@@ -1,0 +1,39 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net462</TargetFramework>
+    <AssemblyName>Villheim</AssemblyName>
+    <RootNamespace>Villheim</RootNamespace>
+    <LangVersion>latest</LangVersion>
+    <Nullable>disable</Nullable>
+    <Version>0.1.0</Version>
+    <GenerateAssemblyInfo>true</GenerateAssemblyInfo>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    <CopyLocalLockFileAssemblies>false</CopyLocalLockFileAssemblies>
+    <NoWarn>$(NoWarn);CS0618</NoWarn>
+  </PropertyGroup>
+
+  <!--
+    Compile-time references only. Nothing from these packages is shipped with the mod:
+    players get BepInEx and Jotunn from Thunderstore, and the game DLLs come from Valheim itself.
+    ValheimGameLibz contains publicized, stripped (no method bodies) copies of the game assemblies,
+    which is the usual way to build Valheim mods without a local game install.
+  -->
+  <ItemGroup>
+    <PackageReference Include="BepInEx.Core" Version="5.4.21" PrivateAssets="all" />
+    <PackageReference Include="UnityEngine.Modules" Version="6000.0.58" PrivateAssets="all" IncludeAssets="compile" />
+    <PackageReference Include="JotunnLib" Version="2.30.2" PrivateAssets="all" />
+    <PackageReference Include="ValheimGameLibz" Version="0.221.12" PrivateAssets="all" />
+    <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies" Version="1.0.3" PrivateAssets="all" />
+  </ItemGroup>
+
+  <!-- Optional: set VALHEIM_INSTALL (or pass -p:ValheimInstall=...) to copy the built DLL into BepInEx/plugins. -->
+  <PropertyGroup>
+    <ValheimInstall Condition="'$(ValheimInstall)' == ''">$(VALHEIM_INSTALL)</ValheimInstall>
+  </PropertyGroup>
+  <Target Name="CopyToValheim" AfterTargets="Build" Condition="'$(ValheimInstall)' != '' And Exists('$(ValheimInstall)')">
+    <Copy SourceFiles="$(TargetPath)" DestinationFolder="$(ValheimInstall)\BepInEx\plugins\Villheim" />
+    <Message Importance="high" Text="Copied Villheim.dll to $(ValheimInstall)\BepInEx\plugins\Villheim" />
+  </Target>
+
+</Project>

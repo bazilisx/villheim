@@ -1,0 +1,10 @@
+{
+  "name": "Villheim",
+  "version_number": "0.1.0",
+  "website_url": "https://github.com/bazilisx/villheim",
+  "description": "NPC villages that grow over time, in the spirit of Millenaire. Built only from Valheim's existing buildings, pieces and player models.",
+  "dependencies": [
+    "denikson-BepInExPack_Valheim-5.4.2333",
+    "ValheimModding-Jotunn-2.30.2"
+  ]
+}

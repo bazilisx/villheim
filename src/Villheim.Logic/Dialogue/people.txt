@@ -1,0 +1,165 @@
+# Villheim: talking to the player, by voice and situation. Same format as lines.txt.
+# Extra tag: event:trade (someone bought from the village in the last ten minutes).
+
+# ------------------------------------------------------------------ talk, steady
+
+@ talk | steady
+Morning. Or afternoon. I lose track out here.
+We're doing all right. Could always do better.
+If you're staying the night, the fire's warm and nobody bites. Much.
+You'll want to see the chest by the hearth. Everything we've got goes in there.
+Ask {other} if you want the long version. I'm more of a short version person.
+
+@ talk, need:any | steady
+We could use {material}, if you happen to have any. No pressure.
+
+@ talk, building:any | steady
+The {building} should be done in a day or two, if the chest keeps up.
+
+# ------------------------------------------------------------------ talk, gruff
+
+@ talk | gruff
+Mm.
+I'm listening. Barely.
+Say it quick.
+You're standing on my good spot.
+Whatever you're selling, we don't want it.
+You can stay. Don't touch anything.
+
+@ talk, need:any | gruff
+Bring {material} or bring nothing. Those are your choices.
+
+@ talk, afterfight | gruff
+Where were you when they came? Thought so.
+
+# ------------------------------------------------------------------ talk, cheerful
+
+@ talk | cheerful
+Oh, hello! Lovely to see you.
+You picked a good day to visit.
+Have you eaten? You should eat. Everyone should eat.
+I was just thinking someone should come by, and here you are.
+Come back soon, won't you?
+
+@ talk, size:hamlet | cheerful
+We've got houses now! Plural!
+
+@ talk, mood:high | cheerful
+Everyone's in good spirits. You can feel it, can't you?
+
+# ------------------------------------------------------------------ talk, worrier
+
+@ talk | worrier
+Did you see anything on the way? Anything big?
+You're armed, right? Good. Good.
+Don't wander off at night. Promise me.
+I keep a knife under my pillow. Is that strange? It's not strange.
+
+@ talk, night | worrier
+You shouldn't be out this late. Nobody should.
+
+@ talk, afterfight | worrier
+They came out of nowhere. I'm still shaking.
+
+# ------------------------------------------------------------------ talk, wry
+
+@ talk | wry
+Welcome to {village}. Population: tired.
+You look like someone who's been hit by a troll. In a nice way.
+If you find the meaning of life out there, bring some back. And wood.
+I'd offer you a seat, but {other} took the good log.
+Don't mind me. I'm supervising.
+
+@ talk, rain | wry
+Lovely weather for drowning.
+
+@ talk, size:town | wry
+We've got so many houses now, I've started losing mine.
+
+# ------------------------------------------------------------------ talk, elder
+
+@ talk | elder
+Come closer, my ears aren't what they were.
+I've seen more winters than I can count. Don't ask me to count.
+Young ones rush about. You look like you rush about.
+There's a story about this hill. Remind me later and I'll tell it badly.
+Keep your axe sharp and your fire lit. That's most of what I know.
+
+@ talk, size:camp | elder
+I've started villages before. This one has a good feel.
+
+# ------------------------------------------------------------------ talk, young
+
+@ talk | young
+Are you a hero? You look like a hero.
+How many monsters have you killed? Round it up.
+Can I come with you next time? I'll carry things.
+I named a boar after you. It's a good boar.
+When I grow up I'm going to have a sword like that.
+
+@ talk, afterfight | young
+I wasn't scared. Well. A bit. Mostly not.
+
+# ------------------------------------------------------------------ talk, devout
+
+@ talk | devout
+The gods sent you, I'm sure of it. Or the weather did.
+I keep a little offering by the hearth. You're welcome to add to it.
+Every traveller is watched over. Some more than others.
+Odin's eye is on this valley. Behave.
+
+@ talk, rain | devout
+Thor's busy today. Best stay under a roof.
+
+# ------------------------------------------------------------------ trading
+
+@ event:trade
+Someone bought from the chest. We'll eat well off those coins.
+Coins in the chest now. I've never seen so many. Well, six.
+
+@ event:trade | gruff
+Sold our spare wood. Now somebody go chop more.
+
+@ event:trade | wry
+We're merchants now. Very fancy. Mind the mud.
+
+@ talk, event:trade
+Thanks for the trade. Come back when your purse is heavy again.
+
+@ talk, food:cooked
+If you're hungry, crouch down and ask. We'll sell you a meal.
+
+@ chat, event:trade
+How many coins have we got? // Enough to feel rich. // Not enough to be rich.
+
+# ------------------------------------------------------------------ villagers about each other's trades
+
+@ !night, many
+The cook keeps a good fire. Best thing about this place.
+Our carpenter could build a hall out of twigs, given time.
+The miners come back grey with dust every evening. You'd think they'd wash.
+Whoever's on watch tonight, I hope they stay awake.
+
+@ !night, many | gruff
+The woodcutters leave sawdust everywhere. Everywhere.
+
+@ !night, many | cheerful
+Everyone has their own job now. Feels like a real village.
+
+# ------------------------------------------------------------------ small talk for quiet moments
+
+@ doing:idle
+Not much to do right now. I'll find something.
+I'm resting my eyes. They're open, but they're resting.
+
+@ doing:stroll | cheerful
+Lovely evening for a walk round the houses.
+
+@ doing:stroll | worrier
+I walk the edge every so often. Just to check.
+
+@ doing:stroll | elder
+Walking keeps the knees going. Barely.
+
+@ doing:stroll, rain
+Walking in the rain. Don't ask me why.

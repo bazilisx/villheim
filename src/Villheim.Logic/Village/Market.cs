@@ -154,6 +154,7 @@ namespace Villheim.Logic.Village
                 Villager villager = __instance.GetComponentInParent<Villager>();
                 if (villager != null)
                 {
+                    Dialogue.Note(villager.VillageId, "trade");
                     Dialogue.Say(villager, Random.value < 0.5f ? "Pleasure doing business." : "Spend it wisely. Or don't.");
                     __instance.m_items = Stock(VillageHearth.Find(villager.VillageId), chest);
                 }

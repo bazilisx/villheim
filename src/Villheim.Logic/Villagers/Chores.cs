@@ -76,6 +76,16 @@ namespace Villheim.Logic.Villagers
             public int Swings;
             public readonly Dictionary<string, int> Carrying = new Dictionary<string, int>();
             public readonly HashSet<GameObject> Skip = new HashSet<GameObject>();
+
+            // Against loops: a builder who can't reach a piece waits before trying again (and after two misses on the
+            // same piece may place it from further away, as Millenaire's builders do when stuck); jobs that end
+            // within seconds with nothing done twice in a row earn a proper break instead of an instant retry.
+            public float BuildRetryAt;
+            public Vector3 MissedPiece;
+            public int Misses;
+            public float StartedAt;
+            public bool Progressed;
+            public int QuickFails;
         }
 
         private const float MaxFromHearth = 55f;
@@ -155,7 +165,7 @@ namespace Villheim.Logic.Villagers
                     VillheimPlugin.Debug($"{villager.VillagerName} goes to rebuild the village chest.");
                 }
             }
-            else if (builder && needs.SiteActive && needs.CanBuildNow && work.Phase != Phase.Build)
+            else if (builder && needs.SiteActive && needs.CanBuildNow && work.Phase != Phase.Build && Time.time >= work.BuildRetryAt)
             {
                 // The chest has what the next piece needs: the builder drops what he is doing (keeping what he
                 // carries for the chest) and builds.
@@ -468,6 +478,8 @@ namespace Villheim.Logic.Villagers
 
         private static void Begin(Villager villager, Work work, Phase phase, GameObject target, Vector3 spot, float seconds)
         {
+            work.StartedAt = Time.time;
+            work.Progressed = false;
             work.Phase = phase;
             work.Target = target;
             work.HitAt = -1f;
@@ -627,6 +639,7 @@ namespace Villheim.Logic.Villagers
             if (work.Target.TryGetComponent(out Pickable pickable))
             {
                 pickable.Interact(villager, false, false);
+                work.Progressed = true;
             }
 
             ReleaseTarget(work);
@@ -795,6 +808,7 @@ namespace Villheim.Logic.Villagers
             }
 
             work.Carrying.Clear();
+            work.Progressed = true;
             VillageNeeds.Forget(villager.VillageId);
             Finish(work);
             return false;
@@ -826,7 +840,9 @@ namespace Villheim.Logic.Villagers
                 Walker.For(villager).Reset();
             }
 
-            bool inReach = ConstructionSite.InBuildReach(hearth, position, piece);
+            bool stubborn = work.Misses >= 2 && Vector3.Distance(work.MissedPiece, piece) < 0.3f;
+            bool inReach = ConstructionSite.InBuildReach(hearth, position, piece) ||
+                           (stubborn && Utils.DistanceXZ(position, piece) < 5f && Mathf.Abs(piece.y - position.y) < 10f);
             if (inReach && ConstructionSite.InsideNextPiece(hearth, villager))
             {
                 // Standing where the piece goes: step further out first.
@@ -850,10 +866,13 @@ namespace Villheim.Logic.Villagers
 
                 if (!ConstructionSite.InBuildReach(hearth, villager.transform.position, piece))
                 {
-                    // Can't get next to it. Try again from another side later; never build from afar.
-                    VillheimPlugin.Debug($"{villager.VillagerName} can't get next to the next piece.");
+                    // Can't get next to it: gather for a while before trying again, instead of walking back at once.
+                    work.Misses = Vector3.Distance(work.MissedPiece, piece) < 0.3f ? work.Misses + 1 : 1;
+                    work.MissedPiece = piece;
+                    work.BuildRetryAt = Time.time + 25f;
+                    VillheimPlugin.Debug($"{villager.VillagerName} can't get next to the next piece (miss {work.Misses}); trying again later.");
                     Finish(work);
-                    work.Cooldown = 4f;
+                    work.Cooldown = 2f;
                     return false;
                 }
             }
@@ -895,6 +914,8 @@ namespace Villheim.Logic.Villagers
             {
                 ConstructionSite.NoteBuilder(villager.VillageId);
                 VillageNeeds.Forget(villager.VillageId);
+                work.Progressed = true;
+                work.Misses = 0;
                 return true;
             }
 
@@ -991,6 +1012,7 @@ namespace Villheim.Logic.Villagers
             if (work.Target != null && CanHit(villager, work.Target, work.HitPoint))
             {
                 Hit(villager, work.Target, work.HitPoint, work.HitCollider, profile.Pickaxe);
+                work.Progressed = true;
             }
         }
 
@@ -1144,6 +1166,18 @@ namespace Villheim.Logic.Villagers
 
         private static void Finish(Work work)
         {
+            if (work.Phase != Phase.Idle && work.Phase != Phase.Build && work.Phase != Phase.BuildChest)
+            {
+                work.QuickFails = !work.Progressed && Time.time - work.StartedAt < 8f ? work.QuickFails + 1 : 0;
+                if (work.QuickFails >= 2)
+                {
+                    // Two jobs in a row that came to nothing: a real break, not an instant retry (no twitchy loops).
+                    work.QuickFails = 0;
+                    work.Cooldown = Random.Range(25f, 40f);
+                    work.Reason = "taking a short break";
+                }
+            }
+
             ReleaseTarget(work);
             work.Phase = Phase.Idle;
             work.Skip.Clear();

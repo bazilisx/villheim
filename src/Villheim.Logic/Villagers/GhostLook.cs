@@ -96,10 +96,13 @@ namespace Villheim.Logic.Villagers
             state.Next = Time.time + RefreshSeconds + Random.Range(0f, 0.5f);
             SweepOrphans();
 
+            // Day and night values, blended through dusk and dawn: by day more teal and more solid (in sunlight the
+            // see-through look washed out to white), at night the softer, glowing look.
             bool on = LogicConfig.GhostLook != null && LogicConfig.GhostLook.Value;
-            float tint = on ? Mathf.Clamp01(LogicConfig.GhostTint.Value) : 0f;
-            float alpha = on ? Mathf.Clamp(LogicConfig.GhostAlpha.Value, 0.1f, 1f) : 1f;
-            float glow = on ? Mathf.Clamp01(LogicConfig.GhostGlow.Value) * Darkness() : 0f;
+            float dark = Darkness();
+            float tint = on ? Mathf.Clamp01(Mathf.Lerp(LogicConfig.GhostTintDay.Value, LogicConfig.GhostTint.Value, dark)) : 0f;
+            float alpha = on ? Mathf.Clamp(Mathf.Lerp(LogicConfig.GhostAlphaDay.Value, LogicConfig.GhostAlpha.Value, dark), 0.1f, 1f) : 1f;
+            float glow = on ? Mathf.Clamp01(Mathf.Lerp(LogicConfig.GhostGlowDay.Value, LogicConfig.GhostGlow.Value, dark)) : 0f;
             if (!on && state.Renderers.Count == 0)
             {
                 return;

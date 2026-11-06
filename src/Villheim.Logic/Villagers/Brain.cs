@@ -68,6 +68,8 @@ namespace Villheim.Logic.Villagers
 
             if (threat)
             {
+                // A fight: the game's AI moves at its own pace (protectors run to the enemy).
+                villager.SetWalk(false);
                 Sleep.Wake(villager);
                 Seats.StandUp(villager);
                 Poses.Release(villager);
@@ -129,6 +131,7 @@ namespace Villheim.Logic.Villagers
             }
 
             Poses.EndTick(villager);
+            LoopWatch.Update(villager);
             Seats.AfterTick(villager);
             Sleep.AfterTick(villager);
             Dialogue.Tick(villager);

@@ -15,8 +15,9 @@ namespace Villheim.Logic
     {
         private static readonly string[] Help =
         {
-            "found: light a new village hearth in front of you",
             "grow: make the nearest village start its next building now (adds the wood it needs)",
+            "settle (or newvillage): light a new village hearth in front of you",
+            "previews: write a preview command for every design to BepInEx/Villheim/preview-commands.txt",
             "wood [amount] [material]: add materials to the nearest village (Wood, Stone, FineWood, RoundLog)",
             "empty: take every material out of the nearest village's stock and village chest",
             "version: show which Villheim.Logic build is running",
@@ -40,7 +41,10 @@ namespace Villheim.Logic
         {
             switch (name)
             {
-                case "villheim_found": Found(context); return true;
+                case "villheim_found":
+                case "villheim_settle":
+                case "villheim_newvillage": Found(context); return true;
+                case "villheim_previews": WritePreviews(context); return true;
                 case "villheim_grow": Grow(context); return true;
                 case "villheim_wood": AddWood(args, context); return true;
                 case "villheim_empty": Empty(context); return true;
@@ -135,6 +139,52 @@ namespace Villheim.Logic
 
             Raids.Force(hearth);
             Say(context, $"Villheim: raiders are on their way to {hearth.VillageName}. They come once it is dark.");
+        }
+
+        /// <summary>
+        /// Writes a 'vh_preview' line for every design a village can use (the culture's lists, More World Locations,
+        /// vanilla houses, every blueprint), grouped by biome and role, to BepInEx/Villheim/preview-commands.txt.
+        /// </summary>
+        private static void WritePreviews(Terminal context)
+        {
+            var lines = new List<string> { "# Villheim: preview commands. Stand in an open spot and paste one into the console (F5).", "" };
+            foreach (Heightmap.Biome biome in new[] { Heightmap.Biome.Meadows, Heightmap.Biome.BlackForest })
+            {
+                foreach (Role role in new[] { Role.Hub, Role.House, Role.Workshop, Role.Farm })
+                {
+                    lines.Add($"# {biome}, {VillageBrain.RoleName(role)}");
+                    foreach (DesignLibrary.Design design in DesignLibrary.PoolFor(biome, role))
+                    {
+                        lines.Add($"vh_preview {design.Name}");
+                    }
+
+                    lines.Add("");
+                }
+            }
+
+            lines.Add("# Every blueprint found (role, family, level)");
+            foreach (Blueprints.Blueprint blueprint in Blueprints.All().Values.OrderBy(b => b.Biome).ThenBy(b => b.Role).ThenBy(b => b.Family).ThenBy(b => b.Level))
+            {
+                lines.Add($"vh_preview {blueprint.Name}    # {blueprint.Biome ?? "any biome"}, {blueprint.Role} '{blueprint.Family}' level {blueprint.Level}, {blueprint.Pieces.Count} pieces");
+            }
+
+            lines.Add("");
+            lines.Add("# Every More World Locations and vanilla location in the Meadows and Black Forest");
+            if (ZoneSystem.instance != null)
+            {
+                foreach (ZoneSystem.ZoneLocation location in ZoneSystem.instance.m_locations
+                             .Where(l => l != null && l.m_prefab.IsValid && (l.m_biome & (Heightmap.Biome.Meadows | Heightmap.Biome.BlackForest)) != 0)
+                             .OrderBy(l => l.m_prefabName))
+                {
+                    lines.Add($"vh_preview {location.m_prefabName}    # {location.m_biome}, radius {DesignLibrary.Radius(location):0}");
+                }
+            }
+
+            string folder = System.IO.Path.Combine(BepInEx.Paths.BepInExRootPath, "Villheim");
+            System.IO.Directory.CreateDirectory(folder);
+            string file = System.IO.Path.Combine(folder, "preview-commands.txt");
+            System.IO.File.WriteAllLines(file, lines);
+            Say(context, $"Villheim: wrote {lines.Count(l => l.StartsWith("vh_"))} preview commands to {file}.");
         }
 
         private static void ListBlueprints(Terminal context)
@@ -236,8 +286,11 @@ namespace Villheim.Logic
                 return;
             }
 
-            Object.Instantiate(HearthPrefab.Prefab, GroundInFront(player, 4f),
+            GameObject made = Object.Instantiate(HearthPrefab.Prefab, GroundInFront(player, 4f),
                 Quaternion.Euler(0f, player.transform.eulerAngles.y, 0f));
+
+            // Settled by hand: the world generator's spacing and rarity rules don't apply to it.
+            made.GetComponent<ZNetView>()?.GetZDO()?.Set(VillageBrain.KeyManual, 1);
             Say(context, "Villheim: a hearth is lit. The first settlers arrive within a few seconds.");
         }
 
@@ -441,10 +494,30 @@ namespace Villheim.Logic
                 return;
             }
 
+            Blueprints.Blueprint blueprint = Blueprints.Find(args[0].StartsWith(Blueprints.Prefix) ? args[0] : Blueprints.Prefix + args[0]);
+            if (blueprint != null)
+            {
+                // A blueprint goes up at once, ground first, so it can be looked at.
+                Vector3 at = GroundInFront(player, blueprint.Radius + 3f);
+                float turn = player.transform.eulerAngles.y;
+                TerrainShaper.LevelPad(at, blueprint.Radius * 0.7f, blueprint.Radius * 0.7f + 3f);
+                int count = 0;
+                foreach (DesignSpawner.PlanEntry entry in Blueprints.MakePlan(blueprint, at, turn))
+                {
+                    if (DesignSpawner.SpawnEntry(entry, at, Quaternion.Euler(0f, turn, 0f), 0, false) != null)
+                    {
+                        count++;
+                    }
+                }
+
+                Say(context, $"Villheim: built {blueprint.Name} ({blueprint.Role} '{blueprint.Family}' level {blueprint.Level}, {count} pieces).");
+                return;
+            }
+
             ZoneSystem.ZoneLocation location = DesignLibrary.Find(args[0]);
             if (location == null)
             {
-                Say(context, $"Villheim: unknown location '{args[0]}'.");
+                Say(context, $"Villheim: no location or blueprint called '{args[0]}'. 'vh_previews' writes the full list.");
                 return;
             }
 

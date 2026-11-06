@@ -47,7 +47,8 @@ namespace Villheim.Logic.Villagers
 
         /// <summary>
         /// Speeds, turn rates and acceleration from the player, whose animations they were made for. Our own slower
-        /// jog played the jog animation at the wrong speed, which read as stutter. Villagers jog on errands.
+        /// jog played the jog animation at the wrong speed, which read as stutter. Villagers walk at the player's
+        /// walking pace, and run at his running pace when they must (see Walker).
         /// </summary>
         private static void CopyMovement(Villager villager)
         {

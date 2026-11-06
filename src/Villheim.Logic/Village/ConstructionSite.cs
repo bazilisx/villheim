@@ -816,8 +816,10 @@ namespace Villheim.Logic.Village
             {
                 // Stand on whatever floor is already there, else on the ground.
                 spot.y = y;
-                if (Physics.Raycast(new Vector3(spot.x, piece.y + 0.5f, spot.z), Vector3.down, out RaycastHit hit, 4f,
-                        LayerMask.GetMask("piece"), QueryTriggerInteraction.Ignore) && hit.point.y > y)
+                // Only a floor close to the ground counts: a roof or upper storey under the spot is never a place to
+                // stand (a builder ended up on a roof).
+                if (Physics.Raycast(new Vector3(spot.x, y + 1.6f, spot.z), Vector3.down, out RaycastHit hit, 2f,
+                        LayerMask.GetMask("piece"), QueryTriggerInteraction.Ignore) && hit.point.y > y && hit.point.y - y < 1.2f)
                 {
                     spot.y = hit.point.y;
                 }

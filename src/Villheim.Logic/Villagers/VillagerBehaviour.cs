@@ -26,6 +26,7 @@ namespace Villheim.Logic.Villagers
             // Looks every client draws for itself: the echo look and a child's size.
             GhostLook.Update(villager);
             GhostLook.UpdateAnimals();
+            Village.MapPins.Update();
             Childhood.Update(villager);
 
             AppliedTier applied = Applied.GetOrCreateValue(villager);
@@ -98,6 +99,15 @@ namespace Villheim.Logic.Villagers
             ai.SetPatrolPoint(target);
         }
 
+        /// <summary>What the villager is doing, in a few words (hover text, inspect command, loop watch).</summary>
+        public static string Activity(Villager villager)
+        {
+            return (Sleep.IsAsleep(villager) ? "asleep" : null) ?? (MorningHearth.IsTending(villager) ? "tending the hearth" : null) ??
+                   Healing.Describe(villager) ?? Chores.Describe(villager) ?? Hunting.Describe(villager) ?? Farming.Describe(villager) ??
+                   Foraging.Describe(villager) ?? Repairs.Describe(villager) ?? (PathLaying.IsLaying(villager) ? "laying a path" : null) ??
+                   FreeTime.Describe(villager);
+        }
+
         public static string HoverText(Villager villager)
         {
             string village = villager.VillageName;
@@ -108,9 +118,7 @@ namespace Villheim.Logic.Villagers
                 text += $"\n<color=#b0b0b0>{(title != null ? char.ToUpperInvariant(title[0]) + title.Substring(1) + " of " : "of ")}{village}</color>";
             }
 
-            string job = (Sleep.IsAsleep(villager) ? "asleep" : null) ?? (MorningHearth.IsTending(villager) ? "tending the hearth" : null) ?? Healing.Describe(villager) ??
-                         Chores.Describe(villager) ?? Hunting.Describe(villager) ?? Farming.Describe(villager) ?? Foraging.Describe(villager) ?? Repairs.Describe(villager) ??
-                         (PathLaying.IsLaying(villager) ? "laying a path" : null) ?? FreeTime.Describe(villager);
+            string job = Activity(villager);
             if (job != null)
             {
                 text += $"\n<color=#b0b0b0>{job}</color>";

@@ -15,6 +15,11 @@ namespace Villheim.Logic
         public static ConfigEntry<int> StartingStock;
         public static ConfigEntry<float> FoodHealing;
         public static ConfigEntry<bool> VillageRaids;
+        public static ConfigEntry<int> VillageChance;
+        public static ConfigEntry<float> VillageSpacing;
+        public static ConfigEntry<float> GhostAlphaDay;
+        public static ConfigEntry<float> GhostTintDay;
+        public static ConfigEntry<float> GhostGlowDay;
         public static ConfigEntry<bool> GhostLook;
         public static ConfigEntry<float> GhostAlpha;
         public static ConfigEntry<float> GhostTint;
@@ -49,14 +54,26 @@ namespace Villheim.Logic
             VillageRaids = Admin(config, work, "RaidsEnabled", false,
                 "Off for now. When on, villages with three or more villagers are now and then raided by greydwarfs at " +
                 "night, warned of at dusk, only while a player is in the village.");
+            const string sites = "1b - Village sites";
+            VillageChance = Admin(config, sites, "VillageChance", 50,
+                "Percent of generated village sites that become villages, so villages stay a rare find. Sites lit with " +
+                "the settle command always do.");
+            VillageSpacing = Admin(config, sites, "VillageSpacing", 1500f,
+                "No two generated villages closer than this (metres). Villages also keep 400 m from traders and ports.");
+
             const string looks = "3c - Villager looks";
             GhostLook = Admin(config, looks, "GhostLook", true,
                 "Villagers look like echoes of the living world: a little see-through, faintly teal, with a faint glow after " +
                 "dark. Only villagers are changed, never players. Off restores the normal look.");
             GhostAlpha = Admin(config, looks, "GhostAlpha", 0.8f,
-                "How solid villagers are, 1 for fully solid. Below 1 uses a see-through shader borrowed from the game's ghosts.");
-            GhostTint = Admin(config, looks, "GhostTint", 0.15f, "How strongly villagers are tinted toward teal, 0 for none.");
+                "How solid villagers are at night, 1 for fully solid. Below 1 uses a see-through shader borrowed from the game's ghosts.");
+            GhostTint = Admin(config, looks, "GhostTint", 0.15f, "How strongly villagers are tinted toward teal at night, 0 for none.");
             GhostGlow = Admin(config, looks, "GhostGlow", 0.25f, "How much villagers glow in the dark hours, 0 for none.");
+            GhostAlphaDay = Admin(config, looks, "GhostAlphaDay", 0.93f,
+                "How solid villagers are by day (GhostAlpha is the night value; dusk and dawn blend the two).");
+            GhostTintDay = Admin(config, looks, "GhostTintDay", 0.5f, "How teal villagers are by day (GhostTint is the night value).");
+            GhostGlowDay = Admin(config, looks, "GhostGlowDay", 0.08f,
+                "A faint teal glow by day, so villagers read teal rather than white in sunlight (GhostGlow is the night value).");
             RaidChance = Admin(config, work, "RaidChance", 0.2f,
                 "Chance each dusk of a raid (plus 3% per village tier), never two nights running.");
         }

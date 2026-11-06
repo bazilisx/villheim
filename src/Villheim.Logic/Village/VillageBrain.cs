@@ -20,6 +20,9 @@ namespace Villheim.Logic.Village
         private const float StartShare = 0.15f;
         private const double UnloadedGapSeconds = 120.0;
 
+        /// <summary>Set on a hearth lit with the settle command: the world generator's spacing rules don't apply.</summary>
+        public static readonly int KeyManual = "villheim_manual".GetStableHashCode();
+
         public static void Tick(VillageHearth hearth)
         {
             if (!hearth.NView.IsOwner() || hearth.Busy || ZNet.instance == null || ZoneSystem.instance == null ||
@@ -31,6 +34,16 @@ namespace Villheim.Logic.Village
             var state = new VillageState(hearth.Zdo);
             if (!state.Initialized)
             {
+                if (hearth.Zdo.GetInt(KeyManual) == 0 && !SiteRules.Allowed(hearth.transform.position, out string why))
+                {
+                    // A generated site that would crowd another village or a trader, or one of the sites left empty
+                    // to keep villages rare: it never becomes a village.
+                    VillheimPlugin.Log.LogInfo($"Village site at {hearth.transform.position} stays empty: {why}.");
+                    hearth.NView.ClaimOwnership();
+                    ZNetScene.instance.Destroy(hearth.gameObject);
+                    return;
+                }
+
                 Initialize(hearth, state);
             }
 

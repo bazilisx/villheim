@@ -19,7 +19,8 @@ namespace Villheim.Logic.Villagers
     /// - Arriving uses two distances. A villager arrives at the stop distance (never under 0.8 m) and only sets off
     ///   again once the goal is half a metre past it, so he doesn't flip between walking and standing at the edge.
     ///   A path that ends early counts as arriving only within 2 m of the stop distance.
-    /// - Villagers always jog, at the player's own speed. No switching between walking and running.
+    /// - Villagers walk, at the player's own walking pace, to and from what they do. They only run when it matters (a
+    ///   carer getting indoors in a fight, a hunter after game): callers ask for it.
     /// - A villager who hasn't moved for a second looks for a closed door between him and the goal. He walks up to
     ///   it, opens it, steps through and closes it behind him.
     /// - A villager who hasn't moved half a metre in 3 seconds jumps and plans a new path. After 5 seconds he steps to
@@ -83,9 +84,10 @@ namespace Villheim.Logic.Villagers
             _doorTried = false;
         }
 
-        public WalkResult Go(Villager villager, VillagerAI ai, float dt, Vector3 point, float stop)
+        public WalkResult Go(Villager villager, VillagerAI ai, float dt, Vector3 point, float stop, bool run = false)
         {
             Vector3 position = villager.transform.position;
+            villager.SetWalk(!run);
             CloseDoorBehind(position);
             stop = Mathf.Max(stop, MinStop);
             if (!_hasGoal || Utils.DistanceXZ(point, _goal) > NewGoalDistance)
@@ -121,7 +123,7 @@ namespace Villheim.Logic.Villagers
                 return WalkResult.Walking;
             }
 
-            if (ai.MoveTo(dt, _goal, stop, false) && distance <= stop + PathEndSlack && !WallBetween(position, _goal))
+            if (ai.MoveTo(dt, _goal, stop, run) && distance <= stop + PathEndSlack && !WallBetween(position, _goal))
             {
                 // The path ends close enough to the goal (a tree trunk or wall is in the way of the last step).
                 _arrived = true;

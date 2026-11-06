@@ -201,7 +201,7 @@ namespace Villheim.Logic.Villagers
                 Vector3? shelter = ShelterSpot(villager);
                 if (shelter.HasValue && Vector3.Distance(enemy.transform.position, shelter.Value) > 6f)
                 {
-                    if (Walker.For(villager).Go(villager, ai, dt, shelter.Value, 1f) != WalkResult.Walking)
+                    if (Walker.For(villager).Go(villager, ai, dt, shelter.Value, 1f, true) != WalkResult.Walking)
                     {
                         ai.StopMoving();
                     }

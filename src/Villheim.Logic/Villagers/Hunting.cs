@@ -139,7 +139,7 @@ namespace Villheim.Logic.Villagers
             float distance = Vector3.Distance(villager.transform.position, prey.transform.position);
             if (distance > StrikeReach)
             {
-                Walker.For(villager).Go(villager, ai, dt, prey.transform.position, StrikeReach * 0.7f);
+                Walker.For(villager).Go(villager, ai, dt, prey.transform.position, StrikeReach * 0.7f, true);
                 return true;
             }
 

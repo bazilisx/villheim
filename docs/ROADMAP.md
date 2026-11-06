@@ -70,6 +70,11 @@ with its own look for its biome.
       needs testing.)
 - [ ] Repairs: villagers fix broken pieces, structural first (flatten under ground pieces), cosmetic later (Tyler,
       2026-11-05). (Built 2026-11-06, needs testing.)
+- [ ] Fencing that keeps enemies out and grows with the village (Tyler, 2026-11-06): a ring around the buildings with
+      gates where paths cross it, starting as sharpened stakes or a light fence in a small Meadows village and becoming
+      a stake wall (and later stone) as the village advances; when buildings go up outside the ring, the old ring comes
+      down and a wider one goes up, as Millénaire's walls grow with village level. Built by the builder from the chest,
+      repaired like buildings.
 - [ ] Stone building waits until the village advances, at least in the Meadows (Tyler, 2026-11-05; to decide).
 
 ## Milestone 4: villagers with lives
@@ -119,6 +124,13 @@ with its own look for its biome.
       weapons and defend (Tyler, 2026-11-05). (Built 2026-11-06, needs testing.)
 - [ ] Trades once the village has six villagers (carpenter, woodcutter, miner, cook, more as it grows), generalists
       before that, after Millénaire's villager types (Tyler, 2026-11-06). (Built 2026-11-06, needs testing.)
+- [ ] Villager moods with reasons (needs and fading thoughts, scaled by personality) and a village mood from its
+      people (Tyler, 2026-11-06). (Built 2026-11-06, needs testing.)
+- [ ] Talk is periodic, never a constant stream; events get a reaction from two or three villagers, never the same line
+      (Tyler, 2026-11-06). (Built 2026-11-06, needs testing.)
+- [ ] Villagers notice and greet new players, remember them, listen and react to each other, spread news and ask for
+      help (Tyler, 2026-11-06, a "Turing test lite"). (Built 2026-11-06, needs testing.)
+- [ ] Newcomers only arrive for an empty bed, as in Millénaire (Tyler, 2026-11-06). (Built 2026-11-06, needs testing.)
 - [ ] Dialogue about what villagers are doing, want and need, with conditions; grow into a large library of lines
       (Tyler, 2026-11-05). (Library of about 670 lines in eight voices with chats built 2026-11-06; keep growing it.)
 - [ ] Interiors upgrade over time (bed, chests, table, then better furniture). (Built 2026-11-06 by village tier,

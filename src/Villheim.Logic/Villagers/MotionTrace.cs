@@ -29,7 +29,8 @@ namespace Villheim.Logic.Villagers
         private static readonly List<string> Events = new List<string>();
 
         // Summary counters.
-        private static int _samples, _airborne, _snaps, _yawFlips, _speedFlips, _triggers;
+        private static int _samples, _airborne, _snaps, _yawFlips, _speedFlips, _triggers, _lookJumps, _bobs;
+        private static float _lastLookYaw;
         private static float _maxUp;
         private static float _lastSpeedSign;
         private static readonly Dictionary<string, int> TriggerCounts = new Dictionary<string, int>();
@@ -68,7 +69,7 @@ namespace Villheim.Logic.Villagers
                              "moveTo,moveTowards,stop,setLook,lookAt,alerted,activity,event");
             Events.Clear();
             TriggerCounts.Clear();
-            _samples = _airborne = _snaps = _yawFlips = _speedFlips = _triggers = _activityChanges = 0;
+            _samples = _airborne = _snaps = _yawFlips = _speedFlips = _triggers = _activityChanges = _lookJumps = _bobs = 0;
             _maxUp = 0f;
             _lastSpeedSign = 0f;
             _lastActivity = null;
@@ -133,6 +134,16 @@ namespace Villheim.Logic.Villagers
                     _snaps++;
                 }
 
+                if (Mathf.Abs(Mathf.DeltaAngle(_lastLookYaw, lookYaw)) > 5f)
+                {
+                    _lookJumps++;
+                }
+
+                if (new Vector3(v.x, 0f, v.z).magnitude < 0.1f && Mathf.Abs(p.y - _lastPosition.y) > 0.02f)
+                {
+                    _bobs++;
+                }
+
                 float dyaw = Mathf.DeltaAngle(_lastYaw, yaw);
                 if (Mathf.Abs(dyaw) > 8f)
                 {
@@ -178,6 +189,7 @@ namespace Villheim.Logic.Villagers
             _moveTo = _moveTowards = _stopMoving = _setLookDir = _lookAt = 0;
             _lastPosition = p;
             _lastYaw = yaw;
+            _lastLookYaw = lookYaw;
             _hasLast = true;
             _samples++;
         }
@@ -199,7 +211,8 @@ namespace Villheim.Logic.Villagers
 
             string summary = $"Villheim trace of {(villager != null ? villager.VillagerName : "?")}: {_samples} steps, " +
                              $"off the ground {_airborne}, highest upward speed {_maxUp:0.00} m/s, position jumps {_snaps}, " +
-                             $"turns over 8 degrees in one step {_yawFlips}, leg direction reversals {_speedFlips}, " +
+                             $"turns over 8 degrees in one step {_yawFlips}, look jumps over 5 degrees {_lookJumps}, height bobs while still {_bobs}, " +
+                             $"leg direction reversals {_speedFlips}, " +
                              $"activity changes {_activityChanges}, animator triggers {_triggers} ({string.Join(", ", triggers)}).";
             try
             {

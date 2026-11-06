@@ -97,5 +97,52 @@ namespace Villheim.Logic.Villagers
 
             return Interact[Random.Range(0, Interact.Count)];
         }
+
+        /// <summary>
+        /// The game's NpcTalk, for villagers, without its turning. Every frame it turned an NPC that stood still (under
+        /// 0.5 m/s) to face the closest player within 15 m. Our own code turns the villager toward his work 20 times
+        /// a second, so with a player nearby the two pulled him back and forth: that was the wobble seen at every
+        /// standing job (a motion trace on 2026-11-06 showed the look direction flipping between the work and the
+        /// player every frame). Greetings and goodbyes are kept; when a villager should look at a player, our own code
+        /// (free time, greetings, reactions) does it.
+        /// </summary>
+        [HarmonyLib.HarmonyPatch(typeof(NpcTalk), nameof(NpcTalk.Update))]
+        internal static class NoTurnPatch
+        {
+            private static bool Prefix(NpcTalk __instance)
+            {
+                if (!(__instance.m_character is Villager))
+                {
+                    return true;
+                }
+
+                if (__instance.m_monsterAI == null || __instance.m_nview == null || !__instance.m_nview.IsValid() ||
+                    __instance.m_monsterAI.GetTargetCreature() != null || __instance.m_monsterAI.GetStaticTarget() != null)
+                {
+                    return false;
+                }
+
+                __instance.UpdateTarget();
+                Player target = __instance.m_targetPlayer;
+                if (target != null && __instance.m_seeTarget)
+                {
+                    float distance = Vector3.Distance(target.transform.position, __instance.transform.position);
+                    if (!__instance.m_didGreet && distance < __instance.m_greetRange)
+                    {
+                        __instance.m_didGreet = true;
+                        __instance.QueueSay(__instance.m_randomGreets, "Greet", __instance.m_randomGreetFX);
+                    }
+
+                    if (__instance.m_didGreet && !__instance.m_didGoodbye && distance > __instance.m_byeRange)
+                    {
+                        __instance.m_didGoodbye = true;
+                        __instance.QueueSay(__instance.m_randomGoodbye, "Greet", __instance.m_randomGoodbyeFX);
+                    }
+                }
+
+                __instance.UpdateSayQueue();
+                return false;
+            }
+        }
     }
 }

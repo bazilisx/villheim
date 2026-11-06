@@ -49,6 +49,9 @@ namespace Villheim.Logic.Village
             public List<DesignSpawner.PlanEntry> Entries;
             public Dictionary<string, float> Factors;
             public float Footprint;
+
+            /// <summary>Height of the ground floor's underside above the site's origin (the bottom of the lowest walls and floors).</summary>
+            public float Floor;
             public int RemainingIndex = -1;
             public Dictionary<string, float> Remaining;
         }
@@ -255,7 +258,7 @@ namespace Villheim.Logic.Village
             }
 
             Quaternion rotation = Quaternion.Euler(0f, site.Yaw, 0f);
-            GroundUnder(site, entry, rotation);
+            GroundUnder(site, entry, rotation, plan.Footprint);
             DesignSpawner.SpawnEntry(entry, site.Position, rotation, state.Id, effects);
             zdo.Set(KeySiteIndex, index + 1);
             state.Waiting = "";
@@ -392,7 +395,17 @@ namespace Villheim.Logic.Village
                 }
             }
 
-            var plan = new CachedPlan { Key = key, Entries = entries, Factors = factors, Footprint = footprint + 0.5f };
+            float floor = float.MaxValue;
+            foreach (DesignSpawner.PlanEntry entry in entries)
+            {
+                if (entry.Shell && entry.Bounds.HasValue && entry.Bounds.Value.min.y < 1.2f)
+                {
+                    floor = Mathf.Min(floor, entry.Bounds.Value.min.y);
+                }
+            }
+
+            floor = floor == float.MaxValue ? 0f : Mathf.Clamp(floor, -1.5f, 1.2f);
+            var plan = new CachedPlan { Key = key, Entries = entries, Factors = factors, Footprint = footprint + 0.5f, Floor = floor };
             Plans[id] = plan;
             return plan;
         }
@@ -562,18 +575,8 @@ namespace Villheim.Logic.Village
             if (old == null)
             {
                 hearth.Zdo.Set(KeySiteTeardown, 0);
-                ZoneSystem.ZoneLocation location = DesignLibrary.Find(site.Design);
-                if (location != null)
-                {
-                    DesignSpawner.PrepareSite(location, site.Position, site.Yaw);
-                }
-                else
-                {
-                    DesignSpawner.ClearArea(site.Position, site.Radius);
-                }
-
-                float footprint = Footprint(hearth);
-                TerrainShaper.LevelPad(site.Position, footprint + 0.5f, footprint + 3f);
+                DesignSpawner.ClearArea(site.Position, site.Radius);
+                PrepareGround(hearth, site.Position);
                 VillheimPlugin.Log.LogInfo($"{state.Name} took down the old building; the new one starts now.");
                 return true;
             }
@@ -706,6 +709,28 @@ namespace Villheim.Logic.Village
             return plan != null ? plan.Footprint : (site != null ? site.Radius * 0.6f : 6f);
         }
 
+        /// <summary>The height the building's ground floor sits at: where its ground is levelled to.</summary>
+        public static float FloorHeight(VillageHearth hearth)
+        {
+            Site site = Get(hearth.Zdo);
+            CachedPlan plan = site != null ? GetPlan(hearth, site) : null;
+            return site == null ? hearth.transform.position.y : site.Position.y + (plan != null ? plan.Floor : 0f);
+        }
+
+        /// <summary>
+        /// The building's ground, like the hearth's: cleared, perfectly flat at the ground floor's height out past the
+        /// walls (so every door opens onto level ground), a smooth slope beyond, grass cleared, bare earth inside.
+        /// </summary>
+        public static void PrepareGround(VillageHearth hearth, Vector3 position)
+        {
+            float footprint = Footprint(hearth);
+            var floor = new Vector3(position.x, FloorHeight(hearth), position.z);
+            HearthGround.ClearAround(position, footprint + 3f);
+            TerrainShaper.LevelPad(floor, footprint + 1.5f, footprint + 5f);
+            HearthGround.ClearVegetation(floor, footprint + 4f);
+            HearthGround.Paint(floor, footprint + 1.5f, TerrainModifier.PaintType.Dirt);
+        }
+
         /// <summary>True when the point is inside the building's outline (plus a little margin).</summary>
         public static bool InsideFootprint(VillageHearth hearth, Vector3 point)
         {
@@ -714,12 +739,21 @@ namespace Villheim.Logic.Village
         }
 
         /// <summary>
-        /// Ground pieces (floors, the bottom row of walls, posts) rest on the ground. Where the ground under one is
-        /// lower or higher than its base, a pad is levelled to the base first, so nothing goes up in the air and breaks.
+        /// Ground pieces (floors, the bottom row of walls, posts) rest on the ground. Where the ground under one outside
+        /// the building's pad is lower or higher than its base, a pad is levelled to the base first, so nothing goes up
+        /// in the air and breaks.
         /// </summary>
-        private static void GroundUnder(Site site, DesignSpawner.PlanEntry entry, Quaternion rotation)
+        private static void GroundUnder(Site site, DesignSpawner.PlanEntry entry, Quaternion rotation, float footprint)
         {
             if (!entry.Shell || !entry.Bounds.HasValue)
+            {
+                return;
+            }
+
+            // Inside the building's flat pad (see PrepareGround) the ground is already right: little pads under single
+            // pieces only made bumps there. This is for pieces that reach past it.
+            Vector3 local0 = entry.Bounds.Value.center;
+            if (new Vector2(local0.x, local0.z).magnitude < footprint + 1f)
             {
                 return;
             }

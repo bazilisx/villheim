@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using HarmonyLib;
 using UnityEngine;
@@ -10,6 +11,7 @@ namespace Villheim.Logic.Villagers
     /// - Villagers pass through players and each other. Unity forgets an ignored pair when a collider is switched off
     ///   and on, so the pairs are set again every two seconds. Without this a villager shoves a player out of the way
     ///   and villagers jam in doorways.
+    /// - A villager on a seat or in a bed is held there every physics step (see <see cref="PinTo"/>).
     /// - Gestures and the fake swings used for work never slide the body: animation-driven movement is dropped for
     ///   villagers outside a real attack (see <see cref="RootMotionPatch"/>).
     /// </summary>
@@ -52,6 +54,100 @@ namespace Villheim.Logic.Villagers
                 {
                     Physics.IgnoreCollision(mine, other.m_collider, true);
                 }
+            }
+        }
+
+        private sealed class Pin
+        {
+            public Transform Point;
+            public Collider[] Ignored;
+        }
+
+        private static readonly Dictionary<Villager, Pin> Pins = new Dictionary<Villager, Pin>();
+
+        /// <summary>
+        /// Holds a villager on a seat or in a bed every physics step, as the NPCS mod and the game's own attach do,
+        /// and stops the seat's colliders from pushing him. Held only at each brain tick, the physics pushed a seated
+        /// villager up out of the bench 4 cm a step and the next tick pulled him down again: a trace on 2026-11-06
+        /// showed that sawtooth, seen as shaking while sitting.
+        /// </summary>
+        public static void PinTo(Villager villager, Transform point, GameObject furniture)
+        {
+            if (Pins.TryGetValue(villager, out Pin pin) && pin.Point == point)
+            {
+                return;
+            }
+
+            Unpin(villager);
+            Collider[] ignored = furniture != null ? furniture.GetComponentsInChildren<Collider>() : new Collider[0];
+            if (villager.m_collider != null)
+            {
+                foreach (Collider collider in ignored)
+                {
+                    if (collider != null)
+                    {
+                        Physics.IgnoreCollision(villager.m_collider, collider, true);
+                    }
+                }
+            }
+
+            Pins[villager] = new Pin { Point = point, Ignored = ignored };
+            Hold(villager, point);
+        }
+
+        public static void Unpin(Villager villager)
+        {
+            if (!Pins.TryGetValue(villager, out Pin pin))
+            {
+                return;
+            }
+
+            Pins.Remove(villager);
+            if (villager != null && villager.m_collider != null)
+            {
+                foreach (Collider collider in pin.Ignored)
+                {
+                    if (collider != null)
+                    {
+                        Physics.IgnoreCollision(villager.m_collider, collider, false);
+                    }
+                }
+            }
+        }
+
+        private static void Hold(Villager villager, Transform point)
+        {
+            Rigidbody body = villager.m_body;
+            if (body != null)
+            {
+                body.useGravity = false;
+                body.velocity = Vector3.zero;
+                body.angularVelocity = Vector3.zero;
+                body.position = point.position;
+                body.rotation = point.rotation;
+            }
+
+            villager.transform.position = point.position;
+            villager.transform.rotation = point.rotation;
+        }
+
+        [HarmonyPatch(typeof(Humanoid), nameof(Humanoid.CustomFixedUpdate))]
+        internal static class PinPatch
+        {
+            private static void Postfix(Humanoid __instance)
+            {
+                if (Pins.Count == 0 || !(__instance is Villager villager) || !Pins.TryGetValue(villager, out Pin pin))
+                {
+                    return;
+                }
+
+                if (pin.Point == null || villager.IsDead())
+                {
+                    Unpin(villager);
+                    return;
+                }
+
+                Hold(villager, pin.Point);
             }
         }
 

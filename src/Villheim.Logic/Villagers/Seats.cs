@@ -88,14 +88,7 @@ namespace Villheim.Logic.Villagers
             SittingOn[villager] = chair;
             SatFrame[villager] = Time.frameCount;
             Taken[chair] = villager;
-            if (villager.m_body != null)
-            {
-                villager.m_body.useGravity = false;
-                villager.m_body.velocity = Vector3.zero;
-            }
-
-            villager.transform.position = point.position;
-            villager.transform.rotation = point.rotation;
+            Body.PinTo(villager, point, chair.gameObject);
             Poses.Hold(villager, string.IsNullOrEmpty(chair.m_attachAnimation) ? "attach_chair" : chair.m_attachAnimation);
             return true;
         }
@@ -108,6 +101,7 @@ namespace Villheim.Logic.Villagers
             }
 
             SittingOn.Remove(villager);
+            Body.Unpin(villager);
             if (chair != null && Taken.TryGetValue(chair, out Villager holder) && holder == villager)
             {
                 Taken.Remove(chair);

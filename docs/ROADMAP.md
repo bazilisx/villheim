@@ -44,7 +44,9 @@ with its own look for its biome.
   chests); then more homes, farms and workshops as trades appear. Built session 11, needs testing.
 - [ ] Storehouse grows into the longhouse: its chests move into the central hall when the hall is rebuilt bigger.
 - [ ] Replant one sapling per tree felled, 8 to 25 m outside the village radius. Built session 11, needs testing.
-- [ ] Jitter: record traces with `vh trace` and fix from the data.
+- [ ] Jitter: record traces with `vh trace` and fix from the data. Session 12 fixed two causes (NpcTalk turning to the
+  player, seat sawtooth); trace again to confirm.
+- [ ] Building ground flat at floor height like the hearth (session 12, needs testing); drop designs that trap villagers.
 - [ ] Trees felled away from the village.
 - [ ] Right tool for each job: hammer to build, axe for trees, pickaxe for rocks. (Built 2026-11-05 session 4,
       needs testing.)

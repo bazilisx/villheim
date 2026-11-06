@@ -47,6 +47,7 @@ namespace Villheim.Logic.Villagers
         private const float DoorPassSeconds = 3f;
         private const float CloseDoorBeyond = 2f;
         private const float RunBeyond = 8f;
+        private const float BlockedNearGoal = 1.5f;
         private const float WalkWithin = 5f;
 
         private static readonly ConditionalWeakTable<Villager, Walker> Walkers = new ConditionalWeakTable<Villager, Walker>();
@@ -73,6 +74,7 @@ namespace Villheim.Logic.Villagers
         private float _nextClosePush;
         private float _lastGo;
         private bool _running;
+        private float _blockedSlack;
 
         public static Walker For(Villager villager) => Walkers.GetOrCreateValue(villager);
 
@@ -82,6 +84,7 @@ namespace Villheim.Logic.Villagers
         {
             _hasGoal = false;
             _arrived = false;
+            _blockedSlack = 0f;
             _sidesteps = 0;
             _sidestepUntil = 0f;
             _door = null;
@@ -119,6 +122,7 @@ namespace Villheim.Logic.Villagers
                 _goal = point;
                 _hasGoal = true;
                 _arrived = false;
+                _blockedSlack = 0f;
                 _hopped = false;
                 _sidesteps = 0;
                 _sidestepUntil = 0f;
@@ -129,7 +133,7 @@ namespace Villheim.Logic.Villagers
             }
 
             float distance = Utils.DistanceXZ(position, _goal);
-            _arrived = _arrived ? distance <= stop + LeaveSlack : distance <= stop;
+            _arrived = _arrived ? distance <= stop + LeaveSlack + _blockedSlack : distance <= stop;
             if (_arrived)
             {
                 ai.StopMoving();
@@ -176,7 +180,23 @@ namespace Villheim.Logic.Villagers
 
             if (distance < NotStuckNearGoal && !WallBetween(position, _goal))
             {
-                // Jostling near the goal is normal: no hops or sidesteps for it.
+                // Jostling near the goal is normal: no hops or sidesteps for it. But pressed against something close to
+                // the goal for a second and a half, he has got as near as he can: stop pushing (a trace showed a
+                // builder leaning into a wall for 14 s, legs still, the body nudged back and forth). Near enough counts
+                // as there; otherwise the caller hears he is stuck.
+                if (still > BlockedNearGoal)
+                {
+                    ai.StopMoving();
+                    if (distance <= stop + 1.5f)
+                    {
+                        _arrived = true;
+                        _blockedSlack = distance - stop; // stays "there" from here, instead of pushing again
+                        return WalkResult.Arrived;
+                    }
+
+                    return WalkResult.Stuck;
+                }
+
                 return WalkResult.Walking;
             }
 
@@ -190,6 +210,13 @@ namespace Villheim.Logic.Villagers
             {
                 if (_sidesteps >= MaxSidesteps)
                 {
+                    if (EscapeBuilding(villager, _goal))
+                    {
+                        _lastMoved = Time.time;
+                        _sidesteps = 0;
+                        return WalkResult.Walking;
+                    }
+
                     return WalkResult.Stuck;
                 }
 
@@ -210,6 +237,59 @@ namespace Villheim.Logic.Villagers
             }
 
             return WalkResult.Walking;
+        }
+
+        /// <summary>
+        /// Shut in a building he can't walk out of (a low beam over the door, a door below the ground), with the goal
+        /// outside it: he steps out to open ground just past the walls, toward the goal. Logged with the design, so
+        /// designs that trap villagers can be found and dropped.
+        /// </summary>
+        private static bool EscapeBuilding(Villager villager, Vector3 goal)
+        {
+            VillageHearth hearth = VillageHearth.Find(villager.VillageId);
+            if (hearth == null || !hearth.IsValid)
+            {
+                return false;
+            }
+
+            Vector3 position = villager.transform.position;
+            foreach (Village.Plot plot in new Village.VillageState(hearth.Zdo).Plots)
+            {
+                float inside = plot.Radius * 0.7f;
+                if (Utils.DistanceXZ(position, plot.Position) > inside || Utils.DistanceXZ(goal, plot.Position) < inside)
+                {
+                    continue;
+                }
+
+                Vector3 way = Flat(goal - plot.Position);
+                for (int turn = 0; turn < 8; turn++)
+                {
+                    Vector3 out1 = plot.Position + Quaternion.Euler(0f, turn * 45f, 0f) * way * (plot.Radius * 0.75f + 1.5f);
+                    if (!ZoneSystem.instance.GetGroundHeight(out1, out float y) || y < ZoneSystem.instance.m_waterLevel)
+                    {
+                        continue;
+                    }
+
+                    out1.y = y + 0.1f;
+                    if (Physics.CheckCapsule(out1 + Vector3.up * 0.4f, out1 + Vector3.up * 1.6f, 0.35f,
+                            LayerMask.GetMask("piece", "piece_nonsolid", "Default", "static_solid", "Default_small")))
+                    {
+                        continue;
+                    }
+
+                    villager.transform.position = out1;
+                    if (villager.m_body != null)
+                    {
+                        villager.m_body.position = out1;
+                        villager.m_body.velocity = Vector3.zero;
+                    }
+
+                    VillheimPlugin.Log.LogInfo($"{villager.VillagerName} was shut in the {plot.Design} and stepped out (that design may trap villagers).");
+                    return true;
+                }
+            }
+
+            return false;
         }
 
         /// <summary>A building piece stands between the two points at knee height.</summary>

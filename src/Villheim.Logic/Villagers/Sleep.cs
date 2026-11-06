@@ -317,16 +317,8 @@ namespace Villheim.Logic.Villagers
                 villager.HideHandItems(false, false);
             }
 
-            Rigidbody body = villager.m_body;
-            if (body != null)
-            {
-                // Held in place each tick, like the game's own attach: no gravity, no drift.
-                body.useGravity = false;
-                body.velocity = Vector3.zero;
-            }
-
-            villager.transform.position = point.position;
-            villager.transform.rotation = point.rotation;
+            // Held in place every physics step, like the game's own attach (see Body.PinTo).
+            Body.PinTo(villager, point, state.Bed != null ? state.Bed.gameObject : null);
             state.HeldFrame = Time.frameCount;
             Poses.Hold(villager, BedPose);
             return true;
@@ -377,6 +369,7 @@ namespace Villheim.Logic.Villagers
             }
 
             state.Asleep = false;
+            Body.Unpin(villager);
             Poses.Release(villager);
             if (villager.m_body != null)
             {

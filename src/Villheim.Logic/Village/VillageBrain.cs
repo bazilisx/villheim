@@ -403,15 +403,9 @@ namespace Villheim.Logic.Village
             hearth.Busy = true;
             try
             {
-                if (design.Blueprint != null)
-                {
-                    DesignSpawner.ClearArea(position, radius);
-                }
-                else if (!DesignSpawner.PrepareSite(design.Location, position, yaw))
-                {
-                    VillheimPlugin.Log.LogWarning($"Could not load the design {design.Name}.");
-                    yield break;
-                }
+                // The design's own terrain shaping is not copied for village buildings: it fought the flat pad below
+                // and could leave a door below the ground.
+                DesignSpawner.ClearArea(position, radius);
 
                 // Give the heightmaps a moment to rebuild before pieces start going up.
                 yield return new WaitForSeconds(0.75f);
@@ -430,12 +424,9 @@ namespace Villheim.Logic.Village
                     Design = design.Name, Position = position, Yaw = yaw, Radius = radius, Role = role, Seed = seed,
                 });
 
-                // Ground first: the whole outline is raised or lowered to the floor height (the hearth's level where it
-                // could be) before the first piece goes up, and the grass is cleared from it.
-                float footprint = ConstructionSite.Footprint(hearth);
-                TerrainShaper.LevelPad(position, footprint + 0.5f, footprint + 3f);
-                HearthGround.ClearAround(position, footprint + 2f);
-                HearthGround.Paint(position, footprint + 1f, TerrainModifier.PaintType.Dirt);
+                // Ground first, like the hearth's: flat at the ground floor's height out past the walls, grass cleared,
+                // bare earth, before the first piece goes up.
+                ConstructionSite.PrepareGround(hearth, position);
 
                 VillheimPlugin.Log.LogInfo($"{state.Name} broke ground for a {RoleName(role)} ({design.Name}) at {position}.");
                 Villagers.Dialogue.Note(state.Id, "groundbroken");

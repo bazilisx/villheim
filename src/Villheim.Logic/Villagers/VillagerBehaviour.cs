@@ -111,6 +111,8 @@ namespace Villheim.Logic.Villagers
                 text += $"\n<color=#b0b0b0>{job}</color>";
             }
 
+            text += $"\n<size=12><color=#909090>feels {Moods.Label(Moods.Get(villager))}</color></size>";
+
             string idle = Chores.IdleReason(villager);
             if (idle != null)
             {

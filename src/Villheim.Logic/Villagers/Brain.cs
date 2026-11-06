@@ -24,6 +24,7 @@ namespace Villheim.Logic.Villagers
             public float NextThreatCheck;
             public bool Threat;
             public Character Enemy;
+            public bool WasThreat;
         }
 
         private static readonly ConditionalWeakTable<Villager, State> States = new ConditionalWeakTable<Villager, State>();
@@ -38,7 +39,20 @@ namespace Villheim.Logic.Villagers
             Body.Update(villager);
             Walker.For(villager).Tick(villager);
 
-            if (ThreatNear(villager, ai, out Character enemy))
+            bool threat = ThreatNear(villager, ai, out Character enemy);
+            Moods.Update(villager, threat);
+            State brain = States.GetOrCreateValue(villager);
+            if (threat != brain.WasThreat)
+            {
+                brain.WasThreat = threat;
+                Dialogue.Event(villager.VillageId, threat ? "attack" : "fightover", villager.transform.position);
+                if (!threat)
+                {
+                    Moods.FightOver(villager);
+                }
+            }
+
+            if (threat)
             {
                 Sleep.Wake(villager);
                 Seats.StandUp(villager);

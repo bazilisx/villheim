@@ -80,6 +80,7 @@ namespace Villheim.Logic.Villagers
             public float Until;
             public string Reply;
             public Villager ReplyBy;
+            public float NextLine;
         }
 
         private const float FireMin = 2.2f;
@@ -593,6 +594,7 @@ namespace Villheim.Logic.Villagers
                 // Answer what the other one just said, or start something new ("first // reply" lines are exchanges).
                 if (chat.Reply != null && chat.ReplyBy == villager)
                 {
+                    Moods.Think(villager, "chat");
                     // Longer exchanges go back and forth: "first // reply // answer".
                     string say = chat.Reply;
                     int next = say.IndexOf("//", System.StringComparison.Ordinal);
@@ -600,16 +602,18 @@ namespace Villheim.Logic.Villagers
                     chat.ReplyBy = chat.A == villager ? chat.B : chat.A;
                     Dialogue.Say(villager, next > 0 ? say.Substring(0, next).Trim() : say);
                 }
-                else if (Random.value < 0.7f)
+                else if (chat.Reply == null && Time.time >= chat.NextLine)
                 {
-                    string line = Dialogue.LineFor(villager, "chat");
+                    // One short exchange, then they just gesture; another one only after a while, if the village
+                    // isn't busy talking already.
+                    string line = Dialogue.ChatOpening(villager);
                     if (line == null)
                     {
-                        string[] lines = mood >= 65f && Random.value < 0.4f ? CheerfulLines
-                            : mood < 35f && Random.value < 0.5f ? GlumLines
-                            : ChatLines;
-                        line = lines[Random.Range(0, lines.Length)];
+                        return;
                     }
+
+                    chat.NextLine = Time.time + Random.Range(45f, 90f);
+                    Moods.Think(villager, "chat");
 
                     int split = line.IndexOf("//", System.StringComparison.Ordinal);
                     if (split > 0)

@@ -429,8 +429,10 @@ namespace Villheim.Logic.Village
             }
 
             bool firstArrivals = state.Arrivals < VillheimConfig.StartingVillagers.Value;
+            // The first settlers are found at the hearth (they build the beds). Everyone after them, as in Millenaire,
+            // only comes when a bed stands empty for them, never just because there is room.
             if (!firstArrivals && (now - state.LastArrival < ArrivalInterval() || EnvMan.IsNight() ||
-                                   Villagers.Beds.Free(hearth) == 0))
+                                   Villagers.Beds.Spare(hearth) == 0))
             {
                 return;
             }
@@ -495,6 +497,10 @@ namespace Villheim.Logic.Village
 
             state.Arrivals = arrival + 1;
             VillheimPlugin.Debug($"{state.Name}: {name} arrived.");
+
+            // The newcomer claims the free bed at once, so the next arrival can't count it as free too.
+            Villagers.Beds.Forget(state.Id);
+            Villagers.Beds.For(villager);
             if (arrival >= VillheimConfig.StartingVillagers.Value)
             {
                 Villagers.Dialogue.Note(state.Id, "arrival");

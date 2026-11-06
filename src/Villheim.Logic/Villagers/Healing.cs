@@ -466,6 +466,7 @@ namespace Villheim.Logic.Villagers
             // Scraps: a weak food that heals 2% of his health every 10 seconds for five minutes.
             state.Foods.Add(new Food { Name = "scraps", Regen = villager.GetMaxHealth() * 0.02f, Until = Time.time + 300f });
             Poses.Trigger(villager, "eat");
+            Moods.Think(villager, "atescraps");
             VillheimPlugin.Debug($"{villager.VillagerName} ate roasted scraps.");
             Done(villager, state, RestBetween);
             return false;
@@ -497,6 +498,7 @@ namespace Villheim.Logic.Villagers
             });
 
             Poses.Trigger(villager, "eat");
+            Moods.Think(villager, "atewell");
             VillheimPlugin.Debug($"{villager.VillagerName} ate {prefabName}: {shared.m_foodRegen * scale:0.#} health every 10 s " +
                                  $"for {shared.m_foodBurnTime / 60f:0} min.");
         }

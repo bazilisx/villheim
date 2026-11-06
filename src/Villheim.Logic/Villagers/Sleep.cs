@@ -116,6 +116,15 @@ namespace Villheim.Logic.Villagers
             return best;
         }
 
+        /// <summary>
+        /// Beds left over once every villager has one: the village's beds less its villagers, as in Millenaire, where a
+        /// building's residents are its beds. A newcomer only arrives when this is above zero.
+        /// </summary>
+        public static int Spare(VillageHearth hearth)
+        {
+            return Mathf.Max(0, Of(hearth).Count - Village.VillageBrain.CountVillagers(hearth.VillageId));
+        }
+
         /// <summary>Beds nobody in the village has claimed yet (counting loaded villagers only).</summary>
         public static int Free(VillageHearth hearth)
         {
@@ -167,6 +176,7 @@ namespace Villheim.Logic.Villagers
         private sealed class State
         {
             public bool Asleep;
+            public bool Rough;
             public int HeldFrame;
             public float GiveUpAt;
             public Bed Bed;
@@ -215,8 +225,15 @@ namespace Villheim.Logic.Villagers
                 if (state.Asleep)
                 {
                     Wake(villager);
+                    Moods.Think(villager, "sleptwell");
                     VillheimPlugin.Debug($"{villager.VillagerName} gets up.");
                 }
+                else if (state.Rough)
+                {
+                    Moods.Think(villager, "sleptrough");
+                }
+
+                state.Rough = false;
 
                 state.GiveUpAt = 0f;
                 return false;
@@ -285,6 +302,7 @@ namespace Villheim.Logic.Villagers
         /// </summary>
         private static bool SleepUnderRoof(Villager villager, VillagerAI ai, float dt, State state)
         {
+            state.Rough = true;
             Vector3? shelter = Roles.ShelterSpot(villager);
             if (!shelter.HasValue || state.GiveUpAt == float.MaxValue)
             {

@@ -65,10 +65,11 @@ namespace Villheim.Logic.Villagers
             talk.enabled = chatter;
             talk.m_name = "Villager";
             talk.m_maxRange = 15f;
-            talk.m_greetRange = 8f;
-            talk.m_byeRange = 12f;
+            // Only a villager you walk right up to says hello, and not again for a while.
+            talk.m_greetRange = 3.5f;
+            talk.m_byeRange = 10f;
             talk.m_offset = 2.2f;
-            talk.m_minTalkInterval = 3f;
+            talk.m_minTalkInterval = 30f;
             talk.m_hideDialogDelay = 5f;
             talk.m_randomTalkInterval = 25f;
 

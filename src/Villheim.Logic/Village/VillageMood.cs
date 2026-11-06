@@ -10,8 +10,9 @@ namespace Villheim.Logic.Village
     /// time: a cheerful village chats, cheers, toasts and dances at the evening fire; a glum one sits alone, shrugs and
     /// sighs. It never stops anyone from working.
     ///
-    /// Inputs: enough homes for everyone, how big the village has grown, a building going up, having what it needs,
-    /// rain, and monsters seen in the last few minutes.
+    /// Six tenths of it is the average of its villagers' own moods (see Villagers.Moods), four tenths the village's
+    /// state: a bed for everyone, how big it has grown, a building going up, having what it needs, rain, and monsters
+    /// seen in the last few minutes. It moves at most 5 points a minute, so a village takes a while to cheer up or sour.
     /// </summary>
     internal static class VillageMood
     {
@@ -73,8 +74,8 @@ namespace Villheim.Logic.Village
             float mood = 50f;
 
             int villagers = Character.GetAllCharacters().Count(c => c is Villager v && !v.IsDead() && v.VillageId == villageId);
-            int homes = state.Plots.Count(p => string.IsNullOrEmpty(p.Role) || p.Role == nameof(Role.House) || p.Role == nameof(Role.Hub));
-            mood += homes * 2 >= villagers ? 10f : -10f;
+            int beds = Villagers.Beds.Of(hearth).Count;
+            mood += beds >= villagers ? 10f : -10f;
             mood += Mathf.Min(20f, state.Plots.Count * 4f);
 
             if (ConstructionSite.IsActive(hearth.Zdo))
@@ -98,8 +99,15 @@ namespace Villheim.Logic.Village
                 mood -= 20f;
             }
 
+            // Its people's own moods weigh most.
+            var people = Character.GetAllCharacters().OfType<Villager>().Where(v => !v.IsDead() && v.VillageId == villageId).ToList();
+            if (people.Count > 0)
+            {
+                mood = mood * 0.4f + people.Average(v => Villagers.Moods.Get(v)) * 0.6f;
+            }
+
             // Moods drift rather than jump.
-            return Mathf.Clamp(Mathf.Lerp(previous, mood, 0.5f), 0f, 100f);
+            return Mathf.Clamp(previous + Mathf.Clamp(mood - previous, -5f, 5f), 0f, 100f);
         }
     }
 }

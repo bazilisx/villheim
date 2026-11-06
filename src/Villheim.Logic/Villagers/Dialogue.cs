@@ -51,10 +51,127 @@ namespace Villheim.Logic.Villagers
         private static List<Section> _sections;
         private static readonly Dictionary<(int, string), float> Events = new Dictionary<(int, string), float>();
 
-        /// <summary>Something happened in the village (finished, arrival...): "event:x" holds for ten minutes.</summary>
+        private static readonly string[] VillageMoodEvents = { "finished", "arrival", "hunt", "trade" };
+        private static readonly string[] Reacted = { "finished", "arrival", "groundbroken", "hunt" };
+
+        /// <summary>
+        /// Something happened in the village (finished, arrival...): "event:x" holds for ten minutes, everyone's mood
+        /// takes note, and a building milestone, newcomer or hunt gets a reaction from a couple of villagers.
+        /// </summary>
         public static void Note(int villageId, string what)
         {
             Events[(villageId, what)] = Time.time;
+            if (VillageMoodEvents.Contains(what))
+            {
+                Moods.VillageThink(villageId, what);
+            }
+
+            if (Reacted.Contains(what))
+            {
+                Event(villageId, what, Vector3.zero);
+            }
+        }
+
+        // ---------------------------------------------------------------- cadence
+
+        /// <summary>When the village may next say something unprompted (any villager), by village.</summary>
+        private static readonly Dictionary<int, float> NextAmbient = new Dictionary<int, float>();
+
+        /// <summary>Lines said in the village in the last minute, so two villagers never say the same thing together.</summary>
+        private static readonly Dictionary<int, List<(string Line, float Time)>> RecentInVillage = new Dictionary<int, List<(string, float)>>();
+
+        private sealed class Reaction
+        {
+            public Villager Who;
+            public string Tag;
+            public float At;
+        }
+
+        private static readonly List<Reaction> Reactions = new List<Reaction>();
+        private static readonly Dictionary<(int, string), float> LastEvent = new Dictionary<(int, string), float>();
+
+        private static bool AmbientOpen(int villageId) => !NextAmbient.TryGetValue(villageId, out float next) || Time.time >= next;
+
+        private static void UseAmbient(int villageId, float min = 30f, float max = 60f)
+        {
+            NextAmbient[villageId] = Time.time + Random.Range(min, max);
+        }
+
+        /// <summary>
+        /// A village event (a building finished, a newcomer, an attack, the fight over, a hunt): up to two villagers,
+        /// now and then three, near the player react, a few seconds apart, each with a different line. Only once per
+        /// event per village per minute, however many villagers notice it.
+        /// </summary>
+        public static void Event(int villageId, string kind, Vector3 where)
+        {
+            Events[(villageId, kind)] = Time.time;
+            if (LastEvent.TryGetValue((villageId, kind), out float last) && Time.time - last < 60f)
+            {
+                return;
+            }
+
+            LastEvent[(villageId, kind)] = Time.time;
+            Player player = Player.m_localPlayer;
+            if (player == null || !VillheimConfig.VillagerChatter.Value)
+            {
+                return;
+            }
+
+            List<Villager> near = Character.GetAllCharacters().OfType<Villager>()
+                .Where(v => !v.IsDead() && v.VillageId == villageId && !Sleep.IsAsleep(v) &&
+                            Vector3.Distance(v.transform.position, player.transform.position) < 30f)
+                .OrderBy(_ => Random.value).ToList();
+            int speakers = Mathf.Min(near.Count, Random.value < 0.3f ? 3 : 2);
+            float at = Time.time + Random.Range(1f, 2.5f);
+            for (int i = 0; i < speakers; i++)
+            {
+                Reactions.Add(new Reaction { Who = near[i], Tag = "event:" + kind, At = at });
+                at += Random.Range(3f, 6f);
+            }
+
+            UseAmbient(villageId, 40f, 70f);
+        }
+
+        private static bool RecentlySaid(int villageId, string line)
+        {
+            if (!RecentInVillage.TryGetValue(villageId, out var list))
+            {
+                return false;
+            }
+
+            list.RemoveAll(e => Time.time - e.Time > 60f);
+            return list.Any(e => e.Line == line);
+        }
+
+        private static void Remember(int villageId, string line)
+        {
+            if (!RecentInVillage.TryGetValue(villageId, out var list))
+            {
+                list = new List<(string, float)>();
+                RecentInVillage[villageId] = list;
+            }
+
+            list.Add((line, Time.time));
+        }
+
+        /// <summary>
+        /// The opening line of a chat between two villagers, if the village isn't already talking (the same budget as
+        /// talking to oneself). Null means: just gesture for now.
+        /// </summary>
+        public static string ChatOpening(Villager villager)
+        {
+            if (!AmbientOpen(villager.VillageId) || !VillheimConfig.VillagerChatter.Value)
+            {
+                return null;
+            }
+
+            string line = LineFor(villager, "chat");
+            if (line != null)
+            {
+                UseAmbient(villager.VillageId);
+            }
+
+            return line;
         }
         private static readonly ConditionalWeakTable<Villager, Memory> Memories = new ConditionalWeakTable<Villager, Memory>();
 
@@ -67,7 +184,7 @@ namespace Villheim.Logic.Villagers
         // ---------------------------------------------------------------- speaking
 
         /// <summary>A line for this villager on this channel, or null when nothing fits.</summary>
-        public static string LineFor(Villager villager, string channel, string reply = null)
+        public static string LineFor(Villager villager, string channel, string required = null)
         {
             HashSet<string> tags = Tags(villager, channel);
             string voice = VoiceOf(villager);
@@ -76,7 +193,7 @@ namespace Villheim.Logic.Villagers
             var options = new List<(Section Section, float Weight)>();
             foreach (Section section in Library())
             {
-                if (!Fits(section, channel, tags, voice))
+                if (!Fits(section, channel, tags, voice) || (required != null && !section.All.Contains(required)))
                 {
                     continue;
                 }
@@ -93,10 +210,12 @@ namespace Villheim.Logic.Villagers
             {
                 Section picked = Pick(options);
                 string line = picked.Lines[Random.Range(0, picked.Lines.Count)];
-                if (memory.Recent.Contains(line) && attempt < 5)
+                if ((memory.Recent.Contains(line) || RecentlySaid(villager.VillageId, line)) && attempt < 5)
                 {
                     continue;
                 }
+
+                Remember(villager.VillageId, line);
 
                 memory.Recent.Enqueue(line);
                 while (memory.Recent.Count > 12)
@@ -119,20 +238,44 @@ namespace Villheim.Logic.Villagers
                 return;
             }
 
+            // Reactions to an event come first and ignore the quiet time.
+            for (int i = Reactions.Count - 1; i >= 0; i--)
+            {
+                Reaction reaction = Reactions[i];
+                if (reaction.Who == null || reaction.Who.IsDead() || Time.time - reaction.At > 30f)
+                {
+                    Reactions.RemoveAt(i);
+                }
+                else if (reaction.Who == villager && Time.time >= reaction.At)
+                {
+                    Reactions.RemoveAt(i);
+                    Say(villager, LineFor(villager, "self", reaction.Tag) ?? LineFor(villager, "self"));
+                    Memories.GetOrCreateValue(villager).NextSelf = Time.time + Random.Range(120f, 240f);
+                    return;
+                }
+            }
+
+            // Talk on their own now and then: each villager every two to four minutes at most, and the village as a
+            // whole about once every half minute to a minute, so it stays a background murmur.
             Memory memory = Memories.GetOrCreateValue(villager);
-            if (Time.time < memory.NextSelf)
+            if (Time.time < memory.NextSelf || !AmbientOpen(villager.VillageId))
             {
                 return;
             }
 
-            memory.NextSelf = Time.time + Random.Range(40f, 100f);
+            memory.NextSelf = Time.time + Random.Range(120f, 240f);
             if (Vector3.Distance(Player.m_localPlayer.transform.position, villager.transform.position) > SelfTalkRange ||
-                Random.value > 0.5f)
+                Random.value > 0.6f)
             {
                 return;
             }
 
-            Say(villager, LineFor(villager, "self"));
+            string line = LineFor(villager, "self");
+            if (line != null)
+            {
+                UseAmbient(villager.VillageId);
+                Say(villager, line);
+            }
         }
 
         public static void Say(Villager villager, string line, float seconds = 5f)
@@ -217,6 +360,12 @@ namespace Villheim.Logic.Villagers
             if (health < 0.95f) tags.Add("anyhurt");
             tags.Add(Healing.FoodCount(villager) > 0 ? "fed" : "unfed");
 
+            foreach (string feeling in Moods.Tags(villager))
+            {
+                tags.Add(feeling);
+            }
+
+            tags.Add("voice:" + VoiceOf(villager));
             Roles.Trade trade = Roles.TradeOf(villager);
             tags.Add("trade:" + trade.ToString().ToLowerInvariant());
             tags.Add(Roles.BackgroundOf(villager) == Roles.Background.Protector ? "protector" : "carer");

@@ -7,6 +7,16 @@ using Villheim.Prefabs;
 namespace Villheim.Logic.Village
 {
     /// <summary>
+    /// Picks where the next building goes, after Millenaire's building location finder:
+    ///
+    /// - Each kind of building has a band of distance from the hearth, as a share of the village radius: the
+    ///   longhouse in the middle, homes in a ring around it, workshops further out, farms at the edge. Nothing ever
+    ///   goes past the village radius.
+    /// - Spots are tried ring by ring from the inside out, so the village stays compact.
+    /// - A spot is refused when it touches another building, a path (the paths from the hearth to every building), or
+    ///   when its own path to the hearth would run through a building.
+    /// - Workshops pick, among the first good spots, the one with the most trees and rocks close by.
+    ///
     /// Picks where the next building goes. Villages are laid out on a grid aligned to the hearth: candidate spots
     /// are grid points around the hearth, closest first, and every building is turned to face the hearth in
     /// 90 degree steps, so the whole village lines up like a Millenaire village instead of scattering.
@@ -20,10 +30,31 @@ namespace Villheim.Logic.Village
 
         private static readonly List<Piece> PieceBuffer = new List<Piece>();
 
+        /// <summary>Distance band from the hearth for each kind of building, as shares of the village radius.</summary>
+        public static void Band(Role role, out float min, out float max)
+        {
+            switch (role)
+            {
+                case Role.Hub: min = 0f; max = 0.35f; break;
+                case Role.House: min = 0.1f; max = 0.65f; break;
+                case Role.Workshop: min = 0.3f; max = 0.9f; break;
+                default: min = 0.45f; max = 1f; break;
+            }
+        }
+
         public static bool TryFind(Vector3 hearth, float axisYaw, Role role, bool strictHub, float radius, float maxTerrainDelta,
             IReadOnlyList<Plot> plots, System.Random rng, out Vector3 position, out float yaw)
         {
-            float maxDistance = VillheimConfig.VillageRadius.Value + radius * 0.5f;
+            float villageRadius = VillheimConfig.VillageRadius.Value;
+            Band(role, out float minShare, out float maxShare);
+            float maxDistance = Mathf.Min(villageRadius, villageRadius * maxShare + radius * 0.5f);
+            float minDistance = Mathf.Max(radius + HearthClearance, villageRadius * minShare);
+            if (minDistance > maxDistance - GridStep)
+            {
+                // A big design in a small band: let it sit as close as it fits.
+                minDistance = radius + HearthClearance;
+            }
+
             // Bigger designs use a coarser grid, which keeps the search cheap.
             float step = Mathf.Max(GridStep, Mathf.Round(radius * 0.5f / GridStep) * GridStep);
             int cells = Mathf.CeilToInt(maxDistance / step);
@@ -36,7 +67,7 @@ namespace Villheim.Logic.Village
                 {
                     var local = new Vector2(x * step, z * step);
                     float distance = local.magnitude;
-                    if (distance > maxDistance || distance < radius + HearthClearance)
+                    if (distance > maxDistance || distance < minDistance)
                     {
                         continue;
                     }
@@ -52,20 +83,80 @@ namespace Villheim.Logic.Village
             }
 
             // Closest first; small random jitter so villages with the same layout rules still differ.
+            var good = new List<Vector3>();
+            int wanted = role == Role.Workshop ? 6 : 1;
             foreach (Vector2 local in candidates.OrderBy(c => c.magnitude + (float)rng.NextDouble() * step))
             {
                 Vector3 candidate = hearth + axis * new Vector3(local.x, 0f, local.y);
-                if (IsGoodSpot(candidate, hearth, radius, maxTerrainDelta, plots, out float groundY))
+                if (IsGoodSpot(candidate, hearth, radius, maxTerrainDelta, plots, out float groundY) &&
+                    ClearOfPaths(candidate, hearth, axisYaw, radius, plots))
                 {
-                    position = new Vector3(candidate.x, groundY, candidate.z);
-                    yaw = FaceHearth(position, hearth, axisYaw);
-                    return true;
+                    good.Add(new Vector3(candidate.x, groundY, candidate.z));
+                    if (good.Count >= wanted)
+                    {
+                        break;
+                    }
                 }
             }
 
-            position = Vector3.zero;
-            yaw = 0f;
-            return false;
+            if (good.Count == 0)
+            {
+                position = Vector3.zero;
+                yaw = 0f;
+                return false;
+            }
+
+            // Workshops go where the work is: the most trees and rocks within 25 m, nearer spots winning ties.
+            position = good.OrderByDescending(p => role == Role.Workshop ? Resources(p) * 4f - Utils.DistanceXZ(p, hearth) : 0f).First();
+            yaw = FaceHearth(position, hearth, axisYaw);
+            return true;
+        }
+
+        /// <summary>
+        /// The spot keeps clear of every path in the village (hearth to each building), and its own path to the
+        /// hearth doesn't run through a building.
+        /// </summary>
+        private static bool ClearOfPaths(Vector3 spot, Vector3 hearth, float axisYaw, float radius, IReadOnlyList<Plot> plots)
+        {
+            foreach (Plot plot in plots)
+            {
+                if (PathBuilder.DistanceToPath(spot, hearth, axisYaw, plot.Position, plot.Radius) < radius * 0.6f + 1.5f)
+                {
+                    return false;
+                }
+
+                if (PathBuilder.DistanceToPath(plot.Position, hearth, axisYaw, spot, radius) < plot.Radius * 0.6f + 1f)
+                {
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
+        /// <summary>Trees and rocks within 25 m.</summary>
+        private static int Resources(Vector3 spot)
+        {
+            var seen = new HashSet<GameObject>();
+            foreach (Collider collider in Physics.OverlapSphere(spot, 25f))
+            {
+                ZNetView view = collider.GetComponentInParent<ZNetView>();
+                if (view != null)
+                {
+                    seen.Add(view.gameObject);
+                }
+            }
+
+            int count = 0;
+            foreach (GameObject go in seen)
+            {
+                if (go != null && (go.GetComponent<TreeBase>() || go.GetComponent<MineRock5>() || go.GetComponent<MineRock>()))
+                {
+                    count++;
+                }
+            }
+
+            return count;
         }
 
         /// <summary>Yaw that turns a design's front (+Z) toward the hearth, snapped to the village grid.</summary>

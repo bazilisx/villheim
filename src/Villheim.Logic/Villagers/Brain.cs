@@ -7,9 +7,10 @@ namespace Villheim.Logic.Villagers
     /// <summary>
     /// Runs a villager each AI tick, in this order:
     ///
-    /// 1. An enemy about: the game's own AI takes over, raises the alarm and fights.
-    /// 2. Work (gathering, carrying, building) when the village needs it.
-    /// 3. Otherwise free time: the fire, a stroll, a chat, a workbench; the evening ring and the night by the fire.
+    /// 1. An enemy about: the game's own AI takes over, raises the alarm and fights (a sleeper wakes up).
+    /// 2. Healing when badly hurt, then bed at bedtime.
+    /// 3. Work (gathering, carrying, building) when the village needs it.
+    /// 4. Otherwise free time: the fire, a stroll, a chat, a workbench; the evening ring and the night by the fire.
     ///
     /// Outside a fight the game's own wandering never runs, so it can't pull villagers away from what they are doing.
     /// Poses are asked for every tick and dropped when nothing asks (see <see cref="Poses"/>).
@@ -38,6 +39,7 @@ namespace Villheim.Logic.Villagers
 
             if (ThreatNear(villager, ai))
             {
+                Sleep.Wake(villager);
                 Poses.Release(villager);
                 VillageMood.NoteThreat(villager.VillageId);
                 return false;
@@ -47,6 +49,10 @@ namespace Villheim.Logic.Villagers
             if (Healing.Update(villager, ai, dt, false))
             {
                 // Healing comes first.
+            }
+            else if (Sleep.Update(villager, ai, dt))
+            {
+                // Bedtime.
             }
             else if (!Chores.Update(villager, ai, dt))
             {

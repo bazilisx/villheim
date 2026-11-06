@@ -262,7 +262,9 @@ namespace Villheim.Logic.Villagers
                 Makers[villager.VillageId] = villager;
                 state.Kind = Kind.Make;
                 state.Making = job;
-                state.Spot = Ground(job.Spot + Flat(villager.transform.position - job.Spot) * 1.5f, job.Spot.y);
+                state.Spot = job.Inside
+                    ? job.Spot + job.Rotation * Vector3.forward * 1.6f
+                    : Ground(job.Spot + Flat(villager.transform.position - job.Spot) * 1.5f, job.Spot.y);
                 state.Look = job.Spot + Vector3.up * 0.5f;
                 state.HasLook = true;
                 state.Until = Time.time + 60f;

@@ -24,6 +24,9 @@ namespace Villheim.Logic.Village
             public Vector3 Spot;
             public Quaternion Rotation;
             public Dictionary<string, int> Cost;
+
+            /// <summary>Goes inside a building (a bed, a workbench) rather than out by the hearth.</summary>
+            public bool Inside;
         }
 
         private sealed class Entry
@@ -43,7 +46,6 @@ namespace Villheim.Logic.Village
         {
             // Slot -1 is the hearth itself: the cooking station goes over the village fire.
             new Entry { Prefab = "piece_cookingstation", Name = "cooking station", Slot = -1, MinBuildings = 0 },
-            new Entry { Prefab = "piece_workbench", Name = "workbench", Slot = 1, MinBuildings = 1 },
             new Entry { Prefab = "piece_bench01", Name = "bench", Slot = 2, MinBuildings = 1 },
             new Entry { Prefab = "piece_bench01", Name = "bench", Slot = 3, MinBuildings = 2 },
         };
@@ -75,8 +77,20 @@ namespace Villheim.Logic.Village
         {
             var state = new VillageState(hearth.Zdo);
             Dictionary<string, int> building = ConstructionSite.Remaining(hearth);
+            bool interiorsDone = false;
             foreach (Entry entry in Entries)
             {
+                if (entry.Slot >= 0 && !interiorsDone)
+                {
+                    // After the hearth's own cooking station: beds and workbenches inside the finished buildings.
+                    interiorsDone = true;
+                    Job inside = FindInside(hearth, state, building, out bool waitForMaterials);
+                    if (inside != null || waitForMaterials)
+                    {
+                        return inside;
+                    }
+                }
+
                 if (state.Plots.Count < entry.MinBuildings)
                 {
                     continue;
@@ -126,6 +140,45 @@ namespace Villheim.Logic.Village
             return null;
         }
 
+        /// <summary>
+        /// The next bed or workbench a finished building is missing, at a covered spot inside it. Sets
+        /// <paramref name="wait"/> when one is due but the chest can't spare its materials yet.
+        /// </summary>
+        private static Job FindInside(VillageHearth hearth, VillageState state, Dictionary<string, int> building, out bool wait)
+        {
+            wait = false;
+            foreach (Plot plot in state.Plots)
+            {
+                foreach (Interior.Want want in Interior.WantsFor(plot))
+                {
+                    if (Interior.CountInside(plot, want.Prefab) >= want.Count)
+                    {
+                        continue;
+                    }
+
+                    GameObject prefab = ZNetScene.instance ? ZNetScene.instance.GetPrefab(want.Prefab) : null;
+                    if (prefab == null || !Buildable(prefab, state.Biome, out Dictionary<string, int> cost) ||
+                        !Interior.FindSpot(plot, prefab, want.Prefab, out Vector3 spot, out Quaternion rotation))
+                    {
+                        continue;
+                    }
+
+                    if (!Affordable(hearth, state, cost, building))
+                    {
+                        wait = true;
+                        return null;
+                    }
+
+                    return new Job
+                    {
+                        Prefab = want.Prefab, Name = want.Name, Spot = spot, Rotation = rotation, Cost = cost, Inside = true,
+                    };
+                }
+            }
+
+            return null;
+        }
+
         /// <summary>Pays for the job and puts the piece down. False when the materials or the spot are gone.</summary>
         public static bool Make(VillageHearth hearth, Job job)
         {
@@ -159,7 +212,8 @@ namespace Villheim.Logic.Village
                 piece.m_placeEffect?.Create(job.Spot, job.Rotation, made.transform);
             }
 
-            VillheimPlugin.Log.LogInfo($"{state.Name} made a {job.Name} by the hearth.");
+            VillheimPlugin.Log.LogInfo($"{state.Name} made a {job.Name} {(job.Inside ? "inside a building" : "by the hearth")}.");
+            Villagers.Beds.Forget(hearth.VillageId);
             return true;
         }
 

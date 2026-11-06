@@ -342,11 +342,15 @@ namespace Villheim.Logic.Village
             }
         }
 
-        /// <summary>How many villagers the village can house: the starting settlers plus room in each home.</summary>
+        /// <summary>
+        /// How many villagers the village can house: one per bed (Millenaire's residents per building), and never
+        /// fewer than the first settlers, who sleep by the fire until the longhouse has their beds.
+        /// </summary>
         public static int Capacity(VillageState state)
         {
-            int homes = state.Plots.Count(p => string.IsNullOrEmpty(p.Role) || p.Role == nameof(Role.House));
-            int capacity = VillheimConfig.StartingVillagers.Value + homes * VillheimConfig.VillagersPerBuilding.Value;
+            VillageHearth hearth = VillageHearth.Find(state.Id);
+            int beds = hearth != null && hearth.IsValid ? Villagers.Beds.Of(hearth).Count : 0;
+            int capacity = Math.Max(VillheimConfig.StartingVillagers.Value, beds);
             return Math.Min(capacity, VillheimConfig.MaxVillagers.Value);
         }
 
@@ -358,7 +362,8 @@ namespace Villheim.Logic.Village
             }
 
             bool firstArrivals = state.Arrivals < VillheimConfig.StartingVillagers.Value;
-            if (!firstArrivals && now - state.LastArrival < ArrivalInterval())
+            if (!firstArrivals && (now - state.LastArrival < ArrivalInterval() || EnvMan.IsNight() ||
+                                   Villagers.Beds.Free(hearth) == 0))
             {
                 return;
             }
@@ -394,7 +399,10 @@ namespace Villheim.Logic.Village
             Vector3 home = homes.Count > 0 ? homes[arrival % homes.Count].Position : center;
 
             float angle = (float)rng.NextDouble() * Mathf.PI * 2f;
-            float distance = 3f + (float)rng.NextDouble() * 3f;
+            // The first settlers are found at the hearth; later ones walk in from the edge of the village.
+            float distance = arrival < VillheimConfig.StartingVillagers.Value
+                ? 3f + (float)rng.NextDouble() * 3f
+                : Mathf.Min(VillheimConfig.VillageRadius.Value, 40f);
             Vector3 spawn = center + new Vector3(Mathf.Sin(angle), 0f, Mathf.Cos(angle)) * distance;
             if (ZoneSystem.instance.GetGroundHeight(spawn, out float y))
             {

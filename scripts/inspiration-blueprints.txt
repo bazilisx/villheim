@@ -1,0 +1,25 @@
+# kind | title | creator | download URL | page URL
+# Valheimians builds that search results say offer a blueprint or build file. For review only, see docs/INSPIRATION_SOURCES.md.
+# The download URL is "-" on every line: the site was blocked from the cloud container (2026-11-06) and no direct file
+# link was confirmed. The file sits behind the page's download button and may need a free account. Copy the link from
+# the page and replace the "-". Creator "?" means the snippet did not name one.
+home | The Ultimate Tiny Home in Valheim! Blueprint Available! | MythicBuilds? | - | https://www.valheimians.com/build/the-ultimate-tiny-home-in-valheim-blueprint-available/
+home | Small Simple cabin (pre-plains) | ? | - | https://www.valheimians.com/build/small-simple-cabin-pre-plains/
+home | Bronze Age Starter House | Zohair47 | - | https://www.valheimians.com/build/bronze-age-starter-house/
+longhouse | Garllok's Longhouse Tutorial | Garllok | - | https://www.valheimians.com/build/garllok-039-s-longhouse-tutorial/
+longhouse | Longhouse | Nautilus94 | - | https://www.valheimians.com/build/longhouse/
+longhouse | My first Longhouse | PUP | - | https://www.valheimians.com/build/my-first-longhouse/
+longhouse | To be decorated Longhouse | MutantArtCat | - | https://www.valheimians.com/build/to-be-decorated-longhouse/
+longhouse | Longhouse with secret storage | MutantArtCat | - | https://www.valheimians.com/build/longhouse-with-secret-storage/
+longhouse | Viking Longhouse V2 | Versaugh | - | https://www.valheimians.com/build/viking-longhouse-v2/
+longhouse | Zertek's Longhouse | Zertek | - | https://www.valheimians.com/build/zertek-s-longhouse/
+longhouse | Large Longhouse | ? | - | https://www.valheimians.com/build/large-longhouse/
+longhouse | The Village Longhouse (fully decorated, room for 6-12) | ? | - | https://www.valheimians.com/build/the-village-longhouse-fully-decorated-room-for-6-12/
+hall | Meadows Townhall (Nakd n Afraid season 2) | ? | - | https://www.valheimians.com/build/meadows-townhall-nakd-n-afraid-season-2/
+hall | The Great Hall | ? | - | https://www.valheimians.com/build/the-great-hall/
+smithy | Simple Forge Workshop, Open Concept, Free Download | Boomboy | - | https://www.valheimians.com/build/simple-forge-workshop-open-concept-free-download/
+smithy | Regal Smithy | ? | - | https://www.valheimians.com/build/regal-smithy/
+storage | Small Storage Warehouse | ? | - | https://www.valheimians.com/build/small-storage-warehouse/
+tower | Tower Builds | ? | - | https://www.valheimians.com/build/tower-builds/
+stall | Market Stall | ? | - | https://www.valheimians.com/build/market-stall/
+stall | Food stall | ? | - | https://www.valheimians.com/build/food-stall/

@@ -9,15 +9,16 @@ namespace Villheim.Logic.Village
     /// <summary>
     /// 'vh gallery [meadows|blackforest]': lays out every design a village of that biome could build, side by side on
     /// one flat, cleared plain, to review them in a fresh world. Each stands flush on its pad as a village would build
-    /// it (the same pieces, the bottom of its walls on the ground), with a sign in front: the kind of building and the
+    /// it (the same pieces, its foundation on the ground), with a sign in front: the kind of building and the
     /// village level it is meant for on top in bright blue, the design's name below in white.
     ///
-    /// The gallery starts in front of the player and runs in rows of six away from him. First the whole area (with a
-    /// 12 m margin) is made one flat, bare plain: everything standing on it is removed at any height (trees, stumps,
-    /// logs, rocks, bushes, ruins, anything not a creature or built by a player), the ground is levelled at the middle height of the area
-    /// (up to 40 m of change, past the game's own 8 m limit, see TerrainShaper.DeepPatch) and the grass taken off, in overlapping pads 24 m apart. A plot's design goes up once
-    /// all the ground round it is done. Parts in zones that aren't loaded yet are done as the player walks up to them
-    /// (checked every two seconds for 40 minutes).
+    /// First it looks, outward from the player up to 3 km, for land of the biome big enough for the whole layout whose
+    /// ground varies by no more than 12 m (read from the world generator), and moves the player there: the game lets
+    /// terrain move only 8 m either way, so the plain has to start out nearly flat (an earlier try lifted that limit and
+    /// broke the ground's look and collisions). There the whole area, with a 12 m margin, is made one flat, bare plain:
+    /// everything standing on it is removed at any height (not creatures or anything a player built), the ground is
+    /// levelled at the area's middle height and the grass taken off, in overlapping pads 24 m apart. A design goes up
+    /// once all the ground round it is done. Gallery pieces never wear or fall (see NoWearPatch).
     /// </summary>
     internal static class Gallery
     {
@@ -31,7 +32,19 @@ namespace Villheim.Logic.Village
         }
 
         private static readonly Role[] Order = { Role.House, Role.Hub, Role.Workshop, Role.Storage, Role.Farm };
-        private static readonly int KeyGallery = "villheim_gallery".GetStableHashCode();
+        internal static readonly int KeyGallery = "villheim_gallery".GetStableHashCode();
+        private const float MaxRelief = 12f; // highest less lowest ground in the area: within the game's 8 m either way of the middle
+
+        /// <summary>
+        /// Gallery pieces never wear or fall: the game's support check would bring down a design whose pieces don't all
+        /// hold each other up the moment it is put down in one go (seen 2026-11-06). Only pieces marked as the gallery's.
+        /// </summary>
+        [HarmonyLib.HarmonyPatch(typeof(WearNTear), nameof(WearNTear.UpdateWear))]
+        internal static class NoWearPatch
+        {
+            private static bool Prefix(WearNTear __instance) =>
+                __instance.m_nview == null || !__instance.m_nview.IsValid() || __instance.m_nview.GetZDO().GetInt(KeyGallery) != 1;
+        }
         private const float PadSpacing = 24f;
         private const float PadRadius = 20f;
         private const float Margin = 12f;
@@ -210,10 +223,127 @@ namespace Villheim.Logic.Village
                 yield break;
             }
 
-            string summary = "";
-            Safe("the layout", () => summary = Plan(cells, playerPosition, forward, biome));
-            Console.instance?.Print(summary);
+            // Lay the designs out, then look for naturally flat land of the biome big enough for them, near the player,
+            // and go there: the game lets terrain move only 8 m either way, so the plain has to start out nearly flat.
+            var labels = new List<(Vector3 At, string Text)>();
+            float depth = 0f, widest = 0f;
+            Safe("the layout", () => Layout(cells, forward, labels, out depth, out widest));
+            Vector3 right = Vector3.Cross(Vector3.up, forward);
+            var site = new SiteResult();
+            yield return FindSite(playerPosition, forward, right, widest + Margin * 2f, depth + Margin * 2f, biome, site);
+            if (!site.Found)
+            {
+                Console.instance?.Print($"Villheim: found no {biome} land flat enough within 3 km; the flattest had {site.Relief:0} m between " +
+                                        "its highest and lowest ground. Try again from elsewhere.");
+                yield break;
+            }
+
+            // The area's corner nearest the player is at site.Start; everything moves there.
+            Vector3 start = site.Start;
+            foreach (Cell cell in cells)
+            {
+                cell.Center = new Vector3(start.x + cell.Center.x, site.Height, start.z + cell.Center.z);
+            }
+
+            for (int i = 0; i < labels.Count; i++)
+            {
+                labels[i] = (new Vector3(start.x + labels[i].At.x, site.Height, start.z + labels[i].At.z), labels[i].Text);
+            }
+
+            var pads = new List<Pad>();
+            for (float z = -Margin; z <= depth + Margin; z += PadSpacing)
+            {
+                for (float x = -widest / 2f - Margin; x <= widest / 2f + Margin; x += PadSpacing)
+                {
+                    Vector3 p = start + forward * z + right * x;
+                    pads.Add(new Pad { Center = new Vector3(p.x, site.Height, p.z) });
+                }
+            }
+
+            Player player = Player.m_localPlayer;
+            if (player != null && Utils.DistanceXZ(player.transform.position, start) > 30f)
+            {
+                Vector3 stand = start - forward * (Margin + 4f);
+                stand.y = WorldGenerator.instance.GetHeight(stand.x, stand.z) + 1f;
+                player.TeleportTo(stand, Quaternion.LookRotation(forward), true);
+            }
+
+            VillheimPlugin.Instance.StartCoroutine(Build(cells, pads, forward, labels));
+            Console.instance?.Print($"Villheim: found flat {biome} land {Utils.DistanceXZ(playerPosition, start):0} m away " +
+                                    $"({site.Relief:0.0} m between highest and lowest ground); clearing {widest + Margin * 2f:0} by " +
+                                    $"{depth + Margin * 2f:0} m there at {site.Height:0.0} m and laying out {cells.Count} designs in {labels.Count} clusters.");
             MessageHud.instance?.ShowMessage(MessageHud.MessageType.Center, $"Gallery: {cells.Count} designs; clearing the ground");
+        }
+
+        private sealed class SiteResult
+        {
+            public bool Found;
+            public Vector3 Start;
+            public float Height;
+            public float Relief = float.MaxValue;
+        }
+
+        /// <summary>
+        /// The nearest spot (outward from the player, 80 m steps, up to 3 km) where the whole area, with the gallery's own
+        /// turn, is land of the biome and its ground varies by no more than 12 m. Read from the world generator, so no
+        /// zone has to be loaded. A few spots a frame.
+        /// </summary>
+        private static IEnumerator FindSite(Vector3 from, Vector3 forward, Vector3 right, float width, float depth, Heightmap.Biome biome, SiteResult result)
+        {
+            WorldGenerator world = WorldGenerator.instance;
+            float water = ZoneSystem.instance.m_waterLevel;
+            int tried = 0;
+            var heights = new List<float>();
+            for (float ring = 0f; ring <= 3000f; ring += 80f)
+            {
+                int steps = ring < 1f ? 1 : Mathf.CeilToInt(2f * Mathf.PI * ring / 80f);
+                for (int k = 0; k < steps; k++)
+                {
+                    float angle = k * Mathf.PI * 2f / steps;
+                    Vector3 start = from + forward * (6f + Margin) + new Vector3(Mathf.Sin(angle), 0f, Mathf.Cos(angle)) * ring;
+                    heights.Clear();
+                    float low = float.MaxValue, high = float.MinValue;
+                    bool ok = true;
+                    for (float z = -Margin; z <= depth - Margin && ok; z += 16f)
+                    {
+                        for (float x = -width / 2f; x <= width / 2f; x += 16f)
+                        {
+                            Vector3 p = start + forward * z + right * x;
+                            float h = world.GetHeight(p.x, p.z);
+                            if (h < water + 1.5f || world.GetBiome(p.x, p.z) != biome)
+                            {
+                                ok = false;
+                                break;
+                            }
+
+                            low = Mathf.Min(low, h);
+                            high = Mathf.Max(high, h);
+                            heights.Add(h);
+                            if (high - low > MaxRelief)
+                            {
+                                ok = false;
+                                break;
+                            }
+                        }
+                    }
+
+                    if (ok && heights.Count > 0)
+                    {
+                        heights.Sort();
+                        result.Found = true;
+                        result.Start = start;
+                        result.Relief = high - low;
+                        result.Height = heights[heights.Count / 2];
+                        yield break;
+                    }
+
+                    if (++tried % 25 == 0)
+                    {
+                        MessageHud.instance?.ShowMessage(MessageHud.MessageType.TopLeft, $"Gallery: looking for flat land, {ring:0} m out");
+                        yield return null;
+                    }
+                }
+            }
         }
 
         private static void Safe(string what, System.Action action)
@@ -279,27 +409,27 @@ namespace Villheim.Logic.Village
         }
 
         /// <summary>
-        /// Lays the designs out in clusters, one per level and kind (all level 1 homes together, then level 1 halls
-        /// and so on), each cluster starting a new row behind a label sign, and starts on the ground.
+        /// Lays the designs out in clusters, one per level and kind (all level 1 homes together, then level 1 halls and so
+        /// on), each cluster starting a new row behind a label sign. Positions are relative to the area's near middle;
+        /// the caller moves them onto the site.
         /// </summary>
-        private static string Plan(List<Cell> cells, Vector3 playerPosition, Vector3 forward, Heightmap.Biome biome)
+        private static void Layout(List<Cell> cells, Vector3 forward, List<(Vector3 At, string Text)> labels, out float depth, out float widest)
         {
-            cells = cells.OrderBy(c => Level(c)).ThenBy(c => System.Array.IndexOf(Order, c.Role)).ThenBy(c => c.Design.Radius).ThenBy(c => c.Design.Name).ToList();
-            Vector3 right = Vector3.Cross(Vector3.up, forward);
-            Vector3 start = playerPosition + forward * 6f;
-            float height = start.y;
-            if (ZoneSystem.instance.GetGroundHeight(start, out float ground))
+            cells.Sort((a, b) =>
             {
-                height = Mathf.Max(ground, ZoneSystem.instance.m_waterLevel + 1.5f);
-            }
+                int byLevel = Level(a).CompareTo(Level(b));
+                if (byLevel != 0) return byLevel;
+                int byRole = System.Array.IndexOf(Order, a.Role).CompareTo(System.Array.IndexOf(Order, b.Role));
+                return byRole != 0 ? byRole : a.Design.Radius.CompareTo(b.Design.Radius);
+            });
 
-            float depth = 0f;
-            float widest = 0f;
-            var labels = new List<(Vector3 At, string Text)>();
+            Vector3 right = Vector3.Cross(Vector3.up, forward);
+            depth = 0f;
+            widest = 0f;
             foreach (IGrouping<string, Cell> cluster in cells.GroupBy(c => $"{Level(c)}|{c.Role}"))
             {
                 List<Cell> members = cluster.ToList();
-                labels.Add((start + forward * (depth + 2f), $"<#5cf>Level {Level(members[0])}<br><#fff>{Plural(members[0].Role)}"));
+                labels.Add((forward * (depth + 2f), $"<#5cf>Level {Level(members[0])}<br><#fff>{Plural(members[0].Role)}"));
                 depth += 6f;
                 for (int row = 0; row * 6 < members.Count; row++)
                 {
@@ -310,52 +440,15 @@ namespace Villheim.Logic.Village
                     float x = -width / 2f;
                     foreach (Cell cell in line)
                     {
-                        cell.Center = start + forward * (depth + rowDepth) + right * (x + cell.Half);
+                        cell.Center = forward * (depth + rowDepth) + right * (x + cell.Half);
                         x += cell.Half * 2f;
                     }
 
                     depth += rowDepth * 2f;
                 }
 
-                depth += 8f; // a gap between clusters
+                depth += 8f;
             }
-
-            // One plain over the whole gallery: pads 24 m apart, levelled at the middle height of the area.
-            var pads = new List<Pad>();
-            var heights = new List<float>();
-            for (float z = -Margin; z <= depth + Margin; z += PadSpacing)
-            {
-                for (float x = -widest / 2f - Margin; x <= widest / 2f + Margin; x += PadSpacing)
-                {
-                    Vector3 p = start + forward * z + right * x;
-                    pads.Add(new Pad { Center = p });
-                    if (ZoneSystem.instance.GetGroundHeight(p, out float h))
-                    {
-                        heights.Add(h);
-                    }
-                }
-            }
-
-            heights.Sort();
-            height = Mathf.Max(heights.Count > 0 ? heights[heights.Count / 2] : height, ZoneSystem.instance.m_waterLevel + 1.5f);
-            foreach (Pad pad in pads)
-            {
-                pad.Center.y = height;
-            }
-
-            foreach (Cell cell in cells)
-            {
-                cell.Center.y = height;
-            }
-
-            for (int i = 0; i < labels.Count; i++)
-            {
-                labels[i] = (new Vector3(labels[i].At.x, height, labels[i].At.z), labels[i].Text);
-            }
-
-            VillheimPlugin.Instance.StartCoroutine(Build(cells, pads, forward, labels));
-            return $"Villheim: clearing and levelling {widest + Margin * 2f:0} by {depth + Margin * 2f:0} m ahead of you at {height:0.0} m, " +
-                   $"then laying out {cells.Count} {biome} designs in {labels.Count} clusters. Walk along it to load the far end.";
         }
 
         private static string Plural(Role role)
@@ -390,7 +483,7 @@ namespace Villheim.Logic.Village
                     shaped = true;
                     Pad current = pad;
                     Safe("clearing ground", () => ClearAll(current.Center, PadRadius + 2f));
-                    Safe("levelling ground", () => TerrainShaper.LevelPad(current.Center, PadRadius, PadRadius + 8f, 40f));
+                    Safe("levelling ground", () => TerrainShaper.LevelPad(current.Center, PadRadius, PadRadius + 8f));
                     Safe("clearing grass", () => HearthGround.ClearVegetation(current.Center, PadRadius + 2f));
                     yield return null;
                 }

@@ -15,58 +15,6 @@ namespace Villheim.Logic.Designs
     {
         private const string TemplatePrefab = "mud_road_v2";
         private static readonly List<Heightmap> Heightmaps = new List<Heightmap>();
-        private static readonly int KeyDeep = "villheim_deep_terrain".GetStableHashCode();
-        private const float GameLimit = 8f;
-        private const float DeepLimit = 50f;
-
-        /// <summary>
-        /// The game keeps every terrain change within 8 m of the natural ground (TerrainComp.ApplyToHeightmap), so a big
-        /// flat area over hills came out as cliffs, with buildings left in the air or in the ground (vh gallery,
-        /// 2026-11-06). On terrain this mod marked (only levelling asked for more than 8 m, such as the gallery's
-        /// plain), the same method runs with a 50 m limit instead. All other terrain keeps the game's limit.
-        /// </summary>
-        [HarmonyLib.HarmonyPatch(typeof(TerrainComp), nameof(TerrainComp.ApplyToHeightmap))]
-        internal static class DeepPatch
-        {
-            private static bool Prefix(TerrainComp __instance, Texture2D clearedMask, List<float> heights, float[] baseHeights)
-            {
-                if (!__instance.m_initialized || __instance.m_nview == null || !__instance.m_nview.IsValid() ||
-                    !__instance.m_nview.GetZDO().GetBool(KeyDeep))
-                {
-                    return true;
-                }
-
-                int count = __instance.m_width + 1;
-                for (int i = 0; i < count; i++)
-                {
-                    for (int j = 0; j < count; j++)
-                    {
-                        int index = i * count + j;
-                        float level = __instance.m_levelDelta[index];
-                        float smooth = __instance.m_smoothDelta[index];
-                        if (level != 0f || smooth != 0f)
-                        {
-                            heights[index] = Mathf.Clamp(heights[index] + level + smooth, baseHeights[index] - DeepLimit, baseHeights[index] + DeepLimit);
-                        }
-                    }
-                }
-
-                for (int k = 0; k < count; k++)
-                {
-                    for (int l = 0; l < count; l++)
-                    {
-                        int index = k * count + l;
-                        if (__instance.m_modifiedPaint[index])
-                        {
-                            clearedMask.SetPixel(l, k, __instance.m_paintMask[index]);
-                        }
-                    }
-                }
-
-                return false;
-            }
-        }
-
         /// <summary>
         /// Settings with every operation turned off. Starts from the vanilla level-ground op so that any
         /// newer fields (paint curves and so on) have the game's own values.
@@ -164,12 +112,6 @@ namespace Villheim.Logic.Designs
 
                 if (changed)
                 {
-                    if (maxChange > GameLimit)
-                    {
-                        // Past the game's own 8 m: marked on the terrain, so every client applies it in full (see DeepPatch).
-                        compiler.m_nview.GetZDO().Set(KeyDeep, true);
-                    }
-
                     compiler.m_operations++;
                     compiler.Save();
                     heightmap.Poke(0, false);

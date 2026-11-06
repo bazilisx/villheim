@@ -12,6 +12,7 @@ namespace Villheim.Logic
         public static ConfigEntry<string> BiomeMaterials;
         public static ConfigEntry<bool> SiteChest;
         public static ConfigEntry<float> SecondsPerPiece;
+        public static ConfigEntry<int> StartingStock;
 
         public static void Bind()
         {
@@ -30,6 +31,9 @@ namespace Villheim.Logic
                 "Anything you drop in helps the village build.");
             SecondsPerPiece = Admin(config, work, "SecondsPerPiece", 2.5f,
                 "How long a builder hammers at each piece before it goes up.");
+            StartingStock = Admin(config, work, "StartingStock", 0,
+                "Wood a new village starts with (and half as much stone). At 0 the villagers gather everything " +
+                "for their first building themselves.");
         }
 
         private static ConfigEntry<T> Admin<T>(ConfigFile config, string section, string key, T value, string description)

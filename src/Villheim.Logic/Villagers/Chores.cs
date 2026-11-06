@@ -408,10 +408,20 @@ namespace Villheim.Logic.Villagers
             work.Timer -= dt;
             if (work.Timer <= 0f)
             {
+                // Check the reach again on every swing: never hit something that is out of arm's length.
+                Vector3 contact = ContactPoint(work.Target, villager.transform.position, out Collider struck);
+                if (!CanHit(villager, work.Target, contact))
+                {
+                    work.Phase = Phase.Approach;
+                    work.TargetSeenAt = new Vector3(float.MaxValue, 0f, 0f);
+                    walker.Reset();
+                    return true;
+                }
+
                 work.Timer = SwingInterval;
                 work.Swings++;
-                work.Contact = ContactPoint(work.Target, villager.transform.position);
-                Hit(villager, work.Target, work.Contact, profile.Pickaxe);
+                work.Contact = contact;
+                Hit(villager, work.Target, contact, struck, profile.Pickaxe);
             }
 
             return true;
@@ -674,7 +684,7 @@ namespace Villheim.Logic.Villagers
             }
         }
 
-        private static void Hit(Villager villager, GameObject target, Vector3 point, bool pickaxe)
+        private static void Hit(Villager villager, GameObject target, Vector3 point, Collider struck, bool pickaxe)
         {
             SwingAnimation(villager);
             IDestructible destructible = target.GetComponentInParent<IDestructible>() ?? target.GetComponentInChildren<IDestructible>();
@@ -692,6 +702,9 @@ namespace Villheim.Logic.Villagers
                 m_dir = direction.sqrMagnitude > 0.01f ? direction.normalized : villager.transform.forward,
                 m_toolTier = 4,
                 m_attacker = villager.GetZDOID(),
+
+                // Big rocks pick the part that breaks from the collider that was hit, and ignore hits without one.
+                m_hitCollider = struck,
             };
 
             if (pickaxe)
@@ -738,7 +751,7 @@ namespace Villheim.Logic.Villagers
             }
             else
             {
-                contact = ContactPoint(target, from);
+                contact = ContactPoint(target, from, out _);
                 Vector3 away = from - contact;
                 away.y = 0f;
                 if (away.sqrMagnitude < 0.01f)
@@ -787,6 +800,20 @@ namespace Villheim.Logic.Villagers
             }
 
             return Mathf.Clamp(radius, 0.2f, 1.2f);
+        }
+
+        /// <summary>
+        /// The last check before a swing. A standing tree is hit at the trunk, so the villager has to stand next to the
+        /// trunk itself (the canopy would make anything look close). Everything else at the nearest surface.
+        /// </summary>
+        private static bool CanHit(Villager villager, GameObject target, Vector3 contact)
+        {
+            if (target.GetComponent<TreeBase>() != null)
+            {
+                return Utils.DistanceXZ(villager.transform.position, target.transform.position) <= TrunkRadius(target) + 2f;
+            }
+
+            return InReach(villager, contact, true);
         }
 
         private static bool InReach(Villager villager, Vector3 contact, bool atSpot)
@@ -879,11 +906,17 @@ namespace Villheim.Logic.Villagers
             return false;
         }
 
-        /// <summary>The point on the target's solid colliders closest to the villager. Logs are long, so their center is useless.</summary>
-        private static Vector3 ContactPoint(GameObject target, Vector3 from)
+        /// <summary>
+        /// The point on the target's solid colliders closest to the villager, and the collider it is on. Logs are
+        /// long, so their center is useless. Unity cannot find the closest point on a concave mesh collider (rocks
+        /// use them) and hands back the point it was given, which made everything look in reach; those use the
+        /// collider's bounding box instead.
+        /// </summary>
+        private static Vector3 ContactPoint(GameObject target, Vector3 from, out Collider struck)
         {
             Vector3 best = target.transform.position;
             float bestDistance = float.MaxValue;
+            struck = null;
             ColliderBuffer.Clear();
             target.GetComponentsInChildren(false, ColliderBuffer);
             Vector3 chest = from + Vector3.up;
@@ -894,12 +927,14 @@ namespace Villheim.Logic.Villagers
                     continue;
                 }
 
-                Vector3 point = collider.ClosestPoint(chest);
+                bool concave = collider is MeshCollider mesh && !mesh.convex;
+                Vector3 point = concave ? collider.bounds.ClosestPoint(chest) : collider.ClosestPoint(chest);
                 float distance = (point - chest).sqrMagnitude;
                 if (distance < bestDistance)
                 {
                     best = point;
                     bestDistance = distance;
+                    struck = collider;
                 }
             }
 

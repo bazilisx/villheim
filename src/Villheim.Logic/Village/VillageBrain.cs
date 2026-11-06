@@ -74,10 +74,10 @@ namespace Villheim.Logic.Village
             VillheimPlugin.Log.LogInfo($"Founded {state.Name} ({state.Biome}) at {position}.");
         }
 
-        /// <summary>Enough wood for a start, so a new village is not idle while its first trees fall.</summary>
+        /// <summary>What a new village has saved up. Nothing by default: villagers gather for their first building.</summary>
         private static int StartingWood()
         {
-            return VillheimConfig.StartingBuildings.Value * VillheimConfig.MaxWoodPerBuilding.Value;
+            return LogicConfig.StartingStock != null ? Mathf.Max(0, LogicConfig.StartingStock.Value) : 0;
         }
 
         public static double DayLength()

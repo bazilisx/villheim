@@ -7,7 +7,7 @@ type: log
 ## Index
 - **<Bold topic>**: <one-sentence outcome>
 
-## Session 1, <HH:MM Denver>: <short title>
+## Session 1, <HH:MM Mountain Time>: <short title>
 
 ### What Got Done
 -

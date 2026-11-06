@@ -8,9 +8,21 @@
     <AssemblyName>Villheim.Logic</AssemblyName>
     <RootNamespace>Villheim.Logic</RootNamespace>
     <Version>0.1.0</Version>
-    <!-- A build stamp in the informational version, so the log shows which build is live. -->
-    <SourceRevisionId>build$([System.DateTime]::UtcNow.ToString("yyyyMMdd-HHmmss"))</SourceRevisionId>
+    <!-- A build stamp in the informational version, so the log and the game show which build is live. -->
+    <BuildTime>$([System.DateTime]::UtcNow.ToString("yyyyMMdd-HHmmss"))</BuildTime>
+    <SourceRevisionId>build$(BuildTime)</SourceRevisionId>
   </PropertyGroup>
+
+  <!-- Adds the git commit to the stamp, so it can be matched with the commit on GitHub. -->
+  <Target Name="StampCommit" BeforeTargets="AddSourceRevisionToInformationalVersion">
+    <Exec Command="git rev-parse --short=7 HEAD" ConsoleToMSBuild="true" IgnoreExitCode="true" StandardOutputImportance="low" StandardErrorImportance="low">
+      <Output TaskParameter="ConsoleOutput" PropertyName="VillheimCommit" />
+      <Output TaskParameter="ExitCode" PropertyName="VillheimCommitExit" />
+    </Exec>
+    <PropertyGroup Condition="'$(VillheimCommitExit)' == '0'">
+      <SourceRevisionId>commit-$(VillheimCommit)-$(BuildTime)</SourceRevisionId>
+    </PropertyGroup>
+  </Target>
 
   <ItemGroup>
     <ProjectReference Include="..\Villheim\Villheim.csproj" Private="false" />

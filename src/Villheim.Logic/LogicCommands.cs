@@ -18,6 +18,8 @@ namespace Villheim.Logic
             "found: light a new village hearth in front of you",
             "grow: make the nearest village start its next building now (adds the wood it needs)",
             "wood [amount] [material]: add materials to the nearest village (Wood, Stone, FineWood, RoundLog)",
+            "empty: take every material out of the nearest village's stock and site chest",
+            "version: show which Villheim.Logic build is running",
             "preview <location>: build one design in front of you, outside any village",
             "clear: remove the nearest village (buildings, villagers and hearth)",
             "info: show loaded villages",
@@ -36,6 +38,8 @@ namespace Villheim.Logic
                 case "villheim_found": Found(context); return true;
                 case "villheim_grow": Grow(context); return true;
                 case "villheim_wood": AddWood(args, context); return true;
+                case "villheim_empty": Empty(context); return true;
+                case "villheim_version": Say(context, VillheimLogic.Build); return true;
                 case "villheim_preview": Preview(args, context); return true;
                 case "villheim_clear": Clear(context); return true;
                 case "villheim_info": Info(context); return true;
@@ -132,6 +136,38 @@ namespace Villheim.Logic
             }
 
             Say(context, $"Villheim: {state.Name} now has {state.StockText()}.");
+        }
+
+        /// <summary>Takes all materials out of the nearest village: its stock and its site chest.</summary>
+        private static void Empty(Terminal context)
+        {
+            if (!TryGetPlayer(context, out Player player))
+            {
+                return;
+            }
+
+            VillageHearth hearth = VillageHearth.Closest(player.transform.position, 150f);
+            if (hearth == null || !hearth.IsValid)
+            {
+                Say(context, "Villheim: no village hearth within 150 m.");
+                return;
+            }
+
+            hearth.NView.ClaimOwnership();
+            var state = new VillageState(hearth.Zdo);
+            Container chest = SiteChest.Find(hearth);
+            foreach (string material in Materials.Tracked)
+            {
+                state.Add(material, -state.Get(material));
+                int inChest = chest != null ? SiteChest.Count(chest, material) : 0;
+                if (inChest > 0)
+                {
+                    SiteChest.Take(chest, new Dictionary<string, int> { { material, inChest } });
+                }
+            }
+
+            VillageNeeds.Forget(state.Id);
+            Say(context, $"Villheim: {state.Name} has nothing saved up now{(chest != null ? " and its site chest is empty" : "")}.");
         }
 
         private static void Clear(Terminal context)

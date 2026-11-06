@@ -65,7 +65,7 @@ https://en.wikipedia.org/wiki/Wikipedia:Signs_of_AI_writing
 
 Before ending any session that changed something:
 
-1. Create or append to today's note `docs/daily-notes/YYYY-MM/YYYY-MM-DD.md` (Denver date), always starting from
+1. Create or append to today's note `docs/daily-notes/YYYY-MM/YYYY-MM-DD.md` (date in US Mountain Time), always starting from
    `docs/daily-notes/DAILY_NOTE_TEMPLATE.md`. If the file exists, add a new `## Session N` and a line in `## Index`.
 2. Update `docs/SESSION_HISTORY.md`: the Current State section, and one line in Recent milestones in exactly this
    form: `- **DATE (short title)** - see docs/daily-notes/YYYY-MM/YYYY-MM-DD.md`.

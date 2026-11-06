@@ -9,7 +9,10 @@ namespace Villheim.Logic
     /// </summary>
     public sealed class VillheimLogic : IVillheimLogic
     {
-        public string BuildInfo
+        public string BuildInfo => Build;
+
+        /// <summary>"Villheim.Logic 0.1.0+commit-abc1234-20261106-051200": version, git commit and build time.</summary>
+        public static string Build
         {
             get
             {
@@ -37,7 +40,8 @@ namespace Villheim.Logic
         public void HearthTick(VillageHearth hearth) => VillageBrain.Tick(hearth);
 
         public string HearthHoverText(VillageHearth hearth) =>
-            $"{hearth.VillageName} hearth\n<color=#b0b0b0>{VillageBrain.Summary(hearth)}</color>";
+            $"{hearth.VillageName} hearth\n<color=#b0b0b0>{VillageBrain.Summary(hearth)}</color>" +
+            $"\n<size=12><color=#808080>{Build}</color></size>";
 
         public string HearthHoverName(VillageHearth hearth) => $"{hearth.VillageName} hearth";
 

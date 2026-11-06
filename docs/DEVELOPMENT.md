@@ -20,7 +20,7 @@ Standing reference for building, deploying and testing Villheim. Current state i
 ## Test setup
 
 - r2modman profile **Villheim Test** on Tyler's Windows PC (a clone of his Valheim 1.0 profile). Profile folder:
-  `C:\Users\tyler\AppData\Roaming\r2modmanPlus-local\Valheim\profiles\Villheim Test`.
+  `%APPDATA%\r2modmanPlus-local\Valheim\profiles\Villheim Test`.
 - Installed alongside: BepInEx, Jötunn 2.30.2, More World Locations (the `MWL_*` designs), PlanBuild (added
   2026-11-05, for more prefabs and blueprints; not wired into Villheim yet).
 - Plugin folder: `BepInEx\plugins\bazilisx-Villheim\` holds the four built files.

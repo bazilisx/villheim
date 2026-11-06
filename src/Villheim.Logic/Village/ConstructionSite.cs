@@ -225,6 +225,7 @@ namespace Villheim.Logic.Village
             }
 
             Quaternion rotation = Quaternion.Euler(0f, site.Yaw, 0f);
+            GroundUnder(site, entry, rotation);
             DesignSpawner.SpawnEntry(entry, site.Position, rotation, state.Id, effects);
             zdo.Set(KeySiteIndex, index + 1);
             state.Waiting = "";
@@ -490,10 +491,71 @@ namespace Villheim.Logic.Village
         }
 
         /// <summary>
-        /// Where a builder stands to work on the next piece: on a ring a little outside the building, at the point
-        /// closest to the piece. Builders never walk into a half-built house.
+        /// Ground pieces (floors, the bottom row of walls, posts) rest on the ground. Where the ground under one is
+        /// lower or higher than its base, a pad is levelled to the base first, so nothing goes up in the air and breaks.
         /// </summary>
-        public static Vector3 StandSpot(VillageHearth hearth, Vector3 piece)
+        private static void GroundUnder(Site site, DesignSpawner.PlanEntry entry, Quaternion rotation)
+        {
+            if (!entry.Shell || !entry.Bounds.HasValue)
+            {
+                return;
+            }
+
+            Bounds local = entry.Bounds.Value;
+            if (local.min.y > 1.2f)
+            {
+                return; // Upper storeys and roofs rest on other pieces.
+            }
+
+            Vector3 center = site.Position + rotation * new Vector3(local.center.x, 0f, local.center.z);
+            float baseY = site.Position.y + local.min.y;
+            if (!ZoneSystem.instance.GetGroundHeight(center, out float ground) || Mathf.Abs(ground - baseY) < 0.25f)
+            {
+                return;
+            }
+
+            float half = Mathf.Clamp(Mathf.Max(local.extents.x, local.extents.z), 0.6f, 3f);
+            TerrainShaper.LevelPad(new Vector3(center.x, baseY, center.z), half, half + 1.5f);
+        }
+
+        /// <summary>How far from its centre the next piece reaches sideways (half its width), 0.5 m when unknown.</summary>
+        public static float NextPieceHalfWidth(VillageHearth hearth)
+        {
+            Site site = Get(hearth.Zdo);
+            CachedPlan plan = site != null ? GetPlan(hearth, site) : null;
+            int index = hearth.Zdo.GetInt(KeySiteIndex);
+            if (plan == null || index >= plan.Entries.Count || !plan.Entries[index].Bounds.HasValue)
+            {
+                return 0.5f;
+            }
+
+            Bounds bounds = plan.Entries[index].Bounds.Value;
+            return Mathf.Clamp(Mathf.Min(bounds.extents.x, bounds.extents.z), 0.3f, 2.5f);
+        }
+
+        /// <summary>True when the character stands inside the next piece's space (a builder never builds himself in).</summary>
+        public static bool InsideNextPiece(VillageHearth hearth, Character character)
+        {
+            Site site = Get(hearth.Zdo);
+            CachedPlan plan = site != null ? GetPlan(hearth, site) : null;
+            int index = hearth.Zdo.GetInt(KeySiteIndex);
+            if (plan == null || index >= plan.Entries.Count || !plan.Entries[index].Bounds.HasValue)
+            {
+                return false;
+            }
+
+            Bounds local = plan.Entries[index].Bounds.Value;
+            local.Expand(0.4f);
+            Vector3 feet = Quaternion.Inverse(Quaternion.Euler(0f, site.Yaw, 0f)) * (character.transform.position - site.Position);
+            return local.Contains(feet) || local.Contains(feet + Vector3.up);
+        }
+
+        /// <summary>
+        /// Where a builder stands to work on the next piece: right beside it, a step out from its edge on the side
+        /// facing away from the middle of the building (walls are built from outside, floors from the edge already
+        /// laid). <paramref name="extra"/> moves the spot further out, for when the first spot is inside the piece.
+        /// </summary>
+        public static Vector3 StandSpot(VillageHearth hearth, Vector3 piece, Vector3 from, float extra = 0f)
         {
             Site site = Get(hearth.Zdo);
             if (site == null)
@@ -503,15 +565,39 @@ namespace Villheim.Logic.Village
 
             Vector3 outward = piece - site.Position;
             outward.y = 0f;
-            Vector3 direction = outward.sqrMagnitude > 0.01f ? outward.normalized : (hearth.transform.position - site.Position).normalized;
-            direction.y = 0f;
-            Vector3 spot = site.Position + direction.normalized * (Footprint(hearth) + 1.2f);
+            if (outward.sqrMagnitude < 0.25f)
+            {
+                outward = from - piece;
+                outward.y = 0f;
+            }
+
+            if (outward.sqrMagnitude < 0.01f)
+            {
+                outward = hearth.transform.position - site.Position;
+                outward.y = 0f;
+            }
+
+            float distance = NextPieceHalfWidth(hearth) + 0.9f + extra;
+            Vector3 spot = piece + outward.normalized * distance;
             if (ZoneSystem.instance.GetGroundHeight(spot, out float y))
             {
+                // Stand on whatever floor is already there, else on the ground.
                 spot.y = y;
+                if (Physics.Raycast(new Vector3(spot.x, piece.y + 0.5f, spot.z), Vector3.down, out RaycastHit hit, 4f,
+                        LayerMask.GetMask("piece"), QueryTriggerInteraction.Ignore) && hit.point.y > y)
+                {
+                    spot.y = hit.point.y;
+                }
             }
 
             return spot;
+        }
+
+        /// <summary>Close enough to put the next piece in place: within a short step of its edge.</summary>
+        public static bool InBuildReach(VillageHearth hearth, Vector3 position, Vector3 piece)
+        {
+            float edge = Utils.DistanceXZ(position, piece) - NextPieceHalfWidth(hearth);
+            return edge <= 2.2f && Mathf.Abs(piece.y - position.y) < 7f;
         }
 
         private static Dictionary<string, float> ReadOwed(ZDO zdo)

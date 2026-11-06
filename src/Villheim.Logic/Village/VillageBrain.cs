@@ -155,14 +155,14 @@ namespace Villheim.Logic.Village
         private const int MaxCatchUpPiecesPerTick = 150;
 
         /// <summary>
-        /// Builders place pieces as they work. Without a builder at the site it still creeps along, one piece per
-        /// tick, and time spent unloaded is made up in one go (wood permitting).
+        /// Pieces only go up while the builder stands next to them. The one exception is time spent unloaded, with
+        /// nobody around to see: that is made up in one go when the village loads again (materials permitting).
         /// </summary>
         private static void AdvanceSite(VillageHearth hearth, double unloadedSeconds)
         {
             int pieces = unloadedSeconds > 0
                 ? Mathf.Min(MaxCatchUpPiecesPerTick, Mathf.CeilToInt((float)(unloadedSeconds / SecondsPerPieceUnattended)))
-                : (ConstructionSite.BuilderActive(hearth.VillageId) ? 0 : 1);
+                : 0;
 
             for (int i = 0; i < pieces; i++)
             {
@@ -325,6 +325,10 @@ namespace Villheim.Logic.Village
                 {
                     Design = design.Name, Position = position, Yaw = yaw, Radius = radius, Role = role, Seed = seed,
                 });
+
+                // Ground first: the whole outline is flattened to the floor height before the first piece goes up.
+                float footprint = ConstructionSite.Footprint(hearth);
+                TerrainShaper.LevelPad(position, footprint + 0.5f, footprint + 3f);
 
                 VillheimPlugin.Log.LogInfo($"{state.Name} broke ground for a {RoleName(role)} ({design.Name}) at {position}.");
                 Announce(hearth, $"{state.Name} has started building a {RoleName(role)}.");

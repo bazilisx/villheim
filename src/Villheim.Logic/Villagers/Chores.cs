@@ -764,8 +764,9 @@ namespace Villheim.Logic.Villagers
         }
 
         /// <summary>
-        /// The builder works from a ring just outside the building, hammering at each piece for a moment before it
-        /// goes up. When the chest runs short he goes back to gathering.
+        /// The builder walks to the next piece and stands right beside it, then hammers at it for a moment before it
+        /// goes up. Once he is in reach he stays put (no more walking) until the piece is placed, so he doesn't shuffle
+        /// back and forth. A piece only goes up while he is there. When the chest runs short he goes back to gathering.
         /// </summary>
         private static bool UpdateBuild(Villager villager, VillagerAI ai, Work work, float dt)
         {
@@ -777,31 +778,56 @@ namespace Villheim.Logic.Villagers
                 return false;
             }
 
-            // Builders work from outside. One who finds himself inside the outline walks out first (opening the door
-            // if there is one), so he never walls himself in.
-            Vector3 stand = ConstructionSite.StandSpot(hearth, piece);
-            float toPiece = Utils.DistanceXZ(villager.transform.position, piece);
-            bool inside = ConstructionSite.InsideFootprint(hearth, villager.transform.position);
-            WalkResult step = Walker.For(villager).Go(villager, ai, dt, stand, 1f);
-            if (!inside)
+            Vector3 position = villager.transform.position;
+            if (Vector3.Distance(piece, work.Contact) > 0.3f)
             {
+                // A new piece: work out where to stand for it.
+                work.Contact = piece;
+                work.Stand = ConstructionSite.StandSpot(hearth, piece, position);
+                work.Picks = 0;
                 work.Deadline = Time.time + 30f;
+                Walker.For(villager).Reset();
             }
 
-            if (step == WalkResult.Walking && (inside || toPiece > BuildRange * 0.75f) && !(inside && Time.time > work.Deadline))
+            bool inReach = ConstructionSite.InBuildReach(hearth, position, piece);
+            if (inReach && ConstructionSite.InsideNextPiece(hearth, villager))
             {
-                return true;
+                // Standing where the piece goes: step further out first.
+                inReach = false;
+                if (work.Picks < 3)
+                {
+                    work.Picks++;
+                    work.Stand = ConstructionSite.StandSpot(hearth, piece, position, 1.2f * work.Picks);
+                    Walker.For(villager).Reset();
+                }
             }
 
-            // Here when outside and in range, or stuck. Stuck inside with no way out yet, he keeps building rather
-            // than stand there; the Walker opens the door as soon as there is one.
+            if (!inReach)
+            {
+                WalkResult step = Walker.For(villager).Go(villager, ai, dt, work.Stand, 0.5f);
+                if (step == WalkResult.Walking && Time.time < work.Deadline)
+                {
+                    work.Timer = 0f;
+                    return true;
+                }
+
+                if (!ConstructionSite.InBuildReach(hearth, villager.transform.position, piece))
+                {
+                    // Can't get next to it. Try again from another side later; never build from afar.
+                    VillheimPlugin.Debug($"{villager.VillagerName} can't get next to the next piece.");
+                    Finish(work);
+                    work.Cooldown = 4f;
+                    return false;
+                }
+            }
+
             ai.StopMoving();
             VillagerLooks.Hold(villager, VillagerLooks.Tool.Hammer);
             Face(villager, ai, piece);
             work.Timer += dt;
             if (work.Timer % HammerInterval < dt)
             {
-                SwingAnimation(villager);
+                ToolAnimation(villager, VillagerLooks.Tool.Hammer);
             }
 
             float perPiece = LogicConfig.SecondsPerPiece != null ? LogicConfig.SecondsPerPiece.Value : 2.5f;
@@ -824,7 +850,6 @@ namespace Villheim.Logic.Villagers
             }
 
             work.Reason = "";
-
             work.Timer = 0f;
             if (ConstructionSite.PlaceNext(hearth, true))
             {
@@ -870,7 +895,7 @@ namespace Villheim.Logic.Villagers
             work.Timer += dt;
             if (work.Timer % HammerInterval < dt)
             {
-                SwingAnimation(villager);
+                ToolAnimation(villager, VillagerLooks.Tool.Hammer);
             }
 
             float perPiece = LogicConfig.SecondsPerPiece != null ? LogicConfig.SecondsPerPiece.Value : 2.5f;
@@ -891,14 +916,26 @@ namespace Villheim.Logic.Villagers
 
         private static void SwingAnimation(Villager villager)
         {
-            ItemDrop.ItemData weapon = villager.GetCurrentWeapon();
-            if (weapon?.m_shared?.m_attack != null && villager.m_zanim != null)
+            ToolAnimation(villager, null);
+        }
+
+        /// <summary>
+        /// Plays the held tool's own use animation: the hammer's tap when building, the axe or pickaxe swing when
+        /// harvesting. With <paramref name="expected"/> set, nothing plays unless that tool is in hand, so a villager
+        /// whose tool went missing never punches the piece with bare fists.
+        /// </summary>
+        public static void ToolAnimation(Villager villager, VillagerLooks.Tool? expected)
+        {
+            ItemDrop.ItemData weapon = villager.GetRightItem();
+            if (weapon == null || (expected.HasValue && !VillagerLooks.IsHolding(villager, expected.Value)))
             {
-                string animation = weapon.m_shared.m_attack.m_attackAnimation;
-                if (!string.IsNullOrEmpty(animation))
-                {
-                    villager.m_zanim.SetTrigger(weapon.m_shared.m_attack.m_attackChainLevels > 1 ? animation + "0" : animation);
-                }
+                return;
+            }
+
+            string animation = weapon.m_shared?.m_attack?.m_attackAnimation;
+            if (!string.IsNullOrEmpty(animation) && villager.m_zanim != null)
+            {
+                villager.m_zanim.SetTrigger(weapon.m_shared.m_attack.m_attackChainLevels > 1 ? animation + "0" : animation);
             }
         }
 

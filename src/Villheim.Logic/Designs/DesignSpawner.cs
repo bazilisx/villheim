@@ -394,7 +394,8 @@ namespace Villheim.Logic.Designs
             if (prefab.GetComponent<DungeonGenerator>() || prefab.GetComponent<Teleport>()) return "dungeon";
             if (prefab.GetComponent<LocationProxy>()) return "location proxy";
             if (prefab.GetComponent<VillageHearth>()) return "village hearth";
-            if (prefab.GetComponent<Beehive>()) return "bee hive";
+            if (prefab.GetComponentInChildren<Beehive>(true) ||
+                prefabName.IndexOf("hive", StringComparison.OrdinalIgnoreCase) >= 0) return "bee hive";
 
             if (!VillheimConfig.KeepLootContainers.Value && prefab.GetComponent<Container>() && !prefab.GetComponent<Piece>())
             {

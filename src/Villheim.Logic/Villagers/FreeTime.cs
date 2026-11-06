@@ -599,12 +599,7 @@ namespace Villheim.Logic.Villagers
 
         private static void Swing(Villager villager)
         {
-            ItemDrop.ItemData tool = villager.GetCurrentWeapon();
-            string animation = tool?.m_shared?.m_attack?.m_attackAnimation;
-            if (!string.IsNullOrEmpty(animation) && villager.m_zanim != null)
-            {
-                villager.m_zanim.SetTrigger(tool.m_shared.m_attack.m_attackChainLevels > 1 ? animation + "0" : animation);
-            }
+            Chores.ToolAnimation(villager, VillagerLooks.Tool.Hammer);
         }
 
         private static void End(Villager villager, State state)

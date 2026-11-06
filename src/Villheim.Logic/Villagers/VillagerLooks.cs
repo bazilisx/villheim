@@ -1,4 +1,5 @@
 using UnityEngine;
+using Villheim.Prefabs;
 
 namespace Villheim.Logic.Villagers
 {
@@ -173,11 +174,53 @@ namespace Villheim.Logic.Villagers
             {
                 if (IsTool(item, tool))
                 {
-                    return villager.EquipItem(item, false);
+                    return villager.EquipItem(item, false) && IsHolding(villager, tool);
                 }
             }
 
-            return false;
+            // The tool went missing (it has happened with the axe). Villagers always carry their three tools, so a
+            // new one is handed over rather than leave him punching at trees and buildings.
+            string name = ToolPrefab(villager, tool);
+            GameObject prefab = name != null && ObjectDB.instance ? ObjectDB.instance.GetItemPrefab(name) : null;
+            ItemDrop.ItemData given = prefab != null ? villager.PickupPrefab(prefab, 0, false) : null;
+            if (given == null)
+            {
+                VillheimPlugin.Debug($"{villager.GetHoverName()} has no {tool} and none could be given " +
+                                     $"(inventory {inventory.GetAllItems().Count} items, {inventory.GetEmptySlots()} free).");
+                return false;
+            }
+
+            VillheimPlugin.Debug($"{villager.GetHoverName()} had lost the {tool.ToString().ToLowerInvariant()}; a new one was given.");
+            return villager.EquipItem(given, false) && IsHolding(villager, tool);
+        }
+
+        public static bool IsHolding(Humanoid villager, Tool tool)
+        {
+            ItemDrop.ItemData current = villager.GetRightItem();
+            return current != null && IsTool(current, tool);
+        }
+
+        /// <summary>The prefab of the tool this villager should carry, by the gear tier of his village.</summary>
+        private static string ToolPrefab(Humanoid villager, Tool tool)
+        {
+            if (tool == Tool.Hammer)
+            {
+                return "Hammer";
+            }
+
+            int tier = 0;
+            if (villager is Villager v && v.Zdo != null)
+            {
+                VillageHearth hearth = VillageHearth.Find(v.VillageId);
+                if (hearth != null && hearth.IsValid)
+                {
+                    var state = new Village.VillageState(hearth.Zdo);
+                    tier = GearTier(Village.VillageBrain.TierIndex(state.Plots.Count), state.Biome);
+                }
+            }
+
+            tier = Mathf.Clamp(tier, 0, MaxTier);
+            return tool == Tool.Axe ? Axes[tier] : Pickaxes[tier];
         }
 
         private static bool IsTool(ItemDrop.ItemData item, Tool tool)

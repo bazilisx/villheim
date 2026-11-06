@@ -16,12 +16,13 @@ jobs:
           dotnet-version: '8.0.x'
 
       - name: Build
-        run: dotnet build src/Villheim/Villheim.csproj -c Release -nologo
+        run: dotnet build Villheim.sln -c Release -nologo
 
       - name: Package for Thunderstore / manual install
         run: |
           mkdir -p package/plugins
           cp src/Villheim/bin/Release/Villheim.dll package/plugins/
+          cp src/Villheim.Logic/bin/Release/Villheim.Logic.dll package/plugins/
           cp README.md CHANGELOG.md manifest.json package/
           if [ -f icon.png ]; then cp icon.png package/; fi
 

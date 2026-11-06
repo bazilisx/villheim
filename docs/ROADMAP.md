@@ -151,6 +151,20 @@ with its own look for its biome.
 - [ ] Gear by biome and village level: basic Meadows tools for everyone, biome weapons and shields for protectors,
       better materials and Black Forest gear as the village levels up (Tyler, 2026-11-05).
 
+## Milestone 6: Millénaire village life
+
+- [ ] Village chronicle read at the hearth (Built 2026-11-06, needs testing.)
+- [ ] Mourning when a villager dies (Built 2026-11-06, needs testing.)
+- [ ] Night watch by protectors in turn (Built 2026-11-06, needs testing.)
+- [ ] Raids at night with a warning at dusk (Built 2026-11-06, needs testing.)
+- [ ] Foraging for food in the Meadows (Built 2026-11-06, needs testing.)
+- [ ] Village sign and notice board (Built 2026-11-06, needs testing.)
+- [ ] Village types: woodland, fortified, farming (Built 2026-11-06, needs testing.)
+- [ ] A chieftain (Built 2026-11-06, needs testing.)
+- [ ] Children born to families who grow up (Built 2026-11-06, needs testing.)
+- [ ] Villages trading or visiting each other; merchants travelling between villages.
+- [ ] Farms with crops once the village has seeds (Black Forest carrots and later).
+
 ## Later ideas
 
 - Trading with the player at village shops, as in Millénaire. (First step 2026-11-06: crouch and talk to buy

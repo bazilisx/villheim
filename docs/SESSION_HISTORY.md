@@ -9,8 +9,9 @@ Current facts only. Read this at the start of a session. Narrative is in `docs/d
 - **On main, not tested in game:** both 2026-11-06 overnight sessions (builder at the piece, levelled sites, beds and
   sleep, furnished buildings, Millénaire placement, cooking, roles and trades, dialogue library, walked A* paths,
   blueprints, growth tiers and upgrades, longhouse around the hearth, hunting, repairs, shelter, seats, trading,
-  furniture by tier, morning hearth, moods, social layer, fence ring, about 1650 spoken lines). Logic only,
-  hot-reloads; core DLL unchanged. Rollback branches `stage/2026-11-06-a` to `-h`.
+  furniture by tier, morning hearth, moods, social layer, fence ring, reactions to the player, chronicle, night watch,
+  raids, foraging, signs, village types, chieftain, children). Logic only, hot-reloads; core DLL unchanged. Rollback
+  branches `stage/2026-11-06-a` to `-k`.
 - **Network:** the cloud environment allows Thunderstore, Nexus, the Valheim wiki, CurseForge, Modrinth, the
   MineColonies wiki and millenaire.org. Nexus still answers 403 from the cloud.
 - **Optional design packs:** OverDrive BiomeBlueprints (Thunderstore) gives Meadows and Black Forest upgrade chains when
@@ -42,6 +43,7 @@ Current facts only. Read this at the start of a session. Narrative is in `docs/d
 
 ## Recent milestones
 
+- **2026-11-06 (fifth session: chronicle, raids, night watch, village types, children)** - see docs/daily-notes/2026-11/2026-11-06.md
 - **2026-11-06 (third session: moods, social layer, fence, dialogue doubled)** - see docs/daily-notes/2026-11/2026-11-06.md
 - **2026-11-06 (second overnight: dialogue library, blueprints, growth and upgrades, hunting, repairs, A* paths)** - see docs/daily-notes/2026-11/2026-11-06.md
 - **2026-11-06 (overnight: beds, sleep, cooking, roles, placement, paths, dialogue)** - see docs/daily-notes/2026-11/2026-11-06.md

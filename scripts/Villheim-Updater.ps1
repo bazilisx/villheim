@@ -55,6 +55,7 @@ if (-not (Test-Path $profileFolder)) {
 New-Item -ItemType Directory -Force -Path $plugin, $download | Out-Null
 $installed = if (Test-Path $marker) { (Get-Content $marker -Raw).Trim() } else { "" }
 $coreWaiting = $false
+$coreWarned = $false
 
 Say "Watching for new Villheim builds for profile '$profileName'. Leave this window open; close it to stop." Cyan
 if ($installed) { Say "Installed now: commit $installed" }
@@ -75,6 +76,7 @@ while ($true) {
             $installed = $latest
             Set-Content -Path $marker -Value $latest
             $coreWaiting = -not (Same-File $coreDll (Join-Path $plugin "Villheim.dll"))
+            $coreWarned = $false
             Say "Installed build $latest. In game, the hearth's hover text should end in commit-$latest." Green
         }
 
@@ -85,7 +87,11 @@ while ($true) {
                 $coreWaiting = $false
                 Say "Core updated too. Start (or restart) Valheim to load it." Green
             } catch {
-                Say "This build changes the core. Close Valheim; the update finishes by itself, then start it again." Yellow
+                if (-not $coreWarned) {
+                    Say "The core file needs replacing too, which can't happen while Valheim runs. Everything else is" Yellow
+                    Say "already loaded. Next time you close Valheim this window finishes the swap by itself." Yellow
+                    $coreWarned = $true
+                }
             }
         }
     } catch {

@@ -15,6 +15,7 @@ namespace Villheim.Logic.Villagers
         private sealed class AppliedTier
         {
             public int Value = -1;
+            public float NextDressCheck;
         }
 
         private static readonly ConditionalWeakTable<Villager, AppliedTier> Applied =
@@ -27,6 +28,20 @@ namespace Villheim.Logic.Villagers
             {
                 villager.LooksApplied = true;
                 applied.Value = -1;
+            }
+
+            // Every gear tier has a shirt and trousers. Something unequips them now and then (seen after villagers
+            // took the axe out): dress them again, and log it so the cause can be found.
+            if (applied.Value >= 0 && Time.time >= applied.NextDressCheck)
+            {
+                applied.NextDressCheck = Time.time + 3f;
+                if (villager.m_chestItem == null || villager.m_legItem == null)
+                {
+                    VillheimPlugin.Log.LogInfo($"{villager.VillagerName} lost their clothes (holding " +
+                                               $"{villager.GetRightItem()?.m_shared?.m_name ?? "nothing"}, " +
+                                               $"{villager.GetInventory()?.NrOfItems() ?? 0} items carried); dressing again.");
+                    applied.Value = -1;
+                }
             }
 
             villager.ScheduleTimer -= deltaTime;

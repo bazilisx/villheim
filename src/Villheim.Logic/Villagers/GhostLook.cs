@@ -33,6 +33,41 @@ namespace Villheim.Logic.Villagers
         private static Color GlowColor => LogicConfig.GhostGlowColor != null ? LogicConfig.GhostGlowColor.Value : new Color(0.25f, 0.6f, 0.75f);
         private static readonly string[] TintProperties = { "_Color", "_SkinColor", "_HairColor", "_TintColor", "_BaseColor" };
         private static readonly string[] PreferredSources = { "ghost", "spirit", "wraith", "echo", "phantom", "wisp" };
+        private static readonly string[] OpacityProperties = { "_Alpha", "_Opacity", "_Transparency", "_Fade", "_Visibility", "_AlphaMultiplier" };
+
+        private static int _version;
+
+        /// <summary>
+        /// Puts any change to the look settings on every ghost at once (the config editor, the file, or the
+        /// GhostApplyNow switch), instead of within the next three seconds.
+        /// </summary>
+        public static void ApplyNow()
+        {
+            _version++;
+            VillheimPlugin.Debug("Ghost look: settings changed, applying now.");
+        }
+
+        /// <summary>For the vh_ghost command: the shaders in use and what they offer.</summary>
+        public static string Report()
+        {
+            Shader ghost = GhostShader();
+            var lines = new List<string> { $"borrowed see-through shader: {(ghost != null ? ghost.name : "none found")}" };
+            if (ghost != null)
+            {
+                var names = new List<string>();
+                for (int i = 0; i < ghost.GetPropertyCount(); i++)
+                {
+                    names.Add(ghost.GetPropertyName(i));
+                }
+
+                lines.Add("   its properties: " + string.Join(", ", names));
+            }
+
+            lines.Add($"   day: alpha {LogicConfig.GhostAlphaDay.Value:0.##}, tint {LogicConfig.GhostTintDay.Value:0.##}, glow {LogicConfig.GhostGlowDay.Value:0.##}; " +
+                      $"night: alpha {LogicConfig.GhostAlpha.Value:0.##}, tint {LogicConfig.GhostTint.Value:0.##}, glow {LogicConfig.GhostGlow.Value:0.##}; " +
+                      $"darkness now {Darkness():0.##}");
+            return string.Join("\n", lines);
+        }
 
         private sealed class Slot
         {
@@ -48,6 +83,7 @@ namespace Villheim.Logic.Villagers
         {
             public float Next;
             public float NextScan;
+            public int Version;
             public float FirstSeen;
             public bool Revealed;
             public readonly Dictionary<Renderer, List<Slot>> Renderers = new Dictionary<Renderer, List<Slot>>();
@@ -121,9 +157,11 @@ namespace Villheim.Logic.Villagers
                 }
             }
 
-            // New parts (a tool taken out, a new shirt) get the look within half a second; values refresh every 3 s.
+            // New parts (a tool taken out, a new shirt) get the look within half a second; values refresh every 3 s,
+            // and at once when a setting changes.
             bool scan = Time.time >= state.NextScan;
-            bool refresh = Time.time >= state.Next;
+            bool refresh = Time.time >= state.Next || state.Version != _version;
+            state.Version = _version;
             if (!scan && !refresh)
             {
                 return;
@@ -256,6 +294,19 @@ namespace Villheim.Logic.Villagers
                 m.shader = slot.OriginalShader;
                 m.renderQueue = slot.OriginalQueue;
                 slot.Swapped = false;
+            }
+
+            // A borrowed see-through shader may take its transparency from a value of its own rather than the
+            // colour's alpha: set the usual ones too, so GhostAlpha always does something.
+            if (slot.Swapped)
+            {
+                foreach (string property in OpacityProperties)
+                {
+                    if (m.HasProperty(property))
+                    {
+                        m.SetFloat(property, alpha);
+                    }
+                }
             }
 
             foreach (string property in slot.Base.Keys.ToList())

@@ -17,6 +17,8 @@ namespace Villheim.Logic
         {
             "grow: make the nearest village start its next building now (adds the wood it needs)",
             "settle (or newvillage): light a new village hearth in front of you",
+            "ghost: apply the look settings now and show the shader in use",
+            "hearthground: clear and level the ground round the nearest village's hearth again",
             "previews: write a preview command for every design to BepInEx/Villheim/preview-commands.txt",
             "wood [amount] [material]: add materials to the nearest village (Wood, Stone, FineWood, RoundLog)",
             "empty: take every material out of the nearest village's stock and village chest",
@@ -45,6 +47,22 @@ namespace Villheim.Logic
                 case "villheim_settle":
                 case "villheim_newvillage": Found(context); return true;
                 case "villheim_previews": WritePreviews(context); return true;
+                case "villheim_ghost":
+                    Villagers.GhostLook.ApplyNow();
+                    Say(context, "Villheim: look settings applied.\n" + Villagers.GhostLook.Report());
+                    return true;
+                case "villheim_hearthground":
+                    if (TryGetPlayer(context, out Player near) && VillageHearth.Closest(near.transform.position, 150f) is VillageHearth h)
+                    {
+                        HearthGround.Prepare(h.transform.position);
+                        Say(context, $"Villheim: cleared and levelled the ground round {h.VillageName}'s hearth.");
+                    }
+                    else
+                    {
+                        Say(context, "Villheim: no village hearth within 150 m.");
+                    }
+
+                    return true;
                 case "villheim_grow": Grow(context); return true;
                 case "villheim_wood": AddWood(args, context); return true;
                 case "villheim_empty": Empty(context); return true;

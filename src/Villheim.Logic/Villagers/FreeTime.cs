@@ -141,6 +141,13 @@ namespace Villheim.Logic.Villagers
 
             State state = States.GetOrCreateValue(villager);
             Mode mode = CurrentMode();
+
+            // Off work in the evening and at night: tools are put away (not on watch); work takes them out again.
+            if (mode != Mode.Day && !Roles.IsNightWatch(villager) && villager.GetRightItem() != null)
+            {
+                villager.HideHandItems(false, true);
+            }
+
             if (Time.time - state.LastRun > 1f || state.Mode != mode || Time.time > state.Until ||
                 (state.Kind == Kind.Chat && !ChatAlive(state.Chat)))
             {
@@ -455,8 +462,8 @@ namespace Villheim.Logic.Villagers
                 return;
             }
 
-            // Every other villager around the ring sits; the rest stand, toast and laugh.
-            bool sits = (state.Ring & 1) == 1;
+            // Most sit round the fire; the odd cheerful one stands, toasts and laughs.
+            bool sits = (state.Ring % 3) != 0 || mood < 65f;
             if (sits)
             {
                 Poses.Hold(villager, Poses.Sit);
@@ -481,7 +488,7 @@ namespace Villheim.Logic.Villagers
                 return;
             }
 
-            state.NextGesture = Time.time + Random.Range(10f, 20f);
+            state.NextGesture = Time.time + Random.Range(6f, 12f);
             if (mood >= 65f && Random.value < 0.33f)
             {
                 state.Dancing = true;

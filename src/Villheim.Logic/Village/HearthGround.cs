@@ -21,9 +21,43 @@ namespace Villheim.Logic.Village
 
         public static void Prepare(Vector3 hearth)
         {
-            DesignSpawner.ClearArea(hearth, ClearRadius);
-            TerrainShaper.LevelPad(hearth, LevelRadius, LevelRadius + 4f);
-            ClearVegetation(hearth, ClearRadius);
+            // Each step on its own, so one that fails can't skip the others; a failure goes to the log.
+            Step("clearing trees, rocks and bushes", () => DesignSpawner.ClearArea(hearth, ClearRadius));
+            Step("levelling the ground", () => TerrainShaper.LevelPad(hearth, LevelRadius, LevelRadius + 4f));
+            string paint = (LogicConfig.HearthGroundPaint?.Value ?? "Both").Trim().ToLowerInvariant();
+            if (paint != "dirt")
+            {
+                Step("clearing the grass", () => ClearVegetation(hearth, ClearRadius));
+            }
+
+            if (paint == "dirt" || paint == "both")
+            {
+                Step("baring the earth by the fire", () => Paint(hearth, paint == "dirt" ? ClearRadius : 5f, TerrainModifier.PaintType.Dirt));
+            }
+
+            VillheimPlugin.Log.LogInfo($"Hearth ground prepared at {hearth} ({paint}).");
+        }
+
+        private static void Step(string what, System.Action action)
+        {
+            try
+            {
+                action();
+            }
+            catch (System.Exception e)
+            {
+                VillheimPlugin.Log.LogWarning($"Hearth ground: {what} failed: {e.Message}");
+            }
+        }
+
+        private static void Paint(Vector3 center, float radius, TerrainModifier.PaintType type)
+        {
+            TerrainOp.Settings settings = TerrainShaper.NewSettings();
+            settings.m_paintCleared = true;
+            settings.m_paintType = type;
+            settings.m_paintRadius = radius;
+            settings.m_paintHeightCheck = false;
+            TerrainShaper.Apply(center, settings);
         }
 
         /// <summary>Takes grass and swaying plants off the ground (the game's own "clear vegetation" paint).</summary>

@@ -23,6 +23,8 @@ namespace Villheim.Logic
         public static ConfigEntry<UnityEngine.Color> GhostColor;
         public static ConfigEntry<UnityEngine.Color> GhostGlowColor;
         public static ConfigEntry<bool> GhostLook;
+        public static ConfigEntry<bool> GhostApplyNow;
+        public static ConfigEntry<string> HearthGroundPaint;
         public static ConfigEntry<float> GhostAlpha;
         public static ConfigEntry<float> GhostTint;
         public static ConfigEntry<float> GhostGlow;
@@ -78,10 +80,40 @@ namespace Villheim.Logic
                 "The colour villagers are tinted toward (the tint settings say how strongly). Teal by default.");
             GhostGlowColor = Admin(config, looks, "GhostGlowColor", new UnityEngine.Color(0.25f, 0.6f, 0.75f),
                 "The colour of the glow (the glow settings say how strongly).");
+            GhostApplyNow = Admin(config, looks, "GhostApplyNow", false,
+                "Switch on to put the look settings on every villager and animal at once; it switches itself off again. " +
+                "(Every change to a look setting is also applied at once on its own.)");
+            HearthGroundPaint = Admin(config, sites, "HearthGroundPaint", "Both",
+                "How the ground around a new hearth is cleared: ClearVegetation (grass taken off, ground keeps its colour), " +
+                "Dirt (bare earth, like a path), or Both (bare earth 5 m round the fire, grass cleared out to 12 m).");
             GhostGlowDay = Admin(config, looks, "GhostGlowDay", 0.08f,
                 "A faint teal glow by day, so villagers read teal rather than white in sunlight (GhostGlow is the night value).");
             RaidChance = Admin(config, work, "RaidChance", 0.2f,
                 "Chance each dusk of a raid (plus 3% per village tier), never two nights running.");
+            WatchLooks();
+        }
+
+        /// <summary>Every look setting puts itself on the ghosts the moment it changes.</summary>
+        private static void WatchLooks()
+        {
+            foreach (ConfigEntryBase entry in new ConfigEntryBase[]
+                     {
+                         GhostLook, GhostAlpha, GhostTint, GhostGlow, GhostAlphaDay, GhostTintDay, GhostGlowDay, GhostColor, GhostGlowColor,
+                     })
+            {
+                if (entry is ConfigEntry<float> f) f.SettingChanged += (_, __) => Villagers.GhostLook.ApplyNow();
+                else if (entry is ConfigEntry<bool> b) b.SettingChanged += (_, __) => Villagers.GhostLook.ApplyNow();
+                else if (entry is ConfigEntry<UnityEngine.Color> c) c.SettingChanged += (_, __) => Villagers.GhostLook.ApplyNow();
+            }
+
+            GhostApplyNow.SettingChanged += (_, __) =>
+            {
+                if (GhostApplyNow.Value)
+                {
+                    Villagers.GhostLook.ApplyNow();
+                    GhostApplyNow.Value = false;
+                }
+            };
         }
 
         private static ConfigEntry<T> Admin<T>(ConfigFile config, string section, string key, T value, string description)

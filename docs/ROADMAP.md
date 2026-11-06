@@ -164,13 +164,14 @@ with its own look for its biome.
 - [ ] A chieftain (Built 2026-11-06, needs testing.)
 - [ ] Children born to families who grow up (Built 2026-11-06, needs testing.)
 - [ ] Villages trading or visiting each other; merchants travelling between villages.
-- [ ] Farms (Tyler, 2026-11-06): berry and mushroom farms in the Meadows, made by planting the vanilla bush and
+- [ ] Farms (Built 2026-11-06, needs testing.) (Tyler, 2026-11-06): berry and mushroom farms in the Meadows, made by planting the vanilla bush and
       mushroom pickables in rows on a farm plot (they regrow after picking); crops from seeds later (carrots in the
       Black Forest). Saplings replanted where trees were felled (Millénaire's lumbermen plant saplings).
-- [ ] A farmer trade: tends and harvests the farms, keeps the chest in food.
-- [ ] Domesticated animals (Tyler, 2026-11-06): boars tamed and kept in pens at farms, fed by the farmer so they
-      breed, later chickens; meat and leather from the herd instead of only hunting.
-- [ ] Ghostly villagers (Tyler's idea, 2026-11-06, to decide): Valheim is the afterlife, so villages may be echoes or
+- [ ] A farmer trade: tends and harvests the farms, keeps the chest in food. (Built 2026-11-06, needs testing.)
+- [ ] Domesticated animals (Tyler, 2026-11-06): tamed boars and piglets at farms, added on a schedule as the village
+      grows (one a day at most, capped by village size), never by feeding or breeding. (Built 2026-11-06, needs
+      testing.) Pens, chickens later.
+- [ ] Ghostly villagers (Tyler, 2026-11-06; built the same day, needs testing): Valheim is the afterlife, so villages may be echoes or
       memories. Villagers slightly see-through, faintly blue or teal, with a faint glow after dark. Subtle.
 
 ## Later ideas

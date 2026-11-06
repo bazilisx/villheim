@@ -10,8 +10,9 @@ Current facts only. Read this at the start of a session. Narrative is in `docs/d
   sleep, furnished buildings, Millénaire placement, cooking, roles and trades, dialogue library, walked A* paths,
   blueprints, growth tiers and upgrades, longhouse around the hearth, hunting, repairs, shelter, seats, trading,
   furniture by tier, morning hearth, moods, social layer, fence ring, reactions to the player, chronicle, night watch,
-  raids, foraging, signs, village types, chieftain, children). Logic only, hot-reloads; core DLL unchanged. Rollback
-  branches `stage/2026-11-06-a` to `-k`.
+  foraging, signs, village types, chieftain, children, echo look, farms and animals). Raids are built but off
+  (`RaidsEnabled`). Logic only, hot-reloads; core DLL unchanged. Rollback
+  branches `stage/2026-11-06-a` to `-l`.
 - **Network:** the cloud environment allows Thunderstore, Nexus, the Valheim wiki, CurseForge, Modrinth, the
   MineColonies wiki and millenaire.org. Nexus still answers 403 from the cloud.
 - **Optional design packs:** OverDrive BiomeBlueprints (Thunderstore) gives Meadows and Black Forest upgrade chains when

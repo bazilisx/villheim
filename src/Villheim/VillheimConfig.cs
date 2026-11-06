@@ -83,7 +83,7 @@ namespace Villheim
             const string designs = "3 - Designs";
             MeadowsDesigns = Admin(config, designs, "MeadowsDesigns",
                 "WoodHouse1,WoodHouse2,WoodHouse3,WoodHouse5,WoodHouse6,WoodHouse7,WoodHouse9,WoodHouse10," +
-                "WoodHouse11,WoodHouse13,WoodHouse8:0.4",
+                "WoodHouse11,WoodHouse13",
                 "Existing locations that Meadows villages copy buildings from, as a comma separated list of location " +
                 "names. Add ':weight' to make a design rarer or more common (default weight is 1). " +
                 "Locations from other installed mods work too: use 'villheim_locations' in the console to list names.");

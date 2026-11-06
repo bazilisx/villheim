@@ -60,6 +60,33 @@ namespace Villheim.Logic.Designs
             return pool;
         }
 
+        /// <summary>
+        /// Every design that could stand in for this role when the preferred ones do not fit the ground: all of the
+        /// culture's tiers for the role, then the homes. Used smallest first.
+        /// </summary>
+        public static List<Design> FallbackPool(Heightmap.Biome biome, Role role)
+        {
+            var pool = new List<Design>();
+            foreach (string tier in Culture.For(biome).Tiers(role))
+            {
+                AddDesigns(pool, tier, warnIfMissing: false);
+            }
+
+            if (role != Role.House)
+            {
+                foreach (Design design in PoolFor(biome, Role.House))
+                {
+                    if (!pool.Exists(d => d.Name == design.Name))
+                    {
+                        pool.Add(design);
+                    }
+                }
+            }
+
+            pool.Sort((a, b) => a.Radius.CompareTo(b.Radius));
+            return pool;
+        }
+
         /// <summary>Every design any role could use, for the designs command.</summary>
         public static List<Design> AllFor(Heightmap.Biome biome)
         {
@@ -156,7 +183,7 @@ namespace Villheim.Logic.Designs
 
         public static float MaxTerrainDelta(ZoneSystem.ZoneLocation location)
         {
-            return Mathf.Clamp(location.m_maxTerrainDelta, 1.5f, 4f);
+            return Mathf.Clamp(location.m_maxTerrainDelta, 2f, 5f);
         }
 
         public static ZoneSystem.ZoneLocation Find(string name)

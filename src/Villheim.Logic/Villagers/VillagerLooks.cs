@@ -78,8 +78,10 @@ namespace Villheim.Logic.Villagers
             new WeightedItem("", 1f),
         };
 
-        /// <summary>Two out of three villagers are woodcutters and always carry an axe.</summary>
-        public static bool IsWoodcutter(int seed) => (seed & 0x7fffffff) % 3 != 0;
+        /// <summary>One villager in three is a builder and carries a hammer; the rest are woodcutters with axes.</summary>
+        public static bool IsBuilder(int seed) => (seed & 0x7fffffff) % 3 == 0;
+
+        public static bool IsWoodcutter(int seed) => !IsBuilder(seed);
 
         public static int GearTier(int villageTier, Heightmap.Biome biome)
         {
@@ -129,7 +131,7 @@ namespace Villheim.Logic.Villagers
             Equip(villager, Pick(gear, Legs[tier]));
             Equip(villager, Pick(gear, Helmets[tier]));
             Equip(villager, Pick(gear, Capes[tier]));
-            Equip(villager, IsWoodcutter(seed) ? Axes[tier] : Pick(gear, OtherTools));
+            Equip(villager, IsBuilder(seed) ? "Hammer" : Axes[tier]);
         }
 
         private static void Equip(Humanoid humanoid, string itemName)

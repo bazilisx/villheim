@@ -17,6 +17,7 @@ namespace Villheim.Logic.Village
     internal static class VillageBrain
     {
         private const int MaxPlotAttempts = 6;
+        private const float StartShare = 0.15f;
         private const double UnloadedGapSeconds = 120.0;
 
         public static void Tick(VillageHearth hearth)
@@ -34,12 +35,18 @@ namespace Villheim.Logic.Village
             }
 
             double now = ZNet.instance.GetTimeSeconds();
-            AddPassiveWood(state, now);
+            double unloadedSeconds = AddPassiveWood(state, now);
 
-            if (!TryGrow(hearth, state, now))
+            if (ConstructionSite.IsActive(hearth.Zdo))
             {
-                TryPopulate(hearth, state, now);
+                AdvanceSite(hearth, unloadedSeconds);
             }
+            else
+            {
+                TryGrow(hearth, state, now);
+            }
+
+            TryPopulate(hearth, state, now);
         }
 
         public static void Initialize(VillageHearth hearth, VillageState state)
@@ -91,13 +98,14 @@ namespace Villheim.Logic.Village
 
         public static string Tier(int buildings) => new[] { "Camp", "Hamlet", "Village", "Town" }[TierIndex(buildings)];
 
-        private static void AddPassiveWood(VillageState state, double now)
+        /// <summary>Adds the wood gathered while the village sat unloaded. Returns how long that was, in seconds.</summary>
+        private static double AddPassiveWood(VillageState state, double now)
         {
             double last = state.LastSeen;
             state.LastSeen = now;
             if (last <= 0 || now - last < UnloadedGapSeconds)
             {
-                return;
+                return 0;
             }
 
             int villagers = Math.Min(state.Arrivals, Capacity(state));
@@ -107,6 +115,30 @@ namespace Villheim.Logic.Village
             {
                 state.Wood += earned;
                 VillheimPlugin.Debug($"{state.Name} gathered {earned} wood while unloaded ({days:0.00} days).");
+            }
+
+            return now - last;
+        }
+
+        private const float SecondsPerPieceUnattended = 5f;
+        private const int MaxCatchUpPiecesPerTick = 150;
+
+        /// <summary>
+        /// Builders place pieces as they work. Without a builder at the site it still creeps along, one piece per
+        /// tick, and time spent unloaded is made up in one go (wood permitting).
+        /// </summary>
+        private static void AdvanceSite(VillageHearth hearth, double unloadedSeconds)
+        {
+            int pieces = unloadedSeconds > 0
+                ? Mathf.Min(MaxCatchUpPiecesPerTick, Mathf.CeilToInt((float)(unloadedSeconds / SecondsPerPieceUnattended)))
+                : (ConstructionSite.BuilderActive(hearth.VillageId) ? 0 : 1);
+
+            for (int i = 0; i < pieces; i++)
+            {
+                if (!ConstructionSite.PlaceNext(hearth, unloadedSeconds <= 0))
+                {
+                    break;
+                }
             }
         }
 
@@ -148,36 +180,62 @@ namespace Villheim.Logic.Village
                 return false;
             }
 
-            DesignLibrary.Design design = picked.Value;
-            int cost = VillheimConfig.RequireWood.Value ? DesignLibrary.WoodCost(design.Location) : 0;
-            if (state.Wood < cost)
+            // Try the picked design first, then smaller stand-ins for the same role, so rough ground slows a village
+            // down instead of stopping it.
+            var candidates = new List<DesignLibrary.Design> { picked.Value };
+            List<DesignLibrary.Design> fallbacks = DesignLibrary.FallbackPool(state.Biome, role);
+            fallbacks.Reverse(); // largest stand-in that is still smaller than the pick comes first
+            foreach (DesignLibrary.Design fallback in fallbacks)
             {
-                state.Waiting = $"wood for a new {RoleName(role)} ({state.Wood}/{cost})";
-                return false;
-            }
-
-            float radius = design.Radius;
-            if (!PlotFinder.TryFind(hearth.transform.position, state.Axis, role, radius,
-                    DesignLibrary.MaxTerrainDelta(design.Location), plots, rng, out Vector3 position, out float yaw))
-            {
-                hearth.PlotAttempts++;
-                VillheimPlugin.Debug($"{state.Name}: no room for {design.Name} (attempt {hearth.PlotAttempts}).");
-                if (hearth.PlotAttempts >= MaxPlotAttempts)
+                if (candidates.Count >= 4)
                 {
-                    // Nowhere to build right now. Wait for the next growth period instead of retrying constantly.
-                    hearth.PlotAttempts = 0;
-                    state.LastGrowth += interval;
-                    state.Waiting = "room to build";
+                    break;
                 }
 
-                return false;
+                if (!candidates.Exists(d => d.Name == fallback.Name) && fallback.Radius < picked.Value.Radius)
+                {
+                    candidates.Add(fallback);
+                }
             }
 
-            hearth.PlotAttempts = 0;
-            state.Waiting = "";
-            int buildSeed = rng.Next(1, int.MaxValue);
-            hearth.StartCoroutine(BuildRoutine(hearth, design, role, position, yaw, radius, buildSeed, interval, cost));
-            return true;
+            bool strictHub = hearth.PlotAttempts < 2;
+            foreach (DesignLibrary.Design design in candidates)
+            {
+                // Breaking ground needs a share of the wood; the rest is paid piece by piece as the building goes up.
+                int cost = VillheimConfig.RequireWood.Value ? DesignLibrary.WoodCost(design.Location) : 0;
+                int toStart = Mathf.CeilToInt(cost * StartShare);
+                if (state.Wood < toStart)
+                {
+                    state.Waiting = $"wood to start a {RoleName(role)} ({state.Wood}/{toStart})";
+                    return false;
+                }
+
+                float radius = design.Radius;
+                if (!PlotFinder.TryFind(hearth.transform.position, state.Axis, role, strictHub, radius,
+                        DesignLibrary.MaxTerrainDelta(design.Location), plots, rng, out Vector3 position, out float yaw))
+                {
+                    VillheimPlugin.Debug($"{state.Name}: no room for {design.Name}.");
+                    continue;
+                }
+
+                hearth.PlotAttempts = 0;
+                state.Waiting = "";
+                int buildSeed = rng.Next(1, int.MaxValue);
+                hearth.StartCoroutine(BreakGround(hearth, design, role, position, yaw, radius, buildSeed, interval));
+                return true;
+            }
+
+            hearth.PlotAttempts++;
+            VillheimPlugin.Debug($"{state.Name}: nowhere to put a {RoleName(role)} (attempt {hearth.PlotAttempts}).");
+            if (hearth.PlotAttempts >= MaxPlotAttempts)
+            {
+                // Nowhere to build right now. Wait a while instead of retrying every few seconds.
+                hearth.PlotAttempts = 0;
+                state.LastGrowth = now - interval * 0.75;
+                state.Waiting = "room to build";
+            }
+
+            return false;
         }
 
         public static string RoleName(Role role)
@@ -192,15 +250,21 @@ namespace Villheim.Logic.Village
             }
         }
 
-        private static IEnumerator BuildRoutine(VillageHearth hearth, DesignLibrary.Design design, Role role, Vector3 position,
-            float yaw, float radius, int seed, double interval, int cost)
+        /// <summary>Clears and levels the plot, then opens a construction site for builders to work on.</summary>
+        private static IEnumerator BreakGround(VillageHearth hearth, DesignLibrary.Design design, Role role, Vector3 position,
+            float yaw, float radius, int seed, double interval)
         {
             hearth.Busy = true;
-            var result = new DesignSpawner.Result();
             try
             {
-                yield return DesignSpawner.Build(design.Location, position, yaw, seed, hearth.VillageId, result);
+                if (!DesignSpawner.PrepareSite(design.Location, position, yaw))
+                {
+                    VillheimPlugin.Log.LogWarning($"Could not load the design {design.Name}.");
+                    yield break;
+                }
 
+                // Give the heightmaps a moment to rebuild before pieces start going up.
+                yield return new WaitForSeconds(0.75f);
                 if (!hearth || !hearth.IsValid)
                 {
                     yield break;
@@ -209,30 +273,15 @@ namespace Villheim.Logic.Village
                 var state = new VillageState(hearth.Zdo);
 
                 // Advance the clock by one period rather than to "now", so a village that was left alone for a
-                // long time catches up one building per tick.
+                // long time catches up.
                 state.LastGrowth += interval;
-
-                if (result.Success)
+                ConstructionSite.Begin(hearth.Zdo, new ConstructionSite.Site
                 {
-                    state.Wood -= cost;
-                    state.AddPlot(new Plot
-                    {
-                        Design = design.Name, Position = position, Yaw = yaw, Radius = radius, Role = role.ToString(),
-                    });
+                    Design = design.Name, Position = position, Yaw = yaw, Radius = radius, Role = role, Seed = seed,
+                });
 
-                    if (VillheimConfig.BuildPaths.Value)
-                    {
-                        PathBuilder.Build(hearth.transform.position, state.Axis, position, radius);
-                    }
-
-                    VillheimPlugin.Log.LogInfo($"{state.Name} built a {RoleName(role)} ({design.Name}) at {position} " +
-                                               $"for {cost} wood ({result.Spawned} objects, {result.Skipped} left out).");
-                    Announce(hearth, $"{state.Name} has raised a new {RoleName(role)}.");
-                }
-                else
-                {
-                    VillheimPlugin.Log.LogWarning($"{state.Name} could not build {design.Name}: {result.Error}");
-                }
+                VillheimPlugin.Log.LogInfo($"{state.Name} broke ground for a {RoleName(role)} ({design.Name}) at {position}.");
+                Announce(hearth, $"{state.Name} has started building a {RoleName(role)}.");
             }
             finally
             {
@@ -341,11 +390,23 @@ namespace Villheim.Logic.Village
                 Initialize(hearth, state);
             }
 
-            state.LastGrowth = ZNet.instance.GetTimeSeconds() - GrowthInterval();
             if (freeWood)
             {
                 state.Wood += VillheimConfig.MaxWoodPerBuilding.Value;
             }
+
+            if (ConstructionSite.IsActive(hearth.Zdo))
+            {
+                // Testing shortcut: finish the building in progress.
+                while (ConstructionSite.PlaceNext(hearth, false))
+                {
+                    state.Wood += 2;
+                }
+
+                return;
+            }
+
+            state.LastGrowth = ZNet.instance.GetTimeSeconds() - GrowthInterval();
         }
 
         public static string Summary(VillageHearth hearth)
@@ -369,9 +430,20 @@ namespace Villheim.Logic.Village
                 return text + " Fully grown.";
             }
 
+            string progress = ConstructionSite.Progress(hearth);
+            if (progress != null)
+            {
+                text += $" Now {progress}.";
+            }
+
             if (!string.IsNullOrEmpty(state.Waiting))
             {
                 return text + $" Waiting for {state.Waiting}.";
+            }
+
+            if (progress != null)
+            {
+                return text;
             }
 
             double remaining = state.LastGrowth + GrowthInterval() - ZNet.instance.GetTimeSeconds();
@@ -379,7 +451,7 @@ namespace Villheim.Logic.Village
             return text + $" Next {RoleName(Culture.RoleFor(buildings))} in about {days:0.0} days.";
         }
 
-        private static void Announce(VillageHearth hearth, string message)
+        public static void Announce(VillageHearth hearth, string message)
         {
             Player player = Player.m_localPlayer;
             if (player != null && MessageHud.instance != null &&

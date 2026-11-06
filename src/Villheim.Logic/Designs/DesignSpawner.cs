@@ -86,16 +86,38 @@ namespace Villheim.Logic.Designs
                          $"RandomSpawns: {Utils.GetEnabledComponentsInChildren<RandomSpawn>(asset).Length}";
         }
 
-        private static void SpawnObjects(GameObject asset, Vector3 origin, Quaternion rotation, int seed, int villageId,
-            Result result)
+        /// <summary>One object of a design, in the order it should be built.</summary>
+        internal sealed class PlanEntry
         {
+            public string Prefab;
+            public Vector3 LocalPosition;
+            public Quaternion LocalRotation;
+            public Vector3 Scale;
+            public int Stage;
+            public bool Structural;
+        }
+
+        // Build stages: structure from the ground up, then roofs, then doors and windows, then everything inside.
+        public const int StageStructure = 0;
+        public const int StageRoof = 1;
+        public const int StageOpenings = 2;
+        public const int StageInterior = 3;
+
+        public static readonly string[] StageNames = { "walls", "roof", "doors and windows", "furnishing" };
+
+        /// <summary>
+        /// Lists the objects a copy of the design contains, in build order. The design's random parts are rolled
+        /// with the seed, so the same seed always gives the same plan.
+        /// </summary>
+        public static List<PlanEntry> MakePlan(GameObject asset, Vector3 origin, int seed)
+        {
+            var plan = new List<PlanEntry>();
             Transform root = asset.transform;
             ZNetView[] views = Utils.GetEnabledComponentsInChildren<ZNetView>(asset);
             SpawnPrefab[] spawnPrefabs = Utils.GetEnabledComponentsInChildren<SpawnPrefab>(asset);
             RandomSpawn[] randomSpawns = Utils.GetEnabledComponentsInChildren<RandomSpawn>(asset);
 
             Random.State previousRandom = Random.state;
-            bool previousDamage = WearNTear.m_randomInitialDamage;
             try
             {
                 foreach (RandomSpawn randomSpawn in randomSpawns)
@@ -116,14 +138,11 @@ namespace Villheim.Logic.Designs
                     }
                 }
 
-                // Villages are lived in: never apply the random wear that ruins get.
-                WearNTear.m_randomInitialDamage = false;
-
                 foreach (ZNetView view in views)
                 {
                     if (view.gameObject.activeSelf)
                     {
-                        Spawn(view.gameObject, Utils.GetPrefabName(view.gameObject), root, origin, rotation, villageId, result);
+                        AddEntry(plan, view.gameObject, Utils.GetPrefabName(view.gameObject), root);
                     }
                 }
 
@@ -131,8 +150,7 @@ namespace Villheim.Logic.Designs
                 {
                     if (spawnPrefab.gameObject.activeSelf && spawnPrefab.m_prefab != null)
                     {
-                        Spawn(spawnPrefab.gameObject, Utils.GetPrefabName(spawnPrefab.m_prefab), root, origin, rotation,
-                            villageId, result);
+                        AddEntry(plan, spawnPrefab.gameObject, Utils.GetPrefabName(spawnPrefab.m_prefab), root);
                     }
                 }
             }
@@ -149,45 +167,81 @@ namespace Villheim.Logic.Designs
                     view.gameObject.SetActive(true);
                 }
 
-                WearNTear.m_randomInitialDamage = previousDamage;
                 Random.state = previousRandom;
             }
 
-            SnapToGround.SnappAll();
+            // Ground up within each stage. The sort is stable, so equal heights keep the design's own order.
+            return plan.OrderBy(e => e.Stage).ThenBy(e => Mathf.Round(e.LocalPosition.y * 4f)).ToList();
         }
 
-        private static void Spawn(GameObject original, string prefabName, Transform root, Vector3 origin, Quaternion rotation,
-            int villageId, Result result)
+        private static void AddEntry(List<PlanEntry> plan, GameObject original, string prefabName, Transform root)
         {
             GameObject prefab = ZNetScene.instance.GetPrefab(prefabName);
             if (prefab == null || ExclusionReason(prefab, prefabName) != null)
             {
-                result.Skipped++;
                 return;
             }
 
-            Vector3 localPosition = root.InverseTransformPoint(original.transform.position);
-            Quaternion localRotation = Quaternion.Inverse(root.rotation) * original.transform.rotation;
-            Vector3 position = origin + rotation * localPosition;
-            Quaternion worldRotation = rotation * localRotation;
+            bool structural = prefab.GetComponent<WearNTear>() != null && prefab.GetComponent<Piece>() != null;
+            plan.Add(new PlanEntry
+            {
+                Prefab = prefabName,
+                LocalPosition = root.InverseTransformPoint(original.transform.position),
+                LocalRotation = Quaternion.Inverse(root.rotation) * original.transform.rotation,
+                Scale = original.transform.lossyScale,
+                Stage = StageOf(prefabName, structural),
+                Structural = structural,
+            });
+        }
+
+        private static int StageOf(string name, bool structural)
+        {
+            string lower = name.ToLowerInvariant();
+            if (lower.Contains("door") || lower.Contains("gate") || lower.Contains("window") || lower.Contains("hatch"))
+            {
+                return StageOpenings;
+            }
+
+            if (!structural)
+            {
+                return StageInterior;
+            }
+
+            return lower.Contains("roof") ? StageRoof : StageStructure;
+        }
+
+        /// <summary>Places one planned object as a real networked object, tagged with the village that built it.</summary>
+        public static GameObject SpawnEntry(PlanEntry entry, Vector3 origin, Quaternion rotation, int villageId, bool effects)
+        {
+            GameObject prefab = ZNetScene.instance.GetPrefab(entry.Prefab);
+            if (prefab == null)
+            {
+                return null;
+            }
+
+            Vector3 position = origin + rotation * entry.LocalPosition;
+            Quaternion worldRotation = rotation * entry.LocalRotation;
 
             // Some designs scale their pieces. The scale has to be on the prefab while it wakes up so the
             // network view records it, so set it briefly and restore it afterwards.
-            Vector3 scale = original.transform.lossyScale;
             Vector3 prefabScale = prefab.transform.localScale;
-            bool scaled = (scale - prefabScale).sqrMagnitude > 0.0001f;
+            bool scaled = (entry.Scale - prefabScale).sqrMagnitude > 0.0001f;
+            bool previousDamage = WearNTear.m_randomInitialDamage;
             if (scaled)
             {
-                prefab.transform.localScale = scale;
+                prefab.transform.localScale = entry.Scale;
             }
 
             GameObject instance;
             try
             {
+                // Villages are lived in: never apply the random wear that ruins get.
+                WearNTear.m_randomInitialDamage = false;
                 instance = Object.Instantiate(prefab, position, worldRotation);
             }
             finally
             {
+                WearNTear.m_randomInitialDamage = previousDamage;
                 if (scaled)
                 {
                     prefab.transform.localScale = prefabScale;
@@ -200,7 +254,53 @@ namespace Villheim.Logic.Designs
                 view.GetZDO().Set(Keys.BuiltBy, villageId);
             }
 
-            result.Spawned++;
+            if (effects && instance.TryGetComponent(out Piece piece))
+            {
+                piece.m_placeEffect?.Create(position, worldRotation, instance.transform);
+            }
+
+            return instance;
+        }
+
+        private static void SpawnObjects(GameObject asset, Vector3 origin, Quaternion rotation, int seed, int villageId,
+            Result result)
+        {
+            foreach (PlanEntry entry in MakePlan(asset, origin, seed))
+            {
+                if (SpawnEntry(entry, origin, rotation, villageId, false) != null)
+                {
+                    result.Spawned++;
+                }
+                else
+                {
+                    result.Skipped++;
+                }
+            }
+
+            SnapToGround.SnappAll();
+        }
+
+        /// <summary>Clears the plot and shapes the ground for a design, without building anything yet.</summary>
+        public static bool PrepareSite(ZoneSystem.ZoneLocation location, Vector3 origin, float yaw)
+        {
+            location.m_prefab.Load();
+            try
+            {
+                GameObject asset = location.m_prefab.Asset;
+                if (asset == null)
+                {
+                    return false;
+                }
+
+                float radius = DesignLibrary.Radius(location);
+                ClearArea(origin, radius);
+                ShapeTerrain(asset, origin, Quaternion.Euler(0f, yaw, 0f), radius);
+                return true;
+            }
+            finally
+            {
+                location.m_prefab.Release();
+            }
         }
 
         /// <summary>

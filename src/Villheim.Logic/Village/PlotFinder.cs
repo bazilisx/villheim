@@ -20,11 +20,13 @@ namespace Villheim.Logic.Village
 
         private static readonly List<Piece> PieceBuffer = new List<Piece>();
 
-        public static bool TryFind(Vector3 hearth, float axisYaw, Role role, float radius, float maxTerrainDelta,
+        public static bool TryFind(Vector3 hearth, float axisYaw, Role role, bool strictHub, float radius, float maxTerrainDelta,
             IReadOnlyList<Plot> plots, System.Random rng, out Vector3 position, out float yaw)
         {
             float maxDistance = VillheimConfig.VillageRadius.Value + radius * 0.5f;
-            int cells = Mathf.CeilToInt(maxDistance / GridStep);
+            // Bigger designs use a coarser grid, which keeps the search cheap.
+            float step = Mathf.Max(GridStep, Mathf.Round(radius * 0.5f / GridStep) * GridStep);
+            int cells = Mathf.CeilToInt(maxDistance / step);
             Quaternion axis = Quaternion.Euler(0f, axisYaw, 0f);
 
             var candidates = new List<Vector2>();
@@ -32,15 +34,15 @@ namespace Villheim.Logic.Village
             {
                 for (int z = -cells; z <= cells; z++)
                 {
-                    var local = new Vector2(x * GridStep, z * GridStep);
+                    var local = new Vector2(x * step, z * step);
                     float distance = local.magnitude;
                     if (distance > maxDistance || distance < radius + HearthClearance)
                     {
                         continue;
                     }
 
-                    // The hub sits straight behind the hearth, on the village axis.
-                    if (role == Role.Hub && (x != 0 || z <= 0))
+                    // The hub sits straight behind the hearth, on the village axis, when the ground allows it.
+                    if (role == Role.Hub && strictHub && (x != 0 || z <= 0))
                     {
                         continue;
                     }
@@ -50,7 +52,7 @@ namespace Villheim.Logic.Village
             }
 
             // Closest first; small random jitter so villages with the same layout rules still differ.
-            foreach (Vector2 local in candidates.OrderBy(c => c.magnitude + (float)rng.NextDouble() * GridStep))
+            foreach (Vector2 local in candidates.OrderBy(c => c.magnitude + (float)rng.NextDouble() * step))
             {
                 Vector3 candidate = hearth + axis * new Vector3(local.x, 0f, local.y);
                 if (IsGoodSpot(candidate, hearth, radius, maxTerrainDelta, plots, out float groundY))
@@ -135,25 +137,23 @@ namespace Villheim.Logic.Village
             max = float.MinValue;
             centerY = 0f;
 
-            var samples = new List<Vector3> { center };
-            foreach (float fraction in new[] { 0.4f, 0.8f })
+            // Center, then eight points at 70% of the radius. Stops early once the spot is clearly too steep.
+            for (int i = 0; i < 9; i++)
             {
-                for (int i = 0; i < 8; i++)
+                Vector3 sample = center;
+                if (i > 0)
                 {
-                    float angle = i * Mathf.PI / 4f;
-                    samples.Add(center + new Vector3(Mathf.Sin(angle), 0f, Mathf.Cos(angle)) * radius * fraction);
+                    float angle = (i - 1) * Mathf.PI / 4f;
+                    sample += new Vector3(Mathf.Sin(angle), 0f, Mathf.Cos(angle)) * radius * 0.7f;
                 }
-            }
 
-            for (int i = 0; i < samples.Count; i++)
-            {
                 // Only judge ground that is actually loaded; unloaded spots are tried again on a later visit.
-                if (Heightmap.FindHeightmap(samples[i]) == null)
+                if (Heightmap.FindHeightmap(sample) == null)
                 {
                     return false;
                 }
 
-                float height = ZoneSystem.instance.GetGroundHeight(samples[i]);
+                float height = ZoneSystem.instance.GetGroundHeight(sample);
                 if (i == 0)
                 {
                     centerY = height;
@@ -161,6 +161,10 @@ namespace Villheim.Logic.Village
 
                 min = Mathf.Min(min, height);
                 max = Mathf.Max(max, height);
+                if (max - min > 8f)
+                {
+                    return true;
+                }
             }
 
             return true;

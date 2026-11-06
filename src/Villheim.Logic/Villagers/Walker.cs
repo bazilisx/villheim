@@ -121,7 +121,7 @@ namespace Villheim.Logic.Villagers
                 return WalkResult.Walking;
             }
 
-            if (ai.MoveTo(dt, _goal, stop, false) && distance <= stop + PathEndSlack)
+            if (ai.MoveTo(dt, _goal, stop, false) && distance <= stop + PathEndSlack && !WallBetween(position, _goal))
             {
                 // The path ends close enough to the goal (a tree trunk or wall is in the way of the last step).
                 _arrived = true;
@@ -129,7 +129,7 @@ namespace Villheim.Logic.Villagers
                 return WalkResult.Arrived;
             }
 
-            if (Utils.DistanceXZ(position, _lastPosition) > MovedEnough || distance < NotStuckNearGoal)
+            if (Utils.DistanceXZ(position, _lastPosition) > MovedEnough)
             {
                 _lastPosition = position;
                 _lastMoved = Time.time;
@@ -146,6 +146,12 @@ namespace Villheim.Logic.Villagers
                     VillheimPlugin.Debug($"{villager.VillagerName} goes through a door.");
                     return WalkResult.Walking;
                 }
+            }
+
+            if (distance < NotStuckNearGoal && !WallBetween(position, _goal))
+            {
+                // Jostling near the goal is normal: no hops or sidesteps for it.
+                return WalkResult.Walking;
             }
 
             if (still > HopAfter && !_hopped)
@@ -179,6 +185,22 @@ namespace Villheim.Logic.Villagers
 
             return WalkResult.Walking;
         }
+
+        /// <summary>A building piece stands between the two points at knee height.</summary>
+        private static bool WallBetween(Vector3 from, Vector3 to)
+        {
+            if (PieceMask == 0)
+            {
+                PieceMask = LayerMask.GetMask("piece", "piece_nonsolid");
+            }
+
+            Vector3 a = from + Vector3.up * 0.4f;
+            Vector3 b = to + Vector3.up * 0.4f;
+            return Physics.Linecast(a, b, out RaycastHit hit, PieceMask, QueryTriggerInteraction.Ignore) &&
+                   Vector3.Distance(hit.point, b) > 0.5f;
+        }
+
+        private static int PieceMask;
 
         /// <summary>Closes a door he came through, once he is clear of it. Called every tick, walking or not.</summary>
         public void Tick(Villager villager)

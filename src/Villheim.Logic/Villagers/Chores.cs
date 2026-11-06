@@ -11,7 +11,7 @@ namespace Villheim.Logic.Villagers
     /// Villager work, by day.
     ///
     /// One villager in each village is its builder (a villager with the builder trade if there is one). Whenever the
-    /// site chest holds what the next piece needs, the builder builds. Everyone else, and the builder while the chest
+    /// village chest holds what the next piece needs, the builder builds. Everyone else, and the builder while the chest
     /// is short, gathers what the village still needs, easiest first:
     ///
     /// 1. material already lying on the ground,
@@ -19,7 +19,7 @@ namespace Villheim.Logic.Villagers
     /// 3. half-finished work (felled logs, cracked rocks),
     /// 4. and only then something new (a standing tree or a whole rock).
     ///
-    /// What they gather goes into the site chest, or into the village stock between buildings. When nothing is
+    /// What they gather goes into the village chest by the hearth (to the hearth itself while there is no chest). When nothing is
     /// needed, nobody harvests.
     ///
     /// Villagers walk to a spot next to what they work on before they swing. A tree is cut from the village side, so
@@ -37,6 +37,7 @@ namespace Villheim.Logic.Villagers
             Collect,
             Deliver,
             Build,
+            BuildChest,
         }
 
         private sealed class Profile
@@ -133,7 +134,24 @@ namespace Villheim.Logic.Villagers
             }
 
             bool builder = IsVillageBuilder(villager);
-            if (builder && needs.SiteActive && needs.CanBuildNow && work.Phase != Phase.Build)
+            if (builder && needs.ChestLost && needs.CanRebuildChest && work.Phase != Phase.BuildChest)
+            {
+                // The village chest comes before everything else. Hand in what he carries (it may be the wood the
+                // chest needs), then build it.
+                if (work.Carrying.Count > 0 && work.Phase != Phase.Deliver)
+                {
+                    BeginDeliver(villager, work);
+                }
+                else if (work.Phase != Phase.Deliver)
+                {
+                    ReleaseTarget(work);
+                    work.Phase = Phase.BuildChest;
+                    work.Timer = 0f;
+                    Walker.For(villager).Reset();
+                    VillheimPlugin.Debug($"{villager.VillagerName} goes to rebuild the village chest.");
+                }
+            }
+            else if (builder && needs.SiteActive && needs.CanBuildNow && work.Phase != Phase.Build)
             {
                 // The chest has what the next piece needs: the builder drops what he is doing (keeping what he
                 // carries for the chest) and builds.
@@ -146,6 +164,7 @@ namespace Villheim.Logic.Villagers
                     ReleaseTarget(work);
                     work.Phase = Phase.Build;
                     work.Timer = 0f;
+                    work.Deadline = Time.time + 30f;
                     Walker.For(villager).Reset();
                 }
             }
@@ -180,6 +199,9 @@ namespace Villheim.Logic.Villagers
 
                 case Phase.Build:
                     return UpdateBuild(villager, ai, work, dt);
+
+                case Phase.BuildChest:
+                    return UpdateBuildChest(villager, ai, work, dt);
             }
 
             return false;
@@ -197,6 +219,8 @@ namespace Villheim.Logic.Villagers
             {
                 case Phase.Build:
                     return "building";
+                case Phase.BuildChest:
+                    return "rebuilding the village chest";
                 case Phase.Deliver:
                     return "carrying materials to the site";
                 case Phase.Collect:
@@ -639,7 +663,7 @@ namespace Villheim.Logic.Villagers
             Walker.For(villager).Reset();
         }
 
-        /// <summary>Carries what was gathered to the site chest, or to the hearth between buildings.</summary>
+        /// <summary>Carries what was gathered to the village chest, or to the hearth while there is none.</summary>
         private static bool UpdateDeliver(Villager villager, VillagerAI ai, Work work, float dt)
         {
             VillageNeeds needs = VillageNeeds.For(villager.VillageId);
@@ -665,13 +689,13 @@ namespace Villheim.Logic.Villagers
             }
 
             VillageHearth hearth = VillageHearth.Find(villager.VillageId);
-            Container chest = hearth != null && needs.ToChest ? SiteChest.Find(hearth) : null;
+            Container chest = hearth != null && needs.ToChest ? VillageChest.Find(hearth) : null;
             foreach (KeyValuePair<string, int> carried in work.Carrying)
             {
                 int left = carried.Value;
                 if (chest != null && distance < 4f)
                 {
-                    left -= SiteChest.Add(chest, carried.Key, left);
+                    left -= VillageChest.Add(chest, carried.Key, left);
                 }
 
                 if (left > 0)
@@ -680,7 +704,7 @@ namespace Villheim.Logic.Villagers
                 }
 
                 VillheimPlugin.Debug($"{villager.VillagerName} brought {carried.Value} {Materials.Label(carried.Key)} " +
-                                     $"to {(chest != null && distance < 4f ? "the site chest" : villager.VillageName)}.");
+                                     $"to {(chest != null && distance < 4f ? "the village chest" : villager.VillageName)}.");
             }
 
             work.Carrying.Clear();
@@ -709,7 +733,12 @@ namespace Villheim.Logic.Villagers
             float toPiece = Utils.DistanceXZ(villager.transform.position, piece);
             bool inside = ConstructionSite.InsideFootprint(hearth, villager.transform.position);
             WalkResult step = Walker.For(villager).Go(villager, ai, dt, stand, 1f);
-            if (step == WalkResult.Walking && (inside || toPiece > BuildRange * 0.75f))
+            if (!inside)
+            {
+                work.Deadline = Time.time + 30f;
+            }
+
+            if (step == WalkResult.Walking && (inside || toPiece > BuildRange * 0.75f) && !(inside && Time.time > work.Deadline))
             {
                 return true;
             }
@@ -731,7 +760,7 @@ namespace Villheim.Logic.Villagers
                 return true;
             }
 
-            if (ConstructionSite.NextPieceBlocked(hearth, out string who))
+            if (ConstructionSite.NextPieceBlocked(hearth, villager, out string who))
             {
                 // Someone stands where the piece goes: keep hammering and try again in a moment.
                 if (work.Reason != "blocked:" + who)
@@ -758,6 +787,55 @@ namespace Villheim.Logic.Villagers
             VillageNeeds.Forget(villager.VillageId);
             Finish(work);
             work.Cooldown = 1f;
+            return false;
+        }
+
+        /// <summary>The builder puts a new village chest where the old one stood, hammering at it for a few seconds.</summary>
+        private static bool UpdateBuildChest(Villager villager, VillagerAI ai, Work work, float dt)
+        {
+            VillageHearth hearth = VillageHearth.Find(villager.VillageId);
+            if (hearth == null || !hearth.IsValid || !VillageChest.IsLost(hearth))
+            {
+                Finish(work);
+                return false;
+            }
+
+            Vector3 spot = VillageChest.Spot(hearth);
+            WalkResult step = Walker.For(villager).Go(villager, ai, dt, spot, 1.5f);
+            if (step == WalkResult.Walking)
+            {
+                return true;
+            }
+
+            if (step == WalkResult.Stuck && Utils.DistanceXZ(villager.transform.position, spot) > 6f)
+            {
+                Finish(work);
+                work.Cooldown = 3f;
+                return false;
+            }
+
+            ai.StopMoving();
+            VillagerLooks.Hold(villager, VillagerLooks.Tool.Hammer);
+            Face(villager, ai, spot + Vector3.up * 0.5f);
+            work.Timer += dt;
+            if (work.Timer % HammerInterval < dt)
+            {
+                SwingAnimation(villager);
+            }
+
+            float perPiece = LogicConfig.SecondsPerPiece != null ? LogicConfig.SecondsPerPiece.Value : 2.5f;
+            if (work.Timer < perPiece * 2f)
+            {
+                return true;
+            }
+
+            if (VillageChest.Rebuild(hearth))
+            {
+                VillageBrain.Announce(hearth, $"{villager.VillagerName} built a new chest for {hearth.VillageName}.");
+            }
+
+            VillageNeeds.Forget(villager.VillageId);
+            Finish(work);
             return false;
         }
 
@@ -1125,23 +1203,56 @@ namespace Villheim.Logic.Villagers
                    !(Unreachable.TryGetValue(go, out float until) && until > Time.time);
         }
 
+        private static readonly Dictionary<(int, int, int), (float Time, List<GameObject> Objects)> Scans =
+            new Dictionary<(int, int, int), (float, List<GameObject>)>();
+
+        /// <summary>
+        /// Networked objects (trees, rocks, drops, pickables...) within the radius. Searches around the hearth are
+        /// shared by all its villagers and kept for three seconds, so a village does one big search, not one per
+        /// villager per look.
+        /// </summary>
+        private static List<GameObject> Objects(Vector3 center, float radius)
+        {
+            var key = (Mathf.RoundToInt(center.x), Mathf.RoundToInt(center.z), Mathf.RoundToInt(radius));
+            bool shared = radius >= MaxFromHearth - 0.01f;
+            if (shared && Scans.TryGetValue(key, out var cached) && Time.time - cached.Time < 3f)
+            {
+                return cached.Objects;
+            }
+
+            var seen = new HashSet<GameObject>();
+            var list = new List<GameObject>();
+            foreach (Collider collider in Physics.OverlapSphere(center, radius, ~0, QueryTriggerInteraction.Collide))
+            {
+                ZNetView view = collider.GetComponentInParent<ZNetView>();
+                if (view != null && seen.Add(view.gameObject))
+                {
+                    list.Add(view.gameObject);
+                }
+            }
+
+            if (shared)
+            {
+                if (Scans.Count > 32)
+                {
+                    Scans.Clear();
+                }
+
+                Scans[key] = (Time.time, list);
+            }
+
+            return list;
+        }
+
         /// <summary>The available object within <paramref name="radius"/> of <paramref name="center"/> nearest to <paramref name="from"/>.</summary>
         private static GameObject FindNearest(Vector3 center, float radius, Vector3 from, Func<GameObject, bool> match,
             HashSet<GameObject> skip)
         {
             GameObject best = null;
             float bestDistance = float.MaxValue;
-            var seen = new HashSet<GameObject>();
-            foreach (Collider collider in Physics.OverlapSphere(center, radius))
+            foreach (GameObject go in Objects(center, radius))
             {
-                ZNetView view = collider.GetComponentInParent<ZNetView>();
-                if (view == null || !seen.Add(view.gameObject))
-                {
-                    continue;
-                }
-
-                GameObject go = view.gameObject;
-                if (Utils.DistanceXZ(go.transform.position, center) > radius || !Available(go, skip) || !match(go))
+                if (go == null || Utils.DistanceXZ(go.transform.position, center) > radius || !Available(go, skip) || !match(go))
                 {
                     continue;
                 }
@@ -1170,9 +1281,9 @@ namespace Villheim.Logic.Villagers
         {
             ItemDrop best = null;
             float bestDistance = float.MaxValue;
-            foreach (Collider collider in Physics.OverlapSphere(center, radius))
+            foreach (GameObject go in Objects(center, radius))
             {
-                ItemDrop item = collider.GetComponentInParent<ItemDrop>();
+                ItemDrop item = go != null ? go.GetComponent<ItemDrop>() : null;
                 if (item == null || !wanted.Contains(Utils.GetPrefabName(item.gameObject)) || skip.Contains(item.gameObject) ||
                     Utils.DistanceXZ(item.transform.position, center) > radius)
                 {

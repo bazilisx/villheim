@@ -37,9 +37,23 @@ namespace Villheim.Logic.Village
             double now = ZNet.instance.GetTimeSeconds();
             double unloadedSeconds = AddPassiveWood(hearth, state, now);
 
+            VillageChest.Ensure(hearth);
+            VillageChest.MoveStockIn(hearth, state);
+            if (VillageChest.IsLost(hearth))
+            {
+                // Nothing gets built until the chest is back.
+                state.Waiting = "a new village chest";
+                TryPopulate(hearth, state, now);
+                return;
+            }
+
+            if (state.Waiting == "a new village chest")
+            {
+                state.Waiting = "";
+            }
+
             if (ConstructionSite.IsActive(hearth.Zdo))
             {
-                StockSiteChest(hearth, state);
                 AdvanceSite(hearth, unloadedSeconds);
             }
             else
@@ -159,34 +173,6 @@ namespace Villheim.Logic.Village
             }
         }
 
-        /// <summary>
-        /// Makes sure the site has its chest and moves what the village has saved up into it, as much as the
-        /// building still needs.
-        /// </summary>
-        private static void StockSiteChest(VillageHearth hearth, VillageState state)
-        {
-            Container chest = SiteChest.Ensure(hearth, ConstructionSite.ChestSpot(hearth));
-            if (chest == null || !SiteChest.Usable(chest))
-            {
-                return;
-            }
-
-            foreach (KeyValuePair<string, int> need in ConstructionSite.Shortfall(hearth))
-            {
-                int move = Math.Min(need.Value, state.Get(need.Key));
-                if (move <= 0)
-                {
-                    continue;
-                }
-
-                int added = SiteChest.Add(chest, need.Key, move);
-                if (added > 0)
-                {
-                    state.Add(need.Key, -added);
-                }
-            }
-        }
-
         public static void AddMaterial(int villageId, string material, int amount)
         {
             VillageHearth hearth = VillageHearth.Find(villageId);
@@ -247,7 +233,7 @@ namespace Villheim.Logic.Village
             foreach (DesignLibrary.Design design in candidates)
             {
                 // Breaking ground needs a share of the materials; the rest is paid piece by piece as it goes up.
-                string missing = MissingToStart(state, design);
+                string missing = MissingToStart(hearth, state, design);
                 if (missing != null)
                 {
                     state.Waiting = $"{missing} to start a {RoleName(role)}";
@@ -283,14 +269,15 @@ namespace Villheim.Logic.Village
         }
 
         /// <summary>Null when the stock covers the share needed to break ground, otherwise what is short.</summary>
-        private static string MissingToStart(VillageState state, DesignLibrary.Design design)
+        private static string MissingToStart(VillageHearth hearth, VillageState state, DesignLibrary.Design design)
         {
             foreach (KeyValuePair<string, int> cost in DesignLibrary.MaterialCost(design.Location))
             {
                 int needed = Mathf.CeilToInt(cost.Value * StartShare);
-                if (state.Get(cost.Key) < needed)
+                int have = VillageChest.Have(hearth, state, cost.Key);
+                if (have < needed)
                 {
-                    return $"{Materials.Label(cost.Key)} ({state.Get(cost.Key)}/{needed})";
+                    return $"{Materials.Label(cost.Key)} ({have}/{needed})";
                 }
             }
 
@@ -463,10 +450,10 @@ namespace Villheim.Logic.Village
                 int guard = 5000;
                 while (guard-- > 0)
                 {
-                    Container chest = SiteChest.Find(hearth);
+                    Container chest = VillageChest.Find(hearth);
                     foreach (string material in Materials.Tracked)
                     {
-                        if (chest == null || SiteChest.Add(chest, material, 10) == 0)
+                        if (chest == null || VillageChest.Add(chest, material, 10) == 0)
                         {
                             state.Add(material, 10);
                         }

@@ -61,7 +61,7 @@ namespace Villheim.Logic.Villagers
         {
             private static bool Prefix(Character __instance)
             {
-                return !(__instance is Villager) || __instance.InAttack();
+                return !(__instance is Villager villager) || villager.m_currentAttack != null;
             }
         }
     }

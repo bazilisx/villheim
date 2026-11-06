@@ -27,8 +27,8 @@ namespace Villheim.Logic
                 "Which building materials can be found in each biome. A village only builds designs that can be made " +
                 "from its own biome's materials, so a Meadows village never needs core wood.");
             SiteChest = Admin(config, work, "SiteChest", true,
-                "Put a chest next to each building site. Villagers bring materials to it and builders take from it. " +
-                "Anything you drop in helps the village build.");
+                "Give each village a chest by its hearth. Villagers bring materials to it and the builder takes from it. " +
+                "Anything you drop in helps the village build. If it is destroyed, the villagers build a new one first.");
             SecondsPerPiece = Admin(config, work, "SecondsPerPiece", 2.5f,
                 "How long a builder hammers at each piece before it goes up.");
             StartingStock = Admin(config, work, "StartingStock", 0,

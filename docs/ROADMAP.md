@@ -29,8 +29,9 @@ with its own look for its biome.
 - [x] Material stock (wood, fine wood, core wood, stone) priced from vanilla recipes.
 - [x] Staged construction: structure, roof, doors and windows, interior.
 - [x] Gathering order: dropped material, loose pickables, half-harvested work, then fresh trees and rocks.
-- [ ] Site chest next to every building in progress. Villagers deliver to it, the builder takes from it, players can
-      add to it. (Built 2026-11-05, works in first test.)
+- [ ] Village chest by the hearth, kept for good. Villagers and players fill it, the builder builds from it when it
+      has enough, and a destroyed chest is rebuilt before anything else. (Built 2026-11-05 session 5, needs testing;
+      replaces the chest beside each building site.)
 - [ ] One prioritized builder per village who builds whenever the chest covers the next piece and gathers otherwise.
       (Built 2026-11-05, needs testing.)
 - [ ] Biome materials: no core wood in the Meadows, and so on. (Built 2026-11-05, needs testing.)
@@ -64,7 +65,9 @@ with its own look for its biome.
 - [ ] Evening ring at the hearth, sitting and resting by the fire at night. (Built 2026-11-05 session 5, needs
       testing.)
 - [ ] Sit on the village's chairs and benches; sleep in beds.
-- [ ] Villagers build a cooking fire and cooking station by the hearth, and cook for real.
+- [ ] Villagers with nothing else to do make a fire pit, cooking station, workbench and benches by the hearth.
+      (Built 2026-11-05 session 5, needs testing.)
+- [ ] Villagers cook for real at the cooking station and keep the fire pit fed.
 - [ ] Interiors upgrade over time (bed, chests, table, then better furniture).
 - [ ] Exteriors upgrade over time (swap a building for a better design of the same role).
 

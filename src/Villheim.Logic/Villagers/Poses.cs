@@ -32,9 +32,33 @@ namespace Villheim.Logic.Villagers
 
         public static bool IsPosed(Villager villager) => States.TryGetValue(villager, out State state) && state.Held != null;
 
+        private static readonly string[] All = { Sit, Kneel, Rest, Dance };
+
         public static void BeginTick(Villager villager)
         {
-            States.GetOrCreateValue(villager).Asked = false;
+            State state = States.GetOrCreateValue(villager);
+            state.Asked = false;
+
+            // A pose left on by an earlier logic build or another owner: the animator says so, our state doesn't.
+            Animator animator = villager.m_animator;
+            if (animator == null || villager.m_zanim == null)
+            {
+                return;
+            }
+
+            if (state.Held != null && !animator.GetBool(state.Held))
+            {
+                state.Held = null;
+            }
+
+            foreach (string pose in All)
+            {
+                if (pose != state.Held && Exists(villager, pose) && animator.GetBool(pose))
+                {
+                    villager.m_zanim.SetBool(pose, false);
+                    villager.m_zanim.SetTrigger(Stop);
+                }
+            }
         }
 
         /// <summary>Keeps (or starts) a held pose this tick.</summary>

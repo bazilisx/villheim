@@ -12,7 +12,7 @@ namespace Villheim.Logic.Village
     /// survives logouts and logic reloads.
     ///
     /// Pieces go up in stages, ground first: walls, roof, doors and windows, then furnishing. Each piece costs its
-    /// materials when it is placed, taken from the site chest, so a village starts building as soon as it can and
+    /// materials when it is placed, taken from the village chest, so a village starts building as soon as it can and
     /// pauses when the chest runs dry. Builders place pieces as they hammer; without a builder nearby the site
     /// still creeps along slowly.
     /// </summary>
@@ -137,7 +137,7 @@ namespace Villheim.Logic.Village
         /// Someone (a player or a villager) stands where the next piece goes. The builder waits rather than put a
         /// wall through them.
         /// </summary>
-        public static bool NextPieceBlocked(VillageHearth hearth, out string who)
+        public static bool NextPieceBlocked(VillageHearth hearth, Character builder, out string who)
         {
             who = null;
             Site site = Get(hearth.Zdo);
@@ -148,18 +148,19 @@ namespace Villheim.Logic.Village
                 return false;
             }
 
+            // Test each character against the piece's own box, in the design's coordinates.
             Bounds local = plan.Entries[index].Bounds.Value;
-            Vector3 center = site.Position + Quaternion.Euler(0f, site.Yaw, 0f) * local.center;
-            float reach = Mathf.Max(local.extents.x, local.extents.z) + 0.3f;
+            local.Expand(0.4f);
+            Quaternion toDesign = Quaternion.Inverse(Quaternion.Euler(0f, site.Yaw, 0f));
             foreach (Character character in Character.GetAllCharacters())
             {
-                Vector3 at = character.transform.position;
-                if (character.IsDead() || Utils.DistanceXZ(at, center) > reach)
+                if (character == null || character == builder || character.IsDead())
                 {
                     continue;
                 }
 
-                if (at.y + 1.8f >= center.y - local.extents.y && at.y <= center.y + local.extents.y)
+                Vector3 feet = toDesign * (character.transform.position - site.Position);
+                if (local.Contains(feet) || local.Contains(feet + Vector3.up * 1f))
                 {
                     who = character.GetHoverName();
                     return true;
@@ -238,7 +239,6 @@ namespace Villheim.Logic.Village
 
         private static void Complete(VillageHearth hearth, VillageState state, Site site)
         {
-            SiteChest.Settle(hearth, state);
             End(hearth.Zdo);
             Plans.Remove(state.Id);
             SnapToGround.SnappAll();
@@ -309,7 +309,7 @@ namespace Villheim.Logic.Village
         }
 
         /// <summary>
-        /// Takes the materials for one piece from the site chest, or from the village stock while the chest is not
+        /// Takes the materials for one piece from the village chest, or from the village stock while the chest is not
         /// loaded. Amounts are scaled (see DesignLibrary.CostFactor) and the fractions carried over between pieces, so
         /// the whole building costs what its summary says. Returns false, with nothing taken, when materials are short.
         /// </summary>
@@ -322,15 +322,21 @@ namespace Villheim.Logic.Village
 
             ZDO zdo = hearth.Zdo;
             Dictionary<string, float> owed = ReadOwed(zdo);
+            if (VillageChest.IsLost(hearth))
+            {
+                state.Waiting = "a new village chest";
+                return false;
+            }
+
             Dictionary<string, int> take = Due(plan, entry, owed);
-            Container chest = SiteChest.Find(hearth);
+            Container chest = VillageChest.Find(hearth);
             foreach (KeyValuePair<string, int> amount in take)
             {
-                int have = chest != null ? SiteChest.Count(chest, amount.Key) : state.Get(amount.Key);
+                int have = chest != null ? VillageChest.Count(chest, amount.Key) : state.Get(amount.Key);
                 if (amount.Value > have)
                 {
                     state.Waiting = chest != null
-                        ? $"{Materials.Label(amount.Key)} in the site chest"
+                        ? $"{Materials.Label(amount.Key)} in the village chest"
                         : $"{Materials.Label(amount.Key)} to keep building ({have} in stock)";
                     return false;
                 }
@@ -338,9 +344,9 @@ namespace Villheim.Logic.Village
 
             if (chest != null)
             {
-                if (!SiteChest.Take(chest, take))
+                if (!VillageChest.Take(chest, take))
                 {
-                    state.Waiting = "someone to close the site chest";
+                    state.Waiting = "someone to close the village chest";
                     return false;
                 }
             }
@@ -387,11 +393,16 @@ namespace Villheim.Logic.Village
                 return null;
             }
 
-            Container chest = SiteChest.Find(hearth);
+            if (VillageChest.IsLost(hearth))
+            {
+                return "chest";
+            }
+
+            Container chest = VillageChest.Find(hearth);
             var state = new VillageState(hearth.Zdo);
             foreach (KeyValuePair<string, int> amount in Due(plan, plan.Entries[index], ReadOwed(hearth.Zdo)))
             {
-                int have = chest != null ? SiteChest.Count(chest, amount.Key) : state.Get(amount.Key);
+                int have = chest != null ? VillageChest.Count(chest, amount.Key) : state.Get(amount.Key);
                 if (amount.Value > have)
                 {
                     return amount.Key;
@@ -448,12 +459,12 @@ namespace Villheim.Logic.Village
         public static Dictionary<string, int> Shortfall(VillageHearth hearth)
         {
             Dictionary<string, int> remaining = Remaining(hearth);
-            Container chest = SiteChest.Find(hearth);
+            Container chest = VillageChest.Find(hearth);
             var state = new VillageState(hearth.Zdo);
             var shortfall = new Dictionary<string, int>();
             foreach (KeyValuePair<string, int> need in remaining)
             {
-                int have = chest != null ? SiteChest.Count(chest, need.Key) : state.Get(need.Key);
+                int have = chest != null ? VillageChest.Count(chest, need.Key) : state.Get(need.Key);
                 if (need.Value > have)
                 {
                     shortfall[need.Key] = need.Value - have;
@@ -469,22 +480,6 @@ namespace Villheim.Logic.Village
             Site site = Get(hearth.Zdo);
             CachedPlan plan = site != null ? GetPlan(hearth, site) : null;
             return plan != null ? plan.Footprint : (site != null ? site.Radius * 0.6f : 6f);
-        }
-
-        /// <summary>Where the site chest goes: just outside the building, on the side facing the hearth.</summary>
-        public static Vector3 ChestSpot(VillageHearth hearth)
-        {
-            Site site = Get(hearth.Zdo);
-            if (site == null)
-            {
-                return hearth.transform.position;
-            }
-
-            Vector3 toHearth = hearth.transform.position - site.Position;
-            toHearth.y = 0f;
-            Vector3 direction = toHearth.sqrMagnitude > 0.01f ? toHearth.normalized : Vector3.forward;
-            Vector3 side = Vector3.Cross(Vector3.up, direction);
-            return site.Position + direction * (Footprint(hearth) + 2f) + side * 2f;
         }
 
         /// <summary>True when the point is inside the building's outline (plus a little margin).</summary>

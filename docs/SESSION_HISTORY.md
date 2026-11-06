@@ -10,7 +10,8 @@ Current facts only. Read this at the start of a session. Narrative is in `docs/d
   walker, rewritten chores). Core DLL unchanged since `Fix access errors, terrain edits and location registration`.
 - **New test world** since 2026-11-05 session 5.
 - **Not confirmed in game:** sessions 4 and 5 (tools per job, doors, support-aware build order, own villager brain,
-  free time with mood, honest reach, no free starting stock). Logic only, hot-reloads. The session 4 DLL was most
+  free time with mood, honest reach, no free starting stock, village chest by the hearth, small things made by the
+  hearth). Logic only, hot-reloads. The session 4 DLL was most
   likely never loaded. Start the next session by checking the hearth's hover text shows the latest commit
   (`scripts/watch.ps1` keeps the profile on main), then test; details in docs/daily-notes/2026-11/2026-11-05.md,
   Sessions 4 and 5.
@@ -25,7 +26,7 @@ Current facts only. Read this at the start of a session. Narrative is in `docs/d
 ## Outstanding work
 
 - Test sessions 4 and 5 in game: work starts, reach, tools, doors, build order, free time, evening ring, smoothness.
-- Chairs and benches, beds, a village cooking fire and real cooking.
+- Sitting on chairs and benches, beds, real cooking, feeding the fire pit.
 - Innangard study: needs the copy on Tyler's PC shared with the session.
 - Grid-searched paths that join into streets (Innangard-style A* over a small grid).
 - Newcomers only for free beds, by day, walking in from the village edge.

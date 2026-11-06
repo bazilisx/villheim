@@ -34,6 +34,7 @@ namespace Villheim.Logic.Villagers
             Station,
             Evening,
             Night,
+            Make,
         }
 
         private enum Mode
@@ -60,8 +61,11 @@ namespace Villheim.Logic.Villagers
             public bool Dancing;
             public float DanceUntil;
             public GameObject Station;
+            public Amenities.Job Making;
             public Talk Chat;
             public float LastRun;
+            public float FreeSince;
+            public int Ring = -1;
             public readonly Dictionary<Kind, float> SkipUntil = new Dictionary<Kind, float>();
             public readonly Dictionary<long, int> WavedOnDay = new Dictionary<long, int>();
         }
@@ -85,6 +89,7 @@ namespace Villheim.Logic.Villagers
 
         private static readonly ConditionalWeakTable<Villager, State> States = new ConditionalWeakTable<Villager, State>();
         private static readonly Dictionary<GameObject, Villager> StationClaims = new Dictionary<GameObject, Villager>();
+        private static readonly Dictionary<int, Villager> Makers = new Dictionary<int, Villager>();
         private static readonly Dictionary<int, (float Time, List<GameObject> Stations)> StationCache =
             new Dictionary<int, (float, List<GameObject>)>();
 
@@ -135,6 +140,11 @@ namespace Villheim.Logic.Villagers
                 (state.Kind == Kind.Chat && !ChatAlive(state.Chat)))
             {
                 // Back from work, night falling, or the activity ran its time: choose again.
+                if (Time.time - state.LastRun > 1f)
+                {
+                    state.FreeSince = Time.time;
+                }
+
                 End(villager, state);
                 state.Mode = mode;
                 Choose(villager, state, mode);
@@ -186,6 +196,7 @@ namespace Villheim.Logic.Villagers
                 case Kind.Station: return state.Station != null ? "busy at the " + StationName(state.Station) : "keeping busy";
                 case Kind.Evening: return "gathered at the hearth";
                 case Kind.Night: return IsLateNight() ? "resting by the fire" : "sitting by the fire";
+                case Kind.Make: return state.Making != null ? "making a " + state.Making.Name : "making something";
                 default: return "idle";
             }
         }
@@ -235,10 +246,27 @@ namespace Villheim.Logic.Villagers
             if (mode != Mode.Day)
             {
                 state.Kind = mode == Mode.Evening ? Kind.Evening : Kind.Night;
-                state.Spot = RingSpot(villager, hearth);
+                state.Ring = RingIndex(villager, out int count);
+                bool ringSkipped = state.SkipUntil.TryGetValue(state.Kind, out float skipped) && skipped > Time.time;
+                state.Spot = ringSkipped ? FireSpot(villager, hearth) : RingSpot(state.Ring, count, villager.VillageId, hearth);
                 state.Look = hearth;
                 state.HasLook = true;
                 state.Until = Time.time + 60f;
+                return;
+            }
+
+            // Something to make by the hearth comes before sitting about, one maker per village at a time.
+            Amenities.Job job = MakerFree(villager) ? Amenities.Due(VillageHearth.Find(villager.VillageId)) : null;
+            if (job != null && !(state.SkipUntil.TryGetValue(Kind.Make, out float makeSkip) && makeSkip > Time.time))
+            {
+                Makers[villager.VillageId] = villager;
+                state.Kind = Kind.Make;
+                state.Making = job;
+                state.Spot = Ground(job.Spot + Flat(villager.transform.position - job.Spot) * 1.5f, job.Spot.y);
+                state.Look = job.Spot + Vector3.up * 0.5f;
+                state.HasLook = true;
+                state.Until = Time.time + 60f;
+                VillheimPlugin.Debug($"{villager.VillagerName} goes to make a {job.Name}.");
                 return;
             }
 
@@ -249,7 +277,9 @@ namespace Villheim.Logic.Villagers
                 (Kind.FireSit, wet ? 0f : 3f),
                 (Kind.GroundSit, wet ? 0f : (mood < 35f ? 2f : 1f)),
                 (Kind.Stroll, mood < 35f ? 0.5f : 1f),
-                (Kind.Chat, FindChatPartner(villager) != null ? (mood >= 65f ? 4f : mood < 35f ? 0.6f : 2f) : 0f),
+                (Kind.Chat, ReallyFree(villager, state) && FindChatPartner(villager) != null
+                    ? (mood >= 65f ? 4f : mood < 35f ? 0.6f : 2f)
+                    : 0f),
                 (Kind.Station, FreeStation(villager) != null ? 3f : 0f),
             };
 
@@ -342,6 +372,10 @@ namespace Villheim.Logic.Villagers
                     ActChat(villager, ai, state, mood);
                     break;
 
+                case Kind.Make:
+                    ActMake(villager, ai, state, facing);
+                    break;
+
                 default:
                     // Strolling: stand a little, greet anyone close, then wander on to the next spot near home.
                     if (state.StandUntil <= 0f)
@@ -376,7 +410,7 @@ namespace Villheim.Logic.Villagers
             }
 
             // Every other villager around the ring sits; the rest stand, toast and laugh.
-            bool sits = (RingIndex(villager, out _) & 1) == 1;
+            bool sits = (state.Ring & 1) == 1;
             if (sits)
             {
                 Poses.Hold(villager, Poses.Sit);
@@ -454,6 +488,49 @@ namespace Villheim.Logic.Villagers
                 state.NextGesture = Time.time + Random.Range(6f, 12f);
                 Poses.Gesture(villager, Random.value < 0.5f ? "point" : "thumbsup");
             }
+        }
+
+        /// <summary>Hammers at the new piece for a while, then it goes up (paid from the village chest).</summary>
+        private static void ActMake(Villager villager, VillagerAI ai, State state, bool facing)
+        {
+            ai.LookAt(state.Look);
+            VillagerLooks.Hold(villager, VillagerLooks.Tool.Hammer);
+            if (!facing)
+            {
+                return;
+            }
+
+            if (Time.time >= state.NextGesture)
+            {
+                state.NextGesture = Time.time + 1.2f;
+                Swing(villager);
+            }
+
+            float seconds = (LogicConfig.SecondsPerPiece != null ? LogicConfig.SecondsPerPiece.Value : 2.5f) * 2f;
+            if (Time.time - state.ArrivedAt < seconds)
+            {
+                return;
+            }
+
+            VillageHearth hearth = VillageHearth.Find(villager.VillageId);
+            if (hearth != null && state.Making != null && Amenities.Make(hearth, state.Making))
+            {
+                VillageBrain.Announce(hearth, $"{villager.VillagerName} made a {state.Making.Name} for {hearth.VillageName}.");
+            }
+
+            state.Making = null;
+            state.Until = 0f;
+        }
+
+        /// <summary>Nobody else in the village is making something right now.</summary>
+        private static bool MakerFree(Villager villager)
+        {
+            if (!Makers.TryGetValue(villager.VillageId, out Villager maker) || maker == null || maker == villager)
+            {
+                return true;
+            }
+
+            return !States.TryGetValue(maker, out State theirs) || theirs.Kind != Kind.Make || Time.time - theirs.LastRun > 2f;
         }
 
         private static void ActChat(Villager villager, VillagerAI ai, State state, float mood)
@@ -542,9 +619,15 @@ namespace Villheim.Logic.Villagers
                 state.Chat.Until = 0f;
             }
 
+            if (state.Kind == Kind.Make && Makers.TryGetValue(villager.VillageId, out Villager maker) && maker == villager)
+            {
+                Makers.Remove(villager.VillageId);
+            }
+
             state.Kind = Kind.None;
             state.Station = null;
             state.Chat = null;
+            state.Making = null;
         }
 
         // ---------------------------------------------------------------- chats
@@ -560,9 +643,9 @@ namespace Villheim.Logic.Villagers
                     continue;
                 }
 
-                // Free, and not already talking.
+                // Free for a while with no work in sight, and not already talking.
                 if (!States.TryGetValue(other, out State theirs) || Time.time - theirs.LastRun > 1f ||
-                    theirs.Kind == Kind.Chat || theirs.Mode != Mode.Day)
+                    theirs.Kind == Kind.Chat || theirs.Mode != Mode.Day || !ReallyFree(other, theirs))
                 {
                     continue;
                 }
@@ -611,6 +694,15 @@ namespace Villheim.Logic.Villagers
             VillheimPlugin.Debug($"{villager.VillagerName} and {partner.VillagerName} stop for a chat.");
         }
 
+        /// <summary>
+        /// Free for at least five seconds and with no work to go back to. A worker passes through free time for a
+        /// moment between jobs; he should not stand up someone at the fire for a chat that ends at once.
+        /// </summary>
+        private static bool ReallyFree(Villager villager, State state)
+        {
+            return Time.time - state.FreeSince >= 5f && Chores.IdleReason(villager) != null;
+        }
+
         private static bool ChatAlive(Talk chat)
         {
             if (chat == null || Time.time > chat.Until || chat.A == null || chat.B == null || chat.A.IsDead() || chat.B.IsDead())
@@ -626,6 +718,11 @@ namespace Villheim.Logic.Villagers
 
         private static GameObject FreeStation(Villager villager)
         {
+            foreach (GameObject gone in StationClaims.Keys.Where(k => k == null || StationClaims[k] == null).ToList())
+            {
+                StationClaims.Remove(gone);
+            }
+
             GameObject best = null;
             float bestDistance = float.MaxValue;
             foreach (GameObject station in Stations(villager))
@@ -728,13 +825,12 @@ namespace Villheim.Logic.Villagers
         /// The villager's place in the evening ring around the hearth, fixed by his place among the village's
         /// villagers, so nobody fights over a spot.
         /// </summary>
-        private static Vector3 RingSpot(Villager villager, Vector3 hearth)
+        private static Vector3 RingSpot(int index, int count, int villageId, Vector3 hearth)
         {
-            int index = RingIndex(villager, out int count);
             int perRing = 8;
             int ring = index / perRing;
             int inRing = Mathf.Min(perRing, count - ring * perRing);
-            float angle = (index % perRing) * Mathf.PI * 2f / Mathf.Max(1, inRing) + villager.VillageId % 360 * Mathf.Deg2Rad;
+            float angle = (index % perRing) * Mathf.PI * 2f / Mathf.Max(1, inRing) + villageId % 360 * Mathf.Deg2Rad;
             float radius = 2.6f + ring * 1.2f;
             return Ground(hearth + new Vector3(Mathf.Sin(angle), 0f, Mathf.Cos(angle)) * radius, hearth.y);
         }

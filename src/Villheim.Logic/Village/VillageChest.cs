@@ -4,20 +4,25 @@ using UnityEngine;
 namespace Villheim.Logic.Village
 {
     /// <summary>
-    /// The chest that stands next to a building site, like the builder's chest in Millénaire. Villagers carry what
-    /// they gather to it, builders take each piece's materials from it, and players can drop materials in to speed
-    /// things up. When the building is finished the leftover materials go back into the village stock and the
-    /// chest is taken away (unless someone left other things in it, in which case it stays).
+    /// The village chest: one wood chest beside the hearth that holds the village's building materials. Villagers
+    /// carry what they gather to it, players can drop materials in, and the builder pays each piece from it once it
+    /// holds enough. It stays for good; materials saved up while nobody was around move into it when it loads.
     ///
-    /// While the chest is not loaded (nobody nearby) the site pays from the village stock instead.
+    /// The first chest comes with the village. If it is destroyed (or taken down), getting it back comes first:
+    /// building stops, everyone gathers wood for a new one, and the builder puts it back in the same place as soon
+    /// as the village has what a wood chest costs. What spilled out is picked up again like any other drop.
+    ///
+    /// While the chest is not loaded (nobody nearby) the village pays from its saved-up stock instead.
     /// </summary>
-    internal static class SiteChest
+    internal static class VillageChest
     {
         private const string ChestPrefab = "piece_chest_wood";
-        private const float MissingBeforeRespawn = 10f;
+        private const float MissingBeforeLost = 10f;
+        private const float FromHearth = 3.5f;
 
         private static readonly int KeyChestPosition = "villheim_chest_pos".GetStableHashCode();
         private static readonly int KeyChestVillage = "villheim_chest".GetStableHashCode();
+        private static readonly int KeyChestLost = "villheim_chest_lost".GetStableHashCode();
 
         private static readonly Dictionary<int, Container> Cache = new Dictionary<int, Container>();
         private static readonly Dictionary<int, float> MissingSince = new Dictionary<int, float>();
@@ -56,8 +61,37 @@ namespace Villheim.Logic.Village
             return null;
         }
 
-        /// <summary>Finds the site's chest, or puts one down next to the building if it is missing.</summary>
-        public static Container Ensure(VillageHearth hearth, Vector3 spot)
+        /// <summary>The chest was destroyed and has not been rebuilt yet.</summary>
+        public static bool IsLost(VillageHearth hearth)
+        {
+            return hearth != null && hearth.IsValid && hearth.Zdo.GetInt(KeyChestLost) == 1;
+        }
+
+        /// <summary>Where the chest stands: its recorded place, or 3.5 m to the side of the hearth across the village axis.</summary>
+        public static Vector3 Spot(VillageHearth hearth)
+        {
+            Vector3 recorded = hearth.Zdo.GetVec3(KeyChestPosition, Vector3.zero);
+            if (recorded != Vector3.zero)
+            {
+                return recorded;
+            }
+
+            var state = new VillageState(hearth.Zdo);
+            Vector3 side = Quaternion.Euler(0f, state.Axis + 90f, 0f) * Vector3.forward;
+            Vector3 spot = hearth.transform.position + side * FromHearth;
+            if (ZoneSystem.instance.GetGroundHeight(spot, out float y))
+            {
+                spot.y = y;
+            }
+
+            return spot;
+        }
+
+        /// <summary>
+        /// Finds the chest. Puts the first one down for free when the village has never had one, and notices when it
+        /// has gone missing (destroyed or taken down), which makes rebuilding it the village's first job.
+        /// </summary>
+        public static Container Ensure(VillageHearth hearth)
         {
             Container chest = Find(hearth);
             if (chest != null || LogicConfig.SiteChest == null || !LogicConfig.SiteChest.Value)
@@ -66,28 +100,88 @@ namespace Villheim.Logic.Village
                 return chest;
             }
 
-            Vector3 recorded = hearth.Zdo.GetVec3(KeyChestPosition, Vector3.zero);
-            if (recorded != Vector3.zero)
+            if (IsLost(hearth))
             {
-                // A recorded chest that has not shown up yet may just be loading in. Give it a moment so we never
-                // put down a second one.
-                if (!ZoneSystem.instance.IsZoneLoaded(recorded))
-                {
-                    return null;
-                }
+                return null;
+            }
 
-                if (!MissingSince.TryGetValue(hearth.VillageId, out float since))
-                {
-                    MissingSince[hearth.VillageId] = Time.time;
-                    return null;
-                }
+            Vector3 recorded = hearth.Zdo.GetVec3(KeyChestPosition, Vector3.zero);
+            if (recorded == Vector3.zero)
+            {
+                return Place(hearth, Spot(hearth), "put its chest down by the hearth");
+            }
 
-                if (Time.time - since < MissingBeforeRespawn)
+            // A recorded chest that has not shown up yet may just be loading in. Give it a moment.
+            if (!ZoneSystem.instance.IsZoneLoaded(recorded))
+            {
+                return null;
+            }
+
+            if (!MissingSince.TryGetValue(hearth.VillageId, out float since))
+            {
+                MissingSince[hearth.VillageId] = Time.time;
+                return null;
+            }
+
+            if (Time.time - since >= MissingBeforeLost)
+            {
+                MissingSince.Remove(hearth.VillageId);
+                hearth.Zdo.Set(KeyChestLost, 1);
+                VillheimPlugin.Log.LogInfo($"{hearth.VillageName} lost its village chest; rebuilding it comes first.");
+                VillageBrain.Announce(hearth, $"{hearth.VillageName} has lost its chest. The villagers will build a new one.");
+            }
+
+            return null;
+        }
+
+        /// <summary>What a new wood chest costs, from its vanilla recipe.</summary>
+        public static Dictionary<string, int> RebuildCost()
+        {
+            GameObject prefab = ZNetScene.instance ? ZNetScene.instance.GetPrefab(ChestPrefab) : null;
+            Dictionary<string, int> cost = prefab != null ? Designs.DesignSpawner.RecipeCost(prefab) : null;
+            return cost != null && cost.Count > 0 ? cost : new Dictionary<string, int> { { Materials.Wood, 10 } };
+        }
+
+        /// <summary>The village has saved up enough for a new chest.</summary>
+        public static bool CanRebuild(VillageState state)
+        {
+            foreach (KeyValuePair<string, int> cost in RebuildCost())
+            {
+                if (state.Get(cost.Key) < cost.Value)
                 {
-                    return null;
+                    return false;
                 }
             }
 
+            return true;
+        }
+
+        /// <summary>The builder puts a new chest where the old one stood, paid from the saved-up stock.</summary>
+        public static bool Rebuild(VillageHearth hearth)
+        {
+            var state = new VillageState(hearth.Zdo);
+            if (!IsLost(hearth) || !CanRebuild(state))
+            {
+                return false;
+            }
+
+            Container chest = Place(hearth, Spot(hearth), "built a new chest by the hearth");
+            if (chest == null)
+            {
+                return false;
+            }
+
+            foreach (KeyValuePair<string, int> cost in RebuildCost())
+            {
+                state.Add(cost.Key, -cost.Value);
+            }
+
+            hearth.Zdo.Set(KeyChestLost, 0);
+            return true;
+        }
+
+        private static Container Place(VillageHearth hearth, Vector3 spot, string what)
+        {
             if (!ZoneSystem.instance.IsZoneLoaded(spot) || !ZoneSystem.instance.GetGroundHeight(spot, out float y))
             {
                 return null;
@@ -104,7 +198,7 @@ namespace Villheim.Logic.Village
             toHearth.y = 0f;
             Quaternion rotation = toHearth.sqrMagnitude > 0.01f ? Quaternion.LookRotation(toHearth) : Quaternion.identity;
             GameObject go = Object.Instantiate(prefab, spot, rotation);
-            chest = go.GetComponent<Container>();
+            Container chest = go.GetComponent<Container>();
             if (chest == null || chest.m_nview == null || !chest.m_nview.IsValid())
             {
                 return null;
@@ -115,8 +209,40 @@ namespace Villheim.Logic.Village
             hearth.Zdo.Set(KeyChestPosition, spot);
             Cache[hearth.VillageId] = chest;
             MissingSince.Remove(hearth.VillageId);
-            VillheimPlugin.Debug($"{hearth.VillageName} put a chest down by its building site at {spot}.");
+            VillheimPlugin.Log.LogInfo($"{hearth.VillageName} {what} at {spot}.");
             return chest;
+        }
+
+        /// <summary>What the village has of a material: in its chest plus saved up and not moved in yet.</summary>
+        public static int Have(VillageHearth hearth, VillageState state, string material)
+        {
+            Container chest = Find(hearth);
+            return state.Get(material) + (chest != null ? Count(chest, material) : 0);
+        }
+
+        /// <summary>Moves everything the village has saved up into the chest, as far as it fits.</summary>
+        public static void MoveStockIn(VillageHearth hearth, VillageState state)
+        {
+            Container chest = Find(hearth);
+            if (chest == null || !Usable(chest))
+            {
+                return;
+            }
+
+            foreach (string material in Materials.Tracked)
+            {
+                int saved = state.Get(material);
+                if (saved <= 0)
+                {
+                    continue;
+                }
+
+                int added = Add(chest, material, saved);
+                if (added > 0)
+                {
+                    state.Add(material, -added);
+                }
+            }
         }
 
         public static Vector3 Position(VillageHearth hearth)
@@ -202,41 +328,6 @@ namespace Villheim.Logic.Village
             }
 
             return true;
-        }
-
-        /// <summary>
-        /// The building is done: leftover materials go back to the village stock, and the chest is removed if
-        /// nothing else is in it.
-        /// </summary>
-        public static void Settle(VillageHearth hearth, VillageState state)
-        {
-            Container chest = Find(hearth);
-            hearth.Zdo.Set(KeyChestPosition, Vector3.zero);
-            Cache.Remove(hearth.VillageId);
-            if (chest == null || !chest.m_nview.IsValid())
-            {
-                return;
-            }
-
-            Claim(chest);
-            foreach (string material in Materials.Tracked)
-            {
-                int count = Count(chest, material);
-                if (count > 0)
-                {
-                    chest.GetInventory().RemoveItem(Materials.SharedName(material), count);
-                    state.Add(material, count);
-                }
-            }
-
-            if (chest.GetInventory().NrOfItems() == 0 && !chest.IsInUse())
-            {
-                ZNetScene.instance.Destroy(chest.gameObject);
-            }
-            else
-            {
-                chest.m_nview.GetZDO().Set(KeyChestVillage, 0);
-            }
         }
 
         private static void Claim(Container chest)

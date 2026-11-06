@@ -156,14 +156,22 @@ with its own look for its biome.
 - [ ] Village chronicle read at the hearth (Built 2026-11-06, needs testing.)
 - [ ] Mourning when a villager dies (Built 2026-11-06, needs testing.)
 - [ ] Night watch by protectors in turn (Built 2026-11-06, needs testing.)
-- [ ] Raids at night with a warning at dusk (Built 2026-11-06, needs testing.)
+- [ ] Raids at night with a warning at dusk. (Built 2026-11-06; paused by Tyler the same day, `RaidsEnabled` is off.
+      Revisit later.)
 - [ ] Foraging for food in the Meadows (Built 2026-11-06, needs testing.)
 - [ ] Village sign and notice board (Built 2026-11-06, needs testing.)
 - [ ] Village types: woodland, fortified, farming (Built 2026-11-06, needs testing.)
 - [ ] A chieftain (Built 2026-11-06, needs testing.)
 - [ ] Children born to families who grow up (Built 2026-11-06, needs testing.)
 - [ ] Villages trading or visiting each other; merchants travelling between villages.
-- [ ] Farms with crops once the village has seeds (Black Forest carrots and later).
+- [ ] Farms (Tyler, 2026-11-06): berry and mushroom farms in the Meadows, made by planting the vanilla bush and
+      mushroom pickables in rows on a farm plot (they regrow after picking); crops from seeds later (carrots in the
+      Black Forest). Saplings replanted where trees were felled (Millénaire's lumbermen plant saplings).
+- [ ] A farmer trade: tends and harvests the farms, keeps the chest in food.
+- [ ] Domesticated animals (Tyler, 2026-11-06): boars tamed and kept in pens at farms, fed by the farmer so they
+      breed, later chickens; meat and leather from the herd instead of only hunting.
+- [ ] Ghostly villagers (Tyler's idea, 2026-11-06, to decide): Valheim is the afterlife, so villages may be echoes or
+      memories. Villagers slightly see-through, faintly blue or teal, with a faint glow after dark. Subtle.
 
 ## Later ideas
 

@@ -40,9 +40,11 @@ namespace Villheim.Logic
             FoodHealing = Admin(config, work, "FoodHealing", 1f,
                 "Villagers heal like players: each food in effect heals its own regen value every 10 seconds for the " +
                 "food's duration. This multiplies that healing.");
-            VillageRaids = Admin(config, work, "VillageRaids", true,
-                "Villages with three or more villagers are now and then raided by greydwarfs at night, warned of at dusk. " +
-                "Only while a player is in the village.");
+            // Raids are paused (Tyler, 2026-11-06): a new key, off by default, so a config file written while they
+            // were on doesn't keep them on.
+            VillageRaids = Admin(config, work, "RaidsEnabled", false,
+                "Off for now. When on, villages with three or more villagers are now and then raided by greydwarfs at " +
+                "night, warned of at dusk, only while a player is in the village.");
             RaidChance = Admin(config, work, "RaidChance", 0.2f,
                 "Chance each dusk of a raid (plus 3% per village tier), never two nights running.");
         }

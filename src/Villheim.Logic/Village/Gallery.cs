@@ -27,6 +27,7 @@ namespace Villheim.Logic.Village
         private sealed class Cell
         {
             public bool Terrace;
+            public int Pieces;
             public DesignLibrary.Design Design;
             public Role Role;
             public Vector3 Center;
@@ -73,12 +74,44 @@ namespace Villheim.Logic.Village
             ["farm"] = new[] { Role.Farm },
         };
 
+        private const int PageSize = 10;
+
         public const string Usage =
-            "vh gallery <meadows|blackforest> [all|house|hall|prof|storage|farm] [level] [rescan]: e.g. 'vh gallery meadows house 1'; 'vh gallery clear' removes a gallery";
+            "vh gallery <meadows|blackforest> [all|house|hall|prof|storage|farm] [page N] [rescan]: ten designs a page, e.g. " +
+            "'vh gallery meadows house page 2'. 'vh gallery list meadows' writes every design to BepInEx/Villheim/gallery-list-Meadows.csv. " +
+            "'vh gallery show <name> [name...]' lays out those designs. 'vh gallery clear' removes a gallery.";
 
         private static bool _running;
 
-        /// <summary>'vh gallery &lt;biome&gt; [group] [level]'. Gathers the designs over a few seconds, then lays them out.</summary>
+        /// <summary>Materials a player has in each biome's stage of the game (the gallery's strict test).</summary>
+        private static readonly Dictionary<Heightmap.Biome, HashSet<string>> StageMaterials = new Dictionary<Heightmap.Biome, HashSet<string>>
+        {
+            [Heightmap.Biome.Meadows] = new HashSet<string>
+            {
+                "Wood", "Stone", "FineWood", "Resin", "LeatherScraps", "DeerHide", "Flint", "BoneFragments", "Feathers", "Coal",
+            },
+            [Heightmap.Biome.BlackForest] = new HashSet<string>
+            {
+                "Wood", "Stone", "FineWood", "Resin", "LeatherScraps", "DeerHide", "Flint", "BoneFragments", "Feathers", "Coal",
+                "RoundLog", "Copper", "Tin", "Bronze", "BronzeNails", "SurtlingCore", "GreydwarfEye", "TrollHide", "Thistle",
+            },
+        };
+
+        /// <summary>Crafting stations a player has in each stage (the stonecutter needs iron, so stone walls are later).</summary>
+        private static readonly Dictionary<Heightmap.Biome, HashSet<string>> StageStations = new Dictionary<Heightmap.Biome, HashSet<string>>
+        {
+            [Heightmap.Biome.Meadows] = new HashSet<string> { "piece_workbench" },
+            [Heightmap.Biome.BlackForest] = new HashSet<string> { "piece_workbench", "forge" },
+        };
+
+        private enum Action
+        {
+            Page,
+            List,
+            Show,
+        }
+
+        /// <summary>'vh gallery ...' (see Usage).</summary>
         public static string Start(Player player, string[] args)
         {
             if (_running)
@@ -86,7 +119,8 @@ namespace Villheim.Logic.Village
                 return "Villheim: a gallery is already being gathered; give it a moment.";
             }
 
-            if (args.Length > 0 && args[0].ToLowerInvariant() == "clear")
+            string first = args.Length > 0 ? args[0].ToLowerInvariant() : "";
+            if (first == "clear")
             {
                 var gone = new List<ZNetView>();
                 foreach (ZNetView view in ZNetScene.instance.m_instances.Values)
@@ -107,78 +141,69 @@ namespace Villheim.Logic.Village
                 return $"Villheim: removed {gone.Count} gallery pieces and signs within 600 m (the ground stays as it is).";
             }
 
-            string biomeName = args.Length > 0 ? args[0].ToLowerInvariant() : "meadows";
-            Heightmap.Biome biome = biomeName.StartsWith("black") || biomeName.StartsWith("forest") ? Heightmap.Biome.BlackForest : Heightmap.Biome.Meadows;
-            string group = "all";
-            int level = 0;
-            bool rescan = false;
-            foreach (string arg in args.Skip(1))
-            {
-                string a = arg.ToLowerInvariant();
-                if (a == "rescan")
-                {
-                    rescan = true;
-                }
-                else if (int.TryParse(a, out int n))
-                {
-                    level = n;
-                }
-                else if (a.StartsWith("prof") || a.StartsWith("work") || a.StartsWith("smith"))
-                {
-                    group = "prof";
-                }
-                else if (a.StartsWith("hall") || a.StartsWith("hub") || a.StartsWith("long"))
-                {
-                    group = "hall";
-                }
-                else if (a.StartsWith("hous") || a.StartsWith("home"))
-                {
-                    group = "house";
-                }
-                else if (a.StartsWith("stor") || a.StartsWith("shed"))
-                {
-                    group = "storage";
-                }
-                else if (a.StartsWith("farm") || a.StartsWith("barn"))
-                {
-                    group = "farm";
-                }
-                else if (a != "all")
-                {
-                    return "Villheim: " + Usage;
-                }
-            }
-
+            Action action = first == "list" ? Action.List : first == "show" ? Action.Show : Action.Page;
+            string[] rest = action == Action.Page ? args : args.Skip(1).ToArray();
             Vector3 forward = player.transform.forward;
             forward.y = 0f;
             forward.Normalize();
-            VillheimPlugin.Instance.StartCoroutine(Run(player.transform.position, forward, biome, group, level, rescan));
-            return $"Villheim: gathering every {biome} design ({group}{(level > 0 ? ", level " + level : "")}): the curated lists, " +
-                   "all blueprints (yours, PlanBuild's, OverDrive's) and every location in the game that is a buildable building.";
+
+            if (action == Action.Show)
+            {
+                if (rest.Length == 0)
+                {
+                    return "Villheim: " + Usage;
+                }
+
+                VillheimPlugin.Instance.StartCoroutine(ShowNamed(player.transform.position, forward, rest));
+                return $"Villheim: laying out {rest.Length} named designs.";
+            }
+
+            string biomeName = rest.Length > 0 ? rest[0].ToLowerInvariant() : "meadows";
+            Heightmap.Biome biome = biomeName.StartsWith("black") || biomeName.StartsWith("forest") ? Heightmap.Biome.BlackForest : Heightmap.Biome.Meadows;
+            string group = "all";
+            int page = 1;
+            bool rescan = false;
+            for (int a = 1; a < rest.Length; a++)
+            {
+                string word = rest[a].ToLowerInvariant();
+                if (word == "rescan") rescan = true;
+                else if (word == "page" && a + 1 < rest.Length && int.TryParse(rest[a + 1], out int n)) { page = Mathf.Max(1, n); a++; }
+                else if (int.TryParse(word, out int m)) page = Mathf.Max(1, m);
+                else if (word.StartsWith("prof") || word.StartsWith("work") || word.StartsWith("smith")) group = "prof";
+                else if (word.StartsWith("hall") || word.StartsWith("hub") || word.StartsWith("long")) group = "hall";
+                else if (word.StartsWith("hous") || word.StartsWith("home")) group = "house";
+                else if (word.StartsWith("stor") || word.StartsWith("shed")) group = "storage";
+                else if (word.StartsWith("farm") || word.StartsWith("barn")) group = "farm";
+                else if (word != "all") return "Villheim: " + Usage;
+            }
+
+            VillheimPlugin.Instance.StartCoroutine(Run(player.transform.position, forward, biome, group, page, rescan, action));
+            return action == Action.List
+                ? $"Villheim: gathering every {biome} design to list them."
+                : $"Villheim: gathering {biome} designs ({group}, page {page}).";
         }
 
-        private static IEnumerator Run(Vector3 playerPosition, Vector3 forward, Heightmap.Biome biome, string group, int level, bool rescan)
+        /// <summary>Every design a player at that stage could build, from the curated lists, the blueprints and the locations.</summary>
+        private static IEnumerator Gather(Heightmap.Biome biome, bool rescan, List<Cell> cells)
         {
-            _running = true;
-            var cells = new List<Cell>();
             var seen = new HashSet<string>();
-            void Add(DesignLibrary.Design design, Role role)
+            void Add(DesignLibrary.Design design, Role role, int pieces)
             {
                 if (seen.Add(design.Name))
                 {
-                    cells.Add(new Cell { Design = design, Role = role, Half = Mathf.Clamp(design.Radius + 2f, 6f, 36f) });
+                    cells.Add(new Cell { Design = design, Role = role, Pieces = pieces, Half = Mathf.Clamp(design.Radius + 2f, 6f, 36f) });
                 }
             }
 
-            // 1 and 2: the curated lists and every blueprint. Each step catches its own errors, so one bad design
-            // can't stop the gallery (a silent stop left it gathering forever, 2026-11-06).
+            // Curated designs and every blueprint (Villheim's folder, PlanBuild's, the plugins folder).
+            var candidates = new List<(DesignLibrary.Design Design, Role Role)>();
             Safe("the curated lists", () =>
             {
                 foreach (Role role in Order)
                 {
                     foreach (DesignLibrary.Design design in DesignLibrary.PoolFor(biome, role).Concat(DesignLibrary.FallbackPool(biome, role)))
                     {
-                        Add(design, role);
+                        candidates.Add((design, role));
                     }
                 }
             });
@@ -187,21 +212,39 @@ namespace Villheim.Logic.Village
             {
                 foreach (Blueprints.Blueprint blueprint in Blueprints.All().Values)
                 {
-                    var design = new DesignLibrary.Design(blueprint, 1f);
-                    if ((blueprint.Biome == null || Matches(blueprint.Biome, biome)) && DesignLibrary.MissingIn(design, biome) == null)
+                    if (blueprint.Biome == null || Matches(blueprint.Biome, biome))
                     {
-                        Add(design, blueprint.Role);
+                        candidates.Add((new DesignLibrary.Design(blueprint, 1f), blueprint.Role));
                     }
                 }
             });
 
-            // 3: every location in the game that is a building the biome can be built of, one per frame.
+            foreach ((DesignLibrary.Design design, Role role) in candidates)
+            {
+                if (seen.Contains(design.Name))
+                {
+                    continue;
+                }
+
+                int pieces = 0;
+                string why = null;
+                Safe(design.Name, () => why = Viable(design, biome, out pieces));
+                if (why == null)
+                {
+                    Add(design, role, pieces);
+                }
+                else
+                {
+                    VillheimPlugin.Debug($"Gallery: {design.Name} left out: {why}.");
+                }
+            }
+
+            // Every location in the game, one per frame; what each turned out to be is kept on disk.
             var locations = new List<ZoneSystem.ZoneLocation>();
             Safe("the location list", () => locations.AddRange(ZoneSystem.instance.m_locations
-                .Where(l => l != null && l.m_prefab.IsValid && l.m_exteriorRadius <= 40f && !Unsuitable(l.m_prefabName))
+                .Where(l => l != null && l.m_prefab.IsValid && l.m_exteriorRadius <= 40f && !Unsuitable(l.m_prefabName) && !AssetGuard.IsBroken(l))
                 .GroupBy(l => l.m_prefabName).Select(g => g.First())));
-            // What each location turned out to be is kept on disk, so only new locations are opened again.
-            Dictionary<string, bool> known = rescan ? new Dictionary<string, bool>() : ReadCache(biome);
+            Dictionary<string, int> known = rescan ? new Dictionary<string, int>() : ReadCache(biome);
             int checkedCount = 0, opened = 0;
             foreach (ZoneSystem.ZoneLocation location in locations)
             {
@@ -211,12 +254,16 @@ namespace Villheim.Logic.Village
                     continue;
                 }
 
-                if (!known.TryGetValue(location.m_prefabName, out bool add))
+                if (!known.TryGetValue(location.m_prefabName, out int pieces))
                 {
-                    Safe(location.m_prefabName, () => add = DesignLibrary.BuildableIn(location, biome) && IsBuilding(location));
-                    known[location.m_prefabName] = add;
-                    opened++;
-                    if (opened % 10 == 0)
+                    pieces = 0;
+                    var design = new DesignLibrary.Design(location, 1f);
+                    string why = "error";
+                    int counted = 0;
+                    Safe(location.m_prefabName, () => why = Viable(design, biome, out counted));
+                    pieces = why == null ? counted : 0;
+                    known[location.m_prefabName] = pieces;
+                    if (++opened % 10 == 0)
                     {
                         MessageHud.instance?.ShowMessage(MessageHud.MessageType.TopLeft,
                             $"Gallery: looked at {checkedCount}/{locations.Count} locations, {cells.Count} designs so far");
@@ -225,45 +272,218 @@ namespace Villheim.Logic.Village
                     yield return null;
                 }
 
-                if (add)
+                if (pieces > 0)
                 {
-                    Add(new DesignLibrary.Design(location, 1f), RoleFromName(location.m_prefabName));
+                    Add(new DesignLibrary.Design(location, 1f), RoleFromName(location.m_prefabName), pieces);
                 }
             }
 
             Safe("the location cache", () => WriteCache(biome, known));
-
-            _running = false;
-            Role[] roles = Groups[group];
-            int all = cells.Count;
-            cells = cells.Where(c => roles.Contains(c.Role) && (level == 0 || Level(c) == level)).ToList();
-            VillheimPlugin.Log.LogInfo($"Gallery: {all} {biome} designs found, {cells.Count} in '{group}'{(level > 0 ? " level " + level : "")}.");
-            if (cells.Count == 0)
+            cells.Sort((a, b) =>
             {
-                Console.instance?.Print($"Villheim: none of the {all} {biome} designs found are in that group and level.");
-                MessageHud.instance?.ShowMessage(MessageHud.MessageType.Center, "Gallery: nothing in that group and level");
+                int byRole = System.Array.IndexOf(Order, a.Role).CompareTo(System.Array.IndexOf(Order, b.Role));
+                if (byRole != 0) return byRole;
+                int bySize = a.Design.Radius.CompareTo(b.Design.Radius);
+                return bySize != 0 ? bySize : string.CompareOrdinal(a.Design.Name, b.Design.Name);
+            });
+        }
+
+        /// <summary>
+        /// Null when a player at the biome's stage could build the design: at least 15 building pieces, every piece one
+        /// a player can build (no location-only pieces such as goblin walls or totems), every material from that stage
+        /// and every crafting station available then. Otherwise why not.
+        /// </summary>
+        private static string Viable(DesignLibrary.Design design, Heightmap.Biome biome, out int pieces)
+        {
+            pieces = 0;
+            List<DesignSpawner.PlanEntry> plan;
+            if (design.Blueprint != null)
+            {
+                plan = Blueprints.MakePlan(design.Blueprint, Vector3.zero, 0f);
+            }
+            else
+            {
+                AssetGuard.Load(design.Location);
+                try
+                {
+                    GameObject asset = design.Location.m_prefab.Asset;
+                    plan = asset != null ? DesignSpawner.MakePlan(asset, Vector3.zero, 1, 0f, false) : new List<DesignSpawner.PlanEntry>();
+                }
+                finally
+                {
+                    design.Location.m_prefab.Release();
+                }
+            }
+
+            HashSet<string> materials = StageMaterials[biome];
+            HashSet<string> stations = StageStations[biome];
+            foreach (DesignSpawner.PlanEntry entry in plan)
+            {
+                Piece piece = ZNetScene.instance.GetPrefab(entry.Prefab)?.GetComponent<Piece>();
+                if (piece == null)
+                {
+                    continue;
+                }
+
+                if (piece.m_resources == null || piece.m_resources.Length == 0)
+                {
+                    return $"{entry.Prefab} is not a piece a player can build";
+                }
+
+                string station = piece.m_craftingStation != null ? piece.m_craftingStation.gameObject.name : null;
+                if (station != null && !stations.Contains(station))
+                {
+                    return $"{entry.Prefab} needs the {station}";
+                }
+
+                foreach (Piece.Requirement requirement in piece.m_resources)
+                {
+                    string material = requirement?.m_resItem != null ? requirement.m_resItem.gameObject.name : null;
+                    if (material != null && requirement.m_amount > 0 && !materials.Contains(material))
+                    {
+                        return $"{entry.Prefab} needs {material}";
+                    }
+                }
+
+                if (entry.Shell)
+                {
+                    pieces++;
+                }
+            }
+
+            return pieces >= 15 ? null : $"only {pieces} building pieces";
+        }
+
+        private static IEnumerator Run(Vector3 playerPosition, Vector3 forward, Heightmap.Biome biome, string group, int page, bool rescan, Action action)
+        {
+            _running = true;
+            var cells = new List<Cell>();
+            try
+            {
+                yield return Gather(biome, rescan, cells);
+            }
+            finally
+            {
+                _running = false;
+            }
+
+            if (action == Action.List)
+            {
+                string path = "";
+                Safe("the list", () => path = WriteList(biome, cells));
+                Console.instance?.Print($"Villheim: {cells.Count} {biome} designs written to {path}.");
                 yield break;
             }
 
-            // Lay the designs out, then look for naturally flat land of the biome big enough for them, near the player,
-            // and go there: the game lets terrain move only 8 m either way, so the plain has to start out nearly flat.
+            Role[] roles = Groups[group];
+            List<Cell> chosen = cells.Where(c => roles.Contains(c.Role)).ToList();
+            int pages = Mathf.Max(1, (chosen.Count + PageSize - 1) / PageSize);
+            chosen = chosen.Skip((page - 1) * PageSize).Take(PageSize).ToList();
+            if (chosen.Count == 0)
+            {
+                Console.instance?.Print($"Villheim: page {page} is empty; '{group}' has {pages} pages.");
+                yield break;
+            }
+
+            Console.instance?.Print($"Villheim: '{group}' page {page} of {pages}" + (page < pages ? $"; 'vh gallery {biome.ToString().ToLowerInvariant()} {group} page {page + 1}' for the next." : "."));
+            yield return Place(chosen, playerPosition, forward);
+        }
+
+        /// <summary>'vh gallery show': the named designs, wherever they come from, without the stage test.</summary>
+        private static IEnumerator ShowNamed(Vector3 playerPosition, Vector3 forward, string[] names)
+        {
+            var cells = new List<Cell>();
+            foreach (string name in names)
+            {
+                DesignLibrary.Design? design = DesignLibrary.ByName(name) ?? DesignLibrary.ByName(Blueprints.Prefix + name);
+                if (design == null)
+                {
+                    Console.instance?.Print($"Villheim: no design called '{name}'.");
+                    continue;
+                }
+
+                Role role = design.Value.Blueprint != null ? design.Value.Blueprint.Role : RoleFromName(name);
+                cells.Add(new Cell { Design = design.Value, Role = role, Half = Mathf.Clamp(design.Value.Radius + 2f, 6f, 36f) });
+            }
+
+            if (cells.Count > 0)
+            {
+                yield return Place(cells, playerPosition, forward);
+            }
+        }
+
+        private static string WriteList(Heightmap.Biome biome, List<Cell> cells)
+        {
+            string path = System.IO.Path.Combine(BepInEx.Paths.BepInExRootPath, "Villheim", $"gallery-list-{biome}.csv");
+            var lines = new List<string> { "Number,Page,Kind,Name,Source,Creator,Pieces,Radius" };
+            var pageOf = new Dictionary<Role, int>();
+            int number = 0;
+            foreach (Cell cell in cells)
+            {
+                pageOf.TryGetValue(cell.Role, out int inGroup);
+                pageOf[cell.Role] = inGroup + 1;
+                number++;
+                lines.Add(string.Join(",", number, inGroup / PageSize + 1, Kind(cell.Role), Csv(cell.Design.Name), Csv(Source(cell.Design)),
+                    Csv(Creator(cell.Design)), cell.Pieces, cell.Design.Radius.ToString("0", System.Globalization.CultureInfo.InvariantCulture)));
+            }
+
+            System.IO.Directory.CreateDirectory(System.IO.Path.GetDirectoryName(path));
+            System.IO.File.WriteAllLines(path, lines);
+            return path;
+        }
+
+        private static string Csv(string text) => "\"" + (text ?? "").Replace("\"", "'") + "\"";
+
+        private static string Kind(Role role)
+        {
+            foreach (KeyValuePair<string, Role[]> group in Groups)
+            {
+                if (group.Key != "all" && group.Value.Contains(role))
+                {
+                    return group.Key;
+                }
+            }
+
+            return "house";
+        }
+
+        private static string Source(DesignLibrary.Design design)
+        {
+            if (design.Blueprint != null)
+            {
+                return "blueprint " + System.IO.Path.GetFileName(design.Blueprint.File);
+            }
+
+            return design.Name.StartsWith("MWL_") ? "location (More World Locations)" : "location";
+        }
+
+        private static string Creator(DesignLibrary.Design design)
+        {
+            if (design.Blueprint != null)
+            {
+                return string.IsNullOrEmpty(design.Blueprint.Creator) ? "unknown" : design.Blueprint.Creator;
+            }
+
+            return design.Name.StartsWith("MWL_") ? "warpalicious" : "Iron Gate (vanilla) or a mod";
+        }
+
+        /// <summary>Lays the cells out, finds flat land for them, goes there and puts them up.</summary>
+        private static IEnumerator Place(List<Cell> cells, Vector3 playerPosition, Vector3 forward)
+        {
             var labels = new List<(Vector3 At, string Text)>();
             float depth = 0f, widest = 0f;
             Safe("the layout", () => Layout(cells, forward, labels, out depth, out widest));
             Vector3 right = Vector3.Cross(Vector3.up, forward);
             var site = new SiteResult();
-            yield return FindSite(playerPosition, forward, right, widest + Margin * 2f, depth + Margin * 2f, biome, site);
+            yield return FindSite(playerPosition, forward, right, widest + Margin * 2f, depth + Margin * 2f, Heightmap.Biome.Meadows, site);
             if (!site.Found)
             {
                 Console.instance?.Print("Villheim: found no land big enough within 2 km (Meadows, Black Forest, Plains, Swamp or " +
-                                        "Mountain, all above water). Try again from elsewhere, or show fewer designs (a group and a level).");
+                                        "Mountain, all above water). Try again from elsewhere.");
                 yield break;
             }
 
-            // The area's corner nearest the player is at site.Start; everything moves there.
             Vector3 start = site.Start;
-            // Each design on the plain, unless its own ground is too far above or below it for the game's 8 m: then it
-            // gets a flat terrace of its own at the middle height of its ground.
             int terraces = 0;
             foreach (Cell cell in cells)
             {
@@ -300,8 +520,7 @@ namespace Villheim.Logic.Village
 
             VillheimPlugin.Instance.StartCoroutine(Build(cells, pads, forward, labels));
             Console.instance?.Print($"Villheim: found flat land ({WorldGenerator.instance.GetBiome(start)}) {Utils.DistanceXZ(playerPosition, start):0} m away " +
-                                    $"({site.Relief:0.0} m between highest and lowest ground); clearing {widest + Margin * 2f:0} by " +
-                                    $"{depth + Margin * 2f:0} m there at {site.Height:0.0} m and laying out {cells.Count} designs in {labels.Count} clusters" +
+                                    $"({site.Relief:0.0} m between highest and lowest ground); laying out {cells.Count} designs" +
                                     (terraces > 0 ? $" ({terraces} on terraces of their own, where the ground is too high or low for the plain)." : "."));
             MessageHud.instance?.ShowMessage(MessageHud.MessageType.Center, $"Gallery: {cells.Count} designs; clearing the ground");
         }
@@ -399,12 +618,12 @@ namespace Villheim.Logic.Village
         }
 
         private static string CachePath(Heightmap.Biome biome) =>
-            System.IO.Path.Combine(BepInEx.Paths.BepInExRootPath, "Villheim", $"gallery-locations-{biome}.txt");
+            System.IO.Path.Combine(BepInEx.Paths.BepInExRootPath, "Villheim", $"gallery-locations-{biome}-v2.txt");
 
-        /// <summary>Location name and whether it is a buildable building in the biome, from the last runs.</summary>
-        private static Dictionary<string, bool> ReadCache(Heightmap.Biome biome)
+        /// <summary>Location name and its building pieces when a player at that stage could build it (0 when not).</summary>
+        private static Dictionary<string, int> ReadCache(Heightmap.Biome biome)
         {
-            var known = new Dictionary<string, bool>();
+            var known = new Dictionary<string, int>();
             try
             {
                 if (System.IO.File.Exists(CachePath(biome)))
@@ -412,9 +631,9 @@ namespace Villheim.Logic.Village
                     foreach (string line in System.IO.File.ReadAllLines(CachePath(biome)))
                     {
                         int bar = line.LastIndexOf('|');
-                        if (bar > 0 && !line.StartsWith("#"))
+                        if (bar > 0 && !line.StartsWith("#") && int.TryParse(line.Substring(bar + 1), out int pieces))
                         {
-                            known[line.Substring(0, bar)] = line.Substring(bar + 1) == "1";
+                            known[line.Substring(0, bar)] = pieces;
                         }
                     }
                 }
@@ -427,12 +646,12 @@ namespace Villheim.Logic.Village
             return known;
         }
 
-        private static void WriteCache(Heightmap.Biome biome, Dictionary<string, bool> known)
+        private static void WriteCache(Heightmap.Biome biome, Dictionary<string, int> known)
         {
             System.IO.Directory.CreateDirectory(System.IO.Path.GetDirectoryName(CachePath(biome)));
             System.IO.File.WriteAllLines(CachePath(biome),
-                new[] { $"# Locations looked at by vh gallery for {biome}: name|1 when it is a building the biome can build. 'vh gallery {biome.ToString().ToLowerInvariant()} rescan' looks again." }
-                    .Concat(known.OrderBy(k => k.Key).Select(k => $"{k.Key}|{(k.Value ? 1 : 0)}")));
+                new[] { $"# Locations looked at by vh gallery for {biome}: name|building pieces when a player at that stage could build it, else 0. 'rescan' looks again." }
+                    .Concat(known.OrderBy(k => k.Key).Select(k => $"{k.Key}|{k.Value}")));
         }
 
         private static void Safe(string what, System.Action action)
@@ -504,21 +723,14 @@ namespace Villheim.Logic.Village
         /// </summary>
         private static void Layout(List<Cell> cells, Vector3 forward, List<(Vector3 At, string Text)> labels, out float depth, out float widest)
         {
-            cells.Sort((a, b) =>
-            {
-                int byLevel = Level(a).CompareTo(Level(b));
-                if (byLevel != 0) return byLevel;
-                int byRole = System.Array.IndexOf(Order, a.Role).CompareTo(System.Array.IndexOf(Order, b.Role));
-                return byRole != 0 ? byRole : a.Design.Radius.CompareTo(b.Design.Radius);
-            });
 
             Vector3 right = Vector3.Cross(Vector3.up, forward);
             depth = 0f;
             widest = 0f;
-            foreach (IGrouping<string, Cell> cluster in cells.GroupBy(c => $"{Level(c)}|{c.Role}"))
+            foreach (IGrouping<Role, Cell> cluster in cells.GroupBy(c => c.Role))
             {
                 List<Cell> members = cluster.ToList();
-                labels.Add((forward * (depth + 2f), $"<#5cf>Level {Level(members[0])}<br><#fff>{Plural(members[0].Role)}"));
+                labels.Add((forward * (depth + 2f), $"<#5cf>{Plural(members[0].Role)}"));
                 depth += 6f;
                 for (int row = 0; row * 6 < members.Count; row++)
                 {
@@ -769,7 +981,7 @@ namespace Villheim.Logic.Village
         /// <summary>A sign at the front of the plot: the kind and level in blue, the design's name in white.</summary>
         private static void Sign(Cell cell, Vector3 forward)
         {
-            PutSign(cell.Center - forward * (cell.Half - 1f), forward, $"<#5cf>{Label(cell)}, {Level(cell)}<br><#fff>{cell.Design.Name}");
+            PutSign(cell.Center - forward * (cell.Half - 1f), forward, $"<#5cf>{Label(cell)}<br><#fff>{cell.Design.Name}<br><#bbb>by {Creator(cell.Design)}");
         }
 
         /// <summary>A sign standing on the ground (two back to back, so it reads from either side).</summary>

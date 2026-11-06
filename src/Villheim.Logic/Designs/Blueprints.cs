@@ -285,7 +285,7 @@ namespace Villheim.Logic.Designs
             }
 
             string rest = lower.Substring(3);
-            foreach (string biome in new[] { "meadows", "blackforest" })
+            foreach (string biome in new[] { "meadows", "blackforest", "swamp", "mountain", "plains", "mistlands", "ashlands", "deepnorth", "ocean" })
             {
                 if (rest.StartsWith(biome + "_"))
                 {

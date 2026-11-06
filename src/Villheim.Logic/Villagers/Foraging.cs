@@ -58,7 +58,7 @@ namespace Villheim.Logic.Villagers
                     return false;
                 }
 
-                if (Walker.For(villager).Go(villager, ai, dt, chest.transform.position, 1.6f) == WalkResult.Walking && Time.time < state.Deadline)
+                if (Walker.For(villager).Go(villager, ai, dt, chest.transform.position, 1.6f, true) == WalkResult.Walking && Time.time < state.Deadline)
                 {
                     return true;
                 }

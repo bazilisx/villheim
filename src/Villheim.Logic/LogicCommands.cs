@@ -54,7 +54,7 @@ namespace Villheim.Logic
                 case "villheim_hearthground":
                     if (TryGetPlayer(context, out Player near) && VillageHearth.Closest(near.transform.position, 150f) is VillageHearth h)
                     {
-                        HearthGround.Prepare(h.transform.position);
+                        HearthGround.Prepare(h);
                         Say(context, $"Villheim: cleared and levelled the ground round {h.VillageName}'s hearth.");
                     }
                     else

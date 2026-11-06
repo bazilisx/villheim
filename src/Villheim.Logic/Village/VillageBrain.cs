@@ -100,7 +100,7 @@ namespace Villheim.Logic.Village
             state.Add(Materials.Stone, StartingWood() / 2);
             state.Initialized = true;
 
-            HearthGround.Prepare(position);
+            HearthGround.Prepare(hearth);
             hearth.Register();
             Chronicle.Add(hearth, $"{state.Name} was founded around a new hearth.");
             VillheimPlugin.Log.LogInfo($"Founded {state.Name} ({state.Biome}) at {position}.");
@@ -414,7 +414,8 @@ namespace Villheim.Logic.Village
                 // could be) before the first piece goes up, and the grass is cleared from it.
                 float footprint = ConstructionSite.Footprint(hearth);
                 TerrainShaper.LevelPad(position, footprint + 0.5f, footprint + 3f);
-                HearthGround.ClearVegetation(position, footprint + 1.5f);
+                HearthGround.ClearAround(position, footprint + 2f);
+                HearthGround.Paint(position, footprint + 1f, TerrainModifier.PaintType.Dirt);
 
                 VillheimPlugin.Log.LogInfo($"{state.Name} broke ground for a {RoleName(role)} ({design.Name}) at {position}.");
                 Villagers.Dialogue.Note(state.Id, "groundbroken");

@@ -94,6 +94,7 @@ namespace Villheim.Logic.Villagers
             new List<(System.WeakReference<Character>, List<Material>)>();
 
         private static Shader _ghostShader;
+        private static float _ghostCutoff = -1f;
         private static bool _searched;
         private static bool _logged;
         private static float _nextSweep;
@@ -296,8 +297,20 @@ namespace Villheim.Logic.Villagers
                 slot.Swapped = false;
             }
 
-            // A borrowed see-through shader may take its transparency from a value of its own rather than the
-            // colour's alpha: set the usual ones too, so GhostAlpha always does something.
+            // The borrowed shader (the game's Fallen Warrior ghosts) takes both colour and see-through from _TintColor:
+            // the colour from GhostColor (GhostTint says how strongly, against white), the alpha from GhostAlpha, and
+            // the glow added on top as a soft brightening in the glow colour (the shader has no glow of its own).
+            if (slot.Swapped && m.HasProperty("_TintColor"))
+            {
+                Color tintRgb = Color.Lerp(Color.white, Teal, tint) + GlowColor * glow;
+                m.SetColor("_TintColor", new Color(tintRgb.r, tintRgb.g, tintRgb.b, alpha));
+                if (m.HasProperty("_Cutoff") && _ghostCutoff >= 0f)
+                {
+                    m.SetFloat("_Cutoff", _ghostCutoff);
+                }
+            }
+
+            // Other see-through shaders may use a value of their own for transparency: set the usual ones too.
             if (slot.Swapped)
             {
                 foreach (string property in OpacityProperties)
@@ -311,7 +324,7 @@ namespace Villheim.Logic.Villagers
 
             foreach (string property in slot.Base.Keys.ToList())
             {
-                if (!m.HasProperty(property))
+                if (!m.HasProperty(property) || (slot.Swapped && property == "_TintColor"))
                 {
                     continue;
                 }
@@ -403,6 +416,12 @@ namespace Villheim.Logic.Villagers
                         if (ghostly && renderer is SkinnedMeshRenderer)
                         {
                             _ghostShader = material.shader;
+                            _ghostCutoff = material.HasProperty("_Cutoff") ? material.GetFloat("_Cutoff") : -1f;
+                            if (material.HasProperty("_TintColor"))
+                            {
+                                VillheimPlugin.Log.LogInfo($"Ghost look: {prefab.name}'s own tint is {material.GetColor("_TintColor")}.");
+                            }
+
                             VillheimPlugin.Log.LogInfo($"Ghost look: borrowing the see-through shader '{material.shader.name}' from {prefab.name}.");
                             return _ghostShader;
                         }

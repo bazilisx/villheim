@@ -776,7 +776,8 @@ namespace Villheim.Logic.Villagers
 
             Vector3 target = needs.DropOff;
             float distance = Utils.DistanceXZ(villager.transform.position, target);
-            WalkResult step = Time.time > work.Deadline ? WalkResult.Stuck : Walker.For(villager).Go(villager, ai, dt, target, DeliverReach);
+            // Back from harvesting with the load: a run is fine (village chores are walked).
+            WalkResult step = Time.time > work.Deadline ? WalkResult.Stuck : Walker.For(villager).Go(villager, ai, dt, target, DeliverReach, true);
             if (step == WalkResult.Walking)
             {
                 return true;

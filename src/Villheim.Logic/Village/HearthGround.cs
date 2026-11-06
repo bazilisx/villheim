@@ -16,26 +16,125 @@ namespace Villheim.Logic.Village
     /// </summary>
     internal static class HearthGround
     {
-        public const float ClearRadius = 12f;
-        public const float LevelRadius = 7f;
+        public const float ClearRadius = 13f;
+        public const float LevelRadius = 10f;
+        private const float DirtRadius = 9f;
 
-        public static void Prepare(Vector3 hearth)
+        /// <summary>
+        /// Readies the ground round a hearth: clears it, levels it at the height most of the ground there already has
+        /// (so it doesn't become a bowl or a mound), moves the hearth and its chest to that level, and takes the grass
+        /// off (bare earth near the fire, cleared grass beyond, per HearthGroundPaint).
+        /// </summary>
+        public static void Prepare(VillageHearth hearth)
         {
+            Vector3 center = hearth.transform.position;
+            float level = TypicalHeight(center, LevelRadius, center.y);
+            Vector3 at = new Vector3(center.x, level, center.z);
+
             // Each step on its own, so one that fails can't skip the others; a failure goes to the log.
-            Step("clearing trees, rocks and bushes", () => DesignSpawner.ClearArea(hearth, ClearRadius));
-            Step("levelling the ground", () => TerrainShaper.LevelPad(hearth, LevelRadius, LevelRadius + 4f));
+            Step("clearing trees, rocks and bushes", () => ClearAround(center, ClearRadius));
+            Step("levelling the ground", () => TerrainShaper.LevelPad(at, LevelRadius, LevelRadius + 4f));
+            Step("setting the hearth on the new ground", () =>
+            {
+                Move(hearth.gameObject, level);
+                Container chest = VillageChest.Find(hearth);
+                if (chest != null && Utils.DistanceXZ(chest.transform.position, center) < LevelRadius)
+                {
+                    Move(chest.gameObject, level);
+                }
+            });
+
             string paint = (LogicConfig.HearthGroundPaint?.Value ?? "Both").Trim().ToLowerInvariant();
             if (paint != "dirt")
             {
-                Step("clearing the grass", () => ClearVegetation(hearth, ClearRadius));
+                Step("clearing the grass", () => ClearVegetation(at, ClearRadius));
             }
 
             if (paint == "dirt" || paint == "both")
             {
-                Step("baring the earth by the fire", () => Paint(hearth, paint == "dirt" ? ClearRadius : 5f, TerrainModifier.PaintType.Dirt));
+                Step("baring the earth by the fire", () => Paint(at, paint == "dirt" ? ClearRadius : DirtRadius, TerrainModifier.PaintType.Dirt));
             }
 
-            VillheimPlugin.Log.LogInfo($"Hearth ground prepared at {hearth} ({paint}).");
+            VillheimPlugin.Log.LogInfo($"Hearth ground prepared at {at} ({paint}).");
+        }
+
+        /// <summary>The middle height of the ground in the circle: half the ground is above it, half below.</summary>
+        private static float TypicalHeight(Vector3 center, float radius, float fallback)
+        {
+            var heights = new System.Collections.Generic.List<float>();
+            for (int ring = 0; ring <= 3; ring++)
+            {
+                float r = radius * ring / 3f;
+                int count = ring == 0 ? 1 : 12;
+                for (int i = 0; i < count; i++)
+                {
+                    float angle = i * Mathf.PI * 2f / count;
+                    Vector3 sample = center + new Vector3(Mathf.Sin(angle), 0f, Mathf.Cos(angle)) * r;
+                    if (ZoneSystem.instance.GetGroundHeight(sample, out float h))
+                    {
+                        heights.Add(h);
+                    }
+                }
+            }
+
+            if (heights.Count == 0)
+            {
+                return fallback;
+            }
+
+            heights.Sort();
+            return heights[heights.Count / 2];
+        }
+
+        private static void Move(GameObject go, float y)
+        {
+            ZNetView view = go.GetComponent<ZNetView>();
+            if (view == null || !view.IsValid())
+            {
+                return;
+            }
+
+            view.ClaimOwnership();
+            Vector3 p = go.transform.position;
+            p.y = y;
+            go.transform.position = p;
+            view.GetZDO().SetPosition(p);
+        }
+
+        /// <summary>
+        /// Clears trees, stumps, logs, rocks, bushes and loose sticks and stones, going by the game's list of loaded
+        /// objects (not colliders, which missed small stones). Pieces, creatures, dropped items and the village's own
+        /// things are never touched.
+        /// </summary>
+        public static void ClearAround(Vector3 center, float radius)
+        {
+            var doomed = new System.Collections.Generic.List<ZNetView>();
+            foreach (ZNetView view in ZNetScene.instance.m_instances.Values)
+            {
+                if (view == null || !view.IsValid() || Utils.DistanceXZ(view.transform.position, center) > radius)
+                {
+                    continue;
+                }
+
+                GameObject go = view.gameObject;
+                if (go.GetComponent<Piece>() || go.GetComponent<Character>() || go.GetComponent<ItemDrop>() ||
+                    go.GetComponent<VillageHearth>() || view.GetZDO().GetInt(Keys.BuiltBy) != 0)
+                {
+                    continue;
+                }
+
+                if (go.GetComponent<TreeBase>() || go.GetComponent<TreeLog>() || go.GetComponent<Destructible>() ||
+                    go.GetComponent<MineRock>() || go.GetComponent<MineRock5>() || go.GetComponent<Pickable>())
+                {
+                    doomed.Add(view);
+                }
+            }
+
+            foreach (ZNetView view in doomed)
+            {
+                view.ClaimOwnership();
+                ZNetScene.instance.Destroy(view.gameObject);
+            }
         }
 
         private static void Step(string what, System.Action action)
@@ -50,7 +149,7 @@ namespace Villheim.Logic.Village
             }
         }
 
-        private static void Paint(Vector3 center, float radius, TerrainModifier.PaintType type)
+        public static void Paint(Vector3 center, float radius, TerrainModifier.PaintType type)
         {
             TerrainOp.Settings settings = TerrainShaper.NewSettings();
             settings.m_paintCleared = true;

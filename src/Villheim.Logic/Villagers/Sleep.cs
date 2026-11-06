@@ -217,7 +217,7 @@ namespace Villheim.Logic.Villagers
                 state.Bed = Beds.For(villager);
                 if (state.Bed == null)
                 {
-                    return false;
+                    return SleepUnderRoof(villager, ai, dt, state);
                 }
 
                 state.GiveUpAt = Time.time + 90f;
@@ -265,6 +265,41 @@ namespace Villheim.Logic.Villagers
             villager.transform.position = point.position;
             villager.transform.rotation = point.rotation;
             Poses.Hold(villager, BedPose);
+            return true;
+        }
+
+        /// <summary>
+        /// No bed: like Millenaire's fallback, he lies down under a roof (his home or the longhouse) rather than out in
+        /// the open. With no building at all he stays at the fire (free time's night by the hearth).
+        /// </summary>
+        private static bool SleepUnderRoof(Villager villager, VillagerAI ai, float dt, State state)
+        {
+            Vector3? shelter = Roles.ShelterSpot(villager);
+            if (!shelter.HasValue || state.GiveUpAt == float.MaxValue)
+            {
+                return false;
+            }
+
+            if (state.GiveUpAt <= 0f)
+            {
+                state.GiveUpAt = Time.time + 90f;
+                Walker.For(villager).Reset();
+            }
+
+            WalkResult step = Walker.For(villager).Go(villager, ai, dt, shelter.Value, 1.5f);
+            if (step == WalkResult.Walking && Time.time < state.GiveUpAt)
+            {
+                return true;
+            }
+
+            if (Utils.DistanceXZ(villager.transform.position, shelter.Value) > 5f)
+            {
+                state.GiveUpAt = float.MaxValue;
+                return false;
+            }
+
+            ai.StopMoving();
+            Poses.Hold(villager, Poses.Rest);
             return true;
         }
 

@@ -65,9 +65,17 @@ namespace Villheim.Logic.Villagers
                 {
                     ai.StopMoving();
                 }
+                else if (Repairs.Update(villager, ai, dt))
+                {
+                    // The builder mends what is broken.
+                }
                 else if (PathLaying.Update(villager, ai, dt))
                 {
                     // Laying a path: background work, before free time.
+                }
+                else if (Hunting.Update(villager, ai, dt))
+                {
+                    // A protector hunts when the chest is low on food.
                 }
                 else if (!Healing.Update(villager, ai, dt, true))
                 {

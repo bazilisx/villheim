@@ -271,3 +271,61 @@ You remind me of someone. Can't think who. Probably someone handsome.
 
 @ talk | devout
 May your road be dry and your blade sharp.
+
+# ------------------------------------------------------------------ hunting, repairs, upgrades
+# Extra tags: doing:hunting doing:repairing event:hunt
+
+@ doing:hunting
+Quiet. It hasn't seen me yet.
+There's a boar by the trees. Dinner, if I'm quick.
+Stay back, you'll spook it.
+Fresh tracks. Not far now.
+
+@ doing:hunting | gruff
+Hush.
+If it gets away it's your fault.
+
+@ doing:hunting | worrier
+What if it charges? Boars charge. I've seen it.
+
+@ doing:hunting | young
+My first proper hunt! Don't tell anyone if I miss.
+
+@ doing:hunting | devout
+Skadi, guide the spear.
+
+@ doing:hunting | wry
+Me against a pig. The pig's winning so far.
+
+@ event:hunt
+Someone brought back meat. Tonight we eat properly.
+There's fresh meat in the chest. Get it before {other} does.
+
+@ event:hunt | cheerful
+Meat! Real meat! I could kiss whoever caught it.
+
+@ event:hunt, trade:cook
+Fresh meat. Now I can actually cook something.
+
+@ chat, event:hunt
+Who caught the boar? // {other}. Took three tries. // Still counts.
+
+@ doing:repairing
+That beam took a knock. Won't take long.
+A few taps and it's good as new.
+Something's been chewing on this wall. Or hitting it.
+
+@ doing:repairing | gruff
+Every time I fix something, something else breaks.
+
+@ doing:repairing | elder
+A house you look after lasts longer than the one who built it.
+
+@ doing:repairing | wry
+Fixing the thing I built last week. Again.
+
+@ building:any, event:groundbroken | elder
+They're taking the old place down to build it bigger. It served us well.
+
+@ chat, event:groundbroken
+They're pulling down the old house. // It had a leak anyway. // It had several leaks.

@@ -465,6 +465,51 @@ namespace Villheim.Logic.Village
             return take;
         }
 
+        /// <summary>
+        /// The shell pieces (walls, floors, roof, doors) of a finished building, as the design lays them out, with the
+        /// cost factor of each material. Used to find and put back pieces that were destroyed.
+        /// </summary>
+        public static List<DesignSpawner.PlanEntry> ShellOf(Plot plot, out Dictionary<string, float> factors)
+        {
+            factors = new Dictionary<string, float>();
+            List<DesignSpawner.PlanEntry> entries = null;
+            Dictionary<string, int> totals = null;
+            Blueprints.Blueprint blueprint = Blueprints.Find(plot.Design);
+            if (blueprint != null)
+            {
+                entries = Blueprints.MakePlan(blueprint, plot.Position, plot.Yaw);
+                totals = Blueprints.RawTotals(blueprint);
+            }
+            else
+            {
+                ZoneSystem.ZoneLocation location = DesignLibrary.Find(plot.Design);
+                if (location == null)
+                {
+                    return new List<DesignSpawner.PlanEntry>();
+                }
+
+                location.m_prefab.Load();
+                try
+                {
+                    GameObject asset = location.m_prefab.Asset;
+                    entries = asset != null ? DesignSpawner.MakePlan(asset, plot.Position, 1, plot.Yaw, true) : new List<DesignSpawner.PlanEntry>();
+                }
+                finally
+                {
+                    location.m_prefab.Release();
+                }
+
+                totals = DesignLibrary.RawTotals(location);
+            }
+
+            foreach (KeyValuePair<string, int> total in totals)
+            {
+                factors[total.Key] = DesignLibrary.CostFactor(total.Value);
+            }
+
+            return entries.Where(e => e.Shell).ToList();
+        }
+
         public static bool TearingDown(VillageHearth hearth) => IsActive(hearth.Zdo) && hearth.Zdo.GetInt(KeySiteTeardown) == 1;
 
         /// <summary>The next piece of the old building to take down: the highest first, so roofs come off before walls.</summary>

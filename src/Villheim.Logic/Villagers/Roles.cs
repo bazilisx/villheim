@@ -135,6 +135,18 @@ namespace Villheim.Logic.Villagers
             if (BackgroundOf(villager) == Background.Carer && HasProtector(villager.VillageId) && enemy != null &&
                 villager.GetHealth() > 0f)
             {
+                // Like Millenaire's shelter point: indoors, in his home or the longhouse; with no building yet, away.
+                Vector3? shelter = ShelterSpot(villager);
+                if (shelter.HasValue && Vector3.Distance(enemy.transform.position, shelter.Value) > 6f)
+                {
+                    if (Walker.For(villager).Go(villager, ai, dt, shelter.Value, 1f) != WalkResult.Walking)
+                    {
+                        ai.StopMoving();
+                    }
+
+                    return true;
+                }
+
                 ai.Flee(dt, enemy.transform.position);
                 return true;
             }
@@ -149,6 +161,33 @@ namespace Villheim.Logic.Villagers
             }
 
             return false;
+        }
+
+        /// <summary>The middle of the villager's home, or of the longhouse, or null when the village has neither.</summary>
+        public static Vector3? ShelterSpot(Villager villager)
+        {
+            VillageHearth hearth = VillageHearth.Find(villager.VillageId);
+            if (hearth == null || !hearth.IsValid)
+            {
+                return null;
+            }
+
+            var state = new VillageState(hearth.Zdo);
+            Vector3 home = villager.Zdo.GetVec3(Keys.VillagerHome, hearth.transform.position);
+            Plot own = state.Plots.FirstOrDefault(p => Utils.DistanceXZ(p.Position, home) < 1f && p.Role != "Farm");
+            Plot hub = state.Plots.FirstOrDefault(p => p.Role == "Hub");
+            Plot shelter = own ?? hub;
+            return shelter?.Position;
+        }
+
+        /// <summary>A hunter takes the weapon of his village's tier (no shield, it would only slow him down).</summary>
+        public static void ArmForHunt(Villager villager)
+        {
+            EquipNamed(villager, Weapons[Gear(villager)]);
+            if (ArmedStates.TryGetValue(villager, out Armed armed))
+            {
+                armed.LastThreat = UnityEngine.Time.time;
+            }
         }
 
         /// <summary>Some time after a fight, protectors put the shield away (work puts the tool back in hand).</summary>

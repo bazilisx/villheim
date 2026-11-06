@@ -205,6 +205,7 @@ namespace Villheim.Logic.Villagers
         {
             var tags = new HashSet<string> { channel };
             string doing = (Sleep.IsAsleep(villager) ? "asleep" : null) ?? Healing.Describe(villager) ?? Chores.Describe(villager) ??
+                           Hunting.Describe(villager) ?? Repairs.Describe(villager) ??
                            (PathLaying.IsLaying(villager) ? "laying a path" : null) ?? FreeTime.Describe(villager) ?? "idle";
             foreach (string activity in Activities(doing))
             {
@@ -285,6 +286,8 @@ namespace Villheim.Logic.Villagers
         private static IEnumerable<string> Activities(string doing)
         {
             string d = doing.ToLowerInvariant();
+            if (d.Contains("hunting") || d.Contains("butchering") || d.Contains("meat to")) yield return "hunting";
+            if (d.Contains("repairing") || d.Contains("putting back")) yield return "repairing";
             if (d.Contains("felling")) yield return "felling";
             if (d.Contains("splitting")) yield return "splitting";
             if (d.Contains("rock")) yield return "mining";

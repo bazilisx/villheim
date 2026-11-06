@@ -104,7 +104,8 @@ namespace Villheim.Logic.Villagers
             }
 
             string job = (Sleep.IsAsleep(villager) ? "asleep" : null) ?? Healing.Describe(villager) ??
-                         Chores.Describe(villager) ?? (PathLaying.IsLaying(villager) ? "laying a path" : null) ?? FreeTime.Describe(villager);
+                         Chores.Describe(villager) ?? Hunting.Describe(villager) ?? Repairs.Describe(villager) ??
+                         (PathLaying.IsLaying(villager) ? "laying a path" : null) ?? FreeTime.Describe(villager);
             if (job != null)
             {
                 text += $"\n<color=#b0b0b0>{job}</color>";

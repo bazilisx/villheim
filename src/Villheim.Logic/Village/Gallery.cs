@@ -136,18 +136,19 @@ namespace Villheim.Logic.Village
         {
             _running = true;
             var cells = new List<Cell>();
-            try
+            var seen = new HashSet<string>();
+            void Add(DesignLibrary.Design design, Role role)
             {
-                var seen = new HashSet<string>();
-                void Add(DesignLibrary.Design design, Role role)
+                if (seen.Add(design.Name))
                 {
-                    if (seen.Add(design.Name))
-                    {
-                        cells.Add(new Cell { Design = design, Role = role, Half = Mathf.Clamp(design.Radius + 4f, 8f, 36f) });
-                    }
+                    cells.Add(new Cell { Design = design, Role = role, Half = Mathf.Clamp(design.Radius + 4f, 8f, 36f) });
                 }
+            }
 
-                // 1. The curated lists (the culture's designs and the config's), with their roles.
+            // 1 and 2: the curated lists and every blueprint. Each step catches its own errors, so one bad design
+            // can't stop the gallery (a silent stop left it gathering forever, 2026-11-06).
+            Safe("the curated lists", () =>
+            {
                 foreach (Role role in Order)
                 {
                     foreach (DesignLibrary.Design design in DesignLibrary.PoolFor(biome, role).Concat(DesignLibrary.FallbackPool(biome, role)))
@@ -155,8 +156,10 @@ namespace Villheim.Logic.Village
                         Add(design, role);
                     }
                 }
+            });
 
-                // 2. Every blueprint found (Villheim's folder, PlanBuild's, the plugins folder: OverDrive's packs too).
+            Safe("the blueprints", () =>
+            {
                 foreach (Blueprints.Blueprint blueprint in Blueprints.All().Values)
                 {
                     var design = new DesignLibrary.Design(blueprint, 1f);
@@ -165,40 +168,64 @@ namespace Villheim.Logic.Village
                         Add(design, blueprint.Role);
                     }
                 }
+            });
 
-                // 3. Every location in the game (vanilla, More World Locations and any other mod) that is a building
-                //    the biome can be built of: one per frame, as each has to be loaded to look inside.
-                foreach (ZoneSystem.ZoneLocation location in ZoneSystem.instance.m_locations
-                             .Where(l => l != null && l.m_prefab.IsValid && l.m_exteriorRadius <= 40f && !Unsuitable(l.m_prefabName))
-                             .GroupBy(l => l.m_prefabName).Select(g => g.First()))
+            // 3: every location in the game that is a building the biome can be built of, one per frame.
+            var locations = new List<ZoneSystem.ZoneLocation>();
+            Safe("the location list", () => locations.AddRange(ZoneSystem.instance.m_locations
+                .Where(l => l != null && l.m_prefab.IsValid && l.m_exteriorRadius <= 40f && !Unsuitable(l.m_prefabName))
+                .GroupBy(l => l.m_prefabName).Select(g => g.First())));
+            int checkedCount = 0;
+            foreach (ZoneSystem.ZoneLocation location in locations)
+            {
+                checkedCount++;
+                if (!seen.Contains(location.m_prefabName))
                 {
-                    if (seen.Contains(location.m_prefabName) || !DesignLibrary.BuildableIn(location, biome))
-                    {
-                        continue;
-                    }
-
-                    if (IsBuilding(location))
+                    bool add = false;
+                    Safe(location.m_prefabName, () => add = DesignLibrary.BuildableIn(location, biome) && IsBuilding(location));
+                    if (add)
                     {
                         Add(new DesignLibrary.Design(location, 1f), RoleFromName(location.m_prefabName));
                     }
-
-                    yield return null;
                 }
-            }
-            finally
-            {
-                _running = false;
+
+                if (checkedCount % 10 == 0)
+                {
+                    MessageHud.instance?.ShowMessage(MessageHud.MessageType.TopLeft,
+                        $"Gallery: looked at {checkedCount}/{locations.Count} locations, {cells.Count} designs so far");
+                }
+
+                yield return null;
             }
 
+            _running = false;
             Role[] roles = Groups[group];
+            int all = cells.Count;
             cells = cells.Where(c => roles.Contains(c.Role) && (level == 0 || Level(c) == level)).ToList();
+            VillheimPlugin.Log.LogInfo($"Gallery: {all} {biome} designs found, {cells.Count} in '{group}'{(level > 0 ? " level " + level : "")}.");
             if (cells.Count == 0)
             {
-                Console.instance?.Print($"Villheim: no {biome} designs in that group and level.");
+                Console.instance?.Print($"Villheim: none of the {all} {biome} designs found are in that group and level.");
+                MessageHud.instance?.ShowMessage(MessageHud.MessageType.Center, "Gallery: nothing in that group and level");
                 yield break;
             }
 
-            Console.instance?.Print(Plan(cells, playerPosition, forward, biome));
+            string summary = "";
+            Safe("the layout", () => summary = Plan(cells, playerPosition, forward, biome));
+            Console.instance?.Print(summary);
+            MessageHud.instance?.ShowMessage(MessageHud.MessageType.Center, $"Gallery: {cells.Count} designs; clearing the ground");
+        }
+
+        private static void Safe(string what, System.Action action)
+        {
+            try
+            {
+                action();
+            }
+            catch (System.Exception e)
+            {
+                VillheimPlugin.Log.LogWarning($"Gallery: skipped {what}: {e.GetType().Name}: {e.Message}");
+            }
         }
 
         /// <summary>Locations that are never village buildings: dungeons, altars, traders, ships and the like.</summary>
@@ -361,9 +388,10 @@ namespace Villheim.Logic.Village
 
                     pad.Done = true;
                     shaped = true;
-                    ClearAll(pad.Center, PadRadius + 2f);
-                    TerrainShaper.LevelPad(pad.Center, PadRadius, PadRadius + 8f, 40f);
-                    HearthGround.ClearVegetation(pad.Center, PadRadius + 2f);
+                    Pad current = pad;
+                    Safe("clearing ground", () => ClearAll(current.Center, PadRadius + 2f));
+                    Safe("levelling ground", () => TerrainShaper.LevelPad(current.Center, PadRadius, PadRadius + 8f, 40f));
+                    Safe("clearing grass", () => HearthGround.ClearVegetation(current.Center, PadRadius + 2f));
                     yield return null;
                 }
 
@@ -377,7 +405,7 @@ namespace Villheim.Logic.Village
                     labelled = true;
                     foreach ((Vector3 at, string text) in labels)
                     {
-                        PutSign(at, forward, text);
+                        Safe("a label", () => PutSign(at, forward, text));
                     }
                 }
 
@@ -391,8 +419,10 @@ namespace Villheim.Logic.Village
                     }
 
                     cell.Done = true;
-                    int pieces = Put(cell, forward);
-                    Sign(cell, forward);
+                    int pieces = 0;
+                    Cell building = cell;
+                    Safe(cell.Design.Name, () => pieces = Put(building, forward));
+                    Safe("a sign", () => Sign(building, forward));
                     built++;
                     VillheimPlugin.Log.LogInfo($"Gallery: {cell.Design.Name} ({Label(cell)}, level {Level(cell)}): {pieces} pieces.");
                     yield return null;

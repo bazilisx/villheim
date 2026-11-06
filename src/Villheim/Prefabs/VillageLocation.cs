@@ -17,9 +17,11 @@ namespace Villheim.Prefabs
         /// Runs every time a world loads, right before Jotunn adds custom locations to the ZoneSystem.
         /// The location only needs to be created once per game session.
         /// </summary>
+        private static bool _registered;
+
         public static void Register()
         {
-            if (ZoneManager.Instance.GetCustomLocation(Name) != null)
+            if (_registered)
             {
                 return;
             }
@@ -74,6 +76,7 @@ namespace Villheim.Prefabs
             }
 
             ZoneManager.Instance.AddCustomLocation(custom);
+            _registered = true;
             VillheimPlugin.Log.LogInfo($"Registered village sites ({config.Quantity} in {biomes}).");
         }
     }

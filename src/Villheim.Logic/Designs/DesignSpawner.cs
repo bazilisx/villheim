@@ -300,20 +300,7 @@ namespace Villheim.Logic.Designs
             foreach (TerrainModifier modifier in modifiers.OrderBy(m => m.m_sortOrder))
             {
                 Vector3 position = origin + rotation * root.InverseTransformPoint(modifier.transform.position);
-                TerrainShaper.Apply(position, new TerrainOp.Settings
-                {
-                    m_levelOffset = modifier.m_levelOffset,
-                    m_level = modifier.m_level,
-                    m_levelRadius = modifier.m_levelRadius,
-                    m_square = modifier.m_square,
-                    m_smooth = modifier.m_smooth,
-                    m_smoothRadius = modifier.m_smoothRadius,
-                    m_smoothPower = modifier.m_smoothPower,
-                    m_paintCleared = modifier.m_paintCleared,
-                    m_paintHeightCheck = modifier.m_paintHeightCheck,
-                    m_paintType = modifier.m_paintType,
-                    m_paintRadius = modifier.m_paintRadius,
-                });
+                TerrainShaper.ApplyModifier(position, modifier);
             }
         }
     }

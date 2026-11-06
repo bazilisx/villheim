@@ -85,7 +85,11 @@ namespace Villheim.Logic.Villagers
             Roles.AfterThreat(villager);
 
             Poses.BeginTick(villager);
-            if (Healing.Update(villager, ai, dt, false))
+            if (TestActs.Update(villager, ai, dt))
+            {
+                // 'vh act': a test action asked for by hand.
+            }
+            else if (Healing.Update(villager, ai, dt, false))
             {
                 // Healing comes first.
             }

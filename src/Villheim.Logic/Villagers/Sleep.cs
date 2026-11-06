@@ -38,7 +38,12 @@ namespace Villheim.Logic.Villagers
                     continue;
                 }
 
-                if (bed.m_nview.GetZDO().GetInt(Keys.BuiltBy) == id)
+                // The village's own beds, and any bed inside one of its buildings that no player made (beds that came
+                // with a design were sometimes missed, and the villagers slept on the floor beside them).
+                int builtBy = bed.m_nview.GetZDO().GetInt(Keys.BuiltBy);
+                Piece piece = bed.GetComponent<Piece>();
+                bool playerMade = piece != null && piece.GetCreator() != 0L;
+                if (builtBy == id || (builtBy == 0 && !playerMade && InsidePlot(hearth, bed.transform.position)))
                 {
                     beds.Add(bed);
                 }
@@ -160,6 +165,46 @@ namespace Villheim.Logic.Villagers
             return Mathf.Max(0, beds.Count - claimed);
         }
 
+        private static bool InsidePlot(VillageHearth hearth, Vector3 point) => PlotAt(hearth, point) != null;
+
+        /// <summary>Why this villager has no bed, for the hover text and 'vh beds'.</summary>
+        public static string NoBedReason(Villager villager)
+        {
+            VillageHearth hearth = VillageHearth.Find(villager.VillageId);
+            if (hearth == null || !hearth.IsValid)
+            {
+                return "no village";
+            }
+
+            int count = Of(hearth).Count;
+            return count == 0 ? "the village has no beds" : $"all {count} beds taken";
+        }
+
+        /// <summary>For 'vh beds': every bed near the village, whose it is and who sleeps in it.</summary>
+        public static List<string> Report(VillageHearth hearth)
+        {
+            var lines = new List<string>();
+            var counted = new HashSet<Bed>(Of(hearth));
+            foreach (Collider collider in Physics.OverlapSphere(hearth.transform.position, VillheimConfig.VillageRadius.Value + 15f,
+                         LayerMask.GetMask("piece", "piece_nonsolid")))
+            {
+                Bed bed = collider.GetComponentInParent<Bed>();
+                if (bed == null || bed.m_nview == null || !bed.m_nview.IsValid() || lines.Any(l => l.Contains(bed.transform.position.ToString("F1"))))
+                {
+                    continue;
+                }
+
+                string sleeper = Character.GetAllCharacters().OfType<Villager>()
+                    .FirstOrDefault(v => v.Zdo != null && Vector3.Distance(v.Zdo.GetVec3(KeyBed, Vector3.zero), bed.transform.position) < 0.6f)?.VillagerName ?? "nobody";
+                Plot plot = PlotAt(hearth, bed.transform.position);
+                lines.Add($"{Utils.GetPrefabName(bed.gameObject)} at {bed.transform.position.ToString("F1")}: " +
+                          $"{(counted.Contains(bed) ? "village bed" : "not counted")} (built by {bed.m_nview.GetZDO().GetInt(Keys.BuiltBy)}, " +
+                          $"creator {bed.GetComponent<Piece>()?.GetCreator() ?? 0}), in {plot?.Design ?? "no building"}, sleeper {sleeper}");
+            }
+
+            return lines;
+        }
+
         private static Plot PlotAt(VillageHearth hearth, Vector3 point)
         {
             var state = new VillageState(hearth.Zdo);
@@ -213,7 +258,7 @@ namespace Villheim.Logic.Villagers
 
         /// <summary>"asleep" in a bed, "resting under a roof" with no bed, else null.</summary>
         public static string Describe(Villager villager) =>
-            !States.TryGetValue(villager, out State state) ? null : state.Asleep ? "asleep" : state.Rough && Bedtime(villager) ? "resting under a roof (no bed)" : null;
+            !States.TryGetValue(villager, out State state) ? null : state.Asleep ? "asleep" : state.Rough && Bedtime(villager) ? $"resting under a roof ({Beds.NoBedReason(villager)})" : null;
 
         /// <summary>Hours (0 to 24) when this villager goes to bed and gets up.</summary>
         public static void Hours(Villager villager, out float bedtime, out float wake)

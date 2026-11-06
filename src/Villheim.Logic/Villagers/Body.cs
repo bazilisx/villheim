@@ -103,6 +103,11 @@ namespace Villheim.Logic.Villagers
             }
 
             Pins.Remove(villager);
+            if (villager != null && villager.m_body != null)
+            {
+                villager.m_body.useGravity = true;
+            }
+
             if (villager != null && villager.m_collider != null)
             {
                 foreach (Collider collider in pin.Ignored)
@@ -148,6 +153,25 @@ namespace Villheim.Logic.Villagers
                 }
 
                 Hold(villager, pin.Point);
+            }
+        }
+
+        public static bool IsPinned(Villager villager) => Pins.ContainsKey(villager);
+
+        /// <summary>
+        /// A pinned villager counts as attached, as a player on a chair or in a bed does: the game then stops its
+        /// walking and falling physics for him and moves his collider to the layer that hardly touches the world.
+        /// Pinning alone left the walking physics working against the pin every step (still a shake on benches).
+        /// </summary>
+        [HarmonyPatch(typeof(Humanoid), nameof(Humanoid.IsAttached))]
+        internal static class AttachedPatch
+        {
+            private static void Postfix(Humanoid __instance, ref bool __result)
+            {
+                if (!__result && Pins.Count > 0 && __instance is Villager villager && Pins.ContainsKey(villager))
+                {
+                    __result = true;
+                }
             }
         }
 

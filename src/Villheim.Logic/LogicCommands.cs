@@ -19,6 +19,9 @@ namespace Villheim.Logic
             "settle (or newvillage): light a new village hearth in front of you",
             "ghost: apply the look settings now and show the shader in use",
             "gallery [meadows|blackforest]: in a fresh world, lay out every design villages of that biome can build on one flat plain, each with a sign (kind, level, name)",
+            "act <villager|near> <action> [seconds]: make one villager do one thing, to test it ('vh act near' lists the actions)",
+            "board [now]: show the notice board's blueprint, place and what it waits for ('now' puts it up at once, free)",
+            "beds: list the beds round the nearest village, whether they count and who sleeps in each",
             "buildingground: level the ground under the nearest village building to the bottom of its walls",
             "hearthground: clear and level the ground round the nearest village's hearth again",
             "previews: write a preview command for every design to BepInEx/Villheim/preview-commands.txt",
@@ -67,6 +70,39 @@ namespace Villheim.Logic
                     if (TryGetPlayer(context, out Player gallery))
                     {
                         Say(context, Gallery.Start(gallery, args.Length > 0 ? args[0] : "meadows"));
+                    }
+
+                    return true;
+                case "villheim_act":
+                    if (TryGetPlayer(context, out Player actor))
+                    {
+                        float actSeconds = args.Length > 2 && float.TryParse(args[2], System.Globalization.NumberStyles.Float,
+                            System.Globalization.CultureInfo.InvariantCulture, out float sec) ? sec : 60f;
+                        Say(context, Villagers.TestActs.Start(actor, args.Length > 0 ? args[0] : "near", args.Length > 1 ? args[1] : "", actSeconds));
+                    }
+
+                    return true;
+                case "villheim_board":
+                case "villheim_beds":
+                    if (TryGetPlayer(context, out Player boardNear) && VillageHearth.Closest(boardNear.transform.position, 150f) is VillageHearth bv)
+                    {
+                        if (name == "villheim_board")
+                        {
+                            Say(context, "Villheim: " + NoticeBoard.Report(bv, args.Length > 0 && args[0] == "now"));
+                        }
+                        else
+                        {
+                            List<string> beds = Villagers.Beds.Report(bv);
+                            Say(context, $"Villheim: {beds.Count} beds round {bv.VillageName}:");
+                            foreach (string line in beds)
+                            {
+                                Say(context, "   " + line);
+                            }
+                        }
+                    }
+                    else
+                    {
+                        Say(context, "Villheim: no village hearth within 150 m.");
                     }
 
                     return true;

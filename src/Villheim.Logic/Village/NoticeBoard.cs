@@ -216,6 +216,30 @@ namespace Villheim.Logic.Village
             }
         }
 
+        /// <summary>For 'vh board': whether the blueprint was found, where the board goes, what is missing and why it waits.</summary>
+        public static string Report(VillageHearth hearth, bool buildNow)
+        {
+            Blueprints.Blueprint blueprint = Blueprints.ByFileName(BlueprintName);
+            if (blueprint == null)
+            {
+                return $"no '{BlueprintName}' blueprint found in BepInEx/config/Villheim/blueprints, BepInEx/config/PlanBuild/blueprints or the plugins folder";
+            }
+
+            List<DesignSpawner.PlanEntry> missing = Missing(hearth, out Vector3 origin, out float yaw);
+            Amenities.Job job = Job(hearth);
+            Amenities.Job next = Amenities.Upcoming(hearth);
+            string cost = job != null ? string.Join(", ", job.Cost.Select(c => $"{c.Value} {Materials.Label(c.Key)}")) : "-";
+            string text = $"blueprint {blueprint.File} ({blueprint.Pieces.Count} pieces, chest piece: " +
+                          $"{(blueprint.Pieces.Any(p => IsChest(p.Prefab)) ? "yes" : "no")}); board at {origin.ToString("F1")} turned {yaw:0}; " +
+                          $"{missing.Count} pieces missing, cost {cost}; the village's next thing to make: {next?.Name ?? "nothing"}.";
+            if (buildNow && missing.Count > 0)
+            {
+                text += Build(hearth) ? " Built it now (free)." : " Could not build it.";
+            }
+
+            return text;
+        }
+
         /// <summary>Rewrites the board's signs (every 20 seconds, or now).</summary>
         public static void Update(VillageHearth hearth, bool now = false)
         {

@@ -84,8 +84,16 @@ namespace Villheim.Logic.Village
             }
 
             var state = new VillageState(hearth.Zdo);
-            return Affordable(hearth, state, next.Cost, ConstructionSite.Remaining(hearth)) ? next : null;
+            return Affordable(hearth, state, next.Cost, Reserved(hearth, next)) ? next : null;
         }
+
+        /// <summary>
+        /// What the job may not touch: the building going up keeps its materials, except from essentials (beds, the
+        /// notice board, the cooking station), which are cheap and come first. A long build had kept the notice board
+        /// waiting on wood the site had set aside.
+        /// </summary>
+        private static Dictionary<string, int> Reserved(VillageHearth hearth, Job job) =>
+            job.Essential ? new Dictionary<string, int>() : ConstructionSite.Remaining(hearth);
 
         /// <summary>The first thing still missing, affordable or not (what gatherers work toward). Every 10 seconds.</summary>
         public static Job Upcoming(VillageHearth hearth)
@@ -237,7 +245,7 @@ namespace Villheim.Logic.Village
             Forget(hearth.VillageId);
             if (job.Prefab == NoticeBoard.BlueprintName)
             {
-                if (!Affordable(hearth, state, job.Cost, ConstructionSite.Remaining(hearth)) || !Pay(hearth, state, job.Cost))
+                if (!Affordable(hearth, state, job.Cost, Reserved(hearth, job)) || !Pay(hearth, state, job.Cost))
                 {
                     return false;
                 }
@@ -247,7 +255,7 @@ namespace Villheim.Logic.Village
                 return built;
             }
 
-            if (Made(hearth.VillageId, job.Prefab, job.Spot) || !Affordable(hearth, state, job.Cost, ConstructionSite.Remaining(hearth)))
+            if (Made(hearth.VillageId, job.Prefab, job.Spot) || !Affordable(hearth, state, job.Cost, Reserved(hearth, job)))
             {
                 return false;
             }

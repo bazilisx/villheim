@@ -266,6 +266,20 @@ namespace Villheim.Logic.Villagers
                 return;
             }
 
+            // An evening by the fire: a free bench near the hearth before the ground.
+            Chair evening = mode == Mode.Evening ? Seats.Free(villager) : null;
+            if (evening != null && Utils.DistanceXZ(evening.transform.position, hearth) < 12f &&
+                !(state.SkipUntil.TryGetValue(Kind.Seat, out float eveningSkip) && eveningSkip > Time.time))
+            {
+                Seats.Claim(evening, villager);
+                state.Kind = Kind.Seat;
+                state.Station = evening.gameObject;
+                state.Spot = Seats.Point(evening).position;
+                state.HasLook = false;
+                state.Until = Time.time + 60f;
+                return;
+            }
+
             if (mode != Mode.Day)
             {
                 state.Kind = mode == Mode.Evening ? Kind.Evening : Kind.Night;
@@ -309,6 +323,14 @@ namespace Villheim.Logic.Villagers
                 (Kind.Station, FreeStation(villager) != null ? 3f : 0f),
                 (Kind.Seat, wet || mood < 35f ? 0f : (Seats.Free(villager) != null ? (carer ? 3f : 2f) : 0f)),
             };
+
+            // A free bench or chair beats the ground: sitting about goes to the seat when there is one.
+            if (!wet && Seats.Free(villager) != null && !(state.SkipUntil.TryGetValue(Kind.Seat, out float seatSkip) && seatSkip > Time.time))
+            {
+                float sitting = options.Where(o => o.Kind == Kind.FireSit || o.Kind == Kind.GroundSit).Sum(o => o.Weight);
+                options.RemoveAll(o => o.Kind == Kind.FireSit || o.Kind == Kind.GroundSit || o.Kind == Kind.Seat);
+                options.Add((Kind.Seat, sitting + (carer ? 3f : 2f)));
+            }
 
             options.RemoveAll(o => o.Weight <= 0f || (state.SkipUntil.TryGetValue(o.Kind, out float until) && until > Time.time));
             Kind kind = options.Count == 0 ? Kind.Stroll : Pick(options);
@@ -520,7 +542,13 @@ namespace Villheim.Logic.Villagers
 
             if (station.GetComponent<CookingStation>() != null || station.GetComponent<Fireplace>() != null)
             {
-                Poses.Hold(villager, Poses.Kneel);
+                // Seeing to the fire: stand at it and reach in now and then (kneeling at a cooking station looked odd).
+                if (Time.time >= state.NextGesture)
+                {
+                    state.NextGesture = Time.time + Random.Range(4f, 7f);
+                    Poses.Trigger(villager, "interact");
+                }
+
                 return;
             }
 

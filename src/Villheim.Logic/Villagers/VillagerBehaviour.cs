@@ -102,7 +102,8 @@ namespace Villheim.Logic.Villagers
                 text += $"\n<color=#b0b0b0>of {village}</color>";
             }
 
-            string job = Chores.Describe(villager) ?? FreeTime.Describe(villager);
+            string job = (Sleep.IsAsleep(villager) ? "asleep" : null) ?? Healing.Describe(villager) ??
+                         Chores.Describe(villager) ?? FreeTime.Describe(villager);
             if (job != null)
             {
                 text += $"\n<color=#b0b0b0>{job}</color>";

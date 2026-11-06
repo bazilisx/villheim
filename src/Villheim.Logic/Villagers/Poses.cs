@@ -108,6 +108,17 @@ namespace Villheim.Logic.Villagers
             villager.m_zanim.SetTrigger(trigger);
         }
 
+        /// <summary>A one-off animator trigger such as "interact" (reaching out) or "eat", if the animator has it.</summary>
+        public static void Trigger(Villager villager, string trigger)
+        {
+            if (villager.m_zanim == null || !Exists(villager, trigger))
+            {
+                return;
+            }
+
+            villager.m_zanim.SetTrigger(trigger);
+        }
+
         private static void ReleaseHeld(Villager villager, State state)
         {
             if (state.Held == null)

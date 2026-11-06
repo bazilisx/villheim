@@ -13,6 +13,7 @@ namespace Villheim.Logic
         public static ConfigEntry<bool> SiteChest;
         public static ConfigEntry<float> SecondsPerPiece;
         public static ConfigEntry<int> StartingStock;
+        public static ConfigEntry<float> FoodHealing;
 
         public static void Bind()
         {
@@ -34,6 +35,9 @@ namespace Villheim.Logic
             StartingStock = Admin(config, work, "StartingStock", 0,
                 "Wood a new village starts with (and half as much stone). At 0 the villagers gather everything " +
                 "for their first building themselves.");
+            FoodHealing = Admin(config, work, "FoodHealing", 1f,
+                "Villagers heal like players: each food in effect heals its own regen value every 10 seconds for the " +
+                "food's duration. This multiplies that healing.");
         }
 
         private static ConfigEntry<T> Admin<T>(ConfigFile config, string section, string key, T value, string description)

@@ -14,6 +14,8 @@ namespace Villheim.Logic
         public static ConfigEntry<float> SecondsPerPiece;
         public static ConfigEntry<int> StartingStock;
         public static ConfigEntry<float> FoodHealing;
+        public static ConfigEntry<bool> VillageRaids;
+        public static ConfigEntry<float> RaidChance;
 
         public static void Bind()
         {
@@ -38,6 +40,11 @@ namespace Villheim.Logic
             FoodHealing = Admin(config, work, "FoodHealing", 1f,
                 "Villagers heal like players: each food in effect heals its own regen value every 10 seconds for the " +
                 "food's duration. This multiplies that healing.");
+            VillageRaids = Admin(config, work, "VillageRaids", true,
+                "Villages with three or more villagers are now and then raided by greydwarfs at night, warned of at dusk. " +
+                "Only while a player is in the village.");
+            RaidChance = Admin(config, work, "RaidChance", 0.2f,
+                "Chance each dusk of a raid (plus 3% per village tier), never two nights running.");
         }
 
         private static ConfigEntry<T> Admin<T>(ConfigFile config, string section, string key, T value, string description)

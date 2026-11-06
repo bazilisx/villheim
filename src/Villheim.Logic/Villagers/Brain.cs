@@ -114,6 +114,10 @@ namespace Villheim.Logic.Villagers
                 {
                     // A protector hunts when the chest is low on food.
                 }
+                else if (Foraging.Update(villager, ai, dt))
+                {
+                    // A carer picks berries and mushrooms when the chest is low on food.
+                }
                 else if (!Healing.Update(villager, ai, dt, true))
                 {
                     FreeTime.Update(villager, ai, dt);

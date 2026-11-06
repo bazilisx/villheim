@@ -284,6 +284,7 @@ namespace Villheim.Logic.Villagers
             }
 
             AddReputation(hearth, player, Mathf.Clamp(gift / 10, 1, 5), "gift");
+            PayForGift(hearth, chest, player, gift);
             Request request = ReadRequest(hearth);
             if (request != null && !request.Done && request.Day == Today)
             {
@@ -296,6 +297,30 @@ namespace Villheim.Logic.Villagers
             }
 
             Dialogue.Event(hearth.VillageId, "gift", player.transform.position);
+        }
+
+        /// <summary>
+        /// Millenaire's villages buy the goods they need: with coins in the chest (from trading), the village pays a
+        /// coin for every three materials a player brings, as far as its coins go.
+        /// </summary>
+        private static void PayForGift(VillageHearth hearth, Container chest, Player player, int gift)
+        {
+            GameObject coins = ObjectDB.instance.GetItemPrefab("Coins");
+            if (coins == null)
+            {
+                return;
+            }
+
+            string name = coins.GetComponent<ItemDrop>().m_itemData.m_shared.m_name;
+            int pay = Mathf.Min(chest.GetInventory().CountItems(name), gift / 3);
+            if (pay <= 0)
+            {
+                return;
+            }
+
+            chest.GetInventory().RemoveItem(name, pay);
+            player.GetInventory().AddItem(coins, pay);
+            player.Message(MessageHud.MessageType.TopLeft, $"{hearth.VillageName} pays you {pay} coins for the materials.");
         }
 
         // ---------------------------------------------------------------- greeting newcomers

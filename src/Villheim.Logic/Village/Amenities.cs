@@ -46,6 +46,7 @@ namespace Villheim.Logic.Village
         {
             // Slot -1 is the hearth itself: the cooking station goes over the village fire.
             new Entry { Prefab = "piece_cookingstation", Name = "cooking station", Slot = -1, MinBuildings = 0 },
+            new Entry { Prefab = "sign", Name = "village sign", Slot = 0, MinBuildings = 1 },
             new Entry { Prefab = "piece_bench01", Name = "bench", Slot = 2, MinBuildings = 1 },
             new Entry { Prefab = "piece_bench01", Name = "bench", Slot = 3, MinBuildings = 2 },
         };
@@ -200,6 +201,12 @@ namespace Villheim.Logic.Village
             if (view != null && view.GetZDO() != null)
             {
                 view.GetZDO().Set(Keys.BuiltBy, hearth.VillageId);
+                if (made.TryGetComponent(out Sign sign))
+                {
+                    // Millenaire puts the village's name on a sign post.
+                    sign.SetText(state.Name);
+                }
+
                 if (made.TryGetComponent(out Fireplace fire))
                 {
                     // A new fire is laid with a full load of wood.

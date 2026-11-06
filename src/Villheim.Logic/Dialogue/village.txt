@@ -1,0 +1,135 @@
+# Villheim: raids, deaths, foraging and the night watch. Same format as social.txt.
+# Extra tags: event:raidwarning event:raidover event:death doing:foraging thought:mourning thought:watch thought:raidwon
+
+# ------------------------------------------------------------------ raid warning at dusk
+
+@ event:raidwarning ~worry
+Scouts saw them gathering. They'll come tonight.
+Keep your axe close tonight.
+Nobody wanders off after dark. Nobody.
+
+@ event:raidwarning, protector ~angry
+Let them come. We'll be ready.
+I'll be at the fence. Get some rest while you can.
+
+@ event:raidwarning, carer ~worry
+Everyone in early tonight. I mean it.
+
+@ event:raidwarning | worrier ~worry
+I knew it. I knew they'd come for us.
+
+@ event:raidwarning | gruff
+Good. I've been wanting to hit something.
+
+@ event:raidwarning | elder
+Raiders. We've seen raiders before. We're still here.
+
+@ event:raidwarning | devout ~pious
+Thor, watch over us tonight.
+
+@ event:raidwarning | young ~worry
+Are they really coming? Real raiders?
+
+@ chat, event:raidwarning
+Do you think they'll make it past the fence? // Not if I can help it. // You can't help much. // Watch me.
+
+# ------------------------------------------------------------------ raid over
+
+@ event:raidover ~proud
+They're gone. We held.
+That's the last of them. Count heads.
+We'll sleep well after this one. Eventually.
+
+@ event:raidover, protector ~proud
+That's what the fence is for.
+
+@ event:raidover | gruff
+Mess everywhere. Someone fix the fence.
+
+@ event:raidover | cheerful ~happy
+We did it! Everyone's still here!
+
+@ event:raidover | elder
+Another night survived. They'll talk about this one.
+
+@ thought:raidwon ~proud
+We beat them back last night. I still can't believe it.
+After last night, a few greydwarfs don't scare me.
+
+@ thought:raidwon | worrier
+We won, but they'll be back. They're always back.
+
+@ chat, thought:raidwon
+Did you see them run? // I saw you run. // Towards them!
+
+# ------------------------------------------------------------------ a death in the village
+
+@ event:death ~sad
+I can't believe they're gone.
+We lost one of our own today.
+It's quiet without them.
+
+@ event:death | gruff ~sad
+Didn't deserve that. Nobody does.
+
+@ event:death | elder ~sad
+I've buried too many. One more is one too many.
+
+@ event:death | devout ~pious
+May they find their way to the halls.
+
+@ thought:mourning ~sad
+I keep looking for them at the fire.
+Some days are just heavy.
+They'd have laughed at me for moping. I'm moping anyway.
+
+@ thought:mourning | young ~sad
+Where do people go? When they go?
+
+@ chat, thought:mourning
+I miss them. // So do I. // Do you think they knew? // They knew.
+
+# ------------------------------------------------------------------ foraging
+
+@ doing:foraging
+Berries here, mushrooms there. Supper's sorted.
+The raspberries are good this year.
+Don't eat them before they get to the chest. That's the hard part.
+
+@ doing:foraging | worrier ~worry
+Is this mushroom the good kind? It's the good kind. I think.
+
+@ doing:foraging | young ~happy
+I've eaten three. Maybe four. They're for the chest, really.
+
+@ doing:foraging | elder
+My grandmother knew every mushroom in the forest by name.
+
+@ chat, doing:foraging
+Found any? // A few. // Can I have one? // They're for the chest. // One. // Fine.
+
+# ------------------------------------------------------------------ the night watch
+
+@ doing:watch, night, protector
+My turn on watch. Go to bed, I've got this.
+I'll walk the edge till dawn.
+Quiet night so far. Let's keep it that way.
+
+@ doing:watch, night | worrier ~worry
+Was that a branch? It was a branch. Wasn't it?
+
+@ doing:watch, night | gruff
+Watch duty. Again. Fine.
+
+@ doing:watch, night | young ~happy
+I get the night watch! Nobody's ever let me before!
+
+@ thought:watch
+I was on watch all night. Don't expect much from me today.
+Long night. I could sleep standing up.
+
+@ thought:watch | gruff
+Tired. Watch. Don't ask.
+
+@ talk, doing:watch, night
+You shouldn't be wandering about at night. I'll walk you to the fire.

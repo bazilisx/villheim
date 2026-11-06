@@ -54,7 +54,7 @@ namespace Villheim.Logic.Villagers
         private static readonly Dictionary<(int, string), float> Events = new Dictionary<(int, string), float>();
 
         private static readonly string[] VillageMoodEvents = { "finished", "arrival", "hunt", "trade" };
-        private static readonly string[] Reacted = { "finished", "arrival", "groundbroken", "hunt" };
+        private static readonly string[] Reacted = { "finished", "arrival", "groundbroken", "hunt", "death" };
 
         /// <summary>
         /// Something happened in the village (finished, arrival...): "event:x" holds for ten minutes, everyone's mood
@@ -417,7 +417,7 @@ namespace Villheim.Logic.Villagers
         {
             var tags = new HashSet<string> { channel };
             string doing = (Sleep.IsAsleep(villager) ? "asleep" : null) ?? (MorningHearth.IsTending(villager) ? "tending the hearth" : null) ?? Healing.Describe(villager) ?? Chores.Describe(villager) ??
-                           Hunting.Describe(villager) ?? Repairs.Describe(villager) ??
+                           Hunting.Describe(villager) ?? Foraging.Describe(villager) ?? Repairs.Describe(villager) ??
                            (PathLaying.IsLaying(villager) ? "laying a path" : null) ?? FreeTime.Describe(villager) ?? "idle";
             foreach (string activity in Activities(doing))
             {
@@ -511,6 +511,7 @@ namespace Villheim.Logic.Villagers
         {
             string d = doing.ToLowerInvariant();
             if (d.Contains("tending the hearth")) yield return "hearth";
+            if (d.Contains("foraging") || d.Contains("berries")) yield return "foraging";
             if (d.Contains("hunting") || d.Contains("butchering") || d.Contains("meat to")) yield return "hunting";
             if (d.Contains("fence")) yield return "fencing";
             else if (d.Contains("repairing") || d.Contains("putting back")) yield return "repairing";

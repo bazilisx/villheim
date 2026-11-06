@@ -23,6 +23,9 @@ namespace Villheim.Logic.Village
             public string Prefab;
             public string Name;
             public int Count;
+
+            /// <summary>Part of settling in (beds, the workbench): made before the village grows any further.</summary>
+            public bool Essential;
         }
 
         /// <summary>A home with a radius under this is a small home with one bed.</summary>
@@ -43,31 +46,33 @@ namespace Villheim.Logic.Village
             : _solidMask = LayerMask.GetMask("Default", "static_solid", "Default_small", "piece", "piece_nonsolid", "terrain", "vehicle");
 
         /// <summary>
-        /// Furnishings this building should have, in the order they are made. Like Millenaire's building levels, more
-        /// comes as the village grows (<paramref name="tier"/>: 0 camp, 1 hamlet, 2 village, 3 town): first beds and the
-        /// workbench, then a chest, then a table and seats.
+        /// Furnishings this building should have, in the order they are made, like a player settling in: beds and the
+        /// workbench first (essential), then a chest, seats and a table for comfort, a little more as the village grows
+        /// (<paramref name="tier"/>: 0 camp, 1 hamlet, 2 village, 3 town).
         /// </summary>
         public static IEnumerable<Want> WantsFor(Plot plot, int tier)
         {
             switch (plot.Role)
             {
                 case nameof(Role.Hub):
-                    yield return new Want { Prefab = "bed", Name = "bed", Count = Mathf.Max(1, VillheimConfig.StartingVillagers.Value) };
-                    if (tier >= 1) yield return new Want { Prefab = "piece_table", Name = "table", Count = 1 };
-                    if (tier >= 1) yield return new Want { Prefab = "piece_bench01", Name = "bench", Count = 2 };
-                    if (tier >= 2) yield return new Want { Prefab = "piece_chest_wood", Name = "chest", Count = 1 };
+                    yield return new Want { Prefab = "bed", Name = "bed", Count = Mathf.Max(1, VillheimConfig.StartingVillagers.Value), Essential = true };
+                    // Like a player's first shelter, the longhouse gets a workbench.
+                    yield return new Want { Prefab = "piece_workbench", Name = "workbench", Count = 1, Essential = true };
+                    yield return new Want { Prefab = "piece_table", Name = "table", Count = 1 };
+                    yield return new Want { Prefab = "piece_bench01", Name = "bench", Count = tier >= 1 ? 2 : 1 };
+                    if (tier >= 1) yield return new Want { Prefab = "piece_chest_wood", Name = "chest", Count = 1 };
                     break;
                 case nameof(Role.Workshop):
-                    yield return new Want { Prefab = "piece_workbench", Name = "workbench", Count = 1 };
-                    if (tier >= 2) yield return new Want { Prefab = "piece_chest_wood", Name = "chest", Count = 1 };
+                    yield return new Want { Prefab = "piece_workbench", Name = "workbench", Count = 1, Essential = true };
+                    yield return new Want { Prefab = "piece_chest_wood", Name = "chest", Count = 1 };
                     break;
                 case nameof(Role.Farm):
                     break;
                 default:
-                    yield return new Want { Prefab = "bed", Name = "bed", Count = BedsInHome(plot) };
-                    if (tier >= 1) yield return new Want { Prefab = "piece_chest_wood", Name = "chest", Count = 1 };
-                    if (tier >= 2) yield return new Want { Prefab = "piece_chair", Name = "chair", Count = BedsInHome(plot) };
-                    if (tier >= 3) yield return new Want { Prefab = "piece_table", Name = "table", Count = 1 };
+                    yield return new Want { Prefab = "bed", Name = "bed", Count = BedsInHome(plot), Essential = true };
+                    yield return new Want { Prefab = "piece_chest_wood", Name = "chest", Count = 1 };
+                    yield return new Want { Prefab = "piece_chair", Name = "chair", Count = BedsInHome(plot) };
+                    if (tier >= 1) yield return new Want { Prefab = "piece_table", Name = "table", Count = 1 };
                     break;
             }
         }

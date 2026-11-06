@@ -47,7 +47,8 @@ namespace Villheim.Logic.Village
                 return null;
             }
 
-            foreach (Collider collider in Physics.OverlapSphere(position, 2f))
+            // A tall search: the ground may have been levelled under the chest since its place was recorded.
+            foreach (Collider collider in Physics.OverlapCapsule(position + Vector3.down * 8f, position + Vector3.up * 8f, 2f))
             {
                 Container container = collider.GetComponentInParent<Container>();
                 if (container && container.m_nview && container.m_nview.IsValid() &&
@@ -59,6 +60,16 @@ namespace Villheim.Logic.Village
             }
 
             return null;
+        }
+
+        /// <summary>Records where the chest now stands, after it was moved (the hearth ground was levelled).</summary>
+        public static void Moved(VillageHearth hearth, Container chest)
+        {
+            if (hearth != null && hearth.IsValid && chest != null)
+            {
+                hearth.Zdo.Set(KeyChestPosition, chest.transform.position);
+                Cache[hearth.VillageId] = chest;
+            }
         }
 
         /// <summary>The chest was destroyed and has not been rebuilt yet.</summary>

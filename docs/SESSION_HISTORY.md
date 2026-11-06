@@ -44,6 +44,7 @@ Current facts only. Read this at the start of a session. Narrative is in `docs/d
 
 ## Recent milestones
 
+- **2026-11-06 (session 10: settling in before growing, jitter fixes from mod research, chest kept)** - see docs/daily-notes/2026-11/2026-11-06.md
 - **2026-11-06 (session 9: flat pads, bronze axes, trading off, Jarl, echo look settings)** - see docs/daily-notes/2026-11/2026-11-06.md
 - **2026-11-06 (fifth session: chronicle, raids, night watch, village types, children)** - see docs/daily-notes/2026-11/2026-11-06.md
 - **2026-11-06 (third session: moods, social layer, fence, dialogue doubled)** - see docs/daily-notes/2026-11/2026-11-06.md

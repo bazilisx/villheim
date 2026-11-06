@@ -18,6 +18,7 @@ namespace Villheim.Logic.Villagers
     internal static class Brain
     {
         private const float ThreatCheckSeconds = 0.5f;
+        private const float ThreatEndsAfter = 5f;
 
         private sealed class State
         {
@@ -25,6 +26,8 @@ namespace Villheim.Logic.Villagers
             public bool Threat;
             public Character Enemy;
             public bool WasThreat;
+            public int Sightings;
+            public float LastSeen = -100f;
         }
 
         private static readonly ConditionalWeakTable<Villager, State> States = new ConditionalWeakTable<Villager, State>();
@@ -138,15 +141,45 @@ namespace Villheim.Logic.Villagers
             return true;
         }
 
-        /// <summary>True while the game AI can sense an enemy. Checked twice a second.</summary>
+        /// <summary>
+        /// True while there is an enemy about, checked twice a second. Steadied both ways, so a creature at the edge of
+        /// sight (in and out behind trees) doesn't flip a villager between fighting and working every half second: a
+        /// fight starts once an enemy has been seen on two checks running (at once when it is close), and ends only
+        /// after none has been seen for five seconds.
+        /// </summary>
         private static bool ThreatNear(Villager villager, VillagerAI ai, out Character enemy)
         {
             State state = States.GetOrCreateValue(villager);
             if (Time.time >= state.NextThreatCheck)
             {
                 state.NextThreatCheck = Time.time + ThreatCheckSeconds + Random.Range(0f, 0.2f);
-                state.Enemy = ai.FindEnemy();
-                state.Threat = state.Enemy != null;
+                Character seen = ai.FindEnemy();
+                if (seen != null)
+                {
+                    state.Sightings++;
+                    state.LastSeen = Time.time;
+                    state.Enemy = seen;
+                    bool close = Vector3.Distance(seen.transform.position, villager.transform.position) < 8f;
+                    if (close || state.Sightings >= 2)
+                    {
+                        state.Threat = true;
+                    }
+                }
+                else
+                {
+                    state.Sightings = 0;
+                    if (Time.time - state.LastSeen > ThreatEndsAfter)
+                    {
+                        state.Threat = false;
+                        state.Enemy = null;
+                    }
+                }
+            }
+
+            if (!ReferenceEquals(state.Enemy, null) && (!state.Enemy || state.Enemy.IsDead()))
+            {
+                state.Enemy = null;
+                state.Threat = false;
             }
 
             enemy = state.Enemy;

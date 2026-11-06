@@ -184,7 +184,7 @@ namespace Villheim.Logic.Villagers
             // see-through look washed out to white), at night the softer, glowing look.
             float dark = Darkness();
             float tint = on ? Mathf.Clamp01(Mathf.Lerp(LogicConfig.GhostTintDay.Value, LogicConfig.GhostTint.Value, dark)) : 0f;
-            float alpha = on ? Mathf.Clamp(Mathf.Lerp(LogicConfig.GhostAlphaDay.Value, LogicConfig.GhostAlpha.Value, dark), 0.1f, 1f) : 1f;
+            float alpha = on ? Mathf.Clamp(Mathf.Lerp(LogicConfig.GhostAlphaDay.Value, LogicConfig.GhostAlpha.Value, dark), 0.02f, 1f) : 1f;
             float glow = on ? Mathf.Clamp01(Mathf.Lerp(LogicConfig.GhostGlowDay.Value, LogicConfig.GhostGlow.Value, dark)) : 0f;
             Shader ghost = alpha < 0.99f ? GhostShader() : null;
             foreach (Renderer renderer in villager.GetComponentsInChildren<Renderer>(true))
@@ -300,9 +300,14 @@ namespace Villheim.Logic.Villagers
             // The borrowed shader (the game's Fallen Warrior ghosts) takes both colour and see-through from _TintColor:
             // the colour from GhostColor (GhostTint says how strongly, against white), the alpha from GhostAlpha, and
             // the glow added on top as a soft brightening in the glow colour (the shader has no glow of its own).
+            //
+            // That shader takes no notice of the alpha value itself (anything under 1 looked the same), but it does
+            // follow the strength of the colour: a fainter colour shows more of what is behind. So GhostAlpha also
+            // scales the colour, from barely there near 0 to the full ghost just under 1. At 1 the villager is solid
+            // (his own shader back), so the last step, from 0.99 to 1, is still a jump.
             if (slot.Swapped && m.HasProperty("_TintColor"))
             {
-                Color tintRgb = Color.Lerp(Color.white, Teal, tint) + GlowColor * glow;
+                Color tintRgb = (Color.Lerp(Color.white, Teal, tint) + GlowColor * glow) * Strength(alpha);
                 m.SetColor("_TintColor", new Color(tintRgb.r, tintRgb.g, tintRgb.b, alpha));
                 if (m.HasProperty("_Cutoff") && _ghostCutoff >= 0f)
                 {
@@ -310,9 +315,20 @@ namespace Villheim.Logic.Villagers
                 }
             }
 
-            // Other see-through shaders may use a value of their own for transparency: set the usual ones too.
+            // Other see-through shaders may use a value of their own for transparency: set the usual ones too, and
+            // where the shader lets its blending be set, make it a plain fade by alpha.
             if (slot.Swapped)
             {
+                if (m.HasProperty("_SrcBlend") && m.HasProperty("_DstBlend"))
+                {
+                    m.SetInt("_SrcBlend", (int)UnityEngine.Rendering.BlendMode.SrcAlpha);
+                    m.SetInt("_DstBlend", (int)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
+                    if (m.HasProperty("_ZWrite"))
+                    {
+                        m.SetInt("_ZWrite", 0);
+                    }
+                }
+
                 foreach (string property in OpacityProperties)
                 {
                     if (m.HasProperty(property))
@@ -356,6 +372,9 @@ namespace Villheim.Logic.Villagers
                 }
             }
         }
+
+        /// <summary>How strong the ghost colour is for a GhostAlpha: 0.15 near 0, about 1 just under 1.</summary>
+        private static float Strength(float alpha) => Mathf.Lerp(0.15f, 1.1f, Mathf.Clamp01(alpha));
 
         private static bool Close(Color a, Color b) =>
             Mathf.Abs(a.r - b.r) < 0.002f && Mathf.Abs(a.g - b.g) < 0.002f && Mathf.Abs(a.b - b.b) < 0.002f && Mathf.Abs(a.a - b.a) < 0.002f;

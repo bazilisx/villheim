@@ -149,8 +149,7 @@ namespace Villheim.Logic.Villagers
             toPrey.y = 0f;
             if (toPrey.sqrMagnitude > 0.01f)
             {
-                villager.transform.rotation = Quaternion.RotateTowards(villager.transform.rotation, Quaternion.LookRotation(toPrey),
-                    360f * Time.fixedDeltaTime);
+                villager.SetLookDir(toPrey.normalized);
             }
 
             if (Time.time < state.NextStrike)

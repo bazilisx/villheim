@@ -532,7 +532,8 @@ namespace Villheim.Logic.Villagers
             }
 
             Walker walker = Walker.For(villager);
-            bool close = InReach(villager, work.Contact, walker.IsArrived);
+            // Once at work he stays put at the longer reach: a step back from a swing doesn't send him walking again.
+            bool close = InReach(villager, work.Contact, walker.IsArrived || work.Phase == Phase.Work);
             if (!close)
             {
                 work.Phase = Phase.Approach;
@@ -584,7 +585,9 @@ namespace Villheim.Logic.Villagers
             Vector3 toContact = work.Contact - villager.transform.position;
             toContact.y = 0f;
             bool facing = Vector3.Angle(villager.transform.forward, toContact) < 20f || Time.time - work.FacingSince > 3f;
-            if (work.Timer <= 0f && facing && work.HitAt < 0f)
+            // Only from a standstill: a swing started while still moving carried him on with his legs running.
+            bool still = villager.GetVelocity().magnitude < 0.3f || Time.time - work.FacingSince > 3f;
+            if (work.Timer <= 0f && facing && still && work.HitAt < 0f)
             {
                 // Check the reach again on every swing: never hit something that is out of arm's length. A standing
                 // tree is struck at the trunk.
@@ -1336,8 +1339,9 @@ namespace Villheim.Logic.Villagers
         }
 
         /// <summary>
-        /// Turns the villager's body toward a point at a steady 360 degrees a second (the game only turns a standing
-        /// character's head), and aims the look there too. Swings wait until he faces it.
+        /// Aims the villager's look at a point. The game turns the body toward the look direction by itself, standing
+        /// or moving; turning the body here as well made two things steer it at once, which showed as a wobble.
+        /// Swings wait until he faces it.
         /// </summary>
         private static void Face(Villager villager, VillagerAI ai, Vector3 point)
         {
@@ -1349,10 +1353,7 @@ namespace Villheim.Logic.Villagers
                 return;
             }
 
-            direction.Normalize();
-            villager.SetLookDir(direction);
-            Quaternion wanted = Quaternion.LookRotation(direction);
-            villager.transform.rotation = Quaternion.RotateTowards(villager.transform.rotation, wanted, 360f * Time.fixedDeltaTime);
+            villager.SetLookDir(direction.normalized);
         }
 
         private static void MarkUnreachable(GameObject target)

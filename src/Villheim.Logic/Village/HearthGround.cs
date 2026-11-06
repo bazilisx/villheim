@@ -31,18 +31,13 @@ namespace Villheim.Logic.Village
             float level = TypicalHeight(center, LevelRadius, center.y);
             Vector3 at = new Vector3(center.x, level, center.z);
 
+            // Found before the ground moves: the chest is looked up by where it was recorded.
+            Container chest = VillageChest.Find(hearth);
+
             // Each step on its own, so one that fails can't skip the others; a failure goes to the log.
             Step("clearing trees, rocks and bushes", () => ClearAround(center, ClearRadius));
             Step("levelling the ground", () => TerrainShaper.LevelPad(at, LevelRadius, LevelRadius + 4f));
-            Step("setting the hearth on the new ground", () =>
-            {
-                Move(hearth.gameObject, level);
-                Container chest = VillageChest.Find(hearth);
-                if (chest != null && Utils.DistanceXZ(chest.transform.position, center) < LevelRadius)
-                {
-                    Move(chest.gameObject, level);
-                }
-            });
+            Step("setting the hearth on the new ground", () => SetOnGround(hearth, chest, level));
 
             string paint = (LogicConfig.HearthGroundPaint?.Value ?? "Both").Trim().ToLowerInvariant();
             if (paint != "dirt")
@@ -55,7 +50,73 @@ namespace Villheim.Logic.Village
                 Step("baring the earth by the fire", () => Paint(at, paint == "dirt" ? ClearRadius : DirtRadius, TerrainModifier.PaintType.Dirt));
             }
 
+            // Once more after the game has rebuilt the ground's collider, in case anything was set down early.
+            hearth.StartCoroutine(SettleLater(hearth, level));
             VillheimPlugin.Log.LogInfo($"Hearth ground prepared at {at} ({paint}).");
+        }
+
+        /// <summary>The village's small pieces by the fire, which sit on the ground there.</summary>
+        private static readonly System.Collections.Generic.HashSet<string> GroundPieces =
+            new System.Collections.Generic.HashSet<string> { "piece_chest_wood", "sign", "piece_bench01", "wood_stack", "stone_pile", "piece_chair" };
+
+        /// <summary>
+        /// Puts the hearth, the chest and the village's small pieces by the fire on the levelled ground. The cooking
+        /// station over the fire moves with the hearth. The chest's new place is recorded, so it is still found (a chest
+        /// not found where it was recorded counts as lost and gets built again).
+        /// </summary>
+        private static void SetOnGround(VillageHearth hearth, Container chest, float level)
+        {
+            float rise = level - hearth.transform.position.y;
+            Vector3 center = hearth.transform.position;
+            Move(hearth.gameObject, level);
+            if (chest != null && Utils.DistanceXZ(chest.transform.position, center) < LevelRadius)
+            {
+                Move(chest.gameObject, level);
+                VillageChest.Moved(hearth, chest);
+            }
+
+            int id = hearth.VillageId;
+            var moves = new System.Collections.Generic.List<(GameObject Go, float Y)>();
+            foreach (ZNetView view in ZNetScene.instance.m_instances.Values)
+            {
+                if (view == null || !view.IsValid() || view.GetZDO().GetInt(Keys.BuiltBy) != id ||
+                    Utils.DistanceXZ(view.transform.position, center) > LevelRadius - 0.5f || (chest != null && view.gameObject == chest.gameObject))
+                {
+                    continue;
+                }
+
+                string name = Utils.GetPrefabName(view.gameObject);
+                if (name == "piece_cookingstation" && Utils.DistanceXZ(view.transform.position, center) < 1.5f)
+                {
+                    moves.Add((view.gameObject, view.transform.position.y + rise));
+                }
+                else if (GroundPieces.Contains(name))
+                {
+                    moves.Add((view.gameObject, level));
+                }
+            }
+
+            foreach ((GameObject go, float y) in moves)
+            {
+                Move(go, y);
+            }
+        }
+
+        private static System.Collections.IEnumerator SettleLater(VillageHearth hearth, float level)
+        {
+            yield return new WaitForSeconds(1.5f);
+            if (hearth == null || !hearth.IsValid)
+            {
+                yield break;
+            }
+
+            Container chest = VillageChest.Find(hearth);
+            if (chest != null && Mathf.Abs(chest.transform.position.y - level) > 0.05f &&
+                Utils.DistanceXZ(chest.transform.position, hearth.transform.position) < LevelRadius)
+            {
+                Move(chest.gameObject, level);
+                VillageChest.Moved(hearth, chest);
+            }
         }
 
         /// <summary>The middle height of the ground in the circle: half the ground is above it, half below.</summary>

@@ -46,6 +46,8 @@ namespace Villheim.Logic.Villagers
         private const float DoorApproachSeconds = 6f;
         private const float DoorPassSeconds = 3f;
         private const float CloseDoorBeyond = 2f;
+        private const float RunBeyond = 8f;
+        private const float WalkWithin = 5f;
 
         private static readonly ConditionalWeakTable<Villager, Walker> Walkers = new ConditionalWeakTable<Villager, Walker>();
 
@@ -70,6 +72,7 @@ namespace Villheim.Logic.Villagers
         private float _closeBy;
         private float _nextClosePush;
         private float _lastGo;
+        private bool _running;
 
         public static Walker For(Villager villager) => Walkers.GetOrCreateValue(villager);
 
@@ -90,6 +93,12 @@ namespace Villheim.Logic.Villagers
         public WalkResult Go(Villager villager, VillagerAI ai, float dt, Vector3 point, float stop, bool run = false)
         {
             Vector3 position = villager.transform.position;
+
+            // Running only on the way: the last few metres are walked. Running right up to a tree or a log carried him
+            // past it in a wide turn, and he circled it at a run instead of stopping.
+            float toGoal = Utils.DistanceXZ(position, point);
+            _running = run && (_running ? toGoal > WalkWithin : toGoal > RunBeyond);
+            run = _running;
             villager.SetWalk(!run);
 
             // Not walking a moment ago (working, sitting, a new task): the stuck clock starts now. Before, time spent
@@ -173,8 +182,8 @@ namespace Villheim.Logic.Villagers
 
             if (still > HopAfter && !_hopped)
             {
+                // A fresh path (no jump: the hop read as a twitch whenever a task began somewhere awkward).
                 _hopped = true;
-                villager.Jump();
                 ai.m_lastFindPathTime = -1000f;
             }
             else if (still > SidestepAfter)

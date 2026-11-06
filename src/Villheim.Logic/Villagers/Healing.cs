@@ -649,9 +649,8 @@ namespace Villheim.Logic.Villagers
             direction.y = 0f;
             if (direction.sqrMagnitude > 0.01f)
             {
+                // The game turns the body toward the look direction itself; turning it here as well fought that.
                 villager.SetLookDir(direction.normalized);
-                villager.transform.rotation = Quaternion.RotateTowards(villager.transform.rotation,
-                    Quaternion.LookRotation(direction.normalized), 360f * Time.fixedDeltaTime);
             }
         }
     }

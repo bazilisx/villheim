@@ -37,7 +37,10 @@ with its own look for its biome.
 - [ ] One prioritized builder per village who builds whenever the chest covers the next piece and gathers otherwise.
       (Built 2026-11-05, needs testing.)
 - [ ] Biome materials: no core wood in the Meadows, and so on. (Built 2026-11-05, needs testing.)
-- [ ] Movement without jitter: stand spots, steady goals, unstuck jump and sidestep. (Built 2026-11-05, needs testing.)
+- [ ] Movement without jitter: stand spots, steady goals, unstuck re-path and sidestep. (Built 2026-11-05; 2026-11-06 session 10:
+  walk the last metres, turn angle 90, one rotation driver, steady threat check. Needs testing.)
+- [ ] Settling in before growing (Tyler, 2026-11-06): cooking station, beds, workbench, sign and notice board before the
+  next building; then comfort pieces (chests, chairs, tables, benches, wood stack, stone pile). Built session 10, needs testing.
 - [ ] Trees felled away from the village.
 - [ ] Right tool for each job: hammer to build, axe for trees, pickaxe for rocks. (Built 2026-11-05 session 4,
       needs testing.)

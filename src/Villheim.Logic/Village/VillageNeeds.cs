@@ -8,7 +8,8 @@ namespace Villheim.Logic.Village
     ///
     /// - The village chest is gone: what a new chest costs, before anything else. Gatherers bring it to the hearth.
     /// - A building is going up: whatever the village chest still lacks for the rest of the building.
-    /// - Between buildings: a modest stock of each material the biome has, counting the chest, and nothing more.
+    /// - Between buildings: what the next thing to make costs (beds, the workbench, the sign, then comfort pieces), and a
+    ///   stock of each material the biome has for the next building, counting the chest, and nothing more.
     ///
     /// Gatherers take what they find to the village chest whenever it stands, otherwise to the hearth.
     /// </summary>
@@ -79,7 +80,25 @@ namespace Villheim.Logic.Village
                     }
                 }
             }
-            else if (state.Plots.Count < VillheimConfig.MaxBuildings.Value)
+            else
+            {
+                // Settling in and comfort: what the next thing to make (a bed, the workbench, the sign, a bench) costs
+                // beyond what the chest already has. The chest is filled for it before anyone sits down.
+                Amenities.Job next = Amenities.Upcoming(hearth);
+                if (next?.Cost != null)
+                {
+                    foreach (KeyValuePair<string, int> cost in next.Cost)
+                    {
+                        int missing = cost.Value - VillageChest.Have(hearth, state, cost.Key);
+                        if (missing > 0)
+                        {
+                            needs.Missing[cost.Key] = missing;
+                        }
+                    }
+                }
+            }
+
+            if (!needs.ChestLost && !needs.SiteActive && state.Plots.Count < VillheimConfig.MaxBuildings.Value)
             {
                 int target = VillheimConfig.MaxWoodPerBuilding.Value;
                 foreach (string material in Materials.AllowedIn(state.Biome))
@@ -91,7 +110,8 @@ namespace Villheim.Logic.Village
 
                     int goal = material == Materials.Wood || material == Materials.Stone ? target : target / 3;
                     int missing = goal - VillageChest.Have(hearth, state, material);
-                    if (missing > 0)
+                    needs.Missing.TryGetValue(material, out int already);
+                    if (missing > already)
                     {
                         needs.Missing[material] = missing;
                     }

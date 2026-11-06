@@ -16,6 +16,7 @@ namespace Villheim.Logic
         public static ConfigEntry<float> FoodHealing;
         public static ConfigEntry<float> VillagerToolStrength;
         public static ConfigEntry<bool> VillagerTrading;
+        public static ConfigEntry<bool> WaitBetweenBuildings;
         public static ConfigEntry<bool> VillageRaids;
         public static ConfigEntry<int> VillageChance;
         public static ConfigEntry<float> VillageSpacing;
@@ -52,6 +53,10 @@ namespace Villheim.Logic
             StartingStock = Admin(config, work, "StartingStock", 0,
                 "Wood a new village starts with (and half as much stone). At 0 the villagers gather everything " +
                 "for their first building themselves.");
+            WaitBetweenBuildings = Admin(config, work, "WaitBetweenBuildings", false,
+                "Off: like a player, a village starts its next building as soon as it has settled in (beds, workbench, " +
+                "cooking station, sign and notice board) and has the materials. On: it also waits DaysPerBuilding " +
+                "between buildings, the old pace.");
             VillagerTrading = Admin(config, work, "VillagerTrading", false,
                 "Off for now. When on, Shift + Use on a villager opens the village's store (what its chest can spare).");
             VillagerToolStrength = Admin(config, work, "VillagerToolStrength", 0.45f,
@@ -77,7 +82,8 @@ namespace Villheim.Logic
                 "Villagers look like echoes of the living world: a little see-through, faintly teal, with a faint glow after " +
                 "dark. Only villagers are changed, never players. Off restores the normal look.");
             GhostAlpha = Admin(config, looks, "GhostAlpha", 0.8f,
-                "How solid villagers are at night, 1 for fully solid. Below 1 uses a see-through shader borrowed from the game's ghosts.");
+                "How solid villagers are at night, 1 for fully solid. Below 1 uses a see-through shader borrowed from the game's ghosts; " +
+                "lower is fainter, down to barely visible near 0. The step from 0.99 to 1 is a jump to fully solid.");
             GhostTint = Admin(config, looks, "GhostTint", 0.15f, "How strongly villagers are tinted toward teal at night, 0 for none.");
             GhostGlow = Admin(config, looks, "GhostGlow", 0.25f, "How much villagers glow in the dark hours, 0 for none.");
             GhostAlphaDay = Admin(config, looks, "GhostAlphaDay", 0.93f,

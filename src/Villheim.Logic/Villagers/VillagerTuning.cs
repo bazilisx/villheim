@@ -52,6 +52,7 @@ namespace Villheim.Logic.Villagers
         /// </summary>
         private static void CopyMovement(Villager villager)
         {
+            villager.m_groundTilt = Character.GroundTiltType.None; // upright like a player, no tilting with the slope
             GameObject prefab = Jotunn.Managers.PrefabManager.Instance.GetPrefab("Player");
             Player player = prefab != null ? prefab.GetComponent<Player>() : null;
             if (player == null)
@@ -77,9 +78,10 @@ namespace Villheim.Logic.Villagers
             ai.m_hearRange = 15f;
             ai.m_mistVision = false;
             ai.m_pathAgentType = Pathfinding.AgentType.Humanoid;
-            // Turn while walking, like a player, instead of stopping to turn on the spot whenever the way changes by
-            // more than a right angle (that stop-turn-go read as a stutter at every change of task or direction).
-            ai.m_moveMinAngle = 170f;
+            // 90, as in the game's own creatures and every other NPC mod looked at. With smooth movement a villager
+            // slows as he turns rather than stopping; at 170 he kept going at almost half speed while facing 90 degrees
+            // away, and circled anything close by instead of turning to it.
+            ai.m_moveMinAngle = 90f;
             ai.m_smoothMovement = true;
             ai.m_serpentMovement = false;
             ai.m_jumpInterval = 0f;

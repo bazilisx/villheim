@@ -207,7 +207,23 @@ namespace Villheim.Logic.Village
         {
             IReadOnlyList<Plot> plots = state.Plots;
             double interval = GrowthInterval();
-            if (now - state.LastGrowth < interval)
+
+            // Settling in comes first, as for a player: beds, the workbench, the cooking station, the sign and the
+            // notice board before anything new goes up. The villagers gather for and make those meanwhile.
+            if (!Amenities.Settled(hearth, out string unsettled))
+            {
+                state.Waiting = $"a {unsettled} before building more";
+                return false;
+            }
+
+            if (state.Waiting.StartsWith("a ") && state.Waiting.EndsWith(" before building more"))
+            {
+                state.Waiting = "";
+            }
+
+            // Found no room last time: a pause before looking again (a quarter of DaysPerBuilding).
+            bool noRoomPause = state.Waiting == "room to build";
+            if ((LogicConfig.WaitBetweenBuildings.Value || noRoomPause) && now - state.LastGrowth < interval)
             {
                 return false;
             }

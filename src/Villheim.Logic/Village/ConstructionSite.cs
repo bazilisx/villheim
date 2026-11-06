@@ -270,6 +270,12 @@ namespace Villheim.Logic.Village
                 return cached;
             }
 
+            Blueprints.Blueprint blueprint = Blueprints.Find(site.Design);
+            if (blueprint != null)
+            {
+                return Cache(id, key, Blueprints.MakePlan(blueprint, site.Position, site.Yaw), Blueprints.RawTotals(blueprint));
+            }
+
             ZoneSystem.ZoneLocation location = DesignLibrary.Find(site.Design);
             if (location == null)
             {
@@ -286,29 +292,34 @@ namespace Villheim.Logic.Village
                 }
 
                 List<DesignSpawner.PlanEntry> entries = DesignSpawner.MakePlan(asset, site.Position, site.Seed, site.Yaw, supportOrder);
-                var factors = new Dictionary<string, float>();
-                foreach (KeyValuePair<string, int> total in DesignLibrary.RawTotals(location))
-                {
-                    factors[total.Key] = DesignLibrary.CostFactor(total.Value);
-                }
-
-                float footprint = 2f;
-                foreach (DesignSpawner.PlanEntry entry in entries)
-                {
-                    if (entry.Structural)
-                    {
-                        footprint = Mathf.Max(footprint, new Vector2(entry.LocalPosition.x, entry.LocalPosition.z).magnitude);
-                    }
-                }
-
-                var plan = new CachedPlan { Key = key, Entries = entries, Factors = factors, Footprint = footprint + 0.5f };
-                Plans[id] = plan;
-                return plan;
+                return Cache(id, key, entries, DesignLibrary.RawTotals(location));
             }
             finally
             {
                 location.m_prefab.Release();
             }
+        }
+
+        private static CachedPlan Cache(int id, string key, List<DesignSpawner.PlanEntry> entries, Dictionary<string, int> rawTotals)
+        {
+            var factors = new Dictionary<string, float>();
+            foreach (KeyValuePair<string, int> total in rawTotals)
+            {
+                factors[total.Key] = DesignLibrary.CostFactor(total.Value);
+            }
+
+            float footprint = 2f;
+            foreach (DesignSpawner.PlanEntry entry in entries)
+            {
+                if (entry.Structural)
+                {
+                    footprint = Mathf.Max(footprint, new Vector2(entry.LocalPosition.x, entry.LocalPosition.z).magnitude);
+                }
+            }
+
+            var plan = new CachedPlan { Key = key, Entries = entries, Factors = factors, Footprint = footprint + 0.5f };
+            Plans[id] = plan;
+            return plan;
         }
 
         /// <summary>

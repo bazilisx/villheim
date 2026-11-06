@@ -10,19 +10,64 @@ namespace Villheim.Logic.Designs
     /// </summary>
     internal static class DesignLibrary
     {
+        /// <summary>A copied location or a blueprint (see <see cref="Blueprints"/>).</summary>
         internal readonly struct Design
         {
             public readonly ZoneSystem.ZoneLocation Location;
+            public readonly Blueprints.Blueprint Blueprint;
             public readonly float Weight;
 
             public Design(ZoneSystem.ZoneLocation location, float weight)
             {
                 Location = location;
+                Blueprint = null;
                 Weight = weight;
             }
 
-            public string Name => Location.m_prefabName;
-            public float Radius => DesignLibrary.Radius(Location);
+            public Design(Blueprints.Blueprint blueprint, float weight)
+            {
+                Location = null;
+                Blueprint = blueprint;
+                Weight = weight;
+            }
+
+            public string Name => Blueprint != null ? Blueprint.Name : Location.m_prefabName;
+            public float Radius => Blueprint != null ? Blueprint.Radius : DesignLibrary.Radius(Location);
+            public float MaxTerrainDelta => Blueprint != null ? 3f : DesignLibrary.MaxTerrainDelta(Location);
+            public Dictionary<string, int> RawTotals => Blueprint != null ? Blueprints.RawTotals(Blueprint) : DesignLibrary.RawTotals(Location);
+        }
+
+        /// <summary>A design by name: a location, or a blueprint when the name starts with "bp:".</summary>
+        public static Design? ByName(string name)
+        {
+            Blueprints.Blueprint blueprint = Blueprints.Find(name);
+            if (blueprint != null)
+            {
+                return new Design(blueprint, 1f);
+            }
+
+            ZoneSystem.ZoneLocation location = Find(name);
+            return location != null ? new Design(location, 1f) : (Design?)null;
+        }
+
+        /// <summary>
+        /// Level 1 blueprints for this role and biome. A blueprint with no biome goes anywhere its materials allow.
+        /// Blueprints weigh twice as much as copied locations: someone picked them for a village.
+        /// </summary>
+        private static void AddBlueprints(List<Design> pool, Heightmap.Biome biome, Role role)
+        {
+            string biomeName = biome == Heightmap.Biome.BlackForest ? "blackforest" : "meadows";
+            foreach (Blueprints.Blueprint blueprint in Blueprints.All().Values)
+            {
+                if (blueprint.Role != role || blueprint.Level != 1 ||
+                    (blueprint.Biome != null && blueprint.Biome.Replace(" ", "") != biomeName) ||
+                    blueprint.Radius > VillheimConfig.MaxDesignRadius.Value || pool.Exists(d => d.Name == blueprint.Name))
+                {
+                    continue;
+                }
+
+                pool.Add(new Design(blueprint, 2f));
+            }
         }
 
         private static readonly HashSet<string> WarnedMissing = new HashSet<string>();
@@ -34,11 +79,14 @@ namespace Villheim.Logic.Designs
         public static List<Design> PoolFor(Heightmap.Biome biome, Role role)
         {
             var pool = new List<Design>();
+            AddBlueprints(pool, biome, role);
+            KeepBuildable(pool, biome);
             foreach (string tier in Culture.For(biome).Tiers(role))
             {
+                int before = pool.Count;
                 AddDesigns(pool, tier, warnIfMissing: false);
                 KeepBuildable(pool, biome);
-                if (pool.Count > 0)
+                if (pool.Count > before)
                 {
                     break;
                 }
@@ -99,7 +147,10 @@ namespace Villheim.Logic.Designs
         }
 
         /// <summary>The first material this design needs that the biome does not have, or null.</summary>
-        public static string MissingIn(ZoneSystem.ZoneLocation location, Heightmap.Biome biome)
+        public static string MissingIn(ZoneSystem.ZoneLocation location, Heightmap.Biome biome) =>
+            MissingIn(new Design(location, 1f), biome);
+
+        public static string MissingIn(Design design, Heightmap.Biome biome)
         {
             if (!VillheimConfig.RequireWood.Value)
             {
@@ -107,7 +158,7 @@ namespace Villheim.Logic.Designs
             }
 
             HashSet<string> allowed = Village.Materials.AllowedIn(biome);
-            foreach (KeyValuePair<string, int> total in RawTotals(location))
+            foreach (KeyValuePair<string, int> total in design.RawTotals)
             {
                 if (total.Value > 0 && !allowed.Contains(total.Key))
                 {
@@ -124,7 +175,7 @@ namespace Villheim.Logic.Designs
         {
             pool.RemoveAll(design =>
             {
-                string missing = MissingIn(design.Location, biome);
+                string missing = MissingIn(design, biome);
                 if (missing != null && WarnedUnbuildable.Add(design.Name + "|" + biome))
                 {
                     VillheimPlugin.Debug($"{design.Name} needs {Village.Materials.Label(missing)}, which {biome} does not have. Skipping it there.");
@@ -159,10 +210,13 @@ namespace Villheim.Logic.Designs
         /// What a copy of this design costs per material: the vanilla recipe of every piece, times WoodPerPiece,
         /// with each material capped at MaxWoodPerBuilding so big designs stay reachable.
         /// </summary>
-        public static Dictionary<string, int> MaterialCost(ZoneSystem.ZoneLocation location)
+        public static Dictionary<string, int> MaterialCost(ZoneSystem.ZoneLocation location) =>
+            MaterialCost(new Design(location, 1f));
+
+        public static Dictionary<string, int> MaterialCost(Design design)
         {
             var result = new Dictionary<string, int>();
-            foreach (KeyValuePair<string, int> entry in RawTotals(location))
+            foreach (KeyValuePair<string, int> entry in design.RawTotals)
             {
                 result[entry.Key] = Mathf.RoundToInt(entry.Value * CostFactor(entry.Value));
             }

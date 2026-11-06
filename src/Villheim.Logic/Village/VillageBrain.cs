@@ -242,7 +242,7 @@ namespace Villheim.Logic.Village
 
                 float radius = design.Radius;
                 if (!PlotFinder.TryFind(hearth.transform.position, state.Axis, role, strictHub, radius,
-                        DesignLibrary.MaxTerrainDelta(design.Location), plots, rng, out Vector3 position, out float yaw))
+                        design.MaxTerrainDelta, plots, rng, out Vector3 position, out float yaw))
                 {
                     VillheimPlugin.Debug($"{state.Name}: no room for {design.Name}.");
                     continue;
@@ -271,7 +271,7 @@ namespace Villheim.Logic.Village
         /// <summary>Null when the stock covers the share needed to break ground, otherwise what is short.</summary>
         private static string MissingToStart(VillageHearth hearth, VillageState state, DesignLibrary.Design design)
         {
-            foreach (KeyValuePair<string, int> cost in DesignLibrary.MaterialCost(design.Location))
+            foreach (KeyValuePair<string, int> cost in DesignLibrary.MaterialCost(design))
             {
                 int needed = Mathf.CeilToInt(cost.Value * StartShare);
                 int have = VillageChest.Have(hearth, state, cost.Key);
@@ -303,7 +303,11 @@ namespace Villheim.Logic.Village
             hearth.Busy = true;
             try
             {
-                if (!DesignSpawner.PrepareSite(design.Location, position, yaw))
+                if (design.Blueprint != null)
+                {
+                    DesignSpawner.ClearArea(position, radius);
+                }
+                else if (!DesignSpawner.PrepareSite(design.Location, position, yaw))
                 {
                     VillheimPlugin.Log.LogWarning($"Could not load the design {design.Name}.");
                     yield break;

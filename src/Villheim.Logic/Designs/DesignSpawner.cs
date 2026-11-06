@@ -190,6 +190,12 @@ namespace Villheim.Logic.Designs
                 return plan.OrderBy(e => StageOf(e.Prefab, e.Structural)).ThenBy(e => Mathf.Round(e.LocalPosition.y * 4f)).ToList();
             }
 
+            return Order(plan, origin, yaw);
+        }
+
+        /// <summary>Shell in support order (see BuildOrder), then everything inside, ground up.</summary>
+        public static List<PlanEntry> Order(List<PlanEntry> plan, Vector3 origin, float yaw)
+        {
             Quaternion rotation = Quaternion.Euler(0f, yaw, 0f);
             float? GroundAt(Vector3 local)
             {
@@ -206,18 +212,27 @@ namespace Villheim.Logic.Designs
 
         private static void AddEntry(List<PlanEntry> plan, GameObject original, string prefabName, Transform root)
         {
+            Vector3 position = root.InverseTransformPoint(original.transform.position);
+            Quaternion rotation = Quaternion.Inverse(root.rotation) * original.transform.rotation;
+            PlanEntry entry = Entry(prefabName, position, rotation, original.transform.lossyScale);
+            if (entry != null)
+            {
+                plan.Add(entry);
+            }
+        }
+
+        /// <summary>A plan entry for one piece in design coordinates, or null when that prefab is left out.</summary>
+        public static PlanEntry Entry(string prefabName, Vector3 position, Quaternion rotation, Vector3 scale)
+        {
             GameObject prefab = ZNetScene.instance.GetPrefab(prefabName);
             if (prefab == null || ExclusionReason(prefab, prefabName) != null)
             {
-                return;
+                return null;
             }
 
             bool structural = prefab.GetComponent<WearNTear>() != null && prefab.GetComponent<Piece>() != null;
             bool shell = structural && IsShell(prefab.GetComponent<Piece>(), prefabName);
-            Vector3 position = root.InverseTransformPoint(original.transform.position);
-            Quaternion rotation = Quaternion.Inverse(root.rotation) * original.transform.rotation;
-            Vector3 scale = original.transform.lossyScale;
-            plan.Add(new PlanEntry
+            return new PlanEntry
             {
                 Cost = RecipeCost(prefab),
                 Prefab = prefabName,
@@ -228,7 +243,7 @@ namespace Villheim.Logic.Designs
                 Structural = structural,
                 Shell = shell,
                 Bounds = shell ? BuildOrder.Measure(prefab, prefabName, position, rotation, scale) : null,
-            });
+            };
         }
 
         /// <summary>Building pieces from the hammer's building tabs, plus anything named like a door or window.</summary>

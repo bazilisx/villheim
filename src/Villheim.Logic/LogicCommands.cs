@@ -27,6 +27,8 @@ namespace Villheim.Logic
             "locations [filter]: list location names you can use as designs",
             "dump <location>: write what a design contains to the BepInEx log",
             "report: write a report of every location that could be a design (BepInEx/Villheim/design-report.txt)",
+            "blueprints: list the blueprints villages can build (BepInEx/config/Villheim/blueprints, PlanBuild's folder)",
+            "savebp <role-family-level> [radius]: save the building pieces around you as a blueprint, e.g. savebp house-cabin-1 8",
         };
 
         public static string[] CommandHelp() => Help;
@@ -47,8 +49,74 @@ namespace Villheim.Logic
                 case "villheim_locations": Locations(args, context); return true;
                 case "villheim_dump": Dump(args, context); return true;
                 case "villheim_report": DesignReport.Start(context); return true;
+                case "villheim_blueprints": ListBlueprints(context); return true;
+                case "villheim_savebp": SaveBlueprint(args, context); return true;
                 default: return false;
             }
+        }
+
+        private static void ListBlueprints(Terminal context)
+        {
+            Dictionary<string, Blueprints.Blueprint> all = Blueprints.All();
+            Say(context, $"Villheim: {all.Count} blueprints (folder: {Blueprints.Folder}).");
+            foreach (Blueprints.Blueprint blueprint in all.Values.OrderBy(b => b.Role).ThenBy(b => b.Family).ThenBy(b => b.Level))
+            {
+                string missing = DesignLibrary.MissingIn(new DesignLibrary.Design(blueprint, 1f), Heightmap.Biome.Meadows);
+                Say(context, $"   {blueprint.Name}: {blueprint.Role} '{blueprint.Family}' level {blueprint.Level}, " +
+                             $"{blueprint.Pieces.Count} pieces, radius {blueprint.Radius:0}" +
+                             (blueprint.Biome != null ? $", {blueprint.Biome}" : "") +
+                             (missing != null ? $", needs {Materials.Label(missing)} (not in the Meadows)" : ""));
+            }
+        }
+
+        /// <summary>Writes every building piece within the radius as a PlanBuild-style blueprint in Villheim's folder.</summary>
+        private static void SaveBlueprint(string[] args, Terminal context)
+        {
+            if (!TryGetPlayer(context, out Player player))
+            {
+                return;
+            }
+
+            if (args.Length < 1)
+            {
+                Say(context, "Villheim: savebp <role-family-level> [radius], for example savebp house-cabin-1 8");
+                return;
+            }
+
+            float radius = args.Length > 1 && float.TryParse(args[1], System.Globalization.NumberStyles.Float,
+                System.Globalization.CultureInfo.InvariantCulture, out float r) ? r : 8f;
+            var pieces = new List<Piece>();
+            Piece.GetAllPiecesInRadius(player.transform.position, radius, pieces);
+            pieces.RemoveAll(p => p == null || p.GetComponent<VillageHearth>() != null || p.GetComponent<Character>() != null);
+            if (pieces.Count == 0)
+            {
+                Say(context, "Villheim: no building pieces within that radius.");
+                return;
+            }
+
+            Vector3 origin = player.transform.position;
+            Quaternion turn = Quaternion.Inverse(Quaternion.Euler(0f, Mathf.Round(player.transform.eulerAngles.y / 90f) * 90f, 0f));
+            var lines = new List<string>
+            {
+                "#Name:" + args[0], "#Creator:" + player.GetPlayerName(), "#Description:villheim: saved in game", "#Category:Villheim", "#Pieces",
+            };
+
+            var inv = System.Globalization.CultureInfo.InvariantCulture;
+            foreach (Piece piece in pieces)
+            {
+                Vector3 p = turn * (piece.transform.position - origin);
+                Quaternion q = turn * piece.transform.rotation;
+                Vector3 s = piece.transform.localScale;
+                lines.Add(string.Join(";", Utils.GetPrefabName(piece.gameObject), "Villheim",
+                    p.x.ToString("0.###", inv), p.y.ToString("0.###", inv), p.z.ToString("0.###", inv),
+                    q.x.ToString("0.#####", inv), q.y.ToString("0.#####", inv), q.z.ToString("0.#####", inv), q.w.ToString("0.#####", inv),
+                    "", s.x.ToString("0.###", inv), s.y.ToString("0.###", inv), s.z.ToString("0.###", inv)));
+            }
+
+            System.IO.Directory.CreateDirectory(Blueprints.Folder);
+            string file = System.IO.Path.Combine(Blueprints.Folder, args[0] + ".blueprint");
+            System.IO.File.WriteAllLines(file, lines);
+            Say(context, $"Villheim: saved {pieces.Count} pieces to {file}. The front of the building is the way you face.");
         }
 
         private static void Say(Terminal context, string text)

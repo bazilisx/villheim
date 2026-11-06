@@ -73,25 +73,26 @@ namespace Villheim
 
             const string designs = "3 - Designs";
             MeadowsDesigns = Admin(config, designs, "MeadowsDesigns",
-                "WoodHouse1,WoodHouse2,WoodHouse3,WoodHouse4,WoodHouse5,WoodHouse6,WoodHouse7,WoodHouse8," +
-                "WoodHouse9,WoodHouse10,WoodHouse11,WoodHouse12,WoodHouse13,WoodFarm1:0.25",
+                "WoodHouse1,WoodHouse2,WoodHouse3,WoodHouse5,WoodHouse6,WoodHouse7,WoodHouse9,WoodHouse10," +
+                "WoodHouse11,WoodHouse13,WoodHouse8:0.4",
                 "Existing locations that Meadows villages copy buildings from, as a comma separated list of location " +
                 "names. Add ':weight' to make a design rarer or more common (default weight is 1). " +
                 "Locations from other installed mods work too: use 'villheim_locations' in the console to list names.");
             BlackForestDesigns = Admin(config, designs, "BlackForestDesigns",
-                "AbandonedLogCabin02,AbandonedLogCabin03,AbandonedLogCabin04,WoodHouse3,WoodHouse7,WoodHouse11",
+                "WoodHouse3,WoodHouse6,WoodHouse7,WoodHouse11,WoodHouse13",
                 "Existing locations that Black Forest villages copy buildings from. Same format as MeadowsDesigns.");
             AnyBiomeDesigns = Admin(config, designs, "AnyBiomeDesigns", "",
-                "Extra designs added to every village's pool, for example locations from More World Locations.");
+                "Extra designs added to every village's pool. When More World Locations is installed, a set of its " +
+                "intact houses and workshops is added automatically.");
             MaxDesignRadius = Admin(config, designs, "MaxDesignRadius", 34f,
                 "Designs whose footprint radius is larger than this are skipped.", new AcceptableValueRange<float>(4f, 80f));
             ExcludedObjects = Admin(config, designs, "ExcludedObjects",
-                "Spawner,TreasureChest,BonePile,Vines,vines,Skeleton,Draugr,Ghost",
+                "Spawner,TreasureChest,BonePile,Vines,vines,Skeleton,Draugr,Ghost,Music",
                 "Objects inside a design whose prefab name contains any of these words are left out. " +
                 "Creatures, creature spawners and dungeon entrances are always left out.");
             KeepLootContainers = Admin(config, designs, "KeepLootContainers", false,
                 "Keep the loot chests that some designs contain.");
-            UseVanillaRandomness = Admin(config, designs, "UseVanillaRandomness", true,
+            UseVanillaRandomness = Admin(config, designs, "UseVanillaRandomness", false,
                 "Many vanilla locations randomly include or leave out some of their parts. When on, each copy " +
                 "rolls those parts the same way the world generator would. When off, every optional part is built.");
             CopyTerrainShaping = Admin(config, designs, "CopyTerrainShaping", true,

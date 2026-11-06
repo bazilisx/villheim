@@ -27,6 +27,15 @@ namespace Villheim.Logic.Designs
 
         private static readonly HashSet<string> WarnedMissing = new HashSet<string>();
 
+        // Intact houses and workshops from More World Locations (warpalicious). Added automatically when that mod
+        // is installed; nothing happens when it is not.
+        private const string MwlMeadows =
+            "MWL_MeadowsHouse2,MWL_SmallMeadowHouse1,MWL_SmallHouse1,MWL_MeadowsBarn1,MWL_MaypoleHut1,MWL_OakHut1," +
+            "MWL_MeadowsFarm1:0.5,MWL_MeadowsSawmill1:0.3,MWL_MeadowsTavern1:0.3";
+        private const string MwlBlackForest =
+            "MWL_ForestHouse2,MWL_ForestGreatHouse2,MWL_Tavern1:0.5,MWL_ForestForge1:0.5,MWL_ForestForge2:0.5," +
+            "MWL_BlackForestBlacksmith1:0.5,MWL_ForestCamp1,MWL_WoodTower1:0.5,MWL_WoodTower2:0.5";
+
         public static List<Design> PoolFor(Heightmap.Biome biome)
         {
             string biomeList = biome == Heightmap.Biome.BlackForest
@@ -36,6 +45,7 @@ namespace Villheim.Logic.Designs
             var pool = new List<Design>();
             AddDesigns(pool, biomeList);
             AddDesigns(pool, VillheimConfig.AnyBiomeDesigns.Value);
+            AddDesigns(pool, biome == Heightmap.Biome.BlackForest ? MwlBlackForest : MwlMeadows, warnIfMissing: false);
             return pool;
         }
 
@@ -101,7 +111,7 @@ namespace Villheim.Logic.Designs
             return null;
         }
 
-        private static void AddDesigns(List<Design> pool, string list)
+        private static void AddDesigns(List<Design> pool, string list, bool warnIfMissing = true)
         {
             if (string.IsNullOrWhiteSpace(list))
             {
@@ -130,9 +140,14 @@ namespace Villheim.Logic.Designs
                 }
 
                 ZoneSystem.ZoneLocation location = Find(entry);
+                if (location != null && pool.Exists(d => d.Name == location.m_prefabName))
+                {
+                    continue;
+                }
+
                 if (location == null)
                 {
-                    if (WarnedMissing.Add(entry))
+                    if (warnIfMissing && WarnedMissing.Add(entry))
                     {
                         VillheimPlugin.Log.LogWarning($"Design '{entry}' is not a known location and will be skipped. " +
                                                       "Use 'villheim_locations' in the console to list valid names.");

@@ -23,6 +23,7 @@ namespace Villheim.Logic
             "designs [meadows|blackforest]: list the designs villages can build",
             "locations [filter]: list location names you can use as designs",
             "dump <location>: write what a design contains to the BepInEx log",
+            "report: write a report of every location that could be a design (BepInEx/Villheim/design-report.txt)",
         };
 
         public static string[] CommandHelp() => Help;
@@ -39,6 +40,7 @@ namespace Villheim.Logic
                 case "villheim_designs": Designs(args, context); return true;
                 case "villheim_locations": Locations(args, context); return true;
                 case "villheim_dump": Dump(args, context); return true;
+                case "villheim_report": DesignReport.Start(context); return true;
                 default: return false;
             }
         }

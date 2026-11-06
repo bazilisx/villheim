@@ -210,3 +210,28 @@ Have you eaten, traveller? You look like you haven't.
 @ chat, carer
 You haven't eaten. // I have. // Liar. Here. // Thank you.
 Your hands are freezing. // They're always freezing. // Sit by the fire, then.
+
+# ------------------------------------------------------------------ the fence (doing:fencing)
+
+@ doing:fencing ~point
+A good fence keeps the greydwarfs guessing.
+One more post and this side's closed.
+Leave a gap for the path. There. That's a gate.
+
+@ doing:fencing | gruff
+Fence goes up. Monsters stay out. Simple.
+
+@ doing:fencing | worrier ~worry
+Higher. Can we make it higher?
+
+@ doing:fencing | wry ~joke
+I'm building a wall so the boars have something to look at.
+
+@ doing:fencing | elder
+My village had a fence once. Kept out everything but the rain.
+
+@ doing:fencing, size:village ~proud
+The old fence was too small for us now. Good problem to have.
+
+@ chat, doing:fencing
+Will the fence stop a troll? // No. // Then what's it for? // Everything smaller than a troll.

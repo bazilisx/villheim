@@ -465,7 +465,8 @@ namespace Villheim.Logic.Villagers
             string d = doing.ToLowerInvariant();
             if (d.Contains("tending the hearth")) yield return "hearth";
             if (d.Contains("hunting") || d.Contains("butchering") || d.Contains("meat to")) yield return "hunting";
-            if (d.Contains("repairing") || d.Contains("putting back")) yield return "repairing";
+            if (d.Contains("fence")) yield return "fencing";
+            else if (d.Contains("repairing") || d.Contains("putting back")) yield return "repairing";
             if (d.Contains("felling")) yield return "felling";
             if (d.Contains("splitting")) yield return "splitting";
             if (d.Contains("rock")) yield return "mining";

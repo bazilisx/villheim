@@ -74,7 +74,8 @@ with its own look for its biome.
       gates where paths cross it, starting as sharpened stakes or a light fence in a small Meadows village and becoming
       a stake wall (and later stone) as the village advances; when buildings go up outside the ring, the old ring comes
       down and a wider one goes up, as Millénaire's walls grow with village level. Built by the builder from the chest,
-      repaired like buildings.
+      repaired like buildings. (First version built 2026-11-06: wood fence, then stake wall, gates at paths, rings
+      replaced as the village grows; needs testing.)
 - [ ] Stone building waits until the village advances, at least in the Meadows (Tyler, 2026-11-05; to decide).
 
 ## Milestone 4: villagers with lives
@@ -142,7 +143,9 @@ with its own look for its biome.
 
 - [ ] Different building sets and villager looks per biome (Meadows versus Black Forest first).
 - [ ] PlanBuild blueprints as a design source. (Reader built 2026-11-06; needs blueprints in the folder and testing.)
-- [ ] Curated blueprint sets for Meadows and Black Forest with upgrade levels (Tyler, 2026-11-06). No openly licensed
+- [ ] Curated blueprint sets for Meadows and Black Forest with upgrade levels (Tyler, 2026-11-06). The OverDrive
+      BiomeBlueprints pack works as an optional install (2026-11-06); ask its author lg_9d about a licence for the
+      78 generated designs if they are ever to ship. No openly licensed
       set was found online; capture with `vh savebp` or PlanBuild, or use downloads with the author's permission.
 - [ ] More biomes (Plains, Mountain, Swamp) with their own materials.
 - [ ] Gear by biome and village level: basic Meadows tools for everyone, biome weapons and shields for protectors,

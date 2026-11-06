@@ -257,3 +257,19 @@ decompiled source is in `docs/DEVELOPMENT.md`.
 - Hirdmandr: jobs tied to worksite chests near related pieces, a thought and mood system that changes work speed.
 - No openly licensed library of Meadows or Black Forest blueprints was found. Nexus and Thunderstore pages can't be
   read from the cloud container.
+
+## Licences and sources checked on 2026-11-06 (second research pass)
+
+- More World Locations: GitHub `jneb802/MoreWorldLocations_All`, All Rights Reserved; builders credited per location.
+  Villheim only copies its locations at runtime from an install, never bundles them.
+- OverDrive BiomeBlueprints (Thunderstore, author lg_9d): 353 PlanBuild blueprints, no licence file; the author's own
+  78 generated designs (hut, cottage, house, longhouse, manor, great hall, villa, stilt and stone sets per biome) and
+  275 community builds shipped with their builders' consent to that pack only. Read from an install, never copied.
+- RoleplayNPCs (MIT, DLL and design docs only): dialogue pools by trait, bond and mood, least-used-first picks,
+  approach timeouts, greetings after an absence, gossip with a ten minute suppression.
+- MineColonies (GPL, ideas only): happiness with lasting modifiers (housing, food, safety, idle days) that decay
+  nightly; citizens bring requests to the player; raids at nightfall with a warning; colonists run home in a raid.
+- Valheim pieces for a Meadows village: `stake_wall` (wood), `wood_fence`, `wood_gate`, `wood_door`, `bed`,
+  `piece_chest_wood`, `piece_workbench`, `piece_cookingstation`, `fire_pit`, `piece_groundtorch_wood`. Sharpened
+  stakes need core wood; the stone hearth needs a stonecutter; tables, benches and chairs need fine wood.
+- Nexus pages answer 403 from the cloud container even with the hosts allowed.

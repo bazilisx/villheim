@@ -159,6 +159,10 @@ Ideas from Millénaire that fit Valheim:
 - Roads between buildings using the vanilla path tool.
 - Raids on villages at night, and quests from village elders.
 
+## Related mods
+
+[docs/RELATED_MODS.md](docs/RELATED_MODS.md) lists village, villager and colony mods for Minecraft and Valheim, what each does, and what Villheim can take from them.
+
 ## Credits
 
 - **Millénaire** by Kinniken, for the idea of villages that grow around the player.

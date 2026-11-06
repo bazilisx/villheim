@@ -18,7 +18,7 @@ namespace Villheim.Logic
             "grow: make the nearest village start its next building now (adds the wood it needs)",
             "settle (or newvillage): light a new village hearth in front of you",
             "ghost: apply the look settings now and show the shader in use",
-            "gallery <meadows|blackforest> [all|house|hall|prof|storage|farm] [level]: in a fresh world, clear and flatten an area ahead of you and lay out every design of that biome (curated, blueprints, every buildable location), clustered by level and kind, each with a sign",
+            "gallery <meadows|blackforest> [all|house|hall|prof|storage|farm] [level]: in a fresh world, clear and flatten an area ahead of you and lay out every design of that biome (curated, blueprints, every buildable location), clustered by level and kind, each with a sign; 'gallery clear' removes one",
             "act <villager|near> <action> [seconds]: make one villager do one thing, to test it ('vh act near' lists the actions)",
             "board [now]: show the notice board's blueprint, place and what it waits for ('now' puts it up at once, free)",
             "beds: list the beds round the nearest village, whether they count and who sleeps in each",

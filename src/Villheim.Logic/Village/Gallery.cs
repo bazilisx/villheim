@@ -15,7 +15,7 @@ namespace Villheim.Logic.Village
     /// The gallery starts in front of the player and runs in rows of six away from him. First the whole area (with a
     /// 12 m margin) is made one flat, bare plain: everything standing on it is removed at any height (trees, stumps,
     /// logs, rocks, bushes, ruins, anything not a creature or built by a player), the ground is levelled at the middle height of the area
-    /// (up to 40 m of change) and the grass taken off, in overlapping pads 24 m apart. A plot's design goes up once
+    /// (up to 40 m of change, past the game's own 8 m limit, see TerrainShaper.DeepPatch) and the grass taken off, in overlapping pads 24 m apart. A plot's design goes up once
     /// all the ground round it is done. Parts in zones that aren't loaded yet are done as the player walks up to them
     /// (checked every two seconds for 40 minutes).
     /// </summary>
@@ -54,7 +54,7 @@ namespace Villheim.Logic.Village
         };
 
         public const string Usage =
-            "vh gallery <meadows|blackforest> [all|house|hall|prof|storage|farm] [level]: e.g. 'vh gallery meadows house 1'";
+            "vh gallery <meadows|blackforest> [all|house|hall|prof|storage|farm] [level]: e.g. 'vh gallery meadows house 1'; 'vh gallery clear' removes a gallery";
 
         private static bool _running;
 
@@ -64,6 +64,27 @@ namespace Villheim.Logic.Village
             if (_running)
             {
                 return "Villheim: a gallery is already being gathered; give it a moment.";
+            }
+
+            if (args.Length > 0 && args[0].ToLowerInvariant() == "clear")
+            {
+                var gone = new List<ZNetView>();
+                foreach (ZNetView view in ZNetScene.instance.m_instances.Values)
+                {
+                    if (view != null && view.IsValid() && view.GetZDO().GetInt(KeyGallery) == 1 &&
+                        Utils.DistanceXZ(view.transform.position, player.transform.position) < 600f)
+                    {
+                        gone.Add(view);
+                    }
+                }
+
+                foreach (ZNetView view in gone)
+                {
+                    view.ClaimOwnership();
+                    ZNetScene.instance.Destroy(view.gameObject);
+                }
+
+                return $"Villheim: removed {gone.Count} gallery pieces and signs within 600 m (the ground stays as it is).";
             }
 
             string biomeName = args.Length > 0 ? args[0].ToLowerInvariant() : "meadows";

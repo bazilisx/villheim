@@ -36,7 +36,12 @@ namespace Villheim.Logic.Village
             public float Radius;
             public Role Role;
             public int Seed;
+
+            /// <summary>Rebuilds the building that stands here: the old one is taken down first.</summary>
+            public bool Upgrade;
         }
+
+        private static readonly int KeySiteTeardown = "villheim_site_teardown".GetStableHashCode();
 
         private sealed class CachedPlan
         {
@@ -73,6 +78,7 @@ namespace Villheim.Logic.Village
                 Radius = P(parts[5]),
                 Role = System.Enum.TryParse(parts[6], out Role role) ? role : Role.House,
                 Seed = int.TryParse(parts[7], out int seed) ? seed : 1,
+                Upgrade = parts.Length > 8 && parts[8] == "u",
             };
         }
 
@@ -81,8 +87,10 @@ namespace Villheim.Logic.Village
         public static void Begin(ZDO zdo, Site site)
         {
             string raw = string.Join("|", site.Design, F(site.Position.x), F(site.Position.y), F(site.Position.z),
-                F(site.Yaw), F(site.Radius), site.Role.ToString(), site.Seed.ToString(CultureInfo.InvariantCulture));
+                F(site.Yaw), F(site.Radius), site.Role.ToString(), site.Seed.ToString(CultureInfo.InvariantCulture),
+                site.Upgrade ? "u" : "");
             zdo.Set(KeySite, raw);
+            zdo.Set(KeySiteTeardown, site.Upgrade ? 1 : 0);
             zdo.Set(KeySiteIndex, 0);
             zdo.Set(KeySiteOwed, "");
             zdo.Set(KeySiteOrder, SupportOrderVersion);
@@ -108,13 +116,25 @@ namespace Villheim.Logic.Village
             int index = Mathf.Clamp(hearth.Zdo.GetInt(KeySiteIndex), 0, plan.Entries.Count - 1);
             string stage = DesignSpawner.StageNames[plan.Entries[index].Stage];
             int percent = Mathf.RoundToInt(100f * hearth.Zdo.GetInt(KeySiteIndex) / plan.Entries.Count);
-            return $"building a {VillageBrain.RoleName(site.Role)}: {stage}, {percent}% done";
+            if (TearingDown(hearth))
+            {
+                return $"taking down the old {VillageBrain.RoleName(site.Role)} to build a bigger one";
+            }
+
+            return $"building a {(site.Upgrade ? "bigger " : "")}{VillageBrain.RoleName(site.Role)}: {stage}, {percent}% done";
         }
 
         /// <summary>Where builders should stand: the next piece to place.</summary>
         public static bool NextPiecePosition(VillageHearth hearth, out Vector3 position)
         {
             position = Vector3.zero;
+            if (TearingDown(hearth))
+            {
+                Piece old = OldPiece(hearth);
+                position = old != null ? old.transform.position : Get(hearth.Zdo)?.Position ?? hearth.transform.position;
+                return true;
+            }
+
             Site site = Get(hearth.Zdo);
             CachedPlan plan = site != null ? GetPlan(hearth, site) : null;
             if (plan == null)
@@ -140,6 +160,11 @@ namespace Villheim.Logic.Village
         public static bool NextPieceBlocked(VillageHearth hearth, Character builder, out string who)
         {
             who = null;
+            if (TearingDown(hearth))
+            {
+                return false;
+            }
+
             Site site = Get(hearth.Zdo);
             CachedPlan plan = site != null ? GetPlan(hearth, site) : null;
             int index = hearth.Zdo.GetInt(KeySiteIndex);
@@ -206,6 +231,11 @@ namespace Villheim.Logic.Village
             }
 
             var state = new VillageState(zdo);
+            if (TearingDown(hearth))
+            {
+                return TakeDownNext(hearth, state, site);
+            }
+
             int index = zdo.GetInt(KeySiteIndex);
             if (index >= plan.Entries.Count)
             {
@@ -244,12 +274,22 @@ namespace Villheim.Logic.Village
             Plans.Remove(state.Id);
             SnapToGround.SnappAll();
 
-            state.AddPlot(new Plot
+            var plot = new Plot
             {
                 Design = site.Design, Position = site.Position, Yaw = site.Yaw, Radius = site.Radius, Role = site.Role.ToString(),
-            });
+            };
 
-            if (VillheimConfig.BuildPaths.Value)
+            if (site.Upgrade)
+            {
+                state.ReplacePlot(site.Position, plot);
+                Villagers.Beds.Forget(state.Id);
+            }
+            else
+            {
+                state.AddPlot(plot);
+            }
+
+            if (VillheimConfig.BuildPaths.Value && !site.Upgrade)
             {
                 // A villager walks the route and lays it (see PathLaying).
                 Villagers.PathLaying.Queue(hearth, site.Position, site.Radius);
@@ -396,9 +436,99 @@ namespace Villheim.Logic.Village
             return take;
         }
 
+        public static bool TearingDown(VillageHearth hearth) => IsActive(hearth.Zdo) && hearth.Zdo.GetInt(KeySiteTeardown) == 1;
+
+        /// <summary>The next piece of the old building to take down: the highest first, so roofs come off before walls.</summary>
+        private static Piece OldPiece(VillageHearth hearth)
+        {
+            Site site = Get(hearth.Zdo);
+            if (site == null)
+            {
+                return null;
+            }
+
+            var state = new VillageState(hearth.Zdo);
+            Plot old = state.Plots.FirstOrDefault(p => Utils.DistanceXZ(p.Position, site.Position) < 0.5f);
+            float radius = (old != null ? old.Radius : site.Radius) * 0.75f;
+            Container chest = VillageChest.Find(hearth);
+            var pieces = new List<Piece>();
+            Piece.GetAllPiecesInRadius(site.Position, radius, pieces);
+            Piece best = null;
+            foreach (Piece piece in pieces)
+            {
+                if (piece == null || piece.m_nview == null || !piece.m_nview.IsValid() ||
+                    piece.m_nview.GetZDO().GetInt(Keys.BuiltBy) != hearth.VillageId || piece.GetComponent<VillageHearth>() != null ||
+                    (chest != null && piece.gameObject == chest.gameObject))
+                {
+                    continue;
+                }
+
+                if (best == null || piece.transform.position.y > best.transform.position.y)
+                {
+                    best = piece;
+                }
+            }
+
+            return best;
+        }
+
+        /// <summary>
+        /// Takes down one piece of the old building and puts half its materials back in the chest. When nothing is
+        /// left, the ground is prepared for the new building and the build starts.
+        /// </summary>
+        private static bool TakeDownNext(VillageHearth hearth, VillageState state, Site site)
+        {
+            Piece old = OldPiece(hearth);
+            if (old == null)
+            {
+                hearth.Zdo.Set(KeySiteTeardown, 0);
+                ZoneSystem.ZoneLocation location = DesignLibrary.Find(site.Design);
+                if (location != null)
+                {
+                    DesignSpawner.PrepareSite(location, site.Position, site.Yaw);
+                }
+                else
+                {
+                    DesignSpawner.ClearArea(site.Position, site.Radius);
+                }
+
+                float footprint = Footprint(hearth);
+                TerrainShaper.LevelPad(site.Position, footprint + 0.5f, footprint + 3f);
+                VillheimPlugin.Log.LogInfo($"{state.Name} took down the old building; the new one starts now.");
+                return true;
+            }
+
+            Container chest = VillageChest.Find(hearth);
+            foreach (KeyValuePair<string, int> cost in DesignSpawner.RecipeCost(old.gameObject))
+            {
+                int back = cost.Value / 2;
+                if (back <= 0)
+                {
+                    continue;
+                }
+
+                int left = back - (chest != null ? VillageChest.Add(chest, cost.Key, back) : 0);
+                if (left > 0)
+                {
+                    state.Add(cost.Key, left);
+                }
+            }
+
+            WearNTear wear = old.GetComponent<WearNTear>();
+            wear?.m_destroyedEffect?.Create(old.transform.position, old.transform.rotation, old.transform);
+            old.m_nview.ClaimOwnership();
+            ZNetScene.instance.Destroy(old.gameObject);
+            return true;
+        }
+
         /// <summary>The material the next piece is short of, or null when it can go up now.</summary>
         public static string NextShort(VillageHearth hearth)
         {
+            if (TearingDown(hearth))
+            {
+                return null;
+            }
+
             Site site = Get(hearth.Zdo);
             CachedPlan plan = site != null ? GetPlan(hearth, site) : null;
             int index = hearth.Zdo.GetInt(KeySiteIndex);
@@ -534,6 +664,11 @@ namespace Villheim.Logic.Village
         /// <summary>How far from its centre the next piece reaches sideways (half its width), 0.5 m when unknown.</summary>
         public static float NextPieceHalfWidth(VillageHearth hearth)
         {
+            if (TearingDown(hearth))
+            {
+                return 0.8f;
+            }
+
             Site site = Get(hearth.Zdo);
             CachedPlan plan = site != null ? GetPlan(hearth, site) : null;
             int index = hearth.Zdo.GetInt(KeySiteIndex);
@@ -549,6 +684,11 @@ namespace Villheim.Logic.Village
         /// <summary>True when the character stands inside the next piece's space (a builder never builds himself in).</summary>
         public static bool InsideNextPiece(VillageHearth hearth, Character character)
         {
+            if (TearingDown(hearth))
+            {
+                return false;
+            }
+
             Site site = Get(hearth.Zdo);
             CachedPlan plan = site != null ? GetPlan(hearth, site) : null;
             int index = hearth.Zdo.GetInt(KeySiteIndex);

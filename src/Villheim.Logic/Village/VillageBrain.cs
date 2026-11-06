@@ -189,24 +189,39 @@ namespace Villheim.Logic.Village
         {
             IReadOnlyList<Plot> plots = state.Plots;
             double interval = GrowthInterval();
-            if (plots.Count >= VillheimConfig.MaxBuildings.Value)
-            {
-                state.Waiting = "";
-                return false;
-            }
-
             if (now - state.LastGrowth < interval)
             {
                 return false;
             }
 
-            Role role = Culture.RoleFor(plots.Count);
+            // Millenaire's growth: one pending project at a time, chosen by tier and priority (see Growth).
+            var rng = new System.Random(state.Seed + plots.Count * 7919 + hearth.PlotAttempts * 104729 + (int)(now / 60.0));
+            Growth.Project project = Growth.Pending(hearth, state, rng);
+            if (project == null)
+            {
+                state.Waiting = "";
+                return false;
+            }
+
+            if (project.IsUpgrade)
+            {
+                return TryUpgrade(hearth, state, project, interval);
+            }
+
+            if (plots.Count >= VillheimConfig.MaxBuildings.Value)
+            {
+                Growth.Clear(hearth);
+                state.Waiting = "";
+                return false;
+            }
+
+            Role role = project.Role;
             List<DesignLibrary.Design> pool = DesignLibrary.PoolFor(state.Biome, role);
-            var rng = new System.Random(state.Seed + plots.Count * 7919 + hearth.PlotAttempts * 104729);
             DesignLibrary.Design? picked = DesignLibrary.Pick(pool, rng);
             if (picked == null)
             {
                 VillheimPlugin.Log.LogWarning($"{state.Name} has no valid designs to build. Check the Designs config.");
+                Growth.Clear(hearth);
                 state.LastGrowth = now;
                 return false;
             }
@@ -250,6 +265,7 @@ namespace Villheim.Logic.Village
 
                 hearth.PlotAttempts = 0;
                 state.Waiting = "";
+                Growth.Clear(hearth);
                 int buildSeed = rng.Next(1, int.MaxValue);
                 hearth.StartCoroutine(BreakGround(hearth, design, role, position, yaw, radius, buildSeed, interval));
                 return true;
@@ -259,13 +275,51 @@ namespace Villheim.Logic.Village
             VillheimPlugin.Debug($"{state.Name}: nowhere to put a {RoleName(role)} (attempt {hearth.PlotAttempts}).");
             if (hearth.PlotAttempts >= MaxPlotAttempts)
             {
-                // Nowhere to build right now. Wait a while instead of retrying every few seconds.
+                // Nowhere to build this right now. Choose another project after a while instead of retrying every
+                // few seconds (Millenaire waits too).
                 hearth.PlotAttempts = 0;
+                Growth.Clear(hearth);
                 state.LastGrowth = now - interval * 0.75;
                 state.Waiting = "room to build";
             }
 
             return false;
+        }
+
+        /// <summary>Rebuilds a building bigger where it stands: the old one comes down piece by piece first.</summary>
+        private static bool TryUpgrade(VillageHearth hearth, VillageState state, Growth.Project project, double interval)
+        {
+            Plot plot = state.Plots[project.UpgradeIndex];
+            DesignLibrary.Design? next = Growth.NextDesign(plot, state.Biome);
+            if (next == null || !PlotFinder.CanUpgrade(plot, next.Value.Radius, hearth.transform.position, state.Axis, state.Plots, state.Id))
+            {
+                VillheimPlugin.Debug($"{state.Name}: no room to make the {plot.Design} bigger.");
+                Growth.Clear(hearth);
+                return false;
+            }
+
+            string missing = MissingToStart(hearth, state, next.Value);
+            if (missing != null)
+            {
+                state.Waiting = $"{missing} to rebuild the {RoleName(Growth.RoleOf(plot))} bigger";
+                return false;
+            }
+
+            Growth.Clear(hearth);
+            state.Waiting = "";
+            state.LastGrowth += interval;
+            Role role = Growth.RoleOf(plot);
+            float yaw = PlotFinder.FaceHearth(plot.Position, hearth.transform.position, state.Axis);
+            ConstructionSite.Begin(hearth.Zdo, new ConstructionSite.Site
+            {
+                Design = next.Value.Name, Position = plot.Position, Yaw = yaw, Radius = next.Value.Radius, Role = role,
+                Seed = new System.Random(state.Seed + plot.Design.GetStableHashCode()).Next(1, int.MaxValue), Upgrade = true,
+            });
+
+            VillheimPlugin.Log.LogInfo($"{state.Name} will rebuild the {plot.Design} as {next.Value.Name}.");
+            Announce(hearth, $"{state.Name} is rebuilding its {RoleName(role)} bigger.");
+            Villagers.Dialogue.Note(state.Id, "groundbroken");
+            return true;
         }
 
         /// <summary>Null when the stock covers the share needed to break ground, otherwise what is short.</summary>
@@ -509,10 +563,6 @@ namespace Villheim.Logic.Village
             int buildings = state.Plots.Count;
             string text = $"{state.Name} ({Tier(buildings)}): {buildings} buildings, " +
                           $"{CountVillagers(state.Id)}/{Capacity(state)} villagers, {state.StockText()}.";
-            if (buildings >= VillheimConfig.MaxBuildings.Value)
-            {
-                return text + " Fully grown.";
-            }
 
             string progress = ConstructionSite.Progress(hearth);
             if (progress != null)
@@ -538,7 +588,8 @@ namespace Villheim.Logic.Village
 
             double remaining = state.LastGrowth + GrowthInterval() - ZNet.instance.GetTimeSeconds();
             double days = Math.Max(0.0, remaining / DayLength());
-            return text + $" Next {RoleName(Culture.RoleFor(buildings))} in about {days:0.0} days.";
+            string next = Growth.PendingLabel(hearth, state);
+            return text + (next == "nothing" ? $" Next building in about {days:0.0} days." : $" Next: {next}, in about {days:0.0} days.");
         }
 
         public static void Announce(VillageHearth hearth, string message)

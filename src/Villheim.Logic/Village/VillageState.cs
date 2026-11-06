@@ -209,6 +209,23 @@ namespace Villheim.Logic.Village
             }
         }
 
+        /// <summary>Puts <paramref name="plot"/> in place of the plot at that spot (an upgraded building).</summary>
+        public void ReplacePlot(Vector3 at, Plot plot)
+        {
+            var plots = new List<Plot>(Plots);
+            int index = plots.FindIndex(p => Utils.DistanceXZ(p.Position, at) < 0.5f);
+            if (index >= 0)
+            {
+                plots[index] = plot;
+            }
+            else
+            {
+                plots.Add(plot);
+            }
+
+            _zdo.Set(Keys.Plots, Serialize(plots));
+        }
+
         public void AddPlot(Plot plot)
         {
             var plots = new List<Plot>(Plots) { plot };

@@ -113,6 +113,46 @@ namespace Villheim.Logic.Village
         }
 
         /// <summary>
+        /// A building can be rebuilt bigger where it stands: the new size keeps its gap to the other buildings and their
+        /// paths, stays inside the village, and nothing that isn't the village's own stands in the way.
+        /// </summary>
+        public static bool CanUpgrade(Plot plot, float radius, Vector3 hearth, float axisYaw, IReadOnlyList<Plot> plots, int villageId)
+        {
+            if (Utils.DistanceXZ(plot.Position, hearth) + radius * 0.5f > VillheimConfig.VillageRadius.Value ||
+                Utils.DistanceXZ(plot.Position, hearth) < radius * 0.6f + HearthClearance)
+            {
+                return false;
+            }
+
+            foreach (Plot other in plots)
+            {
+                if (other == plot || Utils.DistanceXZ(other.Position, plot.Position) < 0.5f)
+                {
+                    continue;
+                }
+
+                if (Utils.DistanceXZ(plot.Position, other.Position) < other.Radius + radius + Gap ||
+                    PathBuilder.DistanceToPath(plot.Position, hearth, axisYaw, other.Position, other.Radius) < radius * 0.6f + 1.5f)
+                {
+                    return false;
+                }
+            }
+
+            PieceBuffer.Clear();
+            Piece.GetAllPiecesInRadius(plot.Position, radius * 0.7f, PieceBuffer);
+            foreach (Piece piece in PieceBuffer)
+            {
+                if (piece != null && piece.GetComponent<VillageHearth>() == null &&
+                    (piece.m_nview == null || !piece.m_nview.IsValid() || piece.m_nview.GetZDO().GetInt(Keys.BuiltBy) != villageId))
+                {
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
+        /// <summary>
         /// The spot keeps clear of every path in the village (hearth to each building), and its own path to the
         /// hearth doesn't run through a building.
         /// </summary>

@@ -42,7 +42,7 @@ with its own look for its biome.
 - [ ] Villagers open and close doors. (Built 2026-11-05 session 4, needs testing.)
 - [ ] Support-aware build order: nothing goes up unsupported; openings before what rests on them. (Built 2026-11-05
       session 4, needs testing.)
-- [ ] Never copy bee hives from designs. (Built 2026-11-05 session 4, needs testing.)
+- [ ] Never copy bee hives from designs. (Built 2026-11-05 session 4; a bee hive still appeared in the session 8 test.)
 - [ ] Villagers gather from nothing for their first building (no free starting stock). (Built 2026-11-05 session 5,
       needs testing.)
 - [ ] No swings from a distance: reach checked against the real surface before every blow. (Built 2026-11-05
@@ -56,6 +56,13 @@ with its own look for its biome.
 - [ ] Paths from a grid search that join into streets (replacing the L-shaped paths).
 - [ ] Earth floor painted under buildings.
 - [ ] Millénaire-like alignment: buildings face the streets.
+- [ ] Buildings stay close: houses orbit the hearth within a set distance; specialty buildings go a bit farther out or
+      next to their resource (mining nodes, water), always inside a maximum radius (Tyler, 2026-11-05).
+- [ ] Ground first: every site is flattened before the first piece goes up (Tyler, 2026-11-05).
+- [ ] Paths are laid by a villager walking the route, one stretch at a time (Tyler, 2026-11-05).
+- [ ] Repairs: villagers fix broken pieces, structural first (flatten under ground pieces), cosmetic later (Tyler,
+      2026-11-05).
+- [ ] Stone building waits until the village advances, at least in the Meadows (Tyler, 2026-11-05; to decide).
 
 ## Milestone 4: villagers with lives
 
@@ -82,6 +89,13 @@ with its own look for its biome.
 - [ ] The hearth upgrades over time as the village grows (Tyler, 2026-11-05): campfire, then a hearth with the
       cooking station over it, then larger vanilla fire pieces; the cooking station is part of the hearth, not a
       separate fire. (Cooking station moved onto the hearth 2026-11-05 session 7; upgrades not started.)
+- [ ] One task at a time: pieces only appear while the builder stands next to them; a fight pauses the build or path,
+      which resumes afterwards (Tyler, 2026-11-05).
+- [ ] Protector and carer roles: assigned at random, never by gender; new arrivals alternate protector, carer,
+      protector. Roles do not limit jobs; they show in idle time and emergencies. When attacked, protectors take basic
+      weapons and defend (Tyler, 2026-11-05).
+- [ ] Dialogue about what villagers are doing, want and need, with conditions; grow into a large library of lines
+      (Tyler, 2026-11-05).
 - [ ] Interiors upgrade over time (bed, chests, table, then better furniture).
 - [ ] Exteriors upgrade over time (swap a building for a better design of the same role).
 
@@ -90,6 +104,8 @@ with its own look for its biome.
 - [ ] Different building sets and villager looks per biome (Meadows versus Black Forest first).
 - [ ] PlanBuild blueprints as a design source.
 - [ ] More biomes (Plains, Mountain, Swamp) with their own materials.
+- [ ] Gear by biome and village level: basic Meadows tools for everyone, biome weapons and shields for protectors,
+      better materials and Black Forest gear as the village levels up (Tyler, 2026-11-05).
 
 ## Later ideas
 

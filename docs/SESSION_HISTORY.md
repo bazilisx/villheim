@@ -38,6 +38,18 @@ Current facts only. Read this at the start of a session. Narrative is in `docs/d
   - A villager jittered at the cooking station repeating one motion (no real cooking yet).
   - Nobody healed. Basic healing added since (kneel and cook at the hearth); needs testing.
   - Tool tier: axes now start at flint; check the fine wood complaint is gone.
+- New from Tyler (details in today's note, Session 8):
+  - Buildings went up far from the hearth: keep buildings within a set ring around the hearth, specialty buildings a
+    bit farther out or near their resource, never past a maximum radius.
+  - Flatten the ground before building; stone pieces went up in the air and broke. Consider no stone in early Meadows
+    villages.
+  - Repair broken pieces: structural first (flatten under ground pieces), cosmetic later.
+  - Bee hive copied again: never build bee hives.
+  - One task at a time: pieces only appear with the builder next to them; paths are walked and laid; work pauses
+    during a fight and resumes.
+  - Protector and carer roles, random and never by gender, new arrivals alternate; half take weapons when attacked.
+  - Dialogue about what villagers do, want and need.
+  - Gear by biome and village level: basic Meadows tools, protectors with biome weapons and shields.
 - Undressing after taking out the axe: cause unknown, a dress check covers it. Check the log for "lost their
   clothes" lines.
 - Sitting on chairs and benches, beds, real cooking.
@@ -51,6 +63,7 @@ Current facts only. Read this at the start of a session. Narrative is in `docs/d
 
 ## Recent milestones
 
+- **2026-11-05 (test notes and new requests: placement, repairs, roles, dialogue)** - see docs/daily-notes/2026-11/2026-11-05.md
 - **2026-11-05 (test of 2108f23, gathering loop fixes)** - see docs/daily-notes/2026-11/2026-11-05.md
 - **2026-11-05 (updater for the PC)** - see docs/daily-notes/2026-11/2026-11-05.md
 - **2026-11-05 (villager AI rework after a second study of VikingColonies)** - see docs/daily-notes/2026-11/2026-11-05.md

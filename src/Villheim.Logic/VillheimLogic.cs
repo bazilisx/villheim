@@ -20,6 +20,7 @@ namespace Villheim.Logic
 
         public void OnLoad()
         {
+            LogicConfig.Bind();
             ConfigWatcher.Start();
             Designs.DesignReport.StartIfStale(System.TimeSpan.FromMinutes(30));
         }

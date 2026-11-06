@@ -61,13 +61,13 @@ namespace Villheim.Logic.Designs
 
                 var sb = new StringBuilder();
                 sb.AppendLine($"Villheim design report, {DateTime.Now}, {locations.Count} locations");
-                sb.AppendLine("name | biome | radius | kept | pieces | skipped | static meshes | kept objects | skipped because");
+                sb.AppendLine("name | biome | radius | kept | pieces | skipped | static meshes | kept objects | skipped because | materials");
 
                 foreach (ZoneSystem.ZoneLocation location in locations)
                 {
                     try
                     {
-                        sb.AppendLine(Describe(location));
+                        sb.AppendLine(Describe(location) + " | " + string.Join(", ", DesignLibrary.RawTotals(location).Select(t => $"{t.Key} {t.Value}")));
                     }
                     catch (Exception ex)
                     {

@@ -35,10 +35,11 @@ namespace Villheim.Logic.Village
             }
 
             double now = ZNet.instance.GetTimeSeconds();
-            double unloadedSeconds = AddPassiveWood(state, now);
+            double unloadedSeconds = AddPassiveWood(hearth, state, now);
 
             if (ConstructionSite.IsActive(hearth.Zdo))
             {
+                StockSiteChest(hearth, state);
                 AdvanceSite(hearth, unloadedSeconds);
             }
             else
@@ -100,7 +101,7 @@ namespace Villheim.Logic.Village
         public static string Tier(int buildings) => new[] { "Camp", "Hamlet", "Village", "Town" }[TierIndex(buildings)];
 
         /// <summary>Adds the wood gathered while the village sat unloaded. Returns how long that was, in seconds.</summary>
-        private static double AddPassiveWood(VillageState state, double now)
+        private static double AddPassiveWood(VillageHearth hearth, VillageState state, double now)
         {
             double last = state.LastSeen;
             state.LastSeen = now;
@@ -114,9 +115,22 @@ namespace Villheim.Logic.Village
             int earned = (int)(villagers * VillheimConfig.PassiveWoodPerVillagerPerDay.Value * days);
             if (earned > 0)
             {
-                // Roughly the split between woodcutters and miners.
-                state.Add(Materials.Wood, earned * 2 / 3);
-                state.Add(Materials.Stone, earned / 3);
+                // Split by what the building site still needs, or roughly between woodcutters and miners.
+                Dictionary<string, int> remaining = ConstructionSite.Remaining(hearth);
+                int total = remaining.Values.Sum();
+                if (total > 0)
+                {
+                    foreach (KeyValuePair<string, int> need in remaining)
+                    {
+                        state.Add(need.Key, (int)((long)earned * need.Value / total));
+                    }
+                }
+                else
+                {
+                    state.Add(Materials.Wood, earned * 2 / 3);
+                    state.Add(Materials.Stone, earned / 3);
+                }
+
                 VillheimPlugin.Debug($"{state.Name} gathered {earned} materials while unloaded ({days:0.00} days).");
             }
 
@@ -141,6 +155,34 @@ namespace Villheim.Logic.Village
                 if (!ConstructionSite.PlaceNext(hearth, unloadedSeconds <= 0))
                 {
                     break;
+                }
+            }
+        }
+
+        /// <summary>
+        /// Makes sure the site has its chest and moves what the village has saved up into it, as much as the
+        /// building still needs.
+        /// </summary>
+        private static void StockSiteChest(VillageHearth hearth, VillageState state)
+        {
+            Container chest = SiteChest.Ensure(hearth, ConstructionSite.ChestSpot(hearth));
+            if (chest == null || !SiteChest.Usable(chest))
+            {
+                return;
+            }
+
+            foreach (KeyValuePair<string, int> need in ConstructionSite.Shortfall(hearth))
+            {
+                int move = Math.Min(need.Value, state.Get(need.Key));
+                if (move <= 0)
+                {
+                    continue;
+                }
+
+                int added = SiteChest.Add(chest, need.Key, move);
+                if (added > 0)
+                {
+                    state.Add(need.Key, -added);
                 }
             }
         }
@@ -421,9 +463,13 @@ namespace Villheim.Logic.Village
                 int guard = 5000;
                 while (guard-- > 0)
                 {
+                    Container chest = SiteChest.Find(hearth);
                     foreach (string material in Materials.Tracked)
                     {
-                        state.Add(material, 10);
+                        if (chest == null || SiteChest.Add(chest, material, 10) == 0)
+                        {
+                            state.Add(material, 10);
+                        }
                     }
 
                     if (!ConstructionSite.PlaceNext(hearth, false))
@@ -463,6 +509,12 @@ namespace Villheim.Logic.Village
             if (progress != null)
             {
                 text += $" Now {progress}.";
+                Dictionary<string, int> shortfall = ConstructionSite.Shortfall(hearth);
+                if (shortfall.Count > 0)
+                {
+                    text += " The site chest still needs " +
+                            string.Join(", ", shortfall.Select(n => $"{n.Value} {Materials.Label(n.Key)}")) + ".";
+                }
             }
 
             if (!string.IsNullOrEmpty(state.Waiting))

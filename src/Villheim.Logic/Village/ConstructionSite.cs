@@ -11,9 +11,9 @@ namespace Villheim.Logic.Village
     /// pieces are done), and the full piece list is rebuilt from the design whenever it is needed, so a site
     /// survives logouts and logic reloads.
     ///
-    /// Pieces go up in stages, ground first: walls, roof, doors and windows, then furnishing. Each structural
-    /// piece costs wood when it is placed, so a village starts building as soon as it can and pauses when the
-    /// wood runs out. Builders place pieces as they swing their hammers; without a builder nearby the site
+    /// Pieces go up in stages, ground first: walls, roof, doors and windows, then furnishing. Each piece costs its
+    /// materials when it is placed, taken from the site chest, so a village starts building as soon as it can and
+    /// pauses when the chest runs dry. Builders place pieces as they hammer; without a builder nearby the site
     /// still creeps along slowly.
     /// </summary>
     internal static class ConstructionSite
@@ -39,6 +39,9 @@ namespace Villheim.Logic.Village
             public string Key;
             public List<DesignSpawner.PlanEntry> Entries;
             public Dictionary<string, float> Factors;
+            public float Footprint;
+            public int RemainingIndex = -1;
+            public Dictionary<string, float> Remaining;
         }
 
         private static readonly Dictionary<int, CachedPlan> Plans = new Dictionary<int, CachedPlan>();
@@ -169,7 +172,7 @@ namespace Villheim.Logic.Village
             }
 
             DesignSpawner.PlanEntry entry = plan.Entries[index];
-            if (!Pay(zdo, state, plan, entry))
+            if (!Pay(hearth, state, plan, entry))
             {
                 return false;
             }
@@ -194,6 +197,7 @@ namespace Villheim.Logic.Village
 
         private static void Complete(VillageHearth hearth, VillageState state, Site site)
         {
+            SiteChest.Settle(hearth, state);
             End(hearth.Zdo);
             Plans.Remove(state.Id);
             SnapToGround.SnappAll();
@@ -243,7 +247,16 @@ namespace Villheim.Logic.Village
                     factors[total.Key] = DesignLibrary.CostFactor(total.Value);
                 }
 
-                var plan = new CachedPlan { Key = key, Entries = entries, Factors = factors };
+                float footprint = 2f;
+                foreach (DesignSpawner.PlanEntry entry in entries)
+                {
+                    if (entry.Structural)
+                    {
+                        footprint = Mathf.Max(footprint, new Vector2(entry.LocalPosition.x, entry.LocalPosition.z).magnitude);
+                    }
+                }
+
+                var plan = new CachedPlan { Key = key, Entries = entries, Factors = factors, Footprint = footprint + 0.5f };
                 Plans[id] = plan;
                 return plan;
             }
@@ -254,18 +267,59 @@ namespace Villheim.Logic.Village
         }
 
         /// <summary>
-        /// Takes the materials for one piece from the stock. Amounts are scaled (see DesignLibrary.CostFactor) and the
-        /// fractions carried over between pieces, so the whole building costs what its summary says.
-        /// Returns false, with nothing taken, when the stock is short.
+        /// Takes the materials for one piece from the site chest, or from the village stock while the chest is not
+        /// loaded. Amounts are scaled (see DesignLibrary.CostFactor) and the fractions carried over between pieces, so
+        /// the whole building costs what its summary says. Returns false, with nothing taken, when materials are short.
         /// </summary>
-        private static bool Pay(ZDO zdo, VillageState state, CachedPlan plan, DesignSpawner.PlanEntry entry)
+        private static bool Pay(VillageHearth hearth, VillageState state, CachedPlan plan, DesignSpawner.PlanEntry entry)
         {
             if (entry.Cost.Count == 0 || !VillheimConfig.RequireWood.Value)
             {
                 return true;
             }
 
+            ZDO zdo = hearth.Zdo;
             Dictionary<string, float> owed = ReadOwed(zdo);
+            Dictionary<string, int> take = Due(plan, entry, owed);
+            Container chest = SiteChest.Find(hearth);
+            foreach (KeyValuePair<string, int> amount in take)
+            {
+                int have = chest != null ? SiteChest.Count(chest, amount.Key) : state.Get(amount.Key);
+                if (amount.Value > have)
+                {
+                    state.Waiting = chest != null
+                        ? $"{Materials.Label(amount.Key)} in the site chest"
+                        : $"{Materials.Label(amount.Key)} to keep building ({have} in stock)";
+                    return false;
+                }
+            }
+
+            if (chest != null)
+            {
+                if (!SiteChest.Take(chest, take))
+                {
+                    state.Waiting = "someone to close the site chest";
+                    return false;
+                }
+            }
+            else
+            {
+                foreach (KeyValuePair<string, int> amount in take)
+                {
+                    if (amount.Value > 0)
+                    {
+                        state.Add(amount.Key, -amount.Value);
+                    }
+                }
+            }
+
+            WriteOwed(zdo, owed);
+            return true;
+        }
+
+        /// <summary>Whole amounts due for one piece. Updates the carried fractions in <paramref name="owed"/>.</summary>
+        private static Dictionary<string, int> Due(CachedPlan plan, DesignSpawner.PlanEntry entry, Dictionary<string, float> owed)
+        {
             var take = new Dictionary<string, int>();
             foreach (KeyValuePair<string, int> cost in entry.Cost)
             {
@@ -273,26 +327,147 @@ namespace Villheim.Logic.Village
                 owed.TryGetValue(cost.Key, out float carried);
                 float due = carried + cost.Value * factor;
                 int whole = Mathf.FloorToInt(due);
-                if (whole > state.Get(cost.Key))
-                {
-                    state.Waiting = $"{Materials.Label(cost.Key)} to keep building ({state.Get(cost.Key)} in stock)";
-                    return false;
-                }
-
                 take[cost.Key] = whole;
                 owed[cost.Key] = due - whole;
             }
 
-            foreach (KeyValuePair<string, int> amount in take)
+            return take;
+        }
+
+        /// <summary>The material the next piece is short of, or null when it can go up now.</summary>
+        public static string NextShort(VillageHearth hearth)
+        {
+            Site site = Get(hearth.Zdo);
+            CachedPlan plan = site != null ? GetPlan(hearth, site) : null;
+            int index = hearth.Zdo.GetInt(KeySiteIndex);
+            if (plan == null || index >= plan.Entries.Count || !VillheimConfig.RequireWood.Value)
             {
-                if (amount.Value > 0)
+                return null;
+            }
+
+            Container chest = SiteChest.Find(hearth);
+            var state = new VillageState(hearth.Zdo);
+            foreach (KeyValuePair<string, int> amount in Due(plan, plan.Entries[index], ReadOwed(hearth.Zdo)))
+            {
+                int have = chest != null ? SiteChest.Count(chest, amount.Key) : state.Get(amount.Key);
+                if (amount.Value > have)
                 {
-                    state.Add(amount.Key, -amount.Value);
+                    return amount.Key;
                 }
             }
 
-            WriteOwed(zdo, owed);
-            return true;
+            return null;
+        }
+
+        /// <summary>Everything the rest of the building still costs, per material.</summary>
+        public static Dictionary<string, int> Remaining(VillageHearth hearth)
+        {
+            var result = new Dictionary<string, int>();
+            Site site = Get(hearth.Zdo);
+            CachedPlan plan = site != null ? GetPlan(hearth, site) : null;
+            if (plan == null || !VillheimConfig.RequireWood.Value)
+            {
+                return result;
+            }
+
+            int index = hearth.Zdo.GetInt(KeySiteIndex);
+            if (plan.RemainingIndex != index || plan.Remaining == null)
+            {
+                var totals = new Dictionary<string, float>();
+                for (int i = index; i < plan.Entries.Count; i++)
+                {
+                    foreach (KeyValuePair<string, int> cost in plan.Entries[i].Cost)
+                    {
+                        plan.Factors.TryGetValue(cost.Key, out float factor);
+                        totals.TryGetValue(cost.Key, out float sum);
+                        totals[cost.Key] = sum + cost.Value * factor;
+                    }
+                }
+
+                plan.Remaining = totals;
+                plan.RemainingIndex = index;
+            }
+
+            Dictionary<string, float> owed = ReadOwed(hearth.Zdo);
+            foreach (KeyValuePair<string, float> total in plan.Remaining)
+            {
+                owed.TryGetValue(total.Key, out float carried);
+                int amount = Mathf.FloorToInt(total.Value + carried);
+                if (amount > 0)
+                {
+                    result[total.Key] = amount;
+                }
+            }
+
+            return result;
+        }
+
+        /// <summary>What the site still needs beyond what is already in its chest (or the stock, when unloaded).</summary>
+        public static Dictionary<string, int> Shortfall(VillageHearth hearth)
+        {
+            Dictionary<string, int> remaining = Remaining(hearth);
+            Container chest = SiteChest.Find(hearth);
+            var state = new VillageState(hearth.Zdo);
+            var shortfall = new Dictionary<string, int>();
+            foreach (KeyValuePair<string, int> need in remaining)
+            {
+                int have = chest != null ? SiteChest.Count(chest, need.Key) : state.Get(need.Key);
+                if (need.Value > have)
+                {
+                    shortfall[need.Key] = need.Value - have;
+                }
+            }
+
+            return shortfall;
+        }
+
+        /// <summary>How far the building reaches from its centre, from its structural pieces.</summary>
+        public static float Footprint(VillageHearth hearth)
+        {
+            Site site = Get(hearth.Zdo);
+            CachedPlan plan = site != null ? GetPlan(hearth, site) : null;
+            return plan != null ? plan.Footprint : (site != null ? site.Radius * 0.6f : 6f);
+        }
+
+        /// <summary>Where the site chest goes: just outside the building, on the side facing the hearth.</summary>
+        public static Vector3 ChestSpot(VillageHearth hearth)
+        {
+            Site site = Get(hearth.Zdo);
+            if (site == null)
+            {
+                return hearth.transform.position;
+            }
+
+            Vector3 toHearth = hearth.transform.position - site.Position;
+            toHearth.y = 0f;
+            Vector3 direction = toHearth.sqrMagnitude > 0.01f ? toHearth.normalized : Vector3.forward;
+            Vector3 side = Vector3.Cross(Vector3.up, direction);
+            return site.Position + direction * (Footprint(hearth) + 2f) + side * 2f;
+        }
+
+        /// <summary>
+        /// Where a builder stands to work on the next piece: on a ring a little outside the building, at the point
+        /// closest to the piece. Builders never walk into a half-built house.
+        /// </summary>
+        public static Vector3 StandSpot(VillageHearth hearth, Vector3 piece)
+        {
+            Site site = Get(hearth.Zdo);
+            if (site == null)
+            {
+                return piece;
+            }
+
+            Vector3 outward = piece - site.Position;
+            outward.y = 0f;
+            Vector3 direction = outward.sqrMagnitude > 0.01f ? outward.normalized : (hearth.transform.position - site.Position).normalized;
+            direction.y = 0f;
+            Vector3 spot = site.Position + direction.normalized * (Footprint(hearth) + 1.2f);
+            if (ZoneSystem.instance.GetGroundHeight(spot, out float y))
+            {
+                spot.y = y;
+            }
+
+            return spot;
         }
 
         private static Dictionary<string, float> ReadOwed(ZDO zdo)

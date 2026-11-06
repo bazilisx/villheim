@@ -37,6 +37,7 @@ namespace Villheim.Logic.Designs
             foreach (string tier in Culture.For(biome).Tiers(role))
             {
                 AddDesigns(pool, tier, warnIfMissing: false);
+                KeepBuildable(pool, biome);
                 if (pool.Count > 0)
                 {
                     break;
@@ -50,6 +51,7 @@ namespace Villheim.Logic.Designs
                     : VillheimConfig.MeadowsDesigns.Value;
                 AddDesigns(pool, configList);
                 AddDesigns(pool, VillheimConfig.AnyBiomeDesigns.Value);
+                KeepBuildable(pool, biome);
             }
 
             if (pool.Count == 0 && role != Role.House)
@@ -83,8 +85,53 @@ namespace Villheim.Logic.Designs
                 }
             }
 
+            KeepBuildable(pool, biome);
             pool.Sort((a, b) => a.Radius.CompareTo(b.Radius));
             return pool;
+        }
+
+        /// <summary>
+        /// A design can only be built in a biome that has every material it needs (see Materials.AllowedIn).
+        /// </summary>
+        public static bool BuildableIn(ZoneSystem.ZoneLocation location, Heightmap.Biome biome)
+        {
+            return MissingIn(location, biome) == null;
+        }
+
+        /// <summary>The first material this design needs that the biome does not have, or null.</summary>
+        public static string MissingIn(ZoneSystem.ZoneLocation location, Heightmap.Biome biome)
+        {
+            if (!VillheimConfig.RequireWood.Value)
+            {
+                return null;
+            }
+
+            HashSet<string> allowed = Village.Materials.AllowedIn(biome);
+            foreach (KeyValuePair<string, int> total in RawTotals(location))
+            {
+                if (total.Value > 0 && !allowed.Contains(total.Key))
+                {
+                    return total.Key;
+                }
+            }
+
+            return null;
+        }
+
+        private static readonly HashSet<string> WarnedUnbuildable = new HashSet<string>();
+
+        private static void KeepBuildable(List<Design> pool, Heightmap.Biome biome)
+        {
+            pool.RemoveAll(design =>
+            {
+                string missing = MissingIn(design.Location, biome);
+                if (missing != null && WarnedUnbuildable.Add(design.Name + "|" + biome))
+                {
+                    VillheimPlugin.Debug($"{design.Name} needs {Village.Materials.Label(missing)}, which {biome} does not have. Skipping it there.");
+                }
+
+                return missing != null;
+            });
         }
 
         /// <summary>Every design any role could use, for the designs command.</summary>

@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 using System.Globalization;
 using UnityEngine;
 
@@ -35,6 +36,74 @@ namespace Villheim.Logic.Designs
             public float Radius => Blueprint != null ? Blueprint.Radius : DesignLibrary.Radius(Location);
             public float MaxTerrainDelta => Blueprint != null ? 3f : DesignLibrary.MaxTerrainDelta(Location);
             public Dictionary<string, int> RawTotals => Blueprint != null ? Blueprints.RawTotals(Blueprint) : DesignLibrary.RawTotals(Location);
+        }
+
+        private static readonly string[] NotAFire = { "torch", "sconce", "candle", "lantern", "lamp", "brazier", "smelter", "kiln", "forge", "oven" };
+
+        private static readonly Dictionary<string, Vector3?> Fires = new Dictionary<string, Vector3?>();
+
+        /// <summary>
+        /// Where the design's own fire pit or hearth sits (design coordinates), the one nearest its middle, or null.
+        /// A longhouse with one can be built around the village hearth.
+        /// </summary>
+        public static Vector3? FireOf(Design design)
+        {
+            if (Fires.TryGetValue(design.Name, out Vector3? cached))
+            {
+                return cached;
+            }
+
+            Vector3? best = null;
+            void Consider(string prefabName, Vector3 local)
+            {
+                GameObject prefab = ZNetScene.instance ? ZNetScene.instance.GetPrefab(prefabName) : null;
+                string lower = prefabName.ToLowerInvariant();
+                if (prefab == null || prefab.GetComponent<Fireplace>() == null || NotAFire.Any(w => lower.Contains(w)))
+                {
+                    return;
+                }
+
+                if (best == null || new Vector2(local.x, local.z).sqrMagnitude < new Vector2(best.Value.x, best.Value.z).sqrMagnitude)
+                {
+                    best = local;
+                }
+            }
+
+            if (design.Blueprint != null)
+            {
+                foreach (Blueprints.Piece piece in design.Blueprint.Pieces)
+                {
+                    Consider(piece.Prefab, piece.Position);
+                }
+            }
+            else
+            {
+                design.Location.m_prefab.Load();
+                try
+                {
+                    GameObject asset = design.Location.m_prefab.Asset;
+                    if (asset != null)
+                    {
+                        foreach (ZNetView view in Utils.GetEnabledComponentsInChildren<ZNetView>(asset))
+                        {
+                            Consider(Utils.GetPrefabName(view.gameObject), asset.transform.InverseTransformPoint(view.transform.position));
+                        }
+                    }
+                }
+                finally
+                {
+                    design.Location.m_prefab.Release();
+                }
+            }
+
+            // Only a fire inside the building counts (not a campfire out in the yard).
+            if (best != null && new Vector2(best.Value.x, best.Value.z).magnitude > design.Radius * 0.5f)
+            {
+                best = null;
+            }
+
+            Fires[design.Name] = best;
+            return best;
         }
 
         /// <summary>A design by name: a location, or a blueprint when the name starts with "bp:".</summary>

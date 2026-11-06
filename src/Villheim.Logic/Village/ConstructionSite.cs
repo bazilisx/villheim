@@ -313,7 +313,8 @@ namespace Villheim.Logic.Village
             Blueprints.Blueprint blueprint = Blueprints.Find(site.Design);
             if (blueprint != null)
             {
-                return Cache(id, key, Blueprints.MakePlan(blueprint, site.Position, site.Yaw), Blueprints.RawTotals(blueprint));
+                return Cache(id, key, AroundHearth(hearth, site, Blueprints.MakePlan(blueprint, site.Position, site.Yaw)),
+                    Blueprints.RawTotals(blueprint));
             }
 
             ZoneSystem.ZoneLocation location = DesignLibrary.Find(site.Design);
@@ -332,12 +333,40 @@ namespace Villheim.Logic.Village
                 }
 
                 List<DesignSpawner.PlanEntry> entries = DesignSpawner.MakePlan(asset, site.Position, site.Seed, site.Yaw, supportOrder);
-                return Cache(id, key, entries, DesignLibrary.RawTotals(location));
+                return Cache(id, key, AroundHearth(hearth, site, entries), DesignLibrary.RawTotals(location));
             }
             finally
             {
                 location.m_prefab.Release();
             }
+        }
+
+        /// <summary>
+        /// Leaves out pieces that would land on the village hearth or its chest: the design's own fire pit when the
+        /// longhouse is built around the hearth, and anything else in the way there.
+        /// </summary>
+        private static List<DesignSpawner.PlanEntry> AroundHearth(VillageHearth hearth, Site site, List<DesignSpawner.PlanEntry> entries)
+        {
+            Vector3 fire = hearth.transform.position;
+            Vector3 chest = VillageChest.Spot(hearth);
+            Quaternion turn = Quaternion.Euler(0f, site.Yaw, 0f);
+            if (Utils.DistanceXZ(fire, site.Position) > site.Radius + 2f)
+            {
+                return entries;
+            }
+
+            return entries.Where(e =>
+            {
+                Vector3 world = site.Position + turn * e.LocalPosition;
+                if (Mathf.Abs(world.y - fire.y) > 1.5f)
+                {
+                    return true;
+                }
+
+                GameObject prefab = ZNetScene.instance.GetPrefab(e.Prefab);
+                bool isFire = prefab != null && prefab.GetComponent<Fireplace>() != null;
+                return Utils.DistanceXZ(world, fire) > (isFire ? 2.5f : 1.3f) && Utils.DistanceXZ(world, chest) > 1.1f;
+            }).ToList();
         }
 
         private static CachedPlan Cache(int id, string key, List<DesignSpawner.PlanEntry> entries, Dictionary<string, int> rawTotals)

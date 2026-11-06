@@ -256,8 +256,16 @@ namespace Villheim.Logic.Village
                 }
 
                 float radius = design.Radius;
-                if (!PlotFinder.TryFind(hearth.transform.position, state.Axis, role, strictHub, radius,
-                        design.MaxTerrainDelta, plots, rng, out Vector3 position, out float yaw))
+                Vector3 position;
+                float yaw;
+                Vector3? fire = role == Role.Hub && !plots.Any(p => p.Role == nameof(Role.Hub)) ? DesignLibrary.FireOf(design) : null;
+                if (fire.HasValue && PlotFinder.AroundHearth(hearth.transform.position, state.Axis, fire.Value, radius,
+                        design.MaxTerrainDelta, state.Id, out position, out yaw))
+                {
+                    VillheimPlugin.Log.LogInfo($"{state.Name} builds its {design.Name} around the hearth.");
+                }
+                else if (!PlotFinder.TryFind(hearth.transform.position, state.Axis, role, strictHub, radius,
+                             design.MaxTerrainDelta, plots, rng, out position, out yaw))
                 {
                     VillheimPlugin.Debug($"{state.Name}: no room for {design.Name}.");
                     continue;

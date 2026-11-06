@@ -113,6 +113,50 @@ namespace Villheim.Logic.Village
         }
 
         /// <summary>
+        /// Places a longhouse so its own fire pit sits on the village hearth: the hall is built around the hearth and
+        /// its cooking station. Tries the four turns of the village grid. The floor goes at the hearth's height.
+        /// </summary>
+        public static bool AroundHearth(Vector3 hearth, float axisYaw, Vector3 fireLocal, float radius, float maxTerrainDelta,
+            int villageId, out Vector3 position, out float yaw)
+        {
+            for (int turn = 0; turn < 4; turn++)
+            {
+                yaw = axisYaw + 90f * turn;
+                Vector3 offset = Quaternion.Euler(0f, yaw, 0f) * new Vector3(fireLocal.x, 0f, fireLocal.z);
+                position = new Vector3(hearth.x - offset.x, hearth.y - fireLocal.y, hearth.z - offset.z);
+                if (!SampleGround(position, radius, out float min, out float max, out float _) ||
+                    min < ZoneSystem.instance.m_waterLevel + 1f || max - min > maxTerrainDelta + 1f ||
+                    Location.IsInsideNoBuildLocation(position))
+                {
+                    continue;
+                }
+
+                bool blocked = false;
+                PieceBuffer.Clear();
+                Piece.GetAllPiecesInRadius(position, radius + 1f, PieceBuffer);
+                foreach (Piece piece in PieceBuffer)
+                {
+                    // Only the village's own pieces (the hearth, its chest and cooking station) may be there already.
+                    if (piece != null && piece.GetComponent<VillageHearth>() == null &&
+                        (piece.m_nview == null || !piece.m_nview.IsValid() || piece.m_nview.GetZDO().GetInt(Keys.BuiltBy) != villageId))
+                    {
+                        blocked = true;
+                        break;
+                    }
+                }
+
+                if (!blocked)
+                {
+                    return true;
+                }
+            }
+
+            position = Vector3.zero;
+            yaw = 0f;
+            return false;
+        }
+
+        /// <summary>
         /// A building can be rebuilt bigger where it stands: the new size keeps its gap to the other buildings and their
         /// paths, stays inside the village, and nothing that isn't the village's own stands in the way.
         /// </summary>

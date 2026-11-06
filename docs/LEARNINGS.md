@@ -273,3 +273,99 @@ decompiled source is in `docs/DEVELOPMENT.md`.
   `piece_chest_wood`, `piece_workbench`, `piece_cookingstation`, `fire_pit`, `piece_groundtorch_wood`. Sharpened
   stakes need core wood; the stone hearth needs a stonecutter; tables, benches and chairs need fine wood.
 - Nexus pages answer 403 from the cloud container even with the hosts allowed.
+
+## Millénaire roads, placement and facing (study 2026-11-06)
+
+A second pass over the decompiled 9.0.3 code, on village layout only. Ideas and numbers only. Two corrections to the
+notes above: in 9.0.3 path cells do not block placement, and Villheim already routes paths with A* (`PathPlanner`).
+
+### Where a building goes
+
+`VillageGrowthManager.placeNewBuildingForConstruction` runs each time a new building is launched:
+
+1. `VillageTerrainMap.compute` scans a square of 2 x radius + 1 around the centre. Per column it keeps ground height,
+   water, danger, forbidden blocks and headroom. A cell is buildable when its ground is within 10 blocks of the
+   centre's height.
+2. `markExistingBuildingsOccupied` marks the core footprint of every building as occupied, plus the reserved site of
+   the pending project. Paths are never marked.
+3. `TerrainReachability.compute` flood-fills walkable cells from the town hall (steps of one block, two blocks of
+   headroom, no water).
+4. `PlacementConstraints.resolve` turns the plan's `min_distance` and `max_distance` (shares of the radius, default 0
+   and 1) into blocks, at least 5. The default radius is 90 and it never changes.
+5. `BuildingLocationFinder.findLocation` walks square rings from the min to the max distance, each ring as four sides
+   from a random first side. `tryPosition` takes the first spot that passes: `far_from`/`close_to` tag rules;
+   `testFootprint` (footprint plus clear margin, 5 blocks a side by default, may not touch an occupied cell; up to 10
+   bad cells, 5% above 200 cells, 10% above 2000); at least 70% of the core reachable from the town hall; and
+   `findNeighbourCliff` (no occupied cell within 8 blocks whose height differs by more than gap + 3).
+
+The new building's margin may not touch another core, so buildings stand at least 5 blocks apart. The paths run in
+that gap. Profession sites sit further out only through their bands: Norman farm 0.5 and up, quarry 0.6 and up,
+watchtower 0.5 and up, presbytery at most 0.8. Everything else uses 0 to 1 and lands close in, because the scan goes
+from the inside out. Wells and fountains carry the `pathnode` tag.
+
+### Facing
+
+`directionToVillageCenter` compares |dx| and |dz| from the candidate's rough centre to the village centre and picks
+the larger axis. Each plan variant declares `building_orientation` (0 to 3), the side its front is on. The rotation
+is (target - building_orientation) mod 4, so the front, with the door and the `pathStartPos` marker, faces the centre
+in one of four grid directions. A plan or slot can set `fixed_orientation` instead (the abbey). An upgrade keeps the
+origin and rotation, and every level of a plan has the same footprint.
+
+### How roads are routed and built
+
+`VillagePathManager.recalculatePaths` plans the whole network again. It runs at founding, when a building finishes
+level 0, when a level has `rebuild_path` or a new `path_level` (`BuildGoal`), and at night when `verifyInvariantAll`
+finds a building that is not connected (back-off 1, 2, 4 up to 64 nights, then every 64th).
+
+1. Anchors: each finished building's `pathStartPos` marker, else its selling or sleeping position, else the edge cell
+   nearest the town hall. The town hall's own anchor is the root.
+2. `PathRouter.computeRoutes` gives each building one parent. It starts with the town hall. A `pathnode` wins when it
+   is 1.3 times closer. If the target is still over 20 blocks away, the nearest building that is itself closer to the
+   town hall and 1.5 times closer than the target becomes the parent. The previous parent is kept while it is no more
+   than 1.3 times further, so roads don't move between recalcs. This parent rule is what makes roads branch outward.
+3. `propagateTierUplift`: a route's level is the highest `path_level` of anything downstream. Levels pick the
+   culture's materials (Norman: dirt, gravel, slabs). Building levels raise `path_level` from 0 to 2, so the trunks
+   near the centre are paved first as the village grows.
+4. `computeLateralRoutes`: two buildings within 35 blocks whose way through the tree is over 2.5 times the straight
+   line get a side link, at most one per building, level 0, width 1.
+5. Routes are sorted by level, then longest first. `PathGridAStar.search` traces each: four directions, cost
+   1 + 2.0 x dh², turn 0.3, max step 3, 5000 nodes; cells on a path from this or the last recalc cost half. On failure
+   it retries with slope weight 0.5 and step 6, then with a looser walkability test.
+6. `PathBlockPlacer.buildPath` widens the trace to `path_width` (default 2). It skips cells inside other buildings,
+   unless the path crosses one end to end, and cells of `nopaths` buildings (fields).
+
+At founding all paths are placed at once. Later, one route is traced per tick, villagers lay one block per action
+(`BuildPathGoal`), and `ClearOldPathGoal` removes blocks that left the network. A new building may land on an old
+path; the next recalc goes around it.
+
+### Proposal for Villheim
+
+Gaps today: `PlotFinder.ClearOfPaths` keeps clear of the old L-shaped route (`PathBuilder.DistanceToPath`) and
+`TryFind` refuses spots near laid paths, which pushes buildings away from roads. `PathPlanner.Plan` aims at the hearth
+and only joins cells already painted, so two paths queued together never share a road. Every design is assumed to
+have its front on +Z.
+
+1. **Real fronts.** At design load, find the door pieces, record which side of the footprint they are on as a yaw
+   offset on the design, and add it in `PlotFinder.FaceHearth`. `PathPlanner` starts the route at that door. Designs
+   with no door keep +Z.
+2. **Parent rule in `PathPlanner.Plan`.** Pick the target as `PathRouter` does: the hearth; a well or other path node
+   when 1.3 times closer; if still over 20 m, the door of the nearest finished plot that is closer to the hearth and
+   1.5 times closer than the target. The search still stops at any network cell. Store the parent on the `Plot` so
+   later plans keep it.
+3. **Queued routes count as network.** Add the cells of routes in `PathLaying`'s queue to the set used for the half
+   cost and the stop test, so routes queued together merge.
+4. **Buildings line roads.** In `PlotFinder.TryFind`, keep refusing spots whose footprint covers a network or queued
+   cell, drop `ClearOfPaths`, and collect the first 6 good spots for every role. Score each as distance from the
+   hearth + 2 x |door-to-network distance - 4 m|. New doors end up about 4 m off a road, with a short spur.
+5. **Face the road when it is closer.** For each good spot try the four grid turns. Keep the turn that faces the
+   hearth unless another turn puts the door at least 3 m closer to the network.
+6. **Professions further out.** Keep the bands and set farms to 0.5 to 1 and quarry or mine workshops to 0.6 to 1, as
+   Millénaire does. The parent rule hangs them off the nearest building on the way in, so each gets its own spur back
+   to a trunk.
+7. **Trunks.** Count how many plots route through each network cell. Paint cells used by 3 or more again at 2 m
+   (`PathBuilder.PaintAt` with a larger radius). This stands in for path levels.
+8. **Repair and upgrades.** After an upgrade, plan the plot's route again from its new door. Once a day
+   (`VillageBrain`), check that each plot's door reaches the hearth over network cells and queue a route for any that
+   doesn't.
+9. **Spacing.** Raise `PlotFinder.Gap` from 2 m to 4 m so a path fits between neighbours, like Millénaire's 5-block
+   margin.

@@ -44,6 +44,8 @@ with its own look for its biome.
   chests); then more homes, farms and workshops as trades appear. Built session 11, needs testing.
 - [ ] Notice board from the `villagenotice` blueprint over the village chest (session 13, needs testing); extra chests
   under it as the village grows; inside the longhouse once there is one.
+- [ ] Roads and facing after Millénaire (session 14, needs testing): doors toward the hearth, parent-rule paths,
+  buildings along roads, wider trunks. Still to do: queued paths count as network, daily door-connection check.
 - [ ] Design review: `vh gallery` (session 13); Tyler's picks saved as blueprints named `<biome><kind><variant>_<level>`
   (e.g. `meadowhouse1_1`); teach the blueprint reader that naming.
 - [ ] Storehouse grows into the longhouse: its chests move into the central hall when the hall is rebuilt bigger.

@@ -35,10 +35,10 @@ namespace Villheim.Logic.Villagers
         private static readonly Dictionary<string, List<Vector3>> PointCache = new Dictionary<string, List<Vector3>>();
 
         /// <summary>Plans the path (PathPlanner) and adds it to the village's queue.</summary>
-        public static void Queue(VillageHearth hearth, Vector3 building, float radius, float yaw)
+        public static void Queue(VillageHearth hearth, Vector3 building, float radius, float yaw, float doorAngle = 0f)
         {
             var village = new VillageState(hearth.Zdo);
-            List<Vector3> route = PathPlanner.Plan(hearth, village.Axis, building, radius, yaw);
+            List<Vector3> route = PathPlanner.Plan(hearth, village.Axis, building, radius, yaw, doorAngle);
             string entry = string.Join(",", F(building.x), F(building.y), F(building.z), F(radius)) + "|" + PathPlanner.Encode(route);
             string queue = hearth.Zdo.GetString(KeyQueue, "");
             hearth.Zdo.Set(KeyQueue, string.IsNullOrEmpty(queue) ? entry : queue + ";" + entry);
@@ -123,7 +123,9 @@ namespace Villheim.Logic.Villagers
 
             state.NextStep = Time.time + SecondsPerStep;
             Chores.ToolAnimation(villager, VillagerLooks.Tool.Hoe);
-            PathBuilder.PaintAt(point);
+            // A stretch another path already uses is a shared road: laid wider, as a trunk.
+            bool shared = PathPlanner.Network(hearth).Contains(PathPlanner.Cell(point));
+            PathBuilder.PaintAt(point, shared ? PathBuilder.Width * 1.8f : PathBuilder.Width);
             PathPlanner.AddToNetwork(hearth, point);
             hearth.Zdo.Set(KeyIndex, index + 1);
             state.GiveUpAt = Time.time + 30f;

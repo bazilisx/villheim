@@ -29,7 +29,8 @@ namespace Villheim.Logic.Village
         /// <summary>How far above or below the hearth a building's ground may be and still be built on the hearth's level.</summary>
         public const float LevelTolerance = 2.5f;
         private const float GridStep = 4f;
-        private const float Gap = 2f;
+        // Room for a path between neighbours (Millénaire keeps a clear margin round every building).
+        private const float Gap = 4f;
 
         private static readonly List<Piece> PieceBuffer = new List<Piece>();
 
@@ -40,7 +41,7 @@ namespace Villheim.Logic.Village
             {
                 case Role.Hub: min = 0f; max = 0.35f; break;
                 case Role.House: min = 0.1f; max = 0.65f; break;
-                case Role.Workshop: min = 0.3f; max = 0.9f; break;
+                case Role.Workshop: min = 0.45f; max = 0.95f; break;
                 case Role.Storage: min = 0.1f; max = 0.5f; break;
                 default: min = 0.45f; max = 1f; break;
             }
@@ -48,7 +49,7 @@ namespace Villheim.Logic.Village
 
         public static bool TryFind(Vector3 hearth, float axisYaw, Role role, bool strictHub, float radius, float maxTerrainDelta,
             IReadOnlyList<Plot> plots, System.Random rng, out Vector3 position, out float yaw, HashSet<Vector2Int> network = null,
-            VillageHearth village = null)
+            VillageHearth village = null, float doorAngle = 0f)
         {
             float villageRadius = VillheimConfig.VillageRadius.Value;
             Band(role, out float minShare, out float maxShare);
@@ -92,7 +93,7 @@ namespace Villheim.Logic.Village
             // whose ground is within 2.5 m of the hearth are tried first; only if there are none is a building set on its
             // own ground.
             var good = new List<Vector3>();
-            int wanted = role == Role.Workshop ? 6 : 1;
+            int wanted = 6;
             List<Vector2> ordered = candidates.OrderBy(c => c.magnitude + (float)rng.NextDouble() * step).ToList();
             for (int pass = 0; pass < 2 && good.Count == 0; pass++)
             {
@@ -110,11 +111,13 @@ namespace Villheim.Logic.Village
                         continue;
                     }
 
+                    // Off the laid paths (a building never sits on a road) and reachable from its door. The old rule that
+                    // kept every building off the straight hearth-to-building lines is gone: Millénaire lets buildings
+                    // line the roads, and so does this.
                     float floor = level ? hearth.y : groundY;
-                    if (ClearOfPaths(candidate, hearth, axisYaw, radius, plots) &&
-                        (network == null || PathPlanner.DistanceToNetwork(network, candidate) > radius * 0.6f + 1.5f) &&
+                    if ((network == null || PathPlanner.DistanceToNetwork(network, candidate) > radius * 0.6f + 1.5f) &&
                         (village == null || PathPlanner.Reachable(village, new Vector3(candidate.x, floor, candidate.z), radius,
-                            FaceHearth(candidate, hearth, axisYaw))))
+                            FaceHearth(candidate, hearth, axisYaw) - doorAngle, doorAngle)))
                     {
                         good.Add(new Vector3(candidate.x, floor, candidate.z));
                         if (good.Count >= wanted)
@@ -132,9 +135,40 @@ namespace Villheim.Logic.Village
                 return false;
             }
 
-            // Workshops go where the work is: the most trees and rocks within 25 m, nearer spots winning ties.
-            position = good.OrderByDescending(p => role == Role.Workshop ? Resources(p) * 4f - Utils.DistanceXZ(p, hearth) : 0f).First();
-            yaw = FaceHearth(position, hearth, axisYaw);
+            // Of the good spots, the best: near the hearth, with the door about 4 m from a road already laid (buildings
+            // line the roads, as in Millénaire). Workshops also go where the work is: the most trees and rocks within 25 m.
+            float RoadScore(Vector3 p)
+            {
+                if (network == null || network.Count == 0)
+                {
+                    return 0f;
+                }
+
+                Vector3 door = p + Quaternion.Euler(0f, FaceHearth(p, hearth, axisYaw), 0f) * Vector3.forward * (radius * 0.6f + 0.5f);
+                return Mathf.Abs(PathPlanner.DistanceToNetwork(network, door) - 4f) * 1.5f;
+            }
+
+            Vector3 chosen = good.OrderBy(p => Utils.DistanceXZ(p, hearth) + RoadScore(p) - (role == Role.Workshop ? Resources(p) * 4f : 0f)).First();
+            position = chosen;
+            yaw = FaceHearth(chosen, hearth, axisYaw) - doorAngle;
+
+            // The door faces the hearth, unless turning it to a road brings it at least 3 m nearer one.
+            if (network != null && network.Count > 0)
+            {
+                float Door(float y) => PathPlanner.DistanceToNetwork(network,
+                    chosen + Quaternion.Euler(0f, y + doorAngle, 0f) * Vector3.forward * (radius * 0.6f + 0.5f));
+                float inward = Door(yaw);
+                for (int turn = 1; turn < 4; turn++)
+                {
+                    float other = yaw + 90f * turn;
+                    if (Door(other) + 3f < inward)
+                    {
+                        yaw = other;
+                        inward = Door(other);
+                    }
+                }
+            }
+
             return true;
         }
 
@@ -269,7 +303,10 @@ namespace Villheim.Logic.Village
             return count;
         }
 
-        /// <summary>Yaw that turns a design's front (+Z) toward the hearth, snapped to the village grid.</summary>
+        /// <summary>
+        /// Yaw that turns a design's +Z side toward the hearth, snapped to the village grid. Take the design's door side
+        /// away from it (see Doors) to turn the door toward the hearth.
+        /// </summary>
         public static float FaceHearth(Vector3 position, Vector3 hearth, float axisYaw)
         {
             Vector3 toHearth = hearth - position;

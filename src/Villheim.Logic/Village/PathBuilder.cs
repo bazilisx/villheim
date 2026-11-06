@@ -11,7 +11,7 @@ namespace Villheim.Logic.Village
     internal static class PathBuilder
     {
         private const float Step = 1f;
-        private const float Width = 1.3f;
+        public const float Width = 1.3f;
         private const float HearthGap = 2.5f;
 
         /// <summary>The corner where a path from the hearth to the building turns (out along one axis, then the other).</summary>
@@ -82,7 +82,7 @@ namespace Villheim.Logic.Village
         }
 
         /// <summary>Paints one spot of path, as a hoe would.</summary>
-        public static void PaintAt(Vector3 point)
+        public static void PaintAt(Vector3 point, float width = -1f)
         {
             if (!ZoneSystem.instance.GetGroundHeight(point, out float y))
             {
@@ -93,7 +93,7 @@ namespace Villheim.Logic.Village
             TerrainOp.Settings settings = TerrainShaper.NewSettings();
             settings.m_paintCleared = true;
             settings.m_paintType = TerrainModifier.PaintType.Dirt;
-            settings.m_paintRadius = Width;
+            settings.m_paintRadius = width > 0f ? width : Width;
             settings.m_paintHeightCheck = false;
             TerrainShaper.Apply(point, settings);
         }

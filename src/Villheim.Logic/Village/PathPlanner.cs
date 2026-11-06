@@ -81,14 +81,36 @@ namespace Villheim.Logic.Village
         /// Points from the building's front to the hearth or the nearest laid path, a metre apart. Falls back to the
         /// straight route along the village grid when the search finds no way.
         /// </summary>
-        public static List<Vector3> Plan(VillageHearth hearth, float axisYaw, Vector3 building, float buildingRadius, float buildingYaw)
+        public static List<Vector3> Plan(VillageHearth hearth, float axisYaw, Vector3 building, float buildingRadius, float buildingYaw,
+            float doorAngle = 0f)
         {
             Vector3 center = hearth.transform.position;
-            Vector3 front = building + Quaternion.Euler(0f, buildingYaw, 0f) * Vector3.forward * (buildingRadius * 0.6f + 0.5f);
+            Vector3 front = Front(building, buildingRadius, buildingYaw, doorAngle);
             var state = new VillageState(hearth.Zdo);
             HashSet<Vector2Int> network = Network(hearth);
 
-            List<Vector3> found = Search(center, front, building, buildingRadius, state.Plots, network);
+            // Millénaire's parent rule: a building more than 20 m out takes its path to the door of a building nearer
+            // the middle (one at least a third closer than the hearth is), whose own path leads on to the hearth. So
+            // roads branch out from the middle and every road leads back to it.
+            Vector3 goal = center;
+            float toCenter = Utils.DistanceXZ(front, center);
+            if (toCenter > 20f)
+            {
+                Plot parent = state.Plots
+                    .Where(p => Utils.DistanceXZ(p.Position, building) > 0.5f &&
+                                Utils.DistanceXZ(p.Position, center) < Utils.DistanceXZ(building, center))
+                    .OrderBy(p => Utils.DistanceXZ(p.Position, front)).FirstOrDefault();
+                if (parent != null)
+                {
+                    Vector3 parentDoor = Front(parent.Position, parent.Radius, parent.Yaw, Designs.Doors.Angle(parent.Design));
+                    if (Utils.DistanceXZ(front, parentDoor) * 1.5f < toCenter)
+                    {
+                        goal = parentDoor;
+                    }
+                }
+            }
+
+            List<Vector3> found = Search(center, front, building, buildingRadius, state.Plots, network, float.MaxValue, goal);
             if (found == null)
             {
                 VillheimPlugin.Debug($"{state.Name}: no path found by grid search to the building at {building}; using the straight route.");
@@ -102,18 +124,22 @@ namespace Villheim.Logic.Village
         /// Millenaire's reachability rule: a spot only counts if a walkable way (no water, no cliffs too steep to
         /// climb) leads from its front to the hearth or a laid path.
         /// </summary>
-        public static bool Reachable(VillageHearth hearth, Vector3 building, float buildingRadius, float buildingYaw)
+        public static bool Reachable(VillageHearth hearth, Vector3 building, float buildingRadius, float buildingYaw, float doorAngle = 0f)
         {
-            Vector3 front = building + Quaternion.Euler(0f, buildingYaw, 0f) * Vector3.forward * (buildingRadius * 0.6f + 0.5f);
+            Vector3 front = Front(building, buildingRadius, buildingYaw, doorAngle);
             var state = new VillageState(hearth.Zdo);
             return Search(hearth.transform.position, front, building, buildingRadius, state.Plots, Network(hearth), 1.6f) != null;
         }
 
+        /// <summary>Just outside the building's door (its door side, see Doors).</summary>
+        public static Vector3 Front(Vector3 building, float radius, float yaw, float doorAngle) =>
+            building + Quaternion.Euler(0f, yaw + doorAngle, 0f) * Vector3.forward * (radius * 0.6f + 0.5f);
+
         private static List<Vector3> Search(Vector3 hearth, Vector3 start, Vector3 building, float buildingRadius,
-            IReadOnlyList<Plot> plots, HashSet<Vector2Int> network, float maxStep = float.MaxValue)
+            IReadOnlyList<Plot> plots, HashSet<Vector2Int> network, float maxStep = float.MaxValue, Vector3? target = null)
         {
             Vector2Int from = Cell(start);
-            Vector2Int goal = Cell(hearth);
+            Vector2Int goal = Cell(target ?? hearth);
             var heights = new Dictionary<Vector2Int, float>();
             var cost = new Dictionary<Vector2Int, float> { [from] = 0f };
             var came = new Dictionary<Vector2Int, Vector2Int>();

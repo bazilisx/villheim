@@ -302,7 +302,8 @@ namespace Villheim.Logic.Village
                     VillheimPlugin.Log.LogInfo($"{state.Name} builds its {design.Name} around the hearth.");
                 }
                 else if (!PlotFinder.TryFind(hearth.transform.position, state.Axis, role, strictHub, radius,
-                             design.MaxTerrainDelta, plots, rng, out position, out yaw, PathPlanner.Network(hearth), hearth))
+                             design.MaxTerrainDelta, plots, rng, out position, out yaw, PathPlanner.Network(hearth), hearth,
+                             Doors.Angle(design)))
                 {
                     VillheimPlugin.Debug($"{state.Name}: no room for {design.Name}.");
                     continue;
@@ -354,7 +355,9 @@ namespace Villheim.Logic.Village
             state.Waiting = "";
             state.LastGrowth += interval;
             Role role = Growth.RoleOf(plot);
-            float yaw = PlotFinder.FaceHearth(plot.Position, hearth.transform.position, state.Axis);
+            // Rebuilt where it stands, its door still toward the hearth (Millénaire keeps the spot and turn on an upgrade;
+            // the bigger design may have its door on another side).
+            float yaw = PlotFinder.FaceHearth(plot.Position, hearth.transform.position, state.Axis) - Doors.Angle(next.Value);
             ConstructionSite.Begin(hearth.Zdo, new ConstructionSite.Site
             {
                 Design = next.Value.Name, Position = plot.Position, Yaw = yaw, Radius = next.Value.Radius, Role = role,

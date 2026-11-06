@@ -1,3 +1,5 @@
+using System.Linq;
+using System.Collections.Generic;
 using UnityEngine;
 using Villheim.Prefabs;
 
@@ -122,14 +124,17 @@ namespace Villheim.Logic.Villagers
             bool female = looks.Next(2) == 1;
             vis.SetModel(female ? 1 : 0);
 
-            Color skin = Color.Lerp(SkinLight, SkinDark, (float)looks.NextDouble() * 0.85f);
+            // Skin from the right three quarters of the game's skin slider (left is palest), evenly, so a village has
+            // a spread of tones rather than mostly pale folk.
+            Color skin = Color.Lerp(SkinLight, SkinDark, 0.25f + (float)looks.NextDouble() * 0.75f);
             vis.SetSkinColor(new Vector3(skin.r, skin.g, skin.b));
 
             Color hair = Color.Lerp(HairLight, HairDark, (float)looks.NextDouble()) *
                          Mathf.Lerp(0.1f, 1f, (float)looks.NextDouble());
             vis.SetHairColor(new Vector3(hair.r, hair.g, hair.b));
 
-            string hairItem = FirstExisting($"Hair{looks.Next(1, 21)}", "Hair1");
+            List<string> styles = HairStyles(female);
+            string hairItem = styles.Count > 0 ? styles[looks.Next(styles.Count)] : FirstExisting($"Hair{looks.Next(1, 21)}", "Hair1");
             villager.m_hairItem = hairItem;
             vis.SetHairItem(Hash(hairItem));
 
@@ -276,6 +281,61 @@ namespace Villheim.Logic.Villagers
             {
                 humanoid.EquipItem(item, false);
             }
+        }
+
+        // Hair styles never given, by the name the game shows for them (Tyler, 2026-11-06). Bald is never given either.
+        // Compared with spaces, hyphens and punctuation taken out, so "Old One-Eye" matches "old one eye".
+        private static readonly HashSet<string> NotForWomen = new HashSet<string>
+        {
+            Plain("old one eye"), Plain("parted"), Plain("short"), Plain("short curls"), Plain("side swept"), Plain("speed demon"),
+        };
+
+        private static readonly HashSet<string> NotForMen = new HashSet<string>
+        {
+            Plain("old one eye"), Plain("matronly"), Plain("side swept"), Plain("speed demon"),
+        };
+
+        private static string Plain(string text) =>
+            new string((text ?? "").ToLowerInvariant().Where(char.IsLetterOrDigit).ToArray());
+
+        private static readonly Dictionary<bool, List<string>> Styles = new Dictionary<bool, List<string>>();
+
+        /// <summary>
+        /// The hair prefabs a villager may get: every hair the game has (Hair1, Hair2...), less the ones left out for
+        /// women or men, judged by the style's name as the game shows it. Worked out once per model.
+        /// </summary>
+        private static List<string> HairStyles(bool female)
+        {
+            if (Styles.TryGetValue(female, out List<string> cached) && cached.Count > 0)
+            {
+                return cached;
+            }
+
+            var list = new List<string>();
+            HashSet<string> excluded = female ? NotForWomen : NotForMen;
+            foreach (GameObject item in ObjectDB.instance.m_items)
+            {
+                if (item == null || !item.name.StartsWith("Hair") || item.name == "HairNone")
+                {
+                    continue;
+                }
+
+                ItemDrop drop = item.GetComponent<ItemDrop>();
+                string token = drop?.m_itemData?.m_shared?.m_name;
+                string shown = token != null && Localization.instance != null ? Localization.instance.Localize(token) : token;
+                shown = Plain(shown);
+                if (shown.Length == 0 || shown == "nohair" || shown == "none" || shown == "bald" || excluded.Contains(shown))
+                {
+                    continue;
+                }
+
+                list.Add(item.name);
+            }
+
+            list.Sort(System.StringComparer.Ordinal);
+            Styles[female] = list;
+            VillheimPlugin.Debug($"Villager hair for {(female ? "women" : "men")}: {string.Join(", ", list)}.");
+            return list;
         }
 
         private static int Hash(string itemName)

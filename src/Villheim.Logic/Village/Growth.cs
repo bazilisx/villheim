@@ -129,7 +129,9 @@ namespace Villheim.Logic.Village
             {
                 for (int i = 0; i < plots.Count; i++)
                 {
-                    if (NextDesign(plots[i], state.Biome) != null)
+                    DesignLibrary.Design? next = NextDesign(plots[i], state.Biome);
+                    if (next != null && PlotFinder.CanUpgrade(plots[i], next.Value.Radius, hearth.transform.position, state.Axis,
+                            plots, state.Id))
                     {
                         options.Add((new Project { Role = RoleOf(plots[i]), UpgradeIndex = i }, UpgradeWeight / plots.Count * 2f));
                     }

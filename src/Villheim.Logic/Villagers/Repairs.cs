@@ -299,13 +299,19 @@ namespace Villheim.Logic.Villagers
             }
         }
 
+        private static readonly List<Piece> Nearby = new List<Piece>();
+
+        /// <summary>
+        /// A piece of that kind stands at that spot. Goes by the pieces' own positions (the game's piece list), never by
+        /// colliders: many pieces have their pivot outside their collider, and a collider test would call them missing.
+        /// </summary>
         private static bool Present(string prefab, Vector3 world)
         {
-            foreach (Collider collider in Physics.OverlapSphere(world, 0.45f, LayerMask.GetMask("piece", "piece_nonsolid")))
+            Nearby.Clear();
+            Piece.GetAllPiecesInRadius(world, 0.5f, Nearby);
+            foreach (Piece piece in Nearby)
             {
-                ZNetView view = collider.GetComponentInParent<ZNetView>();
-                if (view != null && Utils.GetPrefabName(view.gameObject) == prefab &&
-                    Vector3.Distance(view.transform.position, world) < 0.45f)
+                if (piece != null && Utils.GetPrefabName(piece.gameObject) == prefab)
                 {
                     return true;
                 }

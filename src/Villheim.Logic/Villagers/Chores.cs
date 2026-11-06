@@ -345,32 +345,31 @@ namespace Villheim.Logic.Villagers
                 return null;
             }
 
-            // Loose sticks and stones only when they lie close: a long walk for one stick is not worth it.
-            Pickable pickable = NearestPickable(work.Wanted, position, PickableRadius);
-            if (pickable != null)
-            {
-                Claimed.Add(pickable.gameObject);
-                Begin(villager, work, Phase.Pick, pickable.gameObject, pickable.transform.position, 30f);
-                Started(villager, work, "picking " + Utils.GetPrefabName(pickable.gameObject));
-                return null;
-            }
-
             // Everyone carries an axe and a pickaxe, so anyone can fell or mine; they take the right one in hand.
             work.CanHarvest = VillagerLooks.Hold(villager, profile.Tool);
-            if (!work.CanHarvest)
-            {
-                return $"no {profile.Tool.ToString().ToLowerInvariant()} to work with";
-            }
-
             int tier = ToolTier(villager);
             HashSet<string> wanted = work.Wanted;
-            GameObject target = FindNearest(hearth, MaxFromHearth, position,
-                                    go => profile.IsPartial(go) && Yields.GivesAny(go, wanted) && TierAllows(go, tier), null)
-                                ?? FindNearest(hearth, MaxFromHearth, position,
-                                    go => profile.IsSource(go) && Yields.GivesAny(go, wanted) && TierAllows(go, tier), null);
+            GameObject target = !work.CanHarvest ? null
+                : FindNearest(hearth, MaxFromHearth, position,
+                      go => profile.IsPartial(go) && Yields.GivesAny(go, wanted) && TierAllows(go, tier), null)
+                  ?? FindNearest(hearth, MaxFromHearth, position,
+                      go => profile.IsSource(go) && Yields.GivesAny(go, wanted) && TierAllows(go, tier), null);
             if (target == null)
             {
-                return $"nothing within reach that gives {string.Join(" or ", Labels(wanted))} for this tool";
+                // Loose sticks and stones give one each, so they are only worth it when there is nothing bigger to
+                // work, and only close by.
+                Pickable pickable = NearestPickable(work.Wanted, position, PickableRadius);
+                if (pickable != null)
+                {
+                    Claimed.Add(pickable.gameObject);
+                    Begin(villager, work, Phase.Pick, pickable.gameObject, pickable.transform.position, 30f);
+                    Started(villager, work, "picking " + Utils.GetPrefabName(pickable.gameObject));
+                    return null;
+                }
+
+                return !work.CanHarvest
+                    ? $"no {profile.Tool.ToString().ToLowerInvariant()} to work with"
+                    : $"nothing within reach that gives {string.Join(" or ", Labels(wanted))} for this tool";
             }
 
             Claimed.Add(target);

@@ -40,8 +40,9 @@ https://en.wikipedia.org/wiki/Wikipedia:Signs_of_AI_writing
   (`docs/LEARNINGS.md`). Never copy their code, never depend on them. VikingColonies' license forbids publishing
   its code or changed copies of it; Innangard has no license.
 - **Biome materials.** A village only builds designs whose materials exist in its biome (Meadows has no core wood).
-- **Gathering order.** Material on the ground first, then loose pickables, then half-harvested work (felled logs,
-  cracked rocks), then fresh trees and rocks. Nobody harvests when the village needs nothing.
+- **Gathering order.** Material on the ground first, then half-harvested work (felled logs, cracked rocks), then
+  fresh trees and rocks. Loose sticks and stones (one material each) only when there is nothing bigger to work, and
+  only close by. Nobody harvests when the village needs nothing.
 - **Building order.** Ground up, every piece supported when placed; doors and windows before what rests on them.
 - **Village chest.** One chest by the hearth holds the building materials. Villagers and players fill it, the builder
   builds from it when it has enough. If it is destroyed, rebuilding it comes before anything else.

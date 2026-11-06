@@ -17,7 +17,7 @@ namespace Villheim.Logic
         {
             "found: light a new village hearth in front of you",
             "grow: make the nearest village start its next building now (adds the wood it needs)",
-            "wood <amount>: add wood to the nearest village",
+            "wood [amount] [material]: add materials to the nearest village (Wood, Stone, FineWood, RoundLog)",
             "preview <location>: build one design in front of you, outside any village",
             "clear: remove the nearest village (buildings, villagers and hearth)",
             "info: show loaded villages",
@@ -120,10 +120,18 @@ namespace Villheim.Logic
             }
 
             int amount = args.Length > 0 && int.TryParse(args[0], out int parsed) ? parsed : 100;
+            string material = args.Length > 1 ? args[1] : null;
             hearth.NView.ClaimOwnership();
             var state = new VillageState(hearth.Zdo);
-            state.Wood += amount;
-            Say(context, $"Villheim: {state.Name} now has {state.Wood} wood.");
+            foreach (string tracked in Materials.Tracked)
+            {
+                if (material == null || string.Equals(tracked, material, System.StringComparison.OrdinalIgnoreCase))
+                {
+                    state.Add(tracked, amount);
+                }
+            }
+
+            Say(context, $"Villheim: {state.Name} now has {state.StockText()}.");
         }
 
         private static void Clear(Terminal context)

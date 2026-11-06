@@ -95,6 +95,9 @@ namespace Villheim.Logic.Designs
             public Vector3 Scale;
             public int Stage;
             public bool Structural;
+
+            /// <summary>Tracked materials from the piece's vanilla recipe (Wood, Stone and so on).</summary>
+            public Dictionary<string, int> Cost = new Dictionary<string, int>();
         }
 
         // Build stages: structure from the ground up, then roofs, then doors and windows, then everything inside.
@@ -185,6 +188,7 @@ namespace Villheim.Logic.Designs
             bool structural = prefab.GetComponent<WearNTear>() != null && prefab.GetComponent<Piece>() != null;
             plan.Add(new PlanEntry
             {
+                Cost = RecipeCost(prefab),
                 Prefab = prefabName,
                 LocalPosition = root.InverseTransformPoint(original.transform.position),
                 LocalRotation = Quaternion.Inverse(root.rotation) * original.transform.rotation,
@@ -192,6 +196,34 @@ namespace Villheim.Logic.Designs
                 Stage = StageOf(prefabName, structural),
                 Structural = structural,
             });
+        }
+
+        /// <summary>The tracked materials a piece costs in vanilla, from its build recipe.</summary>
+        public static Dictionary<string, int> RecipeCost(GameObject prefab)
+        {
+            var cost = new Dictionary<string, int>();
+            Piece piece = prefab.GetComponent<Piece>();
+            if (piece?.m_resources == null)
+            {
+                return cost;
+            }
+
+            foreach (Piece.Requirement requirement in piece.m_resources)
+            {
+                if (requirement?.m_resItem == null || requirement.m_amount <= 0)
+                {
+                    continue;
+                }
+
+                string material = requirement.m_resItem.gameObject.name;
+                if (Village.Materials.Tracked.Contains(material))
+                {
+                    cost.TryGetValue(material, out int amount);
+                    cost[material] = amount + requirement.m_amount;
+                }
+            }
+
+            return cost;
         }
 
         private static int StageOf(string name, bool structural)

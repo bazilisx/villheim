@@ -105,49 +105,75 @@ namespace Villheim.Logic.Designs
             return all;
         }
 
-        private static readonly Dictionary<string, int> PieceCounts = new Dictionary<string, int>();
+        private static readonly Dictionary<string, Dictionary<string, int>> Totals =
+            new Dictionary<string, Dictionary<string, int>>();
 
-        /// <summary>Wood a copy of this design costs: its building pieces times WoodPerPiece, capped.</summary>
-        public static int WoodCost(ZoneSystem.ZoneLocation location)
+        /// <summary>
+        /// What a copy of this design costs per material: the vanilla recipe of every piece, times WoodPerPiece,
+        /// with each material capped at MaxWoodPerBuilding so big designs stay reachable.
+        /// </summary>
+        public static Dictionary<string, int> MaterialCost(ZoneSystem.ZoneLocation location)
         {
-            if (!PieceCounts.TryGetValue(location.m_prefabName, out int pieces))
+            var result = new Dictionary<string, int>();
+            foreach (KeyValuePair<string, int> entry in RawTotals(location))
             {
-                pieces = CountPieces(location);
-                PieceCounts[location.m_prefabName] = pieces;
+                result[entry.Key] = Mathf.RoundToInt(entry.Value * CostFactor(entry.Value));
             }
 
-            int cost = Mathf.CeilToInt(pieces * VillheimConfig.WoodPerPiece.Value);
-            return Mathf.Clamp(cost, 0, VillheimConfig.MaxWoodPerBuilding.Value);
+            return result;
         }
 
-        private static int CountPieces(ZoneSystem.ZoneLocation location)
+        /// <summary>Multiplier applied to one material's vanilla amounts for a design with this raw total.</summary>
+        public static float CostFactor(int rawTotal)
         {
+            if (!VillheimConfig.RequireWood.Value || rawTotal <= 0)
+            {
+                return 0f;
+            }
+
+            float multiplier = VillheimConfig.WoodPerPiece.Value;
+            float cap = VillheimConfig.MaxWoodPerBuilding.Value;
+            return Mathf.Min(multiplier, cap / rawTotal);
+        }
+
+        public static Dictionary<string, int> RawTotals(ZoneSystem.ZoneLocation location)
+        {
+            if (Totals.TryGetValue(location.m_prefabName, out Dictionary<string, int> cached))
+            {
+                return cached;
+            }
+
+            var totals = new Dictionary<string, int>();
             location.m_prefab.Load();
             try
             {
                 GameObject asset = location.m_prefab.Asset;
-                if (asset == null || ZNetScene.instance == null)
+                if (asset != null && ZNetScene.instance != null)
                 {
-                    return 0;
-                }
-
-                int count = 0;
-                foreach (ZNetView view in Utils.GetEnabledComponentsInChildren<ZNetView>(asset))
-                {
-                    string name = Utils.GetPrefabName(view.gameObject);
-                    GameObject prefab = ZNetScene.instance.GetPrefab(name);
-                    if (prefab != null && prefab.GetComponent<Piece>() && DesignSpawner.ExclusionReason(prefab, name) == null)
+                    foreach (ZNetView view in Utils.GetEnabledComponentsInChildren<ZNetView>(asset))
                     {
-                        count++;
+                        string name = Utils.GetPrefabName(view.gameObject);
+                        GameObject prefab = ZNetScene.instance.GetPrefab(name);
+                        if (prefab == null || DesignSpawner.ExclusionReason(prefab, name) != null)
+                        {
+                            continue;
+                        }
+
+                        foreach (KeyValuePair<string, int> cost in DesignSpawner.RecipeCost(prefab))
+                        {
+                            totals.TryGetValue(cost.Key, out int amount);
+                            totals[cost.Key] = amount + cost.Value;
+                        }
                     }
                 }
-
-                return count;
             }
             finally
             {
                 location.m_prefab.Release();
             }
+
+            Totals[location.m_prefabName] = totals;
+            return totals;
         }
 
         public static Design? Pick(List<Design> pool, System.Random rng)

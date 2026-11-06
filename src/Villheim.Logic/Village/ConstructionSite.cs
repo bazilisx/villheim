@@ -20,7 +20,7 @@ namespace Villheim.Logic.Village
     {
         private static readonly int KeySite = "villheim_site".GetStableHashCode();
         private static readonly int KeySiteIndex = "villheim_site_index".GetStableHashCode();
-        private static readonly int KeySiteWood = "villheim_site_wood".GetStableHashCode();
+        private static readonly int KeySiteOwed = "villheim_site_owed".GetStableHashCode();
 
         private const float BuilderRecentSeconds = 12f;
 
@@ -38,7 +38,7 @@ namespace Villheim.Logic.Village
         {
             public string Key;
             public List<DesignSpawner.PlanEntry> Entries;
-            public float WoodPerStructuralPiece;
+            public Dictionary<string, float> Factors;
         }
 
         private static readonly Dictionary<int, CachedPlan> Plans = new Dictionary<int, CachedPlan>();
@@ -77,14 +77,14 @@ namespace Villheim.Logic.Village
                 F(site.Yaw), F(site.Radius), site.Role.ToString(), site.Seed.ToString(CultureInfo.InvariantCulture));
             zdo.Set(KeySite, raw);
             zdo.Set(KeySiteIndex, 0);
-            zdo.Set(KeySiteWood, 0f);
+            zdo.Set(KeySiteOwed, "");
         }
 
         private static void End(ZDO zdo)
         {
             zdo.Set(KeySite, "");
             zdo.Set(KeySiteIndex, 0);
-            zdo.Set(KeySiteWood, 0f);
+            zdo.Set(KeySiteOwed, "");
         }
 
         /// <summary>"walls 12/40" style progress for summaries, or null when nothing is being built.</summary>
@@ -169,19 +169,9 @@ namespace Villheim.Logic.Village
             }
 
             DesignSpawner.PlanEntry entry = plan.Entries[index];
-            if (entry.Structural && VillheimConfig.RequireWood.Value)
+            if (!Pay(zdo, state, plan, entry))
             {
-                // Charge fractional wood per piece and settle whole logs as they add up.
-                float owed = zdo.GetFloat(KeySiteWood) + plan.WoodPerStructuralPiece;
-                int whole = Mathf.FloorToInt(owed);
-                if (whole > state.Wood)
-                {
-                    state.Waiting = $"wood to keep building ({state.Wood} in stock)";
-                    return false;
-                }
-
-                state.Wood -= whole;
-                zdo.Set(KeySiteWood, owed - whole);
+                return false;
             }
 
             if (!hearth.NView.IsOwner())
@@ -247,14 +237,13 @@ namespace Villheim.Logic.Village
                 }
 
                 List<DesignSpawner.PlanEntry> entries = DesignSpawner.MakePlan(asset, site.Position, site.Seed);
-                int structural = entries.Count(e => e.Structural);
-                int cost = VillheimConfig.RequireWood.Value ? DesignLibrary.WoodCost(location) : 0;
-                var plan = new CachedPlan
+                var factors = new Dictionary<string, float>();
+                foreach (KeyValuePair<string, int> total in DesignLibrary.RawTotals(location))
                 {
-                    Key = key,
-                    Entries = entries,
-                    WoodPerStructuralPiece = structural > 0 ? (float)cost / structural : 0f,
-                };
+                    factors[total.Key] = DesignLibrary.CostFactor(total.Value);
+                }
+
+                var plan = new CachedPlan { Key = key, Entries = entries, Factors = factors };
                 Plans[id] = plan;
                 return plan;
             }
@@ -262,6 +251,68 @@ namespace Villheim.Logic.Village
             {
                 location.m_prefab.Release();
             }
+        }
+
+        /// <summary>
+        /// Takes the materials for one piece from the stock. Amounts are scaled (see DesignLibrary.CostFactor) and the
+        /// fractions carried over between pieces, so the whole building costs what its summary says.
+        /// Returns false, with nothing taken, when the stock is short.
+        /// </summary>
+        private static bool Pay(ZDO zdo, VillageState state, CachedPlan plan, DesignSpawner.PlanEntry entry)
+        {
+            if (entry.Cost.Count == 0 || !VillheimConfig.RequireWood.Value)
+            {
+                return true;
+            }
+
+            Dictionary<string, float> owed = ReadOwed(zdo);
+            var take = new Dictionary<string, int>();
+            foreach (KeyValuePair<string, int> cost in entry.Cost)
+            {
+                plan.Factors.TryGetValue(cost.Key, out float factor);
+                owed.TryGetValue(cost.Key, out float carried);
+                float due = carried + cost.Value * factor;
+                int whole = Mathf.FloorToInt(due);
+                if (whole > state.Get(cost.Key))
+                {
+                    state.Waiting = $"{Materials.Label(cost.Key)} to keep building ({state.Get(cost.Key)} in stock)";
+                    return false;
+                }
+
+                take[cost.Key] = whole;
+                owed[cost.Key] = due - whole;
+            }
+
+            foreach (KeyValuePair<string, int> amount in take)
+            {
+                if (amount.Value > 0)
+                {
+                    state.Add(amount.Key, -amount.Value);
+                }
+            }
+
+            WriteOwed(zdo, owed);
+            return true;
+        }
+
+        private static Dictionary<string, float> ReadOwed(ZDO zdo)
+        {
+            var owed = new Dictionary<string, float>();
+            foreach (string entry in zdo.GetString(KeySiteOwed, "").Split(';'))
+            {
+                int colon = entry.IndexOf(':');
+                if (colon > 0)
+                {
+                    owed[entry.Substring(0, colon)] = P(entry.Substring(colon + 1));
+                }
+            }
+
+            return owed;
+        }
+
+        private static void WriteOwed(ZDO zdo, Dictionary<string, float> owed)
+        {
+            zdo.Set(KeySiteOwed, string.Join(";", owed.Select(e => e.Key + ":" + F(e.Value))));
         }
 
         private static string F(float value) => value.ToString("0.###", CultureInfo.InvariantCulture);

@@ -65,6 +65,7 @@ namespace Villheim.Logic.Village
             state.LastArrival = now;
             state.LastSeen = now;
             state.Wood = StartingWood();
+            state.Add(Materials.Stone, StartingWood() / 2);
             state.Initialized = true;
 
             TerrainShaper.LevelPad(position, 3f, 6f);
@@ -72,7 +73,7 @@ namespace Villheim.Logic.Village
             VillheimPlugin.Log.LogInfo($"Founded {state.Name} ({state.Biome}) at {position}.");
         }
 
-        /// <summary>Enough wood for the starting buildings, so a new village is not empty while its first trees fall.</summary>
+        /// <summary>Enough wood for a start, so a new village is not idle while its first trees fall.</summary>
         private static int StartingWood()
         {
             return VillheimConfig.StartingBuildings.Value * VillheimConfig.MaxWoodPerBuilding.Value;
@@ -113,8 +114,10 @@ namespace Villheim.Logic.Village
             int earned = (int)(villagers * VillheimConfig.PassiveWoodPerVillagerPerDay.Value * days);
             if (earned > 0)
             {
-                state.Wood += earned;
-                VillheimPlugin.Debug($"{state.Name} gathered {earned} wood while unloaded ({days:0.00} days).");
+                // Roughly the split between woodcutters and miners.
+                state.Add(Materials.Wood, earned * 2 / 3);
+                state.Add(Materials.Stone, earned / 3);
+                VillheimPlugin.Debug($"{state.Name} gathered {earned} materials while unloaded ({days:0.00} days).");
             }
 
             return now - last;
@@ -142,7 +145,7 @@ namespace Villheim.Logic.Village
             }
         }
 
-        public static void AddWood(int villageId, int amount)
+        public static void AddMaterial(int villageId, string material, int amount)
         {
             VillageHearth hearth = VillageHearth.Find(villageId);
             if (hearth == null || !hearth.IsValid || amount <= 0)
@@ -151,7 +154,7 @@ namespace Villheim.Logic.Village
             }
 
             var state = new VillageState(hearth.Zdo);
-            state.Wood += amount;
+            state.Add(material, amount);
         }
 
         private static bool TryGrow(VillageHearth hearth, VillageState state, double now)
@@ -201,12 +204,11 @@ namespace Villheim.Logic.Village
             bool strictHub = hearth.PlotAttempts < 2;
             foreach (DesignLibrary.Design design in candidates)
             {
-                // Breaking ground needs a share of the wood; the rest is paid piece by piece as the building goes up.
-                int cost = VillheimConfig.RequireWood.Value ? DesignLibrary.WoodCost(design.Location) : 0;
-                int toStart = Mathf.CeilToInt(cost * StartShare);
-                if (state.Wood < toStart)
+                // Breaking ground needs a share of the materials; the rest is paid piece by piece as it goes up.
+                string missing = MissingToStart(state, design);
+                if (missing != null)
                 {
-                    state.Waiting = $"wood to start a {RoleName(role)} ({state.Wood}/{toStart})";
+                    state.Waiting = $"{missing} to start a {RoleName(role)}";
                     return false;
                 }
 
@@ -236,6 +238,21 @@ namespace Villheim.Logic.Village
             }
 
             return false;
+        }
+
+        /// <summary>Null when the stock covers the share needed to break ground, otherwise what is short.</summary>
+        private static string MissingToStart(VillageState state, DesignLibrary.Design design)
+        {
+            foreach (KeyValuePair<string, int> cost in DesignLibrary.MaterialCost(design.Location))
+            {
+                int needed = Mathf.CeilToInt(cost.Value * StartShare);
+                if (state.Get(cost.Key) < needed)
+                {
+                    return $"{Materials.Label(cost.Key)} ({state.Get(cost.Key)}/{needed})";
+                }
+            }
+
+            return null;
         }
 
         public static string RoleName(Role role)
@@ -392,15 +409,27 @@ namespace Villheim.Logic.Village
 
             if (freeWood)
             {
-                state.Wood += VillheimConfig.MaxWoodPerBuilding.Value;
+                foreach (string material in Materials.Tracked)
+                {
+                    state.Add(material, VillheimConfig.MaxWoodPerBuilding.Value);
+                }
             }
 
             if (ConstructionSite.IsActive(hearth.Zdo))
             {
                 // Testing shortcut: finish the building in progress.
-                while (ConstructionSite.PlaceNext(hearth, false))
+                int guard = 5000;
+                while (guard-- > 0)
                 {
-                    state.Wood += 2;
+                    foreach (string material in Materials.Tracked)
+                    {
+                        state.Add(material, 10);
+                    }
+
+                    if (!ConstructionSite.PlaceNext(hearth, false))
+                    {
+                        break;
+                    }
                 }
 
                 return;
@@ -424,7 +453,7 @@ namespace Villheim.Logic.Village
 
             int buildings = state.Plots.Count;
             string text = $"{state.Name} ({Tier(buildings)}): {buildings} buildings, " +
-                          $"{CountVillagers(state.Id)}/{Capacity(state)} villagers, {state.Wood} wood.";
+                          $"{CountVillagers(state.Id)}/{Capacity(state)} villagers, {state.StockText()}.";
             if (buildings >= VillheimConfig.MaxBuildings.Value)
             {
                 return text + " Fully grown.";

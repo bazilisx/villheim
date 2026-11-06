@@ -67,6 +67,7 @@ namespace Villheim.Logic.Villagers
         };
 
         private static readonly string[] Axes = { "AxeStone", "AxeFlint", "AxeFlint", "AxeBronze", "AxeBronze" };
+        private static readonly string[] Pickaxes = { "PickaxeAntler", "PickaxeAntler", "PickaxeAntler", "PickaxeBronze", "PickaxeBronze" };
 
         private static readonly WeightedItem[] OtherTools =
         {
@@ -78,10 +79,12 @@ namespace Villheim.Logic.Villagers
             new WeightedItem("", 1f),
         };
 
-        /// <summary>One villager in three is a builder and carries a hammer; the rest are woodcutters with axes.</summary>
-        public static bool IsBuilder(int seed) => (seed & 0x7fffffff) % 3 == 0;
+        /// <summary>Villager trades by seed: one in four builds (hammer), one in four mines (pickaxe), the rest cut wood (axe).</summary>
+        public static bool IsBuilder(int seed) => (seed & 0x7fffffff) % 4 == 0;
 
-        public static bool IsWoodcutter(int seed) => !IsBuilder(seed);
+        public static bool IsMiner(int seed) => (seed & 0x7fffffff) % 4 == 1;
+
+        public static bool IsWoodcutter(int seed) => !IsBuilder(seed) && !IsMiner(seed);
 
         public static int GearTier(int villageTier, Heightmap.Biome biome)
         {
@@ -131,7 +134,7 @@ namespace Villheim.Logic.Villagers
             Equip(villager, Pick(gear, Legs[tier]));
             Equip(villager, Pick(gear, Helmets[tier]));
             Equip(villager, Pick(gear, Capes[tier]));
-            Equip(villager, IsBuilder(seed) ? "Hammer" : Axes[tier]);
+            Equip(villager, IsBuilder(seed) ? "Hammer" : IsMiner(seed) ? Pickaxes[tier] : Axes[tier]);
         }
 
         private static void Equip(Humanoid humanoid, string itemName)

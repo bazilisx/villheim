@@ -28,6 +28,7 @@ namespace Villheim.Logic.Village
         private static readonly int KeyLastSeen = "villheim_last_seen".GetStableHashCode();
         private static readonly int KeyAxis = "villheim_axis".GetStableHashCode();
         private static readonly int KeyWaiting = "villheim_waiting".GetStableHashCode();
+        private static readonly int KeyStock = "villheim_stock".GetStableHashCode();
 
         private readonly ZDO _zdo;
         private string _plotsRaw;
@@ -88,11 +89,88 @@ namespace Villheim.Logic.Village
             set => _zdo.Set(Keys.Arrivals, value);
         }
 
-        /// <summary>Wood in the village stock.</summary>
+        /// <summary>Wood in the village stock (shorthand for the "Wood" material).</summary>
         public int Wood
         {
-            get => _zdo.GetInt(KeyWood);
-            set => _zdo.Set(KeyWood, Mathf.Max(0, value));
+            get => Get(Materials.Wood);
+            set => Set(Materials.Wood, value);
+        }
+
+        /// <summary>Amount of a building material (item prefab name such as Wood or Stone) in the village stock.</summary>
+        public int Get(string material)
+        {
+            return ReadStock().TryGetValue(material, out int amount) ? amount : 0;
+        }
+
+        public void Set(string material, int amount)
+        {
+            Dictionary<string, int> stock = ReadStock();
+            stock[material] = Mathf.Max(0, amount);
+            WriteStock(stock);
+        }
+
+        public void Add(string material, int amount)
+        {
+            Set(material, Get(material) + amount);
+        }
+
+        public Dictionary<string, int> Stock => ReadStock();
+
+        /// <summary>"120 wood, 30 stone" for summaries.</summary>
+        public string StockText()
+        {
+            var parts = new List<string>();
+            foreach (KeyValuePair<string, int> entry in ReadStock())
+            {
+                if (entry.Value > 0)
+                {
+                    parts.Add($"{entry.Value} {Materials.Label(entry.Key)}");
+                }
+            }
+
+            return parts.Count > 0 ? string.Join(", ", parts) : "no materials";
+        }
+
+        private Dictionary<string, int> ReadStock()
+        {
+            var stock = new Dictionary<string, int>();
+            string raw = _zdo.GetString(KeyStock, "");
+            foreach (string entry in raw.Split(';'))
+            {
+                int colon = entry.IndexOf(':');
+                if (colon > 0 && int.TryParse(entry.Substring(colon + 1), out int amount))
+                {
+                    stock[entry.Substring(0, colon)] = amount;
+                }
+            }
+
+            // Villages from before the material stock kept their wood in its own key.
+            int legacyWood = _zdo.GetInt(KeyWood);
+            if (legacyWood > 0)
+            {
+                stock.TryGetValue(Materials.Wood, out int wood);
+                stock[Materials.Wood] = wood + legacyWood;
+                _zdo.Set(KeyWood, 0);
+                WriteStock(stock);
+            }
+
+            return stock;
+        }
+
+        private void WriteStock(Dictionary<string, int> stock)
+        {
+            var sb = new StringBuilder();
+            foreach (KeyValuePair<string, int> entry in stock)
+            {
+                if (sb.Length > 0)
+                {
+                    sb.Append(';');
+                }
+
+                sb.Append(entry.Key).Append(':').Append(entry.Value.ToString(CultureInfo.InvariantCulture));
+            }
+
+            _zdo.Set(KeyStock, sb.ToString());
         }
 
         /// <summary>World time of the last tick, to tell how long the village sat unloaded.</summary>

@@ -5,37 +5,80 @@ using UnityEngine;
 namespace Villheim.Logic.Village
 {
     /// <summary>
-    /// Villages on the map. When a player comes within 70 m of a village's hearth, his map gets a pin there with the
-    /// village's name: the campfire icon for a camp, the house icon once it has grown into a hamlet or more. The pin
-    /// follows the village as it grows. Only pins the village made itself are ever changed; a player's own pins nearby
-    /// are left alone. Each player's map is his own, so each discovers villages for himself. Village pins can't be
-    /// deleted from the map.
+    /// Villages and villagers on the map, drawn in a pale ghostly blue so they stand apart from the player's own pins.
     ///
-    /// While the player is inside a village, each of its villagers shows on the map as a dot with his name and what he
-    /// is doing in a word or two (harvesting, building, cooking, relaxing...). They go when the player leaves, and are
-    /// never saved, so the map doesn't fill with dots.
+    /// - Village pins: when a player comes within 70 m of a village's hearth, his map gets a pin there with the village's
+    ///   name: the campfire icon for a camp, the house icon from a hamlet up, following the village as it grows. They
+    ///   can't be deleted, and a village pin whose hearth is gone (a cleared village) is taken off when the player is near.
+    /// - Villager dots: while the player is inside a village, each villager is a small dot with his name and, in smaller
+    ///   letters below, what he is doing in a word or two. The dots move with the villagers every frame, like player
+    ///   markers, go away when the player leaves (or the villagers do), and are never saved.
+    ///
+    /// Everything runs from the map's own update (a Harmony postfix), so it keeps working with no villagers about.
+    /// Villheim's pins are known by their colour tag, so they are recognised again after a reload.
     /// </summary>
     internal static class MapPins
     {
-        /// <summary>Pins this mod put on the map; they can't be removed by the player.</summary>
-        private static readonly HashSet<Minimap.PinData> Protected = new HashSet<Minimap.PinData>();
+        private const float DiscoverWithin = 70f;
+        private const string Ghost = "<color=#D2E9F0>";
+        private const float VillagePinScale = 0.85f;
+        private const float VillagerPinScale = 0.55f;
+
         private static bool _removingOurOwn;
         private static readonly Dictionary<Villager, (Minimap.PinData Pin, string Label)> VillagerPins =
             new Dictionary<Villager, (Minimap.PinData, string)>();
-        private static float _nextVillagers;
-        private const float DiscoverWithin = 70f;
         private static float _next;
 
-        public static void Update()
+        public static bool IsOurs(Minimap.PinData pin) => pin?.m_name != null && pin.m_name.StartsWith(Ghost);
+
+        private static string VillageLabel(string name) => $"{Ghost}{name}</color>";
+
+        private static string VillagerLabel(Villager villager) =>
+            $"{Ghost}<size=75%>{villager.VillagerName}</size>\n<size=55%><color=#A9CCD6>{ShortTask(villager)}</color></size></color>";
+
+        /// <summary>Every frame from the map: keep pins in place and sized; every few seconds, add and remove.</summary>
+        private static void Tick(Minimap map)
         {
-            if (Time.time < _next || Minimap.instance == null || Player.m_localPlayer == null)
+            Player player = Player.m_localPlayer;
+            if (player == null)
             {
                 return;
             }
 
-            _next = Time.time + 3f;
-            Vector3 me = Player.m_localPlayer.transform.position;
-            UpdateVillagerPins(me);
+            // Dots follow their villagers every frame, and our pins are drawn smaller.
+            foreach (KeyValuePair<Villager, (Minimap.PinData Pin, string Label)> entry in VillagerPins)
+            {
+                if (entry.Key != null && entry.Value.Pin != null)
+                {
+                    entry.Value.Pin.m_pos = entry.Key.transform.position;
+                }
+            }
+
+            foreach (Minimap.PinData pin in map.m_pins)
+            {
+                if (IsOurs(pin) && pin.m_uiElement != null)
+                {
+                    float scale = pin.m_save ? VillagePinScale : VillagerPinScale;
+                    if (Mathf.Abs(pin.m_uiElement.localScale.x - scale) > 0.01f)
+                    {
+                        pin.m_uiElement.localScale = Vector3.one * scale;
+                    }
+                }
+            }
+
+            if (Time.time < _next)
+            {
+                return;
+            }
+
+            _next = Time.time + 2f;
+            Vector3 me = player.transform.position;
+            UpdateVillagePins(map, me);
+            UpdateVillagerPins(map, me);
+        }
+
+        private static void UpdateVillagePins(Minimap map, Vector3 me)
+        {
             foreach (VillageHearth hearth in VillageHearth.All)
             {
                 if (hearth == null || !hearth.IsValid || Vector3.Distance(hearth.transform.position, me) > DiscoverWithin)
@@ -44,94 +87,62 @@ namespace Villheim.Logic.Village
                 }
 
                 var state = new VillageState(hearth.Zdo);
-                if (!state.Initialized || string.IsNullOrEmpty(state.Name))
+                if (state.Initialized && !string.IsNullOrEmpty(state.Name))
                 {
-                    continue;
-                }
+                    Minimap.PinType type = VillageBrain.TierIndex(state.Plots.Count) == 0 ? Minimap.PinType.Icon0 : Minimap.PinType.Icon1;
+                    // A pin from before the ghostly colour (plain name, same spot) is replaced, not doubled.
+                    foreach (Minimap.PinData legacy in map.m_pins.Where(p => p.m_name == state.Name && Utils.DistanceXZ(p.m_pos, hearth.transform.position) < 6f).ToList())
+                    {
+                        Remove(map, legacy);
+                    }
 
-                Minimap.PinType type = VillageBrain.TierIndex(state.Plots.Count) == 0 ? Minimap.PinType.Icon0 : Minimap.PinType.Icon1;
-                Ensure(hearth.transform.position, state.Name, type);
+                    Ensure(map, hearth.transform.position, VillageLabel(state.Name), type);
+                }
+            }
+
+            // A village pin near the player whose hearth is gone (the village was cleared): taken off.
+            foreach (Minimap.PinData pin in map.m_pins.Where(p => IsOurs(p) && p.m_save).ToList())
+            {
+                if (Utils.DistanceXZ(pin.m_pos, me) < DiscoverWithin &&
+                    !VillageHearth.All.Any(h => h != null && h.IsValid && Utils.DistanceXZ(h.transform.position, pin.m_pos) < 8f))
+                {
+                    Remove(map, pin);
+                }
             }
         }
 
-        private static void Ensure(Vector3 position, string name, Minimap.PinType type)
+        private static void Ensure(Minimap map, Vector3 position, string label, Minimap.PinType type)
         {
-            Minimap.PinData ours = null;
-            foreach (Minimap.PinData pin in Minimap.instance.m_pins)
-            {
-                if (pin != null && pin.m_name == name && Utils.DistanceXZ(pin.m_pos, position) < 6f)
-                {
-                    ours = pin;
-                    break;
-                }
-            }
-
-            if (ours != null && ours.m_type == type)
+            Minimap.PinData ours = map.m_pins.FirstOrDefault(p => IsOurs(p) && p.m_save && Utils.DistanceXZ(p.m_pos, position) < 6f);
+            if (ours != null && ours.m_type == type && ours.m_name == label)
             {
                 return;
             }
 
             if (ours != null)
             {
-                RemoveOurs(ours);
+                Remove(map, ours);
             }
 
-            Minimap.PinData added = AddPin(position, type, name, true);
-            if (added != null)
-            {
-                Protected.Add(added);
-            }
+            AddPin(map, position, type, label, true);
         }
 
-        private static void RemoveOurs(Minimap.PinData pin)
-        {
-            _removingOurOwn = true;
-            try
-            {
-                Minimap.instance.RemovePin(pin);
-            }
-            finally
-            {
-                _removingOurOwn = false;
-                Protected.Remove(pin);
-            }
-        }
-
-        /// <summary>A village pin, known by its name standing on a hearth (survives a logic reload).</summary>
-        private static bool IsVillagePin(Minimap.PinData pin)
-        {
-            if (pin == null)
-            {
-                return false;
-            }
-
-            if (Protected.Contains(pin))
-            {
-                return true;
-            }
-
-            foreach (VillageHearth hearth in VillageHearth.All)
-            {
-                if (hearth != null && hearth.IsValid && pin.m_name == hearth.VillageName && Utils.DistanceXZ(pin.m_pos, hearth.transform.position) < 6f)
-                {
-                    return true;
-                }
-            }
-
-            return false;
-        }
-
-        // ---------------------------------------------------------------- villagers on the map
-
-        /// <summary>Keeps villager dots on the map while the player is in a village, and moves them along.</summary>
-        public static void UpdateVillagerPins(Vector3 me)
+        /// <summary>Keeps villager dots while the player is in a village; clears them otherwise.</summary>
+        private static void UpdateVillagerPins(Minimap map, Vector3 me)
         {
             VillageHearth home = VillageHearth.All.FirstOrDefault(h => h != null && h.IsValid &&
                                                                        Utils.DistanceXZ(h.transform.position, me) < VillheimConfig.VillageRadius.Value + 10f);
             foreach (Villager gone in VillagerPins.Keys.Where(v => v == null || v.IsDead() || home == null || v.VillageId != home.VillageId).ToList())
             {
-                RemoveOurs(VillagerPins[gone].Pin);
+                Remove(map, VillagerPins[gone].Pin);
                 VillagerPins.Remove(gone);
+            }
+
+            // Dots left from an earlier logic build or a cleared village.
+            var current = new HashSet<Minimap.PinData>(VillagerPins.Values.Select(v => v.Pin));
+            foreach (Minimap.PinData stale in map.m_pins.Where(p => IsOurs(p) && !p.m_save && !current.Contains(p)).ToList())
+            {
+                Remove(map, stale);
             }
 
             if (home == null)
@@ -146,33 +157,40 @@ namespace Villheim.Logic.Village
                     continue;
                 }
 
-                string label = $"{villager.VillagerName}\n{ShortTask(villager)}";
-                if (VillagerPins.TryGetValue(villager, out var current))
+                string label = VillagerLabel(villager);
+                if (VillagerPins.TryGetValue(villager, out var existing))
                 {
-                    if (current.Label == label)
+                    if (existing.Label == label)
                     {
-                        current.Pin.m_pos = villager.transform.position;
                         continue;
                     }
 
-                    RemoveOurs(current.Pin);
+                    Remove(map, existing.Pin);
                 }
 
-                Minimap.PinData pin = AddPin(villager.transform.position, Minimap.PinType.Icon3, label, false);
+                Minimap.PinData pin = AddPin(map, villager.transform.position, Minimap.PinType.Icon3, label, false);
                 if (pin != null)
                 {
-                    Protected.Add(pin);
                     VillagerPins[villager] = (pin, label);
                 }
             }
         }
 
-        /// <summary>Moves a villager's dot with him every frame (cheap: just the position).</summary>
-        public static void Follow(Villager villager)
+        private static void Remove(Minimap map, Minimap.PinData pin)
         {
-            if (VillagerPins.TryGetValue(villager, out var current) && current.Pin != null)
+            if (pin == null)
             {
-                current.Pin.m_pos = villager.transform.position;
+                return;
+            }
+
+            _removingOurOwn = true;
+            try
+            {
+                map.RemovePin(pin);
+            }
+            finally
+            {
+                _removingOurOwn = false;
             }
         }
 
@@ -195,7 +213,8 @@ namespace Villheim.Logic.Village
             if (a.Contains("cook") || a.Contains("fetching") || a.Contains("roasting")) return "cooking";
             if (a.Contains("hearth")) return "tending fire";
             if (a.Contains("busy at")) return "crafting";
-            if (Villagers.Roles.BackgroundOf(villager) == Villagers.Roles.Background.Protector && villager.GetComponent<VillagerAI>()?.GetTargetCreature() != null)
+            if (Villagers.Roles.BackgroundOf(villager) == Villagers.Roles.Background.Protector &&
+                villager.GetComponent<VillagerAI>()?.GetTargetCreature() != null)
                 return "defending";
             return "relaxing";
         }
@@ -206,7 +225,7 @@ namespace Villheim.Logic.Village
         /// Minimap.AddPin, called by reflection: its last parameter's type lives in a platform assembly the build
         /// doesn't reference, so its default is passed as is.
         /// </summary>
-        private static Minimap.PinData AddPin(Vector3 position, Minimap.PinType type, string name, bool save)
+        private static Minimap.PinData AddPin(Minimap map, Vector3 position, Minimap.PinType type, string name, bool save)
         {
             _addPin = _addPin ?? HarmonyLib.AccessTools.Method(typeof(Minimap), "AddPin");
             if (_addPin == null)
@@ -226,7 +245,16 @@ namespace Villheim.Logic.Village
                 }
             }
 
-            return _addPin.Invoke(Minimap.instance, args) as Minimap.PinData;
+            return _addPin.Invoke(map, args) as Minimap.PinData;
+        }
+
+        [HarmonyLib.HarmonyPatch(typeof(Minimap), nameof(Minimap.Update))]
+        internal static class MapUpdatePatch
+        {
+            private static void Postfix(Minimap __instance)
+            {
+                Tick(__instance);
+            }
         }
 
         /// <summary>The player can't delete a village's pin or a villager's dot (right-click, or the remove tool).</summary>
@@ -235,7 +263,7 @@ namespace Villheim.Logic.Village
         {
             private static bool Prefix(Minimap.PinData pin)
             {
-                return _removingOurOwn || !IsVillagePin(pin);
+                return _removingOurOwn || !IsOurs(pin);
             }
         }
 
@@ -250,7 +278,7 @@ namespace Villheim.Logic.Village
                 }
 
                 Minimap.PinData closest = __instance.GetClosestPin(pos, radius, false);
-                if (closest != null && IsVillagePin(closest))
+                if (closest != null && IsOurs(closest))
                 {
                     __result = false;
                     return false;

@@ -26,8 +26,6 @@ namespace Villheim.Logic.Villagers
             // Looks every client draws for itself: the echo look and a child's size.
             GhostLook.Update(villager);
             GhostLook.UpdateAnimals();
-            Village.MapPins.Update();
-            Village.MapPins.Follow(villager);
             Childhood.Update(villager);
 
             AppliedTier applied = Applied.GetOrCreateValue(villager);

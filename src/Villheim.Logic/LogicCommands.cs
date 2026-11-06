@@ -18,6 +18,7 @@ namespace Villheim.Logic
             "grow: make the nearest village start its next building now (adds the wood it needs)",
             "settle (or newvillage): light a new village hearth in front of you",
             "ghost: apply the look settings now and show the shader in use",
+            "buildingground: level the ground under the nearest village building to the bottom of its walls",
             "hearthground: clear and level the ground round the nearest village's hearth again",
             "previews: write a preview command for every design to BepInEx/Villheim/preview-commands.txt",
             "wood [amount] [material]: add materials to the nearest village (Wood, Stone, FineWood, RoundLog)",
@@ -58,6 +59,21 @@ namespace Villheim.Logic
                         float seconds = args.Length > 0 && float.TryParse(args[0], System.Globalization.NumberStyles.Float,
                             System.Globalization.CultureInfo.InvariantCulture, out float s) ? s : 20f;
                         Say(context, Villagers.MotionTrace.Start(tracer, seconds));
+                    }
+
+                    return true;
+                case "villheim_buildingground":
+                    if (TryGetPlayer(context, out Player builderNear) &&
+                        VillageHearth.Closest(builderNear.transform.position, 150f) is VillageHearth bh)
+                    {
+                        Plot nearestPlot = new VillageState(bh.Zdo).Plots
+                            .OrderBy(p => Utils.DistanceXZ(p.Position, builderNear.transform.position)).FirstOrDefault();
+                        Say(context, nearestPlot == null ? "Villheim: that village has no buildings yet."
+                            : "Villheim: " + ConstructionSite.RelevelBuilding(bh, nearestPlot) + ".");
+                    }
+                    else
+                    {
+                        Say(context, "Villheim: no village hearth within 150 m.");
                     }
 
                     return true;

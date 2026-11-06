@@ -395,16 +395,7 @@ namespace Villheim.Logic.Village
                 }
             }
 
-            float floor = float.MaxValue;
-            foreach (DesignSpawner.PlanEntry entry in entries)
-            {
-                if (entry.Shell && entry.Bounds.HasValue && entry.Bounds.Value.min.y < 1.2f)
-                {
-                    floor = Mathf.Min(floor, entry.Bounds.Value.min.y);
-                }
-            }
-
-            floor = floor == float.MaxValue ? 0f : Mathf.Clamp(floor, -1.5f, 1.2f);
+            float floor = FloorOf(entries);
             var plan = new CachedPlan { Key = key, Entries = entries, Factors = factors, Footprint = footprint + 0.5f, Floor = floor };
             Plans[id] = plan;
             return plan;
@@ -709,12 +700,102 @@ namespace Villheim.Logic.Village
             return plan != null ? plan.Footprint : (site != null ? site.Radius * 0.6f : 6f);
         }
 
+        /// <summary>
+        /// Where the ground floor sits, above the design's origin: the bottom of its lowest walls (walls stand on the
+        /// floor), else of its lowest floors, else of its lowest shell piece. The very lowest piece is not used on its
+        /// own: posts, steps and beams can reach below the floor, and a pad levelled to them left a building floating
+        /// a metre up (2026-11-06).
+        /// </summary>
+        private static float FloorOf(List<DesignSpawner.PlanEntry> entries)
+        {
+            float walls = float.MaxValue, floors = float.MaxValue, any = float.MaxValue;
+            foreach (DesignSpawner.PlanEntry entry in entries)
+            {
+                if (!entry.Shell || !entry.Bounds.HasValue || entry.Bounds.Value.min.y > 1.5f)
+                {
+                    continue;
+                }
+
+                float bottom = entry.Bounds.Value.min.y;
+                string name = entry.Prefab.ToLowerInvariant();
+                any = Mathf.Min(any, bottom);
+                if (name.Contains("wall") && !name.Contains("roof"))
+                {
+                    walls = Mathf.Min(walls, bottom);
+                }
+                else if (name.Contains("floor"))
+                {
+                    floors = Mathf.Min(floors, bottom);
+                }
+            }
+
+            float floor = walls < float.MaxValue ? walls : floors < float.MaxValue ? floors : any < float.MaxValue ? any : 0f;
+            return Mathf.Clamp(floor, -1.5f, 1.5f);
+        }
+
         /// <summary>The height the building's ground floor sits at: where its ground is levelled to.</summary>
         public static float FloorHeight(VillageHearth hearth)
         {
             Site site = Get(hearth.Zdo);
             CachedPlan plan = site != null ? GetPlan(hearth, site) : null;
             return site == null ? hearth.transform.position.y : site.Position.y + (plan != null ? plan.Floor : 0f);
+        }
+
+        /// <summary>
+        /// Levels the ground under a standing building of the village to the bottom of its lowest walls (else floors,
+        /// else lowest piece), measured from the pieces themselves, flat out past the walls, grass cleared. For
+        /// 'vh buildingground', to fix a building put up on the wrong ground. Returns what was done.
+        /// </summary>
+        public static string RelevelBuilding(VillageHearth hearth, Plot plot)
+        {
+            float walls = float.MaxValue, floors = float.MaxValue, any = float.MaxValue, reach = 2f;
+            foreach (ZNetView view in ZNetScene.instance.m_instances.Values)
+            {
+                if (view == null || !view.IsValid() || view.GetZDO().GetInt(Keys.BuiltBy) != hearth.VillageId ||
+                    Utils.DistanceXZ(view.transform.position, plot.Position) > plot.Radius * 0.8f || view.GetComponent<Piece>() == null)
+                {
+                    continue;
+                }
+
+                float bottom = float.MaxValue;
+                foreach (Collider collider in view.GetComponentsInChildren<Collider>())
+                {
+                    if (collider != null && !collider.isTrigger)
+                    {
+                        bottom = Mathf.Min(bottom, collider.bounds.min.y);
+                    }
+                }
+
+                if (bottom == float.MaxValue)
+                {
+                    continue;
+                }
+
+                string name = Utils.GetPrefabName(view.gameObject).ToLowerInvariant();
+                any = Mathf.Min(any, bottom);
+                if (name.Contains("wall") && !name.Contains("roof"))
+                {
+                    walls = Mathf.Min(walls, bottom);
+                    reach = Mathf.Max(reach, Utils.DistanceXZ(view.transform.position, plot.Position));
+                }
+                else if (name.Contains("floor"))
+                {
+                    floors = Mathf.Min(floors, bottom);
+                    reach = Mathf.Max(reach, Utils.DistanceXZ(view.transform.position, plot.Position));
+                }
+            }
+
+            float level = walls < float.MaxValue ? walls : floors < float.MaxValue ? floors : any;
+            if (level == float.MaxValue)
+            {
+                return $"no pieces of the {plot.Design} found";
+            }
+
+            var center = new Vector3(plot.Position.x, level, plot.Position.z);
+            TerrainShaper.LevelPad(center, reach + 1.5f, reach + 5f);
+            HearthGround.ClearVegetation(center, reach + 4f);
+            HearthGround.Paint(center, reach + 1.5f, TerrainModifier.PaintType.Dirt);
+            return $"levelled the ground under the {plot.Design} at {level:0.00} out to {reach + 1.5f:0.0} m";
         }
 
         /// <summary>
@@ -725,6 +806,9 @@ namespace Villheim.Logic.Village
         {
             float footprint = Footprint(hearth);
             var floor = new Vector3(position.x, FloorHeight(hearth), position.z);
+            Site site = Get(hearth.Zdo);
+            VillheimPlugin.Log.LogInfo($"Ground for the {site?.Design ?? "building"} levelled at {floor.y:0.00} " +
+                                       $"({floor.y - position.y:+0.00;-0.00} from its origin), out to {footprint + 1.5f:0.0} m.");
             HearthGround.ClearAround(position, footprint + 3f);
             TerrainShaper.LevelPad(floor, footprint + 1.5f, footprint + 5f);
             HearthGround.ClearVegetation(floor, footprint + 4f);

@@ -12,6 +12,10 @@ Standing reference for building, deploying and testing Villheim. Current state i
   SkipVerification attribute that lets the mod use the publicized (private) game members at runtime. Without it the
   game throws `FieldAccessException` / `MethodAccessException`.
 - GitHub Actions (`.github/workflows/build.yml`) builds on every push and uploads a `Villheim` artifact.
+- Cloud containers may block `nuget.bepinex.dev`, which is the only source of `BepInEx.Core` and
+  `UnityEngine.Modules` 6000. `scripts/build-cloud.sh` is a compile check that uses nuget.org, the BepInEx GitHub
+  release and `UnityEngine.Modules` 2021.3 instead. Install the SDK with `apt-get install -y dotnet-sdk-8.0` if
+  `dotnet` is missing (the dot.net install script is blocked too).
 
 ## Test setup
 

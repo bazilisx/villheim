@@ -53,8 +53,13 @@ namespace Villheim.Logic
 
         public bool VillagerUpdateAI(VillagerAI ai, float deltaTime)
         {
-            return ai.TryGetComponent(out Villager villager) && villager.IsValidVillager &&
-                   Chores.Update(villager, ai, deltaTime);
+            if (!ai.TryGetComponent(out Villager villager) || !villager.IsValidVillager ||
+                Loiter.ThreatNear(villager, ai))
+            {
+                return false;
+            }
+
+            return Chores.Update(villager, ai, deltaTime) || Loiter.Update(villager, ai, deltaTime);
         }
 
         public string VillagerHoverText(Villager villager) => VillagerBehaviour.HoverText(villager);

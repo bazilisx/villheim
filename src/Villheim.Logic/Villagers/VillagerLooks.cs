@@ -10,6 +10,14 @@ namespace Villheim.Logic.Villagers
     /// </summary>
     internal static class VillagerLooks
     {
+        /// <summary>The tools every villager carries. They hold the one for the job at hand.</summary>
+        public enum Tool
+        {
+            Axe,
+            Pickaxe,
+            Hammer,
+        }
+
         private readonly struct WeightedItem
         {
             public readonly string Item;
@@ -134,7 +142,70 @@ namespace Villheim.Logic.Villagers
             Equip(villager, Pick(gear, Legs[tier]));
             Equip(villager, Pick(gear, Helmets[tier]));
             Equip(villager, Pick(gear, Capes[tier]));
-            Equip(villager, IsBuilder(seed) ? "Hammer" : IsMiner(seed) ? Pickaxes[tier] : Axes[tier]);
+
+            // Everyone carries all three tools and starts out holding the one of their trade.
+            string axe = Axes[tier];
+            string pickaxe = Pickaxes[tier];
+            Carry(villager, axe);
+            Carry(villager, pickaxe);
+            Carry(villager, "Hammer");
+            Hold(villager, IsBuilder(seed) ? Tool.Hammer : IsMiner(seed) ? Tool.Pickaxe : Tool.Axe);
+        }
+
+        /// <summary>Puts the tool in the villager's hand, if it isn't there already. Returns false if they don't carry one.</summary>
+        public static bool Hold(Humanoid villager, Tool tool)
+        {
+            ItemDrop.ItemData current = villager.GetRightItem();
+            if (current != null && IsTool(current, tool))
+            {
+                return true;
+            }
+
+            Inventory inventory = villager.GetInventory();
+            if (inventory == null)
+            {
+                return false;
+            }
+
+            foreach (ItemDrop.ItemData item in inventory.GetAllItems())
+            {
+                if (IsTool(item, tool))
+                {
+                    return villager.EquipItem(item, false);
+                }
+            }
+
+            return false;
+        }
+
+        private static bool IsTool(ItemDrop.ItemData item, Tool tool)
+        {
+            if (item?.m_shared == null)
+            {
+                return false;
+            }
+
+            switch (tool)
+            {
+                case Tool.Axe:
+                    return item.m_shared.m_skillType == Skills.SkillType.Axes;
+                case Tool.Pickaxe:
+                    return item.m_shared.m_skillType == Skills.SkillType.Pickaxes;
+                default:
+                    return item.m_dropPrefab != null
+                        ? item.m_dropPrefab.name == "Hammer"
+                        : item.m_shared.m_name == "$item_hammer";
+            }
+        }
+
+        /// <summary>Adds an item to the inventory without equipping it.</summary>
+        private static void Carry(Humanoid humanoid, string itemName)
+        {
+            GameObject prefab = string.IsNullOrEmpty(itemName) ? null : ObjectDB.instance.GetItemPrefab(itemName);
+            if (prefab != null)
+            {
+                humanoid.PickupPrefab(prefab, 0, false);
+            }
         }
 
         private static void Equip(Humanoid humanoid, string itemName)

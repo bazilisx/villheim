@@ -36,10 +36,14 @@ with its own look for its biome.
 - [ ] Biome materials: no core wood in the Meadows, and so on. (Built 2026-11-05, needs testing.)
 - [ ] Movement without jitter: stand spots, steady goals, unstuck jump and sidestep. (Built 2026-11-05, needs testing.)
 - [ ] Trees felled away from the village.
-- [ ] Right tool for each job: hammer to build, axe for trees, pickaxe for rocks.
-- [ ] Villagers open and close doors.
-- [ ] Support-aware build order: nothing goes up unsupported; openings before what rests on them.
-- [ ] Never copy bee hives from designs.
+- [ ] Right tool for each job: hammer to build, axe for trees, pickaxe for rocks. (Built 2026-11-05 session 4,
+      needs testing.)
+- [ ] Villagers open and close doors. (Built 2026-11-05 session 4, needs testing.)
+- [ ] Support-aware build order: nothing goes up unsupported; openings before what rests on them. (Built 2026-11-05
+      session 4, needs testing.)
+- [ ] Never copy bee hives from designs. (Built 2026-11-05 session 4, needs testing.)
+- [ ] Idle villagers stand near home or the hearth, clear of the fire, houses and players. (Built 2026-11-05
+      session 4, needs testing.)
 
 ## Milestone 3: a village that looks planned
 

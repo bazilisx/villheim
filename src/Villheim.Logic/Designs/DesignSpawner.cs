@@ -96,11 +96,18 @@ namespace Villheim.Logic.Designs
             public int Stage;
             public bool Structural;
 
+            /// <summary>Walls, floors, beams, roofs, doors and windows: the pieces that hold each other up.</summary>
+            public bool Shell;
+
+            /// <summary>The space the piece takes up, in the design's coordinates.</summary>
+            public Bounds? Bounds;
+
             /// <summary>Tracked materials from the piece's vanilla recipe (Wood, Stone and so on).</summary>
             public Dictionary<string, int> Cost = new Dictionary<string, int>();
         }
 
-        // Build stages: structure from the ground up, then roofs, then doors and windows, then everything inside.
+        // Stage names for progress. The shell (structure, roofs, doors and windows) goes up in support order, see
+        // BuildOrder; everything inside comes after it.
         public const int StageStructure = 0;
         public const int StageRoof = 1;
         public const int StageOpenings = 2;
@@ -111,8 +118,12 @@ namespace Villheim.Logic.Designs
         /// <summary>
         /// Lists the objects a copy of the design contains, in build order. The design's random parts are rolled
         /// with the seed, so the same seed always gives the same plan.
+        ///
+        /// With <paramref name="supportOrder"/> the shell goes up so every piece is held when placed (see BuildOrder),
+        /// then the interior. Without it, the older order: stage first (structure, roof, openings, interior), then
+        /// height. Sites started before the support order keep the old one, so their piece count stays right.
         /// </summary>
-        public static List<PlanEntry> MakePlan(GameObject asset, Vector3 origin, int seed)
+        public static List<PlanEntry> MakePlan(GameObject asset, Vector3 origin, int seed, float yaw = 0f, bool supportOrder = true)
         {
             var plan = new List<PlanEntry>();
             Transform root = asset.transform;
@@ -173,8 +184,24 @@ namespace Villheim.Logic.Designs
                 Random.state = previousRandom;
             }
 
-            // Ground up within each stage. The sort is stable, so equal heights keep the design's own order.
-            return plan.OrderBy(e => e.Stage).ThenBy(e => Mathf.Round(e.LocalPosition.y * 4f)).ToList();
+            if (!supportOrder)
+            {
+                // Ground up within each stage. The sort is stable, so equal heights keep the design's own order.
+                return plan.OrderBy(e => StageOf(e.Prefab, e.Structural)).ThenBy(e => Mathf.Round(e.LocalPosition.y * 4f)).ToList();
+            }
+
+            Quaternion rotation = Quaternion.Euler(0f, yaw, 0f);
+            float? GroundAt(Vector3 local)
+            {
+                Vector3 world = origin + rotation * local;
+                return ZoneSystem.instance != null && ZoneSystem.instance.GetGroundHeight(world, out float height)
+                    ? height - origin.y
+                    : (float?)null;
+            }
+
+            List<PlanEntry> ordered = BuildOrder.Order(plan.Where(e => e.Shell).ToList(), GroundAt);
+            ordered.AddRange(plan.Where(e => !e.Shell).OrderBy(e => Mathf.Round(e.LocalPosition.y * 4f)));
+            return ordered;
         }
 
         private static void AddEntry(List<PlanEntry> plan, GameObject original, string prefabName, Transform root)
@@ -186,16 +213,35 @@ namespace Villheim.Logic.Designs
             }
 
             bool structural = prefab.GetComponent<WearNTear>() != null && prefab.GetComponent<Piece>() != null;
+            bool shell = structural && IsShell(prefab.GetComponent<Piece>(), prefabName);
+            Vector3 position = root.InverseTransformPoint(original.transform.position);
+            Quaternion rotation = Quaternion.Inverse(root.rotation) * original.transform.rotation;
+            Vector3 scale = original.transform.lossyScale;
             plan.Add(new PlanEntry
             {
                 Cost = RecipeCost(prefab),
                 Prefab = prefabName,
-                LocalPosition = root.InverseTransformPoint(original.transform.position),
-                LocalRotation = Quaternion.Inverse(root.rotation) * original.transform.rotation,
-                Scale = original.transform.lossyScale,
-                Stage = StageOf(prefabName, structural),
+                LocalPosition = position,
+                LocalRotation = rotation,
+                Scale = scale,
+                Stage = shell ? StageOf(prefabName, true) : StageInterior,
                 Structural = structural,
+                Shell = shell,
+                Bounds = shell ? BuildOrder.Measure(prefab, prefabName, position, rotation, scale) : null,
             });
+        }
+
+        /// <summary>Building pieces from the hammer's building tabs, plus anything named like a door or window.</summary>
+        private static bool IsShell(Piece piece, string prefabName)
+        {
+            return IsOpening(prefabName) || piece.m_category == Piece.PieceCategory.BuildingWorkbench ||
+                   piece.m_category == Piece.PieceCategory.BuildingStonecutter;
+        }
+
+        private static bool IsOpening(string prefabName)
+        {
+            string lower = prefabName.ToLowerInvariant();
+            return lower.Contains("door") || lower.Contains("gate") || lower.Contains("window") || lower.Contains("hatch");
         }
 
         /// <summary>The tracked materials a piece costs in vanilla, from its build recipe.</summary>
@@ -226,13 +272,15 @@ namespace Villheim.Logic.Designs
             return cost;
         }
 
+        /// <summary>The stage a piece belongs to. Also the sort key of the older build order, so keep it as it is.</summary>
         private static int StageOf(string name, bool structural)
         {
-            string lower = name.ToLowerInvariant();
-            if (lower.Contains("door") || lower.Contains("gate") || lower.Contains("window") || lower.Contains("hatch"))
+            if (IsOpening(name))
             {
                 return StageOpenings;
             }
+
+            string lower = name.ToLowerInvariant();
 
             if (!structural)
             {
@@ -297,7 +345,7 @@ namespace Villheim.Logic.Designs
         private static void SpawnObjects(GameObject asset, Vector3 origin, Quaternion rotation, int seed, int villageId,
             Result result)
         {
-            foreach (PlanEntry entry in MakePlan(asset, origin, seed))
+            foreach (PlanEntry entry in MakePlan(asset, origin, seed, rotation.eulerAngles.y))
             {
                 if (SpawnEntry(entry, origin, rotation, villageId, false) != null)
                 {
@@ -346,6 +394,7 @@ namespace Villheim.Logic.Designs
             if (prefab.GetComponent<DungeonGenerator>() || prefab.GetComponent<Teleport>()) return "dungeon";
             if (prefab.GetComponent<LocationProxy>()) return "location proxy";
             if (prefab.GetComponent<VillageHearth>()) return "village hearth";
+            if (prefab.GetComponent<Beehive>()) return "bee hive";
 
             if (!VillheimConfig.KeepLootContainers.Value && prefab.GetComponent<Container>() && !prefab.GetComponent<Piece>())
             {

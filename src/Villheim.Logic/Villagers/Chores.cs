@@ -43,7 +43,7 @@ namespace Villheim.Logic.Villagers
         {
             public string Activity;
             public string PartialActivity;
-            public Skills.SkillType Tool;
+            public VillagerLooks.Tool Tool;
             public Func<GameObject, bool> IsSource;
             public Func<GameObject, bool> IsPartial;
             public bool Pickaxe;
@@ -87,7 +87,7 @@ namespace Villheim.Logic.Villagers
         {
             Activity = "felling a tree",
             PartialActivity = "splitting logs",
-            Tool = Skills.SkillType.Axes,
+            Tool = VillagerLooks.Tool.Axe,
             IsSource = go => go.GetComponent<TreeBase>() != null,
             IsPartial = go => go.GetComponent<TreeLog>() != null || IsStump(go),
             Pickaxe = false,
@@ -98,7 +98,7 @@ namespace Villheim.Logic.Villagers
         {
             Activity = "breaking rocks",
             PartialActivity = "breaking up a cracked rock",
-            Tool = Skills.SkillType.Pickaxes,
+            Tool = VillagerLooks.Tool.Pickaxe,
             IsSource = IsRock,
             IsPartial = IsCrackedRock,
             Pickaxe = true,
@@ -277,7 +277,9 @@ namespace Villheim.Logic.Villagers
             }
 
             work.Profile = profile;
-            work.CanHarvest = builder || HasTool(villager, profile.Tool);
+
+            // Everyone carries an axe and a pickaxe, so anyone can fell or mine; they take the right one in hand.
+            work.CanHarvest = VillagerLooks.Hold(villager, profile.Tool);
             work.Wanted.Clear();
             foreach (string material in needs.Missing.Keys)
             {
@@ -401,6 +403,7 @@ namespace Villheim.Logic.Villagers
 
             work.Phase = Phase.Work;
             ai.StopMoving();
+            VillagerLooks.Hold(villager, profile.Tool);
             Face(villager, ai, work.Contact);
             work.Timer -= dt;
             if (work.Timer <= 0f)
@@ -615,15 +618,21 @@ namespace Villheim.Logic.Villagers
                 return false;
             }
 
+            // Builders work from outside. One who finds himself inside the outline walks out first (opening the door
+            // if there is one), so he never walls himself in.
             Vector3 stand = ConstructionSite.StandSpot(hearth, piece);
             float toPiece = Utils.DistanceXZ(villager.transform.position, piece);
+            bool inside = ConstructionSite.InsideFootprint(hearth, villager.transform.position);
             WalkResult step = Walker.For(villager).Go(villager, ai, dt, stand, 1f);
-            if (step == WalkResult.Walking && toPiece > BuildRange * 0.75f)
+            if (step == WalkResult.Walking && (inside || toPiece > BuildRange * 0.75f))
             {
                 return true;
             }
 
+            // Here when outside and in range, or stuck. Stuck inside with no way out yet, he keeps building rather
+            // than stand there; the Walker opens the door as soon as there is one.
             ai.StopMoving();
+            VillagerLooks.Hold(villager, VillagerLooks.Tool.Hammer);
             Face(villager, ai, piece);
             work.Timer += dt;
             if (work.Timer % HammerInterval < dt)
@@ -820,12 +829,6 @@ namespace Villheim.Logic.Villagers
 
             work.Carrying.Clear();
             Finish(work);
-        }
-
-        private static bool HasTool(Villager villager, Skills.SkillType skill)
-        {
-            ItemDrop.ItemData weapon = villager.GetCurrentWeapon();
-            return weapon?.m_shared != null && weapon.m_shared.m_skillType == skill;
         }
 
         private static bool IsStump(GameObject go)

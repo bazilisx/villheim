@@ -125,10 +125,19 @@ namespace Villheim.Logic.Village
             return chest != null ? chest.transform.position : hearth.Zdo.GetVec3(KeyChestPosition, Vector3.zero);
         }
 
-        /// <summary>The chest can be changed right now (it exists and nobody has it open).</summary>
+        /// <summary>
+        /// The chest can be changed right now. An open chest can be changed when this machine owns it, which is the
+        /// case when the local player opened it: the open chest window shows the same inventory, so the counts
+        /// change in front of them. A chest someone on another machine has open waits until they close it.
+        /// </summary>
         public static bool Usable(Container chest)
         {
-            return chest && chest.m_nview && chest.m_nview.IsValid() && !chest.IsInUse() && chest.GetInventory() != null;
+            if (!chest || !chest.m_nview || !chest.m_nview.IsValid() || chest.GetInventory() == null)
+            {
+                return false;
+            }
+
+            return !chest.IsInUse() || chest.m_nview.IsOwner();
         }
 
         public static int Count(Container chest, string material)
@@ -187,6 +196,8 @@ namespace Villheim.Logic.Village
                 if (amount.Value > 0)
                 {
                     chest.GetInventory().RemoveItem(Materials.SharedName(amount.Key), amount.Value);
+                    VillheimPlugin.Debug($"Took {amount.Value} {Materials.Label(amount.Key)} from the site chest, " +
+                                         $"{Count(chest, amount.Key)} left{(chest.IsInUse() ? " (chest open)" : "")}.");
                 }
             }
 
@@ -230,7 +241,7 @@ namespace Villheim.Logic.Village
 
         private static void Claim(Container chest)
         {
-            if (!chest.m_nview.IsOwner())
+            if (!chest.m_nview.IsOwner() && !chest.IsInUse())
             {
                 chest.m_nview.ClaimOwnership();
             }

@@ -21,6 +21,10 @@ namespace Villheim.Logic.Village
         private static readonly int KeySite = "villheim_site".GetStableHashCode();
         private static readonly int KeySiteIndex = "villheim_site_index".GetStableHashCode();
         private static readonly int KeySiteOwed = "villheim_site_owed".GetStableHashCode();
+        private static readonly int KeySiteOrder = "villheim_site_order".GetStableHashCode();
+
+        // 2: shell in support order (BuildOrder). Sites begun earlier have no value and keep the old order.
+        private const int SupportOrderVersion = 2;
 
         private const float BuilderRecentSeconds = 12f;
 
@@ -81,6 +85,7 @@ namespace Villheim.Logic.Village
             zdo.Set(KeySite, raw);
             zdo.Set(KeySiteIndex, 0);
             zdo.Set(KeySiteOwed, "");
+            zdo.Set(KeySiteOrder, SupportOrderVersion);
         }
 
         private static void End(ZDO zdo)
@@ -219,7 +224,8 @@ namespace Villheim.Logic.Village
         private static CachedPlan GetPlan(VillageHearth hearth, Site site)
         {
             int id = hearth.VillageId;
-            string key = $"{site.Design}|{site.Seed}|{site.Position}";
+            bool supportOrder = hearth.Zdo.GetInt(KeySiteOrder) >= SupportOrderVersion;
+            string key = $"{site.Design}|{site.Seed}|{site.Position}|{supportOrder}";
             if (Plans.TryGetValue(id, out CachedPlan cached) && cached.Key == key)
             {
                 return cached;
@@ -240,7 +246,7 @@ namespace Villheim.Logic.Village
                     return null;
                 }
 
-                List<DesignSpawner.PlanEntry> entries = DesignSpawner.MakePlan(asset, site.Position, site.Seed);
+                List<DesignSpawner.PlanEntry> entries = DesignSpawner.MakePlan(asset, site.Position, site.Seed, site.Yaw, supportOrder);
                 var factors = new Dictionary<string, float>();
                 foreach (KeyValuePair<string, int> total in DesignLibrary.RawTotals(location))
                 {
@@ -443,6 +449,13 @@ namespace Villheim.Logic.Village
             Vector3 direction = toHearth.sqrMagnitude > 0.01f ? toHearth.normalized : Vector3.forward;
             Vector3 side = Vector3.Cross(Vector3.up, direction);
             return site.Position + direction * (Footprint(hearth) + 2f) + side * 2f;
+        }
+
+        /// <summary>True when the point is inside the building's outline (plus a little margin).</summary>
+        public static bool InsideFootprint(VillageHearth hearth, Vector3 point)
+        {
+            Site site = Get(hearth.Zdo);
+            return site != null && Utils.DistanceXZ(point, site.Position) < Footprint(hearth) + 0.3f;
         }
 
         /// <summary>

@@ -106,6 +106,93 @@ namespace Villheim.Logic.Designs
             return best;
         }
 
+        // Everything a piece may be made of in each biome, beyond the four tracked building materials (which follow the
+        // BiomeMaterials setting). A design with any piece made of something else (black marble, iron, obsidian...) is
+        // left out: a Meadows village built a marble wall.
+        private static readonly HashSet<string> MeadowsResources = new HashSet<string>
+        {
+            "Wood", "Stone", "Flint", "Resin", "LeatherScraps", "DeerHide", "Feathers", "BoneFragments", "Coal",
+            "Dandelion", "Mushroom", "Raspberry", "Honey", "TrophyDeer", "TrophyBoar", "TrophyNeck",
+        };
+
+        private static readonly HashSet<string> ForestResources = new HashSet<string>
+        {
+            "FineWood", "RoundLog", "Copper", "Tin", "Bronze", "BronzeNails", "TrollHide", "GreydwarfEye", "SurtlingCore",
+            "Thistle", "Blueberries", "AncientSeed", "CopperOre", "TinOre", "TrophyGreydwarf", "TrophyFrostTroll",
+        };
+
+        private static readonly Dictionary<string, HashSet<string>> ResourceCache = new Dictionary<string, HashSet<string>>();
+
+        /// <summary>The first resource in the design that its biome doesn't have at all, or null.</summary>
+        public static string Foreign(Design design, Heightmap.Biome biome)
+        {
+            HashSet<string> used = Resources(design);
+            foreach (string resource in used)
+            {
+                if (Village.Materials.Tracked.Contains(resource))
+                {
+                    continue; // handled by the BiomeMaterials setting
+                }
+
+                bool ok = MeadowsResources.Contains(resource) ||
+                          (biome == Heightmap.Biome.BlackForest && ForestResources.Contains(resource));
+                if (!ok)
+                {
+                    return resource;
+                }
+            }
+
+            return null;
+        }
+
+        private static HashSet<string> Resources(Design design)
+        {
+            if (ResourceCache.TryGetValue(design.Name, out HashSet<string> cached))
+            {
+                return cached;
+            }
+
+            var used = new HashSet<string>();
+            void Add(string prefabName)
+            {
+                GameObject prefab = ZNetScene.instance ? ZNetScene.instance.GetPrefab(prefabName) : null;
+                if (prefab != null && DesignSpawner.ExclusionReason(prefab, prefabName) == null)
+                {
+                    used.UnionWith(DesignSpawner.AllResources(prefab));
+                }
+            }
+
+            if (design.Blueprint != null)
+            {
+                foreach (Blueprints.Piece piece in design.Blueprint.Pieces)
+                {
+                    Add(piece.Prefab);
+                }
+            }
+            else
+            {
+                design.Location.m_prefab.Load();
+                try
+                {
+                    GameObject asset = design.Location.m_prefab.Asset;
+                    if (asset != null)
+                    {
+                        foreach (ZNetView view in Utils.GetEnabledComponentsInChildren<ZNetView>(asset))
+                        {
+                            Add(Utils.GetPrefabName(view.gameObject));
+                        }
+                    }
+                }
+                finally
+                {
+                    design.Location.m_prefab.Release();
+                }
+            }
+
+            ResourceCache[design.Name] = used;
+            return used;
+        }
+
         /// <summary>A design by name: a location, or a blueprint when the name starts with "bp:".</summary>
         public static Design? ByName(string name)
         {
@@ -224,6 +311,12 @@ namespace Villheim.Logic.Designs
             if (!VillheimConfig.RequireWood.Value)
             {
                 return null;
+            }
+
+            string foreign = Foreign(design, biome);
+            if (foreign != null)
+            {
+                return foreign;
             }
 
             HashSet<string> allowed = Village.Materials.AllowedIn(biome);

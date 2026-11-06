@@ -27,6 +27,7 @@ namespace Villheim.Logic.Villagers
             GhostLook.Update(villager);
             GhostLook.UpdateAnimals();
             Village.MapPins.Update();
+            Village.MapPins.Follow(villager);
             Childhood.Update(villager);
 
             AppliedTier applied = Applied.GetOrCreateValue(villager);

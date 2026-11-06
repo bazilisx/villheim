@@ -69,6 +69,7 @@ namespace Villheim.Logic.Villagers
         private Door _closeBehind;
         private float _closeBy;
         private float _nextClosePush;
+        private float _lastGo;
 
         public static Walker For(Villager villager) => Walkers.GetOrCreateValue(villager);
 
@@ -82,12 +83,26 @@ namespace Villheim.Logic.Villagers
             _sidestepUntil = 0f;
             _door = null;
             _doorTried = false;
+            _hopped = false;
+            _lastMoved = Time.time;
         }
 
         public WalkResult Go(Villager villager, VillagerAI ai, float dt, Vector3 point, float stop, bool run = false)
         {
             Vector3 position = villager.transform.position;
             villager.SetWalk(!run);
+
+            // Not walking a moment ago (working, sitting, a new task): the stuck clock starts now. Before, time spent
+            // standing at work counted as being stuck, and the first steps of the next task began with a hop.
+            if (Time.time - _lastGo > 0.5f)
+            {
+                _lastMoved = Time.time;
+                _lastPosition = position;
+                _hopped = false;
+                _sidesteps = 0;
+            }
+
+            _lastGo = Time.time;
             CloseDoorBehind(position);
             stop = Mathf.Max(stop, MinStop);
             if (!_hasGoal || Utils.DistanceXZ(point, _goal) > NewGoalDistance)

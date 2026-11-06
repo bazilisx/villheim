@@ -29,8 +29,8 @@ namespace Villheim.Logic.Villagers
     {
         private const float RefreshSeconds = 3f;
 
-        private static readonly Color Teal = new Color(0.55f, 0.85f, 1f);
-        private static readonly Color GlowColor = new Color(0.25f, 0.6f, 0.75f);
+        private static Color Teal => LogicConfig.GhostColor != null ? LogicConfig.GhostColor.Value : new Color(0.55f, 0.85f, 1f);
+        private static Color GlowColor => LogicConfig.GhostGlowColor != null ? LogicConfig.GhostGlowColor.Value : new Color(0.25f, 0.6f, 0.75f);
         private static readonly string[] TintProperties = { "_Color", "_SkinColor", "_HairColor", "_TintColor", "_BaseColor" };
         private static readonly string[] PreferredSources = { "ghost", "spirit", "wraith", "echo", "phantom", "wisp" };
 
@@ -47,6 +47,9 @@ namespace Villheim.Logic.Villagers
         private sealed class State
         {
             public float Next;
+            public float NextScan;
+            public float FirstSeen;
+            public bool Revealed;
             public readonly Dictionary<Renderer, List<Slot>> Renderers = new Dictionary<Renderer, List<Slot>>();
         }
 
@@ -88,26 +91,62 @@ namespace Villheim.Logic.Villagers
         public static void Update(Character villager)
         {
             State state = States.GetOrCreateValue(villager);
-            if (Time.time < state.Next)
+            bool on = LogicConfig.GhostLook != null && LogicConfig.GhostLook.Value;
+
+            // A villager who has just appeared stays out of sight until his clothes and tools are on and every part of
+            // him has the look, so he never shows half solid for a moment.
+            if (!state.Revealed)
+            {
+                if (state.FirstSeen <= 0f)
+                {
+                    state.FirstSeen = Time.time;
+                }
+
+                bool dressed = !(villager is Villager v) || (v.LooksApplied && v.m_chestItem != null && v.GetRightItem() != null);
+                bool ready = on && (dressed || Time.time - state.FirstSeen > 4f) && Time.time - state.FirstSeen > 0.5f;
+                if (!on)
+                {
+                    SetHidden(villager, false);
+                    state.Revealed = true;
+                }
+                else if (!ready)
+                {
+                    SetHidden(villager, true);
+                    return;
+                }
+                else
+                {
+                    state.Next = 0f;
+                    state.NextScan = 0f;
+                }
+            }
+
+            // New parts (a tool taken out, a new shirt) get the look within half a second; values refresh every 3 s.
+            bool scan = Time.time >= state.NextScan;
+            bool refresh = Time.time >= state.Next;
+            if (!scan && !refresh)
             {
                 return;
             }
 
-            state.Next = Time.time + RefreshSeconds + Random.Range(0f, 0.5f);
-            SweepOrphans();
+            state.NextScan = Time.time + 0.5f;
+            if (refresh)
+            {
+                state.Next = Time.time + RefreshSeconds + Random.Range(0f, 0.5f);
+                SweepOrphans();
+            }
 
-            // Day and night values, blended through dusk and dawn: by day more teal and more solid (in sunlight the
-            // see-through look washed out to white), at night the softer, glowing look.
-            bool on = LogicConfig.GhostLook != null && LogicConfig.GhostLook.Value;
-            float dark = Darkness();
-            float tint = on ? Mathf.Clamp01(Mathf.Lerp(LogicConfig.GhostTintDay.Value, LogicConfig.GhostTint.Value, dark)) : 0f;
-            float alpha = on ? Mathf.Clamp(Mathf.Lerp(LogicConfig.GhostAlphaDay.Value, LogicConfig.GhostAlpha.Value, dark), 0.1f, 1f) : 1f;
-            float glow = on ? Mathf.Clamp01(Mathf.Lerp(LogicConfig.GhostGlowDay.Value, LogicConfig.GhostGlow.Value, dark)) : 0f;
             if (!on && state.Renderers.Count == 0)
             {
                 return;
             }
 
+            // Day and night values, blended through dusk and dawn: by day more teal and more solid (in sunlight the
+            // see-through look washed out to white), at night the softer, glowing look.
+            float dark = Darkness();
+            float tint = on ? Mathf.Clamp01(Mathf.Lerp(LogicConfig.GhostTintDay.Value, LogicConfig.GhostTint.Value, dark)) : 0f;
+            float alpha = on ? Mathf.Clamp(Mathf.Lerp(LogicConfig.GhostAlphaDay.Value, LogicConfig.GhostAlpha.Value, dark), 0.1f, 1f) : 1f;
+            float glow = on ? Mathf.Clamp01(Mathf.Lerp(LogicConfig.GhostGlowDay.Value, LogicConfig.GhostGlow.Value, dark)) : 0f;
             Shader ghost = alpha < 0.99f ? GhostShader() : null;
             foreach (Renderer renderer in villager.GetComponentsInChildren<Renderer>(true))
             {
@@ -116,7 +155,8 @@ namespace Villheim.Logic.Villagers
                     continue;
                 }
 
-                if (!state.Renderers.TryGetValue(renderer, out List<Slot> slots))
+                bool known = state.Renderers.TryGetValue(renderer, out List<Slot> slots);
+                if (!known)
                 {
                     if (!on)
                     {
@@ -126,6 +166,10 @@ namespace Villheim.Logic.Villagers
                     slots = Take(villager, renderer);
                     state.Renderers[renderer] = slots;
                 }
+                else if (!refresh)
+                {
+                    continue;
+                }
 
                 foreach (Slot slot in slots)
                 {
@@ -133,10 +177,27 @@ namespace Villheim.Logic.Villagers
                 }
             }
 
+            if (!state.Revealed)
+            {
+                state.Revealed = true;
+                SetHidden(villager, false);
+            }
+
             // Renderers that went away (gear changed) are forgotten; their copies go with the sweep.
             foreach (Renderer gone in state.Renderers.Keys.Where(r => r == null).ToList())
             {
                 state.Renderers.Remove(gone);
+            }
+        }
+
+        private static void SetHidden(Character character, bool hidden)
+        {
+            foreach (Renderer renderer in character.GetComponentsInChildren<Renderer>(true))
+            {
+                if (renderer != null && !(renderer is ParticleSystemRenderer))
+                {
+                    renderer.forceRenderingOff = hidden;
+                }
             }
         }
 

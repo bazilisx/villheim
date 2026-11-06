@@ -536,7 +536,8 @@ namespace Villheim.Logic.Villagers
             if (!close)
             {
                 work.Phase = Phase.Approach;
-                WalkResult step = walker.Go(villager, ai, dt, work.Stand, 0.6f);
+                // Out to a tree or rock: harvesting is work worth hurrying for, so they run there.
+                WalkResult step = walker.Go(villager, ai, dt, work.Stand, 0.6f, true);
                 if (step != WalkResult.Walking && !InReach(villager, work.Contact, true))
                 {
                     // The path often ends short of a tree or rock (it blocks the ground around itself). Walk the
@@ -620,7 +621,7 @@ namespace Villheim.Logic.Villagers
                 return true;
             }
 
-            WalkResult step = Walker.For(villager).Go(villager, ai, dt, work.Target.transform.position, 1.2f);
+            WalkResult step = Walker.For(villager).Go(villager, ai, dt, work.Target.transform.position, 1.2f, true);
             if (step == WalkResult.Walking)
             {
                 return true;
@@ -703,7 +704,7 @@ namespace Villheim.Logic.Villagers
 
             Vector3 at = work.Target.transform.position;
             float distance = Utils.DistanceXZ(villager.transform.position, at);
-            WalkResult step = distance < 2f ? WalkResult.Arrived : Walker.For(villager).Go(villager, ai, dt, at, 1.4f);
+            WalkResult step = distance < 2f ? WalkResult.Arrived : Walker.For(villager).Go(villager, ai, dt, at, 1.4f, true);
             if (step == WalkResult.Walking)
             {
                 return true;

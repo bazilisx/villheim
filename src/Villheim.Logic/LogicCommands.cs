@@ -286,12 +286,14 @@ namespace Villheim.Logic
                 return;
             }
 
-            GameObject made = Object.Instantiate(HearthPrefab.Prefab, GroundInFront(player, 4f),
-                Quaternion.Euler(0f, player.transform.eulerAngles.y, 0f));
+            // The nearest flat spot within 40 m, not wherever the player stands.
+            Vector3 spot = HearthGround.FlatSpotNear(GroundInFront(player, 4f));
+            GameObject made = Object.Instantiate(HearthPrefab.Prefab, spot, Quaternion.Euler(0f, player.transform.eulerAngles.y, 0f));
 
             // Settled by hand: the world generator's spacing and rarity rules don't apply to it.
             made.GetComponent<ZNetView>()?.GetZDO()?.Set(VillageBrain.KeyManual, 1);
-            Say(context, "Villheim: a hearth is lit. The first settlers arrive within a few seconds.");
+            Say(context, $"Villheim: a hearth is lit {Vector3.Distance(spot, player.transform.position):0} m away, on the flattest ground nearby. " +
+                         "The first settlers arrive within a few seconds.");
         }
 
         private static void Grow(Terminal context)

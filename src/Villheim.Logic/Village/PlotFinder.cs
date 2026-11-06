@@ -25,6 +25,9 @@ namespace Villheim.Logic.Village
     internal static class PlotFinder
     {
         public const float HearthClearance = 6f;
+
+        /// <summary>How far above or below the hearth a building's ground may be and still be built on the hearth's level.</summary>
+        public const float LevelTolerance = 2.5f;
         private const float GridStep = 4f;
         private const float Gap = 2f;
 
@@ -84,21 +87,39 @@ namespace Villheim.Logic.Village
             }
 
             // Closest first; small random jitter so villages with the same layout rules still differ.
+            // Every building goes on the hearth's level: the villagers raise or lower the ground under it to match. Spots
+            // whose ground is within 2.5 m of the hearth are tried first; only if there are none is a building set on its
+            // own ground.
             var good = new List<Vector3>();
             int wanted = role == Role.Workshop ? 6 : 1;
-            foreach (Vector2 local in candidates.OrderBy(c => c.magnitude + (float)rng.NextDouble() * step))
+            List<Vector2> ordered = candidates.OrderBy(c => c.magnitude + (float)rng.NextDouble() * step).ToList();
+            for (int pass = 0; pass < 2 && good.Count == 0; pass++)
             {
-                Vector3 candidate = hearth + axis * new Vector3(local.x, 0f, local.y);
-                if (IsGoodSpot(candidate, hearth, radius, maxTerrainDelta, plots, out float groundY) &&
-                    ClearOfPaths(candidate, hearth, axisYaw, radius, plots) &&
-                    (network == null || PathPlanner.DistanceToNetwork(network, candidate) > radius * 0.6f + 1.5f) &&
-                    (village == null || PathPlanner.Reachable(village, new Vector3(candidate.x, groundY, candidate.z), radius,
-                        FaceHearth(candidate, hearth, axisYaw))))
+                foreach (Vector2 local in ordered)
                 {
-                    good.Add(new Vector3(candidate.x, groundY, candidate.z));
-                    if (good.Count >= wanted)
+                    Vector3 candidate = hearth + axis * new Vector3(local.x, 0f, local.y);
+                    if (!IsGoodSpot(candidate, hearth, radius, maxTerrainDelta, plots, out float groundY))
                     {
-                        break;
+                        continue;
+                    }
+
+                    bool level = Mathf.Abs(groundY - hearth.y) <= LevelTolerance;
+                    if (pass == 0 && !level)
+                    {
+                        continue;
+                    }
+
+                    float floor = level ? hearth.y : groundY;
+                    if (ClearOfPaths(candidate, hearth, axisYaw, radius, plots) &&
+                        (network == null || PathPlanner.DistanceToNetwork(network, candidate) > radius * 0.6f + 1.5f) &&
+                        (village == null || PathPlanner.Reachable(village, new Vector3(candidate.x, floor, candidate.z), radius,
+                            FaceHearth(candidate, hearth, axisYaw))))
+                    {
+                        good.Add(new Vector3(candidate.x, floor, candidate.z));
+                        if (good.Count >= wanted)
+                        {
+                            break;
+                        }
                     }
                 }
             }

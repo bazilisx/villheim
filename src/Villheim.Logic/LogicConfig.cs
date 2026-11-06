@@ -20,6 +20,8 @@ namespace Villheim.Logic
         public static ConfigEntry<float> GhostAlphaDay;
         public static ConfigEntry<float> GhostTintDay;
         public static ConfigEntry<float> GhostGlowDay;
+        public static ConfigEntry<UnityEngine.Color> GhostColor;
+        public static ConfigEntry<UnityEngine.Color> GhostGlowColor;
         public static ConfigEntry<bool> GhostLook;
         public static ConfigEntry<float> GhostAlpha;
         public static ConfigEntry<float> GhostTint;
@@ -72,6 +74,10 @@ namespace Villheim.Logic
             GhostAlphaDay = Admin(config, looks, "GhostAlphaDay", 0.93f,
                 "How solid villagers are by day (GhostAlpha is the night value; dusk and dawn blend the two).");
             GhostTintDay = Admin(config, looks, "GhostTintDay", 0.5f, "How teal villagers are by day (GhostTint is the night value).");
+            GhostColor = Admin(config, looks, "GhostColor", new UnityEngine.Color(0.55f, 0.85f, 1f),
+                "The colour villagers are tinted toward (the tint settings say how strongly). Teal by default.");
+            GhostGlowColor = Admin(config, looks, "GhostGlowColor", new UnityEngine.Color(0.25f, 0.6f, 0.75f),
+                "The colour of the glow (the glow settings say how strongly).");
             GhostGlowDay = Admin(config, looks, "GhostGlowDay", 0.08f,
                 "A faint teal glow by day, so villagers read teal rather than white in sunlight (GhostGlow is the night value).");
             RaidChance = Admin(config, work, "RaidChance", 0.2f,

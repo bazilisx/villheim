@@ -260,6 +260,24 @@ namespace Villheim.Logic.Designs
         }
 
         /// <summary>The tracked materials a piece costs in vanilla, from its build recipe.</summary>
+        /// <summary>Every resource in the piece's recipe, tracked or not (wood, black marble, iron nails...).</summary>
+        public static IEnumerable<string> AllResources(GameObject prefab)
+        {
+            Piece piece = prefab.GetComponent<Piece>();
+            if (piece?.m_resources == null)
+            {
+                yield break;
+            }
+
+            foreach (Piece.Requirement requirement in piece.m_resources)
+            {
+                if (requirement?.m_resItem != null && requirement.m_amount > 0)
+                {
+                    yield return requirement.m_resItem.gameObject.name;
+                }
+            }
+        }
+
         public static Dictionary<string, int> RecipeCost(GameObject prefab)
         {
             var cost = new Dictionary<string, int>();

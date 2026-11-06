@@ -26,8 +26,9 @@ Current facts only. Read this at the start of a session. Narrative is in `docs/d
 ## Outstanding work
 
 - Test sessions 4 and 5 in game: work starts, reach, tools, doors, build order, free time, evening ring, smoothness.
-- Next requests from Tyler: hurt villagers cook food at the hearth to heal; the hearth upgrades over time with the
-  cooking station as part of it (see ROADMAP Milestone 4).
+- Next requests from Tyler (ROADMAP Milestone 4): healing first when hurt (cook at the hearth, make a cooking
+  station if none); never walk through fires; flatten land when building; the hearth upgrades over time with the
+  cooking station as part of it.
 - Undressing after taking out the axe: cause unknown, a dress check covers it. Check the log for "lost their
   clothes" lines.
 - Sitting on chairs and benches, beds, real cooking.

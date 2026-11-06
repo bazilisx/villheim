@@ -68,7 +68,12 @@ with its own look for its biome.
 - [ ] Villagers with nothing else to do make a fire pit, cooking station, workbench and benches by the hearth.
       (Built 2026-11-05 session 5, needs testing.)
 - [ ] Villagers cook for real at the hearth's cooking station.
-- [ ] Hurt villagers cook food at the hearth and eat it to heal (Tyler, 2026-11-05).
+- [ ] Hurt villagers put healing first: cook food at the hearth and eat it; with no cooking station, make one first
+      (Tyler, 2026-11-05).
+- [ ] Villagers never walk or run through a fire: the hearth, fire pits and campfires are kept out of every walk,
+      including straight steps (door passes, last metres to a tree) (Tyler, 2026-11-05).
+- [ ] Every building site is flattened where needed before and while building, beyond the design's own terrain
+      shaping and the simple pad (Tyler, 2026-11-05).
 - [ ] The hearth upgrades over time as the village grows (Tyler, 2026-11-05): campfire, then a hearth with the
       cooking station over it, then larger vanilla fire pieces; the cooking station is part of the hearth, not a
       separate fire. (Cooking station moved onto the hearth 2026-11-05 session 7; upgrades not started.)

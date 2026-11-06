@@ -305,6 +305,12 @@ namespace Villheim.Logic.Villagers
                 return;
             }
 
+            if (trade == Roles.Trade.Farmer && !builder)
+            {
+                NoWork(villager, work, "tends the farm");
+                return;
+            }
+
             // A woodcutter or carpenter goes for wood first, a miner for stone. Without trades, everyone goes where
             // the need is greatest.
             Profile first;

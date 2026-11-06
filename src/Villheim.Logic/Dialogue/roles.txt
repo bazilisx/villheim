@@ -235,3 +235,39 @@ The old fence was too small for us now. Good problem to have.
 
 @ chat, doing:fencing
 Will the fence stop a troll? // No. // Then what's it for? // Everything smaller than a troll.
+
+# ------------------------------------------------------------------ farmer and farm work (trade:farmer, doing:farming)
+
+@ doing:farming
+Rows straight, roots deep. That's farming.
+The raspberries are coming on nicely.
+Mushrooms like the shade. Don't ask me why.
+
+@ doing:farming | gruff
+Dirt, roots, berries. Repeat.
+
+@ doing:farming | cheerful ~happy
+Look at them grow! Well, slowly. But they're growing.
+
+@ doing:farming | young ~happy
+I'm allowed to pick the berries! Not eat them. Pick them.
+
+@ doing:farming | elder
+Plant today, eat next week. Patience feeds people.
+
+@ trade:farmer ~proud
+A full chest of berries is worth more than a sword some days.
+The animals know my voice now. They come when I call. Sometimes.
+
+@ trade:farmer, doing:farming
+Nobody goes hungry while this farm stands.
+
+@ trade:farmer | worrier ~worry
+If the boars get into the berries, that's the whole week gone.
+
+@ trade:farmer, feel:happy ~happy
+The piglets were chasing each other all morning. Best thing I've seen in days.
+
+@ chat, trade:farmer
+How are the berries? // Ripe. // Can I have some? // They're for the chest. // You always say that.
+How many boars now? // Enough. // Enough for what? // Enough to keep me busy.

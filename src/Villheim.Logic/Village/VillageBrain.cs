@@ -42,6 +42,7 @@ namespace Villheim.Logic.Village
             Villagers.Social.VillageTick(hearth);
             Raids.Tick(hearth);
             NoticeBoard.Update(hearth);
+            Farms.Tick(hearth);
             if (VillageChest.IsLost(hearth))
             {
                 // Nothing gets built until the chest is back.

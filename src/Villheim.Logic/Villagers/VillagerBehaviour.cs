@@ -108,7 +108,7 @@ namespace Villheim.Logic.Villagers
             }
 
             string job = (Sleep.IsAsleep(villager) ? "asleep" : null) ?? (MorningHearth.IsTending(villager) ? "tending the hearth" : null) ?? Healing.Describe(villager) ??
-                         Chores.Describe(villager) ?? Hunting.Describe(villager) ?? Foraging.Describe(villager) ?? Repairs.Describe(villager) ??
+                         Chores.Describe(villager) ?? Hunting.Describe(villager) ?? Farming.Describe(villager) ?? Foraging.Describe(villager) ?? Repairs.Describe(villager) ??
                          (PathLaying.IsLaying(villager) ? "laying a path" : null) ?? FreeTime.Describe(villager);
             if (job != null)
             {

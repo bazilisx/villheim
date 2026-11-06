@@ -9,7 +9,7 @@
 #   doing:felling splitting mining building carrying gathering cooking fetching roasting watch path making fire
 #         stroll chatting station heading idle
 #   healthy hurt badlyhurt anyhurt fed unfed
-#   trade:none carpenter woodcutter miner cook   protector carer
+#   trade:none carpenter woodcutter miner cook farmer   protector carer
 #   morning day evening night   rain cold freezing
 #   size:camp hamlet village town   few many   biome:meadows biome:blackforest
 #   need:any need:none need:wood need:finewood need:corewood need:stone

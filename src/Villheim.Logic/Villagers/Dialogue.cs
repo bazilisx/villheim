@@ -422,7 +422,8 @@ namespace Villheim.Logic.Villagers
         {
             var tags = new HashSet<string> { channel };
             string doing = (Sleep.IsAsleep(villager) ? "asleep" : null) ?? (MorningHearth.IsTending(villager) ? "tending the hearth" : null) ?? Healing.Describe(villager) ?? Chores.Describe(villager) ??
-                           Hunting.Describe(villager) ?? Foraging.Describe(villager) ?? Repairs.Describe(villager) ??
+                           Hunting.Describe(villager) ?? Farming.Describe(villager) ?? Foraging.Describe(villager) ??
+                           Repairs.Describe(villager) ??
                            (PathLaying.IsLaying(villager) ? "laying a path" : null) ?? FreeTime.Describe(villager) ?? "idle";
             foreach (string activity in Activities(doing))
             {
@@ -520,6 +521,7 @@ namespace Villheim.Logic.Villagers
             string d = doing.ToLowerInvariant();
             if (d.Contains("tending the hearth")) yield return "hearth";
             if (d.Contains("foraging") || d.Contains("berries")) yield return "foraging";
+            if (d.Contains("farm") || d.Contains("harvest") || d.Contains("animals")) yield return "farming";
             if (d.Contains("hunting") || d.Contains("butchering") || d.Contains("meat to")) yield return "hunting";
             if (d.Contains("fence")) yield return "fencing";
             else if (d.Contains("repairing") || d.Contains("putting back")) yield return "repairing";

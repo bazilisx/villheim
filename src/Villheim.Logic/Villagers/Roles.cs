@@ -34,6 +34,7 @@ namespace Villheim.Logic.Villagers
             Woodcutter,
             Miner,
             Cook,
+            Farmer,
         }
 
         public const int TradesFrom = 6;
@@ -41,8 +42,8 @@ namespace Villheim.Logic.Villagers
 
         private static readonly Trade[] TradeOrder =
         {
-            Trade.Carpenter, Trade.Woodcutter, Trade.Miner, Trade.Cook, Trade.Woodcutter, Trade.Miner,
-            Trade.Carpenter, Trade.Woodcutter, Trade.Miner, Trade.Cook, Trade.Woodcutter, Trade.Miner,
+            Trade.Carpenter, Trade.Woodcutter, Trade.Miner, Trade.Cook, Trade.Farmer, Trade.Woodcutter,
+            Trade.Miner, Trade.Carpenter, Trade.Farmer, Trade.Woodcutter, Trade.Cook, Trade.Miner,
         };
 
         private static readonly string[] Weapons = { "Club", "Club", "SpearFlint", "SpearBronze", "SpearBronze" };

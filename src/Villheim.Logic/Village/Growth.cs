@@ -97,6 +97,12 @@ namespace Villheim.Logic.Village
             };
 
             bool bedsFull = Villagers.Beds.Free(hearth) == 0 && VillageBrain.Capacity(state) < VillheimConfig.MaxVillagers.Value;
+
+            // The village's character favours some buildings (Millenaire's village types).
+            float TypeFactor(Role role) =>
+                state.Type == "woodland" && role == Role.Workshop ? 2f :
+                state.Type == "farming" && role == Role.Farm ? 2.5f :
+                state.Type == "fortified" && role == Role.House ? 1.2f : 1f;
             var options = new List<(Project Project, float Weight)>();
             bool startDone = true;
             for (int t = 0; t < tiers.Count; t++)
@@ -105,7 +111,8 @@ namespace Villheim.Logic.Village
                 {
                     if (count[want.Key] < want.Value)
                     {
-                        float weight = Priority[want.Key] * tiers[t].Multiplier * (want.Key == Role.House && bedsFull ? 2f : 1f);
+                        float weight = Priority[want.Key] * tiers[t].Multiplier * (want.Key == Role.House && bedsFull ? 2f : 1f) *
+                                       TypeFactor(want.Key);
                         options.Add((new Project { Role = want.Key }, weight));
                     }
                 }

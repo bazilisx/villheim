@@ -112,9 +112,21 @@ namespace Villheim.Logic.Villagers
             return TradeOrder[index % TradeOrder.Length];
         }
 
-        /// <summary>"carpenter", "protector" and so on for the hover text.</summary>
+        /// <summary>The village's chieftain, like Millenaire's town hall chief: the first settler still living.</summary>
+        public static bool IsChieftain(Villager villager)
+        {
+            List<Villager> roster = Of(villager.VillageId);
+            return roster.Count >= 2 && roster[0] == villager;
+        }
+
+        /// <summary>"chieftain", "carpenter" and so on for the hover text.</summary>
         public static string Title(Villager villager)
         {
+            if (IsChieftain(villager))
+            {
+                return "chieftain";
+            }
+
             Trade trade = TradeOf(villager);
             return trade != Trade.None ? trade.ToString().ToLowerInvariant() : null;
         }
@@ -126,7 +138,9 @@ namespace Villheim.Logic.Villagers
         public static bool IsNightWatch(Villager villager)
         {
             List<Villager> roster = Of(villager.VillageId);
-            if (roster.Count < 3 || EnvMan.instance == null)
+            VillageHearth hearth = VillageHearth.Find(villager.VillageId);
+            bool fortified = hearth != null && hearth.IsValid && new VillageState(hearth.Zdo).Type == "fortified";
+            if (roster.Count < (fortified ? 2 : 3) || EnvMan.instance == null)
             {
                 return false;
             }

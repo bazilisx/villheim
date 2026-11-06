@@ -74,7 +74,7 @@ namespace Villheim.Logic.Village
         private static Segment Find(VillageHearth hearth)
         {
             var state = new VillageState(hearth.Zdo);
-            if (state.Plots.Count < 2 || VillageChest.IsLost(hearth))
+            if (state.Plots.Count < (state.Type == "fortified" ? 1 : 2) || VillageChest.IsLost(hearth))
             {
                 return null;
             }
@@ -104,7 +104,7 @@ namespace Villheim.Logic.Village
                 }
             }
 
-            int tier = VillageBrain.TierIndex(state.Plots.Count);
+            int tier = VillageBrain.TierIndex(state.Plots.Count) + (state.Type == "fortified" ? 1 : 0);
             string prefabName = Pick(tier >= 2 ? WallPieces.Concat(LightPieces) : LightPieces, state.Biome, out GameObject prefab,
                 out Dictionary<string, int> cost);
             if (prefabName == null)

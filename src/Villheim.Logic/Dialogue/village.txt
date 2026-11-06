@@ -133,3 +133,57 @@ Tired. Watch. Don't ask.
 
 @ talk, doing:watch, night
 You shouldn't be wandering about at night. I'll walk you to the fire.
+
+# ------------------------------------------------------------------ the chieftain (tag: chieftain)
+
+@ talk, chieftain ~proud
+I lit the first fire here. I'll see this place grow, gods willing.
+Welcome to {village}. If you need anything, you come to me.
+I look after these people. They look after me. Mostly.
+
+@ talk, chieftain, event:stranger
+I'm the one who speaks for {village}. Who speaks for you?
+
+@ talk, chieftain, player:friend ~happy
+You're always welcome at my fire. You know that.
+
+@ chieftain, need:any
+We need {material}. I'll not have this village stall.
+
+@ chieftain, feel:stressed ~worry
+Everyone looks to me when things go wrong. I don't always know what to say.
+
+@ chieftain, size:town ~proud
+I remember when this was a fire and a chest. Look at it now.
+
+@ chat, chieftain
+What's the plan, chief? // Build. Eat. Sleep. Build some more. // Good plan.
+
+# ------------------------------------------------------------------ the village's character (village:woodland, fortified, farming)
+
+@ village:woodland
+We're woodsfolk here. Timber's in our blood. Splinters too.
+Good trees all round. That's why we settled here.
+
+@ village:woodland, talk
+If it's made of wood, we can make it.
+
+@ village:fortified
+We build the walls first and ask questions later.
+A strong fence makes for good sleep.
+
+@ village:fortified, talk
+Don't take the fence personally. We're careful folk.
+
+@ village:fortified, protector ~proud
+Nothing gets past our fence. Nothing that walks, anyway.
+
+@ village:farming
+Full bellies first, everything else after. That's how we do it here.
+There's always something growing nearby, if you know where to look.
+
+@ village:farming, talk
+Hungry? You've come to the right village.
+
+@ village:farming, carer ~happy
+Nobody goes hungry in {village}. Not while I'm here.

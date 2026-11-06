@@ -57,6 +57,20 @@ namespace Villheim.Logic.Village
             set => _zdo.Set(Keys.Seed, value);
         }
 
+        /// <summary>
+        /// The village's character, like Millenaire's village types (agricultural, artisans, military...), fixed by
+        /// its seed: woodland (workshops come sooner, woodcutting first), fortified (a fence from the first buildings,
+        /// stake wall sooner, more watches) or farming (farms come sooner, more foraging and cooking).
+        /// </summary>
+        public string Type
+        {
+            get
+            {
+                string[] types = { "woodland", "fortified", "farming" };
+                return types[(int)((uint)(Seed * 2246822519u) >> 10) % types.Length];
+            }
+        }
+
         public string Name
         {
             get => _zdo.GetString(Keys.Name, "Village");

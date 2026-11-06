@@ -459,6 +459,8 @@ namespace Villheim.Logic.Villagers
             if (villagers <= 2) tags.Add("few");
             if (villagers >= 6) tags.Add("many");
             tags.Add(state.Biome == Heightmap.Biome.BlackForest ? "biome:blackforest" : "biome:meadows");
+            tags.Add("village:" + state.Type);
+            if (Roles.IsChieftain(villager)) tags.Add("chieftain");
 
             VillageNeeds needs = VillageNeeds.For(villager.VillageId);
             if (needs != null && needs.Missing.Count > 0)

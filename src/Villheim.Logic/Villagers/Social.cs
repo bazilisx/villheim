@@ -342,7 +342,9 @@ namespace Villheim.Logic.Villagers
                     continue;
                 }
 
-                float distance = Vector3.Distance(villager.transform.position, player.transform.position);
+                // The chieftain counts as 10 m closer: the head of the village greets newcomers when he can.
+                float distance = Vector3.Distance(villager.transform.position, player.transform.position) -
+                                 (Roles.IsChieftain(villager) ? 10f : 0f);
                 if (distance < bestDistance)
                 {
                     best = villager;

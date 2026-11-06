@@ -155,7 +155,8 @@ namespace Villheim.Logic.Villagers
 
             VillageHearth hearth = VillageHearth.Find(villager.VillageId);
             Container chest = hearth != null && hearth.IsValid ? VillageChest.Find(hearth) : null;
-            if (chest == null || chest.GetInventory().GetAllItems().Where(i => i.m_shared.m_food > 0f).Sum(i => i.m_stack) >= EnoughFood ||
+            int enough = new VillageState(hearth.Zdo).Type == "farming" ? EnoughFood * 2 : EnoughFood;
+            if (chest == null || chest.GetInventory().GetAllItems().Where(i => i.m_shared.m_food > 0f).Sum(i => i.m_stack) >= enough ||
                 Nearest(hearth.transform.position, villager.transform.position) == null)
             {
                 return false;

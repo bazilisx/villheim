@@ -125,6 +125,21 @@ namespace Villheim.Logic.Villagers
             return Mathf.Max(0, Of(hearth).Count - Village.VillageBrain.CountVillagers(hearth.VillageId));
         }
 
+        /// <summary>A villager of this village has claimed the bed.</summary>
+        public static bool IsClaimed(VillageHearth hearth, Bed bed)
+        {
+            foreach (Character character in Character.GetAllCharacters())
+            {
+                if (character is Villager villager && !villager.IsDead() && villager.VillageId == hearth.VillageId && villager.Zdo != null &&
+                    Vector3.Distance(villager.Zdo.GetVec3(KeyBed, Vector3.zero), bed.transform.position) < 0.6f)
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
         /// <summary>Beds nobody in the village has claimed yet (counting loaded villagers only).</summary>
         public static int Free(VillageHearth hearth)
         {

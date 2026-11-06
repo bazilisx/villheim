@@ -75,7 +75,8 @@ namespace Villheim.Logic.Villagers
             var list = new List<Villager>();
             foreach (Character character in Character.GetAllCharacters())
             {
-                if (character is Villager villager && !villager.IsDead() && villager.VillageId == villageId && villager.Zdo != null)
+                if (character is Villager villager && !villager.IsDead() && villager.VillageId == villageId && villager.Zdo != null &&
+                    !Childhood.IsChild(villager))
                 {
                     list.Add(villager);
                 }
@@ -95,13 +96,19 @@ namespace Villheim.Logic.Villagers
         private static int Index(Villager villager)
         {
             int index = Of(villager.VillageId).IndexOf(villager);
-            return index < 0 ? 0 : index;
+            return index < 0 ? 1 : index;
         }
 
-        public static Background BackgroundOf(Villager villager) => Index(villager) % 2 == 0 ? Background.Protector : Background.Carer;
+        public static Background BackgroundOf(Villager villager) =>
+            !Childhood.IsChild(villager) && Index(villager) % 2 == 0 ? Background.Protector : Background.Carer;
 
         public static Trade TradeOf(Villager villager)
         {
+            if (Childhood.IsChild(villager))
+            {
+                return Trade.None;
+            }
+
             List<Villager> roster = Of(villager.VillageId);
             if (roster.Count < TradesFrom)
             {
@@ -122,6 +129,11 @@ namespace Villheim.Logic.Villagers
         /// <summary>"chieftain", "carpenter" and so on for the hover text.</summary>
         public static string Title(Villager villager)
         {
+            if (Childhood.IsChild(villager))
+            {
+                return "child";
+            }
+
             if (IsChieftain(villager))
             {
                 return "chieftain";

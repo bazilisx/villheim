@@ -53,8 +53,8 @@ namespace Villheim.Logic.Villagers
         private static List<Section> _sections;
         private static readonly Dictionary<(int, string), float> Events = new Dictionary<(int, string), float>();
 
-        private static readonly string[] VillageMoodEvents = { "finished", "arrival", "hunt", "trade" };
-        private static readonly string[] Reacted = { "finished", "arrival", "groundbroken", "hunt", "death" };
+        private static readonly string[] VillageMoodEvents = { "finished", "arrival", "hunt", "trade", "birth" };
+        private static readonly string[] Reacted = { "finished", "arrival", "groundbroken", "hunt", "death", "birth" };
 
         /// <summary>
         /// Something happened in the village (finished, arrival...): "event:x" holds for ten minutes, everyone's mood
@@ -209,6 +209,11 @@ namespace Villheim.Logic.Villagers
 
         public static string VoiceOf(Villager villager)
         {
+            if (Childhood.IsChild(villager))
+            {
+                return "young";
+            }
+
             int seed = villager.Zdo != null ? villager.Zdo.GetInt(Keys.VillagerSeed) : 1;
             return Voices[(int)((uint)(seed * 2654435761u) >> 8) % Voices.Length];
         }
@@ -461,6 +466,7 @@ namespace Villheim.Logic.Villagers
             tags.Add(state.Biome == Heightmap.Biome.BlackForest ? "biome:blackforest" : "biome:meadows");
             tags.Add("village:" + state.Type);
             if (Roles.IsChieftain(villager)) tags.Add("chieftain");
+            if (Childhood.IsChild(villager)) tags.Add("child");
 
             VillageNeeds needs = VillageNeeds.For(villager.VillageId);
             if (needs != null && needs.Missing.Count > 0)

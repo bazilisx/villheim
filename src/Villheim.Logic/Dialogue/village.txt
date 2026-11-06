@@ -187,3 +187,44 @@ Hungry? You've come to the right village.
 
 @ village:farming, carer ~happy
 Nobody goes hungry in {village}. Not while I'm here.
+
+# ------------------------------------------------------------------ births and children (tags: child, event:birth, thought:birth)
+
+@ event:birth ~happy
+A baby! In {village}! Come and see!
+New little one. Loud, too. That's a good sign.
+Another of us. The village is really growing now.
+
+@ event:birth | gruff
+Another mouth. Fine. Congratulations.
+
+@ event:birth | elder ~happy
+A child born by our own hearth. I didn't think I'd live to see it.
+
+@ event:birth | devout ~pious
+Frigg be thanked. A healthy child.
+
+@ thought:birth ~happy
+A baby in the village. Makes the whole place feel different.
+
+@ child
+When I'm big I'm going to chop the biggest tree.
+Can I help? I can help. Let me help.
+Why is the sky that colour?
+I'm not tired. I'm just yawning.
+{other} said I'm not allowed near the fire. I'm not near it. Much.
+Look what I found! It's a stick. It's a good stick.
+
+@ child, night
+I can't sleep. Is that a troll? It sounds like a troll.
+
+@ child, talk
+Are you a giant? You look like a giant.
+Do you have any sweets? Berries count.
+
+@ child, afterfight ~worry
+I hid. Was that right? They said to hide.
+
+@ chat, child
+Can I come with you? // No. // Please? // Fine. Carry this.
+Why do you have a beard? // To keep my face warm. // Can I have one? // Later.

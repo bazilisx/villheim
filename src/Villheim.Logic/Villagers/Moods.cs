@@ -63,6 +63,7 @@ namespace Villheim.Logic.Villagers
             ["trade"] = (3f, 600f),
             ["upgrade"] = (5f, 900f),
             ["mourning"] = (-15f, 1800f),
+            ["birth"] = (10f, 1800f),
             ["watch"] = (-3f, 600f),
             ["raidwon"] = (10f, 1200f),
         };

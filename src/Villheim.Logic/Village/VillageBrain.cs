@@ -441,7 +441,10 @@ namespace Villheim.Logic.Village
                 return;
             }
 
-            SpawnVillager(hearth, state);
+            // A family home and food in the chest: sometimes the arrival is a child born there (Millenaire).
+            Plot family = firstArrivals ? null : Villagers.Childhood.FamilyHome(hearth, state);
+            bool child = family != null && Villagers.Healing.ChestFood(hearth) != null && UnityEngine.Random.value < 0.5f;
+            SpawnVillager(hearth, state, child ? family : null);
             state.LastArrival = now;
         }
 
@@ -459,7 +462,7 @@ namespace Villheim.Logic.Village
             return count;
         }
 
-        private static void SpawnVillager(VillageHearth hearth, VillageState state)
+        private static void SpawnVillager(VillageHearth hearth, VillageState state, Plot birthplace = null)
         {
             int arrival = state.Arrivals;
             var rng = new System.Random(unchecked(state.Seed * 31 + arrival * 6151));
@@ -476,7 +479,9 @@ namespace Villheim.Logic.Village
             float distance = arrival < VillheimConfig.StartingVillagers.Value
                 ? 3f + (float)rng.NextDouble() * 3f
                 : Mathf.Min(VillheimConfig.VillageRadius.Value, 40f);
-            Vector3 spawn = center + new Vector3(Mathf.Sin(angle), 0f, Mathf.Cos(angle)) * distance;
+            Vector3 spawn = birthplace != null
+                ? birthplace.Position + Quaternion.Euler(0f, birthplace.Yaw, 0f) * Vector3.forward * (birthplace.Radius * 0.6f + 1f)
+                : center + new Vector3(Mathf.Sin(angle), 0f, Mathf.Cos(angle)) * distance;
             if (ZoneSystem.instance.GetGroundHeight(spawn, out float y))
             {
                 spawn.y = y + 0.2f;
@@ -496,15 +501,30 @@ namespace Villheim.Logic.Village
             zdo.Set(Keys.VillagerSeed, looksSeed);
             zdo.Set(Keys.VillagerName, name);
             zdo.Set(Villagers.Roles.KeyArrival, arrival);
+            if (birthplace != null)
+            {
+                zdo.Set(Villagers.Childhood.KeyBorn, EnvMan.instance != null ? EnvMan.instance.GetDay() : 0);
+                zdo.Set(Keys.VillagerHome, birthplace.Position);
+                go.transform.localScale = Vector3.one * 0.65f;
+            }
             villager.m_name = name;
             villager.LooksApplied = false;
 
             state.Arrivals = arrival + 1;
             VillheimPlugin.Debug($"{state.Name}: {name} arrived.");
-            Chronicle.Add(hearth, arrival < VillheimConfig.StartingVillagers.Value ? $"{name} settled by the hearth." : $"{name} came to live here.");
+            if (birthplace == null)
+            {
+                Chronicle.Add(hearth, arrival < VillheimConfig.StartingVillagers.Value ? $"{name} settled by the hearth." : $"{name} came to live here.");
+            }
 
             // Someone walks over to say hello to the newcomer.
-            if (arrival >= VillheimConfig.StartingVillagers.Value)
+            if (birthplace != null)
+            {
+                Chronicle.Add(hearth, $"{name} was born in the {RoleName(Role.House)} by the {(Utils.DistanceXZ(birthplace.Position, center) < 20f ? "hearth" : "edge of the village")}.");
+                Villagers.Dialogue.Note(state.Id, "birth");
+                Villagers.Social.Gather(state.Id, villager, null, 2, "event:birth", "cheer", 60f);
+            }
+            else if (arrival >= VillheimConfig.StartingVillagers.Value)
             {
                 Villagers.Social.Gather(state.Id, villager, null, 1, "event:welcomeneighbour", "wave", 60f);
             }
@@ -512,7 +532,7 @@ namespace Villheim.Logic.Village
             // The newcomer claims the free bed at once, so the next arrival can't count it as free too.
             Villagers.Beds.Forget(state.Id);
             Villagers.Beds.For(villager);
-            if (arrival >= VillheimConfig.StartingVillagers.Value)
+            if (arrival >= VillheimConfig.StartingVillagers.Value && birthplace == null)
             {
                 Villagers.Dialogue.Note(state.Id, "arrival");
             }

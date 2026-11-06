@@ -124,7 +124,7 @@ namespace Villheim.Logic.Villagers
         /// <summary>Returns true while a chore is driving the villager this update.</summary>
         public static bool Update(Villager villager, VillagerAI ai, float dt)
         {
-            if (!VillheimConfig.VillagersChopTrees.Value || EnvMan.IsNight() || villager.IsDead())
+            if (!VillheimConfig.VillagersChopTrees.Value || EnvMan.IsNight() || villager.IsDead() || Childhood.IsChild(villager))
             {
                 Stop(villager);
                 return false;
@@ -262,7 +262,8 @@ namespace Villheim.Logic.Villagers
             int bestSeed = int.MaxValue;
             foreach (Character character in Character.GetAllCharacters())
             {
-                if (!(character is Villager other) || other.IsDead() || other.VillageId != id || other.Zdo == null)
+                if (!(character is Villager other) || other.IsDead() || other.VillageId != id || other.Zdo == null ||
+                    Childhood.IsChild(other))
                 {
                     continue;
                 }

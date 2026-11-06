@@ -23,6 +23,10 @@ namespace Villheim.Logic.Villagers
 
         public static void Update(Villager villager, float deltaTime)
         {
+            // Looks every client draws for itself: the echo look and a child's size.
+            GhostLook.Update(villager);
+            Childhood.Update(villager);
+
             AppliedTier applied = Applied.GetOrCreateValue(villager);
             if (!villager.LooksApplied)
             {

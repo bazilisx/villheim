@@ -37,7 +37,6 @@ namespace Villheim.Logic.Villagers
             }
 
             Body.Update(villager);
-            Childhood.Update(villager);
             Walker.For(villager).Tick(villager);
 
             bool threat = ThreatNear(villager, ai, out Character enemy);

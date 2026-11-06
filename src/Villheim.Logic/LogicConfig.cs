@@ -15,6 +15,10 @@ namespace Villheim.Logic
         public static ConfigEntry<int> StartingStock;
         public static ConfigEntry<float> FoodHealing;
         public static ConfigEntry<bool> VillageRaids;
+        public static ConfigEntry<bool> GhostLook;
+        public static ConfigEntry<float> GhostAlpha;
+        public static ConfigEntry<float> GhostTint;
+        public static ConfigEntry<float> GhostGlow;
         public static ConfigEntry<float> RaidChance;
 
         public static void Bind()
@@ -45,6 +49,14 @@ namespace Villheim.Logic
             VillageRaids = Admin(config, work, "RaidsEnabled", false,
                 "Off for now. When on, villages with three or more villagers are now and then raided by greydwarfs at " +
                 "night, warned of at dusk, only while a player is in the village.");
+            const string looks = "3c - Villager looks";
+            GhostLook = Admin(config, looks, "GhostLook", true,
+                "Villagers look like echoes of the living world: a little see-through, faintly teal, with a faint glow after " +
+                "dark. Only villagers are changed, never players. Off restores the normal look.");
+            GhostAlpha = Admin(config, looks, "GhostAlpha", 0.8f,
+                "How solid villagers are, 1 for fully solid. Below 1 uses a see-through shader borrowed from the game's ghosts.");
+            GhostTint = Admin(config, looks, "GhostTint", 0.15f, "How strongly villagers are tinted toward teal, 0 for none.");
+            GhostGlow = Admin(config, looks, "GhostGlow", 0.25f, "How much villagers glow in the dark hours, 0 for none.");
             RaidChance = Admin(config, work, "RaidChance", 0.2f,
                 "Chance each dusk of a raid (plus 3% per village tier), never two nights running.");
         }

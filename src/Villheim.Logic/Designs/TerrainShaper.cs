@@ -60,20 +60,64 @@ namespace Villheim.Logic.Designs
         }
 
         /// <summary>Flattens a round pad at the height of <paramref name="center"/> and smooths its edge.</summary>
+        /// <summary>
+        /// A perfectly flat round pad at the height of <paramref name="center"/>, blending back to the ground around
+        /// it out to <paramref name="smoothRadius"/>. The game's own level operation left pads lumpy, so this writes the
+        /// terrain's stored height offsets directly, the way terrain editing mods do: every terrain point inside the
+        /// pad is set to exactly the pad's height, and points in the ring beyond move part of the way there, less the
+        /// further out they are. Saved with the world like any terrain edit.
+        /// </summary>
         public static void LevelPad(Vector3 center, float levelRadius, float smoothRadius)
         {
-            // Smooth first (the slope out to the edge), then level the pad on its own. In a single operation the game
-            // smooths after levelling, which blended the flat pad back toward the slopes and left it lumpy.
-            TerrainOp.Settings smooth = NewSettings();
-            smooth.m_smooth = true;
-            smooth.m_smoothRadius = Mathf.Max(smoothRadius, levelRadius + 1f);
-            smooth.m_smoothPower = 3f;
-            Apply(center, smooth);
+            float edge = Mathf.Max(smoothRadius, levelRadius + 1f);
+            Heightmaps.Clear();
+            Heightmap.FindHeightmap(center, edge + 1f, Heightmaps);
+            foreach (Heightmap heightmap in Heightmaps)
+            {
+                TerrainComp compiler = heightmap.GetAndCreateTerrainCompiler();
+                if (compiler == null || compiler.m_nview == null || !compiler.m_nview.IsValid() || compiler.m_levelDelta == null)
+                {
+                    continue;
+                }
 
-            TerrainOp.Settings level = NewSettings();
-            level.m_level = true;
-            level.m_levelRadius = levelRadius;
-            Apply(center, level);
+                if (!compiler.IsOwner())
+                {
+                    compiler.m_nview.ClaimOwnership();
+                }
+
+                int width = compiler.m_width + 1;
+                float scale = heightmap.m_scale;
+                Vector3 origin = heightmap.transform.position;
+                bool changed = false;
+                for (int y = 0; y < width; y++)
+                {
+                    for (int x = 0; x < width; x++)
+                    {
+                        var point = new Vector3(origin.x + (x - compiler.m_width / 2f) * scale, 0f, origin.z + (y - compiler.m_width / 2f) * scale);
+                        float distance = Utils.DistanceXZ(point, center);
+                        if (distance > edge || !heightmap.GetWorldBaseHeight(point, out float baseHeight))
+                        {
+                            continue;
+                        }
+
+                        int i = y * width + x;
+                        float current = baseHeight + compiler.m_levelDelta[i] + compiler.m_smoothDelta[i];
+                        float weight = distance <= levelRadius ? 1f : Mathf.SmoothStep(1f, 0f, (distance - levelRadius) / (edge - levelRadius));
+                        float wanted = Mathf.Lerp(current, center.y, weight);
+                        compiler.m_levelDelta[i] = Mathf.Clamp(wanted - baseHeight, -16f, 16f);
+                        compiler.m_smoothDelta[i] = 0f;
+                        compiler.m_modifiedHeight[i] = true;
+                        changed = true;
+                    }
+                }
+
+                if (changed)
+                {
+                    compiler.m_operations++;
+                    compiler.Save();
+                    heightmap.Poke(0, false);
+                }
+            }
         }
 
         /// <summary>Same operation as a location's terrain modifier, as a permanent edit.</summary>

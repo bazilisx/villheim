@@ -10,8 +10,8 @@ Current facts only. Read this at the start of a session. Narrative is in `docs/d
   sleep, furnished buildings, Millénaire placement, cooking, roles and trades, dialogue library, walked A* paths,
   blueprints, growth tiers and upgrades, longhouse around the hearth, hunting, repairs, shelter, seats, trading,
   furniture by tier, morning hearth, moods, social layer, fence ring, reactions to the player, chronicle, night watch,
-  foraging, signs, village types, chieftain, children, echo look, farms and animals). Raids are built but off
-  (`RaidsEnabled`). Logic only, hot-reloads; core DLL unchanged. Rollback
+  foraging, signs, village types, Jarl, children, echo look, farms and animals, map pins, flat pads). Raids are built but off
+  (`RaidsEnabled`); trading with villagers is off (`VillagerTrading`). Logic only, hot-reloads; core DLL unchanged. Rollback
   branches `stage/2026-11-06-a` to `-l`.
 - **Network:** the cloud environment allows Thunderstore, Nexus, the Valheim wiki, CurseForge, Modrinth, the
   MineColonies wiki and millenaire.org. Nexus still answers 403 from the cloud.
@@ -44,6 +44,7 @@ Current facts only. Read this at the start of a session. Narrative is in `docs/d
 
 ## Recent milestones
 
+- **2026-11-06 (session 9: flat pads, bronze axes, trading off, Jarl, echo look settings)** - see docs/daily-notes/2026-11/2026-11-06.md
 - **2026-11-06 (fifth session: chronicle, raids, night watch, village types, children)** - see docs/daily-notes/2026-11/2026-11-06.md
 - **2026-11-06 (third session: moods, social layer, fence, dialogue doubled)** - see docs/daily-notes/2026-11/2026-11-06.md
 - **2026-11-06 (second overnight: dialogue library, blueprints, growth and upgrades, hunting, repairs, A* paths)** - see docs/daily-notes/2026-11/2026-11-06.md

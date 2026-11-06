@@ -80,7 +80,9 @@ namespace Villheim.Logic.Villagers
 
         // Villagers get tools that can cut and break what their biome offers (birch and oak need more than a stone
         // axe), even before players have them.
-        private static readonly string[] Axes = { "AxeFlint", "AxeFlint", "AxeBronze", "AxeBronze", "AxeBronze" };
+        // Bronze from the start: birch and oak (fine wood) need a bronze axe, and a village should be able to cut every
+        // tree around it (Tyler, 2026-11-06), even in the Meadows.
+        private static readonly string[] Axes = { "AxeBronze", "AxeBronze", "AxeBronze", "AxeBronze", "AxeBronze" };
         private static readonly string[] Pickaxes = { "PickaxeAntler", "PickaxeAntler", "PickaxeBronze", "PickaxeBronze", "PickaxeBronze" };
 
         private static readonly WeightedItem[] OtherTools =

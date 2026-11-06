@@ -170,7 +170,10 @@ namespace Villheim.Logic.Villagers
             }
 
             text += "\n[<color=yellow><b>$KEY_Use</b></color>] Talk";
-            text += "\n[<color=yellow><b>Crouch</b></color> + <color=yellow><b>$KEY_Use</b></color>] Trade";
+            if (LogicConfig.VillagerTrading.Value)
+            {
+                text += "\n[<color=yellow><b>Shift</b></color> + <color=yellow><b>$KEY_Use</b></color>] Trade";
+            }
             return Localization.instance.Localize(text);
         }
 
@@ -181,7 +184,8 @@ namespace Villheim.Logic.Villagers
                 return false;
             }
 
-            if (player.IsCrouching() && Village.Market.Open(villager, player))
+            bool shift = ZInput.GetButton("Run") || ZInput.GetKey(KeyCode.LeftShift, false) || ZInput.GetKey(KeyCode.RightShift, false);
+            if (LogicConfig.VillagerTrading.Value && shift && Village.Market.Open(villager, player))
             {
                 return true;
             }

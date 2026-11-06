@@ -73,6 +73,11 @@ folder again.
   Any `vh <name>` reaches the logic, so new commands need no core change.
 - `villheim_info`, `villheim_designs`, `villheim_locations`, `villheim_dump <location>`, `villheim_preview <location>`.
 - `villheim_report`: rewrite the design report now.
+- `vh villager`, `vh village`: inspect the nearest villager (voice, mood, thoughts, role, trade, bed) or village (type,
+  chieftain, project, fence, known players, request). `vh raid`: send raiders to the nearest village.
+- `vh blueprints`, `vh savebp <role-family-level> [radius]`: list blueprints; save the pieces around you as one.
+- Dialogue lines live in `src/Villheim.Logic/Dialogue/*.txt` (format at the top of `lines.txt`) and are built into the
+  logic DLL.
 
 ## Reading game code
 

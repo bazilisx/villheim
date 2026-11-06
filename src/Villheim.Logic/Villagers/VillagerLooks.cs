@@ -74,8 +74,10 @@ namespace Villheim.Logic.Villagers
             new[] { new WeightedItem("CapeDeerHide", 1f), new WeightedItem("CapeTrollHide", 2f) },
         };
 
-        private static readonly string[] Axes = { "AxeStone", "AxeFlint", "AxeFlint", "AxeBronze", "AxeBronze" };
-        private static readonly string[] Pickaxes = { "PickaxeAntler", "PickaxeAntler", "PickaxeAntler", "PickaxeBronze", "PickaxeBronze" };
+        // Villagers get tools that can cut and break what their biome offers (birch and oak need more than a stone
+        // axe), even before players have them.
+        private static readonly string[] Axes = { "AxeFlint", "AxeFlint", "AxeBronze", "AxeBronze", "AxeBronze" };
+        private static readonly string[] Pickaxes = { "PickaxeAntler", "PickaxeAntler", "PickaxeBronze", "PickaxeBronze", "PickaxeBronze" };
 
         private static readonly WeightedItem[] OtherTools =
         {

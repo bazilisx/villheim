@@ -44,7 +44,11 @@ namespace Villheim.Logic.Villagers
             }
 
             Poses.BeginTick(villager);
-            if (!Chores.Update(villager, ai, dt))
+            if (Healing.Update(villager, ai, dt))
+            {
+                // Healing comes first.
+            }
+            else if (!Chores.Update(villager, ai, dt))
             {
                 if (Chores.BetweenJobs(villager))
                 {

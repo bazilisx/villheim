@@ -73,7 +73,8 @@ with its own look for its biome.
 - [ ] Crafted pieces follow the game's rules: workbenches and other crafting stations go under a roof (inside a
       village building) so they are usable; the workbench made outside in the test is not (Tyler, 2026-11-05).
 - [ ] Hurt villagers put healing first: cook food at the hearth and eat it; with no cooking station, make one first
-      (Tyler, 2026-11-05).
+      (Tyler, 2026-11-05). (Basic version built 2026-11-05 session 7: kneel and cook at the hearth, raw meat from the
+      chest heals more. Real cooking on the station and making one first are still to do.)
 - [ ] Villagers never walk or run through a fire: the hearth, fire pits and campfires are kept out of every walk,
       including straight steps (door passes, last metres to a tree) (Tyler, 2026-11-05).
 - [ ] Every building site is flattened where needed before and while building, beyond the design's own terrain

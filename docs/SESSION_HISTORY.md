@@ -36,7 +36,8 @@ Current facts only. Read this at the start of a session. Narrative is in `docs/d
   - "No axe to work with": the axe went missing from the inventory, probably the same cause as the lost clothes.
     Check the villager inventory size (armor plus three tools may not fit) and log its contents.
   - A villager jittered at the cooking station repeating one motion (no real cooking yet).
-  - Nobody heals (not built yet). One villager is at very low health, possibly from falling trees.
+  - Nobody healed. Basic healing added since (kneel and cook at the hearth); needs testing.
+  - Tool tier: axes now start at flint; check the fine wood complaint is gone.
 - Undressing after taking out the axe: cause unknown, a dress check covers it. Check the log for "lost their
   clothes" lines.
 - Sitting on chairs and benches, beds, real cooking.

@@ -1,0 +1,308 @@
+# Villheim: answers. "reply" lines are said by a villager who overheard another one (tone:joke, tone:happy,
+# tone:sad, tone:worry, tone:angry, tone:proud, tone:point, tone:pious), or who saw the player make a gesture
+# (emote:wave and so on). Plus lines for being sent to a player or a new building:
+# event:sitwithplayer event:playerhurt event:latevisit event:viewbuilding event:welcomeneighbour
+
+# ------------------------------------------------------------------ overheard a joke
+
+@ reply, tone:joke
+Ha. Good one.
+I'm stealing that.
+You've told that one before.
+That's terrible. I love it.
+
+@ reply, tone:joke | gruff
+Not funny.
+Hm.
+Some of us are working.
+
+@ reply, tone:joke | cheerful
+Ha! Stop, my ribs!
+
+@ reply, tone:joke | worrier
+I don't get it. Should I get it?
+
+@ reply, tone:joke | elder
+In my day the jokes were better. And shorter.
+
+@ reply, tone:joke | young
+I don't get it but I'm laughing anyway.
+
+@ reply, tone:joke | wry
+Not bad. Mine are better.
+
+# ------------------------------------------------------------------ overheard something cheerful
+
+@ reply, tone:happy
+It is, isn't it?
+Good to hear.
+Can't argue with that.
+
+@ reply, tone:happy | gruff
+Steady on. Don't jinx it.
+
+@ reply, tone:happy | worrier
+Don't say that. You'll curse it.
+
+@ reply, tone:happy | elder
+Enjoy it while it lasts.
+
+@ reply, tone:happy | devout
+The gods are kind today.
+
+# ------------------------------------------------------------------ overheard something sad
+
+@ reply, tone:sad
+Hey. It'll be all right.
+Come sit with me a while.
+I know. Me too.
+
+@ reply, tone:sad | gruff
+Chin up. Or don't. But eat something.
+
+@ reply, tone:sad | cheerful
+Oh, come here. Tomorrow's a new day.
+
+@ reply, tone:sad | wry
+Could be worse. Could be raining. Oh, it is.
+
+@ reply, tone:sad | elder
+It passes. Everything passes.
+
+@ reply, tone:sad | devout
+The gods haven't forgotten you.
+
+# ------------------------------------------------------------------ overheard a worry
+
+@ reply, tone:worry
+You worry too much.
+Easy. Nothing's out there.
+I'll keep an eye out too.
+
+@ reply, tone:worry | gruff
+If something comes, I'll deal with it. Go back to work.
+
+@ reply, tone:worry | worrier
+You heard it too? I knew it.
+
+@ reply, tone:worry | wry
+Yes, and the sky might fall. Probably won't.
+
+@ reply, tone:worry, protector
+Leave it to me.
+
+# ------------------------------------------------------------------ overheard a grumble
+
+@ reply, tone:angry
+Somebody got out the wrong side of the bed.
+All right, all right.
+Easy, now.
+
+@ reply, tone:angry | gruff
+Same to you.
+
+@ reply, tone:angry | cheerful
+Someone needs a hot meal and a sit down.
+
+@ reply, tone:angry | worrier
+Sorry. Was that about me? It was about me.
+
+# ------------------------------------------------------------------ overheard pride, a point, a prayer
+
+@ reply, tone:proud
+You earned it.
+Not bad at all.
+
+@ reply, tone:proud | gruff
+Don't let it go to your head.
+
+@ reply, tone:point
+Where? Oh. Yes.
+I see it.
+
+@ reply, tone:point | worrier
+What is it? What are you pointing at?
+
+@ reply, tone:pious
+May they hear you.
+
+@ reply, tone:pious | wry
+And may they send dinner while they're at it.
+
+@ reply, tone:pious | devout
+They hear. They always hear.
+
+# ------------------------------------------------------------------ the player's gestures
+
+@ reply, emote:wave
+Hello to you too!
+Hey there!
+
+@ reply, emote:wave | gruff
+Yes. Hello. Very good.
+
+@ reply, emote:cheer
+Ha! What are we cheering?
+Yes! For whatever that was!
+
+@ reply, emote:laugh
+What's so funny?
+I want to laugh too. Tell me.
+
+@ reply, emote:bow
+Oh! No need for that.
+Ha, very grand.
+
+@ reply, emote:bow | elder
+Manners. I like you.
+
+@ reply, emote:thumbsup
+Good to hear.
+
+@ reply, emote:point
+What? What is it?
+Where? I don't see anything.
+
+@ reply, emote:point | worrier
+Don't point like that! What's there?
+
+@ reply, emote:nonono
+No? No what?
+
+@ reply, emote:flex
+Very impressive. Can you carry logs, though?
+
+@ reply, emote:flex | young
+Look, I've got muscles too!
+
+@ reply, emote:challenge
+Is that a challenge? Not today.
+
+@ reply, emote:challenge, protector
+Any time, traveller. Any time.
+
+@ reply, emote:dance
+Ha! Look at those feet!
+Someone's in a good mood.
+
+@ reply, emote:dance | gruff
+Stop that. You'll scare the boars.
+
+@ reply, emote:cry
+Oh no, what's wrong?
+Here, sit down. Tell me about it.
+
+@ reply, emote:despair
+That bad? Come to the fire.
+
+@ reply, emote:comehere
+Me? What do you need?
+
+@ reply, emote:kneel
+Get up, get up. We're not lords here.
+
+@ reply, emote:headbang
+Is that a dance? Is that allowed?
+
+@ reply, emote:blowkiss
+Oh! Well. Hello to you too.
+
+@ reply, emote:blowkiss | gruff
+Don't.
+
+@ reply, emote:roar
+Ah! Don't do that!
+
+@ reply, emote:roar | gruff
+Very scary. Terrifying. Truly.
+
+@ reply, emote:cower
+What's wrong? Nothing's here.
+
+@ reply, emote:toast
+Skál!
+To {village}!
+
+# ------------------------------------------------------------------ sitting with the player at the fire
+
+@ talk, event:sitwithplayer
+Mind if I join you? My legs are done for.
+Nothing like a fire after a long day, eh?
+Budge up. There's room for two.
+
+@ talk, event:sitwithplayer | gruff
+I'm sitting here. You can stay.
+
+@ talk, event:sitwithplayer | cheerful
+Oh, lovely, company! Tell me where you've been.
+
+@ talk, event:sitwithplayer | worrier
+I feel safer sitting near you. Is that odd?
+
+@ talk, event:sitwithplayer | elder
+Let me tell you how we found this spot. It's not a short story.
+
+@ talk, event:sitwithplayer | young
+Can I sit with you? Have you got any stories?
+
+@ talk, event:sitwithplayer | devout
+The fire's a good place to give thanks. Sit, rest.
+
+@ talk, event:sitwithplayer | wry
+Two people staring at a fire. Peak entertainment.
+
+# ------------------------------------------------------------------ bringing a hurt player food
+
+@ talk, event:playerhurt
+You're bleeding. Here, eat this. Go on.
+You look terrible. Take this, it's still warm.
+Sit down before you fall down. And eat.
+
+@ talk, event:playerhurt | gruff
+Eat. Don't argue.
+
+@ talk, event:playerhurt | worrier
+Oh no, oh no. Here, food. Quick.
+
+@ talk, event:playerhurt | elder
+I've patched up worse than you. Eat first.
+
+# ------------------------------------------------------------------ the player arriving late
+
+@ talk, event:latevisit
+You're out late. Everything all right?
+Bit late for visiting, isn't it?
+Come to the fire. It's no night to be wandering.
+
+@ talk, event:latevisit | gruff
+It's the middle of the night. Some of us sleep.
+
+@ talk, event:latevisit | worrier
+You walked here in the dark? Through all that?
+
+# ------------------------------------------------------------------ villagers sent to look at things
+
+@ self, event:viewbuilding
+Look at that. Good work, that.
+Let me see it properly. Oh, that's nice.
+That'll keep the rain off someone.
+
+@ self, event:viewbuilding | gruff
+Hm. Straight enough.
+
+@ self, event:viewbuilding | elder
+Stands well. It'll outlast me.
+
+@ self, event:viewbuilding | young
+Can I go inside? Can I?
+
+@ self, event:welcomeneighbour
+Welcome! You'll like it here. Mostly.
+New face! Come and meet everyone.
+Hello, neighbour. The fire's that way.
+
+@ self, event:welcomeneighbour | gruff
+New one. Don't touch my axe.
+
+@ self, event:welcomeneighbour | worrier
+Hello. Welcome. Did anything follow you?

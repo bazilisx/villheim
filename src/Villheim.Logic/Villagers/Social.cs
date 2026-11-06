@@ -46,11 +46,16 @@ namespace Villheim.Logic.Villagers
         private sealed class Approach
         {
             public Villager Who;
-            public Player Target;
+            public Character Target;
+            public Vector3? Point;
             public string Tag;
             public float Until;
             public bool Spoken;
             public bool KeepAway;
+            public string Gesture;
+            public float SitFor;
+            public bool GiveFood;
+            public float Stop = 2.6f;
         }
 
         private sealed class VillageWatch
@@ -62,7 +67,19 @@ namespace Villheim.Logic.Villagers
             public float NextRequest;
         }
 
-        private static readonly Dictionary<int, Approach> Approaches = new Dictionary<int, Approach>();
+        private static readonly Dictionary<Villager, Approach> Approaches = new Dictionary<Villager, Approach>();
+
+        private static bool VillageBusy(int villageId, string tag) =>
+            Approaches.Values.Any(a => a.Who != null && a.Who.VillageId == villageId && a.Tag == tag && Time.time < a.Until);
+
+        private static void Send(Approach approach)
+        {
+            if (approach.Who != null && !Approaches.ContainsKey(approach.Who))
+            {
+                Approaches[approach.Who] = approach;
+                Walker.For(approach.Who).Reset();
+            }
+        }
         private static readonly Dictionary<int, VillageWatch> Watches = new Dictionary<int, VillageWatch>();
         private static readonly ConditionalWeakTable<Villager, LookState> Looks = new ConditionalWeakTable<Villager, LookState>();
 
@@ -285,7 +302,7 @@ namespace Villheim.Logic.Villagers
 
         private static void SendGreeter(VillageHearth hearth, Player player, string tag)
         {
-            if (Approaches.TryGetValue(hearth.VillageId, out Approach busy) && busy.Who != null && Time.time < busy.Until)
+            if (VillageBusy(hearth.VillageId, tag))
             {
                 return;
             }
@@ -314,10 +331,11 @@ namespace Villheim.Logic.Villagers
             }
 
             string voice = Dialogue.VoiceOf(best);
-            Approaches[hearth.VillageId] = new Approach
+            Send(new Approach
             {
                 Who = best, Target = player, Tag = tag, Until = Time.time + 20f, KeepAway = voice == "worrier" && tag == "event:stranger",
-            };
+                Gesture = voice == "worrier" && tag == "event:stranger" ? "cower" : tag == "event:stranger" ? "wave" : "cheer",
+            });
 
             // Everyone close by looks up.
             foreach (Villager other in Character.GetAllCharacters().OfType<Villager>())
@@ -330,41 +348,130 @@ namespace Villheim.Logic.Villagers
             }
         }
 
-        /// <summary>A villager asked to greet or ask something walks up to the player. True while he does.</summary>
+        /// <summary>
+        /// A villager sent somewhere (to greet a player, ask for something, look at a new building, sit by a player at
+        /// the fire, bring a hurt player food) walks there, turns, speaks and gestures. True while he does.
+        /// </summary>
         public static bool Update(Villager villager, VillagerAI ai, float dt)
         {
+            if (Time.frameCount != _checkedFrame)
+            {
+                _checkedFrame = Time.frameCount;
+                PlayerReactions.Check();
+            }
+
             HoldLook(villager, ai);
-            if (!Approaches.TryGetValue(villager.VillageId, out Approach approach) || approach.Who != villager)
+            if (!Approaches.TryGetValue(villager, out Approach approach))
             {
                 return false;
             }
 
-            if (approach.Target == null || approach.Target.IsDead() || Time.time > approach.Until)
+            if ((approach.Target == null && !approach.Point.HasValue) || (approach.Target != null && approach.Target.IsDead()) ||
+                Time.time > approach.Until)
             {
-                Approaches.Remove(villager.VillageId);
+                Approaches.Remove(villager);
                 return false;
             }
 
-            Vector3 target = approach.Target.transform.position;
-            float distance = Vector3.Distance(villager.transform.position, target);
-            float stop = approach.KeepAway ? 7f : 2.6f;
-            if (!approach.Spoken && distance > stop + 0.5f && Dialogue.VoiceOf(villager) != "gruff")
+            Vector3 target = approach.Target != null ? approach.Target.transform.position : approach.Point.Value;
+            float distance = Utils.DistanceXZ(villager.transform.position, target);
+            float stop = approach.KeepAway ? 7f : approach.Stop;
+            if (!approach.Spoken && distance > stop + 0.5f && !(Dialogue.VoiceOf(villager) == "gruff" && approach.Tag == "event:stranger"))
             {
                 Walker.For(villager).Go(villager, ai, dt, target, stop);
                 return true;
             }
 
             ai.StopMoving();
-            ai.LookAt(approach.Target.GetEyePoint());
+            Vector3 look = approach.Target != null ? approach.Target.GetEyePoint() : target + Vector3.up * 2f;
+            ai.LookAt(look);
             if (!approach.Spoken)
             {
                 approach.Spoken = true;
-                approach.Until = Time.time + 4f;
-                string line = Dialogue.LineFor(villager, "talk", approach.Tag) ?? Dialogue.LineFor(villager, "talk");
+                approach.Until = Time.time + Mathf.Max(4f, approach.SitFor);
+                string line = Dialogue.LineFor(villager, approach.Target is Player ? "talk" : "self", approach.Tag) ??
+                              (approach.Target is Player ? Dialogue.LineFor(villager, "talk") : null);
                 Dialogue.Say(villager, line, 6f);
-                Poses.Gesture(villager, approach.KeepAway ? "cower" : approach.Tag == "event:stranger" ? "wave" : "cheer");
+                if (approach.Gesture != null)
+                {
+                    Poses.Gesture(villager, approach.Gesture);
+                }
+
+                if (approach.GiveFood && approach.Target is Player player)
+                {
+                    GiveMeal(villager, player);
+                }
             }
 
+            if (approach.SitFor > 0f)
+            {
+                Poses.Hold(villager, Poses.Sit);
+            }
+
+            return true;
+        }
+
+        private static int _checkedFrame = -1;
+
+        /// <summary>A cooked meal from the village chest into the player's hands.</summary>
+        private static void GiveMeal(Villager villager, Player player)
+        {
+            VillageHearth hearth = VillageHearth.Find(villager.VillageId);
+            Container chest = hearth != null && hearth.IsValid ? VillageChest.Find(hearth) : null;
+            ItemDrop.ItemData meal = chest?.GetInventory().GetAllItems()
+                .FirstOrDefault(i => i.m_shared.m_food > 0f && i.m_shared.m_foodBurnTime > 0f && i.m_dropPrefab != null);
+            if (meal == null)
+            {
+                return;
+            }
+
+            chest.GetInventory().RemoveItem(meal.m_shared.m_name, 1);
+            player.GetInventory().AddItem(meal.m_dropPrefab, 1);
+            player.Message(MessageHud.MessageType.Center, $"{villager.VillagerName} gives you {Localization.instance.Localize(meal.m_shared.m_name)}.");
+        }
+
+        // ---------------------------------------------------------------- sending villagers to things
+
+        /// <summary>Up to <paramref name="count"/> idle villagers near a spot walk over to it and react (a new building, a newcomer).</summary>
+        public static void Gather(int villageId, Character who, Vector3? point, int count, string tag, string gesture, float within = 30f)
+        {
+            Vector3 at = who != null ? who.transform.position : point ?? Vector3.zero;
+            IEnumerable<Villager> nearest = Character.GetAllCharacters().OfType<Villager>()
+                .Where(v => !v.IsDead() && v != who && v.VillageId == villageId && !Sleep.IsAsleep(v) && !Approaches.ContainsKey(v) &&
+                            Chores.Describe(v) == null && Utils.DistanceXZ(v.transform.position, at) < within)
+                .OrderBy(v => Utils.DistanceXZ(v.transform.position, at)).Take(count);
+            float delay = 0f;
+            foreach (Villager villager in nearest)
+            {
+                Send(new Approach
+                {
+                    Who = villager, Target = who, Point = who == null ? point : null, Tag = tag, Gesture = gesture,
+                    Until = Time.time + 25f + delay, Stop = who != null ? 2.4f : 4f + delay,
+                });
+                delay += 1.5f;
+            }
+        }
+
+        /// <summary>One villager goes to a player: to sit with him, to bring food, to answer an emote.</summary>
+        public static bool SendTo(Player player, int villageId, string tag, string gesture, float sitFor = 0f, bool giveFood = false,
+            System.Func<Villager, float> preference = null)
+        {
+            Villager best = Character.GetAllCharacters().OfType<Villager>()
+                .Where(v => !v.IsDead() && v.VillageId == villageId && !Sleep.IsAsleep(v) && !Approaches.ContainsKey(v) &&
+                            !Healing.IsHealing(v) && Chores.Describe(v) == null &&
+                            Vector3.Distance(v.transform.position, player.transform.position) < 25f)
+                .OrderByDescending(v => preference != null ? preference(v) : 0f)
+                .ThenBy(v => Vector3.Distance(v.transform.position, player.transform.position)).FirstOrDefault();
+            if (best == null)
+            {
+                return false;
+            }
+
+            Send(new Approach
+            {
+                Who = best, Target = player, Tag = tag, Gesture = gesture, SitFor = sitFor, GiveFood = giveFood,
+                Until = Time.time + 20f + sitFor, Stop = sitFor > 0f ? 1.8f : 2.4f,
+            });
             return true;
         }
 
@@ -391,6 +498,7 @@ namespace Villheim.Logic.Villagers
         /// </summary>
         public static void Heard(Villager speaker, string tone)
         {
+            bool replied = false;
             foreach (Villager listener in Character.GetAllCharacters().OfType<Villager>())
             {
                 if (listener == speaker || listener.IsDead() || listener.VillageId != speaker.VillageId || Sleep.IsAsleep(listener) ||
@@ -403,6 +511,13 @@ namespace Villheim.Logic.Villagers
                 if (Chores.Describe(listener) != null || Random.value > 0.45f)
                 {
                     continue;
+                }
+
+                // Now and then one listener answers out loud, if the village isn't already busy talking.
+                if (tone != null && !replied && Random.value < 0.35f && Dialogue.TakeTurn(speaker.VillageId, 20f, 40f))
+                {
+                    replied = true;
+                    Dialogue.QueueLine(listener, "reply", "tone:" + tone, new[] { "tone:" + tone }, Random.Range(1.6f, 2.6f));
                 }
 
                 string gesture = Reaction(listener, tone);
@@ -500,7 +615,7 @@ namespace Villheim.Logic.Villagers
                 .ThenBy(v => Vector3.Distance(v.transform.position, player.transform.position)).FirstOrDefault();
             if (asker != null)
             {
-                Approaches[hearth.VillageId] = new Approach { Who = asker, Target = player, Tag = "event:request", Until = Time.time + 25f };
+                Send(new Approach { Who = asker, Target = player, Tag = "event:request", Until = Time.time + 25f, Gesture = "comehere" });
                 VillheimPlugin.Debug($"{hearth.VillageName} asks {player.GetPlayerName()} for {request.Amount} {request.Material}.");
             }
         }

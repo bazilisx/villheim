@@ -28,7 +28,7 @@ namespace Villheim.Logic.Villagers
     {
         public static readonly string[] Voices = { "steady", "gruff", "cheerful", "worrier", "wry", "elder", "young", "devout" };
 
-        private static readonly string[] Channels = { "talk", "self", "chat", "greet", "bye" };
+        private static readonly string[] Channels = { "talk", "self", "chat", "greet", "bye", "reply" };
 
         private sealed class Section
         {
@@ -87,6 +87,35 @@ namespace Villheim.Logic.Villagers
             public Villager Who;
             public string Tag;
             public float At;
+            public string Channel = "self";
+            public string[] Extra;
+        }
+
+        /// <summary>
+        /// A line said a moment from now, outside the quiet time: an answer to something overheard or to a player's
+        /// gesture. <paramref name="extra"/> adds tags for that moment (tone:joke, emote:wave...), and a section must
+        /// carry <paramref name="required"/>.
+        /// </summary>
+        public static void QueueLine(Villager villager, string channel, string required, string[] extra, float delay)
+        {
+            if (!VillheimConfig.VillagerChatter.Value || Reactions.Any(r => r.Who == villager))
+            {
+                return;
+            }
+
+            Reactions.Add(new Reaction { Who = villager, Tag = required, At = Time.time + delay, Channel = channel, Extra = extra });
+        }
+
+        /// <summary>Whether the village has room for one more unprompted line now (and uses it if so).</summary>
+        public static bool TakeTurn(int villageId, float min = 30f, float max = 60f)
+        {
+            if (!AmbientOpen(villageId))
+            {
+                return false;
+            }
+
+            UseAmbient(villageId, min, max);
+            return true;
         }
 
         private static readonly List<Reaction> Reactions = new List<Reaction>();
@@ -187,9 +216,13 @@ namespace Villheim.Logic.Villagers
         // ---------------------------------------------------------------- speaking
 
         /// <summary>A line for this villager on this channel, or null when nothing fits.</summary>
-        public static string LineFor(Villager villager, string channel, string required = null)
+        public static string LineFor(Villager villager, string channel, string required = null, string[] extra = null)
         {
             HashSet<string> tags = Tags(villager, channel);
+            if (extra != null)
+            {
+                tags.UnionWith(extra);
+            }
             string voice = VoiceOf(villager);
             Memory memory = Memories.GetOrCreateValue(villager);
 
@@ -253,7 +286,9 @@ namespace Villheim.Logic.Villagers
                 else if (reaction.Who == villager && Time.time >= reaction.At)
                 {
                     Reactions.RemoveAt(i);
-                    Say(villager, LineFor(villager, "self", reaction.Tag) ?? LineFor(villager, "self"));
+                    string said = LineFor(villager, reaction.Channel, reaction.Tag, reaction.Extra) ??
+                                  (reaction.Channel == "self" ? LineFor(villager, "self") : null);
+                    Say(villager, said);
                     Memories.GetOrCreateValue(villager).NextSelf = Time.time + Random.Range(120f, 240f);
                     return;
                 }
@@ -291,8 +326,20 @@ namespace Villheim.Logic.Villagers
 
             global::Chat.instance.SetNpcText(villager.gameObject, Vector3.up * 2.2f, 20f, seconds, "", line, false);
             Memory memory = Memories.GetOrCreateValue(villager);
-            Social.Heard(villager, memory.LastTone);
+            string tone = memory.LastTone;
             memory.LastTone = null;
+            if (Random.value < 0.3f && !Sleep.IsAsleep(villager))
+            {
+                // The speaker's own hands: a point, a laugh, a shrug, as the line goes.
+                string gesture = tone == "joke" ? "laugh" : tone == "point" ? "point" : tone == "worry" ? "nonono" :
+                    tone == "angry" ? "shrug" : tone == "proud" ? "flex" : tone == "happy" ? "cheer" : tone == "pious" ? "bow" : null;
+                if (gesture != null)
+                {
+                    Poses.Gesture(villager, gesture);
+                }
+            }
+
+            Social.Heard(villager, tone);
         }
 
         /// <summary>The tone listeners hear in a line with no ~tone of its own, from the speaker's voice.</summary>

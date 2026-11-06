@@ -499,6 +499,12 @@ namespace Villheim.Logic.Village
             state.Arrivals = arrival + 1;
             VillheimPlugin.Debug($"{state.Name}: {name} arrived.");
 
+            // Someone walks over to say hello to the newcomer.
+            if (arrival >= VillheimConfig.StartingVillagers.Value)
+            {
+                Villagers.Social.Gather(state.Id, villager, null, 1, "event:welcomeneighbour", "wave", 60f);
+            }
+
             // The newcomer claims the free bed at once, so the next arrival can't count it as free too.
             Villagers.Beds.Forget(state.Id);
             Villagers.Beds.For(villager);

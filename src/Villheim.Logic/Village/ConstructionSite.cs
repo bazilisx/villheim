@@ -297,6 +297,10 @@ namespace Villheim.Logic.Village
 
             VillheimPlugin.Log.LogInfo($"{state.Name} finished a {VillageBrain.RoleName(site.Role)} ({site.Design}).");
             Villagers.Dialogue.Note(state.Id, "finished");
+
+            // A few villagers who aren't busy come to have a look at it.
+            Vector3 front = site.Position + Quaternion.Euler(0f, site.Yaw, 0f) * Vector3.forward * (Footprint(hearth) + 2f);
+            Villagers.Social.Gather(state.Id, null, front, 3, "event:viewbuilding", "cheer", 40f);
             VillageBrain.Announce(hearth, $"{state.Name} has finished a new {VillageBrain.RoleName(site.Role)}.");
         }
 

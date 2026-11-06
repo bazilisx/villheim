@@ -118,6 +118,7 @@ namespace Villheim.Logic.Villagers
             }
 
             text += "\n[<color=yellow><b>$KEY_Use</b></color>] Talk";
+            text += "\n[<color=yellow><b>Crouch</b></color> + <color=yellow><b>$KEY_Use</b></color>] Trade";
             return Localization.instance.Localize(text);
         }
 
@@ -126,6 +127,11 @@ namespace Villheim.Logic.Villagers
             if (!(user is Player player) || player != Player.m_localPlayer)
             {
                 return false;
+            }
+
+            if (player.IsCrouching() && Village.Market.Open(villager, player))
+            {
+                return true;
             }
 
             VillageHearth hearth = VillageHearth.Find(villager.VillageId);

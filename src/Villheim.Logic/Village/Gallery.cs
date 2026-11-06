@@ -473,7 +473,20 @@ namespace Villheim.Logic.Village
             var labels = new List<(Vector3 At, string Text)>();
             float depth = 0f, widest = 0f;
             Safe("the layout", () => Layout(cells, forward, labels, out depth, out widest));
+            // On the area last flattened, when it is near; else in front of the player.
             Vector3 start = playerPosition + forward * 8f;
+            if (LoadFlat(out Vector3 flatStart, out Vector3 flatForward) && Utils.DistanceXZ(flatStart, playerPosition) < 600f)
+            {
+                start = flatStart + flatForward * 4f;
+                if (Vector3.Angle(flatForward, forward) > 1f)
+                {
+                    labels.Clear();
+                    cells.ForEach(c => c.Center = Vector3.zero);
+                    forward = flatForward;
+                    Safe("the layout", () => Layout(cells, forward, labels, out depth, out widest));
+                }
+            }
+
             foreach (Cell cell in cells)
             {
                 cell.Center = new Vector3(start.x + cell.Center.x, float.NaN, start.z + cell.Center.z);
@@ -488,6 +501,44 @@ namespace Villheim.Logic.Village
             Console.instance?.Print($"Villheim: laying out {cells.Count} designs in front of you ({widest:0} by {depth:0} m). " +
                                     "Run 'vh flatten' there first to clear and level the ground.");
             yield break;
+        }
+
+        private const float FlatWidth = 360f;
+        private const float FlatDepth = 260f;
+
+        private static string FlatPath => System.IO.Path.Combine(BepInEx.Paths.BepInExRootPath, "Villheim", "gallery-flat-area.txt");
+
+        /// <summary>Where 'vh flatten' last started (near edge, middle) and which way it ran, kept on disk.</summary>
+        private static void SaveFlat(Vector3 start, Vector3 forward)
+        {
+            Safe("the flat area", () =>
+            {
+                System.IO.Directory.CreateDirectory(System.IO.Path.GetDirectoryName(FlatPath));
+                var c = System.Globalization.CultureInfo.InvariantCulture;
+                System.IO.File.WriteAllText(FlatPath, string.Join(" ", new[] { start.x, start.y, start.z, forward.x, forward.z }.Select(v => v.ToString("R", c))));
+            });
+        }
+
+        private static bool LoadFlat(out Vector3 start, out Vector3 forward)
+        {
+            start = forward = Vector3.zero;
+            try
+            {
+                if (!System.IO.File.Exists(FlatPath))
+                {
+                    return false;
+                }
+
+                var c = System.Globalization.CultureInfo.InvariantCulture;
+                float[] v = System.IO.File.ReadAllText(FlatPath).Split(' ').Select(t => float.Parse(t, c)).ToArray();
+                start = new Vector3(v[0], v[1], v[2]);
+                forward = new Vector3(v[3], 0f, v[4]).normalized;
+                return forward.sqrMagnitude > 0.5f;
+            }
+            catch
+            {
+                return false;
+            }
         }
 
         /// <summary>The middle height of the loaded ground across a square.</summary>
@@ -516,7 +567,9 @@ namespace Villheim.Logic.Village
         /// </summary>
         public static string Flatten(Player player, string[] args)
         {
-            float size = args.Length > 0 && float.TryParse(args[0], out float given) ? Mathf.Clamp(given, 30f, 600f) : 200f;
+            // Big enough for any gallery page (ten designs, six to a row) unless a size is given.
+            float width = args.Length > 0 && float.TryParse(args[0], out float given) ? Mathf.Clamp(given, 30f, 600f) : FlatWidth;
+            float length = args.Length > 0 ? width : FlatDepth;
             Vector3 forward = player.transform.forward;
             forward.y = 0f;
             forward.Normalize();
@@ -528,10 +581,11 @@ namespace Villheim.Logic.Village
             }
 
             Vector3 start = player.transform.position + forward * 4f;
+            SaveFlat(new Vector3(start.x, height, start.z), forward);
             var pads = new List<Pad>();
-            for (float z = 0f; z <= size; z += PadSpacing)
+            for (float z = 0f; z <= length; z += PadSpacing)
             {
-                for (float x = -size / 2f; x <= size / 2f; x += PadSpacing)
+                for (float x = -width / 2f; x <= width / 2f; x += PadSpacing)
                 {
                     Vector3 p = start + forward * z + right * x;
                     pads.Add(new Pad { Center = new Vector3(p.x, height, p.z) });
@@ -539,8 +593,8 @@ namespace Villheim.Logic.Village
             }
 
             VillheimPlugin.Instance.StartCoroutine(Build(new List<Cell>(), pads, forward, new List<(Vector3 At, string Text)>()));
-            return $"Villheim: clearing and levelling {size:0} by {size:0} m in front of you at {height:0.0} m ({pads.Count} pads). " +
-                   "Walk along it so the far parts load; the top-left counts the pads done.";
+            return $"Villheim: clearing and levelling {width:0} m wide by {length:0} m deep in front of you at {height:0.0} m ({pads.Count} pads). " +
+                   "Walk along it so the far parts load; the top-left counts the pads done. 'vh gallery' lays out on this area from anywhere near it.";
         }
 
         /// <summary>The middle height of the generated ground across a square.</summary>

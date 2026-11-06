@@ -163,3 +163,22 @@ Walking keeps the knees going. Barely.
 
 @ doing:stroll, rain
 Walking in the rain. Don't ask me why.
+
+# ------------------------------------------------------------------ tending the hearth in the morning (doing:hearth)
+
+@ doing:hearth
+First job of the day. Keep the fire happy.
+There. That'll see us through the morning.
+A good hearth is half a village.
+
+@ doing:hearth | elder
+My mother tended a fire like this every morning of her life.
+
+@ doing:hearth | devout
+Fire for the hearth, thanks for the night.
+
+@ doing:hearth | gruff
+Somebody has to. It's always me.
+
+@ doing:hearth | young
+I get to do the fire today! Nobody else touch it.

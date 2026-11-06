@@ -60,6 +60,10 @@ namespace Villheim.Logic.Villagers
             {
                 // Bedtime.
             }
+            else if (MorningHearth.Update(villager, ai, dt))
+            {
+                // A carer tends the hearth first thing in the morning.
+            }
             else if (!Chores.Update(villager, ai, dt))
             {
                 if (Chores.BetweenJobs(villager))

@@ -72,6 +72,7 @@ namespace Villheim.Logic.Villagers
             }
 
             Poses.EndTick(villager);
+            Dialogue.Tick(villager);
             return true;
         }
 

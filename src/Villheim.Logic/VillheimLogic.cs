@@ -1,4 +1,5 @@
 using System.Reflection;
+using HarmonyLib;
 using Villheim.Logic.Village;
 using Villheim.Logic.Villagers;
 
@@ -21,8 +22,13 @@ namespace Villheim.Logic
             }
         }
 
+        // Patches owned by this logic build. They come off when the build is unloaded, so a reload never stacks them.
+        private Harmony _harmony;
+
         public void OnLoad()
         {
+            _harmony = new Harmony("bazilisx.villheim.logic");
+            _harmony.PatchAll(typeof(VillheimLogic).Assembly);
             LogicConfig.Bind();
             ConfigWatcher.Start();
             Designs.DesignReport.StartIfStale(System.TimeSpan.FromMinutes(30));
@@ -30,6 +36,8 @@ namespace Villheim.Logic
 
         public void OnUnload()
         {
+            _harmony?.UnpatchSelf();
+            _harmony = null;
         }
 
         public void ConfigurePrefabs()
@@ -41,6 +49,7 @@ namespace Villheim.Logic
 
         public string HearthHoverText(VillageHearth hearth) =>
             $"{hearth.VillageName} hearth\n<color=#b0b0b0>{VillageBrain.Summary(hearth)}</color>" +
+            $"\n<color=#b0b0b0>The village feels {Village.VillageMood.Label(Village.VillageMood.Get(hearth.VillageId))}.</color>" +
             $"\n<size=12><color=#808080>{Build}</color></size>";
 
         public string HearthHoverName(VillageHearth hearth) => $"{hearth.VillageName} hearth";
@@ -57,13 +66,8 @@ namespace Villheim.Logic
 
         public bool VillagerUpdateAI(VillagerAI ai, float deltaTime)
         {
-            if (!ai.TryGetComponent(out Villager villager) || !villager.IsValidVillager ||
-                Loiter.ThreatNear(villager, ai))
-            {
-                return false;
-            }
-
-            return Chores.Update(villager, ai, deltaTime) || Loiter.Update(villager, ai, deltaTime);
+            return ai.TryGetComponent(out Villager villager) && villager.IsValidVillager &&
+                   Brain.Update(villager, ai, deltaTime);
         }
 
         public string VillagerHoverText(Villager villager) => VillagerBehaviour.HoverText(villager);

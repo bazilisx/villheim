@@ -133,6 +133,42 @@ namespace Villheim.Logic.Village
             return true;
         }
 
+        /// <summary>
+        /// Someone (a player or a villager) stands where the next piece goes. The builder waits rather than put a
+        /// wall through them.
+        /// </summary>
+        public static bool NextPieceBlocked(VillageHearth hearth, out string who)
+        {
+            who = null;
+            Site site = Get(hearth.Zdo);
+            CachedPlan plan = site != null ? GetPlan(hearth, site) : null;
+            int index = hearth.Zdo.GetInt(KeySiteIndex);
+            if (plan == null || index >= plan.Entries.Count || !plan.Entries[index].Bounds.HasValue)
+            {
+                return false;
+            }
+
+            Bounds local = plan.Entries[index].Bounds.Value;
+            Vector3 center = site.Position + Quaternion.Euler(0f, site.Yaw, 0f) * local.center;
+            float reach = Mathf.Max(local.extents.x, local.extents.z) + 0.3f;
+            foreach (Character character in Character.GetAllCharacters())
+            {
+                Vector3 at = character.transform.position;
+                if (character.IsDead() || Utils.DistanceXZ(at, center) > reach)
+                {
+                    continue;
+                }
+
+                if (at.y + 1.8f >= center.y - local.extents.y && at.y <= center.y + local.extents.y)
+                {
+                    who = character.GetHoverName();
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
         public static void NoteBuilder(int villageId)
         {
             LastBuilderSwing[villageId] = Time.time;

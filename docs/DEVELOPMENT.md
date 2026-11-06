@@ -30,6 +30,12 @@ Standing reference for building, deploying and testing Villheim. Current state i
   Black Forest location with what Villheim keeps, skips, and the materials each design costs.
 - Config: `BepInEx\config\bazilisx.villheim.cfg`. Reloads live when the file is saved.
 
+## Keeping the game on the latest build
+
+- `scripts/watch.ps1` (leave it running in a PowerShell window) checks GitHub every 20 s. On a new commit to `main`
+  it pulls, builds, deploys and prints the commit. It says when the core changed and the game needs a restart.
+- Which logic build is live: the hearth's hover text and `vh version` show `commit-<hash>-<build time>`.
+
 ## Hot reload loop
 
 1. Change code in `src/Villheim.Logic`.
@@ -59,6 +65,8 @@ folder again.
 - `villheim_found`: light a hearth in front of you.
 - `villheim_grow`: adds free materials and starts the next building now, or finishes the building in progress.
 - `villheim_wood <amount> [material]`: adds materials to the nearest village's stock.
+- `vh empty`: takes every material out of the nearest village's stock and site chest. `vh version`: the live build.
+  Any `vh <name>` reaches the logic, so new commands need no core change.
 - `villheim_info`, `villheim_designs`, `villheim_locations`, `villheim_dump <location>`, `villheim_preview <location>`.
 - `villheim_report`: rewrite the design report now.
 
@@ -85,3 +93,7 @@ For real method bodies, decompile `assembly_valheim.dll` from the game's `valhei
 - `ZoneManager.GetCustomLocation` throws when the name is missing; guard it with a flag.
 - `VisEquipment.SetHairItem` and `SetBeardItem` take item hashes (int) in 1.0.
 - A tree falls along the hit direction, away from whoever hit it.
+- `Collider.ClosestPoint` only works on box, sphere, capsule and convex mesh colliders. On a concave mesh it returns
+  the point it was given. Use `Collider.Raycast` at that collider for a surface point.
+- `MineRock5.Damage` needs `HitData.m_hitCollider`.
+- The logic DLL can apply Harmony patches (`PatchAll` on load, `UnpatchSelf` on unload), so patches hot-reload too.

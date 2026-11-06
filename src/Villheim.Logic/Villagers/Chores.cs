@@ -63,19 +63,24 @@ namespace Villheim.Logic.Villagers
             public Vector3 Spot;
             public float Timer;
             public float Deadline;
-            public float Cooldown = Random.Range(3f, 10f);
+            public float Cooldown = Random.Range(1f, 3f);
+            public string Reason = "";
+            public float FacingSince;
+            public float HitAt = -1f;
+            public Vector3 HitPoint;
+            public Collider HitCollider;
             public float NextCheck;
             public int Swings;
             public readonly Dictionary<string, int> Carrying = new Dictionary<string, int>();
             public readonly HashSet<GameObject> Skip = new HashSet<GameObject>();
         }
 
-        private const float SearchRadius = 30f;
         private const float MaxFromHearth = 55f;
         private const float WorkReach = 2.6f;
         private const float WorkReachAtSpot = 3.3f;
         private const float StandOff = 1.1f;
         private const float SwingInterval = 1.8f;
+        private const float HitDelay = 0.45f;
         private const float WorkRange = 8f;
         private const float BuildRange = 8f;
         private const float HammerInterval = 1.2f;
@@ -154,8 +159,10 @@ namespace Villheim.Logic.Villagers
                         return false;
                     }
 
-                    work.Cooldown = Random.Range(4f, 10f);
                     StartJob(villager, work, needs, builder);
+
+                    // Look again soon when there was work, less often when there was none (free time meanwhile).
+                    work.Cooldown = work.Phase != Phase.Idle ? Random.Range(0.5f, 1.5f) : Random.Range(5f, 8f);
                     return work.Phase != Phase.Idle;
 
                 case Phase.Approach:
@@ -247,44 +254,45 @@ namespace Villheim.Logic.Villagers
             return builderId == villager.GetZDOID();
         }
 
-        /// <summary>Easiest work first: drops, then loose pickables, then half-finished work, then something new.</summary>
+        /// <summary>
+        /// Easiest work first: drops, then loose pickables, then half-finished work, then something new. A villager
+        /// tries his own trade's material first (miners stone, the rest wood) and then the other one. Everything is
+        /// searched within the village's reach of the hearth, nearest to the villager first.
+        /// </summary>
         private static void StartJob(Villager villager, Work work, VillageNeeds needs, bool builder)
         {
             if (needs.Missing.Count == 0)
             {
+                NoWork(villager, work, "the village needs nothing right now");
                 return;
             }
 
             int seed = villager.Zdo.GetInt(Keys.VillagerSeed);
-            bool needsWood = false;
-            foreach (string material in needs.Missing.Keys)
+            Profile first = VillagerLooks.IsMiner(seed) ? Miner : Woodcutter;
+            Profile second = first == Miner ? Woodcutter : Miner;
+            string firstReason = TryProfile(villager, work, needs, first);
+            if (firstReason == null)
             {
-                needsWood |= Materials.WoodTypes.Contains(material);
+                return;
             }
 
-            bool needsStone = needs.Wants(Materials.Stone);
-
-            // Miners go for stone and woodcutters for wood when the village needs it; otherwise they help with the
-            // other material, picking up what they can without the right tool.
-            Profile profile;
-            if (VillagerLooks.IsMiner(seed))
+            string secondReason = TryProfile(villager, work, needs, second);
+            if (secondReason == null)
             {
-                profile = needsStone ? Miner : Woodcutter;
-            }
-            else
-            {
-                profile = needsWood ? Woodcutter : Miner;
+                return;
             }
 
+            NoWork(villager, work, firstReason == "" ? secondReason : firstReason);
+        }
+
+        /// <summary>Starts a job with this profile. Returns null when started, or why not ("" when not wanted).</summary>
+        private static string TryProfile(Villager villager, Work work, VillageNeeds needs, Profile profile)
+        {
             work.Profile = profile;
-
-            // Everyone carries an axe and a pickaxe, so anyone can fell or mine; they take the right one in hand.
-            work.CanHarvest = VillagerLooks.Hold(villager, profile.Tool);
             work.Wanted.Clear();
             foreach (string material in needs.Missing.Keys)
             {
-                bool woodMaterial = Materials.WoodTypes.Contains(material);
-                if (woodMaterial == (profile == Woodcutter))
+                if (Materials.WoodTypes.Contains(material) == (profile == Woodcutter))
                 {
                     work.Wanted.Add(material);
                 }
@@ -292,7 +300,7 @@ namespace Villheim.Logic.Villagers
 
             if (work.Wanted.Count == 0)
             {
-                return;
+                return "";
             }
 
             Vector3 position = villager.transform.position;
@@ -301,43 +309,93 @@ namespace Villheim.Logic.Villagers
             work.Swings = 0;
             work.Spot = position;
 
-            ItemDrop drop = NearestDrop(work.Wanted, position, SearchRadius, hearth, work.Skip);
+            ItemDrop drop = NearestDrop(work.Wanted, hearth, MaxFromHearth, position, work.Skip);
             if (drop != null)
             {
                 Begin(villager, work, Phase.Collect, null, drop.transform.position, 45f);
-                return;
+                Started(villager, work, "picking up " + Utils.GetPrefabName(drop.gameObject));
+                return null;
             }
 
-            Pickable pickable = NearestPickable(work.Wanted, position, SearchRadius, hearth);
+            Pickable pickable = NearestPickable(work.Wanted, hearth, position);
             if (pickable != null)
             {
                 Claimed.Add(pickable.gameObject);
                 Begin(villager, work, Phase.Pick, pickable.gameObject, pickable.transform.position, 30f);
-                return;
+                Started(villager, work, "picking " + Utils.GetPrefabName(pickable.gameObject));
+                return null;
             }
 
+            // Everyone carries an axe and a pickaxe, so anyone can fell or mine; they take the right one in hand.
+            work.CanHarvest = VillagerLooks.Hold(villager, profile.Tool);
             if (!work.CanHarvest)
             {
-                return;
+                return $"no {profile.Tool.ToString().ToLowerInvariant()} to work with";
             }
 
+            int tier = ToolTier(villager);
             HashSet<string> wanted = work.Wanted;
-            GameObject partial = FindNearest(position, SearchRadius, hearth,
-                go => profile.IsPartial(go) && Yields.GivesAny(go, wanted), null);
-            GameObject target = partial != null
-                ? partial
-                : FindNearest(position, SearchRadius, hearth, go => profile.IsSource(go) && Yields.GivesAny(go, wanted), null);
-            if (target != null)
+            GameObject target = FindNearest(hearth, MaxFromHearth, position,
+                                    go => profile.IsPartial(go) && Yields.GivesAny(go, wanted) && TierAllows(go, tier), null)
+                                ?? FindNearest(hearth, MaxFromHearth, position,
+                                    go => profile.IsSource(go) && Yields.GivesAny(go, wanted) && TierAllows(go, tier), null);
+            if (target == null)
             {
-                Claimed.Add(target);
-                Begin(villager, work, Phase.Approach, target, target.transform.position, 90f);
+                return $"nothing within reach that gives {string.Join(" or ", Labels(wanted))} for this tool";
             }
+
+            Claimed.Add(target);
+            Begin(villager, work, Phase.Approach, target, target.transform.position, 90f);
+            Started(villager, work, (profile.IsPartial(target) ? profile.PartialActivity : profile.Activity) +
+                                    $" ({Utils.GetPrefabName(target)}, {Utils.DistanceXZ(position, target.transform.position):0} m away)");
+            return null;
+        }
+
+        private static void Started(Villager villager, Work work, string what)
+        {
+            work.Reason = "";
+            VillheimPlugin.Debug($"{villager.VillagerName}: {what}.");
+        }
+
+        /// <summary>Remembers why there is no work, and logs it when the reason changes.</summary>
+        private static void NoWork(Villager villager, Work work, string reason)
+        {
+            if (work.Reason != reason)
+            {
+                work.Reason = reason;
+                VillheimPlugin.Debug($"{villager.VillagerName} has no work: {reason}.");
+            }
+        }
+
+        /// <summary>Why the villager is not working, or null while working.</summary>
+        public static string IdleReason(Villager villager)
+        {
+            return States.TryGetValue(villager, out Work work) && work.Phase == Phase.Idle && work.Reason != ""
+                ? work.Reason
+                : null;
+        }
+
+        private static int ToolTier(Villager villager)
+        {
+            return villager.GetCurrentWeapon()?.m_shared?.m_toolTier ?? 0;
+        }
+
+        /// <summary>The held tool is good enough to break this (an antler pickaxe does nothing to copper, and so on).</summary>
+        private static bool TierAllows(GameObject go, int tier)
+        {
+            if (go.TryGetComponent(out TreeBase tree)) return tree.m_minToolTier <= tier;
+            if (go.TryGetComponent(out TreeLog log)) return log.m_minToolTier <= tier;
+            if (go.TryGetComponent(out MineRock5 rock5)) return rock5.m_minToolTier <= tier;
+            if (go.TryGetComponent(out MineRock rock)) return rock.m_minToolTier <= tier;
+            if (go.TryGetComponent(out Destructible destructible)) return destructible.m_minToolTier <= tier;
+            return true;
         }
 
         private static void Begin(Villager villager, Work work, Phase phase, GameObject target, Vector3 spot, float seconds)
         {
             work.Phase = phase;
             work.Target = target;
+            work.HitAt = -1f;
             work.Spot = spot;
             work.Deadline = Time.time + seconds;
             work.Timer = 0.6f;
@@ -358,8 +416,9 @@ namespace Villheim.Logic.Villagers
             {
                 // The tree fell or a log split. Keep working what lies around the spot, then collect.
                 HashSet<string> wanted = work.Wanted;
-                GameObject next = FindNearest(work.Spot, WorkRange, null,
-                    go => profile.IsPartial(go) && Yields.GivesAny(go, wanted), work.Skip);
+                int tier = ToolTier(villager);
+                GameObject next = FindNearest(work.Spot, WorkRange, work.Spot,
+                    go => profile.IsPartial(go) && Yields.GivesAny(go, wanted) && TierAllows(go, tier), work.Skip);
                 if (next == null)
                 {
                     BeginCollect(villager, work);
@@ -368,6 +427,7 @@ namespace Villheim.Logic.Villagers
 
                 Claimed.Add(next);
                 work.Target = next;
+                work.HitAt = -1f;
                 work.Swings = 0;
                 work.TargetSeenAt = new Vector3(float.MaxValue, 0f, 0f);
                 Walker.For(villager).Reset();
@@ -401,15 +461,26 @@ namespace Villheim.Logic.Villagers
                 return true;
             }
 
-            work.Phase = Phase.Work;
+            if (work.Phase != Phase.Work)
+            {
+                work.Phase = Phase.Work;
+                work.FacingSince = Time.time;
+            }
+
             ai.StopMoving();
             VillagerLooks.Hold(villager, profile.Tool);
             Face(villager, ai, work.Contact);
+            LandPendingHit(villager, work, profile);
             work.Timer -= dt;
-            if (work.Timer <= 0f)
+            bool facing = ai.IsLookingAt(work.Contact, 20f) || Time.time - work.FacingSince > 2f;
+            if (work.Timer <= 0f && facing && work.HitAt < 0f)
             {
-                // Check the reach again on every swing: never hit something that is out of arm's length.
-                Vector3 contact = ContactPoint(work.Target, villager.transform.position, out Collider struck);
+                // Check the reach again on every swing: never hit something that is out of arm's length. A standing
+                // tree is struck at the trunk.
+                Collider struck = null;
+                Vector3 contact = work.Target.GetComponent<TreeBase>() != null
+                    ? work.Target.transform.position + Vector3.up
+                    : ContactPoint(work.Target, villager.transform.position, out struck);
                 if (!CanHit(villager, work.Target, contact))
                 {
                     work.Phase = Phase.Approach;
@@ -418,10 +489,14 @@ namespace Villheim.Logic.Villagers
                     return true;
                 }
 
+                // The swing starts now; the blow lands when the tool comes down.
                 work.Timer = SwingInterval;
                 work.Swings++;
                 work.Contact = contact;
-                Hit(villager, work.Target, contact, struck, profile.Pickaxe);
+                work.HitPoint = contact;
+                work.HitCollider = struck;
+                work.HitAt = Time.time + HitDelay;
+                SwingAnimation(villager);
             }
 
             return true;
@@ -483,7 +558,7 @@ namespace Villheim.Logic.Villagers
             if (Time.time >= work.NextCheck || work.Target == null)
             {
                 work.NextCheck = Time.time + 0.5f;
-                ItemDrop drop = NearestDrop(Materials.Tracked, work.Spot, WorkRange, null, work.Skip);
+                ItemDrop drop = NearestDrop(Materials.Tracked, work.Spot, WorkRange, work.Spot, work.Skip);
                 if (drop == null)
                 {
                     BeginDeliver(villager, work);
@@ -656,6 +731,21 @@ namespace Villheim.Logic.Villagers
                 return true;
             }
 
+            if (ConstructionSite.NextPieceBlocked(hearth, out string who))
+            {
+                // Someone stands where the piece goes: keep hammering and try again in a moment.
+                if (work.Reason != "blocked:" + who)
+                {
+                    work.Reason = "blocked:" + who;
+                    VillheimPlugin.Debug($"{villager.VillagerName} waits for {who} to move out of the way.");
+                }
+
+                work.Timer = perPiece - 1f;
+                return true;
+            }
+
+            work.Reason = "";
+
             work.Timer = 0f;
             if (ConstructionSite.PlaceNext(hearth, true))
             {
@@ -684,9 +774,23 @@ namespace Villheim.Logic.Villagers
             }
         }
 
+        /// <summary>Lands a swing started earlier, if the target is still there and still in reach.</summary>
+        private static void LandPendingHit(Villager villager, Work work, Profile profile)
+        {
+            if (work.HitAt < 0f || Time.time < work.HitAt)
+            {
+                return;
+            }
+
+            work.HitAt = -1f;
+            if (work.Target != null && CanHit(villager, work.Target, work.HitPoint))
+            {
+                Hit(villager, work.Target, work.HitPoint, work.HitCollider, profile.Pickaxe);
+            }
+        }
+
         private static void Hit(Villager villager, GameObject target, Vector3 point, Collider struck, bool pickaxe)
         {
-            SwingAnimation(villager);
             IDestructible destructible = target.GetComponentInParent<IDestructible>() ?? target.GetComponentInChildren<IDestructible>();
             if (destructible == null)
             {
@@ -700,7 +804,7 @@ namespace Villheim.Logic.Villagers
             {
                 m_point = point,
                 m_dir = direction.sqrMagnitude > 0.01f ? direction.normalized : villager.transform.forward,
-                m_toolTier = 4,
+                m_toolTier = (short)(weapon?.m_shared?.m_toolTier ?? 0),
                 m_attacker = villager.GetZDOID(),
 
                 // Big rocks pick the part that breaks from the collider that was hit, and ignore hits without one.
@@ -824,6 +928,7 @@ namespace Villheim.Logic.Villagers
 
         private static void ReleaseTarget(Work work)
         {
+            work.HitAt = -1f;
             if (work.Target != null)
             {
                 Claimed.Remove(work.Target);
@@ -909,8 +1014,9 @@ namespace Villheim.Logic.Villagers
         /// <summary>
         /// The point on the target's solid colliders closest to the villager, and the collider it is on. Logs are
         /// long, so their center is useless. Unity cannot find the closest point on a concave mesh collider (rocks
-        /// use them) and hands back the point it was given, which made everything look in reach; those use the
-        /// collider's bounding box instead.
+        /// use them): it hands back the point it was given, which made everything look in reach, and the bounding box
+        /// can sit metres from the real face of a big rock. For those a ray is cast at the collider itself, which
+        /// lands on its real surface; a collider no ray reaches does not count.
         /// </summary>
         private static Vector3 ContactPoint(GameObject target, Vector3 from, out Collider struck)
         {
@@ -928,7 +1034,16 @@ namespace Villheim.Logic.Villagers
                 }
 
                 bool concave = collider is MeshCollider mesh && !mesh.convex;
-                Vector3 point = concave ? collider.bounds.ClosestPoint(chest) : collider.ClosestPoint(chest);
+                Vector3 point;
+                if (!concave)
+                {
+                    point = collider.ClosestPoint(chest);
+                }
+                else if (!SurfaceByRay(collider, chest, out point))
+                {
+                    continue;
+                }
+
                 float distance = (point - chest).sqrMagnitude;
                 if (distance < bestDistance)
                 {
@@ -941,20 +1056,37 @@ namespace Villheim.Logic.Villagers
             return best;
         }
 
-        /// <summary>Turns the villager to face a point right away, so swings land where they look.</summary>
-        private static void Face(Villager villager, VillagerAI ai, Vector3 point)
+        /// <summary>
+        /// A point on a concave collider's real surface, seen from <paramref name="from"/>: a ray toward the nearest
+        /// corner of its box, then toward its middle.
+        /// </summary>
+        private static bool SurfaceByRay(Collider collider, Vector3 from, out Vector3 point)
         {
-            Vector3 direction = point - villager.transform.position;
-            direction.y = 0f;
-            if (direction.sqrMagnitude < 0.01f)
+            Bounds bounds = collider.bounds;
+            foreach (Vector3 aim in new[] { bounds.ClosestPoint(from), bounds.center })
             {
-                return;
+                Vector3 direction = aim - from;
+                float length = direction.magnitude;
+                if (length < 0.01f)
+                {
+                    continue;
+                }
+
+                if (collider.Raycast(new Ray(from, direction / length), out RaycastHit hit, length + bounds.extents.magnitude))
+                {
+                    point = hit.point;
+                    return true;
+                }
             }
 
-            direction.Normalize();
+            point = from + Vector3.up * 1000f;
+            return false;
+        }
+
+        /// <summary>Turns the villager toward a point at his own turn speed. Swings wait until he faces it.</summary>
+        private static void Face(Villager villager, VillagerAI ai, Vector3 point)
+        {
             ai.LookAt(point);
-            villager.SetLookDir(direction);
-            villager.transform.rotation = Quaternion.LookRotation(direction);
         }
 
         private static void MarkUnreachable(GameObject target)
@@ -993,13 +1125,14 @@ namespace Villheim.Logic.Villagers
                    !(Unreachable.TryGetValue(go, out float until) && until > Time.time);
         }
 
-        private static GameObject FindNearest(Vector3 from, float radius, Vector3? hearth, Func<GameObject, bool> match,
+        /// <summary>The available object within <paramref name="radius"/> of <paramref name="center"/> nearest to <paramref name="from"/>.</summary>
+        private static GameObject FindNearest(Vector3 center, float radius, Vector3 from, Func<GameObject, bool> match,
             HashSet<GameObject> skip)
         {
             GameObject best = null;
             float bestDistance = float.MaxValue;
             var seen = new HashSet<GameObject>();
-            foreach (Collider collider in Physics.OverlapSphere(from, radius))
+            foreach (Collider collider in Physics.OverlapSphere(center, radius))
             {
                 ZNetView view = collider.GetComponentInParent<ZNetView>();
                 if (view == null || !seen.Add(view.gameObject))
@@ -1008,12 +1141,7 @@ namespace Villheim.Logic.Villagers
                 }
 
                 GameObject go = view.gameObject;
-                if (!Available(go, skip) || !match(go))
-                {
-                    continue;
-                }
-
-                if (hearth.HasValue && Utils.DistanceXZ(go.transform.position, hearth.Value) > MaxFromHearth)
+                if (Utils.DistanceXZ(go.transform.position, center) > radius || !Available(go, skip) || !match(go))
                 {
                     continue;
                 }
@@ -1029,33 +1157,29 @@ namespace Villheim.Logic.Villagers
             return best;
         }
 
-        private static Pickable NearestPickable(HashSet<string> wanted, Vector3 from, float radius, Vector3 hearth)
+        private static Pickable NearestPickable(HashSet<string> wanted, Vector3 hearth, Vector3 from)
         {
-            GameObject go = FindNearest(from, radius, hearth, candidate =>
+            GameObject go = FindNearest(hearth, MaxFromHearth, from, candidate =>
                 candidate.TryGetComponent(out Pickable pickable) && !pickable.GetPicked() && pickable.m_itemPrefab != null &&
                 wanted.Contains(pickable.m_itemPrefab.name), null);
             return go != null ? go.GetComponent<Pickable>() : null;
         }
 
-        private static ItemDrop NearestDrop(ICollection<string> wanted, Vector3 spot, float radius, Vector3? hearth,
+        private static ItemDrop NearestDrop(ICollection<string> wanted, Vector3 center, float radius, Vector3 from,
             HashSet<GameObject> skip)
         {
             ItemDrop best = null;
             float bestDistance = float.MaxValue;
-            foreach (Collider collider in Physics.OverlapSphere(spot, radius))
+            foreach (Collider collider in Physics.OverlapSphere(center, radius))
             {
                 ItemDrop item = collider.GetComponentInParent<ItemDrop>();
-                if (item == null || !wanted.Contains(Utils.GetPrefabName(item.gameObject)) || skip.Contains(item.gameObject))
+                if (item == null || !wanted.Contains(Utils.GetPrefabName(item.gameObject)) || skip.Contains(item.gameObject) ||
+                    Utils.DistanceXZ(item.transform.position, center) > radius)
                 {
                     continue;
                 }
 
-                if (hearth.HasValue && Utils.DistanceXZ(item.transform.position, hearth.Value) > MaxFromHearth)
-                {
-                    continue;
-                }
-
-                float distance = Utils.DistanceXZ(item.transform.position, spot);
+                float distance = Utils.DistanceXZ(item.transform.position, from);
                 if (distance < bestDistance)
                 {
                     best = item;

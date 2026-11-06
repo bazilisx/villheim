@@ -87,10 +87,16 @@ namespace Villheim.Logic.Villagers
                 text += $"\n<color=#b0b0b0>of {village}</color>";
             }
 
-            string job = Chores.Describe(villager);
+            string job = Chores.Describe(villager) ?? FreeTime.Describe(villager);
             if (job != null)
             {
                 text += $"\n<color=#b0b0b0>{job}</color>";
+            }
+
+            string idle = Chores.IdleReason(villager);
+            if (idle != null)
+            {
+                text += $"\n<size=12><color=#808080>no work: {idle}</color></size>";
             }
 
             text += "\n[<color=yellow><b>$KEY_Use</b></color>] Talk";

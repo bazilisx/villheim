@@ -1,3 +1,4 @@
+using UnityEngine;
 using Villheim.Prefabs;
 
 namespace Villheim.Logic.Villagers
@@ -34,9 +35,7 @@ namespace Villheim.Logic.Villagers
 
             villager.m_faction = Character.Faction.Dverger; // neutral to players unless provoked, fights monsters
             villager.m_health = VillheimConfig.VillagerHealth.Value;
-            villager.m_walkSpeed = 1.6f;
-            villager.m_speed = 2f;
-            villager.m_runSpeed = 5f;
+            CopyMovement(villager);
 
             if (villager.TryGetComponent(out VillagerAI ai))
             {
@@ -44,6 +43,30 @@ namespace Villheim.Logic.Villagers
             }
 
             VillagerTalk.Configure(villager.GetComponent<NpcTalk>());
+        }
+
+        /// <summary>
+        /// Speeds, turn rates and acceleration from the player, whose animations they were made for. Our own slower
+        /// jog played the jog animation at the wrong speed, which read as stutter. Villagers jog on errands.
+        /// </summary>
+        private static void CopyMovement(Villager villager)
+        {
+            GameObject prefab = Jotunn.Managers.PrefabManager.Instance.GetPrefab("Player");
+            Player player = prefab != null ? prefab.GetComponent<Player>() : null;
+            if (player == null)
+            {
+                villager.m_walkSpeed = 1.6f;
+                villager.m_speed = 4f;
+                villager.m_runSpeed = 7f;
+                return;
+            }
+
+            villager.m_walkSpeed = player.m_walkSpeed;
+            villager.m_speed = player.m_speed;
+            villager.m_runSpeed = player.m_runSpeed;
+            villager.m_turnSpeed = player.m_turnSpeed;
+            villager.m_runTurnSpeed = player.m_runTurnSpeed;
+            villager.m_acceleration = player.m_acceleration;
         }
 
         private static void ApplyAI(VillagerAI ai)

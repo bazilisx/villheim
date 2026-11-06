@@ -85,6 +85,54 @@ only let people arrive by day, and have them walk in from the village edge.
 other, choosing something new every 30 to 90 seconds. Villheim already sends villagers to the hearth at night. Sitting
 on the village's own benches and by its fires is a later step.
 
+## Second, closer read of VikingColonies (1.6.0)
+
+A section-by-section read of the movement, jobs, free time and building code, after Villheim villagers still
+wandered, stuttered and swung at trees from far away. Notes in my own words; nothing copied.
+
+**Their villager never runs the monster brain.** The AI class sits on the game's base AI, which issues no movement of
+its own. Ours sat on the monster AI, whose idle wandering ran whenever our code let go for a moment. Villheim now
+keeps control every tick outside a fight and hands over only when an enemy is sensed (checked twice a second).
+
+**The body is the player's.** Speeds, turn rates and acceleration come from the player prefab, so the jog animation
+matches the real speed. They always jog on errands and only sprint when fleeing. Turning while walking
+(`m_moveMinAngle` 90 with smooth movement) avoids stopping at every path corner.
+
+**Walking rules.** Stop distance at least 0.8 m, stay arrived until 0.5 m past it, a path that ends early only counts
+within 2 m, a fresh path only after a hop, sidestep or door. Nothing counts as stuck within 3 m of the goal.
+Villagers and players pass through each other (collision pairs ignored, set again every couple of seconds, because
+Unity forgets them). Animation-driven movement is dropped for villagers outside a real attack, so gestures and work
+swings never slide them.
+
+**Doors.** Used when the path dead-ends or a closed door is right ahead. Stand about a metre out, face the door, use
+it, step straight through to 1.5 m beyond without a path (the navmesh still sees a wall for a while), close it 2 m
+later once the doorway is clear.
+
+**Reach is a hard gate on every swing, against the real surface.** Their workers measure to the actual shape (a ray
+for a tree trunk's radius, a line with a radius for a log, a small box per rock section) and only swing within the
+tool's range. Unity's closest point does not work on concave mesh colliders, and a big rock's bounding box can sit
+metres from its face, which is how our villagers chopped from 15 m. Villheim now casts a ray at the collider itself.
+They also face the target before swinging, land the blow partway through the animation, use the tool's real tier,
+and pass the struck collider so big rocks take the hit.
+
+**Jobs decide from facts on a slow clock.** Each tick a job picks one action from a fixed priority list and logs a
+line when the action changes, which makes "does nothing" easy to explain. Villheim logs why a villager has no work
+and shows it in the hover text.
+
+**Free time is asked for, not left running.** Whatever wants a pose (sitting, dancing) asks every tick; when nothing
+asks, the villager stands up. Activities are picked by weight from what is at hand every 30 to 90 seconds: seats,
+fires, chats (pairs meet 1.6 m apart and take turns), strolls. The evening is a ring around the main fire where
+every other one sits and the rest toast and laugh. Held poses are animator bools (`emote_sit`, `emote_dance`,
+`emote_rest`, `emote_kneel`), gestures are triggers (`emote_wave`, `emote_cheer` and so on), and `emote_stop` ends a
+held one.
+
+**Mood does not drive their idle behaviour.** Their mood (0 to 100 from home, food, comfort, deaths and so on) sets
+work speed and arrivals. Villheim uses its own village mood to weight free-time choices and gestures instead.
+
+**Building.** Lowest supported piece first, restarting the search after every placement; a support check before
+placing; the builder always outside the outline with a hard distance limit; never placing a piece where someone
+stands; doorways kept clear.
+
 ## Plan
 
 First round (this round):

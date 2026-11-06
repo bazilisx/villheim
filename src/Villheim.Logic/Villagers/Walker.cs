@@ -14,34 +14,37 @@ namespace Villheim.Logic.Villagers
     /// How villagers get from A to B. The game's pathfinding does the routing; this adds the parts that keep a
     /// villager from twitching or standing stuck:
     ///
-    /// - A goal only counts as new when it moves more than a metre, so a wobbling target doesn't restart the walk.
-    /// - Arriving uses two distances. A villager arrives at the stop distance and only sets off again once the goal is
-    ///   well past it, so he doesn't flip between walking and standing at the edge.
+    /// - A goal only counts as new when it moves more than a metre, so a wobbling target doesn't restart the walk, and
+    ///   the game's own path cache is left to work. A fresh path is asked for only after a hop, sidestep or door.
+    /// - Arriving uses two distances. A villager arrives at the stop distance (never under 0.8 m) and only sets off
+    ///   again once the goal is half a metre past it, so he doesn't flip between walking and standing at the edge.
+    ///   A path that ends early counts as arriving only within 2 m of the stop distance.
+    /// - Villagers always jog, at the player's own speed. No switching between walking and running.
     /// - A villager who hasn't moved for a second looks for a closed door between him and the goal. He walks up to
     ///   it, opens it, steps through and closes it behind him.
-    /// - A player standing right in the way is waited for, not pushed. After a few seconds he steps around them.
     /// - A villager who hasn't moved half a metre in 3 seconds jumps and plans a new path. After 5 seconds he steps to
-    ///   one side (never off a ledge or into water). After a few tries he reports that he is stuck.
+    ///   one side for half a second (never off a ledge or into water). After two tries he reports that he is stuck.
+    ///   Within 3 m of the goal nothing counts as stuck: jostling at the goal is normal.
     /// </summary>
     internal sealed class Walker
     {
         private const float NewGoalDistance = 1f;
-        private const float LeaveSlack = 0.6f;
-        private const float RunAbove = 10f;
+        private const float MinStop = 0.8f;
+        private const float LeaveSlack = 0.5f;
+        private const float PathEndSlack = 2f;
         private const float MovedEnough = 0.5f;
+        private const float NotStuckNearGoal = 3f;
         private const float HopAfter = 3f;
         private const float SidestepAfter = 5f;
-        private const float SidestepSeconds = 0.6f;
-        private const int MaxSidesteps = 3;
+        private const float SidestepSeconds = 0.5f;
+        private const int MaxSidesteps = 2;
         private const float DoorAfter = 1f;
         private const float DoorSearch = 4f;
-        private const float DoorStandOff = 1f;
-        private const float DoorPassDistance = 1.6f;
-        private const float DoorApproachSeconds = 5f;
+        private const float DoorStandOff = 1.2f;
+        private const float DoorPassDistance = 1.5f;
+        private const float DoorApproachSeconds = 6f;
         private const float DoorPassSeconds = 3f;
-        private const float CloseDoorBeyond = 2.2f;
-        private const float PersonalSpace = 1.1f;
-        private const float WaitForPlayer = 3f;
+        private const float CloseDoorBeyond = 2f;
 
         private static readonly ConditionalWeakTable<Villager, Walker> Walkers = new ConditionalWeakTable<Villager, Walker>();
 
@@ -65,7 +68,6 @@ namespace Villheim.Logic.Villagers
         private Door _closeBehind;
         private float _closeBy;
         private float _nextClosePush;
-        private float _waitingSince = -1f;
 
         public static Walker For(Villager villager) => Walkers.GetOrCreateValue(villager);
 
@@ -79,13 +81,13 @@ namespace Villheim.Logic.Villagers
             _sidestepUntil = 0f;
             _door = null;
             _doorTried = false;
-            _waitingSince = -1f;
         }
 
         public WalkResult Go(Villager villager, VillagerAI ai, float dt, Vector3 point, float stop)
         {
             Vector3 position = villager.transform.position;
             CloseDoorBehind(position);
+            stop = Mathf.Max(stop, MinStop);
             if (!_hasGoal || Utils.DistanceXZ(point, _goal) > NewGoalDistance)
             {
                 _goal = point;
@@ -119,48 +121,15 @@ namespace Villheim.Logic.Villagers
                 return WalkResult.Walking;
             }
 
-            Player blocking = PlayerInTheWay(villager, _goal);
-            if (blocking != null)
-            {
-                // Wait for them rather than push. If they stay put, step around them.
-                if (_waitingSince < 0f)
-                {
-                    _waitingSince = Time.time;
-                }
-
-                _lastPosition = position;
-                _lastMoved = Time.time;
-                if (Time.time - _waitingSince < WaitForPlayer)
-                {
-                    ai.StopMoving();
-                    return WalkResult.Walking;
-                }
-
-                _waitingSince = -1f;
-                Vector3 right = Vector3.Cross(Vector3.up, Flat(_goal - position));
-                Vector3 away = Vector3.Dot(right, blocking.transform.position - position) > 0f ? -right : right;
-                if (SafeStep(position, away))
-                {
-                    _sidestep = away;
-                    _sidestepUntil = Time.time + SidestepSeconds * 2f;
-                    ai.MoveTowards(_sidestep, false);
-                    return WalkResult.Walking;
-                }
-            }
-            else
-            {
-                _waitingSince = -1f;
-            }
-
-            bool run = distance > RunAbove;
-            if (ai.MoveTo(dt, _goal, stop, run) && distance <= stop + 1.5f)
+            if (ai.MoveTo(dt, _goal, stop, false) && distance <= stop + PathEndSlack)
             {
                 // The path ends close enough to the goal (a tree trunk or wall is in the way of the last step).
                 _arrived = true;
+                ai.StopMoving();
                 return WalkResult.Arrived;
             }
 
-            if (Utils.DistanceXZ(position, _lastPosition) > MovedEnough)
+            if (Utils.DistanceXZ(position, _lastPosition) > MovedEnough || distance < NotStuckNearGoal)
             {
                 _lastPosition = position;
                 _lastMoved = Time.time;
@@ -197,9 +166,7 @@ namespace Villheim.Logic.Villagers
                 _hopped = false;
                 ai.m_lastFindPathTime = -1000f;
 
-                Vector3 toGoal = _goal - position;
-                toGoal.y = 0f;
-                Vector3 right = Vector3.Cross(Vector3.up, toGoal.sqrMagnitude > 0.01f ? toGoal.normalized : villager.transform.forward);
+                Vector3 right = Vector3.Cross(Vector3.up, Flat(_goal - position));
                 int side = SafeStep(position, right * _side) ? _side : SafeStep(position, -right * _side) ? -_side : 0;
                 _side = -_side;
                 if (side != 0)
@@ -211,6 +178,12 @@ namespace Villheim.Logic.Villagers
             }
 
             return WalkResult.Walking;
+        }
+
+        /// <summary>Closes a door he came through, once he is clear of it. Called every tick, walking or not.</summary>
+        public void Tick(Villager villager)
+        {
+            CloseDoorBehind(villager.transform.position);
         }
 
         /// <summary>
@@ -333,6 +306,12 @@ namespace Villheim.Logic.Villagers
                 return;
             }
 
+            // Never close it on someone standing in the doorway.
+            if (SomeoneInDoorway(_closeBehind) && Time.time < _closeBy + 4f)
+            {
+                return;
+            }
+
             // A door still swinging ignores a push, so try again once a second for a few seconds.
             if (DoorState(_closeBehind) == 0 || Time.time > _closeBy + 4f)
             {
@@ -380,28 +359,24 @@ namespace Villheim.Logic.Villagers
             return total.HasValue ? new Vector3(total.Value.center.x, root.y, total.Value.center.z) : root;
         }
 
-        private static int DoorState(Door door)
+        private static bool SomeoneInDoorway(Door door)
         {
-            return door.m_nview.GetZDO().GetInt(ZDOVars.s_state);
-        }
-
-        /// <summary>A player standing within arm's length, roughly where the villager is heading, or null.</summary>
-        private static Player PlayerInTheWay(Villager villager, Vector3 goal)
-        {
-            Vector3 position = villager.transform.position;
-            Vector3 heading = Flat(goal - position);
-            foreach (Player player in Player.GetAllPlayers())
+            Vector3 center = DoorCenter(door);
+            foreach (Character character in Character.GetAllCharacters())
             {
-                Vector3 toPlayer = player.transform.position - position;
-                toPlayer.y = 0f;
-                if (toPlayer.magnitude < PersonalSpace && Vector3.Dot(toPlayer.normalized, heading) > 0.3f &&
-                    Utils.DistanceXZ(player.transform.position, goal) > 0.3f)
+                if (character != null && Utils.DistanceXZ(character.transform.position, center) < 1f &&
+                    Mathf.Abs(character.transform.position.y - center.y) < 2f)
                 {
-                    return player;
+                    return true;
                 }
             }
 
-            return null;
+            return false;
+        }
+
+        private static int DoorState(Door door)
+        {
+            return door.m_nview.GetZDO().GetInt(ZDOVars.s_state);
         }
 
         private static Vector3 Flat(Vector3 vector)

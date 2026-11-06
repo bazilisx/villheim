@@ -42,8 +42,12 @@ with its own look for its biome.
 - [ ] Support-aware build order: nothing goes up unsupported; openings before what rests on them. (Built 2026-11-05
       session 4, needs testing.)
 - [ ] Never copy bee hives from designs. (Built 2026-11-05 session 4, needs testing.)
-- [ ] Idle villagers stand near home or the hearth, clear of the fire, houses and players. (Built 2026-11-05
-      session 4, needs testing.)
+- [ ] Villagers gather from nothing for their first building (no free starting stock). (Built 2026-11-05 session 5,
+      needs testing.)
+- [ ] No swings from a distance: reach checked against the real surface before every blow. (Built 2026-11-05
+      session 5, needs testing.)
+- [ ] Smooth walking: own brain outside fights, player speeds, no shoving. (Built 2026-11-05 session 5, needs
+      testing.)
 
 ## Milestone 3: a village that looks planned
 
@@ -55,7 +59,12 @@ with its own look for its biome.
 ## Milestone 4: villagers with lives
 
 - [ ] One small house per villager household; newcomers only arrive for a free bed, by day, walking in from the edge.
-- [ ] Evening routine: sit by the fire, on benches, chat.
+- [ ] Free time: fire, sitting, strolls, chats, keeping busy at stations, gestures by village mood. (Built 2026-11-05
+      session 5, needs testing.)
+- [ ] Evening ring at the hearth, sitting and resting by the fire at night. (Built 2026-11-05 session 5, needs
+      testing.)
+- [ ] Sit on the village's chairs and benches; sleep in beds.
+- [ ] Villagers build a cooking fire and cooking station by the hearth, and cook for real.
 - [ ] Interiors upgrade over time (bed, chests, table, then better furniture).
 - [ ] Exteriors upgrade over time (swap a building for a better design of the same role).
 

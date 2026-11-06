@@ -170,7 +170,9 @@ namespace Villheim.Logic.Villagers
 
             // Free time: keep a few meals ready in the chest, one cook per village.
             if (idle && !hurt && chest != null && station != null && station.IsFireLit() && station.GetFreeSlot() >= 0 &&
-                RawIn(chest, station).Count > 0 && CookedIn(chest, station).Values.Sum() < ReadyMeals && CookFree(villager))
+                RawIn(chest, station).Count > 0 && CookedIn(chest, station).Values.Sum() < ReadyMeals && CookFree(villager) &&
+                (Roles.TradeOf(villager) == Roles.Trade.Cook || !Roles.HasTrade(villager.VillageId, Roles.Trade.Cook)) &&
+                (Roles.BackgroundOf(villager) == Roles.Background.Carer || Random.value < 0.3f))
             {
                 Cooks[villager.VillageId] = villager;
                 state.Urgent = false;

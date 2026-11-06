@@ -422,6 +422,7 @@ namespace Villheim.Logic.Village
             zdo.Set(Keys.VillagerHome, home);
             zdo.Set(Keys.VillagerSeed, looksSeed);
             zdo.Set(Keys.VillagerName, name);
+            zdo.Set(Villagers.Roles.KeyArrival, arrival);
             villager.m_name = name;
             villager.LooksApplied = false;
 

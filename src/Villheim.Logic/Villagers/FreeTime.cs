@@ -49,6 +49,7 @@ namespace Villheim.Logic.Villagers
             public Kind Kind;
             public Mode Mode;
             public Vector3 Spot;
+            public bool Watching;
             public Vector3 Look;
             public bool HasLook;
             public float Until;
@@ -191,7 +192,7 @@ namespace Villheim.Logic.Villagers
             {
                 case Kind.FireSit: return "warming up by the fire";
                 case Kind.GroundSit: return "taking a rest";
-                case Kind.Stroll: return "taking a stroll";
+                case Kind.Stroll: return state.Watching ? "keeping watch" : "taking a stroll";
                 case Kind.Chat: return "chatting";
                 case Kind.Station: return state.Station != null ? "busy at the " + StationName(state.Station) : "keeping busy";
                 case Kind.Evening: return "gathered at the hearth";
@@ -274,11 +275,12 @@ namespace Villheim.Logic.Villagers
 
             float mood = VillageMood.Get(villager.VillageId);
             bool wet = EnvMan.IsWet();
+            bool carer = Roles.BackgroundOf(villager) == Roles.Background.Carer;
             var options = new List<(Kind Kind, float Weight)>
             {
-                (Kind.FireSit, wet ? 0f : 3f),
+                (Kind.FireSit, wet ? 0f : (carer ? 4.5f : 2f)),
                 (Kind.GroundSit, wet ? 0f : (mood < 35f ? 2f : 1f)),
-                (Kind.Stroll, mood < 35f ? 0.5f : 1f),
+                (Kind.Stroll, (mood < 35f ? 0.5f : 1f) * (carer ? 1f : 2.5f)),
                 (Kind.Chat, ReallyFree(villager, state) && FindChatPartner(villager) != null
                     ? (mood >= 65f ? 4f : mood < 35f ? 0.6f : 2f)
                     : 0f),
@@ -312,7 +314,7 @@ namespace Villheim.Logic.Villagers
                     break;
 
                 default:
-                    state.Spot = HomeSpot(villager, hearth);
+                    state.Spot = StrollSpot(villager, state, hearth);
                     break;
             }
         }
@@ -390,11 +392,15 @@ namespace Villheim.Logic.Villagers
                         ai.LookAt(player.GetEyePoint());
                         Greet(villager, state, player);
                     }
+                    else if (state.Watching)
+                    {
+                        ai.LookAt(state.Look);
+                    }
 
                     GestureByMood(villager, state, mood, 15f, 30f);
                     if (Time.time > state.StandUntil)
                     {
-                        state.Spot = HomeSpot(villager, Hearth(villager));
+                        state.Spot = StrollSpot(villager, state, Hearth(villager));
                         state.Arrived = false;
                         state.StandUntil = 0f;
                         state.GiveUpAt = Time.time + 30f;
@@ -663,7 +669,7 @@ namespace Villheim.Logic.Villagers
             if (partner == null || !States.TryGetValue(partner, out State theirs))
             {
                 state.Kind = Kind.Stroll;
-                state.Spot = HomeSpot(villager, Hearth(villager));
+                state.Spot = StrollSpot(villager, state, Hearth(villager));
                 return;
             }
 
@@ -846,6 +852,37 @@ namespace Villheim.Logic.Villagers
         }
 
         /// <summary>A spot near home, outside buildings, the site and the fire, and clear of players.</summary>
+        /// <summary>
+        /// Where a stroll goes: near home, or for a protector often a lookout at the edge of the village, where he
+        /// stands looking outward.
+        /// </summary>
+        private static Vector3 StrollSpot(Villager villager, State state, Vector3 hearth)
+        {
+            state.Watching = false;
+            if (Roles.BackgroundOf(villager) != Roles.Background.Protector || Random.value > 0.6f)
+            {
+                return HomeSpot(villager, hearth);
+            }
+
+            float radius = Mathf.Min(VillheimConfig.VillageRadius.Value * 0.7f, 35f);
+            for (int i = 0; i < 8; i++)
+            {
+                float angle = Random.Range(0f, Mathf.PI * 2f);
+                Vector3 outward = new Vector3(Mathf.Sin(angle), 0f, Mathf.Cos(angle));
+                Vector3 spot = hearth + outward * radius;
+                if (ZoneSystem.instance.GetGroundHeight(spot, out float y) && y > ZoneSystem.instance.m_waterLevel + 0.3f)
+                {
+                    spot.y = y;
+                    state.Watching = true;
+                    state.Look = spot + outward * 20f + Vector3.up * 1.5f;
+                    state.HasLook = true;
+                    return spot;
+                }
+            }
+
+            return HomeSpot(villager, hearth);
+        }
+
         private static Vector3 HomeSpot(Villager villager, Vector3 hearth)
         {
             Vector3 home = villager.Zdo.GetVec3(Keys.VillagerHome, hearth);

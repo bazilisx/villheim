@@ -268,7 +268,8 @@ namespace Villheim.Logic.Villagers
                 }
 
                 int seed = other.Zdo.GetInt(Keys.VillagerSeed);
-                bool isBuilder = VillagerLooks.IsBuilder(seed);
+                Roles.Trade trade = Roles.TradeOf(other);
+                bool isBuilder = trade != Roles.Trade.None ? trade == Roles.Trade.Carpenter : VillagerLooks.IsBuilder(seed);
                 if (best == null || (isBuilder && !bestIsBuilder) || (isBuilder == bestIsBuilder && seed < bestSeed))
                 {
                     best = other;
@@ -295,8 +296,37 @@ namespace Villheim.Logic.Villagers
                 return;
             }
 
-            int seed = villager.Zdo.GetInt(Keys.VillagerSeed);
-            Profile first = VillagerLooks.IsMiner(seed) ? Miner : Woodcutter;
+            // Trades (from six villagers on): a cook keeps the hearth and only gathers when hands are short.
+            Roles.Trade trade = Roles.TradeOf(villager);
+            if (trade == Roles.Trade.Cook && !builder)
+            {
+                NoWork(villager, work, "keeps the hearth and cooks for the village");
+                return;
+            }
+
+            // A woodcutter or carpenter goes for wood first, a miner for stone. Without trades, everyone goes where
+            // the need is greatest.
+            Profile first;
+            if (trade == Roles.Trade.Miner)
+            {
+                first = Miner;
+            }
+            else if (trade != Roles.Trade.None)
+            {
+                first = Woodcutter;
+            }
+            else
+            {
+                int wood = 0, stone = 0;
+                foreach (KeyValuePair<string, int> need in needs.Missing)
+                {
+                    if (Materials.WoodTypes.Contains(need.Key)) wood += need.Value;
+                    else stone += need.Value;
+                }
+
+                first = stone > wood ? Miner : Woodcutter;
+            }
+
             Profile second = first == Miner ? Woodcutter : Miner;
             string firstReason = TryProfile(villager, work, needs, first);
             if (firstReason == null)

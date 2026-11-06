@@ -23,6 +23,7 @@ namespace Villheim.Logic.Villagers
         {
             public float NextThreatCheck;
             public bool Threat;
+            public Character Enemy;
         }
 
         private static readonly ConditionalWeakTable<Villager, State> States = new ConditionalWeakTable<Villager, State>();
@@ -37,13 +38,17 @@ namespace Villheim.Logic.Villagers
             Body.Update(villager);
             Walker.For(villager).Tick(villager);
 
-            if (ThreatNear(villager, ai))
+            if (ThreatNear(villager, ai, out Character enemy))
             {
                 Sleep.Wake(villager);
                 Poses.Release(villager);
                 VillageMood.NoteThreat(villager.VillageId);
-                return false;
+
+                // Protectors arm and fight (the game's AI); carers get away while a protector is there.
+                return Roles.OnThreat(villager, ai, enemy, dt);
             }
+
+            Roles.AfterThreat(villager);
 
             Poses.BeginTick(villager);
             if (Healing.Update(villager, ai, dt, false))
@@ -71,15 +76,17 @@ namespace Villheim.Logic.Villagers
         }
 
         /// <summary>True while the game AI can sense an enemy. Checked twice a second.</summary>
-        private static bool ThreatNear(Villager villager, VillagerAI ai)
+        private static bool ThreatNear(Villager villager, VillagerAI ai, out Character enemy)
         {
             State state = States.GetOrCreateValue(villager);
             if (Time.time >= state.NextThreatCheck)
             {
                 state.NextThreatCheck = Time.time + ThreatCheckSeconds + Random.Range(0f, 0.2f);
-                state.Threat = ai.FindEnemy() != null;
+                state.Enemy = ai.FindEnemy();
+                state.Threat = state.Enemy != null;
             }
 
+            enemy = state.Enemy;
             return state.Threat;
         }
     }

@@ -97,9 +97,10 @@ namespace Villheim.Logic.Villagers
         {
             string village = villager.VillageName;
             string text = villager.VillagerName;
+            string title = Roles.Title(villager);
             if (!string.IsNullOrEmpty(village))
             {
-                text += $"\n<color=#b0b0b0>of {village}</color>";
+                text += $"\n<color=#b0b0b0>{(title != null ? char.ToUpperInvariant(title[0]) + title.Substring(1) + " of " : "of ")}{village}</color>";
             }
 
             string job = (Sleep.IsAsleep(villager) ? "asleep" : null) ?? Healing.Describe(villager) ??

@@ -4,7 +4,7 @@ NPC villages for Valheim that grow over time, inspired by Millénaire for Minecr
 
 Every village is made from things that are already in the game. Buildings are copied from Valheim's own locations (the Meadows houses and farms, the Black Forest cabins), and villagers use the vanilla player model with vanilla hair, beards, clothes and tools. The mod adds no models, textures or building designs of its own. Locations added by other mods, such as More World Locations, can be used as designs too.
 
-> **Status: 0.1.0, untested in game.** The code compiles against the current game and Jötunn libraries, but it has not been run in Valheim yet. Expect rough edges on the first run. See [First test checklist](#first-test-checklist).
+> **Status: in development.** Villages found, gather and build in game. Goals and progress are in [docs/ROADMAP.md](docs/ROADMAP.md); working notes for contributors are in [CLAUDE.md](CLAUDE.md) and [docs/](docs).
 
 ## What it does
 

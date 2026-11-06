@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 using Villheim.Logic.Designs;
 
@@ -47,6 +48,54 @@ namespace Villheim.Logic.Village
             Vector2 along = end - start;
             float t = along.sqrMagnitude > 0.001f ? Mathf.Clamp01(Vector2.Dot(p - start, along) / along.sqrMagnitude) : 0f;
             return Vector2.Distance(p, start + along * t);
+        }
+
+        /// <summary>The points of the path from the hearth to the building, a metre apart, in walking order.</summary>
+        public static List<Vector3> Points(Vector3 hearth, float axisYaw, Vector3 building, float buildingRadius)
+        {
+            var points = new List<Vector3>();
+            Vector3 corner = Corner(hearth, axisYaw, building);
+            float stopAt = buildingRadius * 0.6f;
+            foreach ((Vector3 from, Vector3 to) in new[] { (hearth, corner), (corner, building) })
+            {
+                Vector3 flatFrom = new Vector3(from.x, 0f, from.z);
+                Vector3 flatTo = new Vector3(to.x, 0f, to.z);
+                int steps = Mathf.CeilToInt(Vector3.Distance(flatFrom, flatTo) / Step);
+                for (int i = 0; i <= steps; i++)
+                {
+                    Vector3 point = Vector3.Lerp(flatFrom, flatTo, steps == 0 ? 0f : (float)i / steps);
+                    if (Utils.DistanceXZ(point, building) < stopAt || Utils.DistanceXZ(point, hearth) < HearthGap)
+                    {
+                        continue;
+                    }
+
+                    if (points.Count > 0 && Utils.DistanceXZ(points[points.Count - 1], point) < Step * 0.5f)
+                    {
+                        continue;
+                    }
+
+                    points.Add(point);
+                }
+            }
+
+            return points;
+        }
+
+        /// <summary>Paints one spot of path, as a hoe would.</summary>
+        public static void PaintAt(Vector3 point)
+        {
+            if (!ZoneSystem.instance.GetGroundHeight(point, out float y))
+            {
+                return;
+            }
+
+            point.y = y;
+            TerrainOp.Settings settings = TerrainShaper.NewSettings();
+            settings.m_paintCleared = true;
+            settings.m_paintType = TerrainModifier.PaintType.Dirt;
+            settings.m_paintRadius = Width;
+            settings.m_paintHeightCheck = false;
+            TerrainShaper.Apply(point, settings);
         }
 
         public static void Build(Vector3 hearth, float axisYaw, Vector3 building, float buildingRadius)

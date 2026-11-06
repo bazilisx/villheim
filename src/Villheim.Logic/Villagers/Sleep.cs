@@ -257,8 +257,9 @@ namespace Villheim.Logic.Villagers
             Rigidbody body = villager.m_body;
             if (body != null)
             {
+                // Held in place each tick, like the game's own attach: no gravity, no drift.
+                body.useGravity = false;
                 body.velocity = Vector3.zero;
-                body.isKinematic = true;
             }
 
             villager.transform.position = point.position;
@@ -279,7 +280,7 @@ namespace Villheim.Logic.Villagers
             Poses.Release(villager);
             if (villager.m_body != null)
             {
-                villager.m_body.isKinematic = false;
+                villager.m_body.useGravity = true;
             }
 
             if (state.Bed != null)

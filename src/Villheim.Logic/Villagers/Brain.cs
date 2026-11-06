@@ -65,6 +65,10 @@ namespace Villheim.Logic.Villagers
                 {
                     ai.StopMoving();
                 }
+                else if (PathLaying.Update(villager, ai, dt))
+                {
+                    // Laying a path: background work, before free time.
+                }
                 else if (!Healing.Update(villager, ai, dt, true))
                 {
                     FreeTime.Update(villager, ai, dt);

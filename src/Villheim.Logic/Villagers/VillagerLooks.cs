@@ -17,6 +17,7 @@ namespace Villheim.Logic.Villagers
             Axe,
             Pickaxe,
             Hammer,
+            Hoe,
         }
 
         private readonly struct WeightedItem
@@ -203,9 +204,9 @@ namespace Villheim.Logic.Villagers
         /// <summary>The prefab of the tool this villager should carry, by the gear tier of his village.</summary>
         private static string ToolPrefab(Humanoid villager, Tool tool)
         {
-            if (tool == Tool.Hammer)
+            if (tool == Tool.Hammer || tool == Tool.Hoe)
             {
-                return "Hammer";
+                return tool.ToString();
             }
 
             int tier = 0;
@@ -236,6 +237,10 @@ namespace Villheim.Logic.Villagers
                     return item.m_shared.m_skillType == Skills.SkillType.Axes;
                 case Tool.Pickaxe:
                     return item.m_shared.m_skillType == Skills.SkillType.Pickaxes;
+                case Tool.Hoe:
+                    return item.m_dropPrefab != null
+                        ? item.m_dropPrefab.name == "Hoe"
+                        : item.m_shared.m_name == "$item_hoe";
                 default:
                     return item.m_dropPrefab != null
                         ? item.m_dropPrefab.name == "Hammer"

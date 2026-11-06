@@ -32,8 +32,12 @@ Standing reference for building, deploying and testing Villheim. Current state i
 
 ## Keeping the game on the latest build
 
-- `scripts/watch.ps1` (leave it running in a PowerShell window) checks GitHub every 20 s. On a new commit to `main`
-  it pulls, builds, deploys and prints the commit. It says when the core changed and the game needs a restart.
+- Every push to `main` makes CI publish the "Latest test build" release (tag `dev-latest`) with both DLLs, their
+  pdbs and `version.txt` (the short commit).
+- On the PC, `scripts/Villheim-Updater.ps1` copies each new build into the profile. No Git or .NET needed. Start it
+  by opening PowerShell and pasting:
+  `irm https://raw.githubusercontent.com/bazilisx/villheim/main/scripts/Villheim-Updater.ps1 | iex`
+  Leave the window open. When the core changed it asks to close Valheim and finishes the copy by itself.
 - Which logic build is live: the hearth's hover text and `vh version` show `commit-<hash>-<build time>`.
 
 ## Hot reload loop

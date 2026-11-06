@@ -8,6 +8,8 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v4
 
@@ -30,3 +32,18 @@ jobs:
         with:
           name: Villheim
           path: package
+
+      # Every push to main replaces the "Latest test build" release. scripts/Villheim-Updater.ps1 installs it from there.
+      - name: Publish the latest test build
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          mkdir -p dev
+          cp src/Villheim/bin/Release/Villheim.dll src/Villheim/bin/Release/Villheim.pdb dev/
+          cp src/Villheim.Logic/bin/Release/Villheim.Logic.dll src/Villheim.Logic/bin/Release/Villheim.Logic.pdb dev/
+          echo "${GITHUB_SHA::7}" > dev/version.txt
+          gh release delete dev-latest --yes --cleanup-tag || true
+          gh release create dev-latest dev/* --prerelease --target "$GITHUB_SHA" \
+            --title "Latest test build" \
+            --notes "Built from ${GITHUB_SHA::7}. Installed by scripts/Villheim-Updater.ps1; not a release."

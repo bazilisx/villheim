@@ -31,7 +31,7 @@ namespace Villheim.Logic.Designs
         public static IEnumerator Build(ZoneSystem.ZoneLocation location, Vector3 origin, float yaw, int seed, int villageId,
             Result result)
         {
-            location.m_prefab.Load();
+            Designs.AssetGuard.Load(location);
             try
             {
                 GameObject asset = location.m_prefab.Asset;
@@ -396,7 +396,7 @@ namespace Villheim.Logic.Designs
         /// <summary>Clears the plot and shapes the ground for a design, without building anything yet.</summary>
         public static bool PrepareSite(ZoneSystem.ZoneLocation location, Vector3 origin, float yaw)
         {
-            location.m_prefab.Load();
+            Designs.AssetGuard.Load(location);
             try
             {
                 GameObject asset = location.m_prefab.Asset;

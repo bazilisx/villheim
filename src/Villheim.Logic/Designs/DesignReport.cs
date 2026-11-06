@@ -91,7 +91,7 @@ namespace Villheim.Logic.Designs
 
         private static string Describe(ZoneSystem.ZoneLocation location)
         {
-            location.m_prefab.Load();
+            Designs.AssetGuard.Load(location);
             try
             {
                 GameObject asset = location.m_prefab.Asset;

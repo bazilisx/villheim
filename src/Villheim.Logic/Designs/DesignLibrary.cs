@@ -78,7 +78,15 @@ namespace Villheim.Logic.Designs
             }
             else
             {
-                design.Location.m_prefab.Load();
+                try
+                {
+                    Designs.AssetGuard.Load(design.Location);
+                }
+                catch (AssetGuard.BrokenException)
+                {
+                    return null;
+                }
+
                 try
                 {
                     GameObject asset = design.Location.m_prefab.Asset;
@@ -171,7 +179,15 @@ namespace Villheim.Logic.Designs
             }
             else
             {
-                design.Location.m_prefab.Load();
+                try
+                {
+                    Designs.AssetGuard.Load(design.Location);
+                }
+                catch (AssetGuard.BrokenException)
+                {
+                    return used; // can't look inside; MissingIn reports it as broken
+                }
+
                 try
                 {
                     GameObject asset = design.Location.m_prefab.Asset;
@@ -308,6 +324,11 @@ namespace Villheim.Logic.Designs
 
         public static string MissingIn(Design design, Heightmap.Biome biome)
         {
+            if (design.Location != null && AssetGuard.IsBroken(design.Location))
+            {
+                return "a broken asset";
+            }
+
             if (!VillheimConfig.RequireWood.Value)
             {
                 return null;
@@ -407,7 +428,7 @@ namespace Villheim.Logic.Designs
             }
 
             var totals = new Dictionary<string, int>();
-            location.m_prefab.Load();
+            Designs.AssetGuard.Load(location);
             try
             {
                 GameObject asset = location.m_prefab.Asset;

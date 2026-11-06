@@ -640,7 +640,7 @@ namespace Villheim.Logic
                 return;
             }
 
-            location.m_prefab.Load();
+            Villheim.Logic.Designs.AssetGuard.Load(location);
             try
             {
                 GameObject asset = location.m_prefab.Asset;

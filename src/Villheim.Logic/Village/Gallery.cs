@@ -244,7 +244,7 @@ namespace Villheim.Logic.Village
         /// <summary>A location with at least 15 building pieces that Villheim would copy.</summary>
         private static bool IsBuilding(ZoneSystem.ZoneLocation location)
         {
-            location.m_prefab.Load();
+            Designs.AssetGuard.Load(location);
             try
             {
                 GameObject asset = location.m_prefab.Asset;
@@ -494,7 +494,7 @@ namespace Villheim.Logic.Village
             }
 
             ZoneSystem.ZoneLocation location = cell.Design.Location;
-            location.m_prefab.Load();
+            Designs.AssetGuard.Load(location);
             try
             {
                 GameObject asset = location.m_prefab.Asset;

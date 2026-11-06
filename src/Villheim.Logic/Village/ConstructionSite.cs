@@ -332,7 +332,7 @@ namespace Villheim.Logic.Village
                 return null;
             }
 
-            location.m_prefab.Load();
+            Designs.AssetGuard.Load(location);
             try
             {
                 GameObject asset = location.m_prefab.Asset;
@@ -498,7 +498,7 @@ namespace Villheim.Logic.Village
                     return new List<DesignSpawner.PlanEntry>();
                 }
 
-                location.m_prefab.Load();
+                Designs.AssetGuard.Load(location);
                 try
                 {
                     GameObject asset = location.m_prefab.Asset;

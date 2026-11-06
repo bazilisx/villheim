@@ -27,7 +27,7 @@ namespace Villheim.Logic.Designs
             }
 
             DesignLibrary.Design? design = DesignLibrary.ByName(designName);
-            float angle = design.HasValue ? Compute(design.Value) : 0f;
+            float angle = design.HasValue ? SafeCompute(design.Value) : 0f;
             Cache[designName] = angle;
             return angle;
         }
@@ -39,9 +39,22 @@ namespace Villheim.Logic.Designs
                 return known;
             }
 
-            float angle = Compute(design);
+            float angle = SafeCompute(design);
             Cache[design.Name] = angle;
             return angle;
+        }
+
+        private static float SafeCompute(DesignLibrary.Design design)
+        {
+            try
+            {
+                return Compute(design);
+            }
+            catch (System.Exception e)
+            {
+                VillheimPlugin.Log.LogWarning($"Doors: could not look at {design.Name}: {e.Message}");
+                return 0f;
+            }
         }
 
         private static float Compute(DesignLibrary.Design design)
@@ -53,7 +66,7 @@ namespace Villheim.Logic.Designs
             }
             else if (design.Location != null)
             {
-                design.Location.m_prefab.Load();
+                Designs.AssetGuard.Load(design.Location);
                 try
                 {
                     GameObject asset = design.Location.m_prefab.Asset;

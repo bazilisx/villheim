@@ -30,12 +30,16 @@ with its own look for its biome.
 - [x] Staged construction: structure, roof, doors and windows, interior.
 - [x] Gathering order: dropped material, loose pickables, half-harvested work, then fresh trees and rocks.
 - [ ] Site chest next to every building in progress. Villagers deliver to it, the builder takes from it, players can
-      add to it. (Built 2026-11-05, needs testing.)
+      add to it. (Built 2026-11-05, works in first test.)
 - [ ] One prioritized builder per village who builds whenever the chest covers the next piece and gathers otherwise.
       (Built 2026-11-05, needs testing.)
 - [ ] Biome materials: no core wood in the Meadows, and so on. (Built 2026-11-05, needs testing.)
 - [ ] Movement without jitter: stand spots, steady goals, unstuck jump and sidestep. (Built 2026-11-05, needs testing.)
 - [ ] Trees felled away from the village.
+- [ ] Right tool for each job: hammer to build, axe for trees, pickaxe for rocks.
+- [ ] Villagers open and close doors.
+- [ ] Support-aware build order: nothing goes up unsupported; openings before what rests on them.
+- [ ] Never copy bee hives from designs.
 
 ## Milestone 3: a village that looks planned
 

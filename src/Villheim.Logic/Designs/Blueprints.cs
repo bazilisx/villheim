@@ -80,7 +80,7 @@ namespace Villheim.Logic.Designs
                 foreach (string file in Directory.GetFiles(folder, "*.*", SearchOption.AllDirectories))
                 {
                     string extension = Path.GetExtension(file).ToLowerInvariant();
-                    if (extension != ".blueprint" && extension != ".vbuild")
+                    if (extension != ".blueprint" && extension != ".vbuild" || IsExcluded(file))
                     {
                         continue;
                     }
@@ -108,6 +108,13 @@ namespace Villheim.Logic.Designs
             _loaded = found;
             return found;
         }
+
+        /// <summary>
+        /// Never used anywhere (Tyler, 2026-11-06): the generated "hs_" house designs from the BiomeBlueprints pack. The
+        /// pack's community builds keep their own names and are not affected.
+        /// </summary>
+        private static bool IsExcluded(string file) =>
+            Path.GetFileName(file).StartsWith("hs_", StringComparison.OrdinalIgnoreCase);
 
         private static readonly string[] NotForVillages = { "ruin", "hive", "pergola", "portal", "igloo", "chess", "mansion", "castle" };
 

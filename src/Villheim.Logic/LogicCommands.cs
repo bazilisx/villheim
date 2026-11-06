@@ -19,7 +19,7 @@ namespace Villheim.Logic
             "settle (or newvillage): light a new village hearth in front of you",
             "ghost: apply the look settings now and show the shader in use",
             "flatten [size]: clear everything from an area in front of you (360 by 260 m, enough for any gallery page) and level it at your feet's height, as far as the game allows; touch it up by hand, then 'gallery' lays out on it",
-            "gallery <meadows|blackforest> [all|house|hall|prof|storage|farm] [page N]: ten designs a page, laid out in front of you on the ground as it is (run 'flatten' first); 'gallery list <biome>' writes them all to a CSV; 'gallery show <name...>'; 'gallery clear'",
+            "gallery <meadows|blackforest> [all|house|hall|prof|storage|farm] [page N]: ten designs a page on the flattened area; then 'gallery next' (or prev, again) for the following page; the full list is written to BepInEx/Villheim/gallery-list-<biome>.csv each time; 'gallery show <name...>'; 'gallery clear'",
             "act <villager|near> <action> [seconds]: make one villager do one thing, to test it ('vh act near' lists the actions)",
             "board [now]: show the notice board's blueprint, place and what it waits for ('now' puts it up at once, free)",
             "beds: list the beds round the nearest village, whether they count and who sleeps in each",

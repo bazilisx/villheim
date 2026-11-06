@@ -75,6 +75,7 @@ namespace Villheim.Logic.Village
         public const string Usage =
             "vh gallery <meadows|blackforest> [all|house|hall|prof|storage|farm] [page N] [rescan]: ten designs a page, e.g. " +
             "'vh gallery meadows house page 2'. 'vh gallery list meadows' writes every design to BepInEx/Villheim/gallery-list-Meadows.csv. " +
+            "'vh gallery next' / 'prev' / 'again' clears the page shown and shows the next, the one before, or the same again. " +
             "'vh gallery show <name> [name...]' lays out those designs. 'vh gallery clear' removes a gallery.";
 
         private static bool _running;
@@ -137,6 +138,18 @@ namespace Villheim.Logic.Village
                 return $"Villheim: removed {gone.Count} gallery pieces and signs within 600 m (the ground stays as it is).";
             }
 
+            if (first == "next" || first == "prev" || first == "again")
+            {
+                if (!LoadLast(out string lastBiome, out string lastGroup, out int lastPage))
+                {
+                    return "Villheim: no gallery page shown yet; start with 'vh gallery meadows house'.";
+                }
+
+                int wanted = first == "next" ? lastPage + 1 : first == "prev" ? Mathf.Max(1, lastPage - 1) : lastPage;
+                Start(player, new[] { "clear" });
+                return Start(player, new[] { lastBiome, lastGroup, "page", wanted.ToString() });
+            }
+
             Action action = first == "list" ? Action.List : first == "show" ? Action.Show : Action.Page;
             string[] rest = action == Action.Page ? args : args.Skip(1).ToArray();
             Vector3 forward = player.transform.forward;
@@ -171,6 +184,11 @@ namespace Villheim.Logic.Village
                 else if (word.StartsWith("stor") || word.StartsWith("shed")) group = "storage";
                 else if (word.StartsWith("farm") || word.StartsWith("barn")) group = "farm";
                 else if (word != "all") return "Villheim: " + Usage;
+            }
+
+            if (action == Action.Page)
+            {
+                SaveLast(biome.ToString().ToLowerInvariant(), group, page);
             }
 
             VillheimPlugin.Instance.StartCoroutine(Run(player.transform.position, forward, biome, group, page, rescan, action));
@@ -371,9 +389,17 @@ namespace Villheim.Logic.Village
                 yield break;
             }
 
+            // The list for the review sheet is written every time, so it always matches what the pages show.
+            string listPath = "";
+            Safe("the list", () => listPath = WriteList(biome, cells));
             Role[] roles = Groups[group];
             List<Cell> chosen = cells.Where(c => roles.Contains(c.Role)).ToList();
             int pages = Mathf.Max(1, (chosen.Count + PageSize - 1) / PageSize);
+            Console.instance?.Print("Villheim: " + string.Join(", ", Order.Select(r =>
+            {
+                int n = cells.Count(c => c.Role == r);
+                return $"{Kind(r)} {n} ({(n + PageSize - 1) / PageSize} pages)";
+            })) + $". Full list: {listPath}");
             chosen = chosen.Skip((page - 1) * PageSize).Take(PageSize).ToList();
             if (chosen.Count == 0)
             {
@@ -381,7 +407,8 @@ namespace Villheim.Logic.Village
                 yield break;
             }
 
-            Console.instance?.Print($"Villheim: '{group}' page {page} of {pages}" + (page < pages ? $"; 'vh gallery {biome.ToString().ToLowerInvariant()} {group} page {page + 1}' for the next." : "."));
+            Console.instance?.Print($"Villheim: '{group}' page {page} of {pages}." + (page < pages ? " 'vh gallery next' clears this page and shows the next." : " That was the last page."));
+            MessageHud.instance?.ShowMessage(MessageHud.MessageType.Center, $"Gallery: {group}, page {page} of {pages}");
             yield return Place(chosen, playerPosition, forward);
         }
 
@@ -426,6 +453,28 @@ namespace Villheim.Logic.Village
             System.IO.Directory.CreateDirectory(System.IO.Path.GetDirectoryName(path));
             System.IO.File.WriteAllLines(path, lines);
             return path;
+        }
+
+        private static string LastPath => System.IO.Path.Combine(BepInEx.Paths.BepInExRootPath, "Villheim", "gallery-last-page.txt");
+
+        private static void SaveLast(string biome, string group, int page) =>
+            Safe("the last page", () => System.IO.File.WriteAllText(LastPath, $"{biome} {group} {page}"));
+
+        private static bool LoadLast(out string biome, out string group, out int page)
+        {
+            biome = group = null;
+            page = 1;
+            try
+            {
+                string[] parts = System.IO.File.ReadAllText(LastPath).Trim().Split(' ');
+                biome = parts[0];
+                group = parts[1];
+                return int.TryParse(parts[2], out page);
+            }
+            catch
+            {
+                return false;
+            }
         }
 
         private static string Csv(string text) => "\"" + (text ?? "").Replace("\"", "'") + "\"";
@@ -946,7 +995,10 @@ namespace Villheim.Logic.Village
                 }
 
                 GameObject go = view.gameObject;
-                if (go.GetComponent<Character>() || go.GetComponent<TombStone>() || go.GetComponent<VillageHearth>() ||
+                // Terrain objects stay: a terrain tool's edits (PlanBuild's flattening) can be held by them, and taking them
+                // away put the ground back to its old hills (2026-11-06).
+                if (go.GetComponentInChildren<TerrainModifier>() || go.GetComponentInChildren<TerrainOp>() || go.GetComponent<TerrainComp>() ||
+                    go.GetComponent<Character>() || go.GetComponent<TombStone>() || go.GetComponent<VillageHearth>() ||
                     go.GetComponent<LocationProxy>() || view.GetZDO().GetInt(KeyGallery) == 1 ||
                     (go.GetComponent<Piece>() is Piece piece && piece.GetCreator() != 0L))
                 {

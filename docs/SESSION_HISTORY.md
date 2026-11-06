@@ -3,66 +3,37 @@
 Current facts only. Read this at the start of a session. Narrative is in `docs/daily-notes/`, goals in
 `docs/ROADMAP.md`, how-to in `docs/DEVELOPMENT.md`.
 
-## Current State (as of 2026-11-05)
+## Current State (as of 2026-11-06)
 
-- **Branch:** `main` only. All commits authored by Baz.
-- **Deployed to the Villheim Test profile:** logic build from 2026-11-05 session 2 (site chest, biome materials,
-  walker, rewritten chores). Core DLL unchanged since `Fix access errors, terrain edits and location registration`.
-- **New test world** since 2026-11-05 session 5.
-- **Not confirmed in game:** sessions 4 and 5 (tools per job, doors, support-aware build order, own villager brain,
-  free time with mood, honest reach, no free starting stock, village chest by the hearth, small things made by the
-  hearth). Logic only, hot-reloads. The session 4 DLL was most
-  likely never loaded. Start the next session by checking the hearth's hover text shows the latest commit
-  (`scripts/Villheim-Updater.ps1` keeps the profile on main), then test; details in docs/daily-notes/2026-11/2026-11-05.md,
-  Sessions 4 and 5.
-- **Cloud builds:** nuget.bepinex.dev is blocked from cloud containers. `scripts/build-cloud.sh` compiles against
-  nuget.org and GitHub copies instead. No computer folder was shared in session 4, so nothing could be deployed.
-- **Profile mods:** BepInEx, Jötunn 2.30.2, More World Locations, PlanBuild (just added, not used by Villheim yet).
+- **Branch:** `main` (the cloud session branch is kept equal to it). All commits authored by Baz.
+- **On main, not tested in game:** the 2026-11-06 overnight work (builder at the piece, levelled sites, beds and sleep,
+  bed-based capacity, furnished buildings, Millénaire placement, real cooking, roles and trades, dialogue, walked
+  paths). Logic only, hot-reloads; core DLL unchanged. Details and what to watch for: docs/daily-notes/2026-11/2026-11-06.md.
+- **Also untested from 2026-11-05:** sessions 4, 5 and 7 (doors, support order, free time, chest by the hearth,
+  healing). Healing was replaced by the cooking rework.
+- **Updater:** `scripts/Villheim-Updater.ps1` keeps the profile on main. The hearth's hover text shows the commit.
+- **Cloud builds:** `scripts/build-cloud.sh` (nuget.bepinex.dev is blocked from cloud containers).
+- **Profile mods:** BepInEx, Jötunn 2.30.2, More World Locations, PlanBuild (not used by Villheim yet).
 - **Known issue to check:** the biome rule drops Meadows MWL designs that use core wood (likely including the
   Meadows hub `MWL_MeadowsTavern1`). The design report's materials column will show which designs remain.
-- **Study material:** VikingColonies source and decompiled Innangard were in `/tmp/study` of the 2026-11-05 cloud
-  session and are gone. Ideas are kept in `docs/LEARNINGS.md`.
+- **Study material:** Millénaire findings are in `docs/LEARNINGS.md`; decompile steps in `docs/DEVELOPMENT.md`.
 
 ## Outstanding work
 
-- Test sessions 4 and 5 in game: work starts, reach, tools, doors, build order, free time, evening ring, smoothness.
-- Next requests from Tyler (ROADMAP Milestone 4): healing first when hurt (cook at the hearth, make a cooking
-  station if none); never walk through fires; flatten land when building; the hearth upgrades over time with the
-  cooking station as part of it.
-- Bugs from the last test (start here, details in today's note, Session 7):
-  - A villager said there was no fine wood with a birch close by: gear tier 0 in the Meadows is a stone axe, which
-    likely can't cut birch, so the village asks for a material its own tools can't get. Give villagers an axe tier
-    that can cut what their biome's materials need, or drop materials they can't gather from the wants.
-  - "No axe to work with": the axe went missing from the inventory, probably the same cause as the lost clothes.
-    Check the villager inventory size (armor plus three tools may not fit) and log its contents.
-  - A villager jittered at the cooking station repeating one motion (no real cooking yet).
-  - Nobody healed. Basic healing added since (kneel and cook at the hearth); needs testing.
-  - Tool tier: axes now start at flint; check the fine wood complaint is gone.
-- New from Tyler (details in today's note, Session 8):
-  - Buildings went up far from the hearth: keep buildings within a set ring around the hearth, specialty buildings a
-    bit farther out or near their resource, never past a maximum radius.
-  - Flatten the ground before building; stone pieces went up in the air and broke. Consider no stone in early Meadows
-    villages.
-  - Repair broken pieces: structural first (flatten under ground pieces), cosmetic later.
-  - Bee hive copied again: never build bee hives.
-  - One task at a time: pieces only appear with the builder next to them; paths are walked and laid; work pauses
-    during a fight and resumes.
-  - Protector and carer roles, random and never by gender, new arrivals alternate; half take weapons when attacked.
-  - Dialogue about what villagers do, want and need.
-  - Gear by biome and village level: basic Meadows tools, protectors with biome weapons and shields.
-- Undressing after taking out the axe: cause unknown, a dress check covers it. Check the log for "lost their
-  clothes" lines.
-- Sitting on chairs and benches, beds, real cooking.
+- Test the 2026-11-06 build in game. Watch: hammer animation, villagers in beds, cooking on the hearth station
+  (`IsFireLit`), bed and workbench spots ("No covered room for" in the log), `interact` and `eat` triggers, jitter.
+- Central building built around the hearth and cooking station (Tyler, 2026-11-06).
+- Weighted growth with tiers and one pending project (Millénaire), replacing the fixed plan in `Culture`.
+- A* paths that join into a tree toward the hearth; placement reachability and cliff rule.
+- Repairs (structural first), hearth upgrades, stone only later in the Meadows (to decide).
+- Gear by biome and village level beyond the protector weapons.
+- Dialogue lines as a data file; two-villager chats with conditions.
 - Inspiration.zip stays on main for now; Tyler will remove it with a force-push once the study is done.
-- Millénaire and Innangard study from `Inspiration.zip` on branch `clearcreekmakerspace-inspiration`, one area at a
-  time. Delete that branch afterwards (Millénaire is All Rights Reserved).
-- Grid-searched paths that join into streets (Innangard-style A* over a small grid).
-- Newcomers only for free beds, by day, walking in from the village edge.
-- Use PlanBuild blueprints and prefabs as design sources.
-- Evening routine at fires and benches; interior and exterior upgrades; biome cultures.
+- Use PlanBuild blueprints and prefabs as design sources; interior and exterior upgrades; biome cultures.
 
 ## Recent milestones
 
+- **2026-11-06 (overnight: beds, sleep, cooking, roles, placement, paths, dialogue)** - see docs/daily-notes/2026-11/2026-11-06.md
 - **2026-11-05 (test notes and new requests: placement, repairs, roles, dialogue)** - see docs/daily-notes/2026-11/2026-11-05.md
 - **2026-11-05 (test of 2108f23, gathering loop fixes)** - see docs/daily-notes/2026-11/2026-11-05.md
 - **2026-11-05 (updater for the PC)** - see docs/daily-notes/2026-11/2026-11-05.md

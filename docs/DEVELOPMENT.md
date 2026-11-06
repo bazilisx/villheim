@@ -87,6 +87,22 @@ ilspycmd -t BaseAI $D > /tmp/BaseAI.cs
 
 For real method bodies, decompile `assembly_valheim.dll` from the game's `valheim_Data/Managed` folder on the PC.
 
+## Reading Millénaire
+
+`Inspiration.zip` on main holds `millenaire-9.0.3.jar`. Its culture data (villages, villager types, building plans)
+is plain JSON inside the jar under `millenaire/cultures/`. To read the code, decompile it with CFR (study material
+stays in `/tmp`, never committed):
+
+```
+mkdir -p /tmp/mill && cd /tmp/mill && unzip -qo ~/villheim/Inspiration.zip 'Inspiration/millenaire-9.0.3.jar'
+mkdir -p jar && (cd jar && unzip -qo ../Inspiration/millenaire-9.0.3.jar)
+curl -sSL -o cfr.jar https://repo1.maven.org/maven2/org/benf/cfr/0.152/cfr-0.152.jar
+(cd jar && zip -qr ../millcode.jar org/millenaire) && java -jar cfr.jar millcode.jar --outputdir src --silent true
+```
+
+The useful parts are `goal/`, `world/BuildingLocationFinder`, `building/` (BedManager, ConstructionTask),
+`village/path/` and `dialogue/`. The findings are summed up in `docs/LEARNINGS.md`.
+
 ## Facts learned the hard way
 
 - Since Valheim 1.0, terrain edits go straight to `TerrainComp.DoOperation` after claiming ownership. A `TerrainOp`
@@ -100,4 +116,8 @@ For real method bodies, decompile `assembly_valheim.dll` from the game's `valhei
 - `Collider.ClosestPoint` only works on box, sphere, capsule and convex mesh colliders. On a concave mesh it returns
   the point it was given. Use `Collider.Raycast` at that collider for a surface point.
 - `MineRock5.Damage` needs `HitData.m_hitCollider`.
+- `Cover.GetCoverForPoint` (in `assembly_utils`) is the game's own roof and wall test; a workbench needs it to say
+  under a roof with cover of at least 0.7.
+- `Character.AttachStart` does nothing outside `Player`; villagers in bed are held at `Bed.m_spawnPoint` by hand with
+  the `attach_bed` animator bool.
 - The logic DLL can apply Harmony patches (`PatchAll` on load, `UnpatchSelf` on unload), so patches hot-reload too.

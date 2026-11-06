@@ -5,7 +5,9 @@ daily note where it happened.
 
 ## The vision
 
-Villages like Millénaire's in Minecraft, made only from things already in Valheim and its mods. You come across a
+Villages like Millénaire's in Minecraft, made only from things already in Valheim and its mods. Millénaire's design
+and logic are the main reference for how villages grow, place buildings, assign roles and run their days
+(docs/LEARNINGS.md). You come across a
 couple of villagers at a hearth. Over the in-game days they gather, build, move into houses and grow into a town
 with its own look for its biome.
 
@@ -42,7 +44,8 @@ with its own look for its biome.
 - [ ] Villagers open and close doors. (Built 2026-11-05 session 4, needs testing.)
 - [ ] Support-aware build order: nothing goes up unsupported; openings before what rests on them. (Built 2026-11-05
       session 4, needs testing.)
-- [ ] Never copy bee hives from designs. (Built 2026-11-05 session 4; a bee hive still appeared in the session 8 test.)
+- [ ] Never copy bee hives from designs. (Built 2026-11-05 session 4; a bee hive still appeared in the session 8 test.
+      Names containing "hive" are also left out since 2026-11-06, needs testing.)
 - [ ] Villagers gather from nothing for their first building (no free starting stock). (Built 2026-11-05 session 5,
       needs testing.)
 - [ ] No swings from a distance: reach checked against the real surface before every blow. (Built 2026-11-05
@@ -53,13 +56,18 @@ with its own look for its biome.
 ## Milestone 3: a village that looks planned
 
 - [ ] Central hub first (tavern or longhouse), then houses, workshops (carpentry, forge) and farms.
-- [ ] Paths from a grid search that join into streets (replacing the L-shaped paths).
+- [ ] Paths from a grid search that join into streets (replacing the L-shaped paths). Millénaire uses A* with a slope
+      penalty and a tree toward the town hall (docs/LEARNINGS.md).
 - [ ] Earth floor painted under buildings.
 - [ ] Millénaire-like alignment: buildings face the streets.
 - [ ] Buildings stay close: houses orbit the hearth within a set distance; specialty buildings go a bit farther out or
-      next to their resource (mining nodes, water), always inside a maximum radius (Tyler, 2026-11-05).
-- [ ] Ground first: every site is flattened before the first piece goes up (Tyler, 2026-11-05).
-- [ ] Paths are laid by a villager walking the route, one stretch at a time (Tyler, 2026-11-05).
+      next to their resource (mining nodes, water), always inside a maximum radius (Tyler, 2026-11-05). (Built
+      2026-11-06 after Millénaire: distance bands per role, ring order, workshops near trees and rocks; needs testing.)
+- [ ] Buildings never overlap other buildings or paths (Tyler, 2026-11-06). (Built 2026-11-06, needs testing.)
+- [ ] Ground first: every site is flattened before the first piece goes up (Tyler, 2026-11-05). (Built 2026-11-06:
+      whole outline at break ground, and under each ground piece; needs testing.)
+- [ ] Paths are laid by a villager walking the route, one stretch at a time (Tyler, 2026-11-05). (Built 2026-11-06,
+      needs testing.)
 - [ ] Repairs: villagers fix broken pieces, structural first (flatten under ground pieces), cosmetic later (Tyler,
       2026-11-05).
 - [ ] Stone building waits until the village advances, at least in the Meadows (Tyler, 2026-11-05; to decide).
@@ -67,21 +75,30 @@ with its own look for its biome.
 ## Milestone 4: villagers with lives
 
 - [ ] One small house per villager household; newcomers only arrive for a free bed, by day, walking in from the edge.
+      (Built 2026-11-06: capacity is one per bed, small homes get one bed, larger homes two, the longhouse one per
+      first settler; needs testing.)
 - [ ] Free time: fire, sitting, strolls, chats, keeping busy at stations, gestures by village mood. (Built 2026-11-05
       session 5, needs testing.)
 - [ ] Evening ring at the hearth, sitting and resting by the fire at night. (Built 2026-11-05 session 5, needs
       testing.)
-- [ ] Sit on the village's chairs and benches; sleep in beds.
+- [ ] Sit on the village's chairs and benches.
+- [ ] Sleep in claimed beds, bedtime 22:00 to 23:00 and up at 05:00 to 06:00, random per villager (Tyler,
+      2026-11-06). (Built 2026-11-06, needs testing.)
 - [ ] Villagers with nothing else to do make a fire pit, cooking station, workbench and benches by the hearth.
       (Built 2026-11-05 session 5, needs testing.)
-- [ ] Villagers cook for real at the hearth's cooking station.
+- [ ] Villagers cook for real at the hearth's cooking station: put food on, wait its cooking time, take it off, eat
+      and heal by the food's regen over its duration; cooked food in the chest is eaten when needed, raw food is
+      cooked and eaten or stored (Tyler, 2026-11-06). (Built 2026-11-06, needs testing.)
 - [ ] Enough in the chest means no harvesting: villagers switch to two roles, builder and crafter/interior designer
       (Tyler, 2026-11-05).
 - [ ] Crafted pieces follow the game's rules: workbenches and other crafting stations go under a roof (inside a
       village building) so they are usable; the workbench made outside in the test is not (Tyler, 2026-11-05).
+      (Built 2026-11-06: workshops get a workbench at a spot that passes the game's cover test; needs testing.)
+- [ ] Profession buildings with their workbenches near key resources (Tyler, 2026-11-06). (Workshops placed near
+      trees and rocks 2026-11-06; more profession buildings to come.)
+- [ ] Central building built around the hearth and cooking station, growing with it (Tyler, 2026-11-06).
 - [ ] Hurt villagers put healing first: cook food at the hearth and eat it; with no cooking station, make one first
-      (Tyler, 2026-11-05). (Basic version built 2026-11-05 session 7: kneel and cook at the hearth, raw meat from the
-      chest heals more. Real cooking on the station and making one first are still to do.)
+      (Tyler, 2026-11-05). (Real cooking built 2026-11-06; the cooking station is the first thing villagers make.)
 - [ ] Villagers never walk or run through a fire: the hearth, fire pits and campfires are kept out of every walk,
       including straight steps (door passes, last metres to a tree) (Tyler, 2026-11-05).
 - [ ] Every building site is flattened where needed before and while building, beyond the design's own terrain
@@ -90,12 +107,16 @@ with its own look for its biome.
       cooking station over it, then larger vanilla fire pieces; the cooking station is part of the hearth, not a
       separate fire. (Cooking station moved onto the hearth 2026-11-05 session 7; upgrades not started.)
 - [ ] One task at a time: pieces only appear while the builder stands next to them; a fight pauses the build or path,
-      which resumes afterwards (Tyler, 2026-11-05).
+      which resumes afterwards (Tyler, 2026-11-05). (Built 2026-11-06, needs testing.)
+- [ ] The builder stands right by the piece and taps it with the hammer's own animation; no punching, no jitter at
+      the workbench (Tyler, 2026-11-06). (Built 2026-11-06, needs testing.)
 - [ ] Protector and carer roles: assigned at random, never by gender; new arrivals alternate protector, carer,
       protector. Roles do not limit jobs; they show in idle time and emergencies. When attacked, protectors take basic
-      weapons and defend (Tyler, 2026-11-05).
+      weapons and defend (Tyler, 2026-11-05). (Built 2026-11-06, needs testing.)
+- [ ] Trades once the village has six villagers (carpenter, woodcutter, miner, cook, more as it grows), generalists
+      before that, after Millénaire's villager types (Tyler, 2026-11-06). (Built 2026-11-06, needs testing.)
 - [ ] Dialogue about what villagers are doing, want and need, with conditions; grow into a large library of lines
-      (Tyler, 2026-11-05).
+      (Tyler, 2026-11-05). (First topics built 2026-11-06; a data file and two-villager chats are next.)
 - [ ] Interiors upgrade over time (bed, chests, table, then better furniture).
 - [ ] Exteriors upgrade over time (swap a building for a better design of the same role).
 

@@ -1,4 +1,4 @@
-# What I learned from VikingColonies and Innangard
+# What I learned from Millénaire, VikingColonies and Innangard
 
 I read through the source of two village mods to see how they solve the same problems Villheim has. VikingColonies
 (by DaAlmyte) publishes its source. Innangard (by Yololo) ships as a compiled plugin, so I read a decompiled copy.
@@ -149,3 +149,98 @@ Later:
 - Builders carrying materials from a village chest.
 - Ghost previews of the next building.
 - Roads between villages.
+
+## Millénaire 9.0.3 (study of 2026-11-06)
+
+Read from the decompiled jar in `Inspiration.zip` (the NeoForge port, "Millénaire 9") and its culture data files.
+Ideas and numbers only; Millénaire is All Rights Reserved and none of its code is copied. How to re-create the
+decompiled source is in `docs/DEVELOPMENT.md`.
+
+### Village growth
+
+- A village is a centre (the town hall) plus buildings in tiers: `start`, `core`, `secondary`, `extra`. Start
+  buildings exist from founding; the rest are built later.
+- Once a second, if no other building is going up (one site at a time by default), the village picks the next
+  project at random, weighted by the plan's priority times a tier multiplier: start 6, core 4, secondary 2, extra 1.
+  Only the lowest unfinished tier is eligible. Upgrades (a building's next level) are always in the pool.
+- If the pick can't be paid for, it becomes the one "pending project". Its bill drives what villagers gather (need =
+  bill + target stock - chest - what the builder carries). Meanwhile an affordable fallback can still be built.
+- "Nothing to build" is cached for about 30 s; a plan that finds no site waits about 80 s.
+
+### Placement
+
+- Fixed village radius (90 blocks by default); every plan has a min and max distance as a share of it (farms 0.5 and
+  up, quarry 0.6 and up, presbytery at most 0.8). The radius never grows.
+- Ring scan from the inside out, four sides from a random start, first valid spot wins.
+- A spot fails when it touches an occupied cell (buildings and paths), has more than about 10 bad cells (steep, wet,
+  forbidden), has a neighbour cliff higher than gap + 3, is less than 70% reachable from the town hall, or breaks
+  `far_from` / `close_to` tag rules (for example away from patrol points by 20).
+- Buildings face the centre along the dominant axis.
+- Villheim (2026-11-06): distance bands per role, ring order, path clearance and workshops near resources are in
+  `PlotFinder`. Reachability, the cliff rule and tag rules are not done yet.
+
+### Construction
+
+- Each build is a precomputed flat list of steps: clear and fill the terrain first, then the structure, then pieces
+  that hang on others (doors, torches, beds), sorted by layer and then in a snake over 8 x 8 tiles.
+- One builder per site. He takes the whole bill from the chest in one trip, walks to the site and places blocks within
+  about 5 blocks of where he stands (after 100 ticks stuck he places from where he is). Progress is saved so another
+  builder can carry on. Three failures and the site stops blocking new projects.
+- Villheim: the builder stands a step out from the edge of each piece and the site is levelled first. Materials are
+  still paid per piece from the chest.
+
+### Paths
+
+- Laid after buildings, routed as a tree toward the town hall with waypoints, plus a few side links. 4-neighbour A*
+  with a slope penalty (2.0 per squared slope), turn penalty 0.3, a bonus for reusing path cells, node budget 5000.
+- Laying paths is background work (priority 50, clearing old paths 40), one villager at a time, one cell per action.
+- Villheim: paths are walked and laid by one villager at a time (`PathLaying`), still on the L-shaped grid route.
+  The A* router is still to do.
+
+### Villager types and roles
+
+- A villager type is a goal list plus tags (`helpInAttacks`, `raider`, ...). Buildings list their residents (male and
+  female types); a building level can add residents. New residents come from children growing up or from arrivals.
+- In the Norman culture the women build and haul; the men work their building's trade (lumberman, miner, smith...).
+- Villheim keeps roles apart from gender: protector and carer by arrival order, trades from six villagers on.
+
+### Goals and the daily routine
+
+- Each villager has an ordered goal list. Each tick the scheduler picks the highest priority goal that can start;
+  work always beats leisure. Goals have day and night flags, cooldowns and throttles; idle back-off goes 1, 2, 4 up to
+  20; watchdogs end a goal with no progress.
+- Priorities worth reusing: idle 0, socialise 5, chat 10, paths 40 to 50, rest at night 50 + sleep debt / 30, gather
+  125 to 500, build 1500, fetch a tool 1600, light the hearth 2000, fight 5000 to 9999.
+- Sleep: night only, in a bed claimed in the villager's own building, with fallbacks so a missing bed never blocks
+  anything. A resident lights the hearth in the morning.
+- Adults don't get hungry in Millénaire; food is a household matter (children's growth). Villheim goes further at
+  Tyler's request: villagers eat real food and heal by its numbers.
+
+### Gathering and storage
+
+- Gathering happens in purpose-made plots (groves, quarry points, fields), never on wild trees. Stock limits stop
+  work when the chest is full; a carry penalty sends a gatherer home before overloading; ground items within 20
+  blocks are picked up first.
+- The town hall chest is the village bank. A villager without the tool he needs fetches one from the chest first.
+
+### Defence
+
+- Raids are village against village. Defenders (`helpInAttacks`) go to the defence point and the rest hide at the
+  shelter point, both at priority 9999. Nobody flees. Villheim: protectors arm and fight, carers keep away from the
+  enemy while a protector is there.
+
+### Dialogue
+
+- Two plain text formats. Sentences: `role.goalKey=text`, falling back from role to gender to a generic line, said
+  when a player is close, with a cooldown. Chats: blocks of lines between two villagers with a key, weight and
+  conditions (weather, which buildings exist, which villager types live there, who speaks).
+- Villheim: `Dialogue` topics with conditions on the moment. A data file of lines is a later step.
+
+### Next ideas from Millénaire for Villheim
+
+- Weighted growth with tiers and one pending project instead of the fixed plan in `Culture`.
+- Building levels: upgrade a building (extra room, better furniture) as a new step list over the old one.
+- Reachability and the cliff rule in placement.
+- A* paths that join into a tree toward the hearth.
+- A morning resident who lights and tends the hearth; a resting place under a roof for villagers with no bed.
+- A data file of dialogue lines and two-villager chats.

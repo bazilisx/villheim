@@ -28,7 +28,8 @@ namespace Villheim.Logic.Village
         /// <summary>A home with a radius under this is a small home with one bed.</summary>
         public const float SmallHomeRadius = 9f;
 
-        private const float Step = 0.5f;
+        private const float Step = 0.75f;
+        private const int EnoughCandidates = 24;
         private const float MinCover = 0.7f;
         private const float DoorClearance = 1.8f;
 
@@ -132,7 +133,7 @@ namespace Villheim.Logic.Village
             Quaternion plotTurn = Quaternion.Euler(0f, plot.Yaw, 0f);
             var candidates = new List<(float Score, Vector3 Spot, Quaternion Rotation)>();
 
-            for (int x = -cells; x <= cells; x++)
+            for (int x = -cells; x <= cells && candidates.Count < EnoughCandidates; x++)
             {
                 for (int z = -cells; z <= cells; z++)
                 {
@@ -149,24 +150,44 @@ namespace Villheim.Logic.Village
                     }
 
                     point.y = floorY;
-                    Cover.GetCoverForPoint(point + Vector3.up * 1f, out float cover, out bool underRoof);
-                    if (!underRoof || cover < MinCover || NearDoor(point))
+                    if (NearDoor(point))
                     {
                         continue;
                     }
 
-                    // Back to the wall: try the four turns of the building and keep the one with a wall closest behind.
+                    // Cheap tests first (does it fit), the game's cover test (many rays) only for spots that fit.
+                    var fits = new List<Quaternion>();
                     for (int turn = 0; turn < 4; turn++)
                     {
                         Quaternion candidate = plotTurn * Quaternion.Euler(0f, 90f * turn, 0f);
-                        if (!Fits(prefab, prefabName, point, candidate))
+                        if (Fits(prefab, prefabName, point, candidate))
                         {
-                            continue;
+                            fits.Add(candidate);
                         }
+                    }
 
+                    if (fits.Count == 0)
+                    {
+                        continue;
+                    }
+
+                    Cover.GetCoverForPoint(point + Vector3.up * 1f, out float cover, out bool underRoof);
+                    if (!underRoof || cover < MinCover)
+                    {
+                        continue;
+                    }
+
+                    // Back to the wall: keep the turn with a wall closest behind.
+                    foreach (Quaternion candidate in fits)
+                    {
                         float behind = WallBehind(point, candidate);
                         float score = behind + (1f - cover) * 2f + local.magnitude * 0.05f;
                         candidates.Add((score, point, candidate));
+                    }
+
+                    if (candidates.Count >= EnoughCandidates)
+                    {
+                        break;
                     }
                 }
             }

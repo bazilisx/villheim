@@ -67,7 +67,7 @@ namespace Villheim.Logic.Village
         };
 
         public const string Usage =
-            "vh gallery <meadows|blackforest> [all|house|hall|prof|storage|farm] [level]: e.g. 'vh gallery meadows house 1'; 'vh gallery clear' removes a gallery";
+            "vh gallery <meadows|blackforest> [all|house|hall|prof|storage|farm] [level] [rescan]: e.g. 'vh gallery meadows house 1'; 'vh gallery clear' removes a gallery";
 
         private static bool _running;
 
@@ -104,10 +104,15 @@ namespace Villheim.Logic.Village
             Heightmap.Biome biome = biomeName.StartsWith("black") || biomeName.StartsWith("forest") ? Heightmap.Biome.BlackForest : Heightmap.Biome.Meadows;
             string group = "all";
             int level = 0;
+            bool rescan = false;
             foreach (string arg in args.Skip(1))
             {
                 string a = arg.ToLowerInvariant();
-                if (int.TryParse(a, out int n))
+                if (a == "rescan")
+                {
+                    rescan = true;
+                }
+                else if (int.TryParse(a, out int n))
                 {
                     level = n;
                 }
@@ -140,12 +145,12 @@ namespace Villheim.Logic.Village
             Vector3 forward = player.transform.forward;
             forward.y = 0f;
             forward.Normalize();
-            VillheimPlugin.Instance.StartCoroutine(Run(player.transform.position, forward, biome, group, level));
+            VillheimPlugin.Instance.StartCoroutine(Run(player.transform.position, forward, biome, group, level, rescan));
             return $"Villheim: gathering every {biome} design ({group}{(level > 0 ? ", level " + level : "")}): the curated lists, " +
                    "all blueprints (yours, PlanBuild's, OverDrive's) and every location in the game that is a buildable building.";
         }
 
-        private static IEnumerator Run(Vector3 playerPosition, Vector3 forward, Heightmap.Biome biome, string group, int level)
+        private static IEnumerator Run(Vector3 playerPosition, Vector3 forward, Heightmap.Biome biome, string group, int level, bool rescan)
         {
             _running = true;
             var cells = new List<Cell>();
@@ -188,28 +193,38 @@ namespace Villheim.Logic.Village
             Safe("the location list", () => locations.AddRange(ZoneSystem.instance.m_locations
                 .Where(l => l != null && l.m_prefab.IsValid && l.m_exteriorRadius <= 40f && !Unsuitable(l.m_prefabName))
                 .GroupBy(l => l.m_prefabName).Select(g => g.First())));
-            int checkedCount = 0;
+            // What each location turned out to be is kept on disk, so only new locations are opened again.
+            Dictionary<string, bool> known = rescan ? new Dictionary<string, bool>() : ReadCache(biome);
+            int checkedCount = 0, opened = 0;
             foreach (ZoneSystem.ZoneLocation location in locations)
             {
                 checkedCount++;
-                if (!seen.Contains(location.m_prefabName))
+                if (seen.Contains(location.m_prefabName))
                 {
-                    bool add = false;
+                    continue;
+                }
+
+                if (!known.TryGetValue(location.m_prefabName, out bool add))
+                {
                     Safe(location.m_prefabName, () => add = DesignLibrary.BuildableIn(location, biome) && IsBuilding(location));
-                    if (add)
+                    known[location.m_prefabName] = add;
+                    opened++;
+                    if (opened % 10 == 0)
                     {
-                        Add(new DesignLibrary.Design(location, 1f), RoleFromName(location.m_prefabName));
+                        MessageHud.instance?.ShowMessage(MessageHud.MessageType.TopLeft,
+                            $"Gallery: looked at {checkedCount}/{locations.Count} locations, {cells.Count} designs so far");
                     }
+
+                    yield return null;
                 }
 
-                if (checkedCount % 10 == 0)
+                if (add)
                 {
-                    MessageHud.instance?.ShowMessage(MessageHud.MessageType.TopLeft,
-                        $"Gallery: looked at {checkedCount}/{locations.Count} locations, {cells.Count} designs so far");
+                    Add(new DesignLibrary.Design(location, 1f), RoleFromName(location.m_prefabName));
                 }
-
-                yield return null;
             }
+
+            Safe("the location cache", () => WriteCache(biome, known));
 
             _running = false;
             Role[] roles = Groups[group];
@@ -344,6 +359,43 @@ namespace Villheim.Logic.Village
                     }
                 }
             }
+        }
+
+        private static string CachePath(Heightmap.Biome biome) =>
+            System.IO.Path.Combine(BepInEx.Paths.BepInExRootPath, "Villheim", $"gallery-locations-{biome}.txt");
+
+        /// <summary>Location name and whether it is a buildable building in the biome, from the last runs.</summary>
+        private static Dictionary<string, bool> ReadCache(Heightmap.Biome biome)
+        {
+            var known = new Dictionary<string, bool>();
+            try
+            {
+                if (System.IO.File.Exists(CachePath(biome)))
+                {
+                    foreach (string line in System.IO.File.ReadAllLines(CachePath(biome)))
+                    {
+                        int bar = line.LastIndexOf('|');
+                        if (bar > 0 && !line.StartsWith("#"))
+                        {
+                            known[line.Substring(0, bar)] = line.Substring(bar + 1) == "1";
+                        }
+                    }
+                }
+            }
+            catch (System.Exception e)
+            {
+                VillheimPlugin.Log.LogWarning($"Gallery: could not read the location cache: {e.Message}");
+            }
+
+            return known;
+        }
+
+        private static void WriteCache(Heightmap.Biome biome, Dictionary<string, bool> known)
+        {
+            System.IO.Directory.CreateDirectory(System.IO.Path.GetDirectoryName(CachePath(biome)));
+            System.IO.File.WriteAllLines(CachePath(biome),
+                new[] { $"# Locations looked at by vh gallery for {biome}: name|1 when it is a building the biome can build. 'vh gallery {biome.ToString().ToLowerInvariant()} rescan' looks again." }
+                    .Concat(known.OrderBy(k => k.Key).Select(k => $"{k.Key}|{(k.Value ? 1 : 0)}")));
         }
 
         private static void Safe(string what, System.Action action)

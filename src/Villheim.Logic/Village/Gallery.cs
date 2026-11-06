@@ -7,20 +7,16 @@ using Villheim.Logic.Designs;
 namespace Villheim.Logic.Village
 {
     /// <summary>
-    /// 'vh gallery [meadows|blackforest]': lays out every design a village of that biome could build, side by side on
-    /// one flat, cleared plain, to review them in a fresh world. Each stands flush on its pad as a village would build
-    /// it (the same pieces, its foundation on the ground), with a sign in front: the kind of building and the
-    /// village level it is meant for on top in bright blue, the design's name below in white.
+    /// Design review in a fresh world, in two steps:
     ///
-    /// First it looks, outward from the player up to 2 km, for calm land (any biome but the Mistlands, Ashlands, Deep
-    /// North or sea) big enough for the whole layout whose
-    /// ground varies by no more than 12 m (read from the world generator; failing that, the flattest found), and moves
-    /// the player there. A design whose own ground is more than 6 m off the plain gets a flat terrace of its own: the game lets
-    /// terrain move only 8 m either way, so the plain has to start out nearly flat (an earlier try lifted that limit and
-    /// broke the ground's look and collisions). There the whole area, with a 12 m margin, is made one flat, bare plain:
-    /// everything standing on it is removed at any height (not creatures or anything a player built), the ground is
-    /// levelled at the area's middle height and the grass taken off, in overlapping pads 24 m apart. A design goes up
-    /// once all the ground round it is done. Gallery pieces never wear or fall (see NoWearPatch).
+    /// 1. 'vh flatten [size]' clears everything from a square in front of the player and levels it at his feet's height,
+    ///    as far as the game's 8 m either way allows, and takes the grass off. The player touches it up by hand (PlanBuild's
+    ///    terrain tool).
+    /// 2. 'vh gallery &lt;biome&gt; [group] [page N]' lays ten designs a page out in front of the player, grouped by kind,
+    ///    each on the middle height of the ground under it and set on its foundation after it is put down (measured
+    ///    from its colliders), with a sign: kind, design name, creator. Only designs a player at that stage could build
+    ///    (see Viable). 'vh gallery list' writes them all to a CSV for the review sheet, 'vh gallery show' lays out
+    ///    named ones, 'vh gallery clear' removes a gallery. Gallery pieces never wear or fall (see NoWearPatch).
     /// </summary>
     internal static class Gallery
     {
@@ -467,62 +463,84 @@ namespace Villheim.Logic.Village
             return design.Name.StartsWith("MWL_") ? "warpalicious" : "Iron Gate (vanilla) or a mod";
         }
 
-        /// <summary>Lays the cells out, finds flat land for them, goes there and puts them up.</summary>
+        /// <summary>
+        /// Lays the cells out in front of the player and puts them up on the ground as it is there: no clearing, no
+        /// levelling (that is 'vh flatten', touched up by hand). Each design goes on the middle height of the ground
+        /// under it, measured when its zone is loaded.
+        /// </summary>
         private static IEnumerator Place(List<Cell> cells, Vector3 playerPosition, Vector3 forward)
         {
             var labels = new List<(Vector3 At, string Text)>();
             float depth = 0f, widest = 0f;
             Safe("the layout", () => Layout(cells, forward, labels, out depth, out widest));
-            Vector3 right = Vector3.Cross(Vector3.up, forward);
-            var site = new SiteResult();
-            yield return FindSite(playerPosition, forward, right, widest + Margin * 2f, depth + Margin * 2f, Heightmap.Biome.Meadows, site);
-            if (!site.Found)
-            {
-                Console.instance?.Print("Villheim: found no land big enough within 2 km (Meadows, Black Forest, Plains, Swamp or " +
-                                        "Mountain, all above water). Try again from elsewhere.");
-                yield break;
-            }
-
-            Vector3 start = site.Start;
-            int terraces = 0;
+            Vector3 start = playerPosition + forward * 8f;
             foreach (Cell cell in cells)
             {
-                var center = new Vector3(start.x + cell.Center.x, 0f, start.z + cell.Center.z);
-                float own = GroundOf(center, cell.Half);
-                bool onPlain = Mathf.Abs(own - site.Height) <= 6f;
-                cell.Center = new Vector3(center.x, onPlain ? site.Height : own, center.z);
-                cell.Terrace = !onPlain;
-                terraces += onPlain ? 0 : 1;
+                cell.Center = new Vector3(start.x + cell.Center.x, float.NaN, start.z + cell.Center.z);
             }
 
             for (int i = 0; i < labels.Count; i++)
             {
-                labels[i] = (new Vector3(start.x + labels[i].At.x, site.Height, start.z + labels[i].At.z), labels[i].Text);
+                labels[i] = (new Vector3(start.x + labels[i].At.x, float.NaN, start.z + labels[i].At.z), labels[i].Text);
             }
 
-            var pads = new List<Pad>();
-            for (float z = -Margin; z <= depth + Margin; z += PadSpacing)
+            VillheimPlugin.Instance.StartCoroutine(Build(cells, new List<Pad>(), forward, labels));
+            Console.instance?.Print($"Villheim: laying out {cells.Count} designs in front of you ({widest:0} by {depth:0} m). " +
+                                    "Run 'vh flatten' there first to clear and level the ground.");
+            yield break;
+        }
+
+        /// <summary>The middle height of the loaded ground across a square.</summary>
+        private static float MeasuredGround(Vector3 center, float half)
+        {
+            var heights = new List<float>();
+            for (float x = -half; x <= half; x += half / 2f)
             {
-                for (float x = -widest / 2f - Margin; x <= widest / 2f + Margin; x += PadSpacing)
+                for (float z = -half; z <= half; z += half / 2f)
                 {
-                    Vector3 p = start + forward * z + right * x;
-                    pads.Add(new Pad { Center = new Vector3(p.x, site.Height, p.z) });
+                    if (ZoneSystem.instance.GetGroundHeight(new Vector3(center.x + x, 0f, center.z + z), out float h))
+                    {
+                        heights.Add(h);
+                    }
                 }
             }
 
-            Player player = Player.m_localPlayer;
-            if (player != null && Utils.DistanceXZ(player.transform.position, start) > 30f)
+            heights.Sort();
+            return heights.Count > 0 ? heights[heights.Count / 2] : center.y;
+        }
+
+        /// <summary>
+        /// 'vh flatten [size]': clears and levels a square in front of the player (200 m by default) at the height of
+        /// the ground under his feet, as far as the game's 8 m allows, and takes the grass off. Parts in zones that
+        /// aren't loaded are done as he walks to them. Touch it up with a terrain tool, then 'vh gallery'.
+        /// </summary>
+        public static string Flatten(Player player, string[] args)
+        {
+            float size = args.Length > 0 && float.TryParse(args[0], out float given) ? Mathf.Clamp(given, 30f, 600f) : 200f;
+            Vector3 forward = player.transform.forward;
+            forward.y = 0f;
+            forward.Normalize();
+            Vector3 right = Vector3.Cross(Vector3.up, forward);
+            float height = player.transform.position.y;
+            if (ZoneSystem.instance.GetGroundHeight(player.transform.position, out float ground))
             {
-                Vector3 stand = start - forward * (Margin + 4f);
-                stand.y = WorldGenerator.instance.GetHeight(stand.x, stand.z) + 1f;
-                player.TeleportTo(stand, Quaternion.LookRotation(forward), true);
+                height = ground;
             }
 
-            VillheimPlugin.Instance.StartCoroutine(Build(cells, pads, forward, labels));
-            Console.instance?.Print($"Villheim: found flat land ({WorldGenerator.instance.GetBiome(start)}) {Utils.DistanceXZ(playerPosition, start):0} m away " +
-                                    $"({site.Relief:0.0} m between highest and lowest ground); laying out {cells.Count} designs" +
-                                    (terraces > 0 ? $" ({terraces} on terraces of their own, where the ground is too high or low for the plain)." : "."));
-            MessageHud.instance?.ShowMessage(MessageHud.MessageType.Center, $"Gallery: {cells.Count} designs; clearing the ground");
+            Vector3 start = player.transform.position + forward * 4f;
+            var pads = new List<Pad>();
+            for (float z = 0f; z <= size; z += PadSpacing)
+            {
+                for (float x = -size / 2f; x <= size / 2f; x += PadSpacing)
+                {
+                    Vector3 p = start + forward * z + right * x;
+                    pads.Add(new Pad { Center = new Vector3(p.x, height, p.z) });
+                }
+            }
+
+            VillheimPlugin.Instance.StartCoroutine(Build(new List<Cell>(), pads, forward, new List<(Vector3 At, string Text)>()));
+            return $"Villheim: clearing and levelling {size:0} by {size:0} m in front of you at {height:0.0} m ({pads.Count} pads). " +
+                   "Walk along it so the far parts load; the top-left counts the pads done.";
         }
 
         /// <summary>The middle height of the generated ground across a square.</summary>
@@ -766,10 +784,9 @@ namespace Villheim.Logic.Village
 
         private static IEnumerator Build(List<Cell> cells, List<Pad> pads, Vector3 forward, List<(Vector3 At, string Text)> labels)
         {
-            bool labelled = false;
             float until = Time.time + 40f * 60f;
             int built = 0;
-            while (built < cells.Count && Time.time < until)
+            while ((built < cells.Count || pads.Any(p => !p.Done) || labels.Count > 0) && Time.time < until)
             {
                 // Ground first: every pad whose zone is loaded is cleared, levelled and bared.
                 bool shaped = false;
@@ -794,13 +811,22 @@ namespace Villheim.Logic.Village
                     yield return new WaitForSeconds(1f); // let the ground's collider catch up
                 }
 
-                if (!labelled && pads.All(p => p.Done || labels.All(l => Utils.DistanceXZ(p.Center, l.At) > PadRadius + 6f)))
+                // Cluster labels, each once its spot is loaded and its ground done.
+                foreach ((Vector3 at, string text) in labels.ToList())
                 {
-                    labelled = true;
-                    foreach ((Vector3 at, string text) in labels)
+                    if (!Loaded(at, 4f) || pads.Any(p => !p.Done && Utils.DistanceXZ(p.Center, at) < PadRadius + 6f))
                     {
-                        Safe("a label", () => PutSign(at, forward, text));
+                        continue;
                     }
+
+                    labels.Remove((at, text));
+                    Vector3 spot = at;
+                    if (float.IsNaN(spot.y))
+                    {
+                        spot.y = ZoneSystem.instance.GetGroundHeight(new Vector3(spot.x, 0f, spot.z), out float h) ? h : 0f;
+                    }
+
+                    Safe("a label", () => PutSign(spot, forward, text));
                 }
 
                 // Then each plot whose ground is all done.
@@ -810,6 +836,16 @@ namespace Villheim.Logic.Village
                     if (pads.Any(p => !p.Done && Utils.DistanceXZ(p.Center, cell.Center) < reach))
                     {
                         continue;
+                    }
+
+                    if (float.IsNaN(cell.Center.y))
+                    {
+                        if (!Loaded(cell.Center, cell.Half * 1.42f))
+                        {
+                            continue;
+                        }
+
+                        cell.Center.y = MeasuredGround(cell.Center, cell.Half);
                     }
 
                     cell.Done = true;

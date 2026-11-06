@@ -18,7 +18,8 @@ namespace Villheim.Logic
             "grow: make the nearest village start its next building now (adds the wood it needs)",
             "settle (or newvillage): light a new village hearth in front of you",
             "ghost: apply the look settings now and show the shader in use",
-            "gallery <meadows|blackforest> [all|house|hall|prof|storage|farm] [level]: in a fresh world, clear and flatten an area ahead of you and lay out every design of that biome (curated, blueprints, every buildable location), clustered by level and kind, each with a sign; 'gallery clear' removes one",
+            "flatten [size]: clear everything from a square in front of you (200 m by default) and level it at your feet's height, as far as the game allows; touch it up by hand, then 'gallery'",
+            "gallery <meadows|blackforest> [all|house|hall|prof|storage|farm] [page N]: ten designs a page, laid out in front of you on the ground as it is (run 'flatten' first); 'gallery list <biome>' writes them all to a CSV; 'gallery show <name...>'; 'gallery clear'",
             "act <villager|near> <action> [seconds]: make one villager do one thing, to test it ('vh act near' lists the actions)",
             "board [now]: show the notice board's blueprint, place and what it waits for ('now' puts it up at once, free)",
             "beds: list the beds round the nearest village, whether they count and who sleeps in each",
@@ -63,6 +64,13 @@ namespace Villheim.Logic
                         float seconds = args.Length > 0 && float.TryParse(args[0], System.Globalization.NumberStyles.Float,
                             System.Globalization.CultureInfo.InvariantCulture, out float s) ? s : 20f;
                         Say(context, Villagers.MotionTrace.Start(tracer, seconds));
+                    }
+
+                    return true;
+                case "villheim_flatten":
+                    if (TryGetPlayer(context, out Player flattener))
+                    {
+                        Say(context, Gallery.Flatten(flattener, args));
                     }
 
                     return true;

@@ -110,11 +110,16 @@ namespace Villheim.Logic.Designs
         }
 
         /// <summary>
-        /// Never used anywhere (Tyler, 2026-11-06): the generated "hs_" house designs from the BiomeBlueprints pack. The
-        /// pack's community builds keep their own names and are not affected.
+        /// Never used anywhere (Tyler, 2026-11-06): the generated house designs from the BiomeBlueprints pack, all alike,
+        /// named only by biome, style and size ("hs_swamp_stone_manor", "hs_mountain_stilt_cottage", "hs_meadows_hut").
+        /// Builds in the pack made by people, with their own names, are kept, "hs_" or not.
         /// </summary>
-        private static bool IsExcluded(string file) =>
-            Path.GetFileName(file).StartsWith("hs_", StringComparison.OrdinalIgnoreCase);
+        private static readonly System.Text.RegularExpressions.Regex Generated = new System.Text.RegularExpressions.Regex(
+            @"^hs_((meadows|blackforest|black_forest|swamp|mountain|mountains|plains|mistlands|ashlands|deepnorth|deep_north|ocean)_)?" +
+            @"((stilt|stone|wood|wooden|log|timber)_)?(hut|cottage|house|manor|villa|longhouse|long_house|great_hall|hall|cabin)(_?\d+)?$",
+            System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+
+        private static bool IsExcluded(string file) => Generated.IsMatch(Path.GetFileNameWithoutExtension(file));
 
         private static readonly string[] NotForVillages = { "ruin", "hive", "pergola", "portal", "igloo", "chess", "mansion", "castle" };
 

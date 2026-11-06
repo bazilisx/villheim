@@ -1,0 +1,296 @@
+# Villheim: mood crossed with work and weather, gossip, the player's standing, and more exchanges.
+# Same format as social.txt.
+
+# ------------------------------------------------------------------ mood while working
+
+@ feel:happy, doing:felling ~happy
+This axe and I are getting on today.
+Down she goes! Lovely.
+
+@ feel:stressed, doing:felling ~angry
+Every tree in this forest is twisted. Every one.
+Fall, you stubborn thing. Fall.
+
+@ feel:happy, doing:mining ~happy
+Good clean breaks today. Even the rocks are in a good mood.
+
+@ feel:stressed, doing:mining ~angry
+I hit it. It laughed at me. I swear it laughed.
+
+@ feel:happy, doing:building ~proud
+Look at that line. Straight as you like.
+
+@ feel:stressed, doing:building ~angry
+This peg won't go in. Nothing wants to go in today.
+
+@ feel:happy, doing:carrying
+Light load, light heart.
+
+@ feel:stressed, doing:carrying ~sad
+My arms are going to fall off. Then who'll carry things?
+
+@ feel:happy, doing:cooking ~happy
+Perfect, if I say so myself. And I do.
+
+@ feel:stressed, doing:cooking ~sad
+I burned the last one. I'm not burning this one. I'm not.
+
+@ feel:miserable, doing:felling ~sad
+Swing, chop, swing. That's all I've got today.
+
+@ feel:miserable, doing:building ~sad
+I'm building homes for everyone else and sleeping on the floor.
+
+# ------------------------------------------------------------------ mood and weather
+
+@ feel:happy, rain ~happy
+Rain doesn't bother me today. Nothing does.
+
+@ feel:stressed, rain ~sad
+And now it's raining. Of course it is.
+
+@ feel:happy, cold
+Cold? I hadn't noticed. Good mood keeps you warm.
+
+@ feel:stressed, cold ~angry
+Cold, wet, tired. Pick one, weather. Just one.
+
+@ feel:happy, evening ~happy
+A good day ending well. Sit with me a while.
+
+@ feel:stressed, evening ~sad
+I'm glad today's nearly over.
+
+@ feel:happy, morning ~happy
+I've got a good feeling about today.
+
+@ feel:stressed, morning ~sad
+Another day. Let's get it over with.
+
+# ------------------------------------------------------------------ gossip, by voice
+
+@ !night, !few | steady
+{other} works harder than they let on.
+I trust {other}. Can't say that about everyone.
+
+@ !night, !few | wry ~joke
+{other} told me a joke yesterday. I'm still waiting for the end.
+{other} thinks they're quiet. They are not quiet.
+
+@ !night, !few | young
+{other} said they once fought a troll with a spoon. I believe them.
+
+@ !night, !few | devout ~pious
+{other} doesn't leave anything for the gods. I leave a little extra for them.
+
+@ !night, !few | worrier ~worry
+{other} went into the forest again. Alone. Again.
+
+@ !night, !few | gruff ~angry
+If {other} borrows my whetstone one more time, I'm hiding it.
+
+@ !night, !few | cheerful ~happy
+{other} made me laugh so hard I snorted. In front of everyone.
+
+@ !night, !few | elder
+{other} reminds me of my sister. Stubborn as a root.
+
+@ chat, !few
+Have you noticed {other} lately? // Quiet. // Too quiet. // Leave them be.
+{other} snores. // Everyone snores. // Not like that.
+I think {other} likes you. // Everyone likes me. // Not like that.
+
+# ------------------------------------------------------------------ the player's standing, crossed with work and mood
+
+@ talk, player:friend, doing:building ~happy
+Come to help? Grab a hammer. No? Fine, keep me company then.
+
+@ talk, player:friend, doing:cooking ~happy
+For you, the first piece. Don't tell the others.
+
+@ talk, player:friend, feel:stressed
+I'm glad it's you. I couldn't take anyone else today.
+
+@ talk, player:friend, feel:happy ~happy
+Ah, my favourite traveller. Today just got better.
+
+@ talk, player:hero, afterfight ~proud
+Again you were there when we needed you.
+
+@ talk, player:hero, feel:miserable
+Even seeing you, I can't shake this mood. Sorry.
+
+@ talk, player:stranger, feel:stressed ~worry
+Not a good time, stranger. Not a good time at all.
+
+@ talk, player:stranger, feel:happy ~happy
+Welcome, stranger! You've caught us on a good day.
+
+@ talk, player:known, need:any
+You've helped before. Any chance of {material}?
+
+@ talk, player:disliked | gruff ~angry
+You've got some nerve, showing your face.
+
+# ------------------------------------------------------------------ village size and the player
+
+@ talk, player:friend, size:town ~proud
+You've watched this place grow from a fire. Not many can say that.
+
+@ talk, player:friend, size:camp
+Stay with us. We could use someone like you.
+
+@ talk, player:hero, size:village ~proud
+They'll name a hall after you one day. Probably a small hall.
+
+# ------------------------------------------------------------------ more exchanges, by situation
+
+@ chat, doing:fire, feel:happy
+This is the life. // This is a log by a fire. // Exactly.
+
+@ chat, doing:fire, feel:stressed
+Can't stop thinking. // About what? // Everything. // Think about the fire. Just the fire.
+
+@ chat, doing:seat
+Nice bench. // I made it. // Did you? // No. But I sat on it first.
+
+@ chat, building:any, feel:stressed
+They want the {building} done by tomorrow. // Who's they? // Everyone. // Everyone's wrong.
+
+@ chat, need:any, feel:happy
+We'll get the {material}. We always do. // You're very sure. // I'm in a good mood.
+
+@ chat, afterfight, feel:happy
+We were brave today. // You hid behind a barrel. // Bravely.
+
+@ chat, thought:sleptwell
+Slept well? // Like a stone. // Lucky. {other} snored all night.
+
+@ chat, thought:hurt
+How's the arm? // Still attached. // That's something.
+
+@ chat, freebed, feel:stressed
+There's an empty bed and I'm still on the floor. // That bed's for the next one. // I'm the next one.
+
+@ chat, player:friend
+That traveller's all right. // Brought us wood. // More than all right, then.
+
+@ chat, player:hero
+Did you hear what {player} did? // Everyone's heard. // Tell it again anyway.
+
+@ chat, request:open
+Do you think the traveller will bring it? // They might. // They'd better. // They don't owe us anything.
+
+@ chat, news:gift
+Somebody left wood in the chest. // A gift? // Or a trick. // It's wood. Wood can't trick you.
+
+@ chat, event:fightover
+They've gone. // For now. // Always 'for now' with you. // Because it's always true.
+
+@ chat, event:arrival
+New face at the fire tonight. // Be nice. // I'm always nice. // Be nicer.
+
+@ chat, event:finished
+The new place is lovely. // Who's in it? // Not us. // Next time.
+
+# ------------------------------------------------------------------ voice pairs, ordinary moments
+
+@ chat | steady
+Tomorrow we finish the walls. // Then the roof. // Then we argue about the roof.
+Did you check the chest? // Twice. // Good.
+
+@ chat | gruff
+Stop smiling. // Why? // It's unsettling.
+What are you looking at? // You. // Stop it.
+
+@ chat | cheerful
+Isn't it a lovely day? // It's raining. // Lovely rain!
+I made you something. // What is it? // A rock. I painted it. // With what? // Mud.
+
+@ chat | worrier
+I think something's following me. // That's your shadow. // It moves when I move! // Yes.
+Do you think we have enough food? // For tonight. // And tomorrow? // Ask me tomorrow.
+
+@ chat | wry
+How was your day? // Wonderful. Terrible. Normal. // So, normal.
+I'm thinking of taking up a hobby. // Like what? // Napping.
+
+@ chat | elder
+Back when I was young... // Here we go. // ...we had hills. Bigger hills. // Same hills. // Bigger.
+My knees know it's going to rain. // Your knees said that yesterday. // They were early.
+
+@ chat | young
+Can we build a tower? A really tall one? // Why? // To see further! // See what? // Everything!
+Is it true trolls eat people? // Only noisy ones. // ... // That's better.
+
+@ chat | devout
+I saw a raven on the roof. // Odin's watching. // Or it's hungry. // Both.
+Did you leave anything at the stones? // A carved bird. // The gods like birds.
+
+# ------------------------------------------------------------------ talk, small reactions to being spoken to
+
+@ talk, feel:miserable
+Sorry. I'm not good company today.
+Can we talk another time?
+
+@ talk, feel:happy, !player:stranger ~happy
+Good to see you! Really, it is.
+
+@ talk, thought:atewell ~happy
+Just had a proper meal. Ask me anything.
+
+@ talk, thought:sleptrough ~sad
+Don't mind me. I slept on the floor.
+
+@ talk, thought:hurt
+Mind the arm. It's had a day.
+
+@ talk, thought:fight ~worry
+You weren't here when they came, were you? It was bad.
+
+@ talk, thought:finished ~happy
+Have you been inside the new building yet? Go on.
+
+@ talk, thought:hunt ~happy
+Smell that? Fresh meat cooking. Stay for dinner.
+
+@ talk, doing:watch
+Keep it short. I'm meant to be watching.
+
+@ talk, doing:hunting ~worry
+Shh. You'll scare it.
+
+@ talk, doing:repairing
+One moment. If I stop now, it'll crack again.
+
+@ talk, doing:path
+Watch your step. I'm making a path.
+
+@ talk, doing:seat
+Sit, there's room. Well, a bit of room.
+
+@ talk, doing:hearth
+Morning. Just seeing to the fire.
+
+# ------------------------------------------------------------------ self, mood mumbles
+
+@ self, feel:happy
+Hm hm hmm. Good day, good day.
+Everything's going right. Strange.
+
+@ self, feel:stressed
+One thing at a time. One thing.
+Breathe. Just breathe.
+
+@ self, feel:miserable
+Why do I bother.
+Just get through today.
+
+@ self, nobed
+A bed. One bed. Is that too much?
+
+@ self, unfed
+My stomach's talking. I'm not listening.
+
+@ self, afterfight
+Still here. Still here.

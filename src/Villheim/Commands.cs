@@ -13,13 +13,15 @@ namespace Villheim
         public static void Register()
         {
             Add("villheim_found", "Light a new village hearth in front of you.", true);
-            Add("villheim_grow", "Make the nearest village start its next building now.", true);
+            Add("villheim_grow", "Make the nearest village start its next building now (adds the wood it needs).", true);
+            Add("villheim_wood", "Add wood to the nearest village: villheim_wood [amount]", true);
             Add("villheim_preview", "Build one design in front of you: villheim_preview <location>", true);
             Add("villheim_clear", "Remove the nearest village: its buildings, villagers and hearth.", true);
             Add("villheim_info", "Show the state of loaded villages.", false);
             Add("villheim_designs", "List the designs villages can build: villheim_designs [meadows|blackforest]", false);
             Add("villheim_locations", "List location names you can use as designs: villheim_locations [filter]", false);
             Add("villheim_dump", "Write what a design contains to the BepInEx log: villheim_dump <location>", false);
+            Add("villheim_report", "Write a report of every location that could be a design.", false);
 
             CommandManager.Instance.AddConsoleCommand(new DispatchCommand());
             CommandManager.Instance.AddConsoleCommand(new ReloadCommand());

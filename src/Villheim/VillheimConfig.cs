@@ -30,6 +30,15 @@ namespace Villheim
         public static ConfigEntry<bool> UseVanillaRandomness;
         public static ConfigEntry<bool> CopyTerrainShaping;
 
+        // Work and resources
+        public static ConfigEntry<bool> VillagersChopTrees;
+        public static ConfigEntry<bool> RequireWood;
+        public static ConfigEntry<float> WoodPerPiece;
+        public static ConfigEntry<int> MaxWoodPerBuilding;
+        public static ConfigEntry<float> PassiveWoodPerVillagerPerDay;
+        public static ConfigEntry<bool> BuildPaths;
+        public static ConfigEntry<bool> GearImprovesWithVillage;
+
         // Villagers
         public static ConfigEntry<int> StartingVillagers;
         public static ConfigEntry<int> VillagersPerBuilding;
@@ -61,7 +70,7 @@ namespace Villheim
             const string growth = "2 - Growth";
             StartingBuildings = Admin(config, growth, "StartingBuildings", 1,
                 "Buildings a village has when you first find it.", new AcceptableValueRange<int>(0, 20));
-            MaxBuildings = Admin(config, growth, "MaxBuildings", 6,
+            MaxBuildings = Admin(config, growth, "MaxBuildings", 10,
                 "The most buildings a village will grow to.", new AcceptableValueRange<int>(1, 40));
             DaysPerBuilding = Admin(config, growth, "DaysPerBuilding", 2f,
                 "In-game days between new buildings. A Valheim day is 30 real minutes by default. " +
@@ -97,6 +106,22 @@ namespace Villheim
                 "rolls those parts the same way the world generator would. When off, every optional part is built.");
             CopyTerrainShaping = Admin(config, designs, "CopyTerrainShaping", true,
                 "Copy each design's own ground leveling. When off, a simple flat circle is leveled instead.");
+
+            const string work = "3b - Work and resources";
+            VillagersChopTrees = Admin(config, work, "VillagersChopTrees", true,
+                "Villagers fell nearby trees, split the logs and bring the wood to the village stock.");
+            RequireWood = Admin(config, work, "RequireWood", true,
+                "Buildings cost wood from the village stock. When off, villages grow on time alone.");
+            WoodPerPiece = Admin(config, work, "WoodPerPiece", 1f,
+                "Wood a building costs per building piece in its design.", new AcceptableValueRange<float>(0f, 10f));
+            MaxWoodPerBuilding = Admin(config, work, "MaxWoodPerBuilding", 120,
+                "Cap on what a single building costs, so big designs stay reachable.", new AcceptableValueRange<int>(0, 2000));
+            PassiveWoodPerVillagerPerDay = Admin(config, work, "PassiveWoodPerVillagerPerDay", 15f,
+                "Wood each villager gathers per in-game day while nobody is around to watch, so villages still grow " +
+                "while you are away.", new AcceptableValueRange<float>(0f, 500f));
+            BuildPaths = Admin(config, work, "BuildPaths", true, "Villages lay dirt paths from the hearth to each building.");
+            GearImprovesWithVillage = Admin(config, work, "GearImprovesWithVillage", true,
+                "Villagers wear better armor and carry better tools as their village grows.");
 
             const string villagers = "4 - Villagers";
             StartingVillagers = Admin(config, villagers, "StartingVillagers", 2,

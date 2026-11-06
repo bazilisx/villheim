@@ -50,6 +50,12 @@ namespace Villheim.Logic
 
         public void VillagerUpdate(Villager villager, float deltaTime) => VillagerBehaviour.Update(villager, deltaTime);
 
+        public bool VillagerUpdateAI(VillagerAI ai, float deltaTime)
+        {
+            return ai.TryGetComponent(out Villager villager) && villager.IsValidVillager &&
+                   Chores.Update(villager, ai, deltaTime);
+        }
+
         public string VillagerHoverText(Villager villager) => VillagerBehaviour.HoverText(villager);
 
         public bool VillagerInteract(Villager villager, Humanoid user) => VillagerBehaviour.Interact(villager, user);

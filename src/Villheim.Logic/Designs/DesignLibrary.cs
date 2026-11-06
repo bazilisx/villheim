@@ -5,7 +5,7 @@ using UnityEngine;
 namespace Villheim.Logic.Designs
 {
     /// <summary>
-    /// The pool of existing designs a village may copy, read from the config.
+    /// The designs a village may copy, by role (see <see cref="Culture"/>) plus the config lists.
     /// A design is any location registered with the game's ZoneSystem: vanilla ones, or ones added by other mods.
     /// </summary>
     internal static class DesignLibrary
@@ -27,26 +27,100 @@ namespace Villheim.Logic.Designs
 
         private static readonly HashSet<string> WarnedMissing = new HashSet<string>();
 
-        // Intact houses and workshops from More World Locations (warpalicious). Added automatically when that mod
-        // is installed; nothing happens when it is not.
-        private const string MwlMeadows =
-            "MWL_MeadowsHouse2,MWL_SmallMeadowHouse1,MWL_SmallHouse1,MWL_MeadowsBarn1,MWL_MaypoleHut1,MWL_OakHut1," +
-            "MWL_MeadowsFarm1:0.5,MWL_MeadowsSawmill1:0.3,MWL_MeadowsTavern1:0.3";
-        private const string MwlBlackForest =
-            "MWL_ForestHouse2,MWL_ForestGreatHouse2,MWL_Tavern1:0.5,MWL_ForestForge1:0.5,MWL_ForestForge2:0.5," +
-            "MWL_BlackForestBlacksmith1:0.5,MWL_ForestCamp1,MWL_WoodTower1:0.5,MWL_WoodTower2:0.5";
-
-        public static List<Design> PoolFor(Heightmap.Biome biome)
+        /// <summary>
+        /// Designs for one role of a village in this biome. Uses the culture's first design tier that has anything
+        /// available, then adds the config lists (which count as homes) and AnyBiomeDesigns.
+        /// </summary>
+        public static List<Design> PoolFor(Heightmap.Biome biome, Role role)
         {
-            string biomeList = biome == Heightmap.Biome.BlackForest
-                ? VillheimConfig.BlackForestDesigns.Value
-                : VillheimConfig.MeadowsDesigns.Value;
-
             var pool = new List<Design>();
-            AddDesigns(pool, biomeList);
-            AddDesigns(pool, VillheimConfig.AnyBiomeDesigns.Value);
-            AddDesigns(pool, biome == Heightmap.Biome.BlackForest ? MwlBlackForest : MwlMeadows, warnIfMissing: false);
+            foreach (string tier in Culture.For(biome).Tiers(role))
+            {
+                AddDesigns(pool, tier, warnIfMissing: false);
+                if (pool.Count > 0)
+                {
+                    break;
+                }
+            }
+
+            if (role == Role.House || pool.Count == 0)
+            {
+                string configList = biome == Heightmap.Biome.BlackForest
+                    ? VillheimConfig.BlackForestDesigns.Value
+                    : VillheimConfig.MeadowsDesigns.Value;
+                AddDesigns(pool, configList);
+                AddDesigns(pool, VillheimConfig.AnyBiomeDesigns.Value);
+            }
+
+            if (pool.Count == 0 && role != Role.House)
+            {
+                return PoolFor(biome, Role.House);
+            }
+
             return pool;
+        }
+
+        /// <summary>Every design any role could use, for the designs command.</summary>
+        public static List<Design> AllFor(Heightmap.Biome biome)
+        {
+            var all = new List<Design>();
+            foreach (Role role in new[] { Role.Hub, Role.House, Role.Workshop, Role.Farm })
+            {
+                foreach (Design design in PoolFor(biome, role))
+                {
+                    if (!all.Exists(d => d.Name == design.Name))
+                    {
+                        all.Add(design);
+                    }
+                }
+            }
+
+            return all;
+        }
+
+        private static readonly Dictionary<string, int> PieceCounts = new Dictionary<string, int>();
+
+        /// <summary>Wood a copy of this design costs: its building pieces times WoodPerPiece, capped.</summary>
+        public static int WoodCost(ZoneSystem.ZoneLocation location)
+        {
+            if (!PieceCounts.TryGetValue(location.m_prefabName, out int pieces))
+            {
+                pieces = CountPieces(location);
+                PieceCounts[location.m_prefabName] = pieces;
+            }
+
+            int cost = Mathf.CeilToInt(pieces * VillheimConfig.WoodPerPiece.Value);
+            return Mathf.Clamp(cost, 0, VillheimConfig.MaxWoodPerBuilding.Value);
+        }
+
+        private static int CountPieces(ZoneSystem.ZoneLocation location)
+        {
+            location.m_prefab.Load();
+            try
+            {
+                GameObject asset = location.m_prefab.Asset;
+                if (asset == null || ZNetScene.instance == null)
+                {
+                    return 0;
+                }
+
+                int count = 0;
+                foreach (ZNetView view in Utils.GetEnabledComponentsInChildren<ZNetView>(asset))
+                {
+                    string name = Utils.GetPrefabName(view.gameObject);
+                    GameObject prefab = ZNetScene.instance.GetPrefab(name);
+                    if (prefab != null && prefab.GetComponent<Piece>() && DesignSpawner.ExclusionReason(prefab, name) == null)
+                    {
+                        count++;
+                    }
+                }
+
+                return count;
+            }
+            finally
+            {
+                location.m_prefab.Release();
+            }
         }
 
         public static Design? Pick(List<Design> pool, System.Random rng)
@@ -117,6 +191,7 @@ namespace Villheim.Logic.Designs
             {
                 return;
             }
+
 
             foreach (string raw in list.Split(','))
             {

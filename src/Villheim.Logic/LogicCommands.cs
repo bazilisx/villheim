@@ -16,7 +16,8 @@ namespace Villheim.Logic
         private static readonly string[] Help =
         {
             "found: light a new village hearth in front of you",
-            "grow: make the nearest village start its next building now",
+            "grow: make the nearest village start its next building now (adds the wood it needs)",
+            "wood <amount>: add wood to the nearest village",
             "preview <location>: build one design in front of you, outside any village",
             "clear: remove the nearest village (buildings, villagers and hearth)",
             "info: show loaded villages",
@@ -34,6 +35,7 @@ namespace Villheim.Logic
             {
                 case "villheim_found": Found(context); return true;
                 case "villheim_grow": Grow(context); return true;
+                case "villheim_wood": AddWood(args, context); return true;
                 case "villheim_preview": Preview(args, context); return true;
                 case "villheim_clear": Clear(context); return true;
                 case "villheim_info": Info(context); return true;
@@ -99,8 +101,29 @@ namespace Villheim.Logic
                 return;
             }
 
-            VillageBrain.ForceGrow(hearth);
+            VillageBrain.ForceGrow(hearth, true);
             Say(context, $"Villheim: {hearth.VillageName} will start building within a few seconds.");
+        }
+
+        private static void AddWood(string[] args, Terminal context)
+        {
+            if (!TryGetPlayer(context, out Player player))
+            {
+                return;
+            }
+
+            VillageHearth hearth = VillageHearth.Closest(player.transform.position, 150f);
+            if (hearth == null || !hearth.IsValid)
+            {
+                Say(context, "Villheim: no village hearth within 150 m.");
+                return;
+            }
+
+            int amount = args.Length > 0 && int.TryParse(args[0], out int parsed) ? parsed : 100;
+            hearth.NView.ClaimOwnership();
+            var state = new VillageState(hearth.Zdo);
+            state.Wood += amount;
+            Say(context, $"Villheim: {state.Name} now has {state.Wood} wood.");
         }
 
         private static void Clear(Terminal context)
@@ -182,7 +205,7 @@ namespace Villheim.Logic
                 ? Heightmap.Biome.BlackForest
                 : Heightmap.Biome.Meadows;
 
-            List<DesignLibrary.Design> pool = DesignLibrary.PoolFor(biome);
+            List<DesignLibrary.Design> pool = DesignLibrary.AllFor(biome);
             Say(context, $"Villheim: {pool.Count} designs for {biome} villages:");
             foreach (DesignLibrary.Design design in pool)
             {

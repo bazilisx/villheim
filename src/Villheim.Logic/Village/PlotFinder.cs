@@ -1,57 +1,84 @@
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
+using Villheim.Logic.Designs;
 using Villheim.Prefabs;
 
 namespace Villheim.Logic.Village
 {
     /// <summary>
-    /// Picks where the next building goes: rings around the hearth, closest first, on dry, fairly flat ground
-    /// that does not overlap other buildings, player builds or other locations.
+    /// Picks where the next building goes. Villages are laid out on a grid aligned to the hearth: candidate spots
+    /// are grid points around the hearth, closest first, and every building is turned to face the hearth in
+    /// 90 degree steps, so the whole village lines up like a Millenaire village instead of scattering.
+    /// The hub goes on the axis right behind the hearth.
     /// </summary>
     internal static class PlotFinder
     {
-        public const float HearthClearance = 7f;
+        public const float HearthClearance = 6f;
+        private const float GridStep = 4f;
         private const float Gap = 2f;
 
         private static readonly List<Piece> PieceBuffer = new List<Piece>();
 
-        public static bool TryFind(Vector3 hearth, float radius, float maxTerrainDelta, IReadOnlyList<Plot> plots,
-            System.Random rng, out Vector3 position)
+        public static bool TryFind(Vector3 hearth, float axisYaw, Role role, float radius, float maxTerrainDelta,
+            IReadOnlyList<Plot> plots, System.Random rng, out Vector3 position, out float yaw)
         {
-            float villageRadius = VillheimConfig.VillageRadius.Value;
-            float step = Mathf.Max(3f, radius * 0.5f);
+            float maxDistance = VillheimConfig.VillageRadius.Value + radius * 0.5f;
+            int cells = Mathf.CeilToInt(maxDistance / GridStep);
+            Quaternion axis = Quaternion.Euler(0f, axisYaw, 0f);
 
-            for (float ring = HearthClearance + radius; ring <= villageRadius + radius * 0.5f; ring += step)
+            var candidates = new List<Vector2>();
+            for (int x = -cells; x <= cells; x++)
             {
-                int directions = Mathf.Clamp(Mathf.RoundToInt(2f * Mathf.PI * ring / Mathf.Max(radius, 4f)), 6, 32);
-                float offset = (float)rng.NextDouble() * 360f;
-
-                foreach (int i in Enumerable.Range(0, directions).OrderBy(_ => rng.Next()))
+                for (int z = -cells; z <= cells; z++)
                 {
-                    float angle = (offset + i * 360f / directions) * Mathf.Deg2Rad;
-                    Vector3 candidate = hearth + new Vector3(Mathf.Sin(angle), 0f, Mathf.Cos(angle)) * ring;
-                    if (IsGoodSpot(candidate, hearth, radius, maxTerrainDelta, plots, out float groundY))
+                    var local = new Vector2(x * GridStep, z * GridStep);
+                    float distance = local.magnitude;
+                    if (distance > maxDistance || distance < radius + HearthClearance)
                     {
-                        position = new Vector3(candidate.x, groundY, candidate.z);
-                        return true;
+                        continue;
                     }
+
+                    // The hub sits straight behind the hearth, on the village axis.
+                    if (role == Role.Hub && (x != 0 || z <= 0))
+                    {
+                        continue;
+                    }
+
+                    candidates.Add(local);
+                }
+            }
+
+            // Closest first; small random jitter so villages with the same layout rules still differ.
+            foreach (Vector2 local in candidates.OrderBy(c => c.magnitude + (float)rng.NextDouble() * GridStep))
+            {
+                Vector3 candidate = hearth + axis * new Vector3(local.x, 0f, local.y);
+                if (IsGoodSpot(candidate, hearth, radius, maxTerrainDelta, plots, out float groundY))
+                {
+                    position = new Vector3(candidate.x, groundY, candidate.z);
+                    yaw = FaceHearth(position, hearth, axisYaw);
+                    return true;
                 }
             }
 
             position = Vector3.zero;
+            yaw = 0f;
             return false;
+        }
+
+        /// <summary>Yaw that turns a design's front (+Z) toward the hearth, snapped to the village grid.</summary>
+        public static float FaceHearth(Vector3 position, Vector3 hearth, float axisYaw)
+        {
+            Vector3 toHearth = hearth - position;
+            float angle = Mathf.Atan2(toHearth.x, toHearth.z) * Mathf.Rad2Deg;
+            float relative = Mathf.DeltaAngle(axisYaw, angle);
+            return axisYaw + Mathf.Round(relative / 90f) * 90f;
         }
 
         public static bool IsGoodSpot(Vector3 p, Vector3 hearth, float radius, float maxTerrainDelta, IReadOnlyList<Plot> plots,
             out float groundY)
         {
             groundY = 0f;
-
-            if (Utils.DistanceXZ(p, hearth) < radius + HearthClearance)
-            {
-                return false;
-            }
 
             foreach (Plot plot in plots)
             {
@@ -88,7 +115,7 @@ namespace Villheim.Logic.Village
                 return false;
             }
 
-            // Never build on top of anything that is already there: player bases, other villages' buildings, ruins.
+            // Never build on top of anything that is already there: player bases, other villages, ruins.
             PieceBuffer.Clear();
             Piece.GetAllPiecesInRadius(p, radius + 1f, PieceBuffer);
             foreach (Piece piece in PieceBuffer)

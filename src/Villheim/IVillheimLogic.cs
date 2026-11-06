@@ -27,6 +27,12 @@ namespace Villheim
         void HearthInteract(VillageHearth hearth, Humanoid user);
 
         void VillagerUpdate(Villager villager, float deltaTime);
+
+        /// <summary>
+        /// Called every AI update on the owning client. Return true when the logic moved the villager itself this
+        /// update (for example during a chore), which skips the normal monster AI for that update.
+        /// </summary>
+        bool VillagerUpdateAI(VillagerAI ai, float deltaTime);
         string VillagerHoverText(Villager villager);
         bool VillagerInteract(Villager villager, Humanoid user);
 

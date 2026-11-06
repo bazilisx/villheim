@@ -46,7 +46,14 @@ namespace Villheim.Logic.Villagers
             Poses.BeginTick(villager);
             if (!Chores.Update(villager, ai, dt))
             {
-                FreeTime.Update(villager, ai, dt);
+                if (Chores.BetweenJobs(villager))
+                {
+                    ai.StopMoving();
+                }
+                else
+                {
+                    FreeTime.Update(villager, ai, dt);
+                }
             }
 
             Poses.EndTick(villager);

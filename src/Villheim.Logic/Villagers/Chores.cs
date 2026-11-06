@@ -67,6 +67,8 @@ namespace Villheim.Logic.Villagers
             public float Cooldown = Random.Range(1f, 3f);
             public string Reason = "";
             public float FacingSince;
+            public float StraightUntil;
+            public int Picks;
             public float HitAt = -1f;
             public Vector3 HitPoint;
             public Collider HitCollider;
@@ -82,6 +84,8 @@ namespace Villheim.Logic.Villagers
         private const float StandOff = 1.1f;
         private const float SwingInterval = 1.8f;
         private const float HitDelay = 0.45f;
+        private const float PickableRadius = 15f;
+        private const int MaxPicksPerTrip = 8;
         private const float WorkRange = 8f;
         private const float BuildRange = 8f;
         private const float HammerInterval = 1.2f;
@@ -341,7 +345,8 @@ namespace Villheim.Logic.Villagers
                 return null;
             }
 
-            Pickable pickable = NearestPickable(work.Wanted, hearth, position);
+            // Loose sticks and stones only when they lie close: a long walk for one stick is not worth it.
+            Pickable pickable = NearestPickable(work.Wanted, position, PickableRadius);
             if (pickable != null)
             {
                 Claimed.Add(pickable.gameObject);
@@ -391,6 +396,16 @@ namespace Villheim.Logic.Villagers
             }
         }
 
+        /// <summary>
+        /// Between two jobs: there is work, he just hasn't started the next one yet (a second or two). He waits where
+        /// he is instead of going to sit by the fire for a moment.
+        /// </summary>
+        public static bool BetweenJobs(Villager villager)
+        {
+            return VillheimConfig.VillagersChopTrees.Value && !EnvMan.IsNight() &&
+                   States.TryGetValue(villager, out Work work) && work.Phase == Phase.Idle && work.Reason == "";
+        }
+
         /// <summary>Why the villager is not working, or null while working.</summary>
         public static string IdleReason(Villager villager)
         {
@@ -420,6 +435,8 @@ namespace Villheim.Logic.Villagers
             work.Phase = phase;
             work.Target = target;
             work.HitAt = -1f;
+            work.StraightUntil = 0f;
+            work.Picks = 0;
             work.Spot = spot;
             work.Deadline = Time.time + seconds;
             work.Timer = 0.6f;
@@ -452,6 +469,7 @@ namespace Villheim.Logic.Villagers
                 Claimed.Add(next);
                 work.Target = next;
                 work.HitAt = -1f;
+                work.StraightUntil = 0f;
                 work.Swings = 0;
                 work.TargetSeenAt = new Vector3(float.MaxValue, 0f, 0f);
                 Walker.For(villager).Reset();
@@ -471,7 +489,25 @@ namespace Villheim.Logic.Villagers
             {
                 work.Phase = Phase.Approach;
                 WalkResult step = walker.Go(villager, ai, dt, work.Stand, 0.6f);
-                if (step != WalkResult.Stuck && !(step == WalkResult.Arrived && !InReach(villager, work.Contact, true)))
+                if (step != WalkResult.Walking && !InReach(villager, work.Contact, true))
+                {
+                    // The path often ends short of a tree or rock (it blocks the ground around itself). Walk the
+                    // last metres straight at it for a few seconds before giving up.
+                    if (work.StraightUntil <= 0f)
+                    {
+                        work.StraightUntil = Time.time + 4f;
+                    }
+
+                    if (Time.time < work.StraightUntil)
+                    {
+                        Vector3 toTarget = work.Contact - villager.transform.position;
+                        toTarget.y = 0f;
+                        ai.MoveTowards(toTarget.normalized, false);
+                        return true;
+                    }
+                }
+
+                if (step == WalkResult.Walking)
                 {
                     return true;
                 }
@@ -556,6 +592,19 @@ namespace Villheim.Logic.Villagers
             }
 
             ReleaseTarget(work);
+
+            // Pick up the next stick or stone close by before carrying them all back.
+            work.Picks++;
+            Pickable next = work.Picks < MaxPicksPerTrip ? NearestPickable(work.Wanted, villager.transform.position, 8f) : null;
+            if (next != null)
+            {
+                Claimed.Add(next.gameObject);
+                work.Target = next.gameObject;
+                work.Deadline = Time.time + 20f;
+                Walker.For(villager).Reset();
+                return true;
+            }
+
             BeginCollect(villager, work);
             work.Deadline = Time.time + 15f;
             return true;
@@ -1268,9 +1317,9 @@ namespace Villheim.Logic.Villagers
             return best;
         }
 
-        private static Pickable NearestPickable(HashSet<string> wanted, Vector3 hearth, Vector3 from)
+        private static Pickable NearestPickable(HashSet<string> wanted, Vector3 from, float radius)
         {
-            GameObject go = FindNearest(hearth, MaxFromHearth, from, candidate =>
+            GameObject go = FindNearest(from, radius, from, candidate =>
                 candidate.TryGetComponent(out Pickable pickable) && !pickable.GetPicked() && pickable.m_itemPrefab != null &&
                 wanted.Contains(pickable.m_itemPrefab.name), null);
             return go != null ? go.GetComponent<Pickable>() : null;

@@ -1,0 +1,349 @@
+# Villheim: the wider world, the things around the hearth, and more of each voice. Same format as lines.txt.
+
+# ------------------------------------------------------------------ the wider world (light, second-hand, often wrong)
+
+@ !night
+They say there's a stag up on the hill with antlers that spark. I've not seen it.
+Somebody told me the swamp water's thick enough to stand a spoon in.
+Past the forest there's a swamp, and past the swamp there's mountains. I'm staying here.
+A traveller once told me the plains go on until your eyes give up.
+I heard there's an old tree in the forest that walks. Trees don't walk. Probably.
+My cousin went to the mountains. Came back with half a beard. Frostbite.
+There are things in the swamp that smell worse than {other}. Hard to believe.
+They say the dead don't stay down in the swamp. I'll take their word for it.
+Someone found a crypt in the forest. Didn't go in. Smart.
+
+@ !night | worrier
+The swamp, the mountains, the plains. Every direction has something that wants to eat you.
+I heard the fulings in the plains ride boars into battle. Boars! On purpose!
+Mosquitoes the size of a dog, in the plains. That's what they said.
+
+@ !night | wry
+Every traveller tells me a monster story. None of them ever say "and then I had a nice walk".
+The world's very big and very rude.
+
+@ !night | elder
+Long ago someone killed the great stag and hung its head over the stones. Or so my mother said.
+The old ones built those stone towers in the forest. Nobody remembers why.
+Every land past this one is harder. That's why you start here.
+
+@ !night | young
+When I'm grown I'm going to the mountains. And the plains. And then the sea.
+Do you think there are dragons? Real ones?
+
+@ !night | devout
+The stones by the start of things remember every hero who passed. I left a pebble there once.
+They say Odin watches who slays the great beasts. I'd rather he watched someone else.
+
+@ biome:blackforest
+The Elder sleeps somewhere in this forest. Don't wake it.
+Those stone towers? Greydwarfs nest round them. Keep clear.
+Trolls knock trees down just walking. You'll hear it a mile off.
+There's tin in the riverbeds if you look. Shiny, soft stuff.
+
+@ biome:blackforest | worrier
+The skeletons in the burial chambers move. I've heard them. Rattle, rattle.
+
+@ biome:blackforest | wry
+Dark forest, dark mood, dark bread. Matching set.
+
+# ------------------------------------------------------------------ things around the village
+
+@ !night
+The chest by the hearth is for everyone. Don't take more than you bring.
+Whoever keeps putting stones in with the wood, stop it.
+The hearth never goes out. I don't know how. I don't ask.
+Good paths make short days.
+The cooking station's the best thing anyone built here. Fight me.
+Someone left a hammer on the path. I nearly broke my toe.
+I like a door that closes properly. We have two.
+
+@ !night | gruff
+Close the chest when you're done. Every time. Every single time.
+If the bench is wet, don't sit on it and complain.
+
+@ !night | cheerful
+I love the sound of the hearth crackling at night.
+Every new path makes it feel more like home.
+
+@ !night | wry
+The chest is full of things nobody wants and nothing anybody needs.
+
+@ !night | elder
+A village is only as good as its hearth and its chest.
+
+@ freebed | gruff
+There's a bed going spare. Don't look at me, I've got mine.
+
+@ !nobed, evening
+I've got my own bed now. Real straw. Mostly real straw.
+
+@ !nobed, evening | elder
+A bed of my own at my age. The gods are kind.
+
+# ------------------------------------------------------------------ weather, per voice
+
+@ rain | worrier
+The ground's getting soft. What if the walls sink?
+
+@ rain | elder
+Rain's good for the land, bad for the knees.
+
+@ rain | young
+I'm going to jump in every puddle. Every one.
+
+@ rain, doing:felling
+Wet bark, slippery axe. Watch your toes.
+
+@ rain, doing:building
+The pegs swell when it rains. Hold on tighter.
+
+@ cold | gruff
+Cold. My beard's frozen to my face.
+
+@ cold | cheerful
+A bit of cold never hurt anyone. That's what I keep telling my feet.
+
+@ cold | devout
+Skadi's breath is on the wind today.
+
+@ windy
+The wind's got the smoke going everywhere.
+
+# ------------------------------------------------------------------ the village growing, per voice
+
+@ size:camp | gruff
+Two people and a fire. Some village.
+
+@ size:camp | cheerful
+It's small now, but you wait.
+
+@ size:camp | worrier
+What if nobody else ever comes?
+
+@ size:camp | young
+Am I the youngest here? I'm the youngest. That makes me important.
+
+@ size:hamlet | gruff
+More roofs means more roofs to fix.
+
+@ size:hamlet | cheerful
+Look how much we've done!
+
+@ size:hamlet | elder
+It's becoming a place. You can feel it.
+
+@ size:village | worrier
+More people, more food, more everything to go wrong.
+
+@ size:village | wry
+We're practically a city. If you squint. And have never seen a city.
+
+@ size:village | devout
+The gods favour {village}. You can tell by the harvest. Well. By the roofs.
+
+@ size:town | elder
+I'll die happy here. Not soon, mind you.
+
+@ size:town | gruff
+Too many people. I liked it when I knew everyone's name.
+
+@ many | cheerful
+So many faces round the fire these days!
+
+@ many | gruff
+Can't get near the fire for all the bodies.
+
+# ------------------------------------------------------------------ moods
+
+@ mood:high | worrier
+Things are going well. Too well. Something's coming.
+
+@ mood:high | gruff
+Fine. It's fine. I'm fine. Everything's fine.
+
+@ mood:low | cheerful
+It'll get better. It always does.
+
+@ mood:low | elder
+We've had worse years. Not many, but some.
+
+@ mood:low | devout
+The gods are testing us. I'd like them to stop.
+
+# ------------------------------------------------------------------ mumbling to themselves (self only)
+
+@ self
+Where did I put that...
+Right. Wood. Then stone. Then sleep.
+Hm. That's not where I left it.
+Left foot, right foot.
+Nearly done. Nearly.
+If I sit down now I'll never get up.
+
+@ self | gruff
+Stupid knot.
+Nobody else is going to do it.
+
+@ self | cheerful
+Hmm hm hmm, hm hm hmmm.
+What a day, what a day.
+
+@ self | worrier
+Did I close the chest? I think I closed the chest.
+Something moved. No. Nothing moved.
+
+@ self | wry
+Today I will do one thing well. Eventually.
+
+@ self | elder
+My knees, my knees.
+In my day... ah, never mind.
+
+@ self | young
+One, two, three, four... how many logs is enough?
+
+@ self | devout
+Thank you for the dry morning. Thank you for the sharp axe.
+
+# ------------------------------------------------------------------ trade and role, more
+
+@ trade:carpenter, need:any
+I can't build with air. We need {material}.
+
+@ trade:woodcutter, need:wood
+Nobody needs wood more than us right now, and I'm the one to get it.
+
+@ trade:miner, need:stone
+They want stone. Good. I want to hit rocks.
+
+@ trade:cook, food:none
+I'm a cook with nothing to cook. Somebody hunt something.
+
+@ trade:cook, food:cooked
+There's food in the chest. Eat before it goes cold. It's already cold. Eat anyway.
+
+@ protector, night
+I'll keep an ear out tonight.
+
+@ protector, afterfight
+That's what I'm here for.
+
+@ carer, badlyhurt
+Even the ones who look after everyone get hurt. Bring me something to eat.
+
+@ carer, many
+So many to feed now. I don't mind. Mostly.
+
+# ------------------------------------------------------------------ chats, more
+
+@ chat
+Have you seen the size of the new house? // I've seen the size of your feet. Same thing.
+Do you think it'll snow? // In the Meadows? Never. // Never say never.
+I found a feather today. A big one. // Eagle? // Chicken, probably.
+I'm going to carve a dragon on the door. // You can't carve. // I'll learn.
+My axe has a name now. // What is it? // Axe.
+I think the chest is cursed. // Why? // Things go in, and other things come out.
+How long do you think we've been here? // Long enough to complain about it.
+I swapped my boots with {other}. // Why? // Theirs were drier.
+I'm sure that rock moved. // Rocks don't move. // This one did.
+Does the hearth ever need wood? // Never. // That's strange. // Don't question good things.
+Who taught you to build? // Nobody. I watched. // That explains the doors.
+I had a good idea today. // Don't. // You haven't heard it. // Don't.
+The deer looked at me funny. // You looked at it funny first.
+I made a stew. // From what? // Best not to ask.
+Why do greydwarfs throw rocks? // They're bad at throwing anything else.
+I'm going to plant flowers by my door. // What flowers? // The ones that don't die.
+What's your favourite tree? // The one that's already been cut down.
+I hear you're the best at splitting logs. // Who said that? // You did. Yesterday. Loudly.
+Can you hear that? // What? // Exactly. Peaceful.
+I'd like a bigger house. // You'd like a bigger everything.
+
+@ chat | gruff
+Move. // I'm sitting here. // Sit there instead.
+That's my cup. // They all look the same. // Mine has a chip.
+
+@ chat | cheerful
+Isn't it nice when everyone's home? // Except {other}, they're still out. // Then it's nearly nice.
+Guess what I found! // A rock? // A pretty rock!
+
+@ chat | worrier
+I heard something last night. // You always hear something. // This time it was louder.
+What if the fire goes out? // It never goes out. // What if it does?
+
+@ chat | wry
+Busy day? // Very. I moved a log twice. // Impressive.
+How's life? // Wet. You? // Also wet.
+
+@ chat | elder
+When I was a child, there were no chests. // You said piles. // Big piles.
+Do you know the old songs? // A few. // Sing one. // Not without mead.
+
+@ chat | young
+Can we go see the trolls? From really far away? // No. // From really, really far away?
+Will you teach me to fight? // When you can lift a shield. // I can lift a shield! Half of one.
+
+@ chat | devout
+Do you think the gods see us all the way out here? // They see everything. // Even the burnt meat? // Especially that.
+I dreamt of a raven last night. // Good sign or bad sign? // A hungry sign.
+
+@ chat, trade:cook
+What's cooking? // Whatever you bring me. // So nothing. // So nothing.
+
+@ chat, trade:carpenter
+Can you fix my door? // What's wrong with it? // It opens. // That's what doors do.
+
+@ chat, trade:woodcutter
+How many trees today? // Six. // Six! // Small ones.
+
+@ chat, trade:miner
+Find anything good? // Rocks. // Good rocks? // Grey ones.
+
+@ chat, need:stone
+We need stone. // Then go hit a rock. // I was hoping you'd hit it.
+
+@ chat, need:wood
+More wood. // Always more wood. // One day we'll have enough. // No we won't.
+
+@ chat, building:longhouse
+When the hall's done, we'll have feasts. // With what food? // Feasts of hope.
+
+@ chat, building:workshop
+A workshop. Proper tools on a proper bench. // You'll still lose the hammer. // Probably.
+
+@ chat, doing:fire
+Warm enough? // Front's warm, back's frozen. // Turn round. // Then the other side freezes.
+Good fire. // The best fire. // It's the same fire as always. // It's still good.
+
+@ chat, rain, doing:fire
+Listen to the rain on the roof. // We're not under a roof. // Listen to the rain on us, then.
+
+@ chat, night
+Can't sleep? // Too quiet. // Try counting boars. // They keep running off.
+
+@ chat, morning
+Breakfast? // If you can find some. // There's always something. // There's always nothing.
+
+@ chat, evening, mood:high
+Good day today. // They're mostly good, lately.
+
+@ chat, evening, mood:low
+Hard day. // Tomorrow'll be easier. // You said that yesterday.
+
+@ chat, afterfight | worrier
+Do you think they'll come back tonight? // Not tonight. // How do you know? // I don't.
+
+@ chat, afterfight | gruff
+You froze back there. // I was thinking. // Think faster.
+
+@ chat, many
+Too many people to share one fire. // Then build another fire. // Then who'd I talk to?
+
+@ chat, few
+Just us two again. // Like old times. // It was last week. // Old times.
+
+@ chat, biome:meadows
+Boars ate the berries again. // Then eat the boars. // That's the plan.
+
+@ chat, biome:blackforest
+The trees are so tall here. // And so dark. // And so full of trolls.

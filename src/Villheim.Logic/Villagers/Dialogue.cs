@@ -226,6 +226,7 @@ namespace Villheim.Logic.Villagers
             if (EnvMan.IsWet()) tags.Add("rain");
             if (EnvMan.IsCold()) tags.Add("cold");
             if (EnvMan.IsFreezing()) tags.Add("freezing");
+            if (EnvMan.instance != null && EnvMan.instance.GetWindIntensity() > 0.6f) tags.Add("windy");
 
             VillageHearth hearth = VillageHearth.Find(villager.VillageId);
             if (hearth == null || !hearth.IsValid)

@@ -11,8 +11,12 @@ namespace Villheim.Logic.Villagers
     /// the player model, skins and gear, but are a little see-through, faintly tinted toward teal, and give off a faint
     /// glow after dark. All subtle, and all optional (GhostAlpha, GhostTint, GhostGlow in the config).
     ///
+    /// Who: villagers (with whatever is in their hands, which hangs off the villager) and the village's own animals
+    /// (marked as built by the village). Buildings, dropped items and everything in chests keep the game's normal look:
+    /// a dropped item or a building is never under a villager or animal, so it is never touched.
+    ///
     /// Rules this keeps:
-    /// - Only the villager's own renderers are touched, through their own copies of the materials (Renderer.materials
+    /// - Only the villager's or animal's own renderers are touched, through their own copies of the materials (Renderer.materials
     ///   makes a copy per renderer). Shared materials, and so players, are never changed.
     /// - No particles, lights or extra objects: only a few material values, refreshed every few seconds per villager,
     ///   so the cost doesn't grow meaningfully with the village.
@@ -46,16 +50,42 @@ namespace Villheim.Logic.Villagers
             public readonly Dictionary<Renderer, List<Slot>> Renderers = new Dictionary<Renderer, List<Slot>>();
         }
 
-        private static readonly ConditionalWeakTable<Villager, State> States = new ConditionalWeakTable<Villager, State>();
-        private static readonly List<(System.WeakReference<Villager> Owner, List<Material> Materials)> Owned =
-            new List<(System.WeakReference<Villager>, List<Material>)>();
+        private static readonly ConditionalWeakTable<Character, State> States = new ConditionalWeakTable<Character, State>();
+        private static readonly List<(System.WeakReference<Character> Owner, List<Material> Materials)> Owned =
+            new List<(System.WeakReference<Character>, List<Material>)>();
 
         private static Shader _ghostShader;
         private static bool _searched;
         private static bool _logged;
         private static float _nextSweep;
 
-        public static void Update(Villager villager)
+        private static float _nextAnimalScan;
+
+        /// <summary>
+        /// The village's animals, about every three seconds: every tame animal marked as a village's own. Run from the
+        /// villagers' update, so it runs on every client while a village is loaded.
+        /// </summary>
+        public static void UpdateAnimals()
+        {
+            if (Time.time < _nextAnimalScan)
+            {
+                return;
+            }
+
+            _nextAnimalScan = Time.time + RefreshSeconds;
+            foreach (Character character in Character.GetAllCharacters())
+            {
+                if (character == null || character is Villager || character.IsPlayer() || character.IsDead() ||
+                    character.m_nview == null || !character.m_nview.IsValid() || character.m_nview.GetZDO().GetInt(Keys.BuiltBy) == 0)
+                {
+                    continue;
+                }
+
+                Update(character);
+            }
+        }
+
+        public static void Update(Character villager)
         {
             State state = States.GetOrCreateValue(villager);
             if (Time.time < state.Next)
@@ -108,7 +138,7 @@ namespace Villheim.Logic.Villagers
         }
 
         /// <summary>The renderer's own copies of its materials, made once, with the values they started with.</summary>
-        private static List<Slot> Take(Villager villager, Renderer renderer)
+        private static List<Slot> Take(Character villager, Renderer renderer)
         {
             Material[] copies = renderer.materials; // a copy per renderer: shared materials stay untouched
             var slots = new List<Slot>();
@@ -131,7 +161,7 @@ namespace Villheim.Logic.Villagers
                 slots.Add(slot);
             }
 
-            Owned.Add((new System.WeakReference<Villager>(villager), copies.Where(m => m != null).ToList()));
+            Owned.Add((new System.WeakReference<Character>(villager), copies.Where(m => m != null).ToList()));
             if (!_logged)
             {
                 _logged = true;
@@ -310,7 +340,7 @@ namespace Villheim.Logic.Villagers
             _nextSweep = Time.time + 30f;
             for (int i = Owned.Count - 1; i >= 0; i--)
             {
-                if (!Owned[i].Owner.TryGetTarget(out Villager owner) || owner == null)
+                if (!Owned[i].Owner.TryGetTarget(out Character owner) || owner == null)
                 {
                     foreach (Material material in Owned[i].Materials)
                     {

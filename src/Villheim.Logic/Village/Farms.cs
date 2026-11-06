@@ -216,8 +216,10 @@ namespace Villheim.Logic.Village
                     continue;
                 }
 
+                // Only the farm's own kind of animal is claimed: a player's tame wolf passing by stays the player's.
                 int owner = c.m_nview.GetZDO().GetInt(Keys.BuiltBy);
-                if (owner == hearth.VillageId || (owner == 0 && c.IsTamed()))
+                string kind = Utils.GetPrefabName(c.gameObject);
+                if (owner == hearth.VillageId || (owner == 0 && c.IsTamed() && (kind == "Boar" || kind == "Boar_piggy")))
                 {
                     if (owner == 0 && c.m_nview.IsOwner())
                     {

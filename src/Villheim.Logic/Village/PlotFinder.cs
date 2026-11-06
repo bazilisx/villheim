@@ -41,6 +41,7 @@ namespace Villheim.Logic.Village
                 case Role.Hub: min = 0f; max = 0.35f; break;
                 case Role.House: min = 0.1f; max = 0.65f; break;
                 case Role.Workshop: min = 0.3f; max = 0.9f; break;
+                case Role.Storage: min = 0.1f; max = 0.5f; break;
                 default: min = 0.45f; max = 1f; break;
             }
         }

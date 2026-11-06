@@ -140,7 +140,7 @@ namespace Villheim.Logic.Villagers
         public static string Activity(Villager villager)
         {
             return (Sleep.IsAsleep(villager) ? "asleep" : null) ?? (MorningHearth.IsTending(villager) ? "tending the hearth" : null) ??
-                   Healing.Describe(villager) ?? Chores.Describe(villager) ?? Hunting.Describe(villager) ?? Farming.Describe(villager) ??
+                   Healing.Describe(villager) ?? Chores.Describe(villager) ?? Replanting.Describe(villager) ?? Hunting.Describe(villager) ?? Farming.Describe(villager) ??
                    Foraging.Describe(villager) ?? Repairs.Describe(villager) ?? (PathLaying.IsLaying(villager) ? "laying a path" : null) ??
                    FreeTime.Describe(villager);
         }

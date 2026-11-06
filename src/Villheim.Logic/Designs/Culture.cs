@@ -8,6 +8,9 @@ namespace Villheim.Logic.Designs
         House,
         Workshop,
         Farm,
+
+        /// <summary>A storehouse: an open shelter for the village's extra chests.</summary>
+        Storage,
     }
 
     /// <summary>

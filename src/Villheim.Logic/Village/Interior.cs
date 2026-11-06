@@ -8,9 +8,10 @@ namespace Villheim.Logic.Village
     /// What goes inside a finished building, and where. Like Millenaire's building plans, each kind of building has
     /// its own furnishings and residents:
     ///
-    /// - the longhouse (hub) holds a bed for each of the first settlers,
-    /// - a small home one bed, a larger home two,
-    /// - a workshop its workbench.
+    /// - a small home one bed, a larger home two (the only essentials: a village grows no further until every home
+    ///   has its beds),
+    /// - the longhouse (hub) a table and benches,
+    /// - a workshop its workbench, a storehouse its chests.
     ///
     /// Beds and workbenches always go under a roof, on the ground floor, at a spot the game itself counts as covered
     /// (the same test a workbench uses before it lets you craft), clear of doors, and with their back to a wall where
@@ -46,8 +47,8 @@ namespace Villheim.Logic.Village
             : _solidMask = LayerMask.GetMask("Default", "static_solid", "Default_small", "piece", "piece_nonsolid", "terrain", "vehicle");
 
         /// <summary>
-        /// Furnishings this building should have, in the order they are made, like a player settling in: beds and the
-        /// workbench first (essential), then a chest, seats and a table for comfort, a little more as the village grows
+        /// Furnishings this building should have, in the order they are made, like a player settling in: beds first
+        /// (essential), then a chest, seats and a table for comfort, a little more as the village grows
         /// (<paramref name="tier"/>: 0 camp, 1 hamlet, 2 village, 3 town).
         /// </summary>
         public static IEnumerable<Want> WantsFor(Plot plot, int tier)
@@ -55,16 +56,16 @@ namespace Villheim.Logic.Village
             switch (plot.Role)
             {
                 case nameof(Role.Hub):
-                    yield return new Want { Prefab = "bed", Name = "bed", Count = Mathf.Max(1, VillheimConfig.StartingVillagers.Value), Essential = true };
-                    // Like a player's first shelter, the longhouse gets a workbench.
-                    yield return new Want { Prefab = "piece_workbench", Name = "workbench", Count = 1, Essential = true };
                     yield return new Want { Prefab = "piece_table", Name = "table", Count = 1 };
                     yield return new Want { Prefab = "piece_bench01", Name = "bench", Count = tier >= 1 ? 2 : 1 };
                     if (tier >= 1) yield return new Want { Prefab = "piece_chest_wood", Name = "chest", Count = 1 };
                     break;
                 case nameof(Role.Workshop):
-                    yield return new Want { Prefab = "piece_workbench", Name = "workbench", Count = 1, Essential = true };
+                    yield return new Want { Prefab = "piece_workbench", Name = "workbench", Count = 1 };
                     yield return new Want { Prefab = "piece_chest_wood", Name = "chest", Count = 1 };
+                    break;
+                case nameof(Role.Storage):
+                    yield return new Want { Prefab = "piece_chest_wood", Name = "chest", Count = tier >= 2 ? 3 : 2 };
                     break;
                 case nameof(Role.Farm):
                     break;

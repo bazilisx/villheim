@@ -107,6 +107,10 @@ namespace Villheim.Logic.Villagers
                 {
                     ai.StopMoving();
                 }
+                else if (Replanting.Update(villager, ai, dt))
+                {
+                    // Replanting what was felled, out past the village.
+                }
                 else if (Repairs.Update(villager, ai, dt))
                 {
                     // The builder mends what is broken.

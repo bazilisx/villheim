@@ -7,18 +7,19 @@ using Villheim.Logic.Designs;
 namespace Villheim.Logic.Village
 {
     /// <summary>
-    /// What the village builds next, after Millenaire's village growth.
+    /// What the village builds next, in the order a player settling in would (Tyler's order, 2026-11-06):
     ///
-    /// Buildings come in tiers. The start tier is the longhouse and a first home; the core tier brings more homes and a
-    /// workshop; after that come farms, a second workshop and more homes. Only the lowest tier that isn't finished is
-    /// open, so every start building goes up before any core one. Within the open tier each missing building is picked
-    /// at random, weighted by its priority times the tier's multiplier (start 6, core 4, later 2).
-    ///
-    /// Once the start tier stands, upgrades are always in the pool too: a building is rebuilt as the next level of
-    /// its blueprint family, or as a bigger design of the same kind. Homes count double when every bed is taken.
+    /// 1. Homes, each with its beds, until every villager has a bed.
+    /// 2. The longhouse, the village's central hall by the hearth.
+    /// 3. While the village waits to grow: a workshop (a basic workbench house, rebuilt bigger as trades appear) and a
+    ///    storehouse (an open shelter for the extra chests).
+    /// 4. Then growth: more homes (newcomers only come when there is a free bed), farms, more workshops once there
+    ///    are trades, and upgrades (a building rebuilt as the next level of its blueprint family, or a bigger design
+    ///    of the same kind).
     ///
     /// The pick is kept on the hearth as the one pending project until it is built (or found to have no room), so the
-    /// village saves up for it and gathers what it needs instead of changing its mind every few seconds.
+    /// village saves up for it and gathers what it needs instead of changing its mind every few seconds. A pending
+    /// project gives way when a home or the longhouse becomes due.
     /// </summary>
     internal static class Growth
     {
@@ -36,14 +37,16 @@ namespace Villheim.Logic.Village
 
         private static readonly Dictionary<Role, float> Priority = new Dictionary<Role, float>
         {
-            [Role.Hub] = 10f, [Role.House] = 6f, [Role.Workshop] = 4f, [Role.Farm] = 3f,
+            [Role.Hub] = 10f, [Role.House] = 6f, [Role.Workshop] = 4f, [Role.Farm] = 3f, [Role.Storage] = 3f,
         };
 
         /// <summary>The pending project, choosing one when there is none.</summary>
         public static Project Pending(VillageHearth hearth, VillageState state, System.Random rng)
         {
             Project pending = Read(hearth);
-            if (pending != null && (!pending.IsUpgrade || pending.UpgradeIndex < state.Plots.Count))
+            Role? urgent = Urgent(hearth, state);
+            bool stale = pending != null && urgent.HasValue && (pending.IsUpgrade || pending.Role != urgent.Value);
+            if (pending != null && !stale && (!pending.IsUpgrade || pending.UpgradeIndex < state.Plots.Count))
             {
                 return pending;
             }
@@ -79,61 +82,61 @@ namespace Villheim.Logic.Village
 
         public static string PendingLabel(VillageHearth hearth, VillageState state) => Label(state, Read(hearth));
 
+        /// <summary>A home while some villager has no bed (or there is no home yet), else the longhouse if there is none.</summary>
+        private static Role? Urgent(VillageHearth hearth, VillageState state)
+        {
+            int homes = state.Plots.Count(p => RoleOf(p) == Role.House);
+            int beds = Villagers.Beds.Of(hearth).Count;
+            if (homes == 0 || beds < VillageBrain.CountVillagers(state.Id))
+            {
+                return Role.House;
+            }
+
+            return state.Plots.Any(p => RoleOf(p) == Role.Hub) ? (Role?)null : Role.Hub;
+        }
+
         private static Project Choose(VillageHearth hearth, VillageState state, System.Random rng)
         {
+            Role? urgent = Urgent(hearth, state);
+            if (urgent.HasValue)
+            {
+                return new Project { Role = urgent.Value };
+            }
+
             IReadOnlyList<Plot> plots = state.Plots;
-            var count = new Dictionary<Role, int> { [Role.Hub] = 0, [Role.House] = 0, [Role.Workshop] = 0, [Role.Farm] = 0 };
+            var count = new Dictionary<Role, int>();
+            foreach (Role role in System.Enum.GetValues(typeof(Role)))
+            {
+                count[role] = 0;
+            }
+
             foreach (Plot plot in plots)
             {
                 count[RoleOf(plot)]++;
             }
 
-            // Tiers: what each needs to be finished, and its multiplier.
-            var tiers = new List<(Dictionary<Role, int> Wants, float Multiplier)>
-            {
-                (new Dictionary<Role, int> { [Role.Hub] = 1, [Role.House] = 1 }, 6f),
-                (new Dictionary<Role, int> { [Role.House] = 3, [Role.Workshop] = 1 }, 4f),
-                (new Dictionary<Role, int> { [Role.Farm] = 1, [Role.Workshop] = 2, [Role.House] = 6 }, 2f),
-            };
-
-            bool bedsFull = Villagers.Beds.Free(hearth) == 0 && VillageBrain.Capacity(state) < VillheimConfig.MaxVillagers.Value;
-
-            // The village's character favours some buildings (Millenaire's village types).
-            float TypeFactor(Role role) =>
-                state.Type == "woodland" && role == Role.Workshop ? 2f :
-                state.Type == "farming" && role == Role.Farm ? 2.5f :
-                state.Type == "fortified" && role == Role.House ? 1.2f : 1f;
+            // While waiting to grow: the workbench house and the storehouse.
             var options = new List<(Project Project, float Weight)>();
-            bool startDone = true;
-            for (int t = 0; t < tiers.Count; t++)
-            {
-                foreach (KeyValuePair<Role, int> want in tiers[t].Wants)
-                {
-                    if (count[want.Key] < want.Value)
-                    {
-                        float weight = Priority[want.Key] * tiers[t].Multiplier * (want.Key == Role.House && bedsFull ? 2f : 1f) *
-                                       TypeFactor(want.Key);
-                        options.Add((new Project { Role = want.Key }, weight));
-                    }
-                }
-
-                if (options.Count > 0)
-                {
-                    startDone = t > 0;
-                    break;
-                }
-            }
-
+            if (count[Role.Workshop] == 0) options.Add((new Project { Role = Role.Workshop }, 1f));
+            if (count[Role.Storage] == 0) options.Add((new Project { Role = Role.Storage }, 1f));
             if (options.Count == 0)
             {
-                // Every tier stands: more homes, now and then a workshop or farm.
-                options.Add((new Project { Role = Role.House }, Priority[Role.House] * (bedsFull ? 2f : 1f)));
-                options.Add((new Project { Role = Role.Workshop }, 1f));
-                options.Add((new Project { Role = Role.Farm }, 1f));
-            }
+                bool bedsFull = Villagers.Beds.Free(hearth) == 0 && VillageBrain.Capacity(state) < VillheimConfig.MaxVillagers.Value;
+                bool trades = VillageBrain.CountVillagers(state.Id) >= Villagers.Roles.TradesFrom;
 
-            if (startDone)
-            {
+                // The village's character favours some buildings (Millenaire's village types).
+                float TypeFactor(Role role) =>
+                    state.Type == "woodland" && role == Role.Workshop ? 2f :
+                    state.Type == "farming" && role == Role.Farm ? 2.5f :
+                    state.Type == "fortified" && role == Role.House ? 1.2f : 1f;
+
+                options.Add((new Project { Role = Role.House }, Priority[Role.House] * (bedsFull ? 2f : 1f) * TypeFactor(Role.House)));
+                options.Add((new Project { Role = Role.Farm }, (count[Role.Farm] == 0 ? 2f : 0.5f) * TypeFactor(Role.Farm)));
+                if (trades && count[Role.Workshop] < 3)
+                {
+                    options.Add((new Project { Role = Role.Workshop }, 1.5f * TypeFactor(Role.Workshop)));
+                }
+
                 for (int i = 0; i < plots.Count; i++)
                 {
                     DesignLibrary.Design? next = NextDesign(plots[i], state.Biome);

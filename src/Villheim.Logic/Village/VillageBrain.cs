@@ -251,7 +251,10 @@ namespace Villheim.Logic.Village
 
             Role role = project.Role;
             List<DesignLibrary.Design> pool = DesignLibrary.PoolFor(state.Biome, role);
-            DesignLibrary.Design? picked = DesignLibrary.Pick(pool, rng);
+            // A storehouse is a modest shelter: the smallest design that will do.
+            DesignLibrary.Design? picked = role == Role.Storage && pool.Count > 0
+                ? pool.OrderBy(d => d.Radius).First()
+                : DesignLibrary.Pick(pool, rng);
             if (picked == null)
             {
                 VillheimPlugin.Log.LogWarning($"{state.Name} has no valid designs to build. Check the Designs config.");
@@ -388,6 +391,7 @@ namespace Villheim.Logic.Village
                 case Role.House: return "home";
                 case Role.Workshop: return "workshop";
                 case Role.Farm: return "farm";
+                case Role.Storage: return "storehouse";
                 default: return "building";
             }
         }

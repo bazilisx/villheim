@@ -39,8 +39,12 @@ with its own look for its biome.
 - [ ] Biome materials: no core wood in the Meadows, and so on. (Built 2026-11-05, needs testing.)
 - [ ] Movement without jitter: stand spots, steady goals, unstuck re-path and sidestep. (Built 2026-11-05; 2026-11-06 session 10:
   walk the last metres, turn angle 90, one rotation driver, steady threat check. Needs testing.)
-- [ ] Settling in before growing (Tyler, 2026-11-06): cooking station, beds, workbench, sign and notice board before the
-  next building; then comfort pieces (chests, chairs, tables, benches, wood stack, stone pile). Built session 10, needs testing.
+- [ ] Build order (Tyler, 2026-11-06): homes with beds until every villager has one, then the longhouse, then the hub
+  area (sign, notice board, benches) and, while waiting, a workshop (basic workbench house) and a storehouse (extra
+  chests); then more homes, farms and workshops as trades appear. Built session 11, needs testing.
+- [ ] Storehouse grows into the longhouse: its chests move into the central hall when the hall is rebuilt bigger.
+- [ ] Replant one sapling per tree felled, 8 to 25 m outside the village radius. Built session 11, needs testing.
+- [ ] Jitter: record traces with `vh trace` and fix from the data.
 - [ ] Trees felled away from the village.
 - [ ] Right tool for each job: hammer to build, axe for trees, pickaxe for rocks. (Built 2026-11-05 session 4,
       needs testing.)

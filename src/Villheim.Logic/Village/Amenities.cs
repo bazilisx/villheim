@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 
 namespace Villheim.Logic.Village
@@ -6,11 +7,12 @@ namespace Villheim.Logic.Village
     /// <summary>
     /// What villagers make for the village besides its buildings, in the order a player settling in would:
     ///
-    /// 1. Essentials (settling in): the cooking station over the hearth, beds in every home, a workbench under a roof,
-    ///    then the village sign and the notice board by the hearth. The village builds nothing new until these stand
-    ///    (see VillageBrain), and gathers what they cost (see VillageNeeds).
-    /// 2. Comfort, once the essentials stand: chests, chairs and tables in the homes, benches round the fire, a wood
-    ///    stack and a stone pile by the hearth.
+    /// 1. Essentials: the cooking station over the hearth and the beds in every home. The village builds nothing new
+    ///    until these stand (see VillageBrain), and gathers what they cost (see VillageNeeds).
+    /// 2. The hub area, once the longhouse stands: the village sign, the notice board, benches round the fire, a wood
+    ///    stack and a stone pile.
+    /// 3. Furnishings: the workshop's workbench, the storehouse's chests, chests, chairs and tables in the homes and
+    ///    the longhouse.
     ///
     /// Rules:
     /// - Pieces outside go on a ring 5.5 m round the hearth (7 m when that is taken), on the diagonals of the village
@@ -45,6 +47,9 @@ namespace Villheim.Logic.Village
             public float Radius = Ring;
             public int MinBuildings;
             public bool Essential;
+
+            /// <summary>Part of the central hub area: only once the longhouse stands.</summary>
+            public bool NeedsHub;
         }
 
         private const float Ring = 5.5f;
@@ -57,8 +62,8 @@ namespace Villheim.Logic.Village
         {
             // Slot -1 is the hearth itself: the cooking station goes over the village fire.
             new Entry { Prefab = "piece_cookingstation", Name = "cooking station", Slot = -1, MinBuildings = 0, Essential = true },
-            new Entry { Prefab = "sign", Name = "village sign", Slot = 0, MinBuildings = 1, Essential = true },
-            new Entry { Prefab = "sign", Name = "notice board", Slot = 3, MinBuildings = 1, Essential = true },
+            new Entry { Prefab = "sign", Name = "village sign", Slot = 0, MinBuildings = 1, NeedsHub = true },
+            new Entry { Prefab = "sign", Name = "notice board", Slot = 3, MinBuildings = 1, NeedsHub = true },
             new Entry { Prefab = "piece_bench01", Name = "bench", Slot = 2, MinBuildings = 1 },
             new Entry { Prefab = "piece_bench01", Name = "bench", Slot = 1, MinBuildings = 2 },
             new Entry { Prefab = "wood_stack", Name = "wood stack", Slot = 2, Radius = OuterRing, MinBuildings = 2 },
@@ -145,16 +150,18 @@ namespace Villheim.Logic.Village
             var state = new VillageState(hearth.Zdo);
             int tier = VillageBrain.TierIndex(state.Plots.Count);
 
-            // Essentials first: the cooking station, then beds and workbenches, then the sign and the notice board.
-            return Outside(hearth, state, true, onlyHearth: true) ?? Inside(state, tier, true) ?? Outside(hearth, state, true, onlyHearth: false) ??
-                   Inside(state, tier, false) ?? Outside(hearth, state, false, onlyHearth: false);
+            // Essentials first (the cooking station, then the beds), then the hub area (sign, notice board, benches)
+            // and the furnishings of the other buildings.
+            return Outside(hearth, state, true, onlyHearth: true) ?? Inside(state, tier, true) ?? Outside(hearth, state, false, onlyHearth: false) ??
+                   Inside(state, tier, false);
         }
 
         private static Job Outside(VillageHearth hearth, VillageState state, bool essential, bool onlyHearth)
         {
             foreach (Entry entry in Entries)
             {
-                if (entry.Essential != essential || (entry.Slot < 0) != onlyHearth || state.Plots.Count < entry.MinBuildings)
+                if (entry.Essential != essential || (entry.Slot < 0) != onlyHearth || state.Plots.Count < entry.MinBuildings ||
+                    (entry.NeedsHub && !state.Plots.Any(p => p.Role == nameof(Designs.Role.Hub))))
                 {
                     continue;
                 }

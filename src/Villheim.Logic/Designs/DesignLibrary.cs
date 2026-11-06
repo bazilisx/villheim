@@ -351,7 +351,7 @@ namespace Villheim.Logic.Designs
         public static List<Design> AllFor(Heightmap.Biome biome)
         {
             var all = new List<Design>();
-            foreach (Role role in new[] { Role.Hub, Role.House, Role.Workshop, Role.Farm })
+            foreach (Role role in new[] { Role.Hub, Role.House, Role.Workshop, Role.Farm, Role.Storage })
             {
                 foreach (Design design in PoolFor(biome, role))
                 {

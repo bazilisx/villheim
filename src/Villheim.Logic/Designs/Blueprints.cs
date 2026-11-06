@@ -268,6 +268,7 @@ namespace Villheim.Logic.Designs
             else if (rest.Contains("shack") || rest.Contains("smith") || rest.Contains("forge") || rest.Contains("workshop") ||
                      rest.Contains("repair")) blueprint.Role = Role.Workshop;
             else if (rest.Contains("barn") || rest.Contains("farm") || rest.Contains("breeder")) blueprint.Role = Role.Farm;
+            else if (rest.Contains("shed") || rest.Contains("storage") || rest.Contains("store")) blueprint.Role = Role.Storage;
             else blueprint.Role = Role.House;
             return true;
         }
@@ -342,6 +343,7 @@ namespace Villheim.Logic.Designs
                 case "house": case "home": case "hut": case "cabin": role = Role.House; return true;
                 case "workshop": case "forge": case "smithy": role = Role.Workshop; return true;
                 case "farm": case "barn": role = Role.Farm; return true;
+                case "storage": case "store": case "storehouse": case "shed": role = Role.Storage; return true;
                 default: role = Role.House; return false;
             }
         }

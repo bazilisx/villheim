@@ -30,6 +30,7 @@ namespace Villheim.Logic
             "locations [filter]: list location names you can use as designs",
             "dump <location>: write what a design contains to the BepInEx log",
             "report: write a report of every location that could be a design (BepInEx/Villheim/design-report.txt)",
+            "trace [seconds]: record the nearest villager's movement 50 times a second to BepInEx/Villheim/trace-*.csv (for jitter)",
             "villager: show the nearest villager's voice, mood, thoughts, role, trade, bed and activity",
             "village: show the nearest village's type, Jarl, mood, project, fence, known players and request",
             "raid: send a raid to the nearest village (comes at once if it is night)",
@@ -50,6 +51,15 @@ namespace Villheim.Logic
                 case "villheim_ghost":
                     Villagers.GhostLook.ApplyNow();
                     Say(context, "Villheim: look settings applied.\n" + Villagers.GhostLook.Report());
+                    return true;
+                case "villheim_trace":
+                    if (TryGetPlayer(context, out Player tracer))
+                    {
+                        float seconds = args.Length > 0 && float.TryParse(args[0], System.Globalization.NumberStyles.Float,
+                            System.Globalization.CultureInfo.InvariantCulture, out float s) ? s : 20f;
+                        Say(context, Villagers.MotionTrace.Start(tracer, seconds));
+                    }
+
                     return true;
                 case "villheim_hearthground":
                     if (TryGetPlayer(context, out Player near) && VillageHearth.Closest(near.transform.position, 150f) is VillageHearth h)
@@ -168,7 +178,7 @@ namespace Villheim.Logic
             var lines = new List<string> { "# Villheim: preview commands. Stand in an open spot and paste one into the console (F5).", "" };
             foreach (Heightmap.Biome biome in new[] { Heightmap.Biome.Meadows, Heightmap.Biome.BlackForest })
             {
-                foreach (Role role in new[] { Role.Hub, Role.House, Role.Workshop, Role.Farm })
+                foreach (Role role in new[] { Role.Hub, Role.House, Role.Workshop, Role.Farm, Role.Storage })
                 {
                     lines.Add($"# {biome}, {VillageBrain.RoleName(role)}");
                     foreach (DesignLibrary.Design design in DesignLibrary.PoolFor(biome, role))

@@ -86,6 +86,9 @@ namespace Villheim.Logic.Villagers
             public float StartedAt;
             public bool Progressed;
             public int QuickFails;
+
+            /// <summary>The standing tree being felled (its prefab name), so a sapling is owed once it falls.</summary>
+            public string FellingTree;
         }
 
         private const float MaxFromHearth = 55f;
@@ -485,6 +488,7 @@ namespace Villheim.Logic.Villagers
             work.HitAt = -1f;
             work.StraightUntil = 0f;
             work.Picks = 0;
+            work.FellingTree = null;
             work.Spot = spot;
             work.Deadline = Time.time + seconds;
             work.Timer = 0.6f;
@@ -503,6 +507,13 @@ namespace Villheim.Logic.Villagers
 
             if (work.Target == null)
             {
+                if (work.FellingTree != null)
+                {
+                    // One sapling planted for every tree felled, out past the village (see Replanting).
+                    Replanting.Owe(villager.VillageId, work.FellingTree);
+                    work.FellingTree = null;
+                }
+
                 // The tree fell or a log split. Keep working what lies around the spot, then collect.
                 HashSet<string> wanted = work.Wanted;
                 int tier = ToolTier(villager);
@@ -1016,6 +1027,7 @@ namespace Villheim.Logic.Villagers
             work.HitAt = -1f;
             if (work.Target != null && CanHit(villager, work.Target, work.HitPoint))
             {
+                work.FellingTree = work.Target.GetComponent<TreeBase>() != null ? Utils.GetPrefabName(work.Target) : null;
                 Hit(villager, work.Target, work.HitPoint, work.HitCollider, profile.Pickaxe);
                 work.Progressed = true;
             }
@@ -1172,6 +1184,7 @@ namespace Villheim.Logic.Villagers
         private static void ReleaseTarget(Work work)
         {
             work.HitAt = -1f;
+            work.FellingTree = null;
             if (work.Target != null)
             {
                 Claimed.Remove(work.Target);

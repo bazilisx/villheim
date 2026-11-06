@@ -6,7 +6,7 @@ namespace Villheim.Logic.Villagers
 {
     /// <summary>
     /// A hurt villager (under half health) stops working and heals before anything else: he goes to the hearth,
-    /// kneels and cooks for a few seconds, then eats. Raw meat from the village chest heals more; without it he
+    /// sits and cooks for a few seconds, then eats. Once healed he won't start again for five minutes. Raw meat from the village chest heals more; without it he
     /// roasts what he has and heals less. He keeps at it until he is nearly whole again.
     /// </summary>
     internal static class Healing
@@ -14,6 +14,7 @@ namespace Villheim.Logic.Villagers
         private const float StartBelow = 0.5f;
         private const float StopAbove = 0.95f;
         private const float CookSeconds = 8f;
+        private const float RestBetween = 300f;
 
         private static readonly string[] Foods = { "RawMeat", "DeerMeat", "NeckTail", "FishRaw" };
 
@@ -22,6 +23,7 @@ namespace Villheim.Logic.Villagers
             public bool Active;
             public bool Cooking;
             public float CookStart;
+            public float NextAllowed;
         }
 
         private static readonly ConditionalWeakTable<Villager, State> States = new ConditionalWeakTable<Villager, State>();
@@ -34,13 +36,15 @@ namespace Villheim.Logic.Villagers
             float health = villager.GetHealth() / Mathf.Max(1f, villager.GetMaxHealth());
             if (state.Active && health >= StopAbove)
             {
+                // Done. Not again for five minutes, so a scratch right after doesn't send him back to the fire.
                 state.Active = false;
+                state.NextAllowed = Time.time + RestBetween;
                 return false;
             }
 
             if (!state.Active)
             {
-                if (health >= StartBelow)
+                if (health >= StartBelow || Time.time < state.NextAllowed)
                 {
                     return false;
                 }
@@ -74,7 +78,7 @@ namespace Villheim.Logic.Villagers
 
             ai.StopMoving();
             ai.LookAt(fire + Vector3.up * 0.5f);
-            Poses.Hold(villager, Poses.Kneel);
+            Poses.Hold(villager, Poses.Sit);
             if (Time.time - state.CookStart < CookSeconds)
             {
                 return true;

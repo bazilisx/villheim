@@ -201,10 +201,7 @@ namespace Villheim.Logic.Village
             }
         }
 
-        /// <summary>
-        /// The village's animals near a farm: those it brought, and tame animals there (a piglet that grew up is a new
-        /// animal to the game; it is marked as the village's again).
-        /// </summary>
+        /// <summary>The village's animals near a farm: only those it spawned, and piglets of its own that grew up.</summary>
         public static List<Character> Herd(VillageHearth hearth, Plot farm)
         {
             var herd = new List<Character>();
@@ -216,21 +213,49 @@ namespace Villheim.Logic.Village
                     continue;
                 }
 
-                // Only the farm's own kind of animal is claimed: a player's tame wolf passing by stays the player's.
-                int owner = c.m_nview.GetZDO().GetInt(Keys.BuiltBy);
-                string kind = Utils.GetPrefabName(c.gameObject);
-                if (owner == hearth.VillageId || (owner == 0 && c.IsTamed() && (kind == "Boar" || kind == "Boar_piggy")))
+                // Only animals the village spawned (or that grew from one, see GrowUpPatch). No other animal is ever
+                // claimed: a player's tamed boar or wolf near a farm stays the player's and keeps its normal look.
+                if (c.m_nview.GetZDO().GetInt(Keys.BuiltBy) == hearth.VillageId)
                 {
-                    if (owner == 0 && c.m_nview.IsOwner())
-                    {
-                        c.m_nview.GetZDO().Set(Keys.BuiltBy, hearth.VillageId);
-                    }
-
                     herd.Add(c);
                 }
             }
 
             return herd;
+        }
+
+        /// <summary>
+        /// A piglet growing up is replaced by a new adult object, which would lose the village's mark. The mark is
+        /// handed to the adult that appears where the village's piglet stood, in the same moment.
+        /// </summary>
+        [HarmonyLib.HarmonyPatch(typeof(Growup), nameof(Growup.GrowUpdate))]
+        internal static class GrowUpPatch
+        {
+            private static void Prefix(Growup __instance, out (int Village, Vector3 Position) __state)
+            {
+                ZNetView view = __instance != null ? __instance.GetComponent<ZNetView>() : null;
+                int village = view != null && view.IsValid() ? view.GetZDO().GetInt(Keys.BuiltBy) : 0;
+                __state = (village, __instance != null ? __instance.transform.position : Vector3.zero);
+            }
+
+            private static void Postfix((int Village, Vector3 Position) __state)
+            {
+                if (__state.Village == 0)
+                {
+                    return;
+                }
+
+                foreach (Character grown in Character.GetAllCharacters())
+                {
+                    ZNetView view = grown != null ? grown.m_nview : null;
+                    if (view != null && view.IsValid() && view.IsOwner() && view.GetZDO().GetInt(Keys.BuiltBy) == 0 &&
+                        grown.GetComponent<Growup>() == null && Vector3.Distance(grown.transform.position, __state.Position) < 0.6f)
+                    {
+                        view.GetZDO().Set(Keys.BuiltBy, __state.Village);
+                        return;
+                    }
+                }
+            }
         }
     }
 }

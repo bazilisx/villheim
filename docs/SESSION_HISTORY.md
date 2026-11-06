@@ -29,6 +29,14 @@ Current facts only. Read this at the start of a session. Narrative is in `docs/d
 - Next requests from Tyler (ROADMAP Milestone 4): healing first when hurt (cook at the hearth, make a cooking
   station if none); never walk through fires; flatten land when building; the hearth upgrades over time with the
   cooking station as part of it.
+- Bugs from the last test (start here, details in today's note, Session 7):
+  - A villager said there was no fine wood with a birch close by: gear tier 0 in the Meadows is a stone axe, which
+    likely can't cut birch, so the village asks for a material its own tools can't get. Give villagers an axe tier
+    that can cut what their biome's materials need, or drop materials they can't gather from the wants.
+  - "No axe to work with": the axe went missing from the inventory, probably the same cause as the lost clothes.
+    Check the villager inventory size (armor plus three tools may not fit) and log its contents.
+  - A villager jittered at the cooking station repeating one motion (no real cooking yet).
+  - Nobody heals (not built yet). One villager is at very low health, possibly from falling trees.
 - Undressing after taking out the axe: cause unknown, a dress check covers it. Check the log for "lost their
   clothes" lines.
 - Sitting on chairs and benches, beds, real cooking.

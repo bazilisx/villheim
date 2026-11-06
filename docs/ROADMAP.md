@@ -68,6 +68,10 @@ with its own look for its biome.
 - [ ] Villagers with nothing else to do make a fire pit, cooking station, workbench and benches by the hearth.
       (Built 2026-11-05 session 5, needs testing.)
 - [ ] Villagers cook for real at the hearth's cooking station.
+- [ ] Enough in the chest means no harvesting: villagers switch to two roles, builder and crafter/interior designer
+      (Tyler, 2026-11-05).
+- [ ] Crafted pieces follow the game's rules: workbenches and other crafting stations go under a roof (inside a
+      village building) so they are usable; the workbench made outside in the test is not (Tyler, 2026-11-05).
 - [ ] Hurt villagers put healing first: cook food at the hearth and eat it; with no cooking station, make one first
       (Tyler, 2026-11-05).
 - [ ] Villagers never walk or run through a fire: the hearth, fire pits and campfires are kept out of every walk,

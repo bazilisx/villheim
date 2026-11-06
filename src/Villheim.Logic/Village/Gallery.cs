@@ -42,38 +42,203 @@ namespace Villheim.Logic.Village
             public bool Done;
         }
 
-        public static string Start(Player player, string biomeName)
+        /// <summary>The groups the gallery can show, by the word used in the command.</summary>
+        private static readonly Dictionary<string, Role[]> Groups = new Dictionary<string, Role[]>
         {
-            Heightmap.Biome biome = biomeName != null && biomeName.ToLowerInvariant().StartsWith("black")
-                ? Heightmap.Biome.BlackForest
-                : Heightmap.Biome.Meadows;
+            ["all"] = Order,
+            ["house"] = new[] { Role.House },
+            ["hall"] = new[] { Role.Hub },
+            ["prof"] = new[] { Role.Workshop },
+            ["storage"] = new[] { Role.Storage },
+            ["farm"] = new[] { Role.Farm },
+        };
 
-            var seen = new HashSet<string>();
-            var cells = new List<Cell>();
-            foreach (Role role in Order)
+        public const string Usage =
+            "vh gallery <meadows|blackforest> [all|house|hall|prof|storage|farm] [level]: e.g. 'vh gallery meadows house 1'";
+
+        private static bool _running;
+
+        /// <summary>'vh gallery &lt;biome&gt; [group] [level]'. Gathers the designs over a few seconds, then lays them out.</summary>
+        public static string Start(Player player, string[] args)
+        {
+            if (_running)
             {
-                foreach (DesignLibrary.Design design in DesignLibrary.PoolFor(biome, role).Concat(DesignLibrary.FallbackPool(biome, role)))
+                return "Villheim: a gallery is already being gathered; give it a moment.";
+            }
+
+            string biomeName = args.Length > 0 ? args[0].ToLowerInvariant() : "meadows";
+            Heightmap.Biome biome = biomeName.StartsWith("black") || biomeName.StartsWith("forest") ? Heightmap.Biome.BlackForest : Heightmap.Biome.Meadows;
+            string group = "all";
+            int level = 0;
+            foreach (string arg in args.Skip(1))
+            {
+                string a = arg.ToLowerInvariant();
+                if (int.TryParse(a, out int n))
+                {
+                    level = n;
+                }
+                else if (a.StartsWith("prof") || a.StartsWith("work") || a.StartsWith("smith"))
+                {
+                    group = "prof";
+                }
+                else if (a.StartsWith("hall") || a.StartsWith("hub") || a.StartsWith("long"))
+                {
+                    group = "hall";
+                }
+                else if (a.StartsWith("hous") || a.StartsWith("home"))
+                {
+                    group = "house";
+                }
+                else if (a.StartsWith("stor") || a.StartsWith("shed"))
+                {
+                    group = "storage";
+                }
+                else if (a.StartsWith("farm") || a.StartsWith("barn"))
+                {
+                    group = "farm";
+                }
+                else if (a != "all")
+                {
+                    return "Villheim: " + Usage;
+                }
+            }
+
+            Vector3 forward = player.transform.forward;
+            forward.y = 0f;
+            forward.Normalize();
+            VillheimPlugin.Instance.StartCoroutine(Run(player.transform.position, forward, biome, group, level));
+            return $"Villheim: gathering every {biome} design ({group}{(level > 0 ? ", level " + level : "")}): the curated lists, " +
+                   "all blueprints (yours, PlanBuild's, OverDrive's) and every location in the game that is a buildable building.";
+        }
+
+        private static IEnumerator Run(Vector3 playerPosition, Vector3 forward, Heightmap.Biome biome, string group, int level)
+        {
+            _running = true;
+            var cells = new List<Cell>();
+            try
+            {
+                var seen = new HashSet<string>();
+                void Add(DesignLibrary.Design design, Role role)
                 {
                     if (seen.Add(design.Name))
                     {
                         cells.Add(new Cell { Design = design, Role = role, Half = Mathf.Clamp(design.Radius + 4f, 8f, 36f) });
                     }
                 }
+
+                // 1. The curated lists (the culture's designs and the config's), with their roles.
+                foreach (Role role in Order)
+                {
+                    foreach (DesignLibrary.Design design in DesignLibrary.PoolFor(biome, role).Concat(DesignLibrary.FallbackPool(biome, role)))
+                    {
+                        Add(design, role);
+                    }
+                }
+
+                // 2. Every blueprint found (Villheim's folder, PlanBuild's, the plugins folder: OverDrive's packs too).
+                foreach (Blueprints.Blueprint blueprint in Blueprints.All().Values)
+                {
+                    var design = new DesignLibrary.Design(blueprint, 1f);
+                    if ((blueprint.Biome == null || Matches(blueprint.Biome, biome)) && DesignLibrary.MissingIn(design, biome) == null)
+                    {
+                        Add(design, blueprint.Role);
+                    }
+                }
+
+                // 3. Every location in the game (vanilla, More World Locations and any other mod) that is a building
+                //    the biome can be built of: one per frame, as each has to be loaded to look inside.
+                foreach (ZoneSystem.ZoneLocation location in ZoneSystem.instance.m_locations
+                             .Where(l => l != null && l.m_prefab.IsValid && l.m_exteriorRadius <= 40f && !Unsuitable(l.m_prefabName))
+                             .GroupBy(l => l.m_prefabName).Select(g => g.First()))
+                {
+                    if (seen.Contains(location.m_prefabName) || !DesignLibrary.BuildableIn(location, biome))
+                    {
+                        continue;
+                    }
+
+                    if (IsBuilding(location))
+                    {
+                        Add(new DesignLibrary.Design(location, 1f), RoleFromName(location.m_prefabName));
+                    }
+
+                    yield return null;
+                }
+            }
+            finally
+            {
+                _running = false;
             }
 
+            Role[] roles = Groups[group];
+            cells = cells.Where(c => roles.Contains(c.Role) && (level == 0 || Level(c) == level)).ToList();
             if (cells.Count == 0)
             {
-                return $"Villheim: no designs found for {biome}.";
+                Console.instance?.Print($"Villheim: no {biome} designs in that group and level.");
+                yield break;
             }
 
-            cells = cells.OrderBy(c => Level(c)).ThenBy(c => System.Array.IndexOf(Order, c.Role)).ThenBy(c => c.Design.Name).ToList();
+            Console.instance?.Print(Plan(cells, playerPosition, forward, biome));
+        }
 
-            // Rows of six, away from the player.
-            Vector3 forward = player.transform.forward;
-            forward.y = 0f;
-            forward.Normalize();
+        /// <summary>Locations that are never village buildings: dungeons, altars, traders, ships and the like.</summary>
+        private static bool Unsuitable(string name)
+        {
+            string n = name.ToLowerInvariant();
+            string[] words =
+            {
+                "dungeon", "crypt", "cave", "portal", "boss", "altar", "runestone", "vendor", "haldor", "hildir", "bogwitch",
+                "starttemple", "eikthyr", "gdking", "bonemass", "dragonqueen", "goblinking", "seeker", "fader", "ship",
+                "wreck", "grave", "tomb", "infested", "mine", "tarpit", "leviathan", "vegvisir", "spawner",
+            };
+            return words.Any(w => n.Contains(w));
+        }
+
+        /// <summary>A location with at least 15 building pieces that Villheim would copy.</summary>
+        private static bool IsBuilding(ZoneSystem.ZoneLocation location)
+        {
+            location.m_prefab.Load();
+            try
+            {
+                GameObject asset = location.m_prefab.Asset;
+                return asset != null && DesignSpawner.MakePlan(asset, Vector3.zero, 1, 0f, false).Count(e => e.Shell) >= 15;
+            }
+            catch
+            {
+                return false;
+            }
+            finally
+            {
+                location.m_prefab.Release();
+            }
+        }
+
+        private static bool Matches(string blueprintBiome, Heightmap.Biome biome)
+        {
+            string b = blueprintBiome.ToLowerInvariant();
+            return biome == Heightmap.Biome.BlackForest ? b.Contains("black") || b.Contains("forest") : b.Contains("meadow");
+        }
+
+        /// <summary>A kind from the name: hall, workshop, storehouse or farm words, else a home.</summary>
+        private static Role RoleFromName(string name)
+        {
+            string n = name.ToLowerInvariant();
+            if (n.Contains("tavern") || n.Contains("hall") || n.Contains("longhouse") || n.Contains("great")) return Role.Hub;
+            if (n.Contains("forge") || n.Contains("smith") || n.Contains("sawmill") || n.Contains("mill") || n.Contains("workshop") ||
+                n.Contains("tannery") || n.Contains("camp") || n.Contains("tower") || n.Contains("lumber")) return Role.Workshop;
+            if (n.Contains("storage") || n.Contains("shed") || n.Contains("store") || n.Contains("warehouse")) return Role.Storage;
+            if (n.Contains("farm") || n.Contains("barn") || n.Contains("stable") || n.Contains("field") || n.Contains("breeder")) return Role.Farm;
+            return Role.House;
+        }
+
+        /// <summary>
+        /// Lays the designs out in clusters, one per level and kind (all level 1 homes together, then level 1 halls
+        /// and so on), each cluster starting a new row behind a label sign, and starts on the ground.
+        /// </summary>
+        private static string Plan(List<Cell> cells, Vector3 playerPosition, Vector3 forward, Heightmap.Biome biome)
+        {
+            cells = cells.OrderBy(c => Level(c)).ThenBy(c => System.Array.IndexOf(Order, c.Role)).ThenBy(c => c.Design.Radius).ThenBy(c => c.Design.Name).ToList();
             Vector3 right = Vector3.Cross(Vector3.up, forward);
-            Vector3 start = player.transform.position + forward * 6f;
+            Vector3 start = playerPosition + forward * 6f;
             float height = start.y;
             if (ZoneSystem.instance.GetGroundHeight(start, out float ground))
             {
@@ -82,20 +247,29 @@ namespace Villheim.Logic.Village
 
             float depth = 0f;
             float widest = 0f;
-            for (int row = 0; row * 6 < cells.Count; row++)
+            var labels = new List<(Vector3 At, string Text)>();
+            foreach (IGrouping<string, Cell> cluster in cells.GroupBy(c => $"{Level(c)}|{c.Role}"))
             {
-                List<Cell> line = cells.Skip(row * 6).Take(6).ToList();
-                float rowDepth = line.Max(c => c.Half);
-                float width = line.Sum(c => c.Half * 2f);
-                widest = Mathf.Max(widest, width);
-                float x = -width / 2f;
-                foreach (Cell cell in line)
+                List<Cell> members = cluster.ToList();
+                labels.Add((start + forward * (depth + 2f), $"<#5cf>Level {Level(members[0])}<br><#fff>{Plural(members[0].Role)}"));
+                depth += 6f;
+                for (int row = 0; row * 6 < members.Count; row++)
                 {
-                    cell.Center = start + forward * (depth + rowDepth) + right * (x + cell.Half);
-                    x += cell.Half * 2f;
+                    List<Cell> line = members.Skip(row * 6).Take(6).ToList();
+                    float rowDepth = line.Max(c => c.Half);
+                    float width = line.Sum(c => c.Half * 2f);
+                    widest = Mathf.Max(widest, width);
+                    float x = -width / 2f;
+                    foreach (Cell cell in line)
+                    {
+                        cell.Center = start + forward * (depth + rowDepth) + right * (x + cell.Half);
+                        x += cell.Half * 2f;
+                    }
+
+                    depth += rowDepth * 2f;
                 }
 
-                depth += rowDepth * 2f;
+                depth += 8f; // a gap between clusters
             }
 
             // One plain over the whole gallery: pads 24 m apart, levelled at the middle height of the area.
@@ -126,13 +300,31 @@ namespace Villheim.Logic.Village
                 cell.Center.y = height;
             }
 
-            VillheimPlugin.Instance.StartCoroutine(Build(cells, pads, forward));
+            for (int i = 0; i < labels.Count; i++)
+            {
+                labels[i] = (new Vector3(labels[i].At.x, height, labels[i].At.z), labels[i].Text);
+            }
+
+            VillheimPlugin.Instance.StartCoroutine(Build(cells, pads, forward, labels));
             return $"Villheim: clearing and levelling {widest + Margin * 2f:0} by {depth + Margin * 2f:0} m ahead of you at {height:0.0} m, " +
-                   $"then laying out {cells.Count} {biome} designs in {(cells.Count + 5) / 6} rows. Walk along it to load the far end.";
+                   $"then laying out {cells.Count} {biome} designs in {labels.Count} clusters. Walk along it to load the far end.";
         }
 
-        private static IEnumerator Build(List<Cell> cells, List<Pad> pads, Vector3 forward)
+        private static string Plural(Role role)
         {
+            switch (role)
+            {
+                case Role.House: return "Homes";
+                case Role.Hub: return "Halls";
+                case Role.Workshop: return "Workshops";
+                case Role.Storage: return "Storehouses";
+                default: return "Farms";
+            }
+        }
+
+        private static IEnumerator Build(List<Cell> cells, List<Pad> pads, Vector3 forward, List<(Vector3 At, string Text)> labels)
+        {
+            bool labelled = false;
             float until = Time.time + 40f * 60f;
             int built = 0;
             while (built < cells.Count && Time.time < until)
@@ -157,6 +349,15 @@ namespace Villheim.Logic.Village
                 if (shaped)
                 {
                     yield return new WaitForSeconds(1f); // let the ground's collider catch up
+                }
+
+                if (!labelled && pads.All(p => p.Done || labels.All(l => Utils.DistanceXZ(p.Center, l.At) > PadRadius + 6f)))
+                {
+                    labelled = true;
+                    foreach ((Vector3 at, string text) in labels)
+                    {
+                        PutSign(at, forward, text);
+                    }
                 }
 
                 // Then each plot whose ground is all done.
@@ -278,8 +479,14 @@ namespace Villheim.Logic.Village
             return count;
         }
 
-        /// <summary>A sign at the front of the plot (two back to back, so it reads from either side), standing on the ground.</summary>
+        /// <summary>A sign at the front of the plot: the kind and level in blue, the design's name in white.</summary>
         private static void Sign(Cell cell, Vector3 forward)
+        {
+            PutSign(cell.Center - forward * (cell.Half - 1f), forward, $"<#5cf>{Label(cell)}, {Level(cell)}<br><#fff>{cell.Design.Name}");
+        }
+
+        /// <summary>A sign standing on the ground (two back to back, so it reads from either side).</summary>
+        private static void PutSign(Vector3 at, Vector3 forward, string text)
         {
             GameObject prefab = ZNetScene.instance.GetPrefab("sign");
             if (prefab == null)
@@ -287,13 +494,11 @@ namespace Villheim.Logic.Village
                 return;
             }
 
-            string text = $"<#5cf>{Label(cell)}, {Level(cell)}<br><#fff>{cell.Design.Name}";
-            Vector3 at = cell.Center - forward * (cell.Half - 1f);
             foreach (float turn in new[] { 0f, 180f })
             {
                 Quaternion rotation = Quaternion.LookRotation(-forward) * Quaternion.Euler(0f, turn, 0f);
                 GameObject sign = Object.Instantiate(prefab, at + rotation * Vector3.forward * 0.03f, rotation);
-                StandOnGround(sign, cell.Center.y);
+                StandOnGround(sign, at.y);
                 ZNetView view = sign.GetComponent<ZNetView>();
                 if (view != null && view.IsValid())
                 {
@@ -338,7 +543,7 @@ namespace Villheim.Logic.Village
 
             switch (cell.Role)
             {
-                case Role.House: return 1;
+                case Role.House: return cell.Design.Radius >= 16f ? 3 : cell.Design.Radius >= 11f ? 2 : 1;
                 case Role.Farm: return 3;
                 default: return 2;
             }

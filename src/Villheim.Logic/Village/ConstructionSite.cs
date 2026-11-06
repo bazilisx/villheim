@@ -292,7 +292,7 @@ namespace Villheim.Logic.Village
             if (VillheimConfig.BuildPaths.Value && !site.Upgrade)
             {
                 // A villager walks the route and lays it (see PathLaying).
-                Villagers.PathLaying.Queue(hearth, site.Position, site.Radius);
+                Villagers.PathLaying.Queue(hearth, site.Position, site.Radius, site.Yaw);
             }
 
             VillheimPlugin.Log.LogInfo($"{state.Name} finished a {VillageBrain.RoleName(site.Role)} ({site.Design}).");

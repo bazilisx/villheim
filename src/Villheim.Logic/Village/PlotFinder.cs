@@ -43,7 +43,7 @@ namespace Villheim.Logic.Village
         }
 
         public static bool TryFind(Vector3 hearth, float axisYaw, Role role, bool strictHub, float radius, float maxTerrainDelta,
-            IReadOnlyList<Plot> plots, System.Random rng, out Vector3 position, out float yaw)
+            IReadOnlyList<Plot> plots, System.Random rng, out Vector3 position, out float yaw, HashSet<Vector2Int> network = null)
         {
             float villageRadius = VillheimConfig.VillageRadius.Value;
             Band(role, out float minShare, out float maxShare);
@@ -89,7 +89,8 @@ namespace Villheim.Logic.Village
             {
                 Vector3 candidate = hearth + axis * new Vector3(local.x, 0f, local.y);
                 if (IsGoodSpot(candidate, hearth, radius, maxTerrainDelta, plots, out float groundY) &&
-                    ClearOfPaths(candidate, hearth, axisYaw, radius, plots))
+                    ClearOfPaths(candidate, hearth, axisYaw, radius, plots) &&
+                    (network == null || PathPlanner.DistanceToNetwork(network, candidate) > radius * 0.6f + 1.5f))
                 {
                     good.Add(new Vector3(candidate.x, groundY, candidate.z));
                     if (good.Count >= wanted)

@@ -34,9 +34,12 @@ namespace Villheim.Logic.Villagers
         private static readonly Dictionary<int, Villager> Layers = new Dictionary<int, Villager>();
         private static readonly Dictionary<string, List<Vector3>> PointCache = new Dictionary<string, List<Vector3>>();
 
-        public static void Queue(VillageHearth hearth, Vector3 building, float radius)
+        /// <summary>Plans the path (PathPlanner) and adds it to the village's queue.</summary>
+        public static void Queue(VillageHearth hearth, Vector3 building, float radius, float yaw)
         {
-            string entry = string.Join(",", F(building.x), F(building.y), F(building.z), F(radius));
+            var village = new VillageState(hearth.Zdo);
+            List<Vector3> route = PathPlanner.Plan(hearth, village.Axis, building, radius, yaw);
+            string entry = string.Join(",", F(building.x), F(building.y), F(building.z), F(radius)) + "|" + PathPlanner.Encode(route);
             string queue = hearth.Zdo.GetString(KeyQueue, "");
             hearth.Zdo.Set(KeyQueue, string.IsNullOrEmpty(queue) ? entry : queue + ";" + entry);
         }
@@ -67,7 +70,7 @@ namespace Villheim.Logic.Villagers
             }
 
             var village = new VillageState(hearth.Zdo);
-            List<Vector3> points = Points(hearth.transform.position, village.Axis, building, radius);
+            List<Vector3> points = HeadRoute(hearth) ?? Points(hearth.transform.position, village.Axis, building, radius);
             int index = hearth.Zdo.GetInt(KeyIndex);
             if (index >= points.Count)
             {
@@ -121,6 +124,7 @@ namespace Villheim.Logic.Villagers
             state.NextStep = Time.time + SecondsPerStep;
             Chores.ToolAnimation(villager, VillagerLooks.Tool.Hoe);
             PathBuilder.PaintAt(point);
+            PathPlanner.AddToNetwork(hearth, point);
             hearth.Zdo.Set(KeyIndex, index + 1);
             state.GiveUpAt = Time.time + 30f;
             return true;
@@ -161,7 +165,7 @@ namespace Villheim.Logic.Villagers
                 return false;
             }
 
-            string[] parts = queue.Split(';')[0].Split(',');
+            string[] parts = queue.Split(';')[0].Split('|')[0].Split(',');
             if (parts.Length < 4)
             {
                 Pop(hearth);
@@ -171,6 +175,26 @@ namespace Villheim.Logic.Villagers
             building = new Vector3(P(parts[0]), P(parts[1]), P(parts[2]));
             radius = P(parts[3]);
             return true;
+        }
+
+        /// <summary>The planned route of the first path in the queue, or null for paths queued before routes were planned.</summary>
+        private static List<Vector3> HeadRoute(VillageHearth hearth)
+        {
+            string head = hearth.Zdo.GetString(KeyQueue, "").Split(';')[0];
+            int bar = head.IndexOf('|');
+            if (bar < 0)
+            {
+                return null;
+            }
+
+            string key = "route|" + head;
+            if (!PointCache.TryGetValue(key, out List<Vector3> route))
+            {
+                route = PathPlanner.Decode(head.Substring(bar + 1));
+                PointCache[key] = route;
+            }
+
+            return route.Count > 0 ? route : null;
         }
 
         private static void Pop(VillageHearth hearth)

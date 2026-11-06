@@ -531,7 +531,9 @@ namespace Villheim.Logic.Villagers
             Face(villager, ai, work.Contact);
             LandPendingHit(villager, work, profile);
             work.Timer -= dt;
-            bool facing = ai.IsLookingAt(work.Contact, 20f) || Time.time - work.FacingSince > 2f;
+            Vector3 toContact = work.Contact - villager.transform.position;
+            toContact.y = 0f;
+            bool facing = Vector3.Angle(villager.transform.forward, toContact) < 20f || Time.time - work.FacingSince > 3f;
             if (work.Timer <= 0f && facing && work.HitAt < 0f)
             {
                 // Check the reach again on every swing: never hit something that is out of arm's length. A standing
@@ -1209,10 +1211,24 @@ namespace Villheim.Logic.Villagers
             return false;
         }
 
-        /// <summary>Turns the villager toward a point at his own turn speed. Swings wait until he faces it.</summary>
+        /// <summary>
+        /// Turns the villager's body toward a point at a steady 360 degrees a second (the game only turns a standing
+        /// character's head), and aims the look there too. Swings wait until he faces it.
+        /// </summary>
         private static void Face(Villager villager, VillagerAI ai, Vector3 point)
         {
             ai.LookAt(point);
+            Vector3 direction = point - villager.transform.position;
+            direction.y = 0f;
+            if (direction.sqrMagnitude < 0.01f)
+            {
+                return;
+            }
+
+            direction.Normalize();
+            villager.SetLookDir(direction);
+            Quaternion wanted = Quaternion.LookRotation(direction);
+            villager.transform.rotation = Quaternion.RotateTowards(villager.transform.rotation, wanted, 360f * Time.fixedDeltaTime);
         }
 
         private static void MarkUnreachable(GameObject target)

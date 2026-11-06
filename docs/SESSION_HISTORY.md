@@ -8,8 +8,9 @@ Current facts only. Read this at the start of a session. Narrative is in `docs/d
 - **Branch:** `main` (the cloud session branch is kept equal to it). All commits authored by Baz.
 - **On main, not tested in game:** both 2026-11-06 overnight sessions (builder at the piece, levelled sites, beds and
   sleep, furnished buildings, Millénaire placement, cooking, roles and trades, dialogue library, walked A* paths,
-  blueprints, growth tiers and upgrades, longhouse around the hearth, hunting, repairs, shelter). Logic only,
-  hot-reloads; core DLL unchanged. Rollback branches `stage/2026-11-06-a` to `-d`. Details:
+  blueprints, growth tiers and upgrades, longhouse around the hearth, hunting, repairs, shelter, seats, trading,
+  furniture by tier, morning hearth). Logic only, hot-reloads; core DLL unchanged. Rollback branches
+  `stage/2026-11-06-a` to `-f`. Details:
   docs/daily-notes/2026-11/2026-11-06.md.
 - **Blueprints:** `BepInEx/config/Villheim/blueprints` (and PlanBuild's folder), named `role-family-level`.
 - **Dialogue:** `src/Villheim.Logic/Dialogue/*.txt`; the format is at the top of `lines.txt`.
@@ -29,7 +30,7 @@ Current facts only. Read this at the start of a session. Narrative is in `docs/d
 - Put blueprints in the blueprints folder (house-cabin-1, house-cabin-2...) to give villages curated buildings and
   upgrade chains; `vh savebp` can capture any build.
 - Placement reachability and cliff rule; hearth upgrades (core change); stone only later in the Meadows (to decide);
-  trading with the player (Millénaire's shops).
+  the village buying materials from players; raids.
 - Gear by biome and village level beyond the protector weapons.
 - Dialogue lines as a data file; two-villager chats with conditions.
 - Inspiration.zip stays on main for now; Tyler will remove it with a force-push once the study is done.

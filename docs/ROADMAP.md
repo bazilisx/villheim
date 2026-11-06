@@ -81,7 +81,7 @@ with its own look for its biome.
       session 5, needs testing.)
 - [ ] Evening ring at the hearth, sitting and resting by the fire at night. (Built 2026-11-05 session 5, needs
       testing.)
-- [ ] Sit on the village's chairs and benches.
+- [ ] Sit on the village's chairs and benches. (Built 2026-11-06, needs testing.)
 - [ ] Sleep in claimed beds, bedtime 22:00 to 23:00 and up at 05:00 to 06:00, random per villager (Tyler,
       2026-11-06). (Built 2026-11-06, needs testing.)
 - [ ] Villagers with nothing else to do make a fire pit, cooking station, workbench and benches by the hearth.
@@ -121,7 +121,8 @@ with its own look for its biome.
       before that, after Millénaire's villager types (Tyler, 2026-11-06). (Built 2026-11-06, needs testing.)
 - [ ] Dialogue about what villagers are doing, want and need, with conditions; grow into a large library of lines
       (Tyler, 2026-11-05). (Library of about 670 lines in eight voices with chats built 2026-11-06; keep growing it.)
-- [ ] Interiors upgrade over time (bed, chests, table, then better furniture).
+- [ ] Interiors upgrade over time (bed, chests, table, then better furniture). (Built 2026-11-06 by village tier,
+      needs testing.)
 - [ ] Exteriors upgrade over time (swap a building for a better design of the same role). (Built 2026-11-06: next
       blueprint level or a bigger design, old building taken down first; needs testing.)
 
@@ -137,7 +138,8 @@ with its own look for its biome.
 
 ## Later ideas
 
-- Trading with the player at village shops, as in Millénaire.
+- Trading with the player at village shops, as in Millénaire. (First step 2026-11-06: crouch and talk to buy
+  what the chest can spare. Next: the village buys what it needs, shops per building.)
 - Raids on villages through the game's own random events.
 - A mood that speeds or slows work (Millénaire, Hirdmandr).
 

@@ -71,11 +71,15 @@ namespace Villheim.Logic.Villagers
             talk.m_minTalkInterval = 3f;
             talk.m_hideDialogDelay = 5f;
             talk.m_randomTalkInterval = 25f;
-            talk.m_randomTalkChance = 0.25f;
+
+            // Talk about what is going on comes from Dialogue.Tick; the game's own random talk would repeat itself.
+            talk.m_randomTalkChance = 0f;
+            List<string> greets = Dialogue.Plain("greet");
+            List<string> byes = Dialogue.Plain("bye");
             talk.m_randomTalk = new List<string>(RandomTalk);
             talk.m_randomTalkInFactionBase = new List<string>(RandomTalk);
-            talk.m_randomGreets = new List<string>(Greets);
-            talk.m_randomGoodbye = new List<string>(Goodbyes);
+            talk.m_randomGreets = greets.Count > 0 ? greets : new List<string>(Greets);
+            talk.m_randomGoodbye = byes.Count > 0 ? byes : new List<string>(Goodbyes);
             talk.m_privateAreaAlarm = new List<string>(Aggravated);
             talk.m_aggravated = new List<string>(Aggravated);
             talk.m_randomTalkFX = talk.m_randomTalkFX ?? new EffectList();

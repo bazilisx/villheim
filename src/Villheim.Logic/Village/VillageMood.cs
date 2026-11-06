@@ -32,6 +32,10 @@ namespace Villheim.Logic.Village
             LastThreat[villageId] = Time.time;
         }
 
+        /// <summary>Seconds since the village last saw an enemy (a very large number if never).</summary>
+        public static float SecondsSinceThreat(int villageId) =>
+            LastThreat.TryGetValue(villageId, out float time) ? Time.time - time : float.MaxValue;
+
         public static float Get(int villageId)
         {
             if (!Entries.TryGetValue(villageId, out Entry entry))

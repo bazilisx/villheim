@@ -331,6 +331,7 @@ namespace Villheim.Logic.Village
                 TerrainShaper.LevelPad(position, footprint + 0.5f, footprint + 3f);
 
                 VillheimPlugin.Log.LogInfo($"{state.Name} broke ground for a {RoleName(role)} ({design.Name}) at {position}.");
+                Villagers.Dialogue.Note(state.Id, "groundbroken");
                 Announce(hearth, $"{state.Name} has started building a {RoleName(role)}.");
             }
             finally
@@ -428,6 +429,10 @@ namespace Villheim.Logic.Village
 
             state.Arrivals = arrival + 1;
             VillheimPlugin.Debug($"{state.Name}: {name} arrived.");
+            if (arrival >= VillheimConfig.StartingVillagers.Value)
+            {
+                Villagers.Dialogue.Note(state.Id, "arrival");
+            }
         }
 
         /// <summary>Makes the next building start on the following tick. Used by the console command.</summary>

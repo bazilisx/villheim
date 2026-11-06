@@ -24,6 +24,11 @@
     </PropertyGroup>
   </Target>
 
+  <!-- Villager lines, read by Villagers/DialogueLibrary.cs. Built into the DLL so they reload with it. -->
+  <ItemGroup>
+    <EmbeddedResource Include="Dialogue\*.txt" LogicalName="Villheim.Logic.Dialogue.%(Filename)%(Extension)" />
+  </ItemGroup>
+
   <ItemGroup>
     <ProjectReference Include="..\Villheim\Villheim.csproj" Private="false" />
   </ItemGroup>

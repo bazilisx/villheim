@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using UnityEngine;
@@ -9,224 +10,107 @@ using Random = UnityEngine.Random;
 namespace Villheim.Logic.Villagers
 {
     /// <summary>
-    /// What villagers say about what is going on: what they are doing, what they want and what the village needs.
+    /// What villagers say, from the line library in <c>Dialogue/*.txt</c> (built into the logic DLL).
     ///
-    /// Every line belongs to a topic with a condition on the moment (the villager's work, health, trade and role, the
-    /// village's needs, the building going up, the time of day, the weather). When a villager speaks, the topics whose
-    /// conditions hold are gathered and one line is picked, weighted by how specific the topic is. Lines can name the
-    /// material, building, food or village with {material}, {building}, {food}, {village} and {name}.
+    /// Every villager has a voice (steady, gruff, cheerful, worrier, wry, elder, young or devout), fixed by his seed.
+    /// Each section of the library has conditions on the moment and optionally the voices it is for. When a villager
+    /// speaks, the tags that describe the moment are worked out (what he is doing, how hurt he is, what the village
+    /// needs, the time, the weather, his trade and role...), every section whose conditions all hold and whose voice
+    /// fits is a candidate, and one line is picked, sections with more conditions weighing more. A line is not
+    /// repeated by the same villager until he has said a few others. See the top of <c>Dialogue/lines.txt</c> for the
+    /// format and the tags.
     ///
-    /// Villagers speak when you talk to them, and now and then on their own while you are close by.
+    /// Three channels: <c>talk</c> (a player talks to him), <c>self</c> (now and then, with a player close by) and
+    /// <c>chat</c> (two villagers talking in their free time; a line written "first // reply" is a little exchange).
+    /// Sections without a channel tag are used for talk and self.
     /// </summary>
     internal static class Dialogue
     {
-        internal sealed class Moment
-        {
-            public Villager Villager;
-            public VillageHearth Hearth;
-            public VillageState State;
-            public VillageNeeds Needs;
-            public string Doing;
-            public float Health;
-            public Roles.Trade Trade;
-            public Roles.Background Background;
-            public string Material;
-            public string Building;
-            public float Hour;
-        }
+        public static readonly string[] Voices = { "steady", "gruff", "cheerful", "worrier", "wry", "elder", "young", "devout" };
 
-        private sealed class Topic
+        private static readonly string[] Channels = { "talk", "self", "chat", "greet", "bye" };
+
+        private sealed class Section
         {
-            public Func<Moment, bool> When;
+            public string[] All;
+            public string[] None;
+            public HashSet<string> VoiceSet;
+            public string Channel;
             public float Weight;
-            public string[] Lines;
+            public readonly List<string> Lines = new List<string>();
         }
 
-        private sealed class Spoken
+        private sealed class Memory
         {
-            public float Next;
-            public string Last;
+            public float NextSelf;
+            public readonly Queue<string> Recent = new Queue<string>();
         }
 
         private const float SelfTalkRange = 14f;
 
-        private static readonly ConditionalWeakTable<Villager, Spoken> SpokenStates = new ConditionalWeakTable<Villager, Spoken>();
+        private static List<Section> _sections;
+        private static readonly Dictionary<(int, string), float> Events = new Dictionary<(int, string), float>();
 
-        private static bool Doing(Moment m, string word) => m.Doing != null && m.Doing.IndexOf(word, StringComparison.OrdinalIgnoreCase) >= 0;
-
-        private static readonly Topic[] Topics =
+        /// <summary>Something happened in the village (finished, arrival...): "event:x" holds for ten minutes.</summary>
+        public static void Note(int villageId, string what)
         {
-            // ---- what they are doing
-            new Topic { Weight = 3f, When = m => Doing(m, "felling") || Doing(m, "splitting"), Lines = new[]
-            {
-                "This one will fall away from the houses. Stand back.",
-                "Good straight trunk. The builder will be pleased.",
-                "A few more swings and it's down.",
-                "We need the {material}. The trees have plenty.",
-            } },
-            new Topic { Weight = 3f, When = m => Doing(m, "rock"), Lines = new[]
-            {
-                "Stone for the {building}. My arms will feel it tonight.",
-                "This rock has been here longer than any of us.",
-                "Mind the chips. They fly.",
-            } },
-            new Topic { Weight = 3f, When = m => Doing(m, "building"), Lines = new[]
-            {
-                "One piece at a time. That's how a house goes up.",
-                "Hand me that beam. No, the other one.",
-                "The {building} is coming along.",
-                "Floor first, then the walls. Then we argue about the roof.",
-            } },
-            new Topic { Weight = 3f, When = m => Doing(m, "carrying") || Doing(m, "gathering"), Lines = new[]
-            {
-                "This goes in the chest by the hearth.",
-                "Heavier than it looks.",
-                "Every bit of {material} counts.",
-            } },
-            new Topic { Weight = 3f, When = m => Doing(m, "cook") || Doing(m, "fire"), Lines = new[]
-            {
-                "Smells good, doesn't it? Wait your turn.",
-                "Off the fire before it burns. That's the whole trick.",
-                "A full belly heals faster than any herb.",
-            } },
-            new Topic { Weight = 2f, When = m => Doing(m, "watch"), Lines = new[]
-            {
-                "Quiet out there. I don't trust quiet.",
-                "I keep an eye on the tree line. Greydwarfs like to creep.",
-                "If anything comes, I'll see it first.",
-            } },
-            new Topic { Weight = 2f, When = m => Doing(m, "make"), Lines = new[]
-            {
-                "Every village needs a {building}. Ours will be a good one.",
-                "A little of the chest's wood for something we can all use.",
-            } },
+            Events[(villageId, what)] = Time.time;
+        }
+        private static readonly ConditionalWeakTable<Villager, Memory> Memories = new ConditionalWeakTable<Villager, Memory>();
 
-            // ---- what they want and need
-            new Topic { Weight = 2.5f, When = m => m.Material != null && m.Doing == null, Lines = new[]
-            {
-                "We're short of {material}. If you have some, the chest is by the hearth.",
-                "The {building} is waiting on {material}.",
-                "Bring {material} to the chest and you'll have friends here.",
-            } },
-            new Topic { Weight = 2.5f, When = m => m.Health < 0.5f, Lines = new[]
-            {
-                "I took a bad knock. I need something to eat.",
-                "I'm hurt. A hot meal would set me right.",
-            } },
-            new Topic { Weight = 2f, When = m => m.Health < 0.95f && m.Health >= 0.5f, Lines = new[]
-            {
-                "Just a scratch. I'll eat something later.",
-                "Still sore from the last fight.",
-            } },
-            new Topic { Weight = 1.5f, When = m => m.Needs != null && m.Needs.Missing.Count == 0 && !ConstructionSite.IsActive(m.Hearth.Zdo), Lines = new[]
-            {
-                "The chest is full for now. A good day.",
-                "Nothing to haul today. I might sit by the fire.",
-            } },
-            new Topic { Weight = 1.5f, When = m => m.Building != null, Lines = new[]
-            {
-                "We're building a {building}. Come back and see it finished.",
-                "Once the {building} is done, there's room for more of us.",
-            } },
-            new Topic { Weight = 1f, When = m => m.Hearth != null && Beds.Free(m.Hearth) > 0, Lines = new[]
-            {
-                "There's a free bed. Someone new will turn up soon, you'll see.",
-            } },
-
-            // ---- trades and roles
-            new Topic { Weight = 1.2f, When = m => m.Trade == Roles.Trade.Carpenter, Lines = new[]
-            {
-                "I'm the one who builds around here. Mind the hammer.",
-                "A good joint holds a roof for a lifetime.",
-            } },
-            new Topic { Weight = 1.2f, When = m => m.Trade == Roles.Trade.Woodcutter, Lines = new[]
-            {
-                "Wood is what we need most. Always wood.",
-                "I know every tree around {village}.",
-            } },
-            new Topic { Weight = 1.2f, When = m => m.Trade == Roles.Trade.Miner, Lines = new[]
-            {
-                "Stone doesn't burn. That's why I like it.",
-                "Give me a pickaxe and a rock and I'm happy.",
-            } },
-            new Topic { Weight = 1.2f, When = m => m.Trade == Roles.Trade.Cook, Lines = new[]
-            {
-                "Bring me meat and I'll keep everyone fed.",
-                "Someone has to keep the fire going.",
-            } },
-            new Topic { Weight = 0.8f, When = m => m.Background == Roles.Background.Protector, Lines = new[]
-            {
-                "If trouble comes, I'll be the first one out there.",
-                "I sleep lightly. Someone has to.",
-            } },
-            new Topic { Weight = 0.8f, When = m => m.Background == Roles.Background.Carer, Lines = new[]
-            {
-                "Have you eaten today? You look thin.",
-                "I like to keep the hearth warm for when everyone comes back.",
-            } },
-
-            // ---- time and weather
-            new Topic { Weight = 1f, When = m => m.Hour >= 19f && m.Hour < 22f, Lines = new[]
-            {
-                "Almost time to sit by the fire.",
-                "Long day. My bed is calling.",
-            } },
-            new Topic { Weight = 1f, When = m => m.Hour >= 5f && m.Hour < 8f, Lines = new[]
-            {
-                "Up with the sun. There's work to do.",
-                "Cold morning. The fire helps.",
-            } },
-            new Topic { Weight = 1f, When = m => EnvMan.IsWet(), Lines = new[]
-            {
-                "Rain again. At least the roof holds.",
-                "Wet wood, wet boots, wet everything.",
-            } },
-            new Topic { Weight = 0.8f, When = m => m.State != null && m.State.Plots.Count <= 1, Lines = new[]
-            {
-                "We've only just settled here.",
-                "It's not much yet. Give us time.",
-            } },
-            new Topic { Weight = 0.8f, When = m => m.State != null && m.State.Plots.Count >= 4, Lines = new[]
-            {
-                "{village} is turning into a proper village.",
-                "Remember when this was just a fire and two of us?",
-            } },
-        };
-
-        /// <summary>A line for this villager right now, or null when nothing in particular comes to mind.</summary>
-        public static string LineFor(Villager villager)
+        public static string VoiceOf(Villager villager)
         {
-            Moment moment = Read(villager);
-            var options = Topics.Where(t => SafeWhen(t, moment)).ToList();
+            int seed = villager.Zdo != null ? villager.Zdo.GetInt(Keys.VillagerSeed) : 1;
+            return Voices[(int)((uint)(seed * 2654435761u) >> 8) % Voices.Length];
+        }
+
+        // ---------------------------------------------------------------- speaking
+
+        /// <summary>A line for this villager on this channel, or null when nothing fits.</summary>
+        public static string LineFor(Villager villager, string channel, string reply = null)
+        {
+            HashSet<string> tags = Tags(villager, channel);
+            string voice = VoiceOf(villager);
+            Memory memory = Memories.GetOrCreateValue(villager);
+
+            var options = new List<(Section Section, float Weight)>();
+            foreach (Section section in Library())
+            {
+                if (!Fits(section, channel, tags, voice))
+                {
+                    continue;
+                }
+
+                options.Add((section, section.Weight));
+            }
+
             if (options.Count == 0)
             {
                 return null;
             }
 
-            float roll = Random.value * options.Sum(t => t.Weight);
-            Topic topic = options[options.Count - 1];
-            foreach (Topic option in options)
+            for (int attempt = 0; attempt < 6; attempt++)
             {
-                roll -= option.Weight;
-                if (roll <= 0f)
+                Section picked = Pick(options);
+                string line = picked.Lines[Random.Range(0, picked.Lines.Count)];
+                if (memory.Recent.Contains(line) && attempt < 5)
                 {
-                    topic = option;
-                    break;
+                    continue;
                 }
+
+                memory.Recent.Enqueue(line);
+                while (memory.Recent.Count > 12)
+                {
+                    memory.Recent.Dequeue();
+                }
+
+                return Fill(line, villager);
             }
 
-            Spoken spoken = SpokenStates.GetOrCreateValue(villager);
-            string line = topic.Lines[Random.Range(0, topic.Lines.Length)];
-            if (line == spoken.Last && topic.Lines.Length > 1)
-            {
-                line = topic.Lines[(Array.IndexOf(topic.Lines, line) + 1) % topic.Lines.Length];
-            }
-
-            spoken.Last = line;
-            return Fill(line, moment);
+            return null;
         }
 
-        /// <summary>Now and then, with a player close by, a villager says something about what he is doing.</summary>
+        /// <summary>Now and then, with a player close by, a villager says something about what is going on.</summary>
         public static void Tick(Villager villager)
         {
             if (!VillheimConfig.VillagerChatter.Value || Sleep.IsAsleep(villager) || Player.m_localPlayer == null ||
@@ -235,88 +119,334 @@ namespace Villheim.Logic.Villagers
                 return;
             }
 
-            Spoken spoken = SpokenStates.GetOrCreateValue(villager);
-            if (Time.time < spoken.Next)
+            Memory memory = Memories.GetOrCreateValue(villager);
+            if (Time.time < memory.NextSelf)
             {
                 return;
             }
 
-            spoken.Next = Time.time + Random.Range(45f, 110f);
+            memory.NextSelf = Time.time + Random.Range(40f, 100f);
             if (Vector3.Distance(Player.m_localPlayer.transform.position, villager.transform.position) > SelfTalkRange ||
                 Random.value > 0.5f)
             {
                 return;
             }
 
-            string line = LineFor(villager);
-            if (line != null)
-            {
-                global::Chat.instance.SetNpcText(villager.gameObject, Vector3.up * 2.2f, 20f, 5f, "", line, false);
-            }
+            Say(villager, LineFor(villager, "self"));
         }
 
-        private static bool SafeWhen(Topic topic, Moment moment)
+        public static void Say(Villager villager, string line, float seconds = 5f)
         {
-            try
+            if (string.IsNullOrEmpty(line) || global::Chat.instance == null)
             {
-                return topic.When(moment);
+                return;
             }
-            catch (Exception)
+
+            global::Chat.instance.SetNpcText(villager.gameObject, Vector3.up * 2.2f, 20f, seconds, "", line, false);
+        }
+
+        /// <summary>Every line of a channel that has no conditions, for the game's own NpcTalk greetings.</summary>
+        public static List<string> Plain(string channel)
+        {
+            return Library().Where(s => s.Channel == channel && s.All.Length == 0 && s.VoiceSet == null)
+                .SelectMany(s => s.Lines).ToList();
+        }
+
+        private static bool Fits(Section section, string channel, HashSet<string> tags, string voice)
+        {
+            if (section.Channel != null ? section.Channel != channel : channel != "talk" && channel != "self")
             {
                 return false;
             }
+
+            if (section.VoiceSet != null && !section.VoiceSet.Contains(voice))
+            {
+                return false;
+            }
+
+            foreach (string tag in section.All)
+            {
+                if (!tags.Contains(tag))
+                {
+                    return false;
+                }
+            }
+
+            foreach (string tag in section.None)
+            {
+                if (tags.Contains(tag))
+                {
+                    return false;
+                }
+            }
+
+            return true;
         }
 
-        private static Moment Read(Villager villager)
+        private static Section Pick(List<(Section Section, float Weight)> options)
+        {
+            float roll = Random.value * options.Sum(o => o.Weight);
+            foreach ((Section section, float weight) in options)
+            {
+                roll -= weight;
+                if (roll <= 0f)
+                {
+                    return section;
+                }
+            }
+
+            return options[options.Count - 1].Section;
+        }
+
+        // ---------------------------------------------------------------- the moment
+
+        /// <summary>Tags describing this villager and his village right now.</summary>
+        private static HashSet<string> Tags(Villager villager, string channel)
+        {
+            var tags = new HashSet<string> { channel };
+            string doing = (Sleep.IsAsleep(villager) ? "asleep" : null) ?? Healing.Describe(villager) ?? Chores.Describe(villager) ??
+                           (PathLaying.IsLaying(villager) ? "laying a path" : null) ?? FreeTime.Describe(villager) ?? "idle";
+            foreach (string activity in Activities(doing))
+            {
+                tags.Add("doing:" + activity);
+            }
+
+            float health = villager.GetHealth() / Mathf.Max(1f, villager.GetMaxHealth());
+            tags.Add(health < 0.5f ? "badlyhurt" : health < 0.95f ? "hurt" : "healthy");
+            if (health < 0.95f) tags.Add("anyhurt");
+            tags.Add(Healing.FoodCount(villager) > 0 ? "fed" : "unfed");
+
+            Roles.Trade trade = Roles.TradeOf(villager);
+            tags.Add("trade:" + trade.ToString().ToLowerInvariant());
+            tags.Add(Roles.BackgroundOf(villager) == Roles.Background.Protector ? "protector" : "carer");
+
+            float hour = EnvMan.instance != null ? EnvMan.instance.GetDayFraction() * 24f : 12f;
+            tags.Add(hour >= 5f && hour < 9f ? "morning" : hour < 17f && hour >= 9f ? "day" : hour >= 17f && hour < 22f ? "evening" : "night");
+            if (EnvMan.IsWet()) tags.Add("rain");
+            if (EnvMan.IsCold()) tags.Add("cold");
+            if (EnvMan.IsFreezing()) tags.Add("freezing");
+
+            VillageHearth hearth = VillageHearth.Find(villager.VillageId);
+            if (hearth == null || !hearth.IsValid)
+            {
+                return tags;
+            }
+
+            var state = new VillageState(hearth.Zdo);
+            int plots = state.Plots.Count;
+            tags.Add(plots <= 1 ? "size:camp" : plots <= 3 ? "size:hamlet" : plots <= 6 ? "size:village" : "size:town");
+            int villagers = VillageBrain.CountVillagers(state.Id);
+            if (villagers <= 2) tags.Add("few");
+            if (villagers >= 6) tags.Add("many");
+            tags.Add(state.Biome == Heightmap.Biome.BlackForest ? "biome:blackforest" : "biome:meadows");
+
+            VillageNeeds needs = VillageNeeds.For(villager.VillageId);
+            if (needs != null && needs.Missing.Count > 0)
+            {
+                tags.Add("need:any");
+                foreach (string material in needs.Missing.Keys)
+                {
+                    tags.Add("need:" + Materials.Label(material).Replace(" ", "").ToLowerInvariant());
+                }
+            }
+            else
+            {
+                tags.Add("need:none");
+            }
+
+            ConstructionSite.Site site = ConstructionSite.Get(hearth.Zdo);
+            if (site != null)
+            {
+                tags.Add("building:any");
+                tags.Add("building:" + VillageBrain.RoleName(site.Role).Replace(" ", ""));
+            }
+
+            if (Beds.Free(hearth) > 0) tags.Add("freebed");
+            if (Beds.For(villager) == null) tags.Add("nobed");
+
+            float mood = VillageMood.Get(state.Id);
+            tags.Add(mood >= 65f ? "mood:high" : mood < 35f ? "mood:low" : "mood:fair");
+            if (VillageMood.SecondsSinceThreat(state.Id) < 240f) tags.Add("afterfight");
+
+            foreach (KeyValuePair<(int, string), float> happened in Events)
+            {
+                if (happened.Key.Item1 == state.Id && Time.time - happened.Value < 600f)
+                {
+                    tags.Add("event:" + happened.Key.Item2);
+                }
+            }
+
+            bool? food = Healing.ChestFood(hearth);
+            tags.Add(food == true ? "food:cooked" : food == false ? "food:raw" : "food:none");
+            return tags;
+        }
+
+        /// <summary>Activity words from the hover description.</summary>
+        private static IEnumerable<string> Activities(string doing)
+        {
+            string d = doing.ToLowerInvariant();
+            if (d.Contains("felling")) yield return "felling";
+            if (d.Contains("splitting")) yield return "splitting";
+            if (d.Contains("rock")) yield return "mining";
+            if (d == "building" || d.Contains("rebuilding")) yield return "building";
+            if (d.Contains("carrying")) yield return "carrying";
+            if (d.Contains("gathering") || d.Contains("picking")) yield return "gathering";
+            if (d.Contains("cook")) yield return "cooking";
+            if (d.Contains("fetching")) yield return "fetching";
+            if (d.Contains("roasting")) yield return "roasting";
+            if (d.Contains("watch")) yield return "watch";
+            if (d.Contains("path")) yield return "path";
+            if (d.Contains("making")) yield return "making";
+            if (d.Contains("sitting") || d.Contains("fire")) yield return "fire";
+            if (d.Contains("stroll")) yield return "stroll";
+            if (d.Contains("chat") || d.Contains("talking")) yield return "chatting";
+            if (d.Contains("busy at")) yield return "station";
+            if (d.Contains("heading out")) yield return "heading";
+            if (d == "idle" || d.Contains("resting")) yield return "idle";
+            if (d.Contains("asleep")) yield return "asleep";
+        }
+
+        private static string Fill(string line, Villager villager)
         {
             VillageHearth hearth = VillageHearth.Find(villager.VillageId);
-            var moment = new Moment
+            string village = "the village";
+            string material = "wood";
+            string building = "next house";
+            if (hearth != null && hearth.IsValid)
             {
-                Villager = villager,
-                Hearth = hearth != null && hearth.IsValid ? hearth : null,
-                Doing = Healing.Describe(villager) ?? Chores.Describe(villager) ?? FreeTime.Describe(villager),
-                Health = villager.GetHealth() / Mathf.Max(1f, villager.GetMaxHealth()),
-                Trade = Roles.TradeOf(villager),
-                Background = Roles.BackgroundOf(villager),
-                Hour = EnvMan.instance != null ? EnvMan.instance.GetDayFraction() * 24f : 12f,
-            };
-
-            if (moment.Hearth != null)
-            {
-                moment.State = new VillageState(moment.Hearth.Zdo);
-                moment.Needs = VillageNeeds.For(villager.VillageId);
-                if (moment.Needs != null && moment.Needs.Missing.Count > 0)
+                var state = new VillageState(hearth.Zdo);
+                village = state.Name;
+                VillageNeeds needs = VillageNeeds.For(villager.VillageId);
+                if (needs != null && needs.Missing.Count > 0)
                 {
-                    moment.Material = Materials.Label(moment.Needs.Missing.OrderByDescending(n => n.Value).First().Key);
+                    material = Materials.Label(needs.Missing.OrderByDescending(n => n.Value).First().Key);
                 }
 
-                ConstructionSite.Site site = ConstructionSite.Get(moment.Hearth.Zdo);
+                ConstructionSite.Site site = ConstructionSite.Get(hearth.Zdo);
                 if (site != null)
                 {
-                    moment.Building = VillageBrain.RoleName(site.Role);
+                    building = VillageBrain.RoleName(site.Role);
                 }
             }
 
-            if (moment.Doing == null || moment.Doing == "idle")
-            {
-                moment.Doing = null;
-            }
-
-            return moment;
+            string player = Player.m_localPlayer != null ? Player.m_localPlayer.GetPlayerName() : "friend";
+            string other = OtherVillager(villager);
+            return line.Replace("{village}", village)
+                .Replace("{material}", material)
+                .Replace("{building}", building)
+                .Replace("{name}", villager.VillagerName)
+                .Replace("{player}", player)
+                .Replace("{other}", other);
         }
 
-        private static string Fill(string line, Moment m)
+        private static string OtherVillager(Villager villager)
         {
-            string building = m.Building ?? "next house";
-            if (m.Doing != null && m.Doing.StartsWith("making a ", StringComparison.Ordinal))
+            Villager best = null;
+            float bestDistance = float.MaxValue;
+            foreach (Character character in Character.GetAllCharacters())
             {
-                building = m.Doing.Substring("making a ".Length);
+                if (character is Villager other && other != villager && other.VillageId == villager.VillageId && !other.IsDead())
+                {
+                    float distance = Vector3.Distance(other.transform.position, villager.transform.position);
+                    if (distance < bestDistance)
+                    {
+                        best = other;
+                        bestDistance = distance;
+                    }
+                }
             }
 
-            return line.Replace("{material}", m.Material ?? "wood")
-                .Replace("{building}", building)
-                .Replace("{village}", m.State?.Name ?? "the village")
-                .Replace("{name}", m.Villager.VillagerName);
+            return best != null ? best.VillagerName : "the others";
+        }
+
+        // ---------------------------------------------------------------- the library
+
+        private static List<Section> Library()
+        {
+            if (_sections != null)
+            {
+                return _sections;
+            }
+
+            _sections = new List<Section>();
+            var assembly = typeof(Dialogue).Assembly;
+            foreach (string resource in assembly.GetManifestResourceNames().Where(n => n.StartsWith("Villheim.Logic.Dialogue.")))
+            {
+                using (Stream stream = assembly.GetManifestResourceStream(resource))
+                using (var reader = new StreamReader(stream))
+                {
+                    Parse(reader.ReadToEnd(), resource);
+                }
+            }
+
+            VillheimPlugin.Log.LogInfo($"Dialogue: {_sections.Count} sections, {_sections.Sum(s => s.Lines.Count)} lines.");
+            return _sections;
+        }
+
+        /// <summary>
+        /// "@ tag, tag, !tag | voice/voice * weight" starts a section; every other non-empty line that doesn't start
+        /// with # is a line of it.
+        /// </summary>
+        private static void Parse(string text, string source)
+        {
+            Section current = null;
+            int number = 0;
+            foreach (string raw in text.Split('\n'))
+            {
+                number++;
+                string line = raw.Trim();
+                if (line.Length == 0 || line.StartsWith("#"))
+                {
+                    continue;
+                }
+
+                if (!line.StartsWith("@"))
+                {
+                    current?.Lines.Add(line);
+                    continue;
+                }
+
+                string head = line.Substring(1);
+                float weight = 1f;
+                int star = head.IndexOf('*');
+                if (star >= 0)
+                {
+                    float.TryParse(head.Substring(star + 1).Trim(), System.Globalization.NumberStyles.Float,
+                        System.Globalization.CultureInfo.InvariantCulture, out weight);
+                    head = head.Substring(0, star);
+                }
+
+                HashSet<string> voices = null;
+                int bar = head.IndexOf('|');
+                if (bar >= 0)
+                {
+                    voices = new HashSet<string>(head.Substring(bar + 1).Split('/').Select(v => v.Trim().ToLowerInvariant())
+                        .Where(v => v.Length > 0));
+                    head = head.Substring(0, bar);
+                }
+
+                List<string> conditions = head.Split(',').Select(t => t.Trim().ToLowerInvariant()).Where(t => t.Length > 0).ToList();
+                string channel = conditions.FirstOrDefault(c => Channels.Contains(c));
+                conditions.Remove(channel);
+                if (voices != null && voices.Any(v => !Voices.Contains(v)))
+                {
+                    VillheimPlugin.Log.LogWarning($"{source} line {number}: unknown voice in '{line}'.");
+                }
+
+                current = new Section
+                {
+                    All = conditions.Where(c => !c.StartsWith("!")).ToArray(),
+                    None = conditions.Where(c => c.StartsWith("!")).Select(c => c.Substring(1)).ToArray(),
+                    VoiceSet = voices,
+                    Channel = channel,
+                };
+
+                int specific = current.All.Length + current.None.Length + (voices != null ? 1 : 0);
+                current.Weight = (weight > 0f ? weight : 1f) * (1f + specific * 0.6f);
+                _sections.Add(current);
+            }
+
+            _sections.RemoveAll(s => s.Lines.Count == 0);
         }
     }
 }

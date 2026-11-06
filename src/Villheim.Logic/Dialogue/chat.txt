@@ -1,0 +1,126 @@
+# Villheim: what villagers say to each other in their free time (chat), and the game's own greetings (greet, bye).
+# Same format as lines.txt. In chat sections, "first // reply" is said by one villager and answered by the other.
+
+@ chat
+Did you see the size of that boar? // Saw it. Ran from it.
+I heard wolves last night. // That was {other} snoring.
+My back's done in. // Your back's been done in since we got here.
+Who left the chest open? // Not me. Probably.
+Good weather for it today. // For what? // Anything.
+Have you seen my good knife? // The one with the chip? No.
+I think it's going to rain. // You say that every day. // One day I'll be right.
+How many trees did you get? // Enough to be tired. Not enough to stop.
+I'm going to build myself a chair. A proper one. // You said that last week.
+The fire smokes worse when the wind's from the north. // Then sit on the other side.
+Do you ever think about going back? // Back where? // Exactly.
+I dreamt about fish. // Good fish or bad fish? // Big fish.
+That greydwarf yesterday had a pinecone stuck to it. // They're all made of pinecones. That's the joke.
+We should name the boar that keeps coming round. // We should eat the boar that keeps coming round.
+I had a splinter the size of a nail. // Show me. // It's gone now. // Then it wasn't that big.
+Pass the salt. // We don't have salt. // Then pass the nothing.
+What's for dinner? // Same as yesterday. // Meat? // Meat.
+I lost a boot in the bog. // Just the one? // I'm going back for the other one later.
+The ravens were watching me again. // They watch everyone. // They watch me more.
+There's a smell coming from the chest. // That's the cheese. // We don't have cheese. // Then I don't know what it is.
+Mead tonight? // If somebody made some. // Nobody made some. // Then no.
+
+@ chat | gruff
+Stop humming. // I wasn't humming. // You're humming now.
+Don't touch my axe. // I wasn't going to. // You were looking at it.
+
+@ chat | cheerful
+Isn't it a lovely evening? // Your face is lovely. Covered in soot, but lovely.
+I'm in a good mood today. // Did you sleep? // I slept!
+
+@ chat | worrier
+Did you check the door? // Twice. // Can you check it again?
+Do trolls swim? // I don't think so. // But you don't know.
+
+@ chat | wry
+I've decided I'm the village's official complainer. // The job was already taken.
+Another day, another tree. // You say that like it's bad.
+
+@ chat | elder
+In my day we didn't have chests. We had piles. // Piles of what? // Everything.
+My grandmother lived to see ninety winters. // On what? // Spite, mostly.
+
+@ chat | young
+Can I come felling with you tomorrow? // If you carry the logs. // Deal! Wait, all of them?
+How old do you have to be to fight a troll? // Older than you.
+
+@ chat | devout
+Did you leave something for the gods? // I left a crust. // They'll appreciate the effort.
+Thor's quiet tonight. // Good. He's loud when he's angry.
+
+@ chat, need:any
+We need more {material}. // Then go get some. // I was hoping you'd say you'd go.
+How much {material} do we still need? // More than we've got.
+
+@ chat, need:none
+Chest's full. // Then what do we do? // Sit. Like this.
+
+@ chat, building:any
+How's the {building} coming? // Slowly. // So, like everything.
+When's the {building} done? // When it's done.
+
+@ chat, building:home
+Who gets the new house? // Whoever needs a bed most. // That's me. I need a bed most.
+
+@ chat, freebed
+There's a free bed now. // Someone'll turn up. People always turn up.
+
+@ chat, rain
+Rain again. // Rain always. // You'd think we'd be used to it.
+
+@ chat, evening
+Long day. // They're all long. // Some are longer.
+
+@ chat, morning
+Sleep well? // Something was scratching at the wall all night. // Mice. // Big mice.
+
+@ chat, night
+You should be asleep. // So should you.
+
+@ chat, afterfight
+Did you see me back there? // I saw you running. // Running towards!
+Are you hurt? // Only my pride.
+
+@ chat, food:none
+Nothing to eat. // We had meat yesterday. // We ate it yesterday.
+
+@ chat, food:cooked
+There's cooked meat in the chest. // Not anymore. // You didn't.
+
+@ chat, size:camp
+Do you think more will come? // If we build it. // Build what? // Anything with a roof.
+
+@ chat, size:village
+Remember the first night here? // Cold, wet, and you complaining. // Some things don't change.
+
+@ chat, biome:blackforest
+I heard a troll last night. // Was it close? // It was loud. Loud is close.
+
+@ chat, mood:low
+Rough week. // Rough month. // Rough life, really. // Cheer up, it's nearly dinner.
+
+@ chat, mood:high
+Good times. // Don't say that, you'll curse it.
+
+# ------------------------------------------------------------------ the game's own greetings and goodbyes
+
+@ greet
+Hail.
+Well met.
+Ho there.
+Back again?
+Evening. Or is it morning?
+You look like you've walked a long way.
+Mind the fire.
+
+@ bye
+Safe roads.
+Watch for trolls.
+Come back with meat.
+Don't get eaten.
+Off you go, then.
+Fair winds.

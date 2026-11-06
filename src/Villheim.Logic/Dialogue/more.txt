@@ -1,0 +1,273 @@
+# Villheim: more lines. Same format as lines.txt.
+# Extra tags here: event:finished event:arrival event:groundbroken (each holds for ten minutes after it happens).
+
+# ------------------------------------------------------------------ village events
+
+@ event:finished
+Did you see? The new place is finished.
+Another roof. We're getting somewhere.
+I walked through the new house twice. Smells like fresh wood.
+
+@ event:finished | gruff
+Done. Finally. Now somebody else can build the next one.
+
+@ event:finished | cheerful
+It's done! Go and look, go on.
+
+@ event:finished | worrier
+It's finished, but I'll feel better after it survives its first storm.
+
+@ event:finished | elder
+I remember when this was all grass. Well. Last week.
+
+@ event:finished | wry
+Four walls and a roof. Civilisation.
+
+@ event:finished, trade:carpenter
+That one's mine. Every peg.
+
+@ event:arrival
+Have you met the new one? Seems nice enough.
+Someone new turned up today. Walked right in from the woods.
+One more mouth to feed, one more pair of hands.
+
+@ event:arrival | gruff
+New one's already asking where the good bed is. Typical.
+
+@ event:arrival | worrier
+How do we know the new one isn't a draugr in disguise? I'm only asking.
+
+@ event:arrival | young
+Someone new! Do you think they know any stories?
+
+@ event:groundbroken
+They've started on the next building.
+Pegs in the ground already. That was quick.
+
+@ event:groundbroken | wry
+Another building. We're going to run out of names for them.
+
+@ chat, event:finished
+Did you go inside the new house? // I did. The door sticks. // They all stick.
+Who's moving in? // Whoever snores least, I hope.
+
+@ chat, event:arrival
+What do you make of the new one? // Quiet. // Quiet's good. // Quiet's suspicious.
+The new one eats a lot. // So did you, when you came.
+
+# ------------------------------------------------------------------ each voice on an ordinary day
+
+@ !night | steady
+Fair day. Plenty to do.
+I'll finish this, then eat.
+Can't complain. Well, I can, but I won't.
+The weather's holding.
+I like a day with a plan to it.
+Another day, another load of wood.
+If the rain keeps off, we'll get a lot done.
+Not much news. That's good news.
+
+@ !night | gruff
+Hm.
+What now?
+Don't.
+I've got work.
+Everyone talks too much here.
+I liked it better when it was just the trees.
+Ask somebody else.
+You're in my light.
+My knee's playing up. Don't ask about it.
+Whatever it is, the answer's no.
+
+@ !night | cheerful
+Isn't it a fine day?
+I found a mushroom earlier. Haven't eaten it. Yet.
+You should see the sunset from the hill. Worth the climb.
+Somebody hummed a tune this morning and now I can't stop.
+I like it here. The trees are friendly.
+Have you tried the honey? Someone found a hive. Not ours, mind.
+Every day I wake up and there's something new built. Lovely.
+I waved at a deer this morning. It ran. Rude.
+
+@ !night | worrier
+Something's not right today. I can feel it.
+Did you hear that? Never mind.
+I counted the boars this morning. There's one more than yesterday.
+What if the fire goes out and we don't notice?
+I keep thinking about trolls. I can't help it.
+The sky's a strange colour. Is that normal?
+I dreamt the chest was empty. I went and checked.
+Have you seen the tree line? It looks closer than it was.
+
+@ !night | wry
+Ah, another day of standing near trees.
+I have a system. It involves sitting down.
+If you want advice, I have plenty. Useful advice, less.
+I was told there'd be mead. I was lied to.
+Somewhere out there is a land without greydwarfs. I'll never see it.
+I'd tell you a joke about wood, but it's a bit dry.
+Busy day of pretending to be busy.
+I've been promoted. I now carry slightly bigger logs.
+
+@ !night | elder
+When I was your age, we walked to the stones and back before breakfast.
+The land remembers who treats it well.
+Sit down a moment. Young legs think they're endless.
+I've buried two villages. This one I'd like to see grow.
+Patience builds more houses than strength.
+My grandfather said the trolls were bigger in his day. Trolls were always bigger in somebody's day.
+Old bones know the weather. Rain by nightfall.
+They'll tell stories about this place one day. I hope they get my name right.
+
+@ !night | young
+How do you get that strong? Do you eat a lot of meat?
+I climbed the tall rock earlier. Don't tell anyone.
+Can you teach me to use a bow?
+I want to see the mountains one day. Do they really have snow all year?
+Is it true you can ride a lox? I'd ride a lox.
+I'm going to be the best woodcutter in {village}. Watch me.
+{other} said I'm too small to carry logs. I carried two.
+Have you ever been in a cave? Were there monsters?
+
+@ !night | devout
+Did you leave something at the stones? The Elder likes to be remembered.
+The ravens follow the brave. One followed me this morning.
+Freyja's tears are amber, they say. I've never found any.
+I give thanks for the fire every evening. Seems only polite.
+Odin hung on the tree nine nights for wisdom. I can barely last one night without mead.
+The gods watch this valley. I'm sure of it.
+Every hearth is a little piece of Asgard, my mother said.
+Frigg knows what's coming. She doesn't say. Wise woman.
+
+# ------------------------------------------------------------------ about each other
+
+@ !night, !few
+{other} snores like a troll with a cold.
+Have you seen {other} today? They owe me a strip of leather.
+{other} burnt the meat again. Don't tell them I said so.
+{other} thinks they're the best woodcutter here. They're wrong.
+I like {other}. Don't tell them that either.
+{other} talks in their sleep. Mostly about turnips.
+If you want something done properly, ask {other}. If you want it done quickly, ask me.
+
+@ !night, !few | gruff
+{other} keeps borrowing my axe and never brings it back sharp.
+
+@ !night, !few | cheerful
+{other} made me laugh so hard this morning I dropped a log on my foot.
+
+@ !night, !few | worrier
+{other} went into the woods alone yesterday. Alone!
+
+@ !night, !few | elder
+{other} reminds me of myself at that age. Stubborn.
+
+# ------------------------------------------------------------------ the land and the world
+
+@ biome:meadows, !night
+The boars come right up to the houses some mornings.
+There's raspberries past the big rock if you look.
+The deer here are skittish. Can't blame them.
+Flat land, good timber, a stream nearby. We chose well.
+You can see the stones from the hill on a clear day.
+
+@ biome:blackforest, !night
+Mind the roots on the paths. They trip you in the dark.
+The pines up here are older than anything I know.
+There's copper in these hills. Bring a good pick.
+Blueberries everywhere, if the greydwarfs leave any.
+The fog comes in fast here. Keep the hearth in sight.
+Somewhere in this forest is a trader. Haldor, they call him. Strange fellow, by all accounts.
+
+@ biome:blackforest, night
+Hear that? Trolls, far off. Probably far off.
+The forest is louder at night. I don't like it.
+
+@ size:hamlet, !night
+We'll need a proper workshop soon.
+The houses are close enough to shout between. That's how I like it.
+
+@ size:village
+Travellers ask the way to {village} now. We have a name people know.
+We could use a second cook. Just saying.
+
+@ size:town
+I remember every house going up. Well, most of them.
+Too many people to name them all. That's a good problem.
+
+# ------------------------------------------------------------------ sleep and the night
+
+@ night, nobed
+Another night by the fire. My back hates me.
+
+@ night | gruff
+Go to bed.
+
+@ night | cheerful
+Look at all those stars.
+
+@ night | elder
+Night is when the old things wake. Keep the fire high.
+
+@ night | devout
+The moon's bright tonight. Mani's driving hard.
+
+@ morning, healthy
+Slept well. First time in days.
+
+@ morning | worrier
+Something walked past the houses last night. I heard it.
+
+@ morning | wry
+Morning. Same trees as yesterday. Remarkable.
+
+# ------------------------------------------------------------------ work talk that fits any job
+
+@ !doing:idle, !doing:fire, !night
+Can't stop long, I'm in the middle of something.
+Talk while I work, if you like.
+Hold this a moment. Thanks.
+
+@ !doing:idle, !doing:fire, !night | gruff
+Talking slows me down.
+
+@ !doing:idle, !doing:fire, !night | young
+I'm working! See? Working hard.
+
+# ------------------------------------------------------------------ more to the player
+
+@ talk, size:camp
+You're one of the first visitors we've had. Sorry about the mud.
+We've not much to offer yet. Some fire, some company.
+
+@ talk, size:village
+You'll find most of us round the hearth come evening.
+Stay as long as you like. Just don't take the good seat.
+
+@ talk, rain
+Come in out of the rain, at least by the fire.
+
+@ talk, badlyhurt
+Not now, friend. I need to sit down.
+
+@ talk, afterfight
+You picked a bad time to visit. Or a good one, if you can swing an axe.
+
+@ talk, event:finished
+Have you seen the new building? Go on, have a look.
+
+@ talk, freebed
+There's an empty bed, if you know anyone looking for a home.
+
+@ talk | steady
+Good to see a new face.
+Anything you need, ask. We'll help if we can.
+
+@ talk | wry
+You want the tour? This is a tree. That's another tree.
+
+@ talk | elder
+You remind me of someone. Can't think who. Probably someone handsome.
+
+@ talk | devout
+May your road be dry and your blade sharp.

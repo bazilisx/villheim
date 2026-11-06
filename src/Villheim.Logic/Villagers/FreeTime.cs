@@ -77,6 +77,8 @@ namespace Villheim.Logic.Villagers
             public Villager B;
             public Vector3 Meet;
             public float Until;
+            public string Reply;
+            public Villager ReplyBy;
         }
 
         private const float FireMin = 2.2f;
@@ -561,13 +563,39 @@ namespace Villheim.Logic.Villagers
 
             state.NextGesture = Time.time + Random.Range(5f, 9f);
             Poses.Gesture(villager, Gestures(mood)[Random.Range(0, Gestures(mood).Length)]);
-            if (VillheimConfig.VillagerChatter.Value && global::Chat.instance != null && Random.value < 0.6f)
+            if (VillheimConfig.VillagerChatter.Value && global::Chat.instance != null)
             {
-                string[] lines = mood >= 65f && Random.value < 0.4f ? CheerfulLines
-                    : mood < 35f && Random.value < 0.5f ? GlumLines
-                    : ChatLines;
-                global::Chat.instance.SetNpcText(villager.gameObject, Vector3.up * 2.2f, 20f, 5f, "",
-                    lines[Random.Range(0, lines.Length)], false);
+                // Answer what the other one just said, or start something new ("first // reply" lines are exchanges).
+                if (chat.Reply != null && chat.ReplyBy == villager)
+                {
+                    // Longer exchanges go back and forth: "first // reply // answer".
+                    string say = chat.Reply;
+                    int next = say.IndexOf("//", System.StringComparison.Ordinal);
+                    chat.Reply = next > 0 ? say.Substring(next + 2).Trim() : null;
+                    chat.ReplyBy = chat.A == villager ? chat.B : chat.A;
+                    Dialogue.Say(villager, next > 0 ? say.Substring(0, next).Trim() : say);
+                }
+                else if (Random.value < 0.7f)
+                {
+                    string line = Dialogue.LineFor(villager, "chat");
+                    if (line == null)
+                    {
+                        string[] lines = mood >= 65f && Random.value < 0.4f ? CheerfulLines
+                            : mood < 35f && Random.value < 0.5f ? GlumLines
+                            : ChatLines;
+                        line = lines[Random.Range(0, lines.Length)];
+                    }
+
+                    int split = line.IndexOf("//", System.StringComparison.Ordinal);
+                    if (split > 0)
+                    {
+                        chat.Reply = line.Substring(split + 2).Trim();
+                        chat.ReplyBy = chat.A == villager ? chat.B : chat.A;
+                        line = line.Substring(0, split).Trim();
+                    }
+
+                    Dialogue.Say(villager, line);
+                }
             }
         }
 

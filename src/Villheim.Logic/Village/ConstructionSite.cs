@@ -256,6 +256,7 @@ namespace Villheim.Logic.Village
             }
 
             VillheimPlugin.Log.LogInfo($"{state.Name} finished a {VillageBrain.RoleName(site.Role)} ({site.Design}).");
+            Villagers.Dialogue.Note(state.Id, "finished");
             VillageBrain.Announce(hearth, $"{state.Name} has finished a new {VillageBrain.RoleName(site.Role)}.");
         }
 

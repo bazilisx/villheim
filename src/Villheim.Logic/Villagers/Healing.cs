@@ -71,6 +71,28 @@ namespace Villheim.Logic.Villagers
         private static readonly ConditionalWeakTable<Villager, State> States = new ConditionalWeakTable<Villager, State>();
         private static readonly Dictionary<int, Villager> Cooks = new Dictionary<int, Villager>();
 
+        /// <summary>How many foods are in effect for this villager.</summary>
+        public static int FoodCount(Villager villager) =>
+            States.TryGetValue(villager, out State state) ? state.Foods.Count(f => f.Until > Time.time) : 0;
+
+        /// <summary>The village chest holds cooked food (true), raw food only (false), or nothing to eat (null).</summary>
+        public static bool? ChestFood(VillageHearth hearth)
+        {
+            Container chest = VillageChest.Find(hearth);
+            if (chest == null)
+            {
+                return null;
+            }
+
+            CookingStation station = Station(hearth);
+            if (CookedIn(chest, station).Count > 0)
+            {
+                return true;
+            }
+
+            return RawIn(chest, station).Count > 0 ? false : (bool?)null;
+        }
+
         public static bool IsHealing(Villager villager) => States.TryGetValue(villager, out State state) && state.Phase != Phase.None;
 
         /// <summary>"cooking", "eating" and so on for the hover text, or null.</summary>

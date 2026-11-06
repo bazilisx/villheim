@@ -1,0 +1,654 @@
+# Villheim villager lines: what they say when you talk to them (talk) and on their own when you are near (self).
+#
+# A section starts with "@" and a list of tags that must all hold. "!tag" means the tag must not hold.
+# After "|" come the voices the section is for (steady, gruff, cheerful, worrier, wry, elder, young, devout),
+# separated by "/". After "*" a weight (default 1). Sections with more tags are picked more often when they fit.
+# A section with no channel tag is used for both talk and self. "talk" or "self" limits it to one.
+#
+# Tags:
+#   doing:felling splitting mining building carrying gathering cooking fetching roasting watch path making fire
+#         stroll chatting station heading idle
+#   healthy hurt badlyhurt anyhurt fed unfed
+#   trade:none carpenter woodcutter miner cook   protector carer
+#   morning day evening night   rain cold freezing
+#   size:camp hamlet village town   few many   biome:meadows biome:blackforest
+#   need:any need:none need:wood need:finewood need:corewood need:stone
+#   building:any building:longhouse building:home building:workshop building:farm
+#   freebed nobed   mood:high mood:fair mood:low   afterfight   food:cooked food:raw food:none
+#
+# Fill-ins: {village} {material} {building} {name} {player} {other}
+#
+# House style: plain, short, specific. People talk about splinters, wet boots and burnt meat. No speeches, no
+# morals, no em dashes, no "it's not this, it's that". Each voice should sound like one person.
+
+# ------------------------------------------------------------------ felling trees
+
+@ doing:felling
+Stand clear. I'm never sure which way they'll go.
+This one's got a lean to it. Away from the houses, I hope.
+Mind your head. Branches come down first.
+Sap everywhere. My hands will stick to my bowl tonight.
+One more notch and she's done.
+
+@ doing:felling | gruff
+Busy.
+Chop, chop, chop. My whole life.
+If you're going to watch, at least stand somewhere useful.
+This axe needs a whetstone more than I need company.
+
+@ doing:felling | cheerful
+Listen to that. Good wood rings.
+I could do this all day. I probably will.
+Timber! Sorry, I always wanted to shout that.
+
+@ doing:felling | worrier
+Do you hear creaking? That's the tree, right? Only the tree?
+Greydwarfs live in trees like this. I'm sure of it.
+I'll stand on this side. No, that side. Which side does it fall?
+
+@ doing:felling | wry
+The tree is winning, for the record.
+Every tree I cut down, the forest grows two. I've counted.
+Lovely morning to murder a birch.
+
+@ doing:felling | elder
+My father felled oaks twice this thick with a flint axe.
+You cut on the side you want it to fall. Some of these young ones forget.
+Slow and even. The tree has all day.
+
+@ doing:felling | young
+Watch this. Watch. Ah, it bounced off.
+How many swings does it take you? I'm on forty.
+Do you think it'll fall on the boar over there? Please fall on the boar.
+
+@ doing:felling | devout
+Thank you, tree. Your wood will keep us warm.
+Thor guide my arm.
+The world tree wouldn't mind one birch less. I asked.
+
+@ doing:splitting
+Logs first, then the stump. Waste nothing.
+Splitting is the easy part. Carrying it is the rest of the day.
+These logs keep rolling toward my feet.
+
+@ doing:splitting | gruff
+Log won't split itself.
+Hold that end. Or don't. Fine.
+
+@ doing:splitting | wry
+I've split so many logs I dream in firewood.
+
+# ------------------------------------------------------------------ mining
+
+@ doing:mining
+Mind the chips. They fly further than you'd think.
+Good stone. Grey all the way through.
+My arms will be useless tonight.
+Rocks don't fight back. That's what I like about them.
+
+@ doing:mining | gruff
+Stone. Heavy. Wonderful.
+You want to hold the pick? No? Then step back.
+
+@ doing:mining | cheerful
+Every chip is one less we have to carry from somewhere else.
+There's a rhythm to it. Tink, tink, crack.
+
+@ doing:mining | worrier
+What if there's something sleeping under it?
+I heard rocks can move up in the mountains. Golems, they said.
+
+@ doing:mining | elder
+Strike along the crack. Let the stone do the work.
+I've broken more rocks than you've had hot dinners.
+
+@ doing:mining | young
+I found a shiny bit! Oh. It's just wet.
+Is this the biggest rock in the world? It feels like it.
+
+@ doing:mining | devout
+The bones of Ymir, they say. Seems rude to break them, but we need a wall.
+
+@ doing:mining | wry
+Hitting a rock with a stick. Our ancestors would be proud.
+
+# ------------------------------------------------------------------ building
+
+@ doing:building
+Floor first, then the walls.
+Hold still, I'm lining up the beam.
+Another piece in. It's starting to look like something.
+If it creaks, it's settling. If it groans, run.
+Pass me that... never mind, I've got it.
+
+@ doing:building | gruff
+Don't stand there. That's where the wall goes.
+Measure twice, swear once.
+I'd go faster if people stopped asking how it's going.
+
+@ doing:building | cheerful
+Look at that! Straight as an arrow. Mostly.
+Every peg I drive in is somebody's warm night.
+Someone will sleep in here soon. I like thinking about that.
+
+@ doing:building | worrier
+Is that wall leaning? It looks like it's leaning.
+I hope the roof holds when the storms come.
+I checked this joint three times. I'll check it again.
+
+@ doing:building | wry
+It's a house. Or a very ambitious woodpile.
+If it falls down, I was never here.
+
+@ doing:building | elder
+Good bones make a good house. The rest is decoration.
+We built the first longhouse with three people and a lot of shouting.
+
+@ doing:building | young
+Can I put the next one up? I'll be careful. Mostly careful.
+When I'm older I'm building a hall with a roof you can see from the sea.
+
+@ doing:building | devout
+May this roof keep the rain off whoever sleeps here. Frigg, keep it.
+
+@ doing:building, building:home
+This one's a home. Somebody's going to argue about who gets the bed by the wall.
+A small house, but it'll be warm.
+
+@ doing:building, building:longhouse
+The longhouse first. Everybody needs somewhere to eat and argue.
+When this hall is done we'll have room to sit together out of the rain.
+
+@ doing:building, building:workshop
+A proper workshop. No more sawing in the mud.
+Tools need a roof as much as people do.
+
+@ doing:building, building:farm
+Pens and a barn. The animals will be happier than I am.
+
+@ doing:building, rain
+Building in the rain. Wet pegs, wet hands, wet everything.
+
+# ------------------------------------------------------------------ carrying and gathering
+
+@ doing:carrying
+Off to the chest with this.
+Heavier than it looks. Everything is.
+Straight to the chest by the hearth.
+
+@ doing:carrying | gruff
+Out of the way, this is heavy.
+My back has opinions about this.
+
+@ doing:carrying | wry
+Carrying wood to the place where we keep wood. Then later, carrying it away again.
+
+@ doing:carrying | young
+I can carry more than this. I'm just being careful.
+
+@ doing:gathering
+Every stick counts.
+The drops are easiest. Somebody else did the hard part.
+Picking up what the last tree left behind.
+
+@ doing:gathering | elder
+Waste nothing. The forest gives, you pick it up.
+
+@ doing:heading
+Off to work.
+Back to it.
+Where did I leave that axe?
+
+# ------------------------------------------------------------------ paths
+
+@ doing:path
+A path to the new house. Saves us wading through mud.
+One row at a time. Feet will thank me.
+Once this is done, nobody gets lost going home after mead.
+
+@ doing:path | gruff
+Path. Dirt. Hoe. That's my day.
+
+@ doing:path | wry
+I'm drawing a line in the dirt. Very important line.
+
+@ doing:path | young
+I'm making a road! Well. A small road. A walk.
+
+# ------------------------------------------------------------------ making things by the hearth
+
+@ doing:making
+A little of the chest's wood for something we can all use.
+Almost done. Don't sit on it yet.
+
+@ doing:making | cheerful
+A bench by the fire. I'll be first to sit on it, that's my payment.
+
+@ doing:making | gruff
+Who keeps asking for more benches? We have a bench.
+
+# ------------------------------------------------------------------ cooking and eating
+
+@ doing:cooking
+Don't take it off yet. It's still pink.
+Smell that? That's dinner.
+The trick is to take it off before it turns black.
+Turn it once. Don't fuss with it.
+
+@ doing:cooking | gruff
+Hands off. It's not done.
+If you burn it, you eat it. That's the rule.
+
+@ doing:cooking | cheerful
+Nothing smells better than meat on a fire after a long day.
+Hungry? There'll be enough. Probably.
+
+@ doing:cooking | worrier
+Is it done? I can never tell. It might be done.
+Last time I left it too long and it turned to coal.
+
+@ doing:cooking | wry
+I'm a cook now. Somebody has to burn things on purpose.
+
+@ doing:cooking | elder
+Low fire, patience. My mother never burned a thing in her life.
+
+@ doing:cooking | young
+Can I have the first bite? I'll tell you if it's good.
+
+@ doing:cooking | devout
+A share for the gods, a share for us. Mostly for us.
+
+@ doing:cooking, trade:cook
+Everybody comes to the cook in the end.
+Keep bringing meat and I'll keep everyone fed.
+
+@ doing:fetching
+I need something to eat. Badly.
+Let's see what's in the chest.
+
+@ doing:roasting
+There's nothing in the chest. I'll roast whatever scraps I've got.
+Scraps on a stick. Not a feast, but it helps.
+
+@ doing:roasting | gruff
+No meat. Again. Someone go hunting.
+
+# ------------------------------------------------------------------ the fire and free time
+
+@ doing:fire
+Nothing like a fire after a day's work.
+My feet are finally warm.
+I could sit here till the stars come out.
+
+@ doing:fire | gruff
+Sitting. Leave me be.
+This is my spot. I've sat here every evening since we came.
+
+@ doing:fire | cheerful
+Pull up a log, there's room.
+Fire, friends and nothing to haul. Good evening.
+
+@ doing:fire | worrier
+The fire keeps them away. That's what they say, anyway.
+Don't let it go out tonight. Please.
+
+@ doing:fire | elder
+When I was young we had no hearth, only cold and wolves. Sit, sit.
+
+@ doing:fire | young
+Do you know any stories? The scary kind?
+
+@ doing:fire | wry
+I'm guarding the fire. From what, I don't know.
+
+@ doing:fire | devout
+Look at the sparks going up. Odin's ravens see everything, even this.
+
+@ doing:stroll
+Just stretching my legs.
+I like to walk round the houses before dark. Make sure everything's where it was.
+
+@ doing:stroll | wry
+I'm patrolling. With my hands behind my back. Very official.
+
+@ doing:station
+Keeping the tools in order.
+Somebody has to sweep the shavings.
+
+@ doing:watch
+Quiet out there.
+I keep an eye on the tree line. Greydwarfs like to creep up.
+If anything comes, I'll see it first.
+
+@ doing:watch | gruff
+Watching. Not talking.
+
+@ doing:watch | worrier
+Was that a troll? That was a rock. I think it was a rock.
+Every shadow looks like a greydwarf after dark.
+
+@ doing:watch | wry
+Nothing has attacked us all morning. Clearly I'm doing a great job.
+
+@ doing:watch | devout
+Heimdall sees further, but I see far enough.
+
+@ doing:watch, night
+Long night. I'll sleep when it's light.
+
+@ doing:idle, need:none
+Nothing needs doing. Strange feeling.
+The chest is full, so I'm resting. Don't tell anyone.
+
+@ doing:idle, need:none | gruff
+Don't give me work. I just finished work.
+
+# ------------------------------------------------------------------ wanting and needing
+
+@ need:any, !doing:felling, !doing:mining
+We're short of {material}. The chest is by the hearth if you have any spare.
+The {building} is waiting on {material}.
+If you've got {material} going spare, we'd take it.
+
+@ need:any | gruff
+We need {material}. You look like you have pockets.
+
+@ need:any | worrier
+We're running out of {material}. What if we can't finish before winter?
+
+@ need:any | cheerful
+A bit more {material} and the {building} goes up. Nearly there.
+
+@ need:wood
+More wood. It's always more wood.
+
+@ need:corewood
+Core wood comes from the pines up in the forest. Big trunks, hard going.
+
+@ need:finewood
+Fine wood means birch or oak, and a good axe.
+
+@ need:stone
+Stone for the foundations. The rocks round here are lazy and won't move themselves.
+
+@ need:none, !building:any
+The chest is full and nothing's going up. A rare day.
+
+@ building:any, !doing:building
+We're building a {building}. Come back in a day or two.
+Once the {building} is done, there's room for one more of us.
+
+@ freebed
+There's an empty bed. Somebody new will wander in soon, you'll see.
+
+@ nobed, night
+No bed for me yet. The fire's warm enough.
+
+@ nobed, !night
+I'm still sleeping by the fire. A bed would be nice.
+
+# ------------------------------------------------------------------ health and food
+
+@ badlyhurt
+I took a bad knock. I need food.
+Everything hurts. Let me get to the fire.
+
+@ badlyhurt | gruff
+I'm fine. I'm bleeding, but I'm fine.
+
+@ badlyhurt | worrier
+Is this much blood normal? It feels like a lot.
+
+@ badlyhurt | devout
+Eir, I could use a hand right now.
+
+@ hurt
+Just a scratch. I'll eat something later.
+Still sore from the last fight.
+
+@ hurt | wry
+I've been better. I've also been worse, so.
+
+@ fed, healthy
+Belly full, nothing hurts. I could fight a troll. A small one.
+
+@ food:cooked
+There's cooked meat in the chest if you're hungry.
+
+@ food:raw
+Raw meat in the chest. Someone should get it on the fire.
+
+@ food:none, size:hamlet
+Nothing to eat in the chest. We could use a hunter.
+
+@ food:none | gruff
+No meat. Who's supposed to be hunting? Not me.
+
+# ------------------------------------------------------------------ after a fight
+
+@ afterfight
+That was close.
+Did everyone make it? Count heads.
+My hands are still shaking.
+
+@ afterfight | gruff
+They'll be back. They always come back.
+
+@ afterfight | cheerful
+We showed them! Well, {other} did. I mostly shouted.
+
+@ afterfight | worrier
+I'm not going near the tree line for a week.
+
+@ afterfight | elder
+Clean the blades and eat something. That's what you do after.
+
+@ afterfight | young
+Did you see that? I didn't run. Much.
+
+@ afterfight | devout
+Thor was with us today.
+
+@ afterfight, protector
+Next time I'll be faster to the axe.
+
+@ afterfight, carer
+I stayed back like we said. Is anyone hurt? I'll get the fire going.
+
+# ------------------------------------------------------------------ trades and roles
+
+@ trade:carpenter
+I put up most of what you see here.
+A good joint holds a roof for a lifetime.
+Need something built? Get in line.
+
+@ trade:carpenter | gruff
+Every wall in this place, I've sworn at personally.
+
+@ trade:woodcutter
+Wood is what we need most. Always wood.
+I know every tree around {village}. I've named a few.
+
+@ trade:woodcutter | wry
+Trees fear me. Rightly.
+
+@ trade:miner
+Stone doesn't burn. That's why I like it.
+Give me a pickaxe and a rock and leave me alone.
+
+@ trade:miner | gruff
+Dust in my nose, dust in my beard. Dust in my bread.
+
+@ trade:cook
+Bring me meat and I'll keep everyone fed.
+Someone has to keep the fire going.
+I know who eats more than their share. I'm not saying who.
+
+@ trade:none, size:camp
+There's so few of us, everyone does a bit of everything.
+
+@ trade:none, size:hamlet
+Today I'm a woodcutter. Tomorrow, who knows.
+
+@ protector
+If trouble comes, I'll be first out there.
+I sleep with an axe by the bed. Just in case.
+
+@ protector | gruff
+I protect people. Doesn't mean I have to like them.
+
+@ protector | worrier
+I'm supposed to be the brave one. Nobody asked me.
+
+@ carer
+Have you eaten today? You look thin.
+I like the hearth warm for when everyone comes back.
+
+@ carer | cheerful
+Somebody has to make sure this lot don't starve. Might as well be me.
+
+@ carer | elder
+Feed them, keep them warm, and they'll build you a town.
+
+# ------------------------------------------------------------------ time of day and weather
+
+@ morning
+Up with the sun. There's work to do.
+Cold morning. The fire helps.
+
+@ morning | gruff
+Too early. Talk to me after I've eaten.
+
+@ morning | young
+I woke up first! Well, second. {other} was already up.
+
+@ evening
+Almost time to sit by the fire.
+Long day. My bed is calling.
+
+@ evening | cheerful
+Is there mead tonight? Tell me there's mead.
+
+@ night, !doing:watch
+Should be in bed. Can't sleep.
+Stars are out. Means it'll be cold.
+
+@ night | worrier
+I hate the dark. Something's always moving in it.
+
+@ rain
+Rain again. At least the roof holds.
+Wet wood, wet boots, wet everything.
+
+@ rain | gruff
+Rain. Of course.
+
+@ rain | cheerful
+Good for the turnips, at least.
+
+@ rain | wry
+I was getting too dry anyway.
+
+@ rain | devout
+Thor's been drinking again.
+
+@ cold
+My fingers have gone stiff.
+It's cold. Stay near the fire.
+
+@ freezing
+I can't feel my toes. Is that bad?
+
+# ------------------------------------------------------------------ the village growing
+
+@ size:camp
+We've only just settled here.
+It's not much yet. Give us time.
+A fire, a chest and two tired people. That's {village} for now.
+
+@ size:camp | elder
+Every town starts as a fire someone refused to leave.
+
+@ size:hamlet
+A few roofs now. It's starting to feel like somewhere.
+{village} has houses. Actual houses.
+
+@ size:village
+{village} is turning into a proper village.
+Remember when this was just a fire and a couple of us?
+
+@ size:town
+I get lost between the houses sometimes. In a good way.
+Travellers stop here now. Imagine that.
+
+@ few
+It's quiet with so few of us.
+
+@ many
+Getting crowded round the fire these days. I like it.
+
+@ biome:blackforest
+The forest is dark, but the wood's good.
+Watch for trolls on the forest paths. You hear them before you see them.
+
+@ biome:blackforest | worrier
+I heard the trees talking last night. Don't laugh.
+
+@ biome:meadows
+Good soil, easy trees. We picked a good spot.
+The boars here are more trouble than the greydwarfs.
+
+@ mood:high
+Good days, these.
+I like it here. I didn't think I would.
+
+@ mood:low
+Things have been hard lately.
+We need a good week. Just one.
+
+@ mood:low | gruff
+Everything's damp, everyone's tired and the meat's burnt.
+
+# ------------------------------------------------------------------ to the player
+
+@ talk
+Need something?
+Make yourself at home. Mind the axe.
+You're welcome at our fire.
+If you see any boars, send them our way. Cooked, preferably.
+
+@ talk | gruff
+What.
+You again.
+If you're not carrying wood, I'm busy.
+
+@ talk | cheerful
+{player}! Good to see you.
+Stay a while. The fire's warm.
+
+@ talk | worrier
+Did anything follow you here? Check behind you.
+You came through the forest? Alone? You're braver than me.
+
+@ talk | wry
+Visitor. How exciting. Try not to break anything.
+We don't have much, but you're welcome to look at it.
+
+@ talk | elder
+Sit, sit. My knees need the rest more than yours.
+I've seen a lot of travellers come and go. You look like the staying kind.
+
+@ talk | young
+Is that a real sword? Can I hold it? No? Fine.
+Where have you been? Have you seen a troll up close?
+
+@ talk | devout
+The gods brought you here. Or the path did. Same thing, really.
+Odin walks the land dressed as a traveller, they say. Just saying.
+
+@ talk, need:any
+Bring {material} to the chest by the hearth and you'll have friends here for life.
+
+@ talk, food:none
+If you go hunting, the cook would kiss you. Probably.

@@ -24,15 +24,25 @@ namespace Villheim.Logic.Villagers
             public bool Cooking;
             public float CookStart;
             public float NextAllowed;
+            public bool Urgent;
         }
 
         private static readonly ConditionalWeakTable<Villager, State> States = new ConditionalWeakTable<Villager, State>();
 
         public static bool IsHealing(Villager villager) => States.TryGetValue(villager, out State state) && state.Active;
 
-        public static bool Update(Villager villager, VillagerAI ai, float dt)
+        /// <summary>
+        /// Called twice per tick: first before work (<paramref name="idle"/> false: only under half health), then again
+        /// when there is no work (<paramref name="idle"/> true: any missing health). Work interrupts an idle heal.
+        /// </summary>
+        public static bool Update(Villager villager, VillagerAI ai, float dt, bool idle)
         {
             State state = States.GetOrCreateValue(villager);
+            if (state.Active && !idle && !state.Urgent)
+            {
+                return false;
+            }
+
             float health = villager.GetHealth() / Mathf.Max(1f, villager.GetMaxHealth());
             if (state.Active && health >= StopAbove)
             {
@@ -44,12 +54,13 @@ namespace Villheim.Logic.Villagers
 
             if (!state.Active)
             {
-                if (health >= StartBelow || Time.time < state.NextAllowed)
+                if (health >= (idle ? StopAbove : StartBelow) || Time.time < state.NextAllowed)
                 {
                     return false;
                 }
 
                 state.Active = true;
+                state.Urgent = !idle;
                 state.Cooking = false;
                 Walker.For(villager).Reset();
                 VillheimPlugin.Debug($"{villager.VillagerName} is hurt and goes to cook something at the hearth.");

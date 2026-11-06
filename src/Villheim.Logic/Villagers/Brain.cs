@@ -44,7 +44,7 @@ namespace Villheim.Logic.Villagers
             }
 
             Poses.BeginTick(villager);
-            if (Healing.Update(villager, ai, dt))
+            if (Healing.Update(villager, ai, dt, false))
             {
                 // Healing comes first.
             }
@@ -54,7 +54,7 @@ namespace Villheim.Logic.Villagers
                 {
                     ai.StopMoving();
                 }
-                else
+                else if (!Healing.Update(villager, ai, dt, true))
                 {
                     FreeTime.Update(villager, ai, dt);
                 }

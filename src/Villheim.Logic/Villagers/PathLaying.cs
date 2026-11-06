@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 using System.Globalization;
 using System.Runtime.CompilerServices;
 using UnityEngine;
@@ -43,6 +44,35 @@ namespace Villheim.Logic.Villagers
             string queue = hearth.Zdo.GetString(KeyQueue, "");
             hearth.Zdo.Set(KeyQueue, string.IsNullOrEmpty(queue) ? entry : queue + ";" + entry);
         }
+
+        /// <summary>Every cell of every path planned but not yet laid, so a new path can join a planned one.</summary>
+        public static HashSet<Vector2Int> QueuedCells(VillageHearth hearth)
+        {
+            var cells = new HashSet<Vector2Int>();
+            foreach (string entry in hearth.Zdo.GetString(KeyQueue, "").Split(';'))
+            {
+                int bar = entry.IndexOf('|');
+                if (bar < 0)
+                {
+                    continue;
+                }
+
+                foreach (Vector3 point in PathPlanner.Decode(entry.Substring(bar + 1)))
+                {
+                    cells.Add(PathPlanner.Cell(point));
+                }
+            }
+
+            return cells;
+        }
+
+        /// <summary>A path to this building is already waiting to be laid.</summary>
+        public static bool IsQueued(VillageHearth hearth, Vector3 building) =>
+            hearth.Zdo.GetString(KeyQueue, "").Split(';').Any(e =>
+            {
+                string[] parts = e.Split('|')[0].Split(',');
+                return parts.Length >= 3 && Utils.DistanceXZ(new Vector3(P(parts[0]), 0f, P(parts[2])), building) < 0.5f;
+            });
 
         public static bool IsLaying(Villager villager) =>
             Layers.TryGetValue(villager.VillageId, out Villager layer) && layer == villager;

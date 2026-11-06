@@ -67,7 +67,7 @@ namespace Villheim.Logic.Designs
         /// pad is set to exactly the pad's height, and points in the ring beyond move part of the way there, less the
         /// further out they are. Saved with the world like any terrain edit.
         /// </summary>
-        public static void LevelPad(Vector3 center, float levelRadius, float smoothRadius)
+        public static void LevelPad(Vector3 center, float levelRadius, float smoothRadius, float maxChange = 16f)
         {
             float edge = Mathf.Max(smoothRadius, levelRadius + 1f);
             Heightmaps.Clear();
@@ -104,7 +104,7 @@ namespace Villheim.Logic.Designs
                         float current = baseHeight + compiler.m_levelDelta[i] + compiler.m_smoothDelta[i];
                         float weight = distance <= levelRadius ? 1f : Mathf.SmoothStep(1f, 0f, (distance - levelRadius) / (edge - levelRadius));
                         float wanted = Mathf.Lerp(current, center.y, weight);
-                        compiler.m_levelDelta[i] = Mathf.Clamp(wanted - baseHeight, -16f, 16f);
+                        compiler.m_levelDelta[i] = Mathf.Clamp(wanted - baseHeight, -maxChange, maxChange);
                         compiler.m_smoothDelta[i] = 0f;
                         compiler.m_modifiedHeight[i] = true;
                         changed = true;

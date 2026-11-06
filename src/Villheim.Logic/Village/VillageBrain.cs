@@ -55,6 +55,7 @@ namespace Villheim.Logic.Village
             Villagers.Social.VillageTick(hearth);
             Raids.Tick(hearth);
             NoticeBoard.Update(hearth);
+            CheckDoorsDaily(hearth);
             Farms.Tick(hearth);
             if (VillageChest.IsLost(hearth))
             {
@@ -79,6 +80,21 @@ namespace Villheim.Logic.Village
             }
 
             TryPopulate(hearth, state, now);
+        }
+
+        private static readonly Dictionary<int, int> DoorsCheckedOn = new Dictionary<int, int>();
+
+        /// <summary>Once an in-game day (and once after loading), every door is checked for a path to the middle.</summary>
+        private static void CheckDoorsDaily(VillageHearth hearth)
+        {
+            int day = EnvMan.instance != null ? EnvMan.instance.GetDay() : 0;
+            if (DoorsCheckedOn.TryGetValue(hearth.VillageId, out int checkedDay) && checkedDay == day)
+            {
+                return;
+            }
+
+            DoorsCheckedOn[hearth.VillageId] = day;
+            PathPlanner.CheckDoors(hearth);
         }
 
         public static void Initialize(VillageHearth hearth, VillageState state)
@@ -302,7 +318,7 @@ namespace Villheim.Logic.Village
                     VillheimPlugin.Log.LogInfo($"{state.Name} builds its {design.Name} around the hearth.");
                 }
                 else if (!PlotFinder.TryFind(hearth.transform.position, state.Axis, role, strictHub, radius,
-                             design.MaxTerrainDelta, plots, rng, out position, out yaw, PathPlanner.Network(hearth), hearth,
+                             design.MaxTerrainDelta, plots, rng, out position, out yaw, PathPlanner.PlannedNetwork(hearth), hearth,
                              Doors.Angle(design)))
                 {
                     VillheimPlugin.Debug($"{state.Name}: no room for {design.Name}.");

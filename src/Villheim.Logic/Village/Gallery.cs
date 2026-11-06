@@ -12,9 +12,12 @@ namespace Villheim.Logic.Village
     /// it (the same pieces, the bottom of its walls on the ground), with a sign in front: the kind of building and the
     /// village level it is meant for on top in bright blue, the design's name below in white.
     ///
-    /// The gallery starts in front of the player and runs in rows of six away from him. Ground is cleared (trees,
-    /// stumps, logs, rocks, bushes) and levelled at the player's height, grass taken off. Plots in zones that aren't
-    /// loaded yet are built as the player walks up to them (checked every two seconds for 40 minutes).
+    /// The gallery starts in front of the player and runs in rows of six away from him. First the whole area (with a
+    /// 12 m margin) is made one flat, bare plain: everything standing on it is removed at any height (trees, stumps,
+    /// logs, rocks, bushes, ruins, anything not a creature or built by a player), the ground is levelled at the middle height of the area
+    /// (up to 40 m of change) and the grass taken off, in overlapping pads 24 m apart. A plot's design goes up once
+    /// all the ground round it is done. Parts in zones that aren't loaded yet are done as the player walks up to them
+    /// (checked every two seconds for 40 minutes).
     /// </summary>
     internal static class Gallery
     {
@@ -28,6 +31,16 @@ namespace Villheim.Logic.Village
         }
 
         private static readonly Role[] Order = { Role.House, Role.Hub, Role.Workshop, Role.Storage, Role.Farm };
+        private static readonly int KeyGallery = "villheim_gallery".GetStableHashCode();
+        private const float PadSpacing = 24f;
+        private const float PadRadius = 20f;
+        private const float Margin = 12f;
+
+        private sealed class Pad
+        {
+            public Vector3 Center;
+            public bool Done;
+        }
 
         public static string Start(Player player, string biomeName)
         {
@@ -68,47 +81,94 @@ namespace Villheim.Logic.Village
             }
 
             float depth = 0f;
+            float widest = 0f;
             for (int row = 0; row * 6 < cells.Count; row++)
             {
                 List<Cell> line = cells.Skip(row * 6).Take(6).ToList();
                 float rowDepth = line.Max(c => c.Half);
                 float width = line.Sum(c => c.Half * 2f);
+                widest = Mathf.Max(widest, width);
                 float x = -width / 2f;
                 foreach (Cell cell in line)
                 {
                     cell.Center = start + forward * (depth + rowDepth) + right * (x + cell.Half);
-                    cell.Center.y = height;
                     x += cell.Half * 2f;
                 }
 
                 depth += rowDepth * 2f;
             }
 
-            VillheimPlugin.Instance.StartCoroutine(Build(cells, forward));
-            return $"Villheim: laying out {cells.Count} {biome} designs in {(cells.Count + 5) / 6} rows ahead of you " +
-                   $"({depth:0} m deep), flat at {height:0.0} m. Plots further out go up as you walk to them.";
+            // One plain over the whole gallery: pads 24 m apart, levelled at the middle height of the area.
+            var pads = new List<Pad>();
+            var heights = new List<float>();
+            for (float z = -Margin; z <= depth + Margin; z += PadSpacing)
+            {
+                for (float x = -widest / 2f - Margin; x <= widest / 2f + Margin; x += PadSpacing)
+                {
+                    Vector3 p = start + forward * z + right * x;
+                    pads.Add(new Pad { Center = p });
+                    if (ZoneSystem.instance.GetGroundHeight(p, out float h))
+                    {
+                        heights.Add(h);
+                    }
+                }
+            }
+
+            heights.Sort();
+            height = Mathf.Max(heights.Count > 0 ? heights[heights.Count / 2] : height, ZoneSystem.instance.m_waterLevel + 1.5f);
+            foreach (Pad pad in pads)
+            {
+                pad.Center.y = height;
+            }
+
+            foreach (Cell cell in cells)
+            {
+                cell.Center.y = height;
+            }
+
+            VillheimPlugin.Instance.StartCoroutine(Build(cells, pads, forward));
+            return $"Villheim: clearing and levelling {widest + Margin * 2f:0} by {depth + Margin * 2f:0} m ahead of you at {height:0.0} m, " +
+                   $"then laying out {cells.Count} {biome} designs in {(cells.Count + 5) / 6} rows. Walk along it to load the far end.";
         }
 
-        private static IEnumerator Build(List<Cell> cells, Vector3 forward)
+        private static IEnumerator Build(List<Cell> cells, List<Pad> pads, Vector3 forward)
         {
             float until = Time.time + 40f * 60f;
             int built = 0;
             while (built < cells.Count && Time.time < until)
             {
+                // Ground first: every pad whose zone is loaded is cleared, levelled and bared.
+                bool shaped = false;
+                foreach (Pad pad in pads.Where(p => !p.Done))
+                {
+                    if (!Loaded(pad.Center, PadRadius + 6f))
+                    {
+                        continue;
+                    }
+
+                    pad.Done = true;
+                    shaped = true;
+                    ClearAll(pad.Center, PadRadius + 2f);
+                    TerrainShaper.LevelPad(pad.Center, PadRadius, PadRadius + 8f, 40f);
+                    HearthGround.ClearVegetation(pad.Center, PadRadius + 2f);
+                    yield return null;
+                }
+
+                if (shaped)
+                {
+                    yield return new WaitForSeconds(1f); // let the ground's collider catch up
+                }
+
+                // Then each plot whose ground is all done.
                 foreach (Cell cell in cells.Where(c => !c.Done))
                 {
-                    if (!Loaded(cell))
+                    float reach = cell.Half * 1.42f + PadRadius;
+                    if (pads.Any(p => !p.Done && Utils.DistanceXZ(p.Center, cell.Center) < reach))
                     {
                         continue;
                     }
 
                     cell.Done = true;
-                    float reach = cell.Half * 1.42f;
-                    HearthGround.ClearAround(cell.Center, reach + 3f);
-                    TerrainShaper.LevelPad(cell.Center, reach, reach + 6f);
-                    HearthGround.ClearVegetation(cell.Center, reach + 2f);
-                    yield return new WaitForSeconds(1f);
-
                     int pieces = Put(cell, forward);
                     Sign(cell, forward);
                     built++;
@@ -116,18 +176,51 @@ namespace Villheim.Logic.Village
                     yield return null;
                 }
 
-                MessageHud.instance?.ShowMessage(MessageHud.MessageType.TopLeft, $"Gallery: {built}/{cells.Count} built");
+                MessageHud.instance?.ShowMessage(MessageHud.MessageType.TopLeft,
+                    $"Gallery: ground {pads.Count(p => p.Done)}/{pads.Count}, designs {built}/{cells.Count}");
                 yield return new WaitForSeconds(2f);
             }
 
             VillheimPlugin.Log.LogInfo($"Gallery: {built} of {cells.Count} designs built.");
         }
 
-        private static bool Loaded(Cell cell)
+        /// <summary>
+        /// Takes away everything standing in the circle, at any height: trees, logs, stumps, rocks, bushes, ruins and
+        /// loose objects. Creatures, graves, village hearths, location markers and the gallery's own pieces stay.
+        /// </summary>
+        private static void ClearAll(Vector3 center, float radius)
+        {
+            var doomed = new List<ZNetView>();
+            foreach (ZNetView view in ZNetScene.instance.m_instances.Values)
+            {
+                if (view == null || !view.IsValid() || Utils.DistanceXZ(view.transform.position, center) > radius)
+                {
+                    continue;
+                }
+
+                GameObject go = view.gameObject;
+                if (go.GetComponent<Character>() || go.GetComponent<TombStone>() || go.GetComponent<VillageHearth>() ||
+                    go.GetComponent<LocationProxy>() || view.GetZDO().GetInt(KeyGallery) == 1 ||
+                    (go.GetComponent<Piece>() is Piece piece && piece.GetCreator() != 0L))
+                {
+                    continue;
+                }
+
+                doomed.Add(view);
+            }
+
+            foreach (ZNetView view in doomed)
+            {
+                view.ClaimOwnership();
+                ZNetScene.instance.Destroy(view.gameObject);
+            }
+        }
+
+        private static bool Loaded(Vector3 center, float reach)
         {
             for (int i = 0; i < 4; i++)
             {
-                Vector3 corner = cell.Center + Quaternion.Euler(0f, 45f + 90f * i, 0f) * Vector3.forward * cell.Half * 1.42f;
+                Vector3 corner = center + Quaternion.Euler(0f, 45f + 90f * i, 0f) * Vector3.forward * reach;
                 if (!ZoneSystem.instance.IsZoneLoaded(corner))
                 {
                     return false;
@@ -137,7 +230,7 @@ namespace Villheim.Logic.Village
             return true;
         }
 
-        /// <summary>The design's pieces, the bottom of its walls on the ground, facing the sign.</summary>
+        /// <summary>The design's pieces, its foundation on the ground (see ConstructionSite.FloorOf), facing the sign.</summary>
         private static int Put(Cell cell, Vector3 forward)
         {
             float yaw = Quaternion.LookRotation(-forward).eulerAngles.y;
@@ -174,8 +267,10 @@ namespace Villheim.Logic.Village
             int count = 0;
             foreach (DesignSpawner.PlanEntry entry in plan)
             {
-                if (DesignSpawner.SpawnEntry(entry, origin, turn, 0, false) != null)
+                GameObject made = DesignSpawner.SpawnEntry(entry, origin, turn, 0, false);
+                if (made != null)
                 {
+                    made.GetComponent<ZNetView>()?.GetZDO()?.Set(KeyGallery, 1);
                     count++;
                 }
             }
@@ -202,6 +297,7 @@ namespace Villheim.Logic.Village
                 ZNetView view = sign.GetComponent<ZNetView>();
                 if (view != null && view.IsValid())
                 {
+                    view.GetZDO().Set(KeyGallery, 1);
                     view.GetZDO().Set(ZDOVars.s_text, text);
                     sign.GetComponent<Sign>()?.UpdateText();
                 }

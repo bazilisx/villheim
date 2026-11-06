@@ -701,36 +701,30 @@ namespace Villheim.Logic.Village
         }
 
         /// <summary>
-        /// Where the ground floor sits, above the design's origin: the bottom of its lowest walls (walls stand on the
-        /// floor), else of its lowest floors, else of its lowest shell piece. The very lowest piece is not used on its
-        /// own: posts, steps and beams can reach below the floor, and a pad levelled to them left a building floating
-        /// a metre up (2026-11-06).
+        /// Where the ground goes, above the design's origin, so most of the building's foundation stands on it. The
+        /// foundation is every shell piece (walls, floors, posts, beams, doors) whose bottom is within 1.5 m of the
+        /// lowest bottom; the ground goes at the middle of their bottoms. Pieces made to sink into the ground (a door on
+        /// a hillside design, the low end of a post) then go into it, and none of the foundation floats.
+        /// Earlier tries: the lowest piece (buildings floated a metre up), the lowest walls (a hillside design stood on
+        /// its door with its posts in the air, 2026-11-06).
         /// </summary>
         public static float FloorOf(List<DesignSpawner.PlanEntry> entries)
         {
-            float walls = float.MaxValue, floors = float.MaxValue, any = float.MaxValue;
-            foreach (DesignSpawner.PlanEntry entry in entries)
-            {
-                if (!entry.Shell || !entry.Bounds.HasValue || entry.Bounds.Value.min.y > 1.5f)
-                {
-                    continue;
-                }
+            var bottoms = entries.Where(e => e.Shell && e.Bounds.HasValue).Select(e => e.Bounds.Value.min.y).ToList();
+            return Mathf.Clamp(FoundationHeight(bottoms), -3f, 3f);
+        }
 
-                float bottom = entry.Bounds.Value.min.y;
-                string name = entry.Prefab.ToLowerInvariant();
-                any = Mathf.Min(any, bottom);
-                if (name.Contains("wall") && !name.Contains("roof"))
-                {
-                    walls = Mathf.Min(walls, bottom);
-                }
-                else if (name.Contains("floor"))
-                {
-                    floors = Mathf.Min(floors, bottom);
-                }
+        /// <summary>The middle of the bottoms within 1.5 m of the lowest one (0 with none).</summary>
+        public static float FoundationHeight(List<float> bottoms)
+        {
+            if (bottoms.Count == 0)
+            {
+                return 0f;
             }
 
-            float floor = walls < float.MaxValue ? walls : floors < float.MaxValue ? floors : any < float.MaxValue ? any : 0f;
-            return Mathf.Clamp(floor, -1.5f, 1.5f);
+            float lowest = bottoms.Min();
+            List<float> foundation = bottoms.Where(b => b <= lowest + 1.5f).OrderBy(b => b).ToList();
+            return foundation[foundation.Count / 2];
         }
 
         /// <summary>The height the building's ground floor sits at: where its ground is levelled to.</summary>
@@ -742,13 +736,14 @@ namespace Villheim.Logic.Village
         }
 
         /// <summary>
-        /// Levels the ground under a standing building of the village to the bottom of its lowest walls (else floors,
-        /// else lowest piece), measured from the pieces themselves, flat out past the walls, grass cleared. For
+        /// Levels the ground under a standing building of the village to its foundation (see FoundationHeight), measured
+        /// from the pieces themselves, flat out past the walls, grass cleared. For
         /// 'vh buildingground', to fix a building put up on the wrong ground. Returns what was done.
         /// </summary>
         public static string RelevelBuilding(VillageHearth hearth, Plot plot)
         {
-            float walls = float.MaxValue, floors = float.MaxValue, any = float.MaxValue, reach = 2f;
+            var bottoms = new List<float>();
+            float reach = 2f;
             foreach (ZNetView view in ZNetScene.instance.m_instances.Values)
             {
                 if (view == null || !view.IsValid() || view.GetZDO().GetInt(Keys.BuiltBy) != hearth.VillageId ||
@@ -771,25 +766,16 @@ namespace Villheim.Logic.Village
                     continue;
                 }
 
-                string name = Utils.GetPrefabName(view.gameObject).ToLowerInvariant();
-                any = Mathf.Min(any, bottom);
-                if (name.Contains("wall") && !name.Contains("roof"))
-                {
-                    walls = Mathf.Min(walls, bottom);
-                    reach = Mathf.Max(reach, Utils.DistanceXZ(view.transform.position, plot.Position));
-                }
-                else if (name.Contains("floor"))
-                {
-                    floors = Mathf.Min(floors, bottom);
-                    reach = Mathf.Max(reach, Utils.DistanceXZ(view.transform.position, plot.Position));
-                }
+                bottoms.Add(bottom);
+                reach = Mathf.Max(reach, Utils.DistanceXZ(view.transform.position, plot.Position));
             }
 
-            float level = walls < float.MaxValue ? walls : floors < float.MaxValue ? floors : any;
-            if (level == float.MaxValue)
+            if (bottoms.Count == 0)
             {
                 return $"no pieces of the {plot.Design} found";
             }
+
+            float level = FoundationHeight(bottoms);
 
             var center = new Vector3(plot.Position.x, level, plot.Position.z);
             TerrainShaper.LevelPad(center, reach + 1.5f, reach + 5f);

@@ -44,6 +44,48 @@ namespace Villheim.Logic.Village
             return cells;
         }
 
+        /// <summary>The laid paths and the paths planned but not laid yet: what new paths join and buildings keep off.</summary>
+        public static HashSet<Vector2Int> PlannedNetwork(VillageHearth hearth)
+        {
+            HashSet<Vector2Int> cells = Network(hearth);
+            cells.UnionWith(Villagers.PathLaying.QueuedCells(hearth));
+            return cells;
+        }
+
+        /// <summary>
+        /// Once a day: every building's door must lead to the network (laid or planned). A building whose door is more
+        /// than 3 m from any path cell, with no path waiting for it, gets one planned now (Millénaire re-plans its paths
+        /// when a building is not connected).
+        /// </summary>
+        public static void CheckDoors(VillageHearth hearth)
+        {
+            if (!VillheimConfig.BuildPaths.Value)
+            {
+                return;
+            }
+
+            var state = new VillageState(hearth.Zdo);
+            HashSet<Vector2Int> network = PlannedNetwork(hearth);
+            foreach (Plot plot in state.Plots)
+            {
+                if (Utils.DistanceXZ(plot.Position, hearth.transform.position) < plot.Radius * 0.6f)
+                {
+                    continue; // built round the hearth: its door opens onto the middle
+                }
+
+                float doorAngle = Designs.Doors.Angle(plot.Design);
+                Vector3 door = Front(plot.Position, plot.Radius, plot.Yaw, doorAngle);
+                if (DistanceToNetwork(network, door) <= 3f || Villagers.PathLaying.IsQueued(hearth, plot.Position))
+                {
+                    continue;
+                }
+
+                VillheimPlugin.Log.LogInfo($"{state.Name}: the {plot.Design} has no path to the middle; planning one.");
+                Villagers.PathLaying.Queue(hearth, plot.Position, plot.Radius, plot.Yaw, doorAngle);
+                network = PlannedNetwork(hearth);
+            }
+        }
+
         public static void AddToNetwork(VillageHearth hearth, Vector3 point)
         {
             var cell = Cell(point);
@@ -87,7 +129,7 @@ namespace Villheim.Logic.Village
             Vector3 center = hearth.transform.position;
             Vector3 front = Front(building, buildingRadius, buildingYaw, doorAngle);
             var state = new VillageState(hearth.Zdo);
-            HashSet<Vector2Int> network = Network(hearth);
+            HashSet<Vector2Int> network = PlannedNetwork(hearth); // paths planned but not laid yet count, so they merge
 
             // Millénaire's parent rule: a building more than 20 m out takes its path to the door of a building nearer
             // the middle (one at least a third closer than the hearth is), whose own path leads on to the hearth. So

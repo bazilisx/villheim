@@ -44,6 +44,7 @@ Current facts only. Read this at the start of a session. Narrative is in `docs/d
 
 ## Recent milestones
 
+- **2026-11-06 (session 15: queued paths, door check, foundation height, flat gallery)** - see docs/daily-notes/2026-11/2026-11-06.md
 - **2026-11-06 (session 14: seated villagers attached, design beds counted, vh act)** - see docs/daily-notes/2026-11/2026-11-06.md
 - **2026-11-06 (session 13: pose restart loop fixed, notice board blueprint, design gallery)** - see docs/daily-notes/2026-11/2026-11-06.md
 - **2026-11-06 (session 12: jitter causes found in traces and fixed, flat building pads)** - see docs/daily-notes/2026-11/2026-11-06.md

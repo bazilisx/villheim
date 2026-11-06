@@ -707,20 +707,63 @@ namespace Villheim.Logic.Village
 
         private static int Spawn(List<DesignSpawner.PlanEntry> plan, Cell cell, float yaw)
         {
-            Vector3 origin = cell.Center - Vector3.up * ConstructionSite.FloorOf(plan);
+            float planned = ConstructionSite.FloorOf(plan);
+            Vector3 origin = cell.Center - Vector3.up * planned;
             Quaternion turn = Quaternion.Euler(0f, yaw, 0f);
-            int count = 0;
+            var made = new List<GameObject>();
             foreach (DesignSpawner.PlanEntry entry in plan)
             {
-                GameObject made = DesignSpawner.SpawnEntry(entry, origin, turn, 0, false);
-                if (made != null)
+                GameObject piece = DesignSpawner.SpawnEntry(entry, origin, turn, 0, false);
+                if (piece != null)
                 {
-                    made.GetComponent<ZNetView>()?.GetZDO()?.Set(KeyGallery, 1);
-                    count++;
+                    piece.GetComponent<ZNetView>()?.GetZDO()?.Set(KeyGallery, 1);
+                    made.Add(piece);
                 }
             }
 
-            return count;
+            // Measured, not trusted: the foundation as the pieces actually stand (their colliders), and the whole design
+            // moved up or down so that foundation sits on the ground. Logged, to see where the plan's own measure is off.
+            Physics.SyncTransforms();
+            var bottoms = new List<float>();
+            foreach (GameObject piece in made)
+            {
+                if (piece.GetComponent<Piece>() == null || !piece.GetComponent<WearNTear>())
+                {
+                    continue;
+                }
+
+                float bottom = float.MaxValue;
+                foreach (Collider collider in piece.GetComponentsInChildren<Collider>())
+                {
+                    if (collider != null && !collider.isTrigger && collider.enabled)
+                    {
+                        bottom = Mathf.Min(bottom, collider.bounds.min.y);
+                    }
+                }
+
+                if (bottom < float.MaxValue)
+                {
+                    bottoms.Add(bottom);
+                }
+            }
+
+            if (bottoms.Count > 0)
+            {
+                float actual = ConstructionSite.FoundationHeight(bottoms);
+                float shift = cell.Center.y - actual;
+                VillheimPlugin.Log.LogInfo($"Gallery: {cell.Design.Name}: planned floor {planned:+0.00;-0.00}, measured foundation " +
+                                           $"{actual - origin.y:+0.00;-0.00} above the origin, lowest piece {bottoms.Min() - origin.y:+0.00;-0.00}; moved {shift:+0.00;-0.00} m.");
+                if (Mathf.Abs(shift) > 0.05f)
+                {
+                    foreach (GameObject piece in made)
+                    {
+                        piece.transform.position += Vector3.up * shift;
+                        piece.GetComponent<ZNetView>()?.GetZDO()?.SetPosition(piece.transform.position);
+                    }
+                }
+            }
+
+            return made.Count;
         }
 
         /// <summary>A sign at the front of the plot: the kind and level in blue, the design's name in white.</summary>

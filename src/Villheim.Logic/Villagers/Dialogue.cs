@@ -36,6 +36,7 @@ namespace Villheim.Logic.Villagers
             public string[] None;
             public HashSet<string> VoiceSet;
             public string Channel;
+            public string Tone;
             public float Weight;
             public readonly List<string> Lines = new List<string>();
         }
@@ -43,6 +44,7 @@ namespace Villheim.Logic.Villagers
         private sealed class Memory
         {
             public float NextSelf;
+            public string LastTone;
             public readonly Queue<string> Recent = new Queue<string>();
         }
 
@@ -102,19 +104,19 @@ namespace Villheim.Logic.Villagers
         /// now and then three, near the player react, a few seconds apart, each with a different line. Only once per
         /// event per village per minute, however many villagers notice it.
         /// </summary>
-        public static void Event(int villageId, string kind, Vector3 where)
+        public static bool Event(int villageId, string kind, Vector3 where)
         {
             Events[(villageId, kind)] = Time.time;
             if (LastEvent.TryGetValue((villageId, kind), out float last) && Time.time - last < 60f)
             {
-                return;
+                return false;
             }
 
             LastEvent[(villageId, kind)] = Time.time;
             Player player = Player.m_localPlayer;
             if (player == null || !VillheimConfig.VillagerChatter.Value)
             {
-                return;
+                return true;
             }
 
             List<Villager> near = Character.GetAllCharacters().OfType<Villager>()
@@ -130,6 +132,7 @@ namespace Villheim.Logic.Villagers
             }
 
             UseAmbient(villageId, 40f, 70f);
+            return true;
         }
 
         private static bool RecentlySaid(int villageId, string line)
@@ -216,6 +219,7 @@ namespace Villheim.Logic.Villagers
                 }
 
                 Remember(villager.VillageId, line);
+                memory.LastTone = picked.Tone ?? ToneOf(VoiceOf(villager));
 
                 memory.Recent.Enqueue(line);
                 while (memory.Recent.Count > 12)
@@ -286,6 +290,24 @@ namespace Villheim.Logic.Villagers
             }
 
             global::Chat.instance.SetNpcText(villager.gameObject, Vector3.up * 2.2f, 20f, seconds, "", line, false);
+            Memory memory = Memories.GetOrCreateValue(villager);
+            Social.Heard(villager, memory.LastTone);
+            memory.LastTone = null;
+        }
+
+        /// <summary>The tone listeners hear in a line with no ~tone of its own, from the speaker's voice.</summary>
+        private static string ToneOf(string voice)
+        {
+            switch (voice)
+            {
+                case "wry": return "joke";
+                case "cheerful": return "happy";
+                case "worrier": return "worry";
+                case "gruff": return "angry";
+                case "devout": return "pious";
+                case "young": return Random.value < 0.5f ? "happy" : "joke";
+                default: return null;
+            }
         }
 
         /// <summary>Every line of a channel that has no conditions, for the game's own NpcTalk greetings.</summary>
@@ -427,6 +449,11 @@ namespace Villheim.Logic.Villagers
                 }
             }
 
+            foreach (string social in Social.Tags(hearth))
+            {
+                tags.Add(social);
+            }
+
             bool? food = Healing.ChestFood(hearth);
             tags.Add(food == true ? "food:cooked" : food == false ? "food:raw" : "food:none");
             return tags;
@@ -485,6 +512,8 @@ namespace Villheim.Logic.Villagers
             }
 
             string player = Player.m_localPlayer != null ? Player.m_localPlayer.GetPlayerName() : "friend";
+            string request = hearth != null && hearth.IsValid ? Social.RequestText(hearth) ?? "a little wood" : "a little wood";
+            line = line.Replace("{request}", request);
             string other = OtherVillager(villager);
             return line.Replace("{village}", village)
                 .Replace("{material}", material)
@@ -562,6 +591,15 @@ namespace Villheim.Logic.Villagers
                 }
 
                 string head = line.Substring(1);
+                string tone = null;
+                int tilde = head.IndexOf('~');
+                if (tilde >= 0)
+                {
+                    int end = head.IndexOfAny(new[] { ' ', '|', '*', ',' }, tilde + 1);
+                    tone = (end < 0 ? head.Substring(tilde + 1) : head.Substring(tilde + 1, end - tilde - 1)).Trim().ToLowerInvariant();
+                    head = head.Remove(tilde, (end < 0 ? head.Length : end) - tilde);
+                }
+
                 float weight = 1f;
                 int star = head.IndexOf('*');
                 if (star >= 0)
@@ -594,6 +632,7 @@ namespace Villheim.Logic.Villagers
                     None = conditions.Where(c => c.StartsWith("!")).Select(c => c.Substring(1)).ToArray(),
                     VoiceSet = voices,
                     Channel = channel,
+                    Tone = tone,
                 };
 
                 int specific = current.All.Length + current.None.Length + (voices != null ? 1 : 0);

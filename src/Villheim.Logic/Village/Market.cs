@@ -155,6 +155,7 @@ namespace Villheim.Logic.Village
                 if (villager != null)
                 {
                     Dialogue.Note(villager.VillageId, "trade");
+                    Villagers.Social.AddReputation(VillageHearth.Find(villager.VillageId), Player.m_localPlayer, 1, "trade");
                     Dialogue.Say(villager, Random.value < 0.5f ? "Pleasure doing business." : "Spend it wisely. Or don't.");
                     __instance.m_items = Stock(VillageHearth.Find(villager.VillageId), chest);
                 }

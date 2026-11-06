@@ -39,6 +39,7 @@ namespace Villheim.Logic.Village
 
             VillageChest.Ensure(hearth);
             VillageChest.MoveStockIn(hearth, state);
+            Villagers.Social.VillageTick(hearth);
             if (VillageChest.IsLost(hearth))
             {
                 // Nothing gets built until the chest is back.

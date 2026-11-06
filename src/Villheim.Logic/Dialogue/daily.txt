@@ -1,0 +1,215 @@
+# Villheim: daily life, by time and weather, in each voice. Same format as social.txt.
+
+# ------------------------------------------------------------------ morning
+
+@ morning | steady
+Early start. Good.
+Let's get the work done while it's cool.
+
+@ morning | cheerful ~happy
+Morning! Look at that sky.
+Up and about! What shall we build today?
+
+@ morning | worrier ~worry
+Did anything happen in the night? Nothing? Are you sure?
+
+@ morning | wry ~joke
+Ah, morning. My old enemy.
+
+@ morning | elder
+The old ones used to say: first light, first chop.
+
+@ morning | devout ~pious
+Sol's chariot is up. Time to work.
+
+@ morning, rain
+Wet morning. Wet everything.
+
+@ morning, thought:sleptwell ~happy
+I feel ready for anything this morning.
+
+# ------------------------------------------------------------------ midday
+
+@ day | steady
+Halfway through the day. Halfway through the work.
+
+@ day | gruff
+Hot. Busy. Don't.
+
+@ day | cheerful ~happy
+What a day for it!
+
+@ day | wry ~joke
+Midday. The day's half over and so am I.
+
+@ day | young
+Is it lunch yet? It feels like lunch.
+
+@ day, need:any ~point
+Plenty of light left. Plenty of work too.
+
+# ------------------------------------------------------------------ evening
+
+@ evening | steady
+Good day's work. Time to rest.
+
+@ evening | gruff
+Done. Finally.
+
+@ evening | worrier ~worry
+It's getting dark. Everyone's coming in, aren't they?
+
+@ evening | wry ~joke
+Another day survived. Barely.
+
+@ evening | elder
+Evenings are for stories and tired feet.
+
+@ evening | young ~happy
+Is there going to be a story tonight? Please?
+
+@ evening | devout ~pious
+Thanks for the day. Mostly.
+
+@ evening, mood:high ~happy
+Listen to them by the fire. Best sound there is.
+
+@ evening, mood:low ~sad
+Quiet round the fire tonight. Everyone's tired.
+
+# ------------------------------------------------------------------ night
+
+@ night, !doing:watch | steady
+Late. Should be asleep.
+
+@ night | wry ~joke
+I'm awake. The rest of me isn't.
+
+@ night | young
+I'm not tired. I'm a bit tired.
+
+@ night, nobed ~sad
+Another night by the fire. My back's had enough.
+
+# ------------------------------------------------------------------ rain, more
+
+@ rain | steady
+Rain's rain. Keep working.
+
+@ rain | gruff ~angry
+Wet boots. Wet beard. Wet everything.
+
+@ rain | cheerful ~happy
+The trees love it. I'm trying to love it.
+
+@ rain | worrier ~worry
+I hope the roofs hold. Did anyone check the roofs?
+
+@ rain | wry ~joke
+Ah, rain. Saves washing.
+
+@ rain, feel:stressed ~sad
+Rain on top of everything else. Of course.
+
+@ rain, doing:mining
+Wet stone slips. Mind your fingers.
+
+@ rain, doing:hunting
+Rain covers the sound. Good for hunting, bad for my socks.
+
+@ chat, rain
+Wet enough for you? // Not yet. // Give it a minute.
+It never stops raining here. // It stopped once. // For about an hour.
+
+# ------------------------------------------------------------------ cold
+
+@ cold | steady
+Cold today. Keep moving and you won't notice.
+
+@ cold | worrier ~worry
+If it gets any colder we'll freeze in our beds.
+
+@ cold | wry ~joke
+I can see my breath. I can also see my regrets.
+
+@ cold | young
+My nose is cold! Feel it! No, really, feel it.
+
+@ chat, cold
+It's freezing. // Move about, then. // I'd rather complain.
+
+# ------------------------------------------------------------------ wind
+
+@ windy
+The wind's got teeth today.
+Mind your hat. Well, if you had one.
+
+@ windy | worrier ~worry
+What if it blows the roof off? It could.
+
+@ windy, doing:felling ~worry
+Wind's pushing the trees about. Hard to tell where they'll fall.
+
+# ------------------------------------------------------------------ small observations (any time)
+
+@ !night, !rain
+There's a smell of pine on the wind today.
+The birds are loud this morning. Means good weather, my mother said.
+Saw a fox by the stream. It saw me too. We both pretended we hadn't.
+The clouds look like a boar. Or a loaf. Hungry, me.
+Someone's been carving something into the bench. A boat, I think.
+There's a frog living by the chest. I've named him.
+
+@ !night, !rain | gruff
+Too many birds. Too much singing.
+
+@ !night, !rain | cheerful ~happy
+I counted seven butterflies on the way here. Seven!
+
+@ !night, !rain | worrier ~worry
+There were tracks by the stream I didn't recognise.
+
+@ !night, !rain | elder
+I've watched this valley change. Slowly. Like me.
+
+@ !night, !rain | young
+I found a rock shaped like a face. I'm keeping it.
+
+@ !night, !rain | devout ~pious
+A raven landed on the roof this morning. Odin's watching.
+
+@ !night, !rain | wry ~joke
+I spent ten minutes looking for my axe. It was in my hand.
+
+# ------------------------------------------------------------------ chats, general, more
+
+@ chat | steady
+Busy day tomorrow. // Every day's busy. // True. Still.
+Good work today. // Same to you.
+
+@ chat | gruff
+You're in my way. // I was here first. // Then I'm in your way. Move anyway.
+
+@ chat | cheerful
+Want to hear something funny? // Always. // I forgot. // That is funny.
+
+@ chat | worrier
+Did you hear that? // Hear what? // That. // That's the wind. // Is it?
+
+@ chat | wry
+How's the back? // Still attached. // Good sign.
+
+@ chat | elder
+You remind me of my brother. // Was he handsome? // He was loud.
+
+@ chat | young
+Race you to the chest! // I'm not racing you. // Because you'd lose? // Yes.
+
+@ chat | devout
+Did you thank the fire tonight? // I sat near it. // That counts.
+
+@ chat, morning, feel:happy
+Good morning! // Is it? // It is now.
+
+@ chat, evening, feel:stressed
+Long day. // Too long. // Tomorrow's shorter. // That's not how days work.

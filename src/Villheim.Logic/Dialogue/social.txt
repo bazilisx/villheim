@@ -1,0 +1,273 @@
+# Villheim: players, news, requests and village events. Same format as lines.txt, plus a tone after "~"
+# (joke, happy, sad, worry, angry, proud, point, pious) that tells listeners how to react.
+#
+# Extra tags: player:stranger player:known player:friend player:hero player:new player:disliked
+#   news:gift news:defended news:trade news:request   request:open request:done
+#   event:stranger event:returning event:request event:requestdone event:gift event:attack event:fightover
+# Fill-in: {request} (what the village asked for today, like "20 wood")
+
+# ------------------------------------------------------------------ a stranger walks in
+
+@ talk, event:stranger ~point
+Hold on. I don't know your face.
+You're new. Where've you come from?
+A stranger! We don't get many of those.
+Hello there. You're not from round here.
+
+@ talk, event:stranger | gruff ~angry
+Who are you, then?
+We don't have anything worth stealing. Just so you know.
+State your business.
+
+@ talk, event:stranger | cheerful ~happy
+Oh! A visitor! Welcome, welcome.
+You must be tired. Come and sit by the fire.
+
+@ talk, event:stranger | worrier ~worry
+Don't come any closer. Sorry. Hello. Are you friendly?
+Are you one of the good ones? You look like one of the good ones.
+
+@ talk, event:stranger | elder
+Another traveller. Sit down, you'll find we're not much, but we're honest.
+
+@ talk, event:stranger | young ~happy
+Who are you? Where are you going? Can I see your sword?
+
+@ talk, event:stranger | devout ~pious
+The gods send all sorts. Welcome, traveller.
+
+@ talk, event:stranger | wry ~joke
+Ah, a new face. The old ones were getting boring.
+
+@ talk, event:stranger, size:camp
+There's only a couple of us so far. You're welcome to the fire.
+
+@ talk, event:stranger, afterfight ~worry
+You picked a bad time. We've just had trouble.
+
+# ------------------------------------------------------------------ someone coming back
+
+@ talk, event:returning ~happy
+You're back! I wondered where you'd got to.
+Look who it is.
+Back again? We kept your seat warm. Well, someone sat in it.
+
+@ talk, event:returning | gruff
+Oh. You.
+Thought we'd seen the last of you.
+
+@ talk, event:returning | cheerful ~happy
+You came back! I told {other} you would.
+
+@ talk, event:returning | elder
+Ah, I remember you. Don't tell me your name. I won't remember it, but I remember you.
+
+@ talk, event:returning | young ~happy
+You're back! Did you kill anything? Tell me everything.
+
+@ talk, event:returning, player:friend ~happy
+There's our friend. Good to see you.
+
+@ talk, event:returning, player:hero ~proud
+The hero of {village} returns!
+
+@ talk, event:returning, size:village
+A lot's changed since you were last here. Have a look round.
+
+# ------------------------------------------------------------------ how the village sees the player
+
+@ talk, player:new
+Still finding your way round? The chest's by the hearth. Everything else is mud.
+
+@ talk, player:known, !player:friend
+I've seen you about. You seem all right.
+
+@ talk, player:friend ~happy
+Always good to see a friend of {village}.
+You're one of us now, near enough.
+If you ever need a bed, we'll find you one.
+
+@ talk, player:friend | gruff
+You're not so bad. Don't let it go to your head.
+
+@ talk, player:friend | worrier
+I feel safer when you're around. Is that strange?
+
+@ talk, player:hero ~proud
+They're telling stories about you round the fire.
+Half the village owes you something. The other half owes you twice.
+If it weren't for you, I don't know where we'd be.
+
+@ talk, player:hero | gruff
+Fine. You're a hero. Happy now?
+
+@ talk, player:hero | young ~happy
+When I grow up I want to be just like you. But taller.
+
+@ talk, player:hero | elder
+I've known a few heroes. You're one of the better ones.
+
+@ talk, player:disliked ~angry
+I've heard about you. Keep your hands where I can see them.
+We don't forget, you know.
+
+# ------------------------------------------------------------------ news that travels
+
+@ news:gift
+Someone dropped a load of wood in the chest. Very generous.
+Did you see the chest? Somebody's been kind to us.
+
+@ news:gift, talk
+Was it you who filled the chest? Thank you. Truly.
+
+@ news:gift | gruff
+Someone gave us materials. About time somebody did.
+
+@ news:defended
+{player} stood with us when they came. I won't forget it.
+I heard {player} fought right beside us. Is it true?
+
+@ news:defended, talk ~proud
+You were there when they came. We owe you.
+
+@ news:defended | worrier
+I hid. {player} didn't. That's the difference between us.
+
+@ news:trade
+Coins in the chest. Somebody bought our spare wood.
+
+@ news:request
+You brought what we asked. We'll remember that.
+The {building} is going up thanks to you.
+
+@ chat, news:defended
+Did you see {player} out there? // I saw them. // We should feed them. // We should feed them a lot.
+
+@ chat, news:gift
+Who filled the chest? // A traveller. // Strange people, travellers. // Generous people, travellers.
+
+# ------------------------------------------------------------------ requests
+
+@ talk, event:request ~point
+Could you help us? We need {request} for the {building}.
+If you've any {request} to spare, the chest is by the hearth. We'd be grateful.
+We're stuck without {request}. Any chance you could bring some?
+
+@ talk, event:request | gruff
+We need {request}. You look capable. Go on.
+
+@ talk, event:request | cheerful ~happy
+Would you be a dear and bring us {request}? We'd make it worth your while.
+
+@ talk, event:request | worrier ~worry
+We're short of {request} and I don't know what we'll do. Could you help?
+
+@ talk, event:request | elder
+In my day we'd ask a traveller for help. So. {request}, if you have it.
+
+@ talk, event:request | young
+They sent me to ask you. We need {request}! Please?
+
+@ talk, request:open
+Still hoping for {request}, if you come across any.
+
+@ request:open, self
+If only someone would bring us {request}.
+
+@ event:requestdone ~happy
+Look at that! Exactly what we needed.
+That's the {building} sorted, thanks to our friend.
+Bless whoever brought that.
+
+@ event:requestdone | gruff
+Hm. Good. That'll do nicely.
+
+@ event:requestdone | devout ~pious
+The gods provide. Through very kind travellers, mostly.
+
+@ talk, request:done ~happy
+Thank you for today. It meant a lot.
+
+@ event:gift ~happy
+Somebody's been at the chest. Kindly, for once.
+More materials! Who's the generous one?
+
+# ------------------------------------------------------------------ attacks and the fight ending
+
+@ event:attack ~worry
+They're coming! Get back!
+Greydwarfs! At the tree line!
+To the houses! Now!
+Something's out there!
+
+@ event:attack, protector ~angry
+I'll hold them. Get the others inside.
+Grab a weapon!
+With me! Now!
+
+@ event:attack, carer ~worry
+Inside, everyone, inside!
+Leave it, leave it, just run!
+
+@ event:attack | worrier ~worry
+I knew it. I knew this would happen.
+
+@ event:attack | elder
+Stay calm. Stay together.
+
+@ event:attack | devout ~pious
+Thor, give us strength!
+
+@ event:attack | young ~worry
+Is it trolls? Please don't be trolls.
+
+@ event:fightover ~happy
+Is it over? I think it's over.
+They're gone. Everyone all right?
+We did it. We actually did it.
+
+@ event:fightover, protector ~proud
+That's how it's done.
+Come back any time. We'll be waiting.
+
+@ event:fightover, carer
+Is anyone hurt? Come to the fire, all of you.
+
+@ event:fightover | gruff
+Mess everywhere. Someone clean that up.
+
+@ event:fightover | worrier ~worry
+My heart's still pounding. Give me a moment.
+
+@ event:fightover | wry ~joke
+Well. That's my exercise for the week.
+
+@ event:fightover | elder
+Not bad, for a young village.
+
+# ------------------------------------------------------------------ building milestones and arrivals (reactions)
+
+@ event:finished, self ~happy
+It's finished! Come and see!
+Done! Another roof over our heads.
+
+@ event:finished, self | gruff
+Finally.
+
+@ event:finished, self | elder
+Good work, all of you. Good work.
+
+@ event:arrival, self ~point
+Someone's coming in from the woods. A newcomer!
+Look, over there. A new face.
+
+@ event:arrival, self | worrier ~worry
+Who's that? Do we know them? Should we know them?
+
+@ event:groundbroken, self ~point
+They're starting the next one.
+Stakes in the ground. Here we go again.
+
+@ event:hunt, self ~happy
+Meat! Somebody caught something!
+Fresh meat tonight!

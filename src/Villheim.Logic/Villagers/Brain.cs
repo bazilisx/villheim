@@ -45,10 +45,17 @@ namespace Villheim.Logic.Villagers
             if (threat != brain.WasThreat)
             {
                 brain.WasThreat = threat;
-                Dialogue.Event(villager.VillageId, threat ? "attack" : "fightover", villager.transform.position);
+                bool fired = Dialogue.Event(villager.VillageId, threat ? "attack" : "fightover", villager.transform.position);
                 if (!threat)
                 {
                     Moods.FightOver(villager);
+                    VillageHearth home = VillageHearth.Find(villager.VillageId);
+                    Player player = Player.m_localPlayer;
+                    if (fired && home != null && player != null &&
+                        Vector3.Distance(player.transform.position, villager.transform.position) < 25f)
+                    {
+                        Social.FoughtAlongside(home, player);
+                    }
                 }
             }
 
@@ -73,6 +80,10 @@ namespace Villheim.Logic.Villagers
             else if (Sleep.Update(villager, ai, dt))
             {
                 // Bedtime.
+            }
+            else if (Social.Update(villager, ai, dt))
+            {
+                // Walking up to greet a newcomer, or to ask a known player for something.
             }
             else if (MorningHearth.Update(villager, ai, dt))
             {

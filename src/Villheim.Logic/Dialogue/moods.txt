@@ -1,0 +1,324 @@
+# Villheim: how villagers feel and why. Same format as social.txt.
+# Extra tags: feel:happy feel:content feel:stressed feel:miserable
+#   thought:sleptwell thought:sleptrough thought:atewell thought:atescraps thought:hurt thought:fight thought:won
+#   thought:finished thought:arrival thought:chat thought:hunt thought:trade thought:upgrade
+
+# ------------------------------------------------------------------ happy
+
+@ feel:happy ~happy
+I don't know why, but today's a good day.
+I woke up smiling. Haven't stopped since.
+Everything's going right for once.
+I could hug a troll today. A small one. From behind.
+
+@ feel:happy | gruff
+I'm in a good mood. Don't ruin it.
+Today's not terrible. That's high praise from me.
+
+@ feel:happy | cheerful ~happy
+Isn't everything wonderful? Even the mud is lovely.
+I've been humming all morning. Sorry. Not sorry.
+
+@ feel:happy | worrier
+Things are good. I'm trying not to think about what comes next.
+
+@ feel:happy | wry ~joke
+I'm so content it's almost suspicious.
+
+@ feel:happy | elder
+At my age, a day like this is a gift.
+
+@ feel:happy | young ~happy
+Best. Day. Ever. Again.
+
+@ feel:happy | devout ~pious
+The gods smile on us today. I can feel it.
+
+@ feel:happy, trade:carpenter ~proud
+Wood's straight, pegs are tight, roof's up. Lovely.
+
+@ feel:happy, trade:woodcutter
+Trees fall where I want them today. Good omen.
+
+@ feel:happy, trade:miner
+The stone splits clean today. My arms don't even ache. Much.
+
+@ feel:happy, trade:cook ~happy
+Everyone ate well and nobody complained. A cook's dream.
+
+@ feel:happy, protector
+Quiet day. Nothing to fight. I'll take it.
+
+@ feel:happy, carer ~happy
+Everyone's fed and warm. That's all I want.
+
+# ------------------------------------------------------------------ content
+
+@ feel:content
+Fine day. Nothing to complain about.
+Can't grumble. Well, I can, but I won't.
+Steady work, steady life.
+
+@ feel:content | gruff
+It's all right. I suppose.
+
+@ feel:content | wry
+I'm aggressively average today.
+
+@ feel:content | elder
+Days like this add up to a good life.
+
+# ------------------------------------------------------------------ stressed
+
+@ feel:stressed ~sad
+I've got a lot on my mind.
+Everything feels heavy today.
+I just need one thing to go right.
+Don't take it personally. I'm not myself.
+
+@ feel:stressed | gruff ~angry
+If one more thing goes wrong, I'm going to shout.
+Leave me alone today. I mean it.
+
+@ feel:stressed | cheerful ~sad
+I'm trying to smile. It's harder than usual.
+
+@ feel:stressed | worrier ~worry
+I can't stop thinking about everything that could go wrong. Everything.
+My stomach's in knots. It's always in knots, but tighter.
+
+@ feel:stressed | wry ~joke
+I'm fine. Totally fine. This is my fine face.
+
+@ feel:stressed | elder
+I've seen hard times. This isn't the worst. Doesn't make it easy.
+
+@ feel:stressed | young ~sad
+Why is everything so hard today?
+
+@ feel:stressed | devout ~pious
+I keep asking the gods for a sign. They're quiet today.
+
+@ feel:stressed, trade:carpenter ~angry
+Nothing fits. Not the pegs, not the beams, not my temper.
+
+@ feel:stressed, trade:cook ~sad
+Everyone wants food and there's never enough.
+
+@ feel:stressed, protector ~worry
+I keep looking at the tree line. Something's coming. I can feel it.
+
+@ feel:stressed, carer ~sad
+I can't look after everyone at once. I try.
+
+@ feel:stressed, nobed ~sad
+A bed. That's all I want. One bed.
+
+@ feel:stressed, unfed ~sad
+I can't remember when I last ate properly.
+
+# ------------------------------------------------------------------ miserable
+
+@ feel:miserable ~sad
+Leave me be. Please.
+I don't want to talk about it.
+Some days you just get through.
+I miss home. Wherever that was.
+
+@ feel:miserable | gruff ~angry
+Go away.
+Not today.
+
+@ feel:miserable | cheerful ~sad
+Even I can't find the bright side today.
+
+@ feel:miserable | worrier ~worry
+It's all going wrong. All of it. I knew it would.
+
+@ feel:miserable | wry
+On a scale of one to troll, I'm a troll.
+
+@ feel:miserable | elder ~sad
+I've buried better days than this.
+
+@ feel:miserable | young ~sad
+I want to go back to when things were fun.
+
+@ feel:miserable | devout ~sad
+Have the gods forgotten us?
+
+# ------------------------------------------------------------------ thoughts: sleep
+
+@ thought:sleptwell
+Slept like a log. A happy log.
+First proper night's sleep in ages.
+My own bed. Nothing beats it.
+
+@ thought:sleptwell | gruff
+Slept well. Don't make a thing of it.
+
+@ thought:sleptwell | elder
+A good night's sleep is worth more than gold at my age.
+
+@ thought:sleptwell | young ~happy
+I had a dream about a dragon. It was friendly!
+
+@ thought:sleptrough ~sad
+My back's in pieces. No bed again.
+I slept on a floor. Again. It didn't get softer.
+Another night without a bed. I'm getting too old for this.
+
+@ thought:sleptrough | gruff ~angry
+Slept on the ground. Ask me how I feel. Don't.
+
+@ thought:sleptrough | worrier ~worry
+I didn't sleep at all. Every sound was something.
+
+@ thought:sleptrough | wry ~joke
+I've become one with the floor. We're very close now.
+
+# ------------------------------------------------------------------ thoughts: food
+
+@ thought:atewell ~happy
+That was a proper meal. I feel like myself again.
+Belly full. Life's better on a full belly.
+Good meat, cooked right. Thank the cook.
+
+@ thought:atewell | gruff
+That was edible. Better than edible.
+
+@ thought:atewell | cheerful ~happy
+I could eat that every day. I might.
+
+@ thought:atewell | elder
+Hot food warms the old bones.
+
+@ thought:atescraps ~sad
+Scraps again. My stomach's filing complaints.
+That wasn't a meal. That was a rumour of a meal.
+
+@ thought:atescraps | gruff ~angry
+Burnt scraps. Wonderful.
+
+@ thought:atescraps | wry ~joke
+I had a delicious stick with a bit of something on it.
+
+# ------------------------------------------------------------------ thoughts: hurt and fights
+
+@ thought:hurt ~sad
+I took a knock earlier. Still smarting.
+I'll be fine. Just need a moment.
+Everything aches.
+
+@ thought:hurt | gruff
+Got hit. Hit back. That's all.
+
+@ thought:hurt | worrier ~worry
+Is that swelling normal? It looks swollen.
+
+@ thought:hurt | young
+I've got a bruise this big! Want to see?
+
+@ thought:fight ~worry
+I can't stop thinking about the fight.
+My hands won't stop shaking.
+They came so close to the houses.
+
+@ thought:fight | gruff
+Next time, I'll be ready.
+
+@ thought:fight | elder
+You never get used to it. You just get older.
+
+@ thought:fight | devout ~pious
+We were watched over today.
+
+@ thought:won ~proud
+We held them off. We actually held them off.
+I'd do it again. I hope I don't have to.
+
+@ thought:won | young ~happy
+Did you see me? Did you see?
+
+# ------------------------------------------------------------------ thoughts: village life
+
+@ thought:finished ~happy
+I keep walking past the new building just to look at it.
+Every new roof makes this place feel more ours.
+
+@ thought:finished | gruff
+New building. Fine. It's nice. There, I said it.
+
+@ thought:arrival ~happy
+Nice to have a new face around.
+The newcomer seems decent. We'll see.
+
+@ thought:arrival | worrier ~worry
+I'm keeping an eye on the new one. Just in case.
+
+@ thought:chat ~happy
+Had a good talk with {other} earlier. Cheered me up.
+{other} always knows what to say.
+
+@ thought:chat | gruff
+{other} talked my ear off. Wasn't terrible.
+
+@ thought:hunt ~happy
+Fresh meat in the chest. Life is good.
+
+@ thought:trade
+We made some coin today. Feels good to be worth something.
+
+@ thought:upgrade ~proud
+They're building something bigger. We're going places.
+
+# ------------------------------------------------------------------ village mood, combined with roles
+
+@ mood:low, protector ~worry
+The village is on edge. I can feel it when I walk round.
+
+@ mood:low, carer ~sad
+Everyone's tired and short-tempered. I'm doing what I can.
+
+@ mood:low, trade:carpenter
+A new house would cheer everyone up. If I had the wood.
+
+@ mood:high, protector ~happy
+Everyone's in good spirits. Makes my job easier.
+
+@ mood:high, carer ~happy
+Listen to them laughing by the fire. That's the sound of a good village.
+
+@ mood:high, trade:cook ~happy
+When the village is happy, they eat everything. I love it.
+
+# ------------------------------------------------------------------ chats about feelings
+
+@ chat, feel:happy
+You look happy. // I am happy. // Why? // No reason. That's the best kind.
+Good day? // The best. // Tell me your secret. // Sleep, meat, and not talking to {other}.
+
+@ chat, feel:stressed
+You all right? // Not really. // Want to talk? // No. // Want to sit? // Yes.
+You look tired. // I am tired. // Go to bed. // Can't. Work.
+
+@ chat, feel:stressed | cheerful
+Chin up. // Easy for you to say. // It is easy. Try it. // No.
+
+@ chat, feel:miserable
+Rough day? // Rough week. // Here, sit by me. // Thanks.
+
+@ chat, thought:sleptrough
+I slept on the floor again. // Me too. // We should demand beds. // From who?
+
+@ chat, thought:atewell
+That was a good meal. // The cook's getting better. // Don't tell them. They'll get ideas.
+
+@ chat, thought:fight
+Still thinking about the fight? // Can't stop. // Me neither. // At least we're here.
+
+@ chat, mood:low
+Everyone's so grumpy lately. // I'm not grumpy. // You just growled at me. // That was a cough.
+
+@ chat, mood:high
+Everyone's so cheerful lately. // It won't last. // Let it last a little.

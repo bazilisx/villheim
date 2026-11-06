@@ -1,0 +1,212 @@
+# Villheim: trades and roles in more situations. Same format as social.txt.
+
+# ------------------------------------------------------------------ carpenter
+
+@ trade:carpenter, doing:building ~proud
+Hear that? That's a peg going in properly.
+Every piece in its place. That's the job.
+I don't need plans. I need wood and quiet.
+
+@ trade:carpenter, doing:building | gruff ~angry
+Stop leaning on that. It isn't nailed yet.
+
+@ trade:carpenter, doing:building | cheerful ~happy
+I love the smell of a new house going up.
+
+@ trade:carpenter, doing:building | worrier ~worry
+If this beam's wrong, the whole roof comes down. No pressure.
+
+@ trade:carpenter, doing:building | elder
+Forty years of building and I still check every joint.
+
+@ trade:carpenter, doing:repairing
+Someone's been rough with this wall.
+I fix what I built. That's only fair.
+
+@ trade:carpenter, need:none
+Chest's full. Time to plan something bigger.
+
+@ trade:carpenter, building:longhouse ~proud
+The longhouse is the heart of a village. I'm building the heart.
+
+@ trade:carpenter, event:finished ~proud
+That's mine. Every beam of it.
+
+@ trade:carpenter, feel:stressed ~angry
+Everyone wants a house yesterday. I'm one person.
+
+@ chat, trade:carpenter
+Can you build me a shelf? // A shelf for what? // For my things. // You have two things. // Big shelf, then.
+Is my roof going to leak? // Not if you stop poking holes in it.
+
+# ------------------------------------------------------------------ woodcutter
+
+@ trade:woodcutter, doing:felling ~point
+That one's next. I've had my eye on it.
+Birch, then pine. Then lunch.
+You learn to hear when they're about to go.
+
+@ trade:woodcutter, doing:felling | gruff
+Chop. Chop. Don't talk.
+
+@ trade:woodcutter, doing:felling | young ~happy
+I'm getting faster! Twenty swings this time!
+
+@ trade:woodcutter, doing:felling | devout ~pious
+A tree gives its life for our roofs. Least I can do is say thanks.
+
+@ trade:woodcutter, need:none
+No wood wanted today. Feels wrong, standing still.
+
+@ trade:woodcutter, rain
+Wet logs weigh twice as much. I've weighed them.
+
+@ trade:woodcutter, feel:happy ~happy
+Good sharp axe and a forest full of trees. What else is there?
+
+@ trade:woodcutter, feel:stressed ~sad
+My hands are blistered and they still want more wood.
+
+@ chat, trade:woodcutter
+How many trees left out there? // Thousands. // That's a relief. // For you.
+Your hands look terrible. // They're woodcutter's hands. // They look terrible.
+
+# ------------------------------------------------------------------ miner
+
+@ trade:miner, doing:mining ~point
+There's a seam running through this one. Look.
+Hit it where it's cracked. Always where it's cracked.
+I can tell a good rock by the sound.
+
+@ trade:miner, doing:mining | gruff
+Rock. Pick. Rock. Pick.
+
+@ trade:miner, doing:mining | wry ~joke
+This rock and I have an understanding. I hit it, it ignores me.
+
+@ trade:miner, doing:mining | elder
+My father was a miner. His father too. We all had bad backs.
+
+@ trade:miner, need:stone ~proud
+They need stone. Nobody hits rocks like I do.
+
+@ trade:miner, feel:stressed ~angry
+I've had dust in my eyes all day. All. Day.
+
+@ chat, trade:miner
+You're covered in dust. // It's a living. // It's a mess. // It's a living mess.
+
+# ------------------------------------------------------------------ cook
+
+@ trade:cook, doing:cooking ~proud
+Turn it once. Only once. That's the secret.
+Low fire, patience, and nobody touching my spoon.
+Smell it? That's what a good day smells like.
+
+@ trade:cook, doing:cooking | gruff ~angry
+If you touch it, you're cooking tonight.
+
+@ trade:cook, doing:cooking | cheerful ~happy
+Who's hungry? Everyone's hungry. Good.
+
+@ trade:cook, doing:cooking | worrier ~worry
+Is it done? It might be done. It might be raw. Oh, I can't tell.
+
+@ trade:cook, food:raw ~point
+There's meat waiting in the chest. Let me at it.
+
+@ trade:cook, feel:happy ~happy
+Full chest, full bellies. A cook couldn't ask for more.
+
+@ trade:cook, feel:stressed ~sad
+Nobody brings me anything and then they ask what's for dinner.
+
+@ trade:cook, event:hunt ~happy
+Meat! Real meat! Out of my way.
+
+@ chat, trade:cook
+What's for dinner? // Boar. // Again? // Bring me a deer then.
+Did you burn it on purpose? // It's called smoked. // It's called burnt.
+
+# ------------------------------------------------------------------ no trade yet (small village)
+
+@ trade:none, doing:felling
+I'm a woodcutter today. Tomorrow I might be a builder. Small village.
+
+@ trade:none, doing:mining
+Somebody has to get stone. Today that's me.
+
+@ trade:none, doing:building
+We all chip in with the building. That's how it is when there's only a few of us.
+
+@ trade:none | young
+I want to be a carpenter. Or a hunter. Or both.
+
+@ trade:none | elder
+When there's few of you, everybody does everything. It's good for you.
+
+@ trade:none, many
+Everyone else has a trade now. I'm still working that out.
+
+# ------------------------------------------------------------------ protectors
+
+@ protector, doing:watch ~point
+Movement by the trees. Probably a deer.
+I can see the whole valley from here.
+If they come, they come from that side. They always do.
+
+@ protector, doing:watch | young ~happy
+I'm on watch! Very important! Don't distract me!
+
+@ protector, doing:watch | elder
+I've stood watch more nights than I can count.
+
+@ protector, doing:hunting ~point
+Boar tracks. Fresh ones.
+Quiet now. It's just there.
+
+@ protector, feel:stressed ~worry
+I can't protect everyone. I know that. I try anyway.
+
+@ protector, feel:happy ~proud
+Nobody's been hurt in days. That's my job done right.
+
+@ protector, night ~worry
+Keep the fire bright. They don't like the light.
+
+@ protector, player:friend
+Good to have another sword about the place.
+
+@ chat, protector
+Anything out there? // Just trees. // Good. // Too many trees, mind.
+Do you ever sleep? // With one eye open.
+
+# ------------------------------------------------------------------ carers
+
+@ carer, doing:cooking ~happy
+Eat up, all of you. There's plenty.
+
+@ carer, doing:fire
+Come sit by the fire. You look frozen.
+
+@ carer, doing:making
+A bench by the fire so the old ones can rest their legs.
+
+@ carer, badlyhurt ~sad
+Who looks after the one who looks after everyone?
+
+@ carer, feel:happy ~happy
+Everyone's warm and fed tonight. That's enough for me.
+
+@ carer, feel:stressed ~sad
+I can't keep everyone happy. I keep trying.
+
+@ carer, afterfight
+Let me look at that cut. Hold still.
+
+@ carer, player:stranger
+Have you eaten, traveller? You look like you haven't.
+
+@ chat, carer
+You haven't eaten. // I have. // Liar. Here. // Thank you.
+Your hands are freezing. // They're always freezing. // Sit by the fire, then.

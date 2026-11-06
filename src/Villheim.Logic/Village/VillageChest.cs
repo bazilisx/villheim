@@ -272,6 +272,21 @@ namespace Villheim.Logic.Village
             return chest && name != null && chest.GetInventory() != null ? chest.GetInventory().CountItems(name) : 0;
         }
 
+        /// <summary>Materials put in by the village itself (villagers, refunds), by chest, since last read.</summary>
+        public static readonly Dictionary<int, int> AddedByVillage = new Dictionary<int, int>();
+
+        /// <summary>Building materials in the chest, all kinds together.</summary>
+        public static int TotalMaterials(Container chest)
+        {
+            int total = 0;
+            foreach (string material in Materials.Tracked)
+            {
+                total += Count(chest, material);
+            }
+
+            return total;
+        }
+
         /// <summary>Puts materials in. Returns how many fitted.</summary>
         public static int Add(Container chest, string material, int amount)
         {
@@ -297,6 +312,9 @@ namespace Villheim.Logic.Village
                 amount -= stack;
             }
 
+            // Counted, so a gift from a player can be told apart from villagers' own deliveries (see Villagers.Social).
+            AddedByVillage.TryGetValue(chest.GetInstanceID(), out int before);
+            AddedByVillage[chest.GetInstanceID()] = before + added;
             return added;
         }
 

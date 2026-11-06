@@ -56,8 +56,8 @@ with its own look for its biome.
 ## Milestone 3: a village that looks planned
 
 - [ ] Central hub first (tavern or longhouse), then houses, workshops (carpentry, forge) and farms.
-- [ ] Paths from a grid search that join into streets (replacing the L-shaped paths). Millénaire uses A* with a slope
-      penalty and a tree toward the town hall (docs/LEARNINGS.md).
+- [ ] Paths from a grid search that join into streets (replacing the L-shaped paths). (Built 2026-11-06 after
+      Millénaire: A* with slope, turn and reuse costs, joining the laid network; needs testing.)
 - [ ] Earth floor painted under buildings.
 - [ ] Millénaire-like alignment: buildings face the streets.
 - [ ] Buildings stay close: houses orbit the hearth within a set distance; specialty buildings go a bit farther out or
@@ -69,7 +69,7 @@ with its own look for its biome.
 - [ ] Paths are laid by a villager walking the route, one stretch at a time (Tyler, 2026-11-05). (Built 2026-11-06,
       needs testing.)
 - [ ] Repairs: villagers fix broken pieces, structural first (flatten under ground pieces), cosmetic later (Tyler,
-      2026-11-05).
+      2026-11-05). (Built 2026-11-06, needs testing.)
 - [ ] Stone building waits until the village advances, at least in the Meadows (Tyler, 2026-11-05; to decide).
 
 ## Milestone 4: villagers with lives
@@ -96,7 +96,11 @@ with its own look for its biome.
       (Built 2026-11-06: workshops get a workbench at a spot that passes the game's cover test; needs testing.)
 - [ ] Profession buildings with their workbenches near key resources (Tyler, 2026-11-06). (Workshops placed near
       trees and rocks 2026-11-06; more profession buildings to come.)
-- [ ] Central building built around the hearth and cooking station, growing with it (Tyler, 2026-11-06).
+- [ ] Central building built around the hearth and cooking station, growing with it (Tyler, 2026-11-06). (Built
+      2026-11-06 for longhouse designs with a fire pit; needs testing.)
+- [ ] Millénaire growth: tiers, weighted picks, one pending project (Built 2026-11-06, needs testing.)
+- [ ] Hunting for the cooking station's meat (Built 2026-11-06, needs testing.)
+- [ ] Carers shelter indoors in a fight; no bed means sleeping under a roof (Built 2026-11-06, needs testing.)
 - [ ] Hurt villagers put healing first: cook food at the hearth and eat it; with no cooking station, make one first
       (Tyler, 2026-11-05). (Real cooking built 2026-11-06; the cooking station is the first thing villagers make.)
 - [ ] Villagers never walk or run through a fire: the hearth, fire pits and campfires are kept out of every walk,
@@ -116,19 +120,26 @@ with its own look for its biome.
 - [ ] Trades once the village has six villagers (carpenter, woodcutter, miner, cook, more as it grows), generalists
       before that, after Millénaire's villager types (Tyler, 2026-11-06). (Built 2026-11-06, needs testing.)
 - [ ] Dialogue about what villagers are doing, want and need, with conditions; grow into a large library of lines
-      (Tyler, 2026-11-05). (First topics built 2026-11-06; a data file and two-villager chats are next.)
+      (Tyler, 2026-11-05). (Library of about 670 lines in eight voices with chats built 2026-11-06; keep growing it.)
 - [ ] Interiors upgrade over time (bed, chests, table, then better furniture).
-- [ ] Exteriors upgrade over time (swap a building for a better design of the same role).
+- [ ] Exteriors upgrade over time (swap a building for a better design of the same role). (Built 2026-11-06: next
+      blueprint level or a bigger design, old building taken down first; needs testing.)
 
 ## Milestone 5: cultures by biome
 
 - [ ] Different building sets and villager looks per biome (Meadows versus Black Forest first).
-- [ ] PlanBuild blueprints as a design source.
+- [ ] PlanBuild blueprints as a design source. (Reader built 2026-11-06; needs blueprints in the folder and testing.)
+- [ ] Curated blueprint sets for Meadows and Black Forest with upgrade levels (Tyler, 2026-11-06). No openly licensed
+      set was found online; capture with `vh savebp` or PlanBuild, or use downloads with the author's permission.
 - [ ] More biomes (Plains, Mountain, Swamp) with their own materials.
 - [ ] Gear by biome and village level: basic Meadows tools for everyone, biome weapons and shields for protectors,
       better materials and Black Forest gear as the village levels up (Tyler, 2026-11-05).
 
 ## Later ideas
+
+- Trading with the player at village shops, as in Millénaire.
+- Raids on villages through the game's own random events.
+- A mood that speeds or slows work (Millénaire, Hirdmandr).
 
 - Ghost previews of the next building.
 - Builders carrying materials from a village store.

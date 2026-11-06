@@ -6,9 +6,13 @@ Current facts only. Read this at the start of a session. Narrative is in `docs/d
 ## Current State (as of 2026-11-06)
 
 - **Branch:** `main` (the cloud session branch is kept equal to it). All commits authored by Baz.
-- **On main, not tested in game:** the 2026-11-06 overnight work (builder at the piece, levelled sites, beds and sleep,
-  bed-based capacity, furnished buildings, Millénaire placement, real cooking, roles and trades, dialogue, walked
-  paths). Logic only, hot-reloads; core DLL unchanged. Details and what to watch for: docs/daily-notes/2026-11/2026-11-06.md.
+- **On main, not tested in game:** both 2026-11-06 overnight sessions (builder at the piece, levelled sites, beds and
+  sleep, furnished buildings, Millénaire placement, cooking, roles and trades, dialogue library, walked A* paths,
+  blueprints, growth tiers and upgrades, longhouse around the hearth, hunting, repairs, shelter). Logic only,
+  hot-reloads; core DLL unchanged. Rollback branches `stage/2026-11-06-a` to `-d`. Details:
+  docs/daily-notes/2026-11/2026-11-06.md.
+- **Blueprints:** `BepInEx/config/Villheim/blueprints` (and PlanBuild's folder), named `role-family-level`.
+- **Dialogue:** `src/Villheim.Logic/Dialogue/*.txt`; the format is at the top of `lines.txt`.
 - **Also untested from 2026-11-05:** sessions 4, 5 and 7 (doors, support order, free time, chest by the hearth,
   healing). Healing was replaced by the cooking rework.
 - **Updater:** `scripts/Villheim-Updater.ps1` keeps the profile on main. The hearth's hover text shows the commit.
@@ -22,10 +26,10 @@ Current facts only. Read this at the start of a session. Narrative is in `docs/d
 
 - Test the 2026-11-06 build in game. Watch: hammer animation, villagers in beds, cooking on the hearth station
   (`IsFireLit`), bed and workbench spots ("No covered room for" in the log), `interact` and `eat` triggers, jitter.
-- Central building built around the hearth and cooking station (Tyler, 2026-11-06).
-- Weighted growth with tiers and one pending project (Millénaire), replacing the fixed plan in `Culture`.
-- A* paths that join into a tree toward the hearth; placement reachability and cliff rule.
-- Repairs (structural first), hearth upgrades, stone only later in the Meadows (to decide).
+- Put blueprints in the blueprints folder (house-cabin-1, house-cabin-2...) to give villages curated buildings and
+  upgrade chains; `vh savebp` can capture any build.
+- Placement reachability and cliff rule; hearth upgrades (core change); stone only later in the Meadows (to decide);
+  trading with the player (Millénaire's shops).
 - Gear by biome and village level beyond the protector weapons.
 - Dialogue lines as a data file; two-villager chats with conditions.
 - Inspiration.zip stays on main for now; Tyler will remove it with a force-push once the study is done.
@@ -33,6 +37,7 @@ Current facts only. Read this at the start of a session. Narrative is in `docs/d
 
 ## Recent milestones
 
+- **2026-11-06 (second overnight: dialogue library, blueprints, growth and upgrades, hunting, repairs, A* paths)** - see docs/daily-notes/2026-11/2026-11-06.md
 - **2026-11-06 (overnight: beds, sleep, cooking, roles, placement, paths, dialogue)** - see docs/daily-notes/2026-11/2026-11-06.md
 - **2026-11-05 (test notes and new requests: placement, repairs, roles, dialogue)** - see docs/daily-notes/2026-11/2026-11-05.md
 - **2026-11-05 (test of 2108f23, gathering loop fixes)** - see docs/daily-notes/2026-11/2026-11-05.md

@@ -244,3 +244,16 @@ decompiled source is in `docs/DEVELOPMENT.md`.
 - A* paths that join into a tree toward the hearth.
 - A morning resident who lights and tends the hearth; a resting place under a roof for villagers with no bed.
 - A data file of dialogue lines and two-villager chats.
+
+## Other mods and licences (research of 2026-11-06)
+
+- Code that may be copied: PlanBuild (WTFPL; its `.blueprint` format is what `Designs/Blueprints.cs` reads),
+  Hirdmandr (WTFPL), VikingSettlements (MIT, keep the notice), Valheim.SpawnThat (Unlicense). Under the independence
+  rule only PlanBuild's format logic is used; the others are ideas only.
+- Ideas only (GPL, AGPL or no licence): MineColonies (builder requests, building levels 1 to 5), MCA Reborn (dialogue
+  as questions and answers with constraints and a fatigue on repeats), Millénaire, Wyrdrasil, BlueprintCruncher.
+- VikingSettlements: a supply chest feeding a construction site, NPC state in the ZDO, hunger stopping work, morale
+  scaling output, raids through the game's RandEventSystem.
+- Hirdmandr: jobs tied to worksite chests near related pieces, a thought and mood system that changes work speed.
+- No openly licensed library of Meadows or Black Forest blueprints was found. Nexus and Thunderstore pages can't be
+  read from the cloud container.

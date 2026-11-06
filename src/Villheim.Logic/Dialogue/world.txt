@@ -347,3 +347,25 @@ Boars ate the berries again. // Then eat the boars. // That's the plan.
 
 @ chat, biome:blackforest
 The trees are so tall here. // And so dark. // And so full of trolls.
+
+# ------------------------------------------------------------------ sitting on chairs and benches (doing:seat)
+
+@ doing:seat
+A proper seat. My legs thank whoever made it.
+I'll just sit a moment. Just a moment.
+Best bench in {village}. Don't tell the others.
+
+@ doing:seat | gruff
+I'm sitting. That's all I'm doing. Sitting.
+
+@ doing:seat | elder
+At my age a good chair is worth more than a sword.
+
+@ doing:seat | young
+I can't sit still. I'm trying. Look, I'm trying.
+
+@ doing:seat | wry
+I've earned this chair. I've earned several chairs.
+
+@ chat, doing:seat
+Comfortable? // Never been better. // It's a bench. // A good bench.

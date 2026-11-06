@@ -265,7 +265,7 @@ namespace Villheim.Logic.Village
                     VillheimPlugin.Log.LogInfo($"{state.Name} builds its {design.Name} around the hearth.");
                 }
                 else if (!PlotFinder.TryFind(hearth.transform.position, state.Axis, role, strictHub, radius,
-                             design.MaxTerrainDelta, plots, rng, out position, out yaw, PathPlanner.Network(hearth)))
+                             design.MaxTerrainDelta, plots, rng, out position, out yaw, PathPlanner.Network(hearth), hearth))
                 {
                     VillheimPlugin.Debug($"{state.Name}: no room for {design.Name}.");
                     continue;

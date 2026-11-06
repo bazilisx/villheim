@@ -35,6 +35,7 @@ namespace Villheim.Logic.Villagers
             Evening,
             Night,
             Make,
+            Seat,
         }
 
         private enum Mode
@@ -197,6 +198,7 @@ namespace Villheim.Logic.Villagers
                 case Kind.Stroll: return state.Watching ? "keeping watch" : "taking a stroll";
                 case Kind.Chat: return "chatting";
                 case Kind.Station: return state.Station != null ? "busy at the " + StationName(state.Station) : "keeping busy";
+                case Kind.Seat: return "sitting down for a while";
                 case Kind.Evening: return "gathered at the hearth";
                 case Kind.Night: return IsLateNight() ? "resting by the fire" : "sitting by the fire";
                 case Kind.Make: return state.Making != null ? "making a " + state.Making.Name : "making something";
@@ -287,6 +289,7 @@ namespace Villheim.Logic.Villagers
                     ? (mood >= 65f ? 4f : mood < 35f ? 0.6f : 2f)
                     : 0f),
                 (Kind.Station, FreeStation(villager) != null ? 3f : 0f),
+                (Kind.Seat, wet || mood < 35f ? 0f : (Seats.Free(villager) != null ? (carer ? 3f : 2f) : 0f)),
             };
 
             options.RemoveAll(o => o.Weight <= 0f || (state.SkipUntil.TryGetValue(o.Kind, out float until) && until > Time.time));
@@ -304,6 +307,20 @@ namespace Villheim.Logic.Villagers
 
                 case Kind.Chat:
                     StartChat(villager, FindChatPartner(villager), state);
+                    break;
+
+                case Kind.Seat:
+                    Chair seat = Seats.Free(villager);
+                    if (seat == null)
+                    {
+                        state.Kind = Kind.Stroll;
+                        state.Spot = StrollSpot(villager, state, hearth);
+                        break;
+                    }
+
+                    Seats.Claim(seat, villager);
+                    state.Station = seat.gameObject;
+                    state.Spot = Seats.Point(seat).position;
                     break;
 
                 case Kind.Station:
@@ -372,6 +389,14 @@ namespace Villheim.Logic.Villagers
 
                 case Kind.Station:
                     ActStation(villager, ai, state, facing);
+                    break;
+
+                case Kind.Seat:
+                    if (state.Station == null || !Seats.SitOn(villager, state.Station.GetComponent<Chair>()))
+                    {
+                        state.Until = 0f;
+                    }
+
                     break;
 
                 case Kind.Chat:
@@ -640,6 +665,11 @@ namespace Villheim.Logic.Villagers
 
         private static void End(Villager villager, State state)
         {
+            if (state.Kind == Kind.Seat)
+            {
+                Seats.StandUp(villager);
+            }
+
             if (state.Station != null && StationClaims.TryGetValue(state.Station, out Villager holder) && holder == villager)
             {
                 StationClaims.Remove(state.Station);

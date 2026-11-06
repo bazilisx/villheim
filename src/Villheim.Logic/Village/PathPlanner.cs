@@ -98,8 +98,19 @@ namespace Villheim.Logic.Village
             return found;
         }
 
+        /// <summary>
+        /// Millenaire's reachability rule: a spot only counts if a walkable way (no water, no cliffs too steep to
+        /// climb) leads from its front to the hearth or a laid path.
+        /// </summary>
+        public static bool Reachable(VillageHearth hearth, Vector3 building, float buildingRadius, float buildingYaw)
+        {
+            Vector3 front = building + Quaternion.Euler(0f, buildingYaw, 0f) * Vector3.forward * (buildingRadius * 0.6f + 0.5f);
+            var state = new VillageState(hearth.Zdo);
+            return Search(hearth.transform.position, front, building, buildingRadius, state.Plots, Network(hearth), 1.6f) != null;
+        }
+
         private static List<Vector3> Search(Vector3 hearth, Vector3 start, Vector3 building, float buildingRadius,
-            IReadOnlyList<Plot> plots, HashSet<Vector2Int> network)
+            IReadOnlyList<Plot> plots, HashSet<Vector2Int> network, float maxStep = float.MaxValue)
         {
             Vector2Int from = Cell(start);
             Vector2Int goal = Cell(hearth);
@@ -134,6 +145,11 @@ namespace Villheim.Logic.Village
                     }
 
                     float slope = there - here;
+                    if (Mathf.Abs(slope) > maxStep)
+                    {
+                        continue;
+                    }
+
                     float step = 1f + SlopePenalty * slope * slope + (direction[current] >= 0 && direction[current] != d ? TurnPenalty : 0f);
                     if (network.Contains(next))
                     {

@@ -41,6 +41,7 @@ namespace Villheim.Logic.Villagers
             if (ThreatNear(villager, ai, out Character enemy))
             {
                 Sleep.Wake(villager);
+                Seats.StandUp(villager);
                 Poses.Release(villager);
                 VillageMood.NoteThreat(villager.VillageId);
 
@@ -84,6 +85,8 @@ namespace Villheim.Logic.Villagers
             }
 
             Poses.EndTick(villager);
+            Seats.AfterTick(villager);
+            Sleep.AfterTick(villager);
             Dialogue.Tick(villager);
             return true;
         }

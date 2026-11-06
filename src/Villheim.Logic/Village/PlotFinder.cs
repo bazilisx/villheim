@@ -43,7 +43,8 @@ namespace Villheim.Logic.Village
         }
 
         public static bool TryFind(Vector3 hearth, float axisYaw, Role role, bool strictHub, float radius, float maxTerrainDelta,
-            IReadOnlyList<Plot> plots, System.Random rng, out Vector3 position, out float yaw, HashSet<Vector2Int> network = null)
+            IReadOnlyList<Plot> plots, System.Random rng, out Vector3 position, out float yaw, HashSet<Vector2Int> network = null,
+            VillageHearth village = null)
         {
             float villageRadius = VillheimConfig.VillageRadius.Value;
             Band(role, out float minShare, out float maxShare);
@@ -90,7 +91,9 @@ namespace Villheim.Logic.Village
                 Vector3 candidate = hearth + axis * new Vector3(local.x, 0f, local.y);
                 if (IsGoodSpot(candidate, hearth, radius, maxTerrainDelta, plots, out float groundY) &&
                     ClearOfPaths(candidate, hearth, axisYaw, radius, plots) &&
-                    (network == null || PathPlanner.DistanceToNetwork(network, candidate) > radius * 0.6f + 1.5f))
+                    (network == null || PathPlanner.DistanceToNetwork(network, candidate) > radius * 0.6f + 1.5f) &&
+                    (village == null || PathPlanner.Reachable(village, new Vector3(candidate.x, groundY, candidate.z), radius,
+                        FaceHearth(candidate, hearth, axisYaw))))
                 {
                     good.Add(new Vector3(candidate.x, groundY, candidate.z));
                     if (good.Count >= wanted)
@@ -276,6 +279,11 @@ namespace Villheim.Logic.Village
                 return false;
             }
 
+            if (NearCliff(p, radius, groundY))
+            {
+                return false;
+            }
+
             Heightmap.Biome biome = WorldGenerator.instance.GetBiome(p);
             if ((biome & (Heightmap.Biome.Meadows | Heightmap.Biome.BlackForest | Heightmap.Biome.Plains)) == 0)
             {
@@ -305,6 +313,35 @@ namespace Villheim.Logic.Village
             }
 
             return true;
+        }
+
+        /// <summary>
+        /// Millenaire's neighbour cliff rule: around the plot (from its edge to 6 m out), the ground may not rise or
+        /// fall more than the distance from the edge plus 3 m, so nothing is built at the foot of a cliff or on a ledge.
+        /// </summary>
+        private static bool NearCliff(Vector3 center, float radius, float centerY)
+        {
+            for (int ring = 0; ring < 3; ring++)
+            {
+                float gap = ring * 3f;
+                float distance = radius * 0.7f + 0.5f + gap;
+                for (int i = 0; i < 8; i++)
+                {
+                    float angle = i * Mathf.PI / 4f + ring * 0.3f;
+                    Vector3 sample = center + new Vector3(Mathf.Sin(angle), 0f, Mathf.Cos(angle)) * distance;
+                    if (Heightmap.FindHeightmap(sample) == null)
+                    {
+                        continue;
+                    }
+
+                    if (Mathf.Abs(ZoneSystem.instance.GetGroundHeight(sample) - centerY) > gap + 3f)
+                    {
+                        return true;
+                    }
+                }
+            }
+
+            return false;
         }
 
         private static bool SampleGround(Vector3 center, float radius, out float min, out float max, out float centerY)

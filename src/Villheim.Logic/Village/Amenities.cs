@@ -149,7 +149,7 @@ namespace Villheim.Logic.Village
             wait = false;
             foreach (Plot plot in state.Plots)
             {
-                foreach (Interior.Want want in Interior.WantsFor(plot))
+                foreach (Interior.Want want in Interior.WantsFor(plot, VillageBrain.TierIndex(state.Plots.Count)))
                 {
                     if (Interior.CountInside(plot, want.Prefab) >= want.Count)
                     {

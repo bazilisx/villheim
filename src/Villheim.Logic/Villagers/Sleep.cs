@@ -167,11 +167,21 @@ namespace Villheim.Logic.Villagers
         private sealed class State
         {
             public bool Asleep;
+            public int HeldFrame;
             public float GiveUpAt;
             public Bed Bed;
         }
 
         private static readonly ConditionalWeakTable<Villager, State> States = new ConditionalWeakTable<Villager, State>();
+
+        /// <summary>Called after every brain tick: a sleeper the brain didn't keep in bed this tick (healing came first) gets up.</summary>
+        public static void AfterTick(Villager villager)
+        {
+            if (States.TryGetValue(villager, out State state) && state.Asleep && state.HeldFrame != Time.frameCount)
+            {
+                Wake(villager);
+            }
+        }
 
         public static bool IsAsleep(Villager villager) => States.TryGetValue(villager, out State state) && state.Asleep;
 
@@ -264,6 +274,7 @@ namespace Villheim.Logic.Villagers
 
             villager.transform.position = point.position;
             villager.transform.rotation = point.rotation;
+            state.HeldFrame = Time.frameCount;
             Poses.Hold(villager, BedPose);
             return true;
         }

@@ -301,7 +301,8 @@ namespace Villheim.Logic.Villagers
             if (d.Contains("watch")) yield return "watch";
             if (d.Contains("path")) yield return "path";
             if (d.Contains("making")) yield return "making";
-            if (d.Contains("sitting") || d.Contains("fire")) yield return "fire";
+            if (d.Contains("sitting down")) yield return "seat";
+            else if (d.Contains("sitting") || d.Contains("fire")) yield return "fire";
             if (d.Contains("stroll")) yield return "stroll";
             if (d.Contains("chat") || d.Contains("talking")) yield return "chatting";
             if (d.Contains("busy at")) yield return "station";

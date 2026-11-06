@@ -105,6 +105,18 @@ namespace Villheim.Logic.Villagers
             }
         }
 
+        /// <summary>"atewell +6 (4 min left), hurt -8 (1 min left)" for the inspect command.</summary>
+        public static string Describe(Villager villager)
+        {
+            if (!States.TryGetValue(villager, out State state) || state.Thoughts.Count == 0)
+            {
+                return "no thoughts";
+            }
+
+            return string.Join(", ", state.Thoughts.Where(t => t.Until > Time.time)
+                .Select(t => $"{t.Kind} {t.Value:+0;-0} ({(t.Until - Time.time) / 60f:0} min)"));
+        }
+
         /// <summary>Something happened to this villager.</summary>
         public static void Think(Villager villager, string kind)
         {

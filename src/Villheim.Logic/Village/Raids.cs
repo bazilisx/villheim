@@ -32,6 +32,16 @@ namespace Villheim.Logic.Village
         private static readonly Dictionary<int, Raid> Active = new Dictionary<int, Raid>();
         private static readonly Dictionary<int, int> RolledOnDay = new Dictionary<int, int>();
 
+        /// <summary>For testing: a raid comes to this village tonight (or at once if it is already night).</summary>
+        public static void Force(VillageHearth hearth)
+        {
+            float angle = Random.Range(0f, Mathf.PI * 2f);
+            var raid = new Raid { Day = EnvMan.instance != null ? EnvMan.instance.GetDay() : 0, From = new Vector3(Mathf.Sin(angle), 0f, Mathf.Cos(angle)) };
+            Active[hearth.VillageId] = raid;
+            Warn(hearth, raid);
+            raid.WarnedAt = Time.time - 200f;
+        }
+
         public static bool UnderRaid(int villageId) => Active.TryGetValue(villageId, out Raid raid) && raid.Spawned;
 
         /// <summary>Called with the hearth's tick (every few seconds).</summary>

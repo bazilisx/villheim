@@ -27,6 +27,9 @@ namespace Villheim.Logic
             "locations [filter]: list location names you can use as designs",
             "dump <location>: write what a design contains to the BepInEx log",
             "report: write a report of every location that could be a design (BepInEx/Villheim/design-report.txt)",
+            "villager: show the nearest villager's voice, mood, thoughts, role, trade, bed and activity",
+            "village: show the nearest village's type, chieftain, mood, project, fence, known players and request",
+            "raid: send a raid to the nearest village (comes at once if it is night)",
             "blueprints: list the blueprints villages can build (BepInEx/config/Villheim/blueprints, PlanBuild's folder)",
             "savebp <role-family-level> [radius]: save the building pieces around you as a blueprint, e.g. savebp house-cabin-1 8",
         };
@@ -50,9 +53,88 @@ namespace Villheim.Logic
                 case "villheim_dump": Dump(args, context); return true;
                 case "villheim_report": DesignReport.Start(context); return true;
                 case "villheim_blueprints": ListBlueprints(context); return true;
+                case "villheim_villager": InspectVillager(context); return true;
+                case "villheim_village": InspectVillage(context); return true;
+                case "villheim_raid": ForceRaid(context); return true;
                 case "villheim_savebp": SaveBlueprint(args, context); return true;
                 default: return false;
             }
+        }
+
+        private static VillageHearth NearestHearth(Player player)
+        {
+            return VillageHearth.All.Where(h => h != null && h.IsValid)
+                .OrderBy(h => Vector3.Distance(h.transform.position, player.transform.position)).FirstOrDefault();
+        }
+
+        private static void InspectVillager(Terminal context)
+        {
+            if (!TryGetPlayer(context, out Player player))
+            {
+                return;
+            }
+
+            Villager villager = Character.GetAllCharacters().OfType<Villager>().Where(v => !v.IsDead())
+                .OrderBy(v => Vector3.Distance(v.transform.position, player.transform.position)).FirstOrDefault();
+            if (villager == null)
+            {
+                Say(context, "Villheim: no villager nearby.");
+                return;
+            }
+
+            float mood = Villagers.Moods.Get(villager);
+            Say(context, $"Villheim: {villager.VillagerName} of {villager.VillageName}, voice {Villagers.Dialogue.VoiceOf(villager)}" +
+                         $"{(Villagers.Childhood.IsChild(villager) ? ", child" : "")}{(Villagers.Roles.IsChieftain(villager) ? ", chieftain" : "")}");
+            Say(context, $"   mood {mood:0} ({Villagers.Moods.Label(mood)}); thoughts: {Villagers.Moods.Describe(villager)}");
+            Say(context, $"   {Villagers.Roles.BackgroundOf(villager)}, trade {Villagers.Roles.TradeOf(villager)}, " +
+                         $"night watch {(Villagers.Roles.IsNightWatch(villager) ? "tonight" : "no")}, " +
+                         $"bed {(Villagers.Beds.For(villager) != null ? "yes" : "none")}, foods {Villagers.Healing.FoodCount(villager)}");
+            Say(context, $"   doing: {Villagers.VillagerBehaviour.HoverText(villager).Replace("\n", " | ")}");
+        }
+
+        private static void InspectVillage(Terminal context)
+        {
+            if (!TryGetPlayer(context, out Player player))
+            {
+                return;
+            }
+
+            VillageHearth hearth = NearestHearth(player);
+            if (hearth == null)
+            {
+                Say(context, "Villheim: no village loaded.");
+                return;
+            }
+
+            var state = new VillageState(hearth.Zdo);
+            Villager chief = Character.GetAllCharacters().OfType<Villager>().FirstOrDefault(v => v.VillageId == state.Id && Villagers.Roles.IsChieftain(v));
+            Say(context, $"Villheim: {state.Name}, a {state.Type} village ({state.Biome}), mood {VillageMood.Get(state.Id):0}, " +
+                         $"chieftain {(chief != null ? chief.VillagerName : "none")}");
+            Say(context, $"   {state.Plots.Count} buildings, {VillageBrain.CountVillagers(state.Id)} villagers, " +
+                         $"{Villagers.Beds.Of(hearth).Count} beds ({Villagers.Beds.Spare(hearth)} spare), fence ring {Palisade.WantedRadius(hearth, state):0} m");
+            Say(context, $"   project: {Growth.PendingLabel(hearth, state)}; request today: {Villagers.Social.RequestText(hearth) ?? "none"}");
+            foreach (Villagers.Social.Known known in Villagers.Social.KnownPlayers(hearth))
+            {
+                Say(context, $"   knows {known.Name}: reputation {known.Reputation}, first seen day {known.FirstDay}, last day {known.LastDay}");
+            }
+        }
+
+        private static void ForceRaid(Terminal context)
+        {
+            if (!TryGetPlayer(context, out Player player))
+            {
+                return;
+            }
+
+            VillageHearth hearth = NearestHearth(player);
+            if (hearth == null)
+            {
+                Say(context, "Villheim: no village loaded.");
+                return;
+            }
+
+            Raids.Force(hearth);
+            Say(context, $"Villheim: raiders are on their way to {hearth.VillageName}. They come once it is dark.");
         }
 
         private static void ListBlueprints(Terminal context)

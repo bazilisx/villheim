@@ -12,8 +12,10 @@ namespace Villheim.Logic.Village
     /// it (the same pieces, its foundation on the ground), with a sign in front: the kind of building and the
     /// village level it is meant for on top in bright blue, the design's name below in white.
     ///
-    /// First it looks, outward from the player up to 3 km, for land of the biome big enough for the whole layout whose
-    /// ground varies by no more than 12 m (read from the world generator), and moves the player there: the game lets
+    /// First it looks, outward from the player up to 2 km, for calm land (any biome but the Mistlands, Ashlands, Deep
+    /// North or sea) big enough for the whole layout whose
+    /// ground varies by no more than 12 m (read from the world generator; failing that, the flattest found), and moves
+    /// the player there. A design whose own ground is more than 6 m off the plain gets a flat terrace of its own: the game lets
     /// terrain move only 8 m either way, so the plain has to start out nearly flat (an earlier try lifted that limit and
     /// broke the ground's look and collisions). There the whole area, with a 12 m margin, is made one flat, bare plain:
     /// everything standing on it is removed at any height (not creatures or anything a player built), the ground is
@@ -24,6 +26,7 @@ namespace Villheim.Logic.Village
     {
         private sealed class Cell
         {
+            public bool Terrace;
             public DesignLibrary.Design Design;
             public Role Role;
             public Vector3 Center;
@@ -33,6 +36,10 @@ namespace Villheim.Logic.Village
 
         private static readonly Role[] Order = { Role.House, Role.Hub, Role.Workshop, Role.Storage, Role.Farm };
         internal static readonly int KeyGallery = "villheim_gallery".GetStableHashCode();
+        // Any calm land will do for a gallery (mobs can be set passive): not the Mistlands, Ashlands, Deep North or sea.
+        private const Heightmap.Biome GalleryLand = Heightmap.Biome.Meadows | Heightmap.Biome.BlackForest | Heightmap.Biome.Plains |
+                                                    Heightmap.Biome.Swamp | Heightmap.Biome.Mountain;
+
         private const float MaxRelief = 12f; // highest less lowest ground in the area: within the game's 8 m either way of the middle
 
         /// <summary>
@@ -159,7 +166,7 @@ namespace Villheim.Logic.Village
             {
                 if (seen.Add(design.Name))
                 {
-                    cells.Add(new Cell { Design = design, Role = role, Half = Mathf.Clamp(design.Radius + 4f, 8f, 36f) });
+                    cells.Add(new Cell { Design = design, Role = role, Half = Mathf.Clamp(design.Radius + 2f, 6f, 36f) });
                 }
             }
 
@@ -248,16 +255,24 @@ namespace Villheim.Logic.Village
             yield return FindSite(playerPosition, forward, right, widest + Margin * 2f, depth + Margin * 2f, biome, site);
             if (!site.Found)
             {
-                Console.instance?.Print($"Villheim: found no {biome} land flat enough within 3 km; the flattest had {site.Relief:0} m between " +
-                                        "its highest and lowest ground. Try again from elsewhere.");
+                Console.instance?.Print("Villheim: found no land big enough within 2 km (Meadows, Black Forest, Plains, Swamp or " +
+                                        "Mountain, all above water). Try again from elsewhere, or show fewer designs (a group and a level).");
                 yield break;
             }
 
             // The area's corner nearest the player is at site.Start; everything moves there.
             Vector3 start = site.Start;
+            // Each design on the plain, unless its own ground is too far above or below it for the game's 8 m: then it
+            // gets a flat terrace of its own at the middle height of its ground.
+            int terraces = 0;
             foreach (Cell cell in cells)
             {
-                cell.Center = new Vector3(start.x + cell.Center.x, site.Height, start.z + cell.Center.z);
+                var center = new Vector3(start.x + cell.Center.x, 0f, start.z + cell.Center.z);
+                float own = GroundOf(center, cell.Half);
+                bool onPlain = Mathf.Abs(own - site.Height) <= 6f;
+                cell.Center = new Vector3(center.x, onPlain ? site.Height : own, center.z);
+                cell.Terrace = !onPlain;
+                terraces += onPlain ? 0 : 1;
             }
 
             for (int i = 0; i < labels.Count; i++)
@@ -284,10 +299,27 @@ namespace Villheim.Logic.Village
             }
 
             VillheimPlugin.Instance.StartCoroutine(Build(cells, pads, forward, labels));
-            Console.instance?.Print($"Villheim: found flat {biome} land {Utils.DistanceXZ(playerPosition, start):0} m away " +
+            Console.instance?.Print($"Villheim: found flat land ({WorldGenerator.instance.GetBiome(start)}) {Utils.DistanceXZ(playerPosition, start):0} m away " +
                                     $"({site.Relief:0.0} m between highest and lowest ground); clearing {widest + Margin * 2f:0} by " +
-                                    $"{depth + Margin * 2f:0} m there at {site.Height:0.0} m and laying out {cells.Count} designs in {labels.Count} clusters.");
+                                    $"{depth + Margin * 2f:0} m there at {site.Height:0.0} m and laying out {cells.Count} designs in {labels.Count} clusters" +
+                                    (terraces > 0 ? $" ({terraces} on terraces of their own, where the ground is too high or low for the plain)." : "."));
             MessageHud.instance?.ShowMessage(MessageHud.MessageType.Center, $"Gallery: {cells.Count} designs; clearing the ground");
+        }
+
+        /// <summary>The middle height of the generated ground across a square.</summary>
+        private static float GroundOf(Vector3 center, float half)
+        {
+            var heights = new List<float>();
+            for (float x = -half; x <= half; x += 4f)
+            {
+                for (float z = -half; z <= half; z += 4f)
+                {
+                    heights.Add(WorldGenerator.instance.GetHeight(center.x + x, center.z + z));
+                }
+            }
+
+            heights.Sort();
+            return heights[heights.Count / 2];
         }
 
         private sealed class SiteResult
@@ -309,7 +341,7 @@ namespace Villheim.Logic.Village
             float water = ZoneSystem.instance.m_waterLevel;
             int tried = 0;
             var heights = new List<float>();
-            for (float ring = 0f; ring <= 3000f; ring += 80f)
+            for (float ring = 0f; ring <= 2000f; ring += 80f)
             {
                 int steps = ring < 1f ? 1 : Mathf.CeilToInt(2f * Mathf.PI * ring / 80f);
                 for (int k = 0; k < steps; k++)
@@ -325,7 +357,7 @@ namespace Villheim.Logic.Village
                         {
                             Vector3 p = start + forward * z + right * x;
                             float h = world.GetHeight(p.x, p.z);
-                            if (h < water + 1.5f || world.GetBiome(p.x, p.z) != biome)
+                            if (h < water + 1.5f || (world.GetBiome(p.x, p.z) & GalleryLand) == 0)
                             {
                                 ok = false;
                                 break;
@@ -334,9 +366,9 @@ namespace Villheim.Logic.Village
                             low = Mathf.Min(low, h);
                             high = Mathf.Max(high, h);
                             heights.Add(h);
-                            if (high - low > MaxRelief)
+                            if (high - low >= result.Relief)
                             {
-                                ok = false;
+                                ok = false; // no flatter than the best so far
                                 break;
                             }
                         }
@@ -344,17 +376,22 @@ namespace Villheim.Logic.Village
 
                     if (ok && heights.Count > 0)
                     {
+                        // The flattest so far; good enough to stop looking once it fits within the game's terrain limit.
                         heights.Sort();
                         result.Found = true;
                         result.Start = start;
                         result.Relief = high - low;
                         result.Height = heights[heights.Count / 2];
-                        yield break;
+                        if (result.Relief <= MaxRelief)
+                        {
+                            yield break;
+                        }
                     }
 
                     if (++tried % 25 == 0)
                     {
-                        MessageHud.instance?.ShowMessage(MessageHud.MessageType.TopLeft, $"Gallery: looking for flat land, {ring:0} m out");
+                        MessageHud.instance?.ShowMessage(MessageHud.MessageType.TopLeft,
+                            $"Gallery: looking for flat land, {ring:0} m out (flattest so far: {(result.Found ? result.Relief.ToString("0") + " m" : "none")})");
                         yield return null;
                     }
                 }
@@ -566,6 +603,17 @@ namespace Villheim.Logic.Village
                     cell.Done = true;
                     int pieces = 0;
                     Cell building = cell;
+                    if (cell.Terrace)
+                    {
+                        Safe("a terrace", () =>
+                        {
+                            HearthGround.ClearAround(building.Center, building.Half * 1.42f + 2f);
+                            TerrainShaper.LevelPad(building.Center, building.Half * 1.42f, building.Half * 1.42f + 6f);
+                            HearthGround.ClearVegetation(building.Center, building.Half * 1.42f + 2f);
+                        });
+                        yield return new WaitForSeconds(1f);
+                    }
+
                     Safe(cell.Design.Name, () => pieces = Put(building, forward));
                     Safe("a sign", () => Sign(building, forward));
                     built++;

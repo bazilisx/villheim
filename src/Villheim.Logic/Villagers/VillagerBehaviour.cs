@@ -139,7 +139,7 @@ namespace Villheim.Logic.Villagers
         /// <summary>What the villager is doing, in a few words (hover text, inspect command, loop watch).</summary>
         public static string Activity(Villager villager)
         {
-            return (Sleep.IsAsleep(villager) ? "asleep" : null) ?? (MorningHearth.IsTending(villager) ? "tending the hearth" : null) ??
+            return Sleep.Describe(villager) ?? (MorningHearth.IsTending(villager) ? "tending the hearth" : null) ??
                    Healing.Describe(villager) ?? Chores.Describe(villager) ?? Replanting.Describe(villager) ?? Hunting.Describe(villager) ?? Farming.Describe(villager) ??
                    Foraging.Describe(villager) ?? Repairs.Describe(villager) ?? (PathLaying.IsLaying(villager) ? "laying a path" : null) ??
                    FreeTime.Describe(villager);

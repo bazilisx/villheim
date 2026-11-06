@@ -1,0 +1,267 @@
+using System.Collections;
+using System.Collections.Generic;
+using System.Linq;
+using UnityEngine;
+using Villheim.Logic.Designs;
+
+namespace Villheim.Logic.Village
+{
+    /// <summary>
+    /// 'vh gallery [meadows|blackforest]': lays out every design a village of that biome could build, side by side on
+    /// one flat, cleared plain, to review them in a fresh world. Each stands flush on its pad as a village would build
+    /// it (the same pieces, the bottom of its walls on the ground), with a sign in front: the kind of building and the
+    /// village level it is meant for on top in bright blue, the design's name below in white.
+    ///
+    /// The gallery starts in front of the player and runs in rows of six away from him. Ground is cleared (trees,
+    /// stumps, logs, rocks, bushes) and levelled at the player's height, grass taken off. Plots in zones that aren't
+    /// loaded yet are built as the player walks up to them (checked every two seconds for 40 minutes).
+    /// </summary>
+    internal static class Gallery
+    {
+        private sealed class Cell
+        {
+            public DesignLibrary.Design Design;
+            public Role Role;
+            public Vector3 Center;
+            public float Half;
+            public bool Done;
+        }
+
+        private static readonly Role[] Order = { Role.House, Role.Hub, Role.Workshop, Role.Storage, Role.Farm };
+
+        public static string Start(Player player, string biomeName)
+        {
+            Heightmap.Biome biome = biomeName != null && biomeName.ToLowerInvariant().StartsWith("black")
+                ? Heightmap.Biome.BlackForest
+                : Heightmap.Biome.Meadows;
+
+            var seen = new HashSet<string>();
+            var cells = new List<Cell>();
+            foreach (Role role in Order)
+            {
+                foreach (DesignLibrary.Design design in DesignLibrary.PoolFor(biome, role).Concat(DesignLibrary.FallbackPool(biome, role)))
+                {
+                    if (seen.Add(design.Name))
+                    {
+                        cells.Add(new Cell { Design = design, Role = role, Half = Mathf.Clamp(design.Radius + 4f, 8f, 36f) });
+                    }
+                }
+            }
+
+            if (cells.Count == 0)
+            {
+                return $"Villheim: no designs found for {biome}.";
+            }
+
+            cells = cells.OrderBy(c => Level(c)).ThenBy(c => System.Array.IndexOf(Order, c.Role)).ThenBy(c => c.Design.Name).ToList();
+
+            // Rows of six, away from the player.
+            Vector3 forward = player.transform.forward;
+            forward.y = 0f;
+            forward.Normalize();
+            Vector3 right = Vector3.Cross(Vector3.up, forward);
+            Vector3 start = player.transform.position + forward * 6f;
+            float height = start.y;
+            if (ZoneSystem.instance.GetGroundHeight(start, out float ground))
+            {
+                height = Mathf.Max(ground, ZoneSystem.instance.m_waterLevel + 1.5f);
+            }
+
+            float depth = 0f;
+            for (int row = 0; row * 6 < cells.Count; row++)
+            {
+                List<Cell> line = cells.Skip(row * 6).Take(6).ToList();
+                float rowDepth = line.Max(c => c.Half);
+                float width = line.Sum(c => c.Half * 2f);
+                float x = -width / 2f;
+                foreach (Cell cell in line)
+                {
+                    cell.Center = start + forward * (depth + rowDepth) + right * (x + cell.Half);
+                    cell.Center.y = height;
+                    x += cell.Half * 2f;
+                }
+
+                depth += rowDepth * 2f;
+            }
+
+            VillheimPlugin.Instance.StartCoroutine(Build(cells, forward));
+            return $"Villheim: laying out {cells.Count} {biome} designs in {(cells.Count + 5) / 6} rows ahead of you " +
+                   $"({depth:0} m deep), flat at {height:0.0} m. Plots further out go up as you walk to them.";
+        }
+
+        private static IEnumerator Build(List<Cell> cells, Vector3 forward)
+        {
+            float until = Time.time + 40f * 60f;
+            int built = 0;
+            while (built < cells.Count && Time.time < until)
+            {
+                foreach (Cell cell in cells.Where(c => !c.Done))
+                {
+                    if (!Loaded(cell))
+                    {
+                        continue;
+                    }
+
+                    cell.Done = true;
+                    float reach = cell.Half * 1.42f;
+                    HearthGround.ClearAround(cell.Center, reach + 3f);
+                    TerrainShaper.LevelPad(cell.Center, reach, reach + 6f);
+                    HearthGround.ClearVegetation(cell.Center, reach + 2f);
+                    yield return new WaitForSeconds(1f);
+
+                    int pieces = Put(cell, forward);
+                    Sign(cell, forward);
+                    built++;
+                    VillheimPlugin.Log.LogInfo($"Gallery: {cell.Design.Name} ({Label(cell)}, level {Level(cell)}): {pieces} pieces.");
+                    yield return null;
+                }
+
+                MessageHud.instance?.ShowMessage(MessageHud.MessageType.TopLeft, $"Gallery: {built}/{cells.Count} built");
+                yield return new WaitForSeconds(2f);
+            }
+
+            VillheimPlugin.Log.LogInfo($"Gallery: {built} of {cells.Count} designs built.");
+        }
+
+        private static bool Loaded(Cell cell)
+        {
+            for (int i = 0; i < 4; i++)
+            {
+                Vector3 corner = cell.Center + Quaternion.Euler(0f, 45f + 90f * i, 0f) * Vector3.forward * cell.Half * 1.42f;
+                if (!ZoneSystem.instance.IsZoneLoaded(corner))
+                {
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
+        /// <summary>The design's pieces, the bottom of its walls on the ground, facing the sign.</summary>
+        private static int Put(Cell cell, Vector3 forward)
+        {
+            float yaw = Quaternion.LookRotation(-forward).eulerAngles.y;
+            List<DesignSpawner.PlanEntry> plan;
+            if (cell.Design.Blueprint != null)
+            {
+                plan = Blueprints.MakePlan(cell.Design.Blueprint, cell.Center, yaw);
+                return Spawn(plan, cell, yaw);
+            }
+
+            ZoneSystem.ZoneLocation location = cell.Design.Location;
+            location.m_prefab.Load();
+            try
+            {
+                GameObject asset = location.m_prefab.Asset;
+                if (asset == null)
+                {
+                    return 0;
+                }
+
+                plan = DesignSpawner.MakePlan(asset, cell.Center, cell.Design.Name.GetStableHashCode(), yaw);
+                return Spawn(plan, cell, yaw);
+            }
+            finally
+            {
+                location.m_prefab.Release();
+            }
+        }
+
+        private static int Spawn(List<DesignSpawner.PlanEntry> plan, Cell cell, float yaw)
+        {
+            Vector3 origin = cell.Center - Vector3.up * ConstructionSite.FloorOf(plan);
+            Quaternion turn = Quaternion.Euler(0f, yaw, 0f);
+            int count = 0;
+            foreach (DesignSpawner.PlanEntry entry in plan)
+            {
+                if (DesignSpawner.SpawnEntry(entry, origin, turn, 0, false) != null)
+                {
+                    count++;
+                }
+            }
+
+            return count;
+        }
+
+        /// <summary>A sign at the front of the plot (two back to back, so it reads from either side), standing on the ground.</summary>
+        private static void Sign(Cell cell, Vector3 forward)
+        {
+            GameObject prefab = ZNetScene.instance.GetPrefab("sign");
+            if (prefab == null)
+            {
+                return;
+            }
+
+            string text = $"<#5cf>{Label(cell)}, {Level(cell)}<br><#fff>{cell.Design.Name}";
+            Vector3 at = cell.Center - forward * (cell.Half - 1f);
+            foreach (float turn in new[] { 0f, 180f })
+            {
+                Quaternion rotation = Quaternion.LookRotation(-forward) * Quaternion.Euler(0f, turn, 0f);
+                GameObject sign = Object.Instantiate(prefab, at + rotation * Vector3.forward * 0.03f, rotation);
+                StandOnGround(sign, cell.Center.y);
+                ZNetView view = sign.GetComponent<ZNetView>();
+                if (view != null && view.IsValid())
+                {
+                    view.GetZDO().Set(ZDOVars.s_text, text);
+                    sign.GetComponent<Sign>()?.UpdateText();
+                }
+            }
+        }
+
+        private static void StandOnGround(GameObject go, float ground)
+        {
+            Bounds? bounds = null;
+            foreach (Renderer renderer in go.GetComponentsInChildren<Renderer>())
+            {
+                if (bounds.HasValue)
+                {
+                    Bounds b = bounds.Value;
+                    b.Encapsulate(renderer.bounds);
+                    bounds = b;
+                }
+                else
+                {
+                    bounds = renderer.bounds;
+                }
+            }
+
+            if (bounds.HasValue)
+            {
+                go.transform.position += Vector3.up * (ground - bounds.Value.min.y);
+                go.GetComponent<ZNetView>()?.GetZDO()?.SetPosition(go.transform.position);
+            }
+        }
+
+        /// <summary>The village level a design is meant for: homes from the start, the longhouse, workshop and storehouse next, farms after.</summary>
+        private static int Level(Cell cell)
+        {
+            if (cell.Design.Blueprint != null)
+            {
+                return cell.Design.Blueprint.Level;
+            }
+
+            switch (cell.Role)
+            {
+                case Role.House: return 1;
+                case Role.Farm: return 3;
+                default: return 2;
+            }
+        }
+
+        /// <summary>What kind of building it reads as, from its name, else its role.</summary>
+        private static string Label(Cell cell)
+        {
+            string name = cell.Design.Name.ToLowerInvariant();
+            if (name.Contains("sawmill")) return "Sawmill";
+            if (name.Contains("forge") || name.Contains("smith")) return "Smithy";
+            if (name.Contains("tavern") || name.Contains("hall")) return "Longhouse";
+            if (name.Contains("barn")) return "Barn";
+            if (name.Contains("farm")) return "Farm";
+            if (name.Contains("camp")) return "Camp";
+            if (name.Contains("tower")) return "Tower";
+            if (name.Contains("maypole")) return "Maypole hut";
+            string role = VillageBrain.RoleName(cell.Role);
+            return char.ToUpperInvariant(role[0]) + role.Substring(1);
+        }
+    }
+}

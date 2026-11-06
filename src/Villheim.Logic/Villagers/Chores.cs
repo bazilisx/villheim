@@ -89,6 +89,9 @@ namespace Villheim.Logic.Villagers
 
             /// <summary>The standing tree being felled (its prefab name), so a sapling is owed once it falls.</summary>
             public string FellingTree;
+
+            /// <summary>When the brain last ran this villager's work (the activity shown is only what he does now).</summary>
+            public float LastRun;
         }
 
         private const float MaxFromHearth = 55f;
@@ -137,6 +140,11 @@ namespace Villheim.Logic.Villagers
         /// <summary>Returns true while a chore is driving the villager this update.</summary>
         public static bool Update(Villager villager, VillagerAI ai, float dt)
         {
+            if (States.TryGetValue(villager, out Work ran))
+            {
+                ran.LastRun = Time.time;
+            }
+
             if (!VillheimConfig.VillagersChopTrees.Value || EnvMan.IsNight() || villager.IsDead() || Childhood.IsChild(villager))
             {
                 Stop(villager);
@@ -226,7 +234,7 @@ namespace Villheim.Logic.Villagers
 
         public static string Describe(Villager villager)
         {
-            if (!States.TryGetValue(villager, out Work work) || work.Phase == Phase.Idle)
+            if (!States.TryGetValue(villager, out Work work) || work.Phase == Phase.Idle || Time.time - work.LastRun > 1f)
             {
                 return null;
             }

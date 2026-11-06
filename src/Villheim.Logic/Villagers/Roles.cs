@@ -94,6 +94,9 @@ namespace Villheim.Logic.Villagers
             return list;
         }
 
+        /// <summary>The villager's place in the village's arrival order (0 for the first).</summary>
+        public static int IndexOf(Villager villager) => Index(villager);
+
         private static int Index(Villager villager)
         {
             int index = Of(villager.VillageId).IndexOf(villager);

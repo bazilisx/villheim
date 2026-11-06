@@ -42,6 +42,10 @@ with its own look for its biome.
 - [ ] Build order (Tyler, 2026-11-06): homes with beds until every villager has one, then the longhouse, then the hub
   area (sign, notice board, benches) and, while waiting, a workshop (basic workbench house) and a storehouse (extra
   chests); then more homes, farms and workshops as trades appear. Built session 11, needs testing.
+- [ ] Notice board from the `villagenotice` blueprint over the village chest (session 13, needs testing); extra chests
+  under it as the village grows; inside the longhouse once there is one.
+- [ ] Design review: `vh gallery` (session 13); Tyler's picks saved as blueprints named `<biome><kind><variant>_<level>`
+  (e.g. `meadowhouse1_1`); teach the blueprint reader that naming.
 - [ ] Storehouse grows into the longhouse: its chests move into the central hall when the hall is rebuilt bigger.
 - [ ] Replant one sapling per tree felled, 8 to 25 m outside the village radius. Built session 11, needs testing.
 - [ ] Jitter: record traces with `vh trace` and fix from the data. Session 12 fixed two causes (NpcTalk turning to the

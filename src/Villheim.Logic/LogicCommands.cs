@@ -18,6 +18,7 @@ namespace Villheim.Logic
             "grow: make the nearest village start its next building now (adds the wood it needs)",
             "settle (or newvillage): light a new village hearth in front of you",
             "ghost: apply the look settings now and show the shader in use",
+            "gallery [meadows|blackforest]: in a fresh world, lay out every design villages of that biome can build on one flat plain, each with a sign (kind, level, name)",
             "buildingground: level the ground under the nearest village building to the bottom of its walls",
             "hearthground: clear and level the ground round the nearest village's hearth again",
             "previews: write a preview command for every design to BepInEx/Villheim/preview-commands.txt",
@@ -59,6 +60,13 @@ namespace Villheim.Logic
                         float seconds = args.Length > 0 && float.TryParse(args[0], System.Globalization.NumberStyles.Float,
                             System.Globalization.CultureInfo.InvariantCulture, out float s) ? s : 20f;
                         Say(context, Villagers.MotionTrace.Start(tracer, seconds));
+                    }
+
+                    return true;
+                case "villheim_gallery":
+                    if (TryGetPlayer(context, out Player gallery))
+                    {
+                        Say(context, Gallery.Start(gallery, args.Length > 0 ? args[0] : "meadows"));
                     }
 
                     return true;

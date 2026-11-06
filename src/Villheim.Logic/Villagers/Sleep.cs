@@ -211,6 +211,10 @@ namespace Villheim.Logic.Villagers
 
         public static bool IsAsleep(Villager villager) => States.TryGetValue(villager, out State state) && state.Asleep;
 
+        /// <summary>"asleep" in a bed, "resting under a roof" with no bed, else null.</summary>
+        public static string Describe(Villager villager) =>
+            !States.TryGetValue(villager, out State state) ? null : state.Asleep ? "asleep" : state.Rough && Bedtime(villager) ? "resting under a roof (no bed)" : null;
+
         /// <summary>Hours (0 to 24) when this villager goes to bed and gets up.</summary>
         public static void Hours(Villager villager, out float bedtime, out float wake)
         {
@@ -343,13 +347,17 @@ namespace Villheim.Logic.Villagers
                 Walker.For(villager).Reset();
             }
 
-            WalkResult step = Walker.For(villager).Go(villager, ai, dt, shelter.Value, 1.5f);
+            // Each villager his own spot under the roof. Villagers pass through each other (so they never jam in a
+            // doorway), so sent to the same point they stood exactly inside one another (seen 2026-11-06).
+            int index = Roles.IndexOf(villager);
+            Vector3 spot = shelter.Value + Quaternion.Euler(0f, index * 137.5f, 0f) * Vector3.forward * (1f + 0.5f * (index % 3));
+            WalkResult step = Walker.For(villager).Go(villager, ai, dt, spot, 0.6f);
             if (step == WalkResult.Walking && Time.time < state.GiveUpAt)
             {
                 return true;
             }
 
-            if (Utils.DistanceXZ(villager.transform.position, shelter.Value) > 5f)
+            if (Utils.DistanceXZ(villager.transform.position, spot) > 5f)
             {
                 state.GiveUpAt = float.MaxValue;
                 return false;

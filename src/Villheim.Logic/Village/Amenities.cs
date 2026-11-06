@@ -9,8 +9,9 @@ namespace Villheim.Logic.Village
     ///
     /// 1. Essentials: the cooking station over the hearth and the beds in every home. The village builds nothing new
     ///    until these stand (see VillageBrain), and gathers what they cost (see VillageNeeds).
-    /// 2. The hub area, once the longhouse stands: the village sign, the notice board, benches round the fire, a wood
-    ///    stack and a stone pile.
+    ///    The notice board (Tyler's 'villagenotice' blueprint, over the village chest) comes right after the cooking
+    ///    station, and is mended first whenever a piece of it is destroyed (see NoticeBoard).
+    /// 2. The hub area, once the longhouse stands: benches round the fire, a wood stack and a stone pile.
     /// 3. Furnishings: the workshop's workbench, the storehouse's chests, chests, chairs and tables in the homes and
     ///    the longhouse.
     ///
@@ -62,8 +63,6 @@ namespace Villheim.Logic.Village
         {
             // Slot -1 is the hearth itself: the cooking station goes over the village fire.
             new Entry { Prefab = "piece_cookingstation", Name = "cooking station", Slot = -1, MinBuildings = 0, Essential = true },
-            new Entry { Prefab = "sign", Name = "village sign", Slot = 0, MinBuildings = 1, NeedsHub = true },
-            new Entry { Prefab = "sign", Name = "notice board", Slot = 3, MinBuildings = 1, NeedsHub = true },
             new Entry { Prefab = "piece_bench01", Name = "bench", Slot = 2, MinBuildings = 1 },
             new Entry { Prefab = "piece_bench01", Name = "bench", Slot = 1, MinBuildings = 2 },
             new Entry { Prefab = "wood_stack", Name = "wood stack", Slot = 2, Radius = OuterRing, MinBuildings = 2 },
@@ -152,7 +151,8 @@ namespace Villheim.Logic.Village
 
             // Essentials first (the cooking station, then the beds), then the hub area (sign, notice board, benches)
             // and the furnishings of the other buildings.
-            return Outside(hearth, state, true, onlyHearth: true) ?? Inside(state, tier, true) ?? Outside(hearth, state, false, onlyHearth: false) ??
+            // The notice board over the chest comes right after the cooking station, and is mended first when damaged.
+            return Outside(hearth, state, true, onlyHearth: true) ?? NoticeBoard.Job(hearth) ?? Inside(state, tier, true) ?? Outside(hearth, state, false, onlyHearth: false) ??
                    Inside(state, tier, false);
         }
 
@@ -235,6 +235,18 @@ namespace Villheim.Logic.Village
         {
             var state = new VillageState(hearth.Zdo);
             Forget(hearth.VillageId);
+            if (job.Prefab == NoticeBoard.BlueprintName)
+            {
+                if (!Affordable(hearth, state, job.Cost, ConstructionSite.Remaining(hearth)) || !Pay(hearth, state, job.Cost))
+                {
+                    return false;
+                }
+
+                bool built = NoticeBoard.Build(hearth);
+                VillheimPlugin.Log.LogInfo($"{state.Name} {(built ? "put up its notice board" : "found its notice board already whole")}.");
+                return built;
+            }
+
             if (Made(hearth.VillageId, job.Prefab, job.Spot) || !Affordable(hearth, state, job.Cost, ConstructionSite.Remaining(hearth)))
             {
                 return false;

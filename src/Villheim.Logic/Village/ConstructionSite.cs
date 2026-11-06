@@ -706,7 +706,7 @@ namespace Villheim.Logic.Village
         /// own: posts, steps and beams can reach below the floor, and a pad levelled to them left a building floating
         /// a metre up (2026-11-06).
         /// </summary>
-        private static float FloorOf(List<DesignSpawner.PlanEntry> entries)
+        public static float FloorOf(List<DesignSpawner.PlanEntry> entries)
         {
             float walls = float.MaxValue, floors = float.MaxValue, any = float.MaxValue;
             foreach (DesignSpawner.PlanEntry entry in entries)

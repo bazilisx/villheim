@@ -133,6 +133,52 @@ namespace Villheim.Logic.Designs
             return true;
         }
 
+        private static readonly Dictionary<string, (float Time, Blueprint Blueprint)> Named =
+            new Dictionary<string, (float, Blueprint)>(StringComparer.OrdinalIgnoreCase);
+
+        /// <summary>
+        /// One blueprint by its file name (without extension), from the same folders, whatever its size or category:
+        /// for village fixtures like the notice board ('villagenotice'). Looked up again once a minute.
+        /// </summary>
+        public static Blueprint ByFileName(string stem)
+        {
+            if (Named.TryGetValue(stem, out var cached) && Time.realtimeSinceStartup - cached.Time < 60f)
+            {
+                return cached.Blueprint;
+            }
+
+            Blueprint found = null;
+            foreach (string folder in new[] { Folder, Path.Combine(Paths.ConfigPath, "PlanBuild", "blueprints"), Paths.PluginPath })
+            {
+                if (found != null || !Directory.Exists(folder))
+                {
+                    continue;
+                }
+
+                foreach (string file in Directory.GetFiles(folder, "*.*", SearchOption.AllDirectories))
+                {
+                    string extension = Path.GetExtension(file).ToLowerInvariant();
+                    if ((extension == ".blueprint" || extension == ".vbuild") &&
+                        string.Equals(Path.GetFileNameWithoutExtension(file), stem, StringComparison.OrdinalIgnoreCase))
+                    {
+                        try
+                        {
+                            found = Load(file);
+                        }
+                        catch (Exception e)
+                        {
+                            VillheimPlugin.Log.LogWarning($"Could not read the blueprint {file}: {e.Message}");
+                        }
+
+                        break;
+                    }
+                }
+            }
+
+            Named[stem] = (Time.realtimeSinceStartup, found);
+            return found;
+        }
+
         public static bool IsBlueprint(string designName) =>
             designName != null && designName.StartsWith(Prefix, StringComparison.OrdinalIgnoreCase);
 

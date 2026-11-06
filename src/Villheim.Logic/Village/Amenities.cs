@@ -41,8 +41,8 @@ namespace Villheim.Logic.Village
         // In the order they are made. "On" puts a piece on top of another one in the same slot.
         private static readonly Entry[] Entries =
         {
-            new Entry { Prefab = "fire_pit", Name = "fire pit", Slot = 0, MinBuildings = 0 },
-            new Entry { Prefab = "piece_cookingstation", Name = "cooking station", Slot = 0, MinBuildings = 0, On = "fire_pit" },
+            // Slot -1 is the hearth itself: the cooking station goes over the village fire.
+            new Entry { Prefab = "piece_cookingstation", Name = "cooking station", Slot = -1, MinBuildings = 0 },
             new Entry { Prefab = "piece_workbench", Name = "workbench", Slot = 1, MinBuildings = 1 },
             new Entry { Prefab = "piece_bench01", Name = "bench", Slot = 2, MinBuildings = 1 },
             new Entry { Prefab = "piece_bench01", Name = "bench", Slot = 3, MinBuildings = 2 },
@@ -88,7 +88,8 @@ namespace Villheim.Logic.Village
                     continue;
                 }
 
-                if (!SlotSpot(hearth, state, entry.Slot, out Vector3 spot))
+                Vector3 spot = hearth.transform.position;
+                if (entry.Slot >= 0 && !SlotSpot(hearth, state, entry.Slot, out spot))
                 {
                     continue;
                 }
@@ -111,12 +112,13 @@ namespace Villheim.Logic.Village
 
                 Vector3 toHearth = hearth.transform.position - spot;
                 toHearth.y = 0f;
+                Quaternion along = Quaternion.Euler(0f, state.Axis, 0f);
                 return new Job
                 {
                     Prefab = entry.Prefab,
                     Name = entry.Name,
                     Spot = spot,
-                    Rotation = toHearth.sqrMagnitude > 0.01f ? Quaternion.LookRotation(toHearth) : Quaternion.identity,
+                    Rotation = toHearth.sqrMagnitude > 0.01f ? Quaternion.LookRotation(toHearth) : along,
                     Cost = cost,
                 };
             }

@@ -26,7 +26,12 @@ Current facts only. Read this at the start of a session. Narrative is in `docs/d
 ## Outstanding work
 
 - Test sessions 4 and 5 in game: work starts, reach, tools, doors, build order, free time, evening ring, smoothness.
-- Sitting on chairs and benches, beds, real cooking, feeding the fire pit.
+- Next requests from Tyler: hurt villagers cook food at the hearth to heal; the hearth upgrades over time with the
+  cooking station as part of it (see ROADMAP Milestone 4).
+- Undressing after taking out the axe: cause unknown, a dress check covers it. Check the log for "lost their
+  clothes" lines.
+- Sitting on chairs and benches, beds, real cooking.
+- Inspiration.zip stays on main for now; Tyler will remove it with a force-push once the study is done.
 - Millénaire and Innangard study from `Inspiration.zip` on branch `clearcreekmakerspace-inspiration`, one area at a
   time. Delete that branch afterwards (Millénaire is All Rights Reserved).
 - Grid-searched paths that join into streets (Innangard-style A* over a small grid).

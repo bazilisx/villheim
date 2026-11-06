@@ -625,6 +625,7 @@ namespace Villheim.Logic.Villagers
             request.Done = true;
             WriteRequest(hearth, request);
             AddReputation(hearth, player, 3, "request");
+            Chronicle.Add(hearth, $"{player.GetPlayerName()} brought the {Materials.Label(request.Material)} we needed.");
 
             // Paid from what the village has: coins first, then a cooked meal.
             Inventory inventory = chest.GetInventory();

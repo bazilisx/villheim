@@ -177,6 +177,7 @@ namespace Villheim.Logic.Villagers
         {
             public bool Asleep;
             public bool Rough;
+            public bool Watched;
             public int HeldFrame;
             public float GiveUpAt;
             public Bed Bed;
@@ -220,6 +221,26 @@ namespace Villheim.Logic.Villagers
         public static bool Update(Villager villager, VillagerAI ai, float dt)
         {
             State state = States.GetOrCreateValue(villager);
+            if (Bedtime(villager) && Roles.IsNightWatch(villager))
+            {
+                // On watch tonight: no bed (free time sends him patrolling). Tired in the morning.
+                if (state.Asleep)
+                {
+                    Wake(villager);
+                }
+
+                state.Rough = false;
+                state.Watched = true;
+                return false;
+            }
+
+            if (!Bedtime(villager) && state.Watched)
+            {
+                state.Watched = false;
+                Moods.Think(villager, "watch");
+                Village.Chronicle.Add(villager.VillageId, $"{villager.VillagerName} kept watch through the night.");
+            }
+
             if (!Bedtime(villager))
             {
                 if (state.Asleep)

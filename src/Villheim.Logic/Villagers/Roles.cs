@@ -119,6 +119,41 @@ namespace Villheim.Logic.Villagers
             return trade != Trade.None ? trade.ToString().ToLowerInvariant() : null;
         }
 
+        /// <summary>
+        /// Tonight's watch, as Millenaire's guards keep watch: with three or more villagers, one protector each night (in
+        /// turn, by day) stays up and patrols the edge of the village with a torch instead of sleeping.
+        /// </summary>
+        public static bool IsNightWatch(Villager villager)
+        {
+            List<Villager> roster = Of(villager.VillageId);
+            if (roster.Count < 3 || EnvMan.instance == null)
+            {
+                return false;
+            }
+
+            List<Villager> protectors = roster.Where(v => BackgroundOf(v) == Background.Protector).ToList();
+            if (protectors.Count == 0)
+            {
+                return false;
+            }
+
+            // The night belongs to the day it started on.
+            int day = EnvMan.instance.GetDay() - (EnvMan.instance.GetDayFraction() < 0.5f ? 1 : 0);
+            return protectors[((day % protectors.Count) + protectors.Count) % protectors.Count] == villager;
+        }
+
+        /// <summary>The watchman's torch.</summary>
+        public static void HoldTorch(Villager villager)
+        {
+            ItemDrop.ItemData right = villager.GetRightItem();
+            if (right != null && right.m_dropPrefab != null && right.m_dropPrefab.name == "Torch")
+            {
+                return;
+            }
+
+            EquipNamed(villager, "Torch");
+        }
+
         public static bool HasTrade(int villageId, Trade trade) => Of(villageId).Any(v => TradeOf(v) == trade);
 
         public static bool HasProtector(int villageId) =>

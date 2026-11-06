@@ -297,6 +297,8 @@ namespace Villheim.Logic.Village
 
             VillheimPlugin.Log.LogInfo($"{state.Name} finished a {VillageBrain.RoleName(site.Role)} ({site.Design}).");
             Villagers.Dialogue.Note(state.Id, "finished");
+            Chronicle.Add(hearth, site.Upgrade ? $"The {VillageBrain.RoleName(site.Role)} was rebuilt bigger." :
+                $"A new {VillageBrain.RoleName(site.Role)} was finished.");
 
             // A few villagers who aren't busy come to have a look at it.
             Vector3 front = site.Position + Quaternion.Euler(0f, site.Yaw, 0f) * Vector3.forward * (Footprint(hearth) + 2f);

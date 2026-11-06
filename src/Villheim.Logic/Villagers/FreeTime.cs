@@ -249,6 +249,16 @@ namespace Villheim.Logic.Villagers
             state.GiveUpAt = Time.time + 30f;
             Walker.For(villager).Reset();
 
+            if (mode == Mode.Night && Roles.IsNightWatch(villager))
+            {
+                // On watch: walk from lookout to lookout round the edge of the village, torch in hand.
+                state.Kind = Kind.Stroll;
+                state.Spot = StrollSpot(villager, state, hearth, true);
+                state.Until = Time.time + 45f;
+                Roles.HoldTorch(villager);
+                return;
+            }
+
             if (mode != Mode.Day)
             {
                 state.Kind = mode == Mode.Evening ? Kind.Evening : Kind.Night;
@@ -428,7 +438,7 @@ namespace Villheim.Logic.Villagers
                     GestureByMood(villager, state, mood, 15f, 30f);
                     if (Time.time > state.StandUntil)
                     {
-                        state.Spot = StrollSpot(villager, state, Hearth(villager));
+                        state.Spot = StrollSpot(villager, state, Hearth(villager), CurrentMode() == Mode.Night && Roles.IsNightWatch(villager));
                         state.Arrived = false;
                         state.StandUntil = 0f;
                         state.GiveUpAt = Time.time + 30f;
@@ -731,7 +741,7 @@ namespace Villheim.Logic.Villagers
             if (partner == null || !States.TryGetValue(partner, out State theirs))
             {
                 state.Kind = Kind.Stroll;
-                state.Spot = StrollSpot(villager, state, Hearth(villager));
+                state.Spot = StrollSpot(villager, state, Hearth(villager), CurrentMode() == Mode.Night && Roles.IsNightWatch(villager));
                 return;
             }
 
@@ -918,10 +928,10 @@ namespace Villheim.Logic.Villagers
         /// Where a stroll goes: near home, or for a protector often a lookout at the edge of the village, where he
         /// stands looking outward.
         /// </summary>
-        private static Vector3 StrollSpot(Villager villager, State state, Vector3 hearth)
+        private static Vector3 StrollSpot(Villager villager, State state, Vector3 hearth, bool watch = false)
         {
             state.Watching = false;
-            if (Roles.BackgroundOf(villager) != Roles.Background.Protector || Random.value > 0.6f)
+            if (!watch && (Roles.BackgroundOf(villager) != Roles.Background.Protector || Random.value > 0.6f))
             {
                 return HomeSpot(villager, hearth);
             }

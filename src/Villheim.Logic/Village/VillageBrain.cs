@@ -86,6 +86,7 @@ namespace Villheim.Logic.Village
 
             TerrainShaper.LevelPad(position, 3f, 6f);
             hearth.Register();
+            Chronicle.Add(hearth, $"{state.Name} was founded around a new hearth.");
             VillheimPlugin.Log.LogInfo($"Founded {state.Name} ({state.Biome}) at {position}.");
         }
 
@@ -498,6 +499,7 @@ namespace Villheim.Logic.Village
 
             state.Arrivals = arrival + 1;
             VillheimPlugin.Debug($"{state.Name}: {name} arrived.");
+            Chronicle.Add(hearth, arrival < VillheimConfig.StartingVillagers.Value ? $"{name} settled by the hearth." : $"{name} came to live here.");
 
             // Someone walks over to say hello to the newcomer.
             if (arrival >= VillheimConfig.StartingVillagers.Value)

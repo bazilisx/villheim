@@ -51,10 +51,17 @@ namespace Villheim.Logic.Villagers
                     Moods.FightOver(villager);
                     VillageHearth home = VillageHearth.Find(villager.VillageId);
                     Player player = Player.m_localPlayer;
-                    if (fired && home != null && player != null &&
-                        Vector3.Distance(player.transform.position, villager.transform.position) < 25f)
+                    bool helped = fired && home != null && player != null &&
+                                  Vector3.Distance(player.transform.position, villager.transform.position) < 25f;
+                    if (helped)
                     {
                         Social.FoughtAlongside(home, player);
+                    }
+
+                    if (fired)
+                    {
+                        Chronicle.Add(villager.VillageId, helped ? $"Enemies came to the village. {player.GetPlayerName()} fought beside us."
+                            : "Enemies came to the village and were driven off.");
                     }
                 }
             }

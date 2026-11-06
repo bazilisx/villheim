@@ -58,7 +58,7 @@ namespace Villheim.Logic
         {
             if (user == Player.m_localPlayer)
             {
-                user.Message(MessageHud.MessageType.Center, VillageBrain.Summary(hearth));
+                Village.Chronicle.Show(hearth);
             }
         }
 

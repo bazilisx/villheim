@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Everything that decides how villages behave. The core plugin loads this DLL from memory and
+    reloads it whenever the file changes, so it can be rebuilt and swapped while Valheim is running.
+  -->
+  <PropertyGroup>
+    <AssemblyName>Villheim.Logic</AssemblyName>
+    <RootNamespace>Villheim.Logic</RootNamespace>
+    <Version>0.1.0</Version>
+    <!-- A build stamp in the informational version, so the log shows which build is live. -->
+    <SourceRevisionId>build$([System.DateTime]::UtcNow.ToString("yyyyMMdd-HHmmss"))</SourceRevisionId>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Villheim\Villheim.csproj" Private="false" />
+  </ItemGroup>
+
+  <Target Name="CopyToValheim" AfterTargets="Build" Condition="'$(ValheimInstall)' != '' And Exists('$(ValheimInstall)')">
+    <Copy SourceFiles="$(TargetPath);$(TargetDir)$(TargetName).pdb" DestinationFolder="$(ValheimInstall)\BepInEx\plugins\Villheim" />
+  </Target>
+
+</Project>

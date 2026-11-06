@@ -9,7 +9,7 @@ namespace Villheim.Prefabs
     /// The world generator places "village sites": an otherwise empty location holding a single hearth.
     /// Everything else in the village is copied from existing designs at runtime as the village grows.
     /// </summary>
-    internal static class VillageLocation
+    public static class VillageLocation
     {
         public const string Name = VillheimPlugin.Prefix + "VillageSite";
 

@@ -24,7 +24,7 @@ Requirements:
 - [BepInExPack Valheim](https://thunderstore.io/c/valheim/p/denikson/BepInExPack_Valheim/)
 - [Jötunn](https://thunderstore.io/c/valheim/p/ValheimModding/Jotunn/)
 
-Copy `Villheim.dll` into `Valheim/BepInEx/plugins/Villheim/`. In multiplayer, the server and every player need the mod.
+Copy `Villheim.dll` and `Villheim.Logic.dll` into `Valheim/BepInEx/plugins/Villheim/`. In multiplayer, the server and every player need the mod.
 
 You can get a built `Villheim.dll` from the **Actions** tab of this repository: open the latest successful "Build" run and download the `Villheim` artifact. It also contains the files Thunderstore expects (except an icon).
 
@@ -86,24 +86,46 @@ Villheim reads those mods' locations at runtime and nothing from them is copied 
 Code layout:
 
 ```
-src/Villheim/
+src/Villheim/            the core plugin (changes need a game restart)
   Plugin.cs              entry point, registers prefabs and the village site
-  VillheimConfig.cs      all settings
-  Commands.cs            console commands
-  Patches.cs             hearth hover text and interaction
-  Designs/               design pool, copying designs, terrain edits
-  Village/               hearth brain, saved state, plot search
-  Villagers/             villager character, AI, looks, chatter
+  LogicHost.cs           loads Villheim.Logic.dll and reloads it when the file changes
+  IVillheimLogic.cs      the contract between core and logic
+  Components/            hearth, villager and AI components (thin shells that call the logic)
   Prefabs/               hearth, villager and village site prefabs
+  Commands.cs, Patches.cs, Keys.cs, VillheimConfig.cs
+src/Villheim.Logic/      everything that decides behaviour (hot reloadable)
+  Village/               founding, growth, population, saved state, plot search
+  Designs/               design pool, copying designs, terrain edits
+  Villagers/             looks, routine, dialogue, AI tuning
+  LogicCommands.cs       console command implementations
 ```
 
 ## Building from source
 
 1. Install the [.NET 8 SDK](https://dotnet.microsoft.com/download) (Windows, macOS or Linux).
-2. Run `dotnet build src/Villheim/Villheim.csproj -c Release`.
-3. The DLL is in `src/Villheim/bin/Release/Villheim.dll`.
+2. Run `dotnet build Villheim.sln -c Release`.
+3. The DLLs are `src/Villheim/bin/Release/Villheim.dll` and `src/Villheim.Logic/bin/Release/Villheim.Logic.dll`.
 
-You do not need Valheim installed to build: the project uses NuGet packages with publicized reference copies of the game assemblies. If you set the `VALHEIM_INSTALL` environment variable to your Valheim folder, the build also copies the DLL into `BepInEx/plugins/Villheim/`.
+You do not need Valheim installed to build: the project uses NuGet packages with publicized reference copies of the game assemblies.
+
+## Developing with Valheim open (hot reload)
+
+Villheim is split in two so most changes do not need a game restart:
+
+- **Villheim.dll (core)** registers prefabs, components, patches and command names. Changing it needs a restart.
+- **Villheim.Logic.dll (logic)** holds the village rules, design copying, villager behaviour and command implementations. The core checks the file every couple of seconds and swaps in a new build as soon as it changes. A message in the top left corner and a line in the log (`Loaded logic #N`) confirm the reload.
+
+Suggested setup:
+
+1. In r2modman, create a profile called `Villheim Test` with only Jotunn (it brings BepInEx) plus anything you want to test against. A small profile starts much faster.
+2. Add `-console` to the launch parameters (r2modman: Settings, Launch parameters) so F5 opens the console.
+3. Run `./scripts/deploy.ps1 -Core` once, then start the game. After that, `./scripts/deploy.ps1` updates only the logic while the game runs.
+
+Notes:
+
+- Changes to ZDO keys, prefab structure, patches, or `IVillheimLogic` need a core update and a restart.
+- Buildings already being placed when a reload happens finish with the old code.
+- Each reload keeps the previous build in memory until the game closes. That is fine for development; set `HotReload = false` in the config for normal play if you like.
 
 ## First test checklist
 

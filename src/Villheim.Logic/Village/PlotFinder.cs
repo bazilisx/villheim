@@ -3,7 +3,7 @@ using System.Linq;
 using UnityEngine;
 using Villheim.Prefabs;
 
-namespace Villheim.Village
+namespace Villheim.Logic.Village
 {
     /// <summary>
     /// Picks where the next building goes: rings around the hearth, closest first, on dry, fairly flat ground

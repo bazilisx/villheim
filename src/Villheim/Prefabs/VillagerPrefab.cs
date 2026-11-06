@@ -4,7 +4,6 @@ using System.Reflection;
 using Jotunn.Entities;
 using Jotunn.Managers;
 using UnityEngine;
-using Villheim.Villagers;
 using Object = UnityEngine.Object;
 
 namespace Villheim.Prefabs
@@ -16,7 +15,7 @@ namespace Villheim.Prefabs
     ///
     /// Approach inspired by OrianaVenture's Norse Personality Construction System (MIT).
     /// </summary>
-    internal static class VillagerPrefab
+    public static class VillagerPrefab
     {
         public const string Name = VillheimPlugin.Prefix + "Villager";
         public const string RagdollName = VillheimPlugin.Prefix + "Villager_ragdoll";
@@ -61,12 +60,11 @@ namespace Villheim.Prefabs
             ConfigureVillager(villager);
 
             VillagerAI ai = prefab.AddComponent<VillagerAI>();
-            VillagerAI.Configure(ai);
+            ai.m_pathAgentType = Pathfinding.AgentType.Humanoid;
+            ai.m_aggravatable = true;
+            ai.m_enableHuntPlayer = false;
 
-            if (VillheimConfig.VillagerChatter.Value)
-            {
-                VillagerTalk.Configure(prefab.AddComponent<NpcTalk>());
-            }
+            AddTalk(prefab.AddComponent<NpcTalk>());
 
             if (prefab.TryGetComponent(out ZNetView nview))
             {
@@ -84,6 +82,32 @@ namespace Villheim.Prefabs
 
             PrefabManager.Instance.AddPrefab(new CustomPrefab(prefab, false));
             Prefab = prefab;
+        }
+
+        /// <summary>
+        /// NpcTalk is what the Dvergr use for greetings and chatter. The logic assembly fills in the real lines;
+        /// these placeholders only make sure no list is ever empty.
+        /// </summary>
+        private static void AddTalk(NpcTalk talk)
+        {
+            talk.m_name = "Villager";
+            talk.m_maxRange = 15f;
+            talk.m_greetRange = 8f;
+            talk.m_byeRange = 12f;
+            talk.m_offset = 2.2f;
+            talk.m_minTalkInterval = 3f;
+            talk.m_hideDialogDelay = 5f;
+            talk.m_randomTalkInterval = 25f;
+            talk.m_randomTalkChance = 0.25f;
+            talk.m_randomTalk = new List<string> { "..." };
+            talk.m_randomTalkInFactionBase = new List<string> { "..." };
+            talk.m_randomGreets = new List<string> { "Hail." };
+            talk.m_randomGoodbye = new List<string> { "Farewell." };
+            talk.m_privateAreaAlarm = new List<string> { "Hey!" };
+            talk.m_aggravated = new List<string> { "Hey!" };
+            talk.m_randomTalkFX = new EffectList();
+            talk.m_randomGreetFX = new EffectList();
+            talk.m_randomGoodbyeFX = new EffectList();
         }
 
         private static void ConfigureVillager(Villager villager)

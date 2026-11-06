@@ -1,5 +1,4 @@
 using HarmonyLib;
-using Villheim.Village;
 
 namespace Villheim
 {
@@ -16,7 +15,8 @@ namespace Villheim
         {
             if (__instance.TryGetComponent(out VillageHearth hearth))
             {
-                __result = $"{hearth.VillageName} hearth\n<color=#b0b0b0>{hearth.Summary()}</color>";
+                string fallback = __result;
+                __result = LogicHost.Get(logic => logic.HearthHoverText(hearth), fallback);
             }
         }
 
@@ -26,7 +26,8 @@ namespace Villheim
         {
             if (__instance.TryGetComponent(out VillageHearth hearth))
             {
-                __result = $"{hearth.VillageName} hearth";
+                string fallback = __result;
+                __result = LogicHost.Get(logic => logic.HearthHoverName(hearth), fallback);
             }
         }
 
@@ -39,9 +40,9 @@ namespace Villheim
                 return true;
             }
 
-            if (!hold && user == Player.m_localPlayer)
+            if (!hold)
             {
-                user.Message(MessageHud.MessageType.Center, hearth.Summary());
+                LogicHost.Call(logic => logic.HearthInteract(hearth, user));
             }
 
             __result = false;

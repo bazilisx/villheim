@@ -1,6 +1,6 @@
 using UnityEngine;
 
-namespace Villheim
+namespace Villheim.Logic
 {
     internal static class Names
     {

@@ -3,7 +3,7 @@ using System.Globalization;
 using System.Text;
 using UnityEngine;
 
-namespace Villheim.Village
+namespace Villheim.Logic.Village
 {
     /// <summary>One building a village has raised.</summary>
     internal sealed class Plot
@@ -19,15 +19,6 @@ namespace Villheim.Village
     /// </summary>
     internal sealed class VillageState
     {
-        private static readonly int KeyInit = "villheim_init".GetStableHashCode();
-        private static readonly int KeyId = "villheim_id".GetStableHashCode();
-        private static readonly int KeySeed = "villheim_seed".GetStableHashCode();
-        private static readonly int KeyName = "villheim_name".GetStableHashCode();
-        private static readonly int KeyBiome = "villheim_biome".GetStableHashCode();
-        private static readonly int KeyLastGrowth = "villheim_last_growth".GetStableHashCode();
-        private static readonly int KeyLastArrival = "villheim_last_arrival".GetStableHashCode();
-        private static readonly int KeyArrivals = "villheim_arrivals".GetStableHashCode();
-        private static readonly int KeyPlots = "villheim_plots".GetStableHashCode();
 
         private readonly ZDO _zdo;
         private string _plotsRaw;
@@ -40,59 +31,59 @@ namespace Villheim.Village
 
         public bool Initialized
         {
-            get => _zdo.GetBool(KeyInit);
-            set => _zdo.Set(KeyInit, value);
+            get => _zdo.GetBool(Keys.Initialized);
+            set => _zdo.Set(Keys.Initialized, value);
         }
 
         public int Id
         {
-            get => _zdo.GetInt(KeyId);
-            set => _zdo.Set(KeyId, value);
+            get => _zdo.GetInt(Keys.VillageId);
+            set => _zdo.Set(Keys.VillageId, value);
         }
 
         public int Seed
         {
-            get => _zdo.GetInt(KeySeed);
-            set => _zdo.Set(KeySeed, value);
+            get => _zdo.GetInt(Keys.Seed);
+            set => _zdo.Set(Keys.Seed, value);
         }
 
         public string Name
         {
-            get => _zdo.GetString(KeyName, "Village");
-            set => _zdo.Set(KeyName, value);
+            get => _zdo.GetString(Keys.Name, "Village");
+            set => _zdo.Set(Keys.Name, value);
         }
 
         public Heightmap.Biome Biome
         {
-            get => (Heightmap.Biome)_zdo.GetInt(KeyBiome, (int)Heightmap.Biome.Meadows);
-            set => _zdo.Set(KeyBiome, (int)value);
+            get => (Heightmap.Biome)_zdo.GetInt(Keys.Biome, (int)Heightmap.Biome.Meadows);
+            set => _zdo.Set(Keys.Biome, (int)value);
         }
 
         /// <summary>World time (seconds) the growth clock last advanced to.</summary>
         public double LastGrowth
         {
-            get => _zdo.GetLong(KeyLastGrowth) / 10.0;
-            set => _zdo.Set(KeyLastGrowth, (long)(value * 10.0));
+            get => _zdo.GetLong(Keys.LastGrowth) / 10.0;
+            set => _zdo.Set(Keys.LastGrowth, (long)(value * 10.0));
         }
 
         public double LastArrival
         {
-            get => _zdo.GetLong(KeyLastArrival) / 10.0;
-            set => _zdo.Set(KeyLastArrival, (long)(value * 10.0));
+            get => _zdo.GetLong(Keys.LastArrival) / 10.0;
+            set => _zdo.Set(Keys.LastArrival, (long)(value * 10.0));
         }
 
         /// <summary>How many villagers have ever arrived, used for the initial arrivals and for name seeds.</summary>
         public int Arrivals
         {
-            get => _zdo.GetInt(KeyArrivals);
-            set => _zdo.Set(KeyArrivals, value);
+            get => _zdo.GetInt(Keys.Arrivals);
+            set => _zdo.Set(Keys.Arrivals, value);
         }
 
         public IReadOnlyList<Plot> Plots
         {
             get
             {
-                string raw = _zdo.GetString(KeyPlots, "");
+                string raw = _zdo.GetString(Keys.Plots, "");
                 if (raw != _plotsRaw)
                 {
                     _plotsRaw = raw;
@@ -106,7 +97,7 @@ namespace Villheim.Village
         public void AddPlot(Plot plot)
         {
             var plots = new List<Plot>(Plots) { plot };
-            _zdo.Set(KeyPlots, Serialize(plots));
+            _zdo.Set(Keys.Plots, Serialize(plots));
         }
 
         private static string Serialize(List<Plot> plots)

@@ -2,7 +2,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using UnityEngine;
 
-namespace Villheim.Designs
+namespace Villheim.Logic.Designs
 {
     /// <summary>
     /// The pool of existing designs a village may copy, read from the config.

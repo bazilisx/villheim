@@ -3,11 +3,10 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
-using Villheim.Village;
 using Object = UnityEngine.Object;
 using Random = UnityEngine.Random;
 
-namespace Villheim.Designs
+namespace Villheim.Logic.Designs
 {
     /// <summary>
     /// Copies an existing location design into the world at a new spot.
@@ -21,9 +20,6 @@ namespace Villheim.Designs
     /// </summary>
     internal static class DesignSpawner
     {
-        /// <summary>ZDO key set on every object a village builds, holding the village id.</summary>
-        public static readonly int KeyVillage = "villheim_v".GetStableHashCode();
-
         internal sealed class Result
         {
             public bool Success;
@@ -201,7 +197,7 @@ namespace Villheim.Designs
             ZNetView view = instance.GetComponent<ZNetView>();
             if (view != null && view.GetZDO() != null && villageId != 0)
             {
-                view.GetZDO().Set(KeyVillage, villageId);
+                view.GetZDO().Set(Keys.BuiltBy, villageId);
             }
 
             result.Spawned++;
@@ -267,7 +263,7 @@ namespace Villheim.Designs
 
                 GameObject go = view.gameObject;
                 if (go.GetComponent<Piece>() || go.GetComponent<Character>() || go.GetComponent<ItemDrop>() ||
-                    go.GetComponent<VillageHearth>() || view.GetZDO().GetInt(KeyVillage) != 0)
+                    go.GetComponent<VillageHearth>() || view.GetZDO().GetInt(Keys.BuiltBy) != 0)
                 {
                     continue;
                 }

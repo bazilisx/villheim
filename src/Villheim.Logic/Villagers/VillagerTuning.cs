@@ -1,12 +1,52 @@
-namespace Villheim.Villagers
+using Villheim.Prefabs;
+
+namespace Villheim.Logic.Villagers
 {
     /// <summary>
-    /// Monster AI tuned to behave like a peaceful villager: wanders near its patrol point, never hunts players,
-    /// fights monsters, and calms down after being provoked.
+    /// Villager stats, AI settings and dialogue. Applied to the prefab and to every loaded villager whenever a
+    /// logic build loads, so these can be tuned without restarting the game.
+    /// AI values follow OrianaVenture's Norse Personality Construction System (MIT).
     /// </summary>
-    public class VillagerAI : MonsterAI
+    internal static class VillagerTuning
     {
-        public static void Configure(VillagerAI ai)
+        public static void ApplyToAll()
+        {
+            if (VillagerPrefab.Prefab != null)
+            {
+                Apply(VillagerPrefab.Prefab.GetComponent<Villager>());
+            }
+
+            foreach (Character character in Character.GetAllCharacters())
+            {
+                if (character is Villager villager)
+                {
+                    Apply(villager);
+                }
+            }
+        }
+
+        private static void Apply(Villager villager)
+        {
+            if (villager == null)
+            {
+                return;
+            }
+
+            villager.m_faction = Character.Faction.Dverger; // neutral to players unless provoked, fights monsters
+            villager.m_health = VillheimConfig.VillagerHealth.Value;
+            villager.m_walkSpeed = 1.6f;
+            villager.m_speed = 2f;
+            villager.m_runSpeed = 5f;
+
+            if (villager.TryGetComponent(out VillagerAI ai))
+            {
+                ApplyAI(ai);
+            }
+
+            VillagerTalk.Configure(villager.GetComponent<NpcTalk>());
+        }
+
+        private static void ApplyAI(VillagerAI ai)
         {
             ai.m_viewRange = 20f;
             ai.m_viewAngle = 90f;
@@ -29,7 +69,6 @@ namespace Villheim.Villagers
             ai.m_skipLavaTargets = true;
             ai.m_avoidLavaFlee = true;
 
-            // Neutral until a player hits them, like the Dvergr.
             ai.m_aggravatable = true;
             ai.m_passiveAggresive = false;
             ai.m_spawnMessage = "";
@@ -59,16 +98,6 @@ namespace Villheim.Villagers
             ai.m_circleTargetInterval = 5f;
             ai.m_circleTargetDuration = 2f;
             ai.m_circleTargetDistance = 2f;
-        }
-
-        public override void SetAlerted(bool alert)
-        {
-            base.SetAlerted(alert);
-            if (!alert && IsAggravated())
-            {
-                // Forgive the player once things calm down.
-                SetAggravated(false, AggravatedReason.Damage);
-            }
         }
     }
 }

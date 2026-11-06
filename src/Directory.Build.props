@@ -1,0 +1,27 @@
+<Project>
+  <!-- Settings shared by the core plugin and the hot-reloadable logic assembly. -->
+  <PropertyGroup>
+    <TargetFramework>net48</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>disable</Nullable>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    <CopyLocalLockFileAssemblies>false</CopyLocalLockFileAssemblies>
+    <DebugType>portable</DebugType>
+    <NoWarn>$(NoWarn);CS0618</NoWarn>
+    <ValheimInstall Condition="'$(ValheimInstall)' == ''">$(VALHEIM_INSTALL)</ValheimInstall>
+  </PropertyGroup>
+
+  <!--
+    Compile-time references only. Nothing from these packages ships with the mod:
+    players get BepInEx and Jotunn from Thunderstore, and the game DLLs come from Valheim itself.
+    Digitalroot.Valheim.Common.References contains publicized, stripped (no method bodies) copies of the
+    Valheim 1.0 game assemblies, so the mod builds without a local game install.
+  -->
+  <ItemGroup>
+    <PackageReference Include="BepInEx.Core" Version="5.4.21" PrivateAssets="all" />
+    <PackageReference Include="UnityEngine.Modules" Version="6000.0.58" PrivateAssets="all" IncludeAssets="compile" />
+    <PackageReference Include="JotunnLib" Version="2.30.2" PrivateAssets="all" />
+    <PackageReference Include="Digitalroot.Valheim.Common.References" Version="1.0.22" PrivateAssets="all" />
+    <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies" Version="1.0.3" PrivateAssets="all" />
+  </ItemGroup>
+</Project>

@@ -5,7 +5,7 @@ namespace Villheim
     /// <summary>
     /// All user settings. Entries marked admin-only are synced from the server to clients by Jotunn.
     /// </summary>
-    internal static class VillheimConfig
+    public static class VillheimConfig
     {
         // World generation
         public static ConfigEntry<int> VillageCount;
@@ -41,6 +41,7 @@ namespace Villheim
 
         // Debug
         public static ConfigEntry<bool> VerboseLogging;
+        public static ConfigEntry<bool> HotReload;
 
         public static void Bind(ConfigFile config)
         {
@@ -115,6 +116,9 @@ namespace Villheim
 
             VerboseLogging = config.Bind("5 - Debug", "VerboseLogging", false,
                 "Write detailed growth and placement information to the BepInEx log.");
+            HotReload = config.Bind("5 - Debug", "HotReload", true,
+                "Reload Villheim.Logic.dll automatically when the file changes, without restarting the game. " +
+                "Useful while developing; harmless otherwise.");
         }
 
         private static ConfigEntry<T> Admin<T>(ConfigFile config, string section, string key, T value, string description,

@@ -1,6 +1,6 @@
 using UnityEngine;
 
-namespace Villheim.Villagers
+namespace Villheim.Logic.Villagers
 {
     /// <summary>
     /// Dresses a villager with vanilla hair, beards, clothes and tools, chosen from a fixed seed so
@@ -87,11 +87,11 @@ namespace Villheim.Villagers
 
             string hairItem = FirstExisting($"Hair{rng.Next(1, 21)}", "Hair1");
             villager.m_hairItem = hairItem;
-            vis.SetHairItem(hairItem);
+            vis.SetHairItem(Hash(hairItem));
 
             string beard = female || rng.Next(5) == 0 ? "" : FirstExisting($"Beard{rng.Next(1, 11)}", "Beard1");
             villager.m_beardItem = beard;
-            vis.SetBeardItem(beard);
+            vis.SetBeardItem(Hash(beard));
 
             villager.UnequipAllItems();
             villager.GetInventory()?.RemoveAll();
@@ -121,6 +121,11 @@ namespace Villheim.Villagers
             {
                 humanoid.EquipItem(item, false);
             }
+        }
+
+        private static int Hash(string itemName)
+        {
+            return string.IsNullOrEmpty(itemName) ? 0 : itemName.GetStableHashCode();
         }
 
         private static string FirstExisting(string preferred, string fallback)

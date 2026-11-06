@@ -1,8 +1,8 @@
 using System.Collections.Generic;
 using UnityEngine;
-using Villheim.Village;
+using Villheim.Logic.Village;
 
-namespace Villheim.Villagers
+namespace Villheim.Logic.Villagers
 {
     /// <summary>
     /// Lines for the vanilla NpcTalk component (the one the Dvergr use) plus what villagers say when you talk to them.
@@ -56,6 +56,13 @@ namespace Villheim.Villagers
 
         public static void Configure(NpcTalk talk)
         {
+            if (talk == null)
+            {
+                return;
+            }
+
+            bool chatter = VillheimConfig.VillagerChatter.Value;
+            talk.enabled = chatter;
             talk.m_name = "Villager";
             talk.m_maxRange = 15f;
             talk.m_greetRange = 8f;
@@ -71,14 +78,14 @@ namespace Villheim.Villagers
             talk.m_randomGoodbye = new List<string>(Goodbyes);
             talk.m_privateAreaAlarm = new List<string>(Aggravated);
             talk.m_aggravated = new List<string>(Aggravated);
-            talk.m_randomTalkFX = new EffectList();
-            talk.m_randomGreetFX = new EffectList();
-            talk.m_randomGoodbyeFX = new EffectList();
+            talk.m_randomTalkFX = talk.m_randomTalkFX ?? new EffectList();
+            talk.m_randomGreetFX = talk.m_randomGreetFX ?? new EffectList();
+            talk.m_randomGoodbyeFX = talk.m_randomGoodbyeFX ?? new EffectList();
         }
 
         public static string InteractLine(VillageHearth hearth)
         {
-            if (hearth != null && hearth.BuildingCount <= 1 && Random.value < 0.5f)
+            if (hearth != null && hearth.IsValid && new VillageState(hearth.Zdo).Plots.Count <= 1 && Random.value < 0.5f)
             {
                 return "We have only just settled here.";
             }

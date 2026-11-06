@@ -1,6 +1,6 @@
 using UnityEngine;
 
-namespace Villheim.Designs
+namespace Villheim.Logic.Designs
 {
     /// <summary>
     /// Permanent terrain edits, made the same way the hoe makes them: a TerrainOp that applies itself to the

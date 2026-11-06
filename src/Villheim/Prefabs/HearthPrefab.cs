@@ -1,7 +1,6 @@
 using Jotunn.Entities;
 using Jotunn.Managers;
 using UnityEngine;
-using Villheim.Village;
 
 namespace Villheim.Prefabs
 {
@@ -9,7 +8,7 @@ namespace Villheim.Prefabs
     /// The village hearth is the vanilla campfire ("fire_pit") with endless fuel and the
     /// <see cref="VillageHearth"/> brain attached. It stores the whole village state in its ZDO.
     /// </summary>
-    internal static class HearthPrefab
+    public static class HearthPrefab
     {
         public const string Name = VillheimPlugin.Prefix + "Hearth";
         private const string BasePrefab = "fire_pit";

@@ -135,7 +135,7 @@ namespace Villheim.Logic.Designs
                     continue;
                 }
 
-                pool.Add(new Design(blueprint, 2f));
+                pool.Add(new Design(blueprint, blueprint.Weight));
             }
         }
 

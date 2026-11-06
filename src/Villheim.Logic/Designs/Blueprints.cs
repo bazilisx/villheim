@@ -45,7 +45,12 @@ namespace Villheim.Logic.Designs
             public int Level = 1;
             public string Biome;
             public float Radius;
+            public string Creator;
+            public string Category;
             public readonly List<Piece> Pieces = new List<Piece>();
+
+            /// <summary>Picked more often: designs made as sets (hut, cottage, house...) fit a growing village best.</summary>
+            public float Weight = 2f;
         }
 
         public const string Prefix = "bp:";
@@ -65,7 +70,7 @@ namespace Villheim.Logic.Designs
 
             _loadedAt = Time.realtimeSinceStartup;
             var found = new Dictionary<string, Blueprint>(StringComparer.OrdinalIgnoreCase);
-            foreach (string folder in new[] { Folder, Path.Combine(Paths.ConfigPath, "PlanBuild", "blueprints") })
+            foreach (string folder in new[] { Folder, Path.Combine(Paths.ConfigPath, "PlanBuild", "blueprints"), Paths.PluginPath })
             {
                 if (!Directory.Exists(folder))
                 {
@@ -83,7 +88,7 @@ namespace Villheim.Logic.Designs
                     try
                     {
                         Blueprint blueprint = Load(file);
-                        if (blueprint != null && blueprint.Pieces.Count > 0 && !found.ContainsKey(blueprint.Name))
+                        if (blueprint != null && Usable(blueprint) && !found.ContainsKey(blueprint.Name))
                         {
                             found[blueprint.Name] = blueprint;
                         }
@@ -104,6 +109,30 @@ namespace Villheim.Logic.Designs
             return found;
         }
 
+        private static readonly string[] NotForVillages = { "ruin", "hive", "pergola", "portal", "igloo", "chess", "mansion", "castle" };
+
+        /// <summary>Buildings only: furniture and decoration sets and tiny builds are left out.</summary>
+        private static bool Usable(Blueprint blueprint)
+        {
+            string category = (blueprint.Category ?? "").ToLowerInvariant();
+            if (blueprint.Pieces.Count < 25 || category.Contains("furniture") || category.Contains("decor"))
+            {
+                return false;
+            }
+
+            // Community builds from a pack: no ruins, hives, follies or huge showpieces in a village.
+            if (blueprint.Weight < 1f)
+            {
+                string name = blueprint.Name.ToLowerInvariant();
+                if (blueprint.Pieces.Count > 450 || NotForVillages.Any(w => name.Contains(w)))
+                {
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
         public static bool IsBlueprint(string designName) =>
             designName != null && designName.StartsWith(Prefix, StringComparison.OrdinalIgnoreCase);
 
@@ -115,7 +144,8 @@ namespace Villheim.Logic.Designs
         /// <summary>The next level of the same family, or null.</summary>
         public static Blueprint NextLevel(Blueprint blueprint)
         {
-            return All().Values.Where(b => b.Family == blueprint.Family && b.Role == blueprint.Role && b.Level > blueprint.Level)
+            return All().Values.Where(b => b.Family == blueprint.Family && b.Role == blueprint.Role && b.Level > blueprint.Level &&
+                                           b.Biome == blueprint.Biome)
                 .OrderBy(b => b.Level).FirstOrDefault();
         }
 
@@ -144,6 +174,24 @@ namespace Villheim.Logic.Designs
                     {
                         ReadTags(blueprint, line.Substring(line.IndexOf(':') + 1));
                     }
+
+                    if (lower.StartsWith("#creator:"))
+                    {
+                        blueprint.Creator = line.Substring(9).Trim();
+                    }
+
+                    if (lower.StartsWith("#category:"))
+                    {
+                        blueprint.Category = line.Substring(10).Trim();
+                        if (blueprint.Biome == null)
+                        {
+                            string category = blueprint.Category.Replace(" ", "").ToLowerInvariant();
+                            if (category == "meadows" || category == "blackforest")
+                            {
+                                blueprint.Biome = category;
+                            }
+                        }
+                    }
                     else if (!lower.Contains(":"))
                     {
                         section = lower;
@@ -168,9 +216,70 @@ namespace Villheim.Logic.Designs
             return blueprint;
         }
 
+        // Building sets named in levels, smallest first: a village builds the first and upgrades along the list.
+        private static readonly (string Family, Role Role, string[] Levels)[] Sets =
+        {
+            ("stilt", Role.House, new[] { "stilt_hut", "stilt_cottage", "stilt_house" }),
+            ("stone", Role.House, new[] { "stone_cottage", "stone_house", "stone_manor" }),
+            ("home", Role.House, new[] { "hut", "cottage", "house", "manor", "villa" }),
+            ("hall", Role.Hub, new[] { "longhouse", "great_hall" }),
+        };
+
+        /// <summary>
+        /// Names like "hs_meadows_cottage" (the BiomeBlueprints pack): biome from the prefix, and the building sets
+        /// above as levels. Other builds go by words in their name: hall, fort or tavern for a longhouse, shack, smithy,
+        /// forge or workshop for a workshop, barn, farm or breeder for a farm, anything else a home.
+        /// </summary>
+        private static bool ReadPackName(Blueprint blueprint, string stem)
+        {
+            string lower = stem.ToLowerInvariant();
+            if (!lower.StartsWith("hs_"))
+            {
+                return false;
+            }
+
+            string rest = lower.Substring(3);
+            foreach (string biome in new[] { "meadows", "blackforest" })
+            {
+                if (rest.StartsWith(biome + "_"))
+                {
+                    blueprint.Biome = biome;
+                    rest = rest.Substring(biome.Length + 1);
+                }
+            }
+
+            foreach ((string family, Role role, string[] levels) in Sets)
+            {
+                int index = System.Array.IndexOf(levels, rest);
+                if (index >= 0)
+                {
+                    blueprint.Role = role;
+                    blueprint.Family = family + "-" + (blueprint.Biome ?? "any");
+                    blueprint.Level = index + 1;
+                    blueprint.Weight = 4f;
+                    return true;
+                }
+            }
+
+            blueprint.Weight = 0.5f;
+            blueprint.Family = rest;
+            blueprint.Level = 1;
+            if (rest.Contains("hall") || rest.Contains("fort") || rest.Contains("tavern")) blueprint.Role = Role.Hub;
+            else if (rest.Contains("shack") || rest.Contains("smith") || rest.Contains("forge") || rest.Contains("workshop") ||
+                     rest.Contains("repair")) blueprint.Role = Role.Workshop;
+            else if (rest.Contains("barn") || rest.Contains("farm") || rest.Contains("breeder")) blueprint.Role = Role.Farm;
+            else blueprint.Role = Role.House;
+            return true;
+        }
+
         /// <summary>role-family-level from the file name, when it is written that way.</summary>
         private static void ReadName(Blueprint blueprint, string stem)
         {
+            if (ReadPackName(blueprint, stem))
+            {
+                return;
+            }
+
             string[] parts = stem.ToLowerInvariant().Split('-', '_');
             if (parts.Length >= 2 && TryRole(parts[0], out Role role))
             {

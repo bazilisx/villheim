@@ -25,6 +25,7 @@ namespace Villheim.Logic.Villagers
 
         private sealed class Job
         {
+            public Palisade.Segment Fence;
             public WearNTear Damaged;
             public DesignSpawner.PlanEntry Missing;
             public Plot Plot;
@@ -55,6 +56,11 @@ namespace Villheim.Logic.Villagers
             if (!States.TryGetValue(villager, out State state) || state.Job == null)
             {
                 return null;
+            }
+
+            if (state.Job.Fence != null)
+            {
+                return state.Job.Fence.Remove != null ? "taking down the old fence" : "putting up the fence";
             }
 
             return state.Job.Missing != null ? "putting back a broken piece" : "repairing";
@@ -135,6 +141,12 @@ namespace Villheim.Logic.Villagers
 
         private static void Finish(Villager villager, VillageHearth hearth, Job job)
         {
+            if (job.Fence != null)
+            {
+                Palisade.Build(hearth, job.Fence);
+                return;
+            }
+
             if (job.Damaged != null)
             {
                 if (job.Damaged.Repair())
@@ -172,6 +184,11 @@ namespace Villheim.Logic.Villagers
 
         private static bool StillNeeded(Job job)
         {
+            if (job.Fence != null)
+            {
+                return job.Fence.Remove != null ? job.Fence.Remove : true;
+            }
+
             if (job.Damaged != null)
             {
                 return job.Damaged && job.Damaged.GetHealthPercentage() < 0.9f;
@@ -191,6 +208,13 @@ namespace Villheim.Logic.Villagers
                 {
                     return missing;
                 }
+            }
+
+            // Then the fence around the village, before cosmetic repairs.
+            Palisade.Segment fence = Palisade.Next(hearth);
+            if (fence != null)
+            {
+                return new Job { Fence = fence, Position = fence.Position };
             }
 
             WearNTear worst = null;

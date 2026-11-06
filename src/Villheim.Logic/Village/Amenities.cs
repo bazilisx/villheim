@@ -218,7 +218,7 @@ namespace Villheim.Logic.Village
         }
 
         /// <summary>Every ingredient is a material the village tracks and its biome has.</summary>
-        private static bool Buildable(GameObject prefab, Heightmap.Biome biome, out Dictionary<string, int> cost)
+        public static bool Buildable(GameObject prefab, Heightmap.Biome biome, out Dictionary<string, int> cost)
         {
             cost = new Dictionary<string, int>();
             Piece piece = prefab.GetComponent<Piece>();
@@ -249,7 +249,7 @@ namespace Villheim.Logic.Village
         }
 
         /// <summary>The village can spare it: what it has, less what the building going up still needs.</summary>
-        private static bool Affordable(VillageHearth hearth, VillageState state, Dictionary<string, int> cost,
+        public static bool Affordable(VillageHearth hearth, VillageState state, Dictionary<string, int> cost,
             Dictionary<string, int> building)
         {
             foreach (KeyValuePair<string, int> need in cost)

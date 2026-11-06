@@ -14,6 +14,7 @@ namespace Villheim.Logic
         public static ConfigEntry<float> SecondsPerPiece;
         public static ConfigEntry<int> StartingStock;
         public static ConfigEntry<float> FoodHealing;
+        public static ConfigEntry<float> VillagerToolStrength;
         public static ConfigEntry<bool> VillageRaids;
         public static ConfigEntry<int> VillageChance;
         public static ConfigEntry<float> VillageSpacing;
@@ -50,6 +51,9 @@ namespace Villheim.Logic
             StartingStock = Admin(config, work, "StartingStock", 0,
                 "Wood a new village starts with (and half as much stone). At 0 the villagers gather everything " +
                 "for their first building themselves.");
+            VillagerToolStrength = Admin(config, work, "VillagerToolStrength", 0.45f,
+                "How hard villagers' axe and pickaxe blows land against the tool's full damage. A player's blows are scaled " +
+                "by his skill; 0.45 makes a villager about as quick as a player with modest skill.");
             FoodHealing = Admin(config, work, "FoodHealing", 1f,
                 "Villagers heal like players: each food in effect heals its own regen value every 10 seconds for the " +
                 "food's duration. This multiplies that healing.");

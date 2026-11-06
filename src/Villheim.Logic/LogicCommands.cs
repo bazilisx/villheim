@@ -31,7 +31,7 @@ namespace Villheim.Logic
             "dump <location>: write what a design contains to the BepInEx log",
             "report: write a report of every location that could be a design (BepInEx/Villheim/design-report.txt)",
             "villager: show the nearest villager's voice, mood, thoughts, role, trade, bed and activity",
-            "village: show the nearest village's type, chieftain, mood, project, fence, known players and request",
+            "village: show the nearest village's type, Jarl, mood, project, fence, known players and request",
             "raid: send a raid to the nearest village (comes at once if it is night)",
             "blueprints: list the blueprints villages can build (BepInEx/config/Villheim/blueprints, PlanBuild's folder)",
             "savebp <role-family-level> [radius]: save the building pieces around you as a blueprint, e.g. savebp house-cabin-1 8",
@@ -106,7 +106,7 @@ namespace Villheim.Logic
 
             float mood = Villagers.Moods.Get(villager);
             Say(context, $"Villheim: {villager.VillagerName} of {villager.VillageName}, voice {Villagers.Dialogue.VoiceOf(villager)}" +
-                         $"{(Villagers.Childhood.IsChild(villager) ? ", child" : "")}{(Villagers.Roles.IsChieftain(villager) ? ", chieftain" : "")}");
+                         $"{(Villagers.Childhood.IsChild(villager) ? ", child" : "")}{(Villagers.Roles.IsJarl(villager) ?  ", Jarl" : "")}");
             Say(context, $"   mood {mood:0} ({Villagers.Moods.Label(mood)}); thoughts: {Villagers.Moods.Describe(villager)}");
             Say(context, $"   {Villagers.Roles.BackgroundOf(villager)}, trade {Villagers.Roles.TradeOf(villager)}, " +
                          $"night watch {(Villagers.Roles.IsNightWatch(villager) ? "tonight" : "no")}, " +
@@ -129,9 +129,9 @@ namespace Villheim.Logic
             }
 
             var state = new VillageState(hearth.Zdo);
-            Villager chief = Character.GetAllCharacters().OfType<Villager>().FirstOrDefault(v => v.VillageId == state.Id && Villagers.Roles.IsChieftain(v));
+            Villager chief = Character.GetAllCharacters().OfType<Villager>().FirstOrDefault(v => v.VillageId == state.Id && Villagers.Roles.IsJarl(v));
             Say(context, $"Villheim: {state.Name}, a {state.Type} village ({state.Biome}), mood {VillageMood.Get(state.Id):0}, " +
-                         $"chieftain {(chief != null ? chief.VillagerName : "none")}");
+                         $"Jarl {(chief != null ? chief.VillagerName : "none")}");
             Say(context, $"   {state.Plots.Count} buildings, {VillageBrain.CountVillagers(state.Id)} villagers, " +
                          $"{Villagers.Beds.Of(hearth).Count} beds ({Villagers.Beds.Spare(hearth)} spare), fence ring {Palisade.WantedRadius(hearth, state):0} m");
             Say(context, $"   project: {Growth.PendingLabel(hearth, state)}; request today: {Villagers.Social.RequestText(hearth) ?? "none"}");

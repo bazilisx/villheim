@@ -134,30 +134,30 @@ Tired. Watch. Don't ask.
 @ talk, doing:watch, night
 You shouldn't be wandering about at night. I'll walk you to the fire.
 
-# ------------------------------------------------------------------ the chieftain (tag: chieftain)
+# ------------------------------------------------------------------ the Jarl (tag: jarl)
 
-@ talk, chieftain ~proud
+@ talk, jarl ~proud
 I lit the first fire here. I'll see this place grow, gods willing.
 Welcome to {village}. If you need anything, you come to me.
 I look after these people. They look after me. Mostly.
 
-@ talk, chieftain, event:stranger
+@ talk, jarl, event:stranger
 I'm the one who speaks for {village}. Who speaks for you?
 
-@ talk, chieftain, player:friend ~happy
+@ talk, jarl, player:friend ~happy
 You're always welcome at my fire. You know that.
 
-@ chieftain, need:any
+@ jarl, need:any
 We need {material}. I'll not have this village stall.
 
-@ chieftain, feel:stressed ~worry
+@ jarl, feel:stressed ~worry
 Everyone looks to me when things go wrong. I don't always know what to say.
 
-@ chieftain, size:town ~proud
+@ jarl, size:town ~proud
 I remember when this was a fire and a chest. Look at it now.
 
-@ chat, chieftain
-What's the plan, chief? // Build. Eat. Sleep. Build some more. // Good plan.
+@ chat, jarl
+What's the plan, Jarl? // Build. Eat. Sleep. Build some more. // Good plan.
 
 # ------------------------------------------------------------------ the village's character (village:woodland, fortified, farming)
 

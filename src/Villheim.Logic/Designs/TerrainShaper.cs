@@ -62,13 +62,18 @@ namespace Villheim.Logic.Designs
         /// <summary>Flattens a round pad at the height of <paramref name="center"/> and smooths its edge.</summary>
         public static void LevelPad(Vector3 center, float levelRadius, float smoothRadius)
         {
-            TerrainOp.Settings settings = NewSettings();
-            settings.m_level = true;
-            settings.m_levelRadius = levelRadius;
-            settings.m_smooth = true;
-            settings.m_smoothRadius = Mathf.Max(smoothRadius, levelRadius + 1f);
-            settings.m_smoothPower = 3f;
-            Apply(center, settings);
+            // Smooth first (the slope out to the edge), then level the pad on its own. In a single operation the game
+            // smooths after levelling, which blended the flat pad back toward the slopes and left it lumpy.
+            TerrainOp.Settings smooth = NewSettings();
+            smooth.m_smooth = true;
+            smooth.m_smoothRadius = Mathf.Max(smoothRadius, levelRadius + 1f);
+            smooth.m_smoothPower = 3f;
+            Apply(center, smooth);
+
+            TerrainOp.Settings level = NewSettings();
+            level.m_level = true;
+            level.m_levelRadius = levelRadius;
+            Apply(center, level);
         }
 
         /// <summary>Same operation as a location's terrain modifier, as a permanent edit.</summary>

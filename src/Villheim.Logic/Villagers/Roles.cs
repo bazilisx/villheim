@@ -120,14 +120,14 @@ namespace Villheim.Logic.Villagers
             return TradeOrder[index % TradeOrder.Length];
         }
 
-        /// <summary>The village's chieftain, like Millenaire's town hall chief: the first settler still living.</summary>
-        public static bool IsChieftain(Villager villager)
+        /// <summary>The village's Jarl, like Millenaire's town hall chief: the first settler still living.</summary>
+        public static bool IsJarl(Villager villager)
         {
             List<Villager> roster = Of(villager.VillageId);
             return roster.Count >= 2 && roster[0] == villager;
         }
 
-        /// <summary>"chieftain", "carpenter" and so on for the hover text.</summary>
+        /// <summary>"Jarl", "carpenter" and so on for the hover text.</summary>
         public static string Title(Villager villager)
         {
             if (Childhood.IsChild(villager))
@@ -135,9 +135,9 @@ namespace Villheim.Logic.Villagers
                 return "child";
             }
 
-            if (IsChieftain(villager))
+            if (IsJarl(villager))
             {
-                return "chieftain";
+                return "Jarl";
             }
 
             Trade trade = TradeOf(villager);

@@ -77,7 +77,9 @@ namespace Villheim.Logic.Villagers
             ai.m_hearRange = 15f;
             ai.m_mistVision = false;
             ai.m_pathAgentType = Pathfinding.AgentType.Humanoid;
-            ai.m_moveMinAngle = 90f;
+            // Turn while walking, like a player, instead of stopping to turn on the spot whenever the way changes by
+            // more than a right angle (that stop-turn-go read as a stutter at every change of task or direction).
+            ai.m_moveMinAngle = 170f;
             ai.m_smoothMovement = true;
             ai.m_serpentMovement = false;
             ai.m_jumpInterval = 0f;

@@ -23,6 +23,11 @@ namespace Villheim.Logic.Villagers
 
         public static void Update(Villager villager, float deltaTime)
         {
+            // The core hands a villager to the game's own creature AI while he is "alerted" (a noise, a glimpse of
+            // something, a hit). With no enemy about, that only made him wander and pause between our own steps.
+            // Alerts with nothing to fight are dropped at once, so the village's brain keeps steady control.
+            CalmIdleAlert(villager);
+
             // Looks every client draws for itself: the echo look and a child's size.
             GhostLook.Update(villager);
             GhostLook.UpdateAnimals();
@@ -96,6 +101,39 @@ namespace Villheim.Logic.Villagers
             bool night = VillheimConfig.VillagersGatherAtNight.Value && EnvMan.IsNight();
             Vector3 target = night ? hearth + Random.insideUnitSphere.Horizontal() * NightRadius : home;
             ai.SetPatrolPoint(target);
+        }
+
+        private static readonly ConditionalWeakTable<Villager, AlertCheck> AlertChecks = new ConditionalWeakTable<Villager, AlertCheck>();
+
+        private sealed class AlertCheck
+        {
+            public float Next;
+            public float LastHealth = -1f;
+            public float HurtAt = -100f;
+        }
+
+        private static void CalmIdleAlert(Villager villager)
+        {
+            AlertCheck check = AlertChecks.GetOrCreateValue(villager);
+            if (Time.time < check.Next || villager.m_nview == null || !villager.m_nview.IsOwner())
+            {
+                return;
+            }
+
+            check.Next = Time.time + 0.5f;
+            float health = villager.GetHealth();
+            if (check.LastHealth >= 0f && health < check.LastHealth - 0.01f)
+            {
+                check.HurtAt = Time.time;
+            }
+
+            check.LastHealth = health;
+            VillagerAI ai = villager.GetComponent<VillagerAI>();
+            if (ai != null && ai.IsAlerted() && ai.FindEnemy() == null && ai.GetTargetCreature() == null &&
+                Time.time - check.HurtAt > 5f)
+            {
+                ai.SetAlerted(false);
+            }
         }
 
         /// <summary>What the villager is doing, in a few words (hover text, inspect command, loop watch).</summary>

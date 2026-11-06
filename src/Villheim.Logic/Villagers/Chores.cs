@@ -92,7 +92,7 @@ namespace Villheim.Logic.Villagers
         private const float WorkReach = 2.6f;
         private const float WorkReachAtSpot = 3.3f;
         private const float StandOff = 1.1f;
-        private const float SwingInterval = 1.8f;
+        private const float SwingInterval = 1.6f;
         private const float HitDelay = 0.45f;
         private const float PickableRadius = 15f;
         private const int MaxPicksPerTrip = 8;
@@ -111,7 +111,7 @@ namespace Villheim.Logic.Villagers
             IsSource = go => go.GetComponent<TreeBase>() != null,
             IsPartial = go => go.GetComponent<TreeLog>() != null || IsStump(go),
             Pickaxe = false,
-            MaxSwingsPerSource = 40,
+            MaxSwingsPerSource = 90,
         };
 
         private static readonly Profile Miner = new Profile
@@ -122,7 +122,7 @@ namespace Villheim.Logic.Villagers
             IsSource = IsRock,
             IsPartial = IsCrackedRock,
             Pickaxe = true,
-            MaxSwingsPerSource = 12,
+            MaxSwingsPerSource = 30,
         };
 
         private static readonly ConditionalWeakTable<Villager, Work> States = new ConditionalWeakTable<Villager, Work>();
@@ -1018,6 +1018,17 @@ namespace Villheim.Logic.Villagers
             }
         }
 
+        /// <summary>
+        /// How hard a villager's blow lands against the tool's full damage. A player's blow is scaled by his skill and
+        /// varies from swing to swing; villagers hit like a player with modest skill (VillagerToolStrength, 0.45 by
+        /// default, give or take a quarter), so felling a tree takes about as many swings as it does a player.
+        /// </summary>
+        private static float Strength()
+        {
+            float strength = LogicConfig.VillagerToolStrength != null ? LogicConfig.VillagerToolStrength.Value : 0.45f;
+            return strength * Random.Range(0.75f, 1.15f);
+        }
+
         private static void Hit(Villager villager, GameObject target, Vector3 point, Collider struck, bool pickaxe)
         {
             IDestructible destructible = target.GetComponentInParent<IDestructible>() ?? target.GetComponentInChildren<IDestructible>();
@@ -1042,11 +1053,11 @@ namespace Villheim.Logic.Villagers
 
             if (pickaxe)
             {
-                hit.m_damage.m_pickaxe = Mathf.Max(weapon?.m_shared?.m_damages.m_pickaxe ?? 0f, 20f);
+                hit.m_damage.m_pickaxe = Mathf.Max(weapon?.m_shared?.m_damages.m_pickaxe ?? 0f, 20f) * Strength();
             }
             else
             {
-                hit.m_damage.m_chop = Mathf.Max(weapon?.m_shared?.m_damages.m_chop ?? 0f, 15f);
+                hit.m_damage.m_chop = Mathf.Max(weapon?.m_shared?.m_damages.m_chop ?? 0f, 15f) * Strength();
             }
 
             destructible.Damage(hit);

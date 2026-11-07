@@ -191,6 +191,24 @@ namespace Villheim.Logic.Village
             MessageHud.instance?.ShowMessage(MessageHud.MessageType.TopLeft, "Villheim: design lists written (BepInEx/Villheim/gallery-list-*.csv)");
         }
 
+        private static float _nextProgress;
+
+        /// <summary>
+        /// Progress in the middle of the screen, at most once a second. The top-left messages queue up and each stays a
+        /// few seconds, so hundreds of them kept counting through the blueprints for half an hour after the lists were
+        /// written (2026-11-07).
+        /// </summary>
+        private static void Progress(string text)
+        {
+            if (Time.unscaledTime < _nextProgress)
+            {
+                return;
+            }
+
+            _nextProgress = Time.unscaledTime + 1f;
+            MessageHud.instance?.ShowMessage(MessageHud.MessageType.Center, text);
+        }
+
         /// <summary>'vh gallery ...' (see Usage).</summary>
         public static string Start(Player player, string[] args)
         {
@@ -326,7 +344,7 @@ namespace Villheim.Logic.Village
 
                 if (++looked % 5 == 0)
                 {
-                    MessageHud.instance?.ShowMessage(MessageHud.MessageType.TopLeft, $"Gallery: looked at {looked}/{candidates.Count} blueprints and listed designs");
+                    Progress($"Gallery ({biome}): looked at {looked}/{candidates.Count} blueprints and listed designs");
                     yield return null; // hundreds of blueprints: a few a frame
                 }
 
@@ -369,8 +387,7 @@ namespace Villheim.Logic.Village
                     known[location.m_prefabName] = pieces;
                     if (++opened % 10 == 0)
                     {
-                        MessageHud.instance?.ShowMessage(MessageHud.MessageType.TopLeft,
-                            $"Gallery: looked at {checkedCount}/{locations.Count} locations, {cells.Count} designs so far");
+                        Progress($"Gallery ({biome}): looked at {checkedCount}/{locations.Count} locations, {cells.Count} designs so far");
                     }
 
                     yield return null;
@@ -892,8 +909,7 @@ namespace Villheim.Logic.Village
 
                     if (++tried % 25 == 0)
                     {
-                        MessageHud.instance?.ShowMessage(MessageHud.MessageType.TopLeft,
-                            $"Gallery: looking for flat land, {ring:0} m out (flattest so far: {(result.Found ? result.Relief.ToString("0") + " m" : "none")})");
+                        Progress($"Gallery: looking for flat land, {ring:0} m out (flattest so far: {(result.Found ? result.Relief.ToString("0") + " m" : "none")})");
                         yield return null;
                     }
                 }
@@ -1136,8 +1152,7 @@ namespace Villheim.Logic.Village
                     yield return null;
                 }
 
-                MessageHud.instance?.ShowMessage(MessageHud.MessageType.TopLeft,
-                    $"Gallery: ground {pads.Count(p => p.Done)}/{pads.Count}, designs {built}/{cells.Count}");
+                Progress($"Gallery: ground {pads.Count(p => p.Done)}/{pads.Count}, designs {built}/{cells.Count}");
                 yield return new WaitForSeconds(2f);
             }
 

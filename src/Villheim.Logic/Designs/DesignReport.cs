@@ -12,6 +12,9 @@ namespace Villheim.Logic.Designs
     /// Writes a report of every Meadows and Black Forest location that could serve as a design: how many of its
     /// objects Villheim would copy, how many of those are building pieces, and how much of it is static mesh that a
     /// copy would leave out. Saved to BepInEx/Villheim/design-report.txt.
+    ///
+    /// Only on 'vh report'. It used to run on every world load and opening every location stalled the game for about
+    /// 20 seconds after spawning (2026-11-07).
     /// </summary>
     internal static class DesignReport
     {
@@ -19,17 +22,6 @@ namespace Villheim.Logic.Designs
         private static bool _running;
 
         public static string ReportPath => Path.Combine(BepInEx.Paths.BepInExRootPath, "Villheim", "design-report.txt");
-
-        /// <summary>Starts the report once a world is loaded. Skips it if a recent report already exists.</summary>
-        public static void StartIfStale(TimeSpan maxAge)
-        {
-            if (File.Exists(ReportPath) && DateTime.UtcNow - File.GetLastWriteTimeUtc(ReportPath) < maxAge)
-            {
-                return;
-            }
-
-            Start(null);
-        }
 
         public static void Start(Terminal context)
         {

@@ -31,7 +31,6 @@ namespace Villheim.Logic
             _harmony.PatchAll(typeof(VillheimLogic).Assembly);
             LogicConfig.Bind();
             ConfigWatcher.Start();
-            Designs.DesignReport.StartIfStale(System.TimeSpan.FromMinutes(30));
             Village.Gallery.StartAutoList();
         }
 

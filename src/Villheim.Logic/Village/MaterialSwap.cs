@@ -310,6 +310,75 @@ namespace Villheim.Logic.Village
         /// <summary>The stage a piece belongs to for swapping: <see cref="Never"/> when no player can build it.</summary>
         private static int StageOf(string prefab) => Gallery.IsBuildable(prefab) ? Gallery.StageOfPiece(prefab) : Never;
 
+        private static readonly System.Text.RegularExpressions.Regex SizeInName =
+            new System.Text.RegularExpressions.Regex(@"(^|_)\d+x\d+(x\d+)?($|_)");
+
+        /// <summary>
+        /// Combinations of one smaller piece that make up the piece's size, from one stage: two stone_wall_2x1 stacked
+        /// for a 2x2 wall, four 1x1 for it, two 2x2 floors for a 4x2. Only where both names give their size ("2x2"),
+        /// the same kind, 2 to 8 pieces, each side within a few centimetres (the thickness may differ). Each is a group
+        /// stand-in ("group[prefab@x,y,z,qx,qy,qz,qw;...]", relative to the piece's middle and turn), best fit first.
+        /// </summary>
+        public static List<string> Combos(string prefab, int stage, int count)
+        {
+            var found = new List<(string Text, int Pieces, float Error)>();
+            Shape source = Measure(prefab);
+            if (source == null || source.KindKey.Length == 0 || !SizeInName.IsMatch(prefab.ToLowerInvariant()))
+            {
+                return new List<string>();
+            }
+
+            int thin = source.Size.x <= source.Size.y && source.Size.x <= source.Size.z ? 0 : source.Size.y <= source.Size.z ? 1 : 2;
+            CultureInfo inv = CultureInfo.InvariantCulture;
+            string Num(float v) => v.ToString("0.####", inv);
+            foreach (Shape c in Pool().Where(c => c.Stage == stage && c.KindKey == source.KindKey && c.Prefab != prefab &&
+                                                  SizeInName.IsMatch(c.Prefab.ToLowerInvariant())))
+            {
+                foreach (bool turned in new[] { false, true })
+                {
+                    Vector3 size = turned ? Turned(c.Size) : c.Size;
+                    var n = new int[3];
+                    bool fits = true;
+                    float error = 0f;
+                    for (int i = 0; i < 3; i++)
+                    {
+                        if (i == thin)
+                        {
+                            n[i] = 1;
+                            continue;
+                        }
+
+                        n[i] = Mathf.Max(1, Mathf.RoundToInt(source.Size[i] / Mathf.Max(0.01f, size[i])));
+                        float off = Mathf.Abs(n[i] * size[i] - source.Size[i]);
+                        fits &= off <= 0.2f + 0.08f * source.Size[i];
+                        error += off;
+                    }
+
+                    int total = n[0] * n[1] * n[2];
+                    if (!fits || total < 2 || total > 8)
+                    {
+                        continue;
+                    }
+
+                    Quaternion turn = turned ? Quaternion.Euler(0f, 90f, 0f) : Quaternion.identity;
+                    var parts = new List<string>();
+                    for (int i = 0; i < n[0]; i++)
+                    for (int j = 0; j < n[1]; j++)
+                    for (int k = 0; k < n[2]; k++)
+                    {
+                        var tile = new Vector3((i - (n[0] - 1) / 2f) * size.x, (j - (n[1] - 1) / 2f) * size.y, (k - (n[2] - 1) / 2f) * size.z);
+                        Vector3 pivot = tile - turn * c.Center;
+                        parts.Add($"{c.Prefab}@{Num(pivot.x)},{Num(pivot.y)},{Num(pivot.z)},{Num(turn.x)},{Num(turn.y)},{Num(turn.z)},{Num(turn.w)}");
+                    }
+
+                    found.Add(("group[" + string.Join(";", parts) + "]", total, error));
+                    break;
+                }
+            }
+
+            return found.OrderBy(f => f.Error).ThenBy(f => f.Pieces).Take(count).Select(f => f.Text).ToList();
+        }
+
         /// <summary>For 'vh look': what the piece is to the swap, and what it becomes in each stage up to Plains.</summary>
         public static string Describe(string prefab)
         {

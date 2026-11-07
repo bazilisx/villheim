@@ -16,10 +16,12 @@ namespace Villheim.Logic.Village
     /// (middle mouse by default): in front of that design's sign go up the likeliest stand-ins for that kind of piece,
     /// in groups by biome (GallerySwapBiomes: Meadows, Black Forest, Swamp), each group behind a label sign. Aim at one
     /// (or at any piece built by hand) and press the key again: every piece of that kind in that one design changes to
-    /// it, nothing anywhere else. Pick another stand-in to compare; the last one stays. The choice is kept per design
-    /// in BepInEx/Villheim/design-swaps.txt (design|original|replacement|turn) and comes back whenever the design is put
-    /// up again. A piece built by hand brings the hand-built pieces touching it along: two fences side by side become one
-    /// stand-in for a wall twice their width, centred where the wall stood (see Capture). It is
+    /// it, nothing anywhere else. Pick another stand-in to compare; the last one stays. Nothing is kept until the design
+    /// is saved ('vh bp save &lt;number&gt;' or 'vh bp save page'): putting a page up again without saving shows the
+    /// originals (Tyler, 2026-11-07). A piece built by hand brings the hand-built pieces touching it along: two fences
+    /// side by side become one stand-in for a wall twice their width, centred where the wall stood (see Capture). The
+    /// stand-ins also offer combinations where the names give sizes: two stone_wall_2x1 stacked for a 2x2 wall (see
+    /// MaterialSwap.Combos). It is
     /// up again. 'vh swap turn' gives the current choice a quarter turn, 'vh swap undo' puts the original back,
     /// 'vh swap done' takes the stand-ins away, 'vh swap off' ends it. 'vh bp save &lt;number&gt;' writes the design with
     /// its choices as a new blueprint.
@@ -30,6 +32,10 @@ namespace Villheim.Logic.Village
     internal static class SwapTool
     {
         private static readonly int KeyPalette = "villheim_swap_palette".GetStableHashCode();
+
+        /// <summary>On each piece of a combination in the stand-in row: the whole combination, so a click on any of them takes all.</summary>
+        private const string KeyCombo = "villheim_swap_combo";
+        private const int CombosPerBiome = 2;
         private const int PerBiome = 4;
 
         private static bool _on;
@@ -42,8 +48,6 @@ namespace Villheim.Logic.Village
         // design -> original -> (replacement, turn)
         private static readonly Dictionary<string, Dictionary<string, (string Prefab, float Turn)>> Choices =
             new Dictionary<string, Dictionary<string, (string, float)>>();
-
-        private static System.DateTime _choicesRead;
 
         public static string ChoicesPath => Path.Combine(BepInEx.Paths.BepInExRootPath, "Villheim", "design-swaps.txt");
         public static string NotesPath => Path.Combine(BepInEx.Paths.BepInExRootPath, "Villheim", "notes.txt");
@@ -134,7 +138,15 @@ namespace Villheim.Logic.Village
                 return;
             }
 
-            string replacement = Capture(target, out int members, out bool capped);
+            string combo = palette ? zdo.GetString(KeyCombo, "") : "";
+            bool capped = false;
+            int members = 1;
+            string replacement = combo.Length > 0 ? combo : Capture(target, out members, out capped);
+            if (combo.Length > 0)
+            {
+                members = Members(combo).Count;
+            }
+
             int replaced = Replace(_design, _original, replacement, _turn);
             _current = replacement;
             SetChoice(_design, _original, replacement, _turn);
@@ -437,28 +449,30 @@ namespace Villheim.Logic.Village
             toViewer.y = 0f;
             toViewer = toViewer.sqrMagnitude > 0.01f ? toViewer.normalized : Vector3.forward;
             Vector3 right = Vector3.Cross(Vector3.up, -toViewer);
-            var groups = new List<(int Stage, List<string> Pieces)>();
+            var groups = new List<(int Stage, List<string> Pieces, List<string> Combos)>();
             foreach (string word in (LogicConfig.GallerySwapBiomes?.Value ?? "meadows,blackforest,swamp").Split(','))
             {
                 int stage = Gallery.StageIndexOf(word.Trim());
                 if (stage >= 0)
                 {
-                    groups.Add((stage, MaterialSwap.Candidates(original, stage, PerBiome, orEarlier: false)));
+                    groups.Add((stage, MaterialSwap.Candidates(original, stage, PerBiome, orEarlier: false), MaterialSwap.Combos(original, stage, CombosPerBiome)));
                 }
             }
 
             float Span(string name) => Mathf.Max(MaterialSwap.SizeOf(name).x, MaterialSwap.SizeOf(name).z) + 0.8f;
+            Vector3 originalSize = MaterialSwap.SizeOf(original);
+            float comboSpan = Mathf.Max(originalSize.x, originalSize.z) + 0.8f;
             const float LabelWidth = 1.6f;
             const float GroupGap = 2f;
-            float width = groups.Sum(g => LabelWidth + g.Pieces.Sum(Span)) + GroupGap * (groups.Count - 1);
+            float width = groups.Sum(g => LabelWidth + g.Pieces.Sum(Span) + g.Combos.Count * comboSpan) + GroupGap * (groups.Count - 1);
             float x = -width / 2f;
             Vector3 line = sign.transform.position + toViewer * 3f;
             Quaternion facing = Quaternion.LookRotation(-toViewer);
             var shown = new List<string>();
-            foreach ((int stage, List<string> pieces) in groups)
+            foreach ((int stage, List<string> pieces, List<string> combos) in groups)
             {
                 GameObject label = Gallery.OneSign(Ground(line + right * (x + LabelWidth / 2f)), -toViewer, 0f,
-                    $"<#5cf>{Gallery.StageNames[stage]}<br><#bbb>{(pieces.Count == 0 ? "nothing" : "")}");
+                    $"<#5cf>{Gallery.StageNames[stage]}<br><#bbb>{(pieces.Count == 0 && combos.Count == 0 ? "nothing" : "")}");
                 Mark(label);
                 x += LabelWidth;
                 foreach (string name in pieces)
@@ -476,7 +490,24 @@ namespace Villheim.Logic.Village
                     Mark(Object.Instantiate(prefab, lift - facing * MaterialSwap.LocalCenter(name), facing));
                 }
 
-                shown.Add($"{Gallery.StageNames[stage]}: {(pieces.Count > 0 ? string.Join(", ", pieces) : "nothing")}");
+                foreach (string combo in combos)
+                {
+                    Vector3 spot = Ground(line + right * (x + comboSpan / 2f));
+                    x += comboSpan;
+                    foreach ((string name, Vector3 position, Quaternion rotation) in Expand(spot + Vector3.up * (originalSize.y / 2f), facing, combo, 0f))
+                    {
+                        GameObject prefab = ZNetScene.instance.GetPrefab(name);
+                        if (prefab != null)
+                        {
+                            GameObject made = Object.Instantiate(prefab, position, rotation);
+                            Mark(made);
+                            made.GetComponent<ZNetView>()?.GetZDO()?.Set(KeyCombo, combo);
+                        }
+                    }
+                }
+
+                var offered = pieces.Concat(combos.Select(c => Describe(c) + " (combined)")).ToList();
+                shown.Add($"{Gallery.StageNames[stage]}: {(offered.Count > 0 ? string.Join(", ", offered) : "nothing")}");
                 x += GroupGap;
             }
 
@@ -546,44 +577,38 @@ namespace Villheim.Logic.Village
 
         // ---------------------------------------------------------------- the saved choices
 
+        private static bool _retired;
+
+        /// <summary>
+        /// The choices of this session only, for 'vh swap turn' and a second pick of the same piece: they are not kept
+        /// on disk (a design keeps its swaps only by being saved). A design-swaps.txt from the builds that kept every
+        /// choice is moved aside to design-swaps-unused.txt once.
+        /// </summary>
         private static void LoadChoices()
         {
+            if (_retired)
+            {
+                return;
+            }
+
+            _retired = true;
             try
             {
-                System.DateTime written = File.Exists(ChoicesPath) ? File.GetLastWriteTimeUtc(ChoicesPath) : System.DateTime.MinValue;
-                if (written == _choicesRead)
+                if (File.Exists(ChoicesPath))
                 {
-                    return;
-                }
-
-                _choicesRead = written;
-                Choices.Clear();
-                if (!File.Exists(ChoicesPath))
-                {
-                    return;
-                }
-
-                foreach (string line in File.ReadAllLines(ChoicesPath))
-                {
-                    string[] f = line.Split('|');
-                    if (line.StartsWith("#") || f.Length < 3)
+                    string aside = Path.Combine(Path.GetDirectoryName(ChoicesPath), "design-swaps-unused.txt");
+                    if (File.Exists(aside))
                     {
-                        continue;
+                        File.Delete(aside);
                     }
 
-                    float turn = f.Length > 3 && float.TryParse(f[3], NumberStyles.Float, CultureInfo.InvariantCulture, out float t) ? t : 0f;
-                    if (!Choices.TryGetValue(f[0], out var byOriginal))
-                    {
-                        byOriginal = new Dictionary<string, (string, float)>();
-                        Choices[f[0]] = byOriginal;
-                    }
-
-                    byOriginal[f[1]] = (f[2], turn);
+                    File.Move(ChoicesPath, aside);
+                    VillheimPlugin.Log.LogInfo($"Swap: choices are no longer kept unless a design is saved; moved {ChoicesPath} to {aside}.");
                 }
             }
             catch (System.Exception e)
             {
-                VillheimPlugin.Log.LogWarning($"Swap: could not read {ChoicesPath}: {e.Message}");
+                VillheimPlugin.Log.LogWarning($"Swap: could not move {ChoicesPath} aside: {e.Message}");
             }
         }
 
@@ -617,77 +642,6 @@ namespace Villheim.Logic.Village
 
         private static void SaveChoices()
         {
-            var lines = new List<string> { "# Stand-ins chosen by hand with 'vh swap': design|original piece|replacement|quarter turn in degrees." };
-            lines.AddRange(Choices.OrderBy(d => d.Key).SelectMany(d => d.Value.OrderBy(o => o.Key)
-                .Select(o => $"{d.Key}|{o.Key}|{o.Value.Prefab}|{o.Value.Turn.ToString("0", CultureInfo.InvariantCulture)}")));
-            Directory.CreateDirectory(Path.GetDirectoryName(ChoicesPath));
-            File.WriteAllLines(ChoicesPath, lines);
-            _choicesRead = File.GetLastWriteTimeUtc(ChoicesPath);
-        }
-
-        /// <summary>A design's plan with its chosen stand-ins in (the gallery puts designs up with them).</summary>
-        public static List<DesignSpawner.PlanEntry> ApplyChoices(List<DesignSpawner.PlanEntry> plan, string design)
-        {
-            LoadChoices();
-            if (!Choices.TryGetValue(design, out var byOriginal) || byOriginal.Count == 0)
-            {
-                return plan;
-            }
-
-            var output = new List<DesignSpawner.PlanEntry>(plan.Count);
-            foreach (DesignSpawner.PlanEntry entry in plan)
-            {
-                if (!byOriginal.TryGetValue(entry.Prefab, out var choice))
-                {
-                    output.Add(entry);
-                    continue;
-                }
-
-                Vector3 center = entry.LocalPosition + entry.LocalRotation * MaterialSwap.LocalCenter(entry.Prefab);
-                int added = 0;
-                foreach ((string name, Vector3 position, Quaternion rotation) in Expand(center, entry.LocalRotation, choice.Prefab, choice.Turn))
-                {
-                    GameObject prefab = ZNetScene.instance.GetPrefab(name);
-                    DesignSpawner.PlanEntry swapped = prefab != null ? DesignSpawner.Entry(name, position, rotation, prefab.transform.localScale) : null;
-                    if (swapped != null)
-                    {
-                        swapped.SwappedFrom = entry.Prefab;
-                        swapped.OriginalRotation = entry.LocalRotation;
-                        swapped.OriginalCenter = center;
-                        output.Add(swapped);
-                        added++;
-                    }
-                }
-
-                if (added == 0)
-                {
-                    output.Add(entry);
-                }
-            }
-
-            return output;
-        }
-
-        /// <summary>
-        /// The pieces that replace one piece of a design by the choice made for it, in the design's coordinates; null
-        /// when no stand-in was chosen for it.
-        /// </summary>
-        public static List<(string Prefab, Vector3 Position, Quaternion Rotation)> Chosen(string design, string prefab, Vector3 position, Quaternion rotation)
-        {
-            LoadChoices();
-            if (!Choices.TryGetValue(design, out var byOriginal) || !byOriginal.TryGetValue(prefab, out var choice))
-            {
-                return null;
-            }
-
-            return Expand(position + rotation * MaterialSwap.LocalCenter(prefab), rotation, choice.Prefab, choice.Turn);
-        }
-
-        /// <summary>The chosen stand-ins of a design: original to (replacement, turn).</summary>
-        public static Dictionary<string, (string Prefab, float Turn)> ChoicesFor(string design)
-        {
-            LoadChoices();
-            return Choices.TryGetValue(design, out var byOriginal) ? byOriginal : new Dictionary<string, (string, float)>();
         }
 
         // ---------------------------------------------------------------- notes

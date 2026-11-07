@@ -33,6 +33,11 @@ namespace Villheim.Logic.Village
         public static string Run(string[] args)
         {
             string verb = args.Length > 0 ? args[0].ToLowerInvariant() : "";
+            if (verb == "forget" && args.Length >= 2)
+            {
+                return Forget(args[1]);
+            }
+
             if (verb == "save" && args.Length >= 2 && args[1].ToLowerInvariant() == "page")
             {
                 return SavePage(args.Length > 2 && args[2].ToLowerInvariant() == "all");
@@ -65,57 +70,28 @@ namespace Villheim.Logic.Village
             if (save)
             {
                 ZDO standing = FrontSign(design.Name);
-                if (standing != null)
-                {
-                    return "Villheim: " + SaveStanding(design, standing, out _);
-                }
+                return standing != null
+                    ? "Villheim: " + SaveStanding(design, standing, out _)
+                    : $"Villheim: {design.Name} is not standing near you; put its gallery page up and stand near it to save it.";
             }
 
             int changed = 0;
-            string suffix;
-            string description;
-            Change change;
             var result = new MaterialSwap.Result();
-            if (save)
+            int target = Gallery.StageIndexOf(args[2]);
+            string suffix = "_as_" + Gallery.StageWords[target];
+            string description = $"{design.Name} in {Gallery.StageNames[target]} materials (Villheim material swap)";
+            Change change = (prefab, position, rotation) =>
             {
-                Dictionary<string, (string Prefab, float Turn)> choices = SwapTool.ChoicesFor(design.Name);
-                if (choices.Count == 0)
+                if (MaterialSwap.Swappable(prefab) && MaterialSwap.TrySwap(prefab, target, out string other, out Vector3 shift, out Quaternion turn))
                 {
-                    return $"Villheim: no stand-ins chosen for {design.Name} yet ('vh swap' in the gallery).";
+                    result.Swapped++;
+                    changed++;
+                    return new List<(string, Vector3, Quaternion)> { (other, position + rotation * shift, rotation * turn) };
                 }
 
-                suffix = "_edited";
-                description = $"{design.Name} with {choices.Count} stand-ins chosen in the gallery (Villheim)";
-                change = (prefab, position, rotation) =>
-                {
-                    var chosen = SwapTool.Chosen(design.Name, prefab, position, rotation);
-                    if (chosen == null)
-                    {
-                        return new List<(string, Vector3, Quaternion)> { (prefab, position, rotation) };
-                    }
-
-                    changed++;
-                    return chosen;
-                };
-            }
-            else
-            {
-                int target = Gallery.StageIndexOf(args[2]);
-                suffix = "_as_" + Gallery.StageWords[target];
-                description = $"{design.Name} in {Gallery.StageNames[target]} materials (Villheim material swap)";
-                change = (prefab, position, rotation) =>
-                {
-                    if (MaterialSwap.Swappable(prefab) && MaterialSwap.TrySwap(prefab, target, out string other, out Vector3 shift, out Quaternion turn))
-                    {
-                        result.Swapped++;
-                        changed++;
-                        return new List<(string, Vector3, Quaternion)> { (other, position + rotation * shift, rotation * turn) };
-                    }
-
-                    MaterialSwap.Note(prefab, target, result);
-                    return new List<(string, Vector3, Quaternion)> { (prefab, position, rotation) };
-                };
-            }
+                MaterialSwap.Note(prefab, target, result);
+                return new List<(string, Vector3, Quaternion)> { (prefab, position, rotation) };
+            };
 
             string stem = Stem(design.Name) + suffix;
             var lines = new List<string>
@@ -166,11 +142,53 @@ namespace Villheim.Logic.Village
             Directory.CreateDirectory(EditsFolder);
             string file = Path.Combine(EditsFolder, stem + ".blueprint");
             File.WriteAllLines(file, lines);
-            string summary = save ? $"{changed} pieces changed" : result.Summary(Gallery.StageIndexOf(args[2]));
+            string summary = result.Summary(target);
             return $"Villheim: saved {file}: {summary}. 'vh gallery show {stem}' lays it out.";
         }
 
         // ---------------------------------------------------------------- saving what stands in the gallery
+
+        /// <summary>'vh bp forget &lt;number|name|all&gt;': deletes pass 3 saves, so the gallery shows the original again.</summary>
+        private static string Forget(string what)
+        {
+            if (!Directory.Exists(Gallery.PassThreeFolder))
+            {
+                return "Villheim: there are no pass 3 saves.";
+            }
+
+            List<string> files;
+            if (what.ToLowerInvariant() == "all")
+            {
+                files = Directory.GetFiles(Gallery.PassThreeFolder, "p3-*.blueprint").ToList();
+            }
+            else
+            {
+                string name = what;
+                if (int.TryParse(what, out int number))
+                {
+                    files = Directory.GetFiles(Gallery.PassThreeFolder, $"p3-{number:0000}-*.blueprint").ToList();
+                }
+                else
+                {
+                    string file = Gallery.PassThreeFile(name) ?? Gallery.PassThreeFile(Blueprints.Prefix + name);
+                    files = file != null ? new List<string> { file } : new List<string>();
+                }
+            }
+
+            foreach (string file in files)
+            {
+                File.Delete(file);
+            }
+
+            if (File.Exists(ManifestPath))
+            {
+                var stems = new HashSet<string>(files.Select(Path.GetFileNameWithoutExtension));
+                File.WriteAllLines(ManifestPath, File.ReadAllLines(ManifestPath).Where((l, i) => i == 0 || !stems.Any(l.Contains)));
+            }
+
+            return files.Count == 0 ? $"Villheim: no pass 3 save for '{what}'." :
+                $"Villheim: deleted {files.Count} pass 3 save(s); the gallery shows the original from the next time it puts them up.";
+        }
 
         public static string ManifestPath => Path.Combine(BepInEx.Paths.BepInExRootPath, "Villheim", "pass3-saved.csv");
 

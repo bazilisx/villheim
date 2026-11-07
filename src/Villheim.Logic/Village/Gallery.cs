@@ -1579,13 +1579,13 @@ namespace Villheim.Logic.Village
             if (edited != null && edited.Pieces.Count > 0)
             {
                 cell.Edited = true;
-                plan = Swapped(SwapTool.ApplyChoices(Blueprints.Entries(edited), cell.Design.Name), cell);
+                plan = Swapped(Blueprints.Entries(edited), cell);
                 return Spawn(plan, cell, yaw);
             }
 
             if (cell.Design.Blueprint != null)
             {
-                plan = Swapped(SwapTool.ApplyChoices(Blueprints.Entries(cell.Design.Blueprint), cell.Design.Name), cell);
+                plan = Swapped(Blueprints.Entries(cell.Design.Blueprint), cell);
                 return Spawn(plan, cell, yaw);
             }
 
@@ -1599,7 +1599,7 @@ namespace Villheim.Logic.Village
                     return 0;
                 }
 
-                plan = Swapped(SwapTool.ApplyChoices(DesignSpawner.MakePlan(asset, cell.Center, cell.Design.Name.GetStableHashCode(), yaw, false), cell.Design.Name), cell);
+                plan = Swapped(DesignSpawner.MakePlan(asset, cell.Center, cell.Design.Name.GetStableHashCode(), yaw, false), cell);
                 return Spawn(plan, cell, yaw);
             }
             finally

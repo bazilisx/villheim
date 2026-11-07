@@ -2,276 +2,278 @@ namespace Villheim.Logic.Village
 {
     /// <summary>
     /// The designs Tyler kept in the first review pass (2026-11-07): Yes or Yes with edits in the Review tab of the
-    /// design review sheet. Taken from the sheet by hand; 'vh gallery keepers' shows only these.
+    /// design review sheet, taken from the sheet by hand. In gallery order: by piece count, with near-copies of the
+    /// same build (same name, piece counts within 15 %) side by side. 'vh gallery keepers' shows them in this order,
+    /// as does the Pass 2 tab of the sheet. The comment is the design number and its piece count.
     /// </summary>
     internal static class Keepers
     {
         public static readonly string[] Names =
         {
-            "bp:Báz_villagenotice", // 2
-            "bp:house-repaired-ingame-buildings-17", // 9
-            "bp:house-outhouse", // 10
-            "bp:house-watch-tower", // 17
-            "bp:Báz_meadowslonghouse1_1", // 19
-            "bp:house-tiny-hobbit-comfort-amp-repair-hut-cozy-survival-stop", // 21
-            "bp:Báz_meadowshouse1_2", // 23
-            "bp:Báz_meadowshouse1_1", // 24
-            "bp:house-ragnor-day-1-hovel", // 26
-            "bp:hs_meadows_starterhouse", // 29
-            "bp:house-houses-homes-and-tinies-28", // 30
-            "bp:house-repaired-ingame-buildings-12", // 31
-            "bp:house-tiny-amp-simple-house-on-poles", // 33
-            "bp:house-houses-homes-and-tinies-31", // 35
-            "WoodHouse2", // 48
-            "WoodHouse7", // 52
-            "bp:house-the-flint-flat", // 54
-            "bp:hs_ashlands_meathousevanilla_brigames", // 55
-            "bp:house-houses-homes-and-tinies-29", // 59
-            "bp:house-houses-homes-and-tinies-27", // 60
-            "bp:house-repaired-ingame-buildings-13", // 67
-            "bp:house-repaired-ingame-buildings-8", // 75
-            "bp:house-houses-homes-and-tinies-9", // 76
-            "bp:house-ragnar-hus", // 77
-            "bp:house-octogon-structure", // 78
-            "MWL_ForestHouse2", // 79
-            "MWL_MountainsAedicule1", // 80
-            "MWL_WoodHouse1", // 81
-            "bp:house-basic-starter-home", // 82
-            "bp:house-wagon-camp", // 83
-            "bp:house-houses-homes-and-tinies-19", // 86
-            "bp:house-castle-kit-part-1-stone-walls-and-square-towers-20", // 87
-            "bp:hs_blackforest_mister_basestart_simple", // 90
-            "bp:house-houses-homes-and-tinies-17", // 92
-            "bp:hs_blackforest_tester_meadows_log_cabin", // 98
-            "bp:house-houses-homes-and-tinies-21", // 100
-            "bp:house-houses-homes-and-tinies-4", // 103
-            "bp:house-houses-homes-and-tinies-5", // 104
-            "bp:house-viking-s-little-house", // 105
-            "DN_hut01", // 106
-            "bp:house-repaired-ingame-buildings-26", // 107
-            "bp:house-houses-homes-and-tinies-10", // 110
-            "bp:hs_swamp_babe_estacao_de_trabalho", // 111
-            "bp:house-starter-vanilla-build-1", // 114
-            "bp:house-simple-start-base", // 115
-            "bp:house-two-story-roundhouse", // 116
-            "CombatRuin01", // 118
-            "DevHouseStart", // 119
-            "bp:house-houses-homes-and-tinies-22", // 123
-            "bp:house-houses-homes-and-tinies-8", // 125
-            "bp:house-houses-homes-and-tinies-1", // 126
-            "bp:house-just-a-little-almost-ordinary-home-with-vinyl-audio-system", // 127
-            "bp:house-game-start", // 129
-            "bp:house-houses-homes-and-tinies-14", // 131
-            "MWL_MistHut1", // 135
-            "MWL_Treehouse1", // 137
-            "bp:house-houses-homes-and-tinies-25", // 139
-            "bp:house-average-pretty-medium-sized-house-for-an-light-start", // 142
-            "bp:house-community-sign", // 143
-            "bp:house-advanced-midfielder", // 144
-            "bp:house-native-inspired-village", // 147
-            "bp:house-houses-homes-and-tinies-18", // 148
-            "bp:house-houses-homes-and-tinies-12", // 149
-            "bp:house-geletopp-cabin-early-game-ready-3-5-vikings-2", // 151
-            "bp:house-bronze-age-starter-house-1", // 153
-            "bp:house-perfect-great-base-to-start-the-game", // 154
-            "bp:house-bronze-age-starter-house-2", // 156
-            "bp:house-under-the-oak-tree", // 157
-            "bp:house-houses-homes-and-tinies-23", // 162
-            "bp:house-early-game-a-frame", // 164
-            "bp:house-4-part-rebuild-set-duo-black-forest-home", // 167
-            "bp:house-houses-homes-and-tinies-16", // 168
-            "bp:house-hooded-roundhouse", // 169
-            "bp:house-the-honey-home", // 170
-            "bp:house-starter-house-pre-bronze-age", // 171
-            "MWL_MeadowsTrainer1", // 173
-            "bp:house-geletopp-cabin-early-game-ready-3-5-vikings-1", // 181
-            "bp:house-the-awesome-box", // 182
-            "bp:house-larger-a-frame-starter-base", // 184
-            "bp:house-the-storm-cellar-cabin", // 185
-            "bp:house-the-lone-white-wolf-is-the-residence-at-the-start", // 186
-            "bp:house-the-raspberry-cabin", // 191
-            "bp:house-the-stakewall-shack", // 201
-            "bp:house-octagon-starter-base", // 207
-            "bp:house-a-compact-ergonomic-base-for-3-4-players", // 209
-            "bp:house-the-canary-house-minor-decor-room-for-8", // 210
-            "bp:house-simple-corewood-lighthouse", // 211
-            "bp:house-simple-barracks", // 212
-            "bp:house-epic-lake-house", // 213
-            "bp:house-standing-stone-sanctuary", // 214
-            "bp:hub-starter-longhouse-in-preparation-for-mistlands", // 222
-            "bp:hub-black-briar-meadary", // 223
-            "bp:hub-early-game-kitchen-and-apiary", // 224
-            "bp:hub-meadows-townhall-nakd-n-afraid-season-2", // 228
-            "bp:hub-long-house-inn-2", // 231
-            "bp:hub-my-first-longhouse-2", // 235
-            "bp:hub-several-longhouses-4", // 236
-            "bp:hub-inn-with-tunnelvision", // 239
-            "bp:hub-to-be-decorated-longhouse", // 243
-            "bp:hs_meadows_arkitek_repair_shack", // 246
-            "bp:hs_meadows_hobbit_repairhut", // 247
-            "MWL_ForestForge1", // 249
-            "MWL_ForestTower5", // 250
-            "MWL_SwampTower1", // 251
-            "MWL_SwampTower2", // 252
-            "MWL_ForestForge2", // 253
-            "MWL_BlackForestBlacksmith1", // 254
-            "MWL_BlackForestBlacksmith2", // 255
-            "MWL_MountainsBlacksmith1", // 256
-            "MWL_PlainsCamp1", // 257
-            "MWL_MeadowsSawmill1", // 258
-            "bp:storage-storage-solutions-more-testing-required-9", // 264
-            "bp:storage-iron-chest-storage-system", // 265
-            "bp:storage-vanilla-meathouse", // 266
-            "bp:hs_plains_abzul_storage", // 267
-            "bp:storage-village-food-storage", // 272
-            "bp:storage-modded-granary-storehouse", // 273
-            "bp:storage-nele-s-starter-home-plentiful-storage-up-to-5-vikings", // 277
-            "bp:storage-simple-shed-roof-cottage", // 278
-            "bp:farm-water-wheel-1", // 279
-            "bp:farm-the-hive-1-0-let-the-honey-flow", // 280
-            "MWL_MeadowsBarn1", // 281
-            "WoodHouse8", // 283
-            "bp:farm-workstation-esta-o-de-trabalho", // 285
-            "MWL_WoodFarm1", // 286
-            "bp:farm-house-with-barn-animal-shelter", // 287
-            "bp:farm-quaint-little-farm", // 289
-            "bp:house-repaired-ingame-buildings-14", // 291
-            "bp:house-repaired-ingame-buildings-15", // 292
-            "bp:house-houses-homes-and-tinies-30", // 293
-            "SwampHut3", // 297
-            "SwampHut3_1", // 298
-            "SwampHut4", // 299
-            "bp:house-watch-tower-outpost", // 300
-            "bp:house-repaired-ingame-buildings-16", // 302
-            "bp:house-repaired-ingame-buildings-19", // 303
-            "AbandonedLogCabin03", // 304
-            "AbandonedLogCabin04", // 305
-            "WoodHouse3", // 307
-            "bp:house-houses-homes-and-tinies-13", // 310
-            "bp:house-thatch-cottage", // 312
-            "bp:house-houses-homes-and-tinies-11", // 313
-            "bp:house-black-forest-base", // 314
-            "bp:house-swampguard-at-iduna-s-nebula-lagoon", // 316
-            "DevCombatRange", // 318
-            "bp:house-cooking-hut", // 320
-            "bp:house-viking-house-is-my-work-from-2-years-ago-650-inst", // 321
-            "bp:house-small-shipyard-download-sturmclave-remastered-shipyard", // 324
-            "MWL_MountainsHogan1", // 327
-            "MWL_PlainsTrainer1", // 328
-            "MWL_SwampStakeFort1", // 329
-            "MWL_SwampTrainer1", // 330
-            "bp:house-boathouse-1924", // 332
-            "bp:house-quirky-log-cabin", // 336
-            "bp:house-starter-boat-house", // 338
-            "bp:house-shipyard", // 339
-            "bp:house-ocean-side-a-frame", // 340
-            "bp:house-black-forest-outpost-18-terrain-markers-for-rivlet-early-gam", // 341
-            "MWL_ForestGreatHouse2", // 343
-            "bp:hub-feasting-hall-at-kyrr-server-eldridheim", // 345
-            "bp:hub-port-tavern", // 346
-            "bp:hub-cosy-home", // 347
-            "bp:hub-fantasy-viking-house", // 348
-            "bp:hub-pre-mistlands-level-longhouse", // 349
-            "bp:hub-wolf-run-lodge", // 351
-            "bp:hub-the-split-tusk-inn", // 352
-            "DevCombatRing", // 359
-            "bp:house-simple-lighthouse", // 417
-            "bp:house-lighthouse-1093", // 418
-            "bp:house-lighthouse-3163", // 433
-            "bp:house-lighthouse-iron-age", // 446
-            "bp:house-houses-homes-and-tinies-2", // 447
-            "bp:house-small-mausoleum-build", // 451
-            "bp:house-wizard-tower-1806", // 458
-            "bp:house-detailed-mountain-tower", // 460
-            "bp:house-the-wisdom-tower", // 471
-            "bp:house-winter-cabin-1761", // 472
-            "bp:house-1597", // 473
-            "bp:house-tiny-wizard-tower", // 474
-            "bp:house-2-1607", // 475
-            "bp:house-cooking-house-2", // 476
-            "DevKitchen", // 484
-            "MWL_AbandonedHouse1", // 485
-            "MWL_Belmont1", // 486
-            "MWL_RuinsChurch2", // 493
-            "MWL_SwampCastle2", // 495
-            "MWL_SwampWell1", // 499
-            "bp:house-very-simple-dock", // 504
-            "bp:house-bakery-and-loft", // 509
-            "bp:house-forest-cottage", // 512
-            "bp:house-blackmisth-house", // 516
-            "bp:house-house-with-steep-roof", // 518
-            "MWL_MountainsPagota1", // 525
-            "MWL_Port1", // 526
-            "MWL_Port4", // 528
-            "MWL_RuinsCastle3", // 532
-            "MWL_StoneFort1", // 534
-            "bp:house-tower-complex-modded-and-vanilla-2", // 537
-            "bp:house-house-3245", // 538
-            "bp:house-troll-hunter-s-lodge", // 540
-            "bp:house-viking-dock-house", // 545
-            "bp:house-ute-cozy-house", // 549
-            "bp:house-mansion-vanilla", // 564
-            "bp:house-realm-of-rhovanion-hymir", // 573
-            "bp:house-realm-of-rhovanion-straunvaig", // 577
-            "bp:house-rawcliffe", // 580
-            "bp:house-the-misery", // 587
-            "bp:hub-small-kitchen-work-table-pequena-cozinha-mesa-de-trabalho", // 595
-            "MWL_MeadowsTavern1", // 598
-            "bp:hub-dawn-hill-retreat", // 599
-            "bp:hub-astrid-s-childhho-home", // 600
-            "bp:hub-forest-lodge", // 601
-            "bp:hub-great-hall-1835", // 602
-            "bp:hub-viking-style-longhouse", // 603
-            "bp:hub-the-chared-dawn-hill-retreat", // 606
-            "bp:hub-town-hall-from-wow", // 609
-            "MWL_PlainsTavern1", // 611
-            "bp:hub-northern-longhouse-for-10-vikings-6000inst", // 615
-            "bp:workshop-artisan-workshop", // 644
-            "bp:workshop-might-forge", // 646
-            "bp:workshop-round-workshop", // 647
-            "bp:workshop-regal-smithy", // 656
-            "MWL_CoastTower1", // 658
-            "bp:workshop-elven-workshop", // 659
-            "bp:workshop-simple-forge-workshop-open-concept-free-download", // 661
-            "bp:workshop-village-black-forge-amp-eitr-refinery", // 663
-            "MWL_MountainsTower1", // 664
-            "bp:workshop-the-northern-forge", // 667
-            "bp:storage-oficina-da-floresta-negra", // 673
-            "bp:farm-open-longboat-dock-1547", // 685
-            "MWL_MeadowsFarm1", // 686
-            "bp:farm-coop-d-up-farmhouse-and-bee-nery", // 688
-            "bp:house-armory-build", // 691
-            "bp:house-greenhouse", // 692
-            "bp:house-small-viking-house-for-4-10-players", // 696
-            "bp:house-straw-house", // 697
-            "bp:house-realm-of-rhovanion-3497-1", // 712
-            "bp:house-houses-homes-and-tinies-6", // 713
-            "bp:house-house-gray-mane-skyrim", // 728
-            "MWL_MistTrainer1", // 730
-            "bp:hub-a-medieval-fantasy-tavern-8500inst", // 753
-            "bp:hub-a-small-viking-longhouse-starter-for-4-players-1440-inst", // 754
-            "bp:hub-seaside-tavern-port", // 755
-            "bp:hub-fishtrap-bistro-so-very-long-ago", // 759
-            "bp:hub-outer-banks-taverne-amp-fishing-hole", // 763
-            "bp:farm-thortress-garden-plot", // 773
-            "bp:farm-thortress-boar-pen", // 774
-            "Mistlands_Excavation3", // 800
-            "bp:house-the-serpent-s-tail", // 816
-            "bp:farm-greydwarf-farm-wolf-breeder-together-at-last", // 843
-            "bp:hs_ashlands_bullseyestall", // 845
-            "bp:hs_ashlands_sweettoothstall", // 846
-            "bp:hs_ashlands_bakedgoodsstall", // 850
-            "bp:hs_ashlands_henhousevanilla_brigames", // 851
-            "bp:house-the-weavers-wardrobe", // 862
-            "bp:house-portalhub-dome", // 867
-            "bp:house-realm-of-rhovanion-autumnwatch-3296-1", // 877
-            "bp:house-stave-church-home", // 879
-            "bp:house-realm-of-rhovanion-autumnwatch-3296-2", // 888
-            "MWL_AshlandsFort1", // 889
-            "bp:house-medieval-bay", // 904
-            "bp:house-realm-of-rhovanion-autumnwatch-3296-3", // 907
-            "bp:hub-incredible-tavern-valheim-build", // 931
-            "bp:hub-realm-of-rhovanion-dunvegan", // 941
+            "Mistlands_Excavation3", // 800, 10 pieces
+            "WoodHouse8", // 283, 32 pieces
+            "WoodHouse3", // 307, 33 pieces
+            "bp:Báz_villagenotice", // 2, 34 pieces
+            "bp:house-repaired-ingame-buildings-17", // 9, 34 pieces
+            "MWL_MeadowsBarn1", // 281, 38 pieces
+            "MWL_SwampWell1", // 499, 39 pieces
+            "bp:Báz_meadowshouse1_2", // 23, 48 pieces
+            "WoodHouse7", // 52, 48 pieces
+            "WoodHouse2", // 48, 60 pieces
+            "bp:hs_meadows_arkitek_repair_shack", // 246, 50 pieces
+            "MWL_SwampStakeFort1", // 329, 51 pieces
+            "bp:storage-storage-solutions-more-testing-required-9", // 264, 52 pieces
+            "AbandonedLogCabin04", // 305, 55 pieces
+            "bp:house-repaired-ingame-buildings-14", // 291, 56 pieces
+            "bp:house-repaired-ingame-buildings-19", // 303, 58 pieces
+            "bp:house-repaired-ingame-buildings-12", // 31, 59 pieces
+            "bp:Báz_meadowslonghouse1_1", // 19, 59 pieces
+            "bp:Báz_meadowshouse1_1", // 24, 61 pieces
+            "bp:hs_ashlands_henhousevanilla_brigames", // 851, 62 pieces
+            "bp:hs_meadows_hobbit_repairhut", // 247, 62 pieces
+            "MWL_PlainsCamp1", // 257, 62 pieces
+            "bp:house-tiny-hobbit-comfort-amp-repair-hut-cozy-survival-stop", // 21, 62 pieces
+            "SwampHut4", // 299, 65 pieces
+            "SwampHut3", // 297, 79 pieces
+            "bp:house-outhouse", // 10, 73 pieces
+            "DN_hut01", // 106, 79 pieces
+            "bp:house-repaired-ingame-buildings-13", // 67, 79 pieces
+            "bp:house-repaired-ingame-buildings-15", // 292, 83 pieces
+            "SwampHut3_1", // 298, 79 pieces
+            "AbandonedLogCabin03", // 304, 81 pieces
+            "bp:house-ragnor-day-1-hovel", // 26, 90 pieces
+            "bp:farm-water-wheel-1", // 279, 105 pieces
+            "MWL_WoodHouse1", // 81, 112 pieces
+            "MWL_ForestHouse2", // 79, 114 pieces
+            "bp:hs_ashlands_bullseyestall", // 845, 115 pieces
+            "bp:storage-iron-chest-storage-system", // 265, 116 pieces
+            "bp:house-wagon-camp", // 83, 116 pieces
+            "bp:house-castle-kit-part-1-stone-walls-and-square-towers-20", // 87, 123 pieces
+            "bp:farm-the-hive-1-0-let-the-honey-flow", // 280, 126 pieces
+            "MWL_WoodFarm1", // 286, 129 pieces
+            "bp:house-repaired-ingame-buildings-8", // 75, 142 pieces
+            "MWL_SwampTower1", // 251, 147 pieces
+            "MWL_ForestGreatHouse2", // 343, 148 pieces
+            "bp:house-watch-tower", // 17, 158 pieces
+            "bp:hs_ashlands_bakedgoodsstall", // 850, 159 pieces
+            "MWL_BlackForestBlacksmith1", // 254, 159 pieces
+            "bp:farm-thortress-garden-plot", // 773, 165 pieces
+            "MWL_AshlandsFort1", // 889, 166 pieces
+            "bp:house-houses-homes-and-tinies-29", // 59, 167 pieces
+            "bp:house-houses-homes-and-tinies-31", // 35, 168 pieces
+            "bp:house-houses-homes-and-tinies-30", // 293, 170 pieces
+            "bp:house-houses-homes-and-tinies-13", // 310, 181 pieces
+            "bp:house-repaired-ingame-buildings-16", // 302, 173 pieces
+            "bp:house-the-flint-flat", // 54, 176 pieces
+            "MWL_ForestForge2", // 253, 186 pieces
+            "bp:house-ragnar-hus", // 77, 189 pieces
+            "CombatRuin01", // 118, 192 pieces
+            "DevCombatRange", // 318, 192 pieces
+            "bp:house-houses-homes-and-tinies-19", // 86, 200 pieces
+            "bp:house-houses-homes-and-tinies-14", // 131, 205 pieces
+            "bp:house-houses-homes-and-tinies-21", // 100, 223 pieces
+            "bp:house-houses-homes-and-tinies-27", // 60, 225 pieces
+            "bp:house-houses-homes-and-tinies-9", // 76, 228 pieces
+            "bp:house-houses-homes-and-tinies-28", // 30, 232 pieces
+            "bp:house-basic-starter-home", // 82, 204 pieces
+            "MWL_SwampTower2", // 252, 204 pieces
+            "bp:hs_blackforest_tester_meadows_log_cabin", // 98, 207 pieces
+            "MWL_Treehouse1", // 137, 216 pieces
+            "bp:hs_meadows_starterhouse", // 29, 221 pieces
+            "bp:house-tiny-amp-simple-house-on-poles", // 33, 221 pieces
+            "bp:storage-modded-granary-storehouse", // 273, 222 pieces
+            "bp:house-small-shipyard-download-sturmclave-remastered-shipyard", // 324, 230 pieces
+            "bp:hs_ashlands_sweettoothstall", // 846, 232 pieces
+            "bp:house-octogon-structure", // 78, 244 pieces
+            "bp:house-houses-homes-and-tinies-22", // 123, 251 pieces
+            "bp:house-houses-homes-and-tinies-5", // 104, 259 pieces
+            "bp:house-houses-homes-and-tinies-6", // 713, 277 pieces
+            "bp:house-houses-homes-and-tinies-11", // 313, 288 pieces
+            "bp:house-watch-tower-outpost", // 300, 262 pieces
+            "DevCombatRing", // 359, 263 pieces
+            "bp:hs_ashlands_meathousevanilla_brigames", // 55, 265 pieces
+            "bp:storage-vanilla-meathouse", // 266, 265 pieces
+            "bp:house-repaired-ingame-buildings-26", // 107, 266 pieces
+            "MWL_MeadowsFarm1", // 686, 268 pieces
+            "bp:hs_blackforest_mister_basestart_simple", // 90, 270 pieces
+            "bp:house-simple-start-base", // 115, 270 pieces
+            "MWL_StoneFort1", // 534, 292 pieces
+            "bp:hs_plains_abzul_storage", // 267, 294 pieces
+            "MWL_RuinsChurch2", // 493, 295 pieces
+            "bp:house-houses-homes-and-tinies-25", // 139, 307 pieces
+            "bp:house-houses-homes-and-tinies-8", // 125, 358 pieces
+            "DevHouseStart", // 119, 309 pieces
+            "bp:hub-small-kitchen-work-table-pequena-cozinha-mesa-de-trabalho", // 595, 312 pieces
+            "MWL_ForestForge1", // 249, 343 pieces
+            "bp:house-simple-lighthouse", // 417, 350 pieces
+            "MWL_SwampCastle2", // 495, 350 pieces
+            "bp:house-houses-homes-and-tinies-17", // 92, 363 pieces
+            "bp:house-houses-homes-and-tinies-4", // 103, 370 pieces
+            "bp:house-houses-homes-and-tinies-2", // 447, 375 pieces
+            "bp:house-houses-homes-and-tinies-1", // 126, 398 pieces
+            "bp:house-realm-of-rhovanion-3497-1", // 712, 363 pieces
+            "bp:house-small-mausoleum-build", // 451, 376 pieces
+            "bp:house-starter-vanilla-build-1", // 114, 383 pieces
+            "bp:hs_swamp_babe_estacao_de_trabalho", // 111, 384 pieces
+            "bp:farm-workstation-esta-o-de-trabalho", // 285, 384 pieces
+            "MWL_CoastTower1", // 658, 395 pieces
+            "bp:house-community-sign", // 143, 396 pieces
+            "bp:house-very-simple-dock", // 504, 424 pieces
+            "bp:house-early-game-a-frame", // 164, 426 pieces
+            "MWL_ForestTower5", // 250, 428 pieces
+            "MWL_MistHut1", // 135, 448 pieces
+            "bp:farm-house-with-barn-animal-shelter", // 287, 451 pieces
+            "bp:house-cooking-house-2", // 476, 452 pieces
+            "bp:house-game-start", // 129, 466 pieces
+            "MWL_MeadowsSawmill1", // 258, 482 pieces
+            "bp:workshop-simple-forge-workshop-open-concept-free-download", // 661, 486 pieces
+            "bp:workshop-artisan-workshop", // 644, 493 pieces
+            "MWL_MountainsBlacksmith1", // 256, 500 pieces
+            "bp:house-cooking-hut", // 320, 505 pieces
+            "bp:house-just-a-little-almost-ordinary-home-with-vinyl-audio-system", // 127, 506 pieces
+            "bp:house-swampguard-at-iduna-s-nebula-lagoon", // 316, 507 pieces
+            "bp:house-shipyard", // 339, 510 pieces
+            "bp:farm-thortress-boar-pen", // 774, 515 pieces
+            "bp:house-houses-homes-and-tinies-10", // 110, 519 pieces
+            "bp:house-houses-homes-and-tinies-16", // 168, 543 pieces
+            "MWL_BlackForestBlacksmith2", // 255, 543 pieces
+            "bp:storage-oficina-da-floresta-negra", // 673, 543 pieces
+            "bp:house-black-forest-base", // 314, 544 pieces
+            "bp:hub-starter-longhouse-in-preparation-for-mistlands", // 222, 553 pieces
+            "MWL_Port1", // 526, 558 pieces
+            "bp:workshop-regal-smithy", // 656, 567 pieces
+            "bp:house-bronze-age-starter-house-1", // 153, 573 pieces
+            "bp:house-bronze-age-starter-house-2", // 156, 633 pieces
+            "MWL_MeadowsTrainer1", // 173, 583 pieces
+            "bp:hub-to-be-decorated-longhouse", // 243, 584 pieces
+            "bp:house-4-part-rebuild-set-duo-black-forest-home", // 167, 586 pieces
+            "MWL_Belmont1", // 486, 598 pieces
+            "bp:house-the-honey-home", // 170, 600 pieces
+            "bp:house-houses-homes-and-tinies-12", // 149, 610 pieces
+            "bp:house-houses-homes-and-tinies-18", // 148, 659 pieces
+            "bp:hub-cosy-home", // 347, 629 pieces
+            "bp:house-viking-house-is-my-work-from-2-years-ago-650-inst", // 321, 646 pieces
+            "bp:house-realm-of-rhovanion-autumnwatch-3296-1", // 877, 680 pieces
+            "bp:house-larger-a-frame-starter-base", // 184, 696 pieces
+            "bp:house-starter-house-pre-bronze-age", // 171, 715 pieces
+            "DevKitchen", // 484, 717 pieces
+            "bp:house-houses-homes-and-tinies-23", // 162, 752 pieces
+            "bp:house-advanced-midfielder", // 144, 760 pieces
+            "bp:workshop-round-workshop", // 647, 762 pieces
+            "bp:house-forest-cottage", // 512, 796 pieces
+            "MWL_RuinsCastle3", // 532, 803 pieces
+            "bp:workshop-might-forge", // 646, 807 pieces
+            "MWL_MeadowsTavern1", // 598, 810 pieces
+            "MWL_MountainsPagota1", // 525, 861 pieces
+            "bp:farm-quaint-little-farm", // 289, 877 pieces
+            "bp:hub-early-game-kitchen-and-apiary", // 224, 888 pieces
+            "bp:farm-open-longboat-dock-1547", // 685, 900 pieces
+            "bp:house-portalhub-dome", // 867, 909 pieces
+            "bp:hub-feasting-hall-at-kyrr-server-eldridheim", // 345, 911 pieces
+            "bp:house-the-stakewall-shack", // 201, 924 pieces
+            "MWL_SwampTrainer1", // 330, 939 pieces
+            "bp:storage-village-food-storage", // 272, 941 pieces
+            "bp:hub-my-first-longhouse-2", // 235, 960 pieces
+            "bp:house-average-pretty-medium-sized-house-for-an-light-start", // 142, 961 pieces
+            "MWL_MountainsTower1", // 664, 964 pieces
+            "bp:house-octagon-starter-base", // 207, 972 pieces
+            "bp:house-under-the-oak-tree", // 157, 980 pieces
+            "MWL_PlainsTrainer1", // 328, 1001 pieces
+            "bp:hub-port-tavern", // 346, 1002 pieces
+            "bp:house-realm-of-rhovanion-autumnwatch-3296-2", // 888, 1016 pieces
+            "bp:house-two-story-roundhouse", // 116, 1018 pieces
+            "bp:house-the-storm-cellar-cabin", // 185, 1021 pieces
+            "bp:house-blackmisth-house", // 516, 1023 pieces
+            "bp:house-perfect-great-base-to-start-the-game", // 154, 1057 pieces
+            "bp:hub-meadows-townhall-nakd-n-afraid-season-2", // 228, 1058 pieces
+            "MWL_MountainsHogan1", // 327, 1074 pieces
+            "MWL_MountainsAedicule1", // 80, 1090 pieces
+            "bp:workshop-the-northern-forge", // 667, 1097 pieces
+            "bp:house-quirky-log-cabin", // 336, 1106 pieces
+            "bp:house-stave-church-home", // 879, 1117 pieces
+            "bp:hub-town-hall-from-wow", // 609, 1121 pieces
+            "bp:house-the-awesome-box", // 182, 1122 pieces
+            "bp:house-the-lone-white-wolf-is-the-residence-at-the-start", // 186, 1123 pieces
+            "bp:house-viking-s-little-house", // 105, 1144 pieces
+            "bp:house-lighthouse-1093", // 418, 1255 pieces
+            "bp:house-lighthouse-3163", // 433, 1267 pieces
+            "bp:house-the-raspberry-cabin", // 191, 1257 pieces
+            "MWL_Port4", // 528, 1271 pieces
+            "MWL_AbandonedHouse1", // 485, 1285 pieces
+            "bp:house-greenhouse", // 692, 1355 pieces
+            "bp:hub-a-small-viking-longhouse-starter-for-4-players-1440-inst", // 754, 1399 pieces
+            "bp:house-tiny-wizard-tower", // 474, 1413 pieces
+            "bp:house-black-forest-outpost-18-terrain-markers-for-rivlet-early-gam", // 341, 1429 pieces
+            "bp:house-2-1607", // 475, 1437 pieces
+            "bp:house-1597", // 473, 1448 pieces
+            "bp:house-viking-dock-house", // 545, 1455 pieces
+            "bp:house-boathouse-1924", // 332, 1461 pieces
+            "bp:hub-long-house-inn-2", // 231, 1467 pieces
+            "bp:house-a-compact-ergonomic-base-for-3-4-players", // 209, 1474 pieces
+            "bp:house-geletopp-cabin-early-game-ready-3-5-vikings-2", // 151, 1474 pieces
+            "bp:storage-simple-shed-roof-cottage", // 278, 1488 pieces
+            "bp:hub-inn-with-tunnelvision", // 239, 1516 pieces
+            "bp:hub-black-briar-meadary", // 223, 1543 pieces
+            "bp:farm-greydwarf-farm-wolf-breeder-together-at-last", // 843, 1557 pieces
+            "bp:house-bakery-and-loft", // 509, 1566 pieces
+            "bp:house-hooded-roundhouse", // 169, 1586 pieces
+            "bp:house-simple-barracks", // 212, 1609 pieces
+            "bp:house-ute-cozy-house", // 549, 1616 pieces
+            "bp:house-lighthouse-iron-age", // 446, 1628 pieces
+            "bp:hub-viking-style-longhouse", // 603, 1713 pieces
+            "bp:house-ocean-side-a-frame", // 340, 1739 pieces
+            "bp:hub-several-longhouses-4", // 236, 1754 pieces
+            "bp:workshop-elven-workshop", // 659, 1779 pieces
+            "bp:house-winter-cabin-1761", // 472, 1781 pieces
+            "bp:house-epic-lake-house", // 213, 1875 pieces
+            "bp:house-armory-build", // 691, 1895 pieces
+            "bp:house-geletopp-cabin-early-game-ready-3-5-vikings-1", // 181, 1900 pieces
+            "bp:house-the-serpent-s-tail", // 816, 1910 pieces
+            "bp:house-standing-stone-sanctuary", // 214, 1919 pieces
+            "bp:house-wizard-tower-1806", // 458, 1945 pieces
+            "bp:house-the-weavers-wardrobe", // 862, 1974 pieces
+            "bp:house-starter-boat-house", // 338, 2036 pieces
+            "bp:storage-nele-s-starter-home-plentiful-storage-up-to-5-vikings", // 277, 2044 pieces
+            "bp:workshop-village-black-forge-amp-eitr-refinery", // 663, 2045 pieces
+            "bp:hub-dawn-hill-retreat", // 599, 2052 pieces
+            "bp:hub-astrid-s-childhho-home", // 600, 2102 pieces
+            "bp:farm-coop-d-up-farmhouse-and-bee-nery", // 688, 2143 pieces
+            "bp:house-tower-complex-modded-and-vanilla-2", // 537, 2152 pieces
+            "bp:house-house-gray-mane-skyrim", // 728, 2216 pieces
+            "bp:house-native-inspired-village", // 147, 2305 pieces
+            "bp:house-house-with-steep-roof", // 518, 2315 pieces
+            "bp:hub-seaside-tavern-port", // 755, 2353 pieces
+            "bp:hub-the-split-tusk-inn", // 352, 2374 pieces
+            "bp:house-simple-corewood-lighthouse", // 211, 2386 pieces
+            "bp:hub-realm-of-rhovanion-dunvegan", // 941, 2410 pieces
+            "bp:hub-fantasy-viking-house", // 348, 2433 pieces
+            "bp:house-the-wisdom-tower", // 471, 2565 pieces
+            "bp:house-troll-hunter-s-lodge", // 540, 2589 pieces
+            "bp:hub-pre-mistlands-level-longhouse", // 349, 2651 pieces
+            "bp:house-realm-of-rhovanion-hymir", // 573, 2670 pieces
+            "bp:hub-the-chared-dawn-hill-retreat", // 606, 2716 pieces
+            "bp:house-small-viking-house-for-4-10-players", // 696, 2798 pieces
+            "bp:house-detailed-mountain-tower", // 460, 2812 pieces
+            "bp:house-house-3245", // 538, 2966 pieces
+            "bp:house-thatch-cottage", // 312, 2985 pieces
+            "bp:hub-outer-banks-taverne-amp-fishing-hole", // 763, 3057 pieces
+            "MWL_PlainsTavern1", // 611, 3058 pieces
+            "bp:house-realm-of-rhovanion-straunvaig", // 577, 3664 pieces
+            "bp:hub-fishtrap-bistro-so-very-long-ago", // 759, 3668 pieces
+            "MWL_MistTrainer1", // 730, 3689 pieces
+            "bp:house-the-canary-house-minor-decor-room-for-8", // 210, 3764 pieces
+            "bp:house-realm-of-rhovanion-autumnwatch-3296-3", // 907, 3904 pieces
+            "bp:hub-great-hall-1835", // 602, 4182 pieces
+            "bp:house-medieval-bay", // 904, 4213 pieces
+            "bp:hub-incredible-tavern-valheim-build", // 931, 4389 pieces
+            "bp:hub-wolf-run-lodge", // 351, 4926 pieces
+            "bp:hub-forest-lodge", // 601, 5348 pieces
+            "bp:house-the-misery", // 587, 5393 pieces
+            "bp:hub-northern-longhouse-for-10-vikings-6000inst", // 615, 5875 pieces
+            "bp:house-mansion-vanilla", // 564, 6556 pieces
+            "bp:hub-a-medieval-fantasy-tavern-8500inst", // 753, 8344 pieces
+            "bp:house-straw-house", // 697, 12279 pieces
+            "bp:house-rawcliffe", // 580, 13311 pieces
         };
     }
 }

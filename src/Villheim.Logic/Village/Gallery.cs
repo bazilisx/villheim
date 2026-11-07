@@ -39,6 +39,9 @@ namespace Villheim.Logic.Village
 
             /// <summary>What the material swap did, for the sign.</summary>
             public string SwapNote;
+
+            /// <summary>Laid out in one flow, in list order, rows as wide as the flat area (keepers pages).</summary>
+            public bool Flow;
             public Role Role;
             public Vector3 Center;
             public float Half;
@@ -88,8 +91,8 @@ namespace Villheim.Logic.Village
 
         public const string Usage =
             "vh gallery [page N]: ten designs a page, in the order of BepInEx/Villheim/design-list.csv ('vh report' writes it). " +
-            "'vh gallery keepers [as <stage>] [page N]' shows only the designs kept in the review, kind by kind, optionally " +
-            "in another stage's materials (e.g. 'vh gallery keepers as meadows page 3'). " +
+            "'vh gallery keepers [as <stage>] [size N] [page N]' shows only the designs kept in the review, 50 a page by " +
+            "piece count, optionally in another stage's materials (e.g. 'vh gallery keepers as meadows page 3'). " +
             "'vh gallery <meadows|blackforest|swamp|mountain|plains|mistlands|ashlands> [all|house|hall|prof|storage|farm] [page N]' " +
             "shows one stage or kind, e.g. 'vh gallery meadows house page 2'. " +
             "'vh gallery next' / 'prev' / 'again' clears the page shown and shows the next, the one before, or the same again. " +
@@ -401,12 +404,14 @@ namespace Villheim.Logic.Village
             int page = 1;
             bool keepers = false;
             int asStage = -1;
+            int size = 0;
             for (int a = 0; a < rest.Length; a++)
             {
                 string word = rest[a].ToLowerInvariant();
                 if (word == "rescan" || word == "all") continue;
                 if (word.StartsWith("keep")) keepers = true;
                 else if (word == "as" && a + 1 < rest.Length && StageIndex(rest[a + 1]) >= 0) { asStage = StageIndex(rest[a + 1]); a++; }
+                else if (word == "size" && a + 1 < rest.Length && int.TryParse(rest[a + 1], out int z)) { size = Mathf.Clamp(z, 1, 150); a++; }
                 else if (word == "page" && a + 1 < rest.Length && int.TryParse(rest[a + 1], out int n)) { page = Mathf.Max(1, n); a++; }
                 else if (int.TryParse(word, out int m)) page = Mathf.Max(1, m);
                 else if (StageIndex(word) >= 0) stage = StageIndex(word);
@@ -421,8 +426,9 @@ namespace Villheim.Logic.Village
             var saved = new List<string> { stage < 0 ? "all" : StageWords[stage], group };
             if (keepers) saved.Add("keepers");
             if (asStage >= 0) saved.AddRange(new[] { "as", StageWords[asStage] });
+            if (size > 0) saved.AddRange(new[] { "size", size.ToString() });
             SaveLast(saved, page);
-            VillheimPlugin.Instance.StartCoroutine(Run(player.transform.position, forward, stage, group, page, rescan, keepers, asStage));
+            VillheimPlugin.Instance.StartCoroutine(Run(player.transform.position, forward, stage, group, page, rescan, keepers, asStage, size));
             string what = Describe(stage, group, keepers, asStage);
             return $"Villheim: gathering designs ({what}, page {page}).";
         }
@@ -758,7 +764,7 @@ namespace Villheim.Logic.Village
             (stage >= 0 || group != "all" ? (keepers ? ", " : "") + $"{(stage < 0 ? "all stages" : StageNames[stage])}, {group}" : "") +
             (asStage >= 0 ? $", shown as {StageNames[asStage]}" : "");
 
-        private static IEnumerator Run(Vector3 playerPosition, Vector3 forward, int stage, string group, int page, bool rescan, bool keepers, int asStage)
+        private static IEnumerator Run(Vector3 playerPosition, Vector3 forward, int stage, string group, int page, bool rescan, bool keepers, int asStage, int size)
         {
             _running = true;
             var cells = new List<Cell>();
@@ -775,13 +781,23 @@ namespace Villheim.Logic.Village
             string listPath = "";
             Safe("the list", () => listPath = WriteList(cells));
             Role[] roles = Groups[group];
-            var kept = new HashSet<string>(Keepers.Names);
-            List<Cell> matching = cells.Where(c => roles.Contains(c.Role) && (stage < 0 || c.Stage == stage) && (!keepers || kept.Contains(c.Design.Name))).ToList();
+            var kept = new Dictionary<string, int>();
+            for (int k = 0; k < Keepers.Names.Length; k++)
+            {
+                kept[Keepers.Names[k]] = k;
+            }
 
-            // Keepers go kind by kind, each kind starting a new page, as in the Pass 2 tab of the review sheet.
-            List<List<Cell>> paged = keepers
-                ? Order.SelectMany(role => Chunks(matching.Where(c => c.Role == role).ToList())).ToList()
-                : Chunks(matching);
+            List<Cell> matching = cells.Where(c => roles.Contains(c.Role) && (stage < 0 || c.Stage == stage) && (!keepers || kept.ContainsKey(c.Design.Name))).ToList();
+
+            // Keepers in their own order (by piece count, near-copies together), 50 to a page, laid out in one flow
+            // so like sits next to like; the Pass 2 tab of the review sheet has the same pages.
+            if (keepers)
+            {
+                matching = matching.OrderBy(c => kept[c.Design.Name]).ToList();
+                matching.ForEach(c => c.Flow = true);
+            }
+
+            List<List<Cell>> paged = Chunks(matching, size > 0 ? size : keepers ? KeeperPageSize : PageSize);
             int pages = Mathf.Max(1, paged.Count);
             string what = Describe(stage, group, keepers, asStage);
             Console.instance?.Print($"Villheim: {cells.Count} designs in all; {what}: {matching.Count} ({pages} pages). Full list: {listPath}");
@@ -799,12 +815,14 @@ namespace Villheim.Logic.Village
             yield return Place(chosen, playerPosition, forward);
         }
 
-        private static List<List<Cell>> Chunks(List<Cell> cells)
+        private const int KeeperPageSize = 50;
+
+        private static List<List<Cell>> Chunks(List<Cell> cells, int size)
         {
             var chunks = new List<List<Cell>>();
-            for (int i = 0; i < cells.Count; i += PageSize)
+            for (int i = 0; i < cells.Count; i += size)
             {
-                chunks.Add(cells.Skip(i).Take(PageSize).ToList());
+                chunks.Add(cells.Skip(i).Take(size).ToList());
             }
 
             return chunks;
@@ -1260,6 +1278,36 @@ namespace Villheim.Logic.Village
             Vector3 right = Vector3.Cross(Vector3.up, forward);
             depth = 0f;
             widest = 0f;
+            if (cells.Any(c => c.Flow))
+            {
+                // In list order (similar sizes next to each other), each row as full as the flattened area allows.
+                const float MaxRow = FlatWidth - 20f;
+                int i = 0;
+                while (i < cells.Count)
+                {
+                    var line = new List<Cell> { cells[i++] };
+                    float used = line[0].Half * 2f;
+                    while (i < cells.Count && used + Gap + cells[i].Half * 2f <= MaxRow)
+                    {
+                        used += Gap + cells[i].Half * 2f;
+                        line.Add(cells[i++]);
+                    }
+
+                    float rowDepth = line.Max(c => c.Half);
+                    widest = Mathf.Max(widest, used);
+                    float x = -used / 2f;
+                    foreach (Cell cell in line)
+                    {
+                        cell.Center = forward * (depth + rowDepth) + right * (x + cell.Half);
+                        x += cell.Half * 2f + Gap;
+                    }
+
+                    depth += rowDepth * 2f + Gap;
+                }
+
+                return;
+            }
+
             foreach (IGrouping<Role, Cell> cluster in cells.GroupBy(c => c.Role))
             {
                 List<Cell> members = cluster.ToList();

@@ -66,7 +66,7 @@ another tool) and the hotbar is back to normal.
 |---|---|---|
 | 1 or left click | Swap | Aim at a design piece: pick it and put up stand-ins at its sign. Aim at a stand-in (or a piece you built): use it. |
 | 2 | Turn | Quarter turn for the current choice. |
-| 3 | Undo | The original piece back. |
+| 3 | Undo | Takes back your last change, one per press (up to 50): a delete or Delete all (the objects come back), a move step, a swap or a turn. |
 | 4 | Move | Toggle Move. You stand still; **W A S D** move the design away, left, back, right (as you look), **E** up, **Q** down. 10 cm a press, Shift for 50 cm. The label shows "Move ON". |
 | 5 | Part | Pick the structure you aim at (it turns green). While Part is on, Move moves only that structure. 5 again lets go. |
 | 6 | Delete | Removes what you aim at within 6 m: pieces, creatures, traders and other NPCs. Never a player. |
@@ -96,8 +96,8 @@ removes pieces when the hammer is out, so it is not used).
    - Clicking any piece of a combination takes the whole combination.
    - You can also build your own stand-in with the hammer, somewhere open, and click it. Pieces you built that touch
      it come along as a group (up to 20): two fences side by side can stand in for a wall twice as wide.
-3. **Fix it:** `vh swap turn` gives the current choice a quarter turn (repeat as needed). `vh swap undo` puts the
-   original back.
+3. **Fix it:** `vh swap turn` gives the current choice a quarter turn (repeat as needed). `vh swap undo` (key 3)
+   takes back the last change.
 4. `vh swap done` removes the stand-ins. `vh swap off` ends swap mode.
 
 Nothing you swap is kept until you save the design (see Saving). Putting a page up again without saving shows the
@@ -159,6 +159,7 @@ originals.
 - **ShaperGroundEffect:** how it looks on the ground: None, Glow, Beam (a tall light column, like magic loot), Beam and
   Glow, Fire, Frost, Spirit, Lightning.
 - **ShaperColor:** colour of Glow and Beam (and the icon tint).
+- **LookColor:** the orange of the object you aim at while shaping (and of Delete all's marks). Darker is subtler.
 - **GallerySwapKey:** the swap key without the knife (numpad 5).
 - **GallerySwapBiomes:** which biomes stand-ins come from, e.g. `meadows,blackforest,swamp,plains`.
 - **GalleryNumberText:** size and height of the floating number over each sign.

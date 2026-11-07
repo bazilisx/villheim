@@ -219,6 +219,10 @@ namespace Villheim.Logic.Village
                 return;
             }
 
+            string previous = _current;
+            float previousTurn = _turn;
+            string undoDesign = _design;
+            string undoOriginal = _original;
             string combo = palette ? zdo.GetString(KeyCombo, "") : "";
             bool capped = false;
             int members = 1;
@@ -231,6 +235,7 @@ namespace Villheim.Logic.Village
             int replaced = Replace(_design, _original, replacement, _turn);
             _current = replacement;
             SetChoice(_design, _original, replacement, _turn);
+            EditHistory.Push($"swapping {undoOriginal} in {undoDesign}", () => Restore(undoDesign, undoOriginal, previous, previousTurn));
             string what = members > 1 ? $"a group of {members} pieces ({Describe(replacement)})" : prefab;
             Say($"Swap: {_original} is now {what} in {_design} ({replaced} replaced). " +
                 (capped ? $"Only the first {MaxGroup} touching pieces were taken; build the group away from other pieces. " : "") +
@@ -445,7 +450,26 @@ namespace Villheim.Logic.Village
                 return;
             }
 
-            foreach (ZNetView view in Lit)
+            var moved = Lit.Where(v => v != null && v.IsValid()).ToList();
+            MoveViews(moved, move);
+            EditHistory.Push($"moving {moved.Count} pieces", () => MoveViews(moved, -move));
+            string design = Lit.FirstOrDefault(v => v != null && v.IsValid())?.GetZDO().GetString(Gallery.KeyDesign, "") ?? "";
+            foreach (ZNetView view in ZNetScene.instance.m_instances.Values)
+            {
+                ZDO zdo = view != null && view.IsValid() ? view.GetZDO() : null;
+                if (zdo != null && design.Length > 0 && zdo.GetString(Gallery.KeyDesign, "") == design && zdo.GetFloat(Gallery.KeyPlotHalf, 0f) > 0f)
+                {
+                    zdo.Set(Gallery.KeyTouched, 1);
+                }
+            }
+
+            Say($"Swap: moved {Lit.Count} pieces. 'vh bp save' keeps it.");
+        }
+
+        /// <summary>Moves the given objects (and the middles their stand-ins remember).</summary>
+        private static void MoveViews(List<ZNetView> views, Vector3 move)
+        {
+            foreach (ZNetView view in views)
             {
                 if (view == null || !view.IsValid())
                 {
@@ -460,24 +484,12 @@ namespace Villheim.Logic.Village
                     zdo.Set(Gallery.KeySwappedCenter, zdo.GetVec3(Gallery.KeySwappedCenter, view.transform.position) + move);
                 }
             }
-
-            string design = Lit.FirstOrDefault(v => v != null && v.IsValid())?.GetZDO().GetString(Gallery.KeyDesign, "") ?? "";
-            foreach (ZNetView view in ZNetScene.instance.m_instances.Values)
-            {
-                ZDO zdo = view != null && view.IsValid() ? view.GetZDO() : null;
-                if (zdo != null && design.Length > 0 && zdo.GetString(Gallery.KeyDesign, "") == design && zdo.GetFloat(Gallery.KeyPlotHalf, 0f) > 0f)
-                {
-                    zdo.Set(Gallery.KeyTouched, 1);
-                }
-            }
-
-            Say($"Swap: moved {Lit.Count} pieces. 'vh bp save' keeps it.");
         }
 
-        private static void Nudge(Player player, Vector3 move)
+        private static void Nudge(Player player, Vector3 move, string forced = null, bool record = true)
         {
-            GameObject target = LookAt.Target(player);
-            string design = target?.GetComponent<ZNetView>()?.GetZDO()?.GetString(Gallery.KeyDesign, "") ?? "";
+            GameObject target = player != null ? LookAt.Target(player) : null;
+            string design = forced ?? target?.GetComponent<ZNetView>()?.GetZDO()?.GetString(Gallery.KeyDesign, "") ?? "";
             if (design.Length == 0)
             {
                 design = _design;
@@ -533,6 +545,12 @@ namespace Villheim.Logic.Village
                 moved++;
             }
 
+            if (record)
+            {
+                string movedDesign = design;
+                EditHistory.Push($"moving {design}", () => Nudge(null, -move, movedDesign, false));
+            }
+
             Vector3 nudge = sign.GetVec3(Gallery.KeyNudge, Vector3.zero) + frame * move;
             sign.Set(Gallery.KeyNudge, nudge);
             float height = sign.GetFloat(Gallery.KeyGroundOffset, 0f) + nudge.y;
@@ -547,25 +565,38 @@ namespace Villheim.Logic.Village
                 return "Villheim: pick a piece and a stand-in first.";
             }
 
+            float before = _turn;
+            string turnDesign = _design;
+            string turnOriginal = _original;
+            string turned = _current;
+            EditHistory.Push($"turning {turned}", () => Restore(turnDesign, turnOriginal, turned, before));
             _turn = (_turn + 90f) % 360f;
             int replaced = Replace(_design, _original, _current, _turn);
             SetChoice(_design, _original, _current, _turn);
             return $"Villheim: {Describe(_current)} in {_design} turned to {_turn:0} degrees ({replaced} replaced).";
         }
 
-        private static string Undo()
+        /// <summary>Puts a design's piece back to an earlier choice (null: the original), for undo.</summary>
+        private static void Restore(string design, string original, string replacement, float turn)
         {
-            if (_original == null)
+            Replace(design, original, replacement ?? original, replacement == null ? 0f : turn);
+            if (replacement == null)
             {
-                return "Villheim: pick a piece first.";
+                RemoveChoice(design, original);
+            }
+            else
+            {
+                SetChoice(design, original, replacement, turn);
             }
 
-            int replaced = Replace(_design, _original, _original, 0f);
-            RemoveChoice(_design, _original);
-            _current = null;
-            _turn = 0f;
-            return $"Villheim: {_original} is back in {_design} ({replaced} pieces).";
+            if (design == _design && original == _original)
+            {
+                _current = replacement;
+                _turn = replacement == null ? 0f : turn;
+            }
         }
+
+        private static string Undo() => EditHistory.Undo();
 
         /// <summary>
         /// Replaces every piece of one kind in one design (the original itself, or the stand-in pieces for it) with

@@ -39,6 +39,7 @@ namespace Villheim.Logic
         public static ConfigEntry<string> ShaperHandEffect;
         public static ConfigEntry<string> ShaperGroundEffect;
         public static ConfigEntry<UnityEngine.Color> ShaperColor;
+        public static ConfigEntry<UnityEngine.Color> LookColor;
 
         public static void Bind()
         {
@@ -133,6 +134,9 @@ namespace Villheim.Logic
                 new AcceptableValueList<string>(Village.ShaperEffects.GroundChoices), new ConfigurationManagerAttributes { IsAdminOnly = true }));
             ShaperColor = Admin(config, "4 - Design review", "ShaperColor", new UnityEngine.Color(0.1f, 0.85f, 0.75f),
                 "Colour of the Shaper Tool's Glow and Beam, and the tint of its icon.");
+
+            LookColor = Admin(config, "4 - Design review", "LookColor", new UnityEngine.Color(0.45f, 0.16f, 0.02f),
+                "Glow of the object you aim at while shaping (and of Delete all's marks). Darker is subtler; changes show on the next object you aim at.");
 
             // The fishing rod was the first default (2026-11-07); Tyler chose the wooden knife.
             if (ShapingTool.Value == "FishingRod")

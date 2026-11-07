@@ -558,9 +558,11 @@ namespace Villheim.Logic.Village
             }
 
             string name = Utils.GetPrefabName(view.gameObject);
+            EditHistory.Snapshot snapshot = EditHistory.Take(view);
             view.ClaimOwnership();
             ZNetScene.instance.Destroy(view.gameObject);
-            Say($"Deleted {name}.");
+            EditHistory.Push($"deleting {name}", () => EditHistory.Restore(snapshot));
+            Say($"Deleted {name}. 3 (Undo) puts it back.");
         }
 
         /// <summary>
@@ -572,10 +574,12 @@ namespace Villheim.Logic.Village
             if (_massArmed != null && Time.time <= _massUntil)
             {
                 int deleted = 0;
+                var snapshots = new List<EditHistory.Snapshot>();
                 foreach (ZNetView view in Marked)
                 {
                     if (view != null && view.IsValid())
                     {
+                        snapshots.Add(EditHistory.Take(view));
                         view.ClaimOwnership();
                         ZNetScene.instance.Destroy(view.gameObject);
                         deleted++;
@@ -585,7 +589,8 @@ namespace Villheim.Logic.Village
                 string name = _massArmed;
                 Marked.Clear();
                 _massArmed = null;
-                Say($"Deleted {deleted} {name}.");
+                EditHistory.Push($"deleting {deleted} {name}", () => snapshots.ForEach(EditHistory.Restore));
+                Say($"Deleted {deleted} {name}. 3 (Undo) puts them back.");
                 return;
             }
 
@@ -613,7 +618,7 @@ namespace Villheim.Logic.Village
                 if (inScope)
                 {
                     Marked.Add(view);
-                    MaterialMan.instance?.SetValue(view.gameObject, Emission, new Color(0.9f, 0.45f, 0.05f));
+                    MaterialMan.instance?.SetValue(view.gameObject, Emission, LookAt.Highlight);
                 }
             }
 

@@ -10,20 +10,21 @@ namespace Villheim.Logic.Village
     /// ShapingTool; 'vh tool' gives one). With it in hand, hotbar keys 1 to 8 pick a tool (its slot shows as selected;
     /// the same key again puts it down) and left click uses it, with the hammer's building swing:
     ///
-    /// 1 Swap: click a design piece to pick it (stand-ins go up at its sign), click a stand-in or a built piece to use it.
-    /// 2 Turn: the mouse wheel turns the object under the crosshair (yaw; Shift tilts on its own X axis, Alt on its Z
-    ///   axis; Ctrl turns every object of that name in the design). Click locks onto an object so it can be turned
-    ///   while looking elsewhere; click it again to let go.
-    /// 3 Undo: each press takes back the newest change. Click does nothing.
-    /// 4 Move: the player stands still; W A S D move the design under the crosshair away, left, back, right as the
-    ///   player looks, E up and Q down; 10 cm a press, 50 cm with Shift. Click locks onto one structure (green; a hut
-    ///   beside a hall) so only that moves; click it again to let go.
-    /// 5 Free for now.
-    /// 6 Delete: click removes what is aimed at, creatures and traders included (never a player).
-    /// 7 Save: click a design to ask; click again within 6 seconds to save it as it stands (as 'vh bp save').
-    /// 8 Delete all: click an object and every object of its name in that design glows orange; click again within 6
+    /// 1 Move: the player stands still; W A S D move the design under the crosshair away, left, back, right as the
+    ///   player looks, E up and Q down; 10 cm a press, 50 cm with Shift. The whole design is highlighted. Click locks
+    ///   onto one structure (a hut beside a hall) so only that moves and is highlighted; click it again to let go.
+    /// 2 Turn: the player stands still; the mouse wheel turns the design under the crosshair about its plot's middle
+    ///   (yaw; Shift tilts about the plot's X axis, Alt about its Z axis). Click locks onto one object, so only that
+    ///   turns, about its own pivot and axes (Ctrl: every object of its name in the design). A ring shows the axis.
+    /// 3 Swap: click a design piece to pick it (stand-ins go up at its sign), click a stand-in or a built piece to use it.
+    /// 4 Delete: click removes what is aimed at, creatures and traders included (never a player).
+    /// 5 Delete all: click an object and every object of its name in that design is highlighted; click again within 6
     ///   seconds to delete them all (outside a design: everything of that name within 20 m).
-    /// While the tool is in hand, look is on: the aimed object glows orange and its name shows in the middle of the screen.
+    /// 6 Save: click a design to ask; click again within 6 seconds to save it as it stands (as 'vh bp save').
+    /// 7 Reset: click a design to ask; click again within 6 seconds to put it up again as the gallery shows it.
+    /// 8 Undo: each press takes back the newest change. Click does nothing.
+    /// While the tool is in hand, look is on: the aimed object is highlighted (LookColor) and its name shows in the middle
+    /// of the screen. Every highlight of the tool uses that one colour.
     ///
     /// Putting the tool away ends Shaping. Nothing needs a restart: the tool is an existing item.
     /// </summary>
@@ -31,12 +32,17 @@ namespace Villheim.Logic.Village
     {
         private const float DeleteReach = 6f;
 
+        private const int ToolMove = 1, ToolTurn = 2, ToolSwap = 3, ToolDelete = 4, ToolDeleteAll = 5, ToolSave = 6, ToolReset = 7, ToolUndo = 8;
+
         private static bool _active;
         private static int _tool;
         private static ZNetView _locked;
-        private static bool Moving => _tool == 4;
+        private static bool Moving => _tool == ToolMove;
+        private static bool Frozen => _tool == ToolMove || _tool == ToolTurn;
         private static string _saveArmed;
         private static float _saveUntil;
+        private static string _resetArmed;
+        private static float _resetUntil;
         private static bool _lookBefore;
         private static string _massArmed;
         private static float _massUntil;
@@ -44,16 +50,16 @@ namespace Villheim.Logic.Village
         private static readonly int Emission = Shader.PropertyToID("_EmissionColor");
         private const float MassRadius = 20f;
 
-        private static readonly string[] Labels = { "Swap", "Turn", "Undo", "Move", "", "Delete", "Save", "Del all" };
+        private static readonly string[] Labels = { "Move", "Turn", "Swap", "Delete", "Del all", "Save", "Reset", "Undo" };
         private static readonly string[] IconSources =
-            { "Hammer", "ShieldWood", "Feathers", "ArrowWood", "", "BombOoze", "piece_chest_wood", "BombBile" };
+            { "ArrowWood", "ShieldWood", "Hammer", "BombOoze", "BombBile", "piece_chest_wood", "Hoe", "Feathers" };
 
         private static Sprite[] _icons;
 
         public static bool Active => _active;
 
-        /// <summary>The object Turn is locked onto (look leaves it in its own colour).</summary>
-        public static bool IsLocked(GameObject go) => _locked != null && go != null && _locked.gameObject == go;
+        /// <summary>The object is highlighted by the tool (look leaves it as it is).</summary>
+        public static bool IsShown(GameObject go) => go != null && (Shown.Contains(go) || Marked.Exists(v => v != null && v.gameObject == go));
 
         /// <summary>'vh tool': puts a shaping rod in the inventory.</summary>
         public static string GiveTool()
@@ -68,7 +74,7 @@ namespace Villheim.Logic.Village
 
             player.PickupPrefab(prefab, 1, false);
             return $"Villheim: the shaping tool ({name}) is in your inventory. Put it on a quick slot; with it in hand, hotbar 1 to 8 edit gallery designs " +
-                   "(1 Swap, 2 Turn, 3 Undo, 4 Move, 6 Delete, 7 Save, 8 Delete all): press a key to pick the tool, left click to use it. What you aim at glows orange.";
+                   "(1 Move, 2 Turn, 3 Swap, 4 Delete, 5 Delete all, 6 Save, 7 Reset, 8 Undo): press a key to pick the tool, left click to use it.";
         }
 
         private static bool Holding(Player player)
@@ -103,13 +109,15 @@ namespace Villheim.Logic.Village
                             SwapTool.Activate();
                             _lookBefore = LookAt.On;
                             LookAt.SetOn(true);
-                            _tool = 1;
-                            Say("Shaping on: 1 Swap, 2 Turn, 3 Undo, 4 Move, 6 Delete, 7 Save, 8 Delete all. Press a key to pick the tool, left click to use it. Swap is picked.");
+                            _tool = ToolSwap;
+                            Say("Shaping on: 1 Move, 2 Turn, 3 Swap, 4 Delete, 5 Delete all, 6 Save, 7 Reset, 8 Undo. Press a key to pick the tool, left click to use it. Swap is picked.");
                         }
                         else
                         {
                             PutDown();
                             _tool = 0;
+                            ShowSelection(null, null);
+                            Gizmo.Hide();
                             SwapTool.Release();
                             LookAt.SetOn(_lookBefore);
                             Say("Shaping off.");
@@ -124,9 +132,9 @@ namespace Villheim.Logic.Village
                         Disarm();
                     }
 
-                    if (_locked != null && (!_locked.IsValid() || _tool != 2))
+                    if (_locked != null && (!_locked.IsValid() || _tool != ToolTurn))
                     {
-                        Unlock();
+                        _locked = null;
                     }
 
                     if (_active && Moving && !Typing())
@@ -135,9 +143,18 @@ namespace Villheim.Logic.Village
                     }
 
                     _wheelTaken = false;
-                    if (_active && _tool == 2 && !Typing())
+                    if (_active && _tool == ToolTurn && !Typing())
                     {
                         Wheel(__instance);
+                    }
+                    else
+                    {
+                        Gizmo.Hide();
+                    }
+
+                    if (_active)
+                    {
+                        Selection(__instance);
                     }
                 }
                 catch (System.Exception e)
@@ -181,8 +198,8 @@ namespace Villheim.Logic.Village
 
         public const string ToolName = "Villheim Dev Shaper Tool";
         private const string ToolDescription =
-            "Villheim's design review tool. In hand, hotbar 1 to 8 pick a tool and left click uses it: 1 Swap, 2 Turn (mouse " +
-            "wheel), 3 Undo, 4 Move (W A S D, Q and E), 6 Delete, 7 Save, 8 Delete all. See docs/DESIGN_REVIEW_GUIDE.md.";
+            "Villheim's design review tool. In hand, hotbar 1 to 8 pick a tool and left click uses it: 1 Move (W A S D, Q and E), " +
+            "2 Turn (mouse wheel), 3 Swap, 4 Delete, 5 Delete all, 6 Save, 7 Reset, 8 Undo. See docs/DESIGN_REVIEW_GUIDE.md.";
 
         private static string _named;
         private static string _oldName;
@@ -328,7 +345,14 @@ namespace Villheim.Logic.Village
             }
         }
 
-        /// <summary>Left click uses the picked tool; the knife never attacks while Shaping.</summary>
+        private static float _lastAttackCall = -1f;
+
+        /// <summary>
+        /// Left click uses the picked tool once; the knife never attacks while Shaping. The game asks to start an attack
+        /// every physics step for half a second after a click, and every step while the button is held, so only a call
+        /// after a pause counts as a click (one click did two actions before: two swings, two deletes). Answering
+        /// "started" ends the game's half second of asking.
+        /// </summary>
         [HarmonyPatch(typeof(Humanoid), nameof(Humanoid.StartAttack))]
         internal static class AttackPatch
         {
@@ -339,8 +363,10 @@ namespace Villheim.Logic.Village
                     return true;
                 }
 
-                __result = false;
-                if (!secondaryAttack)
+                __result = true;
+                bool fresh = Time.time - _lastAttackCall > 0.15f;
+                _lastAttackCall = Time.time;
+                if (!secondaryAttack && fresh)
                 {
                     try
                     {
@@ -356,13 +382,13 @@ namespace Villheim.Logic.Village
             }
         }
 
-        /// <summary>While moving a design the player stands still: W A S D, Q and E move the design instead.</summary>
+        /// <summary>While moving or turning a design the player stands still (flying too): W A S D, Q and E move the design instead.</summary>
         [HarmonyPatch(typeof(Player), nameof(Player.SetControls))]
         internal static class StandStillPatch
         {
             private static void Prefix(Player __instance, ref Vector3 movedir, ref bool jump, ref bool crouch, ref bool run, ref bool autoRun, ref bool dodge)
             {
-                if (_active && Moving && __instance == Player.m_localPlayer)
+                if (_active && Frozen && __instance == Player.m_localPlayer)
                 {
                     movedir = Vector3.zero;
                     jump = crouch = run = autoRun = dodge = false;
@@ -442,10 +468,11 @@ namespace Villheim.Logic.Village
         {
             switch (i)
             {
-                case 1: return _locked != null ? "Turn lock" : "Turn";
-                case 3: return SwapTool.PartLocked ? "Move part" : "Move";
-                case 6: return _saveArmed != null && Time.time < _saveUntil ? "Save?" : "Save";
-                case 7: return _massArmed != null ? "Del all?" : "Del all";
+                case 0: return SwapTool.PartLocked ? "Move part" : "Move";
+                case 1: return _locked != null ? "Turn one" : "Turn";
+                case 4: return _massArmed != null ? "Del all?" : "Del all";
+                case 5: return _saveArmed != null && Time.time < _saveUntil ? "Save?" : "Save";
+                case 6: return _resetArmed != null && Time.time < _resetUntil ? "Reset?" : "Reset";
                 default: return Labels[i];
             }
         }
@@ -480,17 +507,17 @@ namespace Villheim.Logic.Village
 
         private static readonly string[] Picked =
         {
+            "Move: you stand still. W A S D move the highlighted design, E up, Q down, Shift for 50 cm. Click a structure to move only that, click it again to let go. 1 again to walk.",
+            "Turn: you stand still. The mouse wheel turns the highlighted design; Shift tilts, Alt rolls. Click an object to turn only that (Ctrl: all of its name), click it again to let go. 2 again to walk.",
             "Swap: click a design piece to pick it, then click a stand-in (or a piece you built) to use it.",
-            "Turn: the mouse wheel turns what you aim at. Shift tilts it, Alt rolls it, Ctrl turns every one of that name in the design. Click to lock onto it, click it again to let go.",
-            "",
-            "Move: you stand still. W A S D move the design you aim at, E up, Q down, Shift for 50 cm. Click a structure to move only that (green), click it again to let go. 4 again to walk.",
-            "5 is free for now.",
-            "Delete: click what you want removed. 3 puts it back.",
-            "Save: click a design, then click again within 6 seconds to save it.",
+            "Delete: click what you want removed. 8 puts it back.",
             "Delete all: click an object to mark every one of its name in the design, then click again within 6 seconds.",
+            "Save: click a design, then click again within 6 seconds to save it.",
+            "Reset: click a design, then click again within 6 seconds to put it up again as the gallery shows it.",
+            "",
         };
 
-        /// <summary>A hotbar key picks its tool; the same key again puts it down. 3 undoes on every press.</summary>
+        /// <summary>A hotbar key picks its tool; the same key again puts it down. 8 undoes on every press.</summary>
         private static void Select(Player player, int index)
         {
             if (index < 1 || index > 8)
@@ -498,17 +525,12 @@ namespace Villheim.Logic.Village
                 return;
             }
 
-            if (index == 5)
-            {
-                Say(Picked[4]);
-                return;
-            }
-
-            if (index == 3)
+            if (index == ToolUndo)
             {
                 PutDown();
-                _tool = 3;
+                _tool = ToolUndo;
                 Say(SwapTool.UndoCurrent());
+                _selectionKey = null;
                 return;
             }
 
@@ -521,13 +543,14 @@ namespace Villheim.Logic.Village
         /// <summary>Lets go of what the current tool holds: Move's part, Turn's lock, unanswered questions.</summary>
         private static void PutDown()
         {
-            if (_tool == 4 && SwapTool.PartLocked)
+            if (SwapTool.PartLocked)
             {
                 SwapTool.TogglePart(null);
             }
 
-            Unlock();
+            _locked = null;
             _saveArmed = null;
+            _resetArmed = null;
             Disarm();
         }
 
@@ -536,29 +559,33 @@ namespace Villheim.Logic.Village
         {
             switch (_tool)
             {
-                case 1:
-                    Swing(player);
-                    SwapTool.PickOrUse(player);
-                    break;
-                case 2:
-                    Swing(player);
-                    LockToggle(player);
-                    break;
-                case 4:
+                case ToolMove:
                     Swing(player);
                     PartToggle(player);
                     break;
-                case 6:
+                case ToolTurn:
+                    Swing(player);
+                    LockToggle(player);
+                    break;
+                case ToolSwap:
+                    Swing(player);
+                    SwapTool.PickOrUse(player);
+                    break;
+                case ToolDelete:
                     Swing(player);
                     Delete(player);
                     break;
-                case 7:
+                case ToolDeleteAll:
+                    Swing(player);
+                    DeleteAll(player);
+                    break;
+                case ToolSave:
                     Swing(player);
                     Save(player);
                     break;
-                case 8:
+                case ToolReset:
                     Swing(player);
-                    DeleteAll(player);
+                    Reset(player);
                     break;
             }
         }
@@ -579,27 +606,128 @@ namespace Villheim.Logic.Village
             player.m_zanim.SetTrigger(string.IsNullOrEmpty(animation) ? "swing_hammer" : animation);
         }
 
-        /// <summary>Move: click locks onto the structure aimed at; click it again (or another) to let go (or switch).</summary>
+        /// <summary>Move: click locks onto the structure aimed at; click it again (or nothing) to let go, another to switch.</summary>
         private static void PartToggle(Player player)
         {
+            GameObject aimed = LookAt.Target(player);
+            ShowSelection(null, "part");
             if (SwapTool.PartLocked)
             {
-                GameObject aimed = LookAt.Target(player);
                 bool same = aimed != null && SwapTool.IsLit(aimed);
                 string off = SwapTool.TogglePart(player);
                 if (same || aimed == null)
                 {
+                    _selectionKey = null;
                     Say(off);
                     return;
                 }
             }
 
-            Say(SwapTool.TogglePart(player));
+            string said = SwapTool.TogglePart(player);
+            if (!SwapTool.PartLocked)
+            {
+                _selectionKey = null;
+            }
+
+            Say(said);
+        }
+
+        // ---------------------------------------------------------------- one highlight colour for everything
+
+        private static readonly HashSet<GameObject> Shown = new HashSet<GameObject>();
+        private static string _selectionKey;
+        private static float _nextSelection;
+
+        /// <summary>
+        /// What the picked tool works on is highlighted in LookColor: Move and Turn the whole design under the crosshair
+        /// (or the last one picked), or what a click locked onto; Save and Reset the design they ask about.
+        /// </summary>
+        private static void Selection(Player player)
+        {
+            if (Time.time < _nextSelection)
+            {
+                return;
+            }
+
+            _nextSelection = Time.time + 0.2f;
+            if (SwapTool.PartLocked)
+            {
+                return;
+            }
+
+            if (_tool == ToolTurn && _locked != null)
+            {
+                ShowSelection(new List<ZNetView> { _locked }, "lock:" + _locked.GetInstanceID());
+                return;
+            }
+
+            string design = null;
+            if (_tool == ToolMove || _tool == ToolTurn)
+            {
+                design = SwapTool.DesignAimed(player);
+            }
+            else if (_tool == ToolSave && _saveArmed != null && Time.time < _saveUntil)
+            {
+                design = _saveArmed;
+            }
+            else if (_tool == ToolReset && _resetArmed != null && Time.time < _resetUntil)
+            {
+                design = _resetArmed;
+            }
+
+            if (string.IsNullOrEmpty(design))
+            {
+                ShowSelection(null, null);
+                return;
+            }
+
+            if (_selectionKey != "design:" + design)
+            {
+                ShowSelection(SwapTool.DesignParts(design).Views, "design:" + design);
+            }
+        }
+
+        /// <summary>Highlights these objects instead of the ones before (null: none). Same key: nothing changes.</summary>
+        private static void ShowSelection(List<ZNetView> views, string key)
+        {
+            if (key != null && key == _selectionKey)
+            {
+                return;
+            }
+
+            foreach (GameObject go in Shown)
+            {
+                if (go != null)
+                {
+                    MaterialMan.instance?.ResetValue(go, Emission);
+                }
+            }
+
+            Shown.Clear();
+            _selectionKey = key;
+            LookAt.Refresh();
+            if (views == null)
+            {
+                return;
+            }
+
+            foreach (ZNetView view in views)
+            {
+                if (view != null && view.IsValid())
+                {
+                    Shown.Add(view.gameObject);
+                    MaterialMan.instance?.SetValue(view.gameObject, Emission, LookAt.Highlight);
+                }
+            }
         }
 
         // ---------------------------------------------------------------- Turn: the mouse wheel
 
         private static bool _wheelTaken;
+        private static string _wheelDesign;
+        private static ZDO _wheelSign;
+        private static List<ZNetView> _wheelParts = new List<ZNetView>();
+        private static float _wheelUntil;
         private static float _cameraDistance;
         private static float TurnStep => LogicConfig.ShaperTurnStep?.Value ?? 22.5f;
 
@@ -608,8 +736,8 @@ namespace Villheim.Logic.Village
             GameObject aimed = LookAt.Target(player);
             if (_locked != null && (aimed == null || aimed == _locked.gameObject))
             {
-                Say($"Turn: let go of {Utils.GetPrefabName(_locked.gameObject)}.");
-                Unlock();
+                Say($"Turn: let go of {Utils.GetPrefabName(_locked.gameObject)}; the wheel turns the whole design again.");
+                _locked = null;
                 return;
             }
 
@@ -620,42 +748,75 @@ namespace Villheim.Logic.Village
                 return;
             }
 
-            Unlock();
             _locked = view;
-            LookAt.Refresh();
-            MaterialMan.instance?.SetValue(view.gameObject, Emission, EffectColor * 0.6f);
-            Say($"Turn: locked onto {Utils.GetPrefabName(view.gameObject)}. The mouse wheel turns it wherever you look; click it again to let go.");
-        }
-
-        private static void Unlock()
-        {
-            if (_locked != null && _locked.gameObject != null)
-            {
-                MaterialMan.instance?.ResetValue(_locked.gameObject, Emission);
-            }
-
-            _locked = null;
+            _nextSelection = 0f;
+            Say($"Turn: only {Utils.GetPrefabName(view.gameObject)} turns now, wherever you look. Click it again to let go.");
         }
 
         /// <summary>
-        /// One wheel notch turns the locked object (or the one aimed at) by ShaperTurnStep: about the up axis, or with
-        /// Shift about its own X axis, with Alt about its own Z axis. With Ctrl, every object of that name in its design
-        /// turns, each about its own pivot. The camera does not zoom while the wheel turns something.
+        /// One wheel notch turns by ShaperTurnStep. Nothing locked: the whole design under the crosshair (or the last
+        /// one picked) about the middle of its plot, about the up axis, or with Shift the plot's X axis, with Alt its Z
+        /// axis. Locked onto an object: only that, about its own pivot and axes (Ctrl: every object of its name in the
+        /// design). A ring shows the axis. The camera does not zoom while the wheel turns something.
         /// </summary>
         private static void Wheel(Player player)
         {
-            ZNetView target = _locked;
-            if (target == null)
+            bool shift = Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift);
+            bool alt = Input.GetKey(KeyCode.LeftAlt) || Input.GetKey(KeyCode.RightAlt);
+            bool all = Input.GetKey(KeyCode.LeftControl) || Input.GetKey(KeyCode.RightControl);
+            string axisName = shift ? "X" : alt ? "Z" : "Y";
+            Color axisColor = shift ? new Color(1f, 0.25f, 0.25f) : alt ? new Color(0.3f, 0.5f, 1f) : new Color(0.3f, 1f, 0.3f);
+
+            List<ZNetView> views;
+            Vector3 pivot;
+            Quaternion frame;
+            float radius;
+            string what;
+            string design;
+            bool whole = _locked == null;
+            if (whole)
             {
-                GameObject aimed = LookAt.Target(player);
-                target = aimed != null && aimed.GetComponent<Player>() == null ? aimed.GetComponent<ZNetView>() : null;
+                design = SwapTool.DesignAimed(player);
+                if (design != _wheelDesign || Time.time > _wheelUntil)
+                {
+                    // Looked up a few times a second, not every frame: it walks every object in the world.
+                    (_wheelSign, _wheelParts) = SwapTool.DesignParts(design);
+                    _wheelDesign = design;
+                    _wheelUntil = Time.time + 0.5f;
+                }
+
+                ZDO sign = _wheelSign;
+                List<ZNetView> parts = _wheelParts.Where(v => v != null && v.IsValid()).ToList();
+                if (sign == null || parts.Count == 0)
+                {
+                    Gizmo.Hide();
+                    return;
+                }
+
+                views = parts;
+                Vector3 center = sign.GetVec3(Gallery.KeyPlotCenter, Vector3.zero);
+                float floor = parts.Min(v => v.transform.position.y);
+                pivot = new Vector3(center.x, floor, center.z);
+                frame = Quaternion.Euler(0f, sign.GetFloat(Gallery.KeyPlotYaw, 0f), 0f);
+                radius = Mathf.Clamp(sign.GetFloat(Gallery.KeyPlotHalf, 5f) * 0.8f, 1f, 40f);
+                what = design;
+            }
+            else
+            {
+                design = _locked.GetZDO().GetString(Gallery.KeyDesign, "");
+                string prefab = Utils.GetPrefabName(_locked.gameObject);
+                views = all && design.Length > 0
+                    ? ZNetScene.instance.m_instances.Values.Where(v => v != null && v.IsValid() && Utils.GetPrefabName(v.gameObject) == prefab &&
+                                                                        v.GetZDO().GetString(Gallery.KeyDesign, "") == design).ToList()
+                    : new List<ZNetView> { _locked };
+                pivot = _locked.transform.position;
+                frame = _locked.transform.rotation;
+                radius = Mathf.Clamp(Extent(_locked.gameObject), 0.4f, 10f);
+                what = views.Count > 1 ? $"all {views.Count} {prefab}" : prefab;
             }
 
-            if (target == null || !target.IsValid())
-            {
-                return;
-            }
-
+            Vector3 axis = shift ? frame * Vector3.right : alt ? frame * Vector3.forward : Vector3.up;
+            Gizmo.Show(pivot, axis, radius, axisColor);
             _wheelTaken = true;
             float scroll = ZInput.GetMouseScrollWheel();
             if (Mathf.Abs(scroll) < 0.001f)
@@ -664,38 +825,65 @@ namespace Villheim.Logic.Village
             }
 
             float angle = Mathf.Sign(scroll) * TurnStep;
-            bool shift = Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift);
-            bool alt = Input.GetKey(KeyCode.LeftAlt) || Input.GetKey(KeyCode.RightAlt);
-            bool all = Input.GetKey(KeyCode.LeftControl) || Input.GetKey(KeyCode.RightControl);
-            string axis = shift ? "X" : alt ? "Z" : "Y";
-
-            string prefab = Utils.GetPrefabName(target.gameObject);
-            string design = target.GetZDO().GetString(Gallery.KeyDesign, "");
-            List<ZNetView> views = all && design.Length > 0
-                ? ZNetScene.instance.m_instances.Values.Where(v => v != null && v.IsValid() && Utils.GetPrefabName(v.gameObject) == prefab &&
-                                                                    v.GetZDO().GetString(Gallery.KeyDesign, "") == design).ToList()
-                : new List<ZNetView> { target };
-
-            var before = views.Select(v => (View: v, Rotation: v.transform.rotation)).ToList();
+            var before = views.Select(v => (View: v, Position: v.transform.position, Rotation: v.transform.rotation,
+                Center: v.GetZDO().GetVec3(Gallery.KeySwappedCenter, Vector3.zero), Original: v.GetZDO().GetQuaternion(Gallery.KeySwappedRotation, Quaternion.identity))).ToList();
             foreach (ZNetView view in views)
             {
-                Quaternion rotation = view.transform.rotation;
-                rotation = shift ? rotation * Quaternion.AngleAxis(angle, Vector3.right)
-                    : alt ? rotation * Quaternion.AngleAxis(angle, Vector3.forward)
-                    : Quaternion.AngleAxis(angle, Vector3.up) * rotation;
-                SetRotation(view, rotation);
+                if (whole)
+                {
+                    Quaternion delta = Quaternion.AngleAxis(angle, axis);
+                    Place(view, pivot + delta * (view.transform.position - pivot), delta * view.transform.rotation);
+                    ZDO zdo = view.GetZDO();
+                    if (zdo.GetString(Gallery.KeySwappedFrom, "").Length > 0)
+                    {
+                        zdo.Set(Gallery.KeySwappedCenter, pivot + delta * (zdo.GetVec3(Gallery.KeySwappedCenter, view.transform.position) - pivot));
+                        zdo.Set(Gallery.KeySwappedRotation, delta * zdo.GetQuaternion(Gallery.KeySwappedRotation, view.transform.rotation));
+                    }
+                }
+                else
+                {
+                    Quaternion rotation = view.transform.rotation;
+                    rotation = shift ? rotation * Quaternion.AngleAxis(angle, Vector3.right)
+                        : alt ? rotation * Quaternion.AngleAxis(angle, Vector3.forward)
+                        : Quaternion.AngleAxis(angle, Vector3.up) * rotation;
+                    Place(view, view.transform.position, rotation);
+                }
             }
 
-            string key = $"turn:{(all ? design + "/" + prefab : target.GetInstanceID().ToString())}";
-            EditHistory.Push(views.Count > 1 ? $"turning {views.Count} {prefab}" : $"turning {prefab}",
-                () => before.ForEach(b => SetRotation(b.View, b.Rotation)), key);
+            string key = whole ? "turn:" + design : all ? $"turn:{design}/{Utils.GetPrefabName(_locked.gameObject)}" : "turn:" + _locked.GetInstanceID();
+            EditHistory.Push($"turning {what}", () => before.ForEach(b =>
+            {
+                Place(b.View, b.Position, b.Rotation);
+                if (b.View != null && b.View.IsValid() && b.View.GetZDO().GetString(Gallery.KeySwappedFrom, "").Length > 0)
+                {
+                    b.View.GetZDO().Set(Gallery.KeySwappedCenter, b.Center);
+                    b.View.GetZDO().Set(Gallery.KeySwappedRotation, b.Original);
+                }
+            }), key);
             SwapTool.MarkTouched(design);
-            Vector3 euler = target.transform.rotation.eulerAngles;
+            Vector3 euler = (whole ? Quaternion.identity : _locked.transform.rotation).eulerAngles;
             MessageHud.instance?.ShowMessage(MessageHud.MessageType.Center,
-                $"{prefab}{(views.Count > 1 ? $" (all {views.Count})" : "")}\n{axis} {angle:+0.#;-0.#} : {euler.x:0} {euler.y:0} {euler.z:0}");
+                whole ? $"{what}\n{axisName} {angle:+0.#;-0.#}" : $"{what}\n{axisName} {angle:+0.#;-0.#} : {euler.x:0} {euler.y:0} {euler.z:0}");
         }
 
-        private static void SetRotation(ZNetView view, Quaternion rotation)
+        private static float Extent(GameObject go)
+        {
+            Renderer[] renderers = go.GetComponentsInChildren<Renderer>();
+            if (renderers.Length == 0)
+            {
+                return 1f;
+            }
+
+            Bounds bounds = renderers[0].bounds;
+            foreach (Renderer renderer in renderers)
+            {
+                bounds.Encapsulate(renderer.bounds);
+            }
+
+            return bounds.extents.magnitude;
+        }
+
+        private static void Place(ZNetView view, Vector3 position, Quaternion rotation)
         {
             if (view == null || !view.IsValid())
             {
@@ -703,11 +891,12 @@ namespace Villheim.Logic.Village
             }
 
             view.ClaimOwnership();
-            view.transform.rotation = rotation;
+            view.transform.SetPositionAndRotation(position, rotation);
+            view.GetZDO().SetPosition(position);
             view.GetZDO().SetRotation(rotation);
         }
 
-        /// <summary>The camera keeps its distance while the wheel turns an object.</summary>
+        /// <summary>The camera keeps its distance while the wheel turns something.</summary>
         [HarmonyPatch(typeof(GameCamera), "UpdateCamera")]
         internal static class ZoomPatch
         {
@@ -720,6 +909,81 @@ namespace Villheim.Logic.Village
                     __instance.m_distance = _cameraDistance;
                 }
             }
+        }
+
+        /// <summary>A ring round the axis the mouse wheel turns about: green up (Y), red X (Shift), blue Z (Alt).</summary>
+        private static class Gizmo
+        {
+            private const int Points = 64;
+            private static GameObject _ring;
+            private static LineRenderer _line;
+
+            public static void Show(Vector3 pivot, Vector3 axis, float radius, Color color)
+            {
+                if (_ring == null)
+                {
+                    _ring = new GameObject("VillheimShaperGizmo");
+                    _line = _ring.AddComponent<LineRenderer>();
+                    _line.loop = true;
+                    _line.useWorldSpace = true;
+                    _line.positionCount = Points;
+                    _line.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+                    _line.receiveShadows = false;
+                    Shader shader = Shader.Find("Sprites/Default");
+                    if (shader != null)
+                    {
+                        _line.material = new Material(shader);
+                    }
+                }
+
+                _ring.SetActive(true);
+                _line.startColor = _line.endColor = color;
+                _line.widthMultiplier = Mathf.Clamp(radius * 0.02f, 0.02f, 0.15f);
+                Vector3 normal = axis.normalized;
+                Vector3 a = Vector3.Cross(normal, Mathf.Abs(Vector3.Dot(normal, Vector3.up)) > 0.9f ? Vector3.forward : Vector3.up).normalized;
+                Vector3 b = Vector3.Cross(normal, a);
+                for (int i = 0; i < Points; i++)
+                {
+                    float t = i * Mathf.PI * 2f / Points;
+                    _line.SetPosition(i, pivot + (a * Mathf.Cos(t) + b * Mathf.Sin(t)) * radius);
+                }
+            }
+
+            public static void Hide()
+            {
+                if (_ring != null)
+                {
+                    _ring.SetActive(false);
+                }
+            }
+        }
+
+        // ---------------------------------------------------------------- Reset
+
+        /// <summary>Puts the design aimed at up again as the gallery shows it, on the second click within 6 seconds.</summary>
+        private static void Reset(Player player)
+        {
+            string design = SwapTool.DesignAimed(player);
+            if (string.IsNullOrEmpty(design))
+            {
+                Say("Reset: aim at a gallery design first.");
+                return;
+            }
+
+            if (_resetArmed == design && Time.time < _resetUntil)
+            {
+                _resetArmed = null;
+                ShowSelection(null, null);
+                Say(Gallery.ResetDesign(design));
+                return;
+            }
+
+            _resetArmed = design;
+            _resetUntil = Time.time + 6f;
+            _nextSelection = 0f;
+            string question = $"Reset {design} to how the gallery puts it up?\nClick again within 6 seconds.";
+            MessageHud.instance?.ShowMessage(MessageHud.MessageType.Center, question);
+            Say(question.Replace("\n", " ") + " Swaps, moves, turns and pieces you added or removed since its last save are undone.");
         }
 
         private static void MoveKeys(Player player)
@@ -796,7 +1060,7 @@ namespace Villheim.Logic.Village
             view.ClaimOwnership();
             ZNetScene.instance.Destroy(view.gameObject);
             EditHistory.Push($"deleting {name}", () => EditHistory.Restore(snapshot));
-            Say($"Deleted {name}. 3 (Undo) puts it back.");
+            Say($"Deleted {name}. 8 (Undo) puts it back.");
         }
 
         /// <summary>
@@ -824,7 +1088,7 @@ namespace Villheim.Logic.Village
                 Marked.Clear();
                 _massArmed = null;
                 EditHistory.Push($"deleting {deleted} {name}", () => snapshots.ForEach(EditHistory.Restore));
-                Say($"Deleted {deleted} {name}. 3 (Undo) puts them back.");
+                Say($"Deleted {deleted} {name}. 8 (Undo) puts them back.");
                 return;
             }
 
@@ -892,12 +1156,15 @@ namespace Villheim.Logic.Village
             if (_saveArmed == design && Time.time < _saveUntil)
             {
                 _saveArmed = null;
+                ShowSelection(null, null);
                 Say(BlueprintEdits.Run(new[] { "save", design }));
                 return;
             }
 
             _saveArmed = design;
             _saveUntil = Time.time + 6f;
+            _nextSelection = 0f;
+            MessageHud.instance?.ShowMessage(MessageHud.MessageType.Center, $"Save {design}?\nClick again within 6 seconds.");
             Say($"Save {design}? Click again within 6 seconds to save it as it stands.");
         }
 

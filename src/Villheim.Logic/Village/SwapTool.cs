@@ -319,7 +319,7 @@ namespace Villheim.Logic.Village
             Lit.AddRange(Structure(target));
             foreach (ZNetView view in Lit)
             {
-                MaterialMan.instance?.SetValue(view.gameObject, Emission, new Color(0.1f, 0.6f, 0.1f));
+                MaterialMan.instance?.SetValue(view.gameObject, Emission, LookAt.Highlight);
             }
 
             Say($"Swap: {Lit.Count} pieces of {zdo.GetString(Gallery.KeyDesign, "")} selected; the numpad moves only these while Ctrl is held.");
@@ -457,6 +457,71 @@ namespace Villheim.Logic.Village
             Say($"Swap: moved {Lit.Count} pieces. 'vh bp save' keeps it.");
         }
 
+        /// <summary>
+        /// A design's front sign and everything that is the design now: its gallery pieces (stand-ins swapped in
+        /// included) and pieces built by hand on its plot. Signs and the stand-in palette are left out. Null sign: the
+        /// design is not standing near.
+        /// </summary>
+        public static (ZDO Sign, List<ZNetView> Views) DesignParts(string design)
+        {
+            var views = new List<ZNetView>();
+            if (string.IsNullOrEmpty(design) || ZNetScene.instance == null)
+            {
+                return (null, views);
+            }
+
+            ZDO sign = null;
+            foreach (ZNetView view in ZNetScene.instance.m_instances.Values)
+            {
+                ZDO zdo = view != null && view.IsValid() ? view.GetZDO() : null;
+                if (zdo != null && zdo.GetString(Gallery.KeyDesign, "") == design && zdo.GetFloat(Gallery.KeyPlotHalf, 0f) > 0f)
+                {
+                    sign = zdo;
+                    break;
+                }
+            }
+
+            if (sign == null)
+            {
+                return (null, views);
+            }
+
+            Vector3 center = sign.GetVec3(Gallery.KeyPlotCenter, Vector3.zero);
+            float half = sign.GetFloat(Gallery.KeyPlotHalf, 0f);
+            Quaternion frame = Quaternion.Inverse(Quaternion.Euler(0f, sign.GetFloat(Gallery.KeyPlotYaw, 0f), 0f));
+            foreach (ZNetView view in ZNetScene.instance.m_instances.Values)
+            {
+                ZDO zdo = view != null && view.IsValid() ? view.GetZDO() : null;
+                if (zdo == null || zdo.GetInt(KeyPalette) == 1)
+                {
+                    continue;
+                }
+
+                bool gallery = zdo.GetInt(Gallery.KeyGallery) == 1;
+                bool ours = gallery && zdo.GetString(Gallery.KeyDesign, "") == design && zdo.GetFloat(Gallery.KeyPlotHalf, 0f) <= 0f;
+                Vector3 local = frame * (view.transform.position - center);
+                bool byHand = !gallery && view.GetComponent<Piece>() != null && view.GetComponent<Character>() == null &&
+                              Mathf.Abs(local.x) <= half && Mathf.Abs(local.z) <= half;
+                if (ours || byHand)
+                {
+                    views.Add(view);
+                }
+            }
+
+            return (sign, views);
+        }
+
+        /// <summary>Forgets the swap choices made for a design (it was reset to its original).</summary>
+        public static void ForgetChoices(string design)
+        {
+            Choices.Remove(design);
+            if (_design == design)
+            {
+                _original = null;
+                _current = null;
+            }
+        }
+
         /// <summary>Marks a design as changed by hand, so 'vh bp save page' saves it.</summary>
         public static void MarkTouched(string design)
         {
@@ -504,55 +569,16 @@ namespace Villheim.Logic.Village
                 design = _design;
             }
 
-            ZDO sign = null;
-            foreach (ZNetView view in ZNetScene.instance.m_instances.Values)
-            {
-                ZDO zdo = view != null && view.IsValid() ? view.GetZDO() : null;
-                if (zdo != null && design != null && zdo.GetString(Gallery.KeyDesign, "") == design && zdo.GetFloat(Gallery.KeyPlotHalf, 0f) > 0f)
-                {
-                    sign = zdo;
-                    break;
-                }
-            }
-
+            (ZDO sign, List<ZNetView> views) = DesignParts(design);
             if (sign == null)
             {
                 Say("Swap: aim at a gallery design to move it (or pick one first).");
                 return;
             }
 
-            Vector3 center = sign.GetVec3(Gallery.KeyPlotCenter, Vector3.zero);
-            float half = sign.GetFloat(Gallery.KeyPlotHalf, 0f);
-            Quaternion yaw = Quaternion.Euler(0f, sign.GetFloat(Gallery.KeyPlotYaw, 0f), 0f);
-            Quaternion frame = Quaternion.Inverse(yaw);
-            int moved = 0;
-            foreach (ZNetView view in ZNetScene.instance.m_instances.Values.ToList())
-            {
-                ZDO zdo = view != null && view.IsValid() ? view.GetZDO() : null;
-                if (zdo == null || zdo.GetInt(KeyPalette) == 1)
-                {
-                    continue;
-                }
-
-                bool gallery = zdo.GetInt(Gallery.KeyGallery) == 1;
-                bool ours = gallery && zdo.GetString(Gallery.KeyDesign, "") == design && zdo.GetFloat(Gallery.KeyPlotHalf, 0f) <= 0f;
-                Vector3 local = frame * (view.transform.position - center);
-                bool byHand = !gallery && view.GetComponent<Piece>() != null && view.GetComponent<Character>() == null &&
-                              Mathf.Abs(local.x) <= half && Mathf.Abs(local.z) <= half;
-                if (!ours && !byHand)
-                {
-                    continue;
-                }
-
-                view.transform.position += move;
-                zdo.SetPosition(view.transform.position);
-                if (zdo.GetString(Gallery.KeySwappedFrom, "").Length > 0)
-                {
-                    zdo.Set(Gallery.KeySwappedCenter, zdo.GetVec3(Gallery.KeySwappedCenter, view.transform.position) + move);
-                }
-
-                moved++;
-            }
+            Quaternion frame = Quaternion.Inverse(Quaternion.Euler(0f, sign.GetFloat(Gallery.KeyPlotYaw, 0f), 0f));
+            MoveViews(views, move);
+            int moved = views.Count;
 
             if (record)
             {

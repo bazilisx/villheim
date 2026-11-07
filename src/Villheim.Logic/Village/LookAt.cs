@@ -119,7 +119,7 @@ namespace Villheim.Logic.Village
 
             _lastObject = target;
             Unpaint();
-            if (!SwapTool.IsLit(target) && !Shaping.IsLocked(target))
+            if (!SwapTool.IsLit(target) && !Shaping.IsShown(target))
             {
                 MaterialMan.instance?.SetValue(target, Emission, Highlight);
                 _painted = target;

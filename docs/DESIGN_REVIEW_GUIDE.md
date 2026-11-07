@@ -60,46 +60,50 @@ The shaping knife is the vanilla wooden knife (`KnifeWood`, config ShapingTool),
 (on the ground, in the inventory and on the hotbar). How it looks in hand and on the ground is chosen in F1 (see
 Settings); its icon is tinted the same colour in the inventory and on the hotbars. With it in hand, hotbar keys 1 to 8
 stop using items and become the editing tools, with their own icons and labels. **Press a key to pick a tool** (its
-slot shows as selected), then **left click to use it**; your character makes the hammer's building swing. Press the
-same key again to put the tool down. Swap is picked when you take the knife out. Put the knife away (press its quick
+slot shows as selected), then **left click to use it**; your character makes the hammer's building swing, and one
+click is one action. Press the same key again to put the tool down. Swap is picked when you take the knife out. Put the knife away (press its quick
 slot again, or take another tool) and the hotbar is back to normal.
 
 | Key | Label | Left click does |
 |---|---|---|
-| 1 | Swap | Click a design piece: pick it and put up stand-ins at its sign. Click a stand-in (or a piece you built): use it. |
-| 2 | Turn | Click an object to lock onto it (it glows in ShaperColor); click it again to let go. The **mouse wheel** turns the locked object, or the one you aim at if nothing is locked. See Turning below. |
-| 3 | Undo | Pressing 3 takes back your last change, one per press (up to 50): a delete or Delete all (the objects come back), a move step, a turn, a swap. Clicking does nothing. |
-| 4 | Move | You stand still. **W A S D** move the design you aim at away, left, back, right (as you look), **E** up, **Q** down. 10 cm a press, Shift for 50 cm. Click a structure to lock onto it (green): then only that moves. Click it again to let go, or click another structure to switch. Press 4 again to walk. |
-| 5 | (empty) | Free for a later tool. |
-| 6 | Delete | Click removes what you aim at within 6 m: pieces, creatures, traders and other NPCs. Never a player. |
-| 7 | Save | Click anything of a design: the label turns "Save?". Click again within 6 seconds to save it as it stands. |
-| 8 | Del all | Click something (a dvergr lantern, say): every object with that exact name in that design glows orange and the screen asks "Delete all 14 ...?". Click again within 6 seconds to delete them all; otherwise the orange fades and nothing is deleted. Outside a design it takes everything of that name within 20 m. |
+| 1 | Move | You stand still (flying too). The design you aim at is highlighted, and **W A S D** move it away, left, back, right (as you look), **E** up, **Q** down. 10 cm a press, Shift for 50 cm. Click a structure to lock onto it: then only that is highlighted and moves. Click it again to let go, or click another structure to switch. Press 1 again to walk. |
+| 2 | Turn | You stand still. The design you aim at is highlighted and the **mouse wheel** turns all of it about the middle of its plot. Click one object to lock onto it: then only that turns. Click it again to let go. Press 2 again to walk. See Turning below. |
+| 3 | Swap | Click a design piece: pick it and put up stand-ins at its sign. Click a stand-in (or a piece you built): use it. |
+| 4 | Delete | Click removes what you aim at within 6 m: pieces, creatures, traders and other NPCs. Never a player. |
+| 5 | Del all | Click something (a dvergr lantern, say): every object with that exact name in that design is highlighted and the screen asks "Delete all 14 ...?". Click again within 6 seconds to delete them all; otherwise the highlight fades and nothing is deleted. Outside a design it takes everything of that name within 20 m. |
+| 6 | Save | Click anything of a design: it is highlighted and the label turns "Save?". Click again within 6 seconds to save it as it stands. |
+| 7 | Reset | Click anything of a design: it is highlighted and the label turns "Reset?". Click again within 6 seconds: the design is taken down (with anything built on its plot) and put up again as the gallery shows it, from its pass 3 save if it has one, otherwise as its creator built it. Its swaps and moves are forgotten. For the creator's original of a saved design, `vh bp forget <number>` first. |
+| 8 | Undo | Pressing 8 takes back your last change, one per press (up to 50): a delete or Delete all (the objects come back), a move step, a turn, a swap, a reset. Clicking does nothing. |
+
+Every highlight of the knife (what you aim at, the design Move or Turn works on, a locked structure or object, Delete
+all's marks) is the one colour set by LookColor.
 
 ### Turning (key 2)
 
-| Input | Turns |
-|---|---|
-| Mouse wheel | around the up axis (yaw), one notch = 22.5 degrees (ShaperTurnStep) |
-| Shift + wheel | tilts it on its own X axis |
-| Alt + wheel | rolls it on its own Z axis |
-| Ctrl + wheel (with or without Shift/Alt) | every object of that name in the design, each on its own pivot |
+| Input | Nothing clicked: the whole design turns | One object clicked: only it turns |
+|---|---|---|
+| Mouse wheel | about the up axis, round the middle of its plot | about the up axis, on its own pivot |
+| Shift + wheel | tilts about the plot's X axis | tilts about its own X axis |
+| Alt + wheel | tilts about the plot's Z axis | rolls about its own Z axis |
+| Ctrl + wheel | (as the wheel) | every object of that name in the design, each on its own pivot |
 
-- The camera does not zoom while Turn is picked and you aim at something (or have something locked). Aim at the sky or
-  pick another tool to zoom.
-- The middle of the screen shows the axis and the object's angles. One press of 3 undoes a whole run of wheel notches
-  on the same object.
+- A ring shows the axis the wheel will turn about: green for up, red for X (Shift), blue for Z (Alt). Hold the
+  modifier to see its ring before turning.
+- One notch is 22.5 degrees (ShaperTurnStep).
+- The camera does not zoom while Turn has something to turn. Aim at the sky or pick another tool to zoom.
+- One press of 8 undoes a whole run of wheel notches on the same design or object.
 - Turns are kept when the design is saved, and a turned design counts as changed for `vh bp save page`.
 - `vh swap turn` still gives the current swap choice a quarter turn everywhere in the design.
 
-While the knife is in hand, look is always on: what you aim at (within 4 m) glows orange and its name shows in the
-middle of the screen, with what it stands in for if it is a stand-in. Pieces of a green Move part stay green, and a
-locked Turn object keeps its own colour. Full details go to the console and `looked-at.txt`.
+While the knife is in hand, look is always on: what you aim at (within 4 m) is highlighted and its name shows in the
+middle of the screen, with what it stands in for if it is a stand-in. Full details go to the console and
+`looked-at.txt`.
 
 Everything below about swapping, moving and saving works the same with the knife or with typed commands.
 
 ## Swapping pieces (`vh swap`)
 
-With the knife: pick Swap (key 1) and left click. Without it: turn on `vh swap`, and the swap key is **numpad 5** (middle mouse
+With the knife: pick Swap (key 3) and left click. Without it: turn on `vh swap`, and the swap key is **numpad 5** (middle mouse
 removes pieces when the hammer is out, so it is not used).
 
 1. **Pick a piece:** aim at a piece of a design (within about 4 m) and press numpad 5.
@@ -114,8 +118,8 @@ removes pieces when the hammer is out, so it is not used).
    - Clicking any piece of a combination takes the whole combination.
    - You can also build your own stand-in with the hammer, somewhere open, and click it. Pieces you built that touch
      it come along as a group (up to 20): two fences side by side can stand in for a wall twice as wide.
-3. **Fix it:** turn pieces with Turn (key 2 and the mouse wheel), or `vh swap turn` for a quarter turn of the current
-   choice everywhere in the design. `vh swap undo` (key 3) takes back the last change.
+3. **Fix it:** turn pieces with Turn (key 2, click the piece, mouse wheel), or `vh swap turn` for a quarter turn of
+   the current choice everywhere in the design. `vh swap undo` (key 8) takes back the last change.
 4. `vh swap done` removes the stand-ins. `vh swap off` ends swap mode.
 
 Nothing you swap is kept until you save the design (see Saving). Putting a page up again without saving shows the
@@ -134,7 +138,7 @@ originals.
   built on its plot. Use this for designs that float because their lowest pieces were meant to sit in the ground.
 - Hold Ctrl and aim at part of a design: that structure turns green (the piece and everything of the design touching
   it, for example a hut beside a hall). While Ctrl is held, the numpad moves only the green pieces. (With the knife in
-  hand, Ctrl belongs to Turn; use Move and click instead.)
+  hand, Ctrl belongs to Turn; use Move (key 1) and click instead.)
 - The arrow keys and Page Up/Down also work.
 - A design's height change is saved with it and used every time it goes up again.
 
@@ -184,7 +188,8 @@ originals.
 - **ShaperEffectBurstScale:** with bursts on, the size and reach of the zaps (0.3; lower is tinier, 1 is as the weapon has them).
 - **ShaperEffectTint:** on colours Fire, Frost, Spirit and Lightning with ShaperColor (teal lightning).
 - **ShaperTurnStep:** degrees per mouse wheel notch for Turn (22.5).
-- **LookColor:** the orange of the object you aim at while shaping (and of Delete all's marks). Darker is subtler.
+- **LookColor:** the colour of every highlight while shaping (what you aim at, the design being moved or turned, locked
+  parts, Delete all's marks). Darker is subtler.
 - **GallerySwapKey:** the swap key without the knife (numpad 5).
 - **GallerySwapBiomes:** which biomes stand-ins come from, e.g. `meadows,blackforest,swamp,plains`.
 - **GalleryNumberText:** size and height of the floating number over each sign.

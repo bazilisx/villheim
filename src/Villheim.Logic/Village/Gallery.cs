@@ -1619,6 +1619,74 @@ namespace Villheim.Logic.Village
             }
         }
 
+        /// <summary>
+        /// Shaper Tool Reset: takes down a design standing in the gallery (its pieces, stand-ins swapped in and anything
+        /// built on its plot) and puts it up again on the same plot as the gallery would: from its pass 3 save if it has
+        /// one, else as its creator built it. Its nudge and swap choices are forgotten. Undo puts the edited one back.
+        /// </summary>
+        internal static string ResetDesign(string name)
+        {
+            (ZDO sign, List<ZNetView> views) = SwapTool.DesignParts(name);
+            if (sign == null)
+            {
+                return $"Reset: the sign of {name} is not loaded; stand nearer.";
+            }
+
+            DesignLibrary.Design? design = DesignLibrary.ByName(name) ?? DesignLibrary.ByName(Blueprints.Prefix + name);
+            if (design == null)
+            {
+                return $"Reset: no design called {name}.";
+            }
+
+            Vector3 center = sign.GetVec3(KeyPlotCenter, Vector3.zero);
+            float half = sign.GetFloat(KeyPlotHalf, 0f);
+            float yaw = sign.GetFloat(KeyPlotYaw, 0f);
+            Vector3 nudgeBefore = sign.GetVec3(KeyNudge, Vector3.zero);
+            float offsetBefore = sign.GetFloat(KeyGroundOffset, 0f);
+            int touchedBefore = sign.GetInt(KeyTouched);
+            int placedBefore = sign.GetInt(KeyPlaced);
+
+            List<EditHistory.Snapshot> snapshots = views.Select(EditHistory.Take).ToList();
+            foreach (ZNetView view in views)
+            {
+                view.ClaimOwnership();
+                ZNetScene.instance.Destroy(view.gameObject);
+            }
+
+            var cell = new Cell { Design = design.Value, Center = center, Number = sign.GetInt(KeyNumber) };
+            Size(cell);
+            cell.Half = half;
+            Vector3 forward = -(Quaternion.Euler(0f, yaw, 0f) * Vector3.forward);
+            int made = Put(cell, forward);
+            sign.Set(KeyNudge, Vector3.zero);
+            sign.Set(KeyGroundOffset, cell.GroundOffset);
+            sign.Set(KeyTouched, 0);
+            sign.Set(KeyPlaced, made);
+            SwapTool.ForgetChoices(name);
+
+            List<ZNetView> fresh = SwapTool.DesignParts(name).Views;
+            EditHistory.Push($"resetting {name}", () =>
+            {
+                foreach (ZNetView view in fresh)
+                {
+                    if (view != null && view.IsValid())
+                    {
+                        view.ClaimOwnership();
+                        ZNetScene.instance.Destroy(view.gameObject);
+                    }
+                }
+
+                snapshots.ForEach(EditHistory.Restore);
+                sign.Set(KeyNudge, nudgeBefore);
+                sign.Set(KeyGroundOffset, offsetBefore);
+                sign.Set(KeyTouched, touchedBefore);
+                sign.Set(KeyPlaced, placedBefore);
+            });
+            return $"Reset {name}: {views.Count} pieces taken down, {made} put up " +
+                   (cell.Edited ? "from its pass 3 save ('vh bp forget' first for the creator's original)." : "as its creator built it.") +
+                   " 8 (Undo) puts your edits back.";
+        }
+
         /// <summary>The plan in the materials the page asked for ('as meadows'), or as it is.</summary>
         private static List<DesignSpawner.PlanEntry> Swapped(List<DesignSpawner.PlanEntry> plan, Cell cell)
         {

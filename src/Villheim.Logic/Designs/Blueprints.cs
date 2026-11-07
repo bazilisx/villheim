@@ -531,6 +531,13 @@ namespace Villheim.Logic.Designs
                 return null;
             }
 
+            // Fields are split by spaces, so a comma can only be a decimal comma: the game writes .vbuild files in the
+            // player's own number format ("000,55557" in much of Europe), which read as 0 and put every piece in one spot.
+            for (int i = 1; i < 8; i++)
+            {
+                f[i] = f[i].Replace(',', '.');
+            }
+
             return new Piece
             {
                 Prefab = f[0].Trim(),

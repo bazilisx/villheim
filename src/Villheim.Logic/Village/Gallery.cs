@@ -30,6 +30,9 @@ namespace Villheim.Logic.Village
             public int Building;
             public string Notes = "";
             public DesignLibrary.Design Design;
+
+            /// <summary>The middle of the design's pieces, in its own coordinates (locations are not built round their middle).</summary>
+            public Vector3 Offset;
             public Role Role;
             public Vector3 Center;
             public float Half;
@@ -85,6 +88,12 @@ namespace Villheim.Logic.Village
             "'vh gallery show <name> [name...]' lays out those designs. 'vh gallery clear' removes a gallery.";
 
         private static bool _running;
+
+        /// <summary>Raised by 'vh gallery clear' and by each new page: a gallery still being put up stops.</summary>
+        private static int _generation;
+
+        /// <summary>Space between designs on a page, beyond their own size.</summary>
+        private const float Gap = 6f;
 
         /// <summary>The stages of the game in order. Each design belongs to one (see Classify).</summary>
         internal static readonly string[] StageNames = { "Meadows", "Black Forest", "Swamp", "Mountain", "Plains", "Mistlands", "Ashlands", "Deep North" };
@@ -334,6 +343,7 @@ namespace Villheim.Logic.Village
                     }
                 }
 
+                _generation++;
                 foreach (ZNetView view in gone)
                 {
                     view.ClaimOwnership();
@@ -510,10 +520,44 @@ namespace Villheim.Logic.Village
                 return bySize != 0 ? bySize : string.CompareOrdinal(a.Design.Name, b.Design.Name);
             });
 
-            for (int i = 0; i < cells.Count; i++)
+            // Numbers never change once given: the review sheet and the gallery pages go by them. Designs already in
+            // design-list.csv keep their number; new ones come after, in the order above.
+            Dictionary<string, int> numbers = ReadNumbers();
+            int next = numbers.Count > 0 ? numbers.Values.Max() : 0;
+            foreach (Cell cell in cells)
             {
-                cells[i].Number = i + 1;
+                cell.Number = numbers.TryGetValue(cell.Design.Name, out int number) ? number : ++next;
             }
+
+            cells.Sort((a, b) => a.Number.CompareTo(b.Number));
+        }
+
+        /// <summary>Design name and number from the last design-list.csv, if there is one.</summary>
+        private static Dictionary<string, int> ReadNumbers()
+        {
+            var numbers = new Dictionary<string, int>();
+            try
+            {
+                if (System.IO.File.Exists(ListPath))
+                {
+                    foreach (string line in System.IO.File.ReadAllLines(ListPath).Skip(1))
+                    {
+                        // Number,Page,"Stage",Kind,"Name",...: the name is the third quoted field.
+                        string[] quoted = line.Split('"');
+                        int comma = line.IndexOf(',');
+                        if (quoted.Length > 3 && comma > 0 && int.TryParse(line.Substring(0, comma), out int number))
+                        {
+                            numbers[quoted[3]] = number;
+                        }
+                    }
+                }
+            }
+            catch (System.Exception e)
+            {
+                VillheimPlugin.Log.LogWarning($"Gallery: could not read the old design numbers: {e.Message}");
+            }
+
+            return numbers;
         }
 
         /// <summary>What one prefab is, worked out once: whether a player can build it, whether it is a building piece, its stage.</summary>
@@ -832,6 +876,12 @@ namespace Villheim.Logic.Village
         {
             var labels = new List<(Vector3 At, string Text)>();
             float depth = 0f, widest = 0f;
+            foreach (Cell cell in cells)
+            {
+                Cell sized = cell;
+                Safe("the size of " + cell.Design.Name, () => Size(sized));
+            }
+
             Safe("the layout", () => Layout(cells, forward, labels, out depth, out widest));
             // On the area last flattened, when it is near; else in front of the player.
             Vector3 start = playerPosition + forward * 8f;
@@ -857,10 +907,46 @@ namespace Villheim.Logic.Village
                 labels[i] = (new Vector3(start.x + labels[i].At.x, float.NaN, start.z + labels[i].At.z), labels[i].Text);
             }
 
-            VillheimPlugin.Instance.StartCoroutine(Build(cells, new List<Pad>(), forward, labels));
+            _generation++;
+            VillheimPlugin.Instance.StartCoroutine(Build(cells, new List<Pad>(), forward, labels, _generation));
             Console.instance?.Print($"Villheim: laying out {cells.Count} designs in front of you ({widest:0} by {depth:0} m). " +
                                     "Run 'vh flatten' there first to clear and level the ground.");
             yield break;
+        }
+
+        /// <summary>
+        /// How much ground the design really takes: blueprints know their own size; a location's game radius is where
+        /// it may spawn, not what it covers (DevGarden's fences ran into its neighbours), so its pieces are measured.
+        /// </summary>
+        private static void Size(Cell cell)
+        {
+            if (cell.Design.Blueprint != null)
+            {
+                cell.Half = Mathf.Clamp(cell.Design.Radius + 1f, 5f, 90f);
+                return;
+            }
+
+            ZoneSystem.ZoneLocation location = cell.Design.Location;
+            AssetGuard.Load(location);
+            try
+            {
+                GameObject asset = location.m_prefab.Asset;
+                List<DesignSpawner.PlanEntry> plan = asset != null ? DesignSpawner.MakePlan(asset, Vector3.zero, 1, 0f, false) : null;
+                if (plan == null || plan.Count == 0)
+                {
+                    return;
+                }
+
+                float minX = plan.Min(e => e.LocalPosition.x), maxX = plan.Max(e => e.LocalPosition.x);
+                float minZ = plan.Min(e => e.LocalPosition.z), maxZ = plan.Max(e => e.LocalPosition.z);
+                cell.Offset = new Vector3((minX + maxX) / 2f, 0f, (minZ + maxZ) / 2f);
+                float radius = plan.Max(e => new Vector2(e.LocalPosition.x - cell.Offset.x, e.LocalPosition.z - cell.Offset.z).magnitude);
+                cell.Half = Mathf.Clamp(radius + 3f, 5f, 90f);
+            }
+            finally
+            {
+                location.m_prefab.Release();
+            }
         }
 
         private const float FlatWidth = 360f;
@@ -952,9 +1038,9 @@ namespace Villheim.Logic.Village
                 }
             }
 
-            VillheimPlugin.Instance.StartCoroutine(Build(new List<Cell>(), pads, forward, new List<(Vector3 At, string Text)>()));
+            VillheimPlugin.Instance.StartCoroutine(Build(new List<Cell>(), pads, forward, new List<(Vector3 At, string Text)>(), _generation));
             return $"Villheim: clearing and levelling {width:0} m wide by {length:0} m deep in front of you at {height:0.0} m ({pads.Count} pads). " +
-                   "Walk along it so the far parts load; the top-left counts the pads done. 'vh gallery' lays out on this area from anywhere near it.";
+                   "Walk along it so the far parts load; the middle of the screen counts the pads done. 'vh gallery' lays out on this area from anywhere near it.";
         }
 
         /// <summary>The middle height of the generated ground across a square.</summary>
@@ -1144,16 +1230,16 @@ namespace Villheim.Logic.Village
                 {
                     List<Cell> line = members.Skip(row * 6).Take(6).ToList();
                     float rowDepth = line.Max(c => c.Half);
-                    float width = line.Sum(c => c.Half * 2f);
+                    float width = line.Sum(c => c.Half * 2f) + Gap * (line.Count - 1);
                     widest = Mathf.Max(widest, width);
                     float x = -width / 2f;
                     foreach (Cell cell in line)
                     {
                         cell.Center = forward * (depth + rowDepth) + right * (x + cell.Half);
-                        x += cell.Half * 2f;
+                        x += cell.Half * 2f + Gap;
                     }
 
-                    depth += rowDepth * 2f;
+                    depth += rowDepth * 2f + Gap;
                 }
 
                 depth += 8f;
@@ -1172,12 +1258,17 @@ namespace Villheim.Logic.Village
             }
         }
 
-        private static IEnumerator Build(List<Cell> cells, List<Pad> pads, Vector3 forward, List<(Vector3 At, string Text)> labels)
+        private static IEnumerator Build(List<Cell> cells, List<Pad> pads, Vector3 forward, List<(Vector3 At, string Text)> labels, int generation)
         {
             float until = Time.time + 40f * 60f;
             int built = 0;
             while ((built < cells.Count || pads.Any(p => !p.Done) || labels.Count > 0) && Time.time < until)
             {
+                if (generation != _generation)
+                {
+                    yield break; // cleared, or a new page started
+                }
+
                 // Ground first: every pad whose zone is loaded is cleared, levelled and bared.
                 bool shaped = false;
                 foreach (Pad pad in pads.Where(p => !p.Done))
@@ -1198,18 +1289,22 @@ namespace Villheim.Logic.Village
 
                 if (shaped)
                 {
+                    Progress($"Flatten: {pads.Count(p => p.Done)} of {pads.Count} pads levelled");
                     yield return new WaitForSeconds(1f); // let the ground's collider catch up
                 }
 
                 // Cluster labels, each once its spot is loaded and its ground done.
-                foreach ((Vector3 at, string text) in labels.ToList())
+                // By index: a label's height is NaN until it is put down, and NaN never equals itself, so removing
+                // it by value failed and the same sign went up again every two seconds for 40 minutes (2026-11-07).
+                for (int i = labels.Count - 1; i >= 0; i--)
                 {
+                    (Vector3 at, string text) = labels[i];
                     if (!Loaded(at, 4f) || pads.Any(p => !p.Done && Utils.DistanceXZ(p.Center, at) < PadRadius + 6f))
                     {
                         continue;
                     }
 
-                    labels.Remove((at, text));
+                    labels.RemoveAt(i);
                     Vector3 spot = at;
                     if (float.IsNaN(spot.y))
                     {
@@ -1256,14 +1351,18 @@ namespace Villheim.Logic.Village
                     Safe("a sign", () => Sign(building, forward));
                     built++;
                     VillheimPlugin.Log.LogInfo($"Gallery: {cell.Design.Name} ({Label(cell)}, level {Level(cell)}): {pieces} pieces.");
+                    Progress($"Gallery: {built} of {cells.Count} designs up");
                     yield return null;
                 }
 
-                Progress($"Gallery: ground {pads.Count(p => p.Done)}/{pads.Count}, designs {built}/{cells.Count}");
                 yield return new WaitForSeconds(2f);
             }
 
             VillheimPlugin.Log.LogInfo($"Gallery: {built} of {cells.Count} designs built.");
+            if (generation == _generation && built > 0)
+            {
+                MessageHud.instance?.ShowMessage(MessageHud.MessageType.Center, $"Gallery: page ready ({built} designs)");
+            }
         }
 
         /// <summary>
@@ -1348,8 +1447,8 @@ namespace Villheim.Logic.Village
         private static int Spawn(List<DesignSpawner.PlanEntry> plan, Cell cell, float yaw)
         {
             float planned = ConstructionSite.FloorOf(plan);
-            Vector3 origin = cell.Center - Vector3.up * planned;
             Quaternion turn = Quaternion.Euler(0f, yaw, 0f);
+            Vector3 origin = cell.Center - turn * cell.Offset - Vector3.up * planned;
             var made = new List<GameObject>();
             foreach (DesignSpawner.PlanEntry entry in plan)
             {
@@ -1409,7 +1508,28 @@ namespace Villheim.Logic.Village
         /// <summary>A sign at the front of the plot: the kind and level in blue, the design's name in white.</summary>
         private static void Sign(Cell cell, Vector3 forward)
         {
-            PutSign(cell.Center - forward * (cell.Half - 1f), forward, $"<#5cf>{Label(cell)}, {StageNames[cell.Stage]}<br><#fff>{cell.Design.Name}<br><#bbb>{(cell.Number > 0 ? $"No. {cell.Number}, " : "")}by {Creator(cell.Design)}");
+            Vector3 at = cell.Center - forward * (cell.Half - 1f);
+            string text = $"<#5cf>{Label(cell)}, {StageNames[cell.Stage]}<br><#fff>{cell.Design.Name}<br><#bbb>{(cell.Number > 0 ? $"No. {cell.Number}, " : "")}by {Creator(cell.Design)}";
+            if (cell.Number <= 0)
+            {
+                PutSign(at, forward, text);
+                return;
+            }
+
+            // The front sign carries the text; a second one just behind it, its board hidden, carries the number big
+            // above both (LogicConfig.GalleryNumberText, so its size can be tuned while the game runs).
+            OneSign(at, forward, 0f, text);
+            string number;
+            try
+            {
+                number = string.Format(LogicConfig.GalleryNumberText?.Value ?? "{0}", cell.Number);
+            }
+            catch (System.FormatException)
+            {
+                number = cell.Number.ToString();
+            }
+
+            OneSign(at + forward * 0.08f, forward, 0f, number);
         }
 
         /// <summary>A sign standing on the ground (two back to back, so it reads from either side).</summary>
@@ -1423,16 +1543,27 @@ namespace Villheim.Logic.Village
 
             foreach (float turn in new[] { 0f, 180f })
             {
-                Quaternion rotation = Quaternion.LookRotation(-forward) * Quaternion.Euler(0f, turn, 0f);
-                GameObject sign = Object.Instantiate(prefab, at + rotation * Vector3.forward * 0.03f, rotation);
-                StandOnGround(sign, at.y);
-                ZNetView view = sign.GetComponent<ZNetView>();
-                if (view != null && view.IsValid())
-                {
-                    view.GetZDO().Set(KeyGallery, 1);
-                    view.GetZDO().Set(ZDOVars.s_text, text);
-                    sign.GetComponent<Sign>()?.UpdateText();
-                }
+                OneSign(at, forward, turn, text);
+            }
+        }
+
+        private static void OneSign(Vector3 at, Vector3 forward, float turn, string text)
+        {
+            GameObject prefab = ZNetScene.instance.GetPrefab("sign");
+            if (prefab == null)
+            {
+                return;
+            }
+
+            Quaternion rotation = Quaternion.LookRotation(-forward) * Quaternion.Euler(0f, turn, 0f);
+            GameObject sign = Object.Instantiate(prefab, at + rotation * Vector3.forward * 0.03f, rotation);
+            StandOnGround(sign, at.y);
+            ZNetView view = sign.GetComponent<ZNetView>();
+            if (view != null && view.IsValid())
+            {
+                view.GetZDO().Set(KeyGallery, 1);
+                view.GetZDO().Set(ZDOVars.s_text, text);
+                sign.GetComponent<Sign>()?.UpdateText();
             }
         }
 

@@ -32,6 +32,7 @@ namespace Villheim.Logic
         public static ConfigEntry<float> GhostTint;
         public static ConfigEntry<float> GhostGlow;
         public static ConfigEntry<float> RaidChance;
+        public static ConfigEntry<string> GalleryNumberText;
 
         public static void Bind()
         {
@@ -101,6 +102,9 @@ namespace Villheim.Logic
                 "Dirt (bare earth, like a path), or Both (bare earth 5 m round the fire, grass cleared out to 12 m).");
             GhostGlowDay = Admin(config, looks, "GhostGlowDay", 0.08f,
                 "A faint teal glow by day, so villagers read teal rather than white in sunlight (GhostGlow is the night value).");
+            GalleryNumberText = Admin(config, "4 - Design review", "GalleryNumberText", "<#fff><voffset=100><size=12>{0}",
+                "Text of the big number floating over each gallery sign ({0} is the design's number in design-list.csv). " +
+                "Raise voffset to lift it, size to make it bigger; takes effect on the next gallery page.");
             RaidChance = Admin(config, work, "RaidChance", 0.2f,
                 "Chance each dusk of a raid (plus 3% per village tier), never two nights running.");
             WatchLooks();

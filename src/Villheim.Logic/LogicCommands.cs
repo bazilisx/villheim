@@ -42,6 +42,7 @@ namespace Villheim.Logic
             "raid: send a raid to the nearest village (comes at once if it is night)",
             "blueprints: list the blueprints villages can build (BepInEx/config/Villheim/blueprints, PlanBuild's folder)",
             "savebp <role-family-level> [radius]: save the building pieces around you as a blueprint, e.g. savebp house-cabin-1 8",
+            "look [off]: name whatever the crosshair points at within 4 m, with its kind, size, stage and what the material swap makes of it; new names go to BepInEx/Villheim/looked-at.txt",
             "bp swap <number|name> <stage>: save a copy of a design with its walls, floors, roofs and beams in that stage's materials (to blueprints/inspiration/edits)",
         };
 
@@ -169,6 +170,7 @@ namespace Villheim.Logic
                 case "villheim_raid": ForceRaid(context); return true;
                 case "villheim_savebp": SaveBlueprint(args, context); return true;
                 case "villheim_bp": Say(context, BlueprintEdits.Run(args)); return true;
+                case "villheim_look": Say(context, Village.LookAt.Toggle(args)); return true;
                 default: return false;
             }
         }

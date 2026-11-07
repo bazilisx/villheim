@@ -38,6 +38,17 @@ namespace Villheim.Logic.Village
             ["roof"] = "roof", ["floor"] = "floor", ["stair"] = "stair", ["arch"] = "arch", ["window"] = "window", ["ladder"] = "ladder",
         };
 
+        /// <summary>
+        /// Hidden pieces whose name says one kind but which stand in the world as another (Tyler, from PotteryBarn's list
+        /// of location pieces): the goblin wood walls are fences.
+        /// </summary>
+        private static readonly Dictionary<string, string> KindOverride = new Dictionary<string, string>
+        {
+            ["goblin_woodwall_1m"] = "fence",
+            ["goblin_woodwall_2m"] = "fence",
+            ["goblin_woodwall_2m_ribs"] = "fence",
+        };
+
         /// <summary>A stage after every real one: pieces no player can build.</summary>
         private const int Never = 99;
 
@@ -170,10 +181,13 @@ namespace Villheim.Logic.Village
                 return true;
             }
 
+            // Hidden location pieces (dvergrprops_wood_wall, goblin_fence...): no recipe and often no Piece at all, but
+            // part of a structure (they wear and break) and named for a building kind.
             GameObject go = ZNetScene.instance.GetPrefab(prefab);
-            Piece piece = go != null ? go.GetComponent<Piece>() : null;
-            if (piece == null || (piece.m_resources != null && piece.m_resources.Length > 0) || go.GetComponent<WearNTear>() == null ||
-                go.GetComponent<Fireplace>() != null || go.GetComponent<Container>() != null || go.GetComponentInChildren<Light>(true) != null)
+            if (go == null || Gallery.IsBuildable(prefab) ||
+                go.GetComponent<WearNTear>() == null && go.GetComponent<Destructible>() == null ||
+                go.GetComponent<Character>() != null || go.GetComponent<Fireplace>() != null || go.GetComponent<Container>() != null ||
+                go.GetComponentInChildren<Light>(true) != null)
             {
                 return false;
             }
@@ -184,6 +198,33 @@ namespace Villheim.Logic.Village
 
         /// <summary>The stage a piece belongs to for swapping: <see cref="Never"/> when no player can build it.</summary>
         private static int StageOf(string prefab) => Gallery.IsBuildable(prefab) ? Gallery.StageOfPiece(prefab) : Never;
+
+        /// <summary>For 'vh look': what the piece is to the swap, and what it becomes in each stage up to Plains.</summary>
+        public static string Describe(string prefab)
+        {
+            Shape shape = Measure(prefab);
+            CultureInfo inv = CultureInfo.InvariantCulture;
+            string size = shape == null ? "size unknown" :
+                $"{shape.Size.x.ToString("0.0", inv)} x {shape.Size.y.ToString("0.0", inv)} x {shape.Size.z.ToString("0.0", inv)} m";
+            int stage = StageOf(prefab);
+            string text = $"{prefab}: {(shape != null && shape.KindKey.Length > 0 ? shape.KindKey : "no building kind")}, {size}, " +
+                          (stage == Never ? "no player can build it" : Gallery.StageNames[stage]) +
+                          (Swappable(prefab) ? "" : ", not swapped (decoration or not a building piece)");
+            if (Swappable(prefab) && stage > 0)
+            {
+                var swaps = new List<string>();
+                for (int target = 0; target < Mathf.Min(stage, 5); target++)
+                {
+                    swaps.Add(TrySwap(prefab, target, out string swap, out _, out _, out bool near)
+                        ? $"{Gallery.StageWords[target]}: {swap}{(near ? " (near)" : "")}"
+                        : $"{Gallery.StageWords[target]}: none");
+                }
+
+                text += ". As " + string.Join("; ", swaps);
+            }
+
+            return text;
+        }
 
         /// <summary>Counts a piece that stays although it is from a later stage than the target.</summary>
         public static void Note(string prefab, int target, Result result)
@@ -410,15 +451,17 @@ namespace Villheim.Logic.Village
             if (bounds.HasValue)
             {
                 string lower = prefab.ToLowerInvariant();
-                string[] tokens = lower.Split('_');
+                string named = KindOverride.TryGetValue(prefab, out string kind) ? kind : lower;
+                // "45d" (goblin roofs) means 45 degrees, like "45" in the vanilla names.
+                string[] tokens = lower.Split('_').Select(t => System.Text.RegularExpressions.Regex.IsMatch(t, @"^\d+d$") ? t.TrimEnd('d') : t).ToArray();
                 shape = new Shape
                 {
                     Prefab = prefab,
                     Stage = Gallery.StageOfPiece(prefab),
                     Size = bounds.Value.size,
                     Center = bounds.Value.center,
-                    KindKey = string.Join("+", Kinds.Where(k => lower.Contains(k))),
-                    Families = new HashSet<string>(Kinds.Where(k => lower.Contains(k)).Select(k => Family[k])),
+                    KindKey = string.Join("+", Kinds.Where(k => named.Contains(k))),
+                    Families = new HashSet<string>(Kinds.Where(k => named.Contains(k)).Select(k => Family[k])),
                     Mods = new HashSet<string>(tokens.Where(t => Modifiers.Contains(t) || t.Any(char.IsDigit))),
                 };
             }

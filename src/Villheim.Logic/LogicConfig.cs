@@ -43,6 +43,7 @@ namespace Villheim.Logic
         public static ConfigEntry<float> ShaperEffectScale;
         public static ConfigEntry<float> ShaperEffectStrength;
         public static ConfigEntry<bool> ShaperEffectBursts;
+        public static ConfigEntry<float> ShaperEffectBurstScale;
         public static ConfigEntry<bool> ShaperEffectTint;
 
         public static void Bind()
@@ -147,6 +148,9 @@ namespace Villheim.Logic
                 new AcceptableValueRange<float>(0.05f, 1f), new ConfigurationManagerAttributes { IsAdminOnly = true }));
             ShaperEffectBursts = Admin(config, "4 - Design review", "ShaperEffectBursts", false,
                 "Keep the effects' periodic bursts (the big lightning blasts). Off: only the steady small sparks.");
+            ShaperEffectBurstScale = config.Bind("4 - Design review", "ShaperEffectBurstScale", 0.3f, new ConfigDescription(
+                "With ShaperEffectBursts on: size, speed and reach of the bursts (the zaps), on top of ShaperEffectScale. 1 leaves them as the weapon has them. Changes show at once.",
+                new AcceptableValueRange<float>(0.02f, 1.5f), new ConfigurationManagerAttributes { IsAdminOnly = true }));
             ShaperEffectTint = Admin(config, "4 - Design review", "ShaperEffectTint", true,
                 "Recolour the effects to ShaperColor (teal lightning). Off: their own colours.");
             LookColor = Admin(config, "4 - Design review", "LookColor", new UnityEngine.Color(0.45f, 0.16f, 0.02f),

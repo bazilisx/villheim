@@ -162,6 +162,7 @@ originals.
 - **ShaperEffectScale:** size of Fire, Frost, Spirit and Lightning on the knife (0.3; 1 is sword size).
 - **ShaperEffectStrength:** how many particles and how bright (0.4; lower is subtler).
 - **ShaperEffectBursts:** off leaves out the big periodic blasts the weapons give off.
+- **ShaperEffectBurstScale:** with bursts on, the size and reach of the zaps (0.3; lower is tinier, 1 is as the weapon has them).
 - **ShaperEffectTint:** on colours Fire, Frost, Spirit and Lightning with ShaperColor (teal lightning).
 - **LookColor:** the orange of the object you aim at while shaping (and of Delete all's marks). Darker is subtler.
 - **GallerySwapKey:** the swap key without the knife (numpad 5).

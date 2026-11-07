@@ -34,11 +34,12 @@ namespace Villheim.Logic.Village
 
         /// <summary>The effect and colour as one word, to tell whether an object shows the current choice.</summary>
         public static string Signature(string effect, Color color) =>
-            $"{FxName}:{effect}:{ColorUtility.ToHtmlStringRGB(color)}:{Scale:0.00}:{Strength:0.00}:{Bursts}:{Tint}";
+            $"{FxName}:{effect}:{ColorUtility.ToHtmlStringRGB(color)}:{Scale:0.00}:{Strength:0.00}:{Bursts}:{BurstScale:0.00}:{Tint}";
 
         private static float Scale => LogicConfig.ShaperEffectScale?.Value ?? 0.3f;
         private static float Strength => LogicConfig.ShaperEffectStrength?.Value ?? 0.4f;
         private static bool Bursts => LogicConfig.ShaperEffectBursts?.Value ?? false;
+        private static float BurstScale => LogicConfig.ShaperEffectBurstScale?.Value ?? 0.3f;
         private static bool Tint => LogicConfig.ShaperEffectTint?.Value ?? true;
 
         /// <summary>Whether the object already shows this effect (its effect child carries the signature as its name).</summary>
@@ -186,9 +187,24 @@ namespace Villheim.Logic.Village
 
                 copy.transform.localScale = Vector3.one * Scale;
                 copy.SetActive(true);
-                foreach (ParticleSystem particles in copy.GetComponentsInChildren<ParticleSystem>(true))
+                ParticleSystem[] all = copy.GetComponentsInChildren<ParticleSystem>(true);
+                var fired = new HashSet<ParticleSystem>();
+                foreach (ParticleSystem particles in all)
                 {
-                    Tune(particles, color, source.name);
+                    ParticleSystem.SubEmittersModule subs = particles.subEmitters;
+                    for (int i = 0; i < subs.subEmittersCount; i++)
+                    {
+                        ParticleSystem fire = subs.GetSubEmitterSystem(i);
+                        if (fire != null)
+                        {
+                            fired.Add(fire);
+                        }
+                    }
+                }
+
+                foreach (ParticleSystem particles in all)
+                {
+                    Tune(particles, color, source.name, fired.Contains(particles));
                     particles.Play();
                 }
             }
@@ -202,16 +218,18 @@ namespace Villheim.Logic.Village
         /// ShaperEffectBursts, and recoloured to ShaperColor if ShaperEffectTint. Each part is described once in the log,
         /// to pick out any that still look too big.
         /// </summary>
-        private static void Tune(ParticleSystem particles, Color color, string source)
+        private static void Tune(ParticleSystem particles, Color color, string source, bool subEmitter)
         {
             ParticleSystem.MainModule main = particles.main;
             ParticleSystem.EmissionModule emission = particles.emission;
+            bool burstPart = subEmitter || emission.burstCount > 0;
             string key = source + "/" + particles.name;
             if (Described.Add(key))
             {
                 VillheimPlugin.Log.LogInfo($"Shaper Tool effect part {key}: rate {emission.rateOverTimeMultiplier:0.#}/s, bursts {emission.burstCount}, " +
                                            $"size {main.startSizeMultiplier:0.##}, life {main.startLifetimeMultiplier:0.##} s, max {main.maxParticles}, " +
-                                           $"sub-emitters {particles.subEmitters.subEmittersCount}.");
+                                           $"sub-emitters {particles.subEmitters.subEmittersCount}, space {main.simulationSpace}" +
+                                           (burstPart ? ", burst part (ShaperEffectBurstScale)." : "."));
             }
 
             main.scalingMode = ParticleSystemScalingMode.Hierarchy;
@@ -225,12 +243,77 @@ namespace Villheim.Logic.Village
                     emission.enabled = false;
                 }
             }
+            else if (burstPart)
+            {
+                ShrinkBurst(particles, BurstScale);
+            }
 
             emission.rateOverTimeMultiplier *= Strength;
             main.maxParticles = Mathf.Max(1, Mathf.RoundToInt(main.maxParticles * Strength));
             if (Tint)
             {
                 main.startColor = new ParticleSystem.MinMaxGradient(new Color(color.r, color.g, color.b, Mathf.Clamp01(0.4f + Strength)));
+            }
+        }
+
+        /// <summary>
+        /// Makes a burst part smaller and shorter-reaching: particle size, speed and the forces on it. The copy's scale
+        /// alone missed the zaps (Tyler, 2026-11-07), most likely because their particles fly in world space at the
+        /// weapon's speed.
+        /// </summary>
+        private static void ShrinkBurst(ParticleSystem particles, float f)
+        {
+            ParticleSystem.MainModule main = particles.main;
+            if (main.startSize3D)
+            {
+                main.startSizeXMultiplier *= f;
+                main.startSizeYMultiplier *= f;
+                main.startSizeZMultiplier *= f;
+            }
+            else
+            {
+                main.startSizeMultiplier *= f;
+            }
+
+            main.startSpeedMultiplier *= f;
+            main.gravityModifierMultiplier *= f;
+
+            ParticleSystem.VelocityOverLifetimeModule velocity = particles.velocityOverLifetime;
+            if (velocity.enabled)
+            {
+                velocity.speedModifierMultiplier *= f;
+            }
+
+            ParticleSystem.LimitVelocityOverLifetimeModule limit = particles.limitVelocityOverLifetime;
+            if (limit.enabled)
+            {
+                limit.limitMultiplier *= f;
+            }
+
+            ParticleSystem.ForceOverLifetimeModule force = particles.forceOverLifetime;
+            if (force.enabled)
+            {
+                force.xMultiplier *= f;
+                force.yMultiplier *= f;
+                force.zMultiplier *= f;
+            }
+
+            ParticleSystem.NoiseModule noise = particles.noise;
+            if (noise.enabled)
+            {
+                noise.strengthMultiplier *= f;
+            }
+
+            ParticleSystem.ShapeModule shape = particles.shape;
+            if (shape.enabled)
+            {
+                shape.radius *= f;
+            }
+
+            ParticleSystem.TrailModule trails = particles.trails;
+            if (trails.enabled)
+            {
+                trails.widthOverTrailMultiplier *= f;
             }
         }
 

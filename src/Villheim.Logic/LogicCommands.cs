@@ -371,9 +371,13 @@ namespace Villheim.Logic
             Say(context, $"Villheim: saved {pieces.Count} pieces to {file}. The front of the building is the way you face.");
         }
 
+        /// <summary>Prints to the console, one console line per line of text (a long text in one line draws over itself).</summary>
         private static void Say(Terminal context, string text)
         {
-            context?.AddString(text);
+            foreach (string line in (text ?? "").Split('\n'))
+            {
+                context?.AddString(line);
+            }
         }
 
         private static bool TryGetPlayer(Terminal context, out Player player)

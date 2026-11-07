@@ -1065,11 +1065,25 @@ namespace Villheim.Logic.Village
                     LogicConfig.SortSheetUrl.Value = args[1].ToLowerInvariant() == "off" ? "" : args[1];
                     return SheetUrl.Length == 0 ? "Sort: no longer sending to the sheet." : "Sort: choices now go to the sheet too. 'vh sort push' sends everything sorted so far.";
                 default:
-                    var counts = Types.Select(t => $"{t} {Entries.Values.Count(e => e.Type == t)}");
-                    int subtyped = Entries.Values.Count(e => e.Subtype.Length > 0);
-                    return $"Sort: {string.Join(", ", counts)}; {subtyped} with a subtype. Kept in {FilePath}. Sheet: {(SheetUrl.Length == 0 ? "off" : _lastSheetResult + (Pending.Count > 0 ? $"; {Pending.Count} waiting" : ""))}.\n" +
-                           "'vh sort tools' gives the sort knives; 'vh sort undo'; 'vh sort reset page N|all'; 'vh sort push' sends everything to the sheet; 'vh sort url <address>'; " +
-                           "'vh gallery keepers type <home|work|community|drop|unsorted|nosubtype|crafting|farming...>' shows only those designs.";
+                    var lines = new List<string>
+                    {
+                        "Sort: " + string.Join(", ", Types.Select(t => $"{t} {Entries.Values.Count(e => e.Type == t)}")) +
+                        $", unsorted {Keepers.Names.Count(n => TypeOf(n).Length == 0)} (of {Keepers.Names.Length} kept).",
+                        $"Without a subtype: Work {Entries.Values.Count(e => e.Type == "Work" && e.Subtype.Length == 0)}, " +
+                        $"Community {Entries.Values.Count(e => e.Type == "Community" && e.Subtype.Length == 0)}; " +
+                        $"still Crafting (phase B2): {Entries.Values.Count(e => e.Subtype == "Crafting")}.",
+                    };
+                    var subtypes = Entries.Values.Where(e => e.Subtype.Length > 0).GroupBy(e => e.Subtype).OrderBy(g => g.Key).Select(g => $"{g.Key} {g.Count()}").ToList();
+                    for (int i = 0; i < subtypes.Count; i += 6)
+                    {
+                        lines.Add((i == 0 ? "Subtypes: " : "  ") + string.Join(", ", subtypes.Skip(i).Take(6)));
+                    }
+
+                    lines.Add($"Sheet: {(SheetUrl.Length == 0 ? "off" : _lastSheetResult)}{(Pending.Count > 0 ? $" ({Pending.Count} waiting)" : "")}.");
+                    lines.Add("Kept in BepInEx/Villheim/design-sort.csv.");
+                    lines.Add("vh sort tools | undo | push | reset page N | reset all | url <address>");
+                    lines.Add("vh gallery keepers type <home|work|community|drop|unsorted|nosubtype|crafting|a subtype>");
+                    return string.Join("\n", lines);
             }
         }
 

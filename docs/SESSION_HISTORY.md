@@ -12,7 +12,9 @@ Current facts only. Read this at the start of a session. Narrative is in `docs/d
   - New plan (2026-11-07): phases A type (Home, Work, Community, Drop), B subtype, C biome and material fixes in
     marked plots, slotting (base ID and structure stage), D decor stages, E review rows. Names `<baseID>_s#d#`
     (house1_s2d3), given at slotting; until then the design number. Details in the guide.
-  - Phase A done (Work 126, Community 84, Home 53, Drop 1); phase B next on the 210 work and community designs. Sort knives
+  - Phases A, B and B2 done 2026-11-07, game and sheet agree: Home 53, Work 125, Community 84, Drop 2; subtypes
+    Longhouse 36, Defence 31, Hearth 21, Farming 20, Tavern 18, Workshop 16, Harbour 15, Mining 14, Decor 9,
+    Storage 9, Woodworking 9, Cooking 5, Hunting 4, Arcane 2. Phase C (biome, material fixes in plots) next. Sort knives
     (`Village/DesignSort.cs`, `vh sort`): A = KnifeFlint (type), B = KnifeCopper (subtype); key picks, click sorts,
     sign and number colours, `BepInEx/Villheim/design-sort.csv`, live writes to the Pass 2 tab once the sheet's web
     app is deployed and `vh sort url` is set; `vh gallery keepers type <x>`. Sorted designs leave the field (undo brings them back) and are left off when a
@@ -66,6 +68,7 @@ Current facts only. Read this at the start of a session. Narrative is in `docs/d
 
 ## Recent milestones
 
+- **2026-11-07 (phases A, B and B2 finished; sort knife B2, paging and sheet sending fixes)** - see docs/daily-notes/2026-11/2026-11-07.md
 - **2026-11-07 (sorting phases A to E, sort knives, Pass 2 tab rebuilt, Millénaire reference)** - see docs/daily-notes/2026-11/2026-11-07.md
 - **2026-11-07 (Shaper Tool: new key layout, Reset, design turning with axis ring, one click one action)** - see docs/daily-notes/2026-11/2026-11-07.md
 - **2026-11-07 (Shaper Tool: pick a tool and click, mouse wheel turning, small teal lightning)** - see docs/daily-notes/2026-11/2026-11-07.md

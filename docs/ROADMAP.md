@@ -54,9 +54,9 @@ with its own look for its biome.
   `design-sort.csv`, live writes to the Pass 2 tab through the sheet's web app, `vh gallery keepers type X`.
 - [x] Phase A: every kept design sorted Home, Work, Community or Drop (Tyler, in game, 2026-11-07): Work 126,
   Community 84, Home 53, Drop 1.
-- [ ] Phase B: subtypes for Work (Farming, Woodworking, Mining, Cooking, Crafting, Storage, Defence) and Community
+- [x] Phase B (done 2026-11-07): subtypes for Work (Farming, Woodworking, Mining, Cooking, Crafting, Storage, Defence) and Community
   (Hearth, Tavern, Longhouse, Decor: village decor built in idle time, such as water wheels, outhouses, gardens).
-- [ ] Phase B2: Crafting split into Harbour, Masonry, Weaving, Hunting, Arcane, Workshop (sort knife B2, chitin).
+- [x] Phase B2 (done 2026-11-07): Crafting split into Harbour, Masonry, Weaving, Hunting, Arcane, Workshop (sort knife B2, chitin).
 - [ ] Phase C: biome per design, and material fixes inside plots marked by green-tinted horizontal wood beams; save
   inside the plot keeps everything in it. A saved design is taken down from the field (it comes back from its save
   when the page is put up again). A third knife for phase C.

@@ -28,6 +28,18 @@ namespace Villheim.Logic.Village
         private static readonly int KeyOrigin = "villheim_board_pos".GetStableHashCode();
         private static readonly int KeyYaw = "villheim_board_yaw".GetStableHashCode();
         private const int BoardPiece = 2;
+        private static readonly int KeyHeading = "villheim_board_heading".GetStableHashCode();
+
+        /// <summary>
+        /// The heading on a blueprint sign ("&lt;#fff&gt;Morale: &lt;br&gt;Happy" gives "Morale"), or "" for the title sign
+        /// (no colon: the village's name).
+        /// </summary>
+        private static string Heading(string text)
+        {
+            string plain = System.Text.RegularExpressions.Regex.Replace(text ?? "", "<[^>]*>", " ");
+            int colon = plain.IndexOf(':');
+            return colon < 0 ? "" : plain.Substring(0, colon).Trim();
+        }
 
         private static readonly Dictionary<int, float> NextUpdate = new Dictionary<int, float>();
         private static bool _warned;
@@ -180,6 +192,7 @@ namespace Villheim.Logic.Village
             }
 
             Quaternion turn = Quaternion.Euler(0f, yaw, 0f);
+            Blueprints.Blueprint blueprint = Blueprint();
             foreach (DesignSpawner.PlanEntry entry in missing)
             {
                 GameObject made = DesignSpawner.SpawnEntry(entry, origin, turn, hearth.VillageId, true);
@@ -188,6 +201,17 @@ namespace Villheim.Logic.Village
                 {
                     view.GetZDO().Set(Key, BoardPiece);
                     view.GetZDO().Set(Keys.BuiltBy, hearth.VillageId);
+                    if (made.GetComponent<Sign>() != null && blueprint != null)
+                    {
+                        // Which stat this sign shows comes from the heading written on it in the blueprint.
+                        Blueprints.Piece source = blueprint.Pieces
+                            .Where(p => p.Prefab == entry.Prefab && p.Text != null)
+                            .OrderBy(p => Vector3.Distance(p.Position, entry.LocalPosition)).FirstOrDefault();
+                        if (source != null && Vector3.Distance(source.Position, entry.LocalPosition) < 0.3f)
+                        {
+                            view.GetZDO().Set(KeyHeading, Heading(source.Text));
+                        }
+                    }
                 }
             }
 
@@ -292,12 +316,70 @@ namespace Villheim.Logic.Village
 
             List<Sign> cells = rows.SelectMany(r => r.OrderBy(s => Vector3.Dot(s.transform.position - origin, right))).ToList();
             var state = new VillageState(hearth.Zdo);
+            Dictionary<string, (string Value, string Color)> stats = Stats(hearth, state);
+            bool byHeading = signs.Any(s => s.GetComponent<ZNetView>().GetZDO().GetString(KeyHeading, null) != null);
+            if (byHeading)
+            {
+                // Each sign shows the stat its blueprint heading names, under that same heading.
+                foreach (Sign sign in signs)
+                {
+                    string heading = sign.GetComponent<ZNetView>().GetZDO().GetString(KeyHeading, null);
+                    if (heading == null)
+                    {
+                        continue;
+                    }
+
+                    if (heading.Length == 0)
+                    {
+                        Write(sign, $"<#fff>{state.Name}");
+                    }
+                    else if (stats.TryGetValue(heading.ToLowerInvariant(), out var stat))
+                    {
+                        Write(sign, $"<#fff>{heading}:<br><{stat.Color}>{stat.Value}");
+                    }
+                }
+
+                return;
+            }
+
             Write(title, $"<#fff>{state.Name}");
             string[] lines = Lines(hearth, state);
             for (int i = 0; i < cells.Count && i < lines.Length; i++)
             {
                 Write(cells[i], lines[i]);
             }
+        }
+
+        /// <summary>Every stat a board can show, by the heading words that ask for it.</summary>
+        private static Dictionary<string, (string Value, string Color)> Stats(VillageHearth hearth, VillageState state)
+        {
+            string[] lines = Lines(hearth, state);
+            (string, string) Parse(string line)
+            {
+                int br = line.IndexOf("<br><", System.StringComparison.Ordinal);
+                string rest = line.Substring(br + 5);
+                int close = rest.IndexOf('>');
+                return (rest.Substring(close + 1), rest.Substring(0, close));
+            }
+
+            int stock = Materials.Tracked.Sum(m => VillageChest.Have(hearth, state, m));
+            (string, string) stockStat = stock >= 150 ? ("Good", "#bfb") : stock >= 50 ? ("Fair", "#ffa") : ("Low", "#fc9");
+            var stats = new Dictionary<string, (string, string)>
+            {
+                ["level"] = Parse(lines[0]),
+                ["buildings"] = Parse(lines[1]),
+                ["population"] = Parse(lines[2]),
+                ["villagers"] = Parse(lines[2]),
+                ["project"] = Parse(lines[3]),
+                ["next project"] = Parse(lines[3]),
+                ["needed"] = Parse(lines[4]),
+                ["needs"] = Parse(lines[4]),
+                ["morale"] = Parse(lines[5]),
+                ["mood"] = Parse(lines[5]),
+                ["stock"] = stockStat,
+                ["stores"] = stockStat,
+            };
+            return stats;
         }
 
         private static string[] Lines(VillageHearth hearth, VillageState state)

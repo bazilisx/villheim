@@ -34,6 +34,9 @@ namespace Villheim.Logic.Designs
             public Vector3 Position;
             public Quaternion Rotation;
             public Vector3 Scale = Vector3.one;
+
+            /// <summary>A sign's text as saved in the blueprint (PlanBuild keeps it), or null.</summary>
+            public string Text;
         }
 
         internal sealed class Blueprint
@@ -496,6 +499,17 @@ namespace Villheim.Logic.Designs
                 Position = new Vector3(F(f[2]), F(f[3]), F(f[4])),
                 Rotation = new Quaternion(F(f[5]), F(f[6]), F(f[7]), F(f[8])),
             };
+
+            if (f.Length >= 10)
+            {
+                string text = f[9].Trim();
+                if (text.Length >= 2 && text[0] == '"' && text[text.Length - 1] == '"')
+                {
+                    text = text.Substring(1, text.Length - 2);
+                }
+
+                piece.Text = text.Length > 0 ? text : null;
+            }
 
             if (f.Length >= 13)
             {

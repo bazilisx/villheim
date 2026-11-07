@@ -8,21 +8,28 @@ using Villheim.Logic.Designs;
 namespace Villheim.Logic.Village
 {
     /// <summary>
-    /// 'vh bp swap &lt;number|name&gt; &lt;stage&gt;': saves a copy of a design with its building pieces swapped for the
-    /// target stage's (see MaterialSwap). The original is never changed. Copies go to the inspiration/edits folder of
+    /// 'vh bp save &lt;number|name&gt;': saves a copy of a design with the stand-ins chosen for it in the gallery
+    /// ('vh swap'). 'vh bp swap &lt;number|name&gt; &lt;stage&gt;': saves a copy with every later building piece swapped by
+    /// the rules of MaterialSwap. The original is never changed. Copies go to the inspiration/edits folder of
     /// Villheim's blueprints, so the gallery and PlanBuild show them and villages do not build them.
     /// </summary>
     internal static class BlueprintEdits
     {
         public const string Usage =
-            "vh bp swap <number|name> <meadows|blackforest|swamp|mountain|plains|mistlands|ashlands>: saves a copy of the " +
-            "design in that stage's materials (number from design-list.csv); 'vh gallery show <new name>' shows it.";
+            "vh bp save <number|name>: saves the design with the stand-ins you chose for it ('vh swap'). " +
+            "vh bp swap <number|name> <meadows|blackforest|swamp|mountain|plains>: saves it with every later building piece swapped " +
+            "for that stage. Numbers are from design-list.csv; 'vh gallery show <new name>' shows the copy.";
 
         public static string EditsFolder => Path.Combine(Blueprints.Folder, "inspiration", "edits");
 
+        private delegate bool Change(string prefab, Vector3 position, Quaternion rotation, out string newPrefab, out Vector3 newPosition, out Quaternion newRotation);
+
         public static string Run(string[] args)
         {
-            if (args.Length < 3 || args[0].ToLowerInvariant() != "swap" || Gallery.StageIndexOf(args[2]) < 0)
+            string verb = args.Length > 0 ? args[0].ToLowerInvariant() : "";
+            bool save = verb == "save" && args.Length >= 2;
+            bool swap = verb == "swap" && args.Length >= 3 && Gallery.StageIndexOf(args[2]) >= 0;
+            if (!save && !swap)
             {
                 return "Villheim: " + Usage;
             }
@@ -44,13 +51,70 @@ namespace Villheim.Logic.Village
             }
 
             DesignLibrary.Design design = found.Value;
-            int target = Gallery.StageIndexOf(args[2]);
+            int changed = 0;
+            string suffix;
+            string description;
+            Change change;
             var result = new MaterialSwap.Result();
+            if (save)
+            {
+                Dictionary<string, (string Prefab, float Turn)> choices = SwapTool.ChoicesFor(design.Name);
+                if (choices.Count == 0)
+                {
+                    return $"Villheim: no stand-ins chosen for {design.Name} yet ('vh swap' in the gallery).";
+                }
+
+                suffix = "_edited";
+                description = $"{design.Name} with {choices.Count} stand-ins chosen in the gallery (Villheim)";
+                change = (string prefab, Vector3 position, Quaternion rotation, out string newPrefab, out Vector3 newPosition, out Quaternion newRotation) =>
+                {
+                    newPrefab = prefab;
+                    newPosition = position;
+                    newRotation = rotation;
+                    if (!choices.TryGetValue(prefab, out var choice) ||
+                        !SwapTool.Place(prefab, position, rotation, choice.Prefab, choice.Turn, out newPosition, out newRotation))
+                    {
+                        newPosition = position;
+                        newRotation = rotation;
+                        return false;
+                    }
+
+                    newPrefab = choice.Prefab;
+                    changed++;
+                    return true;
+                };
+            }
+            else
+            {
+                int target = Gallery.StageIndexOf(args[2]);
+                suffix = "_as_" + Gallery.StageWords[target];
+                description = $"{design.Name} in {Gallery.StageNames[target]} materials (Villheim material swap)";
+                change = (string prefab, Vector3 position, Quaternion rotation, out string newPrefab, out Vector3 newPosition, out Quaternion newRotation) =>
+                {
+                    newPrefab = prefab;
+                    newPosition = position;
+                    newRotation = rotation;
+                    if (MaterialSwap.Swappable(prefab) && MaterialSwap.TrySwap(prefab, target, out string other, out Vector3 shift, out Quaternion turn))
+                    {
+                        newPrefab = other;
+                        newPosition = position + rotation * shift;
+                        newRotation = rotation * turn;
+                        result.Swapped++;
+                        changed++;
+                        return true;
+                    }
+
+                    MaterialSwap.Note(prefab, target, result);
+                    return false;
+                };
+            }
+
+            string stem = Stem(design.Name) + suffix;
             var lines = new List<string>
             {
-                "#Name:" + Stem(design.Name) + "_as_" + Gallery.StageWords[target],
-                "#Creator:" + (design.Blueprint?.Creator ?? "") ,
-                $"#Description:{design.Name} in {Gallery.StageNames[target]} materials (Villheim material swap)",
+                "#Name:" + stem,
+                "#Creator:" + (design.Blueprint?.Creator ?? ""),
+                "#Description:" + description,
                 "#Category:Villheim",
                 "#Pieces",
             };
@@ -59,7 +123,8 @@ namespace Villheim.Logic.Village
             {
                 foreach (Blueprints.Piece piece in design.Blueprint.Pieces)
                 {
-                    lines.Add(Line(piece.Prefab, piece.Position, piece.Rotation, piece.Scale, piece.Text, target, result));
+                    change(piece.Prefab, piece.Position, piece.Rotation, out string p, out Vector3 at, out Quaternion q);
+                    lines.Add(Line(p, at, q, piece.Scale, piece.Text));
                 }
             }
             else
@@ -76,7 +141,8 @@ namespace Villheim.Logic.Village
 
                     foreach (DesignSpawner.PlanEntry entry in DesignSpawner.MakePlan(asset, Vector3.zero, 1, 0f, false))
                     {
-                        lines.Add(Line(entry.Prefab, entry.LocalPosition, entry.LocalRotation, entry.Scale, null, target, result));
+                        change(entry.Prefab, entry.LocalPosition, entry.LocalRotation, out string p, out Vector3 at, out Quaternion q);
+                        lines.Add(Line(p, at, q, entry.Scale, null));
                     }
                 }
                 finally
@@ -86,26 +152,14 @@ namespace Villheim.Logic.Village
             }
 
             Directory.CreateDirectory(EditsFolder);
-            string stem = Stem(design.Name) + "_as_" + Gallery.StageWords[target];
             string file = Path.Combine(EditsFolder, stem + ".blueprint");
             File.WriteAllLines(file, lines);
-            return $"Villheim: saved {file}: {result.Summary(target)}. 'vh gallery show {stem}' lays it out.";
+            string summary = save ? $"{changed} pieces changed" : result.Summary(Gallery.StageIndexOf(args[2]));
+            return $"Villheim: saved {file}: {summary}. 'vh gallery show {stem}' lays it out.";
         }
 
-        private static string Line(string prefab, Vector3 position, Quaternion rotation, Vector3 scale, string text, int target, MaterialSwap.Result result)
+        private static string Line(string prefab, Vector3 position, Quaternion rotation, Vector3 scale, string text)
         {
-            if (MaterialSwap.Swappable(prefab) && MaterialSwap.TrySwap(prefab, target, out string swap, out Vector3 shift, out Quaternion turn))
-            {
-                position += rotation * shift;
-                rotation *= turn;
-                prefab = swap;
-                result.Swapped++;
-            }
-            else
-            {
-                MaterialSwap.Note(prefab, target, result);
-            }
-
             CultureInfo inv = CultureInfo.InvariantCulture;
             return string.Join(";", prefab, "Villheim",
                 position.x.ToString("0.####", inv), position.y.ToString("0.####", inv), position.z.ToString("0.####", inv),

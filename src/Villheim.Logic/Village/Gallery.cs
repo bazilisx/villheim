@@ -51,6 +51,12 @@ namespace Villheim.Logic.Village
         private static readonly Role[] Order = { Role.House, Role.Hub, Role.Workshop, Role.Storage, Role.Farm };
         internal static readonly int KeyGallery = "villheim_gallery".GetStableHashCode();
         internal const string KeySwappedFrom = "villheim_swapped_from";
+
+        /// <summary>The design a gallery piece or sign belongs to, so 'vh swap' changes one design at a time.</summary>
+        internal const string KeyDesign = "villheim_design";
+
+        /// <summary>Room between rows of a keepers page, for the stand-ins 'vh swap' lays out in front of a sign.</summary>
+        private const float Aisle = 14f;
         internal const string KeySwappedRotation = "villheim_swapped_rotation";
 
         /// <summary>The stage the last gallery page was shown as ('as meadows'), or -1: what 'vh swap' pairs for.</summary>
@@ -1309,7 +1315,7 @@ namespace Villheim.Logic.Village
                         x += cell.Half * 2f + Gap;
                     }
 
-                    depth += rowDepth * 2f + Gap;
+                    depth += rowDepth * 2f + Aisle;
                 }
 
                 return;
@@ -1524,7 +1530,7 @@ namespace Villheim.Logic.Village
             List<DesignSpawner.PlanEntry> plan;
             if (cell.Design.Blueprint != null)
             {
-                plan = Swapped(Blueprints.Entries(cell.Design.Blueprint), cell);
+                plan = Swapped(SwapTool.ApplyChoices(Blueprints.Entries(cell.Design.Blueprint), cell.Design.Name), cell);
                 return Spawn(plan, cell, yaw);
             }
 
@@ -1538,7 +1544,7 @@ namespace Villheim.Logic.Village
                     return 0;
                 }
 
-                plan = Swapped(DesignSpawner.MakePlan(asset, cell.Center, cell.Design.Name.GetStableHashCode(), yaw, false), cell);
+                plan = Swapped(SwapTool.ApplyChoices(DesignSpawner.MakePlan(asset, cell.Center, cell.Design.Name.GetStableHashCode(), yaw, false), cell.Design.Name), cell);
                 return Spawn(plan, cell, yaw);
             }
             finally
@@ -1602,6 +1608,7 @@ namespace Villheim.Logic.Village
                 {
                     ZDO zdo = piece.GetComponent<ZNetView>()?.GetZDO();
                     zdo?.Set(KeyGallery, 1);
+                    zdo?.Set(KeyDesign, cell.Design.Name);
                     if (zdo != null && entry.SwappedFrom != null)
                     {
                         // 'vh swap' needs to know what a stand-in stands in for, and how the original was turned.
@@ -1672,7 +1679,7 @@ namespace Villheim.Logic.Village
 
             // The front sign carries the text; a second one just behind it, its board hidden, carries the number big
             // above both (LogicConfig.GalleryNumberText, so its size can be tuned while the game runs).
-            OneSign(at, forward, 0f, text);
+            OneSign(at, forward, 0f, text)?.GetComponent<ZNetView>()?.GetZDO()?.Set(KeyDesign, cell.Design.Name);
             string number;
             try
             {
@@ -1701,12 +1708,12 @@ namespace Villheim.Logic.Village
             }
         }
 
-        private static void OneSign(Vector3 at, Vector3 forward, float turn, string text)
+        internal static GameObject OneSign(Vector3 at, Vector3 forward, float turn, string text)
         {
             GameObject prefab = ZNetScene.instance.GetPrefab("sign");
             if (prefab == null)
             {
-                return;
+                return null;
             }
 
             Quaternion rotation = Quaternion.LookRotation(-forward) * Quaternion.Euler(0f, turn, 0f);
@@ -1719,6 +1726,8 @@ namespace Villheim.Logic.Village
                 view.GetZDO().Set(ZDOVars.s_text, text);
                 sign.GetComponent<Sign>()?.UpdateText();
             }
+
+            return sign;
         }
 
         private static void StandOnGround(GameObject go, float ground)

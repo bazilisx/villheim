@@ -154,8 +154,11 @@ namespace Villheim.Logic.Village
         /// <summary>The size of a piece (its colliders), or one metre each way.</summary>
         public static Vector3 SizeOf(string prefab) => Measure(prefab)?.Size ?? Vector3.one;
 
-        /// <summary>Likely stand-ins for a piece from the target stage or before: same kind first, then related kinds, then anything, nearest size first.</summary>
-        public static List<string> Candidates(string prefab, int target, int count)
+        /// <summary>
+        /// Likely stand-ins for a piece from one stage (exactly that stage; or that stage and before when
+        /// <paramref name="orEarlier"/>): same kind first, then related kinds, then anything, nearest size first.
+        /// </summary>
+        public static List<string> Candidates(string prefab, int target, int count, bool orEarlier = true)
         {
             Shape source = Measure(prefab);
             if (source == null)
@@ -163,7 +166,7 @@ namespace Villheim.Logic.Village
                 return new List<string>();
             }
 
-            return Pool().Where(c => c.Prefab != prefab && c.Stage <= target)
+            return Pool().Where(c => c.Prefab != prefab && (orEarlier ? c.Stage <= target : c.Stage == target))
                 .OrderBy(c => c.KindKey.Length > 0 && c.KindKey == source.KindKey ? 0 : c.Families.Overlaps(source.Families) ? 1 : 2)
                 .ThenBy(c => Mathf.Min(Distance(source.Size, c.Size), Distance(source.Size, Turned(c.Size))))
                 .Select(c => c.Prefab).Distinct().Take(count).ToList();

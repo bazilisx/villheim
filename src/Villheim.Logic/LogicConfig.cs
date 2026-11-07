@@ -34,7 +34,7 @@ namespace Villheim.Logic
         public static ConfigEntry<float> RaidChance;
         public static ConfigEntry<string> GalleryNumberText;
         public static ConfigEntry<KeyboardShortcut> GallerySwapKey;
-        public static ConfigEntry<float> GallerySwapRadius;
+        public static ConfigEntry<string> GallerySwapBiomes;
 
         public static void Bind()
         {
@@ -108,9 +108,10 @@ namespace Villheim.Logic
                 "Text of the big number floating over each gallery sign ({0} is the design's number in design-list.csv). " +
                 "Raise voffset to lift it, size to make it bigger; takes effect on the next gallery page.");
             GallerySwapKey = Admin(config, "4 - Design review", "GallerySwapKey", new KeyboardShortcut(UnityEngine.KeyCode.Mouse2),
-                "With 'vh swap' on: press while aiming at a gallery piece to pick it, then at the piece to use instead.");
-            GallerySwapRadius = Admin(config, "4 - Design review", "GallerySwapRadius", 40f,
-                "How far from the picked piece 'vh swap' replaces the same piece (metres), so far parts of the gallery stay as they are.");
+                "With 'vh swap' on: press while aiming at a piece of a gallery design to pick it, then at a stand-in to use it.");
+            GallerySwapBiomes = Admin(config, "4 - Design review", "GallerySwapBiomes", "meadows,blackforest,swamp",
+                "Which biomes 'vh swap' offers stand-ins from, one group each in front of the design's sign " +
+                "(meadows, blackforest, swamp, mountain, plains, mistlands, ashlands).");
             RaidChance = Admin(config, work, "RaidChance", 0.2f,
                 "Chance each dusk of a raid (plus 3% per village tier), never two nights running.");
             WatchLooks();

@@ -62,11 +62,13 @@ namespace Villheim.Logic.Designs
         public const string Prefix = "bp:";
 
         private static Dictionary<string, Blueprint> _loaded;
+        private static readonly Dictionary<string, (DateTime Written, Blueprint Blueprint)> FileCache =
+            new Dictionary<string, (DateTime, Blueprint)>(StringComparer.OrdinalIgnoreCase);
         private static float _loadedAt;
 
         public static string Folder => Path.Combine(Paths.ConfigPath, "Villheim", "blueprints");
 
-        /// <summary>Every blueprint found, by design name ("bp:" + file name). Reread every two minutes.</summary>
+        /// <summary>Every blueprint found, by design name ("bp:" + file name). The folders are looked at again every two minutes; a file is read again only when it changed.</summary>
         public static Dictionary<string, Blueprint> All()
         {
             if (_loaded != null && Time.realtimeSinceStartup - _loadedAt < 120f)
@@ -93,7 +95,16 @@ namespace Villheim.Logic.Designs
 
                     try
                     {
-                        Blueprint blueprint = Load(file);
+                        // Read once; read again only when the file changes (hundreds of review blueprints made rereading
+                        // all of them every two minutes too slow).
+                        DateTime written = File.GetLastWriteTimeUtc(file);
+                        if (!FileCache.TryGetValue(file, out var cached) || cached.Written != written)
+                        {
+                            cached = (written, Load(file));
+                            FileCache[file] = cached;
+                        }
+
+                        Blueprint blueprint = cached.Blueprint;
                         if (blueprint != null && Usable(blueprint) && !found.ContainsKey(blueprint.Name))
                         {
                             found[blueprint.Name] = blueprint;

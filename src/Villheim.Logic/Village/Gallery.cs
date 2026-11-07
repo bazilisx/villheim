@@ -316,11 +316,18 @@ namespace Villheim.Logic.Village
                 }
             });
 
+            int looked = 0;
             foreach ((DesignLibrary.Design design, Role role) in candidates)
             {
                 if (seen.Contains(design.Name))
                 {
                     continue;
+                }
+
+                if (++looked % 20 == 0)
+                {
+                    MessageHud.instance?.ShowMessage(MessageHud.MessageType.TopLeft, $"Gallery: looked at {looked}/{candidates.Count} blueprints and listed designs");
+                    yield return null; // hundreds of blueprints: a few a frame
                 }
 
                 int pieces = 0;

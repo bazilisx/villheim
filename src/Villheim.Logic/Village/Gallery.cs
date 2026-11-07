@@ -87,33 +87,37 @@ namespace Villheim.Logic.Village
         private static bool _running;
 
         /// <summary>The stages of the game in order. Each design belongs to one (see Classify).</summary>
-        internal static readonly string[] StageNames = { "Meadows", "Black Forest", "Swamp", "Mountain", "Plains", "Mistlands", "Ashlands" };
+        internal static readonly string[] StageNames = { "Meadows", "Black Forest", "Swamp", "Mountain", "Plains", "Mistlands", "Ashlands", "Deep North" };
 
         /// <summary>Words for the stages in commands and in the saved last page.</summary>
-        private static readonly string[] StageWords = { "meadows", "blackforest", "swamp", "mountain", "plains", "mistlands", "ashlands" };
+        private static readonly string[] StageWords = { "meadows", "blackforest", "swamp", "mountain", "plains", "mistlands", "ashlands", "deepnorth" };
 
         /// <summary>
         /// The first stage a player has each material in. Fine wood and core wood need the bronze axe, coal the
-        /// charcoal kiln (surtling cores), so they count as Black Forest. Materials from other mods are not listed and
-        /// do not set a stage (they show in the notes).
+        /// charcoal kiln (surtling cores), so they count as Black Forest. Crafted items not listed here (lanterns, meads,
+        /// sharpening stones) take the stage of their own recipe (see ItemStage). Anything else does not set a stage and
+        /// shows in the notes.
         /// </summary>
         private static readonly Dictionary<string, int> MaterialStage = ByStage(
             "Wood Stone Resin Flint LeatherScraps DeerHide BoneFragments Feathers Raspberry Dandelion Mushroom HardAntler " +
-            "TrophyDeer TrophyBoar TrophyNeck TrophyEikthyr Honey QueenBee",
+            "TrophyDeer TrophyBoar TrophyNeck TrophyEikthyr TrophyBjorn Honey QueenBee StoneRock",
             "FineWood RoundLog Coal Copper Tin Bronze BronzeNails SurtlingCore GreydwarfEye TrollHide Thistle Blueberries " +
             "AncientSeed CarrotSeeds Carrot TrophyGreydwarf TrophyGreydwarfBrute TrophyGreydwarfShaman TrophyFrostTroll " +
-            "TrophySkeleton TrophyTheElder CryptKey",
+            "TrophySkeleton TrophyTheElder CryptKey PineCone Coins MushroomYellow Thunderstone",
             "ElderBark Iron IronNails IronScrap Chain Guck Ooze Bloodbag WitheredBone Entrails Root Turnip TurnipSeeds " +
             "TrophyDraugr TrophyDraugrElite TrophyLeech TrophyBlob TrophyBonemass TrophyAbomination TrophyWraith Wishbone",
             "Silver SilverOre Obsidian WolfPelt WolfFang WolfClaw FreezeGland Crystal JuteRed DragonTear DragonEgg Onion " +
-            "OnionSeeds SerpentScale TrophySerpent TrophyWolf TrophyDragonQueen TrophyHatchling TrophyFenring TrophySGolem TrophyCultist",
+            "OnionSeeds SerpentScale TrophySerpent TrophyWolf TrophyDragonQueen TrophyHatchling TrophyFenring TrophySGolem TrophyCultist FirCone",
             "BlackMetal BlackMetalScrap Tar Barley BarleyFlour Flax LinenThread Needle LoxPelt GoblinTotem Cloudberry " +
-            "TrophyGoblin TrophyGoblinBrute TrophyGoblinShaman TrophyLox TrophyDeathsquito TrophyGoblinKing TrophyGrowth",
+            "TrophyGoblin TrophyGoblinBrute TrophyGoblinShaman TrophyLox TrophyDeathsquito TrophyGoblinKing TrophyGrowth YagluthDrop",
             "YggdrasilWood BlackMarble Eitr Sap Carapace Mandible BlackCore ScaleHide Bilebag RoyalJelly JuteBlue Softtissue " +
             "DvergrNeedle Wisp MechanicalSpring DvergrKeyFragment TrophySeeker TrophySeekerBrute TrophyGjall TrophyTick " +
-            "TrophyDvergr TrophySeekerQueen TrophyHare",
+            "TrophyDvergr TrophySeekerQueen TrophyHare QueenDrop CopperScrap MushroomMagecap MushroomJotunPuffs",
             "Grausten Blackwood FlametalNew Flametal FlametalOre FlametalOreNew CharredBone AskHide CeramicPlate MoltenCore " +
-            "ProustitePowder CelestialFeather Vineberry MorgenSinew BellFragment TrophyCharredMelee TrophyFallenValkyrie TrophyFader");
+            "ProustitePowder CelestialFeather Vineberry MorgenSinew BellFragment TrophyCharredMelee TrophyFallenValkyrie TrophyFader " +
+            "SulfurStone CharcoalResin GemstoneRed GemstoneBlue GemstoneGreen Charredskull TrophyAsksvin AsksvinCarrionSkull " +
+            "VineGreenSeeds VineberrySeeds FaderDrop Fiddleheadfern",
+            "Frostwood");
 
         /// <summary>The first stage a player has each crafting station in (the stonecutter needs iron).</summary>
         private static readonly Dictionary<string, int> StationStage = new Dictionary<string, int>
@@ -124,13 +128,83 @@ namespace Villheim.Logic.Village
             ["piece_artisanstation"] = 3,
             ["blackforge"] = 5,
             ["piece_magetable"] = 5,
+            ["piece_cauldron"] = 1,
         };
 
+        private static readonly Dictionary<string, string> StationLabels = new Dictionary<string, string>
+        {
+            ["piece_workbench"] = "the workbench",
+            ["forge"] = "the forge",
+            ["piece_stonecutter"] = "the stonecutter",
+            ["piece_artisanstation"] = "the artisan table",
+            ["blackforge"] = "the black forge",
+            ["piece_magetable"] = "the galdr table",
+            ["piece_cauldron"] = "the cauldron",
+        };
+
+        private static readonly Dictionary<string, int?> CraftedStage = new Dictionary<string, int?>();
+        private static Dictionary<string, Recipe> _recipes;
+
         /// <summary>
-        /// Building pieces from a later stage a design may have and still count as its main stage: one in ten. A few
-        /// iron beams in a wood house, or a tar roof cap, leave it where its walls and roof put it.
+        /// The stage of an item: from the table above, else from its recipe (its station and ingredients, followed a few
+        /// steps down), else null when the game has no way to say (trader goods, other mods' drops).
         /// </summary>
-        private const float MinorShare = 0.10f;
+        private static int? ItemStage(string item, int depth = 0)
+        {
+            if (MaterialStage.TryGetValue(item, out int known))
+            {
+                return known;
+            }
+
+            if (CraftedStage.TryGetValue(item, out int? cached))
+            {
+                return cached;
+            }
+
+            if (depth > 4 || ObjectDB.instance == null)
+            {
+                return null;
+            }
+
+            if (_recipes == null)
+            {
+                _recipes = new Dictionary<string, Recipe>();
+                foreach (Recipe recipe in ObjectDB.instance.m_recipes)
+                {
+                    if (recipe != null && recipe.m_item != null && recipe.m_resources != null && recipe.m_resources.Length > 0 &&
+                        !_recipes.ContainsKey(recipe.m_item.gameObject.name))
+                    {
+                        _recipes[recipe.m_item.gameObject.name] = recipe;
+                    }
+                }
+            }
+
+            int? stage = null;
+            if (_recipes.TryGetValue(item, out Recipe found))
+            {
+                string station = found.m_craftingStation != null ? found.m_craftingStation.gameObject.name : null;
+                stage = station != null && StationStage.TryGetValue(station, out int byStation) ? byStation : 0;
+                foreach (Piece.Requirement requirement in found.m_resources)
+                {
+                    string ingredient = requirement?.m_resItem != null ? requirement.m_resItem.gameObject.name : null;
+                    int? inner = ingredient != null && ingredient != item ? ItemStage(ingredient, depth + 1) : null;
+                    if (inner.HasValue && inner.Value > stage.Value)
+                    {
+                        stage = inner.Value;
+                    }
+                }
+            }
+
+            CraftedStage[item] = stage;
+            return stage;
+        }
+
+        /// <summary>
+        /// Building pieces from a later stage a design may have and still count as its main stage: a quarter. Accent
+        /// beams of ashwood or iron in a wood house leave it where its walls and roof put it; a whole tar roof does not.
+        /// At one in ten, decorative ashwood beams (15 % of a thatch cottage) put it in the Ashlands (2026-11-07).
+        /// </summary>
+        private const float MinorShare = 0.25f;
 
         /// <summary>Locations need this many building pieces to count as a structure (a lone post or fence is not one).</summary>
         private const int MinLocationBuilding = 5;
@@ -160,6 +234,7 @@ namespace Villheim.Logic.Village
             if (w.StartsWith("plain")) return 4;
             if (w.StartsWith("mist")) return 5;
             if (w.StartsWith("ash")) return 6;
+            if (w.StartsWith("deep") || w.StartsWith("north")) return 7;
             return -1;
         }
 
@@ -477,7 +552,7 @@ namespace Villheim.Logic.Village
                 if (station != null && StationStage.TryGetValue(station, out int byStation))
                 {
                     info.Stage = byStation;
-                    info.Why = "the " + station;
+                    info.Why = StationLabels.TryGetValue(station, out string label) ? label : station;
                 }
 
                 foreach (Piece.Requirement requirement in piece.m_resources)
@@ -488,13 +563,14 @@ namespace Villheim.Logic.Village
                     }
 
                     string material = requirement.m_resItem.gameObject.name;
-                    if (!MaterialStage.TryGetValue(material, out int byMaterial))
+                    int? byMaterial = ItemStage(material);
+                    if (!byMaterial.HasValue)
                     {
                         info.OtherMaterial = material;
                     }
-                    else if (info.Why == null || byMaterial > info.Stage)
+                    else if (info.Why == null || byMaterial.Value > info.Stage)
                     {
-                        info.Stage = byMaterial;
+                        info.Stage = byMaterial.Value;
                         info.Why = material;
                     }
                 }
@@ -514,7 +590,7 @@ namespace Villheim.Logic.Village
         }
 
         /// <summary>
-        /// The design's stage is the first one whose materials and stations cover all but one in ten of its building
+        /// The design's stage is the first one whose materials and stations cover all but a quarter of its building
         /// pieces (walls, floors, beams, roofs, doors, windows). Decoration, furniture and crafting stations never set
         /// it; a design with no building pieces at all goes by all its pieces. Everything from a later stage is named in
         /// the notes, with pieces a player cannot build and pieces from mods that are not installed.
@@ -570,7 +646,7 @@ namespace Villheim.Logic.Village
 
             var notes = new List<string>();
             notes.AddRange(pieces.Where(p => p.Stage > stage).GroupBy(p => p.Why).OrderByDescending(g => g.Count())
-                .Select(g => $"{g.Count()} need {g.Key} ({StageNames[g.First().Stage]})"));
+                .Select(g => $"{g.Count()} {(g.Count() == 1 ? "needs" : "need")} {g.Key} ({StageNames[g.First().Stage]})"));
             if (unbuildable.Count > 0)
             {
                 notes.Add($"{unbuildable.Values.Sum()} a player can't build ({Top(unbuildable)})");
@@ -583,7 +659,7 @@ namespace Villheim.Logic.Village
 
             if (others.Count > 0)
             {
-                notes.Add("materials from other mods: " + string.Join(", ", others.Take(4)));
+                notes.Add("materials with no known stage: " + string.Join(", ", others.Take(4)));
             }
 
             return new Sorting
@@ -973,7 +1049,7 @@ namespace Villheim.Logic.Village
         }
 
         private static string CachePath =>
-            System.IO.Path.Combine(BepInEx.Paths.BepInExRootPath, "Villheim", "design-list-locations-v3.txt");
+            System.IO.Path.Combine(BepInEx.Paths.BepInExRootPath, "Villheim", "design-list-locations-v4.txt");
 
         /// <summary>Each location opened before: name|stage|pieces|building pieces|notes. 'rescan' opens them all again.</summary>
         private static Dictionary<string, Sorting> ReadCache()

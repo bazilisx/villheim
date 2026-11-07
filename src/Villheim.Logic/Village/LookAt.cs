@@ -119,7 +119,7 @@ namespace Villheim.Logic.Village
 
             _lastObject = target;
             Unpaint();
-            if (!SwapTool.IsLit(target))
+            if (!SwapTool.IsLit(target) && !Shaping.IsLocked(target))
             {
                 MaterialMan.instance?.SetValue(target, Emission, Highlight);
                 _painted = target;
@@ -141,6 +141,13 @@ namespace Villheim.Logic.Village
                 Directory.CreateDirectory(Path.GetDirectoryName(FilePath));
                 File.AppendAllText(FilePath, text + System.Environment.NewLine);
             }
+        }
+
+        /// <summary>Takes the orange off and looks again (Shaping locked onto the object, which shows its own colour).</summary>
+        public static void Refresh()
+        {
+            Unpaint();
+            _lastObject = null;
         }
 
         private static void Unpaint()

@@ -38,7 +38,7 @@ namespace Villheim.Logic.Village
 
         private static float Scale => LogicConfig.ShaperEffectScale?.Value ?? 0.3f;
         private static float Strength => LogicConfig.ShaperEffectStrength?.Value ?? 0.4f;
-        private static bool Bursts => LogicConfig.ShaperEffectBursts?.Value ?? false;
+        private static bool Bursts => LogicConfig.ShaperEffectBursts?.Value ?? true;
         private static float BurstScale => LogicConfig.ShaperEffectBurstScale?.Value ?? 0.3f;
         private static bool Tint => LogicConfig.ShaperEffectTint?.Value ?? true;
 

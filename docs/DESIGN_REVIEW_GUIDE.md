@@ -58,30 +58,48 @@ means everything is up.
 
 The shaping knife is the vanilla wooden knife (`KnifeWood`, config ShapingTool), renamed **Villheim Dev Shaper Tool**
 (on the ground, in the inventory and on the hotbar). How it looks in hand and on the ground is chosen in F1 (see
-Settings); its icon is tinted the same colour in the inventory and on the hotbars. With it in hand, hotbar keys 1 to 8 stop using items and
-become the editing tools, with their own icons and labels. Put the knife away (press its quick slot again, or take
-another tool) and the hotbar is back to normal.
+Settings); its icon is tinted the same colour in the inventory and on the hotbars. With it in hand, hotbar keys 1 to 8
+stop using items and become the editing tools, with their own icons and labels. **Press a key to pick a tool** (its
+slot shows as selected), then **left click to use it**; your character makes the hammer's building swing. Press the
+same key again to put the tool down. Swap is picked when you take the knife out. Put the knife away (press its quick
+slot again, or take another tool) and the hotbar is back to normal.
 
-| Key | Label | What it does |
+| Key | Label | Left click does |
 |---|---|---|
-| 1 or left click | Swap | Aim at a design piece: pick it and put up stand-ins at its sign. Aim at a stand-in (or a piece you built): use it. |
-| 2 | Turn | Quarter turn for the current choice. |
-| 3 | Undo | Takes back your last change, one per press (up to 50): a delete or Delete all (the objects come back), a move step, a swap or a turn. |
-| 4 | Move | Toggle Move. You stand still; **W A S D** move the design away, left, back, right (as you look), **E** up, **Q** down. 10 cm a press, Shift for 50 cm. The label shows "Move ON". |
-| 5 | Part | Pick the structure you aim at (it turns green). While Part is on, Move moves only that structure. 5 again lets go. |
-| 6 | Delete | Removes what you aim at within 6 m: pieces, creatures, traders and other NPCs. Never a player. |
-| 7 | Save | Saves the design you aim at as it stands. The label turns "Save?"; press 7 again within 6 seconds to save. |
-| 8 | Del all | Aim at something (a dvergr lantern, say): every object with that exact name in that design glows orange and the screen asks "Delete all 14 ...?". Press 8 again within 6 seconds to delete them all; otherwise the orange fades and nothing is deleted. Outside a design it takes everything of that name within 20 m. |
+| 1 | Swap | Click a design piece: pick it and put up stand-ins at its sign. Click a stand-in (or a piece you built): use it. |
+| 2 | Turn | Click an object to lock onto it (it glows in ShaperColor); click it again to let go. The **mouse wheel** turns the locked object, or the one you aim at if nothing is locked. See Turning below. |
+| 3 | Undo | Pressing 3 takes back your last change, one per press (up to 50): a delete or Delete all (the objects come back), a move step, a turn, a swap. Clicking does nothing. |
+| 4 | Move | You stand still. **W A S D** move the design you aim at away, left, back, right (as you look), **E** up, **Q** down. 10 cm a press, Shift for 50 cm. Click a structure to lock onto it (green): then only that moves. Click it again to let go, or click another structure to switch. Press 4 again to walk. |
+| 5 | (empty) | Free for a later tool. |
+| 6 | Delete | Click removes what you aim at within 6 m: pieces, creatures, traders and other NPCs. Never a player. |
+| 7 | Save | Click anything of a design: the label turns "Save?". Click again within 6 seconds to save it as it stands. |
+| 8 | Del all | Click something (a dvergr lantern, say): every object with that exact name in that design glows orange and the screen asks "Delete all 14 ...?". Click again within 6 seconds to delete them all; otherwise the orange fades and nothing is deleted. Outside a design it takes everything of that name within 20 m. |
+
+### Turning (key 2)
+
+| Input | Turns |
+|---|---|
+| Mouse wheel | around the up axis (yaw), one notch = 22.5 degrees (ShaperTurnStep) |
+| Shift + wheel | tilts it on its own X axis |
+| Alt + wheel | rolls it on its own Z axis |
+| Ctrl + wheel (with or without Shift/Alt) | every object of that name in the design, each on its own pivot |
+
+- The camera does not zoom while Turn is picked and you aim at something (or have something locked). Aim at the sky or
+  pick another tool to zoom.
+- The middle of the screen shows the axis and the object's angles. One press of 3 undoes a whole run of wheel notches
+  on the same object.
+- Turns are kept when the design is saved, and a turned design counts as changed for `vh bp save page`.
+- `vh swap turn` still gives the current swap choice a quarter turn everywhere in the design.
 
 While the knife is in hand, look is always on: what you aim at (within 4 m) glows orange and its name shows in the
-middle of the screen, with what it stands in for if it is a stand-in. Pieces of a green Part stay green. Full details
-go to the console and `looked-at.txt`.
+middle of the screen, with what it stands in for if it is a stand-in. Pieces of a green Move part stay green, and a
+locked Turn object keeps its own colour. Full details go to the console and `looked-at.txt`.
 
 Everything below about swapping, moving and saving works the same with the knife or with typed commands.
 
 ## Swapping pieces (`vh swap`)
 
-With the knife: key 1 or left click. Without it: turn on `vh swap`, and the swap key is **numpad 5** (middle mouse
+With the knife: pick Swap (key 1) and left click. Without it: turn on `vh swap`, and the swap key is **numpad 5** (middle mouse
 removes pieces when the hammer is out, so it is not used).
 
 1. **Pick a piece:** aim at a piece of a design (within about 4 m) and press numpad 5.
@@ -96,8 +114,8 @@ removes pieces when the hammer is out, so it is not used).
    - Clicking any piece of a combination takes the whole combination.
    - You can also build your own stand-in with the hammer, somewhere open, and click it. Pieces you built that touch
      it come along as a group (up to 20): two fences side by side can stand in for a wall twice as wide.
-3. **Fix it:** `vh swap turn` gives the current choice a quarter turn (repeat as needed). `vh swap undo` (key 3)
-   takes back the last change.
+3. **Fix it:** turn pieces with Turn (key 2 and the mouse wheel), or `vh swap turn` for a quarter turn of the current
+   choice everywhere in the design. `vh swap undo` (key 3) takes back the last change.
 4. `vh swap done` removes the stand-ins. `vh swap off` ends swap mode.
 
 Nothing you swap is kept until you save the design (see Saving). Putting a page up again without saving shows the
@@ -115,7 +133,8 @@ originals.
 - Without Ctrl: moves the whole design you aim at (or the one you last picked), with its stand-ins and anything you
   built on its plot. Use this for designs that float because their lowest pieces were meant to sit in the ground.
 - Hold Ctrl and aim at part of a design: that structure turns green (the piece and everything of the design touching
-  it, for example a hut beside a hall). While Ctrl is held, the numpad moves only the green pieces.
+  it, for example a hut beside a hall). While Ctrl is held, the numpad moves only the green pieces. (With the knife in
+  hand, Ctrl belongs to Turn; use Move and click instead.)
 - The arrow keys and Page Up/Down also work.
 - A design's height change is saved with it and used every time it goes up again.
 
@@ -154,16 +173,17 @@ originals.
 ## Settings (F1, section "4 - Design review")
 
 - **ShapingTool:** which item is the shaping knife (`KnifeWood`).
-- **ShaperHandEffect:** how the knife looks in hand while shaping: None, Glow, Fire, Frost, Spirit, Lightning. Changes
-  show at once; the effect is on the knife only.
+- **ShaperHandEffect:** how the knife looks in hand while shaping: None, Glow, Fire, Frost, Spirit, Lightning (default:
+  small teal Lightning with zaps). Changes show at once; the effect is on the knife only.
 - **ShaperGroundEffect:** how it looks on the ground: None, Glow, Beam (a tall light column, like magic loot), Beam and
   Glow, Fire, Frost, Spirit, Lightning.
 - **ShaperColor:** colour of Glow and Beam (and the icon tint).
 - **ShaperEffectScale:** size of Fire, Frost, Spirit and Lightning on the knife (0.3; 1 is sword size).
 - **ShaperEffectStrength:** how many particles and how bright (0.4; lower is subtler).
-- **ShaperEffectBursts:** off leaves out the big periodic blasts the weapons give off.
+- **ShaperEffectBursts:** on keeps the periodic zaps (default on); off leaves only the steady sparks.
 - **ShaperEffectBurstScale:** with bursts on, the size and reach of the zaps (0.3; lower is tinier, 1 is as the weapon has them).
 - **ShaperEffectTint:** on colours Fire, Frost, Spirit and Lightning with ShaperColor (teal lightning).
+- **ShaperTurnStep:** degrees per mouse wheel notch for Turn (22.5).
 - **LookColor:** the orange of the object you aim at while shaping (and of Delete all's marks). Darker is subtler.
 - **GallerySwapKey:** the swap key without the knife (numpad 5).
 - **GallerySwapBiomes:** which biomes stand-ins come from, e.g. `meadows,blackforest,swamp,plains`.

@@ -49,6 +49,7 @@ with its own look for its biome.
 - [x] Design review pass 1: `vh report` lists every design with one stage each into the review sheet; Tyler kept
   264 of 963 (2026-11-07).
 - [ ] Design review pass 2: keepers gallery and hand editing (`vh swap`, nudging, `vh bp save`), Pass 2 tab filled
+- [x] Shaper Tool for pass 2: hotbar tools picked by key and used by click, mouse wheel turning, undo, look, effects
   (use, biomes, level). Guide: `docs/DESIGN_REVIEW_GUIDE.md`. Tools built 2026-11-07; review under way.
 - [ ] Pass 3 tools: a decor strip (`vh bp strip`) that makes a1 (shell and essentials), a2 (with furniture), a3
   (everything) from a pass 3 save; naming as below; fill the Variants tab.

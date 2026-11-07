@@ -12,10 +12,11 @@ Current facts only. Read this at the start of a session. Narrative is in `docs/d
   - Pass 2 in progress: `vh gallery keepers` (50 a page, as built), `vh swap` (stand-ins by biome at the sign,
     combinations, hand-built groups, numpad nudging, Ctrl for one structure), `vh look`, `vh note`, `vh bp save
     <number>|page`, saves to `blueprints/inspiration/pass3/p3-<number>-<name>.blueprint` with
-    `BepInEx/Villheim/pass3-saved.csv`. Swaps are kept only by saving. Shaping: with the shaping knife (vanilla
-    KnifeWood, `vh tool`; glows teal) in hand, hotbar 1 to 8 are Swap, Turn, Undo, Move (WASD, Q/E), Part, Delete,
-    Save, Delete all; look is on (orange). Built and pushed; the newest parts (nudging,
-    Ctrl structures, combinations, saving pages) not yet tried in game.
+    `BepInEx/Villheim/pass3-saved.csv`. Swaps are kept only by saving. Shaping: with the Villheim Dev Shaper Tool
+    (vanilla KnifeWood, `vh tool`; small teal lightning) in hand, hotbar 1 to 8 pick Swap, Turn (mouse wheel, Shift/Alt
+    axes, Ctrl all of a name), Undo, Move (WASD, Q/E; click locks a structure), (free), Delete, Save, Delete all, and
+    left click uses the picked tool with a building swing; look is on (orange). Effect sizes tested; click tools,
+    turning, nudging, combinations and page saves not yet tried in game.
   - Pass 3 next: decor tiers a1/a2/a3 and levels a/b/c from the pass 3 saves; a decor strip tool is not written yet.
   - Design numbers come from `BepInEx/Villheim/design-list.csv` (`vh report`) and never change.
   - Licensing to settle before shipping blueprints: valheimians builds and copied MWL locations belong to their
@@ -63,6 +64,7 @@ Current facts only. Read this at the start of a session. Narrative is in `docs/d
 
 ## Recent milestones
 
+- **2026-11-07 (Shaper Tool: pick a tool and click, mouse wheel turning, small teal lightning)** - see docs/daily-notes/2026-11/2026-11-07.md
 - **2026-11-07 (design review tools: keepers gallery, hand swaps, nudging, pass 3 saves, guide)** - see docs/daily-notes/2026-11/2026-11-07.md
 - **2026-11-07 (every design listed, one stage each)** - see docs/daily-notes/2026-11/2026-11-07.md
 - **2026-11-07 (design report on command, no gallery message backlog)** - see docs/daily-notes/2026-11/2026-11-07.md

@@ -163,7 +163,7 @@ namespace Villheim.Logic.Village
                     }
 
                     bool part = Input.GetKey(KeyCode.LeftControl) || Input.GetKey(KeyCode.RightControl);
-                    if (!_partLocked)
+                    if (!_partLocked && !Shaping.Active)
                     {
                         Highlight(__instance, part);
                     }
@@ -453,17 +453,26 @@ namespace Villheim.Logic.Village
             var moved = Lit.Where(v => v != null && v.IsValid()).ToList();
             MoveViews(moved, move);
             EditHistory.Push($"moving {moved.Count} pieces", () => MoveViews(moved, -move));
-            string design = Lit.FirstOrDefault(v => v != null && v.IsValid())?.GetZDO().GetString(Gallery.KeyDesign, "") ?? "";
+            MarkTouched(Lit.FirstOrDefault(v => v != null && v.IsValid())?.GetZDO().GetString(Gallery.KeyDesign, "") ?? "");
+            Say($"Swap: moved {Lit.Count} pieces. 'vh bp save' keeps it.");
+        }
+
+        /// <summary>Marks a design as changed by hand, so 'vh bp save page' saves it.</summary>
+        public static void MarkTouched(string design)
+        {
+            if (string.IsNullOrEmpty(design))
+            {
+                return;
+            }
+
             foreach (ZNetView view in ZNetScene.instance.m_instances.Values)
             {
                 ZDO zdo = view != null && view.IsValid() ? view.GetZDO() : null;
-                if (zdo != null && design.Length > 0 && zdo.GetString(Gallery.KeyDesign, "") == design && zdo.GetFloat(Gallery.KeyPlotHalf, 0f) > 0f)
+                if (zdo != null && zdo.GetString(Gallery.KeyDesign, "") == design && zdo.GetFloat(Gallery.KeyPlotHalf, 0f) > 0f)
                 {
                     zdo.Set(Gallery.KeyTouched, 1);
                 }
             }
-
-            Say($"Swap: moved {Lit.Count} pieces. 'vh bp save' keeps it.");
         }
 
         /// <summary>Moves the given objects (and the middles their stand-ins remember).</summary>

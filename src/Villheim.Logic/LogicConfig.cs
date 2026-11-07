@@ -44,6 +44,7 @@ namespace Villheim.Logic
         public static ConfigEntry<float> ShaperEffectStrength;
         public static ConfigEntry<bool> ShaperEffectBursts;
         public static ConfigEntry<float> ShaperEffectBurstScale;
+        public static ConfigEntry<float> ShaperTurnStep;
         public static ConfigEntry<bool> ShaperEffectTint;
 
         public static void Bind()
@@ -131,7 +132,7 @@ namespace Villheim.Logic
                 "The item that is the shaping tool: with it in hand, hotbar 1 to 8 edit gallery designs ('vh tool' gives one). " +
                 "Any item's prefab name works; the wooden knife by default (it glows teal while shaping).");
 
-            ShaperHandEffect = config.Bind("4 - Design review", "ShaperHandEffect", "Spirit", new ConfigDescription(
+            ShaperHandEffect = config.Bind("4 - Design review", "ShaperHandEffect", "Lightning", new ConfigDescription(
                 "How the Villheim Dev Shaper Tool looks in hand while shaping. Changes show at once.",
                 new AcceptableValueList<string>(Village.ShaperEffects.HandChoices), new ConfigurationManagerAttributes { IsAdminOnly = true }));
             ShaperGroundEffect = config.Bind("4 - Design review", "ShaperGroundEffect", "Beam and Glow", new ConfigDescription(
@@ -146,11 +147,14 @@ namespace Villheim.Logic
             ShaperEffectStrength = config.Bind("4 - Design review", "ShaperEffectStrength", 0.4f, new ConfigDescription(
                 "How busy and bright those effects are: fewer, fainter particles below 1. Changes show at once.",
                 new AcceptableValueRange<float>(0.05f, 1f), new ConfigurationManagerAttributes { IsAdminOnly = true }));
-            ShaperEffectBursts = Admin(config, "4 - Design review", "ShaperEffectBursts", false,
+            ShaperEffectBursts = Admin(config, "4 - Design review", "ShaperEffectBursts", true,
                 "Keep the effects' periodic bursts (the big lightning blasts). Off: only the steady small sparks.");
             ShaperEffectBurstScale = config.Bind("4 - Design review", "ShaperEffectBurstScale", 0.3f, new ConfigDescription(
                 "With ShaperEffectBursts on: size, speed and reach of the bursts (the zaps), on top of ShaperEffectScale. 1 leaves them as the weapon has them. Changes show at once.",
                 new AcceptableValueRange<float>(0.02f, 1.5f), new ConfigurationManagerAttributes { IsAdminOnly = true }));
+            ShaperTurnStep = config.Bind("4 - Design review", "ShaperTurnStep", 22.5f, new ConfigDescription(
+                "Degrees per mouse wheel notch when turning an object with the Shaper Tool (Turn, key 2).",
+                new AcceptableValueRange<float>(1f, 90f), new ConfigurationManagerAttributes { IsAdminOnly = true }));
             ShaperEffectTint = Admin(config, "4 - Design review", "ShaperEffectTint", true,
                 "Recolour the effects to ShaperColor (teal lightning). Off: their own colours.");
             LookColor = Admin(config, "4 - Design review", "LookColor", new UnityEngine.Color(0.45f, 0.16f, 0.02f),

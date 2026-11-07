@@ -6,15 +6,23 @@ namespace Villheim.Logic.Village
     /// <summary>
     /// Undo for gallery editing (Shaping key 3, 'vh swap undo'): the last 50 changes, newest first: deletes (single or
     /// Delete all), moves (whole design or part, one step per press), swaps and turns. Each change leaves how to put it
-    /// back; undo runs the newest.
+    /// back; undo runs the newest. Steps with the same key in a row count as one (turning with the mouse wheel: one
+    /// undo puts the object back as it was before the first notch).
     /// </summary>
     internal static class EditHistory
     {
         private const int Keep = 50;
         private static readonly List<(string What, System.Action Back)> Steps = new List<(string, System.Action)>();
+        private static string _lastKey;
 
-        public static void Push(string what, System.Action back)
+        public static void Push(string what, System.Action back, string key = null)
         {
+            if (key != null && key == _lastKey && Steps.Count > 0)
+            {
+                return;
+            }
+
+            _lastKey = key;
             Steps.Add((what, back));
             if (Steps.Count > Keep)
             {
@@ -31,6 +39,7 @@ namespace Villheim.Logic.Village
 
             (string what, System.Action back) = Steps[Steps.Count - 1];
             Steps.RemoveAt(Steps.Count - 1);
+            _lastKey = null;
             try
             {
                 back();

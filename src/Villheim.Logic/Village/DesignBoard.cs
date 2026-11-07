@@ -30,8 +30,9 @@ namespace Villheim.Logic.Village
         private const float Gap = 6f;
         private const float Aisle = 14f;
         private const float MaxRow = 340f;
-        private static readonly Color BeamColour = new Color(0.1f, 0.9f, 0.2f);
-        private static readonly int Emission = Shader.PropertyToID("_EmissionColor");
+        private static readonly Color BeamColour = new Color(0.08f, 0.28f, 0.1f);
+        private static readonly int Tint = Shader.PropertyToID("_Color");
+        internal const string KeyLabel = "villheim_board_label";
 
         internal sealed class Plot
         {
@@ -132,7 +133,7 @@ namespace Villheim.Logic.Village
                 else if (zdo.GetInt(KeyBeam) == 1 && !Tinted.Contains(view.GetInstanceID()))
                 {
                     Tinted.Add(view.GetInstanceID());
-                    MaterialMan.instance?.SetValue(view.gameObject, Emission, BeamColour);
+                    MaterialMan.instance?.SetValue(view.gameObject, Tint, BeamColour);
                 }
             }
         }
@@ -207,11 +208,17 @@ namespace Villheim.Logic.Village
             Kind kind = Kinds[words[1]];
             int number = 0;
             int stages = 5;
+            float size = 0f;
             for (int i = 2; i < words.Count; i++)
             {
                 if (words[i] == "stages" && i + 1 < words.Count && int.TryParse(words[i + 1], out int s))
                 {
                     stages = Mathf.Clamp(s, 1, 10);
+                    i++;
+                }
+                else if (words[i] == "size" && i + 1 < words.Count && float.TryParse(words[i + 1], NumberStyles.Float, CultureInfo.InvariantCulture, out float m))
+                {
+                    size = Mathf.Clamp(m, 10f, 120f);
                     i++;
                 }
                 else if (int.TryParse(words[i].TrimStart(kind.Root.ToCharArray()), out int n) && n > 0)
@@ -244,7 +251,7 @@ namespace Villheim.Logic.Village
             forward.y = 0f;
             forward.Normalize();
             _busy = true;
-            VillheimPlugin.Instance.StartCoroutine(Build(player.transform.position, forward, biome, kind, kind.Root + number, stages));
+            VillheimPlugin.Instance.StartCoroutine(Build(player.transform.position, forward, biome, kind, kind.Root + number, stages, size));
             return $"Board: putting up {kind.Root}{number} ({biome} {kind.Label}, {stages} stages) and the {kind.Label} designs for PlanBuild's \"{Category}\" tab.";
         }
 
@@ -306,7 +313,7 @@ namespace Villheim.Logic.Village
             doomed.AddRange(Loaded().Where(v =>
             {
                 ZDO z = v.GetZDO();
-                return z.GetInt(KeyBeam) == 1 || z.GetString(Gallery.KeyDesign, "").StartsWith(Prefix);
+                return z.GetInt(KeyBeam) == 1 || z.GetString(KeyLabel, "").Length > 0 || z.GetString(Gallery.KeyDesign, "").StartsWith(Prefix);
             }));
             foreach (ZNetView view in doomed.Distinct())
             {
@@ -320,7 +327,7 @@ namespace Villheim.Logic.Village
 
             try
             {
-                List<ZDO> far = Gallery.UnloadedZdos(z => z.GetInt(KeyBeam) == 1 || z.GetString(Gallery.KeyDesign, "").StartsWith(Prefix));
+                List<ZDO> far = Gallery.UnloadedZdos(z => z.GetInt(KeyBeam) == 1 || z.GetString(KeyLabel, "").Length > 0 || z.GetString(Gallery.KeyDesign, "").StartsWith(Prefix));
                 Gallery.DestroyZdos(far);
                 gone += far.Count;
             }
@@ -404,14 +411,6 @@ namespace Villheim.Logic.Village
         private static IEnumerator WriteCandidates(Kind kind, string biome)
         {
             Candidates.Clear();
-            if (Directory.Exists(CandidateFolder))
-            {
-                foreach (string old in Directory.GetFiles(CandidateFolder))
-                {
-                    File.Delete(old);
-                }
-            }
-
             Directory.CreateDirectory(CandidateFolder);
             Dictionary<string, int> numbers = Gallery.ReadNumbers();
             foreach (string design in Keepers.Names)
@@ -463,10 +462,24 @@ namespace Villheim.Logic.Village
                     candidate.Counts[piece.Prefab] = candidate.Counts.TryGetValue(piece.Prefab, out int c) ? c + 1 : 1;
                 }
 
-                File.WriteAllLines(candidate.File, lines);
+                // A file that has not changed keeps its picture, so PlanBuild only makes pictures for new designs.
+                string text = string.Join("\n", lines);
+                if (!File.Exists(candidate.File) || File.ReadAllText(candidate.File).Replace("\r", "").TrimEnd() != text)
+                {
+                    File.WriteAllText(candidate.File, text + "\n");
+                    string picture = Path.ChangeExtension(candidate.File, ".png");
+                    if (File.Exists(picture))
+                    {
+                        File.Delete(picture);
+                    }
+                }
+
                 Candidates.Add(candidate);
                 yield return null;
             }
+
+            // Designs of other kinds stay on disk with their pictures for the next board of that kind; PlanBuild only
+            // shows this board's (see LoadIntoPlanBuild).
 
             _candidatesFor = kind.Label;
         }
@@ -583,6 +596,13 @@ namespace Villheim.Logic.Village
 
                     dictionary.Add(id, blueprint);
                     createPiece?.Invoke(blueprint, null);
+                    // Known already, so the game does not announce each one as a new piece.
+                    Piece piece = Traverse.Create(blueprint).Field("Prefab").GetValue<GameObject>()?.GetComponent<Piece>();
+                    if (piece != null && Player.m_localPlayer != null)
+                    {
+                        Player.m_localPlayer.m_knownRecipes.Add(piece.m_name);
+                    }
+
                     loaded++;
                 }
                 catch (System.Exception e)
@@ -591,7 +611,7 @@ namespace Villheim.Logic.Village
                 }
 
                 yield return null;
-                if (blueprint == null || createThumbnail == null)
+                if (blueprint == null || createThumbnail == null || File.Exists(Path.ChangeExtension(candidate.File, ".png")))
                 {
                     continue;
                 }
@@ -630,7 +650,7 @@ namespace Villheim.Logic.Village
 
         // ---------------------------------------------------------------- putting the board up
 
-        private static IEnumerator Build(Vector3 playerPosition, Vector3 forward, string biome, Kind kind, string baseId, int stages)
+        private static IEnumerator Build(Vector3 playerPosition, Vector3 forward, string biome, Kind kind, string baseId, int stages, float size)
         {
             try
             {
@@ -642,8 +662,11 @@ namespace Villheim.Logic.Village
                     yield break;
                 }
 
-                // Every plot is as big as the biggest candidate, so whatever is placed fits.
-                float half = Mathf.Clamp(Candidates.Max(c => c.Half), 8f, 60f);
+                // Plots fit four in five of the candidates (the few biggest would make every plot huge); 'size N' sets the
+                // width in metres. Designs bigger than the plot are named in the console.
+                List<float> halves = Candidates.Select(c => c.Half).OrderBy(h => h).ToList();
+                float half = size > 0f ? size / 2f : Mathf.Clamp(halves[Mathf.Min(halves.Count - 1, Mathf.FloorToInt(halves.Count * 0.8f))], 8f, 30f);
+                List<Candidate> bigger = Candidates.Where(c => c.Half > half).OrderByDescending(c => c.Half).ToList();
                 Vector3 start = playerPosition + forward * 8f;
                 if (Gallery.LoadFlatArea(out Vector3 flatStart, out Vector3 flatForward) && Utils.DistanceXZ(flatStart, playerPosition) < 600f)
                 {
@@ -661,7 +684,7 @@ namespace Villheim.Logic.Village
                     int inRow = Mathf.Min(perRow, stages - row * perRow);
                     float width = inRow * half * 2f + (inRow - 1) * Gap;
                     Vector3 center = start + forward * (half + row * (half * 2f + Aisle)) + right * (-width / 2f + half + column * (half * 2f + Gap));
-                    center.y = start.y;
+                    center.y = Ground(center, start.y);
                     string name = $"{Prefix}{baseId}:s{stage}";
                     string file = Path.Combine(SaveFolder, $"{baseId}_s{stage}d3.blueprint");
                     int placed = File.Exists(file) ? PutSaved(file, center, yaw) : 0;
@@ -676,6 +699,11 @@ namespace Villheim.Logic.Village
                 yield return LoadIntoPlanBuild(text => planBuild = text);
                 Say($"Board: {baseId} for {biome} {kind.Label}: {stages} plots of {half * 2f:0} m. {planBuild} " +
                     "Place designs with the Blueprint Rune, then save each plot with the Shaper Tool (Save).");
+                if (bigger.Count > 0)
+                {
+                    Say($"Board: bigger than a plot ({bigger.Count}): " + string.Join(", ", bigger.Take(8).Select(c => $"No. {c.Number} ({c.Half * 2f:0} m)")) +
+                        $". For those, 'vh slot ... size {Mathf.CeilToInt(bigger[0].Half * 2f)}' makes the plots big enough.");
+                }
             }
             finally
             {
@@ -701,7 +729,8 @@ namespace Villheim.Logic.Village
                     float t = -edge + (i + 0.5f) * (edge * 2f / count);
                     Vector3 at = center + across * edge + along * t;
                     // A beam's length runs along its own X axis.
-                    GameObject beam = Object.Instantiate(prefab, at + Vector3.up * 0.1f, Quaternion.LookRotation(Vector3.Cross(along, Vector3.up)));
+                    at.y = Ground(at, center.y) - 0.05f;
+                    GameObject beam = Object.Instantiate(prefab, at, Quaternion.LookRotation(Vector3.Cross(along, Vector3.up)));
                     ZDO zdo = beam.GetComponent<ZNetView>()?.GetZDO();
                     if (zdo != null)
                     {
@@ -709,9 +738,16 @@ namespace Villheim.Logic.Village
                         zdo.Set(KeyBeam, 1);
                     }
 
-                    MaterialMan.instance?.SetValue(beam, Emission, BeamColour);
+                    MaterialMan.instance?.SetValue(beam, Tint, BeamColour);
                 }
             }
+        }
+
+        /// <summary>The ground's height at a point (the terrain where it is loaded), else the fallback.</summary>
+        private static float Ground(Vector3 at, float fallback)
+        {
+            float height = ZoneSystem.instance != null ? ZoneSystem.instance.GetGroundHeight(at) : 0f;
+            return height != 0f && Mathf.Abs(height - fallback) < 30f ? height : fallback;
         }
 
         private static void PlotSign(string name, Vector3 center, float half, float yaw, Vector3 forward, string biome, string kind, int placed, string[] record)
@@ -731,7 +767,16 @@ namespace Villheim.Logic.Village
             zdo.Set(Gallery.KeyPlaced, placed);
             zdo.Set(KeyBiome, biome);
             zdo.Set(KeySubtype, kind);
+
+            // A second sign just behind, carrying big text high above both, readable from across the board.
+            GameObject label = Gallery.OneSign(at + forward * 0.08f, forward, 0f, LabelText(name, placed, record));
+            ZDO labelZdo = label?.GetComponent<ZNetView>()?.GetZDO();
+            labelZdo?.Set(KeyLabel, name);
         }
+
+        private static string LabelText(string name, int placed, string[] record) =>
+            $"<#7f7><voffset=60><size=10>{StageName(name)}<br><size=6>" +
+            (placed == 0 ? "<#ccc>empty" : "<#fff>saved" + (record != null && record.Length > 7 && record[6].Length > 0 ? $": No. {record[6]}" : ""));
 
         private static string SignText(string name, string biome, string kind, int placed, string[] record)
         {
@@ -852,8 +897,19 @@ namespace Villheim.Logic.Village
             sign.Set(ZDOVars.s_text, SignText(plotName, sign.GetString(KeyBiome, ""), sign.GetString(KeySubtype, ""), placed, record));
             foreach (ZNetView view in Loaded())
             {
-                if (view.GetZDO() == sign)
+                ZDO zdo = view.GetZDO();
+                if (zdo == sign)
                 {
+                    view.GetComponent<Sign>()?.UpdateText();
+                }
+                else if (zdo.GetString(KeyLabel, "") == plotName)
+                {
+                    if (!view.IsOwner())
+                    {
+                        view.ClaimOwnership();
+                    }
+
+                    zdo.Set(ZDOVars.s_text, LabelText(plotName, placed, record));
                     view.GetComponent<Sign>()?.UpdateText();
                 }
             }

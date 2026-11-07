@@ -36,7 +36,8 @@ typed in the in-game console (F5) unless it says otherwise.
 1. Stand at the near edge of the flat area. `vh gallery clear` first if a page is still up.
 2. `vh slot meadows hearth` puts up a new base ID (hub1, or the next free number) for the Meadows: 5 plots in a row,
    each bordered by green beams with a sign (hub1_s1 to hub1_s5). `vh slot meadows hearth 1` puts hub1 up again with
-   its saved stages in their plots. `stages 7` gives more plots.
+   its saved stages in their plots. `stages 7` gives more plots. Plots fit most of the kind's designs; the console names
+   any that are bigger, and `size 60` makes every plot 60 m wide.
 3. At the same time every design sorted as that kind is written to PlanBuild's folder and shows in the Blueprint
    Rune under the tab **Villheim board**, with a picture each (the first time for a kind this takes a moment while
    PlanBuild makes the pictures). The next `vh slot` swaps the tab's contents for the new kind.

@@ -128,45 +128,33 @@ namespace Villheim.Logic.Village
         }
 
         private static GameObject _glowItem;
-        private static GameObject _glowLight;
-        private static readonly Color Teal = new Color(0.1f, 0.85f, 0.75f);
 
-        /// <summary>The tool in hand glows teal while shaping (a soft light and a lit blade), so it reads as the shaping tool.</summary>
+        private static string HandEffect => LogicConfig.ShaperHandEffect?.Value ?? "Spirit";
+        private static string GroundEffect => LogicConfig.ShaperGroundEffect?.Value ?? "Beam and Glow";
+        private static Color EffectColor => LogicConfig.ShaperColor?.Value ?? new Color(0.1f, 0.85f, 0.75f);
+
+        /// <summary>
+        /// The tool in hand shows ShaperHandEffect while shaping (on the tool only, no light on the player); a change in
+        /// F1 shows at once. Put away, the effect goes.
+        /// </summary>
         private static void Glow(Player player)
         {
             VisEquipment vis = player.m_visEquipment;
             GameObject item = _active && vis != null ? (vis.m_rightItemInstance != null ? vis.m_rightItemInstance : vis.m_leftItemInstance) : null;
-            if (item == _glowItem)
+            if (item != _glowItem && _glowItem != null)
             {
-                return;
-            }
-
-            if (_glowItem != null)
-            {
-                MaterialMan.instance?.ResetValue(_glowItem, Emission);
-            }
-
-            if (_glowLight != null)
-            {
-                Object.Destroy(_glowLight);
+                ShaperEffects.Clear(_glowItem);
             }
 
             _glowItem = item;
-            _glowLight = null;
-            if (item == null)
+            if (item != null)
             {
-                return;
+                string signature = ShaperEffects.Signature(HandEffect, EffectColor);
+                if (!ShaperEffects.Shows(item, signature))
+                {
+                    ShaperEffects.Apply(item, HandEffect, EffectColor, ground: false);
+                }
             }
-
-            MaterialMan.instance?.SetValue(item, Emission, Teal * 0.8f);
-            _glowLight = new GameObject("VillheimShapingGlow");
-            _glowLight.transform.SetParent(item.transform, false);
-            Light light = _glowLight.AddComponent<Light>();
-            light.type = LightType.Point;
-            light.color = Teal;
-            light.range = 1.5f;
-            light.intensity = 1.2f;
-            light.shadows = LightShadows.None;
         }
 
         // ---------------------------------------------------------------- the tool's name and glow everywhere
@@ -180,7 +168,7 @@ namespace Villheim.Logic.Village
         private static string _oldName;
         private static string _oldDescription;
         private static float _nextGroundGlow;
-        private static readonly Color IconTint = new Color(0.45f, 1f, 0.9f);
+        private static Color IconTint => Color.Lerp(Color.white, EffectColor, 0.6f);
 
         private static ItemDrop.ItemData.SharedData SharedOf(string prefab) =>
             ObjectDB.instance?.GetItemPrefab(prefab)?.GetComponent<ItemDrop>()?.m_itemData?.m_shared;
@@ -225,7 +213,7 @@ namespace Villheim.Logic.Village
             _named = want;
         }
 
-        /// <summary>A Shaper Tool lying on the ground glows teal too (checked once a second).</summary>
+        /// <summary>A Shaper Tool lying on the ground shows ShaperGroundEffect (checked twice a second, so F1 changes show quickly).</summary>
         private static void GlowOnGround()
         {
             if (Time.time < _nextGroundGlow)
@@ -233,24 +221,15 @@ namespace Villheim.Logic.Village
                 return;
             }
 
-            _nextGroundGlow = Time.time + 1f;
+            _nextGroundGlow = Time.time + 0.5f;
             string want = LogicConfig.ShapingTool?.Value ?? "KnifeWood";
+            string signature = ShaperEffects.Signature(GroundEffect, EffectColor);
             foreach (ItemDrop drop in ItemDrop.s_instances)
             {
-                if (drop == null || Utils.GetPrefabName(drop.gameObject) != want || drop.transform.Find("VillheimShapingGlow") != null)
+                if (drop != null && Utils.GetPrefabName(drop.gameObject) == want && !ShaperEffects.Shows(drop.gameObject, signature))
                 {
-                    continue;
+                    ShaperEffects.Apply(drop.gameObject, GroundEffect, EffectColor, ground: true);
                 }
-
-                MaterialMan.instance?.SetValue(drop.gameObject, Emission, Teal * 0.8f);
-                var glow = new GameObject("VillheimShapingGlow");
-                glow.transform.SetParent(drop.transform, false);
-                Light light = glow.AddComponent<Light>();
-                light.type = LightType.Point;
-                light.color = Teal;
-                light.range = 1.5f;
-                light.intensity = 1.2f;
-                light.shadows = LightShadows.None;
             }
         }
 

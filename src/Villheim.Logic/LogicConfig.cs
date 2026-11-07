@@ -36,6 +36,9 @@ namespace Villheim.Logic
         public static ConfigEntry<KeyboardShortcut> GallerySwapKey;
         public static ConfigEntry<string> GallerySwapBiomes;
         public static ConfigEntry<string> ShapingTool;
+        public static ConfigEntry<string> ShaperHandEffect;
+        public static ConfigEntry<string> ShaperGroundEffect;
+        public static ConfigEntry<UnityEngine.Color> ShaperColor;
 
         public static void Bind()
         {
@@ -121,6 +124,15 @@ namespace Villheim.Logic
             ShapingTool = Admin(config, "4 - Design review", "ShapingTool", "KnifeWood",
                 "The item that is the shaping tool: with it in hand, hotbar 1 to 8 edit gallery designs ('vh tool' gives one). " +
                 "Any item's prefab name works; the wooden knife by default (it glows teal while shaping).");
+
+            ShaperHandEffect = config.Bind("4 - Design review", "ShaperHandEffect", "Spirit", new ConfigDescription(
+                "How the Villheim Dev Shaper Tool looks in hand while shaping. Changes show at once.",
+                new AcceptableValueList<string>(Village.ShaperEffects.HandChoices), new ConfigurationManagerAttributes { IsAdminOnly = true }));
+            ShaperGroundEffect = config.Bind("4 - Design review", "ShaperGroundEffect", "Beam and Glow", new ConfigDescription(
+                "How the Villheim Dev Shaper Tool looks lying on the ground. Changes show at once.",
+                new AcceptableValueList<string>(Village.ShaperEffects.GroundChoices), new ConfigurationManagerAttributes { IsAdminOnly = true }));
+            ShaperColor = Admin(config, "4 - Design review", "ShaperColor", new UnityEngine.Color(0.1f, 0.85f, 0.75f),
+                "Colour of the Shaper Tool's Glow and Beam, and the tint of its icon.");
 
             // The fishing rod was the first default (2026-11-07); Tyler chose the wooden knife.
             if (ShapingTool.Value == "FishingRod")

@@ -57,8 +57,8 @@ means everything is up.
 ## Shaping: the knife and the hotbar
 
 The shaping knife is the vanilla wooden knife (`KnifeWood`, config ShapingTool), renamed **Villheim Dev Shaper Tool**
-(on the ground, in the inventory and on the hotbar). It glows teal in hand and on the ground, and its icon is tinted
-teal in the inventory and on the hotbars. With it in hand, hotbar keys 1 to 8 stop using items and
+(on the ground, in the inventory and on the hotbar). How it looks in hand and on the ground is chosen in F1 (see
+Settings); its icon is tinted the same colour in the inventory and on the hotbars. With it in hand, hotbar keys 1 to 8 stop using items and
 become the editing tools, with their own icons and labels. Put the knife away (press its quick slot again, or take
 another tool) and the hotbar is back to normal.
 
@@ -154,6 +154,11 @@ originals.
 ## Settings (F1, section "4 - Design review")
 
 - **ShapingTool:** which item is the shaping knife (`KnifeWood`).
+- **ShaperHandEffect:** how the knife looks in hand while shaping: None, Glow, Fire, Frost, Spirit, Lightning. Changes
+  show at once; the effect is on the knife only.
+- **ShaperGroundEffect:** how it looks on the ground: None, Glow, Beam (a tall light column, like magic loot), Beam and
+  Glow, Fire, Frost, Spirit, Lightning.
+- **ShaperColor:** colour of Glow and Beam (and the icon tint).
 - **GallerySwapKey:** the swap key without the knife (numpad 5).
 - **GallerySwapBiomes:** which biomes stand-ins come from, e.g. `meadows,blackforest,swamp,plains`.
 - **GalleryNumberText:** size and height of the floating number over each sign.

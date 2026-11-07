@@ -19,7 +19,7 @@ namespace Villheim.Logic
             "settle (or newvillage): light a new village hearth in front of you",
             "ghost: apply the look settings now and show the shader in use",
             "flatten [size]: clear everything from an area in front of you (360 by 260 m, enough for any gallery page) and level it at your feet's height, as far as the game allows; touch it up by hand, then 'gallery' lays out on it",
-            "gallery <meadows|blackforest|swamp|mountain> [all|house|hall|prof|storage|farm] [page N]: ten designs a page (each stage includes the ones before it) on the flattened area; then 'gallery next' (or prev, again) for the following page; the full list is written to BepInEx/Villheim/gallery-list-<biome>.csv each time; 'gallery show <name...>'; 'gallery clear'",
+            "gallery [stage] [all|house|hall|prof|storage|farm] [page N]: ten designs a page on the flattened area, numbered as in design-list.csv (no stage: every design); then 'gallery next' (or prev, again); 'gallery show <name...>'; 'gallery clear'",
             "act <villager|near> <action> [seconds]: make one villager do one thing, to test it ('vh act near' lists the actions)",
             "board [now]: show the notice board's blueprint, place and what it waits for ('now' puts it up at once, free)",
             "beds: list the beds round the nearest village, whether they count and who sleeps in each",
@@ -35,7 +35,7 @@ namespace Villheim.Logic
             "designs [meadows|blackforest]: list the designs villages can build",
             "locations [filter]: list location names you can use as designs",
             "dump <location>: write what a design contains to the BepInEx log",
-            "report: write a report of every location that could be a design (BepInEx/Villheim/design-report.txt)",
+            "report [rescan]: write every design (curated, all blueprints, every location with a structure) with its stage, kind, gallery page and notes to BepInEx/Villheim/design-list.csv; 'report locations' writes the older per-location report (design-report.txt)",
             "trace [seconds]: record the nearest villager's movement 50 times a second to BepInEx/Villheim/trace-*.csv (for jitter)",
             "villager: show the nearest villager's voice, mood, thoughts, role, trade, bed and activity",
             "village: show the nearest village's type, Jarl, mood, project, fence, known players and request",
@@ -151,7 +151,17 @@ namespace Villheim.Logic
                 case "villheim_designs": Designs(args, context); return true;
                 case "villheim_locations": Locations(args, context); return true;
                 case "villheim_dump": Dump(args, context); return true;
-                case "villheim_report": DesignReport.Start(context); return true;
+                case "villheim_report":
+                    if (args.Length > 0 && args[0].ToLowerInvariant().StartsWith("loc"))
+                    {
+                        DesignReport.Start(context);
+                    }
+                    else
+                    {
+                        Say(context, Gallery.Report(context, args.Any(a => a.ToLowerInvariant() == "rescan")));
+                    }
+
+                    return true;
                 case "villheim_blueprints": ListBlueprints(context); return true;
                 case "villheim_villager": InspectVillager(context); return true;
                 case "villheim_village": InspectVillage(context); return true;

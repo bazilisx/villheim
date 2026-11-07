@@ -12,18 +12,23 @@ namespace Villheim.Logic.Village
     /// 1. 'vh flatten [size]' clears everything from a square in front of the player and levels it at his feet's height,
     ///    as far as the game's 8 m either way allows, and takes the grass off. The player touches it up by hand (PlanBuild's
     ///    terrain tool).
-    /// 2. 'vh gallery &lt;biome&gt; [group] [page N]' lays ten designs a page out in front of the player, grouped by kind,
+    /// 2. 'vh gallery [stage] [group] [page N]' lays ten designs a page out in front of the player, grouped by kind,
     ///    each on the middle height of the ground under it and set on its foundation after it is put down (measured
-    ///    from its colliders), with a sign: kind, design name, creator. Only designs a player at that stage could build
-    ///    (see Viable). 'vh gallery list' writes them all to a CSV for the review sheet, 'vh gallery show' lays out
-    ///    named ones, 'vh gallery clear' removes a gallery. Gallery pieces never wear or fall (see NoWearPatch).
+    ///    from its colliders), with a sign: kind, stage, design name, number, creator. Every design is shown; each has
+    ///    one stage from what most of its building pieces are made of (see Classify). 'vh report' writes them all to
+    ///    BepInEx/Villheim/design-list.csv for the review sheet, with the same numbers and pages; 'vh gallery show'
+    ///    lays out named ones, 'vh gallery clear' removes a gallery. Gallery pieces never wear or fall (see NoWearPatch).
     /// </summary>
     internal static class Gallery
     {
         private sealed class Cell
         {
             public bool Terrace;
+            public int Number;
+            public int Stage;
             public int Pieces;
+            public int Building;
+            public string Notes = "";
             public DesignLibrary.Design Design;
             public Role Role;
             public Vector3 Center;
@@ -73,61 +78,89 @@ namespace Villheim.Logic.Village
         private const int PageSize = 10;
 
         public const string Usage =
-            "vh gallery <meadows|blackforest|swamp|mountain> [all|house|hall|prof|storage|farm] [page N] [rescan]: ten designs a page, e.g. " +
-            "'vh gallery meadows house page 2'. 'vh gallery list meadows' writes every design to BepInEx/Villheim/gallery-list-Meadows.csv. " +
+            "vh gallery [page N]: ten designs a page, in the order of BepInEx/Villheim/design-list.csv ('vh report' writes it). " +
+            "'vh gallery <meadows|blackforest|swamp|mountain|plains|mistlands|ashlands> [all|house|hall|prof|storage|farm] [page N]' " +
+            "shows one stage or kind, e.g. 'vh gallery meadows house page 2'. " +
             "'vh gallery next' / 'prev' / 'again' clears the page shown and shows the next, the one before, or the same again. " +
             "'vh gallery show <name> [name...]' lays out those designs. 'vh gallery clear' removes a gallery.";
 
         private static bool _running;
 
-        /// <summary>Materials a player has in each biome's stage of the game (the gallery's strict test).</summary>
-        private static readonly Dictionary<Heightmap.Biome, HashSet<string>> StageMaterials = new Dictionary<Heightmap.Biome, HashSet<string>>
+        /// <summary>The stages of the game in order. Each design belongs to one (see Classify).</summary>
+        internal static readonly string[] StageNames = { "Meadows", "Black Forest", "Swamp", "Mountain", "Plains", "Mistlands", "Ashlands" };
+
+        /// <summary>Words for the stages in commands and in the saved last page.</summary>
+        private static readonly string[] StageWords = { "meadows", "blackforest", "swamp", "mountain", "plains", "mistlands", "ashlands" };
+
+        /// <summary>
+        /// The first stage a player has each material in. Fine wood and core wood need the bronze axe, coal the
+        /// charcoal kiln (surtling cores), so they count as Black Forest. Materials from other mods are not listed and
+        /// do not set a stage (they show in the notes).
+        /// </summary>
+        private static readonly Dictionary<string, int> MaterialStage = ByStage(
+            "Wood Stone Resin Flint LeatherScraps DeerHide BoneFragments Feathers Raspberry Dandelion Mushroom HardAntler " +
+            "TrophyDeer TrophyBoar TrophyNeck TrophyEikthyr Honey QueenBee",
+            "FineWood RoundLog Coal Copper Tin Bronze BronzeNails SurtlingCore GreydwarfEye TrollHide Thistle Blueberries " +
+            "AncientSeed CarrotSeeds Carrot TrophyGreydwarf TrophyGreydwarfBrute TrophyGreydwarfShaman TrophyFrostTroll " +
+            "TrophySkeleton TrophyTheElder CryptKey",
+            "ElderBark Iron IronNails IronScrap Chain Guck Ooze Bloodbag WitheredBone Entrails Root Turnip TurnipSeeds " +
+            "TrophyDraugr TrophyDraugrElite TrophyLeech TrophyBlob TrophyBonemass TrophyAbomination TrophyWraith Wishbone",
+            "Silver SilverOre Obsidian WolfPelt WolfFang WolfClaw FreezeGland Crystal JuteRed DragonTear DragonEgg Onion " +
+            "OnionSeeds SerpentScale TrophySerpent TrophyWolf TrophyDragonQueen TrophyHatchling TrophyFenring TrophySGolem TrophyCultist",
+            "BlackMetal BlackMetalScrap Tar Barley BarleyFlour Flax LinenThread Needle LoxPelt GoblinTotem Cloudberry " +
+            "TrophyGoblin TrophyGoblinBrute TrophyGoblinShaman TrophyLox TrophyDeathsquito TrophyGoblinKing TrophyGrowth",
+            "YggdrasilWood BlackMarble Eitr Sap Carapace Mandible BlackCore ScaleHide Bilebag RoyalJelly JuteBlue Softtissue " +
+            "DvergrNeedle Wisp MechanicalSpring DvergrKeyFragment TrophySeeker TrophySeekerBrute TrophyGjall TrophyTick " +
+            "TrophyDvergr TrophySeekerQueen TrophyHare",
+            "Grausten Blackwood FlametalNew Flametal FlametalOre FlametalOreNew CharredBone AskHide CeramicPlate MoltenCore " +
+            "ProustitePowder CelestialFeather Vineberry MorgenSinew BellFragment TrophyCharredMelee TrophyFallenValkyrie TrophyFader");
+
+        /// <summary>The first stage a player has each crafting station in (the stonecutter needs iron).</summary>
+        private static readonly Dictionary<string, int> StationStage = new Dictionary<string, int>
         {
-            [Heightmap.Biome.Meadows] = new HashSet<string>
-            {
-                "Wood", "Stone", "FineWood", "Resin", "LeatherScraps", "DeerHide", "Flint", "BoneFragments", "Feathers", "Coal",
-            },
-            [Heightmap.Biome.BlackForest] = new HashSet<string>
-            {
-                "Wood", "Stone", "FineWood", "Resin", "LeatherScraps", "DeerHide", "Flint", "BoneFragments", "Feathers", "Coal",
-                "RoundLog", "Copper", "Tin", "Bronze", "BronzeNails", "SurtlingCore", "GreydwarfEye", "TrollHide", "Thistle",
-            },
-            [Heightmap.Biome.Swamp] = new HashSet<string>
-            {
-                "Wood", "Stone", "FineWood", "Resin", "LeatherScraps", "DeerHide", "Flint", "BoneFragments", "Feathers", "Coal",
-                "RoundLog", "Copper", "Tin", "Bronze", "BronzeNails", "SurtlingCore", "GreydwarfEye", "TrollHide", "Thistle",
-                "ElderBark", "Iron", "IronNails", "Chain", "Guck", "Ooze", "Bloodbag", "WitheredBone", "Entrails", "Root",
-            },
-            [Heightmap.Biome.Mountain] = new HashSet<string>
-            {
-                "Wood", "Stone", "FineWood", "Resin", "LeatherScraps", "DeerHide", "Flint", "BoneFragments", "Feathers", "Coal",
-                "RoundLog", "Copper", "Tin", "Bronze", "BronzeNails", "SurtlingCore", "GreydwarfEye", "TrollHide", "Thistle",
-                "ElderBark", "Iron", "IronNails", "Chain", "Guck", "Ooze", "Bloodbag", "WitheredBone", "Entrails", "Root",
-                "Silver", "Obsidian", "WolfPelt", "WolfFang", "WolfClaw", "FreezeGland", "Crystal", "JuteRed", "DragonTear",
-                "TrophyWolf", "TrophyDragonQueen",
-            },
+            ["piece_workbench"] = 0,
+            ["forge"] = 1,
+            ["piece_stonecutter"] = 2,
+            ["piece_artisanstation"] = 3,
+            ["blackforge"] = 5,
+            ["piece_magetable"] = 5,
         };
 
-        /// <summary>Crafting stations a player has in each stage (the stonecutter needs iron, so stone walls are later).</summary>
-        private static readonly Dictionary<Heightmap.Biome, HashSet<string>> StageStations = new Dictionary<Heightmap.Biome, HashSet<string>>
+        /// <summary>
+        /// Building pieces from a later stage a design may have and still count as its main stage: one in ten. A few
+        /// iron beams in a wood house, or a tar roof cap, leave it where its walls and roof put it.
+        /// </summary>
+        private const float MinorShare = 0.10f;
+
+        /// <summary>Locations need this many building pieces to count as a structure (a lone post or fence is not one).</summary>
+        private const int MinLocationBuilding = 5;
+
+        private static Dictionary<string, int> ByStage(params string[] perStage)
         {
-            [Heightmap.Biome.Meadows] = new HashSet<string> { "piece_workbench" },
-            [Heightmap.Biome.BlackForest] = new HashSet<string> { "piece_workbench", "forge" },
-            [Heightmap.Biome.Swamp] = new HashSet<string> { "piece_workbench", "forge", "piece_stonecutter" },
-            [Heightmap.Biome.Mountain] = new HashSet<string> { "piece_workbench", "forge", "piece_stonecutter", "piece_artisanstation" },
-        };
+            var stages = new Dictionary<string, int>();
+            for (int stage = 0; stage < perStage.Length; stage++)
+            {
+                foreach (string material in perStage[stage].Split(new[] { ' ' }, System.StringSplitOptions.RemoveEmptyEntries))
+                {
+                    stages[material] = stage;
+                }
+            }
 
-        /// <summary>The stages in game order: each includes everything before it.</summary>
-        private static readonly Heightmap.Biome[] Stages =
-            { Heightmap.Biome.Meadows, Heightmap.Biome.BlackForest, Heightmap.Biome.Swamp, Heightmap.Biome.Mountain };
+            return stages;
+        }
 
-        private static Heightmap.Biome StageOf(string word)
+        /// <summary>A stage from a command word, or -1 when the word is not one.</summary>
+        private static int StageIndex(string word)
         {
             string w = (word ?? "").ToLowerInvariant();
-            if (w.StartsWith("black") || w.StartsWith("forest")) return Heightmap.Biome.BlackForest;
-            if (w.StartsWith("swamp")) return Heightmap.Biome.Swamp;
-            if (w.StartsWith("mountain")) return Heightmap.Biome.Mountain;
-            return Heightmap.Biome.Meadows;
+            if (w.StartsWith("meadow")) return 0;
+            if (w.StartsWith("black") || w.StartsWith("forest")) return 1;
+            if (w.StartsWith("swamp")) return 2;
+            if (w.StartsWith("mountain")) return 3;
+            if (w.StartsWith("plain")) return 4;
+            if (w.StartsWith("mist")) return 5;
+            if (w.StartsWith("ash")) return 6;
+            return -1;
         }
 
         private enum Action
@@ -137,60 +170,56 @@ namespace Villheim.Logic.Village
             Show,
         }
 
-        private static bool _autoListStarted;
+        public static string ListPath => System.IO.Path.Combine(BepInEx.Paths.BepInExRootPath, "Villheim", "design-list.csv");
 
         /// <summary>
-        /// Writes the full design lists by itself once a world is loaded, one per stage (Meadows, Black Forest, Swamp,
-        /// Mountain; each includes the stages before it), so they are never forgotten: BepInEx/Villheim/gallery-list-
-        /// &lt;stage&gt;.csv, with every design's kind
-        /// and gallery page. Nothing is put up; only files are read. Later loads are quick (what each location is, is cached).
+        /// 'vh report': every design there is (curated, every blueprint, every location with a structure in it), each
+        /// with its stage, kind, gallery page and notes, written to BepInEx/Villheim/design-list.csv for the review sheet.
+        /// Nothing is put up. Locations are opened once and remembered (see CachePath).
         /// </summary>
-        public static void StartAutoList()
+        public static string Report(Terminal context, bool rescan)
         {
-            if (_autoListStarted || VillheimPlugin.Instance == null)
+            if (_running || VillheimPlugin.Instance == null)
             {
-                return;
+                return "Villheim: the design list is already being gathered; give it a moment.";
             }
 
-            _autoListStarted = true;
-            VillheimPlugin.Instance.StartCoroutine(AutoList());
+            VillheimPlugin.Instance.StartCoroutine(ReportRun(context, rescan));
+            return "Villheim: gathering every design for the list" + (rescan ? " (opening every location again)." : ".");
         }
 
-        private static IEnumerator AutoList()
+        private static IEnumerator ReportRun(Terminal context, bool rescan)
         {
-            while (Player.m_localPlayer == null || ZNetScene.instance == null || ZoneSystem.instance == null)
-            {
-                yield return new WaitForSeconds(5f);
-            }
-
-            yield return new WaitForSeconds(20f);
-            while (_running)
-            {
-                yield return new WaitForSeconds(5f);
-            }
-
             _running = true;
-            var written = new List<string>();
+            var cells = new List<Cell>();
             try
             {
-                foreach (Heightmap.Biome biome in Stages)
-                {
-                    var cells = new List<Cell>();
-                    yield return Gather(biome, false, cells);
-                    string path = "";
-                    Safe("the list", () => path = WriteList(biome, cells));
-                    written.Add($"{biome}: {cells.Count} designs ({string.Join(", ", Order.Select(r => $"{Kind(r)} {cells.Count(c => c.Role == r)}"))})");
-                }
+                yield return Catalogue(rescan, cells);
             }
             finally
             {
                 _running = false;
             }
 
-            VillheimPlugin.Log.LogInfo("Gallery lists written to BepInEx/Villheim: " + string.Join("; ", written) + ".");
-            MessageHud.instance?.ShowMessage(MessageHud.MessageType.TopLeft, "Villheim: design lists written (BepInEx/Villheim/gallery-list-*.csv)");
-        }
+            string path = "";
+            Safe("the list", () => path = WriteList(cells));
+            string summary = $"{cells.Count} designs, {(cells.Count + PageSize - 1) / PageSize} gallery pages. By stage: " +
+                             string.Join(", ", Enumerable.Range(0, StageNames.Length).Where(s => cells.Any(c => c.Stage == s))
+                                 .Select(s => $"{StageNames[s]} {cells.Count(c => c.Stage == s)}")) +
+                             ". By kind: " + string.Join(", ", Order.Select(r => $"{Kind(r)} {cells.Count(c => c.Role == r)}"));
+            VillheimPlugin.Log.LogInfo($"Design list written to {path}: {summary}.");
+            string done = $"Villheim: design list written to {path}. {summary}.";
+            if (context != null)
+            {
+                context.AddString(done);
+            }
+            else
+            {
+                Console.instance?.Print(done);
+            }
 
+            MessageHud.instance?.ShowMessage(MessageHud.MessageType.TopLeft, $"Villheim: design list written ({cells.Count} designs)");
+        }
         private static float _nextProgress;
 
         /// <summary>
@@ -268,57 +297,67 @@ namespace Villheim.Logic.Village
                 return $"Villheim: laying out {rest.Length} named designs.";
             }
 
-            string biomeName = rest.Length > 0 ? rest[0].ToLowerInvariant() : "meadows";
-            Heightmap.Biome biome = StageOf(biomeName);
+            bool rescan = rest.Any(w => w.ToLowerInvariant() == "rescan");
+            if (action == Action.List)
+            {
+                return Report(null, rescan);
+            }
+
+            int stage = -1;
             string group = "all";
             int page = 1;
-            bool rescan = false;
-            for (int a = 1; a < rest.Length; a++)
+            for (int a = 0; a < rest.Length; a++)
             {
                 string word = rest[a].ToLowerInvariant();
-                if (word == "rescan") rescan = true;
-                else if (word == "page" && a + 1 < rest.Length && int.TryParse(rest[a + 1], out int n)) { page = Mathf.Max(1, n); a++; }
+                if (word == "rescan" || word == "all") continue;
+                if (word == "page" && a + 1 < rest.Length && int.TryParse(rest[a + 1], out int n)) { page = Mathf.Max(1, n); a++; }
                 else if (int.TryParse(word, out int m)) page = Mathf.Max(1, m);
+                else if (StageIndex(word) >= 0) stage = StageIndex(word);
                 else if (word.StartsWith("prof") || word.StartsWith("work") || word.StartsWith("smith")) group = "prof";
                 else if (word.StartsWith("hall") || word.StartsWith("hub") || word.StartsWith("long")) group = "hall";
                 else if (word.StartsWith("hous") || word.StartsWith("home")) group = "house";
                 else if (word.StartsWith("stor") || word.StartsWith("shed")) group = "storage";
                 else if (word.StartsWith("farm") || word.StartsWith("barn")) group = "farm";
-                else if (word != "all") return "Villheim: " + Usage;
+                else return "Villheim: " + Usage;
             }
 
-            if (action == Action.Page)
-            {
-                SaveLast(biome.ToString().ToLowerInvariant(), group, page);
-            }
-
-            VillheimPlugin.Instance.StartCoroutine(Run(player.transform.position, forward, biome, group, page, rescan, action));
-            return action == Action.List
-                ? $"Villheim: gathering every {biome} design to list them."
-                : $"Villheim: gathering {biome} designs ({group}, page {page}).";
+            SaveLast(stage < 0 ? "all" : StageWords[stage], group, page);
+            VillheimPlugin.Instance.StartCoroutine(Run(player.transform.position, forward, stage, group, page, rescan));
+            string what = stage < 0 && group == "all" ? "every design" : $"{(stage < 0 ? "all stages" : StageNames[stage])}, {group}";
+            return $"Villheim: gathering designs ({what}, page {page}).";
         }
 
-        /// <summary>Every design a player at that stage could build, from the curated lists, the blueprints and the locations.</summary>
-        private static IEnumerator Gather(Heightmap.Biome biome, bool rescan, List<Cell> cells)
+        /// <summary>
+        /// Every design there is, each sorted into one stage: the curated lists, every blueprint (all folders, inspiration
+        /// included) and every location with at least <see cref="MinLocationBuilding"/> building pieces. Sorted by stage,
+        /// kind, size and name, and numbered; ten to a gallery page.
+        /// </summary>
+        private static IEnumerator Catalogue(bool rescan, List<Cell> cells)
         {
             var seen = new HashSet<string>();
-            void Add(DesignLibrary.Design design, Role role, int pieces)
+            void Add(DesignLibrary.Design design, Role role, Sorting sorting)
             {
-                if (seen.Add(design.Name))
+                if (sorting != null && seen.Add(design.Name))
                 {
-                    cells.Add(new Cell { Design = design, Role = role, Pieces = pieces, Half = Mathf.Clamp(design.Radius + 2f, 6f, 36f) });
+                    cells.Add(new Cell
+                    {
+                        Design = design, Role = role, Stage = sorting.Stage, Pieces = sorting.Pieces, Building = sorting.Building,
+                        Notes = sorting.Notes, Half = Mathf.Clamp(design.Radius + 2f, 6f, 36f),
+                    });
                 }
             }
 
-            // Curated designs and every blueprint (Villheim's folder, PlanBuild's, the plugins folder).
             var candidates = new List<(DesignLibrary.Design Design, Role Role)>();
             Safe("the curated lists", () =>
             {
-                foreach (Role role in Order)
+                foreach (Heightmap.Biome biome in new[] { Heightmap.Biome.Meadows, Heightmap.Biome.BlackForest, Heightmap.Biome.Swamp, Heightmap.Biome.Mountain })
                 {
-                    foreach (DesignLibrary.Design design in DesignLibrary.PoolFor(biome, role).Concat(DesignLibrary.FallbackPool(biome, role)))
+                    foreach (Role role in Order)
                     {
-                        candidates.Add((design, role));
+                        foreach (DesignLibrary.Design design in DesignLibrary.PoolFor(biome, role).Concat(DesignLibrary.FallbackPool(biome, role)))
+                        {
+                            candidates.Add((design, role));
+                        }
                     }
                 }
             });
@@ -327,10 +366,7 @@ namespace Villheim.Logic.Village
             {
                 foreach (Blueprints.Blueprint blueprint in Blueprints.All().Values)
                 {
-                    if (blueprint.Biome == null || Matches(blueprint.Biome, biome))
-                    {
-                        candidates.Add((new DesignLibrary.Design(blueprint, 1f), blueprint.Role));
-                    }
+                    candidates.Add((new DesignLibrary.Design(blueprint, 1f), blueprint.Role));
                 }
             });
 
@@ -342,31 +378,25 @@ namespace Villheim.Logic.Village
                     continue;
                 }
 
-                if (++looked % 5 == 0)
+                if (++looked % 10 == 0)
                 {
-                    Progress($"Gallery ({biome}): looked at {looked}/{candidates.Count} blueprints and listed designs");
-                    yield return null; // hundreds of blueprints: a few a frame
+                    Progress($"Design list: looked at {looked}/{candidates.Count} blueprints and listed designs");
+                    yield return null;
                 }
 
-                int pieces = 0;
-                string why = null;
-                Safe(design.Name, () => why = Viable(design, biome, out pieces));
-                if (why == null)
-                {
-                    Add(design, role, pieces);
-                }
-                else
-                {
-                    VillheimPlugin.Debug($"Gallery: {design.Name} left out: {why}.");
-                }
+                Sorting sorting = null;
+                Safe(design.Name, () => sorting = design.Blueprint != null
+                    ? Classify(design.Blueprint.Pieces.Select(p => p.Prefab))
+                    : ClassifyLocation(design.Location));
+                Add(design, role, sorting);
             }
 
-            // Every location in the game, one per frame; what each turned out to be is kept on disk.
+            // Every location in the game, one per frame the first time; what each turned out to be is kept on disk.
             var locations = new List<ZoneSystem.ZoneLocation>();
             Safe("the location list", () => locations.AddRange(ZoneSystem.instance.m_locations
                 .Where(l => l != null && l.m_prefab.IsValid && l.m_exteriorRadius <= 40f && !Unsuitable(l.m_prefabName) && !AssetGuard.IsBroken(l))
                 .GroupBy(l => l.m_prefabName).Select(g => g.First())));
-            Dictionary<string, int> known = rescan ? new Dictionary<string, int>() : ReadCache(biome);
+            Dictionary<string, Sorting> known = rescan ? new Dictionary<string, Sorting>() : ReadCache();
             int checkedCount = 0, opened = 0;
             foreach (ZoneSystem.ZoneLocation location in locations)
             {
@@ -376,221 +406,251 @@ namespace Villheim.Logic.Village
                     continue;
                 }
 
-                if (!known.TryGetValue(location.m_prefabName, out int pieces))
+                if (!known.TryGetValue(location.m_prefabName, out Sorting sorting))
                 {
-                    pieces = 0;
-                    var design = new DesignLibrary.Design(location, 1f);
-                    string why = "error";
-                    int counted = 0;
-                    Safe(location.m_prefabName, () => why = Viable(design, biome, out counted));
-                    pieces = why == null ? counted : 0;
-                    known[location.m_prefabName] = pieces;
+                    Safe(location.m_prefabName, () => sorting = ClassifyLocation(location));
+                    known[location.m_prefabName] = sorting ?? new Sorting();
                     if (++opened % 10 == 0)
                     {
-                        Progress($"Gallery ({biome}): looked at {checkedCount}/{locations.Count} locations, {cells.Count} designs so far");
+                        Progress($"Design list: opened {checkedCount}/{locations.Count} locations, {cells.Count} designs so far");
                     }
 
                     yield return null;
                 }
 
-                if (pieces > 0)
+                if (sorting != null && sorting.Building >= MinLocationBuilding)
                 {
-                    Add(new DesignLibrary.Design(location, 1f), RoleFromName(location.m_prefabName), pieces);
+                    Add(new DesignLibrary.Design(location, 1f), RoleFromName(location.m_prefabName), sorting);
                 }
             }
 
-            Safe("the location cache", () => WriteCache(biome, known));
+            Safe("the location cache", () => WriteCache(known));
             cells.Sort((a, b) =>
             {
+                int byStage = a.Stage.CompareTo(b.Stage);
+                if (byStage != 0) return byStage;
                 int byRole = System.Array.IndexOf(Order, a.Role).CompareTo(System.Array.IndexOf(Order, b.Role));
                 if (byRole != 0) return byRole;
                 int bySize = a.Design.Radius.CompareTo(b.Design.Radius);
                 return bySize != 0 ? bySize : string.CompareOrdinal(a.Design.Name, b.Design.Name);
             });
+
+            for (int i = 0; i < cells.Count; i++)
+            {
+                cells[i].Number = i + 1;
+            }
         }
 
-        /// <summary>
-        /// Null when a player at the biome's stage could build the design: at least 15 building pieces, every piece one
-        /// a player can build (no location-only pieces such as goblin walls or totems), every material from that stage
-        /// and every crafting station available then. Otherwise why not.
-        /// </summary>
-        private static readonly Dictionary<string, Piece> PieceOf = new Dictionary<string, Piece>();
-
-        private static Piece PrefabPiece(string name)
+        /// <summary>What one prefab is, worked out once: whether a player can build it, whether it is a building piece, its stage.</summary>
+        private sealed class PieceInfo
         {
-            if (!PieceOf.TryGetValue(name, out Piece piece))
-            {
-                piece = ZNetScene.instance.GetPrefab(name)?.GetComponent<Piece>();
-                PieceOf[name] = piece;
-            }
-
-            return piece;
+            public bool Known;
+            public bool IsPiece;
+            public bool Buildable;
+            public bool Building;
+            public int Stage;
+            public string Why;
+            public string OtherMaterial;
         }
 
-        /// <summary>
-        /// The stage test from a blueprint's own piece list, without laying it out (laying out a build of thousands
-        /// of pieces in build order froze the game for minutes, 2026-11-07). Size never rules a build out.
-        /// </summary>
-        private static string ViableBlueprint(Blueprints.Blueprint blueprint, Heightmap.Biome biome, out int pieces)
+        private static readonly Dictionary<string, PieceInfo> Infos = new Dictionary<string, PieceInfo>();
+
+        private static PieceInfo Info(string prefab)
         {
-            pieces = 0;
-            HashSet<string> materials = StageMaterials[biome];
-            HashSet<string> stations = StageStations[biome];
-            foreach (Blueprints.Piece part in blueprint.Pieces)
+            if (Infos.TryGetValue(prefab, out PieceInfo info))
             {
-                Piece piece = PrefabPiece(part.Prefab);
-                if (piece == null)
-                {
-                    continue;
-                }
-
-                string why = PieceVerdict(piece, part.Prefab, materials, stations);
-                if (why != null)
-                {
-                    return why;
-                }
-
-                string lower = part.Prefab.ToLowerInvariant();
-                if (piece.m_category == Piece.PieceCategory.BuildingWorkbench || piece.m_category == Piece.PieceCategory.BuildingStonecutter ||
-                    lower.Contains("door") || lower.Contains("gate") || lower.Contains("window"))
-                {
-                    pieces++;
-                }
+                return info;
             }
 
-            return pieces >= 15 ? null : $"only {pieces} building pieces";
-        }
-
-        private static string PieceVerdict(Piece piece, string prefab, HashSet<string> materials, HashSet<string> stations)
-        {
-            if (piece.m_resources == null || piece.m_resources.Length == 0)
+            info = new PieceInfo();
+            GameObject go = ZNetScene.instance.GetPrefab(prefab);
+            Piece piece = go != null ? go.GetComponent<Piece>() : null;
+            info.Known = go != null;
+            info.IsPiece = piece != null;
+            if (piece != null && piece.m_resources != null && piece.m_resources.Length > 0)
             {
-                return $"{prefab} is not a piece a player can build";
-            }
-
-            string station = piece.m_craftingStation != null ? piece.m_craftingStation.gameObject.name : null;
-            if (station != null && !stations.Contains(station))
-            {
-                return $"{prefab} needs the {station}";
-            }
-
-            foreach (Piece.Requirement requirement in piece.m_resources)
-            {
-                string material = requirement?.m_resItem != null ? requirement.m_resItem.gameObject.name : null;
-                if (material != null && requirement.m_amount > 0 && !materials.Contains(material))
-                {
-                    return $"{prefab} needs {material}";
-                }
-            }
-
-            return null;
-        }
-
-        private static string Viable(DesignLibrary.Design design, Heightmap.Biome biome, out int pieces)
-        {
-            pieces = 0;
-            if (design.Blueprint != null)
-            {
-                return ViableBlueprint(design.Blueprint, biome, out pieces);
-            }
-
-            List<DesignSpawner.PlanEntry> plan;
-            {
-                AssetGuard.Load(design.Location);
-                try
-                {
-                    GameObject asset = design.Location.m_prefab.Asset;
-                    plan = asset != null ? DesignSpawner.MakePlan(asset, Vector3.zero, 1, 0f, false) : new List<DesignSpawner.PlanEntry>();
-                }
-                finally
-                {
-                    design.Location.m_prefab.Release();
-                }
-            }
-
-            HashSet<string> materials = StageMaterials[biome];
-            HashSet<string> stations = StageStations[biome];
-            foreach (DesignSpawner.PlanEntry entry in plan)
-            {
-                Piece piece = ZNetScene.instance.GetPrefab(entry.Prefab)?.GetComponent<Piece>();
-                if (piece == null)
-                {
-                    continue;
-                }
-
-                if (piece.m_resources == null || piece.m_resources.Length == 0)
-                {
-                    return $"{entry.Prefab} is not a piece a player can build";
-                }
-
+                info.Buildable = true;
+                string lower = prefab.ToLowerInvariant();
+                info.Building = piece.m_category == Piece.PieceCategory.BuildingWorkbench || piece.m_category == Piece.PieceCategory.BuildingStonecutter ||
+                                lower.Contains("door") || lower.Contains("gate") || lower.Contains("window");
                 string station = piece.m_craftingStation != null ? piece.m_craftingStation.gameObject.name : null;
-                if (station != null && !stations.Contains(station))
+                if (station != null && StationStage.TryGetValue(station, out int byStation))
                 {
-                    return $"{entry.Prefab} needs the {station}";
+                    info.Stage = byStation;
+                    info.Why = "the " + station;
                 }
 
                 foreach (Piece.Requirement requirement in piece.m_resources)
                 {
-                    string material = requirement?.m_resItem != null ? requirement.m_resItem.gameObject.name : null;
-                    if (material != null && requirement.m_amount > 0 && !materials.Contains(material))
+                    if (requirement?.m_resItem == null || requirement.m_amount <= 0)
                     {
-                        return $"{entry.Prefab} needs {material}";
+                        continue;
                     }
-                }
 
-                if (entry.Shell)
-                {
-                    pieces++;
+                    string material = requirement.m_resItem.gameObject.name;
+                    if (!MaterialStage.TryGetValue(material, out int byMaterial))
+                    {
+                        info.OtherMaterial = material;
+                    }
+                    else if (info.Why == null || byMaterial > info.Stage)
+                    {
+                        info.Stage = byMaterial;
+                        info.Why = material;
+                    }
                 }
             }
 
-            return pieces >= 15 ? null : $"only {pieces} building pieces";
+            Infos[prefab] = info;
+            return info;
         }
 
-        private static IEnumerator Run(Vector3 playerPosition, Vector3 forward, Heightmap.Biome biome, string group, int page, bool rescan, Action action)
+        /// <summary>A design's stage, counts and notes.</summary>
+        private sealed class Sorting
+        {
+            public int Stage;
+            public int Pieces;
+            public int Building;
+            public string Notes = "";
+        }
+
+        /// <summary>
+        /// The design's stage is the first one whose materials and stations cover all but one in ten of its building
+        /// pieces (walls, floors, beams, roofs, doors, windows). Decoration, furniture and crafting stations never set
+        /// it; a design with no building pieces at all goes by all its pieces. Everything from a later stage is named in
+        /// the notes, with pieces a player cannot build and pieces from mods that are not installed.
+        /// </summary>
+        private static Sorting Classify(IEnumerable<string> prefabs)
+        {
+            var pieces = new List<PieceInfo>();
+            var unbuildable = new Dictionary<string, int>();
+            var missing = new Dictionary<string, int>();
+            var others = new HashSet<string>();
+            foreach (string prefab in prefabs)
+            {
+                if (prefab.StartsWith("piece_bp", System.StringComparison.OrdinalIgnoreCase))
+                {
+                    continue; // PlanBuild's own markers (centre point, snap points), never part of the building
+                }
+
+                PieceInfo info = Info(prefab);
+                if (!info.Known)
+                {
+                    Count(missing, prefab);
+                }
+                else if (!info.IsPiece)
+                {
+                    continue;
+                }
+                else if (!info.Buildable)
+                {
+                    Count(unbuildable, prefab);
+                }
+                else
+                {
+                    pieces.Add(info);
+                    if (info.OtherMaterial != null)
+                    {
+                        others.Add(info.OtherMaterial);
+                    }
+                }
+            }
+
+            List<PieceInfo> pool = pieces.Where(p => p.Building).ToList();
+            if (pool.Count == 0)
+            {
+                pool = pieces;
+            }
+
+            int stage = 0;
+            int allowed = Mathf.FloorToInt(pool.Count * MinorShare);
+            while (stage < StageNames.Length - 1 && pool.Count(p => p.Stage > stage) > allowed)
+            {
+                stage++;
+            }
+
+            var notes = new List<string>();
+            notes.AddRange(pieces.Where(p => p.Stage > stage).GroupBy(p => p.Why).OrderByDescending(g => g.Count())
+                .Select(g => $"{g.Count()} need {g.Key} ({StageNames[g.First().Stage]})"));
+            if (unbuildable.Count > 0)
+            {
+                notes.Add($"{unbuildable.Values.Sum()} a player can't build ({Top(unbuildable)})");
+            }
+
+            if (missing.Count > 0)
+            {
+                notes.Add($"{missing.Values.Sum()} from mods not installed ({Top(missing)})");
+            }
+
+            if (others.Count > 0)
+            {
+                notes.Add("materials from other mods: " + string.Join(", ", others.Take(4)));
+            }
+
+            return new Sorting
+            {
+                Stage = stage,
+                Pieces = pieces.Count + unbuildable.Values.Sum() + missing.Values.Sum(),
+                Building = pieces.Count(p => p.Building),
+                Notes = string.Join("; ", notes),
+            };
+        }
+
+        private static Sorting ClassifyLocation(ZoneSystem.ZoneLocation location)
+        {
+            AssetGuard.Load(location);
+            try
+            {
+                GameObject asset = location.m_prefab.Asset;
+                return asset != null ? Classify(DesignSpawner.MakePlan(asset, Vector3.zero, 1, 0f, false).Select(e => e.Prefab)) : null;
+            }
+            finally
+            {
+                location.m_prefab.Release();
+            }
+        }
+
+        private static void Count(Dictionary<string, int> counts, string key)
+        {
+            counts.TryGetValue(key, out int n);
+            counts[key] = n + 1;
+        }
+
+        private static string Top(Dictionary<string, int> counts) =>
+            string.Join(", ", counts.OrderByDescending(k => k.Value).Take(3).Select(k => k.Key)) + (counts.Count > 3 ? ", ..." : "");
+
+        private static IEnumerator Run(Vector3 playerPosition, Vector3 forward, int stage, string group, int page, bool rescan)
         {
             _running = true;
             var cells = new List<Cell>();
             try
             {
-                yield return Gather(biome, rescan, cells);
+                yield return Catalogue(rescan, cells);
             }
             finally
             {
                 _running = false;
             }
 
-            if (action == Action.List)
-            {
-                string path = "";
-                Safe("the list", () => path = WriteList(biome, cells));
-                Console.instance?.Print($"Villheim: {cells.Count} {biome} designs written to {path}.");
-                yield break;
-            }
-
             // The list for the review sheet is written every time, so it always matches what the pages show.
             string listPath = "";
-            Safe("the list", () => listPath = WriteList(biome, cells));
+            Safe("the list", () => listPath = WriteList(cells));
             Role[] roles = Groups[group];
-            List<Cell> chosen = cells.Where(c => roles.Contains(c.Role)).ToList();
+            List<Cell> chosen = cells.Where(c => roles.Contains(c.Role) && (stage < 0 || c.Stage == stage)).ToList();
             int pages = Mathf.Max(1, (chosen.Count + PageSize - 1) / PageSize);
-            Console.instance?.Print("Villheim: " + string.Join(", ", Order.Select(r =>
-            {
-                int n = cells.Count(c => c.Role == r);
-                return $"{Kind(r)} {n} ({(n + PageSize - 1) / PageSize} pages)";
-            })) + $". Full list: {listPath}");
+            string what = stage < 0 && group == "all" ? "all designs" : $"{(stage < 0 ? "all stages" : StageNames[stage])}, {group}";
+            Console.instance?.Print($"Villheim: {cells.Count} designs in all; {what}: {chosen.Count} ({pages} pages). Full list: {listPath}");
             chosen = chosen.Skip((page - 1) * PageSize).Take(PageSize).ToList();
             if (chosen.Count == 0)
             {
-                Console.instance?.Print($"Villheim: page {page} is empty; '{group}' has {pages} pages.");
+                Console.instance?.Print($"Villheim: page {page} is empty; {what} has {pages} pages.");
                 yield break;
             }
 
-            Console.instance?.Print($"Villheim: '{group}' page {page} of {pages}." + (page < pages ? " 'vh gallery next' clears this page and shows the next." : " That was the last page."));
-            MessageHud.instance?.ShowMessage(MessageHud.MessageType.Center, $"Gallery: {group}, page {page} of {pages}");
+            Console.instance?.Print($"Villheim: {what}, page {page} of {pages} (designs {chosen.First().Number} to {chosen.Last().Number})." +
+                                    (page < pages ? " 'vh gallery next' clears this page and shows the next." : " That was the last page."));
+            MessageHud.instance?.ShowMessage(MessageHud.MessageType.Center, $"Gallery: {what}, page {page} of {pages}");
             yield return Place(chosen, playerPosition, forward);
         }
-
         /// <summary>'vh gallery show': the named designs, wherever they come from, without the stage test.</summary>
         private static IEnumerator ShowNamed(Vector3 playerPosition, Vector3 forward, string[] names)
         {
@@ -614,19 +674,15 @@ namespace Villheim.Logic.Village
             }
         }
 
-        private static string WriteList(Heightmap.Biome biome, List<Cell> cells)
+        private static string WriteList(List<Cell> cells)
         {
-            string path = System.IO.Path.Combine(BepInEx.Paths.BepInExRootPath, "Villheim", $"gallery-list-{biome}.csv");
-            var lines = new List<string> { "Number,Page,Kind,Name,Source,Creator,Pieces,Radius" };
-            var pageOf = new Dictionary<Role, int>();
-            int number = 0;
+            string path = ListPath;
+            var lines = new List<string> { "Number,Page,Stage,Kind,Name,Source,Creator,Pieces,Building pieces,Radius,Notes" };
             foreach (Cell cell in cells)
             {
-                pageOf.TryGetValue(cell.Role, out int inGroup);
-                pageOf[cell.Role] = inGroup + 1;
-                number++;
-                lines.Add(string.Join(",", number, inGroup / PageSize + 1, Kind(cell.Role), Csv(cell.Design.Name), Csv(Source(cell.Design)),
-                    Csv(Creator(cell.Design)), cell.Pieces, cell.Design.Radius.ToString("0", System.Globalization.CultureInfo.InvariantCulture)));
+                lines.Add(string.Join(",", cell.Number, (cell.Number - 1) / PageSize + 1, Csv(StageNames[cell.Stage]), Kind(cell.Role),
+                    Csv(cell.Design.Name), Csv(Source(cell.Design)), Csv(Creator(cell.Design)), cell.Pieces, cell.Building,
+                    cell.Design.Radius.ToString("0", System.Globalization.CultureInfo.InvariantCulture), Csv(cell.Notes)));
             }
 
             System.IO.Directory.CreateDirectory(System.IO.Path.GetDirectoryName(path));
@@ -916,23 +972,24 @@ namespace Villheim.Logic.Village
             }
         }
 
-        private static string CachePath(Heightmap.Biome biome) =>
-            System.IO.Path.Combine(BepInEx.Paths.BepInExRootPath, "Villheim", $"gallery-locations-{biome}-v2.txt");
+        private static string CachePath =>
+            System.IO.Path.Combine(BepInEx.Paths.BepInExRootPath, "Villheim", "design-list-locations-v3.txt");
 
-        /// <summary>Location name and its building pieces when a player at that stage could build it (0 when not).</summary>
-        private static Dictionary<string, int> ReadCache(Heightmap.Biome biome)
+        /// <summary>Each location opened before: name|stage|pieces|building pieces|notes. 'rescan' opens them all again.</summary>
+        private static Dictionary<string, Sorting> ReadCache()
         {
-            var known = new Dictionary<string, int>();
+            var known = new Dictionary<string, Sorting>();
             try
             {
-                if (System.IO.File.Exists(CachePath(biome)))
+                if (System.IO.File.Exists(CachePath))
                 {
-                    foreach (string line in System.IO.File.ReadAllLines(CachePath(biome)))
+                    foreach (string line in System.IO.File.ReadAllLines(CachePath))
                     {
-                        int bar = line.LastIndexOf('|');
-                        if (bar > 0 && !line.StartsWith("#") && int.TryParse(line.Substring(bar + 1), out int pieces))
+                        string[] parts = line.Split('|');
+                        if (!line.StartsWith("#") && parts.Length >= 5 && int.TryParse(parts[1], out int stage) &&
+                            int.TryParse(parts[2], out int pieces) && int.TryParse(parts[3], out int building))
                         {
-                            known[line.Substring(0, bar)] = pieces;
+                            known[parts[0]] = new Sorting { Stage = Mathf.Clamp(stage, 0, StageNames.Length - 1), Pieces = pieces, Building = building, Notes = parts[4] };
                         }
                     }
                 }
@@ -945,12 +1002,13 @@ namespace Villheim.Logic.Village
             return known;
         }
 
-        private static void WriteCache(Heightmap.Biome biome, Dictionary<string, int> known)
+        private static void WriteCache(Dictionary<string, Sorting> known)
         {
-            System.IO.Directory.CreateDirectory(System.IO.Path.GetDirectoryName(CachePath(biome)));
-            System.IO.File.WriteAllLines(CachePath(biome),
-                new[] { $"# Locations looked at by vh gallery for {biome}: name|building pieces when a player at that stage could build it, else 0. 'rescan' looks again." }
-                    .Concat(known.OrderBy(k => k.Key).Select(k => $"{k.Key}|{k.Value}")));
+            System.IO.Directory.CreateDirectory(System.IO.Path.GetDirectoryName(CachePath));
+            System.IO.File.WriteAllLines(CachePath,
+                new[] { "# Locations opened by vh report and vh gallery: name|stage|pieces|building pieces|notes. 'vh report rescan' opens them again." }
+                    .Concat(known.OrderBy(k => k.Key).Select(k =>
+                        $"{k.Key}|{k.Value.Stage}|{k.Value.Pieces}|{k.Value.Building}|{(k.Value.Notes ?? "").Replace('|', '/')}")));
         }
 
         private static void Safe(string what, System.Action action)
@@ -976,33 +1034,6 @@ namespace Villheim.Logic.Village
                 "wreck", "grave", "tomb", "infested", "mine", "tarpit", "leviathan", "vegvisir", "spawner",
             };
             return words.Any(w => n.Contains(w));
-        }
-
-        /// <summary>A location with at least 15 building pieces that Villheim would copy.</summary>
-        private static bool IsBuilding(ZoneSystem.ZoneLocation location)
-        {
-            Designs.AssetGuard.Load(location);
-            try
-            {
-                GameObject asset = location.m_prefab.Asset;
-                return asset != null && DesignSpawner.MakePlan(asset, Vector3.zero, 1, 0f, false).Count(e => e.Shell) >= 15;
-            }
-            catch
-            {
-                return false;
-            }
-            finally
-            {
-                location.m_prefab.Release();
-            }
-        }
-
-        /// <summary>A blueprint made for this stage's biome or any earlier one.</summary>
-        private static bool Matches(string blueprintBiome, Heightmap.Biome biome)
-        {
-            Heightmap.Biome own = StageOf(blueprintBiome.Replace(" ", ""));
-            bool known = blueprintBiome.ToLowerInvariant().Contains("meadow") || own != Heightmap.Biome.Meadows;
-            return !known || System.Array.IndexOf(Stages, own) >= 0 && System.Array.IndexOf(Stages, own) <= System.Array.IndexOf(Stages, biome);
         }
 
         /// <summary>A kind from the name: hall, workshop, storehouse or farm words, else a home.</summary>
@@ -1302,7 +1333,7 @@ namespace Villheim.Logic.Village
         /// <summary>A sign at the front of the plot: the kind and level in blue, the design's name in white.</summary>
         private static void Sign(Cell cell, Vector3 forward)
         {
-            PutSign(cell.Center - forward * (cell.Half - 1f), forward, $"<#5cf>{Label(cell)}<br><#fff>{cell.Design.Name}<br><#bbb>by {Creator(cell.Design)}");
+            PutSign(cell.Center - forward * (cell.Half - 1f), forward, $"<#5cf>{Label(cell)}, {StageNames[cell.Stage]}<br><#fff>{cell.Design.Name}<br><#bbb>{(cell.Number > 0 ? $"No. {cell.Number}, " : "")}by {Creator(cell.Design)}");
         }
 
         /// <summary>A sign standing on the ground (two back to back, so it reads from either side).</summary>

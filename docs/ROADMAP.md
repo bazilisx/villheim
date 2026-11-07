@@ -46,8 +46,17 @@ with its own look for its biome.
   under it as the village grows; inside the longhouse once there is one.
 - [ ] Roads and facing after Millénaire (session 14, needs testing): doors toward the hearth, parent-rule paths,
   buildings along roads, wider trunks, queued paths join, daily door check (session 15).
-- [ ] Design review: `vh gallery` (session 13); Tyler's picks saved as blueprints named `<biome><kind><variant>_<level>`
-  (e.g. `meadowhouse1_1`); teach the blueprint reader that naming.
+- [ ] Design review: `vh report` lists every design with one stage each (by what most of its building pieces are made
+  of) into the review sheet; `vh gallery page N` shows them ten at a time. Verdicts: use as-is, use after edits, not
+  usable.
+- [ ] Building families and variants: Tyler's picks saved as `<biome><kind><n>_<level letter><decor step>`, e.g.
+  `meadowshouse1_a1`. Same family = same structure. The letter is the building's level (A at village level 1, B the
+  same house upgraded); the number is how much decoration it has (a1 least, a2 more). Teach the blueprint reader this
+  naming; the Variants tab of the review sheet tracks them.
+- [ ] Villagers decorate between upgrades: instead of idling, they add single pieces that a1 lacks and a2 has, one
+  at a time, so a house moves from a1 to a2 to a3 piece by piece; a new letter (b1) is a real upgrade of the building.
+- [ ] Ship Tyler's finished blueprints inside the mod (Villheim reads .blueprint files itself, so PlanBuild is only
+  needed to make them, never to play).
 - [ ] Storehouse grows into the longhouse: its chests move into the central hall when the hall is rebuilt bigger.
 - [ ] Replant one sapling per tree felled, 8 to 25 m outside the village radius. Built session 11, needs testing.
 - [ ] Jitter: record traces with `vh trace` and fix from the data. Session 12 fixed two causes (NpcTalk turning to the

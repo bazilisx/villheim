@@ -52,7 +52,8 @@ with its own look for its biome.
   Tyler's F1 values as defaults. Guide: `docs/DESIGN_REVIEW_GUIDE.md`.
 - [x] Sort knives for phases A and B (2026-11-07): type and subtype set in the game by click, sign colours,
   `design-sort.csv`, live writes to the Pass 2 tab through the sheet's web app, `vh gallery keepers type X`.
-- [ ] Phase A: every kept design sorted Home, Work, Community or Drop (Tyler, in game).
+- [x] Phase A: every kept design sorted Home, Work, Community or Drop (Tyler, in game, 2026-11-07): Work 126,
+  Community 84, Home 53, Drop 1.
 - [ ] Phase B: subtypes for Work (Farming, Woodworking, Mining, Cooking, Crafting, Storage, Defence) and Community
   (Hearth, Tavern, Longhouse, Decor: village decor built in idle time, such as water wheels, outhouses, gardens).
 - [ ] Phase C: biome per design, and material fixes inside plots marked by green-tinted horizontal wood beams; save

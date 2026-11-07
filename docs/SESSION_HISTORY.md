@@ -12,7 +12,7 @@ Current facts only. Read this at the start of a session. Narrative is in `docs/d
   - New plan (2026-11-07): phases A type (Home, Work, Community, Drop), B subtype, C biome and material fixes in
     marked plots, slotting (base ID and structure stage), D decor stages, E review rows. Names `<baseID>_s#d#`
     (house1_s2d3), given at slotting; until then the design number. Details in the guide.
-  - Phase A next, all 264 unsorted (the old Kind and Use for guesses were removed from the Pass 2 tab). Sort knives
+  - Phase A done (Work 126, Community 84, Home 53, Drop 1); phase B next on the 210 work and community designs. Sort knives
     (`Village/DesignSort.cs`, `vh sort`): A = KnifeFlint (type), B = KnifeCopper (subtype); key picks, click sorts,
     sign and number colours, `BepInEx/Villheim/design-sort.csv`, live writes to the Pass 2 tab once the sheet's web
     app is deployed and `vh sort url` is set; `vh gallery keepers type <x>`. Sorted designs leave the field (undo brings them back) and are left off when a

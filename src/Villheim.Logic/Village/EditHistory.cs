@@ -87,12 +87,15 @@ namespace Villheim.Logic.Village
             };
         }
 
-        public static void Restore(Snapshot snapshot)
+        public static void Restore(Snapshot snapshot) => RestoreObject(snapshot);
+
+        /// <summary>Puts the snapshot back and returns what was made (null if its prefab is unknown).</summary>
+        public static GameObject RestoreObject(Snapshot snapshot)
         {
             GameObject prefab = ZNetScene.instance.GetPrefab(snapshot.Prefab);
             if (prefab == null)
             {
-                return;
+                return null;
             }
 
             GameObject made = Object.Instantiate(prefab, snapshot.Position, snapshot.Rotation);
@@ -104,7 +107,7 @@ namespace Villheim.Logic.Village
             ZDO zdo = made.GetComponent<ZNetView>()?.GetZDO();
             if (zdo == null)
             {
-                return;
+                return made;
             }
 
             if (snapshot.Gallery == 1)
@@ -129,6 +132,8 @@ namespace Villheim.Logic.Village
                 zdo.Set(ZDOVars.s_text, snapshot.Text);
                 made.GetComponent<Sign>()?.UpdateText();
             }
+
+            return made;
         }
     }
 }

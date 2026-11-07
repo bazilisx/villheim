@@ -87,6 +87,11 @@ at a design shows its number, name and current sort at the top left.
 - The first line of each sign shows the sort in colour (grey Unsorted, green Home, purple Work, teal Community, red
   Drop), and the big number above the sign takes the same colour, so the field shows what is left to do.
 - Changing a design's type clears its subtype.
+- Each choice is saved the moment you click; there is nothing to save by page. `vh gallery next` goes on.
+- A design that is done for the knife's phase leaves the field at once (phase A: it has a type; phase B: it has a
+  subtype), signs and all, so what is left on the page is what you missed. Undo (8) brings it back. Putting a keepers
+  page up again leaves out the designs that already have a type, and the console says how many; `vh gallery keepers
+  type any page N` shows everything. Config SortHideSorted off keeps everything on the field.
 - Every choice is kept in `BepInEx/Villheim/design-sort.csv` and, once the sheet address is set, written to the Pass
   2 tab at once.
 - Pages by sort: `vh gallery keepers type work` (or `home`, `community`, `drop`, `unsorted`, `nosubtype`, or a

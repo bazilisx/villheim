@@ -63,7 +63,7 @@ namespace Villheim.Logic.Village
         private static GameObject _glowItem;
         private static float _nextGroundGlow;
         private static float _lastAttackCall = -1f;
-        private static readonly List<(string Name, Entry Before)> History = new List<(string, Entry)>();
+        private static readonly List<(string Name, Entry Before, TakenDown Gone)> History = new List<(string, Entry, TakenDown)>();
 
         public static bool Active => _phase != Phase.None;
 
@@ -131,6 +131,11 @@ namespace Villheim.Logic.Village
         public static bool Matches(string design, string filter)
         {
             Entry e = Get(design);
+            if (filter == "any")
+            {
+                return true;
+            }
+
             if (filter == "unsorted")
             {
                 return e == null || e.Type.Length == 0;
@@ -148,6 +153,7 @@ namespace Villheim.Logic.Village
         {
             word = word.ToLowerInvariant();
             if (word.StartsWith("unsort")) return "unsorted";
+            if (word == "any" || word == "everything") return "any";
             if (word.StartsWith("nosub")) return "nosubtype";
             foreach (string t in Types.Concat(WorkSubtypes).Concat(CommunitySubtypes))
             {
@@ -287,19 +293,123 @@ namespace Villheim.Logic.Village
 
             change(e);
             e.Changed = Now();
+            Write();
+            RefreshSign(design);
+            Push(new[] { e });
+
+            // A design that is done for this phase leaves the field, so what is left on the page is what still needs
+            // a choice. Undo puts it back.
+            TakenDown gone = HideSorted && DoneForPhase(e) ? TakeDown(design) : null;
             if (remember)
             {
-                History.Add((design, before));
+                History.Add((design, before, gone));
                 if (History.Count > 100)
                 {
                     History.RemoveAt(0);
                 }
             }
 
-            Write();
-            RefreshSign(design);
-            Push(new[] { e });
-            return Describe(e);
+            return Describe(e) + (gone != null ? " (taken off the field; 8 brings it back)" : "");
+        }
+
+        private static bool HideSorted => LogicConfig.SortHideSorted?.Value ?? true;
+
+        /// <summary>Phase A is done with a design once it has a type, phase B once a work or community design has a subtype.</summary>
+        private static bool DoneForPhase(Entry e) =>
+            _phase == Phase.A ? e.Type.Length > 0 : _phase == Phase.B && e.Subtype.Length > 0;
+
+        /// <summary>
+        /// For a page put up with no type filter (phase A): leave out the designs that already have a type, unless
+        /// SortHideSorted is off. 'type any' shows everything.
+        /// </summary>
+        public static bool SkipOnPage(string design, string typeFilter) =>
+            HideSorted && typeFilter == null && TypeOf(design).Length > 0;
+
+        // ---------------------------------------------------------------- taking a design off the field
+
+        private sealed class TakenDown
+        {
+            public List<EditHistory.Snapshot> Parts = new List<EditHistory.Snapshot>();
+            public EditHistory.Snapshot Front;
+            public List<EditHistory.Snapshot> Others = new List<EditHistory.Snapshot>();
+            public Vector3 Center, Nudge;
+            public float Half, Yaw, GroundOffset;
+            public int Number, Placed, Touched;
+        }
+
+        /// <summary>Takes a design's pieces, stand-ins, pieces built on its plot and both its signs down, with snapshots for undo.</summary>
+        private static TakenDown TakeDown(string design)
+        {
+            (ZDO sign, List<ZNetView> views) = SwapTool.DesignParts(design);
+            if (sign == null)
+            {
+                return null;
+            }
+
+            ZNetView front = ZNetScene.instance.m_instances.Values.FirstOrDefault(v => v != null && v.IsValid() && v.GetZDO() == sign);
+            var gone = new TakenDown
+            {
+                Center = sign.GetVec3(Gallery.KeyPlotCenter, Vector3.zero),
+                Half = sign.GetFloat(Gallery.KeyPlotHalf, 0f),
+                Yaw = sign.GetFloat(Gallery.KeyPlotYaw, 0f),
+                Number = sign.GetInt(Gallery.KeyNumber, 0),
+                Placed = sign.GetInt(Gallery.KeyPlaced, 0),
+                GroundOffset = sign.GetFloat(Gallery.KeyGroundOffset, 0f),
+                Nudge = sign.GetVec3(Gallery.KeyNudge, Vector3.zero),
+                Touched = sign.GetInt(Gallery.KeyTouched, 0),
+            };
+
+            var doomed = new List<ZNetView>(views);
+            if (front != null)
+            {
+                gone.Front = EditHistory.Take(front);
+                doomed.Add(front);
+                foreach (ZNetView number in NumberSigns(front))
+                {
+                    gone.Others.Add(EditHistory.Take(number));
+                    doomed.Add(number);
+                }
+            }
+
+            gone.Parts.AddRange(views.Select(EditHistory.Take));
+            foreach (ZNetView view in doomed)
+            {
+                if (view != null && view.IsValid())
+                {
+                    view.ClaimOwnership();
+                    ZNetScene.instance.Destroy(view.gameObject);
+                }
+            }
+
+            return gone;
+        }
+
+        private static IEnumerable<ZNetView> NumberSigns(ZNetView front) =>
+            ZNetScene.instance.m_instances.Values.Where(view =>
+            {
+                ZDO zdo = view != null && view.IsValid() ? view.GetZDO() : null;
+                return zdo != null && view != front && zdo.GetInt(Gallery.KeyGallery) == 1 && zdo.GetString(Gallery.KeyDesign, "").Length == 0 &&
+                       view.GetComponent<Sign>() != null && Vector3.Distance(view.transform.position, front.transform.position) <= 0.5f;
+            }).ToList();
+
+        private static void PutBack(TakenDown gone)
+        {
+            gone.Parts.ForEach(EditHistory.Restore);
+            gone.Others.ForEach(EditHistory.Restore);
+            ZDO sign = gone.Front != null ? EditHistory.RestoreObject(gone.Front)?.GetComponent<ZNetView>()?.GetZDO() : null;
+            if (sign == null)
+            {
+                return;
+            }
+
+            sign.Set(Gallery.KeyPlotCenter, gone.Center);
+            sign.Set(Gallery.KeyPlotHalf, gone.Half);
+            sign.Set(Gallery.KeyPlotYaw, gone.Yaw);
+            sign.Set(Gallery.KeyNumber, gone.Number);
+            sign.Set(Gallery.KeyPlaced, gone.Placed);
+            sign.Set(Gallery.KeyGroundOffset, gone.GroundOffset);
+            sign.Set(Gallery.KeyNudge, gone.Nudge);
+            sign.Set(Gallery.KeyTouched, gone.Touched);
         }
 
         private static string Describe(Entry e) =>
@@ -312,11 +422,16 @@ namespace Villheim.Logic.Village
                 return "Sort: nothing to undo.";
             }
 
-            (string name, Entry before) = History[History.Count - 1];
+            (string name, Entry before, TakenDown gone) = History[History.Count - 1];
             History.RemoveAt(History.Count - 1);
             Entry restored = before ?? new Entry { Name = name, Number = Get(name)?.Number ?? 0 };
             Entries[name] = restored;
             Write();
+            if (gone != null)
+            {
+                PutBack(gone);
+            }
+
             RefreshSign(name);
             Push(new[] { restored });
             return "Undone: " + Describe(restored);

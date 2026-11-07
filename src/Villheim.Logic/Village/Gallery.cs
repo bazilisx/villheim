@@ -865,12 +865,25 @@ namespace Villheim.Logic.Village
             string what = Describe(stage, group, keepers, asStage) + (typeFilter != null ? $", type {typeFilter}" : "");
             Console.instance?.Print($"Villheim: {cells.Count} designs in all; {what}: {matching.Count} ({pages} pages). Full list: {listPath}");
             List<Cell> chosen = page <= paged.Count ? paged[page - 1] : new List<Cell>();
+            int onPage = chosen.Count;
+            if (keepers)
+            {
+                // Designs already sorted (phase A) are left off, so the page shows only what still needs a choice.
+                chosen = chosen.Where(c => !DesignSort.SkipOnPage(c.Design.Name, typeFilter)).ToList();
+                if (chosen.Count < onPage)
+                {
+                    Console.instance?.Print($"Villheim: page {page}: {onPage - chosen.Count} of {onPage} already sorted and left off ('type any' shows them).");
+                }
+            }
+
             chosen.ForEach(c => c.AsStage = asStage);
             MaterialSwap.ClearMisses();
             LastAsStage = asStage;
             if (chosen.Count == 0)
             {
-                Console.instance?.Print($"Villheim: page {page} is empty; {what} has {pages} pages.");
+                Console.instance?.Print(onPage > 0
+                    ? $"Villheim: every design of page {page} is sorted; 'vh gallery next' for page {page + 1} of {pages}."
+                    : $"Villheim: page {page} is empty; {what} has {pages} pages.");
                 yield break;
             }
 

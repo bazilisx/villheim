@@ -15,7 +15,8 @@ Current facts only. Read this at the start of a session. Narrative is in `docs/d
   - Phase A next, all 264 unsorted (the old Kind and Use for guesses were removed from the Pass 2 tab). Sort knives
     (`Village/DesignSort.cs`, `vh sort`): A = KnifeFlint (type), B = KnifeCopper (subtype); key picks, click sorts,
     sign and number colours, `BepInEx/Villheim/design-sort.csv`, live writes to the Pass 2 tab once the sheet's web
-    app is deployed and `vh sort url` is set; `vh gallery keepers type <x>`. Not tried in game yet.
+    app is deployed and `vh sort url` is set; `vh gallery keepers type <x>`. Sorted designs leave the field (undo brings them back) and are left off when a
+    page is put up again (SortHideSorted). Knife A, the sheet link and page 1 tried by Tyler; hiding not yet tried.
   - Shaper Tool (`vh tool`, KnifeWood): 1 Move, 2 Turn, 3 Swap, 4 Delete, 5 Delete all, 6 Save, 7 Reset, 8 Undo;
     saves to `blueprints/inspiration/pass3/p3-<number>-<name>.blueprint` (`pass3-saved.csv`). Used from phase C on.
     The new layout, Reset, design turning and the one-click fix are not yet tried in game.

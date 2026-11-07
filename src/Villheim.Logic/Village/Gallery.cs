@@ -73,7 +73,7 @@ namespace Villheim.Logic.Village
         private const int PageSize = 10;
 
         public const string Usage =
-            "vh gallery <meadows|blackforest> [all|house|hall|prof|storage|farm] [page N] [rescan]: ten designs a page, e.g. " +
+            "vh gallery <meadows|blackforest|swamp|mountain> [all|house|hall|prof|storage|farm] [page N] [rescan]: ten designs a page, e.g. " +
             "'vh gallery meadows house page 2'. 'vh gallery list meadows' writes every design to BepInEx/Villheim/gallery-list-Meadows.csv. " +
             "'vh gallery next' / 'prev' / 'again' clears the page shown and shows the next, the one before, or the same again. " +
             "'vh gallery show <name> [name...]' lays out those designs. 'vh gallery clear' removes a gallery.";
@@ -92,6 +92,20 @@ namespace Villheim.Logic.Village
                 "Wood", "Stone", "FineWood", "Resin", "LeatherScraps", "DeerHide", "Flint", "BoneFragments", "Feathers", "Coal",
                 "RoundLog", "Copper", "Tin", "Bronze", "BronzeNails", "SurtlingCore", "GreydwarfEye", "TrollHide", "Thistle",
             },
+            [Heightmap.Biome.Swamp] = new HashSet<string>
+            {
+                "Wood", "Stone", "FineWood", "Resin", "LeatherScraps", "DeerHide", "Flint", "BoneFragments", "Feathers", "Coal",
+                "RoundLog", "Copper", "Tin", "Bronze", "BronzeNails", "SurtlingCore", "GreydwarfEye", "TrollHide", "Thistle",
+                "ElderBark", "Iron", "IronNails", "Chain", "Guck", "Ooze", "Bloodbag", "WitheredBone", "Entrails", "Root",
+            },
+            [Heightmap.Biome.Mountain] = new HashSet<string>
+            {
+                "Wood", "Stone", "FineWood", "Resin", "LeatherScraps", "DeerHide", "Flint", "BoneFragments", "Feathers", "Coal",
+                "RoundLog", "Copper", "Tin", "Bronze", "BronzeNails", "SurtlingCore", "GreydwarfEye", "TrollHide", "Thistle",
+                "ElderBark", "Iron", "IronNails", "Chain", "Guck", "Ooze", "Bloodbag", "WitheredBone", "Entrails", "Root",
+                "Silver", "Obsidian", "WolfPelt", "WolfFang", "WolfClaw", "FreezeGland", "Crystal", "JuteRed", "DragonTear",
+                "TrophyWolf", "TrophyDragonQueen",
+            },
         };
 
         /// <summary>Crafting stations a player has in each stage (the stonecutter needs iron, so stone walls are later).</summary>
@@ -99,7 +113,22 @@ namespace Villheim.Logic.Village
         {
             [Heightmap.Biome.Meadows] = new HashSet<string> { "piece_workbench" },
             [Heightmap.Biome.BlackForest] = new HashSet<string> { "piece_workbench", "forge" },
+            [Heightmap.Biome.Swamp] = new HashSet<string> { "piece_workbench", "forge", "piece_stonecutter" },
+            [Heightmap.Biome.Mountain] = new HashSet<string> { "piece_workbench", "forge", "piece_stonecutter", "piece_artisanstation" },
         };
+
+        /// <summary>The stages in game order: each includes everything before it.</summary>
+        private static readonly Heightmap.Biome[] Stages =
+            { Heightmap.Biome.Meadows, Heightmap.Biome.BlackForest, Heightmap.Biome.Swamp, Heightmap.Biome.Mountain };
+
+        private static Heightmap.Biome StageOf(string word)
+        {
+            string w = (word ?? "").ToLowerInvariant();
+            if (w.StartsWith("black") || w.StartsWith("forest")) return Heightmap.Biome.BlackForest;
+            if (w.StartsWith("swamp")) return Heightmap.Biome.Swamp;
+            if (w.StartsWith("mountain")) return Heightmap.Biome.Mountain;
+            return Heightmap.Biome.Meadows;
+        }
 
         private enum Action
         {
@@ -111,8 +140,9 @@ namespace Villheim.Logic.Village
         private static bool _autoListStarted;
 
         /// <summary>
-        /// Writes the full design lists by itself once a world is loaded (Meadows and Black Forest), so they are never
-        /// forgotten: BepInEx/Villheim/gallery-list-Meadows.csv and gallery-list-BlackForest.csv, with every design's kind
+        /// Writes the full design lists by itself once a world is loaded, one per stage (Meadows, Black Forest, Swamp,
+        /// Mountain; each includes the stages before it), so they are never forgotten: BepInEx/Villheim/gallery-list-
+        /// &lt;stage&gt;.csv, with every design's kind
         /// and gallery page. Nothing is put up; only files are read. Later loads are quick (what each location is, is cached).
         /// </summary>
         public static void StartAutoList()
@@ -143,7 +173,7 @@ namespace Villheim.Logic.Village
             var written = new List<string>();
             try
             {
-                foreach (Heightmap.Biome biome in new[] { Heightmap.Biome.Meadows, Heightmap.Biome.BlackForest })
+                foreach (Heightmap.Biome biome in Stages)
                 {
                     var cells = new List<Cell>();
                     yield return Gather(biome, false, cells);
@@ -221,7 +251,7 @@ namespace Villheim.Logic.Village
             }
 
             string biomeName = rest.Length > 0 ? rest[0].ToLowerInvariant() : "meadows";
-            Heightmap.Biome biome = biomeName.StartsWith("black") || biomeName.StartsWith("forest") ? Heightmap.Biome.BlackForest : Heightmap.Biome.Meadows;
+            Heightmap.Biome biome = StageOf(biomeName);
             string group = "all";
             int page = 1;
             bool rescan = false;
@@ -872,10 +902,12 @@ namespace Villheim.Logic.Village
             }
         }
 
+        /// <summary>A blueprint made for this stage's biome or any earlier one.</summary>
         private static bool Matches(string blueprintBiome, Heightmap.Biome biome)
         {
-            string b = blueprintBiome.ToLowerInvariant();
-            return biome == Heightmap.Biome.BlackForest ? b.Contains("black") || b.Contains("forest") : b.Contains("meadow");
+            Heightmap.Biome own = StageOf(blueprintBiome.Replace(" ", ""));
+            bool known = blueprintBiome.ToLowerInvariant().Contains("meadow") || own != Heightmap.Biome.Meadows;
+            return !known || System.Array.IndexOf(Stages, own) >= 0 && System.Array.IndexOf(Stages, own) <= System.Array.IndexOf(Stages, biome);
         }
 
         /// <summary>A kind from the name: hall, workshop, storehouse or farm words, else a home.</summary>

@@ -137,12 +137,46 @@ function doPost(e) {
       written++;
     });
 
-    return answer_({ ok: true, written: written, missing: missing });
+    var slots = writeSlots_(body.slots || []);
+    return answer_({ ok: true, written: written, missing: missing, slots: slots });
   } catch (error) {
     return answer_({ ok: false, error: String(error) });
   } finally {
     lock.releaseLock();
   }
+}
+
+/**
+ * Slotting board saves: one row per saved file in the Slots tab (made if missing), found by file name and replaced.
+ * Each row comes as a list: File, Base ID, s, d, Biome, Subtype, No., Name, Match, Pieces, Saved at.
+ */
+function writeSlots_(rows) {
+  if (!rows.length) {
+    return 0;
+  }
+
+  var book = SpreadsheetApp.getActive();
+  var sheet = book.getSheetByName('Slots');
+  var headings = ['File', 'Base ID', 's', 'd', 'Biome', 'Subtype', 'No.', 'Name', 'Match', 'Pieces', 'Saved at'];
+  if (!sheet) {
+    sheet = book.insertSheet('Slots');
+    sheet.getRange(1, 1, 1, headings.length).setValues([headings]).setFontWeight('bold');
+    sheet.setFrozenRows(1);
+  }
+
+  var last = sheet.getLastRow();
+  var files = last > 1 ? sheet.getRange(2, 1, last - 1, 1).getValues().map(function (r) { return String(r[0]); }) : [];
+  rows.forEach(function (row) {
+    var values = headings.map(function (h, i) { return row[i] === undefined ? '' : String(row[i]); });
+    var index = files.indexOf(values[0]);
+    if (index >= 0) {
+      sheet.getRange(index + 2, 1, 1, headings.length).setValues([values]);
+    } else {
+      sheet.appendRow(values);
+      files.push(values[0]);
+    }
+  });
+  return rows.length;
 }
 
 /** Opening the web app address in a browser shows this, to check the deployment works. */

@@ -119,7 +119,8 @@ namespace Villheim.Logic.Village
         internal static class NoWearPatch
         {
             private static bool Prefix(WearNTear __instance) =>
-                __instance.m_nview == null || !__instance.m_nview.IsValid() || __instance.m_nview.GetZDO().GetInt(KeyGallery) != 1;
+                (__instance.m_nview == null || !__instance.m_nview.IsValid() || __instance.m_nview.GetZDO().GetInt(KeyGallery) != 1) &&
+                !DesignBoard.Inside(__instance.transform.position);
         }
         private const float PadSpacing = 24f;
         private const float PadRadius = 20f;
@@ -561,7 +562,7 @@ namespace Villheim.Logic.Village
                 {
                     // Copies made in the gallery (pass 3 saves, material swaps) belong to their design, not the list.
                     string file = (blueprint.File ?? "").Replace('\\', '/').ToLowerInvariant();
-                    if (!file.Contains("/inspiration/pass3/") && !file.Contains("/inspiration/edits/"))
+                    if (!file.Contains("/inspiration/pass3/") && !file.Contains("/inspiration/edits/") && !file.Contains("/inspiration/board/"))
                     {
                         candidates.Add((new DesignLibrary.Design(blueprint, 1f), blueprint.Role));
                     }
@@ -1291,6 +1292,9 @@ namespace Villheim.Logic.Village
                 System.IO.File.WriteAllText(FlatPath, string.Join(" ", new[] { start.x, start.y, start.z, forward.x, forward.z }.Select(v => v.ToString("R", c))));
             });
         }
+
+        /// <summary>The area 'vh flatten' last made (near edge middle and direction), for the slotting board.</summary>
+        internal static bool LoadFlatArea(out Vector3 start, out Vector3 forward) => LoadFlat(out start, out forward);
 
         private static bool LoadFlat(out Vector3 start, out Vector3 forward)
         {

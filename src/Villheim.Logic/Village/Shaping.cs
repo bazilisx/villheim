@@ -978,7 +978,7 @@ namespace Villheim.Logic.Village
             {
                 _resetArmed = null;
                 ShowSelection(null, null);
-                Say(Gallery.ResetDesign(design));
+                Say(design.StartsWith("board:") ? DesignBoard.ResetPlot(design) : Gallery.ResetDesign(design));
                 return;
             }
 
@@ -1161,7 +1161,7 @@ namespace Villheim.Logic.Village
             {
                 _saveArmed = null;
                 ShowSelection(null, null);
-                Say(BlueprintEdits.Run(new[] { "save", design }));
+                Say(design.StartsWith("board:") ? DesignBoard.Save(design) : BlueprintEdits.Run(new[] { "save", design }));
                 return;
             }
 

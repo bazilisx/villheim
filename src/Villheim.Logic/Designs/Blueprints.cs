@@ -191,7 +191,12 @@ namespace Villheim.Logic.Designs
             @"((stilt|stone|wood|wooden|log|timber)_)?(hut|cottage|house|manor|villa|longhouse|long_house|great_hall|hall|cabin)(_?\d+)?$",
             System.Text.RegularExpressions.RegexOptions.IgnoreCase);
 
-        private static bool IsExcluded(string file) => Generated.IsMatch(Path.GetFileNameWithoutExtension(file));
+        private static bool IsExcluded(string file)
+        {
+            // The slotting board's candidate copies (PlanBuild's villheim-board folder) are copies of designs already listed.
+            string path = file.Replace('\\', '/').ToLowerInvariant();
+            return Generated.IsMatch(Path.GetFileNameWithoutExtension(file)) || path.Contains("/villheim-board/");
+        }
 
         private static readonly string[] NotForVillages = { "ruin", "hive", "pergola", "portal", "igloo", "chess", "mansion", "castle" };
 

@@ -21,24 +21,55 @@ typed in the in-game console (F5) unless it says otherwise.
      shipyards, fishing), Masonry (stonecutter, quarry), Weaving (spinning wheel, looms, tailoring), Hunting (hunters,
      fletchers, tanners), Arcane (galdr table, eitr refinery, wizard towers, herbs), or Workshop (general crafting
      that fits none of these). Sort knife B2.
-   - **Phase C, biome.** Each design gets the biome it suits best, and its materials are fixed for that biome with the
-     Shaper Tool inside a marked plot.
-   - **Slotting.** Designs of one biome and subtype are put side by side and grouped under one base ID, each in a
-     structure stage: house1_s1, house1_s2, house1_s3. The base ID and stage are given here, not earlier.
+   - **Slotting (phases C and slotting together).** One base ID at a time on the slotting board (`vh slot`): a row
+     of plots, one per village stage, for one biome and kind. The kind's designs show as pictures in PlanBuild; the
+     best ones are placed into the stage plots, fixed for the biome's materials with the Shaper Tool, and saved. The
+     board's biome is the design's biome, so there is no separate biome pass. An empty stage means no change at that
+     stage (the building keeps its last stage).
    - **Phase D, decor.** Each structure stage gets three decor stages, made from the richest down: d3 is saved first,
      copied to the d2 plot and stripped, saved, copied to d1 and stripped to the bare minimum.
    - **Phase E, review rows.** One base ID in one biome laid out in a row, s1d1 to s3d3, to check how it grows.
 3. Saves from the old pass 2 (`p3-<number>-<name>`) stay where they are and are used as the starting point of a design.
+
+## The slotting board (`vh slot`)
+
+1. Stand at the near edge of the flat area. `vh gallery clear` first if a page is still up.
+2. `vh slot meadows hearth` puts up a new base ID (hub1, or the next free number) for the Meadows: 5 plots in a row,
+   each bordered by green beams with a sign (hub1_s1 to hub1_s5). `vh slot meadows hearth 1` puts hub1 up again with
+   its saved stages in their plots. `stages 7` gives more plots.
+3. At the same time every design sorted as that kind is written to PlanBuild's folder and shows in the Blueprint
+   Rune under the tab **Villheim board**, with a picture each (the first time for a kind this takes a moment while
+   PlanBuild makes the pictures). The next `vh slot` swaps the tab's contents for the new kind.
+4. Place designs into the plots with the Blueprint Rune. If PlanBuild puts down plan pieces that wait for materials,
+   set its default build mode to Direct in F1. Move, swap, delete and build freely; nothing is kept until you save.
+   Pieces inside a plot never wear or fall while you work.
+5. Save a plot with the Shaper Tool's Save (key 6, click anything in the plot, click again), or `vh slot save 2`.
+   Everything inside the green border is written as `hub1_s2d3` to `BepInEx/config/Villheim/blueprints/inspiration/board/`.
+   The design it came from is found by comparing pieces and shown on the sign.
+6. The Shaper Tool's Reset (key 7) on a plot clears it back to its last save, or empty. Undo (8) brings back what was
+   there.
+7. `vh slot clear` takes the board down. Both `vh slot clear` and a new `vh slot` refuse while a plot has unsaved
+   changes (add `force` to drop them).
+
+Each save is listed in `BepInEx/Villheim/board-saves.csv` and sent to the sheet: a row in the **Slots** tab (file,
+base ID, stage, biome, subtype, the design it came from and how alike), and the design's Biome, Base ID and s in the
+Pass 2 tab. After pasting a new `review-sheet.gs`, update the web app (Deploy, Manage deployments, edit, Version: New
+version).
+
+Kinds and their roots: house (house), hearth (hub), tavern (inn), longhouse (hall), decor (deco), farm (farm),
+woodworking (wood), mining (forge), cooking (cook), storage (store), defence (guard), workshop (craft), harbour (dock),
+hunting (hunt), arcane (rune), masonry (mason), weaving (weave). Biomes: meadows, blackforest, swamp, mountains, plains,
+mistlands, ashlands, deepnorth.
 
 ## Naming
 
 Blueprints get their final name once slotting has given them a base ID: `<baseID>_s<structure>d<decor>`, for example
 `house1_s2d3`.
 
-- **Base ID:** a short root and a number, for one building in one biome: house1, farm2, woodshop1, smithy1,
-  cookhouse1, workshop1, storehouse1, guardhouse1, hub1 (the hearth), tavern1, longhouse1. The biome is not in the
+- **Base ID:** a short root and a number, for one building in one biome: house1, hub1 (the hearth), inn1, hall1,
+  farm2, wood1, forge1, cook1, craft1, store1, guard1, dock1 (roots listed under the slotting board). The biome is not in the
   name; the sheet keeps it, so a Black Forest version of a Meadows house is a new base ID.
-- **s1, s2, s3:** the structure stage. A new stage comes when the village moves up a stage: an added room, a second
+- **s1 to s5 (up to 10):** the structure stage, the village stage it belongs to. A new stage comes when the village moves up a stage: an added room, a second
   floor, a wing, a bigger yard. In the game the old building is taken down and the next stage built in its place.
 - **d1, d2, d3:** the decor stage, interior and yard only. d1 is sparse (a bed, perhaps a plain table and chair); d2
   is furnished (a crafting station, small decor, more lights, an early rug); d3 is rich (rugs, drapes, glass windows,
@@ -318,5 +349,6 @@ originals.
 | `vh bp swap <number> <stage>` | Saves a copy with every later building piece swapped automatically (to `inspiration/edits`). |
 | `vh flatten [size]` | Clears and levels an area in front of you for the gallery. Usually done with PlanBuild instead. |
 | `vh tool` | Puts the shaping knife (a wooden knife) in your inventory. |
-| `vh sort tools` | Puts both sort knives in your inventory. |
+| `vh sort tools` | Puts the sort knives and the Shaper Tool in your inventory. |
+| `vh slot <biome> <kind>` | The slotting board (see above). |
 | `vh help` | Every Villheim command. |

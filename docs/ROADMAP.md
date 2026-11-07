@@ -57,13 +57,13 @@ with its own look for its biome.
 - [x] Phase B (done 2026-11-07): subtypes for Work (Farming, Woodworking, Mining, Cooking, Crafting, Storage, Defence) and Community
   (Hearth, Tavern, Longhouse, Decor: village decor built in idle time, such as water wheels, outhouses, gardens).
 - [x] Phase B2 (done 2026-11-07): Crafting split into Harbour, Masonry, Weaving, Hunting, Arcane, Workshop (sort knife B2, chitin).
-- [ ] Phase C: biome per design, and material fixes inside plots marked by green-tinted horizontal wood beams; save
-  inside the plot keeps everything in it. A saved design is taken down from the field (it comes back from its save
-  when the page is put up again). A third knife for phase C.
-- [ ] PNG picture of every saved blueprint, next to the file with the same name (rendered off-screen, as PlanBuild
-  does), plus a command for the saves already made.
-- [ ] Slotting: designs of one biome and subtype side by side; Tyler groups them under a base ID with structure stages
-  (house1_s1, house1_s2). The base ID and stage are given here.
+- [x] Slotting board `vh slot <biome> <kind>` (2026-11-07): one row of stage plots (5, up to 10) in green beams for
+  one base ID; the kind's designs written to PlanBuild's "Villheim board" tab with pictures; plots saved with the
+  Shaper Tool as `<baseID>_s<n>d3`, source design found by piece comparison, Slots tab in the sheet. Phase C (biome)
+  is folded in: the board's biome is the design's biome.
+- [ ] Slotting done for Meadows, then the Black Forest: hearth first, then houses, then the work buildings.
+- [ ] Grow a plot (and slide its neighbours) when a build needs more room than the biggest candidate gave it.
+- [ ] PNG pictures for saved stage files too (copy them to PlanBuild as a "Villheim saved" tab).
 - [ ] Phase D: decor stages from the richest down. Save d3, it is copied to the d2 plot; strip and save d2, copied to
   d1; strip to the bare minimum and save. Files named `<baseID>_s<n>d<n>` (e.g. `house1_s2d3`). Optional: a key that
   removes every non-structural piece as a start for d1.

@@ -46,6 +46,7 @@ namespace Villheim.Logic
             "swap [turn|undo|done|off]: change a gallery design piece by piece: aim at a piece and press numpad 5; stand-ins by biome (and combinations such as two 2x1 for a 2x2) go up at its sign; aim at one (or a piece you built) and press it again; kept only once the design is saved with 'bp save'; numpad + and - move the design under the crosshair up and down, numpad 8 2 4 6 around, 10 cm (50 cm with Shift); hold Ctrl to move only the structure under the crosshair (shown green); saved with it",
             "bp forget <number|name|all>: delete pass 3 saves, so the gallery shows the original design again",
             "tool: put a shaping rod in your inventory: with it in hand, hotbar 1 to 8 edit gallery designs (1 Swap, 2 Turn, 3 Undo, 4 Move, 5 Part, 6 Delete, 7 Save, 8 Look; left click Swap)",
+            "slot <biome> <kind> [number] [stages N] | slot save <stage> | slot clear: the slotting board, one plot per village stage for one base ID; the kind's designs go to PlanBuild's Villheim board tab",
             "sort [tools|undo|push|url <address>]: sort the kept designs in the game with the sort knives (A: type, B: subtype); choices go to BepInEx/Villheim/design-sort.csv and the review sheet",
             "note <text>: write a note with what you are aiming at and the nearest gallery sign to BepInEx/Villheim/notes.txt",
             "bp save <number|name> | bp save page [all]: save a design as it stands in the gallery now (pieces left, stand-ins, anything built on its plot) as blueprints/inspiration/pass3/p3-<number>-<name>; 'page' saves every changed design standing near you; the gallery shows the saves from then on",
@@ -181,6 +182,7 @@ namespace Villheim.Logic
                 case "villheim_note": Say(context, SwapTool.Note(args)); return true;
                 case "villheim_tool": Say(context, Shaping.GiveTool()); return true;
                 case "villheim_sort": Say(context, DesignSort.Run(args)); return true;
+                case "villheim_slot": Say(context, DesignBoard.Run(args)); return true;
                 default: return false;
             }
         }

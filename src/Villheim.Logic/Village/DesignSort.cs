@@ -493,7 +493,7 @@ namespace Villheim.Logic.Village
             }
 
             var given = new List<string>();
-            foreach (string name in new[] { ToolA, ToolB, ToolB2 })
+            foreach (string name in new[] { ToolA, ToolB, ToolB2, LogicConfig.ShapingTool?.Value ?? "KnifeWood" })
             {
                 GameObject prefab = ObjectDB.instance.GetItemPrefab(name);
                 if (prefab != null)
@@ -504,7 +504,7 @@ namespace Villheim.Logic.Village
             }
 
             return $"Sort: {string.Join(" and ", given)} are in your inventory. The flint knife sorts by type (phase A), the copper knife by subtype (phase B). " +
-                   "The chitin knife (B2) splits Crafting into finer trades. Put them on quick slots; with one in hand, a hotbar key picks a choice and left click on a design gives it that choice.";
+                   "The chitin knife (B2) splits Crafting into finer trades; the wooden knife is the Shaper Tool. Put them on quick slots; with one in hand, a hotbar key picks a choice and left click on a design gives it that choice.";
         }
 
         private static readonly Dictionary<string, (string Name, string Description)> OldNames = new Dictionary<string, (string, string)>();
@@ -929,6 +929,38 @@ namespace Villheim.Logic.Village
         /// <summary>Sends sort rows to the review sheet's web app (the sheet script's doPost), in the background.</summary>
         /// <summary>Rows waiting to go to the sheet, by design name (the newest state of each).</summary>
         private static readonly Dictionary<string, Entry> Pending = new Dictionary<string, Entry>();
+
+        /// <summary>Slotting board saves waiting for the sheet's Slots tab (one row each, as in board-saves.csv).</summary>
+        private static readonly List<string[]> PendingSlots = new List<string[]>();
+
+        /// <summary>A board save: the design it came from gets its biome, base ID and stage (Pass 2 columns).</summary>
+        public static void SetSlot(string design, string biome, string baseId, string stage)
+        {
+            Entry e = Get(design);
+            if (e == null)
+            {
+                return;
+            }
+
+            e.Biome = biome;
+            e.BaseId = baseId;
+            e.Stage = stage;
+            e.Changed = Now();
+            Write();
+            Push(new[] { e });
+        }
+
+        /// <summary>A board save for the sheet's Slots tab.</summary>
+        public static void PushSlot(string[] record)
+        {
+            if (SheetUrl.Length == 0)
+            {
+                return;
+            }
+
+            PendingSlots.Add(record);
+            Push(Enumerable.Empty<Entry>());
+        }
         private static bool _sending;
 
         /// <summary>
@@ -948,7 +980,7 @@ namespace Villheim.Logic.Village
                 Pending[e.Name] = e.Copy();
             }
 
-            if (Pending.Count > 0 && !_sending)
+            if ((Pending.Count > 0 || PendingSlots.Count > 0) && !_sending)
             {
                 _sending = true;
                 VillheimPlugin.Instance.StartCoroutine(Sender());
@@ -960,7 +992,7 @@ namespace Villheim.Logic.Village
             int failures = 0;
             try
             {
-                while (Pending.Count > 0 && SheetUrl.Length > 0)
+                while ((Pending.Count > 0 || PendingSlots.Count > 0) && SheetUrl.Length > 0)
                 {
                     yield return new WaitForSecondsRealtime(failures == 0 ? 2f : Mathf.Min(60f, 5f * failures));
                     List<Entry> rows = Pending.Values.Take(25).ToList();
@@ -972,7 +1004,21 @@ namespace Villheim.Logic.Village
                         json.Append(i > 0 ? "," : "").Append("{\"number\":").Append(e.Number)
                             .Append(",\"name\":").Append(Json(e.Name))
                             .Append(",\"type\":").Append(Json(e.Type))
-                            .Append(",\"subtype\":").Append(Json(e.Subtype)).Append('}');
+                            .Append(",\"subtype\":").Append(Json(e.Subtype));
+                        if (e.Biome.Length > 0 || e.BaseId.Length > 0)
+                        {
+                            json.Append(",\"biome\":").Append(Json(e.Biome)).Append(",\"base\":").Append(Json(e.BaseId)).Append(",\"s\":").Append(Json(e.Stage));
+                        }
+
+                        json.Append('}');
+                    }
+
+                    json.Append("],\"slots\":[");
+                    List<string[]> slots = PendingSlots.Take(25).ToList();
+                    PendingSlots.RemoveRange(0, slots.Count);
+                    for (int i = 0; i < slots.Count; i++)
+                    {
+                        json.Append(i > 0 ? "," : "").Append('[').Append(string.Join(",", slots[i].Select(Json))).Append(']');
                     }
 
                     json.Append("]}");
@@ -997,6 +1043,8 @@ namespace Villheim.Logic.Village
                         {
                             Pending[e.Name] = e;
                         }
+
+                        PendingSlots.InsertRange(0, slots);
 
                         failures++;
                         _lastSheetResult = $"sending {rows.Count} row(s) failed at {Now()} (try {failures}, {Pending.Count} waiting): " +

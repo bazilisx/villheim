@@ -97,7 +97,14 @@ namespace Villheim.Logic.Village
         /// <summary>The design under the crosshair, or the last one picked.</summary>
         public static string DesignAimed(Player player)
         {
-            string design = LookAt.Target(player)?.GetComponent<ZNetView>()?.GetZDO()?.GetString(Gallery.KeyDesign, "") ?? "";
+            GameObject target = LookAt.Target(player);
+            string design = target?.GetComponent<ZNetView>()?.GetZDO()?.GetString(Gallery.KeyDesign, "") ?? "";
+            if (design.Length == 0)
+            {
+                // Pieces placed on the slotting board (PlanBuild, the hammer) carry no design name: the plot they stand in.
+                design = DesignBoard.PlotAt(target != null ? target.transform.position : player.transform.position) ?? "";
+            }
+
             return design.Length > 0 ? design : _design;
         }
 

@@ -49,6 +49,9 @@ namespace Villheim.Logic.Village
 
             /// <summary>Laid out in one flow, in list order, rows as wide as the flat area (keepers pages).</summary>
             public bool Flow;
+
+            /// <summary>Size has run (the plot's half width is measured).</summary>
+            public bool Sized;
             public Role Role;
             public Vector3 Center;
             public float Half;
@@ -413,7 +416,20 @@ namespace Villheim.Logic.Village
                     ZNetScene.instance.Destroy(view.gameObject);
                 }
 
-                return $"Villheim: removed {gone.Count} gallery pieces and signs within 600 m (the ground stays as it is).";
+                // Pieces of big designs beyond the loaded area exist only as ZDOs; they go too.
+                var far = new List<ZDO>();
+                try
+                {
+                    far = UnloadedZdos(z => z.GetInt(KeyGallery) == 1 && Utils.DistanceXZ(z.GetPosition(), player.transform.position) < 600f);
+                    DestroyZdos(far);
+                }
+                catch (System.Exception e)
+                {
+                    VillheimPlugin.Log.LogWarning($"Gallery clear: pieces beyond the loaded area were left: {e.Message}");
+                }
+
+                ClearOverflow();
+                return $"Villheim: removed {gone.Count + far.Count} gallery pieces and signs within 600 m (the ground stays as it is).";
             }
 
             if (first == "next" || first == "prev" || first == "again")
@@ -423,8 +439,17 @@ namespace Villheim.Logic.Village
                     return "Villheim: no gallery page shown yet; start with 'vh gallery page 1'.";
                 }
 
-                int wanted = first == "next" ? lastPage + 1 : first == "prev" ? Mathf.Max(1, lastPage - 1) : lastPage;
+                List<string> overflow = LoadOverflow(out int overflowPage);
                 Start(player, new[] { "clear" });
+                if (first == "next" && overflow.Count > 0 && overflowPage == lastPage)
+                {
+                    // The designs of this page that did not fit on the flat area come before the next page.
+                    _onlyNext = new HashSet<string>(overflow);
+                    return Start(player, lastArgs.Concat(new[] { "page", lastPage.ToString() }).ToArray()) +
+                           $" The rest of page {lastPage}: {overflow.Count} designs that did not fit.";
+                }
+
+                int wanted = first == "next" ? lastPage + 1 : first == "prev" ? Mathf.Max(1, lastPage - 1) : lastPage;
                 return Start(player, lastArgs.Concat(new[] { "page", wanted.ToString() }).ToArray());
             }
 
@@ -484,6 +509,8 @@ namespace Villheim.Logic.Village
             if (typeFilter != null) saved.AddRange(new[] { "type", typeFilter });
             SaveLast(saved, page);
             _typeFilter = typeFilter;
+            _only = _onlyNext;
+            _onlyNext = null;
             VillheimPlugin.Instance.StartCoroutine(Run(player.transform.position, forward, stage, group, page, rescan, keepers, asStage, size));
             string what = Describe(stage, group, keepers, asStage) + (typeFilter != null ? $", type {typeFilter}" : "");
             return $"Villheim: gathering designs ({what}, page {page}).";
@@ -849,6 +876,7 @@ namespace Villheim.Logic.Village
             }
 
             string typeFilter = _typeFilter;
+            HashSet<string> only = _only;
             List<Cell> matching = cells.Where(c => roles.Contains(c.Role) && (stage < 0 || c.Stage == stage) && (!keepers || kept.ContainsKey(c.Design.Name)) &&
                                                    (typeFilter == null || DesignSort.Matches(c.Design.Name, typeFilter))).ToList();
 
@@ -876,6 +904,33 @@ namespace Villheim.Logic.Village
                 }
             }
 
+            if (only != null)
+            {
+                chosen = chosen.Where(c => only.Contains(c.Design.Name)).ToList();
+            }
+
+            // Only as many designs as fit on the flat area go up; the rest wait for 'vh gallery next', so nothing lands
+            // in the woods beyond it. Page numbers stay as the sheet has them.
+            var waiting = new List<string>();
+            if (keepers && chosen.Count > 0)
+            {
+                foreach (Cell cell in chosen)
+                {
+                    Cell sized = cell;
+                    Safe("the size of " + cell.Design.Name, () => Size(sized));
+                    sized.Sized = true;
+                }
+
+                int fit = FitFlat(chosen);
+                waiting = chosen.Skip(fit).Select(c => c.Design.Name).ToList();
+                chosen = chosen.Take(fit).ToList();
+                if (waiting.Count > 0)
+                {
+                    Console.instance?.Print($"Villheim: page {page}: {chosen.Count} designs fit on the flat area; the other {waiting.Count} come up with 'vh gallery next'.");
+                }
+            }
+
+            SaveOverflow(page, waiting);
             chosen.ForEach(c => c.AsStage = asStage);
             MaterialSwap.ClearMisses();
             LastAsStage = asStage;
@@ -897,6 +952,125 @@ namespace Villheim.Logic.Village
 
         /// <summary>'type X' of the page being put up: only designs sorted as X (DesignSort.Matches), or null for all.</summary>
         private static string _typeFilter;
+
+        /// <summary>The page shows only these designs (the rest of a page that did not fit), or null for all of it.</summary>
+        private static HashSet<string> _only;
+        private static HashSet<string> _onlyNext;
+
+        /// <summary>How many of the cells, in order, fit on the flat area in the keepers flow layout (at least one).</summary>
+        private static int FitFlat(List<Cell> cells)
+        {
+            const float MaxRow = FlatWidth - 20f;
+            const float MaxDepth = FlatDepth - 10f;
+            float depth = 0f;
+            int i = 0;
+            while (i < cells.Count)
+            {
+                int first = i;
+                float used = cells[i++].Half * 2f;
+                while (i < cells.Count && used + Gap + cells[i].Half * 2f <= MaxRow)
+                {
+                    used += Gap + cells[i++].Half * 2f;
+                }
+
+                float rowDepth = cells.Skip(first).Take(i - first).Max(c => c.Half);
+                if (first > 0 && depth + rowDepth * 2f > MaxDepth)
+                {
+                    return first;
+                }
+
+                depth += rowDepth * 2f + Aisle;
+            }
+
+            return cells.Count;
+        }
+
+        private static string OverflowPath => System.IO.Path.Combine(BepInEx.Paths.BepInExRootPath, "Villheim", "gallery-overflow.txt");
+
+        private static void SaveOverflow(int page, List<string> names)
+        {
+            try
+            {
+                if (names.Count == 0)
+                {
+                    ClearOverflow();
+                    return;
+                }
+
+                System.IO.Directory.CreateDirectory(System.IO.Path.GetDirectoryName(OverflowPath));
+                System.IO.File.WriteAllLines(OverflowPath, new[] { page.ToString() }.Concat(names));
+            }
+            catch (System.Exception e)
+            {
+                VillheimPlugin.Log.LogWarning($"Gallery: could not keep the rest of the page: {e.Message}");
+            }
+        }
+
+        private static void ClearOverflow()
+        {
+            try
+            {
+                if (System.IO.File.Exists(OverflowPath))
+                {
+                    System.IO.File.Delete(OverflowPath);
+                }
+            }
+            catch (System.Exception)
+            {
+                // Nothing to keep.
+            }
+        }
+
+        private static List<string> LoadOverflow(out int page)
+        {
+            page = 0;
+            try
+            {
+                if (System.IO.File.Exists(OverflowPath))
+                {
+                    string[] lines = System.IO.File.ReadAllLines(OverflowPath);
+                    if (lines.Length > 1 && int.TryParse(lines[0], out page))
+                    {
+                        return lines.Skip(1).Where(l => l.Length > 0).ToList();
+                    }
+                }
+            }
+            catch (System.Exception)
+            {
+                // Treated as nothing waiting.
+            }
+
+            return new List<string>();
+        }
+
+        /// <summary>Gallery ZDOs the game has not loaded (no instance), matching the test.</summary>
+        internal static List<ZDO> UnloadedZdos(System.Func<ZDO, bool> test)
+        {
+            var found = new List<ZDO>();
+            if (ZDOMan.instance == null || ZNetScene.instance == null)
+            {
+                return found;
+            }
+
+            foreach (ZDO zdo in ZDOMan.instance.m_objectsByID.Values)
+            {
+                if (zdo != null && zdo.IsValid() && test(zdo) && ZNetScene.instance.FindInstance(zdo) == null)
+                {
+                    found.Add(zdo);
+                }
+            }
+
+            return found;
+        }
+
+        internal static void DestroyZdos(IEnumerable<ZDO> zdos)
+        {
+            foreach (ZDO zdo in zdos)
+            {
+                zdo.SetOwner(ZDOMan.GetSessionID());
+                ZDOMan.instance.DestroyZDO(zdo);
+            }
+        }
 
         private static List<List<Cell>> Chunks(List<Cell> cells, int size)
         {
@@ -1017,7 +1191,10 @@ namespace Villheim.Logic.Village
             foreach (Cell cell in cells)
             {
                 Cell sized = cell;
-                Safe("the size of " + cell.Design.Name, () => Size(sized));
+                if (!sized.Sized)
+                {
+                    Safe("the size of " + cell.Design.Name, () => Size(sized));
+                }
             }
 
             Safe("the layout", () => Layout(cells, forward, labels, out depth, out widest));

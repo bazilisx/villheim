@@ -134,6 +134,11 @@ design saved earlier goes up from its save and its sign says "edited (pass 3 sav
 Walk along the rows: far parts of a page only go up once that part of the world has loaded. The message "page ready"
 means everything is up.
 
+Keepers pages only put up as many designs as fit on the flat area (360 by 260 m), so large designs never land in the
+woods beyond it. When a page does not fit, the console says how many wait, and `vh gallery next` puts those up before
+going on to the next page. Page numbers stay the same as in the sheet. `vh gallery clear` and sorting also remove
+pieces of big designs that are beyond the loaded area.
+
 ## Shaping: the knife and the hotbar
 
 The shaping knife is the vanilla wooden knife (`KnifeWood`, config ShapingTool), renamed **Villheim Dev Shaper Tool**

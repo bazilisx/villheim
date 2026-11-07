@@ -373,6 +373,18 @@ namespace Villheim.Logic.Village
             }
 
             gone.Parts.AddRange(views.Select(EditHistory.Take));
+
+            // Pieces of a big design beyond the loaded area exist only as ZDOs; they go too.
+            try
+            {
+                List<ZDO> far = Gallery.UnloadedZdos(z => z.GetInt(Gallery.KeyGallery) == 1 && z.GetString(Gallery.KeyDesign, "") == design);
+                gone.Parts.AddRange(far.Select(EditHistory.TakeZdo).Where(x => x != null));
+                Gallery.DestroyZdos(far);
+            }
+            catch (System.Exception e)
+            {
+                VillheimPlugin.Log.LogWarning($"Design sort: pieces of {design} beyond the loaded area were left: {e.Message}");
+            }
             foreach (ZNetView view in doomed)
             {
                 if (view != null && view.IsValid())

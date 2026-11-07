@@ -87,6 +87,30 @@ namespace Villheim.Logic.Village
             };
         }
 
+        /// <summary>A snapshot of a piece the game has not loaded (only its ZDO exists), or null if its prefab is unknown.</summary>
+        public static Snapshot TakeZdo(ZDO zdo)
+        {
+            GameObject prefab = ZNetScene.instance.GetPrefab(zdo.GetPrefab());
+            if (prefab == null)
+            {
+                return null;
+            }
+
+            return new Snapshot
+            {
+                Prefab = prefab.name,
+                Position = zdo.GetPosition(),
+                Rotation = zdo.GetRotation(),
+                Scale = prefab.transform.localScale,
+                Gallery = zdo.GetInt(Village.Gallery.KeyGallery),
+                Design = zdo.GetString(Village.Gallery.KeyDesign, ""),
+                SwappedFrom = zdo.GetString(Village.Gallery.KeySwappedFrom, ""),
+                SwappedRotation = zdo.GetQuaternion(Village.Gallery.KeySwappedRotation, zdo.GetRotation()),
+                SwappedCenter = zdo.GetVec3(Village.Gallery.KeySwappedCenter, zdo.GetPosition()),
+                Text = null,
+            };
+        }
+
         public static void Restore(Snapshot snapshot) => RestoreObject(snapshot);
 
         /// <summary>Puts the snapshot back and returns what was made (null if its prefab is unknown).</summary>

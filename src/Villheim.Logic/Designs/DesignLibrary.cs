@@ -231,7 +231,7 @@ namespace Villheim.Logic.Designs
             string biomeName = biome == Heightmap.Biome.BlackForest ? "blackforest" : "meadows";
             foreach (Blueprints.Blueprint blueprint in Blueprints.All().Values)
             {
-                if (blueprint.Role != role || blueprint.Level != 1 ||
+                if (blueprint.Inspiration || blueprint.Role != role || blueprint.Level != 1 ||
                     (blueprint.Biome != null && blueprint.Biome.Replace(" ", "") != biomeName) ||
                     blueprint.Radius > VillheimConfig.MaxDesignRadius.Value || pool.Exists(d => d.Name == blueprint.Name))
                 {

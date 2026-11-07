@@ -51,6 +51,12 @@ namespace Villheim.Logic.Designs
 
             /// <summary>Picked more often: designs made as sets (hut, cottage, house...) fit a growing village best.</summary>
             public float Weight = 2f;
+
+            /// <summary>
+            /// In an "inspiration" folder: other people's builds kept for review (the gallery, PlanBuild). Villages never
+            /// build these.
+            /// </summary>
+            public bool Inspiration;
         }
 
         public const string Prefix = "bp:";
@@ -212,7 +218,11 @@ namespace Villheim.Logic.Designs
         private static Blueprint Load(string file)
         {
             string stem = Path.GetFileNameWithoutExtension(file);
-            var blueprint = new Blueprint { Name = Prefix + stem, File = file, Family = stem.ToLowerInvariant() };
+            var blueprint = new Blueprint
+            {
+                Name = Prefix + stem, File = file, Family = stem.ToLowerInvariant(),
+                Inspiration = file.Replace('\\', '/').ToLowerInvariant().Contains("/inspiration/"),
+            };
             ReadName(blueprint, stem);
 
             bool vbuild = file.EndsWith(".vbuild", StringComparison.OrdinalIgnoreCase);

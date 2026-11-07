@@ -145,6 +145,7 @@ namespace Villheim.Logic.Village
                     _wheelTaken = false;
                     if (_active && _tool == ToolTurn && !Typing())
                     {
+                        StepKeys();
                         Wheel(__instance);
                     }
                     else
@@ -537,6 +538,13 @@ namespace Villheim.Logic.Village
             bool same = index == _tool;
             PutDown();
             _tool = same ? 0 : index;
+            if (_tool == ToolTurn)
+            {
+                _turnDesign = SwapTool.DesignAimed(player);
+                Say($"Turn{(string.IsNullOrEmpty(_turnDesign) ? "" : ": " + _turnDesign)}. The wheel turns the whole design (it stays picked until you press 2 again); " +
+                    $"click a part to turn only it and what touches it, Alt+click for one object. Numpad + and - change the step ({StepText()}).");
+            }
+
             if (_tool == ToolMove)
             {
                 _moveDesign = SwapTool.DesignAimed(player);
@@ -560,9 +568,15 @@ namespace Villheim.Logic.Village
             _saveArmed = null;
             _resetArmed = null;
             _moveDesign = null;
+            _turnDesign = null;
+            _lockedPart = null;
             _heldKey = KeyCode.None;
             Disarm();
         }
+
+        /// <summary>Turn: the design it works on until put down, and a locked connected part (click), if any.</summary>
+        private static string _turnDesign;
+        private static List<ZNetView> _lockedPart;
 
         /// <summary>What Move works on until it is put down (the design or board plot aimed at when Move was picked, or at the first key).</summary>
         private static string _moveDesign;
@@ -676,10 +690,20 @@ namespace Villheim.Logic.Village
                 return;
             }
 
+            if (_tool == ToolTurn && _lockedPart != null && _lockedPart.Count > 0)
+            {
+                ShowSelection(_lockedPart.Where(v => v != null && v.IsValid()).ToList(), "part:" + _lockedPart.GetHashCode());
+                return;
+            }
+
             string design = null;
             if (_tool == ToolMove && !string.IsNullOrEmpty(_moveDesign))
             {
                 design = _moveDesign;
+            }
+            else if (_tool == ToolTurn && !string.IsNullOrEmpty(_turnDesign))
+            {
+                design = _turnDesign;
             }
             else if (_tool == ToolMove || _tool == ToolTurn)
             {
@@ -754,13 +778,61 @@ namespace Villheim.Logic.Village
         private static float _cameraDistance;
         private static float TurnStep => LogicConfig.ShaperTurnStep?.Value ?? 22.5f;
 
+        /// <summary>Steps a full turn can be cut into, coarse to fine (numpad - and +), as ComfyGizmo's snap divisions.</summary>
+        private static readonly int[] Divisions = { 2, 4, 6, 8, 12, 16, 24, 32, 48, 64, 96, 128 };
+
+        private static string StepText()
+        {
+            float step = TurnStep;
+            return $"{360f / step:0.#} a turn, {step:0.###} degrees";
+        }
+
+        /// <summary>Numpad + makes Turn's step finer, numpad - coarser; kept in ShaperTurnStep.</summary>
+        private static void StepKeys()
+        {
+            bool finer = Input.GetKeyDown(KeyCode.KeypadPlus);
+            bool coarser = Input.GetKeyDown(KeyCode.KeypadMinus);
+            if (!finer && !coarser || LogicConfig.ShaperTurnStep == null)
+            {
+                return;
+            }
+
+            float now = 360f / Mathf.Max(0.01f, TurnStep);
+            int index = System.Array.FindIndex(Divisions, d => d >= now - 0.01f);
+            if (index < 0)
+            {
+                index = Divisions.Length - 1;
+            }
+
+            if (finer)
+            {
+                index = Divisions[index] > now + 0.01f ? index : Mathf.Min(Divisions.Length - 1, index + 1);
+            }
+            else
+            {
+                index = Mathf.Max(0, index - 1);
+            }
+
+            LogicConfig.ShaperTurnStep.Value = 360f / Divisions[index];
+            MessageHud.instance?.ShowMessage(MessageHud.MessageType.Center, $"Turn step: {StepText()}");
+        }
+
+        /// <summary>
+        /// Turn's click: locks the connected part aimed at (it and everything of its design touching it), or with Alt
+        /// only the one object. Clicking it again (or the sky) lets go, and the wheel turns the whole design again.
+        /// </summary>
         private static void LockToggle(Player player)
         {
             GameObject aimed = LookAt.Target(player);
-            if (_locked != null && (aimed == null || aimed == _locked.gameObject))
+            bool alt = Input.GetKey(KeyCode.LeftAlt) || Input.GetKey(KeyCode.RightAlt);
+            bool onLocked = aimed != null && (_locked != null && aimed == _locked.gameObject ||
+                                              _lockedPart != null && _lockedPart.Exists(v => v != null && v.gameObject == aimed));
+            if ((_locked != null || _lockedPart != null) && (aimed == null || onLocked))
             {
-                Say($"Turn: let go of {Utils.GetPrefabName(_locked.gameObject)}; the wheel turns the whole design again.");
+                Say("Turn: let go; the wheel turns the whole design again.");
                 _locked = null;
+                _lockedPart = null;
+                _nextSelection = 0f;
                 return;
             }
 
@@ -771,9 +843,24 @@ namespace Villheim.Logic.Village
                 return;
             }
 
-            _locked = view;
             _nextSelection = 0f;
-            Say($"Turn: only {Utils.GetPrefabName(view.gameObject)} turns now, wherever you look. Click it again to let go.");
+            if (alt)
+            {
+                _locked = view;
+                _lockedPart = null;
+                Say($"Turn: only {Utils.GetPrefabName(view.gameObject)} turns now, about its own pivot (Ctrl+wheel: every one of its name). Click it again to let go.");
+                return;
+            }
+
+            List<ZNetView> part = SwapTool.StructureOf(aimed);
+            if (part.Count == 0)
+            {
+                part.Add(view);
+            }
+
+            _locked = null;
+            _lockedPart = part;
+            Say($"Turn: this part ({part.Count} objects) turns now, about its own middle, wherever you look. Click it again to let go.");
         }
 
         /// <summary>
@@ -796,10 +883,30 @@ namespace Villheim.Logic.Village
             float radius;
             string what;
             string design;
+            _lockedPart?.RemoveAll(v => v == null || !v.IsValid());
+            bool group = _locked == null && _lockedPart != null && _lockedPart.Count > 0;
             bool whole = _locked == null;
-            if (whole)
+            if (group)
             {
-                design = SwapTool.DesignAimed(player);
+                views = _lockedPart;
+                design = SwapTool.DesignOf(views[0].gameObject);
+                float floor = views.Min(v => v.transform.position.y);
+                Vector3 middle = views.Aggregate(Vector3.zero, (sum, v) => sum + v.transform.position) / views.Count;
+                pivot = new Vector3(middle.x, floor, middle.z);
+                if (design != _wheelDesign || Time.time > _wheelUntil)
+                {
+                    (_wheelSign, _wheelParts) = SwapTool.DesignParts(design);
+                    _wheelDesign = design;
+                    _wheelUntil = Time.time + 0.5f;
+                }
+
+                frame = Quaternion.Euler(0f, _wheelSign?.GetFloat(Gallery.KeyPlotYaw, 0f) ?? 0f, 0f);
+                radius = Mathf.Clamp(views.Max(v => Utils.DistanceXZ(v.transform.position, pivot)) + 1f, 1f, 40f);
+                what = $"part of {design} ({views.Count})";
+            }
+            else if (whole)
+            {
+                design = !string.IsNullOrEmpty(_turnDesign) ? _turnDesign : SwapTool.DesignAimed(player);
                 if (design != _wheelDesign || Time.time > _wheelUntil)
                 {
                     // Looked up a few times a second, not every frame: it walks every object in the world.
@@ -873,7 +980,7 @@ namespace Villheim.Logic.Village
                 }
             }
 
-            string key = whole ? "turn:" + design : all ? $"turn:{design}/{Utils.GetPrefabName(_locked.gameObject)}" : "turn:" + _locked.GetInstanceID();
+            string key = group ? "turn:part:" + _lockedPart.GetHashCode() : whole ? "turn:" + design : all ? $"turn:{design}/{Utils.GetPrefabName(_locked.gameObject)}" : "turn:" + _locked.GetInstanceID();
             EditHistory.Push($"turning {what}", () => before.ForEach(b =>
             {
                 Place(b.View, b.Position, b.Rotation);

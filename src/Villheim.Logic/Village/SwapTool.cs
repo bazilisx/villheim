@@ -51,7 +51,16 @@ namespace Villheim.Logic.Village
         /// <summary>The object is in the green structure (look leaves it green).</summary>
         public static bool IsLit(GameObject go) => Lit.Exists(v => v != null && v.gameObject == go);
 
-        public static void Activate() => _on = true;
+        /// <summary>
+        /// The Shaper Tool in hand. It no longer turns on 'vh swap' mode: that mode's numpad keys (nudging, numpad 5) stay
+        /// free for other mods (ComfyGizmo's numpad + and -) while shaping and after; the knife has its own keys.
+        /// </summary>
+        public static void Activate()
+        {
+        }
+
+        /// <summary>The connected structure an object belongs to (it and everything of its design touching it).</summary>
+        public static List<ZNetView> StructureOf(GameObject start) => start != null ? Structure(start) : new List<ZNetView>();
 
         public static void PickOrUse(Player player) => Press(player);
 
@@ -233,6 +242,11 @@ namespace Villheim.Logic.Village
                     if (!_partLocked && !Shaping.Active)
                     {
                         Highlight(__instance, part);
+                    }
+
+                    if (Shaping.Active)
+                    {
+                        return; // the knife has its own keys
                     }
 
                     if (LogicConfig.GallerySwapKey.Value.IsDown())

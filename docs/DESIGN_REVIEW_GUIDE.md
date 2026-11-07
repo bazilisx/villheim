@@ -203,7 +203,7 @@ slot again, or take another tool) and the hotbar is back to normal.
 | Key | Label | Left click does |
 |---|---|---|
 | 1 | Move | You stand still (flying too). The design you aim at when you press 1 (or at your first move key) stays picked wherever you aim, until you press 1 again; on the slotting board that is the whole plot, furniture and trees included. **W A S D** move it away, left, back, right (as you look), **E** up, **Q** down: 10 cm a step, Shift for 50 cm, and holding a key keeps it moving. One held key undoes as one step. Click a structure to lock onto it (it and everything touching it, such as one tent of a group): then only that moves. Click it again to let go. Press 1 again to walk. |
-| 2 | Turn | You stand still. The design you aim at is highlighted and the **mouse wheel** turns all of it about the middle of its plot. Click one object to lock onto it: then only that turns. Click it again to let go. Press 2 again to walk. See Turning below. |
+| 2 | Turn | You stand still. The design you aim at when you press 2 stays picked until you press 2 again, and the **mouse wheel** turns all of it about the middle of its plot. Click a part to lock onto it and what touches it (one tent of a group): then only that turns, about its own middle. **Alt+click** locks one object, turning on its own pivot. Click again to let go. **Numpad + and -** make the step finer or coarser. See Turning below. |
 | 3 | Swap | Click a design piece: pick it and put up stand-ins at its sign. Click a stand-in (or a piece you built): use it. |
 | 4 | Delete | Click removes what you aim at within 6 m: pieces, creatures, traders and other NPCs. Never a player. |
 | 5 | Del all | Click something (a dvergr lantern, say): every object with that exact name in that design is highlighted and the screen asks "Delete all 14 ...?". Click again within 6 seconds to delete them all; otherwise the highlight fades and nothing is deleted. Outside a design it takes everything of that name within 20 m. |
@@ -216,16 +216,19 @@ all's marks) is the one colour set by LookColor.
 
 ### Turning (key 2)
 
-| Input | Nothing clicked: the whole design turns | One object clicked: only it turns |
-|---|---|---|
-| Mouse wheel | about the up axis, round the middle of its plot | about the up axis, on its own pivot |
-| Shift + wheel | tilts about the plot's X axis | tilts about its own X axis |
-| Alt + wheel | tilts about the plot's Z axis | rolls about its own Z axis |
-| Ctrl + wheel | (as the wheel) | every object of that name in the design, each on its own pivot |
+| Input | Nothing clicked: the whole design | A part clicked: it and what touches it | Alt+click: one object |
+|---|---|---|---|
+| Mouse wheel | about the up axis, round the middle of its plot | about the up axis, round the part's middle | about the up axis, on its own pivot |
+| Shift + wheel | tilts about the plot's X axis | tilts about the plot's X axis | tilts about its own X axis |
+| Alt + wheel | tilts about the plot's Z axis | tilts about the plot's Z axis | rolls about its own Z axis |
+| Ctrl + wheel | (as the wheel) | (as the wheel) | every object of that name in the design, each on its own pivot |
 
 - A ring shows the axis the wheel will turn about: green for up, red for X (Shift), blue for Z (Alt). Hold the
   modifier to see its ring before turning.
-- One notch is 22.5 degrees (ShaperTurnStep).
+- One notch is 22.5 degrees at first (16 a turn). With Turn picked, numpad + makes it finer and numpad - coarser:
+  2, 4, 6, 8, 12, 16, 24, 32, 48, 64, 96 or 128 steps a turn, as ComfyGizmo does. The choice is kept (ShaperTurnStep).
+- The Shaper Tool leaves the numpad alone otherwise: numpad nudging and numpad 5 work only in `vh swap` mode without
+  the knife, so ComfyGizmo's numpad keys work with the hammer.
 - The camera does not zoom while Turn has something to turn. Aim at the sky or pick another tool to zoom.
 - One press of 8 undoes a whole run of wheel notches on the same design or object.
 - Turns are kept when the design is saved, and a turned design counts as changed for `vh bp save page`.

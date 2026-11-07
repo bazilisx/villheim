@@ -1,17 +1,18 @@
 /**
- * Villheim design review sheet: shows one gallery page at a time on the Review tab.
+ * Villheim design review sheet: shows one gallery page at a time on the Review and Pass 2 tabs.
  *
  * Install once: in the sheet, Extensions > Apps Script, replace everything there with this file, save.
  * No authorisation is needed: it only uses simple triggers (onEdit, onOpen).
  *
- * Top bar of the Review tab:
- *   E1  tick box: back one page
- *   F1  the page shown; type a number to jump to that page
- *   G1  tick box: next page
- * Menu "Villheim review": next page, back one page, next page with blanks, show every page.
+ * Top bar of each tab: a tick box to go back one page, the page shown (type a number to jump), a tick box for the
+ * next page. Review: E1, F1, G1. Pass 2: D1, E1, F1.
+ * Menu "Villheim review": next page, back one page, show every page.
  */
 
-var SHEET = 'Review';
+var TABS = {
+  'Review': { back: 5, page: 6, next: 7 },
+  'Pass 2': { back: 4, page: 5, next: 6 },
+};
 var FIRST_ROW = 3; // rows 1 and 2 are the top bar and the headings
 
 function onOpen() {
@@ -19,26 +20,26 @@ function onOpen() {
     .createMenu('Villheim review')
     .addItem('Next page', 'nextPage')
     .addItem('Back one page', 'previousPage')
-    .addItem('Next page with blanks', 'nextBlankPage')
     .addItem('Show every page', 'showAll')
     .addToUi();
 }
 
 function onEdit(e) {
   var sheet = e.range.getSheet();
-  if (sheet.getName() !== SHEET || e.range.getRow() !== 1) {
+  var tab = TABS[sheet.getName()];
+  if (!tab || e.range.getRow() !== 1) {
     return;
   }
 
   var column = e.range.getColumn();
   var page = currentPage_(sheet);
-  if (column === 5 && e.value === 'TRUE') {
+  if (column === tab.back && e.value === 'TRUE') {
     e.range.setValue(false);
     showPage_(sheet, Math.max(1, page - 1));
-  } else if (column === 7 && e.value === 'TRUE') {
+  } else if (column === tab.next && e.value === 'TRUE') {
     e.range.setValue(false);
     showPage_(sheet, Math.min(lastPage_(sheet), page + 1));
-  } else if (column === 6) {
+  } else if (column === tab.page) {
     var wanted = Number(e.value);
     if (wanted >= 1) {
       showPage_(sheet, Math.min(lastPage_(sheet), Math.round(wanted)));
@@ -54,20 +55,6 @@ function nextPage() {
 function previousPage() {
   var sheet = review_();
   showPage_(sheet, Math.max(1, currentPage_(sheet) - 1));
-}
-
-/** The first page, from the start, that still has a design with no verdict. */
-function nextBlankPage() {
-  var sheet = review_();
-  var rows = data_(sheet);
-  for (var i = 0; i < rows.length; i++) {
-    if (rows[i][0] !== '' && rows[i][2] === '') {
-      showPage_(sheet, Number(rows[i][0]));
-      return;
-    }
-  }
-
-  SpreadsheetApp.getActive().toast('Every design has a verdict.');
 }
 
 function showAll() {
@@ -89,7 +76,7 @@ function showPage_(sheet, page) {
     }
   }
 
-  sheet.getRange('F1').setValue(page);
+  sheet.getRange(1, TABS[sheet.getName()].page).setValue(page);
   sheet.getRange(FIRST_ROW, 3).activate();
 }
 
@@ -98,7 +85,7 @@ function data_(sheet) {
 }
 
 function currentPage_(sheet) {
-  return Number(sheet.getRange('F1').getValue()) || 1;
+  return Number(sheet.getRange(1, TABS[sheet.getName()].page).getValue()) || 1;
 }
 
 function lastPage_(sheet) {
@@ -106,6 +93,8 @@ function lastPage_(sheet) {
   return Math.max.apply(null, pages);
 }
 
+/** The tab in front, if it is one of the review tabs; else the newest (Pass 2). */
 function review_() {
-  return SpreadsheetApp.getActive().getSheetByName(SHEET);
+  var active = SpreadsheetApp.getActiveSheet();
+  return TABS[active.getName()] ? active : SpreadsheetApp.getActive().getSheetByName('Pass 2');
 }

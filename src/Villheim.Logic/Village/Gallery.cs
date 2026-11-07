@@ -33,6 +33,12 @@ namespace Villheim.Logic.Village
 
             /// <summary>The middle of the design's pieces, in its own coordinates (locations are not built round their middle).</summary>
             public Vector3 Offset;
+
+            /// <summary>The stage whose materials the design is shown in ('vh gallery ... as meadows'), or -1 for as built.</summary>
+            public int AsStage = -1;
+
+            /// <summary>What the material swap did, for the sign.</summary>
+            public string SwapNote;
             public Role Role;
             public Vector3 Center;
             public float Half;
@@ -82,6 +88,8 @@ namespace Villheim.Logic.Village
 
         public const string Usage =
             "vh gallery [page N]: ten designs a page, in the order of BepInEx/Villheim/design-list.csv ('vh report' writes it). " +
+            "'vh gallery keepers [as <stage>] [page N]' shows only the designs kept in the review, kind by kind, optionally " +
+            "in another stage's materials (e.g. 'vh gallery keepers as meadows page 3'). " +
             "'vh gallery <meadows|blackforest|swamp|mountain|plains|mistlands|ashlands> [all|house|hall|prof|storage|farm] [page N]' " +
             "shows one stage or kind, e.g. 'vh gallery meadows house page 2'. " +
             "'vh gallery next' / 'prev' / 'again' clears the page shown and shows the next, the one before, or the same again. " +
@@ -99,7 +107,7 @@ namespace Villheim.Logic.Village
         internal static readonly string[] StageNames = { "Meadows", "Black Forest", "Swamp", "Mountain", "Plains", "Mistlands", "Ashlands", "Deep North" };
 
         /// <summary>Words for the stages in commands and in the saved last page.</summary>
-        private static readonly string[] StageWords = { "meadows", "blackforest", "swamp", "mountain", "plains", "mistlands", "ashlands", "deepnorth" };
+        internal static readonly string[] StageWords = { "meadows", "blackforest", "swamp", "mountain", "plains", "mistlands", "ashlands", "deepnorth" };
 
         /// <summary>
         /// The first stage a player has each material in. Fine wood and core wood need the bronze axe, coal the
@@ -355,14 +363,14 @@ namespace Villheim.Logic.Village
 
             if (first == "next" || first == "prev" || first == "again")
             {
-                if (!LoadLast(out string lastBiome, out string lastGroup, out int lastPage))
+                if (!LoadLast(out string[] lastArgs, out int lastPage))
                 {
-                    return "Villheim: no gallery page shown yet; start with 'vh gallery meadows house'.";
+                    return "Villheim: no gallery page shown yet; start with 'vh gallery page 1'.";
                 }
 
                 int wanted = first == "next" ? lastPage + 1 : first == "prev" ? Mathf.Max(1, lastPage - 1) : lastPage;
                 Start(player, new[] { "clear" });
-                return Start(player, new[] { lastBiome, lastGroup, "page", wanted.ToString() });
+                return Start(player, lastArgs.Concat(new[] { "page", wanted.ToString() }).ToArray());
             }
 
             Action action = first == "list" ? Action.List : first == "show" ? Action.Show : Action.Page;
@@ -391,11 +399,15 @@ namespace Villheim.Logic.Village
             int stage = -1;
             string group = "all";
             int page = 1;
+            bool keepers = false;
+            int asStage = -1;
             for (int a = 0; a < rest.Length; a++)
             {
                 string word = rest[a].ToLowerInvariant();
                 if (word == "rescan" || word == "all") continue;
-                if (word == "page" && a + 1 < rest.Length && int.TryParse(rest[a + 1], out int n)) { page = Mathf.Max(1, n); a++; }
+                if (word.StartsWith("keep")) keepers = true;
+                else if (word == "as" && a + 1 < rest.Length && StageIndex(rest[a + 1]) >= 0) { asStage = StageIndex(rest[a + 1]); a++; }
+                else if (word == "page" && a + 1 < rest.Length && int.TryParse(rest[a + 1], out int n)) { page = Mathf.Max(1, n); a++; }
                 else if (int.TryParse(word, out int m)) page = Mathf.Max(1, m);
                 else if (StageIndex(word) >= 0) stage = StageIndex(word);
                 else if (word.StartsWith("prof") || word.StartsWith("work") || word.StartsWith("smith")) group = "prof";
@@ -406,9 +418,12 @@ namespace Villheim.Logic.Village
                 else return "Villheim: " + Usage;
             }
 
-            SaveLast(stage < 0 ? "all" : StageWords[stage], group, page);
-            VillheimPlugin.Instance.StartCoroutine(Run(player.transform.position, forward, stage, group, page, rescan));
-            string what = stage < 0 && group == "all" ? "every design" : $"{(stage < 0 ? "all stages" : StageNames[stage])}, {group}";
+            var saved = new List<string> { stage < 0 ? "all" : StageWords[stage], group };
+            if (keepers) saved.Add("keepers");
+            if (asStage >= 0) saved.AddRange(new[] { "as", StageWords[asStage] });
+            SaveLast(saved, page);
+            VillheimPlugin.Instance.StartCoroutine(Run(player.transform.position, forward, stage, group, page, rescan, keepers, asStage));
+            string what = Describe(stage, group, keepers, asStage);
             return $"Villheim: gathering designs ({what}, page {page}).";
         }
 
@@ -533,7 +548,7 @@ namespace Villheim.Logic.Village
         }
 
         /// <summary>Design name and number from the last design-list.csv, if there is one.</summary>
-        private static Dictionary<string, int> ReadNumbers()
+        internal static Dictionary<string, int> ReadNumbers()
         {
             var numbers = new Dictionary<string, int>();
             try
@@ -738,7 +753,12 @@ namespace Villheim.Logic.Village
         private static string Top(Dictionary<string, int> counts) =>
             string.Join(", ", counts.OrderByDescending(k => k.Value).Take(3).Select(k => k.Key)) + (counts.Count > 3 ? ", ..." : "");
 
-        private static IEnumerator Run(Vector3 playerPosition, Vector3 forward, int stage, string group, int page, bool rescan)
+        private static string Describe(int stage, string group, bool keepers, int asStage) =>
+            (keepers ? "keepers" : stage < 0 && group == "all" ? "all designs" : "") +
+            (stage >= 0 || group != "all" ? (keepers ? ", " : "") + $"{(stage < 0 ? "all stages" : StageNames[stage])}, {group}" : "") +
+            (asStage >= 0 ? $", shown as {StageNames[asStage]}" : "");
+
+        private static IEnumerator Run(Vector3 playerPosition, Vector3 forward, int stage, string group, int page, bool rescan, bool keepers, int asStage)
         {
             _running = true;
             var cells = new List<Cell>();
@@ -755,11 +775,18 @@ namespace Villheim.Logic.Village
             string listPath = "";
             Safe("the list", () => listPath = WriteList(cells));
             Role[] roles = Groups[group];
-            List<Cell> chosen = cells.Where(c => roles.Contains(c.Role) && (stage < 0 || c.Stage == stage)).ToList();
-            int pages = Mathf.Max(1, (chosen.Count + PageSize - 1) / PageSize);
-            string what = stage < 0 && group == "all" ? "all designs" : $"{(stage < 0 ? "all stages" : StageNames[stage])}, {group}";
-            Console.instance?.Print($"Villheim: {cells.Count} designs in all; {what}: {chosen.Count} ({pages} pages). Full list: {listPath}");
-            chosen = chosen.Skip((page - 1) * PageSize).Take(PageSize).ToList();
+            var kept = new HashSet<string>(Keepers.Names);
+            List<Cell> matching = cells.Where(c => roles.Contains(c.Role) && (stage < 0 || c.Stage == stage) && (!keepers || kept.Contains(c.Design.Name))).ToList();
+
+            // Keepers go kind by kind, each kind starting a new page, as in the Pass 2 tab of the review sheet.
+            List<List<Cell>> paged = keepers
+                ? Order.SelectMany(role => Chunks(matching.Where(c => c.Role == role).ToList())).ToList()
+                : Chunks(matching);
+            int pages = Mathf.Max(1, paged.Count);
+            string what = Describe(stage, group, keepers, asStage);
+            Console.instance?.Print($"Villheim: {cells.Count} designs in all; {what}: {matching.Count} ({pages} pages). Full list: {listPath}");
+            List<Cell> chosen = page <= paged.Count ? paged[page - 1] : new List<Cell>();
+            chosen.ForEach(c => c.AsStage = asStage);
             if (chosen.Count == 0)
             {
                 Console.instance?.Print($"Villheim: page {page} is empty; {what} has {pages} pages.");
@@ -771,6 +798,18 @@ namespace Villheim.Logic.Village
             MessageHud.instance?.ShowMessage(MessageHud.MessageType.Center, $"Gallery: {what}, page {page} of {pages}");
             yield return Place(chosen, playerPosition, forward);
         }
+
+        private static List<List<Cell>> Chunks(List<Cell> cells)
+        {
+            var chunks = new List<List<Cell>>();
+            for (int i = 0; i < cells.Count; i += PageSize)
+            {
+                chunks.Add(cells.Skip(i).Take(PageSize).ToList());
+            }
+
+            return chunks;
+        }
+
         /// <summary>'vh gallery show': the named designs, wherever they come from, without the stage test.</summary>
         private static IEnumerator ShowNamed(Vector3 playerPosition, Vector3 forward, string[] names)
         {
@@ -812,19 +851,19 @@ namespace Villheim.Logic.Village
 
         private static string LastPath => System.IO.Path.Combine(BepInEx.Paths.BepInExRootPath, "Villheim", "gallery-last-page.txt");
 
-        private static void SaveLast(string biome, string group, int page) =>
-            Safe("the last page", () => System.IO.File.WriteAllText(LastPath, $"{biome} {group} {page}"));
+        /// <summary>The words of the last page shown and its number, kept on disk: "meadows house keepers as plains 3".</summary>
+        private static void SaveLast(List<string> words, int page) =>
+            Safe("the last page", () => System.IO.File.WriteAllText(LastPath, string.Join(" ", words) + " " + page));
 
-        private static bool LoadLast(out string biome, out string group, out int page)
+        private static bool LoadLast(out string[] words, out int page)
         {
-            biome = group = null;
+            words = new string[0];
             page = 1;
             try
             {
                 string[] parts = System.IO.File.ReadAllText(LastPath).Trim().Split(' ');
-                biome = parts[0];
-                group = parts[1];
-                return int.TryParse(parts[2], out page);
+                words = parts.Take(parts.Length - 1).ToArray();
+                return parts.Length >= 1 && int.TryParse(parts[parts.Length - 1], out page);
             }
             catch
             {
@@ -1421,7 +1460,7 @@ namespace Villheim.Logic.Village
             List<DesignSpawner.PlanEntry> plan;
             if (cell.Design.Blueprint != null)
             {
-                plan = Blueprints.Entries(cell.Design.Blueprint);
+                plan = Swapped(Blueprints.Entries(cell.Design.Blueprint), cell);
                 return Spawn(plan, cell, yaw);
             }
 
@@ -1435,13 +1474,51 @@ namespace Villheim.Logic.Village
                     return 0;
                 }
 
-                plan = DesignSpawner.MakePlan(asset, cell.Center, cell.Design.Name.GetStableHashCode(), yaw);
+                plan = Swapped(DesignSpawner.MakePlan(asset, cell.Center, cell.Design.Name.GetStableHashCode(), yaw, false), cell);
                 return Spawn(plan, cell, yaw);
             }
             finally
             {
                 location.m_prefab.Release();
             }
+        }
+
+        /// <summary>The plan in the materials the page asked for ('as meadows'), or as it is.</summary>
+        private static List<DesignSpawner.PlanEntry> Swapped(List<DesignSpawner.PlanEntry> plan, Cell cell)
+        {
+            if (cell.AsStage < 0)
+            {
+                return plan;
+            }
+
+            var result = new MaterialSwap.Result();
+            List<DesignSpawner.PlanEntry> swapped = MaterialSwap.Apply(plan, cell.AsStage, result);
+            cell.SwapNote = $"as {StageNames[cell.AsStage]}: {result.Swapped} swapped" + (result.Kept > 0 ? $", {result.Kept} kept" : "");
+            VillheimPlugin.Log.LogInfo($"Gallery: {cell.Design.Name} as {StageNames[cell.AsStage]}: {result.Summary(cell.AsStage)}.");
+            return swapped;
+        }
+
+        /// <summary>The stage of one piece (0 for anything unknown).</summary>
+        internal static int StageOfPiece(string prefab)
+        {
+            PieceInfo info = Info(prefab);
+            return info.Buildable ? info.Stage : 0;
+        }
+
+        /// <summary>A building piece (wall, floor, roof, beam, door, window) a player can build.</summary>
+        internal static bool IsBuildingPiece(string prefab)
+        {
+            PieceInfo info = Info(prefab);
+            return info.Known && info.Buildable && info.Building;
+        }
+
+        internal static int StageIndexOf(string word) => StageIndex(word);
+
+        /// <summary>A building piece a player can build, with materials of known stages: a candidate for material swaps.</summary>
+        internal static bool IsSwappable(string prefab)
+        {
+            PieceInfo info = Info(prefab);
+            return info.Known && info.Buildable && info.Building && info.OtherMaterial == null;
         }
 
         private static int Spawn(List<DesignSpawner.PlanEntry> plan, Cell cell, float yaw)
@@ -1509,7 +1586,8 @@ namespace Villheim.Logic.Village
         private static void Sign(Cell cell, Vector3 forward)
         {
             Vector3 at = cell.Center - forward * (cell.Half - 1f);
-            string text = $"<#5cf>{Label(cell)}, {StageNames[cell.Stage]}<br><#fff>{cell.Design.Name}<br><#bbb>{(cell.Number > 0 ? $"No. {cell.Number}, " : "")}by {Creator(cell.Design)}";
+            string text = $"<#5cf>{Label(cell)}, {StageNames[cell.Stage]}<br><#fff>{cell.Design.Name}<br><#bbb>{(cell.Number > 0 ? $"No. {cell.Number}, " : "")}by {Creator(cell.Design)}" +
+                          (cell.SwapNote != null ? $"<br><#fc6>{cell.SwapNote}" : "");
             if (cell.Number <= 0)
             {
                 PutSign(at, forward, text);

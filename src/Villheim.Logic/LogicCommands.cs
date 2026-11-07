@@ -19,7 +19,7 @@ namespace Villheim.Logic
             "settle (or newvillage): light a new village hearth in front of you",
             "ghost: apply the look settings now and show the shader in use",
             "flatten [size]: clear everything from an area in front of you (360 by 260 m, enough for any gallery page) and level it at your feet's height, as far as the game allows; touch it up by hand, then 'gallery' lays out on it",
-            "gallery [stage] [all|house|hall|prof|storage|farm] [page N]: ten designs a page on the flattened area, numbered as in design-list.csv (no stage: every design); then 'gallery next' (or prev, again); 'gallery show <name...>'; 'gallery clear'",
+            "gallery [keepers] [stage] [all|house|hall|prof|storage|farm] [as <stage>] [page N]: ten designs a page on the flattened area, numbered as in design-list.csv; 'keepers' shows only the designs kept in the review, kind by kind; 'as meadows' shows them in Meadows materials; then 'gallery next' (or prev, again); 'gallery show <name...>'; 'gallery clear'",
             "act <villager|near> <action> [seconds]: make one villager do one thing, to test it ('vh act near' lists the actions)",
             "board [now]: show the notice board's blueprint, place and what it waits for ('now' puts it up at once, free)",
             "beds: list the beds round the nearest village, whether they count and who sleeps in each",
@@ -42,6 +42,7 @@ namespace Villheim.Logic
             "raid: send a raid to the nearest village (comes at once if it is night)",
             "blueprints: list the blueprints villages can build (BepInEx/config/Villheim/blueprints, PlanBuild's folder)",
             "savebp <role-family-level> [radius]: save the building pieces around you as a blueprint, e.g. savebp house-cabin-1 8",
+            "bp swap <number|name> <stage>: save a copy of a design with its walls, floors, roofs and beams in that stage's materials (to blueprints/inspiration/edits)",
         };
 
         public static string[] CommandHelp() => Help;
@@ -167,6 +168,7 @@ namespace Villheim.Logic
                 case "villheim_village": InspectVillage(context); return true;
                 case "villheim_raid": ForceRaid(context); return true;
                 case "villheim_savebp": SaveBlueprint(args, context); return true;
+                case "villheim_bp": Say(context, BlueprintEdits.Run(args)); return true;
                 default: return false;
             }
         }

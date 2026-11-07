@@ -17,6 +17,10 @@ typed in the in-game console (F5) unless it says otherwise.
      Storage, Defence. Community: Hearth, Tavern, Longhouse, Decor. Decor is village decor: things with no job that
      make the village look lived in (a water wheel, an outhouse, later gardens), built in idle time, the village's own
      d1, d2, d3. Sort knife B.
+   - **Phase B2, crafting trades.** Work designs sorted as Crafting get a finer trade: Harbour (docks, boathouses,
+     shipyards, fishing), Masonry (stonecutter, quarry), Weaving (spinning wheel, looms, tailoring), Hunting (hunters,
+     fletchers, tanners), Arcane (galdr table, eitr refinery, wizard towers, herbs), or Workshop (general crafting
+     that fits none of these). Sort knife B2.
    - **Phase C, biome.** Each design gets the biome it suits best, and its materials are fixed for that biome with the
      Shaper Tool inside a marked plot.
    - **Slotting.** Designs of one biome and subtype are put side by side and grouped under one base ID, each in a
@@ -88,6 +92,10 @@ at a design shows its number, name and current sort at the top left.
 
 - The first line of each sign shows the sort in colour (grey Unsorted, green Home, purple Work, teal Community, red
   Drop), and the big number above the sign takes the same colour, so the field shows what is left to do.
+Sort knife B2 is the chitin knife (config SortToolB2), **Villheim Sort Tool B2: Crafting**, glowing green. It only
+works on Work designs sorted as Crafting: 1 Harbour, 2 Masonry, 3 Weaving, 4 Hunting, 5 Arcane, 6 Workshop, 7 Clear
+(back to Crafting), 8 Undo. Put them up with `vh gallery keepers type crafting`.
+
 - Changing a design's type clears its subtype.
 - Each choice is saved the moment you click; there is nothing to save by page. `vh gallery next` goes on.
 - A design that is done for the knife's phase leaves the field at once (phase A: it has a type; phase B: it has a
@@ -98,7 +106,9 @@ at a design shows its number, name and current sort at the top left.
   2 tab at once.
 - Pages by sort: `vh gallery keepers type work` (or `home`, `community`, `drop`, `unsorted`, `nosubtype`, or a
   subtype such as `farming`). Phase B: `vh gallery keepers type nosubtype` shows only the work and community designs
-  still without a subtype.
+  still without a subtype. On the to-do lists (`type unsorted`, `type nosubtype`, `type crafting`), `vh gallery next`
+  shows the first page again, which holds whatever is still left (the list shrinks as you sort, so a page 2 would
+  skip designs).
 - `vh sort` shows the counts and the sheet's last answer; `vh sort undo`; `vh sort push` sends every choice to the
   sheet again.
 - `vh sort reset page N` puts every design of keepers page N back to unsorted, in the game and the sheet; `vh sort

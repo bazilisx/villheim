@@ -56,6 +56,7 @@ with its own look for its biome.
   Community 84, Home 53, Drop 1.
 - [ ] Phase B: subtypes for Work (Farming, Woodworking, Mining, Cooking, Crafting, Storage, Defence) and Community
   (Hearth, Tavern, Longhouse, Decor: village decor built in idle time, such as water wheels, outhouses, gardens).
+- [ ] Phase B2: Crafting split into Harbour, Masonry, Weaving, Hunting, Arcane, Workshop (sort knife B2, chitin).
 - [ ] Phase C: biome per design, and material fixes inside plots marked by green-tinted horizontal wood beams; save
   inside the plot keeps everything in it. A saved design is taken down from the field (it comes back from its save
   when the page is put up again). A third knife for phase C.

@@ -11,13 +11,18 @@ namespace Villheim.Logic.Village
 {
     /// <summary>
     /// Sorting the kept designs in the game, one sort knife per phase (vanilla knives, renamed and glowing in their own
-    /// colour; config SortToolA and SortToolB; 'vh sort tools' gives both).
+    /// colour; config SortToolA, SortToolB and SortToolB2; 'vh sort tools' gives all three).
     ///
     /// Phase A (flint knife): every design gets one type. Hotbar 1 Home, 2 Work, 3 Community, 4 Drop, 7 Clear, 8 Undo.
     /// Phase B (copper knife): work and community designs get a subtype. The hotbar follows the type of the design under
     ///   the crosshair: work 1 Farming, 2 Woodworking, 3 Mining, 4 Cooking, 5 Crafting, 6 Storage, 7 Defence;
     ///   community 1 Hearth, 2 Tavern, 3 Longhouse, 4 Decor (village decor: pieces that only make the village look
     ///   lived in, such as a water wheel, an outhouse or a garden), 7 Clear. 8 Undo in both.
+    ///
+    /// Phase B2 (chitin knife): Work designs sorted as Crafting get a finer trade. 1 Harbour (docks, boathouses,
+    ///   shipyards, fishing), 2 Masonry (stonecutter, quarry), 3 Weaving (spinning, looms, tailoring), 4 Hunting
+    ///   (hunters, fletchers, tanners), 5 Arcane (galdr table, eitr, wizard towers, herbs), 6 Workshop (general crafting
+    ///   that fits none of these), 7 Clear (back to Crafting), 8 Undo.
     ///
     /// A key picks a choice (the same key again puts it down); left click on any piece or the sign of a design, up to
     /// 80 m away, gives it that choice. The design's sign and floating number change colour at once. Every choice is
@@ -43,6 +48,10 @@ namespace Villheim.Logic.Village
         public static readonly string[] Types = { "Home", "Work", "Community", "Drop" };
         public static readonly string[] WorkSubtypes = { "Farming", "Woodworking", "Mining", "Cooking", "Crafting", "Storage", "Defence" };
         public static readonly string[] CommunitySubtypes = { "Hearth", "Tavern", "Longhouse", "Decor" };
+        public static readonly string[] CraftingSubtypes = { "Harbour", "Masonry", "Weaving", "Hunting", "Arcane", "Workshop" };
+        private static readonly string[] LabelsB2 = { "Harbour", "Masonry", "Weaving", "Hunting", "Arcane", "Workshop", "Clear", "Undo" };
+        private static readonly string[] IconsB2 =
+            { "FishingRod", "piece_stonecutter", "piece_spinningwheel", "Bow", "piece_magetable", "piece_artisanstation", "Hoe", "Feathers" };
 
         private static readonly string[] LabelsA = { "Home", "Work", "Community", "Drop", "", "", "Clear", "Undo" };
         private static readonly string[] LabelsWork = { "Farming", "Woodwork", "Mining", "Cooking", "Crafting", "Storage", "Defence", "Undo" };
@@ -55,7 +64,7 @@ namespace Villheim.Logic.Village
         private const int KeyClear = 7, KeyUndo = 8;
         private const float Reach = 80f;
 
-        private enum Phase { None, A, B }
+        private enum Phase { None, A, B, B2 }
 
         private static Phase _phase;
         private static int _key;
@@ -156,7 +165,7 @@ namespace Villheim.Logic.Village
             if (word.StartsWith("unsort")) return "unsorted";
             if (word == "any" || word == "everything") return "any";
             if (word.StartsWith("nosub")) return "nosubtype";
-            foreach (string t in Types.Concat(WorkSubtypes).Concat(CommunitySubtypes))
+            foreach (string t in Types.Concat(WorkSubtypes).Concat(CommunitySubtypes).Concat(CraftingSubtypes))
             {
                 if (t.ToLowerInvariant().StartsWith(word) && word.Length >= 3)
                 {
@@ -317,7 +326,9 @@ namespace Villheim.Logic.Village
 
         /// <summary>Phase A is done with a design once it has a type, phase B once a work or community design has a subtype.</summary>
         private static bool DoneForPhase(Entry e) =>
-            _phase == Phase.A ? e.Type.Length > 0 : _phase == Phase.B && e.Subtype.Length > 0;
+            _phase == Phase.A ? e.Type.Length > 0 :
+            _phase == Phase.B ? e.Subtype.Length > 0 :
+            _phase == Phase.B2 && CraftingSubtypes.Contains(e.Subtype);
 
         /// <summary>
         /// For a page put up with no type filter (phase A): leave out the designs that already have a type, unless
@@ -454,6 +465,9 @@ namespace Villheim.Logic.Village
 
         private static string ToolA => LogicConfig.SortToolA?.Value ?? "KnifeFlint";
         private static string ToolB => LogicConfig.SortToolB?.Value ?? "KnifeCopper";
+        private static string ToolB2 => LogicConfig.SortToolB2?.Value ?? "KnifeChitin";
+        private static readonly Color ColourB2 = new Color(0.35f, 0.95f, 0.45f);
+        private const string NameB2 = "Villheim Sort Tool B2: Crafting";
         private static readonly Color ColourA = new Color(1f, 0.72f, 0.2f);
         private static readonly Color ColourB = new Color(0.72f, 0.45f, 1f);
         private const string NameA = "Villheim Sort Tool A: Type";
@@ -465,6 +479,7 @@ namespace Villheim.Logic.Village
             string left = player.GetLeftItem()?.m_dropPrefab?.name;
             if (right == ToolA || left == ToolA) return Phase.A;
             if (right == ToolB || left == ToolB) return Phase.B;
+            if (right == ToolB2 || left == ToolB2) return Phase.B2;
             return Phase.None;
         }
 
@@ -478,7 +493,7 @@ namespace Villheim.Logic.Village
             }
 
             var given = new List<string>();
-            foreach (string name in new[] { ToolA, ToolB })
+            foreach (string name in new[] { ToolA, ToolB, ToolB2 })
             {
                 GameObject prefab = ObjectDB.instance.GetItemPrefab(name);
                 if (prefab != null)
@@ -489,7 +504,7 @@ namespace Villheim.Logic.Village
             }
 
             return $"Sort: {string.Join(" and ", given)} are in your inventory. The flint knife sorts by type (phase A), the copper knife by subtype (phase B). " +
-                   "Put them on quick slots; with one in hand, a hotbar key picks a choice and left click on a design gives it that choice.";
+                   "The chitin knife (B2) splits Crafting into finer trades. Put them on quick slots; with one in hand, a hotbar key picks a choice and left click on a design gives it that choice.";
         }
 
         private static readonly Dictionary<string, (string Name, string Description)> OldNames = new Dictionary<string, (string, string)>();
@@ -498,6 +513,7 @@ namespace Villheim.Logic.Village
         private static void Identity()
         {
             Rename(ToolA, NameA, "Villheim design review, phase A: hotbar 1 Home, 2 Work, 3 Community, 4 Drop, 7 Clear, 8 Undo; left click a design to sort it.");
+            Rename(ToolB2, NameB2, "Villheim design review, phase B2: work designs sorted as Crafting get a trade: 1 Harbour, 2 Masonry, 3 Weaving, 4 Hunting, 5 Arcane, 6 Workshop, 7 Clear, 8 Undo.");
             Rename(ToolB, NameB, "Villheim design review, phase B: the hotbar shows the subtypes for the design under the crosshair (work or community); left click a design to sort it.");
         }
 
@@ -514,7 +530,7 @@ namespace Villheim.Logic.Village
             shared.m_description = description;
         }
 
-        private static Color PhaseColour(Phase phase) => phase == Phase.B ? ColourB : ColourA;
+        private static Color PhaseColour(Phase phase) => phase == Phase.B ? ColourB : phase == Phase.B2 ? ColourB2 : ColourA;
 
         private static void Glow(Player player)
         {
@@ -549,7 +565,7 @@ namespace Villheim.Logic.Village
             foreach (ItemDrop drop in ItemDrop.s_instances)
             {
                 string name = drop != null ? Utils.GetPrefabName(drop.gameObject) : null;
-                Phase phase = name == ToolA ? Phase.A : name == ToolB ? Phase.B : Phase.None;
+                Phase phase = name == ToolA ? Phase.A : name == ToolB ? Phase.B : name == ToolB2 ? Phase.B2 : Phase.None;
                 if (phase == Phase.None)
                 {
                     continue;
@@ -588,6 +604,10 @@ namespace Villheim.Logic.Village
                         if (held == Phase.A)
                         {
                             Say("Sort A (type) on: 1 Home, 2 Work, 3 Community, 4 Drop, 7 Clear, 8 Undo. Press a key, then left click designs.");
+                        }
+                        else if (held == Phase.B2)
+                        {
+                            Say("Sort B2 (crafting trades) on: 1 Harbour, 2 Masonry, 3 Weaving, 4 Hunting, 5 Arcane, 6 Workshop, 7 Clear, 8 Undo. Press a key, then left click Crafting designs.");
                         }
                         else if (held == Phase.B)
                         {
@@ -680,8 +700,8 @@ namespace Villheim.Logic.Village
         /// <summary>The hotbar set for phase B: community choices when aiming at a community design, else work.</summary>
         private static bool CommunitySet => TypeOf(_aimed) == "Community";
 
-        private static string[] Labels => _phase == Phase.A ? LabelsA : CommunitySet ? LabelsCommunity : LabelsWork;
-        private static string[] IconNames => _phase == Phase.A ? IconsA : CommunitySet ? IconsCommunity : IconsWork;
+        private static string[] Labels => _phase == Phase.A ? LabelsA : _phase == Phase.B2 ? LabelsB2 : CommunitySet ? LabelsCommunity : LabelsWork;
+        private static string[] IconNames => _phase == Phase.A ? IconsA : _phase == Phase.B2 ? IconsB2 : CommunitySet ? IconsCommunity : IconsWork;
 
         [HarmonyPatch(typeof(Player), nameof(Player.UseHotbarItem))]
         internal static class HotbarPatch
@@ -790,6 +810,24 @@ namespace Villheim.Logic.Village
 
                         e.Type = choice;
                     }));
+                return;
+            }
+
+            if (_phase == Phase.B2)
+            {
+                Entry current = Get(design);
+                if (current == null || current.Type != "Work" || current.Subtype != "Crafting" && !CraftingSubtypes.Contains(current.Subtype))
+                {
+                    Say($"Sort B2: No. {number} is not a Crafting design; the chitin knife only splits Crafting into trades.");
+                    return;
+                }
+
+                string trade = _key == KeyClear ? "Crafting" : _key - 1 < CraftingSubtypes.Length ? CraftingSubtypes[_key - 1] : null;
+                if (trade != null)
+                {
+                    Say(Apply(design, number, e => e.Subtype = trade));
+                }
+
                 return;
             }
 
@@ -986,7 +1024,7 @@ namespace Villheim.Logic.Village
                     int subtyped = Entries.Values.Count(e => e.Subtype.Length > 0);
                     return $"Sort: {string.Join(", ", counts)}; {subtyped} with a subtype. Kept in {FilePath}. Sheet: {(SheetUrl.Length == 0 ? "off" : _lastSheetResult)}.\n" +
                            "'vh sort tools' gives the sort knives; 'vh sort undo'; 'vh sort reset page N|all'; 'vh sort push' sends everything to the sheet; 'vh sort url <address>'; " +
-                           "'vh gallery keepers type <home|work|community|drop|unsorted|nosubtype|farming...>' shows only those designs.";
+                           "'vh gallery keepers type <home|work|community|drop|unsorted|nosubtype|crafting|farming...>' shows only those designs.";
             }
         }
 

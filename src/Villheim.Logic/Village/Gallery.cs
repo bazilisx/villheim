@@ -449,7 +449,11 @@ namespace Villheim.Logic.Village
                            $" The rest of page {lastPage}: {overflow.Count} designs that did not fit.";
                 }
 
-                int wanted = first == "next" ? lastPage + 1 : first == "prev" ? Mathf.Max(1, lastPage - 1) : lastPage;
+                // A to-do list (unsorted, nosubtype, crafting) shrinks as designs are sorted, so its page 2 would skip a
+                // page's worth: next shows its first page again, which holds whatever is still left.
+                int type = System.Array.IndexOf(lastArgs, "type");
+                bool todo = type >= 0 && type + 1 < lastArgs.Length && (lastArgs[type + 1] == "unsorted" || lastArgs[type + 1] == "nosubtype" || lastArgs[type + 1] == "crafting");
+                int wanted = todo ? 1 : first == "next" ? lastPage + 1 : first == "prev" ? Mathf.Max(1, lastPage - 1) : lastPage;
                 return Start(player, lastArgs.Concat(new[] { "page", wanted.ToString() }).ToArray());
             }
 

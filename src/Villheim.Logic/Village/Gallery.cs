@@ -108,6 +108,59 @@ namespace Villheim.Logic.Village
             Show,
         }
 
+        private static bool _autoListStarted;
+
+        /// <summary>
+        /// Writes the full design lists by itself once a world is loaded (Meadows and Black Forest), so they are never
+        /// forgotten: BepInEx/Villheim/gallery-list-Meadows.csv and gallery-list-BlackForest.csv, with every design's kind
+        /// and gallery page. Nothing is put up; only files are read. Later loads are quick (what each location is, is cached).
+        /// </summary>
+        public static void StartAutoList()
+        {
+            if (_autoListStarted || VillheimPlugin.Instance == null)
+            {
+                return;
+            }
+
+            _autoListStarted = true;
+            VillheimPlugin.Instance.StartCoroutine(AutoList());
+        }
+
+        private static IEnumerator AutoList()
+        {
+            while (Player.m_localPlayer == null || ZNetScene.instance == null || ZoneSystem.instance == null)
+            {
+                yield return new WaitForSeconds(5f);
+            }
+
+            yield return new WaitForSeconds(20f);
+            while (_running)
+            {
+                yield return new WaitForSeconds(5f);
+            }
+
+            _running = true;
+            var written = new List<string>();
+            try
+            {
+                foreach (Heightmap.Biome biome in new[] { Heightmap.Biome.Meadows, Heightmap.Biome.BlackForest })
+                {
+                    var cells = new List<Cell>();
+                    yield return Gather(biome, false, cells);
+                    string path = "";
+                    Safe("the list", () => path = WriteList(biome, cells));
+                    written.Add($"{biome}: {cells.Count} designs ({string.Join(", ", Order.Select(r => $"{Kind(r)} {cells.Count(c => c.Role == r)}"))})");
+                }
+            }
+            finally
+            {
+                _running = false;
+            }
+
+            VillheimPlugin.Log.LogInfo("Gallery lists written to BepInEx/Villheim: " + string.Join("; ", written) + ".");
+            MessageHud.instance?.ShowMessage(MessageHud.MessageType.TopLeft, "Villheim: design lists written (BepInEx/Villheim/gallery-list-*.csv)");
+        }
+
         /// <summary>'vh gallery ...' (see Usage).</summary>
         public static string Start(Player player, string[] args)
         {

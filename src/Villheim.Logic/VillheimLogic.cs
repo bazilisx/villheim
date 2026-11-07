@@ -32,6 +32,7 @@ namespace Villheim.Logic
             LogicConfig.Bind();
             ConfigWatcher.Start();
             Designs.DesignReport.StartIfStale(System.TimeSpan.FromMinutes(30));
+            Village.Gallery.StartAutoList();
         }
 
         public void OnUnload()

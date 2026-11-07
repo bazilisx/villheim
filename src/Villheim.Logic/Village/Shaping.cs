@@ -16,7 +16,9 @@ namespace Villheim.Logic.Village
     /// 5 Part: picks the structure aimed at (green; a hut beside a hall) so Move moves only that; 5 again lets go.
     /// 6 Delete: removes what is aimed at, creatures and traders included (never a player).
     /// 7 Save: saves the design aimed at as it stands (as 'vh bp save'); press twice to confirm.
-    /// 8 Look: names what is aimed at (as 'vh look').
+    /// 8 Delete all: every object with the aimed object's name in that design glows orange; press again within 6
+    ///   seconds to delete them all (outside a design: everything of that name within 20 m).
+    /// While the rod is in hand, look is on: the aimed object glows orange and its name shows in the middle of the screen.
     ///
     /// Putting the rod away ends Shaping. Nothing needs a restart: the rod is an existing item.
     /// </summary>
@@ -28,10 +30,16 @@ namespace Villheim.Logic.Village
         private static bool _moving;
         private static string _saveArmed;
         private static float _saveUntil;
+        private static bool _lookBefore;
+        private static string _massArmed;
+        private static float _massUntil;
+        private static readonly List<ZNetView> Marked = new List<ZNetView>();
+        private static readonly int Emission = Shader.PropertyToID("_EmissionColor");
+        private const float MassRadius = 20f;
 
-        private static readonly string[] Labels = { "Swap", "Turn", "Undo", "Move", "Part", "Delete", "Save", "Look" };
+        private static readonly string[] Labels = { "Swap", "Turn", "Undo", "Move", "Part", "Delete", "Save", "Del all" };
         private static readonly string[] IconSources =
-            { "Hammer", "ShieldWood", "Feathers", "ArrowWood", "BoneFragments", "BombOoze", "piece_chest_wood", "Wishbone" };
+            { "Hammer", "ShieldWood", "Feathers", "ArrowWood", "BoneFragments", "BombOoze", "piece_chest_wood", "BombBile" };
 
         private static Sprite[] _icons;
 
@@ -50,7 +58,7 @@ namespace Villheim.Logic.Village
 
             player.PickupPrefab(prefab, 1, false);
             return $"Villheim: a shaping rod ({name}) is in your inventory. Put it on a quick slot; with it in hand, hotbar 1 to 8 edit gallery designs " +
-                   "(1 Swap, 2 Turn, 3 Undo, 4 Move, 5 Part, 6 Delete, 7 Save, 8 Look; left click is Swap).";
+                   "(1 Swap, 2 Turn, 3 Undo, 4 Move, 5 Part, 6 Delete, 7 Save, 8 Delete all; left click is Swap) and what you aim at glows orange.";
         }
 
         private static bool Holding(Player player)
@@ -83,15 +91,24 @@ namespace Villheim.Logic.Village
                         if (holding)
                         {
                             SwapTool.Activate();
-                            Say("Shaping on: 1 Swap, 2 Turn, 3 Undo, 4 Move, 5 Part, 6 Delete, 7 Save, 8 Look. Left click is Swap.");
+                            _lookBefore = LookAt.On;
+                            LookAt.SetOn(true);
+                            Say("Shaping on: 1 Swap, 2 Turn, 3 Undo, 4 Move, 5 Part, 6 Delete, 7 Save, 8 Delete all. Left click is Swap.");
                         }
                         else
                         {
                             _moving = false;
                             _saveArmed = null;
+                            Disarm();
                             SwapTool.Release();
+                            LookAt.SetOn(_lookBefore);
                             Say("Shaping off.");
                         }
+                    }
+
+                    if (_massArmed != null && Time.time > _massUntil)
+                    {
+                        Disarm();
                     }
 
                     if (_active && _moving && !Typing())
@@ -247,13 +264,13 @@ namespace Villheim.Logic.Village
                 case 3: return _moving ? "Move ON" : "Move";
                 case 4: return SwapTool.PartLocked ? "Part ON" : "Part";
                 case 6: return _saveArmed != null && Time.time < _saveUntil ? "Save?" : "Save";
-                case 7: return LookAt.On ? "Look ON" : "Look";
+                case 7: return _massArmed != null ? "Del all?" : "Del all";
                 default: return Labels[i];
             }
         }
 
         private static bool On(int i) =>
-            i == 3 && _moving || i == 4 && SwapTool.PartLocked || i == 6 && _saveArmed != null && Time.time < _saveUntil || i == 7 && LookAt.On;
+            i == 3 && _moving || i == 4 && SwapTool.PartLocked || i == 6 && _saveArmed != null && Time.time < _saveUntil || i == 7 && _massArmed != null;
 
         private static void LoadIcons()
         {
@@ -305,7 +322,7 @@ namespace Villheim.Logic.Village
                     Save(player);
                     break;
                 case 8:
-                    Say(LookAt.Toggle(new string[0]));
+                    DeleteAll(player);
                     break;
             }
         }
@@ -332,13 +349,14 @@ namespace Villheim.Logic.Village
             SwapTool.MoveBy(player, move * step);
         }
 
-        /// <summary>Removes what the crosshair is on within 6 m: a piece, a creature, a trader; never a player.</summary>
-        private static void Delete(Player player)
+        /// <summary>The object under the crosshair within 6 m, creatures and traders included, never a player; null for none.</summary>
+        private static ZNetView Aimed(Player player, out string why)
         {
+            why = "nothing within reach under the crosshair";
             Transform eye = GameCamera.instance != null ? GameCamera.instance.transform : null;
             if (eye == null)
             {
-                return;
+                return null;
             }
 
             RaycastHit[] hits = Physics.RaycastAll(eye.position, eye.forward, 40f, ~0, QueryTriggerInteraction.Ignore);
@@ -352,24 +370,113 @@ namespace Villheim.Logic.Village
 
                 if (Vector3.Distance(player.transform.position + Vector3.up, hit.point) > DeleteReach)
                 {
-                    break;
+                    return null;
                 }
 
                 ZNetView view = hit.collider.GetComponentInParent<ZNetView>();
                 if (view == null || !view.IsValid())
                 {
-                    Say("Delete: that is the ground or part of the world.");
-                    return;
+                    why = "that is the ground or part of the world";
+                    return null;
                 }
 
-                string name = Utils.GetPrefabName(view.gameObject);
-                view.ClaimOwnership();
-                ZNetScene.instance.Destroy(view.gameObject);
-                Say($"Deleted {name}.");
+                return view;
+            }
+
+            return null;
+        }
+
+        /// <summary>Removes what the crosshair is on within 6 m: a piece, a creature, a trader; never a player.</summary>
+        private static void Delete(Player player)
+        {
+            ZNetView view = Aimed(player, out string why);
+            if (view == null)
+            {
+                Say("Delete: " + why + ".");
                 return;
             }
 
-            Say("Delete: nothing within reach under the crosshair.");
+            string name = Utils.GetPrefabName(view.gameObject);
+            view.ClaimOwnership();
+            ZNetScene.instance.Destroy(view.gameObject);
+            Say($"Deleted {name}.");
+        }
+
+        /// <summary>
+        /// First press: every object with the aimed object's name in its design (or within 20 m, outside a design) glows
+        /// orange and a question shows. Second press within 6 seconds, aimed at any of them or anywhere: all are deleted.
+        /// </summary>
+        private static void DeleteAll(Player player)
+        {
+            if (_massArmed != null && Time.time <= _massUntil)
+            {
+                int deleted = 0;
+                foreach (ZNetView view in Marked)
+                {
+                    if (view != null && view.IsValid())
+                    {
+                        view.ClaimOwnership();
+                        ZNetScene.instance.Destroy(view.gameObject);
+                        deleted++;
+                    }
+                }
+
+                string name = _massArmed;
+                Marked.Clear();
+                _massArmed = null;
+                Say($"Deleted {deleted} {name}.");
+                return;
+            }
+
+            Disarm();
+            ZNetView aimed = Aimed(player, out string why);
+            if (aimed == null)
+            {
+                Say("Delete all: " + why + ".");
+                return;
+            }
+
+            string prefab = Utils.GetPrefabName(aimed.gameObject);
+            string design = aimed.GetZDO().GetString(Gallery.KeyDesign, "");
+            Vector3 around = aimed.transform.position;
+            foreach (ZNetView view in ZNetScene.instance.m_instances.Values)
+            {
+                if (view == null || !view.IsValid() || view.GetComponent<Player>() != null || Utils.GetPrefabName(view.gameObject) != prefab)
+                {
+                    continue;
+                }
+
+                bool inScope = design.Length > 0
+                    ? view.GetZDO().GetString(Gallery.KeyDesign, "") == design
+                    : Vector3.Distance(view.transform.position, around) <= MassRadius;
+                if (inScope)
+                {
+                    Marked.Add(view);
+                    MaterialMan.instance?.SetValue(view.gameObject, Emission, new Color(0.9f, 0.45f, 0.05f));
+                }
+            }
+
+            _massArmed = prefab;
+            _massUntil = Time.time + 6f;
+            string where = design.Length > 0 ? $"in {design}" : $"within {MassRadius:0} m";
+            string question = $"Delete all {Marked.Count} {prefab} {where}?\nPress 8 again within 6 seconds.";
+            MessageHud.instance?.ShowMessage(MessageHud.MessageType.Center, question);
+            Say(question.Replace("\n", " "));
+        }
+
+        /// <summary>Lets a Delete all question lapse: the orange goes and nothing is deleted.</summary>
+        private static void Disarm()
+        {
+            foreach (ZNetView view in Marked)
+            {
+                if (view != null && view.gameObject != null)
+                {
+                    MaterialMan.instance?.ResetValue(view.gameObject, Emission);
+                }
+            }
+
+            Marked.Clear();
+            _massArmed = null;
         }
 
         /// <summary>Saves the design aimed at (or the last picked) on the second press within 6 seconds.</summary>

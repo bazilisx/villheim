@@ -6,10 +6,9 @@ using UnityEngine;
 namespace Villheim.Logic.Village
 {
     /// <summary>
-    /// 'vh look': names the object under the crosshair within 4 m (about 13 feet): its prefab name, its building kind
-    /// and size, the stage it belongs to and what the material swap turns it into for each earlier stage. Shown at
-    /// the top left when the crosshair moves to something new, and each new name is added to
-    /// BepInEx/Villheim/looked-at.txt, to find hidden pieces (dvergrprops_wood_wall and the like) that need pairing.
+    /// 'vh look' (always on while the shaping rod is in hand): the object under the crosshair within 4 m glows orange and
+    /// its name (and what it stands in for) shows in the middle of the screen. The full description (kind, size, stage,
+    /// what the material swap makes of it) goes to the console, and each new name to BepInEx/Villheim/looked-at.txt.
     /// 'vh look' again turns it off.
     /// </summary>
     internal static class LookAt
@@ -19,16 +18,30 @@ namespace Villheim.Logic.Village
         private static bool _on;
         private static float _next;
         private static string _last;
+        private static GameObject _lastObject;
+        private static GameObject _painted;
+        private static readonly int Emission = Shader.PropertyToID("_EmissionColor");
         private static readonly HashSet<string> Seen = new HashSet<string>();
 
         public static string FilePath => Path.Combine(BepInEx.Paths.BepInExRootPath, "Villheim", "looked-at.txt");
 
         public static bool On => _on;
 
+        /// <summary>Turns look on or off without a message (Shaping turns it on while the rod is in hand).</summary>
+        public static void SetOn(bool on)
+        {
+            _on = on;
+            _last = null;
+            _lastObject = null;
+            if (!on)
+            {
+                Unpaint();
+            }
+        }
+
         public static string Toggle(string[] args)
         {
-            _on = args.Length > 0 ? args[0].ToLowerInvariant() != "off" : !_on;
-            _last = null;
+            SetOn(args.Length > 0 ? args[0].ToLowerInvariant() != "off" : !_on);
             return _on
                 ? $"Villheim: look is on. Point at something within {Reach:0} m to see its name; each new one is saved to {FilePath}. 'vh look' again turns it off."
                 : "Villheim: look is off.";
@@ -91,25 +104,50 @@ namespace Villheim.Logic.Village
             GameObject target = Target(player);
             if (target == null)
             {
+                Unpaint();
+                _lastObject = null;
                 return;
             }
 
+            if (target == _lastObject)
+            {
+                return;
+            }
+
+            _lastObject = target;
+            Unpaint();
+            if (!SwapTool.IsLit(target))
+            {
+                MaterialMan.instance?.SetValue(target, Emission, new Color(0.9f, 0.45f, 0.05f));
+                _painted = target;
+            }
+
             string prefab = Utils.GetPrefabName(target);
+            string from = target.GetComponent<ZNetView>()?.GetZDO()?.GetString(Gallery.KeySwappedFrom, "") ?? "";
+            MessageHud.instance?.ShowMessage(MessageHud.MessageType.Center, prefab + (from.Length > 0 ? $"\n(stands in for {from})" : ""));
             if (prefab == _last)
             {
                 return;
             }
 
             _last = prefab;
-            string from = target.GetComponent<ZNetView>()?.GetZDO()?.GetString(Gallery.KeySwappedFrom, "") ?? "";
             string text = MaterialSwap.Describe(prefab) + (from.Length > 0 ? $" (stands in for {from})" : "");
-            MessageHud.instance?.ShowMessage(MessageHud.MessageType.TopLeft, "Look: " + text);
             Console.instance?.Print("Look: " + text);
             if (Seen.Add(prefab))
             {
                 Directory.CreateDirectory(Path.GetDirectoryName(FilePath));
                 File.AppendAllText(FilePath, text + System.Environment.NewLine);
             }
+        }
+
+        private static void Unpaint()
+        {
+            if (_painted != null)
+            {
+                MaterialMan.instance?.ResetValue(_painted, Emission);
+            }
+
+            _painted = null;
         }
     }
 }

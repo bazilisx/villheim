@@ -69,7 +69,11 @@ another tool) and the hotbar is back to normal.
 | 5 | Part | Pick the structure you aim at (it turns green). While Part is on, Move moves only that structure. 5 again lets go. |
 | 6 | Delete | Removes what you aim at within 6 m: pieces, creatures, traders and other NPCs. Never a player. |
 | 7 | Save | Saves the design you aim at as it stands. The label turns "Save?"; press 7 again within 6 seconds to save. |
-| 8 | Look | Names what you aim at (same as `vh look`). |
+| 8 | Del all | Aim at something (a dvergr lantern, say): every object with that exact name in that design glows orange and the screen asks "Delete all 14 ...?". Press 8 again within 6 seconds to delete them all; otherwise the orange fades and nothing is deleted. Outside a design it takes everything of that name within 20 m. |
+
+While the rod is in hand, look is always on: what you aim at (within 4 m) glows orange and its name shows in the
+middle of the screen, with what it stands in for if it is a stand-in. Pieces of a green Part stay green. Full details
+go to the console and `looked-at.txt`.
 
 Everything below about swapping, moving and saving works the same with the rod or with typed commands.
 

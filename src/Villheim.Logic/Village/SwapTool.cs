@@ -48,6 +48,9 @@ namespace Villheim.Logic.Village
 
         public static bool PartLocked => _partLocked;
 
+        /// <summary>The object is in the green structure (look leaves it green).</summary>
+        public static bool IsLit(GameObject go) => Lit.Exists(v => v != null && v.gameObject == go);
+
         public static void Activate() => _on = true;
 
         public static void PickOrUse(Player player) => Press(player);

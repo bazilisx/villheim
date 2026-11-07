@@ -927,47 +927,92 @@ namespace Villheim.Logic.Village
         private static string SheetUrl => LogicConfig.SortSheetUrl?.Value?.Trim() ?? "";
 
         /// <summary>Sends sort rows to the review sheet's web app (the sheet script's doPost), in the background.</summary>
+        /// <summary>Rows waiting to go to the sheet, by design name (the newest state of each).</summary>
+        private static readonly Dictionary<string, Entry> Pending = new Dictionary<string, Entry>();
+        private static bool _sending;
+
+        /// <summary>
+        /// Queues sort rows for the review sheet's web app (the sheet script's doPost). One sender sends what has
+        /// gathered every two seconds in one request, so quick clicks never run into Google's limit on requests at
+        /// once; rows that fail stay queued and go again on the next round.
+        /// </summary>
         private static void Push(IEnumerable<Entry> entries)
         {
-            List<Entry> rows = entries.Where(e => e != null && e.Number > 0).ToList();
-            if (SheetUrl.Length == 0 || rows.Count == 0 || VillheimPlugin.Instance == null)
+            if (SheetUrl.Length == 0 || VillheimPlugin.Instance == null)
             {
                 return;
             }
 
-            var json = new StringBuilder("{\"rows\":[");
-            for (int i = 0; i < rows.Count; i++)
+            foreach (Entry e in entries.Where(e => e != null && e.Number > 0))
             {
-                Entry e = rows[i];
-                json.Append(i > 0 ? "," : "").Append("{\"number\":").Append(e.Number)
-                    .Append(",\"name\":").Append(Json(e.Name))
-                    .Append(",\"type\":").Append(Json(e.Type))
-                    .Append(",\"subtype\":").Append(Json(e.Subtype)).Append('}');
+                Pending[e.Name] = e.Copy();
             }
 
-            json.Append("]}");
-            VillheimPlugin.Instance.StartCoroutine(Send(SheetUrl, json.ToString(), rows.Count));
+            if (Pending.Count > 0 && !_sending)
+            {
+                _sending = true;
+                VillheimPlugin.Instance.StartCoroutine(Sender());
+            }
         }
 
-        private static IEnumerator Send(string url, string body, int count)
+        private static IEnumerator Sender()
         {
-            using (var request = new UnityWebRequest(url, "POST"))
+            int failures = 0;
+            try
             {
-                request.uploadHandler = new UploadHandlerRaw(Encoding.UTF8.GetBytes(body));
-                request.downloadHandler = new DownloadHandlerBuffer();
-                request.SetRequestHeader("Content-Type", "text/plain;charset=utf-8");
-                request.timeout = 30;
-                yield return request.SendWebRequest();
-                string answer = request.downloadHandler?.text ?? "";
-                bool ok = string.IsNullOrEmpty(request.error) && answer.Contains("\"ok\":true");
-                _lastSheetResult = ok
-                    ? $"{count} row(s) sent at {Now()}: {answer}"
-                    : $"sending {count} row(s) failed at {Now()}: {request.error} {answer.Substring(0, Mathf.Min(200, answer.Length))}";
-                if (!ok)
+                while (Pending.Count > 0 && SheetUrl.Length > 0)
                 {
-                    VillheimPlugin.Log.LogWarning("Design sort: sheet " + _lastSheetResult);
-                    MessageHud.instance?.ShowMessage(MessageHud.MessageType.TopLeft, "Sort: the sheet did not take the change (see 'vh sort'). It is kept in design-sort.csv.");
+                    yield return new WaitForSecondsRealtime(failures == 0 ? 2f : Mathf.Min(60f, 5f * failures));
+                    List<Entry> rows = Pending.Values.Take(25).ToList();
+                    rows.ForEach(r => Pending.Remove(r.Name));
+                    var json = new StringBuilder("{\"rows\":[");
+                    for (int i = 0; i < rows.Count; i++)
+                    {
+                        Entry e = rows[i];
+                        json.Append(i > 0 ? "," : "").Append("{\"number\":").Append(e.Number)
+                            .Append(",\"name\":").Append(Json(e.Name))
+                            .Append(",\"type\":").Append(Json(e.Type))
+                            .Append(",\"subtype\":").Append(Json(e.Subtype)).Append('}');
+                    }
+
+                    json.Append("]}");
+                    using (var request = new UnityWebRequest(SheetUrl, "POST"))
+                    {
+                        request.uploadHandler = new UploadHandlerRaw(Encoding.UTF8.GetBytes(json.ToString()));
+                        request.downloadHandler = new DownloadHandlerBuffer();
+                        request.SetRequestHeader("Content-Type", "text/plain;charset=utf-8");
+                        request.timeout = 60;
+                        yield return request.SendWebRequest();
+                        string answer = request.downloadHandler?.text ?? "";
+                        bool ok = string.IsNullOrEmpty(request.error) && answer.Contains("\"ok\":true");
+                        if (ok)
+                        {
+                            failures = 0;
+                            _lastSheetResult = $"{rows.Count} row(s) sent at {Now()}: {answer}";
+                            continue;
+                        }
+
+                        // Put them back unless a newer choice for the same design is already waiting.
+                        foreach (Entry e in rows.Where(e => !Pending.ContainsKey(e.Name)))
+                        {
+                            Pending[e.Name] = e;
+                        }
+
+                        failures++;
+                        _lastSheetResult = $"sending {rows.Count} row(s) failed at {Now()} (try {failures}, {Pending.Count} waiting): " +
+                                           $"{request.error} {answer.Substring(0, Mathf.Min(200, answer.Length))}";
+                        VillheimPlugin.Log.LogWarning("Design sort: sheet " + _lastSheetResult);
+                        if (failures == 3)
+                        {
+                            MessageHud.instance?.ShowMessage(MessageHud.MessageType.TopLeft,
+                                "Sort: the sheet is not taking changes; they are kept in design-sort.csv and sent again (see 'vh sort').");
+                        }
+                    }
                 }
+            }
+            finally
+            {
+                _sending = false;
             }
         }
 
@@ -1022,7 +1067,7 @@ namespace Villheim.Logic.Village
                 default:
                     var counts = Types.Select(t => $"{t} {Entries.Values.Count(e => e.Type == t)}");
                     int subtyped = Entries.Values.Count(e => e.Subtype.Length > 0);
-                    return $"Sort: {string.Join(", ", counts)}; {subtyped} with a subtype. Kept in {FilePath}. Sheet: {(SheetUrl.Length == 0 ? "off" : _lastSheetResult)}.\n" +
+                    return $"Sort: {string.Join(", ", counts)}; {subtyped} with a subtype. Kept in {FilePath}. Sheet: {(SheetUrl.Length == 0 ? "off" : _lastSheetResult + (Pending.Count > 0 ? $"; {Pending.Count} waiting" : ""))}.\n" +
                            "'vh sort tools' gives the sort knives; 'vh sort undo'; 'vh sort reset page N|all'; 'vh sort push' sends everything to the sheet; 'vh sort url <address>'; " +
                            "'vh gallery keepers type <home|work|community|drop|unsorted|nosubtype|crafting|farming...>' shows only those designs.";
             }

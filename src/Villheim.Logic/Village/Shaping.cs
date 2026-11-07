@@ -687,10 +687,14 @@ namespace Villheim.Logic.Village
             }
         }
 
-        /// <summary>Highlights these objects instead of the ones before (null: none). Same key: nothing changes.</summary>
+        /// <summary>
+        /// Highlights these objects instead of the ones before (null: none). Same key, or nothing shown and nothing
+        /// asked: nothing changes. (Clearing an empty highlight five times a second also cleared look's hover colour
+        /// each time, so the object aimed at flashed.)
+        /// </summary>
         private static void ShowSelection(List<ZNetView> views, string key)
         {
-            if (key != null && key == _selectionKey)
+            if (key == _selectionKey && (key != null || Shown.Count == 0))
             {
                 return;
             }

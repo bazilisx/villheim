@@ -33,7 +33,7 @@ Review sheet: https://docs.google.com/spreadsheets/d/1rHaZArWhEa8V43UTZePM9EQSBw
    (or on the area last made with `vh flatten`, if that is within 600 m).
 6. Clear anything left from last time: `vh gallery clear`.
 7. Put up a page: `vh gallery keepers` (page 1), or `vh gallery keepers page 3`.
-8. Take the shaping rod in hand (see Shaping below). The first time, `vh tool` puts one in your inventory; keep it on a
+8. Take the shaping knife in hand (see Shaping below). The first time, `vh tool` puts one in your inventory; keep it on a
    quick slot (V or C). Typed commands (`vh swap` and the numpad) still work without it.
 
 ## Showing designs
@@ -54,10 +54,11 @@ design saved earlier goes up from its save and its sign says "edited (pass 3 sav
 Walk along the rows: far parts of a page only go up once that part of the world has loaded. The message "page ready"
 means everything is up.
 
-## Shaping: the rod and the hotbar
+## Shaping: the knife and the hotbar
 
-The shaping rod is a vanilla fishing rod (config ShapingTool). With it in hand, hotbar keys 1 to 8 stop using items and
-become the editing tools, with their own icons and labels. Put the rod away (press its quick slot again, or take
+The shaping knife is the vanilla wooden knife (`KnifeWood`, config ShapingTool). It glows teal while shaping, so it
+reads as the shaping tool. With it in hand, hotbar keys 1 to 8 stop using items and
+become the editing tools, with their own icons and labels. Put the knife away (press its quick slot again, or take
 another tool) and the hotbar is back to normal.
 
 | Key | Label | What it does |
@@ -71,15 +72,15 @@ another tool) and the hotbar is back to normal.
 | 7 | Save | Saves the design you aim at as it stands. The label turns "Save?"; press 7 again within 6 seconds to save. |
 | 8 | Del all | Aim at something (a dvergr lantern, say): every object with that exact name in that design glows orange and the screen asks "Delete all 14 ...?". Press 8 again within 6 seconds to delete them all; otherwise the orange fades and nothing is deleted. Outside a design it takes everything of that name within 20 m. |
 
-While the rod is in hand, look is always on: what you aim at (within 4 m) glows orange and its name shows in the
+While the knife is in hand, look is always on: what you aim at (within 4 m) glows orange and its name shows in the
 middle of the screen, with what it stands in for if it is a stand-in. Pieces of a green Part stay green. Full details
 go to the console and `looked-at.txt`.
 
-Everything below about swapping, moving and saving works the same with the rod or with typed commands.
+Everything below about swapping, moving and saving works the same with the knife or with typed commands.
 
 ## Swapping pieces (`vh swap`)
 
-With the rod: key 1 or left click. Without it: turn on `vh swap`, and the swap key is **numpad 5** (middle mouse
+With the knife: key 1 or left click. Without it: turn on `vh swap`, and the swap key is **numpad 5** (middle mouse
 removes pieces when the hammer is out, so it is not used).
 
 1. **Pick a piece:** aim at a piece of a design (within about 4 m) and press numpad 5.
@@ -101,7 +102,7 @@ removes pieces when the hammer is out, so it is not used).
 Nothing you swap is kept until you save the design (see Saving). Putting a page up again without saving shows the
 originals.
 
-## Moving designs without the rod (with `vh swap` on)
+## Moving designs without the knife (with `vh swap` on)
 
 | Key | Moves |
 |---|---|
@@ -151,8 +152,8 @@ originals.
 
 ## Settings (F1, section "4 - Design review")
 
-- **ShapingTool:** which item is the shaping rod (`FishingRod`).
-- **GallerySwapKey:** the swap key without the rod (numpad 5).
+- **ShapingTool:** which item is the shaping knife (`KnifeWood`).
+- **GallerySwapKey:** the swap key without the knife (numpad 5).
 - **GallerySwapBiomes:** which biomes stand-ins come from, e.g. `meadows,blackforest,swamp,plains`.
 - **GalleryNumberText:** size and height of the floating number over each sign.
 
@@ -182,5 +183,5 @@ originals.
 | `vh gallery page N` | Every design (not only the kept ones), 10 a page. |
 | `vh bp swap <number> <stage>` | Saves a copy with every later building piece swapped automatically (to `inspiration/edits`). |
 | `vh flatten [size]` | Clears and levels an area in front of you for the gallery. Usually done with PlanBuild instead. |
-| `vh tool` | Puts a shaping rod in your inventory. |
+| `vh tool` | Puts the shaping knife (a wooden knife) in your inventory. |
 | `vh help` | Every Villheim command. |

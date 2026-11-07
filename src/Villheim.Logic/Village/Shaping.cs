@@ -5,9 +5,9 @@ using UnityEngine;
 namespace Villheim.Logic.Village
 {
     /// <summary>
-    /// Shaping: editing gallery designs from the hotbar. With the shaping rod in hand (a vanilla item, the fishing rod by
-    /// default: config ShapingTool; 'vh tool' gives one), hotbar keys 1 to 8 stop using items and do the editing, each
-    /// with its own icon and label:
+    /// Shaping: editing gallery designs from the hotbar. With the shaping tool in hand (a vanilla item, the wooden knife by
+    /// default: config ShapingTool; 'vh tool' gives one; it glows teal while shaping), hotbar keys 1 to 8 stop using
+    /// items and do the editing, each with its own icon and label:
     ///
     /// 1 Swap (also left click): pick the piece aimed at, or use the stand-in aimed at (see SwapTool).
     /// 2 Turn: a quarter turn for the current choice.  3 Undo: the original back.
@@ -49,7 +49,7 @@ namespace Villheim.Logic.Village
         public static string GiveTool()
         {
             Player player = Player.m_localPlayer;
-            string name = LogicConfig.ShapingTool?.Value ?? "FishingRod";
+            string name = LogicConfig.ShapingTool?.Value ?? "KnifeWood";
             GameObject prefab = ObjectDB.instance?.GetItemPrefab(name);
             if (player == null || prefab == null)
             {
@@ -57,13 +57,13 @@ namespace Villheim.Logic.Village
             }
 
             player.PickupPrefab(prefab, 1, false);
-            return $"Villheim: a shaping rod ({name}) is in your inventory. Put it on a quick slot; with it in hand, hotbar 1 to 8 edit gallery designs " +
+            return $"Villheim: the shaping tool ({name}) is in your inventory. Put it on a quick slot; with it in hand, hotbar 1 to 8 edit gallery designs " +
                    "(1 Swap, 2 Turn, 3 Undo, 4 Move, 5 Part, 6 Delete, 7 Save, 8 Delete all; left click is Swap) and what you aim at glows orange.";
         }
 
         private static bool Holding(Player player)
         {
-            string name = LogicConfig.ShapingTool?.Value ?? "FishingRod";
+            string name = LogicConfig.ShapingTool?.Value ?? "KnifeWood";
             ItemDrop.ItemData right = player.GetRightItem();
             ItemDrop.ItemData left = player.GetLeftItem();
             return right?.m_dropPrefab != null && right.m_dropPrefab.name == name || left?.m_dropPrefab != null && left.m_dropPrefab.name == name;
@@ -106,6 +106,7 @@ namespace Villheim.Logic.Village
                         }
                     }
 
+                    Glow(__instance);
                     if (_massArmed != null && Time.time > _massUntil)
                     {
                         Disarm();
@@ -121,6 +122,48 @@ namespace Villheim.Logic.Village
                     VillheimPlugin.Log.LogWarning($"Shaping: {e}");
                 }
             }
+        }
+
+        private static GameObject _glowItem;
+        private static GameObject _glowLight;
+        private static readonly Color Teal = new Color(0.1f, 0.85f, 0.75f);
+
+        /// <summary>The tool in hand glows teal while shaping (a soft light and a lit blade), so it reads as the shaping tool.</summary>
+        private static void Glow(Player player)
+        {
+            VisEquipment vis = player.m_visEquipment;
+            GameObject item = _active && vis != null ? (vis.m_rightItemInstance != null ? vis.m_rightItemInstance : vis.m_leftItemInstance) : null;
+            if (item == _glowItem)
+            {
+                return;
+            }
+
+            if (_glowItem != null)
+            {
+                MaterialMan.instance?.ResetValue(_glowItem, Emission);
+            }
+
+            if (_glowLight != null)
+            {
+                Object.Destroy(_glowLight);
+            }
+
+            _glowItem = item;
+            _glowLight = null;
+            if (item == null)
+            {
+                return;
+            }
+
+            MaterialMan.instance?.SetValue(item, Emission, Teal * 0.8f);
+            _glowLight = new GameObject("VillheimShapingGlow");
+            _glowLight.transform.SetParent(item.transform, false);
+            Light light = _glowLight.AddComponent<Light>();
+            light.type = LightType.Point;
+            light.color = Teal;
+            light.range = 1.5f;
+            light.intensity = 1.2f;
+            light.shadows = LightShadows.None;
         }
 
         /// <summary>Hotbar keys do Shaping's work while the rod is in hand.</summary>

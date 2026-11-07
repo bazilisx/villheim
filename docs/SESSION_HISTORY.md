@@ -12,8 +12,9 @@ Current facts only. Read this at the start of a session. Narrative is in `docs/d
   - Pass 2 in progress: `vh gallery keepers` (50 a page, as built), `vh swap` (stand-ins by biome at the sign,
     combinations, hand-built groups, numpad nudging, Ctrl for one structure), `vh look`, `vh note`, `vh bp save
     <number>|page`, saves to `blueprints/inspiration/pass3/p3-<number>-<name>.blueprint` with
-    `BepInEx/Villheim/pass3-saved.csv`. Swaps are kept only by saving. Shaping: with the shaping rod (a fishing
-    rod, `vh tool`) in hand, hotbar 1 to 8 are Swap, Turn, Undo, Move (WASD, Q/E), Part, Delete, Save, Look. Built and pushed; the newest parts (nudging,
+    `BepInEx/Villheim/pass3-saved.csv`. Swaps are kept only by saving. Shaping: with the shaping knife (vanilla
+    KnifeWood, `vh tool`; glows teal) in hand, hotbar 1 to 8 are Swap, Turn, Undo, Move (WASD, Q/E), Part, Delete,
+    Save, Delete all; look is on (orange). Built and pushed; the newest parts (nudging,
     Ctrl structures, combinations, saving pages) not yet tried in game.
   - Pass 3 next: decor tiers a1/a2/a3 and levels a/b/c from the pass 3 saves; a decor strip tool is not written yet.
   - Design numbers come from `BepInEx/Villheim/design-list.csv` (`vh report`) and never change.

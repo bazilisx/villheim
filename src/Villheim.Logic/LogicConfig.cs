@@ -118,9 +118,15 @@ namespace Villheim.Logic
                 GallerySwapKey.Value = new KeyboardShortcut(UnityEngine.KeyCode.Keypad5);
             }
 
-            ShapingTool = Admin(config, "4 - Design review", "ShapingTool", "FishingRod",
-                "The item that is the shaping rod: with it in hand, hotbar 1 to 8 edit gallery designs ('vh tool' gives one). " +
-                "Any item's prefab name works; the fishing rod by default because nobody fishes while reviewing.");
+            ShapingTool = Admin(config, "4 - Design review", "ShapingTool", "KnifeWood",
+                "The item that is the shaping tool: with it in hand, hotbar 1 to 8 edit gallery designs ('vh tool' gives one). " +
+                "Any item's prefab name works; the wooden knife by default (it glows teal while shaping).");
+
+            // The fishing rod was the first default (2026-11-07); Tyler chose the wooden knife.
+            if (ShapingTool.Value == "FishingRod")
+            {
+                ShapingTool.Value = "KnifeWood";
+            }
             GallerySwapBiomes = Admin(config, "4 - Design review", "GallerySwapBiomes", "meadows,blackforest,swamp",
                 "Which biomes 'vh swap' offers stand-ins from, one group each in front of the design's sign " +
                 "(meadows, blackforest, swamp, mountain, plains, mistlands, ashlands).");

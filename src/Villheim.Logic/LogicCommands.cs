@@ -43,7 +43,7 @@ namespace Villheim.Logic
             "blueprints: list the blueprints villages can build (BepInEx/config/Villheim/blueprints, PlanBuild's folder)",
             "savebp <role-family-level> [radius]: save the building pieces around you as a blueprint, e.g. savebp house-cabin-1 8",
             "look [off]: name whatever the crosshair points at within 4 m, with its kind, size, stage and what the material swap makes of it; new names go to BepInEx/Villheim/looked-at.txt",
-            "swap [turn|undo|done|off]: change a gallery design piece by piece: aim at a piece and press middle mouse; stand-ins by biome (and combinations such as two 2x1 for a 2x2) go up at its sign; aim at one (or a piece you built) and press it again; kept only once the design is saved with 'bp save'",
+            "swap [turn|undo|done|off]: change a gallery design piece by piece: aim at a piece and press middle mouse; stand-ins by biome (and combinations such as two 2x1 for a 2x2) go up at its sign; aim at one (or a piece you built) and press it again; kept only once the design is saved with 'bp save'; Page Up/Down and the arrow keys move the design under the crosshair 10 cm (50 cm with Shift), saved with it",
             "bp forget <number|name|all>: delete pass 3 saves, so the gallery shows the original design again",
             "note <text>: write a note with what you are aiming at and the nearest gallery sign to BepInEx/Villheim/notes.txt",
             "bp save <number|name> | bp save page [all]: save a design as it stands in the gallery now (pieces left, stand-ins, anything built on its plot) as blueprints/inspiration/pass3/p3-<number>-<name>; 'page' saves every changed design standing near you; the gallery shows the saves from then on",

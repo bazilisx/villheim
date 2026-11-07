@@ -73,7 +73,8 @@ namespace Villheim.Logic.Village
             _on = true;
             string key = LogicConfig.GallerySwapKey?.Value.ToString() ?? "Mouse2";
             return $"Villheim: swap is on. Aim at a piece of a gallery design and press {key}: stand-ins go up in front of its sign, by biome. " +
-                   $"Aim at one (or a piece you built) and press {key} again to use it in that design. 'vh swap turn', 'vh swap undo', 'vh swap done', 'vh swap off'.";
+                   $"Aim at one (or a piece you built) and press {key} again to use it in that design. Page Up/Down and the arrow keys move the design " +
+                   "you aim at (Shift: bigger steps). Nothing is kept until 'vh bp save'. 'vh swap turn', 'vh swap undo', 'vh swap done', 'vh swap off'.";
         }
 
         [HarmonyPatch(typeof(Player), "Update")]
@@ -88,13 +89,19 @@ namespace Villheim.Logic.Village
 
                 try
                 {
-                    if (!LogicConfig.GallerySwapKey.Value.IsDown() || Console.IsVisible() || Menu.IsVisible() || InventoryGui.IsVisible() ||
-                        Chat.instance != null && Chat.instance.HasFocus())
+                    if (Console.IsVisible() || Menu.IsVisible() || InventoryGui.IsVisible() || Chat.instance != null && Chat.instance.HasFocus())
                     {
                         return;
                     }
 
-                    Press(__instance);
+                    if (LogicConfig.GallerySwapKey.Value.IsDown())
+                    {
+                        Press(__instance);
+                    }
+                    else
+                    {
+                        NudgeKeys(__instance);
+                    }
                 }
                 catch (System.Exception e)
                 {
@@ -154,6 +161,101 @@ namespace Villheim.Logic.Village
             Say($"Swap: {_original} is now {what} in {_design} ({replaced} replaced). " +
                 (capped ? $"Only the first {MaxGroup} touching pieces were taken; build the group away from other pieces. " : "") +
                 "Pick another to compare, 'vh swap turn' to turn it, 'vh swap undo' to put the original back.");
+        }
+
+        // ---------------------------------------------------------------- nudging a whole design
+
+        /// <summary>
+        /// Page Up / Page Down move the design under the crosshair (or the last one picked) up or down; the arrow keys
+        /// move it left, right, away and towards, as the player looks. 10 cm a press, 50 cm with Shift. Its stand-ins and
+        /// anything built by hand on its plot move with it. The height change is saved with the design ('vh bp save').
+        /// </summary>
+        private static void NudgeKeys(Player player)
+        {
+            Vector3 forward = GameCamera.instance != null ? GameCamera.instance.transform.forward : player.transform.forward;
+            forward.y = 0f;
+            forward = forward.sqrMagnitude > 0.01f ? forward.normalized : Vector3.forward;
+            Vector3 right = Vector3.Cross(Vector3.up, forward);
+            Vector3 move = Vector3.zero;
+            if (Input.GetKeyDown(KeyCode.PageUp)) move = Vector3.up;
+            else if (Input.GetKeyDown(KeyCode.PageDown)) move = Vector3.down;
+            else if (Input.GetKeyDown(KeyCode.UpArrow)) move = forward;
+            else if (Input.GetKeyDown(KeyCode.DownArrow)) move = -forward;
+            else if (Input.GetKeyDown(KeyCode.RightArrow)) move = right;
+            else if (Input.GetKeyDown(KeyCode.LeftArrow)) move = -right;
+            if (move == Vector3.zero)
+            {
+                return;
+            }
+
+            float step = Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift) ? 0.5f : 0.1f;
+            Nudge(player, move * step);
+        }
+
+        private static void Nudge(Player player, Vector3 move)
+        {
+            GameObject target = LookAt.Target(player);
+            string design = target?.GetComponent<ZNetView>()?.GetZDO()?.GetString(Gallery.KeyDesign, "") ?? "";
+            if (design.Length == 0)
+            {
+                design = _design;
+            }
+
+            ZDO sign = null;
+            foreach (ZNetView view in ZNetScene.instance.m_instances.Values)
+            {
+                ZDO zdo = view != null && view.IsValid() ? view.GetZDO() : null;
+                if (zdo != null && design != null && zdo.GetString(Gallery.KeyDesign, "") == design && zdo.GetFloat(Gallery.KeyPlotHalf, 0f) > 0f)
+                {
+                    sign = zdo;
+                    break;
+                }
+            }
+
+            if (sign == null)
+            {
+                Say("Swap: aim at a gallery design to move it (or pick one first).");
+                return;
+            }
+
+            Vector3 center = sign.GetVec3(Gallery.KeyPlotCenter, Vector3.zero);
+            float half = sign.GetFloat(Gallery.KeyPlotHalf, 0f);
+            Quaternion yaw = Quaternion.Euler(0f, sign.GetFloat(Gallery.KeyPlotYaw, 0f), 0f);
+            Quaternion frame = Quaternion.Inverse(yaw);
+            int moved = 0;
+            foreach (ZNetView view in ZNetScene.instance.m_instances.Values.ToList())
+            {
+                ZDO zdo = view != null && view.IsValid() ? view.GetZDO() : null;
+                if (zdo == null || zdo.GetInt(KeyPalette) == 1)
+                {
+                    continue;
+                }
+
+                bool gallery = zdo.GetInt(Gallery.KeyGallery) == 1;
+                bool ours = gallery && zdo.GetString(Gallery.KeyDesign, "") == design && zdo.GetFloat(Gallery.KeyPlotHalf, 0f) <= 0f;
+                Vector3 local = frame * (view.transform.position - center);
+                bool byHand = !gallery && view.GetComponent<Piece>() != null && view.GetComponent<Character>() == null &&
+                              Mathf.Abs(local.x) <= half && Mathf.Abs(local.z) <= half;
+                if (!ours && !byHand)
+                {
+                    continue;
+                }
+
+                view.transform.position += move;
+                zdo.SetPosition(view.transform.position);
+                if (zdo.GetString(Gallery.KeySwappedFrom, "").Length > 0)
+                {
+                    zdo.Set(Gallery.KeySwappedCenter, zdo.GetVec3(Gallery.KeySwappedCenter, view.transform.position) + move);
+                }
+
+                moved++;
+            }
+
+            Vector3 nudge = sign.GetVec3(Gallery.KeyNudge, Vector3.zero) + frame * move;
+            sign.Set(Gallery.KeyNudge, nudge);
+            float height = sign.GetFloat(Gallery.KeyGroundOffset, 0f) + nudge.y;
+            Say($"Swap: moved {design} ({moved} pieces); height now {height:+0.00;-0.00;0.00} m from where it was set on its foundation. " +
+                "'vh bp save' keeps it.");
         }
 
         private static string Turn()

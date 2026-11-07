@@ -290,7 +290,8 @@ namespace Villheim.Logic.Village
         private static bool Changed(string design, ZDO sign)
         {
             var pieces = Standing(design, sign);
-            return pieces.Any(p => p.ByHand || p.StandIn) || pieces.Count != sign.GetInt(Gallery.KeyPlaced, pieces.Count);
+            return pieces.Any(p => p.ByHand || p.StandIn) || pieces.Count != sign.GetInt(Gallery.KeyPlaced, pieces.Count) ||
+                   sign.GetVec3(Gallery.KeyNudge, Vector3.zero).sqrMagnitude > 0.0001f;
         }
 
         /// <summary>Saves what stands on the design's plot as p3-&lt;number&gt;-&lt;name&gt;.blueprint and lists it.</summary>
@@ -314,6 +315,8 @@ namespace Villheim.Logic.Village
                 $"#Description:{design.Name} as edited in the gallery {System.DateTime.Now:yyyy-MM-dd HH:mm}: {pieces.Count} pieces, " +
                 $"{byHand} added by hand, {standIns} stand-in pieces (Villheim pass 3)",
                 "#Category:Villheim",
+                "#GroundOffset:" + (sign.GetFloat(Gallery.KeyGroundOffset, 0f) + sign.GetVec3(Gallery.KeyNudge, Vector3.zero).y)
+                    .ToString("0.###", CultureInfo.InvariantCulture),
                 "#Pieces",
             };
             lines.AddRange(pieces.Select(p => Line(p.Prefab, p.Position, p.Rotation, p.Scale, p.Text)));

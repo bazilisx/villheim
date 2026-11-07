@@ -35,6 +35,9 @@ namespace Villheim.Logic.Village
             public int Placed;
             public bool Edited;
 
+            /// <summary>How far the design is moved up (down below zero) after it is set on its foundation (a saved nudge).</summary>
+            public float GroundOffset;
+
             /// <summary>The middle of the design's pieces, in its own coordinates (locations are not built round their middle).</summary>
             public Vector3 Offset;
 
@@ -66,6 +69,10 @@ namespace Villheim.Logic.Village
         internal const string KeyPlotYaw = "villheim_plot_yaw";
         internal const string KeyNumber = "villheim_number";
         internal const string KeyPlaced = "villheim_placed";
+        internal const string KeyGroundOffset = "villheim_ground_offset";
+
+        /// <summary>On a design's front sign: how far 'vh swap' has nudged it since it went up, in the design's own coordinates.</summary>
+        internal const string KeyNudge = "villheim_nudge";
 
         /// <summary>Where 'vh bp save' keeps designs edited in the gallery: p3-&lt;number&gt;-&lt;name&gt;.blueprint.</summary>
         internal static string PassThreeFolder => System.IO.Path.Combine(Blueprints.Folder, "inspiration", "pass3");
@@ -1579,6 +1586,7 @@ namespace Villheim.Logic.Village
             if (edited != null && edited.Pieces.Count > 0)
             {
                 cell.Edited = true;
+                cell.GroundOffset = edited.GroundOffset;
                 plan = Swapped(Blueprints.Entries(edited), cell);
                 return Spawn(plan, cell, yaw);
             }
@@ -1706,7 +1714,7 @@ namespace Villheim.Logic.Village
             if (bottoms.Count > 0)
             {
                 float actual = ConstructionSite.FoundationHeight(bottoms);
-                float shift = cell.Center.y - actual;
+                float shift = cell.Center.y - actual + cell.GroundOffset;
                 VillheimPlugin.Log.LogInfo($"Gallery: {cell.Design.Name}: planned floor {planned:+0.00;-0.00}, measured foundation " +
                                            $"{actual - origin.y:+0.00;-0.00} above the origin, lowest piece {bottoms.Min() - origin.y:+0.00;-0.00}; moved {shift:+0.00;-0.00} m.");
                 if (Mathf.Abs(shift) > 0.05f)
@@ -1756,6 +1764,7 @@ namespace Villheim.Logic.Village
                 front.Set(KeyPlotYaw, Quaternion.LookRotation(-forward).eulerAngles.y);
                 front.Set(KeyNumber, cell.Number);
                 front.Set(KeyPlaced, cell.Placed);
+                front.Set(KeyGroundOffset, cell.GroundOffset);
             }
             string number;
             try

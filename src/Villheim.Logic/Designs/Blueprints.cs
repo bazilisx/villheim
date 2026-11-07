@@ -48,6 +48,12 @@ namespace Villheim.Logic.Designs
             public int Level = 1;
             public string Biome;
             public float Radius;
+
+            /// <summary>
+            /// "#GroundOffset:" in the file: how far to move the design up (or down, below zero) after it is set on its
+            /// foundation, for designs whose lowest pieces are meant to sit in the ground ('vh swap' nudges, saved).
+            /// </summary>
+            public float GroundOffset;
             public string Creator;
             public string Category;
             public readonly List<Piece> Pieces = new List<Piece>();
@@ -318,6 +324,11 @@ namespace Villheim.Logic.Designs
                     if (lower.StartsWith("#creator:"))
                     {
                         blueprint.Creator = line.Substring(9).Trim();
+                    }
+
+                    if (lower.StartsWith("#groundoffset:"))
+                    {
+                        blueprint.GroundOffset = F(line.Substring(14));
                     }
 
                     if (lower.StartsWith("#category:"))

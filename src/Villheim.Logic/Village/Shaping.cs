@@ -807,11 +807,11 @@ namespace Villheim.Logic.Village
             }
             else
             {
-                design = _locked.GetZDO().GetString(Gallery.KeyDesign, "");
+                design = SwapTool.DesignOf(_locked.gameObject);
                 string prefab = Utils.GetPrefabName(_locked.gameObject);
                 views = all && design.Length > 0
                     ? ZNetScene.instance.m_instances.Values.Where(v => v != null && v.IsValid() && Utils.GetPrefabName(v.gameObject) == prefab &&
-                                                                        v.GetZDO().GetString(Gallery.KeyDesign, "") == design).ToList()
+                                                                        SwapTool.DesignOf(v.gameObject) == design).ToList()
                     : new List<ZNetView> { _locked };
                 pivot = _locked.transform.position;
                 frame = _locked.transform.rotation;
@@ -1105,7 +1105,7 @@ namespace Villheim.Logic.Village
             }
 
             string prefab = Utils.GetPrefabName(aimed.gameObject);
-            string design = aimed.GetZDO().GetString(Gallery.KeyDesign, "");
+            string design = SwapTool.DesignOf(aimed.gameObject);
             Vector3 around = aimed.transform.position;
             foreach (ZNetView view in ZNetScene.instance.m_instances.Values)
             {
@@ -1115,7 +1115,7 @@ namespace Villheim.Logic.Village
                 }
 
                 bool inScope = design.Length > 0
-                    ? view.GetZDO().GetString(Gallery.KeyDesign, "") == design
+                    ? SwapTool.DesignOf(view.gameObject) == design
                     : Vector3.Distance(view.transform.position, around) <= MassRadius;
                 if (inScope)
                 {

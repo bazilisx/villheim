@@ -94,6 +94,21 @@ namespace Villheim.Logic.Village
             return $"Part on: {Lit.Count} pieces picked (green). Move moves only these until Part is pressed again.";
         }
 
+        /// <summary>
+        /// The design an object belongs to: its design name, or for a piece with none (placed on the slotting board with
+        /// PlanBuild or the hammer) the board plot it stands in. "" for neither.
+        /// </summary>
+        public static string DesignOf(GameObject go)
+        {
+            if (go == null)
+            {
+                return "";
+            }
+
+            string design = go.GetComponent<ZNetView>()?.GetZDO()?.GetString(Gallery.KeyDesign, "") ?? "";
+            return design.Length > 0 ? design : DesignBoard.PlotAt(go.transform.position) ?? "";
+        }
+
         /// <summary>The design under the crosshair, or the last one picked.</summary>
         public static string DesignAimed(Player player)
         {
@@ -315,8 +330,8 @@ namespace Villheim.Logic.Village
             _nextLight = Time.time + 0.2f;
             GameObject target = LookAt.Target(player);
             ZDO zdo = target?.GetComponent<ZNetView>()?.GetZDO();
-            if (target == null || target == _litFor || zdo == null || zdo.GetString(Gallery.KeyDesign, "").Length == 0 ||
-                zdo.GetFloat(Gallery.KeyPlotHalf, 0f) > 0f)
+            string design = DesignOf(target);
+            if (target == null || target == _litFor || zdo == null || design.Length == 0 || zdo.GetFloat(Gallery.KeyPlotHalf, 0f) > 0f)
             {
                 return;
             }
@@ -329,7 +344,7 @@ namespace Villheim.Logic.Village
                 MaterialMan.instance?.SetValue(view.gameObject, Emission, LookAt.Highlight);
             }
 
-            Say($"Swap: {Lit.Count} pieces of {zdo.GetString(Gallery.KeyDesign, "")} selected; the numpad moves only these while Ctrl is held.");
+            Say($"Swap: {Lit.Count} pieces of {design} selected; the numpad moves only these while Ctrl is held.");
         }
 
         private static void ClearLight()
@@ -353,7 +368,7 @@ namespace Villheim.Logic.Village
         private static List<ZNetView> Structure(GameObject start)
         {
             ZNetView first = start.GetComponent<ZNetView>();
-            string design = first.GetZDO().GetString(Gallery.KeyDesign, "");
+            string design = DesignOf(start);
             ZDO sign = null;
             var pieces = new List<(ZNetView View, Bounds Bounds)>();
             foreach (ZNetView view in ZNetScene.instance.m_instances.Values)
@@ -460,7 +475,7 @@ namespace Villheim.Logic.Village
             var moved = Lit.Where(v => v != null && v.IsValid()).ToList();
             MoveViews(moved, move);
             EditHistory.Push($"moving {moved.Count} pieces", () => MoveViews(moved, -move));
-            MarkTouched(Lit.FirstOrDefault(v => v != null && v.IsValid())?.GetZDO().GetString(Gallery.KeyDesign, "") ?? "");
+            MarkTouched(DesignOf(Lit.FirstOrDefault(v => v != null && v.IsValid())?.gameObject));
             Say($"Swap: moved {Lit.Count} pieces. 'vh bp save' keeps it.");
         }
 
@@ -570,7 +585,7 @@ namespace Villheim.Logic.Village
         private static void Nudge(Player player, Vector3 move, string forced = null, bool record = true)
         {
             GameObject target = player != null ? LookAt.Target(player) : null;
-            string design = forced ?? target?.GetComponent<ZNetView>()?.GetZDO()?.GetString(Gallery.KeyDesign, "") ?? "";
+            string design = forced ?? DesignOf(target);
             if (design.Length == 0)
             {
                 design = _design;

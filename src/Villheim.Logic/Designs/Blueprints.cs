@@ -576,7 +576,15 @@ namespace Villheim.Logic.Designs
         // ---------------------------------------------------------------- plans and costs
 
         /// <summary>The blueprint's pieces as a build plan, in the same order rules as a copied location.</summary>
-        public static List<DesignSpawner.PlanEntry> MakePlan(Blueprint blueprint, Vector3 origin, float yaw)
+        public static List<DesignSpawner.PlanEntry> MakePlan(Blueprint blueprint, Vector3 origin, float yaw) =>
+            DesignSpawner.Order(Entries(blueprint), origin, yaw);
+
+        /// <summary>
+        /// The blueprint's pieces in file order, without the build order. The build order compares every piece with
+        /// every other one, which takes minutes for builds of thousands of pieces; the gallery places all at once and
+        /// does not need it.
+        /// </summary>
+        public static List<DesignSpawner.PlanEntry> Entries(Blueprint blueprint)
         {
             var plan = new List<DesignSpawner.PlanEntry>();
             foreach (Piece piece in blueprint.Pieces)
@@ -588,7 +596,7 @@ namespace Villheim.Logic.Designs
                 }
             }
 
-            return DesignSpawner.Order(plan, origin, yaw);
+            return plan;
         }
 
         private static readonly Dictionary<string, Dictionary<string, int>> Totals = new Dictionary<string, Dictionary<string, int>>();

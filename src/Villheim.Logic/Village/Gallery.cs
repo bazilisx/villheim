@@ -397,7 +397,6 @@ namespace Villheim.Logic.Village
         /// a player can build (no location-only pieces such as goblin walls or totems), every material from that stage
         /// and every crafting station available then. Otherwise why not.
         /// </summary>
-        private const int MaxPieces = 3000;
         private static readonly Dictionary<string, Piece> PieceOf = new Dictionary<string, Piece>();
 
         private static Piece PrefabPiece(string name)
@@ -413,16 +412,11 @@ namespace Villheim.Logic.Village
 
         /// <summary>
         /// The stage test from a blueprint's own piece list, without laying it out (laying out a build of thousands
-        /// of pieces in build order froze the game for minutes, 2026-11-07). Builds over 3000 pieces are left out.
+        /// of pieces in build order froze the game for minutes, 2026-11-07). Size never rules a build out.
         /// </summary>
         private static string ViableBlueprint(Blueprints.Blueprint blueprint, Heightmap.Biome biome, out int pieces)
         {
             pieces = 0;
-            if (blueprint.Pieces.Count > MaxPieces)
-            {
-                return $"{blueprint.Pieces.Count} pieces, too big for a village";
-            }
-
             HashSet<string> materials = StageMaterials[biome];
             HashSet<string> stations = StageStations[biome];
             foreach (Blueprints.Piece part in blueprint.Pieces)
@@ -1206,7 +1200,7 @@ namespace Villheim.Logic.Village
             List<DesignSpawner.PlanEntry> plan;
             if (cell.Design.Blueprint != null)
             {
-                plan = Blueprints.MakePlan(cell.Design.Blueprint, cell.Center, yaw);
+                plan = Blueprints.Entries(cell.Design.Blueprint);
                 return Spawn(plan, cell, yaw);
             }
 

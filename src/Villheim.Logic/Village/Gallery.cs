@@ -115,11 +115,23 @@ namespace Villheim.Logic.Village
         /// Gallery pieces never wear or fall: the game's support check would bring down a design whose pieces don't all
         /// hold each other up the moment it is put down in one go (seen 2026-11-06). Only pieces marked as the gallery's.
         /// </summary>
+        /// <summary>'vh gravity on': gallery and board pieces wear and fall like built ones, so unsupported pieces break.</summary>
+        internal static bool Gravity;
+
+        internal static string ToggleGravity(string[] args)
+        {
+            string word = args.Length > 0 ? args[0].ToLowerInvariant() : "";
+            Gravity = word == "on" || word != "off" && !Gravity;
+            return Gravity
+                ? "Villheim: gravity on. Gallery and board pieces without support break within a few seconds (they may drop their materials). 'vh gravity off' when done."
+                : "Villheim: gravity off. Gallery and board pieces hold where they are again.";
+        }
+
         [HarmonyLib.HarmonyPatch(typeof(WearNTear), nameof(WearNTear.UpdateWear))]
         internal static class NoWearPatch
         {
             private static bool Prefix(WearNTear __instance) =>
-                (__instance.m_nview == null || !__instance.m_nview.IsValid() || __instance.m_nview.GetZDO().GetInt(KeyGallery) != 1) &&
+                Gravity || (__instance.m_nview == null || !__instance.m_nview.IsValid() || __instance.m_nview.GetZDO().GetInt(KeyGallery) != 1) &&
                 !DesignBoard.Inside(__instance.transform.position);
         }
         private const float PadSpacing = 24f;

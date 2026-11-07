@@ -355,4 +355,5 @@ originals.
 | `vh tool` | Puts the shaping knife (a wooden knife) in your inventory. |
 | `vh sort tools` | Puts the sort knives and the Shaper Tool in your inventory. |
 | `vh slot <biome> <kind>` | The slotting board (see above). |
+| `vh gravity` | Turns gravity on or off (`on`/`off` to set it). On: gallery and board pieces with no support break, as built pieces do; they may drop their materials. Off (the default): nothing falls. |
 | `vh help` | Every Villheim command. |

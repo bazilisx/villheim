@@ -28,7 +28,7 @@ namespace Villheim.Logic.Village
         public static bool On => _on;
 
         /// <summary>The orange of the looked-at object (and of Delete all's marks): config LookColor, a deep beacon orange.</summary>
-        public static Color Highlight => LogicConfig.LookColor?.Value ?? new Color(0.45f, 0.16f, 0.02f);
+        public static Color Highlight => LogicConfig.LookColor?.Value ?? new Color(0.129f, 0.447f, 0.396f, 0.118f);
 
         /// <summary>Turns look on or off without a message (Shaping turns it on while the rod is in hand).</summary>
         public static void SetOn(bool on)

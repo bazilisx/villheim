@@ -138,18 +138,18 @@ namespace Villheim.Logic
             ShaperGroundEffect = config.Bind("4 - Design review", "ShaperGroundEffect", "Beam and Glow", new ConfigDescription(
                 "How the Villheim Dev Shaper Tool looks lying on the ground. Changes show at once.",
                 new AcceptableValueList<string>(Village.ShaperEffects.GroundChoices), new ConfigurationManagerAttributes { IsAdminOnly = true }));
-            ShaperColor = Admin(config, "4 - Design review", "ShaperColor", new UnityEngine.Color(0.1f, 0.85f, 0.75f),
+            ShaperColor = Admin(config, "4 - Design review", "ShaperColor", new UnityEngine.Color(0.102f, 0.851f, 0.749f),
                 "Colour of the Shaper Tool's Glow and Beam, and the tint of its icon.");
 
-            ShaperEffectScale = config.Bind("4 - Design review", "ShaperEffectScale", 0.3f, new ConfigDescription(
+            ShaperEffectScale = config.Bind("4 - Design review", "ShaperEffectScale", 0.205f, new ConfigDescription(
                 "Size of the Fire, Frost, Spirit and Lightning effects on the Shaper Tool, against the weapon they come from. Changes show at once.",
                 new AcceptableValueRange<float>(0.05f, 1.5f), new ConfigurationManagerAttributes { IsAdminOnly = true }));
-            ShaperEffectStrength = config.Bind("4 - Design review", "ShaperEffectStrength", 0.4f, new ConfigDescription(
+            ShaperEffectStrength = config.Bind("4 - Design review", "ShaperEffectStrength", 0.561f, new ConfigDescription(
                 "How busy and bright those effects are: fewer, fainter particles below 1. Changes show at once.",
                 new AcceptableValueRange<float>(0.05f, 1f), new ConfigurationManagerAttributes { IsAdminOnly = true }));
             ShaperEffectBursts = Admin(config, "4 - Design review", "ShaperEffectBursts", true,
                 "Keep the effects' periodic bursts (the big lightning blasts). Off: only the steady small sparks.");
-            ShaperEffectBurstScale = config.Bind("4 - Design review", "ShaperEffectBurstScale", 0.3f, new ConfigDescription(
+            ShaperEffectBurstScale = config.Bind("4 - Design review", "ShaperEffectBurstScale", 0.592f, new ConfigDescription(
                 "With ShaperEffectBursts on: size, speed and reach of the bursts (the zaps), on top of ShaperEffectScale. 1 leaves them as the weapon has them. Changes show at once.",
                 new AcceptableValueRange<float>(0.02f, 1.5f), new ConfigurationManagerAttributes { IsAdminOnly = true }));
             ShaperTurnStep = config.Bind("4 - Design review", "ShaperTurnStep", 22.5f, new ConfigDescription(
@@ -157,7 +157,7 @@ namespace Villheim.Logic
                 new AcceptableValueRange<float>(1f, 90f), new ConfigurationManagerAttributes { IsAdminOnly = true }));
             ShaperEffectTint = Admin(config, "4 - Design review", "ShaperEffectTint", true,
                 "Recolour the effects to ShaperColor (teal lightning). Off: their own colours.");
-            LookColor = Admin(config, "4 - Design review", "LookColor", new UnityEngine.Color(0.45f, 0.16f, 0.02f),
+            LookColor = Admin(config, "4 - Design review", "LookColor", new UnityEngine.Color(0.129f, 0.447f, 0.396f, 0.118f),
                 "Glow of the object you aim at while shaping (and of Delete all's marks). Darker is subtler; changes show on the next object you aim at.");
 
             // The fishing rod was the first default (2026-11-07); Tyler chose the wooden knife.

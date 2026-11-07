@@ -17,7 +17,7 @@ Current facts only. Read this at the start of a session. Narrative is in `docs/d
     wheel, axis ring, Shift/Alt axes), Swap, Delete, Delete all, Save, Reset, Undo; left click uses the picked tool
     once with a building swing (whole design by default, click locks a part or object). One highlight colour
     (LookColor). Effects and wheel turning tested; the new layout, Reset, design turning and the one-click fix are
-    not yet tried in game. To do: copy Tyler's F1 values from `bazilisx.villheim.cfg` into the defaults.
+    not yet tried in game. Tyler's F1 values are the defaults.
   - Pass 3 next: decor tiers a1/a2/a3 and levels a/b/c from the pass 3 saves; a decor strip tool is not written yet.
   - Design numbers come from `BepInEx/Villheim/design-list.csv` (`vh report`) and never change.
   - Licensing to settle before shipping blueprints: valheimians builds and copied MWL locations belong to their

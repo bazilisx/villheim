@@ -36,10 +36,10 @@ namespace Villheim.Logic.Village
         public static string Signature(string effect, Color color) =>
             $"{FxName}:{effect}:{ColorUtility.ToHtmlStringRGB(color)}:{Scale:0.00}:{Strength:0.00}:{Bursts}:{BurstScale:0.00}:{Tint}";
 
-        private static float Scale => LogicConfig.ShaperEffectScale?.Value ?? 0.3f;
-        private static float Strength => LogicConfig.ShaperEffectStrength?.Value ?? 0.4f;
+        private static float Scale => LogicConfig.ShaperEffectScale?.Value ?? 0.205f;
+        private static float Strength => LogicConfig.ShaperEffectStrength?.Value ?? 0.561f;
         private static bool Bursts => LogicConfig.ShaperEffectBursts?.Value ?? true;
-        private static float BurstScale => LogicConfig.ShaperEffectBurstScale?.Value ?? 0.3f;
+        private static float BurstScale => LogicConfig.ShaperEffectBurstScale?.Value ?? 0.592f;
         private static bool Tint => LogicConfig.ShaperEffectTint?.Value ?? true;
 
         /// <summary>Whether the object already shows this effect (its effect child carries the signature as its name).</summary>

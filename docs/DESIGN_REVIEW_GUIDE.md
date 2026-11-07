@@ -182,14 +182,14 @@ originals.
 - **ShaperGroundEffect:** how it looks on the ground: None, Glow, Beam (a tall light column, like magic loot), Beam and
   Glow, Fire, Frost, Spirit, Lightning.
 - **ShaperColor:** colour of Glow and Beam (and the icon tint).
-- **ShaperEffectScale:** size of Fire, Frost, Spirit and Lightning on the knife (0.3; 1 is sword size).
-- **ShaperEffectStrength:** how many particles and how bright (0.4; lower is subtler).
+- **ShaperEffectScale:** size of Fire, Frost, Spirit and Lightning on the knife (0.205; 1 is sword size).
+- **ShaperEffectStrength:** how many particles and how bright (0.561; lower is subtler).
 - **ShaperEffectBursts:** on keeps the periodic zaps (default on); off leaves only the steady sparks.
-- **ShaperEffectBurstScale:** with bursts on, the size and reach of the zaps (0.3; lower is tinier, 1 is as the weapon has them).
+- **ShaperEffectBurstScale:** with bursts on, the size and reach of the zaps (0.592; lower is tinier, 1 is as the weapon has them).
 - **ShaperEffectTint:** on colours Fire, Frost, Spirit and Lightning with ShaperColor (teal lightning).
 - **ShaperTurnStep:** degrees per mouse wheel notch for Turn (22.5).
 - **LookColor:** the colour of every highlight while shaping (what you aim at, the design being moved or turned, locked
-  parts, Delete all's marks). Darker is subtler.
+  parts, Delete all's marks). Default a soft teal (#2172651E). Darker or more see-through is subtler.
 - **GallerySwapKey:** the swap key without the knife (numpad 5).
 - **GallerySwapBiomes:** which biomes stand-ins come from, e.g. `meadows,blackforest,swamp,plains`.
 - **GalleryNumberText:** size and height of the floating number over each sign.

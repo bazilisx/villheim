@@ -168,7 +168,7 @@ namespace Villheim.Logic.Village
 
         private static string HandEffect => LogicConfig.ShaperHandEffect?.Value ?? "Lightning";
         private static string GroundEffect => LogicConfig.ShaperGroundEffect?.Value ?? "Beam and Glow";
-        private static Color EffectColor => LogicConfig.ShaperColor?.Value ?? new Color(0.1f, 0.85f, 0.75f);
+        private static Color EffectColor => LogicConfig.ShaperColor?.Value ?? new Color(0.102f, 0.851f, 0.749f);
 
         /// <summary>
         /// The tool in hand shows ShaperHandEffect while shaping (on the tool only, no light on the player); a change in

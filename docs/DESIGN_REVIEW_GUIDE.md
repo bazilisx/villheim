@@ -7,11 +7,37 @@ typed in the in-game console (F5) unless it says otherwise.
 
 1. **Pass 1 (done).** Every design (963) got Yes, Yes with edits or No in the Review tab of the review sheet. 264 were
    kept.
-2. **Pass 2 (now).** Look at the 264 kept designs in the game, 50 at a time, swap pieces by hand, move things, save
-   the ones worth keeping, and fill in the Pass 2 tab (what each design is for, which biomes it suits, village level).
-3. **Pass 3 (next).** Make decor tiers (a1, a2, a3) and upgrade levels (a, b, c) from the pass 2 saves.
+2. **Sorting the 264 kept designs, in small steps (from 2026-11-07).** The old Pass 2 plan (use, biomes and level all
+   at once) is replaced by these phases. Everything is done in the game; the sheet keeps the record.
+   - **Phase A, type (now).** Each design is Home (anything people live in), Work (anything that keeps the village
+     running: farms, woodworking, mining and smithing, cooking and brewing, crafting, storage, defence such as guard
+     houses, fences and barracks) or Community (third places for social and idle time: the hearth, taverns,
+     longhouses). Drop means the design is not used. Sort knife A.
+   - **Phase B, subtype.** Work and Community designs only. Work: Farming, Woodworking, Mining, Cooking, Crafting,
+     Storage, Defence. Community: Hearth, Tavern, Longhouse. Sort knife B.
+   - **Phase C, biome.** Each design gets the biome it suits best, and its materials are fixed for that biome with the
+     Shaper Tool inside a marked plot.
+   - **Slotting.** Designs of one biome and subtype are put side by side and grouped under one base ID, each in a
+     structure stage: house1_s1, house1_s2, house1_s3. The base ID and stage are given here, not earlier.
+   - **Phase D, decor.** Each structure stage gets three decor stages, made from the richest down: d3 is saved first,
+     copied to the d2 plot and stripped, saved, copied to d1 and stripped to the bare minimum.
+   - **Phase E, review rows.** One base ID in one biome laid out in a row, s1d1 to s3d3, to check how it grows.
+3. Saves from the old pass 2 (`p3-<number>-<name>`) stay where they are and are used as the starting point of a design.
 
-Review sheet: https://docs.google.com/spreadsheets/d/1rHaZArWhEa8V43UTZePM9EQSBwS6bvjsmAFPhnlQs6o/edit
+## Naming
+
+Blueprints get their final name once slotting has given them a base ID: `<baseID>_s<structure>d<decor>`, for example
+`house1_s2d3`.
+
+- **Base ID:** a short root and a number, for one building in one biome: house1, farm2, woodshop1, smithy1,
+  cookhouse1, workshop1, storehouse1, guardhouse1, hub1 (the hearth), tavern1, longhouse1. The biome is not in the
+  name; the sheet keeps it, so a Black Forest version of a Meadows house is a new base ID.
+- **s1, s2, s3:** the structure stage. A new stage comes when the village moves up a stage: an added room, a second
+  floor, a wing, a bigger yard. In the game the old building is taken down and the next stage built in its place.
+- **d1, d2, d3:** the decor stage, interior and yard only. d1 is sparse (a bed, perhaps a plain table and chair); d2
+  is furnished (a crafting station, small decor, more lights, an early rug); d3 is rich (rugs, drapes, glass windows,
+  plants, a tended garden along the walls, wall hangings, tables set with food).
+- Until slotting, a design is known by its design number (`0283`), which never changes.
 
 ## Starting a session
 
@@ -35,6 +61,51 @@ Review sheet: https://docs.google.com/spreadsheets/d/1rHaZArWhEa8V43UTZePM9EQSBw
 7. Put up a page: `vh gallery keepers` (page 1), or `vh gallery keepers page 3`.
 8. Take the shaping knife in hand (see Shaping below). The first time, `vh tool` puts one in your inventory; keep it on a
    quick slot (V or C). Typed commands (`vh swap` and the numpad) still work without it.
+9. For sorting (phases A and B) take a sort knife instead: `vh sort tools` the first time.
+
+## Sorting in the game (phases A and B)
+
+Sort knife A is the vanilla flint knife and sort knife B the copper knife (config SortToolA and SortToolB), renamed
+**Villheim Sort Tool A: Type** and **Villheim Sort Tool B: Subtype**; A glows amber, B purple. `vh sort tools` puts
+both in your inventory. Keep them on quick slots next to the Shaper Tool.
+
+With a sort knife in hand, the hotbar keys pick a choice (the slot shows as selected; the same key again puts it
+down) and **left click** on any piece or the sign of a design, up to 80 m away, gives that design the choice. Aiming
+at a design shows its number, name and current sort at the top left.
+
+| Key | Knife A (type) | Knife B, aiming at a Work design | Knife B, aiming at a Community design |
+|---|---|---|---|
+| 1 | Home | Farming | Hearth |
+| 2 | Work | Woodworking | Tavern |
+| 3 | Community | Mining | Longhouse |
+| 4 | Drop | Cooking | |
+| 5 | | Crafting | |
+| 6 | | Storage | |
+| 7 | Clear (back to unsorted) | Defence | Clear |
+| 8 | Undo (each press takes back one choice) | Undo | Undo |
+
+- The first line of each sign shows the sort in colour (grey Unsorted, green Home, purple Work, teal Community, red
+  Drop), and the big number above the sign takes the same colour, so the field shows what is left to do.
+- Changing a design's type clears its subtype.
+- Every choice is kept in `BepInEx/Villheim/design-sort.csv` and, once the sheet address is set, written to the Pass
+  2 tab at once.
+- Pages by sort: `vh gallery keepers type work` (or `home`, `community`, `drop`, `unsorted`, `nosubtype`, or a
+  subtype such as `farming`). Phase B: `vh gallery keepers type nosubtype` shows only the work and community designs
+  still without a subtype.
+- `vh sort` shows the counts and the sheet's last answer; `vh sort undo`; `vh sort push` sends every choice to the
+  sheet again.
+
+### Connecting the game to the sheet (once)
+
+1. In the sheet: Extensions, Apps Script. Replace everything there with `scripts/review-sheet.gs` and save.
+2. Deploy, New deployment, type **Web app**. Execute as: **Me**. Who has access: **Anyone**. Deploy, then allow access
+   when Google asks.
+3. Copy the web app address (it ends in `/exec`). Opening it in a browser should show `{"ok":true,...}`.
+4. In the game console: `vh sort url <the address>`. From then on every choice goes to the sheet. `vh sort push`
+   sends what was sorted before.
+5. Keep the address to yourself: anyone who has it can write the Type and Subtype columns.
+6. When `review-sheet.gs` changes: paste it again, then Deploy, Manage deployments, edit, Version: New version. The
+   address stays the same.
 
 ## Showing designs
 
@@ -167,12 +238,11 @@ originals.
 
 ## The Pass 2 tab of the sheet
 
-- One page at a time (the sheet script hides the rest). Tick the box after "next ▶" to go on, the box after "◀ back"
-  to go back, or type a page number in the white box.
-- The top bar shows the in-game command for the page.
-- For each design: Use for (home, central hub, longhouse, a trade and so on, or Drop), tick the biomes it suits,
-  village level 1 to 4, and a note.
-- The sheet script (`scripts/review-sheet.gs`) is pasted once into Extensions, Apps Script.
+- Columns: page, design number, name, pieces, built as (the stage of its materials), Type, Subtype, Biome, Base ID, s,
+  note, link to the original. Type and Subtype are filled from the game; Biome, Base ID and s come in later phases.
+- The top bar counts sorted designs and subtypes. One page at a time (the sheet script hides the rest): tick the box
+  after "next ▶" to go on, the box after "◀ back" to go back, or type a page number in the white box.
+- The old guesses (kind, use, biome ticks, level) were removed on 2026-11-07; every design starts unsorted.
 
 ## Settings (F1, section "4 - Design review")
 
@@ -190,6 +260,8 @@ originals.
 - **ShaperTurnStep:** degrees per mouse wheel notch for Turn (22.5).
 - **LookColor:** the colour of every highlight while shaping (what you aim at, the design being moved or turned, locked
   parts, Delete all's marks). Default a soft teal (#2172651E). Darker or more see-through is subtler.
+- **SortToolA / SortToolB:** which items are the sort knives (`KnifeFlint`, `KnifeCopper`).
+- **SortSheetUrl:** the sheet's web app address (`vh sort url` sets it).
 - **GallerySwapKey:** the swap key without the knife (numpad 5).
 - **GallerySwapBiomes:** which biomes stand-ins come from, e.g. `meadows,blackforest,swamp,plains`.
 - **GalleryNumberText:** size and height of the floating number over each sign.
@@ -198,6 +270,7 @@ originals.
 
 | File (in the profile's `BepInEx` folder) | Why |
 |---|---|
+| `Villheim/design-sort.csv` | Every sort choice (if the sheet is not connected). |
 | `Villheim/pass3-saved.csv` | What you saved, for the sheet. |
 | `Villheim/notes.txt` | Your notes from the game. |
 | `Villheim/looked-at.txt` | Names of pieces you looked at, to set better stand-ins. |
@@ -221,4 +294,5 @@ originals.
 | `vh bp swap <number> <stage>` | Saves a copy with every later building piece swapped automatically (to `inspiration/edits`). |
 | `vh flatten [size]` | Clears and levels an area in front of you for the gallery. Usually done with PlanBuild instead. |
 | `vh tool` | Puts the shaping knife (a wooden knife) in your inventory. |
+| `vh sort tools` | Puts both sort knives in your inventory. |
 | `vh help` | Every Villheim command. |

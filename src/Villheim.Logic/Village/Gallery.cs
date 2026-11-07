@@ -457,11 +457,13 @@ namespace Villheim.Logic.Village
             bool keepers = false;
             int asStage = -1;
             int size = 0;
+            string typeFilter = null;
             for (int a = 0; a < rest.Length; a++)
             {
                 string word = rest[a].ToLowerInvariant();
                 if (word == "rescan" || word == "all") continue;
                 if (word.StartsWith("keep")) keepers = true;
+                else if (word == "type" && a + 1 < rest.Length && DesignSort.TypeWord(rest[a + 1]) != null) { typeFilter = DesignSort.TypeWord(rest[a + 1]); a++; }
                 else if (word == "as" && a + 1 < rest.Length && StageIndex(rest[a + 1]) >= 0) { asStage = StageIndex(rest[a + 1]); a++; }
                 else if (word == "size" && a + 1 < rest.Length && int.TryParse(rest[a + 1], out int z)) { size = Mathf.Clamp(z, 1, 150); a++; }
                 else if (word == "page" && a + 1 < rest.Length && int.TryParse(rest[a + 1], out int n)) { page = Mathf.Max(1, n); a++; }
@@ -479,9 +481,11 @@ namespace Villheim.Logic.Village
             if (keepers) saved.Add("keepers");
             if (asStage >= 0) saved.AddRange(new[] { "as", StageWords[asStage] });
             if (size > 0) saved.AddRange(new[] { "size", size.ToString() });
+            if (typeFilter != null) saved.AddRange(new[] { "type", typeFilter });
             SaveLast(saved, page);
+            _typeFilter = typeFilter;
             VillheimPlugin.Instance.StartCoroutine(Run(player.transform.position, forward, stage, group, page, rescan, keepers, asStage, size));
-            string what = Describe(stage, group, keepers, asStage);
+            string what = Describe(stage, group, keepers, asStage) + (typeFilter != null ? $", type {typeFilter}" : "");
             return $"Villheim: gathering designs ({what}, page {page}).";
         }
 
@@ -844,7 +848,9 @@ namespace Villheim.Logic.Village
                 kept[Keepers.Names[k]] = k;
             }
 
-            List<Cell> matching = cells.Where(c => roles.Contains(c.Role) && (stage < 0 || c.Stage == stage) && (!keepers || kept.ContainsKey(c.Design.Name))).ToList();
+            string typeFilter = _typeFilter;
+            List<Cell> matching = cells.Where(c => roles.Contains(c.Role) && (stage < 0 || c.Stage == stage) && (!keepers || kept.ContainsKey(c.Design.Name)) &&
+                                                   (typeFilter == null || DesignSort.Matches(c.Design.Name, typeFilter))).ToList();
 
             // Keepers in their own order (by piece count, near-copies together), 50 to a page, laid out in one flow
             // so like sits next to like; the Pass 2 tab of the review sheet has the same pages.
@@ -856,7 +862,7 @@ namespace Villheim.Logic.Village
 
             List<List<Cell>> paged = Chunks(matching, size > 0 ? size : keepers ? KeeperPageSize : PageSize);
             int pages = Mathf.Max(1, paged.Count);
-            string what = Describe(stage, group, keepers, asStage);
+            string what = Describe(stage, group, keepers, asStage) + (typeFilter != null ? $", type {typeFilter}" : "");
             Console.instance?.Print($"Villheim: {cells.Count} designs in all; {what}: {matching.Count} ({pages} pages). Full list: {listPath}");
             List<Cell> chosen = page <= paged.Count ? paged[page - 1] : new List<Cell>();
             chosen.ForEach(c => c.AsStage = asStage);
@@ -875,6 +881,9 @@ namespace Villheim.Logic.Village
         }
 
         private const int KeeperPageSize = 50;
+
+        /// <summary>'type X' of the page being put up: only designs sorted as X (DesignSort.Matches), or null for all.</summary>
+        private static string _typeFilter;
 
         private static List<List<Cell>> Chunks(List<Cell> cells, int size)
         {
@@ -1815,7 +1824,8 @@ namespace Villheim.Logic.Village
         private static void Sign(Cell cell, Vector3 forward)
         {
             Vector3 at = cell.Center - forward * (cell.Half - 1f);
-            string text = $"<#5cf>{Label(cell)}, {StageNames[cell.Stage]}<br><#fff>{cell.Design.Name}<br><#bbb>{(cell.Number > 0 ? $"No. {cell.Number}, " : "")}by {Creator(cell.Design)}" +
+            // The first line is the design's sort from the sort knives (Unsorted until then), never a guessed kind.
+            string text = $"{DesignSort.SignHead(cell.Design.Name, StageNames[cell.Stage])}<br><#fff>{cell.Design.Name}<br><#bbb>{(cell.Number > 0 ? $"No. {cell.Number}, " : "")}by {Creator(cell.Design)}" +
                           (cell.SwapNote != null ? $"<br><#fc6>{cell.SwapNote}" : "") +
                           (cell.Edited ? "<br><#8f8>edited (pass 3 save)" : "");
             if (cell.Number <= 0)
@@ -1840,11 +1850,11 @@ namespace Villheim.Logic.Village
             string number;
             try
             {
-                number = string.Format(LogicConfig.GalleryNumberText?.Value ?? "{0}", cell.Number);
+                number = string.Format(LogicConfig.GalleryNumberText?.Value ?? "{0}", DesignSort.NumberText(cell.Design.Name, cell.Number));
             }
             catch (System.FormatException)
             {
-                number = cell.Number.ToString();
+                number = DesignSort.NumberText(cell.Design.Name, cell.Number);
             }
 
             OneSign(at + forward * 0.08f, forward, 0f, number);

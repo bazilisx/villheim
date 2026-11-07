@@ -106,7 +106,7 @@ curl -sSL -o cfr.jar https://repo1.maven.org/maven2/org/benf/cfr/0.152/cfr-0.152
 ```
 
 The useful parts are `goal/`, `world/BuildingLocationFinder`, `building/` (BedManager, ConstructionTask),
-`village/path/` and `dialogue/`. The findings are summed up in `docs/LEARNINGS.md`.
+`village/path/` and `dialogue/`. The findings are summed up in `docs/MILLENAIRE.md`. The building and village JSON files need no decompiler: unzip the jar and read `millenaire/cultures/`.
 
 ## Facts learned the hard way
 

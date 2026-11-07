@@ -48,19 +48,29 @@ with its own look for its biome.
   buildings along roads, wider trunks, queued paths join, daily door check (session 15).
 - [x] Design review pass 1: `vh report` lists every design with one stage each into the review sheet; Tyler kept
   264 of 963 (2026-11-07).
-- [ ] Design review pass 2: keepers gallery and hand editing (`vh swap`, nudging, `vh bp save`), Pass 2 tab filled
-- [x] Shaper Tool for pass 2: hotbar tools picked by key and used by click, mouse wheel turning, reset, undo, look, effects
-- [x] Shaper Tool defaults: Tyler's F1 values (effect scale, strength, burst scale, colours)
-  (use, biomes, level). Guide: `docs/DESIGN_REVIEW_GUIDE.md`. Tools built 2026-11-07; review under way.
-- [ ] Pass 3 tools: a decor strip (`vh bp strip`) that makes a1 (shell and essentials), a2 (with furniture), a3
-  (everything) from a pass 3 save; naming as below; fill the Variants tab.
+- [x] Shaper Tool: hotbar tools picked by key and used by click, mouse wheel turning, reset, undo, look, effects;
+  Tyler's F1 values as defaults. Guide: `docs/DESIGN_REVIEW_GUIDE.md`.
+- [x] Sort knives for phases A and B (2026-11-07): type and subtype set in the game by click, sign colours,
+  `design-sort.csv`, live writes to the Pass 2 tab through the sheet's web app, `vh gallery keepers type X`.
+- [ ] Phase A: every kept design sorted Home, Work, Community or Drop (Tyler, in game).
+- [ ] Phase B: subtypes for Work (Farming, Woodworking, Mining, Cooking, Crafting, Storage, Defence) and Community
+  (Hearth, Tavern, Longhouse).
+- [ ] Phase C: biome per design, and material fixes inside plots marked by green-tinted horizontal wood beams; save
+  inside the plot keeps everything in it. A saved design is taken down from the field (it comes back from its save
+  when the page is put up again). A third knife for phase C.
+- [ ] PNG picture of every saved blueprint, next to the file with the same name (rendered off-screen, as PlanBuild
+  does), plus a command for the saves already made.
+- [ ] Slotting: designs of one biome and subtype side by side; Tyler groups them under a base ID with structure stages
+  (house1_s1, house1_s2). The base ID and stage are given here.
+- [ ] Phase D: decor stages from the richest down. Save d3, it is copied to the d2 plot; strip and save d2, copied to
+  d1; strip to the bare minimum and save. Files named `<baseID>_s<n>d<n>` (e.g. `house1_s2d3`). Optional: a key that
+  removes every non-structural piece as a start for d1.
+- [ ] Phase E: one base ID in one biome in a row, s1d1 to s3d3, to review how it grows.
 - [ ] Bake common hand swaps into the stand-in suggestions once a pattern shows (same original, same choice).
-- [ ] Building families and variants: Tyler's picks saved as `<biome><kind><n>_<level letter><decor step>`, e.g.
-  `meadowshouse1_a1`. Same family = same structure. The letter is the building's level (A at village level 1, B the
-  same house upgraded); the number is how much decoration it has (a1 least, a2 more). Teach the blueprint reader this
-  naming; the Variants tab of the review sheet tracks them.
-- [ ] Villagers decorate between upgrades: instead of idling, they add single pieces that a1 lacks and a2 has, one
-  at a time, so a house moves from a1 to a2 to a3 piece by piece; a new letter (b1) is a real upgrade of the building.
+- [ ] Teach the blueprint reader the `<baseID>_s<n>d<n>` naming and the sheet's type, subtype and biome; the hearth's
+  stage unlocks the next s#, villagers raise d# between stages (see `docs/MILLENAIRE.md`).
+- [ ] Villagers decorate between upgrades: instead of idling, they add single pieces that d1 lacks and d2 has, one
+  at a time, so a house moves from d1 to d2 to d3 piece by piece; a new s# is a real rebuild of the building.
 - [ ] Ship Tyler's finished blueprints inside the mod (Villheim reads .blueprint files itself, so PlanBuild is only
   needed to make them, never to play).
 - [ ] Storehouse grows into the longhouse: its chests move into the central hall when the hall is rebuilt bigger.

@@ -36,6 +36,9 @@ namespace Villheim.Logic
         public static ConfigEntry<KeyboardShortcut> GallerySwapKey;
         public static ConfigEntry<string> GallerySwapBiomes;
         public static ConfigEntry<string> ShapingTool;
+        public static ConfigEntry<string> SortToolA;
+        public static ConfigEntry<string> SortToolB;
+        public static ConfigEntry<string> SortSheetUrl;
         public static ConfigEntry<string> ShaperHandEffect;
         public static ConfigEntry<string> ShaperGroundEffect;
         public static ConfigEntry<UnityEngine.Color> ShaperColor;
@@ -168,6 +171,12 @@ namespace Villheim.Logic
             GallerySwapBiomes = Admin(config, "4 - Design review", "GallerySwapBiomes", "meadows,blackforest,swamp",
                 "Which biomes 'vh swap' offers stand-ins from, one group each in front of the design's sign " +
                 "(meadows, blackforest, swamp, mountain, plains, mistlands, ashlands).");
+            SortToolA = Admin(config, "4 - Design review", "SortToolA", "KnifeFlint",
+                "The item that is sort tool A (phase A, type: home, work, community, drop). 'vh sort tools' gives one.");
+            SortToolB = Admin(config, "4 - Design review", "SortToolB", "KnifeCopper",
+                "The item that is sort tool B (phase B, subtype of work and community designs). 'vh sort tools' gives one.");
+            SortSheetUrl = Admin(config, "4 - Design review", "SortSheetUrl", "",
+                "Web app address of the review sheet's script (Deploy, Web app). Every sort choice is sent there as it is made. Empty: kept in design-sort.csv only.");
             RaidChance = Admin(config, work, "RaidChance", 0.2f,
                 "Chance each dusk of a raid (plus 3% per village tier), never two nights running.");
             WatchLooks();

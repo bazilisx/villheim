@@ -9,16 +9,16 @@ Current facts only. Read this at the start of a session. Narrative is in `docs/d
   https://docs.google.com/spreadsheets/d/1rHaZArWhEa8V43UTZePM9EQSBwS6bvjsmAFPhnlQs6o/edit (tabs Pass 2, Review,
   All data, Variants, Mods; sheet script `scripts/review-sheet.gs`).
   - Pass 1 done: 264 of 963 designs kept (`src/Villheim.Logic/Village/Keepers.cs`, in gallery order).
-  - Pass 2 in progress: `vh gallery keepers` (50 a page, as built), `vh swap` (stand-ins by biome at the sign,
-    combinations, hand-built groups, numpad nudging, Ctrl for one structure), `vh look`, `vh note`, `vh bp save
-    <number>|page`, saves to `blueprints/inspiration/pass3/p3-<number>-<name>.blueprint` with
-    `BepInEx/Villheim/pass3-saved.csv`. Swaps are kept only by saving. Shaping: with the Villheim Dev Shaper Tool
-    (vanilla KnifeWood, `vh tool`; small teal lightning) in hand, hotbar 1 to 8 pick Move (WASD, Q/E), Turn (mouse
-    wheel, axis ring, Shift/Alt axes), Swap, Delete, Delete all, Save, Reset, Undo; left click uses the picked tool
-    once with a building swing (whole design by default, click locks a part or object). One highlight colour
-    (LookColor). Effects and wheel turning tested; the new layout, Reset, design turning and the one-click fix are
-    not yet tried in game. Tyler's F1 values are the defaults.
-  - Pass 3 next: decor tiers a1/a2/a3 and levels a/b/c from the pass 3 saves; a decor strip tool is not written yet.
+  - New plan (2026-11-07): phases A type (Home, Work, Community, Drop), B subtype, C biome and material fixes in
+    marked plots, slotting (base ID and structure stage), D decor stages, E review rows. Names `<baseID>_s#d#`
+    (house1_s2d3), given at slotting; until then the design number. Details in the guide.
+  - Phase A next, all 264 unsorted (the old Kind and Use for guesses were removed from the Pass 2 tab). Sort knives
+    (`Village/DesignSort.cs`, `vh sort`): A = KnifeFlint (type), B = KnifeCopper (subtype); key picks, click sorts,
+    sign and number colours, `BepInEx/Villheim/design-sort.csv`, live writes to the Pass 2 tab once the sheet's web
+    app is deployed and `vh sort url` is set; `vh gallery keepers type <x>`. Not tried in game yet.
+  - Shaper Tool (`vh tool`, KnifeWood): 1 Move, 2 Turn, 3 Swap, 4 Delete, 5 Delete all, 6 Save, 7 Reset, 8 Undo;
+    saves to `blueprints/inspiration/pass3/p3-<number>-<name>.blueprint` (`pass3-saved.csv`). Used from phase C on.
+    The new layout, Reset, design turning and the one-click fix are not yet tried in game.
   - Design numbers come from `BepInEx/Villheim/design-list.csv` (`vh report`) and never change.
   - Licensing to settle before shipping blueprints: valheimians builds and copied MWL locations belong to their
     creators; ship only Tyler's own or with permission.
@@ -48,7 +48,7 @@ Current facts only. Read this at the start of a session. Narrative is in `docs/d
 - **Profile mods:** BepInEx, Jötunn 2.30.2, More World Locations, PlanBuild (not used by Villheim yet).
 - **Known issue to check:** the biome rule drops Meadows MWL designs that use core wood (likely including the
   Meadows hub `MWL_MeadowsTavern1`). The design report's materials column will show which designs remain.
-- **Study material:** Millénaire findings are in `docs/LEARNINGS.md`; decompile steps in `docs/DEVELOPMENT.md`.
+- **Study material:** Millénaire findings (buildings, levels, tiers, placement, paths) are in `docs/MILLENAIRE.md`; decompile steps in `docs/DEVELOPMENT.md`.
 
 ## Outstanding work
 
@@ -65,6 +65,7 @@ Current facts only. Read this at the start of a session. Narrative is in `docs/d
 
 ## Recent milestones
 
+- **2026-11-07 (sorting phases A to E, sort knives, Pass 2 tab rebuilt, Millénaire reference)** - see docs/daily-notes/2026-11/2026-11-07.md
 - **2026-11-07 (Shaper Tool: new key layout, Reset, design turning with axis ring, one click one action)** - see docs/daily-notes/2026-11/2026-11-07.md
 - **2026-11-07 (Shaper Tool: pick a tool and click, mouse wheel turning, small teal lightning)** - see docs/daily-notes/2026-11/2026-11-07.md
 - **2026-11-07 (design review tools: keepers gallery, hand swaps, nudging, pass 3 saves, guide)** - see docs/daily-notes/2026-11/2026-11-07.md

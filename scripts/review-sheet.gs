@@ -7,6 +7,11 @@
  * Top bar of each tab: a tick box to go back one page, the page shown (type a number to jump), a tick box for the
  * next page. Review: E1, F1, G1. Pass 2: D1, E1, F1.
  * Menu "Villheim review": next page, back one page, show every page.
+ *
+ * Sorting from the game (design review phases A and B): the game sends every sort choice here. Set up once:
+ * Deploy > New deployment > type Web app, Execute as: Me, Who has access: Anyone, Deploy, allow access, copy the web
+ * app address and type 'vh sort url <address>' in the game console. The address is the only key, so keep it to
+ * yourself. After pasting a new version of this file: Deploy > Manage deployments > edit > Version: New version.
  */
 
 var TABS = {
@@ -97,4 +102,54 @@ function lastPage_(sheet) {
 function review_() {
   var active = SpreadsheetApp.getActiveSheet();
   return TABS[active.getName()] ? active : SpreadsheetApp.getActive().getSheetByName('Pass 2');
+}
+
+/**
+ * Sort choices from the game: {"rows":[{"number":283,"name":"WoodHouse8","type":"Work","subtype":"Farming"}]}.
+ * Each row is found by its design number in the "No." column of the Pass 2 tab; only the fields sent are written.
+ */
+function doPost(e) {
+  var lock = LockService.getScriptLock();
+  lock.waitLock(20000);
+  try {
+    var body = JSON.parse(e.postData.contents);
+    var sheet = SpreadsheetApp.getActive().getSheetByName('Pass 2');
+    var headings = sheet.getRange(2, 1, 1, sheet.getLastColumn()).getValues()[0];
+    var column = {};
+    headings.forEach(function (name, i) { column[String(name).trim()] = i + 1; });
+    var numbers = sheet.getRange(FIRST_ROW, column['No.'], sheet.getMaxRows() - FIRST_ROW + 1, 1).getValues()
+      .map(function (row) { return Number(row[0]); });
+    var fields = { type: 'Type', subtype: 'Subtype', biome: 'Biome', base: 'Base ID', s: 's' };
+    var written = 0;
+    var missing = [];
+    (body.rows || []).forEach(function (row) {
+      var index = numbers.indexOf(Number(row.number));
+      if (index < 0) {
+        missing.push(row.number);
+        return;
+      }
+
+      Object.keys(fields).forEach(function (key) {
+        if (row[key] !== undefined && column[fields[key]]) {
+          sheet.getRange(FIRST_ROW + index, column[fields[key]]).setValue(row[key]);
+        }
+      });
+      written++;
+    });
+
+    return answer_({ ok: true, written: written, missing: missing });
+  } catch (error) {
+    return answer_({ ok: false, error: String(error) });
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+/** Opening the web app address in a browser shows this, to check the deployment works. */
+function doGet() {
+  return answer_({ ok: true, sheet: SpreadsheetApp.getActive().getName() });
+}
+
+function answer_(value) {
+  return ContentService.createTextOutput(JSON.stringify(value)).setMimeType(ContentService.MimeType.JSON);
 }

@@ -50,6 +50,11 @@ namespace Villheim.Logic.Village
 
         private static readonly Role[] Order = { Role.House, Role.Hub, Role.Workshop, Role.Storage, Role.Farm };
         internal static readonly int KeyGallery = "villheim_gallery".GetStableHashCode();
+        internal const string KeySwappedFrom = "villheim_swapped_from";
+        internal const string KeySwappedRotation = "villheim_swapped_rotation";
+
+        /// <summary>The stage the last gallery page was shown as ('as meadows'), or -1: what 'vh swap' pairs for.</summary>
+        internal static int LastAsStage = -1;
         // Any calm land will do for a gallery (mobs can be set passive): not the Mistlands, Ashlands, Deep North or sea.
         private const Heightmap.Biome GalleryLand = Heightmap.Biome.Meadows | Heightmap.Biome.BlackForest | Heightmap.Biome.Plains |
                                                     Heightmap.Biome.Swamp | Heightmap.Biome.Mountain;
@@ -804,6 +809,7 @@ namespace Villheim.Logic.Village
             List<Cell> chosen = page <= paged.Count ? paged[page - 1] : new List<Cell>();
             chosen.ForEach(c => c.AsStage = asStage);
             MaterialSwap.ClearMisses();
+            LastAsStage = asStage;
             if (chosen.Count == 0)
             {
                 Console.instance?.Print($"Villheim: page {page} is empty; {what} has {pages} pages.");
@@ -1594,7 +1600,15 @@ namespace Villheim.Logic.Village
                 GameObject piece = DesignSpawner.SpawnEntry(entry, origin, turn, 0, false);
                 if (piece != null)
                 {
-                    piece.GetComponent<ZNetView>()?.GetZDO()?.Set(KeyGallery, 1);
+                    ZDO zdo = piece.GetComponent<ZNetView>()?.GetZDO();
+                    zdo?.Set(KeyGallery, 1);
+                    if (zdo != null && entry.SwappedFrom != null)
+                    {
+                        // 'vh swap' needs to know what a stand-in stands in for, and how the original was turned.
+                        zdo.Set(KeySwappedFrom, entry.SwappedFrom);
+                        zdo.Set(KeySwappedRotation, turn * entry.OriginalRotation);
+                    }
+
                     made.Add(piece);
                 }
             }

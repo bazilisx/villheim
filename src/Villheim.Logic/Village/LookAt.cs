@@ -54,8 +54,14 @@ namespace Villheim.Logic.Village
             }
         }
 
-        private static void Check(Player player)
+        /// <summary>The object under the crosshair within reach of the player (its network object), or null.</summary>
+        public static GameObject Target(Player player)
         {
+            if (GameCamera.instance == null || player == null)
+            {
+                return null;
+            }
+
             Transform eye = GameCamera.instance.transform;
             RaycastHit[] hits = Physics.RaycastAll(eye.position, eye.forward, 30f, ~0, QueryTriggerInteraction.Ignore);
             System.Array.Sort(hits, (a, b) => a.distance.CompareTo(b.distance));
@@ -66,35 +72,41 @@ namespace Villheim.Logic.Village
                     continue;
                 }
 
-                // The camera sits behind the player: measure the reach from the player, not from the camera.
                 if (Vector3.Distance(player.transform.position + Vector3.up, hit.point) > Reach)
                 {
-                    return;
+                    return null;
                 }
 
                 ZNetView view = hit.collider.GetComponentInParent<ZNetView>();
-                if (view == null)
-                {
-                    return; // the ground or a rock
-                }
+                return view != null ? view.gameObject : null;
+            }
 
-                string prefab = Utils.GetPrefabName(view.gameObject);
-                if (prefab == _last)
-                {
-                    return;
-                }
+            return null;
+        }
 
-                _last = prefab;
-                string text = MaterialSwap.Describe(prefab);
-                MessageHud.instance?.ShowMessage(MessageHud.MessageType.TopLeft, "Look: " + text);
-                Console.instance?.Print("Look: " + text);
-                if (Seen.Add(prefab))
-                {
-                    Directory.CreateDirectory(Path.GetDirectoryName(FilePath));
-                    File.AppendAllText(FilePath, text + System.Environment.NewLine);
-                }
-
+        private static void Check(Player player)
+        {
+            GameObject target = Target(player);
+            if (target == null)
+            {
                 return;
+            }
+
+            string prefab = Utils.GetPrefabName(target);
+            if (prefab == _last)
+            {
+                return;
+            }
+
+            _last = prefab;
+            string from = target.GetComponent<ZNetView>()?.GetZDO()?.GetString(Gallery.KeySwappedFrom, "") ?? "";
+            string text = MaterialSwap.Describe(prefab) + (from.Length > 0 ? $" (stands in for {from})" : "");
+            MessageHud.instance?.ShowMessage(MessageHud.MessageType.TopLeft, "Look: " + text);
+            Console.instance?.Print("Look: " + text);
+            if (Seen.Add(prefab))
+            {
+                Directory.CreateDirectory(Path.GetDirectoryName(FilePath));
+                File.AppendAllText(FilePath, text + System.Environment.NewLine);
             }
         }
     }

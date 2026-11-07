@@ -43,6 +43,8 @@ namespace Villheim.Logic
             "blueprints: list the blueprints villages can build (BepInEx/config/Villheim/blueprints, PlanBuild's folder)",
             "savebp <role-family-level> [radius]: save the building pieces around you as a blueprint, e.g. savebp house-cabin-1 8",
             "look [off]: name whatever the crosshair points at within 4 m, with its kind, size, stage and what the material swap makes of it; new names go to BepInEx/Villheim/looked-at.txt",
+            "swap [off|cancel|turn|as <stage>]: pick stand-ins by hand in the gallery: aim at a piece and press middle mouse, then at the piece to use and press it again; every copy within 40 m changes and the pairing is kept for later pages",
+            "note <text>: write a note with what you are aiming at and the nearest gallery sign to BepInEx/Villheim/notes.txt",
             "bp swap <number|name> <stage>: save a copy of a design with its walls, floors, roofs and beams in that stage's materials (to blueprints/inspiration/edits)",
         };
 
@@ -171,6 +173,8 @@ namespace Villheim.Logic
                 case "villheim_savebp": SaveBlueprint(args, context); return true;
                 case "villheim_bp": Say(context, BlueprintEdits.Run(args)); return true;
                 case "villheim_look": Say(context, Village.LookAt.Toggle(args)); return true;
+                case "villheim_swap": Say(context, SwapTool.Run(args)); return true;
+                case "villheim_note": Say(context, SwapTool.Note(args)); return true;
                 default: return false;
             }
         }

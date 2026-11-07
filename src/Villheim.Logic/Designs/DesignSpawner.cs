@@ -104,6 +104,10 @@ namespace Villheim.Logic.Designs
 
             /// <summary>Tracked materials from the piece's vanilla recipe (Wood, Stone and so on).</summary>
             public Dictionary<string, int> Cost = new Dictionary<string, int>();
+
+            /// <summary>For a material swap stand-in: the piece it stands in for, and that piece's own rotation.</summary>
+            public string SwappedFrom;
+            public Quaternion OriginalRotation = Quaternion.identity;
         }
 
         // Stage names for progress. The shell (structure, roofs, doors and windows) goes up in support order, see

@@ -59,10 +59,115 @@ namespace Villheim.Logic.Village
         };
 
         /// <summary>
-        /// Hand-made pairings, for pieces the size test gets wrong or cannot match: source piece to the piece to use
-        /// at each stage it is swapped down to (stage index, see Gallery.StageNames). Filled from swap-misses files.
+        /// Hand-made pairings: source piece to the piece to use from a stage on (stage index, see Gallery.StageNames),
+        /// and a quarter turn if it needs one. Made in game with 'vh swap' and kept in BepInEx/Villheim/swap-pairs.txt
+        /// (original|stage|replacement|turn); a pairing for a stage also holds for the stages after it.
         /// </summary>
-        private static readonly Dictionary<string, Dictionary<int, string>> Pairs = new Dictionary<string, Dictionary<int, string>>();
+        private static readonly Dictionary<string, Dictionary<int, (string Prefab, float Turn)>> Pairs =
+            new Dictionary<string, Dictionary<int, (string, float)>>();
+
+        private static System.DateTime _pairsRead;
+
+        public static string PairsPath => Path.Combine(BepInEx.Paths.BepInExRootPath, "Villheim", "swap-pairs.txt");
+
+        private static void LoadPairs()
+        {
+            try
+            {
+                System.DateTime written = File.Exists(PairsPath) ? File.GetLastWriteTimeUtc(PairsPath) : System.DateTime.MinValue;
+                if (written == _pairsRead)
+                {
+                    return;
+                }
+
+                _pairsRead = written;
+                Pairs.Clear();
+                Cache.Clear();
+                if (!File.Exists(PairsPath))
+                {
+                    return;
+                }
+
+                foreach (string line in File.ReadAllLines(PairsPath))
+                {
+                    string[] f = line.Split('|');
+                    if (line.StartsWith("#") || f.Length < 3 || !int.TryParse(f[1], out int stage))
+                    {
+                        continue;
+                    }
+
+                    float turn = f.Length > 3 && float.TryParse(f[3], NumberStyles.Float, CultureInfo.InvariantCulture, out float t) ? t : 0f;
+                    if (!Pairs.TryGetValue(f[0], out var byStage))
+                    {
+                        byStage = new Dictionary<int, (string, float)>();
+                        Pairs[f[0]] = byStage;
+                    }
+
+                    byStage[stage] = (f[2], turn);
+                }
+            }
+            catch (System.Exception e)
+            {
+                VillheimPlugin.Log.LogWarning($"Material swap: could not read {PairsPath}: {e.Message}");
+            }
+        }
+
+        /// <summary>Saves a hand pairing (and forgets earlier choices for that piece).</summary>
+        public static void SetPair(string original, int stage, string replacement, float turn)
+        {
+            LoadPairs();
+            if (!Pairs.TryGetValue(original, out var byStage))
+            {
+                byStage = new Dictionary<int, (string, float)>();
+                Pairs[original] = byStage;
+            }
+
+            byStage[stage] = (replacement, turn);
+            var lines = new List<string> { "# Hand pairings made with 'vh swap': original|stage|replacement|quarter turn in degrees. Stages: 0 Meadows, 1 Black Forest, 2 Swamp, 3 Mountain, 4 Plains." };
+            lines.AddRange(Pairs.OrderBy(k => k.Key).SelectMany(k => k.Value.OrderBy(v => v.Key)
+                .Select(v => $"{k.Key}|{v.Key}|{v.Value.Prefab}|{v.Value.Turn.ToString("0", CultureInfo.InvariantCulture)}")));
+            Directory.CreateDirectory(Path.GetDirectoryName(PairsPath));
+            File.WriteAllLines(PairsPath, lines);
+            _pairsRead = File.GetLastWriteTimeUtc(PairsPath);
+            foreach (string key in Cache.Keys.Where(k => k.StartsWith(original + "|")).ToList())
+            {
+                Cache.Remove(key);
+            }
+        }
+
+        /// <summary>The hand pairing that holds for this stage: the one made for it, or for the nearest stage before it.</summary>
+        private static (string Prefab, float Turn)? PairFor(string prefab, int target)
+        {
+            LoadPairs();
+            if (!Pairs.TryGetValue(prefab, out var byStage))
+            {
+                return null;
+            }
+
+            int best = byStage.Keys.Where(k => k <= target).DefaultIfEmpty(-1).Max();
+            return best >= 0 ? byStage[best] : ((string, float)?)null;
+        }
+
+        /// <summary>The middle of a piece in its own coordinates (its colliders), or zero.</summary>
+        public static Vector3 LocalCenter(string prefab) => Measure(prefab)?.Center ?? Vector3.zero;
+
+        /// <summary>The size of a piece (its colliders), or one metre each way.</summary>
+        public static Vector3 SizeOf(string prefab) => Measure(prefab)?.Size ?? Vector3.one;
+
+        /// <summary>Likely stand-ins for a piece from the target stage or before: same kind first, then related kinds, then anything, nearest size first.</summary>
+        public static List<string> Candidates(string prefab, int target, int count)
+        {
+            Shape source = Measure(prefab);
+            if (source == null)
+            {
+                return new List<string>();
+            }
+
+            return Pool().Where(c => c.Prefab != prefab && c.Stage <= target)
+                .OrderBy(c => c.KindKey.Length > 0 && c.KindKey == source.KindKey ? 0 : c.Families.Overlaps(source.Families) ? 1 : 2)
+                .ThenBy(c => Mathf.Min(Distance(source.Size, c.Size), Distance(source.Size, Turned(c.Size))))
+                .Select(c => c.Prefab).Distinct().Take(count).ToList();
+        }
 
         private sealed class Shape
         {
@@ -152,6 +257,8 @@ namespace Villheim.Logic.Village
                         entry.LocalRotation * turn, entry.Scale);
                     if (swapped != null)
                     {
+                        swapped.SwappedFrom = entry.Prefab;
+                        swapped.OriginalRotation = entry.LocalRotation;
                         output.Add(swapped);
                         result.Swapped++;
                         if (near)
@@ -314,22 +421,25 @@ namespace Villheim.Logic.Village
 
         private static Choice Find(string prefab, int target)
         {
-            // Only pieces from after the target stage are swapped, never anything up.
-            if (StageOf(prefab) <= target)
-            {
-                return null;
-            }
-
             Shape source = Measure(prefab);
             if (source == null)
             {
                 return null;
             }
 
-            if (Pairs.TryGetValue(prefab, out Dictionary<int, string> pairs) && pairs.TryGetValue(target, out string paired))
+            // A hand pairing wins over everything, even for a piece the rules would leave alone.
+            var pair = PairFor(prefab, target);
+            if (pair.HasValue)
             {
-                Shape chosen = Measure(paired);
-                return chosen == null ? null : new Choice { Prefab = paired, Shift = source.Center - chosen.Center, Turn = Quaternion.identity };
+                Shape chosen = Measure(pair.Value.Prefab);
+                Quaternion quarter = Quaternion.Euler(0f, pair.Value.Turn, 0f);
+                return chosen == null ? null : new Choice { Prefab = pair.Value.Prefab, Shift = source.Center - quarter * chosen.Center, Turn = quarter };
+            }
+
+            // Only pieces from after the target stage are swapped, never anything up.
+            if (StageOf(prefab) <= target)
+            {
+                return null;
             }
 
             if (source.KindKey.Length == 0)

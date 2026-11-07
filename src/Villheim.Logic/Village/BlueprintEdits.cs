@@ -291,7 +291,7 @@ namespace Villheim.Logic.Village
         {
             var pieces = Standing(design, sign);
             return pieces.Any(p => p.ByHand || p.StandIn) || pieces.Count != sign.GetInt(Gallery.KeyPlaced, pieces.Count) ||
-                   sign.GetVec3(Gallery.KeyNudge, Vector3.zero).sqrMagnitude > 0.0001f;
+                   sign.GetVec3(Gallery.KeyNudge, Vector3.zero).sqrMagnitude > 0.0001f || sign.GetInt(Gallery.KeyTouched) == 1;
         }
 
         /// <summary>Saves what stands on the design's plot as p3-&lt;number&gt;-&lt;name&gt;.blueprint and lists it.</summary>

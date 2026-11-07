@@ -94,13 +94,15 @@ namespace Villheim.Logic.Village
                         return;
                     }
 
+                    bool part = Input.GetKey(KeyCode.LeftControl) || Input.GetKey(KeyCode.RightControl);
+                    Highlight(__instance, part);
                     if (LogicConfig.GallerySwapKey.Value.IsDown())
                     {
                         Press(__instance);
                     }
                     else
                     {
-                        NudgeKeys(__instance);
+                        NudgeKeys(__instance, part);
                     }
                 }
                 catch (System.Exception e)
@@ -166,30 +168,238 @@ namespace Villheim.Logic.Village
         // ---------------------------------------------------------------- nudging a whole design
 
         /// <summary>
-        /// Page Up / Page Down move the design under the crosshair (or the last one picked) up or down; the arrow keys
-        /// move it left, right, away and towards, as the player looks. 10 cm a press, 50 cm with Shift. Its stand-ins and
-        /// anything built by hand on its plot move with it. The height change is saved with the design ('vh bp save').
+        /// Numpad + / - move the design under the crosshair (or the last one picked) up or down; numpad 8, 2, 4, 6 move it
+        /// away, towards, left and right, as the player looks (Page Up/Down and the arrow keys do the same). 10 cm a
+        /// press, 50 cm with Shift. Its stand-ins and anything built by hand on its plot move with it; the height change
+        /// is saved with the design ('vh bp save'). With Ctrl held, only the structure under the crosshair moves: the
+        /// piece and every piece of the design touching it, and those touching them (a hut beside the hall), shown green.
         /// </summary>
-        private static void NudgeKeys(Player player)
+        private static void NudgeKeys(Player player, bool part)
         {
             Vector3 forward = GameCamera.instance != null ? GameCamera.instance.transform.forward : player.transform.forward;
             forward.y = 0f;
             forward = forward.sqrMagnitude > 0.01f ? forward.normalized : Vector3.forward;
             Vector3 right = Vector3.Cross(Vector3.up, forward);
             Vector3 move = Vector3.zero;
-            if (Input.GetKeyDown(KeyCode.PageUp)) move = Vector3.up;
-            else if (Input.GetKeyDown(KeyCode.PageDown)) move = Vector3.down;
-            else if (Input.GetKeyDown(KeyCode.UpArrow)) move = forward;
-            else if (Input.GetKeyDown(KeyCode.DownArrow)) move = -forward;
-            else if (Input.GetKeyDown(KeyCode.RightArrow)) move = right;
-            else if (Input.GetKeyDown(KeyCode.LeftArrow)) move = -right;
+            if (Input.GetKeyDown(KeyCode.KeypadPlus) || Input.GetKeyDown(KeyCode.PageUp)) move = Vector3.up;
+            else if (Input.GetKeyDown(KeyCode.KeypadMinus) || Input.GetKeyDown(KeyCode.PageDown)) move = Vector3.down;
+            else if (Input.GetKeyDown(KeyCode.Keypad8) || Input.GetKeyDown(KeyCode.UpArrow)) move = forward;
+            else if (Input.GetKeyDown(KeyCode.Keypad2) || Input.GetKeyDown(KeyCode.DownArrow)) move = -forward;
+            else if (Input.GetKeyDown(KeyCode.Keypad6) || Input.GetKeyDown(KeyCode.RightArrow)) move = right;
+            else if (Input.GetKeyDown(KeyCode.Keypad4) || Input.GetKeyDown(KeyCode.LeftArrow)) move = -right;
             if (move == Vector3.zero)
             {
                 return;
             }
 
             float step = Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift) ? 0.5f : 0.1f;
-            Nudge(player, move * step);
+            if (part)
+            {
+                NudgePart(move * step);
+            }
+            else
+            {
+                Nudge(player, move * step);
+            }
+        }
+
+        // ---------------------------------------------------------------- one structure of a design (Ctrl)
+
+        private static readonly int Emission = Shader.PropertyToID("_EmissionColor");
+        private static readonly List<ZNetView> Lit = new List<ZNetView>();
+        private static GameObject _litFor;
+        private static float _nextLight;
+
+        /// <summary>While Ctrl is held: the structure under the crosshair, tinted green; let go and the tint goes.</summary>
+        private static void Highlight(Player player, bool part)
+        {
+            if (!part)
+            {
+                if (Lit.Count > 0)
+                {
+                    ClearLight();
+                }
+
+                return;
+            }
+
+            if (Time.time < _nextLight)
+            {
+                return;
+            }
+
+            _nextLight = Time.time + 0.2f;
+            GameObject target = LookAt.Target(player);
+            ZDO zdo = target?.GetComponent<ZNetView>()?.GetZDO();
+            if (target == null || target == _litFor || zdo == null || zdo.GetString(Gallery.KeyDesign, "").Length == 0 ||
+                zdo.GetFloat(Gallery.KeyPlotHalf, 0f) > 0f)
+            {
+                return;
+            }
+
+            ClearLight();
+            _litFor = target;
+            Lit.AddRange(Structure(target));
+            foreach (ZNetView view in Lit)
+            {
+                MaterialMan.instance?.SetValue(view.gameObject, Emission, new Color(0.1f, 0.6f, 0.1f));
+            }
+
+            Say($"Swap: {Lit.Count} pieces of {zdo.GetString(Gallery.KeyDesign, "")} selected; the numpad moves only these while Ctrl is held.");
+        }
+
+        private static void ClearLight()
+        {
+            foreach (ZNetView view in Lit)
+            {
+                if (view != null && view.gameObject != null)
+                {
+                    MaterialMan.instance?.ResetValue(view.gameObject, Emission);
+                }
+            }
+
+            Lit.Clear();
+            _litFor = null;
+        }
+
+        /// <summary>
+        /// The piece and every piece of its design touching it, and those touching them: one building of a design that
+        /// holds several (a hut beside a hall). Hand-built pieces on the plot count as the design's.
+        /// </summary>
+        private static List<ZNetView> Structure(GameObject start)
+        {
+            ZNetView first = start.GetComponent<ZNetView>();
+            string design = first.GetZDO().GetString(Gallery.KeyDesign, "");
+            ZDO sign = null;
+            var pieces = new List<(ZNetView View, Bounds Bounds)>();
+            foreach (ZNetView view in ZNetScene.instance.m_instances.Values)
+            {
+                ZDO zdo = view != null && view.IsValid() ? view.GetZDO() : null;
+                if (zdo != null && zdo.GetString(Gallery.KeyDesign, "") == design && zdo.GetFloat(Gallery.KeyPlotHalf, 0f) > 0f)
+                {
+                    sign = zdo;
+                }
+            }
+
+            Vector3 center = sign?.GetVec3(Gallery.KeyPlotCenter, Vector3.zero) ?? start.transform.position;
+            float half = sign?.GetFloat(Gallery.KeyPlotHalf, 0f) ?? 0f;
+            Quaternion frame = Quaternion.Inverse(Quaternion.Euler(0f, sign?.GetFloat(Gallery.KeyPlotYaw, 0f) ?? 0f, 0f));
+            foreach (ZNetView view in ZNetScene.instance.m_instances.Values)
+            {
+                ZDO zdo = view != null && view.IsValid() ? view.GetZDO() : null;
+                if (zdo == null || zdo.GetInt(KeyPalette) == 1)
+                {
+                    continue;
+                }
+
+                bool gallery = zdo.GetInt(Gallery.KeyGallery) == 1;
+                bool ours = gallery && zdo.GetString(Gallery.KeyDesign, "") == design && zdo.GetFloat(Gallery.KeyPlotHalf, 0f) <= 0f;
+                Vector3 local = frame * (view.transform.position - center);
+                bool byHand = !gallery && view.GetComponent<Piece>() != null && view.GetComponent<Character>() == null &&
+                              Mathf.Abs(local.x) <= half && Mathf.Abs(local.z) <= half;
+                Bounds? bounds = (ours || byHand) ? WorldBounds(view.gameObject) : null;
+                if (bounds.HasValue)
+                {
+                    pieces.Add((view, bounds.Value));
+                }
+            }
+
+            // Pieces by 2 m grid square, so each piece only checks its neighbours.
+            var grid = new Dictionary<(int, int, int), List<int>>();
+            (int, int, int) Cell(Vector3 p) => (Mathf.FloorToInt(p.x / 2f), Mathf.FloorToInt(p.y / 2f), Mathf.FloorToInt(p.z / 2f));
+            for (int i = 0; i < pieces.Count; i++)
+            {
+                Bounds b = pieces[i].Bounds;
+                var lo = Cell(b.min - Vector3.one * 0.1f);
+                var hi = Cell(b.max + Vector3.one * 0.1f);
+                for (int x = lo.Item1; x <= hi.Item1; x++)
+                for (int y = lo.Item2; y <= hi.Item2; y++)
+                for (int z = lo.Item3; z <= hi.Item3; z++)
+                {
+                    if (!grid.TryGetValue((x, y, z), out List<int> list))
+                    {
+                        list = new List<int>();
+                        grid[(x, y, z)] = list;
+                    }
+
+                    list.Add(i);
+                }
+            }
+
+            int startIndex = pieces.FindIndex(p => p.View == first);
+            if (startIndex < 0)
+            {
+                return new List<ZNetView> { first };
+            }
+
+            var taken = new HashSet<int> { startIndex };
+            var queue = new Queue<int>();
+            queue.Enqueue(startIndex);
+            while (queue.Count > 0)
+            {
+                int i = queue.Dequeue();
+                Bounds reach = pieces[i].Bounds;
+                reach.Expand(0.1f);
+                var lo = Cell(reach.min);
+                var hi = Cell(reach.max);
+                for (int x = lo.Item1; x <= hi.Item1; x++)
+                for (int y = lo.Item2; y <= hi.Item2; y++)
+                for (int z = lo.Item3; z <= hi.Item3; z++)
+                {
+                    if (!grid.TryGetValue((x, y, z), out List<int> list))
+                    {
+                        continue;
+                    }
+
+                    foreach (int j in list)
+                    {
+                        if (!taken.Contains(j) && reach.Intersects(pieces[j].Bounds))
+                        {
+                            taken.Add(j);
+                            queue.Enqueue(j);
+                        }
+                    }
+                }
+            }
+
+            return taken.Select(i => pieces[i].View).ToList();
+        }
+
+        private static void NudgePart(Vector3 move)
+        {
+            if (Lit.Count == 0)
+            {
+                Say("Swap: hold Ctrl and aim at a structure of a design first (it turns green).");
+                return;
+            }
+
+            foreach (ZNetView view in Lit)
+            {
+                if (view == null || !view.IsValid())
+                {
+                    continue;
+                }
+
+                ZDO zdo = view.GetZDO();
+                view.transform.position += move;
+                zdo.SetPosition(view.transform.position);
+                if (zdo.GetString(Gallery.KeySwappedFrom, "").Length > 0)
+                {
+                    zdo.Set(Gallery.KeySwappedCenter, zdo.GetVec3(Gallery.KeySwappedCenter, view.transform.position) + move);
+                }
+            }
+
+            string design = Lit.FirstOrDefault(v => v != null && v.IsValid())?.GetZDO().GetString(Gallery.KeyDesign, "") ?? "";
+            foreach (ZNetView view in ZNetScene.instance.m_instances.Values)
+            {
+                ZDO zdo = view != null && view.IsValid() ? view.GetZDO() : null;
+                if (zdo != null && design.Length > 0 && zdo.GetString(Gallery.KeyDesign, "") == design && zdo.GetFloat(Gallery.KeyPlotHalf, 0f) > 0f)
+                {
+                    zdo.Set(Gallery.KeyTouched, 1);
+                }
+            }
+
+            Say($"Swap: moved {Lit.Count} pieces. 'vh bp save' keeps it.");
         }
 
         private static void Nudge(Player player, Vector3 move)

@@ -74,6 +74,9 @@ namespace Villheim.Logic.Village
         /// <summary>On a design's front sign: how far 'vh swap' has nudged it since it went up, in the design's own coordinates.</summary>
         internal const string KeyNudge = "villheim_nudge";
 
+        /// <summary>On a design's front sign: part of it was moved by hand (Ctrl and the numpad), so a page save takes it.</summary>
+        internal const string KeyTouched = "villheim_touched";
+
         /// <summary>Where 'vh bp save' keeps designs edited in the gallery: p3-&lt;number&gt;-&lt;name&gt;.blueprint.</summary>
         internal static string PassThreeFolder => System.IO.Path.Combine(Blueprints.Folder, "inspiration", "pass3");
 

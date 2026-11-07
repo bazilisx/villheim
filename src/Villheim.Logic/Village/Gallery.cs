@@ -324,7 +324,7 @@ namespace Villheim.Logic.Village
                     continue;
                 }
 
-                if (++looked % 20 == 0)
+                if (++looked % 5 == 0)
                 {
                     MessageHud.instance?.ShowMessage(MessageHud.MessageType.TopLeft, $"Gallery: looked at {looked}/{candidates.Count} blueprints and listed designs");
                     yield return null; // hundreds of blueprints: a few a frame
@@ -397,15 +397,93 @@ namespace Villheim.Logic.Village
         /// a player can build (no location-only pieces such as goblin walls or totems), every material from that stage
         /// and every crafting station available then. Otherwise why not.
         /// </summary>
+        private const int MaxPieces = 3000;
+        private static readonly Dictionary<string, Piece> PieceOf = new Dictionary<string, Piece>();
+
+        private static Piece PrefabPiece(string name)
+        {
+            if (!PieceOf.TryGetValue(name, out Piece piece))
+            {
+                piece = ZNetScene.instance.GetPrefab(name)?.GetComponent<Piece>();
+                PieceOf[name] = piece;
+            }
+
+            return piece;
+        }
+
+        /// <summary>
+        /// The stage test from a blueprint's own piece list, without laying it out (laying out a build of thousands
+        /// of pieces in build order froze the game for minutes, 2026-11-07). Builds over 3000 pieces are left out.
+        /// </summary>
+        private static string ViableBlueprint(Blueprints.Blueprint blueprint, Heightmap.Biome biome, out int pieces)
+        {
+            pieces = 0;
+            if (blueprint.Pieces.Count > MaxPieces)
+            {
+                return $"{blueprint.Pieces.Count} pieces, too big for a village";
+            }
+
+            HashSet<string> materials = StageMaterials[biome];
+            HashSet<string> stations = StageStations[biome];
+            foreach (Blueprints.Piece part in blueprint.Pieces)
+            {
+                Piece piece = PrefabPiece(part.Prefab);
+                if (piece == null)
+                {
+                    continue;
+                }
+
+                string why = PieceVerdict(piece, part.Prefab, materials, stations);
+                if (why != null)
+                {
+                    return why;
+                }
+
+                string lower = part.Prefab.ToLowerInvariant();
+                if (piece.m_category == Piece.PieceCategory.BuildingWorkbench || piece.m_category == Piece.PieceCategory.BuildingStonecutter ||
+                    lower.Contains("door") || lower.Contains("gate") || lower.Contains("window"))
+                {
+                    pieces++;
+                }
+            }
+
+            return pieces >= 15 ? null : $"only {pieces} building pieces";
+        }
+
+        private static string PieceVerdict(Piece piece, string prefab, HashSet<string> materials, HashSet<string> stations)
+        {
+            if (piece.m_resources == null || piece.m_resources.Length == 0)
+            {
+                return $"{prefab} is not a piece a player can build";
+            }
+
+            string station = piece.m_craftingStation != null ? piece.m_craftingStation.gameObject.name : null;
+            if (station != null && !stations.Contains(station))
+            {
+                return $"{prefab} needs the {station}";
+            }
+
+            foreach (Piece.Requirement requirement in piece.m_resources)
+            {
+                string material = requirement?.m_resItem != null ? requirement.m_resItem.gameObject.name : null;
+                if (material != null && requirement.m_amount > 0 && !materials.Contains(material))
+                {
+                    return $"{prefab} needs {material}";
+                }
+            }
+
+            return null;
+        }
+
         private static string Viable(DesignLibrary.Design design, Heightmap.Biome biome, out int pieces)
         {
             pieces = 0;
-            List<DesignSpawner.PlanEntry> plan;
             if (design.Blueprint != null)
             {
-                plan = Blueprints.MakePlan(design.Blueprint, Vector3.zero, 0f);
+                return ViableBlueprint(design.Blueprint, biome, out pieces);
             }
-            else
+
+            List<DesignSpawner.PlanEntry> plan;
             {
                 AssetGuard.Load(design.Location);
                 try

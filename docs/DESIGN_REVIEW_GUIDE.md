@@ -45,14 +45,20 @@ typed in the in-game console (F5) unless it says otherwise.
    set its default build mode to Direct in F1. Move, swap, delete and build freely; nothing is kept until you save.
    Pieces inside a plot never wear or fall while you work. Designs are set down with their foundation on the ground
    where you aim, as the gallery sets them.
-5. Save a plot with the Shaper Tool's Save (key 6, click anything in the plot, click again), or `vh slot save 2`.
+5. The front row is d3 (rich, as placed). Save a plot with the Shaper Tool's Save (key 6, click anything in the plot, click again), or `vh slot save 2`.
    Hold Shift on the second click (or `vh slot save all`) to save every plot that has something in it.
    Everything inside the green border is written as `hub1_s2d3` to `BepInEx/config/Villheim/blueprints/inspiration/board/`.
    The design it came from is found by comparing pieces. A saved plot leaves the field (pieces, beams and signs), so
-   what is left is what still needs work; `vh slot meadows hearth 1` puts the board up again with every saved stage.
-6. The Shaper Tool's Reset (key 7) on a plot clears it back to its last save, or empty. Undo (8) brings back what was
+   what is left is what still needs work.
+6. Saving a d3 plot brings up a d2 plot right behind it holding a copy of that save: take decor away (Delete, Delete
+   all) down to furnished and save it; that brings up a d1 copy behind it: strip it to the sparse minimum and save.
+   Three rows of plots in all (d3, d2, d1). After d1 the stage is done.
+7. `vh slot meadows hearth 1` puts hub1 up again with each stage at the decor stage it is at (empty d3, or the next
+   copy to strip, or a "done" sign). Add `review` to see every saved plot of hub1 at once.
+8. The Shaper Tool's Reset (key 7) on a plot clears it back to its last save (a d2 or d1 copy goes back to the copy),
+   or empty. Undo (8) brings back what was
    there.
-7. `vh slot clear` takes the board down; `vh gallery clear` also takes it down, with everything placed in it. Both `vh slot clear` and a new `vh slot` refuse while a plot has unsaved
+9. `vh slot clear` takes the board down; `vh gallery clear` also takes it down, with everything placed in it. Both `vh slot clear` and a new `vh slot` refuse while a plot has unsaved
    changes (add `force` to drop them).
 
 Each save is listed in `BepInEx/Villheim/board-saves.csv` and sent to the sheet: a row in the **Slots** tab (file,
@@ -196,7 +202,7 @@ slot again, or take another tool) and the hotbar is back to normal.
 
 | Key | Label | Left click does |
 |---|---|---|
-| 1 | Move | You stand still (flying too). The design you aim at is highlighted, and **W A S D** move it away, left, back, right (as you look), **E** up, **Q** down. 10 cm a press, Shift for 50 cm. Click a structure to lock onto it: then only that is highlighted and moves. Click it again to let go, or click another structure to switch. Press 1 again to walk. |
+| 1 | Move | You stand still (flying too). The design you aim at when you press 1 (or at your first move key) stays picked wherever you aim, until you press 1 again; on the slotting board that is the whole plot, furniture and trees included. **W A S D** move it away, left, back, right (as you look), **E** up, **Q** down: 10 cm a step, Shift for 50 cm, and holding a key keeps it moving. One held key undoes as one step. Click a structure to lock onto it (it and everything touching it, such as one tent of a group): then only that moves. Click it again to let go. Press 1 again to walk. |
 | 2 | Turn | You stand still. The design you aim at is highlighted and the **mouse wheel** turns all of it about the middle of its plot. Click one object to lock onto it: then only that turns. Click it again to let go. Press 2 again to walk. See Turning below. |
 | 3 | Swap | Click a design piece: pick it and put up stand-ins at its sign. Click a stand-in (or a piece you built): use it. |
 | 4 | Delete | Click removes what you aim at within 6 m: pieces, creatures, traders and other NPCs. Never a player. |

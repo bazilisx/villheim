@@ -60,7 +60,7 @@ namespace Villheim.Logic.Village
         public static string UndoCurrent() => Undo();
 
         /// <summary>Moves the locked structure if there is one, else the design under the crosshair (or the last picked).</summary>
-        public static void MoveBy(Player player, Vector3 move)
+        public static void MoveBy(Player player, Vector3 move, string design = null)
         {
             if (_partLocked && Lit.Count > 0)
             {
@@ -68,7 +68,43 @@ namespace Villheim.Logic.Village
             }
             else
             {
-                Nudge(player, move);
+                Nudge(player, move, string.IsNullOrEmpty(design) ? null : design);
+            }
+        }
+
+        /// <summary>A held move key: its steps add up to one undo step (a new press starts a new one).</summary>
+        private sealed class MoveRun
+        {
+            public Vector3 Total;
+        }
+
+        private static int _moveRun;
+        private static MoveRun _run;
+        private static float _nextMoveSay;
+
+        public static void NewMoveRun() => _moveRun++;
+
+        /// <summary>Adds a step to the current run, or starts one with its own undo (back(total) takes the whole run back).</summary>
+        private static void RecordMove(string what, Vector3 move, System.Action<Vector3> back)
+        {
+            string key = $"move:{what}:{_moveRun}";
+            if (_run != null && EditHistory.LastKey == key)
+            {
+                _run.Total += move;
+                return;
+            }
+
+            var run = new MoveRun { Total = move };
+            _run = run;
+            EditHistory.Push($"moving {what}", () => back(run.Total), key);
+        }
+
+        private static void SayMove(string text)
+        {
+            if (Time.time >= _nextMoveSay)
+            {
+                _nextMoveSay = Time.time + 0.5f;
+                Say(text);
             }
         }
 
@@ -482,9 +518,9 @@ namespace Villheim.Logic.Village
 
             var moved = Lit.Where(v => v != null && v.IsValid()).ToList();
             MoveViews(moved, move);
-            EditHistory.Push($"moving {moved.Count} pieces", () => MoveViews(moved, -move));
+            RecordMove($"{moved.Count} pieces", move, total => MoveViews(moved, -total));
             MarkTouched(DesignOf(Lit.FirstOrDefault(v => v != null && v.IsValid())?.gameObject));
-            Say($"Swap: moved {Lit.Count} pieces. 'vh bp save' keeps it.");
+            SayMove($"Moved {Lit.Count} pieces. Save keeps it.");
         }
 
         /// <summary>
@@ -612,14 +648,16 @@ namespace Villheim.Logic.Village
             if (record)
             {
                 string movedDesign = design;
-                EditHistory.Push($"moving {design}", () => Nudge(null, -move, movedDesign, false));
+                RecordMove(design, move, total => Nudge(null, -total, movedDesign, false));
             }
 
             Vector3 nudge = sign.GetVec3(Gallery.KeyNudge, Vector3.zero) + frame * move;
             sign.Set(Gallery.KeyNudge, nudge);
             float height = sign.GetFloat(Gallery.KeyGroundOffset, 0f) + nudge.y;
-            Say($"Swap: moved {design} ({moved} pieces); height now {height:+0.00;-0.00;0.00} m from where it was set on its foundation. " +
-                "'vh bp save' keeps it.");
+            if (record)
+            {
+                SayMove($"Moved {design} ({moved} pieces); height {height:+0.00;-0.00;0.00} m from where it was set down. Save keeps it.");
+            }
         }
 
         private static string Turn()

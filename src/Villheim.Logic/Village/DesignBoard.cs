@@ -15,7 +15,7 @@ namespace Villheim.Logic.Village
     /// designs sorted as that subtype are written as blueprints into PlanBuild's folder under the category
     /// "Villheim board", so the Blueprint Rune's tab shows exactly those, with pictures. Tyler places them into the
     /// plots with PlanBuild (or builds by hand), moves and removes freely, and saves a plot with the Shaper Tool (Save):
-    /// everything inside the green border is written as &lt;baseID&gt;_s&lt;stage&gt;d3. The design it came from is
+    /// everything inside the green border is written as &lt;baseID&gt;_s&lt;stage&gt;d&lt;decor&gt;; saving d3 brings up a d2 copy behind it, d2 a d1 copy. The design it came from is
     /// found by comparing pieces, and the save is recorded in board-saves.csv and in the sheet (Slots tab, and the
     /// design's Biome, Base ID and s in Pass 2). Shaper Reset on a plot puts it back as last saved (or empty).
     /// </summary>
@@ -200,7 +200,7 @@ namespace Villheim.Logic.Village
 
             if (first == "save" && words.Count > 1)
             {
-                string plot = Plots.Select(p => p.Name).FirstOrDefault(n => n.EndsWith(":s" + words[1].TrimStart('s')));
+                string plot = Plots.Select(p => p.Name).FirstOrDefault(n => n.Contains(":s" + words[1].TrimStart('s') + ":"));
                 return plot != null ? Save(plot) : $"Board: no plot for stage {words[1]} is standing near.";
             }
 
@@ -213,6 +213,7 @@ namespace Villheim.Logic.Village
             Kind kind = Kinds[words[1]];
             int number = 0;
             int stages = 5;
+            bool review = words.Remove("review");
             float size = 0f;
             for (int i = 2; i < words.Count; i++)
             {
@@ -256,13 +257,13 @@ namespace Villheim.Logic.Village
             forward.y = 0f;
             forward.Normalize();
             _busy = true;
-            VillheimPlugin.Instance.StartCoroutine(Build(player.transform.position, forward, biome, kind, kind.Root + number, stages, size));
+            VillheimPlugin.Instance.StartCoroutine(Build(player.transform.position, forward, biome, kind, kind.Root + number, stages, size, review));
             return $"Board: putting up {kind.Root}{number} ({biome} {kind.Label}, {stages} stages) and the {kind.Label} designs for PlanBuild's \"{Category}\" tab.";
         }
 
         private static string Usage() =>
             "Board: 'vh slot <biome> <kind> [number] [stages N]', e.g. 'vh slot meadows hearth' (a new hub) or 'vh slot meadows hearth 1' " +
-            "(hub1 again, with its saved stages).\nBiomes: meadows, blackforest, swamp, mountains, plains, mistlands, ashlands, deepnorth.\n" +
+            "(hub1 again: each stage at the decor stage it is at; add 'review' to see every save).\nBiomes: meadows, blackforest, swamp, mountains, plains, mistlands, ashlands, deepnorth.\n" +
             "Kinds: house, hearth, tavern, longhouse, decor, farm, wood, forge, cook, store, guard, craft, dock, hunt, rune, mason, weave.\n" +
             "'vh slot save <stage>' or 'vh slot save all' (or the Shaper Tool's Save on a plot; Shift on the second click saves all), 'vh slot clear'. Saves go to blueprints/inspiration/board.";
 
@@ -283,7 +284,29 @@ namespace Villheim.Logic.Village
             return changed.Count == 0 ? null : $"{changed.Count} plots have unsaved changes ({string.Join(", ", changed)}).";
         }
 
-        private static string StageName(string plot) => plot.Substring(Prefix.Length).Replace(":", "_");
+        /// <summary>A plot name, board:hub1:s2:d3, as base ID, stage and decor stage (plots of older builds have no d: d3).</summary>
+        private static (string Base, int S, int D) Parse(string plot)
+        {
+            string[] parts = plot.Substring(Prefix.Length).Split(':');
+            int.TryParse(parts.Length > 1 ? parts[1].TrimStart('s') : "1", out int stage);
+            int decor = 3;
+            if (parts.Length > 2)
+            {
+                int.TryParse(parts[2].TrimStart('d'), out decor);
+            }
+
+            return (parts[0], stage, decor);
+        }
+
+        private static string StageName(string plot)
+        {
+            (string baseId, int stage, int decor) = Parse(plot);
+            return $"{baseId}_s{stage}d{decor}";
+        }
+
+        private static string PlotName(string baseId, int stage, int decor) => $"{Prefix}{baseId}:s{stage}:d{decor}";
+
+        private static string SavedFile(string baseId, int stage, int decor) => Path.Combine(SaveFolder, $"{baseId}_s{stage}d{decor}.blueprint");
 
         private static int NextNumber(string root)
         {
@@ -667,7 +690,7 @@ namespace Villheim.Logic.Village
 
         // ---------------------------------------------------------------- putting the board up
 
-        private static IEnumerator Build(Vector3 playerPosition, Vector3 forward, string biome, Kind kind, string baseId, int stages, float size)
+        private static IEnumerator Build(Vector3 playerPosition, Vector3 forward, string biome, Kind kind, string baseId, int stages, float size, bool review)
         {
             try
             {
@@ -694,21 +717,55 @@ namespace Villheim.Logic.Village
                 Vector3 right = Vector3.Cross(Vector3.up, forward);
                 int perRow = Mathf.Max(1, Mathf.FloorToInt((MaxRow + Gap) / (half * 2f + Gap)));
                 float yaw = Quaternion.LookRotation(-forward).eulerAngles.y;
-                Dictionary<string, string[]> records = Records();
+                // Three rows per band of stages: d3 in front, d2 behind it, d1 at the back. Each stage shows only the decor
+                // stage it is at: d3 until saved, then d2 (a copy of d3 to take decor away from), then d1. 'review' shows
+                // every saved one.
+                Vector3 Center(int stage, int decor)
+                {
+                    int band = (stage - 1) / perRow, column = (stage - 1) % perRow;
+                    int inRow = Mathf.Min(perRow, stages - band * perRow);
+                    int row = band * 3 + (3 - decor);
+                    float width = inRow * half * 2f + (inRow - 1) * Gap;
+                    Vector3 c = start + forward * (half + row * (half * 2f + Aisle)) + right * (-width / 2f + half + column * (half * 2f + Gap));
+                    c.y = Ground(c, start.y);
+                    return c;
+                }
+
                 for (int stage = 1; stage <= stages; stage++)
                 {
-                    int row = (stage - 1) / perRow, column = (stage - 1) % perRow;
-                    int inRow = Mathf.Min(perRow, stages - row * perRow);
-                    float width = inRow * half * 2f + (inRow - 1) * Gap;
-                    Vector3 center = start + forward * (half + row * (half * 2f + Aisle)) + right * (-width / 2f + half + column * (half * 2f + Gap));
-                    center.y = Ground(center, start.y);
-                    string name = $"{Prefix}{baseId}:s{stage}";
-                    string file = Path.Combine(SaveFolder, $"{baseId}_s{stage}d3.blueprint");
-                    int placed = File.Exists(file) ? PutSaved(file, center, yaw) : 0;
-                    records.TryGetValue(Path.GetFileNameWithoutExtension(file), out string[] record);
-                    Border(name, center, half, forward, right);
-                    PlotSign(name, center, half, yaw, forward, biome, kind.Label, placed, record);
-                    Plots.Add(new Plot { Name = name, Center = center, Half = half, Yaw = yaw });
+                    bool[] saved = { false, File.Exists(SavedFile(baseId, stage, 1)), File.Exists(SavedFile(baseId, stage, 2)), File.Exists(SavedFile(baseId, stage, 3)) };
+                    if (review)
+                    {
+                        for (int decor = 3; decor >= 1; decor--)
+                        {
+                            if (saved[decor])
+                            {
+                                MakePlot(PlotName(baseId, stage, decor), Center(stage, decor), half, yaw, biome, kind.Label, SavedFile(baseId, stage, decor), "saved");
+                            }
+                        }
+
+                        if (!saved[3])
+                        {
+                            MakePlot(PlotName(baseId, stage, 3), Center(stage, 3), half, yaw, biome, kind.Label, null, null);
+                        }
+                    }
+                    else if (!saved[3])
+                    {
+                        MakePlot(PlotName(baseId, stage, 3), Center(stage, 3), half, yaw, biome, kind.Label, null, null);
+                    }
+                    else if (!saved[2] || !saved[1])
+                    {
+                        int decor = saved[2] ? 1 : 2;
+                        MakePlot(PlotName(baseId, stage, decor), Center(stage, decor), half, yaw, biome, kind.Label, SavedFile(baseId, stage, decor + 1),
+                            $"copy of {baseId}_s{stage}d{decor + 1}");
+                    }
+                    else
+                    {
+                        Vector3 at = Center(stage, 3) - forward * (half + 2f);
+                        GameObject done = Gallery.OneSign(at, forward, 0f, $"<#8f8><voffset=40><size=8>{baseId}_s{stage}<br><size=5>d3 d2 d1 saved");
+                        done?.GetComponent<ZNetView>()?.GetZDO()?.Set(KeyLabel, PlotName(baseId, stage, 0));
+                    }
+
                     yield return null;
                 }
 
@@ -770,10 +827,25 @@ namespace Villheim.Logic.Village
             return height != 0f && Mathf.Abs(height - fallback) < 30f ? height : fallback;
         }
 
-        private static void PlotSign(string name, Vector3 center, float half, float yaw, Vector3 forward, string biome, string kind, int placed, string[] record)
+        /// <summary>
+        /// One plot: beams, sign and label, and the pieces of a saved file in it when given (a decor copy, or a save
+        /// shown again). State: null for empty, else what the sign says about its pieces.
+        /// </summary>
+        private static void MakePlot(string name, Vector3 center, float half, float yaw, string biome, string kind, string file, string state)
+        {
+            Vector3 forward = -(Quaternion.Euler(0f, yaw, 0f) * Vector3.forward);
+            Vector3 right = Vector3.Cross(Vector3.up, forward);
+            int placed = file != null && File.Exists(file) ? PutSaved(file, center, yaw) : 0;
+            Border(name, center, half, forward, right);
+            PlotSign(name, center, half, yaw, forward, biome, kind, placed, placed > 0 ? state : null);
+            Plots.RemoveAll(p => p.Name == name);
+            Plots.Add(new Plot { Name = name, Center = center, Half = half, Yaw = yaw });
+        }
+
+        private static void PlotSign(string name, Vector3 center, float half, float yaw, Vector3 forward, string biome, string kind, int placed, string state)
         {
             Vector3 at = center - forward * (half + 2f);
-            GameObject sign = Gallery.OneSign(at, forward, 0f, SignText(name, biome, kind, placed, record));
+            GameObject sign = Gallery.OneSign(at, forward, 0f, SignText(name, biome, kind, state));
             ZDO zdo = sign?.GetComponent<ZNetView>()?.GetZDO();
             if (zdo == null)
             {
@@ -789,22 +861,24 @@ namespace Villheim.Logic.Village
             zdo.Set(KeySubtype, kind);
 
             // A second sign just behind, carrying big text high above both, readable from across the board.
-            GameObject label = Gallery.OneSign(at + forward * 0.08f, forward, 0f, LabelText(name, placed, record));
+            GameObject label = Gallery.OneSign(at + forward * 0.08f, forward, 0f, LabelText(name, state));
             ZDO labelZdo = label?.GetComponent<ZNetView>()?.GetZDO();
             labelZdo?.Set(KeyLabel, name);
         }
 
-        private static string LabelText(string name, int placed, string[] record) =>
-            $"<#7f7><voffset=60><size=10>{StageName(name)}<br><size=6>" +
-            (placed == 0 ? "<#ccc>empty" : "<#fff>saved" + (record != null && record.Length > 7 && record[6].Length > 0 ? $": No. {record[6]}" : ""));
+        private static string LabelText(string name, string state) =>
+            $"<#7f7><voffset=60><size=10>{StageName(name)}<br><size=6>" + (state == null ? "<#ccc>empty" : "<#fff>" + state);
 
-        private static string SignText(string name, string biome, string kind, int placed, string[] record)
+        private static string SignText(string name, string biome, string kind, string state)
         {
-            string stage = StageName(name);
-            string state = placed == 0
+            (_, _, int decor) = Parse(name);
+            string what = state == null
                 ? "<#bbb>empty: place a design here"
-                : $"<#8f8>saved as {stage}d3" + (record != null && record.Length > 7 && record[6].Length > 0 ? $", from No. {record[6]} {record[7]}" : "");
-            return $"<#5f5>{stage}<br><#fff>{biome} {kind}<br>{state}";
+                : state.StartsWith("copy")
+                    ? $"<#fc6>{state}: take decor away, then save"
+                    : $"<#8f8>{state}";
+            string decorWord = decor == 3 ? "rich" : decor == 2 ? "furnished" : "sparse";
+            return $"<#5f5>{StageName(name)} ({decorWord})<br><#fff>{biome} {kind}<br>{what}";
         }
 
         /// <summary>Puts a saved plot back: plain pieces, as if built, round the plot's middle. Returns how many.</summary>
@@ -871,18 +945,29 @@ namespace Villheim.Logic.Village
                 counts[prefab] = counts.TryGetValue(prefab, out int c) ? c + 1 : 1;
             }
 
-            ReadCandidates();
-            (Candidate source, float match) = BestMatch(counts);
-            string stage = StageName(plotName);
-            string stem = stage + "d3";
+            (string baseId, int stageNumber, int decor) = Parse(plotName);
+            string stem = StageName(plotName);
+            Candidate source = null;
+            float match = 0f;
+            string[] fromD3 = null;
+            if (decor == 3)
+            {
+                ReadCandidates();
+                (source, match) = BestMatch(counts);
+            }
+            else
+            {
+                Records().TryGetValue($"{baseId}_s{stageNumber}d3", out fromD3);
+            }
             string biome = sign.GetString(KeyBiome, "");
             string kind = sign.GetString(KeySubtype, "");
             var header = new List<string>
             {
                 "#Name:" + stem,
                 "#Creator:Villheim board",
-                $"#Description:{biome} {kind}, stage {stage.Substring(stage.LastIndexOf('s') + 1)}, decor 3" +
-                (source != null ? $"; from No. {source.Number} {source.Design} ({match:P0} alike)" : "") + $"; saved {System.DateTime.Now:yyyy-MM-dd HH:mm}",
+                $"#Description:{biome} {kind}, stage {stageNumber}, decor {decor}" +
+                (source != null ? $"; from No. {source.Number} {source.Design} ({match:P0} alike)" : "") +
+                (fromD3 != null && fromD3[6].Length > 0 ? $"; from No. {fromD3[6]} {fromD3[7]} by way of d3" : "") + $"; saved {System.DateTime.Now:yyyy-MM-dd HH:mm}",
                 "#Category:Villheim saved",
                 "#Pieces",
             };
@@ -890,28 +975,49 @@ namespace Villheim.Logic.Village
             string file = Path.Combine(SaveFolder, stem + ".blueprint");
             File.WriteAllLines(file, header.Concat(lines));
 
-            string baseId = stage.Substring(0, stage.IndexOf("_s", System.StringComparison.Ordinal));
-            string s = stage.Substring(stage.IndexOf("_s", System.StringComparison.Ordinal) + 2);
+            string s = stageNumber.ToString();
             string[] record =
             {
-                stem, baseId, s, "3", biome, kind, source?.Number.ToString() ?? "",
-                source?.Design ?? "", source != null ? match.ToString("0.00", CultureInfo.InvariantCulture) : "", views.Count.ToString(),
-                System.DateTime.Now.ToString("yyyy-MM-dd HH:mm"),
+                stem, baseId, s, decor.ToString(), biome, kind,
+                source?.Number.ToString() ?? fromD3?[6] ?? "", source?.Design ?? fromD3?[7] ?? "",
+                source != null ? match.ToString("0.00", CultureInfo.InvariantCulture) : fromD3 != null ? "from d3" : "",
+                views.Count.ToString(), System.DateTime.Now.ToString("yyyy-MM-dd HH:mm"),
             };
             Record(record);
             sign.Set(Gallery.KeyPlaced, views.Count);
             sign.Set(KeySource, source?.Design ?? "");
-            Retext(sign, plotName, views.Count, record);
             if (source != null)
             {
                 DesignSort.SetSlot(source.Design, biome, baseId, s);
             }
 
             DesignSort.PushSlot(record);
+            Vector3 plotCenter = sign.GetVec3(Gallery.KeyPlotCenter, Vector3.zero);
+            float half = sign.GetFloat(Gallery.KeyPlotHalf, 10f);
+            float yaw = sign.GetFloat(Gallery.KeyPlotYaw, 0f);
             Hide(plotName, views);
+
+            // The next decor stage appears behind, as a copy of this save to take decor away from.
+            string next = "";
+            if (decor > 1)
+            {
+                string nextName = PlotName(baseId, stageNumber, decor - 1);
+                if (!Plots.Any(p => p.Name == nextName))
+                {
+                    Vector3 forward = -(Quaternion.Euler(0f, yaw, 0f) * Vector3.forward);
+                    Vector3 behind = plotCenter + forward * (half * 2f + Aisle);
+                    behind.y = Ground(behind, plotCenter.y);
+                    MakePlot(nextName, behind, half, yaw, biome, kind, file, $"copy of {stem}");
+                    next = $" {StageName(nextName)} is up behind it as a copy: take decor away and save.";
+                }
+            }
+            else
+            {
+                next = $" {baseId}_s{stageNumber} is done (d3, d2, d1).";
+            }
+
             return $"Board: saved {stem} ({views.Count} pieces)" +
-                   (source != null ? $", from No. {source.Number} {source.Design} ({match:P0} alike)" : "; no candidate matched it") +
-                   ". The plot is put away; 'vh slot <biome> <kind> <number>' brings the board back with its saves.";
+                   (source != null ? $", from No. {source.Number} {source.Design} ({match:P0} alike)." : decor == 3 ? "; no candidate matched it." : ".") + next;
         }
 
         /// <summary>Every plot of the board with something in it is saved (and put away).</summary>
@@ -951,29 +1057,6 @@ namespace Villheim.Logic.Village
             Plots.RemoveAll(p => p.Name == plotName);
         }
 
-        private static void Retext(ZDO sign, string plotName, int placed, string[] record)
-        {
-            sign.Set(ZDOVars.s_text, SignText(plotName, sign.GetString(KeyBiome, ""), sign.GetString(KeySubtype, ""), placed, record));
-            foreach (ZNetView view in Loaded())
-            {
-                ZDO zdo = view.GetZDO();
-                if (zdo == sign)
-                {
-                    view.GetComponent<Sign>()?.UpdateText();
-                }
-                else if (zdo.GetString(KeyLabel, "") == plotName)
-                {
-                    if (!view.IsOwner())
-                    {
-                        view.ClaimOwnership();
-                    }
-
-                    zdo.Set(ZDOVars.s_text, LabelText(plotName, placed, record));
-                    view.GetComponent<Sign>()?.UpdateText();
-                }
-            }
-        }
-
         /// <summary>The candidate whose piece counts are most like the plot's (cosine of the two count lists).</summary>
         private static (Candidate, float) BestMatch(Dictionary<string, int> counts)
         {
@@ -1011,7 +1094,12 @@ namespace Villheim.Logic.Village
                 ZNetScene.instance.Destroy(view.gameObject);
             }
 
-            string file = Path.Combine(SaveFolder, StageName(plotName) + "d3.blueprint");
+            (string resetBase, int resetStage, int resetDecor) = Parse(plotName);
+            string file = SavedFile(resetBase, resetStage, resetDecor);
+            if (!File.Exists(file) && resetDecor < 3)
+            {
+                file = SavedFile(resetBase, resetStage, resetDecor + 1);
+            }
             int made = File.Exists(file)
                 ? PutSaved(file, sign.GetVec3(Gallery.KeyPlotCenter, Vector3.zero), sign.GetFloat(Gallery.KeyPlotYaw, 0f))
                 : 0;

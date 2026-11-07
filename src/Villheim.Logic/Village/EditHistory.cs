@@ -15,6 +15,9 @@ namespace Villheim.Logic.Village
         private static readonly List<(string What, System.Action Back)> Steps = new List<(string, System.Action)>();
         private static string _lastKey;
 
+        /// <summary>The key of the newest step (steps with the same key are one step), or null.</summary>
+        public static string LastKey => Steps.Count > 0 ? _lastKey : null;
+
         public static void Push(string what, System.Action back, string key = null)
         {
             if (key != null && key == _lastKey && Steps.Count > 0)

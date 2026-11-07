@@ -537,6 +537,14 @@ namespace Villheim.Logic.Village
             bool same = index == _tool;
             PutDown();
             _tool = same ? 0 : index;
+            if (_tool == ToolMove)
+            {
+                _moveDesign = SwapTool.DesignAimed(player);
+                if (!string.IsNullOrEmpty(_moveDesign))
+                {
+                    Say($"Move: {_moveDesign} (it stays picked, wherever you aim, until you press 1 again).");
+                }
+            }
             Say(same ? "Tool put down: clicks do nothing until you pick one (1 to 8)." : Picked[index - 1]);
         }
 
@@ -551,8 +559,15 @@ namespace Villheim.Logic.Village
             _locked = null;
             _saveArmed = null;
             _resetArmed = null;
+            _moveDesign = null;
+            _heldKey = KeyCode.None;
             Disarm();
         }
+
+        /// <summary>What Move works on until it is put down (the design or board plot aimed at when Move was picked, or at the first key).</summary>
+        private static string _moveDesign;
+        private static KeyCode _heldKey = KeyCode.None;
+        private static float _nextRepeat;
 
         /// <summary>Left click: the picked tool's action, with the hammer's building swing.</summary>
         private static void Click(Player player)
@@ -662,7 +677,11 @@ namespace Villheim.Logic.Village
             }
 
             string design = null;
-            if (_tool == ToolMove || _tool == ToolTurn)
+            if (_tool == ToolMove && !string.IsNullOrEmpty(_moveDesign))
+            {
+                design = _moveDesign;
+            }
+            else if (_tool == ToolMove || _tool == ToolTurn)
             {
                 design = SwapTool.DesignAimed(player);
             }
@@ -990,26 +1009,57 @@ namespace Villheim.Logic.Village
             Say(question.Replace("\n", " ") + " Swaps, moves, turns and pieces you added or removed since its last save are undone.");
         }
 
+        private static readonly KeyCode[] MoveKeyCodes = { KeyCode.W, KeyCode.S, KeyCode.D, KeyCode.A, KeyCode.E, KeyCode.Q };
+
+        /// <summary>
+        /// W A S D, E and Q move the picked design (or the locked part): one step on the press, then on and on while the
+        /// key is held (after a short pause), 10 cm a step, 50 cm with Shift. A held key's steps undo as one.
+        /// </summary>
         private static void MoveKeys(Player player)
         {
+            KeyCode key = KeyCode.None;
+            foreach (KeyCode code in MoveKeyCodes)
+            {
+                if (Input.GetKeyDown(code))
+                {
+                    key = code;
+                    _heldKey = code;
+                    _nextRepeat = Time.time + 0.3f;
+                    SwapTool.NewMoveRun();
+                    break;
+                }
+            }
+
+            if (key == KeyCode.None)
+            {
+                if (_heldKey == KeyCode.None || !Input.GetKey(_heldKey))
+                {
+                    _heldKey = KeyCode.None;
+                    return;
+                }
+
+                if (Time.time < _nextRepeat)
+                {
+                    return;
+                }
+
+                key = _heldKey;
+                _nextRepeat = Time.time + 0.05f;
+            }
+
             Vector3 forward = GameCamera.instance != null ? GameCamera.instance.transform.forward : player.transform.forward;
             forward.y = 0f;
             forward = forward.sqrMagnitude > 0.01f ? forward.normalized : Vector3.forward;
             Vector3 right = Vector3.Cross(Vector3.up, forward);
-            Vector3 move = Vector3.zero;
-            if (Input.GetKeyDown(KeyCode.W)) move = forward;
-            else if (Input.GetKeyDown(KeyCode.S)) move = -forward;
-            else if (Input.GetKeyDown(KeyCode.D)) move = right;
-            else if (Input.GetKeyDown(KeyCode.A)) move = -right;
-            else if (Input.GetKeyDown(KeyCode.E)) move = Vector3.up;
-            else if (Input.GetKeyDown(KeyCode.Q)) move = Vector3.down;
-            if (move == Vector3.zero)
+            Vector3 move = key == KeyCode.W ? forward : key == KeyCode.S ? -forward : key == KeyCode.D ? right : key == KeyCode.A ? -right :
+                key == KeyCode.E ? Vector3.up : Vector3.down;
+            if (string.IsNullOrEmpty(_moveDesign))
             {
-                return;
+                _moveDesign = SwapTool.DesignAimed(player);
             }
 
             float step = Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift) ? 0.5f : 0.1f;
-            SwapTool.MoveBy(player, move * step);
+            SwapTool.MoveBy(player, move * step, _moveDesign);
         }
 
         /// <summary>The object under the crosshair within 6 m, creatures and traders included, never a player; null for none.</summary>

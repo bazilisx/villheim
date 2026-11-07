@@ -64,6 +64,7 @@ with its own look for its biome.
 - [ ] Slotting done for Meadows, then the Black Forest: hearth first, then houses, then the work buildings.
 - [ ] Grow a plot (and slide its neighbours) when a build needs more room than the biggest candidate gave it.
 - [ ] PNG pictures for saved stage files too (copy them to PlanBuild as a "Villheim saved" tab).
+- [x] Decor stages on the slotting board (2026-11-07): saving d3 brings up a d2 copy behind it, d2 a d1 copy.
 - [ ] Phase D: decor stages from the richest down. Save d3, it is copied to the d2 plot; strip and save d2, copied to
   d1; strip to the bare minimum and save. Files named `<baseID>_s<n>d<n>` (e.g. `house1_s2d3`). Optional: a key that
   removes every non-structural piece as a start for d1.

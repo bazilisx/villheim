@@ -68,6 +68,52 @@ namespace Villheim.Logic.Designs
 
         public static string Folder => Path.Combine(Paths.ConfigPath, "Villheim", "blueprints");
 
+        /// <summary>
+        /// Where blueprints are looked for: Villheim's own folder, PlanBuild's default folder, every folder named in
+        /// PlanBuild's settings file (its save and search folders, wherever it is set to keep them), and the plugins
+        /// folder. PlanBuild only makes its folder once it saves, and it can be set to use another one.
+        /// </summary>
+        public static List<string> Folders()
+        {
+            var folders = new List<string> { Folder, Path.Combine(Paths.ConfigPath, "PlanBuild", "blueprints") };
+            try
+            {
+                foreach (string config in Directory.GetFiles(Paths.ConfigPath, "*PlanBuild*.cfg"))
+                {
+                    foreach (string line in File.ReadAllLines(config))
+                    {
+                        int equals = line.IndexOf('=');
+                        if (equals <= 0 || line.TrimStart().StartsWith("#") || !line.Substring(0, equals).ToLowerInvariant().Contains("director"))
+                        {
+                            continue;
+                        }
+
+                        string value = line.Substring(equals + 1).Trim();
+                        if (value.Length == 0)
+                        {
+                            continue;
+                        }
+
+                        string full = Path.GetFullPath(Path.IsPathRooted(value) ? value : Path.Combine(Paths.GameRootPath, value));
+                        string root = Path.GetFullPath(Paths.GameRootPath).TrimEnd('\\', '/');
+                        if (root.StartsWith(full.TrimEnd('\\', '/'), StringComparison.OrdinalIgnoreCase))
+                        {
+                            continue; // the game folder itself (or above it): far too much to search
+                        }
+
+                        folders.Add(full);
+                    }
+                }
+            }
+            catch (Exception e)
+            {
+                VillheimPlugin.Log.LogWarning($"Could not read PlanBuild's settings for its blueprint folders: {e.Message}");
+            }
+
+            folders.Add(Paths.PluginPath);
+            return folders.Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+        }
+
         /// <summary>Every blueprint found, by design name ("bp:" + file name). The folders are looked at again every two minutes; a file is read again only when it changed.</summary>
         public static Dictionary<string, Blueprint> All()
         {
@@ -78,7 +124,7 @@ namespace Villheim.Logic.Designs
 
             _loadedAt = Time.realtimeSinceStartup;
             var found = new Dictionary<string, Blueprint>(StringComparer.OrdinalIgnoreCase);
-            foreach (string folder in new[] { Folder, Path.Combine(Paths.ConfigPath, "PlanBuild", "blueprints"), Paths.PluginPath })
+            foreach (string folder in Folders())
             {
                 if (!Directory.Exists(folder))
                 {
@@ -177,7 +223,7 @@ namespace Villheim.Logic.Designs
             }
 
             Blueprint found = null;
-            foreach (string folder in new[] { Folder, Path.Combine(Paths.ConfigPath, "PlanBuild", "blueprints"), Paths.PluginPath })
+            foreach (string folder in Folders())
             {
                 if (found != null || !Directory.Exists(folder))
                 {

@@ -234,7 +234,7 @@ namespace Villheim.Logic.Designs
                 {
                     string extension = Path.GetExtension(file).ToLowerInvariant();
                     if ((extension == ".blueprint" || extension == ".vbuild") &&
-                        string.Equals(Path.GetFileNameWithoutExtension(file), stem, StringComparison.OrdinalIgnoreCase))
+                        NameMatches(Path.GetFileNameWithoutExtension(file), stem))
                     {
                         try
                         {
@@ -253,6 +253,15 @@ namespace Villheim.Logic.Designs
             Named[stem] = (Time.realtimeSinceStartup, found);
             return found;
         }
+
+        /// <summary>
+        /// The file's name is the stem, or the stem after a player name (PlanBuild's "Add player prefix to file name",
+        /// on by default, saves "villagenotice" as "Tyler_villagenotice").
+        /// </summary>
+        private static bool NameMatches(string fileStem, string stem) =>
+            string.Equals(fileStem, stem, StringComparison.OrdinalIgnoreCase) ||
+            fileStem.EndsWith("_" + stem, StringComparison.OrdinalIgnoreCase) ||
+            fileStem.EndsWith("-" + stem, StringComparison.OrdinalIgnoreCase);
 
         public static bool IsBlueprint(string designName) =>
             designName != null && designName.StartsWith(Prefix, StringComparison.OrdinalIgnoreCase);

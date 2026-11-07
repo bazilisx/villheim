@@ -73,8 +73,9 @@ namespace Villheim.Logic.Village
             _on = true;
             string key = LogicConfig.GallerySwapKey?.Value.ToString() ?? "Mouse2";
             return $"Villheim: swap is on. Aim at a piece of a gallery design and press {key}: stand-ins go up in front of its sign, by biome. " +
-                   $"Aim at one (or a piece you built) and press {key} again to use it in that design. Page Up/Down and the arrow keys move the design " +
-                   "you aim at (Shift: bigger steps). Nothing is kept until 'vh bp save'. 'vh swap turn', 'vh swap undo', 'vh swap done', 'vh swap off'.";
+                   $"Aim at one (or a piece you built) and press {key} again to use it in that design. Numpad + and - move the design you aim at up and down, " +
+                   "numpad 8 2 4 6 move it around (Shift: bigger steps; hold Ctrl to move only the structure you aim at, shown green). " +
+                   "Nothing is kept until 'vh bp save'. 'vh swap turn', 'vh swap undo', 'vh swap done', 'vh swap off'.";
         }
 
         [HarmonyPatch(typeof(Player), "Update")]

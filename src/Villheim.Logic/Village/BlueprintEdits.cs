@@ -272,8 +272,7 @@ namespace Villheim.Logic.Village
                 // The design's own pieces, signs included (a notice board's), but not the gallery's sign that names it.
                 bool ours = gallery && zdo.GetString(Gallery.KeyDesign, "") == design && zdo.GetFloat(Gallery.KeyPlotHalf, 0f) <= 0f;
                 Vector3 local = frame * (view.transform.position - center);
-                bool byHand = !gallery && view.GetComponent<Piece>() != null && Mathf.Abs(local.x) <= half && Mathf.Abs(local.z) <= half &&
-                              view.GetComponent<Character>() == null;
+                bool byHand = !gallery && SwapTool.PartOfPlot(view) && Mathf.Abs(local.x) <= half && Mathf.Abs(local.z) <= half;
                 if (!ours && !byHand)
                 {
                     continue;

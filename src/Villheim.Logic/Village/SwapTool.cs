@@ -95,6 +95,15 @@ namespace Villheim.Logic.Village
         }
 
         /// <summary>
+        /// Whether a world object standing on a plot (not one of the gallery's own) is part of what is there: building
+        /// pieces, furniture, props, trees, bushes, pickables, ships. Not creatures, players, loose items, gravestones or the
+        /// game's terrain records. (Pieces only, before 2026-11-07: tables, trees and location props were left behind.)
+        /// </summary>
+        public static bool PartOfPlot(ZNetView view) =>
+            view.GetComponent<Character>() == null && view.GetComponent<ItemDrop>() == null && view.GetComponent<TerrainComp>() == null &&
+            view.GetComponent<TerrainModifier>() == null && view.GetComponent<TombStone>() == null && view.GetComponent<Projectile>() == null;
+
+        /// <summary>
         /// The design an object belongs to: its design name, or for a piece with none (placed on the slotting board with
         /// PlanBuild or the hammer) the board plot it stands in. "" for neither.
         /// </summary>
@@ -394,8 +403,7 @@ namespace Villheim.Logic.Village
                 bool gallery = zdo.GetInt(Gallery.KeyGallery) == 1;
                 bool ours = gallery && zdo.GetString(Gallery.KeyDesign, "") == design && zdo.GetFloat(Gallery.KeyPlotHalf, 0f) <= 0f;
                 Vector3 local = frame * (view.transform.position - center);
-                bool byHand = !gallery && view.GetComponent<Piece>() != null && view.GetComponent<Character>() == null &&
-                              Mathf.Abs(local.x) <= half && Mathf.Abs(local.z) <= half;
+                bool byHand = !gallery && PartOfPlot(view) && Mathf.Abs(local.x) <= half && Mathf.Abs(local.z) <= half;
                 Bounds? bounds = (ours || byHand) ? WorldBounds(view.gameObject) : null;
                 if (bounds.HasValue)
                 {
@@ -522,8 +530,7 @@ namespace Villheim.Logic.Village
                 bool gallery = zdo.GetInt(Gallery.KeyGallery) == 1;
                 bool ours = gallery && zdo.GetString(Gallery.KeyDesign, "") == design && zdo.GetFloat(Gallery.KeyPlotHalf, 0f) <= 0f;
                 Vector3 local = frame * (view.transform.position - center);
-                bool byHand = !gallery && view.GetComponent<Piece>() != null && view.GetComponent<Character>() == null &&
-                              Mathf.Abs(local.x) <= half && Mathf.Abs(local.z) <= half;
+                bool byHand = !gallery && PartOfPlot(view) && Mathf.Abs(local.x) <= half && Mathf.Abs(local.z) <= half;
                 if (ours || byHand)
                 {
                     views.Add(view);

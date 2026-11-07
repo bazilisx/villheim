@@ -803,6 +803,7 @@ namespace Villheim.Logic.Village
             Console.instance?.Print($"Villheim: {cells.Count} designs in all; {what}: {matching.Count} ({pages} pages). Full list: {listPath}");
             List<Cell> chosen = page <= paged.Count ? paged[page - 1] : new List<Cell>();
             chosen.ForEach(c => c.AsStage = asStage);
+            MaterialSwap.ClearMisses();
             if (chosen.Count == 0)
             {
                 Console.instance?.Print($"Villheim: page {page} is empty; {what} has {pages} pages.");
@@ -1449,6 +1450,15 @@ namespace Villheim.Logic.Village
             if (generation == _generation && built > 0)
             {
                 MessageHud.instance?.ShowMessage(MessageHud.MessageType.Center, $"Gallery: page ready ({built} designs)");
+                if (cells.Any(c => c.AsStage >= 0))
+                {
+                    List<string> misses = null;
+                    Safe("the swap misses", () => misses = MaterialSwap.WriteMisses());
+                    if (misses != null && misses.Count > 0)
+                    {
+                        Console.instance?.Print("Villheim: pieces that could not be swapped are listed in " + string.Join(", ", misses));
+                    }
+                }
             }
         }
 
@@ -1541,7 +1551,8 @@ namespace Villheim.Logic.Village
 
             var result = new MaterialSwap.Result();
             List<DesignSpawner.PlanEntry> swapped = MaterialSwap.Apply(plan, cell.AsStage, result);
-            cell.SwapNote = $"as {StageNames[cell.AsStage]}: {result.Swapped} swapped" + (result.Kept > 0 ? $", {result.Kept} kept" : "");
+            cell.SwapNote = $"as {StageNames[cell.AsStage]}: {result.Swapped} swapped" + (result.Near > 0 ? $" ({result.Near} near)" : "") +
+                            (result.Kept > 0 ? $", {result.Kept} kept" : "");
             VillheimPlugin.Log.LogInfo($"Gallery: {cell.Design.Name} as {StageNames[cell.AsStage]}: {result.Summary(cell.AsStage)}.");
             return swapped;
         }

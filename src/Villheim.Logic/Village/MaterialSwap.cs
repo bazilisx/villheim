@@ -1,4 +1,6 @@
 using System.Collections.Generic;
+using System.Globalization;
+using System.IO;
 using System.Linq;
 using UnityEngine;
 using Villheim.Logic.Designs;
@@ -6,25 +8,37 @@ using Villheim.Logic.Designs;
 namespace Villheim.Logic.Village
 {
     /// <summary>
-    /// Shows a design in another stage's materials: each building piece (wall, floor, roof, beam, pole, door, window)
-    /// is swapped for the piece of the same shape from the target stage, so an ashwood house can be seen in Meadows
-    /// wood, or a Meadows house with Plains tar roofs.
+    /// Shows a design in another stage's materials: each building piece (wall, floor, roof, beam, pole, fence, door,
+    /// window...) is swapped for a piece of the same kind from the target stage, so an ashwood house can be seen in
+    /// Meadows wood, or a Meadows house with Plains tar roofs.
     ///
-    /// Same shape means the same kind in the name (wall, roof, floor...) and the same size as the game measures it
-    /// (its colliders), within a few centimetres, either way round. The new piece goes where the old one's middle was,
-    /// so pieces whose pivots differ still line up. Down a stage, the newest piece the target stage has is used; up a
-    /// stage, a piece is only swapped when a newer one of the same shape exists by then. Anything with no match stays
-    /// as it was. Decoration and furniture are never swapped.
+    /// First choice: same kind in the name (wall, roof, floor...) and the same size as the game measures it (its
+    /// colliders), within a few centimetres, either way round. Second choice, when the target stage has no piece that
+    /// size: the nearest in size of the same kind ("near" on the sign). A hand-made pairing in <see cref="Pairs"/> beats
+    /// both. The new piece goes where the old one's middle was, so pieces whose pivots differ still line up. Down a
+    /// stage, the newest piece the target stage has is used; up a stage, a piece is only swapped when a newer one of the
+    /// same kind exists by then. Anything with no match stays as it was and is listed in swap-misses-&lt;stage&gt;.txt.
+    /// Decoration and furniture are never swapped.
     /// </summary>
     internal static class MaterialSwap
     {
-        private static readonly string[] Kinds = { "roof", "wall", "floor", "beam", "pole", "stair", "arch", "window", "door", "gate", "pillar", "column" };
+        private static readonly string[] Kinds =
+        {
+            "roof", "wall", "floor", "beam", "pole", "stair", "arch", "window", "door", "gate", "pillar", "column",
+            "fence", "stake", "rail", "ladder", "palisade", "shutter",
+        };
 
         private static readonly HashSet<string> Modifiers = new HashSet<string>
         {
             "top", "ocorner", "icorner", "corner", "upsidedown", "half", "quarter", "small", "medium", "large", "triangle",
             "tip", "end", "inverted", "narrow", "curved", "cross",
         };
+
+        /// <summary>
+        /// Hand-made pairings, for pieces the size test gets wrong or cannot match: source piece to the piece to use
+        /// at each stage it is swapped down to (stage index, see Gallery.StageNames). Filled from swap-misses files.
+        /// </summary>
+        private static readonly Dictionary<string, Dictionary<int, string>> Pairs = new Dictionary<string, Dictionary<int, string>>();
 
         private sealed class Shape
         {
@@ -36,49 +50,68 @@ namespace Villheim.Logic.Village
             public HashSet<string> Mods;
         }
 
+        private sealed class Choice
+        {
+            public string Prefab;
+            public Vector3 Shift;
+            public Quaternion Turn;
+            public bool Near;
+        }
+
         private static List<Shape> _pool;
         private static readonly Dictionary<string, Shape> ShapeOf = new Dictionary<string, Shape>();
-        private static readonly Dictionary<string, (string Prefab, Vector3 Shift, Quaternion Turn)?> Cache =
-            new Dictionary<string, (string, Vector3, Quaternion)?>();
+        private static readonly Dictionary<string, Choice> Cache = new Dictionary<string, Choice>();
 
-        /// <summary>How a design changed: pieces swapped, and later-stage pieces left as they were for lack of a match.</summary>
+        /// <summary>Pieces left as they were on the last gallery page, by target stage: prefab and how many.</summary>
+        private static readonly Dictionary<int, Dictionary<string, int>> Misses = new Dictionary<int, Dictionary<string, int>>();
+
+        /// <summary>How a design changed: pieces swapped exactly, swapped for the nearest size, and later pieces kept.</summary>
         internal sealed class Result
         {
             public int Swapped;
+            public int Near;
             public int Kept;
             public readonly Dictionary<string, int> Unmatched = new Dictionary<string, int>();
 
             public string Summary(int target) =>
-                $"{Swapped} swapped" + (Kept > 0
+                $"{Swapped} swapped" + (Near > 0 ? $" ({Near} nearest size)" : "") + (Kept > 0
                     ? $", {Kept} later pieces kept (no {Gallery.StageNames[target]} match: " +
                       string.Join(", ", Unmatched.OrderByDescending(k => k.Value).Take(3).Select(k => k.Key)) + ")"
                     : "");
         }
 
+        /// <summary>Forgets the misses of the last page (a new page is starting).</summary>
+        public static void ClearMisses() => Misses.Clear();
+
         /// <summary>
         /// The piece to put instead of <paramref name="prefab"/> for the target stage, and how to place it: new position
         /// = old position + old rotation * shift; new rotation = old rotation * turn. False when it stays as it is.
         /// </summary>
-        public static bool TrySwap(string prefab, int target, out string swap, out Vector3 shift, out Quaternion turn)
+        public static bool TrySwap(string prefab, int target, out string swap, out Vector3 shift, out Quaternion turn) =>
+            TrySwap(prefab, target, out swap, out shift, out turn, out _);
+
+        public static bool TrySwap(string prefab, int target, out string swap, out Vector3 shift, out Quaternion turn, out bool near)
         {
             swap = null;
             shift = Vector3.zero;
             turn = Quaternion.identity;
+            near = false;
             string key = prefab + "|" + target;
-            if (!Cache.TryGetValue(key, out var found))
+            if (!Cache.TryGetValue(key, out Choice found))
             {
                 found = Find(prefab, target);
                 Cache[key] = found;
             }
 
-            if (!found.HasValue)
+            if (found == null)
             {
                 return false;
             }
 
-            swap = found.Value.Prefab;
-            shift = found.Value.Shift;
-            turn = found.Value.Turn;
+            swap = found.Prefab;
+            shift = found.Shift;
+            turn = found.Turn;
+            near = found.Near;
             return true;
         }
 
@@ -88,7 +121,7 @@ namespace Villheim.Logic.Village
             var output = new List<DesignSpawner.PlanEntry>(plan.Count);
             foreach (DesignSpawner.PlanEntry entry in plan)
             {
-                if (entry.Shell && TrySwap(entry.Prefab, target, out string swap, out Vector3 shift, out Quaternion turn))
+                if (entry.Shell && TrySwap(entry.Prefab, target, out string swap, out Vector3 shift, out Quaternion turn, out bool near))
                 {
                     DesignSpawner.PlanEntry swapped = DesignSpawner.Entry(swap, entry.LocalPosition + entry.LocalRotation * shift,
                         entry.LocalRotation * turn, entry.Scale);
@@ -96,6 +129,11 @@ namespace Villheim.Logic.Village
                     {
                         output.Add(swapped);
                         result.Swapped++;
+                        if (near)
+                        {
+                            result.Near++;
+                        }
+
                         continue;
                     }
                 }
@@ -111,48 +149,109 @@ namespace Villheim.Logic.Village
         public static void Note(string prefab, int target, Result result)
         {
             int stage = Gallery.StageOfPiece(prefab);
-            if (stage > target)
+            if (stage <= target)
             {
-                result.Kept++;
-                result.Unmatched.TryGetValue(prefab, out int n);
-                result.Unmatched[prefab] = n + 1;
+                return;
             }
+
+            result.Kept++;
+            result.Unmatched.TryGetValue(prefab, out int n);
+            result.Unmatched[prefab] = n + 1;
+            if (!Misses.TryGetValue(target, out Dictionary<string, int> misses))
+            {
+                misses = new Dictionary<string, int>();
+                Misses[target] = misses;
+            }
+
+            misses.TryGetValue(prefab, out int m);
+            misses[prefab] = m + 1;
         }
 
-        private static (string, Vector3, Quaternion)? Find(string prefab, int target)
+        /// <summary>
+        /// BepInEx/Villheim/swap-misses-&lt;stage&gt;.txt: every later-stage piece the last page left as it was, with its
+        /// kind and size and the nearest pieces the target stage has, to make hand pairings from. Returns the paths.
+        /// </summary>
+        public static List<string> WriteMisses()
+        {
+            var paths = new List<string>();
+            CultureInfo inv = CultureInfo.InvariantCulture;
+            string Size(Vector3 v) => $"{v.x.ToString("0.00", inv)} x {v.y.ToString("0.00", inv)} x {v.z.ToString("0.00", inv)}";
+            foreach (KeyValuePair<int, Dictionary<string, int>> stage in Misses)
+            {
+                var lines = new List<string>
+                {
+                    $"# Pieces left as they were when shown as {Gallery.StageNames[stage.Key]}: piece, count, kind, size (m), stage.",
+                    "# Below each, the nearest pieces that stage has (same kind first). Send this file back to pair them by hand.",
+                };
+
+                foreach (KeyValuePair<string, int> miss in stage.Value.OrderByDescending(k => k.Value))
+                {
+                    Shape source = Measure(miss.Key);
+                    Piece piece = ZNetScene.instance.GetPrefab(miss.Key)?.GetComponent<Piece>();
+                    string kind = source == null ? "?" : source.KindKey.Length > 0 ? source.KindKey : "(no kind word)";
+                    lines.Add($"{miss.Key} | {miss.Value} | {kind} | {(source != null ? Size(source.Size) : "?")} | " +
+                              $"{Gallery.StageNames[Gallery.StageOfPiece(miss.Key)]} | {(piece != null ? piece.m_category.ToString() : "?")}");
+                    if (source == null)
+                    {
+                        continue;
+                    }
+
+                    IEnumerable<Shape> nearest = Pool().Where(c => c.Stage <= stage.Key)
+                        .OrderBy(c => c.KindKey == source.KindKey ? 0 : 1)
+                        .ThenBy(c => Distance(source.Size, c.Size))
+                        .Take(4);
+                    foreach (Shape c in nearest)
+                    {
+                        lines.Add($"    {c.Prefab} | {c.KindKey} | {Size(c.Size)} | {Gallery.StageNames[c.Stage]}");
+                    }
+                }
+
+                string path = Path.Combine(BepInEx.Paths.BepInExRootPath, "Villheim", $"swap-misses-{Gallery.StageWords[stage.Key]}.txt");
+                Directory.CreateDirectory(Path.GetDirectoryName(path));
+                File.WriteAllLines(path, lines);
+                paths.Add(path);
+            }
+
+            return paths;
+        }
+
+        private static Choice Find(string prefab, int target)
         {
             Shape source = Measure(prefab);
-            if (source == null || source.KindKey.Length == 0)
+            if (source == null)
+            {
+                return null;
+            }
+
+            if (Pairs.TryGetValue(prefab, out Dictionary<int, string> pairs) && pairs.TryGetValue(target, out string paired))
+            {
+                Shape chosen = Measure(paired);
+                return chosen == null ? null : new Choice { Prefab = paired, Shift = source.Center - chosen.Center, Turn = Quaternion.identity };
+            }
+
+            if (source.KindKey.Length == 0)
             {
                 return null;
             }
 
             int own = Gallery.StageOfPiece(prefab);
+            List<Shape> candidates = Pool().Where(c => c.Prefab != prefab && c.KindKey == source.KindKey && c.Stage <= target &&
+                                                       (own > target || c.Stage > own)).ToList();
+
+            // Same size, either way round.
             Shape best = null;
             bool bestTurned = false;
             int bestScore = int.MinValue;
-            foreach (Shape candidate in Pool())
+            foreach (Shape candidate in candidates)
             {
-                if (candidate.Prefab == prefab || candidate.KindKey != source.KindKey || candidate.Stage > target)
-                {
-                    continue;
-                }
-
-                // Down: any stage up to the target. Up: only something newer than the piece itself.
-                if (own <= target && candidate.Stage <= own)
-                {
-                    continue;
-                }
-
-                bool straight = Same(source.Size, candidate.Size);
-                bool turned = !straight && Same(source.Size, new Vector3(candidate.Size.z, candidate.Size.y, candidate.Size.x));
+                bool straight = Same(source.Size, candidate.Size, 0.15f, 0.08f);
+                bool turned = !straight && Same(source.Size, Turned(candidate.Size), 0.15f, 0.08f);
                 if (!straight && !turned)
                 {
                     continue;
                 }
 
-                int score = candidate.Stage * 100 + (straight ? 10 : 0) +
-                            candidate.Mods.Count(source.Mods.Contains) * 3 - candidate.Mods.Count(m => !source.Mods.Contains(m)) * 2;
+                int score = candidate.Stage * 100 + (straight ? 10 : 0) + Mods(source, candidate);
                 if (score > bestScore || score == bestScore && best != null && candidate.Prefab.Length < best.Prefab.Length)
                 {
                     best = candidate;
@@ -161,20 +260,48 @@ namespace Villheim.Logic.Village
                 }
             }
 
+            bool near = false;
+            if (best == null && own > target)
+            {
+                // Nearest size of the same kind, down a stage only: the piece must go, and this is the closest stand-in.
+                float bestDistance = float.MaxValue;
+                foreach (Shape candidate in candidates)
+                {
+                    float straight = Distance(source.Size, candidate.Size);
+                    float turned = Distance(source.Size, Turned(candidate.Size));
+                    float distance = Mathf.Min(straight, turned) - Mods(source, candidate) * 0.05f;
+                    if (distance < bestDistance)
+                    {
+                        best = candidate;
+                        bestTurned = turned < straight;
+                        bestDistance = distance;
+                    }
+                }
+
+                near = best != null;
+            }
+
             if (best == null)
             {
                 return null;
             }
 
             Quaternion turn = bestTurned ? Quaternion.Euler(0f, 90f, 0f) : Quaternion.identity;
-            return (best.Prefab, source.Center - turn * best.Center, turn);
+            return new Choice { Prefab = best.Prefab, Shift = source.Center - turn * best.Center, Turn = turn, Near = near };
         }
 
-        private static bool Same(Vector3 a, Vector3 b)
+        private static Vector3 Turned(Vector3 size) => new Vector3(size.z, size.y, size.x);
+
+        private static int Mods(Shape source, Shape candidate) =>
+            candidate.Mods.Count(source.Mods.Contains) * 3 - candidate.Mods.Count(m => !source.Mods.Contains(m)) * 2;
+
+        private static float Distance(Vector3 a, Vector3 b) => Mathf.Abs(a.x - b.x) + Mathf.Abs(a.y - b.y) + Mathf.Abs(a.z - b.z);
+
+        private static bool Same(Vector3 a, Vector3 b, float absolute, float relative)
         {
             for (int i = 0; i < 3; i++)
             {
-                if (Mathf.Abs(a[i] - b[i]) > 0.15f + 0.08f * Mathf.Max(a[i], b[i]))
+                if (Mathf.Abs(a[i] - b[i]) > absolute + relative * Mathf.Max(a[i], b[i]))
                 {
                     return false;
                 }

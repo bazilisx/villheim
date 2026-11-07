@@ -8,10 +8,15 @@ using Villheim.Logic.Designs;
 namespace Villheim.Logic.Village
 {
     /// <summary>
-    /// 'vh bp save &lt;number|name&gt;': saves a copy of a design with the stand-ins chosen for it in the gallery
-    /// ('vh swap'). 'vh bp swap &lt;number|name&gt; &lt;stage&gt;': saves a copy with every later building piece swapped by
-    /// the rules of MaterialSwap. The original is never changed. Copies go to the inspiration/edits folder of
-    /// Villheim's blueprints, so the gallery and PlanBuild show them and villages do not build them.
+    /// 'vh bp save &lt;number|name&gt;': saves a design as it stands in the gallery now: its pieces that are left, the
+    /// stand-ins chosen for it ('vh swap') and anything built by hand on its plot; pieces taken away are simply not
+    /// there. 'vh bp save page [all]' does that for every design of the page standing near the player that was
+    /// changed (or all of them). Saves go to blueprints/inspiration/pass3 as p3-&lt;number&gt;-&lt;name&gt;.blueprint (number
+    /// from design-list.csv), are listed in BepInEx/Villheim/pass3-saved.csv, and the gallery shows a design from its
+    /// save from then on. A design not standing nearby is saved from its chosen stand-ins alone.
+    ///
+    /// 'vh bp swap &lt;number|name&gt; &lt;stage&gt;': saves a copy with every later building piece swapped by the rules of
+    /// MaterialSwap, to blueprints/inspiration/edits. The original design is never changed.
     /// </summary>
     internal static class BlueprintEdits
     {
@@ -28,6 +33,11 @@ namespace Villheim.Logic.Village
         public static string Run(string[] args)
         {
             string verb = args.Length > 0 ? args[0].ToLowerInvariant() : "";
+            if (verb == "save" && args.Length >= 2 && args[1].ToLowerInvariant() == "page")
+            {
+                return SavePage(args.Length > 2 && args[2].ToLowerInvariant() == "all");
+            }
+
             bool save = verb == "save" && args.Length >= 2;
             bool swap = verb == "swap" && args.Length >= 3 && Gallery.StageIndexOf(args[2]) >= 0;
             if (!save && !swap)
@@ -52,6 +62,15 @@ namespace Villheim.Logic.Village
             }
 
             DesignLibrary.Design design = found.Value;
+            if (save)
+            {
+                ZDO standing = FrontSign(design.Name);
+                if (standing != null)
+                {
+                    return "Villheim: " + SaveStanding(design, standing, out _);
+                }
+            }
+
             int changed = 0;
             string suffix;
             string description;
@@ -149,6 +168,164 @@ namespace Villheim.Logic.Village
             File.WriteAllLines(file, lines);
             string summary = save ? $"{changed} pieces changed" : result.Summary(Gallery.StageIndexOf(args[2]));
             return $"Villheim: saved {file}: {summary}. 'vh gallery show {stem}' lays it out.";
+        }
+
+        // ---------------------------------------------------------------- saving what stands in the gallery
+
+        public static string ManifestPath => Path.Combine(BepInEx.Paths.BepInExRootPath, "Villheim", "pass3-saved.csv");
+
+        /// <summary>The front sign of a design standing in the gallery (it holds the plot), or null.</summary>
+        private static ZDO FrontSign(string design)
+        {
+            foreach (ZNetView view in ZNetScene.instance.m_instances.Values)
+            {
+                ZDO zdo = view != null && view.IsValid() ? view.GetZDO() : null;
+                if (zdo != null && view.GetComponent<Sign>() != null && zdo.GetString(Gallery.KeyDesign, "") == design &&
+                    zdo.GetFloat(Gallery.KeyPlotHalf, 0f) > 0f)
+                {
+                    return zdo;
+                }
+            }
+
+            return null;
+        }
+
+        private static string SavePage(bool all)
+        {
+            var signs = new List<ZDO>();
+            foreach (ZNetView view in ZNetScene.instance.m_instances.Values)
+            {
+                ZDO zdo = view != null && view.IsValid() ? view.GetZDO() : null;
+                if (zdo != null && view.GetComponent<Sign>() != null && zdo.GetString(Gallery.KeyDesign, "").Length > 0 &&
+                    zdo.GetFloat(Gallery.KeyPlotHalf, 0f) > 0f)
+                {
+                    signs.Add(zdo);
+                }
+            }
+
+            if (signs.Count == 0)
+            {
+                return "Villheim: no gallery designs standing near you.";
+            }
+
+            int saved = 0, unchanged = 0;
+            var names = new List<string>();
+            foreach (ZDO sign in signs.OrderBy(z => z.GetInt(Gallery.KeyNumber)))
+            {
+                string name = sign.GetString(Gallery.KeyDesign, "");
+                DesignLibrary.Design? found = DesignLibrary.ByName(name);
+                if (found == null)
+                {
+                    continue;
+                }
+
+                if (!all && !Changed(name, sign))
+                {
+                    unchanged++;
+                    continue;
+                }
+
+                SaveStanding(found.Value, sign, out string file);
+                names.Add(Path.GetFileNameWithoutExtension(file));
+                saved++;
+            }
+
+            return $"Villheim: saved {saved} of {signs.Count} designs standing near you to {Gallery.PassThreeFolder}" +
+                   (unchanged > 0 ? $" ({unchanged} unchanged, left out; 'vh bp save page all' saves them too)" : "") +
+                   $". List: {ManifestPath}." + (names.Count > 0 ? " " + string.Join(", ", names.Take(12)) + (names.Count > 12 ? ", ..." : "") : "");
+        }
+
+        /// <summary>What stands on a design's plot now, in the design's own coordinates.</summary>
+        private static List<(string Prefab, Vector3 Position, Quaternion Rotation, Vector3 Scale, string Text, bool ByHand, bool StandIn)> Standing(string design, ZDO sign)
+        {
+            Vector3 center = sign.GetVec3(Gallery.KeyPlotCenter, Vector3.zero);
+            float half = sign.GetFloat(Gallery.KeyPlotHalf, 0f);
+            Quaternion frame = Quaternion.Inverse(Quaternion.Euler(0f, sign.GetFloat(Gallery.KeyPlotYaw, 0f), 0f));
+            var pieces = new List<(string, Vector3, Quaternion, Vector3, string, bool, bool)>();
+            foreach (ZNetView view in ZNetScene.instance.m_instances.Values)
+            {
+                ZDO zdo = view != null && view.IsValid() ? view.GetZDO() : null;
+                if (zdo == null)
+                {
+                    continue;
+                }
+
+                bool gallery = zdo.GetInt(Gallery.KeyGallery) == 1;
+                // The design's own pieces, signs included (a notice board's), but not the gallery's sign that names it.
+                bool ours = gallery && zdo.GetString(Gallery.KeyDesign, "") == design && zdo.GetFloat(Gallery.KeyPlotHalf, 0f) <= 0f;
+                Vector3 local = frame * (view.transform.position - center);
+                bool byHand = !gallery && view.GetComponent<Piece>() != null && Mathf.Abs(local.x) <= half && Mathf.Abs(local.z) <= half &&
+                              view.GetComponent<Character>() == null;
+                if (!ours && !byHand)
+                {
+                    continue;
+                }
+
+                string text = view.GetComponent<Sign>() != null ? zdo.GetString(ZDOVars.s_text, "") : null;
+                pieces.Add((Utils.GetPrefabName(view.gameObject), local, frame * view.transform.rotation, view.transform.localScale, text,
+                    byHand, zdo.GetString(Gallery.KeySwappedFrom, "").Length > 0));
+            }
+
+            return pieces;
+        }
+
+        private static bool Changed(string design, ZDO sign)
+        {
+            var pieces = Standing(design, sign);
+            return pieces.Any(p => p.ByHand || p.StandIn) || pieces.Count != sign.GetInt(Gallery.KeyPlaced, pieces.Count);
+        }
+
+        /// <summary>Saves what stands on the design's plot as p3-&lt;number&gt;-&lt;name&gt;.blueprint and lists it.</summary>
+        private static string SaveStanding(DesignLibrary.Design design, ZDO sign, out string file)
+        {
+            var pieces = Standing(design.Name, sign);
+            int number = sign.GetInt(Gallery.KeyNumber);
+            if (number <= 0)
+            {
+                Gallery.ReadNumbers().TryGetValue(design.Name, out number);
+            }
+
+            string stem = $"p3-{number:0000}-{Stem(design.Name)}";
+            int byHand = pieces.Count(p => p.ByHand);
+            int standIns = pieces.Count(p => p.StandIn);
+            int placed = sign.GetInt(Gallery.KeyPlaced);
+            var lines = new List<string>
+            {
+                "#Name:" + stem,
+                "#Creator:" + (design.Blueprint?.Creator ?? ""),
+                $"#Description:{design.Name} as edited in the gallery {System.DateTime.Now:yyyy-MM-dd HH:mm}: {pieces.Count} pieces, " +
+                $"{byHand} added by hand, {standIns} stand-in pieces (Villheim pass 3)",
+                "#Category:Villheim",
+                "#Pieces",
+            };
+            lines.AddRange(pieces.Select(p => Line(p.Prefab, p.Position, p.Rotation, p.Scale, p.Text)));
+            Directory.CreateDirectory(Gallery.PassThreeFolder);
+            file = Path.Combine(Gallery.PassThreeFolder, stem + ".blueprint");
+            File.WriteAllLines(file, lines);
+            Manifest(number, design.Name, stem, pieces.Count, placed, byHand, standIns);
+            return $"saved {file}: {pieces.Count} pieces ({byHand} added by hand, {standIns} stand-in pieces; {placed} went up at first). " +
+                   "The gallery shows this save from now on.";
+        }
+
+        private static void Manifest(int number, string design, string stem, int pieces, int placed, int byHand, int standIns)
+        {
+            var rows = new Dictionary<string, string>();
+            if (File.Exists(ManifestPath))
+            {
+                foreach (string line in File.ReadAllLines(ManifestPath).Skip(1))
+                {
+                    string[] f = line.Split(',');
+                    if (f.Length > 1)
+                    {
+                        rows[f[1].Trim('"')] = line;
+                    }
+                }
+            }
+
+            rows[design] = string.Join(",", number, "\"" + design + "\"", stem, pieces, placed, byHand, standIns, System.DateTime.Now.ToString("yyyy-MM-dd HH:mm"));
+            Directory.CreateDirectory(Path.GetDirectoryName(ManifestPath));
+            File.WriteAllLines(ManifestPath, new[] { "Number,Design,Saved as,Pieces,Pieces at first,Added by hand,Stand-in pieces,Saved at" }
+                .Concat(rows.Values.OrderBy(l => int.TryParse(l.Split(',')[0], out int n) ? n : int.MaxValue)));
         }
 
         private static string Line(string prefab, Vector3 position, Quaternion rotation, Vector3 scale, string text)

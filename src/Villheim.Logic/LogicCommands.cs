@@ -45,7 +45,7 @@ namespace Villheim.Logic
             "look [off]: name whatever the crosshair points at within 4 m, with its kind, size, stage and what the material swap makes of it; new names go to BepInEx/Villheim/looked-at.txt",
             "swap [turn|undo|done|off]: change a gallery design piece by piece: aim at a piece and press middle mouse; stand-ins by biome go up at its sign; aim at one (or a piece you built) and press it again; the choice is kept for that design",
             "note <text>: write a note with what you are aiming at and the nearest gallery sign to BepInEx/Villheim/notes.txt",
-            "bp save <number|name>: save a design with the stand-ins chosen for it ('vh swap') as a new blueprint (blueprints/inspiration/edits)",
+            "bp save <number|name> | bp save page [all]: save a design as it stands in the gallery now (pieces left, stand-ins, anything built on its plot) as blueprints/inspiration/pass3/p3-<number>-<name>; 'page' saves every changed design standing near you; the gallery shows the saves from then on",
             "bp swap <number|name> <stage>: save a copy of a design with its walls, floors, roofs and beams in that stage's materials (to blueprints/inspiration/edits)",
         };
 

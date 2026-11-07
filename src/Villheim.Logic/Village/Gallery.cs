@@ -31,6 +31,10 @@ namespace Villheim.Logic.Village
             public string Notes = "";
             public DesignLibrary.Design Design;
 
+            /// <summary>Pieces put up for it on the page, and whether they came from a pass 3 save.</summary>
+            public int Placed;
+            public bool Edited;
+
             /// <summary>The middle of the design's pieces, in its own coordinates (locations are not built round their middle).</summary>
             public Vector3 Offset;
 
@@ -54,6 +58,30 @@ namespace Villheim.Logic.Village
 
         /// <summary>The design a gallery piece or sign belongs to, so 'vh swap' changes one design at a time.</summary>
         internal const string KeyDesign = "villheim_design";
+
+        // On a design's front sign: its plot (middle on the ground, half its width, which way the design was turned), its
+        // number and how many pieces went up, so 'vh bp save' can save what stands there now.
+        internal const string KeyPlotCenter = "villheim_plot_center";
+        internal const string KeyPlotHalf = "villheim_plot_half";
+        internal const string KeyPlotYaw = "villheim_plot_yaw";
+        internal const string KeyNumber = "villheim_number";
+        internal const string KeyPlaced = "villheim_placed";
+
+        /// <summary>Where 'vh bp save' keeps designs edited in the gallery: p3-&lt;number&gt;-&lt;name&gt;.blueprint.</summary>
+        internal static string PassThreeFolder => System.IO.Path.Combine(Blueprints.Folder, "inspiration", "pass3");
+
+        /// <summary>The pass 3 save of a design, if there is one.</summary>
+        internal static string PassThreeFile(string design)
+        {
+            string stem = design.StartsWith(Blueprints.Prefix) ? design.Substring(Blueprints.Prefix.Length) : design;
+            if (!System.IO.Directory.Exists(PassThreeFolder))
+            {
+                return null;
+            }
+
+            return System.IO.Directory.GetFiles(PassThreeFolder, "p3-*.blueprint")
+                .FirstOrDefault(f => System.IO.Path.GetFileNameWithoutExtension(f).EndsWith("-" + stem, System.StringComparison.Ordinal));
+        }
 
         /// <summary>Room between rows of a keepers page, for the stand-ins 'vh swap' lays out in front of a sign.</summary>
         private const float Aisle = 14f;
@@ -486,7 +514,12 @@ namespace Villheim.Logic.Village
             {
                 foreach (Blueprints.Blueprint blueprint in Blueprints.All().Values)
                 {
-                    candidates.Add((new DesignLibrary.Design(blueprint, 1f), blueprint.Role));
+                    // Copies made in the gallery (pass 3 saves, material swaps) belong to their design, not the list.
+                    string file = (blueprint.File ?? "").Replace('\\', '/').ToLowerInvariant();
+                    if (!file.Contains("/inspiration/pass3/") && !file.Contains("/inspiration/edits/"))
+                    {
+                        candidates.Add((new DesignLibrary.Design(blueprint, 1f), blueprint.Role));
+                    }
                 }
             });
 
@@ -993,6 +1026,14 @@ namespace Villheim.Logic.Village
         /// </summary>
         private static void Size(Cell cell)
         {
+            string saved = PassThreeFile(cell.Design.Name);
+            Blueprints.Blueprint edited = saved != null ? Blueprints.FromFile(saved) : null;
+            if (edited != null && edited.Pieces.Count > 0)
+            {
+                cell.Half = Mathf.Clamp(edited.Radius + 1f, 5f, 90f);
+                return;
+            }
+
             if (cell.Design.Blueprint != null)
             {
                 cell.Half = Mathf.Clamp(cell.Design.Radius + 1f, 5f, 90f);
@@ -1451,6 +1492,7 @@ namespace Villheim.Logic.Village
                     }
 
                     Safe(cell.Design.Name, () => pieces = Put(building, forward));
+                    building.Placed = pieces;
                     Safe("a sign", () => Sign(building, forward));
                     built++;
                     VillheimPlugin.Log.LogInfo($"Gallery: {cell.Design.Name} ({Label(cell)}, level {Level(cell)}): {pieces} pieces.");
@@ -1531,6 +1573,16 @@ namespace Villheim.Logic.Village
         {
             float yaw = Quaternion.LookRotation(-forward).eulerAngles.y;
             List<DesignSpawner.PlanEntry> plan;
+            // A design saved after editing in the gallery ('vh bp save') goes up as saved: what was kept, swapped and added.
+            string saved = PassThreeFile(cell.Design.Name);
+            Blueprints.Blueprint edited = saved != null ? Blueprints.FromFile(saved) : null;
+            if (edited != null && edited.Pieces.Count > 0)
+            {
+                cell.Edited = true;
+                plan = Swapped(SwapTool.ApplyChoices(Blueprints.Entries(edited), cell.Design.Name), cell);
+                return Spawn(plan, cell, yaw);
+            }
+
             if (cell.Design.Blueprint != null)
             {
                 plan = Swapped(SwapTool.ApplyChoices(Blueprints.Entries(cell.Design.Blueprint), cell.Design.Name), cell);
@@ -1685,7 +1737,8 @@ namespace Villheim.Logic.Village
         {
             Vector3 at = cell.Center - forward * (cell.Half - 1f);
             string text = $"<#5cf>{Label(cell)}, {StageNames[cell.Stage]}<br><#fff>{cell.Design.Name}<br><#bbb>{(cell.Number > 0 ? $"No. {cell.Number}, " : "")}by {Creator(cell.Design)}" +
-                          (cell.SwapNote != null ? $"<br><#fc6>{cell.SwapNote}" : "");
+                          (cell.SwapNote != null ? $"<br><#fc6>{cell.SwapNote}" : "") +
+                          (cell.Edited ? "<br><#8f8>edited (pass 3 save)" : "");
             if (cell.Number <= 0)
             {
                 PutSign(at, forward, text);
@@ -1694,7 +1747,16 @@ namespace Villheim.Logic.Village
 
             // The front sign carries the text; a second one just behind it, its board hidden, carries the number big
             // above both (LogicConfig.GalleryNumberText, so its size can be tuned while the game runs).
-            OneSign(at, forward, 0f, text)?.GetComponent<ZNetView>()?.GetZDO()?.Set(KeyDesign, cell.Design.Name);
+            ZDO front = OneSign(at, forward, 0f, text)?.GetComponent<ZNetView>()?.GetZDO();
+            if (front != null)
+            {
+                front.Set(KeyDesign, cell.Design.Name);
+                front.Set(KeyPlotCenter, cell.Center);
+                front.Set(KeyPlotHalf, cell.Half);
+                front.Set(KeyPlotYaw, Quaternion.LookRotation(-forward).eulerAngles.y);
+                front.Set(KeyNumber, cell.Number);
+                front.Set(KeyPlaced, cell.Placed);
+            }
             string number;
             try
             {

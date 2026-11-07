@@ -284,6 +284,9 @@ namespace Villheim.Logic.Designs
 
         // ---------------------------------------------------------------- reading
 
+        /// <summary>One blueprint file read as it is, whatever its size or folder (the gallery's pass 3 saves).</summary>
+        public static Blueprint FromFile(string file) => File.Exists(file) ? Load(file) : null;
+
         private static Blueprint Load(string file)
         {
             string stem = Path.GetFileNameWithoutExtension(file);

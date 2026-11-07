@@ -40,6 +40,70 @@ namespace Villheim.Logic.Village
 
         private static bool _on;
         private static string _design;
+
+        /// <summary>A structure picked with Shaping's Part key stays picked (and green) until Part is pressed again.</summary>
+        private static bool _partLocked;
+
+        // ---------------------------------------------------------------- for Shaping (the rod's hotbar)
+
+        public static bool PartLocked => _partLocked;
+
+        public static void Activate() => _on = true;
+
+        public static void PickOrUse(Player player) => Press(player);
+
+        public static string TurnCurrent() => Turn();
+
+        public static string UndoCurrent() => Undo();
+
+        /// <summary>Moves the locked structure if there is one, else the design under the crosshair (or the last picked).</summary>
+        public static void MoveBy(Player player, Vector3 move)
+        {
+            if (_partLocked && Lit.Count > 0)
+            {
+                NudgePart(move);
+            }
+            else
+            {
+                Nudge(player, move);
+            }
+        }
+
+        /// <summary>Locks onto the structure under the crosshair (green), or lets it go.</summary>
+        public static string TogglePart(Player player)
+        {
+            if (_partLocked)
+            {
+                _partLocked = false;
+                ClearLight();
+                return "Part off: Move moves the whole design again.";
+            }
+
+            _litFor = null;
+            _nextLight = 0f;
+            Highlight(player, true);
+            if (Lit.Count == 0)
+            {
+                return "Part: aim at a piece of a gallery design first.";
+            }
+
+            _partLocked = true;
+            return $"Part on: {Lit.Count} pieces picked (green). Move moves only these until Part is pressed again.";
+        }
+
+        /// <summary>The design under the crosshair, or the last one picked.</summary>
+        public static string DesignAimed(Player player)
+        {
+            string design = LookAt.Target(player)?.GetComponent<ZNetView>()?.GetZDO()?.GetString(Gallery.KeyDesign, "") ?? "";
+            return design.Length > 0 ? design : _design;
+        }
+
+        /// <summary>Ends picking and part locks (Shaping put away).</summary>
+        public static void Release()
+        {
+            _partLocked = false;
+            ClearLight();
+        }
         private static string _original;
         private static float _turn;
         private static string _current;
@@ -96,7 +160,11 @@ namespace Villheim.Logic.Village
                     }
 
                     bool part = Input.GetKey(KeyCode.LeftControl) || Input.GetKey(KeyCode.RightControl);
-                    Highlight(__instance, part);
+                    if (!_partLocked)
+                    {
+                        Highlight(__instance, part);
+                    }
+
                     if (LogicConfig.GallerySwapKey.Value.IsDown())
                     {
                         Press(__instance);

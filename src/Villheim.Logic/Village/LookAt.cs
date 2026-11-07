@@ -23,6 +23,8 @@ namespace Villheim.Logic.Village
 
         public static string FilePath => Path.Combine(BepInEx.Paths.BepInExRootPath, "Villheim", "looked-at.txt");
 
+        public static bool On => _on;
+
         public static string Toggle(string[] args)
         {
             _on = args.Length > 0 ? args[0].ToLowerInvariant() != "off" : !_on;

@@ -35,6 +35,7 @@ namespace Villheim.Logic
         public static ConfigEntry<string> GalleryNumberText;
         public static ConfigEntry<KeyboardShortcut> GallerySwapKey;
         public static ConfigEntry<string> GallerySwapBiomes;
+        public static ConfigEntry<string> ShapingTool;
 
         public static void Bind()
         {
@@ -117,6 +118,9 @@ namespace Villheim.Logic
                 GallerySwapKey.Value = new KeyboardShortcut(UnityEngine.KeyCode.Keypad5);
             }
 
+            ShapingTool = Admin(config, "4 - Design review", "ShapingTool", "FishingRod",
+                "The item that is the shaping rod: with it in hand, hotbar 1 to 8 edit gallery designs ('vh tool' gives one). " +
+                "Any item's prefab name works; the fishing rod by default because nobody fishes while reviewing.");
             GallerySwapBiomes = Admin(config, "4 - Design review", "GallerySwapBiomes", "meadows,blackforest,swamp",
                 "Which biomes 'vh swap' offers stand-ins from, one group each in front of the design's sign " +
                 "(meadows, blackforest, swamp, mountain, plains, mistlands, ashlands).");

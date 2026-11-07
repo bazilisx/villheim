@@ -33,7 +33,8 @@ Review sheet: https://docs.google.com/spreadsheets/d/1rHaZArWhEa8V43UTZePM9EQSBw
    (or on the area last made with `vh flatten`, if that is within 600 m).
 6. Clear anything left from last time: `vh gallery clear`.
 7. Put up a page: `vh gallery keepers` (page 1), or `vh gallery keepers page 3`.
-8. Turn on the editing tools: `vh swap` (and `vh look` if you want names of things).
+8. Take the shaping rod in hand (see Shaping below). The first time, `vh tool` puts one in your inventory; keep it on a
+   quick slot (V or C). Typed commands (`vh swap` and the numpad) still work without it.
 
 ## Showing designs
 
@@ -53,9 +54,29 @@ design saved earlier goes up from its save and its sign says "edited (pass 3 sav
 Walk along the rows: far parts of a page only go up once that part of the world has loaded. The message "page ready"
 means everything is up.
 
+## Shaping: the rod and the hotbar
+
+The shaping rod is a vanilla fishing rod (config ShapingTool). With it in hand, hotbar keys 1 to 8 stop using items and
+become the editing tools, with their own icons and labels. Put the rod away (press its quick slot again, or take
+another tool) and the hotbar is back to normal.
+
+| Key | Label | What it does |
+|---|---|---|
+| 1 or left click | Swap | Aim at a design piece: pick it and put up stand-ins at its sign. Aim at a stand-in (or a piece you built): use it. |
+| 2 | Turn | Quarter turn for the current choice. |
+| 3 | Undo | The original piece back. |
+| 4 | Move | Toggle Move. You stand still; **W A S D** move the design away, left, back, right (as you look), **E** up, **Q** down. 10 cm a press, Shift for 50 cm. The label shows "Move ON". |
+| 5 | Part | Pick the structure you aim at (it turns green). While Part is on, Move moves only that structure. 5 again lets go. |
+| 6 | Delete | Removes what you aim at within 6 m: pieces, creatures, traders and other NPCs. Never a player. |
+| 7 | Save | Saves the design you aim at as it stands. The label turns "Save?"; press 7 again within 6 seconds to save. |
+| 8 | Look | Names what you aim at (same as `vh look`). |
+
+Everything below about swapping, moving and saving works the same with the rod or with typed commands.
+
 ## Swapping pieces (`vh swap`)
 
-Turn it on with `vh swap`. The swap key is **numpad 5** (middle mouse removes pieces when the hammer is out, so it is not used).
+With the rod: key 1 or left click. Without it: turn on `vh swap`, and the swap key is **numpad 5** (middle mouse
+removes pieces when the hammer is out, so it is not used).
 
 1. **Pick a piece:** aim at a piece of a design (within about 4 m) and press numpad 5.
    - In front of that design's sign, stand-ins go up in groups by biome: Meadows, Black Forest, Swamp. Each group has
@@ -76,7 +97,7 @@ Turn it on with `vh swap`. The swap key is **numpad 5** (middle mouse removes pi
 Nothing you swap is kept until you save the design (see Saving). Putting a page up again without saving shows the
 originals.
 
-## Moving designs (with `vh swap` on)
+## Moving designs without the rod (with `vh swap` on)
 
 | Key | Moves |
 |---|---|
@@ -126,7 +147,8 @@ originals.
 
 ## Settings (F1, section "4 - Design review")
 
-- **GallerySwapKey:** the swap key (numpad 5).
+- **ShapingTool:** which item is the shaping rod (`FishingRod`).
+- **GallerySwapKey:** the swap key without the rod (numpad 5).
 - **GallerySwapBiomes:** which biomes stand-ins come from, e.g. `meadows,blackforest,swamp,plains`.
 - **GalleryNumberText:** size and height of the floating number over each sign.
 
@@ -156,4 +178,5 @@ originals.
 | `vh gallery page N` | Every design (not only the kept ones), 10 a page. |
 | `vh bp swap <number> <stage>` | Saves a copy with every later building piece swapped automatically (to `inspiration/edits`). |
 | `vh flatten [size]` | Clears and levels an area in front of you for the gallery. Usually done with PlanBuild instead. |
+| `vh tool` | Puts a shaping rod in your inventory. |
 | `vh help` | Every Villheim command. |

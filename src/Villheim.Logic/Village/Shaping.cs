@@ -1,0 +1,403 @@
+using System.Collections.Generic;
+using HarmonyLib;
+using UnityEngine;
+
+namespace Villheim.Logic.Village
+{
+    /// <summary>
+    /// Shaping: editing gallery designs from the hotbar. With the shaping rod in hand (a vanilla item, the fishing rod by
+    /// default: config ShapingTool; 'vh tool' gives one), hotbar keys 1 to 8 stop using items and do the editing, each
+    /// with its own icon and label:
+    ///
+    /// 1 Swap (also left click): pick the piece aimed at, or use the stand-in aimed at (see SwapTool).
+    /// 2 Turn: a quarter turn for the current choice.  3 Undo: the original back.
+    /// 4 Move: the player stands still; W A S D move the design (or the picked part) away, left, back, right as the
+    ///   player looks, E up and Q down; 10 cm a press, 50 cm with Shift. 4 again ends it.
+    /// 5 Part: picks the structure aimed at (green; a hut beside a hall) so Move moves only that; 5 again lets go.
+    /// 6 Delete: removes what is aimed at, creatures and traders included (never a player).
+    /// 7 Save: saves the design aimed at as it stands (as 'vh bp save'); press twice to confirm.
+    /// 8 Look: names what is aimed at (as 'vh look').
+    ///
+    /// Putting the rod away ends Shaping. Nothing needs a restart: the rod is an existing item.
+    /// </summary>
+    internal static class Shaping
+    {
+        private const float DeleteReach = 6f;
+
+        private static bool _active;
+        private static bool _moving;
+        private static string _saveArmed;
+        private static float _saveUntil;
+
+        private static readonly string[] Labels = { "Swap", "Turn", "Undo", "Move", "Part", "Delete", "Save", "Look" };
+        private static readonly string[] IconSources =
+            { "Hammer", "ShieldWood", "Feathers", "ArrowWood", "BoneFragments", "BombOoze", "piece_chest_wood", "Wishbone" };
+
+        private static Sprite[] _icons;
+
+        public static bool Active => _active;
+
+        /// <summary>'vh tool': puts a shaping rod in the inventory.</summary>
+        public static string GiveTool()
+        {
+            Player player = Player.m_localPlayer;
+            string name = LogicConfig.ShapingTool?.Value ?? "FishingRod";
+            GameObject prefab = ObjectDB.instance?.GetItemPrefab(name);
+            if (player == null || prefab == null)
+            {
+                return $"Villheim: no item called {name} (config ShapingTool).";
+            }
+
+            player.PickupPrefab(prefab, 1, false);
+            return $"Villheim: a shaping rod ({name}) is in your inventory. Put it on a quick slot; with it in hand, hotbar 1 to 8 edit gallery designs " +
+                   "(1 Swap, 2 Turn, 3 Undo, 4 Move, 5 Part, 6 Delete, 7 Save, 8 Look; left click is Swap).";
+        }
+
+        private static bool Holding(Player player)
+        {
+            string name = LogicConfig.ShapingTool?.Value ?? "FishingRod";
+            ItemDrop.ItemData right = player.GetRightItem();
+            ItemDrop.ItemData left = player.GetLeftItem();
+            return right?.m_dropPrefab != null && right.m_dropPrefab.name == name || left?.m_dropPrefab != null && left.m_dropPrefab.name == name;
+        }
+
+        private static bool Typing() =>
+            Console.IsVisible() || Menu.IsVisible() || InventoryGui.IsVisible() || Chat.instance != null && Chat.instance.HasFocus() || Minimap.IsOpen();
+
+        [HarmonyPatch(typeof(Player), "Update")]
+        internal static class UpdatePatch
+        {
+            private static void Postfix(Player __instance)
+            {
+                if (__instance != Player.m_localPlayer)
+                {
+                    return;
+                }
+
+                try
+                {
+                    bool holding = Holding(__instance);
+                    if (holding != _active)
+                    {
+                        _active = holding;
+                        if (holding)
+                        {
+                            SwapTool.Activate();
+                            Say("Shaping on: 1 Swap, 2 Turn, 3 Undo, 4 Move, 5 Part, 6 Delete, 7 Save, 8 Look. Left click is Swap.");
+                        }
+                        else
+                        {
+                            _moving = false;
+                            _saveArmed = null;
+                            SwapTool.Release();
+                            Say("Shaping off.");
+                        }
+                    }
+
+                    if (_active && _moving && !Typing())
+                    {
+                        MoveKeys(__instance);
+                    }
+                }
+                catch (System.Exception e)
+                {
+                    VillheimPlugin.Log.LogWarning($"Shaping: {e}");
+                }
+            }
+        }
+
+        /// <summary>Hotbar keys do Shaping's work while the rod is in hand.</summary>
+        [HarmonyPatch(typeof(Player), nameof(Player.UseHotbarItem))]
+        internal static class HotbarPatch
+        {
+            private static bool Prefix(Player __instance, int index)
+            {
+                if (!_active || __instance != Player.m_localPlayer)
+                {
+                    return true;
+                }
+
+                try
+                {
+                    Use(__instance, index);
+                }
+                catch (System.Exception e)
+                {
+                    VillheimPlugin.Log.LogWarning($"Shaping: {e}");
+                }
+
+                return false;
+            }
+        }
+
+        /// <summary>Left click is Swap; the rod never casts while Shaping.</summary>
+        [HarmonyPatch(typeof(Humanoid), nameof(Humanoid.StartAttack))]
+        internal static class AttackPatch
+        {
+            private static bool Prefix(Humanoid __instance, bool secondaryAttack, ref bool __result)
+            {
+                if (!_active || __instance != Player.m_localPlayer)
+                {
+                    return true;
+                }
+
+                __result = false;
+                if (!secondaryAttack)
+                {
+                    try
+                    {
+                        SwapTool.PickOrUse((Player)__instance);
+                    }
+                    catch (System.Exception e)
+                    {
+                        VillheimPlugin.Log.LogWarning($"Shaping: {e}");
+                    }
+                }
+
+                return false;
+            }
+        }
+
+        /// <summary>While moving a design the player stands still: W A S D, Q and E move the design instead.</summary>
+        [HarmonyPatch(typeof(Player), nameof(Player.SetControls))]
+        internal static class StandStillPatch
+        {
+            private static void Prefix(Player __instance, ref Vector3 movedir, ref bool jump, ref bool crouch, ref bool run, ref bool autoRun, ref bool dodge)
+            {
+                if (_active && _moving && __instance == Player.m_localPlayer)
+                {
+                    movedir = Vector3.zero;
+                    jump = crouch = run = autoRun = dodge = false;
+                }
+            }
+        }
+
+        /// <summary>E is "up" while moving a design, not "use".</summary>
+        [HarmonyPatch(typeof(Player), nameof(Player.Interact))]
+        internal static class InteractPatch
+        {
+            private static bool Prefix(Player __instance) => !(_active && _moving && __instance == Player.m_localPlayer);
+        }
+
+        /// <summary>The hotbar shows Shaping's eight tools while the rod is in hand.</summary>
+        [HarmonyPatch(typeof(HotkeyBar), nameof(HotkeyBar.UpdateIcons))]
+        internal static class IconsPatch
+        {
+            private static readonly HashSet<string> SeenBars = new HashSet<string>();
+
+            private static void Postfix(HotkeyBar __instance)
+            {
+                if (!_active || __instance.m_elements == null)
+                {
+                    return;
+                }
+
+                // Only the game's own hotbar; other mods' quick slot bars keep their items.
+                if (SeenBars.Add(__instance.gameObject.name))
+                {
+                    VillheimPlugin.Log.LogInfo($"Shaping: hotkey bar '{__instance.gameObject.name}' with {__instance.m_elements.Count} slots.");
+                }
+
+                if (!string.Equals(__instance.gameObject.name, "HotKeyBar", System.StringComparison.OrdinalIgnoreCase))
+                {
+                    return;
+                }
+
+                try
+                {
+                    LoadIcons();
+                    for (int i = 0; i < __instance.m_elements.Count && i < Labels.Length; i++)
+                    {
+                        // The icon (an Image) and the label (a TextMeshPro text) are set by reflection, so the logic DLL
+                        // needs no reference to Unity's UI or TextMeshPro assemblies.
+                        HotkeyBar.ElementData element = __instance.m_elements[i];
+                        Traverse data = Traverse.Create(element);
+                        element.m_go.SetActive(true);
+                        Component icon = data.Field("m_icon").GetValue<Component>();
+                        if (icon != null)
+                        {
+                            icon.gameObject.SetActive(_icons[i] != null);
+                            Traverse.Create(icon).Property("sprite").SetValue(_icons[i]);
+                            Traverse.Create(icon).Property("color").SetValue(Color.white);
+                        }
+
+                        element.m_durability?.gameObject.SetActive(false);
+                        Component amount = data.Field("m_amount").GetValue<Component>();
+                        if (amount != null)
+                        {
+                            amount.gameObject.SetActive(true);
+                            Traverse.Create(amount).Property("text").SetValue(Label(i));
+                        }
+
+                        element.m_equiped?.SetActive(On(i));
+                        element.m_queued?.SetActive(false);
+                    }
+                }
+                catch (System.Exception e)
+                {
+                    VillheimPlugin.Log.LogWarning($"Shaping icons: {e.Message}");
+                }
+            }
+        }
+
+        private static string Label(int i)
+        {
+            switch (i)
+            {
+                case 3: return _moving ? "Move ON" : "Move";
+                case 4: return SwapTool.PartLocked ? "Part ON" : "Part";
+                case 6: return _saveArmed != null && Time.time < _saveUntil ? "Save?" : "Save";
+                case 7: return LookAt.On ? "Look ON" : "Look";
+                default: return Labels[i];
+            }
+        }
+
+        private static bool On(int i) =>
+            i == 3 && _moving || i == 4 && SwapTool.PartLocked || i == 6 && _saveArmed != null && Time.time < _saveUntil || i == 7 && LookAt.On;
+
+        private static void LoadIcons()
+        {
+            if (_icons != null && _icons[0] != null)
+            {
+                return;
+            }
+
+            _icons = new Sprite[IconSources.Length];
+            for (int i = 0; i < IconSources.Length; i++)
+            {
+                GameObject item = ObjectDB.instance?.GetItemPrefab(IconSources[i]);
+                Sprite icon = item?.GetComponent<ItemDrop>()?.m_itemData?.GetIcon();
+                if (icon == null)
+                {
+                    icon = ZNetScene.instance?.GetPrefab(IconSources[i])?.GetComponent<Piece>()?.m_icon;
+                }
+
+                _icons[i] = icon;
+            }
+        }
+
+        private static void Use(Player player, int index)
+        {
+            switch (index)
+            {
+                case 1:
+                    SwapTool.PickOrUse(player);
+                    break;
+                case 2:
+                    Say(SwapTool.TurnCurrent());
+                    break;
+                case 3:
+                    Say(SwapTool.UndoCurrent());
+                    break;
+                case 4:
+                    _moving = !_moving;
+                    Say(_moving
+                        ? "Move on: you stand still; W A S D move the design (or the picked part) as you look, E up, Q down, Shift for 50 cm. 4 again to walk."
+                        : "Move off.");
+                    break;
+                case 5:
+                    Say(SwapTool.TogglePart(player));
+                    break;
+                case 6:
+                    Delete(player);
+                    break;
+                case 7:
+                    Save(player);
+                    break;
+                case 8:
+                    Say(LookAt.Toggle(new string[0]));
+                    break;
+            }
+        }
+
+        private static void MoveKeys(Player player)
+        {
+            Vector3 forward = GameCamera.instance != null ? GameCamera.instance.transform.forward : player.transform.forward;
+            forward.y = 0f;
+            forward = forward.sqrMagnitude > 0.01f ? forward.normalized : Vector3.forward;
+            Vector3 right = Vector3.Cross(Vector3.up, forward);
+            Vector3 move = Vector3.zero;
+            if (Input.GetKeyDown(KeyCode.W)) move = forward;
+            else if (Input.GetKeyDown(KeyCode.S)) move = -forward;
+            else if (Input.GetKeyDown(KeyCode.D)) move = right;
+            else if (Input.GetKeyDown(KeyCode.A)) move = -right;
+            else if (Input.GetKeyDown(KeyCode.E)) move = Vector3.up;
+            else if (Input.GetKeyDown(KeyCode.Q)) move = Vector3.down;
+            if (move == Vector3.zero)
+            {
+                return;
+            }
+
+            float step = Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift) ? 0.5f : 0.1f;
+            SwapTool.MoveBy(player, move * step);
+        }
+
+        /// <summary>Removes what the crosshair is on within 6 m: a piece, a creature, a trader; never a player.</summary>
+        private static void Delete(Player player)
+        {
+            Transform eye = GameCamera.instance != null ? GameCamera.instance.transform : null;
+            if (eye == null)
+            {
+                return;
+            }
+
+            RaycastHit[] hits = Physics.RaycastAll(eye.position, eye.forward, 40f, ~0, QueryTriggerInteraction.Ignore);
+            System.Array.Sort(hits, (a, b) => a.distance.CompareTo(b.distance));
+            foreach (RaycastHit hit in hits)
+            {
+                if (hit.collider == null || hit.collider.GetComponentInParent<Player>() != null)
+                {
+                    continue;
+                }
+
+                if (Vector3.Distance(player.transform.position + Vector3.up, hit.point) > DeleteReach)
+                {
+                    break;
+                }
+
+                ZNetView view = hit.collider.GetComponentInParent<ZNetView>();
+                if (view == null || !view.IsValid())
+                {
+                    Say("Delete: that is the ground or part of the world.");
+                    return;
+                }
+
+                string name = Utils.GetPrefabName(view.gameObject);
+                view.ClaimOwnership();
+                ZNetScene.instance.Destroy(view.gameObject);
+                Say($"Deleted {name}.");
+                return;
+            }
+
+            Say("Delete: nothing within reach under the crosshair.");
+        }
+
+        /// <summary>Saves the design aimed at (or the last picked) on the second press within 6 seconds.</summary>
+        private static void Save(Player player)
+        {
+            string design = SwapTool.DesignAimed(player);
+            if (string.IsNullOrEmpty(design))
+            {
+                Say("Save: aim at a gallery design first.");
+                return;
+            }
+
+            if (_saveArmed == design && Time.time < _saveUntil)
+            {
+                _saveArmed = null;
+                Say(BlueprintEdits.Run(new[] { "save", design }));
+                return;
+            }
+
+            _saveArmed = design;
+            _saveUntil = Time.time + 6f;
+            Say($"Save {design}? Press 7 again within 6 seconds to save it as it stands.");
+        }
+
+        private static void Say(string text)
+        {
+            MessageHud.instance?.ShowMessage(MessageHud.MessageType.TopLeft, text);
+            Console.instance?.Print(text);
+        }
+    }
+}

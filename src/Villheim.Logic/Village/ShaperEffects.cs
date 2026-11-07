@@ -156,9 +156,11 @@ namespace Villheim.Logic.Village
                 return;
             }
 
-            // The topmost particle systems of the item, copied whole (with their children), minus lights and sounds.
+            // The topmost particle systems below the item's root, copied with their children, minus lights and sounds.
+            // Never the root itself: that is the item, and a copy of it is a real sword the player picks up (2026-11-07).
             List<ParticleSystem> systems = source.GetComponentsInChildren<ParticleSystem>(true)
-                .Where(p => p.transform.parent == null || p.transform.parent.GetComponentInParent<ParticleSystem>(true) == null)
+                .Where(p => p.transform != source.transform)
+                .Where(p => !Ancestors(p.transform, source.transform).Any(t => t.GetComponent<ParticleSystem>() != null))
                 .ToList();
             if (systems.Count == 0 && Warned.Add(effect + " particles"))
             {
@@ -169,6 +171,7 @@ namespace Villheim.Logic.Village
             foreach (ParticleSystem system in systems)
             {
                 GameObject copy = Object.Instantiate(system.gameObject, holder.transform, false);
+                Strip(copy);
                 copy.transform.localPosition = Vector3.zero;
                 if (bounds.HasValue)
                 {
@@ -176,19 +179,34 @@ namespace Villheim.Logic.Village
                 }
 
                 copy.SetActive(true);
-                foreach (Light light in copy.GetComponentsInChildren<Light>(true))
-                {
-                    Object.Destroy(light);
-                }
-
-                foreach (AudioSource audio in copy.GetComponentsInChildren<AudioSource>(true))
-                {
-                    Object.Destroy(audio);
-                }
-
                 foreach (ParticleSystem particles in copy.GetComponentsInChildren<ParticleSystem>(true))
                 {
                     particles.Play();
+                }
+            }
+        }
+
+        /// <summary>The transforms between a child and the root (the child and the root left out).</summary>
+        private static IEnumerable<Transform> Ancestors(Transform child, Transform root)
+        {
+            for (Transform t = child.parent; t != null && t != root; t = t.parent)
+            {
+                yield return t;
+            }
+        }
+
+        /// <summary>
+        /// Leaves only looks on a copied effect: no network object, item, physics, collider, light or sound, so it can
+        /// never be picked up, saved, pushed or light the player.
+        /// </summary>
+        private static void Strip(GameObject copy)
+        {
+            foreach (Component part in copy.GetComponentsInChildren<Component>(true))
+            {
+                if (part is ZNetView || part is ItemDrop || part is ZSyncTransform || part is Rigidbody || part is Collider ||
+                    part is Light || part is AudioSource)
+                {
+                    Object.DestroyImmediate(part);
                 }
             }
         }

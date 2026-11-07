@@ -46,9 +46,13 @@ with its own look for its biome.
   under it as the village grows; inside the longhouse once there is one.
 - [ ] Roads and facing after Millénaire (session 14, needs testing): doors toward the hearth, parent-rule paths,
   buildings along roads, wider trunks, queued paths join, daily door check (session 15).
-- [ ] Design review: `vh report` lists every design with one stage each (by what most of its building pieces are made
-  of) into the review sheet; `vh gallery page N` shows them ten at a time. Verdicts: use as-is, use after edits, not
-  usable.
+- [x] Design review pass 1: `vh report` lists every design with one stage each into the review sheet; Tyler kept
+  264 of 963 (2026-11-07).
+- [ ] Design review pass 2: keepers gallery and hand editing (`vh swap`, nudging, `vh bp save`), Pass 2 tab filled
+  (use, biomes, level). Guide: `docs/DESIGN_REVIEW_GUIDE.md`. Tools built 2026-11-07; review under way.
+- [ ] Pass 3 tools: a decor strip (`vh bp strip`) that makes a1 (shell and essentials), a2 (with furniture), a3
+  (everything) from a pass 3 save; naming as below; fill the Variants tab.
+- [ ] Bake common hand swaps into the stand-in suggestions once a pattern shows (same original, same choice).
 - [ ] Building families and variants: Tyler's picks saved as `<biome><kind><n>_<level letter><decor step>`, e.g.
   `meadowshouse1_a1`. Same family = same structure. The letter is the building's level (A at village level 1, B the
   same house upgraded); the number is how much decoration it has (a1 least, a2 more). Teach the blueprint reader this

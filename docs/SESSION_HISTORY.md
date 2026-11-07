@@ -3,7 +3,24 @@
 Current facts only. Read this at the start of a session. Narrative is in `docs/daily-notes/`, goals in
 `docs/ROADMAP.md`, how-to in `docs/DEVELOPMENT.md`.
 
-## Current State (as of 2026-11-06)
+## Current State (as of 2026-11-07)
+
+- **Design review (the current work):** how-to for Tyler in `docs/DESIGN_REVIEW_GUIDE.md`. Review sheet
+  https://docs.google.com/spreadsheets/d/1rHaZArWhEa8V43UTZePM9EQSBwS6bvjsmAFPhnlQs6o/edit (tabs Pass 2, Review,
+  All data, Variants, Mods; sheet script `scripts/review-sheet.gs`).
+  - Pass 1 done: 264 of 963 designs kept (`src/Villheim.Logic/Village/Keepers.cs`, in gallery order).
+  - Pass 2 in progress: `vh gallery keepers` (50 a page, as built), `vh swap` (stand-ins by biome at the sign,
+    combinations, hand-built groups, numpad nudging, Ctrl for one structure), `vh look`, `vh note`, `vh bp save
+    <number>|page`, saves to `blueprints/inspiration/pass3/p3-<number>-<name>.blueprint` with
+    `BepInEx/Villheim/pass3-saved.csv`. Swaps are kept only by saving. Built and pushed; the newest parts (nudging,
+    Ctrl structures, combinations, saving pages) not yet tried in game.
+  - Pass 3 next: decor tiers a1/a2/a3 and levels a/b/c from the pass 3 saves; a decor strip tool is not written yet.
+  - Design numbers come from `BepInEx/Villheim/design-list.csv` (`vh report`) and never change.
+  - Licensing to settle before shipping blueprints: valheimians builds and copied MWL locations belong to their
+    creators; ship only Tyler's own or with permission.
+- **Profile mods now also:** PlanBuild (blueprint folder `BepInEx/config/PlanBuild/blueprints`, community builds in
+  its `inspiration` subfolder), BiomeBlueprints (fails to load its commands on this game version; its files are read
+  directly), Server Devcommands, ComfyGizmo, More World Locations AIO.
 
 - **Branch:** `main` (the cloud session branch is kept equal to it). All commits authored by Baz.
 - **On main, not tested in game:** both 2026-11-06 overnight sessions (builder at the piece, levelled sites, beds and
@@ -44,6 +61,7 @@ Current facts only. Read this at the start of a session. Narrative is in `docs/d
 
 ## Recent milestones
 
+- **2026-11-07 (design review tools: keepers gallery, hand swaps, nudging, pass 3 saves, guide)** - see docs/daily-notes/2026-11/2026-11-07.md
 - **2026-11-07 (every design listed, one stage each)** - see docs/daily-notes/2026-11/2026-11-07.md
 - **2026-11-07 (design report on command, no gallery message backlog)** - see docs/daily-notes/2026-11/2026-11-07.md
 - **2026-11-07 (gallery lists builds of any size without freezing)** - see docs/daily-notes/2026-11/2026-11-07.md

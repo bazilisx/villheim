@@ -22,7 +22,8 @@ namespace Villheim.Logic.Village
 
         public static string EditsFolder => Path.Combine(Blueprints.Folder, "inspiration", "edits");
 
-        private delegate bool Change(string prefab, Vector3 position, Quaternion rotation, out string newPrefab, out Vector3 newPosition, out Quaternion newRotation);
+        /// <summary>What one piece becomes: itself, or one or more other pieces.</summary>
+        private delegate List<(string Prefab, Vector3 Position, Quaternion Rotation)> Change(string prefab, Vector3 position, Quaternion rotation);
 
         public static string Run(string[] args)
         {
@@ -66,22 +67,16 @@ namespace Villheim.Logic.Village
 
                 suffix = "_edited";
                 description = $"{design.Name} with {choices.Count} stand-ins chosen in the gallery (Villheim)";
-                change = (string prefab, Vector3 position, Quaternion rotation, out string newPrefab, out Vector3 newPosition, out Quaternion newRotation) =>
+                change = (prefab, position, rotation) =>
                 {
-                    newPrefab = prefab;
-                    newPosition = position;
-                    newRotation = rotation;
-                    if (!choices.TryGetValue(prefab, out var choice) ||
-                        !SwapTool.Place(prefab, position, rotation, choice.Prefab, choice.Turn, out newPosition, out newRotation))
+                    var chosen = SwapTool.Chosen(design.Name, prefab, position, rotation);
+                    if (chosen == null)
                     {
-                        newPosition = position;
-                        newRotation = rotation;
-                        return false;
+                        return new List<(string, Vector3, Quaternion)> { (prefab, position, rotation) };
                     }
 
-                    newPrefab = choice.Prefab;
                     changed++;
-                    return true;
+                    return chosen;
                 };
             }
             else
@@ -89,23 +84,17 @@ namespace Villheim.Logic.Village
                 int target = Gallery.StageIndexOf(args[2]);
                 suffix = "_as_" + Gallery.StageWords[target];
                 description = $"{design.Name} in {Gallery.StageNames[target]} materials (Villheim material swap)";
-                change = (string prefab, Vector3 position, Quaternion rotation, out string newPrefab, out Vector3 newPosition, out Quaternion newRotation) =>
+                change = (prefab, position, rotation) =>
                 {
-                    newPrefab = prefab;
-                    newPosition = position;
-                    newRotation = rotation;
                     if (MaterialSwap.Swappable(prefab) && MaterialSwap.TrySwap(prefab, target, out string other, out Vector3 shift, out Quaternion turn))
                     {
-                        newPrefab = other;
-                        newPosition = position + rotation * shift;
-                        newRotation = rotation * turn;
                         result.Swapped++;
                         changed++;
-                        return true;
+                        return new List<(string, Vector3, Quaternion)> { (other, position + rotation * shift, rotation * turn) };
                     }
 
                     MaterialSwap.Note(prefab, target, result);
-                    return false;
+                    return new List<(string, Vector3, Quaternion)> { (prefab, position, rotation) };
                 };
             }
 
@@ -123,8 +112,10 @@ namespace Villheim.Logic.Village
             {
                 foreach (Blueprints.Piece piece in design.Blueprint.Pieces)
                 {
-                    change(piece.Prefab, piece.Position, piece.Rotation, out string p, out Vector3 at, out Quaternion q);
-                    lines.Add(Line(p, at, q, piece.Scale, piece.Text));
+                    foreach ((string p, Vector3 at, Quaternion q) in change(piece.Prefab, piece.Position, piece.Rotation))
+                    {
+                        lines.Add(Line(p, at, q, p == piece.Prefab ? piece.Scale : Vector3.one, p == piece.Prefab ? piece.Text : null));
+                    }
                 }
             }
             else
@@ -141,8 +132,10 @@ namespace Villheim.Logic.Village
 
                     foreach (DesignSpawner.PlanEntry entry in DesignSpawner.MakePlan(asset, Vector3.zero, 1, 0f, false))
                     {
-                        change(entry.Prefab, entry.LocalPosition, entry.LocalRotation, out string p, out Vector3 at, out Quaternion q);
-                        lines.Add(Line(p, at, q, entry.Scale, null));
+                        foreach ((string p, Vector3 at, Quaternion q) in change(entry.Prefab, entry.LocalPosition, entry.LocalRotation))
+                        {
+                            lines.Add(Line(p, at, q, p == entry.Prefab ? entry.Scale : Vector3.one, null));
+                        }
                     }
                 }
                 finally

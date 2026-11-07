@@ -262,6 +262,7 @@ namespace Villheim.Logic.Village
                     {
                         swapped.SwappedFrom = entry.Prefab;
                         swapped.OriginalRotation = entry.LocalRotation;
+                        swapped.OriginalCenter = entry.LocalPosition + entry.LocalRotation * LocalCenter(entry.Prefab);
                         output.Add(swapped);
                         result.Swapped++;
                         if (near)

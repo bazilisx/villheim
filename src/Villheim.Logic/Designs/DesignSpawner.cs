@@ -108,6 +108,9 @@ namespace Villheim.Logic.Designs
             /// <summary>For a material swap stand-in: the piece it stands in for, and that piece's own rotation.</summary>
             public string SwappedFrom;
             public Quaternion OriginalRotation = Quaternion.identity;
+
+            /// <summary>For a stand-in: the middle of the piece it stands in for, in the design's coordinates.</summary>
+            public Vector3 OriginalCenter;
         }
 
         // Stage names for progress. The shell (structure, roofs, doors and windows) goes up in support order, see

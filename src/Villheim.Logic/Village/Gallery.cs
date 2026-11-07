@@ -59,6 +59,9 @@ namespace Villheim.Logic.Village
         private const float Aisle = 14f;
         internal const string KeySwappedRotation = "villheim_swapped_rotation";
 
+        /// <summary>For a stand-in: the middle of the piece it stands in for (one original may have several stand-in pieces).</summary>
+        internal const string KeySwappedCenter = "villheim_swapped_center";
+
         /// <summary>The stage the last gallery page was shown as ('as meadows'), or -1: what 'vh swap' pairs for.</summary>
         internal static int LastAsStage = -1;
         // Any calm land will do for a gallery (mobs can be set passive): not the Mistlands, Ashlands, Deep North or sea.
@@ -1601,6 +1604,7 @@ namespace Villheim.Logic.Village
             Quaternion turn = Quaternion.Euler(0f, yaw, 0f);
             Vector3 origin = cell.Center - turn * cell.Offset - Vector3.up * planned;
             var made = new List<GameObject>();
+            var standIns = new List<(ZDO Zdo, Vector3 Center)>();
             foreach (DesignSpawner.PlanEntry entry in plan)
             {
                 GameObject piece = DesignSpawner.SpawnEntry(entry, origin, turn, 0, false);
@@ -1614,6 +1618,7 @@ namespace Villheim.Logic.Village
                         // 'vh swap' needs to know what a stand-in stands in for, and how the original was turned.
                         zdo.Set(KeySwappedFrom, entry.SwappedFrom);
                         zdo.Set(KeySwappedRotation, turn * entry.OriginalRotation);
+                        standIns.Add((zdo, origin + turn * entry.OriginalCenter));
                     }
 
                     made.Add(piece);
@@ -1659,7 +1664,17 @@ namespace Villheim.Logic.Village
                         piece.transform.position += Vector3.up * shift;
                         piece.GetComponent<ZNetView>()?.GetZDO()?.SetPosition(piece.transform.position);
                     }
+
+                    for (int i = 0; i < standIns.Count; i++)
+                    {
+                        standIns[i] = (standIns[i].Zdo, standIns[i].Center + Vector3.up * shift);
+                    }
                 }
+            }
+
+            foreach ((ZDO zdo, Vector3 center) in standIns)
+            {
+                zdo.Set(KeySwappedCenter, center);
             }
 
             return made.Count;

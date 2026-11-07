@@ -18,6 +18,8 @@ namespace Villheim.Logic.Village
     /// (or at any piece built by hand) and press the key again: every piece of that kind in that one design changes to
     /// it, nothing anywhere else. Pick another stand-in to compare; the last one stays. The choice is kept per design
     /// in BepInEx/Villheim/design-swaps.txt (design|original|replacement|turn) and comes back whenever the design is put
+    /// up again. A piece built by hand brings the hand-built pieces touching it along: two fences side by side become one
+    /// stand-in for a wall twice their width, centred where the wall stood (see Capture). It is
     /// up again. 'vh swap turn' gives the current choice a quarter turn, 'vh swap undo' puts the original back,
     /// 'vh swap done' takes the stand-ins away, 'vh swap off' ends it. 'vh bp save &lt;number&gt;' writes the design with
     /// its choices as a new blueprint.
@@ -132,11 +134,14 @@ namespace Villheim.Logic.Village
                 return;
             }
 
-            int replaced = Replace(_design, _original, prefab, _turn);
-            _current = prefab;
-            SetChoice(_design, _original, prefab, _turn);
-            Say($"Swap: {_original} is now {prefab} in {_design} ({replaced} pieces). Pick another to compare, 'vh swap turn' to turn it, " +
-                "'vh swap undo' to put the original back.");
+            string replacement = Capture(target, out int members, out bool capped);
+            int replaced = Replace(_design, _original, replacement, _turn);
+            _current = replacement;
+            SetChoice(_design, _original, replacement, _turn);
+            string what = members > 1 ? $"a group of {members} pieces ({Describe(replacement)})" : prefab;
+            Say($"Swap: {_original} is now {what} in {_design} ({replaced} replaced). " +
+                (capped ? $"Only the first {MaxGroup} touching pieces were taken; build the group away from other pieces. " : "") +
+                "Pick another to compare, 'vh swap turn' to turn it, 'vh swap undo' to put the original back.");
         }
 
         private static string Turn()
@@ -149,7 +154,7 @@ namespace Villheim.Logic.Village
             _turn = (_turn + 90f) % 360f;
             int replaced = Replace(_design, _original, _current, _turn);
             SetChoice(_design, _original, _current, _turn);
-            return $"Villheim: {_current} in {_design} turned to {_turn:0} degrees ({replaced} pieces).";
+            return $"Villheim: {Describe(_current)} in {_design} turned to {_turn:0} degrees ({replaced} replaced).";
         }
 
         private static string Undo()
@@ -167,19 +172,14 @@ namespace Villheim.Logic.Village
         }
 
         /// <summary>
-        /// Replaces every piece of one kind in one design (the original itself or a stand-in for it) with
-        /// <paramref name="replacement"/>, middle on middle, turned as the original was plus <paramref name="turn"/>.
+        /// Replaces every piece of one kind in one design (the original itself, or the stand-in pieces for it) with
+        /// <paramref name="replacement"/> (a piece or a group, see Members), middle on middle, turned as the original was
+        /// plus <paramref name="turn"/>. Putting the original back is a replacement by itself. Returns how many originals.
         /// </summary>
         private static int Replace(string design, string original, string replacement, float turn)
         {
-            GameObject prefab = ZNetScene.instance.GetPrefab(replacement);
-            if (prefab == null)
-            {
-                return 0;
-            }
-
-            Vector3 newCenter = MaterialSwap.LocalCenter(replacement);
             bool back = replacement == original;
+            var instances = new Dictionary<string, (Vector3 Center, Quaternion Rotation)>();
             var doomed = new List<ZNetView>();
             foreach (ZNetView view in ZNetScene.instance.m_instances.Values.ToList())
             {
@@ -196,24 +196,55 @@ namespace Villheim.Logic.Village
                     continue;
                 }
 
+                // One original may stand as several pieces (a group): they share its middle, so count it once.
                 Transform t = view.transform;
-                Vector3 middle = t.position + t.rotation * MaterialSwap.LocalCenter(shown);
-                Quaternion originalRotation = from.Length > 0 ? zdo.GetQuaternion(Gallery.KeySwappedRotation, t.rotation) : t.rotation;
-                Quaternion rotation = back ? originalRotation : originalRotation * Quaternion.Euler(0f, turn, 0f);
-                GameObject made = Object.Instantiate(prefab, middle - rotation * newCenter, rotation);
-                ZDO madeZdo = made.GetComponent<ZNetView>()?.GetZDO();
-                if (madeZdo != null)
+                Vector3 ownMiddle = t.position + t.rotation * MaterialSwap.LocalCenter(shown);
+                Vector3 center = from.Length > 0 ? zdo.GetVec3(Gallery.KeySwappedCenter, ownMiddle) : ownMiddle;
+                Quaternion rotation = from.Length > 0 ? zdo.GetQuaternion(Gallery.KeySwappedRotation, t.rotation) : t.rotation;
+                string key = $"{Mathf.Round(center.x * 10f)},{Mathf.Round(center.y * 10f)},{Mathf.Round(center.z * 10f)}";
+                if (!instances.ContainsKey(key))
                 {
-                    madeZdo.Set(Gallery.KeyGallery, 1);
-                    madeZdo.Set(Gallery.KeyDesign, design);
-                    if (!back)
-                    {
-                        madeZdo.Set(Gallery.KeySwappedFrom, original);
-                        madeZdo.Set(Gallery.KeySwappedRotation, originalRotation);
-                    }
+                    instances[key] = (center, rotation);
                 }
 
                 doomed.Add(view);
+            }
+
+            foreach ((Vector3 center, Quaternion rotation) in instances.Values)
+            {
+                if (back)
+                {
+                    GameObject prefab = ZNetScene.instance.GetPrefab(original);
+                    if (prefab != null)
+                    {
+                        GameObject made = Object.Instantiate(prefab, center - rotation * MaterialSwap.LocalCenter(original), rotation);
+                        ZDO madeZdo = made.GetComponent<ZNetView>()?.GetZDO();
+                        madeZdo?.Set(Gallery.KeyGallery, 1);
+                        madeZdo?.Set(Gallery.KeyDesign, design);
+                    }
+
+                    continue;
+                }
+
+                foreach ((string name, Vector3 position, Quaternion pieceRotation) in Expand(center, rotation, replacement, turn))
+                {
+                    GameObject prefab = ZNetScene.instance.GetPrefab(name);
+                    if (prefab == null)
+                    {
+                        continue;
+                    }
+
+                    GameObject made = Object.Instantiate(prefab, position, pieceRotation);
+                    ZDO madeZdo = made.GetComponent<ZNetView>()?.GetZDO();
+                    if (madeZdo != null)
+                    {
+                        madeZdo.Set(Gallery.KeyGallery, 1);
+                        madeZdo.Set(Gallery.KeyDesign, design);
+                        madeZdo.Set(Gallery.KeySwappedFrom, original);
+                        madeZdo.Set(Gallery.KeySwappedRotation, rotation);
+                        madeZdo.Set(Gallery.KeySwappedCenter, center);
+                    }
+                }
             }
 
             foreach (ZNetView view in doomed)
@@ -222,7 +253,159 @@ namespace Villheim.Logic.Village
                 ZNetScene.instance.Destroy(view.gameObject);
             }
 
-            return doomed.Count;
+            return instances.Count;
+        }
+
+        // ---------------------------------------------------------------- stand-ins: one piece or a group
+
+        private const int MaxGroup = 20;
+
+        /// <summary>
+        /// The stand-in a press on <paramref name="target"/> means. A stand-in from the row, or anything of the gallery:
+        /// that one piece. A piece built by hand: it and every hand-built piece touching it, and those touching them, up
+        /// to <see cref="MaxGroup"/>, as a group (two fences side by side for a wall twice as wide). The group is kept
+        /// relative to its middle and to the clicked piece's turn: "group[prefab@x,y,z,qx,qy,qz,qw;...]".
+        /// </summary>
+        private static string Capture(GameObject target, out int members, out bool capped)
+        {
+            members = 1;
+            capped = false;
+            string name = Utils.GetPrefabName(target);
+            Piece clicked = target.GetComponent<Piece>();
+            ZDO zdo = target.GetComponent<ZNetView>()?.GetZDO();
+            if (clicked == null || zdo == null || zdo.GetInt(Gallery.KeyGallery) == 1)
+            {
+                return name;
+            }
+
+            var nearby = new List<Piece>();
+            Piece.GetAllPiecesInRadius(target.transform.position, 12f, nearby);
+            var bounds = new Dictionary<Piece, Bounds>();
+            foreach (Piece piece in nearby)
+            {
+                ZDO pieceZdo = piece != null ? piece.GetComponent<ZNetView>()?.GetZDO() : null;
+                if (pieceZdo != null && pieceZdo.GetInt(Gallery.KeyGallery) != 1 && piece.GetComponent<VillageHearth>() == null)
+                {
+                    Bounds? b = WorldBounds(piece.gameObject);
+                    if (b.HasValue)
+                    {
+                        bounds[piece] = b.Value;
+                    }
+                }
+            }
+
+            if (!bounds.ContainsKey(clicked))
+            {
+                return name;
+            }
+
+            var group = new List<Piece> { clicked };
+            for (int i = 0; i < group.Count && group.Count < MaxGroup; i++)
+            {
+                Bounds reach = bounds[group[i]];
+                reach.Expand(0.15f);
+                foreach (KeyValuePair<Piece, Bounds> other in bounds)
+                {
+                    if (!group.Contains(other.Key) && reach.Intersects(other.Value))
+                    {
+                        group.Add(other.Key);
+                        if (group.Count >= MaxGroup)
+                        {
+                            capped = true;
+                            break;
+                        }
+                    }
+                }
+            }
+
+            members = group.Count;
+            if (group.Count == 1)
+            {
+                return name;
+            }
+
+            Bounds all = bounds[group[0]];
+            foreach (Piece piece in group)
+            {
+                all.Encapsulate(bounds[piece]);
+            }
+
+            Quaternion frame = Quaternion.Inverse(clicked.transform.rotation);
+            CultureInfo inv = CultureInfo.InvariantCulture;
+            string Num(float v) => v.ToString("0.####", inv);
+            return "group[" + string.Join(";", group.Select(p =>
+            {
+                Vector3 at = frame * (p.transform.position - all.center);
+                Quaternion turn = frame * p.transform.rotation;
+                return $"{Utils.GetPrefabName(p.gameObject)}@{Num(at.x)},{Num(at.y)},{Num(at.z)},{Num(turn.x)},{Num(turn.y)},{Num(turn.z)},{Num(turn.w)}";
+            })) + "]";
+        }
+
+        private static Bounds? WorldBounds(GameObject go)
+        {
+            Bounds? total = null;
+            foreach (Collider collider in go.GetComponentsInChildren<Collider>())
+            {
+                if (collider == null || collider.isTrigger || !collider.enabled)
+                {
+                    continue;
+                }
+
+                if (total.HasValue)
+                {
+                    Bounds b = total.Value;
+                    b.Encapsulate(collider.bounds);
+                    total = b;
+                }
+                else
+                {
+                    total = collider.bounds;
+                }
+            }
+
+            return total;
+        }
+
+        /// <summary>The pieces of a stand-in, each relative to the middle of the piece it replaces and to its turn.</summary>
+        private static List<(string Prefab, Vector3 Position, Quaternion Rotation)> Members(string replacement)
+        {
+            var members = new List<(string, Vector3, Quaternion)>();
+            if (!replacement.StartsWith("group[") || !replacement.EndsWith("]"))
+            {
+                members.Add((replacement, -MaterialSwap.LocalCenter(replacement), Quaternion.identity));
+                return members;
+            }
+
+            CultureInfo inv = CultureInfo.InvariantCulture;
+            foreach (string part in replacement.Substring(6, replacement.Length - 7).Split(';'))
+            {
+                int at = part.IndexOf('@');
+                string[] f = at > 0 ? part.Substring(at + 1).Split(',') : new string[0];
+                if (f.Length < 7)
+                {
+                    continue;
+                }
+
+                float[] v = f.Select(x => float.Parse(x, NumberStyles.Float, inv)).ToArray();
+                members.Add((part.Substring(0, at), new Vector3(v[0], v[1], v[2]), new Quaternion(v[3], v[4], v[5], v[6])));
+            }
+
+            return members;
+        }
+
+        /// <summary>A stand-in in words: the piece, or the pieces of a group and how many of each.</summary>
+        private static string Describe(string replacement) =>
+            !replacement.StartsWith("group[") ? replacement :
+            string.Join(", ", Members(replacement).GroupBy(m => m.Prefab).Select(g => g.Count() > 1 ? $"{g.Count()} {g.Key}" : g.Key));
+
+        /// <summary>
+        /// Where the pieces of a stand-in go for one original: around the original's middle, turned as the original
+        /// plus <paramref name="turn"/> degrees.
+        /// </summary>
+        public static List<(string Prefab, Vector3 Position, Quaternion Rotation)> Expand(Vector3 center, Quaternion originalRotation, string replacement, float turn)
+        {
+            Quaternion frame = originalRotation * Quaternion.Euler(0f, turn, 0f);
+            return Members(replacement).Select(m => (m.Prefab, center + frame * m.Position, frame * m.Rotation)).ToList();
         }
 
         /// <summary>
@@ -454,32 +637,50 @@ namespace Villheim.Logic.Village
             var output = new List<DesignSpawner.PlanEntry>(plan.Count);
             foreach (DesignSpawner.PlanEntry entry in plan)
             {
-                if (byOriginal.TryGetValue(entry.Prefab, out var choice) &&
-                    Place(entry.Prefab, entry.LocalPosition, entry.LocalRotation, choice.Prefab, choice.Turn, out Vector3 position, out Quaternion rotation))
+                if (!byOriginal.TryGetValue(entry.Prefab, out var choice))
                 {
-                    DesignSpawner.PlanEntry swapped = DesignSpawner.Entry(choice.Prefab, position, rotation, entry.Scale);
+                    output.Add(entry);
+                    continue;
+                }
+
+                Vector3 center = entry.LocalPosition + entry.LocalRotation * MaterialSwap.LocalCenter(entry.Prefab);
+                int added = 0;
+                foreach ((string name, Vector3 position, Quaternion rotation) in Expand(center, entry.LocalRotation, choice.Prefab, choice.Turn))
+                {
+                    GameObject prefab = ZNetScene.instance.GetPrefab(name);
+                    DesignSpawner.PlanEntry swapped = prefab != null ? DesignSpawner.Entry(name, position, rotation, prefab.transform.localScale) : null;
                     if (swapped != null)
                     {
                         swapped.SwappedFrom = entry.Prefab;
                         swapped.OriginalRotation = entry.LocalRotation;
+                        swapped.OriginalCenter = center;
                         output.Add(swapped);
-                        continue;
+                        added++;
                     }
                 }
 
-                output.Add(entry);
+                if (added == 0)
+                {
+                    output.Add(entry);
+                }
             }
 
             return output;
         }
 
-        /// <summary>Where a stand-in goes for a piece: middle on middle, turned as the piece plus the chosen turn.</summary>
-        public static bool Place(string original, Vector3 position, Quaternion rotation, string replacement, float turn,
-            out Vector3 newPosition, out Quaternion newRotation)
+        /// <summary>
+        /// The pieces that replace one piece of a design by the choice made for it, in the design's coordinates; null
+        /// when no stand-in was chosen for it.
+        /// </summary>
+        public static List<(string Prefab, Vector3 Position, Quaternion Rotation)> Chosen(string design, string prefab, Vector3 position, Quaternion rotation)
         {
-            newRotation = rotation * Quaternion.Euler(0f, turn, 0f);
-            newPosition = position + rotation * MaterialSwap.LocalCenter(original) - newRotation * MaterialSwap.LocalCenter(replacement);
-            return ZNetScene.instance.GetPrefab(replacement) != null;
+            LoadChoices();
+            if (!Choices.TryGetValue(design, out var byOriginal) || !byOriginal.TryGetValue(prefab, out var choice))
+            {
+                return null;
+            }
+
+            return Expand(position + rotation * MaterialSwap.LocalCenter(prefab), rotation, choice.Prefab, choice.Turn);
         }
 
         /// <summary>The chosen stand-ins of a design: original to (replacement, turn).</summary>

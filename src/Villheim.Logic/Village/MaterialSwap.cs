@@ -8,17 +8,17 @@ using Villheim.Logic.Designs;
 namespace Villheim.Logic.Village
 {
     /// <summary>
-    /// Shows a design in another stage's materials: each building piece (wall, floor, roof, beam, pole, fence, door,
-    /// window...) is swapped for a piece of the same kind from the target stage, so an ashwood house can be seen in
-    /// Meadows wood, or a Meadows house with Plains tar roofs.
+    /// Shows a design as a village of an earlier stage could build it: every building piece (wall, floor, roof, beam,
+    /// pole, fence, door, window...) unlocked after the target stage is swapped for one the target stage has, that stage
+    /// or any before it. Pieces from the target stage or earlier stay as they are: nothing is ever swapped up. Pieces no
+    /// player can build (goblin and dvergr fences in locations) count as later than every stage, so they always go.
     ///
-    /// First choice: same kind in the name (wall, roof, floor...) and the same size as the game measures it (its
-    /// colliders), within a few centimetres, either way round. Second choice, when the target stage has no piece that
-    /// size: the nearest in size of the same kind ("near" on the sign). A hand-made pairing in <see cref="Pairs"/> beats
-    /// both. The new piece goes where the old one's middle was, so pieces whose pivots differ still line up. Down a
-    /// stage, the newest piece the target stage has is used; up a stage, a piece is only swapped when a newer one of the
-    /// same kind exists by then. Anything with no match stays as it was and is listed in swap-misses-&lt;stage&gt;.txt.
-    /// Decoration and furniture are never swapped.
+    /// The stand-in, in order of preference: a hand-made pairing (<see cref="Pairs"/>); the same kind in the name and
+    /// the same size as the game measures it (its colliders), either way round; the same kind, nearest size; a related
+    /// kind (fence, stakes and palisade; beam, pole and pillar; door and gate), same size, then nearest size. "near" on
+    /// the sign counts the nearest-size ones. Within a choice the newest stage allowed wins. The new piece goes where
+    /// the old one's middle was, so pieces whose pivots differ still line up. Anything with no stand-in stays and is
+    /// listed in swap-misses-&lt;stage&gt;.txt. Decoration and furniture are never swapped.
     /// </summary>
     internal static class MaterialSwap
     {
@@ -27,6 +27,19 @@ namespace Villheim.Logic.Village
             "roof", "wall", "floor", "beam", "pole", "stair", "arch", "window", "door", "gate", "pillar", "column",
             "fence", "stake", "rail", "ladder", "palisade", "shutter",
         };
+
+        /// <summary>Kinds that can stand in for each other when the target stage has nothing of the same kind.</summary>
+        private static readonly Dictionary<string, string> Family = new Dictionary<string, string>
+        {
+            ["fence"] = "barrier", ["stake"] = "barrier", ["palisade"] = "barrier", ["rail"] = "barrier",
+            ["wall"] = "wall", ["shutter"] = "wall",
+            ["beam"] = "support", ["pole"] = "support", ["pillar"] = "support", ["column"] = "support",
+            ["door"] = "door", ["gate"] = "door",
+            ["roof"] = "roof", ["floor"] = "floor", ["stair"] = "stair", ["arch"] = "arch", ["window"] = "window", ["ladder"] = "ladder",
+        };
+
+        /// <summary>A stage after every real one: pieces no player can build.</summary>
+        private const int Never = 99;
 
         private static readonly HashSet<string> Modifiers = new HashSet<string>
         {
@@ -47,6 +60,7 @@ namespace Villheim.Logic.Village
             public Vector3 Size;
             public Vector3 Center;
             public string KindKey;
+            public HashSet<string> Families;
             public HashSet<string> Mods;
         }
 
@@ -121,7 +135,7 @@ namespace Villheim.Logic.Village
             var output = new List<DesignSpawner.PlanEntry>(plan.Count);
             foreach (DesignSpawner.PlanEntry entry in plan)
             {
-                if (entry.Shell && TrySwap(entry.Prefab, target, out string swap, out Vector3 shift, out Quaternion turn, out bool near))
+                if (Swappable(entry.Prefab) && TrySwap(entry.Prefab, target, out string swap, out Vector3 shift, out Quaternion turn, out bool near))
                 {
                     DesignSpawner.PlanEntry swapped = DesignSpawner.Entry(swap, entry.LocalPosition + entry.LocalRotation * shift,
                         entry.LocalRotation * turn, entry.Scale);
@@ -145,18 +159,58 @@ namespace Villheim.Logic.Village
             return output;
         }
 
+        /// <summary>
+        /// A piece the swap looks at: a building piece a player can build, or a piece no player can build that is
+        /// part of a structure (it wears and breaks) and has a building kind in its name (goblin and dvergr fences).
+        /// </summary>
+        public static bool Swappable(string prefab)
+        {
+            if (Gallery.IsBuildingPiece(prefab))
+            {
+                return true;
+            }
+
+            GameObject go = ZNetScene.instance.GetPrefab(prefab);
+            Piece piece = go != null ? go.GetComponent<Piece>() : null;
+            if (piece == null || (piece.m_resources != null && piece.m_resources.Length > 0) || go.GetComponent<WearNTear>() == null ||
+                go.GetComponent<Fireplace>() != null || go.GetComponent<Container>() != null || go.GetComponentInChildren<Light>(true) != null)
+            {
+                return false;
+            }
+
+            Shape shape = Measure(prefab);
+            return shape != null && shape.KindKey.Length > 0;
+        }
+
+        /// <summary>The stage a piece belongs to for swapping: <see cref="Never"/> when no player can build it.</summary>
+        private static int StageOf(string prefab) => Gallery.IsBuildable(prefab) ? Gallery.StageOfPiece(prefab) : Never;
+
         /// <summary>Counts a piece that stays although it is from a later stage than the target.</summary>
         public static void Note(string prefab, int target, Result result)
         {
-            int stage = Gallery.StageOfPiece(prefab);
-            if (stage <= target)
+            bool swappable = Swappable(prefab);
+            if (swappable)
             {
-                return;
+                if (StageOf(prefab) <= target)
+                {
+                    return;
+                }
+
+                result.Kept++;
+                result.Unmatched.TryGetValue(prefab, out int n);
+                result.Unmatched[prefab] = n + 1;
+            }
+            else
+            {
+                // Decoration and the like are not swapped, but later ones are listed, in case one is a building piece
+                // under an unusual name.
+                GameObject go = ZNetScene.instance.GetPrefab(prefab);
+                if (go == null || go.GetComponent<Piece>() == null || StageOf(prefab) <= target)
+                {
+                    return;
+                }
             }
 
-            result.Kept++;
-            result.Unmatched.TryGetValue(prefab, out int n);
-            result.Unmatched[prefab] = n + 1;
             if (!Misses.TryGetValue(target, out Dictionary<string, int> misses))
             {
                 misses = new Dictionary<string, int>();
@@ -189,8 +243,10 @@ namespace Villheim.Logic.Village
                     Shape source = Measure(miss.Key);
                     Piece piece = ZNetScene.instance.GetPrefab(miss.Key)?.GetComponent<Piece>();
                     string kind = source == null ? "?" : source.KindKey.Length > 0 ? source.KindKey : "(no kind word)";
+                    int stageOf = StageOf(miss.Key);
                     lines.Add($"{miss.Key} | {miss.Value} | {kind} | {(source != null ? Size(source.Size) : "?")} | " +
-                              $"{Gallery.StageNames[Gallery.StageOfPiece(miss.Key)]} | {(piece != null ? piece.m_category.ToString() : "?")}");
+                              $"{(stageOf == Never ? "no player can build it" : Gallery.StageNames[stageOf])} | {(piece != null ? piece.m_category.ToString() : "?")}" +
+                              (Swappable(miss.Key) ? "" : " | decoration, not swapped"));
                     if (source == null)
                     {
                         continue;
@@ -217,6 +273,12 @@ namespace Villheim.Logic.Village
 
         private static Choice Find(string prefab, int target)
         {
+            // Only pieces from after the target stage are swapped, never anything up.
+            if (StageOf(prefab) <= target)
+            {
+                return null;
+            }
+
             Shape source = Measure(prefab);
             if (source == null)
             {
@@ -234,51 +296,49 @@ namespace Villheim.Logic.Village
                 return null;
             }
 
-            int own = Gallery.StageOfPiece(prefab);
-            List<Shape> candidates = Pool().Where(c => c.Prefab != prefab && c.KindKey == source.KindKey && c.Stage <= target &&
-                                                       (own > target || c.Stage > own)).ToList();
+            List<Shape> allowed = Pool().Where(c => c.Prefab != prefab && c.Stage <= target).ToList();
+            List<Shape> sameKind = allowed.Where(c => c.KindKey == source.KindKey).ToList();
+            List<Shape> related = allowed.Where(c => c.KindKey != source.KindKey && c.Families.Overlaps(source.Families)).ToList();
+            return Closest(source, sameKind, exact: true) ?? Closest(source, sameKind, exact: false) ??
+                   Closest(source, related, exact: true) ?? Closest(source, related, exact: false);
+        }
 
-            // Same size, either way round.
+        /// <summary>
+        /// The best stand-in among the candidates: with <paramref name="exact"/>, one of the same size (either way round),
+        /// newest stage first; without, the nearest in size.
+        /// </summary>
+        private static Choice Closest(Shape source, List<Shape> candidates, bool exact)
+        {
             Shape best = null;
             bool bestTurned = false;
-            int bestScore = int.MinValue;
+            float bestScore = float.MinValue;
             foreach (Shape candidate in candidates)
             {
-                bool straight = Same(source.Size, candidate.Size, 0.15f, 0.08f);
-                bool turned = !straight && Same(source.Size, Turned(candidate.Size), 0.15f, 0.08f);
-                if (!straight && !turned)
+                float straight = Distance(source.Size, candidate.Size);
+                float turned = Distance(source.Size, Turned(candidate.Size));
+                bool isTurned = turned < straight;
+                float score;
+                if (exact)
                 {
-                    continue;
+                    bool same = isTurned ? Same(source.Size, Turned(candidate.Size), 0.15f, 0.08f) : Same(source.Size, candidate.Size, 0.15f, 0.08f);
+                    if (!same)
+                    {
+                        continue;
+                    }
+
+                    score = candidate.Stage * 100 + (isTurned ? 0 : 10) + Mods(source, candidate) - candidate.Prefab.Length * 0.01f;
+                }
+                else
+                {
+                    score = -Mathf.Min(straight, turned) + Mods(source, candidate) * 0.05f + candidate.Stage * 0.01f;
                 }
 
-                int score = candidate.Stage * 100 + (straight ? 10 : 0) + Mods(source, candidate);
-                if (score > bestScore || score == bestScore && best != null && candidate.Prefab.Length < best.Prefab.Length)
+                if (score > bestScore)
                 {
                     best = candidate;
-                    bestTurned = turned;
+                    bestTurned = isTurned;
                     bestScore = score;
                 }
-            }
-
-            bool near = false;
-            if (best == null && own > target)
-            {
-                // Nearest size of the same kind, down a stage only: the piece must go, and this is the closest stand-in.
-                float bestDistance = float.MaxValue;
-                foreach (Shape candidate in candidates)
-                {
-                    float straight = Distance(source.Size, candidate.Size);
-                    float turned = Distance(source.Size, Turned(candidate.Size));
-                    float distance = Mathf.Min(straight, turned) - Mods(source, candidate) * 0.05f;
-                    if (distance < bestDistance)
-                    {
-                        best = candidate;
-                        bestTurned = turned < straight;
-                        bestDistance = distance;
-                    }
-                }
-
-                near = best != null;
             }
 
             if (best == null)
@@ -287,7 +347,7 @@ namespace Villheim.Logic.Village
             }
 
             Quaternion turn = bestTurned ? Quaternion.Euler(0f, 90f, 0f) : Quaternion.identity;
-            return new Choice { Prefab = best.Prefab, Shift = source.Center - turn * best.Center, Turn = turn, Near = near };
+            return new Choice { Prefab = best.Prefab, Shift = source.Center - turn * best.Center, Turn = turn, Near = !exact };
         }
 
         private static Vector3 Turned(Vector3 size) => new Vector3(size.z, size.y, size.x);
@@ -358,6 +418,7 @@ namespace Villheim.Logic.Village
                     Size = bounds.Value.size,
                     Center = bounds.Value.center,
                     KindKey = string.Join("+", Kinds.Where(k => lower.Contains(k))),
+                    Families = new HashSet<string>(Kinds.Where(k => lower.Contains(k)).Select(k => Family[k])),
                     Mods = new HashSet<string>(tokens.Where(t => Modifiers.Contains(t) || t.Any(char.IsDigit))),
                 };
             }

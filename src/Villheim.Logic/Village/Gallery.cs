@@ -1573,6 +1573,9 @@ namespace Villheim.Logic.Village
 
         internal static int StageIndexOf(string word) => StageIndex(word);
 
+        /// <summary>A piece a player can build (it has a recipe).</summary>
+        internal static bool IsBuildable(string prefab) => Info(prefab).Buildable;
+
         /// <summary>A building piece a player can build, with materials of known stages: a candidate for material swaps.</summary>
         internal static bool IsSwappable(string prefab)
         {

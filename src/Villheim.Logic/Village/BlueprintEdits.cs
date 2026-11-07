@@ -94,7 +94,7 @@ namespace Villheim.Logic.Village
 
         private static string Line(string prefab, Vector3 position, Quaternion rotation, Vector3 scale, string text, int target, MaterialSwap.Result result)
         {
-            if (Gallery.IsBuildingPiece(prefab) && MaterialSwap.TrySwap(prefab, target, out string swap, out Vector3 shift, out Quaternion turn))
+            if (MaterialSwap.Swappable(prefab) && MaterialSwap.TrySwap(prefab, target, out string swap, out Vector3 shift, out Quaternion turn))
             {
                 position += rotation * shift;
                 rotation *= turn;

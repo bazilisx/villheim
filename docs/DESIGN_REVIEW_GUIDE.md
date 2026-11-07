@@ -56,8 +56,9 @@ means everything is up.
 
 ## Shaping: the knife and the hotbar
 
-The shaping knife is the vanilla wooden knife (`KnifeWood`, config ShapingTool). It glows teal while shaping, so it
-reads as the shaping tool. With it in hand, hotbar keys 1 to 8 stop using items and
+The shaping knife is the vanilla wooden knife (`KnifeWood`, config ShapingTool), renamed **Villheim Dev Shaper Tool**
+(on the ground, in the inventory and on the hotbar). It glows teal in hand and on the ground, and its icon is tinted
+teal in the inventory and on the hotbars. With it in hand, hotbar keys 1 to 8 stop using items and
 become the editing tools, with their own icons and labels. Put the knife away (press its quick slot again, or take
 another tool) and the hotbar is back to normal.
 

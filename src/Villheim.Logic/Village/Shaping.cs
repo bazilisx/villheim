@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 using HarmonyLib;
 using UnityEngine;
 
@@ -107,6 +108,8 @@ namespace Villheim.Logic.Village
                     }
 
                     Glow(__instance);
+                    Identity();
+                    GlowOnGround();
                     if (_massArmed != null && Time.time > _massUntil)
                     {
                         Disarm();
@@ -164,6 +167,142 @@ namespace Villheim.Logic.Village
             light.range = 1.5f;
             light.intensity = 1.2f;
             light.shadows = LightShadows.None;
+        }
+
+        // ---------------------------------------------------------------- the tool's name and glow everywhere
+
+        public const string ToolName = "Villheim Dev Shaper Tool";
+        private const string ToolDescription =
+            "Villheim's design review tool. In hand, hotbar 1 to 8 edit gallery designs: 1 Swap (or left click), 2 Turn, " +
+            "3 Undo, 4 Move (W A S D, Q and E), 5 Part, 6 Delete, 7 Save, 8 Delete all. See docs/DESIGN_REVIEW_GUIDE.md.";
+
+        private static string _named;
+        private static string _oldName;
+        private static string _oldDescription;
+        private static float _nextGroundGlow;
+        private static readonly Color IconTint = new Color(0.45f, 1f, 0.9f);
+
+        private static ItemDrop.ItemData.SharedData SharedOf(string prefab) =>
+            ObjectDB.instance?.GetItemPrefab(prefab)?.GetComponent<ItemDrop>()?.m_itemData?.m_shared;
+
+        /// <summary>
+        /// The item that is the shaping tool is called "Villheim Dev Shaper Tool" everywhere (on the ground, in the
+        /// inventory, on the hotbar): its shared item data is renamed, so every wooden knife is the Shaper Tool. If the
+        /// config names another item, the old one gets its own name back.
+        /// </summary>
+        private static void Identity()
+        {
+            string want = LogicConfig.ShapingTool?.Value ?? "KnifeWood";
+            if (_named == want || ObjectDB.instance == null)
+            {
+                return;
+            }
+
+            if (_named != null)
+            {
+                ItemDrop.ItemData.SharedData old = SharedOf(_named);
+                if (old != null && _oldName != null)
+                {
+                    old.m_name = _oldName;
+                    old.m_description = _oldDescription;
+                }
+            }
+
+            ItemDrop.ItemData.SharedData shared = SharedOf(want);
+            if (shared == null)
+            {
+                return;
+            }
+
+            if (shared.m_name != ToolName)
+            {
+                _oldName = shared.m_name;
+                _oldDescription = shared.m_description;
+            }
+
+            shared.m_name = ToolName;
+            shared.m_description = ToolDescription;
+            _named = want;
+        }
+
+        /// <summary>A Shaper Tool lying on the ground glows teal too (checked once a second).</summary>
+        private static void GlowOnGround()
+        {
+            if (Time.time < _nextGroundGlow)
+            {
+                return;
+            }
+
+            _nextGroundGlow = Time.time + 1f;
+            string want = LogicConfig.ShapingTool?.Value ?? "KnifeWood";
+            foreach (ItemDrop drop in ItemDrop.s_instances)
+            {
+                if (drop == null || Utils.GetPrefabName(drop.gameObject) != want || drop.transform.Find("VillheimShapingGlow") != null)
+                {
+                    continue;
+                }
+
+                MaterialMan.instance?.SetValue(drop.gameObject, Emission, Teal * 0.8f);
+                var glow = new GameObject("VillheimShapingGlow");
+                glow.transform.SetParent(drop.transform, false);
+                Light light = glow.AddComponent<Light>();
+                light.type = LightType.Point;
+                light.color = Teal;
+                light.range = 1.5f;
+                light.intensity = 1.2f;
+                light.shadows = LightShadows.None;
+            }
+        }
+
+        /// <summary>Tints every icon of the Shaper Tool teal, in an inventory or chest grid or on a hotbar.</summary>
+        private static void TintIcons(System.Collections.IEnumerable elements)
+        {
+            Sprite tool = SharedOf(LogicConfig.ShapingTool?.Value ?? "KnifeWood")?.m_icons?.FirstOrDefault();
+            if (tool == null || elements == null)
+            {
+                return;
+            }
+
+            foreach (object element in elements)
+            {
+                Component icon = element != null ? Traverse.Create(element).Field("m_icon").GetValue<Component>() : null;
+                if (icon != null && Traverse.Create(icon).Property("sprite").GetValue<Sprite>() == tool)
+                {
+                    Traverse.Create(icon).Property("color").SetValue(IconTint);
+                }
+            }
+        }
+
+        [HarmonyPatch(typeof(InventoryGrid), nameof(InventoryGrid.UpdateGui))]
+        internal static class GridTintPatch
+        {
+            private static void Postfix(InventoryGrid __instance)
+            {
+                try
+                {
+                    TintIcons(Traverse.Create(__instance).Field("m_elements").GetValue<System.Collections.IEnumerable>());
+                }
+                catch (System.Exception e)
+                {
+                    VillheimPlugin.Log.LogWarning($"Shaper Tool tint: {e.Message}");
+                }
+            }
+        }
+
+        [HarmonyPatch(typeof(HotkeyBar), nameof(HotkeyBar.UpdateIcons))]
+        internal static class BarTintPatch
+        {
+            private static void Postfix(HotkeyBar __instance)
+            {
+                try
+                {
+                    TintIcons(__instance.m_elements);
+                }
+                catch (System.Exception e)
+                {
+                    VillheimPlugin.Log.LogWarning($"Shaper Tool tint: {e.Message}");
+                }
+            }
         }
 
         /// <summary>Hotbar keys do Shaping's work while the rod is in hand.</summary>

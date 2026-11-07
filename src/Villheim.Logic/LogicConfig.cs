@@ -40,6 +40,10 @@ namespace Villheim.Logic
         public static ConfigEntry<string> ShaperGroundEffect;
         public static ConfigEntry<UnityEngine.Color> ShaperColor;
         public static ConfigEntry<UnityEngine.Color> LookColor;
+        public static ConfigEntry<float> ShaperEffectScale;
+        public static ConfigEntry<float> ShaperEffectStrength;
+        public static ConfigEntry<bool> ShaperEffectBursts;
+        public static ConfigEntry<bool> ShaperEffectTint;
 
         public static void Bind()
         {
@@ -135,6 +139,16 @@ namespace Villheim.Logic
             ShaperColor = Admin(config, "4 - Design review", "ShaperColor", new UnityEngine.Color(0.1f, 0.85f, 0.75f),
                 "Colour of the Shaper Tool's Glow and Beam, and the tint of its icon.");
 
+            ShaperEffectScale = config.Bind("4 - Design review", "ShaperEffectScale", 0.3f, new ConfigDescription(
+                "Size of the Fire, Frost, Spirit and Lightning effects on the Shaper Tool, against the weapon they come from. Changes show at once.",
+                new AcceptableValueRange<float>(0.05f, 1.5f), new ConfigurationManagerAttributes { IsAdminOnly = true }));
+            ShaperEffectStrength = config.Bind("4 - Design review", "ShaperEffectStrength", 0.4f, new ConfigDescription(
+                "How busy and bright those effects are: fewer, fainter particles below 1. Changes show at once.",
+                new AcceptableValueRange<float>(0.05f, 1f), new ConfigurationManagerAttributes { IsAdminOnly = true }));
+            ShaperEffectBursts = Admin(config, "4 - Design review", "ShaperEffectBursts", false,
+                "Keep the effects' periodic bursts (the big lightning blasts). Off: only the steady small sparks.");
+            ShaperEffectTint = Admin(config, "4 - Design review", "ShaperEffectTint", true,
+                "Recolour the effects to ShaperColor (teal lightning). Off: their own colours.");
             LookColor = Admin(config, "4 - Design review", "LookColor", new UnityEngine.Color(0.45f, 0.16f, 0.02f),
                 "Glow of the object you aim at while shaping (and of Delete all's marks). Darker is subtler; changes show on the next object you aim at.");
 

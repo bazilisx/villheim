@@ -33,7 +33,13 @@ namespace Villheim.Logic.Village
         private static readonly HashSet<string> Warned = new HashSet<string>();
 
         /// <summary>The effect and colour as one word, to tell whether an object shows the current choice.</summary>
-        public static string Signature(string effect, Color color) => $"{FxName}:{effect}:{ColorUtility.ToHtmlStringRGB(color)}";
+        public static string Signature(string effect, Color color) =>
+            $"{FxName}:{effect}:{ColorUtility.ToHtmlStringRGB(color)}:{Scale:0.00}:{Strength:0.00}:{Bursts}:{Tint}";
+
+        private static float Scale => LogicConfig.ShaperEffectScale?.Value ?? 0.3f;
+        private static float Strength => LogicConfig.ShaperEffectStrength?.Value ?? 0.4f;
+        private static bool Bursts => LogicConfig.ShaperEffectBursts?.Value ?? false;
+        private static bool Tint => LogicConfig.ShaperEffectTint?.Value ?? true;
 
         /// <summary>Whether the object already shows this effect (its effect child carries the signature as its name).</summary>
         public static bool Shows(GameObject target, string signature)
@@ -69,7 +75,7 @@ namespace Villheim.Logic.Village
                 case "Frost":
                 case "Spirit":
                 case "Lightning":
-                    Borrow(holder, target, effect);
+                    Borrow(holder, target, effect, color);
                     if (ground)
                     {
                         Glow(target, color);
@@ -143,7 +149,7 @@ namespace Villheim.Logic.Village
             light.shadows = LightShadows.None;
         }
 
-        private static void Borrow(GameObject holder, GameObject target, string effect)
+        private static void Borrow(GameObject holder, GameObject target, string effect, Color color)
         {
             GameObject source = Sources[effect].Select(n => ObjectDB.instance?.GetItemPrefab(n)).FirstOrDefault(p => p != null);
             if (source == null)
@@ -178,11 +184,53 @@ namespace Villheim.Logic.Village
                     copy.transform.position = bounds.Value.center;
                 }
 
+                copy.transform.localScale = Vector3.one * Scale;
                 copy.SetActive(true);
                 foreach (ParticleSystem particles in copy.GetComponentsInChildren<ParticleSystem>(true))
                 {
+                    Tune(particles, color, source.name);
                     particles.Play();
                 }
+            }
+        }
+
+        private static readonly HashSet<string> Described = new HashSet<string>();
+
+        /// <summary>
+        /// Fits a borrowed effect to a small tool: sizes follow the copy's scale (ShaperEffectScale), fewer and fainter
+        /// particles (ShaperEffectStrength), periodic bursts and the blasts they set off left out unless
+        /// ShaperEffectBursts, and recoloured to ShaperColor if ShaperEffectTint. Each part is described once in the log,
+        /// to pick out any that still look too big.
+        /// </summary>
+        private static void Tune(ParticleSystem particles, Color color, string source)
+        {
+            ParticleSystem.MainModule main = particles.main;
+            ParticleSystem.EmissionModule emission = particles.emission;
+            string key = source + "/" + particles.name;
+            if (Described.Add(key))
+            {
+                VillheimPlugin.Log.LogInfo($"Shaper Tool effect part {key}: rate {emission.rateOverTimeMultiplier:0.#}/s, bursts {emission.burstCount}, " +
+                                           $"size {main.startSizeMultiplier:0.##}, life {main.startLifetimeMultiplier:0.##} s, max {main.maxParticles}, " +
+                                           $"sub-emitters {particles.subEmitters.subEmittersCount}.");
+            }
+
+            main.scalingMode = ParticleSystemScalingMode.Hierarchy;
+            if (!Bursts)
+            {
+                emission.SetBursts(new ParticleSystem.Burst[0]);
+                ParticleSystem.SubEmittersModule sub = particles.subEmitters;
+                sub.enabled = false;
+                if (emission.rateOverTimeMultiplier <= 0f && emission.rateOverDistanceMultiplier <= 0f)
+                {
+                    emission.enabled = false;
+                }
+            }
+
+            emission.rateOverTimeMultiplier *= Strength;
+            main.maxParticles = Mathf.Max(1, Mathf.RoundToInt(main.maxParticles * Strength));
+            if (Tint)
+            {
+                main.startColor = new ParticleSystem.MinMaxGradient(new Color(color.r, color.g, color.b, Mathf.Clamp01(0.4f + Strength)));
             }
         }
 

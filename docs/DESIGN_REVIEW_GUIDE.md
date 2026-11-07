@@ -159,6 +159,10 @@ originals.
 - **ShaperGroundEffect:** how it looks on the ground: None, Glow, Beam (a tall light column, like magic loot), Beam and
   Glow, Fire, Frost, Spirit, Lightning.
 - **ShaperColor:** colour of Glow and Beam (and the icon tint).
+- **ShaperEffectScale:** size of Fire, Frost, Spirit and Lightning on the knife (0.3; 1 is sword size).
+- **ShaperEffectStrength:** how many particles and how bright (0.4; lower is subtler).
+- **ShaperEffectBursts:** off leaves out the big periodic blasts the weapons give off.
+- **ShaperEffectTint:** on colours Fire, Frost, Spirit and Lightning with ShaperColor (teal lightning).
 - **LookColor:** the orange of the object you aim at while shaping (and of Delete all's marks). Darker is subtler.
 - **GallerySwapKey:** the swap key without the knife (numpad 5).
 - **GallerySwapBiomes:** which biomes stand-ins come from, e.g. `meadows,blackforest,swamp,plains`.

@@ -12,9 +12,11 @@ typed in the in-game console (F5) unless it says otherwise.
    - **Phase A, type (now).** Each design is Home (anything people live in), Work (anything that keeps the village
      running: farms, woodworking, mining and smithing, cooking and brewing, crafting, storage, defence such as guard
      houses, fences and barracks) or Community (third places for social and idle time: the hearth, taverns,
-     longhouses). Drop means the design is not used. Sort knife A.
+     longhouses, and village decor). Drop means the design is not used. Sort knife A.
    - **Phase B, subtype.** Work and Community designs only. Work: Farming, Woodworking, Mining, Cooking, Crafting,
-     Storage, Defence. Community: Hearth, Tavern, Longhouse. Sort knife B.
+     Storage, Defence. Community: Hearth, Tavern, Longhouse, Decor. Decor is village decor: things with no job that
+     make the village look lived in (a water wheel, an outhouse, later gardens), built in idle time, the village's own
+     d1, d2, d3. Sort knife B.
    - **Phase C, biome.** Each design gets the biome it suits best, and its materials are fixed for that biome with the
      Shaper Tool inside a marked plot.
    - **Slotting.** Designs of one biome and subtype are put side by side and grouped under one base ID, each in a
@@ -78,10 +80,10 @@ at a design shows its number, name and current sort at the top left.
 | 1 | Home | Farming | Hearth |
 | 2 | Work | Woodworking | Tavern |
 | 3 | Community | Mining | Longhouse |
-| 4 | Drop | Cooking | |
+| 4 | Drop | Cooking | Decor |
 | 5 | | Crafting | |
 | 6 | | Storage | |
-| 7 | Clear (back to unsorted) | Defence | Clear |
+| 7 | Clear (the clicked design only, back to unsorted) | Defence | Clear (its subtype) |
 | 8 | Undo (each press takes back one choice) | Undo | Undo |
 
 - The first line of each sign shows the sort in colour (grey Unsorted, green Home, purple Work, teal Community, red
@@ -99,6 +101,8 @@ at a design shows its number, name and current sort at the top left.
   still without a subtype.
 - `vh sort` shows the counts and the sheet's last answer; `vh sort undo`; `vh sort push` sends every choice to the
   sheet again.
+- `vh sort reset page N` puts every design of keepers page N back to unsorted, in the game and the sheet; `vh sort
+  reset all` does every design. Then `vh gallery again` (or `vh gallery keepers page N`) shows them all.
 
 ### Connecting the game to the sheet (once)
 

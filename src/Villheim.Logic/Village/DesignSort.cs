@@ -16,7 +16,8 @@ namespace Villheim.Logic.Village
     /// Phase A (flint knife): every design gets one type. Hotbar 1 Home, 2 Work, 3 Community, 4 Drop, 7 Clear, 8 Undo.
     /// Phase B (copper knife): work and community designs get a subtype. The hotbar follows the type of the design under
     ///   the crosshair: work 1 Farming, 2 Woodworking, 3 Mining, 4 Cooking, 5 Crafting, 6 Storage, 7 Defence;
-    ///   community 1 Hearth, 2 Tavern, 3 Longhouse, 7 Clear. 8 Undo in both.
+    ///   community 1 Hearth, 2 Tavern, 3 Longhouse, 4 Decor (village decor: pieces that only make the village look
+    ///   lived in, such as a water wheel, an outhouse or a garden), 7 Clear. 8 Undo in both.
     ///
     /// A key picks a choice (the same key again puts it down); left click on any piece or the sign of a design, up to
     /// 80 m away, gives it that choice. The design's sign and floating number change colour at once. Every choice is
@@ -41,15 +42,15 @@ namespace Villheim.Logic.Village
 
         public static readonly string[] Types = { "Home", "Work", "Community", "Drop" };
         public static readonly string[] WorkSubtypes = { "Farming", "Woodworking", "Mining", "Cooking", "Crafting", "Storage", "Defence" };
-        public static readonly string[] CommunitySubtypes = { "Hearth", "Tavern", "Longhouse" };
+        public static readonly string[] CommunitySubtypes = { "Hearth", "Tavern", "Longhouse", "Decor" };
 
         private static readonly string[] LabelsA = { "Home", "Work", "Community", "Drop", "", "", "Clear", "Undo" };
         private static readonly string[] LabelsWork = { "Farming", "Woodwork", "Mining", "Cooking", "Crafting", "Storage", "Defence", "Undo" };
-        private static readonly string[] LabelsCommunity = { "Hearth", "Tavern", "Longhouse", "", "", "", "Clear", "Undo" };
+        private static readonly string[] LabelsCommunity = { "Hearth", "Tavern", "Longhouse", "Decor", "", "", "Clear", "Undo" };
         private static readonly string[] IconsA = { "bed", "Hammer", "fire_pit", "BombBile", "", "", "Hoe", "Feathers" };
         private static readonly string[] IconsWork =
             { "Cultivator", "AxeBronze", "PickaxeAntler", "piece_cauldron", "piece_workbench", "piece_chest_wood", "ShieldWood", "Feathers" };
-        private static readonly string[] IconsCommunity = { "hearth", "MeadHealthMinor", "piece_table", "", "", "", "Hoe", "Feathers" };
+        private static readonly string[] IconsCommunity = { "hearth", "MeadHealthMinor", "piece_table", "Dandelion", "", "", "Hoe", "Feathers" };
 
         private const int KeyClear = 7, KeyUndo = 8;
         private const float Reach = 80f;
@@ -953,6 +954,8 @@ namespace Villheim.Logic.Village
                     return GiveTools();
                 case "undo":
                     return UndoLast();
+                case "reset":
+                    return Reset(args.Skip(1).ToArray());
                 case "push":
                     Push(Entries.Values);
                     return SheetUrl.Length == 0
@@ -970,9 +973,54 @@ namespace Villheim.Logic.Village
                     var counts = Types.Select(t => $"{t} {Entries.Values.Count(e => e.Type == t)}");
                     int subtyped = Entries.Values.Count(e => e.Subtype.Length > 0);
                     return $"Sort: {string.Join(", ", counts)}; {subtyped} with a subtype. Kept in {FilePath}. Sheet: {(SheetUrl.Length == 0 ? "off" : _lastSheetResult)}.\n" +
-                           "'vh sort tools' gives the sort knives; 'vh sort undo'; 'vh sort push' sends everything to the sheet; 'vh sort url <address>'; " +
+                           "'vh sort tools' gives the sort knives; 'vh sort undo'; 'vh sort reset page N|all'; 'vh sort push' sends everything to the sheet; 'vh sort url <address>'; " +
                            "'vh gallery keepers type <home|work|community|drop|unsorted|nosubtype|farming...>' shows only those designs.";
             }
+        }
+
+        /// <summary>
+        /// 'vh sort reset page N' (a keepers page of 50, as the sheet has them) or 'vh sort reset all': those designs go
+        /// back to unsorted, here and in the sheet. Undo history is cleared.
+        /// </summary>
+        private static string Reset(string[] args)
+        {
+            string what = args.Length > 0 ? args[0].ToLowerInvariant() : "";
+            IEnumerable<string> names;
+            string described;
+            if (what == "all")
+            {
+                names = Entries.Keys.ToList();
+                described = "every design";
+            }
+            else if (what == "page" && args.Length > 1 && int.TryParse(args[1], out int page) && page >= 1)
+            {
+                names = Keepers.Names.Skip((page - 1) * 50).Take(50);
+                described = $"keepers page {page}";
+            }
+            else
+            {
+                return "Sort: 'vh sort reset page N' (a keepers page of 50) or 'vh sort reset all'.";
+            }
+
+            var changed = new List<Entry>();
+            foreach (string name in names)
+            {
+                Entry e = Get(name);
+                if (e != null && (e.Type.Length > 0 || e.Subtype.Length > 0))
+                {
+                    e.Type = "";
+                    e.Subtype = "";
+                    e.Changed = Now();
+                    changed.Add(e);
+                    RefreshSign(name);
+                }
+            }
+
+            History.Clear();
+            Write();
+            Push(changed);
+            return $"Sort: {changed.Count} designs of {described} are unsorted again{(SheetUrl.Length > 0 ? " (sheet updated too)" : "")}. " +
+                   "'vh gallery again' puts the page up with all of them.";
         }
 
         private static void Say(string text)

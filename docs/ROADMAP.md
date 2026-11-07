@@ -54,7 +54,7 @@ with its own look for its biome.
   `design-sort.csv`, live writes to the Pass 2 tab through the sheet's web app, `vh gallery keepers type X`.
 - [ ] Phase A: every kept design sorted Home, Work, Community or Drop (Tyler, in game).
 - [ ] Phase B: subtypes for Work (Farming, Woodworking, Mining, Cooking, Crafting, Storage, Defence) and Community
-  (Hearth, Tavern, Longhouse).
+  (Hearth, Tavern, Longhouse, Decor: village decor built in idle time, such as water wheels, outhouses, gardens).
 - [ ] Phase C: biome per design, and material fixes inside plots marked by green-tinted horizontal wood beams; save
   inside the plot keeps everything in it. A saved design is taken down from the field (it comes back from its save
   when the page is put up again). A third knife for phase C.

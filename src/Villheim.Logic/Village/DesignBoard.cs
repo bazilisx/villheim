@@ -193,6 +193,11 @@ namespace Villheim.Logic.Village
                 return $"Board: taken down ({TakeDown()} objects).";
             }
 
+            if (first == "forget" && args.Length > 1)
+            {
+                return Forget(args[1]);
+            }
+
             if (first == "save" && words.Count > 1 && words[1] == "all")
             {
                 return SaveAll();
@@ -265,7 +270,7 @@ namespace Villheim.Logic.Village
             "Board: 'vh slot <biome> <kind> [number] [stages N]', e.g. 'vh slot meadows hearth' (a new hub) or 'vh slot meadows hearth 1' " +
             "(hub1 again: each stage at the decor stage it is at; add 'review' to see every save).\nBiomes: meadows, blackforest, swamp, mountains, plains, mistlands, ashlands, deepnorth.\n" +
             "Kinds: house, hearth, tavern, longhouse, decor, farm, wood, forge, cook, store, guard, craft, dock, hunt, rune, mason, weave.\n" +
-            "'vh slot save <stage>' or 'vh slot save all' (or the Shaper Tool's Save on a plot; Shift on the second click saves all), 'vh slot clear'. Saves go to blueprints/inspiration/board.";
+            "'vh slot save <stage>' or 'vh slot save all' (or the Shaper Tool's Save on a plot; Shift on the second click saves all), 'vh slot forget hub1_s1d3' deletes a save, 'vh slot clear'. Saves go to blueprints/inspiration/board.";
 
         /// <summary>Plots whose pieces changed since their last save, as a sentence, or null.</summary>
         private static string Unsaved()
@@ -973,6 +978,13 @@ namespace Villheim.Logic.Village
             };
             Directory.CreateDirectory(SaveFolder);
             string file = Path.Combine(SaveFolder, stem + ".blueprint");
+            // What the save replaces, for Undo.
+            string oldText = File.Exists(file) ? File.ReadAllText(file) : null;
+            Records().TryGetValue(stem, out string[] oldRecord);
+            List<EditHistory.Snapshot> snapshots = views.Select(EditHistory.Take).ToList();
+            int oldPlaced = sign.GetInt(Gallery.KeyPlaced, 0);
+            DesignSort.Entry sourceEntry = source != null ? DesignSort.Get(source.Design) : null;
+            (string Biome, string Base, string Stage) oldSlot = sourceEntry != null ? (sourceEntry.Biome, sourceEntry.BaseId, sourceEntry.Stage) : ("", "", "");
             File.WriteAllLines(file, header.Concat(lines));
 
             string s = stageNumber.ToString();
@@ -999,6 +1011,7 @@ namespace Villheim.Logic.Village
 
             // The next decor stage appears behind, as a copy of this save to take decor away from.
             string next = "";
+            string nextPlot = null;
             if (decor > 1)
             {
                 string nextName = PlotName(baseId, stageNumber, decor - 1);
@@ -1008,6 +1021,7 @@ namespace Villheim.Logic.Village
                     Vector3 behind = plotCenter + forward * (half * 2f + Aisle);
                     behind.y = Ground(behind, plotCenter.y);
                     MakePlot(nextName, behind, half, yaw, biome, kind, file, $"copy of {stem}");
+                    nextPlot = nextName;
                     next = $" {StageName(nextName)} is up behind it as a copy: take decor away and save.";
                 }
             }
@@ -1016,8 +1030,48 @@ namespace Villheim.Logic.Village
                 next = $" {baseId}_s{stageNumber} is done (d3, d2, d1).";
             }
 
+            // Undo (8) walks the save back: the plot as it was, the copy behind it gone, the file and the sheet as before.
+            string state = decor < 3 ? $"copy of {baseId}_s{stageNumber}d{decor + 1}" : null;
+            EditHistory.Push($"saving {stem}", () =>
+            {
+                if (nextPlot != null)
+                {
+                    Hide(nextPlot, SwapTool.DesignParts(nextPlot).Views);
+                }
+
+                if (oldText != null)
+                {
+                    File.WriteAllText(file, oldText);
+                }
+                else if (File.Exists(file))
+                {
+                    File.Delete(file);
+                }
+
+                if (oldRecord != null)
+                {
+                    Record(oldRecord);
+                    DesignSort.PushSlot(oldRecord);
+                }
+                else
+                {
+                    Unrecord(stem);
+                    DesignSort.PushSlot(new[] { stem });
+                }
+
+                if (source != null)
+                {
+                    DesignSort.SetSlot(source.Design, oldSlot.Biome, oldSlot.Base, oldSlot.Stage);
+                }
+
+                MakePlot(plotName, plotCenter, half, yaw, biome, kind, null, null);
+                snapshots.ForEach(EditHistory.Restore);
+                SetPlotState(plotName, oldPlaced, snapshots.Count > 0 ? state ?? "as before the save" : null);
+            });
+
             return $"Board: saved {stem} ({views.Count} pieces)" +
-                   (source != null ? $", from No. {source.Number} {source.Design} ({match:P0} alike)." : decor == 3 ? "; no candidate matched it." : ".") + next;
+                   (source != null ? $", from No. {source.Number} {source.Design} ({match:P0} alike)." : decor == 3 ? "; no candidate matched it." : ".") + next +
+                   " Undo (8) walks the save back.";
         }
 
         /// <summary>Every plot of the board with something in it is saved (and put away).</summary>
@@ -1055,6 +1109,77 @@ namespace Villheim.Logic.Village
             }
 
             Plots.RemoveAll(p => p.Name == plotName);
+        }
+
+        /// <summary>Sets a plot's sign and label to a state (and how many pieces count as saved).</summary>
+        private static void SetPlotState(string plotName, int placed, string state)
+        {
+            foreach (ZNetView view in Loaded())
+            {
+                ZDO zdo = view.GetZDO();
+                bool front = zdo.GetString(Gallery.KeyDesign, "") == plotName;
+                bool label = zdo.GetString(KeyLabel, "") == plotName;
+                if (!front && !label)
+                {
+                    continue;
+                }
+
+                if (!view.IsOwner())
+                {
+                    view.ClaimOwnership();
+                }
+
+                if (front)
+                {
+                    zdo.Set(Gallery.KeyPlaced, placed);
+                    zdo.Set(ZDOVars.s_text, SignText(plotName, zdo.GetString(KeyBiome, ""), zdo.GetString(KeySubtype, ""), state));
+                }
+                else
+                {
+                    zdo.Set(ZDOVars.s_text, LabelText(plotName, state));
+                }
+
+                view.GetComponent<Sign>()?.UpdateText();
+            }
+        }
+
+        /// <summary>
+        /// 'vh slot forget hub1_s1d3': deletes that save, its record and its Slots row, and clears the design's biome, base
+        /// ID and stage if they came from it. For saves made before Undo could take a save back.
+        /// </summary>
+        private static string Forget(string stem)
+        {
+            stem = stem.Trim();
+            string file = Path.Combine(SaveFolder, stem + ".blueprint");
+            if (!File.Exists(file))
+            {
+                return $"Board: no save called {stem} (they are in {SaveFolder}).";
+            }
+
+            File.Delete(file);
+            Records().TryGetValue(stem, out string[] record);
+            Unrecord(stem);
+            DesignSort.PushSlot(new[] { stem });
+            if (record != null && record.Length > 7 && record[7].Length > 0)
+            {
+                DesignSort.Entry entry = DesignSort.Get(record[7]);
+                if (entry != null && entry.BaseId == record[1] && entry.Stage == record[2])
+                {
+                    DesignSort.SetSlot(record[7], "", "", "");
+                }
+            }
+
+            return $"Board: {stem} forgotten. Put the board up again ('vh slot <biome> <kind> <number>') to see that stage as it is now.";
+        }
+
+        private static void Unrecord(string stem)
+        {
+            Dictionary<string, string[]> rows = Records();
+            if (rows.Remove(stem))
+            {
+                File.WriteAllLines(RecordPath, new[] { string.Join(",", RecordHeader) }
+                    .Concat(rows.Values.OrderBy(r => r[0]).Select(r => string.Join(",", r.Select(v => v.Contains(",") ? "\"" + v.Replace(",", " ") + "\"" : v)))));
+            }
         }
 
         /// <summary>The candidate whose piece counts are most like the plot's (cosine of the two count lists).</summary>

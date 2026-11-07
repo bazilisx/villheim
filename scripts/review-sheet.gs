@@ -149,6 +149,7 @@ function doPost(e) {
 /**
  * Slotting board saves: one row per saved file in the Slots tab (made if missing), found by file name and replaced.
  * Each row comes as a list: File, Base ID, s, d, Biome, Subtype, No., Name, Match, Pieces, Saved at.
+ * A list with only the file name removes that file's row.
  */
 function writeSlots_(rows) {
   if (!rows.length) {
@@ -167,6 +168,16 @@ function writeSlots_(rows) {
   var last = sheet.getLastRow();
   var files = last > 1 ? sheet.getRange(2, 1, last - 1, 1).getValues().map(function (r) { return String(r[0]); }) : [];
   rows.forEach(function (row) {
+    // A row with only a file name: that save was undone or forgotten, so its row goes.
+    if (row.length === 1) {
+      var gone = files.indexOf(String(row[0]));
+      if (gone >= 0) {
+        sheet.deleteRow(gone + 2);
+        files.splice(gone, 1);
+      }
+      return;
+    }
+
     var values = headings.map(function (h, i) { return row[i] === undefined ? '' : String(row[i]); });
     var index = files.indexOf(values[0]);
     if (index >= 0) {

@@ -43,13 +43,16 @@ typed in the in-game console (F5) unless it says otherwise.
    PlanBuild makes the pictures). The next `vh slot` swaps the tab's contents for the new kind.
 4. Place designs into the plots with the Blueprint Rune. If PlanBuild puts down plan pieces that wait for materials,
    set its default build mode to Direct in F1. Move, swap, delete and build freely; nothing is kept until you save.
-   Pieces inside a plot never wear or fall while you work.
+   Pieces inside a plot never wear or fall while you work. Designs are set down with their foundation on the ground
+   where you aim, as the gallery sets them.
 5. Save a plot with the Shaper Tool's Save (key 6, click anything in the plot, click again), or `vh slot save 2`.
+   Hold Shift on the second click (or `vh slot save all`) to save every plot that has something in it.
    Everything inside the green border is written as `hub1_s2d3` to `BepInEx/config/Villheim/blueprints/inspiration/board/`.
-   The design it came from is found by comparing pieces and shown on the sign.
+   The design it came from is found by comparing pieces. A saved plot leaves the field (pieces, beams and signs), so
+   what is left is what still needs work; `vh slot meadows hearth 1` puts the board up again with every saved stage.
 6. The Shaper Tool's Reset (key 7) on a plot clears it back to its last save, or empty. Undo (8) brings back what was
    there.
-7. `vh slot clear` takes the board down. Both `vh slot clear` and a new `vh slot` refuse while a plot has unsaved
+7. `vh slot clear` takes the board down; `vh gallery clear` also takes it down, with everything placed in it. Both `vh slot clear` and a new `vh slot` refuse while a plot has unsaved
    changes (add `force` to drop them).
 
 Each save is listed in `BepInEx/Villheim/board-saves.csv` and sent to the sheet: a row in the **Slots** tab (file,

@@ -1161,7 +1161,8 @@ namespace Villheim.Logic.Village
             {
                 _saveArmed = null;
                 ShowSelection(null, null);
-                Say(design.StartsWith("board:") ? DesignBoard.Save(design) : BlueprintEdits.Run(new[] { "save", design }));
+                bool all = Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift);
+                Say(!design.StartsWith("board:") ? BlueprintEdits.Run(new[] { "save", design }) : all ? DesignBoard.SaveAll() : DesignBoard.Save(design));
                 return;
             }
 
@@ -1169,7 +1170,9 @@ namespace Villheim.Logic.Village
             _saveUntil = Time.time + 6f;
             _nextSelection = 0f;
             MessageHud.instance?.ShowMessage(MessageHud.MessageType.Center, $"Save {design}?\nClick again within 6 seconds.");
-            Say($"Save {design}? Click again within 6 seconds to save it as it stands.");
+            Say(design.StartsWith("board:")
+                ? $"Save {design.Substring(6).Replace(':', '_')}? Click again within 6 seconds; hold Shift on that click to save every plot of the board."
+                : $"Save {design}? Click again within 6 seconds to save it as it stands.");
         }
 
         private static void Say(string text)

@@ -400,6 +400,17 @@ namespace Villheim.Logic.Village
             string first = args.Length > 0 ? args[0].ToLowerInvariant() : "";
             if (first == "clear")
             {
+                // The slotting board goes too, with everything placed in its plots (PlanBuild pieces are not gallery pieces).
+                int board = 0;
+                try
+                {
+                    board = DesignBoard.TakeDown();
+                }
+                catch (System.Exception e)
+                {
+                    VillheimPlugin.Log.LogWarning($"Gallery clear: the board: {e.Message}");
+                }
+
                 var gone = new List<ZNetView>();
                 foreach (ZNetView view in ZNetScene.instance.m_instances.Values)
                 {
@@ -430,7 +441,8 @@ namespace Villheim.Logic.Village
                 }
 
                 ClearOverflow();
-                return $"Villheim: removed {gone.Count + far.Count} gallery pieces and signs within 600 m (the ground stays as it is).";
+                return $"Villheim: removed {gone.Count + far.Count} gallery pieces and signs within 600 m" +
+                       (board > 0 ? $" and the slotting board with what was placed in it ({board})" : "") + " (the ground stays as it is).";
             }
 
             if (first == "next" || first == "prev" || first == "again")

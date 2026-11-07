@@ -193,6 +193,11 @@ namespace Villheim.Logic.Village
                 return $"Board: taken down ({TakeDown()} objects).";
             }
 
+            if (first == "save" && words.Count > 1 && words[1] == "all")
+            {
+                return SaveAll();
+            }
+
             if (first == "save" && words.Count > 1)
             {
                 string plot = Plots.Select(p => p.Name).FirstOrDefault(n => n.EndsWith(":s" + words[1].TrimStart('s')));
@@ -259,7 +264,7 @@ namespace Villheim.Logic.Village
             "Board: 'vh slot <biome> <kind> [number] [stages N]', e.g. 'vh slot meadows hearth' (a new hub) or 'vh slot meadows hearth 1' " +
             "(hub1 again, with its saved stages).\nBiomes: meadows, blackforest, swamp, mountains, plains, mistlands, ashlands, deepnorth.\n" +
             "Kinds: house, hearth, tavern, longhouse, decor, farm, wood, forge, cook, store, guard, craft, dock, hunt, rune, mason, weave.\n" +
-            "'vh slot save <stage>' (or the Shaper Tool's Save on a plot), 'vh slot clear'. Saves go to blueprints/inspiration/board.";
+            "'vh slot save <stage>' or 'vh slot save all' (or the Shaper Tool's Save on a plot; Shift on the second click saves all), 'vh slot clear'. Saves go to blueprints/inspiration/board.";
 
         /// <summary>Plots whose pieces changed since their last save, as a sentence, or null.</summary>
         private static string Unsaved()
@@ -300,7 +305,7 @@ namespace Villheim.Logic.Village
         }
 
         /// <summary>Takes the board down: beams, signs and everything inside its plots. Returns how many objects went.</summary>
-        private static int TakeDown()
+        internal static int TakeDown()
         {
             Scan();
             int gone = 0;
@@ -438,8 +443,20 @@ namespace Villheim.Logic.Village
 
                 float minX = pieces.Min(p => p.Position.x), maxX = pieces.Max(p => p.Position.x);
                 float minZ = pieces.Min(p => p.Position.z), maxZ = pieces.Max(p => p.Position.z);
-                float minY = pieces.Min(p => p.Position.y);
-                var middle = new Vector3((minX + maxX) / 2f, minY, (minZ + maxZ) / 2f);
+                // y = 0 is where the ground goes: the middle of the lowest shell pieces' bottoms, as the gallery and the
+                // villages set a design down. PlanBuild puts y = 0 on the ground it is aimed at, so nothing floats (with the
+                // lowest piece at 0, designs made to sink posts into the ground stood a metre up).
+                float floor;
+                try
+                {
+                    floor = ConstructionSite.FloorOf(pieces.Select(p => DesignSpawner.Entry(p.Prefab, p.Position, p.Rotation, p.Scale)).Where(e => e != null).ToList());
+                }
+                catch (System.Exception)
+                {
+                    floor = pieces.Min(p => p.Position.y);
+                }
+
+                var middle = new Vector3((minX + maxX) / 2f, floor, (minZ + maxZ) / 2f);
                 int number = entry.Number > 0 ? entry.Number : numbers.TryGetValue(design, out int n) ? n : 0;
                 var candidate = new Candidate
                 {
@@ -689,7 +706,7 @@ namespace Villheim.Logic.Village
                     string file = Path.Combine(SaveFolder, $"{baseId}_s{stage}d3.blueprint");
                     int placed = File.Exists(file) ? PutSaved(file, center, yaw) : 0;
                     records.TryGetValue(Path.GetFileNameWithoutExtension(file), out string[] record);
-                    Border(center, half, forward, right);
+                    Border(name, center, half, forward, right);
                     PlotSign(name, center, half, yaw, forward, biome, kind.Label, placed, record);
                     Plots.Add(new Plot { Name = name, Center = center, Half = half, Yaw = yaw });
                     yield return null;
@@ -712,7 +729,9 @@ namespace Villheim.Logic.Village
         }
 
         /// <summary>Green-tinted horizontal wood beams round the plot, just outside it (never saved with the plot).</summary>
-        private static void Border(Vector3 center, float half, Vector3 forward, Vector3 right)
+        internal const string KeyPlot = "villheim_board_plot";
+
+        private static void Border(string plot, Vector3 center, float half, Vector3 forward, Vector3 right)
         {
             GameObject prefab = ZNetScene.instance.GetPrefab("wood_beam");
             if (prefab == null)
@@ -736,6 +755,7 @@ namespace Villheim.Logic.Village
                     {
                         zdo.Set(Gallery.KeyGallery, 1);
                         zdo.Set(KeyBeam, 1);
+                        zdo.Set(KeyPlot, plot);
                     }
 
                     MaterialMan.instance?.SetValue(beam, Tint, BeamColour);
@@ -888,8 +908,47 @@ namespace Villheim.Logic.Village
             }
 
             DesignSort.PushSlot(record);
-            return $"Board: saved {file} ({views.Count} pieces)" +
-                   (source != null ? $", from No. {source.Number} {source.Design} ({match:P0} alike)." : "; no candidate matched it.");
+            Hide(plotName, views);
+            return $"Board: saved {stem} ({views.Count} pieces)" +
+                   (source != null ? $", from No. {source.Number} {source.Design} ({match:P0} alike)" : "; no candidate matched it") +
+                   ". The plot is put away; 'vh slot <biome> <kind> <number>' brings the board back with its saves.";
+        }
+
+        /// <summary>Every plot of the board with something in it is saved (and put away).</summary>
+        public static string SaveAll()
+        {
+            Scan();
+            var said = new List<string>();
+            foreach (Plot plot in Plots.ToList())
+            {
+                if (SwapTool.DesignParts(plot.Name).Views.Count > 0)
+                {
+                    said.Add(Save(plot.Name));
+                }
+            }
+
+            return said.Count == 0 ? "Board: no plot has anything in it to save." : string.Join("\n", said);
+        }
+
+        /// <summary>A saved plot leaves the field: its pieces, beams, sign and label, so what is left is what still needs work.</summary>
+        private static void Hide(string plotName, List<ZNetView> pieces)
+        {
+            var doomed = new List<ZNetView>(pieces);
+            doomed.AddRange(Loaded().Where(v =>
+            {
+                ZDO z = v.GetZDO();
+                return z.GetString(KeyPlot, "") == plotName || z.GetString(KeyLabel, "") == plotName || z.GetString(Gallery.KeyDesign, "") == plotName;
+            }));
+            foreach (ZNetView view in doomed.Distinct())
+            {
+                if (view != null && view.IsValid())
+                {
+                    view.ClaimOwnership();
+                    ZNetScene.instance.Destroy(view.gameObject);
+                }
+            }
+
+            Plots.RemoveAll(p => p.Name == plotName);
         }
 
         private static void Retext(ZDO sign, string plotName, int placed, string[] record)

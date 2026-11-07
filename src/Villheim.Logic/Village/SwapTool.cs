@@ -13,7 +13,7 @@ namespace Villheim.Logic.Village
     /// 'vh swap': change a gallery design piece by piece, by hand.
     ///
     /// Gallery pages go up as the designs were built. With swap on, aim at a piece of a design and press the swap key
-    /// (middle mouse by default): in front of that design's sign go up the likeliest stand-ins for that kind of piece,
+    /// (numpad 5 by default): in front of that design's sign go up the likeliest stand-ins for that kind of piece,
     /// in groups by biome (GallerySwapBiomes: Meadows, Black Forest, Swamp), each group behind a label sign. Aim at one
     /// (or at any piece built by hand) and press the key again: every piece of that kind in that one design changes to
     /// it, nothing anywhere else. Pick another stand-in to compare; the last one stays. Nothing is kept until the design
@@ -71,7 +71,7 @@ namespace Villheim.Logic.Village
             }
 
             _on = true;
-            string key = LogicConfig.GallerySwapKey?.Value.ToString() ?? "Mouse2";
+            string key = LogicConfig.GallerySwapKey?.Value.ToString() ?? "Keypad5";
             return $"Villheim: swap is on. Aim at a piece of a gallery design and press {key}: stand-ins go up in front of its sign, by biome. " +
                    $"Aim at one (or a piece you built) and press {key} again to use it in that design. Numpad + and - move the design you aim at up and down, " +
                    "numpad 8 2 4 6 move it around (Shift: bigger steps; hold Ctrl to move only the structure you aim at, shown green). " +

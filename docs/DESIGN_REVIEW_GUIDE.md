@@ -55,15 +55,15 @@ means everything is up.
 
 ## Swapping pieces (`vh swap`)
 
-Turn it on with `vh swap`. The swap key is the middle mouse button.
+Turn it on with `vh swap`. The swap key is **numpad 5** (middle mouse removes pieces when the hammer is out, so it is not used).
 
-1. **Pick a piece:** aim at a piece of a design (within about 4 m) and press middle mouse.
+1. **Pick a piece:** aim at a piece of a design (within about 4 m) and press numpad 5.
    - In front of that design's sign, stand-ins go up in groups by biome: Meadows, Black Forest, Swamp. Each group has
      a label sign and up to 4 single pieces, best match first.
    - Where the piece's name gives a size (like `_2x2`), each group can also show up to 2 combinations, such as two
      `stone_wall_2x1` stacked for a 2x2 wall.
    - The top left lists what was put up.
-2. **Choose a stand-in:** aim at one and press middle mouse. Every piece of that kind in that one design changes to
+2. **Choose a stand-in:** aim at one and press numpad 5. Every piece of that kind in that one design changes to
    it. Nothing else in the gallery changes.
    - Click other stand-ins to compare; the last one clicked stays.
    - Clicking any piece of a combination takes the whole combination.
@@ -126,7 +126,7 @@ originals.
 
 ## Settings (F1, section "4 - Design review")
 
-- **GallerySwapKey:** the swap key (middle mouse).
+- **GallerySwapKey:** the swap key (numpad 5).
 - **GallerySwapBiomes:** which biomes stand-ins come from, e.g. `meadows,blackforest,swamp,plains`.
 - **GalleryNumberText:** size and height of the floating number over each sign.
 

@@ -107,8 +107,16 @@ namespace Villheim.Logic
             GalleryNumberText = Admin(config, "4 - Design review", "GalleryNumberText", "<#fff><voffset=100><size=12>{0}",
                 "Text of the big number floating over each gallery sign ({0} is the design's number in design-list.csv). " +
                 "Raise voffset to lift it, size to make it bigger; takes effect on the next gallery page.");
-            GallerySwapKey = Admin(config, "4 - Design review", "GallerySwapKey", new KeyboardShortcut(UnityEngine.KeyCode.Mouse2),
-                "With 'vh swap' on: press while aiming at a piece of a gallery design to pick it, then at a stand-in to use it.");
+            GallerySwapKey = Admin(config, "4 - Design review", "GallerySwapKey", new KeyboardShortcut(UnityEngine.KeyCode.Keypad5),
+                "With 'vh swap' on: press while aiming at a piece of a gallery design to pick it, then at a stand-in to use it. " +
+                "Numpad 5 by default, in the middle of the numpad keys that move designs.");
+
+            // Middle mouse was the first default, but with the hammer in hand it removes the piece aimed at (2026-11-07).
+            if (GallerySwapKey.Value.MainKey == UnityEngine.KeyCode.Mouse2)
+            {
+                GallerySwapKey.Value = new KeyboardShortcut(UnityEngine.KeyCode.Keypad5);
+            }
+
             GallerySwapBiomes = Admin(config, "4 - Design review", "GallerySwapBiomes", "meadows,blackforest,swamp",
                 "Which biomes 'vh swap' offers stand-ins from, one group each in front of the design's sign " +
                 "(meadows, blackforest, swamp, mountain, plains, mistlands, ashlands).");

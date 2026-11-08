@@ -45,16 +45,17 @@ typed in the in-game console (F5) unless it says otherwise.
    set its default build mode to Direct in F1. Move, swap, delete and build freely; nothing is kept until you save.
    Pieces inside a plot never wear or fall while you work. Designs are set down with their foundation on the ground
    where you aim, as the gallery sets them.
-5. The front row is d3 (rich, as placed). Save a plot with the Shaper Tool's Save (key 6, click anything in the plot, click again), or `vh slot save 2`.
+5. The board always shows three rows of plots per band of stages: d3 (rich) in front, d2 (furnished) behind it, d1
+   (sparse) at the back. Plots waiting for the one in front say so. The front row is d3, as placed. Save a plot with the Shaper Tool's Save (key 6, click anything in the plot, click again), or `vh slot save 2`.
    Hold Shift on the second click (or `vh slot save all`) to save every plot that has something in it.
    Everything inside the green border is written as `hub1_s2d3` to `BepInEx/config/Villheim/blueprints/inspiration/board/`.
-   The design it came from is found by comparing pieces. A saved plot leaves the field (pieces, beams and signs), so
-   what is left is what still needs work.
-6. Saving a d3 plot brings up a d2 plot right behind it holding a copy of that save: take decor away (Delete, Delete
-   all) down to furnished and save it; that brings up a d1 copy behind it: strip it to the sparse minimum and save.
-   Three rows of plots in all (d3, d2, d1). After d1 the stage is done.
-7. `vh slot meadows hearth 1` puts hub1 up again with each stage at the decor stage it is at (empty d3, or the next
-   copy to strip, or a "done" sign). Add `review` to see every saved plot of hub1 at once.
+   The design it came from is found by comparing pieces. A saved plot is emptied and marked saved (its border and
+   sign stay as a guide).
+6. Saving a d3 plot fills the d2 plot right behind it with a copy of that save: take decor away (Delete, Delete
+   all) down to furnished and save it; that fills d1 behind it with a copy: strip it to the sparse minimum and save.
+   After d1 the stage is done.
+7. `vh slot meadows hearth 1` puts hub1 up again with every plot, the saved ones empty and marked saved, and the copy
+   to strip where work stopped. Add `review` to fill the saved plots with their saves.
 8. Undo (8) right after a save walks it back: the plot comes back as it was, the copy behind it goes, and the file,
    board-saves.csv and the sheet are as before. For a save made earlier (or before this existed), `vh slot forget
    hub1_s1d3` deletes it, then put the board up again.
@@ -367,5 +368,6 @@ originals.
 | `vh tool` | Puts the shaping knife (a wooden knife) in your inventory. |
 | `vh sort tools` | Puts the sort knives and the Shaper Tool in your inventory. |
 | `vh slot <biome> <kind>` | The slotting board (see above). |
+| `vh drops` | Nothing broken on the review ground (the flat gallery area and the slotting board) drops anything; `vh drops on` brings drops back, `vh drops off` takes them away (the default). |
 | `vh gravity` | Turns gravity on or off (`on`/`off` to set it). On: gallery and board pieces with no support break, as built pieces do; they may drop their materials. Off (the default): nothing falls. |
 | `vh help` | Every Villheim command. |

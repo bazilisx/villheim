@@ -739,36 +739,28 @@ namespace Villheim.Logic.Village
                 for (int stage = 1; stage <= stages; stage++)
                 {
                     bool[] saved = { false, File.Exists(SavedFile(baseId, stage, 1)), File.Exists(SavedFile(baseId, stage, 2)), File.Exists(SavedFile(baseId, stage, 3)) };
-                    if (review)
+                    // Every stage always has its three plots, so the board shows where everything goes. A saved plot is
+                    // shown empty ("saved") unless 'review'; the decor stage being worked on holds the copy to strip.
+                    for (int decor = 3; decor >= 1; decor--)
                     {
-                        for (int decor = 3; decor >= 1; decor--)
+                        string name = PlotName(baseId, stage, decor);
+                        string above = decor < 3 ? SavedFile(baseId, stage, decor + 1) : null;
+                        if (saved[decor])
                         {
-                            if (saved[decor])
-                            {
-                                MakePlot(PlotName(baseId, stage, decor), Center(stage, decor), half, yaw, biome, kind.Label, SavedFile(baseId, stage, decor), "saved");
-                            }
+                            MakePlot(name, Center(stage, decor), half, yaw, biome, kind.Label, review ? SavedFile(baseId, stage, decor) : null, "saved");
                         }
-
-                        if (!saved[3])
+                        else if (decor == 3)
                         {
-                            MakePlot(PlotName(baseId, stage, 3), Center(stage, 3), half, yaw, biome, kind.Label, null, null);
+                            MakePlot(name, Center(stage, decor), half, yaw, biome, kind.Label, null, null);
                         }
-                    }
-                    else if (!saved[3])
-                    {
-                        MakePlot(PlotName(baseId, stage, 3), Center(stage, 3), half, yaw, biome, kind.Label, null, null);
-                    }
-                    else if (!saved[2] || !saved[1])
-                    {
-                        int decor = saved[2] ? 1 : 2;
-                        MakePlot(PlotName(baseId, stage, decor), Center(stage, decor), half, yaw, biome, kind.Label, SavedFile(baseId, stage, decor + 1),
-                            $"copy of {baseId}_s{stage}d{decor + 1}");
-                    }
-                    else
-                    {
-                        Vector3 at = Center(stage, 3) - forward * (half + 2f);
-                        GameObject done = Gallery.OneSign(at, forward, 0f, $"<#8f8><voffset=40><size=8>{baseId}_s{stage}<br><size=5>d3 d2 d1 saved");
-                        done?.GetComponent<ZNetView>()?.GetZDO()?.Set(KeyLabel, PlotName(baseId, stage, 0));
+                        else if (saved[decor + 1])
+                        {
+                            MakePlot(name, Center(stage, decor), half, yaw, biome, kind.Label, above, $"copy of {baseId}_s{stage}d{decor + 1}");
+                        }
+                        else
+                        {
+                            MakePlot(name, Center(stage, decor), half, yaw, biome, kind.Label, null, $"waits for d{decor + 1}");
+                        }
                     }
 
                     yield return null;
@@ -842,7 +834,7 @@ namespace Villheim.Logic.Village
             Vector3 right = Vector3.Cross(Vector3.up, forward);
             int placed = file != null && File.Exists(file) ? PutSaved(file, center, yaw) : 0;
             Border(name, center, half, forward, right);
-            PlotSign(name, center, half, yaw, forward, biome, kind, placed, placed > 0 ? state : null);
+            PlotSign(name, center, half, yaw, forward, biome, kind, placed, state);
             Plots.RemoveAll(p => p.Name == name);
             Plots.Add(new Plot { Name = name, Center = center, Half = half, Yaw = yaw });
         }
@@ -881,7 +873,9 @@ namespace Villheim.Logic.Village
                 ? "<#bbb>empty: place a design here"
                 : state.StartsWith("copy")
                     ? $"<#fc6>{state}: take decor away, then save"
-                    : $"<#8f8>{state}";
+                    : state.StartsWith("waits")
+                        ? $"<#999>{state}"
+                        : $"<#8f8>{state}";
             string decorWord = decor == 3 ? "rich" : decor == 2 ? "furnished" : "sparse";
             return $"<#5f5>{StageName(name)} ({decorWord})<br><#fff>{biome} {kind}<br>{what}";
         }
@@ -1007,7 +1001,14 @@ namespace Villheim.Logic.Village
             Vector3 plotCenter = sign.GetVec3(Gallery.KeyPlotCenter, Vector3.zero);
             float half = sign.GetFloat(Gallery.KeyPlotHalf, 10f);
             float yaw = sign.GetFloat(Gallery.KeyPlotYaw, 0f);
-            Hide(plotName, views);
+            // The pieces go; the plot stays, marked saved.
+            foreach (ZNetView view in views.Where(v => v != null && v.IsValid()))
+            {
+                view.ClaimOwnership();
+                ZNetScene.instance.Destroy(view.gameObject);
+            }
+
+            SetPlotState(plotName, 0, "saved");
 
             // The next decor stage appears behind, as a copy of this save to take decor away from.
             string next = "";
@@ -1015,15 +1016,29 @@ namespace Villheim.Logic.Village
             if (decor > 1)
             {
                 string nextName = PlotName(baseId, stageNumber, decor - 1);
-                if (!Plots.Any(p => p.Name == nextName))
+                Plot behindPlot = Plots.FirstOrDefault(p => p.Name == nextName);
+                if (behindPlot == null)
                 {
                     Vector3 forward = -(Quaternion.Euler(0f, yaw, 0f) * Vector3.forward);
                     Vector3 behind = plotCenter + forward * (half * 2f + Aisle);
                     behind.y = Ground(behind, plotCenter.y);
                     MakePlot(nextName, behind, half, yaw, biome, kind, file, $"copy of {stem}");
-                    nextPlot = nextName;
-                    next = $" {StageName(nextName)} is up behind it as a copy: take decor away and save.";
                 }
+                else
+                {
+                    // Whatever stood there (an older copy) makes way for the new one.
+                    foreach (ZNetView view in SwapTool.DesignParts(nextName).Views.Where(v => v != null && v.IsValid()))
+                    {
+                        view.ClaimOwnership();
+                        ZNetScene.instance.Destroy(view.gameObject);
+                    }
+
+                    int copied = PutSaved(file, behindPlot.Center, behindPlot.Yaw);
+                    SetPlotState(nextName, copied, $"copy of {stem}");
+                }
+
+                nextPlot = nextName;
+                next = $" {StageName(nextName)} behind it now holds a copy: take decor away and save.";
             }
             else
             {
@@ -1036,7 +1051,13 @@ namespace Villheim.Logic.Village
             {
                 if (nextPlot != null)
                 {
-                    Hide(nextPlot, SwapTool.DesignParts(nextPlot).Views);
+                    foreach (ZNetView view in SwapTool.DesignParts(nextPlot).Views.Where(v => v != null && v.IsValid()))
+                    {
+                        view.ClaimOwnership();
+                        ZNetScene.instance.Destroy(view.gameObject);
+                    }
+
+                    SetPlotState(nextPlot, 0, $"waits for d{decor}");
                 }
 
                 if (oldText != null)
@@ -1064,7 +1085,6 @@ namespace Villheim.Logic.Village
                     DesignSort.SetSlot(source.Design, oldSlot.Biome, oldSlot.Base, oldSlot.Stage);
                 }
 
-                MakePlot(plotName, plotCenter, half, yaw, biome, kind, null, null);
                 snapshots.ForEach(EditHistory.Restore);
                 SetPlotState(plotName, oldPlaced, snapshots.Count > 0 ? state ?? "as before the save" : null);
             });

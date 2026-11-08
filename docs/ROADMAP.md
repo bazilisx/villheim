@@ -308,9 +308,16 @@ Villages that reach out past their fence, and a world with other people in it. D
 - [ ] Village reach grows with stage and gear; villagers only explore and harvest where they can hold their own, and
       only know what lies inside their reach, widened by hunters, trails and outposts (Tyler, 2026-11-08).
 - [ ] Map table by the hearth from the hamlet stage: copy the village's discoveries onto your map (Tyler, 2026-11-08).
-- [ ] Cultures by biome: Meadows Norse, Plains Middle Eastern, others to confirm; names, skin tones, looks and a few
-      lines per culture (Tyler, 2026-11-08; helper branch night3/cultures).
-- [ ] Plains archers: villagers near the Plains shoot deathsquitos out of the sky (Tyler, 2026-11-08).
+- [ ] Cultures by biome, up to three per biome, from the Viking-age world (Tyler, 2026-11-08): Meadows norse,
+      anglo-saxon, frankish-norman; Black Forest norse-forest, celtic, slavic; Swamp celtic-crannog, baltic, fen-folk;
+      Mountains norse-highland, saami; Plains middle-eastern, byzantine, steppe; Mistlands byzantine,
+      caucasian-highland. No villages in the Ashlands or Deep North. Names, skin tones, looks and a few lines per
+      culture (helper branch night3/cultures).
+- [ ] Biome defenders: villagers near the Plains shoot deathsquitos out of the sky; villagers near the Mistlands are
+      skilled against and hit harder at Mistlands creatures (Tyler, 2026-11-08).
+- [ ] Style guides and lab templates for each culture, learned from Millénaire (allowed for plans, roofs and room uses
+      of cultures with little data, Tyler 2026-11-08), Lego and other modular builds, and architecture references
+      (helper branch night3/styles).
 
 ## Later ideas
 

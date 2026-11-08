@@ -1012,6 +1012,16 @@ namespace Villheim.Logic.Village
                 yield break;
             }
 
+            // Slopes between the building pads eased, so the levels don't meet in steps (T-57). Before the fence and
+            // the paths, which go on the ground as it ends up.
+            int eased = 0;
+            Freely(hearth, () => eased = GroundBlend.Between(hearth));
+            if (eased > 0)
+            {
+                Say(run, $"eased the slopes between the buildings ({eased} ground points)");
+                yield return new WaitForSeconds(0.5f);
+            }
+
             Say(run, "fence, farms and map table");
             yield return Fence(run);
             yield return Farm(run);

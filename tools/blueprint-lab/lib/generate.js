@@ -23,10 +23,13 @@ function quat(yaw) { const a = yaw * Math.PI / 360; return [0, +Math.sin(a).toFi
 const norm = a => ((a % 360) + 360) % 360;
 
 class Build {
-  constructor() { this.pieces = []; this.rooms = []; this.notes = []; }
+  constructor() { this.pieces = []; this.rooms = []; this.notes = []; this.keys = new Set(); }
   put(name, x, y, z, yaw = 0, extra) {
     if (!name) return;
     yaw = norm(yaw);
+    const key = `${name}|${x.toFixed(2)}|${y.toFixed(2)}|${z.toFixed(2)}|${Math.round(yaw) % 360}`;
+    if (this.keys.has(key)) return; // the same piece in the same place once only (porch eaves, meeting wings)
+    this.keys.add(key);
     this.pieces.push({ name, x: +x.toFixed(3), y: +y.toFixed(3), z: +z.toFixed(3), q: quat(yaw), yaw, ...(extra || {}) });
   }
 }
@@ -223,7 +226,7 @@ function generate(req) {
     const verts = vertsOf(edges);
 
     // footing: stilts and short posts on a grid, or a stone course round the edge
-    if (F > 0 && !T.field) {
+    if (F > 0) {
       if (C.stilts || T.dock || T.raised || C.raised || !stoneBase) {
         const grid = new Map(verts.map(v => [`${v[0]},${v[1]}`, v]));
         if (deck) for (const [, [x, z]] of cells) for (const dx of [-1, 1]) for (const dz of [-1, 1]) for (let k = 0; k <= 1; k++) { const vx = x + dx * (1 + k * 2), vz = z + dz * (1 + k * 2); grid.set(`${vx},${vz}`, [vx, vz]); }
@@ -307,7 +310,11 @@ function generate(req) {
         parts.push(...(kind === 'hip' ? hipPieces(K, w, roofTop, r) : gablePieces(K, C, w, roofTop, r, ends, vent)));
       }
       // where wings cross, keep the higher roof so the lower roof runs into the higher one
+      const placed = new Set();
       for (const p of parts) {
+        const key = `${p.name}|${p.x.toFixed(2)}|${p.y.toFixed(2)}|${p.z.toFixed(2)}|${Math.round(p.yaw)}`;
+        if (placed.has(key)) continue; // two wings can lay the same piece where they meet
+        placed.add(key);
         const hidden = wings.some(o => o !== p.wing && inside(o, p.x, p.z, -0.2) && p.surf < surfaceAt(o, p.x, p.z, roofTop, r) - 0.25);
         if (!hidden) b.put(p.name, p.x, p.y, p.z, p.yaw);
       }

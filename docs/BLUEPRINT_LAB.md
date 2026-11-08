@@ -19,7 +19,7 @@ Code in `tools/blueprint-lab/`. Built 2026-11-08 night. Nothing generated here i
 | Checks | `lib/checks.js` | Every piece connected to the ground, no doubled pieces, doors with room on both sides, materials the biome has, floor left free. |
 | Renderer | `lib/render.js`, `lib/sheet.js` | Four views (front left, back right, top, inside with the roof off) as PNG in Node or on a canvas in a browser. |
 | Request page | `web/app.html`, built to `web/index.html` by `lib/build_web.js` | Type or pick a request, get the best of up to 16 candidates, turn it round, download the `.blueprint`; a second tab strips or furnishes an uploaded blueprint. Published as the artifact "Villheim Blueprint Lab"; a copy is in `BepInEx/config/Villheim-tools/` on Tyler's PC and opens offline. |
-| Review set | `lib/gen_set.js` | Every type in five biomes at s1d1, s2d2, s3d3, plus six cultures; best of 8 each. 273 designs, 268 pass every check (the five that miss one are farms). |
+| Review set | `lib/gen_set.js` | Every type in five biomes at s1d1, s2d2, s3d3, plus six cultures; best of 8 each. 273 designs, all pass every check. |
 
 ## Measured building conventions
 

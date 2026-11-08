@@ -11,9 +11,12 @@ and logic are the main reference for how villages grow, place buildings, assign 
 couple of villagers at a hearth. Over the in-game days they gather, build, move into houses and grow into a town
 with its own look for its biome.
 
-Tyler, 2026-11-08: raids, feuds and hostility between villages, outlaws and thieves are out of scope; he finds them a
-nuisance. Features that make the player do chores or manage menus are out as well. The Features tab of the review
-sheet (`docs/features/box.csv`) holds his Yes, No and Later for each feature.
+Villages are echoes of the old world, memories of the real villages the heroes came from, set in Valheim's
+afterlife. They are places of rest that the player finds, watches grow and helps along, and they add life to the
+generated world. Things still happen to a village: local, biome-appropriate creatures wander in and the villagers
+fend them off, or fail to. There are no raiders, feuds or wars between villages, no outlaws and no thieves. A village
+that empties is settled again after a while. Features that make the player do chores or manage menus are out as
+well (Tyler, 2026-11-08). The Features tab of the review sheet (`docs/features/box.csv`) holds his Yes, No and Later.
 
 ## Ground rules
 

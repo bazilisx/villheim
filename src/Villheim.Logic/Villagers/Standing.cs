@@ -27,6 +27,9 @@ namespace Villheim.Logic.Villagers
 
         public static bool On => Living.On(LogicConfig.PlayerStanding);
 
+        /// <summary>Fines, cold greetings and guards. Off by default: villages are a place of rest (Tyler, 2026-11-08).</summary>
+        private static bool Hostile => On && LogicConfig.Hostility != null && LogicConfig.Hostility.Value;
+
         /// <summary>The lowest reputation Social keeps.</summary>
         public static int Floor => On ? -100 : -20;
 
@@ -55,7 +58,7 @@ namespace Villheim.Logic.Villagers
         /// <summary>The fine the village asks of this player before it trades again, 0 when none.</summary>
         public static int Fine(VillageHearth hearth, Player player)
         {
-            if (!On || player == null)
+            if (!Hostile || player == null)
             {
                 return 0;
             }
@@ -140,7 +143,7 @@ namespace Villheim.Logic.Villagers
         /// <summary>A player walked in. A disliked one is met coldly, a hated one by armed protectors. True when handled.</summary>
         public static bool Greet(VillageHearth hearth, Player player)
         {
-            if (!On || EnvMan.IsNight())
+            if (!Hostile || EnvMan.IsNight())
             {
                 return false;
             }

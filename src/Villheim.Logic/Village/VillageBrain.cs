@@ -511,6 +511,25 @@ namespace Villheim.Logic.Village
             }
 
             bool firstArrivals = state.Arrivals < VillheimConfig.StartingVillagers.Value;
+            // A village left empty (everyone died or moved away) is settled again after a while: new settlers come to the
+            // hearth as the first ones did, beds or not (Tyler, 2026-11-08).
+            int returnDays = LogicConfig.EmptyVillageReturnDays?.Value ?? 3;
+            int living = CountVillagers(state.Id);
+            bool empty = living == 0 && now - state.LastArrival >= returnDays * DayLength();
+            bool second = living > 0 && living < VillheimConfig.StartingVillagers.Value && Villagers.Beds.Spare(hearth) == 0 &&
+                          now - state.LastArrival >= ArrivalInterval();
+            if (!firstArrivals && returnDays > 0 && (empty || second) && !EnvMan.IsNight())
+            {
+                SpawnVillager(hearth, state, null);
+                state.LastArrival = now;
+                if (empty)
+                {
+                    Chronicle.Add(hearth, "New settlers came to the empty hearth.");
+                }
+
+                return;
+            }
+
             // The first settlers are found at the hearth (they build the beds). Everyone after them, as in Millenaire,
             // only comes when a bed stands empty for them, never just because there is room.
             if (!firstArrivals && (now - state.LastArrival < ArrivalInterval() * Prosperity.ArrivalFactor(hearth) || EnvMan.IsNight() ||

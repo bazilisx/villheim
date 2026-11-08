@@ -104,6 +104,8 @@ namespace Villheim.Logic
         public static ConfigEntry<bool> Festivals;
         public static ConfigEntry<bool> WinterStores;
         public static ConfigEntry<bool> PlayerStanding;
+        public static ConfigEntry<bool> Hostility;
+        public static ConfigEntry<int> EmptyVillageReturnDays;
         public static ConfigEntry<int> FineBelow;
         public static ConfigEntry<int> GuardBelow;
         public static ConfigEntry<int> ForgivePerDay;
@@ -388,7 +390,7 @@ namespace Villheim.Logic
             ("VillagerWants", VillagerWants), ("Gatherings", Gatherings), ("Noticing", Noticing), ("IdleGlances", IdleGlances),
             ("SurroundingsTags", SurroundingsTags), ("TopicFatigue", TopicFatigue), ("ChatScenes", ChatScenes),
             ("Prosperity", Prosperity), ("Expectations", Expectations), ("Calendar", Calendar), ("Festivals", Festivals),
-            ("WinterStores", WinterStores), ("PlayerStanding", PlayerStanding), ("Complaints", Complaints), ("Leaving", Leaving),
+            ("WinterStores", WinterStores), ("PlayerStanding", PlayerStanding), ("Hostility", Hostility), ("Complaints", Complaints), ("Leaving", Leaving),
             ("VisitorJudging", VisitorJudging), ("WantPile", WantPile), ("BossStages", BossStages), ("Elders", Elders),
             ("ElderDeaths", ElderDeaths), ("Neighbours", Neighbours), ("Horn", Horn), ("HelpPlayers", HelpPlayers),
         };
@@ -447,6 +449,11 @@ namespace Villheim.Logic
             PlayerStanding = Admin(config, living, "PlayerStanding", true,
                 "A player's standing with a village moves store prices (cheaper for friends, dearer for the disliked), " +
                 "brings a fine to pay when it falls low, and guards on watch when it falls very low.");
+            Hostility = Admin(config, living, "Hostility", false,
+                "Villages are echoes of the old world and a place of rest. Off (default): a village never fines, turns away or " +
+                "guards against a player, however low his standing. On: fines below FineBelow and armed guards below GuardBelow.");
+            EmptyVillageReturnDays = Admin(config, living, "EmptyVillageReturnDays", 3,
+                "A village whose people all died or left is settled again by newcomers after this many game days. 0: never.");
             FineBelow = Admin(config, living, "FineBelow", -30,
                 "Below this standing the village asks a fine in coins before it trades again. Crouch and talk to a " +
                 "villager to pay it.");

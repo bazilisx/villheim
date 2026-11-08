@@ -11,6 +11,10 @@ and logic are the main reference for how villages grow, place buildings, assign 
 couple of villagers at a hearth. Over the in-game days they gather, build, move into houses and grow into a town
 with its own look for its biome.
 
+Tyler, 2026-11-08: raids, feuds and hostility between villages, outlaws and thieves are out of scope; he finds them a
+nuisance. Features that make the player do chores or manage menus are out as well. The Features tab of the review
+sheet (`docs/features/box.csv`) holds his Yes, No and Later for each feature.
+
 ## Ground rules
 
 - Existing designs and assets only (vanilla locations, More World Locations, PlanBuild blueprints and prefabs).

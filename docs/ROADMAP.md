@@ -71,7 +71,7 @@ with its own look for its biome.
 - [ ] Villages build the board's saves (`<baseID>_s<n>d<n>` from blueprints/inspiration/board): pick a base ID per
   kind and biome, build s1 at d1, raise d# over time and s# with the hearth's stage. Until then the markers only
   matter for blueprints that carry them.
-- [ ] Villages build a save's terrain section (paths, paving, levelled spots) along with its pieces.
+- [ ] Villages build a save's terrain section (paths, paving, levelled spots) along with its pieces. Board saves keep pieces, ground and markers relative to the plot's middle: read them with `Blueprints.FromFile(file, asSaved: true)` so the pieces are not re-centred off their ground.
 - [ ] PNG pictures for saved stage files too (copy them to PlanBuild as a "Villheim saved" tab).
 - [x] Decor stages on the slotting board (2026-11-07): saving d3 brings up a d2 copy behind it, d2 a d1 copy.
 - [ ] Phase D: decor stages from the richest down. Save d3, it is copied to the d2 plot; strip and save d2, copied to

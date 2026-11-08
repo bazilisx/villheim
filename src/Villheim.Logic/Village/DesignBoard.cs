@@ -1162,7 +1162,11 @@ namespace Villheim.Logic.Village
         /// <summary>Puts a saved plot back: plain pieces, as if built, round the plot's middle. Returns how many.</summary>
         private static int PutSaved(string file, Vector3 center, float yaw, float half)
         {
-            Blueprints.Blueprint saved = Blueprints.FromFile(file);
+            // As saved: the pieces relative to the plot's middle, like the ground and the markers. Read the usual way, the
+            // pieces were moved onto the middle of their own outline and their lowest piece set on the ground, so every
+            // copy stood off its dirt by the gap between the design's outline middle and the plot's middle (seen as dirt
+            // shifted left and back, 2026-11-07).
+            Blueprints.Blueprint saved = Blueprints.FromFile(file, asSaved: true);
             if (saved == null)
             {
                 return 0;

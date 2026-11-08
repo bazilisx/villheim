@@ -301,10 +301,14 @@ namespace Villheim.Logic.Designs
 
         // ---------------------------------------------------------------- reading
 
-        /// <summary>One blueprint file read as it is, whatever its size or folder (the gallery's pass 3 saves).</summary>
-        public static Blueprint FromFile(string file) => File.Exists(file) ? Load(file) : null;
+        /// <summary>
+        /// One blueprint file read as it is, whatever its size or folder (the gallery's pass 3 saves). Pieces are moved
+        /// so the build's middle is at 0 and its lowest piece at y = 0, unless asSaved: then they keep the positions
+        /// written in the file (the slotting board's saves, which are relative to the plot's middle like their ground).
+        /// </summary>
+        public static Blueprint FromFile(string file, bool asSaved = false) => File.Exists(file) ? Load(file, asSaved) : null;
 
-        private static Blueprint Load(string file)
+        private static Blueprint Load(string file, bool asSaved = false)
         {
             string stem = Path.GetFileNameWithoutExtension(file);
             var blueprint = new Blueprint
@@ -385,7 +389,7 @@ namespace Villheim.Logic.Designs
                 }
             }
 
-            Center(blueprint);
+            Center(blueprint, asSaved);
             return blueprint;
         }
 
@@ -582,8 +586,8 @@ namespace Villheim.Logic.Designs
             };
         }
 
-        /// <summary>Moves the pieces so the middle of the build is at x = z = 0 and its lowest piece at y = 0.</summary>
-        private static void Center(Blueprint blueprint)
+        /// <summary>Moves the pieces so the middle of the build is at x = z = 0 and its lowest piece at y = 0 (not when keep).</summary>
+        private static void Center(Blueprint blueprint, bool keep = false)
         {
             if (blueprint.Pieces.Count == 0)
             {
@@ -595,7 +599,7 @@ namespace Villheim.Logic.Designs
             float minZ = blueprint.Pieces.Min(p => p.Position.z);
             float maxZ = blueprint.Pieces.Max(p => p.Position.z);
             float minY = blueprint.Pieces.Min(p => p.Position.y);
-            var offset = new Vector3((minX + maxX) * 0.5f, minY, (minZ + maxZ) * 0.5f);
+            Vector3 offset = keep ? Vector3.zero : new Vector3((minX + maxX) * 0.5f, minY, (minZ + maxZ) * 0.5f);
             float radius = 0f;
             for (int i = 0; i < blueprint.Markers.Count; i++)
             {

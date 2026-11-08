@@ -371,6 +371,11 @@ namespace Villheim.Logic.Village
                 {
                     string[] f = entry.Split(':');
                     string key = f[0].Trim().ToLowerInvariant();
+                    if (key == "caucasian-highland")
+                    {
+                        key = "lamari";
+                    }
+
                     float weight = f.Length > 1 && float.TryParse(f[1], NumberStyles.Float, CultureInfo.InvariantCulture, out float w) ? w : 1f;
                     if (!Known(key))
                     {

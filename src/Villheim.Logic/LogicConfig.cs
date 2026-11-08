@@ -854,6 +854,12 @@ namespace Villheim.Logic
             {
                 CultureMap.Value = Village.Cultures.DefaultMap;
             }
+
+            // The Mistlands tower culture was renamed Lamari (D-046); a saved map keeps working.
+            if (CultureMap.Value.Contains("caucasian-highland"))
+            {
+                CultureMap.Value = CultureMap.Value.Replace("caucasian-highland", "lamari");
+            }
             CultureForeignChance = Admin(config, cultures, "CultureForeignChance", 0.15f,
                 "Chance that a newcomer from outside is of another people than the village. He keeps his own names and " +
                 "looks and says he comes from a place in his own tongue.");

@@ -84,8 +84,9 @@ typed in the in-game console (F5) unless it says otherwise.
 the south edge of a hub, just outside a house's door. The road leaves it away from the middle of the design, so how
 the marker is turned never matters. Markers are saved as markers (a `#VillheimPaths` section of the file, which
 PlanBuild skips), never as pieces, and the d2 and d1 copies get them back; the save message counts them. To use
-another object (a statue, say), aim at it and type `vh slot marker`. Villages will lay roads from these (not built
-yet).
+another object (a statue, say), aim at it and type `vh slot marker`. Villages lay a building's road from its marker
+nearest the hub to the hub's nearest marker; a design without markers uses the old door guess. Villages do not build
+the board's saves yet, so this shows once they do.
 
 Each save is listed in `BepInEx/Villheim/board-saves.csv` and sent to the sheet: a row in the **Slots** tab (file,
 base ID, stage, biome, subtype, the design it came from and how alike), and the design's Biome, Base ID and s in the

@@ -65,8 +65,12 @@ with its own look for its biome.
 - [ ] Grow a plot (and slide its neighbours) when a build needs more room; for now 'size N' sets every plot of a board.
 - [x] Path markers on the board (2026-11-07): one meaning, "connect roads and paths here"; saved as "#VillheimPaths"
   (path;x;y;z;yaw, yaw = outward from the design's middle through the marker), read into Blueprint.Markers.
-- [ ] Paths use the markers: a building's road starts at its markers (instead of Designs.Doors' guess) and joins the
-  hub's markers or the network, leaving outward; never to the back of a building.
+- [x] Paths use the markers (2026-11-07): a building's road starts a metre out from its marker nearest the hub (or the
+  hearth), the hub's road ends at its nearest marker, the parent rule uses markers too; designs without markers keep
+  the Doors guess.
+- [ ] Villages build the board's saves (`<baseID>_s<n>d<n>` from blueprints/inspiration/board): pick a base ID per
+  kind and biome, build s1 at d1, raise d# over time and s# with the hearth's stage. Until then the markers only
+  matter for blueprints that carry them.
 - [ ] Villages build a save's terrain section (paths, paving, levelled spots) along with its pieces.
 - [ ] PNG pictures for saved stage files too (copy them to PlanBuild as a "Villheim saved" tab).
 - [x] Decor stages on the slotting board (2026-11-07): saving d3 brings up a d2 copy behind it, d2 a d1 copy.

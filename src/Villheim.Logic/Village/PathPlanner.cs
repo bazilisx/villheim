@@ -74,14 +74,14 @@ namespace Villheim.Logic.Village
                 }
 
                 float doorAngle = Designs.Doors.Angle(plot.Design);
-                Vector3 door = Front(plot.Position, plot.Radius, plot.Yaw, doorAngle);
+                Vector3 door = Door(plot.Design, plot.Position, plot.Radius, plot.Yaw, doorAngle, hearth.transform.position);
                 if (DistanceToNetwork(network, door) <= 3f || Villagers.PathLaying.IsQueued(hearth, plot.Position))
                 {
                     continue;
                 }
 
                 VillheimPlugin.Log.LogInfo($"{state.Name}: the {plot.Design} has no path to the middle; planning one.");
-                Villagers.PathLaying.Queue(hearth, plot.Position, plot.Radius, plot.Yaw, doorAngle);
+                Villagers.PathLaying.Queue(hearth, plot.Position, plot.Radius, plot.Yaw, doorAngle, plot.Design);
                 network = PlannedNetwork(hearth);
             }
         }
@@ -124,17 +124,29 @@ namespace Villheim.Logic.Village
         /// straight route along the village grid when the search finds no way.
         /// </summary>
         public static List<Vector3> Plan(VillageHearth hearth, float axisYaw, Vector3 building, float buildingRadius, float buildingYaw,
-            float doorAngle = 0f)
+            float doorAngle = 0f, string design = null)
         {
             Vector3 center = hearth.transform.position;
-            Vector3 front = Front(building, buildingRadius, buildingYaw, doorAngle);
             var state = new VillageState(hearth.Zdo);
+            // The hub's path markers are where roads join it; the road from a building goes to the nearest one.
+            Plot hub = Hub(center, state.Plots);
+            List<(Vector3 At, Vector3 Out)> hubExits = hub != null && Utils.DistanceXZ(hub.Position, building) > 0.5f
+                ? Exits(hub.Design, hub.Position, hub.Yaw) : new List<(Vector3, Vector3)>();
+            Vector3 front = Door(design, building, buildingRadius, buildingYaw, doorAngle, center);
+            if (hubExits.Count > 0)
+            {
+                front = Door(design, building, buildingRadius, buildingYaw, doorAngle,
+                    hubExits.OrderBy(e => Utils.DistanceXZ(e.At, building)).First().At);
+            }
+
             HashSet<Vector2Int> network = PlannedNetwork(hearth); // paths planned but not laid yet count, so they merge
 
             // Millénaire's parent rule: a building more than 20 m out takes its path to the door of a building nearer
             // the middle (one at least a third closer than the hearth is), whose own path leads on to the hearth. So
             // roads branch out from the middle and every road leads back to it.
-            Vector3 goal = center;
+            Vector3 goal = hubExits.Count > 0
+                ? hubExits.Select(e => e.At + e.Out * 1f).OrderBy(e => Utils.DistanceXZ(e, front)).First()
+                : center;
             float toCenter = Utils.DistanceXZ(front, center);
             if (toCenter > 20f)
             {
@@ -144,7 +156,7 @@ namespace Villheim.Logic.Village
                     .OrderBy(p => Utils.DistanceXZ(p.Position, front)).FirstOrDefault();
                 if (parent != null)
                 {
-                    Vector3 parentDoor = Front(parent.Position, parent.Radius, parent.Yaw, Designs.Doors.Angle(parent.Design));
+                    Vector3 parentDoor = Door(parent.Design, parent.Position, parent.Radius, parent.Yaw, Designs.Doors.Angle(parent.Design), front);
                     if (Utils.DistanceXZ(front, parentDoor) * 1.5f < toCenter)
                     {
                         goal = parentDoor;
@@ -172,6 +184,51 @@ namespace Villheim.Logic.Village
             var state = new VillageState(hearth.Zdo);
             return Search(hearth.transform.position, front, building, buildingRadius, state.Plots, Network(hearth), 1.6f) != null;
         }
+
+        /// <summary>
+        /// A design's path markers in the world (from the slotting board: "connect roads and paths here"): each one's spot
+        /// and the way a road leaves it (outward from the design's middle). Empty for a design without markers.
+        /// </summary>
+        public static List<(Vector3 At, Vector3 Out)> Exits(string design, Vector3 building, float yaw)
+        {
+            var exits = new List<(Vector3, Vector3)>();
+            Designs.Blueprints.Blueprint blueprint = string.IsNullOrEmpty(design) ? null : Designs.DesignLibrary.ByName(design)?.Blueprint;
+            if (blueprint == null)
+            {
+                return exits;
+            }
+
+            Quaternion turn = Quaternion.Euler(0f, yaw, 0f);
+            foreach ((string kind, Vector3 position, float markerYaw) in blueprint.Markers)
+            {
+                if (kind == "path")
+                {
+                    exits.Add((building + turn * position, turn * Quaternion.Euler(0f, markerYaw, 0f) * Vector3.forward));
+                }
+            }
+
+            return exits;
+        }
+
+        /// <summary>
+        /// Where a building's path starts: a metre out from its path marker nearest <paramref name="toward"/> (the way a
+        /// road leaves it), or, for a design without markers, just outside the door side Doors guesses.
+        /// </summary>
+        public static Vector3 Door(string design, Vector3 building, float radius, float yaw, float doorAngle, Vector3 toward)
+        {
+            List<(Vector3 At, Vector3 Out)> exits = Exits(design, building, yaw);
+            if (exits.Count == 0)
+            {
+                return Front(building, radius, yaw, doorAngle);
+            }
+
+            (Vector3 at, Vector3 outward) = exits.OrderBy(e => Utils.DistanceXZ(e.At + e.Out, toward)).First();
+            return at + outward * 1f;
+        }
+
+        /// <summary>The village's hub (the plot built round the hearth), if any.</summary>
+        private static Plot Hub(Vector3 center, IReadOnlyList<Plot> plots) =>
+            plots.FirstOrDefault(p => Utils.DistanceXZ(p.Position, center) < Mathf.Max(2f, p.Radius * 0.6f));
 
         /// <summary>Just outside the building's door (its door side, see Doors).</summary>
         public static Vector3 Front(Vector3 building, float radius, float yaw, float doorAngle) =>

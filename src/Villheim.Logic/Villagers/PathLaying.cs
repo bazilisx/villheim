@@ -36,10 +36,10 @@ namespace Villheim.Logic.Villagers
         private static readonly Dictionary<string, List<Vector3>> PointCache = new Dictionary<string, List<Vector3>>();
 
         /// <summary>Plans the path (PathPlanner) and adds it to the village's queue.</summary>
-        public static void Queue(VillageHearth hearth, Vector3 building, float radius, float yaw, float doorAngle = 0f)
+        public static void Queue(VillageHearth hearth, Vector3 building, float radius, float yaw, float doorAngle = 0f, string design = null)
         {
             var village = new VillageState(hearth.Zdo);
-            List<Vector3> route = PathPlanner.Plan(hearth, village.Axis, building, radius, yaw, doorAngle);
+            List<Vector3> route = PathPlanner.Plan(hearth, village.Axis, building, radius, yaw, doorAngle, design);
             string entry = string.Join(",", F(building.x), F(building.y), F(building.z), F(radius)) + "|" + PathPlanner.Encode(route);
             string queue = hearth.Zdo.GetString(KeyQueue, "");
             hearth.Zdo.Set(KeyQueue, string.IsNullOrEmpty(queue) ? entry : queue + ";" + entry);

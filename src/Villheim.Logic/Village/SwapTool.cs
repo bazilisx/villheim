@@ -317,11 +317,13 @@ namespace Villheim.Logic.Village
             int replaced = Replace(_design, _original, replacement, _turn);
             _current = replacement;
             SetChoice(_design, _original, replacement, _turn);
+            // Done: the stand-ins go (click the piece again to see them).
+            ClearPalette();
             EditHistory.Push($"swapping {undoOriginal} in {undoDesign}", () => Restore(undoDesign, undoOriginal, previous, previousTurn));
             string what = members > 1 ? $"a group of {members} pieces ({Describe(replacement)})" : prefab;
             Say($"Swap: {_original} is now {what} in {_design} ({replaced} replaced). " +
                 (capped ? $"Only the first {MaxGroup} touching pieces were taken; build the group away from other pieces. " : "") +
-                "Pick another to compare, 'vh swap turn' to turn it, 'vh swap undo' to put the original back.");
+                "Click the piece again for the stand-ins, 'vh swap turn' to turn it, Undo (8) to put the original back.");
         }
 
         // ---------------------------------------------------------------- nudging a whole design

@@ -244,6 +244,11 @@ namespace Villheim.Logic.Village
                 return $"Board: taken down ({TakeDown()} objects).";
             }
 
+            if (first == "shift")
+            {
+                return Shift(player, words.Skip(1).ToList());
+            }
+
             if (first == "here")
             {
                 Vector3 facing = player.transform.forward;
@@ -333,9 +338,57 @@ namespace Villheim.Logic.Village
             Vector3 forward = player.transform.forward;
             forward.y = 0f;
             forward.Normalize();
+            try
+            {
+                Directory.CreateDirectory(Path.GetDirectoryName(LastBoardPath));
+                File.WriteAllText(LastBoardPath, string.Join(" ", args.Where(a => a.ToLowerInvariant() != "force")));
+            }
+            catch (System.Exception)
+            {
+                // Only for 'vh slot shift'.
+            }
+
             _busy = true;
             VillheimPlugin.Instance.StartCoroutine(Build(player.transform.position, forward, biome, kind, kind.Root + number, stages, size, review));
             return $"Board: putting up {kind.Root}{number} ({biome} {kind.Label}, {stages} stages) and the {kind.Label} designs for PlanBuild's \"{Category}\" tab.";
+        }
+
+        private static string LastBoardPath => Path.Combine(BepInEx.Paths.BepInExRootPath, "Villheim", "slot-last.txt");
+
+        /// <summary>
+        /// 'vh slot shift left 15': moves the board's spot (left, right, forward or back, as the board faces; metres) and
+        /// puts the last board up again there. Unsaved plots are kept as drafts and come back.
+        /// </summary>
+        private static string Shift(Player player, List<string> words)
+        {
+            string way = words.FirstOrDefault(w => w == "left" || w == "right" || w == "forward" || w == "back" || w == "ahead" || w == "backward");
+            float metres = 0f;
+            bool hasNumber = words.Any(w => float.TryParse(w, NumberStyles.Float, CultureInfo.InvariantCulture, out metres));
+            if (way == null || !hasNumber || metres <= 0f)
+            {
+                return "Board: 'vh slot shift <left|right|forward|back> <metres>', e.g. 'vh slot shift left 15' (50 feet is about 15 m).";
+            }
+
+            if (!LoadAnchor(out Vector3 anchor, out Vector3 facing))
+            {
+                anchor = player.transform.position;
+                facing = player.transform.forward;
+                facing.y = 0f;
+                facing.Normalize();
+            }
+
+            // As the board faces: on the compass, as it is laid out.
+            Vector3 forward = Mathf.Abs(facing.x) > Mathf.Abs(facing.z) ? new Vector3(Mathf.Sign(facing.x), 0f, 0f) : new Vector3(0f, 0f, Mathf.Sign(facing.z));
+            Vector3 right = Vector3.Cross(Vector3.up, forward);
+            Vector3 move = way == "left" ? -right : way == "right" ? right : way == "back" || way == "backward" ? -forward : forward;
+            SaveAnchor(anchor + move * metres, facing);
+            string last = File.Exists(LastBoardPath) ? File.ReadAllText(LastBoardPath).Trim() : "";
+            if (last.Length == 0)
+            {
+                return $"Board: the board's spot moved {metres:0.#} m {way}. Put a board up ('vh slot meadows hearth 1') to see it there.";
+            }
+
+            return $"Board: the board's spot moved {metres:0.#} m {way}. " + Run(last.Split(' ').Concat(new[] { "force" }).ToArray());
         }
 
         private static string AnchorPath => Path.Combine(BepInEx.Paths.BepInExRootPath, "Villheim", "slot-anchor.txt");
@@ -464,6 +517,24 @@ namespace Villheim.Logic.Village
                 Say($"Board: {drafts} unsaved plots kept as drafts; they come back when the board goes up again.");
             }
 
+            // The board's dirt goes with it (at once, so it cannot run into the new board's painting where they overlap).
+            try
+            {
+                var touched = new HashSet<TerrainComp>();
+                foreach (Plot plot in Plots)
+                {
+                    ClearPaint(plot.Center, plot.Yaw, plot.Half, touched);
+                }
+
+                SaveGround(touched);
+                ClutterSystem.instance?.ResetGrass(Plots.Count > 0 ? Plots[0].Center : Vector3.zero, 0f);
+            }
+            catch (System.Exception e)
+            {
+                VillheimPlugin.Log.LogWarning($"Board: could not clear the ground: {e.Message}");
+            }
+
+            SwapTool.EndSwap();
             int gone = 0;
             var doomed = new List<ZNetView>();
             foreach (Plot plot in Plots)
@@ -1183,6 +1254,49 @@ namespace Villheim.Logic.Village
             }
         }
 
+        /// <summary>Takes the paint off a plot's ground (heights stay); the ground pieces changed are added to touched.</summary>
+        private static void ClearPaint(Vector3 center, float yaw, float half, HashSet<TerrainComp> touched)
+        {
+            Quaternion turn = Quaternion.Euler(0f, yaw, 0f);
+            int reach = Mathf.CeilToInt(half * 2f);
+            for (int i = -reach; i <= reach; i++)
+            for (int j = -reach; j <= reach; j++)
+            {
+                Vector3 world = center + turn * new Vector3(i * 0.5f, 0f, j * 0.5f);
+                Heightmap map = Heightmap.FindHeightmap(world);
+                TerrainComp ground = map != null ? map.GetAndCreateTerrainCompiler() : null;
+                if (ground == null)
+                {
+                    continue;
+                }
+
+                int size = ground.m_width + 1;
+                ground.m_hmap.WorldToVertexMask(world, out int px, out int py);
+                if (px >= 0 && py >= 0 && px < size && py < size)
+                {
+                    int index = py * size + px;
+                    Color nothing = Heightmap.m_paintMaskNothing;
+                    nothing.a = ground.m_paintMask[index].a;
+                    ground.m_paintMask[index] = nothing;
+                    ground.m_modifiedPaint[index] = true;
+                    touched.Add(ground);
+                }
+            }
+        }
+
+        private static void SaveGround(IEnumerable<TerrainComp> touched)
+        {
+            foreach (TerrainComp ground in touched)
+            {
+                ground.GetComponent<ZNetView>()?.ClaimOwnership();
+                ground.m_operations++;
+                ground.m_lastOpPoint = Vector3.zero;
+                ground.m_lastOpRadius = 0f;
+                ground.Save();
+                ground.m_hmap.Poke(0, false);
+            }
+        }
+
         private static IEnumerator ApplyTerrain(List<string> lines, Vector3 center, float yaw, float half)
         {
             Quaternion turn = Quaternion.Euler(0f, yaw, 0f);
@@ -1190,37 +1304,8 @@ namespace Villheim.Logic.Village
             var touched = new HashSet<TerrainComp>();
 
             // First the plot's own paint goes, so dirt from an earlier copy or try never adds up with the new one.
-            int reach = Mathf.CeilToInt(half * 2f);
-            for (int i = -reach; i <= reach; i++)
-            {
-                for (int j = -reach; j <= reach; j++)
-                {
-                    Vector3 world = center + turn * new Vector3(i * 0.5f, 0f, j * 0.5f);
-                    Heightmap map = Heightmap.FindHeightmap(world);
-                    TerrainComp ground = map != null ? map.GetAndCreateTerrainCompiler() : null;
-                    if (ground == null)
-                    {
-                        continue;
-                    }
-
-                    int size = ground.m_width + 1;
-                    ground.m_hmap.WorldToVertexMask(world, out int px, out int py);
-                    if (px >= 0 && py >= 0 && px < size && py < size)
-                    {
-                        int index = py * size + px;
-                        Color nothing = Heightmap.m_paintMaskNothing;
-                        nothing.a = ground.m_paintMask[index].a;
-                        ground.m_paintMask[index] = nothing;
-                        ground.m_modifiedPaint[index] = true;
-                        touched.Add(ground);
-                    }
-                }
-
-                if (i % 20 == 0)
-                {
-                    yield return null;
-                }
-            }
+            ClearPaint(center, yaw, half, touched);
+            yield return null;
 
             int done = 0, painted = 0;
             string failed = null;

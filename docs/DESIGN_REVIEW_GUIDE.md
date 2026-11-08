@@ -36,7 +36,9 @@ typed in the in-game console (F5) unless it says otherwise.
 1. Once: stand where the board should start and face along it, then `vh slot here`. The board faces the nearest of
    north, south, east and west, with every plot on whole metres, so copied ground lands exactly. Every board goes up in front of
    that spot, facing that way, wherever you are when you type the command (`vh slot anchor <x> <z>` sets it from
-   coordinates, facing the way you face). Without it, a board goes up in front of you. `vh gallery clear` first if a
+   coordinates, facing the way you face). Without it, a board goes up in front of you. `vh slot shift left 15` (or
+   right, forward, back; metres, 50 feet is about 15 m) moves the spot and puts the last board up again there, drafts
+   kept and the old spot's dirt cleared. `vh gallery clear` first if a
    page is still up.
 2. `vh slot meadows hearth` puts up a new base ID (hub1, or the next free number) for the Meadows: 5 plots in a row,
    each bordered by green beams with a sign (hub1_s1 to hub1_s5). `vh slot meadows hearth 1` puts hub1 up again with
@@ -273,7 +275,8 @@ removes pieces when the hammer is out, so it is not used).
      same size either way round (thickness left out, nothing more than a quarter off), exact sizes first, then the
      same material. Every kind in a stand-in's name must fit (a sloped "wall roof" is no wall stand-in). A corner,
      top, half, sloped (26, 45) or barred piece is offered only for a piece of that shape. The rows are no wider than
-     the plot and go away when you leave Swap or put the knife away.
+     the plot and go away as soon as you use a stand-in (click the piece again to see them), leave Swap, put the knife
+     away or take the board down.
    - Each group can also show up to 3 combinations of one smaller piece that make up the size (walls, fences, floors
      and supports only; the pieces lie the way the original does), found from the pieces' measured sizes: two `stone_wall_2x1` stacked for a 2x2 wall, two 2 m beams end to end for a 4 m beam, two 2 m
      poles laid down for it, four 1x1.

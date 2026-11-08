@@ -110,8 +110,15 @@ namespace Villheim.Logic.Village
                 lines.AddRange(terrain);
             }
 
+            List<string> markers = MarkerLines(views, center, frame);
+            if (markers.Count > 0)
+            {
+                lines.Add(MarkerHeader);
+                lines.AddRange(markers);
+            }
+
             lines.Add("#Pieces");
-            foreach (ZNetView view in views)
+            foreach (ZNetView view in views.Where(v => MarkerKind(v) == null))
             {
                 string prefab = Utils.GetPrefabName(view.gameObject);
                 if (prefab.EndsWith("_planned"))
@@ -242,6 +249,11 @@ namespace Villheim.Logic.Village
                 }
 
                 return $"Board: taken down ({TakeDown()} objects).";
+            }
+
+            if (first == "marker")
+            {
+                return SetMarker(player, words.Count > 1 ? words[1] : "");
             }
 
             if (first == "shift")
@@ -1128,6 +1140,7 @@ namespace Villheim.Logic.Village
                 made++;
             }
 
+            made += PutMarkers(file, center, turn);
             SetGround(TerrainLines(file), center, yaw, half);
 
             return made;
@@ -1180,6 +1193,80 @@ namespace Villheim.Logic.Village
             return lines;
         }
 
+        // ---------------------------------------------------------------- path and door markers
+
+        /// <summary>
+        /// The section of a save that holds its markers: "path;x;y;z;yaw" where outside paths join, "door;x;y;z;yaw" at
+        /// the door paths lead to. PlanBuild skips sections it does not know; Villheim's blueprint reader keeps them.
+        /// </summary>
+        internal const string MarkerHeader = "#VillheimPaths";
+
+        private static string PathMarker => LogicConfig.SlotPathMarker?.Value ?? "piece_bpsnappoint";
+        private static string DoorMarker => LogicConfig.SlotDoorMarker?.Value ?? "piece_bpcenterpoint";
+
+        /// <summary>"path", "door", or null for an object that is no marker.</summary>
+        private static string MarkerKind(ZNetView view)
+        {
+            string prefab = Utils.GetPrefabName(view.gameObject);
+            return prefab == PathMarker ? "path" : prefab == DoorMarker ? "door" : null;
+        }
+
+        private static List<string> MarkerLines(List<ZNetView> views, Vector3 center, Quaternion frame)
+        {
+            CultureInfo inv = CultureInfo.InvariantCulture;
+            var lines = new List<string>();
+            foreach (ZNetView view in views)
+            {
+                string kind = MarkerKind(view);
+                if (kind == null)
+                {
+                    continue;
+                }
+
+                Vector3 local = frame * (view.transform.position - center);
+                float yaw = (frame * view.transform.rotation).eulerAngles.y;
+                lines.Add(string.Join(";", kind, local.x.ToString("0.###", inv), local.y.ToString("0.###", inv), local.z.ToString("0.###", inv), yaw.ToString("0.#", inv)));
+            }
+
+            return lines;
+        }
+
+        /// <summary>Puts a save's markers back in a plot (so copies keep them). Returns how many.</summary>
+        private static int PutMarkers(string file, Vector3 center, Quaternion turn)
+        {
+            CultureInfo inv = CultureInfo.InvariantCulture;
+            int made = 0;
+            foreach (string line in SectionLines(file, MarkerHeader))
+            {
+                string[] f = line.Split(';');
+                GameObject prefab = f.Length >= 5 ? ZNetScene.instance.GetPrefab(f[0] == "door" ? DoorMarker : PathMarker) : null;
+                if (prefab == null || !float.TryParse(f[1], NumberStyles.Float, inv, out float x) || !float.TryParse(f[2], NumberStyles.Float, inv, out float y) ||
+                    !float.TryParse(f[3], NumberStyles.Float, inv, out float z) || !float.TryParse(f[4], NumberStyles.Float, inv, out float yaw))
+                {
+                    continue;
+                }
+
+                Object.Instantiate(prefab, center + turn * new Vector3(x, y, z), turn * Quaternion.Euler(0f, yaw, 0f));
+                made++;
+            }
+
+            return made;
+        }
+
+        /// <summary>'vh slot marker path|door': the object under the crosshair becomes that marker.</summary>
+        private static string SetMarker(Player player, string kind)
+        {
+            GameObject aimed = LookAt.Target(player);
+            if (aimed == null || (kind != "path" && kind != "door"))
+            {
+                return $"Board: aim at the object to use and type 'vh slot marker path' or 'vh slot marker door'. Now: path {PathMarker}, door {DoorMarker}.";
+            }
+
+            string prefab = Utils.GetPrefabName(aimed);
+            (kind == "path" ? LogicConfig.SlotPathMarker : LogicConfig.SlotDoorMarker).Value = prefab;
+            return $"Board: {prefab} now marks {(kind == "path" ? "where outside paths join" : "the door paths lead to")}. It is saved as a marker, not as a piece.";
+        }
+
         private static string _lastGround = "";
         private static int _paintChecks;
 
@@ -1216,7 +1303,10 @@ namespace Villheim.Logic.Village
         }
 
         /// <summary>The terrain lines of a saved file (its "#Terrain" section).</summary>
-        private static List<string> TerrainLines(string file)
+        private static List<string> TerrainLines(string file) => SectionLines(file, "#Terrain");
+
+        /// <summary>The lines of one section of a blueprint file ("#Terrain", "#VillheimPaths"...).</summary>
+        private static List<string> SectionLines(string file, string header)
         {
             var lines = new List<string>();
             bool inside = false;
@@ -1224,7 +1314,7 @@ namespace Villheim.Logic.Village
             {
                 if (line.StartsWith("#"))
                 {
-                    inside = line.StartsWith("#Terrain", System.StringComparison.OrdinalIgnoreCase);
+                    inside = line.Trim().Equals(header, System.StringComparison.OrdinalIgnoreCase);
                     continue;
                 }
 
@@ -1427,7 +1517,8 @@ namespace Villheim.Logic.Village
             Quaternion frame = Quaternion.Inverse(Quaternion.Euler(0f, sign.GetFloat(Gallery.KeyPlotYaw, 0f), 0f));
             var counts = new Dictionary<string, int>();
             var lines = new List<string>();
-            foreach (ZNetView view in views)
+            List<string> markers = MarkerLines(views, center, frame);
+            foreach (ZNetView view in views.Where(v => MarkerKind(v) == null))
             {
                 string prefab = Utils.GetPrefabName(view.gameObject);
                 // PlanBuild's planned pieces carry the real piece's name with "_planned" after it.
@@ -1475,6 +1566,12 @@ namespace Villheim.Logic.Village
             {
                 header.Add("#Terrain");
                 header.AddRange(terrain);
+            }
+
+            if (markers.Count > 0)
+            {
+                header.Add(MarkerHeader);
+                header.AddRange(markers);
             }
 
             header.Add("#Pieces");
@@ -1605,7 +1702,9 @@ namespace Villheim.Logic.Village
                 SetPlotState(plotName, oldPlaced, snapshots.Count > 0 ? state ?? "as before the save" : null);
             });
 
-            return $"Board: saved {stem} ({views.Count} pieces; {_lastGround})" +
+            int pathMarks = markers.Count(m => m.StartsWith("path")), doorMarks = markers.Count(m => m.StartsWith("door"));
+            string marks = markers.Count == 0 ? "no path or door markers" : $"{pathMarks} path and {doorMarks} door markers";
+            return $"Board: saved {stem} ({views.Count - markers.Count} pieces; {_lastGround}; {marks})" +
                    (source != null ? $", from No. {source.Number} {source.Design} ({match:P0} alike)." : decor == 3 ? "; no candidate matched it." : ".") + next +
                    " Undo (8) walks the save back.";
         }

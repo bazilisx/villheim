@@ -58,6 +58,12 @@ namespace Villheim.Logic.Designs
             public string Category;
             public readonly List<Piece> Pieces = new List<Piece>();
 
+            /// <summary>
+            /// Path markers from the slotting board ("#VillheimPaths"): Kind "path" where outside paths join, "door" where
+            /// paths lead to the building; in the blueprint's own coordinates, like the pieces.
+            /// </summary>
+            public readonly List<(string Kind, Vector3 Position, float Yaw)> Markers = new List<(string, Vector3, float)>();
+
             /// <summary>Picked more often: designs made as sets (hut, cottage, house...) fit a growing village best.</summary>
             public float Weight = 2f;
 
@@ -356,6 +362,17 @@ namespace Villheim.Logic.Designs
                     continue;
                 }
 
+                if (section == "#villheimpaths")
+                {
+                    string[] m = line.Split(';');
+                    if (m.Length >= 5)
+                    {
+                        blueprint.Markers.Add((m[0].Trim().ToLowerInvariant(), new Vector3(F(m[1]), F(m[2]), F(m[3])), F(m[4])));
+                    }
+
+                    continue;
+                }
+
                 if (section != "#pieces")
                 {
                     continue;
@@ -580,6 +597,11 @@ namespace Villheim.Logic.Designs
             float minY = blueprint.Pieces.Min(p => p.Position.y);
             var offset = new Vector3((minX + maxX) * 0.5f, minY, (minZ + maxZ) * 0.5f);
             float radius = 0f;
+            for (int i = 0; i < blueprint.Markers.Count; i++)
+            {
+                blueprint.Markers[i] = (blueprint.Markers[i].Kind, blueprint.Markers[i].Position - offset, blueprint.Markers[i].Yaw);
+            }
+
             foreach (Piece piece in blueprint.Pieces)
             {
                 piece.Position -= offset;

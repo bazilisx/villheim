@@ -79,6 +79,13 @@ typed in the in-game console (F5) unless it says otherwise.
 11. `vh slot clear` takes the board down; `vh gallery clear` also takes it down, with everything placed in it. Both `vh slot clear` and a new `vh slot` refuse while a plot has unsaved
    changes (add `force` to drop them).
 
+**Path and door markers.** Place PlanBuild's snap point marker (Blueprint Rune, Tools) where outside paths should
+join the design, and its center point marker at the door paths should lead to. They are saved as markers (a
+`#VillheimPaths` section of the file, which PlanBuild skips), never as pieces, and the d2 and d1 copies get them back.
+The save message counts them. To use other objects, aim at one and type `vh slot marker path` or `vh slot marker
+door` (config SlotPathMarker, SlotDoorMarker). Villages will lay paths from door markers and join the network at path
+markers (not built yet).
+
 Each save is listed in `BepInEx/Villheim/board-saves.csv` and sent to the sheet: a row in the **Slots** tab (file,
 base ID, stage, biome, subtype, the design it came from and how alike), and the design's Biome, Base ID and s in the
 Pass 2 tab. After pasting a new `review-sheet.gs`, update the web app (Deploy, Manage deployments, edit, Version: New

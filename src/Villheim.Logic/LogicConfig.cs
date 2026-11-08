@@ -41,6 +41,8 @@ namespace Villheim.Logic
         public static ConfigEntry<string> SortToolB2;
         public static ConfigEntry<string> SortSheetUrl;
         public static ConfigEntry<bool> SortHideSorted;
+        public static ConfigEntry<string> SlotPathMarker;
+        public static ConfigEntry<string> SlotDoorMarker;
         public static ConfigEntry<string> ShaperHandEffect;
         public static ConfigEntry<string> ShaperGroundEffect;
         public static ConfigEntry<UnityEngine.Color> ShaperColor;
@@ -181,6 +183,10 @@ namespace Villheim.Logic
                 "The item that is sort tool B2 (phase B2: work designs sorted as Crafting get a trade). 'vh sort tools' gives one.");
             SortSheetUrl = Admin(config, "4 - Design review", "SortSheetUrl", "",
                 "Web app address of the review sheet's script (Deploy, Web app). Every sort choice is sent there as it is made. Empty: kept in design-sort.csv only.");
+            SlotPathMarker = Admin(config, "4 - Design review", "SlotPathMarker", "piece_bpsnappoint",
+                "The object that marks where outside paths join a design on the slotting board (saved as a marker, not a piece). Default: PlanBuild's snap point marker. 'vh slot marker path' sets it from what you aim at.");
+            SlotDoorMarker = Admin(config, "4 - Design review", "SlotDoorMarker", "piece_bpcenterpoint",
+                "The object that marks the door paths lead to (saved as a marker, not a piece). Default: PlanBuild's center point marker. 'vh slot marker door' sets it from what you aim at.");
             SortHideSorted = Admin(config, "4 - Design review", "SortHideSorted", true,
                 "A design leaves the field once it is sorted for the knife's phase (undo brings it back), and keepers pages leave out designs that already have a type. Off: everything stays.");
             RaidChance = Admin(config, work, "RaidChance", 0.2f,

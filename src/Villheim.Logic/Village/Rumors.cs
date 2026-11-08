@@ -508,6 +508,7 @@ namespace Villheim.Logic.Village
             ["foe:surtling"] = ("Surtlings", "the Surtlings"), ["foe:abomination"] = ("Abominations", "the Abominations"),
             ["foe:golem"] = ("Stone Golems", "the Stone Golems"), ["foe:seeker"] = ("Seekers", "the Seekers"), ["foe:tick"] = ("Ticks", "the Ticks"),
             ["foe:bat"] = ("bats", "the bats"), ["foe:ulv"] = ("Ulvs", "the Ulvs"), ["foe:bear"] = ("Bjørn", "the Bjørn"),
+            ["foe:gjall"] = ("Gjall", "the Gjall"),
             ["foe:serpent"] = ("sea serpents", "the sea serpents"),
             ["biome:meadows"] = ("the Meadows", "the Meadows"), ["biome:blackforest"] = ("the Black Forest", "the Black Forest"),
             ["biome:swamp"] = ("the Swamp", "the Swamp"), ["biome:mountain"] = ("the Mountains", "the Mountains"),
@@ -570,7 +571,8 @@ namespace Villheim.Logic.Village
 
                 float distance = Utils.DistanceXZ(d.Position, home);
                 lines.Add($"   \"{said}\"\n      <- {d.Kind} {d.Key} at ({d.Position.x:0}, {d.Position.z:0}), {distance:0} m " +
-                          $"{WorldSurvey.Compass(d.Position - home)}, {d.Terrain}, {form}, {d.How}{(d.Witness.Length > 0 ? " by " + d.Witness : "")}, day {d.Day}");
+                          $"{WorldSurvey.Compass(d.Position - home)}, {d.Terrain}, {form}, {d.How}{(d.Witness.Length > 0 ? " by " + d.Witness : "")}, day {d.Day}" +
+                          (d.Stood != Vector3.zero ? $", seen from ({d.Stood.x:0}, {d.Stood.z:0}), {Utils.DistanceXZ(d.Stood, d.Position):0} m off" : ""));
             }
 
             return string.Join("\n", lines);

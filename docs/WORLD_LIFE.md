@@ -367,6 +367,16 @@ The table above is the first build. These rules now replace parts of it.
   player is within 80 m of an object discovery in a loaded zone and the object is missing on two looks 20 s apart
   (a nest broken, a deposit mined out), the village forgets it, and does not find it again for 15 minutes while the
   object survey catches up. Nests show on the map table under the same 50% roll as other places.
+- **Creatures and biomes only from where a villager stood (T-50).** `KnowledgeReachKinds` is empty by default (a
+  config on the old "game, foe, biome" moves), so nothing comes from the survey alone. Every 5 s each awake grown
+  villager of the village, in it or out, records the wild creatures within `KnowledgeSightRange` (40 m) of him with
+  nothing solid in the way (a line from his eyes over ground, rock, walls and pieces), once per creature per 200 m
+  square, with day or night from the hour. Standing in a biome other than the village's records that biome there.
+  Each discovery keeps where the witness stood; `vh know` and `vh know rumors` show it and how far it was. Older
+  creature and biome entries without that record are dropped. The survey's spawn-table grounds are no longer turned
+  into discoveries by walking near them.
+- **Empty map table.** Its hover, its use and `vh know` say why: nobody has found a notable place yet, or the places
+  known all fell outside the half the map shows.
 - **Names.** Creatures and places use the game's names: Fuling (never goblin), Greydwarf, Troll, Lox, Eikthyr's altar.
 10. Set `VillageKnowledge = false` and save: no rumour lines, no new map table, `vh know` still lists. Set it back.
     `vh reload`: the survey starts again and `vh know` still lists the same discoveries.

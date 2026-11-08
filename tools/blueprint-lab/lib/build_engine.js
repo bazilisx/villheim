@@ -1,7 +1,7 @@
 // Build the generator bundle the game runs: node lib/build_engine.js [out.js]
 // Default out: src/Villheim.Logic/Generator/lab.js, built into Villheim.Logic.dll as a resource and run by Jint
 // (src/Villheim.Logic/Generator/LabEngine.cs). The same libraries as the request page, without the drawing, plus the
-// rules-lite and scorer data. Run it after every change to the lab; CI runs it too before building the mod.
+// rules-lite, scorer and interior-lite data. Run it after every change to the lab; CI runs it too before building the mod.
 const fs = require('fs'), path = require('path');
 const dir = __dirname;
 const out = process.argv[2] || path.join(dir, '../../../src/Villheim.Logic/Generator/lab.js');
@@ -9,12 +9,14 @@ const libs = ['pieces.js', 'styles.js', 'blueprint.js', 'checks.js', 'features.j
 const code = libs.map(f => `// ---- ${f}\n(function () {\n${fs.readFileSync(path.join(dir, f), 'utf8')}\n})();`).join('\n');
 const rules = fs.readFileSync(path.join(dir, '../data/rules-lite.json'), 'utf8').trim();
 const scorer = fs.readFileSync(path.join(dir, '../data/scorer.json'), 'utf8').trim();
+const interior = fs.readFileSync(path.join(dir, '../data/interior-lite.json'), 'utf8').trim();
 const text = `// Villheim blueprint lab, bundled for the game. Made by tools/blueprint-lab/lib/build_engine.js; do not edit.
 var window = this;
 ${code}
 // ---- data
 window.VH_RULES = ${rules};
 window.VH_SCORER = ${scorer};
+window.VH_INTERIOR = ${interior};
 VHDecorate.setRules(VH_RULES);
 // ---- entry point for the game: one request, best of 'tries' seeds
 function vhMake(type, biome, culture, stage, words, seed, tries) {

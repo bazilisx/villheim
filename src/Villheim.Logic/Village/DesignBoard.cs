@@ -1323,7 +1323,7 @@ namespace Villheim.Logic.Village
             foreach (string line in SectionLines(file, MarkerHeader))
             {
                 string[] f = line.Split(';');
-                GameObject prefab = f.Length >= 5 ? ZNetScene.instance.GetPrefab(PathMarker) : null;
+                GameObject prefab = f.Length >= 5 ? MarkerPrefab() : null;
                 if (prefab == null || !float.TryParse(f[1], NumberStyles.Float, inv, out float x) || !float.TryParse(f[2], NumberStyles.Float, inv, out float y) ||
                     !float.TryParse(f[3], NumberStyles.Float, inv, out float z) || !float.TryParse(f[4], NumberStyles.Float, inv, out float yaw))
                 {
@@ -1337,6 +1337,18 @@ namespace Villheim.Logic.Village
             }
 
             return made;
+        }
+
+        /// <summary>
+        /// The object a copy puts down for a marker. PlanBuild's piece_bpsnappoint is its placing tool, not the marker:
+        /// placing it makes PlanBuild spawn piece_bpsnappointinstance (MarkerComponent.OnPlacePiece, PieceInstanceName in
+        /// BlueprintAssets). Copies spawned the tool prefab, so no marker stood in them (2026-11-07). The "...instance"
+        /// object is used when one exists.
+        /// </summary>
+        private static GameObject MarkerPrefab()
+        {
+            GameObject instance = ZNetScene.instance.GetPrefab(PathMarker + "instance");
+            return instance != null ? instance : ZNetScene.instance.GetPrefab(PathMarker.EndsWith("instance") ? PathMarker : "piece_bpsnappointinstance") ?? ZNetScene.instance.GetPrefab(PathMarker);
         }
 
         /// <summary>'vh slot marker path|door': the object under the crosshair becomes that marker.</summary>

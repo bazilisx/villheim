@@ -56,21 +56,23 @@ namespace Villheim.Logic.Village
                 return step;
             }
 
-            if (ConstructionSite.IsActive(hearth.Zdo))
-            {
-                step.What = ConstructionSite.Progress(hearth) ?? "the building going up";
-                foreach (KeyValuePair<string, int> need in ConstructionSite.StartNeed(hearth))
-                {
-                    step.Needs[need.Key] = need.Value;
-                }
-
-                return step;
-            }
-
+            // Needs first (beds, the cooking station, the notice board, a chest when the main one is full): the builder
+            // makes these before he goes on with the building.
             Amenities.Job job = Amenities.Upcoming(hearth);
             if (job != null && job.Essential)
             {
                 Fill(step, job);
+                return step;
+            }
+
+            if (ConstructionSite.IsActive(hearth.Zdo))
+            {
+                step.What = ConstructionSite.Progress(hearth) ?? "the building going up";
+                foreach (KeyValuePair<string, int> need in ConstructionSite.Remaining(hearth))
+                {
+                    step.Needs[need.Key] = need.Value;
+                }
+
                 return step;
             }
 
@@ -99,7 +101,7 @@ namespace Villheim.Logic.Village
         private static void Fill(Step step, Amenities.Job job)
         {
             step.What = $"a {job.Name}" + (job.Pieces > 1 ? $" ({job.Pieces} pieces to go)" : "");
-            foreach (KeyValuePair<string, int> cost in Amenities.StartCost(job))
+            foreach (KeyValuePair<string, int> cost in job.Total ?? job.Cost)
             {
                 step.Needs[cost.Key] = cost.Value;
             }
@@ -121,30 +123,36 @@ namespace Villheim.Logic.Village
             return shortfall;
         }
 
-        /// <summary>"Next: a home. Needs 20 wood and 6 stone; has 12 wood and 0 stone."</summary>
+        /// <summary>
+        /// The materials the next step lacks, as have/need, the biggest shortfall first, at most three: "wood 12/40,
+        /// stone 3/10" (after Millénaire's project panel, T-38). Empty when the village holds all it needs.
+        /// </summary>
+        public static List<string> Lacking(VillageHearth hearth, VillageState state, Step step, int most = 3)
+        {
+            return step.Needs
+                .Select(n => (Material: n.Key, Need: n.Value, Have: VillageChest.Have(hearth, state, n.Key)))
+                .Where(n => n.Have < n.Need)
+                .OrderByDescending(n => n.Need - n.Have)
+                .Take(most)
+                .Select(n => $"{Materials.Label(n.Material)} {n.Have}/{n.Need}")
+                .ToList();
+        }
+
+        /// <summary>"Next: a home. Wood 12/40, stone 3/10." or "Building a home: roof, 60% done." when nothing is lacking.</summary>
         public static string Text(VillageHearth hearth, VillageState state)
         {
             Step step = For(hearth, state);
-            string text = $"Next: {step.What}.";
-            List<KeyValuePair<string, int>> needs = step.Needs.Where(n => n.Value > 0).OrderByDescending(n => n.Value).ToList();
-            if (needs.Count == 0)
+            string what = step.What.StartsWith("building ") || step.What.StartsWith("taking down")
+                ? char.ToUpperInvariant(step.What[0]) + step.What.Substring(1)
+                : "Next: " + step.What;
+            List<string> lacking = Lacking(hearth, state, step);
+            if (lacking.Count == 0)
             {
-                return text;
+                return what + ".";
             }
 
-            if (Short(hearth, state, step).Count == 0)
-            {
-                return text + " The chest holds what it needs.";
-            }
-
-            string Join(IEnumerable<string> parts)
-            {
-                List<string> list = parts.ToList();
-                return list.Count <= 1 ? string.Concat(list) : string.Join(", ", list.Take(list.Count - 1)) + " and " + list.Last();
-            }
-
-            return text + $" Needs {Join(needs.Select(n => $"{n.Value} {Materials.Label(n.Key)}"))}; " +
-                   $"has {Join(needs.Select(n => $"{VillageChest.Have(hearth, state, n.Key)} {Materials.Label(n.Key)}"))}.";
+            string list = string.Join(", ", lacking);
+            return $"{what}. {char.ToUpperInvariant(list[0])}{list.Substring(1)}.";
         }
     }
 }

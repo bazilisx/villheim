@@ -768,15 +768,23 @@ namespace Villheim.Logic.Village
                 }
             }
 
-            // What the next step (NextStep, as on the hearth) is still short of, the two biggest.
-            Dictionary<string, int> shortfall = NextStep.Short(hearth, state, NextStep.For(hearth, state));
+            // What the next step lacks, as on the hearth (NextStep): have/need for the two biggest shortfalls. With the
+            // chest full enough, a need still to be made (beds) is named: "Nothing" read wrong while homes had no
+            // beds (T-37).
+            NextStep.Step step = NextStep.For(hearth, state);
+            List<string> lacking = NextStep.Lacking(hearth, state, step, 2);
+            Amenities.Job due = Amenities.Upcoming(hearth);
             string needed = "Nothing";
             string neededColor = "#bfb";
-            if (shortfall.Count > 0)
+            if (lacking.Count > 0)
             {
-                List<KeyValuePair<string, int>> top = shortfall.OrderByDescending(n => n.Value).Take(2).ToList();
-                needed = string.Join(", ", top.Select(n => $"{n.Value} {Materials.Label(n.Key)}"));
-                neededColor = top[0].Key == Materials.Stone ? "#ddd" : "#eca";
+                needed = Capital(string.Join(", ", lacking));
+                neededColor = lacking[0].StartsWith(Materials.Label(Materials.Stone)) ? "#ddd" : "#eca";
+            }
+            else if (due != null && due.Essential)
+            {
+                needed = Capital(due.Name == "bed" ? "beds" : due.Name);
+                neededColor = "#fd8";
             }
 
             float mood = VillageMood.Get(hearth.VillageId);

@@ -152,6 +152,11 @@ namespace Villheim.Logic.Village
             foreach (Villager villager in going)
             {
                 ZDO zdo = villager.Zdo;
+                if (zdo == null)
+                {
+                    continue;
+                }
+
                 zdo.Set(Wanderers.KeyKind, Wanderers.Carrier);
                 zdo.Set(Wanderers.KeyPhase, "arrive");
                 zdo.Set(Wanderers.KeyTarget, site);
@@ -226,6 +231,10 @@ namespace Villheim.Logic.Village
             List<Vector3> villages = ZDOMan.instance.m_objectsByID.Values.Where(z => z != null && z.GetPrefab() == hearthPrefab)
                 .Select(z => z.GetPosition()).ToList();
             villages.AddRange(Relations.AllHearths().SelectMany(z => Read(z).Select(s => s.Position)));
+            // Only the game locations that could be near a site (the world has thousands; 312 points are tried).
+            var locations = ZoneSystem.instance.m_locationInstances.Values
+                .Where(l => Utils.DistanceXZ(l.m_position, from) < 1800f)
+                .Select(l => (l.m_position, l.m_location?.m_prefabName == VillageLocation.Name ? 500f : 120f)).ToList();
             var rng = new System.Random(unchecked(state.Seed * 31 + Today));
             int turn = rng.Next(360);
             for (float distance = 600f; distance <= 1200f; distance += 50f)
@@ -254,8 +263,7 @@ namespace Villheim.Logic.Village
                     }
 
                     if (!flat || villages.Any(v => Utils.DistanceXZ(v, point) < 500f) ||
-                        ZoneSystem.instance.m_locationInstances.Values.Any(l => Utils.DistanceXZ(l.m_position, point) <
-                                                                                (l.m_location?.m_prefabName == VillageLocation.Name ? 500f : 120f)))
+                        locations.Any(l => Utils.DistanceXZ(l.Item1, point) < l.Item2))
                     {
                         continue;
                     }
@@ -294,6 +302,13 @@ namespace Villheim.Logic.Village
 
         private static void Light(ZDO parent, Site site)
         {
+            // A lit and settled hearth is in the registry: that cheap check first, since this runs every ten seconds
+            // while a player is near a daughter village. The scan of every object covers a hearth not settled yet.
+            if (VillageHearth.All.Any(h => Utils.DistanceXZ(h.transform.position, site.Position) < 80f))
+            {
+                return;
+            }
+
             int hearthPrefab = HearthPrefab.Name.GetStableHashCode();
             if (ZDOMan.instance.m_objectsByID.Values.Any(z => z != null && z.GetPrefab() == hearthPrefab && Utils.DistanceXZ(z.GetPosition(), site.Position) < 80f))
             {

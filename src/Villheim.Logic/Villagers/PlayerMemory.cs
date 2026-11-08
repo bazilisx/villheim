@@ -84,7 +84,9 @@ namespace Villheim.Logic.Villagers
 
         private static void Change(VillageHearth hearth, Player player, System.Action<Dictionary<string, string>> change)
         {
-            if (hearth == null || !hearth.IsValid || player == null)
+            // Only the hearth's owner writes its record. A client writing a hearth it does not own sends its whole
+            // copy of the hearth, which can undo the owner's newer changes to the stock and the plots.
+            if (hearth == null || !hearth.IsValid || player == null || !hearth.NView.IsOwner())
             {
                 return;
             }
@@ -221,7 +223,7 @@ namespace Villheim.Logic.Villagers
                 if (villager.VillageId == hearth.VillageId)
                 {
                     Change(hearth, player, f => { Add(f, "slain", 1); Set(f, "lastslain", Today); });
-                    Social.AddReputation(hearth, player, -15, "slain");
+                    if (hearth.NView.IsOwner()) Social.AddReputation(hearth, player, -15, "slain");
                     Deed(hearth, player, "slain", dead.transform.position);
                 }
 
@@ -285,7 +287,7 @@ namespace Villheim.Logic.Villagers
 
             _nextHurtNote = Time.time + 20f;
             Change(hearth, player, f => { Add(f, "hurtus", 1); Set(f, "lasthurtus", Today); });
-            Social.AddReputation(hearth, player, -2, "hurtus");
+            if (hearth.NView.IsOwner()) Social.AddReputation(hearth, player, -2, "hurtus");
             Deed(hearth, player, "hurtus", villager.transform.position);
             Moods.Think(villager, "playerhurtus");
             Dialogue.QueueLine(villager, "talk", "event:hurtbyplayer", new[] { "event:hurtbyplayer" }, 0.6f);
@@ -526,9 +528,16 @@ namespace Villheim.Logic.Villagers
         {
             private static void Postfix(Piece __instance)
             {
-                if (Player.m_localPlayer != null && __instance != null && __instance.GetCreator() == Player.m_localPlayer.GetPlayerID())
+                try
                 {
-                    Built(__instance);
+                    if (Player.m_localPlayer != null && __instance != null && __instance.GetCreator() == Player.m_localPlayer.GetPlayerID())
+                    {
+                        Built(__instance);
+                    }
+                }
+                catch (System.Exception ex)
+                {
+                    HookFailed("built", ex);
                 }
             }
         }
@@ -538,11 +547,18 @@ namespace Villheim.Logic.Villagers
         {
             private static void Prefix(Character __instance)
             {
-                Player player = Player.m_localPlayer;
-                if (player != null && __instance != null && !(__instance is Player) &&
-                    __instance.m_lastHit != null && __instance.m_lastHit.GetAttacker() == player)
+                try
                 {
-                    Killed(__instance, player);
+                    Player player = Player.m_localPlayer;
+                    if (player != null && __instance != null && !(__instance is Player) &&
+                        __instance.m_lastHit != null && __instance.m_lastHit.GetAttacker() == player)
+                    {
+                        Killed(__instance, player);
+                    }
+                }
+                catch (System.Exception ex)
+                {
+                    HookFailed("killed", ex);
                 }
             }
         }
@@ -552,9 +568,16 @@ namespace Villheim.Logic.Villagers
         {
             private static void Prefix(Player __instance)
             {
-                if (__instance != null && __instance == Player.m_localPlayer)
+                try
                 {
-                    Died(__instance);
+                    if (__instance != null && __instance == Player.m_localPlayer)
+                    {
+                        Died(__instance);
+                    }
+                }
+                catch (System.Exception ex)
+                {
+                    HookFailed("died", ex);
                 }
             }
         }
@@ -564,11 +587,29 @@ namespace Villheim.Logic.Villagers
         {
             private static void Prefix(Character __instance, HitData hit)
             {
-                if (__instance is Villager villager && !Wanderers.IsWanderer(villager) && hit != null &&
-                    Player.m_localPlayer != null && hit.GetAttacker() == Player.m_localPlayer && hit.GetTotalDamage() > 0f)
+                try
                 {
-                    HurtVillager(villager, Player.m_localPlayer);
+                    if (__instance is Villager villager && !Wanderers.IsWanderer(villager) && hit != null &&
+                        Player.m_localPlayer != null && hit.GetAttacker() == Player.m_localPlayer && hit.GetTotalDamage() > 0f)
+                    {
+                        HurtVillager(villager, Player.m_localPlayer);
+                    }
                 }
+                catch (System.Exception ex)
+                {
+                    HookFailed("hurt", ex);
+                }
+            }
+        }
+
+        private static readonly HashSet<string> HookErrors = new HashSet<string>();
+
+        /// <summary>A hook on a game method must never throw into the game: log it once and carry on.</summary>
+        private static void HookFailed(string hook, System.Exception ex)
+        {
+            if (HookErrors.Add(hook + ex.GetType().Name))
+            {
+                VillheimPlugin.Log.LogWarning($"Player memory ({hook}): {ex}");
             }
         }
     }

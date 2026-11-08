@@ -34,7 +34,8 @@ namespace Villheim.Logic.Villagers
         /// <summary>From Dialogue.Note: some events make the evening a feast, some get a turnout.</summary>
         public static void Noted(int villageId, string what)
         {
-            if (what == "hunt" || what == "birth" || what == "finished" || what == "bossdown" || what == "upgrade")
+            // "feast" is the harvest feast from VillageEvents: it ate well, so the evening is a feast too.
+            if (what == "hunt" || what == "birth" || what == "finished" || what == "bossdown" || what == "upgrade" || what == "feast")
             {
                 if (!FeastToday(villageId))
                 {

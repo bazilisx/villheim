@@ -48,7 +48,9 @@ namespace Villheim.Logic.Village
                 return;
             }
 
-            hearth.Zdo.Set(KeyPlannedDay, day);
+            // One plan per tick (each is an A* search of up to 30,000 cells): the day is marked done only once
+            // nothing is left to plan, so the next trail waits for the next tick, five seconds on. A trail that
+            // cannot be found is saved as "-", so it is never planned again in a loop.
             Vector3 home = hearth.transform.position;
             List<Vector3> camps = Outposts.Positions(hearth);
             for (int i = 0; i < camps.Count && i < 2; i++)
@@ -56,6 +58,7 @@ namespace Villheim.Logic.Village
                 if (hearth.Zdo.GetString(OutpostKey(i), "").Length == 0)
                 {
                     Save(hearth.Zdo, OutpostKey(i), Plan(home, camps[i]));
+                    return;
                 }
             }
 
@@ -67,8 +70,11 @@ namespace Villheim.Logic.Village
                 if (other != null && state.Id < other.GetInt(Keys.VillageId))
                 {
                     Save(hearth.Zdo, KeyNeighbourTrail, Plan(home, other.GetPosition()));
+                    return;
                 }
             }
+
+            hearth.Zdo.Set(KeyPlannedDay, day);
         }
 
         /// <summary>The trail's grid points from <paramref name="from"/> to <paramref name="to"/>, or an empty list.</summary>

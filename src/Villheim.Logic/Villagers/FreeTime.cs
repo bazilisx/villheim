@@ -814,6 +814,13 @@ namespace Villheim.Logic.Villagers
                     // One short exchange, then they just gesture; another one only after a while, if the village
                     // isn't busy talking already.
                     // Word passes on as they talk (PlayerMemory: what the player did, after Minecraft's gossip).
+                    // Only when a chat can open: this branch runs every frame while the village is talked out, and
+                    // gossip reads both villagers' records.
+                    if (!Dialogue.ChatCanOpen(villager))
+                    {
+                        return;
+                    }
+
                     string told = PlayerMemory.Gossip(villager, other);
                     string line = Dialogue.ChatOpening(villager, other, told);
                     if (line == null)

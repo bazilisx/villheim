@@ -70,15 +70,26 @@ namespace Villheim.Logic.Villagers
             foreach (string part in raw.Split(','))
             {
                 int eq = part.IndexOf('=');
-                if (eq > 0 && float.TryParse(part.Substring(eq + 1), NumberStyles.Float, CultureInfo.InvariantCulture, out float v))
+                if (eq > 0 && float.TryParse(part.Substring(eq + 1), NumberStyles.Float, CultureInfo.InvariantCulture, out float v) &&
+                    Pairs.ContainsKey(part.Substring(0, eq)))
                 {
                     skills[part.Substring(0, eq)] = v;
                 }
             }
 
-            if (skills.Count == 0)
+            if (skills.Count < Names.Length)
             {
-                Start(villager, skills);
+                // A new villager, or a record missing a skill (written by an older build): every skill is always there,
+                // so lookups by name never fail.
+                var start = new Dictionary<string, float>();
+                Start(villager, start);
+                foreach (KeyValuePair<string, float> s in start)
+                {
+                    if (!skills.ContainsKey(s.Key))
+                    {
+                        skills[s.Key] = s.Value;
+                    }
+                }
             }
 
             return skills;

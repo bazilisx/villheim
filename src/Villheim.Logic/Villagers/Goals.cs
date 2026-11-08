@@ -244,11 +244,16 @@ namespace Villheim.Logic.Villagers
                 Dialogue.QueueLine(villager, "self", "goalmet:" + goal.Kind, new[] { "goalmet:" + goal.Kind, "goalmet" }, Random.Range(1f, 4f));
                 if (goal.Kind == "court")
                 {
-                    Villager other = Character.GetAllCharacters().OfType<Villager>().FirstOrDefault(o => Seed(o).ToString(CultureInfo.InvariantCulture) == goal.Extra);
+                    Villager other = Character.GetAllCharacters().OfType<Villager>()
+                        .FirstOrDefault(o => o != villager && !o.IsDead() && Seed(o).ToString(CultureInfo.InvariantCulture) == goal.Extra);
                     if (other != null)
                     {
                         villager.Zdo.Set(KeySweetheart, Seed(other));
-                        other.Zdo?.Set(KeySweetheart, Seed(villager));
+                        if (other.m_nview != null && other.m_nview.IsOwner())
+                        {
+                            other.Zdo?.Set(KeySweetheart, Seed(villager));
+                        }
+
                         Moods.Think(other, "courting");
                         Chronicle.Add(villager.VillageId, $"{villager.VillagerName} and {other.VillagerName} are walking out together.");
                     }
@@ -400,7 +405,9 @@ namespace Villheim.Logic.Villagers
 
             if (line.Contains("{goalskill}"))
             {
-                line = line.Replace("{goalskill}", goal?.Extra?.Split(':')[0] is string s && s.Length > 0 ? s : VillagerSkills.Best(villager));
+                // Only learn and master keep a skill in Extra; court and peace keep a villager's seed there.
+                string skill = goal != null && (goal.Kind == "learn" || goal.Kind == "master") ? goal.Extra?.Split(':')[0] : null;
+                line = line.Replace("{goalskill}", !string.IsNullOrEmpty(skill) ? skill : VillagerSkills.Best(villager));
             }
 
             if (line.Contains("{sweetheart}"))

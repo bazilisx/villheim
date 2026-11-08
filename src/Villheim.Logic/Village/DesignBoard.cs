@@ -251,6 +251,19 @@ namespace Villheim.Logic.Village
                 return $"Board: taken down ({TakeDown()} objects).";
             }
 
+            if (first == "undo")
+            {
+                if (SaveUndos.Count == 0)
+                {
+                    return "Board: no save to walk back this session ('vh slot forget <name>' deletes an older one).";
+                }
+
+                (string stem, System.Action back) = SaveUndos[SaveUndos.Count - 1];
+                SaveUndos.RemoveAt(SaveUndos.Count - 1);
+                back();
+                return $"Board: walked back the save of {stem}.";
+            }
+
             if (first == "marker")
             {
                 return SetMarker(player, words.Count > 1 ? words[1] : "");
@@ -1280,28 +1293,42 @@ namespace Villheim.Logic.Village
         }
 
         private static string _lastGround = "";
+
+        /// <summary>The undo of each save this session, newest last, for 'vh slot undo'.</summary>
+        private static readonly List<(string Stem, System.Action Back)> SaveUndos = new List<(string, System.Action)>();
         private static int _paintChecks;
 
-        /// <summary>The paint on the ground at a spot: Paved, Cultivate, Dirt, or "" for none.</summary>
+        /// <summary>
+        /// The paint on the ground at a spot: Paved, Cultivate, Dirt, or "" for none. Read from the ground's own record
+        /// (TerrainComp), the same data copies write to; the picture the game draws from it could not be read for some
+        /// areas, which left a quarter of a dirt circle out of a save (2026-11-07). Ground never changed has no paint.
+        /// </summary>
         private static string PaintAt(Vector3 world)
         {
             try
             {
                 Heightmap map = Heightmap.FindHeightmap(world);
-                if (map == null || map.m_paintMask == null)
+                TerrainComp ground = map != null ? TerrainComp.FindTerrainCompiler(world) : null;
+                if (ground == null || ground.m_paintMask == null || ground.m_modifiedPaint == null)
                 {
                     return "";
                 }
 
-                map.WorldToVertexMask(world, out int x, out int y);
-                Color mask = map.m_paintMask.GetPixel(x, y);
-                string paint = mask.b > 0.5f ? "Paved" : mask.g > 0.5f ? "Cultivate" : mask.r > 0.5f ? "Dirt" : "";
-                if (_paintChecks++ < 3)
+                int size = ground.m_width + 1;
+                ground.m_hmap.WorldToVertexMask(world, out int x, out int y);
+                if (x < 0 || y < 0 || x >= size || y >= size)
                 {
-                    VillheimPlugin.Log.LogInfo($"Board: paint at {world} (mask {x},{y} of {map.m_paintMask.width}): {mask} -> '{paint}'");
+                    return "";
                 }
 
-                return paint;
+                int index = y * size + x;
+                if (!ground.m_modifiedPaint[index])
+                {
+                    return "";
+                }
+
+                Color mask = ground.m_paintMask[index];
+                return mask.b > 0.5f ? "Paved" : mask.g > 0.5f ? "Cultivate" : mask.r > 0.5f ? "Dirt" : "";
             }
             catch (System.Exception e)
             {
@@ -1404,6 +1431,26 @@ namespace Villheim.Logic.Village
             Quaternion turn = Quaternion.Euler(0f, yaw, 0f);
             CultureInfo inv = CultureInfo.InvariantCulture;
             var touched = new HashSet<TerrainComp>();
+
+            // Every ground area the plot touches gets its record first, and the game a moment to load it: a record made
+            // and written at once was loaded over a frame later, losing one area's dirt (a straight-edged gap, 2026-11-07).
+            int made = 0;
+            int span = Mathf.CeilToInt(half) + 8;
+            for (int i = -span; i <= span; i += 8)
+            for (int j = -span; j <= span; j += 8)
+            {
+                Heightmap map = Heightmap.FindHeightmap(center + turn * new Vector3(i, 0f, j));
+                if (map != null && TerrainComp.FindTerrainCompiler(map.transform.position) == null)
+                {
+                    map.GetAndCreateTerrainCompiler();
+                    made++;
+                }
+            }
+
+            if (made > 0)
+            {
+                yield return new WaitForSeconds(0.5f);
+            }
 
             // First the plot's own paint goes, so dirt from an earlier copy or try never adds up with the new one.
             ClearPaint(center, yaw, half, touched);
@@ -1666,53 +1713,89 @@ namespace Villheim.Logic.Village
 
             // Undo (8) walks the save back: the plot as it was, the copy behind it gone, the file and the sheet as before.
             string state = decor < 3 ? $"copy of {baseId}_s{stageNumber}d{decor + 1}" : null;
-            EditHistory.Push($"saving {stem}", () =>
+            // Undo (8, or 'vh slot undo' when other changes came after) walks the save back: first the design goes back
+            // into its plot with its ground, then the copy behind it goes, then the file, the records and the sheet, each
+            // on its own so one failing cannot stop the rest.
+            bool undone = false;
+            void Back()
             {
+                if (undone)
+                {
+                    return;
+                }
+
+                undone = true;
+                var failed = new List<string>();
+                void Step(string what, System.Action action)
+                {
+                    try
+                    {
+                        action();
+                    }
+                    catch (System.Exception e)
+                    {
+                        failed.Add($"{what} ({e.Message})");
+                        VillheimPlugin.Log.LogWarning($"Board: undoing the save of {stem}, {what}: {e}");
+                    }
+                }
+
+                Step("the design", () => snapshots.ForEach(EditHistory.Restore));
+                Step("the ground", () => SetGround(terrain, plotCenter, yaw, half));
+                Step("the sign", () => SetPlotState(plotName, oldPlaced, snapshots.Count > 0 ? state ?? "as before the save" : null));
                 if (nextPlot != null)
                 {
-                    foreach (ZNetView view in SwapTool.DesignParts(nextPlot).Views.Where(v => v != null && v.IsValid()))
+                    Step("the copy behind", () =>
                     {
-                        view.ClaimOwnership();
-                        ZNetScene.instance.Destroy(view.gameObject);
+                        foreach (ZNetView view in SwapTool.DesignParts(nextPlot).Views.Where(v => v != null && v.IsValid()))
+                        {
+                            view.ClaimOwnership();
+                            ZNetScene.instance.Destroy(view.gameObject);
+                        }
+
+                        SetPlotState(nextPlot, 0, $"waits for d{decor}");
+                        Plot behindNow = Plots.FirstOrDefault(p => p.Name == nextPlot);
+                        if (behindNow != null)
+                        {
+                            SetGround(null, behindNow.Center, behindNow.Yaw, behindNow.Half);
+                        }
+                    });
+                }
+
+                Step("the file", () =>
+                {
+                    if (oldText != null)
+                    {
+                        File.WriteAllText(file, oldText);
+                    }
+                    else if (File.Exists(file))
+                    {
+                        File.Delete(file);
+                    }
+                });
+                Step("the records", () =>
+                {
+                    if (oldRecord != null)
+                    {
+                        Record(oldRecord);
+                        DesignSort.PushSlot(oldRecord);
+                    }
+                    else
+                    {
+                        Unrecord(stem);
+                        DesignSort.PushSlot(new[] { stem });
                     }
 
-                    SetPlotState(nextPlot, 0, $"waits for d{decor}");
-                    Plot behindNow = Plots.FirstOrDefault(p => p.Name == nextPlot);
-                    if (behindNow != null)
+                    if (source != null)
                     {
-                        SetGround(null, behindNow.Center, behindNow.Yaw, behindNow.Half);
+                        DesignSort.SetSlot(source.Design, oldSlot.Biome, oldSlot.Base, oldSlot.Stage);
                     }
-                }
+                });
+                Say($"Board: the save of {stem} is walked back: {snapshots.Count} pieces back in {StageName(plotName)}" +
+                    (nextPlot != null ? $", {StageName(nextPlot)} emptied" : "") + (failed.Count > 0 ? ". Could not: " + string.Join("; ", failed) : "."));
+            }
 
-                if (oldText != null)
-                {
-                    File.WriteAllText(file, oldText);
-                }
-                else if (File.Exists(file))
-                {
-                    File.Delete(file);
-                }
-
-                if (oldRecord != null)
-                {
-                    Record(oldRecord);
-                    DesignSort.PushSlot(oldRecord);
-                }
-                else
-                {
-                    Unrecord(stem);
-                    DesignSort.PushSlot(new[] { stem });
-                }
-
-                if (source != null)
-                {
-                    DesignSort.SetSlot(source.Design, oldSlot.Biome, oldSlot.Base, oldSlot.Stage);
-                }
-
-                snapshots.ForEach(EditHistory.Restore);
-                SetGround(terrain, plotCenter, yaw, half);
-                SetPlotState(plotName, oldPlaced, snapshots.Count > 0 ? state ?? "as before the save" : null);
-            });
+            EditHistory.Push($"saving {stem}", Back);
+            SaveUndos.Add((stem, Back));
 
             string marks = markers.Count == 0 ? "no path markers" : $"{markers.Count} path markers, roads leaving outward";
             return $"Board: saved {stem} ({views.Count - markers.Count} pieces; {_lastGround}; {marks})" +

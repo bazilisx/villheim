@@ -67,7 +67,8 @@ typed in the in-game console (F5) unless it says otherwise.
    After d1 the stage is done.
 7. `vh slot meadows hearth 1` puts hub1 up again with every plot, the saved ones empty and marked saved, and the copy
    to strip where work stopped. Add `review` to fill the saved plots with their saves.
-8. Undo (8) right after a save walks it back: the plot comes back as it was, the copy behind it goes, and the file,
+8. Undo (8) right after a save walks it back (`vh slot undo` walks back the last save even when other changes came
+   after it; the console says what came back): the plot comes back as it was, the copy behind it goes, and the file,
    board-saves.csv and the sheet are as before. For a save made earlier (or before this existed), `vh slot forget
    hub1_s1d3` deletes it, then put the board up again.
 9. The Shaper Tool's Reset (key 7) on a plot clears it back to its last save (a d2 or d1 copy goes back to the copy),

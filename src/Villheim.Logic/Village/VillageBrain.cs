@@ -63,6 +63,7 @@ namespace Villheim.Logic.Village
             double unloadedSeconds = AddPassiveWood(hearth, state, now);
 
             NoticeBoard.RemoveStrayBoards(hearth, state);
+            Demisters.Founding(hearth, state);
             VillageChest.Ensure(hearth);
             VillageChest.MoveStockIn(hearth, state);
             Villagers.Social.VillageTick(hearth);

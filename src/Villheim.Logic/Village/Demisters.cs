@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Globalization;
+using System.Linq;
 using UnityEngine;
 
 namespace Villheim.Logic.Village
@@ -15,6 +16,11 @@ namespace Villheim.Logic.Village
     ///   MistlandsDemisterCost (the prefab has no recipe of its own). One that is destroyed is made again.
     /// - Where each one goes is worked out once and kept on the hearth, so a growing ring doesn't move them. A spot on
     ///   water, a building, a path or steep ground moves a little round the ring.
+    /// - One more by the hearth from the start (Tyler, 2026-11-08: "so the village isn't completely shrouded in mist
+    ///   from day one"): put down with the founding camp, like the hearth and the chest, the one thing here that is not
+    ///   built piece by piece (Founding). A Mistlands village from before this gets it when it next loads. If it is lost,
+    ///   it is made again as an amenity like the others, first of them, by the hearth again if its old spot is now
+    ///   under a building.
     /// - Only in Mistlands villages.
     /// </summary>
     internal static class Demisters
@@ -27,10 +33,75 @@ namespace Villheim.Logic.Village
 
         private static int Key(int index) => ("villheim_demister_" + index).GetStableHashCode();
 
+        private static readonly int KeyHearth = "villheim_demister_hearth".GetStableHashCode();
+
+        private static bool Wanted(VillageState state) =>
+            state.Biome == Heightmap.Biome.Mistlands && (LogicConfig.MistlandsDemisters == null || LogicConfig.MistlandsDemisters.Value >= 0);
+
+        /// <summary>
+        /// From the hearth's tick: the founding demister by the hearth of a Mistlands village, put down once, at once,
+        /// with the founding camp. Afterwards only the amenity job puts it back.
+        /// </summary>
+        public static void Founding(VillageHearth hearth, VillageState state)
+        {
+            if (!Wanted(state) || hearth.Zdo.GetVec3(KeyHearth, Vector3.zero) != Vector3.zero || ZNetScene.instance == null)
+            {
+                return;
+            }
+
+            GameObject prefab = ZNetScene.instance.GetPrefab(Prefab);
+            if (prefab == null || !HearthSpot(hearth, state, out Vector3 spot))
+            {
+                return;
+            }
+
+            Vector3 toHearth = (hearth.transform.position - spot).Horizontal();
+            GameObject made = Object.Instantiate(prefab, spot, toHearth.sqrMagnitude > 0.01f ? Quaternion.LookRotation(toHearth.normalized) : Quaternion.identity);
+            made.GetComponent<ZNetView>()?.GetZDO()?.Set(Keys.BuiltBy, hearth.VillageId);
+            hearth.Zdo.Set(KeyHearth, spot);
+            VillheimPlugin.Log.LogInfo($"{state.Name} set a demister by its hearth at {spot}.");
+        }
+
+        /// <summary>
+        /// Beside the hearth, 7 m out on the side away from the chest, on flat open ground clear of the village's pieces,
+        /// buildings and paths.
+        /// </summary>
+        private static bool HearthSpot(VillageHearth hearth, VillageState state, out Vector3 spot)
+        {
+            Vector3 center = hearth.transform.position;
+            Vector3 away = (center - VillageChest.Spot(hearth)).Horizontal();
+            away = away.sqrMagnitude > 0.01f ? away.normalized : Quaternion.Euler(0f, state.Axis, 0f) * Vector3.forward;
+            HashSet<Vector2Int> network = PathPlanner.PlannedNetwork(hearth);
+            var pieces = new List<Piece>();
+            for (int step = 0; step < 16; step++)
+            {
+                float turn = (step + 1) / 2 * 22.5f * (step % 2 == 0 ? 1f : -1f);
+                Vector3 p = center + Quaternion.Euler(0f, turn, 0f) * away * 7f;
+                if (!ZoneSystem.instance.IsZoneLoaded(p) || !Amenities.Usable(hearth, state, p, out float y) ||
+                    PathPlanner.DistanceToNetwork(network, p) < 2.5f)
+                {
+                    continue;
+                }
+
+                pieces.Clear();
+                Piece.GetAllPiecesInRadius(new Vector3(p.x, y, p.z), 3f, pieces);
+                if (pieces.Count > 0)
+                {
+                    continue;
+                }
+
+                spot = new Vector3(p.x, y, p.z);
+                return true;
+            }
+
+            spot = Vector3.zero;
+            return false;
+        }
+
         public static Amenities.Job Job(VillageHearth hearth, VillageState state)
         {
             int count = LogicConfig.MistlandsDemisters != null ? LogicConfig.MistlandsDemisters.Value : 3;
-            if (state.Biome != Heightmap.Biome.Mistlands || count <= 0 || ZNetScene.instance == null)
+            if (state.Biome != Heightmap.Biome.Mistlands || ZNetScene.instance == null)
             {
                 return null;
             }
@@ -39,6 +110,25 @@ namespace Villheim.Logic.Village
             if (prefab == null)
             {
                 return null;
+            }
+
+            // The one by the hearth first, when it has been lost.
+            Vector3 byHearth = hearth.Zdo.GetVec3(KeyHearth, Vector3.zero);
+            if (byHearth != Vector3.zero && ZoneSystem.instance.IsZoneLoaded(byHearth) && !Standing(hearth.VillageId, byHearth))
+            {
+                if (state.Plots.Any(p => Utils.DistanceXZ(p.Position, byHearth) < p.Radius * 0.6f + 1f) &&
+                    HearthSpot(hearth, state, out Vector3 moved))
+                {
+                    byHearth = moved;
+                    hearth.Zdo.Set(KeyHearth, moved);
+                }
+
+                Vector3 facing = (hearth.transform.position - byHearth).Horizontal();
+                return new Amenities.Job
+                {
+                    Prefab = Prefab, Name = JobName, Spot = byHearth, Cost = Cost(),
+                    Rotation = facing.sqrMagnitude > 0.01f ? Quaternion.LookRotation(facing.normalized) : Quaternion.identity,
+                };
             }
 
             for (int i = 0; i < count; i++)

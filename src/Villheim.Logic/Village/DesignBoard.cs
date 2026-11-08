@@ -268,10 +268,10 @@ namespace Villheim.Logic.Village
                 }
 
                 // Standing just outside the plot's front edge, in the middle, facing into it: the same view of every plot.
-                Vector3 forward = -(Quaternion.Euler(0f, plot.Yaw, 0f) * Vector3.forward);
-                Vector3 spot = plot.Center - forward * (plot.Half + 3f);
+                Vector3 facing = -(Quaternion.Euler(0f, plot.Yaw, 0f) * Vector3.forward);
+                Vector3 spot = plot.Center - facing * (plot.Half + 3f);
                 spot.y = Ground(spot, plot.Center.y) + 0.2f;
-                player.TeleportTo(spot, Quaternion.LookRotation(forward), false);
+                player.TeleportTo(spot, Quaternion.LookRotation(facing), false);
                 return $"Board: in front of {StageName(plot.Name)}, facing it. Do the same for another plot to see both from the same spot.";
             }
 
@@ -1399,40 +1399,13 @@ namespace Villheim.Logic.Village
         /// </summary>
         private static string PaintAt(Vector3 world)
         {
-            try
+            if (!PaintCell(world, false, out TerrainComp ground, out int index) || !ground.m_modifiedPaint[index])
             {
-                Heightmap map = Heightmap.FindHeightmap(world);
-                TerrainComp ground = map != null ? TerrainComp.FindTerrainCompiler(world) : null;
-                if (ground == null || ground.m_paintMask == null || ground.m_modifiedPaint == null)
-                {
-                    return "";
-                }
-
-                int size = ground.m_width + 1;
-                ground.m_hmap.WorldToVertexMask(world, out int x, out int y);
-                if (x < 0 || y < 0 || x >= size || y >= size)
-                {
-                    return "";
-                }
-
-                int index = y * size + x;
-                if (!ground.m_modifiedPaint[index])
-                {
-                    return "";
-                }
-
-                Color mask = ground.m_paintMask[index];
-                return mask.b > 0.5f ? "Paved" : mask.g > 0.5f ? "Cultivate" : mask.r > 0.5f ? "Dirt" : "";
-            }
-            catch (System.Exception e)
-            {
-                if (_paintChecks++ < 3)
-                {
-                    VillheimPlugin.Log.LogWarning($"Board: could not read the ground's paint: {e.GetType().Name}: {e.Message}");
-                }
-
                 return "";
             }
+
+            Color mask = ground.m_paintMask[index];
+            return mask.b > 0.5f ? "Paved" : mask.g > 0.5f ? "Cultivate" : mask.r > 0.5f ? "Dirt" : "";
         }
 
         /// <summary>The terrain lines of a saved file (its "#Terrain" section).</summary>
@@ -1493,6 +1466,37 @@ namespace Villheim.Logic.Village
 
         /// <summary>The section of a save with its ground point for point: "x;z;dy;r;g;b" per ground point, plot coordinates.</summary>
         internal const string GroundHeader = "#VillheimGround";
+
+        /// <summary>
+        /// The paint cell under a spot, found with the game's own lookup (Heightmap.WorldToVertexMask) and the paint
+        /// grid's real width (from the length of the ground's paint data), never assumed: the first exact writer took
+        /// the paint grid for the height grid (65 points a side), so every copy came out shifted left and back by an
+        /// amount that depended on where the plot sat (2026-11-07). Each plot square is looked up at a point a quarter
+        /// metre into it, never on a cell's edge, so one square is one cell on any board.
+        /// </summary>
+        private static bool PaintCell(Vector3 world, bool create, out TerrainComp ground, out int index)
+        {
+            index = -1;
+            Heightmap map = Heightmap.FindHeightmap(world);
+            ground = map == null ? null : create ? map.GetAndCreateTerrainCompiler() : TerrainComp.FindTerrainCompiler(world);
+            if (ground == null || ground.m_hmap != map || ground.m_paintMask == null)
+            {
+                return false;
+            }
+
+            int width = Mathf.RoundToInt(Mathf.Sqrt(ground.m_paintMask.Length));
+            map.WorldToVertexMask(world, out int x, out int y);
+            if (x < 0 || y < 0 || x >= width || y >= width)
+            {
+                return false;
+            }
+
+            index = y * width + x;
+            return index < ground.m_paintMask.Length;
+        }
+
+        /// <summary>The spot a plot square's paint is looked up at: a quarter metre into the square.</summary>
+        private static Vector3 CellSpot(Vector3 center, Quaternion turn, int x, int z) => center + turn * new Vector3(x + 0.25f, 0f, z + 0.25f);
 
         /// <summary>Every heightmap (64 m ground area) round a plot.</summary>
         private static List<Heightmap> MapsAround(Vector3 center, float half)
@@ -1573,8 +1577,16 @@ namespace Villheim.Logic.Village
                     }
 
                     int index = y * size + x;
-                    Color paint = ground != null && ground.m_hmap == map && ground.m_modifiedPaint[index] ? ground.m_paintMask[index] : Heightmap.m_paintMaskNothing;
-                    points[key] = (map.m_heights[index] - plot.Center.y, paint);
+                    points[key] = (map.m_heights[index] - plot.Center.y, Heightmap.m_paintMaskNothing);
+                }
+            }
+
+            Quaternion turn = Quaternion.Euler(0f, plot.Yaw, 0f);
+            foreach ((int, int) key in points.Keys.ToList())
+            {
+                if (PaintCell(CellSpot(plot.Center, turn, key.Item1, key.Item2), false, out TerrainComp cell, out int at) && cell.m_modifiedPaint[at])
+                {
+                    points[key] = (points[key].Rise, cell.m_paintMask[at]);
                 }
             }
 
@@ -1615,8 +1627,16 @@ namespace Villheim.Logic.Village
                     }
 
                     int index = y * size + x;
-                    Color paint = ground.m_modifiedPaint[index] ? ground.m_paintMask[index] : Heightmap.m_paintMaskNothing;
-                    points[key] = (map.m_heights[index] - center.y, paint);
+                    points[key] = (map.m_heights[index] - center.y, Heightmap.m_paintMaskNothing);
+                }
+            }
+
+            Quaternion turnSample = Quaternion.Euler(0f, yaw, 0f);
+            foreach ((int, int) key in points.Keys.ToList())
+            {
+                if (PaintCell(CellSpot(center, turnSample, key.Item1, key.Item2), false, out TerrainComp cell, out int at) && cell.m_modifiedPaint[at])
+                {
+                    points[key] = (points[key].Rise, cell.m_paintMask[at]);
                 }
             }
 
@@ -1666,6 +1686,7 @@ namespace Villheim.Logic.Village
 
             Quaternion frame = Quaternion.Inverse(Quaternion.Euler(0f, yaw, 0f));
             int set = 0;
+            var touched = new HashSet<TerrainComp>();
             foreach (Heightmap map in MapsAround(center, half))
             {
                 TerrainComp ground = map.GetAndCreateTerrainCompiler();
@@ -1686,7 +1707,7 @@ namespace Villheim.Logic.Village
                     }
 
                     int index = y * size + x;
-                    (float rise, Color paint) = wanted.TryGetValue((Mathf.RoundToInt(local.x), Mathf.RoundToInt(local.z)), out var w)
+                    (float rise, Color _) = wanted.TryGetValue((Mathf.RoundToInt(local.x), Mathf.RoundToInt(local.z)), out var w)
                         ? w : (0f, Heightmap.m_paintMaskNothing);
 
                     // The ground's own height, under every change made to it so far; the change is then set to reach the
@@ -1695,22 +1716,42 @@ namespace Villheim.Logic.Village
                     ground.m_levelDelta[index] = center.y + rise - bare;
                     ground.m_smoothDelta[index] = 0f;
                     ground.m_modifiedHeight[index] = Mathf.Abs(ground.m_levelDelta[index]) > 0.0001f;
-                    paint.a = ground.m_paintMask[index].a;
-                    ground.m_paintMask[index] = paint;
-                    ground.m_modifiedPaint[index] = true;
                     changed = true;
                     set++;
                 }
 
                 if (changed)
                 {
-                    ground.GetComponent<ZNetView>()?.ClaimOwnership();
-                    ground.m_operations++;
-                    ground.m_lastOpPoint = Vector3.zero;
-                    ground.m_lastOpRadius = 0f;
-                    ground.Save();
-                    ground.m_hmap.Poke(0, false);
+                    touched.Add(ground);
                 }
+            }
+
+            // The paint, square by square, through the game's own lookup (see PaintCell).
+            Quaternion turnWrite = Quaternion.Euler(0f, yaw, 0f);
+            int reach = Mathf.FloorToInt(half);
+            for (int x = -reach; x <= reach; x++)
+            for (int z = -reach; z <= reach; z++)
+            {
+                if (!PaintCell(CellSpot(center, turnWrite, x, z), true, out TerrainComp cell, out int at))
+                {
+                    continue;
+                }
+
+                Color paint = wanted.TryGetValue((x, z), out var p) ? p.Paint : Heightmap.m_paintMaskNothing;
+                paint.a = cell.m_paintMask[at].a;
+                cell.m_paintMask[at] = paint;
+                cell.m_modifiedPaint[at] = true;
+                touched.Add(cell);
+            }
+
+            foreach (TerrainComp ground in touched)
+            {
+                ground.GetComponent<ZNetView>()?.ClaimOwnership();
+                ground.m_operations++;
+                ground.m_lastOpPoint = Vector3.zero;
+                ground.m_lastOpRadius = 0f;
+                ground.Save();
+                ground.m_hmap.Poke(0, false);
             }
 
             ClutterSystem.instance?.ResetGrass(center, half * 1.5f + 2f);

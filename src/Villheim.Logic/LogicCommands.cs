@@ -187,6 +187,7 @@ namespace Villheim.Logic
                 case "villheim_slot": Say(context, DesignBoard.Run(args)); return true;
                 case "villheim_gravity": Say(context, Gallery.ToggleGravity(args)); return true;
                 case "villheim_drops": Say(context, NoDrops.Toggle(args)); return true;
+                case "villheim_nosnow": Say(context, NoSnow.Run(args)); return true;
                 default: return false;
             }
         }

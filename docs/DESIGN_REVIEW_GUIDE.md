@@ -414,5 +414,6 @@ opens the profile's folder; the files below are in its `BepInEx` folder (on Wind
 | `vh sort tools` | Puts the sort knives and the Shaper Tool in your inventory. |
 | `vh slot <biome> <kind>` | The slotting board (see above). |
 | `vh drops` | Nothing broken on the review ground (the flat gallery area and the slotting board) drops anything; `vh drops on` brings drops back, `vh drops off` takes them away (the default). |
+| `vh nosnow [metres]` | Takes the snow off every building piece within 30 m (or the distance given). The game keeps snow on each piece in its saved data; blueprint saves do not carry it. |
 | `vh gravity` | Turns gravity on or off (`on`/`off` to set it). On: gallery and board pieces with no support break, as built pieces do; they may drop their materials. Off (the default): nothing falls. |
 | `vh help` | Every Villheim command. |

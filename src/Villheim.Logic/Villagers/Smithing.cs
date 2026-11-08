@@ -82,6 +82,9 @@ namespace Villheim.Logic.Villagers
             return VillagerLooks.GearTier(VillageBrain.TierIndex(state.Plots.Count), state.Biome);
         }
 
+        /// <summary>The gear tier the village has made and wears (its armoury, held to its size).</summary>
+        public static int Armoury(VillageHearth hearth) => hearth == null || !hearth.IsValid ? 0 : Cap(hearth, SizeTier(hearth));
+
         /// <summary>The next tier the village wants to make, or -1 when its armoury is up to its size.</summary>
         public static int Behind(VillageHearth hearth)
         {

@@ -25,6 +25,15 @@ namespace Villheim.Logic.Village
 
         public static void Tick(VillageHearth hearth)
         {
+            // What the village's outposts send home counts as its own material while it decides what to build.
+            using (Materials.From(hearth))
+            {
+                TickOwned(hearth);
+            }
+        }
+
+        private static void TickOwned(VillageHearth hearth)
+        {
             if (!hearth.NView.IsOwner() || hearth.Busy || ZNet.instance == null || ZoneSystem.instance == null ||
                 EnvMan.instance == null)
             {

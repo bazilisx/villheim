@@ -57,6 +57,8 @@ namespace Villheim.Logic
         public static ConfigEntry<bool> SmithMakesGear;
         public static ConfigEntry<bool> Outposts;
         public static ConfigEntry<bool> Trails;
+        public static ConfigEntry<string> OutpostGear;
+        public static ConfigEntry<bool> OutpostMaterials;
         public static ConfigEntry<float> VisitorChancePerDay;
         public static ConfigEntry<float> DaysBetweenVisitors;
         public static ConfigEntry<int> HermitChance;
@@ -113,6 +115,12 @@ namespace Villheim.Logic
                 "With WorldLife on, a village of four buildings and four villagers founds a logging camp in the nearest " +
                 "other biome (Black Forest core wood for a Meadows village, Meadows fine wood for a Black Forest one) " +
                 "that sends wood home every day.");
+            OutpostGear = Admin(config, life, "OutpostGear", Village.Outposts.DefaultGear,
+                "Gear tier a village must have made before its people go out to a camp in that biome (0 rags, 1 leather, " +
+                "2 flint and leather, 3 troll leather, 4 bronze). Biome: tier, separated by semicolons.");
+            OutpostMaterials = Admin(config, life, "OutpostMaterials", true,
+                "What an outpost sends home counts toward what the village can build: a Meadows village with a logging " +
+                "camp in the Black Forest builds designs that need core wood.");
             Trails = Admin(config, life, "Trails", true,
                 "With WorldLife on, villages plan a dirt trail to their outpost and to their nearest neighbour within " +
                 "2,500 m, painted on the ground near you as you walk it.");

@@ -20,9 +20,12 @@ namespace Villheim.Logic.Village
     /// - Every in-game day the camp sends home 10 of its wood (catching up at most three days after the village sat
     ///   unloaded) into the village stock, which goes into the village chest.
     ///
-    /// What the hauls are used for: today the wood waits in the chest (and pedlars and players can buy it). Letting a
-    /// village with an outpost build designs that need its outpost's wood is a change to the biome rule, left for Tyler
-    /// to decide. Not yet: a road to the camp, campers walking the haul home, more kinds of camp (ore, fishing).
+    /// - Nobody goes out before they can look after themselves (Tyler, 2026-11-08): the village must have made the gear
+    ///   tier OutpostGear asks for that biome (Black Forest: flint and leather, tier 2) before the camp is founded,
+    ///   the way a player should not walk into the Black Forest in rags. Until then the village waits, and says so in
+    ///   its chronicle every few days.
+    /// - What the camp sends counts toward what the village can build (OutpostMaterials, on by default): a Meadows
+    ///   village with a logging camp in the Black Forest builds designs that need core wood (Materials.From).
     /// </summary>
     internal static class Outposts
     {
@@ -107,6 +110,68 @@ namespace Villheim.Logic.Village
         }
 
         private static readonly int KeyTried = "villheim_outposttried".GetStableHashCode();
+        private static readonly int KeyGearNoted = "villheim_outpostgearnoted".GetStableHashCode();
+
+        public const string DefaultGear = "Meadows: 0; BlackForest: 2; Swamp: 4; Mountain: 4; Plains: 4; Ocean: 1";
+
+        /// <summary>The gear tier a village must have made before its people go to a camp in <paramref name="biome"/>.</summary>
+        public static int GearFor(Heightmap.Biome biome)
+        {
+            foreach (string part in (LogicConfig.OutpostGear?.Value ?? DefaultGear).Split(';'))
+            {
+                int colon = part.IndexOf(':');
+                if (colon > 0 && System.Enum.TryParse(part.Substring(0, colon).Trim(), true, out Heightmap.Biome b) && b == biome &&
+                    int.TryParse(part.Substring(colon + 1).Trim(), out int tier))
+                {
+                    return tier;
+                }
+            }
+
+            return biome == Heightmap.Biome.Meadows ? 0 : 4;
+        }
+
+        /// <summary>The village wears at least the gear GearFor asks for in <paramref name="biome"/>.</summary>
+        public static bool Equipped(VillageHearth hearth, Heightmap.Biome biome, out int need, out int have)
+        {
+            need = GearFor(biome);
+            have = Smithing.Armoury(hearth);
+            return have >= need;
+        }
+
+        public static string BiomeName(Heightmap.Biome biome)
+        {
+            switch (biome)
+            {
+                case Heightmap.Biome.BlackForest: return "Black Forest";
+                case Heightmap.Biome.Meadows: return "meadows";
+                case Heightmap.Biome.Mountain: return "mountains";
+                case Heightmap.Biome.Swamp: return "swamp";
+                case Heightmap.Biome.Plains: return "plains";
+                case Heightmap.Biome.Ocean: return "coast";
+                default: return biome.ToString();
+            }
+        }
+
+        /// <summary>
+        /// The materials this village's outposts send home, which count as its own for building (OutpostMaterials).
+        /// Empty with WorldLife or the setting off.
+        /// </summary>
+        public static HashSet<string> Gives(VillageHearth hearth)
+        {
+            var gives = new HashSet<string>();
+            if (!On || !(LogicConfig.OutpostMaterials?.Value ?? true) || hearth == null || !hearth.IsValid)
+            {
+                return gives;
+            }
+
+            Outpost outpost = Read(hearth.Zdo);
+            if (outpost != null && Materials.Tracked.Contains(outpost.Material))
+            {
+                gives.Add(outpost.Material);
+            }
+
+            return gives;
+        }
 
         private static void Found(VillageHearth hearth, VillageState state)
         {
@@ -127,6 +192,20 @@ namespace Villheim.Logic.Village
                 return;
             }
 
+            if (!Equipped(hearth, want, out int need, out int have))
+            {
+                // Said once every five days, so the chronicle does not fill with it.
+                if (hearth.Zdo.GetInt(KeyGearNoted, -100) <= Today - 5)
+                {
+                    hearth.Zdo.Set(KeyGearNoted, Today);
+                    Chronicle.Add(hearth, $"We would send two of us to the {BiomeName(want)} for {Materials.Label(material)}, but not before " +
+                                          $"we have {Smithing.TierName(need)} gear. We have {Smithing.TierName(have)}.");
+                    Dialogue.Note(state.Id, "outpostwait");
+                }
+
+                return;
+            }
+
             if (!FindSite(hearth.transform.position, want, out Vector3 site))
             {
                 VillheimPlugin.Log.LogInfo($"{state.Name}: no {want} within 700 m for an outpost.");
@@ -137,7 +216,7 @@ namespace Villheim.Logic.Village
             Write(hearth.Zdo, outpost);
             string where = WorldLife.Compass(site - hearth.transform.position);
             float distance = Utils.DistanceXZ(site, hearth.transform.position);
-            Chronicle.Add(hearth, $"Two of us set out to make a logging camp in the {(want == Heightmap.Biome.BlackForest ? "Black Forest" : "meadows")}, " +
+            Chronicle.Add(hearth, $"Two of us set out to make a logging camp in the {BiomeName(want)}, " +
                                   $"{distance:0} m to the {where}, for {Materials.Label(material)}.");
             Dialogue.Note(state.Id, "outpost");
             if (Minimap.instance != null && Player.m_localPlayer != null &&
@@ -242,7 +321,11 @@ namespace Villheim.Logic.Village
             Outpost outpost = Read(hearth.Zdo);
             if (outpost == null)
             {
-                return "no outpost";
+                var state = new VillageState(hearth.Zdo);
+                Heightmap.Biome want = state.Biome == Heightmap.Biome.BlackForest ? Heightmap.Biome.Meadows : Heightmap.Biome.BlackForest;
+                bool ready = Equipped(hearth, want, out int need, out int have);
+                return $"no outpost ({BiomeName(want)} camp needs {Smithing.TierName(need)} gear, has {Smithing.TierName(have)}" +
+                       (ready ? ", ready" : "") + ")";
             }
 
             float distance = Utils.DistanceXZ(outpost.Position, hearth.transform.position);

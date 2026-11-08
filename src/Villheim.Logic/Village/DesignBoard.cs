@@ -988,12 +988,15 @@ namespace Villheim.Logic.Village
         /// </summary>
         private static List<string> SampleTerrain(Vector3 center, float yaw, float half)
         {
-            var squares = new List<(int X, int Z, float Rise, string Paint)>();
+            // Every half metre: the plot's squares sit at an angle to the ground's own 1 m grid, so one sample a metre
+            // missed some of its points and painted others twice (patchy copies, 2026-11-07).
+            var squares = new List<(float X, float Z, float Rise, string Paint)>();
             Quaternion turn = Quaternion.Euler(0f, yaw, 0f);
-            int reach = Mathf.FloorToInt(half);
-            for (int x = -reach; x <= reach; x++)
-            for (int z = -reach; z <= reach; z++)
+            int reach = Mathf.FloorToInt(half * 2f);
+            for (int i = -reach; i <= reach; i++)
+            for (int j = -reach; j <= reach; j++)
             {
+                float x = i * 0.5f, z = j * 0.5f;
                 Vector3 world = center + turn * new Vector3(x, 0f, z);
                 if (ZoneSystem.instance != null && ZoneSystem.instance.GetGroundHeight(world, out float ground))
                 {
@@ -1010,11 +1013,11 @@ namespace Villheim.Logic.Village
             List<float> rises = squares.Select(q => q.Rise).OrderBy(r => r).ToList();
             float floor = rises[rises.Count / 2];
             CultureInfo inv = CultureInfo.InvariantCulture;
-            foreach ((int x, int z, float rise, string paint) in squares)
+            foreach ((float x, float z, float rise, string paint) in squares)
             {
                 if (paint.Length > 0 || Mathf.Abs(rise - floor) > 0.3f)
                 {
-                    lines.Add(string.Join(";", "square", x.ToString(inv), rise.ToString("0.###", inv), z.ToString(inv), "0.5", "0", "0", paint));
+                    lines.Add(string.Join(";", "square", x.ToString("0.#", inv), rise.ToString("0.###", inv), z.ToString("0.#", inv), "0.35", "0", "0", paint));
                 }
             }
 
@@ -1083,6 +1086,11 @@ namespace Villheim.Logic.Village
         /// height and paint, written straight into the ground's data, as PlanBuild does (TerrainTools, WTFPL). The game's
         /// own terrain operation (TerrainComp.ApplyOperation) ran without error but changed nothing (2026-11-07).
         /// </summary>
+        private static readonly Vector3[] Spread =
+        {
+            Vector3.zero, new Vector3(0.35f, 0f, 0f), new Vector3(-0.35f, 0f, 0f), new Vector3(0f, 0f, 0.35f), new Vector3(0f, 0f, -0.35f),
+        };
+
         private static IEnumerator ApplyTerrain(List<string> lines, Vector3 center, float yaw)
         {
             Quaternion turn = Quaternion.Euler(0f, yaw, 0f);
@@ -1099,43 +1107,53 @@ namespace Villheim.Logic.Village
                     continue;
                 }
 
-                Vector3 world = center + turn * new Vector3(x, y, z);
+                Vector3 middle = center + turn * new Vector3(x, y, z);
                 try
                 {
-                    Heightmap map = Heightmap.FindHeightmap(world);
-                    TerrainComp ground = map != null ? map.GetAndCreateTerrainCompiler() : null;
-                    if (ground == null)
+                    // The sample and four spots 35 cm round it, so neighbouring samples overlap and leave no gaps.
+                    foreach (Vector3 offset in Spread)
                     {
-                        continue;
-                    }
+                        Vector3 world = middle + offset;
+                        Heightmap map = Heightmap.FindHeightmap(world);
+                        TerrainComp ground = map != null ? map.GetAndCreateTerrainCompiler() : null;
+                        if (ground == null)
+                        {
+                            continue;
+                        }
 
-                    int size = ground.m_width + 1;
-                    ground.m_hmap.WorldToVertex(world, out int hx, out int hy);
-                    if (hx >= 0 && hy >= 0 && hx < size && hy < size)
-                    {
-                        int index = hy * size + hx;
-                        ground.m_levelDelta[index] += world.y - ground.m_hmap.m_heights[index];
-                        ground.m_smoothDelta[index] = 0f;
-                        ground.m_modifiedHeight[index] = ground.m_levelDelta[index] != 0f;
+                        int size = ground.m_width + 1;
+                        ground.m_hmap.WorldToVertex(world, out int hx, out int hy);
+                        if (hx >= 0 && hy >= 0 && hx < size && hy < size)
+                        {
+                            int index = hy * size + hx;
+                            ground.m_levelDelta[index] += world.y - ground.m_hmap.m_heights[index];
+                            ground.m_smoothDelta[index] = 0f;
+                            ground.m_modifiedHeight[index] = ground.m_levelDelta[index] != 0f;
+                        }
+
+                        if (f[7].Length > 0)
+                        {
+                            ground.m_hmap.WorldToVertexMask(world, out int px, out int py);
+                            if (px >= 0 && py >= 0 && px < size && py < size)
+                            {
+                                int index = py * size + px;
+                                Color colour = f[7] == "Paved" ? Heightmap.m_paintMaskPaved
+                                    : f[7] == "Cultivate" ? Heightmap.m_paintMaskCultivated
+                                    : Heightmap.m_paintMaskDirt;
+                                colour.a = ground.m_paintMask[index].a;
+                                ground.m_paintMask[index] = colour;
+                                ground.m_modifiedPaint[index] = true;
+                            }
+                        }
+
+                        touched.Add(ground);
                     }
 
                     if (f[7].Length > 0)
                     {
-                        ground.m_hmap.WorldToVertexMask(world, out int px, out int py);
-                        if (px >= 0 && py >= 0 && px < size && py < size)
-                        {
-                            int index = py * size + px;
-                            Color colour = f[7] == "Paved" ? Heightmap.m_paintMaskPaved
-                                : f[7] == "Cultivate" ? Heightmap.m_paintMaskCultivated
-                                : Heightmap.m_paintMaskDirt;
-                            colour.a = ground.m_paintMask[index].a;
-                            ground.m_paintMask[index] = colour;
-                            ground.m_modifiedPaint[index] = true;
-                            painted++;
-                        }
+                        painted++;
                     }
 
-                    touched.Add(ground);
                     done++;
                 }
                 catch (System.Exception e)

@@ -3,7 +3,7 @@
 Current facts only. Read this at the start of a session. Narrative is in `docs/daily-notes/`, goals in
 `docs/ROADMAP.md`, how-to in `docs/DEVELOPMENT.md`.
 
-## Current State (as of 2026-11-07)
+## Current State (as of 2026-11-08)
 
 - **Design review (the current work):** how-to for Tyler in `docs/DESIGN_REVIEW_GUIDE.md`. Review sheet
   https://docs.google.com/spreadsheets/d/1rHaZArWhEa8V43UTZePM9EQSBwS6bvjsmAFPhnlQs6o/edit (tabs Pass 2, Review,
@@ -26,6 +26,16 @@ Current facts only. Read this at the start of a session. Narrative is in `docs/d
   - Design numbers come from `BepInEx/Villheim/design-list.csv` (`vh report`) and never change.
   - Licensing to settle before shipping blueprints: valheimians builds and copied MWL locations belong to their
     creators; ship only Tyler's own or with permission.
+- **Blueprint lab (2026-11-08 night, not tested in game):** `tools/blueprint-lab`, `docs/BLUEPRINT_LAB.md`. Learns from
+  1,427 designs; generates by type, biome, style, plan, roof, walls, s1 to s3 and d1 to d3; strips or furnishes any
+  blueprint; checks and draws designs without the game. Page "Villheim Blueprint Lab"
+  (https://claude.ai/artifact/W83rbAvBBLXWeXdLmap3Gf; offline copy in `BepInEx/config/Villheim-tools`). 273 generated
+  designs in `Downloads\Villheim-generated` and the sheet's Generated tab (click "Allow access" for pictures).
+  Villages never build generated designs until the CLAUDE.md wording is agreed.
+- **Villager minds and world growth (2026-11-08 night, compiles, not tested in game):** memory, gossip, skills, wants,
+  gatherings, noticing, 1,211 new lines; outpost gear gate and materials, caravans, daughter villages, events,
+  contracts, groves, signposts. Tables in `docs/WORLD_LIFE.md`. Four new Harmony patches: if logic fails to load, read
+  the BepInEx log first. Research: `docs/LIVING_WORLD_RESEARCH.md` (43 proposals).
 - **World life (2026-11-07 overnight session, logic only, not tested in game):** pedlars, pilgrims, hermits, news
   between villages, villager personalities, relations between villages, villagers watching others work, outposts
   (logging camps), trails to the outpost and the nearest neighbour. `WorldLife` (config "5 - World life") is off by
@@ -56,9 +66,10 @@ Current facts only. Read this at the start of a session. Narrative is in `docs/d
   Tyler's approved designs and other creators' builds, with controls still to be worked out. The "existing designs
   only" rule in CLAUDE.md stands until that wording is agreed.
 - **Decided (Tyler, 2026-11-08):** outpost wood counts toward what a village can build, and villagers only go out to
-  another biome once they are equipped and able to defend themselves. Not built yet.
-- **Access as of 2026-11-08:** Remote Control folders on TKERR-NZXT-BLD are listed but not offered to cloud sessions;
-  valheimians.com answers with a Cloudflare block page to plain requests and to Playwright from the cloud container.
+  another biome once they are equipped and able to defend themselves. Built 2026-11-08 night, not tested.
+- **Access as of 2026-11-08 night:** the desktop app's folder bridge reaches the Valheim, r2modman and Downloads
+  folders on TKERR-NZXT-BLD; valheimians.com works through Tyler's Chrome (downloads need no account, the site
+  rate-limits bursts) and stays blocked from the cloud.
   Branch `corpus` exists (README only, never merged).
 - **Blueprints:** `BepInEx/config/Villheim/blueprints` (and PlanBuild's folder), named `role-family-level`.
 - **Dialogue:** `src/Villheim.Logic/Dialogue/*.txt`; the format is at the top of `lines.txt`.
@@ -86,6 +97,7 @@ Current facts only. Read this at the start of a session. Narrative is in `docs/d
 
 ## Recent milestones
 
+- **2026-11-08 (blueprint lab, villager minds, world growth; helper branches merged)** - see docs/daily-notes/2026-11/2026-11-08.md
 - **2026-11-08 (BiomeBlueprints blacklisted; access checks; decisions on generated designs and outposts)** - see docs/daily-notes/2026-11/2026-11-08.md
 - **2026-11-07 (world life: visitors, hermits, news, personalities, relations, watching, smith, outposts, trails; research survey)** - see docs/daily-notes/2026-11/2026-11-07.md
 - **2026-11-07 (board plots stay standing on save, lost plot signs restored, roads relaid on rebuild, vh shaper/repair/weather)** - see docs/daily-notes/2026-11/2026-11-07.md

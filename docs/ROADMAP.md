@@ -190,7 +190,11 @@ with its own look for its biome.
       help (Tyler, 2026-11-06, a "Turing test lite"). (Built 2026-11-06, needs testing.)
 - [ ] Newcomers only arrive for an empty bed, as in Millénaire (Tyler, 2026-11-06). (Built 2026-11-06, needs testing.)
 - [ ] Dialogue about what villagers are doing, want and need, with conditions; grow into a large library of lines
-      (Tyler, 2026-11-05). (Library of about 670 lines in eight voices with chats built 2026-11-06; keep growing it.)
+      (Tyler, 2026-11-05). (Library of about 670 lines in eight voices with chats built 2026-11-06; about 3,000 lines
+      after 2026-11-08 night; keep growing it.)
+- [ ] Villager minds (built 2026-11-08 night, needs testing; `docs/WORLD_LIFE.md`): memory of each player and gossip
+      about them, place, weather and player tags, per-player topic fatigue, skills, wants and sweethearts, gatherings
+      and feasts, noticing, idle glances, chats of three.
 - [ ] Interiors upgrade over time (bed, chests, table, then better furniture). (Built 2026-11-06 by village tier,
       needs testing.)
 - [ ] Exteriors upgrade over time (swap a building for a better design of the same role). (Built 2026-11-06: next
@@ -204,7 +208,13 @@ with its own look for its biome.
       BiomeBlueprints pack is blacklisted (Tyler, 2026-11-08). Capture with `vh savebp` or PlanBuild, or use downloads
       with the author's permission.
 - [ ] Generated designs learned from Tyler's approved set and other creators' builds, with quality controls; renders
-      of any blueprint from several angles; a request-to-blueprint tool (Tyler, 2026-11-08; not started).
+      of any blueprint from several angles; a request-to-blueprint tool (Tyler, 2026-11-08). (Built 2026-11-08 night:
+      `tools/blueprint-lab`, `docs/BLUEPRINT_LAB.md`, the "Villheim Blueprint Lab" page, 273 designs in the Generated
+      tab. Not yet placed in game. Villages do not build them until the CLAUDE.md wording is agreed.)
+- [ ] Review the Generated tab; Yes and No feed the scorer (`lab/train_scorer.py`).
+- [ ] Decorator takes over Phase D: strip any design to d1 and furnish to d2 and d3 (`lib/decorate.js`, built
+      2026-11-08 night; try it on the board's d3 saves).
+- [ ] Exact piece shapes for the lab's pictures from an in-game export of each piece's collider.
 - [ ] More biomes (Plains, Mountain, Swamp) with their own materials.
 - [ ] Gear by biome and village level: basic Meadows tools for everyone, biome weapons and shields for protectors,
       better materials and Black Forest gear as the village levels up (Tyler, 2026-11-05). (Since 2026-11-07 each tier
@@ -248,20 +258,29 @@ Villages that reach out past their fence, and a world with other people in it. D
       2026-11-07, needs testing; `vh villager`).
 - [ ] Relations between villages that drift day by day (built 2026-11-07, needs testing; `vh village`).
 - [ ] Idle villagers watch others work and comment (built 2026-11-07, needs testing).
-- [ ] Caravans as records that move on the world clock and become real only near a player.
+- [ ] Caravans as records that move on the world clock and become real only near a player. (Built 2026-11-08 night,
+      `Caravans.cs`, needs testing.)
 - [ ] Outpost wood counts for the biome rule; villagers go out only once equipped to defend themselves (Tyler,
-      2026-11-08; not built).
+      2026-11-08). (Built 2026-11-08 night: `OutpostMaterials`, `OutpostGear`; needs testing.)
+- [ ] Daughter villages founded 600 to 1,200 m away by a full village (built 2026-11-08 night, `Daughters.cs`, needs
+      testing).
+- [ ] Groves: a grown village with few trees around it plants more (built 2026-11-08 night, needs testing).
+- [ ] Signposts where trails leave a village and halfway along long trails (built 2026-11-08 night, needs testing).
 - [ ] Outposts at far resources (core wood, ore, the coast), joined to the village by a path. (Logging camps and trails
       built 2026-11-07, needs testing; `vh outpost`, `vh trails`.)
 - [ ] Roads between villages. (Dirt trails to the nearest neighbour built 2026-11-07, needs testing.)
 - [ ] Desire paths worn by villagers' feet.
 - [ ] A smith who crafts gear from the chest at a real station; villagers take gear from the chest. (Sets per tier
       built 2026-11-07, needs testing; gear in the chest and a village forge to come.)
-- [ ] Requests and contracts on the notice board; bounties.
-- [ ] A village events director (feasts, quarrels, a lost villager, a skald).
+- [ ] Requests and contracts on the notice board; bounties. (Contracts built 2026-11-08 night, `Contracts.cs`, needs
+      testing; bounties to come.)
+- [ ] A village events director (feasts, quarrels, a lost villager, a skald). (Built 2026-11-08 night,
+      `VillageEvents.cs`, eight kinds, needs testing.)
 - [ ] Raids and help between villages by relation.
-- [ ] Skills that grow with practice.
-- [ ] Wanderers at the longhouse who can be asked to stay.
+- [ ] Skills that grow with practice. (Built 2026-11-08 night, `VillagerSkills.cs`, needs testing.)
+- [ ] Wanderers at the longhouse who can be asked to stay. (Newcomer backstories built 2026-11-08 night; the seeker
+      who asks a price to stay is still to do.)
+- [ ] Proposals from `docs/LIVING_WORLD_RESEARCH.md` (43, ranked): pick the next ones with Tyler.
 
 ## Later ideas
 

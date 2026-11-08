@@ -15,6 +15,9 @@
 #
 # Another profile: set $env:VILLHEIM_PROFILE = "Profile Name" in the window before pasting the line.
 
+$updaterVersion = 4
+$updaterUrl = "https://raw.githubusercontent.com/bazilisx/villheim/main/scripts/Villheim-Updater.ps1"
+
 $ErrorActionPreference = "Stop"
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 
@@ -62,6 +65,16 @@ Say "Watching for new Villheim builds for profile '$profileName'. Leave this win
 if ($installed) { Say "Installed now: commit $installed" }
 
 while ($true) {
+    # A newer copy of this script on main replaces this one in the same window.
+    try {
+        $script = Invoke-RestMethod -Uri ("{0}?t={1}" -f $updaterUrl, [DateTime]::UtcNow.Ticks) -UseBasicParsing
+        if ($script -match '\$updaterVersion = (\d+)' -and [int]$Matches[1] -gt $updaterVersion) {
+            Say ("The updater itself changed (version {0}). Restarting it." -f $Matches[1]) Cyan
+            Invoke-Expression $script
+            return
+        }
+    } catch { }
+
     try {
         $latest = (Get-Content (Fetch "version.txt") -Raw).Trim()
         if ($latest -and $latest -ne $installed) {

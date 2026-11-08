@@ -20,6 +20,8 @@ This is non-negotiable and has no exceptions.
 
 ## Writing rules for everything written on Tyler's behalf
 
+American spelling everywhere: commands, dialogue, config keys, docs (rumor, color, gray, center).
+
 Applies to commits, docs, README, in-game strings and any other text. Reference:
 https://en.wikipedia.org/wiki/Wikipedia:Signs_of_AI_writing
 
@@ -56,6 +58,8 @@ https://en.wikipedia.org/wiki/Wikipedia:Signs_of_AI_writing
   fresh trees and rocks. Loose sticks and stones (one material each) only when there is nothing bigger to work, and
   only close by. Nobody harvests when the village needs nothing.
 - **Building order.** Ground up, every piece supported when placed; doors and windows before what rests on them.
+  Villages never build anything instantly: every building and amenity (notice boards, fences, chests included) goes up
+  piece by piece from materials in the village (Tyler, 2026-11-08). Only `vh` test commands place whole designs at once.
 - **Village chest.** One main chest by the hearth holds the building materials. Villagers and players fill it, the
   builder builds from it when it has enough. If it is destroyed, rebuilding it comes before anything else. Extra
   storage chests come with growth (one at s1d1, two at s1d2, four at s1d3, more with population and need), each

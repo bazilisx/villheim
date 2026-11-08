@@ -27,7 +27,8 @@ namespace Villheim.Logic.Village
 
         private static readonly Vector2Int[] Steps = { new Vector2Int(1, 0), new Vector2Int(-1, 0), new Vector2Int(0, 1), new Vector2Int(0, -1) };
 
-        // Roads also step on the diagonals, so a road at an angle to the grid runs straight instead of in stairs (T-12).
+        // Roads also step on the diagonals, so the search itself doesn't make stairs; Shape then bends the result into
+        // gentle curves (T-12).
         private static readonly Vector2Int[] Steps8 =
         {
             new Vector2Int(1, 0), new Vector2Int(-1, 0), new Vector2Int(0, 1), new Vector2Int(0, -1),
@@ -411,9 +412,9 @@ namespace Villheim.Logic.Village
 
         /// <summary>
         /// The A* search. For a road (<paramref name="road"/>) it also steps diagonally, keeps off big things it cannot
-        /// clear (big rocks, ore veins, trees too hard for the village's axes, see BigObstacle), and pulls the result
-        /// straight (Straighten): trees, stumps and small rocks on the way are cleared by the villagers (Chores), so the
-        /// road runs through where they stood instead of round them (Tyler, T-12).
+        /// clear (big rocks, ore veins, trees too hard for the village's axes, see BigObstacle), and gives the result an
+        /// easy, natural line (Shape): trees, stumps and small rocks on the way are cleared by the villagers (Chores), so
+        /// the road runs through where they stood instead of zigzagging round them (Tyler, T-12).
         /// </summary>
         private static List<Vector3> Search(Vector3 hearth, Vector3 start, Vector3 building, float buildingRadius,
             IReadOnlyList<Plot> plots, HashSet<Vector2Int> network, float maxStep = float.MaxValue, Vector3? target = null,
@@ -439,7 +440,7 @@ namespace Villheim.Logic.Village
                 if (arrived)
                 {
                     List<Vector3> traced = Trace(came, current, heights);
-                    return road ? Straighten(traced, Off, maxStep) : traced;
+                    return road ? Shape(traced, Off, maxStep) : traced;
                 }
 
                 if (!Height(current, heights, out float here))
@@ -576,9 +577,9 @@ namespace Villheim.Logic.Village
                 }
 
                 Bounds box = bounds.Value;
-                for (int x = Mathf.FloorToInt(box.min.x - 0.7f); x <= Mathf.CeilToInt(box.max.x + 0.7f); x++)
+                for (int x = Mathf.FloorToInt(box.min.x - 1.5f); x <= Mathf.CeilToInt(box.max.x + 1.5f); x++)
                 {
-                    for (int z = Mathf.FloorToInt(box.min.z - 0.7f); z <= Mathf.CeilToInt(box.max.z + 0.7f); z++)
+                    for (int z = Mathf.FloorToInt(box.min.z - 1.5f); z <= Mathf.CeilToInt(box.max.z + 1.5f); z++)
                     {
                         cells.Add(new Vector2Int(x, z));
                     }
@@ -589,11 +590,16 @@ namespace Villheim.Logic.Village
         }
 
         /// <summary>
-        /// Pulls a road straight: from each point it goes as far as a straight line stays clear (no cell off limits, no
-        /// water, no step steeper than the search allowed), then on from there, and lays points a metre apart on the
-        /// ground along each straight stretch.
+        /// Gives a road an easy, natural line (Tyler, 2026-11-08: "they should bend and turn and angle naturally";
+        /// neither zigzags round every rock nor ruler-straight lines):
+        /// 1. Waypoints: from each point the road goes as far as a straight stretch stays clear (no cell off limits, no
+        ///    water, no step steeper than the search allowed), up to 10 m, so it still follows the lie of the land.
+        /// 2. Corners rounded off (Chaikin's corner cutting, twice), so every turn is a gentle bend.
+        /// 3. A slow, slight sway sideways along the way (up to 0.6 m, none near the ends), so long stretches are not
+        ///    ruler-straight.
+        /// 4. Points a metre apart on the ground. Any shaped point that would land somewhere off limits keeps the plain line.
         /// </summary>
-        private static List<Vector3> Straighten(List<Vector3> points, System.Func<Vector2Int, bool> off, float maxStep)
+        private static List<Vector3> Shape(List<Vector3> points, System.Func<Vector2Int, bool> off, float maxStep)
         {
             if (points.Count < 3)
             {
@@ -621,22 +627,72 @@ namespace Villheim.Logic.Village
                 return true;
             }
 
-            var result = new List<Vector3> { points[0] };
+            // 1. Waypoints.
+            var waypoints = new List<Vector3> { points[0] };
             int at = 0;
             while (at < points.Count - 1)
             {
-                int to = Mathf.Min(points.Count - 1, at + 40);
+                int to = Mathf.Min(points.Count - 1, at + 10);
                 while (to > at + 1 && !Clear(points[at], points[to]))
                 {
                     to--;
                 }
 
-                Vector3 a = points[at];
-                Vector3 b = points[to];
-                int pieces = Mathf.Max(1, Mathf.RoundToInt(Utils.DistanceXZ(a, b)));
-                for (int i = 1; i <= pieces; i++)
+                waypoints.Add(points[to]);
+                at = to;
+            }
+
+            // 2. Rounded corners.
+            for (int pass = 0; pass < 2 && waypoints.Count > 2; pass++)
+            {
+                var cut = new List<Vector3> { waypoints[0] };
+                for (int i = 0; i < waypoints.Count - 1; i++)
                 {
-                    Vector3 p = Vector3.Lerp(a, b, i / (float)pieces);
+                    Vector3 q = Vector3.Lerp(waypoints[i], waypoints[i + 1], 0.25f);
+                    Vector3 r = Vector3.Lerp(waypoints[i], waypoints[i + 1], 0.75f);
+                    if (i > 0)
+                    {
+                        cut.Add(off(Cell(q)) ? waypoints[i] : q);
+                    }
+
+                    if (i < waypoints.Count - 2)
+                    {
+                        cut.Add(off(Cell(r)) ? waypoints[i + 1] : r);
+                    }
+                }
+
+                cut.Add(waypoints[waypoints.Count - 1]);
+                waypoints = cut;
+            }
+
+            // 3 and 4. A metre apart on the ground, with the sway.
+            float total = 0f;
+            for (int i = 1; i < waypoints.Count; i++)
+            {
+                total += Utils.DistanceXZ(waypoints[i - 1], waypoints[i]);
+            }
+
+            float seed = (points[0].x * 0.37f + points[0].z * 0.61f) % 97f;
+            var result = new List<Vector3> { points[0] };
+            float walked = 0f;
+            for (int i = 1; i < waypoints.Count; i++)
+            {
+                Vector3 a = waypoints[i - 1];
+                Vector3 b = waypoints[i];
+                float length = Utils.DistanceXZ(a, b);
+                int pieces = Mathf.Max(1, Mathf.RoundToInt(length));
+                Vector3 side = Vector3.Cross(Vector3.up, (b - a).Horizontal().normalized);
+                for (int k = 1; k <= pieces; k++)
+                {
+                    Vector3 p = Vector3.Lerp(a, b, k / (float)pieces);
+                    float d = walked + length * k / pieces;
+                    float taper = Mathf.Clamp01(Mathf.Min(d, total - d) / 4f);
+                    Vector3 swayed = p + side * ((Mathf.PerlinNoise(d * 0.07f, seed) - 0.5f) * 1.2f * taper);
+                    if (!off(Cell(swayed)))
+                    {
+                        p = swayed;
+                    }
+
                     if (ZoneSystem.instance.GetGroundHeight(p, out float y))
                     {
                         p.y = y;
@@ -645,7 +701,7 @@ namespace Villheim.Logic.Village
                     result.Add(p);
                 }
 
-                at = to;
+                walked += length;
             }
 
             return result;

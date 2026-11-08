@@ -5,9 +5,9 @@ Current facts only. Read this at the start of a session. Narrative is in `docs/d
 
 ## Current State (as of 2026-11-08)
 
-- **Test round 2 (now):** Tyler starts a new world and runs T-32 to T-63 in the review sheet's Tests tab against
-  build d961978 or later. All of round 1's results were worked through and merged; none of the fixes are tested in
-  game yet. Dialogue rewrite on hold until Tyler passes a sample (see the 2026-11-08 note, Session 9).
+- **Test round 3 (now):** Tyler runs T-64 to T-82 in the review sheet's Tests tab against build 4f786c0 or later.
+  Rounds 1 and 2 were worked through and merged. Dialogue: the original lines get rewritten in place once Tyler
+  passes a sample (D-055; 2026-11-08 note, Sessions 9 and 10).
 - **Design review (the current work):** how-to for Tyler in `docs/DESIGN_REVIEW_GUIDE.md`. Review sheet
   https://docs.google.com/spreadsheets/d/1rHaZArWhEa8V43UTZePM9EQSBwS6bvjsmAFPhnlQs6o/edit (tabs Pass 2, Review,
   All data, Variants, Mods; sheet script `scripts/review-sheet.gs`).
@@ -113,6 +113,7 @@ Current facts only. Read this at the start of a session. Narrative is in `docs/d
 
 ## Recent milestones
 
+- **2026-11-08 (test round 2 fixes merged)** - see docs/daily-notes/2026-11/2026-11-08.md
 - **2026-11-08 (test round 1 fixes merged)** - see docs/daily-notes/2026-11/2026-11-08.md
 - **2026-11-08 (knowledge, cultures, biome defenders and Tyler's decisions merged)** - see docs/daily-notes/2026-11/2026-11-08.md
 - **2026-11-08 (culture styles in the blueprint lab)** - see docs/daily-notes/2026-11/2026-11-08.md

@@ -356,6 +356,12 @@ originals.
 
 ## Files to send to Claude
 
+Where they are: in r2modman, with the "Villheim Test" profile selected, Settings, then "Browse profile folder". That
+opens the profile's folder; the files below are in its `BepInEx` folder (on Windows usually
+`%AppData%\r2modmanPlus-local\Valheim\profiles\Villheim Test\BepInEx`). For the log there is also Settings, Debugging,
+"Copy LogOutput contents to clipboard" in r2modman. Drag a file into the chat with Claude, or paste its text.
+
+
 | File (in the profile's `BepInEx` folder) | Why |
 |---|---|
 | `Villheim/design-sort.csv` | Every sort choice (if the sheet is not connected). |

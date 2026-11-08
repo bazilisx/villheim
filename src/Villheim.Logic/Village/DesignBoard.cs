@@ -1079,71 +1079,98 @@ namespace Villheim.Logic.Village
         }
 
         /// <summary>
-        /// Puts a save's ground back round a plot's middle: each square metre levelled to its height and painted, the way
-        /// the hoe does (a terrain operation on the ground under it). A few squares a frame.
+        /// Puts a save's ground back round a plot's middle: for each square metre, the nearest ground point is set to its
+        /// height and paint, written straight into the ground's data, as PlanBuild does (TerrainTools, WTFPL). The game's
+        /// own terrain operation (TerrainComp.ApplyOperation) ran without error but changed nothing (2026-11-07).
         /// </summary>
         private static IEnumerator ApplyTerrain(List<string> lines, Vector3 center, float yaw)
         {
             Quaternion turn = Quaternion.Euler(0f, yaw, 0f);
             CultureInfo inv = CultureInfo.InvariantCulture;
-            var holder = new GameObject("VillheimTerrainOp");
-            holder.SetActive(false);
-            TerrainOp op = holder.AddComponent<TerrainOp>();
-            int done = 0;
-            try
+            var touched = new HashSet<TerrainComp>();
+            int done = 0, painted = 0;
+            string failed = null;
+            foreach (string line in lines)
             {
-                foreach (string line in lines)
+                string[] f = line.Split(';');
+                if (f.Length < 8 || !float.TryParse(f[1], NumberStyles.Float, inv, out float x) ||
+                    !float.TryParse(f[2], NumberStyles.Float, inv, out float y) || !float.TryParse(f[3], NumberStyles.Float, inv, out float z))
                 {
-                    string[] f = line.Split(';');
-                    if (f.Length < 8 || !float.TryParse(f[1], NumberStyles.Float, inv, out float x) ||
-                        !float.TryParse(f[2], NumberStyles.Float, inv, out float y) || !float.TryParse(f[3], NumberStyles.Float, inv, out float z))
+                    continue;
+                }
+
+                Vector3 world = center + turn * new Vector3(x, y, z);
+                try
+                {
+                    Heightmap map = Heightmap.FindHeightmap(world);
+                    TerrainComp ground = map != null ? map.GetAndCreateTerrainCompiler() : null;
+                    if (ground == null)
                     {
                         continue;
                     }
 
-                    Vector3 world = center + turn * new Vector3(x, y, z);
-                    try
+                    int size = ground.m_width + 1;
+                    ground.m_hmap.WorldToVertex(world, out int hx, out int hy);
+                    if (hx >= 0 && hy >= 0 && hx < size && hy < size)
                     {
-                        TerrainComp ground = TerrainComp.FindTerrainCompiler(world);
-                        if (ground == null)
+                        int index = hy * size + hx;
+                        ground.m_levelDelta[index] += world.y - ground.m_hmap.m_heights[index];
+                        ground.m_smoothDelta[index] = 0f;
+                        ground.m_modifiedHeight[index] = ground.m_levelDelta[index] != 0f;
+                    }
+
+                    if (f[7].Length > 0)
+                    {
+                        ground.m_hmap.WorldToVertexMask(world, out int px, out int py);
+                        if (px >= 0 && py >= 0 && px < size && py < size)
                         {
-                            continue;
+                            int index = py * size + px;
+                            Color colour = f[7] == "Paved" ? Heightmap.m_paintMaskPaved
+                                : f[7] == "Cultivate" ? Heightmap.m_paintMaskCultivated
+                                : Heightmap.m_paintMaskDirt;
+                            colour.a = ground.m_paintMask[index].a;
+                            ground.m_paintMask[index] = colour;
+                            ground.m_modifiedPaint[index] = true;
+                            painted++;
                         }
-
-                        op.transform.position = world;
-                        op.m_settings = new TerrainOp.Settings
-                        {
-                            // 0.75 m: the ground's grid (about 1 m) does not line up with the plot's squares, so a
-                            // 0.5 m reach could fall between its points and change nothing.
-                            m_level = true,
-                            m_levelRadius = 0.75f,
-                            m_square = true,
-                            m_paintCleared = f[7].Length > 0,
-                            m_paintRadius = 0.75f,
-                            m_paintType = f[7] == "Paved" ? TerrainModifier.PaintType.Paved
-                                : f[7] == "Cultivate" ? TerrainModifier.PaintType.Cultivate
-                                : TerrainModifier.PaintType.Dirt,
-                        };
-                        ground.ApplyOperation(op);
-                    }
-                    catch (System.Exception e)
-                    {
-                        VillheimPlugin.Log.LogWarning($"Board: could not put the ground back at {world}: {e.Message}");
-                        yield break;
                     }
 
-                    if (++done % 40 == 0)
-                    {
-                        yield return null;
-                    }
+                    touched.Add(ground);
+                    done++;
+                }
+                catch (System.Exception e)
+                {
+                    failed = $"{e.GetType().Name}: {e.Message}";
+                    break;
+                }
+
+                if (done % 200 == 0)
+                {
+                    yield return null;
                 }
             }
-            finally
+
+            foreach (TerrainComp ground in touched)
             {
-                Object.Destroy(holder);
-                int painted = lines.Count(l => !l.EndsWith(";"));
-                Say($"Board: ground put back in the copy: {done} squares ({painted} painted).");
+                try
+                {
+                    ground.GetComponent<ZNetView>()?.ClaimOwnership();
+                    ground.m_operations++;
+                    ground.m_lastOpPoint = Vector3.zero;
+                    ground.m_lastOpRadius = 0f;
+                    ground.Save();
+                    ground.m_hmap.Poke(0, false);
+                }
+                catch (System.Exception e)
+                {
+                    failed = $"{e.GetType().Name}: {e.Message}";
+                }
             }
+
+            ClutterSystem.instance?.ResetGrass(center, 40f);
+            Say(failed == null
+                ? $"Board: ground put back in the copy: {done} squares ({painted} painted)."
+                : $"Board: putting the ground back stopped after {done} squares: {failed}");
         }
 
         // ---------------------------------------------------------------- saving and resetting a plot

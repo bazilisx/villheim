@@ -69,6 +69,11 @@ namespace Villheim.Logic.Village
         /// <summary>Hearth tick: check the contract that is up, or maybe post one.</summary>
         public static void Tick(VillageHearth hearth, VillageState state)
         {
+            if (!LogicConfig.IsOn(LogicConfig.Contracts))
+            {
+                return;
+            }
+
             Container chest = VillageChest.Find(hearth);
             if (chest == null || !VillageChest.Usable(chest))
             {
@@ -240,7 +245,7 @@ namespace Villheim.Logic.Village
         /// <summary>The contract for the notice board's "Needed" sign, or null.</summary>
         public static string BoardText(VillageHearth hearth)
         {
-            Contract c = hearth != null && hearth.IsValid ? Read(hearth.Zdo) : null;
+            Contract c = hearth != null && hearth.IsValid && LogicConfig.IsOn(LogicConfig.Contracts) ? Read(hearth.Zdo) : null;
             return c != null ? $"{c.Amount} {Label(c.Item)}, pays {c.Reward} {Label(c.RewardItem)}" : null;
         }
 

@@ -780,6 +780,13 @@ namespace Villheim.Logic.Villagers
                     int next = say.IndexOf("//", System.StringComparison.Ordinal);
                     string part = next > 0 ? say.Substring(0, next).Trim() : say.Trim();
                     string rest = next > 0 ? say.Substring(next + 2).Trim() : null;
+                    if ((part.StartsWith("+") || part.StartsWith("@")) && !LogicConfig.IsOn(LogicConfig.ChatScenes))
+                    {
+                        // Chat scenes off: the exchange ends where a third villager or an answer would come in.
+                        chat.Reply = null;
+                        return;
+                    }
+
                     if (part.StartsWith("+"))
                     {
                         Dialogue.ChimeIn(villager, other, part.Substring(1).Trim());

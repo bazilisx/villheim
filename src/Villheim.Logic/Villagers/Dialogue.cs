@@ -207,8 +207,9 @@ namespace Villheim.Logic.Villagers
                 return null;
             }
 
-            List<string> extra = partner != null ? PairTags(villager, partner) : new List<string>();
-            if (told != null)
+            bool scenes = LogicConfig.IsOn(LogicConfig.ChatScenes);
+            List<string> extra = partner != null && scenes ? PairTags(villager, partner) : new List<string>();
+            if (told != null && scenes)
             {
                 extra.Add("tell:" + told);
             }
@@ -411,9 +412,16 @@ namespace Villheim.Logic.Villagers
         private static float FatigueNow(Section section) =>
             Fatigue.TryGetValue(section, out var f) ? Mathf.Max(0f, f.Count - (Time.time - f.At) / FatigueWearsOff) : 0f;
 
-        private static float FatigueFactor(Section section) => 1f / (1f + 0.8f * FatigueNow(section));
+        private static float FatigueFactor(Section section) =>
+            LogicConfig.IsOn(LogicConfig.TopicFatigue) ? 1f / (1f + 0.8f * FatigueNow(section)) : 1f;
 
-        private static void Tire(Section section) => Fatigue[section] = (FatigueNow(section) + 1f, Time.time);
+        private static void Tire(Section section)
+        {
+            if (LogicConfig.IsOn(LogicConfig.TopicFatigue))
+            {
+                Fatigue[section] = (FatigueNow(section) + 1f, Time.time);
+            }
+        }
 
         /// <summary>The sections the player is most tired of, for the inspect command.</summary>
         public static string DescribeFatigue() =>

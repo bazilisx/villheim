@@ -117,6 +117,8 @@ namespace Villheim.Logic.Villagers
         /// <summary>The player walked into the village (once a day counts as a visit). Also notes better gear.</summary>
         public static void Visited(VillageHearth hearth, Player player)
         {
+            if (!LogicConfig.IsOn(LogicConfig.PlayerMemory)) return;
+
             bool gearUp = false;
             Change(hearth, player, f =>
             {
@@ -149,6 +151,8 @@ namespace Villheim.Logic.Villagers
 
         public static void Gave(VillageHearth hearth, Player player, int amount)
         {
+            if (!LogicConfig.IsOn(LogicConfig.PlayerMemory)) return;
+
             Change(hearth, player, f =>
             {
                 Add(f, "gifts", 1);
@@ -164,12 +168,16 @@ namespace Villheim.Logic.Villagers
 
         public static void RequestDone(VillageHearth hearth, Player player)
         {
+            if (!LogicConfig.IsOn(LogicConfig.PlayerMemory)) return;
+
             Change(hearth, player, f => Add(f, "requests", 1));
             Deed(hearth, player, "request", player.transform.position);
         }
 
         public static void Defended(VillageHearth hearth, Player player)
         {
+            if (!LogicConfig.IsOn(LogicConfig.PlayerMemory)) return;
+
             Change(hearth, player, f =>
             {
                 Add(f, "defended", 1);
@@ -188,6 +196,8 @@ namespace Villheim.Logic.Villagers
 
         private static void Built(Piece piece)
         {
+            if (!LogicConfig.IsOn(LogicConfig.PlayerMemory)) return;
+
             Player player = Player.m_localPlayer;
             VillageHearth hearth = player != null ? Near(piece.transform.position, 15f) : null;
             if (hearth == null)
@@ -212,6 +222,8 @@ namespace Villheim.Logic.Villagers
 
         private static void Killed(Character dead, Player player)
         {
+            if (!LogicConfig.IsOn(LogicConfig.PlayerMemory)) return;
+
             VillageHearth hearth = Near(dead.transform.position, 25f);
             if (hearth == null)
             {
@@ -265,6 +277,8 @@ namespace Villheim.Logic.Villagers
 
         private static void Died(Player player)
         {
+            if (!LogicConfig.IsOn(LogicConfig.PlayerMemory)) return;
+
             VillageHearth hearth = Near(player.transform.position, 40f);
             if (hearth == null)
             {
@@ -279,6 +293,8 @@ namespace Villheim.Logic.Villagers
 
         private static void HurtVillager(Villager villager, Player player)
         {
+            if (!LogicConfig.IsOn(LogicConfig.PlayerMemory)) return;
+
             VillageHearth hearth = VillageHearth.Find(villager.VillageId);
             if (hearth == null || !hearth.IsValid || Time.time < _nextHurtNote)
             {
@@ -386,6 +402,8 @@ namespace Villheim.Logic.Villagers
         /// </summary>
         public static string Gossip(Villager speaker, Villager listener)
         {
+            if (!LogicConfig.IsOn(LogicConfig.PlayerMemory) || !LogicConfig.IsOn(LogicConfig.ChatScenes)) return null;
+
             if (speaker == null || listener == null)
             {
                 return null;
@@ -417,6 +435,8 @@ namespace Villheim.Logic.Villagers
 
         public static IEnumerable<string> Tags(VillageHearth hearth, Villager villager)
         {
+            if (!LogicConfig.IsOn(LogicConfig.PlayerMemory)) yield break;
+
             Player player = Player.m_localPlayer;
             if (player == null)
             {

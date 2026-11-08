@@ -71,7 +71,17 @@ namespace Villheim.Logic
             "bp swap <number|name> <stage>: save a copy of a design with its walls, floors, roofs and beams in that stage's materials (to blueprints/inspiration/edits)",
         };
 
-        public static string[] CommandHelp() => Help;
+        public static string[] CommandHelp() => Help.Concat(new[]
+        {
+            "switches: list the settings that turn each world and villager-minds system off, and whether each is on now: " +
+            string.Join(", ", LogicConfig.Switches.Select(s => s.Name)) +
+            " (config sections '5 - World life' and '5b - Villager minds'; the world ones also need WorldLife on)",
+        }).ToArray();
+
+        /// <summary>'vh switches': each system's on/off setting and its value now.</summary>
+        private static string Switches() =>
+            "Villheim switches (set in the config file, they reload live):\n" + string.Join("\n", LogicConfig.Switches.Select(s =>
+                $"   {s.Name}: {(s.Entry == null ? "not bound" : s.Entry.Value ? "on" : "off")}"));
 
         public static bool Run(string name, string[] args, Terminal context)
         {
@@ -225,6 +235,7 @@ namespace Villheim.Logic
                 case "villheim_speech": Say(context, Villagers.MindsCommands.Speech()); return true;
                 case "villheim_goal": Say(context, Villagers.MindsCommands.Goal(args)); return true;
                 case "villheim_notice": Say(context, Villagers.MindsCommands.Notice(args)); return true;
+                case "villheim_switches": Say(context, Switches()); return true;
                 default: return false;
             }
         }

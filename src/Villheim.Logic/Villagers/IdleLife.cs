@@ -30,6 +30,8 @@ namespace Villheim.Logic.Villagers
         /// <summary>Called each tick while the villager stands about; turns his look for a moment now and then.</summary>
         public static void Tick(Villager villager, VillagerAI ai)
         {
+            if (!LogicConfig.IsOn(LogicConfig.IdleGlances)) return;
+
             State state = States.GetOrCreateValue(villager);
             if (Time.time < state.Until)
             {

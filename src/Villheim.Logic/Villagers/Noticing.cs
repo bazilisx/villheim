@@ -48,6 +48,8 @@ namespace Villheim.Logic.Villagers
 
         public static void VillageTick(VillageHearth hearth)
         {
+            if (!LogicConfig.IsOn(LogicConfig.Noticing)) return;
+
             if (!Watches.TryGetValue(hearth.VillageId, out Watch watch))
             {
                 watch = new Watch();

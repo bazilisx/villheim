@@ -207,6 +207,8 @@ namespace Villheim.Logic.Village
 
         private static string Sickness(VillageHearth hearth)
         {
+            if (!LogicConfig.IsOn(LogicConfig.EventFever)) return null;
+
             Villager sick = Loaded(hearth.VillageId)
                 .Where(v => v.m_nview != null && v.m_nview.IsOwner() && v.GetHealthPercentage() > 0.8f)
                 .OrderBy(_ => Random.value).FirstOrDefault();

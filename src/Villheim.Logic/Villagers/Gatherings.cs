@@ -34,6 +34,8 @@ namespace Villheim.Logic.Villagers
         /// <summary>From Dialogue.Note: some events make the evening a feast, some get a turnout.</summary>
         public static void Noted(int villageId, string what)
         {
+            if (!LogicConfig.IsOn(LogicConfig.Gatherings)) return;
+
             // "feast" is the harvest feast from VillageEvents: it ate well, so the evening is a feast too.
             if (what == "hunt" || what == "birth" || what == "finished" || what == "bossdown" || what == "upgrade" || what == "feast")
             {
@@ -59,10 +61,26 @@ namespace Villheim.Logic.Villagers
         }
 
         /// <summary>A building is done: the village comes to look at it.</summary>
-        public static void Finished(int villageId, Vector3 front) => Turnout(villageId, null, front, "finished", 8, 70f);
+        public static void Finished(int villageId, Vector3 front)
+        {
+            if (!LogicConfig.IsOn(LogicConfig.Gatherings))
+            {
+                // As before gatherings: a few villagers who aren't busy come to have a look.
+                Social.Gather(villageId, null, front, 3, "event:viewbuilding", "cheer", 40f);
+                return;
+            }
+
+            Turnout(villageId, null, front, "finished", 8, 70f);
+        }
 
         /// <summary>A newcomer has come to live here: the village comes to say hello.</summary>
-        public static void Arrival(int villageId, Villager newcomer) => Turnout(villageId, newcomer, null, "arrival", 5, 60f);
+        public static void Arrival(int villageId, Villager newcomer)
+        {
+            if (LogicConfig.IsOn(LogicConfig.Gatherings))
+            {
+                Turnout(villageId, newcomer, null, "arrival", 5, 60f);
+            }
+        }
 
         private static bool Free(Villager v, int villageId) =>
             !v.IsDead() && v.VillageId == villageId && v.VillageId != 0 && !Sleep.IsAsleep(v) && !Social.IsSent(v) &&
@@ -113,6 +131,8 @@ namespace Villheim.Logic.Villagers
         /// <summary>From the hearth's tick: the evening words.</summary>
         public static void VillageTick(VillageHearth hearth)
         {
+            if (!LogicConfig.IsOn(LogicConfig.Gatherings)) return;
+
             int id = hearth.VillageId;
             Player player = Player.m_localPlayer;
             if (player == null || Hour < 18f || Hour > 19.5f || (SpeechDays.TryGetValue(id, out int day) && day == Today) ||
@@ -158,6 +178,8 @@ namespace Villheim.Logic.Villagers
 
         public static IEnumerable<string> Tags(int villageId)
         {
+            if (!LogicConfig.IsOn(LogicConfig.Gatherings)) yield break;
+
             if (FeastToday(villageId)) yield return "feastday";
             if (FeastTonight(villageId)) yield return "feast";
         }

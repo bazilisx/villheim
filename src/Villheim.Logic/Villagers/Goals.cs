@@ -119,6 +119,8 @@ namespace Villheim.Logic.Villagers
         /// <summary>Every 30 seconds or so: pick a want if there is none, check whether it is met or has run out.</summary>
         public static void Update(Villager villager)
         {
+            if (!LogicConfig.IsOn(LogicConfig.VillagerWants)) return;
+
             State state = States.GetOrCreateValue(villager);
             if (Time.time < state.NextCheck || villager.Zdo == null || villager.m_nview == null || !villager.m_nview.IsOwner() ||
                 Wanderers.IsWanderer(villager) || villager.VillageId == 0)
@@ -307,6 +309,8 @@ namespace Villheim.Logic.Villagers
         /// <summary>Two villagers chatted: courting and making peace move along.</summary>
         public static void Chatted(Villager a, Villager b)
         {
+            if (!LogicConfig.IsOn(LogicConfig.VillagerWants)) return;
+
             Nudge(a, b);
             Nudge(b, a);
         }
@@ -330,6 +334,8 @@ namespace Villheim.Logic.Villagers
         /// <summary>A village event happened while the want was open (a building finished, a hunt, a visitor...).</summary>
         public static void VillageEvent(int villageId, string what)
         {
+            if (!LogicConfig.IsOn(LogicConfig.VillagerWants)) return;
+
             foreach (Villager villager in Character.GetAllCharacters().OfType<Villager>())
             {
                 if (villager.IsDead() || villager.VillageId != villageId || villager.VillageId == 0)
@@ -350,6 +356,8 @@ namespace Villheim.Logic.Villagers
         /// <summary>The player came to the village: anyone who wanted to see him again has.</summary>
         public static void PlayerCame(int villageId)
         {
+            if (!LogicConfig.IsOn(LogicConfig.VillagerWants)) return;
+
             foreach (Villager villager in Character.GetAllCharacters().OfType<Villager>())
             {
                 if (!villager.IsDead() && villager.VillageId == villageId && Read(villager) is Goal goal && goal.Kind == "player" && goal.Start < Today)
@@ -364,6 +372,8 @@ namespace Villheim.Logic.Villagers
 
         public static IEnumerable<string> Tags(Villager villager)
         {
+            if (!LogicConfig.IsOn(LogicConfig.VillagerWants)) yield break;
+
             Goal goal = Read(villager);
             if (goal != null)
             {

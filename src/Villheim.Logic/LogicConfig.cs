@@ -130,6 +130,23 @@ namespace Villheim.Logic
         public static ConfigEntry<bool> Horn;
         public static ConfigEntry<float> HornSeconds;
         public static ConfigEntry<bool> HelpPlayers;
+        public static ConfigEntry<bool> VillageKnowledge;
+        public static ConfigEntry<string> KnowledgeReach;
+        public static ConfigEntry<float> KnowledgeReachPerGear;
+        public static ConfigEntry<float> KnowledgeReachGrowth;
+        public static ConfigEntry<bool> KnowledgeGearGate;
+        public static ConfigEntry<string> KnowledgeGear;
+        public static ConfigEntry<float> KnowledgeWitness;
+        public static ConfigEntry<float> KnowledgeSight;
+        public static ConfigEntry<int> KnowledgeKeep;
+        public static ConfigEntry<int> KnowledgeCommonDays;
+        public static ConfigEntry<float> RumourChance;
+        public static ConfigEntry<bool> KnowledgeRequests;
+        public static ConfigEntry<bool> HarvestReach;
+        public static ConfigEntry<string> HarvestReachByStage;
+        public static ConfigEntry<float> HarvestReachMax;
+        public static ConfigEntry<bool> MapTable;
+        public static ConfigEntry<int> MapTableFromStage;
 
         public static void Bind()
         {
@@ -274,6 +291,7 @@ namespace Villheim.Logic
                 "Chats between villagers fit the pair (friend, rival, sweetheart, trade), pass on what they know of you, " +
                 "and get answers in each one's own voice and a third villager chiming in. Off: plain chats, as before.");
             BindLiving(config);
+            BindKnowledge(config);
 
             const string sites = "1b - Village sites";
             VillageChance = Admin(config, sites, "VillageChance", 50,
@@ -393,6 +411,8 @@ namespace Villheim.Logic
             ("WinterStores", WinterStores), ("PlayerStanding", PlayerStanding), ("Hostility", Hostility), ("Complaints", Complaints), ("Leaving", Leaving),
             ("VisitorJudging", VisitorJudging), ("WantPile", WantPile), ("BossStages", BossStages), ("Elders", Elders),
             ("ElderDeaths", ElderDeaths), ("Neighbours", Neighbours), ("Horn", Horn), ("HelpPlayers", HelpPlayers),
+            ("VillageKnowledge", VillageKnowledge), ("KnowledgeGearGate", KnowledgeGearGate), ("KnowledgeRequests", KnowledgeRequests),
+            ("HarvestReach", HarvestReach), ("MapTable", MapTable),
         };
 
         // The config entries outlive a logic build (the config file hands back the same entry on every Bind), so the
@@ -505,6 +525,52 @@ namespace Villheim.Logic
             HelpPlayers = Admin(config, living, "HelpPlayers", true,
                 "Up to two protectors run out to help a friend of the village who is fighting within 60 m of it (not at " +
                 "night unless the village is raided).");
+        }
+
+        /// <summary>Section "5c - Village knowledge": what villages know of the land, how far they go, the map table.</summary>
+        private static void BindKnowledge(ConfigFile config)
+        {
+            const string know = "5c - Village knowledge";
+            VillageKnowledge = Admin(config, know, "VillageKnowledge", true,
+                "Villages learn the real land around them (boss altars, dungeons, traders, ore, nests, berries, where animals " +
+                "come out, where the biomes change) as far as their reach goes, and villagers talk about it truthfully: what " +
+                "they saw themselves, what they were told and by whom. Off: no discoveries, no rumours, no map table.");
+            KnowledgeReach = Admin(config, know, "KnowledgeReach", "200, 400, 650, 900",
+                "How far (metres from the hearth) a village comes to know the land at each stage: camp, hamlet, village, town.");
+            KnowledgeReachPerGear = Admin(config, know, "KnowledgeReachPerGear", 60f,
+                "Metres of reach added for each gear tier the village has made (0 rags to 4 bronze).");
+            KnowledgeReachGrowth = Admin(config, know, "KnowledgeReachGrowth", 150f,
+                "Metres a day the explored radius grows toward the reach, so places come to light over days.");
+            KnowledgeGearGate = Admin(config, know, "KnowledgeGearGate", true,
+                "Villagers only go into a biome (to explore, fell, mine, hunt or forage) once the village has made the gear " +
+                "KnowledgeGear asks for there. Big things past that line can still be seen from the edge of it.");
+            KnowledgeGear = Admin(config, know, "KnowledgeGear", Village.Knowledge.DefaultGear,
+                "Gear tier needed before villagers go into each biome (0 rags, 1 leather, 2 flint and leather, 3 troll " +
+                "leather, 4 bronze; 5 never). Biome: tier, separated by semicolons. A village's own biome is always open.");
+            KnowledgeWitness = Admin(config, know, "KnowledgeWitness", 60f,
+                "A villager out working who comes this close to something (twice as far for big things like towers and " +
+                "altars) has seen it himself and can say so.");
+            KnowledgeSight = Admin(config, know, "KnowledgeSight", 150f,
+                "How far past the last ground the villagers walk to a big thing can be spotted (twice that across water).");
+            KnowledgeKeep = Admin(config, know, "KnowledgeKeep", 60,
+                "Discoveries kept on each village's hearth. Past that, the most ordinary and oldest go first.");
+            KnowledgeCommonDays = Admin(config, know, "KnowledgeCommonDays", 2,
+                "Days after which everyone in the village has heard of a discovery. Before that only the one who saw it, " +
+                "and those he told in a chat, can talk about it.");
+            RumourChance = Admin(config, know, "RumourChance", 0.5f,
+                "Chance that a villager who knows something of the land has it on his mind when he picks a line (0 to 1).");
+            KnowledgeRequests = Admin(config, know, "KnowledgeRequests", true,
+                "Requests, contracts and talk about what the village needs say where the village believes it can be found, " +
+                "or that nobody knows.");
+            HarvestReach = Admin(config, know, "HarvestReach", true,
+                "Villagers fell, mine, hunt and forage further from the hearth as the village grows (HarvestReachByStage).");
+            HarvestReachByStage = Admin(config, know, "HarvestReachByStage", "1, 1.15, 1.35, 1.6",
+                "How much further than the usual radius (45 to 55 m) villagers work at each stage: camp, hamlet, village, town.");
+            HarvestReachMax = Admin(config, know, "HarvestReachMax", 90f, "The furthest villagers go from the hearth to work (metres).");
+            MapTable = Admin(config, know, "MapTable", true,
+                "A village puts the game's cartography table by its hearth. Reading it copies the village's discoveries to " +
+                "your map as pins.");
+            MapTableFromStage = Admin(config, know, "MapTableFromStage", 2, "Stage from which a village has a map table: 1 camp, 2 hamlet.");
         }
 
         /// <summary>Every look setting puts itself on the ghosts the moment it changes.</summary>

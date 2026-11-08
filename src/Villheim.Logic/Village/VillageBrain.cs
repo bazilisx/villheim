@@ -70,6 +70,7 @@ namespace Villheim.Logic.Village
             Daughters.Tick(hearth, state);
             Raids.Tick(hearth);
             Contracts.Tick(hearth, state);
+            Knowledge.Tick(hearth, state);
             Groves.Tick(hearth, state);
             Living.HearthTick(hearth, state);
             NoticeBoard.Update(hearth);

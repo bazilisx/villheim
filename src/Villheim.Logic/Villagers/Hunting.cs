@@ -100,7 +100,7 @@ namespace Villheim.Logic.Villagers
                 return false;
             }
 
-            Character prey = FindPrey(hearth.transform.position, villager.transform.position);
+            Character prey = FindPrey(villager.VillageId, hearth.transform.position, villager.transform.position);
             if (prey == null)
             {
                 return false;
@@ -252,10 +252,12 @@ namespace Villheim.Logic.Villagers
             }
         }
 
-        private static Character FindPrey(Vector3 hearth, Vector3 from)
+        private static Character FindPrey(int villageId, Vector3 hearth, Vector3 from)
         {
             Character best = null;
-            float bestDistance = 35f;
+            // A grown village hunts further out, where it has the gear for the land (Knowledge).
+            float search = Village.Knowledge.WorkRadius(villageId, SearchFromHearth);
+            float bestDistance = 35f + (search - SearchFromHearth) * 2f;
             foreach (Character character in Character.GetAllCharacters())
             {
                 if (character == null || character.IsDead() || character.IsPlayer() || character is Villager || character.IsTamed())
@@ -264,7 +266,8 @@ namespace Villheim.Logic.Villagers
                 }
 
                 string name = Utils.GetPrefabName(character.gameObject);
-                if (!Game.Contains(name) || Utils.DistanceXZ(character.transform.position, hearth) > SearchFromHearth)
+                if (!Game.Contains(name) || Utils.DistanceXZ(character.transform.position, hearth) > search ||
+                    !Village.Knowledge.MayWork(villageId, hearth, character.transform.position, SearchFromHearth))
                 {
                     continue;
                 }

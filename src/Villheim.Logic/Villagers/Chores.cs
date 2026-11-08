@@ -396,7 +396,9 @@ namespace Villheim.Logic.Villagers
             work.Swings = 0;
             work.Spot = position;
 
-            ItemDrop drop = NearestDrop(work.Wanted, hearth, MaxFromHearth, position, work.Skip);
+            // The village works further out as it grows, but only where it has the gear for the land (Knowledge).
+            float reach = Village.Knowledge.WorkRadius(villager.VillageId, MaxFromHearth);
+            ItemDrop drop = NearestDrop(work.Wanted, hearth, reach, position, work.Skip);
             if (drop != null)
             {
                 Begin(villager, work, Phase.Collect, null, drop.transform.position, 45f);
@@ -409,10 +411,12 @@ namespace Villheim.Logic.Villagers
             int tier = ToolTier(villager);
             HashSet<string> wanted = work.Wanted;
             GameObject target = !work.CanHarvest ? null
-                : FindNearest(hearth, MaxFromHearth, position,
-                      go => profile.IsPartial(go) && Yields.GivesAny(go, wanted) && TierAllows(go, tier), null)
-                  ?? FindNearest(hearth, MaxFromHearth, position,
-                      go => profile.IsSource(go) && Yields.GivesAny(go, wanted) && TierAllows(go, tier), null);
+                : FindNearest(hearth, reach, position,
+                      go => profile.IsPartial(go) && Yields.GivesAny(go, wanted) && TierAllows(go, tier) &&
+                            Village.Knowledge.MayWork(villager.VillageId, hearth, go.transform.position, MaxFromHearth), null)
+                  ?? FindNearest(hearth, reach, position,
+                      go => profile.IsSource(go) && Yields.GivesAny(go, wanted) && TierAllows(go, tier) &&
+                            Village.Knowledge.MayWork(villager.VillageId, hearth, go.transform.position, MaxFromHearth), null);
             if (target == null)
             {
                 // Loose sticks and stones give one each, so they are only worth it when there is nothing bigger to

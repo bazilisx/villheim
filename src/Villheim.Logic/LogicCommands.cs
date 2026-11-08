@@ -76,6 +76,7 @@ namespace Villheim.Logic
             "switches: list the settings that turn each world and villager-minds system off, and whether each is on now: " +
             string.Join(", ", LogicConfig.Switches.Select(s => s.Name)) +
             " (config sections '5 - World life' and '5b - Villager minds'; the world ones also need WorldLife on)",
+            "know [list|reach|survey [full]|rumours [n]|names|table|forget]: what the nearest village knows of the land (each discovery with its witness and day), its reach and gear limits, a survey now, sample rumour lines with their real target and distance, the location names round it, its map table",
             "exportpieces: write every buildable piece's collider and mesh bounds, pivot height, colour, texture, category, comfort, cost and station to BepInEx/config/Villheim/pieces.json (copy it to tools/blueprint-lab/data/pieces-export.json)",
         }).ToArray();
 
@@ -238,6 +239,12 @@ namespace Villheim.Logic
                 case "villheim_notice": Say(context, Villagers.MindsCommands.Notice(args)); return true;
                 case "villheim_switches": Say(context, Switches()); return true;
                 case "villheim_exportpieces": Say(context, PieceExport.Run()); return true;
+                case "villheim_know":
+                case "villheim_knowledge":
+                case "villheim_discoveries": Say(context, Knowledge.Command(args)); return true;
+                case "villheim_reach": Say(context, Knowledge.Command(new[] { "reach" })); return true;
+                case "villheim_rumours":
+                case "villheim_rumors": Say(context, Knowledge.Command(new[] { "rumours" }.Concat(args ?? new string[0]).ToArray())); return true;
                 case "villheim_living":
                 case "villheim_prosperity":
                 case "villheim_season":

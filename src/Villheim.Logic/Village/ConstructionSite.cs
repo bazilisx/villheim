@@ -665,12 +665,12 @@ namespace Villheim.Logic.Village
         }
 
         /// <summary>
-        /// What the chest must hold before the builder goes to the site to work (Tyler, T-11): enough for the next chunk
-        /// of the building, so he doesn't walk over each time one piece of wood comes in. The chunk is the run of
-        /// pieces from the next one that share its stage (ground, floors and walls; roof; doors and windows; inside),
-        /// in the build order. Per material he waits for the smaller of what the chunk costs and BuildBatchStacks of a
-        /// stack (half a stack by default: 25 wood), and never less than the next piece itself. Once at work he keeps
-        /// going piece by piece while the chest lasts. Empty when nothing is waited for (teardown, done).
+        /// What the chest must hold before the builder goes to the site to work (Tyler, T-11 and D-048): BuildStartShare
+        /// (half by default) of what the next part of the building costs in its main material, so he doesn't walk over
+        /// each time one piece of wood comes in, and never less than the next piece itself. The part is the run of pieces
+        /// from the next one that share its stage (ground, floors and walls; roof; doors and windows; inside), in the
+        /// build order. Once at work he goes on piece by piece, each one supported, while the chest lasts; a half-built
+        /// wall while he fetches more is fine. Empty when nothing is waited for (teardown, done).
         /// </summary>
         public static Dictionary<string, int> StartNeed(VillageHearth hearth)
         {
@@ -683,26 +683,23 @@ namespace Villheim.Logic.Village
                 return need;
             }
 
-            float batch = LogicConfig.BuildBatchStacks != null ? LogicConfig.BuildBatchStacks.Value : 0.5f;
+            float share = LogicConfig.BuildStartShare != null ? Mathf.Clamp01(LogicConfig.BuildStartShare.Value) : 0.5f;
             int stage = plan.Entries[index].Stage;
-            var chunk = new Dictionary<string, float>();
+            var part = new Dictionary<string, float>();
             for (int i = index; i < plan.Entries.Count && plan.Entries[i].Stage == stage; i++)
             {
                 foreach (KeyValuePair<string, int> cost in plan.Entries[i].Cost)
                 {
                     plan.Factors.TryGetValue(cost.Key, out float factor);
-                    chunk.TryGetValue(cost.Key, out float sum);
-                    chunk[cost.Key] = sum + cost.Value * factor;
+                    part.TryGetValue(cost.Key, out float sum);
+                    part[cost.Key] = sum + cost.Value * factor;
                 }
             }
 
-            foreach (KeyValuePair<string, float> part in chunk)
+            if (part.Count > 0 && share > 0f)
             {
-                int total = Mathf.CeilToInt(part.Value);
-                if (batch > 0f && total > 0)
-                {
-                    need[part.Key] = Mathf.Min(total, Mathf.Max(1, Mathf.RoundToInt(Materials.StackSize(part.Key) * batch)));
-                }
+                KeyValuePair<string, float> main = part.OrderByDescending(p => p.Value).First();
+                need[main.Key] = Mathf.CeilToInt(main.Value * share);
             }
 
             foreach (KeyValuePair<string, int> due in Due(plan, plan.Entries[index], ReadOwed(hearth.Zdo)))

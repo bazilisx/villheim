@@ -12,7 +12,7 @@ namespace Villheim.Logic
         public static ConfigEntry<string> BiomeMaterials;
         public static ConfigEntry<bool> SiteChest;
         public static ConfigEntry<float> SecondsPerPiece;
-        public static ConfigEntry<float> BuildBatchStacks;
+        public static ConfigEntry<float> BuildStartShare;
         public static ConfigEntry<float> ClearingRadius;
         public static ConfigEntry<bool> IdlePickup;
         public static ConfigEntry<string> FenceLight;
@@ -286,11 +286,11 @@ namespace Villheim.Logic
                 "Ground no higher than this many metres over the water counts as wet for boardwalks.");
             SecondsPerPiece = Admin(config, work, "SecondsPerPiece", 2.5f,
                 "How long a builder hammers at each piece before it goes up.");
-            BuildBatchStacks = Admin(config, work, "BuildBatchStacks", 0.5f,
-                "How much the chest must hold before the builder goes to work on the next part of a building (ground and " +
-                "walls, roof, doors and windows, inside), in stacks of each material: 0.5 is half a stack (25 wood). When " +
-                "the part costs less than that, he starts as soon as the chest holds what it costs. 0: he goes as soon as " +
-                "the next piece is paid for.");
+            BuildStartShare = Admin(config, work, "BuildStartShare", 0.5f,
+                "When the builder starts or goes back to the next part of a building (ground and walls, roof, doors and " +
+                "windows, inside): once the chest holds this share of what that part costs in its main material (0.5: " +
+                "half, D-048). He then puts up pieces, each one supported, while the materials last, so a building may " +
+                "stand half done while he fetches more. 0: as soon as the next piece is paid for.");
             ClearingRadius = Admin(config, work, "ClearingRadius", 20f,
                 "Villagers keep the ground this many metres around the hearth clear: they fell trees, take out stumps, " +
                 "break rocks and pick up sticks and stones there, and the materials go to the chest. 0: off.");

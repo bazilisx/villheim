@@ -285,7 +285,7 @@ namespace Villheim.Logic.Village
         /// The job of making (or mending) the board, for Amenities, or null when it stands whole. One piece at a time
         /// (Tyler, T-11: no instant buildings): the job is the next missing piece in build order, ground up, paid on its
         /// own; Total is what the rest of the board costs, which the villagers gather for and the builder waits for
-        /// before he starts (up to BuildBatchStacks). The board is plain wood: poles, beams, 1x1 floors, a roof top and
+        /// before he starts (half its main material, BuildStartShare). The board is plain wood: poles, beams, 1x1 floors, a roof top and
         /// signs (the signs' coal is let off). It never needs fine wood.
         /// </summary>
         public static Amenities.Job Job(VillageHearth hearth)

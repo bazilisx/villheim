@@ -91,9 +91,9 @@ namespace Villheim.Logic.Village
         public static Job Due(VillageHearth hearth) => Due(hearth, false);
 
         /// <summary>
-        /// As Due. Something of several pieces (the notice board) is only started once the chest holds what the rest of
-        /// it costs, or BuildBatchStacks of a stack of each material if that is less, so the builder doesn't walk over
-        /// for each piece's wood (Tyler, T-11). <paramref name="continuing"/>: the builder is already at it, and goes
+        /// As Due. Something of several pieces (the notice board) is only started once the chest holds half (BuildStartShare)
+        /// of what the rest of it costs in its main material, so the builder doesn't walk over for each piece's wood
+        /// (Tyler, T-11, D-048). <paramref name="continuing"/>: the builder is already at it, and goes
         /// on while the next piece is paid for.
         /// </summary>
         public static Job Due(VillageHearth hearth, bool continuing)
@@ -114,23 +114,22 @@ namespace Villheim.Logic.Village
             return continuing || next.Total == null || Affordable(hearth, state, StartCost(next), reserved) ? next : null;
         }
 
-        /// <summary>What must be in the chest before a job of several pieces is started (see Due).</summary>
+        /// <summary>
+        /// What must be in the chest before a job of several pieces is started (see Due): BuildStartShare (half by
+        /// default, D-048) of what the rest of it costs in its main material, and the next piece.
+        /// </summary>
         public static Dictionary<string, int> StartCost(Job job)
         {
-            if (job.Total == null)
+            if (job.Total == null || job.Total.Count == 0)
             {
                 return job.Cost;
             }
 
-            float batch = LogicConfig.BuildBatchStacks != null ? LogicConfig.BuildBatchStacks.Value : 0.5f;
+            float share = LogicConfig.BuildStartShare != null ? Mathf.Clamp01(LogicConfig.BuildStartShare.Value) : 0.5f;
             var start = new Dictionary<string, int>(job.Cost);
-            foreach (KeyValuePair<string, int> part in job.Total)
-            {
-                int wanted = batch > 0f ? Mathf.Min(part.Value, Mathf.Max(1, Mathf.RoundToInt(Materials.StackSize(part.Key) * batch))) : 0;
-                start.TryGetValue(part.Key, out int already);
-                start[part.Key] = Mathf.Max(already, wanted);
-            }
-
+            KeyValuePair<string, int> main = job.Total.OrderByDescending(t => t.Value).First();
+            start.TryGetValue(main.Key, out int already);
+            start[main.Key] = Mathf.Max(already, Mathf.CeilToInt(main.Value * share));
             return start;
         }
 

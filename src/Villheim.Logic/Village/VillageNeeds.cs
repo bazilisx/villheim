@@ -69,7 +69,7 @@ namespace Villheim.Logic.Village
             else if (ConstructionSite.IsActive(hearth.Zdo))
             {
                 needs.SiteActive = true;
-                // The builder sets out once the chest holds enough for the next part of the building (BuildBatchStacks),
+                // The builder sets out once the chest holds enough for the next part of the building (BuildStartShare, D-048),
                 // not each time one piece's worth comes in. Once at work he goes on while the chest lasts.
                 needs.CanBuildNow = ConstructionSite.NextShort(hearth) == null && ConstructionSite.ReadyToStart(hearth, out _);
                 foreach (KeyValuePair<string, int> shortfall in ConstructionSite.Shortfall(hearth))

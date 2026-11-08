@@ -15,9 +15,10 @@ namespace Villheim.Logic.Village
     ///   time the main chest is full with nowhere to sort to (at most one a day). Never more than StorageChestMax.
     /// - What each holds, in the order they come: wood, stone, fine wood and core wood (where the village has them),
     ///   food, ore and metal, other; past seven, wood and stone again. The kind is kept on the chest.
-    /// - Where: in a row along the main chest's side, beyond the notice board's posts, facing the hearth. They are
-    ///   amenity jobs (Amenities): paid from the chest like a bench, the sign after its chest, both made again if
-    ///   destroyed.
+    /// - Where: a block by the main chest, in stacks two high side by side, rows behind (FreeSpot), all facing the
+    ///   hearth. They are amenity jobs (Amenities) the builder makes: paid from the chest like a bench, the sign after
+    ///   its chest, both made again if destroyed. While the village has no storehouse, a full main chest asks for one
+    ///   more chest every quarter day.
     /// - Sorting (Villagers/Sorting): when the main chest is StorageSortAt full, a villager carries a stack from it to
     ///   the storage chest of its kind. The builder pays from any of them (VillageChest.Take).
     /// </summary>
@@ -133,10 +134,8 @@ namespace Villheim.Logic.Village
                 chests += (people - 6) / per;
             }
 
-            if (chests > 0)
-            {
-                chests += hearth.Zdo.GetInt(KeyExtra);
-            }
+            // Asked for by a full main chest (NeedMore), even before the first building.
+            chests += hearth.Zdo.GetInt(KeyExtra);
 
             return Mathf.Clamp(chests, 0, LogicConfig.StorageChestMax?.Value ?? 8);
         }
@@ -163,13 +162,18 @@ namespace Villheim.Logic.Village
         /// <summary>The main chest is full and nothing can be sorted out of it: the village wants one more chest (once a day).</summary>
         public static void NeedMore(VillageHearth hearth)
         {
-            int today = EnvMan.instance != null ? EnvMan.instance.GetDay() : 0;
-            if (hearth.Zdo.GetInt(KeyExtraDay, -1) == today)
+            // Without a storehouse yet, one more stack's chest every quarter day while the chest stays full (T-12); with
+            // one, once a day.
+            var state = new VillageState(hearth.Zdo);
+            bool storehouse = state.Plots.Any(p => p.Role == nameof(Designs.Role.Storage));
+            int quarters = EnvMan.instance != null ? Mathf.FloorToInt((float)(ZNet.instance.GetTimeSeconds() / (VillageBrain.DayLength() / 4.0))) : 0;
+            int stamp = storehouse ? quarters / 4 * 4 : quarters;
+            if (hearth.Zdo.GetInt(KeyExtraDay, -1) == stamp)
             {
                 return;
             }
 
-            hearth.Zdo.Set(KeyExtraDay, today);
+            hearth.Zdo.Set(KeyExtraDay, stamp);
             int extra = hearth.Zdo.GetInt(KeyExtra);
             if (extra < (LogicConfig.StorageChestMax?.Value ?? 8))
             {
@@ -317,7 +321,43 @@ namespace Villheim.Logic.Village
             return false;
         }
 
-        /// <summary>The next free place in the row along the main chest's side, alternating left and right.</summary>
+        /// <summary>The wood chest's size: width (along its front), depth and height. Measured once.</summary>
+        private static Vector3 ChestSize()
+        {
+            if (_chestSize == Vector3.zero)
+            {
+                GameObject prefab = ZNetScene.instance ? ZNetScene.instance.GetPrefab(ChestPrefab) : null;
+                Bounds? bounds = prefab != null
+                    ? Designs.BuildOrder.Measure(prefab, ChestPrefab, Vector3.zero, Quaternion.identity, Vector3.one)
+                    : null;
+                _chestSize = bounds.HasValue ? bounds.Value.size : new Vector3(1.4f, 0.8f, 0.8f);
+            }
+
+            return _chestSize;
+        }
+
+        private static Vector3 _chestSize;
+
+        /// <summary>A storage chest of this village stands at the spot (within a hand's width).</summary>
+        private static Container StorageAt(int villageId, Vector3 spot)
+        {
+            foreach (Container chest in Of(villageId))
+            {
+                if (chest && Utils.DistanceXZ(chest.transform.position, spot) < 0.35f && Mathf.Abs(chest.transform.position.y - spot.y) < 0.35f)
+                {
+                    return chest;
+                }
+            }
+
+            return null;
+        }
+
+        /// <summary>
+        /// The next place in the store block by the main chest (Tyler, T-15): chests in stacks two high, the stacks side
+        /// by side in a row along the main chest, alternating right and left beyond the notice board's posts, a second and
+        /// third row behind the first. Every chest faces the hearth like the main chest, so the block reads as one. A
+        /// stack's lower chest comes first, then the one on top of it.
+        /// </summary>
         private static bool FreeSpot(VillageHearth hearth, VillageState state, Container main, out Vector3 spot, out Quaternion rotation)
         {
             Vector3 center = hearth.transform.position;
@@ -325,23 +365,39 @@ namespace Villheim.Logic.Village
             Vector3 out_ = (origin - center).Horizontal();
             out_ = out_.sqrMagnitude > 0.01f ? out_.normalized : Vector3.forward;
             Vector3 along = Vector3.Cross(Vector3.up, out_);
-            for (int i = 0; i < 16; i++)
+            rotation = Quaternion.LookRotation(-out_);
+            Vector3 size = ChestSize();
+            float width = Mathf.Max(size.x, size.z) + 0.1f;
+            float depth = Mathf.Min(size.x, size.z);
+            for (int row = 0; row < 3; row++)
             {
-                float offset = (FirstOffset + (i / 2) * Step) * (i % 2 == 0 ? 1f : -1f);
-                spot = origin + along * offset;
-                if (!Amenities.Usable(hearth, state, spot, out float y) || OwnPieceNear(hearth.VillageId, spot, 1f))
+                for (int column = 0; column < 8; column++)
                 {
-                    continue;
-                }
+                    float offset = (FirstOffset + (column / 2) * width) * (column % 2 == 0 ? 1f : -1f);
+                    Vector3 ground = origin + along * offset + out_ * (row * (depth + 0.9f));
+                    Container bottom = StorageAt(hearth.VillageId, ground);
+                    if (bottom == null)
+                    {
+                        if (!Amenities.Usable(hearth, state, ground, out float y) || OwnPieceNear(hearth.VillageId, new Vector3(ground.x, y, ground.z), 0.8f))
+                        {
+                            continue;
+                        }
 
-                spot.y = y;
-                Vector3 toHearth = (center - spot).Horizontal();
-                rotation = toHearth.sqrMagnitude > 0.01f ? Quaternion.LookRotation(toHearth) : main.transform.rotation;
-                return true;
+                        spot = new Vector3(ground.x, y, ground.z);
+                        return true;
+                    }
+
+                    Vector3 top = bottom.transform.position + Vector3.up * size.y;
+                    if (StorageAt(hearth.VillageId, top) == null)
+                    {
+                        spot = top;
+                        rotation = bottom.transform.rotation;
+                        return true;
+                    }
+                }
             }
 
             spot = origin;
-            rotation = Quaternion.identity;
             return false;
         }
 

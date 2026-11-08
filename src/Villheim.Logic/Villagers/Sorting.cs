@@ -38,6 +38,9 @@ namespace Villheim.Logic.Villagers
         public static string Describe(Villager villager) =>
             States.TryGetValue(villager, out State state) && state.Step != Step.None ? "sorting the village stores" : null;
 
+        /// <summary>This villager is carrying stacks to the storage chests right now.</summary>
+        public static bool Busy(Villager villager) => States.TryGetValue(villager, out State state) && state.Step != Step.None;
+
         public static bool Update(Villager villager, VillagerAI ai, float dt)
         {
             State state = States.GetOrCreateValue(villager);
@@ -102,7 +105,10 @@ namespace Villheim.Logic.Villagers
             if (state.Timer < dt * 1.5f)
             {
                 Poses.Trigger(villager, "interact");
-                Move(main, state.Target, state.Item);
+                // An armful: every stack of the kind that fits, up to four, so a full chest empties in a few trips (T-15).
+                for (int i = 0; i < 4 && Move(main, state.Target, state.Item); i++)
+                {
+                }
             }
 
             if (state.Timer >= 1.2f)
@@ -120,7 +126,7 @@ namespace Villheim.Logic.Villagers
                 return false;
             }
 
-            state.NextLook = Time.time + Random.Range(10f, 20f);
+            state.NextLook = Time.time + Random.Range(3f, 6f);
             if (Childhood.IsChild(villager) || Wanderers.IsWanderer(villager) ||
                 (Sorters.TryGetValue(villager.VillageId, out Villager other) && other != null && other != villager && !other.IsDead() &&
                  Describe(other) != null))
@@ -173,11 +179,11 @@ namespace Villheim.Logic.Villagers
         }
 
         /// <summary>Moves one stack of the item from the main chest into the storage chest, if both still allow it.</summary>
-        private static void Move(Container main, Container target, string prefab)
+        private static bool Move(Container main, Container target, string prefab)
         {
             if (!VillageChest.Usable(main) || !VillageChest.Usable(target))
             {
-                return;
+                return false;
             }
 
             ItemDrop.ItemData item = main.GetInventory().GetAllItems()
@@ -185,7 +191,7 @@ namespace Villheim.Logic.Villagers
                 .OrderByDescending(i => i.m_stack).FirstOrDefault();
             if (item == null || !target.GetInventory().CanAddItem(item))
             {
-                return;
+                return false;
             }
 
             VillageChest.Claim(main);
@@ -195,10 +201,11 @@ namespace Villheim.Logic.Villagers
             {
                 // Should not happen after CanAddItem; put it back rather than lose it.
                 main.GetInventory().AddItem(item);
-                return;
+                return false;
             }
 
             VillheimPlugin.Debug($"Sorted {item.m_stack} {prefab} into the {StorageChests.KindOf(target)} chest.");
+            return true;
         }
 
         private static void Stop(Villager villager, State state)

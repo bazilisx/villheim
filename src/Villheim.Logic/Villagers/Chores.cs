@@ -206,6 +206,13 @@ namespace Villheim.Logic.Villagers
             switch (work.Phase)
             {
                 case Phase.Idle:
+                    // A main chest three quarters full is sorted into the storage chests before the next trip out
+                    // (T-15: it took a while). One villager at a time, never the builder (Sorting).
+                    if (!builder && Sorting.Update(villager, ai, dt))
+                    {
+                        return true;
+                    }
+
                     work.Cooldown -= dt;
                     if (work.Cooldown > 0f)
                     {

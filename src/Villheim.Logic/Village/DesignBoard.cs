@@ -774,6 +774,12 @@ namespace Villheim.Logic.Village
                     forward = anchorForward;
                 }
 
+                // On the world's grid: facing straight north, south, east or west, every plot on whole metres and a whole
+                // number of metres wide. The ground's paint is a 1 m grid on the world's axes, so a copy then lands on it
+                // point for point (at an angle, copies came out patchy and shifted, 2026-11-07).
+                forward = Mathf.Abs(forward.x) > Mathf.Abs(forward.z) ? new Vector3(Mathf.Sign(forward.x), 0f, 0f) : new Vector3(0f, 0f, Mathf.Sign(forward.z));
+                start = new Vector3(Mathf.Round(start.x), start.y, Mathf.Round(start.z));
+                half = Mathf.Ceil(half);
                 Vector3 right = Vector3.Cross(Vector3.up, forward);
                 int perRow = Mathf.Max(1, Mathf.FloorToInt((MaxRow + Gap) / (half * 2f + Gap)));
                 float yaw = Quaternion.LookRotation(-forward).eulerAngles.y;
@@ -787,6 +793,7 @@ namespace Villheim.Logic.Village
                     int row = band * 3 + (3 - decor);
                     float width = inRow * half * 2f + (inRow - 1) * Gap;
                     Vector3 c = start + forward * (half + row * (half * 2f + Aisle)) + right * (-width / 2f + half + column * (half * 2f + Gap));
+                    c = new Vector3(Mathf.Round(c.x), c.y, Mathf.Round(c.z));
                     c.y = Ground(c, start.y);
                     return c;
                 }
@@ -887,7 +894,7 @@ namespace Villheim.Logic.Village
         {
             Vector3 forward = -(Quaternion.Euler(0f, yaw, 0f) * Vector3.forward);
             Vector3 right = Vector3.Cross(Vector3.up, forward);
-            int placed = file != null && File.Exists(file) ? PutSaved(file, center, yaw) : 0;
+            int placed = file != null && File.Exists(file) ? PutSaved(file, center, yaw, half) : 0;
             Border(name, center, half, forward, right);
             PlotSign(name, center, half, yaw, forward, biome, kind, placed, state);
             Plots.RemoveAll(p => p.Name == name);
@@ -941,7 +948,7 @@ namespace Villheim.Logic.Village
         }
 
         /// <summary>Puts a saved plot back: plain pieces, as if built, round the plot's middle. Returns how many.</summary>
-        private static int PutSaved(string file, Vector3 center, float yaw)
+        private static int PutSaved(string file, Vector3 center, float yaw, float half)
         {
             Blueprints.Blueprint saved = Blueprints.FromFile(file);
             if (saved == null)
@@ -968,11 +975,7 @@ namespace Villheim.Logic.Village
                 made++;
             }
 
-            List<string> terrain = TerrainLines(file);
-            if (terrain.Count > 0 && VillheimPlugin.Instance != null)
-            {
-                VillheimPlugin.Instance.StartCoroutine(ApplyTerrain(terrain, center, yaw));
-            }
+            SetGround(TerrainLines(file), center, yaw, half);
 
             return made;
         }
@@ -1086,16 +1089,57 @@ namespace Villheim.Logic.Village
         /// height and paint, written straight into the ground's data, as PlanBuild does (TerrainTools, WTFPL). The game's
         /// own terrain operation (TerrainComp.ApplyOperation) ran without error but changed nothing (2026-11-07).
         /// </summary>
-        private static readonly Vector3[] Spread =
-        {
-            Vector3.zero, new Vector3(0.35f, 0f, 0f), new Vector3(-0.35f, 0f, 0f), new Vector3(0f, 0f, 0.35f), new Vector3(0f, 0f, -0.35f),
-        };
+        /// <summary>Spots round each sample that are set too (the board is on the world's grid, so the sample alone is exact).</summary>
+        private static readonly Vector3[] Spread = { Vector3.zero };
 
-        private static IEnumerator ApplyTerrain(List<string> lines, Vector3 center, float yaw)
+        /// <summary>Clears a plot's painted ground, then puts the given ground lines back (none: only clears).</summary>
+        private static void SetGround(List<string> lines, Vector3 center, float yaw, float half)
+        {
+            if (VillheimPlugin.Instance != null)
+            {
+                VillheimPlugin.Instance.StartCoroutine(ApplyTerrain(lines ?? new List<string>(), center, yaw, half));
+            }
+        }
+
+        private static IEnumerator ApplyTerrain(List<string> lines, Vector3 center, float yaw, float half)
         {
             Quaternion turn = Quaternion.Euler(0f, yaw, 0f);
             CultureInfo inv = CultureInfo.InvariantCulture;
             var touched = new HashSet<TerrainComp>();
+
+            // First the plot's own paint goes, so dirt from an earlier copy or try never adds up with the new one.
+            int reach = Mathf.CeilToInt(half * 2f);
+            for (int i = -reach; i <= reach; i++)
+            {
+                for (int j = -reach; j <= reach; j++)
+                {
+                    Vector3 world = center + turn * new Vector3(i * 0.5f, 0f, j * 0.5f);
+                    Heightmap map = Heightmap.FindHeightmap(world);
+                    TerrainComp ground = map != null ? map.GetAndCreateTerrainCompiler() : null;
+                    if (ground == null)
+                    {
+                        continue;
+                    }
+
+                    int size = ground.m_width + 1;
+                    ground.m_hmap.WorldToVertexMask(world, out int px, out int py);
+                    if (px >= 0 && py >= 0 && px < size && py < size)
+                    {
+                        int index = py * size + px;
+                        Color nothing = Heightmap.m_paintMaskNothing;
+                        nothing.a = ground.m_paintMask[index].a;
+                        ground.m_paintMask[index] = nothing;
+                        ground.m_modifiedPaint[index] = true;
+                        touched.Add(ground);
+                    }
+                }
+
+                if (i % 20 == 0)
+                {
+                    yield return null;
+                }
+            }
+
             int done = 0, painted = 0;
             string failed = null;
             foreach (string line in lines)
@@ -1185,7 +1229,12 @@ namespace Villheim.Logic.Village
                 }
             }
 
-            ClutterSystem.instance?.ResetGrass(center, 40f);
+            ClutterSystem.instance?.ResetGrass(center, half * 1.5f + 2f);
+            if (lines.Count == 0)
+            {
+                yield break;
+            }
+
             Say(failed == null
                 ? $"Board: ground put back in the copy: {done} squares ({painted} painted)."
                 : $"Board: putting the ground back stopped after {done} squares: {failed}");
@@ -1301,6 +1350,7 @@ namespace Villheim.Logic.Village
             }
 
             SetPlotState(plotName, 0, "saved");
+            SetGround(null, plotCenter, yaw, half);
 
             // The next decor stage appears behind, as a copy of this save to take decor away from.
             string next = "";
@@ -1325,7 +1375,7 @@ namespace Villheim.Logic.Village
                         ZNetScene.instance.Destroy(view.gameObject);
                     }
 
-                    int copied = PutSaved(file, behindPlot.Center, behindPlot.Yaw);
+                    int copied = PutSaved(file, behindPlot.Center, behindPlot.Yaw, behindPlot.Half);
                     SetPlotState(nextName, copied, $"copy of {stem}");
                 }
 
@@ -1350,6 +1400,11 @@ namespace Villheim.Logic.Village
                     }
 
                     SetPlotState(nextPlot, 0, $"waits for d{decor}");
+                    Plot behindNow = Plots.FirstOrDefault(p => p.Name == nextPlot);
+                    if (behindNow != null)
+                    {
+                        SetGround(null, behindNow.Center, behindNow.Yaw, behindNow.Half);
+                    }
                 }
 
                 if (oldText != null)
@@ -1378,6 +1433,7 @@ namespace Villheim.Logic.Village
                 }
 
                 snapshots.ForEach(EditHistory.Restore);
+                SetGround(terrain, plotCenter, yaw, half);
                 SetPlotState(plotName, oldPlaced, snapshots.Count > 0 ? state ?? "as before the save" : null);
             });
 
@@ -1531,15 +1587,25 @@ namespace Villheim.Logic.Village
                 ZNetScene.instance.Destroy(view.gameObject);
             }
 
+            Vector3 resetCenter = sign.GetVec3(Gallery.KeyPlotCenter, Vector3.zero);
+            float resetYaw = sign.GetFloat(Gallery.KeyPlotYaw, 0f), resetHalf = sign.GetFloat(Gallery.KeyPlotHalf, 10f);
+            List<string> groundBefore = SampleTerrain(resetCenter, resetYaw, resetHalf);
             (string resetBase, int resetStage, int resetDecor) = Parse(plotName);
             string file = SavedFile(resetBase, resetStage, resetDecor);
             if (!File.Exists(file) && resetDecor < 3)
             {
                 file = SavedFile(resetBase, resetStage, resetDecor + 1);
             }
-            int made = File.Exists(file)
-                ? PutSaved(file, sign.GetVec3(Gallery.KeyPlotCenter, Vector3.zero), sign.GetFloat(Gallery.KeyPlotYaw, 0f))
-                : 0;
+            int made = 0;
+            if (File.Exists(file))
+            {
+                made = PutSaved(file, resetCenter, resetYaw, resetHalf);
+            }
+            else
+            {
+                SetGround(null, resetCenter, resetYaw, resetHalf);
+            }
+
             List<ZNetView> fresh = SwapTool.DesignParts(plotName).Views;
             EditHistory.Push($"resetting {StageName(plotName)}", () =>
             {
@@ -1550,6 +1616,7 @@ namespace Villheim.Logic.Village
                 }
 
                 snapshots.ForEach(EditHistory.Restore);
+                SetGround(groundBefore, resetCenter, resetYaw, resetHalf);
             });
             return $"Board: {StageName(plotName)} cleared ({views.Count} pieces)" +
                    (made > 0 ? $" and put back as last saved ({made} pieces)." : "; it is empty now.") + " 8 (Undo) brings back what was there.";

@@ -33,7 +33,8 @@ typed in the in-game console (F5) unless it says otherwise.
 
 ## The slotting board (`vh slot`)
 
-1. Once: stand where the board should start and face along it, then `vh slot here`. Every board goes up in front of
+1. Once: stand where the board should start and face along it, then `vh slot here`. The board faces the nearest of
+   north, south, east and west, with every plot on whole metres, so copied ground lands exactly. Every board goes up in front of
    that spot, facing that way, wherever you are when you type the command (`vh slot anchor <x> <z>` sets it from
    coordinates, facing the way you face). Without it, a board goes up in front of you. `vh gallery clear` first if a
    page is still up.
@@ -54,7 +55,8 @@ typed in the in-game console (F5) unless it says otherwise.
    The ground you change is kept too: every painted square metre (a circle of dirt, hoe paths, paving, tilled soil)
    with its height, and anything raised or dug more than 30 cm from the plot's floor; plain grass is not. A save is as
    big as what you made, not the plot, so roomy plots (`size 60`) cost nothing. It goes into the save's terrain section, which PlanBuild uses when it places the blueprint and the board
-   uses for its copies. Undo and Reset do not put the ground back.
+   uses for its copies. A plot's paint is cleared whenever it is emptied, saved, reset or given a new copy, so old
+   dirt never adds up; Undo puts the ground back as it was.
    Everything inside the green border is written as `hub1_s2d3` to `BepInEx/config/Villheim/blueprints/inspiration/board/`.
    The design it came from is found by comparing pieces. A saved plot is emptied and marked saved (its border and
    sign stay as a guide).

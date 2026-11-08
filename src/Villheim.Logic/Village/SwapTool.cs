@@ -35,8 +35,8 @@ namespace Villheim.Logic.Village
 
         /// <summary>On each piece of a combination in the stand-in row: the whole combination, so a click on any of them takes all.</summary>
         private const string KeyCombo = "villheim_swap_combo";
-        private const int CombosPerBiome = 2;
-        private const int PerBiome = 4;
+        private const int CombosPerBiome = 3;
+        private const int PerBiome = 5;
 
         private static bool _on;
         private static string _design;
@@ -276,8 +276,9 @@ namespace Villheim.Logic.Village
 
             string prefab = Utils.GetPrefabName(target);
             ZDO zdo = target.GetComponent<ZNetView>()?.GetZDO();
-            string design = zdo?.GetString(Gallery.KeyDesign, "") ?? "";
             bool palette = zdo != null && zdo.GetInt(KeyPalette) == 1;
+            // Gallery pieces carry their design's name; pieces placed on the slotting board belong to the plot they stand in.
+            string design = palette ? "" : DesignOf(target);
 
             // A piece of a design: pick it (or the original it stands in for).
             if (design.Length > 0 && !palette && target.GetComponent<Sign>() == null)
@@ -727,7 +728,16 @@ namespace Villheim.Logic.Village
             foreach (ZNetView view in ZNetScene.instance.m_instances.Values.ToList())
             {
                 ZDO zdo = view != null && view.IsValid() ? view.GetZDO() : null;
-                if (zdo == null || zdo.GetInt(Gallery.KeyGallery) != 1 || zdo.GetInt(KeyPalette) == 1 || zdo.GetString(Gallery.KeyDesign, "") != design)
+                if (zdo == null || zdo.GetInt(KeyPalette) == 1 || zdo.GetFloat(Gallery.KeyPlotHalf, 0f) > 0f || view.GetComponent<Sign>() != null && zdo.GetInt(Gallery.KeyGallery) == 1)
+                {
+                    continue;
+                }
+
+                // A gallery design's own pieces, or (on the slotting board) anything placed in the plot.
+                bool ours = zdo.GetInt(Gallery.KeyGallery) == 1
+                    ? zdo.GetString(Gallery.KeyDesign, "") == design
+                    : PartOfPlot(view) && DesignOf(view.gameObject) == design;
+                if (!ours)
                 {
                     continue;
                 }
@@ -967,9 +977,9 @@ namespace Villheim.Logic.Village
             // Away from the design, through its sign: towards the aisle the player walks along.
             Vector3 middle = Vector3.zero;
             int count = 0;
-            foreach (ZNetView view in ZNetScene.instance.m_instances.Values)
+            foreach (ZNetView view in DesignParts(design).Views)
             {
-                if (view != null && view.IsValid() && view.GetZDO().GetString(Gallery.KeyDesign, "") == design && view.GetComponent<Sign>() == null)
+                if (view != null && view.IsValid() && view.GetComponent<Sign>() == null)
                 {
                     middle += view.transform.position;
                     count++;
@@ -986,7 +996,7 @@ namespace Villheim.Logic.Village
                 int stage = Gallery.StageIndexOf(word.Trim());
                 if (stage >= 0)
                 {
-                    groups.Add((stage, MaterialSwap.Candidates(original, stage, PerBiome, orEarlier: false), MaterialSwap.Combos(original, stage, CombosPerBiome)));
+                    groups.Add((stage, MaterialSwap.StandIns(original, stage, PerBiome), MaterialSwap.Combos(original, stage, CombosPerBiome)));
                 }
             }
 

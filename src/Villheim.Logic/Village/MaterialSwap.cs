@@ -313,30 +313,110 @@ namespace Villheim.Logic.Village
         private static readonly System.Text.RegularExpressions.Regex SizeInName =
             new System.Text.RegularExpressions.Regex(@"(^|_)\d+x\d+(x\d+)?($|_)");
 
+        /// <summary>Families that may stand in for each other on the stand-in row (a fence for a wall, a pole for a beam).</summary>
+        private static readonly Dictionary<string, string[]> Relatives = new Dictionary<string, string[]>
+        {
+            ["wall"] = new[] { "wall", "barrier" }, ["barrier"] = new[] { "barrier", "wall" }, ["support"] = new[] { "support" },
+            ["door"] = new[] { "door" }, ["roof"] = new[] { "roof" }, ["floor"] = new[] { "floor" }, ["stair"] = new[] { "stair", "ladder" },
+            ["arch"] = new[] { "arch" }, ["window"] = new[] { "window", "wall" }, ["ladder"] = new[] { "ladder", "stair" },
+        };
+
+        /// <summary>Name parts that make a different shape: a piece with one of these the original lacks is never offered.</summary>
+        private static readonly HashSet<string> ShapeMods = new HashSet<string>
+        {
+            "top", "ocorner", "icorner", "corner", "upsidedown", "triangle", "tip", "end", "inverted", "curved", "cross", "half", "quarter",
+        };
+
+        private static HashSet<string> RelatedFamilies(Shape shape) =>
+            new HashSet<string>(shape.Families.SelectMany(f => Relatives.TryGetValue(f, out string[] r) ? r : new[] { f }));
+
+        private static bool OtherShape(Shape source, Shape candidate) => candidate.Mods.Any(m => ShapeMods.Contains(m) && !source.Mods.Contains(m));
+
+        /// <summary>The source's thinnest side (0 x, 1 y, 2 z): its thickness, left out when sizes are compared.</summary>
+        private static int Thin(Vector3 size) => size.x <= size.y && size.x <= size.z ? 0 : size.y <= size.z ? 1 : 2;
+
+        /// <summary>How far a size is from the source's, as a share, over the sides that are not the source's thickness.</summary>
+        private static float Misfit(Vector3 source, Vector3 size)
+        {
+            int thin = Thin(source);
+            float error = 0f;
+            for (int i = 0; i < 3; i++)
+            {
+                if (i != thin)
+                {
+                    error += Mathf.Abs(source[i] - size[i]) / Mathf.Max(0.05f, Mathf.Max(source[i], size[i]));
+                }
+            }
+
+            return error;
+        }
+
         /// <summary>
-        /// Combinations of one smaller piece that make up the piece's size, from one stage: two stone_wall_2x1 stacked
-        /// for a 2x2 wall, four 1x1 for it, two 2x2 floors for a 4x2. Only where both names give their size ("2x2"),
-        /// the same kind, 2 to 8 pieces, each side within a few centimetres (the thickness may differ). Each is a group
-        /// stand-in ("group[prefab@x,y,z,qx,qy,qz,qw;...]", relative to the piece's middle and turn), best fit first.
+        /// Single stand-ins for the swap row, from one stage: pieces of the same kind or a related one (walls and
+        /// fences, beams, poles and pillars, doors and gates) whose size matches, either way round, leaving out the
+        /// thickness; never a corner, top, half or other shape the original is not. Exact sizes first, then the same
+        /// kind, then name parts in common; nothing more than a quarter off in size.
+        /// </summary>
+        public static List<string> StandIns(string prefab, int stage, int count)
+        {
+            Shape source = Measure(prefab);
+            if (source == null || source.KindKey.Length == 0)
+            {
+                return Candidates(prefab, stage, count, orEarlier: false);
+            }
+
+            HashSet<string> related = RelatedFamilies(source);
+            return Pool()
+                .Where(c => c.Prefab != prefab && c.Stage == stage && c.Families.Overlaps(related) && !OtherShape(source, c))
+                .Select(c => (Shape: c, Misfit: Mathf.Min(Misfit(source.Size, c.Size), Misfit(source.Size, Turned(c.Size)))))
+                .Where(x => x.Misfit <= 0.25f)
+                .OrderBy(x => x.Misfit <= 0.06f ? 0 : 1)
+                .ThenBy(x => x.Shape.KindKey == source.KindKey ? 0 : x.Shape.Families.Overlaps(source.Families) ? 1 : 2)
+                .ThenByDescending(x => Mods(source, x.Shape))
+                .ThenBy(x => x.Misfit)
+                .Select(x => x.Shape.Prefab).Distinct().Take(count).ToList();
+        }
+
+        /// <summary>Turns a combination piece may take: as it is, a quarter turn about up; supports also lie down.</summary>
+        private static IEnumerable<Quaternion> Orientations(bool support)
+        {
+            yield return Quaternion.identity;
+            yield return Quaternion.Euler(0f, 90f, 0f);
+            if (support)
+            {
+                yield return Quaternion.Euler(0f, 0f, 90f);
+                yield return Quaternion.Euler(90f, 0f, 0f);
+                yield return Quaternion.Euler(0f, 90f, 0f) * Quaternion.Euler(0f, 0f, 90f);
+            }
+        }
+
+        private static Vector3 Abs(Vector3 v) => new Vector3(Mathf.Abs(v.x), Mathf.Abs(v.y), Mathf.Abs(v.z));
+
+        /// <summary>
+        /// Combinations of one smaller piece that make up the piece's size, from one stage, found from the pieces'
+        /// measured sizes (not only names with "2x2"): two stone_wall_2x1 stacked for a 2x2 wall, two 2 m beams end to end
+        /// for a 4 m beam, two 2 m poles laid down for it, four 1x1. The same kind or a related one, 2 to 8 pieces, each
+        /// side within a few centimetres (the thickness may differ), no other shapes. Each is a group stand-in
+        /// ("group[prefab@x,y,z,qx,qy,qz,qw;...]", relative to the piece's middle and turn), best fit first.
         /// </summary>
         public static List<string> Combos(string prefab, int stage, int count)
         {
-            var found = new List<(string Text, int Pieces, float Error)>();
+            var found = new List<(string Text, int Pieces, float Error, bool SameKind)>();
             Shape source = Measure(prefab);
-            if (source == null || source.KindKey.Length == 0 || !SizeInName.IsMatch(prefab.ToLowerInvariant()))
+            if (source == null || source.KindKey.Length == 0)
             {
                 return new List<string>();
             }
 
-            int thin = source.Size.x <= source.Size.y && source.Size.x <= source.Size.z ? 0 : source.Size.y <= source.Size.z ? 1 : 2;
+            HashSet<string> related = RelatedFamilies(source);
+            int thin = Thin(source.Size);
             CultureInfo inv = CultureInfo.InvariantCulture;
             string Num(float v) => v.ToString("0.####", inv);
-            foreach (Shape c in Pool().Where(c => c.Stage == stage && c.KindKey == source.KindKey && c.Prefab != prefab &&
-                                                  SizeInName.IsMatch(c.Prefab.ToLowerInvariant())))
+            foreach (Shape c in Pool().Where(c => c.Stage == stage && c.Prefab != prefab && c.Families.Overlaps(related) && !OtherShape(source, c)))
             {
-                foreach (bool turned in new[] { false, true })
+                foreach (Quaternion turn in Orientations(c.Families.Contains("support")))
                 {
-                    Vector3 size = turned ? Turned(c.Size) : c.Size;
+                    Vector3 size = Abs(turn * c.Size);
                     var n = new int[3];
                     bool fits = true;
                     float error = 0f;
@@ -360,7 +440,6 @@ namespace Villheim.Logic.Village
                         continue;
                     }
 
-                    Quaternion turn = turned ? Quaternion.Euler(0f, 90f, 0f) : Quaternion.identity;
                     var parts = new List<string>();
                     for (int i = 0; i < n[0]; i++)
                     for (int j = 0; j < n[1]; j++)
@@ -371,12 +450,13 @@ namespace Villheim.Logic.Village
                         parts.Add($"{c.Prefab}@{Num(pivot.x)},{Num(pivot.y)},{Num(pivot.z)},{Num(turn.x)},{Num(turn.y)},{Num(turn.z)},{Num(turn.w)}");
                     }
 
-                    found.Add(("group[" + string.Join(";", parts) + "]", total, error));
+                    found.Add(("group[" + string.Join(";", parts) + "]", total, error, c.KindKey == source.KindKey));
                     break;
                 }
             }
 
-            return found.OrderBy(f => f.Error).ThenBy(f => f.Pieces).Take(count).Select(f => f.Text).ToList();
+            return found.OrderBy(f => f.SameKind ? 0 : 1).ThenBy(f => f.Error).ThenBy(f => f.Pieces)
+                .Select(f => f.Text).Distinct().Take(count).ToList();
         }
 
         /// <summary>For 'vh look': what the piece is to the swap, and what it becomes in each stage up to Plains.</summary>

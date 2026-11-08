@@ -258,10 +258,14 @@ With the knife: pick Swap (key 3) and left click. Without it: turn on `vh swap`,
 removes pieces when the hammer is out, so it is not used).
 
 1. **Pick a piece:** aim at a piece of a design (within about 4 m) and press numpad 5.
-   - In front of that design's sign, stand-ins go up in groups by biome: Meadows, Black Forest, Swamp. Each group has
-     a label sign and up to 4 single pieces, best match first.
-   - Where the piece's name gives a size (like `_2x2`), each group can also show up to 2 combinations, such as two
-     `stone_wall_2x1` stacked for a 2x2 wall.
+   - In front of that design's sign (on the slotting board: the plot's sign), stand-ins go up in groups by biome:
+     Meadows, Black Forest, Swamp. Each group has a label sign and up to 5 single pieces, best match first: the same
+     kind or a related one (walls and fences, beams, poles and pillars, doors and gates, stairs and ladders), about the
+     same size either way round (thickness left out, nothing more than a quarter off), exact sizes first. A corner,
+     top, half or other shape is offered only for a piece of that shape.
+   - Each group can also show up to 3 combinations of one smaller piece that make up the size, found from the pieces'
+     measured sizes: two `stone_wall_2x1` stacked for a 2x2 wall, two 2 m beams end to end for a 4 m beam, two 2 m
+     poles laid down for it, four 1x1.
    - The top left lists what was put up.
 2. **Choose a stand-in:** aim at one and press numpad 5. Every piece of that kind in that one design changes to
    it. Nothing else in the gallery changes.

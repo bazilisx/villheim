@@ -259,7 +259,7 @@ Knock before you come in. There's no door. Knock on the post.
 Past here it's just trees and whatever lives in them.
 I like the edge. You can see who's coming.
 The forest starts right there. Every year it tries to come back.
-If you keep walking that way you get to {neighbour}. In a few days.
+If you keep walking that way you get to {neighbor}. In a few days.
 
 @ at:edge, night
 I don't like being out here after dark. Too far from the fire.

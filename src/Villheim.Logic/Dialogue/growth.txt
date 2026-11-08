@@ -11,7 +11,7 @@ Somebody save me a mushroom. Just one.
 
 @ talk, event:feast
 We had a feast. You missed it. There's maybe a handful of berries left if you're quick.
-The harvest came in heavy. Everyone's in a good mood, so ask for favours now.
+The harvest came in heavy. Everyone's in a good mood, so ask for favors now.
 
 @ self, event:skald
 I can still hear that song. All of it. Over and over.
@@ -22,11 +22,11 @@ A skald came through and sang half the night. My throat hurts and I only listene
 Did you hear the skald? He sang about a king who lost his boots. It was better than it sounds.
 
 @ talk, event:fair
-We walked to {neighbour} for market day. My feet are still there.
-Market at {neighbour}. I came back with a comb and no idea why.
+We walked to {neighbor} for market day. My feet are still there.
+Market at {neighbor}. I came back with a comb and no idea why.
 
 @ talk, event:takenin
-Someone found a traveller lost in the woods. They're staying. We'll see how that goes.
+Someone found a traveler lost in the woods. They're staying. We'll see how that goes.
 We've a new face at the fire. Found wandering, half starved. Be kind to them.
 
 @ self, event:sickness
@@ -53,8 +53,8 @@ I'm not taking sides. I'm just saying who's right.
 Two of ours had words. Don't mention it, they'll both want you on their side.
 
 @ talk, event:dispute
-We've fallen out with {neighbour}. Don't ask me what about, nobody agrees.
-Things are cold with {neighbour} just now. It'll pass. Probably.
+We've fallen out with {neighbor}. Don't ask me what about, nobody agrees.
+Things are cold with {neighbor} just now. It'll pass. Probably.
 
 # ------------------------------------------------------------------ outposts waiting for gear
 

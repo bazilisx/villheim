@@ -309,7 +309,7 @@ namespace Villheim.Logic.Village
                     Villagers.PathLaying.Unqueue(hearth, site.Position);
                     var others = new VillageState(hearth.Zdo).Plots.Where(p => Utils.DistanceXZ(p.Position, site.Position) >= 0.5f).ToList();
                     int taken = PathPlanner.TakeUpRoad(hearth, before, others);
-                    VillheimPlugin.Log.LogInfo($"{state.Name}: the {before.Design} was rebuilt as {site.Design}; {taken} metres of its old road taken up, a new one planned.");
+                    VillheimPlugin.Log.LogInfo($"{state.Name}: the {before.Design} was rebuilt as {site.Design}; {taken} meters of its old road taken up, a new one planned.");
                 }
 
                 // A villager walks the route and lays it (see PathLaying).

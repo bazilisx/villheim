@@ -1,451 +1,451 @@
 # Villheim: the land round the village, as its people know it. Same format as lines.txt, same tags and fill-ins as
-# rumours.txt (Village/Rumours.cs). Every line is about a real discovery: ore, nests, berries, where animals come out,
-# where the land changes, old stones and ruins. Also: what a villager says the day he finds something (rumour:new),
+# rumors.txt (Village/Rumors.cs). Every line is about a real discovery: ore, nests, berries, where animals come out,
+# where the land changes, old stones and ruins. Also: what a villager says the day he finds something (rumor:new),
 # and where to look for what the village needs (findit:known/unknown {findit}, need:meat with meat:known/unknown
 # {meatwhere}).
 
 # ================================================================== ore
 
-@ rumour:ore, rumour:saw
+@ rumor:ore, rumor:saw
 I found {thing} {where}. Bring a good pick.
 {where}, there's {thing}. I marked the rock with a scratch so I'd know it again.
 I knocked a bit off a rock {where}. {thing}. I know it when I see it.
 
-@ rumour:ore, rumour:heard
+@ rumor:ore, rumor:heard
 {rteller} says {witness} found {thing} {where}.
 Word from {rteller}: {thing}, {where}. Worth a look if you've a pick.
 
-@ rumour:ore, rumour:common
+@ rumor:ore, rumor:common
 They say there's {thing} {where}. {witness} found it.
 {thing}, {where}. Everyone's talking about it and nobody's fetching it.
 
-@ rumour:ore, rumour:spotted
+@ rumor:ore, rumor:spotted
 There might be {thing} {where}. Seen from a way off, so don't hold me to it.
 
-@ rumour:ore:copper, !rumour:saw
+@ rumor:ore:copper, !rumor:saw
 There's copper {where}. The rock goes green and orange where it shows.
-{witness} found copper {where}. Big lump of rock, half of it the right colour.
+{witness} found copper {where}. Big lump of rock, half of it the right color.
 
-@ rumour:ore:tin, !rumour:saw
+@ rumor:ore:tin, !rumor:saw
 Tin {where}. It sits low by the water, shiny when it's wet.
 {witness} found tin {where}. Soft stuff. Good with copper.
 
-@ rumour:ore:silver
+@ rumor:ore:silver
 A silver vein {where}. Up in the cold. You'll want something warm on.
 
-@ rumour:ore:iron
+@ rumor:ore:iron
 There are scrap piles {where}. Mud and rust and old iron. Smells like a bad year.
 
-@ rumour:ore:obsidian
+@ rumor:ore:obsidian
 There's obsidian {where}. Black glass. Cuts you if you look at it wrong.
 
-@ rumour:ore, trade:miner
+@ rumor:ore, trade:miner
 {thing} {where}. I've been dreaming about it. That's a miner's dream, I'm sorry to say.
 I could have {thing} in the chest in a day, if someone watched my back {direction}.
 
-@ rumour:ore | gruff
+@ rumor:ore | gruff
 {thing}. {where}. Pick. Go.
 
-@ rumour:ore | cheerful ~happy
+@ rumor:ore | cheerful ~happy
 Guess what's {where}? {thing}! I nearly kissed the rock.
 
-@ rumour:ore | worrier ~worry
+@ rumor:ore | worrier ~worry
 There's {thing} {where}, but who knows what's living next to it.
 
-@ rumour:ore, !rumour:saw | wry ~joke
+@ rumor:ore, !rumor:saw | wry ~joke
 {witness} found {thing} {where}. First useful thing they've found in years.
 
-@ rumour:ore | elder
+@ rumor:ore | elder
 {thing} {where}. My grandfather would have walked twice as far for it.
 
-@ rumour:ore, player:holding:pickaxe
+@ rumor:ore, player:holding:pickaxe
 You've a pick in your hand. There's {thing} {where}.
 
-@ rumour:ore, player:skilled:mining
+@ rumor:ore, player:skilled:mining
 You've the arms of a miner. There's {thing} {where}, if you didn't know.
 
-@ chat, tell:rumour, rumour:ore, !rumour:saw
+@ chat, tell:rumor, rumor:ore, !rumor:saw
 There's {thing} {where}. // Who found it? // {witness}. // Then it's probably real.
 {witness} found {thing} {where}. // We'll need a forge for that. // We'll need a lot of things for that.
 
 # ================================================================== nests and bone piles
 
-@ rumour:nest:greydwarfnest, rumour:saw
-There's a greydwarf nest {where}. That's where they all come from. I counted six and stopped counting.
-I found the nest {where}. Big lump of roots that spits greydwarfs. Someone should break it.
+@ rumor:nest:greydwarfnest, rumor:saw
+There's a Greydwarf nest {where}. That's where they all come from. I counted six and stopped counting.
+I found the nest {where}. Big lump of roots that spits Greydwarfs. Someone should break it.
 
-@ rumour:nest:greydwarfnest, !rumour:saw
-{witness} found a greydwarf nest {where}. That explains a lot.
-They say there's a greydwarf nest {where}. If someone broke it we'd sleep better.
+@ rumor:nest:greydwarfnest, !rumor:saw
+{witness} found a Greydwarf nest {where}. That explains a lot.
+They say there's a Greydwarf nest {where}. If someone broke it we'd sleep better.
 
-@ rumour:nest:greydwarfnest, rumour:near ~worry
-There's a nest {where}. That's close. That's why the greydwarfs keep coming.
+@ rumor:nest:greydwarfnest, rumor:near ~worry
+There's a nest {where}. That's close. That's why the Greydwarfs keep coming.
 
-@ rumour:nest:greydwarfnest, player:armed
-You've a weapon on you. There's a greydwarf nest {where}. Just saying.
+@ rumor:nest:greydwarfnest, player:armed
+You've a weapon on you. There's a Greydwarf nest {where}. Just saying.
 
-@ rumour:nest:greydwarfnest | gruff
+@ rumor:nest:greydwarfnest | gruff
 Nest {where}. Break it.
 
-@ rumour:nest:greydwarfnest, !rumour:saw | young
-There's a nest {where} where greydwarfs hatch! Do they hatch? {witness} says they grow.
+@ rumor:nest:greydwarfnest, !rumor:saw | young
+There's a nest {where} where Greydwarfs hatch! Do they hatch? {witness} says they grow.
 
-@ rumour:nest:draugrpile, !rumour:saw
-There's a bone pile in the swamp {where}. The draugr crawl out of it.
-{witness} saw draugr climb out of a pile of bones {where}. I'd rather not have heard that.
+@ rumor:nest:draugrpile, !rumor:saw
+There's a bone pile in the swamp {where}. The Draugr crawl out of it.
+{witness} saw Draugr climb out of a pile of bones {where}. I'd rather not have heard that.
 
-@ rumour:nest:bonepile, !rumour:saw
+@ rumor:nest:bonepile, !rumor:saw
 There's a bone pile {where} that throws up skeletons. Smash it and they stop, they say.
 {witness} found a pile of bones {where} that wouldn't lie still.
 
-@ chat, tell:rumour, rumour:nest, !rumour:saw
+@ chat, tell:rumor, rumor:nest, !rumor:saw
 There's {thing} {where}. // So that's where they come from. // That's where.
 {witness} found {thing} {where}. // Can we break it? // Can you?
 
 # ================================================================== berries and bees
 
-@ rumour:forage, rumour:saw
+@ rumor:forage, rumor:saw
 There's {thing} {where}. I ate more than I carried.
 I found {thing} {where}. Don't tell the cook, I want them for myself.
 
-@ rumour:forage, !rumour:saw
+@ rumor:forage, !rumor:saw
 {witness} found {thing} {where}.
 They say there's {thing} {where}. Go early, before the birds.
 
-@ rumour:forage:raspberries, !rumour:saw
+@ rumor:forage:raspberries, !rumor:saw
 Raspberries {where}. Watch the thorns, they bite back.
 There are raspberries {where}. {witness} came back with red hands.
 
-@ rumour:forage:blueberries
+@ rumor:forage:blueberries
 Blueberries {where}. Greydwarfs like them too, so be quick.
 
-@ rumour:forage:cloudberries
+@ rumor:forage:cloudberries
 Cloudberries {where}. They only grow where it's flat and open.
 
-@ rumour:forage:beehive, !rumour:saw
+@ rumor:forage:beehive, !rumor:saw
 There's a wild beehive {where}. Honey, if you don't mind a few stings.
 {witness} found bees {where}. Came back with honey and a fat lip.
 
-@ rumour:forage, trade:cook
+@ rumor:forage, trade:cook
 There's {thing} {where}. I could do something with that.
 
-@ rumour:forage | young
+@ rumor:forage | young
 There's {thing} {where}! Can I go? I'll only eat half.
 
-@ rumour:forage | worrier ~worry
+@ rumor:forage | worrier ~worry
 {thing} {where}. Lovely. Unless there's something hiding in the bushes. There usually is.
 
-@ chat, tell:rumour, rumour:forage
+@ chat, tell:rumor, rumor:forage
 There's {thing} {where}. // Bring some back next time. // I did. I ate them on the way.
 
 # ================================================================== game
 
-@ rumour:game, rumour:saw
+@ rumor:game, rumor:saw
 I saw {thing} {where}. They come out {when}.
 There are {thing} {where}. I could have had one if I'd had a spear on me.
 {where}, {thing}. Tracks everywhere, droppings everywhere.
 
-@ rumour:game, rumour:heard
+@ rumor:game, rumor:heard
 {rteller} says there are {thing} {where}.
 {rteller} told me {witness} saw {thing} {where}, {when}.
 
-@ rumour:game, rumour:common
+@ rumor:game, rumor:common
 They say there are {thing} {where}, {when}.
 If you want {thing}, go {direction}. {distance}, {witness} says.
 
-@ rumour:game:boar
+@ rumor:game:boar
 Boar root about {where}. You'll hear them before you see them.
 There are boar {where}. Bad tempered, good eating.
 
-@ rumour:game:deer
+@ rumor:game:deer
 Deer come out {where}, {when}. Go quiet and downwind.
 There are deer {where}. Skittish. You'll want a bow.
 
-@ rumour:game:neck
+@ rumor:game:neck
 Necks {where}, down by the water. Little lizards with big opinions.
 
-@ rumour:game:hare
+@ rumor:game:hare
 Hares {where}. Fast. Faster than you, probably.
 
-@ rumour:game:lox
+@ rumor:game:lox
 Lox graze {where}. Big as a house. Leave them be unless you mean it.
 
-@ rumour:game, protector
+@ rumor:game, protector
 Good hunting {where}. {thing}, {when}. I'll go myself if no one else does.
 
-@ rumour:game, player:holding:bow
+@ rumor:game, player:holding:bow
 That's a fine bow. There are {thing} {where}.
 
-@ rumour:game | gruff
+@ rumor:game | gruff
 {thing}. {where}. Meat.
 
-@ rumour:game | cheerful ~happy
+@ rumor:game | cheerful ~happy
 There are {thing} {where}! I can smell the roast already.
 
-@ rumour:game | elder
+@ rumor:game | elder
 When I was young we went further for less. There are {thing} {where}.
 
-@ chat, tell:rumour, rumour:game, !rumour:saw
+@ chat, tell:rumor, rumor:game, !rumor:saw
 There are {thing} {where}. // Good. The chest's nearly empty. // It's always nearly empty.
 {witness} saw {thing} {where}. // Did they catch one? // They saw one.
 
 # ================================================================== creatures that fight
 
-@ rumour:foe, rumour:saw ~worry
+@ rumor:foe, rumor:saw ~worry
 I saw {thing} {where}. I went the other way.
 There are {thing} {where}. They come out {when}. I keep to the paths.
 
-@ rumour:foe, !rumour:saw
+@ rumor:foe, !rumor:saw
 {witness} saw {thing} {where}. Keep clear, or go armed.
 They say there are {thing} {where}, {when}.
 
-@ rumour:foe, rumour:when:night
+@ rumor:foe, rumor:when:night
 There are {thing} {where} at night. Be back before dark.
 
-@ rumour:foe:troll, !rumour:saw
-There's troll country {where}. You'll know it by the flattened trees.
-{witness} saw a troll {where}. Or a hill that got up and walked off.
+@ rumor:foe:troll, !rumor:saw
+There's Troll country {where}. You'll know it by the flattened trees.
+{witness} saw a Troll {where}. Or a hill that got up and walked off.
 
-@ rumour:foe:greydwarf
+@ rumor:foe:greydwarf
 Greydwarfs {where}. They throw stones. Badly, and often.
 
-@ rumour:foe:skeleton
+@ rumor:foe:skeleton
 Skeletons walk {where}. Clatter, clatter. Hit them with something blunt.
 
-@ rumour:foe:wolf
+@ rumor:foe:wolf
 Wolves {where}. You hear them before dark and see them after.
 
-@ rumour:foe:draugr
+@ rumor:foe:draugr
 Draugr {where}. Dead men who didn't get the message.
 
-@ rumour:foe:leech
+@ rumor:foe:leech
 There are leeches in the water {where}. Keep your legs dry.
 
-@ rumour:foe:surtling, !rumour:saw
+@ rumor:foe:surtling, !rumor:saw
 Surtlings {where}, by the fire pits. Fire with legs. They leave coal behind, {witness} says.
 
-@ rumour:foe:fuling
+@ rumor:foe:fuling
 Fulings {where}. Little and nasty, in bands.
 
-@ rumour:foe:deathsquito, !rumour:saw
+@ rumor:foe:deathsquito, !rumor:saw
 Deathsquitos {where}. Biting flies the size of your hand. {witness} still has the mark.
 
-@ rumour:foe:serpent, !rumour:saw
+@ rumor:foe:serpent, !rumor:saw
 There's a sea serpent out {direction}. {witness} saw its back break the water.
 
-@ rumour:foe | worrier ~worry
+@ rumor:foe | worrier ~worry
 {thing} {where}. And we just sit here like it's nothing.
 
-@ rumour:foe | wry ~joke
-There are {thing} {where}. Lovely neighbours. Never bring anything when they visit.
+@ rumor:foe | wry ~joke
+There are {thing} {where}. Lovely neighbors. Never bring anything when they visit.
 
-@ rumour:foe | gruff
+@ rumor:foe | gruff
 {thing}, {where}. Go armed.
 
-@ rumour:foe | devout ~pious
+@ rumor:foe | devout ~pious
 {thing} {where}. Every land has its tests.
 
-@ rumour:foe, protector
+@ rumor:foe, protector
 {thing} {where}. If they come this way, I'll be waiting.
 
-@ chat, tell:rumour, rumour:foe, !rumour:saw
+@ chat, tell:rumor, rumor:foe, !rumor:saw
 There are {thing} {where}. // How many? // Enough. // That's the worst number.
 {witness} saw {thing} {where}. // Did they see {witness}? // Lucky for us, no.
 
 # ================================================================== where the land changes
 
-@ rumour:biome, rumour:saw
+@ rumor:biome, rumor:saw
 {terrain} {direction} the land turns to {thing}. I stood at the edge and looked a while.
 I walked {direction} till the ground changed. {terrain}, {distance} off, there's {thing}.
 
-@ rumour:biome, !rumour:saw
+@ rumor:biome, !rumor:saw
 {witness} says {terrain} {direction} there's {thing}.
 {terrain} {direction}, {distance} out, it's {thing}. That's what {witness} found.
 
-@ rumour:biome:blackforest
-{terrain} {direction} there's a dark forest. Pines, and greydwarfs under them.
+@ rumor:biome:blackforest
+{terrain} {direction} there's a dark forest. Pines, and Greydwarfs under them.
 The dark forest starts {terrain} {direction}. Core wood, if you've the nerve.
 
-@ rumour:biome:blackforest | worrier ~worry
+@ rumor:biome:blackforest | worrier ~worry
 There's a dark forest {direction}. I don't like how quiet it is.
 
-@ rumour:biome:swamp
-{terrain} {direction} it's all swamp. Black water, grey trees, and a smell.
+@ rumor:biome:swamp
+{terrain} {direction} it's all swamp. Black water, gray trees, and a smell.
 The swamp starts {direction}. You'll smell it on a warm day.
 
-@ rumour:biome:mountain
+@ rumor:biome:mountain
 {terrain} {direction} the mountains go up into the snow. Cold enough to freeze your thoughts.
 There are mountains {direction}, {distance} off. You can see the snow on a clear day.
 
-@ rumour:biome:plains
+@ rumor:biome:plains
 {terrain} {direction} it opens out into plains. Yellow grass as far as you can see.
 
-@ rumour:biome:ocean, !rumour:saw
+@ rumor:biome:ocean, !rumor:saw
 The sea's {direction}, {distance}. Flint on the beach, if you look.
 {terrain} {direction} you reach the sea. {witness} brought back flint from the beach.
 
-@ rumour:biome:meadows
+@ rumor:biome:meadows
 {terrain} {direction} there's open meadow. Good soft country.
 
-@ rumour:biome:mistlands
+@ rumor:biome:mistlands
 {direction}, {distance} off, there's mist that never lifts. Nobody goes in.
 
-@ rumour:biome:ashlands, !rumour:saw
+@ rumor:biome:ashlands, !rumor:saw
 {direction} the land burns. {witness} saw the sky glow red over it.
 
-@ rumour:biome:deepnorth
+@ rumor:biome:deepnorth
 {direction} it's ice and nothing. The cold up there has teeth.
 
-@ rumour:biome | elder
+@ rumor:biome | elder
 When I was a child the edge of the world was the next hill. Now it's {thing}, {direction}.
 
-@ rumour:biome, !rumour:saw | young
+@ rumor:biome, !rumor:saw | young
 {witness} says if you go {direction} far enough you get to {thing}. I'm going to go there one day.
 
-@ chat, tell:rumour, rumour:biome
+@ chat, tell:rumor, rumor:biome
 Go {direction} long enough and you're in {thing}. // How long? // {distance}. // That's not long at all.
 
 # ================================================================== runestones, old stones and ruins
 
-@ rumour:runestone, rumour:saw
+@ rumor:runestone, rumor:saw
 There's a runestone {where}. Old writing. I couldn't read it. Maybe you can.
 I found a runestone {where}. The letters glow a little at dusk.
 
-@ rumour:runestone, !rumour:saw
+@ rumor:runestone, !rumor:saw
 {witness} found a runestone {where}. Nobody here can read it.
 They say there's a runestone {where}. The old ones left words on it.
 
-@ rumour:runestone | elder
+@ rumor:runestone | elder
 A runestone {where}. Someone thought those words mattered enough to carve. Go and read them.
 
-@ rumour:runestone | devout ~pious
+@ rumor:runestone | devout ~pious
 The runestone {direction} speaks of the old powers. Read it with care.
 
-@ rumour:landmark:stones
+@ rumor:landmark:stones
 The standing stones are {where}. Where it all began, they say.
 You can see the old stones {where}. Every one of us passed them once.
 
-@ rumour:landmark:tarpit
+@ rumor:landmark:tarpit
 There's a tar pit {where}. Black, thick, and it steams.
 
-@ rumour:landmark:tower, !rumour:saw
+@ rumor:landmark:tower, !rumor:saw
 There's an old stone tower {where}. Nobody knows who built it. Greydwarfs like it, though.
 {witness} found a tower {where}. Old stone, no door worth the name.
 
-@ rumour:landmark:giant, !rumour:saw
+@ rumor:landmark:giant, !rumor:saw
 {witness} saw the bones of a giant {where}. Ribs like longhouse beams.
 
-@ rumour:landmark:henge
+@ rumor:landmark:henge
 There's a ring of standing stones {where}. Old ones. Older than the plains grass.
 
-@ rumour:landmark:dolmen
+@ rumor:landmark:dolmen
 There's a dolmen {where}. Big flat stone on legs. Somebody's grave, I think.
 
-@ rumour:landmark:wreck, !rumour:saw
+@ rumor:landmark:wreck, !rumor:saw
 A ship washed up {where}. Broken in two. {witness} went through it for anything useful.
 There's a wreck on the beach {where}. Someone's bad day, a long time ago.
 
-@ rumour:landmark:well
+@ rumor:landmark:well
 There's an old well {where}. Don't drink from it. Don't look in it at night.
 
-@ rumour:landmark:cairn
+@ rumor:landmark:cairn
 There's a waymarker cairn {where}. Someone was here before us.
 
-@ rumour:landmark:drakenest, !rumour:saw
+@ rumor:landmark:drakenest, !rumor:saw
 {witness} found a drake's nest in the rocks {where}. Eggs, and something guarding them.
 
-@ rumour:landmark:greydwarfcamp
-There's a greydwarf camp {where}. Huts made of sticks and spite.
+@ rumor:landmark:greydwarfcamp
+There's a Greydwarf camp {where}. Huts made of sticks and spite.
 
-@ rumour:landmark, rumour:spotted
+@ rumor:landmark, rumor:spotted
 You can see {thing} {where}. Nobody's walked out to it yet.
 
-@ rumour:ruin, rumour:saw
+@ rumor:ruin, rumor:saw
 I poked round {thing} {where}. Nobody home. Hasn't been for years.
 There's {thing} {where}. I found a broken pot and a bad feeling.
 
-@ rumour:ruin, !rumour:saw
+@ rumor:ruin, !rumor:saw
 {witness} found {thing} {where}. Empty now.
 They say there's {thing} {where}. Echoes, like us.
 
-@ rumour:ruin | elder
+@ rumor:ruin | elder
 {thing} {where}. People lived there once, like we live here. Remember that.
 
-@ rumour:ruin | devout ~pious
+@ rumor:ruin | devout ~pious
 {thing} {where}. The ones who lived there have gone on. We remember them a little.
 
-@ rumour:ruin, !rumour:saw | wry ~joke
+@ rumor:ruin, !rumor:saw | wry ~joke
 {witness} found {thing} {where}. Needs work. Good bones, though.
 
-@ rumour:ruin, trade:carpenter
+@ rumor:ruin, trade:carpenter
 {thing} {where}. I'd like to see how they framed it. Old work is honest work.
 
-@ rumour:fuling, !rumour:saw
-There's a fuling village {where}. Fences, fires and a lot of shouting.
-{witness} saw a fuling village {where}. They ride boars there, {witness} swears it.
+@ rumor:fuling, !rumor:saw
+There's a Fuling village {where}. Fences, fires and a lot of shouting.
+{witness} saw a Fuling village {where}. They ride boars there, {witness} swears it.
 
-@ rumour:fuling | worrier ~worry
-A fuling village, {distance} away. I'm sure they're very nice. I'm sure.
+@ rumor:fuling | worrier ~worry
+A Fuling village, {distance} away. I'm sure they're very nice. I'm sure.
 
-@ rumour:dvergr, !rumour:saw
-{witness} saw dvergr {where}. Little folk with lanterns. They didn't seem to mind us.
-There's a dvergr outpost {where}. They keep to themselves, and their lanterns.
+@ rumor:dvergr, !rumor:saw
+{witness} saw Dvergr {where}. Little folk with lanterns. They didn't seem to mind us.
+There's a Dvergr outpost {where}. They keep to themselves, and their lanterns.
 
-@ chat, tell:rumour, rumour:landmark
+@ chat, tell:rumor, rumor:landmark
 There's {thing} {where}. // What's it for? // Nobody knows. That's the point of it.
 
-@ chat, tell:rumour, rumour:ruin, !rumour:saw
+@ chat, tell:rumor, rumor:ruin, !rumor:saw
 {witness} found {thing} {where}. // Anything worth having? // A good view and a lot of moss.
 
-@ chat, tell:rumour, rumour:runestone
+@ chat, tell:rumor, rumor:runestone
 There's a runestone {where}. // What does it say? // If I knew that, I'd be a different person.
 
 # ================================================================== any discovery, by voice
 
-@ rumour, rumour:saw, rumour:far | steady
+@ rumor, rumor:saw, rumor:far | steady
 It took me {distance} to get there, {direction}. {thing}. I wouldn't do it twice in a day.
 
-@ rumour, rumour:near | wry ~joke
+@ rumor, rumor:near | wry ~joke
 {thing}, {distance} from our beds. And we wondered why we sleep badly.
 
-@ rumour, rumour:common | elder
+@ rumor, rumor:common | elder
 {witness} found {thing} {where}, {daysago}. In my time we'd have made a song of it.
 
-@ rumour, rumour:saw | young
+@ rumor, rumor:saw | young
 I found {thing}! {where}! Nobody believes me!
 
-@ rumour, rumour:heard | cheerful ~happy
+@ rumor, rumor:heard | cheerful ~happy
 {rteller} told me there's {thing} {where}. Isn't that something?
 
-@ rumour, rumour:heard | worrier ~worry
+@ rumor, rumor:heard | worrier ~worry
 {rteller} says there's {thing} {where}. I didn't sleep after {rteller} told me.
 
-@ rumour, rumour:heard | gruff
+@ rumor, rumor:heard | gruff
 {rteller} talks. Says {thing}, {where}. Might be right for once.
 
-@ rumour, rumour:saw | devout ~pious
+@ rumor, rumor:saw | devout ~pious
 I saw {thing} {where}. The gods put it there for someone.
 
 # ================================================================== just found it
 
-@ self, rumour:new, rumour:saw
+@ self, rumor:new, rumor:saw
 Found {thing} out there! {where}!
 You'll want to hear this. {thing}, {where}. Saw it myself just now.
 Back from {direction}. There's {thing} out there, {distance} off.
 
-@ self, rumour:new, rumour:saw | gruff
+@ self, rumor:new, rumor:saw | gruff
 {thing}. {where}. Saw it. That's all.
 
-@ self, rumour:new, rumour:saw | worrier ~worry
+@ self, rumor:new, rumor:saw | worrier ~worry
 I saw {thing} {where} and I ran. Mostly I ran.
 
-@ self, rumour:new, rumour:saw | cheerful ~happy
+@ self, rumor:new, rumor:saw | cheerful ~happy
 Guess what I found! {thing}, {where}!
 
-@ self, rumour:new, rumour:saw | wry ~joke
+@ self, rumor:new, rumor:saw | wry ~joke
 Went out for a walk, came back with news. {thing}, {where}. Next time I'm staying in.
 
-@ self, rumour:new, rumour:saw, rumour:boss ~worry
+@ self, rumor:new, rumor:saw, rumor:boss ~worry
 I saw where {thingshort} waits. {where}. I need to sit down.
 
 # ================================================================== what the village needs, and where
@@ -489,191 +489,191 @@ You're armed and we're hungry. {meatwhere}
 
 # ================================================================== more voices, by kind
 
-@ rumour:ore, !rumour:saw | steady
+@ rumor:ore, !rumor:saw | steady
 {witness} found {thing} {where}. It'll keep. Rock doesn't wander off.
 
-@ rumour:ore, !rumour:saw | young
+@ rumor:ore, !rumor:saw | young
 {witness} found treasure {where}! Well, {thing}. It's nearly treasure.
 
-@ rumour:ore, !rumour:saw | devout ~pious
+@ rumor:ore, !rumor:saw | devout ~pious
 The earth gives {thing} {where}. Take what you need and thank it.
 
-@ rumour:ore, rumour:far
+@ rumor:ore, rumor:far
 {thing}, {where}. A long haul back with a full pack, mind.
 
-@ rumour:ore, rumour:near ~happy
+@ rumor:ore, rumor:near ~happy
 {thing}, {distance} from the chest. I can't believe our luck.
 
-@ rumour:nest, rumour:saw, protector
+@ rumor:nest, rumor:saw, protector
 I found {thing} {where}. Give me two more spears and a dry morning and it's gone.
 
-@ rumour:nest | wry ~joke
+@ rumor:nest | wry ~joke
 {thing} {where}. Someone should send them a letter asking them to keep it down.
 
-@ rumour:nest | elder
+@ rumor:nest | elder
 Break {thingshort} {where} and the woods go quiet for a while. Only for a while.
 
-@ rumour:nest | devout ~pious
+@ rumor:nest | devout ~pious
 {thing} {where}. A sore in the land. It wants cleaning.
 
-@ rumour:nest | cheerful ~happy
+@ rumor:nest | cheerful ~happy
 There's {thing} {where}. Think how nice it'll be when it's gone!
 
-@ rumour:forage, !rumour:saw | steady
+@ rumor:forage, !rumor:saw | steady
 {witness} found {thing} {where}. Good to know for a lean week.
 
-@ rumour:forage | elder
+@ rumor:forage | elder
 {thing} {where}. My mother could find berries in a snowdrift. I could find them {direction}.
 
-@ rumour:forage | gruff
+@ rumor:forage | gruff
 {thing}. {where}. Bring a basket.
 
-@ rumour:forage | wry ~joke
+@ rumor:forage | wry ~joke
 {thing} {where}. I'd tell you more but I'm still picking seeds out of my teeth.
 
-@ rumour:forage | devout ~pious
+@ rumor:forage | devout ~pious
 {thing} {where}. Freyja's gifts, free to anyone who walks that far.
 
-@ rumour:game | worrier ~worry
+@ rumor:game | worrier ~worry
 There are {thing} {where}. Which means something hunts them. Which means something hunts us.
 
-@ rumour:game | wry ~joke
+@ rumor:game | wry ~joke
 {thing} {where}. They've no idea how tasty they are. I've half a mind to tell them.
 
-@ rumour:game, !rumour:saw | young
+@ rumor:game, !rumor:saw | young
 I saw {thing} once! {witness} says there are lots {where}. Can I have a spear?
 
-@ rumour:game | devout ~pious
+@ rumor:game | devout ~pious
 {thing} {where}. Take one, give thanks, leave the rest.
 
-@ rumour:game:boar, rumour:terrain:shore
+@ rumor:game:boar, rumor:terrain:shore
 Boar along the shore {direction}. They dig for something in the sand. I've never found out what.
 
-@ rumour:game:deer, rumour:when:day
+@ rumor:game:deer, rumor:when:day
 Deer {where} in the daylight. Gone by dusk.
 
-@ rumour:foe | elder
+@ rumor:foe | elder
 {thing} {where}. They were there before us and they'll be there after.
 
-@ rumour:foe | cheerful ~happy
+@ rumor:foe | cheerful ~happy
 {thing} {where}. At least they're over there and we're over here!
 
-@ rumour:foe, !rumour:saw | young
+@ rumor:foe, !rumor:saw | young
 {witness} saw {thing} {where}. I'm not scared. I'm a bit scared.
 
-@ rumour:foe, rumour:near ~worry
+@ rumor:foe, rumor:near ~worry
 {thing}, {distance} from here. Close enough to hear them some nights.
 
-@ rumour:foe, rumour:far
+@ rumor:foe, rumor:far
 {thing} {where}. Far enough. Let's keep it far.
 
-@ rumour:dungeon | gruff
+@ rumor:dungeon | gruff
 {thing}. {where}. Dark inside. Dead inside. Your business.
 
-@ rumour:dungeon | cheerful ~happy
+@ rumor:dungeon | cheerful ~happy
 {thing} {where}! There's always treasure in those. And skeletons. Mostly skeletons.
 
-@ rumour:dungeon, !rumour:saw | wry ~joke
+@ rumor:dungeon, !rumor:saw | wry ~joke
 {witness} found {thing} {where}. Their first question was who'd go in. Their second was who'd go in first.
 
-@ rumour:dungeon | worrier ~worry
+@ rumor:dungeon | worrier ~worry
 {thing} {where}. I've stopped walking that side of the village after dark.
 
-@ rumour:trader | elder
+@ rumor:trader | elder
 A trader {where}. Trade is how the world gets smaller. Go see what he has.
 
-@ rumour:trader | worrier ~worry
+@ rumor:trader | worrier ~worry
 There's a trader {where}. What if he cheats us? What if he doesn't and I just think he does?
 
-@ rumour:trader, !rumour:saw | young
+@ rumor:trader, !rumor:saw | young
 {witness} says there's a trader {where} with a backpack full of strange things. I want one strange thing.
 
-@ rumour:runestone, !rumour:saw | wry ~joke
+@ rumor:runestone, !rumor:saw | wry ~joke
 {witness} found a runestone {where}. Probably says "turn back". They always do.
 
-@ rumour:runestone | young
+@ rumor:runestone | young
 There's a stone with writing {where}! I'm going to learn letters and go read it.
 
-@ rumour:landmark | elder
+@ rumor:landmark | elder
 {thing} {where}. Old things like that are why I tell stories.
 
-@ rumour:landmark, !rumour:saw | wry ~joke
+@ rumor:landmark, !rumor:saw | wry ~joke
 {witness} found {thing} {where}. They want to name it after themselves. We said no.
 
-@ rumour:landmark, !rumour:saw | young
+@ rumor:landmark, !rumor:saw | young
 Have you been to {thingshort}? It's {where}! {witness} told me all about it.
 
-@ rumour:landmark | gruff
+@ rumor:landmark | gruff
 {thing}. {where}. Stones. Look at them if you like.
 
-@ rumour:biome | wry ~joke
+@ rumor:biome | wry ~joke
 {direction}, {distance} off, there's {thing}. Different trees, same bugs.
 
-@ rumour:biome | gruff
+@ rumor:biome | gruff
 {thing}, {direction}. Don't get lost.
 
-@ rumour:biome | devout ~pious
+@ rumor:biome | devout ~pious
 {terrain} {direction} the land belongs to other powers. {thing}.
 
-@ rumour:biome, rumour:spotted
+@ rumor:biome, rumor:spotted
 From the edge of where we go you can see {thing} {direction}. Nobody's crossed into it yet.
 
-@ rumour:biome:blackforest | gruff
+@ rumor:biome:blackforest | gruff
 Forest {direction}. Greydwarfs. Don't go in bare.
 
-@ rumour:biome:swamp | wry ~joke
+@ rumor:biome:swamp | wry ~joke
 The swamp's {direction}. If you want to lose a boot, that's the place.
 
-@ rumour:biome:ocean | young
+@ rumor:biome:ocean | young
 The sea's {direction}! Can we build a boat? A small one?
 
-@ rumour:biome:mountain | worrier ~worry
+@ rumor:biome:mountain | worrier ~worry
 Mountains {direction}. Wolves and cold. I'll keep my feet on the low ground, thanks.
 
 # ================================================================== mundane gossip about who found what
 
-@ rumour, rumour:common, !rumour:saw * 0.6
+@ rumor, rumor:common, !rumor:saw * 0.6
 {witness} hasn't stopped talking about {thingshort} since {daysago}.
 {witness} went {direction} {daysago} and came back with a story. {thing}, {where}.
 Ask {witness} about {thingshort}. You'll be there till supper.
 
-@ rumour, rumour:heard * 0.6
+@ rumor, rumor:heard * 0.6
 I had it from {rteller}, who had it from {witness}. {thing}, {where}.
 {rteller} told me about {thingshort} while we were eating. Half of it was true, I reckon. {thing}, {where}.
 
-@ rumour, rumour:saw, rumour:far * 0.6
+@ rumor, rumor:saw, rumor:far * 0.6
 My feet still hurt from the walk {direction}. {thing} at the end of it, {distance} off.
 
-@ rumour, rumour:saw * 0.6
+@ rumor, rumor:saw * 0.6
 I went further {direction} than I meant to. Found {thing}. My legs aren't speaking to me.
 
-@ rumour, rumour:heard | wry * 0.6 ~joke
+@ rumor, rumor:heard | wry * 0.6 ~joke
 {rteller} says {thing} {where}. {rteller} also says they can lift a boar, so.
 
-@ rumour, rumour:common | gruff * 0.6
+@ rumor, rumor:common | gruff * 0.6
 Everyone's heard about {thingshort} by now. {where}. Stop asking.
 
 # ================================================================== more chats
 
-@ chat, tell:rumour, rumour:saw
+@ chat, tell:rumor, rumor:saw
 You won't believe what I found {direction}. // Try me. // {thing}, {distance} off. // I believe you. Mostly.
 I was out {direction} {daysago}. Found {thing}. // Show me sometime. // Bring a spear.
 
-@ chat, tell:rumour, rumour:heard
+@ chat, tell:rumor, rumor:heard
 {rteller} was telling me about {thingshort}. // Where? // {where}. // Huh.
 Did {rteller} tell you about {thingshort}? // No. // {where}. Now you know.
 
-@ chat, tell:rumour, rumour:saw | worrier
+@ chat, tell:rumor, rumor:saw | worrier
 I saw {thing} {where}. // And? // And I'm still shaking.
 
-@ chat, tell:rumour, rumour:saw | wry
+@ chat, tell:rumor, rumor:saw | wry
 I found {thing} {where}. // Useful? // Depends who you ask. // I'm asking you. // Then no.
 
-@ chat, tell:rumour, rumour:saw | cheerful
+@ chat, tell:rumor, rumor:saw | cheerful
 Guess what's {where}! // Tell me. // {thing}! // You're grinning like you made it.
 
-@ chat, tell:rumour, rumour:heard | young
+@ chat, tell:rumor, rumor:heard | young
 Did you know there's {thing} {where}? // Who told you? // {rteller}! // Then it might even be true.
 
-@ chat, tell:rumour, rumour:heard | elder
+@ chat, tell:rumor, rumor:heard | elder
 {rteller} brought word of {thingshort}, {where}. // Is it true? // Things like that usually are.

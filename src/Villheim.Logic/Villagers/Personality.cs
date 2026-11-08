@@ -97,7 +97,7 @@ namespace Villheim.Logic.Villagers
 
         private static readonly string[] FarPlaces =
         {
-            "the Ashfjord", "the north coast", "Myrhavn", "the eastern islands", "the Grey Hills", "Bjornstad",
+            "the Ashfjord", "the north coast", "Myrhavn", "the eastern islands", "the Gray Hills", "Bjornstad",
             "the old road south", "Vindholm", "the lakes", "Stenvik",
         };
 

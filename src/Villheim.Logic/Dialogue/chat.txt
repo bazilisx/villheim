@@ -13,8 +13,8 @@ How many trees did you get? // Enough to be tired. Not enough to stop.
 I'm going to build myself a chair. A proper one. // You said that last week.
 The fire smokes worse when the wind's from the north. // Then sit on the other side.
 Do you ever think about going back? // Back where? // Exactly.
-I dreamt about fish. // Good fish or bad fish? // Big fish.
-That greydwarf yesterday had a pinecone stuck to it. // They're all made of pinecones. That's the joke.
+I dreamed about fish. // Good fish or bad fish? // Big fish.
+That Greydwarf yesterday had a pinecone stuck to it. // They're all made of pinecones. That's the joke.
 We should name the boar that keeps coming round. // We should eat the boar that keeps coming round.
 I had a splinter the size of a nail. // Show me. // It's gone now. // Then it wasn't that big.
 Pass the salt. // We don't have salt. // Then pass the nothing.
@@ -34,7 +34,7 @@ I'm in a good mood today. // Did you sleep? // I slept!
 
 @ chat | worrier
 Did you check the door? // Twice. // Can you check it again?
-Do trolls swim? // I don't think so. // But you don't know.
+Do Trolls swim? // I don't think so. // But you don't know.
 
 @ chat | wry
 I've decided I'm the village's official complainer. // The job was already taken.
@@ -46,7 +46,7 @@ My grandmother lived to see ninety winters. // On what? // Spite, mostly.
 
 @ chat | young
 Can I come felling with you tomorrow? // If you carry the logs. // Deal! Wait, all of them?
-How old do you have to be to fight a troll? // Older than you.
+How old do you have to be to fight a Troll? // Older than you.
 
 @ chat | devout
 Did you leave something for the gods? // I left a crust. // They'll appreciate the effort.
@@ -82,7 +82,7 @@ Sleep well? // Something was scratching at the wall all night. // Mice. // Big m
 You should be asleep. // So should you.
 
 @ chat, afterfight
-Did you see me back there? // I saw you running. // Running towards!
+Did you see me back there? // I saw you running. // Running toward!
 Are you hurt? // Only my pride.
 
 @ chat, food:none
@@ -98,7 +98,7 @@ Do you think more will come? // If we build it. // Build what? // Anything with 
 Remember the first night here? // Cold, wet, and you complaining. // Some things don't change.
 
 @ chat, biome:blackforest
-I heard a troll last night. // Was it close? // It was loud. Loud is close.
+I heard a Troll last night. // Was it close? // It was loud. Loud is close.
 
 @ chat, mood:low
 Rough week. // Rough month. // Rough life, really. // Cheer up, it's nearly dinner.
@@ -119,7 +119,7 @@ Mind the fire.
 
 @ bye
 Safe roads.
-Watch for trolls.
+Watch for Trolls.
 Come back with meat.
 Don't get eaten.
 Off you go, then.

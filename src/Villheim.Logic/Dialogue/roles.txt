@@ -205,7 +205,7 @@ I can't keep everyone happy. I keep trying.
 Let me look at that cut. Hold still.
 
 @ carer, player:stranger
-Have you eaten, traveller? You look like you haven't.
+Have you eaten, traveler? You look like you haven't.
 
 @ chat, carer
 You haven't eaten. // I have. // Liar. Here. // Thank you.
@@ -214,7 +214,7 @@ Your hands are freezing. // They're always freezing. // Sit by the fire, then.
 # ------------------------------------------------------------------ the fence (doing:fencing)
 
 @ doing:fencing ~point
-A good fence keeps the greydwarfs guessing.
+A good fence keeps the Greydwarfs guessing.
 One more post and this side's closed.
 Leave a gap for the path. There. That's a gate.
 
@@ -234,7 +234,7 @@ My village had a fence once. Kept out everything but the rain.
 The old fence was too small for us now. Good problem to have.
 
 @ chat, doing:fencing
-Will the fence stop a troll? // No. // Then what's it for? // Everything smaller than a troll.
+Will the fence stop a Troll? // No. // Then what's it for? // Everything smaller than a Troll.
 
 # ------------------------------------------------------------------ farmer and farm work (trade:farmer, doing:farming)
 

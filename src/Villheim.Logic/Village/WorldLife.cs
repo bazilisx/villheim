@@ -348,11 +348,11 @@ namespace Villheim.Logic.Village
                 case "feast": text = $"{v} had a good harvest and a feast"; break;
                 case "skald": text = $"a skald sang at {v}"; break;
                 case "fair": text = $"people from {v} came to market"; break;
-                case "takenin": text = $"{v} took in a lost traveller"; break;
+                case "takenin": text = $"{v} took in a lost traveler"; break;
                 case "sickness": text = $"there's fever in {v}"; break;
                 case "beasts": text = $"beasts have been prowling round {v} at night"; break;
                 case "quarrel": text = $"two in {v} aren't speaking"; break;
-                case "dispute": text = $"{v} has fallen out with its neighbours"; break;
+                case "dispute": text = $"{v} has fallen out with its neighbors"; break;
                 case "caravan": text = $"a caravan from {v} is on the road"; break;
                 case "daughter": text = $"people from {v} have gone off to found a village of their own"; break;
                 case "founded": text = $"a new village has been founded near {v}"; break;

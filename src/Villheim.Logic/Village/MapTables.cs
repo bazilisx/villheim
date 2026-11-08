@@ -8,8 +8,10 @@ namespace Villheim.Logic.Village
 {
     /// <summary>
     /// The village's map table: from MapTableFromStage (a hamlet) on, the game's own cartography table (MapTablePrefab)
-    /// stands by the hearth, across from the chest. Reading it copies everything the village knows (Knowledge) onto the
-    /// player's map as ordinary pins he can delete: named, one icon per kind, none twice. Writing to it is refused; the
+    /// stands by the hearth, across from the chest. Reading it copies the village's places (Knowledge) onto the
+    /// player's map as ordinary pins he can delete: named, one icon per kind, none twice. Only part of them: each place
+    /// is shown or left off by a fixed roll against MapTableShare, so the map stays readable and the same places show
+    /// every time. Boss altars always show. Animal grounds and biome edges are talk, never pins. Writing to it is refused; the
     /// village's map is its own.
     ///
     /// The table is an amenity (Amenities, last in its list): the builder makes it, hammering, paid from the chest in
@@ -155,7 +157,7 @@ namespace Villheim.Logic.Village
             }
 
             int added = 0, had = 0;
-            foreach (Knowledge.Discovery d in Knowledge.Log(hearth))
+            foreach (Knowledge.Discovery d in Shown(hearth))
             {
                 string name = PinName(d);
                 if (map.m_pins.Any(p => p.m_name == name && Utils.DistanceXZ(p.m_pos, d.Position) < 30f || Utils.DistanceXZ(p.m_pos, d.Position) < 6f))
@@ -178,20 +180,32 @@ namespace Villheim.Logic.Village
             return $"Copied {added} places from {hearth.VillageName}'s map" + (had > 0 ? $" ({had} already on yours)." : ".");
         }
 
-        public static string PinName(Knowledge.Discovery d)
+        /// <summary>The places the table shows: bosses always, the rest by a fixed roll per village and place.</summary>
+        public static List<Knowledge.Discovery> Shown(VillageHearth hearth) => Knowledge.Log(hearth).Where(d => Shows(hearth, d)).ToList();
+
+        public static bool Shows(VillageHearth hearth, Knowledge.Discovery d)
         {
-            string name = Rumours.Short(d);
-            if (name.StartsWith("the ")) name = name.Substring(4);
-            name = name.Length > 0 ? char.ToUpperInvariant(name[0]) + name.Substring(1) : d.Key;
-            if (d.Kind == "game" || d.Kind == "foe")
+            if (!Knowledge.IsPlace(d.Kind))
             {
-                name += d.When == "night" ? " (night)" : d.When == "day" ? " (day)" : "";
-            }
-            else if (d.Kind == "biome")
-            {
-                name += " edge";
+                return false;
             }
 
+            if (d.Kind == "boss")
+            {
+                return true;
+            }
+
+            float share = LogicConfig.MapTableShare != null ? Mathf.Clamp01(LogicConfig.MapTableShare.Value) : 0.5f;
+            uint roll = unchecked((uint)d.Id * 2654435761u ^ (uint)hearth.VillageId * 40503u);
+            roll = unchecked((roll ^ (roll >> 15)) * 2246822519u);
+            return (roll >> 8) % 1000 < share * 1000f;
+        }
+
+        public static string PinName(Knowledge.Discovery d)
+        {
+            string name = Rumors.Short(d);
+            if (name.StartsWith("the ")) name = name.Substring(4);
+            name = name.Length > 0 ? char.ToUpperInvariant(name[0]) + name.Substring(1) : d.Key;
             return name;
         }
 
@@ -204,7 +218,7 @@ namespace Villheim.Logic.Village
                 case "trader": return Minimap.PinType.Icon1;
                 case "ore": return Minimap.PinType.Icon2;
                 case "nest":
-                case "foe": return Minimap.PinType.Icon0;
+                case "fuling": return Minimap.PinType.Icon0;
                 default: return Minimap.PinType.Icon3;
             }
         }
@@ -280,7 +294,7 @@ namespace Villheim.Logic.Village
 
                 VillageHearth hearth = VillageHearth.Find(id);
                 string village = hearth != null ? hearth.VillageName : "The village";
-                int known = hearth != null ? Knowledge.Log(hearth).Count : 0;
+                int known = hearth != null ? Shown(hearth).Count : 0;
                 string use = Localization.instance != null ? Localization.instance.Localize("[<color=yellow><b>$KEY_Use</b></color>]") : "[E]";
                 __result = $"{village}'s map ({known} places)\n{use} Copy them to your map";
             }
@@ -347,7 +361,7 @@ namespace Villheim.Logic.Village
 
             string gate = Living.Stage(state) < FromStage ? $" (the village only puts one up itself from stage {FromStage})" : "";
             return table != null
-                ? $"{hearth.VillageName}'s map table stands at {table.transform.position}{gate}. Use it to copy {Knowledge.Log(hearth).Count} places to your map."
+                ? $"{hearth.VillageName}'s map table stands at {table.transform.position}{gate}. Use it to copy {Shown(hearth).Count} places to your map."
                 : "Could not make the map table.";
         }
     }

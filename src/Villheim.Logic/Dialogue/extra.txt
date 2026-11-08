@@ -78,7 +78,7 @@ I trust {other}. Can't say that about everyone.
 {other} thinks they're quiet. They are not quiet.
 
 @ !night, !few | young
-{other} said they once fought a troll with a spoon. I believe them.
+{other} said they once fought a Troll with a spoon. I believe them.
 
 @ !night, !few | devout ~pious
 {other} doesn't leave anything for the gods. I leave a little extra for them.
@@ -112,7 +112,7 @@ For you, the first piece. Don't tell the others.
 I'm glad it's you. I couldn't take anyone else today.
 
 @ talk, player:friend, feel:happy ~happy
-Ah, my favourite traveller. Today just got better.
+Ah, my favorite traveler. Today just got better.
 
 @ talk, player:hero, afterfight ~proud
 Again you were there when we needed you.
@@ -173,13 +173,13 @@ How's the arm? // Still attached. // That's something.
 There's an empty bed and I'm still on the floor. // That bed's for the next one. // I'm the next one.
 
 @ chat, player:friend
-That traveller's all right. // Brought us wood. // More than all right, then.
+That traveler's all right. // Brought us wood. // More than all right, then.
 
 @ chat, player:hero
 Did you hear what {player} did? // Everyone's heard. // Tell it again anyway.
 
 @ chat, request:open
-Do you think the traveller will bring it? // They might. // They'd better. // They don't owe us anything.
+Do you think the traveler will bring it? // They might. // They'd better. // They don't owe us anything.
 
 @ chat, news:gift
 Somebody left wood in the chest. // A gift? // Or a trick. // It's wood. Wood can't trick you.
@@ -221,7 +221,7 @@ My knees know it's going to rain. // Your knees said that yesterday. // They wer
 
 @ chat | young
 Can we build a tower? A really tall one? // Why? // To see further! // See what? // Everything!
-Is it true trolls eat people? // Only noisy ones. // ... // That's better.
+Is it true Trolls eat people? // Only noisy ones. // ... // That's better.
 
 @ chat | devout
 I saw a raven on the roof. // Odin's watching. // Or it's hungry. // Both.

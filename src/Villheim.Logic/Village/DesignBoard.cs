@@ -573,7 +573,7 @@ namespace Villheim.Logic.Village
             bool hasNumber = words.Any(w => float.TryParse(w, NumberStyles.Float, CultureInfo.InvariantCulture, out metres));
             if (way == null || !hasNumber || metres <= 0f)
             {
-                return "Board: 'vh slot shift <left|right|forward|back> <metres>', e.g. 'vh slot shift left 15' (50 feet is about 15 m).";
+                return "Board: 'vh slot shift <left|right|forward|back> <meters>', e.g. 'vh slot shift left 15' (50 feet is about 15 m).";
             }
 
             if (!LoadAnchor(out Vector3 anchor, out Vector3 facing))

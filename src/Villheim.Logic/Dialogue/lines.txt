@@ -33,8 +33,8 @@
 #   gatherings.txt event:speech:x event:crowd:x event:speechreply feast feastday boss:x bosses:none beast:x
 #                  enemy:x fearnear; {lastboss} {beast}
 #   scenes.txt     chat pair tags with:x, "@key" answers (answer:key) and "+key" chime-ins (chime:key); {partner}
-#   rumours.txt    (and land.txt) rumour rumour:saw/heard/common rumour:<kind>[:<key>] rumour:new and the rest, chat
-#                  tell:rumour, findit:known/unknown, need:meat meat:known/unknown; {thing} {thingshort} {where}
+#   rumors.txt    (and land.txt) rumor rumor:saw/heard/common rumor:<kind>[:<key>] rumor:new and the rest, chat
+#                  tell:rumor, findit:known/unknown, need:meat meat:known/unknown; {thing} {thingshort} {where}
 #                  {direction} {terrain} {distance} {witness} {rteller} {daysago} {when} {findit} {meatwhere}
 #
 # A section the player has heard a lot from is picked less for a while (topic fatigue, see Dialogue.cs).
@@ -103,7 +103,7 @@ I've split so many logs I dream in firewood.
 
 @ doing:mining
 Mind the chips. They fly further than you'd think.
-Good stone. Grey all the way through.
+Good stone. Gray all the way through.
 My arms will be useless tonight.
 Rocks don't fight back. That's what I like about them.
 
@@ -346,8 +346,8 @@ If anything comes, I'll see it first.
 Watching. Not talking.
 
 @ doing:watch | worrier
-Was that a troll? That was a rock. I think it was a rock.
-Every shadow looks like a greydwarf after dark.
+Was that a Troll? That was a rock. I think it was a rock.
+Every shadow looks like a Greydwarf after dark.
 
 @ doing:watch | wry
 Nothing has attacked us all morning. Clearly I'm doing a great job.
@@ -432,7 +432,7 @@ Still sore from the last fight.
 I've been better. I've also been worse, so.
 
 @ fed, healthy
-Belly full, nothing hurts. I could fight a troll. A small one.
+Belly full, nothing hurts. I could fight a Troll. A small one.
 
 @ food:cooked
 There's cooked meat in the chest if you're hungry.
@@ -601,7 +601,7 @@ Remember when this was just a fire and a couple of us?
 
 @ size:town
 I get lost between the houses sometimes. In a good way.
-Travellers stop here now. Imagine that.
+Travelers stop here now. Imagine that.
 
 @ few
 It's quiet with so few of us.
@@ -611,14 +611,14 @@ Getting crowded round the fire these days. I like it.
 
 @ biome:blackforest
 The forest is dark, but the wood's good.
-Watch for trolls on the forest paths. You hear them before you see them.
+Watch for Trolls on the forest paths. You hear them before you see them.
 
 @ biome:blackforest | worrier
 I heard the trees talking last night. Don't laugh.
 
 @ biome:meadows
 Good soil, easy trees. We picked a good spot.
-The boars here are more trouble than the greydwarfs.
+The boars here are more trouble than the Greydwarfs.
 
 @ mood:high
 Good days, these.
@@ -658,15 +658,15 @@ We don't have much, but you're welcome to look at it.
 
 @ talk | elder
 Sit, sit. My knees need the rest more than yours.
-I've seen a lot of travellers come and go. You look like the staying kind.
+I've seen a lot of travelers come and go. You look like the staying kind.
 
 @ talk | young
 Is that a real sword? Can I hold it? No? Fine.
-Where have you been? Have you seen a troll up close?
+Where have you been? Have you seen a Troll up close?
 
 @ talk | devout
 The gods brought you here. Or the path did. Same thing, really.
-Odin walks the land dressed as a traveller, they say. Just saying.
+Odin walks the land dressed as a traveler, they say. Just saying.
 
 @ talk, need:any
 Bring {material} to the chest by the hearth and you'll have friends here for life.

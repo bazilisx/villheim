@@ -251,7 +251,7 @@ namespace Villheim.Logic.Village
                 return null;
             }
 
-            return ($"{c.Amount} {Label(c.Item)}", $"{c.Reward} {Label(c.RewardItem)}", Rumours.BoardWhere(hearth, c.Item));
+            return ($"{c.Amount} {Label(c.Item)}", $"{c.Reward} {Label(c.RewardItem)}", Rumors.BoardWhere(hearth, c.Item));
         }
 
         /// <summary>The contract on one line (commands and the chronicle), or null.</summary>
@@ -264,7 +264,7 @@ namespace Villheim.Logic.Village
             }
 
             // Where the village believes it can be found, or that nobody knows (Knowledge).
-            string where = Rumours.BoardWhere(hearth, c.Item);
+            string where = Rumors.BoardWhere(hearth, c.Item);
             return $"{c.Amount} {Label(c.Item)}, pays {c.Reward} {Label(c.RewardItem)}" + (where != null ? "<br>" + where : "");
         }
 

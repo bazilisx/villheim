@@ -20,7 +20,7 @@
 #   places.start/.end     parts for village and home place names
 #   festivals             the four seasonal feasts, spring | summer | autumn | winter
 #   skin                  range on the game's skin slider, 0 palest, 1 darkest (the game gives no paler than 0.25 here)
-#   hairshade             hair brightness range, 0.1 near black to 1 full colour
+#   hairshade             hair brightness range, 0.1 near black to 1 full color
 #   hairred               0 fair, 1 red
 #   beard                 share of men with a beard
 #   hair, beardstyle      words in the game's style names that are given more often, word:weight
@@ -69,7 +69,7 @@ places.end = fell, dal, holt, stadir, nes, hlid, botn, hraun, tunga, gard
 skin = 0.25-0.65
 cape = CapeDeerHide@0:1, CapeWolf@3:1
 
-# ============================================================================================== Meadows neighbours
+# ============================================================================================== Meadows neighbors
 
 [anglo-saxon]
 name = Anglo-Saxon
@@ -80,7 +80,7 @@ female = Aebbe, Aelfflaed, Aelfgifu, Aelfgyth, Aelfthryth, Aelfwynn, Aethelburh,
 surname = none
 places.start = Ac, Ash, Brad, Brom, Bur, Dun, Hol, Hwit, Lang, Mid, Nor, Sut, Stan, West, Ald, Lea, Thorn, Wil
 places.end = ton, ham, ford, ley, bury, worth, wic, stead, den, field, mere, wold, hurst, cot
-festivals = the plough feast | the midsummer fire | Harvest Home | Midwinter
+festivals = the plow feast | the midsummer fire | Harvest Home | Midwinter
 skin = 0.25-0.7
 hairshade = 0.2-1
 hairred = 0-0.9
@@ -137,7 +137,7 @@ name = Gaelic of the lake dwellings
 places.start = Loch, Inis, Crann, Moin, Ath, Eanach, Lurg, Corr, Cluain
 places.end = more, beg, glas, dubh, ban, liath, na, uisce
 
-# ============================================================================================== Black Forest neighbours
+# ============================================================================================== Black Forest neighbors
 
 [slavic]
 name = Slavic
@@ -196,7 +196,7 @@ hair = short:1.3, long:1.2
 cape = CapeDeerHide@0:0.8
 chest = ArmorTunic*@1:0.4
 
-# ============================================================================================== Mountain neighbours
+# ============================================================================================== Mountain neighbors
 
 [saami]
 name = Saami

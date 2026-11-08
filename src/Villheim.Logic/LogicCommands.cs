@@ -54,14 +54,14 @@ namespace Villheim.Logic
             "sort [tools|undo|push|url <address>]: sort the kept designs in the game with the sort knives (A: type, B: subtype); choices go to BepInEx/Villheim/design-sort.csv and the review sheet",
             "note <text>: write a note with what you are aiming at and the nearest gallery sign to BepInEx/Villheim/notes.txt",
             "bp save <number|name> | bp save page [all]: save a design as it stands in the gallery now (pieces left, stand-ins, anything built on its plot) as blueprints/inspiration/pass3/p3-<number>-<name>; 'page' saves every changed design standing near you; the gallery shows the saves from then on",
-            "trails: plan the nearest village's trails again (to its outpost and its nearest neighbour)",
+            "trails: plan the nearest village's trails again (to its outpost and its nearest neighbor)",
             "outpost [logging|flint|forget|haul]: the nearest village founds its next camp now, whatever its size and gear; 'forget' drops its camps, 'haul' sends every camp's load home now",
             "event [kind]: make something happen in the nearest village now (feast, skald, fair, takenin, sickness, beasts, quarrel, dispute)",
             "caravan [list]: the nearest village sends a trader down the trail now (a load of goods with CaravanDeliveries on); 'list' shows every caravan on the road",
             "daughter [here]: the nearest village sends settlers to found a new village now; 'here' lights the hearth of the nearest settled site",
             "contract [clear]: the nearest village posts a contract for players now; 'clear' takes it down",
             "events: list the nearest village's recent events and how ready it is for a bad one",
-            "pedlar: send a travelling pedlar walking in to the nearest village (works with WorldLife off)",
+            "pedlar: send a traveling pedlar walking in to the nearest village (works with WorldLife off)",
             "pilgrim: send a pilgrim walking in to the nearest village, to stay the night by the hearth",
             "hermit: make a hermit's camp fire and its hermit in front of you",
             "wanderers: list the pedlars, pilgrims and hermits nearby, and the nearest village's news",
@@ -78,7 +78,7 @@ namespace Villheim.Logic
             "switches: list the settings that turn each world and villager-minds system off, and whether each is on now: " +
             string.Join(", ", LogicConfig.Switches.Select(s => s.Name)) +
             " (grouped by config section and sorted by name; the world ones also need WorldLife on)",
-            "know [list|reach|survey [full]|rumours [n]|names|table|forget]: what the nearest village knows of the land (each discovery with its witness and day), its reach and gear limits, a survey now, sample rumour lines with their real target and distance, the location names round it, its map table",
+            "know [list|reach|survey [full]|rumors [n]|names|table|forget]: what the nearest village knows of the land (each discovery with its witness and day), its reach and gear limits, a survey now, sample rumor lines with their real target and distance, the location names round it, its map table",
             "culture [set <key>|reroll]: the nearest village's culture, its leader's title, this season's feast and each loaded villager's culture; 'set' or 'reroll' changes it",
             "cultures: the CultureMap (which cultures each biome's villages may have) and every culture's names, surnames, skin range and feasts",
             "relook [culture]: the nearest villager gets a new seed, name, face and clothes, of his own culture or the one named",
@@ -86,7 +86,7 @@ namespace Villheim.Logic
             "kids rig [clear]: a grown man, a boy, a girl and a grown woman, standing still in front of you, to tune the ChildBoy and ChildGirl settings ('3c - Villager looks') against; clear takes them away",
             "keepapart: the creatures villagers and villages leave alone (KeepApartCreatures), and the camps the nearest village keeps away from",
             "demist: the nearest Mistlands village's clear air, and the game's prefabs that carry a demister",
-            "exportpieces: write every buildable piece's collider and mesh bounds, pivot height, colour, texture, category, comfort, cost and station to BepInEx/config/Villheim/pieces.json (copy it to tools/blueprint-lab/data/pieces-export.json)",
+            "exportpieces: write every buildable piece's collider and mesh bounds, pivot height, color, texture, category, comfort, cost and station to BepInEx/config/Villheim/pieces.json (copy it to tools/blueprint-lab/data/pieces-export.json)",
         }).Concat(Generator.GenCommands.Help).ToArray();
 
         /// <summary>'vh switches': each system's on/off setting and its value now.</summary>
@@ -298,8 +298,8 @@ namespace Villheim.Logic
                 case "villheim_knowledge":
                 case "villheim_discoveries": Say(context, Knowledge.Command(args)); return true;
                 case "villheim_reach": Say(context, Knowledge.Command(new[] { "reach" })); return true;
-                case "villheim_rumours":
-                case "villheim_rumors": Say(context, Knowledge.Command(new[] { "rumours" }.Concat(args ?? new string[0]).ToArray())); return true;
+                case "villheim_rumors":
+                case "villheim_rumours": Say(context, Knowledge.Command(new[] { "rumors" }.Concat(args ?? new string[0]).ToArray())); return true;
                 case "villheim_living":
                 case "villheim_prosperity":
                 case "villheim_season":
@@ -382,7 +382,7 @@ namespace Villheim.Logic
             Say(context, $"   {state.Plots.Count} buildings, {VillageBrain.CountVillagers(state.Id)} villagers, " +
                          $"{Villagers.Beds.Of(hearth).Count} beds ({Villagers.Beds.Spare(hearth)} spare), fence ring {Palisade.WantedRadius(hearth, state):0} m");
             Say(context, $"   project: {Growth.PendingLabel(hearth, state)}; request today: {Villagers.Social.RequestText(hearth) ?? "none"}");
-            Say(context, $"   neighbours: {Relations.Describe(hearth)}");
+            Say(context, $"   neighbors: {Relations.Describe(hearth)}");
             Say(context, $"   {Villagers.Smithing.Report(hearth)}");
             Say(context, $"   outpost: {Outposts.Describe(hearth)}; {Trails.Describe(hearth)}");
             Say(context, $"   {Caravans.Describe(hearth)}; {VillageEvents.Describe(hearth)}; {Daughters.Describe(hearth)}; {Contracts.Describe(hearth)}");

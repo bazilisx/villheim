@@ -40,7 +40,7 @@ namespace Villheim.Logic.Designs
             sb.Append("{\n  \"version\": 1,\n");
             sb.Append("  \"game\": ").Append(Quote(Version.GetVersionString())).Append(",\n");
             sb.Append("  \"exported\": ").Append(Quote(System.DateTime.UtcNow.ToString("yyyy-MM-dd'T'HH:mm:ss'Z'", CultureInfo.InvariantCulture))).Append(",\n");
-            sb.Append("  \"units\": \"metres, the prefab's own space (x right, y up, z forward)\",\n");
+            sb.Append("  \"units\": \"meters, the prefab's own space (x right, y up, z forward)\",\n");
             sb.Append("  \"pieces\": {");
             int written = 0, failed = 0;
             foreach (GameObject prefab in prefabs)

@@ -188,7 +188,7 @@ namespace Villheim.Logic.Villagers
 
         private static readonly HashSet<string> BigBeasts = new HashSet<string>
         {
-            "troll", "bear", "draugr", "wolf", "drake", "fenring", "goblin", "lox", "serpent", "ghost", "great stag",
+            "troll", "bear", "draugr", "wolf", "drake", "fenring", "fuling", "lox", "serpent", "ghost", "great stag",
         };
 
         private static float _nextBuildEvent;

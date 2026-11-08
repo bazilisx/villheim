@@ -35,7 +35,7 @@ One more mouth to feed, one more pair of hands.
 New one's already asking where the good bed is. Typical.
 
 @ event:arrival | worrier
-How do we know the new one isn't a draugr in disguise? I'm only asking.
+How do we know the new one isn't a Draugr in disguise? I'm only asking.
 
 @ event:arrival | young
 Someone new! Do you think they know any stories?
@@ -94,9 +94,9 @@ Something's not right today. I can feel it.
 Did you hear that? Never mind.
 I counted the boars this morning. There's one more than yesterday.
 What if the fire goes out and we don't notice?
-I keep thinking about trolls. I can't help it.
-The sky's a strange colour. Is that normal?
-I dreamt the chest was empty. I went and checked.
+I keep thinking about Trolls. I can't help it.
+The sky's a strange color. Is that normal?
+I dreamed the chest was empty. I went and checked.
 Have you seen the tree line? It looks closer than it was.
 
 @ !night | wry
@@ -104,7 +104,7 @@ Ah, another day of standing near trees.
 I have a system. It involves sitting down.
 If you want advice, I have plenty. Useful advice, less.
 I was told there'd be mead. I was lied to.
-Somewhere out there is a land without greydwarfs. I'll never see it.
+Somewhere out there is a land without Greydwarfs. I'll never see it.
 I'd tell you a joke about wood, but it's a bit dry.
 Busy day of pretending to be busy.
 I've been promoted. I now carry slightly bigger logs.
@@ -115,7 +115,7 @@ The land remembers who treats it well.
 Sit down a moment. Young legs think they're endless.
 I've buried two villages. This one I'd like to see grow.
 Patience builds more houses than strength.
-My grandfather said the trolls were bigger in his day. Trolls were always bigger in somebody's day.
+My grandfather said the Trolls were bigger in his day. Trolls were always bigger in somebody's day.
 Old bones know the weather. Rain by nightfall.
 They'll tell stories about this place one day. I hope they get my name right.
 
@@ -124,7 +124,7 @@ How do you get that strong? Do you eat a lot of meat?
 I climbed the tall rock earlier. Don't tell anyone.
 Can you teach me to use a bow?
 I want to see the mountains one day. Do they really have snow all year?
-Is it true you can ride a lox? I'd ride a lox.
+Is it true you can ride a Lox? I'd ride a Lox.
 I'm going to be the best woodcutter in {village}. Watch me.
 {other} said I'm too small to carry logs. I carried two.
 Have you ever been in a cave? Were there monsters?
@@ -142,7 +142,7 @@ Frigg knows what's coming. She doesn't say. Wise woman.
 # ------------------------------------------------------------------ about each other
 
 @ !night, !few
-{other} snores like a troll with a cold.
+{other} snores like a Troll with a cold.
 Have you seen {other} today? They owe me a strip of leather.
 {other} burnt the meat again. Don't tell them I said so.
 {other} thinks they're the best woodcutter here. They're wrong.
@@ -172,7 +172,7 @@ Flat land, good timber. We chose well.
 @ biome:blackforest, !night
 Mind the roots on the paths. They trip you in the dark.
 The pines up here are older than anything I know.
-Blueberries everywhere, if the greydwarfs leave any.
+Blueberries everywhere, if the Greydwarfs leave any.
 The fog comes in fast here. Keep the hearth in sight.
 
 @ biome:blackforest, night
@@ -184,7 +184,7 @@ We'll need a proper workshop soon.
 The houses are close enough to shout between. That's how I like it.
 
 @ size:village
-Travellers ask the way to {village} now. We have a name people know.
+Travelers ask the way to {village} now. We have a name people know.
 We could use a second cook. Just saying.
 
 @ size:town

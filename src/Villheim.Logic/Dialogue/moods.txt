@@ -9,7 +9,7 @@
 I don't know why, but today's a good day.
 I woke up smiling. Haven't stopped since.
 Everything's going right for once.
-I could hug a troll today. A small one. From behind.
+I could hug a Troll today. A small one. From behind.
 
 @ feel:happy | gruff
 I'm in a good mood. Don't ruin it.
@@ -136,7 +136,7 @@ Even I can't find the bright side today.
 It's all going wrong. All of it. I knew it would.
 
 @ feel:miserable | wry
-On a scale of one to troll, I'm a troll.
+On a scale of one to Troll, I'm a Troll.
 
 @ feel:miserable | elder ~sad
 I've buried better days than this.
@@ -195,7 +195,7 @@ Hot food warms the old bones.
 
 @ thought:atescraps ~sad
 Scraps again. My stomach's filing complaints.
-That wasn't a meal. That was a rumour of a meal.
+That wasn't a meal. That was a rumor of a meal.
 
 @ thought:atescraps | gruff ~angry
 Burnt scraps. Wonderful.

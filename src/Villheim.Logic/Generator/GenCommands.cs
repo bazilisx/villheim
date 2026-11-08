@@ -21,7 +21,7 @@ namespace Villheim.Logic.Generator
     {
         public static readonly string[] Help =
         {
-            "gen <biome> <type> <stage> [culture] [\"request\"] [seed]: make a new building with the blueprint lab and build it in front of you, e.g. gen md home s1d3 \"two storeys with a porch\"; saved to PlanBuild/blueprints/inspiration/generated/ingame ('gen help' lists the codes)",
+            "gen <biome> <type> <stage> [culture] [\"request\"] [seed]: make a new building with the blueprint lab and build it in front of you, e.g. gen md home s1d3 \"two stories with a porch\"; saved to PlanBuild/blueprints/inspiration/generated/ingame ('gen help' lists the codes)",
             "ask <biome> <type> <stage> [culture] \"request\": write the request to BepInEx/config/Villheim/requests/requests.jsonl for Claude to make with more care; 'asks' lists them, 'place <id>' builds the result",
             "asks: list the requests made with 'ask' and their status",
             "place <id|name> [here]: build a finished request (R-0001) or an in-game generated design in front of you; 'here' builds a request where you stood when you asked",
@@ -35,10 +35,10 @@ namespace Villheim.Logic.Generator
             "  stage: size s1 to s3 and decor d1 to d3, e.g. s1d3 (small and richly furnished); s2 alone means d2",
             "  culture: optional; without it the biome's cultures are picked by weight",
             "  request words: plan (L-shaped, T-shaped, cross, courtyard, round, long, square), roof (gable, hip, flat, shed roof, steep, low roof),",
-            "    walls (plank, half-timber, log, stone, stone base), storeys (one, two or three storeys), porch (with a porch, no porch), size (small, large), decor (bare, cosy, rich)",
+            "    walls (plank, half-timber, log, stone, stone base), stories (one, two or three stories), porch (with a porch, no porch), size (small, large), decor (bare, cozy, rich)",
             "  seed: optional; the best of several seeds from it is kept (checks first, then the keep score). Without it a new seed each time.",
             "Examples:",
-            "  vh gen md home s1d3 \"two storeys with a porch\"",
+            "  vh gen md home s1d3 \"two stories with a porch\"",
             "  vh gen bf longhouse s3d2 norse-forest \"steep roof\" 7",
             "  vh gen pl home s2d2 middle-eastern \"courtyard, flat roof\"",
             "  vh gen sw storage s1d1",

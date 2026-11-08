@@ -28,13 +28,13 @@ Don't come any closer. Sorry. Hello. Are you friendly?
 Are you one of the good ones? You look like one of the good ones.
 
 @ talk, event:stranger | elder
-Another traveller. Sit down, you'll find we're not much, but we're honest.
+Another traveler. Sit down, you'll find we're not much, but we're honest.
 
 @ talk, event:stranger | young ~happy
 Who are you? Where are you going? Can I see your sword?
 
 @ talk, event:stranger | devout ~pious
-The gods send all sorts. Welcome, traveller.
+The gods send all sorts. Welcome, traveler.
 
 @ talk, event:stranger | wry ~joke
 Ah, a new face. The old ones were getting boring.
@@ -144,7 +144,7 @@ The {building} is going up thanks to you.
 Did you see {player} out there? // I saw them. // We should feed them. // We should feed them a lot.
 
 @ chat, news:gift
-Who filled the chest? // A traveller. // Strange people, travellers. // Generous people, travellers.
+Who filled the chest? // A traveler. // Strange people, travelers. // Generous people, travelers.
 
 # ------------------------------------------------------------------ requests
 
@@ -163,7 +163,7 @@ Would you be a dear and bring us {request}? We'd make it worth your while.
 We're short of {request} and I don't know what we'll do. Could you help?
 
 @ talk, event:request | elder
-In my day we'd ask a traveller for help. So. {request}, if you have it.
+In my day we'd ask a traveler for help. So. {request}, if you have it.
 
 @ talk, event:request | young
 They sent me to ask you. We need {request}! Please?
@@ -183,7 +183,7 @@ Bless whoever brought that.
 Hm. Good. That'll do nicely.
 
 @ event:requestdone | devout ~pious
-The gods provide. Through very kind travellers, mostly.
+The gods provide. Through very kind travelers, mostly.
 
 @ talk, request:done ~happy
 Thank you for today. It meant a lot.
@@ -219,7 +219,7 @@ Stay calm. Stay together.
 Thor, give us strength!
 
 @ event:attack | young ~worry
-Is it trolls? Please don't be trolls.
+Is it Trolls? Please don't be Trolls.
 
 @ event:fightover ~happy
 Is it over? I think it's over.

@@ -45,6 +45,8 @@ namespace Villheim.Logic.Villagers
         {
             public float NextSelf;
             public string LastTone;
+            /// <summary>The place the last line was about (a rumor), for pointing the right way.</summary>
+            public Vector3? LastPlace;
             public readonly Queue<string> Recent = new Queue<string>();
         }
 
@@ -359,11 +361,24 @@ namespace Villheim.Logic.Villagers
                 return null;
             }
 
+            string sighted = extra?.FirstOrDefault(e => e.StartsWith("sighted:"))?.Substring(8);
+            if (sighted != null && !CreatureNear(villager, sighted, 50f))
+            {
+                // The creature has gone (or was never in sight of this one): nothing to say about it.
+                return null;
+            }
+
             for (int attempt = 0; attempt < 6; attempt++)
             {
                 Section picked = Pick(options);
                 string line = picked.Lines[Random.Range(0, picked.Lines.Count)];
                 if ((memory.Recent.Contains(line) || RecentlySaid(villager.VillageId, line)) && attempt < 5)
+                {
+                    continue;
+                }
+
+                // A line about "{beast}" needs a real creature close by; without one it is skipped.
+                if (line.Contains("{beast}") && sighted == null && Context.Beast(villager) == null)
                 {
                     continue;
                 }
@@ -374,7 +389,9 @@ namespace Villheim.Logic.Villagers
                     Tire(picked);
                 }
 
-                memory.LastTone = picked.Tone ?? ToneOf(VoiceOf(villager));
+                // Only a section's own ~tone moves hands and draws replies: a voice alone is no reason to gesture.
+                memory.LastTone = picked.Tone;
+                memory.LastPlace = picked.All.Any(t => t.StartsWith("rumor")) ? Village.Rumors.PlaceOf(villager) : null;
 
                 memory.Recent.Enqueue(line);
                 while (memory.Recent.Count > 12)
@@ -382,7 +399,7 @@ namespace Villheim.Logic.Villagers
                     memory.Recent.Dequeue();
                 }
 
-                _sighted = extra?.FirstOrDefault(e => e.StartsWith("sighted:"))?.Substring(8);
+                _sighted = sighted;
                 try
                 {
                     return Fill(line, villager);
@@ -493,13 +510,23 @@ namespace Villheim.Logic.Villagers
             global::Chat.instance.SetNpcText(villager.gameObject, Vector3.up * 2.2f, 20f, seconds, "", line, false);
             Memory memory = Memories.GetOrCreateValue(villager);
             string tone = memory.LastTone;
+            Vector3? place = memory.LastPlace;
             memory.LastTone = null;
-            if (Random.value < 0.3f && !Sleep.IsAsleep(villager))
+            memory.LastPlace = null;
+            string gesture = GestureFor(tone);
+            if (gesture != null && !Sleep.IsAsleep(villager) && Random.value < GestureChance(tone))
             {
-                // The speaker's own hands: a point, a laugh, a shrug, as the line goes.
-                string gesture = tone == "joke" ? "laugh" : tone == "point" ? "point" : tone == "worry" ? "nonono" :
-                    tone == "angry" ? "shrug" : tone == "proud" ? "flex" : tone == "happy" ? "cheer" : tone == "pious" ? "bow" : null;
-                if (gesture != null)
+                if (gesture == "point")
+                {
+                    // Pointing only makes sense at the real place: he turns to it first, or does not point.
+                    Vector3 way = place.HasValue ? (place.Value - villager.transform.position).Horizontal() : Vector3.zero;
+                    if (way.sqrMagnitude > 1f)
+                    {
+                        villager.transform.rotation = Quaternion.LookRotation(way.normalized);
+                        Poses.Gesture(villager, gesture);
+                    }
+                }
+                else
                 {
                     Poses.Gesture(villager, gesture);
                 }
@@ -508,18 +535,71 @@ namespace Villheim.Logic.Villagers
             Social.Heard(villager, tone);
         }
 
-        /// <summary>The tone listeners hear in a line with no ~tone of its own, from the speaker's voice.</summary>
-        private static string ToneOf(string voice)
+        /// <summary>
+        /// The speaker's gesture for a section's ~tone. Only tones whose lines call for the hands have one: ~wave for
+        /// hellos and goodbyes, ~no for refusals, ~shrug for "I don't know", ~point for a place (he turns to it),
+        /// ~joke a laugh, ~proud a thumbs up, ~cheer for good news, ~pious a bow. Worry, anger and sadness show in the
+        /// words only.
+        /// </summary>
+        private static string GestureFor(string tone)
         {
-            switch (voice)
+            switch (tone)
             {
-                case "wry": return "joke";
-                case "cheerful": return "happy";
-                case "worrier": return "worry";
-                case "gruff": return "angry";
-                case "devout": return "pious";
-                case "young": return Random.value < 0.5f ? "happy" : "joke";
+                case "wave": return "wave";
+                case "no": return "nonono";
+                case "shrug": return "shrug";
+                case "point": return "point";
+                case "joke": return "laugh";
+                case "proud": return "thumbsup";
+                case "cheer": return "cheer";
+                case "pious": return "bow";
                 default: return null;
+            }
+        }
+
+        /// <summary>Gestures stay rare: the ones a line plainly asks for (a wave, a point) a bit more often.</summary>
+        private static float GestureChance(string tone) => tone == "wave" || tone == "point" || tone == "no" ? 0.5f : 0.2f;
+
+        /// <summary>A creature with this word (Context.CreatureWord) within <paramref name="range"/> of the villager.</summary>
+        private static bool CreatureNear(Villager villager, string word, float range)
+        {
+            Vector3 at = villager.transform.position;
+            foreach (Character character in Character.GetAllCharacters())
+            {
+                if (character != null && !character.IsDead() && !(character is Player) && !(character is Villager) &&
+                    Vector3.Distance(character.transform.position, at) <= range && Context.CreatureWord(character) == word)
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        /// <summary>The game's own name for a creature word, as players know it: "Greydwarf", "Fuling", "Troll".</summary>
+        public static string BeastName(string word)
+        {
+            switch (word)
+            {
+                case null: return null;
+                case "goblin":
+                case "fuling": return "Fuling";
+                case "great stag": return "Eikthyr";
+                case "bear": return "Bjørn";
+                case "stone golem": return "Stone Golem";
+                case "deer":
+                case "boar":
+                case "hare":
+                case "chicken":
+                case "gull":
+                case "crow":
+                case "wolf":
+                case "skeleton":
+                case "ghost":
+                case "leech":
+                case "bat":
+                case "serpent": return word;
+                default: return char.ToUpperInvariant(word[0]) + word.Substring(1);
             }
         }
 
@@ -637,7 +717,7 @@ namespace Villheim.Logic.Villagers
 
             tags.UnionWith(PlayerMemory.Tags(hearth, villager));
             tags.UnionWith(Village.Living.Tags(villager, hearth));
-            tags.UnionWith(Village.Rumours.Tags(villager, hearth));
+            tags.UnionWith(Village.Rumors.Tags(villager, hearth));
 
             var state = new VillageState(hearth.Zdo);
             int plots = state.Plots.Count;
@@ -689,7 +769,7 @@ namespace Villheim.Logic.Villagers
             (string Name, int View)? neighbour = Relations.Nearest(hearth);
             if (neighbour != null)
             {
-                tags.Add("neighbour:" + Relations.Band(neighbour.Value.View));
+                tags.Add("neighbor:" + Relations.Band(neighbour.Value.View));
             }
 
             foreach (string social in Social.Tags(hearth))
@@ -797,10 +877,10 @@ namespace Villheim.Logic.Villagers
             line = FillMoment(line, villager);
             line = Personality.Fill(line, villager);
             line = Village.Living.Fill(line, villager);
-            line = Village.Rumours.Fill(line, villager);
-            if (line.Contains("{neighbour}"))
+            line = Village.Rumors.Fill(line, villager);
+            if (line.Contains("{neighbor}"))
             {
-                line = line.Replace("{neighbour}", (hearth != null ? Relations.Nearest(hearth)?.Name : null) ?? "the next village");
+                line = line.Replace("{neighbor}", (hearth != null ? Relations.Nearest(hearth)?.Name : null) ?? "the next village");
             }
 
             line = line.Replace("{village}", village)
@@ -830,7 +910,7 @@ namespace Villheim.Logic.Villagers
             string weather = env.Contains("thunder") ? "storm" : env.Contains("snow") ? "snow" : env.Contains("rain") ? "rain" :
                 env.Contains("mist") || env.Contains("fog") ? "mist" : "weather";
             return line.Replace("{place}", Context.Place(villager))
-                .Replace("{beast}", _sighted ?? Context.Beast(villager) ?? "beast")
+                .Replace("{beast}", BeastName(_sighted ?? Context.Beast(villager)) ?? "creature")
                 .Replace("{playergear}", player != null ? Context.GearName(player) : "gear")
                 .Replace("{playerweapon}", Context.WeaponWord(player?.GetRightItem()) ?? "blade")
                 .Replace("{lastboss}", Context.LastBoss() ?? "the great stag")

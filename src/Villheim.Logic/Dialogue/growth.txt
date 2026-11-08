@@ -1,6 +1,6 @@
 # Lines about how a village grows and what happens to it: the events director (Village/VillageEvents.cs), the gear
-# an outpost waits for (Village/Outposts.cs) and caravans (Village/Caravans.cs). Format as in lines.txt. Every section here needs an event tag, which holds for ten minutes
-# after the thing happened.
+# an outpost waits for (Village/Outposts.cs) and caravans (Village/Caravans.cs). Format as in lines.txt. Every
+# section here needs an event tag, which holds for ten minutes after the thing happened.
 
 # ------------------------------------------------------------------ events
 

@@ -49,8 +49,14 @@ well (Tyler, 2026-11-08). The Features tab of the review sheet (`docs/features/b
 - [ ] Build order (Tyler, 2026-11-06): homes with beds until every villager has one, then the longhouse, then the hub
   area (sign, notice board, benches) and, while waiting, a workshop (basic workbench house) and a storehouse (extra
   chests); then more homes, farms and workshops as trades appear. Built session 11, needs testing.
-- [ ] Notice board from the `villagenotice` blueprint over the village chest (session 13, needs testing); extra chests
-  under it as the village grows; inside the longhouse once there is one.
+- [ ] Notice board from the `villagenotice` blueprint over the village chest (session 13, needs testing). Its back
+  carries the contract, season, next feast and prosperity (D-009, built 2026-11-08, needs testing).
+- [ ] Storage chests by the main chest as the village grows (one, two, four, then by people and need), each labelled
+  with a vanilla sign and kept sorted by a villager; the builder takes from any (D-016, built 2026-11-08,
+  `StorageChests.cs`, `Sorting.cs`, needs testing).
+- [ ] Anything brought into the village counts toward what it can build (D-007, built 2026-11-08, `BroughtMaterials`,
+  needs testing).
+- [ ] Village-built pieces take no rain or water damage (D-038, built 2026-11-08, `WaterProof.cs`, needs testing).
 - [ ] Roads and facing after Millénaire (session 14, needs testing): doors toward the hearth, parent-rule paths,
   buildings along roads, wider trunks, queued paths join, daily door check (session 15).
 - [x] Design review pass 1: `vh report` lists every design with one stage each into the review sheet; Tyler kept
@@ -141,7 +147,10 @@ well (Tyler, 2026-11-08). The Features tab of the review sheet (`docs/features/b
       down and a wider one goes up, as Millénaire's walls grow with village level. Built by the builder from the chest,
       repaired like buildings. (First version built 2026-11-06: wood fence, then stake wall, gates at paths, rings
       replaced as the village grows; needs testing.)
-- [ ] Stone building waits until the village advances, at least in the Meadows (Tyler, 2026-11-05; to decide).
+- [ ] Stone building waits until the village advances in the Meadows and Black Forest: wood at early stages, stone
+      from stage 3, the hall from stage 2 (Tyler, D-012; built 2026-11-08, needs testing).
+- [ ] Boardwalks on poles over wet ground in fen-folk and crannog villages (D-038; built 2026-11-08,
+      `Boardwalks.cs`, needs testing).
 
 ## Milestone 4: villagers with lives
 
@@ -202,7 +211,8 @@ well (Tyler, 2026-11-08). The Features tab of the review sheet (`docs/features/b
       after 2026-11-08 night; keep growing it.)
 - [ ] Villager minds (built 2026-11-08 night, needs testing; `docs/WORLD_LIFE.md`): memory of each player and gossip
       about them, place, weather and player tags, per-player topic fatigue, skills, wants and sweethearts, gatherings
-      and feasts, noticing, idle glances, chats of three.
+      and feasts, noticing, idle glances, chats of three. Feasts only after big buildings (D-005); mood changes free
+      time only, never work speed (D-014).
 - [ ] Interiors upgrade over time (bed, chests, table, then better furniture). (Built 2026-11-06 by village tier,
       needs testing.)
 - [ ] Exteriors upgrade over time (swap a building for a better design of the same role). (Built 2026-11-06: next
@@ -260,7 +270,8 @@ well (Tyler, 2026-11-08). The Features tab of the review sheet (`docs/features/b
 - [ ] A farmer trade: tends and harvests the farms, keeps the chest in food. (Built 2026-11-06, needs testing.)
 - [ ] Domesticated animals (Tyler, 2026-11-06): tamed boars and piglets at farms, added on a schedule as the village
       grows (one a day at most, capped by village size), never by feeding or breeding. (Built 2026-11-06, needs
-      testing.) Pens, chickens later.
+      testing.) Breeding and eating blocked for village animals by Harmony patch, feeding acted out (D-015,
+      2026-11-08). Pens, chickens later.
 - [ ] Ghostly villagers (Tyler, 2026-11-06; built the same day, needs testing): Valheim is the afterlife, so villages may be echoes or
       memories. Villagers slightly see-through, faintly blue or teal, with a faint glow after dark. Subtle.
 
@@ -279,11 +290,12 @@ Villages that reach out past their fence, and a world with other people in it. D
 - [ ] Relations between villages that drift day by day (built 2026-11-07, needs testing; `vh village`).
 - [ ] Idle villagers watch others work and comment (built 2026-11-07, needs testing).
 - [ ] Caravans as records that move on the world clock and become real only near a player. (Built 2026-11-08 night,
-      `Caravans.cs`, needs testing.)
+      `Caravans.cs`, needs testing.) Since D-008 a caravan is a trader on the trail with his own pack, for players
+      (`CaravanDeliveries` off). Still to do: paying him with gifts, a pack animal.
 - [ ] Outpost wood counts for the biome rule; villagers go out only once equipped to defend themselves (Tyler,
       2026-11-08). (Built 2026-11-08 night: `OutpostMaterials`, `OutpostGear`; needs testing.)
-- [ ] Daughter villages founded 600 to 1,200 m away by a full village (built 2026-11-08 night, `Daughters.cs`, needs
-      testing).
+- [x] ~~Daughter villages founded 600 to 1,200 m away by a full village~~ Dropped by Tyler (D-010): one village
+      per site plus resource outposts. `Daughters.cs` kept, `DaughterVillages` off.
 - [ ] Groves: a grown village with few trees around it plants more (built 2026-11-08 night, needs testing).
 - [ ] Signposts where trails leave a village and halfway along long trails (built 2026-11-08 night, needs testing).
 - [ ] Outposts at far resources (core wood, ore, the coast), joined to the village by a path. (Logging camps and trails
@@ -296,11 +308,14 @@ Villages that reach out past their fence, and a world with other people in it. D
       testing; bounties to come.)
 - [ ] A village events director (feasts, quarrels, a lost villager, a skald). (Built 2026-11-08 night,
       `VillageEvents.cs`, eight kinds, needs testing.)
-- [ ] Raids and help between villages by relation.
+- [ ] Raids and help between villages by relation. (Raids stay off, D-017; villages are a place of rest.)
 - [ ] Skills that grow with practice. (Built 2026-11-08 night, `VillagerSkills.cs`, needs testing.)
 - [ ] Wanderers at the longhouse who can be asked to stay. (Newcomer backstories built 2026-11-08 night; the seeker
       who asks a price to stay is still to do.)
 - [ ] Proposals from `docs/LIVING_WORLD_RESEARCH.md` (43, ranked): pick the next ones with Tyler.
+- [ ] Living village rules from Tyler's decisions (2026-11-08): villagers never leave, elders do not die of age,
+      growth is never capped by bosses (D-003, D-004; `VillagersLeave`, `EldersDieOfAge`, `BossStageCap` off,
+      code kept). Complaints and asking a player for help stay. Needs testing.
 
 - [ ] True rumours from the land: idle talk, requests and hints come from real locations, spawns, ore and terrain
       around the village (boss hints, animals, dungeons, biome edges, landmarks), firsthand from the villager who saw
@@ -310,9 +325,10 @@ Villages that reach out past their fence, and a world with other people in it. D
 - [ ] Map table by the hearth from the hamlet stage: copy the village's discoveries onto your map (Tyler, 2026-11-08).
 - [ ] Cultures by biome, up to three per biome, from the Viking-age world (Tyler, 2026-11-08): Meadows norse,
       anglo-saxon, frankish-norman; Black Forest norse-forest, celtic, slavic; Swamp celtic-crannog, baltic, fen-folk;
-      Mountains norse-highland, saami; Plains middle-eastern, byzantine, steppe; Mistlands byzantine,
-      caucasian-highland. No villages in the Ashlands or Deep North. Names, skin tones, looks and a few lines per
-      culture (helper branch night3/cultures).
+      Mountains norse-highland, saami (equal weight, D-039); Plains middle-eastern, byzantine, steppe; Mistlands
+      byzantine, caucasian-highland. No villages in the Ashlands or Deep North. Names, skin tones, looks and a few
+      lines per culture (helper branch night3/cultures). Short leader titles: Jarl, Reeve, Lord, Chief, Elder, Sheikh,
+      Archon, Beg (D-040).
 - [ ] Biome defenders: villagers near the Plains shoot deathsquitos out of the sky; villagers near the Mistlands are
       skilled against and hit harder at Mistlands creatures (Tyler, 2026-11-08).
 - [ ] Style guides and lab templates for each culture, learned from Millénaire (allowed for plans, roofs and room uses

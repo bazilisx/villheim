@@ -63,6 +63,8 @@ namespace Villheim.Logic
         public static ConfigEntry<bool> Caravans;
         public static ConfigEntry<bool> Daughters;
         public static ConfigEntry<bool> Contracts;
+        public static ConfigEntry<bool> Groves;
+        public static ConfigEntry<int> GroveTrees;
         public static ConfigEntry<float> ContractChancePerDay;
         public static ConfigEntry<int> DaughtersPerVillage;
         public static ConfigEntry<float> DaughterChancePerDay;
@@ -167,6 +169,11 @@ namespace Villheim.Logic
                 "smith, a material its biome lacks), paid in coins or spare goods when you bring it to the chest.");
             ContractChancePerDay = Admin(config, life, "ContractChancePerDay", 0.5f,
                 "Chance a village with nothing posted puts up a contract on a given day (0 to 1).");
+            Groves = Admin(config, life, "Groves", true,
+                "With WorldLife on, a village of four or more buildings with few trees left round it plants extra saplings " +
+                "(three a day) for later harvests.");
+            GroveTrees = Admin(config, life, "GroveTrees", 25,
+                "Standing trees within 60 m of a village's edge it wants to keep; below this it plants more.");
             Trails = Admin(config, life, "Trails", true,
                 "With WorldLife on, villages plan a dirt trail to their outpost and to their nearest neighbour within " +
                 "2,500 m, painted on the ground near you as you walk it.");

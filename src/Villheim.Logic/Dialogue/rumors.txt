@@ -1,20 +1,33 @@
 # Villheim: what villagers know of the land round them. Same format as lines.txt. Every line here is about a real
-# place the village has found (Village/Knowledge.cs, Village/Rumours.cs); nothing in it may name a place or a creature
+# place the village has found (Village/Knowledge.cs, Village/Rumors.cs); nothing in it may name a place or a creature
 # that the tags don't vouch for.
 #
-# Tags: rumour, rumour:saw (he saw it himself), rumour:heard (someone told him in a chat), rumour:common (the whole
-# village has heard by now), rumour:<kind>, rumour:<kind>:<key>, rumour:near, rumour:far, rumour:spotted (seen from a
-# way off only), rumour:new (he found it today), rumour:felled (a boss that is down), rumour:when:day/night/any,
-# rumour:terrain:sea/river/mountain/ridge/swamp/forest/hill/high/down/shore/flat. Chat: tell:rumour (he is passing it on).
+# Tags: rumor, rumor:saw (he saw it himself), rumor:heard (someone told him in a chat), rumor:common (the whole
+# village has heard by now), rumor:<kind>, rumor:<kind>:<key>, rumor:near (under 350 m), rumor:far (over 900 m),
+# rumor:spotted (seen from a way off: only animal grounds and biome edges), rumor:new (he found it today),
+# rumor:felled (a boss that is down), rumor:when:day/night/any, rumor:sure (a runestone with boar, Greydwarfs or Draugr
+# always around it: say it with confidence), rumor:ground (an animal ground or biome edge, not a place: hedge it),
+# rumor:terrain:sea/river/mountain/ridge/swamp/forest/hill/high/down/shore/flat. Chat: tell:rumor (he is passing it on).
 # Kinds and keys: boss eikthyr elder bonemass moder yagluth queen fader; dungeon burial sunkencrypt trollcave frostcave
-# infestedmine; trader haldor hildir bogwitch; runestone; landmark stones tarpit tower giant henge dolmen wreck well
-# cairn drakenest greydwarfcamp; ruin; fuling; dvergr; ore copper tin silver obsidian iron flametal; nest greydwarfnest
-# draugrpile bonepile; forage raspberries blueberries cloudberries beehive; game boar deer neck hare lox; foe (creatures
-# that fight); biome meadows blackforest swamp mountain plains ocean mistlands ashlands deepnorth.
+# infestedmine; trader haldor hildir bogwitch; runestone runestone boars greydwarfs draugr; landmark stones tarpit tower
+# giant henge drakenest (dolmen wreck well cairn greydwarfcamp only if KnowledgeKinds lists them); fuling; dvergr; ore
+# copper tin silver obsidian flametal; forage beehive; game boar deer neck hare lox; foe (creatures that fight); biome
+# meadows blackforest swamp mountain plains ocean mistlands ashlands deepnorth. Ruins, nests and berries are off by
+# default (KnowledgeKinds).
 #
-# Fill-ins: {thing} (what it is, "a troll cave"), {thingshort} ("the troll cave"), {where} ("over the ridge to the
-# north, a good walk"), {direction} ("to the north"), {terrain} ("over the ridge", or "out" on the flat), {distance}
-# ("a good walk"), {witness} (who found it), {rteller} (who told him), {daysago}, {when} ("by day", "at night").
+# Fill-ins (Village/Rumors.cs; each rolls a different short shape every time it is used):
+#   {thing}      what it is, with the game's names: "a troll cave", "Eikthyr's altar", "a runestone with boar all around it"
+#   {thingshort} "the troll cave", "the boar runestone"
+#   {where}      direction and maybe distance or a known place on the way: "to the north", "north, a fair walk",
+#                "over the ridge to the north", "past the tar pit"; under 150 m "just past the north fence"
+#   {direction}  "to the north", "north of here", "out north", "off north"
+#   {dir}        the bare compass word: "north", "northeast"
+#   {terrain}    "over the ridge", "across the river"..., empty on flat ground (spaces close up)
+#   {via}        a known place on the way ("past the tar pit"), else {terrain}, else "out"
+#   {distance}   "a short walk", "a fair walk", "a long walk", "half a day out"...
+#   {biome}      the biome it is in: "the Black Forest"
+#   {witness}    who found it; {rteller} who told him; {daysago} "yesterday", "three days back"; {when} "at night",
+#                "in daylight", "any time of day"
 #
 # Firsthand lines say "I". Heard lines name {rteller} or {witness}. Common lines say "they say" or name {witness}.
 # Boss lines say what the place is and no more.
@@ -23,315 +36,315 @@
 
 # ------------------------------------------------------------------ the great stag
 
-@ rumour:boss:eikthyr, rumour:saw, !rumour:felled
+@ rumor:boss:eikthyr, rumor:saw, !rumor:felled
 There's a place {where} where the air crackles. Old stones, and the ground scorched round them. The stag's place.
 I saw it, {player}. A great antlered stag, lightning in its horns, {where}. I didn't stay to be introduced.
 {where}. Stones, and antler marks on them. My hair stood up the whole time.
 Go {direction} and keep going, {distance}. You'll smell the burnt grass before you see the stones.
 
-@ rumour:boss:eikthyr, rumour:heard, !rumour:felled
+@ rumor:boss:eikthyr, rumor:heard, !rumor:felled
 {rteller} told me there's a great stag {where}. Lightning in its horns, {rteller} says.
 Word from {rteller}: stones {where}, and the grass burnt black round them. The stag's place, they reckon.
 {witness} came back pale. Said there's an antlered thing {where} that throws lightning.
 
-@ rumour:boss:eikthyr, rumour:common, !rumour:felled
+@ rumor:boss:eikthyr, rumor:common, !rumor:felled
 They say the great stag waits {where}. {witness} found its stones.
 Everyone knows about the stag's stones by now. {where}. Nobody goes up there for fun.
 The stag. {where}. If you're the sort who goes looking for trouble.
 
-@ rumour:boss:eikthyr, !rumour:felled | worrier ~worry
+@ rumor:boss:eikthyr, !rumor:felled | worrier ~worry
 There's a stag {where} with lightning in its antlers. Lightning! In antlers! Who allowed that?
 When it storms I think of that stag {direction}. I'm sure it's thinking of me.
 
-@ rumour:boss:eikthyr, !rumour:felled, !rumour:saw | young
+@ rumor:boss:eikthyr, !rumor:felled, !rumor:saw | young
 {witness} says there's a stag {where} that's bigger than a house and shoots lightning! Can we go see? From far away?
 I'm going to fight the lightning stag {direction} when I'm big. Or wave at it.
 
-@ rumour:boss:eikthyr, !rumour:felled | elder
+@ rumor:boss:eikthyr, !rumor:felled | elder
 My father spoke of a stag like that. Odd to learn it's been {where} all this time.
 The stag {direction} has been there longer than this village. Treat it with respect, or with a good spear.
 
-@ rumour:boss:eikthyr, !rumour:felled, !rumour:saw | wry
+@ rumor:boss:eikthyr, !rumor:felled, !rumor:saw | wry
 {witness} found the stag's stones {where}. Brought back nothing but a singed eyebrow.
-A stag that throws lightning, {distance} from here. Some neighbours keep chickens.
+A stag that throws lightning, {distance} from here. Some neighbors keep chickens.
 
-@ rumour:boss:eikthyr, !rumour:felled | devout
+@ rumor:boss:eikthyr, !rumor:felled | devout
 The stag {direction} is one of the old powers. Leave an offering at its stones and see what comes.
 Odin set the stag {where} for a reason. Someone is meant to go.
 
-@ rumour:boss:eikthyr, !rumour:felled | gruff
+@ rumor:boss:eikthyr, !rumor:felled | gruff
 Stag's {where}. Big. Angry. Go if you're going.
 
-@ rumour:boss:eikthyr, !rumour:felled | cheerful ~happy
+@ rumor:boss:eikthyr, !rumor:felled | cheerful ~happy
 The stag's {where}! Big antlers. Bring it a carrot. A very big carrot.
 
-@ rumour:boss:eikthyr, !rumour:felled, player:trophies
+@ rumor:boss:eikthyr, !rumor:felled, player:trophies
 You've hunted. Then you'll want to know the great stag's {where}.
 
-@ rumour:boss:eikthyr, rumour:felled, !rumour:saw
+@ rumor:boss:eikthyr, rumor:felled, !rumor:saw
 The stag's stones {where} are quiet now. Just stones.
 {witness} went back to the stag's place {direction}. Nothing there but burnt grass and old bones.
 
 # ------------------------------------------------------------------ the Elder
 
-@ rumour:boss:elder, rumour:saw, !rumour:felled
+@ rumor:boss:elder, rumor:saw, !rumor:felled
 I found a ring of old stones {where}. Deep in the trees, and the trees leaned in. The Elder's place, I'd bet my axe on it.
 {where} there's a clearing where nothing grows right. Stones in a ring. I left in a hurry.
-I saw the Elder's stones {where}. The greydwarfs round there were thick as midges.
+I saw the Elder's stones {where}. The Greydwarfs round there were thick as midges.
 
-@ rumour:boss:elder, rumour:heard, !rumour:felled
+@ rumor:boss:elder, rumor:heard, !rumor:felled
 {rteller} says the Elder's stones are {where}. Deep in the forest, of course.
 According to {rteller}, there's a ring of stones {where} where the old tree-giant sleeps.
 
-@ rumour:boss:elder, rumour:common, !rumour:felled
+@ rumor:boss:elder, rumor:common, !rumor:felled
 They say the Elder waits {where}. {witness} found the stones.
 The Elder's place is {where}. The trees there are older than anyone's grandmother.
 
-@ rumour:boss:elder, !rumour:felled, !rumour:saw | worrier ~worry
+@ rumor:boss:elder, !rumor:felled, !rumor:saw | worrier ~worry
 A tree that walks, {distance} from here. I've started apologising to the woodpile.
 {witness} says the Elder's {where}. I'm not felling anything on that side ever again.
 
-@ rumour:boss:elder, !rumour:felled | wry ~joke
+@ rumor:boss:elder, !rumor:felled | wry ~joke
 The Elder's {where}. I'd ask it to fell itself, save us the work.
 A walking tree {direction}. Imagine the firewood. Then imagine it imagining us as firewood.
 
-@ rumour:boss:elder, !rumour:felled | elder
+@ rumor:boss:elder, !rumor:felled | elder
 The Elder was old when the stones were new. It's {where}. Mind it.
 
-@ rumour:boss:elder, !rumour:felled, !rumour:saw | young
+@ rumor:boss:elder, !rumor:felled, !rumor:saw | young
 Is the Elder really a tree with legs? {witness} says it's {where}. I want to see its feet.
 
-@ rumour:boss:elder, !rumour:felled | devout ~pious
+@ rumor:boss:elder, !rumor:felled | devout ~pious
 The Elder {direction} is the forest's own anger. Go with an axe and a prayer.
 
-@ rumour:boss:elder, !rumour:felled | cheerful ~happy
+@ rumor:boss:elder, !rumor:felled | cheerful ~happy
 The Elder's {where}! A big old tree. I'm sure it's lovely once you get to know it.
 
-@ rumour:boss:elder, rumour:felled
+@ rumor:boss:elder, rumor:felled
 The Elder's stones {where} are just stones now. The forest feels lighter for it.
 
 # ------------------------------------------------------------------ Bonemass
 
-@ rumour:boss:bonemass, rumour:saw, !rumour:felled
+@ rumor:boss:bonemass, rumor:saw, !rumor:felled
 There's an altar {where}. Green water, bones in the mud, and a smell I'll be tasting for a week.
 I went {direction} as far as the swamp would let me. There's an altar, and something under the muck that breathes.
 
-@ rumour:boss:bonemass, !rumour:saw, !rumour:felled
+@ rumor:boss:bonemass, !rumor:saw, !rumor:felled
 {witness} found an altar in the swamp {where}. Bonemass, they call what waits there.
 They say Bonemass lies {where}. A heap of bones and bog that's never heard of dying.
 
-@ rumour:boss:bonemass, rumour:heard, !rumour:felled
+@ rumor:boss:bonemass, rumor:heard, !rumor:felled
 {rteller} told me about the swamp altar {where}. Said not to go without iron on.
 
-@ rumour:boss:bonemass, !rumour:felled | worrier ~worry
+@ rumor:boss:bonemass, !rumor:felled | worrier ~worry
 Bonemass. {where}. It's a name made of two bad things put together.
 
-@ rumour:boss:bonemass, !rumour:felled | wry
+@ rumor:boss:bonemass, !rumor:felled | wry
 There's a thing {where} made of bones and mud. Our cook has made worse.
 
-@ rumour:boss:bonemass, rumour:felled
+@ rumor:boss:bonemass, rumor:felled
 The swamp altar {where} is quiet now, they say. Still smells, mind.
 
 # ------------------------------------------------------------------ Moder
 
-@ rumour:boss:moder, rumour:saw, !rumour:felled
+@ rumor:boss:moder, rumor:saw, !rumor:felled
 High up {where}, there's an altar on the rock. Big claw marks. I came down faster than I went up.
 I saw the dragon's perch {where}. Ice and old bones. The wind up there cuts like a knife.
 
-@ rumour:boss:moder, !rumour:saw, !rumour:felled
+@ rumor:boss:moder, !rumor:saw, !rumor:felled
 {witness} saw an altar high on the mountain {where}. The dragon mother comes down there, they say.
 They say Moder nests {where}. Up where the snow never goes.
 
-@ rumour:boss:moder, !rumour:felled, !rumour:saw | young
+@ rumor:boss:moder, !rumor:felled, !rumor:saw | young
 There's a dragon {where}! A real one! {witness} saw where it lands!
 
-@ rumour:boss:moder, !rumour:felled | devout
+@ rumor:boss:moder, !rumor:felled | devout
 The dragon mother {direction} is older than any of us. Pray before you climb.
 
-@ rumour:boss:moder, !rumour:felled | worrier ~worry
+@ rumor:boss:moder, !rumor:felled | worrier ~worry
 There's a dragon {where}. I check the sky every morning now. Twice.
 
-@ rumour:boss:moder, !rumour:felled | wry ~joke
+@ rumor:boss:moder, !rumor:felled | wry ~joke
 The dragon nests {where}. Bit high up for visitors. That suits me.
 
-@ rumour:boss:moder, rumour:felled
+@ rumor:boss:moder, rumor:felled
 The dragon's perch {where} stands empty now. The sky's emptier too.
 
 # ------------------------------------------------------------------ Yagluth
 
-@ rumour:boss:yagluth, rumour:saw, !rumour:felled
-On the plains {where} there's a ring of burnt stones. The fulings keep away from it. So should we.
-I saw where the fuling king lies, {where}. Black stones, and the grass won't grow.
+@ rumor:boss:yagluth, rumor:saw, !rumor:felled
+On the plains {where} there's a ring of burnt stones. The Fulings keep away from it. So should we.
+I saw where the Fuling king lies, {where}. Black stones, and the grass won't grow.
 
-@ rumour:boss:yagluth, !rumour:saw, !rumour:felled
-{witness} found a ring of burnt stones {where}. The fulings' old king, they say. What's left of him.
-They say Yagluth's ring is {where}. Even the fulings don't go near it.
+@ rumor:boss:yagluth, !rumor:saw, !rumor:felled
+{witness} found a ring of burnt stones {where}. The Fulings' old king, they say. What's left of him.
+They say Yagluth's ring is {where}. Even the Fulings don't go near it.
 
-@ rumour:boss:yagluth, !rumour:felled | gruff
+@ rumor:boss:yagluth, !rumor:felled | gruff
 Burnt king, {where}. Leave him burnt.
 
-@ rumour:boss:yagluth, !rumour:felled | elder
-The fulings had a king once. He's {where}, and he isn't finished being angry.
+@ rumor:boss:yagluth, !rumor:felled | elder
+The Fulings had a king once. He's {where}, and he isn't finished being angry.
 
-@ rumour:boss:yagluth, !rumour:felled, !rumour:saw | young
-{witness} says there's a dead goblin king {where}! Dead but not all the way!
+@ rumor:boss:yagluth, !rumor:felled, !rumor:saw | young
+{witness} says there's a dead Fuling king {where}! Dead but not all the way!
 
-@ rumour:boss:yagluth, rumour:felled
+@ rumor:boss:yagluth, rumor:felled
 The burnt ring {where} has gone cold, they say.
 
 # ------------------------------------------------------------------ the Queen
 
-@ rumour:boss:queen, rumour:saw, !rumour:felled
-{where}, in the mist, there's a dvergr gate sealed shut. Something scratches behind it. I didn't knock.
-I saw the sealed gate {where}. Carved stone, dvergr work. And the ground hums.
+@ rumor:boss:queen, rumor:saw, !rumor:felled
+{where}, in the mist, there's a Dvergr gate sealed shut. Something scratches behind it. I didn't knock.
+I saw the sealed gate {where}. Carved stone, Dvergr work. And the ground hums.
 
-@ rumour:boss:queen, !rumour:saw, !rumour:felled
-{witness} says there's a sealed dvergr gate in the mist {where}. Something big lives behind it.
+@ rumor:boss:queen, !rumor:saw, !rumor:felled
+{witness} says there's a sealed Dvergr gate in the mist {where}. Something big lives behind it.
 They say the Queen of the crawling things waits behind a gate {where}.
 
-@ rumour:boss:queen, !rumour:felled | worrier ~worry
+@ rumor:boss:queen, !rumor:felled | worrier ~worry
 A gate in the mist {where}, and something behind it. I hope whoever sealed it used good nails.
 
-@ rumour:boss:queen, !rumour:felled | elder
-The dvergr sealed that gate {where} for a reason. Even they were afraid of something.
+@ rumor:boss:queen, !rumor:felled | elder
+The Dvergr sealed that gate {where} for a reason. Even they were afraid of something.
 
-@ rumour:boss:queen, rumour:felled
+@ rumor:boss:queen, rumor:felled
 The gate in the mist {where} stands open now. Nothing scratches.
 
 # ------------------------------------------------------------------ Fader
 
-@ rumour:boss:fader, !rumour:felled, !rumour:saw
+@ rumor:boss:fader, !rumor:felled, !rumor:saw
 {witness} saw a great ring in the burning lands {where}. Fader, they call what waits there.
 They say a fire beast sleeps {where}. The ground there glows at night.
 
-@ rumour:boss:fader, rumour:felled
+@ rumor:boss:fader, rumor:felled
 The fire ring {where} has gone dark, they say. Whatever slept there won't wake.
 
 # ------------------------------------------------------------------ any boss
 
-@ rumour:boss, rumour:spotted, !rumour:felled
+@ rumor:boss, rumor:spotted, !rumor:felled
 I only saw it from a way off, {direction}. Stones on high ground, and a feeling in my neck I didn't like.
 You can make out the place from the edge of where we go, {where}. Nobody's been closer.
 
-@ rumour:boss, !rumour:felled | steady
+@ rumor:boss, !rumor:felled | steady
 If you're looking for {thingshort}, it's {where}. Go ready.
 {thingshort} is {where}. That's all I know, and all I want to.
 
-@ rumour:boss, !rumour:felled | cheerful ~happy
+@ rumor:boss, !rumor:felled | cheerful ~happy
 You look like you could take on {thingshort}! It's {where}. We'll have the feast ready.
 
-@ rumour:boss, !rumour:felled, player:armed | gruff
+@ rumor:boss, !rumor:felled, player:armed | gruff
 You're armed. {thingshort}'s {where}. Go and use it.
 
-@ chat, tell:rumour, rumour:boss, rumour:saw, !rumour:felled
+@ chat, tell:rumor, rumor:boss, rumor:saw, !rumor:felled
 I found where {thingshort} waits. {where}. // You went right up to it? // Close enough.
 {where}, that's where {thingshort} is. I've seen it. // And you came back. // I came back fast.
 
-@ chat, tell:rumour, rumour:boss, !rumour:saw, !rumour:felled
-{witness} says {thingshort} is {where}. // Someone should tell the traveller. // Someone just did.
+@ chat, tell:rumor, rumor:boss, !rumor:saw, !rumor:felled
+{witness} says {thingshort} is {where}. // Someone should tell the traveler. // Someone just did.
 Did you hear? {thingshort}, {where}. // I'll stay on this side of the village, then.
 
 # ================================================================== dungeons
 
-@ rumour:dungeon, rumour:saw
+@ rumor:dungeon, rumor:saw
 I found {thing} {where}. Didn't go in. I like my bones on the inside.
 {where}, there's {thing}. Cold air comes out of it, even at midday.
 I stood at the mouth of {thingshort} {where} and listened. Something listened back.
 
-@ rumour:dungeon, rumour:heard
+@ rumor:dungeon, rumor:heard
 {rteller} told me {witness} found {thing} {where}.
 Word from {rteller}: {thing}, {where}. Nobody's been in.
 
-@ rumour:dungeon, rumour:common
+@ rumor:dungeon, rumor:common
 They say there's {thing} {where}. {witness} found it.
 {thing}, {where}. Bring a torch, they say. And a friend you don't mind losing.
 
-@ rumour:dungeon:burial, !rumour:saw
+@ rumor:dungeon:burial, !rumor:saw
 There's a burial chamber {where}. The door's heavy for a reason.
 {witness} says the burial chamber {direction} rattles at night. Bones, they reckon.
 
-@ rumour:dungeon:burial | worrier ~worry
+@ rumor:dungeon:burial | worrier ~worry
 A burial chamber, {distance} away. Whoever's buried there isn't resting much, from what I hear.
 
-@ rumour:dungeon:burial | devout ~pious
+@ rumor:dungeon:burial | devout ~pious
 The dead in the chamber {direction} were laid down with care once. Go in with care, if you go.
 
-@ rumour:dungeon:sunkencrypt
+@ rumor:dungeon:sunkencrypt
 There's a crypt {where}, half under the swamp water. Something in there keeps the door shut.
 The sunken crypt {direction}. Muck to your knees and worse below.
 
-@ rumour:dungeon:trollcave, !rumour:saw
-There's a troll cave {where}. You'll know it by the bones outside.
-{witness} found a troll cave {where}. Heard it snoring from a stone's throw off.
+@ rumor:dungeon:trollcave, !rumor:saw
+There's a Troll cave {where}. You'll know it by the bones outside.
+{witness} found a Troll cave {where}. Heard it snoring from a stone's throw off.
 
-@ rumour:dungeon:trollcave | wry ~joke
-A troll lives {where}. I'd say we should invite it to the feast, but it would bring the furniture.
+@ rumor:dungeon:trollcave | wry ~joke
+A Troll lives {where}. I'd say we should invite it to the feast, but it would bring the furniture.
 
-@ rumour:dungeon:frostcave, !rumour:saw
+@ rumor:dungeon:frostcave, !rumor:saw
 There's a cave up {where} that breathes cold. A frost cave, {witness} says.
 
-@ rumour:dungeon:infestedmine
-{where}, under the mist, there's an old dvergr mine. Something's crawling in it now.
+@ rumor:dungeon:infestedmine
+{where}, under the mist, there's an old Dvergr mine. Something's crawling in it now.
 
-@ rumour:dungeon:trollcave | worrier ~worry
-A troll cave {where}. I hear the ground shake some nights. That's the troll turning over.
+@ rumor:dungeon:trollcave | worrier ~worry
+A Troll cave {where}. I hear the ground shake some nights. That's the Troll turning over.
 
-@ rumour:dungeon:frostcave | wry ~joke
+@ rumor:dungeon:frostcave | wry ~joke
 A frost cave {where}. Even the cold up there has a cave to hide in.
 
-@ rumour:dungeon, !rumour:saw | young
+@ rumor:dungeon, !rumor:saw | young
 {witness} found a cave! Or a hole. A scary hole. {where}.
 
-@ rumour:dungeon | elder
+@ rumor:dungeon | elder
 Every land has its holes where the dead go wrong. Ours is {where}.
 
-@ rumour:dungeon, player:holding:torch
+@ rumor:dungeon, player:holding:torch
 You've a torch. Good. There's {thing} {where}, and it's dark in there.
 
-@ chat, tell:rumour, rumour:dungeon, !rumour:saw
+@ chat, tell:rumor, rumor:dungeon, !rumor:saw
 {witness} found {thing} {where}. // Did they go in? // Do I look like I'd be telling you if they had?
 There's {thing} {where}. // That's close. // That's too close.
 
 # ================================================================== traders
 
-@ rumour:trader:haldor, rumour:saw
+@ rumor:trader:haldor, rumor:saw
 There's a trader camped {where}. Big man, bigger pack. He wanted coins for everything, even directions.
 I found the trader {where}. He has things in that pack I've never seen. He has prices I've never seen either.
 
-@ rumour:trader:haldor, !rumour:saw
+@ rumor:trader:haldor, !rumor:saw
 {witness} says there's a trader {where}. Haldor, he calls himself. Bring coins.
 They say a trader keeps a camp {where}. He sells strange things, and won't haggle.
 
-@ rumour:trader:haldor | wry ~joke
+@ rumor:trader:haldor | wry ~joke
 A trader in the woods {where}. He'll sell you a fishing rod and look at you like you're the fish.
 
-@ rumour:trader:hildir, rumour:saw
+@ rumor:trader:hildir, rumor:saw
 There's a woman's camp {where}. Tents, and more hats than I've seen in my life.
 I met a trader {where}. Hildir. Sells clothes. Looked at mine and sighed.
 
-@ rumour:trader:hildir, !rumour:saw
+@ rumor:trader:hildir, !rumor:saw
 {witness} found a camp {where}. A woman named Hildir sells clothes there, and hats. So many hats.
 They say a trader called Hildir camps {where}. She's lost some things, {witness} says.
 
-@ rumour:trader:bogwitch, !rumour:saw
+@ rumor:trader:bogwitch, !rumor:saw
 {witness} found a hut in the swamp {where}. An old woman brews things there. She looked right through me, {witness} said.
 There's a witch in the swamp {where}. She trades, they say. Mind what you drink.
 
-@ rumour:trader:haldor | worrier ~worry
+@ rumor:trader:haldor | worrier ~worry
 The trader {direction} sells things nobody can explain. Where does he get them? Who does he get them from?
 
-@ rumour:trader:hildir | cheerful ~happy
-Hildir's {where}! Maybe she has something in my colour.
+@ rumor:trader:hildir | cheerful ~happy
+Hildir's {where}! Maybe she has something in my color.
 
-@ rumour:trader:bogwitch | devout ~pious
+@ rumor:trader:bogwitch | devout ~pious
 The old woman in the swamp {direction} knows things about herbs the gods forgot. Go with respect.
 
-@ rumour:trader | cheerful ~happy
+@ rumor:trader | cheerful ~happy
 A trader, {distance} away! We should save up. I want something shiny.
 
-@ rumour:trader | gruff
+@ rumor:trader | gruff
 Trader's {where}. Overcharges. Go anyway.
 
-@ chat, tell:rumour, rumour:trader, !rumour:saw
+@ chat, tell:rumor, rumor:trader, !rumor:saw
 There's a trader {where}. // What does he sell? // Everything we can't afford.
 {witness} found {thingshort} {where}. // Did they buy anything? // A look. It was free.

@@ -179,7 +179,7 @@ Look, I've got muscles too!
 Is that a challenge? Not today.
 
 @ reply, emote:challenge, protector
-Any time, traveller. Any time.
+Any time, traveler. Any time.
 
 @ reply, emote:dance
 Ha! Look at those feet!
@@ -299,7 +299,7 @@ Can I go inside? Can I?
 @ self, event:welcomeneighbour
 Welcome! You'll like it here. Mostly.
 New face! Come and meet everyone.
-Hello, neighbour. The fire's that way.
+Hello, neighbor. The fire's that way.
 
 @ self, event:welcomeneighbour | gruff
 New one. Don't touch my axe.

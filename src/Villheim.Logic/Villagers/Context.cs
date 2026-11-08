@@ -54,9 +54,11 @@ namespace Villheim.Logic.Villagers
             ["troll"] = "troll", ["skeleton"] = "skeleton", ["skeletonpoison"] = "skeleton", ["ghost"] = "ghost",
             ["wolf"] = "wolf", ["wolfcub"] = "wolf", ["bjorn"] = "bear", ["unbjorn"] = "bear", ["draugr"] = "draugr",
             ["draugrelite"] = "draugr", ["blob"] = "blob", ["leech"] = "leech", ["surtling"] = "surtling",
-            ["drake"] = "drake", ["fenring"] = "fenring", ["lox"] = "lox", ["fuling"] = "goblin", ["goblin"] = "goblin",
+            ["drake"] = "drake", ["fenring"] = "fenring", ["lox"] = "lox", ["fuling"] = "fuling", ["goblin"] = "fuling", ["goblinbrute"] = "fuling", ["goblinshaman"] = "fuling",
             ["deathsquito"] = "deathsquito", ["hare"] = "hare", ["chicken"] = "chicken", ["hen"] = "chicken",
-            ["serpent"] = "serpent", ["seagal"] = "gull", ["crow"] = "crow", ["eikthyr"] = "great stag",
+            ["serpent"] = "serpent", ["seeker"] = "seeker", ["seekerbrute"] = "seeker", ["seekersoldier"] = "seeker",
+            ["tick"] = "tick", ["gjall"] = "gjall", ["wraith"] = "wraith", ["abomination"] = "abomination", ["stonegolem"] = "golem",
+            ["ulv"] = "ulv", ["dvergr"] = "dvergr", ["seagal"] = "gull", ["crow"] = "crow", ["eikthyr"] = "great stag",
         };
 
         private static readonly HashSet<string> Animals = new HashSet<string> { "deer", "boar", "neck", "hare", "chicken", "lox", "gull", "crow" };

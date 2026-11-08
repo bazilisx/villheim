@@ -12,13 +12,15 @@ namespace Villheim.Logic.Village
     ///
     /// - Reach: each village has a radius it has explored. Its target grows with the village's stage
     ///   (KnowledgeReach: camp, hamlet, village, town) and its gear tier (KnowledgeReachPerGear); the explored radius
-    ///   creeps toward the target by KnowledgeReachGrowth metres a day, so places come to light over days. Villagers
-    ///   only go where they have the gear for the biome (KnowledgeGear), and never across long water. Outpost camps,
-    ///   daughter villages and the trails out widen what is known around them and along them.
-    /// - Discoveries: the real features WorldSurvey reads (locations, objects, creature grounds, biome edges) become
-    ///   discoveries once the reach covers them, or once a villager walks within KnowledgeWitness metres of one (a
-    ///   hunter, a forager, a camper, a carrier). Big things past the gear line can be spotted from the edge of it
-    ///   (KnowledgeSight). Each is kept on the hearth with its witness and day, at most KnowledgeKeep.
+    ///   creeps toward the target by KnowledgeReachGrowth meters a day. Villagers only go where they have the gear for
+    ///   the biome (KnowledgeGear), and never across long water. The reach only teaches the general lay of the land:
+    ///   the kinds in KnowledgeReachKinds (where animals and creatures come out, where the biomes change). Outpost
+    ///   camps, daughter villages and trails widen that.
+    /// - Places: only notable kinds are recorded at all (KnowledgeKinds: boss altars, dungeons, traders, runestones,
+    ///   valuable ore, Fuling villages, tar pits and the like; no dolmens, old houses or berry bushes). A place is only
+    ///   found when a villager (a hunter, a forager, a camper, a carrier) walks within KnowledgeNear meters of it, a
+    ///   half again as far for big sites such as boss altars and towers. Each is kept on the hearth with its witness
+    ///   and day, at most KnowledgeKeep.
     /// - Who knows: the witness knows it firsthand. Others hear it in chats, passed on by someone who knows, with the
     ///   teller kept in the listener's ZDO. After KnowledgeCommonDays everyone has heard ("they say").
     ///
@@ -83,16 +85,66 @@ namespace Villheim.Logic.Village
                     continue;
                 }
 
-                list.Add(new Discovery
+                var d = new Discovery
                 {
                     Id = id, Kind = f[1], Key = f[2], Position = new Vector3(F(f[3]), F(f[4]), F(f[5])), Day = (int)F(f[6]),
                     Witness = f[7], How = f[8], Terrain = f[9], Lean = f[10], When = f.Length > 11 ? f[11] : "",
-                });
+                };
+
+                // Older saves hold mundane finds and places learned without anyone going there: they are dropped
+                // here and leave the hearth with the next save.
+                if (Kept(d))
+                {
+                    list.Add(d);
+                }
             }
 
             Parsed[hearth.VillageId] = (raw, list);
             return list;
         }
+
+        /// <summary>Whether a stored discovery still counts under the current rules.</summary>
+        private static bool Kept(Discovery d) => Notable(d.Kind, d.Key) && (ByReach(d.Kind) || d.How == "went");
+
+        // ---------------------------------------------------------------- what is worth knowing
+
+        public const string DefaultKinds =
+            "boss, dungeon, trader, runestone, ore:copper, ore:tin, ore:silver, ore:obsidian, ore:flametal, fuling, dvergr, " +
+            "landmark:tarpit, landmark:tower, landmark:giant, landmark:henge, landmark:drakenest, landmark:stones, " +
+            "forage:beehive, game, foe, biome";
+
+        public const string DefaultReachKinds = "game, foe, biome";
+
+        private static (string Raw, HashSet<string> Set) _kinds, _reachKinds;
+
+        private static HashSet<string> SetOf(string raw, ref (string Raw, HashSet<string> Set) cache)
+        {
+            raw = raw ?? "";
+            if (cache.Set == null || cache.Raw != raw)
+            {
+                cache = (raw, new HashSet<string>(raw.Split(',').Select(t => t.Trim().ToLowerInvariant()).Where(t => t.Length > 0)));
+            }
+
+            return cache.Set;
+        }
+
+        /// <summary>A kind ("boss") or kind:key ("ore:copper") on the KnowledgeKinds list: worth recording at all.</summary>
+        public static bool Notable(string kind, string key)
+        {
+            HashSet<string> set = SetOf(LogicConfig.KnowledgeKinds?.Value ?? DefaultKinds, ref _kinds);
+            return set.Contains(kind) || set.Contains(kind + ":" + key);
+        }
+
+        /// <summary>Kinds the village learns from its reach, without anyone walking up to them.</summary>
+        public static bool ByReach(string kind) => SetOf(LogicConfig.KnowledgeReachKinds?.Value ?? DefaultReachKinds, ref _reachKinds).Contains(kind);
+
+        /// <summary>Places that are seen from further off: altars, villages, towers, the giant's bones.</summary>
+        private static bool BigSite(string kind, string key) =>
+            kind == "boss" || kind == "fuling" || kind == "dvergr" || kind == "trader" ||
+            kind == "landmark" && (key == "tower" || key == "giant" || key == "henge" || key == "stones");
+
+        /// <summary>Kinds that are places on the map, as against creature grounds and biome edges.</summary>
+        public static bool IsPlace(string kind) => kind != "game" && kind != "foe" && kind != "biome";
 
         private static float F(string s) => float.TryParse(s, NumberStyles.Float, CultureInfo.InvariantCulture, out float v) ? v : 0f;
 
@@ -128,7 +180,7 @@ namespace Villheim.Logic.Village
                 case "nest": return 2.5f;
                 case "fuling":
                 case "dvergr": return 2.5f;
-                case "runestone": return 2f;
+                case "runestone": return 2.5f;
                 case "game": return 2f;
                 case "biome": return 2f;
                 case "foe": return 1.5f;
@@ -188,7 +240,7 @@ namespace Villheim.Logic.Village
             }
 
             string who = d.Witness.Length > 0 ? d.Witness : "Someone";
-            Chronicle.Add(hearth, $"{who} came back with word of {Rumours.Thing(d)}, {Rumours.Where(hearth, d)}.");
+            Chronicle.Add(hearth, $"{who} came back with word of {Rumors.Thing(d)}, {Rumors.Where(hearth, d)}.");
         }
 
         // ---------------------------------------------------------------- reach
@@ -342,12 +394,14 @@ namespace Villheim.Logic.Village
             }
 
             Vector3 home = hearth.transform.position;
-            fresh.Candidates.AddRange(WorldSurvey.LocationsNear(home, radius));
-            fresh.Candidates.AddRange(WorldSurvey.ObjectsNear(home, radius, 3).Select(f => f.Copy()));
-            foreach (Vector3 extra in ExtraCentres(hearth))
+            fresh.Candidates.AddRange(WorldSurvey.LocationsNear(home, radius).Where(f => Notable(f.Kind, f.Key)));
+            fresh.Candidates.AddRange(WorldSurvey.ObjectsNear(home, radius, 3).Where(f => Notable(f.Kind, f.Key)).Select(f => f.Copy()));
+            foreach (Vector3 extra in ExtraCenters(hearth))
             {
-                fresh.Candidates.AddRange(WorldSurvey.LocationsNear(extra, ExtraRadius).Where(f => Utils.DistanceXZ(f.Position, home) > radius));
-                fresh.Candidates.AddRange(WorldSurvey.ObjectsNear(extra, ExtraRadius, 2).Where(f => Utils.DistanceXZ(f.Position, home) > radius).Select(f => f.Copy()));
+                fresh.Candidates.AddRange(WorldSurvey.LocationsNear(extra, ExtraRadius)
+                    .Where(f => Notable(f.Kind, f.Key) && Utils.DistanceXZ(f.Position, home) > radius));
+                fresh.Candidates.AddRange(WorldSurvey.ObjectsNear(extra, ExtraRadius, 2)
+                    .Where(f => Notable(f.Kind, f.Key) && Utils.DistanceXZ(f.Position, home) > radius).Select(f => f.Copy()));
             }
 
             Surveys[id] = fresh;
@@ -358,7 +412,7 @@ namespace Villheim.Logic.Village
         private const float TrailCorridor = 120f;
 
         /// <summary>Outpost camps and daughter villages: places the village's people live away from home.</summary>
-        private static IEnumerable<Vector3> ExtraCentres(VillageHearth hearth)
+        private static IEnumerable<Vector3> ExtraCenters(VillageHearth hearth)
         {
             foreach (Vector3 camp in Outposts.Positions(hearth))
             {
@@ -427,7 +481,7 @@ namespace Villheim.Logic.Village
                 }
             }
 
-            foreach (KeyValuePair<Heightmap.Biome, Vector3> edge in edges)
+            foreach (KeyValuePair<Heightmap.Biome, Vector3> edge in edges.Where(e => Notable("biome", e.Key.ToString().ToLowerInvariant())))
             {
                 survey.Candidates.Add(new WorldSurvey.Feature { Kind = "biome", Key = edge.Key.ToString().ToLowerInvariant(), Position = edge.Value });
             }
@@ -442,7 +496,7 @@ namespace Villheim.Logic.Village
             {
                 foreach (var s in nearestFirst)
                 {
-                    if (WorldSurvey.CanSpawnAt(spawn, s.Biome, s.Height, s.Forest))
+                    if (WorldSurvey.CanSpawnAt(spawn, s.Biome, s.Height, s.Forest) && Notable(spawn.Game ? "game" : "foe", spawn.Key))
                     {
                         string when = spawn.Day && spawn.Night ? "any" : spawn.Night ? "night" : "day";
                         survey.Candidates.Add(new WorldSurvey.Feature
@@ -489,9 +543,17 @@ namespace Villheim.Logic.Village
             }
         }
 
-        /// <summary>How the village comes to know <paramref name="f"/> without anyone walking right up to it, or null.</summary>
+        /// <summary>
+        /// How the village comes to know <paramref name="f"/> without anyone walking right up to it, or null. Only for
+        /// the reach kinds (creature grounds, biome edges): places need a villager to go there (Witnesses).
+        /// </summary>
         private static string Covered(VillageHearth hearth, VillageState state, WorldSurvey.Feature f, Vector3 home, float reach, int tier)
         {
+            if (!ByReach(f.Kind))
+            {
+                return null;
+            }
+
             float distance = Utils.DistanceXZ(f.Position, home);
             if (distance <= reach)
             {
@@ -584,7 +646,7 @@ namespace Villheim.Logic.Village
         /// </summary>
         private static bool SpottedFromEdge(VillageHearth hearth, VillageState state, Vector3 home, Vector3 at)
         {
-            float sight = LogicConfig.KnowledgeSight != null ? LogicConfig.KnowledgeSight.Value : 150f;
+            float sight = LogicConfig.KnowledgeSight != null ? LogicConfig.KnowledgeSight.Value : 100f;
             float distance = Utils.DistanceXZ(home, at);
             if (sight <= 0f || distance <= 1f)
             {
@@ -672,7 +734,7 @@ namespace Villheim.Logic.Village
         /// <summary>Villagers out past the village edge: their trips are noted, and what they walk near is found.</summary>
         private static void Witnesses(VillageHearth hearth, VillageState state, Survey survey)
         {
-            float within = LogicConfig.KnowledgeWitness != null ? LogicConfig.KnowledgeWitness.Value : 60f;
+            float within = LogicConfig.KnowledgeNear != null ? LogicConfig.KnowledgeNear.Value : 35f;
             float radius = VillheimConfig.VillageRadius != null ? VillheimConfig.VillageRadius.Value : 60f;
             Vector3 home = hearth.transform.position;
             int id = hearth.VillageId;
@@ -700,8 +762,8 @@ namespace Villheim.Logic.Village
 
                 foreach (WorldSurvey.Feature f in survey.Candidates)
                 {
-                    // Big things are seen from further off than a bush or a nest.
-                    float reachOfEye = Visible(f.Kind) && f.Kind != "game" && f.Kind != "foe" ? within * 2f : within;
+                    // Big sites are seen from a little further off than a rock or a hive.
+                    float reachOfEye = BigSite(f.Kind, f.Key) ? within * 1.5f : within;
                     if (Utils.DistanceXZ(f.Position, at) <= reachOfEye)
                     {
                         Discovery d = Add(hearth, f, name, "went");
@@ -717,10 +779,10 @@ namespace Villheim.Logic.Village
         /// <summary>A villager has just found something himself: he says so if a player is near.</summary>
         private static void Found(Villager v, Discovery d)
         {
-            Rumours.Focus(v, d.Id);
+            Rumors.Focus(v, d.Id);
             if (Player.m_localPlayer != null && Vector3.Distance(Player.m_localPlayer.transform.position, v.transform.position) < 30f)
             {
-                Dialogue.QueueLine(v, "self", "rumour:new", new[] { "rumour:new" }, Random.Range(1f, 3f));
+                Dialogue.QueueLine(v, "self", "rumor:new", new[] { "rumor:new" }, Random.Range(1f, 3f));
             }
         }
 
@@ -783,7 +845,7 @@ namespace Villheim.Logic.Village
 
         /// <summary>
         /// In a chat in the village, the speaker passes on one thing he knows that the listener does not, the newest
-        /// first. Returns "rumour" for the chat's opening tag, or null.
+        /// first. Returns "rumor" for the chat's opening tag, or null.
         /// </summary>
         public static string Gossip(Villager speaker, Villager listener)
         {
@@ -807,8 +869,8 @@ namespace Villheim.Logic.Village
                 {
                     theirs[d.Id] = speaker.VillagerName;
                     SaveHeard(listener, theirs, d.Id);
-                    Rumours.Focus(speaker, d.Id);
-                    return "rumour";
+                    Rumors.Focus(speaker, d.Id);
+                    return "rumor";
                 }
             }
 
@@ -885,14 +947,14 @@ namespace Villheim.Logic.Village
         private static readonly Dictionary<string, (string Kind, string Key)> MaterialSources = new Dictionary<string, (string, string)>
         {
             ["CopperOre"] = ("ore", "copper"), ["Copper"] = ("ore", "copper"), ["TinOre"] = ("ore", "tin"), ["Tin"] = ("ore", "tin"),
-            ["Bronze"] = ("ore", "copper"), ["IronScrap"] = ("ore", "iron"), ["Iron"] = ("ore", "iron"),
+            ["Bronze"] = ("ore", "copper"), ["IronScrap"] = ("dungeon", "sunkencrypt"), ["Iron"] = ("dungeon", "sunkencrypt"),
             ["SilverOre"] = ("ore", "silver"), ["Silver"] = ("ore", "silver"), ["Obsidian"] = ("ore", "obsidian"),
             ["RoundLog"] = ("biome", "blackforest"), ["Resin"] = ("biome", "blackforest"), ["ElderBark"] = ("biome", "swamp"),
             ["FineWood"] = ("biome", "meadows"), ["Flint"] = ("biome", "ocean"), ["Guck"] = ("biome", "swamp"),
-            ["DeerHide"] = ("game", "deer"), ["LeatherScraps"] = ("game", "boar"), ["RawMeat"] = ("game", "boar"),
+            ["DeerHide"] = ("game", "deer"), ["LeatherScraps"] = ("runestone", "boars"), ["RawMeat"] = ("runestone", "boars"),
             ["DeerMeat"] = ("game", "deer"), ["NeckTail"] = ("game", "neck"), ["TrollHide"] = ("foe", "troll"),
             ["BoneFragments"] = ("foe", "skeleton"), ["WolfPelt"] = ("foe", "wolf"), ["Raspberry"] = ("forage", "raspberries"),
-            ["Blueberries"] = ("forage", "blueberries"), ["Honey"] = ("forage", "beehive"), ["GreydwarfEye"] = ("foe", "greydwarf"),
+            ["Blueberries"] = ("forage", "blueberries"), ["Honey"] = ("forage", "beehive"), ["GreydwarfEye"] = ("runestone", "greydwarfs"),
             ["Coal"] = ("foe", "surtling"),
         };
 
@@ -905,9 +967,23 @@ namespace Villheim.Logic.Village
             }
 
             Vector3 home = hearth.transform.position;
-            return Log(hearth).Where(d => d.Kind == source.Kind && d.Key == source.Key)
+            Discovery best = Log(hearth).Where(d => d.Kind == source.Kind && d.Key == source.Key)
                 .OrderBy(d => Utils.DistanceXZ(d.Position, home)).FirstOrDefault();
+            if (best == null && Fallbacks.TryGetValue(source, out var fallback))
+            {
+                best = Log(hearth).Where(d => d.Kind == fallback.Kind && d.Key == fallback.Key)
+                    .OrderBy(d => Utils.DistanceXZ(d.Position, home)).FirstOrDefault();
+            }
+
+            return best;
         }
+
+        // A runestone with creatures round it is a sure place; failing that, where the creature is known to come out.
+        private static readonly Dictionary<(string, string), (string Kind, string Key)> Fallbacks = new Dictionary<(string, string), (string, string)>
+        {
+            [("runestone", "boars")] = ("game", "boar"),
+            [("runestone", "greydwarfs")] = ("foe", "greydwarf"),
+        };
 
         /// <summary>Whether this material is one the village would look for out in the land.</summary>
         public static bool Sought(string material) => material != null && MaterialSources.ContainsKey(material);
@@ -920,14 +996,16 @@ namespace Villheim.Logic.Village
                 return null;
             }
 
+            // The boar runestone first: there are always boar round it.
             Vector3 home = hearth.transform.position;
-            return Log(hearth).Where(d => d.Kind == "game").OrderBy(d => d.Key == "deer" || d.Key == "boar" ? 0 : 1)
+            return Log(hearth).Where(d => d.Kind == "game" || d.Kind == "runestone" && d.Key == "boars")
+                .OrderBy(d => d.Kind == "runestone" ? 0 : d.Key == "deer" || d.Key == "boar" ? 1 : 2)
                 .ThenBy(d => Utils.DistanceXZ(d.Position, home)).FirstOrDefault();
         }
 
         // ---------------------------------------------------------------- commands
 
-        /// <summary>'vh know [list|reach|survey|rumours|names|table|forget]' at the nearest village within 300 m.</summary>
+        /// <summary>'vh know [list|reach|survey|rumors|names|table|forget]' at the nearest village within 300 m.</summary>
         public static string Command(string[] args)
         {
             Player player = Player.m_localPlayer;
@@ -947,9 +1025,9 @@ namespace Villheim.Logic.Village
                     bool full = args.Length > 1 && args[1] == "full";
                     return SurveyNow(hearth, state, full) + (full ? "" : " 'vh know survey full' sets the reach to its target first.");
                 }
-                case "rumours":
                 case "rumors":
-                case "lines": return Rumours.Samples(hearth, args.Length > 1 && int.TryParse(args[1], out int n) ? n : 8);
+                case "rumours":
+                case "lines": return Rumors.Samples(hearth, args.Length > 1 && int.TryParse(args[1], out int n) ? n : 8);
                 case "names": return $"Locations within {MaxRadius(hearth, state):0} m of {hearth.VillageName}:\n" +
                                      WorldSurvey.Names(hearth.transform.position, MaxRadius(hearth, state));
                 case "table": return MapTables.Command(hearth, state);
@@ -1022,16 +1100,21 @@ namespace Villheim.Logic.Village
         {
             List<Discovery> log = Log(hearth);
             Vector3 home = hearth.transform.position;
-            var lines = new List<string> { $"{hearth.VillageName} knows {log.Count} places (reach {Reach(hearth):0} m, day {Today}):" };
+            var lines = new List<string>
+            {
+                $"{hearth.VillageName} knows {log.Count} things (reach {Reach(hearth):0} m, day {Today}; places found within " +
+                $"{(LogicConfig.KnowledgeNear != null ? LogicConfig.KnowledgeNear.Value : 35f):0} m of a villager):",
+            };
             foreach (Discovery d in log.OrderBy(d => Utils.DistanceXZ(d.Position, home)))
             {
                 float distance = Utils.DistanceXZ(d.Position, home);
                 lines.Add($"   {d.Kind} {d.Key}{(d.When.Length > 0 ? " (" + d.When + ")" : "")}: {distance:0} m {WorldSurvey.Compass(d.Position - home)}, " +
                           $"{d.Terrain}{(d.Lean.Length > 0 ? "/" + d.Lean : "")}, day {d.Day}, {d.How}" +
+                          $"{(IsPlace(d.Kind) ? (MapTables.Shows(hearth, d) ? ", on the map" : ", left off the map") : "")}" +
                           $"{(d.Witness.Length > 0 ? " by " + d.Witness : "")} at ({d.Position.x:0}, {d.Position.z:0})");
             }
 
-            lines.Add("'vh know reach', 'vh know survey [full]', 'vh know rumours [n]', 'vh know names', 'vh know table', 'vh know forget'.");
+            lines.Add("'vh know reach', 'vh know survey [full]', 'vh know rumors [n]', 'vh know names', 'vh know table', 'vh know forget'.");
             return string.Join("\n", lines);
         }
     }

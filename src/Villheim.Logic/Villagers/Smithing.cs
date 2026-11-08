@@ -186,7 +186,7 @@ namespace Villheim.Logic.Villagers
             Chronicle.Add(hearth, $"{how} The village has {TierNames[Mathf.Clamp(tier, 0, TierNames.Length - 1)]} gear now.");
             Dialogue.Note(hearth.VillageId, "forged");
             Moods.VillageThink(hearth.VillageId, "upgrade");
-            VillheimPlugin.Log.LogInfo($"{hearth.VillageName}: armoury tier {tier} ({how}).");
+            VillheimPlugin.Log.LogInfo($"{hearth.VillageName}: armory tier {tier} ({how}).");
         }
 
         /// <summary>For a pedlar: what the next set would cost in coins when the village has no station to make it.</summary>

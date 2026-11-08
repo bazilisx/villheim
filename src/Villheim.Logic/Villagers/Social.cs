@@ -620,12 +620,14 @@ namespace Villheim.Logic.Villagers
         }
 
         /// <summary>
-        /// A villager said something: those within 8 m turn to him, and some react with a gesture that fits the line's
-        /// tone (from the library's ~tone, or from the speaker's voice), as long as they aren't busy with work.
+        /// A villager said something: those within 8 m turn to him. Now and then one of them, if not busy with work,
+        /// reacts with a gesture, and only when the line's own ~tone calls for one (a laugh at a joke, a thumbs up at
+        /// good news, a bow at a prayer). Most lines get no gesture at all.
         /// </summary>
         public static void Heard(Villager speaker, string tone)
         {
             bool replied = false;
+            bool gestured = false;
             foreach (Villager listener in Character.GetAllCharacters().OfType<Villager>())
             {
                 if (listener == speaker || listener.IsDead() || listener.VillageId != speaker.VillageId || Sleep.IsAsleep(listener) ||
@@ -647,9 +649,10 @@ namespace Villheim.Logic.Villagers
                     Dialogue.QueueLine(listener, "reply", "tone:" + tone, new[] { "tone:" + tone }, Random.Range(1.6f, 2.6f));
                 }
 
-                string gesture = Reaction(listener, tone);
+                string gesture = gestured || Random.value > 0.35f ? null : Reaction(listener, tone);
                 if (gesture != null)
                 {
+                    gestured = true;
                     Poses.Gesture(listener, gesture);
                 }
             }
@@ -661,15 +664,12 @@ namespace Villheim.Logic.Villagers
             float mood = Moods.Get(listener);
             switch (tone)
             {
-                case "joke": return voice == "gruff" || mood < 30f ? "nonono" : "laugh";
-                case "happy": return mood >= 40f ? (Random.value < 0.5f ? "cheer" : "thumbsup") : null;
-                case "sad": return voice == "cheerful" || voice == "carer" ? "comehere" : "despair";
-                case "worry": return voice == "worrier" ? "cower" : voice == "gruff" || voice == "wry" ? "shrug" : "nonono";
-                case "angry": return voice == "worrier" ? "cower" : "shrug";
-                case "proud": return "thumbsup";
-                case "point": return "point";
+                case "joke": return mood >= 35f && voice != "gruff" ? "laugh" : null;
+                case "cheer":
+                case "proud": return mood >= 40f ? "thumbsup" : null;
                 case "pious": return voice == "devout" ? "bow" : null;
-                default: return Random.value < 0.4f ? "thumbsup" : null;
+                case "wave": return "wave";
+                default: return null;
             }
         }
 

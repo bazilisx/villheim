@@ -250,7 +250,7 @@ leaves it open for up to an hour. Migrants write to another hearth's ZDO, as car
 
 ## Built (2026-11-08 night 3, village knowledge; compiles, not yet tested in game)
 
-Tyler's rule: rumours and idle talk must be true. If a villager says there are boar along the coast, boar can spawn
+Tyler's rule: rumors and idle talk must be true. If a villager says there are boar along the coast, boar can spawn
 there. All logic only (hot-reloads), in config section "5c - Village knowledge", on whether or not WorldLife is on.
 Branch `night3/knowledge`. Nothing here was run in the game: only `scripts/build-cloud.sh`.
 
@@ -333,6 +333,34 @@ Test plan (about 25 minutes, devcommands on):
    discoveries are "reach" (only "spotted"). Watch a woodcutter: he never fells past 55 m inside Black Forest ground.
 9. `vh contract` with a need the land gives (ore, core wood): the board's Needed sign shows a "Where:" line.
    With an empty food chest, talk to villagers: a line with where the deer or boar come out, or that nobody knows.
+
+### Changed after Tyler's first test (T-20 to T-24, T-28)
+
+The table above is the first build. These rules now replace parts of it.
+
+- **Only notable places are recorded.** `KnowledgeKinds` lists what a village records at all. Default: boss altars,
+  dungeons, traders, runestones, copper, tin, silver, obsidian, flametal, Fuling villages, Dvergr outposts, tar pits,
+  towers, giant bones, stone rings, Drake nests, the sacrificial stones, wild beehives, and the non-place kinds game,
+  foe and biome. Dolmens, wrecks, wells, cairns, Greydwarf camps, ruins, nests, berry bushes and iron scrap piles are
+  left out. Stored discoveries that no longer qualify are dropped when the hearth's list is read.
+- **Places need a villager close by.** A place is found only when a villager walks within `KnowledgeNear` (35 m;
+  half again for boss altars, Fuling and Dvergr sites, traders, towers, giant bones, stone rings and the sacrificial
+  stones). The reach, camps, trails and daughter villages only cover `KnowledgeReachKinds` (game, foe, biome): where
+  animals and creatures come out and where the land changes. `KnowledgeWitness` (60 m) is gone. `KnowledgeSight` is
+  100 m and applies only to those kinds.
+- **Runestones with creatures.** `Runestone_Boars`, `Runestone_Greydwarfs` and `Runestone_Draugr` get the keys
+  `boars`, `greydwarfs` and `draugr` (check the names with `vh know names`). Lines about them carry `rumor:sure` and
+  are said with confidence. Requests for meat and leather point to the boar runestone first, Greydwarf eyes to the
+  Greydwarf runestone. Iron points to a sunken crypt.
+- **Map table shows half.** Only places are pinned (never animal grounds or biome edges). Each place is shown or left
+  off by a fixed roll per village and place against `MapTableShare` (0.5), so the same ones show every time. Boss
+  altars always show. `vh know` marks each place "on the map" or "left off the map".
+- **Rumors.** `Rumours.cs` is now `Rumors.cs`, tags are `rumor...`, `RumourChance` is `RumorChance` (0.4). New
+  fill-ins: `{dir}` (bare compass word), `{via}` (a known place on the way, or the terrain), `{biome}`. `{where}`,
+  `{direction}` and `{distance}` come out in a different shape each time; `{where}` may use a known place on the way
+  ("past the tar pit, still heading north"). Tags `rumor:sure` and `rumor:ground` (creature ground or biome edge).
+  `vh know rumors` (and the old `vh know rumours`).
+- **Names.** Creatures and places use the game's names: Fuling (never goblin), Greydwarf, Troll, Lox, Eikthyr's altar.
 10. Set `VillageKnowledge = false` and save: no rumour lines, no new map table, `vh know` still lists. Set it back.
     `vh reload`: the survey starts again and `vh know` still lists the same discoveries.
 

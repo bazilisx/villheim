@@ -52,7 +52,9 @@ namespace Villheim.Logic.Village
             ("Vendor_BlackForest", "trader", "haldor"), ("Hildir_camp", "trader", "hildir"), ("BogWitch_Camp", "trader", "bogwitch"),
             ("SunkenCrypt", "dungeon", "sunkencrypt"), ("Crypt", "dungeon", "burial"), ("TrollCave", "dungeon", "trollcave"),
             ("MountainCave", "dungeon", "frostcave"), ("Mistlands_DvergrTownEntrance", "dungeon", "infestedmine"),
-            ("Runestone", "runestone", "runestone"), ("StartTemple", "landmark", "stones"), ("TarPit", "landmark", "tarpit"),
+            // Runestones with a creature spawner round them first: boar, Greydwarfs or Draugr are always there.
+            ("Runestone_Boars", "runestone", "boars"), ("Runestone_Greydwarfs", "runestone", "greydwarfs"),
+            ("Runestone_Draugr", "runestone", "draugr"), ("Runestone", "runestone", "runestone"), ("StartTemple", "landmark", "stones"), ("TarPit", "landmark", "tarpit"),
             ("StoneTowerRuins", "landmark", "tower"), ("StoneTower", "landmark", "tower"), ("Mistlands_Giant", "landmark", "giant"),
             ("StoneHenge", "landmark", "henge"), ("Dolmen", "landmark", "dolmen"), ("ShipWreck", "landmark", "wreck"),
             ("MountainWell", "landmark", "well"), ("SwampWell", "landmark", "well"), ("Waymarker", "landmark", "cairn"),
@@ -490,16 +492,16 @@ namespace Villheim.Logic.Village
         public static string Compass(Vector3 direction) => WorldLife.Compass(direction);
 
         /// <summary>A plain distance: close by, a short walk, a good walk, half a morning's walk, half a day's walk, a long day's walk.</summary>
-        public static string Distance(float metres) =>
-            metres < 150f ? "close by" : metres < 350f ? "a short walk" : metres < 700f ? "a good walk" :
-            metres < 1100f ? "half a morning's walk" : metres < 1600f ? "half a day's walk" : "a long day's walk";
+        public static string Distance(float meters) =>
+            meters < 150f ? "close by" : meters < 350f ? "a short walk" : meters < 700f ? "a good walk" :
+            meters < 1100f ? "half a morning's walk" : meters < 1600f ? "half a day's walk" : "a long day's walk";
 
         public static string TerrainWords(string code, Heightmap.Biome target)
         {
             switch (code)
             {
                 case "sea": return "across the water";
-                case "mountain": return "round the mountain";
+                case "mountain": return "around the mountain";
                 case "river": return "across the river";
                 case "ridge": return "over the ridge";
                 case "swamp": return "past the swamp";

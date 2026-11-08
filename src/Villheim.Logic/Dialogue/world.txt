@@ -1,11 +1,11 @@
 # Villheim: the wider world, the things around the hearth, and more of each voice. Same format as lines.txt.
 
 # ------------------------------------------------------------------ the wider world (general talk, no particular place)
-# Talk about real places near the village lives in rumours.txt and land.txt, from what the village has found.
+# Talk about real places near the village lives in rumors.txt and land.txt, from what the village has found.
 
 @ !night
 Somebody told me the swamp water's thick enough to stand a spoon in.
-A traveller once told me the plains go on until your eyes give up.
+A traveler once told me the plains go on until your eyes give up.
 I heard there's an old tree in the forest that walks. Trees don't walk. Probably.
 My cousin went to the mountains. Came back with half a beard. Frostbite.
 There are things in the swamp that smell worse than {other}. Hard to believe.
@@ -13,11 +13,11 @@ They say the dead don't stay down in the swamp. I'll take their word for it.
 
 @ !night | worrier
 The swamp, the mountains, the plains. Every direction has something that wants to eat you.
-I heard the fulings in the plains ride boars into battle. Boars! On purpose!
+I heard the Fulings in the plains ride boars into battle. Boars! On purpose!
 Mosquitoes the size of a dog, in the plains. That's what they said.
 
 @ !night | wry
-Every traveller tells me a monster story. None of them ever say "and then I had a nice walk".
+Every traveler tells me a monster story. None of them ever say "and then I had a nice walk".
 The world's very big and very rude.
 
 @ !night | elder
@@ -138,7 +138,7 @@ More people, more food, more everything to go wrong.
 We're practically a city. If you squint. And have never seen a city.
 
 @ size:village | devout
-The gods favour {village}. You can tell by the harvest. Well. By the roofs.
+The gods favor {village}. You can tell by the harvest. Well. By the roofs.
 
 @ size:town | elder
 I'll die happy here. Not soon, mind you.
@@ -250,9 +250,9 @@ Who taught you to build? // Nobody. I watched. // That explains the doors.
 I had a good idea today. // Don't. // You haven't heard it. // Don't.
 The deer looked at me funny. // You looked at it funny first.
 I made a stew. // From what? // Best not to ask.
-Why do greydwarfs throw rocks? // They're bad at throwing anything else.
+Why do Greydwarfs throw rocks? // They're bad at throwing anything else.
 I'm going to plant flowers by my door. // What flowers? // The ones that don't die.
-What's your favourite tree? // The one that's already been cut down.
+What's your favorite tree? // The one that's already been cut down.
 I hear you're the best at splitting logs. // Who said that? // You did. Yesterday. Loudly.
 Can you hear that? // What? // Exactly. Peaceful.
 I'd like a bigger house. // You'd like a bigger everything.
@@ -278,12 +278,12 @@ When I was a child, there were no chests. // You said piles. // Big piles.
 Do you know the old songs? // A few. // Sing one. // Not without mead.
 
 @ chat | young
-Can we go see the trolls? From really far away? // No. // From really, really far away?
+Can we go see the Trolls? From really far away? // No. // From really, really far away?
 Will you teach me to fight? // When you can lift a shield. // I can lift a shield! Half of one.
 
 @ chat | devout
 Do you think the gods see us all the way out here? // They see everything. // Even the burnt meat? // Especially that.
-I dreamt of a raven last night. // Good sign or bad sign? // A hungry sign.
+I dreamed of a raven last night. // Good sign or bad sign? // A hungry sign.
 
 @ chat, trade:cook
 What's cooking? // Whatever you bring me. // So nothing. // So nothing.
@@ -295,7 +295,7 @@ Can you fix my door? // What's wrong with it? // It opens. // That's what doors 
 How many trees today? // Six. // Six! // Small ones.
 
 @ chat, trade:miner
-Find anything good? // Rocks. // Good rocks? // Grey ones.
+Find anything good? // Rocks. // Good rocks? // Gray ones.
 
 @ chat, need:stone
 We need stone. // Then go hit a rock. // I was hoping you'd hit it.
@@ -344,7 +344,7 @@ Just us two again. // Like old times. // It was last week. // Old times.
 Boars ate the berries again. // Then eat the boars. // That's the plan.
 
 @ chat, biome:blackforest
-The trees are so tall here. // And so dark. // And so full of trolls.
+The trees are so tall here. // And so dark. // And so full of Trolls.
 
 # ------------------------------------------------------------------ sitting on chairs and benches (doing:seat)
 

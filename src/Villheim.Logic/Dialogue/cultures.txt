@@ -69,7 +69,7 @@ Mind the ford on the way out.
 The {leader} keeps the tally. Ask there if you need anything.
 At home we had a mead hall with a fire down the middle. This will do for now.
 A good word costs nothing and buys a lot.
-We plough in spring, cut hay in summer, and argue about the boundary all year.
+We plow in spring, cut hay in summer, and argue about the boundary all year.
 
 @ self, people:anglo-saxon, festivalday
 {festival}. Bread from the new grain and ale for everyone.
@@ -110,7 +110,7 @@ There's an apple for everyone today. Two if you are quick.
 
 @ greet, people:celtic
 Failte. You're welcome at our fire.
-Well met, traveller.
+Well met, traveler.
 Come in, come in. There's always room by the hearth.
 
 @ bye, people:celtic
@@ -174,7 +174,7 @@ The ancestors are glad when the house is full. Make it full.
 @ greet, people:baltic
 Labas. Welcome.
 Come in out of the wet. The fire is going.
-Good day, traveller.
+Good day, traveler.
 
 @ bye, people:baltic
 Go well.
@@ -224,7 +224,7 @@ Wet feet in spring, wet feet in winter. At least we're consistent.
 @ greet, people:saami
 Bures. Welcome.
 Come and sit. The fire is going.
-Welcome, traveller. Warm your hands.
+Welcome, traveler. Warm your hands.
 
 @ bye, people:saami
 Go well.
@@ -250,7 +250,7 @@ The land remembers who walked it. Walk it gently.
 Salaam. Welcome, friend.
 Dorood. Come out of the sun.
 Peace be with you. Sit, there's water.
-Welcome, welcome. You honour us.
+Welcome, welcome. You honor us.
 
 @ bye, people:middle-eastern
 Go in peace.
@@ -307,7 +307,7 @@ Everything was better in the city. Ask anyone from the city.
 
 @ greet, people:steppe
 Welcome, guest. Come into the tent. The house, I mean.
-Be well, traveller. Sit down, drink.
+Be well, traveler. Sit down, drink.
 Welcome. Your horse can rest too, if you have one.
 
 @ bye, people:steppe

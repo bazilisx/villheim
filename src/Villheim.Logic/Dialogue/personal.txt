@@ -30,9 +30,9 @@ I haven't said {homeland} out loud in a while.
 I was born far away, in {homeland}. I don't remember it. I tell people I do.
 
 @ talk, doing:stroll | wry
-Every village thinks it's the centre of the world. {homeland} certainly did.
+Every village thinks it's the center of the world. {homeland} certainly did.
 
-# ------------------------------------------------------------------ favourite food
+# ------------------------------------------------------------------ favorite food
 
 @ talk, unfed
 I'd give a lot for some {favfood} right now.
@@ -61,12 +61,12 @@ Is it me, or is the dark thicker out here?
 Stay close to the fire. The dark has teeth.
 
 @ talk, fear:trolls, biome:blackforest
-Trolls. Every crack of a branch, I think trolls.
-If a troll comes, I'm hiding in the chest. It's big enough. I've checked.
+Trolls. Every crack of a branch, I think Trolls.
+If a Troll comes, I'm hiding in the chest. It's big enough. I've checked.
 
 @ talk, fear:greydwarfs
 Greydwarfs again? I can't stand their little faces.
-I dream about greydwarfs. Small ones. Lots of them.
+I dream about Greydwarfs. Small ones. Lots of them.
 
 @ talk, fear:water
 I don't go near the deep water. Things live down there.
@@ -167,7 +167,7 @@ Keep your voice down. {rival} hears everything and repeats half of it.
 Saved you a seat. // You always do. // That's what friends are for.
 Did you sleep? // Not much. // Me neither. Let's be tired together.
 Remember that boar? // Which one? // The one that won. // Ah. That one.
-Bring me back something from the woods. // Like what? // Surprise me. Not a greydwarf.
+Bring me back something from the woods. // Like what? // Surprise me. Not a Greydwarf.
 
 @ chat, rival:near
 Is that my axe? // It's the village's axe. // It's my axe.
@@ -215,7 +215,7 @@ Have you seen the new building? Still smells of fresh wood.
 We finished one more building. I keep walking past it just to look.
 
 @ talk, mem:arrival, !event:arrival
-We've got a new neighbour. Seems decent. Too early to say.
+We've got a new neighbor. Seems decent. Too early to say.
 
 @ talk, mem:birth
 There's a little one in the village now. Everything feels different.
@@ -268,37 +268,37 @@ If anyone asks, today's a day of rest. Nobody asked.
 @ talk, tenthday | elder
 Ten days more behind us. I count them on the doorpost.
 
-# ------------------------------------------------------------------ the neighbours (Village/Relations.cs)
-# Tags neighbour:close neighbour:friendly neighbour:fair neighbour:wary neighbour:hostile, fill-in {neighbour}.
+# ------------------------------------------------------------------ the neighbors (Village/Relations.cs)
+# Tags neighbor:close neighbor:friendly neighbor:fair neighbor:wary neighbor:hostile, fill-in {neighbor}.
 
-@ talk, neighbour:close
-{neighbour} would do anything for us. We'd do the same.
-If we ever run short, {neighbour} will help. They always have.
+@ talk, neighbor:close
+{neighbor} would do anything for us. We'd do the same.
+If we ever run short, {neighbor} will help. They always have.
 
-@ talk, neighbour:friendly
-Good people in {neighbour}. A bit loud at feasts.
-We get on with {neighbour}. Their pedlars are honest, mostly.
+@ talk, neighbor:friendly
+Good people in {neighbor}. A bit loud at feasts.
+We get on with {neighbor}. Their pedlars are honest, mostly.
 
-@ talk, neighbour:fair
-{neighbour}? They keep to themselves. So do we.
-I don't know much about {neighbour}. Should visit one day.
+@ talk, neighbor:fair
+{neighbor}? They keep to themselves. So do we.
+I don't know much about {neighbor}. Should visit one day.
 
-@ talk, neighbour:wary
-Folk from {neighbour} came through last month. Counted our boars, I think.
-I don't trust {neighbour}. Can't say why. Just don't.
+@ talk, neighbor:wary
+Folk from {neighbor} came through last month. Counted our boars, I think.
+I don't trust {neighbor}. Can't say why. Just don't.
 
-@ talk, neighbour:wary | gruff
-{neighbour} wants what we have. Watch them.
+@ talk, neighbor:wary | gruff
+{neighbor} wants what we have. Watch them.
 
-@ talk, neighbour:hostile
-If anyone from {neighbour} comes up the path, call the protectors.
-We don't talk about {neighbour} here.
+@ talk, neighbor:hostile
+If anyone from {neighbor} comes up the path, call the protectors.
+We don't talk about {neighbor} here.
 
-@ talk, neighbour:hostile | worrier
-What if {neighbour} comes for us in the night? Has anyone thought about that?
+@ talk, neighbor:hostile | worrier
+What if {neighbor} comes for us in the night? Has anyone thought about that?
 
-@ chat, neighbour:wary
-Heard from {neighbour}? // Nothing good. // Nothing's what I like to hear from them.
+@ chat, neighbor:wary
+Heard from {neighbor}? // Nothing good. // Nothing's what I like to hear from them.
 
 # ------------------------------------------------------------------ watching someone work (FreeTime, Kind.Watch)
 # Tags watching, watch:building watch:felling watch:cooking watch:mining watch:farming watch:repairing watch:path
@@ -344,7 +344,7 @@ Good as new. Nearly new. New-ish.
 A proper path. My boots thank you, {watched}.
 
 @ self, watching, watch:fencing
-A fence. Good. Let the greydwarfs read that.
+A fence. Good. Let the Greydwarfs read that.
 
 @ self, watching, watch:pedlar
 What's in the pack today? I'm only looking.
@@ -363,7 +363,7 @@ I'm not idle. I'm supervising.
 
 @ self, event:forged
 New gear! It still smells of the workbench.
-Look at this. Proper armour. I feel like a hero. A small one.
+Look at this. Proper armor. I feel like a hero. A small one.
 Does it fit? It doesn't matter, it's new.
 I'll keep it clean. For a day, anyway.
 
@@ -371,7 +371,7 @@ I'll keep it clean. For a day, anyway.
 About time we had decent gear.
 
 @ self, event:forged | worrier
-Armour means they think there'll be fighting. Doesn't it?
+Armor means they think there'll be fighting. Doesn't it?
 
 @ self, event:forged | young
 Can I have one? A small one? Please?

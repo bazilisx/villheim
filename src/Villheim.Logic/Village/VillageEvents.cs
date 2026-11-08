@@ -199,8 +199,8 @@ namespace Villheim.Logic.Village
             // The next arrival is due at once; TryPopulate brings them in this tick or the next.
             state.LastArrival = 0.0;
             return finder != null
-                ? $"{finder.VillagerName} found a traveller lost in the woods and brought them home. They are staying with us."
-                : "A traveller lost in the woods found our fire. They are staying with us.";
+                ? $"{finder.VillagerName} found a traveler lost in the woods and brought them home. They are staying with us."
+                : "A traveler lost in the woods found our fire. They are staying with us.";
         }
 
         // ---------------------------------------------------------------- bad
@@ -307,7 +307,7 @@ namespace Villheim.Logic.Village
                 return $"Kinds: {string.Join(", ", Good.Concat(Bad))}.";
             }
 
-            return Happen(hearth, state, kind) ? $"{state.Name}: {kind}." : $"A {kind} cannot happen at {state.Name} now (needs a neighbour, a free bed, a rival or a healthy villager nearby).";
+            return Happen(hearth, state, kind) ? $"{state.Name}: {kind}." : $"A {kind} cannot happen at {state.Name} now (needs a neighbor, a free bed, a rival or a healthy villager nearby).";
         }
 
         public static string Describe(VillageHearth hearth)

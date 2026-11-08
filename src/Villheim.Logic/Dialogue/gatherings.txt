@@ -85,7 +85,7 @@ A pedlar! Come and see what they've got.
 Welcome, trader. What have you brought us this time?
 
 @ self, event:speech:pilgrim
-A pilgrim at our fire. Be welcome, traveller.
+A pilgrim at our fire. Be welcome, traveler.
 Rest here tonight, friend. You'll find no harm in {village}.
 
 @ self, event:crowd:pedlar
@@ -176,7 +176,7 @@ To {village}!
 More mead!
 
 @ self, event:speechreply | wry
-Short speech. My favourite kind.
+Short speech. My favorite kind.
 
 @ self, event:speechreply | gruff
 Hm. Fine.
@@ -226,7 +226,7 @@ Word came that {lastboss} has fallen. Can it be true?
 Somebody killed {lastboss}. The world's a little safer tonight.
 
 @ self, event:bossdown | devout
-The gods favour us. {lastboss} is no more.
+The gods favor us. {lastboss} is no more.
 
 @ self, event:bossdown | worrier
 If {lastboss} is gone, what comes next? Something always comes next.
@@ -247,7 +247,7 @@ The stag is dead, and the forest is still dark. The Elder waits there, they say.
 With the stag gone, the meadows feel calmer. Or it's just me.
 
 @ boss:elder, !boss:bonemass
-The Elder is gone. The greydwarfs are angrier than ever, but fewer.
+The Elder is gone. The Greydwarfs are angrier than ever, but fewer.
 Somebody has to go into the swamp next. It won't be me.
 
 @ boss:bonemass, !boss:moder
@@ -306,8 +306,8 @@ Greydwarfs again. They never learn.
 Keep the fire high. Greydwarfs hate the fire.
 
 @ enemy:troll
-Troll! A troll! Everybody stay back!
-Gods, that's a troll. Quiet. Maybe it hasn't seen us.
+Troll! A Troll! Everybody stay back!
+Gods, that's a Troll. Quiet. Maybe it hasn't seen us.
 
 @ enemy:skeleton
 Bones walking. I hate when bones walk.
@@ -316,7 +316,7 @@ Bones walking. I hate when bones walk.
 Wolves. They're circling.
 
 @ enemy:draugr
-That's a draugr. Don't let it get close.
+That's a Draugr. Don't let it get close.
 
 @ fearnear
 No. No, not that. Anything but that.
@@ -359,7 +359,7 @@ Is that a {beast}? It's a {beast}. It's coming. Is it coming?
 {beast} out there. I'll keep watch. Everyone stay near the houses.
 
 @ self, event:enemyfar, sighted:troll
-That's a troll. Out by the trees. Nobody go that way.
+That's a Troll. Out by the trees. Nobody go that way.
 
 @ self, event:enemyfar, sighted:greydwarf
 Greydwarf. Two, maybe. Light the torches.

@@ -16,9 +16,9 @@ I don't know you. That's fine. Most of us didn't know each other once.
 First time in {village}? Mind the mud by the chest.
 
 @ talk, pmem:visits:few * 0.6
-You again. Good. I was starting to think you'd only dreamt us.
+You again. Good. I was starting to think you'd only dreamed us.
 Back again, {player}? We'll have to find you a stool.
-You've been here {visits} now. That nearly makes you a neighbour.
+You've been here {visits} now. That nearly makes you a neighbor.
 
 @ talk, pmem:visits:many * 0.6
 You're here so often I've started setting a place.
@@ -132,7 +132,7 @@ You took down that {lastkill} by the village. Good riddance.
 I saw you with that {lastkill}. Quick work.
 
 @ talk, pmem:kill:recent, pmem:killed:greydwarf
-One less greydwarf throwing rocks at us. Thank you.
+One less Greydwarf throwing rocks at us. Thank you.
 
 @ talk, pmem:kill:recent, pmem:killed:deer
 That deer you took will feed us well. Did you bring any of it?
@@ -191,13 +191,13 @@ You were dead! You were! How is that... no. I don't want to know.
 @ talk, pmem:defender
 You stood with us when they came. That counts for a lot here.
 I remember you fighting by the fence. I'll always remember.
-When the greydwarfs came, you didn't run. We noticed.
+When the Greydwarfs came, you didn't run. We noticed.
 
 @ talk, pmem:defender, protector
 I'd stand next to you in a shield wall any day, {player}.
 
 @ talk, pmem:helper
-You brought what we asked for. That's how neighbours should be.
+You brought what we asked for. That's how neighbors should be.
 We asked, you came through. We won't forget.
 
 # ------------------------------------------------------------------ word that went round
@@ -281,7 +281,7 @@ Did you hear the noise earlier? That was {player} and a {lastkill}. // Who won? 
 
 @ chat, tell:bigkill
 {player} killed a {bigkill}. Right there by the trees. // No! // I saw it. // @amazed
-You'll never guess what {player} killed. // A greydwarf? // A {bigkill}. // @amazed
+You'll never guess what {player} killed. // A Greydwarf? // A {bigkill}. // @amazed
 There was a {bigkill} by the houses and {player} put it down. // Gods. Was anyone hurt? // Only the {bigkill}.
 
 @ chat, tell:died
@@ -289,7 +289,7 @@ There was a {bigkill} by the houses and {player} put it down. // Gods. Was anyon
 They say {player} fell yesterday. // They walked past me this morning. // @strange
 
 @ chat, tell:defended
-{player} fought with us when the greydwarfs came. // I saw. Good arm. // Better than good.
+{player} fought with us when the Greydwarfs came. // I saw. Good arm. // Better than good.
 
 @ chat, tell:request
 {player} brought what we asked for. // Every bit? // Every bit. // +praiseplayer

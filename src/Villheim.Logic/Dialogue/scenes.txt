@@ -20,7 +20,7 @@ Where would you go, if you could go anywhere? // @dream
 Do you miss home? // @home
 What's the worst job in {village}? // @worstjob
 What did you do yesterday? // @yesterday
-If a troll came right now, what would you do? // @troll
+If a Troll came right now, what would you do? // @Troll
 What do you think of the {building}? // @building
 
 @ reply, answer:howareyou
@@ -56,8 +56,8 @@ Wonderful. I slept well and the sun's out.
 @ reply, answer:sleep
 Like a log.
 Not really. Somebody snores.
-I dreamt of {homeland}.
-Dreamt I was falling. Woke up on the floor.
+I dreamed of {homeland}.
+Dreamed I was falling. Woke up on the floor.
 
 @ reply, answer:sleep, thought:sleptwell
 Best night in ages. My own bed makes all the difference.
@@ -80,7 +80,7 @@ Who? Oh, the new one. Haven't decided.
 {player}'s a friend to {village}. That's all I need to know.
 
 @ reply, answer:aboutplayer, player:hero
-{player}? I'd follow them into a troll cave. Maybe not a deep one.
+{player}? I'd follow them into a Troll cave. Maybe not a deep one.
 
 @ reply, answer:aboutplayer, player:disliked
 I don't trust them. Not after what happened.
@@ -279,7 +279,7 @@ Only if you don't steal my meat. // I'd never. // You would. // I would.
 Maybe. Ask me again at the fire.
 
 @ chat, with:sweetheart
-Did you sleep? // You kicked me all night. // I was dreaming of running. // From me? // Towards you.
+Did you sleep? // You kicked me all night. // I was dreaming of running. // From me? // Toward you.
 I saved you the warm spot by the fire. // You always do.
 When we have our own house, I want a window. // A window? Like the {leader}'s? // Like the {leader}'s.
 Everyone's looking at us. // Let them look. // +sweethearts
@@ -341,7 +341,7 @@ Want to learn something? // What? // How to tie a knot. // That's boring. // It'
 
 @ chat, with:hurt
 You're hurt. Sit down. // It's nothing. // Sit down anyway.
-Who did that to you? // A greydwarf. Small one. // Small ones hurt the most.
+Who did that to you? // A Greydwarf. Small one. // Small ones hurt the most.
 There's food in the chest. Go and eat. // I'm fine. // Go and eat.
 
 @ chat, with:hurt | worrier
@@ -392,7 +392,7 @@ Ask me when the next roof's up.
 No. Things need to get better. And they will.
 
 @ chat, with:skilled
-How do you do it so fast? // Practice. Lots of it. // I practise. // Practise more.
+How do you do it so fast? // Practice. Lots of it. // I practice. // Practice more.
 Will you show me how you do that? // @teach
 
 @ reply, answer:teach

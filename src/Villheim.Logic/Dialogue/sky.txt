@@ -68,7 +68,7 @@ Look at that. White already on the roofs.
 Snow on the wind. Bring more wood to the fire.
 
 @ self, event:snowstart | young
-Snow! I'm going to make a troll out of it. A small troll.
+Snow! I'm going to make a Troll out of it. A small Troll.
 
 @ self, event:snowstart | elder
 Snow early this year. Or late. I lose count.
@@ -209,7 +209,7 @@ It's very quiet. I like it and I don't like it.
 The fire's low. I'll put one more log on.
 
 @ latenight | worrier
-I can't sleep. Every noise is a troll.
+I can't sleep. Every noise is a Troll.
 
 @ latenight, protector
 Long night. I'll walk round again before the sun.

@@ -56,7 +56,7 @@ namespace Villheim.Logic.Village
                 views[id] = after;
                 if (Band(after) != Band(before))
                 {
-                    string name = other.GetString(Keys.Name, "our neighbours");
+                    string name = other.GetString(Keys.Name, "our neighbors");
                     Chronicle.Add(hearth, after > before
                         ? $"We are on {Band(after)} terms with {name} now."
                         : $"Things have cooled with {name}. We are {Band(after)} now.");

@@ -446,7 +446,7 @@ namespace Villheim.Logic.Village
         {
             int outpost = Load(hearth.Zdo, KeyOutpostTrail).Count + Load(hearth.Zdo, KeyOutpostTrail2).Count;
             int neighbour = Load(hearth.Zdo, KeyNeighbourTrail).Count;
-            return $"trails to the outposts {(outpost > 0 ? outpost + " points" : "none")}, to the neighbour {(neighbour > 0 ? neighbour + " points" : "none")}";
+            return $"trails to the outposts {(outpost > 0 ? outpost + " points" : "none")}, to the neighbor {(neighbour > 0 ? neighbour + " points" : "none")}";
         }
 
         /// <summary>'vh trails': plan the nearest village's trails again now.</summary>

@@ -416,7 +416,7 @@ namespace Villheim.Logic.Villagers
             string kind = KindOf(villager);
             string from = villager.Zdo.GetString(KeyFrom, "");
             string title = kind == Hermit ? "A hermit" : kind == Pilgrim ? "A pilgrim" : kind == Camper
-                ? $"At {from}'s {villager.Zdo.GetString(KeyCampKind, "camp")}" : "A travelling pedlar";
+                ? $"At {from}'s {villager.Zdo.GetString(KeyCampKind, "camp")}" : "A traveling pedlar";
             string text = villager.VillagerName + $"\n<color=#b0b0b0>{title}{(from.Length > 0 && kind != Hermit && kind != Camper ? " from " + from : "")}</color>" +
                           $"\n<color=#b0b0b0>{Describe(villager)}</color>" +
                           "\n[<color=yellow><b>$KEY_Use</b></color>] Talk";

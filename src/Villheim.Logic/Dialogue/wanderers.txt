@@ -26,7 +26,7 @@ My feet hurt and my pack is full. Let's fix one of those.
 Right. The road won't walk itself.
 Keep the fire going. I'll be back when my pack's full again.
 If anyone asks, I gave you a good price.
-Off I go. Mind the greydwarfs, they've been bold this year.
+Off I go. Mind the Greydwarfs, they've been bold this year.
 Thank you for the seat by the fire.
 
 @ talk, wanderer, pedlar
@@ -142,7 +142,7 @@ Shift and talk if you want what I've got. It isn't much.
 News can find me if it wants. It never does.
 
 @ talk, wanderer, hermit, biome:blackforest
-The greydwarfs leave me alone. We have an understanding.
+The Greydwarfs leave me alone. We have an understanding.
 Trolls come through here sometimes. I stay very still and think about rocks.
 The forest is loud if you listen. Mostly it's saying go away.
 
@@ -215,7 +215,7 @@ Can I see the pack? Please? Just the top bit?
 
 @ self, event:pilgrim
 A pilgrim. Somebody make room by the fire.
-A traveller for the night. Give them the warm side.
+A traveler for the night. Give them the warm side.
 Pilgrims bring luck, my mother said. Or was it rain.
 
 @ self, event:pilgrim | devout
@@ -253,11 +253,11 @@ We're from {from}. Somebody has to cut the good wood, and it doesn't grow at hom
 Ten logs a day back to {from}. Every day. My arms have opinions about it.
 It's quiet out here. Too quiet, some nights.
 Tell them in {from} we're fine. Tell them we want better food.
-We sleep by the fire and listen for trolls. Mostly we hear owls.
+We sleep by the fire and listen for Trolls. Mostly we hear owls.
 I volunteered for this. I forget why.
 
 @ talk, wanderer, camper, night
-Sit down if you're staying. Don't if you're a troll.
+Sit down if you're staying. Don't if you're a Troll.
 The fire's small on purpose. Big fires bring visitors.
 
 @ talk, wanderer, camper, rain
@@ -266,7 +266,7 @@ Rain in the forest is twice the rain. It drips off everything.
 @ self, wanderer, camper
 More logs. Always more logs.
 I miss my bed in {from}.
-Was that a branch, or a greydwarf?
+Was that a branch, or a Greydwarf?
 The others back home have no idea how good they've got it.
 
 @ greet, wanderer, camper
@@ -283,7 +283,7 @@ A camp out past the trees. We're getting bigger than this clearing.
 They're going for the good wood. About time.
 
 @ self, event:outpost | worrier
-They're going all that way? With the trolls?
+They're going all that way? With the Trolls?
 
 @ talk, mem:outpost
 Our people are out at the logging camp. They send wood back every day.

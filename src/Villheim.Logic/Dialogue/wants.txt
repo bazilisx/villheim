@@ -241,7 +241,7 @@ Nothing ever happens here. I want to hear about somewhere where things happen.
 I've heard all of {other}'s stories. Twice. I need new ones.
 
 @ goal:hunt
-I want to bring down something big. A troll, maybe. A small troll.
+I want to bring down something big. A Troll, maybe. A small Troll.
 Next hunt, I'm going. And I'm coming back with something worth carrying.
 
 @ goal:hunt, protector

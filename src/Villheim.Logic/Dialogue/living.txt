@@ -10,7 +10,7 @@
 #   farewell farewell:bed/food/safety/mood migrant                                 (Villagers/Leaving.cs)
 #   stay:good stay:fair stay:bad (a visitor's goodbye)                             (Village/VisitorJudging.cs)
 #   lifestage:elder elder:story                                                    (Villagers/Elders.cs)
-#   nextdoor:friend nextdoor:rival                                                 (Villagers/Neighbours.cs)
+#   nextdoor:friend nextdoor:rival                                                 (Villagers/Neighbors.cs)
 #   stagecap                                                                       (Village/BossStages.cs)
 #   horn help                                                                      (Villagers/Escort.cs)
 #   events: event:newseason festivalmorning festival coldhome complain leaving finepaid unwelcome guard
@@ -211,7 +211,7 @@ One wrong step and the guards will have you.
 @ talk, fine
 You owe {village} {fine} coins. Crouch and speak to me when you mean to pay.
 {fine} coins and we'll call it even. Crouch and speak to me with the silver ready.
-Pay the fine, {fine} coins. Then we can talk like neighbours again.
+Pay the fine, {fine} coins. Then we can talk like neighbors again.
 
 @ talk, fine | gruff
 {fine} coins. Not one less. Crouch down and hand it over when you're ready.
@@ -352,23 +352,23 @@ Have I told you about day {chronicleday}? {chronicle} Well, now I have.
 Day {chronicleday}. {chronicle} Those were the days.
 
 @ talk, event:newelder
-We've a new elder in the village. They earned the grey in their beard.
+We've a new elder in the village. They earned the gray in their beard.
 
 # Retired 2026-11-08 (D-003): elders do not die of age, so the event:elderdeath lines are gone (setting
 # EldersDieOfAge, off).
 
-# ------------------------------------------------------------------ neighbours
+# ------------------------------------------------------------------ neighbors
 
 @ talk, nextdoor:friend * 0.6
 My friend lives right next door. Handy when you run out of salt.
-Good neighbours make a good village. I've got the best one.
+Good neighbors make a good village. I've got the best one.
 
 @ talk, nextdoor:rival * 0.6
 Of all the houses, they put me next to that one.
-I can hear my neighbour snoring through two walls. I hate my neighbour.
+I can hear my neighbor snoring through two walls. I hate my neighbor.
 
 @ talk, nextdoor:rival | gruff * 0.6
-If my neighbour moves one more stone onto my side, there'll be trouble.
+If my neighbor moves one more stone onto my side, there'll be trouble.
 
 # ------------------------------------------------------------------ the horn and help
 

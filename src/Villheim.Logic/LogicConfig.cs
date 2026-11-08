@@ -163,17 +163,20 @@ namespace Villheim.Logic
         public static ConfigEntry<float> KnowledgeReachGrowth;
         public static ConfigEntry<bool> KnowledgeGearGate;
         public static ConfigEntry<string> KnowledgeGear;
-        public static ConfigEntry<float> KnowledgeWitness;
+        public static ConfigEntry<float> KnowledgeNear;
+        public static ConfigEntry<string> KnowledgeKinds;
+        public static ConfigEntry<string> KnowledgeReachKinds;
         public static ConfigEntry<float> KnowledgeSight;
         public static ConfigEntry<int> KnowledgeKeep;
         public static ConfigEntry<int> KnowledgeCommonDays;
-        public static ConfigEntry<float> RumourChance;
+        public static ConfigEntry<float> RumorChance;
         public static ConfigEntry<bool> KnowledgeRequests;
         public static ConfigEntry<bool> HarvestReach;
         public static ConfigEntry<string> HarvestReachByStage;
         public static ConfigEntry<float> HarvestReachMax;
         public static ConfigEntry<bool> MapTable;
         public static ConfigEntry<int> MapTableFromStage;
+        public static ConfigEntry<float> MapTableShare;
 
         // Cultures (Village/Cultures.cs) and biome defenders (Villagers/Defenders.cs).
         public static ConfigEntry<bool> Cultures;
@@ -289,7 +292,7 @@ namespace Villheim.Logic
             BoardwalkCultures = Admin(config, work, "BoardwalkCultures", "fen-folk, celtic-crannog",
                 "Cultures whose villages lay raised wooden walkways on poles instead of dirt paths over wet ground.");
             BoardwalkWetHeight = Admin(config, work, "BoardwalkWetHeight", 0.8f,
-                "Ground no higher than this many metres over the water counts as wet for boardwalks.");
+                "Ground no higher than this many meters over the water counts as wet for boardwalks.");
             SecondsPerPiece = Admin(config, work, "SecondsPerPiece", 2.5f,
                 "How long a builder hammers at each piece before it goes up.");
             BuildStartShare = Admin(config, work, "BuildStartShare", 0.5f,
@@ -298,7 +301,7 @@ namespace Villheim.Logic
                 "half, D-048). He then puts up pieces, each one supported, while the materials last, so a building may " +
                 "stand half done while he fetches more. 0: as soon as the next piece is paid for.");
             ClearingRadius = Admin(config, work, "ClearingRadius", 20f,
-                "Villagers keep the ground this many metres around the hearth clear: they fell trees, take out stumps, " +
+                "Villagers keep the ground this many meters around the hearth clear: they fell trees, take out stumps, " +
                 "break rocks and pick up sticks and stones there, and the materials go to the chest. 0: only the paths " +
                 "waiting to be laid are cleared.");
             IdlePickup = Admin(config, work, "IdlePickup", true,
@@ -315,7 +318,7 @@ namespace Villheim.Logic
                 "Models from locations a village puts up as decor on the outer ring by the hearth (D-047), as location:child " +
                 "separated by commas: Hildir's tents that flutter in the wind by default. 'vh props <location>' lists names.");
             VillageLevelSnap = Admin(config, work, "VillageLevelSnap", 2f,
-                "A new building whose ground lies within this many metres of the hearth's is set at the hearth's level, so " +
+                "A new building whose ground lies within this many meters of the hearth's is set at the hearth's level, so " +
                 "the middle of the village is one even floor instead of steps (T-28). Further off, it sits at the middle " +
                 "height of the ground under it. 0: always the ground under it.");
             AnimalPens = Admin(config, work, "AnimalPens", true,
@@ -383,7 +386,7 @@ namespace Villheim.Logic
                 "camp in the Black Forest builds designs that need core wood.");
             VillageEvents = Admin(config, life, "VillageEvents", true,
                 "With WorldLife on, once a day something may happen in a village: a feast, a visiting skald, a market day, " +
-                "a lost traveller taken in, a fever, beasts at night, a quarrel, a falling-out with the neighbours.");
+                "a lost traveler taken in, a fever, beasts at night, a quarrel, a falling-out with the neighbors.");
             EventChancePerDay = Admin(config, life, "EventChancePerDay", 0.35f,
                 "Chance that something happens in a village on a given day (0 to 1).");
             Caravans = Admin(config, life, "Caravans", true,
@@ -392,14 +395,14 @@ namespace Villheim.Logic
                 "on a trader opens his pack (his own wares, for coins).");
             // Caravans no longer move goods between villages (Tyler, 2026-11-08, D-008).
             CaravanDeliveries = Admin(config, life, "CaravanDeliveries", false,
-                "Off: a trader on the trail carries his own pack and nothing from a village chest. On (old behaviour): " +
+                "Off: a trader on the trail carries his own pack and nothing from a village chest. On (old behavior): " +
                 "villages send what they can spare to villages that lack it.");
             CaravanChancePerDay = Admin(config, life, "CaravanChancePerDay", 0.3f,
                 "Chance that a village sends a trader down the trail on a given day (0 to 1).");
             CaravanMetresPerDay = Admin(config, life, "CaravanMetresPerDay", 2400f,
                 "How far a caravan or a haul goes in an in-game day.");
             CaravanReach = Admin(config, life, "CaravanReach", 2500f,
-                "Villages farther apart than this (metres) do not send each other caravans.");
+                "Villages farther apart than this (meters) do not send each other caravans.");
             OutpostsPerVillage = Admin(config, life, "OutpostsPerVillage", 2,
                 "Most camps a village keeps: a logging camp in the other wood biome, and a flint camp on the shore while " +
                 "its smith needs flint.");
@@ -409,7 +412,7 @@ namespace Villheim.Logic
             // config file written while "Daughters" was on doesn't keep it on. The code stays.
             Daughters = Admin(config, life, "DaughterVillages", false,
                 "Off: a village never founds another; each site is one village plus its resource outposts. On (old " +
-                "behaviour, needs WorldLife): a full village now and then sends two of its people to found a village of " +
+                "behavior, needs WorldLife): a full village now and then sends two of its people to found a village of " +
                 "their own 600 to 1,200 m away.");
             DaughtersPerVillage = Admin(config, life, "DaughtersPerVillage", 2,
                 "With DaughterVillages on: most daughter villages one village founds.");
@@ -426,7 +429,7 @@ namespace Villheim.Logic
             GroveTrees = Admin(config, life, "GroveTrees", 25,
                 "Standing trees within 60 m of a village's edge it wants to keep; below this it plants more.");
             Trails = Admin(config, life, "Trails", true,
-                "With WorldLife on, villages plan a dirt trail to their outpost and to their nearest neighbour within " +
+                "With WorldLife on, villages plan a dirt trail to their outpost and to their nearest neighbor within " +
                 "2,500 m, painted on the ground near you as you walk it.");
             TrailSigns = Admin(config, life, "TrailSigns", true,
                 "With Trails on, wooden signposts where a trail leaves a village (where it goes and how far) and halfway " +
@@ -488,7 +491,7 @@ namespace Villheim.Logic
                 "Percent of generated village sites that become villages, so villages stay a rare find. Sites lit with " +
                 "the settle command always do.");
             VillageSpacing = Admin(config, sites, "VillageSpacing", 1500f,
-                "No two generated villages closer than this (metres). Villages also keep 400 m from traders and ports.");
+                "No two generated villages closer than this (meters). Villages also keep 400 m from traders and ports.");
 
             const string looks = "3c - Villager looks";
             GhostLook = Admin(config, looks, "GhostLook", true,
@@ -503,9 +506,9 @@ namespace Villheim.Logic
                 "How solid villagers are by day (GhostAlpha is the night value; dusk and dawn blend the two).");
             GhostTintDay = Admin(config, looks, "GhostTintDay", 0.5f, "How teal villagers are by day (GhostTint is the night value).");
             GhostColor = Admin(config, looks, "GhostColor", new UnityEngine.Color(0.55f, 0.85f, 1f),
-                "The colour villagers are tinted toward (the tint settings say how strongly). Teal by default.");
+                "The color villagers are tinted toward (the tint settings say how strongly). Teal by default.");
             GhostGlowColor = Admin(config, looks, "GhostGlowColor", new UnityEngine.Color(0.25f, 0.6f, 0.75f),
-                "The colour of the glow (the glow settings say how strongly).");
+                "The color of the glow (the glow settings say how strongly).");
             ChildProportions = Admin(config, looks, "ChildProportions", true,
                 "Children are shaped as children (the ChildBoy and ChildGirl settings): a bigger head for their size, a " +
                 "shorter neck, legs and arms, narrower shoulders and hips. Off: a child is a grown villager scaled down " +
@@ -516,7 +519,7 @@ namespace Villheim.Logic
                 "Switch on to put the look settings on every villager and animal at once; it switches itself off again. " +
                 "(Every change to a look setting is also applied at once on its own.)");
             HearthGroundPaint = Admin(config, sites, "HearthGroundPaint", "Both",
-                "How the ground around a new hearth is cleared: ClearVegetation (grass taken off, ground keeps its colour), " +
+                "How the ground around a new hearth is cleared: ClearVegetation (grass taken off, ground keeps its color), " +
                 "Dirt (bare earth, like a path), or Both (bare earth 5 m round the fire, grass cleared out to 12 m).");
             GhostGlowDay = Admin(config, looks, "GhostGlowDay", 0.08f,
                 "A faint teal glow by day, so villagers read teal rather than white in sunlight (GhostGlow is the night value).");
@@ -544,7 +547,7 @@ namespace Villheim.Logic
                 "How the Villheim Dev Shaper Tool looks lying on the ground. Changes show at once.",
                 new AcceptableValueList<string>(Village.ShaperEffects.GroundChoices), new ConfigurationManagerAttributes { IsAdminOnly = true }));
             ShaperColor = Admin(config, "4 - Design review", "ShaperColor", new UnityEngine.Color(0.102f, 0.851f, 0.749f),
-                "Colour of the Shaper Tool's Glow and Beam, and the tint of its icon.");
+                "Color of the Shaper Tool's Glow and Beam, and the tint of its icon.");
 
             ShaperEffectScale = config.Bind("4 - Design review", "ShaperEffectScale", 0.205f, new ConfigDescription(
                 "Size of the Fire, Frost, Spirit and Lightning effects on the Shaper Tool, against the weapon they come from. Changes show at once.",
@@ -561,7 +564,7 @@ namespace Villheim.Logic
                 "Degrees per mouse wheel notch when turning an object with the Shaper Tool (Turn, key 2).",
                 new AcceptableValueRange<float>(1f, 90f), new ConfigurationManagerAttributes { IsAdminOnly = true }));
             ShaperEffectTint = Admin(config, "4 - Design review", "ShaperEffectTint", true,
-                "Recolour the effects to ShaperColor (teal lightning). Off: their own colours.");
+                "Recolor the effects to ShaperColor (teal lightning). Off: their own colors.");
             LookColor = Admin(config, "4 - Design review", "LookColor", new UnityEngine.Color(0.129f, 0.447f, 0.396f, 0.118f),
                 "Glow of the object you aim at while shaping (and of Delete all's marks). Darker is subtler; changes show on the next object you aim at.");
 
@@ -691,9 +694,9 @@ namespace Villheim.Logic
             // Villagers never move away (Tyler, 2026-11-08, D-003): a new key, off by default, so a config file
             // written while "Leaving" was on doesn't keep it on. The code stays.
             Leaving = Admin(config, living, "VillagersLeave", false,
-                "Off: villagers never leave their village. On (old behaviour, needs WorldLife): one who lacked a need " +
+                "Off: villagers never leave their village. On (old behavior, needs WorldLife): one who lacked a need " +
                 "too long, or the least content when the whole village is glum for days, walks to the friendliest " +
-                "neighbour and settles there when it has a free bed.");
+                "neighbor and settles there when it has a free bed.");
             ExodusMood = Admin(config, living, "ExodusMood", 25, "With VillagersLeave on: village mood below which people start to think of leaving.");
             ExodusDays = Admin(config, living, "ExodusDays", 3, "With VillagersLeave on: days in a row below ExodusMood before someone leaves.");
             VisitorJudging = Admin(config, living, "VisitorJudging", true,
@@ -706,7 +709,7 @@ namespace Villheim.Logic
             // Growth follows materials, people and needs, never bosses felled (Tyler, 2026-11-08, D-004). New key, off.
             BossStages = Admin(config, living, "BossStageCap", false,
                 "Off: growth follows materials, people and needs, and bosses felled never hold a village back. On (old " +
-                "behaviour, needs WorldLife): each boss felled (or its trophy hung on an item stand in the village) lets " +
+                "behavior, needs WorldLife): each boss felled (or its trophy hung on an item stand in the village) lets " +
                 "villages grow one stage further.");
             BossStageStart = Admin(config, living, "BossStageStart", 2,
                 "With BossStageCap on: stage a village can reach with no boss felled: 1 camp, 2 hamlet, 3 village, 4 town.");
@@ -724,7 +727,7 @@ namespace Villheim.Logic
                 "near the village and take no jobs.");
             // Elders do not die of age (Tyler, 2026-11-08, D-003). New key, off.
             ElderDeaths = Admin(config, living, "EldersDieOfAge", false,
-                "Off: elders live on. On (old behaviour, needs WorldLife): very old elders may die in their sleep and are " +
+                "Off: elders live on. On (old behavior, needs WorldLife): very old elders may die in their sleep and are " +
                 "mourned.");
             ElderDeathDays = Admin(config, living, "ElderDeathDays", 60, "With EldersDieOfAge on: days in the village before an elder may die of age.");
             ElderDeathChance = Admin(config, living, "ElderDeathChance", 0.02f, "Chance each morning, from ElderDeathDays on.");
@@ -745,32 +748,41 @@ namespace Villheim.Logic
         {
             const string know = "5c - Village knowledge";
             VillageKnowledge = Admin(config, know, "VillageKnowledge", true,
-                "Villages learn the real land around them (boss altars, dungeons, traders, ore, nests, berries, where animals " +
-                "come out, where the biomes change) as far as their reach goes, and villagers talk about it truthfully: what " +
-                "they saw themselves, what they were told and by whom. Off: the village makes no discoveries and has no map table.");
+                "Villages learn the real land around them (boss altars, dungeons, traders, runestones, valuable ore, where " +
+                "animals come out, where the biomes change) and villagers talk about it truthfully: what they saw themselves, " +
+                "what they were told and by whom. Off: the village makes no discoveries and has no map table.");
             KnowledgeReach = Admin(config, know, "KnowledgeReach", "200, 400, 650, 900",
-                "How far (metres from the hearth) a village comes to know the land at each stage: camp, hamlet, village, town.");
+                "How far (meters from the hearth) a village knows the lay of the land at each stage: camp, hamlet, village, town. " +
+                "This covers only the kinds in KnowledgeReachKinds; places need a villager to go there.");
             KnowledgeReachPerGear = Admin(config, know, "KnowledgeReachPerGear", 60f,
-                "Metres of reach added for each gear tier the village has made (0 rags to 4 bronze).");
+                "Meters of reach added for each gear tier the village has made (0 rags to 4 bronze).");
             KnowledgeReachGrowth = Admin(config, know, "KnowledgeReachGrowth", 150f,
-                "Metres a day the explored radius grows toward the reach, so places come to light over days.");
+                "Meters a day the explored radius grows toward the reach.");
             KnowledgeGearGate = Admin(config, know, "KnowledgeGearGate", true,
                 "Villagers only go into a biome (to explore, fell, mine, hunt or forage) once the village has made the gear " +
                 "KnowledgeGear asks for there. Big things past that line can still be seen from the edge of it.");
             KnowledgeGear = Admin(config, know, "KnowledgeGear", Village.Knowledge.DefaultGear,
                 "Gear tier needed before villagers go into each biome (0 rags, 1 leather, 2 flint and leather, 3 troll " +
                 "leather, 4 bronze; 5 never). Biome: tier, separated by semicolons. A village's own biome is always open.");
-            KnowledgeWitness = Admin(config, know, "KnowledgeWitness", 60f,
-                "A villager out working who comes this close to something (twice as far for big things like towers and " +
-                "altars) has seen it himself and can say so.");
-            KnowledgeSight = Admin(config, know, "KnowledgeSight", 150f,
-                "How far past the last ground the villagers walk to a big thing can be spotted (twice that across water).");
+            KnowledgeNear = Admin(config, know, "KnowledgeNear", 35f,
+                "A villager out working who comes this close (meters) to a place has found it and can talk about it. Big sites " +
+                "(boss altars, Fuling villages, towers, traders) count from half again as far. Nothing is found from further off.");
+            KnowledgeKinds = Admin(config, know, "KnowledgeKinds", Village.Knowledge.DefaultKinds,
+                "What a village records at all: kinds (boss, dungeon, trader, runestone, ore, fuling, dvergr, landmark, ruin, " +
+                "nest, forage, game, foe, biome) or kind:key (ore:copper, landmark:tarpit). Anything else, such as dolmens, " +
+                "old houses, berry bushes and common rocks, is never recorded.");
+            KnowledgeReachKinds = Admin(config, know, "KnowledgeReachKinds", Village.Knowledge.DefaultReachKinds,
+                "Kinds a village learns from its reach without anyone walking up to them: game (where animals come out), foe " +
+                "(where creatures come out) and biome (where the land changes). Everything else needs a villager to go there.");
+            KnowledgeSight = Admin(config, know, "KnowledgeSight", 100f,
+                "For the reach kinds only: how far past the last ground the villagers walk an animal ground or biome edge can " +
+                "be made out (twice that across water).");
             KnowledgeKeep = Admin(config, know, "KnowledgeKeep", 60,
                 "Discoveries kept on each village's hearth. Past that, the most ordinary and oldest go first.");
             KnowledgeCommonDays = Admin(config, know, "KnowledgeCommonDays", 2,
                 "Days after which everyone in the village has heard of a discovery. Before that only the one who saw it, " +
                 "and those he told in a chat, can talk about it.");
-            RumourChance = Admin(config, know, "RumourChance", 0.5f,
+            RumorChance = Admin(config, know, "RumorChance", 0.4f,
                 "Chance that a villager who knows something of the land has it on his mind when he picks a line (0 to 1).");
             KnowledgeRequests = Admin(config, know, "KnowledgeRequests", true,
                 "Requests, contracts and talk about what the village needs say where the village believes it can be found, " +
@@ -779,10 +791,10 @@ namespace Villheim.Logic
                 "Villagers fell, mine, hunt and forage further from the hearth as the village grows (HarvestReachByStage).");
             HarvestReachByStage = Admin(config, know, "HarvestReachByStage", "1, 1.15, 1.35, 1.6",
                 "How much further than the usual radius (45 to 55 m) villagers work at each stage: camp, hamlet, village, town.");
-            HarvestReachMax = Admin(config, know, "HarvestReachMax", 90f, "The furthest villagers go from the hearth to work (metres).");
+            HarvestReachMax = Admin(config, know, "HarvestReachMax", 90f, "The furthest villagers go from the hearth to work (meters).");
             MapTable = Admin(config, know, "MapTable", true,
-                "A village puts the game's cartography table by its hearth. Reading it copies the village's discoveries to " +
-                "your map as pins.");
+                "A village puts the game's cartography table by its hearth. Reading it copies some of the village's places to " +
+                "your map as pins (see MapTableShare). Animal grounds and biome edges are never pinned.");
             MapTableFromStage = Admin(config, know, "MapTableFromStage", 2, "Stage from which a village has a map table: 1 camp, 2 hamlet.");
             MapTablePrefab = Admin(config, know, "MapTablePrefab", "piece_cartographytable",
                 "The piece used for the village's map table. Vanilla has only the cartography table; Hildir's small map " +
@@ -791,6 +803,9 @@ namespace Villheim.Logic
                 "The village's map table copied from a location's own model (D-047), as location:child, the child found by " +
                 "the start of its name. Hildir's small map on a stool by default. 'vh props Hildir_camp' lists the names. " +
                 "Empty, or not found: MapTablePrefab is used.");
+            MapTableShare = Admin(config, know, "MapTableShare", 0.5f,
+                "Share of the village's places that its map table shows (0 to 1), picked at random once per place and kept, " +
+                "so the same places show each time. Boss altars always show.");
         }
 
         /// <summary>Sections "5d - Cultures" and "5e - Biome defenders".</summary>
@@ -831,7 +846,7 @@ namespace Villheim.Logic
                 "Carers shoot too when a listed flying creature comes (running from a deathsquito does not work). Off: " +
                 "only protectors shoot.");
             DefenderRange = Admin(config, defenders, "DefenderRange", 35f,
-                "How far away (metres) a villager starts shooting at a listed flying creature.");
+                "How far away (meters) a villager starts shooting at a listed flying creature.");
             DefenderShotSeconds = Admin(config, defenders, "DefenderShotSeconds", 1.2f,
                 "Seconds between one villager's arrows.");
             DefenderLead = Admin(config, defenders, "DefenderLead", 1f,
@@ -845,7 +860,7 @@ namespace Villheim.Logic
             PlainsDefenderBiomes = Admin(config, defenders, "PlainsDefenderBiomes", "Plains",
                 "Villages in these biomes always use the Plains profile (comma separated).");
             PlainsDefenderReach = Admin(config, defenders, "PlainsDefenderReach", 400f,
-                "A village also uses it when Plains ground lies within this many metres of its hearth. 0: biome only.");
+                "A village also uses it when Plains ground lies within this many meters of its hearth. 0: biome only.");
             PlainsDefenderTargets = Admin(config, defenders, "PlainsDefenderTargets", "Deathsquito",
                 "Creature prefab names the profile covers. Flying ones are shot with bows; the rest are fought as usual " +
                 "with the damage bonus.");
@@ -862,7 +877,7 @@ namespace Villheim.Logic
             MistlandsDefenderBiomes = Admin(config, defenders, "MistlandsDefenderBiomes", "Mistlands",
                 "Villages in these biomes always use the Mistlands profile (comma separated).");
             MistlandsDefenderReach = Admin(config, defenders, "MistlandsDefenderReach", 300f,
-                "A village also uses it when Mistlands ground lies within this many metres of its hearth. 0: biome only.");
+                "A village also uses it when Mistlands ground lies within this many meters of its hearth. 0: biome only.");
             MistlandsDefenderTargets = Admin(config, defenders, "MistlandsDefenderTargets", "Seeker,SeekerBrute,SeekerBrood,Tick,Gjall",
                 "Creature prefab names the profile covers. Gjall fly and are shot with bows; the rest are fought as usual " +
                 "with the damage bonus.");
@@ -909,9 +924,9 @@ namespace Villheim.Logic
                 "A village in the Mistlands keeps the mist off itself, and its people push the mist back around them as " +
                 "the Mistwalker does.");
             MistlandsDemistRadius = Admin(config, defenders, "MistlandsDemistRadius", 0f,
-                "Metres of clear air around a Mistlands village's hearth. 0: the village's radius plus 10.");
+                "Meters of clear air around a Mistlands village's hearth. 0: the village's radius plus 10.");
             MistlandsVillagerDemist = Admin(config, defenders, "MistlandsVillagerDemist", 6f,
-                "Metres of clear air around each villager of a Mistlands village. 0: none.");
+                "Meters of clear air around each villager of a Mistlands village. 0: none.");
             MistlandsDemisterPrefab = Admin(config, defenders, "MistlandsDemisterPrefab", "dverger_demister_large",
                 "The big Dvergr demister a Mistlands village puts up round its edge, so it looks as if they keep the mist " +
                 "off. 'vh demist' lists the game's prefabs that carry a demister.");

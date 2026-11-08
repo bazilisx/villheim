@@ -54,13 +54,13 @@ Another night survived. They'll talk about this one.
 
 @ thought:raidwon ~proud
 We beat them back last night. I still can't believe it.
-After last night, a few greydwarfs don't scare me.
+After last night, a few Greydwarfs don't scare me.
 
 @ thought:raidwon | worrier
 We won, but they'll be back. They're always back.
 
 @ chat, thought:raidwon
-Did you see them run? // I saw you run. // Towards them!
+Did you see them run? // I saw you run. // Toward them!
 
 # ------------------------------------------------------------------ a death in the village
 
@@ -210,13 +210,13 @@ A baby in the village. Makes the whole place feel different.
 @ child
 When I'm big I'm going to chop the biggest tree.
 Can I help? I can help. Let me help.
-Why is the sky that colour?
+Why is the sky that color?
 I'm not tired. I'm just yawning.
 {other} said I'm not allowed near the fire. I'm not near it. Much.
 Look what I found! It's a stick. It's a good stick.
 
 @ child, night
-I can't sleep. Is that a troll? It sounds like a troll.
+I can't sleep. Is that a Troll? It sounds like a Troll.
 
 @ child, talk
 Are you a giant? You look like a giant.

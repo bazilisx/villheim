@@ -513,7 +513,7 @@ namespace Villheim.Logic.Village
         private static void Identity()
         {
             Rename(ToolA, NameA, "Villheim design review, phase A: hotbar 1 Home, 2 Work, 3 Community, 4 Drop, 7 Clear, 8 Undo; left click a design to sort it.");
-            Rename(ToolB2, NameB2, "Villheim design review, phase B2: work designs sorted as Crafting get a trade: 1 Harbour, 2 Masonry, 3 Weaving, 4 Hunting, 5 Arcane, 6 Workshop, 7 Clear, 8 Undo.");
+            Rename(ToolB2, NameB2, "Villheim design review, phase B2: work designs sorted as Crafting get a trade: 1 Harbor, 2 Masonry, 3 Weaving, 4 Hunting, 5 Arcane, 6 Workshop, 7 Clear, 8 Undo.");
             Rename(ToolB, NameB, "Villheim design review, phase B: the hotbar shows the subtypes for the design under the crosshair (work or community); left click a design to sort it.");
         }
 
@@ -607,7 +607,7 @@ namespace Villheim.Logic.Village
                         }
                         else if (held == Phase.B2)
                         {
-                            Say("Sort B2 (crafting trades) on: 1 Harbour, 2 Masonry, 3 Weaving, 4 Hunting, 5 Arcane, 6 Workshop, 7 Clear, 8 Undo. Press a key, then left click Crafting designs.");
+                            Say("Sort B2 (crafting trades) on: 1 Harbor, 2 Masonry, 3 Weaving, 4 Hunting, 5 Arcane, 6 Workshop, 7 Clear, 8 Undo. Press a key, then left click Crafting designs.");
                         }
                         else if (held == Phase.B)
                         {

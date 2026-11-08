@@ -106,7 +106,7 @@ Never. Not for all the silver in the world.
 
 @ chat, at:edge
 Hear that? // Birds. // I hope it's birds.
-Long way to {neighbour} from here. // A few days. // Feels further.
+Long way to {neighbor} from here. // A few days. // Feels further.
 
 @ chat, at:hearth, evening
 Good fire tonight. // Dry wood for once. // +fire

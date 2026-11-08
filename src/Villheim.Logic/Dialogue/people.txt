@@ -65,7 +65,7 @@ They came out of nowhere. I'm still shaking.
 
 @ talk | wry
 Welcome to {village}. Population: tired.
-You look like someone who's been hit by a troll. In a nice way.
+You look like someone who's been hit by a Troll. In a nice way.
 If you find the meaning of life out there, bring some back. And wood.
 I'd offer you a seat, but {other} took the good log.
 Don't mind me. I'm supervising.
@@ -105,7 +105,7 @@ I wasn't scared. Well. A bit. Mostly not.
 @ talk | devout
 The gods sent you, I'm sure of it. Or the weather did.
 I keep a little offering by the hearth. You're welcome to add to it.
-Every traveller is watched over. Some more than others.
+Every traveler is watched over. Some more than others.
 Odin's eye is on this valley. Behave.
 
 @ talk, rain | devout
@@ -137,7 +137,7 @@ How many coins have we got? // Enough to feel rich. // Not enough to be rich.
 @ !night, many
 The cook keeps a good fire. Best thing about this place.
 Our carpenter could build a hall out of twigs, given time.
-The miners come back grey with dust every evening. You'd think they'd wash.
+The miners come back gray with dust every evening. You'd think they'd wash.
 Whoever's on watch tonight, I hope they stay awake.
 
 @ !night, many | gruff

@@ -102,10 +102,12 @@ namespace Villheim.Logic.Villagers
         private static readonly Dictionary<int, (float Time, List<GameObject> Stations)> StationCache =
             new Dictionary<int, (float, List<GameObject>)>();
 
-        private static readonly string[] CheerfulGestures = { "cheer", "laugh", "toast", "thumbsup", "wave", "flex" };
-        private static readonly string[] ContentGestures = { "wave", "point", "laugh", "thumbsup", "shrug", "comehere" };
-        private static readonly string[] UneasyGestures = { "shrug", "point", "nonono" };
-        private static readonly string[] GlumGestures = { "shrug", "nonono", "despair", "cry" };
+        // Idle gestures stay few and fit a mood anyone could read from across the village. Pointing, waving, shrugging
+        // and "no" need something to point at, someone to wave to, a question or a refusal, so they are left out here.
+        private static readonly string[] CheerfulGestures = { "cheer", "laugh", "toast", "thumbsup" };
+        private static readonly string[] ContentGestures = { "laugh", "thumbsup" };
+        private static readonly string[] UneasyGestures = { };
+        private static readonly string[] GlumGestures = { "despair" };
         private static readonly string[] EveningGestures = { "toast", "laugh", "cheer" };
 
         private static readonly string[] ChatLines =
@@ -656,7 +658,10 @@ namespace Villheim.Logic.Villagers
                 return;
             }
 
-            Poses.Gesture(villager, mood >= 35f ? EveningGestures[Random.Range(0, EveningGestures.Length)] : "shrug");
+            if (mood >= 35f && Random.value < 0.35f)
+            {
+                Poses.Gesture(villager, EveningGestures[Random.Range(0, EveningGestures.Length)]);
+            }
         }
 
         /// <summary>
@@ -770,8 +775,8 @@ namespace Villheim.Logic.Villagers
                 return;
             }
 
+            // No gesture of its own each turn: the hands move only when a line's tone calls for it (Dialogue.Say).
             state.NextGesture = Time.time + Random.Range(5f, 9f);
-            Poses.Gesture(villager, Gestures(mood)[Random.Range(0, Gestures(mood).Length)]);
             if (VillheimConfig.VillagerChatter.Value && global::Chat.instance != null)
             {
                 // Answer what the other one just said, or start something new ("first // reply" lines are exchanges).
@@ -875,7 +880,10 @@ namespace Villheim.Logic.Villagers
 
             state.NextGesture = Time.time + Random.Range(min, max);
             string[] set = Gestures(mood);
-            Poses.Gesture(villager, set[Random.Range(0, set.Length)]);
+            if (set.Length > 0 && Random.value < 0.3f)
+            {
+                Poses.Gesture(villager, set[Random.Range(0, set.Length)]);
+            }
         }
 
         private static string[] Gestures(float mood)

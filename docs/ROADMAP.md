@@ -220,7 +220,8 @@ with its own look for its biome.
 - [ ] Village types: woodland, fortified, farming (Built 2026-11-06, needs testing.)
 - [ ] A chieftain (Built 2026-11-06, needs testing.)
 - [ ] Children born to families who grow up (Built 2026-11-06, needs testing.)
-- [ ] Villages trading or visiting each other; merchants travelling between villages.
+- [ ] Villages trading or visiting each other; merchants travelling between villages. (First step 2026-11-07: pedlars
+      and pilgrims from the nearest other village, news and relations; see Milestone 7.)
 - [ ] Farms (Built 2026-11-06, needs testing.) (Tyler, 2026-11-06): berry and mushroom farms in the Meadows, made by planting the vanilla bush and
       mushroom pickables in rows on a farm plot (they regrow after picking); crops from seeds later (carrots in the
       Black Forest). Saplings replanted where trees were felled (Millénaire's lumbermen plant saplings).
@@ -230,6 +231,31 @@ with its own look for its biome.
       testing.) Pens, chickens later.
 - [ ] Ghostly villagers (Tyler, 2026-11-06; built the same day, needs testing): Valheim is the afterlife, so villages may be echoes or
       memories. Villagers slightly see-through, faintly blue or teal, with a faint glow after dark. Subtle.
+
+## Milestone 7: the world between villages (Tyler, 2026-11-07)
+
+Villages that reach out past their fence, and a world with other people in it. Design and order of work:
+`docs/WORLD_LIFE.md`; research in `docs/RELATED_MODS.md` section 5.
+
+- [ ] Travelling pedlars who trade with the village chest and the player (built 2026-11-07, needs testing; `WorldLife`
+      off by default, `vh pedlar`).
+- [ ] Pilgrims who stay the night by the hearth and bless it (built 2026-11-07, needs testing; `vh pilgrim`).
+- [ ] Hermits at camps by ruins who point players to places worth finding (built 2026-11-07, needs testing; `vh hermit`).
+- [ ] News that travels between villages with visitors (built 2026-11-07, needs testing; `vh news`).
+- [ ] Villagers with their own homeland, food, fear, pastime, hope, friend, rival, yesterday and memories (built
+      2026-11-07, needs testing; `vh villager`).
+- [ ] Relations between villages that drift day by day (built 2026-11-07, needs testing; `vh village`).
+- [ ] Idle villagers watch others work and comment (built 2026-11-07, needs testing).
+- [ ] Caravans as records that move on the world clock and become real only near a player.
+- [ ] Outposts at far resources (core wood, ore, the coast), joined to the village by a path.
+- [ ] Roads between villages.
+- [ ] Desire paths worn by villagers' feet.
+- [ ] A smith who crafts gear from the chest at a real station; villagers take gear from the chest.
+- [ ] Requests and contracts on the notice board; bounties.
+- [ ] A village events director (feasts, quarrels, a lost villager, a skald).
+- [ ] Raids and help between villages by relation.
+- [ ] Skills that grow with practice.
+- [ ] Wanderers at the longhouse who can be asked to stay.
 
 ## Later ideas
 

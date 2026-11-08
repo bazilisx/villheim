@@ -26,6 +26,10 @@ Current facts only. Read this at the start of a session. Narrative is in `docs/d
   - Design numbers come from `BepInEx/Villheim/design-list.csv` (`vh report`) and never change.
   - Licensing to settle before shipping blueprints: valheimians builds and copied MWL locations belong to their
     creators; ship only Tyler's own or with permission.
+- **World life (2026-11-07 late session, logic only, not tested in game):** pedlars, pilgrims, hermits, news between
+  villages, villager personalities, relations between villages, villagers watching others work. `WorldLife` (config
+  "5 - World life") is off by default so the design review is not disturbed; `vh pedlar`, `vh pilgrim`, `vh hermit`,
+  `vh wanderers` work either way. Design and plan: `docs/WORLD_LIFE.md`; survey: `docs/RELATED_MODS.md` section 5.
 - **Profile mods now also:** More Vanilla Build Prefabs and Infinity Hammer (2026-11-07, for placing hidden objects while
   making variants), PlanBuild (blueprint folder `BepInEx/config/PlanBuild/blueprints`, community builds in
   its `inspiration` subfolder), BiomeBlueprints (fails to load its commands on this game version; its files are read
@@ -70,6 +74,7 @@ Current facts only. Read this at the start of a session. Narrative is in `docs/d
 
 ## Recent milestones
 
+- **2026-11-07 (world life: pedlars, pilgrims, hermits, news, personalities, relations, watching; research survey)** - see docs/daily-notes/2026-11/2026-11-07.md
 - **2026-11-07 (board plots stay standing on save, lost plot signs restored, roads relaid on rebuild, vh shaper/repair/weather)** - see docs/daily-notes/2026-11/2026-11-07.md
 - **2026-11-07 (board ground copy reworked, still open; pieces placed as saved; vh snow)** - see docs/daily-notes/2026-11/2026-11-07.md
 - **2026-11-07 (board: drafts, ground, compass grid, swap fixes, path markers wired into paths)** - see docs/daily-notes/2026-11/2026-11-07.md

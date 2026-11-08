@@ -137,7 +137,7 @@ namespace Villheim.Logic.Village
         private static float _hearthsAt = -100f;
 
         /// <summary>Every lived-in hearth this machine knows of, looked up at most every 30 seconds (dialogue asks often).</summary>
-        private static IEnumerable<ZDO> AllHearths()
+        internal static IEnumerable<ZDO> AllHearths()
         {
             if (Time.time - _hearthsAt > 30f || _hearths.Any(z => z == null || !z.IsValid()))
             {

@@ -158,7 +158,10 @@ namespace Villheim.Logic.Villagers
             bool done;
             if (kind == Hermit)
             {
-                done = WorldLife.CampOf(zdo.GetVec3(KeyTarget, villager.transform.position)) == null;
+                // Only once the camp's ground is loaded, or a hermit at the edge of the loaded area would lose a camp
+                // that is still there.
+                Vector3 camp = zdo.GetVec3(KeyTarget, villager.transform.position);
+                done = ZNetScene.instance.IsAreaReady(camp) && WorldLife.CampOf(camp) == null;
             }
             else
             {

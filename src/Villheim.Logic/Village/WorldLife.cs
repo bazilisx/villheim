@@ -372,11 +372,7 @@ namespace Villheim.Logic.Village
         }
 
         /// <summary>Every lived-in village hearth this machine knows of, loaded or not.</summary>
-        private static IEnumerable<ZDO> HearthZdos()
-        {
-            int prefab = HearthPrefab.Name.GetStableHashCode();
-            return ZDOMan.instance.m_objectsByID.Values.Where(z => z != null && z.GetPrefab() == prefab && z.GetBool(Keys.Initialized));
-        }
+        private static IEnumerable<ZDO> HearthZdos() => Relations.AllHearths();
 
         private static ZDO NearestOtherVillage(Vector3 center, int villageId)
         {

@@ -21,6 +21,7 @@ All of it is logic only (hot-reloads). Visitors and hermits only appear with `Wo
 | News | `WorldLife.NoteNews`, `CarryNews` | Village events (finished, arrival, birth, death, fight driven off, hunt, upgrade) go on the hearth's news list (six kept). A visitor from a village copies its two newest items into the host village's "heard" list (eight kept). Tag `news`, fill-in `{news}`. |
 | Personality | `Villagers/Personality.cs` | From the seed: homeland, favourite food, fear, pastime, hope. Friend and rival from a fixed pair liking plus chats. Yesterday's main activity (sampled every 30 s, kept in the ZDO). Village events remembered two to five days (`mem:x`). Day tags `restday`, `tenthday`. |
 | Relations | `Village/Relations.cs` | Each village's view of each other village (-100 to 100), Millénaire's daily drift that leans toward where it stands, +3 per visitor from there, band changes in the chronicle. Tags `neighbour:<band>`, fill-in `{neighbour}`. |
+| Watching | `Villagers/FreeTime.cs` (Kind.Watch) | After Millénaire's observe goals: an idle villager walks to 3.5 m from a neighbour who is building, felling, cooking, mining, farming, repairing, laying a path or fencing (within 35 m), or a pedlar or pilgrim (within 40 m, weighted higher), watches 35 to 70 s and may comment (tags `watching`, `watch:<work>`, fill-in `{watched}`). |
 | Lines | `Dialogue/wanderers.txt`, `Dialogue/personal.txt` | About 260 new lines. Wanderer sections need the tag `wanderer`; fill-ins can start a sentence (capitalised after filling). |
 
 Commands: `vh pedlar`, `vh pilgrim` (nearest village within 200 m), `vh hermit` (camp in front of you),
@@ -39,8 +40,8 @@ Effort is a rough guess: S an evening, M a session or two, L several sessions.
    heard a lot (fatigue +1 per talk, -1 every in-game hour). Villheim's tag sections already do most of this; add a
    per-player recent-topic count that lowers a section's weight, and lines bound to a spot (at the forge, the dock, the
    fire), as Stardew does with location keys.
-2. **Watching others work (S).** Millénaire's "observe" goals: an idle villager walks over and watches the builder, a
-   cook or a visitor for a minute and says something. A free-time kind in `FreeTime.cs` that picks a busy neighbour.
+2. **Gatherings (S).** Built on watching: the whole village turns out for a finished building, a newcomer or a pedlar
+   (Millénaire's listen_to_speech gathers people for a speech at set hours); a feast at the longhouse after a good hunt.
 3. **Caravans as records (M).** Living Factions keeps travelling bands as data (position, target, people, state) and
    moves them at a set pace (2,400 m a day) while no one is near; within about 130 m of the nearest player they become
    real NPCs, and despawn past 200 m. Do the same for a pedlar's route between two hearths: the record moves on the

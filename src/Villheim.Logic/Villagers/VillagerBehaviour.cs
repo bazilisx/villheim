@@ -31,6 +31,8 @@ namespace Villheim.Logic.Villagers
             // Looks every client draws for itself: the echo look and a child's size.
             GhostLook.Update(villager);
             GhostLook.UpdateAnimals();
+            Animals.Tick();
+            Recovery.Tick(villager);
             Childhood.Update(villager);
             Ages.Update(villager);
             // The ghost's death and hit effects (found once the game's prefabs are loaded).
@@ -63,9 +65,10 @@ namespace Villheim.Logic.Villagers
             bool scheduleDue = villager.ScheduleTimer <= 0f;
             if (scheduleDue || applied.Value < 0)
             {
-                // Gear follows the village: re-dress whenever the village reaches a new tier.
+                // Gear follows the village: re-dress whenever the village reaches a new tier. Dressing is heavy, so
+                // only one villager a frame is dressed (a test village brings many at once, T-57).
                 int tier = DesiredGearTier(villager);
-                if (tier != applied.Value)
+                if (tier != applied.Value && FrameBudget.Take("dress", 1))
                 {
                     applied.Value = tier;
                     VillagerLooks.Apply(villager, villager.Zdo.GetInt(Keys.VillagerSeed), tier);

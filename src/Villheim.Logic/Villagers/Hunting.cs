@@ -27,6 +27,23 @@ namespace Villheim.Logic.Villagers
 
         private static readonly string[] Game = { "Boar", "Deer", "Neck", "Hare" };
 
+        /// <summary>
+        /// Game animals: hunted, never a threat. A boar the hunter hits turns on him, and that is part of the hunt, so it
+        /// raises no alarm or call to arms (T-58). The village's own animals are never game.
+        /// </summary>
+        public static bool IsGame(Character character) =>
+            character != null && !(character is Villager) && System.Array.IndexOf(Game, Utils.GetPrefabName(character.gameObject)) >= 0;
+
+        /// <summary>A hunting line (hunt:start, hunt:kill, hunt:lost), if one is written.</summary>
+        private static void Say(Villager villager, string tag)
+        {
+            string line = Dialogue.LineFor(villager, "self", tag, new[] { tag });
+            if (line != null)
+            {
+                Dialogue.Say(villager, line, 4f);
+            }
+        }
+
         private enum Phase
         {
             None,
@@ -130,6 +147,11 @@ namespace Villheim.Logic.Villagers
             }
 
             Hunters[villager.VillageId] = villager;
+            if (Random.value < 0.5f)
+            {
+                Say(villager, "hunt:start");
+            }
+
             state.Prey = prey;
             Defenders.CarryBow(villager);
             state.Phase = Phase.Chase;
@@ -149,6 +171,7 @@ namespace Villheim.Logic.Villagers
             Character prey = state.Prey;
             if (prey == null || prey.IsDead())
             {
+                Say(villager, "hunt:kill");
                 state.Phase = Phase.Collect;
                 state.Deadline = Time.time + 20f;
                 state.DropsSeenAt = -1f;
@@ -164,6 +187,7 @@ namespace Villheim.Logic.Villagers
             {
                 VillheimPlugin.Debug($"{villager.VillagerName} gives up on the {prey.m_name} ({(tooFar ? "too far out" : "too long")}).");
                 LetGo[prey.GetZDOID()] = Time.time + 180f;
+                Say(villager, "hunt:lost");
                 End(villager, state);
                 return false;
             }
@@ -327,6 +351,12 @@ namespace Villheim.Logic.Villagers
             foreach (ItemDrop item in drops)
             {
                 string name = Utils.GetPrefabName(item.gameObject);
+                if (Trophies.Keep(villager, item))
+                {
+                    // His own trophy, to hang in his home (Trophies).
+                    continue;
+                }
+
                 state.Carrying.TryGetValue(name, out int count);
                 state.Carrying[name] = count + item.m_itemData.m_stack;
                 item.m_nview.ClaimOwnership();
@@ -410,7 +440,8 @@ namespace Villheim.Logic.Villagers
             float bestDistance = 35f + (search - SearchFromHearth) * 2f;
             foreach (Character character in Character.GetAllCharacters())
             {
-                if (character == null || character.IsDead() || character.IsPlayer() || character is Villager || character.IsTamed())
+                if (character == null || character.IsDead() || character.IsPlayer() || character is Villager || character.IsTamed() ||
+                    Animals.IsVillageAnimal(character))
                 {
                     continue;
                 }

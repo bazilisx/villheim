@@ -972,10 +972,8 @@ namespace Villheim.Logic.Village
 
                 Farms.Plant(hearth, spot, prefab);
                 run.Plants++;
-                if (i % 3 == 2)
-                {
-                    yield return null;
-                }
+                // One villager at a time, a moment apart: each is dressed and given the ghost look as he appears (T-57).
+                yield return new WaitForSeconds(0.25f);
             }
 
             if (run.Options.NoAnimals || hearth == null || !hearth.IsValid)
@@ -1074,10 +1072,8 @@ namespace Villheim.Logic.Village
                     }
                 }
 
-                if (i % 3 == 2)
-                {
-                    yield return null;
-                }
+                // One villager at a time, a moment apart: each is dressed and given the ghost look as he appears (T-57).
+                yield return new WaitForSeconds(0.25f);
             }
 
             for (int i = 0; i < children; i++)
@@ -1088,7 +1084,7 @@ namespace Villheim.Logic.Village
                     run.NewVillagers.Add(child);
                 }
 
-                yield return null;
+                yield return new WaitForSeconds(0.25f);
             }
         }
 

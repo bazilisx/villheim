@@ -40,6 +40,7 @@ namespace Villheim.Logic.Villagers
             Play,
             Fight,
             Fletch,
+            Trophy,
         }
 
         private static readonly int KeyShort = "villheim_task".GetStableHashCode();
@@ -101,6 +102,7 @@ namespace Villheim.Logic.Villagers
                 case Doer.Play: return ChildPlay.Describe(villager) ?? "playing";
                 case Doer.Fight: return Combat.Describe(villager) ?? "fighting";
                 case Doer.Fletch: return Fletching.Describe(villager) ?? "making arrows";
+                case Doer.Trophy: return Trophies.Describe(villager) ?? "seeing to a trophy";
             }
 
             // Nothing of ours ran him lately: the game's own AI has him (a fight with a player), or he is loading.
@@ -143,6 +145,7 @@ namespace Villheim.Logic.Villagers
                 case Doer.Play: return text.Contains("help") ? "helping" : "playing";
                 case Doer.Fight: return Combat.Short(villager);
                 case Doer.Fletch: return "making arrows";
+                case Doer.Trophy: return text.Contains("hanging") ? "hanging a trophy" : "fetching a trophy";
                 case Doer.FreeTime: return FreeWord(text);
             }
 

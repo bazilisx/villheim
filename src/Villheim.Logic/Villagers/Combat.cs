@@ -26,7 +26,7 @@ namespace Villheim.Logic.Villagers
     /// FightRetreatHealth goes back to the hearth to heal.
     ///
     /// Players (D-051): a few hits from one player may be an accident, so protectors only complain and the others run
-    /// home; from PlayerHitsToFight hits within PlayerHitWindow the protectors fight him (see PlayerHit). Creatures
+    /// home; after that the protectors warn him and fight him if he stays (Grudges). Creatures
     /// pick protectors before the others and children last (TargetOrderPatch).
     /// </summary>
     internal static class Combat
@@ -37,6 +37,7 @@ namespace Villheim.Logic.Villagers
             Fighter,
             Shelter,
             Flee,
+            Warn,
         }
 
         private sealed class State
@@ -58,15 +59,10 @@ namespace Villheim.Logic.Villagers
             public Vector3 Velocity;
             public float PartSince;
             public float ShootingAt = -100f;
-            public float FleeUntil = -100f;
-            public Character FleeFrom;
-            public float NextLine;
             public bool Retreating;
         }
 
-        // Hits on a village's people by each player (D-051), and the player its protectors are fighting, if any.
-        private static readonly Dictionary<(int, long), List<float>> PlayerHits = new Dictionary<(int, long), List<float>>();
-        private static readonly Dictionary<int, (Player Player, float Until)> Hostile = new Dictionary<int, (Player, float)>();
+
 
         private sealed class Fight
         {
@@ -123,6 +119,7 @@ namespace Villheim.Logic.Villagers
                 case Part.Fighter: return (state.Ranged ? "shooting at " : "fighting ") + enemy;
                 case Part.Shelter: return "taking shelter";
                 case Part.Flee: return state.Retreating ? "going back to heal" : "running to safety";
+                case Part.Warn: return "telling " + enemy + " to leave";
                 default: return null;
             }
         }
@@ -143,6 +140,7 @@ namespace Villheim.Logic.Villagers
             {
                 case Part.Shelter: return "sheltering";
                 case Part.Flee: return "fleeing";
+                case Part.Warn: return "warning";
                 default: return state.Ranged ? "shooting" : "fighting";
             }
         }
@@ -227,6 +225,16 @@ namespace Villheim.Logic.Villagers
                     return FightIt(villager, ai, dt, hearth, state, fight);
                 case Part.Shelter:
                     return Shelter(villager, ai, dt, hearth, state);
+                case Part.Warn:
+                    // Facing the player he has told to leave, ready to fight.
+                    ai.StopMoving();
+                    if (state.Enemy != null)
+                    {
+                        ai.LookAt(state.Enemy.GetEyePoint());
+                    }
+
+                    Arm(villager);
+                    return true;
                 default:
                     return Run(villager, ai, dt, hearth, state);
             }
@@ -235,6 +243,12 @@ namespace Villheim.Logic.Villagers
         /// <summary>Wakes him, gets him up from a seat or out of a pose: the fight comes first.</summary>
         private static void Begin(Villager villager)
         {
+            if (!Childhood.IsChild(villager))
+            {
+                // His bow and first quiver, so he can shoot a deathsquito the first time one comes (T-54).
+                Defenders.CarryBow(villager);
+            }
+
             Sleep.Wake(villager);
             Seats.StandUp(villager);
             Poses.Release(villager);
@@ -282,20 +296,22 @@ namespace Villheim.Logic.Villagers
                 return;
             }
 
-            state.NextScan = Time.time + 0.25f + Random.Range(0f, 0.1f);
+            state.NextScan = Time.time + 0.4f + Random.Range(0f, 0.2f);
             state.Nearest = null;
             state.NearestDistance = float.MaxValue;
             Vector3 position = villager.transform.position;
             Vector3 eye = villager.GetEyePoint();
             foreach (Character c in Character.GetAllCharacters())
             {
-                if (c == null || c == villager || c.IsDead() || c is Villager || c is Player || !BaseAI.IsEnemy(villager, c))
+                if (c == null || c == villager || c is Villager || c is Player || c.IsDead())
                 {
                     continue;
                 }
 
+                // Cheap tests first; game animals (a boar the hunter hit) and the village's own animals are never a threat.
                 float distance = Vector3.Distance(c.transform.position, position);
-                if (distance > SenseRange || distance >= state.NearestDistance || (distance > CloseSense && !InSight(eye, c)))
+                if (distance > SenseRange || distance >= state.NearestDistance || Hunting.IsGame(c) || Animals.IsVillageAnimal(c) ||
+                    !BaseAI.IsEnemy(villager, c) || (distance > CloseSense && !InSight(eye, c)))
                 {
                     continue;
                 }
@@ -433,30 +449,23 @@ namespace Villheim.Logic.Villagers
 
             // Badly hurt in a fight: back to the hearth to heal (the brain's healing takes over once he is clear).
             float retreat = Mathf.Clamp01(LogicConfig.FightRetreatHealth?.Value ?? 0.25f);
-            bool inFight = state.Part != Part.None || near != null || IsHostile(villager.VillageId, out _);
+            bool inFight = state.Part != Part.None || near != null || Grudges.Active(villager.VillageId);
             if (inFight && villager.GetHealth() < villager.GetMaxHealth() * retreat)
             {
-                enemy = state.Enemy ?? near ?? state.FleeFrom;
+                enemy = state.Enemy ?? near;
                 state.Retreating = true;
                 return Part.Flee;
             }
 
             state.Retreating = false;
 
-            // A player who keeps hitting the village's people (D-051): protectors fight him, everyone else runs home.
-            if (IsHostile(villager.VillageId, out Player foe) &&
-                Vector3.Distance(foe.transform.position, villager.transform.position) < 40f)
+            // A player who harmed the village's people (Grudges): protectors warn him, then fight; the rest run home.
+            Grudges.Role role = Grudges.RoleOf(villager, hearth, out Player foe);
+            if (role != Grudges.Role.None && foe != null)
             {
                 enemy = foe;
                 state.SelfDefense = false;
-                return protector ? Part.Fighter : Part.Flee;
-            }
-
-            // Hit by a player, not yet on purpose as far as the village can tell: carers, elders and children run home.
-            if (!protector && Time.time < state.FleeUntil && state.FleeFrom != null && !state.FleeFrom.IsDead())
-            {
-                enemy = state.FleeFrom;
-                return Part.Flee;
+                return role == Grudges.Role.Fight ? Part.Fighter : role == Grudges.Role.Warn ? Part.Warn : Part.Flee;
             }
 
             if (Childhood.IsChild(villager))
@@ -508,6 +517,12 @@ namespace Villheim.Logic.Villagers
             Character enemy = state.Enemy;
             if (enemy == null || enemy.IsDead())
             {
+                // It fell: once the fight is over he goes back for its trophy (a creature, never a player).
+                if (!(state.Enemy is Player) && state.LastEnemyPosAt > 0f && Time.time - state.LastEnemyPosAt < 3f)
+                {
+                    Trophies.NoteKill(villager, state.LastEnemyPos);
+                }
+
                 state.Part = Part.None;
                 return false;
             }
@@ -757,109 +772,6 @@ namespace Villheim.Logic.Villagers
         private static bool Protects(Villager villager) =>
             !Childhood.IsChild(villager) && !Elders.IsElder(villager) && Roles.BackgroundOf(villager) == Roles.Background.Protector;
 
-        private static bool IsHostile(int villageId, out Player player)
-        {
-            player = null;
-            if (!Hostile.TryGetValue(villageId, out (Player Player, float Until) entry))
-            {
-                return false;
-            }
-
-            VillageHearth hearth = VillageHearth.Find(villageId);
-            bool gone = entry.Player == null || entry.Player.IsDead() || Time.time > entry.Until ||
-                        (hearth != null && Utils.DistanceXZ(entry.Player.transform.position, hearth.transform.position) >
-                            VillheimConfig.VillageRadius.Value + Leash);
-            if (gone)
-            {
-                Hostile.Remove(villageId);
-                return false;
-            }
-
-            player = entry.Player;
-            return true;
-        }
-
-        /// <summary>
-        /// A player hit one of the village's people (D-051). Up to PlayerHitsToFight hits within PlayerHitWindow it may
-        /// be an accident: a protector says it hurt, the others run to the hearth and say so. From then on it is on
-        /// purpose: the protectors near him fight him until PlayerFightSeconds after his last hit or until he leaves.
-        /// Lines: playerhit:protector, playerhit:carer (carers and elders), playerhit:child, playerfight (protectors
-        /// as they turn on him), playerfight:flee (everyone else while it lasts).
-        /// </summary>
-        public static void PlayerHit(Villager villager, Player player)
-        {
-            if (villager == null || player == null || villager.VillageId == 0)
-            {
-                return;
-            }
-
-            var key = (villager.VillageId, player.GetPlayerID());
-            if (!PlayerHits.TryGetValue(key, out List<float> hits))
-            {
-                hits = new List<float>();
-                PlayerHits[key] = hits;
-            }
-
-            float window = Mathf.Max(1f, LogicConfig.PlayerHitWindow?.Value ?? 30f);
-            hits.RemoveAll(t => Time.time - t > window);
-            hits.Add(Time.time);
-            bool was = IsHostile(villager.VillageId, out _);
-            if (hits.Count >= Mathf.Max(1, LogicConfig.PlayerHitsToFight?.Value ?? 3))
-            {
-                Hostile[villager.VillageId] = (player, Time.time + Mathf.Max(5f, LogicConfig.PlayerFightSeconds?.Value ?? 60f));
-            }
-
-            bool hostile = IsHostile(villager.VillageId, out _);
-            bool protector = Protects(villager);
-            State state = States.GetOrCreateValue(villager);
-            if (!protector)
-            {
-                state.FleeUntil = Time.time + 12f;
-                state.FleeFrom = player;
-            }
-
-            if (hostile && !was)
-            {
-                VillheimPlugin.Debug($"{villager.VillageName}: {player.GetPlayerName()} keeps hitting our people; the protectors fight back.");
-                foreach (Villager guard in Character.GetAllCharacters().OfType<Villager>()
-                             .Where(v => !v.IsDead() && v.VillageId == villager.VillageId && Protects(v) &&
-                                         Vector3.Distance(v.transform.position, player.transform.position) < 40f)
-                             .OrderBy(v => Vector3.Distance(v.transform.position, player.transform.position)).Take(2))
-                {
-                    Line(guard, "playerfight", true);
-                }
-            }
-
-            if (hostile)
-            {
-                if (!protector)
-                {
-                    Line(villager, "playerfight:flee");
-                }
-
-                return;
-            }
-
-            Line(villager, protector ? "playerhit:protector" : Childhood.IsChild(villager) ? "playerhit:child" : "playerhit:carer");
-        }
-
-        /// <summary>A line under this tag, if one is written, at most every few seconds per villager.</summary>
-        private static void Line(Villager villager, string tag, bool force = false)
-        {
-            State state = States.GetOrCreateValue(villager);
-            if (!force && Time.time < state.NextLine)
-            {
-                return;
-            }
-
-            state.NextLine = Time.time + 3f;
-            string line = Dialogue.LineFor(villager, "self", tag, new[] { tag });
-            if (line != null)
-            {
-                Dialogue.Say(villager, line, 3f);
-            }
-        }
-
         /// <summary>On the machine that owns the villager: a hit from a player is counted.</summary>
         [HarmonyLib.HarmonyPatch(typeof(Character), nameof(Character.RPC_Damage))]
         internal static class PlayerHitPatch
@@ -871,7 +783,7 @@ namespace Villheim.Logic.Villagers
                     if (__instance is Villager villager && villager.NView != null && villager.NView.IsOwner() && !villager.IsDead() &&
                         hit != null && hit.GetAttacker() is Player player && !Wanderers.IsWanderer(villager))
                     {
-                        PlayerHit(villager, player);
+                        Grudges.Hit(villager, player);
                     }
                 }
                 catch (System.Exception ex)

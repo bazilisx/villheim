@@ -145,6 +145,13 @@ namespace Villheim.Logic.Villagers
 
             List<string> styles = HairStyles(female);
             string hairItem = styles.Count > 0 ? PickStyle(looks, styles, culture.HairPrefer) : FirstExisting($"Hair{looks.Next(1, 21)}", "Hair1");
+            if (Childhood.IsChild(villager))
+            {
+                // Children's styles from ChildHairAllow, ChildHairBlock and ChildHairCultures (T-53), from their own
+                // random stream, so the grown villager's looks stay the same.
+                hairItem = ChildBody.ChildHair(seed, female, culture.Key, styles) ?? hairItem;
+            }
+
             villager.m_hairItem = hairItem;
             vis.SetHairItem(Hash(hairItem));
 
@@ -463,6 +470,9 @@ namespace Villheim.Logic.Villagers
         /// The hair prefabs a villager may get: every hair the game has (Hair1, Hair2...), less the ones left out for
         /// women or men, judged by the style's name as the game shows it. Worked out once per model.
         /// </summary>
+        /// <summary>Every hair style grown villagers of this sex may have (for children's hair and the tuning rig).</summary>
+        internal static List<string> HairList(bool female) => HairStyles(female);
+
         private static List<string> HairStyles(bool female)
         {
             if (Styles.TryGetValue(female, out List<string> cached) && cached.Count > 0)

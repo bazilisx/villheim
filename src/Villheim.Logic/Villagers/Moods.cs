@@ -67,6 +67,18 @@ namespace Villheim.Logic.Villagers
             ["watch"] = (-3f, 600f),
             ["raidwon"] = (10f, 1200f),
             ["blessing"] = (6f, 1800f),
+            ["playergift"] = (3f, 600f),
+            ["playerhurtus"] = (-8f, 900f),
+            ["goalmet"] = (8f, 1800f),
+            ["goalgaveup"] = (-3f, 900f),
+            ["feast"] = (6f, 1200f),
+            ["speech"] = (3f, 600f),
+            ["skillup"] = (4f, 600f),
+            ["fright"] = (-5f, 300f),
+            ["courting"] = (5f, 900f),
+            ["gossip"] = (1f, 200f),
+            ["bossdown"] = (8f, 1800f),
+            ["gathering"] = (3f, 600f),
         };
 
         private static readonly ConditionalWeakTable<Villager, State> States = new ConditionalWeakTable<Villager, State>();

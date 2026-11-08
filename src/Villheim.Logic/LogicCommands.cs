@@ -37,7 +37,7 @@ namespace Villheim.Logic
             "dump <location>: write what a design contains to the BepInEx log",
             "report [rescan]: write every design (curated, all blueprints, every location with a structure) with its stage, kind, gallery page and notes to BepInEx/Villheim/design-list.csv; 'report locations' writes the older per-location report (design-report.txt)",
             "trace [seconds]: record the nearest villager's movement 50 times a second to BepInEx/Villheim/trace-*.csv (for jitter)",
-            "villager: show the nearest villager's voice, mood, thoughts, role, trade, bed and activity",
+            "villager: show the nearest villager's voice, mood, thoughts, role, trade, bed, activity, skills and want",
             "village: show the nearest village's type, Jarl, mood, project, fence, known players and request",
             "raid: send a raid to the nearest village (comes at once if it is night)",
             "blueprints: list the blueprints villages can build (BepInEx/config/Villheim/blueprints, PlanBuild's folder)",
@@ -63,6 +63,11 @@ namespace Villheim.Logic
             "pilgrim: send a pilgrim walking in to the nearest village, to stay the night by the hearth",
             "hermit: make a hermit's camp fire and its hermit in front of you",
             "wanderers: list the pedlars, pilgrims and hermits nearby, and the nearest village's news",
+            "minds: the nearest villager's skills, want, what he knows of you (saw or heard, and from whom), what he sees round him, the village's record of you, and the topics you have heard most",
+            "feast: make this evening a feast at the nearest village (more up and dancing at the hearth)",
+            "speech: the Jarl or an elder says the evening words at the nearest hearth now",
+            "goal [bed|house|learn|master|court|peace|feast|news|hunt|rest|player]: show or set the nearest villager's want",
+            "notice <event>: the nearest village reacts to an event now, to hear its lines (rainstart, stormstart, snowstart, miststart, rainstop, dawn, dusk, bossdown, trophy, playergear, playerbuilt, playerkill)",
             "bp swap <number|name> <stage>: save a copy of a design with its walls, floors, roofs and beams in that stage's materials (to blueprints/inspiration/edits)",
         };
 
@@ -215,6 +220,11 @@ namespace Villheim.Logic
                 case "villheim_wanderers":
                 case "villheim_news": Say(context, WorldLife.Report()); return true;
                 case "villheim_shaper": Say(context, Village.Shaping.Status()); return true;
+                case "villheim_minds": Say(context, Villagers.MindsCommands.Minds()); return true;
+                case "villheim_feast": Say(context, Villagers.MindsCommands.Feast()); return true;
+                case "villheim_speech": Say(context, Villagers.MindsCommands.Speech()); return true;
+                case "villheim_goal": Say(context, Villagers.MindsCommands.Goal(args)); return true;
+                case "villheim_notice": Say(context, Villagers.MindsCommands.Notice(args)); return true;
                 default: return false;
             }
         }
@@ -256,6 +266,10 @@ namespace Villheim.Logic
                          $"night watch {(Villagers.Roles.IsNightWatch(villager) ? "tonight" : "no")}, " +
                          $"bed {(Villagers.Beds.For(villager) != null ? "yes" : "none")}, foods {Villagers.Healing.FoodCount(villager)}");
             Say(context, $"   doing: {Villagers.VillagerBehaviour.HoverText(villager).Replace("\n", " | ")}");
+            if (!Villagers.Wanderers.IsWanderer(villager))
+            {
+                Say(context, $"   skills: {Villagers.VillagerSkills.Describe(villager)}; {Villagers.Goals.Describe(villager)} (more with 'vh minds')");
+            }
         }
 
         private static void InspectVillage(Terminal context)

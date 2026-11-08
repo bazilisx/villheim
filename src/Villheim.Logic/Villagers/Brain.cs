@@ -115,6 +115,7 @@ namespace Villheim.Logic.Villagers
                 if (Chores.BetweenJobs(villager))
                 {
                     ai.StopMoving();
+                    IdleLife.Tick(villager, ai);
                 }
                 else if (Replanting.Update(villager, ai, dt))
                 {

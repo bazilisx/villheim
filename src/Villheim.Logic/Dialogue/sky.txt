@@ -1,0 +1,241 @@
+# Villheim: the sky and the hour. Same format as lines.txt.
+#
+# Tags (Villagers/Context.cs): weather:clear weather:rain weather:storm weather:snow weather:mist weather:other,
+# dawn midday dusk latenight, world:young world:old. Events (Villagers/Noticing.cs, said by one to three villagers
+# near the player): event:rainstart event:stormstart event:snowstart event:miststart event:rainstop event:dawn
+# event:dusk. Fill-ins {weather} {daypart}.
+
+# ------------------------------------------------------------------ the weather turns
+
+@ self, event:rainstart
+Here it comes. Get the wood under cover.
+Rain. Of course. I just dried my socks.
+There's the rain. The turnips will be glad, anyway.
+Feel that? First drops.
+Cover the chest! No, it has a lid. Never mind.
+
+@ self, event:rainstart | gruff
+Rain. Wonderful.
+Wet again. Every day, wet.
+
+@ self, event:rainstart | cheerful
+Rain! Good for the berries.
+I don't mind a bit of rain. Washes the soot off.
+
+@ self, event:rainstart | worrier
+Is the roof sound? Somebody check the roof.
+Rain makes the paths slippery. Mind your feet, everyone.
+
+@ self, event:rainstart | wry
+The sky has been saving that up all morning.
+Ah. The gods are washing their boots again.
+
+@ self, event:rainstart | elder
+My knee told me this morning. My knee is never wrong.
+
+@ self, event:rainstart | young
+Rain! Can I play in it? I'm going to play in it.
+
+@ self, event:rainstart | devout
+Rain is a gift. A cold, wet gift.
+
+@ self, event:stormstart
+Thunder. Get inside, all of you.
+That's Thor's wagon. He's in a hurry tonight.
+Did you see that flash? Right over the hill.
+Tie down anything loose. This one's going to blow.
+
+@ self, event:stormstart | worrier
+I hate storms. I hate them. Is everyone inside?
+What if it hits the longhouse? It could hit the longhouse.
+
+@ self, event:stormstart | devout
+Thor rides. Bow your head and keep your iron close.
+He's after the giants tonight. I hope.
+
+@ self, event:stormstart | wry
+Thor's moving furniture again.
+
+@ self, event:stormstart | young
+Count after the flash! One, two... BOOM! It's close!
+
+@ self, event:stormstart | gruff
+Storm. No work in this. Everyone get under a roof.
+
+@ self, event:snowstart
+Snow. It'll be cold tonight.
+Look at that. White already on the roofs.
+Snow on the wind. Bring more wood to the fire.
+
+@ self, event:snowstart | young
+Snow! I'm going to make a troll out of it. A small troll.
+
+@ self, event:snowstart | elder
+Snow early this year. Or late. I lose count.
+
+@ self, event:miststart
+The mist is coming in off the trees.
+Can't see past the fence in this.
+Stay close in the mist. Things walk in it.
+
+@ self, event:miststart | worrier
+I don't like mist. You never know what's standing in it.
+
+@ self, event:miststart | wry
+Lovely. Now we can be eaten without seeing it coming.
+
+@ self, event:rainstop
+It's stopping. About time.
+There. The sky's done crying.
+Sun's coming through. Back to work, then.
+Smell that? Wet grass. Best smell of the day.
+
+@ self, event:rainstop | cheerful
+Look, the sun! I knew it would come back.
+
+@ self, event:rainstop | gruff
+Finally. Out, everyone. Work doesn't do itself.
+
+@ self, event:rainstop | young
+Puddles! The best part of rain is after.
+
+# ------------------------------------------------------------------ dawn and dusk
+
+@ self, event:dawn
+Morning. Who's lighting the fire?
+Up, up. The day won't wait.
+There's the sun over the trees.
+Birds are up. So am I, sadly.
+Cold mornings make for warm work.
+
+@ self, event:dawn | gruff
+Morning. Don't talk to me yet.
+
+@ self, event:dawn | cheerful
+Good morning, everyone! It's a new day!
+
+@ self, event:dawn | elder
+Another morning. I'm grateful for each one now.
+
+@ self, event:dawn | devout
+Sol rides again. Thanks be.
+
+@ self, event:dawn | young
+Is it breakfast yet? It feels like breakfast.
+
+@ self, event:dawn | wry
+Morning again. It keeps happening.
+
+@ self, event:dusk
+Light's going. Finish what you're doing.
+Sun's down soon. Everyone near the fire.
+That's the day done. Not a bad one.
+Get the tools in before it's dark.
+
+@ self, event:dusk | worrier
+Getting dark. Is everyone back? Count heads.
+
+@ self, event:dusk | cheerful
+Evening! Best part of the day. Food and fire.
+
+@ self, event:dusk, protector
+Dark soon. I'll take the first watch.
+
+@ self, event:dusk | elder
+The sky goes red like that before a cold night.
+
+# ------------------------------------------------------------------ the weather, any time
+
+@ weather:storm
+Stay under a roof till this passes.
+Every time it thunders I count my fingers. Still ten.
+The trees are bending like grass out there.
+
+@ weather:storm | devout
+Thor's busy tonight. Let's not get in his way.
+
+@ weather:storm | worrier
+If the lightning hits the woodpile we lose a week's work.
+
+@ weather:mist
+Can't see the end of the village in this.
+Mist always makes the trees look closer.
+I keep hearing footsteps in the mist. It's always someone from here. So far.
+
+@ weather:mist | wry
+Good day for hiding. Bad day for finding.
+
+@ weather:snow
+Mind the ice on the path.
+Snow on the roof keeps the heat in. That's what they say.
+My fingers have stopped talking to me.
+
+@ weather:snow | young
+I made a snow boar! It's mostly a lump. It's a boar lump.
+
+@ weather:clear, day, !rain
+Dry day. Good for work.
+Not a cloud. Somebody's happy with us.
+You can see all the way to the hills today.
+
+@ weather:clear, day | cheerful
+Look at that sky. Days like this you could live forever.
+
+@ weather:clear, day | gruff
+Sun. Fine. Doesn't change the work.
+
+@ weather:clear, night
+Look at the stars. Clear as anything.
+Clear night. It'll be cold by morning.
+
+@ weather:clear, night | elder
+My mother knew the name of every star up there. I know about six.
+
+@ weather:clear, night | young
+Which one is Odin's? That big one? I think it's that big one.
+
+# ------------------------------------------------------------------ the hours
+
+@ midday
+Middle of the day. Time to eat something, if there's something.
+Sun's straight up. Half the day gone already.
+
+@ midday | wry
+Midday. Too late to start anything, too early to stop.
+
+@ latenight
+Everyone else is asleep. I'm thinking.
+It's very quiet. I like it and I don't like it.
+The fire's low. I'll put one more log on.
+
+@ latenight | worrier
+I can't sleep. Every noise is a troll.
+
+@ latenight, protector
+Long night. I'll walk round again before the sun.
+
+@ talk, latenight
+You're up late, {player}. Or early.
+Can't sleep either? Sit, then.
+
+@ talk, dawn
+Up early, {player}. Good. The best of the day is the start.
+Morning. There's a bit of porridge if you want it. Cold, but porridge.
+
+@ talk, dusk
+Evening, {player}. Stay for the fire?
+Sun's going down. You won't want to be on the road tonight.
+
+# ------------------------------------------------------------------ the age of the world
+
+@ world:young
+Everything here still feels new. Even the dirt.
+We haven't been here long. A handful of days.
+
+@ world:old
+Feels like we've been here a lifetime. Maybe we have.
+The old trees by the edge were saplings when we came. Or so it seems.
+I've stopped counting the days. There were too many.
+
+@ world:old | elder
+I've seen this place grow from one fire to all this.

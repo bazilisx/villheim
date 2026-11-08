@@ -1,0 +1,379 @@
+# Villheim: what villagers notice about the player in front of them (Skyrim's greetings that see your gear and
+# your wounds). Same format as lines.txt.
+#
+# Tags (Villagers/Context.cs, with the player within 15 m): player:here player:near player:hurt player:badlyhurt
+# player:healthy player:wet player:cold player:freezing player:rested player:poisoned player:burning player:sneaking
+# player:emote player:heavy player:armed player:holding:<axe|sword|club|spear|atgeir|knife|bow|crossbow|pickaxe|
+# torch|hammer|hoe|staff|weapon> player:gear:<none|rags|leather|troll|bronze|iron|wolf|padded|fine> player:cape
+# player:trophy player:trophy:<eikthyr|elder|bonemass|moder|yagluth|queen> player:trophies
+# player:carrying:<wood|stone|finewood|roundlog|materials|food> player:skilled:<woodcutting|mining|bows|swords|axes|
+# spears|running|swimming|sneaking|blocking|clubs>.
+# Events: event:weaponout (talk), event:sneaking (talk), event:hurtbyplayer (talk), event:trophy, event:playergear.
+# Fill-ins {playergear} {playerweapon}.
+
+# ------------------------------------------------------------------ hurt
+
+@ talk, player:badlyhurt
+You're bleeding, {player}. Sit down before you fall down.
+Gods, look at you. Who did that?
+Get something in your belly and lie down. That's an order. I'm in charge of nothing, and still it's an order.
+You look like you lost an argument with a troll.
+Sit. Here, by the fire. Don't argue.
+
+@ talk, player:badlyhurt | worrier
+Oh no. Oh no, no. Is it deep? Let me see. No, don't let me see.
+
+@ talk, player:badlyhurt | gruff
+You'll live. Probably. Go and eat something.
+
+@ talk, player:badlyhurt | elder
+I've seen men walk in looking like that and not walk out. Rest, {player}. Please.
+
+@ talk, player:badlyhurt | wry
+I'd say you look well, but the gods are listening.
+
+@ talk, player:badlyhurt | devout
+Eir watch over you. And eat something, Eir can't do all of it.
+
+@ talk, player:badlyhurt, food:cooked
+There's cooked food in the chest. Take some. Take two.
+
+@ talk, player:hurt
+You've got a cut there. Did you know?
+Rough day out there?
+You're limping. Sit a while.
+Somebody had a go at you.
+
+@ talk, player:hurt | cheerful
+A few scratches! You should see the other one, I bet.
+
+@ talk, player:hurt | young
+Did it hurt? It looks like it hurt. Did you win?
+
+@ talk, player:healthy, player:rested
+You look well rested, {player}. Somebody slept in a proper bed.
+Fresh as a spring morning. What's your secret?
+
+# ------------------------------------------------------------------ wet, cold, burning, poisoned
+
+@ talk, player:wet
+You're soaked through. Stand by the fire.
+Did you swim here?
+You're dripping on my boots.
+Wet as a fish. Come and dry off.
+
+@ talk, player:wet | wry
+Fell in the river, or the river fell on you?
+
+@ talk, player:wet | elder
+Wet clothes in the cold will kill you quicker than a troll. Get dry.
+
+@ talk, player:cold
+Your lips are going blue, {player}. Come to the fire.
+You look frozen. Here, stand close.
+
+@ talk, player:freezing
+You're freezing! Where have you been, the mountains?
+Get inside, {player}. You'll lose your fingers like that.
+
+@ talk, player:freezing | worrier
+You're shaking. Is that the cold or are you ill? It's the cold. It's the cold, isn't it?
+
+@ talk, player:poisoned
+You're green, {player}. Greener than usual. Was it the swamp?
+Poison. I can see it in your eyes. Drink something and sit down.
+
+@ talk, player:burning
+You're on fire! Roll! Roll on the ground!
+
+# ------------------------------------------------------------------ armed and holding things
+
+@ talk, player:armed, !afterfight
+Expecting trouble, {player}?
+You can put that away. Nobody here bites.
+That's a fine {playerweapon}. Mind where you point it.
+
+@ talk, player:armed, !afterfight | worrier
+Please put that away. You're making me nervous.
+
+@ talk, player:armed, !afterfight | gruff
+Put it away or use it. Waving it about helps nobody.
+
+@ talk, player:armed, protector
+Good grip. You've used that before.
+If trouble comes, I'll stand with you.
+
+@ talk, event:weaponout
+Put that away, {player}. We're friends here.
+Easy with the {playerweapon}. There are children about.
+Is there something out there I should know about?
+You don't need that inside the village.
+
+@ talk, event:weaponout | gruff
+Sheathe it. Now.
+Don't wave that around near me.
+
+@ talk, event:weaponout | worrier
+What is it? Is something coming? Why is your {playerweapon} out?
+
+@ talk, event:weaponout | wry
+Planning to fight the turnips?
+
+@ talk, event:weaponout | elder
+In my day you didn't draw steel in another man's village. Put it away, if you please.
+
+@ talk, event:weaponout | young
+Can I hold it? Just for a moment? I won't swing it. Much.
+
+@ talk, event:weaponout, player:friend
+I trust you, {player}. But put it away all the same.
+
+@ talk, player:holding:torch, night
+Good, you brought a light. The path's black as tar tonight.
+
+@ talk, player:holding:torch, day
+A torch in broad daylight? Afraid of the shade?
+
+@ talk, player:holding:pickaxe
+Going digging? The good stone's up past the hill.
+
+@ talk, player:holding:axe, need:wood
+If you're swinging that, the {building} could use the wood.
+
+@ talk, player:holding:hammer
+Building something? Don't put it in the way of the paths.
+
+@ talk, player:holding:bow
+Good bow. Bring us back a deer and we'll eat well tonight.
+
+@ talk, player:holding:hoe
+A farmer, then? Our ground's stony, but it grows things.
+
+@ talk, player:holding:atgeir
+That's a long reach you've got there. Keep it pointed at the sky.
+
+@ talk, player:holding:knife
+A knife. Small, but you only need the one good cut.
+
+@ talk, player:holding:staff
+What sort of stick is that? It hums.
+
+# ------------------------------------------------------------------ what the player wears
+
+@ talk, player:gear:none * 0.6
+Where are your clothes, {player}? Did the river take them?
+You'll catch your death dressed like that. Or undressed like that.
+
+@ talk, player:gear:none | young * 0.6
+Why haven't you got a shirt on? Can I not wear a shirt?
+
+@ talk, player:gear:rags * 0.6
+That tunic has seen better days. Many better days.
+We could find you something warmer than rags, if you bring us the hides.
+
+@ talk, player:gear:leather * 0.6
+Good leathers. Stitched well, too.
+Leather's warm and it turns a greydwarf's stick. Good choice.
+
+@ talk, player:gear:troll * 0.6
+Is that troll hide? You took that off a troll?
+Troll leather. I'd heard it could be done. Now I've seen it.
+
+@ talk, player:gear:troll | worrier * 0.6
+Is it dead? The troll? It's definitely dead?
+
+@ talk, player:gear:bronze * 0.6
+Bronze! You shine like a sunrise.
+That's good bronze on you. Somebody knows their way round a forge.
+You clank a bit when you walk. It suits you.
+
+@ talk, player:gear:bronze | gruff * 0.6
+Bronze. Hm. It'll do.
+
+@ talk, player:gear:iron * 0.6
+Iron mail. You've been down in the crypts, then.
+That iron must weigh a cow. How do you walk in it?
+
+@ talk, player:gear:wolf * 0.6
+Wolf fur. You've been up the mountain. Was it as cold as they say?
+That's a wolf you're wearing. I wouldn't want to meet its friends.
+
+@ talk, player:gear:padded * 0.6
+Look at you, all padded and plated. Like a lord from the old stories.
+
+@ talk, player:gear:fine * 0.6
+I don't even know what that's made of. It looks expensive.
+Fine gear, {player}. Too fine for the likes of us.
+
+@ talk, player:cape * 0.6
+Nice cloak. Keeps the rain off, I bet.
+
+@ self, event:playergear
+Look at {player}. New gear!
+Somebody's been busy. That's new, isn't it, {player}?
+{player} looks different. Better fed, or better dressed.
+
+@ self, event:playergear | cheerful
+Look at you! Turn round, let's see it!
+
+@ self, event:playergear | gruff
+New kit. Good. Now go and use it.
+
+@ self, event:playergear | young
+That's so good! I want one! What is it?
+
+@ talk, pmem:gearup
+That's new, isn't it? Your {playergear}. Last time you came you had less on.
+You're better dressed than last time, {player}. Doing well out there?
+
+# ------------------------------------------------------------------ trophies in the pack
+
+@ talk, player:trophy:eikthyr
+Is that the stag's head? The big one, from the stones?
+You carry the stag's antler. Then the forest is a little quieter now.
+
+@ talk, player:trophy:elder
+You've got something of the Elder on you. I can smell the old wood.
+The Elder. You fought the Elder. And you're standing here.
+
+@ talk, player:trophy:bonemass
+That stinks of the swamp. Is it what I think it is?
+Bonemass. Gods. Keep that thing wrapped up.
+
+@ talk, player:trophy:moder
+A dragon's head! In our village! Wait till {other} sees.
+
+@ talk, player:trophy:yagluth
+That's from the plains. Nothing good comes from the plains, but you did.
+
+@ talk, player:trophy:queen
+What is that? It looks like it came from under the earth.
+
+@ talk, player:trophy | elder
+In the old songs the heroes carried trophies like that. I never thought I'd see one.
+
+@ talk, player:trophy | devout
+You've done the gods' work, {player}. Hang that by the stones.
+
+@ talk, player:trophies, !player:trophy
+You've a pack full of heads and horns. Been hunting?
+
+@ self, event:trophy
+Look what {player} is carrying!
+Is that real? It's real.
+Everyone come and look. {player} brought a trophy.
+
+@ self, event:trophy | worrier
+Is it still... is it dead? It looks at me.
+
+@ self, event:trophy | young
+Can I touch it? Just once? With one finger?
+
+# ------------------------------------------------------------------ what the player carries
+
+@ talk, player:carrying:materials, need:any
+That's a good load you've got. The chest's right there, if you're feeling generous.
+Is all that for us? You don't have to. But you could.
+
+@ talk, player:carrying:wood, need:wood
+You've got wood, we need wood. The gods must want us to be friends.
+
+@ talk, player:carrying:stone, need:stone
+Stone! We've been short of stone all week.
+
+@ talk, player:carrying:food
+You smell of food. Good food. Share?
+Carrying a feast there, {player}. We won't say no.
+
+@ talk, player:heavy
+You're carrying half a mountain. Put some down.
+I can hear your back creaking from here.
+Slow down, {player}. You'll do yourself a hurt with all that.
+
+@ talk, player:heavy | wry
+Moving house? Bring it here, we've got room.
+
+# ------------------------------------------------------------------ sneaking, and other habits
+
+@ talk, event:sneaking
+Why are you creeping, {player}? Is something out there?
+You can stand up, you know. We know you're here.
+Are you hunting or hiding?
+Shh yourself.
+
+@ talk, event:sneaking | worrier
+Why are you sneaking? What did you see? Should I sneak?
+
+@ talk, event:sneaking | young
+Are we playing a game? I'm good at hiding. Watch.
+
+@ talk, event:sneaking | gruff
+Stop skulking. It makes people nervous.
+
+@ talk, event:sneaking | wry
+Very quiet. Very good. I still saw you.
+
+@ talk, player:skilled:woodcutting
+You swing an axe like you were born to it.
+I watched you fell that birch. Clean work.
+
+@ talk, player:skilled:mining
+You've got the arms of a miner. Know where the copper is?
+
+@ talk, player:skilled:bows
+They say you can hit a deer at a hundred paces. Is it true?
+
+@ talk, player:skilled:running
+You're always running somewhere, {player}. Where do you get the breath?
+
+@ talk, player:skilled:swimming
+You swim like a seal, they tell me. I sink like a stone.
+
+@ talk, player:skilled:sneaking
+I never hear you coming. It's a little rude.
+
+@ talk, player:skilled:blocking
+You take a hit well. Shield up, feet planted. Somebody taught you right.
+
+# ------------------------------------------------------------------ hurt by the player
+
+@ talk, event:hurtbyplayer
+Ow! What was that for?
+Watch where you swing, {player}!
+Hey! I'm on your side!
+That hurt. Are you mad?
+
+@ talk, event:hurtbyplayer | gruff
+Do that again and see what happens.
+You want a fight? I'll give you a fight.
+
+@ talk, event:hurtbyplayer | worrier
+Why? What did I do? I'm sorry, whatever it was!
+
+@ talk, event:hurtbyplayer | cheerful
+Ouch! That was an accident, right? Right?
+
+@ talk, event:hurtbyplayer | elder
+I have bones older than you, {player}. Please don't break them.
+
+@ talk, event:hurtbyplayer | young
+That's not fair! I'm telling!
+
+@ talk, event:hurtbyplayer | devout
+The gods saw that, {player}.
+
+@ talk, pmem:hurtus, !event:hurtbyplayer
+You hit one of ours the other day. We haven't forgotten.
+Keep your hands to yourself this time, {player}.
+
+@ talk, pmem:hurtus, !event:hurtbyplayer | gruff
+I remember you. You're the one who swings at people.
+
+@ talk, pmem:slayer
+You killed one of us. Don't think we forget.
+Get away from me. Murderer.
+{village} has a long memory, {player}.
+
+@ talk, pmem:killedtame
+Somebody killed one of our boars. It was you, wasn't it?
+That boar was ours. We'd raised it from a piglet.

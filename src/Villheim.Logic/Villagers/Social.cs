@@ -56,6 +56,9 @@ namespace Villheim.Logic.Villagers
             public float SitFor;
             public bool GiveFood;
             public float Stop = 2.6f;
+            public bool Quiet;
+            public float Linger;
+            public Vector3? Face;
         }
 
         private sealed class VillageWatch
@@ -228,6 +231,8 @@ namespace Villheim.Logic.Villagers
             VillageWatch watch = Watch(hearth.VillageId);
             Container chest = VillageChest.Find(hearth);
             Player player = Player.m_localPlayer;
+            Gatherings.VillageTick(hearth);
+            Noticing.VillageTick(hearth);
             if (chest != null)
             {
                 NoticeGifts(hearth, chest, watch, player);
@@ -253,6 +258,7 @@ namespace Villheim.Logic.Villagers
                 // Just walked in.
                 watch.SeenInside[id] = Time.time;
                 MarkSeen(hearth, player, out bool stranger, out bool returning);
+                PlayerMemory.Visited(hearth, player);
                 if ((stranger || returning) && !EnvMan.IsNight())
                 {
                     SendGreeter(hearth, player, stranger ? "event:stranger" : "event:returning");
@@ -284,6 +290,7 @@ namespace Villheim.Logic.Villagers
             }
 
             AddReputation(hearth, player, Mathf.Clamp(gift / 10, 1, 5), "gift");
+            PlayerMemory.Gave(hearth, player, gift);
             PayForGift(hearth, chest, player, gift);
             Request request = ReadRequest(hearth);
             if (request != null && !request.Done && request.Day == Today)
@@ -410,15 +417,19 @@ namespace Villheim.Logic.Villagers
             }
 
             ai.StopMoving();
-            Vector3 look = approach.Target != null ? approach.Target.GetEyePoint() : target + Vector3.up * 2f;
+            Vector3 look = approach.Target != null ? approach.Target.GetEyePoint() : approach.Face ?? target + Vector3.up * 2f;
             ai.LookAt(look);
             if (!approach.Spoken)
             {
                 approach.Spoken = true;
-                approach.Until = Time.time + Mathf.Max(4f, approach.SitFor);
-                string line = Dialogue.LineFor(villager, approach.Target is Player ? "talk" : "self", approach.Tag) ??
-                              (approach.Target is Player ? Dialogue.LineFor(villager, "talk") : null);
-                Dialogue.Say(villager, line, 6f);
+                approach.Until = Time.time + Mathf.Max(4f, Mathf.Max(approach.SitFor, approach.Linger));
+                if (!approach.Quiet)
+                {
+                    string line = Dialogue.LineFor(villager, approach.Target is Player ? "talk" : "self", approach.Tag) ??
+                                  (approach.Target is Player ? Dialogue.LineFor(villager, "talk") : null);
+                    Dialogue.Say(villager, line, 6f);
+                }
+
                 if (approach.Gesture != null)
                 {
                     Poses.Gesture(villager, approach.Gesture);
@@ -477,6 +488,30 @@ namespace Villheim.Logic.Villagers
                 });
                 delay += 1.5f;
             }
+        }
+
+        /// <summary>Whether this villager is on his way to something (a greeting, a gathering...).</summary>
+        public static bool IsSent(Villager villager) => villager != null && Approaches.ContainsKey(villager);
+
+        /// <summary>
+        /// One villager walks to a person or a spot, stops <paramref name="stop"/> metres short, turns to it, gestures
+        /// and (unless <paramref name="quiet"/>) says a line tagged <paramref name="tag"/>, then stays
+        /// <paramref name="linger"/> seconds. For gatherings: one speaker, the rest quiet.
+        /// </summary>
+        public static bool SendOne(Villager villager, Character target, Vector3? point, string tag, string gesture, float seconds,
+            float stop, bool quiet, float linger, Vector3? face = null)
+        {
+            if (villager == null || villager.IsDead() || Approaches.ContainsKey(villager))
+            {
+                return false;
+            }
+
+            Send(new Approach
+            {
+                Who = villager, Target = target, Point = target == null ? point : null, Tag = tag, Gesture = gesture,
+                Until = Time.time + seconds, Stop = stop, Quiet = quiet, Linger = linger, Face = face,
+            });
+            return true;
         }
 
         /// <summary>One villager goes to a player: to sit with him, to bring food, to answer an emote.</summary>
@@ -652,6 +687,7 @@ namespace Villheim.Logic.Villagers
             request.Done = true;
             WriteRequest(hearth, request);
             AddReputation(hearth, player, 3, "request");
+            PlayerMemory.RequestDone(hearth, player);
             Chronicle.Add(hearth, $"{player.GetPlayerName()} brought the {Materials.Label(request.Material)} we needed.");
 
             // Paid from what the village has: coins first, then a cooked meal.
@@ -686,6 +722,7 @@ namespace Villheim.Logic.Villagers
         public static void FoughtAlongside(VillageHearth hearth, Player player)
         {
             AddReputation(hearth, player, 2, "defended");
+            PlayerMemory.Defended(hearth, player);
         }
 
         private static int I(string text) => int.TryParse(text, NumberStyles.Integer, CultureInfo.InvariantCulture, out int v) ? v : 0;

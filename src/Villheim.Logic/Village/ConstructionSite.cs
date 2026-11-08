@@ -313,9 +313,9 @@ namespace Villheim.Logic.Village
             Chronicle.Add(hearth, site.Upgrade ? $"The {VillageBrain.RoleName(site.Role)} was rebuilt bigger." :
                 $"A new {VillageBrain.RoleName(site.Role)} was finished.");
 
-            // A few villagers who aren't busy come to have a look at it.
+            // The village turns out to look at it (Gatherings: a speaker, a crowd, a few words after).
             Vector3 front = site.Position + Quaternion.Euler(0f, site.Yaw, 0f) * Vector3.forward * (Footprint(hearth) + 2f);
-            Villagers.Social.Gather(state.Id, null, front, 3, "event:viewbuilding", "cheer", 40f);
+            Villagers.Gatherings.Finished(state.Id, front);
             VillageBrain.Announce(hearth, $"{state.Name} has finished a new {VillageBrain.RoleName(site.Role)}.");
         }
 

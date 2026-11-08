@@ -1,0 +1,379 @@
+# Villheim: skills that grow, wants that last days, and sweethearts. Same format as lines.txt.
+#
+# Skill tags (Villagers/VillagerSkills.cs): skill:<skill>:novice|good|master for woodcutting mining building cooking
+# farming hunting foraging crafting hauling; doingskill:novice|fair|good|master for the work at hand; best:<skill>;
+# goodday; skillup and skillup:<skill> (a line queued when a skill passes a tenth).
+# Want tags (Villagers/Goals.cs): goal:any goal:old goal:<bed|house|learn|master|court|peace|feast|news|hunt|rest|player>,
+# goalmet:<kind> goalmet (queued line when met), gaveup:<kind>, courting, hassweetheart, sweetheart:near.
+# Fill-ins {bestskill} {bestskillman} {skillword} {skilldoing} {goal} {goalskill} {sweetheart}.
+
+# ------------------------------------------------------------------ how good they are at what they are doing
+
+@ doingskill:novice
+I'm still getting the hang of this.
+Don't watch. I'm no good yet.
+Is it supposed to go like that? I think it's supposed to go like that.
+Everyone starts somewhere. I'm starting here. Badly.
+
+@ doingskill:novice | worrier
+I'm doing it wrong, aren't I. Just tell me.
+
+@ doingskill:novice | young
+I'm learning! I'll be the best one day.
+
+@ doingskill:novice | gruff
+I know I'm slow. I don't need you to tell me.
+
+@ doingskill:fair
+I'm getting better at this. Slowly.
+Fair, if I say so myself. Fair is something.
+
+@ doingskill:good
+I could do this in my sleep. Some days I nearly do.
+My hands know this work now.
+Ten days ago this took me twice as long.
+
+@ doingskill:good | cheerful
+I'm good at this! I didn't used to be. Now I am!
+
+@ doingskill:master
+Nobody in {village} does this better than me. I'm not boasting. Well, a little.
+After all these years the work does itself. I just stand near it.
+Watch and learn. There, like that.
+
+@ doingskill:master | elder
+I've done this since before some of you were born.
+
+@ doingskill:master | wry
+I'm so good at this I've started to find it dull.
+
+@ doing:felling, skill:woodcutting:master
+Three swings and she's down. Watch.
+I can tell which way a tree will fall by the bark.
+
+@ doing:mining, skill:mining:master
+You read the rock like a face. There. That crack is where it wants to break.
+
+@ doing:building, skill:building:master
+Every peg in the right place first time. That's what practice is for.
+
+@ doing:cooking, skill:cooking:master
+Nobody burns meat on my fire. Not even me.
+
+@ doing:farming, skill:farming:master
+I can tell when a turnip is ready by looking at its leaves.
+
+@ doing:felling, skill:woodcutting:novice
+It keeps bouncing off. Is the axe blunt? It's not the axe, is it.
+
+@ doing:mining, skill:mining:novice
+I hit it and my arms ring like a bell. The rock doesn't care.
+
+@ doing:building, skill:building:novice
+I put that one in crooked. Don't tell {other}.
+
+@ doing:cooking, skill:cooking:novice
+Is it black on the outside because it's done, or because I'm bad at this?
+
+@ talk, best:woodcutting * 0.5
+Ask me about trees, {player}. I know trees.
+
+@ talk, best:mining * 0.5
+If you want copper, ask me. I've a nose for it.
+
+@ talk, best:building * 0.5
+I've put up more walls here than anyone. I'm the one to ask.
+
+@ talk, best:cooking * 0.5
+Hungry? I'm the best cook in {village}. Ask anyone. Ask {other}.
+
+@ talk, best:hunting * 0.5
+I'm the one who brings the meat home. Most days.
+
+@ talk, best:farming * 0.5
+The fields like me. I don't know why. I talk to them.
+
+@ talk, best:foraging * 0.5
+I can find berries where there aren't any.
+
+@ talk, best:hauling * 0.5
+I can carry more than anyone here. A small gift, and it's mine.
+
+@ talk, best:crafting * 0.5
+Give me a bench and an afternoon and I'll make you anything.
+
+@ talk * 0.5
+What am I good at? {bestskill}, they tell me. I'm {skillword} at it.
+
+# ------------------------------------------------------------------ getting better
+
+@ self, skillup
+I'm getting quicker at this.
+Did you see that? I've got it now.
+Better than yesterday. That's all you can ask.
+Huh. That came easy.
+
+@ self, skillup | cheerful
+I'm getting good at this! I'm actually getting good!
+
+@ self, skillup | gruff
+About time I got the knack.
+
+@ self, skillup | worrier
+That went well. Too well. Something's going to go wrong now.
+
+@ self, skillup | young
+I did it! Did anyone see? Nobody saw.
+
+@ self, skillup | elder
+Still learning, at my age. Good.
+
+@ self, skillup | devout
+The gods guide the hand that keeps trying.
+
+@ self, skillup, skillup:woodcutting
+The axe goes where I want it now.
+
+@ self, skillup, skillup:mining
+I found the seam on the first strike. First strike!
+
+@ self, skillup, skillup:building
+The joints are coming tighter. I can feel it.
+
+@ self, skillup, skillup:cooking
+That's the best stew I've made. I'm sure of it.
+
+@ self, skillup, skillup:hunting
+I'm getting quieter on my feet. The deer don't hear me now.
+
+@ self, skillup, skillup:hauling
+My back's stopped complaining. Mostly.
+
+# ------------------------------------------------------------------ a good day
+
+@ goodday
+I feel like I could fell the whole forest today.
+Good day today. Everything's going right.
+Something in the air. I'm working like two of me.
+I woke up feeling ten years younger.
+
+@ goodday | gruff
+Don't spoil it. I'm having a good day.
+
+@ goodday | worrier
+Everything's going well. I don't trust it. But it's going well.
+
+@ goodday | wry
+I've done a whole day's work before midday. Nobody tell anyone or they'll expect it.
+
+@ goodday | young
+I'm fast today! Watch how fast!
+
+# ------------------------------------------------------------------ wants
+
+@ talk, goal:any, !goal:court, !goal:player
+What do I want? {goal}. Is that so much to ask?
+If you're asking what I want, {player}, it's {goal}.
+I've been thinking about {goal}. Can't stop thinking about it.
+
+@ goal:bed
+One day I'll have a bed of my own. With a blanket. A thick one.
+Sleeping by the fire is all very well till the fire goes out.
+I'd give my good knife for a bed.
+
+@ goal:bed | gruff
+No bed. Again. Somebody build me a bed.
+
+@ goal:bed | wry
+I'm told the ground is good for the back. My back disagrees.
+
+@ goal:house
+I want a bigger house. One with room to turn round.
+My corner is fine. A room would be finer.
+When the next house goes up, I'm asking for it.
+
+@ goal:house | cheerful
+Imagine a house with two doors! I'd use both.
+
+@ goal:learn
+I want to learn {goalskill}. Somebody show me how.
+I'm terrible at {goalskill}. I'm going to fix that.
+{other} is good at {goalskill}. I'll watch them till I get it.
+
+@ goal:learn | young
+I'm going to learn {goalskill}. Then I'll learn everything else.
+
+@ goal:learn | elder
+Never too old to learn {goalskill}. Or so I keep saying.
+
+@ goal:master
+I want to be the best {bestskillman} in all the land. Or at least in {village}.
+I'm good at {goalskill}. I want to be better.
+
+@ goal:master | gruff
+Good isn't good enough.
+
+@ goal:peace
+I've been hard on {rival}. Maybe I should talk to them.
+{rival} and I should sort things out. Before it gets worse.
+I'm tired of not talking to {rival}.
+
+@ goal:peace | devout
+The gods don't like a grudge kept too long. I'll make peace with {rival}.
+
+@ goal:peace | gruff
+I'll talk to {rival}. Doesn't mean I like them.
+
+@ goal:feast
+What we need is a feast. Meat, mead, the lot.
+When was the last proper feast here? Too long ago.
+Somebody bring down a deer and let's eat like jarls.
+
+@ goal:feast | cheerful
+A feast! We should have a feast! Who's with me?
+
+@ goal:news
+I'd give a lot to hear news from somewhere else.
+When's the next pedlar coming? I want to hear what's going on.
+Nothing ever happens here. I want to hear about somewhere where things happen.
+
+@ goal:news | wry
+I've heard all of {other}'s stories. Twice. I need new ones.
+
+@ goal:hunt
+I want to bring down something big. A troll, maybe. A small troll.
+Next hunt, I'm going. And I'm coming back with something worth carrying.
+
+@ goal:hunt, protector
+My spear's been hungry for days.
+
+@ goal:rest
+I just want a quiet day. One quiet day.
+I'm worn through. Like an old boot.
+If nothing happens tomorrow, I'll be happy.
+
+@ goal:rest | worrier
+I need a day without any trouble. Just one.
+
+@ talk, goal:player
+There you are, {player}. I was hoping you'd come by.
+I'm glad you came. I wanted to see you.
+
+@ goal:old
+Still waiting on {goal}. Still hoping.
+Days I've been wanting {goal}. Days.
+
+# ------------------------------------------------------------------ wants met and given up
+
+@ self, goalmet:bed
+A bed! My own bed! I'm going to lie in it all day. No, I'm not. But I could.
+I slept in a bed last night. A real bed. I'm a new person.
+
+@ self, goalmet:house
+More room at last. I can stretch out my arms.
+
+@ self, goalmet:learn
+I can do it now. I can actually do it.
+I've got the knack of it. Took long enough.
+
+@ self, goalmet:master
+I'm the best at this now. Ask anyone. Ask me.
+
+@ self, goalmet:court
+{sweetheart} and I... well. We're walking out together now.
+I told {sweetheart}. And {sweetheart} said yes. To walking, I mean. For now.
+
+@ self, goalmet:peace
+{rival} and I talked. It's better now. Strange, but better.
+
+@ self, goalmet:feast
+That was a feast. My belly will talk about it for days.
+
+@ self, goalmet:news
+The visitor had news. Real news. I've been telling everyone.
+
+@ self, goalmet:hunt
+We brought it down. Me and the others. I'll tell this one for years.
+
+@ self, goalmet:rest
+A quiet day. Finally. I feel like myself again.
+
+@ self, goalmet:player
+{player} came back. I'm glad.
+
+@ self, goalmet
+Got what I wanted, for once.
+
+@ gaveup:bed
+No bed yet. I've stopped hoping for now.
+
+@ gaveup:house
+I've given up on a bigger house. This one will do.
+
+@ gaveup:learn
+I tried to learn {goalskill}. I'm not made for it.
+
+@ gaveup:court
+I didn't say anything to {friend}. Maybe next year.
+
+@ gaveup:peace
+I tried with {rival}. They wouldn't listen. Fine.
+
+@ gaveup:peace | gruff
+{rival} can rot.
+
+@ gaveup:feast
+No feast, then. Same porridge as always.
+
+@ gaveup:news
+No visitors. No news. Same as ever.
+
+@ gaveup:hunt
+Never got my chance. Maybe next time.
+
+# ------------------------------------------------------------------ courting
+
+@ courting
+Have you noticed how {sweetheart} laughs? Like a little bell.
+I made something for {sweetheart}. A spoon. Do you think a spoon is too much?
+Don't tell anyone, but I like {sweetheart}. A lot.
+I keep finding reasons to walk past where {sweetheart} works.
+
+@ courting | gruff
+What? I'm not looking at {sweetheart}. I'm looking near {sweetheart}.
+
+@ courting | worrier
+What if {sweetheart} doesn't like me back? What then?
+
+@ courting | wry
+I've started washing. Every day. People are asking questions.
+
+@ courting | young
+I'm going to marry {sweetheart}. They don't know yet.
+
+@ courting | elder
+At my age, courting. My mother would laugh. Then she'd help.
+
+@ talk, courting
+Can I ask you something, {player}? How do you tell someone you like them?
+Do I look all right? {sweetheart} might come by.
+
+# ------------------------------------------------------------------ sweethearts
+
+@ hassweetheart
+{sweetheart} and I are going to build a house together. One day.
+I'm lucky. {sweetheart} puts up with me.
+{sweetheart} says I snore. I say {sweetheart} kicks. We're even.
+
+@ hassweetheart | gruff
+{sweetheart} is the only one here with any sense.
+
+@ hassweetheart | cheerful
+Have you met {sweetheart}? Best person in {village}. Biased, I know.
+
+@ sweetheart:near
+I'm working. {sweetheart} is distracting me. Go away. No, stay.
+Look, there's {sweetheart}. Don't look. Look.
+
+@ talk, hassweetheart
+If you see {sweetheart}, tell them I said hello. They know which hello.

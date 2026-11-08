@@ -18,6 +18,24 @@
 #
 # Fill-ins: {village} {material} {building} {name} {player} {other}
 #
+# Added 2026-11-08 night (each new file lists its tags at the top):
+#   places.txt     at:hearth at:forge at:workbench at:cauldron at:station at:fire at:chest at:shore at:home at:edge
+#                  at:outside indoors outdoors; {place}
+#   sky.txt        weather:clear/rain/storm/snow/mist dawn midday dusk latenight world:young world:old;
+#                  events rainstart stormstart snowstart miststart rainstop dawn dusk; {weather} {daypart}
+#   player.txt     player:hurt/badlyhurt/wet/cold/freezing/poisoned/sneaking/heavy/armed/holding:x/gear:x/trophy:x/
+#                  carrying:x/skilled:x; events weaponout sneaking hurtbyplayer trophy playergear;
+#                  {playergear} {playerweapon}
+#   memory.txt     pmem:... (visits, away, gifts, built, kills, died, defended, helped), knows:x saw:x heard:x,
+#                  chat tell:x; {visits} {daysaway} {given} {lastkill} {bigkill} {builtcount} {kills} {teller}
+#   wants.txt      skill:x:novice/good/master doingskill:x best:x goodday skillup goal:x goalmet:x gaveup:x
+#                  courting hassweetheart; {bestskill} {bestskillman} {skillword} {goal} {goalskill} {sweetheart}
+#   gatherings.txt event:speech:x event:crowd:x event:speechreply feast feastday boss:x bosses:none beast:x
+#                  enemy:x fearnear; {lastboss} {beast}
+#   scenes.txt     chat pair tags with:x, "@key" answers (answer:key) and "+key" chime-ins (chime:key); {partner}
+#
+# A section the player has heard a lot from is picked less for a while (topic fatigue, see Dialogue.cs).
+#
 # House style: plain, short, specific. People talk about splinters, wet boots and burnt meat. No speeches, no
 # morals, no em dashes, no "it's not this, it's that". Each voice should sound like one person.
 

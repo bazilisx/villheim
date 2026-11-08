@@ -247,6 +247,53 @@ only.
 
 Clones from the survey were kept in `/tmp/study` for the session and are not committed.
 
+## 6. Survey of 2026-11-08 night: villager minds
+
+What makes NPCs seem to think: what they notice, what they remember, how they talk to each other and how they
+change over days. Read on the night of 2026-11-08 from the games' wikis and, for MCA Reborn, its data files (GPL,
+read for ideas in `/tmp/study-minds`, not copied). Games are ideas only; so is every mod without an MIT or Unlicense
+licence. What was built from it is in `docs/WORLD_LIFE.md` ("Built (2026-11-08 night, villager minds)").
+
+| Source | Licence | Mechanics worth taking (with the numbers) | Villheim file |
+|---|---|---|---|
+| Minecraft villagers (gossip) | game | Each villager keeps memories of each player by type. Gain, decay every 20 minutes, sharing cost, cap, weight: trading 4 / 2 / 20 / 25 / x1; minor positive 25 / 1 / 5 / 25 / x1; minor negative (hit) 25 / 20 / 20 / 200 / x-1; major negative (killed a villager nearby, every witness in 16 blocks) 25 / 10 / 10 / 100 / x-5; major positive (cured) 20 / 0 / never shared / x5. Gossip passes on when two villagers meet, weakened by the sharing cost. Late in the day everyone gathers at the bell and mingles; babies play tag. | `Villagers/PlayerMemory.cs` (deeds, witnesses, word passing in chats) |
+| Stardew Valley | game | 250 points a heart, ten hearts. Talking +20 once a day, gifts love +80, like +45, neutral +20, dislike -20, hate -40, two a week, x8 on a birthday; -2 a day unvisited. Lines keyed by weekday, heart level, season, weather and place, with fallbacks. A villager near a bin you rummage in speaks up (-25). Heart events at set levels. | `Villagers/Dialogue.cs` (place tags, fatigue), `PlayerMemory.cs` (visits, gifts) |
+| RimWorld (social) | game | Opinion -100 to 100: rival below -20, friend above 20. Random interactions by weight: chitchat 1 (+0.66), deep talk 0.075 (+15 for 20 days, x0.1 to x3 by compatibility), slight 0.02 (-5), insult 0.007 (-15), kind words 0.01 (only kind pawns, +15). Slights and insults grow x6 at opinion -100 and x0 at +100. An insult starts a fight 4% of the time, a slight 0.5% (x2.5 tipsy, x4 drunk); after a fight it is cathartic (+38) or angering (-22) at even odds. | `Villagers/FreeTime.cs` and the chat sections (pair tags, rival scenes) |
+| RimWorld (inspirations) | game | Only above 50% mood: mean days between inspirations = 410 - 400 x mood (210 days at 50%, 10 at 100%). One at a time, eight days or one use: work frenzy x1.8 work speed, inspired creativity (+2 quality). Weighted 1 / 2.5 / 5 by passion. | `Villagers/Skills.cs` ("a good day": a happy villager works faster for a while) |
+| Dwarf Fortress (facets) | game | 50 facets 0 to 100; only values outside 40 to 60 show (78% of values fall inside); 91+ and 9- are 0.4% each. Facets change which thoughts an event gives (a cheerless dwarf feels nothing at work he likes). Big differences in some facets breed grudges. Memories can shift facets over years. | `Villagers/Personality.cs` (traits shown only at the extremes; already done for voice and facts) |
+| MCA Reborn | GPL | Per player memory: hearts, interaction fatigue, last seen day. Chat outcomes rolled from base chances shifted by personality (gloomy x4 on one branch, odd x5 on another) and hearts thresholds (rumours only at 20+ hearts, refused at -5). Mood -15 to 15 in normal life. Dialogue keys fall back from specific to plain. | `Dialogue.cs` (per-player topic fatigue), `PlayerMemory.cs` |
+| MineColonies | GPL | Citizen skills in complementary and adverse pairs: practice raises the trade's two skills, the adverse one slips; the home's level caps them. Happiness from housing, food, safety, idle days. Requests a citizen walks up with, blocking ones before chit-chat. | `Villagers/Skills.cs` |
+| Skyrim (Radiant AI, barks) | game | AI packages by hour (sandbox, eat, sleep, work) pick furniture and idle markers near the spot. Hello and idle lines are conditioned on the player's gear, health, race, guild, crimes and the weather ("You look like you could use some rest."). Two NPCs run short scripted scenes when near. | `Dialogue.cs` (player state tags), `Villagers/Noticing.cs` |
+| Skyrim mods: Immersive Citizens, Inconsequential NPCs, Relationship Dialogue Overhaul | mods, no licence for code | Townsfolk shelter in rain, flee fights, use more furniture, keep routines; extra townsfolk with their own schedules; greetings picked by relationship rank so a stranger never gets a friend's line, and lines that stop repeating. | `Dialogue.cs` (player standing tags), `IdleLife.cs` |
+| Gothic I and II | game | Every NPC has a day of routines with start and end hours and a waypoint (sleep, smith, sit on a bench, stand and drink). Perceptions: the player drawing a weapon nearby ("Put that away!"), entering a home, stealing, fighting; bystanders gather to watch a fight. Pairs of idle NPCs swap small talk. | `Noticing.cs` (weapon out), `Gatherings.cs` |
+| The Sims 2 and 4 | game | Four wants and three fears a Sim at any time, rolled from life state and aspiration, renewed after sleep; a met want gives points, a fear that happens takes them. Moodlets with durations stack into an emotion; objects advertise which need they meet. | `Villagers/Goals.cs` (wants that last days), `Moods.cs` thoughts |
+| Medieval Dynasty | game | Villagers have a skill per job that rises while they work it; happiness from housing and food; marriage and heirs. | `Skills.cs` |
+| Kenshi | game | Dialogue packages fire on triggers (sees the player, is hit, an ally is down, the player talks) with conditions on traits, health, faction and relations; other squad members interject in the same exchange; lines have chances and repeat limits. | `Dialogue.cs` scenes ("@" answers and "+" chime-ins) |
+| Bannerlord | game | Traits (Mercy, Valor, Honor, Generosity, Calculating) from -2 to +2; relation -100 to 100; companions approve or object to the player's choices by their traits. | `PlayerMemory.cs` (what the player did, judged by voice) |
+| ValheimCityBuilder (RustyProductions) | Thunderstore, no licence seen | City builder view over Valheim: houses that build themselves piece by piece, needs by class (Karls want meat or honey and mead), upgrades by needs met, settlers who stroll. | none for minds; noted for the design side |
+| Offline Companions Reborn | MIT | Tagged barks with a priority queue (order, problem, event, ambient) and repeat timers. | `Dialogue.cs` (already uses tags; nothing copied) |
+
+### Ranked build list (what was worth building first)
+
+1. Per-player memory of deeds (gifts, building, kills near the village, deaths, visits, requests, fights) with
+   witnesses and word passing from villager to villager in chats, after Minecraft's gossip. Dialogue reads it.
+2. Topic fatigue per player (MCA) and lines bound to places (Stardew): at the forge, the workbench, the fire, the
+   chest, the shore, indoors, the edge of the village.
+3. What villagers notice (Skyrim, Gothic): weather turning, dawn and dusk, the player's gear, health, weapon out,
+   boss trophies, animals and enemies in sight, bosses felled anywhere in the world.
+4. Conversations of two and three with replies chosen by the one who answers (Kenshi interjections, Skyrim scenes),
+   with pair conditions (friends, rivals, same trade, sweethearts).
+5. Skills that grow with practice and scale work speed (MineColonies, Medieval Dynasty), with "a good day" from
+   high mood (RimWorld work frenzy, much milder).
+6. Wants that last days and change (The Sims): a bigger house, learning a trade, courting, making peace with a rival.
+7. Gatherings (Minecraft's bell, Millénaire's speeches, RimWorld's parties): the village turns out for a finished
+   building, a newcomer or a pedlar; a feast in the evening after a good hunt; the Jarl's evening words.
+8. Small idle actions so nobody stands frozen: glancing at whoever talks, at animals, at the sky in rain, warming
+   hands at the fire.
+
+Not reachable: the MineColonies wiki pages on skills and happiness (moved, 404) and the MCA Reborn GitHub wiki
+(redirected); the numbers above for those two come from the 2026-11-08 survey and MCA's data files.
+
 ## 7. Survey of 2026-11-08 night: settlements that grow
 
 Question: how do other games and mods make settlements grow, spread and fill the land between them on their own?

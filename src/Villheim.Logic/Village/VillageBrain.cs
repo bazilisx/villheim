@@ -566,6 +566,7 @@ namespace Villheim.Logic.Village
             zdo.Set(Keys.VillagerSeed, looksSeed);
             zdo.Set(Keys.VillagerName, name);
             zdo.Set(Villagers.Roles.KeyArrival, arrival);
+            Villagers.Personality.NoteArrived(zdo, arrival >= VillheimConfig.StartingVillagers.Value && birthplace == null);
             if (birthplace != null)
             {
                 zdo.Set(Villagers.Childhood.KeyBorn, EnvMan.instance != null ? EnvMan.instance.GetDay() : 0);
@@ -592,6 +593,7 @@ namespace Villheim.Logic.Village
             else if (arrival >= VillheimConfig.StartingVillagers.Value)
             {
                 Villagers.Social.Gather(state.Id, villager, null, 1, "event:welcomeneighbour", "wave", 60f);
+                Villagers.Gatherings.Arrival(state.Id, villager);
             }
 
             // The newcomer claims the free bed at once, so the next arrival can't count it as free too.

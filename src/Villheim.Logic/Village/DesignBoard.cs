@@ -259,6 +259,11 @@ namespace Villheim.Logic.Village
                 return $"Board: taken down ({TakeDown()} objects).";
             }
 
+            if (first == "compare" && words.Count >= 3)
+            {
+                return CompareGround(words[1], words[2]);
+            }
+
             if (first == "move" && words.Count >= 3)
             {
                 return MovePlot(words[1], words[2]);
@@ -1488,6 +1493,76 @@ namespace Villheim.Logic.Village
             at.x += (x - map.m_width / 2) * map.m_scale;
             at.z += (y - map.m_width / 2) * map.m_scale;
             return at;
+        }
+
+        /// <summary>
+        /// 'vh slot compare s1d3 s1d2': the two plots' ground, point by point (every point of the plot, painted or not):
+        /// how many differ in paint (more than 0.05 in any colour) or height (more than 5 cm), and where the first ones
+        /// are. Tells a real difference in the ground's data from a difference only in how the grass is drawn over it.
+        /// </summary>
+        private static string CompareGround(string firstWord, string secondWord)
+        {
+            Plot a = FindPlot(firstWord), b = FindPlot(secondWord);
+            if (a == null || b == null)
+            {
+                return "Board: 'vh slot compare s1d3 s1d2' compares the ground of two standing plots.";
+            }
+
+            Dictionary<(int, int), (float Rise, Color Paint)> first = GroundPoints(a), second = GroundPoints(b);
+            int paint = 0, height = 0, missing = 0;
+            var where = new List<string>();
+            foreach (KeyValuePair<(int, int), (float Rise, Color Paint)> p in first)
+            {
+                if (!second.TryGetValue(p.Key, out var q))
+                {
+                    missing++;
+                    continue;
+                }
+
+                Color x = p.Value.Paint, y = q.Paint;
+                bool paintDiffers = Mathf.Abs(x.r - y.r) > 0.05f || Mathf.Abs(x.g - y.g) > 0.05f || Mathf.Abs(x.b - y.b) > 0.05f;
+                bool heightDiffers = Mathf.Abs(p.Value.Rise - q.Rise) > 0.05f;
+                paint += paintDiffers ? 1 : 0;
+                height += heightDiffers ? 1 : 0;
+                if ((paintDiffers || heightDiffers) && where.Count < 6)
+                {
+                    where.Add($"({p.Key.Item1},{p.Key.Item2}) paint {x.r:0.00}/{y.r:0.00} height {p.Value.Rise:0.00}/{q.Rise:0.00}");
+                }
+            }
+
+            string text = $"Board: ground of {StageName(a.Name)} and {StageName(b.Name)}: {first.Count} points compared; {paint} differ in paint, {height} in height" +
+                          (missing > 0 ? $", {missing} missing in the second" : "") +
+                          (where.Count > 0 ? ". First differences (x,z first/second): " + string.Join("; ", where) : ". The ground data is the same; any difference you see is how the grass is drawn.");
+            VillheimPlugin.Log.LogInfo(text);
+            return text;
+        }
+
+        /// <summary>Every ground point of a standing plot: plot coordinates, height above its middle and paint as stored.</summary>
+        private static Dictionary<(int, int), (float Rise, Color Paint)> GroundPoints(Plot plot)
+        {
+            Quaternion frame = Quaternion.Inverse(Quaternion.Euler(0f, plot.Yaw, 0f));
+            var points = new Dictionary<(int, int), (float Rise, Color Paint)>();
+            foreach (Heightmap map in MapsAround(plot.Center, plot.Half))
+            {
+                TerrainComp ground = TerrainComp.FindTerrainCompiler(map.transform.position);
+                int size = map.m_width + 1;
+                for (int y = 0; y < size; y++)
+                for (int x = 0; x < size; x++)
+                {
+                    Vector3 local = frame * (PointWorld(map, x, y) - plot.Center);
+                    var key = (Mathf.RoundToInt(local.x), Mathf.RoundToInt(local.z));
+                    if (Mathf.Abs(local.x) > plot.Half + 0.01f || Mathf.Abs(local.z) > plot.Half + 0.01f || points.ContainsKey(key))
+                    {
+                        continue;
+                    }
+
+                    int index = y * size + x;
+                    Color paint = ground != null && ground.m_hmap == map && ground.m_modifiedPaint[index] ? ground.m_paintMask[index] : Heightmap.m_paintMaskNothing;
+                    points[key] = (map.m_heights[index] - plot.Center.y, paint);
+                }
+            }
+
+            return points;
         }
 
         /// <summary>

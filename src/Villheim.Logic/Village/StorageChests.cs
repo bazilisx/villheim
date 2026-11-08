@@ -16,7 +16,7 @@ namespace Villheim.Logic.Village
     /// - What each holds, in the order they come: wood, stone, fine wood and core wood (where the village has them),
     ///   food, ore and metal, other; past seven, wood and stone again. The kind is kept on the chest.
     /// - Where: a block by the main chest, in stacks two high side by side, rows behind (FreeSpot), all facing the
-    ///   hearth. They are amenity jobs (Amenities) the builder makes: paid from the chest like a bench, the sign after
+    ///   hearth, never touching the notice board, the hearth or a path (ClearFor); another side when that one is full. They are amenity jobs (Amenities) the builder makes: paid from the chest like a bench, the sign after
     ///   its chest, both made again if destroyed. While the village has no storehouse, a full main chest asks for one
     ///   more chest every quarter day.
     /// - Sorting (Villagers/Sorting): when the main chest is StorageSortAt full, a villager carries a stack from it to
@@ -353,10 +353,47 @@ namespace Villheim.Logic.Village
         }
 
         /// <summary>
-        /// The next place in the store block by the main chest (Tyler, T-15): chests in stacks two high, the stacks side
-        /// by side in a row along the main chest, alternating right and left beyond the notice board's posts, a second and
-        /// third row behind the first. Every chest faces the hearth like the main chest, so the block reads as one. A
-        /// stack's lower chest comes first, then the one on top of it.
+        /// Nothing but the ground where a chest (or a stack of <paramref name="levels"/>) would stand, with a hand's width
+        /// round it: none of the village's pieces (the notice board over the main chest, the main chest, a bench), no
+        /// tree or rock, not by the hearth, not on a path (Tyler: the store must never clip into the notice board).
+        /// The store's own chests and signs (its neighbours in the block) don't count.
+        /// </summary>
+        private static bool ClearFor(VillageHearth hearth, HashSet<Vector2Int> paths, Vector3 spot, Quaternion rotation, int levels, Container below)
+        {
+            if (Utils.DistanceXZ(spot, hearth.transform.position) < 3f || PathPlanner.DistanceToNetwork(paths, spot) < 1.6f)
+            {
+                return false;
+            }
+
+            Vector3 size = ChestSize();
+            var half = new Vector3(size.x * 0.5f + 0.25f, size.y * levels * 0.5f - 0.05f, size.z * 0.5f + 0.25f);
+            Vector3 middle = spot + Vector3.up * (size.y * levels * 0.5f + 0.05f);
+            foreach (Collider collider in Physics.OverlapBox(middle, half, rotation, ~0, QueryTriggerInteraction.Ignore))
+            {
+                if (collider.GetComponentInParent<Heightmap>() != null || collider.GetComponentInParent<Character>() != null)
+                {
+                    continue;
+                }
+
+                ZNetView view = collider.GetComponentInParent<ZNetView>();
+                // Its neighbours in the block (the store's own chests and their signs) stand close on purpose.
+                if (view == null || (below != null && view.gameObject == below.gameObject) || view.GetComponent<ItemDrop>() != null ||
+                    (view.IsValid() && (view.GetZDO().GetInt(KeyVillage) == hearth.VillageId || view.GetZDO().GetInt(KeySign) == hearth.VillageId)))
+                {
+                    continue;
+                }
+
+                return false;
+            }
+
+            return true;
+        }
+
+        /// <summary>
+        /// The next place in the store block (Tyler, T-15): chests in stacks two high, the stacks side by side in a row,
+        /// rows behind, every chest facing the hearth so the block reads as one. A stack's lower chest comes first, then
+        /// the one on top. Tried in turn, each checked to stand clear (ClearFor): along the main chest's side, beyond the
+        /// notice board's posts; then a row behind the main chest; then the far side of the hearth.
         /// </summary>
         private static bool FreeSpot(VillageHearth hearth, VillageState state, Container main, out Vector3 spot, out Quaternion rotation)
         {
@@ -365,39 +402,59 @@ namespace Villheim.Logic.Village
             Vector3 out_ = (origin - center).Horizontal();
             out_ = out_.sqrMagnitude > 0.01f ? out_.normalized : Vector3.forward;
             Vector3 along = Vector3.Cross(Vector3.up, out_);
-            rotation = Quaternion.LookRotation(-out_);
             Vector3 size = ChestSize();
-            float width = Mathf.Max(size.x, size.z) + 0.1f;
+            float width = Mathf.Max(size.x, size.z) + 0.15f;
             float depth = Mathf.Min(size.x, size.z);
-            for (int row = 0; row < 3; row++)
+            float fromHearth = Utils.DistanceXZ(origin, center);
+            HashSet<Vector2Int> paths = PathPlanner.PlannedNetwork(hearth);
+            var layouts = new List<(Vector3 Origin, Vector3 Along, Vector3 Back, float First)>
             {
-                for (int column = 0; column < 8; column++)
+                (origin, along, out_, FirstOffset),
+                (origin + out_ * (depth + 2.2f), along, out_, 0.9f),
+                (center - out_ * fromHearth, -along, -out_, 0.9f),
+            };
+
+            foreach ((Vector3 start, Vector3 side, Vector3 back, float first) in layouts)
+            {
+                Quaternion facing = Quaternion.LookRotation(-back);
+                for (int row = 0; row < 3; row++)
                 {
-                    float offset = (FirstOffset + (column / 2) * width) * (column % 2 == 0 ? 1f : -1f);
-                    Vector3 ground = origin + along * offset + out_ * (row * (depth + 0.9f));
-                    Container bottom = StorageAt(hearth.VillageId, ground);
-                    if (bottom == null)
+                    for (int column = 0; column < 8; column++)
                     {
-                        if (!Amenities.Usable(hearth, state, ground, out float y) || OwnPieceNear(hearth.VillageId, new Vector3(ground.x, y, ground.z), 0.8f))
+                        float offset = (first + (column / 2) * width) * (column % 2 == 0 ? 1f : -1f);
+                        Vector3 ground = start + side * offset + back * (row * (depth + 0.9f));
+                        Container bottom = StorageAt(hearth.VillageId, ground);
+                        if (bottom == null)
                         {
-                            continue;
+                            if (!Amenities.Usable(hearth, state, ground, out float y))
+                            {
+                                continue;
+                            }
+
+                            var at = new Vector3(ground.x, y, ground.z);
+                            if (!ClearFor(hearth, paths, at, facing, 2, null))
+                            {
+                                continue;
+                            }
+
+                            spot = at;
+                            rotation = facing;
+                            return true;
                         }
 
-                        spot = new Vector3(ground.x, y, ground.z);
-                        return true;
-                    }
-
-                    Vector3 top = bottom.transform.position + Vector3.up * size.y;
-                    if (StorageAt(hearth.VillageId, top) == null)
-                    {
-                        spot = top;
-                        rotation = bottom.transform.rotation;
-                        return true;
+                        Vector3 top = bottom.transform.position + Vector3.up * size.y;
+                        if (StorageAt(hearth.VillageId, top) == null && ClearFor(hearth, paths, top, bottom.transform.rotation, 1, bottom))
+                        {
+                            spot = top;
+                            rotation = bottom.transform.rotation;
+                            return true;
+                        }
                     }
                 }
             }
 
             spot = origin;
+            rotation = Quaternion.identity;
             return false;
         }
 

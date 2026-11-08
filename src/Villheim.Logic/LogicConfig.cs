@@ -15,8 +15,8 @@ namespace Villheim.Logic
         public static ConfigEntry<float> BuildStartShare;
         public static ConfigEntry<float> ClearingRadius;
         public static ConfigEntry<bool> IdlePickup;
-        public static ConfigEntry<string> FenceLight;
-        public static ConfigEntry<float> FenceLightSink;
+        public static ConfigEntry<string> HamletFence;
+        public static ConfigEntry<float> HamletFenceSink;
         public static ConfigEntry<float> FenceWallSink;
         public static ConfigEntry<bool> AnimalPens;
         public static ConfigEntry<float> VillageLevelSnap;
@@ -307,11 +307,11 @@ namespace Villheim.Logic
             IdlePickup = Admin(config, work, "IdlePickup", true,
                 "Villagers with nothing else to do pick up useful things lying in the village (wood, stone, resin, " +
                 "leather, feathers, meat and the like) and put them in the chest.");
-            FenceLight = Admin(config, work, "FenceLight", "stake_wall",
-                "The fence a hamlet puts up round itself, sunk FenceLightSink into the ground. Empty: none until the " +
-                "village is big enough for the stake wall. wood_fence is kept for farm plots and animal pens.");
-            FenceLightSink = Admin(config, work, "FenceLightSink", 0.7f,
-                "How much of the hamlet's fence goes into the ground (0.7: seven tenths, a low fence).");
+            HamletFence = Admin(config, work, "HamletFence", "wood_fence",
+                "The fence a hamlet puts up round itself, with gaps where the paths cross. Once it is a village it is " +
+                "replaced by the stake wall. Empty: no fence until then.");
+            HamletFenceSink = Admin(config, work, "HamletFenceSink", 0f,
+                "How much of the hamlet's fence goes into the ground (0: none, it stands on the ground).");
             FenceWallSink = Admin(config, work, "FenceWallSink", 0.5f,
                 "How much of the village's stake wall goes into the ground (0.5: half). Gates are pairs of wood gates.");
             DecorProps = Admin(config, work, "DecorProps", "Hildir_camp:tent",

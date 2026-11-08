@@ -6,16 +6,15 @@ using Villheim.Logic.Villagers;
 namespace Villheim.Logic.Village
 {
     /// <summary>
-    /// The village's want, shown beside the chest (proposal 9, after Black and White's desire flags and Frostpunk's
-    /// promises).
+    /// The village's want (proposal 9, after Black and White's desire flags and Frostpunk's promises).
     ///
-    /// - Once a game hour the hearth's owner looks at what the next step is shortest of (NextStep) and puts the
-    ///   game's own pile of it next to the chest: a woodpile for wood, the fine and core wood stacks, the stone pile.
-    ///   Anything else goes on an item stand. It cannot be taken down with the hammer, and it goes when the want
-    ///   changes or is met.
-    /// - A promise without a penalty: when the want shown is filled within a day while a player is near the chest, the
+    /// - Once a game hour the hearth's owner notes what the next step is shortest of (NextStep). Nothing is put by the
+    ///   chest for it any more (Tyler, 2026-11-08): a pile of wood by the chest looked as if the village had wood, not
+    ///   needed it. The hearth's hover text and the board's Needed sign say what is needed. Piles an earlier build put
+    ///   there are taken away.
+    /// - A promise without a penalty: when the want is filled within a day while a player is near the chest, the
     ///   village takes "promisekept" (+6 for a day) and says so. Ignoring it costs nothing.
-    /// - Records on the hearth: what is shown, where, how much the chest held when it went up, and the day.
+    /// - Records on the hearth: what is wanted, how much the chest held then, and the day.
     /// </summary>
     internal static class WantPile
     {
@@ -40,6 +39,7 @@ namespace Villheim.Logic.Village
         public static void Tick(VillageHearth hearth, VillageState state, bool now = false)
         {
             ZDO zdo = hearth.Zdo;
+            ClearOldPiles(hearth);
             if (!On)
             {
                 if (zdo.GetString(KeyShown, "").Length > 0)
@@ -113,46 +113,52 @@ namespace Villheim.Logic.Village
             Chronicle.Add(hearth, $"{player.GetPlayerName()} brought the {Materials.Label(shown)} we were short of.");
         }
 
+        /// <summary>
+        /// Records the want. Nothing is put by the chest any more (Tyler, 2026-11-08: a pile of a material by the chest
+        /// read as the village having it, not needing it; the hearth hover and the board's Needed sign say what is
+        /// needed). The promise below still works from the record.
+        /// </summary>
         private static void Place(VillageHearth hearth, Container chest, string material)
         {
-            bool pile = Piles.TryGetValue(material, out string prefabName);
-            GameObject prefab = ZNetScene.instance != null ? ZNetScene.instance.GetPrefab(pile ? prefabName : Stand) : null;
-            if (prefab == null && pile)
-            {
-                pile = false;
-                prefab = ZNetScene.instance.GetPrefab(Stand);
-            }
-
-            if (prefab == null || chest == null)
+            if (chest == null)
             {
                 return;
             }
 
-            Vector3 spot = chest.transform.position + chest.transform.right * 1.8f;
-            if (ZoneSystem.instance.GetGroundHeight(spot, out float y))
-            {
-                spot.y = y;
-            }
-
-            GameObject made = Object.Instantiate(prefab, spot, chest.transform.rotation);
-            ZNetView view = made.GetComponent<ZNetView>();
-            if (view == null || !view.IsValid())
-            {
-                return;
-            }
-
-            view.GetZDO().Set(KeyMark, hearth.VillageId);
-            view.GetZDO().Set(Keys.BuiltBy, hearth.VillageId);
-            if (!pile)
-            {
-                view.GetZDO().Set(ZDOVars.s_item, material);
-            }
-
-            Lock(made);
             hearth.Zdo.Set(KeyShown, material);
-            hearth.Zdo.Set(KeySpot, spot);
-            VillheimPlugin.Debug($"{hearth.VillageName} shows it wants {Materials.Label(material)}.");
+            hearth.Zdo.Set(KeySpot, Vector3.zero);
         }
+
+        /// <summary>Takes away any pile or item stand an earlier build put by the chest (once per village per session).</summary>
+        private static void ClearOldPiles(VillageHearth hearth)
+        {
+            if (!Cleared.Add(hearth.VillageId) || ZNetScene.instance == null)
+            {
+                return;
+            }
+
+            var old = new List<ZNetView>();
+            foreach (ZNetView view in ZNetScene.instance.m_instances.Values)
+            {
+                if (view != null && view.IsValid() && view.GetZDO().GetInt(KeyMark) == hearth.VillageId)
+                {
+                    old.Add(view);
+                }
+            }
+
+            foreach (ZNetView view in old)
+            {
+                view.ClaimOwnership();
+                ZNetScene.instance.Destroy(view.gameObject);
+            }
+
+            if (old.Count > 0)
+            {
+                VillheimPlugin.Log.LogInfo($"{hearth.VillageName}: took away {old.Count} want pile(s) by the chest.");
+            }
+        }
+
+        private static readonly HashSet<int> Cleared = new HashSet<int>();
 
         /// <summary>The pile can't be taken down with the hammer, and the item can't be taken off the stand.</summary>
         private static void Lock(GameObject made)
@@ -207,7 +213,7 @@ namespace Villheim.Logic.Village
         public static string Describe(VillageHearth hearth)
         {
             string shown = hearth.Zdo.GetString(KeyShown, "");
-            return shown.Length == 0 ? "nothing shown by the chest" : $"shows {Materials.Label(shown)} by the chest (since day {hearth.Zdo.GetInt(KeyDay)})";
+            return shown.Length == 0 ? "wants nothing in particular" : $"wants {Materials.Label(shown)} (since day {hearth.Zdo.GetInt(KeyDay)})";
         }
     }
 }

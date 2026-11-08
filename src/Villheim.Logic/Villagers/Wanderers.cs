@@ -29,6 +29,8 @@ namespace Villheim.Logic.Villagers
         public const string Pedlar = "pedlar";
         public const string Pilgrim = "pilgrim";
         public const string Hermit = "hermit";
+        public const string Camper = "camper";
+        public static readonly int KeyCampKind = "villheim_wcampkind".GetStableHashCode();
 
         public static readonly int KeyKind = "villheim_wanderer".GetStableHashCode();
         public static readonly int KeyPhase = "villheim_wphase".GetStableHashCode();
@@ -100,7 +102,7 @@ namespace Villheim.Logic.Villagers
             zdo.Set(Keys.VillagerSeed, seed);
             zdo.Set(Keys.VillagerName, name);
             zdo.Set(KeyKind, kind);
-            zdo.Set(KeyPhase, kind == Hermit ? Stay : Arrive);
+            zdo.Set(KeyPhase, kind == Hermit || kind == Camper ? Stay : Arrive);
             zdo.Set(KeyTarget, target);
             zdo.Set(KeyFrom, from ?? "");
             zdo.Set(KeyBorn, (long)(Now * 10.0));
@@ -135,6 +137,7 @@ namespace Villheim.Logic.Villagers
             switch (kind)
             {
                 case Hermit:
+                case Camper:
                     HermitTick(villager, ai, dt, zdo, state);
                     break;
                 default:
@@ -156,7 +159,7 @@ namespace Villheim.Logic.Villagers
             float nearest = NearestPlayer(villager.transform.position);
             double age = Now - zdo.GetLong(KeyBorn) / 10.0;
             bool done;
-            if (kind == Hermit)
+            if (kind == Hermit || kind == Camper)
             {
                 // Only once the camp's ground is loaded, or a hermit at the edge of the loaded area would lose a camp
                 // that is still there.
@@ -373,6 +376,8 @@ namespace Villheim.Logic.Villagers
             {
                 case Hermit:
                     return Hour >= 18f || Hour < 7f ? "sitting by the camp fire" : "pottering about the camp";
+                case Camper:
+                    return Hour >= 18f || Hour < 7f ? "sitting by the camp fire" : "working round the " + zdo.GetString(KeyCampKind, "camp");
                 case Pilgrim:
                     switch (zdo.GetString(KeyPhase, Arrive))
                     {
@@ -394,11 +399,12 @@ namespace Villheim.Logic.Villagers
         {
             string kind = KindOf(villager);
             string from = villager.Zdo.GetString(KeyFrom, "");
-            string title = kind == Hermit ? "A hermit" : kind == Pilgrim ? "A pilgrim" : "A travelling pedlar";
-            string text = villager.VillagerName + $"\n<color=#b0b0b0>{title}{(from.Length > 0 && kind != Hermit ? " from " + from : "")}</color>" +
+            string title = kind == Hermit ? "A hermit" : kind == Pilgrim ? "A pilgrim" : kind == Camper
+                ? $"At {from}'s {villager.Zdo.GetString(KeyCampKind, "camp")}" : "A travelling pedlar";
+            string text = villager.VillagerName + $"\n<color=#b0b0b0>{title}{(from.Length > 0 && kind != Hermit && kind != Camper ? " from " + from : "")}</color>" +
                           $"\n<color=#b0b0b0>{Describe(villager)}</color>" +
                           "\n[<color=yellow><b>$KEY_Use</b></color>] Talk";
-            if (kind != Pilgrim)
+            if (kind != Pilgrim && kind != Camper)
             {
                 text += "\n[<color=yellow><b>Shift</b></color> + <color=yellow><b>$KEY_Use</b></color>] Trade";
             }
@@ -411,7 +417,7 @@ namespace Villheim.Logic.Villagers
             string kind = KindOf(villager);
             bool shift = ZInput.GetButton("Run") || ZInput.GetKey(KeyCode.LeftShift, false) || ZInput.GetKey(KeyCode.RightShift, false);
             Social.LookAt(villager, player, 6f);
-            if (shift && kind != Pilgrim && OpenStore(villager))
+            if (shift && kind != Pilgrim && kind != Camper && OpenStore(villager))
             {
                 return true;
             }

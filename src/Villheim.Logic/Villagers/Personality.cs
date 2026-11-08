@@ -83,7 +83,7 @@ namespace Villheim.Logic.Villagers
         private static readonly Dictionary<string, float> MemoryDays = new Dictionary<string, float>
         {
             ["finished"] = 3f, ["arrival"] = 3f, ["birth"] = 5f, ["death"] = 5f, ["fight"] = 3f, ["hunt"] = 2f,
-            ["pedlar"] = 2f, ["pilgrim"] = 2f, ["blessing"] = 2f, ["groundbroken"] = 2f, ["upgrade"] = 3f, ["trade"] = 1f, ["forged"] = 4f,
+            ["pedlar"] = 2f, ["pilgrim"] = 2f, ["blessing"] = 2f, ["groundbroken"] = 2f, ["upgrade"] = 3f, ["trade"] = 1f, ["forged"] = 4f, ["outpost"] = 5f, ["haul"] = 1f,
         };
 
         private sealed class State

@@ -54,6 +54,7 @@ namespace Villheim.Logic.Village
             VillageChest.MoveStockIn(hearth, state);
             Villagers.Social.VillageTick(hearth);
             Relations.Daily(hearth);
+            Outposts.Tick(hearth, state);
             Raids.Tick(hearth);
             NoticeBoard.Update(hearth);
             CheckDoorsDaily(hearth);

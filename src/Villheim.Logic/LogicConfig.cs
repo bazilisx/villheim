@@ -55,6 +55,7 @@ namespace Villheim.Logic
         public static ConfigEntry<bool> ShaperEffectTint;
         public static ConfigEntry<bool> WorldLife;
         public static ConfigEntry<bool> SmithMakesGear;
+        public static ConfigEntry<bool> Outposts;
         public static ConfigEntry<float> VisitorChancePerDay;
         public static ConfigEntry<float> DaysBetweenVisitors;
         public static ConfigEntry<int> HermitChance;
@@ -107,6 +108,10 @@ namespace Villheim.Logic
                 "Off for now, while designs are reviewed. When on, pedlars and pilgrims visit villages (bringing news from " +
                 "other villages, and a pedlar trading with the village chest), and hermits keep camps by some ruins and " +
                 "abandoned houses. 'vh pedlar', 'vh pilgrim' and 'vh hermit' work either way, for testing.");
+            Outposts = Admin(config, life, "Outposts", true,
+                "With WorldLife on, a village of four buildings and four villagers founds a logging camp in the nearest " +
+                "other biome (Black Forest core wood for a Meadows village, Meadows fine wood for a Black Forest one) " +
+                "that sends wood home every day.");
             VisitorChancePerDay = Admin(config, life, "VisitorChancePerDay", 0.5f,
                 "Chance that a pedlar or pilgrim comes to a village on a day you spend there (0 to 1).");
             DaysBetweenVisitors = Admin(config, life, "DaysBetweenVisitors", 1f,

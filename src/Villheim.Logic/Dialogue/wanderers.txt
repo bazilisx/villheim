@@ -244,3 +244,50 @@ The pilgrim told me about {farplace}. I'd like to go one day. I won't.
 
 @ talk, mem:blessing
 The hearth's been blessed. Doesn't stop the rain, mind.
+
+# ------------------------------------------------------------------ campers at a village's outpost (Village/Outposts.cs)
+# Tag camper. {from} is their home village.
+
+@ talk, wanderer, camper
+We're from {from}. Somebody has to cut the good wood, and it doesn't grow at home.
+Ten logs a day back to {from}. Every day. My arms have opinions about it.
+It's quiet out here. Too quiet, some nights.
+Tell them in {from} we're fine. Tell them we want better food.
+We sleep by the fire and listen for trolls. Mostly we hear owls.
+I volunteered for this. I forget why.
+
+@ talk, wanderer, camper, night
+Sit down if you're staying. Don't if you're a troll.
+The fire's small on purpose. Big fires bring visitors.
+
+@ talk, wanderer, camper, rain
+Rain in the forest is twice the rain. It drips off everything.
+
+@ self, wanderer, camper
+More logs. Always more logs.
+I miss my bed in {from}.
+Was that a branch, or a greydwarf?
+The others back home have no idea how good they've got it.
+
+@ greet, wanderer, camper
+Oh, a face. Hello.
+
+@ bye, wanderer, camper
+Off you go. Say hello to {from} for us.
+
+# ------------------------------------------------------------------ villagers about their outpost
+
+@ self, event:outpost
+Two of ours are off to make a camp in the woods. I hope they took enough food.
+A camp out past the trees. We're getting bigger than this clearing.
+They're going for the good wood. About time.
+
+@ self, event:outpost | worrier
+They're going all that way? With the trolls?
+
+@ talk, mem:outpost
+Our people are out at the logging camp. They send wood back every day.
+I asked to go to the camp. They said I talk too much. They're right.
+
+@ talk, event:haul
+The camp sent wood back. It smells of pine.

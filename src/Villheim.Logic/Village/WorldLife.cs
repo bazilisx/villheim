@@ -94,6 +94,7 @@ namespace Villheim.Logic.Village
             if (ZNet.instance.IsServer())
             {
                 MaybeMakeCamps(player.transform.position);
+                Outposts.EnsureCamps(player.transform.position);
             }
         }
 
@@ -134,7 +135,8 @@ namespace Villheim.Logic.Village
         }
 
         private static bool VisitorThere(int villageId) =>
-            Character.GetAllCharacters().OfType<Villager>().Any(v => !v.IsDead() && Wanderers.IsWanderer(v) &&
+            Character.GetAllCharacters().OfType<Villager>().Any(v => !v.IsDead() &&
+                                                                     (Wanderers.KindOf(v) == Wanderers.Pedlar || Wanderers.KindOf(v) == Wanderers.Pilgrim) &&
                                                                      v.Zdo.GetInt(Wanderers.KeyVisit) == villageId);
 
         /// <summary>Sends a pedlar or pilgrim walking in to <paramref name="hearth"/>. Null when no spot was found.</summary>
@@ -515,7 +517,7 @@ namespace Villheim.Logic.Village
         /// <summary>The camp by a location, made if it is missing; its hermit, made if missing and due.</summary>
         private static void EnsureCamp(Vector3 location, string locationName, bool log)
         {
-            Fireplace fire = CampNear(location, 45f);
+            Fireplace fire = CampNear(location, 45f, true);
             if (fire == null)
             {
                 Vector3 outward = Quaternion.Euler(0f, Score(location) % 360, 0f) * Vector3.forward;
@@ -587,7 +589,7 @@ namespace Villheim.Logic.Village
             return hermit;
         }
 
-        private static Fireplace MakeCamp(Vector3 spot)
+        public static Fireplace MakeCamp(Vector3 spot)
         {
             GameObject prefab = ZNetScene.instance.GetPrefab("fire_pit");
             if (prefab == null)
@@ -616,13 +618,14 @@ namespace Villheim.Logic.Village
             }
         }
 
-        private static Fireplace CampNear(Vector3 point, float radius)
+        private static Fireplace CampNear(Vector3 point, float radius, bool hermitsOnly = false)
         {
             var pieces = new List<Piece>();
             Piece.GetAllPiecesInRadius(point, radius, pieces);
             foreach (Piece piece in pieces)
             {
                 if (piece != null && piece.m_nview != null && piece.m_nview.IsValid() && piece.m_nview.GetZDO().GetBool(KeyCamp) &&
+                    (!hermitsOnly || piece.m_nview.GetZDO().GetInt(Outposts.KeyOutpostVillage) == 0) &&
                     piece.TryGetComponent(out Fireplace fire))
                 {
                     return fire;
@@ -633,7 +636,7 @@ namespace Villheim.Logic.Village
         }
 
         /// <summary>The hermit's own camp fire, if it still stands.</summary>
-        public static Fireplace CampOf(Vector3 camp) => CampNear(camp, 4f);
+        public static Fireplace CampOf(Vector3 camp, float radius = 4f) => CampNear(camp, radius);
 
         /// <summary>
         /// A spot <paramref name="min"/> to <paramref name="max"/> m from <paramref name="center"/>, as near the direction
@@ -775,7 +778,7 @@ namespace Villheim.Logic.Village
             if (kind == Wanderers.Hermit)
             {
                 Vector3 ahead = player.transform.position + player.transform.forward * 6f;
-                Fireplace fire = CampNear(ahead, 30f) ?? MakeCamp(ahead);
+                Fireplace fire = CampNear(ahead, 30f, true) ?? MakeCamp(ahead);
                 if (fire == null)
                 {
                     return "Could not make a camp fire here.";

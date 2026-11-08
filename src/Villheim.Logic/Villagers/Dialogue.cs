@@ -54,7 +54,7 @@ namespace Villheim.Logic.Villagers
         private static readonly Dictionary<(int, string), float> Events = new Dictionary<(int, string), float>();
 
         private static readonly string[] VillageMoodEvents = { "finished", "arrival", "hunt", "trade", "birth" };
-        private static readonly string[] Reacted = { "finished", "arrival", "groundbroken", "hunt", "death", "birth", "pedlar", "pilgrim", "blessing", "forged" };
+        private static readonly string[] Reacted = { "finished", "arrival", "groundbroken", "hunt", "death", "birth", "pedlar", "pilgrim", "blessing", "forged", "outpost" };
 
         /// <summary>
         /// Something happened in the village (finished, arrival...): "event:x" holds for ten minutes, everyone's mood

@@ -33,6 +33,12 @@ namespace Villheim.Logic.Village
 
         public const string DefaultMap =
             "Meadows=norse:3,anglo-saxon:1,frankish-norman:1; BlackForest=norse-forest:2,celtic:1,slavic:1; " +
+            "Swamp=celtic-crannog:1,baltic:1,fen-folk:1; Mountain=norse-highland:1,saami:1; " +
+            "Plains=middle-eastern:2,byzantine:1,steppe:1; Mistlands=byzantine:1,caucasian-highland:1";
+
+        /// <summary>The default before D-039 (Mountains cultures equally common), moved to the new one on load.</summary>
+        public const string OldDefaultMap =
+            "Meadows=norse:3,anglo-saxon:1,frankish-norman:1; BlackForest=norse-forest:2,celtic:1,slavic:1; " +
             "Swamp=celtic-crannog:1,baltic:1,fen-folk:1; Mountain=norse-highland:2,saami:1; " +
             "Plains=middle-eastern:2,byzantine:1,steppe:1; Mistlands=byzantine:1,caucasian-highland:1";
 
@@ -557,7 +563,7 @@ namespace Villheim.Logic.Village
             return surname.Length > 0 && !name.Contains(" ") ? name + " " + surname : name;
         }
 
-        /// <summary>The title of the village's first settler: Jarl in a Norse village, Starosta in a Slavic one...</summary>
+        /// <summary>The title of the village's first settler: Jarl in a Norse village, Elder in a Slavic one...</summary>
         public static string LeaderTitle(int villageId) => On ? Get(OfVillage(villageId)).Leader : "Jarl";
 
         private static readonly string[] NorseFestivals = { "the sowing feast", "the midsummer fire", "the harvest feast", "Yule" };
@@ -596,7 +602,7 @@ namespace Villheim.Logic.Village
             }
         }
 
-        /// <summary>{people} (Norse, Slavic...) and {leader} (Jarl, Starosta...) in lines.</summary>
+        /// <summary>{people} (Norse, Slavic...) and {leader} (Jarl, Chief, Elder...) in lines.</summary>
         public static string Fill(string line, Villager villager)
         {
             if (line.IndexOf('{') < 0)

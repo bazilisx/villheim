@@ -18,7 +18,8 @@ namespace Villheim.Logic.Villagers
     ///   his mood.
     /// - DemandAfterDays (6): he walks up to a known player within 60 m and asks for it (demand:x), and the need weighs
     ///   twice as much.
-    /// - LeaveAfterDays (10): with WorldLife and Leaving on, he leaves (see Leaving).
+    /// - LeaveAfterDays (10): only with WorldLife and VillagersLeave on, he leaves (see Leaving). Off by default: villagers
+    ///   never move away (D-003), so a need gone long ends in asking, never in leaving.
     ///
     /// Counts live in the villager's ZDO ("bed:3;food:0;safety:0").
     /// </summary>

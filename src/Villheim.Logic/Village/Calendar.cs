@@ -102,6 +102,9 @@ namespace Villheim.Logic.Village
             return day <= festival ? festival - day : length - day + festival;
         }
 
+        /// <summary>The name of the next feast in this culture (for the back of the notice board).</summary>
+        public static string NextFestivalName(string culture) => NextFestival(culture ?? Cultures.Fallback);
+
         private static string NextFestival(string culture = Cultures.Fallback)
         {
             Now(out int season, out int day, out int length);

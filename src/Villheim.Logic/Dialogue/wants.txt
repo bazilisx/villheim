@@ -154,7 +154,7 @@ My back's stopped complaining. Mostly.
 @ goodday
 I feel like I could fell the whole forest today.
 Good day today. Everything's going right.
-Something in the air. I'm working like two of me.
+Something in the air today. I keep humming.
 I woke up feeling ten years younger.
 
 @ goodday | gruff
@@ -164,10 +164,10 @@ Don't spoil it. I'm having a good day.
 Everything's going well. I don't trust it. But it's going well.
 
 @ goodday | wry
-I've done a whole day's work before midday. Nobody tell anyone or they'll expect it.
+I'm in a good mood. Nobody tell anyone or they'll expect it every day.
 
 @ goodday | young
-I'm fast today! Watch how fast!
+Today's a good day! I can tell!
 
 # ------------------------------------------------------------------ wants
 
@@ -227,7 +227,7 @@ I'll talk to {rival}. Doesn't mean I like them.
 @ goal:feast
 What we need is a feast. Meat, mead, the lot.
 When was the last proper feast here? Too long ago.
-Somebody bring down a deer and let's eat like jarls.
+Somebody bring down a deer and let's eat like lords.
 
 @ goal:feast | cheerful
 A feast! We should have a feast! Who's with me?

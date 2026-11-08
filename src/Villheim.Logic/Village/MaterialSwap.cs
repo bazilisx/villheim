@@ -307,8 +307,43 @@ namespace Villheim.Logic.Village
             return shape != null && shape.KindKey.Length > 0;
         }
 
-        /// <summary>The stage a piece belongs to for swapping: <see cref="Never"/> when no player can build it.</summary>
-        private static int StageOf(string prefab) => Gallery.IsBuildable(prefab) ? Gallery.StageOfPiece(prefab) : Never;
+        /// <summary>
+        /// The stage a piece belongs to for swapping: <see cref="Never"/> when no player can build it. A piece made with
+        /// stone counts as Swamp at the earliest (D-012: Meadows and Black Forest build in wood), so a design shown as a
+        /// Meadows or Black Forest one has its stone swapped for wood.
+        /// </summary>
+        private static int StageOf(string prefab)
+        {
+            if (!Gallery.IsBuildable(prefab))
+            {
+                return Never;
+            }
+
+            int stage = Gallery.StageOfPiece(prefab);
+            return UsesStone(prefab) ? Mathf.Max(stage, StoneStage) : stage;
+        }
+
+        /// <summary>The first stage stone pieces belong to (Gallery.StageNames: 2 is the Swamp).</summary>
+        private const int StoneStage = 2;
+
+        private static readonly Dictionary<string, bool> StoneCache = new Dictionary<string, bool>();
+
+        private static bool UsesStone(string prefab)
+        {
+            if (StoneCache.TryGetValue(prefab, out bool stone))
+            {
+                return stone;
+            }
+
+            GameObject go = ZNetScene.instance != null ? ZNetScene.instance.GetPrefab(prefab) : null;
+            stone = go != null && DesignSpawner.RecipeCost(go).TryGetValue(Materials.Stone, out int n) && n > 0;
+            if (go != null)
+            {
+                StoneCache[prefab] = stone;
+            }
+
+            return stone;
+        }
 
         private static readonly System.Text.RegularExpressions.Regex SizeInName =
             new System.Text.RegularExpressions.Regex(@"(^|_)\d+x\d+(x\d+)?($|_)");
@@ -786,7 +821,7 @@ namespace Villheim.Logic.Village
                 shape = new Shape
                 {
                     Prefab = prefab,
-                    Stage = Gallery.StageOfPiece(prefab),
+                    Stage = UsesStone(prefab) ? Mathf.Max(Gallery.StageOfPiece(prefab), StoneStage) : Gallery.StageOfPiece(prefab),
                     Size = bounds.Value.size,
                     Center = bounds.Value.center,
                     KindKey = string.Join("+", Kinds.Where(k => named.Contains(k))),

@@ -12,6 +12,7 @@ namespace Villheim.Logic.Village
     ///    The notice board (Tyler's 'villagenotice' blueprint, over the village chest) comes right after the cooking
     ///    station, and is mended first whenever a piece of it is destroyed (see NoticeBoard).
     /// 2. The hub area, once the longhouse stands: benches round the fire, a wood stack and a stone pile.
+    /// 2b. Storage chests by the main chest as the village grows, each with its label (StorageChests, D-016).
     /// 3. Furnishings: the workshop's workbench, the storehouse's chests, chests, chairs and tables in the homes and
     ///    the longhouse.
     ///
@@ -38,6 +39,9 @@ namespace Villheim.Logic.Village
 
             /// <summary>Part of settling in: made before the village grows.</summary>
             public bool Essential;
+
+            /// <summary>A storage chest or its label (D-016): what the chest holds. Null for anything else.</summary>
+            public string Kind;
         }
 
         private sealed class Entry
@@ -160,8 +164,8 @@ namespace Villheim.Logic.Village
             // Essentials first (the cooking station, then the beds), then the hub area (sign, notice board, benches)
             // and the furnishings of the other buildings.
             // The notice board over the chest comes right after the cooking station, and is mended first when damaged.
-            return Outside(hearth, state, true, onlyHearth: true) ?? NoticeBoard.Job(hearth) ?? Inside(state, tier, true) ?? Outside(hearth, state, false, onlyHearth: false) ??
-                   Inside(state, tier, false);
+            return Outside(hearth, state, true, onlyHearth: true) ?? NoticeBoard.Job(hearth) ?? Inside(state, tier, true) ??
+                   StorageChests.Job(hearth, state) ?? Outside(hearth, state, false, onlyHearth: false) ?? Inside(state, tier, false);
         }
 
         private static Job Outside(VillageHearth hearth, VillageState state, bool essential, bool onlyHearth)
@@ -253,6 +257,13 @@ namespace Villheim.Logic.Village
                 bool built = NoticeBoard.Build(hearth);
                 VillheimPlugin.Log.LogInfo($"{state.Name} {(built ? "put up its notice board" : "found its notice board already whole")}.");
                 return built;
+            }
+
+            if (job.Kind != null)
+            {
+                // A storage chest or its label: the spot was checked when the job was worked out.
+                return Affordable(hearth, state, job.Cost, Reserved(hearth, job)) && Pay(hearth, state, job.Cost) &&
+                       StorageChests.Make(hearth, state, job);
             }
 
             if (Made(hearth.VillageId, job.Prefab, job.Spot) || !Affordable(hearth, state, job.Cost, Reserved(hearth, job)))
@@ -429,7 +440,7 @@ namespace Villheim.Logic.Village
             return false;
         }
 
-        private static bool Usable(VillageHearth hearth, VillageState state, Vector3 spot, out float y)
+        internal static bool Usable(VillageHearth hearth, VillageState state, Vector3 spot, out float y)
         {
             if (!ZoneSystem.instance.IsZoneLoaded(spot) || !ZoneSystem.instance.GetGroundHeight(spot, out y) ||
                 y < ZoneSystem.instance.m_waterLevel + 0.3f)

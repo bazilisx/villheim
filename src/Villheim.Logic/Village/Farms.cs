@@ -12,8 +12,12 @@ namespace Villheim.Logic.Village
     /// - Each farm wants 6 plants plus 4 per village tier (at most 18), in rows behind the building (away from the
     ///   hearth), off paths and other buildings. The farmer plants them one at a time (see Villagers.Farming).
     /// - Each farm wants 1 animal plus 1 per tier (at most 4). One new animal comes per in-game day per village: a
-    ///   grown boar for a farm with none, a piglet once it has one. They are tamed, marked as the village's, and the
-    ///   game's own breeding is switched off for them, so herds never grow past what the village allows.
+    ///   grown boar for a farm with none, a piglet once it has one. So babies come when the village reaches a new
+    ///   stage (the farm wants one more) or to take the place of an animal that died or was killed (D-015). They are
+    ///   tamed and marked as the village's.
+    /// - Village animals never breed by themselves and never eat (NoBreedingPatch, NoEatingPatch): the herd only grows
+    ///   on the schedule, and no real food is used. The farmer acts out feeding (Villagers.Farming, Tend). Animals
+    ///   tamed by players carry no village mark and behave as in vanilla.
     /// </summary>
     internal static class Farms
     {
@@ -163,7 +167,8 @@ namespace Villheim.Logic.Village
                 List<Character> herd = Herd(hearth, farm);
                 foreach (Character animal in herd)
                 {
-                    // The game's own breeding stays off: the village decides how many animals there are.
+                    // The game's own breeding stays off: the village decides how many animals there are (the
+                    // component switched off, and NoBreedingPatch, since its timer runs even when it is off).
                     Procreation procreation = animal.GetComponent<Procreation>();
                     if (procreation != null && procreation.enabled)
                     {
@@ -222,6 +227,36 @@ namespace Villheim.Logic.Village
             }
 
             return herd;
+        }
+
+        /// <summary>The animal was spawned by a village (or grew up from one of its piglets).</summary>
+        private static bool IsVillageAnimal(Component component)
+        {
+            ZNetView view = component != null ? component.GetComponent<ZNetView>() : null;
+            return view != null && view.IsValid() && view.GetZDO().GetInt(Keys.BuiltBy) != 0;
+        }
+
+        /// <summary>Village animals never breed by themselves (D-015). The game's breeding check runs on a timer.</summary>
+        [HarmonyLib.HarmonyPatch(typeof(Procreation), nameof(Procreation.Procreate))]
+        internal static class NoBreedingPatch
+        {
+            private static bool Prefix(Procreation __instance) => !IsVillageAnimal(__instance);
+        }
+
+        /// <summary>Village animals never eat food lying about (D-015: no real food is used).</summary>
+        [HarmonyLib.HarmonyPatch(typeof(MonsterAI), nameof(MonsterAI.UpdateConsumeItem))]
+        internal static class NoEatingPatch
+        {
+            private static bool Prefix(MonsterAI __instance, ref bool __result)
+            {
+                if (!IsVillageAnimal(__instance))
+                {
+                    return true;
+                }
+
+                __result = false;
+                return false;
+            }
         }
 
         /// <summary>

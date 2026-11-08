@@ -14,6 +14,9 @@ namespace Villheim.Logic.Village
     /// as the village has what a wood chest costs. What spilled out is picked up again like any other drop.
     ///
     /// While the chest is not loaded (nobody nearby) the village pays from its saved-up stock instead.
+    ///
+    /// The storage chests (D-016, see StorageChests) count as part of it: Count on the main chest includes what they
+    /// hold, and Take pays from the main chest first and then from them, so the builder takes from any of them.
     /// </summary>
     internal static class VillageChest
     {
@@ -232,6 +235,29 @@ namespace Villheim.Logic.Village
             return state.Get(material) + (chest != null ? Count(chest, material) : 0);
         }
 
+        /// <summary>
+        /// What the village holds of each building material, wherever it is kept: the main chest, the storage chests
+        /// and the saved-up stock (D-007).
+        /// </summary>
+        public static Dictionary<string, int> Holdings(VillageHearth hearth)
+        {
+            var held = new Dictionary<string, int>();
+            var state = new VillageState(hearth.Zdo);
+            foreach (string material in Materials.Tracked)
+            {
+                held[material] = HaveAnywhere(hearth, state, material);
+            }
+
+            return held;
+        }
+
+        /// <summary>What the village has of a material in all its chests (Have counts the storage chests too) plus saved up.</summary>
+        public static int HaveAnywhere(VillageHearth hearth, VillageState state, string material) => Have(hearth, state, material);
+
+        /// <summary>The village a main chest belongs to, or 0 for any other chest.</summary>
+        public static int VillageOf(Container chest) =>
+            chest && chest.m_nview && chest.m_nview.IsValid() ? chest.m_nview.GetZDO().GetInt(KeyChestVillage) : 0;
+
         /// <summary>Moves everything the village has saved up into the chest, as far as it fits.</summary>
         public static void MoveStockIn(VillageHearth hearth, VillageState state)
         {
@@ -280,7 +306,24 @@ namespace Villheim.Logic.Village
             return !chest.IsInUse() || chest.m_nview.IsOwner();
         }
 
+        /// <summary>What a chest holds of a material. For a village's main chest, its storage chests count too (D-016).</summary>
         public static int Count(Container chest, string material)
+        {
+            int count = CountIn(chest, material);
+            int village = VillageOf(chest);
+            if (village != 0)
+            {
+                foreach (Container storage in StorageChests.Of(village))
+                {
+                    count += CountIn(storage, material);
+                }
+            }
+
+            return count;
+        }
+
+        /// <summary>What this one chest holds of a material.</summary>
+        public static int CountIn(Container chest, string material)
         {
             string name = Materials.SharedName(material);
             return chest && name != null && chest.GetInventory() != null ? chest.GetInventory().CountItems(name) : 0;
@@ -295,7 +338,7 @@ namespace Villheim.Logic.Village
             int total = 0;
             foreach (string material in Materials.Tracked)
             {
-                total += Count(chest, material);
+                total += CountIn(chest, material);
             }
 
             return total;
@@ -332,7 +375,10 @@ namespace Villheim.Logic.Village
             return added;
         }
 
-        /// <summary>Takes all of the given amounts, or nothing if the chest is short of any of them.</summary>
+        /// <summary>
+        /// Takes all of the given amounts, or nothing if the chest is short of any of them. From a main chest, what it
+        /// lacks comes out of the village's storage chests (D-016).
+        /// </summary>
         public static bool Take(Container chest, Dictionary<string, int> amounts)
         {
             if (!Usable(chest))
@@ -340,21 +386,45 @@ namespace Villheim.Logic.Village
                 return false;
             }
 
+            int village = VillageOf(chest);
+            List<Container> sources = new List<Container> { chest };
+            if (village != 0)
+            {
+                sources.AddRange(StorageChests.Of(village).Where(Usable));
+            }
+
             foreach (KeyValuePair<string, int> amount in amounts)
             {
-                if (amount.Value > 0 && Count(chest, amount.Key) < amount.Value)
+                if (amount.Value > 0 && sources.Sum(c => CountIn(c, amount.Key)) < amount.Value)
                 {
                     return false;
                 }
             }
 
-            Claim(chest);
             foreach (KeyValuePair<string, int> amount in amounts)
             {
+                int left = amount.Value;
+                string name = Materials.SharedName(amount.Key);
+                foreach (Container source in sources)
+                {
+                    int take = Mathf.Min(left, CountIn(source, amount.Key));
+                    if (take <= 0)
+                    {
+                        continue;
+                    }
+
+                    Claim(source);
+                    source.GetInventory().RemoveItem(name, take);
+                    left -= take;
+                    if (left <= 0)
+                    {
+                        break;
+                    }
+                }
+
                 if (amount.Value > 0)
                 {
-                    chest.GetInventory().RemoveItem(Materials.SharedName(amount.Key), amount.Value);
-                    VillheimPlugin.Debug($"Took {amount.Value} {Materials.Label(amount.Key)} from the site chest, " +
+                    VillheimPlugin.Debug($"Took {amount.Value} {Materials.Label(amount.Key)} from the village chests, " +
                                          $"{Count(chest, amount.Key)} left{(chest.IsInUse() ? " (chest open)" : "")}.");
                 }
             }
@@ -362,7 +432,7 @@ namespace Villheim.Logic.Village
             return true;
         }
 
-        private static void Claim(Container chest)
+        internal static void Claim(Container chest)
         {
             if (!chest.m_nview.IsOwner() && !chest.IsInUse())
             {

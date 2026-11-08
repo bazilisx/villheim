@@ -16,12 +16,16 @@ namespace Villheim.Logic.Village
     /// - A caravan is a line on the source hearth's ZDO: who sends it, where to, what it carries, when it left and its
     ///   pace (CaravanMetresPerDay, 2,400 m a day as in Living Factions). Where it is follows from the time alone, so
     ///   nothing has to run while nobody is near; it goes along the planned trail when there is one, else straight.
-    /// - Trade caravans: once a day (CaravanChancePerDay) a village with more than it needs of something sends up to
+    /// - Travellers (D-008, the default): with CaravanDeliveries off, a caravan carries no village goods. Once a day
+    ///   (CaravanChancePerDay) a village sends a trader down the trail to a neighbour with an empty load; near a
+    ///   player he is a person on the road, and Shift + Use on him opens his pack (his own wares, for coins). He
+    ///   stays at the far hearth a while as a visiting pedlar. Goods never move from one village's chest to another.
+    /// - Trade caravans (only with CaravanDeliveries on): once a day a village with more than it needs of something sends up to
     ///   20 of one or two things to the village within CaravanReach that lacks them most: what its biome does not
     ///   give first (core wood to a Meadows village, fine wood to a Black Forest one), then what its stock is low on.
     ///   Never to a village it is wary of or hostile to. The goods leave the chest at once.
     /// - Hauls: an outpost's load carried home along its trail (Outposts.cs).
-    /// - Settlers: people going off to found a daughter village (Daughters.cs).
+    /// - Settlers: people going off to found a daughter village (Daughters.cs, off by default since D-010).
     /// - The destination's hearth owner takes the load into its stock once the caravan is due, and keeps the id so
     ///   it is taken once; the source forgets the record when the destination has it (or after twenty days).
     /// - Near a player (100 m) the caravan is a real person walking the road (wanderer kind "carrier"), a little ahead
@@ -66,6 +70,9 @@ namespace Villheim.Logic.Village
 
         private static bool On => LogicConfig.WorldLife != null && LogicConfig.WorldLife.Value &&
                                   (LogicConfig.Caravans == null || LogicConfig.Caravans.Value);
+
+        /// <summary>Caravans carry village goods to other villages (off by default, D-008).</summary>
+        private static bool Deliveries => LogicConfig.CaravanDeliveries != null && LogicConfig.CaravanDeliveries.Value;
 
         private static double Now => ZNet.instance != null ? ZNet.instance.GetTimeSeconds() : Time.time;
 
@@ -336,6 +343,13 @@ namespace Villheim.Logic.Village
             {
                 case Trade:
                     Relations.Visited(hearth, c.From);
+                    if (c.Cargo.Count == 0)
+                    {
+                        // A traveller with his own pack: nothing for the stock.
+                        Chronicle.Add(hearth, $"{Names.Villager(c.Seed, Cultures.Of(source))}, a trader from {from}, came by on the trail.");
+                        break;
+                    }
+
                     Chronicle.Add(hearth, $"{Names.Villager(c.Seed, Cultures.Of(source))} came with a load from {from}: {c.CargoText()}.");
                     Dialogue.Note(state.Id, "cargo");
                     break;
@@ -385,7 +399,41 @@ namespace Villheim.Logic.Village
                 return;
             }
 
-            SendTrade(hearth, state, out _);
+            if (Deliveries)
+            {
+                SendTrade(hearth, state, out _);
+            }
+            else
+            {
+                SendTraveller(hearth, state, out _);
+            }
+        }
+
+        /// <summary>
+        /// A trader sets out for a neighbour with his own pack and nothing from the chest (D-008). He picks a village
+        /// within CaravanReach this one is not wary of, the nearest first, and prefers one joined by a trail.
+        /// </summary>
+        internal static bool SendTraveller(VillageHearth hearth, VillageState state, out string why)
+        {
+            float reach = LogicConfig.CaravanReach != null ? LogicConfig.CaravanReach.Value : 2500f;
+            Vector3 home = hearth.transform.position;
+            ZDO to = Relations.AllHearths()
+                .Where(o => o.GetInt(Keys.VillageId) != state.Id && Utils.DistanceXZ(o.GetPosition(), home) <= reach &&
+                            Relations.View(hearth.Zdo, o.GetInt(Keys.VillageId)) > -15)
+                .OrderBy(o => Utils.DistanceXZ(o.GetPosition(), home) * (Trails.Between(hearth.Zdo, o) != null ? 0.5f : 1f))
+                .FirstOrDefault();
+            if (to == null)
+            {
+                why = "no village in reach to travel to";
+                return false;
+            }
+
+            int toId = to.GetInt(Keys.VillageId);
+            bool trail = Trails.Between(hearth.Zdo, to) != null;
+            Caravan c = Send(hearth, Trade, toId, home, to.GetPosition(), null, trail ? "n" : "s");
+            Chronicle.Add(hearth, $"{Names.Villager(c.Seed, Cultures.Of(hearth))} set out for {to.GetString(Keys.Name, "the next village")} with a trader's pack.");
+            why = null;
+            return true;
         }
 
         /// <summary>Sends the best load the village can spare to the village that lacks it most. False with a reason.</summary>
@@ -735,7 +783,8 @@ namespace Villheim.Logic.Village
             }
 
             var state = new VillageState(hearth.Zdo);
-            return SendTrade(hearth, state, out string why)
+            bool sent = Deliveries ? SendTrade(hearth, state, out string why) : SendTraveller(hearth, state, out why);
+            return sent
                 ? Describe(hearth) + (On ? "" : " (WorldLife or Caravans is off: nobody walks it and nothing arrives until they are on)")
                 : $"{state.Name} sends nothing: {why}.";
         }

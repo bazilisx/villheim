@@ -158,7 +158,7 @@ I'm getting good at this, you know. // I know. You keep telling me.
 Taste this. // It's good. // Only good? // Very good. // That's better.
 
 @ chat, goodday
-I've done a whole day's work already. // It's barely midday. // I know!
+I'm in a fine mood today. // It's barely midday. // I know!
 
 # ------------------------------------------------------------------ wants and moods
 

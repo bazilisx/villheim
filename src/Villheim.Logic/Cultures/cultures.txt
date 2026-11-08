@@ -9,7 +9,8 @@
 #   base = key            copy every field of that culture first (a "+" field adds to the copied list)
 #   name                  shown in commands
 #   people                group tag for dialogue lines (people:norse, people:celtic...)
-#   leader                title of the village's first settler (the Norse say Jarl)
+#   leader                title of the village's first settler, short and plain (the Norse say Jarl). Tyler's list
+#                         (D-040): Jarl, Reeve, Lord, Chief, Elder, Sheikh, Archon, Beg
 #   male, female          given names, separated by commas
 #   surname               none, norse (father's name + son or daughter), mac (mac or ingen + father), ibn (ibn or
 #                         bint + father), slavic (father's name + ich or na), de (de + a place from "seats"),
@@ -91,7 +92,7 @@ helmet = HelmetHat*@1:0.3
 [frankish-norman]
 name = Frankish and Norman
 people = frankish-norman
-leader = Seneschal
+leader = Lord
 male = Alan, Anschetil, Arnulf, Baldric, Baldwin, Berengar, Bernard, Drogo, Eudo, Fulk, Geoffrey, Gerard, Gilbert, Giroie, Godfrey, Goscelin, Guy, Hamon, Herluin, Hervey, Hubert, Hugh, Humphrey, Ivo, Lanfranc, Neel, Odo, Osbern, Osmund, Rainald, Ralph, Ranulf, Richard, Robert, Roger, Rollo, Serlo, Tancred, Theobald, Turstin, Waleran, Walter, Warin, William
 female = Adela, Adelaide, Adeliza, Agnes, Albreda, Alberada, Alice, Amice, Aubree, Avelina, Avice, Basilia, Beatrice, Cecily, Constance, Duda, Emma, Eremburga, Ermengarde, Gerberga, Gisela, Godehilde, Gundreda, Gunnor, Hawise, Helisende, Herleva, Hildeburg, Ida, Isabel, Judith, Juliana, Lesceline, Mabel, Matilda, Muriel, Papia, Petronilla, Rohais, Sibyl, Sprota
 surname = de
@@ -141,7 +142,7 @@ places.end = more, beg, glas, dubh, ban, liath, na, uisce
 [slavic]
 name = Slavic
 people = slavic
-leader = Starosta
+leader = Elder
 male = Bogdan, Bogumil, Boleslav, Boris, Borislav, Bozhidar, Bratislav, Budimir, Dalibor, Dobromir, Dobroslav, Dobrynya, Gleb, Gostomysl, Igor, Kazimir, Krasimir, Lubomir, Mieszko, Miroslav, Mstislav, Oleg, Premysl, Putyata, Radim, Radomir, Radoslav, Ratibor, Rostislav, Stanislav, Svyatopolk, Svyatoslav, Tihomir, Velimir, Vladimir, Vladislav, Vojtech, Volodar, Vratislav, Vseslav, Vsevolod, Yaropolk, Yaroslav, Zbigniew, Zdeslav, Ziemomysl, Zvonimir
 female = Bogdana, Bogumila, Bozhena, Branislava, Dobrava, Dobroslava, Dragomira, Dragoslava, Gorislava, Gostislava, Kazimira, Libuse, Lubava, Lyudmila, Malusha, Milada, Milena, Miloslava, Miroslava, Mlada, Olga, Predslava, Radmila, Radoslava, Rogneda, Rostislava, Stanislava, Svyatoslava, Velislava, Verkhuslava, Vlasta, Yaroslava, Zbyslava, Zlata, Zvenislava, Dobronega, Gremislava, Vysheslava, Boguslava, Desislava
 surname = slavic
@@ -163,7 +164,7 @@ chest = f:ArmorDress*@1:0.4
 [baltic]
 name = Baltic
 people = baltic
-leader = Elder
+leader = Chief
 male = Algirdas, Butigeidis, Daugirdas, Daumantas, Eivydas, Erdvilas, Gediminas, Gerdenis, Glande, Herkus, Jogaila, Karijotas, Kaributas, Kestutis, Lengvenis, Liubartas, Mantvilas, Mindaugas, Nalubas, Narimantas, Rimgaudas, Sirvydas, Skirgaila, Skomantas, Survila, Svitrigaila, Tautvilas, Traidenis, Treniota, Vaidotas, Vaisvilkas, Vismantas, Vykintas, Vytautas, Vytenis, Auktumas, Kintautas, Mantas, Gintautas, Vilius, Rimvydas, Butautas
 female = Aldona, Algirde, Ausra, Birute, Daina, Danute, Daugirde, Daumante, Dovile, Egle, Eivyde, Gaile, Gaivile, Gedvile, Giedre, Jogaile, Jurate, Kestute, Liepa, Mintaute, Rasa, Rimante, Rimgaile, Ruta, Skaiste, Tautvile, Ugne, Vaida, Vaiva, Vilte, Vismante, Gintaute, Mantvile, Butigeide, Survile, Rimvyde, Erdvile, Skirgaile, Vytaute, Kintaute
 surname = none
@@ -180,7 +181,7 @@ cape = CapeDeerHide@0:1
 [fen-folk]
 name = Frisian fen folk
 people = fen-folk
-leader = Headman
+leader = Chief
 male = Abba, Aldgisl, Bote, Douwe, Edzard, Eppo, Feddo, Folkert, Gerulf, Haio, Hero, Hessel, Hidde, Ibbo, Jarich, Juw, Keno, Liudger, Lubbert, Menno, Ocko, Onno, Popke, Poppo, Radbod, Reinert, Ricklef, Sibet, Sicco, Sjoerd, Sjuck, Sytse, Tako, Tammo, Tiard, Tjalling, Ubbo, Uko, Unico, Wiard, Wibe, Worp
 female = Aaltje, Antje, Ats, Auck, Aukje, Bauke, Baukje, Elske, Eta, Foelke, Frouke, Froukje, Geeske, Gela, Hebe, Hilke, Hima, Hiske, Ida, Imke, Jelske, Lutske, Ocka, Reina, Rixt, Sjoukje, Tetta, Theda, Tjetske, Tjitske, Wietske, Wobbe, Wypkje, Ymke, Swaantje, Teetje, Hiltje, Sibbel, Jeltje, Tryn
 surname = none
@@ -221,7 +222,7 @@ helmet = HelmetHat*@1:0.4
 [middle-eastern]
 name = Persian and Arab
 people = middle-eastern
-leader = Kadkhuda
+leader = Sheikh
 male = Abbas, Ahmad, Ali, Ardashir, Arash, Babak, Bahram, Bijan, Dariush, Farhad, Faridun, Firuz, Hamid, Hamza, Harun, Hasan, Husayn, Ibrahim, Ismail, Jafar, Jamshid, Karim, Kaveh, Khalid, Khosrow, Mahmud, Malik, Mansur, Mardavij, Marzban, Masud, Mehran, Mubarak, Nasir, Nasr, Nuh, Parviz, Qabus, Qasim, Rashid, Rustam, Saad, Sahl, Salim, Shapur, Siyavash, Sohrab, Tahir, Umar, Walid, Yaqub, Yusuf, Zahir, Zayd, Ziyar
 female = Aisha, Amina, Asma, Azar, Banu, Farangis, Fatima, Firuza, Gordiya, Habiba, Hafsa, Hind, Homa, Jamila, Khadija, Khayzuran, Laila, Mahbanu, Mahsati, Maryam, Munira, Nasrin, Nur, Pari, Parvin, Purandokht, Rabia, Roshan, Ruqayya, Safiya, Salma, Samira, Shahrbanu, Shirin, Sitara, Soraya, Sukayna, Tahmina, Ulayya, Yasmin, Zahra, Zaynab, Zubayda, Zarin
 surname = ibn
@@ -242,7 +243,7 @@ cape = CapeLinen@2:1.5
 [byzantine]
 name = Byzantine
 people = byzantine
-leader = Protokometes
+leader = Archon
 male = Alexios, Anastasios, Andreas, Andronikos, Bardas, Basil, Christophoros, Constantine, Demetrios, Eudokimos, Eustathios, Euthymios, Georgios, Gregorios, Ignatios, Ioannes, Isaakios, Kosmas, Kyrillos, Leo, Leontios, Loukas, Manuel, Markianos, Methodios, Michael, Nikephoros, Niketas, Nikolaos, Nikon, Pankratios, Petros, Philippos, Photios, Romanos, Sergios, Stavrakios, Stephanos, Symeon, Tarasios, Theodoros, Theodosios, Theophanes, Theophilos, Thomas
 female = Agathe, Aikaterine, Anastasia, Anna, Anthousa, Barbara, Christina, Danielis, Eirene, Eudokia, Eudoxia, Eugenia, Euphemia, Euphrosyne, Helena, Kale, Kassia, Makrina, Maria, Marina, Martina, Olympias, Paraskeve, Pelagia, Prokopia, Pulcheria, Sophia, Thekla, Theodora, Theodote, Theoktiste, Theophano, Thomais, Xenia, Zoe, Agnes, Ioanna, Melania, Sophronia, Kallinike
 surname = list
@@ -282,7 +283,7 @@ helmet = HelmetLeather@1:0.6
 [caucasian-highland]
 name = Caucasian highland
 people = caucasian
-leader = Mamasakhlisi
+leader = Elder
 male = Abas, Adarnase, Artavazd, Ashot, Bagrat, Bakur, Davit, Demetre, Derenik, Gagik, Giorgi, Grigol, Grigor, Guaram, Gurgen, Hamazasp, Hovhannes, Ioane, Ivane, Kakhaber, Khachik, Kvirike, Liparit, Mamia, Mikael, Mirian, Mushegh, Nerses, Parsman, Rati, Sargis, Senekerim, Shota, Smbat, Stepanoz, Sumbat, Tigran, Tornike, Vahram, Vakhtang, Varaz, Vardan, Vasak, Zakaria
 female = Anoush, Ashkhen, Borena, Burdukhan, Dedisimedi, Elene, Elisabed, Gayane, Gohar, Gurandukht, Hasmik, Katranide, Ketevan, Khoshak, Khvaramze, Lusine, Mariam, Marta, Mlke, Nino, Nvard, Rusudan, Salome, Satenik, Shahandukht, Shushan, Shushanik, Sopio, Taguhi, Tamar, Tekla, Tinatin, Zabel, Ana, Mzekhatun, Varduhi, Arpine, Gulkan, Natela, Siranush
 surname = list

@@ -147,6 +147,10 @@ namespace Villheim.Logic.Villagers
                 {
                     // Laying a path: background work, before free time.
                 }
+                else if (Sorting.Update(villager, ai, dt))
+                {
+                    // Carrying stacks from the full main chest to the storage chests (D-016).
+                }
                 else if (Hunting.Update(villager, ai, dt))
                 {
                     // A protector hunts when the chest is low on food.

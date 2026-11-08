@@ -13,7 +13,7 @@ namespace Villheim.Logic.Villagers
     ///   calendar) he is an elder: the chronicle says so, he leaves felling, mining and hauling to others unless he is
     ///   the village's builder, and he tells old stories from the chronicle (tags lifestage:elder, elder:story;
     ///   fill-ins {chronicle}, {chronicleday}, {yearshere}).
-    /// - With WorldLife and ElderDeaths on, from ElderDeathDays (60) an elder has ElderDeathChance (2%) each morning of
+    /// - Elders do not die of age by default (D-003). With WorldLife and EldersDieOfAge on, from ElderDeathDays (60) an elder has ElderDeathChance (2%) each morning of
     ///   dying in his sleep: a chronicle line, mourning for everyone, news for the neighbours. No prosperity is lost.
     /// - A child born in the village takes one parent's homeland and the other's pastime (both from the household
     ///   at the birthplace).

@@ -17,9 +17,9 @@ namespace Villheim.Logic.Villagers
     /// after MineColonies' complementary and adverse pairs. Watching someone at work teaches a little of that work.
     ///
     /// Skill scales work: felling and mining blows and the time per building piece, from 0.8 at nothing to 1.3 at a
-    /// hundred. A happy villager now and then has a good day (after RimWorld's work frenzy, much milder): a quarter
-    /// faster at everything until the day ends. Every tenth point is a small lift in mood; reaching 50 and 75 goes in
-    /// the chronicle. Dialogue tags: skill:x:novice/good/master, doingskill:novice/good/master for the work at hand,
+    /// hundred. A happy villager now and then has a good day: a cheerful mood for the day and the goodday lines. His
+    /// work speed stays the same (D-014: mood changes free time only). Every tenth point is a small lift in mood;
+    /// reaching 50 and 75 goes in the chronicle. Dialogue tags: skill:x:novice/good/master, doingskill:novice/good/master for the work at hand,
     /// best:x, goodday; fill-ins {bestskill} {bestskillman} {skillword}.
     /// </summary>
     internal static class VillagerSkills
@@ -137,7 +137,7 @@ namespace Villheim.Logic.Villagers
 
         public static float Level(Villager villager, string skill) => skill != null && Read(villager).TryGetValue(skill, out float v) ? v : 0f;
 
-        /// <summary>How fast this villager works at this skill: 0.8 to 1.3, a quarter more on a good day.</summary>
+        /// <summary>How fast this villager works at this skill: 0.8 to 1.3. Mood plays no part (D-014).</summary>
         public static float WorkFactor(Villager villager, string skill)
         {
             if (!LogicConfig.IsOn(LogicConfig.VillagerSkills)) return 1f;
@@ -147,8 +147,7 @@ namespace Villheim.Logic.Villagers
                 return 1f;
             }
 
-            float factor = 0.8f + Mathf.Clamp(Level(villager, skill), 0f, 100f) * 0.005f;
-            return GoodDay(villager) ? factor * 1.25f : factor;
+            return 0.8f + Mathf.Clamp(Level(villager, skill), 0f, 100f) * 0.005f;
         }
 
         /// <summary>Once a day a happy villager may wake up to a good day: (mood - 60) percent, at most 40.</summary>

@@ -7,7 +7,8 @@ namespace Villheim.Logic.Village
 {
     /// <summary>
     /// Boss trophies open the next stage (proposal 10, after VikingColonies' and Friendlies' boss tiers and
-    /// MineColonies' research gates; ideas only, our own code). Needs WorldLife and BossStages on.
+    /// MineColonies' research gates; ideas only, our own code). Needs WorldLife and BossStageCap on. Off by default:
+    /// growth follows materials, people and needs, never bosses felled (Tyler, 2026-11-08, D-004). The code is kept.
     ///
     /// - A village can grow to stage BossStageStart (2, a hamlet) plus one per boss felled: the world's boss keys
     ///   (defeated_eikthyr and the rest), the boss trophies hung on item stands within the village, or either
@@ -166,7 +167,7 @@ namespace Villheim.Logic.Village
         {
             var state = new VillageState(hearth.Zdo);
             HashSet<int> felled = Felled(hearth);
-            return $"boss stages {(On ? "on" : "off (needs WorldLife and BossStages)")}: stage {Living.Stage(state)} of at most {Cap(hearth)}; " +
+            return $"boss stages {(On ? "on" : "off (needs WorldLife and BossStageCap)")}: stage {Living.Stage(state)} of at most {Cap(hearth)}; " +
                    $"felled ({Source}): {(felled.Count > 0 ? string.Join(", ", felled.Select(i => Bosses[i].Name)) : "none")}; " +
                    $"trophies hung: {(Hung(hearth).Count > 0 ? string.Join(", ", Hung(hearth)) : "none")}";
         }

@@ -61,6 +61,20 @@ namespace Villheim.Logic
         public static ConfigEntry<string> OutpostGear;
         public static ConfigEntry<bool> VillageEvents;
         public static ConfigEntry<bool> Caravans;
+        public static ConfigEntry<bool> CaravanDeliveries;
+        public static ConfigEntry<bool> BroughtMaterials;
+        public static ConfigEntry<bool> WaterProofPieces;
+        public static ConfigEntry<string> BoardwalkCultures;
+        public static ConfigEntry<float> BoardwalkWetHeight;
+        public static ConfigEntry<bool> StorageChests;
+        public static ConfigEntry<string> StorageChestSteps;
+        public static ConfigEntry<int> StorageChestPeople;
+        public static ConfigEntry<int> StorageChestMax;
+        public static ConfigEntry<float> StorageSortAt;
+        public static ConfigEntry<string> WoodFirstBiomes;
+        public static ConfigEntry<int> StoneFromStage;
+        public static ConfigEntry<int> StoneHallFromStage;
+        public static ConfigEntry<int> EarlyStoneMax;
         public static ConfigEntry<bool> Daughters;
         public static ConfigEntry<bool> Contracts;
         public static ConfigEntry<bool> Groves;
@@ -89,6 +103,7 @@ namespace Villheim.Logic
         public static ConfigEntry<bool> SurroundingsTags;
         public static ConfigEntry<bool> TopicFatigue;
         public static ConfigEntry<bool> ChatScenes;
+        public static ConfigEntry<int> FeastPieces;
         public static ConfigEntry<bool> EventFever;
 
         /// <summary>True when the setting is on, or not bound yet (every system defaults to on).</summary>
@@ -191,6 +206,35 @@ namespace Villheim.Logic
             SiteChest = Admin(config, work, "SiteChest", true,
                 "Give each village a chest by its hearth. Villagers bring materials to it and the builder takes from it. " +
                 "Anything you drop in helps the village build. If it is destroyed, the villagers build a new one first.");
+            WoodFirstBiomes = Admin(config, work, "WoodFirstBiomes", "Meadows, BlackForest",
+                "Biomes whose villages build in wood at their early stages and in stone only later (comma separated).");
+            StoneFromStage = Admin(config, work, "StoneFromStage", 3,
+                "In WoodFirstBiomes: the stage a village must reach with its next building before it builds a design " +
+                "with more than EarlyStoneMax stone (1 camp, 2 hamlet, 3 village, 4 town).");
+            StoneHallFromStage = Admin(config, work, "StoneHallFromStage", 2,
+                "The same for the hall (the longhouse by the hearth): it may be built or rebuilt in stone from this stage.");
+            EarlyStoneMax = Admin(config, work, "EarlyStoneMax", 30,
+                "Stone a design may use and still count as a wooden building (a hearth, a fire pit, a few steps).");
+            StorageChests = Admin(config, work, "StorageChests", true,
+                "Extra wood chests by the main chest as the village grows, each with a sign for what it holds (wood, " +
+                "fine wood, core wood, stone, ore and metal, food, other). Villagers sort the main chest into them when it " +
+                "fills, and the builder takes from any of them.");
+            StorageChestSteps = Admin(config, work, "StorageChestSteps", "1:1, 2:2, 3:4",
+                "Storage chests by buildings standing, buildings:chests separated by commas. The default gives one with the " +
+                "first building, two with the second and four with the third.");
+            StorageChestPeople = Admin(config, work, "StorageChestPeople", 3,
+                "One more storage chest for every this many villagers past six. 0: none for people.");
+            StorageChestMax = Admin(config, work, "StorageChestMax", 8,
+                "Most storage chests a village keeps, counting the ones it adds when the main chest is full with " +
+                "nowhere to sort to (at most one a day).");
+            StorageSortAt = Admin(config, work, "StorageSortAt", 0.75f,
+                "How full the main chest (share of its slots) gets before a villager carries stacks to the storage chests.");
+            WaterProofPieces = Admin(config, work, "WaterProofPieces", true,
+                "Pieces a village built take no rain or water damage. Pieces players build keep the game's own wear.");
+            BoardwalkCultures = Admin(config, work, "BoardwalkCultures", "fen-folk, celtic-crannog",
+                "Cultures whose villages lay raised wooden walkways on poles instead of dirt paths over wet ground.");
+            BoardwalkWetHeight = Admin(config, work, "BoardwalkWetHeight", 0.8f,
+                "Ground no higher than this many metres over the water counts as wet for boardwalks.");
             SecondsPerPiece = Admin(config, work, "SecondsPerPiece", 2.5f,
                 "How long a builder hammers at each piece before it goes up.");
             StartingStock = Admin(config, work, "StartingStock", 0,
@@ -230,6 +274,10 @@ namespace Villheim.Logic
             OutpostGear = Admin(config, life, "OutpostGear", Village.Outposts.DefaultGear,
                 "Gear tier a village must have made before its people go out to a camp in that biome (0 rags, 1 leather, " +
                 "2 flint and leather, 3 troll leather, 4 bronze). Biome: tier, separated by semicolons.");
+            BroughtMaterials = Admin(config, work, "BroughtMaterials", true,
+                "Anything brought into the village counts toward what it can build, whoever brought it: a design that " +
+                "needs a material the biome does not give (core wood in the Meadows) can go up once the village's chests " +
+                "hold all of it the design needs. Villagers still only gather what their own land gives.");
             OutpostMaterials = Admin(config, life, "OutpostMaterials", true,
                 "What an outpost sends home counts toward what the village can build: a Meadows village with a logging " +
                 "camp in the Black Forest builds designs that need core wood.");
@@ -239,12 +287,17 @@ namespace Villheim.Logic
             EventChancePerDay = Admin(config, life, "EventChancePerDay", 0.35f,
                 "Chance that something happens in a village on a given day (0 to 1).");
             Caravans = Admin(config, life, "Caravans", true,
-                "With WorldLife on, villages send what they can spare to villages that lack it, along their trails. The " +
-                "caravan moves on the world clock and is a real person walking the road when you are near it.");
+                "With WorldLife on, traders travel the trails between villages, and outpost loads are carried home. A " +
+                "caravan moves on the world clock and is a real person walking the road when you are near it; Shift + Use " +
+                "on a trader opens his pack (his own wares, for coins).");
+            // Caravans no longer move goods between villages (Tyler, 2026-11-08, D-008).
+            CaravanDeliveries = Admin(config, life, "CaravanDeliveries", false,
+                "Off: a trader on the trail carries his own pack and nothing from a village chest. On (old behaviour): " +
+                "villages send what they can spare to villages that lack it.");
             CaravanChancePerDay = Admin(config, life, "CaravanChancePerDay", 0.3f,
-                "Chance that a village sends a trade caravan on a given day (0 to 1), when it has something to spare.");
+                "Chance that a village sends a trader down the trail on a given day (0 to 1).");
             CaravanMetresPerDay = Admin(config, life, "CaravanMetresPerDay", 2400f,
-                "How far a caravan, a haul or a party of settlers goes in an in-game day.");
+                "How far a caravan or a haul goes in an in-game day.");
             CaravanReach = Admin(config, life, "CaravanReach", 2500f,
                 "Villages farther apart than this (metres) do not send each other caravans.");
             OutpostsPerVillage = Admin(config, life, "OutpostsPerVillage", 2,
@@ -252,11 +305,14 @@ namespace Villheim.Logic
                 "its smith needs flint.");
             OutpostCarryAt = Admin(config, life, "OutpostCarryAt", 12,
                 "A camp sends its load home (a camper walks it along the trail) once it has gathered this much.");
-            Daughters = Admin(config, life, "Daughters", true,
-                "With WorldLife on, a full village (MaxVillagers or MaxBuildings) now and then sends two of its people to " +
-                "found a village of their own 600 to 1,200 m away. Its hearth is lit when you first come near the site.");
+            // One village per site, plus resource outposts (Tyler, 2026-11-08, D-010): a new key, off by default, so a
+            // config file written while "Daughters" was on doesn't keep it on. The code stays.
+            Daughters = Admin(config, life, "DaughterVillages", false,
+                "Off: a village never founds another; each site is one village plus its resource outposts. On (old " +
+                "behaviour, needs WorldLife): a full village now and then sends two of its people to found a village of " +
+                "their own 600 to 1,200 m away.");
             DaughtersPerVillage = Admin(config, life, "DaughtersPerVillage", 2,
-                "Most daughter villages one village founds.");
+                "With DaughterVillages on: most daughter villages one village founds.");
             DaughterChancePerDay = Admin(config, life, "DaughterChancePerDay", 0.25f,
                 "Chance a full village sends settlers on a given day (0 to 1), at most one party every ten days.");
             Contracts = Admin(config, life, "Contracts", true,
@@ -302,7 +358,7 @@ namespace Villheim.Logic
                 "Each villager wants something for a few days (a bed, a feast, to court a friend, to make peace...) and " +
                 "is glad when it comes. Off: no new wants and no sweethearts.");
             Gatherings = Admin(config, minds, "Gatherings", true,
-                "The village turns out for a finished building, a newcomer or a pedlar, feasts on good days and hears the " +
+                "The village turns out for a big finished building, a newcomer or a pedlar, feasts on good days and hears the " +
                 "evening words at the hearth. Off: a few villagers come to look, as before.");
             Noticing = Admin(config, minds, "Noticing", true,
                 "Villagers remark on the weather turning, dawn and dusk, a boss felled, animals and enemies in sight, and " +
@@ -315,6 +371,9 @@ namespace Villheim.Logic
                 "carry. Off: those lines are not picked.");
             TopicFatigue = Admin(config, minds, "TopicFatigue", true,
                 "A topic you have heard a lot of lately is picked less often. Off: every line keeps its weight.");
+            FeastPieces = Admin(config, minds, "FeastPieces", 150,
+                "A finished building makes the evening a feast when it is a hall, a new home, or has at least this many " +
+                "pieces. Smaller ones (sheds, pens, rebuilt homes under this size) get a short look from a few villagers.");
             ChatScenes = Admin(config, minds, "ChatScenes", true,
                 "Chats between villagers fit the pair (friend, rival, sweetheart, trade), pass on what they know of you, " +
                 "and get answers in each one's own voice and a third villager chiming in. Off: plain chats, as before.");
@@ -432,14 +491,14 @@ namespace Villheim.Logic
         public static (string Name, ConfigEntry<bool> Entry)[] Switches => new[]
         {
             ("WorldLife", WorldLife), ("Outposts", Outposts), ("Trails", Trails), ("TrailSigns", TrailSigns),
-            ("VillageEvents", VillageEvents), ("EventFever", EventFever), ("Caravans", Caravans), ("Daughters", Daughters),
+            ("VillageEvents", VillageEvents), ("EventFever", EventFever), ("Caravans", Caravans), ("DaughterVillages", Daughters),
             ("Contracts", Contracts), ("Groves", Groves), ("PlayerMemory", PlayerMemory), ("VillagerSkills", VillagerSkills),
             ("VillagerWants", VillagerWants), ("Gatherings", Gatherings), ("Noticing", Noticing), ("IdleGlances", IdleGlances),
             ("SurroundingsTags", SurroundingsTags), ("TopicFatigue", TopicFatigue), ("ChatScenes", ChatScenes),
             ("Prosperity", Prosperity), ("Expectations", Expectations), ("Calendar", Calendar), ("Festivals", Festivals),
-            ("WinterStores", WinterStores), ("PlayerStanding", PlayerStanding), ("Hostility", Hostility), ("Complaints", Complaints), ("Leaving", Leaving),
-            ("VisitorJudging", VisitorJudging), ("WantPile", WantPile), ("BossStages", BossStages), ("Elders", Elders),
-            ("ElderDeaths", ElderDeaths), ("Neighbours", Neighbours), ("Horn", Horn), ("HelpPlayers", HelpPlayers),
+            ("WinterStores", WinterStores), ("PlayerStanding", PlayerStanding), ("Hostility", Hostility), ("Complaints", Complaints), ("VillagersLeave", Leaving),
+            ("VisitorJudging", VisitorJudging), ("WantPile", WantPile), ("BossStageCap", BossStages), ("Elders", Elders),
+            ("EldersDieOfAge", ElderDeaths), ("Neighbours", Neighbours), ("Horn", Horn), ("HelpPlayers", HelpPlayers),
             ("VillageKnowledge", VillageKnowledge), ("KnowledgeGearGate", KnowledgeGearGate), ("KnowledgeRequests", KnowledgeRequests),
             ("HarvestReach", HarvestReach), ("MapTable", MapTable),
             ("Cultures", Cultures), ("CultureSurnames", CultureSurnames), ("CultureDesigns", CultureDesigns),
@@ -514,17 +573,19 @@ namespace Villheim.Logic
             ForgivePerDay = Admin(config, living, "ForgivePerDay", 1,
                 "Points a bad standing comes back toward zero each day.");
             Complaints = Admin(config, living, "Complaints", true,
-                "A villager without a bed, food or safety for days complains, then asks a player for it, then (with " +
-                "WorldLife and Leaving on) leaves.");
+                "A villager without a bed, food or safety for days complains, then asks a player for it. He stays in the " +
+                "village whatever happens (Leaving is off by default).");
             ComplainAfterDays = Admin(config, living, "ComplainAfterDays", 3, "Days without a need before complaining.");
             DemandAfterDays = Admin(config, living, "DemandAfterDays", 6, "Days without a need before asking a player for it.");
-            LeaveAfterDays = Admin(config, living, "LeaveAfterDays", 10, "Days without a need before leaving.");
-            Leaving = Admin(config, living, "Leaving", true,
-                "With WorldLife on, villagers can leave: one who lacked a need too long, or the least content when the " +
-                "whole village is glum for days. They walk to the friendliest neighbour and settle there when it has a " +
-                "free bed.");
-            ExodusMood = Admin(config, living, "ExodusMood", 25, "Village mood below which people start to think of leaving.");
-            ExodusDays = Admin(config, living, "ExodusDays", 3, "Days in a row below ExodusMood before someone leaves.");
+            LeaveAfterDays = Admin(config, living, "LeaveAfterDays", 10, "With VillagersLeave on: days without a need before leaving.");
+            // Villagers never move away (Tyler, 2026-11-08, D-003): a new key, off by default, so a config file
+            // written while "Leaving" was on doesn't keep it on. The code stays.
+            Leaving = Admin(config, living, "VillagersLeave", false,
+                "Off: villagers never leave their village. On (old behaviour, needs WorldLife): one who lacked a need " +
+                "too long, or the least content when the whole village is glum for days, walks to the friendliest " +
+                "neighbour and settles there when it has a free bed.");
+            ExodusMood = Admin(config, living, "ExodusMood", 25, "With VillagersLeave on: village mood below which people start to think of leaving.");
+            ExodusDays = Admin(config, living, "ExodusDays", 3, "With VillagersLeave on: days in a row below ExodusMood before someone leaves.");
             VisitorJudging = Admin(config, living, "VisitorJudging", true,
                 "Pedlars and pilgrims judge their stay (weather, a fight, the village's mood, a feast). A good stay " +
                 "warms their home village to this one and may leave a gift; a bad one cools it and keeps visitors away " +
@@ -532,20 +593,24 @@ namespace Villheim.Logic
             WantPile = Admin(config, living, "WantPile", true,
                 "A pile or item stand beside the village chest shows what the village wants most, readable from afar. " +
                 "Filling it within a day cheers the village.");
-            BossStages = Admin(config, living, "BossStages", true,
-                "With WorldLife on, each boss felled (or its trophy hung on an item stand in the village) lets villages " +
-                "grow one stage further. Homes for villagers without a bed are always allowed.");
+            // Growth follows materials, people and needs, never bosses felled (Tyler, 2026-11-08, D-004). New key, off.
+            BossStages = Admin(config, living, "BossStageCap", false,
+                "Off: growth follows materials, people and needs, and bosses felled never hold a village back. On (old " +
+                "behaviour, needs WorldLife): each boss felled (or its trophy hung on an item stand in the village) lets " +
+                "villages grow one stage further.");
             BossStageStart = Admin(config, living, "BossStageStart", 2,
-                "Stage a village can reach with no boss felled: 1 camp, 2 hamlet, 3 village, 4 town.");
+                "With BossStageCap on: stage a village can reach with no boss felled: 1 camp, 2 hamlet, 3 village, 4 town.");
             BossStageSource = Admin(config, living, "BossStageSource", "Either",
-                "What counts as a boss felled: Keys (the world's boss keys), Trophies (hung in the village) or Either.");
+                "With BossStageCap on: what counts as a boss felled: Keys (the world's boss keys), Trophies (hung in the village) or Either.");
             Elders = Admin(config, living, "Elders", true,
                 "Villagers who have lived in a village long enough are elders: they leave felling and mining to others " +
                 "and tell the village's old stories.");
             ElderDays = Admin(config, living, "ElderDays", 40, "Days in the village before a villager is an elder.");
-            ElderDeaths = Admin(config, living, "ElderDeaths", true,
-                "With WorldLife on, very old elders may die in their sleep and are mourned.");
-            ElderDeathDays = Admin(config, living, "ElderDeathDays", 60, "Days in the village before an elder may die of age.");
+            // Elders do not die of age (Tyler, 2026-11-08, D-003). New key, off.
+            ElderDeaths = Admin(config, living, "EldersDieOfAge", false,
+                "Off: elders live on. On (old behaviour, needs WorldLife): very old elders may die in their sleep and are " +
+                "mourned.");
+            ElderDeathDays = Admin(config, living, "ElderDeathDays", 60, "With EldersDieOfAge on: days in the village before an elder may die of age.");
             ElderDeathChance = Admin(config, living, "ElderDeathChance", 0.02f, "Chance each morning, from ElderDeathDays on.");
             Neighbours = Admin(config, living, "Neighbours", true,
                 "Villagers pick beds near their friend and away from their rival, and are glad or sour about who lives " +
@@ -617,6 +682,11 @@ namespace Villheim.Logic
                 "Which cultures a village of each biome may have, with weights: Biome=culture:weight,culture:weight; next " +
                 "biome. A new village rolls one with its own seed and keeps it. Biomes left out build like the Meadows. " +
                 "Culture keys are the [names] in Cultures/cultures.txt (see 'vh cultures').");
+            // Mountains cultures equally common (Tyler, 2026-11-08, D-039): a file still on the old default moves.
+            if (CultureMap.Value == Village.Cultures.OldDefaultMap)
+            {
+                CultureMap.Value = Village.Cultures.DefaultMap;
+            }
             CultureForeignChance = Admin(config, cultures, "CultureForeignChance", 0.15f,
                 "Chance that a newcomer from outside is of another people than the village. He keeps his own names and " +
                 "looks and says he comes from a place in his own tongue.");

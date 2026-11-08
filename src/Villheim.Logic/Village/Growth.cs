@@ -186,7 +186,11 @@ namespace Villheim.Logic.Village
                 }
 
                 var design = new DesignLibrary.Design(next, 1f);
-                return DesignLibrary.MissingIn(design, biome) == null ? design : (DesignLibrary.Design?)null;
+                // A stone level waits for the stage that allows stone (D-012).
+                return DesignLibrary.MissingIn(design, biome) == null &&
+                       !Materials.StoneTooEarly(biome, role, DesignLibrary.StoneIn(design))
+                    ? design
+                    : (DesignLibrary.Design?)null;
             }
 
             DesignLibrary.Design? best = null;

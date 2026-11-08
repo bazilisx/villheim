@@ -11,8 +11,9 @@ namespace Villheim.Logic.Villagers
     /// - A finished building, a newcomer, a pedlar: up to eight idle villagers within 70 m walk over and stand round
     ///   it; one speaker (the Jarl, else an elder, else whoever is closest) says a few words, the rest cheer, and a
     ///   moment later one or two of them say something of their own. At most one turnout every two minutes.
-    /// - A feast: a hunt brought home, a birth, a finished building or a boss felled anywhere in the world makes the
-    ///   evening a feast. At the hearth that evening fewer sit, more toast and dance, and everyone gets the feast
+    /// - A feast: a hunt brought home, a birth, a big finished building (a hall, a new home, or FeastPieces pieces and
+    ///   more, D-005) or a boss felled anywhere in the world makes the evening a feast. A small building gets a short
+    ///   look from a few villagers. At the hearth that evening fewer sit, more toast and dance, and everyone gets the feast
     ///   thought (+6). Tags "feastday" all that day and "feast" in the evening.
     /// - Evening words (Millenaire's speeches): once a day between 18:00 and 19:30, with a player by the hearth, the
     ///   Jarl (or an elder) stands by the fire and talks about the day; one or two answer.
@@ -40,7 +41,8 @@ namespace Villheim.Logic.Villagers
             if (!LogicConfig.IsOn(LogicConfig.Gatherings)) return;
 
             // "feast" is the harvest feast from VillageEvents: it ate well, so the evening is a feast too.
-            if (what == "hunt" || what == "birth" || what == "finished" || what == "bossdown" || what == "upgrade" || what == "feast")
+            // A finished building makes a feast only when it is big (see Finished).
+            if (what == "hunt" || what == "birth" || what == "bossdown" || what == "upgrade" || what == "feast")
             {
                 if (!FeastToday(villageId))
                 {
@@ -63,14 +65,20 @@ namespace Villheim.Logic.Villagers
             }
         }
 
-        /// <summary>A building is done: the village comes to look at it.</summary>
-        public static void Finished(int villageId, Vector3 front)
+        /// <summary>A building is done: the village comes to look at it. A big one makes the evening a feast.</summary>
+        public static void Finished(int villageId, Vector3 front, bool big)
         {
-            if (!LogicConfig.IsOn(LogicConfig.Gatherings))
+            if (!LogicConfig.IsOn(LogicConfig.Gatherings) || !big)
             {
                 // As before gatherings: a few villagers who aren't busy come to have a look.
                 Social.Gather(villageId, null, front, 3, "event:viewbuilding", "cheer", 40f);
                 return;
+            }
+
+            if (!FeastToday(villageId))
+            {
+                FeastDays[villageId] = Today;
+                VillheimPlugin.Debug($"Village {villageId}: a feast tonight (a big building).");
             }
 
             Turnout(villageId, null, front, "finished", 8, 70f);

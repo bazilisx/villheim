@@ -145,7 +145,7 @@ namespace Villheim.Logic.Villagers
             }
 
             return TestActs.Describe(villager) ?? Sleep.Describe(villager) ?? (MorningHearth.IsTending(villager) ? "tending the hearth" : null) ??
-                   Healing.Describe(villager) ?? Chores.Describe(villager) ?? Replanting.Describe(villager) ?? Hunting.Describe(villager) ?? Farming.Describe(villager) ??
+                   Healing.Describe(villager) ?? Chores.Describe(villager) ?? Replanting.Describe(villager) ?? Hunting.Describe(villager) ?? Farming.Describe(villager) ?? Sorting.Describe(villager) ??
                    Foraging.Describe(villager) ?? Repairs.Describe(villager) ?? Smithing.Describe(villager) ?? (PathLaying.IsLaying(villager) ? "laying a path" : null) ??
                    FreeTime.Describe(villager);
         }

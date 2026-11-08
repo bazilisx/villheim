@@ -314,6 +314,12 @@ namespace Villheim.Logic.Village
             }
         }
 
+        /// <summary>A haul from the camp has reached the village (Caravans): the load is already in the stock.</summary>
+        internal static void Hauled(VillageHearth hearth, VillageState state, Caravans.Caravan haul)
+        {
+            Dialogue.Note(state.Id, "haul");
+        }
+
         public static Vector3? Position(VillageHearth hearth) => Read(hearth.Zdo)?.Position;
 
         public static string Describe(VillageHearth hearth)

@@ -92,6 +92,7 @@ namespace Villheim.Logic.Village
             }
 
             Trails.Paint(player.transform.position);
+            Caravans.Embody(player.transform.position);
             if (ZNet.instance.IsServer())
             {
                 MaybeMakeCamps(player.transform.position);
@@ -176,7 +177,7 @@ namespace Villheim.Logic.Village
             return visitor;
         }
 
-        private static readonly int KeyFromVillage = "villheim_wfromid".GetStableHashCode();
+        internal static readonly int KeyFromVillage = "villheim_wfromid".GetStableHashCode();
 
         /// <summary>A visitor has reached the hearth: greetings, news, and for a pedlar a trade with the chest.</summary>
         public static void Arrived(Villager visitor, string kind, VillageHearth hearth)

@@ -66,6 +66,7 @@ namespace Villheim.Logic.Village
             VillageEvents.Daily(hearth, state);
             Outposts.Tick(hearth, state);
             Trails.Tick(hearth, state);
+            Caravans.Tick(hearth, state);
             Raids.Tick(hearth);
             NoticeBoard.Update(hearth);
             CheckDoorsDaily(hearth);

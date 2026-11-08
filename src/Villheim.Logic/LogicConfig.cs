@@ -59,6 +59,10 @@ namespace Villheim.Logic
         public static ConfigEntry<bool> Trails;
         public static ConfigEntry<string> OutpostGear;
         public static ConfigEntry<bool> VillageEvents;
+        public static ConfigEntry<bool> Caravans;
+        public static ConfigEntry<float> CaravanChancePerDay;
+        public static ConfigEntry<float> CaravanMetresPerDay;
+        public static ConfigEntry<float> CaravanReach;
         public static ConfigEntry<float> EventChancePerDay;
         public static ConfigEntry<bool> OutpostMaterials;
         public static ConfigEntry<float> VisitorChancePerDay;
@@ -128,6 +132,15 @@ namespace Villheim.Logic
                 "a lost traveller taken in, a fever, beasts at night, a quarrel, a falling-out with the neighbours.");
             EventChancePerDay = Admin(config, life, "EventChancePerDay", 0.35f,
                 "Chance that something happens in a village on a given day (0 to 1).");
+            Caravans = Admin(config, life, "Caravans", true,
+                "With WorldLife on, villages send what they can spare to villages that lack it, along their trails. The " +
+                "caravan moves on the world clock and is a real person walking the road when you are near it.");
+            CaravanChancePerDay = Admin(config, life, "CaravanChancePerDay", 0.3f,
+                "Chance that a village sends a trade caravan on a given day (0 to 1), when it has something to spare.");
+            CaravanMetresPerDay = Admin(config, life, "CaravanMetresPerDay", 2400f,
+                "How far a caravan, a haul or a party of settlers goes in an in-game day.");
+            CaravanReach = Admin(config, life, "CaravanReach", 2500f,
+                "Villages farther apart than this (metres) do not send each other caravans.");
             Trails = Admin(config, life, "Trails", true,
                 "With WorldLife on, villages plan a dirt trail to their outpost and to their nearest neighbour within " +
                 "2,500 m, painted on the ground near you as you walk it.");

@@ -245,6 +245,34 @@ namespace Villheim.Logic.Village
             }
         }
 
+        /// <summary>The trail from hearth <paramref name="a"/> to hearth <paramref name="b"/>, if one was planned between them.</summary>
+        public static List<Vector3> Between(ZDO a, ZDO b)
+        {
+            foreach ((ZDO owner, ZDO other) in new[] { (a, b), (b, a) })
+            {
+                List<Vector3> points = Load(owner, KeyNeighbourTrail);
+                if (points.Count > 1 && Utils.DistanceXZ(points[points.Count - 1], other.GetPosition()) < 40f)
+                {
+                    var list = new List<Vector3>(points);
+                    if (owner == b)
+                    {
+                        list.Reverse();
+                    }
+
+                    return list;
+                }
+            }
+
+            return null;
+        }
+
+        /// <summary>The trail from the hearth to its outpost, or null.</summary>
+        public static List<Vector3> ToOutpost(ZDO hearth)
+        {
+            List<Vector3> points = Load(hearth, KeyOutpostTrail);
+            return points.Count > 1 ? new List<Vector3>(points) : null;
+        }
+
         public static string Describe(VillageHearth hearth)
         {
             int outpost = Load(hearth.Zdo, KeyOutpostTrail).Count;

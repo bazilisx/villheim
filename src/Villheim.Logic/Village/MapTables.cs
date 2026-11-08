@@ -174,7 +174,7 @@ namespace Villheim.Logic.Village
 
             if (added == 0)
             {
-                return had > 0 ? $"Nothing new on {hearth.VillageName}'s map." : $"{hearth.VillageName}'s map is empty so far.";
+                return had > 0 ? $"Nothing new on {hearth.VillageName}'s map." : WhyEmpty(hearth) ?? $"{hearth.VillageName}'s map is empty so far.";
             }
 
             return $"Copied {added} places from {hearth.VillageName}'s map" + (had > 0 ? $" ({had} already on yours)." : ".");
@@ -182,6 +182,25 @@ namespace Villheim.Logic.Village
 
         /// <summary>The places the table shows: bosses always, the rest by a fixed roll per village and place.</summary>
         public static List<Knowledge.Discovery> Shown(VillageHearth hearth) => Knowledge.Log(hearth).Where(d => Shows(hearth, d)).ToList();
+
+        /// <summary>Why the map shows nothing, in a line for the hover and 'vh know'; null when it shows something.</summary>
+        public static string WhyEmpty(VillageHearth hearth)
+        {
+            List<Knowledge.Discovery> places = Knowledge.Log(hearth).Where(d => Knowledge.IsPlace(d.Kind)).ToList();
+            if (places.Count == 0)
+            {
+                return $"{hearth.VillageName}'s map is empty: nobody has found a notable place yet. Villagers find boss altars, " +
+                       "dungeons, traders, runestones, ore and nests when their work takes them close.";
+            }
+
+            if (!places.Any(d => Shows(hearth, d)))
+            {
+                return $"{hearth.VillageName}'s map is empty: they know {places.Count} place{(places.Count == 1 ? "" : "s")}, " +
+                       "but none of them is marked on it (the map shows about half, see MapTableShare).";
+            }
+
+            return null;
+        }
 
         public static bool Shows(VillageHearth hearth, Knowledge.Discovery d)
         {
@@ -295,6 +314,12 @@ namespace Villheim.Logic.Village
                 VillageHearth hearth = VillageHearth.Find(id);
                 string village = hearth != null ? hearth.VillageName : "The village";
                 int known = hearth != null ? Shown(hearth).Count : 0;
+                if (known == 0 && hearth != null)
+                {
+                    __result = WhyEmpty(hearth);
+                    return;
+                }
+
                 string use = Localization.instance != null ? Localization.instance.Localize("[<color=yellow><b>$KEY_Use</b></color>]") : "[E]";
                 __result = $"{village}'s map ({known} places)\n{use} Copy them to your map";
             }

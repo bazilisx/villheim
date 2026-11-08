@@ -167,6 +167,7 @@ namespace Villheim.Logic
         public static ConfigEntry<string> KnowledgeKinds;
         public static ConfigEntry<string> KnowledgeReachKinds;
         public static ConfigEntry<float> KnowledgeSight;
+        public static ConfigEntry<float> KnowledgeSightRange;
         public static ConfigEntry<int> KnowledgeKeep;
         public static ConfigEntry<int> KnowledgeCommonDays;
         public static ConfigEntry<float> RumorChance;
@@ -801,11 +802,20 @@ namespace Villheim.Logic
             }
 
             KnowledgeReachKinds = Admin(config, know, "KnowledgeReachKinds", Village.Knowledge.DefaultReachKinds,
-                "Kinds a village learns from its reach without anyone walking up to them: game (where animals come out), foe " +
-                "(where creatures come out) and biome (where the land changes). Everything else needs a villager to go there.");
+                "Kinds a village learns from its reach, from the survey alone, without anyone seeing them: game, foe or biome. " +
+                "Empty by default (T-50): creatures and biomes are only known from where a villager stood (KnowledgeSightRange).");
+            // Nothing from the survey alone any more (T-50): a file still on the old default moves.
+            if (KnowledgeReachKinds.Value == Village.Knowledge.OldDefaultReachKinds)
+            {
+                KnowledgeReachKinds.Value = Village.Knowledge.DefaultReachKinds;
+            }
+
+            KnowledgeSightRange = Admin(config, know, "KnowledgeSightRange", 40f,
+                "How far (meters) a villager sees a wild creature from where he stands, with nothing solid in the way. That is " +
+                "how the village learns where animals and creatures are; a biome is learned by standing in it.");
             KnowledgeSight = Admin(config, know, "KnowledgeSight", 100f,
-                "For the reach kinds only: how far past the last ground the villagers walk an animal ground or biome edge can " +
-                "be made out (twice that across water).");
+                "Only for kinds listed in KnowledgeReachKinds: how far past the last ground the villagers walk an animal " +
+                "ground or biome edge can be made out (twice that across water).");
             KnowledgeKeep = Admin(config, know, "KnowledgeKeep", 60,
                 "Discoveries kept on each village's hearth. Past that, the most ordinary and oldest go first.");
             KnowledgeCommonDays = Admin(config, know, "KnowledgeCommonDays", 2,

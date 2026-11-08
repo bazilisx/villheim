@@ -56,6 +56,8 @@ namespace Villheim.Logic.Village
             public string Lean = "";
             /// <summary>For creature grounds: day, night or any.</summary>
             public string When = "";
+            /// <summary>Where the witness stood when he saw it (zero when not known: older saves).</summary>
+            public Vector3 Stood;
 
             public bool Firsthand => How == "went" || How == "reach" || How == "spotted";
         }
@@ -89,6 +91,7 @@ namespace Villheim.Logic.Village
                 {
                     Id = id, Kind = f[1], Key = f[2], Position = new Vector3(F(f[3]), F(f[4]), F(f[5])), Day = (int)F(f[6]),
                     Witness = f[7], How = f[8], Terrain = f[9], Lean = f[10], When = f.Length > 11 ? f[11] : "",
+                    Stood = f.Length > 13 ? new Vector3(F(f[12]), 0f, F(f[13])) : Vector3.zero,
                 };
 
                 // Older saves hold mundane finds and places learned without anyone going there: they are dropped
@@ -103,8 +106,12 @@ namespace Villheim.Logic.Village
             return list;
         }
 
-        /// <summary>Whether a stored discovery still counts under the current rules.</summary>
-        private static bool Kept(Discovery d) => Notable(d.Kind, d.Key) && (ByReach(d.Kind) || d.How == "went");
+        /// <summary>
+        /// Whether a stored discovery still counts under the current rules. Places need a villager who went there.
+        /// Creatures and biome edges need one who stood and saw them (T-50): older ones made from the survey alone go.
+        /// </summary>
+        private static bool Kept(Discovery d) =>
+            Notable(d.Kind, d.Key) && (ByReach(d.Kind) || d.How == "went" && (IsPlace(d.Kind) || d.Stood != Vector3.zero));
 
         // ---------------------------------------------------------------- what is worth knowing
 
@@ -119,7 +126,10 @@ namespace Villheim.Logic.Village
             "landmark:tarpit, landmark:tower, landmark:giant, landmark:henge, landmark:drakenest, landmark:stones, " +
             "forage:beehive, game, foe, biome";
 
-        public const string DefaultReachKinds = "game, foe, biome";
+        public const string DefaultReachKinds = "";
+
+        /// <summary>The default before T-50: a config still on it moves to DefaultReachKinds (nothing from the reach).</summary>
+        public const string OldDefaultReachKinds = "game, foe, biome";
 
         private static (string Raw, HashSet<string> Set) _kinds, _reachKinds;
 
@@ -170,7 +180,8 @@ namespace Villheim.Logic.Village
 
             hearth.Zdo.Set(KeyLog, string.Join("\n", list.Select(d => string.Join("|",
                 d.Id.ToString(CultureInfo.InvariantCulture), d.Kind, d.Key, S(d.Position.x), S(d.Position.y), S(d.Position.z),
-                d.Day.ToString(CultureInfo.InvariantCulture), Clean(d.Witness), d.How, d.Terrain, d.Lean, d.When))));
+                d.Day.ToString(CultureInfo.InvariantCulture), Clean(d.Witness), d.How, d.Terrain, d.Lean, d.When,
+                S(d.Stood.x), S(d.Stood.z)))));
         }
 
         private static string Clean(string text) => (text ?? "").Replace("|", "").Replace("\n", "").Replace(":", "").Replace(",", "");
@@ -198,13 +209,14 @@ namespace Villheim.Logic.Village
 
         private static int IdOf(string kind, string key, Vector3 at)
         {
-            // Rounded to 40 m: the same thing found twice is one discovery. Creature grounds and biome edges are one per key.
-            bool one = kind == "game" || kind == "foe" || kind == "biome";
-            string text = one ? $"{kind}:{key}" : $"{kind}:{key}:{Mathf.RoundToInt(at.x / 40f)}:{Mathf.RoundToInt(at.z / 40f)}";
+            // Rounded to 40 m: the same thing found twice is one discovery. Creatures seen count once per 200 m square;
+            // a biome edge once per biome.
+            float grid = kind == "game" || kind == "foe" ? 200f : 40f;
+            string text = kind == "biome" ? $"{kind}:{key}" : $"{kind}:{key}:{Mathf.RoundToInt(at.x / grid)}:{Mathf.RoundToInt(at.z / grid)}";
             return text.GetStableHashCode() & 0x7fffffff;
         }
 
-        private static Discovery Add(VillageHearth hearth, WorldSurvey.Feature feature, string witness, string how)
+        private static Discovery Add(VillageHearth hearth, WorldSurvey.Feature feature, string witness, string how, Vector3 stood = default)
         {
             List<Discovery> list = Log(hearth).ToList();
             int id = IdOf(feature.Kind, feature.Key, feature.Position);
@@ -232,7 +244,7 @@ namespace Villheim.Logic.Village
             var d = new Discovery
             {
                 Id = id, Kind = feature.Kind, Key = feature.Key, Position = feature.Position, Day = Today, Witness = witness ?? "",
-                How = how, When = feature.When ?? "",
+                How = how, When = feature.When ?? "", Stood = stood,
             };
             d.Terrain = WorldSurvey.Terrain(home, feature.Position, out string lean);
             d.Lean = lean;
@@ -761,7 +773,15 @@ namespace Villheim.Logic.Village
                 bool ours = v.VillageId == id ||
                             (Wanderers.KindOf(v) == Wanderers.Camper && v.Zdo.GetInt(Wanderers.KeyVisit) == id);
                 Vector3 at = v.transform.position;
-                if (!ours || Utils.DistanceXZ(at, home) < radius * 1.1f)
+                if (!ours)
+                {
+                    continue;
+                }
+
+                // Creatures he can see from where he stands, and the biome he stands in: in the village too.
+                bool outside = Utils.DistanceXZ(at, home) >= radius * 1.1f;
+                Sightings(hearth, state, v, at, outside);
+                if (!outside)
                 {
                     continue;
                 }
@@ -776,7 +796,7 @@ namespace Villheim.Logic.Village
                 // Objects (nests, ore, hives) right where he walks, besides the nearest few of each on the candidate list.
                 foreach (WorldSurvey.Feature f in WorldSurvey.ObjectsAround(at, within))
                 {
-                    if (Notable(f.Kind, f.Key) && Add(hearth, f, name, "went") is Discovery found)
+                    if (Notable(f.Kind, f.Key) && Add(hearth, f, name, "went", at) is Discovery found)
                     {
                         Found(v, found);
                     }
@@ -784,16 +804,92 @@ namespace Villheim.Logic.Village
 
                 foreach (WorldSurvey.Feature f in survey.Candidates)
                 {
+                    // Creature grounds and biome edges on the list come from the survey: only real sightings count.
+                    if (!IsPlace(f.Kind))
+                    {
+                        continue;
+                    }
+
                     // Big sites are seen from a little further off than a rock or a hive.
                     float reachOfEye = BigSite(f.Kind, f.Key) ? within * 1.5f : within;
                     if (Utils.DistanceXZ(f.Position, at) <= reachOfEye)
                     {
-                        Discovery d = Add(hearth, f, name, "went");
+                        Discovery d = Add(hearth, f, name, "went", at);
                         if (d != null)
                         {
                             Found(v, d);
                         }
                     }
+                }
+            }
+        }
+
+        // Context.CreatureWord to the knowledge key; game animals are hunted, the rest are foes. Others are not recorded.
+        private static readonly Dictionary<string, (string Kind, string Key)> SeenCreatures = new Dictionary<string, (string, string)>
+        {
+            ["deer"] = ("game", "deer"), ["boar"] = ("game", "boar"), ["neck"] = ("game", "neck"), ["hare"] = ("game", "hare"),
+            ["lox"] = ("game", "lox"), ["greyling"] = ("foe", "greyling"), ["greydwarf"] = ("foe", "greydwarf"),
+            ["troll"] = ("foe", "troll"), ["skeleton"] = ("foe", "skeleton"), ["ghost"] = ("foe", "ghost"), ["wolf"] = ("foe", "wolf"),
+            ["bear"] = ("foe", "bear"), ["draugr"] = ("foe", "draugr"), ["blob"] = ("foe", "blob"), ["leech"] = ("foe", "leech"),
+            ["surtling"] = ("foe", "surtling"), ["drake"] = ("foe", "drake"), ["fenring"] = ("foe", "fenring"),
+            ["fuling"] = ("foe", "fuling"), ["deathsquito"] = ("foe", "deathsquito"), ["serpent"] = ("foe", "serpent"),
+            ["seeker"] = ("foe", "seeker"), ["tick"] = ("foe", "tick"), ["gjall"] = ("foe", "gjall"), ["wraith"] = ("foe", "wraith"),
+            ["abomination"] = ("foe", "abomination"), ["golem"] = ("foe", "golem"), ["ulv"] = ("foe", "ulv"),
+        };
+
+        private static int _sightMask;
+
+        /// <summary>Nothing solid (ground, rock, walls) between the two points.</summary>
+        private static bool InSight(Vector3 from, Vector3 to)
+        {
+            if (_sightMask == 0)
+            {
+                _sightMask = LayerMask.GetMask("Default", "static_solid", "terrain", "piece");
+            }
+
+            return !Physics.Linecast(from, to, _sightMask);
+        }
+
+        /// <summary>
+        /// What one villager sees from where he stands (T-50): wild creatures within KnowledgeSightRange with nothing in
+        /// the way, and the biome under his feet when it is not the village's own. Kept with where he stood.
+        /// </summary>
+        private static void Sightings(VillageHearth hearth, VillageState state, Villager v, Vector3 at, bool outside)
+        {
+            float range = LogicConfig.KnowledgeSightRange != null ? LogicConfig.KnowledgeSightRange.Value : 40f;
+            string name = v.VillagerName;
+            float hour = EnvMan.instance != null ? EnvMan.instance.GetDayFraction() * 24f : 12f;
+            string when = hour >= 6f && hour < 20f ? "day" : "night";
+            Vector3 eye = at + Vector3.up * 1.6f;
+            foreach (Character c in Character.GetAllCharacters())
+            {
+                if (c == null || c.IsDead() || c is Player || c is Villager || c.IsTamed() ||
+                    Vector3.Distance(c.transform.position, at) > range)
+                {
+                    continue;
+                }
+
+                string word = Context.CreatureWord(c);
+                if (word == null || !SeenCreatures.TryGetValue(word, out var seen) || !Notable(seen.Kind, seen.Key) ||
+                    !InSight(eye, c.transform.position + Vector3.up * 1f))
+                {
+                    continue;
+                }
+
+                var f = new WorldSurvey.Feature { Kind = seen.Kind, Key = seen.Key, Position = c.transform.position, When = when };
+                if (Add(hearth, f, name, "went", at) is Discovery d && outside)
+                {
+                    Found(v, d);
+                }
+            }
+
+            Heightmap.Biome biome = WorldSurvey.Biome(at);
+            if (biome != state.Biome && biome != Heightmap.Biome.None)
+            {
+                string key = biome.ToString().ToLowerInvariant();
+                if (Notable("biome", key))
+                {
+                    Add(hearth, new WorldSurvey.Feature { Kind = "biome", Key = key, Position = at }, name, "went", at);
                 }
             }
         }
@@ -1196,10 +1292,12 @@ namespace Villheim.Logic.Village
         {
             List<Discovery> log = Log(hearth);
             Vector3 home = hearth.transform.position;
+            float near = LogicConfig.KnowledgeNear != null ? LogicConfig.KnowledgeNear.Value : 35f;
+            float sight = LogicConfig.KnowledgeSightRange != null ? LogicConfig.KnowledgeSightRange.Value : 40f;
             var lines = new List<string>
             {
-                $"{hearth.VillageName} knows {log.Count} things (reach {Reach(hearth):0} m, day {Today}; places found within " +
-                $"{(LogicConfig.KnowledgeNear != null ? LogicConfig.KnowledgeNear.Value : 35f):0} m of a villager):",
+                $"{hearth.VillageName} knows {log.Count} things (day {Today}; places found within {near:0} m of a villager, " +
+                $"creatures seen within {sight:0} m with nothing in the way, biomes stood in):",
             };
             foreach (Discovery d in log.OrderBy(d => Utils.DistanceXZ(d.Position, home)))
             {
@@ -1207,8 +1305,14 @@ namespace Villheim.Logic.Village
                 lines.Add($"   {d.Kind} {d.Key}{(d.When.Length > 0 ? " (" + d.When + ")" : "")}: {distance:0} m {WorldSurvey.Compass(d.Position - home)}, " +
                           $"{d.Terrain}{(d.Lean.Length > 0 ? "/" + d.Lean : "")}, day {d.Day}, {d.How}" +
                           $"{(IsPlace(d.Kind) ? (MapTables.Shows(hearth, d) ? ", on the map" : ", left off the map") : "")}" +
-                          $"{(d.Witness.Length > 0 ? " by " + d.Witness : "")} at ({d.Position.x:0}, {d.Position.z:0})");
+                          $"{(d.Witness.Length > 0 ? " by " + d.Witness : "")} at ({d.Position.x:0}, {d.Position.z:0})" +
+                          (d.Stood != Vector3.zero
+                              ? $"; {d.Witness} stood at ({d.Stood.x:0}, {d.Stood.z:0}), {Utils.DistanceXZ(d.Stood, d.Position):0} m from it and " +
+                                $"{Utils.DistanceXZ(d.Stood, home):0} m from the hearth"
+                              : ""));
             }
+
+            lines.Add(MapTables.WhyEmpty(hearth) ?? $"Map table: {MapTables.Shown(hearth).Count} places on it.");
 
             lines.Add("'vh know reach', 'vh know survey [full]', 'vh know rumors [n]', 'vh know names', 'vh know table', 'vh know forget'.");
             return string.Join("\n", lines);

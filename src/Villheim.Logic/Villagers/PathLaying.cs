@@ -229,6 +229,29 @@ namespace Villheim.Logic.Villagers
             return route.Count > 0 ? route : null;
         }
 
+        /// <summary>Drops every path waiting for the building at this spot (it is being rebuilt; its new path comes after).</summary>
+        public static void Unqueue(VillageHearth hearth, Vector3 building)
+        {
+            string[] entries = hearth.Zdo.GetString(KeyQueue, "").Split(new[] { ';' }, System.StringSplitOptions.RemoveEmptyEntries);
+            bool Matches(string e)
+            {
+                string[] parts = e.Split('|')[0].Split(',');
+                return parts.Length >= 3 && Utils.DistanceXZ(new Vector3(P(parts[0]), 0f, P(parts[2])), building) < 0.5f;
+            }
+
+            if (entries.Length == 0 || !entries.Any(Matches))
+            {
+                return;
+            }
+
+            if (Matches(entries[0]))
+            {
+                hearth.Zdo.Set(KeyIndex, 0);
+            }
+
+            hearth.Zdo.Set(KeyQueue, string.Join(";", entries.Where(e => !Matches(e))));
+        }
+
         private static void Pop(VillageHearth hearth)
         {
             string queue = hearth.Zdo.GetString(KeyQueue, "");

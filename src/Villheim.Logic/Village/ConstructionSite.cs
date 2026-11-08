@@ -282,6 +282,7 @@ namespace Villheim.Logic.Village
                 Design = site.Design, Position = site.Position, Yaw = site.Yaw, Radius = site.Radius, Role = site.Role.ToString(),
             };
 
+            Plot before = site.Upgrade ? state.Plots.FirstOrDefault(p => Utils.DistanceXZ(p.Position, site.Position) < 0.5f) : null;
             if (site.Upgrade)
             {
                 state.ReplacePlot(site.Position, plot);
@@ -292,8 +293,17 @@ namespace Villheim.Logic.Village
                 state.AddPlot(plot);
             }
 
-            if (VillheimConfig.BuildPaths.Value && !site.Upgrade)
+            if (VillheimConfig.BuildPaths.Value)
             {
+                if (site.Upgrade && before != null)
+                {
+                    // Rebuilt: the old building's own road is taken up, and the new building gets a road from its markers.
+                    Villagers.PathLaying.Unqueue(hearth, site.Position);
+                    var others = new VillageState(hearth.Zdo).Plots.Where(p => Utils.DistanceXZ(p.Position, site.Position) >= 0.5f).ToList();
+                    int taken = PathPlanner.TakeUpRoad(hearth, before, others);
+                    VillheimPlugin.Log.LogInfo($"{state.Name}: the {before.Design} was rebuilt as {site.Design}; {taken} metres of its old road taken up, a new one planned.");
+                }
+
                 // A villager walks the route and lays it (see PathLaying).
                 Villagers.PathLaying.Queue(hearth, site.Position, site.Radius, site.Yaw, Designs.Doors.Angle(site.Design), site.Design);
             }

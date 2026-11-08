@@ -117,6 +117,174 @@ namespace Villheim.Logic.Village
 
         public static Vector2Int Cell(Vector3 point) => new Vector2Int(Mathf.RoundToInt(point.x), Mathf.RoundToInt(point.z));
 
+        // ---------------------------------------------------------------- taking up a road
+
+        private static float Dist(Vector2Int cell, Vector3 point) => Vector2.Distance(new Vector2(cell.x, cell.y), new Vector2(point.x, point.z));
+
+        private static IEnumerable<Vector2Int> Around(Vector2Int c)
+        {
+            for (int dx = -1; dx <= 1; dx++)
+            for (int dz = -1; dz <= 1; dz++)
+            {
+                if (dx != 0 || dz != 0)
+                {
+                    yield return new Vector2Int(c.x + dx, c.y + dz);
+                }
+            }
+        }
+
+        /// <summary>Where a building's roads start: a metre out from each of its path markers, or its door for a design without them.</summary>
+        private static List<Vector3> Starts(Plot plot, Vector3 center)
+        {
+            List<(Vector3 At, Vector3 Out)> exits = Exits(plot.Design, plot.Position, plot.Yaw);
+            return exits.Count > 0
+                ? exits.Select(e => e.At + e.Out * 1f).ToList()
+                : new List<Vector3> { Door(plot.Design, plot.Position, plot.Radius, plot.Yaw, Designs.Doors.Angle(plot.Design), center) };
+        }
+
+        /// <summary>The road cells from the seeds to the nearest target, along the laid network (none if not connected).</summary>
+        private static HashSet<Vector2Int> RouteTo(HashSet<Vector2Int> network, List<Vector2Int> seeds, HashSet<Vector2Int> targets)
+        {
+            var from = new Dictionary<Vector2Int, Vector2Int>();
+            var open = new Queue<Vector2Int>();
+            foreach (Vector2Int seed in seeds)
+            {
+                if (!from.ContainsKey(seed))
+                {
+                    from[seed] = seed;
+                    open.Enqueue(seed);
+                }
+            }
+
+            while (open.Count > 0)
+            {
+                Vector2Int c = open.Dequeue();
+                if (targets.Contains(c))
+                {
+                    var route = new HashSet<Vector2Int>();
+                    for (Vector2Int at = c; ; at = from[at])
+                    {
+                        route.Add(at);
+                        if (from[at] == at)
+                        {
+                            break;
+                        }
+                    }
+
+                    return route;
+                }
+
+                foreach (Vector2Int n in Around(c))
+                {
+                    if (network.Contains(n) && !from.ContainsKey(n))
+                    {
+                        from[n] = c;
+                        open.Enqueue(n);
+                    }
+                }
+            }
+
+            return new HashSet<Vector2Int>();
+        }
+
+        /// <summary>
+        /// A building is rebuilt: the road that served only the old building is taken up (out of the village's path network
+        /// and painted back to grass), up to where it meets a road another building still uses. The rule (Tyler,
+        /// 2026-11-07): roads follow the buildings standing now; a rebuilt building gets a new road from its own markers.
+        /// Every other building's road to the middle is traced along the network first, and none of it is touched.
+        /// Returns how many road cells were taken up.
+        /// </summary>
+        public static int TakeUpRoad(VillageHearth hearth, Plot old, IReadOnlyList<Plot> others)
+        {
+            HashSet<Vector2Int> network = Network(hearth);
+            if (network.Count == 0 || old == null)
+            {
+                return 0;
+            }
+
+            Vector3 center = hearth.transform.position;
+            var targets = new HashSet<Vector2Int>(network.Where(c => Dist(c, center) <= HearthReach + 1.5f));
+            Plot hub = Hub(center, others);
+            if (hub != null)
+            {
+                foreach ((Vector3 at, Vector3 _) in Exits(hub.Design, hub.Position, hub.Yaw))
+                {
+                    targets.UnionWith(network.Where(c => Dist(c, at) <= 2.5f));
+                }
+            }
+
+            var needed = new HashSet<Vector2Int>(targets);
+            foreach (Plot plot in others)
+            {
+                foreach (Vector3 start in Starts(plot, center))
+                {
+                    List<Vector2Int> seeds = network.Where(c => Dist(c, start) <= 3f).ToList();
+                    if (seeds.Count > 0)
+                    {
+                        needed.UnionWith(RouteTo(network, seeds, targets));
+                    }
+                }
+            }
+
+            var taken = new HashSet<Vector2Int>();
+            var open = new Queue<Vector2Int>();
+            foreach (Vector3 start in Starts(old, center))
+            {
+                foreach (Vector2Int seed in network.Where(c => Dist(c, start) <= 3f && !needed.Contains(c)))
+                {
+                    if (taken.Add(seed))
+                    {
+                        open.Enqueue(seed);
+                    }
+                }
+            }
+
+            while (open.Count > 0)
+            {
+                foreach (Vector2Int n in Around(open.Dequeue()))
+                {
+                    if (network.Contains(n) && !needed.Contains(n) && taken.Add(n))
+                    {
+                        open.Enqueue(n);
+                    }
+                }
+            }
+
+            if (taken.Count == 0)
+            {
+                return 0;
+            }
+
+            network.ExceptWith(taken);
+            hearth.Zdo.Set(KeyNetwork, string.Join(" ", network.Select(c =>
+                c.x.ToString(CultureInfo.InvariantCulture) + "," + c.y.ToString(CultureInfo.InvariantCulture))));
+
+            // Painted back to grass; cells right beside a road still in use keep their paint so its edge stays whole.
+            foreach (Vector2Int cell in taken)
+            {
+                if (needed.Any(k => Mathf.Abs(k.x - cell.x) <= 1 && Mathf.Abs(k.y - cell.y) <= 1))
+                {
+                    continue;
+                }
+
+                var point = new Vector3(cell.x, 0f, cell.y);
+                if (!ZoneSystem.instance.GetGroundHeight(point, out float y))
+                {
+                    continue;
+                }
+
+                point.y = y;
+                TerrainOp.Settings settings = Designs.TerrainShaper.NewSettings();
+                settings.m_paintCleared = true;
+                settings.m_paintType = TerrainModifier.PaintType.Reset;
+                settings.m_paintRadius = PathBuilder.Width;
+                settings.m_paintHeightCheck = false;
+                Designs.TerrainShaper.Apply(point, settings);
+            }
+
+            return taken.Count;
+        }
+
         // ---------------------------------------------------------------- planning
 
         /// <summary>

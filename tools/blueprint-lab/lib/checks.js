@@ -32,6 +32,7 @@ function aabb(p) {
   const ex = (w * c + d * sn) / 2, ez = (w * sn + d * c) / 2;
   const prop = info.shape === 'prop' || info.shape === 'cap' || info.shape === 'tri' || info.shape === 'triInv';
   let y0 = prop ? p.y : p.y - h / 2, y1 = prop ? p.y + h : p.y + h / 2;
+  if (info.shape === 'hang') { y0 = p.y - h; y1 = p.y; }
   if (info.shape === 'slope26') { y0 = p.y - 0.15; y1 = p.y + h; }
   const climb = info.role === 'stair' && PC.climbSpec(p.name);
   if (climb && (info.shape === 'stair' || info.shape === 'ladder')) { y0 = p.y + climb.bottom; y1 = y0 + climb.rise; }
@@ -69,9 +70,14 @@ function index(boxes) {
       const key = k(i, j); if (!g.has(key)) g.set(key, []); g.get(key).push(n);
     }
   });
-  return b => {
+  // pad 1 also returns pieces in the cells round the box (for touching with a margin); pad 0 only those whose box can
+  // reach into it, which is all a point or a small column needs
+  const none = [];
+  return (b, pad = 1) => {
+    const ia = Math.floor(b.x0 / 2) - pad, ib = Math.floor(b.x1 / 2) + pad, ja = Math.floor(b.z0 / 2) - pad, jb = Math.floor(b.z1 / 2) + pad;
+    if (ia === ib && ja === jb) return g.get(k(ia, ja)) || none;
     const out = new Set();
-    for (let i = Math.floor(b.x0 / 2) - 1; i <= Math.floor(b.x1 / 2) + 1; i++) for (let j = Math.floor(b.z0 / 2) - 1; j <= Math.floor(b.z1 / 2) + 1; j++) for (const n of g.get(k(i, j)) || []) out.add(n);
+    for (let i = ia; i <= ib; i++) for (let j = ja; j <= jb; j++) for (const n of g.get(k(i, j)) || none) out.add(n);
     return out;
   };
 }
@@ -99,21 +105,62 @@ function wallGrid(pieces, boxes) {
     }
   });
   const at = (x, z, y, minW = 0) => (g.get(key(Math.round(x * 4), Math.round(z * 4))) || []).some(([a, c, w]) => a <= y && y <= c && w >= minW);
+  // Per floor height, maps on the same 0.25 m grid: which cells have walls on all four sides within 14 m, and sums for
+  // "a wall within r" at a few heights. Built once per height; the checks ask thousands of points.
+  let i0 = Infinity, i1 = -Infinity, j0 = Infinity, j1 = -Infinity;
+  for (const k of g.keys()) {
+    const i = Math.round(k / 100003), j = k - i * 100003;
+    if (i < i0) i0 = i; if (i > i1) i1 = i; if (j < j0) j0 = j; if (j > j1) j1 = j;
+  }
+  const nx = i1 - i0 + 1, nz = j1 - j0 + 1;
+  const levels = new Map();
+  const level = y => {
+    const lk = Math.round(y * 20);
+    if (levels.has(lk)) return levels.get(lk);
+    const N = nx * nz, ray = new Uint8Array(N), ins = new Uint8Array(N);
+    const sums = {};
+    const mk = (h, minW) => {
+      const a = new Uint8Array(N), yy = y + h;
+      for (const [k, list] of g) if (list.some(([lo, hi, w]) => lo <= yy && yy <= hi && w >= minW)) { const i = Math.round(k / 100003), j = k - i * 100003; a[(i - i0) * nz + (j - j0)] = 1; }
+      return a;
+    };
+    const lo = mk(0.6, 0), hi = mk(1.2, 0);
+    for (let n = 0; n < N; n++) ray[n] = lo[n] | hi[n];
+    // walls within 14 m (56 cells) in each direction
+    const R = 56, seen = new Int32Array(N).fill(0);
+    const pass = (outer, inner, idx) => {
+      for (let a = 0; a < outer; a++) { let last = -1e9; for (let b = 0; b < inner; b++) { const n = idx(a, b); if (ray[n]) last = b; else if (b - last <= R) seen[n]++; } }
+    };
+    pass(nx, nz, (a, b) => a * nz + b); pass(nx, nz, (a, b) => a * nz + (nz - 1 - b));
+    pass(nz, nx, (a, b) => b * nz + a); pass(nz, nx, (a, b) => (nx - 1 - b) * nz + a);
+    for (let n = 0; n < N; n++) ins[n] = seen[n] === 4 ? 1 : 0;
+    const prefix = a => { const P = new Int32Array((nx + 1) * (nz + 1)); for (let i = 0; i < nx; i++) for (let j = 0; j < nz; j++) P[(i + 1) * (nz + 1) + j + 1] = a[i * nz + j] + P[i * (nz + 1) + j + 1] + P[(i + 1) * (nz + 1) + j] - P[i * (nz + 1) + j]; return P; };
+    const L = { ins, sums, mk, prefix };
+    levels.set(lk, L);
+    return L;
+  };
+  const cell = (x, z) => [Math.round(x * 4) - i0, Math.round(z * 4) - j0];
+  const boxSum = (P, i, j, r) => {
+    const a0 = Math.max(0, i - r), a1 = Math.min(nx - 1, i + r), b0 = Math.max(0, j - r), b1 = Math.min(nz - 1, j + r);
+    if (a0 > a1 || b0 > b1) return 0;
+    return P[(a1 + 1) * (nz + 1) + b1 + 1] - P[a0 * (nz + 1) + b1 + 1] - P[(a1 + 1) * (nz + 1) + b0] + P[a0 * (nz + 1) + b0];
+  };
   return {
     at,
-    // walls on all four sides within 14 m
+    // walls on all four sides within 14 m, at knee or chest height, so a window opening does not count as a way out
     inside(x, y, z) {
-      for (const [dx, dz] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
-        let hit = false;
-        // at knee and chest height, so a window opening does not count as a way out
-        for (let t = 0.25; t <= 14; t += 0.25) if (at(x + dx * t, z + dz * t, y + 0.6) || at(x + dx * t, z + dz * t, y + 1.2)) { hit = true; break; }
-        if (!hit) return false;
-      }
-      return true;
+      if (!g.size) return false;
+      const [i, j] = cell(x, z);
+      if (i < 0 || j < 0 || i >= nx || j >= nz) return false;
+      return level(y).ins[i * nz + j] === 1;
     },
+    // a wall within r metres at height y + h (of at least minW metres wide)
     near(x, y, z, r, h = 1.2, minW = 0) {
-      for (let dx = -r; dx <= r + 0.001; dx += 0.25) for (let dz = -r; dz <= r + 0.001; dz += 0.25) if (at(x + dx, z + dz, y + h, minW)) return true;
-      return false;
+      if (!g.size) return false;
+      const L = level(y), k = `${h}|${minW}`;
+      if (!L.sums[k]) L.sums[k] = L.prefix(L.mk(h, minW));
+      const [i, j] = cell(x, z);
+      return boxSum(L.sums[k], i, j, Math.round(r * 4)) > 0;
     },
   };
 }
@@ -143,7 +190,7 @@ function doorBlockers(o, pieces, boxes, near, skip) {
     for (let t = -hw; t <= hw + 0.001; t += hw / 2) {
       const x = o.x + o.nx * s + o.ux * t, z = o.z + o.nz * s + o.uz * t;
       const col = ptBox(x, yLo, yHi, z);
-      for (const j of near(col)) {
+      for (const j of near(col, 0)) {
         if (skip && skip(j)) continue;
         const b = boxes[j], role = b.info.role;
         if (['floor', 'rug', 'door', 'stair', 'nature', 'misc'].includes(role)) continue;
@@ -235,7 +282,7 @@ function check(design, biome) {
   const standAt = (x, y, z) => {
     if (y <= ground + 0.6) return true;
     const col = ptBox(x, y - 0.7, y + 0.3, z, 0.3);
-    for (const j of near(col)) {
+    for (const j of near(col, 0)) {
       const b = boxes[j];
       if (!['floor', 'stair'].includes(b.info.role) && !(b.info.role === 'wall' && b.y1 <= y + 0.05)) continue;
       if (touch(col, b, 0)) return true;
@@ -257,16 +304,16 @@ function check(design, biome) {
   let low = 0, inside = 0;
   const lowBy = new Set(), where = [];
   for (const pt of pts) {
-    if (!walls.inside(pt.x, pt.y, pt.z) || walls.near(pt.x, pt.y, pt.z, 0.45)) continue;
     // the lowest roof or ceiling over the point; a floor open to the sky (a roof terrace, a yard) is left out
     const col = ptBox(pt.x, pt.y + 0.05, pt.y + 30, pt.z);
     let lowest = Infinity, by = null;
-    for (const j of near(col)) {
+    for (const j of near(col, 0)) {
       if (j === pt.floor) continue;
       const u = underside(pieces[j], pt.x, pt.z, boxes[j].info);
       if (u != null && u > pt.y + 0.05 && u < lowest) { lowest = u; by = pieces[j].name; }
     }
     if (!isFinite(lowest)) continue;
+    if (!walls.inside(pt.x, pt.y, pt.z) || walls.near(pt.x, pt.y, pt.z, 0.45)) continue;
     inside++;
     let bad = lowest < pt.y + HEADROOM - 0.01 ? by : null;
     // walls at least 2.5 m tall: a point beside a wall needs wall at that height too (from the floor piece's middle)
@@ -289,7 +336,7 @@ function check(design, biome) {
         const x = L.bx - L.dx * t, z = L.bz - L.dz * t;
         if (!standAt(x, L.by + 0.05, z)) clear = false;
         const col = ptBox(x, L.by + 0.3, L.by + 1.8, z, 0.3);
-        for (const j of near(col)) {
+        for (const j of near(col, 0)) {
           if (climbIdx.has(j)) continue;
           const b = boxes[j];
           if (['floor', 'rug', 'nature', 'misc'].includes(b.info.role)) continue;
@@ -308,7 +355,7 @@ function check(design, biome) {
     for (let t = 0.25; t <= L.run - 0.25 + 0.001 && !hit; t += 0.25) {
       const x = L.bx + L.dx * t, z = L.bz + L.dz * t, y = L.by + t * L.rise / L.run;
       const col = ptBox(x, y + 0.3, y + 1.9, z, 0.23);
-      for (const j of near(col)) {
+      for (const j of near(col, 0)) {
         if (climbIdx.has(j)) continue;
         const b = boxes[j];
         if (!b.info.structural || ['door', 'stair'].includes(b.info.role)) continue;
@@ -324,7 +371,7 @@ function check(design, biome) {
 
   // woodpiles stand outside: none under a roof inside walls
   const piles = pieces.filter((p, i) => /^wood_(fine_|core_)?stack$/.test(p.name) && walls.inside(p.x, p.y, p.z) &&
-    [...near(ptBox(p.x, p.y + 0.5, p.y + 30, p.z))].some(j => j !== i && (underside(pieces[j], p.x, p.z, boxes[j].info) ?? -1) > p.y + 0.5));
+    [...near(ptBox(p.x, p.y + 0.5, p.y + 30, p.z), 0)].some(j => j !== i && (underside(pieces[j], p.x, p.z, boxes[j].info) ?? -1) > p.y + 0.5));
   results.push({ check: 'woodpiles', ok: piles.length === 0, detail: piles.length ? `${piles.length} woodpiles indoors` : 'no woodpiles indoors' });
 
   // materials for the biome, building pieces and furnishing alike

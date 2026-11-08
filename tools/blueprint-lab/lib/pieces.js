@@ -70,8 +70,8 @@ const RULES = [
   [/pole2|pole_log|pole_2m|pole.*2m|darkwood_pole$|woodiron_pole|stone_pillar|column|pillar$/, 'pole', [0.25, 2, 0.25], 'box'],
   [/pole_1m|pole/i, 'pole', [0.2, 1, 0.2], 'box'],
   [/pillar/i, 'pole', [0.6, 2, 0.6], 'box'],
-  // floors and stairs
-  [/stone_floor_2x2/, 'floor', [2, 1, 2], 'box'],
+  // floors and stairs; stone and black marble floors are 1 m thick with the pivot in the middle
+  [/stone_floor_2x2|^blackmarble_floor$/, 'floor', [2, 1, 2], 'box'],
   [/floor_4x4|floor_large/, 'floor', [4, 0.25, 4], 'box'],
   [/floor_1x1|floor_triangle|tile_floor_1x1/, 'floor', [1, 0.25, 1], 'box'],
   [/floor/i, 'floor', [2, 0.25, 2], 'box'],
@@ -81,6 +81,12 @@ const RULES = [
   [/stair/i, 'stair', [1, 2, 2], 'stair'],
   // wall torches before the wall rules, or 'piece_walltorch' reads as a 2x2 wall
   [/walltorch/i, 'light', [0.3, 0.8, 0.3], 'prop'],
+  // floor torches pivot 0.75 m above their foot (measured by the interior helper, 2026-11-09)
+  [/groundtorch/i, 'light', [0.4, 1.5, 0.4], 'box'],
+  // rugs before the deco rule, or rug_wolf reads as a wolf carving
+  [/^rug_|carpet/i, 'rug', [2.0, 0.05, 2.6], 'prop'],
+  // banners hang down from their pivot
+  [/banner/i, 'deco', [1, 2, 0.2], 'hang'],
   // openings; the cloth door hangs from its pivot, its leaf along its local z (DOORS below)
   [/cloth_hanging_door/, 'door', [0.2, 3, 2], 'hang'],
   [/door|gate/i, 'door', [2, 2, 0.2], 'box'],
@@ -150,6 +156,13 @@ function exported() {
 const round = v => Math.round(v * 100) / 100;
 const usable = sz => Array.isArray(sz) && sz.length === 3 && sz.every(v => typeof v === 'number' && v > 0.01);
 
+// Furniture sizes measured in the corpus by the interior work (docs/INTERIOR_DESIGN.md), w x h x d.
+const SIZES = {
+  bed: [1.2, 0.8, 2.8], piece_bed02: [2.0, 1.0, 3.3], hearth: [3.2, 0.6, 2.0], piece_table_oak: [4.2, 0.8, 1.6],
+  piece_table_round: [1.7, 0.9, 1.7], fermenter: [1.4, 1.8, 1.4], piece_chest_barrel: [0.7, 1.0, 0.7], ArmorStand: [0.9, 1.9, 0.6],
+  piece_logbench01: [1.4, 0.5, 0.6],
+};
+
 const cache = new Map();
 function piece(name) {
   let c = cache.get(name);
@@ -159,6 +172,7 @@ function piece(name) {
   for (const [re, r, s, sh] of RULES) {
     if (re.test(n)) { role = r; size = s; shape = sh; break; }
   }
+  if (SIZES[n]) size = SIZES[n];
   const mat = material(n);
   const structural = ['wall', 'floor', 'roof', 'roofTop', 'roofCorner', 'gable', 'beam', 'pole', 'stair', 'door', 'window', 'fence'].includes(role);
   c = { name, role, size, shape, mat, color: MAT[mat], structural, exact: false };

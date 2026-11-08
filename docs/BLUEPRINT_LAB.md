@@ -75,11 +75,13 @@ without drawing them; `--gen` makes the designs with another copy of the lib to 
 
 | | Review set | Culture samples |
 |---|---|---|
-| Before (old generator, new checks) | 64 of 225 | 18 of 147 |
+| Before (old generator, new checks) | 65 of 225 | 18 of 147 |
 | After | 225 of 225 | 147 of 147 |
 
-On single seeds (every type, seven biomes, three stages, six seeds; 1,890 designs) 484 passed every check before and
-1,889 after.
+On single seeds (every type, seven biomes, three stages, six seeds; 1,890 designs) 524 passed every check before and
+1,890 after. With the new decorator merged, `lab/check_interiors.js` finds nothing but 7 thinly furnished tower floors
+in its 702 designs. In the game engine (Jint under .NET 8) a request at best of 8 takes 1.8 s on average and 7 s at
+most over the 62 test requests.
 
 Culture ids that have changed or may change sit in `styles.js` `ID`; a renamed id goes in `RENAMED` so old requests
 still work (`caucasian-highland` is now `lamari`, D-046).
@@ -126,7 +128,9 @@ substance because the new downloads carry no Yes or No (AUC 0.70 on the same 661
    "Structure rules"): the fire under the smoke hole and a chimney over it, braziers hung, woodpiles outside, nothing
    in a doorway, on a ladder or in a chimney, nothing the biome cannot make.
 10. The page and the review set build several seeds and keep the one that passes the most checks, then scores highest
-    (`lib/request.js` `best`: seeds n, n + 101, n + 202 and so on).
+    (`lib/request.js` `best`: seeds n, n + 101, n + 202 and so on). `best` builds every seed bare first
+    (`skipDecor`), ranks them on their structure, then furnishes the best in order until one passes every check (at
+    most four), since furnishing is the slow part in the game.
 
 A request may also name storeys (1 to 3) and ask for a porch or none. Both, and an asked roof pitch, go into the
 design's name (`-2st`, `-porch`, `-noporch`, `-p45`), so two requests never share a file name. A porch is only built

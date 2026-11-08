@@ -1625,7 +1625,8 @@ function audit(design, decor) {
   }
   // floating: floor pieces need a floor (or the ground) under them; table pieces a table; fire pieces a fire
   const ys = struct.filter(s => s.info.structural).map(s => s.y0).sort((a, b) => a - b);
-  const ground = ys.length ? ys[Math.floor(ys.length * 0.02)] : 0;
+  // generated designs say where the ground is (posts and stone floors reach below it)
+  const ground = design.ground != null ? design.ground : ys.length ? ys[Math.floor(ys.length * 0.02)] : 0;
   for (const it of items) {
     const fa = it.f.at || 'floor';
     if (fa === 'mount' || fa === 'hang') continue;

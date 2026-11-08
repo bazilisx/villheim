@@ -62,14 +62,26 @@ function evaluate(d, biome, scorer) {
 }
 
 // Builds n seeds (seed, seed + 101, ...) and keeps the one that passes the most checks, then scores highest.
+// Furnishing is the slow part (about 1 s a design in the game), so the seeds are first built bare and ranked on their
+// structure; then the best are furnished in that order until one passes every check (or the best furnished one is
+// kept). Bare and furnished builds of a seed share the same structure.
 function best(req, n, scorer) {
   const base = +req.seed || 1;
-  let top = null;
+  const bare = [];
   for (let i = 0; i < Math.max(1, n | 0); i++) {
-    const d = GQ.generate({ ...req, seed: base + i * 101 });
+    const seed = base + i * 101;
+    const d = GQ.generate({ ...req, seed, skipDecor: true });
+    const ev = evaluate(d, req.biome, scorer);
+    bare.push({ seed, key: ev.pass * 10 + ev.score });
+  }
+  bare.sort((a, c) => c.key - a.key || a.seed - c.seed);
+  let top = null;
+  for (const c of bare.slice(0, 4)) {
+    const d = GQ.generate({ ...req, seed: c.seed });
     const ev = evaluate(d, req.biome, scorer);
     const key = ev.pass * 10 + ev.score;
     if (!top || key > top.key) top = { d, ev, key };
+    if (ev.pass === ev.checks.length) break;
   }
   return top;
 }

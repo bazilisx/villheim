@@ -1,0 +1,269 @@
+# Personal lines: each villager's own facts (Villagers/Personality.cs). Format as in lines.txt.
+#
+# Fill-ins: {homeland} (where they grew up), {favfood}, {fear}, {hobby}, {dream} (said as "to see the mountains"),
+# {friend} and {rival} (other villagers by name), {yesterday} ("felling trees", "on the farm"...), {news} (heard
+# from a visitor), {farplace}.
+# Tags: hasfriend friend:near hasrival rival:near   yesterday:any yesterday:felling yesterday:mining
+#   yesterday:building yesterday:cooking yesterday:farming yesterday:hunting yesterday:foraging yesterday:fire
+#   yesterday:idle ...   mem:finished mem:arrival mem:birth mem:death mem:fight mem:hunt mem:groundbroken
+#   mem:upgrade   fear:trolls fear:water fear:dark fear:greydwarfs fear:thunder fear:bees fear:swamp
+#   fear:skeletons fear:heights fear:wolves fear:forgotten fear:serpent fear:fire   news   restday tenthday
+
+# ------------------------------------------------------------------ where they came from
+
+@ talk, doing:idle
+I grew up in {homeland}. It's a long way from here, in every way.
+Back in {homeland} we'd be eating {favfood} about now.
+Have you ever been to {homeland}? Don't. Well, maybe once.
+In {homeland} they'd laugh at how we stack wood here.
+
+@ talk, doing:fire
+This fire smells like home. Home being {homeland}.
+My mother used to sing by a fire like this one. In {homeland}, that was.
+When I close my eyes I'm back in {homeland}. Then the smoke gets in them.
+
+@ talk, evening | elder
+I left {homeland} before you were born. It was smaller then. I was taller.
+I haven't said {homeland} out loud in a while.
+
+@ talk, doing:fire | young
+I was born far away, in {homeland}. I don't remember it. I tell people I do.
+
+@ talk, doing:stroll | wry
+Every village thinks it's the centre of the world. {homeland} certainly did.
+
+# ------------------------------------------------------------------ favourite food
+
+@ talk, unfed
+I'd give a lot for some {favfood} right now.
+Is there any {favfood}? No? I'll just stand here and think about it.
+
+@ talk, doing:cooking
+{favfood} would be better. This'll do.
+If you ever want to make me happy, {favfood}. That's all.
+
+@ self, doing:cooking | cheerful
+One day I'll cook {favfood} for the whole village.
+
+@ talk, fed, mood:high
+Full belly, good day. Only {favfood} would make it better.
+
+@ talk, food:none | gruff
+No food in the chest. And nobody's thought of {favfood} once.
+
+# ------------------------------------------------------------------ fears
+
+@ talk, night, fear:dark
+I don't love the dark. I'll stay where the firelight reaches.
+Is it me, or is the dark thicker out here?
+
+@ self, night, fear:dark | worrier
+Stay close to the fire. The dark has teeth.
+
+@ talk, fear:trolls, biome:blackforest
+Trolls. Every crack of a branch, I think trolls.
+If a troll comes, I'm hiding in the chest. It's big enough. I've checked.
+
+@ talk, fear:greydwarfs
+Greydwarfs again? I can't stand their little faces.
+I dream about greydwarfs. Small ones. Lots of them.
+
+@ talk, fear:water
+I don't go near the deep water. Things live down there.
+I never learned to swim. I never will. That's my plan.
+
+@ talk, rain, fear:thunder
+Listen. If that's thunder, I'm going inside.
+Thor's in a temper. I'm keeping my head down.
+
+@ talk, fear:wolves, night
+Wolves howl and I count my fingers. Still ten.
+
+@ talk, fear:bees
+Bees. Tiny, angry, and everywhere in summer.
+
+@ talk, fear:skeletons
+The dead should stay down. Some of them don't.
+
+@ talk, fear:heights
+I don't climb the scaffolds. Somebody else can do the roof.
+
+@ talk, fear:forgotten | elder
+When I'm gone, will anyone remember my name? Write it in the chronicle.
+
+@ talk, fear:serpent
+The sea serpent is real. My uncle saw it. He never fished again.
+
+@ talk, fear:fire, doing:fire
+I sit back from the fire. I've seen what it does to a thatch roof.
+
+@ talk, afterfight
+When it's over, I shake. Nobody tells you about the shaking.
+Everyone has something they're scared of. Mine is {fear}. Today it was anything with teeth.
+
+@ talk, doing:idle | worrier
+Do you know what I'm afraid of? {fear}. Don't tell anyone.
+I worry about {fear} more than I worry about anything. Is that strange?
+
+# ------------------------------------------------------------------ pastimes and hopes
+
+@ talk, doing:fire
+When it's quiet I like {hobby}. It keeps my hands busy.
+Ask me about {hobby}. Actually, don't. I'll talk all night.
+
+@ talk, doing:idle
+If there's no work, I'm {hobby}. Someone has to.
+I've been {hobby}. Don't laugh.
+
+@ talk, doing:stroll
+Some days I just walk. Other days, {hobby}.
+
+@ talk, evening, mood:high
+One day I'd like {dream}. Tonight I'd settle for a warm bed.
+Do you know what I want? I want {dream}. There, I've said it.
+
+@ talk, evening, mood:low
+I used to want {dream}. Now I just want a dry pair of boots.
+
+@ talk, doing:fire | young
+When I'm grown I'm going {dream}. You'll see.
+
+@ talk, doing:fire | elder
+I always meant {dream}. Maybe next year. I say that every year.
+
+@ talk, doing:fire | devout
+I pray every night. Mostly for the village. Once in a while I ask for a chance {dream}.
+
+# ------------------------------------------------------------------ friends and rivals
+
+@ talk, hasfriend
+Have you met {friend}? Best person in the village. Don't tell them I said so.
+{friend} and I go back. Well, a few weeks. That's a long time out here.
+If I'm not around, ask {friend}. They know where I'll be.
+
+@ talk, friend:near
+That's {friend} over there. We look out for each other.
+{friend} laughs at my jokes. That's rare enough to count as friendship.
+
+@ talk, hasrival
+Don't ask {rival} anything. You'll get an opinion and a lecture.
+{rival} stacked my logs wrong again. On purpose, I think.
+I get on with everyone. Nearly everyone. Not {rival}.
+
+@ talk, rival:near
+{rival} is watching me. They're always watching me.
+Keep your voice down. {rival} hears everything and repeats half of it.
+
+@ talk, hasrival | gruff
+{rival} can do their own chopping.
+
+@ talk, hasrival | wry
+{rival} and I have an understanding. We both think the other one's wrong.
+
+@ talk, hasrival | cheerful
+{rival} and I don't always see eye to eye. I'm working on it. Slowly.
+
+@ chat, friend:near
+Saved you a seat. // You always do. // That's what friends are for.
+Did you sleep? // Not much. // Me neither. Let's be tired together.
+Remember that boar? // Which one? // The one that won. // Ah. That one.
+Bring me back something from the woods. // Like what? // Surprise me. Not a greydwarf.
+
+@ chat, rival:near
+Is that my axe? // It's the village's axe. // It's my axe.
+You missed a log. // I didn't. // There. Under your foot. // Fine.
+Nice stacking. // Was that a joke? // You'll never know.
+Your turn on the water. // I went yesterday. // You went the day before.
+
+# ------------------------------------------------------------------ yesterday
+
+@ talk, yesterday:any, morning
+Yesterday I was {yesterday} all day. Let's see what today brings.
+I spent all of yesterday {yesterday}. My arms remember.
+
+@ talk, yesterday:felling, morning
+Felled trees all day yesterday. My shoulders are not speaking to me.
+
+@ talk, yesterday:mining, morning
+Broke rocks all day yesterday. I still hear the ringing.
+
+@ talk, yesterday:building
+I was on the build all day yesterday. Did you see the new wall? That's mine. Part of it.
+
+@ talk, yesterday:cooking
+Cooked all of yesterday. Nobody said thank you. You could start.
+
+@ talk, yesterday:idle | wry
+Yesterday I did nothing at all. I'm thinking of making it a habit.
+
+@ talk, yesterday:idle | gruff
+Nothing to do yesterday. I hate days like that.
+
+@ talk, yesterday:hunting
+Hunted yesterday. My feet are wet just remembering it.
+
+@ talk, yesterday:farming
+On the farm all day yesterday. Dirt in places dirt shouldn't be.
+
+@ talk, yesterday:fire
+I sat by the fire most of yesterday. Don't judge. Someone had to keep it company.
+
+# ------------------------------------------------------------------ what happened lately
+
+@ talk, mem:finished, !event:finished
+Have you seen the new building? Still smells of fresh wood.
+We finished one more building. I keep walking past it just to look.
+
+@ talk, mem:arrival, !event:arrival
+We've got a new neighbour. Seems decent. Too early to say.
+
+@ talk, mem:birth
+There's a little one in the village now. Everything feels different.
+A baby. We'll need more of everything. Mostly sleep.
+
+@ talk, mem:death
+I keep looking for the one we lost. Old habits.
+We're fewer now. The hearth feels wider.
+
+@ talk, mem:death | elder
+Every village buries its own. That's how it becomes a village.
+
+@ talk, mem:fight, !afterfight
+After the last attack I sleep with my boots on.
+They came, we fought, we're still here. That's a good story to tell later.
+
+@ talk, mem:hunt
+That meat from the hunt is the best we've had in days.
+
+@ talk, mem:groundbroken
+We've started on something new. Ground's already flat.
+
+# ------------------------------------------------------------------ news from other villages
+
+@ talk, news
+Did you hear? {news}. A pedlar told us.
+News from the road: {news}.
+They say {news}. I'd like to see that for myself.
+The visitor said {news}. Makes you think, doesn't it.
+
+@ talk, news | gruff
+Apparently {news}. Good for them.
+
+@ talk, news | worrier
+I heard {news}. What if that happens here?
+
+@ talk, news | wry
+Word is {news}. By the time it reaches the next village it'll be a dragon.
+
+@ chat, news
+Did you hear? // Hear what? // {news}. // Huh.
+The pedlar said {news}. // Pedlars say a lot of things. // True.
+
+# ------------------------------------------------------------------ the days
+
+@ talk, restday
+Seventh day. My father never worked on the seventh day. My father was also lazy.
+If anyone asks, today's a day of rest. Nobody asked.
+
+@ talk, tenthday | elder
+Ten days more behind us. I count them on the doorpost.

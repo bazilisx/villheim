@@ -66,6 +66,7 @@ namespace Villheim.Logic.Villagers
             ["birth"] = (10f, 1800f),
             ["watch"] = (-3f, 600f),
             ["raidwon"] = (10f, 1200f),
+            ["blessing"] = (6f, 1800f),
         };
 
         private static readonly ConditionalWeakTable<Villager, State> States = new ConditionalWeakTable<Villager, State>();

@@ -20,7 +20,7 @@ namespace Villheim.Logic.Village
     {
         private const string TraderObject = "VillheimMarket";
 
-        private static readonly Dictionary<string, (int Stack, int Price)> Prices = new Dictionary<string, (int, int)>
+        internal static readonly Dictionary<string, (int Stack, int Price)> Prices = new Dictionary<string, (int, int)>
         {
             ["Wood"] = (10, 6), ["Stone"] = (10, 6), ["FineWood"] = (10, 15), ["RoundLog"] = (10, 15),
             ["Resin"] = (5, 5), ["LeatherScraps"] = (5, 5), ["DeerHide"] = (2, 6), ["Feathers"] = (5, 5),
@@ -72,7 +72,7 @@ namespace Villheim.Logic.Village
         }
 
         /// <summary>What the chest can spare, in the store's stacks and prices.</summary>
-        private static List<Trader.TradeItem> Stock(VillageHearth hearth, Container chest)
+        internal static List<Trader.TradeItem> Stock(VillageHearth hearth, Container chest)
         {
             var items = new List<Trader.TradeItem>();
             Dictionary<string, int> building = ConstructionSite.Remaining(hearth);

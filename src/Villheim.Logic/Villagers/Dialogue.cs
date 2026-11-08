@@ -54,7 +54,7 @@ namespace Villheim.Logic.Villagers
         private static readonly Dictionary<(int, string), float> Events = new Dictionary<(int, string), float>();
 
         private static readonly string[] VillageMoodEvents = { "finished", "arrival", "hunt", "trade", "birth" };
-        private static readonly string[] Reacted = { "finished", "arrival", "groundbroken", "hunt", "death", "birth" };
+        private static readonly string[] Reacted = { "finished", "arrival", "groundbroken", "hunt", "death", "birth", "pedlar", "pilgrim", "blessing" };
 
         /// <summary>
         /// Something happened in the village (finished, arrival...): "event:x" holds for ten minutes, everyone's mood
@@ -63,6 +63,8 @@ namespace Villheim.Logic.Villagers
         public static void Note(int villageId, string what)
         {
             Events[(villageId, what)] = Time.time;
+            Personality.VillageRemembers(villageId, what);
+            WorldLife.NoteNews(villageId, what);
             if (VillageMoodEvents.Contains(what))
             {
                 Moods.VillageThink(villageId, what);
@@ -136,6 +138,12 @@ namespace Villheim.Logic.Villagers
         public static bool Event(int villageId, string kind, Vector3 where)
         {
             Events[(villageId, kind)] = Time.time;
+            if (kind == "fightover")
+            {
+                Personality.VillageRemembers(villageId, "fight");
+                WorldLife.NoteNews(villageId, kind);
+            }
+
             if (LastEvent.TryGetValue((villageId, kind), out float last) && Time.time - last < 60f)
             {
                 return false;
@@ -274,6 +282,7 @@ namespace Villheim.Logic.Villagers
         /// <summary>Now and then, with a player close by, a villager says something about what is going on.</summary>
         public static void Tick(Villager villager)
         {
+            Personality.Sample(villager);
             if (!VillheimConfig.VillagerChatter.Value || Sleep.IsAsleep(villager) || Player.m_localPlayer == null ||
                 global::Chat.instance == null)
             {
@@ -421,6 +430,12 @@ namespace Villheim.Logic.Villagers
         private static HashSet<string> Tags(Villager villager, string channel)
         {
             var tags = new HashSet<string> { channel };
+            string wanderer = Wanderers.KindOf(villager);
+            if (wanderer != null)
+            {
+                return WandererTags(villager, channel, wanderer);
+            }
+
             string doing = (Sleep.IsAsleep(villager) ? "asleep" : null) ?? (MorningHearth.IsTending(villager) ? "tending the hearth" : null) ?? Healing.Describe(villager) ?? Chores.Describe(villager) ??
                            Hunting.Describe(villager) ?? Farming.Describe(villager) ?? Foraging.Describe(villager) ??
                            Repairs.Describe(villager) ??
@@ -451,6 +466,11 @@ namespace Villheim.Logic.Villagers
             if (EnvMan.IsCold()) tags.Add("cold");
             if (EnvMan.IsFreezing()) tags.Add("freezing");
             if (EnvMan.instance != null && EnvMan.instance.GetWindIntensity() > 0.6f) tags.Add("windy");
+
+            foreach (string own in Personality.Tags(villager))
+            {
+                tags.Add(own);
+            }
 
             VillageHearth hearth = VillageHearth.Find(villager.VillageId);
             if (hearth == null || !hearth.IsValid)
@@ -515,6 +535,31 @@ namespace Villheim.Logic.Villagers
             return tags;
         }
 
+        /// <summary>
+        /// Tags for a pedlar, pilgrim or hermit: "wanderer", the kind, the time and weather, the biome, whether a
+        /// village is near and the phase of the visit. Only sections that require "wanderer" are used for them.
+        /// </summary>
+        private static HashSet<string> WandererTags(Villager villager, string channel, string kind)
+        {
+            var tags = new HashSet<string> { channel, "wanderer", kind, "voice:" + VoiceOf(villager) };
+            float hour = EnvMan.instance != null ? EnvMan.instance.GetDayFraction() * 24f : 12f;
+            tags.Add(hour >= 5f && hour < 9f ? "morning" : hour < 17f && hour >= 9f ? "day" : hour >= 17f && hour < 22f ? "evening" : "night");
+            if (EnvMan.IsWet()) tags.Add("rain");
+            if (EnvMan.IsCold()) tags.Add("cold");
+            if (EnvMan.IsFreezing()) tags.Add("freezing");
+            Heightmap.Biome biome = WorldGenerator.instance != null ? WorldGenerator.instance.GetBiome(villager.transform.position) : Heightmap.Biome.Meadows;
+            tags.Add("biome:" + biome.ToString().ToLowerInvariant());
+            tags.Add("phase:" + (villager.Zdo?.GetString(Wanderers.KeyPhase, "") ?? ""));
+            if (WorldLife.VisitorNews(villager) != null) tags.Add("news");
+            if (VillageHearth.Closest(villager.transform.position, 60f) != null) tags.Add("invillage");
+            float health = villager.GetHealth() / Mathf.Max(1f, villager.GetMaxHealth());
+            tags.Add(health < 0.5f ? "badlyhurt" : health < 0.95f ? "hurt" : "healthy");
+            return tags;
+        }
+
+        /// <summary>The first activity word for a hover description ("felling", "cooking"...), or null.</summary>
+        public static string ActivityWord(string doing) => Activities(doing).FirstOrDefault();
+
         /// <summary>Activity words from the hover description.</summary>
         private static IEnumerable<string> Activities(string doing)
         {
@@ -574,12 +619,16 @@ namespace Villheim.Logic.Villagers
             string request = hearth != null && hearth.IsValid ? Social.RequestText(hearth) ?? "a little wood" : "a little wood";
             line = line.Replace("{request}", request);
             string other = OtherVillager(villager);
-            return line.Replace("{village}", village)
+            line = Personality.Fill(line, villager);
+            line = line.Replace("{village}", village)
                 .Replace("{material}", material)
                 .Replace("{building}", building)
                 .Replace("{name}", villager.VillagerName)
                 .Replace("{player}", player)
                 .Replace("{other}", other);
+
+            // Fill-ins such as {favfood} or {news} can start a sentence: give it its capital.
+            return System.Text.RegularExpressions.Regex.Replace(line, @"(^|[.?!]\s+)([a-z])", m => m.Groups[1].Value + char.ToUpperInvariant(m.Groups[2].Value[0]));
         }
 
         private static string OtherVillager(Villager villager)

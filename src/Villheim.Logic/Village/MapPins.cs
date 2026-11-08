@@ -225,7 +225,7 @@ namespace Villheim.Logic.Village
         /// Minimap.AddPin, called by reflection: its last parameter's type lives in a platform assembly the build
         /// doesn't reference, so its default is passed as is.
         /// </summary>
-        private static Minimap.PinData AddPin(Minimap map, Vector3 position, Minimap.PinType type, string name, bool save)
+        internal static Minimap.PinData AddPin(Minimap map, Vector3 position, Minimap.PinType type, string name, bool save)
         {
             _addPin = _addPin ?? HarmonyLib.AccessTools.Method(typeof(Minimap), "AddPin");
             if (_addPin == null)

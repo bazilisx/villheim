@@ -41,6 +41,11 @@ namespace Villheim.Logic.Villagers
 
             Body.Update(villager);
             Walker.For(villager).Tick(villager);
+            if (Wanderers.IsWanderer(villager))
+            {
+                // Pedlars, pilgrims and hermits belong to no village and run their own small routine.
+                return Wanderers.Update(villager, ai, dt);
+            }
 
             bool threat = ThreatNear(villager, ai, out Character enemy);
             Moods.Update(villager, threat);
@@ -155,7 +160,7 @@ namespace Villheim.Logic.Villagers
         /// fight starts once an enemy has been seen on two checks running (at once when it is close), and ends only
         /// after none has been seen for five seconds.
         /// </summary>
-        private static bool ThreatNear(Villager villager, VillagerAI ai, out Character enemy)
+        internal static bool ThreatNear(Villager villager, VillagerAI ai, out Character enemy)
         {
             State state = States.GetOrCreateValue(villager);
             if (Time.time >= state.NextThreatCheck)

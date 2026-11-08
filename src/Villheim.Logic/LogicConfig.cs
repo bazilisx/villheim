@@ -53,6 +53,12 @@ namespace Villheim.Logic
         public static ConfigEntry<float> ShaperEffectBurstScale;
         public static ConfigEntry<float> ShaperTurnStep;
         public static ConfigEntry<bool> ShaperEffectTint;
+        public static ConfigEntry<bool> WorldLife;
+        public static ConfigEntry<float> VisitorChancePerDay;
+        public static ConfigEntry<float> DaysBetweenVisitors;
+        public static ConfigEntry<int> HermitChance;
+        public static ConfigEntry<string> HermitPlaces;
+        public static ConfigEntry<string> HermitBiomes;
 
         public static void Bind()
         {
@@ -91,6 +97,23 @@ namespace Villheim.Logic
             VillageRaids = Admin(config, work, "RaidsEnabled", false,
                 "Off for now. When on, villages with three or more villagers are now and then raided by greydwarfs at " +
                 "night, warned of at dusk, only while a player is in the village.");
+            const string life = "5 - World life";
+            WorldLife = Admin(config, life, "WorldLife", false,
+                "Off for now, while designs are reviewed. When on, pedlars and pilgrims visit villages (bringing news from " +
+                "other villages, and a pedlar trading with the village chest), and hermits keep camps by some ruins and " +
+                "abandoned houses. 'vh pedlar', 'vh pilgrim' and 'vh hermit' work either way, for testing.");
+            VisitorChancePerDay = Admin(config, life, "VisitorChancePerDay", 0.5f,
+                "Chance that a pedlar or pilgrim comes to a village on a day you spend there (0 to 1).");
+            DaysBetweenVisitors = Admin(config, life, "DaysBetweenVisitors", 1f,
+                "At least this many in-game days between two visitors to the same village.");
+            HermitChance = Admin(config, life, "HermitChance", 30,
+                "Percent of the places in HermitPlaces that have a hermit's camp by them (picked by position, the same on " +
+                "every machine). 0 for no hermits.");
+            HermitPlaces = Admin(config, life, "HermitPlaces", "WoodHouse,AbandonedLogCabin,StoneHouse,Ruin,ShipSetting",
+                "Location names (the start of the name is enough) that hermits camp beside.");
+            HermitBiomes = Admin(config, life, "HermitBiomes", "Meadows,BlackForest,Mountain",
+                "Biomes where hermits camp.");
+
             const string sites = "1b - Village sites";
             VillageChance = Admin(config, sites, "VillageChance", 50,
                 "Percent of generated village sites that become villages, so villages stay a rare find. Sites lit with " +

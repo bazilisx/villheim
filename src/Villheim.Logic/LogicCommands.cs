@@ -52,6 +52,10 @@ namespace Villheim.Logic
             "sort [tools|undo|push|url <address>]: sort the kept designs in the game with the sort knives (A: type, B: subtype); choices go to BepInEx/Villheim/design-sort.csv and the review sheet",
             "note <text>: write a note with what you are aiming at and the nearest gallery sign to BepInEx/Villheim/notes.txt",
             "bp save <number|name> | bp save page [all]: save a design as it stands in the gallery now (pieces left, stand-ins, anything built on its plot) as blueprints/inspiration/pass3/p3-<number>-<name>; 'page' saves every changed design standing near you; the gallery shows the saves from then on",
+            "pedlar: send a travelling pedlar walking in to the nearest village (works with WorldLife off)",
+            "pilgrim: send a pilgrim walking in to the nearest village, to stay the night by the hearth",
+            "hermit: make a hermit's camp fire and its hermit in front of you",
+            "wanderers: list the pedlars, pilgrims and hermits nearby, and the nearest village's news",
             "bp swap <number|name> <stage>: save a copy of a design with its walls, floors, roofs and beams in that stage's materials (to blueprints/inspiration/edits)",
         };
 
@@ -190,6 +194,11 @@ namespace Villheim.Logic
                 case "villheim_snow": Say(context, Village.Snow.Run(args)); return true;
                 case "villheim_weather": Say(context, Village.LocalWeather.Run(args)); return true;
                 case "villheim_repair": Say(context, Village.RepairAll.Run()); return true;
+                case "villheim_pedlar": Say(context, WorldLife.Command(Villagers.Wanderers.Pedlar)); return true;
+                case "villheim_pilgrim": Say(context, WorldLife.Command(Villagers.Wanderers.Pilgrim)); return true;
+                case "villheim_hermit": Say(context, WorldLife.Command(Villagers.Wanderers.Hermit)); return true;
+                case "villheim_wanderers":
+                case "villheim_news": Say(context, WorldLife.Report()); return true;
                 case "villheim_shaper": Say(context, Village.Shaping.Status()); return true;
                 default: return false;
             }
@@ -220,6 +229,7 @@ namespace Villheim.Logic
             Say(context, $"Villheim: {villager.VillagerName} of {villager.VillageName}, voice {Villagers.Dialogue.VoiceOf(villager)}" +
                          $"{(Villagers.Childhood.IsChild(villager) ? ", child" : "")}{(Villagers.Roles.IsJarl(villager) ?  ", Jarl" : "")}");
             Say(context, $"   mood {mood:0} ({Villagers.Moods.Label(mood)}); thoughts: {Villagers.Moods.Describe(villager)}");
+            Say(context, $"   {Villagers.Personality.Describe(villager)}");
             Say(context, $"   {Villagers.Roles.BackgroundOf(villager)}, trade {Villagers.Roles.TradeOf(villager)}, " +
                          $"night watch {(Villagers.Roles.IsNightWatch(villager) ? "tonight" : "no")}, " +
                          $"bed {(Villagers.Beds.For(villager) != null ? "yes" : "none")}, foods {Villagers.Healing.FoodCount(villager)}");

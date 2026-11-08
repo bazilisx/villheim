@@ -659,6 +659,10 @@ namespace Villheim.Logic.Villagers
 
                     chat.NextLine = Time.time + Random.Range(45f, 90f);
                     Moods.Think(villager, "chat");
+                    if (chat.A != null && chat.B != null)
+                    {
+                        Personality.Chatted(chat.A, chat.B);
+                    }
 
                     int split = line.IndexOf("//", System.StringComparison.Ordinal);
                     if (split > 0)

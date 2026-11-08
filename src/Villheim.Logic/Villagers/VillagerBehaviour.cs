@@ -139,6 +139,11 @@ namespace Villheim.Logic.Villagers
         /// <summary>What the villager is doing, in a few words (hover text, inspect command, loop watch).</summary>
         public static string Activity(Villager villager)
         {
+            if (Wanderers.IsWanderer(villager))
+            {
+                return Wanderers.Describe(villager);
+            }
+
             return TestActs.Describe(villager) ?? Sleep.Describe(villager) ?? (MorningHearth.IsTending(villager) ? "tending the hearth" : null) ??
                    Healing.Describe(villager) ?? Chores.Describe(villager) ?? Replanting.Describe(villager) ?? Hunting.Describe(villager) ?? Farming.Describe(villager) ??
                    Foraging.Describe(villager) ?? Repairs.Describe(villager) ?? (PathLaying.IsLaying(villager) ? "laying a path" : null) ??
@@ -147,6 +152,11 @@ namespace Villheim.Logic.Villagers
 
         public static string HoverText(Villager villager)
         {
+            if (Wanderers.IsWanderer(villager))
+            {
+                return Wanderers.HoverText(villager);
+            }
+
             string village = villager.VillageName;
             string text = villager.VillagerName;
             string title = Roles.Title(villager);
@@ -182,6 +192,11 @@ namespace Villheim.Logic.Villagers
             if (!(user is Player player) || player != Player.m_localPlayer)
             {
                 return false;
+            }
+
+            if (Wanderers.IsWanderer(villager))
+            {
+                return Wanderers.Interact(villager, player);
             }
 
             bool shift = ZInput.GetButton("Run") || ZInput.GetKey(KeyCode.LeftShift, false) || ZInput.GetKey(KeyCode.RightShift, false);

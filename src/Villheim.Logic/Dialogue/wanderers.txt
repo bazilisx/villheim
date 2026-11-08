@@ -1,0 +1,246 @@
+# Lines for people who belong to no village: pedlars, pilgrims and hermits (Villagers/Wanderers.cs), and what
+# villagers say about them. Format as in lines.txt.
+#
+# Wanderer sections must carry the tag "wanderer"; only those are used for them. Their tags:
+#   wanderer  pedlar pilgrim hermit  phase:arrive phase:stay phase:leave  invillage  news
+#   morning day evening night  rain cold freezing  biome:meadows biome:blackforest biome:mountain ...
+#   healthy hurt badlyhurt
+# Channels: greet (on reaching the hearth), bye (leaving), talk (a player talks to them), self (now and then), and
+# "talk, sold" after a player buys something.
+# Fill-ins as in lines.txt, plus {from} (where a visitor comes from), {news} (the latest from there), {farplace},
+# {homeland}, {favfood}, {fear}, {hobby}, {dream}.
+#
+# Villager sections about visitors use event:pedlar, event:pilgrim and event:blessing (ten minutes after) and
+# mem:pedlar, mem:pilgrim (two days after).
+
+# ------------------------------------------------------------------ pedlars
+
+@ greet, wanderer, pedlar
+Hello the hearth! Anyone need anything carried a very long way?
+Goods from {from}. Fair prices, mostly.
+Put the kettle on, I've walked since dawn.
+Pedlar! Don't all run off at once.
+My feet hurt and my pack is full. Let's fix one of those.
+
+@ bye, wanderer, pedlar
+Right. The road won't walk itself.
+Keep the fire going. I'll be back when my pack's full again.
+If anyone asks, I gave you a good price.
+Off I go. Mind the greydwarfs, they've been bold this year.
+Thank you for the seat by the fire.
+
+@ talk, wanderer, pedlar
+Shift and talk if you want to see the pack. I don't bite.
+I came from {from}. Long way. Lots of trees.
+I carry what people don't have and take what they don't want. That's the whole trade.
+Everyone wants core wood out here. Nobody wants to go and get it.
+You look like someone with coins.
+I've slept in nine villages this month and a hollow log twice.
+Buy something or tell me a story. Either pays.
+A pedlar who says the prices are fair is lying. Mine are fair, though.
+
+@ talk, wanderer, pedlar, news
+News from {from}: {news}.
+They're talking about it all the way back in {from}. {news}.
+You heard? {news}. That's what they told me in {from}.
+
+@ talk, wanderer, pedlar, rain
+Rain gets into the pack. Everything I sell smells of wet wool.
+Don't stand there in the wet. Come under the eaves and haggle.
+
+@ talk, wanderer, pedlar, night
+Bad time to be on the road. That's why I'm here and not there.
+I sleep with one hand on the pack. Nothing personal.
+
+@ talk, wanderer, pedlar, phase:arrive
+Nearly there. Is that smoke from the hearth?
+Hold on, let me get to the fire first.
+
+@ talk, wanderer, pedlar, phase:leave
+Too late, the pack's closed. Catch me next time.
+Walk with me to the edge of the trees, if you like. No? Fair.
+
+@ self, wanderer, pedlar
+Three hides, two resin, one very sad boar tusk.
+Where did I put the thistle? I had thistle.
+Good village, this. Nobody's tried to rob me yet.
+My back. My poor back.
+Count it twice, sell it once.
+I could stay a week here. I won't, but I could.
+
+@ self, wanderer, pedlar, phase:stay
+I'll stay till midday, then on to the next place.
+They always want what's at the bottom of the pack.
+
+@ talk, sold, wanderer
+Good choice. Don't tell anyone what you paid.
+Pleasure. Truly.
+That was the last one. It's always the last one.
+You won't regret it. Probably.
+Spend well, friend.
+I'll remember your face. In the good way.
+
+# ------------------------------------------------------------------ pilgrims
+
+@ greet, wanderer, pilgrim
+Peace on this hearth. May I sit by it a while?
+I'll ask nothing but a place by the fire tonight.
+The gods sent me this way. Or the road did. Same thing.
+Is there room by the fire for one more?
+
+@ bye, wanderer, pilgrim
+Your fire kept me warm. May it keep you safe.
+The gods have seen this place. That's my blessing, such as it is.
+I go on. Light the fire for whoever comes next.
+Rest well, all of you. I'll remember this hearth.
+
+@ talk, wanderer, pilgrim
+I walk from shrine to shrine. Most of them are just stones now.
+I've come from {from}. I'm going toward {farplace}. After that, who knows.
+The dead are all around us here. They don't mind if we're quiet.
+Odin hung nine nights on the tree. I can manage one night by your fire.
+My pack holds stories, and they're free.
+They say this whole land is a place between. I believe it on bad nights.
+Every hearth is a little temple, if you squint.
+
+@ talk, wanderer, pilgrim, news
+I passed through {from}. {news}. The gods watch over them, I hope.
+Last I saw {from}, {news}.
+
+@ talk, wanderer, pilgrim, night
+Sit with me. The fire talks if you let it.
+This is the hour when the stars are close. Look up.
+
+@ talk, wanderer, pilgrim, morning
+Dawn already. I always miss the best part sleeping.
+The fire's low. Feed it before you go about your day.
+
+@ self, wanderer, pilgrim
+Thank you for the fire.
+Hm. A good, honest smoke.
+Every road ends at a hearth.
+Frigg, keep these people.
+My feet have walked further than my mind can follow.
+
+@ self, wanderer, pilgrim, night
+The world is very quiet here.
+Sleep, little village. I'll keep an eye open.
+
+# ------------------------------------------------------------------ hermits
+
+@ talk, wanderer, hermit
+Hm? Oh. A person. It's been a while.
+I came out here to get away from people. And here you are.
+That's my fire. You can look at it. Don't touch it.
+I talk to the trees. They're better listeners than most.
+Do you hear that? No? Good. Neither do I.
+Sit if you like. I won't make conversation.
+I lived in a village once. Too much talking. Too many opinions about my hat.
+Out here nobody tells me when to get up.
+The ruins over there were somebody's house. Now they're mine. They don't seem to mind.
+Shift and talk if you want what I've got. It isn't much.
+News can find me if it wants. It never does.
+
+@ talk, wanderer, hermit, biome:blackforest
+The greydwarfs leave me alone. We have an understanding.
+Trolls come through here sometimes. I stay very still and think about rocks.
+The forest is loud if you listen. Mostly it's saying go away.
+
+@ talk, wanderer, hermit, biome:meadows
+It's a soft place, the meadows. Too soft for me, some days.
+Boars are good company. They want food and that's it.
+
+@ talk, wanderer, hermit, biome:mountain
+Cold keeps the visitors away. Mostly.
+Up here the wind does the talking. I just agree with it.
+Wolves at night. You get used to it. No, you don't.
+
+@ talk, wanderer, hermit, night
+Sit down. You're blocking my fire.
+At night the ruins whisper. Old people, old arguments.
+I don't sleep much. Someone has to watch the dark.
+
+@ talk, wanderer, hermit, rain
+The rain is the only visitor who never asks me anything.
+Wet again. My fire is the only dry thing for a mile.
+
+@ talk, wanderer, hermit, hurt
+Something bit me. I bit it back. We're even.
+Don't fuss. I've had worse from a door.
+
+@ self, wanderer, hermit
+Mushrooms by the old wall. Good mushrooms.
+Where's my other boot.
+Quiet. Good.
+More wood on the fire. Always more wood.
+Talked to a crow this morning. Smart crow.
+I had a name for this place once. Forgot it.
+Somebody's walking about. Could be you. Could be worse.
+
+@ self, wanderer, hermit, night
+The fire's the only thing out here that needs me.
+Stars are out. Hello, stars.
+
+@ greet, wanderer, hermit
+Hm.
+What do you want?
+
+@ bye, wanderer, hermit
+Go on, then.
+Mind how you go.
+
+# ------------------------------------------------------------------ villagers about visitors
+
+@ self, event:pedlar
+A pedlar! Let's see what's in the pack.
+Someone's coming up the path with a big pack.
+Hide the good food, a pedlar's here.
+Pedlar's here. I'm only looking. Really.
+I hope there's some core wood in there.
+
+@ self, event:pedlar | gruff
+Another pedlar. Count the chest after they go.
+Pedlars. All smiles and short measures.
+
+@ self, event:pedlar | cheerful
+Visitors! I love visitors.
+Oh, I wonder what's in the pack this time.
+
+@ self, event:pedlar | worrier
+Do we know this one? Has anyone seen them before?
+What if they're a thief? They look like a thief. Everyone looks like a thief.
+
+@ self, event:pedlar | young
+Can I see the pack? Please? Just the top bit?
+
+@ self, event:pilgrim
+A pilgrim. Somebody make room by the fire.
+A traveller for the night. Give them the warm side.
+Pilgrims bring luck, my mother said. Or was it rain.
+
+@ self, event:pilgrim | devout
+A pilgrim at our hearth. The gods are looking this way.
+We should share our food. That's the old way.
+
+@ self, event:pilgrim | wry
+Pilgrims. Free stories, but they eat like anyone.
+
+@ self, event:blessing
+The pilgrim blessed the hearth. I do feel lighter.
+I slept better with the pilgrim keeping watch.
+Did you hear the blessing? Short, but I'll take it.
+
+@ self, event:blessing | gruff
+Words over a fire. Still, it's warm.
+
+@ talk, mem:pedlar
+The pedlar who came through had the worst jokes. Good goods, though.
+We traded with a pedlar the other day. The chest looks happier for it.
+I bought nothing from the pedlar. I wanted to. I'm saving.
+
+@ talk, mem:pilgrim
+We had a pilgrim sleeping by the hearth. Quiet sort. Snored a bit.
+The pilgrim told me about {farplace}. I'd like to go one day. I won't.
+
+@ talk, mem:blessing
+The hearth's been blessed. Doesn't stop the rain, mind.

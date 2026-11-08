@@ -80,7 +80,7 @@ namespace Villheim.Logic.Villagers
 
             if (state.Target == null || state.Target.GetPicked() || Time.time > state.Deadline)
             {
-                state.Target = state.Carrying.Values.Sum() < PerTrip ? Nearest(hearth.transform.position, villager.transform.position) : null;
+                state.Target = state.Carrying.Values.Sum() < PerTrip ? Nearest(villager.VillageId, hearth.transform.position, villager.transform.position) : null;
                 state.Deadline = Time.time + 25f;
                 Walker.For(villager).Reset();
                 if (state.Target == null)
@@ -158,7 +158,7 @@ namespace Villheim.Logic.Villagers
             Container chest = hearth != null && hearth.IsValid ? VillageChest.Find(hearth) : null;
             int enough = (new VillageState(hearth.Zdo).Type == "farming" ? EnoughFood * 2 : EnoughFood) * Village.Calendar.FoodFactor();
             if (chest == null || chest.GetInventory().GetAllItems().Where(i => i.m_shared.m_food > 0f).Sum(i => i.m_stack) >= enough ||
-                Nearest(hearth.transform.position, villager.transform.position) == null)
+                Nearest(villager.VillageId, hearth.transform.position, villager.transform.position) == null)
             {
                 return false;
             }
@@ -183,14 +183,17 @@ namespace Villheim.Logic.Villagers
             }
         }
 
-        private static Pickable Nearest(Vector3 hearth, Vector3 from)
+        private static Pickable Nearest(int villageId, Vector3 hearth, Vector3 from)
         {
             Pickable best = null;
             float bestDistance = float.MaxValue;
-            foreach (Collider collider in Physics.OverlapSphere(hearth, SearchFromHearth))
+            // A grown village forages further out, where it has the gear for the land (Knowledge).
+            float search = Village.Knowledge.WorkRadius(villageId, SearchFromHearth);
+            foreach (Collider collider in Physics.OverlapSphere(hearth, search))
             {
                 Pickable pickable = collider.GetComponentInParent<Pickable>();
-                if (pickable == null || pickable.GetPicked() || pickable.m_itemPrefab == null)
+                if (pickable == null || pickable.GetPicked() || pickable.m_itemPrefab == null ||
+                    !Village.Knowledge.MayWork(villageId, hearth, pickable.transform.position, SearchFromHearth))
                 {
                     continue;
                 }

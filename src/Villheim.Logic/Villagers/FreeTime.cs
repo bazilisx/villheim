@@ -828,7 +828,7 @@ namespace Villheim.Logic.Villagers
                         return;
                     }
 
-                    string told = PlayerMemory.Gossip(villager, other);
+                    string told = PlayerMemory.Gossip(villager, other) ?? Village.Knowledge.Gossip(villager, other);
                     string line = Dialogue.ChatOpening(villager, other, told);
                     if (line == null)
                     {

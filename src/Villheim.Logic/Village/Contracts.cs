@@ -246,7 +246,14 @@ namespace Villheim.Logic.Village
         public static string BoardText(VillageHearth hearth)
         {
             Contract c = hearth != null && hearth.IsValid && LogicConfig.IsOn(LogicConfig.Contracts) ? Read(hearth.Zdo) : null;
-            return c != null ? $"{c.Amount} {Label(c.Item)}, pays {c.Reward} {Label(c.RewardItem)}" : null;
+            if (c == null)
+            {
+                return null;
+            }
+
+            // Where the village believes it can be found, or that nobody knows (Knowledge).
+            string where = Rumours.BoardWhere(hearth, c.Item);
+            return $"{c.Amount} {Label(c.Item)}, pays {c.Reward} {Label(c.RewardItem)}" + (where != null ? "<br>" + where : "");
         }
 
         public static string Describe(VillageHearth hearth)

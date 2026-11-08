@@ -335,7 +335,7 @@ I'll help with the picking. If I get some.
 
 @ chat, with:child
 What are you up to, little one? // Nothing! // That's what worries me.
-Mind you don't wander past the fence. // Why? // Trolls. // Real ones?
+Mind you don't wander past the fence. // Why? // Things. // What things?
 Did you help today? // I carried a stick! // A whole stick. Good.
 Want to learn something? // What? // How to tie a knot. // That's boring. // It's useful. // Boring.
 

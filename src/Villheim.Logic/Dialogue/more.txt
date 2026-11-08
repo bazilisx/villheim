@@ -166,18 +166,14 @@ If you want something done properly, ask {other}. If you want it done quickly, a
 
 @ biome:meadows, !night
 The boars come right up to the houses some mornings.
-There's raspberries past the big rock if you look.
 The deer here are skittish. Can't blame them.
-Flat land, good timber, a stream nearby. We chose well.
-You can see the stones from the hill on a clear day.
+Flat land, good timber. We chose well.
 
 @ biome:blackforest, !night
 Mind the roots on the paths. They trip you in the dark.
 The pines up here are older than anything I know.
-There's copper in these hills. Bring a good pick.
 Blueberries everywhere, if the greydwarfs leave any.
 The fog comes in fast here. Keep the hearth in sight.
-Somewhere in this forest is a trader. Haldor, they call him. Strange fellow, by all accounts.
 
 @ biome:blackforest, night
 Hear that? Trolls, far off. Probably far off.
@@ -277,7 +273,7 @@ May your road be dry and your blade sharp.
 
 @ doing:hunting
 Quiet. It hasn't seen me yet.
-There's a boar by the trees. Dinner, if I'm quick.
+There, by the trees. Dinner, if I'm quick.
 Stay back, you'll spook it.
 Fresh tracks. Not far now.
 

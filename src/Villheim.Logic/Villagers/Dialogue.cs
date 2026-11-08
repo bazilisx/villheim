@@ -637,6 +637,7 @@ namespace Villheim.Logic.Villagers
 
             tags.UnionWith(PlayerMemory.Tags(hearth, villager));
             tags.UnionWith(Village.Living.Tags(villager, hearth));
+            tags.UnionWith(Village.Rumours.Tags(villager, hearth));
 
             var state = new VillageState(hearth.Zdo);
             int plots = state.Plots.Count;
@@ -796,6 +797,7 @@ namespace Villheim.Logic.Villagers
             line = FillMoment(line, villager);
             line = Personality.Fill(line, villager);
             line = Village.Living.Fill(line, villager);
+            line = Village.Rumours.Fill(line, villager);
             if (line.Contains("{neighbour}"))
             {
                 line = line.Replace("{neighbour}", (hearth != null ? Relations.Nearest(hearth)?.Name : null) ?? "the next village");

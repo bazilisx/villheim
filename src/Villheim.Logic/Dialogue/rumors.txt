@@ -3,18 +3,31 @@
 # that the tags don't vouch for.
 #
 # Tags: rumor, rumor:saw (he saw it himself), rumor:heard (someone told him in a chat), rumor:common (the whole
-# village has heard by now), rumor:<kind>, rumor:<kind>:<key>, rumor:near, rumor:far, rumor:spotted (seen from a
-# way off only), rumor:new (he found it today), rumor:felled (a boss that is down), rumor:when:day/night/any,
+# village has heard by now), rumor:<kind>, rumor:<kind>:<key>, rumor:near (under 350 m), rumor:far (over 900 m),
+# rumor:spotted (seen from a way off: only animal grounds and biome edges), rumor:new (he found it today),
+# rumor:felled (a boss that is down), rumor:when:day/night/any, rumor:sure (a runestone with boar, Greydwarfs or Draugr
+# always around it: say it with confidence), rumor:ground (an animal ground or biome edge, not a place: hedge it),
 # rumor:terrain:sea/river/mountain/ridge/swamp/forest/hill/high/down/shore/flat. Chat: tell:rumor (he is passing it on).
 # Kinds and keys: boss eikthyr elder bonemass moder yagluth queen fader; dungeon burial sunkencrypt trollcave frostcave
-# infestedmine; trader haldor hildir bogwitch; runestone; landmark stones tarpit tower giant henge dolmen wreck well
-# cairn drakenest greydwarfcamp; ruin; fuling; dvergr; ore copper tin silver obsidian iron flametal; nest greydwarfnest
-# draugrpile bonepile; forage raspberries blueberries cloudberries beehive; game boar deer neck hare lox; foe (creatures
-# that fight); biome meadows blackforest swamp mountain plains ocean mistlands ashlands deepnorth.
+# infestedmine; trader haldor hildir bogwitch; runestone runestone boars greydwarfs draugr; landmark stones tarpit tower
+# giant henge drakenest (dolmen wreck well cairn greydwarfcamp only if KnowledgeKinds lists them); fuling; dvergr; ore
+# copper tin silver obsidian flametal; forage beehive; game boar deer neck hare lox; foe (creatures that fight); biome
+# meadows blackforest swamp mountain plains ocean mistlands ashlands deepnorth. Ruins, nests and berries are off by
+# default (KnowledgeKinds).
 #
-# Fill-ins: {thing} (what it is, "a troll cave"), {thingshort} ("the troll cave"), {where} ("over the ridge to the
-# north, a good walk"), {direction} ("to the north"), {terrain} ("over the ridge", or "out" on the flat), {distance}
-# ("a good walk"), {witness} (who found it), {rteller} (who told him), {daysago}, {when} ("by day", "at night").
+# Fill-ins (Village/Rumors.cs; each rolls a different short shape every time it is used):
+#   {thing}      what it is, with the game's names: "a troll cave", "Eikthyr's altar", "a runestone with boar all around it"
+#   {thingshort} "the troll cave", "the boar runestone"
+#   {where}      direction and maybe distance or a known place on the way: "to the north", "north, a fair walk",
+#                "over the ridge to the north", "past the tar pit"; under 150 m "just past the north fence"
+#   {direction}  "to the north", "north of here", "out north", "off north"
+#   {dir}        the bare compass word: "north", "northeast"
+#   {terrain}    "over the ridge", "across the river"..., empty on flat ground (spaces close up)
+#   {via}        a known place on the way ("past the tar pit"), else {terrain}, else "out"
+#   {distance}   "a short walk", "a fair walk", "a long walk", "half a day out"...
+#   {biome}      the biome it is in: "the Black Forest"
+#   {witness}    who found it; {rteller} who told him; {daysago} "yesterday", "three days back"; {when} "at night",
+#                "in daylight", "any time of day"
 #
 # Firsthand lines say "I". Heard lines name {rteller} or {witness}. Common lines say "they say" or name {witness}.
 # Boss lines say what the place is and no more.

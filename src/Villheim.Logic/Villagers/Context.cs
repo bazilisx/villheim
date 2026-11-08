@@ -57,7 +57,7 @@ namespace Villheim.Logic.Villagers
             ["drake"] = "drake", ["fenring"] = "fenring", ["lox"] = "lox", ["fuling"] = "fuling", ["goblin"] = "fuling", ["goblinbrute"] = "fuling", ["goblinshaman"] = "fuling",
             ["deathsquito"] = "deathsquito", ["hare"] = "hare", ["chicken"] = "chicken", ["hen"] = "chicken",
             ["serpent"] = "serpent", ["seeker"] = "seeker", ["seekerbrute"] = "seeker", ["seekersoldier"] = "seeker",
-            ["tick"] = "tick", ["gjall"] = "gjall", ["wraith"] = "wraith", ["abomination"] = "abomination", ["stonegolem"] = "stone golem",
+            ["tick"] = "tick", ["gjall"] = "gjall", ["wraith"] = "wraith", ["abomination"] = "abomination", ["stonegolem"] = "golem",
             ["ulv"] = "ulv", ["dvergr"] = "dvergr", ["seagal"] = "gull", ["crow"] = "crow", ["eikthyr"] = "great stag",
         };
 

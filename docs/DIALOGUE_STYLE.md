@@ -20,8 +20,15 @@ https://en.wikipedia.org/wiki/Wikipedia:Signs_of_AI_writing. They add to the wri
 
 ## What a good line does
 
-- Varies in length. Some lines are one long sentence held together with "and" or "so". Some are a quick question.
-- Sounds spoken: contractions, hedges ("I think", "far as I know"), a run-on, a change of mind halfway through.
+- Fits a speech bubble. Most bubbles are 4 to 15 words, many under 8; a few run to about 20. Anything longer is split:
+  " >> " lets the same speaker go on in a second bubble once the first has been read, and " // " lets the nearest
+  other villager answer (Tyler, T-30). Use both sparingly.
+- Varies in shape from one line to the next: a question, a fragment, a plain statement, a half-finished thought. The
+  key fact sits in different places. No fixed template for a kind of line, and no repeated "statement plus short tag
+  sentence" ("He didn't go in." "I marked the rock.").
+- Sounds spoken: contractions, hedges ("I think", "far as I know"), a change of mind halfway through.
+- Ends on the plain fact or the direction more often than on a joke. Small self-deprecating closers and stock phrases
+  ("white as milk", "bet my boots") become their own tell across hundreds of lines.
 - Names a person, a day or a small detail: who saw it, when, what they brought back, what went wrong.
 - Starts somewhere other than the thing itself: with a person, a time, a complaint, a use for it.
 - Asks the player something back or offers something.

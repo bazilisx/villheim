@@ -697,7 +697,7 @@ namespace Villheim.Logic.Villagers
                 case "fuling": return "Fuling";
                 case "great stag": return "Eikthyr";
                 case "bear": return "Bjørn";
-                case "stone golem": return "Stone Golem";
+                case "golem": return "Stone Golem";
                 case "deer":
                 case "boar":
                 case "hare":

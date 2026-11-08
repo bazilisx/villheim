@@ -39,6 +39,21 @@
 #
 # A section the player has heard a lot from is picked less for a while (topic fatigue, see Dialogue.cs).
 #
+# More than one bubble (Dialogue.cs), in any line and any channel:
+#   " >> "  a pause, then the same speaker goes on in a new bubble (6 to 10 s later, scaled to the first bubble).
+#   " // "  outside a chat: the nearest other villager within 10 m answers (2.5 to 6 s later); with nobody that close
+#           the line stops after the first bubble. Parts go back and forth between the two. In chat sections "//"
+#           keeps its chat meaning (turns between the two chatting, "@key" answers, "+key" a third villager).
+# Bubbles stay up 2.5 s + 0.07 s a character (3 to 12 s). Keep bubbles short; split anything long with >> or //.
+#
+# Gestures come only from a section's own ~tone, and only now and then: ~wave, ~no (shakes head), ~shrug, ~point
+# (only when the line is about a known place: he turns to it first), ~joke (laugh), ~proud (thumbs up), ~cheer, ~pious
+# (bow). Other tones (~worry ~angry ~sad ~happy) move no hands; they only let a listener answer (reply, tone:x).
+#
+# Creatures: beast:x, enemy:x, enemy:seen and fearnear hold only while that creature is within 40 m. Queued lines
+# event:beast and event:enemyfar come with sighted:x and are dropped if the creature has gone. {beast} gives the game's
+# name (Greydwarf, Troll, Fuling, Deathsquito...) and a line with {beast} is skipped when no creature is near.
+#
 # House style: plain, short, specific. People talk about splinters, wet boots and burnt meat. No speeches, no
 # morals, no em dashes, no "it's not this, it's that". Each voice should sound like one person.
 

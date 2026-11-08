@@ -227,7 +227,7 @@ I'll talk to {rival}. Doesn't mean I like them.
 @ goal:feast
 What we need is a feast. Meat, mead, the lot.
 When was the last proper feast here? Too long ago.
-Somebody bring down a deer and let's eat like jarls.
+Somebody bring down a deer and let's eat like lords.
 
 @ goal:feast | cheerful
 A feast! We should have a feast! Who's with me?

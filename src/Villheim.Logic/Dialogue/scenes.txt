@@ -281,7 +281,7 @@ Maybe. Ask me again at the fire.
 @ chat, with:sweetheart
 Did you sleep? // You kicked me all night. // I was dreaming of running. // From me? // Towards you.
 I saved you the warm spot by the fire. // You always do.
-When we have our own house, I want a window. // A window? Like a jarl? // Like a jarl.
+When we have our own house, I want a window. // A window? Like the {leader}'s? // Like the {leader}'s.
 Everyone's looking at us. // Let them look. // +sweethearts
 
 @ reply, chime:sweethearts
@@ -379,7 +379,7 @@ Don't know. I just woke up like this.
 Everything's going right today. Don't spoil it.
 
 @ chat, with:jarl
-Jarl. Can I ask you something? // Ask. // When are we building the next house? // When the chest is full.
+{leader}. Can I ask you something? // Ask. // When are we building the next house? // When the chest is full.
 Are you pleased with how things are going? // @jarlpleased
 I've got an idea for the village. // Go on. // A wall. A big one. // We'll see.
 

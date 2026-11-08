@@ -563,7 +563,7 @@ namespace Villheim.Logic.Village
             return surname.Length > 0 && !name.Contains(" ") ? name + " " + surname : name;
         }
 
-        /// <summary>The title of the village's first settler: Jarl in a Norse village, Starosta in a Slavic one...</summary>
+        /// <summary>The title of the village's first settler: Jarl in a Norse village, Elder in a Slavic one...</summary>
         public static string LeaderTitle(int villageId) => On ? Get(OfVillage(villageId)).Leader : "Jarl";
 
         private static readonly string[] NorseFestivals = { "the sowing feast", "the midsummer fire", "the harvest feast", "Yule" };
@@ -602,7 +602,7 @@ namespace Villheim.Logic.Village
             }
         }
 
-        /// <summary>{people} (Norse, Slavic...) and {leader} (Jarl, Starosta...) in lines.</summary>
+        /// <summary>{people} (Norse, Slavic...) and {leader} (Jarl, Chief, Elder...) in lines.</summary>
         public static string Fill(string line, Villager villager)
         {
             if (line.IndexOf('{') < 0)

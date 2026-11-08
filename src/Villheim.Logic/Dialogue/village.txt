@@ -157,7 +157,7 @@ Everyone looks to me when things go wrong. I don't always know what to say.
 I remember when this was a fire and a chest. Look at it now.
 
 @ chat, jarl
-What's the plan, Jarl? // Build. Eat. Sleep. Build some more. // Good plan.
+What's the plan, {leader}? // Build. Eat. Sleep. Build some more. // Good plan.
 
 # ------------------------------------------------------------------ the village's character (village:woodland, fortified, farming)
 

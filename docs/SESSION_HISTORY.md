@@ -70,6 +70,7 @@ Current facts only. Read this at the start of a session. Narrative is in `docs/d
 
 ## Recent milestones
 
+- **2026-11-07 (board plots stay standing on save, lost plot signs restored, roads relaid on rebuild, vh shaper/repair/weather)** - see docs/daily-notes/2026-11/2026-11-07.md
 - **2026-11-07 (board ground copy reworked, still open; pieces placed as saved; vh snow)** - see docs/daily-notes/2026-11/2026-11-07.md
 - **2026-11-07 (board: drafts, ground, compass grid, swap fixes, path markers wired into paths)** - see docs/daily-notes/2026-11/2026-11-07.md
 - **2026-11-07 (slotting board `vh slot` with PlanBuild picture tab and Slots tab)** - see docs/daily-notes/2026-11/2026-11-07.md

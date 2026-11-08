@@ -16,7 +16,7 @@ Code in `tools/blueprint-lab/`. Built 2026-11-08 night. Nothing generated here i
 | Pieces | `lib/pieces.js` | Size, shape, role and material for any prefab name; the biome a material first appears in. |
 | Generator | `lib/generate.js`, `lib/styles.js` | A request (type, biome, culture, plan, roof, walls, size stage, decor stage, seed) to a design. |
 | Cultures | `lib/styles.js`, `lib/generate.js`, `lib/gen_cultures.js` | The 14 approved village cultures, up to three per biome with weights, and their forms: round houses, crannogs, goahti, lavvu, yurts, Icelandic gable rows, courtyards with arcades, keeps, Svan towers, domed and drum churches, stave churches, sunken huts. Style guide and sources in `docs/CULTURE_STYLES.md`; overview pictures in `docs/cultures/`. |
-| Decorator | `lib/decorate.js` | Furnishes rooms to d1, d2 or d3; strips any design to d1; furnishes any existing blueprint against its real walls. |
+| Decorator | `lib/decorate.js`, `lab/learn_interior.py`, `data/interior-lite.json` | Furnishes every floor to d1, d2 or d3 from rules learned from the best-liked builds; strips any design to d1; furnishes any existing blueprint against its real walls; checks its own work (`audit`, `lab/check_interiors.js`). See `docs/INTERIOR_DESIGN.md`. |
 | Checks | `lib/checks.js` | Every piece connected to the ground, no doubled pieces, doors with room on both sides, materials the biome has, floor left free. |
 | Renderer | `lib/render.js`, `lib/sheet.js` | Four views (front left, back right, top, inside with the roof off) as PNG in Node or on a canvas in a browser. |
 | Request page | `web/app.html`, built to `web/index.html` by `lib/build_web.js` | Type or pick a request, get the best of up to 16 candidates, turn it round, download the `.blueprint`; a second tab strips or furnishes an uploaded blueprint; a third repairs one. Published as the artifact "Villheim Blueprint Lab"; a copy is in `BepInEx/config/Villheim-tools/` on Tyler's PC and opens offline. |
@@ -213,8 +213,8 @@ running it again makes the same design. Then `vh place <id>` in the game.
 - Piece sizes come from names and corpus measurements, so the pictures are close. An in-game export of each piece's
   collider would make them exact.
 - Crop fields need the ground cultivated in game for crops to grow back.
-- The decorator's facing per item comes from the corpus. Items whose facing the corpus does not settle face into the
-  room.
+- Furniture sizes in the decorator are measured in the corpus (`docs/INTERIOR_DESIGN.md`); the renderer still draws
+  the sizes in `lib/pieces.js`.
 - None of the generated designs has been placed in the game yet.
 
 ## Commands
@@ -232,6 +232,8 @@ node lib/gen_set.js out/set 8                                      # the review 
 node lib/gen_cultures.js out/cultures 6 ../../docs/cultures       # culture samples and overview pictures
 node lib/build_web.js web/index.html                               # the request page
 node lib/build_engine.js                                           # the game's bundle, src/Villheim.Logic/Generator/lab.js
+python3 lab/learn_interior.py <corpus dir> data/interior.json      # interior rules; then node lab/interior_lite.js
+node lab/check_interiors.js lib out.json 3                         # furniture checks over a sample
 node lab/process_requests.js <requests.jsonl> [result dir]         # make the designs asked for with 'vh ask'
 ../gen-test/run.sh [list] [tries]                                  # game engine and node, byte for byte
 ```

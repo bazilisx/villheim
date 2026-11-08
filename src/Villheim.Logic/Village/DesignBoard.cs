@@ -84,6 +84,57 @@ namespace Villheim.Logic.Village
 
         private static string CandidateFolder => Path.Combine(BepInEx.Paths.ConfigPath, "PlanBuild", "blueprints", "villheim-board");
         internal static string SaveFolder => Path.Combine(Blueprints.Folder, "inspiration", "board");
+        private static string DraftFolder => Path.Combine(SaveFolder, "drafts");
+        private static string DraftFile(string plotName) => Path.Combine(DraftFolder, StageName(plotName) + ".blueprint");
+
+        /// <summary>
+        /// Keeps a plot that changed since its last save (pieces and ground) as a draft in board/drafts. False when the
+        /// plot is as saved or empty.
+        /// </summary>
+        private static bool WriteDraft(string plotName)
+        {
+            (ZDO sign, List<ZNetView> views) = SwapTool.DesignParts(plotName);
+            if (sign == null || views.Count == 0 || views.Count == sign.GetInt(Gallery.KeyPlaced, 0))
+            {
+                return false;
+            }
+
+            Vector3 center = sign.GetVec3(Gallery.KeyPlotCenter, Vector3.zero);
+            float yaw = sign.GetFloat(Gallery.KeyPlotYaw, 0f);
+            Quaternion frame = Quaternion.Inverse(Quaternion.Euler(0f, yaw, 0f));
+            var lines = new List<string> { "#Name:" + StageName(plotName) + " (draft)", "#Creator:Villheim board", "#Category:Villheim draft" };
+            List<string> terrain = SampleTerrain(center, yaw, sign.GetFloat(Gallery.KeyPlotHalf, 10f));
+            if (terrain.Count > 0)
+            {
+                lines.Add("#Terrain");
+                lines.AddRange(terrain);
+            }
+
+            lines.Add("#Pieces");
+            foreach (ZNetView view in views)
+            {
+                string prefab = Utils.GetPrefabName(view.gameObject);
+                if (prefab.EndsWith("_planned"))
+                {
+                    prefab = prefab.Substring(0, prefab.Length - "_planned".Length);
+                }
+
+                lines.Add(Line(prefab, frame * (view.transform.position - center), frame * view.transform.rotation, view.transform.localScale));
+            }
+
+            Directory.CreateDirectory(DraftFolder);
+            File.WriteAllLines(DraftFile(plotName), lines);
+            return true;
+        }
+
+        private static void DropDraft(string plotName)
+        {
+            string draft = DraftFile(plotName);
+            if (File.Exists(draft))
+            {
+                File.Delete(draft);
+            }
+        }
         private static string RecordPath => Path.Combine(BepInEx.Paths.BepInExRootPath, "Villheim", "board-saves.csv");
 
         // ---------------------------------------------------------------- plots in the world
@@ -187,7 +238,7 @@ namespace Villheim.Logic.Village
                 string unsaved = Unsaved();
                 if (unsaved != null && !force)
                 {
-                    return $"Board: {unsaved} Save them, or 'vh slot clear force' to drop the changes.";
+                    return $"Board: {unsaved} Save them, or 'vh slot clear force' (they are kept as drafts and come back with the board).";
                 }
 
                 return $"Board: taken down ({TakeDown()} objects).";
@@ -276,7 +327,7 @@ namespace Villheim.Logic.Village
             string unsavedNow = Unsaved();
             if (unsavedNow != null && !force)
             {
-                return $"Board: {unsavedNow} Save them first, or add 'force' to drop the changes.";
+                return $"Board: {unsavedNow} Save them first, or add 'force' (they are kept as drafts and come back into their plots).";
             }
 
             Vector3 forward = player.transform.forward;
@@ -390,6 +441,29 @@ namespace Villheim.Logic.Village
         internal static int TakeDown()
         {
             Scan();
+            // Nothing unfinished is lost: every plot changed since its last save is kept as a draft first, and comes back
+            // into its plot when the board goes up again.
+            int drafts = 0;
+            foreach (Plot plot in Plots)
+            {
+                try
+                {
+                    if (WriteDraft(plot.Name))
+                    {
+                        drafts++;
+                    }
+                }
+                catch (System.Exception e)
+                {
+                    VillheimPlugin.Log.LogWarning($"Board: could not keep a draft of {plot.Name}: {e.Message}");
+                }
+            }
+
+            if (drafts > 0)
+            {
+                Say($"Board: {drafts} unsaved plots kept as drafts; they come back when the board goes up again.");
+            }
+
             int gone = 0;
             var doomed = new List<ZNetView>();
             foreach (Plot plot in Plots)
@@ -894,9 +968,15 @@ namespace Villheim.Logic.Village
         {
             Vector3 forward = -(Quaternion.Euler(0f, yaw, 0f) * Vector3.forward);
             Vector3 right = Vector3.Cross(Vector3.up, forward);
-            int placed = file != null && File.Exists(file) ? PutSaved(file, center, yaw, half) : 0;
+            string draft = DraftFile(name);
+            bool fromDraft = File.Exists(draft);
+            int placed = fromDraft ? PutSaved(draft, center, yaw, half) : file != null && File.Exists(file) ? PutSaved(file, center, yaw, half) : 0;
+            if (fromDraft)
+            {
+                state = "draft, not saved yet";
+            }
             Border(name, center, half, forward, right);
-            PlotSign(name, center, half, yaw, forward, biome, kind, placed, state);
+            PlotSign(name, center, half, yaw, forward, biome, kind, fromDraft ? -1 : placed, state);
             Plots.RemoveAll(p => p.Name == name);
             Plots.Add(new Plot { Name = name, Center = center, Half = half, Yaw = yaw });
         }
@@ -929,7 +1009,7 @@ namespace Villheim.Logic.Village
         {
             // Short lines: a sign cuts off text wider than its board (one long name showed only "_S2D").
             (string baseId, int stage, int decor) = Parse(name);
-            string word = state == null ? "empty" : state.StartsWith("copy") ? "strip" : state.StartsWith("waits") ? "waits" : state;
+            string word = state == null ? "empty" : state.StartsWith("copy") ? "strip" : state.StartsWith("waits") ? "waits" : state.StartsWith("draft") ? "draft" : state;
             return $"<#7f7><voffset=60><size=7>{baseId}<br>s{stage} d{decor}<br><size=5>" + (state == null ? "<#ccc>" : "<#fff>") + word;
         }
 
@@ -938,6 +1018,8 @@ namespace Villheim.Logic.Village
             (_, _, int decor) = Parse(name);
             string what = state == null
                 ? "<#bbb>empty: place a design here"
+                : state.StartsWith("draft")
+                    ? $"<#fc6>{state}"
                 : state.StartsWith("copy")
                     ? $"<#fc6>{state}: take decor away, then save"
                     : state.StartsWith("waits")
@@ -1331,6 +1413,7 @@ namespace Villheim.Logic.Village
                 views.Count.ToString(), System.DateTime.Now.ToString("yyyy-MM-dd HH:mm"),
             };
             Record(record);
+            DropDraft(plotName);
             sign.Set(Gallery.KeyPlaced, views.Count);
             sign.Set(KeySource, source?.Design ?? "");
             if (source != null)
@@ -1590,6 +1673,7 @@ namespace Villheim.Logic.Village
             Vector3 resetCenter = sign.GetVec3(Gallery.KeyPlotCenter, Vector3.zero);
             float resetYaw = sign.GetFloat(Gallery.KeyPlotYaw, 0f), resetHalf = sign.GetFloat(Gallery.KeyPlotHalf, 10f);
             List<string> groundBefore = SampleTerrain(resetCenter, resetYaw, resetHalf);
+            DropDraft(plotName);
             (string resetBase, int resetStage, int resetDecor) = Parse(plotName);
             string file = SavedFile(resetBase, resetStage, resetDecor);
             if (!File.Exists(file) && resetDecor < 3)

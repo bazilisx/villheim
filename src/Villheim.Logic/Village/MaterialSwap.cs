@@ -330,7 +330,46 @@ namespace Villheim.Logic.Village
         private static HashSet<string> RelatedFamilies(Shape shape) =>
             new HashSet<string>(shape.Families.SelectMany(f => Relatives.TryGetValue(f, out string[] r) ? r : new[] { f }));
 
-        private static bool OtherShape(Shape source, Shape candidate) => candidate.Mods.Any(m => ShapeMods.Contains(m) && !source.Mods.Contains(m));
+        /// <summary>Name parts for pieces you see through or that are not solid: offered only for a piece that has one too.</summary>
+        private static readonly string[] OpenWords = { "grate", "bars", "cage", "iron_wall", "window", "shutter", "railing", "lattice" };
+
+        /// <summary>
+        /// A different shape from the original: a corner, top, half and so on it lacks, a slope angle in its name (26, 45)
+        /// it lacks, or bars and grates for a solid piece.
+        /// </summary>
+        private static bool OtherShape(Shape source, Shape candidate)
+        {
+            if (candidate.Mods.Any(m => (ShapeMods.Contains(m) || IsAngle(m)) && !source.Mods.Contains(m)))
+            {
+                return true;
+            }
+
+            string from = source.Prefab.ToLowerInvariant(), to = candidate.Prefab.ToLowerInvariant();
+            return OpenWords.Any(w => to.Contains(w) && !from.Contains(w));
+        }
+
+        private static bool IsAngle(string token) => int.TryParse(token, out int n) && n >= 10 && n <= 90;
+
+        /// <summary>
+        /// Every kind in the candidate's name may stand in for the original (a sloped "wall roof" is a roof too, so it is
+        /// no stand-in for a wall), and at least one does.
+        /// </summary>
+        private static bool Fits(HashSet<string> related, Shape candidate) =>
+            candidate.Families.Count > 0 && candidate.Families.All(related.Contains);
+
+        /// <summary>The material a piece is made of, from its name's first part (wood, darkwood, stone, goblin, dvergr...).</summary>
+        private static string Material(string prefab)
+        {
+            string lower = prefab.ToLowerInvariant();
+            if (lower.StartsWith("piece_"))
+            {
+                lower = lower.Substring(6);
+            }
+
+            int cut = lower.IndexOf('_');
+            string first = cut > 0 ? lower.Substring(0, cut) : lower;
+            return first.Contains("wood") && first != "darkwood" && first != "ashwood" && first != "yggdrasil" ? "wood" : first;
+        }
 
         /// <summary>The source's thinnest side (0 x, 1 y, 2 z): its thickness, left out when sizes are compared.</summary>
         private static int Thin(Vector3 size) => size.x <= size.y && size.x <= size.z ? 0 : size.y <= size.z ? 1 : 2;
@@ -369,7 +408,7 @@ namespace Villheim.Logic.Village
             int thin = Thin(source.Size);
             float maxThick = Mathf.Max(1.2f, source.Size[thin] * 4f);
             return Pool()
-                .Where(c => c.Prefab != prefab && c.Stage == stage && c.Families.Overlaps(related) && !OtherShape(source, c))
+                .Where(c => c.Prefab != prefab && c.Stage == stage && Fits(related, c) && !OtherShape(source, c))
                 .Select(c =>
                 {
                     // The better way round, and only if the stand-in is not far thicker than the original.
@@ -380,6 +419,7 @@ namespace Villheim.Logic.Village
                 .Where(x => x.Misfit <= 0.25f)
                 .OrderBy(x => x.Misfit <= 0.06f ? 0 : 1)
                 .ThenBy(x => x.Shape.KindKey == source.KindKey ? 0 : x.Shape.Families.Overlaps(source.Families) ? 1 : 2)
+                .ThenBy(x => Material(x.Shape.Prefab) == Material(prefab) ? 0 : 1)
                 .ThenByDescending(x => Mods(source, x.Shape))
                 .ThenBy(x => x.Misfit)
                 .Select(x => x.Shape.Prefab).Distinct().Take(count).ToList();
@@ -429,7 +469,7 @@ namespace Villheim.Logic.Village
             float maxThick = Mathf.Max(0.6f, source.Size[thin] * 3f);
             CultureInfo inv = CultureInfo.InvariantCulture;
             string Num(float v) => v.ToString("0.####", inv);
-            foreach (Shape c in Pool().Where(c => c.Stage == stage && c.Prefab != prefab && c.Families.Overlaps(related) && !OtherShape(source, c)))
+            foreach (Shape c in Pool().Where(c => c.Stage == stage && c.Prefab != prefab && Fits(related, c) && !OtherShape(source, c)))
             {
                 foreach (Quaternion turn in Orientations(support && c.Families.Contains("support")))
                 {

@@ -71,7 +71,10 @@ typed in the in-game console (F5) unless it says otherwise.
 9. The Shaper Tool's Reset (key 7) on a plot clears it back to its last save (a d2 or d1 copy goes back to the copy),
    or empty. Undo (8) brings back what was
    there.
-10. `vh slot clear` takes the board down; `vh gallery clear` also takes it down, with everything placed in it. Both `vh slot clear` and a new `vh slot` refuse while a plot has unsaved
+10. Nothing unfinished is lost: whenever the board is taken down (`force`, `vh slot clear`, `vh gallery clear`), every
+   plot changed since its last save is kept as a draft (`blueprints/inspiration/board/drafts`) and comes back into its
+   plot, marked "draft", when the board goes up again. Saving the plot ends the draft; Reset drops it.
+11. `vh slot clear` takes the board down; `vh gallery clear` also takes it down, with everything placed in it. Both `vh slot clear` and a new `vh slot` refuse while a plot has unsaved
    changes (add `force` to drop them).
 
 Each save is listed in `BepInEx/Villheim/board-saves.csv` and sent to the sheet: a row in the **Slots** tab (file,
@@ -267,8 +270,10 @@ removes pieces when the hammer is out, so it is not used).
    - In front of that design's sign (on the slotting board: the plot's sign), stand-ins go up in groups by biome:
      Meadows, Black Forest, Swamp. Each group has a label sign and up to 5 single pieces, best match first: the same
      kind or a related one (walls and fences, beams, poles and pillars, doors and gates, stairs and ladders), about the
-     same size either way round (thickness left out, nothing more than a quarter off), exact sizes first. A corner,
-     top, half or other shape is offered only for a piece of that shape.
+     same size either way round (thickness left out, nothing more than a quarter off), exact sizes first, then the
+     same material. Every kind in a stand-in's name must fit (a sloped "wall roof" is no wall stand-in). A corner,
+     top, half, sloped (26, 45) or barred piece is offered only for a piece of that shape. The rows are no wider than
+     the plot and go away when you leave Swap or put the knife away.
    - Each group can also show up to 3 combinations of one smaller piece that make up the size (walls, fences, floors
      and supports only; the pieces lie the way the original does), found from the pieces' measured sizes: two `stone_wall_2x1` stacked for a 2x2 wall, two 2 m beams end to end for a 4 m beam, two 2 m
      poles laid down for it, four 1x1.

@@ -115,6 +115,7 @@ namespace Villheim.Logic.Village
                         else
                         {
                             PutDown();
+                            SwapTool.EndSwap();
                             _tool = 0;
                             ShowSelection(null, null);
                             Gizmo.Hide();
@@ -567,6 +568,11 @@ namespace Villheim.Logic.Village
             _locked = null;
             _saveArmed = null;
             _resetArmed = null;
+            if (_tool == ToolSwap)
+            {
+                SwapTool.EndSwap();
+            }
+
             _moveDesign = null;
             _turnDesign = null;
             _lockedPart = null;

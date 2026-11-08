@@ -1004,37 +1004,61 @@ namespace Villheim.Logic.Village
             Vector3 originalSize = MaterialSwap.SizeOf(original);
             float comboSpan = Mathf.Max(originalSize.x, originalSize.z) + 0.8f;
             const float LabelWidth = 1.6f;
-            const float GroupGap = 2f;
-            float width = groups.Sum(g => LabelWidth + g.Pieces.Sum(Span) + g.Combos.Count * comboSpan) + GroupGap * (groups.Count - 1);
-            float x = -width / 2f;
-            Vector3 line = sign.transform.position + toViewer * 3f;
+
+            // Rows no wider than the design's plot, stacked out towards the viewer: one biome after another, a new row
+            // whenever the next piece would go past the plot's width.
+            ZDO plotSign = DesignParts(design).Sign;
+            float rowWidth = Mathf.Max(8f, (plotSign?.GetFloat(Gallery.KeyPlotHalf, 6f) ?? 6f) * 2f);
             Quaternion facing = Quaternion.LookRotation(-toViewer);
             var shown = new List<string>();
+            float rowOut = 3f, x = 0f, rowDepth = 0f;
+            void NewRow()
+            {
+                rowOut += Mathf.Max(2f, rowDepth) + 0.6f;
+                x = 0f;
+                rowDepth = 0f;
+            }
+
+            Vector3 Spot(float span, float depth)
+            {
+                if (x > 0f && x + span > rowWidth)
+                {
+                    NewRow();
+                }
+
+                rowDepth = Mathf.Max(rowDepth, depth);
+                Vector3 at = sign.transform.position + toViewer * (rowOut + depth / 2f) + right * (-rowWidth / 2f + x + span / 2f);
+                x += span;
+                return Ground(at);
+            }
+
             foreach ((int stage, List<string> pieces, List<string> combos) in groups)
             {
-                GameObject label = Gallery.OneSign(Ground(line + right * (x + LabelWidth / 2f)), -toViewer, 0f,
+                if (x > 0f)
+                {
+                    NewRow();
+                }
+
+                GameObject label = Gallery.OneSign(Spot(LabelWidth, 1f), -toViewer, 0f,
                     $"<#5cf>{Gallery.StageNames[stage]}<br><#bbb>{(pieces.Count == 0 && combos.Count == 0 ? "nothing" : "")}");
                 Mark(label);
-                x += LabelWidth;
                 foreach (string name in pieces)
                 {
                     GameObject prefab = ZNetScene.instance.GetPrefab(name);
-                    float span = Span(name);
-                    Vector3 spot = Ground(line + right * (x + span / 2f));
-                    x += span;
+                    Vector3 size = MaterialSwap.SizeOf(name);
+                    Vector3 spot = Spot(Span(name), Mathf.Min(size.x, size.z) + 0.8f);
                     if (prefab == null)
                     {
                         continue;
                     }
 
-                    Vector3 lift = spot + Vector3.up * (MaterialSwap.SizeOf(name).y / 2f);
+                    Vector3 lift = spot + Vector3.up * (size.y / 2f);
                     Mark(Object.Instantiate(prefab, lift - facing * MaterialSwap.LocalCenter(name), facing));
                 }
 
                 foreach (string combo in combos)
                 {
-                    Vector3 spot = Ground(line + right * (x + comboSpan / 2f));
-                    x += comboSpan;
+                    Vector3 spot = Spot(comboSpan, Mathf.Min(originalSize.x, originalSize.z) + 0.8f);
                     foreach ((string name, Vector3 position, Quaternion rotation) in Expand(spot + Vector3.up * (originalSize.y / 2f), facing, combo, 0f))
                     {
                         GameObject prefab = ZNetScene.instance.GetPrefab(name);
@@ -1049,7 +1073,6 @@ namespace Villheim.Logic.Village
 
                 var offered = pieces.Concat(combos.Select(c => Describe(c) + " (combined)")).ToList();
                 shown.Add($"{Gallery.StageNames[stage]}: {(offered.Count > 0 ? string.Join(", ", offered) : "nothing")}");
-                x += GroupGap;
             }
 
             return string.Join("; ", shown);
@@ -1096,7 +1119,14 @@ namespace Villheim.Logic.Village
 
         private static void ClearPalette()
         {
-            foreach (ZNetView view in Palette)
+            // The row of this session, and any left in the world from before (a restart forgets the list).
+            var doomed = new List<ZNetView>(Palette);
+            if (ZNetScene.instance != null)
+            {
+                doomed.AddRange(ZNetScene.instance.m_instances.Values.Where(v => v != null && v.IsValid() && v.GetZDO().GetInt(KeyPalette) == 1));
+            }
+
+            foreach (ZNetView view in doomed.Distinct())
             {
                 if (view != null && view.IsValid())
                 {
@@ -1107,6 +1137,9 @@ namespace Villheim.Logic.Village
 
             Palette.Clear();
         }
+
+        /// <summary>Takes the stand-ins away and ends the pick (Swap put down, or the knife put away).</summary>
+        public static void EndSwap() => Done();
 
         private static void Done()
         {

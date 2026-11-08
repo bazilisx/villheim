@@ -15,6 +15,7 @@ Code in `tools/blueprint-lab/`. Built 2026-11-08 night. Nothing generated here i
 | Scorer | `lib/features.js`, `lab/train_scorer.py` | 21 numbers per design and a logistic regression on the review's Yes and No (206 kept, 455 dropped). Cross-validated AUC 0.70. `data/scorer.json`. |
 | Pieces | `lib/pieces.js` | Size, shape, role and material for any prefab name; the biome a material first appears in. |
 | Generator | `lib/generate.js`, `lib/styles.js` | A request (type, biome, culture, plan, roof, walls, size stage, decor stage, seed) to a design. |
+| Cultures | `lib/styles.js`, `lib/generate.js`, `lib/gen_cultures.js` | The 14 approved village cultures, up to three per biome with weights, and their forms: round houses, crannogs, goahti, lavvu, yurts, Icelandic gable rows, courtyards with arcades, keeps, Svan towers, domed and drum churches, stave churches, sunken huts. Style guide and sources in `docs/CULTURE_STYLES.md`; overview pictures in `docs/cultures/`. |
 | Decorator | `lib/decorate.js` | Furnishes rooms to d1, d2 or d3; strips any design to d1; furnishes any existing blueprint against its real walls. |
 | Checks | `lib/checks.js` | Every piece connected to the ground, no doubled pieces, doors with room on both sides, materials the biome has, floor left free. |
 | Renderer | `lib/render.js`, `lib/sheet.js` | Four views (front left, back right, top, inside with the roof off) as PNG in Node or on a canvas in a browser. |
@@ -66,6 +67,8 @@ substance because the new downloads carry no Yes or No (AUC 0.70 on the same 661
 
 ## Request to design
 
+0. Culture: the one asked for, or one of the biome's cultures by weight (`styles.js` BIOME_CULTURE). A culture may
+   give a type its own form (`forms`), which sets the plan, roof and walls below; see `docs/CULTURE_STYLES.md`.
 1. Plan from the type and stage (weights from the corpus counts per type), unless the request names one. Round plans
    only for styles that build them.
 2. Roof from the culture (weights from culture by roof), forced to a ring roof on an octagon and to a hip or gable
@@ -142,5 +145,6 @@ node lib/cli.js gen home "Black Forest" - s2 d2 7 out/house       # one design a
 node lib/cli.js decorate in.blueprint home d3 Swamp out/furnished  # furnish or strip (d1) a blueprint
 node lib/batch.js out/shapes shapes                                # plan and roof matrix with an overview image
 node lib/gen_set.js out/set 8                                      # the review set
+node lib/gen_cultures.js out/cultures 6 ../../docs/cultures       # culture samples and overview pictures
 node lib/build_web.js web/index.html                               # the request page
 ```

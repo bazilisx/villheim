@@ -213,6 +213,8 @@ namespace Villheim.Logic.Village
                 }
             }
 
+            HealSigns();
+
             // Effects (rain drips and the like) standing in a plot are taken away: they are never part of a design.
             foreach (ZNetView view in Loaded().Where(v => v != null && v.IsValid() && Inside(v.transform.position) && SwapTool.IsEffect(v.gameObject)).ToList())
             {
@@ -223,6 +225,96 @@ namespace Villheim.Logic.Village
         }
 
         private static readonly HashSet<int> Tinted = new HashSet<int>();
+        private static readonly HashSet<string> Healed = new HashSet<string>();
+
+        /// <summary>
+        /// A plot whose sign is gone is no plot to the board: nothing in it can be moved, turned or saved (s2d3, 2026-11-07,
+        /// cause unknown). Each decor row of a board is evenly spaced, so a missing plot between or beside two known
+        /// plots of the same row (same base ID and decor stage, same distance along the board) stands where the spacing
+        /// puts it; its sign (and its border, if that is gone too) is put back there with the row's biome and kind.
+        /// </summary>
+        private static void HealSigns()
+        {
+            var signs = new Dictionary<string, ZDO>();
+            foreach (ZNetView view in Loaded())
+            {
+                ZDO zdo = view.GetZDO();
+                string name = zdo.GetString(Gallery.KeyDesign, "");
+                if (name.StartsWith(Prefix) && zdo.GetFloat(Gallery.KeyPlotHalf, 0f) > 0f)
+                {
+                    signs[name] = zdo;
+                }
+            }
+
+            foreach (IGrouping<(string, int), Plot> row in Plots.GroupBy(p => (Parse(p.Name).Base, Parse(p.Name).D)).ToList())
+            {
+                List<Plot> ordered = row.OrderBy(p => Parse(p.Name).S).ToList();
+                if (ordered.Count < 2)
+                {
+                    continue;
+                }
+
+                // Only plots in the same line across the board as the first (a long board wraps into bands).
+                Plot a = ordered[0];
+                Quaternion frame = Quaternion.Inverse(Quaternion.Euler(0f, a.Yaw, 0f));
+                List<Plot> known = ordered.Where(p => Mathf.Abs((frame * (p.Center - a.Center)).z) <= 0.5f).ToList();
+                if (known.Count < 2)
+                {
+                    continue;
+                }
+
+                Plot b = known[1];
+                int sa = Parse(a.Name).S, sb = Parse(b.Name).S;
+                if (sb == sa)
+                {
+                    continue;
+                }
+
+                Vector3 perStage = (b.Center - a.Center) / (sb - sa);
+                int last = known.Max(p => Parse(p.Name).S);
+                for (int stage = 1; stage <= last; stage++)
+                {
+                    string name = PlotName(row.Key.Item1, stage, row.Key.Item2);
+                    if (Plots.Any(p => p.Name == name) || Healed.Contains(name))
+                    {
+                        continue;
+                    }
+
+                    Vector3 center = a.Center + perStage * (stage - sa);
+                    center.y = Ground(center, a.Center.y);
+                    // The row must really have room for it: no other plot within a plot's width.
+                    if (Plots.Any(p => Utils.DistanceXZ(p.Center, center) < a.Half))
+                    {
+                        continue;
+                    }
+
+                    Healed.Add(name);
+                    signs.TryGetValue(a.Name, out ZDO model);
+                    // A label left standing without its sign goes; the sign comes back with its own.
+                    foreach (ZNetView old in Loaded().Where(v => v.GetZDO().GetString(KeyLabel, "") == name).ToList())
+                    {
+                        old.ClaimOwnership();
+                        ZNetScene.instance.Destroy(old.gameObject);
+                    }
+
+                    Vector3 forward = -(Quaternion.Euler(0f, a.Yaw, 0f) * Vector3.forward);
+                    Vector3 right = Vector3.Cross(Vector3.up, forward);
+                    if (!Loaded().Any(v => v.GetZDO().GetString(KeyPlot, "") == name))
+                    {
+                        Border(name, center, a.Half, forward, right);
+                    }
+
+                    (string baseId, int s, int d) = Parse(name);
+                    bool saved = File.Exists(SavedFile(baseId, s, d));
+                    PlotSign(name, center, a.Half, a.Yaw, forward, model?.GetString(KeyBiome, "") ?? "", model?.GetString(KeySubtype, "") ?? "",
+                        -1, saved ? "saved (sign put back)" : "not saved yet (sign put back)");
+                    Plots.Add(new Plot { Name = name, Center = center, Half = a.Half, Yaw = a.Yaw });
+                    string text = $"Board: {StageName(name)} had lost its sign, so it was no plot to the board; the sign is back and the plot works again.";
+                    VillheimPlugin.Log.LogInfo(text);
+                    Say(text);
+                }
+            }
+        }
 
         [HarmonyPatch(typeof(Player), "Update")]
         internal static class UpdatePatch

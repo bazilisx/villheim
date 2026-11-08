@@ -302,6 +302,16 @@ Villages that reach out past their fence, and a world with other people in it. D
       who asks a price to stay is still to do.)
 - [ ] Proposals from `docs/LIVING_WORLD_RESEARCH.md` (43, ranked): pick the next ones with Tyler.
 
+- [ ] True rumours from the land: idle talk, requests and hints come from real locations, spawns, ore and terrain
+      around the village (boss hints, animals, dungeons, biome edges, landmarks), firsthand from the villager who saw
+      it, then passed on by others (Tyler, 2026-11-08; helper branch night3/knowledge).
+- [ ] Village reach grows with stage and gear; villagers only explore and harvest where they can hold their own, and
+      only know what lies inside their reach, widened by hunters, trails and outposts (Tyler, 2026-11-08).
+- [ ] Map table by the hearth from the hamlet stage: copy the village's discoveries onto your map (Tyler, 2026-11-08).
+- [ ] Cultures by biome: Meadows Norse, Plains Middle Eastern, others to confirm; names, skin tones, looks and a few
+      lines per culture (Tyler, 2026-11-08; helper branch night3/cultures).
+- [ ] Plains archers: villagers near the Plains shoot deathsquitos out of the sky (Tyler, 2026-11-08).
+
 ## Later ideas
 
 - Trading with the player at village shops, as in Millénaire. (First step 2026-11-06: crouch and talk to buy

@@ -110,6 +110,13 @@ namespace Villheim.Logic.Village
                 lines.AddRange(terrain);
             }
 
+            List<string> exact = SampleGround(center, yaw, sign.GetFloat(Gallery.KeyPlotHalf, 10f));
+            if (exact.Count > 0)
+            {
+                lines.Add(GroundHeader);
+                lines.AddRange(exact);
+            }
+
             List<string> markers = MarkerLines(views, center, frame);
             if (markers.Count > 0)
             {
@@ -1160,7 +1167,8 @@ namespace Villheim.Logic.Village
             }
 
             made += PutMarkers(file, center, turn);
-            SetGround(TerrainLines(file), center, yaw, half);
+            List<string> exactGround = SectionLines(file, GroundHeader);
+            SetGround(TerrainLines(file), center, yaw, half, exactGround.Count > 0 ? exactGround : null);
 
             return made;
         }
@@ -1255,8 +1263,9 @@ namespace Villheim.Logic.Village
                 Vector3 outward = local - middle;
                 outward.y = 0f;
                 float yaw = outward.sqrMagnitude > 0.01f ? Mathf.Atan2(outward.x, outward.z) * Mathf.Rad2Deg : 0f;
+                float own = (frame * view.transform.rotation).eulerAngles.y;
                 lines.Add(string.Join(";", "path", local.x.ToString("0.###", inv), local.y.ToString("0.###", inv), local.z.ToString("0.###", inv),
-                    ((yaw + 360f) % 360f).ToString("0.#", inv)));
+                    ((yaw + 360f) % 360f).ToString("0.#", inv), own.ToString("0.#", inv)));
             }
 
             return lines;
@@ -1277,7 +1286,9 @@ namespace Villheim.Logic.Village
                     continue;
                 }
 
-                Object.Instantiate(prefab, center + turn * new Vector3(x, y, z), turn * Quaternion.Euler(0f, yaw, 0f));
+                // Its own turn (field 6); older saves only have the road's direction.
+                float own = f.Length >= 6 && float.TryParse(f[5], NumberStyles.Float, inv, out float o) ? o : yaw;
+                Object.Instantiate(prefab, center + turn * new Vector3(x, y, z), turn * Quaternion.Euler(0f, own, 0f));
                 made++;
             }
 
@@ -1437,11 +1448,11 @@ namespace Villheim.Logic.Village
         private static readonly Vector3[] Spread = { Vector3.zero };
 
         /// <summary>Clears a plot's painted ground, then puts the given ground lines back (none: only clears).</summary>
-        private static void SetGround(List<string> lines, Vector3 center, float yaw, float half)
+        private static void SetGround(List<string> lines, Vector3 center, float yaw, float half, List<string> exact = null)
         {
             if (VillheimPlugin.Instance != null)
             {
-                VillheimPlugin.Instance.StartCoroutine(ApplyTerrain(lines ?? new List<string>(), center, yaw, half));
+                VillheimPlugin.Instance.StartCoroutine(ApplyTerrain(lines ?? new List<string>(), center, yaw, half, exact));
             }
         }
 
@@ -1451,12 +1462,168 @@ namespace Villheim.Logic.Village
         /// </summary>
         private static void ClearPaint(Vector3 center, float yaw, float half, HashSet<TerrainComp> touched)
         {
-            PlanBuildTerrain.Apply(center, half * 2f + 1f, half * 2f + 1f, yaw, center.y, "Reset");
+            WriteGround(center, yaw, half, null);
         }
 
         /// <summary>PlanBuild saves the ground itself after every change; nothing to do here any more.</summary>
         private static void SaveGround(IEnumerable<TerrainComp> touched)
         {
+        }
+
+        /// <summary>The section of a save with its ground point for point: "x;z;dy;r;g;b" per ground point, plot coordinates.</summary>
+        internal const string GroundHeader = "#VillheimGround";
+
+        /// <summary>Every heightmap (64 m ground area) round a plot.</summary>
+        private static List<Heightmap> MapsAround(Vector3 center, float half)
+        {
+            var maps = new List<Heightmap>();
+            Heightmap.FindHeightmap(center, half * 1.5f + 2f, maps);
+            return maps;
+        }
+
+        /// <summary>A ground point's place in the world (PlanBuild's TerrainTools.VertexToWorld): heights and paint share it.</summary>
+        private static Vector3 PointWorld(Heightmap map, int x, int y)
+        {
+            Vector3 at = map.transform.position;
+            at.x += (x - map.m_width / 2) * map.m_scale;
+            at.z += (y - map.m_width / 2) * map.m_scale;
+            return at;
+        }
+
+        /// <summary>
+        /// The plot's ground, point for point: each ground point (1 m apart, on the world's grid like the board) that is
+        /// painted, or raised or dug more than 30 cm from the plot's usual floor, with its height above the plot's
+        /// middle and its paint as stored (soft edges included). Points on the edge of two 64 m areas are kept once.
+        /// </summary>
+        private static List<string> SampleGround(Vector3 center, float yaw, float half)
+        {
+            Quaternion frame = Quaternion.Inverse(Quaternion.Euler(0f, yaw, 0f));
+            var points = new Dictionary<(int, int), (float Rise, Color Paint)>();
+            foreach (Heightmap map in MapsAround(center, half))
+            {
+                TerrainComp ground = TerrainComp.FindTerrainCompiler(map.transform.position);
+                if (ground == null || ground.m_hmap != map)
+                {
+                    continue;
+                }
+
+                int size = ground.m_width + 1;
+                for (int y = 0; y < size; y++)
+                for (int x = 0; x < size; x++)
+                {
+                    Vector3 local = frame * (PointWorld(map, x, y) - center);
+                    if (Mathf.Abs(local.x) > half + 0.01f || Mathf.Abs(local.z) > half + 0.01f)
+                    {
+                        continue;
+                    }
+
+                    var key = (Mathf.RoundToInt(local.x), Mathf.RoundToInt(local.z));
+                    if (points.ContainsKey(key))
+                    {
+                        continue;
+                    }
+
+                    int index = y * size + x;
+                    Color paint = ground.m_modifiedPaint[index] ? ground.m_paintMask[index] : Heightmap.m_paintMaskNothing;
+                    points[key] = (map.m_heights[index] - center.y, paint);
+                }
+            }
+
+            var lines = new List<string>();
+            if (points.Count == 0)
+            {
+                return lines;
+            }
+
+            List<float> rises = points.Values.Select(p => p.Rise).OrderBy(r => r).ToList();
+            float floor = rises[rises.Count / 2];
+            CultureInfo inv = CultureInfo.InvariantCulture;
+            foreach (KeyValuePair<(int, int), (float Rise, Color Paint)> point in points)
+            {
+                Color c = point.Value.Paint;
+                if (c.r + c.g + c.b > 0.02f || Mathf.Abs(point.Value.Rise - floor) > 0.3f)
+                {
+                    lines.Add(string.Join(";", point.Key.Item1.ToString(inv), point.Key.Item2.ToString(inv), point.Value.Rise.ToString("0.###", inv),
+                        c.r.ToString("0.###", inv), c.g.ToString("0.###", inv), c.b.ToString("0.###", inv)));
+                }
+            }
+
+            return lines;
+        }
+
+        /// <summary>
+        /// Writes a plot's ground point for point, the way PlanBuild's TerrainTools writes it, and without the two faults
+        /// of the first writer: every ground point inside the plot is set once, to its value (never added to), in every
+        /// 64 m area that holds it (edge points are in two). Points of the save get their height and paint; every other
+        /// point is levelled to the plot's floor with no paint. With no save (null), the whole plot is emptied. Each area
+        /// is then saved and redrawn once (PlanBuild's TerrainTools.Save). Returns how many points were set.
+        /// </summary>
+        private static int WriteGround(Vector3 center, float yaw, float half, List<string> exact)
+        {
+            CultureInfo inv = CultureInfo.InvariantCulture;
+            var wanted = new Dictionary<(int, int), (float Rise, Color Paint)>();
+            foreach (string line in exact ?? new List<string>())
+            {
+                string[] f = line.Split(';');
+                if (f.Length >= 6 && int.TryParse(f[0], NumberStyles.Integer, inv, out int x) && int.TryParse(f[1], NumberStyles.Integer, inv, out int z) &&
+                    float.TryParse(f[2], NumberStyles.Float, inv, out float rise) && float.TryParse(f[3], NumberStyles.Float, inv, out float r) &&
+                    float.TryParse(f[4], NumberStyles.Float, inv, out float g) && float.TryParse(f[5], NumberStyles.Float, inv, out float b))
+                {
+                    wanted[(x, z)] = (rise, new Color(r, g, b, 1f));
+                }
+            }
+
+            Quaternion frame = Quaternion.Inverse(Quaternion.Euler(0f, yaw, 0f));
+            int set = 0;
+            foreach (Heightmap map in MapsAround(center, half))
+            {
+                TerrainComp ground = map.GetAndCreateTerrainCompiler();
+                if (ground == null || ground.m_hmap != map)
+                {
+                    continue;
+                }
+
+                int size = ground.m_width + 1;
+                bool changed = false;
+                for (int y = 0; y < size; y++)
+                for (int x = 0; x < size; x++)
+                {
+                    Vector3 local = frame * (PointWorld(map, x, y) - center);
+                    if (Mathf.Abs(local.x) > half + 0.01f || Mathf.Abs(local.z) > half + 0.01f)
+                    {
+                        continue;
+                    }
+
+                    int index = y * size + x;
+                    (float rise, Color paint) = wanted.TryGetValue((Mathf.RoundToInt(local.x), Mathf.RoundToInt(local.z)), out var w)
+                        ? w : (0f, Heightmap.m_paintMaskNothing);
+
+                    // The ground's own height, under every change made to it so far; the change is then set to reach the
+                    // wanted height exactly, whatever was there before.
+                    float bare = map.m_heights[index] - (ground.m_modifiedHeight[index] ? ground.m_levelDelta[index] + ground.m_smoothDelta[index] : 0f);
+                    ground.m_levelDelta[index] = center.y + rise - bare;
+                    ground.m_smoothDelta[index] = 0f;
+                    ground.m_modifiedHeight[index] = Mathf.Abs(ground.m_levelDelta[index]) > 0.0001f;
+                    paint.a = ground.m_paintMask[index].a;
+                    ground.m_paintMask[index] = paint;
+                    ground.m_modifiedPaint[index] = true;
+                    changed = true;
+                    set++;
+                }
+
+                if (changed)
+                {
+                    ground.GetComponent<ZNetView>()?.ClaimOwnership();
+                    ground.m_operations++;
+                    ground.m_lastOpPoint = Vector3.zero;
+                    ground.m_lastOpRadius = 0f;
+                    ground.Save();
+                    ground.m_hmap.Poke(0, false);
+                }
+            }
+
+            ClutterSystem.instance?.ResetGrass(center, half * 1.5f + 2f);
+            return set;
         }
 
         /// <summary>One ground job at a time.</summary>
@@ -1468,7 +1635,7 @@ namespace Villheim.Logic.Village
         /// in a row is one rectangle, levelled to its height and painted. Nothing is written by Villheim itself (see
         /// PlanBuildTerrain for why).
         /// </summary>
-        private static IEnumerator ApplyTerrain(List<string> lines, Vector3 center, float yaw, float half)
+        private static IEnumerator ApplyTerrain(List<string> lines, Vector3 center, float yaw, float half, List<string> exact = null)
         {
             while (_groundBusy)
             {
@@ -1478,6 +1645,18 @@ namespace Villheim.Logic.Village
             _groundBusy = true;
             try
             {
+                // A save with the exact ground (or nothing to put back: an emptied plot) is written point for point.
+                if (exact != null || lines.Count == 0)
+                {
+                    int points = WriteGround(center, yaw, half, exact);
+                    if (exact != null)
+                    {
+                        Say($"Board: ground copied point for point: {exact.Count} points of the save, {points} ground points set.");
+                    }
+
+                    yield break;
+                }
+
                 if (!PlanBuildTerrain.Available)
                 {
                     Say($"Board: the ground was left as it is: {PlanBuildTerrain.Missing}.");
@@ -1615,6 +1794,14 @@ namespace Villheim.Logic.Village
                 header.AddRange(terrain);
             }
 
+            // The same ground point for point (height and paint, soft edges included), for the board's own copies.
+            List<string> exact = SampleGround(center, sign.GetFloat(Gallery.KeyPlotYaw, 0f), sign.GetFloat(Gallery.KeyPlotHalf, 10f));
+            if (exact.Count > 0)
+            {
+                header.Add(GroundHeader);
+                header.AddRange(exact);
+            }
+
             if (markers.Count > 0)
             {
                 header.Add(MarkerHeader);
@@ -1728,7 +1915,7 @@ namespace Villheim.Logic.Village
                 }
 
                 Step("the design", () => snapshots.ForEach(EditHistory.Restore));
-                Step("the ground", () => SetGround(terrain, plotCenter, yaw, half));
+                Step("the ground", () => SetGround(terrain, plotCenter, yaw, half, exact));
                 Step("the sign", () => SetPlotState(plotName, oldPlaced, snapshots.Count > 0 ? state ?? "as before the save" : null));
                 if (nextPlot != null)
                 {
@@ -1939,6 +2126,7 @@ namespace Villheim.Logic.Village
             Vector3 resetCenter = sign.GetVec3(Gallery.KeyPlotCenter, Vector3.zero);
             float resetYaw = sign.GetFloat(Gallery.KeyPlotYaw, 0f), resetHalf = sign.GetFloat(Gallery.KeyPlotHalf, 10f);
             List<string> groundBefore = SampleTerrain(resetCenter, resetYaw, resetHalf);
+            List<string> exactBefore = SampleGround(resetCenter, resetYaw, resetHalf);
             DropDraft(plotName);
             (string resetBase, int resetStage, int resetDecor) = Parse(plotName);
             string file = SavedFile(resetBase, resetStage, resetDecor);
@@ -1966,7 +2154,7 @@ namespace Villheim.Logic.Village
                 }
 
                 snapshots.ForEach(EditHistory.Restore);
-                SetGround(groundBefore, resetCenter, resetYaw, resetHalf);
+                SetGround(groundBefore, resetCenter, resetYaw, resetHalf, exactBefore);
             });
             return $"Board: {StageName(plotName)} cleared ({views.Count} pieces)" +
                    (made > 0 ? $" and put back as last saved ({made} pieces)." : "; it is empty now.") + " 8 (Undo) brings back what was there.";

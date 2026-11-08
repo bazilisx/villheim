@@ -83,7 +83,7 @@ namespace Villheim.Logic.Villagers
         private static readonly Dictionary<string, float> MemoryDays = new Dictionary<string, float>
         {
             ["finished"] = 3f, ["arrival"] = 3f, ["birth"] = 5f, ["death"] = 5f, ["fight"] = 3f, ["hunt"] = 2f,
-            ["pedlar"] = 2f, ["pilgrim"] = 2f, ["blessing"] = 2f, ["groundbroken"] = 2f, ["upgrade"] = 3f, ["trade"] = 1f, ["forged"] = 4f, ["outpost"] = 5f, ["haul"] = 1f,
+            ["pedlar"] = 2f, ["pilgrim"] = 2f, ["blessing"] = 2f, ["groundbroken"] = 2f, ["upgrade"] = 3f, ["trade"] = 1f, ["forged"] = 4f, ["outpost"] = 5f, ["haul"] = 1f, ["bossdown"] = 6f,
         };
 
         private sealed class State
@@ -170,6 +170,7 @@ namespace Villheim.Logic.Villagers
                 return;
             }
 
+            VillagerSkills.Practice(villager, doing);
             ZDO zdo = villager.Zdo;
             string raw = zdo.GetString(KeyDiary, "");
             int colon = raw.IndexOf(':');
@@ -235,6 +236,9 @@ namespace Villheim.Logic.Villagers
             villager.Zdo.Set(KeyMemories, string.Join(",", memories.Select(m =>
                 m.Key + "=" + m.Value.ToString("0.#", CultureInfo.InvariantCulture))));
         }
+
+        /// <summary>Whether this villager still remembers a village event of this kind ("hunt", "finished"...).</summary>
+        public static bool Remembers(Villager villager, string what) => Memories(villager).ContainsKey(what);
 
         private static Dictionary<string, float> Memories(Villager villager)
         {

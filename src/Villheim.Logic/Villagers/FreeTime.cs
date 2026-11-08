@@ -200,6 +200,14 @@ namespace Villheim.Logic.Villagers
             return States.TryGetValue(villager, out State state) && Time.time - state.LastRun < 1f ? Describe(state) : null;
         }
 
+        /// <summary>The kind of work this villager is watching right now ("felling"...), or null.</summary>
+        public static string WatchedWork(Villager villager)
+        {
+            return States.TryGetValue(villager, out State state) && state.Kind == Kind.Watch && state.Watched is Villager worker
+                ? WatchWord(worker)
+                : null;
+        }
+
         private static string Describe(State state)
         {
             switch (state.Kind)
@@ -525,7 +533,7 @@ namespace Villheim.Logic.Villagers
 
                 case Kind.Evening:
                     ai.LookAt(state.Look);
-                    ActEvening(villager, state, mood, facing);
+                    ActEvening(villager, ai, state, mood, facing);
                     break;
 
                 case Kind.Station:
@@ -568,6 +576,11 @@ namespace Villheim.Logic.Villagers
                     {
                         ai.LookAt(state.Look);
                     }
+                    else
+                    {
+                        // Glances about: whoever talks, an animal, the sky in rain (IdleLife).
+                        IdleLife.Tick(villager, ai);
+                    }
 
                     GestureByMood(villager, state, mood, 15f, 30f);
                     if (Time.time > state.StandUntil)
@@ -582,19 +595,31 @@ namespace Villheim.Logic.Villagers
             }
         }
 
-        private static void ActEvening(Villager villager, State state, float mood, bool facing)
+        private static void ActEvening(Villager villager, VillagerAI ai, State state, float mood, bool facing)
         {
             if (!facing)
             {
                 return;
             }
 
-            // Most sit round the fire; the odd cheerful one stands, toasts and laughs.
-            bool sits = (state.Ring % 3) != 0 || mood < 65f;
+            // Most sit round the fire; the odd cheerful one stands, toasts and laughs. On a feast night (Gatherings)
+            // half of them are up, and the dancing starts sooner.
+            bool feast = Gatherings.FeastTonight(villager.VillageId);
+            if (feast && Time.time >= state.NextGesture)
+            {
+                Moods.Think(villager, "feast");
+            }
+
+            bool sits = feast ? (state.Ring % 2) != 0 || mood < 30f : (state.Ring % 3) != 0 || mood < 65f;
             if (sits)
             {
                 Poses.Hold(villager, Poses.Sit);
                 return;
+            }
+
+            if (!state.Dancing)
+            {
+                IdleLife.Tick(villager, ai);
             }
 
             if (state.Dancing)
@@ -616,7 +641,7 @@ namespace Villheim.Logic.Villagers
             }
 
             state.NextGesture = Time.time + Random.Range(6f, 12f);
-            if (mood >= 65f && Random.value < 0.33f)
+            if ((mood >= 65f && Random.value < 0.33f) || (feast && mood >= 35f && Random.value < 0.5f))
             {
                 state.Dancing = true;
                 state.DanceUntil = Time.time + Random.Range(15f, 25f);
@@ -745,18 +770,49 @@ namespace Villheim.Logic.Villagers
                 if (chat.Reply != null && chat.ReplyBy == villager)
                 {
                     Moods.Think(villager, "chat");
-                    // Longer exchanges go back and forth: "first // reply // answer".
+                    // Longer exchanges go back and forth: "first // reply // answer". A part "@key" is answered
+                    // from the answerer's own lines tagged answer:key (and may go on with its own "//" parts); a
+                    // part "+key" brings in a third villager standing close by (chime:key).
                     string say = chat.Reply;
                     int next = say.IndexOf("//", System.StringComparison.Ordinal);
-                    chat.Reply = next > 0 ? say.Substring(next + 2).Trim() : null;
+                    string part = next > 0 ? say.Substring(0, next).Trim() : say.Trim();
+                    string rest = next > 0 ? say.Substring(next + 2).Trim() : null;
+                    if (part.StartsWith("+"))
+                    {
+                        Dialogue.ChimeIn(villager, other, part.Substring(1).Trim());
+                        chat.Reply = string.IsNullOrEmpty(rest) ? null : rest;
+                        return;
+                    }
+
+                    if (part.StartsWith("@"))
+                    {
+                        part = Dialogue.Answer(villager, other, part.Substring(1).Trim());
+                        if (part == null)
+                        {
+                            chat.Reply = null;
+                            return;
+                        }
+
+                        int more = part.IndexOf("//", System.StringComparison.Ordinal);
+                        if (more > 0)
+                        {
+                            string follow = part.Substring(more + 2).Trim();
+                            part = part.Substring(0, more).Trim();
+                            rest = string.IsNullOrEmpty(rest) ? follow : follow + " // " + rest;
+                        }
+                    }
+
+                    chat.Reply = string.IsNullOrEmpty(rest) ? null : rest;
                     chat.ReplyBy = chat.A == villager ? chat.B : chat.A;
-                    Dialogue.Say(villager, next > 0 ? say.Substring(0, next).Trim() : say);
+                    Dialogue.Say(villager, part);
                 }
                 else if (chat.Reply == null && Time.time >= chat.NextLine)
                 {
                     // One short exchange, then they just gesture; another one only after a while, if the village
                     // isn't busy talking already.
-                    string line = Dialogue.ChatOpening(villager);
+                    // Word passes on as they talk (PlayerMemory: what the player did, after Minecraft's gossip).
+                    string told = PlayerMemory.Gossip(villager, other);
+                    string line = Dialogue.ChatOpening(villager, other, told);
                     if (line == null)
                     {
                         return;
@@ -764,9 +820,15 @@ namespace Villheim.Logic.Villagers
 
                     chat.NextLine = Time.time + Random.Range(45f, 90f);
                     Moods.Think(villager, "chat");
+                    if (told != null)
+                    {
+                        Moods.Think(other, "gossip");
+                    }
+
                     if (chat.A != null && chat.B != null)
                     {
                         Personality.Chatted(chat.A, chat.B);
+                        Goals.Chatted(chat.A, chat.B);
                     }
 
                     int split = line.IndexOf("//", System.StringComparison.Ordinal);

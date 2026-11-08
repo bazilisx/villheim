@@ -65,6 +65,8 @@ namespace Villheim.Logic.Villagers
             Events[(villageId, what)] = Time.time;
             Personality.VillageRemembers(villageId, what);
             WorldLife.NoteNews(villageId, what);
+            Goals.VillageEvent(villageId, what);
+            Gatherings.Noted(villageId, what);
             if (VillageMoodEvents.Contains(what))
             {
                 Moods.VillageThink(villageId, what);
@@ -198,20 +200,102 @@ namespace Villheim.Logic.Villagers
         /// The opening line of a chat between two villagers, if the village isn't already talking (the same budget as
         /// talking to oneself). Null means: just gesture for now.
         /// </summary>
-        public static string ChatOpening(Villager villager)
+        public static string ChatOpening(Villager villager, Villager partner = null, string told = null)
         {
             if (!AmbientOpen(villager.VillageId) || !VillheimConfig.VillagerChatter.Value)
             {
                 return null;
             }
 
-            string line = LineFor(villager, "chat");
+            List<string> extra = partner != null ? PairTags(villager, partner) : new List<string>();
+            if (told != null)
+            {
+                extra.Add("tell:" + told);
+            }
+
+            _partner = partner;
+            string line = LineFor(villager, "chat", null, extra.ToArray());
+            _partner = null;
             if (line != null)
             {
                 UseAmbient(villager.VillageId);
             }
 
             return line;
+        }
+
+        /// <summary>The one being talked to in the line being picked, for {partner}.</summary>
+        private static Villager _partner;
+
+        /// <summary>
+        /// Tags about the other one in a chat, so a line can fit the pair: with:friend, with:rival, with:sweetheart,
+        /// with:courting (the speaker is courting him), with:sametrade, with:trade:x, with:voice:x, with:child,
+        /// with:jarl, with:hurt, with:sad, with:happy, with:skilled.
+        /// </summary>
+        public static List<string> PairTags(Villager speaker, Villager other)
+        {
+            var tags = new List<string>();
+            if (speaker == null || other == null)
+            {
+                return tags;
+            }
+
+            if (Personality.Friend(speaker) == other) tags.Add("with:friend");
+            if (Personality.Rival(speaker) == other) tags.Add("with:rival");
+            if (Goals.Sweetheart(speaker) == other) tags.Add("with:sweetheart");
+            if (Goals.IsCourting(speaker, other)) tags.Add("with:courting");
+            Roles.Trade mine = Roles.TradeOf(speaker), theirs = Roles.TradeOf(other);
+            tags.Add("with:trade:" + theirs.ToString().ToLowerInvariant());
+            if (mine == theirs && mine != Roles.Trade.None) tags.Add("with:sametrade");
+            tags.Add("with:voice:" + VoiceOf(other));
+            if (Childhood.IsChild(other)) tags.Add("with:child");
+            if (Roles.IsJarl(other)) tags.Add("with:jarl");
+            if (other.GetHealth() < other.GetMaxHealth() * 0.6f) tags.Add("with:hurt");
+            float mood = Moods.Get(other);
+            if (mood < 35f) tags.Add("with:sad");
+            if (mood >= 70f) tags.Add("with:happy");
+            if (VillagerSkills.Level(other, VillagerSkills.Best(other)) >= 50f) tags.Add("with:skilled");
+            return tags;
+        }
+
+        /// <summary>
+        /// An answer in a chat: a line from the sections tagged "answer:key" (channel reply), picked with the
+        /// answerer's own tags, so the same question gets a worrier's answer from a worrier. Falls back to
+        /// "answer:any". Null when nothing fits.
+        /// </summary>
+        public static string Answer(Villager answerer, Villager asker, string key)
+        {
+            List<string> extra = PairTags(answerer, asker);
+            extra.Add("answer:" + key);
+            _partner = asker;
+            string line = LineFor(answerer, "reply", "answer:" + key, extra.ToArray());
+            if (line == null && key != "any")
+            {
+                extra.Add("answer:any");
+                line = LineFor(answerer, "reply", "answer:any", extra.ToArray());
+            }
+
+            _partner = null;
+            return line;
+        }
+
+        /// <summary>A third villager standing close to a chat joins in with a line tagged "chime:key".</summary>
+        public static bool ChimeIn(Villager a, Villager b, string key)
+        {
+            Villager third = Character.GetAllCharacters().OfType<Villager>()
+                .Where(v => v != a && v != b && !v.IsDead() && v.VillageId == a.VillageId && !Sleep.IsAsleep(v) &&
+                            Vector3.Distance(v.transform.position, a.transform.position) < 9f)
+                .OrderBy(v => Vector3.Distance(v.transform.position, a.transform.position)).FirstOrDefault();
+            if (third == null)
+            {
+                return false;
+            }
+
+            List<string> extra = PairTags(third, a);
+            extra.Add("chime:" + key);
+            Social.LookAt(third, a, 4f);
+            QueueLine(third, "reply", "chime:" + key, extra.ToArray(), Random.Range(1.2f, 2.2f));
+            return true;
         }
         private static readonly ConditionalWeakTable<Villager, Memory> Memories = new ConditionalWeakTable<Villager, Memory>();
 
@@ -247,7 +331,7 @@ namespace Villheim.Logic.Villagers
                     continue;
                 }
 
-                options.Add((section, section.Weight));
+                options.Add((section, section.Weight * FatigueFactor(section)));
             }
 
             if (options.Count == 0)
@@ -265,6 +349,11 @@ namespace Villheim.Logic.Villagers
                 }
 
                 Remember(villager.VillageId, line);
+                if (Player.m_localPlayer != null && Vector3.Distance(Player.m_localPlayer.transform.position, villager.transform.position) < 20f)
+                {
+                    Tire(picked);
+                }
+
                 memory.LastTone = picked.Tone ?? ToneOf(VoiceOf(villager));
 
                 memory.Recent.Enqueue(line);
@@ -279,10 +368,35 @@ namespace Villheim.Logic.Villagers
             return null;
         }
 
+        // ---------------------------------------------------------------- topic fatigue
+
+        /// <summary>
+        /// How tired the player is of each section, after MCA's interaction fatigue: +1 every time he hears a line
+        /// from it (within 20 m), one point wears off every two game hours (150 s). A tired section is picked less:
+        /// weight / (1 + 0.8 x fatigue), so after three lines from one topic the others come forward.
+        /// </summary>
+        private static readonly Dictionary<Section, (float Count, float At)> Fatigue = new Dictionary<Section, (float, float)>();
+
+        private const float FatigueWearsOff = 150f;
+
+        private static float FatigueNow(Section section) =>
+            Fatigue.TryGetValue(section, out var f) ? Mathf.Max(0f, f.Count - (Time.time - f.At) / FatigueWearsOff) : 0f;
+
+        private static float FatigueFactor(Section section) => 1f / (1f + 0.8f * FatigueNow(section));
+
+        private static void Tire(Section section) => Fatigue[section] = (FatigueNow(section) + 1f, Time.time);
+
+        /// <summary>The sections the player is most tired of, for the inspect command.</summary>
+        public static string DescribeFatigue() =>
+            string.Join("; ", Fatigue.Select(f => (Section: f.Key, Count: FatigueNow(f.Key))).Where(f => f.Count >= 0.5f)
+                .OrderByDescending(f => f.Count).Take(6)
+                .Select(f => $"{string.Join(",", f.Section.All)}{(f.Section.VoiceSet != null ? "|" + string.Join("/", f.Section.VoiceSet) : "")} {f.Count:0.0}"));
+
         /// <summary>Now and then, with a player close by, a villager says something about what is going on.</summary>
         public static void Tick(Villager villager)
         {
             Personality.Sample(villager);
+            Goals.Update(villager);
             if (!VillheimConfig.VillagerChatter.Value || Sleep.IsAsleep(villager) || Player.m_localPlayer == null ||
                 global::Chat.instance == null)
             {
@@ -472,11 +586,18 @@ namespace Villheim.Logic.Villagers
                 tags.Add(own);
             }
 
+            tags.UnionWith(Context.Tags(villager));
+            tags.UnionWith(VillagerSkills.Tags(villager, ActivityWord(doing)));
+            tags.UnionWith(Goals.Tags(villager));
+            tags.UnionWith(Gatherings.Tags(villager.VillageId));
+
             VillageHearth hearth = VillageHearth.Find(villager.VillageId);
             if (hearth == null || !hearth.IsValid)
             {
                 return tags;
             }
+
+            tags.UnionWith(PlayerMemory.Tags(hearth, villager));
 
             var state = new VillageState(hearth.Zdo);
             int plots = state.Plots.Count;
@@ -625,7 +746,11 @@ namespace Villheim.Logic.Villagers
             string player = Player.m_localPlayer != null ? Player.m_localPlayer.GetPlayerName() : "friend";
             string request = hearth != null && hearth.IsValid ? Social.RequestText(hearth) ?? "a little wood" : "a little wood";
             line = line.Replace("{request}", request);
-            string other = OtherVillager(villager);
+            string other = _partner != null ? _partner.VillagerName : OtherVillager(villager);
+            line = Goals.Fill(line, villager);
+            line = PlayerMemory.Fill(line, villager);
+            line = VillagerSkills.Fill(line, villager, ActivityWord(VillagerBehaviour.Activity(villager) ?? "idle"));
+            line = FillMoment(line, villager);
             line = Personality.Fill(line, villager);
             if (line.Contains("{neighbour}"))
             {
@@ -637,10 +762,34 @@ namespace Villheim.Logic.Villagers
                 .Replace("{building}", building)
                 .Replace("{name}", villager.VillagerName)
                 .Replace("{player}", player)
+                .Replace("{partner}", other)
                 .Replace("{other}", other);
 
             // Fill-ins such as {favfood} or {news} can start a sentence: give it its capital.
             return System.Text.RegularExpressions.Regex.Replace(line, @"(^|[.?!]\s+)([a-z])", m => m.Groups[1].Value + char.ToUpperInvariant(m.Groups[2].Value[0]));
+        }
+
+        /// <summary>Fill-ins about the moment: {place} {beast} {playergear} {playerweapon} {lastboss} {daypart} {weather}.</summary>
+        private static string FillMoment(string line, Villager villager)
+        {
+            if (line.IndexOf('{') < 0)
+            {
+                return line;
+            }
+
+            Player player = Player.m_localPlayer;
+            float hour = EnvMan.instance != null ? EnvMan.instance.GetDayFraction() * 24f : 12f;
+            string daypart = hour >= 5f && hour < 11f ? "morning" : hour < 17f && hour >= 11f ? "afternoon" : hour >= 17f && hour < 22f ? "evening" : "night";
+            string env = EnvMan.instance?.GetCurrentEnvironment()?.m_name?.ToLowerInvariant() ?? "";
+            string weather = env.Contains("thunder") ? "storm" : env.Contains("snow") ? "snow" : env.Contains("rain") ? "rain" :
+                env.Contains("mist") || env.Contains("fog") ? "mist" : "weather";
+            return line.Replace("{place}", Context.Place(villager))
+                .Replace("{beast}", Context.Beast(villager) ?? "beast")
+                .Replace("{playergear}", player != null ? Context.GearName(player) : "gear")
+                .Replace("{playerweapon}", Context.WeaponWord(player?.GetRightItem()) ?? "blade")
+                .Replace("{lastboss}", Context.LastBoss() ?? "the great stag")
+                .Replace("{daypart}", daypart)
+                .Replace("{weather}", weather);
         }
 
         private static string OtherVillager(Villager villager)

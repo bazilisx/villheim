@@ -913,7 +913,7 @@ namespace Villheim.Logic.Villagers
             // A happy village works faster, a glum one slower (Millenaire and Hirdmandr both tie work to mood).
             float mood = VillageMood.Get(villager.VillageId);
             float perPiece = (LogicConfig.SecondsPerPiece != null ? LogicConfig.SecondsPerPiece.Value : 2.5f) *
-                             (mood >= 65f ? 0.85f : mood < 35f ? 1.3f : 1f);
+                             (mood >= 65f ? 0.85f : mood < 35f ? 1.3f : 1f) / VillagerSkills.WorkFactor(villager, "building");
             if (work.Timer < perPiece)
             {
                 return true;
@@ -1076,11 +1076,11 @@ namespace Villheim.Logic.Villagers
 
             if (pickaxe)
             {
-                hit.m_damage.m_pickaxe = Mathf.Max(weapon?.m_shared?.m_damages.m_pickaxe ?? 0f, 20f) * Strength();
+                hit.m_damage.m_pickaxe = Mathf.Max(weapon?.m_shared?.m_damages.m_pickaxe ?? 0f, 20f) * Strength() * VillagerSkills.WorkFactor(villager, "mining");
             }
             else
             {
-                hit.m_damage.m_chop = Mathf.Max(weapon?.m_shared?.m_damages.m_chop ?? 0f, 15f) * Strength();
+                hit.m_damage.m_chop = Mathf.Max(weapon?.m_shared?.m_damages.m_chop ?? 0f, 15f) * Strength() * VillagerSkills.WorkFactor(villager, "woodcutting");
             }
 
             destructible.Damage(hit);

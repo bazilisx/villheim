@@ -577,6 +577,7 @@ namespace Villheim.Logic.Village
             else if (arrival >= VillheimConfig.StartingVillagers.Value)
             {
                 Villagers.Social.Gather(state.Id, villager, null, 1, "event:welcomeneighbour", "wave", 60f);
+                Villagers.Gatherings.Arrival(state.Id, villager);
             }
 
             // The newcomer claims the free bed at once, so the next arrival can't count it as free too.

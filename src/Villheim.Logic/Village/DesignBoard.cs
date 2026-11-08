@@ -259,6 +259,22 @@ namespace Villheim.Logic.Village
                 return $"Board: taken down ({TakeDown()} objects).";
             }
 
+            if (first == "view" && words.Count >= 2)
+            {
+                Plot plot = FindPlot(words[1]);
+                if (plot == null)
+                {
+                    return "Board: 'vh slot view s1d3' puts you at the same spot in front of any plot (to compare plots from one view).";
+                }
+
+                // Standing just outside the plot's front edge, in the middle, facing into it: the same view of every plot.
+                Vector3 forward = -(Quaternion.Euler(0f, plot.Yaw, 0f) * Vector3.forward);
+                Vector3 spot = plot.Center - forward * (plot.Half + 3f);
+                spot.y = Ground(spot, plot.Center.y) + 0.2f;
+                player.TeleportTo(spot, Quaternion.LookRotation(forward), false);
+                return $"Board: in front of {StageName(plot.Name)}, facing it. Do the same for another plot to see both from the same spot.";
+            }
+
             if (first == "compare" && words.Count >= 3)
             {
                 return CompareGround(words[1], words[2]);

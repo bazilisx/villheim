@@ -918,7 +918,43 @@ const PLANS = {
     d3: [['wall', ['darkwood_raven', 'darkwood_wolf'], 2], ['mount', ['itemstand', 'itemstandh'], 2], ['rug', ['rug_wolf', 'rug_fur'], 1]],
   },
   yard: { d1: [], d2: [], d3: [] },
+  bedroom: {
+    d1: [['bed', ['bed', 'piece_bed02'], 1], ['wall', ['piece_chest_wood', 'piece_chest'], 1]],
+    d2: [['rug', ['rug_deer', 'rug_wolf', 'rug_fur'], 1], ['light', ['piece_groundtorch_wood', 'piece_groundtorch'], 1]],
+    d3: [['mount', ['itemstand', 'itemstandh'], 1], ['wall', ['ArmorStand'], 0.5], ['mount', ['piece_banner01', 'piece_banner02'], 0.5]],
+  },
+  kitchen: {
+    d1: [['wall', ['piece_cauldron'], 1], ['wall', ['piece_chest_wood'], 1]],
+    d2: [['wall', ['fermenter', 'piece_chest_barrel'], 1], ['table', ['piece_table'], 1], ['light', ['piece_groundtorch_wood'], 1]],
+    d3: [['wall', ['wood_stack'], 1], ['mount', ['itemstandh'], 1], ['rug', ['rug_straw', 'rug_deer'], 0.5]],
+  },
 };
+
+// Whole-building limits per decor stage, so a big house with several rooms is furnished like one home and not like
+// several. Numbers set by eye against the keepers; the corpus rates per area vary too much to use directly.
+const CAPS = {
+  d1: { bed: 2, storage: 2, deco: 0, rug: 0, light: 1, clutter: 1, craftEach: 1, table: 1 },
+  d2: { bed: 3, storage: 3, deco: 2, rug: 2, light: 2, clutter: 2, craftEach: 1, table: 2 },
+  d3: { bed: 4, storage: 5, deco: 6, rug: 3, light: 4, clutter: 3, craftEach: 1, table: 3 },
+};
+const CAP_USE = { hall: { bed: 2, storage: 2, deco: 4, table: 2, light: 2 }, storage: { storage: 8 }, smithy: { craftEach: 2 } };
+function capFor(cat, use, decor) {
+  const base = CAPS[decor] || CAPS.d2;
+  const extra = (CAP_USE[use] || {})[cat] || 0;
+  return (base[cat] ?? 99) + (decor === 'd1' ? 0 : extra);
+}
+function catOf(name) {
+  const r = P.piece(name).role;
+  if (r === 'bed') return 'bed';
+  if (r === 'storage') return 'storage';
+  if (r === 'deco') return 'deco';
+  if (r === 'rug') return 'rug';
+  if (r === 'light') return 'light';
+  if (r === 'clutter') return 'clutter';
+  if (r === 'table') return 'table';
+  if (r === 'craft') return 'craft:' + name;
+  return null;
+}
 
 const ESSENTIAL = /^(bed|piece_bed02|ashwood_bed|piece_chest_wood|piece_chest|hearth|fire_pit|forge|piece_workbench|piece_cookingstation|smelter|portal_wood)$/;
 
@@ -973,10 +1009,16 @@ function decorate(b, ctx) {
     const info = P.piece(p.name);
     if (info.role === 'pole') occ.add(p.x, p.z, Math.round(p.y - 1), 0.4, 0.4, 0);
   }
-  for (const room of b.rooms) {
-    if (room.door) occ.add(room.door.x, room.door.z + 1.5, room.y, 2.4, 3.0, 0); // keep the way in clear
-    if (room.upper && ctx.use === 'hall') continue;
-    furnishRoom(b, room, room.upper ? (ctx.use === 'home' ? 'home' : ctx.use) : ctx.use, ctx.decor, ctx.biome, R, occ, ctx, room.upper);
+  ctx.counts = new Map();
+  ctx.totalArea = b.rooms.filter(r => !r.upper).reduce((s, r) => s + (r.x1 - r.x0) * (r.z1 - r.z0), 0);
+  const rooms = [...b.rooms].sort((a, c) => (a.upper - c.upper) || ((c.main ? 1 : 0) - (a.main ? 1 : 0)));
+  for (const room of rooms) {
+    if (room.door) occ.add(room.door.x, room.door.z + 1.0, room.y, 2.4, 2.0, 0); // keep the way in clear
+    // the main ground room gets the building's own plan; upper rooms and side wings get a plan that suits them
+    let use = ctx.use;
+    if (room.upper) use = ['home', 'hall', 'guard'].includes(ctx.use) ? 'bedroom' : 'storage';
+    else if (room.main === false) use = { home: 'bedroom', hall: 'kitchen', smithy: 'workshop', workshop: 'storage', temple: 'temple' }[ctx.use] || 'storage';
+    furnishRoom(b, room, use, ctx.decor, ctx.biome, R, occ, ctx, room.upper);
   }
   return b;
 }
@@ -991,10 +1033,20 @@ function furnishRoom(b, room, use, decor, biome, R, occ, ctx, upper) {
   slots.sort((a, b2) => (b2.z - a.z) * 0.3 + (R() - 0.5));
   const y = room.y;
   const cx = (room.x0 + room.x1) / 2, cz = (room.z0 + room.z1) / 2;
+  const counts = ctx.counts || (ctx.counts = new Map());
+  const allowed = name => {
+    const c = catOf(name);
+    if (!c) return true;
+    const cap = c.startsWith('craft:') ? capFor('craftEach', ctx.use || use, decor) + (/cookingstation/.test(name) ? 1 : 0) : capFor(c, ctx.use || use, decor);
+    return (counts.get(c) || 0) < cap;
+  };
   const place = (name, x, yy, z, yaw) => {
+    const c = catOf(name);
+    if (c) counts.set(c, (counts.get(c) || 0) + 1);
     b.pieces.push({ name, x: +x.toFixed(3), y: +yy.toFixed(3), z: +z.toFixed(3), q: quatY(yaw), yaw, decor: true });
   };
   const putWall = (name, mount) => {
+    if (!allowed(name)) return false;
     const info = P.piece(name);
     const [w, h, d] = info.size;
     for (let i = 0; i < slots.length; i++) {
@@ -1012,6 +1064,7 @@ function furnishRoom(b, room, use, decor, biome, R, occ, ctx, upper) {
     return false;
   };
   const putCentre = (name, x, z, yaw) => {
+    if (!allowed(name)) return false;
     const info = P.piece(name), [w, , d] = info.size;
     if (!occ.fits(x, z, y, w, d, yaw)) return false;
     occ.add(x, z, y, w, d, yaw); place(name, x, y + (info.role === 'rug' ? 0.05 : 0.1), z, yaw); return true;
@@ -1021,9 +1074,9 @@ function furnishRoom(b, room, use, decor, biome, R, occ, ctx, upper) {
     for (const [kind, list, per] of plan[st] || []) {
       const name = best(list, biome);
       if (!ok(name, biome) && kind !== 'fire') continue;
-      let n = per * (kind === 'wall' || kind === 'mount' ? scale : 1);
+      let n = per * (kind === 'wall' || kind === 'mount' ? Math.min(scale, 2) : 1);
       n = Math.floor(n) + (R() < n - Math.floor(n) ? 1 : 0);
-      if (kind === 'bed') n = Math.max(1, Math.round(scale * 0.6));
+      if (kind === 'bed') n = Math.max(1, Math.min(2, Math.round(scale * 0.5)));
       for (let k = 0; k < n; k++) {
         if (kind === 'wall') putWall(name, false);
         else if (kind === 'mount' || kind === 'light' && /brazierceiling|walltorch/.test(name)) putWall(name, true);
@@ -1052,6 +1105,7 @@ function furnishRoom(b, room, use, decor, biome, R, occ, ctx, upper) {
             putCentre(seat, sx, sz, (syaw + rel(seat)) % 360);
           }
         } else if (kind === 'rug') {
+          if (!allowed(name)) continue;
           const rx = cx + (R() - 0.5) * (room.x1 - room.x0) * 0.4, rz = cz + (R() - 0.5) * (room.z1 - room.z0) * 0.3;
           place(name, rx, y + 0.02, rz, longX ? 0 : 90);
         } else if (kind === 'light') {
@@ -1241,31 +1295,30 @@ function pick(R, weights) {
   return e[0][0];
 }
 
-// Wings for a plan, from the main wing's half sizes W (along x) and D (across, odd).
+// Wings for a plan, from the main wing's half sizes W (along x) and D (across, odd). Every wing's cells must fall on
+// the main wing's 2 m grid, so a side wing runs through the main wing's whole depth and out the other side: its half
+// length is D plus the part that sticks out, and its centre sits on the right parity.
 function wingsFor(plan, W, D, R) {
   const odd = n => (n % 2 ? n : n + 1);
   const wD = Math.max(1, odd(D - 2)); // side wings are a bay narrower
+  const ext = Math.max(2, Math.ceil(D * 0.8)); // how far a wing sticks out, metres in 2 m steps below
+  const out = 2 * Math.round(ext / 2);
+  const main = { cx: 0, cz: 0, W, D, alpha: 0, main: true };
+  const mid = (W % 2 === wD % 2) ? 0 : 1; // centre x for a wing in the middle, on the grid
   switch (plan) {
     case 'L': {
-      const side = R() < 0.5 ? -1 : 1, len = odd(Math.max(2, D + 1));
-      // side wing runs toward the front (-z) from one end of the main wing
-      return [{ cx: 0, cz: 0, W, D, alpha: 0, main: true }, { cx: side * (W - wD), cz: -len, W: len, D: wD, alpha: 270 }];
+      const side = R() < 0.5 ? -1 : 1;
+      return [main, { cx: side * (W - wD), cz: -out / 2, W: D + out / 2, D: wD, alpha: 270 }];
     }
-    case 'T': {
-      const len = Math.max(2, D + 1);
-      return [{ cx: 0, cz: 0, W, D, alpha: 0, main: true }, { cx: 0, cz: len, W: len, D: wD, alpha: 270 }];
-    }
-    case 'cross': {
-      const len = Math.max(2, D);
-      return [{ cx: 0, cz: 0, W, D, alpha: 0, main: true }, { cx: 0, cz: len, W: len, D: wD, alpha: 270 }, { cx: 0, cz: -len, W: len, D: wD, alpha: 270 }];
-    }
-    case 'U': {
-      const len = D + 2 + (D % 2 ? 0 : 1);
-      return [{ cx: 0, cz: D, W, D, alpha: 0, main: true },
-        { cx: -(W - wD), cz: D - len + 1, W: len, D: wD, alpha: 270 }, { cx: W - wD, cz: D - len + 1, W: len, D: wD, alpha: 270 }];
-    }
+    case 'T':
+      return [main, { cx: mid, cz: out / 2, W: D + out / 2, D: wD, alpha: 270 }];
+    case 'cross':
+      return [main, { cx: mid, cz: 0, W: D + out, D: wD, alpha: 270 }];
+    case 'U':
+      return [main, { cx: -(W - wD), cz: -out / 2 - 1, W: D + out / 2 + 1, D: wD, alpha: 270 },
+        { cx: W - wD, cz: -out / 2 - 1, W: D + out / 2 + 1, D: wD, alpha: 270 }];
     default:
-      return [{ cx: 0, cz: 0, W, D, alpha: 0, main: true }];
+      return [main];
   }
 }
 
@@ -1461,15 +1514,22 @@ function generate(req) {
       if (fireInside) b.notes.push('Ridge cap left open over the fire for smoke.');
     }
 
-    // porch at the front door
+    // porch at the front door: one or three bays wide, on the grid, never on top of a wing
     if (!flat && roofKind !== 'shed' && !T.dock && !T.tower && C.porch && R() < C.porch + (stage === 's1' ? -0.3 : 0.2) && plan !== 'U' && plan !== 'cross' && !deck) {
-      const len = 4 + 2 * Math.floor(R() * 2), x0 = doorX - len / 2, x1 = x0 + len, zf = doorZ;
-      for (let x = x0 + 1; x < x1; x += 2) b.put(K.floor, x, F, zf - 1);
-      for (let x = x0; x <= x1 + 0.01; x += 2) {
-        for (let y = 0; y < F - 0.01; y += 1) b.put(K.pole1, x, y + 0.5, zf - 2);
-        b.put(framePole(K, C), x, F + 1, zf - 2);
+      const h = R() < 0.5 ? 0 : 1, zf = doorZ;
+      const bays = [];
+      for (let k = -h; k <= h; k++) { const x = doorX + 2 * k; if (!cells.has(`${x},${zf - 1}`) && !cells.has(`${x},${zf - 3}`)) bays.push(x); }
+      if (bays.length) {
+        const posts = new Set();
+        for (const x of bays) { b.put(K.floor, x, F, zf - 1); posts.add(x - 1); posts.add(x + 1); }
+        const taken = new Set(verts.map(([vx, vz]) => `${vx},${vz}`));
+        for (const x of posts) {
+          if (taken.has(`${x},${zf - 2}`)) continue; // a wing's corner post already stands here
+          for (let y = 0; y < F - 0.01; y += 1) b.put(K.pole1, x, y + 0.5, zf - 2);
+          b.put(framePole(K, C), x, F + 1, zf - 2);
+        }
+        for (const x of bays) b.put((biome === 'Meadows' || biome === 'Black Forest') ? K.roof26 : 'darkwood_roof', x, F + 2, zf - 1, 180);
       }
-      for (let x = x0 + 1; x < x1; x += 2) b.put((biome === 'Meadows' || biome === 'Black Forest') ? K.roof26 : 'darkwood_roof', x, F + 2, zf - 1, 180);
     }
     if (T.dock) dockDesign(b, K, W, D, F, stage);
     if (T.field) fieldDesign(b, K, W, D, biome, stage, R);

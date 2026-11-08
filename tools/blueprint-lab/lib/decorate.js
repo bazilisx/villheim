@@ -86,7 +86,43 @@ const PLANS = {
     d3: [['wall', ['darkwood_raven', 'darkwood_wolf'], 2], ['mount', ['itemstand', 'itemstandh'], 2], ['rug', ['rug_wolf', 'rug_fur'], 1]],
   },
   yard: { d1: [], d2: [], d3: [] },
+  bedroom: {
+    d1: [['bed', ['bed', 'piece_bed02'], 1], ['wall', ['piece_chest_wood', 'piece_chest'], 1]],
+    d2: [['rug', ['rug_deer', 'rug_wolf', 'rug_fur'], 1], ['light', ['piece_groundtorch_wood', 'piece_groundtorch'], 1]],
+    d3: [['mount', ['itemstand', 'itemstandh'], 1], ['wall', ['ArmorStand'], 0.5], ['mount', ['piece_banner01', 'piece_banner02'], 0.5]],
+  },
+  kitchen: {
+    d1: [['wall', ['piece_cauldron'], 1], ['wall', ['piece_chest_wood'], 1]],
+    d2: [['wall', ['fermenter', 'piece_chest_barrel'], 1], ['table', ['piece_table'], 1], ['light', ['piece_groundtorch_wood'], 1]],
+    d3: [['wall', ['wood_stack'], 1], ['mount', ['itemstandh'], 1], ['rug', ['rug_straw', 'rug_deer'], 0.5]],
+  },
 };
+
+// Whole-building limits per decor stage, so a big house with several rooms is furnished like one home and not like
+// several. Numbers set by eye against the keepers; the corpus rates per area vary too much to use directly.
+const CAPS = {
+  d1: { bed: 2, storage: 2, deco: 0, rug: 0, light: 1, clutter: 1, craftEach: 1, table: 1 },
+  d2: { bed: 3, storage: 3, deco: 2, rug: 2, light: 2, clutter: 2, craftEach: 1, table: 2 },
+  d3: { bed: 4, storage: 5, deco: 6, rug: 3, light: 4, clutter: 3, craftEach: 1, table: 3 },
+};
+const CAP_USE = { hall: { bed: 2, storage: 2, deco: 4, table: 2, light: 2 }, storage: { storage: 8 }, smithy: { craftEach: 2 } };
+function capFor(cat, use, decor) {
+  const base = CAPS[decor] || CAPS.d2;
+  const extra = (CAP_USE[use] || {})[cat] || 0;
+  return (base[cat] ?? 99) + (decor === 'd1' ? 0 : extra);
+}
+function catOf(name) {
+  const r = P.piece(name).role;
+  if (r === 'bed') return 'bed';
+  if (r === 'storage') return 'storage';
+  if (r === 'deco') return 'deco';
+  if (r === 'rug') return 'rug';
+  if (r === 'light') return 'light';
+  if (r === 'clutter') return 'clutter';
+  if (r === 'table') return 'table';
+  if (r === 'craft') return 'craft:' + name;
+  return null;
+}
 
 const ESSENTIAL = /^(bed|piece_bed02|ashwood_bed|piece_chest_wood|piece_chest|hearth|fire_pit|forge|piece_workbench|piece_cookingstation|smelter|portal_wood)$/;
 
@@ -141,10 +177,16 @@ function decorate(b, ctx) {
     const info = P.piece(p.name);
     if (info.role === 'pole') occ.add(p.x, p.z, Math.round(p.y - 1), 0.4, 0.4, 0);
   }
-  for (const room of b.rooms) {
-    if (room.door) occ.add(room.door.x, room.door.z + 1.5, room.y, 2.4, 3.0, 0); // keep the way in clear
-    if (room.upper && ctx.use === 'hall') continue;
-    furnishRoom(b, room, room.upper ? (ctx.use === 'home' ? 'home' : ctx.use) : ctx.use, ctx.decor, ctx.biome, R, occ, ctx, room.upper);
+  ctx.counts = new Map();
+  ctx.totalArea = b.rooms.filter(r => !r.upper).reduce((s, r) => s + (r.x1 - r.x0) * (r.z1 - r.z0), 0);
+  const rooms = [...b.rooms].sort((a, c) => (a.upper - c.upper) || ((c.main ? 1 : 0) - (a.main ? 1 : 0)));
+  for (const room of rooms) {
+    if (room.door) occ.add(room.door.x, room.door.z + 1.0, room.y, 2.4, 2.0, 0); // keep the way in clear
+    // the main ground room gets the building's own plan; upper rooms and side wings get a plan that suits them
+    let use = ctx.use;
+    if (room.upper) use = ['home', 'hall', 'guard'].includes(ctx.use) ? 'bedroom' : 'storage';
+    else if (room.main === false) use = { home: 'bedroom', hall: 'kitchen', smithy: 'workshop', workshop: 'storage', temple: 'temple' }[ctx.use] || 'storage';
+    furnishRoom(b, room, use, ctx.decor, ctx.biome, R, occ, ctx, room.upper);
   }
   return b;
 }
@@ -159,10 +201,20 @@ function furnishRoom(b, room, use, decor, biome, R, occ, ctx, upper) {
   slots.sort((a, b2) => (b2.z - a.z) * 0.3 + (R() - 0.5));
   const y = room.y;
   const cx = (room.x0 + room.x1) / 2, cz = (room.z0 + room.z1) / 2;
+  const counts = ctx.counts || (ctx.counts = new Map());
+  const allowed = name => {
+    const c = catOf(name);
+    if (!c) return true;
+    const cap = c.startsWith('craft:') ? capFor('craftEach', ctx.use || use, decor) + (/cookingstation/.test(name) ? 1 : 0) : capFor(c, ctx.use || use, decor);
+    return (counts.get(c) || 0) < cap;
+  };
   const place = (name, x, yy, z, yaw) => {
+    const c = catOf(name);
+    if (c) counts.set(c, (counts.get(c) || 0) + 1);
     b.pieces.push({ name, x: +x.toFixed(3), y: +yy.toFixed(3), z: +z.toFixed(3), q: quatY(yaw), yaw, decor: true });
   };
   const putWall = (name, mount) => {
+    if (!allowed(name)) return false;
     const info = P.piece(name);
     const [w, h, d] = info.size;
     for (let i = 0; i < slots.length; i++) {
@@ -180,6 +232,7 @@ function furnishRoom(b, room, use, decor, biome, R, occ, ctx, upper) {
     return false;
   };
   const putCentre = (name, x, z, yaw) => {
+    if (!allowed(name)) return false;
     const info = P.piece(name), [w, , d] = info.size;
     if (!occ.fits(x, z, y, w, d, yaw)) return false;
     occ.add(x, z, y, w, d, yaw); place(name, x, y + (info.role === 'rug' ? 0.05 : 0.1), z, yaw); return true;
@@ -189,9 +242,9 @@ function furnishRoom(b, room, use, decor, biome, R, occ, ctx, upper) {
     for (const [kind, list, per] of plan[st] || []) {
       const name = best(list, biome);
       if (!ok(name, biome) && kind !== 'fire') continue;
-      let n = per * (kind === 'wall' || kind === 'mount' ? scale : 1);
+      let n = per * (kind === 'wall' || kind === 'mount' ? Math.min(scale, 2) : 1);
       n = Math.floor(n) + (R() < n - Math.floor(n) ? 1 : 0);
-      if (kind === 'bed') n = Math.max(1, Math.round(scale * 0.6));
+      if (kind === 'bed') n = Math.max(1, Math.min(2, Math.round(scale * 0.5)));
       for (let k = 0; k < n; k++) {
         if (kind === 'wall') putWall(name, false);
         else if (kind === 'mount' || kind === 'light' && /brazierceiling|walltorch/.test(name)) putWall(name, true);
@@ -220,6 +273,7 @@ function furnishRoom(b, room, use, decor, biome, R, occ, ctx, upper) {
             putCentre(seat, sx, sz, (syaw + rel(seat)) % 360);
           }
         } else if (kind === 'rug') {
+          if (!allowed(name)) continue;
           const rx = cx + (R() - 0.5) * (room.x1 - room.x0) * 0.4, rz = cz + (R() - 0.5) * (room.z1 - room.z0) * 0.3;
           place(name, rx, y + 0.02, rz, longX ? 0 : 90);
         } else if (kind === 'light') {

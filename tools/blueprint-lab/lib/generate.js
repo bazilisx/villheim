@@ -95,31 +95,30 @@ function pick(R, weights) {
   return e[0][0];
 }
 
-// Wings for a plan, from the main wing's half sizes W (along x) and D (across, odd).
+// Wings for a plan, from the main wing's half sizes W (along x) and D (across, odd). Every wing's cells must fall on
+// the main wing's 2 m grid, so a side wing runs through the main wing's whole depth and out the other side: its half
+// length is D plus the part that sticks out, and its centre sits on the right parity.
 function wingsFor(plan, W, D, R) {
   const odd = n => (n % 2 ? n : n + 1);
   const wD = Math.max(1, odd(D - 2)); // side wings are a bay narrower
+  const ext = Math.max(2, Math.ceil(D * 0.8)); // how far a wing sticks out, metres in 2 m steps below
+  const out = 2 * Math.round(ext / 2);
+  const main = { cx: 0, cz: 0, W, D, alpha: 0, main: true };
+  const mid = (W % 2 === wD % 2) ? 0 : 1; // centre x for a wing in the middle, on the grid
   switch (plan) {
     case 'L': {
-      const side = R() < 0.5 ? -1 : 1, len = odd(Math.max(2, D + 1));
-      // side wing runs toward the front (-z) from one end of the main wing
-      return [{ cx: 0, cz: 0, W, D, alpha: 0, main: true }, { cx: side * (W - wD), cz: -len, W: len, D: wD, alpha: 270 }];
+      const side = R() < 0.5 ? -1 : 1;
+      return [main, { cx: side * (W - wD), cz: -out / 2, W: D + out / 2, D: wD, alpha: 270 }];
     }
-    case 'T': {
-      const len = Math.max(2, D + 1);
-      return [{ cx: 0, cz: 0, W, D, alpha: 0, main: true }, { cx: 0, cz: len, W: len, D: wD, alpha: 270 }];
-    }
-    case 'cross': {
-      const len = Math.max(2, D);
-      return [{ cx: 0, cz: 0, W, D, alpha: 0, main: true }, { cx: 0, cz: len, W: len, D: wD, alpha: 270 }, { cx: 0, cz: -len, W: len, D: wD, alpha: 270 }];
-    }
-    case 'U': {
-      const len = D + 2 + (D % 2 ? 0 : 1);
-      return [{ cx: 0, cz: D, W, D, alpha: 0, main: true },
-        { cx: -(W - wD), cz: D - len + 1, W: len, D: wD, alpha: 270 }, { cx: W - wD, cz: D - len + 1, W: len, D: wD, alpha: 270 }];
-    }
+    case 'T':
+      return [main, { cx: mid, cz: out / 2, W: D + out / 2, D: wD, alpha: 270 }];
+    case 'cross':
+      return [main, { cx: mid, cz: 0, W: D + out, D: wD, alpha: 270 }];
+    case 'U':
+      return [main, { cx: -(W - wD), cz: -out / 2 - 1, W: D + out / 2 + 1, D: wD, alpha: 270 },
+        { cx: W - wD, cz: -out / 2 - 1, W: D + out / 2 + 1, D: wD, alpha: 270 }];
     default:
-      return [{ cx: 0, cz: 0, W, D, alpha: 0, main: true }];
+      return [main];
   }
 }
 
@@ -315,15 +314,22 @@ function generate(req) {
       if (fireInside) b.notes.push('Ridge cap left open over the fire for smoke.');
     }
 
-    // porch at the front door
+    // porch at the front door: one or three bays wide, on the grid, never on top of a wing
     if (!flat && roofKind !== 'shed' && !T.dock && !T.tower && C.porch && R() < C.porch + (stage === 's1' ? -0.3 : 0.2) && plan !== 'U' && plan !== 'cross' && !deck) {
-      const len = 4 + 2 * Math.floor(R() * 2), x0 = doorX - len / 2, x1 = x0 + len, zf = doorZ;
-      for (let x = x0 + 1; x < x1; x += 2) b.put(K.floor, x, F, zf - 1);
-      for (let x = x0; x <= x1 + 0.01; x += 2) {
-        for (let y = 0; y < F - 0.01; y += 1) b.put(K.pole1, x, y + 0.5, zf - 2);
-        b.put(framePole(K, C), x, F + 1, zf - 2);
+      const h = R() < 0.5 ? 0 : 1, zf = doorZ;
+      const bays = [];
+      for (let k = -h; k <= h; k++) { const x = doorX + 2 * k; if (!cells.has(`${x},${zf - 1}`) && !cells.has(`${x},${zf - 3}`)) bays.push(x); }
+      if (bays.length) {
+        const posts = new Set();
+        for (const x of bays) { b.put(K.floor, x, F, zf - 1); posts.add(x - 1); posts.add(x + 1); }
+        const taken = new Set(verts.map(([vx, vz]) => `${vx},${vz}`));
+        for (const x of posts) {
+          if (taken.has(`${x},${zf - 2}`)) continue; // a wing's corner post already stands here
+          for (let y = 0; y < F - 0.01; y += 1) b.put(K.pole1, x, y + 0.5, zf - 2);
+          b.put(framePole(K, C), x, F + 1, zf - 2);
+        }
+        for (const x of bays) b.put((biome === 'Meadows' || biome === 'Black Forest') ? K.roof26 : 'darkwood_roof', x, F + 2, zf - 1, 180);
       }
-      for (let x = x0 + 1; x < x1; x += 2) b.put((biome === 'Meadows' || biome === 'Black Forest') ? K.roof26 : 'darkwood_roof', x, F + 2, zf - 1, 180);
     }
     if (T.dock) dockDesign(b, K, W, D, F, stage);
     if (T.field) fieldDesign(b, K, W, D, biome, stage, R);

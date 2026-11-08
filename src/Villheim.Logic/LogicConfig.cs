@@ -330,9 +330,11 @@ namespace Villheim.Logic
                 "How much of the hamlet's fence goes into the ground (0: none, it stands on the ground).");
             FenceWallSink = Admin(config, work, "FenceWallSink", 0.5f,
                 "How much of the village's stake wall goes into the ground (0.5: half). Gates are pairs of wood gates.");
-            DecorProps = Admin(config, work, "DecorProps", "Hildir_camp:tent",
+            DecorProps = Admin(config, work, "LocationDecor", "",
                 "Models from locations a village puts up as decor on the outer ring by the hearth (D-047), as location:child " +
-                "separated by commas: Hildir's tents that flutter in the wind by default. 'vh props <location>' lists names.");
+                "separated by commas; the child by the start of its name, or by its path (a/b/c) as 'vh props' prints it. " +
+                "Empty by default: Hildir_camp's 'tent' child was a bundle of things on the ground (T-59). 'vh props " +
+                "Hildir_camp cloth' lists the children that flutter, to find the tent.");
             VillageLevelSnap = Admin(config, work, "VillageLevelSnap", 2f,
                 "A new building whose ground lies within this many meters of the hearth's is set at the hearth's level, so " +
                 "the middle of the village is one even floor instead of steps (T-28). Further off, it sits at the middle " +

@@ -251,7 +251,7 @@ I've got a corner and a cloak. One day a bed.
 I love coming home. Even when home is a wall and a roof.
 
 @ at:home | gruff
-Don't come in without knocking. There's no door, but knock anyway.
+Knock before you come in. There's no door. Knock on the post.
 
 # ------------------------------------------------------------------ the edge of the village
 
@@ -313,4 +313,4 @@ Watch yourself past those stones. That's not our land any more.
 
 @ talk, indoors
 Come in, come in. Shake the wet off outside, if you would.
-It's not much, but it's dry.
+It's small and it's dry.

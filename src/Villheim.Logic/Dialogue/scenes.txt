@@ -1,0 +1,432 @@
+# Villheim: conversations of two and three. Same format as lines.txt and chat.txt.
+#
+# Chat sections can test the other one in the chat (Dialogue.PairTags): with:friend with:rival with:sweetheart
+# with:courting with:sametrade with:trade:<x> with:voice:<x> with:child with:jarl with:hurt with:sad with:happy
+# with:skilled. {partner} is the one being talked to.
+#
+# In a chat line, parts are split by "//" and said in turn. A part "@key" is answered by whoever's turn it is, from
+# the reply sections tagged answer:key, picked with that villager's own tags and voice (falling back to answer:any).
+# An answer can carry its own "//" parts. A part "+key" brings in a third villager standing within 9 m, who says
+# a line from the reply sections tagged chime:key.
+
+# ------------------------------------------------------------------ questions anyone answers in their own way
+
+@ chat
+How are you keeping, {partner}? // @howareyou
+Sleep well? // @sleep
+What do you think of {player}? // @aboutplayer
+What's the best thing you ever ate? // @food
+Where would you go, if you could go anywhere? // @dream
+Do you miss home? // @home
+What's the worst job in {village}? // @worstjob
+What did you do yesterday? // @yesterday
+If a troll came right now, what would you do? // @troll
+What do you think of the {building}? // @building
+
+@ reply, answer:howareyou
+Well enough. I'd complain, but who'd listen?
+Tired. Same as yesterday.
+Better for asking.
+Ask me after I've eaten.
+
+@ reply, answer:howareyou, feel:happy
+Good! Really good, actually. Don't know why.
+
+@ reply, answer:howareyou, feel:miserable
+Badly, if I'm honest. Don't ask why. // Why? // I said don't ask.
+
+@ reply, answer:howareyou, anyhurt
+My side hurts. Nothing a few days won't fix.
+
+@ reply, answer:howareyou, nobed
+I'd be better with a bed.
+
+@ reply, answer:howareyou | gruff
+Fine.
+
+@ reply, answer:howareyou | elder
+Old. Otherwise well.
+
+@ reply, answer:howareyou | young
+Hungry! And bored. Mostly hungry.
+
+@ reply, answer:howareyou, goodday
+Wonderful. I've done twice the work and I'm not even tired.
+
+@ reply, answer:sleep
+Like a log.
+Not really. Somebody snores.
+I dreamt of {homeland}.
+Dreamt I was falling. Woke up on the floor.
+
+@ reply, answer:sleep, thought:sleptwell
+Best night in ages. My own bed makes all the difference.
+
+@ reply, answer:sleep, thought:sleptrough
+On the ground, by the fire. My back says no.
+
+@ reply, answer:sleep | worrier
+I heard something outside all night. I didn't sleep at all.
+
+@ reply, answer:aboutplayer
+{player}? Good sort. Helps out.
+I don't know them well. They come and go.
+I like them. They always say hello.
+
+@ reply, answer:aboutplayer, player:stranger
+Who? Oh, the new one. Haven't decided.
+
+@ reply, answer:aboutplayer, player:friend
+{player}'s a friend to {village}. That's all I need to know.
+
+@ reply, answer:aboutplayer, player:hero
+{player}? I'd follow them into a troll cave. Maybe not a deep one.
+
+@ reply, answer:aboutplayer, player:disliked
+I don't trust them. Not after what happened.
+
+@ reply, answer:aboutplayer, pmem:generous
+They've given us more than some of us have. I'll say no word against them.
+
+@ reply, answer:aboutplayer, pmem:nevergave
+They eat with us and bring nothing. Make of that what you like.
+
+@ reply, answer:aboutplayer, heard:bigkill
+Did you hear about the {bigkill}? {teller} told me. They're not someone to cross.
+
+@ reply, answer:aboutplayer | wry
+Too tall. Otherwise fine.
+
+@ reply, answer:food
+{favfood}. Nothing else comes close.
+My mother's {favfood}. Nobody makes it like she did.
+Whatever's hot and in front of me.
+
+@ reply, answer:food | gruff
+Meat. Any meat.
+
+@ reply, answer:food | young
+Honey! Straight from the comb!
+
+@ reply, answer:dream
+I'd go {dream}. Well, that's what I want, anyway.
+Far away. Somewhere warm.
+I'd stay right here. Don't laugh.
+
+@ reply, answer:dream | worrier
+Nowhere. Everywhere else has worse things in it.
+
+@ reply, answer:dream | wry
+Somewhere with no trees to cut.
+
+@ reply, answer:home
+Every day. {homeland} was home. This is starting to be.
+Some days. Then I eat, and I forget.
+No. There's nothing left there.
+
+@ reply, answer:home | gruff
+No point missing things.
+
+@ reply, answer:home | elder
+At my age you miss everything a little. It's fine.
+
+@ reply, answer:worstjob
+Hauling stone. Nobody argues.
+Cleaning the fish. The smell stays on you for days.
+Night watch. Cold, dark and boring until it isn't.
+
+@ reply, answer:worstjob, trade:miner
+Mining. And it's my job. So.
+
+@ reply, answer:worstjob | wry
+Listening to {other} talk about their day.
+
+@ reply, answer:yesterday
+I was {yesterday}. Mostly.
+{yesterday}. Same as always. // Sounds dull. // It was.
+Can't remember. That's how good it was.
+
+@ reply, answer:troll
+Run. Then run faster.
+Climb something. Trolls can't climb. Can they?
+Throw {other} at it and run the other way.
+
+@ reply, answer:troll, protector
+Spear up and go for its knees. That's what I'd do.
+
+@ reply, answer:troll, fear:trolls
+Don't. Don't even say it. I'm not listening.
+
+@ reply, answer:troll | young
+Fight it! With a stick! A big stick!
+
+@ reply, answer:building
+It'll do. Better than sleeping in the rain.
+It's coming on. Slower than I'd like.
+I'll believe it when there's a roof on it.
+
+@ reply, answer:building, trade:carpenter
+It's going well. Don't tell me about the corners. I know about the corners.
+
+@ reply, answer:any
+Hm. Maybe.
+Could be.
+I'd have to think about that.
+Ask me tomorrow.
+You always ask the strangest things.
+
+# ------------------------------------------------------------------ friends
+
+@ chat, with:friend
+There you are. I was looking for you. // Here I am. // Good. That's all.
+You and me, we should go fishing one day. // You always say that. // One day I'll mean it.
+I saved you a bit of the good meat. // You're the best friend a fool could have.
+Remember when we first came here? // Mud to the knees. // Mud to the waist, the way I remember.
+If anything happens to me, look after my things. // Nothing's going to happen. // Look after them anyway.
+You're the only one here who laughs at my jokes. // That's because I'm kind. // You're very kind.
+
+@ chat, with:friend | cheerful
+I'm glad you're here. I mean it. // I know. You say it every day. // Because I mean it every day.
+
+@ chat, with:friend | gruff
+You. // Me. // Good. // +friendsquiet
+
+@ reply, chime:friendsquiet
+You two talk less than anyone I know.
+Sit with them long enough and you'll learn to grunt too.
+
+# ------------------------------------------------------------------ rivals (RimWorld's slights)
+
+@ chat, with:rival
+You're in my way again. // I was here first. // You're always here first. // @rivalry
+That's my stool. // Your name's not on it. // It will be.
+I heard you were telling people I can't fell a tree. // I said you can't fell a tree well. // +quarrel
+Did you take my whetstone? // Why would I want your whetstone? // @rivalry
+Your fire's smoking into my eyes. // Then move. // You move.
+
+@ chat, with:rival | gruff
+Don't. // I didn't say anything. // Don't anyway.
+
+@ chat, with:rival | wry
+Lovely to see you, as always. // You don't mean that. // I never mean anything.
+
+@ chat, with:rival | devout
+We should try to get on. The gods prefer it. // The gods don't have to live with you.
+
+@ chat, with:rival, goal:peace
+Can we talk? Properly, I mean. // About what? // About us not getting on. // @makepeace
+
+@ reply, answer:rivalry
+Fine. Have it your way. You always do.
+I've nothing more to say to you.
+Ask anyone. Ask {other}. They'll tell you who's right.
+One day you'll see. One day.
+
+@ reply, answer:rivalry | cheerful
+Oh, come on. Let's not fight. It's too nice a day.
+
+@ reply, answer:rivalry | gruff
+Get out of my sight.
+
+@ reply, answer:rivalry | worrier
+I don't want trouble. I really don't.
+
+@ reply, answer:makepeace
+All right. I'm listening. // I was wrong, about the axe. // ...Thank you.
+I suppose we could start over. // I'd like that.
+I'm tired of arguing, that's all. // Me too. // Good. Then let's stop.
+
+@ reply, answer:makepeace | gruff
+Fine. Peace. Don't push it.
+
+@ reply, chime:quarrel
+Both of you, enough. Some of us are trying to rest.
+Here we go again.
+Leave it. It's not worth it.
+If you two want to fight, do it outside the village.
+
+@ reply, chime:quarrel | wry
+I'll get the mead. This could take a while.
+
+@ reply, chime:quarrel | elder
+In my day we'd settle this with a wrestle and a drink after. Shall we?
+
+# ------------------------------------------------------------------ courting and sweethearts
+
+@ chat, with:courting
+I made you something. It's a spoon. // A spoon? // It's a good spoon. // @spoon
+You look nice today. // Do I? I've been hauling wood all morning. // You look nice anyway.
+Would you sit with me at the fire tonight? // @sitwithme
+I found these flowers. They made me think of you. // Of me? They're a bit crushed. // So am I, a bit.
+
+@ chat, with:courting | gruff
+You're all right, you know. // Is that a compliment? // It's the best I've got.
+
+@ chat, with:courting | worrier
+I wanted to ask you something but I've forgotten what. // Ask me later. // Will you still be here? // I'm always here.
+
+@ reply, answer:spoon
+Thank you. I'll use it every day.
+It's lovely. Wait, is it carved like a boar? // It's meant to be you. // ...Oh.
+No one's ever made me a spoon before.
+
+@ reply, answer:spoon | wry
+I'll cherish it. Until it breaks. Then I'll cherish the bits.
+
+@ reply, answer:sitwithme
+I'd like that.
+Only if you don't steal my meat. // I'd never. // You would. // I would.
+Maybe. Ask me again at the fire.
+
+@ chat, with:sweetheart
+Did you sleep? // You kicked me all night. // I was dreaming of running. // From me? // Towards you.
+I saved you the warm spot by the fire. // You always do.
+When we have our own house, I want a window. // A window? Like a jarl? // Like a jarl.
+Everyone's looking at us. // Let them look. // +sweethearts
+
+@ reply, chime:sweethearts
+Look at you two. It's sickening. I love it.
+Get a house, the pair of you.
+I remember being like that. Long ago.
+
+@ reply, chime:sweethearts | young
+Are you two going to get married? Are you? Are you?
+
+# ------------------------------------------------------------------ same trade, other trades
+
+@ chat, with:sametrade
+How's the work going? // Same as yours, I imagine. // That bad?
+You're doing it wrong. // I'm doing it my way. // That's what I said.
+We should split the work tomorrow. You take the morning. // You always want me to take the morning.
+
+@ chat, with:trade:carpenter
+When's the next house going up? // When there's wood. // There's never wood. // Then never.
+Can you make me a stool? A small one? // Bring me the wood. // There it is again, wood.
+
+@ chat, with:trade:cook
+What's for supper? // @supper
+Your stew last night was good. // It was the same as always. // It was always good, then.
+
+@ reply, answer:supper
+Meat. Again. Be grateful.
+Whatever {player} brings us. Or doesn't.
+Stew. Don't ask what's in it.
+
+@ reply, answer:supper, food:none
+Nothing, unless somebody goes hunting.
+
+@ reply, answer:supper, food:raw
+There's raw meat waiting. Give me time.
+
+@ chat, with:trade:woodcutter
+How many trees today? // Lost count after seven. // That's not very many. // It's seven more than you.
+
+@ chat, with:trade:miner
+Find any copper? // Rocks. Lots of rocks. // Isn't that the job? // That's the job.
+
+@ chat, with:trade:farmer
+How are the fields? // Growing. Slowly. Like everything. // +fields
+
+@ reply, chime:fields
+Keep the boars off them this time.
+I'll help with the picking. If I get some.
+
+# ------------------------------------------------------------------ with the young, the hurt, the sad, the Jarl
+
+@ chat, with:child
+What are you up to, little one? // Nothing! // That's what worries me.
+Mind you don't wander past the fence. // Why? // Trolls. // Real ones?
+Did you help today? // I carried a stick! // A whole stick. Good.
+Want to learn something? // What? // How to tie a knot. // That's boring. // It's useful. // Boring.
+
+@ chat, with:hurt
+You're hurt. Sit down. // It's nothing. // Sit down anyway.
+Who did that to you? // A greydwarf. Small one. // Small ones hurt the most.
+There's food in the chest. Go and eat. // I'm fine. // Go and eat.
+
+@ chat, with:hurt | worrier
+That looks deep! Is it deep? It looks deep. // It's a scratch. // A deep scratch.
+
+@ chat, with:sad
+You look low. What is it? // @low
+Come and sit by the fire with me. // I'd rather be alone. // Then I'll sit quietly.
+
+@ reply, answer:low
+I don't know. Just tired of everything.
+Nothing. Everything. You know.
+I miss {homeland}. That's all.
+I'll be all right. Give me a day.
+
+@ reply, answer:low, nobed
+I want a bed. It's stupid. But I want a bed.
+
+@ reply, answer:low, mem:death
+I keep thinking about the one we lost.
+
+@ reply, answer:low | gruff
+Leave it.
+
+@ chat, with:happy
+You're smiling. What happened? // Nothing. Just a good day. // I'll have what you're having.
+What's got you so cheerful? // @cheerful
+
+@ reply, answer:cheerful
+I slept well, I ate well, and nobody shouted at me. What more is there?
+The sun's out. That's enough.
+Don't know. I just woke up like this.
+
+@ reply, answer:cheerful, goodday
+Everything's going right today. Don't spoil it.
+
+@ chat, with:jarl
+Jarl. Can I ask you something? // Ask. // When are we building the next house? // When the chest is full.
+Are you pleased with how things are going? // @jarlpleased
+I've got an idea for the village. // Go on. // A wall. A big one. // We'll see.
+
+@ reply, answer:jarlpleased
+More or less. There's always more to do.
+We're alive and fed. I'm pleased.
+Ask me when the next roof's up.
+
+@ reply, answer:jarlpleased, mood:low
+No. Things need to get better. And they will.
+
+@ chat, with:skilled
+How do you do it so fast? // Practice. Lots of it. // I practise. // Practise more.
+Will you show me how you do that? // @teach
+
+@ reply, answer:teach
+Watch me tomorrow. Do what I do.
+Maybe. If you bring me a drink.
+It's all in the wrist. And the years.
+
+# ------------------------------------------------------------------ three together
+
+@ chat
+Has anyone seen my good knife? // Not me. // +knife
+Who's on watch tonight? // Not me, I did last night. // +watch
+I think we should build a wall round the village. // A wall? With what? // +wall
+Somebody's been at the berries. // It wasn't me. // +berries
+
+@ reply, chime:knife
+It's on the chest. It's always on the chest.
+I saw {other} with it this morning.
+Did you check your belt?
+
+@ reply, chime:watch
+I'll do it. Somebody has to.
+Not me. I'll fall asleep standing up.
+Whoever lost at stones last.
+
+@ reply, chime:watch, protector
+I'll take it. Wake me at midnight.
+
+@ reply, chime:wall
+With logs. Lots of logs. Which we don't have.
+A wall would be good. I'd sleep better.
+Who's carrying the logs for this wall?
+
+@ reply, chime:berries
+It was the boar. Probably.
+It was me. They were very good.
+It was {other}. I saw the purple on their fingers.

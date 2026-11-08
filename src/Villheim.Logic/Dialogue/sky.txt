@@ -51,7 +51,7 @@ What if it hits the longhouse? It could hit the longhouse.
 
 @ self, event:stormstart | devout
 Thor rides. Bow your head and keep your iron close.
-He's angry at the giants, not at us. I hope.
+He's after the giants tonight. I hope.
 
 @ self, event:stormstart | wry
 Thor's moving furniture again.

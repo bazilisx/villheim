@@ -362,11 +362,17 @@ namespace Villheim.Logic.Villagers
                     memory.Recent.Dequeue();
                 }
 
-                return Fill(line, villager);
+                _sighted = extra?.FirstOrDefault(e => e.StartsWith("sighted:"))?.Substring(8);
+                string filled = Fill(line, villager);
+                _sighted = null;
+                return filled;
             }
 
             return null;
         }
+
+        /// <summary>The creature a queued line is about (from a "sighted:x" tag), for {beast}.</summary>
+        private static string _sighted;
 
         // ---------------------------------------------------------------- topic fatigue
 
@@ -746,7 +752,10 @@ namespace Villheim.Logic.Villagers
             string player = Player.m_localPlayer != null ? Player.m_localPlayer.GetPlayerName() : "friend";
             string request = hearth != null && hearth.IsValid ? Social.RequestText(hearth) ?? "a little wood" : "a little wood";
             line = line.Replace("{request}", request);
-            string other = _partner != null ? _partner.VillagerName : OtherVillager(villager);
+            // In a chat, {partner} is the one being talked to and {other} someone else near by.
+            string partner = _partner != null ? _partner.VillagerName : null;
+            string other = OtherVillager(villager, _partner);
+            partner = partner ?? other;
             line = Goals.Fill(line, villager);
             line = PlayerMemory.Fill(line, villager);
             line = VillagerSkills.Fill(line, villager, ActivityWord(VillagerBehaviour.Activity(villager) ?? "idle"));
@@ -762,7 +771,7 @@ namespace Villheim.Logic.Villagers
                 .Replace("{building}", building)
                 .Replace("{name}", villager.VillagerName)
                 .Replace("{player}", player)
-                .Replace("{partner}", other)
+                .Replace("{partner}", partner)
                 .Replace("{other}", other);
 
             // Fill-ins such as {favfood} or {news} can start a sentence: give it its capital.
@@ -784,7 +793,7 @@ namespace Villheim.Logic.Villagers
             string weather = env.Contains("thunder") ? "storm" : env.Contains("snow") ? "snow" : env.Contains("rain") ? "rain" :
                 env.Contains("mist") || env.Contains("fog") ? "mist" : "weather";
             return line.Replace("{place}", Context.Place(villager))
-                .Replace("{beast}", Context.Beast(villager) ?? "beast")
+                .Replace("{beast}", _sighted ?? Context.Beast(villager) ?? "beast")
                 .Replace("{playergear}", player != null ? Context.GearName(player) : "gear")
                 .Replace("{playerweapon}", Context.WeaponWord(player?.GetRightItem()) ?? "blade")
                 .Replace("{lastboss}", Context.LastBoss() ?? "the great stag")
@@ -792,13 +801,13 @@ namespace Villheim.Logic.Villagers
                 .Replace("{weather}", weather);
         }
 
-        private static string OtherVillager(Villager villager)
+        private static string OtherVillager(Villager villager, Villager besides = null)
         {
             Villager best = null;
             float bestDistance = float.MaxValue;
             foreach (Character character in Character.GetAllCharacters())
             {
-                if (character is Villager other && other != villager && other.VillageId == villager.VillageId && !other.IsDead())
+                if (character is Villager other && other != villager && other != besides && other.VillageId == villager.VillageId && !other.IsDead())
                 {
                     float distance = Vector3.Distance(other.transform.position, villager.transform.position);
                     if (distance < bestDistance)

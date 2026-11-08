@@ -26,7 +26,7 @@ I know I'm slow. I don't need you to tell me.
 
 @ doingskill:fair
 I'm getting better at this. Slowly.
-Not bad, if I say so myself. Not good, either.
+Fair, if I say so myself. Fair is something.
 
 @ doingskill:good
 I could do this in my sleep. Some days I nearly do.
@@ -97,7 +97,7 @@ The fields like me. I don't know why. I talk to them.
 I can find berries where there aren't any.
 
 @ talk, best:hauling
-I can carry more than anyone here. It's not much of a gift but it's mine.
+I can carry more than anyone here. A small gift, and it's mine.
 
 @ talk, best:crafting
 Give me a bench and an afternoon and I'll make you anything.

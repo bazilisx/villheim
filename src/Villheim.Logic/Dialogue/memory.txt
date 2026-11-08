@@ -328,7 +328,7 @@ And where there's one, there are two. I'm checking the door.
 @ reply, answer:strange
 Some people the gods won't let go of.
 That's the strangest thing I've heard all week.
-Maybe they're like us. Not quite alive, not quite gone.
+Maybe they're like us. Somewhere between here and the halls.
 
 @ reply, answer:strange | devout
 Odin has a use for that one. Mark my words.

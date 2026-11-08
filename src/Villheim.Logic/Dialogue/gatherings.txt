@@ -1,0 +1,368 @@
+# Villheim: the village together, and what is out there. Same format as lines.txt.
+#
+# Gatherings (Villagers/Gatherings.cs): the speaker's line event:speech:<finished|arrival|pedlar|pilgrim|evening|feast>,
+# a crowd member's line after event:crowd:<finished|arrival|pedlar|pilgrim>, an answer to the evening words
+# event:speechreply (with feast or nofeast). Tags feastday (all day) and feast (the evening).
+# Bosses (Villagers/Context.cs, Noticing.cs): boss:<eikthyr|elder|bonemass|moder|yagluth|queen|fader> bosses:none,
+# event:bossdown, mem:bossdown. Fill-in {lastboss}.
+# Creatures: beast:<deer|boar|neck|hare|chicken|lox|gull|crow> beast:any beast:tame tame:<x> enemy:<x> enemy:seen
+# fearnear; queued lines event:beast and event:enemyfar with sighted:<x>. Fill-in {beast}.
+
+# ------------------------------------------------------------------ a building finished: the speaker
+
+@ self, event:speech:finished
+There she stands. Another roof over our heads.
+Look at it. We did that. Every peg and plank.
+Well done, all of you. Tonight we sleep a little better.
+That's the {building} done. On to the next.
+I'll say it once: good work. Now don't let it go to your heads.
+
+@ self, event:speech:finished, jarl
+{village} grows. Remember this day.
+I promised you a better place than the one we left. Here's another piece of it.
+
+@ self, event:speech:finished | elder
+When I came here there was grass where this stands. Now look.
+
+@ self, event:speech:finished | gruff
+It's up. It's straight. Good.
+
+@ self, event:speech:finished | devout
+May this roof keep off rain and worse. The gods keep it.
+
+@ self, event:speech:finished | cheerful
+It's beautiful! Isn't it beautiful? Somebody say it's beautiful.
+
+@ self, event:crowd:finished
+Better than the last one, I think.
+I helped carry the beams for that. Well, one beam.
+The door sticks. Give it a week, it'll settle.
+I could live in that. I'm only saying.
+It smells of new wood. Best smell there is.
+
+@ self, event:crowd:finished | wry
+Lovely. Now somebody has to sweep it.
+
+@ self, event:crowd:finished | worrier
+The roof looks a bit low on that side. Is it meant to?
+
+@ self, event:crowd:finished | young
+Can I go in first? I want to go in first!
+
+# ------------------------------------------------------------------ a newcomer: the speaker
+
+@ self, event:speech:arrival
+Welcome to {village}. There's a bed for you, and work if you want it.
+New hands. Good. We've plenty for them to do.
+You've come to the right place. It's small, but it's ours. Now it's yours too.
+Come in. Meet everyone. Don't mind {other}, they're always like that.
+
+@ self, event:speech:arrival, jarl
+Be welcome in {village}. Keep the peace, do your share, and you'll never go hungry here.
+
+@ self, event:speech:arrival | gruff
+You'll work. We all work. Welcome.
+
+@ self, event:speech:arrival | elder
+Sit by the fire tonight and tell us where you've come from. That's how we do it here.
+
+@ self, event:crowd:arrival
+Another mouth to feed. Another pair of hands, too.
+Where are they from, do you think?
+I hope they can cook.
+They look tired. Long road, probably.
+
+@ self, event:crowd:arrival | cheerful
+A new friend! Let's give them the good stool.
+
+@ self, event:crowd:arrival | worrier
+Do we know they're all right? Just asking.
+
+# ------------------------------------------------------------------ a visitor
+
+@ self, event:speech:pedlar
+A pedlar! Come and see what they've got.
+Welcome, trader. What have you brought us this time?
+
+@ self, event:speech:pilgrim
+A pilgrim at our fire. Be welcome, traveller.
+Rest here tonight, friend. You'll find no harm in {village}.
+
+@ self, event:crowd:pedlar
+Has he got any salt? Ask him about salt.
+I hope he takes resin. I've got a lot of resin.
+Last pedlar sold me a knife that bent. Let's see this one.
+
+@ self, event:crowd:pilgrim
+Pilgrims always know where the old places are.
+I wonder where this one's going.
+
+# ------------------------------------------------------------------ the evening words
+
+@ self, event:speech:evening
+Another day done. We're all still here. That's a good day.
+Rest well, all of you. Tomorrow's just as long.
+Eat, sleep, and be up with the sun. That's all I ask.
+We did good work today. Don't let anyone tell you otherwise.
+The fire's lit, the chest isn't empty, nobody's dead. I'll take it.
+
+@ self, event:speech:evening, mem:finished
+We've a new building standing. A few days ago it was a pile of logs. Remember that when you're tired.
+
+@ self, event:speech:evening, mem:death
+We're one less tonight. Say their name before you sleep.
+
+@ self, event:speech:evening, mem:arrival
+We've a new face among us. Make them welcome. I mean it.
+
+@ self, event:speech:evening, mem:fight
+They came for us and we sent them running. Keep your weapons near tonight.
+
+@ self, event:speech:evening, mem:hunt
+We ate well tonight. Thank the hunters.
+
+@ self, event:speech:evening, need:any
+We're still short of {material}. Everyone bring what you can tomorrow.
+
+@ self, event:speech:evening, news
+Word from outside: {news}. Make of it what you like.
+
+@ self, event:speech:evening, mood:low
+I know it's been hard. It gets better. It always has.
+
+@ self, event:speech:evening, mood:high
+I don't think I've seen this village so cheerful. Keep it up.
+
+@ self, event:speech:evening, player:friend
+And thanks to {player}, who's done more for us than they had to.
+
+@ self, event:speech:evening, rain
+Wet day, wet night. Keep your feet by the fire and your boots off it.
+
+@ self, event:speech:evening | elder
+When I was young, the old ones would tell a story at the fire. I'll tell one tomorrow. Tonight, sleep.
+
+@ self, event:speech:evening | gruff
+Good day. Bed early. That's all.
+
+@ self, event:speech:evening | devout
+Thank the gods for the day, and ask them nicely for another.
+
+@ self, event:speech:feast
+Eat! Drink! There's more than enough tonight.
+To {village}, and to everyone in it!
+Tonight we feast. Tomorrow we work. Mostly tonight we feast.
+Raise your cups. To full bellies and dry roofs!
+
+@ self, event:speech:feast, mem:hunt
+To the hunters, who filled our pot! Eat, everyone!
+
+@ self, event:speech:feast, mem:bossdown
+{lastboss} is dead! Somebody finally did it! Drink!
+
+@ self, event:speech:feast, mem:birth
+To the little one, and to the mother! May the child grow strong.
+
+@ self, event:speechreply
+Hear, hear.
+Well said.
+Aye.
+That's the truth.
+And pass the meat.
+
+@ self, event:speechreply, feast
+Skol!
+To {village}!
+More mead!
+
+@ self, event:speechreply | wry
+Short speech. My favourite kind.
+
+@ self, event:speechreply | gruff
+Hm. Fine.
+
+@ self, event:speechreply | young
+Ha! Good!
+
+# ------------------------------------------------------------------ feasts
+
+@ feast
+Eat up, there's more than enough.
+Best meat I've had in a moon.
+I'll be full till spring.
+Somebody start a song. Not you, {other}.
+
+@ feast | cheerful
+This is the best night! Dance with me!
+
+@ feast | gruff
+Good meat. Don't talk to me, I'm eating.
+
+@ feast | wry
+I've eaten so much I'll have to be carried to bed.
+
+@ feast | elder
+Feasts like this are what you remember when you're old. Trust me.
+
+@ feast | young
+Can I have the bone? The big bone?
+
+@ feast | devout
+A share for the gods first. Then for me.
+
+@ feastday, !feast
+There's going to be a feast tonight. I can smell it already.
+Save your appetite. Tonight we eat.
+
+@ talk, feast
+Sit, {player}! Eat with us!
+There's a place for you at the fire. Take some meat.
+
+# ------------------------------------------------------------------ bosses
+
+@ self, event:bossdown
+Did you hear? {lastboss} is dead!
+Word came that {lastboss} has fallen. Can it be true?
+Somebody killed {lastboss}. The world's a little safer tonight.
+
+@ self, event:bossdown | devout
+The gods favour us. {lastboss} is no more.
+
+@ self, event:bossdown | worrier
+If {lastboss} is gone, what comes next? Something always comes next.
+
+@ self, event:bossdown | young
+Was it {player}? I bet it was {player}!
+
+@ talk, mem:bossdown
+They say you had a hand in killing {lastboss}, {player}. Did you?
+{lastboss} dead. I'll be telling my grandchildren. If I have any.
+
+@ bosses:none
+They say there's a great stag out by the stones. Nobody goes near it.
+Some say the forest has a heart, and the heart is angry.
+
+@ boss:eikthyr, !boss:elder
+The stag is dead, and the forest is still dark. The Elder waits there, they say.
+With the stag gone, the meadows feel calmer. Or it's just me.
+
+@ boss:elder, !boss:bonemass
+The Elder is gone. The greydwarfs are angrier than ever, but fewer.
+Somebody has to go into the swamp next. It won't be me.
+
+@ boss:bonemass, !boss:moder
+They say Bonemass is dead. I'd still not go near the swamp.
+After the swamp, the mountains. Always further, always colder.
+
+@ boss:moder, !boss:yagluth
+Moder dead. I saw dragons in the sky once. Not any more.
+The plains are next, they say. Yellow grass and those biting flies.
+
+@ boss:yagluth
+Even Yagluth fell. Is there anything left out there to fear?
+They say the mist lands are where the last great things hide.
+
+@ boss:queen
+I don't know what the Queen was. I'm glad she's dead.
+
+@ boss:fader
+They say even Fader is gone. The fire lands are quiet now.
+
+# ------------------------------------------------------------------ animals and enemies in sight
+
+@ beast:deer
+Look, deer. Quiet now.
+There's a deer at the edge of the trees. If only I had a bow.
+
+@ beast:deer | young
+A deer! Can I chase it? I won't catch it. I just want to chase it.
+
+@ beast:boar
+That boar is back. Rooting up the field again.
+Boar. Don't turn your back on it.
+
+@ beast:boar | wry
+That boar has a better life than I do.
+
+@ beast:neck
+Necks in the water. Keep your feet out.
+
+@ beast:hare
+A hare! Quick as anything.
+
+@ beast:tame
+Our boars look well fed. Better than me.
+Somebody scratch that boar behind the ears, it's earned it.
+
+@ tame:boar | young
+I've named the boar. Its name is Snorri.
+
+@ enemy:seen
+Something out there. Keep your eyes open.
+I don't like the look of that.
+
+@ enemy:greydwarf
+Greydwarfs again. They never learn.
+Keep the fire high. Greydwarfs hate the fire.
+
+@ enemy:troll
+Troll! A troll! Everybody stay back!
+Gods, that's a troll. Quiet. Maybe it hasn't seen us.
+
+@ enemy:skeleton
+Bones walking. I hate when bones walk.
+
+@ enemy:wolf
+Wolves. They're circling.
+
+@ enemy:draugr
+That's a draugr. Don't let it get close.
+
+@ fearnear
+No. No, not that. Anything but that.
+That's the one thing I'm afraid of, and it's right there.
+I told you I hated {fear}. I told everyone.
+
+@ fearnear | gruff
+I'm not scared. I'm just going to stand behind you.
+
+@ self, event:beast
+Look over there, a {beast}.
+There's a {beast}. Don't scare it.
+{beast}! By the trees!
+
+@ self, event:beast, sighted:deer
+Deer at the edge. Somebody fetch a bow.
+Quiet. Deer. If we're quick we eat well tonight.
+
+@ self, event:beast, sighted:boar
+That boar again. It's going for the berries.
+
+@ self, event:beast, sighted:neck
+Necks by the water. Watch your toes.
+
+@ self, event:beast | young
+Look! Look! A {beast}! Did you see it?
+
+@ self, event:beast | elder
+A {beast}. They come closer every year.
+
+@ self, event:enemyfar
+Something's moving out there. A {beast}, I think.
+There, by the trees. A {beast}. Keep an eye on it.
+Don't look now, but there's a {beast} watching us.
+
+@ self, event:enemyfar | worrier
+Is that a {beast}? It's a {beast}. It's coming. Is it coming?
+
+@ self, event:enemyfar, protector
+{beast} out there. I'll keep watch. Everyone stay near the houses.
+
+@ self, event:enemyfar, sighted:troll
+That's a troll. Out by the trees. Nobody go that way.
+
+@ self, event:enemyfar, sighted:greydwarf
+Greydwarf. Two, maybe. Light the torches.
+
+@ self, event:enemyfar, sighted:skeleton
+I see bones walking out there. Bones shouldn't walk.

@@ -187,8 +187,9 @@ const S = VHStyles;
 const fill = (sel, items) => { $(sel).innerHTML = items.map(([v, t]) => `<option value="${v}">${t}</option>`).join(''); };
 fill('type', Object.entries(S.TYPES).map(([k, t]) => [k, t.label]));
 fill('biome', S.BIOMES.map(b => [b, b])); fill('dbiome', S.BIOMES.map(b => [b, b]));
-fill('culture', [['', "Biome's own"], ...Object.entries(S.CULTURES).map(([k, c]) => [k, c.label])]);
-fill('plan', [['auto', 'Pick for me'], ['rect', 'Rectangle'], ['long', 'Long'], ['square', 'Square'], ['L', 'L-shaped'], ['T', 'T-shaped'], ['cross', 'Cross'], ['U', 'U around a yard'], ['octagon', 'Octagon (round)']]);
+fill('culture', [['', "Biome's cultures (by weight)"], ...Object.entries(S.CULTURES).filter(([, c]) => c.village).map(([k, c]) => [k, `${c.label}: ${c.biomes.join(', ')}`]),
+  ...Object.entries(S.CULTURES).filter(([, c]) => !c.village).map(([k, c]) => [k, c.label])]);
+fill('plan', [['auto', 'Pick for me'], ['rect', 'Rectangle'], ['long', 'Long'], ['square', 'Square'], ['L', 'L-shaped'], ['T', 'T-shaped'], ['cross', 'Cross'], ['U', 'U around a yard'], ['court', 'Rooms round a courtyard'], ['gables', 'Row of gables (turf farm)'], ['nave', 'Nave and chancel'], ['greek', 'Equal-armed cross'], ['octagon', 'Octagon (round)']]);
 fill('walls', [['auto', 'Pick for me'], ['plank', 'Plank'], ['half-timber', 'Half-timber'], ['log', 'Log (Black Forest on)'], ['stone-base', 'Stone base, wood above'], ['stone', 'Stone'], ['marble', 'Black marble (Mistlands)'], ['grausten', 'Grausten (Ashlands)']]);
 fill('roof', [['auto', 'Pick for me'], ['gable', 'Gable'], ['hip', 'Hip'], ['shed', 'Shed'], ['flat', 'Flat with parapet'], ['conical', 'Ring (round plans)']]);
 
@@ -205,9 +206,13 @@ const WORDS = [
   ['type', 'workshop', /workshop|workbench|craft/], ['type', 'home', /house|home|cottage|cabin|hut|hovel/],
   ['biome', 'Black Forest', /black ?forest/], ['biome', 'Swamp', /swamp|bog|marsh/], ['biome', 'Mountain', /mountain|snow/],
   ['biome', 'Plains', /plains/], ['biome', 'Mistlands', /mist/], ['biome', 'Ashlands', /ash ?lands/], ['biome', 'Meadows', /meadow/],
-  ['culture', 'middle-eastern', /desert|arab|middle ?east|persian|moor|ottoman|sultan|oasis/], ['culture', 'east-asian', /japan|asian|pagoda|chinese/],
-  ['culture', 'castle-medieval', /medieval|castle|tudor|knight/], ['culture', 'dwarven', /dwar/], ['culture', 'slavic', /slav|russian|izba/],
-  ['culture', 'celtic', /celtic|druid|round ?house/], ['culture', 'swamp', /stilt/], ['culture', 'black-forest', /log cabin|log house/],
+  ['culture', 'middle-eastern', /desert|arab|middle ?east|persian|moor|oasis|caravanserai|courtyard house/], ['culture', 'east-asian', /japan|asian|pagoda|chinese/],
+  ['culture', 'byzantine', /byzantin|greek|domed? church/], ['culture', 'steppe', /steppe|yurt|khazar|turkic|nomad/],
+  ['culture', 'caucasian-highland', /svan|georgian|armenian|caucas|tower house/], ['culture', 'saami', /s[aá]a?mi|lavvu|goahti|kota/],
+  ['culture', 'norse-highland', /iceland|turf/], ['culture', 'celtic-crannog', /crannog|lake ?dwell/], ['culture', 'baltic', /baltic|latvia|lithuan|prussia|curonian/],
+  ['culture', 'fen-folk', /\bfen|frisian|terp/], ['culture', 'anglo-saxon', /anglo|saxon/], ['culture', 'frankish-norman', /norman|frank|motte|keep/],
+  ['culture', 'norse-forest', /stave|log cabin|log house/], ['culture', 'castle-medieval', /medieval|castle|tudor|knight/], ['culture', 'dwarven', /dwar/],
+  ['culture', 'slavic', /slav|russian|izba|\brus\b/], ['culture', 'celtic', /celtic|irish|scots|welsh|druid|round ?house/], ['culture', 'swamp', /stilt/],
   ['culture', 'mountain', /lodge/], ['culture', 'norse', /viking|norse|nordic/],
   ['plan', 'L', /\bl[- ]?shaped|\bl plan/], ['plan', 'T', /\bt[- ]?shaped|\bt plan/], ['plan', 'cross', /cross/], ['plan', 'U', /courtyard|u[- ]?shaped/],
   ['plan', 'octagon', /octagon|round\b|circular/], ['plan', 'long', /\blong\b/], ['plan', 'square', /square/],
@@ -236,7 +241,7 @@ $('read').onclick = async () => {
     const sample = await Promise.race([window.claude ? claude.use('sample') : null, new Promise(r => setTimeout(() => r(null), 3000))]);
     if (sample) {
       $('readhint').textContent = 'Asking Claude...';
-      const opts = { walls: ['auto', 'plank', 'half-timber', 'log', 'stone-base', 'stone', 'marble', 'grausten'], type: Object.keys(S.TYPES), biome: S.BIOMES, culture: Object.keys(S.CULTURES), plan: ['auto', 'rect', 'long', 'square', 'L', 'T', 'cross', 'U', 'octagon'], roof: ['auto', 'gable', 'hip', 'shed', 'flat', 'conical'], stage: ['s1', 's2', 's3'], decor: ['d1', 'd2', 'd3'] };
+      const opts = { walls: ['auto', 'plank', 'half-timber', 'log', 'stone-base', 'stone', 'marble', 'grausten'], type: Object.keys(S.TYPES), biome: S.BIOMES, culture: Object.keys(S.CULTURES), plan: ['auto', 'rect', 'long', 'square', 'L', 'T', 'cross', 'U', 'court', 'gables', 'nave', 'greek', 'octagon'], roof: ['auto', 'gable', 'hip', 'shed', 'flat', 'conical'], stage: ['s1', 's2', 's3'], decor: ['d1', 'd2', 'd3'] };
       const ans = await sample.json(`Turn this request for a Valheim building into settings. Request: "${text}". Allowed values: ${JSON.stringify(opts)}. Answer with a JSON object holding only keys from that list whose value the request implies, each value one of the allowed values. s1 small, s2 middle, s3 large; d1 bare, d2 lived in, d3 richly decorated.`, { modelTier: 'quick' });
       if (ans && typeof ans === 'object') { const ok = {}; for (const [k, v] of Object.entries(ans)) if (opts[k] && opts[k].includes(v)) ok[k] = v; apply(ok); $('readhint').textContent = 'Claude read your request.'; }
     }

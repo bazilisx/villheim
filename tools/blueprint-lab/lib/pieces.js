@@ -50,6 +50,15 @@ const RULES = [
   [/roof_67/, 'roof', [2, 4, 2], 'slope67'],
   [/roof_45|roof.*_45/, 'roof', [2, 2, 2], 'slope45'],
   [/roof/, 'roof', [2, 1, 2], 'slope26'],
+  // arches and pillars, measured in the corpus (lab/offsets.js): a stone pillar is 2 m tall and stands on a 1 m block,
+  // a stone arch is 2 m wide, 1 m tall and 1 m deep with its top level with the pillar tops 1.5 m to either side;
+  // a black marble arch spans 2 m between 1 m columns, which stack every metre
+  [/^stone_arch$/, 'wall', [2, 1, 1], 'box'],
+  [/^stone_pillar$/, 'pole', [1, 2, 1], 'box'],
+  // stone_wall_1x1 is a 1 m cube (docs/MC_TRANSLATION.md, neighbours 1 m apart in depth)
+  [/^stone_wall_1x1$/, 'wall', [1, 1, 1], 'box'],
+  [/^blackmarble_arch$/, 'wall', [2, 2, 0.5], 'box'],
+  [/^blackmarble_column_1$/, 'pole', [0.6, 1, 0.6], 'box'],
   // beams and poles
   [/beam_26|log_26/, 'beam', [2, 1, 0.2], 'beam26'],
   [/beam_45|log_45/, 'beam', [2, 2, 0.2], 'beam45'],
@@ -177,6 +186,8 @@ function exportSize() {
 
 // Materials a piece needs, for the biome rule (rough, from the prefab name).
 function needs(name) {
+  // hanging cloth doors take red jute (Cultists, Mountain caves); the blue ones blue jute (Mistlands)
+  if (/cloth_hanging_door|jute_carpet/.test(name)) return /blue/.test(name) ? 'Mistlands' : 'Mountain';
   const m = material(name);
   return {
     wood: 'Meadows', thatch: 'Meadows', stake: 'Meadows', fur: 'Meadows', cloth: 'Meadows', fire: 'Meadows',

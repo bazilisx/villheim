@@ -47,14 +47,146 @@ function kitFor(biome) {
   return out;
 }
 
-// Culture: how a building is put together. Numbers from the corpus shell stats per culture (rules.json "cultures").
+// Roof sets a culture can ask for whatever its biome's kit has: thatch (reed, straw, and the stand-in for turf and
+// felt) and dark wood (shingle, slate, lead and tile stand-in; Swamp on).
+const ROOF_SETS = {
+  thatch: { roof26: 'wood_roof', roof45: 'wood_roof_45', roofTop26: 'wood_roof_top', roofTop45: 'wood_roof_top_45' },
+  dark: { roof26: 'darkwood_roof', roof45: 'darkwood_roof_45', roofTop26: 'darkwood_roof_top', roofTop45: 'darkwood_roof_top_45' },
+};
+
+// Culture: how a building is put together. The first block are the village cultures Tyler approved (2026-11-08),
+// with the shapes and sizes in docs/CULTURE_STYLES.md. The older lab styles after them stay for the request page
+// and the review set; villages do not use them.
+//
+// Fields the generator reads:
+//   roof, pitch, eaves     main roof form, 26 or 45 degrees, eaves rows (2 = one row past the wall, roof to the ground)
+//   roofs, walls, plans    weights: roof kinds; wall styles; plan per type and stage ({ home: { s1: { rect: 1 } } })
+//   roofSet                'thatch' or 'dark' whatever the biome kit has (dark falls back to thatch before Swamp)
+//   forms                  building type to a special form: round, tent, yurt, gables, court, keep, svan, tower-svan,
+//                          dome, drum, stave, sunken, open, raised (see generate.js)
+//   frame, logWalls, plinth, stilts, stiltH, deck, raised, podklet, porch, dragons, carved, glass, arches, parapet,
+//   stoneWalls, courtyard, awnings, opposedDoors, clothDoor, boardwalk, frontWood, buttress
+//   size                   per type: octagon side in metres for round forms ({ home: { s1: 2, s2: 4 } })
+//   sample                 the types drawn for the culture's overview sheet
 const CULTURES = {
   'norse': {
-    label: 'Norse', roof: 'gable', pitch: 45, eaves: 1, frame: true, plinth: 'byBiome', porch: 0.5, dragons: true,
+    label: 'Norse', village: true, biomes: ['Meadows'], roof: 'gable', pitch: 45, eaves: 1, frame: true, plinth: 'byBiome', porch: 0.5, dragons: true,
+    sample: ['home', 'longhouse', 'smithy'],
     note: 'Steep thatch or darkwood gable, timber frame with posts at every bay, dragon heads on the ridge of halls.',
   },
+  'anglo-saxon': {
+    label: 'Anglo-Saxon', village: true, biomes: ['Meadows'], roof: 'gable', pitch: 45, eaves: 1, frame: true, porch: 0, opposedDoors: true,
+    roofs: { gable: 3, hip: 2 }, walls: { plank: 3, 'half-timber': 1 },
+    plans: { home: { s1: { rect: 1 }, s2: { rect: 3, long: 1 }, s3: { long: 2, rect: 1 } }, longhouse: { s1: { long: 1 }, s2: { long: 1 }, s3: { long: 1 } }, temple: { s1: { nave: 1 }, s2: { nave: 1 }, s3: { nave: 1 } } },
+    forms: { workshop: 'sunken', sawmill: 'sunken', smithy: 'sunken', storage: 'sunken' },
+    sample: ['home', 'longhouse', 'workshop'],
+    note: 'Straight-walled timber halls with doors in the middle of both long sides, thatched gable or hip roofs, sunken huts for work.',
+  },
+  'frankish-norman': {
+    label: 'Frankish-Norman', village: true, biomes: ['Meadows'], roof: 'gable', pitch: 45, eaves: 1, frame: true, porch: 0.3,
+    roofs: { gable: 5, hip: 1 }, walls: { 'half-timber': 3, plank: 1, 'stone-base': 2, stone: 1 }, buttress: true,
+    plans: { home: { s1: { rect: 1 }, s2: { rect: 2, L: 1 }, s3: { L: 2, T: 1 } }, temple: { s1: { nave: 1 }, s2: { nave: 1 }, s3: { nave: 1 } } },
+    forms: { tower: 'keep' },
+    sample: ['home', 'tower', 'tower@Black Forest', 'workshop'],
+    note: 'Timber-framed houses along a street, a keep of timber (Meadows) or stone (later biomes) with flat buttresses and a parapet.',
+  },
+  'norse-forest': {
+    label: 'Norse forest (stave and log)', village: true, biomes: ['Black Forest'], roof: 'gable', pitch: 45, eaves: 1, frame: false, logWalls: true,
+    plinth: 'stone', porch: 0.6, dragons: true, carved: true, roofs: { gable: 6, hip: 1 }, walls: { log: 4, plank: 1 },
+    forms: { temple: 'stave', storage: 'raised' },
+    sample: ['home', 'temple', 'storage'],
+    note: 'Log houses on a stone course, raised log storehouses, stave churches with a low gallery roof all round and dragon heads.',
+  },
+  'celtic': {
+    label: 'Celtic (Irish, Scots, Welsh)', village: true, biomes: ['Black Forest'], roof: 'conical', pitch: 45, eaves: 1, frame: true, porch: 0,
+    walls: { 'stone-base': 2, stone: 1, plank: 2 },
+    forms: { home: 'round', longhouse: 'round', tavern: 'round', smithy: 'round', workshop: 'round', barn: 'round', tower: 'round' },
+    plans: { temple: { s1: { rect: 1 }, s2: { nave: 1 }, s3: { nave: 1 } } },
+    size: { home: { s1: 2, s2: 4, s3: 4 }, longhouse: { s1: 4, s2: 4, s3: 6 }, tavern: { s1: 4, s2: 4, s3: 6 }, smithy: { s1: 2, s2: 2, s3: 4 },
+      workshop: { s1: 2, s2: 2, s3: 4 }, barn: { s1: 4, s2: 4, s3: 4 }, tower: { s1: 2, s2: 2, s3: 2 } },
+    sample: ['home', 'longhouse', 'smithy'],
+    note: 'Round houses of eight walls under a steep cone of thatch, one door, fire in the middle; tall round stone towers.',
+  },
+  'slavic': {
+    label: 'Slavic (early Rus)', village: true, biomes: ['Black Forest'], roof: 'gable', pitch: 45, eaves: 1, frame: false, logWalls: true, plinth: 'stone',
+    porch: 0.8, carved: true, podklet: true, roofs: { gable: 5, hip: 1 }, walls: { log: 1 }, forms: { storage: 'raised' },
+    sample: ['home', 'longhouse', 'storage'],
+    note: 'Log izba with a steep gable and carved ridge; larger houses stand on a log ground storey (podklet) reached by an outside stair.',
+  },
+  'celtic-crannog': {
+    label: 'Crannog (lake dwellers)', village: true, biomes: ['Swamp'], roof: 'conical', pitch: 45, eaves: 1, frame: true, porch: 0,
+    roofSet: 'thatch', stilts: 1, stiltH: 2, deck: 3, boardwalk: true, walls: { plank: 3, 'half-timber': 1 },
+    forms: { home: 'round', longhouse: 'round', tavern: 'round', workshop: 'round', smithy: 'round', storage: 'round', temple: 'round' },
+    size: { home: { s1: 2, s2: 4, s3: 4 }, longhouse: { s1: 4, s2: 4, s3: 6 }, tavern: { s1: 4, s2: 4, s3: 6 }, workshop: { s1: 2, s2: 2, s3: 4 },
+      smithy: { s1: 2, s2: 2, s3: 4 }, storage: { s1: 2, s2: 2, s3: 2 }, temple: { s1: 2, s2: 4, s3: 4 } },
+    sample: ['home', 'longhouse', 'workshop'],
+    note: 'Round thatched houses on a timber platform over water, a deck round the house and a walkway to the shore.',
+  },
+  'baltic': {
+    label: 'Baltic (lake fort)', village: true, biomes: ['Swamp'], roof: 'gable', pitch: 45, eaves: 1, frame: false, logWalls: true, porch: 0.5,
+    roofSet: 'thatch', stilts: 1, stiltH: 1, deck: 2, roofs: { gable: 3, hip: 2 }, walls: { log: 1 },
+    forms: { storage: 'raised' }, plans: { longhouse: { s1: { long: 1 }, s2: { long: 1 }, s3: { long: 1 } } },
+    sample: ['home', 'longhouse', 'storage'],
+    note: 'Log houses packed on a timber platform in a lake, steep thatch, granaries raised on posts.',
+  },
+  'fen-folk': {
+    label: 'Fen folk (Frisian and fenland)', village: true, biomes: ['Swamp'], roof: 'hip', pitch: 45, eaves: 2, frame: true, porch: 0,
+    roofSet: 'thatch', raised: 1, stiltChance: 0.4, boardwalk: true, kick: true, roofs: { hip: 4, gable: 1 }, walls: { plank: 2, 'half-timber': 2 },
+    plans: { home: { s1: { rect: 1 }, s2: { long: 2, rect: 1 }, s3: { long: 1 } }, longhouse: { s1: { long: 1 }, s2: { long: 1 }, s3: { long: 1 } } },
+    forms: { storage: 'open' },
+    sample: ['home', 'longhouse', 'workshop'],
+    note: 'Long low byre-houses on raised ground with hipped reed roofs coming down near the ground, timber trackways between them.',
+  },
+  'norse-highland': {
+    label: 'Norse highland (Icelandic turf)', village: true, biomes: ['Mountain'], roof: 'gable', pitch: 45, eaves: 1, frame: false, porch: 0,
+    roofSet: 'thatch', frontWood: true, walls: { stone: 1 },
+    forms: { home: 'gables', longhouse: 'gables', tavern: 'gables', temple: 'gables', storage: 'gables', workshop: 'gables', smithy: 'gables', barn: 'gables' },
+    sample: ['home', 'longhouse', 'storage'],
+    note: 'Low thick stone walls under a steep roof (thatch stands in for turf), wooden gable fronts in a row facing the yard.',
+  },
+  'saami': {
+    label: 'Saami', village: true, biomes: ['Mountain'], roof: 'conical', pitch: 45, eaves: 1, frame: false, porch: 0, roofSet: 'thatch',
+    walls: { stone: 1 }, storeH: 2, typeWalls: { storage: 'log' }, roofs: { gable: 1 }, storeys: { storage: { s1: 1, s2: 1, s3: 1 } },
+    bays: { storage: { s1: [2, 3], s2: [2, 3], s3: [3, 3] } },
+    forms: { home: 'round', longhouse: 'round', tavern: 'round', workshop: 'tent', smithy: 'tent', storage: 'raised', temple: 'tent', barn: 'tent', camp: 'tent' },
+    size: { home: { s1: 2, s2: 2, s3: 2 }, longhouse: { s1: 2, s2: 4, s3: 4 }, tavern: { s1: 2, s2: 4, s3: 4 }, workshop: { s1: 2, s2: 2, s3: 2 },
+      smithy: { s1: 2, s2: 2, s3: 2 }, temple: { s1: 2, s2: 2, s3: 2 }, barn: { s1: 2, s2: 2, s3: 2 }, camp: { s1: 2, s2: 2, s3: 2 } },
+    sample: ['home', 'longhouse', 'storage', 'workshop'],
+    note: 'Goahti: low round huts with a stone and turf wall and a cone with a smoke hole; lavvu tents; small storehouses high on posts.',
+  },
+  'byzantine': {
+    label: 'Byzantine', village: true, biomes: ['Plains', 'Mistlands'], roof: 'gable', pitch: 26, eaves: 1, frame: false, porch: 0.2,
+    roofSet: 'dark', stoneWalls: true, arches: true, storeyH: 3, roofs: { gable: 3, hip: 2 }, walls: { stone: 4, 'stone-base': 1 },
+    plans: { home: { s1: { rect: 1 }, s2: { rect: 2, L: 2 }, s3: { L: 2, U: 1 } } },
+    forms: { temple: 'dome' }, storeys: { home: { s1: 1, s2: 2, s3: 2 } },
+    sample: ['home', 'temple', 'temple@Mistlands', 'workshop'],
+    note: 'Stone houses of one or two storeys under low tile roofs; cross-in-square churches with a dome on a drum over four columns.',
+  },
+  'steppe': {
+    label: 'Steppe (Khazar and Turkic camps)', village: true, biomes: ['Plains'], roof: 'conical', pitch: 26, eaves: 1, frame: false, porch: 0,
+    roofSet: 'thatch', clothDoor: true, walls: { 'half-timber': 1 },
+    forms: { home: 'yurt', longhouse: 'yurt', tavern: 'yurt', temple: 'yurt', storage: 'yurt', workshop: 'open', smithy: 'open', sawmill: 'open' },
+    size: { home: { s1: 4, s2: 4, s3: 4 }, longhouse: { s1: 4, s2: 6, s3: 6 }, tavern: { s1: 4, s2: 4, s3: 6 }, temple: { s1: 4, s2: 4, s3: 4 }, storage: { s1: 2, s2: 2, s3: 2 } },
+    sample: ['home', 'longhouse', 'workshop'],
+    note: 'Round felt tents on a lattice wall under a low cone with an open crown; open sunshades for work.',
+  },
+  'caucasian-highland': {
+    label: 'Caucasian highland (Svan, Georgian, Armenian)', village: true, biomes: ['Mistlands'], roof: 'gable', pitch: 26, eaves: 1, frame: false, porch: 0,
+    roofSet: 'dark', stoneWalls: true, storeyH: 3, roofs: { gable: 4, hip: 1 }, walls: { stone: 1 },
+    forms: { home: 'svan', tower: 'tower-svan', temple: 'drum' }, storeys: { home: { s1: 1, s2: 2, s3: 2 } },
+    sample: ['home', 'tower', 'temple', 'workshop'],
+    note: 'Two-storey stone houses with a tall square tower beside them, low slate roofs, hall churches with a drum and a cone.',
+  },
+  'middle-eastern': {
+    label: 'Middle Eastern (Persian and Arab)', village: true, biomes: ['Plains'], roof: 'flat', parapet: true, frame: false, stoneWalls: true, arches: true,
+    courtyard: true, awnings: true, rugs: 2, clothDoor: true, forms: { tavern: { s2: 'court', s3: 'court' }, home: { s3: 'court' } },
+    plans: { home: { s1: { rect: 1 }, s2: { U: 2, rect: 1 } } },
+    sample: ['home', 'tavern', 'workshop'],
+    note: 'Flat roofs with parapets, thick stone walls, arched doors, cloth awnings; houses and caravanserais round a courtyard with an arcade.',
+  },
+  // ---- older lab styles (not village cultures)
   'black-forest': {
-    label: 'Black Forest log', roof: 'gable', pitch: 45, eaves: 1, frame: true, logWalls: true, plinth: 'stone', porch: 0.6,
+    label: 'Black Forest log (lab)', roof: 'gable', pitch: 45, eaves: 1, frame: true, logWalls: true, plinth: 'stone', porch: 0.6,
     note: 'Log walls on a stone footing, steep roof, short porch.',
   },
   'swamp': {
@@ -65,37 +197,49 @@ const CULTURES = {
     label: 'Mountain lodge', roof: 'gable', pitch: 45, eaves: 1, frame: true, plinth: 'stone', plinthHigh: true, porch: 0.3, glass: true,
     note: 'Tall stone base against the snow, steep roof, glass windows.',
   },
-  'middle-eastern': {
-    label: 'Desert / Middle Eastern', roof: 'flat', parapet: true, frame: false, stoneWalls: true, arches: true, courtyard: true,
-    awnings: true, rugs: 2, note: 'Flat roofs with parapets, thick stone walls, arched doors, cloth awnings and a courtyard.',
-  },
   'east-asian': {
-    label: 'East Asian', roof: 'gable', pitch: 26, eaves: 2, frame: true, raised: 0.5, darkFrame: true, lanterns: true, porch: 1,
+    label: 'East Asian (lab)', roof: 'gable', pitch: 26, eaves: 2, frame: true, raised: 0.5, darkFrame: true, lanterns: true, porch: 1,
     note: 'Raised floor, dark timber grid on light walls, wide low eaves, lanterns.',
   },
   'castle-medieval': {
-    label: 'Medieval', roof: 'gable', pitch: 45, eaves: 1, frame: true, stoneGround: true, jetty: true, porch: 0.2,
+    label: 'Medieval (lab)', roof: 'gable', pitch: 45, eaves: 1, frame: true, stoneGround: true, jetty: true, porch: 0.2,
     note: 'Stone ground floor, timber upper floor set out over the street, steep roof.',
   },
   'dwarven': {
-    label: 'Dwarven', roof: 'flat', parapet: true, frame: false, stoneWalls: true, arches: true, lanterns: true,
+    label: 'Dwarven (lab)', roof: 'flat', parapet: true, frame: false, stoneWalls: true, arches: true, lanterns: true,
     note: 'Heavy stone or black marble blocks, flat roofs, arches, many lanterns.',
-  },
-  'celtic': {
-    label: 'Celtic round', roof: 'conical', pitch: 45, eaves: 1, frame: true, round: true, porch: 0,
-    note: 'Round house of eight walls under a ring of thatch, one door, fire in the middle.',
-  },
-  'slavic': {
-    label: 'Slavic log', roof: 'gable', pitch: 45, eaves: 1, frame: false, logWalls: true, plinth: 'stone', porch: 0.8, carved: true,
-    note: 'Log house on a stone footing, covered porch, carved ridge.',
   },
 };
 
-// Which culture a biome leans to when none is asked for.
+// Cultures a biome's villages come from when none is asked for, with weights (provisional, Tyler 2026-11-08; Mountain even, D-039). Up to
+// three per biome. Ashlands has no approved culture yet and keeps the lab's medieval style.
 const BIOME_CULTURE = {
-  'Meadows': 'norse', 'Black Forest': 'black-forest', 'Swamp': 'swamp', 'Mountain': 'mountain', 'Plains': 'norse',
-  'Mistlands': 'dwarven', 'Ashlands': 'castle-medieval',
+  'Meadows': { 'norse': 5, 'anglo-saxon': 3, 'frankish-norman': 2 },
+  'Black Forest': { 'norse-forest': 5, 'celtic': 3, 'slavic': 3 },
+  'Swamp': { 'celtic-crannog': 3, 'baltic': 3, 'fen-folk': 3 },
+  'Mountain': { 'norse-highland': 1, 'saami': 1 },
+  'Plains': { 'middle-eastern': 3, 'byzantine': 3, 'steppe': 3 },
+  'Mistlands': { 'byzantine': 3, 'caucasian-highland': 4 },
+  'Ashlands': { 'castle-medieval': 1 },
 };
+
+// A culture for a biome: weighted by BIOME_CULTURE, R a random source (0..1). Without R, the heaviest.
+function cultureFor(biome, R) {
+  const w = BIOME_CULTURE[biome] || BIOME_CULTURE.Meadows;
+  const e = Object.entries(w);
+  if (!R) return e.sort((a, b) => b[1] - a[1])[0][0];
+  let x = R() * e.reduce((s, [, v]) => s + v, 0);
+  for (const [k, v] of e) if ((x -= v) <= 0) return k;
+  return e[0][0];
+}
+
+// Roof pieces for a culture in a biome: the kit's own, or the culture's roof set where the biome has it.
+function roofKit(K, C, biome) {
+  const order = BIOMES.indexOf(biome);
+  if (C.roofSet === 'thatch') return { ...K, ...ROOF_SETS.thatch };
+  if (C.roofSet === 'dark') return { ...K, ...(order >= BIOMES.indexOf('Swamp') ? ROOF_SETS.dark : ROOF_SETS.thatch) };
+  return K;
+}
 
 // Building types: footprint in 2 m bays per stage (from the corpus shell numbers, scaled to one building without its
 // yard), storeys, and how it opens.
@@ -117,5 +261,6 @@ const TYPES = {
   camp:      { label: 'Camp', bays: { s1: [2, 2], s2: [3, 2], s3: [3, 3] }, storeys: { s1: 1, s2: 1, s3: 1 }, use: 'yard', camp: true },
 };
 
-if (typeof module !== 'undefined') module.exports = { BIOMES, kitFor, CULTURES, BIOME_CULTURE, TYPES };
-else window.VHStyles = { BIOMES, kitFor, CULTURES, BIOME_CULTURE, TYPES };
+const api = { BIOMES, kitFor, CULTURES, BIOME_CULTURE, TYPES, ROOF_SETS, cultureFor, roofKit };
+if (typeof module !== 'undefined') module.exports = api;
+else window.VHStyles = api;

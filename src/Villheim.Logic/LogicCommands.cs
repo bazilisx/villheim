@@ -54,6 +54,8 @@ namespace Villheim.Logic
             "bp save <number|name> | bp save page [all]: save a design as it stands in the gallery now (pieces left, stand-ins, anything built on its plot) as blueprints/inspiration/pass3/p3-<number>-<name>; 'page' saves every changed design standing near you; the gallery shows the saves from then on",
             "trails: plan the nearest village's trails again (to its outpost and its nearest neighbour)",
             "outpost: make the nearest village found its logging camp now (its old one is forgotten)",
+            "event [kind]: make something happen in the nearest village now (feast, skald, fair, takenin, sickness, beasts, quarrel, dispute)",
+            "events: list the nearest village's recent events and how ready it is for a bad one",
             "pedlar: send a travelling pedlar walking in to the nearest village (works with WorldLife off)",
             "pilgrim: send a pilgrim walking in to the nearest village, to stay the night by the hearth",
             "hermit: make a hermit's camp fire and its hermit in front of you",
@@ -198,6 +200,8 @@ namespace Villheim.Logic
                 case "villheim_repair": Say(context, Village.RepairAll.Run()); return true;
                 case "villheim_trails": Say(context, Trails.Command()); return true;
                 case "villheim_outpost": Say(context, Outposts.Command()); return true;
+                case "villheim_event": Say(context, VillageEvents.Command(args)); return true;
+                case "villheim_events": Say(context, EventsReport()); return true;
                 case "villheim_pedlar": Say(context, WorldLife.Command(Villagers.Wanderers.Pedlar)); return true;
                 case "villheim_pilgrim": Say(context, WorldLife.Command(Villagers.Wanderers.Pilgrim)); return true;
                 case "villheim_hermit": Say(context, WorldLife.Command(Villagers.Wanderers.Hermit)); return true;
@@ -206,6 +210,13 @@ namespace Villheim.Logic
                 case "villheim_shaper": Say(context, Village.Shaping.Status()); return true;
                 default: return false;
             }
+        }
+
+        private static string EventsReport()
+        {
+            Player player = Player.m_localPlayer;
+            VillageHearth hearth = player != null ? VillageHearth.Closest(player.transform.position, 200f) : null;
+            return hearth != null ? $"{hearth.VillageName}: {VillageEvents.Describe(hearth)}" : "No village within 200 m.";
         }
 
         private static VillageHearth NearestHearth(Player player)

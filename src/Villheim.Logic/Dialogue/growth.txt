@@ -1,0 +1,85 @@
+# Lines about how a village grows and what happens to it: the events director (Village/VillageEvents.cs), the gear
+# an outpost waits for (Village/Outposts.cs), caravans (Village/Caravans.cs) and daughter villages
+# (Village/Daughters.cs). Format as in lines.txt. Every section here needs an event tag, which holds for ten minutes
+# after the thing happened.
+
+# ------------------------------------------------------------------ events
+
+@ self, event:feast
+I've eaten so many berries I can't feel my teeth.
+Good year. Remember it when the next one isn't.
+Somebody save me a mushroom. Just one.
+
+@ talk, event:feast
+We had a feast. You missed it. There's maybe a handful of berries left if you're quick.
+The harvest came in heavy. Everyone's in a good mood, so ask for favours now.
+
+@ self, event:skald
+I can still hear that song. All of it. Over and over.
+The skald said the sea serpent was this long. I think he was lying.
+
+@ talk, event:skald
+A skald came through and sang half the night. My throat hurts and I only listened.
+Did you hear the skald? He sang about a king who lost his boots. It was better than it sounds.
+
+@ talk, event:fair
+We walked to {neighbour} for market day. My feet are still there.
+Market at {neighbour}. I came back with a comb and no idea why.
+
+@ talk, event:takenin
+Someone found a traveller lost in the woods. They're staying. We'll see how that goes.
+We've a new face at the fire. Found wandering, half starved. Be kind to them.
+
+@ self, event:sickness
+Keep your cup to yourself, there's fever about.
+I'm not sick. I'm just tired. That's different.
+
+@ talk, event:sickness
+There's fever in the village. Don't stand too close to anyone coughing.
+One of ours is down with a fever. Rest and broth, that's all you can do.
+
+@ self, event:beasts
+Did you hear them last night? Right at the edge of the trees.
+I didn't sleep a wink. Every branch was a wolf.
+
+@ talk, event:beasts
+Something was prowling round the houses last night. Keep a weapon by you.
+We kept the fire high all night. Whatever it was, it didn't like the light.
+
+@ self, event:quarrel
+Some people need to learn to say sorry.
+I'm not taking sides. I'm just saying who's right.
+
+@ talk, event:quarrel
+Two of ours had words. Don't mention it, they'll both want you on their side.
+
+@ talk, event:dispute
+We've fallen out with {neighbour}. Don't ask me what about, nobody agrees.
+Things are cold with {neighbour} just now. It'll pass. Probably.
+
+# ------------------------------------------------------------------ outposts waiting for gear
+
+@ talk, event:outpostwait
+Nobody's going out to that forest in what we're wearing. We need proper gear first.
+The camp can wait until we've spears and something on our heads.
+
+# ------------------------------------------------------------------ caravans and daughter villages
+
+@ talk, event:caravan
+A load went out on the road this morning. Somebody else is short of what we have plenty of.
+The pedlar took our spare wood. Off to some village that needs it more.
+
+@ talk, event:cargo
+A load came in from down the road. Somebody had more than they needed.
+
+@ self, event:daughter
+They've gone to start a village of their own. It's quiet without them.
+I hope they picked somewhere with good water.
+
+@ talk, event:daughter
+Some of ours set off to found a new village. We'll visit when they've a roof up.
+We're too many for this place now. A few of ours went off to build their own.
+
+@ talk, event:founded
+We're new here. Everyone came from the old village, down the road.
+New fire, new houses, same old faces.

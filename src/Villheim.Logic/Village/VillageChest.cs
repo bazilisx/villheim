@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 
 namespace Villheim.Logic.Village
@@ -240,10 +241,12 @@ namespace Villheim.Logic.Village
                 return;
             }
 
-            foreach (string material in Materials.Tracked)
+            // Building materials, and anything else that came in to the stock (a feast's berries, a caravan's load, an
+            // outpost's ore).
+            foreach (string material in Materials.Tracked.Concat(state.Stock.Keys.Where(k => !Materials.Tracked.Contains(k))).ToList())
             {
                 int saved = state.Get(material);
-                if (saved <= 0)
+                if (saved <= 0 || Materials.Prefab(material) == null)
                 {
                     continue;
                 }

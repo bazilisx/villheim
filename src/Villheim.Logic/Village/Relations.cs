@@ -86,6 +86,43 @@ namespace Villheim.Logic.Village
             Write(hearth.Zdo, views);
         }
 
+        /// <summary>Moves this village's view of the neighbour called <paramref name="name"/> (or with id <paramref name="id"/>).</summary>
+        public static void Adjust(VillageHearth hearth, string name, int delta, int id = 0)
+        {
+            if (hearth == null || !hearth.IsValid)
+            {
+                return;
+            }
+
+            ZDO other = Neighbours(hearth.transform.position, hearth.VillageId)
+                .FirstOrDefault(z => id != 0 ? z.GetInt(Keys.VillageId) == id : z.GetString(Keys.Name, "") == name);
+            if (other == null)
+            {
+                return;
+            }
+
+            Dictionary<int, int> views = Read(hearth.Zdo);
+            int otherId = other.GetInt(Keys.VillageId);
+            int before = Get(hearth.Zdo, views, otherId, other);
+            views[otherId] = Mathf.Clamp(before + delta, -100, 100);
+            Write(hearth.Zdo, views);
+        }
+
+        /// <summary>Sets this village's view of village <paramref name="id"/> outright (a daughter village starts close).</summary>
+        public static void Set(ZDO hearth, int id, int value)
+        {
+            Dictionary<int, int> views = Read(hearth);
+            views[id] = Mathf.Clamp(value, -100, 100);
+            Write(hearth, views);
+        }
+
+        /// <summary>This village's view of village <paramref name="id"/>.</summary>
+        public static int View(ZDO hearth, int id)
+        {
+            ZDO other = AllHearths().FirstOrDefault(z => z.GetInt(Keys.VillageId) == id);
+            return Get(hearth, Read(hearth), id, other);
+        }
+
         /// <summary>The nearest neighbour's name and this village's view of it, or null.</summary>
         public static (string Name, int View)? Nearest(VillageHearth hearth)
         {

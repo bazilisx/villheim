@@ -58,6 +58,8 @@ namespace Villheim.Logic
         public static ConfigEntry<bool> Outposts;
         public static ConfigEntry<bool> Trails;
         public static ConfigEntry<string> OutpostGear;
+        public static ConfigEntry<bool> VillageEvents;
+        public static ConfigEntry<float> EventChancePerDay;
         public static ConfigEntry<bool> OutpostMaterials;
         public static ConfigEntry<float> VisitorChancePerDay;
         public static ConfigEntry<float> DaysBetweenVisitors;
@@ -121,6 +123,11 @@ namespace Villheim.Logic
             OutpostMaterials = Admin(config, life, "OutpostMaterials", true,
                 "What an outpost sends home counts toward what the village can build: a Meadows village with a logging " +
                 "camp in the Black Forest builds designs that need core wood.");
+            VillageEvents = Admin(config, life, "VillageEvents", true,
+                "With WorldLife on, once a day something may happen in a village: a feast, a visiting skald, a market day, " +
+                "a lost traveller taken in, a fever, beasts at night, a quarrel, a falling-out with the neighbours.");
+            EventChancePerDay = Admin(config, life, "EventChancePerDay", 0.35f,
+                "Chance that something happens in a village on a given day (0 to 1).");
             Trails = Admin(config, life, "Trails", true,
                 "With WorldLife on, villages plan a dirt trail to their outpost and to their nearest neighbour within " +
                 "2,500 m, painted on the ground near you as you walk it.");

@@ -1,0 +1,353 @@
+# Villheim: what the village remembers of the player, and who heard what from whom. Same format as lines.txt.
+#
+# Tags (Villagers/PlayerMemory.cs): pmem:visits:first pmem:visits:few pmem:visits:many pmem:visits:regular
+# pmem:away:short pmem:away:long pmem:giver pmem:generous pmem:gift:recent pmem:nevergave pmem:builder
+# pmem:built:recent pmem:hunter pmem:kill:recent pmem:killed:<creature> pmem:bigkill pmem:died pmem:defender
+# pmem:helper pmem:gearup pmem:hurtus pmem:slayer pmem:killedtame.
+# Known by this villager: knows:<deed> saw:<deed> heard:<deed>, deeds gift built kill bigkill died defended request
+# hurtus slain killedtame gearup. Events: event:playerbuilt event:playerkill.
+# Fill-ins {visits} {daysaway} {given} {lastkill} {bigkill} {builtcount} {kills} {teller}.
+
+# ------------------------------------------------------------------ how often the player comes
+
+@ talk, pmem:visits:first
+New face. Where have you come from?
+I don't know you. That's fine. Most of us didn't know each other once.
+First time in {village}? Mind the mud by the chest.
+
+@ talk, pmem:visits:few
+You again. Good. I was starting to think you'd only dreamt us.
+Back again, {player}? We'll have to find you a stool.
+You've been here {visits} now. That nearly makes you a neighbour.
+
+@ talk, pmem:visits:many
+You're here so often I've started setting a place.
+Ah, {player}. The fire's warmer when you're about.
+{visits} you've come to {village}, by my count. I've been counting.
+
+@ talk, pmem:visits:regular
+You're one of us now, {player}. Whether you like it or not.
+I don't even look up any more when you come in. That's a compliment.
+If you stopped coming, we'd wonder where you'd gone.
+
+@ talk, pmem:visits:regular | gruff
+You again. Of course. Sit down, then.
+
+@ talk, pmem:visits:regular | elder
+When I'm gone, tell them about this place. You know it as well as anyone.
+
+@ talk, pmem:away:long
+{player}! It's been {daysaway}. We thought the forest had you.
+Where have you been all this time? {daysaway}, and not a word.
+Look who's back. You've missed a lot.
+We were just talking about you. Wondering if you'd come back.
+
+@ talk, pmem:away:long | worrier
+I thought you were dead. I really did. I said so to {other}.
+
+@ talk, pmem:away:long | wry
+Back from the dead? Or just from the woods?
+
+@ talk, pmem:away:long | cheerful
+You came back! I knew you would. I told everyone.
+
+@ talk, pmem:away:long, mem:finished
+You missed it, {player}. We finished the {building} while you were gone. Well, we finished something.
+
+@ talk, pmem:away:long, mem:arrival
+We've a new face since you were here last. Go and say hello.
+
+@ talk, pmem:away:short
+A couple of days and you're back. Couldn't keep away?
+Back so soon? We've hardly had time to miss you.
+
+# ------------------------------------------------------------------ what the player gave
+
+@ talk, pmem:gift:recent
+Thank you for what you left in the chest. It went straight into the {building}.
+That was good of you, yesterday. With the chest.
+You're the one who filled the chest. I won't forget it.
+
+@ talk, pmem:gift:recent | gruff
+You brought materials. Good. Bring more.
+
+@ talk, pmem:gift:recent | devout
+The gods notice a generous hand, {player}. So do we.
+
+@ talk, pmem:generous
+You've given {given} things to the chest, near enough. We've a stone with your name on it in our heads.
+Half this village is built from what you brought us.
+When the children ask who built {village}, I'll say you. Well, you and us.
+
+@ talk, pmem:generous | elder
+In the old days a giver like you would have a seat at the high table. We'll find you one.
+
+@ talk, pmem:giver, !pmem:gift:recent
+You've helped us before. We remember.
+You've a friend in every house here, {player}.
+
+@ talk, pmem:nevergave, need:any
+You visit often enough. You could bring a little {material} next time.
+You know what would make us like you more? {material}. In the chest.
+
+@ talk, pmem:nevergave, need:any | gruff
+You eat by our fire and bring nothing. Think on that.
+
+@ talk, pmem:nevergave, need:any | wry
+You must be very rich, keeping all that wood to yourself.
+
+# ------------------------------------------------------------------ what the player built
+
+@ talk, pmem:built:recent
+I saw you building yesterday. Good, straight work.
+You put up that piece by the path. It's holding, I checked.
+
+@ talk, pmem:builder
+You've built {builtcount} pieces round here, if anyone's counting. I am.
+You're as much a builder here as any of us.
+If you ever want to build a house of your own here, we'd make room.
+
+@ self, event:playerbuilt
+Look, {player} is building.
+{player} has got the hammer out.
+What's {player} putting up over there?
+Somebody's helping. Good.
+
+@ self, event:playerbuilt | gruff
+If {player} is building, I can rest. No? Fine.
+
+@ self, event:playerbuilt | worrier
+I hope that's not in the way of the path.
+
+@ self, event:playerbuilt | wry
+Another builder. Soon we'll have more builders than houses.
+
+@ self, event:playerbuilt | young
+Can I help build? I can carry the small bits!
+
+# ------------------------------------------------------------------ what the player killed
+
+@ talk, pmem:kill:recent
+You took down that {lastkill} by the village. Good riddance.
+I saw you with that {lastkill}. Quick work.
+
+@ talk, pmem:kill:recent, pmem:killed:greydwarf
+One less greydwarf throwing rocks at us. Thank you.
+
+@ talk, pmem:kill:recent, pmem:killed:deer
+That deer you took will feed us well. Did you bring any of it?
+
+@ talk, pmem:kill:recent, pmem:killed:boar
+A boar? Good. They dig up everything.
+
+@ talk, pmem:kill:recent, pmem:killed:neck
+Necks. Nasty little things. Bite your ankles in the shallows.
+
+@ talk, pmem:bigkill
+A {bigkill}, they said. You killed a {bigkill} near our houses.
+That {bigkill} has been lurking for days. You did what we couldn't.
+They'll sing about that {bigkill}. Badly, but they'll sing.
+
+@ talk, pmem:bigkill | worrier
+Are there more? There's never only one {bigkill}.
+
+@ talk, pmem:bigkill | elder
+When I was young a {bigkill} took two of us before we drove it off. You make it look easy.
+
+@ talk, pmem:hunter
+You hunt well, {player}. {kills} kills near here alone.
+If you ever want to teach someone to hunt, take {other}. They need it.
+
+@ self, event:playerkill
+{player} got it! Did you see?
+That's done, then. Good shot, {player}.
+That was a big one. Somebody tell the others.
+
+@ self, event:playerkill | worrier
+Is it dead? Really dead? Poke it.
+
+@ self, event:playerkill | gruff
+Good. Now skin it.
+
+@ self, event:playerkill | young
+Did you see? It went down like a tree! Boom!
+
+# ------------------------------------------------------------------ died nearby, fought beside us, helped
+
+@ talk, pmem:died
+You died out there. I saw them carry... I saw. And here you are.
+We thought you were gone. Then you came walking back like nothing happened.
+They say you fell by the trees. You look well for a dead one.
+
+@ talk, pmem:died | devout
+Odin sent you back. He must have work for you yet.
+
+@ talk, pmem:died | wry
+How was the afterlife? I hear the mead is good.
+
+@ talk, pmem:died | worrier
+You were dead! You were! How is that... no. I don't want to know.
+
+@ talk, pmem:defender
+You stood with us when they came. That counts for a lot here.
+I remember you fighting by the fence. I'll always remember.
+When the greydwarfs came, you didn't run. We noticed.
+
+@ talk, pmem:defender, protector
+I'd stand next to you in a shield wall any day, {player}.
+
+@ talk, pmem:helper
+You brought what we asked for. That's how neighbours should be.
+We asked, you came through. We won't forget.
+
+# ------------------------------------------------------------------ word that went round
+
+@ talk, saw:gift
+I saw you at the chest. That was a good thing you did.
+I watched you fill the chest. I'll say thank you for all of us.
+
+@ talk, heard:gift
+{teller} says you've been bringing us materials. Is it true? Thank you.
+Word is you've been filling the chest. {teller} told me.
+
+@ talk, heard:gift | wry
+{teller} won't stop talking about how generous you are. It's getting tiring. Thank you, though.
+
+@ talk, saw:built
+I watched you building. You hold a hammer better than most here.
+
+@ talk, heard:built
+{teller} says you've been building with us. That's kind.
+
+@ talk, saw:bigkill
+I saw you fight that beast. I couldn't move. You could.
+
+@ talk, heard:bigkill
+{teller} told me about the beast you killed. Was it really that big?
+Everyone's talking about it. {teller} says it was twice your size.
+
+@ talk, heard:bigkill | worrier
+{teller} says there was a monster right by the houses. Is that true? Are there more?
+
+@ talk, saw:kill
+Saw you deal with that one by the edge. Neat.
+
+@ talk, heard:died
+{teller} says you died. You look alive to me.
+I heard from {teller} you had a bad end out there. Glad it didn't stick.
+
+@ talk, saw:defended
+I saw you in the fight. You were something.
+
+@ talk, heard:defended
+{teller} says you held the line when they came. I wish I'd seen it.
+
+@ talk, heard:request
+{teller} told me you brought what we needed. Thank you.
+
+@ talk, saw:hurtus
+I saw what you did. I'm keeping my distance.
+
+@ talk, heard:hurtus
+{teller} says you struck one of us. I'll be watching you.
+
+@ talk, heard:hurtus | gruff
+I heard about you. Don't try it with me.
+
+@ talk, heard:slain
+They say you killed one of ours. {teller} saw. Leave.
+
+@ talk, heard:killedtame
+{teller} says you killed one of the boars. Our boars.
+
+# ------------------------------------------------------------------ passing word on, between villagers
+
+@ chat, tell:gift
+{player} brought a good load to the chest. // Did they? Good. // Every bit helps.
+Did you see the chest? {player} filled half of it. // I saw. I could kiss them.
+{player} came with materials again. // That one's worth ten of us. // Speak for yourself.
+Guess who filled the chest. // {player}? // {player}.
+
+@ chat, tell:gift | gruff
+{player} brought stuff. // Good. // That's all I wanted to say.
+
+@ chat, tell:built
+{player} was building by the path. // Was it any good? // Better than yours.
+{player}'s been hammering away. // As long as they don't hammer the wrong thing.
+
+@ chat, tell:kill
+{player} killed a {lastkill} by the edge. // Good riddance to it.
+Did you hear the noise earlier? That was {player} and a {lastkill}. // Who won? // Guess.
+
+@ chat, tell:bigkill
+{player} killed a {bigkill}. Right there by the trees. // No! // I saw it. // @amazed
+You'll never guess what {player} killed. // A greydwarf? // A {bigkill}. // @amazed
+There was a {bigkill} by the houses and {player} put it down. // Gods. Was anyone hurt? // Only the {bigkill}.
+
+@ chat, tell:died
+{player} died out by the trees. // And came back? // And came back. // @strange
+They say {player} fell yesterday. // They walked past me this morning. // @strange
+
+@ chat, tell:defended
+{player} fought with us when the greydwarfs came. // I saw. Good arm. // Better than good.
+
+@ chat, tell:request
+{player} brought what we asked for. // Every bit? // Every bit. // +praiseplayer
+
+@ chat, tell:hurtus
+{player} hit one of us. // On purpose? // Does it matter? // @wary
+Keep away from {player}. They lashed out at one of ours. // @wary
+
+@ chat, tell:slain
+{player} killed one of us. // No. // I saw it. // @wary
+
+@ chat, tell:killedtame
+One of our boars is dead. {player} did it. // Why would they do that? // @wary
+
+@ chat, tell:gearup
+Did you see {player}'s new gear? // Shiny. // I want some.
+
+@ reply, answer:amazed
+Gods. I'd have run.
+And we just stood there, I suppose?
+A {bigkill}. Here. I'm not sleeping tonight.
+Remind me never to make {player} angry.
+
+@ reply, answer:amazed | wry
+I once killed a rabbit. It was a big rabbit.
+
+@ reply, answer:amazed | young
+I want to be like {player} when I'm grown!
+
+@ reply, answer:amazed | gruff
+Hm. Good for them.
+
+@ reply, answer:amazed | worrier
+And where there's one, there are two. I'm checking the door.
+
+@ reply, answer:strange
+Some people the gods won't let go of.
+That's the strangest thing I've heard all week.
+Maybe they're like us. Not quite alive, not quite gone.
+
+@ reply, answer:strange | devout
+Odin has a use for that one. Mark my words.
+
+@ reply, answer:strange | wry
+Dying seems to agree with them.
+
+@ reply, answer:wary
+I'll keep an eye on them.
+Then we watch our backs when they come.
+I never liked how they looked at the boars.
+
+@ reply, answer:wary | cheerful
+Maybe it was an accident? I hope it was an accident.
+
+@ reply, answer:wary | gruff
+Next time they swing, I'll swing back.
+
+@ reply, chime:praiseplayer
+Good. {player} is all right, then.
+Somebody should tell {player} thank you. Properly.
+I'll say it to their face next time. Thank you.

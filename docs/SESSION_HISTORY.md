@@ -27,15 +27,17 @@ Current facts only. Read this at the start of a session. Narrative is in `docs/d
   - Licensing to settle before shipping blueprints: valheimians builds and copied MWL locations belong to their
     creators; ship only Tyler's own or with permission.
 - **Blueprint lab (2026-11-08 night, not tested in game):** `tools/blueprint-lab`, `docs/BLUEPRINT_LAB.md`. Learns from
-  1,427 designs; generates by type, biome, style, plan, roof, walls, s1 to s3 and d1 to d3; strips or furnishes any
-  blueprint; checks and draws designs without the game. Page "Villheim Blueprint Lab"
+  2,134 designs (valheimians downloads and their `.vbuild` files included since 2026-11-08 day); generates by type,
+  biome, style, plan, roof, walls, s1 to s3 and d1 to d3; strips or furnishes any blueprint; repairs missing pieces of
+  an uploaded blueprint; checks and draws designs without the game. Page "Villheim Blueprint Lab"
   (https://claude.ai/artifact/W83rbAvBBLXWeXdLmap3Gf; offline copy in `BepInEx/config/Villheim-tools`). 273 generated
   designs in `Downloads\Villheim-generated` and the sheet's Generated tab (click "Allow access" for pictures).
   Villages never build generated designs until the CLAUDE.md wording is agreed.
 - **Villager minds and world growth (2026-11-08 night, compiles, not tested in game):** memory, gossip, skills, wants,
   gatherings, noticing, 1,211 new lines; outpost gear gate and materials, caravans, daughter villages, events,
   contracts, groves, signposts. Tables in `docs/WORLD_LIFE.md`. Four new Harmony patches: if logic fails to load, read
-  the BepInEx log first. Research: `docs/LIVING_WORLD_RESEARCH.md` (43 proposals).
+  the BepInEx log first. Reviewed and hardened 2026-11-08 day: each patch class loads alone, ten kill switches
+  (`vh switches`), a 20 minute test plan in `docs/WORLD_LIFE.md`. Research: `docs/LIVING_WORLD_RESEARCH.md` (43 proposals).
 - **World life (2026-11-07 overnight session, logic only, not tested in game):** pedlars, pilgrims, hermits, news
   between villages, villager personalities, relations between villages, villagers watching others work, outposts
   (logging camps), trails to the outpost and the nearest neighbour. `WorldLife` (config "5 - World life") is off by
@@ -97,6 +99,7 @@ Current facts only. Read this at the start of a session. Narrative is in `docs/d
 
 ## Recent milestones
 
+- **2026-11-08 (blueprint repair tab; 2,134 designs learned; minds and world code hardened)** - see docs/daily-notes/2026-11/2026-11-08.md
 - **2026-11-08 (blueprint lab, villager minds, world growth; helper branches merged)** - see docs/daily-notes/2026-11/2026-11-08.md
 - **2026-11-08 (BiomeBlueprints blacklisted; access checks; decisions on generated designs and outposts)** - see docs/daily-notes/2026-11/2026-11-08.md
 - **2026-11-07 (world life: visitors, hermits, news, personalities, relations, watching, smith, outposts, trails; research survey)** - see docs/daily-notes/2026-11/2026-11-07.md

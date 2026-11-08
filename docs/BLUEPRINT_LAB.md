@@ -41,12 +41,13 @@ the way a hand build does.
 - Roof rows line up with wall bays only when the building's depth is an odd number of bays, so the generator keeps
   depths odd under pitched roofs.
 
-## What the corpus says (1,968 designs, 2026-11-08)
+## What the corpus says (2,134 designs, 2026-11-08)
 
-Rules, shapes and scorer were relearned on 1,968 designs after the valheimians downloads were sorted in. The counts
-below are from the first run on 1,427; the new totals for the 1,593 builds the shape reader could align are: plans
-irregular 557, none 198, T 175, rectangle 151, octagon or round 140, L 122, square 105, U 72, long 53, cross 20; roofs
-none 365, cross-gable 326, gable 310, flat 235, conical 223, hip 112, half-hip 15. The scorer is unchanged in
+Rules, shapes and scorer were relearned on 2,134 designs after the valheimians downloads (and their `.vbuild` files,
+converted by `lab/vbuild_to_blueprint.py`) were sorted in. The counts below are from the first run on 1,427; the new
+totals for the 1,755 builds the shape reader could align are: plans irregular 603, none 212, T 193, rectangle 176,
+octagon or round 158, L 136, square 119, U 80, long 57, cross 21; roofs none 392, gable 368, cross-gable 352,
+conical 255, flat 244, hip 119, half-hip 15. The scorer is unchanged in
 substance because the new downloads carry no Yes or No (AUC 0.70 on the same 661 reviewed designs).
 
 - Plans: irregular 452, T 150, rectangle 130, octagon or round 113, L 94, square 84, U or courtyard 58, long 36,

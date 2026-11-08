@@ -214,7 +214,16 @@ with its own look for its biome.
 - [ ] Review the Generated tab; Yes and No feed the scorer (`lab/train_scorer.py`).
 - [ ] Decorator takes over Phase D: strip any design to d1 and furnish to d2 and d3 (`lib/decorate.js`, built
       2026-11-08 night; try it on the board's d3 saves).
-- [ ] Exact piece shapes for the lab's pictures from an in-game export of each piece's collider.
+- [ ] Exact piece shapes for the lab's pictures from an in-game export of each piece's collider. (`vh exportpieces`
+      and the lab's loader built 2026-11-08 day; run it in game and copy `BepInEx/config/Villheim/pieces.json` into
+      `tools/blueprint-lab/data/`.)
+- [x] Repair tab: fill missing pieces of an uploaded blueprint from rows, stacks, floors, mirror and the build's own
+      patterns, with a confidence for each (2026-11-08 day; measured accuracy in `docs/BLUEPRINT_LAB.md`).
+- [ ] Repair for irregular hand builds: learn neighbour patterns across the whole corpus, so builds without a mirror
+      line get more than row and floor fixes.
+- [ ] Villagers repair damaged buildings from the same rules (gap in a row, missing course) when no saved design
+      covers the piece.
+- [ ] More Middle Eastern builds to learn from: still only 3 in 2,134 designs.
 - [ ] More biomes (Plains, Mountain, Swamp) with their own materials.
 - [ ] Gear by biome and village level: basic Meadows tools for everyone, biome weapons and shields for protectors,
       better materials and Black Forest gear as the village levels up (Tyler, 2026-11-05). (Since 2026-11-07 each tier

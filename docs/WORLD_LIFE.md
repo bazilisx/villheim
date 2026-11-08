@@ -108,6 +108,47 @@ seen (single player and the host see all). A settlers' party that never sees a p
 caravans are one way and unpaid; the next caravan back evens it out. Cargo from a caravan does not count toward what
 a village can build (only outposts do, as Tyler decided). Groves count trees with a physics sweep once a day.
 
+## Built (2026-11-08 day, round 2: the living village; compiles, not yet tested in game)
+
+All logic only (hot-reloads), in config section "6 - Living village", each part behind its own switch (on by default).
+Three parts that take villagers away or hold growth back also need WorldLife (off during the design review): leaving,
+elder deaths and the boss stage cap. One hub, `Village/Living.cs`, is called from the hearth's tick
+(`VillageBrain`), the villager's brain tick (`Brain`), `Moods.Target`, `Dialogue` (tags, fill-ins, `Note`) and
+`WorldLife`'s visitor chance, so the existing files gain a line each. The numbers come from the proposals in
+`docs/LIVING_WORLD_RESEARCH.md` ("Beyond Millénaire"); nothing was run in the game, only `scripts/build-cloud.sh`.
+
+| Part | File | What it does |
+|---|---|---|
+| Prosperity (1) | `Village/Prosperity.cs` | 5 per grown villager + per building (5 + stage squared / 5) + chest worth / 50 (store prices, 1 a coin), times (0.5 + mood / 100); worked out once a game hour, kept on the hearth. A villager killed or a raid lost takes 15% off (at most 60%), back 2% a day. Shown on the board's Level sign in brackets and as a "Prosperity" heading. Visitors x0.6 to x2, the wait between newcomers x0.75 to x1.25, no raid below `ProsperityRaidsFrom` (75), one more raider per 60. Tags `prosper:poor/modest/thriving/rich`, `prosper:hit`. |
+| Expectations (2) | `Villagers/Expectations.cs` | A mood bonus by stage (`ExpectationBonus` 18, 12, 6, 0). Food variety: distinct foods eaten in three days (from `Healing.Eat`) against the stage, -2.5 each short, +1 each over (at most +2). Stage 2 and up without a longhouse -4; stage 3 and up with seats for under half the village -2, fewer than eight fence pieces -3. Per village once a minute. Tags `expect:met`, `expect:short:x`. |
+| Calendar and festivals (3) | `Village/Calendar.cs` | Four seasons of `DaysPerSeason` (10). With shudnal's Seasons installed, its `seasonState.GetCurrentSeason()` and `GetCurrentDay()` are read by reflection (no code copied). A festival on `FestivalDay` (5) of each season: sowing feast, midsummer fire, harvest feast, Yule. From 16:00 nobody works (`Brain` runs free time), the evening is a feast (`Gatherings.Feast`), everyone takes "festival" (+10 for a day), visitors x3, and with WorldLife a pilgrim comes when a neighbour is above 20. Chronicle lines for each season and festival. |
+| Winter stores (21) | `Village/Calendar.cs` | Autumn: wood kept between buildings x1.5 (`VillageNeeds`), food foragers and hunters keep x2. Winter: farmers and foragers rest, fire sitting twice as likely (`FreeTime`), rain in the open -3, and a winter morning with under 5 wood in the chest gives everyone "coldhome" (-6). |
+| Player standing (5) | `Villagers/Standing.cs`, `Villagers/Social.cs` | Reputation may now fall to -100 and comes back `ForgivePerDay` (1) a day. Prices x0.85 hero, x0.93 friend, x1.2 below -10, x1.35 below `FineBelow` (-30). Below `FineBelow` a fine of 10 + 2 per point under: talking to a villager names it, crouching and talking pays it from your coins into the chest, sets the standing to -5 and goes in the chronicle; the store stays shut until then. Walking in below -10: the nearest villager comes to turn you away; below `GuardBelow` (-60) up to two protectors arm themselves and stand watching. Tags `standing:x`, `standing:fined`; fill-in {fine}. |
+| Needs that complain (7) | `Villagers/Complaints.cs` | Each morning each grown villager counts days in a row without a bed, food (none in effect and none in the chest) and safety (a fight in the last day). 3 days: complain lines, the need weighs a third more on his mood. 6 days: a chronicle line and he walks up to a known player within 60 m to ask (`demand:x`); the need weighs double. 10 days: he leaves (below). |
+| Leaving and migrants (16) | `Villagers/Leaving.cs`, `Village/VillageBrain.cs` | Needs WorldLife and `Leaving`. A villager whose need went 10 days, or (after `ExodusDays` mornings with village mood under `ExodusMood`) the least content one, says goodbye and walks out toward the neighbour his village thinks best of; the village takes "leftus" (-4). Nobody leaves a village of two, nor the Jarl. Out of sight past the edge, he is removed and put on the neighbour's migrant list; the next newcomer there (free bed, within ten days) is the same person, name and look, "came over from X". |
+| Visitors who judge (8) | `Village/VisitorJudging.cs`, `Villagers/Wanderers.cs` | A pedlar's or pilgrim's feeling (0 to 1) on arrival and every 20 s of the stay: village mood, rain on him, a fight, being hurt, a feast or festival. Score = mean of (rise x 2.75) and (feeling x 1.35). His home village's view of this one moves up to 3 toward lerp(-100, 100, score). Under 0.5 no visitor for up to three more days; the next visitor x0.5 to x1.5 by the last score. A gift in the chest at 0.2 to 0.9 (chance = score). Goodbye lines `stay:good/fair/bad`. Relations.Visited's +3 for the host stays. |
+| The want by the chest (9) | `Village/WantPile.cs` | Once a game hour the top need from `VillageNeeds` is shown 1.8 m beside the chest: the game's woodpile, fine or core wood stack, stone pile, or an item stand with the item. The hammer cannot take it down and the item cannot be taken off the stand. Filled within a day with a player near the chest: "promisekept" (+6) and a chronicle line. |
+| Boss stages (10) | `Village/BossStages.cs` | Needs WorldLife. Stage cap = `BossStageStart` (2, a hamlet) + bosses felled, by the world's keys, trophies hung on item stands in the village, or either (`BossStageSource`). A new building past the cap waits ("Waiting for the next boss to fall (Eikthyr) ..."); upgrades go on, and a home is always allowed while someone has no bed. A trophy found hung: chronicle and "bossdown". Tag `stagecap`, fill-in {nextboss}. |
+| Elders (18) | `Villagers/Elders.cs`, `Villagers/Personality.cs` | Days in the village count from arrival or birth. From `ElderDays` (40) an elder: chronicle line, no felling, mining or hauling unless he is the builder (`Chores`), stories from the older half of the chronicle ({chronicle}, {chronicleday}, {yearshere}). With WorldLife and `ElderDeaths`, from day 60 a 2% chance each morning of dying in the night: chronicle, mourning, no prosperity lost. A child born in the village takes one parent's homeland and the other's pastime. |
+| Neighbours (33) | `Villagers/Neighbours.cs`, `Villagers/Sleep.cs` | A bed claim counts a bed within 30 m of the friend's as 15 m nearer and within 40 m of the rival's as 25 m farther. Each morning: home within 30 m of the friend's "goodneighbour" (+2), within 20 m of the rival's "badneighbour" (-3). The store opened through him x0.94 or x1.06. |
+| The horn (35) | `Villagers/Escort.cs`, `VillheimLogic.cs` | Use the hearth while crouching: a friend of the village (standing 5) gets every grown protector within 80 m armed and following for `HornSeconds` (240 s). Once a game hour. Otherwise the hearth opens the chronicle as before. |
+| Help in a fight (37) | `Villagers/Escort.cs` | Each hearth tick: a friend of the village within its radius + 60 m with a creature targeting him (25 m) or a hostile one within 8 m gets up to two protectors running to him; they go home 8 s after the last enemy. Not at night unless the village is raided. The brain's own fight takes over once they see the enemy. |
+| Lines | `Dialogue/living.txt` | 188 lines for all of the above; the tags are listed at the top of the file. |
+
+Commands, at the nearest village or villager: `vh living` (everything at a glance), `vh prosperity [now|hit]`,
+`vh season [next|<days>]` (moves the own calendar this session), `vh festival`, `vh standing [<points>]`,
+`vh complain [bed|food|safety] [days]`, `vh leave [why]`, `vh migrants`, `vh judge`, `vh want`, `vh stages`,
+`vh elder [days|die]`, `vh horn`, `vh rescue`. They are not in `vh help` (to keep `LogicCommands.cs` edits to the
+switch); `vh living` lists them.
+
+Not done from these proposals: empty houses that stop being repaired after ten days and the logistic arrival chance
+(16); the request on the notice board at the demand stage (7); a horn sound (35); elders who slow down (18).
+
+Known limits: the food eaten and the horn's once-an-hour are kept in memory and lost on a reload. A visitor's judgement
+changes his home village's view only on the host or the owner of that hearth. The want pile and the item stand are
+locked by setting the piece's `m_canBeRemoved` on the instance; the logic sets it again each game hour, so a fresh load
+leaves it open for up to an hour. Migrants write to another hearth's ZDO, as caravans do.
+
 ## Next, in order
 
 Effort is a rough guess: S an evening, M a session or two, L several sessions.

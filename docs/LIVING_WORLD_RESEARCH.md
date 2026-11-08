@@ -446,7 +446,7 @@ to 5. Status: **new**; **planned** (already in `docs/WORLD_LIFE.md` "Next" or `d
 Two other agents work tonight on villager minds and dialogue and on world growth (caravans, outposts, events,
 daughter villages). Proposals that touch their ground are marked "(minds)" or "(world)" so the work can be matched up.
 
-### 1. Village prosperity (S, 5) new
+### 1. Village prosperity (S, 5) new (built 2026-11-08 day)
 - Player sees: the notice board's level sign shows a prosperity number that rises as the village grows and falls
   after a raid or a death; bigger numbers bring more visitors and bigger raids.
 - Rules: prosperity = 5 per adult + per finished building (5 + stage squared / 5) + chest stock value / 50, times
@@ -456,7 +456,7 @@ daughter villages). Proposals that touch their ground are marked "(minds)" or "(
   chance), `Market.cs` (stock size).
 - From: MineColonies raid level, Bannerlord prosperity.
 
-### 2. Expectations that rise with the village (S, 5) new (minds)
+### 2. Expectations that rise with the village (S, 5) new (minds) (built 2026-11-08 day)
 - Player sees: a new hamlet is content with little; a grown village grumbles unless it has a longhouse, benches,
   varied food and a fence.
 - Rules: a standing mood bonus by village stage: stage 1 +18, stage 2 +12, stage 3 +6, stage 4 and up 0. Amenities then
@@ -465,7 +465,7 @@ daughter villages). Proposals that touch their ground are marked "(minds)" or "(
 - Extends: `Villagers/Moods.cs` (a baseline term), `VillageMood.cs`.
 - From: RimWorld expectations, Songs of Syx, MineColonies food factor.
 
-### 3. Village calendar and festivals (M, 5) new
+### 3. Village calendar and festivals (M, 5) new (built 2026-11-08 day)
 - Player sees: villagers name the season and the day; four times a year the village stops work at 16:00 and holds a
   feast at the hearth with music poses, a chronicle entry and visitors from the neighbour villages.
 - Rules: seasons of 10 days (matching the Seasons mod default), a year of 40 days. If shudnal's Seasons is installed,
@@ -489,7 +489,7 @@ daughter villages). Proposals that touch their ground are marked "(minds)" or "(
   `WorldLife.cs` news.
 - From: Gothic news, Minecraft gossip, DF memories.
 
-### 5. Player standing that can fall (M, 5) partly built
+### 5. Player standing that can fall (M, 5) partly built (built 2026-11-08 day)
 - Player sees: prices at the village go up or down, villagers greet or turn away, and a much disliked player finds
   the gate shut and protectors on guard.
 - Rules: standing per player per village = sum of gossip weights from proposal 4 known in the village (each entry
@@ -511,7 +511,7 @@ daughter villages). Proposals that touch their ground are marked "(minds)" or "(
   stages and decorating between upgrades.
 - From: Sim Settlements 2, Manor Lords, Emilien 2012.
 
-### 7. Needs that complain, then demand (S, 4) new (minds)
+### 7. Needs that complain, then demand (S, 4) new (minds) (built 2026-11-08 day)
 - Player sees: a villager without a bed sleeps by the fire for a few nights, then grumbles about it, then comes to the
   player to ask, then packs up and leaves.
 - Rules: per missing need (bed, food, safety), count days. 3 days: complain lines (tag `complain:<need>`), mood factor
@@ -520,7 +520,7 @@ daughter villages). Proposals that touch their ground are marked "(minds)" or "(
 - Extends: `Villagers/Moods.cs`, `Social.cs` (requests), `Dialogue.cs` tags.
 - From: MineColonies complain and demand days (7 and 14, shortened here for Valheim's shorter days).
 
-### 8. Visitors who judge their stay (S, 4) new (world)
+### 8. Visitors who judge their stay (S, 4) new (world) (built 2026-11-08 day)
 - Player sees: a pilgrim who had a bad night (rain, no seat, a raid) leaves sour and his village thinks less of this
   one; a well treated pedlar comes back sooner and sometimes brings a friend.
 - Rules: record the visitor's mood on arrival and on leaving; score = lerp(rise x 2.75, mood at leaving x 1.35, 0.5),
@@ -530,7 +530,7 @@ daughter villages). Proposals that touch their ground are marked "(minds)" or "(
 - Extends: `Village/WorldLife.cs`, `Relations.cs` (replaces the flat +3 per visitor).
 - From: Hospitality.
 
-### 9. The village's want shown over the hearth (S, 4) partly built
+### 9. The village's want shown over the hearth (S, 4) partly built (built 2026-11-08 day)
 - Player sees: a banner or a pile by the hearth shows what the village wants now (a log, a stone, a hide, a fish),
   readable from 30 m without opening anything.
 - Rules: the top need from `VillageNeeds.cs` places one matching vanilla prop or item stand display next to the chest;
@@ -539,7 +539,7 @@ daughter villages). Proposals that touch their ground are marked "(minds)" or "(
 - Extends: `NoticeBoard.cs`, `VillageNeeds.cs`, `Social.cs` requests.
 - From: Black and White desire flags, Frostpunk promises.
 
-### 10. Boss trophies open the next stage (S, 4) planned in part
+### 10. Boss trophies open the next stage (S, 4) planned in part (built 2026-11-08 day)
 - Player sees: after the player hangs the Eikthyr trophy at the longhouse, the village starts on stage 2 designs and
   bronze is talked about; each boss moves every village a step.
 - Rules: a village's stage cap = 1 + number of boss keys the world has (the game's global keys `defeated_eikthyr` and
@@ -595,7 +595,7 @@ daughter villages). Proposals that touch their ground are marked "(minds)" or "(
 - Extends: `Villagers/FreeTime.cs`, `Seats.cs`.
 - From: The Sims, Skyrim sandbox packages.
 
-### 16. Leaving, migrating and empty houses (M, 4) new (world)
+### 16. Leaving, migrating and empty houses (M, 4) new (world) (built 2026-11-08 day)
 - Player sees: an unhappy village loses a family, who walk to a happier neighbour and move in there; the empty house
   stands, weathers and is taken over by the next newcomer, or falls apart.
 - Rules: village mood under 25 for 3 days running: the least content household leaves by day (proposal 7 handles the
@@ -614,7 +614,7 @@ daughter villages). Proposals that touch their ground are marked "(minds)" or "(
 - Extends: `VillageState.cs`, `Chronicle.cs`, `WorldLife.cs` hermits, the world agent's daughter villages.
 - From: DF sites, Kenshi world states and town overrides.
 
-### 18. Elders and a life story (M, 4) new (minds)
+### 18. Elders and a life story (M, 4) new (minds) (built 2026-11-08 day)
 - Player sees: the founders grow old, slow down, sit by the fire telling the village's story, and in time die and are
   mourned; their children carry their homeland and look.
 - Rules: an adult turns elder after 40 game days in the village (a year of proposal 3). Elders do no felling or mining,
@@ -642,7 +642,7 @@ daughter villages). Proposals that touch their ground are marked "(minds)" or "(
 - Extends: `Village/Interior.cs`, `Amenities.cs`, `Roles.cs`.
 - From: Dragon Quest Builders 2, Starbound tenants, Terraria housing.
 
-### 21. Seasons and winter stores (M, 4) new
+### 21. Seasons and winter stores (M, 4) new (built 2026-11-08 day)
 - Player sees: in autumn the village stacks wood and dries meat; in winter villagers stay nearer the fire and farms
   rest; a village that ran short in winter is glum.
 - Rules: with proposal 3's calendar. Autumn: wanted wood stock +50%, food stock target doubled. Winter: farms do not
@@ -739,7 +739,7 @@ daughter villages). Proposals that touch their ground are marked "(minds)" or "(
 - Extends: `Chronicle.cs`, `Relations.cs`, `Personality.cs`.
 - From: DF world history.
 
-### 33. Who lives next to whom (S, 3) new (minds)
+### 33. Who lives next to whom (S, 3) new (minds) (built 2026-11-08 day)
 - Player sees: friends live side by side; rivals end up apart; a villager placed next to his rival complains.
 - Rules: when a home is assigned, prefer a free bed within 30 m of the friend and over 40 m from the rival. Daily
   thought: friend within 30 m +2, rival within 20 m -3. A trade villager's prices move x0.94 when content with his
@@ -755,7 +755,7 @@ daughter villages). Proposals that touch their ground are marked "(minds)" or "(
 - Extends: `Raids.cs`, `Market.cs`, `PlayerReactions.cs`, `Chronicle.cs`.
 - From: Minecraft Hero of the Village.
 
-### 35. A horn at the hearth (S, 3) new
+### 35. A horn at the hearth (S, 3) new (built 2026-11-08 day)
 - Player sees: blowing the horn by the hearth calls the protectors to follow him for a while.
 - Rules: using the hearth while crouched with a standing of friend or more: protectors within 80 m follow the player
   for 5 game minutes, then walk home. Once per game hour.
@@ -769,7 +769,7 @@ daughter villages). Proposals that touch their ground are marked "(minds)" or "(
 - Extends: `WorldLife.cs`, `Market.cs`, `FreeTime.cs`.
 - From: Stardew, medieval market days, Millénaire markets.
 
-### 37. Villagers come to help a player in trouble (S, 3) new
+### 37. Villagers come to help a player in trouble (S, 3) new (built 2026-11-08 day)
 - Player sees: a player fighting near a friendly village gets help from its protectors.
 - Rules: a player with standing friend or more fighting within 60 m of the fence: up to 2 protectors run out to help,
   then go back once no enemy is within 20 m of them. Not at night unless the village is under raid.

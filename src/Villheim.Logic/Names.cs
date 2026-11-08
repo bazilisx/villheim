@@ -117,14 +117,20 @@ namespace Villheim.Logic
         private static string SlavicPatronymic(string father, bool female)
         {
             char last = char.ToLowerInvariant(father[father.Length - 1]);
-            if ("aeiouy".IndexOf(last) >= 0)
+            if (last == 'a')
             {
+                // Putyata to Putyatich and Putyatichna, as Nikita gives Nikitich.
                 string stem = father.Substring(0, father.Length - 1);
                 if (stem.EndsWith("y")) stem = stem.Substring(0, stem.Length - 1);
                 return stem + (female ? "ichna" : "ich");
             }
 
-            bool slav = father.EndsWith("slav") || father.EndsWith("mir") || father.EndsWith("mysl") || father.EndsWith("polk");
+            if ("eiouy".IndexOf(last) >= 0)
+            {
+                father = father.Substring(0, father.Length - 1);
+            }
+
+            bool slav = father.EndsWith("slav") || father.EndsWith("mysl");
             return father + (slav ? (female ? "na" : "ich") : (female ? "ovna" : "ovich"));
         }
 

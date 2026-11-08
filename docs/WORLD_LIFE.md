@@ -248,6 +248,119 @@ changes his home village's view only on the host or the owner of that hearth. Th
 locked by setting the piece's `m_canBeRemoved` on the instance; the logic sets it again each game hour, so a fresh load
 leaves it open for up to an hour. Migrants write to another hearth's ZDO, as caravans do.
 
+## Built (2026-11-08, cultures and biome defenders; compiles, not yet tested in game)
+
+Logic only (hot-reloads). Settings in config sections "5c - Cultures" and "5d - Biome defenders"; the on/off ones are
+in `vh switches`. Data in `src/Villheim.Logic/Cultures/cultures.txt`, lines in `Dialogue/cultures.txt`.
+
+### Cultures by biome
+
+Villages are echoes of the old world the heroes came from, so the cultures are peoples of the Viking-age world: the
+Norse and the peoples they traded with, settled among or served beside. Each biome has up to three, picked per village
+by weight with the village's seed and kept on the hearth (`villheim_culture`). The map is the setting `CultureMap`,
+`Biome=culture:weight,...; Biome=...`. Biomes left out (Ashlands, Deep North, Ocean) build like the Meadows.
+
+| Biome | Cultures (weight) | Why |
+|---|---|---|
+| Meadows | norse 3, anglo-saxon 1, frankish-norman 1 | The home farms; England and Normandy are where the Norse settled and mixed. |
+| Black Forest | norse-forest 2, celtic 1, slavic 1 | Forest Norse (Swedish runestone names, forest place names); Gaelic Ireland and the Slavic lands of the Rus routes, both forest and timber peoples. |
+| Swamp | celtic-crannog 1, baltic 1, fen-folk 1 | Lake dwellings on stilts and islands (crannogs), the Baltic bog and amber coast, the Frisian marsh villages built on mounds. |
+| Mountain | norse-highland 2, saami 1 | Icelandic turf farms and fells; the Saami of the northern fells and reindeer country. |
+| Plains | middle-eastern 2, byzantine 1, steppe 1 | The silver road east: Persian and Arab lands, Byzantium where the Varangians served, the Khazar and Turkic steppe. |
+| Mistlands | byzantine 1, caucasian-highland 1 | Stone tower villages of the Caucasus (Svaneti) in the mist; Byzantine stonework. |
+
+Tyler still has to confirm every row (provisional, from his 2026-11-08 list). Open questions: whether Mistlands get
+villages at all; whether fen-folk should be Frisian (as built) or English fenland; whether norse-highland's
+Icelandic turf look fits the Mountains or the Saami should weigh more.
+
+What a culture gives (`cultures.txt`, one `[key]` block each, `base = key` copies another):
+
+- Names: at least 40 men's and 40 women's given names per culture from the region's naming tradition (Old Norse and
+  Icelandic sagas, Old English, Norman and Frankish, Old Irish, Old East and West Slavic, Lithuanian and Old Prussian,
+  Frisian, Saami, Persian and Arabic, Byzantine Greek, Old Turkic, Kipchak and Bulgar, Georgian and Armenian), plain
+  letters only. The three Norse keys share one list with a few extra names each.
+- Surnames, where the people used them: Norse son/dottir from a father's name (Snorrason, Leifsdottir), Gaelic mac and
+  ingen, Arabic ibn and bint, Slavic -ich and -na, Norman "de" and a seat in Normandy, Byzantine and Caucasian family
+  names (Doukas and Doukaina; Dadeshkeliani). Shown after the name in the hover text (`CultureSurnames`); the name in
+  lines stays the given name.
+- Village and home place names from the culture's parts (Sabzabad, Dunmore, Novgorod, Kyzyltepe).
+- The leader's title in the hover text: Jarl, Reeve, Seneschal, Chief, Starosta, Elder, Headman, Kadkhuda,
+  Protokometes, Beg, Mamasakhlisi. Fill-in `{leader}`.
+- Looks: a skin range on the game's slider (0.25 to 1 as before; Norse 0.25 to 0.7, Persian and Arab 0.5 to 1),
+  hair darkness and redness ranges, beard share, and words that make some hair and beard styles come up more (braid,
+  curl, long...; matched against the style names the game shows). `LooksOutlierChance` (0.1) gives anyone any tone.
+- Clothes: extra vanilla items mixed into the gear tier's pool, `Prefab@fromTier:weight`, women-only with `f:`, any
+  item by prefix with `*` (Hildir's tunics and dresses, `ArmorTunic*`, `ArmorDress*`; hats `HelmetHat*`; linen capes in
+  Plains cultures, wolf capes for the high country, lox capes on the steppe). An item the game lacks is skipped.
+- Feasts: the four seasonal feasts by the culture's own names. Norse keep the sowing feast, the midsummer fire, the
+  harvest feast and Yule; Gaelic Bealtaine, Lughnasa, Samhain, Imbolc; Slavic the spring feast, Kupala night, Dozhinki,
+  Koliada; Persian Nowruz, Tirgan, Mehregan, Yalda night; and so on (`vh cultures`). Used for `{festival}`,
+  `{nextfestival}` and the chronicle.
+- Design sets: optional `designs.house = ...` tiers tried before the biome's (none set yet: no installed design is
+  known to belong to one of these peoples). Blueprints may carry `villheim: culture=key`: they go only to villages of
+  that culture and weigh double there. Everything else falls back to the biome's set.
+- Lines: `Dialogue/cultures.txt`, 179 lines, tags `culture:<key>`, `people:<group>`, `villageculture:<key>`,
+  `foreign`. Greetings and goodbyes are now picked like other lines for village villagers, so culture greetings come up.
+
+Who gets which culture: the first settlers and children take the village's (children a parent's); a newcomer from
+outside is of another people with `CultureForeignChance` (0.15), weighted by the map; a migrant from a neighbour keeps
+his own (a fifth field in the migrant list); pedlars, pilgrims and hermits roll from the biome they walk in; caravan
+carriers take their home village's. A village that had villagers before this build takes the first culture listed
+for its biome (norse, norse-forest), so its people keep a Norse look.
+
+### Biome defenders
+
+`Villagers/Defenders.cs`. One mechanism, one profile per biome (Plains and Mistlands now), each with its own settings:
+the biomes that always count (`PlainsDefenderBiomes`), how near that biome's ground must be to the hearth to count
+(`PlainsDefenderReach` 400 m, sampled on three rings of 16 points), the creature prefabs it covers
+(`PlainsDefenderTargets` Deathsquito; Mistlands Seeker, SeekerBrute, SeekerBrood, Tick, Gjall), a damage multiplier
+(2 and 3), arrow spread (1.5 and 2 degrees) and reaction time (0.4 s). Shared: `DefenderRange` 35 m,
+`DefenderShotSeconds` 1.2, `DefenderLead` 1, `DefenderCarers` on, `DefenderBowAnimation` on.
+
+How the game fights, and what changes:
+
+- MonsterAI.UpdateTarget calls BaseAI.FindEnemy every 2 s near a player (6 s far): the closest enemy it senses.
+  For covered creatures, Brain now starts the fight at the first sighting, and a villager already fighting is turned
+  onto a covered creature in range (MonsterAI.SetTarget) every half second.
+- MonsterAI.SelectBestAttack has Humanoid.EquipBestWeapon pick a weapon once a second; DoAttack fires when the AI is
+  looking at the target. A monster never draws a player bow (m_attackDrawTime stays 0), so its arrows fly at the
+  bow's slowest and widest, and Attack aims them at the target's centre as it is, which misses a deathsquito.
+- So bows are run by Villheim: a prefix on `VillagerAI.UpdateAI` (works while the game's AI has the villager
+  alerted) takes over while a covered flying creature is within range and in sight. The villager stands, turns, and
+  after the reaction time looses an arrow every DefenderShotSeconds. The arrow is built as Attack.FireProjectileBurst
+  builds one at full draw: the arrow's projectile prefab, HitData from bow and arrow damage, IProjectile.Setup at the
+  bow's full speed, aimed where the target will be when it arrives (speed measured over the last half second, plus the
+  arrow's drop), turned by up to the spread. Bow and arrow by gear tier: crude bow and wood, flint arrows from tier 1,
+  fine wood bow and bronze arrows from tier 3. Arrows are not carried or used up and never drop.
+- A prefix on `Character.Damage` multiplies every blow or arrow a villager lands on a covered creature.
+- When no flyer is left the bow leaves the inventory (so the game's AI never takes it into a ground fight) and a
+  protector takes his weapon and shield again (`Roles.Rearm`).
+- Fights with every other creature are as before.
+
+### Commands
+
+- `vh cultures`: the map and every culture in short.
+- `vh culture [set <key>|reroll]`: the nearest village's culture, leader title, this season's feast and each loaded
+  villager's culture; change it.
+- `vh relook [culture]`: the nearest villager gets a new seed, name, face and clothes (his culture or the one named).
+  The seed also sets voice and small facts, so those change too.
+- `vh defenders`: the nearest village's profile, its creatures and numbers, how many would shoot, arrows loosed and
+  flyers downed this session.
+
+### Limits and risks
+
+- Existing villagers get the new look formula on the next load (the culture ranges draw differently from the seed), so
+  faces in old villages change once. Their stored names stay.
+- `Outposts.cs` (being changed in another branch) still names haulers with `Names.Villager(seed)`, which is Norse; it
+  should call `Names.Villager(seed, Cultures.Of(hearth))`.
+- Hair, beard and clothes words and Hildir item prefixes are guesses until checked in game; a word that matches no
+  style or an item the game lacks changes nothing.
+- The bow animation trigger (`bow_fire`) is sent without the player's draw state; if the model sticks in a pose, turn
+  off `DefenderBowAnimation`.
+- Deathsquitos and gjall count only if `BaseAI.IsEnemy` says villagers (Dverger faction) and they are enemies.
+- Village gear stays at bronze at most; the Mistlands damage multiplier is what keeps seekers in reach.
+- Mountain drakes and bats are not covered; add their prefab names to a profile to try it.
+
 ## Next, in order
 
 Effort is a rough guess: S an evening, M a session or two, L several sessions.

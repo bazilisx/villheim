@@ -25,8 +25,8 @@ namespace Villheim.Logic.Villagers
     ///   interval fit, and DoAttack starts it when IsLookingAt the target within the weapon's ai angle. Player bows
     ///   draw: a monster never draws (m_attackDrawTime stays 0), so a player bow fired by the AI flies at its slowest and
     ///   widest, and Attack aims a monster's arrow at the target's centre as it is now, which misses anything that
-    ///   moves as fast as a deathsquito. So the bow is not left to the game's AI.
-    /// - Instead, while a covered flying creature is in range, this class runs the villager (a prefix on
+    ///   moves as fast as a deathsquito.
+    /// - So this class runs the bow itself. While a covered flying creature is in range it runs the villager (a prefix on
     ///   VillagerAI.UpdateAI, which also works while the game's AI has him alerted): stand, face the shot, and after
     ///   the reaction time loose an arrow every DefenderShotSeconds. The arrow is made as Attack.FireProjectileBurst
     ///   makes one at full draw: the ammo's projectile, HitData from the bow and arrow damage, IProjectile.Setup with

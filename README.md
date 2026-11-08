@@ -45,6 +45,9 @@ You can get a built `Villheim.dll` from the **Actions** tab of this repository: 
 | `villheim_designs [meadows\|blackforest]` | no | Lists the designs a village of that biome can build. |
 | `villheim_locations [filter]` | no | Lists every location name in the game, including other mods' locations, so you can add them as designs. |
 | `villheim_dump <location>` | no | Writes everything inside a location to the BepInEx log, and whether Villheim keeps or leaves out each object. |
+| `vh village spawn [stage] [villagers] [buildings] [culture] [biome] [options]` | yes | Sets up a whole village in front of you at once, at a stage (camp, hamlet, village, town or 1 to 4), for testing. `vh village spawn help` lists the codes and options; `vh testvillage` is short for it. Example: `vh village spawn town 14 12 celtic`. |
+| `vh village stage <stage>` | yes | Takes the nearest village to that stage at once: the buildings, villagers and the rest the stage adds. |
+| `vh village clear [yes]` | yes | Removes the nearest test village and everything Villheim made for it (asks first; `yes` goes ahead). `vh tidy villages` clears any village in range. |
 
 You can also hover over or interact with a hearth or a villager to see the village summary.
 

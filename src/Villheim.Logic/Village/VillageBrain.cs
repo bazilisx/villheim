@@ -561,7 +561,12 @@ namespace Villheim.Logic.Village
             return count;
         }
 
-        private static void SpawnVillager(VillageHearth hearth, VillageState state, Plot birthplace = null)
+        /// <summary>
+        /// A new villager arrives (or is born at <paramref name="birthplace"/>). <paramref name="quiet"/> is for a village
+        /// set up at once (TestVillage): everyone is found by the hearth, nobody walks over to greet them, no chronicle
+        /// line each and no migrant is taken from a neighbour.
+        /// </summary>
+        internal static Villager SpawnVillager(VillageHearth hearth, VillageState state, Plot birthplace = null, bool quiet = false)
         {
             int arrival = state.Arrivals;
             var rng = new System.Random(unchecked(state.Seed * 31 + arrival * 6151));
@@ -575,7 +580,7 @@ namespace Villheim.Logic.Village
 
             float angle = (float)rng.NextDouble() * Mathf.PI * 2f;
             // The first settlers are found at the hearth; later ones walk in from the edge of the village.
-            float distance = arrival < VillheimConfig.StartingVillagers.Value
+            float distance = arrival < VillheimConfig.StartingVillagers.Value || quiet
                 ? 3f + (float)rng.NextDouble() * 3f
                 : Mathf.Min(VillheimConfig.VillageRadius.Value, 40f);
             Vector3 spawn = birthplace != null
@@ -595,7 +600,7 @@ namespace Villheim.Logic.Village
             string culture = Cultures.ForNewcomer(state, looksSeed, fromOutside);
             string name = Names.Villager(looksSeed, culture);
             // A villager who left a neighbour comes as himself (Villagers.Leaving).
-            string cameFrom = fromOutside
+            string cameFrom = fromOutside && !quiet
                 ? Villagers.Leaving.TakeMigrant(hearth, ref looksSeed, ref name, ref culture)
                 : null;
 
@@ -625,6 +630,18 @@ namespace Villheim.Logic.Village
 
             state.Arrivals = arrival + 1;
             VillheimPlugin.Debug($"{state.Name}: {name} arrived.");
+            if (quiet)
+            {
+                Villagers.Beds.Forget(state.Id);
+                Villagers.Beds.For(villager);
+                if (birthplace != null)
+                {
+                    Villagers.Elders.Inherit(villager, birthplace);
+                }
+
+                return villager;
+            }
+
             if (birthplace == null)
             {
                 Chronicle.Add(hearth, arrival < VillheimConfig.StartingVillagers.Value ? $"{name} settled by the hearth." :
@@ -652,6 +669,8 @@ namespace Villheim.Logic.Village
             {
                 Villagers.Dialogue.Note(state.Id, "arrival");
             }
+
+            return villager;
         }
 
         /// <summary>Makes the next building start on the following tick. Used by the console command.</summary>

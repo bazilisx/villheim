@@ -191,6 +191,11 @@ namespace Villheim.Logic
         public static ConfigEntry<float> MistlandsDefenderSpread;
         public static ConfigEntry<float> MistlandsDefenderReaction;
 
+        // Section "9 - Test villages" ('vh village spawn', see Village/TestVillage).
+        public static ConfigEntry<string> TestVillageBuildings;
+        public static ConfigEntry<string> TestVillageVillagers;
+        public static ConfigEntry<int> TestVillagePiecesPerFrame;
+
         public static void Bind()
         {
             ConfigFile config = VillheimPlugin.Instance?.Config;
@@ -380,6 +385,7 @@ namespace Villheim.Logic
             BindLiving(config);
             BindKnowledge(config);
             BindCultures(config);
+            BindTestVillages(config);
 
             const string sites = "1b - Village sites";
             VillageChance = Admin(config, sites, "VillageChance", 50,
@@ -775,6 +781,18 @@ namespace Villheim.Logic
                     GhostApplyNow.Value = false;
                 }
             });
+        }
+
+        /// <summary>Section "9 - Test villages": what 'vh village spawn' makes when no numbers are given.</summary>
+        private static void BindTestVillages(ConfigFile config)
+        {
+            const string test = "9 - Test villages";
+            TestVillageBuildings = Admin(config, test, "TestVillageBuildings", "1, 3, 6, 10",
+                "Buildings a test village gets at each stage when no number is given: camp, hamlet, village, town.");
+            TestVillageVillagers = Admin(config, test, "TestVillageVillagers", "2, 4, 7, 12",
+                "Villagers a test village gets at each stage when no number is given: camp, hamlet, village, town.");
+            TestVillagePiecesPerFrame = Admin(config, test, "TestVillagePiecesPerFrame", 60,
+                "Building pieces a test village puts up each frame. Lower it if the game stalls while one is set up.");
         }
 
         private static ConfigEntry<T> Admin<T>(ConfigFile config, string section, string key, T value, string description)

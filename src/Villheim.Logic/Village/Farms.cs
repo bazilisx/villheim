@@ -182,21 +182,9 @@ namespace Villheim.Logic.Village
                 }
 
                 string kind = herd.Count == 0 ? "Boar" : "Boar_piggy";
-                GameObject prefab = ZNetScene.instance.GetPrefab(kind) ?? ZNetScene.instance.GetPrefab("Boar");
-                List<Vector3> spots = Spots(hearth, farm, 4);
-                if (prefab == null || spots.Count == 0)
+                if (!AddAnimal(hearth, farm, kind))
                 {
                     continue;
-                }
-
-                Vector3 spot = spots[Random.Range(0, spots.Count)] + Vector3.up * 0.5f;
-                GameObject made = Object.Instantiate(prefab, spot, Quaternion.Euler(0f, Random.Range(0f, 360f), 0f));
-                made.GetComponent<ZNetView>()?.GetZDO()?.Set(Keys.BuiltBy, hearth.VillageId);
-                made.GetComponent<Tameable>()?.Tame();
-                Procreation breeding = made.GetComponent<Procreation>();
-                if (breeding != null)
-                {
-                    breeding.enabled = false;
                 }
 
                 hearth.Zdo.Set(KeyAnimalDay, day);
@@ -204,6 +192,32 @@ namespace Villheim.Logic.Village
                 VillheimPlugin.Debug($"{state.Name}: a {kind} came to the farm ({herd.Count + 1}/{WantedAnimals(tier)}).");
                 return;
             }
+        }
+
+        /// <summary>
+        /// Puts one animal of the village (tamed, marked as its own, never breeding) on a planting spot of the farm.
+        /// False when there is no such animal or no spot.
+        /// </summary>
+        public static bool AddAnimal(VillageHearth hearth, Plot farm, string kind)
+        {
+            GameObject prefab = ZNetScene.instance.GetPrefab(kind) ?? ZNetScene.instance.GetPrefab("Boar");
+            List<Vector3> spots = Spots(hearth, farm, 4);
+            if (prefab == null || spots.Count == 0)
+            {
+                return false;
+            }
+
+            Vector3 spot = spots[Random.Range(0, spots.Count)] + Vector3.up * 0.5f;
+            GameObject made = Object.Instantiate(prefab, spot, Quaternion.Euler(0f, Random.Range(0f, 360f), 0f));
+            made.GetComponent<ZNetView>()?.GetZDO()?.Set(Keys.BuiltBy, hearth.VillageId);
+            made.GetComponent<Tameable>()?.Tame();
+            Procreation breeding = made.GetComponent<Procreation>();
+            if (breeding != null)
+            {
+                breeding.enabled = false;
+            }
+
+            return true;
         }
 
         /// <summary>The village's animals near a farm: only those it spawned, and piglets of its own that grew up.</summary>

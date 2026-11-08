@@ -56,6 +56,7 @@ namespace Villheim.Logic
         public static ConfigEntry<bool> WorldLife;
         public static ConfigEntry<bool> SmithMakesGear;
         public static ConfigEntry<bool> Outposts;
+        public static ConfigEntry<bool> Trails;
         public static ConfigEntry<float> VisitorChancePerDay;
         public static ConfigEntry<float> DaysBetweenVisitors;
         public static ConfigEntry<int> HermitChance;
@@ -112,6 +113,9 @@ namespace Villheim.Logic
                 "With WorldLife on, a village of four buildings and four villagers founds a logging camp in the nearest " +
                 "other biome (Black Forest core wood for a Meadows village, Meadows fine wood for a Black Forest one) " +
                 "that sends wood home every day.");
+            Trails = Admin(config, life, "Trails", true,
+                "With WorldLife on, villages plan a dirt trail to their outpost and to their nearest neighbour within " +
+                "2,500 m, painted on the ground near you as you walk it.");
             VisitorChancePerDay = Admin(config, life, "VisitorChancePerDay", 0.5f,
                 "Chance that a pedlar or pilgrim comes to a village on a day you spend there (0 to 1).");
             DaysBetweenVisitors = Admin(config, life, "DaysBetweenVisitors", 1f,

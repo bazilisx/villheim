@@ -91,6 +91,7 @@ namespace Villheim.Logic.Village
                 }
             }
 
+            Trails.Paint(player.transform.position);
             if (ZNet.instance.IsServer())
             {
                 MaybeMakeCamps(player.transform.position);

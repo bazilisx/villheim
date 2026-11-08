@@ -52,6 +52,7 @@ namespace Villheim.Logic
             "sort [tools|undo|push|url <address>]: sort the kept designs in the game with the sort knives (A: type, B: subtype); choices go to BepInEx/Villheim/design-sort.csv and the review sheet",
             "note <text>: write a note with what you are aiming at and the nearest gallery sign to BepInEx/Villheim/notes.txt",
             "bp save <number|name> | bp save page [all]: save a design as it stands in the gallery now (pieces left, stand-ins, anything built on its plot) as blueprints/inspiration/pass3/p3-<number>-<name>; 'page' saves every changed design standing near you; the gallery shows the saves from then on",
+            "trails: plan the nearest village's trails again (to its outpost and its nearest neighbour)",
             "outpost: make the nearest village found its logging camp now (its old one is forgotten)",
             "pedlar: send a travelling pedlar walking in to the nearest village (works with WorldLife off)",
             "pilgrim: send a pilgrim walking in to the nearest village, to stay the night by the hearth",
@@ -195,6 +196,7 @@ namespace Villheim.Logic
                 case "villheim_snow": Say(context, Village.Snow.Run(args)); return true;
                 case "villheim_weather": Say(context, Village.LocalWeather.Run(args)); return true;
                 case "villheim_repair": Say(context, Village.RepairAll.Run()); return true;
+                case "villheim_trails": Say(context, Trails.Command()); return true;
                 case "villheim_outpost": Say(context, Outposts.Command()); return true;
                 case "villheim_pedlar": Say(context, WorldLife.Command(Villagers.Wanderers.Pedlar)); return true;
                 case "villheim_pilgrim": Say(context, WorldLife.Command(Villagers.Wanderers.Pilgrim)); return true;
@@ -261,7 +263,7 @@ namespace Villheim.Logic
             Say(context, $"   project: {Growth.PendingLabel(hearth, state)}; request today: {Villagers.Social.RequestText(hearth) ?? "none"}");
             Say(context, $"   neighbours: {Relations.Describe(hearth)}");
             Say(context, $"   {Villagers.Smithing.Report(hearth)}");
-            Say(context, $"   outpost: {Outposts.Describe(hearth)}");
+            Say(context, $"   outpost: {Outposts.Describe(hearth)}; {Trails.Describe(hearth)}");
             foreach (Villagers.Social.Known known in Villagers.Social.KnownPlayers(hearth))
             {
                 Say(context, $"   knows {known.Name}: reputation {known.Reputation}, first seen day {known.FirstDay}, last day {known.LastDay}");

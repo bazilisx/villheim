@@ -55,6 +55,7 @@ namespace Villheim.Logic.Village
             Villagers.Social.VillageTick(hearth);
             Relations.Daily(hearth);
             Outposts.Tick(hearth, state);
+            Trails.Tick(hearth, state);
             Raids.Tick(hearth);
             NoticeBoard.Update(hearth);
             CheckDoorsDaily(hearth);

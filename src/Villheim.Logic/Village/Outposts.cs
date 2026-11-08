@@ -235,6 +235,8 @@ namespace Villheim.Logic.Village
             }
         }
 
+        public static Vector3? Position(VillageHearth hearth) => Read(hearth.Zdo)?.Position;
+
         public static string Describe(VillageHearth hearth)
         {
             Outpost outpost = Read(hearth.Zdo);

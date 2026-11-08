@@ -894,6 +894,64 @@ namespace Villheim.Logic.Village
         }
 
         /// <summary>
+        /// Sets a new site's height before any piece goes up (T-28, T-30: buildings too high or too low, the village in
+        /// steps). The ground floor goes at the middle height of the ground under the whole footprint, not the ground at
+        /// its centre; and when that is within VillageLevelSnap of the hearth's level, at the hearth's level, so the
+        /// village's middle is one even floor. PrepareGround then levels the pad there and blends it into the land.
+        /// Rebuilds keep the height they have.
+        /// </summary>
+        public static void SettleHeight(VillageHearth hearth)
+        {
+            Site site = Get(hearth.Zdo);
+            CachedPlan plan = site != null ? GetPlan(hearth, site) : null;
+            if (plan == null || site.Upgrade || hearth.Zdo.GetInt(KeySiteIndex) > 0)
+            {
+                return;
+            }
+
+            float footprint = plan.Footprint;
+            var heights = new List<float>();
+            for (int ring = 0; ring <= 2; ring++)
+            {
+                float r = footprint * ring / 2f;
+                int count = ring == 0 ? 1 : 10;
+                for (int i = 0; i < count; i++)
+                {
+                    float angle = i * Mathf.PI * 2f / count;
+                    Vector3 p = site.Position + new Vector3(Mathf.Sin(angle), 0f, Mathf.Cos(angle)) * r;
+                    if (ZoneSystem.instance.GetGroundHeight(p, out float h) && h > ZoneSystem.instance.m_waterLevel)
+                    {
+                        heights.Add(h);
+                    }
+                }
+            }
+
+            if (heights.Count == 0)
+            {
+                return;
+            }
+
+            heights.Sort();
+            float target = heights[heights.Count / 2];
+            float snap = LogicConfig.VillageLevelSnap != null ? LogicConfig.VillageLevelSnap.Value : 2f;
+            float hearthY = hearth.transform.position.y;
+            if (snap > 0f && Mathf.Abs(target - hearthY) <= snap)
+            {
+                target = hearthY;
+            }
+
+            float shift = target - (site.Position.y + plan.Floor);
+            if (Mathf.Abs(shift) < 0.05f)
+            {
+                return;
+            }
+
+            site.Position.y += shift;
+            Begin(hearth.Zdo, site);
+            VillheimPlugin.Debug($"Site for {site.Design} set {shift:+0.00;-0.00} m to a floor at {target:0.00} (hearth {hearthY:0.00}).");
+        }
+
+        /// <summary>
         /// The building's ground, like the hearth's: cleared, perfectly flat at the ground floor's height out past the
         /// walls (so every door opens onto level ground), a smooth slope beyond, grass cleared, bare earth inside.
         /// </summary>

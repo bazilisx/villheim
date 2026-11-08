@@ -19,6 +19,7 @@ namespace Villheim.Logic
         public static ConfigEntry<float> FenceLightSink;
         public static ConfigEntry<float> FenceWallSink;
         public static ConfigEntry<bool> AnimalPens;
+        public static ConfigEntry<float> VillageLevelSnap;
         public static ConfigEntry<string> MapTablePrefab;
         public static ConfigEntry<string> MapTableProp;
         public static ConfigEntry<string> DecorProps;
@@ -309,6 +310,10 @@ namespace Villheim.Logic
             DecorProps = Admin(config, work, "DecorProps", "Hildir_camp:tent",
                 "Models from locations a village puts up as decor on the outer ring by the hearth (D-047), as location:child " +
                 "separated by commas: Hildir's tents that flutter in the wind by default. 'vh props <location>' lists names.");
+            VillageLevelSnap = Admin(config, work, "VillageLevelSnap", 2f,
+                "A new building whose ground lies within this many metres of the hearth's is set at the hearth's level, so " +
+                "the middle of the village is one even floor instead of steps (T-28). Further off, it sits at the middle " +
+                "height of the ground under it. 0: always the ground under it.");
             AnimalPens = Admin(config, work, "AnimalPens", true,
                 "Farm animals are kept in a pen of wood fence with a gate, built by the farm before the first animal comes.");
             StartingStock = Admin(config, work, "StartingStock", 0,

@@ -233,17 +233,24 @@ namespace Villheim.Logic.Villagers
         /// Lays every path in the village's queue at once, the same way a villager would lay it, and empties the queue.
         /// For a village set up at once (TestVillage). Returns how many metres were laid.
         /// </summary>
-        public static int LayAllNow(VillageHearth hearth)
+        public static int LayAllNow(VillageHearth hearth, int most = int.MaxValue)
         {
             var village = new VillageState(hearth.Zdo);
             int laid = 0;
-            for (int guard = 0; guard < 200 && Head(hearth, out Vector3 building, out float radius); guard++)
+            for (int guard = 0; guard < 200 && laid < most && Head(hearth, out Vector3 building, out float radius); guard++)
             {
                 List<Vector3> points = HeadRoute(hearth) ?? Points(hearth.transform.position, village.Axis, building, radius);
-                for (int i = Mathf.Max(0, hearth.Zdo.GetInt(KeyIndex)); i < points.Count; i++)
+                int i = Mathf.Max(0, hearth.Zdo.GetInt(KeyIndex));
+                for (; i < points.Count && laid < most; i++)
                 {
                     LayPoint(hearth, points[i]);
                     laid++;
+                }
+
+                if (i < points.Count)
+                {
+                    hearth.Zdo.Set(KeyIndex, i);
+                    break;
                 }
 
                 Pop(hearth);

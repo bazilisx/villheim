@@ -497,6 +497,7 @@ namespace Villheim.Logic.Village
                 {
                     Design = design.Name, Position = position, Yaw = yaw, Radius = radius, Role = role, Seed = seed,
                 });
+                ConstructionSite.SettleHeight(hearth);
 
                 // Ground first, like the hearth's: flat at the ground floor's height out past the walls, grass cleared,
                 // bare earth, before the first piece goes up.

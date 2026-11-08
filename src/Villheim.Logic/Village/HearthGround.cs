@@ -269,6 +269,77 @@ namespace Villheim.Logic.Village
             return best;
         }
 
+        /// <summary>
+        /// The spot within 80 m of <paramref name="near"/> where the ground over a whole village (a circle of
+        /// <paramref name="radius"/>) is most even, on dry land and clear of buildings, so the village can be levelled
+        /// without steps (T-28). Even ground first, then nearness. Falls back to FlatSpotNear when nothing is dry.
+        /// </summary>
+        public static Vector3 FlatVillageSpot(Vector3 near, float radius)
+        {
+            Vector3 best = near;
+            float bestScore = float.MaxValue;
+            var pieces = new System.Collections.Generic.List<Piece>();
+            var heights = new System.Collections.Generic.List<float>();
+            for (float ring = 0f; ring <= 80f; ring += 10f)
+            {
+                int steps = ring < 1f ? 1 : Mathf.Max(8, Mathf.RoundToInt(ring * 0.6f));
+                for (int i = 0; i < steps; i++)
+                {
+                    float angle = i * Mathf.PI * 2f / steps;
+                    Vector3 spot = near + new Vector3(Mathf.Sin(angle), 0f, Mathf.Cos(angle)) * ring;
+                    if (!ZoneSystem.instance.IsZoneLoaded(spot))
+                    {
+                        continue;
+                    }
+
+                    pieces.Clear();
+                    Piece.GetAllPiecesInRadius(spot, radius, pieces);
+                    if (pieces.Count > 0)
+                    {
+                        continue;
+                    }
+
+                    heights.Clear();
+                    bool dry = true;
+                    for (int r = 0; r <= 3 && dry; r++)
+                    {
+                        float at = radius * r / 3f;
+                        int count = r == 0 ? 1 : 12;
+                        for (int k = 0; k < count; k++)
+                        {
+                            float a = k * Mathf.PI * 2f / count;
+                            Vector3 sample = spot + new Vector3(Mathf.Sin(a), 0f, Mathf.Cos(a)) * at;
+                            if (!ZoneSystem.instance.GetGroundHeight(sample, out float h) || h < ZoneSystem.instance.m_waterLevel + 0.8f)
+                            {
+                                dry = false;
+                                break;
+                            }
+
+                            heights.Add(h);
+                        }
+                    }
+
+                    if (!dry || heights.Count == 0)
+                    {
+                        continue;
+                    }
+
+                    heights.Sort();
+                    // The spread of the middle nine tenths: one boulder or ditch doesn't spoil a site.
+                    float spread = heights[heights.Count * 19 / 20] - heights[heights.Count / 20];
+                    float score = spread + ring * 0.03f;
+                    if (score < bestScore)
+                    {
+                        bestScore = score;
+                        best = new Vector3(spot.x, heights[0], spot.z);
+                        ZoneSystem.instance.GetGroundHeight(spot, out best.y);
+                    }
+                }
+            }
+
+            return bestScore < float.MaxValue ? best : FlatSpotNear(near);
+        }
+
         private static bool Flatness(Vector3 center, out float spread, out float centerY)
         {
             spread = float.MaxValue;

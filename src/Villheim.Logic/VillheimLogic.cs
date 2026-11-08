@@ -27,14 +27,49 @@ namespace Villheim.Logic
 
         public void OnLoad()
         {
-            _harmony = new Harmony("bazilisx.villheim.logic");
-            _harmony.PatchAll(typeof(VillheimLogic).Assembly);
+            // Settings first: if a patch fails, the rest of the logic still has its config.
             LogicConfig.Bind();
             ConfigWatcher.Start();
+            _harmony = new Harmony("bazilisx.villheim.logic");
+            PatchEach(_harmony);
+        }
+
+        /// <summary>
+        /// Patches one class at a time, so a game method that has changed or gone only loses its own patch. PatchAll
+        /// stops at the first failure and the logic loads with only half its patches.
+        /// </summary>
+        private static void PatchEach(Harmony harmony)
+        {
+            int done = 0, failed = 0;
+            foreach (System.Type type in AccessTools.GetTypesFromAssembly(typeof(VillheimLogic).Assembly))
+            {
+                if (!type.IsDefined(typeof(HarmonyAttribute), false))
+                {
+                    continue;
+                }
+
+                try
+                {
+                    harmony.CreateClassProcessor(type).Patch();
+                    done++;
+                }
+                catch (System.Exception ex)
+                {
+                    failed++;
+                    VillheimPlugin.Log.LogWarning($"Patch {type.FullName} failed and is left off: {ex.GetBaseException().Message}");
+                }
+            }
+
+            if (failed > 0)
+            {
+                VillheimPlugin.Log.LogWarning($"Logic patches: {done} on, {failed} failed (see above).");
+            }
         }
 
         public void OnUnload()
         {
+            ConfigWatcher.Stop();
+            LogicConfig.Unbind();
             _harmony?.UnpatchSelf();
             _harmony = null;
         }

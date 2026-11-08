@@ -295,27 +295,50 @@ namespace Villheim.Logic
             WatchLooks();
         }
 
+        // The config entries outlive a logic build (the config file hands back the same entry on every Bind), so the
+        // handlers this build adds are taken off again when it unloads. Otherwise every reload adds another set.
+        private static readonly System.Collections.Generic.List<System.Action> Unhook = new System.Collections.Generic.List<System.Action>();
+
+        private static void Hook<T>(ConfigEntry<T> entry, System.EventHandler handler)
+        {
+            entry.SettingChanged += handler;
+            Unhook.Add(() => entry.SettingChanged -= handler);
+        }
+
+        /// <summary>Takes this build's handlers off the config entries (logic unload).</summary>
+        public static void Unbind()
+        {
+            foreach (System.Action unhook in Unhook)
+            {
+                unhook();
+            }
+
+            Unhook.Clear();
+        }
+
         /// <summary>Every look setting puts itself on the ghosts the moment it changes.</summary>
         private static void WatchLooks()
         {
+            Unbind();
+            System.EventHandler apply = (_, __) => Villagers.GhostLook.ApplyNow();
             foreach (ConfigEntryBase entry in new ConfigEntryBase[]
                      {
                          GhostLook, GhostAlpha, GhostTint, GhostGlow, GhostAlphaDay, GhostTintDay, GhostGlowDay, GhostColor, GhostGlowColor,
                      })
             {
-                if (entry is ConfigEntry<float> f) f.SettingChanged += (_, __) => Villagers.GhostLook.ApplyNow();
-                else if (entry is ConfigEntry<bool> b) b.SettingChanged += (_, __) => Villagers.GhostLook.ApplyNow();
-                else if (entry is ConfigEntry<UnityEngine.Color> c) c.SettingChanged += (_, __) => Villagers.GhostLook.ApplyNow();
+                if (entry is ConfigEntry<float> f) Hook(f, apply);
+                else if (entry is ConfigEntry<bool> b) Hook(b, apply);
+                else if (entry is ConfigEntry<UnityEngine.Color> c) Hook(c, apply);
             }
 
-            GhostApplyNow.SettingChanged += (_, __) =>
+            Hook(GhostApplyNow, (_, __) =>
             {
                 if (GhostApplyNow.Value)
                 {
                     Villagers.GhostLook.ApplyNow();
                     GhostApplyNow.Value = false;
                 }
-            };
+            });
         }
 
         private static ConfigEntry<T> Admin<T>(ConfigFile config, string section, string key, T value, string description)

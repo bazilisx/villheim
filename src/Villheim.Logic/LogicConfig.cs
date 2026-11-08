@@ -13,6 +13,8 @@ namespace Villheim.Logic
         public static ConfigEntry<bool> SiteChest;
         public static ConfigEntry<float> SecondsPerPiece;
         public static ConfigEntry<float> BuildStartShare;
+        public static ConfigEntry<int> BuildHelpers;
+        public static ConfigEntry<string> YggdrasilYield;
         public static ConfigEntry<float> ClearingRadius;
         public static ConfigEntry<bool> IdlePickup;
         public static ConfigEntry<string> HamletFence;
@@ -308,6 +310,12 @@ namespace Villheim.Logic
                 "windows, inside): once the chest holds this share of what that part costs in its main material (0.5: " +
                 "half, D-048). He then puts up pieces, each one supported, while the materials last, so a building may " +
                 "stand half done while he fetches more. 0: as soon as the next piece is paid for.");
+            BuildHelpers = Admin(config, work, "BuildHelpers", 3,
+                "While the chest holds what the next part of a building needs, up to this many villagers with nothing in " +
+                "hand help the builder put it up, instead of going out for more (T-54). 0: the builder alone.");
+            YggdrasilYield = Admin(config, work, "YggdrasilYield", "Wood:2, FineWood:1",
+                "In the Mistlands villagers fell the young Yggdrasil trees and break the Mistlands rock nearby, whatever " +
+                "their tools. Each piece of Yggdrasil wood they bring in counts as this much ordinary wood (T-55).");
             ClearingRadius = Admin(config, work, "ClearingRadius", 20f,
                 "Villagers keep the ground this many meters around the hearth clear: they fell trees, take out stumps, " +
                 "break rocks and pick up sticks and stones there, and the materials go to the chest. 0: only the paths " +

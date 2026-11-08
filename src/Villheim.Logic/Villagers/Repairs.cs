@@ -139,6 +139,40 @@ namespace Villheim.Logic.Villagers
             return false;
         }
 
+        private static readonly Dictionary<string, (int Count, double Since)> Repaired = new Dictionary<string, (int, double)>();
+
+        private static string RepairKey(VillageHearth hearth, Vector3 at, string prefab) =>
+            $"{hearth.VillageId}:{prefab}:{Mathf.RoundToInt(at.x * 2f)}:{Mathf.RoundToInt(at.y * 2f)}:{Mathf.RoundToInt(at.z * 2f)}";
+
+        /// <summary>
+        /// A piece mended or put back: counted, so one that breaks again straight after (a sign with nothing to hang on,
+        /// T-43) is noticed. Three times in a game day and it is left alone until the next.
+        /// </summary>
+        private static void NoteRepair(VillageHearth hearth, Vector3 at, string prefab)
+        {
+            string key = RepairKey(hearth, at, prefab);
+            double now = ZNet.instance != null ? ZNet.instance.GetTimeSeconds() : Time.time;
+            Repaired[key] = Repaired.TryGetValue(key, out var seen) && now - seen.Since < VillageBrain.DayLength()
+                ? (seen.Count + 1, seen.Since)
+                : (1, now);
+            if (Repaired[key].Count == 3)
+            {
+                VillheimPlugin.Log.LogWarning($"{hearth.VillageName}: the {prefab} at {at} broke again after three repairs today; " +
+                                              "it is left alone until tomorrow.");
+            }
+        }
+
+        private static bool GivenUp(VillageHearth hearth, Vector3 at, string prefab)
+        {
+            if (!Repaired.TryGetValue(RepairKey(hearth, at, prefab), out var seen))
+            {
+                return false;
+            }
+
+            double now = ZNet.instance != null ? ZNet.instance.GetTimeSeconds() : Time.time;
+            return seen.Count >= 3 && now - seen.Since < VillageBrain.DayLength();
+        }
+
         private static void Finish(Villager villager, VillageHearth hearth, Job job)
         {
             if (job.Fence != null)
@@ -151,6 +185,7 @@ namespace Villheim.Logic.Villagers
             {
                 if (job.Damaged.Repair())
                 {
+                    NoteRepair(hearth, job.Damaged.transform.position, Utils.GetPrefabName(job.Damaged.gameObject));
                     VillheimPlugin.Debug($"{villager.VillagerName} repaired a {Utils.GetPrefabName(job.Damaged.gameObject)}.");
                 }
 
@@ -178,6 +213,7 @@ namespace Villheim.Logic.Villagers
             }
 
             DesignSpawner.SpawnEntry(job.Missing, job.Plot.Position, turn, state.Id, true);
+            NoteRepair(hearth, job.Position, job.Missing.Prefab);
             Forget(hearth, job);
             VillheimPlugin.Debug($"{villager.VillagerName} put back a {job.Missing.Prefab} in the {job.Plot.Design}.");
         }
@@ -204,7 +240,8 @@ namespace Villheim.Logic.Villagers
             Container chest = VillageChest.Find(hearth);
             foreach (Job missing in scan.Missing.OrderBy(j => j.Position.y))
             {
-                if (!Present(missing.Missing.Prefab, missing.Position) && Affordable(chest, missing.Cost))
+                if (!Present(missing.Missing.Prefab, missing.Position) && Affordable(chest, missing.Cost) &&
+                    !GivenUp(hearth, missing.Position, missing.Missing.Prefab))
                 {
                     return missing;
                 }
@@ -230,7 +267,7 @@ namespace Villheim.Logic.Villagers
                 }
 
                 float health = wear.GetHealthPercentage();
-                if (health < worstHealth)
+                if (health < worstHealth && !GivenUp(hearth, wear.transform.position, Utils.GetPrefabName(wear.gameObject)))
                 {
                     worst = wear;
                     worstHealth = health;

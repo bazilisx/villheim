@@ -110,7 +110,9 @@ namespace Villheim.Logic.Village
                         continue;
                     }
 
-                    int goal = material == Materials.Wood || material == Materials.Stone ? target : target / 3;
+                    // Wood and stone toward the next building; fine and core wood only when the next building waits for
+                    // them (T-54: the village gathers for what it builds, building by building).
+                    int goal = material == Materials.Wood || material == Materials.Stone ? target : NextStep.StartNeedOf(state.Id, material);
                     if (material == Materials.Wood)
                     {
                         // Autumn: wood put by for the winter (Calendar).

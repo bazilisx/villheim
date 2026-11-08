@@ -149,8 +149,36 @@ namespace Villheim.Logic.Village
                 }
             }
 
-            return missing;
+            // Strictly ground up (T-37: bottom pieces had gone up last, and what rested on them fell): by the height of
+            // each piece's bottom, frame before what hangs on it (signs), in the blueprint's order within that.
+            return missing.Select((e, i) => (Entry: e, Index: i))
+                .OrderBy(x => Mathf.Round(Bottom(x.Entry) * 4f))
+                .ThenBy(x => x.Entry.Shell ? 0 : 1)
+                .ThenBy(x => x.Index)
+                .Select(x => x.Entry).ToList();
         }
+
+        private static int _planCount;
+
+        /// <summary>How many pieces the whole board has (the chest left out when the village chest stands in for it).</summary>
+        private static int PlanCount(VillageHearth hearth)
+        {
+            if (_planCount == 0)
+            {
+                Blueprints.Blueprint blueprint = Blueprint();
+                if (blueprint != null)
+                {
+                    int front = blueprint.Pieces.Count(p => !IsChest(p.Prefab));
+                    _planCount = front + blueprint.Pieces.Count(p => IsSign(p.Prefab));
+                }
+            }
+
+            return _planCount;
+        }
+
+        /// <summary>The height of a piece's bottom in the blueprint (from its measured box; a quarter metre under a sign's middle).</summary>
+        private static float Bottom(DesignSpawner.PlanEntry entry) =>
+            entry.Bounds.HasValue ? entry.Bounds.Value.min.y : entry.LocalPosition.y - 0.25f;
 
         /// <summary>
         /// The signs for the back of the board: each front sign mirrored through the line of the frame (the two frame
@@ -316,6 +344,7 @@ namespace Villheim.Logic.Village
                 Cost = PieceCost(missing[0]),
                 Total = total,
                 Pieces = missing.Count,
+                Started = missing.Count < PlanCount(hearth),
                 Essential = true,
             };
         }

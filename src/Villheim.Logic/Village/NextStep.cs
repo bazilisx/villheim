@@ -38,6 +38,10 @@ namespace Villheim.Logic.Village
 
         public static void ClearStart(int villageId) => StartNeeds.Remove(villageId);
 
+        /// <summary>What the next building waits for of this material before it can break ground (0 when nothing is noted).</summary>
+        public static int StartNeedOf(int villageId, string material) =>
+            StartNeeds.TryGetValue(villageId, out Step step) && step.Needs.TryGetValue(material, out int need) ? need : 0;
+
         public static Step For(VillageHearth hearth, VillageState state)
         {
             var step = new Step();

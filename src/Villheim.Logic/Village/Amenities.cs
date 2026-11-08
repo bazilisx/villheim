@@ -51,6 +51,9 @@ namespace Villheim.Logic.Village
 
             /// <summary>Pieces still to go up (1 for a single piece).</summary>
             public int Pieces = 1;
+
+            /// <summary>Something of several pieces with some of them already standing: finished before anything new.</summary>
+            public bool Started;
         }
 
         private sealed class Entry
@@ -181,7 +184,8 @@ namespace Villheim.Logic.Village
                 PendingSince[key] = since = Time.time;
             }
 
-            if (Time.time - since > (float)VillageBrain.DayLength())
+            // Something half made (the notice board) is finished first, however long it takes (T-37).
+            if (Time.time - since > (float)VillageBrain.DayLength() && !next.Started)
             {
                 if (since > 0f)
                 {
@@ -203,13 +207,74 @@ namespace Villheim.Logic.Village
             var state = new VillageState(hearth.Zdo);
             int tier = VillageBrain.TierIndex(state.Plots.Count);
 
-            // Essentials first (the cooking station, then the beds), then the hub area (sign, notice board, benches)
-            // and the furnishings of the other buildings.
-            // The notice board over the chest comes right after the cooking station, and is mended first when damaged.
-            // The map table comes last: its recipe has fine wood, which not every biome gives.
-            return Outside(hearth, state, true, onlyHearth: true) ?? NoticeBoard.Job(hearth) ?? Inside(state, tier, true) ??
-                   StorageChests.Job(hearth, state) ?? Outside(hearth, state, false, onlyHearth: false) ?? Inside(state, tier, false) ??
-                   Demisters.Job(hearth, state) ?? MapTables.Job(hearth, state);
+            // Needs first, like a player settling in (T-54): the cooking station over the fire, the beds in the homes (T-39:
+            // a board stuck ahead of them had kept every bed from being made), the notice board, a storage chest when the
+            // main one is full (T-42), then the rest. The map table comes last: its recipe has fine wood, which not every
+            // biome gives. A job that keeps falling down (IsStuck) is passed over for a day, so it can't hold up the rest.
+            var steps = new System.Func<Job>[]
+            {
+                () => Outside(hearth, state, true, onlyHearth: true),
+                () => Inside(state, tier, true),
+                () => NoticeBoard.Job(hearth),
+                () => StorageChests.Urgent(hearth) ? StorageChests.Job(hearth, state) : null,
+                () => StorageChests.Job(hearth, state),
+                () => Outside(hearth, state, false, onlyHearth: false),
+                () => Inside(state, tier, false),
+                () => Demisters.Job(hearth, state),
+                () => MapTables.Job(hearth, state),
+            };
+
+            for (int i = 0; i < steps.Length; i++)
+            {
+                Job job = steps[i]();
+                if (job == null || IsStuck(hearth, job))
+                {
+                    continue;
+                }
+
+                if (i == 3)
+                {
+                    job.Essential = true; // the full chest can't wait for the building going up
+                }
+
+                return job;
+            }
+
+            return null;
+        }
+
+        // ---------------------------------------------------------------- pieces that keep falling
+
+        private static readonly Dictionary<string, (int Count, double Since)> Remakes = new Dictionary<string, (int, double)>();
+
+        private static string RemakeKey(VillageHearth hearth, Job job) =>
+            $"{hearth.VillageId}:{job.Prefab}:{Mathf.RoundToInt(job.Spot.x * 2f)}:{Mathf.RoundToInt(job.Spot.y * 2f)}:{Mathf.RoundToInt(job.Spot.z * 2f)}";
+
+        /// <summary>A piece was made: counted, so one that falls and is made again and again is noticed (T-43).</summary>
+        private static void NoteMade(VillageHearth hearth, Job job)
+        {
+            string key = RemakeKey(hearth, job);
+            double now = ZNet.instance != null ? ZNet.instance.GetTimeSeconds() : Time.time;
+            Remakes[key] = Remakes.TryGetValue(key, out var seen) && now - seen.Since < VillageBrain.DayLength()
+                ? (seen.Count + 1, seen.Since)
+                : (1, now);
+            if (Remakes[key].Count == 3)
+            {
+                VillheimPlugin.Log.LogWarning($"{hearth.VillageName}: the {job.Name} at {job.Spot} fell and was made again three times " +
+                                              "today; it is left alone until tomorrow.");
+            }
+        }
+
+        /// <summary>Made three times in a game day and gone again: left alone until the day is out.</summary>
+        public static bool IsStuck(VillageHearth hearth, Job job)
+        {
+            if (!Remakes.TryGetValue(RemakeKey(hearth, job), out var seen))
+            {
+                return false;
+            }
+
+            double now = ZNet.instance != null ? ZNet.instance.GetTimeSeconds() : Time.time;
+            return seen.Count >= 3 && now - seen.Since < VillageBrain.DayLength();
         }
 
         /// <summary>
@@ -247,14 +312,9 @@ namespace Villheim.Logic.Village
                 }
 
                 Vector3 spot = hearth.transform.position;
-                if (entry.Slot >= 0 && !SlotSpot(hearth, state, entry.Slot, entry.Radius, out spot))
+                if (entry.Slot < 0 ? Made(hearth.VillageId, entry.Prefab, spot) : !SlotSpot(hearth, state, entry, out spot))
                 {
-                    continue;
-                }
-
-                if (Made(hearth.VillageId, entry.Prefab, spot))
-                {
-                    continue;
+                    continue; // made already, or no room for it
                 }
 
                 Vector3 toHearth = hearth.transform.position - spot;
@@ -306,6 +366,17 @@ namespace Villheim.Logic.Village
 
         /// <summary>Pays for the job and puts the piece down. False when the materials or the spot are gone.</summary>
         public static bool Make(VillageHearth hearth, Job job)
+        {
+            bool made = MakeOnce(hearth, job);
+            if (made)
+            {
+                NoteMade(hearth, job);
+            }
+
+            return made;
+        }
+
+        private static bool MakeOnce(VillageHearth hearth, Job job)
         {
             var state = new VillageState(hearth.Zdo);
             Forget(hearth.VillageId);
@@ -494,17 +565,31 @@ namespace Villheim.Logic.Village
         }
 
         /// <summary>
-        /// The slot's spot on the ring around the hearth (the diagonals of the village axis), or a little further
-        /// out if that is taken; on the outer ring, only there. False when none is usable.
+        /// The free spot for the entry on the ring around the hearth (the diagonals of the village axis), or a little
+        /// further out if that is taken; on the outer ring, only there. False when it is made already at one of them (it
+        /// is found there first) or none is free: nothing goes into anything else (T-43, chests into a bench).
         /// </summary>
-        private static bool SlotSpot(VillageHearth hearth, VillageState state, int slot, float ring, out Vector3 spot)
+        private static bool SlotSpot(VillageHearth hearth, VillageState state, Entry entry, out Vector3 spot)
         {
             Vector3 center = hearth.transform.position;
-            Quaternion turn = Quaternion.Euler(0f, state.Axis + 45f + 90f * slot, 0f);
-            foreach (float radius in ring > Ring ? new[] { ring } : new[] { Ring, RingFar })
+            Quaternion turn = Quaternion.Euler(0f, state.Axis + 45f + 90f * entry.Slot, 0f);
+            float[] radii = entry.Radius > Ring ? new[] { entry.Radius } : new[] { Ring, RingFar };
+            foreach (float radius in radii)
+            {
+                Vector3 at = center + turn * Vector3.forward * radius;
+                if (ZoneSystem.instance.GetGroundHeight(at, out float ground) && Made(hearth.VillageId, entry.Prefab, new Vector3(at.x, ground, at.z)))
+                {
+                    spot = at;
+                    return false;
+                }
+            }
+
+            foreach (float radius in radii)
             {
                 spot = center + turn * Vector3.forward * radius;
-                if (Usable(hearth, state, spot, out float y))
+                Vector3 toHearth = (center - spot).Horizontal();
+                Quaternion facing = toHearth.sqrMagnitude > 0.01f ? Quaternion.LookRotation(toHearth) : Quaternion.identity;
+                if (Usable(hearth, state, spot, out float y) && Fits(entry.Prefab, new Vector3(spot.x, y, spot.z), facing))
                 {
                     spot.y = y;
                     return true;
@@ -515,7 +600,42 @@ namespace Villheim.Logic.Village
             return false;
         }
 
-        internal static bool Usable(VillageHearth hearth, VillageState state, Vector3 spot, out float y)
+        /// <summary>
+        /// Nothing stands where the piece would (its measured box and a hand's width round it): no piece of the village
+        /// or anyone else's, no tree or rock. The ground, people and things lying about don't count.
+        /// </summary>
+        public static bool Fits(string prefabName, Vector3 spot, Quaternion rotation)
+        {
+            GameObject prefab = ZNetScene.instance ? ZNetScene.instance.GetPrefab(prefabName) : null;
+            Bounds? bounds = prefab != null
+                ? Designs.BuildOrder.Measure(prefab, prefabName, Vector3.zero, Quaternion.identity, prefab.transform.localScale)
+                : null;
+            if (!bounds.HasValue)
+            {
+                return true;
+            }
+
+            Bounds box = bounds.Value;
+            Vector3 middle = spot + rotation * box.center + Vector3.up * 0.05f;
+            Vector3 half = box.extents + new Vector3(0.15f, -0.05f, 0.15f);
+            foreach (Collider collider in Physics.OverlapBox(middle, half, rotation, ~0, QueryTriggerInteraction.Ignore))
+            {
+                if (collider.GetComponentInParent<Heightmap>() != null || collider.GetComponentInParent<Character>() != null ||
+                    collider.GetComponentInParent<ItemDrop>() != null)
+                {
+                    continue;
+                }
+
+                if (collider.GetComponentInParent<ZNetView>() != null)
+                {
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
+        internal static bool Usable(VillageHearth hearth, VillageState state, Vector3 spot, out float y, bool ownBlock = true)
         {
             if (!ZoneSystem.instance.IsZoneLoaded(spot) || !ZoneSystem.instance.GetGroundHeight(spot, out y) ||
                 y < ZoneSystem.instance.m_waterLevel + 0.3f)
@@ -547,12 +667,12 @@ namespace Villheim.Logic.Village
                 return false;
             }
 
-            // No one else's piece in the way (our own made pieces are what Made() looks for).
+            // No piece in the way, the village's own included (a made piece is found by Made() before this is asked).
             foreach (Collider collider in Physics.OverlapSphere(spot, 1f))
             {
                 Piece piece = collider.GetComponentInParent<Piece>();
                 if (piece != null && piece.GetComponent<VillageHearth>() == null &&
-                    (piece.m_nview == null || !piece.m_nview.IsValid() || piece.m_nview.GetZDO().GetInt(Keys.BuiltBy) != hearth.VillageId))
+                    (ownBlock || piece.m_nview == null || !piece.m_nview.IsValid() || piece.m_nview.GetZDO().GetInt(Keys.BuiltBy) != hearth.VillageId))
                 {
                     return false;
                 }

@@ -99,6 +99,13 @@ namespace Villheim.Logic.Village
             zdo.Set(KeySiteOrder, SupportOrderVersion);
         }
 
+        /// <summary>Drops the site without finishing it (a design that should never have been picked).</summary>
+        public static void Abandon(VillageHearth hearth)
+        {
+            End(hearth.Zdo);
+            Plans.Remove(hearth.VillageId);
+        }
+
         private static void End(ZDO zdo)
         {
             zdo.Set(KeySite, "");
@@ -655,6 +662,84 @@ namespace Villheim.Logic.Village
             }
 
             return null;
+        }
+
+        /// <summary>
+        /// What the chest must hold before the builder goes to the site to work (Tyler, T-11): enough for the next chunk
+        /// of the building, so he doesn't walk over each time one piece of wood comes in. The chunk is the run of
+        /// pieces from the next one that share its stage (ground, floors and walls; roof; doors and windows; inside),
+        /// in the build order. Per material he waits for the smaller of what the chunk costs and BuildBatchStacks of a
+        /// stack (half a stack by default: 25 wood), and never less than the next piece itself. Once at work he keeps
+        /// going piece by piece while the chest lasts. Empty when nothing is waited for (teardown, done).
+        /// </summary>
+        public static Dictionary<string, int> StartNeed(VillageHearth hearth)
+        {
+            var need = new Dictionary<string, int>();
+            Site site = Get(hearth.Zdo);
+            CachedPlan plan = site != null ? GetPlan(hearth, site) : null;
+            int index = hearth.Zdo.GetInt(KeySiteIndex);
+            if (plan == null || TearingDown(hearth) || index >= plan.Entries.Count || !VillheimConfig.RequireWood.Value)
+            {
+                return need;
+            }
+
+            float batch = LogicConfig.BuildBatchStacks != null ? LogicConfig.BuildBatchStacks.Value : 0.5f;
+            int stage = plan.Entries[index].Stage;
+            var chunk = new Dictionary<string, float>();
+            for (int i = index; i < plan.Entries.Count && plan.Entries[i].Stage == stage; i++)
+            {
+                foreach (KeyValuePair<string, int> cost in plan.Entries[i].Cost)
+                {
+                    plan.Factors.TryGetValue(cost.Key, out float factor);
+                    chunk.TryGetValue(cost.Key, out float sum);
+                    chunk[cost.Key] = sum + cost.Value * factor;
+                }
+            }
+
+            foreach (KeyValuePair<string, float> part in chunk)
+            {
+                int total = Mathf.CeilToInt(part.Value);
+                if (batch > 0f && total > 0)
+                {
+                    need[part.Key] = Mathf.Min(total, Mathf.Max(1, Mathf.RoundToInt(Materials.StackSize(part.Key) * batch)));
+                }
+            }
+
+            foreach (KeyValuePair<string, int> due in Due(plan, plan.Entries[index], ReadOwed(hearth.Zdo)))
+            {
+                need.TryGetValue(due.Key, out int already);
+                if (due.Value > already)
+                {
+                    need[due.Key] = due.Value;
+                }
+            }
+
+            return need;
+        }
+
+        /// <summary>The chest holds what StartNeed asks for. With what is short, when it does not.</summary>
+        public static bool ReadyToStart(VillageHearth hearth, out string shortOf)
+        {
+            shortOf = null;
+            if (VillageChest.IsLost(hearth))
+            {
+                shortOf = "chest";
+                return false;
+            }
+
+            Container chest = VillageChest.Find(hearth);
+            var state = new VillageState(hearth.Zdo);
+            foreach (KeyValuePair<string, int> need in StartNeed(hearth))
+            {
+                int have = chest != null ? VillageChest.Count(chest, need.Key) : state.Get(need.Key);
+                if (have < need.Value)
+                {
+                    shortOf = need.Key;
+                    return false;
+                }
+            }
+
+            return true;
         }
 
         /// <summary>Everything the rest of the building still costs, per material.</summary>

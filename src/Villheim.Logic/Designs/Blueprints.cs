@@ -286,6 +286,25 @@ namespace Villheim.Logic.Designs
             fileStem.EndsWith("_" + stem, StringComparison.OrdinalIgnoreCase) ||
             fileStem.EndsWith("-" + stem, StringComparison.OrdinalIgnoreCase);
 
+        /// <summary>Blueprints for village fixtures, made by Amenities, never built as a building of their own.</summary>
+        private static readonly string[] FixtureStems = { Village.NoticeBoard.BlueprintName };
+
+        /// <summary>
+        /// The design is a village fixture (the notice board), by its name ("bp:Báz_villagenotice") or file name. Such a
+        /// design never goes in a building pool: the 'villagenotice' blueprint is 34 pieces and named like nothing else,
+        /// so it counted as a home, and villages built notice boards on their house plots over and over (T-14).
+        /// </summary>
+        public static bool IsFixture(string designName)
+        {
+            if (string.IsNullOrEmpty(designName))
+            {
+                return false;
+            }
+
+            string stem = designName.StartsWith(Prefix, StringComparison.OrdinalIgnoreCase) ? designName.Substring(Prefix.Length) : designName;
+            return FixtureStems.Any(f => NameMatches(stem, f));
+        }
+
         /// <summary>Look at the folders again on the next call (a design was just saved, e.g. by 'vh gen').</summary>
         public static void Forget() => _loaded = null;
 

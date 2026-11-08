@@ -38,6 +38,7 @@ namespace Villheim.Logic.Villagers
             Deliver,
             Build,
             BuildChest,
+            Make,
         }
 
         private sealed class Profile
@@ -92,6 +93,10 @@ namespace Villheim.Logic.Villagers
 
             /// <summary>When the brain last ran this villager's work (the activity shown is only what he does now).</summary>
             public float LastRun;
+
+            /// <summary>The amenity piece the builder is making (Phase.Make), and when he may look for one again.</summary>
+            public Amenities.Job Making;
+            public float MakeRetryAt;
         }
 
         private const float MaxFromHearth = 55f;
@@ -228,6 +233,9 @@ namespace Villheim.Logic.Villagers
 
                 case Phase.BuildChest:
                     return UpdateBuildChest(villager, ai, work, dt);
+
+                case Phase.Make:
+                    return UpdateMake(villager, ai, work, dt);
             }
 
             return false;
@@ -247,6 +255,8 @@ namespace Villheim.Logic.Villagers
                     return "building";
                 case Phase.BuildChest:
                     return "rebuilding the village chest";
+                case Phase.Make:
+                    return work.Making != null ? "making a " + work.Making.Name : "building";
                 case Phase.Deliver:
                     return "carrying materials to the site";
                 case Phase.Collect:
@@ -316,6 +326,13 @@ namespace Villheim.Logic.Villagers
         /// </summary>
         private static void StartJob(Villager villager, Work work, VillageNeeds needs, bool builder)
         {
+            // The builder makes what the village has the materials for (the notice board piece by piece, chests, the map
+            // table, benches) before he goes out gathering. Building the house going up comes first (Update).
+            if (builder && TryMake(villager, work))
+            {
+                return;
+            }
+
             if (needs.Missing.Count == 0)
             {
                 NoWork(villager, work, "the village needs nothing right now");
@@ -889,7 +906,8 @@ namespace Villheim.Logic.Villagers
 
             if (!inReach)
             {
-                WalkResult step = Walker.For(villager).Go(villager, ai, dt, work.Stand, 0.5f);
+                // Back to the site with work waiting: he runs (Tyler, T-11), walking only the last metres.
+                WalkResult step = Walker.For(villager).Go(villager, ai, dt, work.Stand, 0.5f, true);
                 if (step == WalkResult.Walking && Time.time < work.Deadline)
                 {
                     work.Timer = 0f;
@@ -957,6 +975,141 @@ namespace Villheim.Logic.Villagers
             return false;
         }
 
+        /// <summary>The village's builder is about and makes the amenities (FreeTime leaves them to him).</summary>
+        public static bool BuilderMakes(int villageId) =>
+            Builders.TryGetValue(villageId, out var cached) && Time.time - cached.Time < 10f && cached.Builder != ZDOID.None;
+
+        /// <summary>Starts making the next amenity piece the chest can pay for. False when there is none.</summary>
+        private static bool TryMake(Villager villager, Work work)
+        {
+            if (Time.time < work.MakeRetryAt)
+            {
+                return false;
+            }
+
+            VillageHearth hearth = VillageHearth.Find(villager.VillageId);
+            Amenities.Job job = hearth != null && hearth.IsValid ? Amenities.Due(hearth) : null;
+            if (job == null)
+            {
+                return false;
+            }
+
+            Begin(villager, work, Phase.Make, null, job.Spot, 60f);
+            work.Making = job;
+            work.Timer = 0f;
+            work.Stand = MakeStand(job, villager.transform.position);
+            Started(villager, work, $"making a {job.Name}{(job.Pieces > 1 ? $" ({job.Pieces} pieces to go)" : "")}");
+            return true;
+        }
+
+        /// <summary>Where to stand to make a piece: in front of it inside a building, else a step from it on his side.</summary>
+        private static Vector3 MakeStand(Amenities.Job job, Vector3 from)
+        {
+            Vector3 stand;
+            if (job.Inside)
+            {
+                stand = job.Spot + job.Rotation * Vector3.forward * 1.6f;
+            }
+            else
+            {
+                Vector3 away = (from - job.Spot).Horizontal();
+                stand = job.Spot + (away.sqrMagnitude > 0.01f ? away.normalized : Vector3.forward) * 1.6f;
+            }
+
+            if (ZoneSystem.instance.GetGroundHeight(stand, out float y) && (!job.Inside || Mathf.Abs(y - job.Spot.y) < 1f))
+            {
+                stand.y = y;
+            }
+
+            return stand;
+        }
+
+        /// <summary>
+        /// The builder makes an amenity the way he builds a house: he goes (runs) to it, hammers, and the piece goes up,
+        /// paid from the chest. Something of several pieces (the notice board) goes up one piece at a time, ground up;
+        /// he stays on it while the chest pays for the next piece, then goes back to other work.
+        /// </summary>
+        private static bool UpdateMake(Villager villager, VillagerAI ai, Work work, float dt)
+        {
+            VillageHearth hearth = VillageHearth.Find(villager.VillageId);
+            Amenities.Job job = work.Making;
+            if (hearth == null || !hearth.IsValid || job == null)
+            {
+                Finish(work);
+                return false;
+            }
+
+            Vector3 position = villager.transform.position;
+            bool near = Utils.DistanceXZ(position, job.Spot) < 2.6f && Mathf.Abs(position.y - job.Spot.y) < 4f;
+            if (!near)
+            {
+                WalkResult step = Walker.For(villager).Go(villager, ai, dt, work.Stand, 0.6f, true);
+                if (step == WalkResult.Walking && Time.time < work.Deadline)
+                {
+                    work.Timer = 0f;
+                    return true;
+                }
+
+                if (Utils.DistanceXZ(villager.transform.position, job.Spot) > 4f)
+                {
+                    VillheimPlugin.Debug($"{villager.VillagerName} can't get to the {job.Name}; trying again later.");
+                    work.MakeRetryAt = Time.time + 30f;
+                    Finish(work);
+                    work.Cooldown = 2f;
+                    return false;
+                }
+            }
+
+            ai.StopMoving();
+            VillagerLooks.Hold(villager, VillagerLooks.Tool.Hammer);
+            Face(villager, ai, job.Spot + Vector3.up * 0.5f);
+            work.Timer += dt;
+            if (work.Timer % HammerInterval < dt)
+            {
+                ToolAnimation(villager, VillagerLooks.Tool.Hammer);
+            }
+
+            float perPiece = (LogicConfig.SecondsPerPiece != null ? LogicConfig.SecondsPerPiece.Value : 2.5f) /
+                             VillagerSkills.WorkFactor(villager, "building");
+            if (work.Timer < perPiece)
+            {
+                return true;
+            }
+
+            work.Timer = 0f;
+            bool made = Amenities.Make(hearth, job);
+            VillageNeeds.Forget(villager.VillageId);
+            Amenities.Forget(villager.VillageId);
+            if (made)
+            {
+                work.Progressed = true;
+                if (job.Pieces <= 1)
+                {
+                    VillageBrain.Announce(hearth, $"{villager.VillagerName} made a {job.Name} for {hearth.VillageName}.");
+                }
+            }
+
+            // The next piece of the same thing, if the chest pays for it: he stays on it.
+            Amenities.Job next = made ? Amenities.Due(hearth, true) : null;
+            if (next != null && next.Name == job.Name && Utils.DistanceXZ(next.Spot, job.Spot) < 8f)
+            {
+                work.Making = next;
+                work.Stand = MakeStand(next, villager.transform.position);
+                work.Deadline = Time.time + 60f;
+                Walker.For(villager).Reset();
+                return true;
+            }
+
+            if (!made)
+            {
+                work.MakeRetryAt = Time.time + 20f;
+            }
+
+            Finish(work);
+            work.Cooldown = 0.5f;
+            return false;
+        }
+
         /// <summary>The builder puts a new village chest where the old one stood, hammering at it for a few seconds.</summary>
         private static bool UpdateBuildChest(Villager villager, VillagerAI ai, Work work, float dt)
         {
@@ -968,7 +1121,7 @@ namespace Villheim.Logic.Villagers
             }
 
             Vector3 spot = VillageChest.Spot(hearth);
-            WalkResult step = Walker.For(villager).Go(villager, ai, dt, spot, 1.5f);
+            WalkResult step = Walker.For(villager).Go(villager, ai, dt, spot, 1.5f, true);
             if (step == WalkResult.Walking)
             {
                 return true;
@@ -1210,7 +1363,7 @@ namespace Villheim.Logic.Villagers
 
         private static void Finish(Work work)
         {
-            if (work.Phase != Phase.Idle && work.Phase != Phase.Build && work.Phase != Phase.BuildChest)
+            if (work.Phase != Phase.Idle && work.Phase != Phase.Build && work.Phase != Phase.BuildChest && work.Phase != Phase.Make)
             {
                 work.QuickFails = !work.Progressed && Time.time - work.StartedAt < 8f ? work.QuickFails + 1 : 0;
                 if (work.QuickFails >= 2)
@@ -1224,6 +1377,7 @@ namespace Villheim.Logic.Villagers
 
             ReleaseTarget(work);
             work.Phase = Phase.Idle;
+            work.Making = null;
             work.Skip.Clear();
             Claimed.RemoveWhere(go => go == null);
             PruneUnreachable();

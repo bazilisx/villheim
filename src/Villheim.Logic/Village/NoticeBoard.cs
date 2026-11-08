@@ -259,7 +259,35 @@ namespace Villheim.Logic.Village
             return false;
         }
 
-        /// <summary>The job of making (or mending) the board, for Amenities, or null when it stands whole.</summary>
+        /// <summary>Tracked materials a piece costs in vanilla (the sign's coal is let off).</summary>
+        private static Dictionary<string, int> PieceCost(DesignSpawner.PlanEntry entry)
+        {
+            var cost = new Dictionary<string, int>();
+            GameObject prefab = ZNetScene.instance.GetPrefab(entry.Prefab);
+            if (prefab == null)
+            {
+                return cost;
+            }
+
+            foreach (KeyValuePair<string, int> part in DesignSpawner.RecipeCost(prefab))
+            {
+                if (Materials.Tracked.Contains(part.Key))
+                {
+                    cost.TryGetValue(part.Key, out int n);
+                    cost[part.Key] = n + part.Value;
+                }
+            }
+
+            return cost;
+        }
+
+        /// <summary>
+        /// The job of making (or mending) the board, for Amenities, or null when it stands whole. One piece at a time
+        /// (Tyler, T-11: no instant buildings): the job is the next missing piece in build order, ground up, paid on its
+        /// own; Total is what the rest of the board costs, which the villagers gather for and the builder waits for
+        /// before he starts (up to BuildBatchStacks). The board is plain wood: poles, beams, 1x1 floors, a roof top and
+        /// signs (the signs' coal is let off). It never needs fine wood.
+        /// </summary>
         public static Amenities.Job Job(VillageHearth hearth)
         {
             List<DesignSpawner.PlanEntry> missing = Missing(hearth, out Vector3 origin, out float yaw);
@@ -268,77 +296,157 @@ namespace Villheim.Logic.Village
                 return null;
             }
 
-            var cost = new Dictionary<string, int>();
+            var total = new Dictionary<string, int>();
             foreach (DesignSpawner.PlanEntry entry in missing)
             {
-                GameObject prefab = ZNetScene.instance.GetPrefab(entry.Prefab);
-                if (prefab == null)
+                foreach (KeyValuePair<string, int> part in PieceCost(entry))
                 {
-                    continue;
-                }
-
-                foreach (KeyValuePair<string, int> part in DesignSpawner.RecipeCost(prefab))
-                {
-                    if (Materials.Tracked.Contains(part.Key))
-                    {
-                        cost.TryGetValue(part.Key, out int n);
-                        cost[part.Key] = n + part.Value;
-                    }
+                    total.TryGetValue(part.Key, out int n);
+                    total[part.Key] = n + part.Value;
                 }
             }
 
+            Quaternion turn = Quaternion.Euler(0f, yaw, 0f);
             return new Amenities.Job
             {
                 Prefab = BlueprintName,
                 Name = "notice board",
-                Spot = origin + Quaternion.Euler(0f, yaw, 0f) * missing[0].LocalPosition,
-                Rotation = Quaternion.Euler(0f, yaw, 0f),
-                Cost = cost,
+                Spot = origin + turn * missing[0].LocalPosition,
+                Rotation = turn * missing[0].LocalRotation,
+                Cost = PieceCost(missing[0]),
+                Total = total,
+                Pieces = missing.Count,
                 Essential = true,
             };
         }
 
-        /// <summary>Puts up the board's missing pieces (already paid for) and takes the old ground signs away.</summary>
-        public static bool Build(VillageHearth hearth)
+        /// <summary>
+        /// Puts up the board's next missing piece (already paid for). The last piece takes the old ground signs away.
+        /// False when nothing is missing or the piece could not be made.
+        /// </summary>
+        public static bool BuildNext(VillageHearth hearth) => Build(hearth, 1) > 0;
+
+        /// <summary>Puts up every missing piece at once: only for 'vh board now' (a test command).</summary>
+        public static bool Build(VillageHearth hearth) => Build(hearth, int.MaxValue) > 0;
+
+        private static int Build(VillageHearth hearth, int most)
         {
             List<DesignSpawner.PlanEntry> missing = Missing(hearth, out Vector3 origin, out float yaw);
             if (missing.Count == 0)
             {
-                return false;
+                return 0;
             }
 
             Quaternion turn = Quaternion.Euler(0f, yaw, 0f);
             Blueprints.Blueprint blueprint = Blueprint();
-            foreach (DesignSpawner.PlanEntry entry in missing)
+            int made = 0;
+            foreach (DesignSpawner.PlanEntry entry in missing.Take(most))
             {
-                GameObject made = DesignSpawner.SpawnEntry(entry, origin, turn, hearth.VillageId, true);
-                ZNetView view = made != null ? made.GetComponent<ZNetView>() : null;
-                if (view != null && view.IsValid())
+                GameObject piece = DesignSpawner.SpawnEntry(entry, origin, turn, hearth.VillageId, true);
+                ZNetView view = piece != null ? piece.GetComponent<ZNetView>() : null;
+                if (view == null || !view.IsValid())
                 {
-                    view.GetZDO().Set(Key, BoardPiece);
-                    view.GetZDO().Set(Keys.BuiltBy, hearth.VillageId);
-                    if (BackHeading.TryGetValue(entry, out string backHeading))
+                    continue;
+                }
+
+                made++;
+                view.GetZDO().Set(Key, BoardPiece);
+                view.GetZDO().Set(Keys.BuiltBy, hearth.VillageId);
+                if (BackHeading.TryGetValue(entry, out string backHeading))
+                {
+                    view.GetZDO().Set(KeyBack, 1);
+                    view.GetZDO().Set(KeyHeading, backHeading);
+                }
+                else if (piece.GetComponent<Sign>() != null && blueprint != null)
+                {
+                    // Which stat this sign shows comes from the heading written on it in the blueprint. The nearest
+                    // blueprint sign gives it; Update gives any sign left without one a heading by its place.
+                    Blueprints.Piece source = blueprint.Pieces
+                        .Where(p => p.Prefab == entry.Prefab && p.Text != null)
+                        .OrderBy(p => Vector3.Distance(p.Position, entry.LocalPosition)).FirstOrDefault();
+                    if (source != null && Vector3.Distance(source.Position, entry.LocalPosition) < 0.6f)
                     {
-                        view.GetZDO().Set(KeyBack, 1);
-                        view.GetZDO().Set(KeyHeading, backHeading);
-                    }
-                    else if (made.GetComponent<Sign>() != null && blueprint != null)
-                    {
-                        // Which stat this sign shows comes from the heading written on it in the blueprint.
-                        Blueprints.Piece source = blueprint.Pieces
-                            .Where(p => p.Prefab == entry.Prefab && p.Text != null)
-                            .OrderBy(p => Vector3.Distance(p.Position, entry.LocalPosition)).FirstOrDefault();
-                        if (source != null && Vector3.Distance(source.Position, entry.LocalPosition) < 0.3f)
-                        {
-                            view.GetZDO().Set(KeyHeading, Heading(source.Text));
-                        }
+                        view.GetZDO().Set(KeyHeading, Heading(source.Text));
                     }
                 }
             }
 
-            RemoveOldSigns(hearth);
+            if (made >= missing.Count)
+            {
+                RemoveOldSigns(hearth);
+            }
+
             Update(hearth, true);
-            return true;
+            return made;
+        }
+
+        /// <summary>
+        /// Takes away notice boards that went up as buildings (T-14: the 'villagenotice' blueprint was in the house
+        /// pool, so the builder put up a blank board on every house plot). A site or plot with a fixture design is
+        /// dropped, and the pieces it put up come down with their materials back in the stock. The real board over the
+        /// chest is left alone. Cheap when there is nothing to do: one look at the plot list and the site.
+        /// </summary>
+        public static void RemoveStrayBoards(VillageHearth hearth, VillageState state)
+        {
+            var spots = new List<(Vector3 Position, float Radius)>();
+            ConstructionSite.Site site = ConstructionSite.Get(hearth.Zdo);
+            if (site != null && Blueprints.IsFixture(site.Design))
+            {
+                spots.Add((site.Position, Mathf.Max(site.Radius, 3f)));
+                ConstructionSite.Abandon(hearth);
+                Growth.Clear(hearth);
+            }
+
+            foreach (Plot plot in state.Plots)
+            {
+                if (Blueprints.IsFixture(plot.Design))
+                {
+                    spots.Add((plot.Position, Mathf.Max(plot.Radius, 3f)));
+                }
+            }
+
+            if (spots.Count == 0)
+            {
+                return;
+            }
+
+            int removed = state.RemovePlots(p => Blueprints.IsFixture(p.Design));
+            Container chest = VillageChest.Find(hearth);
+            int pieces = 0;
+            var doomed = new List<ZNetView>();
+            foreach (ZNetView view in ZNetScene.instance.m_instances.Values)
+            {
+                if (view == null || !view.IsValid() || view.GetZDO().GetInt(Keys.BuiltBy) != hearth.VillageId ||
+                    view.GetZDO().GetInt(Key) == BoardPiece || view.GetComponent<Piece>() == null ||
+                    view.GetComponent<VillageHearth>() != null || (chest != null && view.gameObject == chest.gameObject) ||
+                    view.GetZDO().GetInt(StorageChests.KeyVillage) != 0)
+                {
+                    continue;
+                }
+
+                if (spots.Any(s => Utils.DistanceXZ(view.transform.position, s.Position) < s.Radius))
+                {
+                    doomed.Add(view);
+                }
+            }
+
+            foreach (ZNetView view in doomed)
+            {
+                foreach (KeyValuePair<string, int> cost in DesignSpawner.RecipeCost(view.gameObject))
+                {
+                    if (Materials.Tracked.Contains(cost.Key))
+                    {
+                        state.Add(cost.Key, cost.Value);
+                    }
+                }
+
+                view.ClaimOwnership();
+                ZNetScene.instance.Destroy(view.gameObject);
+                pieces++;
+            }
+
+            Amenities.Forget(hearth.VillageId);
+            VillheimPlugin.Log.LogInfo($"{state.Name}: took away {removed} notice board(s) built as houses ({pieces} pieces, materials back in stock).");
         }
 
         private static void RemoveOldSigns(VillageHearth hearth)
@@ -373,7 +481,7 @@ namespace Villheim.Logic.Village
             List<DesignSpawner.PlanEntry> missing = Missing(hearth, out Vector3 origin, out float yaw);
             Amenities.Job job = Job(hearth);
             Amenities.Job next = Amenities.Upcoming(hearth);
-            string cost = job != null ? string.Join(", ", job.Cost.Select(c => $"{c.Value} {Materials.Label(c.Key)}")) : "-";
+            string cost = job != null ? string.Join(", ", (job.Total ?? job.Cost).Select(c => $"{c.Value} {Materials.Label(c.Key)}")) : "-";
             string text = $"blueprint {blueprint.File} ({blueprint.Pieces.Count} pieces, chest piece: " +
                           $"{(blueprint.Pieces.Any(p => IsChest(p.Prefab)) ? "yes" : "no")}); board at {origin.ToString("F1")} turned {yaw:0}; " +
                           $"{missing.Count} pieces missing, cost {cost}; the village's next thing to make: {next?.Name ?? "nothing"}.";
@@ -382,7 +490,8 @@ namespace Villheim.Logic.Village
                 text += Build(hearth) ? " Built it now (free)." : " Could not build it.";
             }
 
-            return text;
+            Update(hearth, true);
+            return text + "\n" + SignReport(hearth);
         }
 
         /// <summary>Rewrites the board's signs (every 20 seconds, or now).</summary>
@@ -441,6 +550,8 @@ namespace Villheim.Logic.Village
             bool byHeading = signs.Any(s => s.GetComponent<ZNetView>().GetZDO().GetString(KeyHeading, null) != null);
             if (byHeading)
             {
+                GiveHeadings(signs, origin, right, stats);
+
                 // Each sign shows the stat its blueprint heading names, under that same heading.
                 foreach (Sign sign in signs)
                 {
@@ -469,6 +580,95 @@ namespace Villheim.Logic.Village
             {
                 Write(cells[i], lines[i]);
             }
+        }
+
+        /// <summary>What a front sign without a usable heading shows, in reading order (top row, left to right).</summary>
+        private static readonly string[] FrontHeadings = { "Project", "Needed", "Morale", "Population", "Stock", "Buildings" };
+
+        /// <summary>
+        /// Front signs with no heading, or one no stat answers to, get one by their place: the top sign the name, the
+        /// rest the front stats in reading order, skipping the ones another sign already shows. The front had shown
+        /// only "..." (T-11) where its signs had no heading to go by.
+        /// </summary>
+        private static void GiveHeadings(List<Sign> signs, Vector3 origin, Vector3 right, Dictionary<string, (string Value, string Color)> stats)
+        {
+            List<Sign> front = signs.Where(s => s.GetComponent<ZNetView>().GetZDO().GetInt(KeyBack) != 1)
+                .OrderByDescending(s => s.transform.position.y).ToList();
+            if (front.Count == 0)
+            {
+                return;
+            }
+
+            bool Usable(Sign sign)
+            {
+                string heading = sign.GetComponent<ZNetView>().GetZDO().GetString(KeyHeading, null);
+                return heading != null && (heading.Length == 0 || stats.ContainsKey(heading.ToLowerInvariant()));
+            }
+
+            if (front.All(Usable))
+            {
+                return;
+            }
+
+            var used = new HashSet<string>(front.Where(Usable)
+                .Select(s => s.GetComponent<ZNetView>().GetZDO().GetString(KeyHeading, "").ToLowerInvariant()));
+            var rows = new List<List<Sign>>();
+            foreach (Sign sign in front.Skip(1))
+            {
+                List<Sign> row = rows.FirstOrDefault(r => Mathf.Abs(r[0].transform.position.y - sign.transform.position.y) < 0.25f);
+                if (row == null)
+                {
+                    rows.Add(row = new List<Sign>());
+                }
+
+                row.Add(sign);
+            }
+
+            if (!Usable(front[0]) && !used.Contains(""))
+            {
+                front[0].GetComponent<ZNetView>().GetZDO().Set(KeyHeading, "");
+                used.Add("");
+            }
+
+            var free = new Queue<string>(FrontHeadings.Where(h => !used.Contains(h.ToLowerInvariant())));
+            foreach (Sign sign in rows.SelectMany(r => r.OrderBy(s => Vector3.Dot(s.transform.position - origin, right))))
+            {
+                if (!Usable(sign) && free.Count > 0)
+                {
+                    ZNetView view = sign.GetComponent<ZNetView>();
+                    view.ClaimOwnership();
+                    view.GetZDO().Set(KeyHeading, free.Dequeue());
+                }
+            }
+        }
+
+        /// <summary>For 'vh board': each sign of the board, its heading and what it shows.</summary>
+        public static string SignReport(VillageHearth hearth)
+        {
+            Vector3 origin = hearth.Zdo.GetVec3(KeyOrigin, Vector3.zero);
+            if (origin == Vector3.zero)
+            {
+                return "no board placed yet";
+            }
+
+            var lines = new List<string>();
+            var seen = new HashSet<Sign>();
+            foreach (Collider collider in Physics.OverlapSphere(origin, 6f))
+            {
+                Sign sign = collider.GetComponentInParent<Sign>();
+                ZNetView view = sign != null ? sign.GetComponent<ZNetView>() : null;
+                if (view == null || !view.IsValid() || view.GetZDO().GetInt(Key) != BoardPiece || !seen.Add(sign))
+                {
+                    continue;
+                }
+
+                ZDO zdo = view.GetZDO();
+                string shown = (sign.m_isViewable ? "" : "(hidden) ") + (sign.m_currentText ?? "");
+                lines.Add($"{(zdo.GetInt(KeyBack) == 1 ? "back" : "front")} '{zdo.GetString(KeyHeading, "(none)")}' at " +
+                          $"{sign.transform.position.y - origin.y:0.0} m: saved '{zdo.GetString(ZDOVars.s_text, "")}', shows '{shown}'");
+            }
+
+            return lines.Count == 0 ? "no signs found on the board" : string.Join("\n", lines);
         }
 
         /// <summary>Every stat a board can show, by the heading words that ask for it.</summary>
@@ -539,14 +739,15 @@ namespace Villheim.Logic.Village
                 }
             }
 
-            VillageNeeds needs = VillageNeeds.For(hearth.VillageId);
+            // What the next step (NextStep, as on the hearth) is still short of, the two biggest.
+            Dictionary<string, int> shortfall = NextStep.Short(hearth, state, NextStep.For(hearth, state));
             string needed = "Nothing";
             string neededColor = "#bfb";
-            if (needs != null && needs.Missing.Count > 0)
+            if (shortfall.Count > 0)
             {
-                KeyValuePair<string, int> top = needs.Missing.OrderByDescending(n => n.Value).First();
-                needed = $"{top.Value} {Materials.Label(top.Key)}";
-                neededColor = top.Key == Materials.Stone ? "#ddd" : "#eca";
+                List<KeyValuePair<string, int>> top = shortfall.OrderByDescending(n => n.Value).Take(2).ToList();
+                needed = string.Join(", ", top.Select(n => $"{n.Value} {Materials.Label(n.Key)}"));
+                neededColor = top[0].Key == Materials.Stone ? "#ddd" : "#eca";
             }
 
             float mood = VillageMood.Get(hearth.VillageId);

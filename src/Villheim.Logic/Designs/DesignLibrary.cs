@@ -392,6 +392,13 @@ namespace Villheim.Logic.Designs
         {
             pool.RemoveAll(design =>
             {
+                // Village fixtures (the notice board) are made by Amenities over the chest, never as a building. The
+                // 'villagenotice' blueprint had been picked as a home, so the builder put up notice boards on house plots.
+                if (Blueprints.IsFixture(design.Name))
+                {
+                    return true;
+                }
+
                 string missing = MissingIn(design, biome);
                 if (missing != null && WarnedUnbuildable.Add(design.Name + "|" + biome))
                 {

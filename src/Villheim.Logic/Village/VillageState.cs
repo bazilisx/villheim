@@ -252,6 +252,19 @@ namespace Villheim.Logic.Village
             _zdo.Set(Keys.Plots, Serialize(plots));
         }
 
+        /// <summary>Takes every plot that matches off the list. Returns how many went.</summary>
+        public int RemovePlots(System.Predicate<Plot> match)
+        {
+            var plots = new List<Plot>(Plots);
+            int removed = plots.RemoveAll(match);
+            if (removed > 0)
+            {
+                _zdo.Set(Keys.Plots, Serialize(plots));
+            }
+
+            return removed;
+        }
+
         public void AddPlot(Plot plot)
         {
             var plots = new List<Plot>(Plots) { plot };

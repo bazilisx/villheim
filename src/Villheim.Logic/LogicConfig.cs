@@ -12,6 +12,15 @@ namespace Villheim.Logic
         public static ConfigEntry<string> BiomeMaterials;
         public static ConfigEntry<bool> SiteChest;
         public static ConfigEntry<float> SecondsPerPiece;
+        public static ConfigEntry<float> BuildBatchStacks;
+        public static ConfigEntry<float> ClearingRadius;
+        public static ConfigEntry<bool> IdlePickup;
+        public static ConfigEntry<string> FenceLight;
+        public static ConfigEntry<float> FenceLightSink;
+        public static ConfigEntry<float> FenceWallSink;
+        public static ConfigEntry<bool> AnimalPens;
+        public static ConfigEntry<string> MapTablePrefab;
+        public static ConfigEntry<float> TestVillageFrameMs;
         public static ConfigEntry<int> StartingStock;
         public static ConfigEntry<float> FoodHealing;
         public static ConfigEntry<float> VillagerToolStrength;
@@ -277,6 +286,26 @@ namespace Villheim.Logic
                 "Ground no higher than this many metres over the water counts as wet for boardwalks.");
             SecondsPerPiece = Admin(config, work, "SecondsPerPiece", 2.5f,
                 "How long a builder hammers at each piece before it goes up.");
+            BuildBatchStacks = Admin(config, work, "BuildBatchStacks", 0.5f,
+                "How much the chest must hold before the builder goes to work on the next part of a building (ground and " +
+                "walls, roof, doors and windows, inside), in stacks of each material: 0.5 is half a stack (25 wood). When " +
+                "the part costs less than that, he starts as soon as the chest holds what it costs. 0: he goes as soon as " +
+                "the next piece is paid for.");
+            ClearingRadius = Admin(config, work, "ClearingRadius", 20f,
+                "Villagers keep the ground this many metres around the hearth clear: they fell trees, take out stumps, " +
+                "break rocks and pick up sticks and stones there, and the materials go to the chest. 0: off.");
+            IdlePickup = Admin(config, work, "IdlePickup", true,
+                "Villagers with nothing else to do pick up useful things lying in the village (wood, stone, resin, " +
+                "leather, feathers, meat and the like) and put them in the chest.");
+            FenceLight = Admin(config, work, "FenceLight", "stake_wall",
+                "The fence a hamlet puts up round itself, sunk FenceLightSink into the ground. Empty: none until the " +
+                "village is big enough for the stake wall. wood_fence is kept for farm plots and animal pens.");
+            FenceLightSink = Admin(config, work, "FenceLightSink", 0.7f,
+                "How much of the hamlet's fence goes into the ground (0.7: seven tenths, a low fence).");
+            FenceWallSink = Admin(config, work, "FenceWallSink", 0.5f,
+                "How much of the village's stake wall goes into the ground (0.5: half). Gates are pairs of wood gates.");
+            AnimalPens = Admin(config, work, "AnimalPens", true,
+                "Farm animals are kept in a pen of wood fence with a gate, built by the farm before the first animal comes.");
             StartingStock = Admin(config, work, "StartingStock", 0,
                 "Wood a new village starts with (and half as much stone). At 0 the villagers gather everything " +
                 "for their first building themselves.");
@@ -741,6 +770,9 @@ namespace Villheim.Logic
                 "A village puts the game's cartography table by its hearth. Reading it copies the village's discoveries to " +
                 "your map as pins.");
             MapTableFromStage = Admin(config, know, "MapTableFromStage", 2, "Stage from which a village has a map table: 1 camp, 2 hamlet.");
+            MapTablePrefab = Admin(config, know, "MapTablePrefab", "piece_cartographytable",
+                "The piece used for the village's map table. Vanilla has only the cartography table; Hildir's small map " +
+                "table is part of her camp and is not a piece (mods add one as hildir_maptable_coe).");
         }
 
         /// <summary>Sections "5d - Cultures" and "5e - Biome defenders".</summary>
@@ -949,6 +981,9 @@ namespace Villheim.Logic
                 "Villagers a test village gets at each stage when no number is given: camp, hamlet, village, town.");
             TestVillagePiecesPerFrame = Admin(config, test, "TestVillagePiecesPerFrame", 60,
                 "Building pieces a test village puts up each frame. Lower it if the game stalls while one is set up.");
+            TestVillageFrameMs = Admin(config, test, "TestVillageFrameMs", 6f,
+                "Milliseconds a test village may spend each frame putting up pieces, fences and plants before it waits " +
+                "for the next frame. Lower: smoother frame rate, slower setup.");
         }
 
         private static ConfigEntry<T> Admin<T>(ConfigFile config, string section, string key, T value, string description)

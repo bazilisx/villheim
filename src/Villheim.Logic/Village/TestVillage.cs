@@ -971,7 +971,6 @@ namespace Villheim.Logic.Village
             yield return Fence(run);
             yield return Farm(run);
             var state = new VillageState(hearth.Zdo);
-            MapTables.Ensure(hearth, state);
 
             // Gear for the stage, counted as made by the smith, before anyone dresses.
             int gear = VillagerLooks.GearTier(VillageBrain.TierIndex(state.Plots.Count), state.Biome);

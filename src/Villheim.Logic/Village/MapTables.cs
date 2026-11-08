@@ -7,62 +7,86 @@ using UnityEngine;
 namespace Villheim.Logic.Village
 {
     /// <summary>
-    /// The village's map table: from MapTableFromStage (a hamlet) on, the game's own cartography table stands by the
-    /// hearth, across from the chest. Reading it copies everything the village knows (Knowledge) onto the player's map
-    /// as ordinary pins he can delete: named, one icon per kind, none twice. Writing to it is refused; the village's map
-    /// is its own. A table that goes missing is put back after a minute.
+    /// The village's map table: from MapTableFromStage (a hamlet) on, the game's own cartography table (MapTablePrefab)
+    /// stands by the hearth, across from the chest. Reading it copies everything the village knows (Knowledge) onto the
+    /// player's map as ordinary pins he can delete: named, one icon per kind, none twice. Writing to it is refused; the
+    /// village's map is its own.
+    ///
+    /// The table is an amenity (Amenities, last in its list): the builder makes it, hammering, paid from the chest in
+    /// the tracked materials of its recipe (the rest let off), and makes it again if it is destroyed. Nothing appears by
+    /// itself (Tyler, 2026-11-08: no instant buildings). Vanilla has no small map table: Hildir's is part of her camp,
+    /// and the stool-sized one some mods add (hildir_maptable_coe) is not a vanilla piece.
     /// </summary>
     internal static class MapTables
     {
-        private const string Prefab = "piece_cartographytable";
+        public const string JobName = "map table";
         private const float FromHearth = 4.5f;
 
         private static readonly int KeyTable = "villheim_maptable".GetStableHashCode();
         private static readonly int KeyTablePos = "villheim_maptable_pos".GetStableHashCode();
 
-        private static readonly Dictionary<int, float> NextCheck = new Dictionary<int, float>();
-        private static readonly Dictionary<int, float> MissingSince = new Dictionary<int, float>();
-
         private static bool On => Knowledge.On && LogicConfig.IsOn(LogicConfig.MapTable);
 
         private static int FromStage => LogicConfig.MapTableFromStage != null ? LogicConfig.MapTableFromStage.Value : 2;
 
-        /// <summary>From the knowledge tick: puts the table down when the village is big enough, and back when it is gone.</summary>
+        private static string Prefab => string.IsNullOrWhiteSpace(LogicConfig.MapTablePrefab?.Value)
+            ? "piece_cartographytable"
+            : LogicConfig.MapTablePrefab.Value.Trim();
+
+        /// <summary>Kept for the knowledge tick, which used to put the table down: the builder makes it now (Job).</summary>
         public static void Ensure(VillageHearth hearth, VillageState state)
         {
-            int id = hearth.VillageId;
-            if (!On || Living.Stage(state) < FromStage || NextCheck.TryGetValue(id, out float next) && Time.time < next)
+        }
+
+        /// <summary>The job of making the table, for Amenities, or null when it stands or isn't due.</summary>
+        public static Amenities.Job Job(VillageHearth hearth, VillageState state)
+        {
+            if (!On || Living.Stage(state) < FromStage || Find(hearth) != null)
             {
-                return;
+                return null;
             }
 
-            NextCheck[id] = Time.time + 10f;
-            Vector3 recorded = hearth.Zdo.GetVec3(KeyTablePos, Vector3.zero);
-            if (recorded == Vector3.zero)
+            GameObject prefab = ZNetScene.instance != null ? ZNetScene.instance.GetPrefab(Prefab) : null;
+            if (prefab == null)
             {
-                if (FindSpot(hearth, state, out Vector3 spot))
+                return null;
+            }
+
+            Vector3 spot = hearth.Zdo.GetVec3(KeyTablePos, Vector3.zero);
+            if ((spot == Vector3.zero || !ZoneSystem.instance.IsZoneLoaded(spot)) && !FindSpot(hearth, state, out spot))
+            {
+                return null;
+            }
+
+            // Only what the village gathers and its biome gives is paid; the rest of the recipe (bronze, feathers) is let off.
+            var cost = new Dictionary<string, int>();
+            HashSet<string> allowed = Materials.AllowedIn(state.Biome);
+            foreach (KeyValuePair<string, int> part in Designs.DesignSpawner.RecipeCost(prefab))
+            {
+                if (Materials.Tracked.Contains(part.Key) && allowed.Contains(part.Key))
                 {
-                    Place(hearth, spot, true);
+                    cost[part.Key] = part.Value;
                 }
-
-                return;
             }
 
-            if (!ZoneSystem.instance.IsZoneLoaded(recorded) || Find(hearth) != null)
+            Vector3 toHearth = (hearth.transform.position - spot).Horizontal();
+            return new Amenities.Job
             {
-                MissingSince.Remove(id);
-                return;
-            }
+                Prefab = Prefab, Name = JobName, Spot = spot, Cost = cost,
+                Rotation = toHearth.sqrMagnitude > 0.01f ? Quaternion.LookRotation(toHearth.normalized) : Quaternion.identity,
+            };
+        }
 
-            if (!MissingSince.TryGetValue(id, out float since))
-            {
-                MissingSince[id] = Time.time;
-            }
-            else if (Time.time - since > 60f)
-            {
-                MissingSince.Remove(id);
-                Place(hearth, recorded, false);
-            }
+        /// <summary>Marks a table the builder just made as the village's.</summary>
+        public static void Made(VillageHearth hearth, ZNetView view, Vector3 spot)
+        {
+            bool first = hearth.Zdo.GetVec3(KeyTablePos, Vector3.zero) == Vector3.zero;
+            view.GetZDO().Set(KeyTable, hearth.VillageId);
+            hearth.Zdo.Set(KeyTablePos, spot);
+            Chronicle.Add(hearth, first
+                ? "We put up a map table by the hearth, with what we know of the land on it."
+                : "We put the map table back by the hearth.");
+            VillheimPlugin.Log.LogInfo($"{hearth.VillageName}: map table at {spot}.");
         }
 
         public static MapTable Find(VillageHearth hearth)
@@ -113,34 +137,6 @@ namespace Villheim.Logic.Village
 
             spot = Vector3.zero;
             return false;
-        }
-
-        private static MapTable Place(VillageHearth hearth, Vector3 spot, bool first)
-        {
-            GameObject prefab = ZNetScene.instance != null ? ZNetScene.instance.GetPrefab(Prefab) : null;
-            if (prefab == null)
-            {
-                VillheimPlugin.Log.LogWarning($"Village knowledge: no '{Prefab}' prefab for the map table.");
-                return null;
-            }
-
-            Vector3 toHearth = (hearth.transform.position - spot).Horizontal();
-            Quaternion facing = toHearth.sqrMagnitude > 0.01f ? Quaternion.LookRotation(toHearth.normalized) : Quaternion.identity;
-            GameObject made = Object.Instantiate(prefab, spot, facing);
-            ZNetView view = made.GetComponent<ZNetView>();
-            MapTable table = made.GetComponent<MapTable>();
-            if (view == null || !view.IsValid() || table == null)
-            {
-                return null;
-            }
-
-            view.GetZDO().Set(KeyTable, hearth.VillageId);
-            hearth.Zdo.Set(KeyTablePos, spot);
-            Chronicle.Add(hearth, first
-                ? "We put up a map table by the hearth, with what we know of the land on it."
-                : "We put the map table back by the hearth.");
-            VillheimPlugin.Log.LogInfo($"{hearth.VillageName}: map table at {spot}.");
-            return table;
         }
 
         private static int VillageOf(MapTable table) =>
@@ -303,6 +299,30 @@ namespace Villheim.Logic.Village
         // ---------------------------------------------------------------- command
 
         /// <summary>'vh know table': puts the table down now if it is missing, and says where it stands.</summary>
+        /// <summary>Puts the table down at once: only for the test command.</summary>
+        private static MapTable Place(VillageHearth hearth, Vector3 spot, bool first)
+        {
+            GameObject prefab = ZNetScene.instance != null ? ZNetScene.instance.GetPrefab(Prefab) : null;
+            if (prefab == null)
+            {
+                VillheimPlugin.Log.LogWarning($"Village knowledge: no '{Prefab}' prefab for the map table.");
+                return null;
+            }
+
+            Vector3 toHearth = (hearth.transform.position - spot).Horizontal();
+            Quaternion facing = toHearth.sqrMagnitude > 0.01f ? Quaternion.LookRotation(toHearth.normalized) : Quaternion.identity;
+            GameObject made = Object.Instantiate(prefab, spot, facing);
+            ZNetView view = made.GetComponent<ZNetView>();
+            if (view == null || !view.IsValid())
+            {
+                return null;
+            }
+
+            view.GetZDO().Set(Keys.BuiltBy, hearth.VillageId);
+            Made(hearth, view, spot);
+            return made.GetComponent<MapTable>();
+        }
+
         public static string Command(VillageHearth hearth, VillageState state)
         {
             if (!hearth.NView.IsOwner())

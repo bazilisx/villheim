@@ -234,6 +234,12 @@ well (Tyler, 2026-11-08). The Features tab of the review sheet (`docs/features/b
       line get more than row and floor fixes.
 - [ ] Villagers repair damaged buildings from the same rules (gap in a row, missing course) when no saved design
       covers the piece.
+- [x] Style guides and lab forms for the approved cultures (2026-11-08, branch night3/styles,
+      `docs/CULTURE_STYLES.md`; 147 samples pass every check).
+- [ ] Measure `turf_roof`, trader tents and awnings with `vh exportpieces` and use them for turf houses, steppe,
+      Persian and Saami styles (D-013).
+- [ ] Culture forms still to build: darbazi stepped roof, church apse and narthex, Slavic corner stove, keep door on
+      the first floor, passage farm behind Icelandic gables.
 - [ ] More Middle Eastern builds to learn from: still only 3 in 2,134 designs.
 - [ ] More biomes (Plains, Mountain, Swamp) with their own materials.
 - [ ] Gear by biome and village level: basic Meadows tools for everyone, biome weapons and shields for protectors,

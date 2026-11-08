@@ -29,6 +29,8 @@ Current facts only. Read this at the start of a session. Narrative is in `docs/d
 - **Feature checklist (2026-11-08):** every built, planned and proposed feature plus ideas from other mods, 730 rows,
   in the review sheet's Features tab (Yes, No or Later). Source files in `docs/features/`. ValheimCityBuilder is CC0
   per its authors; study in `docs/CITYBUILDER_STUDY.md`.
+- **Culture styles (2026-11-08, branch night3/styles):** `docs/CULTURE_STYLES.md`; the lab generates the 14 approved
+  cultures with their own forms, weighted by biome; 147 samples pass every check; overviews in `docs/cultures/`.
 - **Millénaire translation (2026-11-08):** `docs/MC_TRANSLATION.md`. Converted designs and their learned rules stay
   outside the repo; the lab's data is unchanged. Usable for plans, roofs and room uses in five of seven cultures;
   materials, hips and domes do not carry over. Whether mc rules may feed the lab is Tyler's call.
@@ -105,6 +107,7 @@ Current facts only. Read this at the start of a session. Narrative is in `docs/d
 
 ## Recent milestones
 
+- **2026-11-08 (culture styles in the blueprint lab)** - see docs/daily-notes/2026-11/2026-11-08.md
 - **2026-11-08 (Millénaire translation pilot)** - see docs/daily-notes/2026-11/2026-11-08.md
 - **2026-11-08 (CityBuilder study, CC0; feature checklist in the review sheet; living village merged)** - see docs/daily-notes/2026-11/2026-11-08.md
 - **2026-11-08 (blueprint repair tab; 2,134 designs learned; minds and world code hardened)** - see docs/daily-notes/2026-11/2026-11-08.md

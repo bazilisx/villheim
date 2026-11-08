@@ -49,9 +49,17 @@ Current facts only. Read this at the start of a session. Narrative is in `docs/d
   branches `stage/2026-11-06-a` to `-l`.
 - **Network:** the cloud environment allows Thunderstore, Nexus, the Valheim wiki, CurseForge, Modrinth, the
   MineColonies wiki and millenaire.org. Nexus still answers 403 from the cloud.
-- **Optional design packs:** OverDrive BiomeBlueprints (Thunderstore) gives Meadows and Black Forest upgrade chains when
-  installed; never commit its files. Details:
-  docs/daily-notes/2026-11/2026-11-06.md.
+- **Blacklisted source (Tyler, 2026-11-08):** the OverDrive BiomeBlueprints pack. Never used as a design source, a
+  study source or a reference. Open: whether the 12 builds by other creators that shipped in that pack and sit in
+  `Keepers.cs` (`bp:hs_...`) stay.
+- **Approved, not yet written into CLAUDE.md (Tyler, 2026-11-08):** villages may use generated designs, learned from
+  Tyler's approved designs and other creators' builds, with controls still to be worked out. The "existing designs
+  only" rule in CLAUDE.md stands until that wording is agreed.
+- **Decided (Tyler, 2026-11-08):** outpost wood counts toward what a village can build, and villagers only go out to
+  another biome once they are equipped and able to defend themselves. Not built yet.
+- **Access as of 2026-11-08:** Remote Control folders on TKERR-NZXT-BLD are listed but not offered to cloud sessions;
+  valheimians.com answers with a Cloudflare block page to plain requests and to Playwright from the cloud container.
+  Branch `corpus` exists (README only, never merged).
 - **Blueprints:** `BepInEx/config/Villheim/blueprints` (and PlanBuild's folder), named `role-family-level`.
 - **Dialogue:** `src/Villheim.Logic/Dialogue/*.txt`; the format is at the top of `lines.txt`.
 - **Also untested from 2026-11-05:** sessions 4, 5 and 7 (doors, support order, free time, chest by the hearth,
@@ -78,6 +86,7 @@ Current facts only. Read this at the start of a session. Narrative is in `docs/d
 
 ## Recent milestones
 
+- **2026-11-08 (BiomeBlueprints blacklisted; access checks; decisions on generated designs and outposts)** - see docs/daily-notes/2026-11/2026-11-08.md
 - **2026-11-07 (world life: visitors, hermits, news, personalities, relations, watching, smith, outposts, trails; research survey)** - see docs/daily-notes/2026-11/2026-11-07.md
 - **2026-11-07 (board plots stay standing on save, lost plot signs restored, roads relaid on rebuild, vh shaper/repair/weather)** - see docs/daily-notes/2026-11/2026-11-07.md
 - **2026-11-07 (board ground copy reworked, still open; pieces placed as saved; vh snow)** - see docs/daily-notes/2026-11/2026-11-07.md

@@ -201,9 +201,10 @@ with its own look for its biome.
 - [ ] Different building sets and villager looks per biome (Meadows versus Black Forest first).
 - [ ] PlanBuild blueprints as a design source. (Reader built 2026-11-06; needs blueprints in the folder and testing.)
 - [ ] Curated blueprint sets for Meadows and Black Forest with upgrade levels (Tyler, 2026-11-06). The OverDrive
-      BiomeBlueprints pack works as an optional install (2026-11-06); ask its author lg_9d about a licence for the
-      78 generated designs if they are ever to ship. No openly licensed
-      set was found online; capture with `vh savebp` or PlanBuild, or use downloads with the author's permission.
+      BiomeBlueprints pack is blacklisted (Tyler, 2026-11-08). Capture with `vh savebp` or PlanBuild, or use downloads
+      with the author's permission.
+- [ ] Generated designs learned from Tyler's approved set and other creators' builds, with quality controls; renders
+      of any blueprint from several angles; a request-to-blueprint tool (Tyler, 2026-11-08; not started).
 - [ ] More biomes (Plains, Mountain, Swamp) with their own materials.
 - [ ] Gear by biome and village level: basic Meadows tools for everyone, biome weapons and shields for protectors,
       better materials and Black Forest gear as the village levels up (Tyler, 2026-11-05). (Since 2026-11-07 each tier
@@ -248,6 +249,8 @@ Villages that reach out past their fence, and a world with other people in it. D
 - [ ] Relations between villages that drift day by day (built 2026-11-07, needs testing; `vh village`).
 - [ ] Idle villagers watch others work and comment (built 2026-11-07, needs testing).
 - [ ] Caravans as records that move on the world clock and become real only near a player.
+- [ ] Outpost wood counts for the biome rule; villagers go out only once equipped to defend themselves (Tyler,
+      2026-11-08; not built).
 - [ ] Outposts at far resources (core wood, ore, the coast), joined to the village by a path. (Logging camps and trails
       built 2026-11-07, needs testing; `vh outpost`, `vh trails`.)
 - [ ] Roads between villages. (Dirt trails to the nearest neighbour built 2026-11-07, needs testing.)

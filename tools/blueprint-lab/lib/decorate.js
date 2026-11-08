@@ -197,8 +197,12 @@ function furnishRoom(b, room, use, decor, biome, R, occ, ctx, upper) {
   const area = (room.x1 - room.x0) * (room.z1 - room.z0);
   const scale = Math.max(1, area / 20);
   const slots = room.slots || slotsForRect(room);
-  // shuffle slots by seed, but keep back-wall slots first for stations
-  slots.sort((a, b2) => (b2.z - a.z) * 0.3 + (R() - 0.5));
+  // shuffle slots by seed, but keep back-wall slots first for stations. One random number per slot, then a plain
+  // sort: a comparator that draws random numbers gives a different order in every JavaScript engine (the game runs
+  // this file in Jint), and so a different building for the same seed.
+  const keyed = slots.map(s => [s, -s.z * 0.3 + (R() - 0.5)]);
+  keyed.sort((p, q) => p[1] - q[1]);
+  keyed.forEach(([s], i) => { slots[i] = s; });
   const y = room.y;
   const cx = (room.x0 + room.x1) / 2, cz = (room.z0 + room.z1) / 2;
   const counts = ctx.counts || (ctx.counts = new Map());

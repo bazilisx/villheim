@@ -160,52 +160,52 @@ What sort of stick is that? It hums.
 
 # ------------------------------------------------------------------ what the player wears
 
-@ talk, player:gear:none
+@ talk, player:gear:none * 0.6
 Where are your clothes, {player}? Did the river take them?
 You'll catch your death dressed like that. Or undressed like that.
 
-@ talk, player:gear:none | young
+@ talk, player:gear:none | young * 0.6
 Why haven't you got a shirt on? Can I not wear a shirt?
 
-@ talk, player:gear:rags
+@ talk, player:gear:rags * 0.6
 That tunic has seen better days. Many better days.
 We could find you something warmer than rags, if you bring us the hides.
 
-@ talk, player:gear:leather
+@ talk, player:gear:leather * 0.6
 Good leathers. Stitched well, too.
 Leather's warm and it turns a greydwarf's stick. Good choice.
 
-@ talk, player:gear:troll
+@ talk, player:gear:troll * 0.6
 Is that troll hide? You took that off a troll?
 Troll leather. I'd heard it could be done. Now I've seen it.
 
-@ talk, player:gear:troll | worrier
+@ talk, player:gear:troll | worrier * 0.6
 Is it dead? The troll? It's definitely dead?
 
-@ talk, player:gear:bronze
+@ talk, player:gear:bronze * 0.6
 Bronze! You shine like a sunrise.
 That's good bronze on you. Somebody knows their way round a forge.
 You clank a bit when you walk. It suits you.
 
-@ talk, player:gear:bronze | gruff
+@ talk, player:gear:bronze | gruff * 0.6
 Bronze. Hm. It'll do.
 
-@ talk, player:gear:iron
+@ talk, player:gear:iron * 0.6
 Iron mail. You've been down in the crypts, then.
 That iron must weigh a cow. How do you walk in it?
 
-@ talk, player:gear:wolf
+@ talk, player:gear:wolf * 0.6
 Wolf fur. You've been up the mountain. Was it as cold as they say?
 That's a wolf you're wearing. I wouldn't want to meet its friends.
 
-@ talk, player:gear:padded
+@ talk, player:gear:padded * 0.6
 Look at you, all padded and plated. Like a lord from the old stories.
 
-@ talk, player:gear:fine
+@ talk, player:gear:fine * 0.6
 I don't even know what that's made of. It looks expensive.
 Fine gear, {player}. Too fine for the likes of us.
 
-@ talk, player:cape
+@ talk, player:cape * 0.6
 Nice cloak. Keeps the rain off, I bet.
 
 @ self, event:playergear

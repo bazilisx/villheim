@@ -75,34 +75,34 @@ I put that one in crooked. Don't tell {other}.
 @ doing:cooking, skill:cooking:novice
 Is it black on the outside because it's done, or because I'm bad at this?
 
-@ talk, best:woodcutting
+@ talk, best:woodcutting * 0.5
 Ask me about trees, {player}. I know trees.
 
-@ talk, best:mining
+@ talk, best:mining * 0.5
 If you want copper, ask me. I've a nose for it.
 
-@ talk, best:building
+@ talk, best:building * 0.5
 I've put up more walls here than anyone. I'm the one to ask.
 
-@ talk, best:cooking
+@ talk, best:cooking * 0.5
 Hungry? I'm the best cook in {village}. Ask anyone. Ask {other}.
 
-@ talk, best:hunting
+@ talk, best:hunting * 0.5
 I'm the one who brings the meat home. Most days.
 
-@ talk, best:farming
+@ talk, best:farming * 0.5
 The fields like me. I don't know why. I talk to them.
 
-@ talk, best:foraging
+@ talk, best:foraging * 0.5
 I can find berries where there aren't any.
 
-@ talk, best:hauling
+@ talk, best:hauling * 0.5
 I can carry more than anyone here. A small gift, and it's mine.
 
-@ talk, best:crafting
+@ talk, best:crafting * 0.5
 Give me a bench and an afternoon and I'll make you anything.
 
-@ talk
+@ talk * 0.5
 What am I good at? {bestskill}, they tell me. I'm {skillword} at it.
 
 # ------------------------------------------------------------------ getting better

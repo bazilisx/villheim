@@ -10,30 +10,30 @@
 
 # ------------------------------------------------------------------ how often the player comes
 
-@ talk, pmem:visits:first
+@ talk, pmem:visits:first * 0.6
 New face. Where have you come from?
 I don't know you. That's fine. Most of us didn't know each other once.
 First time in {village}? Mind the mud by the chest.
 
-@ talk, pmem:visits:few
+@ talk, pmem:visits:few * 0.6
 You again. Good. I was starting to think you'd only dreamt us.
 Back again, {player}? We'll have to find you a stool.
 You've been here {visits} now. That nearly makes you a neighbour.
 
-@ talk, pmem:visits:many
+@ talk, pmem:visits:many * 0.6
 You're here so often I've started setting a place.
 Ah, {player}. The fire's warmer when you're about.
 {visits} you've come to {village}, by my count. I've been counting.
 
-@ talk, pmem:visits:regular
+@ talk, pmem:visits:regular * 0.6
 You're one of us now, {player}. Whether you like it or not.
 I don't even look up any more when you come in. That's a compliment.
 If you stopped coming, we'd wonder where you'd gone.
 
-@ talk, pmem:visits:regular | gruff
+@ talk, pmem:visits:regular | gruff * 0.6
 You again. Of course. Sit down, then.
 
-@ talk, pmem:visits:regular | elder
+@ talk, pmem:visits:regular | elder * 0.6
 When I'm gone, tell them about this place. You know it as well as anyone.
 
 @ talk, pmem:away:long

@@ -1,0 +1,299 @@
+# Villheim: more chats of two and three, tied to the moment (weather, place, work, wants, what the player did).
+# Same format as scenes.txt: "@key" is answered from answer:key in the answerer's own voice, "+key" brings in a
+# third villager (chime:key).
+
+# ------------------------------------------------------------------ weather
+
+@ chat, weather:rain
+Wet again. // @wet
+Do you think it'll stop? // @rainstop
+My boots have been wet for three days. // Mine for four. // You win.
+
+@ chat, weather:storm
+Did you hear that one? // Shook the walls. // +storm
+
+@ chat, weather:mist
+Can you see the trees? // What trees? // Exactly.
+I thought I saw someone in the mist. // It was me. // It was taller than you.
+
+@ chat, weather:snow
+Snow. // Snow. // I'll get more wood.
+
+@ chat, cold
+I can't feel my toes. // @cold
+
+@ chat, weather:clear, day
+Good day for drying the hides. // Good day for sitting down. // Can't it be both?
+
+@ reply, answer:wet
+It's only water. // Cold water. // Still only water.
+I've stopped minding. Wet is how I am now.
+The ground's drinking well, at least.
+
+@ reply, answer:wet | gruff
+Wet's wet. Get on with it.
+
+@ reply, answer:wet | cheerful
+Rain's good for the berries! And for... the berries.
+
+@ reply, answer:wet | worrier
+My cloak will rot. Everything rots in this.
+
+@ reply, answer:rainstop
+By dusk. My knee says so.
+Never. We live under a cloud now.
+When the gods get bored of it.
+
+@ reply, answer:rainstop | wry
+It'll stop the moment I go inside.
+
+@ reply, answer:rainstop | elder
+It always stops. Then it always starts again.
+
+@ reply, answer:cold
+Stand closer to the fire. // Any closer and I'll be the fire.
+Stamp your feet. Works for me.
+Put your hands in your armpits. Your own armpits.
+
+@ reply, answer:cold | young
+I'm not cold! I'm a bit cold.
+
+@ reply, chime:storm
+Everybody under a roof. Now.
+Thor's in a temper tonight.
+I'm not going out in that for anything.
+
+# ------------------------------------------------------------------ places
+
+@ chat, at:forge
+Hot work? // Hot, dirty and loud. I love it.
+Can you mend my buckle? // Leave it on the anvil. // +forge
+
+@ reply, chime:forge
+Mine too, while you're at it.
+Don't let them talk you into doing it for nothing.
+
+@ chat, at:chest
+What have we got? // @chest
+Who keeps putting the wet logs on top? // Not me. // +chest
+
+@ reply, answer:chest
+Not enough of anything. Same as always.
+A bit of everything. Not a lot of anything.
+Resin. So much resin. Nobody needs this much resin.
+
+@ reply, answer:chest, need:none
+Plenty, for once. I counted twice.
+
+@ reply, answer:chest, need:any
+We're short of {material}. Everyone keeps saying so, nobody brings any.
+
+@ reply, chime:chest
+It was {other}. Wet hands, wet logs.
+I saw it. I'm not saying who.
+
+@ chat, at:shore
+Think there are fish out there? // There are always fish. Catching them is the trouble.
+Ever been out on a boat? // @boat
+
+@ reply, answer:boat
+Once. I was sick the whole way.
+My father had one. I never learned.
+I'd like to. Somewhere quiet, with a line in the water.
+
+@ reply, answer:boat, fear:water
+Never. Not for all the silver in the world.
+
+@ chat, at:edge
+Hear that? // Birds. // I hope it's birds.
+Long way to {neighbour} from here. // A few days. // Feels further.
+
+@ chat, at:hearth, evening
+Good fire tonight. // Dry wood for once. // +fire
+
+@ reply, chime:fire
+I brought that wood. You're welcome.
+Shove up, there's room for one more.
+
+@ chat, indoors, weather:rain
+At least we're dry. // At least. // What's at most? // Mead, if there was any.
+
+# ------------------------------------------------------------------ work
+
+@ chat, doing:chatting, need:wood
+We need more wood again. // We always need more wood. // Then let's go and get some. // After this.
+
+@ chat, need:stone
+Who's going for stone tomorrow? // Not me. // +stone
+
+@ reply, chime:stone
+I'll go. My back's already ruined.
+Ask {player}. They're always carrying stone about.
+
+@ chat, building:any
+How's the {building} coming on? // @building
+Do you think the {building} will be done before the rains? // @done
+
+@ reply, answer:done
+If nobody falls off the roof.
+If we get the {material}.
+Before the rains, after the rains, during the rains.
+
+@ reply, answer:done | worrier
+I doubt it. Something always goes wrong.
+
+@ reply, answer:done | cheerful
+Of course! We're nearly there!
+
+@ chat, trade:woodcutter, with:trade:carpenter
+I've got the logs you wanted. // All of them? // Most of them. // Most isn't all.
+
+@ chat, trade:cook, with:trade:woodcutter
+Bring me dry wood for the fire tonight. // What's in it for me? // Supper.
+
+@ chat, doingskill:good
+I'm getting good at this, you know. // I know. You keep telling me.
+
+@ chat, best:cooking
+Taste this. // It's good. // Only good? // Very good. // That's better.
+
+@ chat, goodday
+I've done a whole day's work already. // It's barely midday. // I know!
+
+# ------------------------------------------------------------------ wants and moods
+
+@ chat, goal:feast
+We should have a feast. // We should. // Who's cooking? // +feast
+
+@ reply, chime:feast
+I'll eat. Somebody else can cook.
+If someone brings a deer, I'll roast it.
+A feast! When? Tonight?
+
+@ chat, goal:news
+Heard anything from outside? // @news
+
+@ reply, answer:news
+Nothing. Nobody comes this way.
+The last pedlar said {news}.
+Only what {other} made up.
+
+@ reply, answer:news, news
+Word is {news}.
+
+@ chat, goal:bed
+Is there a bed going in the next house? // @bed
+
+@ reply, answer:bed
+Ask the builder. They know.
+Maybe. If you're good.
+You'll have to fight {other} for it.
+
+@ reply, answer:bed, freebed
+There's one free now. Go and claim it before someone else does.
+
+@ chat, goal:learn, with:skilled
+Could you teach me? I'm hopeless at {goalskill}. // @teach
+
+@ chat, feel:stressed
+I'm worn out. // @worn
+
+@ reply, answer:worn
+Sit down a while. The work will wait.
+Me too. Let's sit.
+Go and lie down. I'll cover for you.
+
+@ reply, answer:worn | gruff
+We all are. Keep going.
+
+@ reply, answer:worn | elder
+Rest. You're no good to anyone half dead.
+
+@ chat, feel:happy
+I'm in a good mood. // I can tell. You're humming. // Was I? // All morning.
+
+@ chat, afterfight
+That was close. // Too close. // @afterfight
+
+@ reply, answer:afterfight
+Is everyone all right? Has anyone counted?
+We need a fence. A proper one.
+I'm still shaking.
+
+@ reply, answer:afterfight, protector
+They'll be back. Next time we're ready.
+
+@ reply, answer:afterfight | wry
+That's my exercise for the week.
+
+# ------------------------------------------------------------------ the player, between villagers
+
+@ chat, player:here
+{player}'s about. // I saw. // +player
+
+@ reply, chime:player
+Ask them if they've got any wood.
+Good. I wanted to say hello.
+Act busy.
+
+@ chat, player:here, pmem:generous
+There goes {player}. // The one who filled the chest? // The very one. // +praiseplayer
+
+@ chat, player:here, player:hero
+Do you think {player} would teach me to fight? // Ask them. // I'm too shy.
+
+@ chat, player:here, pmem:nevergave
+{player} again. // Did they bring anything? // What do you think?
+
+@ chat, player:here, player:armed
+Why's {player} walking around with that out? // @wary
+
+@ chat, player:here, player:badlyhurt
+{player} looks bad. // Somebody take them some food. // +helpplayer
+
+@ reply, chime:helpplayer
+I'll go. There's cooked meat in the chest.
+Sit them by the fire.
+I've got a bandage. Clean, mostly.
+
+@ chat, player:here, player:gear:bronze
+{player}'s all in bronze now. // Somebody's been to the forge. // Or robbing graves.
+
+@ chat, player:here, player:trophy
+Is that what I think {player} is carrying? // Don't look at it. // I'm looking at it.
+
+# ------------------------------------------------------------------ the young and the old
+
+@ chat | young
+Want to play stones? // I'll win. // You always say that. // I always win.
+Can I come hunting next time? // When you're bigger. // How big? // Bigger than that.
+Why is the sky blue? // Because. // Because what? // Because I said.
+
+@ chat | elder
+In my day we'd have finished this by now. // In your day there were more of you. // Fewer complaints, too.
+Did I ever tell you about the winter of the three wolves? // Many times. // Then you'll know how it ends.
+I'm too old for this. // You say that every morning. // Every morning it's true.
+
+@ chat | devout
+Did you leave something at the stones this morning? // Bread. // Good. The gods like bread.
+Thor watches over us. // Does he watch over the turnips? // Everything.
+
+@ chat | cheerful
+Isn't this a good place? // It has its days. // Today's one of them!
+I've decided today is going to be good. // Who decides that? // Me. Just now.
+
+@ chat | worrier
+Did you hear that? // What? // Exactly. Nothing. Too quiet.
+What if the chest gets wet? // It has a lid. // What if the lid gets wet?
+
+@ chat | wry
+I've been thinking. // Careful. // About supper. // Safer.
+Have you noticed we talk about the weather a lot? // It's raining. // There, see.
+
+@ chat | gruff
+Move. // Where? // Away.
+Your turn to fetch water. // It was my turn yesterday. // And today.
+
+@ chat | steady
+Steady work today. // Same as yesterday. // That's how I like it.
+We'll get there. One log at a time.

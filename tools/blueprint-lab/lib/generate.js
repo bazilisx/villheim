@@ -27,7 +27,7 @@ class Build {
   put(name, x, y, z, yaw = 0, extra) {
     if (!name) return;
     yaw = norm(yaw);
-    const key = `${name}|${x.toFixed(2)}|${y.toFixed(2)}|${z.toFixed(2)}|${Math.round(yaw) % 360}`;
+    const key = `${name}|${Math.round(x * 100)}|${Math.round(y * 100)}|${Math.round(z * 100)}|${Math.round(yaw) % 360}`; // rounded so -0.00 and 0.00 match
     if (this.keys.has(key)) return; // the same piece in the same place once only (porch eaves, meeting wings)
     this.keys.add(key);
     this.pieces.push({ name, x: +x.toFixed(3), y: +y.toFixed(3), z: +z.toFixed(3), q: quat(yaw), yaw, ...(extra || {}) });
@@ -117,9 +117,13 @@ function wingsFor(plan, W, D, R) {
       return [main, { cx: mid, cz: out / 2, W: D + out / 2, D: wD, alpha: 270 }];
     case 'cross':
       return [main, { cx: mid, cz: 0, W: D + out, D: wD, alpha: 270 }];
-    case 'U':
-      return [main, { cx: -(W - wD), cz: -out / 2 - 1, W: D + out / 2 + 1, D: wD, alpha: 270 },
-        { cx: W - wD, cz: -out / 2 - 1, W: D + out / 2 + 1, D: wD, alpha: 270 }];
+    case 'U': {
+      // wings at both ends with a yard of at least 4 m between them (the main wing is widened when it is too short)
+      const uD = Math.min(wD, 3), Wu = Math.max(W, 2 * uD + 3);
+      main.W = Wu;
+      return [main, { cx: -(Wu - uD), cz: -out / 2 - 1, W: D + out / 2 + 1, D: uD, alpha: 270 },
+        { cx: Wu - uD, cz: -out / 2 - 1, W: D + out / 2 + 1, D: uD, alpha: 270 }];
+    }
     default:
       return [main];
   }
@@ -204,7 +208,7 @@ function generate(req) {
   if (bz % 2 === 0 && roofKind !== 'flat') bz += 1; // a ridge over a bay centre
   if (plan === 'square') bx = bz = Math.max(bx, bz) % 2 ? Math.max(bx, bz) : Math.max(bx, bz) + 1;
   if (roofKind === 'hip' && bx < bz) bx = bz;
-  const W = bx, D = bz;
+  let W = bx; const D = bz;
   const storeys = T.storeys[stage];
   const SH = T.low ? 2 : T.tower ? 3 : (['longhouse', 'tavern', 'temple'].includes(type) || stage === 's3') ? 3 : 2;
   const flat = roofKind === 'flat';
@@ -221,6 +225,7 @@ function generate(req) {
     octagonDesign(b, K, C, { W: Math.max(3, Math.round((W + D) / 2)), F, SH, storeys, r, T, biome, stoneBase });
   } else {
     const wings = wingsFor(plan, W, D, R);
+    W = wings[0].W; // a U plan may widen the main wing
     const cells = cellsOf(wings);
     const edges = edgesOf(cells);
     const verts = vertsOf(edges);
@@ -312,7 +317,7 @@ function generate(req) {
       // where wings cross, keep the higher roof so the lower roof runs into the higher one
       const placed = new Set();
       for (const p of parts) {
-        const key = `${p.name}|${p.x.toFixed(2)}|${p.y.toFixed(2)}|${p.z.toFixed(2)}|${Math.round(p.yaw)}`;
+        const key = `${p.name}|${Math.round(p.x * 100)}|${Math.round(p.y * 100)}|${Math.round(p.z * 100)}|${Math.round(p.yaw) % 360}`;
         if (placed.has(key)) continue; // two wings can lay the same piece where they meet
         placed.add(key);
         const hidden = wings.some(o => o !== p.wing && inside(o, p.x, p.z, -0.2) && p.surf < surfaceAt(o, p.x, p.z, roofTop, r) - 0.25);
@@ -336,6 +341,28 @@ function generate(req) {
           b.put(framePole(K, C), x, F + 1, zf - 2);
         }
         for (const x of bays) b.put((biome === 'Meadows' || biome === 'Black Forest') ? K.roof26 : 'darkwood_roof', x, F + 2, zf - 1, 180);
+      }
+    }
+    // desert courtyard houses: a well in the yard of a U plan, a tall stone tower at a back corner of large ones
+    if (cultureKey === 'middle-eastern' && !T.tower) {
+      if (plan === 'U') {
+        // pave the yard between the wings
+        const zmin = wings[1].cz - wings[1].W;
+        const pave = K.stoneFloor || K.floor;
+        for (let x = -W + 1; x < W; x += 2) for (let z = zmin + 1; z < -D; z += 2)
+          if (!cells.has(`${x},${z}`)) b.put(pave, x, pave === 'stone_floor_2x2' ? -0.5 : 0, z);
+        const yz = Math.round((zmin - D) / 2);
+        const well = new Build(); wellDesign(well, K, biome, 's1');
+        for (const p of well.pieces) b.put(p.name, p.x, p.y, p.z + yz, p.yaw);
+      }
+      if (stage === 's3' || type === 'temple') {
+        const tx = W + 1, tz = D - 1, h = top + 6, stone = K.stoneWall || 'stone_wall_2x1';
+        for (let y = 0.5; y < h; y += 1) for (const [dx, dz, yaw] of [[0, -1, 0], [0, 1, 0], [-1, 0, 90], [1, 0, 90]])
+          if (!(y < F + 2 && dx === -1)) b.put(stone, tx + dx, y, tz + dz, yaw); // open on the house side at the bottom
+        b.put(K.floor, tx, h, tz);
+        for (const [dx, dz, yaw] of [[0, -1, 0], [0, 1, 0], [-1, 0, 90], [1, 0, 90]]) b.put(K.stoneBlock || 'stone_wall_1x1', tx + dx * 1.0, h + 0.5, tz + dz * 1.0, yaw);
+        b.put(K.ladder, tx, h - 1, tz, 0);
+        b.notes.push('Tall stone tower at a back corner, after the desert style.');
       }
     }
     if (T.dock) dockDesign(b, K, W, D, F, stage);

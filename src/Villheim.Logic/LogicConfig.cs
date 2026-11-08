@@ -63,6 +63,11 @@ namespace Villheim.Logic
         public static ConfigEntry<bool> Caravans;
         public static ConfigEntry<bool> CaravanDeliveries;
         public static ConfigEntry<bool> BroughtMaterials;
+        public static ConfigEntry<bool> StorageChests;
+        public static ConfigEntry<string> StorageChestSteps;
+        public static ConfigEntry<int> StorageChestPeople;
+        public static ConfigEntry<int> StorageChestMax;
+        public static ConfigEntry<float> StorageSortAt;
         public static ConfigEntry<string> WoodFirstBiomes;
         public static ConfigEntry<int> StoneFromStage;
         public static ConfigEntry<int> StoneHallFromStage;
@@ -207,6 +212,20 @@ namespace Villheim.Logic
                 "The same for the hall (the longhouse by the hearth): it may be built or rebuilt in stone from this stage.");
             EarlyStoneMax = Admin(config, work, "EarlyStoneMax", 30,
                 "Stone a design may use and still count as a wooden building (a hearth, a fire pit, a few steps).");
+            StorageChests = Admin(config, work, "StorageChests", true,
+                "Extra wood chests by the main chest as the village grows, each with a sign for what it holds (wood, " +
+                "fine wood, core wood, stone, ore and metal, food, other). Villagers sort the main chest into them when it " +
+                "fills, and the builder takes from any of them.");
+            StorageChestSteps = Admin(config, work, "StorageChestSteps", "1:1, 2:2, 3:4",
+                "Storage chests by buildings standing, buildings:chests separated by commas. The default gives one with the " +
+                "first building, two with the second and four with the third.");
+            StorageChestPeople = Admin(config, work, "StorageChestPeople", 3,
+                "One more storage chest for every this many villagers past six. 0: none for people.");
+            StorageChestMax = Admin(config, work, "StorageChestMax", 8,
+                "Most storage chests a village keeps, counting the ones it adds when the main chest is full with " +
+                "nowhere to sort to (at most one a day).");
+            StorageSortAt = Admin(config, work, "StorageSortAt", 0.75f,
+                "How full the main chest (share of its slots) gets before a villager carries stacks to the storage chests.");
             SecondsPerPiece = Admin(config, work, "SecondsPerPiece", 2.5f,
                 "How long a builder hammers at each piece before it goes up.");
             StartingStock = Admin(config, work, "StartingStock", 0,

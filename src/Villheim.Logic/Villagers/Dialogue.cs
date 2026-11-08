@@ -589,7 +589,7 @@ namespace Villheim.Logic.Villagers
             }
 
             string doing = (Sleep.IsAsleep(villager) ? "asleep" : null) ?? (MorningHearth.IsTending(villager) ? "tending the hearth" : null) ?? Healing.Describe(villager) ?? Chores.Describe(villager) ??
-                           Hunting.Describe(villager) ?? Farming.Describe(villager) ?? Foraging.Describe(villager) ??
+                           Hunting.Describe(villager) ?? Farming.Describe(villager) ?? Sorting.Describe(villager) ?? Foraging.Describe(villager) ??
                            Repairs.Describe(villager) ?? Smithing.Describe(villager) ??
                            (PathLaying.IsLaying(villager) ? "laying a path" : null) ?? FreeTime.Describe(villager) ?? "idle";
             foreach (string activity in Activities(doing))

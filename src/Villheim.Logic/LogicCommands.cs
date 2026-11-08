@@ -339,6 +339,7 @@ namespace Villheim.Logic
             Say(context, $"   {Villagers.Smithing.Report(hearth)}");
             Say(context, $"   outpost: {Outposts.Describe(hearth)}; {Trails.Describe(hearth)}");
             Say(context, $"   {Caravans.Describe(hearth)}; {VillageEvents.Describe(hearth)}; {Daughters.Describe(hearth)}; {Contracts.Describe(hearth)}");
+            Say(context, $"   {StorageChests.Describe(hearth)}");
             foreach (Villagers.Social.Known known in Villagers.Social.KnownPlayers(hearth))
             {
                 Say(context, $"   knows {known.Name}: reputation {known.Reputation}, first seen day {known.FirstDay}, last day {known.LastDay}");

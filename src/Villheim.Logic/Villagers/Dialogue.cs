@@ -525,6 +525,12 @@ namespace Villheim.Logic.Villagers
                 }
             }
 
+            (string Name, int View)? neighbour = Relations.Nearest(hearth);
+            if (neighbour != null)
+            {
+                tags.Add("neighbour:" + Relations.Band(neighbour.Value.View));
+            }
+
             foreach (string social in Social.Tags(hearth))
             {
                 tags.Add(social);
@@ -620,6 +626,11 @@ namespace Villheim.Logic.Villagers
             line = line.Replace("{request}", request);
             string other = OtherVillager(villager);
             line = Personality.Fill(line, villager);
+            if (line.Contains("{neighbour}"))
+            {
+                line = line.Replace("{neighbour}", (hearth != null ? Relations.Nearest(hearth)?.Name : null) ?? "the next village");
+            }
+
             line = line.Replace("{village}", village)
                 .Replace("{material}", material)
                 .Replace("{building}", building)

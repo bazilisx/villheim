@@ -181,6 +181,7 @@ namespace Villheim.Logic.Village
             var state = new VillageState(hearth.Zdo);
             string from = visitor.Zdo.GetString(Wanderers.KeyFrom, "");
             int news = CarryNews(visitor.Zdo.GetInt(KeyFromVillage), hearth);
+            Relations.Visited(hearth, visitor.Zdo.GetInt(KeyFromVillage));
             Villagers.Social.Gather(state.Id, visitor, null, kind == Wanderers.Pedlar ? 2 : 1, "event:" + kind, "wave", 40f);
             Dialogue.Note(state.Id, kind);
             string goods = kind == Wanderers.Pedlar ? TradeWithChest(hearth, state) : null;

@@ -267,3 +267,35 @@ If anyone asks, today's a day of rest. Nobody asked.
 
 @ talk, tenthday | elder
 Ten days more behind us. I count them on the doorpost.
+
+# ------------------------------------------------------------------ the neighbours (Village/Relations.cs)
+# Tags neighbour:close neighbour:friendly neighbour:fair neighbour:wary neighbour:hostile, fill-in {neighbour}.
+
+@ talk, neighbour:close
+{neighbour} would do anything for us. We'd do the same.
+If we ever run short, {neighbour} will help. They always have.
+
+@ talk, neighbour:friendly
+Good people in {neighbour}. A bit loud at feasts.
+We get on with {neighbour}. Their pedlars are honest, mostly.
+
+@ talk, neighbour:fair
+{neighbour}? They keep to themselves. So do we.
+I don't know much about {neighbour}. Should visit one day.
+
+@ talk, neighbour:wary
+Folk from {neighbour} came through last month. Counted our boars, I think.
+I don't trust {neighbour}. Can't say why. Just don't.
+
+@ talk, neighbour:wary | gruff
+{neighbour} wants what we have. Watch them.
+
+@ talk, neighbour:hostile
+If anyone from {neighbour} comes up the path, call the protectors.
+We don't talk about {neighbour} here.
+
+@ talk, neighbour:hostile | worrier
+What if {neighbour} comes for us in the night? Has anyone thought about that?
+
+@ chat, neighbour:wary
+Heard from {neighbour}? // Nothing good. // Nothing's what I like to hear from them.

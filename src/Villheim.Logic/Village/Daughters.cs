@@ -205,13 +205,13 @@ namespace Villheim.Logic.Village
         {
             foreach (ZDO daughter in Relations.AllHearths())
             {
-                if (daughter.GetInt(KeyParent) != state.Id || hearth.Zdo.GetBool(KeyWelcomed + daughter.GetInt(Keys.VillageId)))
+                if (daughter.GetInt(KeyParent) != state.Id || hearth.Zdo.GetBool(unchecked(KeyWelcomed + daughter.GetInt(Keys.VillageId))))
                 {
                     continue;
                 }
 
                 int id = daughter.GetInt(Keys.VillageId);
-                hearth.Zdo.Set(KeyWelcomed + id, true);
+                hearth.Zdo.Set(unchecked(KeyWelcomed + id), true);
                 Relations.Set(hearth.Zdo, id, 80);
                 Chronicle.Add(hearth, $"Our people have lit their own hearth. The village is called {daughter.GetString(Keys.Name, "something new")}.");
             }

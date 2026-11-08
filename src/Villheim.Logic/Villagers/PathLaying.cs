@@ -42,6 +42,7 @@ namespace Villheim.Logic.Villagers
         {
             var village = new VillageState(hearth.Zdo);
             List<Vector3> route = PathPlanner.Plan(hearth, village.Axis, building, radius, yaw, doorAngle, design);
+            PathPlanner.RememberDetours(hearth, building);
             string entry = string.Join(",", F(building.x), F(building.y), F(building.z), F(radius)) + "|" + PathPlanner.Encode(route);
             string queue = hearth.Zdo.GetString(KeyQueue, "");
             hearth.Zdo.Set(KeyQueue, string.IsNullOrEmpty(queue) ? entry : queue + ";" + entry);

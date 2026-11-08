@@ -35,6 +35,7 @@ namespace Villheim.Logic.Villagers
         private sealed class State
         {
             public Phase Phase;
+            public string Entry;
             public string Sapling;
             public Vector3 Spot;
             public float Deadline;
@@ -147,15 +148,23 @@ namespace Villheim.Logic.Villagers
                 return false;
             }
 
-            string sapling = owed[0];
-            if (!FindSpot(hearth, sapling, villager.transform.position, out Vector3 spot))
+            string entry = owed[0];
+            bool copse = entry.StartsWith(CopsePrefix);
+            string sapling = copse ? entry.Substring(CopsePrefix.Length) : entry;
+            Vector3 spot;
+            if (!(copse ? FindCopseSpot(hearth, sapling, out spot) : FindSpot(hearth, sapling, villager.transform.position, out spot)))
             {
                 VillheimPlugin.Debug($"{hearth.VillageName}: no open ground found to plant a {sapling}.");
                 state.NextLook = Time.time + 120f;
+                // To the back of the list, so one sapling with nowhere to go does not hold up the rest.
+                owed.RemoveAt(0);
+                owed.Add(entry);
+                Save(hearth, owed);
                 return false;
             }
 
             Planters[villager.VillageId] = villager;
+            state.Entry = entry;
             state.Sapling = sapling;
             state.Spot = spot;
             state.Phase = Phase.Walk;
@@ -183,7 +192,7 @@ namespace Villheim.Logic.Villagers
             GameObject planted = Object.Instantiate(prefab, at, Quaternion.Euler(0f, Random.Range(0f, 360f), 0f));
             planted.GetComponent<Piece>()?.m_placeEffect?.Create(at, Quaternion.identity, planted.transform);
             List<string> owed = Owed(hearth);
-            owed.Remove(state.Sapling);
+            owed.Remove(state.Entry ?? state.Sapling);
             Save(hearth, owed);
             VillheimPlugin.Debug($"{villager.VillagerName} planted a {state.Sapling} ({owed.Count} still to plant).");
         }
@@ -283,12 +292,119 @@ namespace Villheim.Logic.Villagers
         private static string SaplingFor(string tree, Heightmap.Biome biome)
         {
             string name = tree ?? "";
-            if (name.StartsWith("Beech")) return "Beech_Sapling";
-            if (name.StartsWith("Birch")) return "Birch_Sapling";
-            if (name.StartsWith("Oak")) return "Oak_Sapling";
-            if (name.StartsWith("Pine")) return "PineTree_Sapling";
-            if (name.StartsWith("FirTree") || name.StartsWith("Fir")) return "FirTree_Sapling";
-            return biome == Heightmap.Biome.BlackForest ? "FirTree_Sapling" : "Beech_Sapling";
+            string sapling = name.StartsWith("Beech") ? "Beech_Sapling"
+                : name.StartsWith("Birch") ? "Birch_Sapling"
+                : name.StartsWith("Oak") ? "Oak_Sapling"
+                : name.StartsWith("Pine") ? "PineTree_Sapling"
+                : name.StartsWith("FirTree") || name.StartsWith("Fir") ? "FirTree_Sapling"
+                : biome == Heightmap.Biome.BlackForest ? "FirTree_Sapling" : "Beech_Sapling";
+            // A sapling that cannot grow in the village's biome (beech in the Plains) becomes one that can.
+            return Grows(sapling, biome) ? sapling : SaplingForBiome(biome) ?? sapling;
+        }
+
+        private static readonly string[] Saplings = { "Birch_Sapling", "Oak_Sapling", "Beech_Sapling", "PineTree_Sapling", "FirTree_Sapling" };
+
+        private static bool Grows(string sapling, Heightmap.Biome biome)
+        {
+            GameObject prefab = ZNetScene.instance ? ZNetScene.instance.GetPrefab(sapling) : null;
+            Plant plant = prefab != null ? prefab.GetComponent<Plant>() : null;
+            return plant == null || (plant.m_biome & biome) != 0;
+        }
+
+        /// <summary>One of the ordinary wood trees (birch, oak, beech, pine, fir) that grows in this biome, or null.</summary>
+        public static string SaplingForBiome(Heightmap.Biome biome)
+        {
+            List<string> fits = Saplings.Where(n => ZNetScene.instance != null && ZNetScene.instance.GetPrefab(n) != null && Grows(n, biome)).ToList();
+            return fits.Count > 0 ? fits[Random.Range(0, fits.Count)] : null;
+        }
+
+        // ---------------------------------------------------------------- copses
+
+        private const string CopsePrefix = "copse:";
+        private static readonly int KeyCopseAt = "villheim_copse_at".GetStableHashCode();
+
+        /// <summary>A sapling owed to the village's copse (Groves, for villages with few trees about).</summary>
+        public static void OweCopse(int villageId, string sapling)
+        {
+            VillageHearth hearth = VillageHearth.Find(villageId);
+            if (hearth == null || !hearth.IsValid || string.IsNullOrEmpty(sapling))
+            {
+                return;
+            }
+
+            List<string> owed = Owed(hearth);
+            if (owed.Count < MaxOwed)
+            {
+                owed.Add(CopsePrefix + sapling);
+                Save(hearth, owed);
+            }
+        }
+
+        /// <summary>
+        /// Open ground in the village's copse: within 10 m of a spot 15 to 30 m past the village edge, kept on the
+        /// hearth. When the copse is full (or the spot is gone), a new copse is started elsewhere round the village.
+        /// </summary>
+        private static bool FindCopseSpot(VillageHearth hearth, string sapling, out Vector3 spot)
+        {
+            spot = Vector3.zero;
+            Vector3 center = hearth.transform.position;
+            float radius = VillheimConfig.VillageRadius.Value;
+            Plant[] plants = Object.FindObjectsOfType<Plant>();
+            for (int attempt = 0; attempt < 2; attempt++)
+            {
+                Vector3 copse = hearth.Zdo.GetVec3(KeyCopseAt, Vector3.zero);
+                if (copse == Vector3.zero)
+                {
+                    copse = NewCopse(hearth, sapling, center, radius);
+                    if (copse == Vector3.zero)
+                    {
+                        return false;
+                    }
+
+                    hearth.Zdo.Set(KeyCopseAt, copse);
+                }
+
+                for (int i = 0; i < 16; i++)
+                {
+                    float angle = Random.Range(0f, Mathf.PI * 2f);
+                    Vector3 p = copse + new Vector3(Mathf.Sin(angle), 0f, Mathf.Cos(angle)) * Random.Range(0f, 10f);
+                    if (!ZoneSystem.instance.IsZoneLoaded(p) || !ZoneSystem.instance.GetGroundHeight(p, out float y) ||
+                        y < ZoneSystem.instance.m_waterLevel + 0.5f || !Grows(sapling, WorldGenerator.instance.GetBiome(p)) ||
+                        Utils.DistanceXZ(p, center) < radius + 5f || !Open(p, plants))
+                    {
+                        continue;
+                    }
+
+                    p.y = y;
+                    spot = p;
+                    return true;
+                }
+
+                // This copse is full: the next one goes elsewhere.
+                hearth.Zdo.Set(KeyCopseAt, Vector3.zero);
+            }
+
+            return false;
+        }
+
+        private static Vector3 NewCopse(VillageHearth hearth, string sapling, Vector3 center, float radius)
+        {
+            for (int i = 0; i < 24; i++)
+            {
+                float angle = Random.Range(0f, Mathf.PI * 2f);
+                Vector3 p = center + new Vector3(Mathf.Sin(angle), 0f, Mathf.Cos(angle)) * (radius + Random.Range(15f, 30f));
+                if (!ZoneSystem.instance.IsZoneLoaded(p) || !ZoneSystem.instance.GetGroundHeight(p, out float y) ||
+                    y < ZoneSystem.instance.m_waterLevel + 0.5f || !Grows(sapling, WorldGenerator.instance.GetBiome(p)) ||
+                    NearOtherVillage(p, hearth.VillageId) || KeepApart.Avoids(hearth.VillageId, center, p))
+                {
+                    continue;
+                }
+
+                p.y = y;
+                return p;
+            }
+
+            return Vector3.zero;
         }
 
         private static List<string> Owed(VillageHearth hearth)

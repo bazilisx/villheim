@@ -25,8 +25,11 @@ namespace Villheim.Logic.Village
 
         private static int Today => EnvMan.instance != null ? EnvMan.instance.GetDay() : 0;
 
+        private static readonly int KeyCopseDay = "villheim_copse_day".GetStableHashCode();
+
         public static void Tick(VillageHearth hearth, VillageState state)
         {
+            Copse(hearth, state);
             if (!On || state.Plots.Count < 4 || hearth.Zdo.GetInt(KeyDay, -1) == Today)
             {
                 return;
@@ -49,6 +52,51 @@ namespace Villheim.Logic.Village
             if (Random.value < 0.3f)
             {
                 Chronicle.Add(hearth, "The woods round the village are thin. We are planting saplings for the years to come.");
+            }
+        }
+
+        /// <summary>
+        /// Copses for villages in biomes with few trees (T-24): once a day, from the first building, a village in one of
+        /// CopseBiomes with fewer than CopseTrees standing trees round it adds CopseSaplingsPerDay saplings of a wood
+        /// tree that grows in its biome (birch and oak in the Plains) to the planting list. They go in a copse just past
+        /// the village edge (Replanting). Needs no WorldLife. A biome where none of those trees grows gets none.
+        /// </summary>
+        private static void Copse(VillageHearth hearth, VillageState state)
+        {
+            if (!LogicConfig.IsOn(LogicConfig.Copses) || state.Plots.Count < 1 || hearth.Zdo.GetInt(KeyCopseDay, -1) == Today ||
+                !(LogicConfig.CopseBiomes?.Value ?? "").Split(',').Any(b => Cultures.TryBiome(b.Trim(), out Heightmap.Biome named) && named == state.Biome))
+            {
+                return;
+            }
+
+            hearth.Zdo.Set(KeyCopseDay, Today);
+            int trees = Trees(hearth);
+            int wanted = LogicConfig.CopseTrees?.Value ?? 20;
+            if (trees >= wanted || Replanting.OwedCount(hearth) > 12)
+            {
+                return;
+            }
+
+            int count = Mathf.Max(0, LogicConfig.CopseSaplingsPerDay?.Value ?? 4);
+            int planted = 0;
+            for (int i = 0; i < count; i++)
+            {
+                string sapling = Replanting.SaplingForBiome(state.Biome);
+                if (sapling == null)
+                {
+                    break;
+                }
+
+                Replanting.OweCopse(state.Id, sapling);
+                planted++;
+            }
+
+            VillheimPlugin.Debug(planted > 0
+                ? $"{state.Name}: {trees} trees round the village, wants {wanted}; {planted} saplings for the copse."
+                : $"{state.Name}: no wood tree grows in the {state.Biome}, so no copse.");
+            if (planted > 0 && Random.value < 0.3f)
+            {
+                Chronicle.Add(hearth, "Wood is scarce out here. We are planting a copse past the edge of the village.");
             }
         }
 

@@ -194,30 +194,9 @@ namespace Villheim.Logic.Village
             }
         }
 
-        /// <summary>What the villager is doing, in a word or two, for the map.</summary>
-        private static string ShortTask(Villager villager)
-        {
-            if (Villagers.Sleep.IsAsleep(villager)) return "sleeping";
-            string a = (Villagers.VillagerBehaviour.Activity(villager) ?? "").ToLowerInvariant();
-            if (a.Contains("watch")) return "on watch";
-            if (a.Contains("hunt") || a.Contains("butcher") || a.Contains("meat to")) return "hunting";
-            if (a.Contains("farm") || a.Contains("harvest") || a.Contains("animals")) return "farming";
-            if (a.Contains("forag") || a.Contains("berries")) return "foraging";
-            if (a.Contains("fell") || a.Contains("splitting") || a.Contains("rock") || a.Contains("gathering") || a.Contains("picking"))
-                return "harvesting";
-            if (a.Contains("carrying")) return "hauling";
-            if (a.Contains("fence")) return "fencing";
-            if (a.Contains("repair") || a.Contains("putting back")) return "repairing";
-            if (a.Contains("taking down") || a == "building" || a.Contains("rebuilding") || a.Contains("making")) return "building";
-            if (a.Contains("path")) return "laying paths";
-            if (a.Contains("cook") || a.Contains("fetching") || a.Contains("roasting")) return "cooking";
-            if (a.Contains("hearth")) return "tending fire";
-            if (a.Contains("busy at")) return "crafting";
-            if (Villagers.Roles.BackgroundOf(villager) == Villagers.Roles.Background.Protector &&
-                villager.GetComponent<VillagerAI>()?.GetTargetCreature() != null)
-                return "defending";
-            return "relaxing";
-        }
+        /// <summary>What the villager is doing, in a word or two, for the map (see Villagers.Status).</summary>
+        private static string ShortTask(Villager villager) =>
+            Villagers.Sleep.IsAsleep(villager) ? "sleeping" : Villagers.Status.Short(villager);
 
         private static System.Reflection.MethodInfo _addPin;
 

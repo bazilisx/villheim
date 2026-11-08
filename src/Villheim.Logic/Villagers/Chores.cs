@@ -253,6 +253,9 @@ namespace Villheim.Logic.Villagers
                 case Phase.Pick:
                     return "gathering " + string.Join(" and ", Labels(work.Wanted));
                 case Phase.Work:
+                case Phase.Approach when work.Target != null && work.Profile != null:
+                    // Walking up to the tree or rock, or stepping back in after a swing or a rolling log, is part of
+                    // the job: the map showed "relaxing" for it (T-11).
                     return work.Target != null && profile.IsPartial(work.Target) ? profile.PartialActivity : profile.Activity;
                 default:
                     return "heading out to work";

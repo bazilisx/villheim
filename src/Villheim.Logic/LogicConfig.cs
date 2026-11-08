@@ -190,6 +190,38 @@ namespace Villheim.Logic
         public static ConfigEntry<float> MistlandsDefenderDamage;
         public static ConfigEntry<float> MistlandsDefenderSpread;
         public static ConfigEntry<float> MistlandsDefenderReaction;
+        // Fights (Villagers/Combat.cs), keeping apart (Village/KeepApart.cs) and mist (Village/Demisting.cs).
+        public static ConfigEntry<int> FightResponders;
+        public static ConfigEntry<float> FightBackRange;
+        public static ConfigEntry<float> FightFleeRange;
+        public static ConfigEntry<float> FightLeash;
+        public static ConfigEntry<float> MeleeStrength;
+        public static ConfigEntry<float> ArrowSmallHealth;
+        public static ConfigEntry<int> ArrowHitsBig;
+        public static ConfigEntry<bool> KeepApart;
+        public static ConfigEntry<string> KeepApartCreatures;
+        public static ConfigEntry<float> KeepApartMargin;
+        public static ConfigEntry<string> KeepApartAvoid;
+        public static ConfigEntry<bool> MistlandsDemist;
+        public static ConfigEntry<float> MistlandsDemistRadius;
+        public static ConfigEntry<float> MistlandsVillagerDemist;
+        // Hunting (Villagers/Hunting.cs) and copses (Village/Groves.cs).
+        public static ConfigEntry<float> HuntBowRange;
+        public static ConfigEntry<float> HuntMeleeRange;
+        public static ConfigEntry<float> HuntChaseSeconds;
+        public static ConfigEntry<float> HuntChaseDistance;
+        public static ConfigEntry<bool> Copses;
+        public static ConfigEntry<string> CopseBiomes;
+        public static ConfigEntry<int> CopseTrees;
+        public static ConfigEntry<int> CopseSaplingsPerDay;
+        // Ages (Villagers/Ages.cs, Villagers/ChildPlay.cs).
+        public static ConfigEntry<float> ElderSpeed;
+        public static ConfigEntry<float> ChildHelpChance;
+        public static ConfigEntry<bool> ChildProportions;
+        public static ConfigEntry<bool> ChildNoBeard;
+        // Child body proportions, [0] boys and [1] girls: Height, Head, Neck, Torso, Arms, Legs, Shoulders, Hips.
+        public static readonly ConfigEntry<float>[][] ChildShape = { new ConfigEntry<float>[8], new ConfigEntry<float>[8] };
+        public static readonly string[] ChildShapeParts = { "Height", "Head", "Neck", "Torso", "Arms", "Legs", "Shoulders", "Hips" };
 
         // In-game generator (Generator/GenCommands.cs).
         public static ConfigEntry<int> GenCandidates;
@@ -264,6 +296,23 @@ namespace Villheim.Logic
             FoodHealing = Admin(config, work, "FoodHealing", 1f,
                 "Villagers heal like players: each food in effect heals its own regen value every 10 seconds for the " +
                 "food's duration. This multiplies that healing.");
+            HuntBowRange = Admin(config, work, "HuntBowRange", 25f,
+                "Hunters shoot from up to this far (meters). Deer are only ever hunted with a bow, since they always run.");
+            HuntMeleeRange = Admin(config, work, "HuntMeleeRange", 4f,
+                "A boar or other slow game this close is fought with the hunter's weapon instead of the bow.");
+            HuntChaseSeconds = Admin(config, work, "HuntChaseSeconds", 45f,
+                "A hunter gives up on an animal he has not brought down after this many seconds and goes back to other work.");
+            HuntChaseDistance = Admin(config, work, "HuntChaseDistance", 30f,
+                "A hunter also gives up when the animal gets this many meters past the village's working reach.");
+            Copses = Admin(config, work, "Copses", true,
+                "Villages in biomes with few trees (CopseBiomes) plant saplings in a copse or two just outside the village, " +
+                "of trees that grow in their biome, so there is wood to fell later. Works without WorldLife.");
+            CopseBiomes = Admin(config, work, "CopseBiomes", "Plains, Mistlands, Mountain",
+                "Biomes whose villages plant copses (comma separated).");
+            CopseTrees = Admin(config, work, "CopseTrees", 20,
+                "Standing trees within 60 m of the village's edge a copse village wants; below this it plants more.");
+            CopseSaplingsPerDay = Admin(config, work, "CopseSaplingsPerDay", 4,
+                "Saplings a copse village adds to its planting list each day while it has fewer than CopseTrees.");
             // Raids are paused (Tyler, 2026-11-06): a new key, off by default, so a config file written while they
             // were on doesn't keep them on.
             VillageRaids = Admin(config, work, "RaidsEnabled", false,
@@ -414,6 +463,12 @@ namespace Villheim.Logic
                 "The colour villagers are tinted toward (the tint settings say how strongly). Teal by default.");
             GhostGlowColor = Admin(config, looks, "GhostGlowColor", new UnityEngine.Color(0.25f, 0.6f, 0.75f),
                 "The colour of the glow (the glow settings say how strongly).");
+            ChildProportions = Admin(config, looks, "ChildProportions", true,
+                "Children are shaped as children (the ChildBoy and ChildGirl settings): a bigger head for their size, a " +
+                "shorter neck, legs and arms, narrower shoulders and hips. Off: a child is a grown villager scaled down " +
+                "to ChildBoyHeight or ChildGirlHeight. 'vh kids rig' puts up models to tune these against.");
+            ChildNoBeard = Admin(config, looks, "ChildNoBeard", true, "Boys have no beard until they grow up.");
+            BindChildShape(config, looks);
             GhostApplyNow = Admin(config, looks, "GhostApplyNow", false,
                 "Switch on to put the look settings on every villager and animal at once; it switches itself off again. " +
                 "(Every change to a look setting is also applied at once on its own.)");
@@ -495,8 +550,8 @@ namespace Villheim.Logic
         }
 
         /// <summary>
-        /// The on/off settings for the systems added on 2026-11-07 and 2026-11-08, for 'vh switches' and the help
-        /// text. World systems also need WorldLife on.
+        /// The on/off settings for the village systems, for 'vh switches' and the help text. World systems also need
+        /// WorldLife on. 'vh switches' groups them by config section.
         /// </summary>
         public static (string Name, ConfigEntry<bool> Entry)[] Switches => new[]
         {
@@ -514,6 +569,8 @@ namespace Villheim.Logic
             ("Cultures", Cultures), ("CultureSurnames", CultureSurnames), ("CultureDesigns", CultureDesigns),
             ("BiomeDefenders", BiomeDefenders), ("PlainsDefenders", PlainsDefenders), ("MistlandsDefenders", MistlandsDefenders),
             ("DefenderCarers", DefenderCarers), ("DefenderBowAnimation", DefenderBowAnimation),
+            ("RaidsEnabled", VillageRaids), ("KeepApart", KeepApart), ("MistlandsDemist", MistlandsDemist), ("Copses", Copses),
+            ("ChildProportions", ChildProportions),
         };
 
         // The config entries outlive a logic build (the config file hands back the same entry on every Bind), so the
@@ -616,6 +673,12 @@ namespace Villheim.Logic
                 "Villagers who have lived in a village long enough are elders: they leave felling and mining to others " +
                 "and tell the village's old stories.");
             ElderDays = Admin(config, living, "ElderDays", 40, "Days in the village before a villager is an elder.");
+            ElderSpeed = Admin(config, living, "ElderSpeed", 0.75f,
+                "How fast elders walk and run against a grown villager (1 for the same speed). Elders keep to chores in the " +
+                "village: cooking, sorting, the farm and the hearth.");
+            ChildHelpChance = Admin(config, living, "ChildHelpChance", 0.1f,
+                "Chance that a child at play goes to \"help\" a villager at work for a minute (0 to 1). Children play and explore " +
+                "near the village and take no jobs.");
             // Elders do not die of age (Tyler, 2026-11-08, D-003). New key, off.
             ElderDeaths = Admin(config, living, "EldersDieOfAge", false,
                 "Off: elders live on. On (old behaviour, needs WorldLife): very old elders may die in their sleep and are " +
@@ -760,6 +823,45 @@ namespace Villheim.Logic
                 "Aim spread in degrees for arrows at those creatures.");
             MistlandsDefenderReaction = Admin(config, defenders, "MistlandsDefenderReaction", 0.4f,
                 "Seconds from first seeing such a creature to the first arrow.");
+
+            FightResponders = Admin(config, defenders, "FightResponders", 3,
+                "Most villagers who go after a threat: the protectors nearest to it (or anyone following the horn). Only " +
+                "they call to arms. Everyone else keeps working, or moves toward the hearth when the fight comes close.");
+            FightBackRange = Admin(config, defenders, "FightBackRange", 3f,
+                "Any grown villager with a creature this close, or one that just hurt him, fights back with his weapon " +
+                "instead of running. Children run to the hearth.");
+            FightFleeRange = Admin(config, defenders, "FightFleeRange", 18f,
+                "Villagers who are not fighting go toward the hearth or their home when a threat is this close while a " +
+                "protector fights it.");
+            FightLeash = Admin(config, defenders, "FightLeash", 30f,
+                "Responders chase a threat no further than this many meters past the village's edge, then come home.");
+            MeleeStrength = Admin(config, defenders, "MeleeStrength", 0.8f,
+                "How hard villagers' weapon blows land against the weapon's full damage (the defender damage multiplier " +
+                "comes on top for the creatures a profile covers).");
+            ArrowSmallHealth = Admin(config, defenders, "ArrowSmallHealth", 60f,
+                "Creatures with at most this much health count as small: one or two arrows bring them down " +
+                "(deathsquitos, ticks, deer).");
+            ArrowHitsBig = Admin(config, defenders, "ArrowHitsBig", 4,
+                "Bigger creatures (seekers, lox, trolls) take at least this many villager arrows: one arrow never takes " +
+                "more than this share of their health.");
+            KeepApart = Admin(config, defenders, "KeepApart", true,
+                "Villagers and the creatures in KeepApartCreatures leave each other alone: those creatures only turn on a " +
+                "villager who comes very close, and turn back before they wander into a village. Villagers keep away from " +
+                "the camps in KeepApartAvoid when they fell, mine, hunt or forage.");
+            KeepApartCreatures = Admin(config, defenders, "KeepApartCreatures",
+                "Lox:0, Goblin:8, GoblinArcher:8, GoblinBrute:8, GoblinShaman:8, Seeker:8, SeekerBrute:8, SeekerBrood:5, Tick:4, Gjall:0",
+                "Creature prefab name: meters within which it still turns on a villager (0: never). Comma separated.");
+            KeepApartMargin = Admin(config, defenders, "KeepApartMargin", 25f,
+                "Those creatures turn back this many meters before the village's edge.");
+            KeepApartAvoid = Admin(config, defenders, "KeepApartAvoid", "GoblinCamp:70, TarPit:45",
+                "Locations villagers do not work near: the start of the location's name: meters to keep away. Comma separated.");
+            MistlandsDemist = Admin(config, defenders, "MistlandsDemist", true,
+                "A village in the Mistlands keeps the mist off itself, and its people push the mist back around them as " +
+                "the Mistwalker does.");
+            MistlandsDemistRadius = Admin(config, defenders, "MistlandsDemistRadius", 0f,
+                "Metres of clear air around a Mistlands village's hearth. 0: the village's radius plus 10.");
+            MistlandsVillagerDemist = Admin(config, defenders, "MistlandsVillagerDemist", 6f,
+                "Metres of clear air around each villager of a Mistlands village. 0: none.");
         }
 
         /// <summary>Section "4b - Generator": 'vh gen' and 'vh place'.</summary>
@@ -796,6 +898,45 @@ namespace Villheim.Logic
                     GhostApplyNow.Value = false;
                 }
             });
+        }
+
+        /// <summary>
+        /// The child body settings (T-28, D-049), one set for boys and one for girls, as sliders in the config manager.
+        /// Each is against a grown villager of the same sex and applies the moment it changes. Height scales the whole
+        /// child; the rest reshape the body at that size (Head 1.35 is a head 35% bigger than the scaled-down body
+        /// would have). All of them ease to 1 as the child grows up.
+        /// </summary>
+        private static void BindChildShape(ConfigFile config, string section)
+        {
+            // Starting values from the proportions of a child of about seven: about 1/6 of his height is head (1/7.5
+            // for a grown man), the legs are a smaller share of the height, and shoulders and hips are narrow.
+            float[][] defaults =
+            {
+                new[] { 0.62f, 1.35f, 0.8f, 1f, 0.92f, 0.88f, 0.85f, 0.9f },
+                new[] { 0.6f, 1.35f, 0.8f, 1f, 0.92f, 0.88f, 0.85f, 0.92f },
+            };
+            string[] what =
+            {
+                "Overall size against a grown villager, for a newborn child (he grows to full size over four days).",
+                "Head size against the scaled-down body.",
+                "Neck length.",
+                "Torso (the spine and everything on it is scaled by this, then put back for the neck, head and arms).",
+                "Arm length.",
+                "Leg length (the body is lowered to keep the feet on the ground).",
+                "Shoulder width.",
+                "Hip width.",
+            };
+            for (int sex = 0; sex < 2; sex++)
+            {
+                for (int i = 0; i < ChildShapeParts.Length; i++)
+                {
+                    string key = (sex == 0 ? "ChildBoy" : "ChildGirl") + ChildShapeParts[i];
+                    ChildShape[sex][i] = config.Bind(section, key, defaults[sex][i], new ConfigDescription(
+                        (sex == 0 ? "Boys: " : "Girls: ") + what[i],
+                        new AcceptableValueRange<float>(i == 0 ? 0.3f : 0.4f, i == 0 ? 1f : 2f),
+                        new ConfigurationManagerAttributes { IsAdminOnly = true }));
+                }
+            }
         }
 
         /// <summary>Section "9 - Test villages": what 'vh village spawn' makes when no numbers are given.</summary>

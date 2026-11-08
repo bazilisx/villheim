@@ -69,6 +69,7 @@ namespace Villheim.Logic
         public void OnUnload()
         {
             ConfigWatcher.Stop();
+            Villagers.ChildBody.Unload();
             LogicConfig.Unbind();
             _harmony?.UnpatchSelf();
             _harmony = null;

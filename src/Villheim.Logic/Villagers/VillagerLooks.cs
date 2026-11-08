@@ -151,6 +151,12 @@ namespace Villheim.Logic.Villagers
             List<string> beards = BeardStyles();
             string beard = female || looks.NextDouble() >= culture.Beard ? ""
                 : beards.Count > 0 ? PickStyle(looks, beards, culture.BeardPrefer) : FirstExisting($"Beard{looks.Next(1, 11)}", "Beard1");
+            if (Childhood.IsChild(villager) && (LogicConfig.ChildNoBeard == null || LogicConfig.ChildNoBeard.Value))
+            {
+                // No beard on a child (T-28); the random draw above still runs, so the grown man's beard is the same.
+                beard = "";
+            }
+
             villager.m_beardItem = beard;
             vis.SetBeardItem(Hash(beard));
 

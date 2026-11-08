@@ -440,7 +440,14 @@ namespace Villheim.Logic.Village
                 if (arrived)
                 {
                     List<Vector3> traced = Trace(came, current, heights);
-                    return road ? Shape(traced, Off, maxStep) : traced;
+                    if (!road)
+                    {
+                        return traced;
+                    }
+
+                    List<Vector3> shaped = Shape(traced, Off, maxStep);
+                    NoteDetours(shaped);
+                    return shaped;
                 }
 
                 if (!Height(current, heights, out float here))
@@ -555,9 +562,125 @@ namespace Villheim.Logic.Village
             return all;
         }
 
+        // The big obstacles the last road search kept off, and those of them the road it found bends round.
+        private static readonly List<(Vector3 At, string Prefab, Bounds Box)> Found = new List<(Vector3, string, Bounds)>();
+        private static readonly List<(Vector3 At, string Prefab)> LastDetours = new List<(Vector3, string)>();
+
+        /// <summary>A big obstacle within three metres of the road counts as one it goes round.</summary>
+        private static void NoteDetours(List<Vector3> road)
+        {
+            LastDetours.Clear();
+            foreach ((Vector3 at, string prefab, Bounds box) in Found)
+            {
+                Bounds near = box;
+                near.Expand(new Vector3(6f, 1000f, 6f));
+                if (road.Any(p => near.Contains(new Vector3(p.x, box.center.y, p.z))))
+                {
+                    LastDetours.Add((at, prefab));
+                }
+            }
+        }
+
+        private static readonly int KeyDetours = "villheim_path_detours".GetStableHashCode();
+
+        /// <summary>
+        /// From PathLaying.Queue: remembers what the road just planned for a building bends round, so it can be laid
+        /// again along a natural line once that is gone (CheckDetours). Kept on the hearth as "bx,bz,ox,oz,prefab;...".
+        /// </summary>
+        public static void RememberDetours(VillageHearth hearth, Vector3 building)
+        {
+            List<string> entries = hearth.Zdo.GetString(KeyDetours, "").Split(new[] { ';' }, System.StringSplitOptions.RemoveEmptyEntries)
+                .Where(e => !ForBuilding(e, building)).ToList();
+            foreach ((Vector3 at, string prefab) in LastDetours)
+            {
+                entries.Add(string.Join(",", F(building.x), F(building.z), F(at.x), F(at.z), prefab));
+            }
+
+            LastDetours.Clear();
+            hearth.Zdo.Set(KeyDetours, string.Join(";", entries));
+        }
+
+        private static bool ForBuilding(string entry, Vector3 building)
+        {
+            string[] f = entry.Split(',');
+            return f.Length >= 5 && Utils.DistanceXZ(new Vector3(P(f[0]), 0f, P(f[1])), building) < 0.5f;
+        }
+
+        /// <summary>
+        /// Once a day (with CheckDoors): a road that bends round a big rock, an ore vein or a big tree that has since gone
+        /// is taken up (painted back to grass up to where another building's road joins it) and planned again, and the
+        /// path layer lays the new line (Tyler, 2026-11-08: no detour left with nothing to go round). Only obstacles whose
+        /// ground is loaded are looked at; the rest wait for another day.
+        /// </summary>
+        public static void CheckDetours(VillageHearth hearth)
+        {
+            string raw = hearth.Zdo.GetString(KeyDetours, "");
+            if (raw.Length == 0 || !VillheimConfig.BuildPaths.Value)
+            {
+                return;
+            }
+
+            var state = new VillageState(hearth.Zdo);
+            var redo = new List<Plot>();
+            foreach (string entry in raw.Split(';'))
+            {
+                string[] f = entry.Split(',');
+                if (f.Length < 5)
+                {
+                    continue;
+                }
+
+                var obstacle = new Vector3(P(f[2]), 0f, P(f[3]));
+                if (!ZoneSystem.instance.IsZoneLoaded(obstacle) || !ZoneSystem.instance.GetGroundHeight(obstacle, out obstacle.y) ||
+                    StillThere(obstacle, f[4]))
+                {
+                    continue;
+                }
+
+                var building = new Vector3(P(f[0]), 0f, P(f[1]));
+                Plot plot = state.Plots.FirstOrDefault(p => Utils.DistanceXZ(p.Position, building) < 0.5f);
+                if (plot != null && !redo.Contains(plot) && !Villagers.PathLaying.IsQueued(hearth, plot.Position))
+                {
+                    redo.Add(plot);
+                }
+            }
+
+            foreach (Plot plot in redo)
+            {
+                List<Plot> others = state.Plots.Where(p => p != plot).ToList();
+                int taken = TakeUpRoad(hearth, plot, others);
+                Villagers.PathLaying.Queue(hearth, plot.Position, plot.Radius, plot.Yaw, Designs.Doors.Angle(plot.Design), plot.Design);
+                VillheimPlugin.Log.LogInfo($"{state.Name}: what the road to the {plot.Design} went round is gone; " +
+                                           $"{taken} metres taken up, a new road planned.");
+            }
+        }
+
+        /// <summary>Something of that prefab still stands where the obstacle was (it can be a few metres across).</summary>
+        private static bool StillThere(Vector3 at, string prefab)
+        {
+            foreach (Collider collider in Physics.OverlapSphere(at + Vector3.up, 3f))
+            {
+                ZNetView view = collider.GetComponentInParent<ZNetView>();
+                if (view != null && view.IsValid() && Utils.GetPrefabName(view.gameObject) == prefab &&
+                    Utils.DistanceXZ(view.transform.position, at) < 1.5f)
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        private static string F(float value) => value.ToString("0.##", CultureInfo.InvariantCulture);
+
+        private static float P(string value) =>
+            float.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture, out float result) ? result : 0f;
+
         /// <summary>The cells under big obstacles (BigObstacle) around the way from a to b, with a margin.</summary>
         private static HashSet<Vector2Int> BigObstacles(Vector3 a, Vector3 b)
         {
+            Found.Clear();
+            LastDetours.Clear();
             var cells = new HashSet<Vector2Int>();
             var seen = new HashSet<GameObject>();
             Vector3 middle = (a + b) * 0.5f;
@@ -577,6 +700,7 @@ namespace Villheim.Logic.Village
                 }
 
                 Bounds box = bounds.Value;
+                Found.Add((view.transform.position, Utils.GetPrefabName(view.gameObject), box));
                 for (int x = Mathf.FloorToInt(box.min.x - 1.5f); x <= Mathf.CeilToInt(box.max.x + 1.5f); x++)
                 {
                     for (int z = Mathf.FloorToInt(box.min.z - 1.5f); z <= Mathf.CeilToInt(box.max.z + 1.5f); z++)

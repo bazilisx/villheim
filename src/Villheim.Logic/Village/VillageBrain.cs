@@ -119,6 +119,7 @@ namespace Villheim.Logic.Village
 
             DoorsCheckedOn[hearth.VillageId] = day;
             PathPlanner.CheckDoors(hearth);
+            PathPlanner.CheckDetours(hearth);
         }
 
         public static void Initialize(VillageHearth hearth, VillageState state)

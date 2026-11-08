@@ -25,7 +25,8 @@ Current facts only. Read this at the start of a session. Narrative is in `docs/d
   - Design numbers come from `BepInEx/Villheim/design-list.csv` (`vh report`) and never change.
   - Licensing to settle before shipping blueprints: valheimians builds and copied MWL locations belong to their
     creators; ship only Tyler's own or with permission.
-- **Profile mods now also:** PlanBuild (blueprint folder `BepInEx/config/PlanBuild/blueprints`, community builds in
+- **Profile mods now also:** More Vanilla Build Prefabs and Infinity Hammer (2026-11-07, for placing hidden objects while
+  making variants), PlanBuild (blueprint folder `BepInEx/config/PlanBuild/blueprints`, community builds in
   its `inspiration` subfolder), BiomeBlueprints (fails to load its commands on this game version; its files are read
   directly), Server Devcommands, ComfyGizmo, More World Locations AIO.
 

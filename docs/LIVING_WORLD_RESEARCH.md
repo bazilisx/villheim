@@ -396,3 +396,411 @@ Villheim files named under "For Villheim" are in `src/Villheim.Logic/Village` an
   write a book telling the settlement's history.
 - For Villheim: `PlotFinder.cs` and `PathPlanner.cs` already follow the Millénaire version of this; interest weights
   per building type and roads that snap to roads are the parts worth checking against.
+
+## Patterns across sources
+
+Each pattern with the rule that works best of the ones read, and where Villheim stands.
+
+| Pattern | Seen in | Best concrete rule | Villheim now |
+|---|---|---|---|
+| Needs and moods | MineColonies, RimWorld, The Sims, DF | Weighted average of lasting factors plus fading thoughts. MineColonies weights: security 4, food 3, housing 3, social 2, work 2, health 2, sleep 1.5. | `Moods.cs` has needs and fading thoughts; no weights per factor. |
+| Complaints that escalate | MineColonies, Frostpunk | A missing need is quiet for a while, then complained about (7 days), then demanded (14 days), each step a bigger hit. | One step only. |
+| Expectations | RimWorld, Songs of Syx | A mood bonus that shrinks as the settlement grows (+30 to 0 in six steps), so a bigger place needs more amenities to stay as happy. | None. |
+| Memory and news | Gothic, Minecraft gossip, DF, Villheim | A news entry has who, to whom, what, and a witness; typed weights and decay per type; it passes on at chats a little weaker. | Village news and personal memories built; no witness or per-player reputation. |
+| Reputation per player | Minecraft, MCA, CustomNPC+, Millénaire | Weighted sum of gossip gives prices (about +-20%), favours, and at the bottom, hunters sent after the player. | `Social.cs` keeps a player reputation that only rises (friend at 5, hero at 15), with no losses, decay or price effect; `Relations.cs` is village to village. |
+| Schedules | Gothic, Ultima VII, Stardew, Skyrim | A table of (start, end, activity, place) per villager, with variants by rest day and rain, and shared places so meetings happen by chance. | Fixed bed and wake times, free time by mood; no tables. |
+| Choosing what to do | The Sims, Skyrim sandbox | Objects advertise what they give; score = gain x need, less for distance; pick at random among the top three. | Fixed order in `FreeTime.cs`. |
+| Storyteller and budget | RimWorld, Living Factions, MineColonies | One clock per event category: a mean time between, a minimum spacing, a cap on the gap for threats, points that scale with wealth. | Raids roll 20% at dusk (paused). |
+| Adaptive threats | MineColonies, RimWorld | No raids below a size threshold; raids every 10 to 14 nights; heavy losses lower the next raid and push it back by 40%, an easy win raises it. | Fixed size by tier. |
+| Settlement prosperity | Bannerlord, MineColonies raid level, Fallout 4 | One number from people, buildings (more for higher levels) and stock, used by raids, visitors, traders and growth. | Tier from buildings and people. |
+| Logistic growth | Banner Kings, Banished, Manor Lords | Growth per day proportional to size times (1 - fullness), with a boost when nearly empty; arrivals stop or reverse when approval is low. | Arrivals for an empty bed only. |
+| Organic plot growth | Sim Settlements 2, Manor Lords, Foundation, Emilien 2012 | Typed plots; the household picks the design from a pool at random; the plot levels up when its needs are met; back yards take one extension. | Design board stages (s#, d#) planned; plots by role. |
+| Room recipes | DQB2, Starbound, Terraria, Necesse | A building's use comes from what is inside it (bed and light: bedroom; pot and table: kitchen); tenants and happiness follow. | `Interior.cs` furnishes by building kind. |
+| Visitors and their verdict | Hospitality, MineColonies tavern, MCA inn | Visitor mood on arrival and leaving makes a score; relation moves toward it with a cap that grows with group size; next visit in 3 to 30 days by score. | Visitors come on a fixed chance; relation +3 each. |
+| Caravans and trade | Bannerlord, Recruits, Fallout 4, Living Factions | Records that move on the world clock; goods go from cheap to dear; caravans can be raided; supply lines share stock. | Planned (`WORLD_LIFE.md` step 3). |
+| Trader stock | Vintage Story, 7 Days to Die | Restock every 3 to 7 days, half the slots at a time, money drifts toward a new roll; catch up the missed refreshes on return (cap 10). | Market sells chest surplus, no refresh rule. |
+| Seasons and calendar | Stardew, Serene Seasons, Seasons (Valheim), Medieval Dynasty, Banished | Named seasons of fixed length (10 days in Seasons, 28 in Stardew) with work, food and festivals tied to them; winter needs stores. | Rest day and tenth day tags only. |
+| Festivals and gatherings | Stardew, Millénaire, Black and White | Fixed days where work stops and everyone is in one place, with a feast and its own lines. | Evening ring at the hearth; gatherings planned. |
+| Life stages | Banished, MCA, Medieval Dynasty, DF | Child, adult, elder; couples need a free home for a child; elders work less and tell stories; traits pass to children. | Children grow up in four days; no elders. |
+| Rivalries and breaks | CK3, RimWorld, DF | Stress adds up from things against the grain; past a threshold a break (sulk, quarrel, leave), then relief. | Friend and rival pairs; no breaks. |
+| Ruins and decline | DF, Kenshi, Bannerlord | Sites can fall: emptied by war or hunger, taken over, left as ruins with their history, later resettled. Raided villages recover over days. | A dead village stays dead; no ruins. |
+| Rescued specialists | Enshrouded, Conan Exiles, Core Keeper | A person found in the world unlocks a trade or station once given a home. | Newcomers walk in for beds. |
+| Off-screen work | V Rising, Kenshi, Living Factions | A party leaves for a set time with a success chance from gear against the place, and comes back with loot or losses. | Outposts send 10 wood a day. |
+| Skills | MineColonies, Palworld, DF | Work raises a skill; the home or station caps it; speed and yield grow with it. | Planned (`WORLD_LIFE.md` step 11). |
+| Visible wants | Black and White, Frostpunk, Fallout 4 | The settlement's current want is shown in the world (a flag, a sign), and promises with a deadline. | Notice board signs; daily material request in `Social.cs`. |
+| Written history | DF legends, GDMC chronicle, Millénaire | A readable record of the village's story, with names and dates. | `Chronicle.cs` at the hearth. |
+
+## Beyond Millénaire: proposals for Villheim
+
+Ranked by value for the effort, highest first. Effort: S an evening, M a session or two, L several sessions. Value 1
+to 5. Status: **new**; **planned** (already in `docs/WORLD_LIFE.md` "Next" or `docs/ROADMAP.md`); **partly built**
+(something close exists). All numbers are starting values to tune in game, and new settings go in `LogicConfig.cs`.
+
+Two other agents work tonight on villager minds and dialogue and on world growth (caravans, outposts, events,
+daughter villages). Proposals that touch their ground are marked "(minds)" or "(world)" so the work can be matched up.
+
+### 1. Village prosperity (S, 5) new
+- Player sees: the notice board's level sign shows a prosperity number that rises as the village grows and falls
+  after a raid or a death; bigger numbers bring more visitors and bigger raids.
+- Rules: prosperity = 5 per adult + per finished building (5 + stage squared / 5) + chest stock value / 50, times
+  (0.5 + village mood / 100). Recomputed once a game hour, kept on the hearth. A raid that kills a villager or breaks a
+  building takes 15% off at once, recovering at 2% a day (Bannerlord's looted state).
+- Extends: `VillageState.cs` (stored), `NoticeBoard.cs` (shown), and read by `Raids.cs`, `WorldLife.cs` (visitor
+  chance), `Market.cs` (stock size).
+- From: MineColonies raid level, Bannerlord prosperity.
+
+### 2. Expectations that rise with the village (S, 5) new (minds)
+- Player sees: a new hamlet is content with little; a grown village grumbles unless it has a longhouse, benches,
+  varied food and a fence.
+- Rules: a standing mood bonus by village stage: stage 1 +18, stage 2 +12, stage 3 +6, stage 4 and up 0. Amenities then
+  have to make up the gap. Food variety (distinct cooked foods eaten in the last 3 days) counts more as the stage rises:
+  wanted variety = stage.
+- Extends: `Villagers/Moods.cs` (a baseline term), `VillageMood.cs`.
+- From: RimWorld expectations, Songs of Syx, MineColonies food factor.
+
+### 3. Village calendar and festivals (M, 5) new
+- Player sees: villagers name the season and the day; four times a year the village stops work at 16:00 and holds a
+  feast at the hearth with music poses, a chronicle entry and visitors from the neighbour villages.
+- Rules: seasons of 10 days (matching the Seasons mod default), a year of 40 days. If shudnal's Seasons is installed,
+  read its season and day instead (soft read by reflection). Festivals on day 5 of each season: sowing feast, midsummer
+  fire, harvest feast, Yule. Festival day: no harvesting after 16:00, everyone at the hearth from 18:00 to 22:00,
+  thought `festival` +10 for one game day, pedlar and pilgrim chance x3, one neighbour visitor per village with
+  relation above 20. Tags `season:<name>`, `festival:<name>`.
+- Extends: `Villagers/Personality.cs` (day tags), `FreeTime.cs` (evening ring), `WorldLife.cs`, `Chronicle.cs`.
+- From: Stardew festivals, Serene Seasons, Seasons (Unlicense), Millénaire gatherings. Gatherings are planned in
+  `WORLD_LIFE.md` (step 2); this gives them dates.
+
+### 4. Witnessed deeds and gossip (M, 5) partly built (minds)
+- Player sees: a villager who saw the player chop a village tree, take from the chest or hit a villager mentions it
+  later, and the story reaches his friends; one who saw the player kill a raider tells it at the fire.
+- Rules: a deed entry is (player, deed type, witness, day). Only villagers within 25 m with a line of sight record it.
+  Types and weights after Minecraft gossip: harmed a villager (-5, decays 10 a day), took from the chest without
+  putting in (-1, decays 20 a day), helped build or filled the chest (+1, decays 1 a day), defended the village (+5, no
+  decay), traded (+1, cap 25, decays 2 a day). At each chat a witness passes his newest entry to the listener at 80%
+  strength; second-hand entries never pass on again.
+- Extends: `PlayerReactions.cs` (seeing), `Personality.cs` memories, `Social.cs` (chats and the player record),
+  `WorldLife.cs` news.
+- From: Gothic news, Minecraft gossip, DF memories.
+
+### 5. Player standing that can fall (M, 5) partly built
+- Player sees: prices at the village go up or down, villagers greet or turn away, and a much disliked player finds
+  the gate shut and protectors on guard.
+- Rules: standing per player per village = sum of gossip weights from proposal 4 known in the village (each entry
+  counted once). Prices: x0.85 at hero, x1.0 at known, x1.2 below -10. Below -30 the village asks a fine at the notice
+  board to make peace (coins or materials); below -60 protectors draw weapons when the player comes inside the fence.
+  The existing stranger, known, friend (5) and hero (15) bands stay.
+- Extends: `Villagers/Social.cs` (reputation), `Market.cs` (prices), `Palisade.cs` gates.
+- From: Minecraft reputation, MCA hearts and bounty hunters, CustomNPC+ factions.
+
+### 6. Plot growth with random designs (L, 5) planned in part
+- Player sees: two villages of the same biome grow different streets; a house plot starts as a small hut and becomes
+  a bigger house of its own kind over the days.
+- Rules: the village reserves plots by type (home, work by subtype, community) when it lays roads. When a plot is
+  built, its design is drawn at random from the kept designs of that type, subtype and biome, weighted against designs
+  already in the village (a design used once has half the weight, twice a quarter). A plot goes up one s# stage when
+  the village stage allows and the household's needs are met (bed, food variety, mood above 50 for 2 days), and up one
+  d# step every 3 to 5 days in between.
+- Extends: `PlotFinder.cs`, `Growth.cs`, `DesignBoard.cs` naming (`<baseID>_s<n>d<n>`), the roadmap items on
+  stages and decorating between upgrades.
+- From: Sim Settlements 2, Manor Lords, Emilien 2012.
+
+### 7. Needs that complain, then demand (S, 4) new (minds)
+- Player sees: a villager without a bed sleeps by the fire for a few nights, then grumbles about it, then comes to the
+  player to ask, then packs up and leaves.
+- Rules: per missing need (bed, food, safety), count days. 3 days: complain lines (tag `complain:<need>`), mood factor
+  x0.75 on that need. 6 days: a request on the notice board and to the nearest known player, factor x0.5. 10 days: the
+  villager leaves by day with a farewell line, walking toward the friendliest neighbour village.
+- Extends: `Villagers/Moods.cs`, `Social.cs` (requests), `Dialogue.cs` tags.
+- From: MineColonies complain and demand days (7 and 14, shortened here for Valheim's shorter days).
+
+### 8. Visitors who judge their stay (S, 4) new (world)
+- Player sees: a pilgrim who had a bad night (rain, no seat, a raid) leaves sour and his village thinks less of this
+  one; a well treated pedlar comes back sooner and sometimes brings a friend.
+- Rules: record the visitor's mood on arrival and on leaving; score = lerp(rise x 2.75, mood at leaving x 1.35, 0.5),
+  mood on a 0 to 1 scale. Relation of the home village moves toward lerp(-100, 100, score) by at most 3 (one visitor)
+  to 24 (eight). Changes under 5 count for nothing. Next visit in 3 to 12 days if the target is above 0, 12 to 30
+  if below. A gift from the visitor to the chest when score is 0.2 to 0.9 (chance rises with score).
+- Extends: `Village/WorldLife.cs`, `Relations.cs` (replaces the flat +3 per visitor).
+- From: Hospitality.
+
+### 9. The village's want shown over the hearth (S, 4) partly built
+- Player sees: a banner or a pile by the hearth shows what the village wants now (a log, a stone, a hide, a fish),
+  readable from 30 m without opening anything.
+- Rules: the top need from `VillageNeeds.cs` places one matching vanilla prop or item stand display next to the chest;
+  it changes at most once a game hour. A promise form: when the player fills it within a day, thought `promise_kept`
+  +6 for everyone; when the day passes, nothing is lost (no punishment for ignoring it).
+- Extends: `NoticeBoard.cs`, `VillageNeeds.cs`, `Social.cs` requests.
+- From: Black and White desire flags, Frostpunk promises.
+
+### 10. Raids that adapt (S, 4) new
+- Player sees: a young village is left alone; a grown one is raided every week or two; a raid that went badly is
+  followed by a quieter spell.
+- Rules: no raid while prosperity (proposal 1) is under 75. Raids between night 10 and night 14 after the last (in
+  Valheim days), certain by night 16. Raid size = 1 + prosperity / 60. Difficulty 1 to 14, starting at 7: if a raid
+  killed more than 15% of the villagers, difficulty falls by one per 15% and the next raid comes 40% later; under 5%
+  lost, difficulty rises one.
+- Extends: `Village/Raids.cs` (currently 20% at dusk, paused).
+- From: MineColonies raid manager.
+
+### 11. An events director with clocks per category (M, 4) planned (world)
+- Player sees: a steady run of small happenings (a feast, a lost child, a quarrel, a skald) with the odd big one, never
+  two big ones in a row.
+- Rules: one clock per category, each with a mean time and a minimum gap, after RimWorld: small good (mean 2 days), small
+  bad (3 days), visitors (4 days, gap 2), big threat (raids, proposal 10), rare (a wandering seer, 15 days). Weights
+  scale with prosperity. Each event is a short script with slots filled from the village (a villager, a place).
+- Extends: the planned director (`WORLD_LIFE.md` step 9).
+- From: RimWorld storytellers (Diego Dire defs), Living Factions daily rolls.
+
+### 12. Caravans that carry goods where they are dear (M, 5) planned (world)
+- Player sees: a pedlar with a pack boar on the trail between two villages, carrying the stone one has spare to the
+  one that lacks it; raided caravans leave a lost pack on the trail.
+- Rules: as planned (records moving at 2,400 m a day, real within 130 m of a player). Route choice: the village with
+  the biggest surplus sends to the neighbour with the biggest shortage of the same material when the difference is
+  20 or more items. A caravan carries up to 40 items. Each arrival changes the price of that material in both villages
+  by 10% (cheaper where it arrives).
+- Extends: `WORLD_LIFE.md` step 3, `Market.cs`, `VillageNeeds.cs`.
+- From: Bannerlord caravans, Recruits merchant routes, Fallout 4 supply lines.
+
+### 13. Daily routines as tables (M, 4) partly built (minds)
+- Player sees: the same villager is at the same bench every morning and meets the same friend at the fire every
+  evening; on rest days and in rain the day looks different.
+- Rules: each villager gets a routine of eight 3-hour blocks (Ultima VII) built from his trade, voice and pastime:
+  sleep, eat, work, chores, free, social. Blocks name a place (his home, his workshop, the hearth, the longhouse, a
+  friend's door). Variants by key, Stardew style: festival day, rest day (every 7th), rain, then default. Friends get
+  the same social place at the same hour so they meet. Work and emergencies still override the table.
+- Extends: `Villagers/Brain.cs`, `Chores.cs`, `FreeTime.cs`, `Sleep.cs`.
+- From: Gothic routines, Ultima VII schedules, Stardew schedule keys.
+
+### 14. Free time chosen by what places offer (M, 4) new (minds)
+- Player sees: tired villagers find a bench, cold ones the fire, lonely ones a crowd; a new bench or table gets used.
+- Rules: seats, fires, tables, stations and the hearth each advertise what they give (rest, warmth, company, a sense of
+  purpose) as 0 to 10. Score = gain x how low that need is, divided by (1 + distance / 20 m). Pick at random among the
+  best three. Advertised values live in one table in `LogicConfig.cs`.
+- Extends: `Villagers/FreeTime.cs`, `Seats.cs`.
+- From: The Sims, Skyrim sandbox packages.
+
+### 15. Leaving, migrating and empty houses (M, 4) new (world)
+- Player sees: an unhappy village loses a family, who walk to a happier neighbour and move in there; the empty house
+  stands, weathers and is taken over by the next newcomer, or falls apart.
+- Rules: village mood under 25 for 3 days running: the least content household leaves by day (proposal 7 handles the
+  one-villager case). Target: the neighbour with relation above 0 and the most free beds; arrival there counts as a
+  newcomer with a homeland line. An empty house loses no health while someone repairs it; after 10 days empty, repairs
+  stop and it wears. Growth by arrivals follows a logistic rule: chance per day = 0.3 x (1 - beds taken / beds).
+- Extends: `VillageBrain.cs`, `Repairs.cs`, `WorldLife.cs`.
+- From: Banished, Manor Lords approval, Banner Kings growth, DF migrants.
+
+### 16. Fallen villages and ruins (L, 5) new (world)
+- Player sees: a village wiped out by raids stays as a ruin with its chest broken and its chronicle readable at the
+  cold hearth; later a hermit camps there, and in time a neighbour sends settlers to start again.
+- Rules: a village with no villagers for 2 days becomes a ruin: hearth out, no repairs, wear on. After 10 days a hermit
+  may take the hearth (existing hermit rules). After 20 days the friendliest neighbour of stage 3 or more may resettle
+  it with two villagers, keeping the name with "New" or a new name, and the old chronicle continued.
+- Extends: `VillageState.cs`, `Chronicle.cs`, `WorldLife.cs` hermits, the world agent's daughter villages.
+- From: DF sites, Kenshi world states and town overrides.
+
+### 17. Elders and a life story (M, 4) new (minds)
+- Player sees: the founders grow old, slow down, sit by the fire telling the village's story, and in time die and are
+  mourned; their children carry their homeland and look.
+- Rules: an adult turns elder after 40 game days in the village (a year of proposal 3). Elders do no felling or mining,
+  keep lighter chores, and get story lines drawn from the chronicle (tag `elder`, fill-in `{chronicle}`). From 60
+  days, a 2% chance each morning of a peaceful death in bed, with mourning (existing). Children take one parent's
+  homeland and the other's pastime (MCA trait inheritance).
+- Extends: `Villagers/Childhood.cs`, `Personality.cs`, `Dialogue.cs`, `Chronicle.cs`.
+- From: Banished life stages, MCA, Medieval Dynasty.
+
+### 18. Wants and fears (M, 4) partly built (minds)
+- Player sees: a villager says he wants to see the longhouse finished or eat cooked meat, and is plainly pleased when
+  it happens; one who fears the dark is shaken by a night raid.
+- Rules: each villager holds up to 3 wants, rolled each morning from his personality and the village state (a building
+  done, a food, a chat with his friend, a visit from a known player, a festival). A want met: thought +6 for a day. The
+  fixed fear from `Personality.cs` gives a thought -8 when it happens (raid at night, a death, deep water).
+- Extends: `Villagers/Personality.cs`, `Moods.cs`.
+- From: The Sims 2 wants and fears, DF needs.
+
+### 19. Rooms by what is in them (M, 4) new
+- Player sees: a house with a bed and a light is a home; one with a forge and an anvil a smithy; villagers move into
+  the room that fits them, and the village's notice board lists its rooms.
+- Rules: a finished building's role is checked from its pieces: bed (home), fire or cooking station plus table
+  (kitchen), forge (smithy), workbench (workshop), chests 3 or more (store). A room counts only under a roof (the game's
+  cover test). Recipes fill gaps: `Interior.cs` adds the missing piece to reach the recipe of the building's role.
+- Extends: `Village/Interior.cs`, `Amenities.cs`, `Roles.cs`.
+- From: Dragon Quest Builders 2, Starbound tenants, Terraria housing.
+
+### 20. Seasons and winter stores (M, 4) new
+- Player sees: in autumn the village stacks wood and dries meat; in winter villagers stay nearer the fire and farms
+  rest; a village that ran short in winter is glum.
+- Rules: with proposal 3's calendar. Autumn: wanted wood stock +50%, food stock target doubled. Winter: farms do not
+  grow (`Farms.cs`), foraging stops, free time favours fires, rain counts as cold. Each winter day with no firewood in
+  the chest: thought `cold_home` -6. If the Seasons mod runs, read its season; its own effects stay its own.
+- Extends: `Farms.cs`, `Foraging.cs`, `VillageNeeds.cs`, `Moods.cs`.
+- From: Banished firewood, Serene Seasons, Seasons, Medieval Dynasty.
+
+### 21. Rescued specialists (M, 4) new (world)
+- Player sees: a smith held at a greydwarf camp or lost in a crypt; freed and walked home, he joins the nearest
+  village and it gains a forge trade it could not have before.
+- Rules: one specialist per 2 villages, placed at a vanilla location within 400 m of a village (camp, crypt, tower),
+  as an unarmed wanderer with a captive pose. Freed (enemies within 20 m dead and the player talks to him), he
+  follows the player and joins the village he reaches, taking a trade that needs his skill: smith (bronze sets),
+  weaver, hunter. Without him the village can still grow, slower.
+- Extends: `Wanderers.cs`, `WorldLife.cs`, `Roles.cs`, `Smithing.cs`.
+- From: Enshrouded survivors, Conan thralls, Core Keeper merchants.
+
+### 22. Expeditions out of sight (M, 4) new (world)
+- Player sees: two protectors leave at dawn for the Black Forest and come back two days later with core wood and
+  trophies, or one comes back alone.
+- Rules: a village of stage 3 with gear tier 2 sends two protectors to the nearest biome it lacks. They walk off, and
+  while no player is within 150 m they are a record. Trip length 1 to 2 days. Success = 0.5 + 0.15 x (gear tier -
+  biome level), clamped 0.1 to 0.95. Success brings 20 to 40 of the biome's material; failure brings half, and a 30%
+  chance one villager dies (chronicle, mourning).
+- Extends: `Outposts.cs`, `Hunting.cs`, `Smithing.cs`, the caravan records plan.
+- From: V Rising hunts, Kenshi squads, Living Factions bands.
+
+### 23. Requests filled from the world (M, 4) planned
+- Player sees: the notice board asks for help with a real place: "Wolves at the old tower north of here", pinned on the
+  map, with a reward from the chest.
+- Rules: request templates with slots: kill (a camp or nest within 500 m), fetch (a material the village lacks, from
+  its biome), escort (a villager to the outpost or a neighbour), find (a lost villager placed 150 to 300 m out).
+  Deadline 2 days. Kept: standing +3, thought +6 for the village. Broken: standing -1, nothing more.
+- Extends: `NoticeBoard.cs`, `Social.cs` requests, the hermit pin list in `WorldLife.cs`, `WORLD_LIFE.md` step 8.
+- From: Skyrim Radiant Story, Frostpunk promises, Millénaire quests.
+
+### 24. Wanderers at the longhouse who can be asked to stay (S, 4) planned
+- Player sees: strangers sit in the longhouse with a short life story; one says he would stay for a hide and a bed.
+- Rules: up to 3 x longhouse stage visitors at once. After one comes, the next waits rand(0.1 day) + (0.25 day /
+  stage) x (villagers / beds). Each has a backstory line and a price (a material from the chest, the price plus 0 to 2
+  items). He stays 2 days, then moves on.
+- Extends: `WORLD_LIFE.md` step 12, `WorldLife.cs`, `Interior.cs` (longhouse seats).
+- From: MineColonies tavern, MCA inn.
+
+### 25. Back yards (M, 4) new
+- Player sees: houses grow a small garden, a drying rack, a woodpile or a boar pen behind them, different from house to
+  house.
+- Rules: each home plot gets one extension at its d2 step, drawn from what its biome allows: berry patch (Meadows),
+  mushroom bed, woodpile, drying rack, small pen with one tamed boar. Extensions use vanilla pieces only and count as
+  part of the plot for overlaps. A household with an extension gets +2 to its food or warmth need.
+- Extends: `Farms.cs`, `PlotFinder.cs`, `Amenities.cs`.
+- From: Manor Lords burgage extensions.
+
+### 26. Skills that grow (M, 4) planned (minds)
+- As planned in `WORLD_LIFE.md` step 11. Detail from MineColonies: skill sum feeds prosperity (proposal 1) at 1 per
+  100 points; from Palworld: start each villager with a work level 1 to 4 per job from his seed, so trades go to the
+  best fit and speed is x(0.75 + 0.25 x level).
+
+### 27. Desire paths (M, 3) planned
+- As planned in `WORLD_LIFE.md` step 6 (AntTrails, MIT). Foundation shows the payoff: the path network is drawn by where
+  people walk.
+
+### 28. Bad days and recovery (S, 3) new (minds)
+- Player sees: a villager at the end of his rope sulks at the edge of the village for an hour and won't work, then is
+  calmer for a day.
+- Rules: mood under 15 for 6 game hours: a break (sulk 1 hour at a spot 20 to 30 m from the hearth, or a shouting match
+  with his rival if within 30 m). After it: thought `catharsis` +8 for one day. At most one break per villager per 3
+  days.
+- Extends: `Villagers/Moods.cs`, `FreeTime.cs`, `Social.cs`.
+- From: RimWorld mental breaks, CK3 stress.
+
+### 29. Weekly restock with catch-up (S, 3) new
+- Player sees: the village store has new things each week, and coming back after a long trip the store has moved on.
+- Rules: every 7 days, half the store slots are rolled again from the chest surplus and the biome list; coins drift
+  toward a new roll by 7 to 28%. Missed weeks catch up when the village loads, at most 10.
+- Extends: `Village/Market.cs`.
+- From: Vintage Story traders, 7 Days to Die.
+
+### 30. A chronicle book (S, 3) partly built
+- Player sees: a book at the notice board that can be read, with the village's story: founding, each building, births,
+  deaths, raids, festivals, visitors, in dated lines.
+- Rules: built from `Chronicle.cs` entries; the readable text uses the game's sign or text window; the oldest entries
+  are kept in a summary line per year so the book stays short.
+- Extends: `Chronicle.cs`, `NoticeBoard.cs`.
+- From: GDMC chronicle challenge, DF legends.
+
+### 31. A short history at world start (S, 3) new (world)
+- Player sees: villagers mention an old feud with the next village, the year the hall burned, where the founders came
+  from.
+- Rules: at founding, roll 1 to 3 past events from a small list (founded by people from X, a fire, a hard winter, a
+  feud or alliance with the nearest village, a hero's grave). Feud sets the starting relation to -30, alliance to +30.
+  Events go into the chronicle as "before the founding".
+- Extends: `Chronicle.cs`, `Relations.cs`, `Personality.cs`.
+- From: DF world history.
+
+### 32. Who lives next to whom (S, 3) new (minds)
+- Player sees: friends live side by side; rivals end up apart; a villager placed next to his rival complains.
+- Rules: when a home is assigned, prefer a free bed within 30 m of the friend and over 40 m from the rival. Daily
+  thought: friend within 30 m +2, rival within 20 m -3. A trade villager's prices move x0.94 when content with his
+  neighbours, x1.06 when not.
+- Extends: `Sleep.cs` (bed claim), `Moods.cs`, `Market.cs`.
+- From: Terraria NPC happiness.
+
+### 33. Friend of the village after a raid (S, 3) new
+- Player sees: after the player helps beat a raid, villagers cheer him and the store is cheaper for two days; the
+  chronicle names him.
+- Rules: a player within 40 m who dealt damage during a raid that ended with no villager dead gets "Friend of <village>"
+  for 2 game days: prices x0.7, gesture on meeting, chronicle line.
+- Extends: `Raids.cs`, `Market.cs`, `PlayerReactions.cs`, `Chronicle.cs`.
+- From: Minecraft Hero of the Village.
+
+### 34. A horn at the hearth (S, 3) new
+- Player sees: blowing the horn by the hearth calls the protectors to follow him for a while.
+- Rules: using the hearth while crouched with a standing of friend or more: protectors within 80 m follow the player
+  for 5 game minutes, then walk home. Once per game hour.
+- Extends: `Roles.cs`, `PlayerReactions.cs`.
+- From: Guard Villagers' bell.
+
+### 35. Market day (S, 3) new (world)
+- Player sees: one day a week the hub fills: a pedlar for sure, a neighbour villager or two with goods, better prices.
+- Rules: every 7th day (the rest day), 10:00 to 15:00: a pedlar comes (no roll), up to 2 visitors from villages with
+  relation above 0, store prices x0.9, villagers spend free time at the hub.
+- Extends: `WorldLife.cs`, `Market.cs`, `FreeTime.cs`.
+- From: Stardew, medieval market days, Millénaire markets.
+
+### 36. Villagers come to help a player in trouble (S, 3) new
+- Player sees: a player fighting near a friendly village gets help from its protectors.
+- Rules: a player with standing friend or more fighting within 60 m of the fence: up to 2 protectors run out to help,
+  then go back once no enemy is within 20 m of them. Not at night unless the village is under raid.
+- Extends: `Roles.cs`, `Brain.cs` threat checks.
+- From: Bannerlord, Fallout 4 minutemen.
+
+### 37. Households and marriage (M, 3) new (minds)
+- Player sees: two friends move into a two-bed house together; children follow.
+- Rules: two single adults who are friends (pair liking above a threshold) and both have a bed: chance 5% each game hour
+  to move into a free two-bed home together (MCA rolls 0.05 a minute in Minecraft's shorter days). Childhood then
+  works as now from their home.
+- Extends: `Social.cs`, `Childhood.cs`, `Sleep.cs`.
+- From: MCA, Medieval Dynasty.
+
+### 38. Villagers who visit friends in other villages (M, 3) new (world)
+- Player sees: on a rest day a villager walks the trail to see a friend in the next village and comes back with news.
+- Rules: villagers with a friend in a neighbour village (a pair liking with a past visitor) may go on a rest day, when
+  relation is above 20 and the trail exists. Off-screen as a record when no player is near, like caravans.
+- Extends: `Trails.cs`, `WorldLife.cs`, `Personality.cs`.
+- From: Inconsequential NPCs, Gothic routines.
+
+### 39. Work skill levels from birth (S, 3) new (minds)
+- Player sees: one villager is a quick feller and slow builder, another the reverse; the village gives each the work
+  he is good at.
+- Rules: each villager gets a level 1 to 4 per work (felling, mining, building, cooking, farming, hunting) from his
+  seed, with a sum of 10. Trades go to the best fit. Work speed x(0.75 + 0.25 x level). Shown by `vh villager`.
+- Extends: `Roles.cs`, `VillagerTuning.cs`. A first step toward proposal 26.
+- From: Palworld work suitability.
+
+### 40. Bandit camps that grow (M, 3) new (world)
+- Player sees: a camp of outlaws near an unfriendly region grows if left alone and starts to raid the nearest village.
+- Rules: at a vanilla camp location 300 to 800 m from a village, a camp record grows by one fighter every 3 days to 6;
+  at 4 it sends a raid (proposal 10's rules) to the nearest village. Clearing it is a request (proposal 23).
+- Extends: `Raids.cs`, `WorldLife.cs`, `NoticeBoard.cs`.
+- From: Kenshi squads, Project Zomboid Bandits, OBIS, Millénaire bandit lairs.
+
+### 41. A gift basket for a hero (S, 2) new
+- Player sees: a village that counts the player a hero leaves him a small basket of food each week in a chest by the
+  notice board.
+- Rules: at hero standing, every 7 days: 0.5 x villagers items of cooked food or spare material, taken from surplus
+  only. Village thought +3 ("we could give something back").
+- Extends: `Market.cs`, `VillageChest.cs`.
+- From: MCA taxes, turned around to a gift.
+
+### 42. Protectors who need feeding (S, 2) new
+- Player sees: unfed protectors grumble and stay home instead of patrolling.
+- Rules: each protector eats one meal from the chest a day; 2 days without, he skips the night watch and the horn
+  (proposal 34) until fed.
+- Extends: `Roles.cs`, `Healing.cs`.
+- From: Recruits upkeep and morale.

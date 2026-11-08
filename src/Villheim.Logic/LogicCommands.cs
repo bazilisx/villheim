@@ -37,7 +37,7 @@ namespace Villheim.Logic
             "dump <location>: write what a design contains to the BepInEx log",
             "report [rescan]: write every design (curated, all blueprints, every location with a structure) with its stage, kind, gallery page and notes to BepInEx/Villheim/design-list.csv; 'report locations' writes the older per-location report (design-report.txt)",
             "trace [seconds]: record the nearest villager's movement 50 times a second to BepInEx/Villheim/trace-*.csv (for jitter)",
-            "villager: show the nearest villager's voice, mood, thoughts, role, trade, bed and activity",
+            "villager: show the nearest villager's voice, mood, thoughts, role, trade, bed, activity, skills and want",
             "village: show the nearest village's type, Jarl, mood, project, fence, known players and request",
             "raid: send a raid to the nearest village (comes at once if it is night)",
             "blueprints: list the blueprints villages can build (BepInEx/config/Villheim/blueprints, PlanBuild's folder)",
@@ -248,6 +248,10 @@ namespace Villheim.Logic
                          $"night watch {(Villagers.Roles.IsNightWatch(villager) ? "tonight" : "no")}, " +
                          $"bed {(Villagers.Beds.For(villager) != null ? "yes" : "none")}, foods {Villagers.Healing.FoodCount(villager)}");
             Say(context, $"   doing: {Villagers.VillagerBehaviour.HoverText(villager).Replace("\n", " | ")}");
+            if (!Villagers.Wanderers.IsWanderer(villager))
+            {
+                Say(context, $"   skills: {Villagers.VillagerSkills.Describe(villager)}; {Villagers.Goals.Describe(villager)} (more with 'vh minds')");
+            }
         }
 
         private static void InspectVillage(Terminal context)

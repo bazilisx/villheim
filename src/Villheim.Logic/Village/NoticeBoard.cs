@@ -17,6 +17,10 @@ namespace Villheim.Logic.Village
     ///   with no chest in the blueprint (or no village chest), it goes on the ring by the hearth, facing the fire.
     /// - The old single sign and the village name sign on the ground are taken away when the board goes up.
     /// - With no 'villagenotice' blueprint found, there is no board (logged once).
+    /// - The back of the board (D-009): every front sign gets a vanilla sign on the other side of the frame, mirrored
+    ///   through the frame's line. The top one shows the name again; the rest, read from behind left to right and top
+    ///   down, show the contract for players (what, the reward, where to find it), the season, the next feast and the
+    ///   prosperity. The front "Needed" sign keeps showing what the village needs.
     /// </summary>
     internal static class NoticeBoard
     {
@@ -29,6 +33,15 @@ namespace Villheim.Logic.Village
         private static readonly int KeyYaw = "villheim_board_yaw".GetStableHashCode();
         private const int BoardPiece = 2;
         private static readonly int KeyHeading = "villheim_board_heading".GetStableHashCode();
+
+        /// <summary>On a sign on the back of the board (D-009).</summary>
+        private static readonly int KeyBack = "villheim_board_back".GetStableHashCode();
+
+        /// <summary>What the back signs show, in reading order from behind (the top sign is the name).</summary>
+        private static readonly string[] BackHeadings = { "Contract", "Reward", "Where", "Season", "Next feast", "Prosperity" };
+
+        // Back signs of the plan last worked out by Missing, with their headings.
+        private static readonly Dictionary<DesignSpawner.PlanEntry, string> BackHeading = new Dictionary<DesignSpawner.PlanEntry, string>();
 
         /// <summary>
         /// The heading on a blueprint sign ("&lt;#fff&gt;Morale: &lt;br&gt;Happy" gives "Morale"), or "" for the title sign
@@ -111,7 +124,8 @@ namespace Villheim.Logic.Village
             }
 
             Quaternion turn = Quaternion.Euler(0f, yaw, 0f);
-            foreach (DesignSpawner.PlanEntry entry in Blueprints.MakePlan(blueprint, origin, yaw))
+            List<DesignSpawner.PlanEntry> plan = Blueprints.MakePlan(blueprint, origin, yaw).ToList();
+            foreach (DesignSpawner.PlanEntry entry in plan)
             {
                 if (onChest && IsChest(entry.Prefab))
                 {
@@ -119,7 +133,17 @@ namespace Villheim.Logic.Village
                 }
 
                 Vector3 at = origin + turn * entry.LocalPosition;
-                if (!Standing(at, entry.Prefab, hearth.VillageId))
+                if (!Standing(at, entry.Prefab, hearth.VillageId, null))
+                {
+                    missing.Add(entry);
+                }
+            }
+
+            BackHeading.Clear();
+            foreach ((DesignSpawner.PlanEntry entry, string heading) in BackSigns(plan))
+            {
+                BackHeading[entry] = heading;
+                if (!Standing(origin + turn * entry.LocalPosition, entry.Prefab, hearth.VillageId, heading))
                 {
                     missing.Add(entry);
                 }
@@ -128,13 +152,105 @@ namespace Villheim.Logic.Village
             return missing;
         }
 
-        private static bool Standing(Vector3 at, string prefab, int villageId)
+        /// <summary>
+        /// The signs for the back of the board: each front sign mirrored through the line of the frame (the two frame
+        /// pieces furthest apart) and turned round, with the heading it shows.
+        /// </summary>
+        private static List<(DesignSpawner.PlanEntry Entry, string Heading)> BackSigns(List<DesignSpawner.PlanEntry> plan)
         {
-            foreach (Collider collider in Physics.OverlapSphere(at, 0.5f))
+            var back = new List<(DesignSpawner.PlanEntry, string)>();
+            List<DesignSpawner.PlanEntry> frame = plan.Where(e => !IsChest(e.Prefab) && !IsSign(e.Prefab)).ToList();
+            List<DesignSpawner.PlanEntry> signs = plan.Where(e => IsSign(e.Prefab)).ToList();
+            if (frame.Count < 2 || signs.Count == 0)
+            {
+                return back;
+            }
+
+            (Vector3 A, Vector3 B, float D) far = (Vector3.zero, Vector3.zero, -1f);
+            foreach (DesignSpawner.PlanEntry a in frame)
+            {
+                foreach (DesignSpawner.PlanEntry b in frame)
+                {
+                    float d = Utils.DistanceXZ(a.LocalPosition, b.LocalPosition);
+                    if (d > far.D)
+                    {
+                        far = (a.LocalPosition, b.LocalPosition, d);
+                    }
+                }
+            }
+
+            Vector3 axis = (far.B - far.A).Horizontal();
+            if (axis.sqrMagnitude < 0.01f)
+            {
+                return back;
+            }
+
+            Vector3 normal = Vector3.Cross(Vector3.up, axis.normalized).normalized;
+            Vector3 center = far.A;
+            var mirrored = new List<DesignSpawner.PlanEntry>();
+            foreach (DesignSpawner.PlanEntry sign in signs)
+            {
+                float side = Vector3.Dot((sign.LocalPosition - center).Horizontal(), normal);
+                mirrored.Add(new DesignSpawner.PlanEntry
+                {
+                    Prefab = sign.Prefab,
+                    LocalPosition = sign.LocalPosition - normal * (2f * side),
+                    LocalRotation = Quaternion.Euler(0f, 180f, 0f) * sign.LocalRotation,
+                    Scale = sign.Scale,
+                    Stage = sign.Stage,
+                    Cost = new Dictionary<string, int>(sign.Cost),
+                });
+            }
+
+            // Read from behind: the viewer looks toward the front side, so his right is across that way.
+            float frontSide = Vector3.Dot((signs[0].LocalPosition - center).Horizontal(), normal);
+            Vector3 look = frontSide >= 0f ? normal : -normal;
+            Vector3 right = Vector3.Cross(Vector3.up, look);
+            List<DesignSpawner.PlanEntry> ordered = mirrored.OrderByDescending(e => e.LocalPosition.y).ToList();
+            back.Add((ordered[0], ""));
+            var rows = new List<List<DesignSpawner.PlanEntry>>();
+            foreach (DesignSpawner.PlanEntry entry in ordered.Skip(1))
+            {
+                List<DesignSpawner.PlanEntry> row = rows.FirstOrDefault(r => Mathf.Abs(r[0].LocalPosition.y - entry.LocalPosition.y) < 0.25f);
+                if (row == null)
+                {
+                    rows.Add(row = new List<DesignSpawner.PlanEntry>());
+                }
+
+                row.Add(entry);
+            }
+
+            int i = 0;
+            foreach (DesignSpawner.PlanEntry entry in rows.SelectMany(r => r.OrderBy(e => Vector3.Dot(e.LocalPosition, right))))
+            {
+                if (i < BackHeadings.Length)
+                {
+                    back.Add((entry, BackHeadings[i++]));
+                }
+            }
+
+            return back;
+        }
+
+        private static bool IsSign(string prefab) => prefab == "sign";
+
+        /// <summary>
+        /// A piece of the board stands here. Front pieces never count a back sign; a back sign (heading given) must be a
+        /// back sign with that heading, since its front twin stands a hand's width away.
+        /// </summary>
+        private static bool Standing(Vector3 at, string prefab, int villageId, string backHeading)
+        {
+            foreach (Collider collider in Physics.OverlapSphere(at, backHeading != null ? 0.3f : 0.5f))
             {
                 ZNetView view = collider.GetComponentInParent<ZNetView>();
-                if (view != null && view.IsValid() && Utils.GetPrefabName(view.gameObject) == prefab &&
-                    view.GetZDO().GetInt(Keys.BuiltBy) == villageId)
+                if (view == null || !view.IsValid() || Utils.GetPrefabName(view.gameObject) != prefab ||
+                    view.GetZDO().GetInt(Keys.BuiltBy) != villageId)
+                {
+                    continue;
+                }
+
+                bool isBack = view.GetZDO().GetInt(KeyBack) == 1;
+                if (backHeading == null ? !isBack : isBack && view.GetZDO().GetString(KeyHeading, "") == backHeading)
                 {
                     return true;
                 }
@@ -201,7 +317,12 @@ namespace Villheim.Logic.Village
                 {
                     view.GetZDO().Set(Key, BoardPiece);
                     view.GetZDO().Set(Keys.BuiltBy, hearth.VillageId);
-                    if (made.GetComponent<Sign>() != null && blueprint != null)
+                    if (BackHeading.TryGetValue(entry, out string backHeading))
+                    {
+                        view.GetZDO().Set(KeyBack, 1);
+                        view.GetZDO().Set(KeyHeading, backHeading);
+                    }
+                    else if (made.GetComponent<Sign>() != null && blueprint != null)
                     {
                         // Which stat this sign shows comes from the heading written on it in the blueprint.
                         Blueprints.Piece source = blueprint.Pieces
@@ -379,7 +500,15 @@ namespace Villheim.Logic.Village
                 ["stock"] = stockStat,
                 ["prosperity"] = (Prosperity.Get(hearth).ToString(System.Globalization.CultureInfo.InvariantCulture), "#bdf"),
                 ["stores"] = stockStat,
+                ["season"] = (Capital(Calendar.Season), "#bdf"),
+                ["next feast"] = (Calendar.FestivalToday ? "Today" : Calendar.NextFestivalName(Cultures.Of(state)), "#fd8"),
             };
+
+            // The back of the board: the contract for players (D-009).
+            (string What, string Reward, string Where)? contract = Contracts.BoardParts(hearth);
+            stats["contract"] = contract.HasValue ? (Capital(contract.Value.What), "#fd8") : ("None posted", "#bfb");
+            stats["reward"] = contract.HasValue ? (Capital(contract.Value.Reward), "#fd8") : ("-", "#bfb");
+            stats["where"] = contract.HasValue ? (Capital(contract.Value.Where ?? "Nobody knows"), "#bdf") : ("-", "#bfb");
             return stats;
         }
 
@@ -418,14 +547,6 @@ namespace Villheim.Logic.Village
                 KeyValuePair<string, int> top = needs.Missing.OrderByDescending(n => n.Value).First();
                 needed = $"{top.Value} {Materials.Label(top.Key)}";
                 neededColor = top.Key == Materials.Stone ? "#ddd" : "#eca";
-            }
-
-            // A contract for players takes the "Needed" line while it stands (Contracts).
-            string contract = Contracts.BoardText(hearth);
-            if (contract != null)
-            {
-                needed = Capital(contract);
-                neededColor = "#fd8";
             }
 
             float mood = VillageMood.Get(hearth.VillageId);

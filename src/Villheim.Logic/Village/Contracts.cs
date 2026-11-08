@@ -16,8 +16,8 @@ namespace Villheim.Logic.Village
     ///   smith still lacks for the next gear (flint, hides), or a building material its pending work needs that its
     ///   biome does not give. A plain shortage of wood or stone gets no contract: villagers gather those.
     /// - The notice says how many and what it pays: about one and a half times the village store's price, in coins
-    ///   from the chest, or in what the village can spare when it has too few coins. It shows on the notice board's
-    ///   "Needed" sign and in the chronicle, and stands for three days.
+    ///   from the chest, or in what the village can spare when it has too few coins. It shows on the back of the notice board
+    ///   (D-009: what, the reward, where) and in the chronicle, and stands for three days.
     /// - It is met when the chest holds the asked amount more than it did when it went up. A player within 15 m of the
     ///   chest then is paid (into their inventory, or at their feet); met by a caravan or a haul, nobody is paid.
     ///
@@ -242,7 +242,19 @@ namespace Villheim.Logic.Village
             return name != null && Localization.instance != null ? Localization.instance.Localize(name).ToLowerInvariant() : item.ToLowerInvariant();
         }
 
-        /// <summary>The contract for the notice board's "Needed" sign, or null.</summary>
+        /// <summary>The contract in three parts for the back of the notice board (D-009): what, the reward, where. Null with none.</summary>
+        public static (string What, string Reward, string Where)? BoardParts(VillageHearth hearth)
+        {
+            Contract c = hearth != null && hearth.IsValid && LogicConfig.IsOn(LogicConfig.Contracts) ? Read(hearth.Zdo) : null;
+            if (c == null)
+            {
+                return null;
+            }
+
+            return ($"{c.Amount} {Label(c.Item)}", $"{c.Reward} {Label(c.RewardItem)}", Rumours.BoardWhere(hearth, c.Item));
+        }
+
+        /// <summary>The contract on one line (commands and the chronicle), or null.</summary>
         public static string BoardText(VillageHearth hearth)
         {
             Contract c = hearth != null && hearth.IsValid && LogicConfig.IsOn(LogicConfig.Contracts) ? Read(hearth.Zdo) : null;

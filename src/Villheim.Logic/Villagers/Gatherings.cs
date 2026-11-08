@@ -95,7 +95,7 @@ namespace Villheim.Logic.Villagers
                 float angle = (i + 1) * 47f;
                 Vector3? spot = point.HasValue ? point.Value + Quaternion.Euler(0f, angle, 0f) * Vector3.forward * (3.5f + (i % 3) * 0.8f) : (Vector3?)null;
                 Social.SendOne(crowd[i], who, spot, "event:gathering:" + kind, i % 2 == 0 ? "cheer" : "thumbsup", 40f,
-                    who != null ? 2.6f + (i % 4) * 0.6f : 0.8f, true, 18f);
+                    who != null ? 2.6f + (i % 4) * 0.6f : 0.8f, true, 18f, point.HasValue ? point.Value + Vector3.up * 1.5f : (Vector3?)null);
                 Moods.Think(crowd[i], "gathering");
             }
 

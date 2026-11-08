@@ -131,22 +131,22 @@ Still learning, at my age. Good.
 @ self, skillup | devout
 The gods guide the hand that keeps trying.
 
-@ self, skillup:woodcutting
+@ self, skillup, skillup:woodcutting
 The axe goes where I want it now.
 
-@ self, skillup:mining
+@ self, skillup, skillup:mining
 I found the seam on the first strike. First strike!
 
-@ self, skillup:building
+@ self, skillup, skillup:building
 The joints are coming tighter. I can feel it.
 
-@ self, skillup:cooking
+@ self, skillup, skillup:cooking
 That's the best stew I've made. I'm sure of it.
 
-@ self, skillup:hunting
+@ self, skillup, skillup:hunting
 I'm getting quieter on my feet. The deer don't hear me now.
 
-@ self, skillup:hauling
+@ self, skillup, skillup:hauling
 My back's stopped complaining. Mostly.
 
 # ------------------------------------------------------------------ a good day

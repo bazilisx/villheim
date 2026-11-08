@@ -58,6 +58,7 @@ namespace Villheim.Logic.Villagers
             public float Stop = 2.6f;
             public bool Quiet;
             public float Linger;
+            public Vector3? Face;
         }
 
         private sealed class VillageWatch
@@ -416,7 +417,7 @@ namespace Villheim.Logic.Villagers
             }
 
             ai.StopMoving();
-            Vector3 look = approach.Target != null ? approach.Target.GetEyePoint() : target + Vector3.up * 2f;
+            Vector3 look = approach.Target != null ? approach.Target.GetEyePoint() : approach.Face ?? target + Vector3.up * 2f;
             ai.LookAt(look);
             if (!approach.Spoken)
             {
@@ -498,7 +499,7 @@ namespace Villheim.Logic.Villagers
         /// <paramref name="linger"/> seconds. For gatherings: one speaker, the rest quiet.
         /// </summary>
         public static bool SendOne(Villager villager, Character target, Vector3? point, string tag, string gesture, float seconds,
-            float stop, bool quiet, float linger)
+            float stop, bool quiet, float linger, Vector3? face = null)
         {
             if (villager == null || villager.IsDead() || Approaches.ContainsKey(villager))
             {
@@ -508,7 +509,7 @@ namespace Villheim.Logic.Villagers
             Send(new Approach
             {
                 Who = villager, Target = target, Point = target == null ? point : null, Tag = tag, Gesture = gesture,
-                Until = Time.time + seconds, Stop = stop, Quiet = quiet, Linger = linger,
+                Until = Time.time + seconds, Stop = stop, Quiet = quiet, Linger = linger, Face = face,
             });
             return true;
         }

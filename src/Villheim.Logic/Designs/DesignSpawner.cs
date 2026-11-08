@@ -330,16 +330,31 @@ namespace Villheim.Logic.Designs
             return lower.Contains("roof") ? StageRoof : StageStructure;
         }
 
-        /// <summary>Places one planned object as a real networked object, tagged with the village that built it.</summary>
         /// <summary>Marks pieces a console command built (not a village, not a player).</summary>
         internal static readonly int KeySpawned = "villheim_spawned".GetStableHashCode();
 
+        /// <summary>Marks fires a design brought with it (vh preview, vh gen, vh place, village builds): they stay lit.</summary>
+        internal static readonly int KeyLit = "villheim_lit".GetStableHashCode();
+
+        /// <summary>Places one planned object as a real networked object, tagged with the village that built it.</summary>
         public static GameObject SpawnEntry(PlanEntry entry, Vector3 origin, Quaternion rotation, int villageId, bool effects)
         {
             GameObject prefab = ZNetScene.instance.GetPrefab(entry.Prefab);
             if (prefab == null)
             {
                 return null;
+            }
+
+            if (entry.Bounds.HasValue && entry.Prefab.IndexOf("floor", StringComparison.OrdinalIgnoreCase) >= 0)
+            {
+                try
+                {
+                    GroundUnderFloor(entry, origin, rotation);
+                }
+                catch (Exception e)
+                {
+                    VillheimPlugin.Log.LogWarning($"Ground under {entry.Prefab}: {e.Message}");
+                }
             }
 
             Vector3 position = origin + rotation * entry.LocalPosition;
@@ -382,12 +397,73 @@ namespace Villheim.Logic.Designs
                 view.GetZDO().Set(KeySpawned, 1);
             }
 
+            if (view != null && view.GetZDO() != null && instance.TryGetComponent(out Fireplace fire))
+            {
+                // Fires, braziers and torches come lit, and KeepLitPatch keeps them so.
+                view.GetZDO().Set(ZDOVars.s_fuel, fire.m_maxFuel);
+                view.GetZDO().Set(KeyLit, 1);
+            }
+
             if (effects && instance.TryGetComponent(out Piece piece))
             {
                 piece.m_placeEffect?.Create(position, worldRotation, instance.transform);
             }
 
             return instance;
+        }
+
+        /// <summary>
+        /// Bare earth under a floor that rests on the ground, so no grass grows up through it (Tyler, 2026-11-09). The
+        /// ground under the floor is painted dirt and levelled: just under a thin wooden floor, so no lump pokes
+        /// through, and up to 0.15 m under the top of a thick stone floor, so it sits in the ground with only its top
+        /// edge showing. Floors on posts or stilts, well above the ground, are left alone.
+        /// </summary>
+        private static void GroundUnderFloor(PlanEntry entry, Vector3 origin, Quaternion rotation)
+        {
+            if (ZoneSystem.instance == null)
+            {
+                return;
+            }
+
+            Bounds bounds = entry.Bounds.Value;
+            Vector3 center = origin + rotation * bounds.center;
+            float bottom = center.y - bounds.extents.y;
+            float top = center.y + bounds.extents.y;
+            if (!ZoneSystem.instance.GetGroundHeight(center, out float ground) || ground < bottom - 0.6f || ground > top + 0.3f)
+            {
+                return;
+            }
+
+            float radius = Mathf.Sqrt(bounds.extents.x * bounds.extents.x + bounds.extents.z * bounds.extents.z) + 0.1f;
+            float level = bounds.size.y >= 0.5f ? top - 0.15f : bottom - 0.05f;
+            TerrainOp.Settings settings = TerrainShaper.NewSettings();
+            settings.m_level = true;
+            settings.m_levelRadius = radius;
+            settings.m_paintCleared = true;
+            settings.m_paintType = TerrainModifier.PaintType.Dirt;
+            settings.m_paintRadius = radius;
+            settings.m_paintHeightCheck = false;
+            TerrainShaper.Apply(new Vector3(center.x, level, center.z), settings);
+        }
+
+        /// <summary>Fires marked lit by SpawnEntry never run out of fuel.</summary>
+        [HarmonyLib.HarmonyPatch(typeof(Fireplace), "UpdateFireplace")]
+        internal static class KeepLitPatch
+        {
+            private static void Prefix(Fireplace __instance)
+            {
+                ZNetView view = __instance.m_nview;
+                if (view == null || !view.IsValid() || !view.IsOwner())
+                {
+                    return;
+                }
+
+                ZDO zdo = view.GetZDO();
+                if (zdo.GetInt(KeyLit) == 1 && zdo.GetFloat(ZDOVars.s_fuel) < __instance.m_maxFuel)
+                {
+                    zdo.Set(ZDOVars.s_fuel, __instance.m_maxFuel);
+                }
+            }
         }
 
         private static void SpawnObjects(GameObject asset, Vector3 origin, Quaternion rotation, int seed, int villageId,

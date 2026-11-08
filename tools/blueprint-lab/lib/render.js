@@ -56,6 +56,17 @@ function localFaces(info) {
     }
     case 'prop':
       return box(-hx, hx, 0, h, -hz, hz);
+    case 'hang':
+      return box(-hx, hx, -h, 0, -hz, hz);
+    case 'ladder': {
+      // a step ladder standing on its pivot, rising toward -z
+      const out = [];
+      for (let i = 0; i < 4; i++) {
+        const z0 = hz - (i + 1) * d / 4, z1 = hz - i * d / 4;
+        out.push(...box(-hx * 0.8, hx * 0.8, i * h / 4, (i + 1) * h / 4, z0, z1));
+      }
+      return out;
+    }
     case 'hipcorner26': case 'hipcorner45': {
       // outer hip corner: low along its +x and +z edges, rising to the inner corner (-x, -z); pivot on the low edge
       const r = info.shape === 'hipcorner45' ? 2 : 1, t = 0.12;

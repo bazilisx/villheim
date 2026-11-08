@@ -70,16 +70,25 @@ const RULES = [
   [/pole2|pole_log|pole_2m|pole.*2m|darkwood_pole$|woodiron_pole|stone_pillar|column|pillar$/, 'pole', [0.25, 2, 0.25], 'box'],
   [/pole_1m|pole/i, 'pole', [0.2, 1, 0.2], 'box'],
   [/pillar/i, 'pole', [0.6, 2, 0.6], 'box'],
-  // floors and stairs
-  [/stone_floor_2x2/, 'floor', [2, 1, 2], 'box'],
+  // floors and stairs; stone and black marble floors are 1 m thick with the pivot in the middle
+  [/stone_floor_2x2|^blackmarble_floor$/, 'floor', [2, 1, 2], 'box'],
   [/floor_4x4|floor_large/, 'floor', [4, 0.25, 4], 'box'],
   [/floor_1x1|floor_triangle|tile_floor_1x1/, 'floor', [1, 0.25, 1], 'box'],
   [/floor/i, 'floor', [2, 0.25, 2], 'box'],
   [/spiralstair/, 'stair', [2, 4, 2], 'box'],
-  [/stair|ladder|stepladder/i, 'stair', [1, 2, 2], 'stair'],
+  // a step ladder stands on its pivot and climbs 2 m over 2 m toward its local -z (CLIMB below)
+  [/stepladder|ladder/i, 'stair', [1, 2, 2], 'ladder'],
+  [/stair/i, 'stair', [1, 2, 2], 'stair'],
   // wall torches before the wall rules, or 'piece_walltorch' reads as a 2x2 wall
   [/walltorch/i, 'light', [0.3, 0.8, 0.3], 'prop'],
-  // openings
+  // floor torches pivot 0.75 m above their foot (measured by the interior helper, 2026-11-09)
+  [/groundtorch/i, 'light', [0.4, 1.5, 0.4], 'box'],
+  // rugs before the deco rule, or rug_wolf reads as a wolf carving
+  [/^rug_|carpet/i, 'rug', [2.0, 0.05, 2.6], 'prop'],
+  // banners hang down from their pivot
+  [/banner/i, 'deco', [1, 2, 0.2], 'hang'],
+  // openings; the cloth door hangs from its pivot, its leaf along its local z (DOORS below)
+  [/cloth_hanging_door/, 'door', [0.2, 3, 2], 'hang'],
   [/door|gate/i, 'door', [2, 2, 0.2], 'box'],
   [/window/i, 'window', [1, 1, 0.2], 'box'],
   [/arch/i, 'wall', [2, 2, 0.3], 'box'],
@@ -147,6 +156,13 @@ function exported() {
 const round = v => Math.round(v * 100) / 100;
 const usable = sz => Array.isArray(sz) && sz.length === 3 && sz.every(v => typeof v === 'number' && v > 0.01);
 
+// Furniture sizes measured in the corpus by the interior work (docs/INTERIOR_DESIGN.md), w x h x d.
+const SIZES = {
+  bed: [1.2, 0.8, 2.8], piece_bed02: [2.0, 1.0, 3.3], hearth: [3.2, 0.6, 2.0], piece_table_oak: [4.2, 0.8, 1.6],
+  piece_table_round: [1.7, 0.9, 1.7], fermenter: [1.4, 1.8, 1.4], piece_chest_barrel: [0.7, 1.0, 0.7], ArmorStand: [0.9, 1.9, 0.6],
+  piece_logbench01: [1.4, 0.5, 0.6],
+};
+
 const cache = new Map();
 function piece(name) {
   let c = cache.get(name);
@@ -156,6 +172,7 @@ function piece(name) {
   for (const [re, r, s, sh] of RULES) {
     if (re.test(n)) { role = r; size = s; shape = sh; break; }
   }
+  if (SIZES[n]) size = SIZES[n];
   const mat = material(n);
   const structural = ['wall', 'floor', 'roof', 'roofTop', 'roofCorner', 'gable', 'beam', 'pole', 'stair', 'door', 'window', 'fence'].includes(role);
   c = { name, role, size, shape, mat, color: MAT[mat], structural, exact: false };
@@ -184,21 +201,80 @@ function exportSize() {
   return e ? Object.keys(e).length : 0;
 }
 
-// Materials a piece needs, for the biome rule (rough, from the prefab name).
+// Biome where a piece's hardest material first exists, for the biome rule. Named pieces first (their names do not say
+// what they are made of), then by material from the name. Dark wood pieces take tar, which comes from the Plains;
+// iron from the Swamp; black marble and Dvergr parts from the Mistlands.
+const NEEDS = {
+  bed: 'Meadows', piece_bed02: 'Swamp', piece_chest_wood: 'Meadows', piece_chest: 'Swamp', piece_chest_barrel: 'Swamp',
+  piece_chest_blackmetal: 'Plains', piece_table: 'Meadows', piece_table_round: 'Meadows', piece_table_oak: 'Swamp',
+  piece_chair: 'Meadows', piece_chair02: 'Meadows', piece_chair03: 'Swamp', piece_bench01: 'Meadows', piece_logbench01: 'Black Forest',
+  piece_throne01: 'Black Forest', fire_pit: 'Meadows', hearth: 'Black Forest', piece_cookingstation: 'Meadows',
+  piece_cookingstation_iron: 'Swamp', piece_cauldron: 'Black Forest', fermenter: 'Swamp', piece_oven: 'Mistlands',
+  piece_workbench: 'Meadows', piece_workbench_ext1: 'Meadows', piece_workbench_ext2: 'Black Forest', piece_workbench_ext3: 'Black Forest',
+  forge: 'Black Forest', forge_ext1: 'Black Forest', forge_ext2: 'Black Forest', forge_ext3: 'Swamp', smelter: 'Black Forest',
+  charcoal_kiln: 'Black Forest', piece_stonecutter: 'Black Forest', piece_spinningwheel: 'Plains', piece_artisanstation: 'Mountain',
+  rug_deer: 'Meadows', rug_wolf: 'Mountain', rug_fur: 'Plains', rug_hare: 'Mistlands', rug_straw: 'Meadows', jute_carpet: 'Mistlands',
+  itemstand: 'Meadows', itemstandh: 'Meadows', ArmorStand: 'Swamp', sign: 'Meadows', piece_banner01: 'Plains', piece_banner02: 'Plains',
+  piece_banner05: 'Plains', piece_groundtorch_wood: 'Meadows', piece_groundtorch: 'Swamp', piece_walltorch: 'Black Forest',
+  piece_brazierceiling01: 'Black Forest', piece_dvergr_lantern: 'Mistlands', Candle_resin: 'Black Forest', wood_stack: 'Meadows',
+  wood_fine_stack: 'Meadows', wood_core_stack: 'Black Forest', stone_pile: 'Meadows', coal_pile: 'Black Forest',
+  wood_dragon1: 'Meadows', darkwood_raven: 'Plains', darkwood_wolf: 'Plains', piece_jackoturnip: 'Swamp', piece_xmastree: 'Meadows',
+  piece_beehive: 'Meadows', piece_bathtub: 'Black Forest', guard_stone: 'Black Forest',
+};
 function needs(name) {
+  if (NEEDS[name]) return NEEDS[name];
   // hanging cloth doors take red jute (Cultists, Mountain caves); the blue ones blue jute (Mistlands)
   if (/cloth_hanging_door|jute_carpet/.test(name)) return /blue/.test(name) ? 'Mistlands' : 'Mountain';
+  if (/(^|_)tar(_|$)/i.test(name)) return 'Plains';
   const m = material(name);
   return {
     wood: 'Meadows', thatch: 'Meadows', stake: 'Meadows', fur: 'Meadows', cloth: 'Meadows', fire: 'Meadows',
-    corewood: 'Black Forest', stone: 'Black Forest', darkwood: 'Swamp', darkroof: 'Swamp', iron: 'Swamp',
+    corewood: 'Black Forest', stone: 'Black Forest', darkwood: 'Plains', darkroof: 'Plains', iron: 'Swamp',
     glass: 'Mountain', marble: 'Mistlands', dvergr: 'Mistlands', ashwood: 'Ashlands', grausten: 'Ashlands',
-    flametal: 'Ashlands', turf: 'Meadows', green: 'Meadows', bone: 'Meadows', gold: 'Meadows', black: 'Swamp',
+    flametal: 'Ashlands', turf: 'Meadows', green: 'Meadows', bone: 'Meadows', gold: 'Meadows', black: 'Plains',
     white: 'Mountain',
   }[m] || 'Meadows';
 }
 
+// Door pieces, measured in the corpus from the walls, beams and floors around 2,500 placed doors (2026-11-09):
+//   w, h     the opening the piece fills, metres
+//   bottom   the opening's bottom relative to the pivot (wood_door pivots in its middle, 1 m up; the dark wood gate
+//            stands on its pivot; the cloth door hangs from its pivot at the top of a 3 m opening)
+//   along    the piece's local axis the leaf runs along: x for wooden doors, z for the cloth door (it is turned 90
+//            degrees against the wall it hangs in, and hangs 0.3 m to one side of the wall's middle)
+const DOORS = {
+  wood_door: { w: 2, h: 2, bottom: -1, along: 'x', offset: 0 },
+  wood_gate: { w: 2, h: 3, bottom: -1, along: 'x', offset: 0 },
+  darkwood_gate: { w: 2, h: 4, bottom: 0, along: 'x', offset: 0 },
+  piece_cloth_hanging_door: { w: 2, h: 3, bottom: -3, along: 'z', offset: 0.3 },
+  piece_cloth_hanging_door_blue: { w: 2, h: 3, bottom: -3, along: 'z', offset: 0.3 },
+  piece_cloth_hanging_door_blue2: { w: 2, h: 3, bottom: -3, along: 'z', offset: 0.3 },
+};
+function doorSpec(name) { return DOORS[name] || { w: 2, h: 2, bottom: -1, along: 'x', offset: 0, guessed: true }; }
+
+// Placed door to its opening in the world: the middle of the opening at floor level (x, y, z), the wall's yaw, and the
+// unit vectors along the wall (ux, uz) and across it (nx, nz).
+function doorOpening(p) {
+  const s = doorSpec(p.name), a = (p.yaw != null ? p.yaw : yawOfQ(p.q)) * Math.PI / 180;
+  const lx = [Math.cos(a), -Math.sin(a)], lz = [Math.sin(a), Math.cos(a)];
+  const [u, n] = s.along === 'z' ? [lz, lx] : [lx, lz];
+  // the wall's middle is 'offset' along the piece's local x from its pivot (cloth doors hang beside it)
+  const x = p.x + lx[0] * s.offset, z = p.z + lx[1] * s.offset;
+  return { x, y: p.y + s.bottom, z, w: s.w, h: s.h, ux: u[0], uz: u[1], nx: n[0], nz: n[1], spec: s };
+}
+function yawOfQ(q) { const [x, y, z, w] = q || [0, 0, 0, 1]; return Math.atan2(2 * (w * y + x * z), 1 - 2 * (y * y + x * x)) * 180 / Math.PI; }
+
+// Ladders and stairs, measured the same way: wood_stepladder stands on its pivot and climbs 2 m over 2 m toward its
+// local -z (the floor above starts 1 m past the pivot that way); wood_stair pivots in its middle, 1 m up, and climbs
+// 2 m over 2 m toward its local -z.
+const CLIMB = {
+  wood_stepladder: { bottom: 0, rise: 2, run: 2 },
+  wood_stair: { bottom: -1, rise: 2, run: 2 },
+};
+function climbSpec(name) { return CLIMB[name] || (/ladder/i.test(name) ? CLIMB.wood_stepladder : /stair/i.test(name) ? CLIMB.wood_stair : null); }
+
 const BIOME_ORDER = ['Meadows', 'Black Forest', 'Swamp', 'Mountain', 'Plains', 'Mistlands', 'Ashlands', 'Deep North'];
 
-if (typeof module !== 'undefined') module.exports = { piece, needs, MAT, BIOME_ORDER, exportSize };
-else window.VHPieces = { piece, needs, MAT, BIOME_ORDER, exportSize };
+const apiP = { piece, needs, MAT, BIOME_ORDER, exportSize, NEEDS, DOORS, doorSpec, doorOpening, CLIMB, climbSpec };
+if (typeof module !== 'undefined') module.exports = apiP;
+else window.VHPieces = apiP;

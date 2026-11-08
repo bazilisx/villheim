@@ -1471,6 +1471,17 @@ namespace Villheim.Logic.Village
                     ground.m_modifiedPaint[index] = true;
                     touched.Add(ground);
                 }
+
+                // Level with the plot's floor too: a copy's heights stayed behind when only the paint was cleared.
+                ground.m_hmap.WorldToVertex(world, out int hx, out int hy);
+                if (hx >= 0 && hy >= 0 && hx < size && hy < size)
+                {
+                    int index = hy * size + hx;
+                    ground.m_levelDelta[index] += center.y - ground.m_hmap.m_heights[index];
+                    ground.m_smoothDelta[index] = 0f;
+                    ground.m_modifiedHeight[index] = ground.m_levelDelta[index] != 0f;
+                    touched.Add(ground);
+                }
             }
         }
 
@@ -1530,8 +1541,10 @@ namespace Villheim.Logic.Village
             // First the plot's own paint goes, so dirt from an earlier copy or try never adds up with the new one.
             ClearPaint(center, yaw, half, touched);
 
-            int done = 0, painted = 0;
+            int done = 0, painted = 0, noGround = 0;
             string failed = null;
+            var written = new Dictionary<string, int>();
+            var checks = new List<(Vector3 World, string Area)>();
             foreach (string line in lines)
             {
                 string[] f = line.Split(';');
@@ -1552,7 +1565,15 @@ namespace Villheim.Logic.Village
                         TerrainComp ground = map != null ? map.GetAndCreateTerrainCompiler() : null;
                         if (ground == null)
                         {
+                            noGround++;
                             continue;
+                        }
+
+                        string area = $"{map.transform.position.x:0},{map.transform.position.z:0}";
+                        written[area] = written.TryGetValue(area, out int w) ? w + 1 : 1;
+                        if (f[7].Length > 0)
+                        {
+                            checks.Add((world, area));
                         }
 
                         int size = ground.m_width + 1;
@@ -1623,6 +1644,31 @@ namespace Villheim.Logic.Village
             Say(failed == null
                 ? $"Board: ground put back in the copy: {done} squares ({painted} painted)."
                 : $"Board: putting the ground back stopped after {done} squares: {failed}");
+
+            // Read every painted square back from the ground's records, per 64 m ground area, at once and 2 seconds later:
+            // shows whether written paint goes missing from the data (and when), or only from what is drawn.
+            Dictionary<string, int> Held()
+            {
+                var held = new Dictionary<string, int>();
+                foreach ((Vector3 world, string area) in checks)
+                {
+                    if (PaintAt(world).Length > 0)
+                    {
+                        held[area] = held.TryGetValue(area, out int h) ? h + 1 : 1;
+                    }
+                }
+
+                return held;
+            }
+
+            Dictionary<string, int> now = Held();
+            yield return new WaitForSeconds(2f);
+            Dictionary<string, int> later = Held();
+            string areas = string.Join("; ", checks.GroupBy(c => c.Area).Select(g =>
+                $"area {g.Key}: {g.Count()} painted, {(now.TryGetValue(g.Key, out int a) ? a : 0)} held at once, {(later.TryGetValue(g.Key, out int b) ? b : 0)} after 2 s"));
+            string report = $"Board: ground check: {areas}" + (noGround > 0 ? $"; {noGround} spots had no ground found" : "") + ".";
+            Say(report);
+            VillheimPlugin.Log.LogInfo(report + " Written per area: " + string.Join(", ", written.Select(k => $"{k.Key}={k.Value}")));
             }
             finally
             {

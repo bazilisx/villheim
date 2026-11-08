@@ -7,7 +7,8 @@ namespace Villheim.Logic.Village
     /// <summary>
     /// Nothing broken on the review ground drops anything: building pieces taken down with the hammer, deleted with the
     /// Shaper Tool or broken by 'vh gravity', and props, rocks or trees destroyed there. The review ground is the flat
-    /// gallery area (from where 'vh flatten' last started, 400 m round its middle) and every slotting board plot.
+    /// gallery area (from where 'vh flatten' last started, 400 m round its middle), 400 m round the board's spot ('vh slot
+    /// here') and every slotting board plot.
     /// 'vh drops on' brings drops back; 'vh drops off' (the default) takes them away again.
     /// </summary>
     internal static class NoDrops
@@ -32,6 +33,11 @@ namespace Villheim.Logic.Village
             }
 
             if (DesignBoard.Inside(position))
+            {
+                return true;
+            }
+
+            if (DesignBoard.LoadAnchor(out Vector3 anchor, out _) && Utils.DistanceXZ(position, anchor) < 400f)
             {
                 return true;
             }

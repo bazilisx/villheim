@@ -33,7 +33,10 @@ typed in the in-game console (F5) unless it says otherwise.
 
 ## The slotting board (`vh slot`)
 
-1. Stand at the near edge of the flat area. `vh gallery clear` first if a page is still up.
+1. Once: stand where the board should start and face along it, then `vh slot here`. Every board goes up in front of
+   that spot, facing that way, wherever you are when you type the command (`vh slot anchor <x> <z>` sets it from
+   coordinates, facing the way you face). Without it, a board goes up in front of you. `vh gallery clear` first if a
+   page is still up.
 2. `vh slot meadows hearth` puts up a new base ID (hub1, or the next free number) for the Meadows: 5 plots in a row,
    each bordered by green beams with a sign (hub1_s1 to hub1_s5). `vh slot meadows hearth 1` puts hub1 up again with
    its saved stages in their plots. `stages 7` gives more plots. Plots fit most of the kind's designs; the console names
@@ -74,6 +77,11 @@ Kinds and their roots: house (house), hearth (hub), tavern (inn), longhouse (hal
 woodworking (wood), mining (forge), cooking (cook), storage (store), defence (guard), workshop (craft), harbour (dock),
 hunting (hunt), arcane (rune), masonry (mason), weaving (weave). Biomes: meadows, blackforest, swamp, mountains, plains,
 mistlands, ashlands, deepnorth.
+
+Lumps the terrain tools cannot flatten: Valheim lets the ground move at most 8 m up or down from where the world made
+it, whichever tool does it. Where the first ground stood more than 8 m above the level being flattened to, a mound is
+left (often painted dirt where the tool tried). Flatten at a higher level, move the board to flatter ground, or use a
+terrain mod that lifts the limit.
 
 ## Naming
 

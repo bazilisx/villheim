@@ -193,6 +193,27 @@ namespace Villheim.Logic.Village
                 return $"Board: taken down ({TakeDown()} objects).";
             }
 
+            if (first == "here")
+            {
+                Vector3 facing = player.transform.forward;
+                facing.y = 0f;
+                SaveAnchor(player.transform.position, facing.normalized);
+                Vector3 p = player.transform.position;
+                return $"Board: boards now go up in front of {p.x:0}, {p.z:0} (height {p.y:0}), facing the way you face, every time. " +
+                       "'vh slot here' again moves it; 'vh slot here off' goes back to in front of you.";
+            }
+
+            if (first == "anchor" && words.Count >= 3 &&
+                float.TryParse(words[1], NumberStyles.Float, CultureInfo.InvariantCulture, out float ax) &&
+                float.TryParse(words[2], NumberStyles.Float, CultureInfo.InvariantCulture, out float az))
+            {
+                Vector3 facing = player.transform.forward;
+                facing.y = 0f;
+                float ay = ZoneSystem.instance != null ? ZoneSystem.instance.GetGroundHeight(new Vector3(ax, 0f, az)) : player.transform.position.y;
+                SaveAnchor(new Vector3(ax, ay, az), facing.normalized);
+                return $"Board: boards now go up in front of {ax:0}, {az:0}, facing the way you face now.";
+            }
+
             if (first == "forget" && args.Length > 1)
             {
                 return Forget(args[1]);
@@ -266,9 +287,42 @@ namespace Villheim.Logic.Village
             return $"Board: putting up {kind.Root}{number} ({biome} {kind.Label}, {stages} stages) and the {kind.Label} designs for PlanBuild's \"{Category}\" tab.";
         }
 
+        private static string AnchorPath => Path.Combine(BepInEx.Paths.BepInExRootPath, "Villheim", "slot-anchor.txt");
+
+        private static void SaveAnchor(Vector3 at, Vector3 forward)
+        {
+            CultureInfo inv = CultureInfo.InvariantCulture;
+            Directory.CreateDirectory(Path.GetDirectoryName(AnchorPath));
+            File.WriteAllText(AnchorPath, string.Join(" ", new[] { at.x, at.y, at.z, forward.x, forward.z }.Select(v => v.ToString("R", inv))));
+        }
+
+        /// <summary>The spot boards go up in front of ('vh slot here'), if one is set.</summary>
+        internal static bool LoadAnchor(out Vector3 at, out Vector3 forward)
+        {
+            at = Vector3.zero;
+            forward = Vector3.forward;
+            try
+            {
+                if (!File.Exists(AnchorPath))
+                {
+                    return false;
+                }
+
+                float[] v = File.ReadAllText(AnchorPath).Split(' ').Select(t => float.Parse(t, CultureInfo.InvariantCulture)).ToArray();
+                at = new Vector3(v[0], v[1], v[2]);
+                forward = new Vector3(v[3], 0f, v[4]).normalized;
+                return forward.sqrMagnitude > 0.5f;
+            }
+            catch (System.Exception)
+            {
+                return false;
+            }
+        }
+
         private static string Usage() =>
             "Board: 'vh slot <biome> <kind> [number] [stages N]', e.g. 'vh slot meadows hearth' (a new hub) or 'vh slot meadows hearth 1' " +
             "(hub1 again: each stage at the decor stage it is at; add 'review' to see every save).\nBiomes: meadows, blackforest, swamp, mountains, plains, mistlands, ashlands, deepnorth.\n" +
+            "'vh slot here' (stand where the board should start, facing along it) makes every board go up there; 'vh slot anchor <x> <z>' does the same from coordinates.\n" +
             "Kinds: house, hearth, tavern, longhouse, decor, farm, wood, forge, cook, store, guard, craft, dock, hunt, rune, mason, weave.\n" +
             "'vh slot save <stage>' or 'vh slot save all' (or the Shaper Tool's Save on a plot; Shift on the second click saves all), 'vh slot forget hub1_s1d3' deletes a save, 'vh slot clear'. Saves go to blueprints/inspiration/board.";
 
@@ -712,11 +766,12 @@ namespace Villheim.Logic.Village
                 List<float> halves = Candidates.Select(c => c.Half).OrderBy(h => h).ToList();
                 float half = size > 0f ? size / 2f : Mathf.Clamp(halves[Mathf.Min(halves.Count - 1, Mathf.FloorToInt(halves.Count * 0.8f))], 8f, 30f);
                 List<Candidate> bigger = Candidates.Where(c => c.Half > half).OrderByDescending(c => c.Half).ToList();
+                // In front of the spot set with 'vh slot here' (the same place every time), else in front of the player.
                 Vector3 start = playerPosition + forward * 8f;
-                if (Gallery.LoadFlatArea(out Vector3 flatStart, out Vector3 flatForward) && Utils.DistanceXZ(flatStart, playerPosition) < 600f)
+                if (LoadAnchor(out Vector3 anchor, out Vector3 anchorForward))
                 {
-                    start = flatStart + flatForward * 4f;
-                    forward = flatForward;
+                    start = anchor + anchorForward * 8f;
+                    forward = anchorForward;
                 }
 
                 Vector3 right = Vector3.Cross(Vector3.up, forward);
@@ -863,8 +918,13 @@ namespace Villheim.Logic.Village
             labelZdo?.Set(KeyLabel, name);
         }
 
-        private static string LabelText(string name, string state) =>
-            $"<#7f7><voffset=60><size=10>{StageName(name)}<br><size=6>" + (state == null ? "<#ccc>empty" : "<#fff>" + state);
+        private static string LabelText(string name, string state)
+        {
+            // Short lines: a sign cuts off text wider than its board (one long name showed only "_S2D").
+            (string baseId, int stage, int decor) = Parse(name);
+            string word = state == null ? "empty" : state.StartsWith("copy") ? "strip" : state.StartsWith("waits") ? "waits" : state;
+            return $"<#7f7><voffset=60><size=7>{baseId}<br>s{stage} d{decor}<br><size=5>" + (state == null ? "<#ccc>" : "<#fff>") + word;
+        }
 
         private static string SignText(string name, string biome, string kind, string state)
         {

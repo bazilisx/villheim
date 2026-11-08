@@ -190,6 +190,7 @@ namespace Villheim.Logic
                 case "villheim_snow": Say(context, Village.Snow.Run(args)); return true;
                 case "villheim_weather": Say(context, Village.LocalWeather.Run(args)); return true;
                 case "villheim_repair": Say(context, Village.RepairAll.Run()); return true;
+                case "villheim_shaper": Say(context, Village.Shaping.Status()); return true;
                 default: return false;
             }
         }

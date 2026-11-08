@@ -110,6 +110,26 @@ namespace Villheim.Logic.Village
             return true;
         }
 
+        /// <summary>'vh shaper': what the Shaper Tool sees right now, to find why a tool does nothing.</summary>
+        public static string Status()
+        {
+            Player player = Player.m_localPlayer;
+            if (player == null)
+            {
+                return "Villheim: no player.";
+            }
+
+            string aimed = SwapTool.DesignAimed(player);
+            GameObject target = LookAt.Target(player);
+            (ZDO sign, List<ZNetView> views) = SwapTool.DesignParts(string.IsNullOrEmpty(_moveDesign) ? aimed : _moveDesign);
+            string right = player.GetRightItem()?.m_dropPrefab?.name ?? "nothing";
+            return $"Shaper: in hand {Holding(player)} (right hand: {right}, tool item: {LogicConfig.ShapingTool?.Value ?? "KnifeWood"}), active {_active}, " +
+                   $"tool {_tool} ({(_tool >= 1 && _tool <= 8 ? Labels[_tool - 1] : "none")}), typing {Typing()}, " +
+                   $"Move holds '{_moveDesign ?? ""}', aimed '{aimed}' (object {(target != null ? Utils.GetPrefabName(target) : "none")}), " +
+                   $"part locked {SwapTool.PartLocked}, plot sign {(sign != null ? "found" : "NOT FOUND")}, {views.Count} objects in it. " +
+                   $"Logic {VillheimLogic.Build}.";
+        }
+
         private static bool Typing() =>
             Console.IsVisible() || Menu.IsVisible() || InventoryGui.IsVisible() || Chat.instance != null && Chat.instance.HasFocus() || Minimap.IsOpen();
 

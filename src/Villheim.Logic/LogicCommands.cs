@@ -31,6 +31,7 @@ namespace Villheim.Logic
             "version: show which Villheim.Logic build is running",
             "preview <location>: build one design in front of you, outside any village",
             "clear: remove the nearest village (buildings, villagers and hearth)",
+            Tidy.Help,
             "info: show loaded villages",
             "designs [meadows|blackforest]: list the designs villages can build",
             "locations [filter]: list location names you can use as designs",
@@ -190,6 +191,9 @@ namespace Villheim.Logic
                 case "villheim_version": Say(context, VillheimLogic.Build); return true;
                 case "villheim_preview": Preview(args, context); return true;
                 case "villheim_clear": Clear(context); return true;
+                case "villheim_tidy":
+                    if (TryGetPlayer(context, out Player tidier)) Say(context, Tidy.Run(args, tidier.transform.position));
+                    return true;
                 case "villheim_info": Info(context); return true;
                 case "villheim_designs": Designs(args, context); return true;
                 case "villheim_locations": Locations(args, context); return true;

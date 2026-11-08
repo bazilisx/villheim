@@ -331,6 +331,9 @@ namespace Villheim.Logic.Designs
         }
 
         /// <summary>Places one planned object as a real networked object, tagged with the village that built it.</summary>
+        /// <summary>Marks pieces a console command built (not a village, not a player).</summary>
+        internal static readonly int KeySpawned = "villheim_spawned".GetStableHashCode();
+
         public static GameObject SpawnEntry(PlanEntry entry, Vector3 origin, Quaternion rotation, int villageId, bool effects)
         {
             GameObject prefab = ZNetScene.instance.GetPrefab(entry.Prefab);
@@ -372,6 +375,11 @@ namespace Villheim.Logic.Designs
             if (view != null && view.GetZDO() != null && villageId != 0)
             {
                 view.GetZDO().Set(Keys.BuiltBy, villageId);
+            }
+            else if (view != null && view.GetZDO() != null)
+            {
+                // Built by a command (vh preview, vh gen, vh place, the gallery): marked so 'vh tidy' can take it away.
+                view.GetZDO().Set(KeySpawned, 1);
             }
 
             if (effects && instance.TryGetComponent(out Piece piece))

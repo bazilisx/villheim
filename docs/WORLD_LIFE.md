@@ -592,3 +592,12 @@ Effort is a rough guess: S an evening, M a session or two, L several sessions.
 
 Anything copied keeps its licence notice in `THIRD_PARTY_NOTICES.md`. Living Factions, TraderQuests, Norsemen and
 ServerGuide have no licence file and Millénaire is All Rights Reserved: ideas only. Clones for study go in `/tmp`.
+
+## Tidying up after tests (2026-11-08)
+
+Pieces built by console commands (`vh preview`, `vh gen`, `vh place`) carry the key `villheim_spawned` on their ZDO.
+`vh tidy [radius] [villages] [untagged] [yes]` (Village/Tidy.cs) counts, and with `yes` removes, those pieces within the
+radius (default 40 m). `villages` also removes every village whose hearth is in range, with all its buildings and
+villagers. `untagged` also takes pieces with no builder and no village, for previews made before the key existed;
+world locations have no builder either, so it is only for clear ground. Player-built pieces, the gallery and the
+slotting board (`villheim_gallery` key) are never touched. Levelled ground stays.

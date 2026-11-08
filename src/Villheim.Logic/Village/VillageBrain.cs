@@ -551,6 +551,7 @@ namespace Villheim.Logic.Village
             zdo.Set(Keys.VillagerSeed, looksSeed);
             zdo.Set(Keys.VillagerName, name);
             zdo.Set(Villagers.Roles.KeyArrival, arrival);
+            Villagers.Personality.NoteArrived(zdo, arrival >= VillheimConfig.StartingVillagers.Value && birthplace == null);
             if (birthplace != null)
             {
                 zdo.Set(Villagers.Childhood.KeyBorn, EnvMan.instance != null ? EnvMan.instance.GetDay() : 0);

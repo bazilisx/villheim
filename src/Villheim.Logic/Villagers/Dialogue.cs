@@ -249,6 +249,7 @@ namespace Villheim.Logic.Villagers
             if (mine == theirs && mine != Roles.Trade.None) tags.Add("with:sametrade");
             tags.Add("with:voice:" + VoiceOf(other));
             if (Childhood.IsChild(other)) tags.Add("with:child");
+            if (Personality.IsNewcomer(other)) tags.Add("with:newcomer");
             if (Roles.IsJarl(other)) tags.Add("with:jarl");
             if (other.GetHealth() < other.GetMaxHealth() * 0.6f) tags.Add("with:hurt");
             float mood = Moods.Get(other);

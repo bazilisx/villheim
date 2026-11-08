@@ -64,6 +64,37 @@ namespace Villheim.Logic.Villagers
             "to see the world tree", "to sleep one whole night without a greydwarf", "to build a boat of my own",
         };
 
+        // Why a newcomer left home: the backstory a newcomer tells in his first days (WORLD_LIFE plan item 12).
+        private static readonly string[] Reasons =
+        {
+            "the farm went to my older brother", "a fire took our longhouse", "I owed a man money and he wanted it back",
+            "the fishing failed three years running", "the family I married into never liked me", "I wanted to see something new",
+            "the jarl there was a hard man", "wolves took the sheep and then they took the dog", "I followed a dream I had",
+            "there were too many of us and too little land", "the sickness came through our valley",
+            "I lost a wager and had to leave", "I heard there was land to be had", "nobody there needed a carpenter",
+            "the old ones died and the young ones scattered",
+        };
+
+        private static readonly int KeyArrivedDay = "villheim_arrivedday".GetStableHashCode();
+
+        /// <summary>Called when a villager first comes to live in a village (not the first settlers, not the newborn).</summary>
+        public static void NoteArrived(ZDO zdo, bool newcomer)
+        {
+            if (zdo != null && newcomer)
+            {
+                zdo.Set(KeyArrivedDay, Today);
+            }
+        }
+
+        /// <summary>Came to the village from outside in the last three days.</summary>
+        public static bool IsNewcomer(Villager villager)
+        {
+            int day = villager.Zdo != null ? villager.Zdo.GetInt(KeyArrivedDay, -1) : -1;
+            return day >= 0 && Today - day <= 3;
+        }
+
+        public static string WhyLeft(Villager v) => Pick(Reasons, v, 67u);
+
         private static readonly string[] FarPlaces =
         {
             "the Ashfjord", "the north coast", "Myrhavn", "the eastern islands", "the Grey Hills", "Bjornstad",
@@ -288,6 +319,7 @@ namespace Villheim.Logic.Villagers
             }
 
             yield return "fear:" + Fear(villager).Split(' ').Last().Replace(",", "");
+            if (IsNewcomer(villager)) yield return "newcomer";
             if (Village.WorldLife.HeardNews(villager.VillageId) != null)
             {
                 yield return "news";
@@ -327,6 +359,7 @@ namespace Villheim.Logic.Villagers
                 .Replace("{hobby}", Hobby(villager))
                 .Replace("{dream}", Dream(villager))
                 .Replace("{farplace}", FarPlace(Seed(villager)))
+                .Replace("{whyleft}", WhyLeft(villager))
                 .Replace("{from}", villager.Zdo?.GetString(Wanderers.KeyFrom, "") is string from && from.Length > 0 ? from : "far off");
         }
 
@@ -334,7 +367,7 @@ namespace Villheim.Logic.Villagers
         public static string Describe(Villager villager)
         {
             YesterdayWords.TryGetValue(Yesterday(villager), out string yesterday);
-            return $"from {Homeland(villager)}; loves {Food(villager)}; afraid of {Fear(villager)}; likes {Hobby(villager)}; " +
+            return $"from {Homeland(villager)}{(IsNewcomer(villager) ? " (new here: " + WhyLeft(villager) + ")" : "")}; loves {Food(villager)}; afraid of {Fear(villager)}; likes {Hobby(villager)}; " +
                    $"hopes {Dream(villager)}; friend {Friend(villager)?.VillagerName ?? "none"}, rival {Rival(villager)?.VillagerName ?? "none"}; " +
                    $"yesterday {yesterday ?? "unknown"}; remembers {string.Join(" ", Memories(villager).Keys)}";
         }

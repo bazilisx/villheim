@@ -366,3 +366,44 @@ Greydwarf. Two, maybe. Light the torches.
 
 @ self, event:enemyfar, sighted:skeleton
 I see bones walking out there. Bones shouldn't walk.
+
+# ------------------------------------------------------------------ newcomers (their first three days)
+#
+# Tags: newcomer (this villager came from outside in the last three days), chat with:newcomer.
+# Fill-in {whyleft}: why they left home, from their seed.
+
+@ talk, newcomer
+I'm new here. Came over the hills a few days ago.
+I left {homeland} because {whyleft}. Here's as good a place as any to start again.
+Everyone's been kind. Kinder than I expected.
+I'm still learning everyone's names. You're {player}, yes?
+
+@ talk, newcomer | worrier
+I hope they let me stay. I'm working as hard as I can.
+
+@ talk, newcomer | gruff
+New. Don't ask me where things are. I don't know yet.
+
+@ talk, newcomer | cheerful
+I've only been here a few days and I already love it.
+
+@ talk, newcomer | elder
+At my age, starting over. But {whyleft}, so here I am.
+
+@ newcomer
+Where does everyone keep the spare rope? I'll find it.
+I keep getting lost on the way to the chest.
+It's quieter here than {homeland}. I think I like it.
+
+@ chat, with:newcomer
+Settling in? // Slowly. Where do you keep the salt? // We don't have salt. // Ah.
+Why did you leave home, then? // @whyleft
+Has anyone shown you the good berry patch? // No. // Good. More for me. // That's unkind. // I'll show you tomorrow.
+
+@ reply, answer:whyleft
+{whyleft}. That's the short of it.
+Well, {whyleft}. And I wanted a change.
+Ask me again after a few cups of mead.
+
+@ reply, answer:whyleft | gruff
+Reasons.

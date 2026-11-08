@@ -17,14 +17,14 @@ Code in `tools/blueprint-lab/`. Built 2026-11-08 night. Nothing generated here i
 | Generator | `lib/generate.js`, `lib/styles.js` | A request (type, biome, culture, plan, roof, walls, size stage, decor stage, seed) to a design. |
 | Cultures | `lib/styles.js`, `lib/generate.js`, `lib/gen_cultures.js` | The 14 approved village cultures, up to three per biome with weights, and their forms: round houses, crannogs, goahti, lavvu, yurts, Icelandic gable rows, courtyards with arcades, keeps, Svan towers, domed and drum churches, stave churches, sunken huts. Style guide and sources in `docs/CULTURE_STYLES.md`; overview pictures in `docs/cultures/`. |
 | Decorator | `lib/decorate.js` | Furnishes rooms to d1, d2 or d3; strips any design to d1; furnishes any existing blueprint against its real walls. |
-| Checks | `lib/checks.js` | Every piece connected to the ground, no doubled pieces, doors with room on both sides, materials the biome has, floor left free. |
+| Checks | `lib/checks.js`, `lab/check_set.js` | Every piece connected to the ground, no doubled pieces, doors you can walk through, headroom under roofs and ceilings, ladders and stairs you can climb, no woodpiles indoors, materials the biome has (furnishing too), floor left free. See "Structure rules". |
 | Renderer | `lib/render.js`, `lib/sheet.js` | Four views (front left, back right, top, inside with the roof off) as PNG in Node or on a canvas in a browser. |
 | Request page | `web/app.html`, built to `web/index.html` by `lib/build_web.js` | Type or pick a request, get the best of up to 16 candidates, turn it round, download the `.blueprint`; a second tab strips or furnishes an uploaded blueprint; a third repairs one. Published as the artifact "Villheim Blueprint Lab"; a copy is in `BepInEx/config/Villheim-tools/` on Tyler's PC and opens offline. |
 | Requests | `lib/request.js` | Request words to choices, the best of several seeds, and one request made from short codes. Shared by the page, the game (`vh gen`) and `lab/process_requests.js`. |
 | Game bundle | `lib/build_engine.js` to `src/Villheim.Logic/Generator/lab.js` | The generator for the game, run by Jint. See "In the game". |
 | Repair | `lib/repair.js`, tests `lab/test_repair.js` and `lab/test_repair_chunk.js` | Fills in pieces missing from an uploaded blueprint from the rest of the build: gaps in a row, a missing course in a stack, holes in a floor, the mirror of the other half when the build is mostly symmetric, and pieces that the build's own patterns call for. Each added piece carries a reason and a confidence. Third tab of the request page. |
 | Millénaire study | `lab/mc_convert.py`, `lab/mc_eval.js`, `lab/mc_render.js`, `lab/mc_compare.py`, `data/mc-blockmap.json` | Translates Millénaire schematics into blueprints for study and measures how well they translate. Kept apart from the lab's data; see `docs/MC_TRANSLATION.md`. |
-| Review set | `lib/gen_set.js` | Every type in five biomes at s1d1, s2d2, s3d3, plus six cultures; best of 8 each. 273 designs, all pass every check. |
+| Review set | `lib/gen_set.js` | Every type in five biomes at s1d1, s2d2, s3d3, plus six cultures; best of 8 each. 273 designs, all pass every check (2026-11-09). |
 
 ## Measured building conventions
 
@@ -44,6 +44,45 @@ the way a hand build does.
   with it.
 - Roof rows line up with wall bays only when the building's depth is an odd number of bays, so the generator keeps
   depths odd under pitched roofs.
+
+## Structure rules (Tyler's in-game review, 2026-11-09)
+
+Tyler built the first designs in the game (T-04 to T-10 on the review sheet): doors blocked by a beam or a low roof,
+walls and roofs at head height, ladders facing a wall with no hole above, the cloth door turned and hanging half way
+up, braziers in the walls and unlit, fires off the smoke hole, woodpiles indoors, dark wood in the Meadows, grass
+through the floors. The generator now follows these rules, and `lib/checks.js` checks them on every design.
+
+| Rule | Generator | Check |
+|---|---|---|
+| Rooms are tall enough | Walls of 3 m (sunken huts 2.5 m, under a steep roof); upper floors 3 m apart. | `headroom`: every covered floor point inside walls, away from the wall itself, has 2.4 m clear under every roof, ceiling and level beam, and the walls beside it are at least 2.5 m tall. Open floors (roof terraces, yards, decks) are left out. |
+| Doors can be walked through | The door piece fits the wall: `wood_door` for a 2 m opening, `piece_cloth_hanging_door` for a 3 m one, `wood_gate` for barns (3 m); never `darkwood_gate`. Roof, eave and beam pieces in a doorway, or lower than 2.3 m for a metre in front of it or behind it, are taken out (the eave is cut back over the door). A raised door gets a stair: from the ground at 2 m, set half in the ground at 1 m, stopping at the face of a stone course. | `doors`: nothing in the opening, nothing under 2.3 m for a metre either side, and a floor, stair or the ground to step on at both sides. |
+| Ladders can be climbed | Each ladder needs three cells in a row: a clear foot, the hole, and a landing. Cells along a wall come first, away from the door and the chimney. The foot stands at the near edge of the hole; in a 3 m storey the climb ends in the middle of the landing cell, whose near half stays open and whose far half gets two `wood_floor_1x1`. In towers each landing is the next ladder's foot, so they climb round the walls. Furniture is kept off the foot, the hole and the landing. Flat roofs get a ladder to a hatch. | `ladders`: a metre of clear floor in front of the foot, a floor to step onto at the top, and nothing lower than 1.9 m over the climb. |
+| Fires sit under the smoke | The fire goes to the middle of the smoke hole: the ridge caps left out over it, the open crown of a ring roof, or a cell of a flat roof. A chimney goes over a ridge or flat-roof hole, through any upper floor: stone where the culture may build in stone, else a plank box with a raised cap on short posts (a smoke louver). Ring roofs keep their open crown. No fire laid: the ridge is closed again. A hearth in a room under 40 m2 becomes a fire pit. | (the fire's place is set by the generator) |
+| Ceiling braziers hang lit | `piece_brazierceiling01` hangs on its 2 m chain from the lowest roof or ceiling piece over the middle of its room (two in a hall are spread along it), at least 2.3 m up and away from the fire; where the room is too low it stands as a torch. The spawner lights every fire, brazier and torch a design brings and keeps it lit (`DesignSpawner.KeepLitPatch`). | |
+| Woodpiles outside | Woodpiles placed indoors move outside against an outside wall, away from the doors, or are left out. | `woodpiles`: none under a roof inside walls. |
+| Materials by biome | Dark wood takes tar (Plains): the Swamp kit is wood and iron; dark roofs, frames and porch roofs start in the Plains. Furnishing the biome cannot make comes out; the generator's own props (well and pen barrels, camp benches) are swapped for ones it can. | `materials`: every piece, structure and furnishing, by `pieces.js` `needs`. |
+| Floors in the ground | A 1 m stone floor sits half in the ground. Posts and stilts start a metre in the ground. The game sets a design's lowest pivot on the ground, so both keep fields, wells and pens on the ground too. In the game, `DesignSpawner.SpawnEntry` paints dirt under every floor that rests on the ground before placing it and levels the earth: just under a thin floor, and up to 0.15 m under the top of a stone floor. This runs for `vh preview`, `vh gen`, `vh place` and village builds. | |
+
+Measured pivots (corpus neighbours, `pieces.js` `DOORS` and `CLIMB`): `wood_door` pivots in its middle (2 x 2 m);
+`wood_gate` 1 m above its bottom (2 m wide, 3 m tall); `darkwood_gate` on its bottom (4 m tall);
+`piece_cloth_hanging_door` hangs from its pivot at the top of a 3 m opening, turned 90 degrees against its wall and
+0.3 m to one side of it; `wood_stepladder` stands on its pivot and climbs 2 m over 2 m toward its local -z;
+`wood_stair` pivots in its middle and climbs the same way; `piece_brazierceiling01` hangs about 2 m below what it
+hangs from.
+
+`node lab/check_set.js [tries] [--gen <lib dir>] [--list]` runs every check on the review set and the culture samples
+without drawing them; `--gen` makes the designs with another copy of the lib to compare. On 2026-11-09, best of 8:
+
+| | Review set | Culture samples |
+|---|---|---|
+| Before (old generator, new checks) | 64 of 225 | 18 of 147 |
+| After | 225 of 225 | 147 of 147 |
+
+On single seeds (every type, seven biomes, three stages, six seeds; 1,890 designs) 484 passed every check before and
+1,889 after.
+
+Culture ids that have changed or may change sit in `styles.js` `ID`; a renamed id goes in `RENAMED` so old requests
+still work (`caucasian-highland` is now `lamari`, D-046).
 
 ## What the corpus says (2,134 designs, 2026-11-08)
 
@@ -81,9 +120,11 @@ substance because the new downloads carry no Yes or No (AUC 0.70 on the same 661
 6. Wings for the plan; floor cells; outside edges; one door on the main wing's front; windows on alternate bays;
    posts at every corner of every bay; top plates.
 7. Roof per wing. Where wings cross, the lower roof runs into the higher one; pieces hidden under the higher roof are
-   left out. The ridge cap is left open over an indoor fire for smoke.
+   left out. The ridge caps over the fire's place are left open for smoke.
 8. Porch, pier, field, pen, dragon heads where the type and culture call for them.
-9. Furnishing by room use and decor stage, then anything standing in a doorway is taken out.
+9. Roof and beam pieces in a doorway come out. Furnishing by room use and decor stage, then the last pass (see
+   "Structure rules"): the fire under the smoke hole and a chimney over it, braziers hung, woodpiles outside, nothing
+   in a doorway, on a ladder or in a chimney, nothing the biome cannot make.
 10. The page and the review set build several seeds and keep the one that passes the most checks, then scores highest
     (`lib/request.js` `best`: seeds n, n + 101, n + 202 and so on).
 
@@ -215,7 +256,9 @@ running it again makes the same design. Then `vh place <id>` in the game.
 - Crop fields need the ground cultivated in game for crops to grow back.
 - The decorator's facing per item comes from the corpus. Items whose facing the corpus does not settle face into the
   room.
-- None of the generated designs has been placed in the game yet.
+- The first designs were placed in the game on 2026-11-09 (Tyler, T-04 to T-10); the structure rules above came from
+  that review.
+- `ashwood_door` pivots at its hinge side; its height is not measured, so Ashlands houses use `wood_door`.
 
 ## Commands
 
@@ -229,6 +272,7 @@ node lib/cli.js gen home "Black Forest" - s2 d2 7 out/house       # one design a
 node lib/cli.js decorate in.blueprint home d3 Swamp out/furnished  # furnish or strip (d1) a blueprint
 node lib/batch.js out/shapes shapes                                # plan and roof matrix with an overview image
 node lib/gen_set.js out/set 8                                      # the review set
+node lab/check_set.js 8 --list                                     # every check on the review set and culture samples
 node lib/gen_cultures.js out/cultures 6 ../../docs/cultures       # culture samples and overview pictures
 node lib/build_web.js web/index.html                               # the request page
 node lib/build_engine.js                                           # the game's bundle, src/Villheim.Logic/Generator/lab.js

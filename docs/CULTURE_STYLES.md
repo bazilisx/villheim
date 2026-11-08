@@ -46,13 +46,15 @@ Exact prefab names the generator uses. Later biomes keep earlier pieces.
 |---|---|---|---|---|
 | Meadows | `woodwall`, `wood_wall_half`, `wood_wall_quarter`, `wood_beam_45` (braces) | `wood_pole2`, `wood_pole`, `wood_beam` | `wood_roof`, `wood_roof_45`, `wood_roof_top`, `wood_roof_top_45`, `wood_roof_ocorner(_45)`, gables `wood_wall_roof(_45)` | `wood_floor`, `wood_floor_1x1`, `wood_door`, `wood_gate`, `wood_fence`, `wood_stair`, `wood_stepladder` |
 | Black Forest | `wood_wall_log`, `stone_wall_2x1`, `stone_wall_1x1`, `stone_wall_4x2` | `wood_pole_log`, `wood_pole_log_4`, `stone_pillar` | as Meadows | `stone_floor_2x2`, `stone_arch`, `stone_stair` |
-| Swamp | as above | `darkwood_pole`, `darkwood_pole4`, `darkwood_beam`, `darkwood_beam_45` | `darkwood_roof`, `darkwood_roof_45`, `darkwood_roof_top(_45)`, `darkwood_roof_ocorner(_45)` | `darkwood_gate` |
+| Swamp | as above | as above, and `woodiron_beam`, `woodiron_pole` | as Meadows | as above |
 | Mountain | as above | as above | as above | `crystal_wall_1x1`; red jute for `piece_cloth_hanging_door` |
-| Plains | as above | as above | as above | as above |
+| Plains | as above | `darkwood_pole`, `darkwood_pole4`, `darkwood_beam`, `darkwood_beam_45` | `darkwood_roof`, `darkwood_roof_45`, `darkwood_roof_top(_45)`, `darkwood_roof_ocorner(_45)` | as above |
 | Mistlands | `blackmarble_2x1x1`, `blackmarble_1x1` | `blackmarble_column_1` | as above | `blackmarble_floor`, `blackmarble_arch` |
 
 Roof sets a culture may ask for in any biome that has them: thatch (`wood_roof*`: reed, straw, and the stand-in for
-turf and felt) and dark wood (`darkwood_roof*`: shingle, slate, lead and tile stand-in, Swamp on).
+turf and felt) and dark wood (`darkwood_roof*`: shingle, slate, lead and tile stand-in, Plains on: dark wood takes tar,
+which comes from the Plains). Every house door is `wood_door` (2 m) or, where the culture uses one and red jute is in
+reach, `piece_cloth_hanging_door` (3 m); `darkwood_gate` (4 m tall) is never used as a house door.
 
 Measured in the corpus this session (`lab/offsets.js`, now in `lib/pieces.js`): a `stone_pillar` is 2 m tall and
 stands on a 1 m `stone_wall_1x1`; a `stone_arch` is 2 x 1 x 1 m with its top level with pillar tops 1.5 m to either
@@ -70,7 +72,7 @@ degrees, so their shape is unknown), trader tents and awnings. Their sizes need 
 | Form | Used by | What it is |
 |---|---|---|
 | `round` | celtic, celtic-crannog, saami (goahti) | eight walls of 2, 4 or 6 m a side (4.8, 9.7, 14.5 m across), ring roof whose first ring is a 26 degree eave (1 m drop) and then 45 degree rings; a porch on 4 m sides; on stilts with a deck, a walkway and a stair (crannog) |
-| `tent` | saami (lavvu) | cone of 45 degree rings from the floor, a doorway in the first ring, dark roof from the Swamp on |
+| `tent` | saami (lavvu) | cone of 45 degree rings from the floor, a doorway in the first ring, dark roof from the Plains on |
 | `yurt` | steppe | 2 m lattice wall (plank with a brace each bay), low 26 degree cone starting at the wall top, open crown |
 | `gables` | norse-highland | 1 to 3 narrow houses (6 m wide) side by side, wooden gable fronts and doors to the yard, stone side and back walls, the middle house deeper at s3 |
 | `court` | middle-eastern | four wings round a yard, a gallery on the yard side with a stone arcade (3 m bays) or marble arcade (2 m bays), one door per wing, paved yard with a well; corner towers on s3 caravanserais |
@@ -234,7 +236,7 @@ Who and why: Irish and Scots who built round houses on timber platforms in lakes
 
 - Buildings: home, hall and workshop as round houses on platforms; storehouse round; shore buildings use the same form.
 - Plans and sizes: the Scottish Crannog Centre house is about 15 m across on 168 piles with a 20 m causeway.
-  Generator: houses 4.8, 9.7 and 14.5 m across on 2 m stilts (`darkwood_pole`), a deck 3 m wide all round,
+  Generator: houses 4.8, 9.7 and 14.5 m across on 2 m stilts (`wood_pole2`), a deck 3 m wide all round,
   a walkway 6 to 10 m long to the shore ending in a stair; a `wood_fence` round the deck at s3.
 - Build-up: plank (wattle hurdle) walls, thatch cone (`wood_roof` set kept in the Swamp), hearth on clay in the middle.
 - Signature: the round house over water with its walkway; no smoke hole (smoke goes through the thatch).
@@ -318,9 +320,9 @@ Who and why: the Saami of the northern fells, reindeer herders with turf huts, t
 - Buildings: goahti (turf hut, home and gathering hut), lavvu (tent, for work), njalla or luovvi storehouse on posts,
   reindeer pen.
 - Plans and sizes: goahti frame of four bent poles 2.4 to 3.7 m long, 1.5 to 2.4 m high, often longer than wide.
-  Generator: goahti 4.8 m across (9.7 m gathering hut), 2 m stone and turf wall, thatch cone with a smoke hole;
+  Generator: goahti 4.8 m across (9.7 m gathering hut), 3 m stone and turf wall, thatch cone with a smoke hole;
   lavvu 8.8 m across at the base and 4 m high (real lavvu are 4 to 6 m; the smallest ring roof the lab can lay
-  is this wide), dark cover from the Swamp on; storehouse 4 x 6 m in log on 2 m posts with
+  is this wide), dark cover from the Plains on; storehouse 4 x 6 m in log on 2 m posts with
   a landing and stair.
 - Signature: low round huts and tents; storehouses on posts.
 - Interiors: hearth in the middle; logs from the door to the fire mark a path; the area behind the fire (boaššu) is

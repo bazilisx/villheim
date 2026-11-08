@@ -18,13 +18,14 @@ const BIOME_KIT = {
     stoneWall: 'stone_wall_2x1', stoneWall4: 'stone_wall_4x2', stoneBlock: 'stone_wall_1x1', stoneFloor: 'stone_floor_2x2',
     stoneArch: 'stone_arch', stonePillar: 'stone_pillar', stoneStair: 'stone_stair', beamLog: 'wood_log_26',
   },
-  'Swamp': {
-    wall: 'woodwall', pole: 'darkwood_pole', poleLong: 'darkwood_pole4', beam: 'darkwood_beam', beamLong: 'darkwood_beam4x4',
-    roof26: 'darkwood_roof', roof45: 'darkwood_roof_45', roofTop26: 'darkwood_roof_top', roofTop45: 'darkwood_roof_top_45',
-    door: 'darkwood_gate', ironBeam: 'woodiron_beam', ironPole: 'woodiron_pole', decowall: 'darkwood_decowall',
-  },
+  // Dark wood pieces take tar, so they start in the Plains (Tyler, 2026-11-09); the Swamp adds iron.
+  'Swamp': { ironBeam: 'woodiron_beam', ironPole: 'woodiron_pole' },
   'Mountain': { window: 'crystal_wall_1x1', glass: 'crystal_wall_1x1' },
-  'Plains': {},
+  'Plains': {
+    pole: 'darkwood_pole', poleLong: 'darkwood_pole4', beam: 'darkwood_beam', beamLong: 'darkwood_beam4x4',
+    roof26: 'darkwood_roof', roof45: 'darkwood_roof_45', roofTop26: 'darkwood_roof_top', roofTop45: 'darkwood_roof_top_45',
+    decowall: 'darkwood_decowall',
+  },
   'Mistlands': {
     wall: 'blackmarble_2x1x1', stoneWall: 'blackmarble_2x1x1', stoneBlock: 'blackmarble_1x1', stoneFloor: 'blackmarble_floor',
     stonePillar: 'blackmarble_column_1', stoneArch: 'blackmarble_arch', plinth: 'blackmarble_2x1x1',
@@ -32,7 +33,7 @@ const BIOME_KIT = {
   'Ashlands': {
     wall: 'ashwood_wall_2x2', pole: 'ashwood_pole_2m', poleLong: 'ashwood_pole_2m', beam: 'ashwood_beam_2m', beam1: 'ashwood_beam_1m',
     floor: 'ashwood_floor_2x2', stoneWall: 'Piece_grausten_wall_2x2', stoneWall4: 'Piece_grausten_wall_4x2', stoneFloor: 'Piece_grausten_floor_2x2',
-    stoneBlock: 'Piece_grausten_wall_1x2', plinth: 'Piece_grausten_wall_2x2', door: 'ashwood_door', window: 'Piece_grausten_window_2x2',
+    stoneBlock: 'Piece_grausten_wall_1x2', plinth: 'Piece_grausten_wall_2x2', window: 'Piece_grausten_window_2x2',
     gable26: 'ashwood_wall_roof_26', gable45: 'ashwood_wall_roof_45',
   },
 };
@@ -48,11 +49,17 @@ function kitFor(biome) {
 }
 
 // Roof sets a culture can ask for whatever its biome's kit has: thatch (reed, straw, and the stand-in for turf and
-// felt) and dark wood (shingle, slate, lead and tile stand-in; Swamp on).
+// felt) and dark wood (shingle, slate, lead and tile stand-in; Plains on, as dark wood takes tar).
 const ROOF_SETS = {
   thatch: { roof26: 'wood_roof', roof45: 'wood_roof_45', roofTop26: 'wood_roof_top', roofTop45: 'wood_roof_top_45' },
   dark: { roof26: 'darkwood_roof', roof45: 'darkwood_roof_45', roofTop26: 'darkwood_roof_top', roofTop45: 'darkwood_roof_top_45' },
 };
+
+// Culture ids that have changed or may change: the id lives here once; a renamed id goes in RENAMED so old requests
+// still work. The Mistlands tower culture was 'caucasian-highland' until Tyler named it Lamari (D-046, after Lamaria,
+// the Svan hearth goddess).
+const ID = { lamari: 'lamari' };
+const RENAMED = { 'caucasian-highland': ID.lamari }; // old id: new id
 
 // Culture: how a building is put together. The first block are the village cultures Tyler approved (2026-11-08),
 // with the shapes and sizes in docs/CULTURE_STYLES.md. The older lab styles after them stay for the request page
@@ -61,7 +68,7 @@ const ROOF_SETS = {
 // Fields the generator reads:
 //   roof, pitch, eaves     main roof form, 26 or 45 degrees, eaves rows (2 = one row past the wall, roof to the ground)
 //   roofs, walls, plans    weights: roof kinds; wall styles; plan per type and stage ({ home: { s1: { rect: 1 } } })
-//   roofSet                'thatch' or 'dark' whatever the biome kit has (dark falls back to thatch before Swamp)
+//   roofSet                'thatch' or 'dark' whatever the biome kit has (dark falls back to thatch before the Plains)
 //   forms                  building type to a special form: round, tent, yurt, gables, court, keep, svan, tower-svan,
 //                          dome, drum, stave, sunken, open, raised (see generate.js)
 //   frame, logWalls, plinth, stilts, stiltH, deck, raised, podklet, porch, dragons, carved, glass, arches, parapet,
@@ -170,8 +177,8 @@ const CULTURES = {
     sample: ['home', 'longhouse', 'workshop'],
     note: 'Round felt tents on a lattice wall under a low cone with an open crown; open sunshades for work.',
   },
-  'caucasian-highland': {
-    label: 'Caucasian highland (Svan, Georgian, Armenian)', village: true, biomes: ['Mistlands'], roof: 'gable', pitch: 26, eaves: 1, frame: false, porch: 0,
+  [ID.lamari]: {
+    label: 'Lamari', village: true, biomes: ['Mistlands'], roof: 'gable', pitch: 26, eaves: 1, frame: false, porch: 0,
     roofSet: 'dark', stoneWalls: true, storeyH: 3, roofs: { gable: 4, hip: 1 }, walls: { stone: 1 },
     forms: { home: 'svan', tower: 'tower-svan', temple: 'drum' }, storeys: { home: { s1: 1, s2: 2, s3: 2 } },
     sample: ['home', 'tower', 'temple', 'workshop'],
@@ -219,9 +226,16 @@ const BIOME_CULTURE = {
   'Swamp': { 'celtic-crannog': 3, 'baltic': 3, 'fen-folk': 3 },
   'Mountain': { 'norse-highland': 1, 'saami': 1 },
   'Plains': { 'middle-eastern': 3, 'byzantine': 3, 'steppe': 3 },
-  'Mistlands': { 'byzantine': 3, 'caucasian-highland': 4 },
+  'Mistlands': { 'byzantine': 3, [ID.lamari]: 4 },
   'Ashlands': { 'castle-medieval': 1 },
 };
+
+// A culture key as asked, an old key renamed since, or null.
+function cultureKey(k) {
+  if (!k) return null;
+  const key = RENAMED[k] || k;
+  return CULTURES[key] ? key : null;
+}
 
 // A culture for a biome: weighted by BIOME_CULTURE, R a random source (0..1). Without R, the heaviest.
 function cultureFor(biome, R) {
@@ -237,7 +251,7 @@ function cultureFor(biome, R) {
 function roofKit(K, C, biome) {
   const order = BIOMES.indexOf(biome);
   if (C.roofSet === 'thatch') return { ...K, ...ROOF_SETS.thatch };
-  if (C.roofSet === 'dark') return { ...K, ...(order >= BIOMES.indexOf('Swamp') ? ROOF_SETS.dark : ROOF_SETS.thatch) };
+  if (C.roofSet === 'dark') return { ...K, ...(order >= BIOMES.indexOf('Plains') ? ROOF_SETS.dark : ROOF_SETS.thatch) };
   return K;
 }
 
@@ -261,6 +275,6 @@ const TYPES = {
   camp:      { label: 'Camp', bays: { s1: [2, 2], s2: [3, 2], s3: [3, 3] }, storeys: { s1: 1, s2: 1, s3: 1 }, use: 'yard', camp: true },
 };
 
-const api = { BIOMES, kitFor, CULTURES, BIOME_CULTURE, TYPES, ROOF_SETS, cultureFor, roofKit };
+const api = { BIOMES, kitFor, CULTURES, BIOME_CULTURE, TYPES, ROOF_SETS, cultureFor, roofKit, ID, RENAMED, cultureKey };
 if (typeof module !== 'undefined') module.exports = api;
 else window.VHStyles = api;

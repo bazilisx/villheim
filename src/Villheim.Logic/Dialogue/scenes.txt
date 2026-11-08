@@ -51,7 +51,7 @@ Old. Otherwise well.
 Hungry! And bored. Mostly hungry.
 
 @ reply, answer:howareyou, goodday
-Wonderful. I've done twice the work and I'm not even tired.
+Wonderful. I slept well and the sun's out.
 
 @ reply, answer:sleep
 Like a log.

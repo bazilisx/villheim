@@ -915,10 +915,9 @@ namespace Villheim.Logic.Villagers
                 ToolAnimation(villager, VillagerLooks.Tool.Hammer);
             }
 
-            // A happy village works faster, a glum one slower (Millenaire and Hirdmandr both tie work to mood).
-            float mood = VillageMood.Get(villager.VillageId);
-            float perPiece = (LogicConfig.SecondsPerPiece != null ? LogicConfig.SecondsPerPiece.Value : 2.5f) *
-                             (mood >= 65f ? 0.85f : mood < 35f ? 1.3f : 1f) / VillagerSkills.WorkFactor(villager, "building");
+            // Mood never changes how fast anyone works (D-014); only skill does. Mood changes free time.
+            float perPiece = (LogicConfig.SecondsPerPiece != null ? LogicConfig.SecondsPerPiece.Value : 2.5f) /
+                             VillagerSkills.WorkFactor(villager, "building");
             if (work.Timer < perPiece)
             {
                 return true;

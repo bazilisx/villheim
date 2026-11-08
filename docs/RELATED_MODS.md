@@ -246,3 +246,50 @@ only.
 | RimWorld, Dwarf Fortress, Stardew Valley, Skyrim, Bannerlord, Kenshi, Enshrouded, Medieval Dynasty | other games | games | Pair opinions from talk types; only extreme personality facets show; lines keyed by day, weather and spot; schedules and two-NPC scenes; caravans that carry goods for profit and can be raided; rescued specialists unlock crafting; output from skill and needs. |
 
 Clones from the survey were kept in `/tmp/study` for the session and are not committed.
+
+## 7. Survey of 2026-11-08 night: settlements that grow
+
+Question: how do other games and mods make settlements grow, spread and fill the land between them on their own?
+Pages read tonight are marked (read); the rest is from the games' known rules and needs checking before numbers are
+copied. Licence decides use, as in section 5. The Villheim file each idea maps to is in the last column.
+
+| Source | Licence | Mechanics worth having (numbers, rules) | Villheim file |
+|---|---|---|---|
+| Living Factions 0.7 (read) | none, ideas only | Camp, hamlet, village, town, city; only a faction's capital becomes a city. Stores of wood, stone, food, metal, coins; people split between gathering, building and guard. Builds what it is short of: houses when crowded, a storehouse when stores are full, then watchtower, smithy, market, palisade, great hall. A settlement short of a material sends a band of 2 to 6 up to 1.4 km to where it is plentiful, weighing distance against danger. Outposts where the land gives what home lacks (timber, stone, soil, ore) or a watch post halfway on a long road. People leave a place that starves. Road to the nearest neighbour up to 1,500 m, a lamp post every 30 m outside the walls, traders with two guards walk it. Woodcutters replant the same tree in the stump. | `Outposts.cs`, `Caravans.cs`, `Trails.cs`, `Daughters.cs` |
+| ValheimCityBuilder 1.8 (read) | not stated on the page | Huts fill with settlers who pay taxes; needs by house level (food; meat or honey and mead; then coal and bread); unmet needs make people move out. A full house with needs met upgrades in place (hut, Karl house, Jarl hall). Buildings need a road to a warehouse. Events: fires, harvest festivals, a travelling merchant, thieves, blood moons, treasure. Raids warned with a countdown. Expedition hall sends soldiers into dungeons for loot. Seven ages unlock new materials. | `Events.cs`, `Growth.cs` |
+| Hearth and Village 0.12 (read) | not stated | Expeditions to another biome come back with loot or with stories, by their gear and skills. A marked armoury chest: villagers take better weapons and tools from it. Wanderers come and can be recruited. Village radius 40 m, 55 m as a village, 75 m as a town. | `Outposts.cs` gear gate, `Smithing.cs` |
+| MineColonies request system (read) | GPL, ideas only | A worker who lacks an item looks in his own inventory, hut and rack, then raises a request. A courier fills it from the warehouse; if it is not there, a crafter who knows the recipe takes the request and raises his own for the inputs (stairs, planks, logs). Requests nobody can fill wait for the player and show over the citizen's head and on a clipboard. Building priority 1 to 10 orders pickups. | `NoticeBoard.cs` contracts, `VillageNeeds.cs` |
+| Sim Settlements 2 (read) | Nexus mod, ideas only | Plots of seven types; a plan levels up over time, three levels, each with a new look. Industrial plots make resources into virtual storage; storage space grows with plot level. Settlements joined by caravans share one virtual storage pool. Multi-level city plans add plots as the settlement grows. | `Caravans.cs` (shared surplus), `Growth.cs` |
+| RimWorld raid points (read) | game | Threat size = (wealth points + pawn points) x difficulty x starting factor x adaption. Wealth under 14,000 gives no wealth points; buildings count half. Starting factor 0.7 until day 10, 1.0 from day 40. Adaption days go up by about 1 a day, drop 30 when a colonist dies, giving a factor from 0.4 to 1.47. Randy multiplies by 0.5 to 1.5. | `Events.cs` (bad events scale with size and ease off after a death) |
+| RimWorld storyteller and caravans | game | Cassandra spaces major threats on a cycle with quiet days between; good and bad events come from separate pools. Caravans travel the world map as one object with a speed from the slowest member and carry goods to trade. Factions' bases are fixed points, the world does not expand. | `Events.cs`, `Caravans.cs` |
+| Bannerlord villages | game | Each village is bound to a town and produces one or two goods by type (grain, clay, iron, horses). Villagers walk their goods to the bound town to sell, as a party on the map that can be raided. Hearths (population) grow slowly with peace and fall when raided; a raided village is looted and produces nothing for some days. Caravans buy where cheap and sell where dear. The TaleWorlds dev blog was behind a bot check. | `Caravans.cs`, `Events.cs` |
+| Millénaire (from `docs/MILLENAIRE.md`) | All Rights Reserved | Hamlets owned by a parent village and built from its stores; foreign merchants who go to the village that lacks their goods and stay two nights; raids on weaker villages below a relation threshold. | `Outposts.cs`, `Caravans.cs`, `Relations.cs` |
+| Kenshi | game | Towns change hands and can be destroyed; new squads and roaming traders spawn from faction lists; a destroyed town becomes ruins that can be resettled later. | `Daughters.cs` (sites of lost villages) |
+| Banished (read: orchard) | game | Orchards take several years before the first yield; foresters plant and cut in a radius; nomads arrive at a town hall and join; an infestation can kill an orchard. | `Replanting.cs` coppices |
+| Kingdoms and Castles, Foundation, Manor Lords | games | Organic growth: houses go up along roads and the player only zones; Manor Lords burgage plots grow backyard extensions and upgrade by level when their needs are met; Foundation villagers choose where to build by desirability. | `Growth.cs` (later) |
+| Necesse | game | Settlers arrive one at a time when there is a free bed and settlement quality is high enough; raids scale with settlement wealth. The wiki refused the reader. | `VillageBrain.cs` arrivals |
+| Vintage Story | game | Traders live in fixed caravans (wagons) generated with the world; each trader type sells and buys from its own list and restocks every few days. | `WorldLife.cs` wares |
+| Medieval Dynasty, Enshrouded, Conan Exiles | games | Medieval Dynasty: villagers are assigned to buildings and produce by skill, the village grows a tier when enough families settle. Enshrouded: rescued survivors each unlock a station and recipes. Conan Exiles: purges come when a clan's building score passes a threshold. | `Smithing.cs`, `Events.cs` |
+| ProceduralRoads, AntTrails, CustomRaids | MIT, MIT, Unlicense | As in section 5. CustomRaids is the way to put a beast attack through `RandEventSystem` later. | `Trails.cs`, `Raids.cs` |
+
+What these share: a settlement keeps simple counted stores; it is short of something, and that shortage decides
+what it builds, where it sends people and what traders carry. People and goods move as records on the world clock and
+only become real near a player. Growth past a size makes new places (hamlets, outposts, a second village) instead
+of a bigger single place. Bad events scale with size and back off after a loss.
+
+### Build list from this survey, ranked
+
+1. Outpost gear gate (Hearth and Village expeditions, Tyler's 2026-11-08 decision) and outpost wood counting toward
+   what the village can build (Living Factions outposts).
+2. Village events director: good harvest, sickness, beast trouble, a quarrel, a visiting skald, a lost traveller
+   taken in (ValheimCityBuilder events, RimWorld's separate good and bad pools, starting and adaption factors).
+3. Caravans as records between hearths, carrying one village's surplus to another that lacks it, real pedlars near a
+   player (Living Factions bands, Bannerlord villager parties, Sim Settlements 2 shared storage).
+4. Outposts second step: stock kept at the camp and carried home along the trail by haulers once it passes 12; a
+   second camp by what home lacks (Living Factions, Millénaire hamlets).
+5. Daughter villages: a full village sends settlers who found a new village 600 to 1,200 m away (Living Factions moving
+   house, Kenshi resettling).
+6. Signposts where a trail leaves a village and road posts halfway on long trails (Living Factions lamp posts).
+7. Contracts on the notice board for what nobody in the village can get (MineColonies manual requests).
+8. Coppices: villagers plant saplings in a grove outside the village and fell them years later (Banished orchards and
+   foresters).

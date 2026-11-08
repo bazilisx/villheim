@@ -66,6 +66,11 @@ https://en.wikipedia.org/wiki/Wikipedia:Signs_of_AI_writing
 - Be concise in chat: short bullets on what changed and what he needs to do.
 - When Tyler has something to do (restart the game, test, install a mod), end the reply with a horizontal rule, then
   `## 🟧 Your steps 🟧`, then numbered steps, then a closing horizontal rule. Nothing else goes in that block.
+- Every question or decision for Tyler goes in the **Decisions** tab of the review sheet
+  (https://docs.google.com/spreadsheets/d/1rHaZArWhEa8V43UTZePM9EQSBwS6bvjsmAFPhnlQs6o/edit): one row with an ID
+  (D-###), the date, Status Open, the question, the options and a recommendation. Read the tab at the start of a
+  session; act on rows Tyler has answered, set them to Done, and copy the decision into the docs. Answers given in chat
+  are added there too, so the tab is the record.
 - Docs and session notes are objective records: what was done, what broke, what was tried, what is still open. No
   descriptions of anyone's mood or tone.
 

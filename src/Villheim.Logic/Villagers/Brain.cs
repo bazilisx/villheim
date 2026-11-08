@@ -198,6 +198,11 @@ namespace Villheim.Logic.Villagers
             {
                 doer = Status.Doer.Heal;
             }
+            else if (Trophies.Update(villager, ai, dt))
+            {
+                // Picking up a trophy after a fight, or hanging one at home.
+                doer = Status.Doer.Trophy;
+            }
             else if (Fletching.Update(villager, ai, dt))
             {
                 // Low on arrows with nothing else to do: more made at the workbench.
@@ -210,6 +215,7 @@ namespace Villheim.Logic.Villagers
             }
 
             Status.Set(villager, doer);
+            HandItems.Tidy(villager, doer);
             Poses.EndTick(villager);
             LoopWatch.Update(villager);
             Seats.AfterTick(villager);
@@ -231,6 +237,12 @@ namespace Villheim.Logic.Villagers
             {
                 state.NextThreatCheck = Time.time + ThreatCheckSeconds + Random.Range(0f, 0.2f);
                 Character seen = ai.FindEnemy();
+                if (Hunting.IsGame(seen) || Animals.IsVillageAnimal(seen))
+                {
+                    // A boar fighting the hunter, or a village animal: no threat to the village (T-58).
+                    seen = null;
+                }
+
                 if (seen != null)
                 {
                     state.Sightings++;

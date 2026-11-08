@@ -70,6 +70,7 @@ namespace Villheim.Logic
         {
             ConfigWatcher.Stop();
             Villagers.ChildBody.Unload();
+            Villagers.GhostDeath.Unload();
             LogicConfig.Unbind();
             _harmony?.UnpatchSelf();
             _harmony = null;

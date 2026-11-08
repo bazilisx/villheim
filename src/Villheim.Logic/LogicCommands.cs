@@ -84,6 +84,8 @@ namespace Villheim.Logic
             "relook [culture]: the nearest villager gets a new seed, name, face and clothes, of his own culture or the one named",
             "defenders: the nearest village's biome defender profile (Plains, Mistlands), the creatures it covers, who would shoot, and arrows loosed so far",
             "kids rig [clear]: a grown man, a boy, a girl and a grown woman, standing still in front of you, to tune the ChildBoy and ChildGirl settings ('3c - Villager looks') against; clear takes them away",
+            "kids hair [next|prev|<style>] [boy|girl]: change the hair of the 'vh kids rig' children (saved to ChildRigHairBoy and ChildRigHairGirl)",
+            "grudges [clear]: what the nearest village holds against players who harmed its people, and clear it",
             "keepapart: the creatures villagers and villages leave alone (KeepApartCreatures), and the camps the nearest village keeps away from",
             "demist: the nearest Mistlands village's clear air, and the game's prefabs that carry a demister",
             "exportpieces: write every buildable piece's collider and mesh bounds, pivot height, color, texture, category, comfort, cost and station to BepInEx/config/Villheim/pieces.json (copy it to tools/blueprint-lab/data/pieces-export.json)",
@@ -283,9 +285,12 @@ namespace Villheim.Logic
                 case "villheim_relook": Say(context, Cultures.Relook(args)); return true;
                 case "villheim_defenders": Say(context, Villagers.Defenders.Command()); return true;
                 case "villheim_keepapart": Say(context, KeepApart.Command()); return true;
+                case "villheim_grudges": Say(context, Villagers.Grudges.Command(args)); return true;
                 case "villheim_kids":
                     Say(context, args.Length > 0 && args[0].Equals("rig", System.StringComparison.OrdinalIgnoreCase)
                         ? Villagers.ChildBody.Command(args.Skip(1).ToArray())
+                        : args.Length > 0 && args[0].Equals("hair", System.StringComparison.OrdinalIgnoreCase)
+                        ? Villagers.ChildBody.Hair(args.Skip(1).ToArray())
                         : "Villheim: 'vh kids rig' puts up a grown man, a boy, a girl and a grown woman to tune the child settings against; 'vh kids rig clear' takes them away.");
                     return true;
                 case "villheim_demist": Say(context, Demisting.Command()); return true;

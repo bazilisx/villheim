@@ -225,7 +225,22 @@ namespace Villheim.Logic
         public static ConfigEntry<bool> FightTargetOrder;
         public static ConfigEntry<int> PlayerHitsToFight;
         public static ConfigEntry<float> PlayerHitWindow;
-        public static ConfigEntry<float> PlayerFightSeconds;
+        public static ConfigEntry<bool> PlayerGrudges;
+        public static ConfigEntry<int> TrophiesPerHome;
+        public static ConfigEntry<bool> PlayerKillBan;
+        public static ConfigEntry<float> PlayerWarnSeconds;
+        public static ConfigEntry<float> PlayerWarnRadius;
+        public static ConfigEntry<int> PlayerBanDays;
+        public static ConfigEntry<int> PlayerBanDaysPerPerson;
+        public static ConfigEntry<float> VillagerRegen;
+        public static ConfigEntry<float> RestRegenFactor;
+        public static ConfigEntry<float> GhostDeathSeconds;
+        public static ConfigEntry<string> ChildRigHairBoy;
+        public static ConfigEntry<string> ChildRigHairGirl;
+        public static ConfigEntry<bool> ChildRigGhost;
+        public static ConfigEntry<string> ChildHairAllow;
+        public static ConfigEntry<string> ChildHairBlock;
+        public static ConfigEntry<string> ChildHairCultures;
         public static ConfigEntry<bool> GhostDeath;
         public static ConfigEntry<int> YggaGrowDays;
         public static ConfigEntry<string> MistlandsDemisterPrefab;
@@ -527,6 +542,21 @@ namespace Villheim.Logic
                 "to ChildBoyHeight or ChildGirlHeight. 'vh kids rig' puts up models to tune these against.");
             ChildNoBeard = Admin(config, looks, "ChildNoBeard", true, "Boys have no beard until they grow up.");
             BindChildShape(config, looks);
+            GhostDeathSeconds = Admin(config, looks, "GhostDeathSeconds", 2.5f,
+                "Seconds a dying villager takes to fade out as he rises, after the ghost's vanishing effect.");
+            ChildRigHairBoy = Admin(config, looks, "ChildRigHairBoy", "",
+                "Hair on the boy model of 'vh kids rig' (a hair prefab such as Hair3; empty: the rig's default). " +
+                "'vh kids hair next' cycles through the game's styles.");
+            ChildRigHairGirl = Admin(config, looks, "ChildRigHairGirl", "", "The same for the girl model.");
+            ChildRigGhost = Admin(config, looks, "ChildRigGhost", false,
+                "Give the 'vh kids rig' models the villagers' ghost look, to see children as they will be.");
+            ChildHairAllow = Admin(config, looks, "ChildHairAllow", "",
+                "Hair styles children may have (comma separated, e.g. Hair3, Hair12). Empty: any style grown villagers of " +
+                "their sex may have, less ChildHairBlock.");
+            ChildHairBlock = Admin(config, looks, "ChildHairBlock", "", "Hair styles children never have (comma separated).");
+            ChildHairCultures = Admin(config, looks, "ChildHairCultures", "",
+                "Children's hair styles by culture, with weights: culture=Hair3:2,Hair5:1; next culture. A child of a culture " +
+                "listed here picks from its list only (still less ChildHairBlock). Culture keys as in 'vh cultures'.");
             GhostDeath = Admin(config, looks, "GhostDeath", true,
                 "A villager who dies fades away the way the game's ghosts do: no body falls, no blood, and he stays an " +
                 "echo to the end. Hits on villagers show the ghosts' hit effect too. Takes effect on the next logic load.");
@@ -738,9 +768,28 @@ namespace Villheim.Logic
                 "Hits on a village's people by one player within PlayerHitWindow before its protectors fight him. Before " +
                 "that a hit protector only complains, and carers, elders and children run to the hearth.");
             PlayerHitWindow = Admin(config, living, "PlayerHitWindow", 30f, "Seconds over which PlayerHitsToFight are counted.");
-            PlayerFightSeconds = Admin(config, living, "PlayerFightSeconds", 60f,
-                "Protectors stop fighting a player this many seconds after his last hit on the village's people, or when he " +
-                "leaves the village.");
+            PlayerGrudges = Admin(config, living, "PlayerGrudges", true,
+                "A village remembers a player who harms its people on purpose: its protectors tell him to leave and fight " +
+                "him if he stays, for PlayerBanDays (more for each person harmed), and for good if he killed one of them. " +
+                "Off: a fight ends when he leaves and nothing is kept. 'vh grudges' shows and clears them.");
+            PlayerKillBan = Admin(config, living, "PlayerKillBan", true,
+                "With PlayerGrudges on: a player who killed one of a village's people is never welcome there again.");
+            PlayerWarnSeconds = Admin(config, living, "PlayerWarnSeconds", 15f,
+                "Seconds a protector gives an unwelcome player to leave before he fights him.");
+            PlayerWarnRadius = Admin(config, living, "PlayerWarnRadius", 20f,
+                "Protectors within this many meters of an unwelcome player warn him, and fight him if he is still this " +
+                "close when the warning runs out.");
+            PlayerBanDays = Admin(config, living, "PlayerBanDays", 2,
+                "Days a player who harmed one of a village's people on purpose is unwelcome there.");
+            PlayerBanDaysPerPerson = Admin(config, living, "PlayerBanDaysPerPerson", 2,
+                "Days added to the ban for each more person he harmed.");
+            TrophiesPerHome = Admin(config, living, "TrophiesPerHome", 2,
+                "Trophies a villager may hang on wall item stands in his home (he keeps the trophies he took himself, and " +
+                "the stand is paid from the village's chests). 0: none are hung.");
+            VillagerRegen = Admin(config, living, "VillagerRegen", 2f,
+                "Percent of his health a hurt villager gets back each minute, food or no food, while he is not fighting.");
+            RestRegenFactor = Admin(config, living, "RestRegenFactor", 3f,
+                "How many times faster that is while he sits or rests by the hearth, or lies in bed.");
             ElderSpeed = Admin(config, living, "ElderSpeed", 0.75f,
                 "How fast elders walk and run against a grown villager (1 for the same speed). Elders keep to chores in the " +
                 "village: cooking, sorting, the farm and the hearth.");

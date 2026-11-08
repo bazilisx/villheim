@@ -146,8 +146,9 @@ namespace Villheim.Logic.Villagers
                     SetHidden(villager, false);
                     state.Revealed = true;
                 }
-                else if (!ready)
+                else if (!ready || !FrameBudget.Take("ghost", 2))
                 {
+                    // Not dressed yet, or two others got the look this frame already (it copies every material).
                     SetHidden(villager, true);
                     return;
                 }
@@ -158,7 +159,7 @@ namespace Villheim.Logic.Villagers
                 }
             }
 
-            // New parts (a tool taken out, a new shirt) get the look within half a second; values refresh every 3 s,
+            // New parts (a tool taken out, a new shirt) get the look within about a second; values refresh every 3 s,
             // and at once when a setting changes.
             bool scan = Time.time >= state.NextScan;
             bool refresh = Time.time >= state.Next || state.Version != _version;
@@ -168,7 +169,7 @@ namespace Villheim.Logic.Villagers
                 return;
             }
 
-            state.NextScan = Time.time + 0.5f;
+            state.NextScan = Time.time + 1f + Random.Range(0f, 0.2f);
             if (refresh)
             {
                 state.Next = Time.time + RefreshSeconds + Random.Range(0f, 0.5f);
@@ -398,6 +399,9 @@ namespace Villheim.Logic.Villagers
         /// A transparent shader from the game's own creatures: preferring ghostly ones by name, then any creature whose
         /// material renders in the transparent queue. Looked up once.
         /// </summary>
+        /// <summary>The borrowed see-through shader, or null (GhostDeath fades a dying villager with it).</summary>
+        public static Shader SeeThroughShader() => GhostShader();
+
         private static Shader GhostShader()
         {
             if (_searched)

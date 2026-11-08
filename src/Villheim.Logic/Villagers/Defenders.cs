@@ -489,6 +489,8 @@ namespace Villheim.Logic.Villagers
 
         private static bool Engage(Villager villager, State state)
         {
+            // His first quiver comes with the bow, so a villager who has never fought still shoots (T-54).
+            CarryBow(villager);
             if (CarriedArrow(villager) == null || EquipBow(villager) == null)
             {
                 return false;

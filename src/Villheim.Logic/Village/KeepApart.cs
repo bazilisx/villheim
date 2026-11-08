@@ -219,7 +219,9 @@ namespace Villheim.Logic.Village
 
                 try
                 {
-                    if (a is Villager va && AtPeace(va, b) || b is Villager vb && AtPeace(vb, a))
+                    // The village's own animals and its people are never enemies (T-57).
+                    if (a is Villager && Villagers.Animals.IsVillageAnimal(b) || b is Villager && Villagers.Animals.IsVillageAnimal(a) ||
+                        a is Villager va && AtPeace(va, b) || b is Villager vb && AtPeace(vb, a))
                     {
                         __result = false;
                     }

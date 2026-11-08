@@ -126,7 +126,9 @@ namespace Villheim.Logic.Villagers
                 Regenerate(villager, state);
             }
 
-            if (state.Phase != Phase.None && !idle && !state.Urgent)
+            // Food already on the fire keeps its cook by it until it comes off, work or not (T-39: meat left on the fire
+            // burnt to coal).
+            if (state.Phase != Phase.None && !idle && !state.Urgent && state.Phase != Phase.Cooking)
             {
                 return false;
             }
@@ -364,11 +366,55 @@ namespace Villheim.Logic.Villagers
             return true;
         }
 
+        /// <summary>
+        /// The village's cooking station, when nobody is cooking at it: what is done goes into the chest, what burnt is
+        /// taken off (its coal into the chest), so nothing is left to char on the fire. From the hearth's tick.
+        /// </summary>
+        public static void ClearStation(VillageHearth hearth)
+        {
+            if (Cooks.TryGetValue(hearth.VillageId, out Villager cook) && cook != null && !cook.IsDead() &&
+                States.TryGetValue(cook, out State cooking) && (cooking.Phase == Phase.Cooking || cooking.Phase == Phase.ToStation))
+            {
+                return;
+            }
+
+            CookingStation station = Station(hearth);
+            Container chest = VillageChest.Find(hearth);
+            if (station == null || chest == null || !VillageChest.Usable(chest))
+            {
+                return;
+            }
+
+            for (int slot = 0; slot < station.m_slots.Length; slot++)
+            {
+                station.GetSlot(slot, out string name, out float _, out CookingStation.Status status, out bool _);
+                if (status == CookingStation.Status.NotDone || string.IsNullOrEmpty(name))
+                {
+                    continue;
+                }
+
+                GameObject prefab = ObjectDB.instance ? ObjectDB.instance.GetItemPrefab(name) : null;
+                if (!station.m_nview.IsOwner())
+                {
+                    station.m_nview.ClaimOwnership();
+                }
+
+                station.SetSlot(slot, "", 0f, CookingStation.Status.NotDone, false);
+                if (prefab != null)
+                {
+                    VillageChest.Claim(chest);
+                    chest.GetInventory().AddItem(prefab, 1);
+                }
+
+                VillheimPlugin.Debug($"{hearth.VillageName}: {name} taken off the fire into the chest.");
+            }
+        }
+
         /// <summary>Waits the food's own cooking time by the fire, then takes it off before it burns.</summary>
         private static bool UpdateCooking(Villager villager, VillagerAI ai, float dt, State state, VillageHearth hearth)
         {
             CookingStation station = Station(hearth);
-            if (station == null || Time.time > state.Deadline)
+            if (station == null || Time.time > state.Deadline + 60f)
             {
                 Done(villager, state, 20f);
                 return false;

@@ -64,6 +64,7 @@ namespace Villheim.Logic.Village
 
             NoticeBoard.RemoveStrayBoards(hearth, state);
             Demisters.Founding(hearth, state);
+            Villagers.Healing.ClearStation(hearth);
             VillageChest.Ensure(hearth);
             VillageChest.MoveStockIn(hearth, state);
             Villagers.Social.VillageTick(hearth);

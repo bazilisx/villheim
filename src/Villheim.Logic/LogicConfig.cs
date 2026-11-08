@@ -220,6 +220,14 @@ namespace Villheim.Logic
         public static ConfigEntry<bool> MistlandsDemist;
         public static ConfigEntry<float> MistlandsDemistRadius;
         public static ConfigEntry<float> MistlandsVillagerDemist;
+        public static ConfigEntry<float> FightBowFrom;
+        public static ConfigEntry<float> FightRetreatHealth;
+        public static ConfigEntry<bool> FightTargetOrder;
+        public static ConfigEntry<int> PlayerHitsToFight;
+        public static ConfigEntry<float> PlayerHitWindow;
+        public static ConfigEntry<float> PlayerFightSeconds;
+        public static ConfigEntry<bool> GhostDeath;
+        public static ConfigEntry<int> YggaGrowDays;
         public static ConfigEntry<string> MistlandsDemisterPrefab;
         public static ConfigEntry<int> MistlandsDemisters;
         public static ConfigEntry<string> MistlandsDemisterCost;
@@ -353,6 +361,10 @@ namespace Villheim.Logic
             Copses = Admin(config, work, "Copses", true,
                 "Villages in biomes with few trees (CopseBiomes) plant saplings in a copse or two just outside the village, " +
                 "of trees that grow in their biome, so there is wood to fell later. Works without WorldLife.");
+            YggaGrowDays = Admin(config, work, "YggaGrowDays", 2,
+                "Mistlands copses are Yggdrasil shoots (no other tree grows there). A small shoot planted by a village grows " +
+                "into a full one after this many days. Villagers get plain wood from the shoots their village planted; " +
+                "players get the game's own drops.");
             CopseBiomes = Admin(config, work, "CopseBiomes", "Plains, Mistlands, Mountain",
                 "Biomes whose villages plant copses (comma separated).");
             CopseTrees = Admin(config, work, "CopseTrees", 20,
@@ -515,6 +527,9 @@ namespace Villheim.Logic
                 "to ChildBoyHeight or ChildGirlHeight. 'vh kids rig' puts up models to tune these against.");
             ChildNoBeard = Admin(config, looks, "ChildNoBeard", true, "Boys have no beard until they grow up.");
             BindChildShape(config, looks);
+            GhostDeath = Admin(config, looks, "GhostDeath", true,
+                "A villager who dies fades away the way the game's ghosts do: no body falls, no blood, and he stays an " +
+                "echo to the end. Hits on villagers show the ghosts' hit effect too. Takes effect on the next logic load.");
             GhostApplyNow = Admin(config, looks, "GhostApplyNow", false,
                 "Switch on to put the look settings on every villager and animal at once; it switches itself off again. " +
                 "(Every change to a look setting is also applied at once on its own.)");
@@ -719,6 +734,13 @@ namespace Villheim.Logic
                 "Villagers who have lived in a village long enough are elders: they leave felling and mining to others " +
                 "and tell the village's old stories.");
             ElderDays = Admin(config, living, "ElderDays", 40, "Days in the village before a villager is an elder.");
+            PlayerHitsToFight = Admin(config, living, "PlayerHitsToFight", 3,
+                "Hits on a village's people by one player within PlayerHitWindow before its protectors fight him. Before " +
+                "that a hit protector only complains, and carers, elders and children run to the hearth.");
+            PlayerHitWindow = Admin(config, living, "PlayerHitWindow", 30f, "Seconds over which PlayerHitsToFight are counted.");
+            PlayerFightSeconds = Admin(config, living, "PlayerFightSeconds", 60f,
+                "Protectors stop fighting a player this many seconds after his last hit on the village's people, or when he " +
+                "leaves the village.");
             ElderSpeed = Admin(config, living, "ElderSpeed", 0.75f,
                 "How fast elders walk and run against a grown villager (1 for the same speed). Elders keep to chores in the " +
                 "village: cooking, sorting, the farm and the hearth.");
@@ -925,6 +947,13 @@ namespace Villheim.Logic
                 "the Mistwalker does.");
             MistlandsDemistRadius = Admin(config, defenders, "MistlandsDemistRadius", 0f,
                 "Meters of clear air around a Mistlands village's hearth. 0: the village's radius plus 10.");
+            FightBowFrom = Admin(config, defenders, "FightBowFrom", 8f,
+                "Responders shoot at anything further than this (meters) that they can see, and close in with the weapon " +
+                "when it is nearer. Everyone who fights carries a bow and arrows of the village's tier.");
+            FightRetreatHealth = Admin(config, defenders, "FightRetreatHealth", 0.25f,
+                "A villager in a fight with less than this share of his health left goes back to the hearth to heal.");
+            FightTargetOrder = Admin(config, defenders, "FightTargetOrder", true,
+                "Creatures that go for villagers pick a protector before anyone else near it, and a child last.");
             MistlandsVillagerDemist = Admin(config, defenders, "MistlandsVillagerDemist", 6f,
                 "Meters of clear air around each villager of a Mistlands village. 0: none.");
             MistlandsDemisterPrefab = Admin(config, defenders, "MistlandsDemisterPrefab", "dverger_demister_large",

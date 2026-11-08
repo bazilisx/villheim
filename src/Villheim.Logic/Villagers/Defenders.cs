@@ -33,8 +33,8 @@ namespace Villheim.Logic.Villagers
     ///   the bow's full speed. It is aimed where the target will be when the arrow arrives (its speed from the last
     ///   half second, allowing for the arrow's drop), then turned by up to the profile's spread.
     /// - Damage: a prefix on Character.Damage multiplies any blow or arrow a villager lands on a covered creature.
-    /// - The bow comes out of the inventory once the flyers are gone, so the game's AI never picks it for a ground
-    ///   fight, and a protector takes up his weapon and shield again.
+    /// - The bow goes back in his pack once the flyers are gone (he carries it, with arrows, D-050), and a protector
+    ///   takes up his weapon and shield again.
     /// </summary>
     internal static class Defenders
     {
@@ -330,18 +330,38 @@ namespace Villheim.Logic.Villagers
             return true;
         }
 
-        /// <summary>Puts any bow back out of the inventory (after a hunt, so the game never picks it for a fight).</summary>
+        /// <summary>
+        /// The bow goes out of his hands. He keeps carrying it, with his arrows, alongside his weapon (D-050): the
+        /// game's own AI no longer fights for villagers (Combat), so it never picks the bow for a fight by itself.
+        /// </summary>
         public static void PutBowAway(Villager villager)
         {
-            Inventory inventory = villager.GetInventory();
-            foreach (ItemDrop.ItemData item in inventory != null ? inventory.GetAllItems().ToList() : new List<ItemDrop.ItemData>())
+            ItemDrop.ItemData held = HeldBow(villager);
+            if (held != null)
             {
-                if (item.m_shared.m_itemType == ItemDrop.ItemData.ItemType.Bow)
-                {
-                    villager.UnequipItem(item, false);
-                    inventory.RemoveItem(item);
-                }
+                villager.UnequipItem(held, false);
             }
+        }
+
+        /// <summary>A bow and arrows of his village's tier in his pack, for anyone who fights or hunts (D-050).</summary>
+        public static void CarryBow(Villager villager)
+        {
+            int tier = Mathf.Clamp(Roles.GearTier(villager), 0, Bows.Length - 1);
+            Carry(villager, Bows[tier], 1);
+            Carry(villager, Arrows[tier], 20);
+        }
+
+        private static void Carry(Villager villager, string prefabName, int amount)
+        {
+            GameObject prefab = ObjectDB.instance ? ObjectDB.instance.GetItemPrefab(prefabName) : null;
+            string shared = prefab != null ? prefab.GetComponent<ItemDrop>()?.m_itemData?.m_shared?.m_name : null;
+            Inventory inventory = villager.GetInventory();
+            if (shared == null || inventory == null || inventory.HaveItem(shared))
+            {
+                return;
+            }
+
+            villager.PickupPrefab(prefab, amount, false);
         }
 
         /// <summary>Whether the villager's village has a bow to give him (any tier: a plain bow at worst).</summary>
@@ -479,6 +499,7 @@ namespace Villheim.Logic.Villagers
                 return null;
             }
 
+            Carry(villager, Arrows[Mathf.Clamp(Roles.GearTier(villager), 0, Arrows.Length - 1)], 20);
             villager.EquipItem(bow, false);
             return bow;
         }

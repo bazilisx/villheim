@@ -190,6 +190,12 @@ namespace Villheim.Logic.Villagers
             }
 
             GameObject planted = Object.Instantiate(prefab, at, Quaternion.Euler(0f, Random.Range(0f, 360f), 0f));
+            if (planted.GetComponent<TreeBase>() != null)
+            {
+                // A Yggdrasil shoot in a Mistlands copse: the village's own, for plain wood (D-052).
+                VillageWood.Mark(planted, villager.VillageId);
+            }
+
             planted.GetComponent<Piece>()?.m_placeEffect?.Create(at, Quaternion.identity, planted.transform);
             List<string> owed = Owed(hearth);
             owed.Remove(state.Entry ?? state.Sapling);
@@ -292,6 +298,12 @@ namespace Villheim.Logic.Villagers
         private static string SaplingFor(string tree, Heightmap.Biome biome)
         {
             string name = tree ?? "";
+            if (VillageWood.IsShoot(name) || biome == Heightmap.Biome.Mistlands)
+            {
+                // Nothing else grows in the Mistlands: a Yggdrasil shoot for each one felled (D-052).
+                return VillageWood.MistlandsShoot();
+            }
+
             string sapling = name.StartsWith("Beech") ? "Beech_Sapling"
                 : name.StartsWith("Birch") ? "Birch_Sapling"
                 : name.StartsWith("Oak") ? "Oak_Sapling"

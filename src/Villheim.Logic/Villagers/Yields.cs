@@ -30,8 +30,16 @@ namespace Villheim.Logic.Villagers
             return false;
         }
 
+        private static readonly HashSet<string> PlainWood = new HashSet<string> { "Wood" };
+
         public static HashSet<string> Of(GameObject go)
         {
+            // A Yggdrasil shoot a village planted gives its people plain wood (D-052).
+            if (Village.VillageWood.IsVillageWood(go))
+            {
+                return PlainWood;
+            }
+
             string name = Utils.GetPrefabName(go);
             if (Cache.TryGetValue(name, out HashSet<string> drops))
             {

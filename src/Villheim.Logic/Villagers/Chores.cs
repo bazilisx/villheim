@@ -765,6 +765,7 @@ namespace Villheim.Logic.Villagers
         /// <summary>The held tool is good enough to break this (an antler pickaxe does nothing to copper, and so on).</summary>
         private static bool TierAllows(GameObject go, int tier)
         {
+            if (Village.VillageWood.IsVillageWood(go)) return true; // the village's own Yggdrasil shoots (D-052)
             if (go.TryGetComponent(out TreeBase tree)) return tree.m_minToolTier <= tier;
             if (go.TryGetComponent(out TreeLog log)) return log.m_minToolTier <= tier;
             if (go.TryGetComponent(out MineRock5 rock5)) return rock5.m_minToolTier <= tier;

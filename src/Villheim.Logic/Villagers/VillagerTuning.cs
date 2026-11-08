@@ -43,6 +43,7 @@ namespace Villheim.Logic.Villagers
             }
 
             VillagerTalk.Configure(villager.GetComponent<NpcTalk>());
+            GhostDeath.Apply(villager);
         }
 
         /// <summary>

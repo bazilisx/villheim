@@ -21,8 +21,13 @@ namespace Villheim.Logic.Villagers
     ///
     /// Blows are dealt the way the villagers' axes are (Chores, Hunting): the weapon's animation plays and its damage
     /// lands on the target a moment later if it is still in reach, scaled by MeleeStrength. The game's own monster
-    /// AI does not fight for villagers any more (it swung slowly and turned away when hurt), except against a player
-    /// who attacks one, which is left as it was.
+    /// AI does not fight for villagers any more (it swung slowly and turned away when hurt). Responders shoot with
+    /// the bow everyone who fights carries at anything further off than FightBowFrom (D-050), and anyone under
+    /// FightRetreatHealth goes back to the hearth to heal.
+    ///
+    /// Players (D-051): a few hits from one player may be an accident, so protectors only complain and the others run
+    /// home; from PlayerHitsToFight hits within PlayerHitWindow the protectors fight him (see PlayerHit). Creatures
+    /// pick protectors before the others and children last (TargetOrderPatch).
     /// </summary>
     internal static class Combat
     {
@@ -53,7 +58,15 @@ namespace Villheim.Logic.Villagers
             public Vector3 Velocity;
             public float PartSince;
             public float ShootingAt = -100f;
+            public float FleeUntil = -100f;
+            public Character FleeFrom;
+            public float NextLine;
+            public bool Retreating;
         }
+
+        // Hits on a village's people by each player (D-051), and the player its protectors are fighting, if any.
+        private static readonly Dictionary<(int, long), List<float>> PlayerHits = new Dictionary<(int, long), List<float>>();
+        private static readonly Dictionary<int, (Player Player, float Until)> Hostile = new Dictionary<int, (Player, float)>();
 
         private sealed class Fight
         {
@@ -109,7 +122,7 @@ namespace Villheim.Logic.Villagers
             {
                 case Part.Fighter: return (state.Ranged ? "shooting at " : "fighting ") + enemy;
                 case Part.Shelter: return "taking shelter";
-                case Part.Flee: return "running to safety";
+                case Part.Flee: return state.Retreating ? "going back to heal" : "running to safety";
                 default: return null;
             }
         }
@@ -229,14 +242,20 @@ namespace Villheim.Logic.Villagers
 
         /// <summary>
         /// With no part in a fight, the game's own alert (from a glimpse or a hit) is dropped so the village's routine
-        /// keeps him, unless a player is the one he is fighting.
+        /// keeps him.
         /// </summary>
         private static void Calm(VillagerAI ai)
         {
-            if (ai.IsAlerted() && !(ai.GetTargetCreature() is Player))
+            // Fights with players are run here too (D-051), so the game's own alert and grudge are always dropped.
+            if (ai.IsAlerted())
             {
                 ai.SetAlerted(false);
                 ai.m_targetCreature = null;
+            }
+
+            if (ai.IsAggravated())
+            {
+                ai.SetAggravated(false, BaseAI.AggravatedReason.Damage);
             }
         }
 
@@ -410,6 +429,36 @@ namespace Villheim.Logic.Villagers
             enemy = null;
             Character near = state.Nearest;
             bool hurt = Time.time - state.HurtAt < HurtMemory;
+            bool protector = Protects(villager);
+
+            // Badly hurt in a fight: back to the hearth to heal (the brain's healing takes over once he is clear).
+            float retreat = Mathf.Clamp01(LogicConfig.FightRetreatHealth?.Value ?? 0.25f);
+            bool inFight = state.Part != Part.None || near != null || IsHostile(villager.VillageId, out _);
+            if (inFight && villager.GetHealth() < villager.GetMaxHealth() * retreat)
+            {
+                enemy = state.Enemy ?? near ?? state.FleeFrom;
+                state.Retreating = true;
+                return Part.Flee;
+            }
+
+            state.Retreating = false;
+
+            // A player who keeps hitting the village's people (D-051): protectors fight him, everyone else runs home.
+            if (IsHostile(villager.VillageId, out Player foe) &&
+                Vector3.Distance(foe.transform.position, villager.transform.position) < 40f)
+            {
+                enemy = foe;
+                state.SelfDefense = false;
+                return protector ? Part.Fighter : Part.Flee;
+            }
+
+            // Hit by a player, not yet on purpose as far as the village can tell: carers, elders and children run home.
+            if (!protector && Time.time < state.FleeUntil && state.FleeFrom != null && !state.FleeFrom.IsDead())
+            {
+                enemy = state.FleeFrom;
+                return Part.Flee;
+            }
+
             if (Childhood.IsChild(villager))
             {
                 if (near != null && state.NearestDistance < Mathf.Max(FleeRange, 8f))
@@ -479,11 +528,20 @@ namespace Villheim.Logic.Villagers
             fight.LastEngaged = Time.time;
             CallToArms(villager, fight, distance);
 
-            // Flyers are shot at; everything else is met with the weapon.
+            // Flyers are shot at, and anything else he can see further off than FightBowFrom (D-050); up close, the weapon.
             bool flies = enemy.IsFlying() || enemy.m_flying;
-            state.Ranged = flies && distance > BackRange;
+            float bowFrom = Mathf.Max(BackRange, LogicConfig.FightBowFrom?.Value ?? 8f);
+            state.Ranged = !state.SelfDefense && distance > BackRange &&
+                           (flies || (distance > bowFrom && InSight(villager.GetEyePoint(), enemy)));
             if (state.Ranged)
             {
+                if (distance > 30f)
+                {
+                    // Out of bow range: closer first.
+                    Walker.For(villager).Go(villager, ai, dt, enemy.transform.position, 25f, true);
+                    return true;
+                }
+
                 ai.StopMoving();
                 if (Time.time >= state.NextShot)
                 {
@@ -694,7 +752,191 @@ namespace Villheim.Logic.Villagers
             return true;
         }
 
-        /// <summary>A child runs to the hearth, or straight away from the creature when it is between.</summary>
+        /// <summary>A grown protector, not an elder: the ones who stand and fight.</summary>
+        private static bool Protects(Villager villager) =>
+            !Childhood.IsChild(villager) && !Elders.IsElder(villager) && Roles.BackgroundOf(villager) == Roles.Background.Protector;
+
+        private static bool IsHostile(int villageId, out Player player)
+        {
+            player = null;
+            if (!Hostile.TryGetValue(villageId, out (Player Player, float Until) entry))
+            {
+                return false;
+            }
+
+            VillageHearth hearth = VillageHearth.Find(villageId);
+            bool gone = entry.Player == null || entry.Player.IsDead() || Time.time > entry.Until ||
+                        (hearth != null && Utils.DistanceXZ(entry.Player.transform.position, hearth.transform.position) >
+                            VillheimConfig.VillageRadius.Value + Leash);
+            if (gone)
+            {
+                Hostile.Remove(villageId);
+                return false;
+            }
+
+            player = entry.Player;
+            return true;
+        }
+
+        /// <summary>
+        /// A player hit one of the village's people (D-051). Up to PlayerHitsToFight hits within PlayerHitWindow it may
+        /// be an accident: a protector says it hurt, the others run to the hearth and say so. From then on it is on
+        /// purpose: the protectors near him fight him until PlayerFightSeconds after his last hit or until he leaves.
+        /// Lines: playerhit:protector, playerhit:carer (carers and elders), playerhit:child, playerfight (protectors
+        /// as they turn on him), playerfight:flee (everyone else while it lasts).
+        /// </summary>
+        public static void PlayerHit(Villager villager, Player player)
+        {
+            if (villager == null || player == null || villager.VillageId == 0)
+            {
+                return;
+            }
+
+            var key = (villager.VillageId, player.GetPlayerID());
+            if (!PlayerHits.TryGetValue(key, out List<float> hits))
+            {
+                hits = new List<float>();
+                PlayerHits[key] = hits;
+            }
+
+            float window = Mathf.Max(1f, LogicConfig.PlayerHitWindow?.Value ?? 30f);
+            hits.RemoveAll(t => Time.time - t > window);
+            hits.Add(Time.time);
+            bool was = IsHostile(villager.VillageId, out _);
+            if (hits.Count >= Mathf.Max(1, LogicConfig.PlayerHitsToFight?.Value ?? 3))
+            {
+                Hostile[villager.VillageId] = (player, Time.time + Mathf.Max(5f, LogicConfig.PlayerFightSeconds?.Value ?? 60f));
+            }
+
+            bool hostile = IsHostile(villager.VillageId, out _);
+            bool protector = Protects(villager);
+            State state = States.GetOrCreateValue(villager);
+            if (!protector)
+            {
+                state.FleeUntil = Time.time + 12f;
+                state.FleeFrom = player;
+            }
+
+            if (hostile && !was)
+            {
+                VillheimPlugin.Debug($"{villager.VillageName}: {player.GetPlayerName()} keeps hitting our people; the protectors fight back.");
+                foreach (Villager guard in Character.GetAllCharacters().OfType<Villager>()
+                             .Where(v => !v.IsDead() && v.VillageId == villager.VillageId && Protects(v) &&
+                                         Vector3.Distance(v.transform.position, player.transform.position) < 40f)
+                             .OrderBy(v => Vector3.Distance(v.transform.position, player.transform.position)).Take(2))
+                {
+                    Line(guard, "playerfight", true);
+                }
+            }
+
+            if (hostile)
+            {
+                if (!protector)
+                {
+                    Line(villager, "playerfight:flee");
+                }
+
+                return;
+            }
+
+            Line(villager, protector ? "playerhit:protector" : Childhood.IsChild(villager) ? "playerhit:child" : "playerhit:carer");
+        }
+
+        /// <summary>A line under this tag, if one is written, at most every few seconds per villager.</summary>
+        private static void Line(Villager villager, string tag, bool force = false)
+        {
+            State state = States.GetOrCreateValue(villager);
+            if (!force && Time.time < state.NextLine)
+            {
+                return;
+            }
+
+            state.NextLine = Time.time + 3f;
+            string line = Dialogue.LineFor(villager, "self", tag, new[] { tag });
+            if (line != null)
+            {
+                Dialogue.Say(villager, line, 3f);
+            }
+        }
+
+        /// <summary>On the machine that owns the villager: a hit from a player is counted.</summary>
+        [HarmonyLib.HarmonyPatch(typeof(Character), nameof(Character.RPC_Damage))]
+        internal static class PlayerHitPatch
+        {
+            private static void Prefix(Character __instance, HitData hit)
+            {
+                try
+                {
+                    if (__instance is Villager villager && villager.NView != null && villager.NView.IsOwner() && !villager.IsDead() &&
+                        hit != null && hit.GetAttacker() is Player player && !Wanderers.IsWanderer(villager))
+                    {
+                        PlayerHit(villager, player);
+                    }
+                }
+                catch (System.Exception ex)
+                {
+                    VillheimPlugin.Debug($"Combat player hit: {ex.Message}");
+                }
+            }
+        }
+
+        /// <summary>
+        /// Creatures going for villagers pick a protector first among those about as close, and a child last
+        /// (D-051): a postfix on BaseAI.FindEnemy that looks again when the game picked a villager.
+        /// </summary>
+        [HarmonyLib.HarmonyPatch(typeof(BaseAI), nameof(BaseAI.FindEnemy))]
+        internal static class TargetOrderPatch
+        {
+            private static int Rank(Villager v) => Childhood.IsChild(v) ? 2 : Protects(v) ? 0 : 1;
+
+            private static void Postfix(BaseAI __instance, ref Character __result)
+            {
+                try
+                {
+                    if (!(__result is Villager first) || __instance is VillagerAI || !LogicConfig.IsOn(LogicConfig.FightTargetOrder) ||
+                        __instance.m_character == null)
+                    {
+                        return;
+                    }
+
+                    Vector3 me = __instance.transform.position;
+                    float reach = Vector3.Distance(first.transform.position, me) + 8f;
+                    Character best = first;
+                    int bestRank = Rank(first);
+                    float bestDistance = float.MaxValue;
+                    foreach (Character c in Character.GetAllCharacters())
+                    {
+                        if (!(c is Villager v) || v == first || v.IsDead())
+                        {
+                            continue;
+                        }
+
+                        float distance = Vector3.Distance(v.transform.position, me);
+                        int rank = Rank(v);
+                        if (distance > reach || rank > bestRank || (rank == bestRank && distance >= bestDistance) ||
+                            !BaseAI.IsEnemy(__instance.m_character, v) || !__instance.CanSenseTarget(v))
+                        {
+                            continue;
+                        }
+
+                        best = v;
+                        bestRank = rank;
+                        bestDistance = distance;
+                    }
+
+                    __result = best;
+                }
+                catch (System.Exception ex)
+                {
+                    VillheimPlugin.Debug($"Combat target order: {ex.Message}");
+                }
+            }
+        }
+
+        /// <summary>
+        /// Running home: a child from a creature, carers and elders from a player who hits them, anyone badly hurt.
+        /// To the hearth, or straight away from the threat when it stands between.
+        /// </summary>
         private static bool Run(Villager villager, VillagerAI ai, float dt, VillageHearth hearth, State state)
         {
             Character enemy = state.Enemy;

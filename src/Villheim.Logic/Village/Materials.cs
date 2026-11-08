@@ -219,5 +219,12 @@ namespace Villheim.Logic.Village
         {
             return ObjectDB.instance ? ObjectDB.instance.GetItemPrefab(material) : null;
         }
+
+        /// <summary>How many of the material fit in one stack (50 for wood and stone), 50 when not known.</summary>
+        public static int StackSize(string material)
+        {
+            int size = Prefab(material)?.GetComponent<ItemDrop>()?.m_itemData?.m_shared?.m_maxStackSize ?? 0;
+            return size > 0 ? size : 50;
+        }
     }
 }

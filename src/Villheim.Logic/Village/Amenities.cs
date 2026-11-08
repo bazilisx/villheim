@@ -42,6 +42,15 @@ namespace Villheim.Logic.Village
 
             /// <summary>A storage chest or its label (D-016): what the chest holds. Null for anything else.</summary>
             public string Kind;
+
+            /// <summary>
+            /// For something made of several pieces (the notice board): what all its missing pieces cost. Cost is the
+            /// next piece only, paid when it goes up. Null for a single piece.
+            /// </summary>
+            public Dictionary<string, int> Total;
+
+            /// <summary>Pieces still to go up (1 for a single piece).</summary>
+            public int Pieces = 1;
         }
 
         private sealed class Entry
@@ -79,7 +88,15 @@ namespace Villheim.Logic.Village
         /// The next thing the village should make, or null: the first thing still missing, once the chest can spare
         /// what it costs. Made in order: the village waits for this one rather than skip ahead to something cheaper.
         /// </summary>
-        public static Job Due(VillageHearth hearth)
+        public static Job Due(VillageHearth hearth) => Due(hearth, false);
+
+        /// <summary>
+        /// As Due. Something of several pieces (the notice board) is only started once the chest holds half (BuildStartShare)
+        /// of what the rest of it costs in its main material, so the builder doesn't walk over for each piece's wood
+        /// (Tyler, T-11, D-048). <paramref name="continuing"/>: the builder is already at it, and goes
+        /// on while the next piece is paid for.
+        /// </summary>
+        public static Job Due(VillageHearth hearth, bool continuing)
         {
             Job next = Upcoming(hearth);
             if (next == null)
@@ -88,7 +105,32 @@ namespace Villheim.Logic.Village
             }
 
             var state = new VillageState(hearth.Zdo);
-            return Affordable(hearth, state, next.Cost, Reserved(hearth, next)) ? next : null;
+            Dictionary<string, int> reserved = Reserved(hearth, next);
+            if (!Affordable(hearth, state, next.Cost, reserved))
+            {
+                return null;
+            }
+
+            return continuing || next.Total == null || Affordable(hearth, state, StartCost(next), reserved) ? next : null;
+        }
+
+        /// <summary>
+        /// What must be in the chest before a job of several pieces is started (see Due): BuildStartShare (half by
+        /// default, D-048) of what the rest of it costs in its main material, and the next piece.
+        /// </summary>
+        public static Dictionary<string, int> StartCost(Job job)
+        {
+            if (job.Total == null || job.Total.Count == 0)
+            {
+                return job.Cost;
+            }
+
+            float share = LogicConfig.BuildStartShare != null ? Mathf.Clamp01(LogicConfig.BuildStartShare.Value) : 0.5f;
+            var start = new Dictionary<string, int>(job.Cost);
+            KeyValuePair<string, int> main = job.Total.OrderByDescending(t => t.Value).First();
+            start.TryGetValue(main.Key, out int already);
+            start[main.Key] = Mathf.Max(already, Mathf.CeilToInt(main.Value * share));
+            return start;
         }
 
         /// <summary>
@@ -164,13 +206,33 @@ namespace Villheim.Logic.Village
             // Essentials first (the cooking station, then the beds), then the hub area (sign, notice board, benches)
             // and the furnishings of the other buildings.
             // The notice board over the chest comes right after the cooking station, and is mended first when damaged.
+            // The map table comes last: its recipe has fine wood, which not every biome gives.
             return Outside(hearth, state, true, onlyHearth: true) ?? NoticeBoard.Job(hearth) ?? Inside(state, tier, true) ??
-                   StorageChests.Job(hearth, state) ?? Outside(hearth, state, false, onlyHearth: false) ?? Inside(state, tier, false);
+                   StorageChests.Job(hearth, state) ?? Outside(hearth, state, false, onlyHearth: false) ?? Inside(state, tier, false) ??
+                   MapTables.Job(hearth, state);
+        }
+
+        /// <summary>
+        /// Decor copied from locations (DecorProps, Props): the first on the outer ring once three buildings stand, the
+        /// next once five do, and so on.
+        /// </summary>
+        private static IEnumerable<Entry> Decor()
+        {
+            int i = 0;
+            foreach (string spec in Props.DecorSpecs())
+            {
+                string prefab = Props.Get(spec, false);
+                if (prefab != null)
+                {
+                    yield return new Entry { Prefab = prefab, Name = "tent", Slot = i % 2 == 0 ? 0 : 1, Radius = OuterRing + 3f * (i / 2), MinBuildings = 3 + 2 * i };
+                    i++;
+                }
+            }
         }
 
         private static Job Outside(VillageHearth hearth, VillageState state, bool essential, bool onlyHearth)
         {
-            foreach (Entry entry in Entries)
+            foreach (Entry entry in essential ? Entries : Entries.Concat(Decor()))
             {
                 if (entry.Essential != essential || (entry.Slot < 0) != onlyHearth || state.Plots.Count < entry.MinBuildings ||
                     (entry.NeedsHub && !state.Plots.Any(p => p.Role == nameof(Designs.Role.Hub))))
@@ -249,13 +311,21 @@ namespace Villheim.Logic.Village
             Forget(hearth.VillageId);
             if (job.Prefab == NoticeBoard.BlueprintName)
             {
-                if (!Affordable(hearth, state, job.Cost, Reserved(hearth, job)) || !Pay(hearth, state, job.Cost))
+                // One piece of the board, ground up (no instant buildings).
+                Job now = NoticeBoard.Job(hearth);
+                if (now == null || Utils.DistanceXZ(now.Spot, job.Spot) > 0.3f || Mathf.Abs(now.Spot.y - job.Spot.y) > 0.3f ||
+                    !Affordable(hearth, state, now.Cost, Reserved(hearth, now)) || !Pay(hearth, state, now.Cost))
                 {
                     return false;
                 }
 
-                bool built = NoticeBoard.Build(hearth);
-                VillheimPlugin.Log.LogInfo($"{state.Name} {(built ? "put up its notice board" : "found its notice board already whole")}.");
+                bool built = NoticeBoard.BuildNext(hearth);
+                if (built && now.Pieces <= 1)
+                {
+                    VillheimPlugin.Log.LogInfo($"{state.Name} finished its notice board.");
+                    Chronicle.Add(hearth, "The notice board by the chest was finished.");
+                }
+
                 return built;
             }
 
@@ -300,6 +370,11 @@ namespace Villheim.Logic.Village
                 {
                     // A new fire is laid with a full load of wood.
                     view.GetZDO().Set(ZDOVars.s_fuel, fire.m_maxFuel);
+                }
+
+                if (job.Name == MapTables.JobName)
+                {
+                    MapTables.Made(hearth, view, job.Spot);
                 }
             }
 

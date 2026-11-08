@@ -99,6 +99,13 @@ namespace Villheim.Logic.Village
             zdo.Set(KeySiteOrder, SupportOrderVersion);
         }
 
+        /// <summary>Drops the site without finishing it (a design that should never have been picked).</summary>
+        public static void Abandon(VillageHearth hearth)
+        {
+            End(hearth.Zdo);
+            Plans.Remove(hearth.VillageId);
+        }
+
         private static void End(ZDO zdo)
         {
             zdo.Set(KeySite, "");
@@ -657,6 +664,81 @@ namespace Villheim.Logic.Village
             return null;
         }
 
+        /// <summary>
+        /// What the chest must hold before the builder goes to the site to work (Tyler, T-11 and D-048): BuildStartShare
+        /// (half by default) of what the next part of the building costs in its main material, so he doesn't walk over
+        /// each time one piece of wood comes in, and never less than the next piece itself. The part is the run of pieces
+        /// from the next one that share its stage (ground, floors and walls; roof; doors and windows; inside), in the
+        /// build order. Once at work he goes on piece by piece, each one supported, while the chest lasts; a half-built
+        /// wall while he fetches more is fine. Empty when nothing is waited for (teardown, done).
+        /// </summary>
+        public static Dictionary<string, int> StartNeed(VillageHearth hearth)
+        {
+            var need = new Dictionary<string, int>();
+            Site site = Get(hearth.Zdo);
+            CachedPlan plan = site != null ? GetPlan(hearth, site) : null;
+            int index = hearth.Zdo.GetInt(KeySiteIndex);
+            if (plan == null || TearingDown(hearth) || index >= plan.Entries.Count || !VillheimConfig.RequireWood.Value)
+            {
+                return need;
+            }
+
+            float share = LogicConfig.BuildStartShare != null ? Mathf.Clamp01(LogicConfig.BuildStartShare.Value) : 0.5f;
+            int stage = plan.Entries[index].Stage;
+            var part = new Dictionary<string, float>();
+            for (int i = index; i < plan.Entries.Count && plan.Entries[i].Stage == stage; i++)
+            {
+                foreach (KeyValuePair<string, int> cost in plan.Entries[i].Cost)
+                {
+                    plan.Factors.TryGetValue(cost.Key, out float factor);
+                    part.TryGetValue(cost.Key, out float sum);
+                    part[cost.Key] = sum + cost.Value * factor;
+                }
+            }
+
+            if (part.Count > 0 && share > 0f)
+            {
+                KeyValuePair<string, float> main = part.OrderByDescending(p => p.Value).First();
+                need[main.Key] = Mathf.CeilToInt(main.Value * share);
+            }
+
+            foreach (KeyValuePair<string, int> due in Due(plan, plan.Entries[index], ReadOwed(hearth.Zdo)))
+            {
+                need.TryGetValue(due.Key, out int already);
+                if (due.Value > already)
+                {
+                    need[due.Key] = due.Value;
+                }
+            }
+
+            return need;
+        }
+
+        /// <summary>The chest holds what StartNeed asks for. With what is short, when it does not.</summary>
+        public static bool ReadyToStart(VillageHearth hearth, out string shortOf)
+        {
+            shortOf = null;
+            if (VillageChest.IsLost(hearth))
+            {
+                shortOf = "chest";
+                return false;
+            }
+
+            Container chest = VillageChest.Find(hearth);
+            var state = new VillageState(hearth.Zdo);
+            foreach (KeyValuePair<string, int> need in StartNeed(hearth))
+            {
+                int have = chest != null ? VillageChest.Count(chest, need.Key) : state.Get(need.Key);
+                if (have < need.Value)
+                {
+                    shortOf = need.Key;
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
         /// <summary>Everything the rest of the building still costs, per material.</summary>
         public static Dictionary<string, int> Remaining(VillageHearth hearth)
         {
@@ -809,6 +891,64 @@ namespace Villheim.Logic.Village
             HearthGround.ClearVegetation(center, reach + 4f);
             HearthGround.Paint(center, reach + 1.5f, TerrainModifier.PaintType.Dirt);
             return $"levelled the ground under the {plot.Design} at {level:0.00} out to {reach + 1.5f:0.0} m";
+        }
+
+        /// <summary>
+        /// Sets a new site's height before any piece goes up (T-28, T-30: buildings too high or too low, the village in
+        /// steps). The ground floor goes at the middle height of the ground under the whole footprint, not the ground at
+        /// its centre; and when that is within VillageLevelSnap of the hearth's level, at the hearth's level, so the
+        /// village's middle is one even floor. PrepareGround then levels the pad there and blends it into the land.
+        /// Rebuilds keep the height they have.
+        /// </summary>
+        public static void SettleHeight(VillageHearth hearth)
+        {
+            Site site = Get(hearth.Zdo);
+            CachedPlan plan = site != null ? GetPlan(hearth, site) : null;
+            if (plan == null || site.Upgrade || hearth.Zdo.GetInt(KeySiteIndex) > 0)
+            {
+                return;
+            }
+
+            float footprint = plan.Footprint;
+            var heights = new List<float>();
+            for (int ring = 0; ring <= 2; ring++)
+            {
+                float r = footprint * ring / 2f;
+                int count = ring == 0 ? 1 : 10;
+                for (int i = 0; i < count; i++)
+                {
+                    float angle = i * Mathf.PI * 2f / count;
+                    Vector3 p = site.Position + new Vector3(Mathf.Sin(angle), 0f, Mathf.Cos(angle)) * r;
+                    if (ZoneSystem.instance.GetGroundHeight(p, out float h) && h > ZoneSystem.instance.m_waterLevel)
+                    {
+                        heights.Add(h);
+                    }
+                }
+            }
+
+            if (heights.Count == 0)
+            {
+                return;
+            }
+
+            heights.Sort();
+            float target = heights[heights.Count / 2];
+            float snap = LogicConfig.VillageLevelSnap != null ? LogicConfig.VillageLevelSnap.Value : 2f;
+            float hearthY = hearth.transform.position.y;
+            if (snap > 0f && Mathf.Abs(target - hearthY) <= snap)
+            {
+                target = hearthY;
+            }
+
+            float shift = target - (site.Position.y + plan.Floor);
+            if (Mathf.Abs(shift) < 0.05f)
+            {
+                return;
+            }
+
+            site.Position.y += shift;
+            Begin(hearth.Zdo, site);
+            VillheimPlugin.Debug($"Site for {site.Design} set {shift:+0.00;-0.00} m to a floor at {target:0.00} (hearth {hearthY:0.00}).");
         }
 
         /// <summary>

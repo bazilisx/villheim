@@ -38,6 +38,7 @@ namespace Villheim.Logic.Villagers
             Deliver,
             Build,
             BuildChest,
+            Make,
         }
 
         private sealed class Profile
@@ -92,6 +93,13 @@ namespace Villheim.Logic.Villagers
 
             /// <summary>When the brain last ran this villager's work (the activity shown is only what he does now).</summary>
             public float LastRun;
+
+            /// <summary>Picking up useful things lying in the village (any kind, not only building materials).</summary>
+            public bool Tidying;
+
+            /// <summary>The amenity piece the builder is making (Phase.Make), and when he may look for one again.</summary>
+            public Amenities.Job Making;
+            public float MakeRetryAt;
         }
 
         private const float MaxFromHearth = 55f;
@@ -198,6 +206,13 @@ namespace Villheim.Logic.Villagers
             switch (work.Phase)
             {
                 case Phase.Idle:
+                    // A main chest three quarters full is sorted into the storage chests before the next trip out
+                    // (T-15: it took a while). One villager at a time, never the builder (Sorting).
+                    if (!builder && Sorting.Update(villager, ai, dt))
+                    {
+                        return true;
+                    }
+
                     work.Cooldown -= dt;
                     if (work.Cooldown > 0f)
                     {
@@ -228,6 +243,9 @@ namespace Villheim.Logic.Villagers
 
                 case Phase.BuildChest:
                     return UpdateBuildChest(villager, ai, work, dt);
+
+                case Phase.Make:
+                    return UpdateMake(villager, ai, work, dt);
             }
 
             return false;
@@ -247,6 +265,8 @@ namespace Villheim.Logic.Villagers
                     return "building";
                 case Phase.BuildChest:
                     return "rebuilding the village chest";
+                case Phase.Make:
+                    return work.Making != null ? "making a " + work.Making.Name : "building";
                 case Phase.Deliver:
                     return "carrying materials to the site";
                 case Phase.Collect:
@@ -316,9 +336,20 @@ namespace Villheim.Logic.Villagers
         /// </summary>
         private static void StartJob(Villager villager, Work work, VillageNeeds needs, bool builder)
         {
+            // The builder makes what the village has the materials for (the notice board piece by piece, chests, the map
+            // table, benches) before he goes out gathering. Building the house going up comes first (Update).
+            if (builder && TryMake(villager, work))
+            {
+                return;
+            }
+
             if (needs.Missing.Count == 0)
             {
-                NoWork(villager, work, "the village needs nothing right now");
+                if (!TryClear(villager, work, needs, false) && !TryTidy(villager, work))
+                {
+                    NoWork(villager, work, "the village needs nothing right now");
+                }
+
                 return;
             }
 
@@ -372,7 +403,246 @@ namespace Villheim.Logic.Villagers
                 return;
             }
 
+            if (TryClear(villager, work, needs, false) || TryTidy(villager, work))
+            {
+                return;
+            }
+
             NoWork(villager, work, firstReason == "" ? secondReason : firstReason);
+        }
+
+        // ---------------------------------------------------------------- clearing the ground
+
+        private static readonly Dictionary<int, (float Time, HashSet<Vector2Int> Cells)> PathCells =
+            new Dictionary<int, (float, HashSet<Vector2Int>)>();
+
+        /// <summary>Cells of the paths waiting to be laid, looked up again every ten seconds.</summary>
+        private static HashSet<Vector2Int> QueuedPathCells(VillageHearth hearth)
+        {
+            if (PathCells.TryGetValue(hearth.VillageId, out var cached) && Time.time - cached.Time < 10f)
+            {
+                return cached.Cells;
+            }
+
+            HashSet<Vector2Int> cells = PathLaying.QueuedCells(hearth);
+            PathCells[hearth.VillageId] = (Time.time, cells);
+            return cells;
+        }
+
+        /// <summary>On or right beside a path cell (the path is laid about two metres wide).</summary>
+        public static bool OnPath(HashSet<Vector2Int> cells, Vector3 point)
+        {
+            if (cells.Count == 0)
+            {
+                return false;
+            }
+
+            Vector2Int c = PathPlanner.Cell(point);
+            for (int dx = -1; dx <= 1; dx++)
+            {
+                for (int dz = -1; dz <= 1; dz++)
+                {
+                    if (cells.Contains(new Vector2Int(c.x + dx, c.y + dz)))
+                    {
+                        return true;
+                    }
+                }
+            }
+
+            return false;
+        }
+
+        /// <summary>
+        /// Something natural that has to go from the village ground: a tree, a felled log, a stump, a rock (no ore) or a
+        /// loose stick or stone. Never anything the village or a player made or planted.
+        /// </summary>
+        public static bool IsClutter(GameObject go)
+        {
+            if (go == null || go.GetComponent<Piece>() != null || go.GetComponent<Character>() != null || go.GetComponent<ItemDrop>() != null)
+            {
+                return false;
+            }
+
+            ZNetView view = go.GetComponent<ZNetView>();
+            if (view == null || !view.IsValid() || view.GetZDO().GetInt(Keys.BuiltBy) != 0)
+            {
+                return false;
+            }
+
+            if (go.TryGetComponent(out Pickable pickable))
+            {
+                string item = pickable.m_itemPrefab != null ? pickable.m_itemPrefab.name : "";
+                return !pickable.GetPicked() && (item == Materials.Wood || item == Materials.Stone || item == "Flint");
+            }
+
+            return go.GetComponent<TreeBase>() != null || go.GetComponent<TreeLog>() != null || IsStump(go) || IsRock(go);
+        }
+
+        /// <summary>
+        /// Starts clearing the nearest clutter within ClearingRadius of the hearth or on a path waiting to be laid.
+        /// With <paramref name="wantedOnly"/>, only clutter that gives something the village wants (clearing comes before
+        /// going further out for it); without, anything (when there is no other work).
+        /// </summary>
+        private static bool TryClear(Villager villager, Work work, VillageNeeds needs, bool wantedOnly)
+        {
+            float radius = LogicConfig.ClearingRadius != null ? LogicConfig.ClearingRadius.Value : 20f;
+            VillageHearth home = VillageHearth.Find(villager.VillageId);
+            if (home == null || !home.IsValid)
+            {
+                return false;
+            }
+
+            Vector3 hearth = home.transform.position;
+            Vector3 position = villager.transform.position;
+            HashSet<Vector2Int> path = QueuedPathCells(home);
+            int axeTier = CarriedTier(villager, Skills.SkillType.Axes);
+            int pickTier = CarriedTier(villager, Skills.SkillType.Pickaxes);
+
+            GameObject target = FindNearest(hearth, MaxFromHearth, position, go =>
+            {
+                if (!IsClutter(go))
+                {
+                    return false;
+                }
+
+                // Round the hearth everything goes; on a road only what the road runs through (it goes round the big ones).
+                bool inside = radius > 0f && Utils.DistanceXZ(go.transform.position, hearth) <= radius;
+                if (!inside && (!OnPath(path, go.transform.position) || PathPlanner.BigObstacle(go)))
+                {
+                    return false;
+                }
+
+                bool rock = IsRock(go);
+                if (go.GetComponent<Pickable>() == null && !TierAllows(go, rock ? pickTier : axeTier))
+                {
+                    return false;
+                }
+
+                return !wantedOnly || Yields.GivesAny(go, needs.Missing.Keys);
+            }, null);
+
+            if (target == null)
+            {
+                return false;
+            }
+
+            if (target.TryGetComponent(out Pickable loose))
+            {
+                work.Profile = Woodcutter;
+                work.Wanted.Clear();
+                work.Wanted.Add(loose.m_itemPrefab.name);
+                Claimed.Add(target);
+                Begin(villager, work, Phase.Pick, target, target.transform.position, 30f);
+                Started(villager, work, "clearing a loose " + Materials.Label(loose.m_itemPrefab.name) + " off the village ground");
+                return true;
+            }
+
+            Profile profile = IsRock(target) ? Miner : Woodcutter;
+            work.Profile = profile;
+            work.Wanted.Clear();
+            foreach (string material in Materials.Tracked)
+            {
+                if (Materials.WoodTypes.Contains(material) == (profile == Woodcutter))
+                {
+                    work.Wanted.Add(material);
+                }
+            }
+
+            work.CanHarvest = VillagerLooks.Hold(villager, profile.Tool);
+            work.Skip.Clear();
+            work.Swings = 0;
+            Claimed.Add(target);
+            Begin(villager, work, Phase.Approach, target, target.transform.position, 120f);
+            Started(villager, work, $"clearing {Utils.GetPrefabName(target)} off the village ground " +
+                                    $"({Utils.DistanceXZ(position, target.transform.position):0} m away)");
+            return true;
+        }
+
+        /// <summary>The best tier of a tool he carries (by its skill), held or not. 0 when he has none.</summary>
+        private static int CarriedTier(Villager villager, Skills.SkillType skill)
+        {
+            int tier = 0;
+            Inventory inventory = villager.GetInventory();
+            if (inventory == null)
+            {
+                return 0;
+            }
+
+            foreach (ItemDrop.ItemData item in inventory.GetAllItems())
+            {
+                if (item?.m_shared != null && item.m_shared.m_skillType == skill)
+                {
+                    tier = Mathf.Max(tier, item.m_shared.m_toolTier);
+                }
+            }
+
+            return tier;
+        }
+
+        // ---------------------------------------------------------------- tidying up
+
+        /// <summary>
+        /// Worth carrying to the chest: building materials, food and crafting materials (resin, leather, feathers,
+        /// meat...). Never weapons, armour, tools or anything a player is standing over.
+        /// </summary>
+        public static bool Useful(ItemDrop item)
+        {
+            ItemDrop.ItemData data = item != null ? item.m_itemData : null;
+            if (data?.m_shared == null)
+            {
+                return false;
+            }
+
+            string name = Utils.GetPrefabName(item.gameObject);
+            if (Materials.Tracked.Contains(name))
+            {
+                return true;
+            }
+
+            ItemDrop.ItemData.ItemType type = data.m_shared.m_itemType;
+            return type == ItemDrop.ItemData.ItemType.Material || type == ItemDrop.ItemData.ItemType.Consumable;
+        }
+
+        /// <summary>
+        /// With nothing else to do, a villager picks up a useful thing lying in the village (Tyler, T-15: resin on the
+        /// ground with nobody touching it) and takes it to the chest. Within the village radius only; nothing a player
+        /// stands right by.
+        /// </summary>
+        private static bool TryTidy(Villager villager, Work work)
+        {
+            VillageHearth home = VillageHearth.Find(villager.VillageId);
+            if (home == null || !home.IsValid || (LogicConfig.IdlePickup != null && !LogicConfig.IdlePickup.Value))
+            {
+                return false;
+            }
+
+            Vector3 hearth = home.transform.position;
+            float radius = Mathf.Min(VillheimConfig.VillageRadius.Value, MaxFromHearth);
+            GameObject found = FindNearest(hearth, MaxFromHearth, villager.transform.position, go =>
+            {
+                ItemDrop item = go.GetComponent<ItemDrop>();
+                if (item == null || !Useful(item) || Utils.DistanceXZ(go.transform.position, hearth) > radius)
+                {
+                    return false;
+                }
+
+                Player near = Player.GetClosestPlayer(go.transform.position, 4f);
+                return near == null;
+            }, null);
+
+            if (found == null)
+            {
+                return false;
+            }
+
+            work.Profile = Woodcutter;
+            work.Wanted.Clear();
+            work.Tidying = true;
+            Begin(villager, work, Phase.Collect, null, found.transform.position, 45f);
+            work.Spot = found.transform.position;
+            work.Target = found;
+            Started(villager, work, "picking up " + Utils.GetPrefabName(found) + " lying in the village");
+            return true;
         }
 
         /// <summary>Starts a job with this profile. Returns null when started, or why not ("" when not wanted).</summary>
@@ -406,6 +676,14 @@ namespace Villheim.Logic.Villagers
             {
                 Begin(villager, work, Phase.Collect, null, drop.transform.position, 45f);
                 Started(villager, work, "picking up " + Utils.GetPrefabName(drop.gameObject));
+                return null;
+            }
+
+            // Then ground to clear (Tyler, T-11/T-12): trees, stumps, rocks and loose sticks and stones round the hearth
+            // and on the paths waiting to be laid, when it gives something the village wants. The rest of it is cleared
+            // when there is no other work.
+            if (TryClear(villager, work, needs, true))
+            {
                 return null;
             }
 
@@ -713,7 +991,9 @@ namespace Villheim.Logic.Villagers
             if (Time.time >= work.NextCheck || work.Target == null)
             {
                 work.NextCheck = Time.time + 0.5f;
-                ItemDrop drop = NearestDrop(Materials.Tracked, work.Spot, WorkRange, work.Spot, work.Skip);
+                ItemDrop drop = work.Tidying
+                    ? NearestUseful(work.Spot, 4f, work.Skip)
+                    : NearestDrop(Materials.Tracked, work.Spot, WorkRange, work.Spot, work.Skip);
                 if (drop == null)
                 {
                     BeginDeliver(villager, work);
@@ -750,18 +1030,20 @@ namespace Villheim.Logic.Villagers
 
             ai.StopMoving();
             Face(villager, ai, at);
-            PickUpAround(work, villager.transform.position, 3f);
+            PickUpAround(work, villager.transform.position, 3f, work.Tidying);
             work.Target = null;
             work.NextCheck = 0f;
             return true;
         }
 
-        private static void PickUpAround(Work work, Vector3 center, float radius)
+        private static void PickUpAround(Work work, Vector3 center, float radius, bool anyUseful = false)
         {
+            var seen = new HashSet<ItemDrop>();
             foreach (Collider collider in Physics.OverlapSphere(center, radius))
             {
                 ItemDrop item = collider.GetComponentInParent<ItemDrop>();
-                if (item == null || !Materials.Tracked.Contains(Utils.GetPrefabName(item.gameObject)))
+                if (item == null || !seen.Add(item) ||
+                    !(anyUseful ? Useful(item) : Materials.Tracked.Contains(Utils.GetPrefabName(item.gameObject))))
                 {
                     continue;
                 }
@@ -889,7 +1171,8 @@ namespace Villheim.Logic.Villagers
 
             if (!inReach)
             {
-                WalkResult step = Walker.For(villager).Go(villager, ai, dt, work.Stand, 0.5f);
+                // Back to the site with work waiting: he runs (Tyler, T-11), walking only the last metres.
+                WalkResult step = Walker.For(villager).Go(villager, ai, dt, work.Stand, 0.5f, true);
                 if (step == WalkResult.Walking && Time.time < work.Deadline)
                 {
                     work.Timer = 0f;
@@ -957,6 +1240,141 @@ namespace Villheim.Logic.Villagers
             return false;
         }
 
+        /// <summary>The village's builder is about and makes the amenities (FreeTime leaves them to him).</summary>
+        public static bool BuilderMakes(int villageId) =>
+            Builders.TryGetValue(villageId, out var cached) && Time.time - cached.Time < 10f && cached.Builder != ZDOID.None;
+
+        /// <summary>Starts making the next amenity piece the chest can pay for. False when there is none.</summary>
+        private static bool TryMake(Villager villager, Work work)
+        {
+            if (Time.time < work.MakeRetryAt)
+            {
+                return false;
+            }
+
+            VillageHearth hearth = VillageHearth.Find(villager.VillageId);
+            Amenities.Job job = hearth != null && hearth.IsValid ? Amenities.Due(hearth) : null;
+            if (job == null)
+            {
+                return false;
+            }
+
+            Begin(villager, work, Phase.Make, null, job.Spot, 60f);
+            work.Making = job;
+            work.Timer = 0f;
+            work.Stand = MakeStand(job, villager.transform.position);
+            Started(villager, work, $"making a {job.Name}{(job.Pieces > 1 ? $" ({job.Pieces} pieces to go)" : "")}");
+            return true;
+        }
+
+        /// <summary>Where to stand to make a piece: in front of it inside a building, else a step from it on his side.</summary>
+        private static Vector3 MakeStand(Amenities.Job job, Vector3 from)
+        {
+            Vector3 stand;
+            if (job.Inside)
+            {
+                stand = job.Spot + job.Rotation * Vector3.forward * 1.6f;
+            }
+            else
+            {
+                Vector3 away = (from - job.Spot).Horizontal();
+                stand = job.Spot + (away.sqrMagnitude > 0.01f ? away.normalized : Vector3.forward) * 1.6f;
+            }
+
+            if (ZoneSystem.instance.GetGroundHeight(stand, out float y) && (!job.Inside || Mathf.Abs(y - job.Spot.y) < 1f))
+            {
+                stand.y = y;
+            }
+
+            return stand;
+        }
+
+        /// <summary>
+        /// The builder makes an amenity the way he builds a house: he goes (runs) to it, hammers, and the piece goes up,
+        /// paid from the chest. Something of several pieces (the notice board) goes up one piece at a time, ground up;
+        /// he stays on it while the chest pays for the next piece, then goes back to other work.
+        /// </summary>
+        private static bool UpdateMake(Villager villager, VillagerAI ai, Work work, float dt)
+        {
+            VillageHearth hearth = VillageHearth.Find(villager.VillageId);
+            Amenities.Job job = work.Making;
+            if (hearth == null || !hearth.IsValid || job == null)
+            {
+                Finish(work);
+                return false;
+            }
+
+            Vector3 position = villager.transform.position;
+            bool near = Utils.DistanceXZ(position, job.Spot) < 2.6f && Mathf.Abs(position.y - job.Spot.y) < 4f;
+            if (!near)
+            {
+                WalkResult step = Walker.For(villager).Go(villager, ai, dt, work.Stand, 0.6f, true);
+                if (step == WalkResult.Walking && Time.time < work.Deadline)
+                {
+                    work.Timer = 0f;
+                    return true;
+                }
+
+                if (Utils.DistanceXZ(villager.transform.position, job.Spot) > 4f)
+                {
+                    VillheimPlugin.Debug($"{villager.VillagerName} can't get to the {job.Name}; trying again later.");
+                    work.MakeRetryAt = Time.time + 30f;
+                    Finish(work);
+                    work.Cooldown = 2f;
+                    return false;
+                }
+            }
+
+            ai.StopMoving();
+            VillagerLooks.Hold(villager, VillagerLooks.Tool.Hammer);
+            Face(villager, ai, job.Spot + Vector3.up * 0.5f);
+            work.Timer += dt;
+            if (work.Timer % HammerInterval < dt)
+            {
+                ToolAnimation(villager, VillagerLooks.Tool.Hammer);
+            }
+
+            float perPiece = (LogicConfig.SecondsPerPiece != null ? LogicConfig.SecondsPerPiece.Value : 2.5f) /
+                             VillagerSkills.WorkFactor(villager, "building");
+            if (work.Timer < perPiece)
+            {
+                return true;
+            }
+
+            work.Timer = 0f;
+            bool made = Amenities.Make(hearth, job);
+            VillageNeeds.Forget(villager.VillageId);
+            Amenities.Forget(villager.VillageId);
+            if (made)
+            {
+                work.Progressed = true;
+                if (job.Pieces <= 1)
+                {
+                    VillageBrain.Announce(hearth, $"{villager.VillagerName} made a {job.Name} for {hearth.VillageName}.");
+                }
+            }
+
+            // The next piece of the same thing, if the chest pays for it: he stays on it.
+            Amenities.Job next = made ? Amenities.Due(hearth, true) : null;
+            if (next != null && next.Name == job.Name && Utils.DistanceXZ(next.Spot, job.Spot) < 8f)
+            {
+                work.Making = next;
+                work.Stand = MakeStand(next, villager.transform.position);
+                work.Deadline = Time.time + 60f;
+                Walker.For(villager).Reset();
+                return true;
+            }
+
+            if (!made)
+            {
+                work.MakeRetryAt = Time.time + 20f;
+            }
+
+            Finish(work);
+            work.Cooldown = 0.5f;
+            return false;
+        }
+
         /// <summary>The builder puts a new village chest where the old one stood, hammering at it for a few seconds.</summary>
         private static bool UpdateBuildChest(Villager villager, VillagerAI ai, Work work, float dt)
         {
@@ -968,7 +1386,7 @@ namespace Villheim.Logic.Villagers
             }
 
             Vector3 spot = VillageChest.Spot(hearth);
-            WalkResult step = Walker.For(villager).Go(villager, ai, dt, spot, 1.5f);
+            WalkResult step = Walker.For(villager).Go(villager, ai, dt, spot, 1.5f, true);
             if (step == WalkResult.Walking)
             {
                 return true;
@@ -1210,7 +1628,7 @@ namespace Villheim.Logic.Villagers
 
         private static void Finish(Work work)
         {
-            if (work.Phase != Phase.Idle && work.Phase != Phase.Build && work.Phase != Phase.BuildChest)
+            if (work.Phase != Phase.Idle && work.Phase != Phase.Build && work.Phase != Phase.BuildChest && work.Phase != Phase.Make)
             {
                 work.QuickFails = !work.Progressed && Time.time - work.StartedAt < 8f ? work.QuickFails + 1 : 0;
                 if (work.QuickFails >= 2)
@@ -1224,6 +1642,8 @@ namespace Villheim.Logic.Villagers
 
             ReleaseTarget(work);
             work.Phase = Phase.Idle;
+            work.Making = null;
+            work.Tidying = false;
             work.Skip.Clear();
             Claimed.RemoveWhere(go => go == null);
             PruneUnreachable();
@@ -1491,6 +1911,14 @@ namespace Villheim.Logic.Villagers
                 candidate.TryGetComponent(out Pickable pickable) && !pickable.GetPicked() && pickable.m_itemPrefab != null &&
                 wanted.Contains(pickable.m_itemPrefab.name), null);
             return go != null ? go.GetComponent<Pickable>() : null;
+        }
+
+        private static ItemDrop NearestUseful(Vector3 center, float radius, HashSet<GameObject> skip)
+        {
+            GameObject go = FindNearest(center, radius, center, candidate =>
+                candidate.TryGetComponent(out ItemDrop item) && Useful(item) && Player.GetClosestPlayer(candidate.transform.position, 4f) == null,
+                skip);
+            return go != null ? go.GetComponent<ItemDrop>() : null;
         }
 
         private static ItemDrop NearestDrop(ICollection<string> wanted, Vector3 center, float radius, Vector3 from,

@@ -307,8 +307,11 @@ namespace Villheim.Logic.Villagers
 
             // Something to make by the hearth comes before sitting about, one maker per village at a time.
             // Never a child: making things is work (T-28, a child was seen building beside the builder).
+            // The village's builder makes them piece by piece (Chores); this is only for when he is not about.
             bool child = Childhood.IsChild(villager);
-            Amenities.Job job = !child && MakerFree(villager) ? Amenities.Due(VillageHearth.Find(villager.VillageId)) : null;
+            Amenities.Job job = !child && MakerFree(villager) && !Chores.BuilderMakes(villager.VillageId)
+                ? Amenities.Due(VillageHearth.Find(villager.VillageId))
+                : null;
             if (job != null && !(state.SkipUntil.TryGetValue(Kind.Make, out float makeSkip) && makeSkip > Time.time))
             {
                 Makers[villager.VillageId] = villager;

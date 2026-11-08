@@ -322,7 +322,8 @@ namespace Villheim.Logic.Village
                 }
                 else
                 {
-                    spot = HearthGround.FlatSpotNear(spot);
+                    // The flattest ground for the whole village within reach, not only for the hearth (T-28).
+                    spot = HearthGround.FlatVillageSpot(spot, VillheimConfig.VillageRadius.Value * 0.6f);
                 }
 
                 GameObject made = Object.Instantiate(HearthPrefab.Prefab, spot, Quaternion.Euler(0f, player.transform.eulerAngles.y, 0f));
@@ -485,7 +486,7 @@ namespace Villheim.Logic.Village
                 {
                     Say(run, "finishing the building already going up");
                     yield return PlaceAll(run);
-                    LayPaths(run);
+                    yield return LayPaths(run);
                     yield return Furnish(run);
                 }
 
@@ -534,7 +535,7 @@ namespace Villheim.Logic.Village
                     continue;
                 }
 
-                LayPaths(run);
+                yield return LayPaths(run);
                 yield return Furnish(run);
                 var state = new VillageState(hearth.Zdo);
                 Say(run, $"{state.Plots.Count} of {run.TargetBuildings} buildings stand ({Time.time - run.Started:0} s)");
@@ -729,12 +730,24 @@ namespace Villheim.Logic.Village
                 Design = chosen.Name, Position = position, Yaw = yaw, Radius = chosen.Radius, Role = role,
                 Seed = run.Rng.Next(1, int.MaxValue),
             });
+            ConstructionSite.SettleHeight(hearth);
+            float floor = ConstructionSite.FloorHeight(hearth);
             ConstructionSite.PrepareGround(hearth, position);
 
-            // The heightmaps rebuild before the first piece goes up.
-            yield return new WaitForSeconds(0.6f);
+            // The heightmaps rebuild before the first piece goes up: pieces put up over ground that had not caught up
+            // stood in the air and broke (T-30).
+            yield return GroundSettled(position, floor);
             yield return PlaceAll(run);
             run.LastOk = hearth != null && hearth.IsValid && new VillageState(hearth.Zdo).Plots.Count > before;
+            if (run.LastOk)
+            {
+                // The ground made to meet the foundation as it stands, so nothing is left in the air.
+                Plot built = new VillageState(hearth.Zdo).Plots.LastOrDefault();
+                if (built != null)
+                {
+                    Freely(hearth, () => ConstructionSite.RelevelBuilding(hearth, built));
+                }
+            }
             if (!run.LastOk)
             {
                 run.Skipped.Add($"the {chosen.Name}: it could not be put up");
@@ -781,6 +794,23 @@ namespace Villheim.Logic.Village
             }
         }
 
+        /// <summary>Waits (up to three seconds) until the ground at the spot reads the levelled height.</summary>
+        private static IEnumerator GroundSettled(Vector3 spot, float floor)
+        {
+            float until = Time.time + 3f;
+            yield return null;
+            while (Time.time < until && (!ZoneSystem.instance.GetGroundHeight(spot, out float y) || Mathf.Abs(y - floor) > 0.2f))
+            {
+                yield return null;
+            }
+
+            yield return null;
+        }
+
+        /// <summary>Time this frame may still spend on setup work (TestVillageFrameMs).</summary>
+        private static bool FrameLeft(System.Diagnostics.Stopwatch watch) =>
+            watch.Elapsed.TotalMilliseconds < Mathf.Clamp(LogicConfig.TestVillageFrameMs?.Value ?? 6f, 1f, 100f);
+
         /// <summary>
         /// Puts up every piece of the construction site through ConstructionSite.PlaceNext (so it is built and finished
         /// as builders would), a few dozen pieces a frame. Taking down an old building comes first on a rebuild; the ground
@@ -795,9 +825,10 @@ namespace Villheim.Logic.Village
             {
                 bool settle = false;
                 bool stuck = false;
+                var watch = System.Diagnostics.Stopwatch.StartNew();
                 Freely(hearth, () =>
                 {
-                    for (int i = 0; i < perFrame && guard > 0; i++, guard--)
+                    for (int i = 0; i < perFrame && guard > 0 && (i == 0 || FrameLeft(watch)); i++, guard--)
                     {
                         bool tearing = ConstructionSite.TearingDown(hearth);
                         if (!ConstructionSite.PlaceNext(hearth, false))
@@ -838,14 +869,26 @@ namespace Villheim.Logic.Village
 
         // ---------------------------------------------------------------- what the village makes for itself
 
-        private static void LayPaths(Run run)
+        /// <summary>Lays the queued paths a few metres a frame: each metre is a terrain edit, and all at once froze the game (T-29).</summary>
+        private static IEnumerator LayPaths(Run run)
         {
             if (run.Options.NoPaths || !VillheimConfig.BuildPaths.Value || run.Hearth == null || !run.Hearth.IsValid)
             {
-                return;
+                yield break;
             }
 
-            Freely(run.Hearth, () => run.Paths += PathLaying.LayAllNow(run.Hearth));
+            for (int guard = 0; guard < 5000 && run.Hearth != null && run.Hearth.IsValid; guard++)
+            {
+                int laid = 0;
+                Freely(run.Hearth, () => laid = PathLaying.LayAllNow(run.Hearth, 6));
+                run.Paths += laid;
+                if (laid == 0)
+                {
+                    yield break;
+                }
+
+                yield return null;
+            }
         }
 
         /// <summary>Everything Amenities would have the village make, one a frame, until nothing is missing.</summary>
@@ -890,6 +933,7 @@ namespace Villheim.Logic.Village
         private static IEnumerator Fence(Run run)
         {
             VillageHearth hearth = run.Hearth;
+            var watch = System.Diagnostics.Stopwatch.StartNew();
             for (int i = 0; i < 600 && hearth != null && hearth.IsValid; i++)
             {
                 Palisade.Forget(hearth.VillageId);
@@ -906,9 +950,10 @@ namespace Villheim.Logic.Village
                     run.Fence++;
                 }
 
-                if (i % 6 == 5)
+                if (!FrameLeft(watch))
                 {
                     yield return null;
+                    watch.Restart();
                 }
             }
         }
@@ -927,7 +972,7 @@ namespace Villheim.Logic.Village
 
                 Farms.Plant(hearth, spot, prefab);
                 run.Plants++;
-                if (i % 4 == 3)
+                if (i % 3 == 2)
                 {
                     yield return null;
                 }
@@ -971,7 +1016,6 @@ namespace Villheim.Logic.Village
             yield return Fence(run);
             yield return Farm(run);
             var state = new VillageState(hearth.Zdo);
-            MapTables.Ensure(hearth, state);
 
             // Gear for the stage, counted as made by the smith, before anyone dresses.
             int gear = VillagerLooks.GearTier(VillageBrain.TierIndex(state.Plots.Count), state.Biome);
@@ -985,7 +1029,7 @@ namespace Villheim.Logic.Village
 
             // Storage chests that come with more people, and anything else still missing.
             yield return Furnish(run);
-            LayPaths(run);
+            yield return LayPaths(run);
 
             string survey = Knowledge.On ? Knowledge.SurveyNow(hearth, state, true) : "village knowledge is off";
             Stock(run);

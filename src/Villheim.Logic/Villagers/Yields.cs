@@ -74,6 +74,11 @@ namespace Villheim.Logic.Villagers
                 Add(rock.m_dropItems, drops);
             }
 
+            if (go.TryGetComponent(out Pickable pickable) && pickable.m_itemPrefab != null)
+            {
+                drops.Add(pickable.m_itemPrefab.name);
+            }
+
             if (go.TryGetComponent(out DropOnDestroyed dropOnDestroyed))
             {
                 Add(dropOnDestroyed.m_dropWhenDestroyed, drops);

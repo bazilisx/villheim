@@ -9,7 +9,7 @@ namespace Villheim.Logic.Village
     /// The village's want, shown beside the chest (proposal 9, after Black and White's desire flags and Frostpunk's
     /// promises).
     ///
-    /// - Once a game hour the hearth's owner looks at what the village is shortest of (VillageNeeds) and puts the
+    /// - Once a game hour the hearth's owner looks at what the next step is shortest of (NextStep) and puts the
     ///   game's own pile of it next to the chest: a woodpile for wood, the fine and core wood stacks, the stone pile.
     ///   Anything else goes on an item stand. It cannot be taken down with the hammer, and it goes when the want
     ///   changes or is met.
@@ -60,9 +60,10 @@ namespace Villheim.Logic.Village
             Container chest = VillageChest.Find(hearth);
             VillageNeeds needs = VillageNeeds.For(state.Id);
             string shown = zdo.GetString(KeyShown, "");
-            string top = needs != null && needs.Missing.Count > 0 && chest != null
-                ? needs.Missing.OrderByDescending(n => n.Value).First().Key
-                : "";
+            // Only what the next step is short of (NextStep): the stock the village keeps for later (fine wood in the
+            // Meadows) had shown a fine wood pile by the chest that nothing planned needed (T-11).
+            Dictionary<string, int> shortfall = NextStep.Short(hearth, state, NextStep.For(hearth, state));
+            string top = shortfall.Count > 0 && chest != null ? shortfall.OrderByDescending(n => n.Value).First().Key : "";
 
             if (shown.Length > 0 && chest != null)
             {
@@ -84,7 +85,7 @@ namespace Villheim.Logic.Village
             {
                 Place(hearth, chest, top);
                 zdo.Set(KeyPosted, VillageChest.Count(chest, top));
-                zdo.Set(KeyWanted, needs.Missing[top]);
+                zdo.Set(KeyWanted, shortfall[top]);
                 zdo.Set(KeyDay, Living.Today);
             }
         }

@@ -128,6 +128,37 @@ namespace Villheim.Logic.Villagers
             }
 
             Vector3 point = points[index];
+
+            // Trees, stumps and rocks on the way are cleared first (Chores clears queued paths): the road runs straight
+            // through where they stood (T-12). Loose sticks and stones he picks up himself. He waits a while for the
+            // clearing; after ClearWaitSeconds the spot is skipped, as before.
+            GameObject clutter = ClutterAt(point);
+            if (clutter != null && clutter.TryGetComponent(out Pickable loose) &&
+                Utils.DistanceXZ(villager.transform.position, point) < Reach * 2f)
+            {
+                loose.Interact(villager, false, false);
+                clutter = null;
+            }
+
+            if (clutter != null && clutter.GetComponent<Pickable>() == null)
+            {
+                string key = $"{villager.VillageId}:{index}";
+                if (!ClearWait.TryGetValue(key, out float since))
+                {
+                    ClearWait[key] = since = Time.time;
+                }
+
+                if (Time.time - since < ClearWaitSeconds)
+                {
+                    Release(villager);
+                    return false;
+                }
+
+                ClearWait.Remove(key);
+                hearth.Zdo.Set(KeyIndex, index + 1);
+                return true;
+            }
+
             if (Utils.DistanceXZ(villager.transform.position, point) > Reach)
             {
                 WalkResult step = Walker.For(villager).Go(villager, ai, dt, point, Reach * 0.6f);
@@ -161,6 +192,29 @@ namespace Villheim.Logic.Villagers
             return true;
         }
 
+        private const float ClearWaitSeconds = 150f;
+        private static readonly Dictionary<string, float> ClearWait = new Dictionary<string, float>();
+
+        /// <summary>A tree, stump, log, rock or loose stick or stone on the spot (Chores.IsClutter), or null.</summary>
+        private static GameObject ClutterAt(Vector3 point)
+        {
+            if (ClearWait.Count > 64)
+            {
+                ClearWait.Clear();
+            }
+
+            foreach (Collider collider in Physics.OverlapSphere(point + Vector3.up * 0.5f, 1.1f))
+            {
+                ZNetView view = collider.GetComponentInParent<ZNetView>();
+                if (view != null && Chores.IsClutter(view.gameObject) && !PathPlanner.BigObstacle(view.gameObject))
+                {
+                    return view.gameObject;
+                }
+            }
+
+            return null;
+        }
+
         /// <summary>Lays one metre of path where the point is, and adds it to the village's network.</summary>
         private static void LayPoint(VillageHearth hearth, Vector3 point)
         {
@@ -179,17 +233,24 @@ namespace Villheim.Logic.Villagers
         /// Lays every path in the village's queue at once, the same way a villager would lay it, and empties the queue.
         /// For a village set up at once (TestVillage). Returns how many metres were laid.
         /// </summary>
-        public static int LayAllNow(VillageHearth hearth)
+        public static int LayAllNow(VillageHearth hearth, int most = int.MaxValue)
         {
             var village = new VillageState(hearth.Zdo);
             int laid = 0;
-            for (int guard = 0; guard < 200 && Head(hearth, out Vector3 building, out float radius); guard++)
+            for (int guard = 0; guard < 200 && laid < most && Head(hearth, out Vector3 building, out float radius); guard++)
             {
                 List<Vector3> points = HeadRoute(hearth) ?? Points(hearth.transform.position, village.Axis, building, radius);
-                for (int i = Mathf.Max(0, hearth.Zdo.GetInt(KeyIndex)); i < points.Count; i++)
+                int i = Mathf.Max(0, hearth.Zdo.GetInt(KeyIndex));
+                for (; i < points.Count && laid < most; i++)
                 {
                     LayPoint(hearth, points[i]);
                     laid++;
+                }
+
+                if (i < points.Count)
+                {
+                    hearth.Zdo.Set(KeyIndex, i);
+                    break;
                 }
 
                 Pop(hearth);

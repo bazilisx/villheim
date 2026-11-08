@@ -62,6 +62,7 @@ namespace Villheim.Logic.Village
             double now = ZNet.instance.GetTimeSeconds();
             double unloadedSeconds = AddPassiveWood(hearth, state, now);
 
+            NoticeBoard.RemoveStrayBoards(hearth, state);
             VillageChest.Ensure(hearth);
             VillageChest.MoveStockIn(hearth, state);
             Villagers.Social.VillageTick(hearth);
@@ -341,8 +342,11 @@ namespace Villheim.Logic.Village
                 if (missing != null)
                 {
                     state.Waiting = $"{missing} to start a {RoleName(role)}";
+                    NextStep.NoteStart(state.Id, $"a {RoleName(role)}", StartShareOf(design));
                     return false;
                 }
+
+                NextStep.ClearStart(state.Id);
 
                 float radius = design.Radius;
                 Vector3 position;
@@ -399,9 +403,12 @@ namespace Villheim.Logic.Village
             string missing = MissingToStart(hearth, state, next.Value);
             if (missing != null)
             {
-                state.Waiting = $"{missing} to rebuild the {RoleName(Growth.RoleOf(plot))} bigger";
+                state.Waiting = $"{missing} to start a bigger {RoleName(Growth.RoleOf(plot))}";
+                NextStep.NoteStart(state.Id, $"a bigger {RoleName(Growth.RoleOf(plot))}", StartShareOf(next.Value));
                 return false;
             }
+
+            NextStep.ClearStart(state.Id);
 
             Growth.Clear(hearth);
             state.Waiting = "";
@@ -420,6 +427,18 @@ namespace Villheim.Logic.Village
             Announce(hearth, $"{state.Name} is rebuilding its {RoleName(role)} bigger.");
             Villagers.Dialogue.Note(state.Id, "groundbroken");
             return true;
+        }
+
+        /// <summary>The share of each material a design needs in the chest to break ground.</summary>
+        private static Dictionary<string, int> StartShareOf(DesignLibrary.Design design)
+        {
+            var share = new Dictionary<string, int>();
+            foreach (KeyValuePair<string, int> cost in DesignLibrary.MaterialCost(design))
+            {
+                share[cost.Key] = Mathf.CeilToInt(cost.Value * StartShare);
+            }
+
+            return share;
         }
 
         /// <summary>Null when the stock covers the share needed to break ground, otherwise what is short.</summary>
@@ -478,6 +497,7 @@ namespace Villheim.Logic.Village
                 {
                     Design = design.Name, Position = position, Yaw = yaw, Radius = radius, Role = role, Seed = seed,
                 });
+                ConstructionSite.SettleHeight(hearth);
 
                 // Ground first, like the hearth's: flat at the ground floor's height out past the walls, grass cleared,
                 // bare earth, before the first piece goes up.
@@ -743,36 +763,38 @@ namespace Villheim.Logic.Village
                 return "A newly lit hearth. Settlers will arrive soon.";
             }
 
+            // What the village holds wherever it keeps it (the chest, the storage chests and the stock), as the builder
+            // counts it. The hover had read only the stock and said "no materials" with a full chest (T-11).
             int buildings = state.Plots.Count;
+            Dictionary<string, int> held = VillageChest.Holdings(hearth);
+            List<string> holds = held.Where(h => h.Value > 0).OrderByDescending(h => h.Value)
+                .Select(h => $"{h.Value} {Materials.Label(h.Key)}").ToList();
             string text = $"{state.Name} ({Tier(buildings)}): {buildings} buildings, " +
-                          $"{CountVillagers(state.Id)}/{Capacity(state)} villagers, {state.StockText()}.";
+                          $"{CountVillagers(state.Id)}/{Capacity(state)} villagers. " +
+                          $"Holds {(holds.Count > 0 ? string.Join(", ", holds) : "no building materials")}.";
 
-            string progress = ConstructionSite.Progress(hearth);
-            if (progress != null)
+            text += " " + NextStep.Text(hearth, state);
+
+            // Waits that the next step doesn't already explain (no room, a boss, a closed chest).
+            string waiting = state.Waiting ?? "";
+            bool explained = waiting.Length == 0 || waiting.EndsWith(" before building more") || waiting.Contains(" to start a") ||
+                             waiting.Contains("in the village chest") || waiting.Contains("to keep building") ||
+                             (waiting == "a new village chest" && VillageChest.IsLost(hearth));
+            if (!explained)
             {
-                text += $" Now {progress}.";
-                Dictionary<string, int> shortfall = ConstructionSite.Shortfall(hearth);
-                if (shortfall.Count > 0)
+                text += $" Waiting for {waiting}.";
+            }
+
+            if (!ConstructionSite.IsActive(hearth.Zdo) && LogicConfig.WaitBetweenBuildings.Value)
+            {
+                double remaining = state.LastGrowth + GrowthInterval() - ZNet.instance.GetTimeSeconds();
+                if (remaining > 0)
                 {
-                    text += " The site chest still needs " +
-                            string.Join(", ", shortfall.Select(n => $"{n.Value} {Materials.Label(n.Key)}")) + ".";
+                    text += $" Next building in about {remaining / DayLength():0.0} days.";
                 }
             }
 
-            if (!string.IsNullOrEmpty(state.Waiting))
-            {
-                return text + $" Waiting for {state.Waiting}.";
-            }
-
-            if (progress != null)
-            {
-                return text;
-            }
-
-            double remaining = state.LastGrowth + GrowthInterval() - ZNet.instance.GetTimeSeconds();
-            double days = Math.Max(0.0, remaining / DayLength());
-            string next = Growth.PendingLabel(hearth, state);
-            return text + (next == "nothing" ? $" Next building in about {days:0.0} days." : $" Next: {next}, in about {days:0.0} days.");
+            return text;
         }
 
         public static void Announce(VillageHearth hearth, string message)

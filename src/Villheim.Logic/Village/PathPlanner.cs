@@ -27,6 +27,13 @@ namespace Villheim.Logic.Village
 
         private static readonly Vector2Int[] Steps = { new Vector2Int(1, 0), new Vector2Int(-1, 0), new Vector2Int(0, 1), new Vector2Int(0, -1) };
 
+        // Roads also step on the diagonals, so a road at an angle to the grid runs straight instead of in stairs (T-12).
+        private static readonly Vector2Int[] Steps8 =
+        {
+            new Vector2Int(1, 0), new Vector2Int(-1, 0), new Vector2Int(0, 1), new Vector2Int(0, -1),
+            new Vector2Int(1, 1), new Vector2Int(1, -1), new Vector2Int(-1, 1), new Vector2Int(-1, -1),
+        };
+
         // ---------------------------------------------------------------- the network
 
         public static HashSet<Vector2Int> Network(VillageHearth hearth)
@@ -332,7 +339,7 @@ namespace Villheim.Logic.Village
                 }
             }
 
-            List<Vector3> found = Search(center, front, building, buildingRadius, state.Plots, network, float.MaxValue, goal);
+            List<Vector3> found = Search(center, front, building, buildingRadius, state.Plots, network, float.MaxValue, goal, true);
             if (found == null)
             {
                 VillheimPlugin.Debug($"{state.Name}: no path found by grid search to the building at {building}; using the straight route.");
@@ -402,11 +409,21 @@ namespace Villheim.Logic.Village
         public static Vector3 Front(Vector3 building, float radius, float yaw, float doorAngle) =>
             building + Quaternion.Euler(0f, yaw + doorAngle, 0f) * Vector3.forward * (radius * 0.6f + 0.5f);
 
+        /// <summary>
+        /// The A* search. For a road (<paramref name="road"/>) it also steps diagonally, keeps off big things it cannot
+        /// clear (big rocks, ore veins, trees too hard for the village's axes, see BigObstacle), and pulls the result
+        /// straight (Straighten): trees, stumps and small rocks on the way are cleared by the villagers (Chores), so the
+        /// road runs through where they stood instead of round them (Tyler, T-12).
+        /// </summary>
         private static List<Vector3> Search(Vector3 hearth, Vector3 start, Vector3 building, float buildingRadius,
-            IReadOnlyList<Plot> plots, HashSet<Vector2Int> network, float maxStep = float.MaxValue, Vector3? target = null)
+            IReadOnlyList<Plot> plots, HashSet<Vector2Int> network, float maxStep = float.MaxValue, Vector3? target = null,
+            bool road = false)
         {
             Vector2Int from = Cell(start);
             Vector2Int goal = Cell(target ?? hearth);
+            HashSet<Vector2Int> big = road ? BigObstacles(start, target ?? hearth) : new HashSet<Vector2Int>();
+            Vector2Int[] steps = road ? Steps8 : Steps;
+            bool Off(Vector2Int cell) => big.Contains(cell) || Blocked(cell, hearth, building, buildingRadius, plots);
             var heights = new Dictionary<Vector2Int, float>();
             var cost = new Dictionary<Vector2Int, float> { [from] = 0f };
             var came = new Dictionary<Vector2Int, Vector2Int>();
@@ -421,7 +438,8 @@ namespace Villheim.Logic.Village
                 bool arrived = Vector2.Distance(current, goal) <= HearthReach || (network.Contains(current) && current != from);
                 if (arrived)
                 {
-                    return Trace(came, current, heights);
+                    List<Vector3> traced = Trace(came, current, heights);
+                    return road ? Straighten(traced, Off, maxStep) : traced;
                 }
 
                 if (!Height(current, heights, out float here))
@@ -429,21 +447,25 @@ namespace Villheim.Logic.Village
                     continue;
                 }
 
-                for (int d = 0; d < Steps.Length; d++)
+                for (int d = 0; d < steps.Length; d++)
                 {
-                    Vector2Int next = current + Steps[d];
-                    if (Blocked(next, hearth, building, buildingRadius, plots) || !Height(next, heights, out float there))
+                    Vector2Int next = current + steps[d];
+                    bool diagonal = steps[d].x != 0 && steps[d].y != 0;
+                    if (Off(next) || !Height(next, heights, out float there) ||
+                        (diagonal && (Off(new Vector2Int(next.x, current.y)) || Off(new Vector2Int(current.x, next.y)))))
                     {
                         continue;
                     }
 
-                    float slope = there - here;
-                    if (Mathf.Abs(slope) > maxStep)
+                    float length = diagonal ? 1.4142f : 1f;
+                    float slope = (there - here) / length;
+                    if (Mathf.Abs(there - here) > maxStep * length)
                     {
                         continue;
                     }
 
-                    float step = 1f + SlopePenalty * slope * slope + (direction[current] >= 0 && direction[current] != d ? TurnPenalty : 0f);
+                    float step = length * (1f + SlopePenalty * slope * slope) +
+                                 (direction[current] >= 0 && direction[current] != d ? TurnPenalty : 0f);
                     if (network.Contains(next))
                     {
                         step *= ReuseFactor;
@@ -458,7 +480,7 @@ namespace Villheim.Logic.Village
                     cost[next] = total;
                     came[next] = current;
                     direction[next] = d;
-                    open.Push(next, total + Heuristic(next, goal));
+                    open.Push(next, total + (road ? Octile(next, goal) : Heuristic(next, goal)));
                 }
             }
 
@@ -466,6 +488,168 @@ namespace Villheim.Logic.Village
         }
 
         private static float Heuristic(Vector2Int a, Vector2Int b) => Mathf.Abs(a.x - b.x) + Mathf.Abs(a.y - b.y);
+
+        private static float Octile(Vector2Int a, Vector2Int b)
+        {
+            int dx = Mathf.Abs(a.x - b.x), dz = Mathf.Abs(a.y - b.y);
+            return Mathf.Max(dx, dz) + 0.4142f * Mathf.Min(dx, dz);
+        }
+
+        private static readonly string[] OreWords = { "copper", "tin", "iron", "silver", "obsidian", "meteor", "flametal", "ore" };
+
+        /// <summary>
+        /// Something a road goes round rather than through: a big rock (MineRock5 and MineRock formations), an ore
+        /// vein, a tree the village's early axes can't fell (oak, ancient trees), or anything else natural over 4.5 m
+        /// across. Trees, stumps, logs and ordinary rocks are cleared off the road instead.
+        /// </summary>
+        public static bool BigObstacle(GameObject go)
+        {
+            if (go == null || go.GetComponent<Piece>() != null || go.GetComponent<Character>() != null || go.GetComponent<ItemDrop>() != null)
+            {
+                return false;
+            }
+
+            string name = go.name.ToLowerInvariant();
+            if (go.GetComponent<MineRock5>() != null || go.GetComponent<MineRock>() != null || OreWords.Any(name.Contains))
+            {
+                return true;
+            }
+
+            if (go.TryGetComponent(out TreeBase tree))
+            {
+                return tree.m_minToolTier > 1;
+            }
+
+            if (go.GetComponent<TreeLog>() != null || go.GetComponent<Pickable>() != null || go.GetComponent<Destructible>() == null)
+            {
+                return false;
+            }
+
+            Bounds? bounds = SolidBounds(go);
+            return bounds.HasValue && Mathf.Max(bounds.Value.size.x, bounds.Value.size.z) > 4.5f;
+        }
+
+        private static Bounds? SolidBounds(GameObject go)
+        {
+            Bounds? all = null;
+            foreach (Collider collider in go.GetComponentsInChildren<Collider>())
+            {
+                if (collider == null || collider.isTrigger || !collider.enabled)
+                {
+                    continue;
+                }
+
+                if (all.HasValue)
+                {
+                    Bounds b = all.Value;
+                    b.Encapsulate(collider.bounds);
+                    all = b;
+                }
+                else
+                {
+                    all = collider.bounds;
+                }
+            }
+
+            return all;
+        }
+
+        /// <summary>The cells under big obstacles (BigObstacle) around the way from a to b, with a margin.</summary>
+        private static HashSet<Vector2Int> BigObstacles(Vector3 a, Vector3 b)
+        {
+            var cells = new HashSet<Vector2Int>();
+            var seen = new HashSet<GameObject>();
+            Vector3 middle = (a + b) * 0.5f;
+            float radius = Utils.DistanceXZ(a, b) * 0.5f + 15f;
+            foreach (Collider collider in Physics.OverlapSphere(middle, radius))
+            {
+                ZNetView view = collider.GetComponentInParent<ZNetView>();
+                if (view == null || !seen.Add(view.gameObject) || !BigObstacle(view.gameObject))
+                {
+                    continue;
+                }
+
+                Bounds? bounds = SolidBounds(view.gameObject);
+                if (!bounds.HasValue)
+                {
+                    continue;
+                }
+
+                Bounds box = bounds.Value;
+                for (int x = Mathf.FloorToInt(box.min.x - 0.7f); x <= Mathf.CeilToInt(box.max.x + 0.7f); x++)
+                {
+                    for (int z = Mathf.FloorToInt(box.min.z - 0.7f); z <= Mathf.CeilToInt(box.max.z + 0.7f); z++)
+                    {
+                        cells.Add(new Vector2Int(x, z));
+                    }
+                }
+            }
+
+            return cells;
+        }
+
+        /// <summary>
+        /// Pulls a road straight: from each point it goes as far as a straight line stays clear (no cell off limits, no
+        /// water, no step steeper than the search allowed), then on from there, and lays points a metre apart on the
+        /// ground along each straight stretch.
+        /// </summary>
+        private static List<Vector3> Straighten(List<Vector3> points, System.Func<Vector2Int, bool> off, float maxStep)
+        {
+            if (points.Count < 3)
+            {
+                return points;
+            }
+
+            float stepLimit = Mathf.Min(maxStep, 0.8f) * 0.5f;
+            bool Clear(Vector3 a, Vector3 b)
+            {
+                float length = Utils.DistanceXZ(a, b);
+                int samples = Mathf.Max(2, Mathf.CeilToInt(length / 0.5f));
+                float last = a.y;
+                for (int i = 1; i <= samples; i++)
+                {
+                    Vector3 p = Vector3.Lerp(a, b, i / (float)samples);
+                    if (off(Cell(p)) || !ZoneSystem.instance.GetGroundHeight(p, out float y) || y < ZoneSystem.instance.m_waterLevel + 0.3f ||
+                        Mathf.Abs(y - last) > stepLimit)
+                    {
+                        return false;
+                    }
+
+                    last = y;
+                }
+
+                return true;
+            }
+
+            var result = new List<Vector3> { points[0] };
+            int at = 0;
+            while (at < points.Count - 1)
+            {
+                int to = Mathf.Min(points.Count - 1, at + 40);
+                while (to > at + 1 && !Clear(points[at], points[to]))
+                {
+                    to--;
+                }
+
+                Vector3 a = points[at];
+                Vector3 b = points[to];
+                int pieces = Mathf.Max(1, Mathf.RoundToInt(Utils.DistanceXZ(a, b)));
+                for (int i = 1; i <= pieces; i++)
+                {
+                    Vector3 p = Vector3.Lerp(a, b, i / (float)pieces);
+                    if (ZoneSystem.instance.GetGroundHeight(p, out float y))
+                    {
+                        p.y = y;
+                    }
+
+                    result.Add(p);
+                }
+
+                at = to;
+            }
+
+            return result;
+        }
 
         private static bool Height(Vector2Int cell, Dictionary<Vector2Int, float> heights, out float height)
         {

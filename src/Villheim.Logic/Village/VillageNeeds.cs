@@ -69,7 +69,9 @@ namespace Villheim.Logic.Village
             else if (ConstructionSite.IsActive(hearth.Zdo))
             {
                 needs.SiteActive = true;
-                needs.CanBuildNow = ConstructionSite.NextShort(hearth) == null;
+                // The builder sets out once the chest holds enough for the next part of the building (BuildStartShare, D-048),
+                // not each time one piece's worth comes in. Once at work he goes on while the chest lasts.
+                needs.CanBuildNow = ConstructionSite.NextShort(hearth) == null && ConstructionSite.ReadyToStart(hearth, out _);
                 foreach (KeyValuePair<string, int> shortfall in ConstructionSite.Shortfall(hearth))
                 {
                     // Savings in the village stock are on their way into the chest already.
@@ -87,7 +89,7 @@ namespace Villheim.Logic.Village
                 Amenities.Job next = Amenities.Upcoming(hearth);
                 if (next?.Cost != null)
                 {
-                    foreach (KeyValuePair<string, int> cost in next.Cost)
+                    foreach (KeyValuePair<string, int> cost in next.Total ?? next.Cost)
                     {
                         int missing = cost.Value - VillageChest.Have(hearth, state, cost.Key);
                         if (missing > 0)

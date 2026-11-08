@@ -15,6 +15,10 @@ namespace Villheim.Logic.Village
     ///   grown boar for a farm with none, a piglet once it has one. So babies come when the village reaches a new
     ///   stage (the farm wants one more) or to take the place of an animal that died or was killed (D-015). They are
     ///   tamed and marked as the village's.
+    /// - Animals live in a pen (Tyler, T-17; AnimalPens): a rectangle of wood fence with a wood gate on the side toward
+    ///   the farm building, beside the farm or behind its rows, on flat open ground. The builder puts it up piece by
+    ///   piece (Palisade hands out its pieces before the ring's) and the farm's first animal only comes once it is closed.
+    ///   New animals are set down inside it.
     /// - Village animals never breed by themselves and never eat (NoBreedingPatch, NoEatingPatch): the herd only grows
     ///   on the schedule, and no real food is used. The farmer acts out feeding (Villagers.Farming, Tend). Animals
     ///   tamed by players carry no village mark and behave as in vanilla.
@@ -143,6 +147,175 @@ namespace Villheim.Logic.Village
             return ripe;
         }
 
+        // ---------------------------------------------------------------- pens
+
+        private const float PenLength = 9f;
+        private const float PenWidth = 7f;
+
+        private static bool PensOn => LogicConfig.AnimalPens == null || LogicConfig.AnimalPens.Value;
+
+        private static int PenKey(Plot farm) =>
+            $"villheim_pen_{Mathf.RoundToInt(farm.Position.x)}_{Mathf.RoundToInt(farm.Position.z)}".GetStableHashCode();
+
+        /// <summary>
+        /// The farm's pen: its middle and its turn (the long side along the way out from the hearth). Worked out once and
+        /// kept on the hearth. False when no flat open ground was found for it.
+        /// </summary>
+        public static bool Pen(VillageHearth hearth, Plot farm, out Vector3 center, out Quaternion turn)
+        {
+            int key = PenKey(farm);
+            Vector3 away = (farm.Position - hearth.transform.position).Horizontal();
+            away = away.sqrMagnitude > 0.01f ? away.normalized : Vector3.forward;
+            turn = Quaternion.LookRotation(away);
+            center = hearth.Zdo.GetVec3(key, Vector3.zero);
+            if (center != Vector3.zero)
+            {
+                return true;
+            }
+
+            var state = new VillageState(hearth.Zdo);
+            Vector3 side = Vector3.Cross(Vector3.up, away);
+            HashSet<Vector2Int> network = PathPlanner.PlannedNetwork(hearth);
+            List<Vector3> plants = Spots(hearth, farm, WantedPlants(3));
+            float r = farm.Radius * 0.6f;
+            Vector3[] candidates =
+            {
+                farm.Position + side * (r + PenWidth * 0.5f + 1.5f),
+                farm.Position - side * (r + PenWidth * 0.5f + 1.5f),
+                farm.Position + away * (r + 2.5f + 6 * RowStep + PenLength * 0.5f + 1.5f),
+            };
+
+            foreach (Vector3 candidate in candidates)
+            {
+                if (PenFits(state, candidate, turn, network, plants, out float y))
+                {
+                    center = new Vector3(candidate.x, y, candidate.z);
+                    hearth.Zdo.Set(key, center);
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        private static bool PenFits(VillageState state, Vector3 center, Quaternion turn, HashSet<Vector2Int> network, List<Vector3> plants, out float y)
+        {
+            if (!ZoneSystem.instance.GetGroundHeight(center, out y) || y < ZoneSystem.instance.m_waterLevel + 0.5f)
+            {
+                return false;
+            }
+
+            for (float x = -0.5f; x <= 0.5f; x += 0.25f)
+            {
+                for (float z = -0.5f; z <= 0.5f; z += 0.25f)
+                {
+                    Vector3 p = center + turn * new Vector3(x * PenWidth, 0f, z * PenLength);
+                    if (!ZoneSystem.instance.GetGroundHeight(p, out float h) || Mathf.Abs(h - y) > 1.5f ||
+                        PathPlanner.DistanceToNetwork(network, p) < 1.5f || plants.Any(s => Utils.DistanceXZ(s, p) < 1.2f) ||
+                        state.Plots.Any(plot => Utils.DistanceXZ(plot.Position, p) < plot.Radius * 0.6f + 1f))
+                    {
+                        return false;
+                    }
+                }
+            }
+
+            return true;
+        }
+
+        /// <summary>
+        /// The next piece of a pen still to go up, for the builder (Palisade.Next): wood fence round the rectangle, a wood
+        /// gate in the middle of the side toward the farm building. Null when every farm's pen stands, or with pens off.
+        /// </summary>
+        public static Palisade.Segment NextPenSegment(VillageHearth hearth)
+        {
+            if (!PensOn || VillageChest.IsLost(hearth))
+            {
+                return null;
+            }
+
+            var state = new VillageState(hearth.Zdo);
+            foreach (Plot farm in FarmPlots(state))
+            {
+                Palisade.Segment next = MissingPenPiece(hearth, state, farm);
+                if (next != null)
+                {
+                    return next.Prefab != null ? next : null; // Prefab null: waiting for the chest
+                }
+            }
+
+            return null;
+        }
+
+        /// <summary>The farm's pen is up (or pens are off, or it has no room for one).</summary>
+        public static bool PenClosed(VillageHearth hearth, Plot farm) =>
+            !PensOn || MissingPenPiece(hearth, new VillageState(hearth.Zdo), farm) == null;
+
+        private static Palisade.Segment MissingPenPiece(VillageHearth hearth, VillageState state, Plot farm)
+        {
+            if (!Pen(hearth, farm, out Vector3 center, out Quaternion turn))
+            {
+                return null;
+            }
+
+            GameObject fence = ZNetScene.instance.GetPrefab("wood_fence");
+            GameObject gate = ZNetScene.instance.GetPrefab("wood_gate");
+            if (fence == null || !Amenities.Buildable(fence, state.Biome, out Dictionary<string, int> fenceCost))
+            {
+                return null;
+            }
+
+            Dictionary<string, int> gateCost = null;
+            bool gates = gate != null && Amenities.Buildable(gate, state.Biome, out gateCost);
+            Bounds? measured = BuildOrder.Measure(fence, "wood_fence", Vector3.zero, Quaternion.identity, fence.transform.localScale);
+            float width = Mathf.Max(1f, measured.HasValue ? measured.Value.size.x : 2f);
+            Dictionary<string, int> building = ConstructionSite.Remaining(hearth);
+
+            // The four sides; the first is the near short side (toward the farm building, for a pen beside it the side
+            // facing it), where the gate goes.
+            Vector3 toFarm = (farm.Position - center).Horizontal().normalized;
+            var sides = new List<(Vector3 Middle, Vector3 Out, float Length)>
+            {
+                (center + turn * Vector3.forward * (PenLength * 0.5f), turn * Vector3.forward, PenWidth),
+                (center - turn * Vector3.forward * (PenLength * 0.5f), -(turn * Vector3.forward), PenWidth),
+                (center + turn * Vector3.right * (PenWidth * 0.5f), turn * Vector3.right, PenLength),
+                (center - turn * Vector3.right * (PenWidth * 0.5f), -(turn * Vector3.right), PenLength),
+            };
+            int gateSide = sides.Select((s, i) => (i, Vector3.Dot(s.Out, toFarm))).OrderByDescending(t => t.Item2).First().i;
+
+            for (int k = 0; k < sides.Count; k++)
+            {
+                (Vector3 middle, Vector3 outward, float length) = sides[k];
+                Vector3 along = Vector3.Cross(Vector3.up, outward);
+                int pieces = Mathf.Max(1, Mathf.RoundToInt(length / width));
+                for (int i = 0; i < pieces; i++)
+                {
+                    Vector3 spot = middle + along * ((i - (pieces - 1) * 0.5f) * width);
+                    bool isGate = gates && k == gateSide && i == pieces / 2;
+                    string prefabName = isGate ? "wood_gate" : "wood_fence";
+                    Quaternion rotation = Quaternion.LookRotation(outward);
+                    Vector3 at = Palisade.Centered(isGate ? gate : fence, prefabName, spot, rotation);
+                    if (PenPieceAt(at, prefabName))
+                    {
+                        continue;
+                    }
+
+                    Dictionary<string, int> cost = isGate ? gateCost : fenceCost;
+                    return Amenities.Affordable(hearth, state, cost, building)
+                        ? new Palisade.Segment { Prefab = prefabName, Position = at, Rotation = rotation, Cost = cost, Pen = true }
+                        : new Palisade.Segment();
+                }
+            }
+
+            return null;
+        }
+
+        private static bool PenPieceAt(Vector3 at, string prefabName)
+        {
+            var near = new List<Piece>();
+            Piece.GetAllPiecesInRadius(at, 1f, near);
+            return near.Any(p => p != null && Utils.GetPrefabName(p.gameObject) == prefabName && Utils.DistanceXZ(p.transform.position, at) < 0.6f);
+        }
+
         // ---------------------------------------------------------------- animals, on a schedule
 
         /// <summary>Called with the hearth's tick: at most one new animal per in-game day, and no breeding.</summary>
@@ -176,7 +349,7 @@ namespace Villheim.Logic.Village
                     }
                 }
 
-                if (herd.Count >= WantedAnimals(tier) || hearth.Zdo.GetInt(KeyAnimalDay, -1) == day)
+                if (herd.Count >= WantedAnimals(tier) || hearth.Zdo.GetInt(KeyAnimalDay, -1) == day || !PenClosed(hearth, farm))
                 {
                     continue;
                 }
@@ -201,13 +374,33 @@ namespace Villheim.Logic.Village
         public static bool AddAnimal(VillageHearth hearth, Plot farm, string kind)
         {
             GameObject prefab = ZNetScene.instance.GetPrefab(kind) ?? ZNetScene.instance.GetPrefab("Boar");
-            List<Vector3> spots = Spots(hearth, farm, 4);
-            if (prefab == null || spots.Count == 0)
+            if (prefab == null)
             {
                 return false;
             }
 
-            Vector3 spot = spots[Random.Range(0, spots.Count)] + Vector3.up * 0.5f;
+            Vector3 spot;
+            if (PensOn && Pen(hearth, farm, out Vector3 pen, out Quaternion turn))
+            {
+                // Inside the pen, clear of its fence.
+                spot = pen + turn * new Vector3(Random.Range(-0.3f, 0.3f) * PenWidth, 0f, Random.Range(-0.3f, 0.3f) * PenLength);
+                if (ZoneSystem.instance.GetGroundHeight(spot, out float y))
+                {
+                    spot.y = y;
+                }
+            }
+            else
+            {
+                List<Vector3> spots = Spots(hearth, farm, 4);
+                if (spots.Count == 0)
+                {
+                    return false;
+                }
+
+                spot = spots[Random.Range(0, spots.Count)];
+            }
+
+            spot += Vector3.up * 0.5f;
             GameObject made = Object.Instantiate(prefab, spot, Quaternion.Euler(0f, Random.Range(0f, 360f), 0f));
             made.GetComponent<ZNetView>()?.GetZDO()?.Set(Keys.BuiltBy, hearth.VillageId);
             made.GetComponent<Tameable>()?.Tame();

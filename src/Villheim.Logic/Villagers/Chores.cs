@@ -726,6 +726,7 @@ namespace Villheim.Logic.Villagers
         private static void Started(Villager villager, Work work, string what)
         {
             work.Reason = "";
+            TaskGestures.SettingOff(villager, work.Target != null ? work.Target.transform.position : work.Spot);
             VillheimPlugin.Debug($"{villager.VillagerName}: {what}.");
         }
 
@@ -1352,6 +1353,7 @@ namespace Villheim.Logic.Villagers
                 if (job.Pieces <= 1)
                 {
                     VillageBrain.Announce(hearth, $"{villager.VillagerName} made a {job.Name} for {hearth.VillageName}.");
+                    TaskGestures.Made(villager);
                 }
             }
 
@@ -1368,7 +1370,9 @@ namespace Villheim.Logic.Villagers
 
             if (!made)
             {
+                // The chest can't pay for the piece: he leaves it for now.
                 work.MakeRetryAt = Time.time + 20f;
+                TaskGestures.GaveUp(villager);
             }
 
             Finish(work);

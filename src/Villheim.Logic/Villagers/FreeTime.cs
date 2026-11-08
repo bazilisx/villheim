@@ -618,6 +618,7 @@ namespace Villheim.Logic.Villagers
             {
                 state.FeastDay = today;
                 Moods.Think(villager, "feast");
+                TaskGestures.Feast(villager);
             }
 
             bool sits = feast ? (state.Ring % 2) != 0 || mood < 30f : (state.Ring % 3) != 0 || mood < 65f;
@@ -658,10 +659,7 @@ namespace Villheim.Logic.Villagers
                 return;
             }
 
-            if (mood >= 35f && Random.value < 0.35f)
-            {
-                Poses.Gesture(villager, EveningGestures[Random.Range(0, EveningGestures.Length)]);
-            }
+            // No gesture of its own here: the feast gets a cheer (TaskGestures.Feast), and nothing random otherwise.
         }
 
         /// <summary>
@@ -707,11 +705,7 @@ namespace Villheim.Logic.Villagers
                 return;
             }
 
-            if (Time.time >= state.NextGesture)
-            {
-                state.NextGesture = Time.time + Random.Range(6f, 12f);
-                Poses.Gesture(villager, Random.value < 0.5f ? "point" : "thumbsup");
-            }
+            // He stands at it and works; no pointing or thumbs up at nothing.
         }
 
         /// <summary>Hammers at the new piece for a while, then it goes up (paid from the village chest).</summary>
@@ -879,11 +873,7 @@ namespace Villheim.Logic.Villagers
             }
 
             state.NextGesture = Time.time + Random.Range(min, max);
-            string[] set = Gestures(mood);
-            if (set.Length > 0 && Random.value < 0.3f)
-            {
-                Poses.Gesture(villager, set[Random.Range(0, set.Length)]);
-            }
+            // Idle gestures by mood are gone (Tyler, 2026-11-08): a gesture needs a reason (TaskGestures).
         }
 
         private static string[] Gestures(float mood)

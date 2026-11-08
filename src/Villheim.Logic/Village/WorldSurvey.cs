@@ -224,6 +224,24 @@ namespace Villheim.Logic.Village
             _broken = false;
         }
 
+        /// <summary>Every surveyed object within <paramref name="radius"/> of <paramref name="at"/> (copies).</summary>
+        public static List<Feature> ObjectsAround(Vector3 at, float radius) =>
+            Objects.Where(o => Utils.DistanceXZ(o.Position, at) <= radius).Select(o => o.Copy()).ToList();
+
+        /// <summary>The prefab an object discovery comes from ("Spawner_GreydwarfNest"), or null for locations and land.</summary>
+        public static string ObjectPrefab(string kind, string key)
+        {
+            foreach ((string prefab, string k, string y) in ObjectKinds)
+            {
+                if (k == kind && y == key)
+                {
+                    return prefab;
+                }
+            }
+
+            return null;
+        }
+
         /// <summary>
         /// The objects of each key within <paramref name="radius"/>, the nearest <paramref name="perKey"/> of each, and
         /// only one within 120 m of another of the same key (a cluster counts once).

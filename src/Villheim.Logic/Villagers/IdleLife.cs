@@ -64,7 +64,6 @@ namespace Villheim.Logic.Villagers
             {
                 // Up at the sky.
                 state.Point = eye + villager.transform.forward * 4f + Vector3.up * 6f;
-                if (Random.value < 0.3f) Poses.Gesture(villager, "shrug");
                 return;
             }
 

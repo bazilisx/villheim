@@ -55,6 +55,7 @@ namespace Villheim.Logic.Village
             if (trader.m_items.Count == 0)
             {
                 Dialogue.Say(villager, "We've nothing to spare right now. Come back when the chest is fuller.");
+                TaskGestures.Refused(villager);
                 return true;
             }
 

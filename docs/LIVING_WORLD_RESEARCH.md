@@ -123,10 +123,8 @@ Villheim files named under "For Villheim" are in `src/Villheim.Logic/Village` an
 ### Valheim mods
 
 #### ValheimCityBuilder (RustyProductions)
-- Thunderstore page only (versions 1.0.0 to 1.2.2 listed); no public source found under RustyMods on GitHub. The
-  page text could not be read tonight, so its settlers, production chains, research and armies are noted from the
-  title and the lead's brief only. Check the page before relying on any of it.
-- For Villheim: worth reading for production chains and research as a village growth gate.
+- Studied in full on 2026-11-08 (version 1.8.2 and World Edit): see `docs/CITYBUILDER_STUDY.md`. No licence, so ideas
+  only; 187 rows in `docs/features/citybuilder.csv`.
 
 ### Other games with readable source
 
@@ -842,7 +840,7 @@ before tuning proposal 11, so Villheim's raids and the game's own do not stack.
 5. Inside Gothic (routines, perceptions, news). https://ataulien.github.io/Inside-Gothic/DailyRoutine
 6. Stardew Valley schedule and event data docs. https://stardewvalleywiki.com/Modding:Schedule_data
 7. Emilien and others, villages on arbitrary terrains (2012). https://perso.liris.cnrs.fr/egalin/Articles/2012-villages.pdf
-8. ValheimCityBuilder (RustyProductions): unread tonight; settlers, production chains and research in Valheim.
+8. ValheimCityBuilder (RustyProductions): studied 2026-11-08, see `docs/CITYBUILDER_STUDY.md`.
    https://thunderstore.io/c/valheim/p/RustyProductions/ValheimCityBuilder/
 9. Kenshi world states and town overrides. https://kenshi.wiki/w/World_States
 10. RimWorld storyteller and raid points pages. https://rimworldwiki.com/wiki/AI_Storytellers

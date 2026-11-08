@@ -71,6 +71,7 @@ namespace Villheim.Logic.Village
             Raids.Tick(hearth);
             Contracts.Tick(hearth, state);
             Groves.Tick(hearth, state);
+            Living.HearthTick(hearth, state);
             NoticeBoard.Update(hearth);
             CheckDoorsDaily(hearth);
             Farms.Tick(hearth);
@@ -274,6 +275,18 @@ namespace Villheim.Logic.Village
             if (project.IsUpgrade)
             {
                 return TryUpgrade(hearth, state, project, interval);
+            }
+
+            // A boss felled lets villages grow a stage further (BossStages); homes for the bedless always go up.
+            if (BossStages.Blocks(hearth, state, out string bossWait))
+            {
+                state.Waiting = bossWait;
+                return false;
+            }
+
+            if (state.Waiting.StartsWith(BossStages.WaitingPrefix))
+            {
+                state.Waiting = "";
             }
 
             if (plots.Count >= VillheimConfig.MaxBuildings.Value)
@@ -500,7 +513,7 @@ namespace Villheim.Logic.Village
             bool firstArrivals = state.Arrivals < VillheimConfig.StartingVillagers.Value;
             // The first settlers are found at the hearth (they build the beds). Everyone after them, as in Millenaire,
             // only comes when a bed stands empty for them, never just because there is room.
-            if (!firstArrivals && (now - state.LastArrival < ArrivalInterval() || EnvMan.IsNight() ||
+            if (!firstArrivals && (now - state.LastArrival < ArrivalInterval() * Prosperity.ArrivalFactor(hearth) || EnvMan.IsNight() ||
                                    Villagers.Beds.Spare(hearth) == 0))
             {
                 return;
@@ -557,6 +570,10 @@ namespace Villheim.Logic.Village
             Villager villager = go.GetComponent<Villager>();
             int looksSeed = rng.Next(1, int.MaxValue);
             string name = Names.Villager(looksSeed);
+            // A villager who left a neighbour comes as himself (Villagers.Leaving).
+            string cameFrom = birthplace == null && arrival >= VillheimConfig.StartingVillagers.Value
+                ? Villagers.Leaving.TakeMigrant(hearth, ref looksSeed, ref name)
+                : null;
 
             ZDO zdo = villager.Zdo;
             zdo.Set(Keys.VillagerVillage, state.Id);
@@ -567,6 +584,11 @@ namespace Villheim.Logic.Village
             zdo.Set(Keys.VillagerName, name);
             zdo.Set(Villagers.Roles.KeyArrival, arrival);
             Villagers.Personality.NoteArrived(zdo, arrival >= VillheimConfig.StartingVillagers.Value && birthplace == null);
+            if (cameFrom != null)
+            {
+                zdo.Set(Villagers.Leaving.KeyCameFrom, cameFrom);
+            }
+
             if (birthplace != null)
             {
                 zdo.Set(Villagers.Childhood.KeyBorn, EnvMan.instance != null ? EnvMan.instance.GetDay() : 0);
@@ -580,7 +602,8 @@ namespace Villheim.Logic.Village
             VillheimPlugin.Debug($"{state.Name}: {name} arrived.");
             if (birthplace == null)
             {
-                Chronicle.Add(hearth, arrival < VillheimConfig.StartingVillagers.Value ? $"{name} settled by the hearth." : $"{name} came to live here.");
+                Chronicle.Add(hearth, arrival < VillheimConfig.StartingVillagers.Value ? $"{name} settled by the hearth." :
+                    cameFrom != null ? $"{name} came over from {cameFrom} to live here." : $"{name} came to live here.");
             }
 
             // Someone walks over to say hello to the newcomer.
@@ -588,6 +611,7 @@ namespace Villheim.Logic.Village
             {
                 Chronicle.Add(hearth, $"{name} was born in the {RoleName(Role.House)} by the {(Utils.DistanceXZ(birthplace.Position, center) < 20f ? "hearth" : "edge of the village")}.");
                 Villagers.Dialogue.Note(state.Id, "birth");
+                Villagers.Elders.Inherit(villager, birthplace);
                 Villagers.Social.Gather(state.Id, villager, null, 2, "event:birth", "cheer", 60f);
             }
             else if (arrival >= VillheimConfig.StartingVillagers.Value)

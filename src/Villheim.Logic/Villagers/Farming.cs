@@ -61,7 +61,7 @@ namespace Villheim.Logic.Villagers
         {
             State state = States.GetOrCreateValue(villager);
             VillageHearth hearth = VillageHearth.Find(villager.VillageId);
-            if (hearth == null || !hearth.IsValid || EnvMan.IsNight())
+            if (hearth == null || !hearth.IsValid || EnvMan.IsNight() || Village.Calendar.FieldsRest)
             {
                 Stop(villager, state);
                 return false;

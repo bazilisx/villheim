@@ -132,10 +132,20 @@ namespace Villheim.Logic.Villagers
         private static string Pick(string[] list, Villager villager, uint salt) =>
             list[(int)(((uint)Seed(villager) * 2654435761u ^ salt * 2246822519u) >> 7) % list.Length];
 
-        public static string Homeland(Villager v) => Pick(Homelands, v, 11u);
+        public static readonly int KeyHomeland = "villheim_homeland".GetStableHashCode();
+        public static readonly int KeyHobby = "villheim_hobby".GetStableHashCode();
+
+        /// <summary>A child born in the village carries a parent's homeland (Elders.Inherit), else it comes from the seed.</summary>
+        public static string Homeland(Villager v) => Own(v, KeyHomeland) ?? Pick(Homelands, v, 11u);
+
+        private static string Own(Villager v, int key)
+        {
+            string own = v?.Zdo != null ? v.Zdo.GetString(key, "") : "";
+            return own.Length > 0 ? own : null;
+        }
         public static string Food(Villager v) => Pick(Foods, v, 23u);
         public static string Fear(Villager v) => Pick(Fears, v, 37u);
-        public static string Hobby(Villager v) => Pick(Hobbies, v, 41u);
+        public static string Hobby(Villager v) => Own(v, KeyHobby) ?? Pick(Hobbies, v, 41u);
         public static string Dream(Villager v) => Pick(Dreams, v, 53u);
 
         public static string FarPlace(int seed) => FarPlaces[(seed & 0x7fffffff) % FarPlaces.Length];

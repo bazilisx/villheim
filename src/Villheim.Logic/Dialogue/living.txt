@@ -1,0 +1,445 @@
+# Villheim: the living village (config section "6 - Living village"). Same format as lines.txt and social.txt.
+#
+# Tags (Village/Living.cs and the files it calls):
+#   prosper:poor prosper:modest prosper:thriving prosper:rich prosper:hit          (Village/Prosperity.cs)
+#   season:spring/summer/autumn/winter seasonday:early/mid/late festivalday festival:sowing/midsummer/harvest/yule
+#     festivalsoon holiday                                                          (Village/Calendar.cs)
+#   expect:met expect:short expect:short:food/hall/seats/fence                     (Villagers/Expectations.cs)
+#   standing:hero/friend/known/disliked/outcast/hated standing:fined fine finepaid (Villagers/Standing.cs)
+#   complain complain:bed/food/safety demand:bed/food/safety                       (Villagers/Complaints.cs)
+#   farewell farewell:bed/food/safety/mood migrant                                 (Villagers/Leaving.cs)
+#   stay:good stay:fair stay:bad (a visitor's goodbye)                             (Village/VisitorJudging.cs)
+#   lifestage:elder elder:story                                                    (Villagers/Elders.cs)
+#   nextdoor:friend nextdoor:rival                                                 (Villagers/Neighbours.cs)
+#   stagecap                                                                       (Village/BossStages.cs)
+#   horn help                                                                      (Villagers/Escort.cs)
+#   events: event:newseason festivalmorning festival coldhome complain leaving finepaid unwelcome guard
+#     visitorpleased visitorsour visitorleft promisekept trophy stageopen newelder elderdeath horn helpplayer
+# Fill-ins: {season} {festival} {nextfestival} {daystofestival} {fine} {lackdays} {chronicle} {chronicleday}
+#   {yearshere} {nextboss} {camefrom}
+
+# ------------------------------------------------------------------ prosperity
+
+@ talk, prosper:poor * 0.6
+We get by. Just about.
+Lean times. You can count our coins on one hand.
+Nobody comes here to trade. There's nothing to trade for.
+
+@ talk, prosper:poor | gruff * 0.6
+Poor as mice. Don't look at me like that, it's true.
+
+@ talk, prosper:poor | worrier * 0.6
+If one more thing goes wrong we'll be eating bark.
+
+@ talk, prosper:modest * 0.4
+We're doing all right. Enough to eat, and a little over.
+Enough in the chest to sleep easy. Most nights.
+
+@ talk, prosper:thriving * 0.6
+Word's got round about us. More faces on the road every week.
+The chest is heavy these days. Feels good to lift the lid.
+Pedlars come out of their way to stop here now.
+
+@ talk, prosper:thriving | cheerful * 0.6
+Look at us! Remember when this was a fire and two tents?
+
+@ talk, prosper:thriving | worrier * 0.6
+When a place does this well, the wrong sort start to notice.
+
+@ talk, prosper:rich * 0.6
+They say we're the richest hearth for a week's walk. They may be right.
+Silver in the chest, meat on the fire. The gods are kind to us.
+
+@ talk, prosper:rich | gruff * 0.6
+Rich makes you a target. Keep your axe close.
+
+@ talk, prosper:hit
+We lost a lot. It'll take time to get back what we had.
+Since the raid, nobody's had the heart for much.
+Things were going well before. They'll go well again. Not yet, though.
+
+@ self, prosper:hit
+Hard days. Keep your head down and keep working.
+
+# ------------------------------------------------------------------ the seasons
+
+@ talk, season:spring * 0.5
+Spring. Mud to the ankles and everything wants planting at once.
+The birds are back. Noisy little things.
+Good season for building. The ground's soft and the days are long enough.
+
+@ talk, season:summer * 0.5
+Summer. Too hot to swing an axe after noon.
+Long days. You can work till you drop and the sun's still up.
+The flies are out. Everything bites in summer.
+
+@ talk, season:autumn * 0.5
+Autumn. Wood and meat, wood and meat, before the cold comes.
+Leaves everywhere. They get into the stew.
+Stack the wood high this time of year. You'll thank yourself in winter.
+
+@ talk, season:winter * 0.5
+Winter. Stay near the fire and don't ask me to go out.
+Nothing grows. We eat what we put by, and we hope it was enough.
+Cold enough to freeze the words in your mouth.
+
+@ talk, season:winter | gruff * 0.5
+I hate winter. I've always hated winter.
+
+@ talk, season:winter | cheerful * 0.5
+I like the snow. Don't tell anyone.
+
+@ talk, season:winter | elder * 0.5
+I've seen worse winters. I've seen better ones too. This one's somewhere in the middle.
+
+@ self, season:autumn, doing:carrying * 0.6
+Every log now is a warm night later.
+
+@ self, season:winter, doing:fire * 0.6
+Closer to the fire. Closer.
+My toes went numb an hour ago. I'm not sure they'll come back.
+
+@ talk, seasonday:late, season:autumn
+Winter's close. You can smell it in the morning.
+
+@ talk, seasonday:late, season:winter
+Not long now till spring. I keep telling myself that.
+
+@ talk, event:newseason
+A new season. Everyone says it'll be better than the last.
+The season's turned. You can feel it.
+
+@ talk, event:coldhome
+No wood in the chest and the nights this cold. Somebody fetch some, please.
+We let the woodpile run out. In winter. Who does that?
+
+@ self, event:coldhome
+Cold hearth, cold house, cold feet.
+
+# ------------------------------------------------------------------ festivals
+
+@ talk, festivalsoon
+It's {festival} {daystofestival}. Everyone's saving their best for it.
+Not long till {festival}. You'll stay for it, won't you?
+
+@ talk, festivalsoon | young
+Is it {festival} yet? How about now?
+
+@ talk, festivalday, !holiday
+It's {festival} today. Work till four, then we eat.
+Festival day. Nobody's working hard, whatever they tell you.
+
+@ talk, festival:sowing
+The sowing feast. We eat well now so the fields remember what they're for.
+Seeds blessed, bellies full. That's the sowing feast.
+
+@ talk, festival:midsummer
+The midsummer fire. We'll keep it going till dawn if the wood holds.
+Midsummer. Jump the fire for luck, if you dare.
+
+@ talk, festival:harvest
+The harvest feast. Everything we gathered, and then a bit more.
+We give thanks for the harvest. Then we eat it.
+
+@ talk, festival:yule
+Yule. The longest night, and the best fire of the year.
+Yule. Drink something warm and tell me a story.
+
+@ talk, festival:yule | devout
+At Yule the dead walk close. We set a place for them.
+
+@ self, holiday
+No more work today. That's the rule.
+Put the axe down. It's a feast.
+Somebody pass the meat.
+
+@ self, holiday | cheerful
+Sing, then! Somebody start, and I'll come in loud.
+
+@ talk, event:festival
+Did you see the fire tonight? The whole village was there.
+That was a good feast. My belly agrees.
+
+# ------------------------------------------------------------------ expectations
+
+@ talk, expect:met, size:village * 0.5
+We have what a proper village needs. Took long enough.
+
+@ talk, expect:short:food
+The same food every day. I'm sick of the sight of it.
+Berries again? We had berries yesterday. And the day before.
+
+@ talk, expect:short:food | gruff
+If I eat one more raspberry I'll turn into one.
+
+@ talk, expect:short:hall
+A village this size and no longhouse. Where are we meant to meet?
+We need a hall. Somewhere to sit out of the rain together.
+
+@ talk, expect:short:seats
+Not enough benches. Half of us sit in the dirt.
+Someone build a bench. My back is begging you.
+
+@ talk, expect:short:fence
+A village this big without a fence. Asking for trouble, that is.
+Put a fence up. I'd sleep better behind one.
+
+@ talk, expect:short:fence | worrier
+Anything could walk straight in. Anything!
+
+@ talk, expect:short, size:camp
+We've little here, but little is enough for now.
+
+# ------------------------------------------------------------------ standing
+
+@ talk, standing:disliked
+Oh. It's you.
+I'll speak to you. I don't have to like it.
+Folk here remember what you did. Mind yourself.
+
+@ talk, standing:disliked | gruff
+Say what you want and go.
+
+@ talk, standing:outcast
+You've a nerve, coming back here.
+Nobody here will trade with you until you settle what you owe.
+
+@ talk, standing:hated
+Keep your hands where I can see them.
+One wrong step and the guards will have you.
+
+@ talk, fine
+You owe {village} {fine} coins. Crouch and speak to me when you mean to pay.
+{fine} coins and we'll call it even. Crouch and speak to me with the silver ready.
+Pay the fine, {fine} coins. Then we can talk like neighbours again.
+
+@ talk, fine | gruff
+{fine} coins. Not one less. Crouch down and hand it over when you're ready.
+
+@ talk, finepaid
+Paid in full. We'll say no more about it.
+That's settled, then. Welcome back, I suppose.
+Silver talks. All's forgiven. Mostly.
+
+@ talk, event:unwelcome ~angry
+You're not welcome here. Not after what you did.
+Turn round. We don't want you.
+I know who you are. Everyone here does.
+
+@ talk, event:unwelcome | worrier ~worry
+Please just go. We don't want any trouble.
+
+@ talk, event:guard ~angry
+Stop there. The guards are watching you.
+Not another step. You've done enough to this village.
+
+@ talk, standing:hero, event:returning
+Look who's back! The hearth's brighter for you.
+
+# ------------------------------------------------------------------ needs that go too long
+
+@ self, complain:bed
+Another night on the floor. My back will never forgive me.
+I'd give a week's food for a bed of my own.
+
+@ talk, complain:bed
+{lackdays} days I've slept on the ground. Is a bed so much to ask?
+Everyone has a bed but me. I've counted.
+
+@ self, complain:food
+My belly's been empty since I don't know when.
+I keep dreaming about bread.
+
+@ talk, complain:food
+{lackdays} days with nothing proper to eat. How long can a body go?
+If someone doesn't bring food soon I'll start on the boots.
+
+@ self, complain:safety
+Every night something comes. I can't sleep for listening.
+
+@ talk, complain:safety
+Monsters every night. How long are we meant to live like this?
+I flinch at every sound. That's no way to live.
+
+@ talk, complain | worrier
+I hate to complain. But it's been days.
+
+@ talk, demand:bed ~point
+I need a bed. Please. Help us build one, or I don't know how much longer I'll stay.
+You're good with a hammer. Could you put up a bed for me? I'm at the end of my rope.
+
+@ talk, demand:food ~point
+We're starving here. Bring something to the chest, anything, I beg you.
+Meat, berries, anything. Please put some food in the chest.
+
+@ talk, demand:safety ~point
+Can you do something about the monsters? We can't hold them off alone.
+Help us. A fence, a guard, anything. We can't go on like this.
+
+@ talk, demand:bed | gruff ~angry
+A bed. That's all I want. Get me a bed.
+
+# ------------------------------------------------------------------ leaving
+
+@ self, farewell
+I can't stay. Look after the place.
+That's it. I'm going. Don't try to stop me.
+Goodbye, all of you. I'm sorry.
+
+@ self, farewell:bed
+Ten nights on the ground is enough. I'll find a bed somewhere else.
+
+@ self, farewell:food
+I won't starve here. There must be bread somewhere down the road.
+
+@ self, farewell:safety
+I'm done being hunted every night. I'm going somewhere safer.
+
+@ self, farewell:mood
+Nobody smiles here any more. I need to be somewhere people smile.
+
+@ self, farewell | gruff
+Don't wave. Just don't.
+
+@ self, farewell | young
+I'll write. I can't write. I'll send word, then.
+
+@ talk, event:leaving
+One of ours packed up and left. Didn't even finish their stew.
+Did you see? They walked off down the road and never looked back.
+Another one gone. If this keeps on there'll be nobody to light the fire.
+
+@ talk, event:leaving | worrier
+Who's next? It's going to be me, isn't it. Or worse, everyone but me.
+
+@ talk, migrant
+I came over from {camefrom}. It wasn't working out there.
+Back in {camefrom} I had nothing. Here I'll have a bed, at least.
+
+@ talk, migrant | gruff
+{camefrom} was a mess. Don't ask.
+
+# ------------------------------------------------------------------ visitors who judge their stay
+
+@ bye, wanderer, stay:good
+A fine stay. I'll tell everyone on the road about this place.
+Good people, good fire. I'll be back.
+I leave lighter than I came. Thank you, all of you.
+
+@ bye, wanderer, stay:fair
+Thanks for the fire. Safe roads to you.
+It'll do. Farewell.
+
+@ bye, wanderer, stay:bad
+Wet, cold and nearly eaten. I won't hurry back.
+I've had warmer welcomes in a bog.
+Don't expect me again soon.
+
+@ bye, wanderer, pedlar, stay:bad
+Poor trade, poor beds. My cart and I will try elsewhere next time.
+
+@ bye, wanderer, pilgrim, stay:good
+The gods smile on this hearth. I felt it in the night.
+
+@ talk, event:visitorpleased
+The pedlar went off whistling. That's a good sign.
+Our guest left happy. Word will get round.
+
+@ talk, event:visitorsour
+That visitor left with a face like a wet dog.
+We didn't treat our guest well. People will hear about it.
+
+# ------------------------------------------------------------------ the want by the chest
+
+@ talk, event:promisekept
+You brought just what we needed. Thank you.
+The pile by the chest was for you to see, and you saw it. Thank you, truly.
+That's just what we were waiting for. You've a good heart.
+
+@ self, event:promisekept | cheerful
+Look at that chest! Someone listened to us!
+
+# ------------------------------------------------------------------ boss stages and trophies
+
+@ talk, stagecap
+We could grow, but folk won't settle here while {nextboss} still lives.
+The elders say we're as big as we can be until {nextboss} falls.
+Kill {nextboss} and you'll see this place grow, I promise you.
+
+@ talk, stagecap | worrier
+Nobody wants to build big while {nextboss} is out there. I don't blame them.
+
+@ talk, event:trophy
+Have you seen the trophy hanging in the village? Gives me shivers.
+A real trophy, here! The children won't stop staring at it.
+
+@ talk, event:stageopen
+The great foe is dead! Now we can build like we mean it.
+With that beast gone, people are talking about new houses already.
+
+# ------------------------------------------------------------------ elders
+
+@ talk, lifestage:elder
+My knees aren't what they were. I leave the felling to the young ones now.
+I've been here {yearshere}. Long enough to remember when this was all trees.
+Sit down, sit down. Let an old one talk a while.
+
+@ talk, lifestage:elder | gruff
+Old. Still handy with a knife, mind.
+
+@ talk, elder:story
+I remember day {chronicleday}. {chronicle} Feels like a lifetime ago.
+Back on day {chronicleday}. {chronicle} The young ones don't remember that.
+Have I told you about day {chronicleday}? {chronicle} Well, now I have.
+
+@ self, elder:story, doing:fire
+Day {chronicleday}. {chronicle} Those were the days.
+
+@ talk, event:newelder
+We've a new elder in the village. They earned the grey in their beard.
+
+@ talk, event:elderdeath
+We lost one of the old ones in the night. Peaceful, they say.
+Our eldest is gone. Went in their sleep, warm by the fire. A good way to go.
+The village feels smaller today. They'd been here from the start.
+
+@ talk, event:elderdeath | devout
+They walk with the ancestors now. Raise a cup tonight.
+
+# ------------------------------------------------------------------ neighbours
+
+@ talk, nextdoor:friend * 0.6
+My friend lives right next door. Handy when you run out of salt.
+Good neighbours make a good village. I've got the best one.
+
+@ talk, nextdoor:rival * 0.6
+Of all the houses, they put me next to that one.
+I can hear my neighbour snoring through two walls. I hate my neighbour.
+
+@ talk, nextdoor:rival | gruff * 0.6
+If my neighbour moves one more stone onto my side, there'll be trouble.
+
+# ------------------------------------------------------------------ the horn and help
+
+@ self, horn
+The horn! I'm coming.
+Right behind you. Lead on.
+Weapons up. Where to?
+
+@ self, horn | gruff
+This had better be worth it.
+
+@ self, help
+Hold on, friend! We're coming!
+Someone's in trouble out there. With me!
+Not on our doorstep, you don't!
+
+@ self, help | worrier
+I'm coming. I'm scared, but I'm coming.
+
+@ talk, event:helpplayer
+Saw you in a fight out there. Couldn't just stand and watch.
+You looked like you needed a hand. We don't let friends fight alone.
+
+@ talk, event:horn
+When the horn sounds, we come. That's how it's always been.

@@ -255,8 +255,15 @@ namespace Villheim.Logic.Villagers
 
                     zdo.Set(KeyTarget, home + away.normalized * 140f);
                     walker.Reset();
-                    Dialogue.Say(villager, Dialogue.LineFor(villager, "bye", "wanderer") ?? "Safe roads.");
+                    // How the stay went, for his home village and for his goodbye (VisitorJudging).
+                    string[] judged = hearth != null ? Village.VisitorJudging.Leaving(villager, hearth) : null;
+                    Dialogue.Say(villager, Dialogue.LineFor(villager, "bye", "wanderer", judged) ?? "Safe roads.");
                     return;
+                }
+
+                if (hearth != null)
+                {
+                    Village.VisitorJudging.Sample(villager, hearth);
                 }
 
                 Linger(villager, ai, dt, state, hearth, target);

@@ -92,6 +92,12 @@ namespace Villheim.Logic
         {
             if (user == Player.m_localPlayer)
             {
+                // Crouching at the hearth blows the horn (Escort); otherwise the chronicle opens.
+                if (Player.m_localPlayer.IsCrouching() && Villagers.Escort.Horn(hearth, Player.m_localPlayer))
+                {
+                    return;
+                }
+
                 Village.Chronicle.Show(hearth);
             }
         }

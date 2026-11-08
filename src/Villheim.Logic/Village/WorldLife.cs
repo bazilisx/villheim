@@ -121,13 +121,15 @@ namespace Villheim.Logic.Village
             }
 
             string kind = Hour >= 8f && Hour < 15f ? Wanderers.Pedlar : Hour >= 17f && Hour < 20f ? Wanderers.Pilgrim : null;
-            if (kind == null || EnvMan.IsWet() || VisitorThere(state.Id))
+            if (kind == null || EnvMan.IsWet() || VisitorThere(state.Id) || VisitorJudging.Waiting(hearth))
             {
                 return;
             }
 
             // The day's chance, spread over the checks in the hours a visitor can come (about seven of them).
             float perDay = LogicConfig.VisitorChancePerDay != null ? LogicConfig.VisitorChancePerDay.Value : 0.5f;
+            // Prosperity, a festival and how the last visitor found the place (Living).
+            perDay = Mathf.Clamp01(perDay * Living.VisitorFactor(hearth));
             double checks = 7.0 / 24.0 * day / TickSeconds;
             double perCheck = 1.0 - System.Math.Pow(1.0 - Mathf.Clamp01(perDay), 1.0 / System.Math.Max(1.0, checks));
             if (Random.value > perCheck)
@@ -188,6 +190,7 @@ namespace Villheim.Logic.Village
             string from = visitor.Zdo.GetString(Wanderers.KeyFrom, "");
             int news = CarryNews(visitor.Zdo.GetInt(KeyFromVillage), hearth);
             Relations.Visited(hearth, visitor.Zdo.GetInt(KeyFromVillage));
+            VisitorJudging.Arrived(visitor, hearth);
             Villagers.Social.Gather(state.Id, visitor, null, kind == Wanderers.Pedlar ? 2 : 1, "event:" + kind, "wave", 40f);
             Dialogue.Note(state.Id, kind);
             string goods = kind == Wanderers.Pedlar ? TradeWithChest(hearth, state) : null;

@@ -67,6 +67,7 @@ namespace Villheim.Logic.Villagers
             WorldLife.NoteNews(villageId, what);
             Goals.VillageEvent(villageId, what);
             Gatherings.Noted(villageId, what);
+            Village.Living.Noted(villageId, what);
             if (VillageMoodEvents.Contains(what))
             {
                 Moods.VillageThink(villageId, what);
@@ -635,6 +636,7 @@ namespace Villheim.Logic.Villagers
             }
 
             tags.UnionWith(PlayerMemory.Tags(hearth, villager));
+            tags.UnionWith(Village.Living.Tags(villager, hearth));
 
             var state = new VillageState(hearth.Zdo);
             int plots = state.Plots.Count;
@@ -718,6 +720,7 @@ namespace Villheim.Logic.Villagers
             if (VillageHearth.Closest(villager.transform.position, 60f) != null) tags.Add("invillage");
             float health = villager.GetHealth() / Mathf.Max(1f, villager.GetMaxHealth());
             tags.Add(health < 0.5f ? "badlyhurt" : health < 0.95f ? "hurt" : "healthy");
+            tags.UnionWith(Village.Living.WandererTags(villager));
             return tags;
         }
 
@@ -792,6 +795,7 @@ namespace Villheim.Logic.Villagers
             line = VillagerSkills.Fill(line, villager, ActivityWord(VillagerBehaviour.Activity(villager) ?? "idle"));
             line = FillMoment(line, villager);
             line = Personality.Fill(line, villager);
+            line = Village.Living.Fill(line, villager);
             if (line.Contains("{neighbour}"))
             {
                 line = line.Replace("{neighbour}", (hearth != null ? Relations.Nearest(hearth)?.Name : null) ?? "the next village");

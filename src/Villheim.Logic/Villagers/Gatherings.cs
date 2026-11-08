@@ -31,6 +31,9 @@ namespace Villheim.Logic.Villagers
 
         public static bool FeastTonight(int villageId) => FeastToday(villageId) && (Hour >= 16.5f || Hour < 2f);
 
+        /// <summary>A festival: tonight is a feast (Calendar).</summary>
+        public static void Feast(int villageId) => FeastDays[villageId] = Today;
+
         /// <summary>From Dialogue.Note: some events make the evening a feast, some get a turnout.</summary>
         public static void Noted(int villageId, string what)
         {

@@ -37,9 +37,21 @@ namespace Villheim.Logic.Village
                 return false;
             }
 
+            if (Standing.RefusesTrade(hearth, villager, player))
+            {
+                return true;
+            }
+
             Trader trader = TraderOf(villager);
             trader.m_name = $"{villager.VillagerName} of {villager.VillageName}";
             trader.m_items = Stock(hearth, chest);
+            // Standing and the trader's mood about his neighbours move the prices (Living).
+            float factor = Living.PriceFactor(hearth, villager, player);
+            foreach (Trader.TradeItem item in trader.m_items)
+            {
+                item.m_price = Mathf.Max(1, Mathf.RoundToInt(item.m_price * factor));
+            }
+
             if (trader.m_items.Count == 0)
             {
                 Dialogue.Say(villager, "We've nothing to spare right now. Come back when the chest is fuller.");

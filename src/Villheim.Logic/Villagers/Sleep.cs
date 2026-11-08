@@ -18,6 +18,9 @@ namespace Villheim.Logic.Villagers
 
         public static void Forget(int villageId) => Cache.Remove(villageId);
 
+        /// <summary>Where this villager's claimed bed stands, or zero when he has none.</summary>
+        public static Vector3 Claimed(Villager villager) => villager?.Zdo != null ? villager.Zdo.GetVec3(KeyBed, Vector3.zero) : Vector3.zero;
+
         /// <summary>Every bed of the village that is loaded now. Looked up at most every ten seconds.</summary>
         public static List<Bed> Of(VillageHearth hearth)
         {
@@ -102,7 +105,8 @@ namespace Villheim.Logic.Villagers
                     continue;
                 }
 
-                float distance = Utils.DistanceXZ(bed.transform.position, home);
+                // Near his friend and away from his rival where he can (Neighbours).
+                float distance = Utils.DistanceXZ(bed.transform.position, home) + Neighbours.BedPenalty(villager, bed.transform.position);
                 if (distance < bestDistance)
                 {
                     best = bed;

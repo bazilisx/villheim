@@ -682,6 +682,11 @@ namespace Villheim.Logic
                 "Which cultures a village of each biome may have, with weights: Biome=culture:weight,culture:weight; next " +
                 "biome. A new village rolls one with its own seed and keeps it. Biomes left out build like the Meadows. " +
                 "Culture keys are the [names] in Cultures/cultures.txt (see 'vh cultures').");
+            // Mountains cultures equally common (Tyler, 2026-11-08, D-039): a file still on the old default moves.
+            if (CultureMap.Value == Village.Cultures.OldDefaultMap)
+            {
+                CultureMap.Value = Village.Cultures.DefaultMap;
+            }
             CultureForeignChance = Admin(config, cultures, "CultureForeignChance", 0.15f,
                 "Chance that a newcomer from outside is of another people than the village. He keeps his own names and " +
                 "looks and says he comes from a place in his own tongue.");

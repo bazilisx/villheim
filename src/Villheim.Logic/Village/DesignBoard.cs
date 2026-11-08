@@ -1701,6 +1701,40 @@ namespace Villheim.Logic.Village
             return set;
         }
 
+        /// <summary>
+        /// How many ground points of a plot differ from what WriteGround writes for this save (paint by more than 0.05
+        /// in a colour, height by more than 5 cm): the points of the save, and every other point flat with no paint.
+        /// </summary>
+        private static int GroundMismatches(Vector3 center, float yaw, float half, List<string> exact)
+        {
+            CultureInfo inv = CultureInfo.InvariantCulture;
+            var wanted = new Dictionary<(int, int), (float Rise, Color Paint)>();
+            foreach (string line in exact ?? new List<string>())
+            {
+                string[] f = line.Split(';');
+                if (f.Length >= 6 && int.TryParse(f[0], NumberStyles.Integer, inv, out int x) && int.TryParse(f[1], NumberStyles.Integer, inv, out int z) &&
+                    float.TryParse(f[2], NumberStyles.Float, inv, out float rise) && float.TryParse(f[3], NumberStyles.Float, inv, out float r) &&
+                    float.TryParse(f[4], NumberStyles.Float, inv, out float g) && float.TryParse(f[5], NumberStyles.Float, inv, out float b))
+                {
+                    wanted[(x, z)] = (rise, new Color(r, g, b, 1f));
+                }
+            }
+
+            int wrong = 0;
+            foreach (KeyValuePair<(int, int), (float Rise, Color Paint)> point in GroundPoints(new Plot { Center = center, Yaw = yaw, Half = half }))
+            {
+                (float rise, Color paint) = wanted.TryGetValue(point.Key, out var w) ? w : (0f, Heightmap.m_paintMaskNothing);
+                Color have = point.Value.Paint;
+                if (Mathf.Abs(have.r - paint.r) > 0.05f || Mathf.Abs(have.g - paint.g) > 0.05f || Mathf.Abs(have.b - paint.b) > 0.05f ||
+                    Mathf.Abs(point.Value.Rise - rise) > 0.05f)
+                {
+                    wrong++;
+                }
+            }
+
+            return wrong;
+        }
+
         /// <summary>One ground job at a time.</summary>
         private static bool _groundBusy;
 
@@ -1724,9 +1758,26 @@ namespace Villheim.Logic.Village
                 if (exact != null || lines.Count == 0)
                 {
                     int points = WriteGround(center, yaw, half, exact);
-                    if (exact != null)
+
+                    // Checked by itself: 2 s later every ground point of the plot is read back and compared with what was
+                    // written; any that differ (an area reloaded by the game, say) and the plot is written again.
+                    yield return new WaitForSeconds(2f);
+                    int wrong = GroundMismatches(center, yaw, half, exact);
+                    int rewrites = 0;
+                    while (wrong > 0 && rewrites < 3)
                     {
-                        Say($"Board: ground copied point for point: {exact.Count} points of the save, {points} ground points set.");
+                        rewrites++;
+                        WriteGround(center, yaw, half, exact);
+                        yield return new WaitForSeconds(1f);
+                        wrong = GroundMismatches(center, yaw, half, exact);
+                    }
+
+                    ClutterSystem.instance?.ResetGrass(center, half * 1.5f + 2f);
+                    if (exact != null || wrong > 0)
+                    {
+                        Say(wrong == 0
+                            ? $"Board: ground copied and checked: identical to the save ({points} ground points{(rewrites > 0 ? $", written {rewrites + 1} times" : "")})."
+                            : $"Board: ground copy still differs in {wrong} points after {rewrites + 1} writes; please tell Claude.");
                     }
 
                     yield break;
@@ -1871,6 +1922,7 @@ namespace Villheim.Logic.Village
 
             // The same ground point for point (height and paint, soft edges included), for the board's own copies.
             List<string> exact = SampleGround(center, sign.GetFloat(Gallery.KeyPlotYaw, 0f), sign.GetFloat(Gallery.KeyPlotHalf, 10f));
+            ClutterSystem.instance?.ResetGrass(center, sign.GetFloat(Gallery.KeyPlotHalf, 10f) * 1.5f + 2f);
             if (exact.Count > 0)
             {
                 header.Add(GroundHeader);

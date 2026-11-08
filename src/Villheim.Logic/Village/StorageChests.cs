@@ -194,9 +194,16 @@ namespace Villheim.Logic.Village
                 return null;
             }
 
-            // A chest that stands without its label gets its sign first.
+            // A stack without its label gets its sign first. One sign per stack, on the lower chest's front, where it
+            // has the chest to hang on: a sign on the upper chest counted as hanging in the air and broke (T-43). It
+            // names both chests, the upper one first.
             foreach (Container chest in Of(state.Id))
             {
+                if (Below(state.Id, chest) != null)
+                {
+                    continue; // labelled on the chest under it
+                }
+
                 if (!HasSign(chest, state.Id))
                 {
                     Amenities.Job sign = LabelJob(state, chest);
@@ -204,6 +211,10 @@ namespace Villheim.Logic.Village
                     {
                         return sign;
                     }
+                }
+                else
+                {
+                    Relabel(state.Id, chest);
                 }
             }
 
@@ -229,6 +240,55 @@ namespace Villheim.Logic.Village
             {
                 Prefab = ChestPrefab, Name = ChestJob, Spot = spot, Rotation = rotation, Cost = cost, Kind = kind,
             };
+        }
+
+        /// <summary>The store's chest this one stands on, or null.</summary>
+        private static Container Below(int villageId, Container chest)
+        {
+            Vector3 under = chest.transform.position - Vector3.up * ChestSize().y;
+            Container below = StorageAt(villageId, under);
+            return below != null && below != chest ? below : null;
+        }
+
+        /// <summary>The store's chest standing on this one, or null.</summary>
+        private static Container Above(int villageId, Container chest)
+        {
+            Container above = StorageAt(villageId, chest.transform.position + Vector3.up * ChestSize().y);
+            return above != null && above != chest ? above : null;
+        }
+
+        /// <summary>What a stack's sign says: the upper chest's kind over the lower one's.</summary>
+        private static string LabelText(int villageId, Container lower)
+        {
+            Container upper = Above(villageId, lower);
+            return upper != null ? $"<#fff>{Label(KindOf(upper))}<br>{Label(KindOf(lower))}" : $"<#fff>{Label(KindOf(lower))}";
+        }
+
+        /// <summary>Brings the stack's sign up to date once a chest goes on top (the text only, nothing is built).</summary>
+        private static void Relabel(int villageId, Container lower)
+        {
+            SignPlace(lower, out Vector3 spot, out _);
+            string text = LabelText(villageId, lower);
+            foreach (Collider collider in Physics.OverlapSphere(spot, 0.4f))
+            {
+                Sign sign = collider.GetComponentInParent<Sign>();
+                ZNetView view = sign != null ? sign.GetComponent<ZNetView>() : null;
+                if (view != null && view.IsValid() && view.GetZDO().GetInt(KeySign) == villageId &&
+                    view.GetZDO().GetString(ZDOVars.s_text, "") != text)
+                {
+                    view.ClaimOwnership();
+                    view.GetZDO().Set(ZDOVars.s_text, text);
+                    sign.UpdateText();
+                }
+            }
+        }
+
+        /// <summary>The main chest is (nearly) full: another storage chest comes before anything but the essentials (T-42).</summary>
+        public static bool Urgent(VillageHearth hearth)
+        {
+            Container main = VillageChest.Find(hearth);
+            Inventory inventory = main != null ? main.GetInventory() : null;
+            return On && inventory != null && (inventory.GetEmptySlots() <= 1 || inventory.SlotsUsedPercentage() >= 90f);
         }
 
         private static Amenities.Job LabelJob(VillageState state, Container chest)
@@ -275,7 +335,8 @@ namespace Villheim.Logic.Village
                 zdo.Set(KeySign, hearth.VillageId);
                 if (made.TryGetComponent(out Sign sign))
                 {
-                    zdo.Set(ZDOVars.s_text, $"<#fff>{Label(job.Kind)}");
+                    Container labelled = Of(hearth.VillageId).OrderBy(c => Vector3.Distance(c.transform.position, job.Spot)).FirstOrDefault();
+                    zdo.Set(ZDOVars.s_text, labelled != null ? LabelText(hearth.VillageId, labelled) : $"<#fff>{Label(job.Kind)}");
                     sign.UpdateText();
                 }
             }
@@ -426,7 +487,8 @@ namespace Villheim.Logic.Village
                         Container bottom = StorageAt(hearth.VillageId, ground);
                         if (bottom == null)
                         {
-                            if (!Amenities.Usable(hearth, state, ground, out float y))
+                            // The store's own neighbours are fine; anything else of the village is checked by ClearFor.
+                            if (!Amenities.Usable(hearth, state, ground, out float y, false))
                             {
                                 continue;
                             }

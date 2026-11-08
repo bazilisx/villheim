@@ -133,10 +133,18 @@ namespace Villheim.Logic.Village
                                            l.m_prefabName.IndexOf(name, System.StringComparison.OrdinalIgnoreCase) >= 0);
         }
 
-        /// <summary>The first child (depth first) whose name starts with the text, then the first that contains it.</summary>
+        /// <summary>
+        /// The child by its path from the root ("a/b/c", as 'vh props' prints it), or else the first (depth first) whose
+        /// name starts with the text, then the first that contains it.
+        /// </summary>
         private static Transform FindChild(Transform root, string name)
         {
             List<Transform> all = root.GetComponentsInChildren<Transform>(true).Where(t => t != root).ToList();
+            if (name.Contains("/"))
+            {
+                return all.FirstOrDefault(t => Path(root, t).EndsWith(name, System.StringComparison.OrdinalIgnoreCase));
+            }
+
             return all.FirstOrDefault(t => t.name.StartsWith(name, System.StringComparison.OrdinalIgnoreCase)) ??
                    all.FirstOrDefault(t => t.name.IndexOf(name, System.StringComparison.OrdinalIgnoreCase) >= 0);
         }
@@ -379,7 +387,10 @@ namespace Villheim.Logic.Village
             foreach (Transform t in asset.GetComponentsInChildren<Transform>(true))
             {
                 string path = t == asset.transform ? "(root)" : Path(asset.transform, t);
-                if (filter.Length > 0 && path.IndexOf(filter, System.StringComparison.OrdinalIgnoreCase) < 0)
+                // 'cloth': the children that flutter in the wind (a Cloth anywhere under them), to find tents and banners.
+                bool cloth = filter.Equals("cloth", System.StringComparison.OrdinalIgnoreCase);
+                if (cloth ? t.GetComponentInChildren<Cloth>(true) == null || t == asset.transform
+                          : filter.Length > 0 && path.IndexOf(filter, System.StringComparison.OrdinalIgnoreCase) < 0)
                 {
                     continue;
                 }

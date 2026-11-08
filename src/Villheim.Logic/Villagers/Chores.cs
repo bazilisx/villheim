@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Runtime.CompilerServices;
 using UnityEngine;
 using Villheim.Logic.Village;
@@ -97,6 +98,9 @@ namespace Villheim.Logic.Villagers
             /// <summary>Picking up useful things lying in the village (any kind, not only building materials).</summary>
             public bool Tidying;
 
+            /// <summary>When the builder next looks for an essential amenity to make before the building going up.</summary>
+            public float NextNeedCheck;
+
             /// <summary>The amenity piece the builder is making (Phase.Make), and when he may look for one again.</summary>
             public Amenities.Job Making;
             public float MakeRetryAt;
@@ -185,10 +189,27 @@ namespace Villheim.Logic.Villagers
                     VillheimPlugin.Debug($"{villager.VillagerName} goes to rebuild the village chest.");
                 }
             }
-            else if (builder && needs.SiteActive && needs.CanBuildNow && work.Phase != Phase.Build && Time.time >= work.BuildRetryAt)
+            else if (builder && work.Phase != Phase.Make && work.Phase != Phase.Deliver && Time.time >= work.NextNeedCheck &&
+                     EssentialDue(villager, work))
             {
-                // The chest has what the next piece needs: the builder drops what he is doing (keeping what he
-                // carries for the chest) and builds.
+                // Needs before the building going up (T-54): beds, the cooking station, a half-made notice board, a
+                // chest when the main one is full. He hands in what he carries first.
+                if (work.Carrying.Count > 0)
+                {
+                    BeginDeliver(villager, work);
+                }
+                else
+                {
+                    ReleaseTarget(work);
+                    TryMake(villager, work);
+                }
+            }
+            else if (needs.SiteActive && needs.CanBuildNow && work.Phase != Phase.Build && work.Phase != Phase.Make &&
+                     Time.time >= work.BuildRetryAt && (builder || JoinsBuilding(villager, work)))
+            {
+                // The chest has what the next part needs: the builder drops what he is doing (keeping what he carries
+                // for the chest) and builds, and idle hands join him (T-54: building the village is the point; the
+                // materials serve it).
                 if (work.Carrying.Count > 0 && work.Phase != Phase.Deliver)
                 {
                     BeginDeliver(villager, work);
@@ -766,7 +787,8 @@ namespace Villheim.Logic.Villagers
         /// <summary>The held tool is good enough to break this (an antler pickaxe does nothing to copper, and so on).</summary>
         private static bool TierAllows(GameObject go, int tier)
         {
-            if (Village.VillageWood.IsVillageWood(go)) return true; // the village's own Yggdrasil shoots (D-052)
+            if (Village.VillageWood.GivesWood(go)) return true; // Yggdrasil shoots (D-052, T-55)
+            if (InMistlands(go) && IsRock(go)) return true; // Mistlands rock: villagers break it whatever their tools (T-55)
             if (go.TryGetComponent(out TreeBase tree)) return tree.m_minToolTier <= tier;
             if (go.TryGetComponent(out TreeLog log)) return log.m_minToolTier <= tier;
             if (go.TryGetComponent(out MineRock5 rock5)) return rock5.m_minToolTier <= tier;
@@ -1226,6 +1248,7 @@ namespace Villheim.Logic.Villagers
 
             work.Reason = "";
             work.Timer = 0f;
+            NoteHelping(villager);
             if (ConstructionSite.PlaceNext(hearth, true))
             {
                 ConstructionSite.NoteBuilder(villager.VillageId);
@@ -1240,6 +1263,63 @@ namespace Villheim.Logic.Villagers
             Finish(work);
             work.Cooldown = 1f;
             return false;
+        }
+
+        private static readonly Dictionary<int, Dictionary<Villager, float>> Helpers = new Dictionary<int, Dictionary<Villager, float>>();
+
+        /// <summary>
+        /// A villager between jobs (not carrying, not out at a tree or rock) joins the builder while the chest covers the
+        /// next part of the building, up to BuildHelpers of them (T-54). Elders, children and wanderers never do.
+        /// </summary>
+        private static bool JoinsBuilding(Villager villager, Work work)
+        {
+            int most = LogicConfig.BuildHelpers != null ? LogicConfig.BuildHelpers.Value : 3;
+            if (most <= 0 || work.Phase != Phase.Idle || work.Carrying.Count > 0 || Wanderers.IsWanderer(villager))
+            {
+                return false;
+            }
+
+            if (!Helpers.TryGetValue(villager.VillageId, out Dictionary<Villager, float> helping))
+            {
+                Helpers[villager.VillageId] = helping = new Dictionary<Villager, float>();
+            }
+
+            foreach (Villager gone in helping.Where(h => h.Key == null || h.Key.IsDead() || Time.time - h.Value > 3f).Select(h => h.Key).ToList())
+            {
+                helping.Remove(gone);
+            }
+
+            if (!helping.ContainsKey(villager) && helping.Count >= most)
+            {
+                return false;
+            }
+
+            helping[villager] = Time.time;
+            VillheimPlugin.Debug($"{villager.VillagerName} goes to help with the building.");
+            return true;
+        }
+
+        /// <summary>Still building as a helper: keeps his place among the helpers.</summary>
+        private static void NoteHelping(Villager villager)
+        {
+            if (Helpers.TryGetValue(villager.VillageId, out Dictionary<Villager, float> helping) && helping.ContainsKey(villager))
+            {
+                helping[villager] = Time.time;
+            }
+        }
+
+        /// <summary>An essential amenity (see Amenities.Find) is due and the chest pays for it. Looked at every few seconds.</summary>
+        private static bool EssentialDue(Villager villager, Work work)
+        {
+            work.NextNeedCheck = Time.time + 3f;
+            if (Time.time < work.MakeRetryAt)
+            {
+                return false;
+            }
+
+            VillageHearth hearth = VillageHearth.Find(villager.VillageId);
+            Amenities.Job job = hearth != null && hearth.IsValid ? Amenities.Due(hearth) : null;
+            return job != null && job.Essential;
         }
 
         /// <summary>The village's builder is about and makes the amenities (FreeTime leaves them to him).</summary>
@@ -1482,6 +1562,9 @@ namespace Villheim.Logic.Villagers
             return strength * Random.Range(0.75f, 1.15f);
         }
 
+        private static bool InMistlands(GameObject go) =>
+            go != null && WorldGenerator.instance != null && WorldGenerator.instance.GetBiome(go.transform.position) == Heightmap.Biome.Mistlands;
+
         private static void Hit(Villager villager, GameObject target, Vector3 point, Collider struck, bool pickaxe)
         {
             IDestructible destructible = target.GetComponentInParent<IDestructible>() ?? target.GetComponentInChildren<IDestructible>();
@@ -1497,7 +1580,8 @@ namespace Villheim.Logic.Villagers
             {
                 m_point = point,
                 m_dir = direction.sqrMagnitude > 0.01f ? direction.normalized : villager.transform.forward,
-                m_toolTier = (short)(weapon?.m_shared?.m_toolTier ?? 0),
+                // Mistlands rock gives way to villagers whatever their tools (T-55); the shoots see to themselves (VillageWood).
+                m_toolTier = (short)(pickaxe && InMistlands(target) ? 10 : weapon?.m_shared?.m_toolTier ?? 0),
                 m_attacker = villager.GetZDOID(),
 
                 // Big rocks pick the part that breaks from the collider that was hit, and ignore hits without one.
@@ -1684,7 +1768,8 @@ namespace Villheim.Logic.Villagers
             }
 
             string name = go.name.ToLowerInvariant();
-            if (!name.Contains("rock") || go.GetComponent<Piece>() != null)
+            bool mistlandsCliff = name.Contains("cliff_mistlands") || (name.Contains("mistland") && go.GetComponent<MineRock5>() != null);
+            if ((!name.Contains("rock") && !mistlandsCliff) || go.GetComponent<Piece>() != null)
             {
                 return false;
             }

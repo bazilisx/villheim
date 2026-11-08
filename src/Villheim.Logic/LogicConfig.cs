@@ -13,6 +13,8 @@ namespace Villheim.Logic
         public static ConfigEntry<bool> SiteChest;
         public static ConfigEntry<float> SecondsPerPiece;
         public static ConfigEntry<float> BuildStartShare;
+        public static ConfigEntry<int> BuildHelpers;
+        public static ConfigEntry<string> YggdrasilYield;
         public static ConfigEntry<float> ClearingRadius;
         public static ConfigEntry<bool> IdlePickup;
         public static ConfigEntry<string> HamletFence;
@@ -324,6 +326,12 @@ namespace Villheim.Logic
                 "windows, inside): once the chest holds this share of what that part costs in its main material (0.5: " +
                 "half, D-048). He then puts up pieces, each one supported, while the materials last, so a building may " +
                 "stand half done while he fetches more. 0: as soon as the next piece is paid for.");
+            BuildHelpers = Admin(config, work, "BuildHelpers", 3,
+                "While the chest holds what the next part of a building needs, up to this many villagers with nothing in " +
+                "hand help the builder put it up, instead of going out for more (T-54). 0: the builder alone.");
+            YggdrasilYield = Admin(config, work, "YggdrasilYield", "Wood:2, FineWood:1",
+                "In the Mistlands villagers fell the young Yggdrasil trees and break the Mistlands rock nearby, whatever " +
+                "their tools. Each piece of Yggdrasil wood they bring in counts as this much ordinary wood (T-55).");
             ClearingRadius = Admin(config, work, "ClearingRadius", 20f,
                 "Villagers keep the ground this many meters around the hearth clear: they fell trees, take out stumps, " +
                 "break rocks and pick up sticks and stones there, and the materials go to the chest. 0: only the paths " +
@@ -338,9 +346,11 @@ namespace Villheim.Logic
                 "How much of the hamlet's fence goes into the ground (0: none, it stands on the ground).");
             FenceWallSink = Admin(config, work, "FenceWallSink", 0.5f,
                 "How much of the village's stake wall goes into the ground (0.5: half). Gates are pairs of wood gates.");
-            DecorProps = Admin(config, work, "DecorProps", "Hildir_camp:tent",
+            DecorProps = Admin(config, work, "LocationDecor", "",
                 "Models from locations a village puts up as decor on the outer ring by the hearth (D-047), as location:child " +
-                "separated by commas: Hildir's tents that flutter in the wind by default. 'vh props <location>' lists names.");
+                "separated by commas; the child by the start of its name, or by its path (a/b/c) as 'vh props' prints it. " +
+                "Empty by default: Hildir_camp's 'tent' child was a bundle of things on the ground (T-59). 'vh props " +
+                "Hildir_camp cloth' lists the children that flutter, to find the tent.");
             VillageLevelSnap = Admin(config, work, "VillageLevelSnap", 2f,
                 "A new building whose ground lies within this many meters of the hearth's is set at the hearth's level, so " +
                 "the middle of the village is one even floor instead of steps (T-28). Further off, it sits at the middle " +

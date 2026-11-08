@@ -12,9 +12,10 @@ namespace Villheim.Logic.Village
     /// game's own Yggdrasil shoots in its copse (Groves, Replanting) and marks each with its village id. A small shoot
     /// grows into a full one after YggaGrowDays.
     ///
-    /// When the village's own people fell one of their shoots, it drops plain wood instead of Yggdrasil wood, and so
-    /// do its logs (marked as they are made). Anyone else who fells one gets the game's own drops. Villagers' axes are
-    /// strong enough for their own shoots whatever the tier.
+    /// When the village's own people fell one of their shoots, or a wild one in the Mistlands near them (T-55), it drops
+    /// ordinary wood and fine wood instead of Yggdrasil wood (YggdrasilYield for each piece), and so do its logs (marked
+    /// as they are made). Anyone else who fells one gets the game's own drops. Villagers' axes are strong enough for
+    /// these shoots whatever the tier.
     /// </summary>
     internal static class VillageWood
     {
@@ -56,6 +57,33 @@ namespace Villheim.Logic.Village
         /// <summary>True for a tree or log a village planted (its people get plain wood from it).</summary>
         public static bool IsVillageWood(GameObject go) =>
             go != null && (go.GetComponent<TreeBase>() != null || go.GetComponent<TreeLog>() != null) && VillageOf(go) != 0;
+
+        /// <summary>A wild Yggdrasil shoot or its log: villagers fell these for wood like their own (T-55).</summary>
+        public static bool IsWildShoot(GameObject go) =>
+            go != null && (go.GetComponent<TreeBase>() != null || go.GetComponent<TreeLog>() != null) && VillageOf(go) == 0 &&
+            Utils.GetPrefabName(go).StartsWith("YggaShoot", StringComparison.OrdinalIgnoreCase);
+
+        /// <summary>What a villager gets from a shoot: ordinary and fine wood (or the village's own: also that).</summary>
+        public static bool GivesWood(GameObject go) => IsVillageWood(go) || IsWildShoot(go);
+
+        /// <summary>The village of the villager behind the hit, or 0.</summary>
+        private static int VillageOfHit(HitData hit) => hit?.GetAttacker() is Villager villager ? villager.VillageId : 0;
+
+        /// <summary>YggdrasilYield: what one piece of Yggdrasil wood counts as, "Wood:2, FineWood:1".</summary>
+        private static List<(string Item, int Amount)> Yield()
+        {
+            var yield = new List<(string, int)>();
+            foreach (string part in (LogicConfig.YggdrasilYield?.Value ?? "Wood:2, FineWood:1").Split(','))
+            {
+                string[] pair = part.Split(':');
+                if (pair.Length == 2 && int.TryParse(pair[1].Trim(), out int amount) && amount > 0)
+                {
+                    yield.Add((pair[0].Trim(), amount));
+                }
+            }
+
+            return yield.Count > 0 ? yield : new List<(string, int)> { ("Wood", 1) };
+        }
 
         /// <summary>Marks something just planted (or a log just made) as the village's own.</summary>
         public static void Mark(GameObject go, int villageId)
@@ -114,12 +142,24 @@ namespace Villheim.Logic.Village
 
         private static readonly Dictionary<DropTable, DropTable> WoodTables = new Dictionary<DropTable, DropTable>();
 
-        /// <summary>The same drops with Yggdrasil wood swapped for plain wood.</summary>
+        private static string _yieldFrom;
+
+        /// <summary>
+        /// The same drops with Yggdrasil wood swapped for YggdrasilYield (ordinary and fine wood by default): each roll
+        /// that would have given Yggdrasil wood gives one of them, its amount times the yield.
+        /// </summary>
         private static DropTable WoodTable(DropTable source)
         {
-            if (source == null)
+            if (source == null || ObjectDB.instance == null)
             {
-                return null;
+                return source;
+            }
+
+            string config = LogicConfig.YggdrasilYield?.Value ?? "";
+            if (config != _yieldFrom)
+            {
+                WoodTables.Clear();
+                _yieldFrom = config;
             }
 
             if (WoodTables.TryGetValue(source, out DropTable cached))
@@ -127,17 +167,35 @@ namespace Villheim.Logic.Village
                 return cached;
             }
 
-            GameObject wood = ObjectDB.instance != null ? ObjectDB.instance.GetItemPrefab("Wood") : null;
+            List<(string Item, int Amount)> yield = Yield();
             DropTable table = source.Clone();
-            table.m_drops = (source.m_drops ?? new List<DropTable.DropData>()).Select(d =>
+            var drops = new List<DropTable.DropData>();
+            foreach (DropTable.DropData d in source.m_drops ?? new List<DropTable.DropData>())
             {
-                if (wood != null && d.m_item != null && d.m_item.name.StartsWith("YggdrasilWood"))
+                if (d.m_item == null || !d.m_item.name.StartsWith("YggdrasilWood"))
                 {
-                    d.m_item = wood;
+                    drops.Add(d);
+                    continue;
                 }
 
-                return d;
-            }).ToList();
+                foreach ((string item, int amount) in yield)
+                {
+                    GameObject prefab = ObjectDB.instance.GetItemPrefab(item);
+                    if (prefab == null)
+                    {
+                        continue;
+                    }
+
+                    DropTable.DropData copy = d;
+                    copy.m_item = prefab;
+                    copy.m_stackMin = Mathf.Max(1, d.m_stackMin * amount);
+                    copy.m_stackMax = Mathf.Max(copy.m_stackMin, d.m_stackMax * amount);
+                    drops.Add(copy);
+                }
+            }
+
+            table.m_drops = drops;
+
             WoodTables[source] = table;
             return table;
         }
@@ -161,6 +219,11 @@ namespace Villheim.Logic.Village
                 try
                 {
                     int village = VillageOf(__instance.gameObject);
+                    if (village == 0 && ByVillager(hit) && IsWildShoot(__instance.gameObject))
+                    {
+                        village = VillageOfHit(hit); // a wild shoot near a Mistlands village (T-55)
+                    }
+
                     if (village == 0 || !ByVillager(hit))
                     {
                         return;
@@ -196,6 +259,11 @@ namespace Villheim.Logic.Village
                 try
                 {
                     int village = VillageOf(__instance.gameObject);
+                    if (village == 0 && ByVillager(hit) && IsWildShoot(__instance.gameObject))
+                    {
+                        village = VillageOfHit(hit); // a wild shoot near a Mistlands village (T-55)
+                    }
+
                     if (village == 0 || !ByVillager(hit))
                     {
                         return;

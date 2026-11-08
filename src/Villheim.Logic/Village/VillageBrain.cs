@@ -64,6 +64,7 @@ namespace Villheim.Logic.Village
 
             NoticeBoard.RemoveStrayBoards(hearth, state);
             Demisters.Founding(hearth, state);
+            Villagers.Healing.ClearStation(hearth);
             VillageChest.Ensure(hearth);
             VillageChest.MoveStockIn(hearth, state);
             Villagers.Social.VillageTick(hearth);
@@ -765,16 +766,10 @@ namespace Villheim.Logic.Village
                 return "A newly lit hearth. Settlers will arrive soon.";
             }
 
-            // What the village holds wherever it keeps it (the chest, the storage chests and the stock), as the builder
-            // counts it. The hover had read only the stock and said "no materials" with a full chest (T-11).
+            // Short, as Millénaire's panel (T-38): who and how big, what comes next, and have/need for what it lacks.
             int buildings = state.Plots.Count;
-            Dictionary<string, int> held = VillageChest.Holdings(hearth);
-            List<string> holds = held.Where(h => h.Value > 0).OrderByDescending(h => h.Value)
-                .Select(h => $"{h.Value} {Materials.Label(h.Key)}").ToList();
             string text = $"{state.Name} ({Tier(buildings)}): {buildings} buildings, " +
-                          $"{CountVillagers(state.Id)}/{Capacity(state)} villagers. " +
-                          $"Holds {(holds.Count > 0 ? string.Join(", ", holds) : "no building materials")}.";
-
+                          $"{CountVillagers(state.Id)}/{Capacity(state)} villagers.";
             text += " " + NextStep.Text(hearth, state);
 
             // Waits that the next step doesn't already explain (no room, a boss, a closed chest).

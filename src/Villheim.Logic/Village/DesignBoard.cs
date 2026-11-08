@@ -980,34 +980,42 @@ namespace Villheim.Logic.Village
         // ---------------------------------------------------------------- the ground of a plot
 
         /// <summary>
-        /// Every square metre of the plot whose ground is not as the plot was laid out (raised or lowered by more than
-        /// 5 cm from the plot's middle, or painted as path, paving or tilled soil), as PlanBuild terrain lines:
-        /// "square;x;y;z;0.5;0;0;Paint" in the plot's own coordinates, y the ground's height above the plot's middle.
+        /// The ground that is part of the design, as PlanBuild terrain lines ("square;x;y;z;0.5;0;0;Paint", plot
+        /// coordinates, y above the plot's middle): every painted square metre (a circle of dirt, paths, paving, tilled
+        /// soil), with its height so it comes back level, and every square raised or dug more than 30 cm from the plot's
+        /// usual floor (the middle height of all its squares). Plain grass at floor height is never kept, so a save is
+        /// as big as what was made in the plot, not the plot.
         /// </summary>
         private static List<string> SampleTerrain(Vector3 center, float yaw, float half)
         {
-            var lines = new List<string>();
-            CultureInfo inv = CultureInfo.InvariantCulture;
+            var squares = new List<(int X, int Z, float Rise, string Paint)>();
             Quaternion turn = Quaternion.Euler(0f, yaw, 0f);
             int reach = Mathf.FloorToInt(half);
             for (int x = -reach; x <= reach; x++)
             for (int z = -reach; z <= reach; z++)
             {
-                var local = new Vector3(x, 0f, z);
-                Vector3 world = center + turn * local;
-                if (ZoneSystem.instance == null || !ZoneSystem.instance.GetGroundHeight(world, out float ground))
+                Vector3 world = center + turn * new Vector3(x, 0f, z);
+                if (ZoneSystem.instance != null && ZoneSystem.instance.GetGroundHeight(world, out float ground))
                 {
-                    continue;
+                    squares.Add((x, z, ground - center.y, PaintAt(world)));
                 }
+            }
 
-                float rise = ground - center.y;
-                string paint = PaintAt(world);
-                if (Mathf.Abs(rise) < 0.05f && paint.Length == 0)
+            var lines = new List<string>();
+            if (squares.Count == 0)
+            {
+                return lines;
+            }
+
+            List<float> rises = squares.Select(q => q.Rise).OrderBy(r => r).ToList();
+            float floor = rises[rises.Count / 2];
+            CultureInfo inv = CultureInfo.InvariantCulture;
+            foreach ((int x, int z, float rise, string paint) in squares)
+            {
+                if (paint.Length > 0 || Mathf.Abs(rise - floor) > 0.3f)
                 {
-                    continue;
+                    lines.Add(string.Join(";", "square", x.ToString(inv), rise.ToString("0.###", inv), z.ToString(inv), "0.5", "0", "0", paint));
                 }
-
-                lines.Add(string.Join(";", "square", x.ToString(inv), rise.ToString("0.###", inv), z.ToString(inv), "0.5", "0", "0", paint));
             }
 
             return lines;

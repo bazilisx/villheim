@@ -34,13 +34,13 @@ namespace Villheim.Logic.Village
         public const string DefaultMap =
             "Meadows=norse:3,anglo-saxon:1,frankish-norman:1; BlackForest=norse-forest:2,celtic:1,slavic:1; " +
             "Swamp=celtic-crannog:1,baltic:1,fen-folk:1; Mountain=norse-highland:1,saami:1; " +
-            "Plains=middle-eastern:2,byzantine:1,steppe:1; Mistlands=byzantine:1,caucasian-highland:1";
+            "Plains=middle-eastern:2,byzantine:1,steppe:1; Mistlands=byzantine:1,lamari:1";
 
         /// <summary>The default before D-039 (Mountains cultures equally common), moved to the new one on load.</summary>
         public const string OldDefaultMap =
             "Meadows=norse:3,anglo-saxon:1,frankish-norman:1; BlackForest=norse-forest:2,celtic:1,slavic:1; " +
             "Swamp=celtic-crannog:1,baltic:1,fen-folk:1; Mountain=norse-highland:2,saami:1; " +
-            "Plains=middle-eastern:2,byzantine:1,steppe:1; Mistlands=byzantine:1,caucasian-highland:1";
+            "Plains=middle-eastern:2,byzantine:1,steppe:1; Mistlands=byzantine:1,lamari:1";
 
         internal readonly struct Wear
         {
@@ -110,6 +110,11 @@ namespace Villheim.Logic.Village
         public static Culture Get(string key)
         {
             Dictionary<string, Culture> data = Data();
+            if (key == "caucasian-highland")
+            {
+                key = "lamari"; // renamed 2026-11-08 (D-046)
+            }
+
             if (key != null && data.TryGetValue(key, out Culture culture))
             {
                 return culture;

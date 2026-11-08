@@ -32,7 +32,7 @@ Weights are provisional (Tyler, 2026-11-08; Mountain even, D-039). `S.cultureFor
 | Swamp | celtic-crannog 3, baltic 3, fen-folk 3 |
 | Mountain | norse-highland 1, saami 1 |
 | Plains | middle-eastern 3, byzantine 3, steppe 3 |
-| Mistlands | byzantine 3, caucasian-highland 4 |
+| Mistlands | byzantine 3, lamari 4 |
 | Ashlands | castle-medieval 1 (lab style; no approved culture yet) |
 
 The older lab styles (`black-forest`, `swamp`, `mountain`, `east-asian`, `castle-medieval`, `dwarven`) stay on the
@@ -75,9 +75,9 @@ degrees, so their shape is unknown), trader tents and awnings. Their sizes need 
 | `gables` | norse-highland | 1 to 3 narrow houses (6 m wide) side by side, wooden gable fronts and doors to the yard, stone side and back walls, the middle house deeper at s3 |
 | `court` | middle-eastern | four wings round a yard, a gallery on the yard side with a stone arcade (3 m bays) or marble arcade (2 m bays), one door per wing, paved yard with a well; corner towers on s3 caravanserais |
 | `keep` | frankish-norman | square keep, 2 to 3 storeys of 3 m; stone with flat buttresses and a parapet, or timber with a pyramid roof where stone is not used yet |
-| `svan`, `tower-svan` | caucasian-highland | stone house with a 6 x 6 m tower of 4 or 5 storeys at a back corner; the tower alone 4 to 6 storeys; wooden floors, slit windows, low pyramid roof |
+| `svan`, `tower-svan` | lamari | stone house with a 6 x 6 m tower of 4 or 5 storeys at a back corner; the tower alone 4 to 6 storeys; wooden floors, slit windows, low pyramid roof |
 | `dome` | byzantine | s1 square chapel; s2 and s3 equal-armed cross; four columns carry a ceiling; drum with windows; stepped dome (45 then 26 degree rings) or a low dome on small drums |
-| `drum` | caucasian-highland | hall church with a drum and a cone over the middle |
+| `drum` | lamari | hall church with a drum and a cone over the middle |
 | `stave` | norse-forest | plank walls 4 m high on log posts, steep roof, dragon heads, a low gallery roof all round on posts |
 | `sunken` | anglo-saxon | small hut with the roof down to the ground and the door in the gable end |
 | `open` | steppe, fen-folk | posts and a roof, no walls, things stand along the floor's edge |
@@ -409,7 +409,7 @@ Plains.
 As in the Plains, in black marble (`blackmarble_2x1x1`, `blackmarble_floor`, `blackmarble_column_1`,
 `blackmarble_arch`) with dark roofs.
 
-### caucasian-highland
+### lamari
 
 Who and why: Georgians, Armenians and Svans of the Caucasus mountains, whose stone tower villages stand in high
 misty valleys.
@@ -425,7 +425,7 @@ misty valleys.
   for storage and refuge.
 - Layout: dense clusters of house-and-tower farms on a slope, a church on a rise.
 - Sources: Svan towers and Darbazi (Wikipedia, CC BY-SA 4.0, facts only).
-- Overview: `docs/cultures/caucasian-highland.png`.
+- Overview: `docs/cultures/lamari.png`.
 
 | Data we have | Data we need |
 |---|---|

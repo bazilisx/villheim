@@ -3,7 +3,7 @@
 # Tags: culture:<key> and people:<group> of the speaker, villageculture:<key> of his village, foreign (the speaker
 # is of another people than his village). Groups: norse (norse, norse-forest, norse-highland), anglo-saxon,
 # frankish-norman, celtic (celtic, celtic-crannog), slavic, baltic, fen-folk, saami, middle-eastern, byzantine,
-# steppe, caucasian. Fill-ins {people} (the speaker's culture name) and {leader} (the village leader's title).
+# steppe, lamari. Fill-ins {people} (the speaker's culture name) and {leader} (the village leader's title).
 # {festival} gives the feast's name in the village's own way (Yule, Koliada, Nowruz...).
 # Biome defenders (Villagers/Defenders.cs): "defender" when villagers first take up bows against flyers.
 #
@@ -331,29 +331,29 @@ I'll race anyone. On foot, since nobody here has a horse.
 @ self, people:steppe | elder
 The sky is wide and the steppe is long. Don't hurry.
 
-# ================================================================== Caucasian highland
+# ================================================================== Lamari (Mistlands tower villages)
 
-@ greet, people:caucasian
+@ greet, people:lamari
 Gamarjoba. Welcome.
 Come up, come up. You climbed a long way.
 Welcome, guest. Sit, the table is ready.
 
-@ bye, people:caucasian
+@ bye, people:lamari
 Go in peace.
 Mind the path down. It's steeper going down.
 Safe road. Come back for the next feast.
 
-@ talk, people:caucasian
+@ talk, people:lamari
 Every family keeps a tower. When trouble came, we went up.
 A guest is sent from the gods. At our table, he sits first.
 The {leader} gives the toasts. There are a lot of toasts.
 In the mist, keep a hand on the wall and your ears open.
 
-@ self, people:caucasian, festivalday
+@ self, people:lamari, festivalday
 {festival}! Torches, songs and a long table.
 The grapes are in. {festival} tonight.
 
-@ self, people:caucasian | elder
+@ self, people:lamari | elder
 One toast for the living, one for those before us, one for those to come.
 
 # ================================================================== a newcomer from another people

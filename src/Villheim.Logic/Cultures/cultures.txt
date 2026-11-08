@@ -280,9 +280,9 @@ helmet = HelmetLeather@1:0.6
 
 # ============================================================================================== Mistlands peoples
 
-[caucasian-highland]
-name = Caucasian highland
-people = caucasian
+[lamari]
+name = Lamari
+people = lamari
 leader = Elder
 male = Abas, Adarnase, Artavazd, Ashot, Bagrat, Bakur, Davit, Demetre, Derenik, Gagik, Giorgi, Grigol, Grigor, Guaram, Gurgen, Hamazasp, Hovhannes, Ioane, Ivane, Kakhaber, Khachik, Kvirike, Liparit, Mamia, Mikael, Mirian, Mushegh, Nerses, Parsman, Rati, Sargis, Senekerim, Shota, Smbat, Stepanoz, Sumbat, Tigran, Tornike, Vahram, Vakhtang, Varaz, Vardan, Vasak, Zakaria
 female = Anoush, Ashkhen, Borena, Burdukhan, Dedisimedi, Elene, Elisabed, Gayane, Gohar, Gurandukht, Hasmik, Katranide, Ketevan, Khoshak, Khvaramze, Lusine, Mariam, Marta, Mlke, Nino, Nvard, Rusudan, Salome, Satenik, Shahandukht, Shushan, Shushanik, Sopio, Taguhi, Tamar, Tekla, Tinatin, Zabel, Ana, Mzekhatun, Varduhi, Arpine, Gulkan, Natela, Siranush

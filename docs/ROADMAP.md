@@ -332,7 +332,7 @@ Villages that reach out past their fence, and a world with other people in it. D
 - [ ] Cultures by biome, up to three per biome, from the Viking-age world (Tyler, 2026-11-08): Meadows norse,
       anglo-saxon, frankish-norman; Black Forest norse-forest, celtic, slavic; Swamp celtic-crannog, baltic, fen-folk;
       Mountains norse-highland, saami (equal weight, D-039); Plains middle-eastern, byzantine, steppe; Mistlands
-      byzantine, caucasian-highland. No villages in the Ashlands or Deep North. Names, skin tones, looks and a few
+      byzantine, lamari. No villages in the Ashlands or Deep North. Names, skin tones, looks and a few
       lines per culture (helper branch night3/cultures). Short leader titles: Jarl, Reeve, Lord, Chief, Elder, Sheikh,
       Archon, Beg (D-040).
 - [ ] Biome defenders: villagers near the Plains shoot deathsquitos out of the sky; villagers near the Mistlands are

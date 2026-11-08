@@ -39,8 +39,8 @@ home|bf|slavic|s2d2||36
 temple|bf|slavic|s3d3|large|37
 home|ml|byzantine|s2d2||38
 temple|ml|byzantine|s3d3|large|39
-home|ml|caucasian-highland|s2d2||40
-temple|ml|caucasian-highland|s3d3|large|41
+home|ml|lamari|s2d2||40
+temple|ml|lamari|s3d3|large|41
 home|pl|steppe|s2d2||42
 temple|pl|steppe|s3d3|large|43
 home|mt|saami|s2d2||44

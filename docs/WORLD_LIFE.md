@@ -391,7 +391,7 @@ by weight with the village's seed and kept on the hearth (`villheim_culture`). T
 | Swamp | celtic-crannog 1, baltic 1, fen-folk 1 | Lake dwellings on stilts and islands (crannogs), the Baltic bog and amber coast, the Frisian marsh villages built on mounds. |
 | Mountain | norse-highland 1, saami 1 | Icelandic turf farms and fells; the Saami of the northern fells and reindeer country. |
 | Plains | middle-eastern 2, byzantine 1, steppe 1 | The silver road east: Persian and Arab lands, Byzantium where the Varangians served, the Khazar and Turkic steppe. |
-| Mistlands | byzantine 1, caucasian-highland 1 | Stone tower villages of the Caucasus (Svaneti) in the mist; Byzantine stonework. |
+| Mistlands | byzantine 1, lamari 1 | Stone tower villages of the Caucasus (Svaneti) in the mist; Byzantine stonework. |
 
 Tyler still has to confirm every row (provisional, from his 2026-11-08 list). The Mountains row is settled: both
 equally common (D-039). Open questions: whether Mistlands get villages at all; whether fen-folk should be Frisian (as
@@ -404,13 +404,13 @@ What a culture gives (`cultures.txt`, one `[key]` block each, `base = key` copie
   Frisian, Saami, Persian and Arabic, Byzantine Greek, Old Turkic, Kipchak and Bulgar, Georgian and Armenian), plain
   letters only. The three Norse keys share one list with a few extra names each.
 - Surnames, where the people used them: Norse son/dottir from a father's name (Snorrason, Leifsdottir), Gaelic mac and
-  ingen, Arabic ibn and bint, Slavic -ich and -na, Norman "de" and a seat in Normandy, Byzantine and Caucasian family
+  ingen, Arabic ibn and bint, Slavic -ich and -na, Norman "de" and a seat in Normandy, Byzantine and Lamari family
   names (Doukas and Doukaina; Dadeshkeliani). Shown after the name in the hover text (`CultureSurnames`); the name in
   lines stays the given name.
 - Village and home place names from the culture's parts (Sabzabad, Dunmore, Novgorod, Kyzyltepe).
 - The leader's title in the hover text, short and plain (D-040): Jarl (the three Norse keys), Reeve (anglo-saxon),
   Lord (frankish-norman), Chief (celtic, celtic-crannog, baltic, fen-folk), Elder (slavic, saami,
-  caucasian-highland), Sheikh (middle-eastern), Archon (byzantine), Beg (steppe). Fill-in `{leader}`.
+  lamari), Sheikh (middle-eastern), Archon (byzantine), Beg (steppe). Fill-in `{leader}`.
 - Looks: a skin range on the game's slider (0.25 to 1 as before; Norse 0.25 to 0.7, Persian and Arab 0.5 to 1),
   hair darkness and redness ranges, beard share, and words that make some hair and beard styles come up more (braid,
   curl, long...; matched against the style names the game shows). `LooksOutlierChance` (0.1) gives anyone any tone.

@@ -29,6 +29,9 @@ Current facts only. Read this at the start of a session. Narrative is in `docs/d
 - **Feature checklist (2026-11-08):** every built, planned and proposed feature plus ideas from other mods, 730 rows,
   in the review sheet's Features tab (Yes, No or Later). Source files in `docs/features/`. ValheimCityBuilder is CC0
   per its authors; study in `docs/CITYBUILDER_STUDY.md`.
+- **Millénaire translation (2026-11-08):** `docs/MC_TRANSLATION.md`. Converted designs and their learned rules stay
+  outside the repo; the lab's data is unchanged. Usable for plans, roofs and room uses in five of seven cultures;
+  materials, hips and domes do not carry over. Whether mc rules may feed the lab is Tyler's call.
 - **Blueprint lab (2026-11-08 night, not tested in game):** `tools/blueprint-lab`, `docs/BLUEPRINT_LAB.md`. Learns from
   2,134 designs (valheimians downloads and their `.vbuild` files included since 2026-11-08 day); generates by type,
   biome, style, plan, roof, walls, s1 to s3 and d1 to d3; strips or furnishes any blueprint; repairs missing pieces of
@@ -102,6 +105,7 @@ Current facts only. Read this at the start of a session. Narrative is in `docs/d
 
 ## Recent milestones
 
+- **2026-11-08 (Millénaire translation pilot)** - see docs/daily-notes/2026-11/2026-11-08.md
 - **2026-11-08 (CityBuilder study, CC0; feature checklist in the review sheet; living village merged)** - see docs/daily-notes/2026-11/2026-11-08.md
 - **2026-11-08 (blueprint repair tab; 2,134 designs learned; minds and world code hardened)** - see docs/daily-notes/2026-11/2026-11-08.md
 - **2026-11-08 (blueprint lab, villager minds, world growth; helper branches merged)** - see docs/daily-notes/2026-11/2026-11-08.md

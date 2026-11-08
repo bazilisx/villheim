@@ -248,6 +248,8 @@ const RULES = [
   [/floor/i, 'floor', [2, 0.25, 2], 'box'],
   [/spiralstair/, 'stair', [2, 4, 2], 'box'],
   [/stair|ladder|stepladder/i, 'stair', [1, 2, 2], 'stair'],
+  // wall torches before the wall rules, or 'piece_walltorch' reads as a 2x2 wall
+  [/walltorch/i, 'light', [0.3, 0.8, 0.3], 'prop'],
   // openings
   [/door|gate/i, 'door', [2, 2, 0.2], 'box'],
   [/window/i, 'window', [1, 1, 0.2], 'box'],

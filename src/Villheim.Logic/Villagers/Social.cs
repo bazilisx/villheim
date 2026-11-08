@@ -472,13 +472,57 @@ namespace Villheim.Logic.Villagers
 
         private static int _checkedFrame = -1;
 
+        private static HashSet<string> _raw;
+
+        /// <summary>
+        /// Prefab names of food that still needs cooking: whatever any cooking station or oven takes in (raw meat,
+        /// fish, dough), plus anything named Raw or entrails. Worked out once from the game's prefabs.
+        /// </summary>
+        private static bool IsRaw(string name)
+        {
+            if (_raw == null && ZNetScene.instance != null)
+            {
+                _raw = new HashSet<string>();
+                foreach (GameObject prefab in ZNetScene.instance.m_prefabs)
+                {
+                    CookingStation station = prefab != null ? prefab.GetComponent<CookingStation>() : null;
+                    if (station?.m_conversion == null)
+                    {
+                        continue;
+                    }
+
+                    foreach (CookingStation.ItemConversion conversion in station.m_conversion)
+                    {
+                        if (conversion?.m_from != null)
+                        {
+                            _raw.Add(conversion.m_from.gameObject.name);
+                        }
+                    }
+                }
+            }
+
+            return name.StartsWith("Raw") || name.EndsWith("Raw") || name == "Entrails" || (_raw != null && _raw.Contains(name));
+        }
+
+        /// <summary>
+        /// The best ready-to-eat food in an inventory to give away: cooked or prepared, never raw (T-11), the most
+        /// filling first. Null when there is none.
+        /// </summary>
+        public static ItemDrop.ItemData BestMeal(Inventory inventory)
+        {
+            return inventory?.GetAllItems()
+                .Where(i => i.m_dropPrefab != null && i.m_shared.m_foodBurnTime > 0f &&
+                            (i.m_shared.m_food > 0f || i.m_shared.m_foodStamina > 0f) && !IsRaw(i.m_dropPrefab.name))
+                .OrderByDescending(i => i.m_shared.m_food + i.m_shared.m_foodStamina + i.m_shared.m_foodEitr)
+                .FirstOrDefault();
+        }
+
         /// <summary>A cooked meal from the village chest into the player's hands.</summary>
         private static void GiveMeal(Villager villager, Player player)
         {
             VillageHearth hearth = VillageHearth.Find(villager.VillageId);
             Container chest = hearth != null && hearth.IsValid ? VillageChest.Find(hearth) : null;
-            ItemDrop.ItemData meal = chest?.GetInventory().GetAllItems()
-                .FirstOrDefault(i => i.m_shared.m_food > 0f && i.m_shared.m_foodBurnTime > 0f && i.m_dropPrefab != null);
+            ItemDrop.ItemData meal = chest != null ? BestMeal(chest.GetInventory()) : null;
             if (meal == null)
             {
                 return;
@@ -725,7 +769,7 @@ namespace Villheim.Logic.Villagers
             }
             else
             {
-                ItemDrop.ItemData meal = inventory.GetAllItems().FirstOrDefault(i => i.m_shared.m_food > 0f && i.m_shared.m_foodBurnTime > 0f);
+                ItemDrop.ItemData meal = BestMeal(inventory);
                 if (meal?.m_dropPrefab != null)
                 {
                     inventory.RemoveItem(meal.m_shared.m_name, 1);

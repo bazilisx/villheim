@@ -25,6 +25,9 @@ namespace Villheim.Logic.Village
 
         public static void Tick(VillageHearth hearth)
         {
+            // Clear air in a Mistlands village, on every machine (mist is drawn by each for itself).
+            Demisting.Hearth(hearth);
+
             // What the village's outposts send home counts as its own material while it decides what to build.
             using (Materials.From(hearth))
             {

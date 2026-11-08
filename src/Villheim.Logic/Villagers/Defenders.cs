@@ -275,11 +275,77 @@ namespace Villheim.Logic.Villagers
             bool facing = flat.sqrMagnitude < 0.01f || Vector3.Angle(villager.transform.forward.Horizontal(), flat) < 30f;
             if (facing && Time.time >= state.NextShot && Time.time - state.SeenAt >= profile.Reaction() && projectile != null)
             {
-                Fire(villager, state, profile, bow, ammo, projectile, spawn, aim, speed);
+                state.NextShot = Time.time + Mathf.Max(0.3f, LogicConfig.DefenderShotSeconds?.Value ?? 1.2f) * Random.Range(0.9f, 1.15f);
+                state.LastShotAt = Time.time;
+                Fire(villager, bow, ammo, projectile, spawn, aim, speed, profile.Spread());
             }
 
+            Status.Set(villager, Status.Doer.Fight);
+            Combat.NoteShooting(villager, state.Target);
             return true;
         }
+
+        /// <summary>
+        /// One arrow at <paramref name="target"/> if the villager faces it (a hunter, or a responder at range): the bow of
+        /// his village's tier comes out if it isn't in hand. <paramref name="velocity"/> is the target's speed, for the
+        /// lead. True when an arrow was loosed.
+        /// </summary>
+        public static bool ShootAt(Villager villager, VillagerAI ai, Character target, Vector3 velocity, float spread)
+        {
+            ItemDrop.ItemData bow = HeldBow(villager) ?? EquipBow(villager);
+            if (bow == null || target == null)
+            {
+                return false;
+            }
+
+            ItemDrop.ItemData ammo = Ammo(villager);
+            Vector3 spawn = villager.transform.position + Vector3.up * 1.5f + villager.transform.forward * 0.6f;
+            float speed = bow.m_shared.m_attack.m_projectileVel > 1f ? bow.m_shared.m_attack.m_projectileVel : 50f;
+            GameObject projectile = ProjectilePrefab(bow, ammo);
+            float gravity = projectile != null && projectile.GetComponent<Projectile>() is Projectile p ? p.m_gravity : 0f;
+            float lead = Mathf.Clamp01(LogicConfig.DefenderLead?.Value ?? 1f);
+            Vector3 point = target.GetCenterPoint();
+            float time = 0f;
+            for (int i = 0; i < 3; i++)
+            {
+                time = Vector3.Distance(spawn, point) / speed;
+                point = target.GetCenterPoint() + velocity * (time * lead);
+            }
+
+            Vector3 aim = point + Vector3.up * (0.5f * gravity * time * time);
+            ai.LookAt(aim);
+            Vector3 flat = (aim - villager.transform.position).Horizontal();
+            if (flat.sqrMagnitude > 0.01f)
+            {
+                villager.SetLookDir(flat.normalized);
+            }
+
+            bool facing = flat.sqrMagnitude < 0.01f || Vector3.Angle(villager.transform.forward.Horizontal(), flat) < 30f;
+            if (!facing || projectile == null)
+            {
+                return false;
+            }
+
+            Fire(villager, bow, ammo, projectile, spawn, aim, speed, spread);
+            return true;
+        }
+
+        /// <summary>Puts any bow back out of the inventory (after a hunt, so the game never picks it for a fight).</summary>
+        public static void PutBowAway(Villager villager)
+        {
+            Inventory inventory = villager.GetInventory();
+            foreach (ItemDrop.ItemData item in inventory != null ? inventory.GetAllItems().ToList() : new List<ItemDrop.ItemData>())
+            {
+                if (item.m_shared.m_itemType == ItemDrop.ItemData.ItemType.Bow)
+                {
+                    villager.UnequipItem(item, false);
+                    inventory.RemoveItem(item);
+                }
+            }
+        }
+
+        /// <summary>Whether the villager's village has a bow to give him (any tier: a plain bow at worst).</summary>
+        public static bool HasBow(Villager villager) => ObjectDB.instance != null && ObjectDB.instance.GetItemPrefab("Bow") != null;
 
         /// <summary>
         /// Outside the bow fight: when the villager is already fighting and a covered creature is in range, it
@@ -374,15 +440,7 @@ namespace Villheim.Logic.Villagers
 
             state.Engaged = false;
             state.Target = null;
-            Inventory inventory = villager.GetInventory();
-            foreach (ItemDrop.ItemData item in inventory != null ? inventory.GetAllItems().ToList() : new List<ItemDrop.ItemData>())
-            {
-                if (item.m_shared.m_itemType == ItemDrop.ItemData.ItemType.Bow)
-                {
-                    villager.UnequipItem(item, false);
-                    inventory.RemoveItem(item);
-                }
-            }
+            PutBowAway(villager);
 
             if (Roles.BackgroundOf(villager) == Roles.Background.Protector)
             {
@@ -472,13 +530,11 @@ namespace Villheim.Logic.Villagers
             return point + Vector3.up * (0.5f * gravity * time * time);
         }
 
-        private static void Fire(Villager villager, State state, Profile profile, ItemDrop.ItemData bow, ItemDrop.ItemData ammo,
-            GameObject projectilePrefab, Vector3 spawn, Vector3 aim, float speed)
+        private static void Fire(Villager villager, ItemDrop.ItemData bow, ItemDrop.ItemData ammo,
+            GameObject projectilePrefab, Vector3 spawn, Vector3 aim, float speed, float spread)
         {
-            state.NextShot = Time.time + Mathf.Max(0.3f, LogicConfig.DefenderShotSeconds?.Value ?? 1.2f) * Random.Range(0.9f, 1.15f);
-            state.LastShotAt = Time.time;
             Vector3 dir = (aim - spawn).normalized;
-            float spread = Mathf.Max(0f, profile.Spread());
+            spread = Mathf.Max(0f, spread);
             Vector3 side = Vector3.Cross(dir, Vector3.up);
             if (side.sqrMagnitude < 0.001f)
             {
@@ -560,6 +616,34 @@ namespace Villheim.Logic.Villagers
                 : 1f;
         }
 
+        /// <summary>
+        /// A villager's arrow brings down a small creature (ArrowSmallHealth or less: deathsquitos, ticks, deer) in one
+        /// or two hits, and never takes more than 1/ArrowHitsBig of a bigger one's health (T-26: seekers, lox and trolls
+        /// need several arrows).
+        /// </summary>
+        private static void CapArrow(Character target, HitData hit)
+        {
+            if (!hit.m_ranged || target == null)
+            {
+                return;
+            }
+
+            float max = target.GetMaxHealth();
+            float small = LogicConfig.ArrowSmallHealth?.Value ?? 60f;
+            int hits = Mathf.Max(1, LogicConfig.ArrowHitsBig?.Value ?? 4);
+            float total = hit.GetTotalDamage();
+            if (max <= small || total <= 0f)
+            {
+                return;
+            }
+
+            float cap = max / hits;
+            if (total > cap)
+            {
+                hit.m_damage.Modify(cap / total);
+            }
+        }
+
         [HarmonyPatch(typeof(Character), nameof(Character.Damage))]
         internal static class DamagePatch
         {
@@ -567,16 +651,18 @@ namespace Villheim.Logic.Villagers
             {
                 try
                 {
-                    if (hit == null || !On || !hit.HaveAttacker() || !(hit.GetAttacker() is Villager villager))
+                    if (hit == null || !hit.HaveAttacker() || !(hit.GetAttacker() is Villager villager))
                     {
                         return;
                     }
 
-                    float multiplier = Multiplier(villager, __instance);
+                    float multiplier = On ? Multiplier(villager, __instance) : 1f;
                     if (!Mathf.Approximately(multiplier, 1f))
                     {
                         hit.m_damage.Modify(multiplier);
                     }
+
+                    CapArrow(__instance, hit);
                 }
                 catch (Exception ex)
                 {
@@ -592,7 +678,7 @@ namespace Villheim.Logic.Villagers
             {
                 try
                 {
-                    if (Update(__instance, dt))
+                    if (Update(__instance, dt) || Combat.Update(__instance, dt))
                     {
                         __result = true;
                         return false;

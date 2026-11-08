@@ -12,7 +12,7 @@ namespace Villheim.Logic.Villagers
     /// Background role: every villager is a protector or a carer, by order of arrival (protector, carer, protector...),
     /// never by looks or gender. It does not limit work. It shows when there is nothing to do (protectors keep watch at
     /// the edge of the village, carers stay by the hearth, cook and make things) and in a fight: protectors take up a
-    /// weapon and shield and defend, carers get away from the enemy while there is a protector to fight it.
+    /// weapon and shield and defend, carers keep working, or get out of the way while a protector fights (Combat).
     ///
     /// Trade: a small village (under six villagers) has no trades; everyone does a bit of everything, going where the
     /// village's need is greatest. From six villagers on, like Millenaire's villager types, each villager gets a trade
@@ -46,7 +46,8 @@ namespace Villheim.Logic.Villagers
             Trade.Miner, Trade.Carpenter, Trade.Farmer, Trade.Woodcutter, Trade.Cook, Trade.Miner,
         };
 
-        private static readonly string[] Weapons = { "Club", "Club", "SpearFlint", "SpearBronze", "SpearBronze" };
+        // A weapon for each gear tier (0 rags .. 4 bronze), made of what that tier's smith works with.
+        private static readonly string[] Weapons = { "Club", "Club", "SpearFlint", "SpearFlint", "SwordBronze" };
         private static readonly string[] Shields = { "ShieldWood", "ShieldWood", "ShieldBronzeBuckler", "ShieldBronzeBuckler", "ShieldBronzeBuckler" };
 
         private sealed class Roster
@@ -191,42 +192,25 @@ namespace Villheim.Logic.Villagers
             Of(villageId).Any(v => BackgroundOf(v) == Background.Protector);
 
         /// <summary>
-        /// A fight is on. Protectors take a weapon and shield and let the game's own AI fight. Carers get away from the
-        /// enemy while there is a protector to fight it (returns true while fleeing).
+        /// Takes up the village's weapon of his tier for a fight (Villagers/Combat.cs), and the shield too for a
+        /// protector. The shield goes away again some seconds after the fight (AfterThreat).
         /// </summary>
-        public static bool OnThreat(Villager villager, VillagerAI ai, Character enemy, float dt)
+        public static void ArmForFight(Villager villager, bool shield)
         {
             Armed armed = ArmedStates.GetOrCreateValue(villager);
             armed.LastThreat = UnityEngine.Time.time;
-            if (BackgroundOf(villager) == Background.Carer && HasProtector(villager.VillageId) && enemy != null &&
-                villager.GetHealth() > 0f)
+            int tier = Gear(villager);
+            EquipNamed(villager, Weapons[tier]);
+            if (shield)
             {
-                // Like Millenaire's shelter point: indoors, in his home or the longhouse; with no building yet, away.
-                Vector3? shelter = ShelterSpot(villager);
-                if (shelter.HasValue && Vector3.Distance(enemy.transform.position, shelter.Value) > 6f)
-                {
-                    if (Walker.For(villager).Go(villager, ai, dt, shelter.Value, 1f, true) != WalkResult.Walking)
-                    {
-                        ai.StopMoving();
-                    }
-
-                    return true;
-                }
-
-                ai.Flee(dt, enemy.transform.position);
-                return true;
+                EquipNamed(villager, Shields[tier]);
             }
 
             if (!armed.Holding)
             {
                 armed.Holding = true;
-                int tier = Gear(villager);
-                EquipNamed(villager, Weapons[tier]);
-                EquipNamed(villager, Shields[tier]);
                 VillheimPlugin.Debug($"{villager.VillagerName} takes up arms.");
             }
-
-            return false;
         }
 
         /// <summary>The middle of the villager's home, or of the longhouse, or null when the village has neither.</summary>

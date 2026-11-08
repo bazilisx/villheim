@@ -306,7 +306,9 @@ namespace Villheim.Logic.Villagers
             }
 
             // Something to make by the hearth comes before sitting about, one maker per village at a time.
-            Amenities.Job job = MakerFree(villager) ? Amenities.Due(VillageHearth.Find(villager.VillageId)) : null;
+            // Never a child: making things is work (T-28, a child was seen building beside the builder).
+            bool child = Childhood.IsChild(villager);
+            Amenities.Job job = !child && MakerFree(villager) ? Amenities.Due(VillageHearth.Find(villager.VillageId)) : null;
             if (job != null && !(state.SkipUntil.TryGetValue(Kind.Make, out float makeSkip) && makeSkip > Time.time))
             {
                 Makers[villager.VillageId] = villager;
@@ -333,7 +335,7 @@ namespace Villheim.Logic.Villagers
                 (Kind.Chat, ReallyFree(villager, state) && FindChatPartner(villager) != null
                     ? (mood >= 65f ? 4f : mood < 35f ? 0.6f : 2f)
                     : 0f),
-                (Kind.Station, FreeStation(villager) != null ? 3f : 0f),
+                (Kind.Station, !child && FreeStation(villager) != null ? 3f : 0f),
                 (Kind.Seat, wet || mood < 35f ? 0f : (Seats.Free(villager) != null ? (carer ? 3f : 2f) : 0f)),
                 (Kind.Watch, WatchTarget(villager) != null ? (Wanderers.IsWanderer(WatchTarget(villager) as Villager) ? 3f : 1.2f) : 0f),
             };

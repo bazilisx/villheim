@@ -8,15 +8,21 @@ namespace Villheim.Logic.Villagers
 {
     /// <summary>
     /// Hunting, so there is meat for the cooking station. Like Millenaire's hunters, it is background work for the
-    /// village's protectors: by day, when the village chest holds little food, one protector at a time takes a spear or
-    /// club, goes after a boar, deer or neck near the village, brings it down, picks up what it drops (meat, hides,
-    /// trophies) and carries it to the village chest.
+    /// village's protectors (elders leave it to the young): by day, when the village chest holds little food, one
+    /// protector at a time goes after a boar, deer, neck or hare near the village, brings it down, waits by the kill
+    /// for what it drops (meat, hides, trophies) and carries it to the village chest.
+    ///
+    /// Deer always run, so they are only hunted with a bow (T-18). Other game is shot from up to HuntBowRange, or
+    /// fought with the weapon when it is within HuntMeleeRange. A hunter gives up after HuntChaseSeconds, or when the
+    /// animal gets HuntChaseDistance past the village's working reach, and leaves that animal alone for a few minutes.
     /// </summary>
     internal static class Hunting
     {
         private const float SearchFromHearth = 45f;
         private const float StrikeReach = 2.3f;
-        private const float StrikeInterval = 1.6f;
+        private const float StrikeInterval = 1.4f;
+        private const float ShotInterval = 1.6f;
+        private const float DropWait = 12f;
         private const int EnoughFood = 4;
 
         private static readonly string[] Game = { "Boar", "Deer", "Neck", "Hare" };
@@ -37,8 +43,17 @@ namespace Villheim.Logic.Villagers
             public float Deadline;
             public float NextStrike;
             public float NextLook;
+            public float LastRun;
+            public float DropsSeenAt = -1f;
+            public Vector3 LastPreyPos;
+            public float LastPreyPosAt;
+            public Vector3 Velocity;
+            public bool Bow;
             public readonly Dictionary<string, int> Carrying = new Dictionary<string, int>();
         }
+
+        // Animals a hunter gave up on, left alone for a while so he does not go straight back after them.
+        private static readonly Dictionary<ZDOID, float> LetGo = new Dictionary<ZDOID, float>();
 
         private static readonly ConditionalWeakTable<Villager, State> States = new ConditionalWeakTable<Villager, State>();
         private static readonly Dictionary<int, Villager> Hunters = new Dictionary<int, Villager>();
@@ -47,14 +62,14 @@ namespace Villheim.Logic.Villagers
 
         public static string Describe(Villager villager)
         {
-            if (!States.TryGetValue(villager, out State state))
+            if (!States.TryGetValue(villager, out State state) || Time.time - state.LastRun > 1f)
             {
                 return null;
             }
 
             switch (state.Phase)
             {
-                case Phase.Chase: return "hunting";
+                case Phase.Chase: return state.Prey != null ? $"hunting a {state.Prey.GetHoverName()}{(state.Bow ? " with a bow" : "")}" : "hunting";
                 case Phase.Collect: return "butchering the kill";
                 case Phase.Deliver: return "carrying meat to the chest";
                 default: return null;
@@ -65,6 +80,13 @@ namespace Villheim.Logic.Villagers
         public static bool Update(Villager villager, VillagerAI ai, float dt)
         {
             State state = States.GetOrCreateValue(villager);
+            if (state.Phase != Phase.None && Time.time - state.LastRun > 5f)
+            {
+                // Something else ran him for a while (a fight, a chore): the hunt is off.
+                End(villager, state);
+            }
+
+            state.LastRun = Time.time;
             if (state.Phase == Phase.None && !Begin(villager, state))
             {
                 return false;
@@ -82,7 +104,8 @@ namespace Villheim.Logic.Villagers
 
         private static bool Begin(Villager villager, State state)
         {
-            if (EnvMan.IsNight() || Time.time < state.NextLook || Roles.BackgroundOf(villager) != Roles.Background.Protector)
+            if (EnvMan.IsNight() || Time.time < state.NextLook || Roles.BackgroundOf(villager) != Roles.Background.Protector ||
+                Elders.IsElder(villager))
             {
                 return false;
             }
@@ -109,12 +132,16 @@ namespace Villheim.Logic.Villagers
             Hunters[villager.VillageId] = villager;
             state.Prey = prey;
             state.Phase = Phase.Chase;
-            state.Deadline = Time.time + 60f;
-            Roles.ArmForHunt(villager);
+            state.Deadline = Time.time + Mathf.Max(10f, LogicConfig.HuntChaseSeconds?.Value ?? 45f);
+            state.LastPreyPosAt = 0f;
+            state.Velocity = Vector3.zero;
+            state.Bow = false;
             Walker.For(villager).Reset();
             VillheimPlugin.Debug($"{villager.VillagerName} goes hunting ({prey.m_name}).");
             return true;
         }
+
+        private static bool IsDeer(Character prey) => Utils.GetPrefabName(prey.gameObject).StartsWith("Deer");
 
         private static bool Chase(Villager villager, VillagerAI ai, float dt, State state)
         {
@@ -123,20 +150,63 @@ namespace Villheim.Logic.Villagers
             {
                 state.Phase = Phase.Collect;
                 state.Deadline = Time.time + 20f;
-                state.NextStrike = Time.time + 1f;
+                state.DropsSeenAt = -1f;
                 Walker.For(villager).Reset();
                 return true;
             }
 
             state.KillSpot = prey.transform.position;
-            if (Time.time > state.Deadline)
+            VillageHearth hearth = VillageHearth.Find(villager.VillageId);
+            float reach = Village.Knowledge.WorkRadius(villager.VillageId, SearchFromHearth) + (LogicConfig.HuntChaseDistance?.Value ?? 30f);
+            bool tooFar = hearth != null && Utils.DistanceXZ(prey.transform.position, hearth.transform.position) > reach;
+            if (Time.time > state.Deadline || tooFar)
             {
-                VillheimPlugin.Debug($"{villager.VillagerName} lost the {prey.m_name}.");
+                VillheimPlugin.Debug($"{villager.VillagerName} gives up on the {prey.m_name} ({(tooFar ? "too far out" : "too long")}).");
+                LetGo[prey.GetZDOID()] = Time.time + 180f;
                 End(villager, state);
                 return false;
             }
 
+            TrackPrey(state, prey);
             float distance = Vector3.Distance(villager.transform.position, prey.transform.position);
+            float meleeRange = Mathf.Max(StrikeReach, LogicConfig.HuntMeleeRange?.Value ?? 4f);
+            float bowRange = Mathf.Max(8f, LogicConfig.HuntBowRange?.Value ?? 25f);
+            state.Bow = IsDeer(prey) || distance > meleeRange;
+            if (state.Bow)
+            {
+                bool seen = InSight(villager, prey);
+                if (distance > bowRange || !seen)
+                {
+                    // Into bow range, walking the last part so he doesn't start them running.
+                    Walker.For(villager).Go(villager, ai, dt, prey.transform.position, bowRange * 0.6f, distance > bowRange * 1.5f);
+                    return true;
+                }
+
+                ai.StopMoving();
+                if (Time.time >= state.NextStrike && Defenders.ShootAt(villager, ai, prey, state.Velocity, 1.5f))
+                {
+                    state.NextStrike = Time.time + ShotInterval * Random.Range(0.9f, 1.15f);
+                    string animation = (villager.GetLeftItem() ?? villager.GetRightItem())?.m_shared?.m_attack?.m_attackAnimation;
+                    if (LogicConfig.IsOn(LogicConfig.DefenderBowAnimation) && !string.IsNullOrEmpty(animation) && villager.m_zanim != null)
+                    {
+                        villager.m_zanim.SetTrigger(animation);
+                    }
+                }
+
+                return true;
+            }
+
+            // Up close to a boar or a neck: the weapon.
+            if (HoldsBow(villager))
+            {
+                Defenders.PutBowAway(villager);
+            }
+
+            if (villager.GetRightItem() == null || villager.GetRightItem().GetDamage().GetTotalDamage() < 1f)
+            {
+                Roles.ArmForHunt(villager);
+            }
+
             if (distance > StrikeReach)
             {
                 Walker.For(villager).Go(villager, ai, dt, prey.transform.position, StrikeReach * 0.7f, true);
@@ -173,29 +243,79 @@ namespace Villheim.Logic.Villagers
             return true;
         }
 
-        /// <summary>Picks up what the kill dropped.</summary>
+        private static bool HoldsBow(Villager villager)
+        {
+            ItemDrop.ItemData left = villager.GetLeftItem();
+            return left != null && left.m_shared.m_itemType == ItemDrop.ItemData.ItemType.Bow;
+        }
+
+        private static int _sightMask;
+
+        private static bool InSight(Villager villager, Character prey)
+        {
+            if (_sightMask == 0)
+            {
+                _sightMask = LayerMask.GetMask("Default", "static_solid", "Default_small", "piece", "terrain", "vehicle");
+            }
+
+            return !Physics.Linecast(villager.GetEyePoint(), prey.GetCenterPoint(), _sightMask);
+        }
+
+        private static void TrackPrey(State state, Character prey)
+        {
+            Vector3 now = prey.GetCenterPoint();
+            if (state.LastPreyPosAt > 0f && Time.time - state.LastPreyPosAt > 0.05f)
+            {
+                state.Velocity = Vector3.Lerp(state.Velocity, (now - state.LastPreyPos) / (Time.time - state.LastPreyPosAt), 0.5f);
+            }
+
+            if (state.LastPreyPosAt <= 0f || Time.time - state.LastPreyPosAt > 0.05f)
+            {
+                state.LastPreyPos = now;
+                state.LastPreyPosAt = Time.time;
+            }
+        }
+
+        /// <summary>
+        /// Waits by the kill for what it drops (many animals drop their meat only as the body fades, a few seconds
+        /// on), then picks it up. Gives up after DropWait seconds at the spot.
+        /// </summary>
         private static bool Collect(Villager villager, VillagerAI ai, float dt, State state)
         {
+            if (HoldsBow(villager))
+            {
+                Defenders.PutBowAway(villager);
+            }
+
             if (Walker.For(villager).Go(villager, ai, dt, state.KillSpot, 1.2f) == WalkResult.Walking && Time.time < state.Deadline)
             {
                 return true;
             }
 
             ai.StopMoving();
-            if (Time.time < state.NextStrike)
+            if (state.DropsSeenAt < 0f)
             {
-                return true; // the drops land a moment after the kill
+                // At the spot: the wait starts now.
+                state.DropsSeenAt = 0f;
+                state.Deadline = Time.time + DropWait;
+            }
+
+            List<ItemDrop> drops = DropsAround(state.KillSpot);
+            if (drops.Count > 0 && state.DropsSeenAt <= 0f)
+            {
+                // The first drops are down; give the rest a second to land.
+                state.DropsSeenAt = Time.time;
+            }
+
+            bool ready = state.DropsSeenAt > 0f && Time.time - state.DropsSeenAt > 1f;
+            if (!ready && Time.time < state.Deadline)
+            {
+                return true;
             }
 
             Poses.Trigger(villager, "interact");
-            foreach (Collider collider in Physics.OverlapSphere(villager.transform.position, 4f))
+            foreach (ItemDrop item in drops)
             {
-                ItemDrop item = collider.GetComponentInParent<ItemDrop>();
-                if (item == null || item.m_nview == null || !item.m_nview.IsValid() || !IsGameDrop(item))
-                {
-                    continue;
-                }
-
                 string name = Utils.GetPrefabName(item.gameObject);
                 state.Carrying.TryGetValue(name, out int count);
                 state.Carrying[name] = count + item.m_itemData.m_stack;
@@ -207,6 +327,21 @@ namespace Villheim.Logic.Villagers
             state.Deadline = Time.time + 90f;
             Walker.For(villager).Reset();
             return true;
+        }
+
+        private static List<ItemDrop> DropsAround(Vector3 spot)
+        {
+            var found = new List<ItemDrop>();
+            foreach (Collider collider in Physics.OverlapSphere(spot, 4f))
+            {
+                ItemDrop item = collider.GetComponentInParent<ItemDrop>();
+                if (item != null && item.m_nview != null && item.m_nview.IsValid() && IsGameDrop(item) && !found.Contains(item))
+                {
+                    found.Add(item);
+                }
+            }
+
+            return found;
         }
 
         private static bool Deliver(Villager villager, VillagerAI ai, float dt, State state)
@@ -243,6 +378,11 @@ namespace Villheim.Logic.Villagers
 
         private static void End(Villager villager, State state)
         {
+            if (HoldsBow(villager))
+            {
+                Defenders.PutBowAway(villager);
+            }
+
             state.Phase = Phase.None;
             state.Prey = null;
             state.Carrying.Clear();
@@ -266,7 +406,7 @@ namespace Villheim.Logic.Villagers
                 }
 
                 string name = Utils.GetPrefabName(character.gameObject);
-                if (!Game.Contains(name) || Utils.DistanceXZ(character.transform.position, hearth) > search ||
+                if (!Game.Contains(name) || (LetGo.TryGetValue(character.GetZDOID(), out float until) && Time.time < until) || Utils.DistanceXZ(character.transform.position, hearth) > search ||
                     !Village.Knowledge.MayWork(villageId, hearth, character.transform.position, SearchFromHearth))
                 {
                     continue;

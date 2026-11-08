@@ -76,19 +76,36 @@ namespace Villheim.Logic
         {
             "switches: list the settings that turn each world and villager-minds system off, and whether each is on now: " +
             string.Join(", ", LogicConfig.Switches.Select(s => s.Name)) +
-            " (config sections '5 - World life' and '5b - Villager minds'; the world ones also need WorldLife on)",
+            " (grouped by config section and sorted by name; the world ones also need WorldLife on)",
             "know [list|reach|survey [full]|rumours [n]|names|table|forget]: what the nearest village knows of the land (each discovery with its witness and day), its reach and gear limits, a survey now, sample rumour lines with their real target and distance, the location names round it, its map table",
             "culture [set <key>|reroll]: the nearest village's culture, its leader's title, this season's feast and each loaded villager's culture; 'set' or 'reroll' changes it",
             "cultures: the CultureMap (which cultures each biome's villages may have) and every culture's names, surnames, skin range and feasts",
             "relook [culture]: the nearest villager gets a new seed, name, face and clothes, of his own culture or the one named",
             "defenders: the nearest village's biome defender profile (Plains, Mistlands), the creatures it covers, who would shoot, and arrows loosed so far",
+            "kids rig [clear]: a grown man, a boy, a girl and a grown woman, standing still in front of you, to tune the ChildBoy and ChildGirl settings ('3c - Villager looks') against; clear takes them away",
+            "keepapart: the creatures villagers and villages leave alone (KeepApartCreatures), and the camps the nearest village keeps away from",
+            "demist: the nearest Mistlands village's clear air, and the game's prefabs that carry a demister",
             "exportpieces: write every buildable piece's collider and mesh bounds, pivot height, colour, texture, category, comfort, cost and station to BepInEx/config/Villheim/pieces.json (copy it to tools/blueprint-lab/data/pieces-export.json)",
         }).Concat(Generator.GenCommands.Help).ToArray();
 
         /// <summary>'vh switches': each system's on/off setting and its value now.</summary>
-        private static string Switches() =>
-            "Villheim switches (set in the config file, they reload live):\n" + string.Join("\n", LogicConfig.Switches.Select(s =>
-                $"   {s.Name}: {(s.Entry == null ? "not bound" : s.Entry.Value ? "on" : "off")}"));
+        private static string Switches()
+        {
+            // Grouped by the config file's section, then by name, as they appear in the config manager.
+            var sb = new System.Text.StringBuilder("Villheim switches (set in the config file, they reload live):");
+            foreach (var section in LogicConfig.Switches
+                         .GroupBy(s => s.Entry?.Definition?.Section ?? "(not bound)")
+                         .OrderBy(g => g.Key, System.StringComparer.OrdinalIgnoreCase))
+            {
+                sb.Append($"\n [{section.Key}]");
+                foreach (var s in section.OrderBy(s => s.Entry?.Definition?.Key ?? s.Name, System.StringComparer.OrdinalIgnoreCase))
+                {
+                    sb.Append($"\n   {s.Entry?.Definition?.Key ?? s.Name}: {(s.Entry == null ? "not bound" : s.Entry.Value ? "on" : "off")}");
+                }
+            }
+
+            return sb.ToString();
+        }
 
         public static bool Run(string name, string[] args, Terminal context)
         {
@@ -263,6 +280,13 @@ namespace Villheim.Logic
                 case "villheim_cultures": Say(context, Cultures.ListCommand()); return true;
                 case "villheim_relook": Say(context, Cultures.Relook(args)); return true;
                 case "villheim_defenders": Say(context, Villagers.Defenders.Command()); return true;
+                case "villheim_keepapart": Say(context, KeepApart.Command()); return true;
+                case "villheim_kids":
+                    Say(context, args.Length > 0 && args[0].Equals("rig", System.StringComparison.OrdinalIgnoreCase)
+                        ? Villagers.ChildBody.Command(args.Skip(1).ToArray())
+                        : "Villheim: 'vh kids rig' puts up a grown man, a boy, a girl and a grown woman to tune the child settings against; 'vh kids rig clear' takes them away.");
+                    return true;
+                case "villheim_demist": Say(context, Demisting.Command()); return true;
                 case "villheim_exportpieces": Say(context, PieceExport.Run()); return true;
                 case "villheim_gen": Generator.GenCommands.Gen(args, context); return true;
                 case "villheim_ask": Say(context, Generator.GenCommands.Ask(args)); return true;

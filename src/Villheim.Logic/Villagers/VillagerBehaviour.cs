@@ -32,6 +32,9 @@ namespace Villheim.Logic.Villagers
             GhostLook.Update(villager);
             GhostLook.UpdateAnimals();
             Childhood.Update(villager);
+            Ages.Update(villager);
+            Demisting.UpdateVillager(villager);
+            Status.Publish(villager);
 
             AppliedTier applied = Applied.GetOrCreateValue(villager);
             if (!villager.LooksApplied)
@@ -144,10 +147,10 @@ namespace Villheim.Logic.Villagers
                 return Wanderers.Describe(villager);
             }
 
-            return TestActs.Describe(villager) ?? Sleep.Describe(villager) ?? (MorningHearth.IsTending(villager) ? "tending the hearth" : null) ??
-                   Healing.Describe(villager) ?? Chores.Describe(villager) ?? Replanting.Describe(villager) ?? Hunting.Describe(villager) ?? Farming.Describe(villager) ?? Sorting.Describe(villager) ??
-                   Foraging.Describe(villager) ?? Repairs.Describe(villager) ?? Smithing.Describe(villager) ?? (PathLaying.IsLaying(villager) ? "laying a path" : null) ??
-                   FreeTime.Describe(villager);
+            // What the routine that runs him now says (Status), and only when nothing has run him lately the old
+            // look through every routine.
+            return Status.Long(villager) ?? TestActs.Describe(villager) ?? Sleep.Describe(villager) ??
+                   (MorningHearth.IsTending(villager) ? "tending the hearth" : null) ?? FreeTime.Describe(villager);
         }
 
         public static string HoverText(Villager villager)

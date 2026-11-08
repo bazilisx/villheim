@@ -7,10 +7,14 @@ namespace Villheim.Logic.Villagers
     /// <summary>
     /// Runs a villager each AI tick, in this order:
     ///
-    /// 1. An enemy about: the game's own AI takes over, raises the alarm and fights (a sleeper wakes up).
+    /// 1. An enemy about: Combat runs those with a part in the fight before the brain (responders, anyone fighting
+    ///    back, those taking shelter). Everyone else goes on with the day below.
     /// 2. Healing when badly hurt, then bed at bedtime.
     /// 3. Work (gathering, carrying, building) when the village needs it.
     /// 4. Otherwise free time: the fire, a stroll, a chat, a workbench; the evening ring and the night by the fire.
+    ///    Children play instead of working (ChildPlay); elders keep to work inside the village (Ages).
+    ///
+    /// The routine that ran him is recorded each tick (Status), for the hover text and the map.
     ///
     /// Outside a fight the game's own wandering never runs, so it can't pull villagers away from what they are doing.
     /// Poses are asked for every tick and dropped when nothing asks (see <see cref="Poses"/>).
@@ -54,9 +58,11 @@ namespace Villheim.Logic.Villagers
             if (threat != brain.WasThreat)
             {
                 brain.WasThreat = threat;
-                bool fired = Dialogue.Event(villager.VillageId, threat ? "attack" : "fightover", villager.transform.position);
+                // The call to arms comes only from the villagers who go after the threat (Combat). The end of a fight
+                // is still news for everyone.
                 if (!threat)
                 {
+                    bool fired = Dialogue.Event(villager.VillageId, "fightover", villager.transform.position);
                     Moods.FightOver(villager);
                     VillageHearth home = VillageHearth.Find(villager.VillageId);
                     Player player = Player.m_localPlayer;
@@ -77,98 +83,128 @@ namespace Villheim.Logic.Villagers
 
             if (threat)
             {
-                // A fight: the game's AI moves at its own pace (protectors run to the enemy).
-                villager.SetWalk(false);
-                Sleep.Wake(villager);
-                Seats.StandUp(villager);
-                Poses.Release(villager);
+                // Fighting, sheltering and fleeing are run by Combat before the brain (a prefix on the AI update). A
+                // villager who gets this far has no part in the fight and goes on with his day.
                 VillageMood.NoteThreat(villager.VillageId);
-
-                // Protectors arm and fight (the game's AI); carers get away while a protector is there.
-                return Roles.OnThreat(villager, ai, enemy, dt);
             }
 
             Roles.AfterThreat(villager);
 
             Poses.BeginTick(villager);
+            Status.Doer doer = Status.Doer.None;
             if (TestActs.Update(villager, ai, dt))
             {
                 // 'vh act': a test action asked for by hand.
+                doer = Status.Doer.Test;
             }
             else if (Healing.Update(villager, ai, dt, false))
             {
                 // Healing comes first.
+                doer = Status.Doer.Heal;
             }
             else if (Leaving.Update(villager, ai, dt))
             {
                 // Packed up and walking out of the village for good.
+                doer = Status.Doer.Leave;
             }
             else if (Escort.Update(villager, ai, dt))
             {
                 // A protector following the horn, or running to help a friend of the village in a fight.
+                doer = Status.Doer.Escort;
             }
             else if (Sleep.Update(villager, ai, dt))
             {
                 // Bedtime.
+                doer = Status.Doer.Sleep;
             }
             else if (Social.Update(villager, ai, dt))
             {
                 // Walking up to greet a newcomer, or to ask a known player for something.
+                doer = Status.Doer.Social;
             }
             else if (MorningHearth.Update(villager, ai, dt))
             {
                 // A carer tends the hearth first thing in the morning.
+                doer = Status.Doer.Hearth;
             }
             else if (Living.Holiday(villager.VillageId))
             {
                 // A festival evening: no work, everyone at the hearth.
                 FreeTime.Update(villager, ai, dt);
+                doer = Status.Doer.FreeTime;
             }
-            else if (!Chores.Update(villager, ai, dt))
+            else if (ChildPlay.Update(villager, ai, dt))
             {
-                if (Chores.BetweenJobs(villager))
-                {
-                    ai.StopMoving();
-                    IdleLife.Tick(villager, ai);
-                }
-                else if (Replanting.Update(villager, ai, dt))
-                {
-                    // Replanting what was felled, out past the village.
-                }
-                else if (Repairs.Update(villager, ai, dt))
-                {
-                    // The builder mends what is broken.
-                }
-                else if (Smithing.Update(villager, ai, dt))
-                {
-                    // The smith makes the village's next set of gear at a station.
-                }
-                else if (PathLaying.Update(villager, ai, dt))
-                {
-                    // Laying a path: background work, before free time.
-                }
-                else if (Sorting.Update(villager, ai, dt))
-                {
-                    // Carrying stacks from the full main chest to the storage chests (D-016).
-                }
-                else if (Hunting.Update(villager, ai, dt))
-                {
-                    // A protector hunts when the chest is low on food.
-                }
-                else if (Farming.Update(villager, ai, dt))
-                {
-                    // The farmer plants, harvests and sees to the animals.
-                }
-                else if (Foraging.Update(villager, ai, dt))
-                {
-                    // A carer picks berries and mushrooms when the chest is low on food.
-                }
-                else if (!Healing.Update(villager, ai, dt, true))
-                {
-                    FreeTime.Update(villager, ai, dt);
-                }
+                // Children play and explore near the village; they take no jobs.
+                doer = Status.Doer.Play;
+            }
+            else if (Childhood.IsChild(villager))
+            {
+                // Out of play hours a child has free time like everyone else, and never a job.
+                FreeTime.Update(villager, ai, dt);
+                doer = Status.Doer.FreeTime;
+            }
+            else if (Chores.Update(villager, ai, dt))
+            {
+                doer = Status.Doer.Chores;
+            }
+            else if (Chores.BetweenJobs(villager))
+            {
+                ai.StopMoving();
+                IdleLife.Tick(villager, ai);
+                doer = Status.Doer.BetweenJobs;
+            }
+            else if (!Ages.OutOfVillageWork(villager) && Replanting.Update(villager, ai, dt))
+            {
+                // Replanting what was felled, out past the village.
+                doer = Status.Doer.Replant;
+            }
+            else if (Repairs.Update(villager, ai, dt))
+            {
+                // The builder mends what is broken.
+                doer = Status.Doer.Repair;
+            }
+            else if (Smithing.Update(villager, ai, dt))
+            {
+                // The smith makes the village's next set of gear at a station.
+                doer = Status.Doer.Smith;
+            }
+            else if (PathLaying.Update(villager, ai, dt))
+            {
+                // Laying a path: background work, before free time.
+                doer = Status.Doer.Path;
+            }
+            else if (Sorting.Update(villager, ai, dt))
+            {
+                // Carrying stacks from the full main chest to the storage chests (D-016).
+                doer = Status.Doer.Sort;
+            }
+            else if (!Ages.OutOfVillageWork(villager) && Hunting.Update(villager, ai, dt))
+            {
+                // A protector hunts when the chest is low on food.
+                doer = Status.Doer.Hunt;
+            }
+            else if (Farming.Update(villager, ai, dt))
+            {
+                // The farmer plants, harvests and sees to the animals.
+                doer = Status.Doer.Farm;
+            }
+            else if (!Ages.OutOfVillageWork(villager) && Foraging.Update(villager, ai, dt))
+            {
+                // A carer picks berries and mushrooms when the chest is low on food.
+                doer = Status.Doer.Forage;
+            }
+            else if (Healing.Update(villager, ai, dt, true))
+            {
+                doer = Status.Doer.Heal;
+            }
+            else
+            {
+                FreeTime.Update(villager, ai, dt);
+                doer = Status.Doer.FreeTime;
             }
 
+            Status.Set(villager, doer);
             Poses.EndTick(villager);
             LoopWatch.Update(villager);
             Seats.AfterTick(villager);

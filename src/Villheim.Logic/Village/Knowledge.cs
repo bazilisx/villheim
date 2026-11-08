@@ -863,6 +863,12 @@ namespace Villheim.Logic.Village
         /// </summary>
         public static bool MayWork(int villageId, Vector3 hearth, Vector3 at, float inner)
         {
+            // Fuling camps, tar pits and the like are kept clear of, whatever the gear (KeepApart, T-24).
+            if (KeepApart.Avoids(villageId, hearth, at))
+            {
+                return false;
+            }
+
             if (!On || !LogicConfig.IsOn(LogicConfig.KnowledgeGearGate) || villageId == 0 || Utils.DistanceXZ(hearth, at) <= inner)
             {
                 return true;

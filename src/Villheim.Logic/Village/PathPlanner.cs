@@ -651,7 +651,7 @@ namespace Villheim.Logic.Village
                 int taken = TakeUpRoad(hearth, plot, others);
                 Villagers.PathLaying.Queue(hearth, plot.Position, plot.Radius, plot.Yaw, Designs.Doors.Angle(plot.Design), plot.Design);
                 VillheimPlugin.Log.LogInfo($"{state.Name}: what the road to the {plot.Design} went round is gone; " +
-                                           $"{taken} metres taken up, a new road planned.");
+                                           $"{taken} meters taken up, a new road planned.");
             }
         }
 

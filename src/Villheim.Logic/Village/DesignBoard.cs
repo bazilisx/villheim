@@ -1230,7 +1230,7 @@ namespace Villheim.Logic.Village
         private static string MarkerKind(ZNetView view)
         {
             string prefab = Utils.GetPrefabName(view.gameObject);
-            return prefab == PathMarker || prefab == DoorMarker ? "path" : null;
+            return prefab == PathMarker || prefab == DoorMarker || prefab == "piece_bpsnappoint" || prefab == "piece_bpcenterpoint" ? "path" : null;
         }
 
         /// <summary>
@@ -1487,8 +1487,22 @@ namespace Villheim.Logic.Village
             }
         }
 
+        /// <summary>One ground job at a time (see ApplyTerrain).</summary>
+        private static bool _groundBusy;
+
         private static IEnumerator ApplyTerrain(List<string> lines, Vector3 center, float yaw, float half)
         {
+            // One job at a time, and each one clears, writes and saves in a single frame. Two jobs at once (emptying the
+            // saved plot while painting the copy) both wrote into the same 64 m ground area; when one saved it mid-way,
+            // the game reloaded that area and the other's dirt in it was lost: a straight-edged gap (2026-11-07).
+            while (_groundBusy)
+            {
+                yield return null;
+            }
+
+            _groundBusy = true;
+            try
+            {
             Quaternion turn = Quaternion.Euler(0f, yaw, 0f);
             CultureInfo inv = CultureInfo.InvariantCulture;
             var touched = new HashSet<TerrainComp>();
@@ -1515,7 +1529,6 @@ namespace Villheim.Logic.Village
 
             // First the plot's own paint goes, so dirt from an earlier copy or try never adds up with the new one.
             ClearPaint(center, yaw, half, touched);
-            yield return null;
 
             int done = 0, painted = 0;
             string failed = null;
@@ -1582,11 +1595,6 @@ namespace Villheim.Logic.Village
                     failed = $"{e.GetType().Name}: {e.Message}";
                     break;
                 }
-
-                if (done % 200 == 0)
-                {
-                    yield return null;
-                }
             }
 
             foreach (TerrainComp ground in touched)
@@ -1615,6 +1623,11 @@ namespace Villheim.Logic.Village
             Say(failed == null
                 ? $"Board: ground put back in the copy: {done} squares ({painted} painted)."
                 : $"Board: putting the ground back stopped after {done} squares: {failed}");
+            }
+            finally
+            {
+                _groundBusy = false;
+            }
         }
 
         // ---------------------------------------------------------------- saving and resetting a plot

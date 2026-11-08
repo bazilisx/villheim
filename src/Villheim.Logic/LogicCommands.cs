@@ -76,6 +76,7 @@ namespace Villheim.Logic
             "switches: list the settings that turn each world and villager-minds system off, and whether each is on now: " +
             string.Join(", ", LogicConfig.Switches.Select(s => s.Name)) +
             " (config sections '5 - World life' and '5b - Villager minds'; the world ones also need WorldLife on)",
+            "exportpieces: write every buildable piece's collider and mesh bounds, pivot height, colour, texture, category, comfort, cost and station to BepInEx/config/Villheim/pieces.json (copy it to tools/blueprint-lab/data/pieces-export.json)",
         }).ToArray();
 
         /// <summary>'vh switches': each system's on/off setting and its value now.</summary>
@@ -236,6 +237,7 @@ namespace Villheim.Logic
                 case "villheim_goal": Say(context, Villagers.MindsCommands.Goal(args)); return true;
                 case "villheim_notice": Say(context, Villagers.MindsCommands.Notice(args)); return true;
                 case "villheim_switches": Say(context, Switches()); return true;
+                case "villheim_exportpieces": Say(context, PieceExport.Run()); return true;
                 default: return false;
             }
         }

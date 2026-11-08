@@ -89,6 +89,7 @@ namespace Villheim.Logic
         public static ConfigEntry<bool> SurroundingsTags;
         public static ConfigEntry<bool> TopicFatigue;
         public static ConfigEntry<bool> ChatScenes;
+        public static ConfigEntry<int> FeastPieces;
         public static ConfigEntry<bool> EventFever;
 
         /// <summary>True when the setting is on, or not bound yet (every system defaults to on).</summary>
@@ -302,7 +303,7 @@ namespace Villheim.Logic
                 "Each villager wants something for a few days (a bed, a feast, to court a friend, to make peace...) and " +
                 "is glad when it comes. Off: no new wants and no sweethearts.");
             Gatherings = Admin(config, minds, "Gatherings", true,
-                "The village turns out for a finished building, a newcomer or a pedlar, feasts on good days and hears the " +
+                "The village turns out for a big finished building, a newcomer or a pedlar, feasts on good days and hears the " +
                 "evening words at the hearth. Off: a few villagers come to look, as before.");
             Noticing = Admin(config, minds, "Noticing", true,
                 "Villagers remark on the weather turning, dawn and dusk, a boss felled, animals and enemies in sight, and " +
@@ -315,6 +316,9 @@ namespace Villheim.Logic
                 "carry. Off: those lines are not picked.");
             TopicFatigue = Admin(config, minds, "TopicFatigue", true,
                 "A topic you have heard a lot of lately is picked less often. Off: every line keeps its weight.");
+            FeastPieces = Admin(config, minds, "FeastPieces", 150,
+                "A finished building makes the evening a feast when it is a hall, a new home, or has at least this many " +
+                "pieces. Smaller ones (sheds, pens, rebuilt homes under this size) get a short look from a few villagers.");
             ChatScenes = Admin(config, minds, "ChatScenes", true,
                 "Chats between villagers fit the pair (friend, rival, sweetheart, trade), pass on what they know of you, " +
                 "and get answers in each one's own voice and a third villager chiming in. Off: plain chats, as before.");

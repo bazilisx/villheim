@@ -274,6 +274,7 @@ namespace Villheim.Logic.Village
         private static void Complete(VillageHearth hearth, VillageState state, Site site)
         {
             End(hearth.Zdo);
+            int pieces = Plans.TryGetValue(state.Id, out CachedPlan done) && done.Entries != null ? done.Entries.Count : -1;
             Plans.Remove(state.Id);
             SnapToGround.SnappAll();
 
@@ -313,10 +314,26 @@ namespace Villheim.Logic.Village
             Chronicle.Add(hearth, site.Upgrade ? $"The {VillageBrain.RoleName(site.Role)} was rebuilt bigger." :
                 $"A new {VillageBrain.RoleName(site.Role)} was finished.");
 
-            // The village turns out to look at it (Gatherings: a speaker, a crowd, a few words after).
+            // The village turns out to look at it (Gatherings: a speaker, a crowd, a few words after). Only a big
+            // building makes the evening a feast (D-005); a small one gets a short look.
             Vector3 front = site.Position + Quaternion.Euler(0f, site.Yaw, 0f) * Vector3.forward * (Footprint(hearth) + 2f);
-            Villagers.Gatherings.Finished(state.Id, front);
+            Villagers.Gatherings.Finished(state.Id, front, IsBig(site, pieces));
             VillageBrain.Announce(hearth, $"{state.Name} has finished a new {VillageBrain.RoleName(site.Role)}.");
+        }
+
+        /// <summary>
+        /// A big building, worth a feast (D-005): a hall (the hub), a new home, or any design of FeastPieces pieces or
+        /// more. When the piece count is not known, a footprint of 8 m radius or more counts as big.
+        /// </summary>
+        public static bool IsBig(Site site, int pieces)
+        {
+            if (site.Role == Role.Hub || (site.Role == Role.House && !site.Upgrade))
+            {
+                return true;
+            }
+
+            int threshold = LogicConfig.FeastPieces != null ? LogicConfig.FeastPieces.Value : 150;
+            return pieces >= 0 ? pieces >= threshold : site.Radius >= 8f;
         }
 
         private static CachedPlan GetPlan(VillageHearth hearth, Site site)

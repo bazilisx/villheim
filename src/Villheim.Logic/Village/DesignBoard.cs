@@ -1204,28 +1204,39 @@ namespace Villheim.Logic.Village
         private static string PathMarker => LogicConfig.SlotPathMarker?.Value ?? "piece_bpsnappoint";
         private static string DoorMarker => LogicConfig.SlotDoorMarker?.Value ?? "piece_bpcenterpoint";
 
-        /// <summary>"path", "door", or null for an object that is no marker.</summary>
+        /// <summary>
+        /// "path" for a marker (either marker object: both only say "connect roads and paths here"), null for anything
+        /// else.
+        /// </summary>
         private static string MarkerKind(ZNetView view)
         {
             string prefab = Utils.GetPrefabName(view.gameObject);
-            return prefab == PathMarker ? "path" : prefab == DoorMarker ? "door" : null;
+            return prefab == PathMarker || prefab == DoorMarker ? "path" : null;
         }
 
+        /// <summary>
+        /// One line per marker: "path;x;y;z;yaw", where yaw is the way a road leaves it: from the middle of the design's
+        /// own pieces out through the marker. How the marker itself is turned never matters.
+        /// </summary>
         private static List<string> MarkerLines(List<ZNetView> views, Vector3 center, Quaternion frame)
         {
             CultureInfo inv = CultureInfo.InvariantCulture;
             var lines = new List<string>();
+            List<Vector3> pieces = views.Where(v => MarkerKind(v) == null).Select(v => frame * (v.transform.position - center)).ToList();
+            Vector3 middle = pieces.Count > 0 ? pieces.Aggregate(Vector3.zero, (sum, p) => sum + p) / pieces.Count : Vector3.zero;
             foreach (ZNetView view in views)
             {
-                string kind = MarkerKind(view);
-                if (kind == null)
+                if (MarkerKind(view) == null)
                 {
                     continue;
                 }
 
                 Vector3 local = frame * (view.transform.position - center);
-                float yaw = (frame * view.transform.rotation).eulerAngles.y;
-                lines.Add(string.Join(";", kind, local.x.ToString("0.###", inv), local.y.ToString("0.###", inv), local.z.ToString("0.###", inv), yaw.ToString("0.#", inv)));
+                Vector3 outward = local - middle;
+                outward.y = 0f;
+                float yaw = outward.sqrMagnitude > 0.01f ? Mathf.Atan2(outward.x, outward.z) * Mathf.Rad2Deg : 0f;
+                lines.Add(string.Join(";", "path", local.x.ToString("0.###", inv), local.y.ToString("0.###", inv), local.z.ToString("0.###", inv),
+                    ((yaw + 360f) % 360f).ToString("0.#", inv)));
             }
 
             return lines;
@@ -1239,7 +1250,7 @@ namespace Villheim.Logic.Village
             foreach (string line in SectionLines(file, MarkerHeader))
             {
                 string[] f = line.Split(';');
-                GameObject prefab = f.Length >= 5 ? ZNetScene.instance.GetPrefab(f[0] == "door" ? DoorMarker : PathMarker) : null;
+                GameObject prefab = f.Length >= 5 ? ZNetScene.instance.GetPrefab(PathMarker) : null;
                 if (prefab == null || !float.TryParse(f[1], NumberStyles.Float, inv, out float x) || !float.TryParse(f[2], NumberStyles.Float, inv, out float y) ||
                     !float.TryParse(f[3], NumberStyles.Float, inv, out float z) || !float.TryParse(f[4], NumberStyles.Float, inv, out float yaw))
                 {
@@ -1257,14 +1268,15 @@ namespace Villheim.Logic.Village
         private static string SetMarker(Player player, string kind)
         {
             GameObject aimed = LookAt.Target(player);
-            if (aimed == null || (kind != "path" && kind != "door"))
+            if (aimed == null)
             {
-                return $"Board: aim at the object to use and type 'vh slot marker path' or 'vh slot marker door'. Now: path {PathMarker}, door {DoorMarker}.";
+                return $"Board: aim at the object to use and type 'vh slot marker'. Markers now: {PathMarker} and {DoorMarker}.";
             }
 
             string prefab = Utils.GetPrefabName(aimed);
-            (kind == "path" ? LogicConfig.SlotPathMarker : LogicConfig.SlotDoorMarker).Value = prefab;
-            return $"Board: {prefab} now marks {(kind == "path" ? "where outside paths join" : "the door paths lead to")}. It is saved as a marker, not as a piece.";
+            LogicConfig.SlotPathMarker.Value = prefab;
+            return $"Board: {prefab} now marks \"connect roads and paths here\" ({DoorMarker} still does too). It is saved as a marker, never as a piece; " +
+                   "the road leaves it away from the middle of the design, whichever way it is turned.";
         }
 
         private static string _lastGround = "";
@@ -1702,8 +1714,7 @@ namespace Villheim.Logic.Village
                 SetPlotState(plotName, oldPlaced, snapshots.Count > 0 ? state ?? "as before the save" : null);
             });
 
-            int pathMarks = markers.Count(m => m.StartsWith("path")), doorMarks = markers.Count(m => m.StartsWith("door"));
-            string marks = markers.Count == 0 ? "no path or door markers" : $"{pathMarks} path and {doorMarks} door markers";
+            string marks = markers.Count == 0 ? "no path markers" : $"{markers.Count} path markers, roads leaving outward";
             return $"Board: saved {stem} ({views.Count - markers.Count} pieces; {_lastGround}; {marks})" +
                    (source != null ? $", from No. {source.Number} {source.Design} ({match:P0} alike)." : decor == 3 ? "; no candidate matched it." : ".") + next +
                    " Undo (8) walks the save back.";

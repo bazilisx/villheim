@@ -63,10 +63,10 @@ with its own look for its biome.
   is folded in: the board's biome is the design's biome.
 - [ ] Slotting done for Meadows, then the Black Forest: hearth first, then houses, then the work buildings.
 - [ ] Grow a plot (and slide its neighbours) when a build needs more room; for now 'size N' sets every plot of a board.
-- [x] Path and door markers on the board (2026-11-07): saved as "#VillheimPaths" (path;x;y;z;yaw, door;...), read into
-  Blueprints.Blueprint.Markers.
-- [ ] Paths use the markers: from a building's door marker (instead of Designs.Doors' guess) to the nearest path
-  marker of the hub or the network; never to the back of a building.
+- [x] Path markers on the board (2026-11-07): one meaning, "connect roads and paths here"; saved as "#VillheimPaths"
+  (path;x;y;z;yaw, yaw = outward from the design's middle through the marker), read into Blueprint.Markers.
+- [ ] Paths use the markers: a building's road starts at its markers (instead of Designs.Doors' guess) and joins the
+  hub's markers or the network, leaving outward; never to the back of a building.
 - [ ] Villages build a save's terrain section (paths, paving, levelled spots) along with its pieces.
 - [ ] PNG pictures for saved stage files too (copy them to PlanBuild as a "Villheim saved" tab).
 - [x] Decor stages on the slotting board (2026-11-07): saving d3 brings up a d2 copy behind it, d2 a d1 copy.

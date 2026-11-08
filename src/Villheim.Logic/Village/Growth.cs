@@ -139,7 +139,7 @@ namespace Villheim.Logic.Village
 
                 for (int i = 0; i < plots.Count; i++)
                 {
-                    DesignLibrary.Design? next = NextDesign(plots[i], state.Biome);
+                    DesignLibrary.Design? next = NextDesign(plots[i], state.Biome, Cultures.Of(state));
                     if (next != null && PlotFinder.CanUpgrade(plots[i], next.Value.Radius, hearth.transform.position, state.Axis,
                             plots, state.Id))
                     {
@@ -168,7 +168,7 @@ namespace Villheim.Logic.Village
         /// The design a building would be rebuilt as: the next level of its blueprint family, or for a copied
         /// location the smallest design of the same kind that is clearly bigger (up to 1.7 times its size). Farms stay.
         /// </summary>
-        public static DesignLibrary.Design? NextDesign(Plot plot, Heightmap.Biome biome)
+        public static DesignLibrary.Design? NextDesign(Plot plot, Heightmap.Biome biome, string culture = null)
         {
             Role role = RoleOf(plot);
             if (role == Role.Farm)
@@ -190,7 +190,7 @@ namespace Villheim.Logic.Village
             }
 
             DesignLibrary.Design? best = null;
-            foreach (DesignLibrary.Design candidate in DesignLibrary.PoolFor(biome, role))
+            foreach (DesignLibrary.Design candidate in DesignLibrary.PoolFor(biome, role, culture))
             {
                 if (candidate.Name == plot.Design || candidate.Radius < plot.Radius * 1.2f || candidate.Radius > plot.Radius * 1.7f)
                 {

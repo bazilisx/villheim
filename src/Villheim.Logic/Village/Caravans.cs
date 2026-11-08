@@ -336,7 +336,7 @@ namespace Villheim.Logic.Village
             {
                 case Trade:
                     Relations.Visited(hearth, c.From);
-                    Chronicle.Add(hearth, $"{Names.Villager(c.Seed)} came with a load from {from}: {c.CargoText()}.");
+                    Chronicle.Add(hearth, $"{Names.Villager(c.Seed, Cultures.Of(source))} came with a load from {from}: {c.CargoText()}.");
                     Dialogue.Note(state.Id, "cargo");
                     break;
                 case Haul:
@@ -463,7 +463,7 @@ namespace Villheim.Logic.Village
             Caravan c = Send(hearth, Trade, toId, home, best.To.GetPosition(), best.Load, trail ? "n" : "s");
             Relations.Adjust(hearth, null, 2, toId);
             string toName = best.To.GetString(Keys.Name, "the next village");
-            Chronicle.Add(hearth, $"{Names.Villager(c.Seed)} set out for {toName} with {c.CargoText()} we could spare.");
+            Chronicle.Add(hearth, $"{Names.Villager(c.Seed, Cultures.Of(hearth))} set out for {toName} with {c.CargoText()} we could spare.");
             Dialogue.Note(state.Id, "caravan");
             why = null;
             return true;
@@ -550,12 +550,14 @@ namespace Villheim.Logic.Village
                     }
 
                     int seed = c.Seed + i * 7919;
-                    string name = Names.Villager(seed);
+                    string culture = Cultures.Of(source);
+                    string name = Names.Villager(seed, culture);
                     if (walker.Zdo == null)
                     {
                         break;
                     }
 
+                    walker.Zdo.Set(Cultures.KeyVillager, culture);
                     walker.Zdo.Set(KeyCaravanId, c.Id);
                     walker.Zdo.Set(Keys.VillagerSeed, seed);
                     walker.Zdo.Set(Keys.VillagerName, name);

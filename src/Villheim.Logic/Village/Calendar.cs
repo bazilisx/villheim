@@ -102,10 +102,10 @@ namespace Villheim.Logic.Village
             return day <= festival ? festival - day : length - day + festival;
         }
 
-        private static string NextFestival()
+        private static string NextFestival(string culture = Cultures.Fallback)
         {
             Now(out int season, out int day, out int length);
-            return FestivalNames[day <= Mathf.Min(FestivalDayOfSeason, length) ? season : (season + 1) % 4];
+            return Cultures.Festival(culture, day <= Mathf.Min(FestivalDayOfSeason, length) ? season : (season + 1) % 4);
         }
 
         // ---------------------------------------------------------------- shudnal's Seasons, read softly
@@ -230,7 +230,7 @@ namespace Villheim.Logic.Village
             Gatherings.Feast(state.Id);
             Moods.VillageThink(state.Id, "festival");
             Dialogue.Note(state.Id, "festival");
-            Chronicle.Add(hearth, $"{state.Name} held {FestivalNames[season]} at the hearth.");
+            Chronicle.Add(hearth, $"{state.Name} held {Cultures.Festival(Cultures.Of(state), season)} at the hearth.");
             if (Living.World)
             {
                 foreach (ZDO other in Relations.AllHearths())
@@ -301,18 +301,20 @@ namespace Villheim.Logic.Village
             }
         }
 
-        public static string Fill(string line)
+        public static string Fill(string line, string culture = Cultures.Fallback)
         {
             if (!line.Contains("{season") && !line.Contains("festival}") && !line.Contains("{daystofestival}"))
             {
                 return line;
             }
 
+            // Each culture names the four feasts its own way (Cultures.Festival): Yule in a Norse village, Koliada in a
+            // Slavic one.
             Now(out int season, out _, out _);
             int days = DaysToFestival();
             return line.Replace("{season}", Seasons[season])
-                .Replace("{festival}", FestivalToday ? FestivalNames[season] : NextFestival())
-                .Replace("{nextfestival}", NextFestival())
+                .Replace("{festival}", FestivalToday ? Cultures.Festival(culture, season) : NextFestival(culture))
+                .Replace("{nextfestival}", NextFestival(culture))
                 .Replace("{daystofestival}", days == 0 ? "today" : days == 1 ? "tomorrow" : $"in {PlayerMemory.Number(days)} days");
         }
 

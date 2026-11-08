@@ -95,8 +95,12 @@ namespace Villheim.Logic.Villagers
                 facing.sqrMagnitude > 0.01f ? Quaternion.LookRotation(facing) : Quaternion.identity);
             Villager villager = go.GetComponent<Villager>();
             int seed = Random.Range(1, int.MaxValue);
-            string name = Names.Villager(seed);
+            // A wanderer is of one of the peoples of the land he walks in (Cultures).
+            Heightmap.Biome land = WorldGenerator.instance != null ? WorldGenerator.instance.GetBiome(target) : Heightmap.Biome.Meadows;
+            string culture = Village.Cultures.On ? Village.Cultures.Roll(land, seed) : Village.Cultures.Fallback;
+            string name = Names.Villager(seed, culture);
             ZDO zdo = villager.Zdo;
+            zdo.Set(Village.Cultures.KeyVillager, culture);
             zdo.Set(Keys.VillagerVillage, 0);
             zdo.Set(Keys.VillagerVillageName, "");
             zdo.Set(Keys.VillagerHearth, target);

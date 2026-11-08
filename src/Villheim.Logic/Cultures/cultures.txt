@@ -1,0 +1,302 @@
+# Villheim cultures: names, looks, feasts and building sets for each people a village can belong to.
+# Read by Village/Cultures.cs. Built into the logic DLL, so a change reloads with it.
+#
+# Villages are echoes of the old world the heroes came from: the Norse and the peoples they traded with, settled
+# among or served beside. Which cultures a biome's villages may have is the setting CultureMap (config section
+# "5c - Cultures"). Names come from real naming traditions of each people, written in plain letters.
+#
+# [key] starts a culture. Fields:
+#   base = key            copy every field of that culture first (a "+" field adds to the copied list)
+#   name                  shown in commands
+#   people                group tag for dialogue lines (people:norse, people:celtic...)
+#   leader                title of the village's first settler (the Norse say Jarl)
+#   male, female          given names, separated by commas
+#   surname               none, norse (father's name + son or daughter), mac (mac or ingen + father), ibn (ibn or
+#                         bint + father), slavic (father's name + ich or na), de (de + a place from "seats"),
+#                         list (a family name from "families", written male/female)
+#   surnamechance         share of villagers who use the surname (default 1)
+#   seats, families       lists for the "de" and "list" styles
+#   places.start/.end     parts for village and home place names
+#   festivals             the four seasonal feasts, spring | summer | autumn | winter
+#   skin                  range on the game's skin slider, 0 palest, 1 darkest (the game gives no paler than 0.25 here)
+#   hairshade             hair brightness range, 0.1 near black to 1 full colour
+#   hairred               0 fair, 1 red
+#   beard                 share of men with a beard
+#   hair, beardstyle      words in the game's style names that are given more often, word:weight
+#   chest, legs, helmet,  extra vanilla clothes for this culture, Prefab@fromTier:weight; "f:" women only, "m:" men
+#   cape                  only; "*" at the end takes any item whose name starts so (ArmorTunic*). Missing items are
+#                         skipped, so a missing prefab never leaves a villager bare.
+#   designs.hub/.house/.workshop/.farm/.storage   design tiers tried before the biome's own (same form as Culture.cs)
+
+# ============================================================================================== Norse peoples
+
+[norse]
+name = Norse
+people = norse
+leader = Jarl
+male = Arne, Asbjorn, Asgeir, Bard, Bjarke, Bjorn, Bolli, Brand, Dag, Egil, Eirik, Erling, Eyvind, Finn, Frode, Geir, Gisli, Grim, Gudmund, Gunnar, Hakon, Halfdan, Halvard, Harald, Hauk, Helgi, Hrolf, Ingolf, Ivar, Ketil, Kolbein, Leif, Njal, Odd, Olaf, Orm, Ottar, Ragnar, Rolf, Sigurd, Skeggi, Snorri, Stein, Sven, Thorbjorn, Thorkel, Torstein, Tore, Ulf, Vidar, Yngvar
+female = Alfhild, Asa, Asgerd, Aslaug, Astrid, Bergljot, Bodil, Borghild, Dagny, Eldrid, Freydis, Frida, Geirlaug, Gerd, Gro, Gudrid, Gudrun, Gunnhild, Gyda, Halla, Hallgerd, Helga, Hild, Ingrid, Ingunn, Jorunn, Kari, Oddny, Ragna, Ragnhild, Rannveig, Runa, Signe, Sigrid, Sigrun, Solveig, Steinunn, Svanhild, Thora, Thordis, Thorgerd, Thurid, Tove, Unn, Vigdis, Ylva
+surname = norse
+surnamechance = 1
+places.start = Ask, Birk, Eik, Fjall, Grim, Hag, Hval, Ulf, Rav, Stein, Sol, Ting, Varg, Bjorn, Frey, Gull, Hrafn, Kald, Lyng, Mjo, Nord, Odd, Sig, Tor, Elg, Ran, Hjort, Lind, Ros, Skog
+places.end = heim, vik, by, stad, dal, nes, fjord, holt, berg, tun, vang, land, voll, seter
+festivals = the sowing feast | the midsummer fire | the harvest feast | Yule
+skin = 0.25-0.7
+hairshade = 0.25-1
+hairred = 0-1
+beard = 0.85
+hair = braid:2, ponytail:1.3, long:1.3
+beardstyle = braid:1.5, long:1.5
+cape = CapeDeerHide@1:0.5
+
+[norse-forest]
+base = norse
+name = Norse of the forests
+male+ = Anund, Assur, Fastulf, Gorm, Ingvar, Kale, Styrbjorn, Sune, Toke, Torgny
+female+ = Estrid, Gyrid, Holmfrid, Inga, Ragnfrid, Tola, Tora
+places.start+ = Gran, Furu, Mos, Myr
+places.end = heim, by, stad, dal, holt, berg, tun, skog, lund, rud, mark, haga, sater
+cape = CapeDeerHide@1:1, CapeTrollHide@3:1
+
+[norse-highland]
+base = norse
+name = Norse of the high country
+male+ = Flosi, Grettir, Gunnlaug, Hoskuld, Hrafnkel, Ingimund, Kjartan, Skallagrim, Skarphedin, Thorgils
+female+ = Asdis, Bergthora, Gudny, Hildigunn, Hrefna, Ljot, Thorhild, Thorunn, Yngvild
+places.start = Hof, Reyk, Hvit, Sval, Isa, Myr, Skal, Hraun, Snae, Kald, Fjall, Grim, Hlid, Borg, Vatns
+places.end = fell, dal, holt, stadir, nes, hlid, botn, hraun, tunga, gard
+skin = 0.25-0.65
+cape = CapeDeerHide@0:1, CapeWolf@3:1
+
+# ============================================================================================== Meadows neighbours
+
+[anglo-saxon]
+name = Anglo-Saxon
+people = anglo-saxon
+leader = Reeve
+male = Aelfric, Aelfstan, Aelfwine, Aethelstan, Aethelwulf, Aldred, Beorhtric, Beorn, Beornoth, Brihtnoth, Byrhtferth, Cenwulf, Ceolwulf, Cuthbert, Cuthred, Cyneheard, Cynric, Dunstan, Eadgar, Eadmund, Eadric, Eadward, Eadwine, Eadwulf, Ealdwine, Ecgbert, Godric, Godwine, Guthlac, Hereward, Leofric, Leofwine, Ordgar, Osric, Oswald, Oswine, Sigeberht, Sigeric, Wigstan, Wihtred, Wulfhere, Wulfric, Wulfstan, Wynstan
+female = Aebbe, Aelfflaed, Aelfgifu, Aelfgyth, Aelfthryth, Aelfwynn, Aethelburh, Aethelflaed, Aethelgifu, Aethelthryth, Aldgyth, Breguswith, Cwenburh, Cwenthryth, Cyneburh, Cynethryth, Eadburh, Eadflaed, Eadgifu, Eadgyth, Eadwynn, Ealdgyth, Ealhswith, Eanflaed, Ecgwynn, Eormengyth, Frithugyth, Godgifu, Hereswith, Hild, Hildelith, Leofflaed, Leofgifu, Leofrun, Mildthryth, Osburh, Saethryth, Seaxburh, Tetta, Wihtburh, Wulfgyth, Wulfrun, Wulfwynn, Wynflaed
+surname = none
+places.start = Ac, Ash, Brad, Brom, Bur, Dun, Hol, Hwit, Lang, Mid, Nor, Sut, Stan, West, Ald, Lea, Thorn, Wil
+places.end = ton, ham, ford, ley, bury, worth, wic, stead, den, field, mere, wold, hurst, cot
+festivals = the plough feast | the midsummer fire | Harvest Home | Midwinter
+skin = 0.25-0.7
+hairshade = 0.2-1
+hairred = 0-0.9
+beard = 0.7
+hair = short:1.3, long:1.2
+chest = ArmorTunic*@1:0.6
+helmet = HelmetHat*@1:0.3
+
+[frankish-norman]
+name = Frankish and Norman
+people = frankish-norman
+leader = Seneschal
+male = Alan, Anschetil, Arnulf, Baldric, Baldwin, Berengar, Bernard, Drogo, Eudo, Fulk, Geoffrey, Gerard, Gilbert, Giroie, Godfrey, Goscelin, Guy, Hamon, Herluin, Hervey, Hubert, Hugh, Humphrey, Ivo, Lanfranc, Neel, Odo, Osbern, Osmund, Rainald, Ralph, Ranulf, Richard, Robert, Roger, Rollo, Serlo, Tancred, Theobald, Turstin, Waleran, Walter, Warin, William
+female = Adela, Adelaide, Adeliza, Agnes, Albreda, Alberada, Alice, Amice, Aubree, Avelina, Avice, Basilia, Beatrice, Cecily, Constance, Duda, Emma, Eremburga, Ermengarde, Gerberga, Gisela, Godehilde, Gundreda, Gunnor, Hawise, Helisende, Herleva, Hildeburg, Ida, Isabel, Judith, Juliana, Lesceline, Mabel, Matilda, Muriel, Papia, Petronilla, Rohais, Sibyl, Sprota
+surname = de
+surnamechance = 0.6
+seats = Arques, Avranches, Bayeux, Beaumont, Bellame, Breteuil, Brionne, Briquebec, Caen, Conches, Courcy, Coutances, Eu, Evreux, Falaise, Fecamp, Ferrieres, Gournay, Harcourt, Ivry, Lisieux, Mandeville, Montgomery, Mortain, Rouen, Tancarville, Tosny, Varenne, Vernon
+places.start = Beau, Bel, Blanc, Bon, Clair, Long, Mont, Haut, Roque, Bourg, Neuf, Grand, Vert, Bois
+places.end = ville, bec, tot, court, mont, fleur, beuf, val, fort
+festivals = the spring fair | the midsummer fires | the apple feast | the midwinter feast
+skin = 0.25-0.75
+hairshade = 0.15-0.9
+hairred = 0-0.6
+beard = 0.55
+hair = short:1.5, parted:1.2
+chest = ArmorTunic*@1:0.8, f:ArmorDress*@1:0.8
+helmet = HelmetHat*@1:0.4
+cape = CapeLinen@3:0.6
+
+# ============================================================================================== Gaelic peoples
+
+[celtic]
+name = Gaelic
+people = celtic
+leader = Chief
+male = Aed, Ailill, Art, Bran, Brian, Cathal, Cellach, Cian, Ciaran, Colman, Conall, Conchobar, Conn, Cormac, Crimthann, Cuan, Dallan, Diarmait, Domnall, Donnchad, Dubthach, Ennae, Eochaid, Eogan, Fachtna, Faelan, Fergal, Fergus, Fiachra, Finnian, Flann, Lorcan, Lugaid, Muirchertach, Muiredach, Murchad, Niall, Odran, Oengus, Ronan, Ruadri, Senan, Tadg, Tigernach, Tuathal, Ultan
+female = Aife, Ailbe, Aillenn, Aine, Bebinn, Blathnat, Brigit, Bronach, Cacht, Cobflaith, Cred, Derbail, Derbforgaill, Dunlaith, Eithne, Emer, Etain, Fainche, Fand, Fedelm, Findchaem, Finnabair, Gormlaith, Grainne, Lasair, Liadan, Mor, Moninne, Mugain, Muirenn, Muirgel, Ness, Niamh, Orlaith, Rignach, Sadb, Sarnat, Scathach, Sorcha, Tuathflaith
+surname = mac
+surnamechance = 0.7
+places.start = Dun, Rath, Ard, Lis, Clon, Gort, Druim, Ath, Ros, Glen, Carrig, Achad, Tulach
+places.end = more, beg, glas, dubh, ban, ard, liath, na, derg
+festivals = Bealtaine | Lughnasa | Samhain | Imbolc
+skin = 0.25-0.6
+hairshade = 0.15-1
+hairred = 0.3-1
+beard = 0.6
+hair = curl:1.5, long:1.4, braid:1.3
+cape = CapeDeerHide@0:1.2, CapeLinen@3:0.5
+chest = f:ArmorDress*@1:0.5
+
+[celtic-crannog]
+base = celtic
+name = Gaelic of the lake dwellings
+places.start = Loch, Inis, Crann, Moin, Ath, Eanach, Lurg, Corr, Cluain
+places.end = more, beg, glas, dubh, ban, liath, na, uisce
+
+# ============================================================================================== Black Forest neighbours
+
+[slavic]
+name = Slavic
+people = slavic
+leader = Starosta
+male = Bogdan, Bogumil, Boleslav, Boris, Borislav, Bozhidar, Bratislav, Budimir, Dalibor, Dobromir, Dobroslav, Dobrynya, Gleb, Gostomysl, Igor, Kazimir, Krasimir, Lubomir, Mieszko, Miroslav, Mstislav, Oleg, Premysl, Putyata, Radim, Radomir, Radoslav, Ratibor, Rostislav, Stanislav, Svyatopolk, Svyatoslav, Tihomir, Velimir, Vladimir, Vladislav, Vojtech, Volodar, Vratislav, Vseslav, Vsevolod, Yaropolk, Yaroslav, Zbigniew, Zdeslav, Ziemomysl, Zvonimir
+female = Bogdana, Bogumila, Bozhena, Branislava, Dobrava, Dobroslava, Dragomira, Dragoslava, Gorislava, Gostislava, Kazimira, Libuse, Lubava, Lyudmila, Malusha, Milada, Milena, Miloslava, Miroslava, Mlada, Olga, Predslava, Radmila, Radoslava, Rogneda, Rostislava, Stanislava, Svyatoslava, Velislava, Verkhuslava, Vlasta, Yaroslava, Zbyslava, Zlata, Zvenislava, Dobronega, Gremislava, Vysheslava, Boguslava, Desislava
+surname = slavic
+surnamechance = 0.6
+places.start = Bel, Nov, Star, Vysh, Dobr, Bor, Vel, Kras, Gor, Zel, Mir, Lub, Rad, Dub, Lip
+places.end = grad, gorod, ov, in, sk, no, ets, ica, ograd
+festivals = the spring feast | Kupala night | Dozhinki | Koliada
+skin = 0.25-0.7
+hairshade = 0.2-1
+hairred = 0-0.7
+beard = 0.75
+hair = braid:1.5, long:1.3
+beardstyle = long:1.3
+cape = CapeDeerHide@0:0.8, CapeTrollHide@3:0.8
+chest = f:ArmorDress*@1:0.4
+
+# ============================================================================================== Swamp peoples
+
+[baltic]
+name = Baltic
+people = baltic
+leader = Elder
+male = Algirdas, Butigeidis, Daugirdas, Daumantas, Eivydas, Erdvilas, Gediminas, Gerdenis, Glande, Herkus, Jogaila, Karijotas, Kaributas, Kestutis, Lengvenis, Liubartas, Mantvilas, Mindaugas, Nalubas, Narimantas, Rimgaudas, Sirvydas, Skirgaila, Skomantas, Survila, Svitrigaila, Tautvilas, Traidenis, Treniota, Vaidotas, Vaisvilkas, Vismantas, Vykintas, Vytautas, Vytenis, Auktumas, Kintautas, Mantas, Gintautas, Vilius, Rimvydas, Butautas
+female = Aldona, Algirde, Ausra, Birute, Daina, Danute, Daugirde, Daumante, Dovile, Egle, Eivyde, Gaile, Gaivile, Gedvile, Giedre, Jogaile, Jurate, Kestute, Liepa, Mintaute, Rasa, Rimante, Rimgaile, Ruta, Skaiste, Tautvile, Ugne, Vaida, Vaiva, Vilte, Vismante, Gintaute, Mantvile, Butigeide, Survile, Rimvyde, Erdvile, Skirgaile, Vytaute, Kintaute
+surname = none
+places.start = Ger, Kaln, Ar, Ved, Tal, Ner, Bart, Skal, Vil, Liep, Berz, Azuol, Alk, Pelk, Rag
+places.end = ai, iai, ava, upe, ene, ys, uva, ine, ainiai
+festivals = the sowing feast | Rasos | the last sheaf | the midwinter feast
+skin = 0.25-0.65
+hairshade = 0.25-1
+hairred = 0-0.6
+beard = 0.7
+hair = braid:1.6, long:1.4
+cape = CapeDeerHide@0:1
+
+[fen-folk]
+name = Frisian fen folk
+people = fen-folk
+leader = Headman
+male = Abba, Aldgisl, Bote, Douwe, Edzard, Eppo, Feddo, Folkert, Gerulf, Haio, Hero, Hessel, Hidde, Ibbo, Jarich, Juw, Keno, Liudger, Lubbert, Menno, Ocko, Onno, Popke, Poppo, Radbod, Reinert, Ricklef, Sibet, Sicco, Sjoerd, Sjuck, Sytse, Tako, Tammo, Tiard, Tjalling, Ubbo, Uko, Unico, Wiard, Wibe, Worp
+female = Aaltje, Antje, Ats, Auck, Aukje, Bauke, Baukje, Elske, Eta, Foelke, Frouke, Froukje, Geeske, Gela, Hebe, Hilke, Hima, Hiske, Ida, Imke, Jelske, Lutske, Ocka, Reina, Rixt, Sjoukje, Tetta, Theda, Tjetske, Tjitske, Wietske, Wobbe, Wypkje, Ymke, Swaantje, Teetje, Hiltje, Sibbel, Jeltje, Tryn
+surname = none
+places.start = Dokk, Hol, Ber, Wier, Hel, Mar, Hall, Wyn, Ost, West, Jel, Bols, Sned, Warf, Ferw
+places.end = um, werd, wert, ga, ens, ster, hem, wier, sum
+festivals = the spring feast | the midsummer fire | the harvest feast | the biike fires
+skin = 0.25-0.7
+hairshade = 0.3-1
+hairred = 0-0.6
+beard = 0.7
+hair = short:1.3, long:1.2
+cape = CapeDeerHide@0:0.8
+chest = ArmorTunic*@1:0.4
+
+# ============================================================================================== Mountain neighbours
+
+[saami]
+name = Saami
+people = saami
+leader = Elder
+male = Ailo, Ailu, Ande, Antte, Aslak, Asllat, Biehtar, Biera, Duommas, Gustu, Hansa, Heaika, Hendo, Iisakki, Issat, Ivvar, Jahkko, Jon, Jouni, Jovnna, Juhan, Jussa, Lasse, Mahtte, Matti, Mihkkal, Mons, Niillas, Nilla, Ovlla, Paavval, Piera, Ristta, Sammol, Simmon, Tuomas, Uula, Bierra, Isak, Mikkal
+female = Anne, Anna, Ane, Biret, Brita, Elen, Elle, Ella, Elsse, Gadja, Hilda, Inga, Ingir, Kari, Karen, Kristiinna, Majja, Maret, Marit, Marja, Rahkel, Ristin, Risten, Sara, Sire, Siri, Sanna, Lisa, Gunhild, Ellen, Ravdna, Ingga, Kirsti, Berit, Elina, Kaisa, Anni, Siiri, Maija, Aili
+surname = none
+places.start = Stuora, Unna, Vilges, Cahppes, Ruona, Boazo, Biegga, Allas, Guov, Gaska, Ceavo, Lulli, Nuorta, Davvi
+places.end = varri, javri, vuopmi, gieddi, njarga, luokta, johka, oaivi
+festivals = the calving feast | the midnight sun | the round-up | the return of the sun
+skin = 0.35-0.8
+hairshade = 0.12-0.7
+hairred = 0.2-0.7
+beard = 0.4
+hair = braid:1.4, short:1.2
+cape = CapeDeerHide@0:1.5, CapeWolf@3:1
+chest = ArmorTunic*@1:0.5
+helmet = HelmetHat*@1:0.4
+
+# ============================================================================================== Plains peoples
+
+[middle-eastern]
+name = Persian and Arab
+people = middle-eastern
+leader = Kadkhuda
+male = Abbas, Ahmad, Ali, Ardashir, Arash, Babak, Bahram, Bijan, Dariush, Farhad, Faridun, Firuz, Hamid, Hamza, Harun, Hasan, Husayn, Ibrahim, Ismail, Jafar, Jamshid, Karim, Kaveh, Khalid, Khosrow, Mahmud, Malik, Mansur, Mardavij, Marzban, Masud, Mehran, Mubarak, Nasir, Nasr, Nuh, Parviz, Qabus, Qasim, Rashid, Rustam, Saad, Sahl, Salim, Shapur, Siyavash, Sohrab, Tahir, Umar, Walid, Yaqub, Yusuf, Zahir, Zayd, Ziyar
+female = Aisha, Amina, Asma, Azar, Banu, Farangis, Fatima, Firuza, Gordiya, Habiba, Hafsa, Hind, Homa, Jamila, Khadija, Khayzuran, Laila, Mahbanu, Mahsati, Maryam, Munira, Nasrin, Nur, Pari, Parvin, Purandokht, Rabia, Roshan, Ruqayya, Safiya, Salma, Samira, Shahrbanu, Shirin, Sitara, Soraya, Sukayna, Tahmina, Ulayya, Yasmin, Zahra, Zaynab, Zubayda, Zarin
+surname = ibn
+surnamechance = 0.7
+places.start = Khorram, Sabz, Nur, Shir, Gol, Rud, Dasht, Bagh, Ab, Sar, Kuh, Firuz, Mehr, Anar, Shah
+places.end = abad, dez, bagh, kand, shahr, rud, ab, gerd
+festivals = Nowruz | Tirgan | Mehregan | Yalda night
+skin = 0.5-1
+hairshade = 0.08-0.35
+hairred = 0.3-0.8
+beard = 0.85
+hair = curl:1.4, long:1.3
+beardstyle = long:1.5
+chest = ArmorTunic*@1:0.8, f:ArmorDress*@1:0.8
+helmet = HelmetHat*@1:0.5
+cape = CapeLinen@2:1.5
+
+[byzantine]
+name = Byzantine
+people = byzantine
+leader = Protokometes
+male = Alexios, Anastasios, Andreas, Andronikos, Bardas, Basil, Christophoros, Constantine, Demetrios, Eudokimos, Eustathios, Euthymios, Georgios, Gregorios, Ignatios, Ioannes, Isaakios, Kosmas, Kyrillos, Leo, Leontios, Loukas, Manuel, Markianos, Methodios, Michael, Nikephoros, Niketas, Nikolaos, Nikon, Pankratios, Petros, Philippos, Photios, Romanos, Sergios, Stavrakios, Stephanos, Symeon, Tarasios, Theodoros, Theodosios, Theophanes, Theophilos, Thomas
+female = Agathe, Aikaterine, Anastasia, Anna, Anthousa, Barbara, Christina, Danielis, Eirene, Eudokia, Eudoxia, Eugenia, Euphemia, Euphrosyne, Helena, Kale, Kassia, Makrina, Maria, Marina, Martina, Olympias, Paraskeve, Pelagia, Prokopia, Pulcheria, Sophia, Thekla, Theodora, Theodote, Theoktiste, Theophano, Thomais, Xenia, Zoe, Agnes, Ioanna, Melania, Sophronia, Kallinike
+surname = list
+surnamechance = 0.4
+families = Argyros/Argyropoulina, Dalassenos/Dalassene, Doukas/Doukaina, Kamateros/Kamatere, Kantakouzenos/Kantakouzene, Komnenos/Komnene, Lekapenos/Lekapene, Melissenos/Melissene, Palaiologos/Palaiologina, Phokas/Phokaina, Skleros/Skleraina
+places.start = Kalli, Neo, Chryso, Leuko, Melano, Petro, Paleo, Kato, Ano, Mega, Rodo
+places.end = chori, kastro, polis, pyrgos, kome, limni, vrysi
+festivals = the Rousalia | the midsummer fires | the vintage | the Brumalia
+skin = 0.45-0.85
+hairshade = 0.1-0.6
+hairred = 0.2-0.8
+beard = 0.8
+hair = curl:1.4, short:1.3
+chest = ArmorTunic*@1:0.8, f:ArmorDress*@1:0.8
+cape = CapeLinen@2:1.2
+
+[steppe]
+name = Steppe Turkic
+people = steppe
+leader = Beg
+male = Aepa, Alp, Arslan, Asparukh, Aydin, Bachman, Bars, Bilge, Boniak, Bori, Bulan, Bumin, Chagri, Ilbars, Ilterish, Inal, Istemi, Itlar, Kara, Kaya, Kegen, Kitan, Konchak, Korkut, Kotian, Krum, Kubrat, Kuria, Kutlug, Omurtag, Ozan, Selchuk, Sharukan, Temir, Tervel, Togrul, Tonyukuk, Tugorkan, Tyrach, Kumush, Yaruk, Toktamir
+female = Akbike, Akchichek, Altun, Altunay, Altynai, Ay, Aybike, Aychichek, Aykiz, Aysulu, Aysylu, Banuchichek, Bilge, Burla, Chichek, Gokche, Gulnur, Gunay, Ilbilge, Kumushay, Kunduz, Kunsulu, Kyzbike, Selcan, Sevinch, Sulu, Terken, Tolunay, Ulduz, Yulduz, Kunay, Aysu, Akkush, Tansulu, Kunbike, Aytolun, Aykun, Sarybike, Altynbike, Kumushbike
+surname = none
+places.start = Ak, Kara, Kok, Sary, Kyzyl, Altyn, Ulug, Kumush, Boz, Ala, Temir, Ters
+places.end = tash, su, kul, tepe, bulak, kent, yurt, balyk, oba
+festivals = Nauryz | the first kumis | the autumn round-up | the long night
+skin = 0.45-0.9
+hairshade = 0.08-0.4
+hairred = 0.2-0.7
+beard = 0.55
+hair = braid:1.6, ponytail:1.4
+cape = CapeDeerHide@0:0.8, CapeLox@3:1.2
+helmet = HelmetLeather@1:0.6
+
+# ============================================================================================== Mistlands peoples
+
+[caucasian-highland]
+name = Caucasian highland
+people = caucasian
+leader = Mamasakhlisi
+male = Abas, Adarnase, Artavazd, Ashot, Bagrat, Bakur, Davit, Demetre, Derenik, Gagik, Giorgi, Grigol, Grigor, Guaram, Gurgen, Hamazasp, Hovhannes, Ioane, Ivane, Kakhaber, Khachik, Kvirike, Liparit, Mamia, Mikael, Mirian, Mushegh, Nerses, Parsman, Rati, Sargis, Senekerim, Shota, Smbat, Stepanoz, Sumbat, Tigran, Tornike, Vahram, Vakhtang, Varaz, Vardan, Vasak, Zakaria
+female = Anoush, Ashkhen, Borena, Burdukhan, Dedisimedi, Elene, Elisabed, Gayane, Gohar, Gurandukht, Hasmik, Katranide, Ketevan, Khoshak, Khvaramze, Lusine, Mariam, Marta, Mlke, Nino, Nvard, Rusudan, Salome, Satenik, Shahandukht, Shushan, Shushanik, Sopio, Taguhi, Tamar, Tekla, Tinatin, Zabel, Ana, Mzekhatun, Varduhi, Arpine, Gulkan, Natela, Siranush
+surname = list
+surnamechance = 0.6
+families = Abashidze, Amilakhvari, Dadeshkeliani, Dadiani, Eristavi, Gabliani, Gelovani, Jakeli, Japaridze, Kvitsiani, Orbeliani, Ratiani, Tsereteli, Mamikonian, Artsruni, Rshtuni, Pahlavuni
+places.start = Ush, Mest, Lat, Len, Ipar, Zhib, Chazh, Kal, Ugv, Tsvir, Khaish, Adish, Etser, Mazer
+places.end = guli, ia, ali, eri, ari, ani, eti, uri, tsikhe
+festivals = Berikaoba | Vardavar | Rtveli | Lamproba
+skin = 0.4-0.8
+hairshade = 0.08-0.4
+hairred = 0.2-0.7
+beard = 0.85
+hair = curl:1.3, braid:1.2
+beardstyle = long:1.4
+chest = ArmorTunic*@1:0.6, f:ArmorDress*@1:0.6
+helmet = HelmetHat*@1:0.5
+cape = CapeWolf@3:1, CapeDeerHide@0:0.8

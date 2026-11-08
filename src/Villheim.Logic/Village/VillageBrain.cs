@@ -124,8 +124,9 @@ namespace Villheim.Logic.Village
 
             state.Id = id;
             state.Seed = seed;
-            state.Name = Names.Village(new System.Random(seed));
             state.Biome = WorldGenerator.instance.GetBiome(position);
+            state.Culture = Cultures.Roll(state.Biome, seed);
+            state.Name = Names.Village(new System.Random(seed), Cultures.Of(state));
             state.Axis = Mathf.Round(hearth.transform.eulerAngles.y / 15f) * 15f;
             state.LastGrowth = now - GrowthInterval() * VillheimConfig.StartingBuildings.Value;
             state.LastArrival = now;
@@ -297,7 +298,7 @@ namespace Villheim.Logic.Village
             }
 
             Role role = project.Role;
-            List<DesignLibrary.Design> pool = DesignLibrary.PoolFor(state.Biome, role);
+            List<DesignLibrary.Design> pool = DesignLibrary.PoolFor(state.Biome, role, Cultures.Of(state));
             // A storehouse is a modest shelter: the smallest design that will do.
             DesignLibrary.Design? picked = role == Role.Storage && pool.Count > 0
                 ? pool.OrderBy(d => d.Radius).First()
@@ -313,7 +314,7 @@ namespace Villheim.Logic.Village
             // Try the picked design first, then smaller stand-ins for the same role, so rough ground slows a village
             // down instead of stopping it.
             var candidates = new List<DesignLibrary.Design> { picked.Value };
-            List<DesignLibrary.Design> fallbacks = DesignLibrary.FallbackPool(state.Biome, role);
+            List<DesignLibrary.Design> fallbacks = DesignLibrary.FallbackPool(state.Biome, role, Cultures.Of(state));
             fallbacks.Reverse(); // largest stand-in that is still smaller than the pick comes first
             foreach (DesignLibrary.Design fallback in fallbacks)
             {
@@ -383,7 +384,7 @@ namespace Villheim.Logic.Village
         private static bool TryUpgrade(VillageHearth hearth, VillageState state, Growth.Project project, double interval)
         {
             Plot plot = state.Plots[project.UpgradeIndex];
-            DesignLibrary.Design? next = Growth.NextDesign(plot, state.Biome);
+            DesignLibrary.Design? next = Growth.NextDesign(plot, state.Biome, Cultures.Of(state));
             if (next == null || !PlotFinder.CanUpgrade(plot, next.Value.Radius, hearth.transform.position, state.Axis, state.Plots, state.Id))
             {
                 VillheimPlugin.Debug($"{state.Name}: no room to make the {plot.Design} bigger.");
@@ -588,10 +589,13 @@ namespace Villheim.Logic.Village
                 Quaternion.Euler(0f, angle * Mathf.Rad2Deg, 0f));
             Villager villager = go.GetComponent<Villager>();
             int looksSeed = rng.Next(1, int.MaxValue);
-            string name = Names.Villager(looksSeed);
+            // The village's people, or for a newcomer from outside now and then another people (Cultures).
+            bool fromOutside = birthplace == null && arrival >= VillheimConfig.StartingVillagers.Value;
+            string culture = Cultures.ForNewcomer(state, looksSeed, fromOutside);
+            string name = Names.Villager(looksSeed, culture);
             // A villager who left a neighbour comes as himself (Villagers.Leaving).
-            string cameFrom = birthplace == null && arrival >= VillheimConfig.StartingVillagers.Value
-                ? Villagers.Leaving.TakeMigrant(hearth, ref looksSeed, ref name)
+            string cameFrom = fromOutside
+                ? Villagers.Leaving.TakeMigrant(hearth, ref looksSeed, ref name, ref culture)
                 : null;
 
             ZDO zdo = villager.Zdo;
@@ -601,6 +605,7 @@ namespace Villheim.Logic.Village
             zdo.Set(Keys.VillagerHome, home);
             zdo.Set(Keys.VillagerSeed, looksSeed);
             zdo.Set(Keys.VillagerName, name);
+            zdo.Set(Cultures.KeyVillager, culture);
             zdo.Set(Villagers.Roles.KeyArrival, arrival);
             Villagers.Personality.NoteArrived(zdo, arrival >= VillheimConfig.StartingVillagers.Value && birthplace == null);
             if (cameFrom != null)

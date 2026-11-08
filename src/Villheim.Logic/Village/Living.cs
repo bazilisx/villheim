@@ -139,6 +139,7 @@ namespace Villheim.Logic.Village
                 tags.AddRange(Neighbours.Tags(villager));
                 tags.AddRange(BossStages.Tags(hearth));
                 tags.AddRange(Leaving.Tags(villager));
+                tags.AddRange(Cultures.Tags(villager));
             });
             return tags;
         }
@@ -147,6 +148,7 @@ namespace Villheim.Logic.Village
         {
             var tags = new List<string>();
             Safely("wanderer tags", () => tags.AddRange(Calendar.Tags()));
+            Safely("wanderer culture", () => tags.AddRange(Cultures.Tags(villager)));
             return tags;
         }
 
@@ -157,7 +159,8 @@ namespace Villheim.Logic.Village
                 return line;
             }
 
-            line = Calendar.Fill(line);
+            line = Calendar.Fill(line, Cultures.OfVillager(villager));
+            line = Cultures.Fill(line, villager);
             line = Elders.Fill(line, villager);
             line = Standing.Fill(line, villager);
             line = Complaints.Fill(line, villager);

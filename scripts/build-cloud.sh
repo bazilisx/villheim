@@ -69,6 +69,7 @@ cat > "$work/logic/Villheim.Logic.csproj" <<EOF
   <ItemGroup>
     <Compile Include="$repo/src/Villheim.Logic/**/*.cs" Exclude="$repo/src/Villheim.Logic/obj/**;$repo/src/Villheim.Logic/bin/**" />
     <EmbeddedResource Include="$repo/src/Villheim.Logic/Dialogue/*.txt" LogicalName="Villheim.Logic.Dialogue.%(Filename)%(Extension)" />
+    <EmbeddedResource Include="$repo/src/Villheim.Logic/Cultures/*.txt" LogicalName="Villheim.Logic.Cultures.%(Filename)%(Extension)" />
     <ProjectReference Include="../core/Villheim.csproj" Private="false" />
   </ItemGroup>
 </Project>

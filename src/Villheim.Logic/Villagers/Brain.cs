@@ -191,7 +191,9 @@ namespace Villheim.Logic.Villagers
                     state.Sightings++;
                     state.LastSeen = Time.time;
                     state.Enemy = seen;
-                    bool close = Vector3.Distance(seen.transform.position, villager.transform.position) < 8f;
+                    // A creature the village's defender profile covers (deathsquitos near the Plains) is met at once.
+                    bool close = Vector3.Distance(seen.transform.position, villager.transform.position) < 8f ||
+                                 Defenders.IsTarget(villager, seen);
                     if (close || state.Sightings >= 2)
                     {
                         state.Threat = true;

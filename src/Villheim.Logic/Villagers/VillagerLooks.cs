@@ -1,6 +1,7 @@
 using System.Linq;
 using System.Collections.Generic;
 using UnityEngine;
+using Villheim.Logic.Village;
 using Villheim.Prefabs;
 
 namespace Villheim.Logic.Villagers
@@ -9,6 +10,8 @@ namespace Villheim.Logic.Villagers
     /// Dresses a villager with vanilla hair, beards, armor and tools. The look comes from a fixed seed, so each
     /// villager keeps the same face and style; the gear tier comes from the size of the village, so armor and tools
     /// improve as the village grows. Black Forest villages start one tier higher.
+    /// Skin, hair colour, the styles given more often, beards and some extra clothes follow the villager's culture
+    /// (Village/Cultures.cs), with a spread inside each village.
     /// Villagers have no drop table and their ragdoll does not drop items, so killing them yields nothing.
     /// </summary>
     internal static class VillagerLooks
@@ -121,26 +124,33 @@ namespace Villheim.Logic.Villagers
                 return;
             }
 
-            // The face and style use their own random stream, so a gear change never changes the person.
+            // The face and style use their own random stream, so a gear change never changes the person. The ranges
+            // come from the villager's culture (Cultures/cultures.txt): a Persian village runs darker in skin and hair
+            // than a Gaelic one, and now and then (LooksOutlierChance) anyone may have any skin tone the game gives.
+            Cultures.Culture culture = Cultures.Get(Cultures.OfVillager(villager));
             var looks = new System.Random(seed);
             bool female = looks.Next(2) == 1;
             vis.SetModel(female ? 1 : 0);
 
-            // Skin from the right three quarters of the game's skin slider (left is palest), evenly, so a village has
-            // a spread of tones rather than mostly pale folk.
-            Color skin = Color.Lerp(SkinLight, SkinDark, 0.25f + (float)looks.NextDouble() * 0.75f);
+            float outlier = LogicConfig.LooksOutlierChance != null ? LogicConfig.LooksOutlierChance.Value : 0.1f;
+            Vector2 skinRange = looks.NextDouble() < outlier ? new Vector2(0.25f, 1f) : culture.Skin;
+            float skinAt = Mathf.Clamp(Mathf.Lerp(skinRange.x, skinRange.y, (float)looks.NextDouble()), 0.25f, 1f);
+            Color skin = Color.Lerp(SkinLight, SkinDark, skinAt);
             vis.SetSkinColor(new Vector3(skin.r, skin.g, skin.b));
 
-            Color hair = Color.Lerp(HairLight, HairDark, (float)looks.NextDouble()) *
-                         Mathf.Lerp(0.1f, 1f, (float)looks.NextDouble());
+            float red = Mathf.Lerp(culture.HairRed.x, culture.HairRed.y, (float)looks.NextDouble());
+            float shade = Mathf.Clamp(Mathf.Lerp(culture.HairShade.x, culture.HairShade.y, (float)looks.NextDouble()), 0.05f, 1f);
+            Color hair = Color.Lerp(HairLight, HairDark, red) * shade;
             vis.SetHairColor(new Vector3(hair.r, hair.g, hair.b));
 
             List<string> styles = HairStyles(female);
-            string hairItem = styles.Count > 0 ? styles[looks.Next(styles.Count)] : FirstExisting($"Hair{looks.Next(1, 21)}", "Hair1");
+            string hairItem = styles.Count > 0 ? PickStyle(looks, styles, culture.HairPrefer) : FirstExisting($"Hair{looks.Next(1, 21)}", "Hair1");
             villager.m_hairItem = hairItem;
             vis.SetHairItem(Hash(hairItem));
 
-            string beard = female || looks.Next(5) == 0 ? "" : FirstExisting($"Beard{looks.Next(1, 11)}", "Beard1");
+            List<string> beards = BeardStyles();
+            string beard = female || looks.NextDouble() >= culture.Beard ? ""
+                : beards.Count > 0 ? PickStyle(looks, beards, culture.BeardPrefer) : FirstExisting($"Beard{looks.Next(1, 11)}", "Beard1");
             villager.m_beardItem = beard;
             vis.SetBeardItem(Hash(beard));
 
@@ -149,10 +159,10 @@ namespace Villheim.Logic.Villagers
 
             int tier = Mathf.Clamp(gearTier, 0, MaxTier);
             var gear = new System.Random(unchecked(seed * 17 + tier * 7919));
-            Equip(villager, Pick(gear, Chests[tier]));
-            Equip(villager, Pick(gear, Legs[tier]));
-            Equip(villager, Pick(gear, Helmets[tier]));
-            Equip(villager, Pick(gear, Capes[tier]));
+            Equip(villager, Pick(gear, WithCulture(Chests[tier], culture, "chest", tier, female)));
+            Equip(villager, Pick(gear, WithCulture(Legs[tier], culture, "legs", tier, female)));
+            Equip(villager, Pick(gear, WithCulture(Helmets[tier], culture, "helmet", tier, female)));
+            Equip(villager, Pick(gear, WithCulture(Capes[tier], culture, "cape", tier, female)));
 
             // Everyone carries all three tools and starts out holding the one of their trade.
             string axe = Axes[tier];
@@ -285,6 +295,147 @@ namespace Villheim.Logic.Villagers
             }
         }
 
+        /// <summary>
+        /// The tier's clothes plus the culture's own (Cultures/cultures.txt): a linen cape in a Plains village, a
+        /// tunic or dress elsewhere. Items the game does not have are left out, so the tier's own always remain.
+        /// </summary>
+        private static WeightedItem[] WithCulture(WeightedItem[] tierItems, Cultures.Culture culture, string slot, int tier, bool female)
+        {
+            if (!culture.Clothes.TryGetValue(slot, out List<Cultures.Wear> extra) || extra.Count == 0)
+            {
+                return tierItems;
+            }
+
+            var items = new List<WeightedItem>(tierItems);
+            foreach (Cultures.Wear wear in extra)
+            {
+                if (tier < wear.MinTier || (wear.Sex == 1 && female) || (wear.Sex == 2 && !female))
+                {
+                    continue;
+                }
+
+                List<string> prefabs = Expand(wear.Prefab);
+                foreach (string prefab in prefabs)
+                {
+                    items.Add(new WeightedItem(prefab, wear.Weight / prefabs.Count));
+                }
+            }
+
+            return items.ToArray();
+        }
+
+        private static readonly Dictionary<string, List<string>> Expanded = new Dictionary<string, List<string>>();
+
+        /// <summary>"ArmorTunic*" to every item whose prefab name starts so; a plain name to itself if the game has it.</summary>
+        private static List<string> Expand(string pattern)
+        {
+            if (Expanded.TryGetValue(pattern, out List<string> cached))
+            {
+                return cached;
+            }
+
+            var list = new List<string>();
+            if (pattern.EndsWith("*"))
+            {
+                string prefix = pattern.Substring(0, pattern.Length - 1);
+                list.AddRange(ObjectDB.instance.m_items.Where(i => i != null && i.name.StartsWith(prefix) && i.GetComponent<ItemDrop>() != null)
+                    .Select(i => i.name).OrderBy(n => n, System.StringComparer.Ordinal));
+            }
+            else if (ObjectDB.instance.GetItemPrefab(pattern) != null)
+            {
+                list.Add(pattern);
+            }
+
+            if (list.Count == 0)
+            {
+                VillheimPlugin.Debug($"Culture clothes: no item '{pattern}' in this game; left out.");
+            }
+
+            Expanded[pattern] = list;
+            return list;
+        }
+
+        /// <summary>A style, with the ones whose shown name holds one of the culture's words given more often.</summary>
+        private static string PickStyle(System.Random rng, List<string> prefabs, Dictionary<string, float> prefer)
+        {
+            if (prefer == null || prefer.Count == 0)
+            {
+                return prefabs[rng.Next(prefabs.Count)];
+            }
+
+            var weights = new float[prefabs.Count];
+            float total = 0f;
+            for (int i = 0; i < prefabs.Count; i++)
+            {
+                ShownNames.TryGetValue(prefabs[i], out string shown);
+                float weight = 1f;
+                foreach (KeyValuePair<string, float> word in prefer)
+                {
+                    if (shown != null && shown.Contains(word.Key))
+                    {
+                        weight = Mathf.Max(weight, word.Value);
+                    }
+                }
+
+                weights[i] = weight;
+                total += weight;
+            }
+
+            double roll = rng.NextDouble() * total;
+            for (int i = 0; i < prefabs.Count; i++)
+            {
+                roll -= weights[i];
+                if (roll <= 0)
+                {
+                    return prefabs[i];
+                }
+            }
+
+            return prefabs[prefabs.Count - 1];
+        }
+
+        /// <summary>Prefab name to the style's name as the game shows it, plain (for the culture's style words).</summary>
+        private static readonly Dictionary<string, string> ShownNames = new Dictionary<string, string>();
+
+        private static List<string> _beards;
+
+        /// <summary>Every beard the game has (Beard1, Beard2...), less "no beard". Worked out once.</summary>
+        private static List<string> BeardStyles()
+        {
+            if (_beards != null && _beards.Count > 0)
+            {
+                return _beards;
+            }
+
+            _beards = new List<string>();
+            foreach (GameObject item in ObjectDB.instance.m_items)
+            {
+                if (item == null || !item.name.StartsWith("Beard") || item.name == "BeardNone")
+                {
+                    continue;
+                }
+
+                string shown = Shown(item);
+                if (shown.Length == 0 || shown == "nobeard" || shown == "none")
+                {
+                    continue;
+                }
+
+                ShownNames[item.name] = shown;
+                _beards.Add(item.name);
+            }
+
+            _beards.Sort(System.StringComparer.Ordinal);
+            return _beards;
+        }
+
+        private static string Shown(GameObject item)
+        {
+            string token = item.GetComponent<ItemDrop>()?.m_itemData?.m_shared?.m_name;
+            string shown = token != null && Localization.instance != null ? Localization.instance.Localize(token) : token;
+            return Plain(shown);
+        }
+
         // Hair styles never given, by the name the game shows for them (Tyler, 2026-11-06). Bald is never given either.
         // Compared with spaces, hyphens and punctuation taken out, so "Old One-Eye" matches "old one eye".
         private static readonly HashSet<string> NotForWomen = new HashSet<string>
@@ -331,6 +482,7 @@ namespace Villheim.Logic.Villagers
                     continue;
                 }
 
+                ShownNames[item.name] = shown;
                 list.Add(item.name);
             }
 

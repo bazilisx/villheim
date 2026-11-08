@@ -160,7 +160,7 @@ namespace Villheim.Logic.Villagers
             {
                 List<string> list = destination.GetString(KeyMigrants, "").Split(';').Where(e => e.Length > 0).ToList();
                 list.Add(string.Join("|", Clean(villager.VillagerName), zdo.GetInt(Keys.VillagerSeed).ToString(CultureInfo.InvariantCulture),
-                    Clean(villager.VillageName), (Living.Today + 1).ToString(CultureInfo.InvariantCulture)));
+                    Clean(villager.VillageName), (Living.Today + 1).ToString(CultureInfo.InvariantCulture), Cultures.OfVillager(villager)));
                 destination.Set(KeyMigrants, string.Join(";", list.Skip(Mathf.Max(0, list.Count - 6))));
             }
 
@@ -176,6 +176,13 @@ namespace Villheim.Logic.Villagers
         /// name and look. Returns the village he came from, or null.
         /// </summary>
         public static string TakeMigrant(VillageHearth hearth, ref int seed, ref string name)
+        {
+            string culture = null;
+            return TakeMigrant(hearth, ref seed, ref name, ref culture);
+        }
+
+        /// <summary>As above; a migrant keeps the culture he had in his old village (a fifth field, when recorded).</summary>
+        public static string TakeMigrant(VillageHearth hearth, ref int seed, ref string name, ref string culture)
         {
             if (hearth == null || !hearth.IsValid)
             {
@@ -200,6 +207,10 @@ namespace Villheim.Logic.Villagers
                     seed = s;
                     name = f[0];
                     taken = f[2];
+                    if (f.Length > 4 && Cultures.Known(f[4]))
+                    {
+                        culture = f[4];
+                    }
                 }
             }
 

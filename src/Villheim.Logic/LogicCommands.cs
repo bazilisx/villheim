@@ -76,6 +76,10 @@ namespace Villheim.Logic
             "switches: list the settings that turn each world and villager-minds system off, and whether each is on now: " +
             string.Join(", ", LogicConfig.Switches.Select(s => s.Name)) +
             " (config sections '5 - World life' and '5b - Villager minds'; the world ones also need WorldLife on)",
+            "culture [set <key>|reroll]: the nearest village's culture, its leader's title, this season's feast and each loaded villager's culture; 'set' or 'reroll' changes it",
+            "cultures: the CultureMap (which cultures each biome's villages may have) and every culture's names, surnames, skin range and feasts",
+            "relook [culture]: the nearest villager gets a new seed, name, face and clothes, of his own culture or the one named",
+            "defenders: the nearest village's biome defender profile (Plains, Mistlands), the creatures it covers, who would shoot, and arrows loosed so far",
             "exportpieces: write every buildable piece's collider and mesh bounds, pivot height, colour, texture, category, comfort, cost and station to BepInEx/config/Villheim/pieces.json (copy it to tools/blueprint-lab/data/pieces-export.json)",
         }).ToArray();
 
@@ -237,6 +241,10 @@ namespace Villheim.Logic
                 case "villheim_goal": Say(context, Villagers.MindsCommands.Goal(args)); return true;
                 case "villheim_notice": Say(context, Villagers.MindsCommands.Notice(args)); return true;
                 case "villheim_switches": Say(context, Switches()); return true;
+                case "villheim_culture": Say(context, Cultures.Command(args)); return true;
+                case "villheim_cultures": Say(context, Cultures.ListCommand()); return true;
+                case "villheim_relook": Say(context, Cultures.Relook(args)); return true;
+                case "villheim_defenders": Say(context, Villagers.Defenders.Command()); return true;
                 case "villheim_exportpieces": Say(context, PieceExport.Run()); return true;
                 case "villheim_living":
                 case "villheim_prosperity":

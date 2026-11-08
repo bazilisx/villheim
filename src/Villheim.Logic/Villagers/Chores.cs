@@ -487,7 +487,7 @@ namespace Villheim.Logic.Villagers
         {
             float radius = LogicConfig.ClearingRadius != null ? LogicConfig.ClearingRadius.Value : 20f;
             VillageHearth home = VillageHearth.Find(villager.VillageId);
-            if (radius <= 0f || home == null || !home.IsValid)
+            if (home == null || !home.IsValid)
             {
                 return false;
             }
@@ -506,7 +506,7 @@ namespace Villheim.Logic.Villagers
                 }
 
                 // Round the hearth everything goes; on a road only what the road runs through (it goes round the big ones).
-                bool inside = Utils.DistanceXZ(go.transform.position, hearth) <= radius;
+                bool inside = radius > 0f && Utils.DistanceXZ(go.transform.position, hearth) <= radius;
                 if (!inside && (!OnPath(path, go.transform.position) || PathPlanner.BigObstacle(go)))
                 {
                     return false;

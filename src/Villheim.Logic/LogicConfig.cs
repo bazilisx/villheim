@@ -296,7 +296,8 @@ namespace Villheim.Logic
                 "stand half done while he fetches more. 0: as soon as the next piece is paid for.");
             ClearingRadius = Admin(config, work, "ClearingRadius", 20f,
                 "Villagers keep the ground this many metres around the hearth clear: they fell trees, take out stumps, " +
-                "break rocks and pick up sticks and stones there, and the materials go to the chest. 0: off.");
+                "break rocks and pick up sticks and stones there, and the materials go to the chest. 0: only the paths " +
+                "waiting to be laid are cleared.");
             IdlePickup = Admin(config, work, "IdlePickup", true,
                 "Villagers with nothing else to do pick up useful things lying in the village (wood, stone, resin, " +
                 "leather, feathers, meat and the like) and put them in the chest.");

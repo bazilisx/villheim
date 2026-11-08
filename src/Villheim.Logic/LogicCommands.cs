@@ -39,7 +39,7 @@ namespace Villheim.Logic
             "report [rescan]: write every design (curated, all blueprints, every location with a structure) with its stage, kind, gallery page and notes to BepInEx/Villheim/design-list.csv; 'report locations' writes the older per-location report (design-report.txt)",
             "trace [seconds]: record the nearest villager's movement 50 times a second to BepInEx/Villheim/trace-*.csv (for jitter)",
             "villager: show the nearest villager's voice, mood, thoughts, role, trade, bed, activity, skills and want",
-            "village: show the nearest village's type, Jarl, mood, project, fence, known players and request",
+            "village: show the nearest village's type, Jarl, mood, project, fence, known players and request (spawn, stage and clear below)",
             "raid: send a raid to the nearest village (comes at once if it is night)",
             "blueprints: list the blueprints villages can build (BepInEx/config/Villheim/blueprints, PlanBuild's folder)",
             "savebp <role-family-level> [radius]: save the building pieces around you as a blueprint, e.g. savebp house-cabin-1 8",
@@ -72,7 +72,7 @@ namespace Villheim.Logic
             "bp swap <number|name> <stage>: save a copy of a design with its walls, floors, roofs and beams in that stage's materials (to blueprints/inspiration/edits)",
         };
 
-        public static string[] CommandHelp() => Help.Concat(new[]
+        public static string[] CommandHelp() => Help.Concat(TestVillage.Help).Concat(new[]
         {
             "switches: list the settings that turn each world and villager-minds system off, and whether each is on now: " +
             string.Join(", ", LogicConfig.Switches.Select(s => s.Name)) +
@@ -211,7 +211,20 @@ namespace Villheim.Logic
                     return true;
                 case "villheim_blueprints": ListBlueprints(context); return true;
                 case "villheim_villager": InspectVillager(context); return true;
-                case "villheim_village": InspectVillage(context); return true;
+                case "villheim_village":
+                    if (args.Length > 0 && TestVillage.Handles(args[0]))
+                    {
+                        Say(context, TestVillage.Command(args, context));
+                    }
+                    else
+                    {
+                        InspectVillage(context);
+                    }
+
+                    return true;
+                case "villheim_testvillage":
+                    Say(context, TestVillage.Command(args.Length > 0 && TestVillage.Handles(args[0]) ? args : new[] { "spawn" }.Concat(args).ToArray(), context));
+                    return true;
                 case "villheim_raid": ForceRaid(context); return true;
                 case "villheim_savebp": SaveBlueprint(args, context); return true;
                 case "villheim_bp": Say(context, BlueprintEdits.Run(args)); return true;

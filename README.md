@@ -49,6 +49,9 @@ You can get a built `Villheim.dll` from the **Actions** tab of this repository: 
 | `vh ask <biome> <type> <stage> [culture] "request"` | yes | Saves the request to `BepInEx/config/Villheim/requests/requests.jsonl` for Claude to make with more care. |
 | `vh asks` | yes | Lists those requests and their status. |
 | `vh place <id\|name> [here]` | yes | Builds a finished request (`R-0001`) or a design made with `vh gen` in front of you; `here` builds a request where you stood when you asked. |
+| `vh village spawn [stage] [villagers] [buildings] [culture] [biome] [options]` | yes | Sets up a whole village in front of you at once, at a stage (camp, hamlet, village, town or 1 to 4), for testing. `vh village spawn help` lists the codes and options; `vh testvillage` is short for it. Example: `vh village spawn town 14 12 celtic`. |
+| `vh village stage <stage>` | yes | Takes the nearest village to that stage at once: the buildings, villagers and the rest the stage adds. |
+| `vh village clear [yes]` | yes | Removes the nearest test village and everything Villheim made for it (asks first; `yes` goes ahead). `vh tidy villages` clears any village in range. |
 
 `vh help` lists every developer command. Villages never build the generated designs: they sit in an `inspiration` folder.
 

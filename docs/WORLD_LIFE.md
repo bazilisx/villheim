@@ -498,6 +498,95 @@ To check in game: the back signs sit flush behind the frame and read the right w
 sign needs support from the chest face); boardwalk posts reach the ground and the deck holds; rain on a village roof
 over a day leaves no wear; a village boar never breeds in a pen; a fen-folk village's paths over wet ground.
 
+## Test villages (2026-11-08 night 3; compiles, not yet tested in game)
+
+Branch `night3/testvillage`. `vh village spawn` sets up a whole village at a chosen stage in front of you, so it can be
+walked round at once (`Village/TestVillage.cs`). It goes through the steps a village takes over days, all at once, with
+the same code the village uses for each of them.
+
+`vh village spawn [stage] [villagers] [buildings] [culture] [biome] [flat] [noanimals] [nopaths] [empty] [seed <n>]`
+(alias `vh testvillage`, codes with `vh village spawn help`):
+
+- Stage: camp, hamlet, village, town or 1 to 4, as the first word (default village). Villagers and buildings are plain
+  numbers in that order; without them the stage's defaults come from `TestVillageVillagers` ("2, 4, 7, 12") and
+  `TestVillageBuildings` ("1, 3, 6, 10") in config section "9 - Test villages". The stage follows the building count
+  (camp 0 to 1, hamlet 2 to 3, village 4 to 6, town 7 and up), so a count outside the stage is moved into it and
+  said so. Most 30 buildings and 40 villagers.
+- Culture: a key from `vh cultures`; without one, the biome's weighted pick. Biome code md, bf, sw, mt, pl, ml, al or
+  dn: only picks the culture and the design set (and the biome's materials); the village stands where you are.
+- `flat` clears trees and rocks and levels most of the village radius first. `noanimals` leaves the farms without
+  animals. `nopaths` leaves the paths planned for the villagers to lay over the next days. `empty` leaves the chest
+  empty. `seed <n>` gives the same choices again on the same ground (the seed is in the report).
+
+What it does, in order:
+
+1. Lights the hearth 12 m ahead on the flattest ground within 40 m (or on the levelled ground with `flat`), founds the
+   village as `vh settle` does (hearth ground cleared and levelled), marks it as a test village and gives it the
+   culture, biome and seed asked for. The village chest goes down by the fire.
+2. Buildings in Growth's order: homes until the first settlers have beds, the longhouse (round the hearth when its
+   design has a fire pit), the workshop and the storehouse, then by Growth's weights (homes while beds are short, a
+   farm, more workshops once there are six or more villagers, the village type's leanings). Designs come from the
+   culture's sets with the biome's materials and the early stone rule (D-012); the storehouse is the smallest design;
+   smaller stand-ins are tried when the pick has no room. PlotFinder places them. At the village stage one building,
+   at the town stage two or more, is rebuilt bigger (the next blueprint level or a bigger design of its kind), as
+   growth does.
+3. Each building goes up through the normal construction site (`ConstructionSite.PlaceNext`, a rebuild taking the old
+   one down first), ground cleared and levelled first, `TestVillagePiecesPerFrame` pieces a frame (60), so it is
+   finished, recorded and gets its path planned the usual way. The village's chests pay for everything without losing
+   anything while it is set up (`VillageChest.FreeVillage`, set within one frame at a time).
+4. After each building: its path is laid at once (`PathLaying.LayAllNow`, boardwalks over wet ground for the boardwalk
+   cultures), and everything the village makes for itself is made, one a frame (`Amenities`: cooking station, notice
+   board with its back signs, beds, storage chests with labels, benches, stacks, workbench, chests, chairs, tables).
+5. At the end: the fence ring for the stage (`Palisade`), the farms' rows planted and their animals for the stage (one
+   grown boar per farm, the newest one a piglet), the map table from the hamlet stage, the gear tier for the stage
+   counted as made by the smith, then the villagers: the first is the Jarl (or the culture's leader), trades by
+   arrival from six on, about one in six grown-ups an elder (five or more grown-ups), about one in six a child born
+   in a home (six or more villagers). Everyone is found by the hearth and claims a bed. Then storage chests for the
+   population, a survey of the land to the stage's reach (`Knowledge.SurveyNow`, as `vh know survey full`), a modest
+   stock in the chest (wood, stone, the biome's finer woods from the village stage, a stack of berries), prosperity
+   worked out, and chronicle lines saying it was set up for testing.
+6. The growth and arrival clocks start from now, so the village carries on as any other. A report follows a few
+   seconds later: name, culture, stage, type, seed, villagers by role, beds, gear, buildings by kind and design,
+   rebuilds, what was made, fence, paths, farms, map table, knowledge, and anything skipped with the reason (no
+   design for the biome and culture, no room twice for a kind, a building that could not be put up, a furnishing that
+   would not go down).
+
+`vh village stage <stage> [villagers] [buildings] [noanimals] [nopaths] [seed <n>]` does steps 2 to 6 on the nearest
+village (any village within 150 m): it finishes the building going up, adds buildings up to the stage's count, lays
+queued paths, and adds grown-up villagers up to the stage's count. It never takes anything away.
+
+`vh village clear` names the nearest test village within 150 m and what would go; `vh village clear yes` removes its
+villagers, everything with its mark (buildings, chests and what is in them, signs, the notice board, fence, plants,
+animals, boardwalks), its map table, its pin on your map and the hearth. Levelled ground stays. It only touches
+villages made with `vh village spawn`; `vh clear` removes the nearest village of any kind, and `vh tidy villages`
+(on main) clears every village in range.
+
+### Changes outside the new file
+
+- `VillageChest`: `FreeVillage` (the village being set up counts as holding plenty and pays without losing anything).
+- `VillageBrain.SpawnVillager`: internal, returns the villager, and has a quiet mode (found by the hearth, no greeting,
+  no chronicle line each, no migrant taken from a neighbour).
+- `PathLaying.LayAllNow`, `Farms.AddAnimal` and `Knowledge.SurveyNow` split out of existing code so the test village
+  uses the same steps.
+- `LogicCommands`: `vh village spawn|stage|clear|help` and `vh testvillage`; plain `vh village` still shows the village.
+- `LogicConfig`: section "9 - Test villages". No core change.
+
+### Limits and things to check in game
+
+- Only loaded ground is used: a town needs the area round you loaded (stand near the middle). `flat` levels what is
+  loaded.
+- The spawn takes some seconds (about a second per building plus the pieces); the console shows progress. The
+  survey at the end can hitch for a moment.
+- Buildings go up in one go, so the ground settling under a piece and wear checks get less time than with a builder.
+  Check that floors sit on the ground, roofs stay up and nothing breaks in the first minute.
+- Interiors depend on the cover test seeing the new roof: check beds and workbenches went inside, and the report's
+  bed count against the villagers.
+- Villagers beyond the beds sleep without one; the village will not take in more until there are free beds.
+- A furnishing that will not go down stops the rest of that list (named in the report as skipped).
+- Rebuilds refund half the old building to the chest; that is cleared before the stock goes in.
+- Map pins copied from the map table to your map are your own pins and stay after a clear.
+- With `nopaths`, the daily door check plans any missing path again for the villagers, as usual.
+
 ## Next, in order
 
 Effort is a rough guess: S an evening, M a session or two, L several sessions.

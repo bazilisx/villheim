@@ -31,6 +31,16 @@ namespace Villheim.Logic.Village
         private static readonly Dictionary<int, Container> Cache = new Dictionary<int, Container>();
         private static readonly Dictionary<int, float> MissingSince = new Dictionary<int, float>();
 
+        /// <summary>
+        /// A village being set up at once by 'vh village spawn' (TestVillage): while this is its id, its chests count
+        /// as holding plenty of everything and pay for anything without losing it. Set only within one frame.
+        /// </summary>
+        public static int FreeVillage;
+
+        private const int Plenty = 1000000;
+
+        private static bool Free(int village) => FreeVillage != 0 && village == FreeVillage;
+
         public static Container Find(VillageHearth hearth)
         {
             if (hearth == null || !hearth.IsValid)
@@ -309,8 +319,13 @@ namespace Villheim.Logic.Village
         /// <summary>What a chest holds of a material. For a village's main chest, its storage chests count too (D-016).</summary>
         public static int Count(Container chest, string material)
         {
-            int count = CountIn(chest, material);
             int village = VillageOf(chest);
+            if (Free(village))
+            {
+                return Plenty;
+            }
+
+            int count = CountIn(chest, material);
             if (village != 0)
             {
                 foreach (Container storage in StorageChests.Of(village))
@@ -387,6 +402,11 @@ namespace Villheim.Logic.Village
             }
 
             int village = VillageOf(chest);
+            if (Free(village))
+            {
+                return true;
+            }
+
             List<Container> sources = new List<Container> { chest };
             if (village != 0)
             {

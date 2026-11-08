@@ -938,25 +938,8 @@ namespace Villheim.Logic.Village
                 case "reach": return ReachReport(hearth, state);
                 case "survey":
                 {
-                    if (!hearth.NView.IsOwner()) hearth.NView.ClaimOwnership();
-                    Surveys.Remove(hearth.VillageId);
-                    WorldSurvey.SweepNow();
-                    float target = TargetReach(hearth, state);
-                    if (args.Length > 1 && args[1] == "full")
-                    {
-                        hearth.Zdo.Set(KeyReach, target);
-                    }
-
-                    // Run the land and the checks to the end now (a short hitch).
-                    Survey survey = SurveyOf(hearth, state);
-                    for (int i = 0; i < 200 && !survey.SamplesDone; i++) SampleLand(hearth, survey);
-                    SampleLand(hearth, survey);
-                    int before = Log(hearth).Count;
-                    CheckCandidates(hearth, state, survey, Reach(hearth), survey.Candidates.Count);
-                    return $"{hearth.VillageName}: surveyed {survey.Candidates.Count} candidates within {survey.Radius:0} m " +
-                           $"({WorldSurvey.ObjectCount} objects known in the world so far; the object sweep runs again in the background). " +
-                           $"{Log(hearth).Count - before} new discoveries. Reach {Reach(hearth):0} of {target:0} m." +
-                           (args.Length > 1 && args[1] == "full" ? "" : " 'vh know survey full' sets the reach to its target first.");
+                    bool full = args.Length > 1 && args[1] == "full";
+                    return SurveyNow(hearth, state, full) + (full ? "" : " 'vh know survey full' sets the reach to its target first.");
                 }
                 case "rumours":
                 case "rumors":
@@ -972,6 +955,32 @@ namespace Villheim.Logic.Village
                     return $"{hearth.VillageName} has forgotten everything it knew of the land.";
                 default: return List(hearth, state);
             }
+        }
+
+        /// <summary>
+        /// Runs the village's survey to the end now (a short hitch). With <paramref name="full"/>, the explored radius
+        /// is set to the village's reach first. Returns what was found.
+        /// </summary>
+        public static string SurveyNow(VillageHearth hearth, VillageState state, bool full)
+        {
+            if (!hearth.NView.IsOwner()) hearth.NView.ClaimOwnership();
+            Surveys.Remove(hearth.VillageId);
+            WorldSurvey.SweepNow();
+            float target = TargetReach(hearth, state);
+            if (full)
+            {
+                hearth.Zdo.Set(KeyReach, target);
+                hearth.Zdo.Set(KeyReachDay, Today);
+            }
+
+            Survey survey = SurveyOf(hearth, state);
+            for (int i = 0; i < 200 && !survey.SamplesDone; i++) SampleLand(hearth, survey);
+            SampleLand(hearth, survey);
+            int before = Log(hearth).Count;
+            CheckCandidates(hearth, state, survey, Reach(hearth), survey.Candidates.Count);
+            return $"{hearth.VillageName}: surveyed {survey.Candidates.Count} candidates within {survey.Radius:0} m " +
+                   $"({WorldSurvey.ObjectCount} objects known in the world so far; the object sweep runs again in the background). " +
+                   $"{Log(hearth).Count - before} new discoveries. Reach {Reach(hearth):0} of {target:0} m.";
         }
 
         private static string ReachReport(VillageHearth hearth, VillageState state)

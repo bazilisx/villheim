@@ -155,6 +155,15 @@ namespace Villheim.Logic.Villagers
 
             state.NextStep = Time.time + SecondsPerStep;
             Chores.ToolAnimation(villager, VillagerLooks.Tool.Hoe);
+            LayPoint(hearth, point);
+            hearth.Zdo.Set(KeyIndex, index + 1);
+            state.GiveUpAt = Time.time + 30f;
+            return true;
+        }
+
+        /// <summary>Lays one metre of path where the point is, and adds it to the village's network.</summary>
+        private static void LayPoint(VillageHearth hearth, Vector3 point)
+        {
             // A stretch another path already uses is a shared road: laid wider, as a trunk.
             bool shared = PathPlanner.Network(hearth).Contains(PathPlanner.Cell(point));
             // Fen-folk and crannog villages walk on boards over wet ground (D-038); dirt where that fails.
@@ -164,9 +173,34 @@ namespace Villheim.Logic.Villagers
             }
 
             PathPlanner.AddToNetwork(hearth, point);
-            hearth.Zdo.Set(KeyIndex, index + 1);
-            state.GiveUpAt = Time.time + 30f;
-            return true;
+        }
+
+        /// <summary>
+        /// Lays every path in the village's queue at once, the same way a villager would lay it, and empties the queue.
+        /// For a village set up at once (TestVillage). Returns how many metres were laid.
+        /// </summary>
+        public static int LayAllNow(VillageHearth hearth)
+        {
+            var village = new VillageState(hearth.Zdo);
+            int laid = 0;
+            for (int guard = 0; guard < 200 && Head(hearth, out Vector3 building, out float radius); guard++)
+            {
+                List<Vector3> points = HeadRoute(hearth) ?? Points(hearth.transform.position, village.Axis, building, radius);
+                for (int i = Mathf.Max(0, hearth.Zdo.GetInt(KeyIndex)); i < points.Count; i++)
+                {
+                    LayPoint(hearth, points[i]);
+                    laid++;
+                }
+
+                Pop(hearth);
+            }
+
+            if (Layers.TryGetValue(hearth.VillageId, out Villager layer) && layer != null)
+            {
+                Release(layer);
+            }
+
+            return laid;
         }
 
         private static void Release(Villager villager)

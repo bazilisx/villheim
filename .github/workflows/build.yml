@@ -17,6 +17,12 @@ jobs:
         with:
           dotnet-version: '8.0.x'
 
+      # The in-game generator runs the blueprint lab's own code. Bundle it fresh, so the DLL always matches the lab.
+      - name: Bundle the blueprint lab for the game
+        run: |
+          node tools/blueprint-lab/lib/build_engine.js
+          git diff --quiet -- src/Villheim.Logic/Generator/lab.js || echo "::warning::src/Villheim.Logic/Generator/lab.js was out of date; run node tools/blueprint-lab/lib/build_engine.js and commit it"
+
       - name: Build
         run: dotnet build Villheim.sln -c Release -nologo
 
@@ -25,6 +31,9 @@ jobs:
           mkdir -p package/plugins
           cp src/Villheim/bin/Release/Villheim.dll package/plugins/
           cp src/Villheim.Logic/bin/Release/Villheim.Logic.dll package/plugins/
+          # Jint and what it needs, for 'vh gen' (BSD-2-Clause, BSD-3-Clause, MIT; see THIRD_PARTY_NOTICES.md)
+          cp src/Villheim.Logic/bin/Release/{Jint,Acornima,System.Runtime.CompilerServices.Unsafe}.dll package/plugins/
+          cp THIRD_PARTY_NOTICES.md package/
           cp README.md CHANGELOG.md manifest.json package/
           if [ -f icon.png ]; then cp icon.png package/; fi
 
@@ -42,6 +51,7 @@ jobs:
           mkdir -p dev
           cp src/Villheim/bin/Release/Villheim.dll src/Villheim/bin/Release/Villheim.pdb dev/
           cp src/Villheim.Logic/bin/Release/Villheim.Logic.dll src/Villheim.Logic/bin/Release/Villheim.Logic.pdb dev/
+          cp src/Villheim.Logic/bin/Release/{Jint,Acornima,System.Runtime.CompilerServices.Unsafe}.dll dev/
           echo "${GITHUB_SHA::7}" > dev/version.txt
           gh release delete dev-latest --yes --cleanup-tag || true
           gh release create dev-latest dev/* --prerelease --target "$GITHUB_SHA" \

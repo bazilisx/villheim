@@ -21,6 +21,15 @@ Copy-Item "$logic\Villheim.Logic.pdb" $target -Force
 # Copy the DLL last: the core reloads as soon as the DLL changes and settles.
 Copy-Item "$logic\Villheim.Logic.dll" $target -Force
 
+# Jint and its helpers for 'vh gen': only when missing or changed, as the game locks them once loaded.
+foreach ($name in @("Jint.dll", "Acornima.dll", "System.Runtime.CompilerServices.Unsafe.dll")) {
+    $new = Join-Path $logic $name
+    $old = Join-Path $target $name
+    if ((Test-Path $new) -and (-not (Test-Path $old) -or (Get-FileHash $new).Hash -ne (Get-FileHash $old).Hash)) {
+        try { Copy-Item $new $target -Force } catch { Write-Host "$name is in use: close Valheim and deploy again." }
+    }
+}
+
 if ($Core) {
     Copy-Item "$repo\src\Villheim\bin\Debug\Villheim.dll" $target -Force
     Copy-Item "$repo\src\Villheim\bin\Debug\Villheim.pdb" $target -Force

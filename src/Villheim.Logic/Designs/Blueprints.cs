@@ -286,6 +286,9 @@ namespace Villheim.Logic.Designs
             fileStem.EndsWith("_" + stem, StringComparison.OrdinalIgnoreCase) ||
             fileStem.EndsWith("-" + stem, StringComparison.OrdinalIgnoreCase);
 
+        /// <summary>Look at the folders again on the next call (a design was just saved, e.g. by 'vh gen').</summary>
+        public static void Forget() => _loaded = null;
+
         public static bool IsBlueprint(string designName) =>
             designName != null && designName.StartsWith(Prefix, StringComparison.OrdinalIgnoreCase);
 

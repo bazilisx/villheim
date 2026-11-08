@@ -26,6 +26,7 @@ $profileFolder = Join-Path $profiles $profileName
 $plugin = Join-Path $profileFolder "BepInEx\plugins\bazilisx-Villheim"
 $download = Join-Path $env:TEMP "villheim-update"
 $marker = Join-Path $plugin "villheim-build.txt"
+$engineFiles = @("Jint.dll", "Acornima.dll", "System.Runtime.CompilerServices.Unsafe.dll")
 
 function Say([string]$text, [string]$color = "Gray") {
     Write-Host ("[{0}] {1}" -f (Get-Date -Format "HH:mm:ss"), $text) -ForegroundColor $color
@@ -69,6 +70,10 @@ while ($true) {
             $logicPdb = Fetch "Villheim.Logic.pdb"
             $coreDll = Fetch "Villheim.dll"
             $corePdb = Fetch "Villheim.pdb"
+            # The JavaScript engine for 'vh gen'. Like the core, Windows locks these once the game has loaded them.
+            foreach ($name in $engineFiles) {
+                try { Fetch $name | Out-Null } catch { Say "$name is not in this build." DarkYellow }
+            }
 
             # The pdb first: the game reloads as soon as the logic DLL changes.
             Copy-Item $logicPdb $plugin -Force
@@ -76,6 +81,12 @@ while ($true) {
             $installed = $latest
             Set-Content -Path $marker -Value $latest
             $coreWaiting = -not (Same-File $coreDll (Join-Path $plugin "Villheim.dll"))
+            foreach ($name in $engineFiles) {
+                $new = Join-Path $download $name
+                if ((Test-Path $new) -and -not (Same-File $new (Join-Path $plugin $name))) {
+                    try { Copy-Item $new $plugin -Force } catch { $coreWaiting = $true }
+                }
+            }
             $coreWarned = $false
             Say "Installed build $latest. In game, the hearth's hover text should end in commit-$latest." Green
         }
@@ -84,11 +95,15 @@ while ($true) {
             try {
                 Copy-Item (Join-Path $download "Villheim.dll") $plugin -Force
                 Copy-Item (Join-Path $download "Villheim.pdb") $plugin -Force
+                foreach ($name in $engineFiles) {
+                    $new = Join-Path $download $name
+                    if (Test-Path $new) { Copy-Item $new $plugin -Force }
+                }
                 $coreWaiting = $false
                 Say "Core updated too. Start (or restart) Valheim to load it." Green
             } catch {
                 if (-not $coreWarned) {
-                    Say "The core file needs replacing too, which can't happen while Valheim runs. Everything else is" Yellow
+                    Say "The core file (or the generator's Jint files) needs replacing too, which can't happen while Valheim runs. Everything else is" Yellow
                     Say "already loaded. Next time you close Valheim this window finishes the swap by itself." Yellow
                     $coreWarned = $true
                 }

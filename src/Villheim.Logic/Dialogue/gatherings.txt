@@ -239,7 +239,7 @@ They say you had a hand in killing {lastboss}, {player}. Did you?
 {lastboss} dead. I'll be telling my grandchildren. If I have any.
 
 @ bosses:none
-They say there's a great stag out by the stones. Nobody goes near it.
+They say there's a great stag somewhere in the meadows. Nobody goes near it.
 Some say the forest has a heart, and the heart is angry.
 
 @ boss:eikthyr, !boss:elder

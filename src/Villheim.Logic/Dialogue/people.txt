@@ -82,7 +82,7 @@ We've got so many houses now, I've started losing mine.
 Come closer, my ears aren't what they were.
 I've seen more winters than I can count. Don't ask me to count.
 Young ones rush about. You look like you rush about.
-There's a story about this hill. Remind me later and I'll tell it badly.
+There's a story about this place. Remind me later and I'll tell it badly.
 Keep your axe sharp and your fire lit. That's most of what I know.
 
 @ talk, size:camp | elder

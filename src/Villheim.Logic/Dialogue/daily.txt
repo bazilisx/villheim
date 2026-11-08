@@ -155,10 +155,8 @@ Wind's pushing the trees about. Hard to tell where they'll fall.
 @ !night, !rain
 There's a smell of pine on the wind today.
 The birds are loud this morning. Means good weather, my mother said.
-Saw a fox by the stream. It saw me too. We both pretended we hadn't.
 The clouds look like a boar. Or a loaf. Hungry, me.
 Someone's been carving something into the bench. A boat, I think.
-There's a frog living by the chest. I've named him.
 
 @ !night, !rain | gruff
 Too many birds. Too much singing.

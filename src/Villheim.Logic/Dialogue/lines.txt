@@ -33,6 +33,9 @@
 #   gatherings.txt event:speech:x event:crowd:x event:speechreply feast feastday boss:x bosses:none beast:x
 #                  enemy:x fearnear; {lastboss} {beast}
 #   scenes.txt     chat pair tags with:x, "@key" answers (answer:key) and "+key" chime-ins (chime:key); {partner}
+#   rumours.txt    (and land.txt) rumour rumour:saw/heard/common rumour:<kind>[:<key>] rumour:new and the rest, chat
+#                  tell:rumour, findit:known/unknown, need:meat meat:known/unknown; {thing} {thingshort} {where}
+#                  {direction} {terrain} {distance} {witness} {rteller} {daysago} {when} {findit} {meatwhere}
 #
 # A section the player has heard a lot from is picked less for a while (topic fatigue, see Dialogue.cs).
 #

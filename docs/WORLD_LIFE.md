@@ -248,6 +248,94 @@ changes his home village's view only on the host or the owner of that hearth. Th
 locked by setting the piece's `m_canBeRemoved` on the instance; the logic sets it again each game hour, so a fresh load
 leaves it open for up to an hour. Migrants write to another hearth's ZDO, as caravans do.
 
+## Built (2026-11-08 night 3, village knowledge; compiles, not yet tested in game)
+
+Tyler's rule: rumours and idle talk must be true. If a villager says there are boar along the coast, boar can spawn
+there. All logic only (hot-reloads), in config section "5c - Village knowledge", on whether or not WorldLife is on.
+Branch `night3/knowledge`. Nothing here was run in the game: only `scripts/build-cloud.sh`.
+
+| Part | File | What it does |
+|---|---|---|
+| Reading the world | `Village/WorldSurvey.cs` | Locations from `ZoneSystem.m_locationInstances` (the whole world from generation, explored or not), named by prefix: boss altars (`Eikthyrnir`, `GDKing`, `Bonemass`, `Dragonqueen`, `GoblinKing`, `Mistlands_DvergrBossEntrance`, `FaderLocation`), dungeons (`Crypt`, `SunkenCrypt`, `TrollCave`, `MountainCave`, `Mistlands_DvergrTownEntrance`), traders (`Vendor_BlackForest`, `Hildir_camp`, `BogWitch_Camp`), runestones, `StartTemple`, tar pits, towers, giant bones, stone rings, dolmens, wrecks, wells, cairns, drake nests, greydwarf camps, fuling villages (`GoblinCamp`), dvergr outposts (`Mistlands_GuardTower`, `_Harbour`, `_Camp`, `_Excavation`, `_Lighthouse`) and ruins. Objects in generated zones by prefab with the game's `GetAllZDOsWithPrefabIterative`, one call per hearth tick: copper, tin, silver, obsidian, iron scrap piles, meteorites, greydwarf nests, draugr and bone piles, raspberry, blueberry and cloudberry bushes, wild beehives (no creator); a new sweep five minutes after the last. Creature spawns from the zone controller's `SpawnSystem` lists, merged per creature (biomes, height above the sea, forest or open, day or night; event-only and boss-key spawns left out). Terrain words from `WorldGenerator` heights sampled every 40 m on the line (6 to 24 samples). |
+| Reach | `Village/Knowledge.cs` | Target reach = `KnowledgeReach` by stage (200, 400, 650, 900 m) + `KnowledgeReachPerGear` (60 m) per gear tier. The explored radius on the hearth grows `KnowledgeReachGrowth` (150 m) a day toward it. A place counts as reached when its biome is open to the village's gear (`KnowledgeGear`: Meadows 0, Black Forest 2, coast 1, Swamp, Mountain and Plains 4, Mistlands, Ashlands and the north never) and no stretch of water over 120 m lies on the way. Big things past that line (altars, landmarks, ruins, fuling and dvergr camps, traders, biome edges, creatures) can be spotted within `KnowledgeSight` (150 m, twice across water) of the last safe ground. Outpost camps and daughter villages know 250 m round them; trails to camps and neighbours know 120 m to each side. |
+| Discoveries | `Village/Knowledge.cs` | Hearth key `villheim_known`: id, kind, key, position, day, witness, how (went, reach, spotted, camp, trail, daughter), terrain code, lean (toward the sea, inland), and day or night for creature grounds. Kept to `KnowledgeKeep` (60), ordinary and old dropped first. Ore and nests keep the nearest three of each (one per 120 m cluster); creature grounds and biome edges one each, at the nearest sample that fits. Bosses, dungeons and traders found go in the chronicle. |
+| Survey in slices | `Village/Knowledge.cs` | From the hearth tick (5 s, hearth owner): the reach grows, one slice of the object sweep, 48 land samples (16 directions, rings every 80 m) until done, 12 candidates checked (the walk out is worked out once per gear tier per candidate). Candidates are made again once a game day or when the reach target grows. |
+| Witnesses | `Village/Knowledge.cs` | Every 5 s, villagers (and the village's campers) past 1.1 x the village radius: their furthest point on the trip is noted, and anything within `KnowledgeWitness` (60 m, twice for big things) becomes a discovery they saw. If a player is within 30 m he says so (`rumour:new`). A place the reach covers first goes to the villager whose trip came nearest in the last hour, else to one whose trade fits (protector for creatures, nests, dungeons and bosses; miner for ore; woodcutter for the land), the same one each time. |
+| Firsthand and secondhand | `Village/Knowledge.cs`, `Villagers/FreeTime.cs` | The witness knows it firsthand. In a chat in the village a speaker who saw or heard something passes the newest thing the listener does not know (`villheim_rumheard` on the listener: id and teller, 16 kept); the opening line can be about it (`tell:rumour`). After `KnowledgeCommonDays` (2) everyone has heard. Places found by a camp, trail or daughter village are common at once. |
+| Rumours | `Village/Rumours.cs`, `Villagers/Dialogue.cs` | Each line pick, with `RumourChance` (0.5), one discovery the villager knows, weighted by kind (bosses 5, traders 4, dungeons 3.5, ore 3 ... ruins 1), how he knows it (saw 2.5, heard 1.8, common 1), freshness, and bosses not felled x2 (felled x0.4). Tags and fill-ins are listed at the top of `Dialogue/rumours.txt`. Requests: `findit:known/unknown` and {findit} for the top need when it is a material the land gives (ore, core wood, fine wood, flint, hides, meat, berries, honey...), `need:meat`, `meat:known/unknown` and {meatwhere} when the chest has no food. |
+| Lines | `Dialogue/rumours.txt`, `Dialogue/land.txt` | 381 lines in eight voices: each boss (what the place is, felled or not), dungeons, traders, ore, nests, berries and bees, game, creatures that fight, biome edges, runestones, landmarks, ruins, fuling and dvergr camps, finds of the day, chats passing it on, requests. Retired: lines in `world.txt`, `more.txt`, `gatherings.txt`, `player.txt`, `daily.txt`, `people.txt` and `scenes.txt` that named a place or creature near the village (the stag on the hill, the crypt in the forest, copper in these hills, Haldor in this forest, raspberries past the big rock, a fox, a frog, trolls past the fence). General talk about the lands stays. |
+| Contracts | `Village/Contracts.cs` | The "Needed" sign gets a second line: "Where: north-east, over the ridge, a good walk", or "Where: nobody here knows". |
+| Work reach | `Villagers/Chores.cs`, `Hunting.cs`, `Foraging.cs` | The felling, mining, hunting and foraging radius (55 and 45 m) is multiplied by `HarvestReachByStage` (1, 1.15, 1.35, 1.6), at most `HarvestReachMax` (90 m). Past the old radius, only ground in a biome the village has the gear for. |
+| Map table | `Village/MapTables.cs` | From `MapTableFromStage` (2, a hamlet) the game's `piece_cartographytable` stands 4.5 m from the hearth across from the chest (the first clear spot of twelve), marked with `villheim_maptable`. Reading it copies every discovery to the player's map as ordinary pins (deletable): boss icon for bosses, Icon4 dungeons, Icon1 traders, Icon2 ore, Icon0 nests and fighting creatures, Icon3 the rest; skipped when a pin of the same name is within 30 m or any pin within 6 m. Writing is refused with a message. Hover: "Hallby's map (12 places), [E] Copy them to your map". Put back a minute after it goes missing. |
+
+Settings ("5c - Village knowledge"): `VillageKnowledge`, `KnowledgeReach`, `KnowledgeReachPerGear`,
+`KnowledgeReachGrowth`, `KnowledgeGearGate`, `KnowledgeGear`, `KnowledgeWitness`, `KnowledgeSight`, `KnowledgeKeep`,
+`KnowledgeCommonDays`, `RumourChance`, `KnowledgeRequests`, `HarvestReach`, `HarvestReachByStage`, `HarvestReachMax`,
+`MapTable`, `MapTableFromStage`. The switches `VillageKnowledge`, `KnowledgeGearGate`, `KnowledgeRequests`,
+`HarvestReach` and `MapTable` are in `vh switches`.
+
+Commands, at the nearest village within 300 m:
+
+- `vh know` lists every discovery: kind, key, distance and direction from the hearth, terrain, day, how and by whom,
+  and its position.
+- `vh know reach` (or `vh reach`): explored and target reach, stage, gear tier, which biomes the villagers go into,
+  the work radius, camps, trails and daughters, and the survey's progress.
+- `vh know survey` runs the land sampling and every candidate check now (a short hitch) and restarts the object sweep;
+  `vh know survey full` first sets the explored radius to its target.
+- `vh know rumours [n]` (or `vh rumours`): n sample lines (8) from the nearest villager, each with its real target,
+  position, distance, direction, terrain, how the speaker knows it, the witness and the day.
+- `vh know names`: every location prefab name within the survey radius, how many, and what it is read as ("not used"
+  for names the table skips).
+- `vh know table` puts the map table down now (whatever the stage) and says where it stands.
+- `vh know forget` clears the village's discoveries and its explored radius.
+
+Known limits:
+
+- **Prefab names are from memory, not checked against the game.** Location names (above) and object names
+  (`rock4_copper`, `MineRock_Tin`, `silvervein`, `rock3_silver`, `MineRock_Obsidian`, `mudpile`, `mudpile2`,
+  `MineRock_Meteorite`, `Spawner_GreydwarfNest`, `Spawner_DraugrPile`, `BonePileSpawner`, `RaspberryBush`,
+  `BlueberryBush`, `CloudberryBush`, `Beehive`), creature prefabs (`Greydwarf_Elite`, `Hatchling`, `GoblinBrute`...)
+  and `piece_cartographytable`. A wrong location name only means it is skipped: check with `vh know names`. A wrong
+  object name finds nothing. A missing cartography table prefab logs a warning.
+- **Objects only in generated zones**, and on a multiplayer client only the ZDOs that machine has. Locations, land
+  and spawns cover the whole world.
+- **Spawn grounds are the nearest land sample (80 m rings) that fits** a creature's biome, height and forest rule.
+  The creature can come out there, but the game's own spawn chance, group size and distance from players decide
+  whether one is there when the player arrives.
+- **Terrain words** come from the generated height, not from terrain the players or villages have dug. "Across the
+  river" means some water under 150 m wide on the straight line.
+- **`GetAllZDOsWithPrefabIterative`** is the stub's signature. If it throws, the object sweep turns itself off with one
+  warning and knowledge rests on locations, land and spawns.
+- **MapTable patches** go on every `OnRead` and `OnWrite` overload found. If the game's table calls its read through
+  a different method, reading a village table would show the vanilla behaviour (sharing explored map), and no pins.
+- **The hearth owner writes**: discoveries, reach and the map table come from the client that owns the hearth. A
+  listener's heard list is written only by the machine that owns him.
+- Heard lists, the trips used to pick a witness and the survey's candidates live in memory; a logic reload restarts
+  the survey (the discoveries stay on the hearth).
+- No "explorer" trade exists; protectors on hunts, foragers, campers and carriers are the ones who walk out.
+
+Test plan (about 25 minutes, devcommands on):
+
+1. Load a world with a village of two or more buildings. `vh switches`: VillageKnowledge, KnowledgeGearGate,
+   KnowledgeRequests, HarvestReach and MapTable read on. The log has no "Patch ... failed" for `MapTables`.
+2. At the village: `vh know reach`. Note the stage, gear tier, explored and target reach, and which biomes are open.
+3. `vh know names`: the boss altars, dungeons and traders you know to be near show as read ("boss eikthyr" etc.).
+   Note any "not used" names that should count.
+4. `vh know survey full`, then `vh know`: discoveries listed with distance, direction and terrain. Open the map (with
+   `exploremap` in a test world) and check two or three against their positions.
+5. `vh know rumours 10`: read each line against its target line (direction, distance in plain words, "over the ridge",
+   "across the river"). Walk to one creature ground and one ore discovery to see that it is there.
+6. Stand by a villager who was not the witness of a fresh discovery (`vh know` shows witness and day) and wait for
+   him to chat with the witness. `vh know rumours` near him then gives "heard" for it, and his lines name the teller.
+7. Find the map table by the hearth (or `vh know table`). Hover: "<village>'s map (n places)". Use it: "Copied n places".
+   Use it again: "Nothing new". Delete one pin by hand, use again: one copied. Try to write: the refusal message.
+8. With a Meadows village of gear tier below 2, `vh know reach` says they stay out of the Black Forest; no forest
+   discoveries are "reach" (only "spotted"). Watch a woodcutter: he never fells past 55 m inside Black Forest ground.
+9. `vh contract` with a need the land gives (ore, core wood): the board's Needed sign shows a "Where:" line.
+   With an empty food chest, talk to villagers: a line with where the deer or boar come out, or that nobody knows.
+10. Set `VillageKnowledge = false` and save: no rumour lines, no new map table, `vh know` still lists. Set it back.
+    `vh reload`: the survey starts again and `vh know` still lists the same discoveries.
+
 ## Next, in order
 
 Effort is a rough guess: S an evening, M a session or two, L several sessions.

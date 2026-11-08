@@ -534,7 +534,7 @@ namespace Villheim.Logic
             VillageKnowledge = Admin(config, know, "VillageKnowledge", true,
                 "Villages learn the real land around them (boss altars, dungeons, traders, ore, nests, berries, where animals " +
                 "come out, where the biomes change) as far as their reach goes, and villagers talk about it truthfully: what " +
-                "they saw themselves, what they were told and by whom. Off: no discoveries, no rumours, no map table.");
+                "they saw themselves, what they were told and by whom. Off: the village makes no discoveries and has no map table.");
             KnowledgeReach = Admin(config, know, "KnowledgeReach", "200, 400, 650, 900",
                 "How far (metres from the hearth) a village comes to know the land at each stage: camp, hamlet, village, town.");
             KnowledgeReachPerGear = Admin(config, know, "KnowledgeReachPerGear", 60f,

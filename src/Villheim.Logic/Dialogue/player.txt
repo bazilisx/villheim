@@ -135,7 +135,7 @@ Good, you brought a light. The path's black as tar tonight.
 A torch in broad daylight? Afraid of the shade?
 
 @ talk, player:holding:pickaxe
-Going digging? The good stone's up past the hill.
+Going digging? Bring back something shiny.
 
 @ talk, player:holding:axe, need:wood
 If you're swinging that, the {building} could use the wood.

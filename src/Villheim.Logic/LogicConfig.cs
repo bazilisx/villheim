@@ -217,6 +217,9 @@ namespace Villheim.Logic
         public static ConfigEntry<bool> MistlandsDemist;
         public static ConfigEntry<float> MistlandsDemistRadius;
         public static ConfigEntry<float> MistlandsVillagerDemist;
+        public static ConfigEntry<string> MistlandsDemisterPrefab;
+        public static ConfigEntry<int> MistlandsDemisters;
+        public static ConfigEntry<string> MistlandsDemisterCost;
         // Hunting (Villagers/Hunting.cs) and copses (Village/Groves.cs).
         public static ConfigEntry<float> HuntBowRange;
         public static ConfigEntry<float> HuntMeleeRange;
@@ -909,6 +912,14 @@ namespace Villheim.Logic
                 "Metres of clear air around a Mistlands village's hearth. 0: the village's radius plus 10.");
             MistlandsVillagerDemist = Admin(config, defenders, "MistlandsVillagerDemist", 6f,
                 "Metres of clear air around each villager of a Mistlands village. 0: none.");
+            MistlandsDemisterPrefab = Admin(config, defenders, "MistlandsDemisterPrefab", "dverger_demister_large",
+                "The big Dvergr demister a Mistlands village puts up round its edge, so it looks as if they keep the mist " +
+                "off. 'vh demist' lists the game's prefabs that carry a demister.");
+            MistlandsDemisters = Admin(config, defenders, "MistlandsDemisters", 3,
+                "How many big demisters a Mistlands village puts up, spread evenly round its edge. 0: none.");
+            MistlandsDemisterCost = Admin(config, defenders, "MistlandsDemisterCost", "Wood:10, Stone:10",
+                "What the builder takes from the chest for each big demister (it is not a piece players can build, so it " +
+                "has no recipe of its own): material:amount, comma separated.");
         }
 
         /// <summary>Section "4b - Generator": 'vh gen' and 'vh place'.</summary>

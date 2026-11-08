@@ -209,7 +209,7 @@ namespace Villheim.Logic.Village
             // The map table comes last: its recipe has fine wood, which not every biome gives.
             return Outside(hearth, state, true, onlyHearth: true) ?? NoticeBoard.Job(hearth) ?? Inside(state, tier, true) ??
                    StorageChests.Job(hearth, state) ?? Outside(hearth, state, false, onlyHearth: false) ?? Inside(state, tier, false) ??
-                   MapTables.Job(hearth, state);
+                   Demisters.Job(hearth, state) ?? MapTables.Job(hearth, state);
         }
 
         /// <summary>

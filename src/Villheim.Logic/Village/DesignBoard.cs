@@ -202,6 +202,14 @@ namespace Villheim.Logic.Village
                     MaterialMan.instance?.SetValue(view.gameObject, Tint, BeamColour);
                 }
             }
+
+            // Effects (rain drips and the like) standing in a plot are taken away: they are never part of a design.
+            foreach (ZNetView view in Loaded().Where(v => v != null && v.IsValid() && Inside(v.transform.position) && SwapTool.IsEffect(v.gameObject)).ToList())
+            {
+                VillheimPlugin.Log.LogInfo($"Board: removed the effect {Utils.GetPrefabName(view.gameObject)} from {PlotAt(view.transform.position)}.");
+                view.ClaimOwnership();
+                ZNetScene.instance.Destroy(view.gameObject);
+            }
         }
 
         private static readonly HashSet<int> Tinted = new HashSet<int>();
@@ -1177,7 +1185,7 @@ namespace Villheim.Logic.Village
             foreach (Blueprints.Piece piece in saved.Pieces)
             {
                 GameObject prefab = ZNetScene.instance.GetPrefab(piece.Prefab);
-                if (prefab == null)
+                if (prefab == null || SwapTool.IsEffect(prefab))
                 {
                     continue;
                 }

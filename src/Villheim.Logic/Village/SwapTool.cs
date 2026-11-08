@@ -146,7 +146,24 @@ namespace Villheim.Logic.Village
         /// </summary>
         public static bool PartOfPlot(ZNetView view) =>
             view.GetComponent<Character>() == null && view.GetComponent<ItemDrop>() == null && view.GetComponent<TerrainComp>() == null &&
-            view.GetComponent<TerrainModifier>() == null && view.GetComponent<TombStone>() == null && view.GetComponent<Projectile>() == null;
+            view.GetComponent<TerrainModifier>() == null && view.GetComponent<TombStone>() == null && view.GetComponent<Projectile>() == null &&
+            !IsEffect(view.gameObject);
+
+        /// <summary>
+        /// Whether an object is only a visual or sound effect (rain drips, smoke puffs, hit sparks): named vfx_, sfx_ or fx_
+        /// as the game names its effects, or set to vanish on a timer (TimedDestruction). Such objects are never part of a design: a save once took one in (a rain effect left in the
+        /// plot), and every copy then showed rain hanging in the air (2026-11-07).
+        /// </summary>
+        public static bool IsEffect(GameObject go)
+        {
+            if (go == null)
+            {
+                return false;
+            }
+
+            string name = Utils.GetPrefabName(go).ToLowerInvariant();
+            return name.StartsWith("vfx_") || name.StartsWith("sfx_") || name.StartsWith("fx_") || go.GetComponent<TimedDestruction>() != null;
+        }
 
         /// <summary>
         /// The design an object belongs to: its design name, or for a piece with none (placed on the slotting board with

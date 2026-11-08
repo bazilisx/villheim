@@ -285,7 +285,33 @@ namespace Villheim.Logic.Designs
                 return PoolFor(biome, Role.House, culture);
             }
 
+            KeepWoodEarly(pool, biome, role);
             return pool;
+        }
+
+        /// <summary>Stone in this design (from its pieces' recipes).</summary>
+        public static int StoneIn(Design design) => design.RawTotals.TryGetValue(Village.Materials.Stone, out int n) ? n : 0;
+
+        /// <summary>
+        /// Wood first in the early stages (D-012, see Materials.StoneTooEarly): stone-heavy designs leave the pool
+        /// while the village is young. When that would leave nothing, the designs with the least stone stay.
+        /// </summary>
+        private static void KeepWoodEarly(List<Design> pool, Heightmap.Biome biome, Role role)
+        {
+            if (pool.Count == 0 || !pool.Any(d => Village.Materials.StoneTooEarly(biome, role, StoneIn(d))))
+            {
+                return;
+            }
+
+            List<Design> wood = pool.Where(d => !Village.Materials.StoneTooEarly(biome, role, StoneIn(d))).ToList();
+            if (wood.Count == 0)
+            {
+                int least = pool.Min(StoneIn);
+                wood = pool.Where(d => StoneIn(d) == least).ToList();
+            }
+
+            pool.Clear();
+            pool.AddRange(wood);
         }
 
         /// <summary>

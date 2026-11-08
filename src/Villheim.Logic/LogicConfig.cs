@@ -63,6 +63,10 @@ namespace Villheim.Logic
         public static ConfigEntry<bool> Caravans;
         public static ConfigEntry<bool> CaravanDeliveries;
         public static ConfigEntry<bool> BroughtMaterials;
+        public static ConfigEntry<string> WoodFirstBiomes;
+        public static ConfigEntry<int> StoneFromStage;
+        public static ConfigEntry<int> StoneHallFromStage;
+        public static ConfigEntry<int> EarlyStoneMax;
         public static ConfigEntry<bool> Daughters;
         public static ConfigEntry<bool> Contracts;
         public static ConfigEntry<bool> Groves;
@@ -194,6 +198,15 @@ namespace Villheim.Logic
             SiteChest = Admin(config, work, "SiteChest", true,
                 "Give each village a chest by its hearth. Villagers bring materials to it and the builder takes from it. " +
                 "Anything you drop in helps the village build. If it is destroyed, the villagers build a new one first.");
+            WoodFirstBiomes = Admin(config, work, "WoodFirstBiomes", "Meadows, BlackForest",
+                "Biomes whose villages build in wood at their early stages and in stone only later (comma separated).");
+            StoneFromStage = Admin(config, work, "StoneFromStage", 3,
+                "In WoodFirstBiomes: the stage a village must reach with its next building before it builds a design " +
+                "with more than EarlyStoneMax stone (1 camp, 2 hamlet, 3 village, 4 town).");
+            StoneHallFromStage = Admin(config, work, "StoneHallFromStage", 2,
+                "The same for the hall (the longhouse by the hearth): it may be built or rebuilt in stone from this stage.");
+            EarlyStoneMax = Admin(config, work, "EarlyStoneMax", 30,
+                "Stone a design may use and still count as a wooden building (a hearth, a fire pit, a few steps).");
             SecondsPerPiece = Admin(config, work, "SecondsPerPiece", 2.5f,
                 "How long a builder hammers at each piece before it goes up.");
             StartingStock = Admin(config, work, "StartingStock", 0,

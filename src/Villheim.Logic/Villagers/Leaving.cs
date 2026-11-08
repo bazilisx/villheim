@@ -8,7 +8,8 @@ namespace Villheim.Logic.Villagers
 {
     /// <summary>
     /// Villagers who leave, and where they go (proposals 7 and 16, after Banished, Manor Lords' approval and Dwarf
-    /// Fortress migrants). Needs WorldLife and Leaving on.
+    /// Fortress migrants). Needs WorldLife and VillagersLeave on. Off by default: villagers never move away (Tyler,
+    /// 2026-11-08, D-003). The code is kept for a later choice.
     ///
     /// - Who: a villager who went LeaveAfterDays without a need (Complaints), or, when the village's mood has been under
     ///   ExodusMood for ExodusDays mornings running, its least content grown villager (never the Jarl). Nobody leaves a

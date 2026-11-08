@@ -265,7 +265,7 @@ I flinch at every sound. That's no way to live.
 I hate to complain. But it's been days.
 
 @ talk, demand:bed ~point
-I need a bed. Please. Help us build one, or I don't know how much longer I'll stay.
+I need a bed. Please. Help us build one. My back can't take much more.
 You're good with a hammer. Could you put up a bed for me? I'm at the end of my rope.
 
 @ talk, demand:food ~point
@@ -281,43 +281,8 @@ A bed. That's all I want. Get me a bed.
 
 # ------------------------------------------------------------------ leaving
 
-@ self, farewell
-I can't stay. Look after the place.
-That's it. I'm going. Don't try to stop me.
-Goodbye, all of you. I'm sorry.
-
-@ self, farewell:bed
-Ten nights on the ground is enough. I'll find a bed somewhere else.
-
-@ self, farewell:food
-I won't starve here. There must be bread somewhere down the road.
-
-@ self, farewell:safety
-I'm done being hunted every night. I'm going somewhere safer.
-
-@ self, farewell:mood
-Nobody smiles here any more. I need to be somewhere people smile.
-
-@ self, farewell | gruff
-Don't wave. Just don't.
-
-@ self, farewell | young
-I'll write. I can't write. I'll send word, then.
-
-@ talk, event:leaving
-One of ours packed up and left. Didn't even finish their stew.
-Did you see? They walked off down the road and never looked back.
-Another one gone. If this keeps on there'll be nobody to light the fire.
-
-@ talk, event:leaving | worrier
-Who's next? It's going to be me, isn't it. Or worse, everyone but me.
-
-@ talk, migrant
-I came over from {camefrom}. It wasn't working out there.
-Back in {camefrom} I had nothing. Here I'll have a bed, at least.
-
-@ talk, migrant | gruff
-{camefrom} was a mess. Don't ask.
+# Retired 2026-11-08 (D-003): villagers never move away, so the farewell, event:leaving and migrant lines are gone.
+# The tags still exist in Villagers/Leaving.cs (setting VillagersLeave, off). Old lines are in git history.
 
 # ------------------------------------------------------------------ visitors who judge their stay
 
@@ -361,21 +326,12 @@ Look at that chest! Someone listened to us!
 
 # ------------------------------------------------------------------ boss stages and trophies
 
-@ talk, stagecap
-We could grow, but folk won't settle here while {nextboss} still lives.
-The elders say we're as big as we can be until {nextboss} falls.
-Kill {nextboss} and you'll see this place grow, I promise you.
-
-@ talk, stagecap | worrier
-Nobody wants to build big while {nextboss} is out there. I don't blame them.
+# Retired 2026-11-08 (D-004): growth is never capped by bosses felled, so the stagecap and stageopen lines are gone.
+# Village/BossStages.cs keeps the tags (setting BossStageCap, off).
 
 @ talk, event:trophy
 Have you seen the trophy hanging in the village? Gives me shivers.
 A real trophy, here! The children won't stop staring at it.
-
-@ talk, event:stageopen
-The great foe is dead! Now we can build like we mean it.
-With that beast gone, people are talking about new houses already.
 
 # ------------------------------------------------------------------ elders
 
@@ -398,13 +354,8 @@ Day {chronicleday}. {chronicle} Those were the days.
 @ talk, event:newelder
 We've a new elder in the village. They earned the grey in their beard.
 
-@ talk, event:elderdeath
-We lost one of the old ones in the night. Peaceful, they say.
-Our eldest is gone. Went in their sleep, warm by the fire. A good way to go.
-The village feels smaller today. They'd been here from the start.
-
-@ talk, event:elderdeath | devout
-They walk with the ancestors now. Raise a cup tonight.
+# Retired 2026-11-08 (D-003): elders do not die of age, so the event:elderdeath lines are gone (setting
+# EldersDieOfAge, off).
 
 # ------------------------------------------------------------------ neighbours
 

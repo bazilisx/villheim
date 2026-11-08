@@ -437,9 +437,9 @@ namespace Villheim.Logic
             ("VillagerWants", VillagerWants), ("Gatherings", Gatherings), ("Noticing", Noticing), ("IdleGlances", IdleGlances),
             ("SurroundingsTags", SurroundingsTags), ("TopicFatigue", TopicFatigue), ("ChatScenes", ChatScenes),
             ("Prosperity", Prosperity), ("Expectations", Expectations), ("Calendar", Calendar), ("Festivals", Festivals),
-            ("WinterStores", WinterStores), ("PlayerStanding", PlayerStanding), ("Hostility", Hostility), ("Complaints", Complaints), ("Leaving", Leaving),
-            ("VisitorJudging", VisitorJudging), ("WantPile", WantPile), ("BossStages", BossStages), ("Elders", Elders),
-            ("ElderDeaths", ElderDeaths), ("Neighbours", Neighbours), ("Horn", Horn), ("HelpPlayers", HelpPlayers),
+            ("WinterStores", WinterStores), ("PlayerStanding", PlayerStanding), ("Hostility", Hostility), ("Complaints", Complaints), ("VillagersLeave", Leaving),
+            ("VisitorJudging", VisitorJudging), ("WantPile", WantPile), ("BossStageCap", BossStages), ("Elders", Elders),
+            ("EldersDieOfAge", ElderDeaths), ("Neighbours", Neighbours), ("Horn", Horn), ("HelpPlayers", HelpPlayers),
             ("VillageKnowledge", VillageKnowledge), ("KnowledgeGearGate", KnowledgeGearGate), ("KnowledgeRequests", KnowledgeRequests),
             ("HarvestReach", HarvestReach), ("MapTable", MapTable),
             ("Cultures", Cultures), ("CultureSurnames", CultureSurnames), ("CultureDesigns", CultureDesigns),
@@ -514,17 +514,19 @@ namespace Villheim.Logic
             ForgivePerDay = Admin(config, living, "ForgivePerDay", 1,
                 "Points a bad standing comes back toward zero each day.");
             Complaints = Admin(config, living, "Complaints", true,
-                "A villager without a bed, food or safety for days complains, then asks a player for it, then (with " +
-                "WorldLife and Leaving on) leaves.");
+                "A villager without a bed, food or safety for days complains, then asks a player for it. He stays in the " +
+                "village whatever happens (Leaving is off by default).");
             ComplainAfterDays = Admin(config, living, "ComplainAfterDays", 3, "Days without a need before complaining.");
             DemandAfterDays = Admin(config, living, "DemandAfterDays", 6, "Days without a need before asking a player for it.");
-            LeaveAfterDays = Admin(config, living, "LeaveAfterDays", 10, "Days without a need before leaving.");
-            Leaving = Admin(config, living, "Leaving", true,
-                "With WorldLife on, villagers can leave: one who lacked a need too long, or the least content when the " +
-                "whole village is glum for days. They walk to the friendliest neighbour and settle there when it has a " +
-                "free bed.");
-            ExodusMood = Admin(config, living, "ExodusMood", 25, "Village mood below which people start to think of leaving.");
-            ExodusDays = Admin(config, living, "ExodusDays", 3, "Days in a row below ExodusMood before someone leaves.");
+            LeaveAfterDays = Admin(config, living, "LeaveAfterDays", 10, "With VillagersLeave on: days without a need before leaving.");
+            // Villagers never move away (Tyler, 2026-11-08, D-003): a new key, off by default, so a config file
+            // written while "Leaving" was on doesn't keep it on. The code stays.
+            Leaving = Admin(config, living, "VillagersLeave", false,
+                "Off: villagers never leave their village. On (old behaviour, needs WorldLife): one who lacked a need " +
+                "too long, or the least content when the whole village is glum for days, walks to the friendliest " +
+                "neighbour and settles there when it has a free bed.");
+            ExodusMood = Admin(config, living, "ExodusMood", 25, "With VillagersLeave on: village mood below which people start to think of leaving.");
+            ExodusDays = Admin(config, living, "ExodusDays", 3, "With VillagersLeave on: days in a row below ExodusMood before someone leaves.");
             VisitorJudging = Admin(config, living, "VisitorJudging", true,
                 "Pedlars and pilgrims judge their stay (weather, a fight, the village's mood, a feast). A good stay " +
                 "warms their home village to this one and may leave a gift; a bad one cools it and keeps visitors away " +
@@ -532,20 +534,24 @@ namespace Villheim.Logic
             WantPile = Admin(config, living, "WantPile", true,
                 "A pile or item stand beside the village chest shows what the village wants most, readable from afar. " +
                 "Filling it within a day cheers the village.");
-            BossStages = Admin(config, living, "BossStages", true,
-                "With WorldLife on, each boss felled (or its trophy hung on an item stand in the village) lets villages " +
-                "grow one stage further. Homes for villagers without a bed are always allowed.");
+            // Growth follows materials, people and needs, never bosses felled (Tyler, 2026-11-08, D-004). New key, off.
+            BossStages = Admin(config, living, "BossStageCap", false,
+                "Off: growth follows materials, people and needs, and bosses felled never hold a village back. On (old " +
+                "behaviour, needs WorldLife): each boss felled (or its trophy hung on an item stand in the village) lets " +
+                "villages grow one stage further.");
             BossStageStart = Admin(config, living, "BossStageStart", 2,
-                "Stage a village can reach with no boss felled: 1 camp, 2 hamlet, 3 village, 4 town.");
+                "With BossStageCap on: stage a village can reach with no boss felled: 1 camp, 2 hamlet, 3 village, 4 town.");
             BossStageSource = Admin(config, living, "BossStageSource", "Either",
-                "What counts as a boss felled: Keys (the world's boss keys), Trophies (hung in the village) or Either.");
+                "With BossStageCap on: what counts as a boss felled: Keys (the world's boss keys), Trophies (hung in the village) or Either.");
             Elders = Admin(config, living, "Elders", true,
                 "Villagers who have lived in a village long enough are elders: they leave felling and mining to others " +
                 "and tell the village's old stories.");
             ElderDays = Admin(config, living, "ElderDays", 40, "Days in the village before a villager is an elder.");
-            ElderDeaths = Admin(config, living, "ElderDeaths", true,
-                "With WorldLife on, very old elders may die in their sleep and are mourned.");
-            ElderDeathDays = Admin(config, living, "ElderDeathDays", 60, "Days in the village before an elder may die of age.");
+            // Elders do not die of age (Tyler, 2026-11-08, D-003). New key, off.
+            ElderDeaths = Admin(config, living, "EldersDieOfAge", false,
+                "Off: elders live on. On (old behaviour, needs WorldLife): very old elders may die in their sleep and are " +
+                "mourned.");
+            ElderDeathDays = Admin(config, living, "ElderDeathDays", 60, "With EldersDieOfAge on: days in the village before an elder may die of age.");
             ElderDeathChance = Admin(config, living, "ElderDeathChance", 0.02f, "Chance each morning, from ElderDeathDays on.");
             Neighbours = Admin(config, living, "Neighbours", true,
                 "Villagers pick beds near their friend and away from their rival, and are glad or sour about who lives " +

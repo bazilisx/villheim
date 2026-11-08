@@ -279,7 +279,7 @@ namespace Villheim.Logic.Village
                 return TryUpgrade(hearth, state, project, interval);
             }
 
-            // A boss felled lets villages grow a stage further (BossStages); homes for the bedless always go up.
+            // Only with BossStageCap on (off by default, D-004): a boss felled lets villages grow a stage further.
             if (BossStages.Blocks(hearth, state, out string bossWait))
             {
                 state.Waiting = bossWait;

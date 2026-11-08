@@ -26,6 +26,9 @@ Current facts only. Read this at the start of a session. Narrative is in `docs/d
   - Design numbers come from `BepInEx/Villheim/design-list.csv` (`vh report`) and never change.
   - Licensing to settle before shipping blueprints: valheimians builds and copied MWL locations belong to their
     creators; ship only Tyler's own or with permission.
+- **Decisions (2026-11-08):** questions and answers live in the review sheet's Decisions tab. Knowledge (true
+  rumours, map table), cultures by biome, biome defenders and D-003 to D-040 are in main; none tested in game. Tyler
+  starts a new test world for village testing.
 - **Feature checklist (2026-11-08):** every built, planned and proposed feature plus ideas from other mods, 730 rows,
   in the review sheet's Features tab (Yes, No or Later). Source files in `docs/features/`. ValheimCityBuilder is CC0
   per its authors; study in `docs/CITYBUILDER_STUDY.md`.
@@ -107,6 +110,7 @@ Current facts only. Read this at the start of a session. Narrative is in `docs/d
 
 ## Recent milestones
 
+- **2026-11-08 (knowledge, cultures, biome defenders and Tyler's decisions merged)** - see docs/daily-notes/2026-11/2026-11-08.md
 - **2026-11-08 (culture styles in the blueprint lab)** - see docs/daily-notes/2026-11/2026-11-08.md
 - **2026-11-08 (Millénaire translation pilot)** - see docs/daily-notes/2026-11/2026-11-08.md
 - **2026-11-08 (CityBuilder study, CC0; feature checklist in the review sheet; living village merged)** - see docs/daily-notes/2026-11/2026-11-08.md

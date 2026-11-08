@@ -175,6 +175,16 @@ namespace Villheim.Logic.Village
             return null;
         }
 
+        /// <summary>For 'vh shaper': the plots the board knows and the board signs standing within 60 m.</summary>
+        internal static string Known(Vector3 near)
+        {
+            string plots = string.Join(", ", Plots.OrderBy(p => Utils.DistanceXZ(p.Center, near)).Take(4)
+                .Select(p => $"{StageName(p.Name)} {Utils.DistanceXZ(p.Center, near):0} m"));
+            var signs = Loaded().Select(v => v.GetZDO()).Where(z => z.GetString(Gallery.KeyDesign, "").StartsWith(Prefix) && Utils.DistanceXZ(z.GetPosition(), near) < 60f)
+                .Select(z => $"{z.GetString(Gallery.KeyDesign, "")} half {z.GetFloat(Gallery.KeyPlotHalf, 0f):0.#} {Utils.DistanceXZ(z.GetPosition(), near):0} m").Take(8).ToList();
+            return $"Board knows {Plots.Count} plots (nearest: {(plots.Length > 0 ? plots : "none")}); board-named objects within 60 m: {(signs.Count > 0 ? string.Join("; ", signs) : "none")}.";
+        }
+
         private static IEnumerable<ZNetView> Loaded() =>
             ZNetScene.instance == null ? Enumerable.Empty<ZNetView>() : ZNetScene.instance.m_instances.Values.Where(v => v != null && v.IsValid());
 

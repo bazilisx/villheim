@@ -127,7 +127,7 @@ namespace Villheim.Logic.Village
                    $"tool {_tool} ({(_tool >= 1 && _tool <= 8 ? Labels[_tool - 1] : "none")}), typing {Typing()}, " +
                    $"Move holds '{_moveDesign ?? ""}', aimed '{aimed}' (object {(target != null ? Utils.GetPrefabName(target) : "none")}), " +
                    $"part locked {SwapTool.PartLocked}, plot sign {(sign != null ? "found" : "NOT FOUND")}, {views.Count} objects in it. " +
-                   $"Logic {VillheimLogic.Build}.";
+                   DesignBoard.Known(player.transform.position) + $" Logic {VillheimLogic.Build}.";
         }
 
         private static bool Typing() =>

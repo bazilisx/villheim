@@ -1,0 +1,316 @@
+# Villheim: lines bound to a place (Stardew Valley's location keys). Same format as lines.txt.
+#
+# Place tags (Villagers/Context.cs): at:hearth at:forge at:workbench at:cauldron at:stonecutter at:station at:fire
+# at:chest at:shore at:home at:edge at:outside indoors outdoors. Fill-in {place} says where the villager stands
+# ("by the forge", "down by the water").
+
+# ------------------------------------------------------------------ the forge
+
+@ at:forge
+The forge eats charcoal like a bear eats honey.
+Hot work, this. You can feel it on your face from here.
+Keep your sleeves away from the coals.
+Copper and tin. Two stones that are no use alone and good together. Like some marriages.
+When the bellows sigh like that, the fire is happy.
+Mind the anvil, it bites toes.
+
+@ at:forge | gruff
+Don't stand in my light.
+The forge doesn't care how tired you are.
+If you touch that tongs you'd better be holding them right.
+
+@ at:forge | cheerful
+I love the sound of the hammer on bronze. Like bells, a little.
+Warm as summer by the forge, even in the rain.
+
+@ at:forge | worrier
+One spark on the thatch and we'd all be sleeping in the field.
+I always think the forge is about to fall over. It never does. Yet.
+
+@ at:forge | wry
+The forge is the only one in the village who never complains of the cold.
+I came for the warmth. I'm told that doesn't count as work.
+
+@ at:forge | elder
+My grandfather said a smith listens with his hands.
+Good bronze is half fire and half patience.
+
+@ at:forge | young
+Can I pump the bellows? I'll be careful. Mostly careful.
+I want to be a smith when I'm grown. Or a dragon.
+
+@ at:forge | devout
+Every smith owes a little to the gods of fire. I say thank you each morning.
+The forge was the first gift. Fire, then iron, then us.
+
+@ at:forge, skill:crafting:good
+I can tell bad tin by the sound now. It goes dull, like a wet drum.
+Give me the forge and a quiet day and I'll give you a blade worth carrying.
+
+@ at:forge, skill:crafting:novice
+I burnt my thumb again. The same thumb.
+Which end of the tongs do I hold? The cold end. Yes. I knew that.
+
+# ------------------------------------------------------------------ the workbench
+
+@ at:workbench
+Somebody left the hammer on the floor again.
+A bench, a saw and a dry roof. That's most of what a village needs.
+Shavings everywhere. I'll sweep them into the fire later.
+Measure twice. Cut once. Then curse once.
+The glue pot's gone hard again.
+
+@ at:workbench | gruff
+Don't move my pegs. I know where they are.
+That plank's warped. Who brought me a warped plank?
+
+@ at:workbench | cheerful
+I love the smell of fresh-cut wood. Better than mead. Nearly.
+Look at that joint. Tight as a drum.
+
+@ at:workbench | worrier
+I keep thinking I'll take a finger off with this saw.
+Is the roof over the bench sound? It dripped on me yesterday.
+
+@ at:workbench | wry
+This bench has made more things than I have. It deserves a name.
+I build stools so people can sit and watch me build more stools.
+
+@ at:workbench | elder
+A good bench outlives its maker. This one will outlive me, at any rate.
+Let the wood tell you which way it wants to split.
+
+@ at:workbench | young
+I made a little boat out of the offcuts. It floats. Sort of.
+Can you make a sword out of wood? A real one?
+
+@ at:workbench, skill:building:master
+I could build a longhouse with my eyes shut. I won't. But I could.
+These hands have put up more roofs than I can count.
+
+@ at:workbench, trade:carpenter
+The bench is where the houses start, really. Everything after is carrying.
+I've got the next door half made already.
+
+# ------------------------------------------------------------------ the cauldron and other stations
+
+@ at:cauldron
+Something in this pot smells like boots.
+Stir it slowly or it catches on the bottom.
+The cauldron's been bubbling since morning. Nobody knows what's in it.
+
+@ at:cauldron | worrier
+I'm not sure what's in here. I'm not eating it until somebody else does.
+
+@ at:cauldron | wry
+The cauldron has two moods. Boiling and boiling over.
+
+@ at:stonecutter
+Stone dust in my teeth. Again.
+A stone wall stands a hundred years. A wood wall, twenty if you're lucky.
+
+@ at:station, !at:forge, !at:workbench, !at:cauldron
+Every tool has its own bench now. We're getting fancy.
+Whoever built this knew what they were doing.
+
+# ------------------------------------------------------------------ the hearth
+
+@ at:hearth
+The hearth is the middle of everything here. You can tell by the ash.
+Feed the fire before you feed yourself. That's the rule.
+Somebody's been burning green wood. Listen to it spit.
+This was the first fire we lit here. It's never gone out. Well, once.
+Stand on the windward side. Unless you like smoke.
+
+@ at:hearth, morning
+First one up keeps the fire. Today that was me.
+Cold ash in the morning means somebody slept through their turn.
+
+@ at:hearth, night
+The fire talks at night if you're quiet. Mostly it says pop.
+Look at the sparks going up. Like little stars going home.
+
+@ at:hearth | elder
+I sat by a hearth like this when I was small. Different fire. Same warmth.
+The hearth remembers every one of us. That's what the old ones said.
+
+@ at:hearth | devout
+A hearth is a small altar. Treat it like one.
+We keep this fire for the living and the ones before.
+
+@ at:hearth | young
+If you throw pinecones in, they go whoosh. Watch.
+I'm not allowed to poke the fire. I'm poking it a little.
+
+@ at:hearth | gruff
+Somebody take a turn at the fire for once.
+More wood, less talk.
+
+@ at:hearth, rain
+The fire hisses at the rain. I'm on the fire's side.
+Huddle in, there's room for one more.
+
+# ------------------------------------------------------------------ a fire pit
+
+@ at:fire
+Nothing like a fire to make the day feel done.
+I could sit here till my boots smoke.
+Pass me a stick, this log wants turning.
+Fire's good company. Doesn't argue.
+
+@ at:fire | wry
+I've been warming my hands so long they've started to cook.
+
+@ at:fire | worrier
+Is it too close to the wall? It looks too close to the wall.
+
+@ at:fire, cold
+Get your hands out, the fire won't bite.
+Cold days are made for sitting by fires. I'm doing my part.
+
+# ------------------------------------------------------------------ the chest
+
+@ at:chest
+Let's see what we've got. Not much. Never much.
+Somebody put wet wood in the chest again.
+If you're taking from the chest, say so. If you're putting in, say so louder.
+I count what's in here every morning. It's never what I hope.
+
+@ at:chest, need:any
+We're short of {material}. The chest says so, and so do I.
+Every {material} in here goes into the {building}.
+
+@ at:chest, need:none
+The chest is full for once. I'm going to stand here and enjoy it.
+Look at that. Enough of everything. Somebody write it on a stone.
+
+@ at:chest | gruff
+Close the lid properly. The damp gets in.
+Who's been taking resin? I want names.
+
+@ at:chest | wry
+The chest is the most honest one of us. It always tells you what's missing.
+
+@ at:chest, pmem:giver
+Half of this is your doing, {player}. Don't think we didn't notice.
+
+# ------------------------------------------------------------------ the shore
+
+@ at:shore
+The water's cold enough to stop your heart. I put my feet in anyway.
+You can see the fish if you stand still long enough.
+I like it down here. Nobody asks me to carry anything.
+The sea smells different when the weather's turning.
+Driftwood all along here. Some of it from boats.
+
+@ at:shore | worrier
+I don't go in past my knees. Things live out there.
+There was something big under the water yesterday. I'm sure of it.
+
+@ at:shore | elder
+My father fished waters like these. He said the sea gives, and the sea takes back.
+Watch the gulls. They know when the weather is coming.
+
+@ at:shore | young
+I skipped a stone seven times! Nobody saw. It counts anyway.
+Can we build a boat? A big one? With a dragon on the front?
+
+@ at:shore | devout
+Njord keeps the water. I leave him a fish head now and then.
+
+@ at:shore | wry
+The sea is very big and I am very small. We've agreed to leave each other alone.
+
+@ at:shore, fear:water
+I don't like it here. The water's too close. Too deep.
+
+# ------------------------------------------------------------------ indoors and at home
+
+@ indoors
+Dry in here, at least. Small mercies.
+Mind your head on the beam. Everyone does it once.
+It's warmer with the door shut. Shut the door.
+Smoke goes up and out if the roof's right. This one's nearly right.
+
+@ indoors, rain
+Listen to the rain on the roof. Best sound there is when you're under it.
+I'll stay in until it stops. Or until someone makes me go out.
+
+@ indoors, night
+Quiet in here at night. Just the beams settling.
+
+@ at:home
+This is my corner. I know every knot in the wall.
+Home. Small, but it doesn't leak. Much.
+I put a little carving over the door. For luck.
+
+@ at:home, nobed
+I've got a corner and a cloak. One day a bed.
+
+@ at:home | cheerful
+I love coming home. Even when home is a wall and a roof.
+
+@ at:home | gruff
+Don't come in without knocking. There's no door, but knock anyway.
+
+# ------------------------------------------------------------------ the edge of the village
+
+@ at:edge
+Past here it's just trees and whatever lives in them.
+I like the edge. You can see who's coming.
+The forest starts right there. Every year it tries to come back.
+If you keep walking that way you get to {neighbour}. In a few days.
+
+@ at:edge, night
+I don't like being out here after dark. Too far from the fire.
+Every shadow out here has teeth. Probably.
+
+@ at:edge | worrier
+Something moved in the trees. Didn't it? Tell me it didn't.
+We should have a fence here. A tall one. With spikes.
+
+@ at:edge, protector
+I walk the edge every day. Nothing gets past without me seeing it.
+If anything comes, it comes from the trees. So I watch the trees.
+
+@ at:edge | young
+Out there is where the adventures are. I'm going one day.
+
+@ at:outside
+We're a long way from the hearth. I can't smell the smoke.
+Should we head back? It's getting far.
+Nobody's ever told me how far the village goes. I think it ends about here.
+
+@ at:outside | worrier
+I don't like being this far out. Let's not stay long.
+
+# ------------------------------------------------------------------ talking to the player, by place
+
+@ talk, at:forge
+Come to see the forge? Stand back a step, that's it.
+If you need something mended, you're in the right place.
+Careful, {player}. The anvil's hot.
+
+@ talk, at:workbench
+Pull up a stump. I'm nearly done here.
+Wood's a forgiving thing, {player}. More than people.
+
+@ talk, at:hearth
+Warm yourself, {player}. The fire's for everyone.
+Sit if you like. The ground's warm near the stones.
+
+@ talk, at:chest
+Come to put something in, {player}? Or just looking?
+The chest is always hungry. Like a young one.
+
+@ talk, at:shore
+Nice spot, this. I come here to think. Mostly about fish.
+Fancy a swim, {player}? No? Wise.
+
+@ talk, at:edge
+You're on the edge of things here, {player}. Keep your eyes on the trees.
+Watch yourself past those stones. That's not our land any more.
+
+@ talk, indoors
+Come in, come in. Shake the wet off outside, if you would.
+It's not much, but it's dry.

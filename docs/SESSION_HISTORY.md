@@ -15,7 +15,7 @@ Current facts only. Read this at the start of a session. Narrative is in `docs/d
   - Phases A, B and B2 done 2026-11-07, game and sheet agree: Home 53, Work 125, Community 84, Drop 2; subtypes
     Longhouse 36, Defence 31, Hearth 21, Farming 20, Tavern 18, Workshop 16, Harbour 15, Mining 14, Decor 9,
     Storage 9, Woodworking 9, Cooking 5, Hunting 4, Arcane 2. Slotting under way with `vh slot` (Village/DesignBoard.cs): Meadows hearth first; drafts, decor rows, ground and path
-    markers in saves; paths use markers. Next: villages build the board's saves. Sort knives
+    markers in saves; paths use markers. Plot ground is copied per ground point the way PlanBuild and World Edit Commands do it (height and paint at one index, every 64 m area); saves made before 2026-11-08 need saving again. Next: villages build the board's saves. Sort knives
     (`Village/DesignSort.cs`, `vh sort`): A = KnifeFlint (type), B = KnifeCopper (subtype); key picks, click sorts,
     sign and number colours, `BepInEx/Villheim/design-sort.csv`, live writes to the Pass 2 tab once the sheet's web
     app is deployed and `vh sort url` is set; `vh gallery keepers type <x>`. Sorted designs leave the field (undo brings them back) and are left off when a

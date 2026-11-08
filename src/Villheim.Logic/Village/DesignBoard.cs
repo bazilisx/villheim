@@ -1189,6 +1189,10 @@ namespace Villheim.Logic.Village
 
             made += PutMarkers(file, center, turn);
             List<string> exactGround = SectionLines(file, GroundHeader);
+            if (exactGround.Count == 0)
+            {
+                exactGround = SectionLines(file, OldGroundHeader);
+            }
             SetGround(TerrainLines(file), center, yaw, half, exactGround.Count > 0 ? exactGround : null);
 
             return made;
@@ -1399,7 +1403,7 @@ namespace Villheim.Logic.Village
         /// </summary>
         private static string PaintAt(Vector3 world)
         {
-            if (!PaintCell(world, false, out TerrainComp ground, out int index) || !ground.m_modifiedPaint[index])
+            if (!NearestPoint(world, out TerrainComp ground, out int index) || !ground.m_modifiedPaint[index])
             {
                 return "";
             }
@@ -1433,14 +1437,6 @@ namespace Villheim.Logic.Village
             return lines;
         }
 
-        /// <summary>
-        /// Puts a save's ground back round a plot's middle: for each square metre, the nearest ground point is set to its
-        /// height and paint, written straight into the ground's data, as PlanBuild does (TerrainTools, WTFPL). The game's
-        /// own terrain operation (TerrainComp.ApplyOperation) ran without error but changed nothing (2026-11-07).
-        /// </summary>
-        /// <summary>Spots round each sample that are set too (the board is on the world's grid, so the sample alone is exact).</summary>
-        private static readonly Vector3[] Spread = { Vector3.zero };
-
         /// <summary>Clears a plot's painted ground, then puts the given ground lines back (none: only clears).</summary>
         private static void SetGround(List<string> lines, Vector3 center, float yaw, float half, List<string> exact = null)
         {
@@ -1464,39 +1460,88 @@ namespace Villheim.Logic.Village
         {
         }
 
-        /// <summary>The section of a save with its ground point for point: "x;z;dy;r;g;b" per ground point, plot coordinates.</summary>
-        internal const string GroundHeader = "#VillheimGround";
+        /// <summary>The section of a save with its ground point for point: "x;z;rise;r;g;b;a;painted" per ground point, plot coordinates.</summary>
+        internal const string GroundHeader = "#VillheimGround2";
 
         /// <summary>
-        /// The paint cell under a spot, found with the game's own lookup (Heightmap.WorldToVertexMask) and the paint
-        /// grid's real width (from the length of the ground's paint data), never assumed: the first exact writer took
-        /// the paint grid for the height grid (65 points a side), so every copy came out shifted left and back by an
-        /// amount that depended on where the plot sat (2026-11-07). Each plot square is looked up at a point a quarter
-        /// metre into it, never on a cell's edge, so one square is one cell on any board.
+        /// The section saves had before 2026-11-08 ("x;z;rise;r;g;b"). Its paint was read through Heightmap.WorldToVertexMask
+        /// a quarter metre into each square, a different cell from the height's on a board facing south, west or east.
         /// </summary>
-        private static bool PaintCell(Vector3 world, bool create, out TerrainComp ground, out int index)
+        internal const string OldGroundHeader = "#VillheimGround";
+
+        /// <summary>
+        /// The ground point nearest a spot and its index in its 64 m area. Height and paint share the index, 65 points a
+        /// side, one point per metre at TerrainTools.VertexToWorld: PlanBuild's and World Edit Commands' terrain tools
+        /// (both open source) read and write the paint this way. Villheim's earlier lookup (Heightmap.WorldToVertexMask a
+        /// quarter metre into the square) picked the cell one over on both axes on a board facing south, and wrote only
+        /// one of the two areas that share an edge point, which left 1 m strips along the areas' edges (2026-11-07).
+        /// </summary>
+        private static bool NearestPoint(Vector3 world, out TerrainComp ground, out int index)
         {
             index = -1;
+            ground = null;
             Heightmap map = Heightmap.FindHeightmap(world);
-            ground = map == null ? null : create ? map.GetAndCreateTerrainCompiler() : TerrainComp.FindTerrainCompiler(world);
-            if (ground == null || ground.m_hmap != map || ground.m_paintMask == null)
+            if (map == null)
             {
                 return false;
             }
 
-            int width = Mathf.RoundToInt(Mathf.Sqrt(ground.m_paintMask.Length));
-            map.WorldToVertexMask(world, out int x, out int y);
-            if (x < 0 || y < 0 || x >= width || y >= width)
+            ground = TerrainComp.FindTerrainCompiler(map.transform.position);
+            if (ground == null || ground.m_hmap != map)
             {
                 return false;
             }
 
-            index = y * width + x;
-            return index < ground.m_paintMask.Length;
+            int size = map.m_width + 1;
+            int x = Mathf.RoundToInt((world.x - map.transform.position.x) / map.m_scale) + map.m_width / 2;
+            int y = Mathf.RoundToInt((world.z - map.transform.position.z) / map.m_scale) + map.m_width / 2;
+            if (x < 0 || y < 0 || x >= size || y >= size)
+            {
+                return false;
+            }
+
+            index = y * size + x;
+            return index < ground.m_paintMask.Length && index < ground.m_modifiedPaint.Length;
         }
 
-        /// <summary>The spot a plot square's paint is looked up at: a quarter metre into the square.</summary>
-        private static Vector3 CellSpot(Vector3 center, Quaternion turn, int x, int z) => center + turn * new Vector3(x + 0.25f, 0f, z + 0.25f);
+        /// <summary>
+        /// Every ground point inside a plot, in every 64 m area that holds it: the area's ground data (null when reading
+        /// an area never changed, unless create), the area, the point's index and its plot coordinates.
+        /// </summary>
+        private static IEnumerable<(TerrainComp Ground, Heightmap Map, int Index, (int, int) Key)> PlotPoints(Vector3 center, float yaw, float half, bool create)
+        {
+            Quaternion frame = Quaternion.Inverse(Quaternion.Euler(0f, yaw, 0f));
+            foreach (Heightmap map in MapsAround(center, half))
+            {
+                TerrainComp ground = create ? map.GetAndCreateTerrainCompiler() : TerrainComp.FindTerrainCompiler(map.transform.position);
+                if (ground != null && ground.m_hmap != map)
+                {
+                    ground = null;
+                }
+
+                if (create && ground == null)
+                {
+                    continue;
+                }
+
+                int size = map.m_width + 1;
+                for (int y = 0; y < size; y++)
+                for (int x = 0; x < size; x++)
+                {
+                    Vector3 local = frame * (PointWorld(map, x, y) - center);
+                    if (Mathf.Abs(local.x) > half + 0.01f || Mathf.Abs(local.z) > half + 0.01f)
+                    {
+                        continue;
+                    }
+
+                    int index = y * size + x;
+                    if (index < map.m_heights.Count)
+                    {
+                        yield return (ground, map, index, (Mathf.RoundToInt(local.x), Mathf.RoundToInt(local.z)));
+                    }
+                }
+            }
+        }
 
         /// <summary>Every heightmap (64 m ground area) round a plot.</summary>
         private static List<Heightmap> MapsAround(Vector3 center, float half)
@@ -1528,10 +1573,11 @@ namespace Villheim.Logic.Village
                 return "Board: 'vh slot compare s1d3 s1d2' compares the ground of two standing plots.";
             }
 
-            Dictionary<(int, int), (float Rise, Color Paint)> first = GroundPoints(a), second = GroundPoints(b);
+            var first = GroundPoints(a);
+            var second = GroundPoints(b);
             int paint = 0, height = 0, missing = 0;
             var where = new List<string>();
-            foreach (KeyValuePair<(int, int), (float Rise, Color Paint)> p in first)
+            foreach (var p in first)
             {
                 if (!second.TryGetValue(p.Key, out var q))
                 {
@@ -1540,7 +1586,7 @@ namespace Villheim.Logic.Village
                 }
 
                 Color x = p.Value.Paint, y = q.Paint;
-                bool paintDiffers = Mathf.Abs(x.r - y.r) > 0.05f || Mathf.Abs(x.g - y.g) > 0.05f || Mathf.Abs(x.b - y.b) > 0.05f;
+                bool paintDiffers = p.Value.Painted != q.Painted || Mathf.Abs(x.r - y.r) > 0.05f || Mathf.Abs(x.g - y.g) > 0.05f || Mathf.Abs(x.b - y.b) > 0.05f;
                 bool heightDiffers = Mathf.Abs(p.Value.Rise - q.Rise) > 0.05f;
                 paint += paintDiffers ? 1 : 0;
                 height += heightDiffers ? 1 : 0;
@@ -1557,191 +1603,120 @@ namespace Villheim.Logic.Village
             return text;
         }
 
-        /// <summary>Every ground point of a standing plot: plot coordinates, height above its middle and paint as stored.</summary>
-        private static Dictionary<(int, int), (float Rise, Color Paint)> GroundPoints(Plot plot)
+        /// <summary>Every ground point of a standing plot: plot coordinates, height above its middle, paint, and whether painted.</summary>
+        private static Dictionary<(int, int), (float Rise, Color Paint, bool Painted)> GroundPoints(Plot plot) => ReadGround(plot.Center, plot.Yaw, plot.Half);
+
+        /// <summary>
+        /// Every ground point of a plot, read the way PlanBuild and World Edit Commands read it: a point's height and
+        /// its paint sit at the same index of its 64 m area (65 points a side, the point at TerrainTools.VertexToWorld).
+        /// A point on the edge of two areas is in both; the first one read is kept.
+        /// </summary>
+        private static Dictionary<(int, int), (float Rise, Color Paint, bool Painted)> ReadGround(Vector3 center, float yaw, float half)
         {
-            Quaternion frame = Quaternion.Inverse(Quaternion.Euler(0f, plot.Yaw, 0f));
-            var points = new Dictionary<(int, int), (float Rise, Color Paint)>();
-            foreach (Heightmap map in MapsAround(plot.Center, plot.Half))
+            var points = new Dictionary<(int, int), (float Rise, Color Paint, bool Painted)>();
+            foreach ((TerrainComp ground, Heightmap map, int index, (int, int) key) in PlotPoints(center, yaw, half, false))
             {
-                TerrainComp ground = TerrainComp.FindTerrainCompiler(map.transform.position);
-                int size = map.m_width + 1;
-                for (int y = 0; y < size; y++)
-                for (int x = 0; x < size; x++)
+                if (points.ContainsKey(key))
                 {
-                    Vector3 local = frame * (PointWorld(map, x, y) - plot.Center);
-                    var key = (Mathf.RoundToInt(local.x), Mathf.RoundToInt(local.z));
-                    if (Mathf.Abs(local.x) > plot.Half + 0.01f || Mathf.Abs(local.z) > plot.Half + 0.01f || points.ContainsKey(key))
-                    {
-                        continue;
-                    }
-
-                    int index = y * size + x;
-                    points[key] = (map.m_heights[index] - plot.Center.y, Heightmap.m_paintMaskNothing);
+                    continue;
                 }
-            }
 
-            Quaternion turn = Quaternion.Euler(0f, plot.Yaw, 0f);
-            foreach ((int, int) key in points.Keys.ToList())
-            {
-                if (PaintCell(CellSpot(plot.Center, turn, key.Item1, key.Item2), false, out TerrainComp cell, out int at) && cell.m_modifiedPaint[at])
-                {
-                    points[key] = (points[key].Rise, cell.m_paintMask[at]);
-                }
+                bool painted = ground != null && index < ground.m_modifiedPaint.Length && ground.m_modifiedPaint[index];
+                points[key] = (map.m_heights[index] - center.y, painted ? ground.m_paintMask[index] : Heightmap.m_paintMaskNothing, painted);
             }
 
             return points;
         }
 
         /// <summary>
-        /// The plot's ground, point for point: each ground point (1 m apart, on the world's grid like the board) that is
-        /// painted, or raised or dug more than 30 cm from the plot's usual floor, with its height above the plot's
-        /// middle and its paint as stored (soft edges included). Points on the edge of two 64 m areas are kept once.
+        /// The plot's ground, point for point: every ground point inside the plot (1 m apart, on the world's grid like
+        /// the board), each as "x;z;rise;r;g;b;a;painted" in plot coordinates, rise above the plot's middle. Nothing is
+        /// left out or rounded away, so a copy written from it is the same ground.
         /// </summary>
         private static List<string> SampleGround(Vector3 center, float yaw, float half)
         {
-            Quaternion frame = Quaternion.Inverse(Quaternion.Euler(0f, yaw, 0f));
-            var points = new Dictionary<(int, int), (float Rise, Color Paint)>();
-            foreach (Heightmap map in MapsAround(center, half))
-            {
-                TerrainComp ground = TerrainComp.FindTerrainCompiler(map.transform.position);
-                if (ground == null || ground.m_hmap != map)
-                {
-                    continue;
-                }
-
-                int size = ground.m_width + 1;
-                for (int y = 0; y < size; y++)
-                for (int x = 0; x < size; x++)
-                {
-                    Vector3 local = frame * (PointWorld(map, x, y) - center);
-                    if (Mathf.Abs(local.x) > half + 0.01f || Mathf.Abs(local.z) > half + 0.01f)
-                    {
-                        continue;
-                    }
-
-                    var key = (Mathf.RoundToInt(local.x), Mathf.RoundToInt(local.z));
-                    if (points.ContainsKey(key))
-                    {
-                        continue;
-                    }
-
-                    int index = y * size + x;
-                    points[key] = (map.m_heights[index] - center.y, Heightmap.m_paintMaskNothing);
-                }
-            }
-
-            Quaternion turnSample = Quaternion.Euler(0f, yaw, 0f);
-            foreach ((int, int) key in points.Keys.ToList())
-            {
-                if (PaintCell(CellSpot(center, turnSample, key.Item1, key.Item2), false, out TerrainComp cell, out int at) && cell.m_modifiedPaint[at])
-                {
-                    points[key] = (points[key].Rise, cell.m_paintMask[at]);
-                }
-            }
-
-            var lines = new List<string>();
-            if (points.Count == 0)
-            {
-                return lines;
-            }
-
-            List<float> rises = points.Values.Select(p => p.Rise).OrderBy(r => r).ToList();
-            float floor = rises[rises.Count / 2];
             CultureInfo inv = CultureInfo.InvariantCulture;
-            foreach (KeyValuePair<(int, int), (float Rise, Color Paint)> point in points)
+            var lines = new List<string>();
+            foreach (KeyValuePair<(int, int), (float Rise, Color Paint, bool Painted)> point in ReadGround(center, yaw, half))
             {
                 Color c = point.Value.Paint;
-                if (c.r + c.g + c.b > 0.02f || Mathf.Abs(point.Value.Rise - floor) > 0.3f)
-                {
-                    lines.Add(string.Join(";", point.Key.Item1.ToString(inv), point.Key.Item2.ToString(inv), point.Value.Rise.ToString("0.###", inv),
-                        c.r.ToString("0.###", inv), c.g.ToString("0.###", inv), c.b.ToString("0.###", inv)));
-                }
+                lines.Add(string.Join(";", point.Key.Item1.ToString(inv), point.Key.Item2.ToString(inv), point.Value.Rise.ToString("0.####", inv),
+                    c.r.ToString("0.####", inv), c.g.ToString("0.####", inv), c.b.ToString("0.####", inv), c.a.ToString("0.####", inv),
+                    point.Value.Painted ? "1" : "0"));
             }
 
             return lines;
         }
 
         /// <summary>
-        /// Writes a plot's ground point for point, the way PlanBuild's TerrainTools writes it, and without the two faults
-        /// of the first writer: every ground point inside the plot is set once, to its value (never added to), in every
-        /// 64 m area that holds it (edge points are in two). Points of the save get their height and paint; every other
-        /// point is levelled to the plot's floor with no paint. With no save (null), the whole plot is emptied. Each area
-        /// is then saved and redrawn once (PlanBuild's TerrainTools.Save). Returns how many points were set.
+        /// Ground lines read back. Lines of the old section ("x;z;rise;r;g;b") count as painted when they carry a colour
+        /// and keep the ground's own alpha (a below 0).
+        /// </summary>
+        private static Dictionary<(int, int), (float Rise, Color Paint, bool Painted)> ParseGround(List<string> lines)
+        {
+            CultureInfo inv = CultureInfo.InvariantCulture;
+            var wanted = new Dictionary<(int, int), (float Rise, Color Paint, bool Painted)>();
+            foreach (string line in lines ?? new List<string>())
+            {
+                string[] f = line.Split(';');
+                if (f.Length < 6 || !int.TryParse(f[0], NumberStyles.Integer, inv, out int x) || !int.TryParse(f[1], NumberStyles.Integer, inv, out int z) ||
+                    !float.TryParse(f[2], NumberStyles.Float, inv, out float rise) || !float.TryParse(f[3], NumberStyles.Float, inv, out float r) ||
+                    !float.TryParse(f[4], NumberStyles.Float, inv, out float g) || !float.TryParse(f[5], NumberStyles.Float, inv, out float b))
+                {
+                    continue;
+                }
+
+                if (f.Length >= 8 && float.TryParse(f[6], NumberStyles.Float, inv, out float a))
+                {
+                    wanted[(x, z)] = (rise, new Color(r, g, b, a), f[7] == "1");
+                }
+                else
+                {
+                    wanted[(x, z)] = (rise, new Color(r, g, b, -1f), r + g + b > 0.02f);
+                }
+            }
+
+            return wanted;
+        }
+
+        /// <summary>
+        /// Writes a plot's ground point for point, as PlanBuild's and World Edit Commands' terrain tools write it: every
+        /// ground point inside the plot, in every 64 m area that holds it (edge points are in two), its height set once
+        /// (never added to) and its paint set at the same index as its height. Points of the save get their height and
+        /// paint; any other point is levelled to the plot's middle with no paint. With no save (null), the whole plot is
+        /// emptied. Each area is then saved and redrawn once (PlanBuild's TerrainTools.Save). Returns how many points
+        /// were set.
         /// </summary>
         private static int WriteGround(Vector3 center, float yaw, float half, List<string> exact)
         {
-            CultureInfo inv = CultureInfo.InvariantCulture;
-            var wanted = new Dictionary<(int, int), (float Rise, Color Paint)>();
-            foreach (string line in exact ?? new List<string>())
-            {
-                string[] f = line.Split(';');
-                if (f.Length >= 6 && int.TryParse(f[0], NumberStyles.Integer, inv, out int x) && int.TryParse(f[1], NumberStyles.Integer, inv, out int z) &&
-                    float.TryParse(f[2], NumberStyles.Float, inv, out float rise) && float.TryParse(f[3], NumberStyles.Float, inv, out float r) &&
-                    float.TryParse(f[4], NumberStyles.Float, inv, out float g) && float.TryParse(f[5], NumberStyles.Float, inv, out float b))
-                {
-                    wanted[(x, z)] = (rise, new Color(r, g, b, 1f));
-                }
-            }
-
-            Quaternion frame = Quaternion.Inverse(Quaternion.Euler(0f, yaw, 0f));
+            Dictionary<(int, int), (float Rise, Color Paint, bool Painted)> wanted = ParseGround(exact);
             int set = 0;
             var touched = new HashSet<TerrainComp>();
-            foreach (Heightmap map in MapsAround(center, half))
+            foreach ((TerrainComp ground, Heightmap map, int index, (int, int) key) in PlotPoints(center, yaw, half, true))
             {
-                TerrainComp ground = map.GetAndCreateTerrainCompiler();
-                if (ground == null || ground.m_hmap != map)
+                if (index >= ground.m_levelDelta.Length || index >= ground.m_paintMask.Length || index >= ground.m_modifiedPaint.Length)
                 {
                     continue;
                 }
 
-                int size = ground.m_width + 1;
-                bool changed = false;
-                for (int y = 0; y < size; y++)
-                for (int x = 0; x < size; x++)
+                (float rise, Color paint, bool painted) = wanted.TryGetValue(key, out var w) ? w : (0f, Heightmap.m_paintMaskNothing, false);
+
+                // The ground's own height, under every change made to it so far; the change is then set to reach the
+                // wanted height exactly, whatever was there before.
+                float bare = map.m_heights[index] - (ground.m_modifiedHeight[index] ? ground.m_levelDelta[index] + ground.m_smoothDelta[index] : 0f);
+                ground.m_levelDelta[index] = center.y + rise - bare;
+                ground.m_smoothDelta[index] = 0f;
+                ground.m_modifiedHeight[index] = Mathf.Abs(ground.m_levelDelta[index]) > 0.0001f;
+
+                if (paint.a < 0f)
                 {
-                    Vector3 local = frame * (PointWorld(map, x, y) - center);
-                    if (Mathf.Abs(local.x) > half + 0.01f || Mathf.Abs(local.z) > half + 0.01f)
-                    {
-                        continue;
-                    }
-
-                    int index = y * size + x;
-                    (float rise, Color _) = wanted.TryGetValue((Mathf.RoundToInt(local.x), Mathf.RoundToInt(local.z)), out var w)
-                        ? w : (0f, Heightmap.m_paintMaskNothing);
-
-                    // The ground's own height, under every change made to it so far; the change is then set to reach the
-                    // wanted height exactly, whatever was there before.
-                    float bare = map.m_heights[index] - (ground.m_modifiedHeight[index] ? ground.m_levelDelta[index] + ground.m_smoothDelta[index] : 0f);
-                    ground.m_levelDelta[index] = center.y + rise - bare;
-                    ground.m_smoothDelta[index] = 0f;
-                    ground.m_modifiedHeight[index] = Mathf.Abs(ground.m_levelDelta[index]) > 0.0001f;
-                    changed = true;
-                    set++;
+                    paint.a = ground.m_paintMask[index].a;
                 }
 
-                if (changed)
-                {
-                    touched.Add(ground);
-                }
-            }
-
-            // The paint, square by square, through the game's own lookup (see PaintCell).
-            Quaternion turnWrite = Quaternion.Euler(0f, yaw, 0f);
-            int reach = Mathf.FloorToInt(half);
-            for (int x = -reach; x <= reach; x++)
-            for (int z = -reach; z <= reach; z++)
-            {
-                if (!PaintCell(CellSpot(center, turnWrite, x, z), true, out TerrainComp cell, out int at))
-                {
-                    continue;
-                }
-
-                Color paint = wanted.TryGetValue((x, z), out var p) ? p.Paint : Heightmap.m_paintMaskNothing;
-                paint.a = cell.m_paintMask[at].a;
-                cell.m_paintMask[at] = paint;
-                cell.m_modifiedPaint[at] = true;
-                touched.Add(cell);
+                ground.m_paintMask[index] = painted ? paint : Heightmap.m_paintMaskNothing;
+                ground.m_modifiedPaint[index] = painted;
+                touched.Add(ground);
+                set++;
             }
 
             foreach (TerrainComp ground in touched)
@@ -1759,34 +1734,23 @@ namespace Villheim.Logic.Village
         }
 
         /// <summary>
-        /// How many ground points of a plot differ from what WriteGround writes for this save (paint by more than 0.05
-        /// in a colour, height by more than 5 cm): the points of the save, and every other point flat with no paint.
+        /// How many ground points of a plot differ from what WriteGround writes for this save (height by more than 5 cm,
+        /// painted or not, paint by more than 0.02 in a colour). Every copy of a point is checked, so an edge point
+        /// that is right in one 64 m area and wrong in the other counts.
         /// </summary>
         private static int GroundMismatches(Vector3 center, float yaw, float half, List<string> exact)
         {
-            CultureInfo inv = CultureInfo.InvariantCulture;
-            var wanted = new Dictionary<(int, int), (float Rise, Color Paint)>();
-            foreach (string line in exact ?? new List<string>())
-            {
-                string[] f = line.Split(';');
-                if (f.Length >= 6 && int.TryParse(f[0], NumberStyles.Integer, inv, out int x) && int.TryParse(f[1], NumberStyles.Integer, inv, out int z) &&
-                    float.TryParse(f[2], NumberStyles.Float, inv, out float rise) && float.TryParse(f[3], NumberStyles.Float, inv, out float r) &&
-                    float.TryParse(f[4], NumberStyles.Float, inv, out float g) && float.TryParse(f[5], NumberStyles.Float, inv, out float b))
-                {
-                    wanted[(x, z)] = (rise, new Color(r, g, b, 1f));
-                }
-            }
-
+            Dictionary<(int, int), (float Rise, Color Paint, bool Painted)> wanted = ParseGround(exact);
             int wrong = 0;
-            foreach (KeyValuePair<(int, int), (float Rise, Color Paint)> point in GroundPoints(new Plot { Center = center, Yaw = yaw, Half = half }))
+            foreach ((TerrainComp ground, Heightmap map, int index, (int, int) key) in PlotPoints(center, yaw, half, false))
             {
-                (float rise, Color paint) = wanted.TryGetValue(point.Key, out var w) ? w : (0f, Heightmap.m_paintMaskNothing);
-                Color have = point.Value.Paint;
-                if (Mathf.Abs(have.r - paint.r) > 0.05f || Mathf.Abs(have.g - paint.g) > 0.05f || Mathf.Abs(have.b - paint.b) > 0.05f ||
-                    Mathf.Abs(point.Value.Rise - rise) > 0.05f)
-                {
-                    wrong++;
-                }
+                (float rise, Color paint, bool painted) = wanted.TryGetValue(key, out var w) ? w : (0f, Heightmap.m_paintMaskNothing, false);
+                bool havePainted = ground != null && index < ground.m_modifiedPaint.Length && ground.m_modifiedPaint[index];
+                Color have = havePainted ? ground.m_paintMask[index] : Heightmap.m_paintMaskNothing;
+                bool differs = Mathf.Abs(map.m_heights[index] - center.y - rise) > 0.05f || havePainted != painted ||
+                               (painted && (Mathf.Abs(have.r - paint.r) > 0.02f || Mathf.Abs(have.g - paint.g) > 0.02f || Mathf.Abs(have.b - paint.b) > 0.02f ||
+                                            (paint.a >= 0f && Mathf.Abs(have.a - paint.a) > 0.02f)));
+                wrong += differs ? 1 : 0;
             }
 
             return wrong;

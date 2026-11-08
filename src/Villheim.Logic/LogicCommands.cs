@@ -258,6 +258,7 @@ namespace Villheim.Logic
                          $"{Villagers.Beds.Of(hearth).Count} beds ({Villagers.Beds.Spare(hearth)} spare), fence ring {Palisade.WantedRadius(hearth, state):0} m");
             Say(context, $"   project: {Growth.PendingLabel(hearth, state)}; request today: {Villagers.Social.RequestText(hearth) ?? "none"}");
             Say(context, $"   neighbours: {Relations.Describe(hearth)}");
+            Say(context, $"   {Villagers.Smithing.Report(hearth)}");
             foreach (Villagers.Social.Known known in Villagers.Social.KnownPlayers(hearth))
             {
                 Say(context, $"   knows {known.Name}: reputation {known.Reputation}, first seen day {known.FirstDay}, last day {known.LastDay}");

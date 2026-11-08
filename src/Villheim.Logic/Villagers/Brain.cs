@@ -124,6 +124,10 @@ namespace Villheim.Logic.Villagers
                 {
                     // The builder mends what is broken.
                 }
+                else if (Smithing.Update(villager, ai, dt))
+                {
+                    // The smith makes the village's next set of gear at a station.
+                }
                 else if (PathLaying.Update(villager, ai, dt))
                 {
                     // Laying a path: background work, before free time.

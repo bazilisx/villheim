@@ -280,7 +280,7 @@ namespace Villheim.Logic.Villagers
             }
 
             var state = new VillageState(hearth.Zdo);
-            return Mathf.Clamp(VillagerLooks.GearTier(VillageBrain.TierIndex(state.Plots.Count), state.Biome), 0, Weapons.Length - 1);
+            return Mathf.Clamp(Smithing.Cap(hearth, VillagerLooks.GearTier(VillageBrain.TierIndex(state.Plots.Count), state.Biome)), 0, Weapons.Length - 1);
         }
 
         private static void EquipNamed(Villager villager, string prefabName)

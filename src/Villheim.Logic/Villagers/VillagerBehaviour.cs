@@ -83,7 +83,7 @@ namespace Villheim.Logic.Villagers
             }
 
             var state = new VillageState(hearth.Zdo);
-            return VillagerLooks.GearTier(VillageBrain.TierIndex(state.Plots.Count), state.Biome);
+            return Smithing.Cap(hearth, VillagerLooks.GearTier(VillageBrain.TierIndex(state.Plots.Count), state.Biome));
         }
 
         /// <summary>By day villagers wander around their home building; at night they stay near the hearth.</summary>
@@ -146,7 +146,7 @@ namespace Villheim.Logic.Villagers
 
             return TestActs.Describe(villager) ?? Sleep.Describe(villager) ?? (MorningHearth.IsTending(villager) ? "tending the hearth" : null) ??
                    Healing.Describe(villager) ?? Chores.Describe(villager) ?? Replanting.Describe(villager) ?? Hunting.Describe(villager) ?? Farming.Describe(villager) ??
-                   Foraging.Describe(villager) ?? Repairs.Describe(villager) ?? (PathLaying.IsLaying(villager) ? "laying a path" : null) ??
+                   Foraging.Describe(villager) ?? Repairs.Describe(villager) ?? Smithing.Describe(villager) ?? (PathLaying.IsLaying(villager) ? "laying a path" : null) ??
                    FreeTime.Describe(villager);
         }
 

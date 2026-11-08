@@ -187,6 +187,11 @@ namespace Villheim.Logic.Village
             string goods = kind == Wanderers.Pedlar ? TradeWithChest(hearth, state) : null;
             if (kind == Wanderers.Pedlar)
             {
+                SellGear(visitor, hearth);
+            }
+
+            if (kind == Wanderers.Pedlar)
+            {
                 Moods.VillageThink(state.Id, "trade");
             }
 
@@ -240,6 +245,30 @@ namespace Villheim.Logic.Village
             return null;
         }
 
+        /// <summary>
+        /// A village that has outgrown its gear but has no station to make the next set buys it from the pedlar, if the
+        /// chest has the coins (40 a tier).
+        /// </summary>
+        private static void SellGear(Villager pedlar, VillageHearth hearth)
+        {
+            Container chest = VillageChest.Find(hearth);
+            int price = Smithing.PedlarPrice(hearth, out int tier);
+            GameObject coins = ObjectDB.instance.GetItemPrefab("Coins");
+            if (price <= 0 || chest == null || coins == null)
+            {
+                return;
+            }
+
+            string coinName = coins.GetComponent<ItemDrop>().m_itemData.m_shared.m_name;
+            if (chest.GetInventory().CountItems(coinName) < price)
+            {
+                return;
+            }
+
+            chest.GetInventory().RemoveItem(coinName, price);
+            Smithing.Raise(hearth, tier, $"We bought {Smithing.TierName(tier)} gear from {pedlar.VillagerName} the pedlar for {price} coins.");
+        }
+
         /// <summary>Takes up to <paramref name="cost"/> worth from the chest: coins, then spare goods. Returns the worth taken.</summary>
         private static int Pay(VillageHearth hearth, Container chest, int cost, string notThis)
         {
@@ -262,9 +291,11 @@ namespace Villheim.Logic.Village
                 return paid;
             }
 
+            HashSet<string> smith = Smithing.Reserved(hearth);
             foreach (Trader.TradeItem spare in Market.Stock(hearth, chest))
             {
-                if (paid >= cost || spare.m_prefab == null || spare.m_prefab.gameObject.name == notThis)
+                if (paid >= cost || spare.m_prefab == null || spare.m_prefab.gameObject.name == notThis ||
+                    smith.Contains(spare.m_prefab.gameObject.name))
                 {
                     continue;
                 }

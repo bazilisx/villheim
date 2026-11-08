@@ -54,6 +54,7 @@ namespace Villheim.Logic
         public static ConfigEntry<float> ShaperTurnStep;
         public static ConfigEntry<bool> ShaperEffectTint;
         public static ConfigEntry<bool> WorldLife;
+        public static ConfigEntry<bool> SmithMakesGear;
         public static ConfigEntry<float> VisitorChancePerDay;
         public static ConfigEntry<float> DaysBetweenVisitors;
         public static ConfigEntry<int> HermitChance;
@@ -86,6 +87,10 @@ namespace Villheim.Logic
                 "between buildings, the old pace.");
             VillagerTrading = Admin(config, work, "VillagerTrading", false,
                 "Off for now. When on, Shift + Use on a villager opens the village's store (what its chest can spare).");
+            SmithMakesGear = Admin(config, work, "SmithMakesGear", true,
+                "Villagers make their own gear: clothes and weapons only go up a tier once the smith has made that tier's " +
+                "set at the right station from what is in the chest (or the village has bought it from a pedlar). Off: " +
+                "gear follows the village's size alone, as before.");
             VillagerToolStrength = Admin(config, work, "VillagerToolStrength", 0.45f,
                 "How hard villagers' axe and pickaxe blows land against the tool's full damage. A player's blows are scaled " +
                 "by his skill; 0.45 makes a villager about as quick as a player with modest skill.");

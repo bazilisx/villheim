@@ -358,3 +358,24 @@ I wonder where the pilgrim's going next.
 @ self, watching
 Somebody has to keep an eye on things.
 I'm not idle. I'm supervising.
+
+# ------------------------------------------------------------------ new gear (Villagers/Smithing.cs)
+
+@ self, event:forged
+New gear! It still smells of the workbench.
+Look at this. Proper armour. I feel like a hero. A small one.
+Does it fit? It doesn't matter, it's new.
+I'll keep it clean. For a day, anyway.
+
+@ self, event:forged | gruff
+About time we had decent gear.
+
+@ self, event:forged | worrier
+Armour means they think there'll be fighting. Doesn't it?
+
+@ self, event:forged | young
+Can I have one? A small one? Please?
+
+@ talk, mem:forged
+We've got new gear. I walk differently in it. Taller.
+The smith worked all day on our gear. I said thank you twice.

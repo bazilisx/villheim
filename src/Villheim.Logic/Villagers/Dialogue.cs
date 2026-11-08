@@ -54,7 +54,7 @@ namespace Villheim.Logic.Villagers
         private static readonly Dictionary<(int, string), float> Events = new Dictionary<(int, string), float>();
 
         private static readonly string[] VillageMoodEvents = { "finished", "arrival", "hunt", "trade", "birth" };
-        private static readonly string[] Reacted = { "finished", "arrival", "groundbroken", "hunt", "death", "birth", "pedlar", "pilgrim", "blessing" };
+        private static readonly string[] Reacted = { "finished", "arrival", "groundbroken", "hunt", "death", "birth", "pedlar", "pilgrim", "blessing", "forged" };
 
         /// <summary>
         /// Something happened in the village (finished, arrival...): "event:x" holds for ten minutes, everyone's mood
@@ -438,7 +438,7 @@ namespace Villheim.Logic.Villagers
 
             string doing = (Sleep.IsAsleep(villager) ? "asleep" : null) ?? (MorningHearth.IsTending(villager) ? "tending the hearth" : null) ?? Healing.Describe(villager) ?? Chores.Describe(villager) ??
                            Hunting.Describe(villager) ?? Farming.Describe(villager) ?? Foraging.Describe(villager) ??
-                           Repairs.Describe(villager) ??
+                           Repairs.Describe(villager) ?? Smithing.Describe(villager) ??
                            (PathLaying.IsLaying(villager) ? "laying a path" : null) ?? FreeTime.Describe(villager) ?? "idle";
             foreach (string activity in Activities(doing))
             {

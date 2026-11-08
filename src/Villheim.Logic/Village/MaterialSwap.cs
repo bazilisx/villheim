@@ -366,9 +366,17 @@ namespace Villheim.Logic.Village
             }
 
             HashSet<string> related = RelatedFamilies(source);
+            int thin = Thin(source.Size);
+            float maxThick = Mathf.Max(1.2f, source.Size[thin] * 4f);
             return Pool()
                 .Where(c => c.Prefab != prefab && c.Stage == stage && c.Families.Overlaps(related) && !OtherShape(source, c))
-                .Select(c => (Shape: c, Misfit: Mathf.Min(Misfit(source.Size, c.Size), Misfit(source.Size, Turned(c.Size)))))
+                .Select(c =>
+                {
+                    // The better way round, and only if the stand-in is not far thicker than the original.
+                    float straight = Misfit(source.Size, c.Size), turned = Misfit(source.Size, Turned(c.Size));
+                    Vector3 size = turned < straight ? Turned(c.Size) : c.Size;
+                    return (Shape: c, Misfit: size[thin] <= maxThick ? Mathf.Min(straight, turned) : float.MaxValue);
+                })
                 .Where(x => x.Misfit <= 0.25f)
                 .OrderBy(x => x.Misfit <= 0.06f ? 0 : 1)
                 .ThenBy(x => x.Shape.KindKey == source.KindKey ? 0 : x.Shape.Families.Overlaps(source.Families) ? 1 : 2)
@@ -408,15 +416,33 @@ namespace Villheim.Logic.Village
                 return new List<string>();
             }
 
+            // Roofs, stairs, doors, windows and arches do not add up from smaller pieces (stacked roofs make no roof).
+            bool support = source.Families.Contains("support");
+            if (!source.Families.Overlaps(new[] { "wall", "barrier", "floor", "support" }))
+            {
+                return new List<string>();
+            }
+
             HashSet<string> related = RelatedFamilies(source);
             int thin = Thin(source.Size);
+            int longest = source.Size.x >= source.Size.y && source.Size.x >= source.Size.z ? 0 : source.Size.y >= source.Size.z ? 1 : 2;
+            float maxThick = Mathf.Max(0.6f, source.Size[thin] * 3f);
             CultureInfo inv = CultureInfo.InvariantCulture;
             string Num(float v) => v.ToString("0.####", inv);
             foreach (Shape c in Pool().Where(c => c.Stage == stage && c.Prefab != prefab && c.Families.Overlaps(related) && !OtherShape(source, c)))
             {
-                foreach (Quaternion turn in Orientations(c.Families.Contains("support")))
+                foreach (Quaternion turn in Orientations(support && c.Families.Contains("support")))
                 {
                     Vector3 size = Abs(turn * c.Size);
+                    // The pieces lie the way the original does: a wall's thickness on the wall's thickness (else thin walls
+                    // stood side by side make a thick block), a beam's length along the beam's length.
+                    int ownThin = Thin(size);
+                    int ownLong = size.x >= size.y && size.x >= size.z ? 0 : size.y >= size.z ? 1 : 2;
+                    if (support ? ownLong != longest : ownThin != thin || size[thin] > maxThick)
+                    {
+                        continue;
+                    }
+
                     var n = new int[3];
                     bool fits = true;
                     float error = 0f;

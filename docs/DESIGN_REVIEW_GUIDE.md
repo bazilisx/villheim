@@ -263,8 +263,8 @@ removes pieces when the hammer is out, so it is not used).
      kind or a related one (walls and fences, beams, poles and pillars, doors and gates, stairs and ladders), about the
      same size either way round (thickness left out, nothing more than a quarter off), exact sizes first. A corner,
      top, half or other shape is offered only for a piece of that shape.
-   - Each group can also show up to 3 combinations of one smaller piece that make up the size, found from the pieces'
-     measured sizes: two `stone_wall_2x1` stacked for a 2x2 wall, two 2 m beams end to end for a 4 m beam, two 2 m
+   - Each group can also show up to 3 combinations of one smaller piece that make up the size (walls, fences, floors
+     and supports only; the pieces lie the way the original does), found from the pieces' measured sizes: two `stone_wall_2x1` stacked for a 2x2 wall, two 2 m beams end to end for a 4 m beam, two 2 m
      poles laid down for it, four 1x1.
    - The top left lists what was put up.
 2. **Choose a stand-in:** aim at one and press numpad 5. Every piece of that kind in that one design changes to

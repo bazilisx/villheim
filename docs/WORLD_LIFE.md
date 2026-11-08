@@ -34,17 +34,43 @@ Known limits: hermit camps need a host (no dedicated server yet). Wanderers have
 them (Dverger faction). Visitors walk only while their zone is loaded. A pedlar's chest trade ignores the biome rule
 for materials only in the sense that it brings what the village already needs.
 
+## Built (2026-11-08 night, villager minds; compiles, not yet tested in game)
+
+All logic only (hot-reloads), on whether or not `WorldLife` is on. Nothing here could be tried in the game that
+night; every part needs a test. Research behind it: section 6 of `docs/RELATED_MODS.md`.
+
+| Part | File | What it does |
+|---|---|---|
+| What villagers see | `Villagers/Context.cs` | Tags worked out at most every 3 s per villager. Place: at the hearth (6 m), forge, workbench, cauldron, stonecutter (5 m), a fire (4 m), the chest (4 m), the shore (ground under water level within 10 m), home (8 m), the edge (past 0.7 of the village radius), outside (past 1.2), indoors. Sky: storm, rain, snow, mist, clear; dawn, midday, dusk, late night; a young or old world. Bosses felled (global keys). Animals and enemies within 40 m, tame ones apart, and `fearnear` when the nearest enemy is the villager's own fear. The player within 15 m: hurt, wet, cold, poisoned, burning, rested, sneaking, a heavy pack, what is in his hand, his chest armour (none to padded), a cape, boss trophies, 20 or more wood or stone, food, skills at 50 or more. Fill-ins {place} {beast} {playergear} {playerweapon} {lastboss} {daypart} {weather}. |
+| Topic fatigue | `Villagers/Dialogue.cs` | Plan item 1, after MCA. Each section the player hears a line from (within 20 m) gets +1 fatigue, which wears off one point every 150 s (two game hours); its weight is divided by 1 + 0.8 x fatigue. Together with the place tags this is item 1. |
+| Memory of the player | `Villagers/PlayerMemory.cs` | On the hearth, per player: days visited, the day before this visit, gifts and their total, pieces built within the village (a patch on `Piece.SetCreator`), kills within it (a patch on `Character.OnDeath`, the last creature and the last big one), deaths there (`Player.OnDeath`), fights beside the village, requests done, villagers hit (`Character.Damage`, -2 reputation; killing one -15), tame animals killed, and the chest armour last worn (better gear is noticed). Tags `pmem:...`. |
+| Word passing on | `Villagers/PlayerMemory.cs` | After Minecraft's gossip. Villagers within 25 m of a deed saw it (remembered 2 to 20 days by deed); in a chat the speaker passes on what the listener doesn't know, for half the time it had left (at most two days), and the opening line can be about it (`tell:x`). Tags `saw:x`, `heard:x`, `knows:x`; fill-in {teller}. |
+| Skills | `Villagers/VillagerSkills.cs` | Plan item 11. Nine skills, 0 to 100, in the ZDO; a start from the seed (0 to 15) and +20 in the trade. Every 30 s of work: +0.6 x learning rate x (1 - level/120); the partner skill +a fifth, the opposite -8%. Watching work teaches 15% of a step. Felling and mining blows and the time per building piece scale 0.8 to 1.3 with skill. A good day once a day at (mood - 60)% chance: +25% speed. Each tenth point a mood lift (+4) and a line; 50 and 75 go in the chronicle. |
+| Wants | `Villagers/Goals.cs` | After The Sims. One want at a time for 2 to 6 days: a bed, a bigger house, to learn the weakest skill (+6), to reach the next tenth in the best one, to court a friend liked above 0.5 (five chats, then sweethearts in both ZDOs and the chronicle), peace with a rival (three chats), a feast, news (a visitor), a hunt, a quiet day, the player back. Met: +8 for half a game day and a line; given up: -3. |
+| Gatherings | `Villagers/Gatherings.cs` | Plan item 2. A finished building, a newcomer, a pedlar or pilgrim: up to eight idle villagers within 70 m come and stand round, a speaker (the Jarl, an elder, or the nearest) speaks, the rest cheer, one or two speak after 12 to 16 s; one turnout per village every two minutes. A hunt, a birth, a finished building, an upgrade or a felled boss makes the evening a feast (half the ring up, more dancing, +6). Evening words between 18:00 and 19:30 with a player by the hearth. |
+| Noticing | `Villagers/Noticing.cs` | Every 2 s with a player within 60 m and no fight in the last 30 s: rain, storm, snow and mist starting and rain stopping (4 min apart), dawn and dusk, a boss felled (chronicle, +8 for everyone, a feast), a weapon out within 5 m by day (Gothic), the player sneaking, a boss trophy in the pack (once in 20 minutes), animals within 30 m and enemies at 25 to 50 m before they come close. |
+| Idle glances | `Villagers/IdleLife.cs` | Standing villagers (strolling, between jobs, up at the evening fire) glance for 1.5 to 3.5 s every 5 to 14 s at a neighbour, the player, an animal, the sky in rain or storm, the fire (hands out to it when cold or at night), or about; a stretch once some mornings. Sitters keep still. |
+| Chats of two and three | `Villagers/FreeTime.cs`, `Dialogue.cs` | Pair tags on the chat opening (`with:friend`, `with:rival`, `with:sweetheart`, `with:courting`, `with:sametrade`, `with:trade:x`, `with:voice:x`, `with:child`, `with:newcomer`, `with:jarl`, `with:hurt`, `with:sad`, `with:happy`, `with:skilled`). A part `@key` is answered from `answer:key` sections in the answerer's own voice and state; `+key` brings in a third villager within 9 m (`chime:key`). |
+| Newcomers' stories | `Villagers/Personality.cs` | Part of plan item 12: a villager who came from outside is a `newcomer` for three days and tells why he left home ({whyleft}, fifteen reasons by seed). The day of arrival is set in `VillageBrain`'s arrival code. |
+| Lines | `Dialogue/places.txt`, `sky.txt`, `player.txt`, `memory.txt`, `wants.txt`, `gatherings.txt`, `scenes.txt` | About 1,080 new lines; each file lists its tags at the top. |
+
+Commands: `vh minds` (the nearest villager's skills, want, what he knows of you and from whom, what he sees, the
+village's record of you, the topics you have heard most), `vh feast`, `vh speech`, `vh goal [kind]`,
+`vh notice <event>`.
+
+Known limits: per-player fatigue lives on the client and is lost on a reload. The memory of the player is written
+to the hearth's ZDO by whichever client sees the deed, as `Social` already does. Kills only count when the local
+player's hit was the last one. Villagers know deeds by player name.
+
 ## Next, in order
 
 Effort is a rough guess: S an evening, M a session or two, L several sessions.
 
-1. **Dialogue fallback chains and per-player fatigue (S).** MCA resolves a line key from most specific to least
-   (trade.voice.key, voice.key, trade.key, key) with numbered variants, and lowers the weight of topics a player has
-   heard a lot (fatigue +1 per talk, -1 every in-game hour). Villheim's tag sections already do most of this; add a
-   per-player recent-topic count that lowers a section's weight, and lines bound to a spot (at the forge, the dock, the
-   fire), as Stardew does with location keys.
-2. **Gatherings (S).** Built on watching: the whole village turns out for a finished building, a newcomer or a pedlar
-   (Millénaire's listen_to_speech gathers people for a speech at set hours); a feast at the longhouse after a good hunt.
+1. **Dialogue fallback chains and per-player fatigue (S).** Built 2026-11-08 night (topic fatigue in `Dialogue.cs`,
+   place tags in `Context.cs`). Still to do: a dock tag once villages have docks, and keeping fatigue across reloads.
+2. **Gatherings (S).** Built 2026-11-08 night (`Gatherings.cs`): turnouts, feasts at the hearth, evening words.
+   Still to do: the feast in the longhouse itself once villagers use its benches and tables, and food taken from the
+   chest for it.
 3. **Caravans as records (M).** Living Factions keeps travelling bands as data (position, target, people, state) and
    moves them at a set pace (2,400 m a day) while no one is near; within about 130 m of the nearest player they become
    real NPCs, and despawn past 200 m. Do the same for a pedlar's route between two hearths: the record moves on the
@@ -93,11 +119,14 @@ Effort is a rough guess: S an evening, M a session or two, L several sessions.
 10. **Raids and help between villages (M).** With relations in place: below -50 a village may send a raid party to a
     neighbour (Millénaire picks targets weaker than the raider), above 70 it sends help when the neighbour is attacked.
     Needs caravans as records first.
-11. **Skills that grow (M).** MineColonies: each trade has a primary and secondary skill; practice raises them, the
-    opposite skill slips a little, the home's level caps them, and children start from their parents' skills. Work
-    speed and output scale with skill, so villagers grow apart over time.
+11. **Skills that grow (M).** Built 2026-11-08 night (`VillagerSkills.cs`). Still to do: a cap from the home's level,
+    children starting from their parents' skills (no parent records yet), output (not only speed) by skill, and trades
+    chosen by skill once a village has them.
 12. **Newcomers at the longhouse (S).** MineColonies taverns: wanderers sit in the longhouse with a backstory line and
-    a price to stay (mead, a hide, coins). A way for villages to grow beyond births and the empty-bed arrivals.
+    a price to stay (mead, a hide, coins). A way for villages to grow beyond births and the empty-bed arrivals. The
+    backstory part is built (2026-11-08 night: `newcomer` tag and {whyleft} for three days after arriving); the
+    seeker who waits in the longhouse and the price to stay need a new wanderer kind in `WorldLife.cs` and are left
+    for the world-growth work.
 
 ## Sources that allow copying
 

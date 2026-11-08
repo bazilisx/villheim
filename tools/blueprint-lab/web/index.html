@@ -288,6 +288,34 @@ const RULES = [
   [/guard_stone|ward/i, 'deco', [0.6, 1.5, 0.6], 'prop'],
 ];
 
+// Exact sizes from the game. 'vh exportpieces' writes BepInEx/config/Villheim/pieces.json; copied here as
+// data/pieces-export.json (or named by the VH_PIECES environment variable), its sizes replace the name rules' guesses.
+// The name rules stay for role, shape and colour, and for every piece the export does not have. The browser page has
+// no file access: it uses the name rules unless the page sets window.VHPiecesExport before this script runs.
+let EXPORT;
+function exported() {
+  if (EXPORT !== undefined) return EXPORT;
+  EXPORT = null;
+  try {
+    if (typeof window !== 'undefined' && window.VHPiecesExport) {
+      EXPORT = window.VHPiecesExport.pieces || window.VHPiecesExport;
+    } else if (typeof require === 'function' && typeof __dirname !== 'undefined') {
+      const fs = require('fs'), path = require('path');
+      const file = process.env.VH_PIECES || path.join(__dirname, '../data/pieces-export.json');
+      if (fs.existsSync(file)) {
+        const data = JSON.parse(fs.readFileSync(file, 'utf8'));
+        EXPORT = data.pieces || data;
+      }
+    }
+  } catch (e) {
+    EXPORT = null; // a broken export file falls back to the name rules
+  }
+  return EXPORT;
+}
+
+const round = v => Math.round(v * 100) / 100;
+const usable = sz => Array.isArray(sz) && sz.length === 3 && sz.every(v => typeof v === 'number' && v > 0.01);
+
 const cache = new Map();
 function piece(name) {
   let c = cache.get(name);
@@ -299,9 +327,30 @@ function piece(name) {
   }
   const mat = material(n);
   const structural = ['wall', 'floor', 'roof', 'roofTop', 'roofCorner', 'gable', 'beam', 'pole', 'stair', 'door', 'window', 'fence'].includes(role);
-  c = { name, role, size, shape, mat, color: MAT[mat], structural };
+  c = { name, role, size, shape, mat, color: MAT[mat], structural, exact: false };
+  const e = exported() && exported()[name];
+  if (e) {
+    // Solid colliders first (what the game tests against), the meshes when the piece has none.
+    const box = e.collider && usable(e.collider.size) ? e.collider : e.renderer && usable(e.renderer.size) ? e.renderer : null;
+    if (box) {
+      c.size = box.size.map(round);
+      c.center = box.center.map(round);
+      c.exact = true;
+    }
+    // The game's colour sits mostly in its textures; the material tint is kept for reference, the colour by name stays.
+    Object.assign(c, {
+      pivotFromBottom: e.pivotFromBottom, tint: e.colour, texture: e.texture, category: e.category, comfort: e.comfort,
+      cost: e.cost, station: e.station, inBuildMenu: e.inBuildMenu,
+    });
+  }
   cache.set(name, c);
   return c;
+}
+
+/** How many pieces the game export holds (0 without one). */
+function exportSize() {
+  const e = exported();
+  return e ? Object.keys(e).length : 0;
 }
 
 // Materials a piece needs, for the biome rule (rough, from the prefab name).
@@ -318,8 +367,8 @@ function needs(name) {
 
 const BIOME_ORDER = ['Meadows', 'Black Forest', 'Swamp', 'Mountain', 'Plains', 'Mistlands', 'Ashlands', 'Deep North'];
 
-if (typeof module !== 'undefined') module.exports = { piece, needs, MAT, BIOME_ORDER };
-else window.VHPieces = { piece, needs, MAT, BIOME_ORDER };
+if (typeof module !== 'undefined') module.exports = { piece, needs, MAT, BIOME_ORDER, exportSize };
+else window.VHPieces = { piece, needs, MAT, BIOME_ORDER, exportSize };
 
 })();
 // ---- styles.js

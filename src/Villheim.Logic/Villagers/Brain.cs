@@ -198,6 +198,11 @@ namespace Villheim.Logic.Villagers
             {
                 doer = Status.Doer.Heal;
             }
+            else if (Fletching.Update(villager, ai, dt))
+            {
+                // Low on arrows with nothing else to do: more made at the workbench.
+                doer = Status.Doer.Fletch;
+            }
             else
             {
                 FreeTime.Update(villager, ai, dt);

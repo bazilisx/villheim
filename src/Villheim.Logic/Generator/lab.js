@@ -1,0 +1,2434 @@
+// Villheim blueprint lab, bundled for the game. Made by tools/blueprint-lab/lib/build_engine.js; do not edit.
+var window = this;
+// ---- pieces.js
+(function () {
+// Piece catalog: size, shape, role and material for Valheim prefab names.
+// Sizes are [x, y, z] in metres in the piece's own frame. Measured from the corpus:
+// building pieces have their pivot at their centre; furniture and props stand on their pivot.
+// Roof pieces run 2 m along local z and rise toward -z (1 m for 26 degrees, 2 m for 45).
+// Walls, beams and gable pieces run along local x.
+
+const MAT = {
+  wood: '#a07c4f', darkwood: '#4f3a28', thatch: '#b89a55', darkroof: '#3e3330', corewood: '#7b5a36',
+  stone: '#8d8b84', marble: '#5b6467', grausten: '#5d5753', ashwood: '#8a4f3c', iron: '#5e6266',
+  glass: '#b9dde8', dvergr: '#76643f', flametal: '#7d3d2a', cloth: '#8b2f2a', fur: '#8a7a66',
+  green: '#557f3c', fire: '#e08a2c', gold: '#c8a640', bone: '#d8d2bf', black: '#2c2c2e', turf: '#5f7f3a',
+  stake: '#6f5133', white: '#ddd8cc',
+};
+
+function material(n) {
+  if (/crystal|glass|window_glass/.test(n)) return 'glass';
+  if (/darkwood_roof|KokeraRoof/i.test(n)) return 'darkroof';
+  if (/^wood_roof|straw|thatch/.test(n)) return 'thatch';
+  if (/darkwood|blackwood/.test(n)) return 'darkwood';
+  if (/turf/.test(n)) return 'turf';
+  if (/ashwood/.test(n)) return 'ashwood';
+  if (/grausten|Ashlands_/.test(n)) return 'grausten';
+  if (/blackmarble/.test(n)) return 'marble';
+  if (/flametal/.test(n)) return 'flametal';
+  if (/dvergr|dverger/.test(n)) return 'dvergr';
+  if (/woodiron|iron|metal|thin_iron/.test(n)) return 'iron';
+  if (/stone|Rock|rock|cliff/.test(n)) return 'stone';
+  if (/_log|corewood|wood_core|roundlog/i.test(n)) return 'corewood';
+  if (/stake/.test(n)) return 'stake';
+  if (/banner|cloth|carpet|curtain/.test(n)) return 'cloth';
+  if (/rug|fur|bed/.test(n)) return 'fur';
+  if (/Pickable|Bush|bush|Tree|tree|shrub|vines|Vine|Fern|root|Beech|Mushroom|Plant|sapling|Birch|Pine|Oak|grass/.test(n)) return 'green';
+  if (/torch|fire|brazier|hearth|lantern|candle|Candle|Lava/.test(n)) return 'fire';
+  if (/bone|Skull|skull/.test(n)) return 'bone';
+  if (/treasure|coin|gold/.test(n)) return 'gold';
+  return 'wood';
+}
+
+// role, size, shape. Order matters: first match wins.
+const RULES = [
+  // roofs
+  [/roof.*top|_top_45|roof_top/, 'roofTop', [2, 0.45, 2], 'cap'],
+  [/roof.*ocorner.*45/, 'roofCorner', [2, 2, 2], 'hipcorner45'],
+  [/roof.*ocorner/, 'roofCorner', [2, 1, 2], 'hipcorner26'],
+  [/roof.*icorner.*45/, 'roofCorner', [2, 2, 2], 'slope45'],
+  [/roof.*icorner/, 'roofCorner', [2, 1, 2], 'slope26'],
+  [/wall_roof.*upsidedown|roof.*upsidedown/, 'gable', [2, 1, 0.2], 'triInv'],
+  [/wall_roof_45|wall_roof_67|wall_roof.*45/, 'gable', [2, 2, 0.2], 'tri'],
+  [/wall_roof/, 'gable', [2, 1, 0.2], 'tri'],
+  [/roof_67/, 'roof', [2, 4, 2], 'slope67'],
+  [/roof_45|roof.*_45/, 'roof', [2, 2, 2], 'slope45'],
+  [/roof/, 'roof', [2, 1, 2], 'slope26'],
+  // arches and pillars, measured in the corpus (lab/offsets.js): a stone pillar is 2 m tall and stands on a 1 m block,
+  // a stone arch is 2 m wide, 1 m tall and 1 m deep with its top level with the pillar tops 1.5 m to either side;
+  // a black marble arch spans 2 m between 1 m columns, which stack every metre
+  [/^stone_arch$/, 'wall', [2, 1, 1], 'box'],
+  [/^stone_pillar$/, 'pole', [1, 2, 1], 'box'],
+  // stone_wall_1x1 is a 1 m cube (docs/MC_TRANSLATION.md, neighbours 1 m apart in depth)
+  [/^stone_wall_1x1$/, 'wall', [1, 1, 1], 'box'],
+  [/^blackmarble_arch$/, 'wall', [2, 2, 0.5], 'box'],
+  [/^blackmarble_column_1$/, 'pole', [0.6, 1, 0.6], 'box'],
+  // beams and poles
+  [/beam_26|log_26/, 'beam', [2, 1, 0.2], 'beam26'],
+  [/beam_45|log_45/, 'beam', [2, 2, 0.2], 'beam45'],
+  [/beam_67|log_67/, 'beam', [2, 4, 0.2], 'beam67'],
+  [/beam4x4|beam_4m|beam.*4m|wall_log_4x0\.5/, 'beam', [4, 0.25, 0.25], 'box'],
+  [/beam_1|beam.*1m|beam_small/i, 'beam', [1, 0.2, 0.2], 'box'],
+  [/beam/i, 'beam', [2, 0.2, 0.2], 'box'],
+  [/pole4|pole_log_4|pole_4m|pole.*4m/, 'pole', [0.25, 4, 0.25], 'box'],
+  [/pole2|pole_log|pole_2m|pole.*2m|darkwood_pole$|woodiron_pole|stone_pillar|column|pillar$/, 'pole', [0.25, 2, 0.25], 'box'],
+  [/pole_1m|pole/i, 'pole', [0.2, 1, 0.2], 'box'],
+  [/pillar/i, 'pole', [0.6, 2, 0.6], 'box'],
+  // floors and stairs
+  [/stone_floor_2x2/, 'floor', [2, 1, 2], 'box'],
+  [/floor_4x4|floor_large/, 'floor', [4, 0.25, 4], 'box'],
+  [/floor_1x1|floor_triangle|tile_floor_1x1/, 'floor', [1, 0.25, 1], 'box'],
+  [/floor/i, 'floor', [2, 0.25, 2], 'box'],
+  [/spiralstair/, 'stair', [2, 4, 2], 'box'],
+  [/stair|ladder|stepladder/i, 'stair', [1, 2, 2], 'stair'],
+  // wall torches before the wall rules, or 'piece_walltorch' reads as a 2x2 wall
+  [/walltorch/i, 'light', [0.3, 0.8, 0.3], 'prop'],
+  // openings
+  [/door|gate/i, 'door', [2, 2, 0.2], 'box'],
+  [/window/i, 'window', [1, 1, 0.2], 'box'],
+  [/arch/i, 'wall', [2, 2, 0.3], 'box'],
+  // walls by size in the name
+  [/wall_4x2|wall4x2/i, 'wall', [4, 2, 0.4], 'box'],
+  [/wall_2x1|2x1x1/, 'wall', [2, 1, 1], 'box'],
+  [/wall_1x2/i, 'wall', [1, 2, 0.3], 'box'],
+  [/wall_2x2|2x2x2|woodwall$|stave_wall/i, 'wall', [2, 2, 0.2], 'box'],
+  [/wall_1x1|1x1|stoneblock/i, 'wall', [1, 1, 0.5], 'box'],
+  [/2x2x1/, 'wall', [2, 1, 2], 'box'],
+  [/wall_half|halfwall/i, 'wall', [2, 1, 0.2], 'box'],
+  [/wall_quarter|quarterwall/i, 'wall', [2, 0.5, 0.2], 'box'],
+  [/wall_log/, 'wall', [2, 0.5, 0.4], 'box'],
+  [/stake_wall|stakewall|sharpstakes/, 'fence', [4, 3, 0.5], 'box'],
+  [/fence/, 'fence', [2, 1, 0.2], 'box'],
+  [/decowall|divider|wall/i, 'wall', [2, 2, 0.2], 'box'],
+  // furniture and work
+  [/bed/i, 'bed', [1.3, 0.6, 2.3], 'prop'],
+  [/table_round/, 'table', [1.6, 0.9, 1.6], 'prop'],
+  [/table|workbench$|piece_workbench$/, 'table', [2, 0.9, 1], 'prop'],
+  [/bench|logbench/, 'seat', [2, 0.5, 0.6], 'prop'],
+  [/throne/, 'seat', [1, 1.6, 1], 'prop'],
+  [/chair|stool|seat/i, 'seat', [0.6, 1, 0.6], 'prop'],
+  [/chest|barrel|drawer|crate|ItemDrawer/i, 'storage', [1.2, 0.8, 0.7], 'prop'],
+  [/hearth/, 'fire', [3, 0.5, 3], 'prop'],
+  [/fire_pit/, 'fire', [1.6, 0.4, 1.6], 'prop'],
+  [/cookingstation|cauldron|oven|MeadCauldron/i, 'craft', [1.2, 1, 1.2], 'prop'],
+  [/forge|smelter|kiln|blastfurnace|anvil|grindstone|tanning|spinning|stonecutter|artisan|magetable|ext\d|workbench|windmill|refinery|press/i, 'craft', [1.4, 1.4, 1.2], 'prop'],
+  [/fermenter|beehive|bathtub|cart/i, 'craft', [1.2, 1.2, 1.2], 'prop'],
+  [/itemstand|ArmorStand|sign|banner|trophy|raven|wolf|dragon|shield|xmas|garland|jackoturnip|totem|statue|head/i, 'deco', [1, 1, 0.2], 'prop'],
+  [/rug|carpet/i, 'rug', [2.5, 0.05, 2.5], 'prop'],
+  [/torch|lantern|brazier|candle|Candle|Lavalantern|wisplure|lamp/i, 'light', [0.4, 1.2, 0.4], 'prop'],
+  [/portal/, 'craft', [3, 3, 1], 'prop'],
+  [/stack|pile|Placeable_Stone|coal_pile|treasure/i, 'clutter', [1.6, 0.8, 1.2], 'prop'],
+  [/Pickable|Bush|bush|Tree|tree|shrub|vines|Vine|Fern|root|Beech|Mushroom|sapling|Plant/, 'nature', [1, 1, 1], 'prop'],
+  [/Rock|rock|cliff|Dolmen/, 'nature', [2, 1.5, 2], 'prop'],
+  [/guard_stone|ward/i, 'deco', [0.6, 1.5, 0.6], 'prop'],
+];
+
+// Exact sizes from the game. 'vh exportpieces' writes BepInEx/config/Villheim/pieces.json; copied here as
+// data/pieces-export.json (or named by the VH_PIECES environment variable), its sizes replace the name rules' guesses.
+// The name rules stay for role, shape and colour, and for every piece the export does not have. The browser page has
+// no file access: it uses the name rules unless the page sets window.VHPiecesExport before this script runs.
+let EXPORT;
+function exported() {
+  if (EXPORT !== undefined) return EXPORT;
+  EXPORT = null;
+  try {
+    if (typeof window !== 'undefined' && window.VHPiecesExport) {
+      EXPORT = window.VHPiecesExport.pieces || window.VHPiecesExport;
+    } else if (typeof require === 'function' && typeof __dirname !== 'undefined') {
+      const fs = require('fs'), path = require('path');
+      const file = process.env.VH_PIECES || path.join(__dirname, '../data/pieces-export.json');
+      if (fs.existsSync(file)) {
+        const data = JSON.parse(fs.readFileSync(file, 'utf8'));
+        EXPORT = data.pieces || data;
+      }
+    }
+  } catch (e) {
+    EXPORT = null; // a broken export file falls back to the name rules
+  }
+  return EXPORT;
+}
+
+const round = v => Math.round(v * 100) / 100;
+const usable = sz => Array.isArray(sz) && sz.length === 3 && sz.every(v => typeof v === 'number' && v > 0.01);
+
+const cache = new Map();
+function piece(name) {
+  let c = cache.get(name);
+  if (c) return c;
+  const n = name;
+  let role = 'misc', size = [0.8, 0.8, 0.8], shape = 'prop';
+  for (const [re, r, s, sh] of RULES) {
+    if (re.test(n)) { role = r; size = s; shape = sh; break; }
+  }
+  const mat = material(n);
+  const structural = ['wall', 'floor', 'roof', 'roofTop', 'roofCorner', 'gable', 'beam', 'pole', 'stair', 'door', 'window', 'fence'].includes(role);
+  c = { name, role, size, shape, mat, color: MAT[mat], structural, exact: false };
+  const e = exported() && exported()[name];
+  if (e) {
+    // Solid colliders first (what the game tests against), the meshes when the piece has none.
+    const box = e.collider && usable(e.collider.size) ? e.collider : e.renderer && usable(e.renderer.size) ? e.renderer : null;
+    if (box) {
+      c.size = box.size.map(round);
+      c.center = box.center.map(round);
+      c.exact = true;
+    }
+    // The game's colour sits mostly in its textures; the material tint is kept for reference, the colour by name stays.
+    Object.assign(c, {
+      pivotFromBottom: e.pivotFromBottom, tint: e.colour, texture: e.texture, category: e.category, comfort: e.comfort,
+      cost: e.cost, station: e.station, inBuildMenu: e.inBuildMenu,
+    });
+  }
+  cache.set(name, c);
+  return c;
+}
+
+/** How many pieces the game export holds (0 without one). */
+function exportSize() {
+  const e = exported();
+  return e ? Object.keys(e).length : 0;
+}
+
+// Materials a piece needs, for the biome rule (rough, from the prefab name).
+function needs(name) {
+  // hanging cloth doors take red jute (Cultists, Mountain caves); the blue ones blue jute (Mistlands)
+  if (/cloth_hanging_door|jute_carpet/.test(name)) return /blue/.test(name) ? 'Mistlands' : 'Mountain';
+  const m = material(name);
+  return {
+    wood: 'Meadows', thatch: 'Meadows', stake: 'Meadows', fur: 'Meadows', cloth: 'Meadows', fire: 'Meadows',
+    corewood: 'Black Forest', stone: 'Black Forest', darkwood: 'Swamp', darkroof: 'Swamp', iron: 'Swamp',
+    glass: 'Mountain', marble: 'Mistlands', dvergr: 'Mistlands', ashwood: 'Ashlands', grausten: 'Ashlands',
+    flametal: 'Ashlands', turf: 'Meadows', green: 'Meadows', bone: 'Meadows', gold: 'Meadows', black: 'Swamp',
+    white: 'Mountain',
+  }[m] || 'Meadows';
+}
+
+const BIOME_ORDER = ['Meadows', 'Black Forest', 'Swamp', 'Mountain', 'Plains', 'Mistlands', 'Ashlands', 'Deep North'];
+
+if (typeof module !== 'undefined') module.exports = { piece, needs, MAT, BIOME_ORDER, exportSize };
+else window.VHPieces = { piece, needs, MAT, BIOME_ORDER, exportSize };
+
+})();
+// ---- styles.js
+(function () {
+// Building kits per biome and culture. The piece choices and proportions come from the corpus palettes
+// (lab/learn.py, rules.json "palettes" and "shell"); the combinations per culture follow how the corpus builds
+// in each style. A kit names the pieces; the generator decides where they go.
+
+const BIOMES = ['Meadows', 'Black Forest', 'Swamp', 'Mountain', 'Plains', 'Mistlands', 'Ashlands'];
+
+// Pieces every biome kit has. Later biomes may use earlier biomes' pieces.
+const BIOME_KIT = {
+  'Meadows': {
+    floor: 'wood_floor', floor1: 'wood_floor_1x1', wall: 'woodwall', wallHalf: 'wood_wall_half', wallQuarter: 'wood_wall_quarter',
+    pole: 'wood_pole2', pole1: 'wood_pole', poleLong: 'wood_pole2', beam: 'wood_beam', beam1: 'wood_beam_1',
+    roof26: 'wood_roof', roof45: 'wood_roof_45', roofTop26: 'wood_roof_top', roofTop45: 'wood_roof_top_45',
+    gable26: 'wood_wall_roof', gable45: 'wood_wall_roof_45', door: 'wood_door', gate: 'wood_gate', window: 'wood_window',
+    stair: 'wood_stair', ladder: 'wood_stepladder', fence: 'wood_fence', plinth: null, stoneFloor: null,
+  },
+  'Black Forest': {
+    wall: 'wood_wall_log', wallLog: true, poleLong: 'wood_pole_log_4', pole: 'wood_pole_log', plinth: 'stone_wall_2x1',
+    stoneWall: 'stone_wall_2x1', stoneWall4: 'stone_wall_4x2', stoneBlock: 'stone_wall_1x1', stoneFloor: 'stone_floor_2x2',
+    stoneArch: 'stone_arch', stonePillar: 'stone_pillar', stoneStair: 'stone_stair', beamLog: 'wood_log_26',
+  },
+  'Swamp': {
+    wall: 'woodwall', pole: 'darkwood_pole', poleLong: 'darkwood_pole4', beam: 'darkwood_beam', beamLong: 'darkwood_beam4x4',
+    roof26: 'darkwood_roof', roof45: 'darkwood_roof_45', roofTop26: 'darkwood_roof_top', roofTop45: 'darkwood_roof_top_45',
+    door: 'darkwood_gate', ironBeam: 'woodiron_beam', ironPole: 'woodiron_pole', decowall: 'darkwood_decowall',
+  },
+  'Mountain': { window: 'crystal_wall_1x1', glass: 'crystal_wall_1x1' },
+  'Plains': {},
+  'Mistlands': {
+    wall: 'blackmarble_2x1x1', stoneWall: 'blackmarble_2x1x1', stoneBlock: 'blackmarble_1x1', stoneFloor: 'blackmarble_floor',
+    stonePillar: 'blackmarble_column_1', stoneArch: 'blackmarble_arch', plinth: 'blackmarble_2x1x1',
+  },
+  'Ashlands': {
+    wall: 'ashwood_wall_2x2', pole: 'ashwood_pole_2m', poleLong: 'ashwood_pole_2m', beam: 'ashwood_beam_2m', beam1: 'ashwood_beam_1m',
+    floor: 'ashwood_floor_2x2', stoneWall: 'Piece_grausten_wall_2x2', stoneWall4: 'Piece_grausten_wall_4x2', stoneFloor: 'Piece_grausten_floor_2x2',
+    stoneBlock: 'Piece_grausten_wall_1x2', plinth: 'Piece_grausten_wall_2x2', door: 'ashwood_door', window: 'Piece_grausten_window_2x2',
+    gable26: 'ashwood_wall_roof_26', gable45: 'ashwood_wall_roof_45',
+  },
+};
+
+// Merge kits up to the biome so later biomes keep earlier pieces they do not replace.
+function kitFor(biome) {
+  const out = {};
+  for (const b of BIOMES) {
+    Object.assign(out, BIOME_KIT[b]);
+    if (b === biome) break;
+  }
+  return out;
+}
+
+// Roof sets a culture can ask for whatever its biome's kit has: thatch (reed, straw, and the stand-in for turf and
+// felt) and dark wood (shingle, slate, lead and tile stand-in; Swamp on).
+const ROOF_SETS = {
+  thatch: { roof26: 'wood_roof', roof45: 'wood_roof_45', roofTop26: 'wood_roof_top', roofTop45: 'wood_roof_top_45' },
+  dark: { roof26: 'darkwood_roof', roof45: 'darkwood_roof_45', roofTop26: 'darkwood_roof_top', roofTop45: 'darkwood_roof_top_45' },
+};
+
+// Culture: how a building is put together. The first block are the village cultures Tyler approved (2026-11-08),
+// with the shapes and sizes in docs/CULTURE_STYLES.md. The older lab styles after them stay for the request page
+// and the review set; villages do not use them.
+//
+// Fields the generator reads:
+//   roof, pitch, eaves     main roof form, 26 or 45 degrees, eaves rows (2 = one row past the wall, roof to the ground)
+//   roofs, walls, plans    weights: roof kinds; wall styles; plan per type and stage ({ home: { s1: { rect: 1 } } })
+//   roofSet                'thatch' or 'dark' whatever the biome kit has (dark falls back to thatch before Swamp)
+//   forms                  building type to a special form: round, tent, yurt, gables, court, keep, svan, tower-svan,
+//                          dome, drum, stave, sunken, open, raised (see generate.js)
+//   frame, logWalls, plinth, stilts, stiltH, deck, raised, podklet, porch, dragons, carved, glass, arches, parapet,
+//   stoneWalls, courtyard, awnings, opposedDoors, clothDoor, boardwalk, frontWood, buttress
+//   size                   per type: octagon side in metres for round forms ({ home: { s1: 2, s2: 4 } })
+//   sample                 the types drawn for the culture's overview sheet
+const CULTURES = {
+  'norse': {
+    label: 'Norse', village: true, biomes: ['Meadows'], roof: 'gable', pitch: 45, eaves: 1, frame: true, plinth: 'byBiome', porch: 0.5, dragons: true,
+    sample: ['home', 'longhouse', 'smithy'],
+    note: 'Steep thatch or darkwood gable, timber frame with posts at every bay, dragon heads on the ridge of halls.',
+  },
+  'anglo-saxon': {
+    label: 'Anglo-Saxon', village: true, biomes: ['Meadows'], roof: 'gable', pitch: 45, eaves: 1, frame: true, porch: 0, opposedDoors: true,
+    roofs: { gable: 3, hip: 2 }, walls: { plank: 3, 'half-timber': 1 },
+    plans: { home: { s1: { rect: 1 }, s2: { rect: 3, long: 1 }, s3: { long: 2, rect: 1 } }, longhouse: { s1: { long: 1 }, s2: { long: 1 }, s3: { long: 1 } }, temple: { s1: { nave: 1 }, s2: { nave: 1 }, s3: { nave: 1 } } },
+    forms: { workshop: 'sunken', sawmill: 'sunken', smithy: 'sunken', storage: 'sunken' },
+    sample: ['home', 'longhouse', 'workshop'],
+    note: 'Straight-walled timber halls with doors in the middle of both long sides, thatched gable or hip roofs, sunken huts for work.',
+  },
+  'frankish-norman': {
+    label: 'Frankish-Norman', village: true, biomes: ['Meadows'], roof: 'gable', pitch: 45, eaves: 1, frame: true, porch: 0.3,
+    roofs: { gable: 5, hip: 1 }, walls: { 'half-timber': 3, plank: 1, 'stone-base': 2, stone: 1 }, buttress: true,
+    plans: { home: { s1: { rect: 1 }, s2: { rect: 2, L: 1 }, s3: { L: 2, T: 1 } }, temple: { s1: { nave: 1 }, s2: { nave: 1 }, s3: { nave: 1 } } },
+    forms: { tower: 'keep' },
+    sample: ['home', 'tower', 'tower@Black Forest', 'workshop'],
+    note: 'Timber-framed houses along a street, a keep of timber (Meadows) or stone (later biomes) with flat buttresses and a parapet.',
+  },
+  'norse-forest': {
+    label: 'Norse forest (stave and log)', village: true, biomes: ['Black Forest'], roof: 'gable', pitch: 45, eaves: 1, frame: false, logWalls: true,
+    plinth: 'stone', porch: 0.6, dragons: true, carved: true, roofs: { gable: 6, hip: 1 }, walls: { log: 4, plank: 1 },
+    forms: { temple: 'stave', storage: 'raised' },
+    sample: ['home', 'temple', 'storage'],
+    note: 'Log houses on a stone course, raised log storehouses, stave churches with a low gallery roof all round and dragon heads.',
+  },
+  'celtic': {
+    label: 'Celtic (Irish, Scots, Welsh)', village: true, biomes: ['Black Forest'], roof: 'conical', pitch: 45, eaves: 1, frame: true, porch: 0,
+    walls: { 'stone-base': 2, stone: 1, plank: 2 },
+    forms: { home: 'round', longhouse: 'round', tavern: 'round', smithy: 'round', workshop: 'round', barn: 'round', tower: 'round' },
+    plans: { temple: { s1: { rect: 1 }, s2: { nave: 1 }, s3: { nave: 1 } } },
+    size: { home: { s1: 2, s2: 4, s3: 4 }, longhouse: { s1: 4, s2: 4, s3: 6 }, tavern: { s1: 4, s2: 4, s3: 6 }, smithy: { s1: 2, s2: 2, s3: 4 },
+      workshop: { s1: 2, s2: 2, s3: 4 }, barn: { s1: 4, s2: 4, s3: 4 }, tower: { s1: 2, s2: 2, s3: 2 } },
+    sample: ['home', 'longhouse', 'smithy'],
+    note: 'Round houses of eight walls under a steep cone of thatch, one door, fire in the middle; tall round stone towers.',
+  },
+  'slavic': {
+    label: 'Slavic (early Rus)', village: true, biomes: ['Black Forest'], roof: 'gable', pitch: 45, eaves: 1, frame: false, logWalls: true, plinth: 'stone',
+    porch: 0.8, carved: true, podklet: true, roofs: { gable: 5, hip: 1 }, walls: { log: 1 }, forms: { storage: 'raised' },
+    sample: ['home', 'longhouse', 'storage'],
+    note: 'Log izba with a steep gable and carved ridge; larger houses stand on a log ground storey (podklet) reached by an outside stair.',
+  },
+  'celtic-crannog': {
+    label: 'Crannog (lake dwellers)', village: true, biomes: ['Swamp'], roof: 'conical', pitch: 45, eaves: 1, frame: true, porch: 0,
+    roofSet: 'thatch', stilts: 1, stiltH: 2, deck: 3, boardwalk: true, walls: { plank: 3, 'half-timber': 1 },
+    forms: { home: 'round', longhouse: 'round', tavern: 'round', workshop: 'round', smithy: 'round', storage: 'round', temple: 'round' },
+    size: { home: { s1: 2, s2: 4, s3: 4 }, longhouse: { s1: 4, s2: 4, s3: 6 }, tavern: { s1: 4, s2: 4, s3: 6 }, workshop: { s1: 2, s2: 2, s3: 4 },
+      smithy: { s1: 2, s2: 2, s3: 4 }, storage: { s1: 2, s2: 2, s3: 2 }, temple: { s1: 2, s2: 4, s3: 4 } },
+    sample: ['home', 'longhouse', 'workshop'],
+    note: 'Round thatched houses on a timber platform over water, a deck round the house and a walkway to the shore.',
+  },
+  'baltic': {
+    label: 'Baltic (lake fort)', village: true, biomes: ['Swamp'], roof: 'gable', pitch: 45, eaves: 1, frame: false, logWalls: true, porch: 0.5,
+    roofSet: 'thatch', stilts: 1, stiltH: 1, deck: 2, roofs: { gable: 3, hip: 2 }, walls: { log: 1 },
+    forms: { storage: 'raised' }, plans: { longhouse: { s1: { long: 1 }, s2: { long: 1 }, s3: { long: 1 } } },
+    sample: ['home', 'longhouse', 'storage'],
+    note: 'Log houses packed on a timber platform in a lake, steep thatch, granaries raised on posts.',
+  },
+  'fen-folk': {
+    label: 'Fen folk (Frisian and fenland)', village: true, biomes: ['Swamp'], roof: 'hip', pitch: 45, eaves: 2, frame: true, porch: 0,
+    roofSet: 'thatch', raised: 1, stiltChance: 0.4, boardwalk: true, kick: true, roofs: { hip: 4, gable: 1 }, walls: { plank: 2, 'half-timber': 2 },
+    plans: { home: { s1: { rect: 1 }, s2: { long: 2, rect: 1 }, s3: { long: 1 } }, longhouse: { s1: { long: 1 }, s2: { long: 1 }, s3: { long: 1 } } },
+    forms: { storage: 'open' },
+    sample: ['home', 'longhouse', 'workshop'],
+    note: 'Long low byre-houses on raised ground with hipped reed roofs coming down near the ground, timber trackways between them.',
+  },
+  'norse-highland': {
+    label: 'Norse highland (Icelandic turf)', village: true, biomes: ['Mountain'], roof: 'gable', pitch: 45, eaves: 1, frame: false, porch: 0,
+    roofSet: 'thatch', frontWood: true, walls: { stone: 1 },
+    forms: { home: 'gables', longhouse: 'gables', tavern: 'gables', temple: 'gables', storage: 'gables', workshop: 'gables', smithy: 'gables', barn: 'gables' },
+    sample: ['home', 'longhouse', 'storage'],
+    note: 'Low thick stone walls under a steep roof (thatch stands in for turf), wooden gable fronts in a row facing the yard.',
+  },
+  'saami': {
+    label: 'Saami', village: true, biomes: ['Mountain'], roof: 'conical', pitch: 45, eaves: 1, frame: false, porch: 0, roofSet: 'thatch',
+    walls: { stone: 1 }, storeH: 2, typeWalls: { storage: 'log' }, roofs: { gable: 1 }, storeys: { storage: { s1: 1, s2: 1, s3: 1 } },
+    bays: { storage: { s1: [2, 3], s2: [2, 3], s3: [3, 3] } },
+    forms: { home: 'round', longhouse: 'round', tavern: 'round', workshop: 'tent', smithy: 'tent', storage: 'raised', temple: 'tent', barn: 'tent', camp: 'tent' },
+    size: { home: { s1: 2, s2: 2, s3: 2 }, longhouse: { s1: 2, s2: 4, s3: 4 }, tavern: { s1: 2, s2: 4, s3: 4 }, workshop: { s1: 2, s2: 2, s3: 2 },
+      smithy: { s1: 2, s2: 2, s3: 2 }, temple: { s1: 2, s2: 2, s3: 2 }, barn: { s1: 2, s2: 2, s3: 2 }, camp: { s1: 2, s2: 2, s3: 2 } },
+    sample: ['home', 'longhouse', 'storage', 'workshop'],
+    note: 'Goahti: low round huts with a stone and turf wall and a cone with a smoke hole; lavvu tents; small storehouses high on posts.',
+  },
+  'byzantine': {
+    label: 'Byzantine', village: true, biomes: ['Plains', 'Mistlands'], roof: 'gable', pitch: 26, eaves: 1, frame: false, porch: 0.2,
+    roofSet: 'dark', stoneWalls: true, arches: true, storeyH: 3, roofs: { gable: 3, hip: 2 }, walls: { stone: 4, 'stone-base': 1 },
+    plans: { home: { s1: { rect: 1 }, s2: { rect: 2, L: 2 }, s3: { L: 2, U: 1 } } },
+    forms: { temple: 'dome' }, storeys: { home: { s1: 1, s2: 2, s3: 2 } },
+    sample: ['home', 'temple', 'temple@Mistlands', 'workshop'],
+    note: 'Stone houses of one or two storeys under low tile roofs; cross-in-square churches with a dome on a drum over four columns.',
+  },
+  'steppe': {
+    label: 'Steppe (Khazar and Turkic camps)', village: true, biomes: ['Plains'], roof: 'conical', pitch: 26, eaves: 1, frame: false, porch: 0,
+    roofSet: 'thatch', clothDoor: true, walls: { 'half-timber': 1 },
+    forms: { home: 'yurt', longhouse: 'yurt', tavern: 'yurt', temple: 'yurt', storage: 'yurt', workshop: 'open', smithy: 'open', sawmill: 'open' },
+    size: { home: { s1: 4, s2: 4, s3: 4 }, longhouse: { s1: 4, s2: 6, s3: 6 }, tavern: { s1: 4, s2: 4, s3: 6 }, temple: { s1: 4, s2: 4, s3: 4 }, storage: { s1: 2, s2: 2, s3: 2 } },
+    sample: ['home', 'longhouse', 'workshop'],
+    note: 'Round felt tents on a lattice wall under a low cone with an open crown; open sunshades for work.',
+  },
+  'caucasian-highland': {
+    label: 'Caucasian highland (Svan, Georgian, Armenian)', village: true, biomes: ['Mistlands'], roof: 'gable', pitch: 26, eaves: 1, frame: false, porch: 0,
+    roofSet: 'dark', stoneWalls: true, storeyH: 3, roofs: { gable: 4, hip: 1 }, walls: { stone: 1 },
+    forms: { home: 'svan', tower: 'tower-svan', temple: 'drum' }, storeys: { home: { s1: 1, s2: 2, s3: 2 } },
+    sample: ['home', 'tower', 'temple', 'workshop'],
+    note: 'Two-storey stone houses with a tall square tower beside them, low slate roofs, hall churches with a drum and a cone.',
+  },
+  'middle-eastern': {
+    label: 'Middle Eastern (Persian and Arab)', village: true, biomes: ['Plains'], roof: 'flat', parapet: true, frame: false, stoneWalls: true, arches: true,
+    courtyard: true, awnings: true, rugs: 2, clothDoor: true, forms: { tavern: { s2: 'court', s3: 'court' }, home: { s3: 'court' } },
+    plans: { home: { s1: { rect: 1 }, s2: { U: 2, rect: 1 } } },
+    sample: ['home', 'tavern', 'workshop'],
+    note: 'Flat roofs with parapets, thick stone walls, arched doors, cloth awnings; houses and caravanserais round a courtyard with an arcade.',
+  },
+  // ---- older lab styles (not village cultures)
+  'black-forest': {
+    label: 'Black Forest log (lab)', roof: 'gable', pitch: 45, eaves: 1, frame: true, logWalls: true, plinth: 'stone', porch: 0.6,
+    note: 'Log walls on a stone footing, steep roof, short porch.',
+  },
+  'swamp': {
+    label: 'Swamp stilt', roof: 'gable', pitch: 26, eaves: 2, frame: true, stilts: 1.6, porch: 0.9, ironTrim: true,
+    note: 'Raised on darkwood stilts with a deck all round, low wide darkwood roof, iron trim.',
+  },
+  'mountain': {
+    label: 'Mountain lodge', roof: 'gable', pitch: 45, eaves: 1, frame: true, plinth: 'stone', plinthHigh: true, porch: 0.3, glass: true,
+    note: 'Tall stone base against the snow, steep roof, glass windows.',
+  },
+  'east-asian': {
+    label: 'East Asian (lab)', roof: 'gable', pitch: 26, eaves: 2, frame: true, raised: 0.5, darkFrame: true, lanterns: true, porch: 1,
+    note: 'Raised floor, dark timber grid on light walls, wide low eaves, lanterns.',
+  },
+  'castle-medieval': {
+    label: 'Medieval (lab)', roof: 'gable', pitch: 45, eaves: 1, frame: true, stoneGround: true, jetty: true, porch: 0.2,
+    note: 'Stone ground floor, timber upper floor set out over the street, steep roof.',
+  },
+  'dwarven': {
+    label: 'Dwarven (lab)', roof: 'flat', parapet: true, frame: false, stoneWalls: true, arches: true, lanterns: true,
+    note: 'Heavy stone or black marble blocks, flat roofs, arches, many lanterns.',
+  },
+};
+
+// Cultures a biome's villages come from when none is asked for, with weights (provisional, Tyler 2026-11-08; Mountain even, D-039). Up to
+// three per biome. Ashlands has no approved culture yet and keeps the lab's medieval style.
+const BIOME_CULTURE = {
+  'Meadows': { 'norse': 5, 'anglo-saxon': 3, 'frankish-norman': 2 },
+  'Black Forest': { 'norse-forest': 5, 'celtic': 3, 'slavic': 3 },
+  'Swamp': { 'celtic-crannog': 3, 'baltic': 3, 'fen-folk': 3 },
+  'Mountain': { 'norse-highland': 1, 'saami': 1 },
+  'Plains': { 'middle-eastern': 3, 'byzantine': 3, 'steppe': 3 },
+  'Mistlands': { 'byzantine': 3, 'caucasian-highland': 4 },
+  'Ashlands': { 'castle-medieval': 1 },
+};
+
+// A culture for a biome: weighted by BIOME_CULTURE, R a random source (0..1). Without R, the heaviest.
+function cultureFor(biome, R) {
+  const w = BIOME_CULTURE[biome] || BIOME_CULTURE.Meadows;
+  const e = Object.entries(w);
+  if (!R) return e.sort((a, b) => b[1] - a[1])[0][0];
+  let x = R() * e.reduce((s, [, v]) => s + v, 0);
+  for (const [k, v] of e) if ((x -= v) <= 0) return k;
+  return e[0][0];
+}
+
+// Roof pieces for a culture in a biome: the kit's own, or the culture's roof set where the biome has it.
+function roofKit(K, C, biome) {
+  const order = BIOMES.indexOf(biome);
+  if (C.roofSet === 'thatch') return { ...K, ...ROOF_SETS.thatch };
+  if (C.roofSet === 'dark') return { ...K, ...(order >= BIOMES.indexOf('Swamp') ? ROOF_SETS.dark : ROOF_SETS.thatch) };
+  return K;
+}
+
+// Building types: footprint in 2 m bays per stage (from the corpus shell numbers, scaled to one building without its
+// yard), storeys, and how it opens.
+const TYPES = {
+  home:      { label: 'House', bays: { s1: [3, 2], s2: [4, 3], s3: [5, 4] }, storeys: { s1: 1, s2: 1, s3: 2 }, use: 'home' },
+  longhouse: { label: 'Longhouse', bays: { s1: [6, 3], s2: [8, 4], s3: [11, 5] }, storeys: { s1: 1, s2: 1, s3: 1 }, tall: 1, use: 'hall', aisles: true },
+  tavern:    { label: 'Tavern', bays: { s1: [5, 4], s2: [7, 4], s3: [8, 5] }, storeys: { s1: 1, s2: 2, s3: 2 }, use: 'hall' },
+  smithy:    { label: 'Smithy', bays: { s1: [3, 2], s2: [4, 3], s3: [5, 4] }, storeys: { s1: 1, s2: 1, s3: 1 }, open: 'front', use: 'smithy' },
+  sawmill:   { label: 'Woodworker', bays: { s1: [3, 2], s2: [4, 3], s3: [6, 3] }, storeys: { s1: 1, s2: 1, s3: 1 }, open: 'sides', use: 'workshop' },
+  workshop:  { label: 'Workshop', bays: { s1: [3, 3], s2: [4, 3], s3: [5, 4] }, storeys: { s1: 1, s2: 1, s3: 2 }, use: 'workshop' },
+  barn:      { label: 'Barn and pen', bays: { s1: [3, 3], s2: [5, 4], s3: [6, 5] }, storeys: { s1: 1, s2: 1, s3: 1 }, tall: 1, use: 'farm', pen: true, bigDoor: true },
+  farm:      { label: 'Crop farm', bays: { s1: [2, 2], s2: [3, 2], s3: [4, 3] }, storeys: { s1: 1, s2: 1, s3: 1 }, use: 'farm', field: true },
+  storage:   { label: 'Storehouse', bays: { s1: [2, 2], s2: [3, 3], s3: [5, 3] }, storeys: { s1: 1, s2: 1, s3: 2 }, use: 'storage', raised: 0.5 },
+  tower:     { label: 'Watchtower', bays: { s1: [2, 3], s2: [3, 3], s3: [3, 3] }, storeys: { s1: 3, s2: 4, s3: 5 }, use: 'guard', tower: true },
+  dock:      { label: 'Dock and boathouse', bays: { s1: [3, 2], s2: [4, 3], s3: [6, 4] }, storeys: { s1: 1, s2: 1, s3: 1 }, use: 'workshop', dock: true, open: 'front' },
+  stall:     { label: 'Market stall', bays: { s1: [2, 1], s2: [3, 2], s3: [4, 2] }, storeys: { s1: 1, s2: 1, s3: 1 }, use: 'market', open: 'all', low: true },
+  temple:    { label: 'Temple', bays: { s1: [3, 2], s2: [5, 3], s3: [7, 4] }, storeys: { s1: 1, s2: 1, s3: 1 }, tall: 2, use: 'temple' },
+  well:      { label: 'Well', bays: { s1: [1, 1], s2: [1, 1], s3: [2, 2] }, storeys: { s1: 1, s2: 1, s3: 1 }, use: 'yard', well: true, open: 'all', low: true },
+  camp:      { label: 'Camp', bays: { s1: [2, 2], s2: [3, 2], s3: [3, 3] }, storeys: { s1: 1, s2: 1, s3: 1 }, use: 'yard', camp: true },
+};
+
+const api = { BIOMES, kitFor, CULTURES, BIOME_CULTURE, TYPES, ROOF_SETS, cultureFor, roofKit };
+if (typeof module !== 'undefined') module.exports = api;
+else window.VHStyles = api;
+
+})();
+// ---- blueprint.js
+(function () {
+// Read and write PlanBuild .blueprint files.
+function parse(text) {
+  const meta = {}, pieces = [], snaps = [];
+  let mode = null;
+  for (const raw of text.split(/\r?\n/)) {
+    const line = raw.trim();
+    if (!line) continue;
+    if (line[0] === '#') {
+      const i = line.indexOf(':');
+      const key = i < 0 ? line.slice(1) : line.slice(1, i);
+      if (['Pieces', 'SnapPoints', 'Terrain'].includes(key)) mode = key;
+      else meta[key] = line.slice(i + 1).replace(/^"|"$/g, '');
+      continue;
+    }
+    const p = line.split(';');
+    if (mode === 'Pieces' && p.length >= 9) {
+      const n = p.slice(2, 9).map(Number);
+      if (n.some(isNaN)) continue;
+      const s = p.length >= 13 ? p.slice(10, 13).map(Number) : [1, 1, 1];
+      pieces.push({ name: p[0], cat: p[1], x: n[0], y: n[1], z: n[2], q: n.slice(3, 7),
+        s: s.some(isNaN) ? [1, 1, 1] : s, info: p[9] || '', data: p[13] || '' });
+    } else if (mode === 'SnapPoints' && p.length === 3) snaps.push(p.map(Number));
+  }
+  return { meta, pieces, snaps };
+}
+
+const f = v => (Math.abs(v) < 1e-6 ? 0 : +v.toFixed(4)).toString();
+
+function write(bp) {
+  const m = bp.meta || {};
+  const out = [`#Name:${m.Name || 'Villheim design'}`, `#Creator:${m.Creator || 'Villheim generator'}`,
+    `#Description:"${(m.Description || '').replace(/"/g, "'")}"`, `#Category:${m.Category || 'Villheim'}`];
+  if (bp.snaps && bp.snaps.length) { out.push('#SnapPoints'); for (const s of bp.snaps) out.push(s.map(f).join(';')); }
+  out.push('#Pieces');
+  for (const p of bp.pieces) {
+    const q = p.q || [0, 0, 0, 1], s = p.s || [1, 1, 1];
+    out.push([p.name, p.cat || 'Building', f(p.x), f(p.y), f(p.z), f(q[0]), f(q[1]), f(q[2]), f(q[3]),
+      JSON.stringify(p.info || ''), f(s[0]), f(s[1]), f(s[2])].join(';') + (p.data ? ';' + p.data : ''));
+  }
+  return out.join('\n') + '\n';
+}
+
+if (typeof module !== 'undefined') module.exports = { parse, write };
+else window.VHBlueprint = { parse, write };
+
+})();
+// ---- checks.js
+(function () {
+// Checks on a design: every piece supported, no doubled or crushed pieces, doors you can walk through,
+// materials the biome has, and room left to move inside. Rough, from piece boxes; good for catching mistakes.
+
+const NODE_C = typeof module !== 'undefined';
+const PC = NODE_C ? require('./pieces.js') : window.VHPieces;
+
+function yawOf(q) { const [x, y, z, w] = q || [0, 0, 0, 1]; return Math.atan2(2 * (w * y + x * z), 1 - 2 * (y * y + x * x)) * 180 / Math.PI; }
+function tilted(q) { return q && (Math.abs(q[0]) > 0.02 || Math.abs(q[2]) > 0.02); }
+
+function aabb(p) {
+  const info = PC.piece(p.name);
+  let [w, h, d] = info.size;
+  const s = p.s || [1, 1, 1];
+  w *= s[0]; h *= s[1]; d *= s[2];
+  const a = yawOf(p.q) * Math.PI / 180, c = Math.abs(Math.cos(a)), sn = Math.abs(Math.sin(a));
+  const ex = (w * c + d * sn) / 2, ez = (w * sn + d * c) / 2;
+  const prop = info.shape === 'prop' || info.shape === 'cap' || info.shape === 'tri' || info.shape === 'triInv';
+  let y0 = prop ? p.y : p.y - h / 2, y1 = prop ? p.y + h : p.y + h / 2;
+  if (info.shape === 'slope26') { y0 = p.y - 0.15; y1 = p.y + h; }
+  if (tilted(p.q)) { const m = Math.max(w, h, d) / 2; return { x0: p.x - m, x1: p.x + m, y0: p.y - m, y1: p.y + m, z0: p.z - m, z1: p.z + m, info }; }
+  return { x0: p.x - ex, x1: p.x + ex, y0, y1, z0: p.z - ez, z1: p.z + ez, info };
+}
+const touch = (a, b, e) => a.x0 <= b.x1 + e && b.x0 <= a.x1 + e && a.y0 <= b.y1 + e && b.y0 <= a.y1 + e && a.z0 <= b.z1 + e && b.z0 <= a.z1 + e;
+const vol = a => Math.max(0, a.x1 - a.x0) * Math.max(0, a.y1 - a.y0) * Math.max(0, a.z1 - a.z0);
+function inter(a, b) {
+  const v = Math.max(0, Math.min(a.x1, b.x1) - Math.max(a.x0, b.x0)) * Math.max(0, Math.min(a.y1, b.y1) - Math.max(a.y0, b.y0)) * Math.max(0, Math.min(a.z1, b.z1) - Math.max(a.z0, b.z0));
+  return v;
+}
+
+// Grid of boxes for fast neighbour search.
+function index(boxes) {
+  const g = new Map(), k = (i, j) => i * 100003 + j;
+  boxes.forEach((b, n) => {
+    for (let i = Math.floor(b.x0 / 2); i <= Math.floor(b.x1 / 2); i++) for (let j = Math.floor(b.z0 / 2); j <= Math.floor(b.z1 / 2); j++) {
+      const key = k(i, j); if (!g.has(key)) g.set(key, []); g.get(key).push(n);
+    }
+  });
+  return b => {
+    const out = new Set();
+    for (let i = Math.floor(b.x0 / 2) - 1; i <= Math.floor(b.x1 / 2) + 1; i++) for (let j = Math.floor(b.z0 / 2) - 1; j <= Math.floor(b.z1 / 2) + 1; j++) for (const n of g.get(k(i, j)) || []) out.add(n);
+    return out;
+  };
+}
+
+function check(design, biome) {
+  const pieces = design.pieces;
+  const boxes = pieces.map(aabb);
+  const near = index(boxes);
+  const ys = boxes.filter(b => b.info.structural).map(b => b.y0).sort((a, b) => a - b);
+  const ground = ys.length ? ys[Math.floor(ys.length * 0.02)] : 0;
+  const results = [];
+
+  // support: Valheim holds a piece up through any touching piece that is itself held up, back to the ground.
+  // Walk outward from everything that stands on the ground; whatever is never reached floats.
+  const held = new Array(boxes.length).fill(false), queue = [];
+  boxes.forEach((b, i) => { if (b.y0 <= ground + 0.35) { held[i] = true; queue.push(i); } });
+  while (queue.length) {
+    const i = queue.pop(), b = boxes[i];
+    for (const j of near(b)) {
+      if (held[j]) continue;
+      const o = boxes[j];
+      if (touch(b, o, 0.16) && (b.info.structural || o.info.role === 'craft' || o.info.role === 'deco' || o.info.role === 'light')) { held[j] = true; queue.push(j); }
+    }
+  }
+  const unsupported = pieces.filter((p, i) => !held[i] && (boxes[i].info.structural || ['craft', 'storage', 'bed', 'table', 'seat', 'fire'].includes(boxes[i].info.role))).map(p => p.name);
+  results.push({ check: 'support', ok: unsupported.length === 0, detail: unsupported.length ? `${unsupported.length} pieces not connected to the ground (${[...new Set(unsupported)].slice(0, 4).join(', ')})` : 'every piece connects to the ground' });
+
+  // doubles and crushed pieces
+  let doubles = 0, crushed = 0;
+  const seen = new Map();
+  pieces.forEach((p, i) => {
+    const key = `${p.name}|${p.x.toFixed(1)}|${p.y.toFixed(1)}|${p.z.toFixed(1)}|${Math.round(yawOf(p.q))}`;
+    if (seen.has(key)) doubles++; else seen.set(key, i);
+    const b = boxes[i];
+    if (!b.info.structural || ['roof', 'roofTop', 'roofCorner', 'gable', 'beam', 'pole'].includes(b.info.role)) return;
+    for (const j of near(b)) {
+      if (j <= i) continue;
+      const o = boxes[j];
+      if (o.info.role !== b.info.role || !o.info.structural) continue;
+      const v = inter(b, o), m = Math.min(vol(b), vol(o));
+      if (m > 0.05 && v / m > 0.6 && pieces[j].name !== p.name) crushed++;
+    }
+  });
+  results.push({ check: 'overlap', ok: doubles === 0 && crushed <= 2, detail: `${doubles} doubled, ${crushed} pieces inside another of the same kind` });
+
+  // doors: a free spot one metre in front and behind
+  const doors = pieces.map((p, i) => [p, boxes[i]]).filter(([, b]) => b.info.role === 'door');
+  let blocked = 0;
+  for (const [p] of doors) {
+    const a = yawOf(p.q) * Math.PI / 180, nx = Math.sin(a), nz = Math.cos(a);
+    for (const sg of [-1, 1]) {
+      const pt = { x0: p.x + sg * nx * 1.1 - 0.2, x1: p.x + sg * nx * 1.1 + 0.2, y0: p.y - 0.3, y1: p.y + 0.6, z0: p.z + sg * nz * 1.1 - 0.2, z1: p.z + sg * nz * 1.1 + 0.2 };
+      for (const j of near(pt)) {
+        const o = boxes[j];
+        if (['floor', 'rug', 'roof', 'roofTop', 'beam'].includes(o.info.role) || o.info.role === 'door') continue;
+        if (touch(pt, o, 0)) { blocked++; break; }
+      }
+    }
+  }
+  results.push({ check: 'doors', ok: doors.length > 0 ? blocked === 0 : true, detail: doors.length ? `${doors.length} doors, ${blocked} sides blocked` : 'no doors (open building)' });
+
+  // materials for the biome
+  if (biome) {
+    const ord = PC.BIOME_ORDER, limit = ord.indexOf(biome);
+    const over = [...new Set(pieces.filter(p => PC.piece(p.name).structural && ord.indexOf(PC.needs(p.name)) > limit).map(p => p.name))];
+    results.push({ check: 'materials', ok: over.length === 0, detail: over.length ? `needs later biomes: ${over.slice(0, 5).join(', ')}` : `all building pieces available in ${biome}` });
+  }
+
+  // room to move: share of floor not covered by furniture
+  const floors = boxes.filter(b => b.info.role === 'floor');
+  const furn = boxes.filter(b => ['bed', 'table', 'seat', 'storage', 'craft', 'fire', 'clutter', 'deco'].includes(b.info.role) && b.y0 < b.y1);
+  let area = 0, used = 0;
+  for (const f of floors) {
+    const fa = (f.x1 - f.x0) * (f.z1 - f.z0); area += fa;
+    for (const u of furn) if (u.y0 >= f.y1 - 0.3 && u.y0 <= f.y1 + 0.5) used += Math.max(0, Math.min(f.x1, u.x1) - Math.max(f.x0, u.x0)) * Math.max(0, Math.min(f.z1, u.z1) - Math.max(f.z0, u.z0));
+  }
+  const free = area ? 1 - used / area : 1;
+  results.push({ check: 'space', ok: free >= 0.45, detail: `${Math.round(free * 100)} % of the floor is free to walk` });
+  return results;
+}
+
+if (NODE_C) module.exports = { check, aabb }; else window.VHChecks = { check, aabb };
+
+})();
+// ---- features.js
+(function () {
+// Numbers that describe a design, used by the scorer. The same code runs on the corpus (for training) and on
+// generated designs (for ranking), so both are measured the same way.
+const NODE_F = typeof module !== 'undefined';
+const PF = NODE_F ? require('./pieces.js') : window.VHPieces;
+const NAMES = ['log_pieces', 'log_kinds', 'wall', 'floor', 'roof', 'beam', 'pole', 'openings', 'furniture', 'deco', 'light',
+  'nature', 'misc', 'mat_entropy', 'decor_density', 'height_ratio', 'log_area', 'levels', 'diag', 'roof_cover', 'top_mat_share'];
+function yawOf(q) { const [x, y, z, w] = q || [0, 0, 0, 1]; return Math.atan2(2 * (w * y + x * z), 1 - 2 * (y * y + x * x)) * 180 / Math.PI; }
+function features(pieces) {
+  const n = pieces.length || 1, roles = {}, mats = {}, kinds = new Set();
+  let st = [];
+  for (const p of pieces) {
+    const i = PF.piece(p.name); roles[i.role] = (roles[i.role] || 0) + 1; kinds.add(p.name);
+    if (i.structural) { st.push(p); mats[i.mat] = (mats[i.mat] || 0) + 1; }
+  }
+  if (!st.length) st = pieces;
+  const q = (a, t) => a[Math.min(a.length - 1, Math.floor(a.length * t))];
+  const xs = st.map(p => p.x).sort((a, b) => a - b), zs = st.map(p => p.z).sort((a, b) => a - b), ys = st.map(p => p.y).sort((a, b) => a - b);
+  const w = Math.max(1, q(xs, 0.97) - q(xs, 0.03)), l = Math.max(1, q(zs, 0.97) - q(zs, 0.03)), h = Math.max(0.5, q(ys, 0.98) - q(ys, 0.05));
+  const floors = pieces.filter(p => PF.piece(p.name).role === 'floor');
+  const floorArea = floors.reduce((s, p) => s + PF.piece(p.name).size[0] * PF.piece(p.name).size[2], 0) || w * l;
+  const roofArea = pieces.filter(p => ['roof', 'roofCorner'].includes(PF.piece(p.name).role)).length * 4;
+  const lv = {}; for (const f of floors) { const k = Math.round(f.y * 2); lv[k] = (lv[k] || 0) + 1; }
+  const tot = Object.values(mats).reduce((a, b) => a + b, 0) || 1;
+  const ent = -Object.values(mats).reduce((s, c) => s + c / tot * Math.log(c / tot), 0);
+  const r = k => (roles[k] || 0) / n;
+  const furn = ['bed', 'table', 'seat', 'storage', 'fire', 'craft'].reduce((s, k) => s + (roles[k] || 0), 0);
+  const deco = (roles.deco || 0) + (roles.rug || 0) + (roles.clutter || 0);
+  return {
+    log_pieces: Math.log(n), log_kinds: Math.log(kinds.size), wall: r('wall'), floor: r('floor'),
+    roof: r('roof') + r('roofTop') + r('roofCorner') + r('gable'), beam: r('beam'), pole: r('pole'),
+    openings: r('door') + r('window'), furniture: furn / n, deco: deco / n, light: r('light'), nature: r('nature'), misc: r('misc'),
+    mat_entropy: ent, decor_density: (furn + deco + (roles.light || 0)) / floorArea, height_ratio: h / Math.sqrt(w * l),
+    log_area: Math.log(w * l), levels: Object.values(lv).filter(c => c >= 4).length,
+    diag: st.filter(p => { const a = ((yawOf(p.q) % 90) + 90) % 90; return Math.abs(a - 45) < 30; }).length / st.length,
+    roof_cover: Math.min(3, roofArea / Math.max(1, floorArea)), top_mat_share: Math.max(...Object.values(mats), 0) / tot,
+  };
+}
+function score(model, pieces) {
+  const f = features(pieces);
+  let z = model.bias;
+  NAMES.forEach((k, i) => { z += model.w[i] * ((f[k] - model.mean[i]) / (model.std[i] || 1)); });
+  return 1 / (1 + Math.exp(-z));
+}
+if (NODE_F) module.exports = { features, score, NAMES }; else window.VHFeatures = { features, score, NAMES };
+
+})();
+// ---- decorate.js
+(function () {
+// Decorator: furnishes rooms at decor stage d1 (bare needs), d2 (lived in) or d3 (rich), or strips a design down.
+// Works on generated buildings (rooms known) and on any existing blueprint (rooms found from floors and walls).
+// What goes where follows the corpus (rules.json "decor", "placement", "groups"): chests and stations stand against
+// walls facing in, tables and hearths stand in the middle with seats round them, banners and item stands hang
+// high on walls, the cooking station sits on the fire.
+
+const NODE_D = typeof module !== 'undefined';
+const P = NODE_D ? require('./pieces.js') : window.VHPieces;
+let RULES = null;
+function setRules(r) { RULES = r; }
+if (NODE_D) { try { RULES = require('../data/rules.json'); } catch (e) { RULES = null; } }
+
+// Biome where each item first becomes buildable (its hardest material).
+const ITEM_BIOME = {
+  bed: 'Meadows', piece_bed02: 'Swamp', piece_chest_wood: 'Meadows', piece_chest: 'Swamp', piece_chest_barrel: 'Swamp',
+  piece_chest_blackmetal: 'Plains', piece_table: 'Meadows', piece_table_round: 'Meadows', piece_table_oak: 'Swamp',
+  piece_chair: 'Meadows', piece_chair02: 'Meadows', piece_chair03: 'Swamp', piece_bench01: 'Meadows', piece_logbench01: 'Black Forest',
+  piece_throne01: 'Black Forest', fire_pit: 'Meadows', hearth: 'Black Forest', piece_cookingstation: 'Meadows',
+  piece_cookingstation_iron: 'Swamp', piece_cauldron: 'Black Forest', fermenter: 'Swamp', piece_oven: 'Mistlands',
+  piece_workbench: 'Meadows', piece_workbench_ext1: 'Meadows', piece_workbench_ext2: 'Black Forest', piece_workbench_ext3: 'Black Forest',
+  forge: 'Black Forest', forge_ext1: 'Black Forest', forge_ext2: 'Black Forest', forge_ext3: 'Swamp', smelter: 'Black Forest',
+  charcoal_kiln: 'Black Forest', piece_stonecutter: 'Black Forest', piece_spinningwheel: 'Plains', piece_artisanstation: 'Mountain',
+  rug_deer: 'Meadows', rug_wolf: 'Mountain', rug_fur: 'Plains', rug_hare: 'Mistlands', rug_straw: 'Meadows', jute_carpet: 'Mistlands',
+  itemstand: 'Meadows', itemstandh: 'Meadows', ArmorStand: 'Swamp', sign: 'Meadows', piece_banner01: 'Plains', piece_banner02: 'Plains',
+  piece_banner05: 'Plains', piece_groundtorch_wood: 'Meadows', piece_groundtorch: 'Swamp', piece_walltorch: 'Black Forest',
+  piece_brazierceiling01: 'Black Forest', piece_dvergr_lantern: 'Mistlands', Candle_resin: 'Black Forest', wood_stack: 'Meadows',
+  wood_fine_stack: 'Meadows', wood_core_stack: 'Black Forest', stone_pile: 'Meadows', coal_pile: 'Black Forest',
+  wood_dragon1: 'Meadows', darkwood_raven: 'Swamp', darkwood_wolf: 'Swamp', piece_jackoturnip: 'Swamp', piece_xmastree: 'Meadows',
+  piece_beehive: 'Meadows', piece_bathtub: 'Black Forest', guard_stone: 'Black Forest',
+};
+const ORDER = ['Meadows', 'Black Forest', 'Swamp', 'Mountain', 'Plains', 'Mistlands', 'Ashlands'];
+const ok = (name, biome) => ORDER.indexOf(ITEM_BIOME[name] || 'Meadows') <= ORDER.indexOf(biome);
+// best available of a list for the biome (lists are worst to best)
+const best = (list, biome) => list.filter(n => ok(n, biome)).pop() || list[0];
+
+// Plans per room use and stage. Each entry: [place, items (worst to best), count or [min,max] per 20 m2]
+// place: wall, mount, centre, fire, bed. Counts come from the corpus per-100 m2 rates, rounded for one room.
+const PLANS = {
+  home: {
+    d1: [['bed', ['bed', 'piece_bed02'], 1], ['wall', ['piece_chest_wood', 'piece_chest'], 1], ['fire', ['fire_pit'], 1]],
+    d2: [['table', ['piece_table', 'piece_table_oak'], 1], ['rug', ['rug_deer', 'rug_wolf', 'rug_fur'], 1], ['wall', ['piece_chest_wood', 'piece_chest_barrel'], 1],
+      ['light', ['piece_groundtorch_wood', 'piece_groundtorch'], 1], ['mount', ['itemstand'], 1], ['wall', ['wood_stack'], 0.5]],
+    d3: [['mount', ['itemstand', 'itemstandh'], 2], ['wall', ['piece_cauldron'], 0.6], ['wall', ['ArmorStand'], 0.5], ['mount', ['piece_banner01', 'piece_banner02'], 1],
+      ['rug', ['rug_deer', 'rug_wolf', 'rug_fur'], 1], ['wall', ['piece_chest_barrel', 'fermenter'], 0.6], ['mount', ['sign'], 0.4], ['wall', ['wood_fine_stack'], 0.5]],
+  },
+  hall: {
+    d1: [['fire', ['fire_pit', 'hearth'], 1], ['table', ['piece_table', 'piece_table_oak'], 1], ['wall', ['piece_chest_wood', 'piece_chest'], 1]],
+    d2: [['table', ['piece_table', 'piece_table_oak'], 1], ['wall', ['piece_cauldron', 'fermenter'], 1], ['light', ['piece_groundtorch_wood', 'piece_groundtorch', 'piece_brazierceiling01'], 2],
+      ['rug', ['rug_deer', 'rug_wolf', 'rug_fur'], 1], ['end', ['piece_throne01'], 1], ['wall', ['piece_chest_barrel'], 1]],
+    d3: [['mount', ['piece_banner01', 'piece_banner02', 'piece_banner05'], 3], ['mount', ['itemstand', 'itemstandh'], 3], ['wall', ['ArmorStand'], 1],
+      ['wall', ['darkwood_raven', 'darkwood_wolf'], 1], ['rug', ['rug_wolf', 'rug_fur'], 2], ['wall', ['fermenter'], 1], ['mount', ['sign'], 0.5]],
+  },
+  smithy: {
+    d1: [['wall', ['forge'], 1], ['wall', ['piece_workbench'], 1], ['wall', ['piece_chest_wood', 'piece_chest'], 1]],
+    d2: [['wall', ['forge_ext1', 'forge_ext2'], 1], ['wall', ['smelter'], 1], ['wall', ['charcoal_kiln'], 0.6], ['wall', ['piece_workbench_ext1'], 1], ['light', ['piece_groundtorch_wood', 'piece_groundtorch'], 1]],
+    d3: [['wall', ['ArmorStand'], 1], ['mount', ['itemstand', 'itemstandh'], 2], ['wall', ['coal_pile', 'wood_core_stack'], 1], ['rug', ['rug_deer'], 0.5], ['mount', ['sign'], 0.5], ['wall', ['forge_ext3'], 0.5]],
+  },
+  workshop: {
+    d1: [['wall', ['piece_workbench'], 1], ['wall', ['piece_chest_wood'], 1], ['wall', ['wood_stack'], 1]],
+    d2: [['wall', ['piece_workbench_ext1', 'piece_workbench_ext2'], 1], ['wall', ['wood_fine_stack', 'wood_core_stack'], 1], ['wall', ['piece_stonecutter'], 0.5], ['light', ['piece_groundtorch_wood'], 1], ['seat', ['piece_logbench01', 'piece_bench01'], 0.6]],
+    d3: [['wall', ['piece_workbench_ext3'], 0.6], ['mount', ['itemstand', 'itemstandh'], 2], ['wall', ['wood_stack', 'wood_core_stack'], 1], ['mount', ['sign'], 0.5], ['wall', ['piece_chest_barrel'], 0.6]],
+  },
+  farm: {
+    d1: [['wall', ['piece_chest_wood'], 1]],
+    d2: [['wall', ['piece_chest_barrel', 'piece_chest_wood'], 1], ['wall', ['wood_stack'], 0.6], ['light', ['piece_groundtorch_wood'], 0.5], ['wall', ['fermenter'], 0.4]],
+    d3: [['mount', ['itemstand'], 1], ['wall', ['piece_cauldron'], 0.5], ['mount', ['sign'], 0.5], ['seat', ['piece_bench01'], 0.6], ['rug', ['rug_straw', 'rug_deer'], 0.5]],
+  },
+  storage: {
+    d1: [['wall', ['piece_chest_wood', 'piece_chest'], 3]],
+    d2: [['wall', ['piece_chest_barrel', 'piece_chest_wood'], 2], ['wall', ['wood_stack', 'wood_fine_stack'], 1], ['light', ['piece_groundtorch_wood'], 0.5]],
+    d3: [['wall', ['piece_chest', 'piece_chest_blackmetal'], 2], ['mount', ['sign'], 1], ['wall', ['coal_pile', 'stone_pile'], 0.6]],
+  },
+  guard: {
+    d1: [['wall', ['piece_chest_wood'], 1], ['light', ['piece_groundtorch_wood'], 0.6]],
+    d2: [['bed', ['bed', 'piece_bed02'], 1], ['mount', ['itemstand'], 1], ['light', ['piece_brazierceiling01', 'piece_groundtorch'], 0.5]],
+    d3: [['wall', ['ArmorStand'], 1], ['mount', ['piece_banner01', 'piece_banner02'], 1], ['mount', ['itemstandh'], 1]],
+  },
+  market: {
+    d1: [['table', ['piece_table'], 1], ['wall', ['piece_chest_wood'], 1]],
+    d2: [['wall', ['piece_chest_barrel'], 1], ['mount', ['sign'], 1], ['wall', ['wood_stack', 'stone_pile'], 0.6]],
+    d3: [['mount', ['piece_banner01', 'piece_banner05'], 1], ['light', ['piece_groundtorch_wood'], 1], ['mount', ['itemstand'], 1]],
+  },
+  temple: {
+    d1: [['end', ['piece_table', 'piece_table_oak'], 1], ['light', ['piece_groundtorch_wood', 'piece_brazierceiling01'], 2]],
+    d2: [['seat', ['piece_bench01'], 2], ['mount', ['piece_banner01', 'piece_banner02'], 2], ['end', ['Candle_resin'], 1]],
+    d3: [['wall', ['darkwood_raven', 'darkwood_wolf'], 2], ['mount', ['itemstand', 'itemstandh'], 2], ['rug', ['rug_wolf', 'rug_fur'], 1]],
+  },
+  yard: { d1: [], d2: [], d3: [] },
+  bedroom: {
+    d1: [['bed', ['bed', 'piece_bed02'], 1], ['wall', ['piece_chest_wood', 'piece_chest'], 1]],
+    d2: [['rug', ['rug_deer', 'rug_wolf', 'rug_fur'], 1], ['light', ['piece_groundtorch_wood', 'piece_groundtorch'], 1]],
+    d3: [['mount', ['itemstand', 'itemstandh'], 1], ['wall', ['ArmorStand'], 0.5], ['mount', ['piece_banner01', 'piece_banner02'], 0.5]],
+  },
+  kitchen: {
+    d1: [['wall', ['piece_cauldron'], 1], ['wall', ['piece_chest_wood'], 1]],
+    d2: [['wall', ['fermenter', 'piece_chest_barrel'], 1], ['table', ['piece_table'], 1], ['light', ['piece_groundtorch_wood'], 1]],
+    d3: [['wall', ['wood_stack'], 1], ['mount', ['itemstandh'], 1], ['rug', ['rug_straw', 'rug_deer'], 0.5]],
+  },
+};
+
+// Whole-building limits per decor stage, so a big house with several rooms is furnished like one home and not like
+// several. Numbers set by eye against the keepers; the corpus rates per area vary too much to use directly.
+const CAPS = {
+  d1: { bed: 2, storage: 2, deco: 0, rug: 0, light: 1, clutter: 1, craftEach: 1, table: 1 },
+  d2: { bed: 3, storage: 3, deco: 2, rug: 2, light: 2, clutter: 2, craftEach: 1, table: 2 },
+  d3: { bed: 4, storage: 5, deco: 6, rug: 3, light: 4, clutter: 3, craftEach: 1, table: 3 },
+};
+const CAP_USE = { hall: { bed: 2, storage: 2, deco: 4, table: 2, light: 2 }, storage: { storage: 8 }, smithy: { craftEach: 2 } };
+function capFor(cat, use, decor) {
+  const base = CAPS[decor] || CAPS.d2;
+  const extra = (CAP_USE[use] || {})[cat] || 0;
+  return (base[cat] ?? 99) + (decor === 'd1' ? 0 : extra);
+}
+function catOf(name) {
+  const r = P.piece(name).role;
+  if (r === 'bed') return 'bed';
+  if (r === 'storage') return 'storage';
+  if (r === 'deco') return 'deco';
+  if (r === 'rug') return 'rug';
+  if (r === 'light') return 'light';
+  if (r === 'clutter') return 'clutter';
+  if (r === 'table') return 'table';
+  if (r === 'craft') return 'craft:' + name;
+  return null;
+}
+
+const ESSENTIAL = /^(bed|piece_bed02|ashwood_bed|piece_chest_wood|piece_chest|hearth|fire_pit|forge|piece_workbench|piece_cookingstation|smelter|portal_wood)$/;
+
+function quatY(yaw) { const a = yaw * Math.PI / 360; return [0, +Math.sin(a).toFixed(6), 0, +Math.cos(a).toFixed(6)]; }
+function yawOf(q) { const [x, y, z, w] = q; return Math.atan2(2 * (w * y + x * z), 1 - 2 * (y * y + x * x)) * 180 / Math.PI; }
+function rel(name) { return (RULES && RULES.placement && RULES.placement[name] && RULES.placement[name].rel) || 0; }
+function lift(name, def) {
+  const l = RULES && RULES.placement && RULES.placement[name] && RULES.placement[name].lift;
+  return l != null && l > 0.9 && l < 3 ? l : def;
+}
+
+// Occupancy on a 0.5 m grid per floor level.
+class Occ {
+  constructor() { this.s = new Set(); }
+  key(x, z, y) { return `${Math.round(x * 2)},${Math.round(z * 2)},${Math.round(y)}`; }
+  fits(x, z, y, w, d, yaw) {
+    for (const [cx, cz] of this.cells(x, z, w, d, yaw)) if (this.s.has(this.key(cx, cz, y))) return false;
+    return true;
+  }
+  add(x, z, y, w, d, yaw) { for (const [cx, cz] of this.cells(x, z, w, d, yaw)) this.s.add(this.key(cx, cz, y)); }
+  cells(x, z, w, d, yaw) {
+    const out = [], a = yaw * Math.PI / 180, c = Math.abs(Math.cos(a)), s = Math.abs(Math.sin(a));
+    const ex = (w * c + d * s) / 2, ez = (w * s + d * c) / 2;
+    for (let i = x - ex + 0.25; i < x + ex; i += 0.5) for (let j = z - ez + 0.25; j < z + ez; j += 0.5) out.push([i, j]);
+    if (!out.length) out.push([x, z]);
+    return out;
+  }
+}
+
+// Rooms of a generated building are rectangles; slots run along each wall, inset by the item's depth.
+function slotsForRect(room) {
+  const slots = [];
+  const { x0, x1, z0, z1, y } = room;
+  const door = room.door;
+  const along = (a0, a1, fixed, axis, inwardYaw) => {
+    for (let a = a0 + 0.8; a <= a1 - 0.8 + 0.01; a += 1) {
+      const x = axis === 'x' ? a : fixed, z = axis === 'x' ? fixed : a;
+      if (door && Math.abs(z - door.z) < 0.1 && Math.abs(x - door.x) < 1.7) continue;
+      if (room.hole && Math.abs(x - room.hole[0]) < 1.6 && Math.abs(z - room.hole[1]) < 1.6) continue;
+      slots.push({ x, z, y, yaw: inwardYaw, nx: Math.sin(inwardYaw * Math.PI / 180), nz: Math.cos(inwardYaw * Math.PI / 180) });
+    }
+  };
+  along(x0, x1, z0, 'x', 0); along(x0, x1, z1, 'x', 180); along(z0, z1, x0, 'z', 90); along(z0, z1, x1, 'z', 270);
+  return slots;
+}
+
+function decorate(b, ctx) {
+  const R = ctx.R || Math.random;
+  const occ = new Occ();
+  // structure blocks the grid where posts stand inside rooms
+  for (const p of b.pieces) {
+    const info = P.piece(p.name);
+    if (info.role === 'pole') occ.add(p.x, p.z, Math.round(p.y - 1), 0.4, 0.4, 0);
+  }
+  ctx.counts = new Map();
+  ctx.totalArea = b.rooms.filter(r => !r.upper).reduce((s, r) => s + (r.x1 - r.x0) * (r.z1 - r.z0), 0);
+  const rooms = [...b.rooms].sort((a, c) => (a.upper - c.upper) || ((c.main ? 1 : 0) - (a.main ? 1 : 0)));
+  for (const room of rooms) {
+    if (room.door) occ.add(room.door.x, room.door.z + 1.0, room.y, 2.4, 2.0, 0); // keep the way in clear
+    // the main ground room gets the building's own plan; upper rooms and side wings get a plan that suits them
+    let use = ctx.use;
+    if (room.upper) use = ['home', 'hall', 'guard'].includes(ctx.use) ? 'bedroom' : 'storage';
+    else if (room.main === false) use = { home: 'bedroom', hall: 'kitchen', smithy: 'workshop', workshop: 'storage', temple: 'temple' }[ctx.use] || 'storage';
+    furnishRoom(b, room, use, ctx.decor, ctx.biome, R, occ, ctx, room.upper);
+  }
+  return b;
+}
+
+function furnishRoom(b, room, use, decor, biome, R, occ, ctx, upper) {
+  const plan = PLANS[use] || PLANS.home;
+  const stages = decor === 'd1' ? ['d1'] : decor === 'd2' ? ['d1', 'd2'] : ['d1', 'd2', 'd3'];
+  const area = (room.x1 - room.x0) * (room.z1 - room.z0);
+  const scale = Math.max(1, area / 20);
+  const slots = room.slots || slotsForRect(room);
+  // shuffle slots by seed, but keep back-wall slots first for stations. One random number per slot, then a plain
+  // sort: a comparator that draws random numbers gives a different order in every JavaScript engine (the game runs
+  // this file in Jint), and so a different building for the same seed.
+  const keyed = slots.map(s => [s, -s.z * 0.3 + (R() - 0.5)]);
+  keyed.sort((p, q) => p[1] - q[1]);
+  keyed.forEach(([s], i) => { slots[i] = s; });
+  const y = room.y;
+  const cx = (room.x0 + room.x1) / 2, cz = (room.z0 + room.z1) / 2;
+  const counts = ctx.counts || (ctx.counts = new Map());
+  const allowed = name => {
+    const c = catOf(name);
+    if (!c) return true;
+    const cap = c.startsWith('craft:') ? capFor('craftEach', ctx.use || use, decor) + (/cookingstation/.test(name) ? 1 : 0) : capFor(c, ctx.use || use, decor);
+    return (counts.get(c) || 0) < cap;
+  };
+  const place = (name, x, yy, z, yaw) => {
+    const c = catOf(name);
+    if (c) counts.set(c, (counts.get(c) || 0) + 1);
+    b.pieces.push({ name, x: +x.toFixed(3), y: +yy.toFixed(3), z: +z.toFixed(3), q: quatY(yaw), yaw, decor: true });
+  };
+  const putWall = (name, mount) => {
+    if (!allowed(name)) return false;
+    const info = P.piece(name);
+    const [w, h, d] = info.size;
+    for (let i = 0; i < slots.length; i++) {
+      const s = slots[i];
+      if (s.used && !mount) continue;
+      if (mount && s.mounted) continue;
+      const inset = mount ? 0.15 : d / 2 + 0.15;
+      const x = s.x + s.nx * inset, z = s.z + s.nz * inset;
+      const yaw = (s.yaw + rel(name) + 360) % 360;
+      if (!mount && !occ.fits(x, z, y, w, Math.max(d, 0.5), yaw)) continue;
+      if (mount) { s.mounted = true; place(name, x, y + Math.min(lift(name, 1.7), (room.h || 2.4) - 0.5), z, yaw); return true; }
+      s.used = true; occ.add(x, z, y, w, Math.max(d, 0.5), yaw); place(name, x, y + 0.1, z, yaw);
+      return true;
+    }
+    return false;
+  };
+  const putCentre = (name, x, z, yaw) => {
+    if (!allowed(name)) return false;
+    const info = P.piece(name), [w, , d] = info.size;
+    if (!occ.fits(x, z, y, w, d, yaw)) return false;
+    occ.add(x, z, y, w, d, yaw); place(name, x, y + (info.role === 'rug' ? 0.05 : 0.1), z, yaw); return true;
+  };
+  const longX = (room.x1 - room.x0) >= (room.z1 - room.z0);
+  for (const st of stages) {
+    for (const [kind, list, per] of plan[st] || []) {
+      const name = best(list, biome);
+      if (!ok(name, biome) && kind !== 'fire') continue;
+      let n = per * (kind === 'wall' || kind === 'mount' ? Math.min(scale, 2) : 1);
+      n = Math.floor(n) + (R() < n - Math.floor(n) ? 1 : 0);
+      if (kind === 'bed') n = Math.max(1, Math.min(2, Math.round(scale * 0.5)));
+      for (let k = 0; k < n; k++) {
+        if (kind === 'wall') putWall(name, false);
+        else if (kind === 'mount' || kind === 'light' && /brazierceiling|walltorch/.test(name)) putWall(name, true);
+        else if (kind === 'bed') putWall(name, false);
+        else if (kind === 'fire') {
+          if (upper || room.main === false) break; // one fire, in the main room
+          const doorIn = ctx.doorX != null && ctx.doorX > room.x0 && ctx.doorX < room.x1;
+          const fx = use === 'home' && doorIn ? ctx.doorX : cx, fz = use === 'home' ? cz + 0.5 : cz;
+          const fire = use === 'hall' && ok('hearth', biome) ? 'hearth' : name;
+          if (putCentre(fire, fx, fz, 0)) {
+            if (decor !== 'd1' || use === 'hall') place(ok('piece_cookingstation_iron', biome) && use === 'hall' ? 'piece_cookingstation_iron' : 'piece_cookingstation', fx, y + 0.5, fz, 0);
+            occ.add(fx, fz, y, 3.5, 3.5, 0);
+          }
+        } else if (kind === 'table') {
+          // table group: along the long axis, seats on both long sides (corpus groups: chairs 0.9 to 1 m out)
+          const tx = longX ? cx + (use === 'hall' ? 0 : (R() - 0.5) * 2) : cx, tz = longX ? cz + (use === 'hall' ? (k % 2 ? 2.2 : -2.2) : -0.6) : cz;
+          const yaw = longX ? 0 : 90;
+          if (use === 'hall' && k === 0 && b.rooms[0] === room) { /* fire in the middle: tables beside it */ }
+          if (!putCentre(name, use === 'hall' ? tx + (k ? 0 : 0) : tx, use === 'hall' ? cz + (k % 2 ? 2.4 : -2.4) : tz, yaw)) continue;
+          const tzz = use === 'hall' ? cz + (k % 2 ? 2.4 : -2.4) : tz;
+          const seat = use === 'hall' ? best(['piece_bench01'], biome) : best(['piece_chair', 'piece_chair03'], biome);
+          const off = use === 'hall' ? 0.9 : 0.95;
+          for (const sgn of [-1, 1]) {
+            const sx = longX ? tx : tx + sgn * off, sz = longX ? tzz + sgn * off : tzz;
+            const syaw = longX ? (sgn < 0 ? 0 : 180) : (sgn < 0 ? 90 : 270);
+            putCentre(seat, sx, sz, (syaw + rel(seat)) % 360);
+          }
+        } else if (kind === 'rug') {
+          if (!allowed(name)) continue;
+          const rx = cx + (R() - 0.5) * (room.x1 - room.x0) * 0.4, rz = cz + (R() - 0.5) * (room.z1 - room.z0) * 0.3;
+          place(name, rx, y + 0.02, rz, longX ? 0 : 90);
+        } else if (kind === 'light') {
+          const a = R() * 2 * Math.PI;
+          putCentre(name, cx + Math.cos(a) * (room.x1 - room.x0) * 0.35, cz + Math.sin(a) * (room.z1 - room.z0) * 0.35, 0) || putWall(name, false);
+        } else if (kind === 'seat') {
+          putWall(name, false);
+        } else if (kind === 'end') {
+          // far end of the long axis, facing the door
+          const ex = longX ? room.x1 - 1.4 : cx, ez = longX ? cz : room.z1 - 1.4;
+          putCentre(name, ex, ez, longX ? 270 : 180);
+        }
+      }
+    }
+  }
+}
+
+// ---------------------------------------------------------------- existing blueprints
+
+// Strip a design to d1: keep structure and the essentials (first bed per 25 m2, one chest, fires and main stations).
+function strip(pieces) {
+  const keep = [], counts = {};
+  for (const p of pieces) {
+    const info = P.piece(p.name);
+    if (info.structural || info.role === 'nature' || info.role === 'misc') { keep.push(p); continue; }
+    if (ESSENTIAL.test(p.name)) {
+      const k = /bed/.test(p.name) ? 'bed' : /chest/.test(p.name) ? 'chest' : p.name;
+      counts[k] = (counts[k] || 0) + 1;
+      if (k === 'chest' && counts[k] > 2) continue;
+      keep.push(p);
+    }
+  }
+  return keep;
+}
+
+// Find rooms in any blueprint: floor levels, wall slots along real walls, free floor in the middle.
+function findRooms(pieces) {
+  const floors = pieces.filter(p => P.piece(p.name).role === 'floor');
+  const walls = pieces.filter(p => ['wall', 'door', 'window'].includes(P.piece(p.name).role));
+  const levels = {};
+  for (const f of floors) { const k = Math.round(f.y * 2) / 2; (levels[k] = levels[k] || []).push(f); }
+  const rooms = [];
+  for (const [ky, fl] of Object.entries(levels)) {
+    if (fl.length < 4) continue;
+    const y = +ky;
+    const xs = fl.map(f => f.x).sort((a, b) => a - b), zs = fl.map(f => f.z).sort((a, b) => a - b);
+    const q = (a, t) => a[Math.min(a.length - 1, Math.floor(a.length * t))];
+    const room = { x0: q(xs, 0.03) - 1, x1: q(xs, 0.97) + 1, z0: q(zs, 0.03) - 1, z1: q(zs, 0.97) + 1, y: y + 0.1, slots: [] };
+    const cx = (room.x0 + room.x1) / 2, cz = (room.z0 + room.z1) / 2;
+    const covered = (x, z) => fl.some(f => Math.abs(f.x - x) <= 1.05 && Math.abs(f.z - z) <= 1.05);
+    for (const w of walls) {
+      if (w.y < y || w.y > y + 2.6) continue;
+      const yaw = yawOf(w.q || [0, 0, 0, 1]);
+      const a = yaw * Math.PI / 180, ux = Math.cos(a), uz = -Math.sin(a);
+      const half = P.piece(w.name).size[0] / 2;
+      for (let t = -half + 0.5; t <= half - 0.5 + 0.01; t += 1) {
+        const px = w.x + ux * t, pz = w.z + uz * t;
+        // inward normal: the side of the wall facing the room centre
+        let nx = -uz, nz = ux;
+        if ((cx - px) * nx + (cz - pz) * nz < 0) { nx = -nx; nz = -nz; }
+        const sx = px + nx * 0.6, sz = pz + nz * 0.6;
+        if (!covered(sx, sz)) continue;
+        room.slots.push({ x: px, z: pz, y: room.y, yaw: Math.atan2(nx, nz) * 180 / Math.PI, nx, nz });
+      }
+    }
+    if (room.slots.length >= 4) rooms.push(room);
+  }
+  rooms.sort((a, b) => a.y - b.y);
+  return rooms;
+}
+
+// Decorate an existing design to d2 or d3. Existing decor stays; new pieces fill free wall slots and floor.
+function decorateExisting(pieces, { use = 'home', decor = 'd2', biome = 'Meadows', seed = 1 } = {}) {
+  let s = seed >>> 0 || 1;
+  const R = () => { s ^= s << 13; s >>>= 0; s ^= s >> 17; s ^= s << 5; s >>>= 0; return s / 4294967296; };
+  const b = { pieces: pieces.map(p => ({ ...p })), rooms: findRooms(pieces) };
+  const occ = new Occ();
+  for (const p of pieces) {
+    const info = P.piece(p.name);
+    if (info.structural && info.role !== 'floor' && info.role !== 'roof' && info.role !== 'beam') occ.add(p.x, p.z, Math.round(p.y - 1), Math.min(info.size[0], 2), Math.min(info.size[2], 2), yawOf(p.q || [0, 0, 0, 1]));
+    if (!info.structural) occ.add(p.x, p.z, Math.round(p.y), info.size[0], info.size[2], yawOf(p.q || [0, 0, 0, 1]));
+  }
+  b.rooms.forEach((room, i) => furnishRoom(b, room, i === 0 ? use : (use === 'hall' ? 'home' : use), decor, biome, R, occ, {}, i > 0));
+  return b.pieces;
+}
+
+const api = { decorate, strip, findRooms, decorateExisting, setRules, PLANS, ITEM_BIOME };
+if (NODE_D) module.exports = api; else window.VHDecorate = api;
+
+})();
+// ---- generate.js
+(function () {
+// Villheim building generator. Builds a design from a request (type, biome, culture, plan, roof, stage, decor,
+// seed) with a kit of real Valheim pieces, proportions learned from the corpus, and the building conventions the
+// corpus shows. Coordinates: building centred near the origin, the main door on the -z side, ground at y = 0,
+// grid 2 m.
+//
+// Plans (lab/shapes.py counts in the corpus, after turning each build to its main axis): rectangle, long, square,
+// L, T, U or courtyard, cross, octagon. A plan is a set of wings (rectangles), each with its own roof axis.
+// Roofs: gable, cross-gable (a gable per wing, the lower wing's roof running into the main roof), hip (corner
+// pieces at each ring, measured with lab/offsets.js), shed, flat with parapet, conical over an octagon.
+// Roof layout measured in the corpus: a 2 m ridge cap on the ridge, rows centred 2, 4, 6 m out from it, each row's
+// low edge on the beam at its outer edge, 26 degree pieces pivoting on the low edge and 45 degree pieces in the
+// middle, gable pieces under each row pivoting on the row's low edge, hip corners at the row's low edge.
+//
+// Culture forms (styles.js "forms", shapes and sizes in docs/CULTURE_STYLES.md):
+//   round   round house of eight walls under a ring roof; on stilts with a deck and a walkway for crannogs
+//   tent    lavvu: a cone of roof rings from the ground, no walls
+//   yurt    low lattice wall (braced plank) under a low cone with an open crown
+//   gables  Icelandic turf farm: narrow houses side by side, wooden gable fronts, stone side and back walls
+//   court   rooms on four sides of a yard, an arcade on the yard side, flat roofs
+//   keep    square keep: stone with buttresses and a parapet, or timber with a pyramid roof in the Meadows
+//   svan    stone house with a tall square tower at a back corner (s2 and s3)
+//   tower-svan  the tower alone
+//   dome    cross-in-square church: equal arms, four columns, a drum and a stepped dome over the crossing
+//   drum    hall church with a drum and a cone over the middle
+//   stave   tall plank walls on log posts, a low gallery roof all round
+//   sunken  small hut with the roof down to the ground and the door in the gable end
+//   open    posts and a roof, no walls
+//   raised  storehouse on posts
+
+const NODE = typeof module !== 'undefined';
+const S = NODE ? require('./styles.js') : window.VHStyles;
+const Decor = NODE ? require('./decorate.js') : window.VHDecorate;
+
+function rng(seed) {
+  let s = (seed >>> 0) || 1;
+  return () => { s ^= s << 13; s >>>= 0; s ^= s >> 17; s ^= s << 5; s >>>= 0; return s / 4294967296; };
+}
+function quat(yaw) { const a = yaw * Math.PI / 360; return [0, +Math.sin(a).toFixed(6), 0, +Math.cos(a).toFixed(6)]; }
+const norm = a => ((a % 360) + 360) % 360;
+const reaches = (biome, b) => S.BIOMES.indexOf(biome) >= S.BIOMES.indexOf(b);
+
+class Build {
+  constructor() { this.pieces = []; this.rooms = []; this.notes = []; this.keys = new Set(); }
+  put(name, x, y, z, yaw = 0, extra) {
+    if (!name) return;
+    yaw = norm(yaw);
+    const key = `${name}|${Math.round(x * 100)}|${Math.round(y * 100)}|${Math.round(z * 100)}|${Math.round(yaw) % 360}`; // rounded so -0.00 and 0.00 match
+    if (this.keys.has(key)) return; // the same piece in the same place once only (porch eaves, meeting wings)
+    this.keys.add(key);
+    this.pieces.push({ name, x: +x.toFixed(3), y: +y.toFixed(3), z: +z.toFixed(3), q: quat(yaw), yaw, ...(extra || {}) });
+  }
+}
+
+// Wing-local (u along the ridge, v across, local yaw) to world. alpha is the wing's yaw: 0 = ridge along x,
+// 270 = ridge along z (Unity's yaw maps local x to (cos a, -sin a)).
+function toWorld(w, u, v, yaw) {
+  const a = w.alpha * Math.PI / 180;
+  return [w.cx + u * Math.cos(a) + v * Math.sin(a), w.cz - u * Math.sin(a) + v * Math.cos(a), norm(yaw + w.alpha)];
+}
+function inside(w, x, z, pad = 0) {
+  const a = w.alpha * Math.PI / 180, dx = x - w.cx, dz = z - w.cz;
+  const u = dx * Math.cos(a) - dz * Math.sin(a), v = dx * Math.sin(a) + dz * Math.cos(a);
+  return Math.abs(u) < w.W + pad && Math.abs(v) < w.D + pad;
+}
+
+// ---------------------------------------------------------------- plan choice
+
+const PLAN_BY_TYPE = {
+  // weights per stage, from the corpus counts per category (category x plan), favouring Tyler's keepers
+  home: { s1: { rect: 6, square: 3 }, s2: { rect: 5, L: 3, T: 2, square: 2, octagon: 0.6 }, s3: { T: 3, L: 3, rect: 2, cross: 1, octagon: 0.6 } },
+  longhouse: { s1: { long: 1 }, s2: { long: 3, T: 1 }, s3: { long: 2, T: 2, cross: 1 } },
+  tavern: { s1: { rect: 1 }, s2: { L: 2, T: 2, rect: 1 }, s3: { T: 2, cross: 1, U: 1 } },
+  smithy: { s1: { rect: 2, square: 1 }, s2: { rect: 2, L: 1, T: 1 }, s3: { L: 2, T: 2, U: 1 } },
+  sawmill: { s1: { rect: 1 }, s2: { rect: 2, L: 1 }, s3: { L: 1, rect: 1 } },
+  workshop: { s1: { rect: 1 }, s2: { rect: 2, L: 1 }, s3: { L: 2, T: 1 } },
+  barn: { s1: { rect: 1 }, s2: { rect: 2, long: 1 }, s3: { long: 1, L: 1 } },
+  farm: { s1: { rect: 1 }, s2: { rect: 1 }, s3: { rect: 1, L: 1 } },
+  storage: { s1: { rect: 1, square: 1 }, s2: { rect: 2, L: 1 }, s3: { L: 1, T: 1 } },
+  tower: { s1: { square: 2, octagon: 1 }, s2: { square: 2, octagon: 1 }, s3: { square: 1, octagon: 1 } },
+  dock: { s1: { rect: 1 }, s2: { rect: 1 }, s3: { rect: 1, L: 1 } },
+  stall: { s1: { rect: 1 }, s2: { rect: 1 }, s3: { rect: 1, L: 1 } },
+  temple: { s1: { rect: 1 }, s2: { rect: 1, cross: 1, octagon: 1 }, s3: { cross: 2, octagon: 1 } },
+};
+const ROOF_BY_CULTURE = {
+  'norse': { gable: 6, hip: 2 }, 'black-forest': { gable: 5, hip: 2 }, 'swamp': { gable: 4, hip: 3 },
+  'mountain': { gable: 6, hip: 1 }, 'middle-eastern': { flat: 1 }, 'east-asian': { hip: 4, gable: 1 },
+  'castle-medieval': { gable: 5, hip: 2 }, 'dwarven': { flat: 2, hip: 1 }, 'slavic': { gable: 5, hip: 1 }, 'celtic': { gable: 1 },
+  'celtic-crannog': { gable: 1 }, 'saami': { gable: 1 }, 'steppe': { gable: 1, hip: 1 },
+};
+// Wall styles per biome: counts of the main wall style in the corpus by material palette (lab/shapes.py).
+const WALLS_BY_BIOME = {
+  'Meadows': { 'half-timber': 144, plank: 110 },
+  'Black Forest': { stone: 151, 'stone-base': 41, log: 34, plank: 15, 'half-timber': 10 },
+  'Swamp': { stone: 36, 'stone-base': 33, 'half-timber': 27, plank: 25, log: 11 },
+  'Mountain': { 'stone-base': 8, stone: 7, plank: 4, 'half-timber': 3 },
+  'Plains': { 'stone-base': 10, 'half-timber': 10, plank: 8, stone: 6 },
+  'Mistlands': { marble: 36, stone: 11, plank: 10 },
+  'Ashlands': { grausten: 77, plank: 61, 'stone-base': 61, 'half-timber': 61, stone: 41 },
+};
+const WALLS_BY_CULTURE = {
+  'black-forest': { log: 3, 'stone-base': 2, stone: 1 }, 'slavic': { log: 1 }, 'middle-eastern': { stone: 1 },
+  'dwarven': { stone: 1 }, 'castle-medieval': { 'stone-base': 3, stone: 1 }, 'east-asian': { 'half-timber': 1 },
+  'mountain': { 'stone-base': 2, stone: 1 },
+};
+function wallStyleFor(R, C, cultureKey, biome) {
+  const w = { ...(C.walls || WALLS_BY_CULTURE[cultureKey] || WALLS_BY_BIOME[biome] || { plank: 1 }) };
+  if (biome === 'Meadows') { delete w.stone; delete w['stone-base']; delete w.log; } // no stone or core wood yet
+  if (C.early) { delete w.stone; delete w['stone-base']; delete w.marble; } // wood first (D-012)
+  if (!Object.keys(w).length) w.plank = 1;
+  return pick(R, w);
+}
+
+function pick(R, weights) {
+  const e = Object.entries(weights), tot = e.reduce((s, [, w]) => s + w, 0);
+  let x = R() * tot;
+  for (const [k, w] of e) { if ((x -= w) <= 0) return k; }
+  return e[0][0];
+}
+
+function formFor(C, type, stage) {
+  const f = C.forms && C.forms[type];
+  if (!f) return null;
+  return typeof f === 'string' ? f : (f[stage] || null);
+}
+
+// Wings for a plan, from the main wing's half sizes W (along x) and D (across, odd). Every wing's cells must fall on
+// the main wing's 2 m grid, so a side wing runs through the main wing's whole depth and out the other side: its half
+// length is D plus the part that sticks out, and its centre sits on the right parity.
+function wingsFor(plan, W, D, R, o = {}) {
+  const odd = n => (n % 2 ? n : n + 1);
+  const wD = Math.max(1, odd(D - 2)); // side wings are a bay narrower
+  const ext = Math.max(2, Math.ceil(D * 0.8)); // how far a wing sticks out, metres in 2 m steps below
+  const out = 2 * Math.round(ext / 2);
+  const main = { cx: 0, cz: 0, W, D, alpha: 0, main: true };
+  const mid = (W % 2 === wD % 2) ? 0 : 1; // centre x for a wing in the middle, on the grid
+  switch (plan) {
+    case 'L': {
+      const side = R() < 0.5 ? -1 : 1;
+      return [main, { cx: side * (W - wD), cz: -out / 2, W: D + out / 2, D: wD, alpha: 270 }];
+    }
+    case 'T':
+      return [main, { cx: mid, cz: out / 2, W: D + out / 2, D: wD, alpha: 270 }];
+    case 'cross':
+      return [main, { cx: mid, cz: 0, W: D + out, D: wD, alpha: 270 }];
+    case 'greek':
+      // equal arms of the same width crossing in the middle (cross-in-square church)
+      return [main, { cx: 0, cz: 0, W, D, alpha: 270 }];
+    case 'nave': {
+      // a narrower chancel in line at the +x end (2 cells long, a bay narrower)
+      return [main, { cx: W + 2, cz: 0, W: 2, D: wD, alpha: 0 }];
+    }
+    case 'U': {
+      // wings at both ends with a yard of at least 4 m between them (the main wing is widened when it is too short)
+      const uD = Math.min(wD, 3), Wu = Math.max(W, 2 * uD + 3);
+      main.W = Wu;
+      return [main, { cx: -(Wu - uD), cz: -out / 2 - 1, W: D + out / 2 + 1, D: uD, alpha: 270 },
+        { cx: Wu - uD, cz: -out / 2 - 1, W: D + out / 2 + 1, D: uD, alpha: 270 }];
+    }
+    case 'court': {
+      // four wings dW cells deep round a yard; the outer square is 2Q metres; the front wing holds the gate
+      const { Q, dW } = o;
+      return [{ cx: 0, cz: -(Q - dW), W: Q, D: dW, alpha: 0, main: true }, { cx: 0, cz: Q - dW, W: Q, D: dW, alpha: 0 },
+        { cx: -(Q - dW), cz: 0, W: Q - 2 * dW, D: dW, alpha: 270 }, { cx: Q - dW, cz: 0, W: Q - 2 * dW, D: dW, alpha: 270 }];
+    }
+    case 'gables': {
+      // n narrow houses side by side, ridges front to back, fronts in one line; the middle one may run deeper
+      const { n, deeper } = o, ws = [];
+      for (let k = 0; k < n; k++) {
+        const middle = n % 2 === 1 && k === (n - 1) / 2, Wk = W + (middle && deeper ? 1 : 0);
+        ws.push({ cx: (k - (n - 1) / 2) * 2 * D, cz: Wk - W, W: Wk, D, alpha: 270, main: middle || (n % 2 === 0 && k === 0) });
+      }
+      return ws.sort((a, c) => (c.main ? 1 : 0) - (a.main ? 1 : 0));
+    }
+    default:
+      return [main];
+  }
+}
+
+// Floor cells (2 m, keyed by centre) and the outside edges of their union.
+function cellsOf(wings) {
+  const cells = new Map();
+  for (const w of wings) {
+    const a = w.alpha === 270 || w.alpha === 90;
+    const hx = a ? w.D : w.W, hz = a ? w.W : w.D;
+    for (let x = w.cx - hx + 1; x < w.cx + hx; x += 2) for (let z = w.cz - hz + 1; z < w.cz + hz; z += 2) cells.set(`${x},${z}`, [x, z]);
+  }
+  return cells;
+}
+function edgesOf(cells) {
+  const out = [];
+  for (const [, [x, z]] of cells) {
+    for (const [dx, dz, yaw, inYaw] of [[0, -2, 0, 0], [0, 2, 0, 180], [-2, 0, 90, 90], [2, 0, 90, 270]]) {
+      if (cells.has(`${x + dx},${z + dz}`)) continue;
+      out.push({ x: x + dx / 2, z: z + dz / 2, yaw, inYaw, out: [dx / 2, dz / 2], cell: [x, z] });
+    }
+  }
+  return out;
+}
+function vertsOf(edges) {
+  const m = new Map();
+  for (const e of edges) {
+    const ux = e.yaw === 0 ? 1 : 0, uz = e.yaw === 0 ? 0 : 1;
+    for (const s of [-1, 1]) { const x = e.x + s * ux, z = e.z + s * uz; m.set(`${x},${z}`, [x, z]); }
+  }
+  return [...m.values()];
+}
+// yaw of a slope piece whose low edge faces out (rises toward the building), from the edge's outward direction
+function slopeYaw(out) { return out[1] < 0 ? 180 : out[1] > 0 ? 0 : out[0] < 0 ? 270 : 90; }
+
+// ---------------------------------------------------------------- generator
+
+function generate(req) {
+  const type = S.TYPES[req.type] ? req.type : 'home';
+  const T = { ...S.TYPES[type] };
+  const biome = S.BIOMES.includes(req.biome) ? req.biome : 'Meadows';
+  const seed = req.seed ?? 1;
+  const cultureKey = S.CULTURES[req.culture] ? req.culture : S.cultureFor(biome, rng(seed * 104729 + type.length * 13 + 7));
+  const C = { ...S.CULTURES[cultureKey], biome };
+  const stage = ['s1', 's2', 's3'].includes(req.stage) ? req.stage : 's1';
+  const decor = ['d1', 'd2', 'd3'].includes(req.decor) ? req.decor : 'd2';
+  const R = rng(seed * 7919 + type.length * 31 + stage.charCodeAt(1) * 7 + cultureKey.length);
+  const K = S.roofKit(S.kitFor(biome), C, biome);
+  const b = new Build();
+  const form = req.form || formFor(C, type, stage);
+  const info = { type, biome, cultureKey, stage, decor, seed, form };
+  // asked-for storeys, porch and pitch go into the name, so different requests never share a file name
+  info.asked = (req.storeys >= 1 && req.storeys <= 3 ? `-${Math.round(req.storeys)}st` : '') + (req.porch === true ? '-porch' : req.porch === false ? '-noporch' : '') + (req.pitch ? `-p${+req.pitch}` : '');
+  // Meadows and Black Forest villages build in wood at first; stone for later stages and for halls from s2 (D-012)
+  const early = (biome === 'Meadows' || biome === 'Black Forest') && (stage === 's1' || (stage === 's2' && !['longhouse', 'tavern', 'temple', 'tower'].includes(type)));
+  C.early = early;
+  const stoneOK = !!K.stoneWall && biome !== 'Meadows' && !early;
+  // a request may name the storeys (1 to 3) and ask for a porch or none; otherwise the culture and type decide
+  const askedStoreys = req.storeys >= 1 && req.storeys <= 3 ? Math.round(req.storeys) : null;
+  const storeysOf = () => askedStoreys || (C.storeys && C.storeys[type] && C.storeys[type][stage]) || T.storeys[stage];
+
+  if (T.well) return finish(wellDesign(b, K, biome, stage), info);
+  if (T.camp && !form) return finish(campDesign(b, K, biome, stage, R, decor), info);
+
+  let plan = req.plan && req.plan !== 'auto' ? req.plan : null;
+
+  // ---- round forms: round houses, crannogs, goahti, lavvu, yurts, round towers
+  if (['round', 'tent', 'yurt'].includes(form) || plan === 'octagon' || (!plan && T.camp)) {
+    const kind = form === 'tent' || form === 'yurt' ? form : (T.camp ? 'tent' : 'round');
+    const [bx, bz] = T.bays[stage];
+    const avg = Math.round((bx + bz) / 2);
+    const side = (C.size && C.size[type] && C.size[type][stage]) || (avg >= 7 ? 6 : avg >= 4 ? 4 : 2);
+    const storeys = T.tower ? T.storeys[stage] : 1;
+    const r = kind === 'yurt' ? 1 : (C.pitch === 26 && kind === 'round' ? 1 : 2);
+    const SH = T.tower ? 3 : 2;
+    const F = C.stilts ? (C.stiltH || 2) : (T.raised || C.raised ? 1 : 0);
+    let wallStyle = req.walls && req.walls !== 'auto' ? req.walls : wallStyleFor(R, C, cultureKey, biome);
+    if (T.tower && stoneOK) wallStyle = 'stone';
+    if (/stone/.test(wallStyle) && !stoneOK && !reaches(biome, 'Swamp')) wallStyle = 'plank';
+    C.wallStyle = wallStyle;
+    const Kr = kind === 'tent' && reaches(biome, 'Swamp') ? { ...K, ...S.ROOF_SETS.dark } : K;
+    octagonDesign(b, Kr, C, { side, F, SH, storeys, r, T, kind, stage, deck: C.stilts ? (C.deck || 2) : 0,
+      walk: C.boardwalk ? { s1: 6, s2: 8, s3: 10 }[stage] : 0, fence: !!C.stilts && stage === 's3' });
+    info.plan = 'octagon'; info.roof = kind === 'yurt' ? 'crown' : 'conical'; info.walls = kind === 'tent' ? 'none' : wallStyle;
+    Decor.decorate(b, { use: T.use, decor, biome, type, R, culture: cultureKey, doorX: b.doorX });
+    clearDoors(b);
+    return finish(b, info);
+  }
+
+  // ---- a square stone tower alone (Svan)
+  if (form === 'tower-svan') {
+    C.wallStyle = stoneOK ? 'stone' : 'plank';
+    towerAt(b, K, C, { cx: 0, cz: 0, n: 3, F: 0, storeys: { s1: 4, s2: 5, s3: 6 }[stage], SH: 3, door: 'front', use: 'guard' });
+    info.plan = 'square'; info.roof = 'hip'; info.walls = C.wallStyle;
+    b.notes.push('Square stone tower with wooden floors, slit windows and a low pyramid roof.');
+    Decor.decorate(b, { use: 'guard', decor, biome, type, R, culture: cultureKey, doorX: b.doorX });
+    clearDoors(b);
+    return finish(b, info);
+  }
+
+  // ---- plan and roof
+  if (form === 'sunken') Object.assign(C, { eaves: 2, porch: 0, pitch: 45 });
+  if (!plan) {
+    const fixed = { gables: 'gables', court: 'court', keep: 'square', svan: 'rect', drum: 'rect', stave: 'rect', sunken: 'rect' }[form];
+    if (fixed) plan = fixed;
+    else if (form === 'dome') plan = stage === 's1' ? 'square' : 'greek';
+    else if (C.courtyard && stage === 's3' && !T.tower && type === 'home') plan = 'U';
+    else {
+      const w = { ...((C.plans && C.plans[type] && C.plans[type][stage]) || (PLAN_BY_TYPE[type] || PLAN_BY_TYPE.home)[stage]) };
+      // round plans belong to Norse, Celtic, Black Forest and Mountain building in the corpus; flat-roofed styles never
+      if (!['norse', 'black-forest', 'mountain', 'swamp', 'norse-forest'].includes(cultureKey) && type !== 'tower') delete w.octagon;
+      if (!['home', 'tavern', 'smithy'].includes(type)) delete w.U;
+      if (form === 'raised' || form === 'open') { delete w.L; delete w.T; delete w.U; delete w.cross; delete w.octagon; }
+      plan = pick(R, Object.keys(w).length ? w : { rect: 1 });
+    }
+  }
+  let roofKind = req.roof && req.roof !== 'auto' ? req.roof : null;
+  if (!roofKind) {
+    if (plan === 'court') roofKind = 'flat';
+    else if (['gables', 'greek', 'nave'].includes(plan) || ['drum', 'stave', 'sunken', 'svan'].includes(form) || (form === 'dome')) roofKind = 'gable';
+    else if (form === 'keep') roofKind = stoneOK ? 'flat' : 'hip';
+    else roofKind = plan === 'octagon' ? 'conical' : pick(R, C.roofs || ROOF_BY_CULTURE[cultureKey] || { gable: 1 });
+  }
+  if (T.open === 'sides' && !req.roof && R() < 0.4) roofKind = 'shed';
+  if (plan === 'octagon' && roofKind !== 'flat') roofKind = 'conical';
+  if (plan !== 'octagon' && roofKind === 'conical') roofKind = 'hip';
+  if (roofKind === 'shed' && plan !== 'rect' && plan !== 'long' && plan !== 'square') plan = 'rect';
+  if (roofKind === 'hip' && ['gables', 'court', 'greek', 'nave', 'U'].includes(plan)) roofKind = 'gable';
+  let wallStyle = req.walls && req.walls !== 'auto' ? req.walls : wallStyleFor(R, C, cultureKey, biome);
+  if (form === 'keep') wallStyle = stoneOK ? 'stone' : (biome === 'Meadows' ? 'half-timber' : wallStyle);
+  if (form === 'stave') wallStyle = 'plank';
+  if (C.typeWalls && C.typeWalls[type] && !req.walls) wallStyle = C.typeWalls[type];
+  if (plan === 'gables') wallStyle = stoneOK ? 'stone' : 'plank';
+  C.wallStyle = wallStyle;
+  if (form === 'keep' && stoneOK) Object.assign(C, { stoneWalls: true, parapet: true });
+  if (form === 'open') T.open = 'all';
+  info.plan = plan; info.roof = roofKind; info.walls = wallStyle;
+
+  // ---- size
+  let [bx, bz] = (C.bays && C.bays[type] && C.bays[type][stage]) || T.bays[stage];
+  const wingOpts = {};
+  if (plan === 'gables') {
+    const n = { home: [1, 2, 3], longhouse: [2, 3, 3], tavern: [2, 3, 3], temple: [1, 1, 2] }[type] || [1, 1, 2];
+    const depth = { home: [4, 4, 5], longhouse: [5, 5, 6], tavern: [5, 5, 6], temple: [4, 5, 5] }[type] || [3, 3, 4];
+    const i = +stage[1] - 1;
+    Object.assign(wingOpts, { n: n[i], deeper: ['home', 'longhouse', 'tavern'].includes(type) && stage === 's3' });
+    bx = depth[i]; bz = 3;
+  } else if (plan === 'court') {
+    Object.assign(wingOpts, { Q: stage === 's3' && type !== 'home' ? 8 : 6, dW: 2 });
+    bx = wingOpts.Q; bz = 2;
+  } else if (form === 'keep') { bx = bz = { s1: 3, s2: 3, s3: 5 }[stage]; }
+  else if (form === 'dome') { bx = { s1: 3, s2: 5, s3: 7 }[stage]; bz = { s1: 3, s2: 3, s3: 5 }[stage]; }
+  else if (form === 'stave' || form === 'drum') { bx = { s1: 3, s2: 4, s3: 5 }[stage]; bz = 3; }
+  else if (form === 'sunken') { bx = { s1: 2, s2: 3, s3: 4 }[stage]; bz = 3; }
+  else {
+    if (plan === 'long') bx = Math.max(bx + 2, Math.round(bz * 2.4));
+    if (!T.tower && R() < 0.5 && plan !== 'square') bx += 1;
+    if (!T.tower && stage !== 's1' && R() < 0.3 && plan !== 'square') bz += 1;
+    if (bz % 2 === 0 && roofKind !== 'flat') bz += 1; // a ridge over a bay centre
+    if (plan === 'square') bx = bz = Math.max(bx, bz) % 2 ? Math.max(bx, bz) : Math.max(bx, bz) + 1;
+    if (roofKind === 'hip' && bx < bz) bx = bz;
+  }
+  let W = bx; const D = bz;
+  const storeys = form === 'open' ? 1 : ['keep'].includes(form) ? { s1: 2, s2: 3, s3: 3 }[stage] : ['stave', 'court', 'dome', 'drum', 'sunken', 'gables'].includes(form) || plan === 'gables' ? 1 : storeysOf();
+  let SH = T.low ? 2 : T.tower ? 3 : (['longhouse', 'tavern', 'temple'].includes(type) || stage === 's3') ? 3 : 2;
+  if (form === 'keep' || plan === 'court') SH = 3;
+  if (form === 'stave') SH = 4;
+  if (plan === 'gables' || form === 'sunken') SH = 2;
+  if (form === 'open') SH = 3;
+  if (C.storeyH && !T.low) SH = Math.max(SH, C.storeyH);
+  const flat = roofKind === 'flat';
+  const pitch = req.pitch || (T.low || roofKind === 'shed' ? 26 : (C.pitch || 45));
+  const r = +pitch === 45 ? 2 : 1;
+  const lookout = T.tower && !['keep'].includes(form);
+
+  // ---- foundation height
+  let F = 0;
+  const stoneBase = (C.plinth === 'stone' || (C.plinth === 'byBiome' && biome !== 'Meadows') || C.stoneGround) && K.plinth && !early;
+  const podklet = C.podklet && stage !== 's1' && ['home', 'longhouse', 'tavern'].includes(type);
+  if (plan === 'gables') F = 0; else if (T.dock) F = 1; else if (C.stilts) F = C.stiltH || 2; else if (podklet) F = 2; else if (form === 'raised') F = C.storeH || 1;
+  else if (T.raised || C.raised) F = C.stiltChance && R() < C.stiltChance ? 2 : 1; else if (stoneBase) F = C.plinthHigh ? 2 : 1;
+  const deck = C.stilts && plan !== 'octagon' ? (C.deck || 2) : 0;
+
+  const wings = wingsFor(plan, W, D, R, wingOpts);
+  W = wings[0].W; // a U plan may widen the main wing
+  const cells = cellsOf(wings);
+  const edges = edgesOf(cells);
+  const verts = vertsOf(edges);
+
+  // courtyard: cells next to the yard are a gallery; their yard side is an arcade
+  const Q = wingOpts.Q;
+  const inYard = (x, z) => plan === 'court' && Math.abs(x) < Q && Math.abs(z) < Q && !cells.has(`${x},${z}`);
+  const arcade = new Set(edges.filter(e => inYard(e.cell[0] + 2 * e.out[0], e.cell[1] + 2 * e.out[1])));
+  const gallery = new Set([...arcade].map(e => `${e.cell[0]},${e.cell[1]}`));
+
+  // footing: stilts and short posts on a grid, a log ground storey, or a stone course round the edge
+  if (F > 0) {
+    if (podklet) {
+      for (const e of edges) for (let y = 0; y < F - 0.01; y += 0.5) b.put('wood_wall_log', e.x, y + 0.25, e.z, e.yaw);
+      b.notes.push('Log ground storey (podklet) for storage under the living floor.');
+    } else if (C.stilts || T.dock || T.raised || C.raised || form === 'raised' || !stoneBase) {
+      const grid = new Map(verts.map(v => [`${v[0]},${v[1]}`, v]));
+      if (deck) for (const [, [x, z]] of cells) for (const dx of [-1, 1]) for (const dz of [-1, 1]) for (let k = 0; k <= 1; k++) { const vx = x + dx * (1 + k * 2), vz = z + dz * (1 + k * 2); grid.set(`${vx},${vz}`, [vx, vz]); }
+      for (const [, [x, z]] of grid) for (let y = 0; y < F - 0.01; y += (F >= 2 ? 2 : 1)) b.put(F >= 2 ? K.pole : K.pole1, x, y + (F >= 2 ? 1 : 0.5), z);
+    } else {
+      for (let y = 0.5; y < F; y += 1) for (const e of edges) b.put(K.plinth, e.x, y, e.z, e.yaw);
+    }
+  }
+
+  // floors (and a deck all round on stilts)
+  const floorPiece = (C.stoneWalls && K.stoneFloor && F === 0) ? K.stoneFloor : K.floor;
+  const floorY = floorPiece === 'stone_floor_2x2' ? F - 0.5 : F;
+  const floorCells = new Map(cells);
+  if (deck) for (const [, [x, z]] of cells) for (let dx = -deck; dx <= deck; dx += 2) for (let dz = -deck; dz <= deck; dz += 2) floorCells.set(`${x + dx},${z + dz}`, [x + dx, z + dz]);
+  for (const [k, [x, z]] of floorCells) b.put(cells.has(k) ? floorPiece : K.floor, x, cells.has(k) ? floorY : F, z);
+
+  // door: the front edge of the main wing nearest the middle; in a sunken hut, the middle of the left gable end
+  let door;
+  if (form === 'sunken') door = edges.filter(e => e.out[0] < 0 && inside(wings[0], e.cell[0], e.cell[1])).sort((a, c) => Math.abs(a.z) - Math.abs(c.z))[0];
+  if (!door) {
+    const front = edges.filter(e => e.out[1] < 0 && inside(wings[0], e.cell[0], e.cell[1])).sort((a, c) => Math.abs(a.x - wings[0].cx) - Math.abs(c.x - wings[0].cx));
+    door = front.length ? front[0] : edges.filter(e => e.out[1] < 0)[0] || edges[0];
+  }
+  const doorX = door.x, doorZ = door.z;
+  const backDoor = C.opposedDoors && !T.tower && form !== 'sunken'
+    ? edges.filter(e => e.out[1] > 0 && inside(wings[0], e.cell[0], e.cell[1])).sort((a, c) => Math.abs(a.x - doorX) - Math.abs(c.x - doorX))[0] : null;
+  if (backDoor) b.notes.push('Doors in the middle of both long sides.');
+
+  // walls, frame and top plates per storey
+  const open = T.open || null;
+  let top = F;
+  const hole = [...cells.values()].sort((a, c) => (c[0] + c[1]) - (a[0] + a[1]))[0];
+  for (let s = 0; s < storeys; s++) {
+    const y0 = F + s * SH;
+    if (s > 0) {
+      for (const [, [x, z]] of cells) if (!(x === hole[0] && z === hole[1])) b.put(K.floor, x, y0, z);
+      b.put(K.ladder, hole[0], y0 - SH / 2, hole[1], 180);
+    }
+    const isTopLookout = lookout && s === storeys - 1;
+    for (const e of edges) {
+      if (isTopLookout) { b.put(K.fence || K.wallQuarter, e.x, y0 + 0.5, e.z, e.yaw); continue; }
+      if (open === 'all') continue;
+      if (open === 'front' && e.out[1] < 0) continue;
+      if (open === 'sides' && !(e.out[1] > 0)) continue;
+      if (arcade.has(e)) continue;
+      const isDoor = s === 0 && (e === door || e === backDoor);
+      const isGate = T.bigDoor && s === 0 && e.out[1] < 0 && Math.abs(e.x - doorX) <= 2.01 && Math.abs(e.z - doorZ) < 0.1;
+      let isWindow = !isDoor && !isGate && (!T.tower || (form === 'keep' && s > 0)) && (Math.round((e.x + e.z) / 2) % 2 === 0) && Math.abs(e.x - doorX) + Math.abs(e.z - doorZ) > 2.5;
+      if (plan === 'gables' && e.out[1] >= 0) isWindow = false;
+      const style = C.frontWood && plan === 'gables' ? (e.out[1] < 0 ? 'plank' : null) : null;
+      wallSegment(b, K, C, e.x, y0, e.z, e.yaw, SH, isGate ? 'gate' : isDoor ? 'door' : isWindow ? 'window' : 'wall', style);
+    }
+    if (C.frame || open || T.tower || form === 'stave') for (const [x, z] of verts) {
+      for (let y = y0; y < y0 + SH - 0.01;) { const h = (y0 + SH - y) >= 2 ? 2 : 1; b.put(h === 2 ? framePole(K, C) : K.pole1, x, y + h / 2, z); y += h; }
+    }
+    for (const e of edges) b.put(K.beam, e.x, y0 + SH, e.z, e.yaw);
+    for (const w of wings) {
+      const a = w.alpha === 270;
+      const room = { x0: w.cx - (a ? w.D : w.W), x1: w.cx + (a ? w.D : w.W), z0: w.cz - (a ? w.W : w.D), z1: w.cz + (a ? w.W : w.D),
+        y: y0, h: SH, use: T.use, upper: s > 0, door: s === 0 && w.main ? { x: doorX, z: doorZ } : null, main: !!w.main, slots: [] };
+      for (const e of edges) {
+        if (!(e.cell[0] > room.x0 && e.cell[0] < room.x1 && e.cell[1] > room.z0 && e.cell[1] < room.z1)) continue;
+        if (s === 0 && Math.abs(e.x - doorX) + Math.abs(e.z - doorZ) < 1.8) continue;
+        if (backDoor && s === 0 && Math.abs(e.x - backDoor.x) + Math.abs(e.z - backDoor.z) < 1.8) continue;
+        if (open === 'all' || (open === 'front' && e.out[1] < 0) || (open === 'sides' && !(e.out[1] > 0)) || arcade.has(e)) continue;
+        const ux = e.yaw === 0 ? 1 : 0, uz = e.yaw === 0 ? 0 : 1, nx = -e.out[0], nz = -e.out[1];
+        for (const t of [-0.5, 0.5]) room.slots.push({ x: e.x + ux * t, z: e.z + uz * t, y: y0, yaw: e.inYaw, nx, nz });
+      }
+      if (s > 0) room.hole = hole;
+      if (form === 'open') delete room.slots; // no walls: things stand along the edges of the floor
+      b.rooms.push(room);
+    }
+    top = y0 + SH;
+  }
+  b.doorX = doorX;
+
+  // courtyard: walls between the gallery and the rooms behind it, one door per wing, the arcade on the yard side
+  if (plan === 'court') {
+    const inner = [];
+    for (const k of gallery) {
+      const [x, z] = k.split(',').map(Number);
+      for (const [dx, dz] of [[2, 0], [-2, 0], [0, 2], [0, -2]]) {
+        const nk = `${x + dx},${z + dz}`;
+        if (cells.has(nk) && !gallery.has(nk)) inner.push({ x: x + dx / 2, z: z + dz / 2, yaw: dx ? 90 : 0 });
+      }
+    }
+    const doors = new Set();
+    wings.forEach((w, i) => {
+      const own = inner.filter(e => inside(w, e.x, e.z, 0.01));
+      const target = i === 0 ? [doorX, w.cz] : [w.cx, w.cz];
+      own.sort((a, c) => Math.hypot(a.x - target[0], a.z - target[1]) - Math.hypot(c.x - target[0], c.z - target[1]));
+      if (own[0]) doors.add(own[0]);
+    });
+    for (const e of inner) wallSegment(b, K, C, e.x, F, e.z, e.yaw, SH, doors.has(e) ? 'door' : 'wall');
+    arcadeAlong(b, K, [...arcade], F, SH);
+    b.notes.push('Rooms on four sides of a yard, an arcade on the yard side.');
+  }
+
+  // inner aisle posts for halls
+  if (T.aisles && D >= 3 && plan === 'long') for (let x = -W + 2; x <= W - 2; x += 2) for (const z of [-(D - 2), D - 2])
+    for (let y = F; y < top - 0.01; y += 2) b.put(framePole(K, C), x, y + 1, z);
+
+  // ---- roof
+  const fireInside = ['hall', 'home', 'smithy', 'temple'].includes(T.use) && !T.tower;
+  const roofTop = lookout ? F + (storeys - 1) * SH + 3 : top;
+  // places where a drum, a dome or a tower stands instead of roof
+  const holes = [];
+  const domeCfg = form === 'dome' ? { x: 0, z: 0, side: D >= 5 ? 4 : 2 } : form === 'drum' ? { x: 0, z: 0, side: 2 } : null;
+  if (domeCfg) { const ap = domeCfg.side / 2 / Math.tan(Math.PI / 8); holes.push({ x0: -ap - 0.6, x1: ap + 0.6, z0: -ap - 0.6, z1: ap + 0.6 }); }
+  if (form === 'dome' && plan === 'greek') holes.push({ x0: -D, x1: D, z0: -D, z1: D });
+  const svanTower = form === 'svan' && stage !== 's1' ? { cx: W - 3, cz: D + 3, n: 3 } : null;
+  if (svanTower) holes.push({ x0: W - 6, x1: W + 0.01, z0: D - 0.01, z1: D + 6 });
+  const inHole = p => holes.some(h => p.x > h.x0 && p.x < h.x1 && p.z > h.z0 && p.z < h.z1);
+  if (flat && !lookout) flatRoof(b, K, C, cells, edges, top, F, SH, biome);
+  else if (roofKind === 'shed') shedRoof(b, K, wings[0], roofTop, r);
+  else {
+    const parts = [];
+    for (const w of wings) {
+      const others = wings.filter(o => o !== w);
+      // a gable end is built unless it runs into a wing at least as wide (a narrower chancel or porch runs into it)
+      const ends = [-1, 1].map(sg => { const [x, z] = toWorld(w, sg * (w.W + 0.5), 0, 0); return !others.some(o => inside(o, x, z) && o.D >= w.D); });
+      const kind = roofKind === 'hip' && w.main && w.W >= w.D ? 'hip' : 'gable';
+      const vent = fireInside && w.main && !domeCfg ? (T.use === 'home' ? doorX : 0) : null;
+      parts.push(...(kind === 'hip' ? hipPieces(K, w, roofTop, r, C.eaves, { kick: C.kick }) : gablePieces(K, C, w, roofTop, r, ends, vent)));
+    }
+    // where wings cross, keep the higher roof so the lower roof runs into the higher one
+    const placed = new Set();
+    for (const p of parts) {
+      const key = `${p.name}|${Math.round(p.x * 100)}|${Math.round(p.y * 100)}|${Math.round(p.z * 100)}|${Math.round(p.yaw) % 360}`;
+      if (placed.has(key)) continue; // two wings can lay the same piece where they meet
+      placed.add(key);
+      if (inHole(p) && p.role !== 'gable') continue;
+      const hidden = wings.some(o => o !== p.wing && inside(o, p.x, p.z, -0.2) && p.surf < surfaceAt(o, p.x, p.z, roofTop, r) - 0.25);
+      if (!hidden) b.put(p.name, p.x, p.y, p.z, p.yaw);
+    }
+    if (fireInside && !domeCfg) b.notes.push('Ridge cap left open over the fire for smoke.');
+  }
+
+  // porch at the front door: one or three bays wide, on the grid, never on top of a wing
+  const porchFits = !flat && roofKind !== 'shed' && !T.dock && !T.tower && !['U', 'cross', 'court', 'gables', 'greek'].includes(plan) && !deck && !podklet && form !== 'sunken';
+  if (req.porch === true && !porchFits) b.notes.push('No porch: this plan, roof or form has no front for one.');
+  if (req.porch === true ? porchFits : req.porch !== false && !flat && roofKind !== 'shed' && !T.dock && !T.tower && C.porch && R() < C.porch + (stage === 's1' ? -0.3 : 0.2) && porchFits) {
+    const h = R() < 0.5 ? 0 : 1, zf = doorZ;
+    const bays = [];
+    for (let k = -h; k <= h; k++) { const x = doorX + 2 * k; if (!cells.has(`${x},${zf - 1}`) && !cells.has(`${x},${zf - 3}`)) bays.push(x); }
+    if (bays.length) {
+      const posts = new Set();
+      for (const x of bays) { b.put(K.floor, x, F, zf - 1); posts.add(x - 1); posts.add(x + 1); }
+      const taken = new Set(verts.map(([vx, vz]) => `${vx},${vz}`));
+      for (const x of posts) {
+        if (taken.has(`${x},${zf - 2}`)) continue; // a wing's corner post already stands here
+        for (let y = 0; y < F - 0.01; y += 1) b.put(K.pole1, x, y + 0.5, zf - 2);
+        b.put(framePole(K, C), x, F + 1, zf - 2);
+      }
+      for (const x of bays) b.put((biome === 'Meadows' || biome === 'Black Forest') ? K.roof26 : 'darkwood_roof', x, F + 2, zf - 1, 180);
+    }
+  }
+
+  // a way up to a raised door: a landing and a stair from the ground (2 m up), or a stair at the front of a deck
+  if (F >= 1.99 && door.out[1] < 0 && !T.tower) {
+    if (deck) {
+      const zEdge = Math.min(...[...floorCells.values()].map(([, z]) => z)) - 1;
+      stairUp(b, K, doorX, zEdge, F);
+    } else if (!C.boardwalk) {
+      b.put(K.floor, doorX, F, doorZ - 1);
+      for (const x of [doorX - 1, doorX + 1]) for (let y = 0; y < F - 0.01; y += 1) b.put(K.pole1, x, y + 0.5, doorZ - 2);
+      stairUp(b, K, doorX, doorZ - 2, F);
+    }
+  }
+  if (C.boardwalk && door.out[1] < 0 && !T.tower) {
+    boardwalk(b, K, doorX, doorZ, Math.max(F, 0), { s1: 4, s2: 6, s3: 8 }[stage]);
+    b.notes.push('Timber walkway out from the door; lay it over wet ground or water.');
+  }
+
+  // desert houses: a well in the yard of a U plan, a tall stone tower at a back corner of large ones
+  if (cultureKey === 'middle-eastern' && !T.tower && plan !== 'court') {
+    if (plan === 'U') {
+      // pave the yard between the wings
+      const zmin = wings[1].cz - wings[1].W;
+      const pave = K.stoneFloor || K.floor;
+      for (let x = -W + 1; x < W; x += 2) for (let z = zmin + 1; z < -D; z += 2)
+        if (!cells.has(`${x},${z}`)) b.put(pave, x, pave === 'stone_floor_2x2' ? -0.5 : 0, z);
+      const yz = Math.round((zmin - D) / 2);
+      const well = new Build(); wellDesign(well, K, biome, 's1');
+      for (const p of well.pieces) b.put(p.name, p.x, p.y, p.z + yz, p.yaw);
+    }
+    if ((stage === 's3' && type === 'home') || type === 'temple') {
+      stoneTowerAt(b, K, W + 1, D - 1, top + 6, F);
+      b.notes.push('Tall stone tower at a back corner, after the desert style.');
+    }
+  }
+  if (plan === 'court') {
+    const yard = Q - 2 * wingOpts.dW, pave = K.stoneFloor || K.floor;
+    for (let x = -yard + 1; x < yard; x += 2) for (let z = -yard + 1; z < yard; z += 2) b.put(pave, x, pave === 'stone_floor_2x2' ? -0.5 : 0, z);
+    const well = new Build(); wellDesign(well, K, biome, 's1');
+    for (const p of well.pieces) b.put(p.name, p.x, p.y, p.z, p.yaw);
+    if (stage === 's3' && type !== 'home') {
+      for (const sx of [-1, 1]) for (const sz of [-1, 1]) stoneTowerAt(b, K, sx * (Q + 1), sz * (Q + 1), top + 2, 0, true);
+      b.notes.push('Corner towers, after the caravanserais.');
+    }
+  }
+
+  // forms that add to the shell
+  if (domeCfg) {
+    const ap = domeCfg.side / 2 / Math.tan(Math.PI / 8);
+    if (form === 'dome') {
+      // four columns at the corners of the middle bay carry the ceiling the drum stands on
+      for (const sx of [-1, 1]) for (const sz of [-1, 1]) column(b, K, sx * 2, sz * 2, F, top);
+    }
+    const ceiling = [...cells.values()].filter(([x, z]) => Math.abs(x) < ap + 1 && Math.abs(z) < ap + 1 && !(Math.abs(x) < 1.01 && Math.abs(z) < 1.01));
+    const capY = capOf(wings[0], top, r);
+    const h = Math.max(2, Math.ceil(capY - top) + (form === 'drum' ? 3 : 2));
+    domeOn(b, K, C, { x: 0, z: 0, side: domeCfg.side, y: top, h, ceiling, cone: form === 'drum' });
+    b.notes.push(form === 'dome' ? 'Dome on a drum over the crossing, stepped from vanilla roof rings.' : 'Drum with a cone over the middle of the hall.');
+  }
+  if (form === 'stave') {
+    skirtRoof(b, K, edges, F + 2);
+    b.notes.push('Low gallery roof all round on posts, after the stave churches.');
+  }
+  if (form === 'keep' && stoneOK) {
+    // flat buttresses at the middle of each side, the full height of the walls
+    for (const e of edges) {
+      const mid = e.yaw === 0 ? Math.abs(e.x) < 1.01 : Math.abs(e.z) < 1.01;
+      if (!mid || e === door) continue;
+      for (let y = 0.5; y < top; y += 1) b.put(K.stoneBlock || 'stone_wall_1x1', e.x + e.out[0], y, e.z + e.out[1], e.yaw);
+    }
+    b.notes.push('Stone keep with flat buttresses and a parapet; Norman keeps often had their door on the first floor.');
+  }
+  if (svanTower) {
+    const houseTop = top;
+    towerAt(b, K, C, { cx: svanTower.cx, cz: svanTower.cz, n: 3, F, storeys: stage === 's3' ? 5 : 4, SH: 3, door: 'right', use: 'guard',
+      skip: (e, y0, sh) => e.out[1] < 0 && y0 + sh <= houseTop + 0.01 });
+    b.notes.push('Tall square tower at a back corner of the house.');
+  }
+
+  if (T.dock) dockDesign(b, K, W, D, F, stage);
+  if (T.field) fieldDesign(b, K, W, D, biome, stage, R);
+  if (T.pen) penDesign(b, K, W, D, stage);
+  if (roofKind === 'gable' && plan !== 'gables' && ((C.dragons && ['longhouse', 'temple', 'tavern'].includes(type)) || (C.carved && stage !== 's1')))
+    for (const sx of [-1, 1]) b.put('wood_dragon1', sx * (W + 0.6), roofTop + r * (D - 1) / 2 + 0.3, 0, sx > 0 ? 90 : 270);
+
+  Decor.decorate(b, { use: T.use, decor, biome, type, R, culture: cultureKey, doorX: b.doorX });
+  clearDoors(b);
+  return finish(b, info);
+}
+
+// Last pass: take out any furniture standing in a doorway, inside or out.
+function clearDoors(b) {
+  const Ck = NODE ? require('./checks.js') : window.VHChecks;
+  const doors = b.pieces.filter(p => /door|gate/.test(p.name));
+  b.pieces = b.pieces.filter(p => {
+    if (!p.decor) return true;
+    const bx = Ck.aabb(p);
+    return !doors.some(d => [-1, 1].some(sg => {
+      const a = (d.yaw || 0) * Math.PI / 180, px = d.x + sg * Math.sin(a) * 1.1, pz = d.z + sg * Math.cos(a) * 1.1;
+      return bx.x0 <= px + 0.3 && bx.x1 >= px - 0.3 && bx.z0 <= pz + 0.3 && bx.z1 >= pz - 0.3 && bx.y0 <= d.y + 0.6 && bx.y1 >= d.y - 1.1;
+    }));
+  });
+}
+
+function finish(b, info) {
+  const name = `${info.type}_${info.biome.replace(' ', '')}_${info.cultureKey}_${info.plan || 'x'}-${info.roof || 'x'}-${info.walls || 'x'}${info.asked || ''}_${info.stage}${info.decor}_${info.seed}`;
+  return {
+    meta: { Name: name, Creator: 'Villheim generator', Category: 'Villheim generated',
+      Description: `${S.TYPES[info.type].label}, ${info.biome}, ${S.CULTURES[info.cultureKey].label}, ${info.plan || ''} plan, ${info.roof || ''} roof, ${info.walls || ''} walls, ${info.stage}${info.decor}, seed ${info.seed}` },
+    pieces: b.pieces, rooms: b.rooms, notes: [...new Set(b.notes)], request: info,
+  };
+}
+
+// ---------------------------------------------------------------- walls
+
+function framePole(K, C) { return C.darkFrame ? 'darkwood_pole' : (K.pole || 'wood_pole2'); }
+
+// Door piece: a hanging cloth door where the culture uses one and red jute is in reach (Mountain on), else wood.
+function doorPiece(K, C) {
+  return (C.clothDoor || C.arches) && reaches(C.biome || 'Meadows', 'Mountain') ? 'piece_cloth_hanging_door' : K.door;
+}
+
+// One 2 m wall bay. Wall styles: plank, half-timber (plank with a 45 degree brace across the bay), log,
+// stone, stone-base (a metre of stone, then plank), marble, grausten.
+function wallSegment(b, K, C, x, y0, z, yaw, SH, kind, styleOverride) {
+  const style = styleOverride || C.wallStyle || 'plank';
+  const plank = K.floor === 'ashwood_floor_2x2' ? 'ashwood_wall_2x2' : 'woodwall';
+  const stonePiece = K.stoneWall || 'stone_wall_2x1';
+  const stoneCourse = /2x2/.test(stonePiece) ? 2 : 1;
+  const pieceFor = y => {
+    if (style === 'stone' || style === 'marble' || style === 'grausten') return [stonePiece, stoneCourse];
+    if (style === 'stone-base' && y < y0 + 0.99) return [stoneCourse === 1 ? stonePiece : 'stone_wall_2x1', 1];
+    if (style === 'log') return ['wood_wall_log', 0.5];
+    return [plank, 2];
+  };
+  const fill = (from, to) => {
+    let y = from;
+    while (to - y > 0.01) {
+      const left = to - y;
+      const [main, course] = pieceFor(y);
+      if (course <= left + 0.01) { b.put(main, x, y + course / 2, z, yaw); y += course; }
+      else if (left >= 0.99 && main !== 'wood_wall_log') { b.put(course === 1 ? main : K.wallHalf, x, y + 0.5, z, yaw); y += 1; }
+      else { b.put(main === 'wood_wall_log' ? main : K.wallQuarter, x, y + Math.min(0.5, left) / 2, z, yaw); y += 0.5; }
+    }
+  };
+  if (kind === 'door' || kind === 'gate') {
+    b.put(kind === 'gate' ? (K.gate || K.door) : doorPiece(K, C), x, y0 + 1, z, yaw);
+    fill(y0 + 2, y0 + SH); return;
+  }
+  if (kind === 'window' && SH >= 2) {
+    fill(y0, y0 + 1);
+    if (K.glass && C.glass) { const dx = Math.cos(yaw * Math.PI / 180) * 0.5, dz = -Math.sin(yaw * Math.PI / 180) * 0.5; b.put(K.glass, x - dx, y0 + 1.5, z - dz, yaw); b.put(K.glass, x + dx, y0 + 1.5, z + dz, yaw); }
+    else if (!C.arches && !C.stoneWalls) b.put(K.wallQuarter, x, y0 + 1.75, z, yaw);
+    fill(y0 + 2, y0 + SH); return;
+  }
+  fill(y0, y0 + SH);
+  if (style === 'half-timber' && SH >= 2) {
+    const brace = C.darkFrame || /darkwood/.test(K.beam || '') ? 'darkwood_beam_45' : 'wood_beam_45';
+    const flip = Math.round(x + z) % 4 === 0 ? 180 : 0; // braces lean both ways along a wall
+    b.put(brace, x, y0 + 1, z, yaw + flip);
+  }
+}
+
+// A column from the floor to a ceiling: a stone block, then 2 m stone pillars (measured: the pillar stands on a 1 m
+// block, its centre 1.5 m above the block's); black marble columns are 1 m tall and stack.
+function column(b, K, x, z, y0, y1) {
+  if (/blackmarble/.test(K.stoneWall || '')) { for (let y = y0; y < y1 - 0.01; y += 1) b.put('blackmarble_column_1', x, y + 0.5, z); return; }
+  let y = y0;
+  if ((y1 - y0) % 2 === 1) { b.put(K.stoneBlock || 'stone_wall_1x1', x, y + 0.5, z); y += 1; }
+  for (; y < y1 - 0.01; y += 2) b.put(K.stonePillar || 'stone_pillar', x, y + 1, z);
+}
+
+// Arcade along the yard edges of a courtyard. Black marble: a column at every 2 m and an arch over each bay.
+// Stone (measured in the corpus): a block, a 2 m pillar on it, a 2 m arch between pillars 3 m apart, its top level
+// with the pillar tops; the run is centred on its side of the yard.
+function arcadeAlong(b, K, edges, y0, SH) {
+  const marble = /blackmarble/.test(K.stoneWall || '');
+  const runs = new Map();
+  for (const e of edges) {
+    const key = e.yaw === 0 ? `z${e.z}` : `x${e.x}`;
+    if (!runs.has(key)) runs.set(key, { yaw: e.yaw, fixed: e.yaw === 0 ? e.z : e.x, lo: Infinity, hi: -Infinity });
+    const r = runs.get(key), t = e.yaw === 0 ? e.x : e.z;
+    r.lo = Math.min(r.lo, t - 1); r.hi = Math.max(r.hi, t + 1);
+  }
+  const at = (r, t) => (r.yaw === 0 ? [t, r.fixed] : [r.fixed, t]);
+  for (const r of runs.values()) {
+    if (marble) {
+      for (let t = r.lo; t <= r.hi + 0.01; t += 2) { const [x, z] = at(r, t); column(b, K, x, z, y0, y0 + SH - 2); }
+      for (let t = r.lo + 1; t < r.hi; t += 2) { const [x, z] = at(r, t); b.put('blackmarble_arch', x, y0 + SH - 1, z, r.yaw); }
+    } else if (K.stonePillar) {
+      const n = Math.max(1, Math.floor((r.hi - r.lo) / 3)), mid = (r.lo + r.hi) / 2, start = mid - n * 1.5;
+      for (let k = 0; k <= n; k++) { const [x, z] = at(r, start + 3 * k); column(b, K, x, z, y0, y0 + SH); }
+      for (let k = 0; k < n; k++) { const [x, z] = at(r, start + 3 * k + 1.5); b.put(K.stoneArch || 'stone_arch', x, y0 + SH - 0.5, z, r.yaw); }
+    } else {
+      for (let t = r.lo; t <= r.hi + 0.01; t += 2) { const [x, z] = at(r, t); for (let y = y0; y < y0 + SH - 0.01; y += 1) b.put(K.pole1, x, y + 0.5, z); }
+    }
+  }
+}
+
+// ---------------------------------------------------------------- roofs
+
+function capOf(w, top, r) { return top + r * (w.D - 1) / 2; }
+// height of a wing's roof surface over a world point (for crossing wings)
+function surfaceAt(w, x, z, top, r) {
+  const a = w.alpha * Math.PI / 180, dx = x - w.cx, dz = z - w.cz;
+  const v = Math.abs(dx * Math.sin(a) + dz * Math.cos(a));
+  return capOf(w, top, r) - (r / 2) * Math.max(0, v - 1);
+}
+
+function gablePieces(K, C, w, top, r, ends, vent) {
+  const roof = r === 2 ? K.roof45 : K.roof26, roofTop = r === 2 ? K.roofTop45 : K.roofTop26, gable = r === 2 ? K.gable45 : K.gable26;
+  const capY = capOf(w, top, r), low = i => capY - r * (i + 1), pivot = i => low(i) + (r === 2 ? 1 : 0);
+  const wallRow = (w.D - 3) / 2, rows = wallRow + (r === 1 ? 1 : 0) + ((C.eaves || 1) > 1 ? 1 : 0);
+  const out = [], add = (name, u, y, v, yaw, role, surf) => { const [x, z, wy] = toWorld(w, u, v, yaw); out.push({ name, x, y, z, yaw: wy, role, surf, wing: w }); };
+  const kick = C.kick && r === 2 && (C.eaves || 1) > 1;
+  for (let u = -w.W + 1; u < w.W; u += 2) {
+    for (let i = 0; i <= rows; i++) {
+      const v = 2 + 2 * i, surf = low(i) + r / 2;
+      if (kick && i === rows) { const y = low(i - 1) - 1; add(K.roof26, u, y, -v, 180, 'roof', y + 0.5); add(K.roof26, u, y, v, 0, 'roof', y + 0.5); continue; }
+      add(roof, u, pivot(i), -v, 180, 'roof', surf); add(roof, u, pivot(i), v, 0, 'roof', surf);
+    }
+    const [vx] = toWorld(w, u, 0, 0);
+    if (vent == null || Math.abs(vx - vent) > 1.01) add(roofTop, u, capY, 0, 0, 'cap', capY + 0.3);
+  }
+  [-1, 1].forEach((sg, k) => {
+    if (!ends[k]) return;
+    const u = sg * w.W;
+    gableFill(K, add, u, top, 0, capY - top, C.stoneWalls);
+    for (let i = 0; i <= wallRow; i++) for (const sv of [-1, 1]) {
+      const v = sv * (2 + 2 * i);
+      gableFill(K, add, u, top, v, low(i) - top, C.stoneWalls);
+      add(gable, u, low(i), v, sv < 0 ? 270 : 90, 'gable', low(i) + r);
+    }
+  });
+  return out;
+}
+function gableFill(K, add, u, from, v, h, stone) {
+  const wall = /^(wood_wall_log|blackmarble|stone|Piece_grausten)/.test(K.wall) ? 'woodwall' : K.wall;
+  const course = stone && K.stoneWall ? (/2x2/.test(K.stoneWall) ? 2 : 1) : 0;
+  let y = from;
+  while (h - (y - from) > 0.01) {
+    const left = h - (y - from);
+    if (course && left >= course - 0.01) { add(K.stoneWall, u, y + course / 2, v, 90, 'gable', y + course); y += course; continue; } // masonry gable in courses
+    if (left >= 2) { add(wall, u, y + 1, v, 90, 'gable', y + 2); y += 2; }
+    else if (left >= 1) { add(K.wallHalf, u, y + 0.5, v, 90, 'gable', y + 1); y += 1; }
+    else { add(K.wallQuarter, u, y + 0.25, v, 90, 'gable', y + 0.5); y += 0.5; }
+  }
+}
+
+// Hip roof: rings of rows on all four sides with corner pieces, a ridge along what is left (needs W >= D).
+// Corner yaw per corner from the corpus: front-left 180, front-right 90, back-right 0, back-left 270, each on its
+// row's low edge (lab/offsets.js: ocorner to roof). eaves 2 adds a ring past the walls (fen and longhouse roofs).
+function hipPieces(K, w, top, r, eaves, o = {}) {
+  const roof = r === 2 ? K.roof45 : K.roof26, roofTop = r === 2 ? K.roofTop45 : K.roofTop26;
+  const corner = r === 2 ? (K.roof45 || '').replace('_45', '_ocorner_45') : (K.roof26 || '') + '_ocorner';
+  const capY = capOf(w, top, r), low = i => capY - r * (i + 1), pivot = i => low(i) + (r === 2 ? 1 : 0);
+  const Xr = w.W - w.D, rows = (w.D - 3) / 2 + (r === 1 && !o.tight ? 1 : 0) + ((eaves || 1) > 1 ? 1 : 0);
+  const kick = o.kick && r === 2 && (eaves || 1) > 1;
+  const out = [], add = (name, u, y, v, yaw, role, surf) => { const [x, z, wy] = toWorld(w, u, v, yaw); out.push({ name, x, y, z, yaw: wy, role, surf, wing: w }); };
+  for (let u = -Xr; u <= Xr + 0.01; u += 2) add(roofTop, u, capY, 0, 0, 'cap', capY + 0.3);
+  for (let i = 0; i <= rows; i++) {
+    const d = 2 + 2 * i, k = kick && i === rows;
+    // a kicked eave ring is a 26 degree ring hanging from the 45 degree ring above it
+    const pc = k ? K.roof26 : roof, cn = k ? (K.roof26 || '') + '_ocorner' : corner, ly = k ? low(i - 1) - 1 : low(i), py = k ? ly : pivot(i);
+    const surf = k ? ly + 0.5 : low(i) + r / 2;
+    for (let u = -(Xr + 2 * i); u <= Xr + 2 * i + 0.01; u += 2) { add(pc, u, py, -d, 180, 'roof', surf); add(pc, u, py, d, 0, 'roof', surf); }
+    for (let v = -2 * i; v <= 2 * i + 0.01; v += 2) { add(pc, -(Xr + d), py, v, 270, 'roof', surf); add(pc, Xr + d, py, v, 90, 'roof', surf); }
+    add(cn, -(Xr + d), ly, -d, 180, 'roof', surf); add(cn, Xr + d, ly, -d, 90, 'roof', surf);
+    add(cn, Xr + d, ly, d, 0, 'roof', surf); add(cn, -(Xr + d), ly, d, 270, 'roof', surf);
+  }
+  return out;
+}
+
+// Shed roof: one slope rising toward the back wall, side and back walls built up under it.
+function shedRoof(b, K, w, top, r) {
+  const roof = r === 2 ? K.roof45 : K.roof26, gable = r === 2 ? K.gable45 : K.gable26;
+  const rows = w.D + 1;
+  const lowAt = i => top + r * (i - 1); // row 0 hangs over the front wall, row 1 starts at it
+  for (let u = -w.W + 1; u < w.W; u += 2) for (let i = 0; i < rows; i++) b.put(roof, u, lowAt(i) + (r === 2 ? 1 : 0), -w.D - 1 + 2 * i, 180);
+  for (const sx of [-w.W, w.W]) for (let i = 1; i < rows; i++) {
+    const v = -w.D - 1 + 2 * i;
+    if (Math.abs(v) >= w.D) continue;
+    for (let y = top; y < lowAt(i) - 0.01; y += 1) b.put(K.wallHalf, sx, y + 0.5, v, 90);
+    b.put(gable, sx, lowAt(i), v, 270);
+  }
+  const backY = lowAt(rows - 1);
+  for (let u = -w.W + 1; u < w.W; u += 2) for (let y = top; y < backY - 0.01; y += 1) b.put(K.wallHalf, u, y + 0.5, w.D, 0);
+  b.notes.push('Shed roof rising to the back.');
+}
+
+function flatRoof(b, K, C, cells, edges, top, F, SH, biome) {
+  for (const [, [x, z]] of cells) b.put(K.floor, x, top, z);
+  if (C.parapet) for (const e of edges) {
+    if (C.stoneWalls && K.stoneBlock) {
+      const ux = e.yaw === 0 ? 1 : 0, uz = e.yaw === 0 ? 0 : 1;
+      b.put(K.stoneBlock, e.x - ux * 0.5, top + 0.5, e.z - uz * 0.5, e.yaw); // a block every other metre
+    } else b.put(K.wallQuarter, e.x, top + 0.25, e.z, e.yaw);
+  }
+  if (C.awnings) for (const e of edges.filter(e => e.out[1] < 0)) b.put((biome === 'Meadows' || biome === 'Black Forest') ? K.roof26 : 'darkwood_roof', e.x, F + SH - 1, e.z - 1, 180);
+  const last = [...cells.values()].pop();
+  b.put(K.ladder, last[0], top - SH / 2, last[1], 0);
+}
+
+// Ring roof over a round plan: each ring 2 m further in and one row higher, pieces turned to rise toward the middle.
+// rs: rise per ring (2 for 45 degrees, 1 for 26), the last value repeating. With eave the first ring hangs 2 m past
+// the wall; without it the first ring starts at the wall top (drums and domes). gap leaves the first ring open
+// either side of the front (a tent's doorway). Returns the height of the top ring's inner edge.
+function ringRoof(b, K, ap, top, rs, o = {}) {
+  const eave = o.eave !== false;
+  let low = eave ? top - rs[0] : top;
+  for (let i = 0; ; i++) {
+    const rho = (eave ? ap + 1 : ap - 1) - 2 * i;
+    if (rho < 1.2) break;
+    const r = rs[Math.min(i, rs.length - 1)], roof = r === 2 ? K.roof45 : K.roof26;
+    const n = Math.max(4, Math.ceil(2 * Math.PI * rho / 1.7)); // a little overlap so the ring has no gaps
+    for (let k = 0; k < n; k++) {
+      const phi = k * 360 / n, pr = phi * Math.PI / 180;
+      if (o.gap && i === 0 && Math.abs(phi - 180) < o.gap) continue;
+      b.put(roof, (o.x || 0) + Math.sin(pr) * rho, low + (r === 2 ? 1 : 0), (o.z || 0) + Math.cos(pr) * rho, phi);
+    }
+    low += r;
+  }
+  return low;
+}
+
+// ---------------------------------------------------------------- octagon (round houses, crannogs, tents, yurts, round towers)
+
+function octagonDesign(b, K, C, o) {
+  const { F, SH, storeys, r, T, kind } = o;
+  const side = o.side;                                // wall length per side (2, 4 or 6 m)
+  const ap = side / 2 / Math.tan(Math.PI / 8);        // apothem
+  const seg = side / 2;                               // 2 m walls per side
+  const tent = kind === 'tent';
+  const deckR = ap + (o.deck || 0);
+  const inOct = (x, z, Rr, m = 0) => [0, 45, 90, 135].every(a => Math.abs(x * Math.sin(a * Math.PI / 180) + z * Math.cos(a * Math.PI / 180)) <= Rr - m);
+  const Rr = Math.ceil(deckR);
+  const big = [];
+  let zFront = 0;
+  for (let x = -Rr + 1; x < Rr; x += 2) for (let z = -Rr + 1; z < Rr; z += 2) {
+    if (inOct(x, z, deckR, 0.99)) { b.put(K.floor, x, F, z); big.push([x, z]); zFront = Math.min(zFront, z - 1); }
+    else for (const dx of [-0.5, 0.5]) for (const dz of [-0.5, 0.5]) if (inOct(x + dx, z + dz, deckR, 0.45)) { b.put(K.floor1, x + dx, F, z + dz); zFront = Math.min(zFront, z + dz - 0.5); }
+  }
+  const stack = (x, z, y1) => { for (let y = 0; y < y1 - 0.01;) { const h = y1 - y >= 2 ? 2 : 1; b.put(h === 2 ? K.pole : K.pole1, x, y + h / 2, z); y += h; } };
+  if (F > 0) {
+    if (o.deck) { for (const [x, z] of big) if ((((x + z) / 2) % 2 + 2) % 2 === 0) stack(x, z, F); }
+    else { for (let i = 0; i < 8; i++) { const a = i * 45 * Math.PI / 180; stack(Math.sin(a) * ap * 0.98, Math.cos(a) * ap * 0.98, F); } stack(0, 0, F); }
+  }
+  let top = F;
+  const slots = [];
+  const sideAt = (i, k) => {
+    const a = i * 45, ar = a * Math.PI / 180;
+    const nx = Math.sin(ar), nz = Math.cos(ar), tx = Math.cos(ar), tz = -Math.sin(ar);
+    const t = -side / 2 + 1 + 2 * k;
+    return { a, nx, nz, tx, tz, x: nx * ap + tx * t, z: nz * ap + tz * t };
+  };
+  if (tent) {
+    // lavvu: no walls; a doorway in the front of the first ring, the cone starting at the floor
+    top = F + r;
+    b.put(doorPiece(K, C), 0, F + 1, -ap, 0);
+    for (const x of [-1.1, 1.1]) b.put(K.pole, x, F + 1, -ap);
+    for (let i = 0; i < 8; i++) for (let k = 0; k < seg; k++) {
+      if (i === 4 && k === Math.floor(seg / 2)) continue;
+      const s = sideAt(i, k);
+      for (const dt of [-0.5, 0.5]) slots.push({ x: s.x + s.tx * dt - s.nx * 0.6, z: s.z + s.tz * dt - s.nz * 0.6, y: F, yaw: norm(s.a + 180), nx: -s.nx, nz: -s.nz });
+    }
+  } else {
+    const hole = big.filter(([x, z]) => x > 0 && z > 0 && inOct(x, z, ap, 0.99)).sort((p, q) => (p[0] + p[1]) - (q[0] + q[1]))[0];
+    for (let s = 0; s < storeys; s++) {
+      const y0 = F + s * SH;
+      if (s > 0) {
+        for (const [x, z] of big) if (inOct(x, z, ap, 0.99) && !(hole && x === hole[0] && z === hole[1])) b.put(K.floor, x, y0, z);
+        if (hole) b.put(K.ladder, hole[0], y0 - SH / 2, hole[1], 180);
+      }
+      for (let i = 0; i < 8; i++) {
+        for (let k = 0; k < seg; k++) {
+          const sd = sideAt(i, k);
+          const isDoor = s === 0 && i === 4 && k === Math.floor(seg / 2);
+          wallSegment(b, K, C, sd.x, y0, sd.z, sd.a, SH, isDoor ? 'door' : (k === 0 && i % 2 && !T.tower ? 'window' : 'wall'));
+          if (s === 0 && !isDoor) for (const dt of [-0.5, 0.5]) slots.push({ x: sd.x + sd.tx * dt, z: sd.z + sd.tz * dt, y: y0, yaw: norm(sd.a + 180), nx: -sd.nx, nz: -sd.nz });
+          b.put(K.beam, sd.x, y0 + SH, sd.z, sd.a);
+        }
+        const sd = sideAt(i, 0), vx = sd.nx * ap + sd.tx * side / 2, vz = sd.nz * ap + sd.tz * side / 2;
+        for (let y = y0; y < y0 + SH - 0.01;) { const h = (y0 + SH - y) >= 2 ? 2 : 1; b.put(h === 2 ? K.pole : K.pole1, vx, y + h / 2, vz); y += h; }
+      }
+      top = y0 + SH;
+    }
+  }
+  const dx0 = tent ? 0 : sideAt(4, Math.floor(seg / 2)).x; // the door's 2 m bay is off centre when a side has two bays
+  b.rooms.push({ x0: -ap, x1: ap, z0: -ap, z1: ap, y: F, h: tent ? 2 : SH, use: T.use, slots, door: { x: dx0, z: -ap }, main: true });
+  b.doorX = dx0;
+  const porch = kind === 'round' && !o.deck && !T.tower && side >= 4;
+  if (kind === 'yurt') ringRoof(b, K, ap, top, [r], { eave: false });
+  else ringRoof(b, K, ap, top, tent || r === 1 ? [r] : [1, r], { gap: tent ? 26 : porch ? 22 : 0 });
+  if (porch) {
+    // entrance porch: two short walls and a small gable roof out from the door (Iron Age and early medieval round houses)
+    const z = -ap - 1;
+    b.put(K.floor, dx0, F, z);
+    for (const x of [dx0 - 1, dx0 + 1]) { wallSegment(b, K, C, x, F, z, 90, SH, 'wall', C.wallStyle === 'stone' ? 'stone-base' : null); b.put(K.beam, x, F + SH, z, 90); }
+    b.put(K.roof26, dx0 + 1, F + SH, z, 90); b.put(K.roof26, dx0 - 1, F + SH, z, 270);
+    b.put(K.roofTop26, dx0, F + SH + 1, z, 90);
+    b.notes.push('Porch at the door.');
+  }
+  if (kind === 'yurt') b.notes.push('Round tent on a lattice wall, low cone with an open crown.');
+  else if (tent) b.notes.push('Cone tent from the ground, smoke hole at the top.');
+  else b.notes.push('Round plan: eight walls and a ring roof, each ring turned toward the middle.');
+  // crannog: a fence round the deck, a walkway to the shore with a stair down at its end
+  if (o.fence) {
+    const Rf = deckR - 0.5, L = 2 * Rf * Math.tan(Math.PI / 8), n = Math.max(1, Math.floor(L / 2));
+    for (let i = 0; i < 8; i++) {
+      const a = i * 45, ar = a * Math.PI / 180, nx = Math.sin(ar), nz = Math.cos(ar), tx = Math.cos(ar), tz = -Math.sin(ar);
+      for (let k = 0; k < n; k++) {
+        const t = -(n - 1) + 2 * k;
+        if (i === 4 && Math.abs(t) < 1.5) continue;
+        b.put(K.fence, nx * Rf + tx * t, F + 0.5, nz * Rf + tz * t, a);
+      }
+    }
+  }
+  if (o.walk) {
+    let z = zFront - 1;
+    for (let k = 0; k < o.walk / 2; k++, z -= 2) { b.put(K.floor, 0, F, z); stack(0, z, F); }
+    stairUp(b, K, 0, z + 1, F);
+    b.notes.push('Platform on stilts with a deck round the house and a walkway to the shore; place it over water.');
+  }
+}
+
+// ---------------------------------------------------------------- additions to a shell
+
+// A stair from the ground up to a floor whose front edge is at zEdge (2 m up), climbing toward +z.
+function stairUp(b, K, x, zEdge, F) {
+  if (Math.abs(F - 2) > 0.01) return;
+  b.put(K.stair || 'wood_stair', x, F / 2, zEdge - 1, 180);
+}
+
+// Timber trackway out from a door at (x, zDoor), len metres, on short posts.
+function boardwalk(b, K, x, zDoor, F, len) {
+  const y = Math.max(F, 0);
+  let z = zDoor - 1;
+  for (let k = 0; k < len / 2; k++, z -= 2) {
+    b.put(K.floor, x, y, z);
+    for (const dx of [-1, 1]) for (let yy = 0; yy < y - 0.01; yy += 1) b.put(K.pole1, x + dx, yy + 0.5, z);
+  }
+  stairUp(b, K, x, z + 1, y);
+}
+
+// A 2 x 2 m stone tower up to height h at (tx, tz); open on its -x side at the bottom unless closed.
+function stoneTowerAt(b, K, tx, tz, h, F, closed) {
+  const stone = K.stoneWall || 'stone_wall_2x1';
+  for (let y = 0.5; y < h; y += 1) for (const [dx, dz, yaw] of [[0, -1, 0], [0, 1, 0], [-1, 0, 90], [1, 0, 90]])
+    if (closed || !(y < F + 2 && dx === -1)) b.put(stone, tx + dx, y, tz + dz, yaw);
+  b.put(K.floor, tx, h, tz);
+  for (const [dx, dz, yaw] of [[0, -1, 0], [0, 1, 0], [-1, 0, 90], [1, 0, 90]]) b.put(K.stoneBlock || 'stone_wall_1x1', tx + dx * 1.0, h + 0.5, tz + dz * 1.0, yaw);
+  if (!closed) b.put(K.ladder, tx, h - 1, tz, 0);
+}
+
+// Square tower of n x n cells centred on (cx, cz): wooden floors, a ladder per storey, slit windows above the ground
+// storey, a low pyramid roof. skip(edge, y0, SH) leaves out walls another building already has.
+function towerAt(b, K, C, o) {
+  const { cx, cz, n, F, storeys, SH } = o;
+  const w = { cx, cz, W: n, D: n, alpha: 0 };
+  const cells = cellsOf([w]), edges = edgesOf(cells), verts = vertsOf(edges);
+  const list = [...cells.values()];
+  const hole = list.sort((a, c) => (c[0] - c[1]) - (a[0] - a[1]))[0];
+  const door = o.door === 'right'
+    ? edges.filter(e => e.out[0] > 0).sort((a, c) => Math.abs(a.z - cz) - Math.abs(c.z - cz))[0]
+    : edges.filter(e => e.out[1] < 0).sort((a, c) => Math.abs(a.x - cx) - Math.abs(c.x - cx))[0];
+  for (const [x, z] of list) b.put(K.floor, x, F, z);
+  let top = F;
+  for (let s = 0; s < storeys; s++) {
+    const y0 = F + s * SH;
+    if (s > 0) {
+      for (const [x, z] of list) if (!(x === hole[0] && z === hole[1])) b.put(K.floor, x, y0, z);
+      b.put(K.ladder, hole[0], y0 - SH / 2, hole[1], 180);
+    }
+    for (const e of edges) {
+      if (o.skip && o.skip(e, y0, SH)) continue;
+      const midSide = e.yaw === 0 ? Math.abs(e.x - cx) < 0.01 : Math.abs(e.z - cz) < 0.01;
+      wallSegment(b, K, C, e.x, y0, e.z, e.yaw, SH, s === 0 && e === door ? 'door' : (s > 0 && midSide ? 'window' : 'wall'));
+    }
+    for (const e of edges) b.put(K.beam, e.x, y0 + SH, e.z, e.yaw);
+    b.rooms.push({ x0: cx - n, x1: cx + n, z0: cz - n, z1: cz + n, y: y0, h: SH, use: o.use || 'guard', upper: s > 0, main: s === 0 && !o.skip,
+      door: s === 0 ? { x: door.x, z: door.z } : null, hole: s > 0 ? hole : null });
+    top = y0 + SH;
+  }
+  for (const p of hipPieces(K, w, top, 1, 1, { tight: true })) b.put(p.name, p.x, p.y, p.z, p.yaw);
+  if (b.doorX == null) b.doorX = door.x;
+  void verts;
+  return top;
+}
+
+// Drum on a ceiling, then a stepped dome (45 then 26 degree rings) or a cone (45 degree rings), a block on top.
+function domeOn(b, K, C, o) {
+  const ap = o.side / 2 / Math.tan(Math.PI / 8), seg = o.side / 2;
+  for (const [x, z] of o.ceiling) b.put(K.floor, x, o.y, z);
+  for (let i = 0; i < 8; i++) {
+    const a = i * 45, ar = a * Math.PI / 180, nx = Math.sin(ar), nz = Math.cos(ar), tx = Math.cos(ar), tz = -Math.sin(ar);
+    for (let k = 0; k < seg; k++) {
+      const t = -o.side / 2 + 1 + 2 * k, x = o.x + nx * ap + tx * t, z = o.z + nz * ap + tz * t;
+      wallSegment(b, K, C, x, o.y, z, a, o.h, i % 2 === 0 && k === 0 ? 'window' : 'wall');
+      b.put(K.beam, x, o.y + o.h, z, a);
+    }
+  }
+  const peak = ringRoof(b, K, ap, o.y + o.h, o.cone ? [2] : o.side >= 4 ? [2, 1] : [1], { eave: false, x: o.x, z: o.z });
+  b.put(K.stoneBlock || 'stone_wall_1x1', o.x, peak, o.z);
+}
+
+// Low gallery roof all round a building at height yS: a 26 degree lean-to 2 m deep against the walls, corner pieces,
+// posts and beams along its outer edge.
+function skirtRoof(b, K, edges, yS) {
+  const roof = K.roof26, corner = K.roof26 + '_ocorner';
+  const post = (x, z) => { for (let y = 0; y < yS - 0.01;) { const h = yS - y >= 2 ? 2 : 1; b.put(h === 2 ? K.pole : K.pole1, x, y + h / 2, z); y += h; } };
+  const outs = new Map();
+  for (const e of edges) {
+    const [ox, oz] = e.out, ux = e.yaw === 0 ? 1 : 0, uz = e.yaw === 0 ? 0 : 1;
+    b.put(roof, e.x + ox, yS, e.z + oz, slopeYaw(e.out));
+    b.put(K.beam, e.x + 2 * ox, yS, e.z + 2 * oz, e.yaw);
+    for (const s of [-1, 1]) {
+      const vx = e.x + s * ux, vz = e.z + s * uz, k = `${vx},${vz}`;
+      post(vx + 2 * ox, vz + 2 * oz);
+      if (!outs.has(k)) outs.set(k, []);
+      outs.get(k).push([ox, oz]);
+    }
+  }
+  for (const [k, os] of outs) {
+    const ax = os.find(o => o[0] !== 0), az = os.find(o => o[1] !== 0);
+    if (!ax || !az || os.length !== 2) continue; // only outside corners
+    const [vx, vz] = k.split(',').map(Number), sx = ax[0], sz = az[1];
+    const yaw = sx < 0 && sz < 0 ? 180 : sx > 0 && sz < 0 ? 90 : sx > 0 ? 0 : 270;
+    b.put(corner, vx + sx, yS, vz + sz, yaw);
+    post(vx + 2 * sx, vz + 2 * sz);
+    b.put(K.beam, vx + 2 * sx, yS, vz + sz, 90);
+    b.put(K.beam, vx + sx, yS, vz + 2 * sz, 0);
+  }
+}
+
+// ---------------------------------------------------------------- extras
+
+function dockDesign(b, K, W, D, F, stage) {
+  const len = stage === 's1' ? 3 : stage === 's2' ? 5 : 7;
+  for (let i = 0; i < len; i++) {
+    const z = -D - 1 - 2 * i;
+    for (const x of [-1, 1]) b.put(K.floor, x, F, z);
+    for (const x of [-2, 2]) { b.put(K.pole, x, F - 1, z - 1); b.put(K.pole, x, F - 3, z - 1); }
+  }
+  b.put(K.pole, -2, F + 1, -D - 2 * len, 0); b.put(K.pole, 2, F + 1, -D - 2 * len, 0);
+  b.notes.push('Pier runs out on the door side; place it over water.');
+  void W;
+}
+
+function fieldDesign(b, K, W, D, biome, stage, R) {
+  const crops = { 'Meadows': 'RaspberryBush', 'Black Forest': 'Pickable_Carrot', 'Swamp': 'Pickable_Turnip', 'Mountain': 'Pickable_Onion',
+    'Plains': 'Pickable_Barley', 'Mistlands': 'Pickable_Barley', 'Ashlands': 'Pickable_Barley' };
+  const crop = crops[biome] || 'Pickable_Carrot';
+  const fw = stage === 's1' ? 4 : stage === 's2' ? 6 : 8, fd = stage === 's1' ? 3 : 4;
+  const z0 = -D - 2 - fd * 2, x0 = -fw;
+  for (let x = x0 + 1; x < x0 + fw * 2; x += 2) { b.put(K.fence, x, 0.5, z0, 0); if (Math.abs(x) > 1.5) b.put(K.fence, x, 0.5, -D - 2, 0); }
+  for (let z = z0 + 1; z < -D - 2; z += 2) { b.put(K.fence, x0, 0.5, z, 90); b.put(K.fence, x0 + fw * 2, 0.5, z, 90); }
+  const step = crop === 'RaspberryBush' ? 1.5 : 0.75;
+  for (let x = x0 + 1; x < x0 + fw * 2 - 0.5; x += step * 1.5) for (let z = z0 + 1; z < -D - 2.5; z += step) b.put(crop, x, 0, z, Math.floor(R() * 4) * 90);
+  b.put('ArmorStand', x0 + fw, 0, z0 + fd, 0);
+  b.notes.push(`Field of ${crop}; the ground needs cultivating in game for crops to grow back.`);
+  void W;
+}
+
+function penDesign(b, K, W, D, stage) {
+  const pw = stage === 's1' ? 3 : 4, pd = D, x0 = W, x1 = W + pw * 2;
+  for (let x = x0 + 1; x < x1; x += 2) { b.put(K.fence, x, 0.5, -pd, 0); b.put(K.fence, x, 0.5, pd, 0); }
+  for (let z = -pd + 1; z < pd; z += 2) if (Math.abs(z) > 1.5) b.put(K.fence, x1, 0.5, z, 90);
+  b.put('piece_chest_barrel', x1 - 1, 0, pd - 1, 0);
+  b.put('wood_stack', x0 + 1.2, 0, pd - 1, 0);
+  b.notes.push('Pen beside the barn; its gap faces away from the barn.');
+}
+
+function wellDesign(b, K, biome, stage) {
+  const st = biome === 'Meadows' ? 'wood_wall_quarter' : (K.stoneBlock || 'stone_wall_1x1');
+  for (const [x, z, yaw] of [[0, -1, 0], [0, 1, 0], [-1, 0, 90], [1, 0, 90]]) b.put(st, x, 0.5, z, yaw);
+  for (const x of [-1.2, 1.2]) { b.put(K.pole, x, 1, 0); b.put(K.pole1, x, 2.5, 0); }
+  b.put(K.beam || 'wood_beam', 0, 3, 0, 0);
+  b.put(K.roof26, 0, 2, -1, 180); b.put(K.roof26, 0, 2, 1, 0);
+  b.put('piece_chest_barrel', 1.6, 0, 1.6, 0);
+  if (stage !== 's1') { b.put('piece_groundtorch_wood', -1.8, 0, -1.8, 0); b.put('piece_bench01', 0, 0, -2.6, 0); }
+  b.notes.push('Well; Valheim has no water source piece, so the shaft is for looks.');
+  return b;
+}
+
+function campDesign(b, K, biome, stage, R, decor) {
+  b.put('fire_pit', 0, 0, 0, 0);
+  b.put('piece_cookingstation', 0, 0.4, 0, 0);
+  const n = stage === 's1' ? 2 : 3;
+  for (let i = 0; i < n; i++) { const a = (i / n) * 2 * Math.PI + R() * 0.4; b.put('piece_logbench01', Math.sin(a) * 2.6, 0, Math.cos(a) * 2.6, (a * 180 / Math.PI + 180) % 360); }
+  for (const x of [-1, 1]) { b.put(K.pole, x * 2, 1, 5, 0); b.put(K.roof45, x, 1.2, 4.6, 0); }
+  b.put('bed', 0, 0, 5, 90);
+  if (decor !== 'd1') { b.put('wood_stack', 3.5, 0, 3, 30); b.put('piece_chest_wood', -3.5, 0, 3, 150); }
+  if (decor === 'd3') { b.put('piece_groundtorch_wood', 3.6, 0, -2, 0); b.put('rug_deer', 0, 0.02, 4.3, 0); b.put('itemstand', -2, 1.5, 5.3, 180); }
+  return b;
+}
+
+if (NODE) module.exports = { generate, quat, PLAN_BY_TYPE, ROOF_BY_CULTURE };
+else window.VHGenerate = { generate, quat, PLAN_BY_TYPE, ROOF_BY_CULTURE };
+
+})();
+// ---- request.js
+(function () {
+// Requests in plain words, and the best of several seeds. One copy for every place that makes designs: the request
+// page (web/app.html), the game's 'vh gen' (the engine bundle, lib/build_engine.js), and lab/process_requests.js.
+// A request is { type, biome, culture, plan, roof, walls, pitch, storeys, porch, stage, decor, seed }.
+
+const NODE_Q = typeof module !== 'undefined';
+const GQ = NODE_Q ? require('./generate.js') : window.VHGenerate;
+const SQ = NODE_Q ? require('./styles.js') : window.VHStyles;
+const CQ = NODE_Q ? require('./checks.js') : window.VHChecks;
+const FQ = NODE_Q ? require('./features.js') : window.VHFeatures;
+const BQ = NODE_Q ? require('./blueprint.js') : window.VHBlueprint;
+const DQ = NODE_Q ? require('./decorate.js') : window.VHDecorate;
+
+// Words to choices. The first match per field wins, so the more specific words come first.
+const WORDS = [
+  ['type', 'longhouse', /long ?house|great hall|mead ?hall|jarl/], ['type', 'tavern', /tavern|\binn\b|\bpub\b|feast/],
+  ['type', 'smithy', /smith|forge|\bmine\b|mining|metal/], ['type', 'sawmill', /saw ?mill|wood ?work|lumber|carpent|woodcutter/],
+  ['type', 'barn', /barn|stable|animal|\bpen\b|\bboar|\blox\b|chicken|coop/], ['type', 'farm', /farm|field|crop|garden/],
+  ['type', 'storage', /storage|store ?house|granary|\bshed\b|warehouse/], ['type', 'tower', /tower|lookout|watch/],
+  ['type', 'dock', /dock|pier|boat|harbou?r|shipyard/], ['type', 'stall', /stall|market|shop|bazaar/],
+  ['type', 'temple', /temple|shrine|church|altar/], ['type', 'well', /\ba well\b|\bwell house|\bwater well/], ['type', 'camp', /camp\b|campfire|tent/],
+  ['type', 'workshop', /workshop|workbench|craft/], ['type', 'home', /house|home|cottage|cabin|hut|hovel/],
+  ['biome', 'Black Forest', /black ?forest/], ['biome', 'Swamp', /swamp|bog|marsh/], ['biome', 'Mountain', /mountain|snow/],
+  ['biome', 'Plains', /plains/], ['biome', 'Mistlands', /mist/], ['biome', 'Ashlands', /ash ?lands/], ['biome', 'Meadows', /meadow/],
+  ['culture', 'middle-eastern', /desert|arab|middle ?east|persian|moor|oasis|caravanserai|courtyard house/], ['culture', 'east-asian', /japan|asian|pagoda|chinese/],
+  ['culture', 'byzantine', /byzantin|greek|domed? church/], ['culture', 'steppe', /steppe|yurt|khazar|turkic|nomad/],
+  ['culture', 'caucasian-highland', /svan|georgian|armenian|caucas|tower house/], ['culture', 'saami', /s[aá]a?mi|lavvu|goahti|kota/],
+  ['culture', 'norse-highland', /iceland|turf/], ['culture', 'celtic-crannog', /crannog|lake ?dwell/], ['culture', 'baltic', /baltic|latvia|lithuan|prussia|curonian/],
+  ['culture', 'fen-folk', /\bfen|frisian|terp/], ['culture', 'anglo-saxon', /anglo|saxon/], ['culture', 'frankish-norman', /norman|frank|motte|keep/],
+  ['culture', 'norse-forest', /stave|log cabin|log house/], ['culture', 'castle-medieval', /medieval|castle|tudor|knight/], ['culture', 'dwarven', /dwar/],
+  ['culture', 'slavic', /slav|russian|izba|\brus\b/], ['culture', 'celtic', /celtic|irish|scots|welsh|druid|round ?house/], ['culture', 'swamp', /stilt/],
+  ['culture', 'mountain', /lodge/], ['culture', 'norse', /viking|norse|nordic/],
+  ['plan', 'L', /\bl[- ]?shaped|\bl plan/], ['plan', 'T', /\bt[- ]?shaped|\bt plan/], ['plan', 'cross', /cross/], ['plan', 'U', /courtyard|u[- ]?shaped/],
+  ['plan', 'octagon', /octagon|round\b|circular/], ['plan', 'long', /\blong\b/], ['plan', 'square', /square/],
+  ['roof', 'hip', /hip/], ['roof', 'flat', /flat/], ['roof', 'shed', /shed roof|lean[- ]?to/], ['roof', 'gable', /gable/],
+  ['stage', 's1', /small|tiny|little|starter/], ['stage', 's3', /large|big|grand|huge/], ['stage', 's2', /medium|middle/],
+  ['decor', 'd1', /bare|empty|plain|stripped/], ['decor', 'd3', /rich|lavish|clutter|full of|well furnished|decorated|lots of decor/], ['decor', 'd2', /cosy|cozy|furnished|lived/],
+  ['walls', 'half-timber', /half[- ]?timber|timber ?frame/], ['walls', 'log', /\blog\b/], ['walls', 'stone', /\bstone\b/], ['walls', 'stone-base', /stone base|stone footing/],
+  ['pitch', '45', /steep/], ['pitch', '26', /low roof|shallow/],
+  ['storeys', 3, /\b(three|3)[- ]?(stor(e?y|ies|eys)|floors?|levels?)\b/], ['storeys', 2, /\b(two|2)[- ]?(stor(e?y|ies|eys)|floors?|levels?)\b|upstairs|upper floor|loft/],
+  ['storeys', 1, /\b(one|1|single)[- ]?(stor(e?y|ies|eys)|floors?|levels?)\b|bungalow/],
+  ['porch', false, /\bno porch|without (a )?porch/], ['porch', true, /porch|veranda|stoop/],
+];
+
+// The fields a text names, e.g. "two storeys with a porch" gives { storeys: 2, porch: true }.
+function read(text) {
+  const t = String(text || '').toLowerCase(), out = {};
+  for (const [k, v, re] of WORDS) if (!(k in out) && re.test(t)) out[k] = v;
+  return out;
+}
+
+// Short codes for the game's console.
+const BIOME_CODES = { md: 'Meadows', bf: 'Black Forest', sw: 'Swamp', mt: 'Mountain', pl: 'Plains', ml: 'Mistlands', al: 'Ashlands', dn: 'Deep North' };
+// The lab has no Deep North kit yet; Deep North requests use the Mountain kit, the nearest one.
+const BIOME_STAND_IN = { 'Deep North': 'Mountain' };
+const TYPE_WORDS = { house: 'home', hall: 'longhouse', greathall: 'longhouse', inn: 'tavern', forge: 'smithy', woodworker: 'sawmill',
+  storehouse: 'storage', watchtower: 'tower', market: 'stall', shrine: 'temple', church: 'temple', boathouse: 'dock' };
+
+function evaluate(d, biome, scorer) {
+  const checks = CQ.check(d, biome);
+  const score = scorer ? FQ.score(scorer, d.pieces) : 0;
+  return { checks, score, pass: checks.filter(c => c.ok).length };
+}
+
+// Builds n seeds (seed, seed + 101, ...) and keeps the one that passes the most checks, then scores highest.
+function best(req, n, scorer) {
+  const base = +req.seed || 1;
+  let top = null;
+  for (let i = 0; i < Math.max(1, n | 0); i++) {
+    const d = GQ.generate({ ...req, seed: base + i * 101 });
+    const ev = evaluate(d, req.biome, scorer);
+    const key = ev.pass * 10 + ev.score;
+    if (!top || key > top.key) top = { d, ev, key };
+  }
+  return top;
+}
+
+// One request as the game and the request processor make it. o: { type, biome (name or code), culture, stage
+// ('s1d3' or 's1'), decor, words, seed, tries }. Fields named in o win over the words. Returns plain data.
+function make(o, scorer, rules) {
+  if (rules) DQ.setRules(rules);
+  const words = read(o.words);
+  const notes = [];
+  let biome = BIOME_CODES[String(o.biome || '').toLowerCase()] || o.biome || words.biome || 'Meadows';
+  const asked = biome;
+  if (BIOME_STAND_IN[biome]) { biome = BIOME_STAND_IN[biome]; notes.push(`The lab has no ${asked} kit yet; built with the ${biome} kit.`); }
+  let type = String(o.type || words.type || 'home').toLowerCase();
+  type = TYPE_WORDS[type] || type;
+  if (type === 'hub' || type === 'hearth') return { error: 'the lab has no hub or hearth design yet. Types: ' + Object.keys(SQ.TYPES).join(', ') };
+  if (!SQ.TYPES[type]) return { error: `unknown type '${o.type}'. Types: ${Object.keys(SQ.TYPES).join(', ')}` };
+  if (!SQ.BIOMES.includes(biome)) return { error: `unknown biome '${o.biome}'. Codes: ${Object.keys(BIOME_CODES).join(', ')}` };
+  let stage = o.stage, decor = o.decor;
+  const sd = /^(s[123])(d[123])?$/i.exec(String(stage || ''));
+  if (sd) { stage = sd[1].toLowerCase(); decor = decor || (sd[2] && sd[2].toLowerCase()); }
+  stage = stage || words.stage || 's2';
+  decor = decor || words.decor || 'd2';
+  // a culture key written among the words ("middle-eastern courtyard") counts as the culture
+  const keyWord = String(o.words || '').toLowerCase().split(/[\s,;]+/).find(w => SQ.CULTURES[w]);
+  const culture = o.culture || keyWord || words.culture;
+  if (culture && !SQ.CULTURES[culture]) return { error: `unknown culture '${culture}'. Cultures: ${Object.keys(SQ.CULTURES).join(', ')}` };
+  const req = { type, biome, culture, stage, decor, seed: +o.seed || 1 };
+  for (const k of ['plan', 'roof', 'walls', 'pitch', 'storeys', 'porch']) if (words[k] !== undefined) req[k] = words[k];
+  if (req.pitch) req.pitch = +req.pitch;
+  const top = best(req, o.tries || 8, scorer);
+  const d = top.d, info = d.request;
+  const failed = top.ev.checks.filter(c => !c.ok).map(c => `${c.check}: ${c.detail}`);
+  return {
+    name: d.meta.Name, description: d.meta.Description, blueprint: BQ.write(d), pieces: d.pieces.length,
+    type: info.type, biome: info.biome, culture: info.cultureKey, plan: info.plan || '', roof: info.roof || '', walls: info.walls || '',
+    stage: info.stage, decor: info.decor, seed: info.seed, score: top.ev.score, passed: top.ev.pass, checks: top.ev.checks.length,
+    failed, notes: notes.concat(d.notes || []), read: words, request: req,
+  };
+}
+
+const apiQ = { WORDS, read, best, evaluate, make, BIOME_CODES, BIOME_STAND_IN, TYPE_WORDS };
+if (NODE_Q) module.exports = apiQ; else window.VHRequest = apiQ;
+
+})();
+// ---- data
+window.VH_RULES = {"placement": {"Candle_resin": {"rel": 0, "lift": 0.8}, "itemstandh": {"rel": 180, "lift": 0.6}, "piece_brazierceiling01": {"rel": 0, "lift": 4.6}, "piece_chair02": {"rel": 0, "lift": 0.5}, "piece_chest_barrel": {"rel": 0, "lift": 0.3}, "rug_straw": {"rel": 0, "lift": 0.35}, "fire_pit": {"rel": 180, "lift": 0.5}, "piece_cookingstation": {"rel": 0, "lift": 0.7}, "piece_workbench": {"rel": 0, "lift": 0.1}, "piece_workbench_ext1": {"rel": 0, "lift": 0.1}, "rug_deer": {"rel": 90, "lift": 0.4}, "portal_wood": {"rel": 0, "lift": 0.5}, "bed": {"rel": 270, "lift": 0.1}, "piece_workbench_ext2": {"rel": 0, "lift": 0.1}, "piece_groundtorch_wood": {"rel": 0, "lift": 0.7}, "piece_chest_wood": {"rel": 0, "lift": 0.1}, "sign": {"rel": 0, "lift": 0.7}, "piece_groundtorch": {"rel": 0, "lift": 1.2}, "piece_chest": {"rel": 0, "lift": 0.1}, "rug_fur": {"rel": 270, "lift": 0.1}, "fermenter": {"rel": 0, "lift": 0.1}, "itemstand": {"rel": 0, "lift": 2.1}, "piece_dvergr_lantern": {"rel": 90, "lift": 3.7}, "MountainKit_brazier": {"rel": 270, "lift": 2.0}, "piece_groundtorch_blue": {"rel": 0, "lift": 1.7}, "piece_jackoturnip": {"rel": 90, "lift": 0.6}, "guard_stone": {"rel": 0, "lift": 0.5}, "piece_workbench_ext3": {"rel": 0, "lift": 0.1}, "windmill": {"rel": 180, "lift": 0.3}, "fire_pit_iron": {"rel": 270, "lift": 0.5}, "forge_ext2": {"rel": 0, "lift": 0.1}, "piece_beehive": {"rel": 90, "lift": 0.6}, "forge_ext4": {"rel": 0, "lift": 0.2}, "forge": {"rel": 0, "lift": 0.2}, "forge_ext3": {"rel": 90, "lift": 0.3}, "forge_ext5": {"rel": 180, "lift": 0.3}, "forge_ext1": {"rel": 180, "lift": 0.3}, "piece_workbench_ext4": {"rel": 0, "lift": 1.9}, "forge_ext6": {"rel": 0, "lift": 2.3}, "ArmorStand": {"rel": 0, "lift": 0.1}, "cauldron_ext1_spice": {"rel": 0, "lift": 3.0}, "cauldron_ext3_butchertable": {"rel": 180, "lift": 0.2}, "cauldron_ext4_pots": {"rel": 0, "lift": 2.6}, "cauldron_ext5_mortarandpestle": {"rel": 0, "lift": 0.5}, "cauldron_ext6_rollingpins": {"rel": 0, "lift": 1.8}, "jute_carpet": {"rel": 0, "lift": 0.2}, "piece_cauldron": {"rel": 180, "lift": 0.8}, "piece_chair03": {"rel": 0, "lift": 0.1}, "piece_preptable": {"rel": 0, "lift": 0.2}, "piece_table_oak": {"rel": 90, "lift": 0.1}, "wood_core_stack": {"rel": 270, "lift": 0.5}, "hearth": {"rel": 0, "lift": 0.5}, "piece_groundtorch_green": {"rel": 270, "lift": 1.2}, "piece_stonecutter": {"rel": 180, "lift": 0.1}, "piece_groundtorch_mist": {"rel": 0, "lift": 4.6}, "piece_chair": {"rel": 270, "lift": 0.9}, "wood_fine_stack": {"rel": 0, "lift": 0.2}, "rug_wolf": {"rel": 270, "lift": 0.1}, "stone_pile": {"rel": 0, "lift": 0.5}, "wood_stack": {"rel": 270, "lift": 0.7}, "piece_chest_blackmetal": {"rel": 0, "lift": 0.1}, "$custompiece_stackedpoetrybooks1": {"rel": 0, "lift": 1.2}, "$custompiece_stackedpoetrybooks2": {"rel": 180, "lift": 0.7000000000000001}, "piece_chest_private": {"rel": 0, "lift": 0.1}, "hildir_maptable_coe": {"rel": 90, "lift": 0.2}, "hildir_chest_coe": {"rel": 90, "lift": 0.3}, "piece_banner04": {"rel": 270, "lift": 5.0}, "$custompiece_candlebottle": {"rel": 90, "lift": 1.0}, "rug_asksvin": {"rel": 180, "lift": 0.1}, "piece_table": {"rel": 0, "lift": 0.1}, "wood_dragon1": {"rel": 0, "lift": 2.5}, "piece_oven": {"rel": 270, "lift": 0.5}, "rug_Bjorn": {"rel": 0, "lift": 0.1}, "piece_Lavalantern": {"rel": 180, "lift": 0.9}, "piece_cookingstation_iron": {"rel": 0, "lift": 1.1}, "piece_bench01": {"rel": 0, "lift": 0.1}, "rug_hare": {"rel": 90, "lift": 0.6}, "piece_table_round": {"rel": 180, "lift": 0.1}, "piece_banner11": {"rel": 90, "lift": 8.2}, "piece_chest_treasure": {"rel": 0, "lift": 0.5}, "piece_throne01": {"rel": 0, "lift": 0.1}, "jute_carpet_blue": {"rel": 90, "lift": 0.5}, "piece_bed02": {"rel": 0, "lift": 0.1}, "treasure_stack": {"rel": 0, "lift": 0.5}, "piece_banner05": {"rel": 90, "lift": 3.9}, "smelter": {"rel": 90, "lift": 0.5}, "charcoal_kiln": {"rel": 270, "lift": 0.5}, "piece_banner01": {"rel": 90, "lift": 4.3}, "piece_logbench01": {"rel": 180, "lift": 0.1}, "eitrrefinery": {"rel": 180, "lift": 0.5}, "blackforge": {"rel": 0, "lift": 0.5}, "piece_spinningwheel": {"rel": 270, "lift": 0.1}, "piece_artisanstation": {"rel": 0, "lift": 2.0}, "piece_magetable": {"rel": 0, "lift": 0.2}, "piece_magetable_ext": {"rel": 0, "lift": 0.2}, "piece_magetable_ext2": {"rel": 0, "lift": 0.1}, "wood_yggdrasil_stack": {"rel": 270, "lift": 0.3}, "blastfurnace": {"rel": 0, "lift": 0.5}, "blackforge_ext2_vise": {"rel": 0, "lift": 0.5}, "blackforge_ext1": {"rel": 0, "lift": 0.2}, "piece_bone_throne": {"rel": 0, "lift": 0.5}, "skull_pile": {"rel": 270, "lift": 0.2}, "piece_banner10": {"rel": 270, "lift": 4.0}, "darkwood_raven": {"rel": 0, "lift": 3.0}, "piece_cartographytable": {"rel": 0, "lift": 0.1}, "piece_blackwood_bench01": {"rel": 180, "lift": 0.1}, "piece_xmastree": {"rel": 180, "lift": 0.4}, "blackforge_ext3_metalcutter": {"rel": 90, "lift": 0.2}, "blackforge_ext4_gemcutter": {"rel": 270, "lift": 1.2}, "ashwood_bed": {"rel": 90, "lift": 0.1}, "piece_banner07": {"rel": 270, "lift": 1.4}, "piece_banner03": {"rel": 90, "lift": 8.45}, "piece_banner06": {"rel": 270, "lift": 3.6500000000000004}, "piece_banner02": {"rel": 270, "lift": 3.4}, "darkwood_wolf": {"rel": 180, "lift": 6.6}, "barrell": {"rel": 90, "lift": 0.9}, "blackmarble_head_big01": {"rel": 0, "lift": 3.0}, "blackmarble_head_big02": {"rel": 0, "lift": 10.5}, "bone_stack": {"rel": 270, "lift": 1.0}, "CastleKit_groundtorch": {"rel": 90, "lift": 2.2}, "dvergrprops_chair": {"rel": 0, "lift": 0.1}, "dvergrprops_crate": {"rel": 90, "lift": 0.0}, "dvergrprops_crate_long": {"rel": 0, "lift": 4.5}, "dvergrprops_lantern_standing": {"rel": 270, "lift": 2.45}, "dvergrprops_stool": {"rel": 180, "lift": 0.7}, "dvergrprops_table": {"rel": 90, "lift": 2.2}, "piece_banner08": {"rel": 90, "lift": 3.9}, "piece_banner09": {"rel": 90, "lift": 4.2}, "piece_magetable_ext3": {"rel": 0, "lift": 2.7}, "trader_wagon_destructable": {"rel": 270, "lift": -0.2}, "piece_xmasgarland": {"rel": 270, "lift": 2.2}, "piece_xmascrown": {"rel": 90, "lift": 3.2}, "piece_world_blueprint_rune_stack": {"rel": 0, "lift": 0.7}, "artisan_ext1": {"rel": 0, "lift": 1.5}, "piece_throne02": {"rel": 0, "lift": 0.5}, "piece_bathtub": {"rel": 0, "lift": 0.1}, "piece_blackmarble_bench": {"rel": 0, "lift": 0.2}, "piece_blackmarble_throne": {"rel": 0, "lift": 6.6}, "goblinking_totemholder": {"rel": 180, "lift": 0.4}, "dvergrprops_lantern": {"rel": 270, "lift": 5.35}, "dvergrprops_barrel": {"rel": 270, "lift": 0.1}, "treasure_pile": {"rel": 0, "lift": 0.4}, "piece_blackmarble_table": {"rel": 0, "lift": 0.3}, "Fiddleheadfern": {"rel": 180, "lift": 0.1}, "Placeable_Stone": {"rel": 0, "lift": -0.8}, "CastleKit_groundtorch_green": {"rel": 180, "lift": 0.1}, "mudpile": {"rel": 0, "lift": 0.0}, "coal_pile": {"rel": 270, "lift": 0.2}, "mountainkit_table": {"rel": 180, "lift": 0.5}, "goblin_bed": {"rel": 0, "lift": 2.1}, "piece_wisplure": {"rel": 0, "lift": 0.6}, "blackwood_stack": {"rel": 180, "lift": 0.8}, "surtling_lantern_1": {"rel": 270, "lift": 0.6}, "Pickable_Fiddlehead": {"rel": 90, "lift": -0.95}, "portal": {"rel": 0, "lift": 0.8}, "MountainKit_brazier_blue": {"rel": 0, "lift": 2.0}, "blackmarble_pile": {"rel": 180, "lift": 0.6}, "volture_strawpile": {"rel": 0, "lift": 5.65}, "mm_corewood_stackable_chest": {"rel": 270, "lift": 1.0}, "blackmarble_head02": {"rel": 0, "lift": 4.3}, "blackmarble_head01": {"rel": 90, "lift": 0.8}, "sign_notext": {"rel": 180, "lift": 2.3}, "GB_Hanging_Candles": {"rel": 0, "lift": 3.6}, "$custompiece_roundtablewithcloth": {"rel": 0, "lift": 0.5}, "mm_corewood_crate_onion": {"rel": 90, "lift": 2.55}, "MountainKit_brazier_purple": {"rel": 0, "lift": 1.5}, "cauldron_ext7_smoker": {"rel": 0, "lift": 0.5}, "piece_chest_warderobe": {"rel": 180, "lift": 0.1}, "piece_magetable_ext4": {"rel": 0, "lift": 0.5}, "piece_moose_throne": {"rel": 270, "lift": 0.2}, "blackforge_ext5_apron": {"rel": 0, "lift": 2.0}, "pressurePlate_stone_PressurePlate_Items_AddPlateItem": {"rel": 270, "lift": 0.5}, "pressurePlate_PressurePlate_Items_AddPlateItem": {"rel": 180, "lift": 0.1}, "apiary_ext2": {"rel": 180, "lift": -0.1}, "apiary_ext1": {"rel": 180, "lift": 0.7}, "M_Werewolf_Throne": {"rel": 90, "lift": 0.5}, "piece_chest_grausten": {"rel": 0, "lift": 0.1}, "piece_bench_runed": {"rel": 0, "lift": 0.1}, "rug_seal": {"rel": 180, "lift": 0.1}, "piece_table_runed_small": {"rel": 0, "lift": 0.5}, "piece_chair_runed": {"rel": 180, "lift": 0.3}, "piece_table_runed": {"rel": 0, "lift": 0.5}, "piece_hoodedlantern": {"rel": 0, "lift": 5.4}, "rug_moose": {"rel": 180, "lift": 0.1}, "CastleKit_groundtorch_blue": {"rel": 180, "lift": 0.4}, "piece_chest_barrel_bal": {"rel": 270, "lift": 1.3}, "piece_chest_seedbasket_bal": {"rel": 0, "lift": 0.8}, "fire_pit_hildir": {"rel": 270, "lift": 0.5}, "piece_drawer": {"rel": 180, "lift": 1.5}, "deepnorth_lantern_standing": {"rel": 270, "lift": 0.2}, "portal_stone": {"rel": 0, "lift": 0.9}, "flint_pile": {"rel": 270, "lift": 0.6}, "grausten_pile": {"rel": 180, "lift": -0.1}, "prop_itemstand_TrophyGoblinBrute": {"rel": 0, "lift": 1.5}, "rug_bogwitch_deer": {"rel": 0, "lift": 0.5}, "Candle_resin_bogwitch": {"rel": 270, "lift": 0.1}, "VC_Eldhrimnir_ext2": {"rel": 180, "lift": 0.6}, "teq_dv_ferm_fermenter": {"rel": 180, "lift": 0.1}, "corewood_crate_bal": {"rel": 180, "lift": 0.5}, "$custompiece_rug_fur_tablecloth": {"rel": 270, "lift": 1.2}, "$custompiece_rug_wolf_tablecloth": {"rel": 180, "lift": 1.2}, "h_woodtorch_white": {"rel": 0, "lift": 1.8}, "CastleKit_brazier": {"rel": 270, "lift": 14.75}, "loot_chest_wood": {"rel": 180, "lift": 15.2}, "goblin_banner": {"rel": 180, "lift": 6.7}, "piece_banner_BlackSaga1": {"rel": 90, "lift": 4.3}, "$custompiece_stool": {"rel": 0, "lift": -0.1}, "rk_rugsmall": {"rel": 270, "lift": 0.2}, "loot_chest_stone": {"rel": 0, "lift": 9.75}, "mudpile_old": {"rel": 0, "lift": 8.7}, "piece_seed_totem_auto_field": {"rel": 0, "lift": -0.5}, "dvergr_chest_bal": {"rel": 0, "lift": 0.1}, "piece_chest_private_bal": {"rel": 180, "lift": 1.0}, "itemstand45_inner_bal": {"rel": 0, "lift": 1.5}, "rk_oven": {"rel": 180, "lift": 0.1}, "goblin_trashpile": {"rel": 180, "lift": 0.8}, "rae_darkwood_iron_raven": {"rel": 90, "lift": 2.8}, "goblin_strawpile": {"rel": 0, "lift": -2.0}, "dvergrprops_bed": {"rel": 0, "lift": 3.25}, "$custompiece_couchbed1": {"rel": 0, "lift": 0.1}}};
+window.VH_SCORER = {
+ "names": [
+  "log_pieces",
+  "log_kinds",
+  "wall",
+  "floor",
+  "roof",
+  "beam",
+  "pole",
+  "openings",
+  "furniture",
+  "deco",
+  "light",
+  "nature",
+  "misc",
+  "mat_entropy",
+  "decor_density",
+  "height_ratio",
+  "log_area",
+  "levels",
+  "diag",
+  "roof_cover",
+  "top_mat_share"
+ ],
+ "mean": [
+  6.764891996974292,
+  3.7009830559757915,
+  0.25525028744326733,
+  0.15991744326777615,
+  0.10809491679273836,
+  0.20999481089258684,
+  0.12264177004538558,
+  0.006414175491679272,
+  0.040534220877458345,
+  0.03861850226928894,
+  0.008202723146747347,
+  0.015248577912254155,
+  0.01618373676248109,
+  1.0036597125567313,
+  0.3191787443267776,
+  2.1701556580937984,
+  5.787639939485628,
+  7.285930408472012,
+  0.5255306505295007,
+  0.6668055219364604,
+  0.6315766565809375
+ ],
+ "std": [
+  1.4215922098319655,
+  0.9148187963203895,
+  0.18335452621181772,
+  0.11665639865584233,
+  0.09477297713735185,
+  0.12363055353566728,
+  0.08375973920258502,
+  0.010836488620862207,
+  0.054810634815982855,
+  0.07677963281173499,
+  0.0161939653272697,
+  0.04555006916270081,
+  0.04293323320583611,
+  0.48724151345369365,
+  0.783920806262776,
+  18.443842210205016,
+  1.3558449264782908,
+  8.994784096634447,
+  0.42151331053268,
+  0.5977517801708216,
+  0.1987993006762224
+ ],
+ "w": [
+  -0.6390229090705772,
+  0.6909294902345111,
+  -0.08113794918181771,
+  -0.27686606989229673,
+  0.2904262217548144,
+  0.04175112844462465,
+  0.2951028947979103,
+  0.13708589675815175,
+  0.17470835676460106,
+  0.003004685642491017,
+  -0.44451473570723904,
+  -0.10848628245675804,
+  -0.2739070955433602,
+  -0.16754909991683542,
+  0.2200480955038386,
+  -0.050363236895286836,
+  -0.009483277314407216,
+  0.08896574583393844,
+  0.2111367322272386,
+  0.06784251585535234,
+  0.1304350411423744
+ ],
+ "bias": -0.1930183434933209,
+ "auc": 0.6985003382215925,
+ "n_kept": 206,
+ "n_dropped": 455
+};
+VHDecorate.setRules(VH_RULES);
+// ---- entry point for the game: one request, best of 'tries' seeds
+function vhMake(type, biome, culture, stage, words, seed, tries) {
+  return VHRequest.make({ type: type, biome: biome, culture: culture || undefined, stage: stage, words: words, seed: seed, tries: tries }, VH_SCORER, VH_RULES);
+}
+function vhRead(words) { return JSON.stringify(VHRequest.read(words)); }
+function vhLists() {
+  return JSON.stringify({ types: Object.keys(VHStyles.TYPES), cultures: Object.keys(VHStyles.CULTURES), biomes: VHRequest.BIOME_CODES });
+}

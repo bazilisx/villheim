@@ -5,7 +5,7 @@
 # compile errors; CI and scripts/deploy.ps1 make the DLLs that go in the game.
 #
 # Usage: scripts/build-cloud.sh [work dir]   (default /tmp/villheim-cloud-build)
-# Output: <work dir>/logic/bin/Release/Villheim.Logic.dll
+# Output: <work dir>/logic/bin/Release/Villheim.Logic.dll, with Jint.dll, Acornima.dll and System.Runtime.CompilerServices.Unsafe.dll
 set -euo pipefail
 
 repo="$(cd "$(dirname "$0")/.." && pwd)"
@@ -24,6 +24,10 @@ fetch() { # id version
 fetch digitalroot.valheim.common.references 1.0.22
 fetch jotunnlib 2.30.2
 fetch unityengine.modules 2021.3.33
+# The JavaScript engine that runs the blueprint lab in game (src/Villheim.Logic/Generator). Shipped next to the DLLs.
+fetch jint 4.17.0
+fetch acornima 1.7.0
+fetch system.runtime.compilerservices.unsafe 6.0.0
 if [ ! -d "$refs/bepinex" ]; then
   curl -sSL -o "$refs/bepinex.zip" https://github.com/BepInEx/BepInEx/releases/download/v5.4.21/BepInEx_x64_5.4.21.0.zip
   mkdir -p "$refs/bepinex" && (cd "$refs/bepinex" && unzip -qo ../bepinex.zip)
@@ -50,6 +54,8 @@ cat > "$work/refs.props" <<EOF
     <Reference Include="$refs/jotunnlib/lib/net462/Jotunn.dll" Private="false" />
     <Reference Include="$refs/digitalroot.valheim.common.references/ref/net48/*.dll" Private="false" />
     <Reference Include="$refs/unityengine.modules/lib/net35/*.dll" Private="false" />
+    <Reference Include="$refs/jint/lib/netstandard2.1/Jint.dll" Private="false" />
+    <Reference Include="$refs/acornima/lib/netstandard2.1/Acornima.dll" Private="false" />
   </ItemGroup>
 </Project>
 EOF
@@ -70,6 +76,7 @@ cat > "$work/logic/Villheim.Logic.csproj" <<EOF
     <Compile Include="$repo/src/Villheim.Logic/**/*.cs" Exclude="$repo/src/Villheim.Logic/obj/**;$repo/src/Villheim.Logic/bin/**" />
     <EmbeddedResource Include="$repo/src/Villheim.Logic/Dialogue/*.txt" LogicalName="Villheim.Logic.Dialogue.%(Filename)%(Extension)" />
     <EmbeddedResource Include="$repo/src/Villheim.Logic/Cultures/*.txt" LogicalName="Villheim.Logic.Cultures.%(Filename)%(Extension)" />
+    <EmbeddedResource Include="$repo/src/Villheim.Logic/Generator/lab.js" LogicalName="Villheim.Logic.Generator.lab.js" />
     <ProjectReference Include="../core/Villheim.csproj" Private="false" />
   </ItemGroup>
 </Project>
@@ -77,3 +84,6 @@ EOF
 
 cd "$work"
 dotnet build logic/Villheim.Logic.csproj -c Release --configfile nuget.config -nologo
+# The engine DLLs that ship next to Villheim.Logic.dll.
+cp "$refs/jint/lib/netstandard2.1/Jint.dll" "$refs/acornima/lib/netstandard2.1/Acornima.dll" \
+   "$refs/system.runtime.compilerservices.unsafe/lib/netstandard2.0/System.Runtime.CompilerServices.Unsafe.dll" logic/bin/Release/

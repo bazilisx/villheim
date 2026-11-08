@@ -35,8 +35,34 @@
     <ProjectReference Include="..\Villheim\Villheim.csproj" Private="false" />
   </ItemGroup>
 
+  <!--
+    The blueprint lab's generator, run in game by Jint (Generator/LabEngine.cs). lab.js is made by
+    tools/blueprint-lab/lib/build_engine.js. The packages are only downloaded here; the netstandard2.1 builds are
+    referenced by path and copied next to the DLL, because those are the ones that ship (Unity's Mono has
+    netstandard 2.1, so they need only System.Runtime.CompilerServices.Unsafe besides each other).
+  -->
+  <ItemGroup>
+    <EmbeddedResource Include="Generator\lab.js" LogicalName="Villheim.Logic.Generator.lab.js" />
+    <PackageReference Include="Jint" Version="4.17.0" PrivateAssets="all" ExcludeAssets="all" GeneratePathProperty="true" />
+    <PackageReference Include="Acornima" Version="1.7.0" PrivateAssets="all" ExcludeAssets="all" GeneratePathProperty="true" />
+    <PackageReference Include="System.Runtime.CompilerServices.Unsafe" Version="6.0.0" PrivateAssets="all" ExcludeAssets="all" GeneratePathProperty="true" />
+    <Reference Include="Jint" HintPath="$(PkgJint)\lib\netstandard2.1\Jint.dll" Private="false" />
+    <Reference Include="Acornima" HintPath="$(PkgAcornima)\lib\netstandard2.1\Acornima.dll" Private="false" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <JsEngineFile Include="$(PkgJint)\lib\netstandard2.1\Jint.dll" />
+    <JsEngineFile Include="$(PkgAcornima)\lib\netstandard2.1\Acornima.dll" />
+    <JsEngineFile Include="$(PkgSystem_Runtime_CompilerServices_Unsafe)\lib\netstandard2.0\System.Runtime.CompilerServices.Unsafe.dll" />
+  </ItemGroup>
+
+  <Target Name="CopyJsEngine" AfterTargets="Build">
+    <Copy SourceFiles="@(JsEngineFile)" DestinationFolder="$(OutDir)" SkipUnchangedFiles="true" />
+  </Target>
+
   <Target Name="CopyToValheim" AfterTargets="Build" Condition="'$(ValheimInstall)' != '' And Exists('$(ValheimInstall)')">
     <Copy SourceFiles="$(TargetPath);$(TargetDir)$(TargetName).pdb" DestinationFolder="$(ValheimInstall)\BepInEx\plugins\Villheim" />
+    <Copy SourceFiles="@(JsEngineFile)" DestinationFolder="$(ValheimInstall)\BepInEx\plugins\Villheim" SkipUnchangedFiles="true" ContinueOnError="true" />
   </Target>
 
 </Project>

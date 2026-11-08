@@ -118,6 +118,8 @@ legend { font-size: 13px; color: var(--muted); padding: 0 4px; }
       <label for="plan">Plan<select id="plan"></select></label>
       <label for="roof">Roof<select id="roof"></select></label>
       <label for="walls">Walls<select id="walls"></select></label>
+      <label for="storeys">Storeys<select id="storeys"><option value="">Style's own</option><option value="1">1</option><option value="2">2</option><option value="3">3</option></select></label>
+      <label for="porch">Porch<select id="porch"><option value="">Style's own</option><option value="true">Yes, where it fits</option><option value="false">No</option></select></label>
       <label for="pitch">Roof pitch<select id="pitch"><option value="">Style's own</option><option value="26">26 degrees</option><option value="45">45 degrees</option></select></label>
       <label for="stage">Size stage<select id="stage"><option value="s1">s1 small</option><option value="s2" selected>s2 middle</option><option value="s3">s3 large</option></select></label>
       <label for="decor">Decor stage<select id="decor"><option value="d1">d1 bare needs</option><option value="d2" selected>d2 lived in</option><option value="d3">d3 rich</option></select></label>
@@ -195,41 +197,11 @@ fill('roof', [['auto', 'Pick for me'], ['gable', 'Gable'], ['hip', 'Hip'], ['she
 
 let current = null, view = { az: 35, el: 30 }, mode = 'gen', fileBp = null;
 
-// ---------- request words to choices (works without Claude; "Read my request" asks Claude when it can)
-const WORDS = [
-  ['type', 'longhouse', /long ?house|great hall|mead ?hall|jarl/], ['type', 'tavern', /tavern|\binn\b|\bpub\b|feast/],
-  ['type', 'smithy', /smith|forge|\bmine\b|mining|metal/], ['type', 'sawmill', /saw ?mill|wood ?work|lumber|carpent|woodcutter/],
-  ['type', 'barn', /barn|stable|animal|\bpen\b|\bboar|\blox\b|chicken|coop/], ['type', 'farm', /farm|field|crop|garden/],
-  ['type', 'storage', /storage|store ?house|granary|\bshed\b|warehouse/], ['type', 'tower', /tower|lookout|watch/],
-  ['type', 'dock', /dock|pier|boat|harbou?r|shipyard/], ['type', 'stall', /stall|market|shop|bazaar/],
-  ['type', 'temple', /temple|shrine|church|altar/], ['type', 'well', /\ba well\b|\bwell house|\bwater well/], ['type', 'camp', /camp\b|campfire|tent/],
-  ['type', 'workshop', /workshop|workbench|craft/], ['type', 'home', /house|home|cottage|cabin|hut|hovel/],
-  ['biome', 'Black Forest', /black ?forest/], ['biome', 'Swamp', /swamp|bog|marsh/], ['biome', 'Mountain', /mountain|snow/],
-  ['biome', 'Plains', /plains/], ['biome', 'Mistlands', /mist/], ['biome', 'Ashlands', /ash ?lands/], ['biome', 'Meadows', /meadow/],
-  ['culture', 'middle-eastern', /desert|arab|middle ?east|persian|moor|oasis|caravanserai|courtyard house/], ['culture', 'east-asian', /japan|asian|pagoda|chinese/],
-  ['culture', 'byzantine', /byzantin|greek|domed? church/], ['culture', 'steppe', /steppe|yurt|khazar|turkic|nomad/],
-  ['culture', 'caucasian-highland', /svan|georgian|armenian|caucas|tower house/], ['culture', 'saami', /s[aá]a?mi|lavvu|goahti|kota/],
-  ['culture', 'norse-highland', /iceland|turf/], ['culture', 'celtic-crannog', /crannog|lake ?dwell/], ['culture', 'baltic', /baltic|latvia|lithuan|prussia|curonian/],
-  ['culture', 'fen-folk', /\bfen|frisian|terp/], ['culture', 'anglo-saxon', /anglo|saxon/], ['culture', 'frankish-norman', /norman|frank|motte|keep/],
-  ['culture', 'norse-forest', /stave|log cabin|log house/], ['culture', 'castle-medieval', /medieval|castle|tudor|knight/], ['culture', 'dwarven', /dwar/],
-  ['culture', 'slavic', /slav|russian|izba|\brus\b/], ['culture', 'celtic', /celtic|irish|scots|welsh|druid|round ?house/], ['culture', 'swamp', /stilt/],
-  ['culture', 'mountain', /lodge/], ['culture', 'norse', /viking|norse|nordic/],
-  ['plan', 'L', /\bl[- ]?shaped|\bl plan/], ['plan', 'T', /\bt[- ]?shaped|\bt plan/], ['plan', 'cross', /cross/], ['plan', 'U', /courtyard|u[- ]?shaped/],
-  ['plan', 'octagon', /octagon|round\b|circular/], ['plan', 'long', /\blong\b/], ['plan', 'square', /square/],
-  ['roof', 'hip', /hip/], ['roof', 'flat', /flat/], ['roof', 'shed', /shed roof|lean[- ]?to/], ['roof', 'gable', /gable/],
-  ['stage', 's1', /small|tiny|little|starter/], ['stage', 's3', /large|big|grand|huge/], ['stage', 's2', /medium|middle/],
-  ['decor', 'd1', /bare|empty|plain|stripped/], ['decor', 'd3', /rich|lavish|clutter|full of|well furnished|decorated|lots of decor/], ['decor', 'd2', /cosy|cozy|furnished|lived/],
-  ['walls', 'half-timber', /half[- ]?timber|timber ?frame/], ['walls', 'log', /\blog\b/], ['walls', 'stone', /\bstone\b/], ['walls', 'stone-base', /stone base|stone footing/],
-  ['pitch', '45', /steep/], ['pitch', '26', /low roof|shallow/],
-];
-function readLocal(text) {
-  const t = text.toLowerCase(), out = {};
-  for (const [k, v, re] of WORDS) if (!(k in out) && re.test(t)) out[k] = v;
-  return out;
-}
+// ---------- request words to choices (lib/request.js; works without Claude; "Read my request" asks Claude when it can)
+const readLocal = text => VHRequest.read(text);
 function apply(fields) {
   const seen = [];
-  for (const [k, v] of Object.entries(fields)) { if (v == null || !$(k)) continue; $(k).value = v; seen.push(`${k} ${v}`); }
+  for (const [k, v] of Object.entries(fields)) { if (v == null || !$(k)) continue; $(k).value = String(v); seen.push(`${k} ${v}`); }
   return seen;
 }
 $('read').onclick = async () => {
@@ -251,25 +223,15 @@ $('read').onclick = async () => {
 
 // ---------- build: several seeds, keep the best that passes the checks
 function request(seed) {
+  const porch = $('porch').value;
   return { type: $('type').value, biome: $('biome').value, culture: $('culture').value || undefined, plan: $('plan').value, roof: $('roof').value,
-    walls: $('walls').value, pitch: $('pitch').value || undefined, stage: $('stage').value, decor: $('decor').value, seed };
+    walls: $('walls').value, pitch: $('pitch').value ? +$('pitch').value : undefined, storeys: +$('storeys').value || undefined,
+    porch: porch === '' ? undefined : porch === 'true', stage: $('stage').value, decor: $('decor').value, seed };
 }
-function evaluate(d, biome) {
-  const checks = VHChecks.check(d, biome);
-  const score = VHFeatures.score(SCORER, d.pieces);
-  return { checks, score, pass: checks.filter(c => c.ok).length };
-}
+function evaluate(d, biome) { return VHRequest.evaluate(d, biome, SCORER); }
 function build() {
   mode = 'gen';
-  const base = +$('seed').value || 1, n = +$('tries').value;
-  let best = null;
-  for (let i = 0; i < n; i++) {
-    const d = VHGenerate.generate(request(base + i * 101));
-    const ev = evaluate(d, $('biome').value);
-    const key = ev.pass * 10 + ev.score;
-    if (!best || key > best.key) best = { d, ev, key };
-  }
-  current = best;
+  current = VHRequest.best(request(+$('seed').value || 1), +$('tries').value, SCORER);
   show();
 }
 $('go').onclick = build;

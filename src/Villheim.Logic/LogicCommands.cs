@@ -82,7 +82,7 @@ namespace Villheim.Logic
             "relook [culture]: the nearest villager gets a new seed, name, face and clothes, of his own culture or the one named",
             "defenders: the nearest village's biome defender profile (Plains, Mistlands), the creatures it covers, who would shoot, and arrows loosed so far",
             "exportpieces: write every buildable piece's collider and mesh bounds, pivot height, colour, texture, category, comfort, cost and station to BepInEx/config/Villheim/pieces.json (copy it to tools/blueprint-lab/data/pieces-export.json)",
-        }).ToArray();
+        }).Concat(Generator.GenCommands.Help).ToArray();
 
         /// <summary>'vh switches': each system's on/off setting and its value now.</summary>
         private static string Switches() =>
@@ -247,6 +247,10 @@ namespace Villheim.Logic
                 case "villheim_relook": Say(context, Cultures.Relook(args)); return true;
                 case "villheim_defenders": Say(context, Villagers.Defenders.Command()); return true;
                 case "villheim_exportpieces": Say(context, PieceExport.Run()); return true;
+                case "villheim_gen": Generator.GenCommands.Gen(args, context); return true;
+                case "villheim_ask": Say(context, Generator.GenCommands.Ask(args)); return true;
+                case "villheim_asks": Say(context, Generator.GenCommands.Asks()); return true;
+                case "villheim_place": Say(context, Generator.GenCommands.Place(args)); return true;
                 case "villheim_know":
                 case "villheim_knowledge":
                 case "villheim_discoveries": Say(context, Knowledge.Command(args)); return true;

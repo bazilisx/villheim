@@ -24,7 +24,7 @@ Requirements:
 - [BepInExPack Valheim](https://thunderstore.io/c/valheim/p/denikson/BepInExPack_Valheim/)
 - [Jötunn](https://thunderstore.io/c/valheim/p/ValheimModding/Jotunn/)
 
-Copy `Villheim.dll` and `Villheim.Logic.dll` into `Valheim/BepInEx/plugins/Villheim/`. In multiplayer, the server and every player need the mod.
+Copy `Villheim.dll`, `Villheim.Logic.dll`, `Jint.dll`, `Acornima.dll` and `System.Runtime.CompilerServices.Unsafe.dll` into `Valheim/BepInEx/plugins/Villheim/`. The last three run the building generator (`vh gen`). In multiplayer, the server and every player need the mod.
 
 You can get a built `Villheim.dll` from the **Actions** tab of this repository: open the latest successful "Build" run and download the `Villheim` artifact. It also contains the files Thunderstore expects (except an icon).
 
@@ -45,6 +45,12 @@ You can get a built `Villheim.dll` from the **Actions** tab of this repository: 
 | `villheim_designs [meadows\|blackforest]` | no | Lists the designs a village of that biome can build. |
 | `villheim_locations [filter]` | no | Lists every location name in the game, including other mods' locations, so you can add them as designs. |
 | `villheim_dump <location>` | no | Writes everything inside a location to the BepInEx log, and whether Villheim keeps or leaves out each object. |
+| `vh gen <biome> <type> <stage> [culture] ["request"] [seed]` | yes | Makes a new building with the blueprint lab's generator and builds it in front of you, e.g. `vh gen md home s1d3 "two storeys with a porch"`. Saves it to `PlanBuild/blueprints/inspiration/generated/ingame/`. `vh gen help` lists the codes. |
+| `vh ask <biome> <type> <stage> [culture] "request"` | yes | Saves the request to `BepInEx/config/Villheim/requests/requests.jsonl` for Claude to make with more care. |
+| `vh asks` | yes | Lists those requests and their status. |
+| `vh place <id\|name> [here]` | yes | Builds a finished request (`R-0001`) or a design made with `vh gen` in front of you; `here` builds a request where you stood when you asked. |
+
+`vh help` lists every developer command. Villages never build the generated designs: they sit in an `inspiration` folder.
 
 You can also hover over or interact with a hearth or a villager to see the village summary.
 
@@ -104,7 +110,7 @@ src/Villheim.Logic/      everything that decides behaviour (hot reloadable)
 
 1. Install the [.NET 8 SDK](https://dotnet.microsoft.com/download) (Windows, macOS or Linux).
 2. Run `dotnet build Villheim.sln -c Release`.
-3. The DLLs are `src/Villheim/bin/Release/Villheim.dll` and `src/Villheim.Logic/bin/Release/Villheim.Logic.dll`.
+3. The DLLs are `src/Villheim/bin/Release/Villheim.dll` and `src/Villheim.Logic/bin/Release/Villheim.Logic.dll`, with `Jint.dll`, `Acornima.dll` and `System.Runtime.CompilerServices.Unsafe.dll` next to the second.
 
 You do not need Valheim installed to build: the project uses NuGet packages with publicized reference copies of the game assemblies.
 
@@ -169,6 +175,7 @@ Ideas from Millénaire that fit Valheim:
 - **Norse Personality Construction System** and **Location Reset** by OrianaVenture (MIT). Villheim builds NPCs from the player model and re-spawns a location's contents the same way those mods do, and some AI settings come from them. See [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
 - **ValheimCityBuilder** and **World Edit** by RustyProductions, with 1Day2Die and Ybivec228 (CC0). Ideas for settlers, production, terrain and paths, and code where noted in the source.
 - **Jötunn** by the Valheim Modding team, for prefab, location and command management.
+- **Jint** by Sebastien Ros (BSD-2-Clause) and **Acornima** by Adam Simon (BSD-3-Clause) run the blueprint lab's JavaScript in the game. See [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
 - Other village mods for Valheim (VikingSettlements, ValheimVillages, VillageLife, PopVillages) were looked at for ideas.
 
 ## License

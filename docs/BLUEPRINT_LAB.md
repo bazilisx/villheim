@@ -20,6 +20,8 @@ Code in `tools/blueprint-lab/`. Built 2026-11-08 night. Nothing generated here i
 | Checks | `lib/checks.js` | Every piece connected to the ground, no doubled pieces, doors with room on both sides, materials the biome has, floor left free. |
 | Renderer | `lib/render.js`, `lib/sheet.js` | Four views (front left, back right, top, inside with the roof off) as PNG in Node or on a canvas in a browser. |
 | Request page | `web/app.html`, built to `web/index.html` by `lib/build_web.js` | Type or pick a request, get the best of up to 16 candidates, turn it round, download the `.blueprint`; a second tab strips or furnishes an uploaded blueprint; a third repairs one. Published as the artifact "Villheim Blueprint Lab"; a copy is in `BepInEx/config/Villheim-tools/` on Tyler's PC and opens offline. |
+| Requests | `lib/request.js` | Request words to choices, the best of several seeds, and one request made from short codes. Shared by the page, the game (`vh gen`) and `lab/process_requests.js`. |
+| Game bundle | `lib/build_engine.js` to `src/Villheim.Logic/Generator/lab.js` | The generator for the game, run by Jint. See "In the game". |
 | Repair | `lib/repair.js`, tests `lab/test_repair.js` and `lab/test_repair_chunk.js` | Fills in pieces missing from an uploaded blueprint from the rest of the build: gaps in a row, a missing course in a stack, holes in a floor, the mirror of the other half when the build is mostly symmetric, and pieces that the build's own patterns call for. Each added piece carries a reason and a confidence. Third tab of the request page. |
 | Millénaire study | `lab/mc_convert.py`, `lab/mc_eval.js`, `lab/mc_render.js`, `lab/mc_compare.py`, `data/mc-blockmap.json` | Translates Millénaire schematics into blueprints for study and measures how well they translate. Kept apart from the lab's data; see `docs/MC_TRANSLATION.md`. |
 | Review set | `lib/gen_set.js` | Every type in five biomes at s1d1, s2d2, s3d3, plus six cultures; best of 8 each. 273 designs, all pass every check. |
@@ -82,7 +84,18 @@ substance because the new downloads carry no Yes or No (AUC 0.70 on the same 661
    left out. The ridge cap is left open over an indoor fire for smoke.
 8. Porch, pier, field, pen, dragon heads where the type and culture call for them.
 9. Furnishing by room use and decor stage, then anything standing in a doorway is taken out.
-10. The page and the review set build several seeds and keep the one that passes the most checks, then scores highest.
+10. The page and the review set build several seeds and keep the one that passes the most checks, then scores highest
+    (`lib/request.js` `best`: seeds n, n + 101, n + 202 and so on).
+
+A request may also name storeys (1 to 3) and ask for a porch or none. Both, and an asked roof pitch, go into the
+design's name (`-2st`, `-porch`, `-noporch`, `-p45`), so two requests never share a file name. A porch is only built
+where the plan has a front for one; otherwise a note says so.
+
+Request words are read by `lib/request.js` (`read`), the same code for the page, the game and the request processor:
+plan (L-shaped, T-shaped, cross, courtyard, round, long, square), roof (gable, hip, flat, shed roof, lean-to, steep,
+low roof), walls (plank, half-timber, log, stone, stone base), storeys (one, two, three storeys or floors, upstairs,
+loft), porch (porch, veranda, no porch), size (small, large) and decor (bare, cosy, rich), plus biome and culture
+words. A culture key written among the words (`middle-eastern`) counts as the culture.
 
 ## Repair
 
@@ -110,6 +123,77 @@ Measured on test damage (pieces removed at random or a slice cut from one side, 
 Most hand builds are too irregular for the mirror rule (24 of 94 test houses read as mirrored). Added pieces show in
 teal and the page lists them by rule, so they can be checked before the file goes into the game. The confidence slider
 and the rule switches trade how much is filled against how much is right.
+
+## In the game
+
+The game runs the lab's own JavaScript, so `vh gen` makes the same building as the lab for the same request and seed.
+
+| Command | What it does |
+|---|---|
+| `vh gen <biome> <type> <stage> [culture] ["request"] [seed]` | Best of `GenCandidates` seeds (8; config section "4b - Generator"), built at once in front of you with the ground levelled, as `vh preview` does. Saved to `BepInEx/config/PlanBuild/blueprints/inspiration/generated/ingame/<name>.blueprint` and nothing else. Prints the name, plan, roof, walls, culture, piece count, checks passed and any failed check. Without a seed it takes a new one each time. |
+| `vh gen help` | Codes and examples. |
+| `vh ask <biome> <type> <stage> [culture] "request" [seed]` | Adds one line to `BepInEx/config/Villheim/requests/requests.jsonl`: id (R-0001 on), time, world, position, facing, biome code, type, stage, culture, request, seed (0: none), status "open". Works without the generator. |
+| `vh asks` | Every request, its status and its result. |
+| `vh place <R-0001\|name> [here]` | Builds a request's result (`.../inspiration/generated/requests/<id>.blueprint`) or a `vh gen` design in front of you. With `here`, a request is built where you stood when you asked. |
+
+Codes. Biomes: md Meadows, bf Black Forest, sw Swamp, mt Mountains, pl Plains, ml Mistlands, al Ashlands, dn Deep
+North (the lab has no Deep North kit yet, so it builds with the Mountain kit and says so). Types: home (house),
+longhouse (hall), tavern, smithy, sawmill, workshop, barn, farm, storage, tower, dock, stall, temple, well, camp. The
+lab has no hub or hearth design. Stage: s1 to s3 with d1 to d3 (`s1d3`); `s2` alone is d2. Cultures: the keys in
+`lib/styles.js` (`vh gen help` and `vh cultures` list them); without one the biome's cultures are picked by weight.
+The console splits on spaces and keeps the quotes, so the command joins the words back together; a last whole number
+is the seed.
+
+Villages never build from `inspiration` folders, so nothing made here reaches a village. PlanBuild lists the files.
+`vh preview <name>` finds them too, except designs under 25 pieces (wells, small camps), which only `vh place <name>`
+builds.
+
+### How the game runs the lab
+
+- `lib/build_engine.js` bundles `pieces`, `styles`, `blueprint`, `checks`, `features`, `decorate`, `generate` and
+  `request` with `data/rules-lite.json` and `data/scorer.json` into `src/Villheim.Logic/Generator/lab.js`, leaving
+  out the drawing code. It is built into `Villheim.Logic.dll` as a resource, so it reloads with the logic.
+- `src/Villheim.Logic/Generator/LabEngine.cs` runs it in Jint 4.17 (a JavaScript interpreter in C#) on a worker thread;
+  `GenCommands.cs` builds the result on the game's thread. The first `vh gen` after a load reads the bundle (under a
+  second); a request takes one to two seconds at best of 8 outside the game.
+- Jint ships as three DLLs next to Villheim's: `Jint.dll`, `Acornima.dll` (its parser) and
+  `System.Runtime.CompilerServices.Unsafe.dll`, all the netstandard2.1 builds (Unity's Mono has netstandard 2.1, so
+  they need nothing else). The logic DLL is loaded from bytes, so the runtime finds them through BepInEx's resolver
+  (it searches the plugins folder) or through `LabEngine.Prepare`, which looks next to `Villheim.dll`. Windows locks
+  them once loaded: the updater and `scripts/deploy.ps1` replace them only when they changed, and after Valheim closes
+  when they are in use.
+- The packages come from nuget.org: `Villheim.Logic.csproj` downloads Jint, Acornima and Unsafe, references the
+  netstandard2.1 DLLs by path and copies them to the output folder. `scripts/build-cloud.sh` fetches them the same
+  way. CI rebuilds `lab.js` before building (with a warning if the committed copy was out of date) and puts the three
+  DLLs in the package and the "Latest test build" release; `scripts/Villheim-Updater.ps1` installs them.
+- After any change to the lab, run `node lib/build_engine.js` and commit `lab.js` with the change.
+- Engines differ in one way that matters here: a sort whose comparator draws random numbers gives a different order in
+  each engine. `decorate.js` used one to shuffle furniture slots; it now draws one number per slot and sorts by it.
+  This changed the furniture of designs made before 2026-11-08 night for the same seed.
+
+### Proof outside the game
+
+`tools/gen-test/run.sh [requests.txt] [tries]` bundles the lab, runs the mod's own `LabEngine.cs` and `lab.js` in a
+.NET 8 console with the shipped netstandard2.1 DLLs, then `lab/compare_engine.js` makes the same requests in node and
+compares the `.blueprint` files byte for byte. Lists: `tools/gen-test/requests.txt` (5 requests) and
+`requests-all.txt` (62: every type, every biome code, the request word groups, twelve cultures). On 2026-11-08 all 62
+were the same byte for byte. The game runs Unity's Mono, whose maths library may differ from .NET 8's in the last
+digit; positions are rounded to 3 decimals, so this is unlikely to show, but only a test in the game proves it.
+
+### Requests for Claude
+
+`vh ask` saves a request; Claude makes it with more care on the PC's files:
+
+```
+node lab/process_requests.js "<profile>/BepInEx/config/Villheim/requests/requests.jsonl" [result dir] [--tries 24] [--only R-0003] [--redo]
+```
+
+For every open request it builds the best of 24 seeds (checks, then score), writes `<id>.blueprint` and a four-view
+`<id>.png` to `BepInEx/config/PlanBuild/blueprints/inspiration/generated/requests/` (found from the requests file's
+place unless given), and marks the line `"status":"done"` with `result` (the design's name), `file`, `done` and `note`
+(failed checks, or plan, roof, walls and pieces). A request it cannot make (unknown type, the hub) is marked
+`"failed"` with the reason. Every other line is left as it was. A request without a seed gets one from its number, so
+running it again makes the same design. Then `vh place <id>` in the game.
 
 ## Rules
 
@@ -147,4 +231,7 @@ node lib/batch.js out/shapes shapes                                # plan and ro
 node lib/gen_set.js out/set 8                                      # the review set
 node lib/gen_cultures.js out/cultures 6 ../../docs/cultures       # culture samples and overview pictures
 node lib/build_web.js web/index.html                               # the request page
+node lib/build_engine.js                                           # the game's bundle, src/Villheim.Logic/Generator/lab.js
+node lab/process_requests.js <requests.jsonl> [result dir]         # make the designs asked for with 'vh ask'
+../gen-test/run.sh [list] [tries]                                  # game engine and node, byte for byte
 ```

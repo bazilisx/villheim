@@ -23,7 +23,8 @@ Standing reference for building, deploying and testing Villheim. Current state i
   `%APPDATA%\r2modmanPlus-local\Valheim\profiles\Villheim Test`.
 - Installed alongside: BepInEx, Jötunn 2.30.2, More World Locations (the `MWL_*` designs), PlanBuild (added
   2026-11-05, for more prefabs and blueprints; not wired into Villheim yet).
-- Plugin folder: `BepInEx\plugins\bazilisx-Villheim\` holds the four built files.
+- Plugin folder: `BepInEx\plugins\bazilisx-Villheim\` holds the four built files and the three DLLs `vh gen` needs
+  (`Jint.dll`, `Acornima.dll`, `System.Runtime.CompilerServices.Unsafe.dll`; see `docs/BLUEPRINT_LAB.md`).
 - Logs: `BepInEx\LogOutput.log`. Villheim lines start with `[Info   :  Villheim]`. Turn on `VerboseLogging` in the
   config for per-villager detail.
 - Design report: `BepInEx\Villheim\design-report.txt`, rewritten when older than 30 minutes. Lists every Meadows and

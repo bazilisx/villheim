@@ -1,0 +1,63 @@
+# type|biome|culture|stage|words|seed: every type, biome and request word group, for tools/gen-test/run.sh
+home|md||s1d1||1
+home|pl||s2d2|flat roof courtyard|15
+longhouse|al||s2d2|L-shaped, hip roof|27
+longhouse|sw||s2|large, rich, steep roof|41
+tavern|pl||s2|flat roof courtyard|53
+tavern|md||s1d1|three storeys|67
+smithy|sw||s1d1|large, rich, steep roof|79
+smithy|al||s2d2||93
+sawmill|md||s2d2|three storeys|105
+sawmill|pl||s2|L-shaped, hip roof|119
+workshop|al||s2||131
+workshop|sw||s1d1|flat roof courtyard|145
+barn|pl||s1d1|L-shaped, hip roof|157
+barn|md||s2d2|large, rich, steep roof|171
+farm|sw||s2d2|flat roof courtyard|183
+farm|al||s2|three storeys|197
+storage|md||s2|large, rich, steep roof|209
+storage|pl||s1d1||223
+tower|al||s1d1|three storeys|235
+tower|sw||s2d2|L-shaped, hip roof|249
+dock|pl||s2d2||261
+dock|md||s2|flat roof courtyard|275
+stall|sw||s2|L-shaped, hip roof|287
+stall|al||s1d1|large, rich, steep roof|301
+temple|md||s1d1|flat roof courtyard|313
+temple|pl||s2d2|three storeys|327
+well|al||s2d2|large, rich, steep roof|339
+well|sw||s2||353
+camp|pl||s2|three storeys|365
+camp|md||s1d1|L-shaped, hip roof|379
+house|sw||s1d1||391
+house|al||s2d2|flat roof courtyard|405
+hall|md||s2d2|L-shaped, hip roof|417
+hall|pl||s2|large, rich, steep roof|431
+home|bf|celtic|s2d2||34
+temple|bf|celtic|s3d3|large|35
+home|bf|slavic|s2d2||36
+temple|bf|slavic|s3d3|large|37
+home|ml|byzantine|s2d2||38
+temple|ml|byzantine|s3d3|large|39
+home|ml|caucasian-highland|s2d2||40
+temple|ml|caucasian-highland|s3d3|large|41
+home|pl|steppe|s2d2||42
+temple|pl|steppe|s3d3|large|43
+home|mt|saami|s2d2||44
+temple|mt|saami|s3d3|large|45
+home|mt|norse-highland|s2d2||46
+temple|mt|norse-highland|s3d3|large|47
+home|sw|celtic-crannog|s2d2||48
+temple|sw|celtic-crannog|s3d3|large|49
+home|sw|baltic|s2d2||50
+temple|sw|baltic|s3d3|large|51
+home|al|castle-medieval|s2d2||52
+temple|al|castle-medieval|s3d3|large|53
+home|md|east-asian|s2d2||54
+temple|md|east-asian|s3d3|large|55
+home|ml|dwarven|s2d2||56
+temple|ml|dwarven|s3d3|large|57
+home|dn||s2d2|two storeys|5
+longhouse|bf||s3d3||6
+smithy|ml||s2d2||7
+barn|mt||s3d2|log walls|8

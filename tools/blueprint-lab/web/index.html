@@ -118,6 +118,8 @@ legend { font-size: 13px; color: var(--muted); padding: 0 4px; }
       <label for="plan">Plan<select id="plan"></select></label>
       <label for="roof">Roof<select id="roof"></select></label>
       <label for="walls">Walls<select id="walls"></select></label>
+      <label for="storeys">Storeys<select id="storeys"><option value="">Style's own</option><option value="1">1</option><option value="2">2</option><option value="3">3</option></select></label>
+      <label for="porch">Porch<select id="porch"><option value="">Style's own</option><option value="true">Yes, where it fits</option><option value="false">No</option></select></label>
       <label for="pitch">Roof pitch<select id="pitch"><option value="">Style's own</option><option value="26">26 degrees</option><option value="45">45 degrees</option></select></label>
       <label for="stage">Size stage<select id="stage"><option value="s1">s1 small</option><option value="s2" selected>s2 middle</option><option value="s3">s3 large</option></select></label>
       <label for="decor">Decor stage<select id="decor"><option value="d1">d1 bare needs</option><option value="d2" selected>d2 lived in</option><option value="d3">d3 rich</option></select></label>
@@ -1254,8 +1256,12 @@ function furnishRoom(b, room, use, decor, biome, R, occ, ctx, upper) {
   const area = (room.x1 - room.x0) * (room.z1 - room.z0);
   const scale = Math.max(1, area / 20);
   const slots = room.slots || slotsForRect(room);
-  // shuffle slots by seed, but keep back-wall slots first for stations
-  slots.sort((a, b2) => (b2.z - a.z) * 0.3 + (R() - 0.5));
+  // shuffle slots by seed, but keep back-wall slots first for stations. One random number per slot, then a plain
+  // sort: a comparator that draws random numbers gives a different order in every JavaScript engine (the game runs
+  // this file in Jint), and so a different building for the same seed.
+  const keyed = slots.map(s => [s, -s.z * 0.3 + (R() - 0.5)]);
+  keyed.sort((p, q) => p[1] - q[1]);
+  keyed.forEach(([s], i) => { slots[i] = s; });
   const y = room.y;
   const cx = (room.x0 + room.x1) / 2, cz = (room.z0 + room.z1) / 2;
   const counts = ctx.counts || (ctx.counts = new Map());
@@ -1648,11 +1654,15 @@ function generate(req) {
   const b = new Build();
   const form = req.form || formFor(C, type, stage);
   const info = { type, biome, cultureKey, stage, decor, seed, form };
+  // asked-for storeys, porch and pitch go into the name, so different requests never share a file name
+  info.asked = (req.storeys >= 1 && req.storeys <= 3 ? `-${Math.round(req.storeys)}st` : '') + (req.porch === true ? '-porch' : req.porch === false ? '-noporch' : '') + (req.pitch ? `-p${+req.pitch}` : '');
   // Meadows and Black Forest villages build in wood at first; stone for later stages and for halls from s2 (D-012)
   const early = (biome === 'Meadows' || biome === 'Black Forest') && (stage === 's1' || (stage === 's2' && !['longhouse', 'tavern', 'temple', 'tower'].includes(type)));
   C.early = early;
   const stoneOK = !!K.stoneWall && biome !== 'Meadows' && !early;
-  const storeysOf = () => (C.storeys && C.storeys[type] && C.storeys[type][stage]) || T.storeys[stage];
+  // a request may name the storeys (1 to 3) and ask for a porch or none; otherwise the culture and type decide
+  const askedStoreys = req.storeys >= 1 && req.storeys <= 3 ? Math.round(req.storeys) : null;
+  const storeysOf = () => askedStoreys || (C.storeys && C.storeys[type] && C.storeys[type][stage]) || T.storeys[stage];
 
   if (T.well) return finish(wellDesign(b, K, biome, stage), info);
   if (T.camp && !form) return finish(campDesign(b, K, biome, stage, R, decor), info);
@@ -1932,7 +1942,9 @@ function generate(req) {
   }
 
   // porch at the front door: one or three bays wide, on the grid, never on top of a wing
-  if (!flat && roofKind !== 'shed' && !T.dock && !T.tower && C.porch && R() < C.porch + (stage === 's1' ? -0.3 : 0.2) && !['U', 'cross', 'court', 'gables', 'greek'].includes(plan) && !deck && !podklet && form !== 'sunken') {
+  const porchFits = !flat && roofKind !== 'shed' && !T.dock && !T.tower && !['U', 'cross', 'court', 'gables', 'greek'].includes(plan) && !deck && !podklet && form !== 'sunken';
+  if (req.porch === true && !porchFits) b.notes.push('No porch: this plan, roof or form has no front for one.');
+  if (req.porch === true ? porchFits : req.porch !== false && !flat && roofKind !== 'shed' && !T.dock && !T.tower && C.porch && R() < C.porch + (stage === 's1' ? -0.3 : 0.2) && porchFits) {
     const h = R() < 0.5 ? 0 : 1, zf = doorZ;
     const bays = [];
     for (let k = -h; k <= h; k++) { const x = doorX + 2 * k; if (!cells.has(`${x},${zf - 1}`) && !cells.has(`${x},${zf - 3}`)) bays.push(x); }
@@ -2052,7 +2064,7 @@ function clearDoors(b) {
 }
 
 function finish(b, info) {
-  const name = `${info.type}_${info.biome.replace(' ', '')}_${info.cultureKey}_${info.plan || 'x'}-${info.roof || 'x'}-${info.walls || 'x'}_${info.stage}${info.decor}_${info.seed}`;
+  const name = `${info.type}_${info.biome.replace(' ', '')}_${info.cultureKey}_${info.plan || 'x'}-${info.roof || 'x'}-${info.walls || 'x'}${info.asked || ''}_${info.stage}${info.decor}_${info.seed}`;
   return {
     meta: { Name: name, Creator: 'Villheim generator', Category: 'Villheim generated',
       Description: `${S.TYPES[info.type].label}, ${info.biome}, ${S.CULTURES[info.cultureKey].label}, ${info.plan || ''} plan, ${info.roof || ''} roof, ${info.walls || ''} walls, ${info.stage}${info.decor}, seed ${info.seed}` },
@@ -2547,6 +2559,125 @@ if (NODE) module.exports = { generate, quat, PLAN_BY_TYPE, ROOF_BY_CULTURE };
 else window.VHGenerate = { generate, quat, PLAN_BY_TYPE, ROOF_BY_CULTURE };
 
 })();
+// ---- request.js
+(function () {
+// Requests in plain words, and the best of several seeds. One copy for every place that makes designs: the request
+// page (web/app.html), the game's 'vh gen' (the engine bundle, lib/build_engine.js), and lab/process_requests.js.
+// A request is { type, biome, culture, plan, roof, walls, pitch, storeys, porch, stage, decor, seed }.
+
+const NODE_Q = typeof module !== 'undefined';
+const GQ = NODE_Q ? require('./generate.js') : window.VHGenerate;
+const SQ = NODE_Q ? require('./styles.js') : window.VHStyles;
+const CQ = NODE_Q ? require('./checks.js') : window.VHChecks;
+const FQ = NODE_Q ? require('./features.js') : window.VHFeatures;
+const BQ = NODE_Q ? require('./blueprint.js') : window.VHBlueprint;
+const DQ = NODE_Q ? require('./decorate.js') : window.VHDecorate;
+
+// Words to choices. The first match per field wins, so the more specific words come first.
+const WORDS = [
+  ['type', 'longhouse', /long ?house|great hall|mead ?hall|jarl/], ['type', 'tavern', /tavern|\binn\b|\bpub\b|feast/],
+  ['type', 'smithy', /smith|forge|\bmine\b|mining|metal/], ['type', 'sawmill', /saw ?mill|wood ?work|lumber|carpent|woodcutter/],
+  ['type', 'barn', /barn|stable|animal|\bpen\b|\bboar|\blox\b|chicken|coop/], ['type', 'farm', /farm|field|crop|garden/],
+  ['type', 'storage', /storage|store ?house|granary|\bshed\b|warehouse/], ['type', 'tower', /tower|lookout|watch/],
+  ['type', 'dock', /dock|pier|boat|harbou?r|shipyard/], ['type', 'stall', /stall|market|shop|bazaar/],
+  ['type', 'temple', /temple|shrine|church|altar/], ['type', 'well', /\ba well\b|\bwell house|\bwater well/], ['type', 'camp', /camp\b|campfire|tent/],
+  ['type', 'workshop', /workshop|workbench|craft/], ['type', 'home', /house|home|cottage|cabin|hut|hovel/],
+  ['biome', 'Black Forest', /black ?forest/], ['biome', 'Swamp', /swamp|bog|marsh/], ['biome', 'Mountain', /mountain|snow/],
+  ['biome', 'Plains', /plains/], ['biome', 'Mistlands', /mist/], ['biome', 'Ashlands', /ash ?lands/], ['biome', 'Meadows', /meadow/],
+  ['culture', 'middle-eastern', /desert|arab|middle ?east|persian|moor|oasis|caravanserai|courtyard house/], ['culture', 'east-asian', /japan|asian|pagoda|chinese/],
+  ['culture', 'byzantine', /byzantin|greek|domed? church/], ['culture', 'steppe', /steppe|yurt|khazar|turkic|nomad/],
+  ['culture', 'caucasian-highland', /svan|georgian|armenian|caucas|tower house/], ['culture', 'saami', /s[aá]a?mi|lavvu|goahti|kota/],
+  ['culture', 'norse-highland', /iceland|turf/], ['culture', 'celtic-crannog', /crannog|lake ?dwell/], ['culture', 'baltic', /baltic|latvia|lithuan|prussia|curonian/],
+  ['culture', 'fen-folk', /\bfen|frisian|terp/], ['culture', 'anglo-saxon', /anglo|saxon/], ['culture', 'frankish-norman', /norman|frank|motte|keep/],
+  ['culture', 'norse-forest', /stave|log cabin|log house/], ['culture', 'castle-medieval', /medieval|castle|tudor|knight/], ['culture', 'dwarven', /dwar/],
+  ['culture', 'slavic', /slav|russian|izba|\brus\b/], ['culture', 'celtic', /celtic|irish|scots|welsh|druid|round ?house/], ['culture', 'swamp', /stilt/],
+  ['culture', 'mountain', /lodge/], ['culture', 'norse', /viking|norse|nordic/],
+  ['plan', 'L', /\bl[- ]?shaped|\bl plan/], ['plan', 'T', /\bt[- ]?shaped|\bt plan/], ['plan', 'cross', /cross/], ['plan', 'U', /courtyard|u[- ]?shaped/],
+  ['plan', 'octagon', /octagon|round\b|circular/], ['plan', 'long', /\blong\b/], ['plan', 'square', /square/],
+  ['roof', 'hip', /hip/], ['roof', 'flat', /flat/], ['roof', 'shed', /shed roof|lean[- ]?to/], ['roof', 'gable', /gable/],
+  ['stage', 's1', /small|tiny|little|starter/], ['stage', 's3', /large|big|grand|huge/], ['stage', 's2', /medium|middle/],
+  ['decor', 'd1', /bare|empty|plain|stripped/], ['decor', 'd3', /rich|lavish|clutter|full of|well furnished|decorated|lots of decor/], ['decor', 'd2', /cosy|cozy|furnished|lived/],
+  ['walls', 'half-timber', /half[- ]?timber|timber ?frame/], ['walls', 'log', /\blog\b/], ['walls', 'stone', /\bstone\b/], ['walls', 'stone-base', /stone base|stone footing/],
+  ['pitch', '45', /steep/], ['pitch', '26', /low roof|shallow/],
+  ['storeys', 3, /\b(three|3)[- ]?(stor(e?y|ies|eys)|floors?|levels?)\b/], ['storeys', 2, /\b(two|2)[- ]?(stor(e?y|ies|eys)|floors?|levels?)\b|upstairs|upper floor|loft/],
+  ['storeys', 1, /\b(one|1|single)[- ]?(stor(e?y|ies|eys)|floors?|levels?)\b|bungalow/],
+  ['porch', false, /\bno porch|without (a )?porch/], ['porch', true, /porch|veranda|stoop/],
+];
+
+// The fields a text names, e.g. "two storeys with a porch" gives { storeys: 2, porch: true }.
+function read(text) {
+  const t = String(text || '').toLowerCase(), out = {};
+  for (const [k, v, re] of WORDS) if (!(k in out) && re.test(t)) out[k] = v;
+  return out;
+}
+
+// Short codes for the game's console.
+const BIOME_CODES = { md: 'Meadows', bf: 'Black Forest', sw: 'Swamp', mt: 'Mountain', pl: 'Plains', ml: 'Mistlands', al: 'Ashlands', dn: 'Deep North' };
+// The lab has no Deep North kit yet; Deep North requests use the Mountain kit, the nearest one.
+const BIOME_STAND_IN = { 'Deep North': 'Mountain' };
+const TYPE_WORDS = { house: 'home', hall: 'longhouse', greathall: 'longhouse', inn: 'tavern', forge: 'smithy', woodworker: 'sawmill',
+  storehouse: 'storage', watchtower: 'tower', market: 'stall', shrine: 'temple', church: 'temple', boathouse: 'dock' };
+
+function evaluate(d, biome, scorer) {
+  const checks = CQ.check(d, biome);
+  const score = scorer ? FQ.score(scorer, d.pieces) : 0;
+  return { checks, score, pass: checks.filter(c => c.ok).length };
+}
+
+// Builds n seeds (seed, seed + 101, ...) and keeps the one that passes the most checks, then scores highest.
+function best(req, n, scorer) {
+  const base = +req.seed || 1;
+  let top = null;
+  for (let i = 0; i < Math.max(1, n | 0); i++) {
+    const d = GQ.generate({ ...req, seed: base + i * 101 });
+    const ev = evaluate(d, req.biome, scorer);
+    const key = ev.pass * 10 + ev.score;
+    if (!top || key > top.key) top = { d, ev, key };
+  }
+  return top;
+}
+
+// One request as the game and the request processor make it. o: { type, biome (name or code), culture, stage
+// ('s1d3' or 's1'), decor, words, seed, tries }. Fields named in o win over the words. Returns plain data.
+function make(o, scorer, rules) {
+  if (rules) DQ.setRules(rules);
+  const words = read(o.words);
+  const notes = [];
+  let biome = BIOME_CODES[String(o.biome || '').toLowerCase()] || o.biome || words.biome || 'Meadows';
+  const asked = biome;
+  if (BIOME_STAND_IN[biome]) { biome = BIOME_STAND_IN[biome]; notes.push(`The lab has no ${asked} kit yet; built with the ${biome} kit.`); }
+  let type = String(o.type || words.type || 'home').toLowerCase();
+  type = TYPE_WORDS[type] || type;
+  if (type === 'hub' || type === 'hearth') return { error: 'the lab has no hub or hearth design yet. Types: ' + Object.keys(SQ.TYPES).join(', ') };
+  if (!SQ.TYPES[type]) return { error: `unknown type '${o.type}'. Types: ${Object.keys(SQ.TYPES).join(', ')}` };
+  if (!SQ.BIOMES.includes(biome)) return { error: `unknown biome '${o.biome}'. Codes: ${Object.keys(BIOME_CODES).join(', ')}` };
+  let stage = o.stage, decor = o.decor;
+  const sd = /^(s[123])(d[123])?$/i.exec(String(stage || ''));
+  if (sd) { stage = sd[1].toLowerCase(); decor = decor || (sd[2] && sd[2].toLowerCase()); }
+  stage = stage || words.stage || 's2';
+  decor = decor || words.decor || 'd2';
+  // a culture key written among the words ("middle-eastern courtyard") counts as the culture
+  const keyWord = String(o.words || '').toLowerCase().split(/[\s,;]+/).find(w => SQ.CULTURES[w]);
+  const culture = o.culture || keyWord || words.culture;
+  if (culture && !SQ.CULTURES[culture]) return { error: `unknown culture '${culture}'. Cultures: ${Object.keys(SQ.CULTURES).join(', ')}` };
+  const req = { type, biome, culture, stage, decor, seed: +o.seed || 1 };
+  for (const k of ['plan', 'roof', 'walls', 'pitch', 'storeys', 'porch']) if (words[k] !== undefined) req[k] = words[k];
+  if (req.pitch) req.pitch = +req.pitch;
+  const top = best(req, o.tries || 8, scorer);
+  const d = top.d, info = d.request;
+  const failed = top.ev.checks.filter(c => !c.ok).map(c => `${c.check}: ${c.detail}`);
+  return {
+    name: d.meta.Name, description: d.meta.Description, blueprint: BQ.write(d), pieces: d.pieces.length,
+    type: info.type, biome: info.biome, culture: info.cultureKey, plan: info.plan || '', roof: info.roof || '', walls: info.walls || '',
+    stage: info.stage, decor: info.decor, seed: info.seed, score: top.ev.score, passed: top.ev.pass, checks: top.ev.checks.length,
+    failed, notes: notes.concat(d.notes || []), read: words, request: req,
+  };
+}
+
+const apiQ = { WORDS, read, best, evaluate, make, BIOME_CODES, BIOME_STAND_IN, TYPE_WORDS };
+if (NODE_Q) module.exports = apiQ; else window.VHRequest = apiQ;
+
+})();
 // ---- repair.js
 (function () {
 // Repair a blueprint: find pieces that are missing from an otherwise regular structure and put them back.
@@ -2975,41 +3106,11 @@ fill('roof', [['auto', 'Pick for me'], ['gable', 'Gable'], ['hip', 'Hip'], ['she
 
 let current = null, view = { az: 35, el: 30 }, mode = 'gen', fileBp = null;
 
-// ---------- request words to choices (works without Claude; "Read my request" asks Claude when it can)
-const WORDS = [
-  ['type', 'longhouse', /long ?house|great hall|mead ?hall|jarl/], ['type', 'tavern', /tavern|\binn\b|\bpub\b|feast/],
-  ['type', 'smithy', /smith|forge|\bmine\b|mining|metal/], ['type', 'sawmill', /saw ?mill|wood ?work|lumber|carpent|woodcutter/],
-  ['type', 'barn', /barn|stable|animal|\bpen\b|\bboar|\blox\b|chicken|coop/], ['type', 'farm', /farm|field|crop|garden/],
-  ['type', 'storage', /storage|store ?house|granary|\bshed\b|warehouse/], ['type', 'tower', /tower|lookout|watch/],
-  ['type', 'dock', /dock|pier|boat|harbou?r|shipyard/], ['type', 'stall', /stall|market|shop|bazaar/],
-  ['type', 'temple', /temple|shrine|church|altar/], ['type', 'well', /\ba well\b|\bwell house|\bwater well/], ['type', 'camp', /camp\b|campfire|tent/],
-  ['type', 'workshop', /workshop|workbench|craft/], ['type', 'home', /house|home|cottage|cabin|hut|hovel/],
-  ['biome', 'Black Forest', /black ?forest/], ['biome', 'Swamp', /swamp|bog|marsh/], ['biome', 'Mountain', /mountain|snow/],
-  ['biome', 'Plains', /plains/], ['biome', 'Mistlands', /mist/], ['biome', 'Ashlands', /ash ?lands/], ['biome', 'Meadows', /meadow/],
-  ['culture', 'middle-eastern', /desert|arab|middle ?east|persian|moor|oasis|caravanserai|courtyard house/], ['culture', 'east-asian', /japan|asian|pagoda|chinese/],
-  ['culture', 'byzantine', /byzantin|greek|domed? church/], ['culture', 'steppe', /steppe|yurt|khazar|turkic|nomad/],
-  ['culture', 'caucasian-highland', /svan|georgian|armenian|caucas|tower house/], ['culture', 'saami', /s[aá]a?mi|lavvu|goahti|kota/],
-  ['culture', 'norse-highland', /iceland|turf/], ['culture', 'celtic-crannog', /crannog|lake ?dwell/], ['culture', 'baltic', /baltic|latvia|lithuan|prussia|curonian/],
-  ['culture', 'fen-folk', /\bfen|frisian|terp/], ['culture', 'anglo-saxon', /anglo|saxon/], ['culture', 'frankish-norman', /norman|frank|motte|keep/],
-  ['culture', 'norse-forest', /stave|log cabin|log house/], ['culture', 'castle-medieval', /medieval|castle|tudor|knight/], ['culture', 'dwarven', /dwar/],
-  ['culture', 'slavic', /slav|russian|izba|\brus\b/], ['culture', 'celtic', /celtic|irish|scots|welsh|druid|round ?house/], ['culture', 'swamp', /stilt/],
-  ['culture', 'mountain', /lodge/], ['culture', 'norse', /viking|norse|nordic/],
-  ['plan', 'L', /\bl[- ]?shaped|\bl plan/], ['plan', 'T', /\bt[- ]?shaped|\bt plan/], ['plan', 'cross', /cross/], ['plan', 'U', /courtyard|u[- ]?shaped/],
-  ['plan', 'octagon', /octagon|round\b|circular/], ['plan', 'long', /\blong\b/], ['plan', 'square', /square/],
-  ['roof', 'hip', /hip/], ['roof', 'flat', /flat/], ['roof', 'shed', /shed roof|lean[- ]?to/], ['roof', 'gable', /gable/],
-  ['stage', 's1', /small|tiny|little|starter/], ['stage', 's3', /large|big|grand|huge/], ['stage', 's2', /medium|middle/],
-  ['decor', 'd1', /bare|empty|plain|stripped/], ['decor', 'd3', /rich|lavish|clutter|full of|well furnished|decorated|lots of decor/], ['decor', 'd2', /cosy|cozy|furnished|lived/],
-  ['walls', 'half-timber', /half[- ]?timber|timber ?frame/], ['walls', 'log', /\blog\b/], ['walls', 'stone', /\bstone\b/], ['walls', 'stone-base', /stone base|stone footing/],
-  ['pitch', '45', /steep/], ['pitch', '26', /low roof|shallow/],
-];
-function readLocal(text) {
-  const t = text.toLowerCase(), out = {};
-  for (const [k, v, re] of WORDS) if (!(k in out) && re.test(t)) out[k] = v;
-  return out;
-}
+// ---------- request words to choices (lib/request.js; works without Claude; "Read my request" asks Claude when it can)
+const readLocal = text => VHRequest.read(text);
 function apply(fields) {
   const seen = [];
-  for (const [k, v] of Object.entries(fields)) { if (v == null || !$(k)) continue; $(k).value = v; seen.push(`${k} ${v}`); }
+  for (const [k, v] of Object.entries(fields)) { if (v == null || !$(k)) continue; $(k).value = String(v); seen.push(`${k} ${v}`); }
   return seen;
 }
 $('read').onclick = async () => {
@@ -3031,25 +3132,15 @@ $('read').onclick = async () => {
 
 // ---------- build: several seeds, keep the best that passes the checks
 function request(seed) {
+  const porch = $('porch').value;
   return { type: $('type').value, biome: $('biome').value, culture: $('culture').value || undefined, plan: $('plan').value, roof: $('roof').value,
-    walls: $('walls').value, pitch: $('pitch').value || undefined, stage: $('stage').value, decor: $('decor').value, seed };
+    walls: $('walls').value, pitch: $('pitch').value ? +$('pitch').value : undefined, storeys: +$('storeys').value || undefined,
+    porch: porch === '' ? undefined : porch === 'true', stage: $('stage').value, decor: $('decor').value, seed };
 }
-function evaluate(d, biome) {
-  const checks = VHChecks.check(d, biome);
-  const score = VHFeatures.score(SCORER, d.pieces);
-  return { checks, score, pass: checks.filter(c => c.ok).length };
-}
+function evaluate(d, biome) { return VHRequest.evaluate(d, biome, SCORER); }
 function build() {
   mode = 'gen';
-  const base = +$('seed').value || 1, n = +$('tries').value;
-  let best = null;
-  for (let i = 0; i < n; i++) {
-    const d = VHGenerate.generate(request(base + i * 101));
-    const ev = evaluate(d, $('biome').value);
-    const key = ev.pass * 10 + ev.score;
-    if (!best || key > best.key) best = { d, ev, key };
-  }
-  current = best;
+  current = VHRequest.best(request(+$('seed').value || 1), +$('tries').value, SCORER);
   show();
 }
 $('go').onclick = build;

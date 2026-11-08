@@ -223,11 +223,15 @@ function generate(req) {
   const b = new Build();
   const form = req.form || formFor(C, type, stage);
   const info = { type, biome, cultureKey, stage, decor, seed, form };
+  // asked-for storeys, porch and pitch go into the name, so different requests never share a file name
+  info.asked = (req.storeys >= 1 && req.storeys <= 3 ? `-${Math.round(req.storeys)}st` : '') + (req.porch === true ? '-porch' : req.porch === false ? '-noporch' : '') + (req.pitch ? `-p${+req.pitch}` : '');
   // Meadows and Black Forest villages build in wood at first; stone for later stages and for halls from s2 (D-012)
   const early = (biome === 'Meadows' || biome === 'Black Forest') && (stage === 's1' || (stage === 's2' && !['longhouse', 'tavern', 'temple', 'tower'].includes(type)));
   C.early = early;
   const stoneOK = !!K.stoneWall && biome !== 'Meadows' && !early;
-  const storeysOf = () => (C.storeys && C.storeys[type] && C.storeys[type][stage]) || T.storeys[stage];
+  // a request may name the storeys (1 to 3) and ask for a porch or none; otherwise the culture and type decide
+  const askedStoreys = req.storeys >= 1 && req.storeys <= 3 ? Math.round(req.storeys) : null;
+  const storeysOf = () => askedStoreys || (C.storeys && C.storeys[type] && C.storeys[type][stage]) || T.storeys[stage];
 
   if (T.well) return finish(wellDesign(b, K, biome, stage), info);
   if (T.camp && !form) return finish(campDesign(b, K, biome, stage, R, decor), info);
@@ -507,7 +511,9 @@ function generate(req) {
   }
 
   // porch at the front door: one or three bays wide, on the grid, never on top of a wing
-  if (!flat && roofKind !== 'shed' && !T.dock && !T.tower && C.porch && R() < C.porch + (stage === 's1' ? -0.3 : 0.2) && !['U', 'cross', 'court', 'gables', 'greek'].includes(plan) && !deck && !podklet && form !== 'sunken') {
+  const porchFits = !flat && roofKind !== 'shed' && !T.dock && !T.tower && !['U', 'cross', 'court', 'gables', 'greek'].includes(plan) && !deck && !podklet && form !== 'sunken';
+  if (req.porch === true && !porchFits) b.notes.push('No porch: this plan, roof or form has no front for one.');
+  if (req.porch === true ? porchFits : req.porch !== false && !flat && roofKind !== 'shed' && !T.dock && !T.tower && C.porch && R() < C.porch + (stage === 's1' ? -0.3 : 0.2) && porchFits) {
     const h = R() < 0.5 ? 0 : 1, zf = doorZ;
     const bays = [];
     for (let k = -h; k <= h; k++) { const x = doorX + 2 * k; if (!cells.has(`${x},${zf - 1}`) && !cells.has(`${x},${zf - 3}`)) bays.push(x); }
@@ -627,7 +633,7 @@ function clearDoors(b) {
 }
 
 function finish(b, info) {
-  const name = `${info.type}_${info.biome.replace(' ', '')}_${info.cultureKey}_${info.plan || 'x'}-${info.roof || 'x'}-${info.walls || 'x'}_${info.stage}${info.decor}_${info.seed}`;
+  const name = `${info.type}_${info.biome.replace(' ', '')}_${info.cultureKey}_${info.plan || 'x'}-${info.roof || 'x'}-${info.walls || 'x'}${info.asked || ''}_${info.stage}${info.decor}_${info.seed}`;
   return {
     meta: { Name: name, Creator: 'Villheim generator', Category: 'Villheim generated',
       Description: `${S.TYPES[info.type].label}, ${info.biome}, ${S.CULTURES[info.cultureKey].label}, ${info.plan || ''} plan, ${info.roof || ''} roof, ${info.walls || ''} walls, ${info.stage}${info.decor}, seed ${info.seed}` },

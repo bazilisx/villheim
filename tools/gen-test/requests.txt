@@ -1,0 +1,6 @@
+# type|biome|culture|stage|words|seed   (the same list lab/compare_engine.js reads)
+home|md||s1d3|two storeys with a porch|7
+longhouse|bf|norse-forest|s3d2|steep roof|7
+home|pl|middle-eastern|s2d2|courtyard, flat roof|11
+storage|sw||s1d1||3
+tower|mt||s2d3|stone|5

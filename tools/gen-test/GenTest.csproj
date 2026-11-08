@@ -1,0 +1,27 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Runs the in-game generator outside the game: the mod's own LabEngine.cs and lab.js, with the same netstandard2.1
+    Jint, Acornima and Unsafe DLLs that ship with the mod. Not shipped. See run.sh.
+  -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>disable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="Program.cs" />
+    <Compile Include="../../src/Villheim.Logic/Generator/LabEngine.cs" />
+    <EmbeddedResource Include="../../src/Villheim.Logic/Generator/lab.js" LogicalName="Villheim.Logic.Generator.lab.js" />
+    <PackageReference Include="Jint" Version="4.17.0" ExcludeAssets="all" GeneratePathProperty="true" />
+    <PackageReference Include="Acornima" Version="1.7.0" ExcludeAssets="all" GeneratePathProperty="true" />
+    <PackageReference Include="System.Runtime.CompilerServices.Unsafe" Version="6.0.0" ExcludeAssets="all" GeneratePathProperty="true" />
+    <Reference Include="Jint" HintPath="$(PkgJint)/lib/netstandard2.1/Jint.dll" />
+    <Reference Include="Acornima" HintPath="$(PkgAcornima)/lib/netstandard2.1/Acornima.dll" />
+    <Reference Include="System.Runtime.CompilerServices.Unsafe" HintPath="$(PkgSystem_Runtime_CompilerServices_Unsafe)/lib/netstandard2.0/System.Runtime.CompilerServices.Unsafe.dll" />
+  </ItemGroup>
+
+</Project>

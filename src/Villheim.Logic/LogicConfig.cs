@@ -191,6 +191,10 @@ namespace Villheim.Logic
         public static ConfigEntry<float> MistlandsDefenderSpread;
         public static ConfigEntry<float> MistlandsDefenderReaction;
 
+        // In-game generator (Generator/GenCommands.cs).
+        public static ConfigEntry<int> GenCandidates;
+        public static ConfigEntry<bool> GenLevelGround;
+
         public static void Bind()
         {
             ConfigFile config = VillheimPlugin.Instance?.Config;
@@ -380,6 +384,7 @@ namespace Villheim.Logic
             BindLiving(config);
             BindKnowledge(config);
             BindCultures(config);
+            BindGenerator(config);
 
             const string sites = "1b - Village sites";
             VillageChance = Admin(config, sites, "VillageChance", 50,
@@ -750,6 +755,17 @@ namespace Villheim.Logic
                 "Aim spread in degrees for arrows at those creatures.");
             MistlandsDefenderReaction = Admin(config, defenders, "MistlandsDefenderReaction", 0.4f,
                 "Seconds from first seeing such a creature to the first arrow.");
+        }
+
+        /// <summary>Section "4b - Generator": 'vh gen' and 'vh place'.</summary>
+        private static void BindGenerator(ConfigFile config)
+        {
+            const string gen = "4b - Generator";
+            GenCandidates = Admin(config, gen, "GenCandidates", 8,
+                "How many seeds 'vh gen' tries for one request. It keeps the one that passes the most checks, then scores " +
+                "highest against the keep and drop review (1 to 32; more takes longer).");
+            GenLevelGround = Admin(config, gen, "GenLevelGround", true,
+                "Level the ground under a design that 'vh gen' or 'vh place' builds, as 'vh preview' does.");
         }
 
         /// <summary>Every look setting puts itself on the ghosts the moment it changes.</summary>

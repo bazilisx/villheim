@@ -50,7 +50,9 @@ well (Tyler, 2026-11-08). The Features tab of the review sheet (`docs/features/b
   area (sign, notice board, benches) and, while waiting, a workshop (basic workbench house) and a storehouse (extra
   chests); then more homes, farms and workshops as trades appear. Built session 11, needs testing.
 - [ ] Notice board from the `villagenotice` blueprint over the village chest (session 13; repeated-board bug fixed
-  2026-11-08, needs testing). Its back
+  2026-11-08, needs testing).
+- [ ] Clickable notice board signs with a menu, like Haldor's or Millénaire's: accept a contract, see the list of
+  buildings to come, move or prioritize them, or ask for a different building (Tyler, 2026-11-08, later). Its back
   carries the contract, season, next feast and prosperity (D-009, built 2026-11-08, needs testing).
 - [ ] Storage chests by the main chest as the village grows (one, two, four, then by people and need), each labelled
   with a vanilla sign and kept sorted by a villager; the builder takes from any (D-016, built 2026-11-08,

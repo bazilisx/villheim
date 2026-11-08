@@ -46,7 +46,8 @@ namespace Villheim.Logic.Villagers
             Trade.Miner, Trade.Carpenter, Trade.Farmer, Trade.Woodcutter, Trade.Cook, Trade.Miner,
         };
 
-        // A weapon for each gear tier (0 rags .. 4 bronze), made of what that tier's smith works with.
+        // A weapon for each gear tier (0 rags .. 4 bronze), made of what that tier's smith works with (D-050: these for
+        // now, each culture's own weapons later). Everyone who fights also carries a bow and arrows (Defenders.CarryBow).
         private static readonly string[] Weapons = { "Club", "Club", "SpearFlint", "SpearFlint", "SwordBronze" };
         private static readonly string[] Shields = { "ShieldWood", "ShieldWood", "ShieldBronzeBuckler", "ShieldBronzeBuckler", "ShieldBronzeBuckler" };
 
@@ -206,6 +207,8 @@ namespace Villheim.Logic.Villagers
                 EquipNamed(villager, Shields[tier]);
             }
 
+            // A bow and arrows go with every weapon, at every tier (D-050).
+            Defenders.CarryBow(villager);
             if (!armed.Holding)
             {
                 armed.Holding = true;
@@ -234,6 +237,7 @@ namespace Villheim.Logic.Villagers
         public static void ArmForHunt(Villager villager)
         {
             EquipNamed(villager, Weapons[Gear(villager)]);
+            Defenders.CarryBow(villager);
             if (ArmedStates.TryGetValue(villager, out Armed armed))
             {
                 armed.LastThreat = UnityEngine.Time.time;

@@ -59,7 +59,8 @@ namespace Villheim.Logic.Village
         /// Copses for villages in biomes with few trees (T-24): once a day, from the first building, a village in one of
         /// CopseBiomes with fewer than CopseTrees standing trees round it adds CopseSaplingsPerDay saplings of a wood
         /// tree that grows in its biome (birch and oak in the Plains) to the planting list. They go in a copse just past
-        /// the village edge (Replanting). Needs no WorldLife. A biome where none of those trees grows gets none.
+        /// the village edge (Replanting). Needs no WorldLife. A Mistlands village plants Yggdrasil shoots instead, which
+        /// give its own people plain wood (VillageWood, D-052).
         /// </summary>
         private static void Copse(VillageHearth hearth, VillageState state)
         {
@@ -70,6 +71,7 @@ namespace Villheim.Logic.Village
             }
 
             hearth.Zdo.Set(KeyCopseDay, Today);
+            VillageWood.Grow(hearth);
             int trees = Trees(hearth);
             int wanted = LogicConfig.CopseTrees?.Value ?? 20;
             if (trees >= wanted || Replanting.OwedCount(hearth) > 12)
@@ -81,7 +83,8 @@ namespace Villheim.Logic.Village
             int planted = 0;
             for (int i = 0; i < count; i++)
             {
-                string sapling = Replanting.SaplingForBiome(state.Biome);
+                string sapling = Replanting.SaplingForBiome(state.Biome) ??
+                                 (state.Biome == Heightmap.Biome.Mistlands ? VillageWood.MistlandsShoot() : null);
                 if (sapling == null)
                 {
                     break;

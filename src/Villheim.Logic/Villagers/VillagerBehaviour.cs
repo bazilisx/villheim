@@ -33,6 +33,8 @@ namespace Villheim.Logic.Villagers
             GhostLook.UpdateAnimals();
             Childhood.Update(villager);
             Ages.Update(villager);
+            // The ghost's death and hit effects (found once the game's prefabs are loaded).
+            GhostDeath.Apply(villager);
             Demisting.UpdateVillager(villager);
             Status.Publish(villager);
 

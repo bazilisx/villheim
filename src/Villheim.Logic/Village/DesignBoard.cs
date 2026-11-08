@@ -1021,6 +1021,9 @@ namespace Villheim.Logic.Village
             return lines;
         }
 
+        private static string _lastGround = "";
+        private static int _paintChecks;
+
         /// <summary>The paint on the ground at a spot: Paved, Cultivate, Dirt, or "" for none.</summary>
         private static string PaintAt(Vector3 world)
         {
@@ -1034,10 +1037,21 @@ namespace Villheim.Logic.Village
 
                 map.WorldToVertexMask(world, out int x, out int y);
                 Color mask = map.m_paintMask.GetPixel(x, y);
-                return mask.b > 0.5f ? "Paved" : mask.g > 0.5f ? "Cultivate" : mask.r > 0.5f ? "Dirt" : "";
+                string paint = mask.b > 0.5f ? "Paved" : mask.g > 0.5f ? "Cultivate" : mask.r > 0.5f ? "Dirt" : "";
+                if (_paintChecks++ < 3)
+                {
+                    VillheimPlugin.Log.LogInfo($"Board: paint at {world} (mask {x},{y} of {map.m_paintMask.width}): {mask} -> '{paint}'");
+                }
+
+                return paint;
             }
-            catch (System.Exception)
+            catch (System.Exception e)
             {
+                if (_paintChecks++ < 3)
+                {
+                    VillheimPlugin.Log.LogWarning($"Board: could not read the ground's paint: {e.GetType().Name}: {e.Message}");
+                }
+
                 return "";
             }
         }
@@ -1099,11 +1113,13 @@ namespace Villheim.Logic.Village
                         op.transform.position = world;
                         op.m_settings = new TerrainOp.Settings
                         {
+                            // 0.75 m: the ground's grid (about 1 m) does not line up with the plot's squares, so a
+                            // 0.5 m reach could fall between its points and change nothing.
                             m_level = true,
-                            m_levelRadius = 0.5f,
+                            m_levelRadius = 0.75f,
                             m_square = true,
                             m_paintCleared = f[7].Length > 0,
-                            m_paintRadius = 0.5f,
+                            m_paintRadius = 0.75f,
                             m_paintType = f[7] == "Paved" ? TerrainModifier.PaintType.Paved
                                 : f[7] == "Cultivate" ? TerrainModifier.PaintType.Cultivate
                                 : TerrainModifier.PaintType.Dirt,
@@ -1125,6 +1141,8 @@ namespace Villheim.Logic.Village
             finally
             {
                 Object.Destroy(holder);
+                int painted = lines.Count(l => !l.EndsWith(";"));
+                Say($"Board: ground put back in the copy: {done} squares ({painted} painted).");
             }
         }
 
@@ -1190,6 +1208,8 @@ namespace Villheim.Logic.Village
             // The ground inside the plot (paths, paving, tilled soil, raised or lowered spots), as PlanBuild's terrain
             // section: PlanBuild puts it back when it places the blueprint, and so does the board for its copies.
             List<string> terrain = SampleTerrain(center, sign.GetFloat(Gallery.KeyPlotYaw, 0f), sign.GetFloat(Gallery.KeyPlotHalf, 10f));
+            int paintedSquares = terrain.Count(l => !l.EndsWith(";"));
+            _lastGround = $"{terrain.Count} ground squares kept ({paintedSquares} painted)";
             if (terrain.Count > 0)
             {
                 header.Add("#Terrain");
@@ -1316,7 +1336,7 @@ namespace Villheim.Logic.Village
                 SetPlotState(plotName, oldPlaced, snapshots.Count > 0 ? state ?? "as before the save" : null);
             });
 
-            return $"Board: saved {stem} ({views.Count} pieces)" +
+            return $"Board: saved {stem} ({views.Count} pieces; {_lastGround})" +
                    (source != null ? $", from No. {source.Number} {source.Design} ({match:P0} alike)." : decor == 3 ? "; no candidate matched it." : ".") + next +
                    " Undo (8) walks the save back.";
         }

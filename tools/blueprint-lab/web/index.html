@@ -113,6 +113,7 @@ td.n { text-align: right; font-family: var(--mono); font-variant-numeric: tabula
       <label for="culture">Style<select id="culture"></select></label>
       <label for="plan">Plan<select id="plan"></select></label>
       <label for="roof">Roof<select id="roof"></select></label>
+      <label for="walls">Walls<select id="walls"></select></label>
       <label for="pitch">Roof pitch<select id="pitch"><option value="">Style's own</option><option value="26">26 degrees</option><option value="45">45 degrees</option></select></label>
       <label for="stage">Size stage<select id="stage"><option value="s1">s1 small</option><option value="s2" selected>s2 middle</option><option value="s3">s3 large</option></select></label>
       <label for="decor">Decor stage<select id="decor"><option value="d1">d1 bare needs</option><option value="d2" selected>d2 lived in</option><option value="d3">d3 rich</option></select></label>
@@ -1192,25 +1193,47 @@ function inside(w, x, z, pad = 0) {
 
 const PLAN_BY_TYPE = {
   // weights per stage, from the corpus counts per category (category x plan), favouring Tyler's keepers
-  home: { s1: { rect: 6, square: 2 }, s2: { rect: 4, L: 3, T: 1 }, s3: { L: 3, T: 3, rect: 2, cross: 1 } },
+  home: { s1: { rect: 6, square: 3 }, s2: { rect: 5, L: 3, T: 2, square: 2, octagon: 0.6 }, s3: { T: 3, L: 3, rect: 2, cross: 1, octagon: 0.6 } },
   longhouse: { s1: { long: 1 }, s2: { long: 3, T: 1 }, s3: { long: 2, T: 2, cross: 1 } },
   tavern: { s1: { rect: 1 }, s2: { L: 2, T: 2, rect: 1 }, s3: { T: 2, cross: 1, U: 1 } },
-  smithy: { s1: { rect: 1 }, s2: { rect: 2, L: 1 }, s3: { L: 2, T: 1 } },
+  smithy: { s1: { rect: 2, square: 1 }, s2: { rect: 2, L: 1, T: 1 }, s3: { L: 2, T: 2, U: 1 } },
   sawmill: { s1: { rect: 1 }, s2: { rect: 2, L: 1 }, s3: { L: 1, rect: 1 } },
   workshop: { s1: { rect: 1 }, s2: { rect: 2, L: 1 }, s3: { L: 2, T: 1 } },
   barn: { s1: { rect: 1 }, s2: { rect: 2, long: 1 }, s3: { long: 1, L: 1 } },
   farm: { s1: { rect: 1 }, s2: { rect: 1 }, s3: { rect: 1, L: 1 } },
   storage: { s1: { rect: 1, square: 1 }, s2: { rect: 2, L: 1 }, s3: { L: 1, T: 1 } },
-  tower: { s1: { square: 1 }, s2: { square: 1 }, s3: { square: 3, octagon: 1 } },
+  tower: { s1: { square: 2, octagon: 1 }, s2: { square: 2, octagon: 1 }, s3: { square: 1, octagon: 1 } },
   dock: { s1: { rect: 1 }, s2: { rect: 1 }, s3: { rect: 1, L: 1 } },
   stall: { s1: { rect: 1 }, s2: { rect: 1 }, s3: { rect: 1, L: 1 } },
   temple: { s1: { rect: 1 }, s2: { rect: 1, cross: 1, octagon: 1 }, s3: { cross: 2, octagon: 1 } },
 };
 const ROOF_BY_CULTURE = {
-  'norse': { gable: 6, hip: 1 }, 'black-forest': { gable: 5, hip: 2 }, 'swamp': { gable: 4, hip: 3 },
+  'norse': { gable: 6, hip: 2 }, 'black-forest': { gable: 5, hip: 2 }, 'swamp': { gable: 4, hip: 3 },
   'mountain': { gable: 6, hip: 1 }, 'middle-eastern': { flat: 1 }, 'east-asian': { hip: 4, gable: 1 },
   'castle-medieval': { gable: 5, hip: 2 }, 'dwarven': { flat: 2, hip: 1 }, 'slavic': { gable: 5, hip: 1 }, 'celtic': { conical: 1 },
 };
+// Wall styles per biome: counts of the main wall style in the corpus by material palette (lab/shapes.py).
+const WALLS_BY_BIOME = {
+  'Meadows': { 'half-timber': 144, plank: 110 },
+  'Black Forest': { stone: 151, 'stone-base': 41, log: 34, plank: 15, 'half-timber': 10 },
+  'Swamp': { stone: 36, 'stone-base': 33, 'half-timber': 27, plank: 25, log: 11 },
+  'Mountain': { 'stone-base': 8, stone: 7, plank: 4, 'half-timber': 3 },
+  'Plains': { 'stone-base': 10, 'half-timber': 10, plank: 8, stone: 6 },
+  'Mistlands': { marble: 36, stone: 11, plank: 10 },
+  'Ashlands': { grausten: 77, plank: 61, 'stone-base': 61, 'half-timber': 61, stone: 41 },
+};
+const WALLS_BY_CULTURE = {
+  'black-forest': { log: 3, 'stone-base': 2, stone: 1 }, 'slavic': { log: 1 }, 'middle-eastern': { stone: 1 },
+  'dwarven': { stone: 1 }, 'castle-medieval': { 'stone-base': 3, stone: 1 }, 'east-asian': { 'half-timber': 1 },
+  'mountain': { 'stone-base': 2, stone: 1 }, 'celtic': { plank: 1, 'half-timber': 1 },
+};
+function wallStyleFor(R, C, cultureKey, biome) {
+  const w = { ...(WALLS_BY_CULTURE[cultureKey] || WALLS_BY_BIOME[biome] || { plank: 1 }) };
+  if (biome === 'Meadows') { delete w.stone; delete w['stone-base']; delete w.log; } // no stone or core wood yet
+  if (!Object.keys(w).length) w.plank = 1;
+  return pick(R, w);
+}
+
 function pick(R, weights) {
   const e = Object.entries(weights), tot = e.reduce((s, [, w]) => s + w, 0);
   let x = R() * tot;
@@ -1282,7 +1305,7 @@ function generate(req) {
   const T = S.TYPES[type];
   const biome = S.BIOMES.includes(req.biome) ? req.biome : 'Meadows';
   const cultureKey = S.CULTURES[req.culture] ? req.culture : S.BIOME_CULTURE[biome];
-  const C = S.CULTURES[cultureKey];
+  const C = { ...S.CULTURES[cultureKey] };
   const stage = ['s1', 's2', 's3'].includes(req.stage) ? req.stage : 's1';
   const decor = ['d1', 'd2', 'd3'].includes(req.decor) ? req.decor : 'd2';
   const seed = req.seed ?? 1;
@@ -1299,7 +1322,13 @@ function generate(req) {
   if (!plan) {
     if (C.round) plan = 'octagon';
     else if (C.courtyard && stage === 's3' && !T.tower) plan = 'U';
-    else plan = pick(R, (PLAN_BY_TYPE[type] || PLAN_BY_TYPE.home)[stage]);
+    else {
+      const w = { ...(PLAN_BY_TYPE[type] || PLAN_BY_TYPE.home)[stage] };
+      // round plans belong to Norse, Celtic, Black Forest and Mountain building in the corpus; flat-roofed styles never
+      if (!['norse', 'black-forest', 'mountain', 'celtic', 'swamp'].includes(cultureKey) && type !== 'tower') delete w.octagon;
+      if (!['home', 'tavern', 'smithy'].includes(type)) delete w.U;
+      plan = pick(R, Object.keys(w).length ? w : { rect: 1 });
+    }
   }
   let roofKind = req.roof && req.roof !== 'auto' ? req.roof : null;
   if (!roofKind) roofKind = plan === 'octagon' ? 'conical' : pick(R, ROOF_BY_CULTURE[cultureKey] || { gable: 1 });
@@ -1307,7 +1336,9 @@ function generate(req) {
   if (plan === 'octagon' && roofKind !== 'flat') roofKind = 'conical';
   if (plan !== 'octagon' && roofKind === 'conical') roofKind = 'hip';
   if (roofKind === 'shed' && plan !== 'rect' && plan !== 'long' && plan !== 'square') plan = 'rect';
-  info.plan = plan; info.roof = roofKind;
+  const wallStyle = req.walls && req.walls !== 'auto' ? req.walls : wallStyleFor(R, C, cultureKey, biome);
+  C.wallStyle = wallStyle;
+  info.plan = plan; info.roof = roofKind; info.walls = wallStyle;
 
   // ---- size
   let [bx, bz] = T.bays[stage];
@@ -1467,10 +1498,10 @@ function clearDoors(b) {
 }
 
 function finish(b, info) {
-  const name = `${info.type}_${info.biome.replace(' ', '')}_${info.cultureKey}_${info.plan || 'x'}-${info.roof || 'x'}_${info.stage}${info.decor}_${info.seed}`;
+  const name = `${info.type}_${info.biome.replace(' ', '')}_${info.cultureKey}_${info.plan || 'x'}-${info.roof || 'x'}-${info.walls || 'x'}_${info.stage}${info.decor}_${info.seed}`;
   return {
     meta: { Name: name, Creator: 'Villheim generator', Category: 'Villheim generated',
-      Description: `${S.TYPES[info.type].label}, ${info.biome}, ${S.CULTURES[info.cultureKey].label}, ${info.plan || ''} plan, ${info.roof || ''} roof, ${info.stage}${info.decor}, seed ${info.seed}` },
+      Description: `${S.TYPES[info.type].label}, ${info.biome}, ${S.CULTURES[info.cultureKey].label}, ${info.plan || ''} plan, ${info.roof || ''} roof, ${info.walls || ''} walls, ${info.stage}${info.decor}, seed ${info.seed}` },
     pieces: b.pieces, rooms: b.rooms, notes: [...new Set(b.notes)], request: info,
   };
 }
@@ -1479,18 +1510,27 @@ function finish(b, info) {
 
 function framePole(K, C) { return C.darkFrame ? 'darkwood_pole' : (K.pole || 'wood_pole2'); }
 
+// One 2 m wall bay. Wall styles: plank, half-timber (plank with a 45 degree brace across the bay), log,
+// stone, stone-base (a metre of stone, then plank), marble, grausten.
 function wallSegment(b, K, C, x, y0, z, yaw, SH, kind) {
-  const stone = C.stoneWalls && K.stoneWall;
-  const log = (C.logWalls || K.wallLog) && K.wall === 'wood_wall_log' && !stone;
-  const main = stone ? K.stoneWall : (log ? 'wood_wall_log' : K.wall);
-  const course = stone ? (/2x2/.test(K.stoneWall) ? 2 : 1) : (log ? 0.5 : 2);
+  const style = C.wallStyle || 'plank';
+  const plank = K.floor === 'ashwood_floor_2x2' ? 'ashwood_wall_2x2' : 'woodwall';
+  const stonePiece = K.stoneWall || 'stone_wall_2x1';
+  const stoneCourse = /2x2/.test(stonePiece) ? 2 : 1;
+  const pieceFor = y => {
+    if (style === 'stone' || style === 'marble' || style === 'grausten') return [stonePiece, stoneCourse];
+    if (style === 'stone-base' && y < y0 + 0.99) return [stoneCourse === 1 ? stonePiece : 'stone_wall_2x1', 1];
+    if (style === 'log') return ['wood_wall_log', 0.5];
+    return [plank, 2];
+  };
   const fill = (from, to) => {
     let y = from;
     while (to - y > 0.01) {
       const left = to - y;
+      const [main, course] = pieceFor(y);
       if (course <= left + 0.01) { b.put(main, x, y + course / 2, z, yaw); y += course; }
-      else if (left >= 0.99 && !log) { b.put(stone && course === 1 ? K.stoneWall : K.wallHalf, x, y + 0.5, z, yaw); y += 1; }
-      else { b.put(log ? 'wood_wall_log' : K.wallQuarter, x, y + Math.min(0.5, left) / 2, z, yaw); y += 0.5; }
+      else if (left >= 0.99 && main !== 'wood_wall_log') { b.put(course === 1 ? main : K.wallHalf, x, y + 0.5, z, yaw); y += 1; }
+      else { b.put(main === 'wood_wall_log' ? main : K.wallQuarter, x, y + Math.min(0.5, left) / 2, z, yaw); y += 0.5; }
     }
   };
   if (kind === 'door' || kind === 'gate') {
@@ -1504,6 +1544,11 @@ function wallSegment(b, K, C, x, y0, z, yaw, SH, kind) {
     fill(y0 + 2, y0 + SH); return;
   }
   fill(y0, y0 + SH);
+  if (style === 'half-timber') {
+    const brace = C.darkFrame || /darkwood/.test(K.beam || '') ? 'darkwood_beam_45' : 'wood_beam_45';
+    const flip = Math.round(x + z) % 4 === 0 ? 180 : 0; // braces lean both ways along a wall
+    b.put(brace, x, y0 + 1, z, yaw + flip);
+  }
 }
 
 // ---------------------------------------------------------------- roofs
@@ -1721,7 +1766,7 @@ else window.VHGenerate = { generate, quat, PLAN_BY_TYPE, ROOF_BY_CULTURE };
 })();
 </script>
 <script>
-const RULES = {"placement":{"Candle_resin":{"rel":0,"lift":0.8},"itemstandh":{"rel":180,"lift":0.4},"piece_brazierceiling01":{"rel":0,"lift":4.85},"piece_chair02":{"rel":0,"lift":0.1},"piece_chest_barrel":{"rel":0,"lift":0.1},"rug_straw":{"rel":270,"lift":0.1},"fire_pit":{"rel":0,"lift":0.4},"piece_cookingstation":{"rel":180,"lift":0.7},"piece_workbench":{"rel":0,"lift":0.1},"piece_workbench_ext1":{"rel":0,"lift":0.1},"rug_deer":{"rel":90,"lift":0.1},"portal_wood":{"rel":0,"lift":0.2},"bed":{"rel":270,"lift":0.1},"piece_workbench_ext2":{"rel":0,"lift":0.1},"piece_groundtorch_wood":{"rel":0,"lift":0.7},"piece_chest_wood":{"rel":0,"lift":0.1},"sign":{"rel":0,"lift":1.2},"piece_groundtorch":{"rel":180,"lift":1.2},"piece_chest":{"rel":0,"lift":0.1},"rug_fur":{"rel":0,"lift":0.1},"fermenter":{"rel":180,"lift":0.1},"itemstand":{"rel":0,"lift":2.4},"piece_dvergr_lantern":{"rel":90,"lift":3.8},"MountainKit_brazier":{"rel":270,"lift":1.1},"piece_groundtorch_blue":{"rel":0,"lift":1.7},"piece_jackoturnip":{"rel":90,"lift":0.9},"guard_stone":{"rel":0,"lift":0.1},"piece_workbench_ext3":{"rel":0,"lift":0.1},"windmill":{"rel":180,"lift":0.3},"fire_pit_iron":{"rel":270,"lift":0.25},"forge_ext2":{"rel":0,"lift":0.1},"piece_beehive":{"rel":90,"lift":0.5},"forge_ext4":{"rel":0,"lift":0.1},"forge":{"rel":0,"lift":0.1},"forge_ext3":{"rel":90,"lift":0.1},"forge_ext5":{"rel":90,"lift":0.1},"forge_ext1":{"rel":180,"lift":0.1},"piece_workbench_ext4":{"rel":0,"lift":1.7},"forge_ext6":{"rel":0,"lift":2.4},"ArmorStand":{"rel":0,"lift":0.1},"cauldron_ext1_spice":{"rel":0,"lift":2.7},"cauldron_ext3_butchertable":{"rel":270,"lift":0.2},"cauldron_ext4_pots":{"rel":0,"lift":2.7},"cauldron_ext5_mortarandpestle":{"rel":0,"lift":0.5},"cauldron_ext6_rollingpins":{"rel":0,"lift":1.7},"jute_carpet":{"rel":90,"lift":0.1},"piece_cauldron":{"rel":180,"lift":0.7},"piece_chair03":{"rel":0,"lift":0.1},"piece_preptable":{"rel":0,"lift":0.2},"piece_table_oak":{"rel":90,"lift":0.1},"wood_core_stack":{"rel":270,"lift":-0.2},"hearth":{"rel":180,"lift":0.5},"piece_groundtorch_green":{"rel":180,"lift":1.2},"piece_stonecutter":{"rel":180,"lift":0.15000000000000002},"piece_groundtorch_mist":{"rel":0,"lift":7.1},"piece_chair":{"rel":270,"lift":0.7},"wood_fine_stack":{"rel":0,"lift":0.1},"rug_wolf":{"rel":270,"lift":0.1},"stone_pile":{"rel":0,"lift":-0.1},"wood_stack":{"rel":270,"lift":0.6499999999999999},"piece_chest_blackmetal":{"rel":0,"lift":0.1},"$custompiece_stackedpoetrybooks1":{"rel":0,"lift":0.7000000000000001},"$custompiece_stackedpoetrybooks2":{"rel":180,"lift":0.7000000000000001},"piece_chest_private":{"rel":90,"lift":0.1},"hildir_maptable_coe":{"rel":90,"lift":0.2},"hildir_chest_coe":{"rel":90,"lift":0.3},"piece_banner04":{"rel":90,"lift":6.0},"$custompiece_candlebottle":{"rel":90,"lift":1.1},"rug_asksvin":{"rel":180,"lift":0.1},"piece_table":{"rel":0,"lift":0.1},"wood_dragon1":{"rel":0,"lift":2.45},"piece_oven":{"rel":270,"lift":0.5},"rug_Bjorn":{"rel":0,"lift":0.1},"piece_Lavalantern":{"rel":270,"lift":1.0},"piece_cookingstation_iron":{"rel":0,"lift":1.1},"piece_bench01":{"rel":0,"lift":0.1},"rug_hare":{"rel":90,"lift":0.9},"piece_table_round":{"rel":180,"lift":0.1},"piece_banner11":{"rel":90,"lift":8.2},"piece_chest_treasure":{"rel":0,"lift":0.15000000000000002},"piece_throne01":{"rel":0,"lift":0.1},"jute_carpet_blue":{"rel":0,"lift":0.1},"piece_bed02":{"rel":0,"lift":0.1},"treasure_stack":{"rel":0,"lift":0.1},"piece_banner05":{"rel":90,"lift":3.8},"smelter":{"rel":270,"lift":0.4},"charcoal_kiln":{"rel":90,"lift":0.5},"piece_banner01":{"rel":90,"lift":4.3},"piece_logbench01":{"rel":180,"lift":0.1},"eitrrefinery":{"rel":0,"lift":0.0},"blackforge":{"rel":90,"lift":0.5},"piece_spinningwheel":{"rel":90,"lift":0.1},"piece_artisanstation":{"rel":0,"lift":0.1},"piece_magetable":{"rel":0,"lift":0.2},"piece_magetable_ext":{"rel":270,"lift":0.2},"piece_magetable_ext2":{"rel":90,"lift":0.05},"wood_yggdrasil_stack":{"rel":90,"lift":0.1},"blastfurnace":{"rel":0,"lift":0.5},"blackforge_ext2_vise":{"rel":90,"lift":0.2},"blackforge_ext1":{"rel":0,"lift":0.15000000000000002},"piece_bone_throne":{"rel":0,"lift":0.25},"skull_pile":{"rel":270,"lift":0.25},"piece_banner10":{"rel":180,"lift":3.8},"darkwood_raven":{"rel":0,"lift":3.2},"piece_cartographytable":{"rel":180,"lift":0.1},"piece_blackwood_bench01":{"rel":180,"lift":0.2},"piece_xmastree":{"rel":180,"lift":0.3},"blackforge_ext3_metalcutter":{"rel":270,"lift":0.15000000000000002},"blackforge_ext4_gemcutter":{"rel":0,"lift":0.35},"ashwood_bed":{"rel":180,"lift":0.1},"piece_banner07":{"rel":90,"lift":4.0},"piece_banner03":{"rel":90,"lift":8.4},"piece_banner06":{"rel":90,"lift":4.6},"piece_banner02":{"rel":90,"lift":4.9},"darkwood_wolf":{"rel":180,"lift":7.0},"barrell":{"rel":180,"lift":0.9},"blackmarble_head_big01":{"rel":180,"lift":3.0},"bone_stack":{"rel":0,"lift":8.6},"CastleKit_groundtorch":{"rel":270,"lift":0.0},"dvergrprops_chair":{"rel":90,"lift":0.1},"dvergrprops_crate":{"rel":180,"lift":0.1},"dvergrprops_crate_long":{"rel":90,"lift":0.65},"dvergrprops_lantern_standing":{"rel":180,"lift":0.9},"dvergrprops_stool":{"rel":0,"lift":0.9},"dvergrprops_table":{"rel":180,"lift":0.15000000000000002},"piece_banner08":{"rel":270,"lift":4.2},"piece_banner09":{"rel":270,"lift":4.2},"piece_magetable_ext3":{"rel":0,"lift":2.6},"trader_wagon_destructable":{"rel":0,"lift":-0.6},"piece_xmasgarland":{"rel":270,"lift":2.4},"piece_xmascrown":{"rel":90,"lift":3.1500000000000004},"piece_world_blueprint_rune_stack":{"rel":0,"lift":0.9},"artisan_ext1":{"rel":0,"lift":0.3},"piece_throne02":{"rel":270,"lift":0.5},"piece_bathtub":{"rel":0,"lift":0.1},"piece_blackmarble_bench":{"rel":0,"lift":0.1},"piece_blackmarble_throne":{"rel":0,"lift":0.5},"goblinking_totemholder":{"rel":0,"lift":-0.2},"dvergrprops_barrel":{"rel":270,"lift":0.5},"treasure_pile":{"rel":0,"lift":0.4},"piece_blackmarble_table":{"rel":90,"lift":0.1},"Fiddleheadfern":{"rel":180,"lift":0.1},"Placeable_Stone":{"rel":0,"lift":-0.8},"CastleKit_groundtorch_green":{"rel":180,"lift":0.1},"mudpile":{"rel":0,"lift":0.0},"coal_pile":{"rel":180,"lift":0.1},"mountainkit_table":{"rel":180,"lift":0.5},"piece_wisplure":{"rel":0,"lift":0.2},"surtling_lantern_1":{"rel":270,"lift":0.6},"Pickable_Fiddlehead":{"rel":90,"lift":-1.7},"volture_strawpile":{"rel":0,"lift":5.65},"mm_corewood_stackable_chest":{"rel":270,"lift":1.0},"blackmarble_head02":{"rel":180,"lift":0.0},"blackmarble_head01":{"rel":180,"lift":0.0},"sign_notext":{"rel":0,"lift":0.8},"GB_Hanging_Candles":{"rel":0,"lift":3.6},"$custompiece_roundtablewithcloth":{"rel":0,"lift":0.5},"cauldron_ext7_smoker":{"rel":180,"lift":0.35},"piece_chest_warderobe":{"rel":180,"lift":0.1},"piece_moose_throne":{"rel":0,"lift":0.2},"blackforge_ext5_apron":{"rel":0,"lift":1.5499999999999998},"pressurePlate_stone_PressurePlate_Items_AddPlateItem":{"rel":270,"lift":0.5},"pressurePlate_PressurePlate_Items_AddPlateItem":{"rel":180,"lift":0.1},"apiary_ext2":{"rel":180,"lift":-0.1},"apiary_ext1":{"rel":180,"lift":0.7},"piece_chest_grausten":{"rel":0,"lift":0.0},"piece_bench_runed":{"rel":0,"lift":0.1},"rug_seal":{"rel":0,"lift":0.1},"piece_chair_runed":{"rel":180,"lift":0.3},"piece_hoodedlantern":{"rel":0,"lift":5.5},"rug_moose":{"rel":180,"lift":0.15000000000000002},"piece_chest_barrel_bal":{"rel":270,"lift":1.3},"piece_drawer":{"rel":180,"lift":2.1},"deepnorth_lantern_standing":{"rel":0,"lift":3.2}}};
+const RULES = {"placement":{"Candle_resin":{"rel":0,"lift":0.8},"itemstandh":{"rel":180,"lift":0.5},"piece_brazierceiling01":{"rel":0,"lift":4.6},"piece_chair02":{"rel":0,"lift":0.1},"piece_chest_barrel":{"rel":0,"lift":0.3},"rug_straw":{"rel":0,"lift":0.4},"fire_pit":{"rel":180,"lift":0.5},"piece_cookingstation":{"rel":0,"lift":0.7},"piece_workbench":{"rel":0,"lift":0.1},"piece_workbench_ext1":{"rel":0,"lift":0.1},"rug_deer":{"rel":90,"lift":0.2},"portal_wood":{"rel":0,"lift":0.4},"bed":{"rel":270,"lift":0.1},"piece_workbench_ext2":{"rel":0,"lift":0.1},"piece_groundtorch_wood":{"rel":0,"lift":0.7},"piece_chest_wood":{"rel":0,"lift":0.1},"sign":{"rel":0,"lift":1.0},"piece_groundtorch":{"rel":0,"lift":1.2},"piece_chest":{"rel":0,"lift":0.1},"rug_fur":{"rel":270,"lift":0.1},"fermenter":{"rel":270,"lift":0.1},"itemstand":{"rel":0,"lift":2.4},"piece_dvergr_lantern":{"rel":90,"lift":3.7},"MountainKit_brazier":{"rel":0,"lift":3.5},"piece_groundtorch_blue":{"rel":0,"lift":1.4},"piece_jackoturnip":{"rel":0,"lift":0.5},"guard_stone":{"rel":0,"lift":0.5},"piece_workbench_ext3":{"rel":0,"lift":0.1},"windmill":{"rel":180,"lift":0.2},"fire_pit_iron":{"rel":270,"lift":0.4},"forge_ext2":{"rel":0,"lift":0.1},"piece_beehive":{"rel":90,"lift":0.5},"forge_ext4":{"rel":0,"lift":0.2},"forge":{"rel":0,"lift":0.1},"forge_ext3":{"rel":90,"lift":0.3},"forge_ext5":{"rel":180,"lift":0.3},"forge_ext1":{"rel":180,"lift":0.3},"piece_workbench_ext4":{"rel":0,"lift":1.9},"forge_ext6":{"rel":0,"lift":2.3},"ArmorStand":{"rel":0,"lift":0.1},"cauldron_ext1_spice":{"rel":0,"lift":2.9},"cauldron_ext3_butchertable":{"rel":270,"lift":0.2},"cauldron_ext4_pots":{"rel":0,"lift":2.7},"cauldron_ext5_mortarandpestle":{"rel":0,"lift":0.5},"cauldron_ext6_rollingpins":{"rel":0,"lift":1.8},"jute_carpet":{"rel":0,"lift":0.2},"piece_cauldron":{"rel":180,"lift":0.8},"piece_chair03":{"rel":0,"lift":0.1},"piece_preptable":{"rel":0,"lift":0.2},"piece_table_oak":{"rel":90,"lift":0.1},"wood_core_stack":{"rel":270,"lift":0.1},"hearth":{"rel":0,"lift":0.5},"piece_groundtorch_green":{"rel":270,"lift":1.2},"piece_stonecutter":{"rel":180,"lift":0.1},"piece_groundtorch_mist":{"rel":0,"lift":5.0},"piece_chair":{"rel":270,"lift":0.7},"wood_fine_stack":{"rel":0,"lift":0.2},"rug_wolf":{"rel":270,"lift":0.1},"stone_pile":{"rel":0,"lift":0.5},"wood_stack":{"rel":270,"lift":0.7},"piece_chest_blackmetal":{"rel":0,"lift":0.1},"$custompiece_stackedpoetrybooks1":{"rel":0,"lift":1.2},"$custompiece_stackedpoetrybooks2":{"rel":180,"lift":0.7000000000000001},"piece_chest_private":{"rel":0,"lift":0.1},"hildir_maptable_coe":{"rel":90,"lift":0.2},"hildir_chest_coe":{"rel":90,"lift":0.3},"piece_banner04":{"rel":270,"lift":4.6},"$custompiece_candlebottle":{"rel":90,"lift":1.0},"rug_asksvin":{"rel":180,"lift":0.1},"piece_table":{"rel":0,"lift":0.1},"wood_dragon1":{"rel":0,"lift":2.4},"piece_oven":{"rel":90,"lift":0.5},"rug_Bjorn":{"rel":0,"lift":0.1},"piece_Lavalantern":{"rel":180,"lift":0.9},"piece_cookingstation_iron":{"rel":0,"lift":1.1},"piece_bench01":{"rel":0,"lift":0.1},"rug_hare":{"rel":90,"lift":0.5},"piece_table_round":{"rel":180,"lift":0.1},"piece_banner11":{"rel":90,"lift":8.2},"piece_chest_treasure":{"rel":0,"lift":0.5},"piece_throne01":{"rel":0,"lift":0.1},"jute_carpet_blue":{"rel":90,"lift":0.5},"piece_bed02":{"rel":0,"lift":0.1},"treasure_stack":{"rel":180,"lift":0.5},"piece_banner05":{"rel":90,"lift":3.9},"smelter":{"rel":270,"lift":0.45},"charcoal_kiln":{"rel":270,"lift":0.5},"piece_banner01":{"rel":90,"lift":4.5},"piece_logbench01":{"rel":180,"lift":0.1},"eitrrefinery":{"rel":180,"lift":0.5},"blackforge":{"rel":0,"lift":0.2},"piece_spinningwheel":{"rel":90,"lift":0.1},"piece_artisanstation":{"rel":0,"lift":2.1},"piece_magetable":{"rel":0,"lift":0.2},"piece_magetable_ext":{"rel":0,"lift":0.2},"piece_magetable_ext2":{"rel":0,"lift":0.1},"wood_yggdrasil_stack":{"rel":270,"lift":0.3},"blastfurnace":{"rel":0,"lift":0.45},"blackforge_ext2_vise":{"rel":0,"lift":0.5},"blackforge_ext1":{"rel":0,"lift":0.1},"piece_bone_throne":{"rel":0,"lift":0.5},"skull_pile":{"rel":270,"lift":0.2},"piece_banner10":{"rel":180,"lift":4.0},"darkwood_raven":{"rel":0,"lift":3.0},"piece_cartographytable":{"rel":0,"lift":0.1},"piece_blackwood_bench01":{"rel":180,"lift":0.1},"piece_xmastree":{"rel":180,"lift":0.4},"blackforge_ext3_metalcutter":{"rel":90,"lift":0.2},"blackforge_ext4_gemcutter":{"rel":270,"lift":1.2},"ashwood_bed":{"rel":90,"lift":0.1},"piece_banner07":{"rel":270,"lift":1.4},"piece_banner03":{"rel":90,"lift":8.4},"piece_banner06":{"rel":90,"lift":5.1},"piece_banner02":{"rel":270,"lift":2.6},"darkwood_wolf":{"rel":180,"lift":7.0},"barrell":{"rel":90,"lift":0.9},"blackmarble_head_big01":{"rel":0,"lift":3.0},"blackmarble_head_big02":{"rel":0,"lift":10.5},"bone_stack":{"rel":270,"lift":1.0},"CastleKit_groundtorch":{"rel":90,"lift":2.1},"dvergrprops_chair":{"rel":0,"lift":0.1},"dvergrprops_crate":{"rel":90,"lift":0.0},"dvergrprops_crate_long":{"rel":0,"lift":5.3},"dvergrprops_lantern_standing":{"rel":270,"lift":2.45},"dvergrprops_stool":{"rel":180,"lift":0.9},"dvergrprops_table":{"rel":90,"lift":2.2},"piece_banner08":{"rel":90,"lift":3.9},"piece_banner09":{"rel":90,"lift":4.5},"piece_magetable_ext3":{"rel":0,"lift":2.7},"trader_wagon_destructable":{"rel":0,"lift":-0.6},"piece_xmasgarland":{"rel":270,"lift":2.2},"piece_xmascrown":{"rel":90,"lift":3.2},"piece_world_blueprint_rune_stack":{"rel":0,"lift":0.7},"artisan_ext1":{"rel":0,"lift":1.5},"piece_throne02":{"rel":0,"lift":0.5},"piece_bathtub":{"rel":0,"lift":0.1},"piece_blackmarble_bench":{"rel":0,"lift":0.2},"piece_blackmarble_throne":{"rel":0,"lift":6.6},"goblinking_totemholder":{"rel":0,"lift":0.4},"dvergrprops_barrel":{"rel":270,"lift":0.1},"treasure_pile":{"rel":90,"lift":0.4},"piece_blackmarble_table":{"rel":0,"lift":0.3},"Fiddleheadfern":{"rel":180,"lift":0.1},"Placeable_Stone":{"rel":0,"lift":-0.8},"CastleKit_groundtorch_green":{"rel":180,"lift":0.1},"mudpile":{"rel":0,"lift":0.0},"coal_pile":{"rel":270,"lift":0.2},"mountainkit_table":{"rel":180,"lift":0.5},"goblin_bed":{"rel":0,"lift":2.1},"piece_wisplure":{"rel":0,"lift":0.3},"blackwood_stack":{"rel":180,"lift":0.8},"surtling_lantern_1":{"rel":270,"lift":0.6},"Pickable_Fiddlehead":{"rel":90,"lift":-0.95},"portal":{"rel":0,"lift":0.8},"MountainKit_brazier_blue":{"rel":0,"lift":2.0},"blackmarble_pile":{"rel":180,"lift":0.2},"volture_strawpile":{"rel":0,"lift":5.65},"mm_corewood_stackable_chest":{"rel":270,"lift":1.0},"blackmarble_head02":{"rel":0,"lift":4.3},"blackmarble_head01":{"rel":90,"lift":0.8},"sign_notext":{"rel":180,"lift":2.3},"GB_Hanging_Candles":{"rel":0,"lift":3.6},"$custompiece_roundtablewithcloth":{"rel":0,"lift":0.5},"mm_corewood_crate_onion":{"rel":90,"lift":2.55},"MountainKit_brazier_purple":{"rel":0,"lift":1.5},"cauldron_ext7_smoker":{"rel":0,"lift":0.5},"piece_chest_warderobe":{"rel":180,"lift":0.1},"piece_magetable_ext4":{"rel":0,"lift":0.5},"piece_moose_throne":{"rel":270,"lift":0.2},"blackforge_ext5_apron":{"rel":0,"lift":2.0},"pressurePlate_stone_PressurePlate_Items_AddPlateItem":{"rel":270,"lift":0.5},"pressurePlate_PressurePlate_Items_AddPlateItem":{"rel":180,"lift":0.1},"apiary_ext2":{"rel":180,"lift":-0.1},"apiary_ext1":{"rel":180,"lift":0.7},"M_Werewolf_Throne":{"rel":90,"lift":0.5},"piece_chest_grausten":{"rel":0,"lift":0.1},"piece_bench_runed":{"rel":0,"lift":0.1},"rug_seal":{"rel":180,"lift":0.1},"piece_table_runed_small":{"rel":0,"lift":0.5},"piece_chair_runed":{"rel":180,"lift":0.3},"piece_table_runed":{"rel":0,"lift":0.5},"piece_hoodedlantern":{"rel":0,"lift":5.4},"rug_moose":{"rel":180,"lift":0.1},"CastleKit_groundtorch_blue":{"rel":180,"lift":0.4},"piece_chest_barrel_bal":{"rel":270,"lift":1.3},"piece_chest_seedbasket_bal":{"rel":0,"lift":0.8},"fire_pit_hildir":{"rel":270,"lift":0.5},"piece_drawer":{"rel":180,"lift":1.4},"deepnorth_lantern_standing":{"rel":270,"lift":0.2},"portal_stone":{"rel":0,"lift":0.9},"flint_pile":{"rel":270,"lift":0.6},"grausten_pile":{"rel":180,"lift":-0.1},"prop_itemstand_TrophyGoblinBrute":{"rel":0,"lift":1.5},"rug_bogwitch_deer":{"rel":0,"lift":0.5},"Candle_resin_bogwitch":{"rel":270,"lift":0.1},"VC_Eldhrimnir_ext2":{"rel":180,"lift":0.6},"teq_dv_ferm_fermenter":{"rel":180,"lift":0.1},"corewood_crate_bal":{"rel":180,"lift":0.5},"$custompiece_rug_fur_tablecloth":{"rel":270,"lift":1.2},"$custompiece_rug_wolf_tablecloth":{"rel":180,"lift":1.2},"piece_banner_BlackSaga1":{"rel":90,"lift":4.3},"$custompiece_stool":{"rel":0,"lift":-0.1},"rk_rugsmall":{"rel":270,"lift":0.2},"loot_chest_stone":{"rel":0,"lift":9.75},"mudpile_old":{"rel":0,"lift":8.7},"piece_seed_totem_auto_field":{"rel":0,"lift":-0.5},"dvergr_chest_bal":{"rel":0,"lift":0.1},"piece_chest_private_bal":{"rel":180,"lift":1.0},"itemstand45_inner_bal":{"rel":0,"lift":1.5},"goblin_trashpile":{"rel":180,"lift":0.8},"rae_darkwood_iron_raven":{"rel":90,"lift":2.8},"dvergrprops_bed":{"rel":0,"lift":3.4},"CastleKit_brazier":{"rel":0,"lift":22.0},"rk_oven":{"rel":0,"lift":0.9},"$custompiece_couchbed1":{"rel":0,"lift":0.1}}};
 const SCORER = {
  "names": [
   "log_pieces",
@@ -1747,78 +1792,78 @@ const SCORER = {
   "top_mat_share"
  ],
  "mean": [
-  6.752353483483492,
-  3.694258588588586,
-  0.25443012012011973,
-  0.1602253903903904,
-  0.10829834834834841,
-  0.21008348348348338,
-  0.12272713213213195,
-  0.006395435435435436,
-  0.04074159159159155,
-  0.038433363363363345,
-  0.008299324324324321,
-  0.015467222222222216,
-  0.016084894894894893,
-  0.9996471621621612,
-  0.31855737237237247,
-  2.1597001801801814,
-  5.775237612612614,
-  7.2507507507507505,
-  0.5230019669669669,
-  0.6671418318318324,
-  0.6331648348348343
+  6.764891996974292,
+  3.7009830559757915,
+  0.25525028744326733,
+  0.15991744326777615,
+  0.10809491679273836,
+  0.20999481089258684,
+  0.12264177004538558,
+  0.006414175491679272,
+  0.040534220877458345,
+  0.03861850226928894,
+  0.008202723146747347,
+  0.015248577912254155,
+  0.01618373676248109,
+  1.0036597125567313,
+  0.3191787443267776,
+  2.1701556580937984,
+  5.787639939485628,
+  7.285930408472012,
+  0.5255306505295007,
+  0.6668055219364604,
+  0.6315766565809375
  ],
  "std": [
-  1.4259307242723294,
-  0.9147818826609377,
-  0.18306931674065424,
-  0.11686113907984268,
-  0.09501837595744886,
-  0.12347480096462342,
-  0.08403645312596421,
-  0.01080280337830955,
-  0.05485442001483256,
-  0.07652588976027296,
-  0.016218931047503344,
-  0.046094222869247324,
-  0.04278831034824191,
-  0.48781934172019453,
-  0.7811591422440238,
-  18.374880821818852,
-  1.3612511349916485,
-  8.97252434647084,
-  0.4214402221894601,
-  0.5963480794584027,
-  0.19896015798228167
+  1.4215922098319655,
+  0.9148187963203895,
+  0.18335452621181772,
+  0.11665639865584233,
+  0.09477297713735185,
+  0.12363055353566728,
+  0.08375973920258502,
+  0.010836488620862207,
+  0.054810634815982855,
+  0.07677963281173499,
+  0.0161939653272697,
+  0.04555006916270081,
+  0.04293323320583611,
+  0.48724151345369365,
+  0.783920806262776,
+  18.443842210205016,
+  1.3558449264782908,
+  8.994784096634447,
+  0.42151331053268,
+  0.5977517801708216,
+  0.1987993006762224
  ],
  "w": [
-  -0.6440933908313331,
-  0.7051050199486791,
-  -0.08946777460023406,
-  -0.2846892580054941,
-  0.30220334969325147,
-  0.04051180449066516,
-  0.28294503023146783,
-  0.13570987312757202,
-  0.16155179947679388,
-  -0.000601364105696907,
-  -0.4878766953279085,
-  -0.10829320929480882,
-  -0.2713187961044573,
-  -0.1644160844798483,
-  0.22580352761087943,
-  -0.04932277644638869,
-  -0.008258185111906078,
-  0.0882518009548478,
-  0.2108502690630027,
-  0.0551027427526054,
-  0.13003317447119148
+  -0.6390229090705772,
+  0.6909294902345111,
+  -0.08113794918181771,
+  -0.27686606989229673,
+  0.2904262217548144,
+  0.04175112844462465,
+  0.2951028947979103,
+  0.13708589675815175,
+  0.17470835676460106,
+  0.003004685642491017,
+  -0.44451473570723904,
+  -0.10848628245675804,
+  -0.2739070955433602,
+  -0.16754909991683542,
+  0.2200480955038386,
+  -0.050363236895286836,
+  -0.009483277314407216,
+  0.08896574583393844,
+  0.2111367322272386,
+  0.06784251585535234,
+  0.1304350411423744
  ],
- "bias": -0.19790456610823168,
- "auc": 0.6923687123107666,
- "n_kept": 207,
- "n_dropped": 459
+ "bias": -0.1930183434933209,
+ "auc": 0.6985003382215925,
+ "n_kept": 206,
+ "n_dropped": 455
 };
 VHDecorate.setRules(RULES);
 const $ = id => document.getElementById(id);
@@ -1828,6 +1873,7 @@ fill('type', Object.entries(S.TYPES).map(([k, t]) => [k, t.label]));
 fill('biome', S.BIOMES.map(b => [b, b])); fill('dbiome', S.BIOMES.map(b => [b, b]));
 fill('culture', [['', "Biome's own"], ...Object.entries(S.CULTURES).map(([k, c]) => [k, c.label])]);
 fill('plan', [['auto', 'Pick for me'], ['rect', 'Rectangle'], ['long', 'Long'], ['square', 'Square'], ['L', 'L-shaped'], ['T', 'T-shaped'], ['cross', 'Cross'], ['U', 'U around a yard'], ['octagon', 'Octagon (round)']]);
+fill('walls', [['auto', 'Pick for me'], ['plank', 'Plank'], ['half-timber', 'Half-timber'], ['log', 'Log (Black Forest on)'], ['stone-base', 'Stone base, wood above'], ['stone', 'Stone'], ['marble', 'Black marble (Mistlands)'], ['grausten', 'Grausten (Ashlands)']]);
 fill('roof', [['auto', 'Pick for me'], ['gable', 'Gable'], ['hip', 'Hip'], ['shed', 'Shed'], ['flat', 'Flat with parapet'], ['conical', 'Ring (round plans)']]);
 
 let current = null, view = { az: 35, el: 30 }, mode = 'gen', fileBp = null;
@@ -1852,6 +1898,7 @@ const WORDS = [
   ['roof', 'hip', /hip/], ['roof', 'flat', /flat/], ['roof', 'shed', /shed roof|lean[- ]?to/], ['roof', 'gable', /gable/],
   ['stage', 's1', /small|tiny|little|starter/], ['stage', 's3', /large|big|grand|huge/], ['stage', 's2', /medium|middle/],
   ['decor', 'd1', /bare|empty|plain|stripped/], ['decor', 'd3', /rich|lavish|clutter|full of|well furnished|decorated|lots of decor/], ['decor', 'd2', /cosy|cozy|furnished|lived/],
+  ['walls', 'half-timber', /half[- ]?timber|timber ?frame/], ['walls', 'log', /\blog\b/], ['walls', 'stone', /\bstone\b/], ['walls', 'stone-base', /stone base|stone footing/],
   ['pitch', '45', /steep/], ['pitch', '26', /low roof|shallow/],
 ];
 function readLocal(text) {
@@ -1873,7 +1920,7 @@ $('read').onclick = async () => {
     const sample = await Promise.race([window.claude ? claude.use('sample') : null, new Promise(r => setTimeout(() => r(null), 3000))]);
     if (sample) {
       $('readhint').textContent = 'Asking Claude...';
-      const opts = { type: Object.keys(S.TYPES), biome: S.BIOMES, culture: Object.keys(S.CULTURES), plan: ['auto', 'rect', 'long', 'square', 'L', 'T', 'cross', 'U', 'octagon'], roof: ['auto', 'gable', 'hip', 'shed', 'flat', 'conical'], stage: ['s1', 's2', 's3'], decor: ['d1', 'd2', 'd3'] };
+      const opts = { walls: ['auto', 'plank', 'half-timber', 'log', 'stone-base', 'stone', 'marble', 'grausten'], type: Object.keys(S.TYPES), biome: S.BIOMES, culture: Object.keys(S.CULTURES), plan: ['auto', 'rect', 'long', 'square', 'L', 'T', 'cross', 'U', 'octagon'], roof: ['auto', 'gable', 'hip', 'shed', 'flat', 'conical'], stage: ['s1', 's2', 's3'], decor: ['d1', 'd2', 'd3'] };
       const ans = await sample.json(`Turn this request for a Valheim building into settings. Request: "${text}". Allowed values: ${JSON.stringify(opts)}. Answer with a JSON object holding only keys from that list whose value the request implies, each value one of the allowed values. s1 small, s2 middle, s3 large; d1 bare, d2 lived in, d3 richly decorated.`, { modelTier: 'quick' });
       if (ans && typeof ans === 'object') { const ok = {}; for (const [k, v] of Object.entries(ans)) if (opts[k] && opts[k].includes(v)) ok[k] = v; apply(ok); $('readhint').textContent = 'Claude read your request.'; }
     }
@@ -1884,7 +1931,7 @@ $('read').onclick = async () => {
 // ---------- build: several seeds, keep the best that passes the checks
 function request(seed) {
   return { type: $('type').value, biome: $('biome').value, culture: $('culture').value || undefined, plan: $('plan').value, roof: $('roof').value,
-    pitch: $('pitch').value || undefined, stage: $('stage').value, decor: $('decor').value, seed };
+    walls: $('walls').value, pitch: $('pitch').value || undefined, stage: $('stage').value, decor: $('decor').value, seed };
 }
 function evaluate(d, biome) {
   const checks = VHChecks.check(d, biome);

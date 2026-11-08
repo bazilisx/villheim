@@ -113,6 +113,7 @@ td.n { text-align: right; font-family: var(--mono); font-variant-numeric: tabula
       <label for="culture">Style<select id="culture"></select></label>
       <label for="plan">Plan<select id="plan"></select></label>
       <label for="roof">Roof<select id="roof"></select></label>
+      <label for="walls">Walls<select id="walls"></select></label>
       <label for="pitch">Roof pitch<select id="pitch"><option value="">Style's own</option><option value="26">26 degrees</option><option value="45">45 degrees</option></select></label>
       <label for="stage">Size stage<select id="stage"><option value="s1">s1 small</option><option value="s2" selected>s2 middle</option><option value="s3">s3 large</option></select></label>
       <label for="decor">Decor stage<select id="decor"><option value="d1">d1 bare needs</option><option value="d2" selected>d2 lived in</option><option value="d3">d3 rich</option></select></label>
@@ -170,6 +171,7 @@ fill('type', Object.entries(S.TYPES).map(([k, t]) => [k, t.label]));
 fill('biome', S.BIOMES.map(b => [b, b])); fill('dbiome', S.BIOMES.map(b => [b, b]));
 fill('culture', [['', "Biome's own"], ...Object.entries(S.CULTURES).map(([k, c]) => [k, c.label])]);
 fill('plan', [['auto', 'Pick for me'], ['rect', 'Rectangle'], ['long', 'Long'], ['square', 'Square'], ['L', 'L-shaped'], ['T', 'T-shaped'], ['cross', 'Cross'], ['U', 'U around a yard'], ['octagon', 'Octagon (round)']]);
+fill('walls', [['auto', 'Pick for me'], ['plank', 'Plank'], ['half-timber', 'Half-timber'], ['log', 'Log (Black Forest on)'], ['stone-base', 'Stone base, wood above'], ['stone', 'Stone'], ['marble', 'Black marble (Mistlands)'], ['grausten', 'Grausten (Ashlands)']]);
 fill('roof', [['auto', 'Pick for me'], ['gable', 'Gable'], ['hip', 'Hip'], ['shed', 'Shed'], ['flat', 'Flat with parapet'], ['conical', 'Ring (round plans)']]);
 
 let current = null, view = { az: 35, el: 30 }, mode = 'gen', fileBp = null;
@@ -194,6 +196,7 @@ const WORDS = [
   ['roof', 'hip', /hip/], ['roof', 'flat', /flat/], ['roof', 'shed', /shed roof|lean[- ]?to/], ['roof', 'gable', /gable/],
   ['stage', 's1', /small|tiny|little|starter/], ['stage', 's3', /large|big|grand|huge/], ['stage', 's2', /medium|middle/],
   ['decor', 'd1', /bare|empty|plain|stripped/], ['decor', 'd3', /rich|lavish|clutter|full of|well furnished|decorated|lots of decor/], ['decor', 'd2', /cosy|cozy|furnished|lived/],
+  ['walls', 'half-timber', /half[- ]?timber|timber ?frame/], ['walls', 'log', /\blog\b/], ['walls', 'stone', /\bstone\b/], ['walls', 'stone-base', /stone base|stone footing/],
   ['pitch', '45', /steep/], ['pitch', '26', /low roof|shallow/],
 ];
 function readLocal(text) {
@@ -215,7 +218,7 @@ $('read').onclick = async () => {
     const sample = await Promise.race([window.claude ? claude.use('sample') : null, new Promise(r => setTimeout(() => r(null), 3000))]);
     if (sample) {
       $('readhint').textContent = 'Asking Claude...';
-      const opts = { type: Object.keys(S.TYPES), biome: S.BIOMES, culture: Object.keys(S.CULTURES), plan: ['auto', 'rect', 'long', 'square', 'L', 'T', 'cross', 'U', 'octagon'], roof: ['auto', 'gable', 'hip', 'shed', 'flat', 'conical'], stage: ['s1', 's2', 's3'], decor: ['d1', 'd2', 'd3'] };
+      const opts = { walls: ['auto', 'plank', 'half-timber', 'log', 'stone-base', 'stone', 'marble', 'grausten'], type: Object.keys(S.TYPES), biome: S.BIOMES, culture: Object.keys(S.CULTURES), plan: ['auto', 'rect', 'long', 'square', 'L', 'T', 'cross', 'U', 'octagon'], roof: ['auto', 'gable', 'hip', 'shed', 'flat', 'conical'], stage: ['s1', 's2', 's3'], decor: ['d1', 'd2', 'd3'] };
       const ans = await sample.json(`Turn this request for a Valheim building into settings. Request: "${text}". Allowed values: ${JSON.stringify(opts)}. Answer with a JSON object holding only keys from that list whose value the request implies, each value one of the allowed values. s1 small, s2 middle, s3 large; d1 bare, d2 lived in, d3 richly decorated.`, { modelTier: 'quick' });
       if (ans && typeof ans === 'object') { const ok = {}; for (const [k, v] of Object.entries(ans)) if (opts[k] && opts[k].includes(v)) ok[k] = v; apply(ok); $('readhint').textContent = 'Claude read your request.'; }
     }
@@ -226,7 +229,7 @@ $('read').onclick = async () => {
 // ---------- build: several seeds, keep the best that passes the checks
 function request(seed) {
   return { type: $('type').value, biome: $('biome').value, culture: $('culture').value || undefined, plan: $('plan').value, roof: $('roof').value,
-    pitch: $('pitch').value || undefined, stage: $('stage').value, decor: $('decor').value, seed };
+    walls: $('walls').value, pitch: $('pitch').value || undefined, stage: $('stage').value, decor: $('decor').value, seed };
 }
 function evaluate(d, biome) {
   const checks = VHChecks.check(d, biome);

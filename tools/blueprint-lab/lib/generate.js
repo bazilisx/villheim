@@ -47,25 +47,47 @@ function inside(w, x, z, pad = 0) {
 
 const PLAN_BY_TYPE = {
   // weights per stage, from the corpus counts per category (category x plan), favouring Tyler's keepers
-  home: { s1: { rect: 6, square: 2 }, s2: { rect: 4, L: 3, T: 1 }, s3: { L: 3, T: 3, rect: 2, cross: 1 } },
+  home: { s1: { rect: 6, square: 3 }, s2: { rect: 5, L: 3, T: 2, square: 2, octagon: 0.6 }, s3: { T: 3, L: 3, rect: 2, cross: 1, octagon: 0.6 } },
   longhouse: { s1: { long: 1 }, s2: { long: 3, T: 1 }, s3: { long: 2, T: 2, cross: 1 } },
   tavern: { s1: { rect: 1 }, s2: { L: 2, T: 2, rect: 1 }, s3: { T: 2, cross: 1, U: 1 } },
-  smithy: { s1: { rect: 1 }, s2: { rect: 2, L: 1 }, s3: { L: 2, T: 1 } },
+  smithy: { s1: { rect: 2, square: 1 }, s2: { rect: 2, L: 1, T: 1 }, s3: { L: 2, T: 2, U: 1 } },
   sawmill: { s1: { rect: 1 }, s2: { rect: 2, L: 1 }, s3: { L: 1, rect: 1 } },
   workshop: { s1: { rect: 1 }, s2: { rect: 2, L: 1 }, s3: { L: 2, T: 1 } },
   barn: { s1: { rect: 1 }, s2: { rect: 2, long: 1 }, s3: { long: 1, L: 1 } },
   farm: { s1: { rect: 1 }, s2: { rect: 1 }, s3: { rect: 1, L: 1 } },
   storage: { s1: { rect: 1, square: 1 }, s2: { rect: 2, L: 1 }, s3: { L: 1, T: 1 } },
-  tower: { s1: { square: 1 }, s2: { square: 1 }, s3: { square: 3, octagon: 1 } },
+  tower: { s1: { square: 2, octagon: 1 }, s2: { square: 2, octagon: 1 }, s3: { square: 1, octagon: 1 } },
   dock: { s1: { rect: 1 }, s2: { rect: 1 }, s3: { rect: 1, L: 1 } },
   stall: { s1: { rect: 1 }, s2: { rect: 1 }, s3: { rect: 1, L: 1 } },
   temple: { s1: { rect: 1 }, s2: { rect: 1, cross: 1, octagon: 1 }, s3: { cross: 2, octagon: 1 } },
 };
 const ROOF_BY_CULTURE = {
-  'norse': { gable: 6, hip: 1 }, 'black-forest': { gable: 5, hip: 2 }, 'swamp': { gable: 4, hip: 3 },
+  'norse': { gable: 6, hip: 2 }, 'black-forest': { gable: 5, hip: 2 }, 'swamp': { gable: 4, hip: 3 },
   'mountain': { gable: 6, hip: 1 }, 'middle-eastern': { flat: 1 }, 'east-asian': { hip: 4, gable: 1 },
   'castle-medieval': { gable: 5, hip: 2 }, 'dwarven': { flat: 2, hip: 1 }, 'slavic': { gable: 5, hip: 1 }, 'celtic': { conical: 1 },
 };
+// Wall styles per biome: counts of the main wall style in the corpus by material palette (lab/shapes.py).
+const WALLS_BY_BIOME = {
+  'Meadows': { 'half-timber': 144, plank: 110 },
+  'Black Forest': { stone: 151, 'stone-base': 41, log: 34, plank: 15, 'half-timber': 10 },
+  'Swamp': { stone: 36, 'stone-base': 33, 'half-timber': 27, plank: 25, log: 11 },
+  'Mountain': { 'stone-base': 8, stone: 7, plank: 4, 'half-timber': 3 },
+  'Plains': { 'stone-base': 10, 'half-timber': 10, plank: 8, stone: 6 },
+  'Mistlands': { marble: 36, stone: 11, plank: 10 },
+  'Ashlands': { grausten: 77, plank: 61, 'stone-base': 61, 'half-timber': 61, stone: 41 },
+};
+const WALLS_BY_CULTURE = {
+  'black-forest': { log: 3, 'stone-base': 2, stone: 1 }, 'slavic': { log: 1 }, 'middle-eastern': { stone: 1 },
+  'dwarven': { stone: 1 }, 'castle-medieval': { 'stone-base': 3, stone: 1 }, 'east-asian': { 'half-timber': 1 },
+  'mountain': { 'stone-base': 2, stone: 1 }, 'celtic': { plank: 1, 'half-timber': 1 },
+};
+function wallStyleFor(R, C, cultureKey, biome) {
+  const w = { ...(WALLS_BY_CULTURE[cultureKey] || WALLS_BY_BIOME[biome] || { plank: 1 }) };
+  if (biome === 'Meadows') { delete w.stone; delete w['stone-base']; delete w.log; } // no stone or core wood yet
+  if (!Object.keys(w).length) w.plank = 1;
+  return pick(R, w);
+}
+
 function pick(R, weights) {
   const e = Object.entries(weights), tot = e.reduce((s, [, w]) => s + w, 0);
   let x = R() * tot;
@@ -137,7 +159,7 @@ function generate(req) {
   const T = S.TYPES[type];
   const biome = S.BIOMES.includes(req.biome) ? req.biome : 'Meadows';
   const cultureKey = S.CULTURES[req.culture] ? req.culture : S.BIOME_CULTURE[biome];
-  const C = S.CULTURES[cultureKey];
+  const C = { ...S.CULTURES[cultureKey] };
   const stage = ['s1', 's2', 's3'].includes(req.stage) ? req.stage : 's1';
   const decor = ['d1', 'd2', 'd3'].includes(req.decor) ? req.decor : 'd2';
   const seed = req.seed ?? 1;
@@ -154,7 +176,13 @@ function generate(req) {
   if (!plan) {
     if (C.round) plan = 'octagon';
     else if (C.courtyard && stage === 's3' && !T.tower) plan = 'U';
-    else plan = pick(R, (PLAN_BY_TYPE[type] || PLAN_BY_TYPE.home)[stage]);
+    else {
+      const w = { ...(PLAN_BY_TYPE[type] || PLAN_BY_TYPE.home)[stage] };
+      // round plans belong to Norse, Celtic, Black Forest and Mountain building in the corpus; flat-roofed styles never
+      if (!['norse', 'black-forest', 'mountain', 'celtic', 'swamp'].includes(cultureKey) && type !== 'tower') delete w.octagon;
+      if (!['home', 'tavern', 'smithy'].includes(type)) delete w.U;
+      plan = pick(R, Object.keys(w).length ? w : { rect: 1 });
+    }
   }
   let roofKind = req.roof && req.roof !== 'auto' ? req.roof : null;
   if (!roofKind) roofKind = plan === 'octagon' ? 'conical' : pick(R, ROOF_BY_CULTURE[cultureKey] || { gable: 1 });
@@ -162,7 +190,9 @@ function generate(req) {
   if (plan === 'octagon' && roofKind !== 'flat') roofKind = 'conical';
   if (plan !== 'octagon' && roofKind === 'conical') roofKind = 'hip';
   if (roofKind === 'shed' && plan !== 'rect' && plan !== 'long' && plan !== 'square') plan = 'rect';
-  info.plan = plan; info.roof = roofKind;
+  const wallStyle = req.walls && req.walls !== 'auto' ? req.walls : wallStyleFor(R, C, cultureKey, biome);
+  C.wallStyle = wallStyle;
+  info.plan = plan; info.roof = roofKind; info.walls = wallStyle;
 
   // ---- size
   let [bx, bz] = T.bays[stage];
@@ -322,10 +352,10 @@ function clearDoors(b) {
 }
 
 function finish(b, info) {
-  const name = `${info.type}_${info.biome.replace(' ', '')}_${info.cultureKey}_${info.plan || 'x'}-${info.roof || 'x'}_${info.stage}${info.decor}_${info.seed}`;
+  const name = `${info.type}_${info.biome.replace(' ', '')}_${info.cultureKey}_${info.plan || 'x'}-${info.roof || 'x'}-${info.walls || 'x'}_${info.stage}${info.decor}_${info.seed}`;
   return {
     meta: { Name: name, Creator: 'Villheim generator', Category: 'Villheim generated',
-      Description: `${S.TYPES[info.type].label}, ${info.biome}, ${S.CULTURES[info.cultureKey].label}, ${info.plan || ''} plan, ${info.roof || ''} roof, ${info.stage}${info.decor}, seed ${info.seed}` },
+      Description: `${S.TYPES[info.type].label}, ${info.biome}, ${S.CULTURES[info.cultureKey].label}, ${info.plan || ''} plan, ${info.roof || ''} roof, ${info.walls || ''} walls, ${info.stage}${info.decor}, seed ${info.seed}` },
     pieces: b.pieces, rooms: b.rooms, notes: [...new Set(b.notes)], request: info,
   };
 }
@@ -334,18 +364,27 @@ function finish(b, info) {
 
 function framePole(K, C) { return C.darkFrame ? 'darkwood_pole' : (K.pole || 'wood_pole2'); }
 
+// One 2 m wall bay. Wall styles: plank, half-timber (plank with a 45 degree brace across the bay), log,
+// stone, stone-base (a metre of stone, then plank), marble, grausten.
 function wallSegment(b, K, C, x, y0, z, yaw, SH, kind) {
-  const stone = C.stoneWalls && K.stoneWall;
-  const log = (C.logWalls || K.wallLog) && K.wall === 'wood_wall_log' && !stone;
-  const main = stone ? K.stoneWall : (log ? 'wood_wall_log' : K.wall);
-  const course = stone ? (/2x2/.test(K.stoneWall) ? 2 : 1) : (log ? 0.5 : 2);
+  const style = C.wallStyle || 'plank';
+  const plank = K.floor === 'ashwood_floor_2x2' ? 'ashwood_wall_2x2' : 'woodwall';
+  const stonePiece = K.stoneWall || 'stone_wall_2x1';
+  const stoneCourse = /2x2/.test(stonePiece) ? 2 : 1;
+  const pieceFor = y => {
+    if (style === 'stone' || style === 'marble' || style === 'grausten') return [stonePiece, stoneCourse];
+    if (style === 'stone-base' && y < y0 + 0.99) return [stoneCourse === 1 ? stonePiece : 'stone_wall_2x1', 1];
+    if (style === 'log') return ['wood_wall_log', 0.5];
+    return [plank, 2];
+  };
   const fill = (from, to) => {
     let y = from;
     while (to - y > 0.01) {
       const left = to - y;
+      const [main, course] = pieceFor(y);
       if (course <= left + 0.01) { b.put(main, x, y + course / 2, z, yaw); y += course; }
-      else if (left >= 0.99 && !log) { b.put(stone && course === 1 ? K.stoneWall : K.wallHalf, x, y + 0.5, z, yaw); y += 1; }
-      else { b.put(log ? 'wood_wall_log' : K.wallQuarter, x, y + Math.min(0.5, left) / 2, z, yaw); y += 0.5; }
+      else if (left >= 0.99 && main !== 'wood_wall_log') { b.put(course === 1 ? main : K.wallHalf, x, y + 0.5, z, yaw); y += 1; }
+      else { b.put(main === 'wood_wall_log' ? main : K.wallQuarter, x, y + Math.min(0.5, left) / 2, z, yaw); y += 0.5; }
     }
   };
   if (kind === 'door' || kind === 'gate') {
@@ -359,6 +398,11 @@ function wallSegment(b, K, C, x, y0, z, yaw, SH, kind) {
     fill(y0 + 2, y0 + SH); return;
   }
   fill(y0, y0 + SH);
+  if (style === 'half-timber') {
+    const brace = C.darkFrame || /darkwood/.test(K.beam || '') ? 'darkwood_beam_45' : 'wood_beam_45';
+    const flip = Math.round(x + z) % 4 === 0 ? 180 : 0; // braces lean both ways along a wall
+    b.put(brace, x, y0 + 1, z, yaw + flip);
+  }
 }
 
 // ---------------------------------------------------------------- roofs

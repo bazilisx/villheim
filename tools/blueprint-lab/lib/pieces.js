@@ -139,3 +139,4 @@ function needs(name) {
 const BIOME_ORDER = ['Meadows', 'Black Forest', 'Swamp', 'Mountain', 'Plains', 'Mistlands', 'Ashlands', 'Deep North'];
 
 if (typeof module !== 'undefined') module.exports = { piece, needs, MAT, BIOME_ORDER };
+else window.VHPieces = { piece, needs, MAT, BIOME_ORDER };

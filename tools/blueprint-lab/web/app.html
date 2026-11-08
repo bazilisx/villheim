@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Villheim Blueprint Lab</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Marcellus+SC&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  /* Layout: a request column on the left, the building on a drafting board on the right, results under it. */
+  --bg: #e7ebe8;        /* birch bark */
+  --panel: #f6f8f6;
+  --ink: #1c2427;
+  --muted: #5b676b;
+  --line: #c5cec9;
+  --accent: #2c5f73;    /* tar-blue, the colour of a darkwood roof in rain */
+  --accent-ink: #ffffff;
+  --good: #3c7a4a; --warn: #a6731a; --bad: #a33d32;
+  --board: #e9e4d8;
+  --display: "Marcellus SC", "Trajan Pro", Georgia, serif;
+  --body: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, Consolas, monospace;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #141a1c; --panel: #1c2427; --ink: #e3e9e6; --muted: #98a6a4; --line: #33403f;
+    --accent: #6fa9bf; --accent-ink: #0d1517; --good: #6fbf7f; --warn: #d9a54a; --bad: #e07a6e; --board: #232b2d;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #141a1c; --panel: #1c2427; --ink: #e3e9e6; --muted: #98a6a4; --line: #33403f;
+  --accent: #6fa9bf; --accent-ink: #0d1517; --good: #6fbf7f; --warn: #d9a54a; --bad: #e07a6e; --board: #232b2d;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.5 var(--body); }
+header { display: flex; align-items: baseline; gap: 16px; flex-wrap: wrap; padding: 14px 20px 6px; }
+h1 { font: 26px/1.1 var(--display); margin: 0; letter-spacing: 0.02em; text-wrap: balance; }
+header p { margin: 0; color: var(--muted); max-width: 70ch; }
+.tabs { display: flex; gap: 6px; padding: 6px 20px 0; }
+.tab { border: 1px solid var(--line); border-bottom: none; background: transparent; color: var(--muted); padding: 7px 14px; border-radius: 8px 8px 0 0; font: 500 14px var(--body); cursor: pointer; }
+.tab[aria-selected="true"] { background: var(--panel); color: var(--ink); }
+main { display: grid; grid-template-columns: minmax(280px, 340px) 1fr; gap: 16px; padding: 0 20px 20px; }
+@media (max-width: 860px) { main { grid-template-columns: 1fr; } }
+.panel { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 14px; display: flex; flex-direction: column; gap: 12px; }
+label { display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: var(--muted); }
+select, input, textarea { font: 14px var(--body); color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 6px; padding: 7px 8px; }
+textarea { resize: vertical; min-height: 64px; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+button.primary, button.secondary { font: 600 14px var(--body); border-radius: 6px; padding: 9px 12px; cursor: pointer; }
+button.primary { background: var(--accent); color: var(--accent-ink); border: 1px solid var(--accent); }
+button.secondary { background: transparent; color: var(--ink); border: 1px solid var(--line); }
+button:disabled { opacity: 0.5; cursor: default; }
+.row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.hint { font-size: 12px; color: var(--muted); margin: 0; }
+.stage { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.board { position: relative; background: var(--board); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+.board canvas { display: block; width: 100%; height: auto; cursor: grab; touch-action: none; }
+.board .over { position: absolute; left: 12px; top: 10px; right: 12px; display: flex; justify-content: space-between; gap: 8px; pointer-events: none; }
+.board .over span { background: color-mix(in srgb, var(--panel) 85%, transparent); padding: 3px 8px; border-radius: 5px; font-size: 13px; }
+.thumbs { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+.thumbs figure { margin: 0; background: var(--board); border: 1px solid var(--line); border-radius: 8px; overflow: hidden; cursor: pointer; }
+.thumbs figcaption { font-size: 12px; color: var(--muted); padding: 3px 7px; }
+.thumbs canvas { width: 100%; display: block; }
+.facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 8px; }
+.fact { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; }
+.fact b { display: block; font: 500 20px/1.2 var(--mono); font-variant-numeric: tabular-nums; }
+.fact span { font-size: 12px; color: var(--muted); }
+.checks { display: flex; flex-wrap: wrap; gap: 6px; }
+.pill { font-size: 12.5px; border-radius: 999px; padding: 3px 10px; border: 1px solid; }
+.pill.ok { color: var(--good); border-color: var(--good); }
+.pill.no { color: var(--bad); border-color: var(--bad); }
+details { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 8px 12px; }
+summary { cursor: pointer; font-weight: 500; }
+table { border-collapse: collapse; width: 100%; font-size: 13px; }
+td { padding: 2px 6px; border-bottom: 1px solid var(--line); }
+td.n { text-align: right; font-family: var(--mono); font-variant-numeric: tabular-nums; }
+.tablewrap { max-height: 240px; overflow: auto; }
+.notes { margin: 0; padding-left: 18px; color: var(--muted); font-size: 13px; }
+.status { font-size: 13px; color: var(--muted); min-height: 1.4em; }
+.hidden { display: none !important; }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+</head>
+<body>
+<header>
+  <h1>Villheim Blueprint Lab</h1>
+  <p>Ask for a building, look at it from any side, check it, and take the .blueprint into the game with PlanBuild. Or load a blueprint you have and strip or furnish it.</p>
+</header>
+<div class="tabs" role="tablist">
+  <button class="tab" id="tab-gen" role="tab" aria-selected="true">New building</button>
+  <button class="tab" id="tab-dec" role="tab" aria-selected="false">Decorate a blueprint</button>
+</div>
+<main>
+  <section class="panel" id="panel-gen" aria-label="Request">
+    <label for="prompt">What should it be?
+      <textarea id="prompt">a cosy black forest log house, L-shaped, well furnished</textarea>
+    </label>
+    <div class="row">
+      <button class="primary" id="read">Read my request</button>
+      <span class="hint" id="readhint">Fills in the choices below.</span>
+    </div>
+    <div class="grid2">
+      <label for="type">Building<select id="type"></select></label>
+      <label for="biome">Biome<select id="biome"></select></label>
+      <label for="culture">Style<select id="culture"></select></label>
+      <label for="plan">Plan<select id="plan"></select></label>
+      <label for="roof">Roof<select id="roof"></select></label>
+      <label for="pitch">Roof pitch<select id="pitch"><option value="">Style's own</option><option value="26">26 degrees</option><option value="45">45 degrees</option></select></label>
+      <label for="stage">Size stage<select id="stage"><option value="s1">s1 small</option><option value="s2" selected>s2 middle</option><option value="s3">s3 large</option></select></label>
+      <label for="decor">Decor stage<select id="decor"><option value="d1">d1 bare needs</option><option value="d2" selected>d2 lived in</option><option value="d3">d3 rich</option></select></label>
+      <label for="seed">Seed<input id="seed" type="number" min="1" value="7"></label>
+      <label for="tries">Candidates<select id="tries"><option value="1">1</option><option value="4">best of 4</option><option value="8" selected>best of 8</option><option value="16">best of 16</option></select></label>
+    </div>
+    <div class="row">
+      <button class="primary" id="go">Build it</button>
+      <button class="secondary" id="next">Another seed</button>
+    </div>
+    <p class="hint">Candidates: the lab builds several seeds and keeps the one that passes the checks and scores highest against your keep and drop review.</p>
+  </section>
+
+  <section class="panel hidden" id="panel-dec" aria-label="Decorate">
+    <label for="bpfile">Blueprint file (.blueprint from PlanBuild)<input id="bpfile" type="file" accept=".blueprint,.txt"></label>
+    <div class="grid2">
+      <label for="duse">Room use<select id="duse"><option value="home">Home</option><option value="hall">Hall or tavern</option><option value="smithy">Smithy</option><option value="workshop">Workshop</option><option value="farm">Farm or barn</option><option value="storage">Storehouse</option><option value="guard">Guard post</option><option value="market">Market</option><option value="temple">Temple</option></select></label>
+      <label for="ddecor">Make it<select id="ddecor"><option value="d1">d1: strip to bare needs</option><option value="d2" selected>d2: lived in</option><option value="d3">d3: rich</option></select></label>
+      <label for="dbiome">Biome<select id="dbiome"></select></label>
+      <label for="dseed">Seed<input id="dseed" type="number" min="1" value="1"></label>
+    </div>
+    <div class="row"><button class="primary" id="dgo" disabled>Decorate</button></div>
+    <p class="hint">Furniture goes against real walls facing in, tables and fires in the middle, banners high on walls, all from where the corpus puts them. Structure is never changed.</p>
+  </section>
+
+  <section class="stage" aria-label="Result">
+    <div class="board">
+      <canvas id="view" width="1200" height="760" aria-label="The building. Drag to turn it, scroll to tilt."></canvas>
+      <div class="over"><span id="title">Building</span><span id="viewhint">Drag to turn, scroll to tilt</span></div>
+    </div>
+    <div class="thumbs" id="thumbs"></div>
+    <div class="facts" id="facts"></div>
+    <div class="checks" id="checks"></div>
+    <div class="row">
+      <button class="primary" id="save">Download .blueprint</button>
+      <button class="secondary" id="copy">Copy blueprint text</button>
+      <span class="status" id="status"></span>
+    </div>
+    <ul class="notes" id="notes"></ul>
+    <details><summary>Pieces in this design</summary><div class="tablewrap"><table id="pieces"></table></div></details>
+  </section>
+</main>
+<script>
+/*LIBS*/
+</script>
+<script>
+const RULES = /*RULES*/;
+const SCORER = /*SCORER*/;
+VHDecorate.setRules(RULES);
+const $ = id => document.getElementById(id);
+const S = VHStyles;
+const fill = (sel, items) => { $(sel).innerHTML = items.map(([v, t]) => `<option value="${v}">${t}</option>`).join(''); };
+fill('type', Object.entries(S.TYPES).map(([k, t]) => [k, t.label]));
+fill('biome', S.BIOMES.map(b => [b, b])); fill('dbiome', S.BIOMES.map(b => [b, b]));
+fill('culture', [['', "Biome's own"], ...Object.entries(S.CULTURES).map(([k, c]) => [k, c.label])]);
+fill('plan', [['auto', 'Pick for me'], ['rect', 'Rectangle'], ['long', 'Long'], ['square', 'Square'], ['L', 'L-shaped'], ['T', 'T-shaped'], ['cross', 'Cross'], ['U', 'U around a yard'], ['octagon', 'Octagon (round)']]);
+fill('roof', [['auto', 'Pick for me'], ['gable', 'Gable'], ['hip', 'Hip'], ['shed', 'Shed'], ['flat', 'Flat with parapet'], ['conical', 'Ring (round plans)']]);
+
+let current = null, view = { az: 35, el: 30 }, mode = 'gen', fileBp = null;
+
+// ---------- request words to choices (works without Claude; "Read my request" asks Claude when it can)
+const WORDS = [
+  ['type', 'longhouse', /long ?house|great hall|mead ?hall|jarl/], ['type', 'tavern', /tavern|\binn\b|\bpub\b|feast/],
+  ['type', 'smithy', /smith|forge|\bmine\b|mining|metal/], ['type', 'sawmill', /saw ?mill|wood ?work|lumber|carpent|woodcutter/],
+  ['type', 'barn', /barn|stable|animal|\bpen\b|\bboar|\blox\b|chicken|coop/], ['type', 'farm', /farm|field|crop|garden/],
+  ['type', 'storage', /storage|store ?house|granary|\bshed\b|warehouse/], ['type', 'tower', /tower|lookout|watch/],
+  ['type', 'dock', /dock|pier|boat|harbou?r|shipyard/], ['type', 'stall', /stall|market|shop|bazaar/],
+  ['type', 'temple', /temple|shrine|church|altar/], ['type', 'well', /\ba well\b|\bwell house|\bwater well/], ['type', 'camp', /camp\b|campfire|tent/],
+  ['type', 'workshop', /workshop|workbench|craft/], ['type', 'home', /house|home|cottage|cabin|hut|hovel/],
+  ['biome', 'Black Forest', /black ?forest/], ['biome', 'Swamp', /swamp|bog|marsh/], ['biome', 'Mountain', /mountain|snow/],
+  ['biome', 'Plains', /plains/], ['biome', 'Mistlands', /mist/], ['biome', 'Ashlands', /ash ?lands/], ['biome', 'Meadows', /meadow/],
+  ['culture', 'middle-eastern', /desert|arab|middle ?east|persian|moor|ottoman|sultan|oasis/], ['culture', 'east-asian', /japan|asian|pagoda|chinese/],
+  ['culture', 'castle-medieval', /medieval|castle|tudor|knight/], ['culture', 'dwarven', /dwar/], ['culture', 'slavic', /slav|russian|izba/],
+  ['culture', 'celtic', /celtic|druid|round ?house/], ['culture', 'swamp', /stilt/], ['culture', 'black-forest', /log cabin|log house/],
+  ['culture', 'mountain', /lodge/], ['culture', 'norse', /viking|norse|nordic/],
+  ['plan', 'L', /\bl[- ]?shaped|\bl plan/], ['plan', 'T', /\bt[- ]?shaped|\bt plan/], ['plan', 'cross', /cross/], ['plan', 'U', /courtyard|u[- ]?shaped/],
+  ['plan', 'octagon', /octagon|round\b|circular/], ['plan', 'long', /\blong\b/], ['plan', 'square', /square/],
+  ['roof', 'hip', /hip/], ['roof', 'flat', /flat/], ['roof', 'shed', /shed roof|lean[- ]?to/], ['roof', 'gable', /gable/],
+  ['stage', 's1', /small|tiny|little|starter/], ['stage', 's3', /large|big|grand|huge/], ['stage', 's2', /medium|middle/],
+  ['decor', 'd1', /bare|empty|plain|stripped/], ['decor', 'd3', /rich|lavish|clutter|full of|well furnished|decorated|lots of decor/], ['decor', 'd2', /cosy|cozy|furnished|lived/],
+  ['pitch', '45', /steep/], ['pitch', '26', /low roof|shallow/],
+];
+function readLocal(text) {
+  const t = text.toLowerCase(), out = {};
+  for (const [k, v, re] of WORDS) if (!(k in out) && re.test(t)) out[k] = v;
+  return out;
+}
+function apply(fields) {
+  const seen = [];
+  for (const [k, v] of Object.entries(fields)) { if (v == null || !$(k)) continue; $(k).value = v; seen.push(`${k} ${v}`); }
+  return seen;
+}
+$('read').onclick = async () => {
+  const text = $('prompt').value;
+  const local = readLocal(text);
+  apply(local);
+  $('readhint').textContent = 'Read from your words.';
+  try {
+    const sample = await Promise.race([window.claude ? claude.use('sample') : null, new Promise(r => setTimeout(() => r(null), 3000))]);
+    if (sample) {
+      $('readhint').textContent = 'Asking Claude...';
+      const opts = { type: Object.keys(S.TYPES), biome: S.BIOMES, culture: Object.keys(S.CULTURES), plan: ['auto', 'rect', 'long', 'square', 'L', 'T', 'cross', 'U', 'octagon'], roof: ['auto', 'gable', 'hip', 'shed', 'flat', 'conical'], stage: ['s1', 's2', 's3'], decor: ['d1', 'd2', 'd3'] };
+      const ans = await sample.json(`Turn this request for a Valheim building into settings. Request: "${text}". Allowed values: ${JSON.stringify(opts)}. Answer with a JSON object holding only keys from that list whose value the request implies, each value one of the allowed values. s1 small, s2 middle, s3 large; d1 bare, d2 lived in, d3 richly decorated.`, { modelTier: 'quick' });
+      if (ans && typeof ans === 'object') { const ok = {}; for (const [k, v] of Object.entries(ans)) if (opts[k] && opts[k].includes(v)) ok[k] = v; apply(ok); $('readhint').textContent = 'Claude read your request.'; }
+    }
+  } catch (e) { $('readhint').textContent = 'Read from your words.'; }
+  build();
+};
+
+// ---------- build: several seeds, keep the best that passes the checks
+function request(seed) {
+  return { type: $('type').value, biome: $('biome').value, culture: $('culture').value || undefined, plan: $('plan').value, roof: $('roof').value,
+    pitch: $('pitch').value || undefined, stage: $('stage').value, decor: $('decor').value, seed };
+}
+function evaluate(d, biome) {
+  const checks = VHChecks.check(d, biome);
+  const score = VHFeatures.score(SCORER, d.pieces);
+  return { checks, score, pass: checks.filter(c => c.ok).length };
+}
+function build() {
+  mode = 'gen';
+  const base = +$('seed').value || 1, n = +$('tries').value;
+  let best = null;
+  for (let i = 0; i < n; i++) {
+    const d = VHGenerate.generate(request(base + i * 101));
+    const ev = evaluate(d, $('biome').value);
+    const key = ev.pass * 10 + ev.score;
+    if (!best || key > best.key) best = { d, ev, key };
+  }
+  current = best;
+  show();
+}
+$('go').onclick = build;
+$('next').onclick = () => { $('seed').value = (+$('seed').value || 1) + 1; build(); };
+
+// ---------- decorate an uploaded blueprint
+$('bpfile').onchange = async e => {
+  const f = e.target.files[0]; if (!f) return;
+  fileBp = VHBlueprint.parse(await f.text());
+  $('dgo').disabled = !fileBp.pieces.length;
+  current = { d: { meta: fileBp.meta, pieces: fileBp.pieces, notes: [`Loaded ${fileBp.pieces.length} pieces.`] }, ev: evaluate({ pieces: fileBp.pieces }, $('dbiome').value) };
+  mode = 'dec'; show();
+};
+$('dgo').onclick = () => {
+  if (!fileBp) return;
+  const decor = $('ddecor').value, use = $('duse').value;
+  const bare = VHDecorate.strip(fileBp.pieces);
+  const pieces = decor === 'd1' ? bare : VHDecorate.decorateExisting(bare, { use, decor, biome: $('dbiome').value, seed: +$('dseed').value || 1 });
+  const meta = { ...fileBp.meta, Name: `${fileBp.meta.Name || 'design'} ${decor}` };
+  current = { d: { meta, pieces, snaps: fileBp.snaps, notes: [`${fileBp.pieces.length} pieces before, ${bare.length} after stripping, ${pieces.length} now.`] }, ev: evaluate({ pieces }, $('dbiome').value) };
+  mode = 'dec'; show();
+};
+
+// ---------- drawing
+function ground(pieces) { const ys = pieces.map(p => p.y).sort((a, b) => a - b); return ys.length ? ys[Math.floor(ys.length * 0.05)] : 0; }
+function drawMain() {
+  if (!current) return;
+  const c = $('view');
+  VHRender.draw(c.getContext('2d'), current.d.pieces, { az: view.az, el: view.el, width: c.width, height: c.height, background: getComputedStyle(document.body).getPropertyValue('--board').trim() || '#e9e4d8' });
+}
+function show() {
+  const { d, ev } = current;
+  $('title').textContent = d.meta.Description || d.meta.Name || 'Blueprint';
+  drawMain();
+  const g = ground(d.pieces), bg = getComputedStyle(document.body).getPropertyValue('--board').trim() || '#e9e4d8';
+  $('thumbs').innerHTML = '';
+  for (const v of VHRender.VIEWS) {
+    const fig = document.createElement('figure'), cv = document.createElement('canvas');
+    cv.width = 360; cv.height = 260;
+    VHRender.draw(cv.getContext('2d'), d.pieces, { ...v, cut: v.cut != null ? g + v.cut : null, width: 360, height: 260, background: bg });
+    fig.append(cv); const cap = document.createElement('figcaption'); cap.textContent = v.label; fig.append(cap);
+    fig.onclick = () => { view = { az: v.az, el: v.el }; drawMain(); };
+    $('thumbs').append(fig);
+  }
+  const counts = {}; for (const p of d.pieces) counts[p.name] = (counts[p.name] || 0) + 1;
+  const furn = d.pieces.filter(p => !VHPieces.piece(p.name).structural).length;
+  $('facts').innerHTML = [
+    [d.pieces.length, 'pieces'], [Object.keys(counts).length, 'kinds of piece'], [furn, 'furniture and decor'],
+    [Math.round(ev.score * 100) + ' %', 'like your keepers'], [ev.pass + ' / ' + ev.checks.length, 'checks passed'],
+  ].map(([b, s]) => `<div class="fact"><b>${b}</b><span>${s}</span></div>`).join('');
+  $('checks').innerHTML = ev.checks.map(c => `<span class="pill ${c.ok ? 'ok' : 'no'}" title="${c.detail}">${c.ok ? 'OK' : 'Fix'}: ${c.check}, ${c.detail}</span>`).join('');
+  $('notes').innerHTML = (d.notes || []).map(n => `<li>${n}</li>`).join('');
+  $('pieces').innerHTML = Object.entries(counts).sort((a, b) => b[1] - a[1]).map(([k, n]) => `<tr><td>${k}</td><td class="n">${n}</td></tr>`).join('');
+  $('status').textContent = '';
+}
+
+// drag to turn, wheel to tilt
+(() => {
+  const c = $('view'); let drag = null;
+  c.addEventListener('pointerdown', e => { drag = { x: e.clientX, y: e.clientY, az: view.az, el: view.el }; c.setPointerCapture(e.pointerId); });
+  c.addEventListener('pointermove', e => { if (!drag) return; view.az = drag.az + (e.clientX - drag.x) * 0.5; view.el = Math.max(5, Math.min(89, drag.el + (e.clientY - drag.y) * 0.3)); drawMain(); });
+  c.addEventListener('pointerup', () => { drag = null; });
+  c.addEventListener('wheel', e => { e.preventDefault(); view.el = Math.max(5, Math.min(89, view.el - e.deltaY * 0.05)); drawMain(); }, { passive: false });
+})();
+
+// ---------- save and copy
+function text() { const d = current.d; return VHBlueprint.write({ meta: d.meta, pieces: d.pieces, snaps: d.snaps }); }
+function fname() { return ((current.d.meta.Name || 'villheim-design').replace(/[^A-Za-z0-9_.-]+/g, '_')) + '.blueprint'; }
+$('copy').onclick = async () => {
+  try { await navigator.clipboard.writeText(text()); $('status').textContent = 'Copied. Paste it into a new file named ' + fname() + ' in your PlanBuild blueprints folder.'; }
+  catch (e) { $('status').textContent = 'Copy was refused by the browser.'; }
+};
+(async () => {
+  let dl = null;
+  try { dl = window.claude ? await claude.use('downloads') : null; } catch (e) { dl = null; }
+  $('save').onclick = async () => {
+    if (!dl) { $('status').textContent = 'Downloads are not available in this view. Use Copy instead.'; return; }
+    try { await dl.save({ filename: fname(), data: text() }); $('status').textContent = 'Saved ' + fname() + '. Put it in BepInEx/config/PlanBuild/blueprints.'; }
+    catch (e) { $('status').textContent = 'The download was declined or failed.'; }
+  };
+  if (!dl) $('save').title = 'Downloads are not available in this view; Copy works everywhere.';
+})();
+
+// ---------- tabs
+function tab(which) {
+  $('tab-gen').setAttribute('aria-selected', which === 'gen'); $('tab-dec').setAttribute('aria-selected', which === 'dec');
+  $('panel-gen').classList.toggle('hidden', which !== 'gen'); $('panel-dec').classList.toggle('hidden', which !== 'dec');
+}
+$('tab-gen').onclick = () => { tab('gen'); build(); };
+$('tab-dec').onclick = () => tab('dec');
+
+apply(readLocal($('prompt').value));
+build();
+</script>
+</body>
+</html>

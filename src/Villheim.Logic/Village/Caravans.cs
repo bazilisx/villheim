@@ -174,11 +174,12 @@ namespace Villheim.Logic.Village
             {
                 points = Trails.Between(from, to);
             }
-            else if (c.Path == "o")
+            else if (c.Path.StartsWith("o"))
             {
                 // An outpost haul: the village's trail to its camp, walked from the camp end.
                 ZDO home = to ?? from;
-                points = home != null ? Trails.ToOutpost(home) : null;
+                int index = c.Path.Length > 1 && int.TryParse(c.Path.Substring(1), out int i) ? i : 0;
+                points = home != null ? Trails.ToOutpost(home, index) : null;
                 if (points != null)
                 {
                     points.Reverse();

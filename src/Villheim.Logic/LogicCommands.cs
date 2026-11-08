@@ -53,7 +53,7 @@ namespace Villheim.Logic
             "note <text>: write a note with what you are aiming at and the nearest gallery sign to BepInEx/Villheim/notes.txt",
             "bp save <number|name> | bp save page [all]: save a design as it stands in the gallery now (pieces left, stand-ins, anything built on its plot) as blueprints/inspiration/pass3/p3-<number>-<name>; 'page' saves every changed design standing near you; the gallery shows the saves from then on",
             "trails: plan the nearest village's trails again (to its outpost and its nearest neighbour)",
-            "outpost: make the nearest village found its logging camp now (its old one is forgotten)",
+            "outpost [logging|flint|forget|haul]: the nearest village founds its next camp now, whatever its size and gear; 'forget' drops its camps, 'haul' sends every camp's load home now",
             "event [kind]: make something happen in the nearest village now (feast, skald, fair, takenin, sickness, beasts, quarrel, dispute)",
             "caravan [list]: the nearest village sends a trade caravan now; 'list' shows every caravan on the road",
             "events: list the nearest village's recent events and how ready it is for a bad one",
@@ -200,7 +200,7 @@ namespace Villheim.Logic
                 case "villheim_weather": Say(context, Village.LocalWeather.Run(args)); return true;
                 case "villheim_repair": Say(context, Village.RepairAll.Run()); return true;
                 case "villheim_trails": Say(context, Trails.Command()); return true;
-                case "villheim_outpost": Say(context, Outposts.Command()); return true;
+                case "villheim_outpost": Say(context, Outposts.Command(args)); return true;
                 case "villheim_event": Say(context, VillageEvents.Command(args)); return true;
                 case "villheim_events": Say(context, EventsReport()); return true;
                 case "villheim_caravan": Say(context, Caravans.Command(args)); return true;

@@ -23,6 +23,8 @@ namespace Villheim.Logic.Village
     internal static class Trails
     {
         private static readonly int KeyOutpostTrail = "villheim_trail_outpost".GetStableHashCode();
+        private static readonly int KeyOutpostTrail2 = "villheim_trail_outpost1".GetStableHashCode();
+        private static int OutpostKey(int index) => index == 0 ? KeyOutpostTrail : KeyOutpostTrail2;
         private static readonly int KeyNeighbourTrail = "villheim_trail_neighbour".GetStableHashCode();
         private static readonly int KeyPlannedDay = "villheim_trail_day".GetStableHashCode();
         private const float NeighbourReach = 2500f;
@@ -48,10 +50,13 @@ namespace Villheim.Logic.Village
 
             hearth.Zdo.Set(KeyPlannedDay, day);
             Vector3 home = hearth.transform.position;
-            Vector3? outpost = Outposts.Position(hearth);
-            if (outpost != null && hearth.Zdo.GetString(KeyOutpostTrail, "").Length == 0)
+            List<Vector3> camps = Outposts.Positions(hearth);
+            for (int i = 0; i < camps.Count && i < 2; i++)
             {
-                Save(hearth.Zdo, KeyOutpostTrail, Plan(home, outpost.Value));
+                if (hearth.Zdo.GetString(OutpostKey(i), "").Length == 0)
+                {
+                    Save(hearth.Zdo, OutpostKey(i), Plan(home, camps[i]));
+                }
             }
 
             if (hearth.Zdo.GetString(KeyNeighbourTrail, "").Length == 0)
@@ -213,7 +218,7 @@ namespace Villheim.Logic.Village
             List<ZDO> hearths = Relations.AllHearths().ToList();
             foreach (ZDO hearth in hearths)
             {
-                foreach (int key in new[] { KeyOutpostTrail, KeyNeighbourTrail })
+                foreach (int key in new[] { KeyOutpostTrail, KeyOutpostTrail2, KeyNeighbourTrail })
                 {
                     List<Vector3> points = Load(hearth, key);
                     for (int i = 1; i < points.Count && budget > 0; i++)
@@ -267,17 +272,24 @@ namespace Villheim.Logic.Village
         }
 
         /// <summary>The trail from the hearth to its outpost, or null.</summary>
-        public static List<Vector3> ToOutpost(ZDO hearth)
+        public static List<Vector3> ToOutpost(ZDO hearth, int index = 0)
         {
-            List<Vector3> points = Load(hearth, KeyOutpostTrail);
+            List<Vector3> points = Load(hearth, OutpostKey(index));
             return points.Count > 1 ? new List<Vector3>(points) : null;
+        }
+
+        /// <summary>The camps are gone: their trails are planned again for whatever camps come next.</summary>
+        public static void ForgetOutposts(ZDO hearth)
+        {
+            hearth.Set(KeyOutpostTrail, "");
+            hearth.Set(KeyOutpostTrail2, "");
         }
 
         public static string Describe(VillageHearth hearth)
         {
-            int outpost = Load(hearth.Zdo, KeyOutpostTrail).Count;
+            int outpost = Load(hearth.Zdo, KeyOutpostTrail).Count + Load(hearth.Zdo, KeyOutpostTrail2).Count;
             int neighbour = Load(hearth.Zdo, KeyNeighbourTrail).Count;
-            return $"trail to the outpost {(outpost > 0 ? outpost + " points" : "none")}, to the neighbour {(neighbour > 0 ? neighbour + " points" : "none")}";
+            return $"trails to the outposts {(outpost > 0 ? outpost + " points" : "none")}, to the neighbour {(neighbour > 0 ? neighbour + " points" : "none")}";
         }
 
         /// <summary>'vh trails': plan the nearest village's trails again now.</summary>
@@ -290,7 +302,7 @@ namespace Villheim.Logic.Village
                 return "No village within 200 m.";
             }
 
-            hearth.Zdo.Set(KeyOutpostTrail, "");
+            ForgetOutposts(hearth.Zdo);
             hearth.Zdo.Set(KeyNeighbourTrail, "");
             hearth.Zdo.Set(KeyPlannedDay, -1);
             bool was = LogicConfig.WorldLife.Value;

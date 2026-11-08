@@ -65,6 +65,8 @@ namespace Villheim.Logic
         public static ConfigEntry<float> CaravanReach;
         public static ConfigEntry<float> EventChancePerDay;
         public static ConfigEntry<bool> OutpostMaterials;
+        public static ConfigEntry<int> OutpostsPerVillage;
+        public static ConfigEntry<int> OutpostCarryAt;
         public static ConfigEntry<float> VisitorChancePerDay;
         public static ConfigEntry<float> DaysBetweenVisitors;
         public static ConfigEntry<int> HermitChance;
@@ -118,9 +120,10 @@ namespace Villheim.Logic
                 "other villages, and a pedlar trading with the village chest), and hermits keep camps by some ruins and " +
                 "abandoned houses. 'vh pedlar', 'vh pilgrim' and 'vh hermit' work either way, for testing.");
             Outposts = Admin(config, life, "Outposts", true,
-                "With WorldLife on, a village of four buildings and four villagers founds a logging camp in the nearest " +
-                "other biome (Black Forest core wood for a Meadows village, Meadows fine wood for a Black Forest one) " +
-                "that sends wood home every day.");
+                "With WorldLife on, a village of four buildings and four villagers founds camps where the land gives what " +
+                "home lacks: a logging camp in the other wood biome (Black Forest core wood for a Meadows village, Meadows " +
+                "fine wood for a Black Forest one), and a flint camp on the shore while its smith needs flint. Campers " +
+                "carry the loads home.");
             OutpostGear = Admin(config, life, "OutpostGear", Village.Outposts.DefaultGear,
                 "Gear tier a village must have made before its people go out to a camp in that biome (0 rags, 1 leather, " +
                 "2 flint and leather, 3 troll leather, 4 bronze). Biome: tier, separated by semicolons.");
@@ -141,6 +144,11 @@ namespace Villheim.Logic
                 "How far a caravan, a haul or a party of settlers goes in an in-game day.");
             CaravanReach = Admin(config, life, "CaravanReach", 2500f,
                 "Villages farther apart than this (metres) do not send each other caravans.");
+            OutpostsPerVillage = Admin(config, life, "OutpostsPerVillage", 2,
+                "Most camps a village keeps: a logging camp in the other wood biome, and a flint camp on the shore while " +
+                "its smith needs flint.");
+            OutpostCarryAt = Admin(config, life, "OutpostCarryAt", 12,
+                "A camp sends its load home (a camper walks it along the trail) once it has gathered this much.");
             Trails = Admin(config, life, "Trails", true,
                 "With WorldLife on, villages plan a dirt trail to their outpost and to their nearest neighbour within " +
                 "2,500 m, painted on the ground near you as you walk it.");

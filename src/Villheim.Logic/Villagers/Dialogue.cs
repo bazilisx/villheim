@@ -79,6 +79,11 @@ namespace Villheim.Logic.Villagers
             {
                 Event(villageId, what, Vector3.zero);
             }
+
+            if (what == "finished")
+            {
+                TaskGestures.Finished(villageId);
+            }
         }
 
         // ---------------------------------------------------------------- cadence
@@ -456,6 +461,8 @@ namespace Villheim.Logic.Villagers
             {
                 RunPendings();
             }
+
+            TaskGestures.PlayerTick();
 
             if (!VillheimConfig.VillagerChatter.Value || Sleep.IsAsleep(villager) || Player.m_localPlayer == null ||
                 global::Chat.instance == null)

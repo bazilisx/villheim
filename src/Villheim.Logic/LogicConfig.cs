@@ -791,8 +791,15 @@ namespace Villheim.Logic
                 "(boss altars, Fuling villages, towers, traders) count from half again as far. Nothing is found from further off.");
             KnowledgeKinds = Admin(config, know, "KnowledgeKinds", Village.Knowledge.DefaultKinds,
                 "What a village records at all: kinds (boss, dungeon, trader, runestone, ore, fuling, dvergr, landmark, ruin, " +
-                "nest, forage, game, foe, biome) or kind:key (ore:copper, landmark:tarpit). Anything else, such as dolmens, " +
-                "old houses, berry bushes and common rocks, is never recorded.");
+                "nest, forage, game, foe, biome) or kind:key (ore:copper, landmark:tarpit). nest is the Greydwarf nest (the " +
+                "purple spawner) and the skeleton and Draugr bone piles; a destroyed one is forgotten. Anything else, such " +
+                "as dolmens, old houses, berry bushes and common rocks, is never recorded.");
+            // Greydwarf nests and bone piles count (Tyler, 2026-11-08): a file still on the old default moves.
+            if (KnowledgeKinds.Value == Village.Knowledge.OldDefaultKinds)
+            {
+                KnowledgeKinds.Value = Village.Knowledge.DefaultKinds;
+            }
+
             KnowledgeReachKinds = Admin(config, know, "KnowledgeReachKinds", Village.Knowledge.DefaultReachKinds,
                 "Kinds a village learns from its reach without anyone walking up to them: game (where animals come out), foe " +
                 "(where creatures come out) and biome (where the land changes). Everything else needs a villager to go there.");

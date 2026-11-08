@@ -110,6 +110,12 @@ namespace Villheim.Logic.Village
 
         public const string DefaultKinds =
             "boss, dungeon, trader, runestone, ore:copper, ore:tin, ore:silver, ore:obsidian, ore:flametal, fuling, dvergr, " +
+            "nest, landmark:tarpit, landmark:tower, landmark:giant, landmark:henge, landmark:drakenest, landmark:stones, " +
+            "forage:beehive, game, foe, biome";
+
+        /// <summary>The default before nests counted (Tyler, 2026-11-08): a config still on it moves to DefaultKinds.</summary>
+        public const string OldDefaultKinds =
+            "boss, dungeon, trader, runestone, ore:copper, ore:tin, ore:silver, ore:obsidian, ore:flametal, fuling, dvergr, " +
             "landmark:tarpit, landmark:tower, landmark:giant, landmark:henge, landmark:drakenest, landmark:stones, " +
             "forage:beehive, game, foe, biome";
 
@@ -202,6 +208,12 @@ namespace Villheim.Logic.Village
         {
             List<Discovery> list = Log(hearth).ToList();
             int id = IdOf(feature.Kind, feature.Key, feature.Position);
+            if (Gone.TryGetValue(id, out float goneAt) && Time.time - goneAt < 900f)
+            {
+                // Destroyed a moment ago: the object survey may not have caught up yet.
+                return null;
+            }
+
             Discovery known = list.FirstOrDefault(d => d.Id == id);
             if (known != null)
             {
@@ -366,6 +378,7 @@ namespace Villheim.Logic.Village
             {
                 survey.NextWitness = Time.time + 5f;
                 Witnesses(hearth, state, survey);
+                CheckGone(hearth);
             }
 
             MapTables.Ensure(hearth, state);
@@ -760,6 +773,15 @@ namespace Villheim.Logic.Village
                     survey.Trips[name] = (at, Time.time);
                 }
 
+                // Objects (nests, ore, hives) right where he walks, besides the nearest few of each on the candidate list.
+                foreach (WorldSurvey.Feature f in WorldSurvey.ObjectsAround(at, within))
+                {
+                    if (Notable(f.Kind, f.Key) && Add(hearth, f, name, "went") is Discovery found)
+                    {
+                        Found(v, found);
+                    }
+                }
+
                 foreach (WorldSurvey.Feature f in survey.Candidates)
                 {
                     // Big sites are seen from a little further off than a rock or a hive.
@@ -774,6 +796,80 @@ namespace Villheim.Logic.Village
                     }
                 }
             }
+        }
+
+        // ---------------------------------------------------------------- gone
+
+        /// <summary>Discoveries of objects that were destroyed (a nest broken, a deposit mined out): id to when.</summary>
+        private static readonly Dictionary<int, float> Gone = new Dictionary<int, float>();
+
+        /// <summary>Discoveries whose object was missing at the last look: id to when, so one miss is not enough.</summary>
+        private static readonly Dictionary<int, float> Missing = new Dictionary<int, float>();
+
+        /// <summary>
+        /// Object discoveries (nests, ore, hives) in a loaded zone with a player near: if the object is not there on two
+        /// looks 20 s apart, it was destroyed and the village forgets it.
+        /// </summary>
+        private static void CheckGone(VillageHearth hearth)
+        {
+            Player player = Player.m_localPlayer;
+            if (player == null)
+            {
+                return;
+            }
+
+            List<Discovery> list = null;
+            foreach (Discovery d in Log(hearth))
+            {
+                string prefab = WorldSurvey.ObjectPrefab(d.Kind, d.Key);
+                if (prefab == null || Utils.DistanceXZ(d.Position, player.transform.position) > 80f ||
+                    !ZoneSystem.instance.IsZoneLoaded(d.Position))
+                {
+                    continue;
+                }
+
+                if (ObjectThere(d.Position, prefab))
+                {
+                    Missing.Remove(d.Id);
+                    continue;
+                }
+
+                if (!Missing.TryGetValue(d.Id, out float since))
+                {
+                    Missing[d.Id] = Time.time;
+                    continue;
+                }
+
+                if (Time.time - since >= 20f)
+                {
+                    Missing.Remove(d.Id);
+                    Gone[d.Id] = Time.time;
+                    (list = list ?? Log(hearth).ToList()).RemoveAll(x => x.Id == d.Id);
+                    VillheimPlugin.Debug($"{hearth.VillageName} forgets {d.Kind} {d.Key} at {d.Position}: it is gone.");
+                }
+            }
+
+            if (list != null)
+            {
+                Save(hearth, list);
+            }
+        }
+
+        private static readonly Collider[] Hits = new Collider[64];
+
+        private static bool ObjectThere(Vector3 at, string prefab)
+        {
+            int n = Physics.OverlapSphereNonAlloc(at + Vector3.up, 5f, Hits);
+            for (int i = 0; i < n; i++)
+            {
+                ZNetView view = Hits[i] != null ? Hits[i].GetComponentInParent<ZNetView>() : null;
+                if (view != null && view.gameObject.name.StartsWith(prefab, System.StringComparison.OrdinalIgnoreCase))
+                {
+                    return true;
+                }
+            }
+
+            return false;
         }
 
         /// <summary>A villager has just found something himself: he says so if a player is near.</summary>

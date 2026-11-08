@@ -62,6 +62,11 @@ https://en.wikipedia.org/wiki/Wikipedia:Signs_of_AI_writing. They add to the wri
   `~shrug` "I don't know", `~point` a place (the speaker turns to it first), `~joke` a laugh, `~proud` a thumbs up,
   `~cheer` good news, `~pious` a bow. A section with no tone gets no gesture. Worry, anger and sadness stay in the words.
 - A line about a creature only plays when that creature is close by.
+- Gestures without a line come only from real events (`Villagers/TaskGestures.cs`), rarely and with a cooldown: a point
+  toward a job 15 m or more off as he sets out, a thumbs up when a building is finished or he makes an amenity, a wave
+  at a player arriving or leaving, a shrug when the chest can't pay for the piece he came to make, a head shake when
+  the village has nothing to trade, a cheer at the feast. Idle gestures by mood, pointing at work stations and the
+  shrug at the rain are gone.
 
 ## Checking a file
 

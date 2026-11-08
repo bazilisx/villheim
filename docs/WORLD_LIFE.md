@@ -360,6 +360,13 @@ The table above is the first build. These rules now replace parts of it.
   `{direction}` and `{distance}` come out in a different shape each time; `{where}` may use a known place on the way
   ("past the tar pit, still heading north"). Tags `rumor:sure` and `rumor:ground` (creature ground or biome edge).
   `vh know rumors` (and the old `vh know rumours`).
+- **Nests count (Tyler, 2026-11-08).** `nest` is in `KnowledgeKinds`: the Greydwarf nest (`Spawner_GreydwarfNest`, the
+  purple spawner), the skeleton bone pile (`BonePileSpawner`) and the Draugr body pile (`Spawner_DraugrPile`). Every 5 s
+  each villager out past the village edge finds any surveyed object (nest, ore, hive) within `KnowledgeNear` of him,
+  besides the nearest few on the candidate list. A config still on the old default list moves to the new one. When a
+  player is within 80 m of an object discovery in a loaded zone and the object is missing on two looks 20 s apart
+  (a nest broken, a deposit mined out), the village forgets it, and does not find it again for 15 minutes while the
+  object survey catches up. Nests show on the map table under the same 50% roll as other places.
 - **Names.** Creatures and places use the game's names: Fuling (never goblin), Greydwarf, Troll, Lox, Eikthyr's altar.
 10. Set `VillageKnowledge = false` and save: no rumour lines, no new map table, `vh know` still lists. Set it back.
     `vh reload`: the survey starts again and `vh know` still lists the same discoveries.

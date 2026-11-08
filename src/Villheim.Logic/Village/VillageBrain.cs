@@ -69,6 +69,7 @@ namespace Villheim.Logic.Village
             Caravans.Tick(hearth, state);
             Daughters.Tick(hearth, state);
             Raids.Tick(hearth);
+            Contracts.Tick(hearth, state);
             NoticeBoard.Update(hearth);
             CheckDoorsDaily(hearth);
             Farms.Tick(hearth);

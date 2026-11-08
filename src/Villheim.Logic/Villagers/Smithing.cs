@@ -209,6 +209,30 @@ namespace Villheim.Logic.Villagers
             return tier < 0 ? new HashSet<string>() : new HashSet<string>(Cost(tier, out _, out _).Keys);
         }
 
+        /// <summary>What the chest still lacks for the next set (item prefab name, how many), or nothing.</summary>
+        public static Dictionary<string, int> Shortfall(VillageHearth hearth)
+        {
+            var missing = new Dictionary<string, int>();
+            int tier = Behind(hearth);
+            Container chest = tier >= 0 ? VillageChest.Find(hearth) : null;
+            if (chest == null)
+            {
+                return missing;
+            }
+
+            foreach (KeyValuePair<string, int> need in Cost(tier, out _, out _))
+            {
+                string name = Materials.SharedName(need.Key);
+                int have = name != null ? chest.GetInventory().CountItems(name) : 0;
+                if (have < need.Value)
+                {
+                    missing[need.Key] = need.Value - have;
+                }
+            }
+
+            return missing;
+        }
+
         public static string TierName(int tier) => TierNames[Mathf.Clamp(tier, 0, TierNames.Length - 1)];
 
         // ---------------------------------------------------------------- the smith at work

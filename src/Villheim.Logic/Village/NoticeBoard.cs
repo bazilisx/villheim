@@ -419,6 +419,14 @@ namespace Villheim.Logic.Village
                 neededColor = top.Key == Materials.Stone ? "#ddd" : "#eca";
             }
 
+            // A contract for players takes the "Needed" line while it stands (Contracts).
+            string contract = Contracts.BoardText(hearth);
+            if (contract != null)
+            {
+                needed = Capital(contract);
+                neededColor = "#fd8";
+            }
+
             float mood = VillageMood.Get(hearth.VillageId);
             string moodColor = mood >= 70f ? "#bfb" : mood >= 50f ? "#ffa" : mood >= 30f ? "#fc9" : "#f99";
             return new[]

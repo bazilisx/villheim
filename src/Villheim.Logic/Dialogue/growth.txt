@@ -83,3 +83,9 @@ We're too many for this place now. A few of ours went off to build their own.
 @ talk, event:founded
 We're new here. Everyone came from the old village, down the road.
 New fire, new houses, same old faces.
+
+# ------------------------------------------------------------------ contracts on the notice board
+
+@ talk, event:contract
+There's a notice up by the chest. We need something we can't get ourselves, and we'll pay for it.
+Read the board. If you can bring it, you'll be paid fair.

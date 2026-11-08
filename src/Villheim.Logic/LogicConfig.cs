@@ -62,6 +62,8 @@ namespace Villheim.Logic
         public static ConfigEntry<bool> VillageEvents;
         public static ConfigEntry<bool> Caravans;
         public static ConfigEntry<bool> Daughters;
+        public static ConfigEntry<bool> Contracts;
+        public static ConfigEntry<float> ContractChancePerDay;
         public static ConfigEntry<int> DaughtersPerVillage;
         public static ConfigEntry<float> DaughterChancePerDay;
         public static ConfigEntry<float> CaravanChancePerDay;
@@ -160,6 +162,11 @@ namespace Villheim.Logic
                 "Most daughter villages one village founds.");
             DaughterChancePerDay = Admin(config, life, "DaughterChancePerDay", 0.25f,
                 "Chance a full village sends settlers on a given day (0 to 1), at most one party every ten days.");
+            Contracts = Admin(config, life, "Contracts", true,
+                "With WorldLife on, a village puts up a notice for what its own people cannot get (flint or hides for the " +
+                "smith, a material its biome lacks), paid in coins or spare goods when you bring it to the chest.");
+            ContractChancePerDay = Admin(config, life, "ContractChancePerDay", 0.5f,
+                "Chance a village with nothing posted puts up a contract on a given day (0 to 1).");
             Trails = Admin(config, life, "Trails", true,
                 "With WorldLife on, villages plan a dirt trail to their outpost and to their nearest neighbour within " +
                 "2,500 m, painted on the ground near you as you walk it.");

@@ -1230,7 +1230,8 @@ namespace Villheim.Logic.Village
         private static string MarkerKind(ZNetView view)
         {
             string prefab = Utils.GetPrefabName(view.gameObject);
-            return prefab == PathMarker || prefab == DoorMarker || prefab == "piece_bpsnappoint" || prefab == "piece_bpcenterpoint" ? "path" : null;
+            return prefab == PathMarker || prefab == DoorMarker || prefab == "piece_bpsnappoint" || prefab == "piece_bpcenterpoint" ||
+                   prefab == "piece_bpsnappointinstance" || prefab == "piece_bpcenterpointinstance" ? "path" : null;
         }
 
         /// <summary>
@@ -1444,68 +1445,31 @@ namespace Villheim.Logic.Village
             }
         }
 
-        /// <summary>Takes the paint off a plot's ground (heights stay); the ground pieces changed are added to touched.</summary>
+        /// <summary>
+        /// Empties a plot's ground: levelled to the plot's floor (its middle's height) and the paint taken off, with
+        /// PlanBuild's terrain tools, in one go. The touched set is no longer used (kept for the callers).
+        /// </summary>
         private static void ClearPaint(Vector3 center, float yaw, float half, HashSet<TerrainComp> touched)
         {
-            Quaternion turn = Quaternion.Euler(0f, yaw, 0f);
-            int reach = Mathf.CeilToInt(half * 2f);
-            for (int i = -reach; i <= reach; i++)
-            for (int j = -reach; j <= reach; j++)
-            {
-                Vector3 world = center + turn * new Vector3(i * 0.5f, 0f, j * 0.5f);
-                Heightmap map = Heightmap.FindHeightmap(world);
-                TerrainComp ground = map != null ? map.GetAndCreateTerrainCompiler() : null;
-                if (ground == null)
-                {
-                    continue;
-                }
-
-                int size = ground.m_width + 1;
-                ground.m_hmap.WorldToVertexMask(world, out int px, out int py);
-                if (px >= 0 && py >= 0 && px < size && py < size)
-                {
-                    int index = py * size + px;
-                    Color nothing = Heightmap.m_paintMaskNothing;
-                    nothing.a = ground.m_paintMask[index].a;
-                    ground.m_paintMask[index] = nothing;
-                    ground.m_modifiedPaint[index] = true;
-                    touched.Add(ground);
-                }
-
-                // Level with the plot's floor too: a copy's heights stayed behind when only the paint was cleared.
-                ground.m_hmap.WorldToVertex(world, out int hx, out int hy);
-                if (hx >= 0 && hy >= 0 && hx < size && hy < size)
-                {
-                    int index = hy * size + hx;
-                    ground.m_levelDelta[index] += center.y - ground.m_hmap.m_heights[index];
-                    ground.m_smoothDelta[index] = 0f;
-                    ground.m_modifiedHeight[index] = ground.m_levelDelta[index] != 0f;
-                    touched.Add(ground);
-                }
-            }
+            PlanBuildTerrain.Apply(center, half * 2f + 1f, half * 2f + 1f, yaw, center.y, "Reset");
         }
 
+        /// <summary>PlanBuild saves the ground itself after every change; nothing to do here any more.</summary>
         private static void SaveGround(IEnumerable<TerrainComp> touched)
         {
-            foreach (TerrainComp ground in touched)
-            {
-                ground.GetComponent<ZNetView>()?.ClaimOwnership();
-                ground.m_operations++;
-                ground.m_lastOpPoint = Vector3.zero;
-                ground.m_lastOpRadius = 0f;
-                ground.Save();
-                ground.m_hmap.Poke(0, false);
-            }
         }
 
-        /// <summary>One ground job at a time (see ApplyTerrain).</summary>
+        /// <summary>One ground job at a time.</summary>
         private static bool _groundBusy;
 
+        /// <summary>
+        /// Puts a save's ground into a plot with PlanBuild's terrain tools: first the whole plot levelled to its floor and
+        /// its paint taken off, then the saved squares, row by row: each run of neighbouring squares with the same paint
+        /// in a row is one rectangle, levelled to its height and painted. Nothing is written by Villheim itself (see
+        /// PlanBuildTerrain for why).
+        /// </summary>
         private static IEnumerator ApplyTerrain(List<string> lines, Vector3 center, float yaw, float half)
         {
-            // One job at a time, and each one clears, writes and saves in a single frame. Two jobs at once (emptying the
-            // saved plot while painting the copy) both wrote into the same 64 m ground area; when one saved it mid-way,
-            // the game reloaded that area and the other's dirt in it was lost: a straight-edged gap (2026-11-07).
             while (_groundBusy)
             {
                 yield return null;
@@ -1514,161 +1478,65 @@ namespace Villheim.Logic.Village
             _groundBusy = true;
             try
             {
-            Quaternion turn = Quaternion.Euler(0f, yaw, 0f);
-            CultureInfo inv = CultureInfo.InvariantCulture;
-            var touched = new HashSet<TerrainComp>();
-
-            // Every ground area the plot touches gets its record first, and the game a moment to load it: a record made
-            // and written at once was loaded over a frame later, losing one area's dirt (a straight-edged gap, 2026-11-07).
-            int made = 0;
-            int span = Mathf.CeilToInt(half) + 8;
-            for (int i = -span; i <= span; i += 8)
-            for (int j = -span; j <= span; j += 8)
-            {
-                Heightmap map = Heightmap.FindHeightmap(center + turn * new Vector3(i, 0f, j));
-                if (map != null && TerrainComp.FindTerrainCompiler(map.transform.position) == null)
+                if (!PlanBuildTerrain.Available)
                 {
-                    map.GetAndCreateTerrainCompiler();
-                    made++;
-                }
-            }
-
-            if (made > 0)
-            {
-                yield return new WaitForSeconds(0.5f);
-            }
-
-            // First the plot's own paint goes, so dirt from an earlier copy or try never adds up with the new one.
-            ClearPaint(center, yaw, half, touched);
-
-            int done = 0, painted = 0, noGround = 0;
-            string failed = null;
-            var written = new Dictionary<string, int>();
-            var checks = new List<(Vector3 World, string Area)>();
-            foreach (string line in lines)
-            {
-                string[] f = line.Split(';');
-                if (f.Length < 8 || !float.TryParse(f[1], NumberStyles.Float, inv, out float x) ||
-                    !float.TryParse(f[2], NumberStyles.Float, inv, out float y) || !float.TryParse(f[3], NumberStyles.Float, inv, out float z))
-                {
-                    continue;
+                    Say($"Board: the ground was left as it is: {PlanBuildTerrain.Missing}.");
+                    yield break;
                 }
 
-                Vector3 middle = center + turn * new Vector3(x, y, z);
-                try
+                Quaternion turn = Quaternion.Euler(0f, yaw, 0f);
+                CultureInfo inv = CultureInfo.InvariantCulture;
+                PlanBuildTerrain.Apply(center, half * 2f + 1f, half * 2f + 1f, yaw, center.y, "Reset");
+                yield return null;
+
+                var squares = new List<(float X, float Y, float Z, string Paint)>();
+                foreach (string line in lines)
                 {
-                    // The sample and four spots 35 cm round it, so neighbouring samples overlap and leave no gaps.
-                    foreach (Vector3 offset in Spread)
+                    string[] f = line.Split(';');
+                    if (f.Length >= 8 && float.TryParse(f[1], NumberStyles.Float, inv, out float x) &&
+                        float.TryParse(f[2], NumberStyles.Float, inv, out float y) && float.TryParse(f[3], NumberStyles.Float, inv, out float z))
                     {
-                        Vector3 world = middle + offset;
-                        Heightmap map = Heightmap.FindHeightmap(world);
-                        TerrainComp ground = map != null ? map.GetAndCreateTerrainCompiler() : null;
-                        if (ground == null)
+                        squares.Add((x, y, z, f[7]));
+                    }
+                }
+
+                // Runs along each row (x in the plot's own frame), half a metre apart, same paint.
+                int runs = 0, painted = 0;
+                foreach (IGrouping<float, (float X, float Y, float Z, string Paint)> row in squares.GroupBy(q => Mathf.Round(q.Z * 2f) / 2f))
+                {
+                    List<(float X, float Y, float Z, string Paint)> ordered = row.OrderBy(q => q.X).ToList();
+                    int start = 0;
+                    for (int i = 1; i <= ordered.Count; i++)
+                    {
+                        bool ends = i == ordered.Count || ordered[i].X - ordered[i - 1].X > 0.6f || ordered[i].Paint != ordered[start].Paint;
+                        if (!ends)
                         {
-                            noGround++;
                             continue;
                         }
 
-                        string area = $"{map.transform.position.x:0},{map.transform.position.z:0}";
-                        written[area] = written.TryGetValue(area, out int w) ? w + 1 : 1;
-                        if (f[7].Length > 0)
+                        List<(float X, float Y, float Z, string Paint)> run = ordered.GetRange(start, i - start);
+                        float from = run[0].X, to = run[run.Count - 1].X;
+                        float height = run.Average(q => q.Y);
+                        Vector3 middle = center + turn * new Vector3((from + to) / 2f, height, row.Key);
+                        PlanBuildTerrain.Apply(middle, to - from + 0.5f, 0.5f, yaw, middle.y, run[0].Paint);
+                        runs++;
+                        if (run[0].Paint.Length > 0)
                         {
-                            checks.Add((world, area));
+                            painted += run.Count;
                         }
 
-                        int size = ground.m_width + 1;
-                        ground.m_hmap.WorldToVertex(world, out int hx, out int hy);
-                        if (hx >= 0 && hy >= 0 && hx < size && hy < size)
+                        start = i;
+                        if (runs % 10 == 0)
                         {
-                            int index = hy * size + hx;
-                            ground.m_levelDelta[index] += world.y - ground.m_hmap.m_heights[index];
-                            ground.m_smoothDelta[index] = 0f;
-                            ground.m_modifiedHeight[index] = ground.m_levelDelta[index] != 0f;
+                            yield return null;
                         }
-
-                        if (f[7].Length > 0)
-                        {
-                            ground.m_hmap.WorldToVertexMask(world, out int px, out int py);
-                            if (px >= 0 && py >= 0 && px < size && py < size)
-                            {
-                                int index = py * size + px;
-                                Color colour = f[7] == "Paved" ? Heightmap.m_paintMaskPaved
-                                    : f[7] == "Cultivate" ? Heightmap.m_paintMaskCultivated
-                                    : Heightmap.m_paintMaskDirt;
-                                colour.a = ground.m_paintMask[index].a;
-                                ground.m_paintMask[index] = colour;
-                                ground.m_modifiedPaint[index] = true;
-                            }
-                        }
-
-                        touched.Add(ground);
-                    }
-
-                    if (f[7].Length > 0)
-                    {
-                        painted++;
-                    }
-
-                    done++;
-                }
-                catch (System.Exception e)
-                {
-                    failed = $"{e.GetType().Name}: {e.Message}";
-                    break;
-                }
-            }
-
-            foreach (TerrainComp ground in touched)
-            {
-                try
-                {
-                    ground.GetComponent<ZNetView>()?.ClaimOwnership();
-                    ground.m_operations++;
-                    ground.m_lastOpPoint = Vector3.zero;
-                    ground.m_lastOpRadius = 0f;
-                    ground.Save();
-                    ground.m_hmap.Poke(0, false);
-                }
-                catch (System.Exception e)
-                {
-                    failed = $"{e.GetType().Name}: {e.Message}";
-                }
-            }
-
-            ClutterSystem.instance?.ResetGrass(center, half * 1.5f + 2f);
-            if (lines.Count == 0)
-            {
-                yield break;
-            }
-
-            Say(failed == null
-                ? $"Board: ground put back in the copy: {done} squares ({painted} painted)."
-                : $"Board: putting the ground back stopped after {done} squares: {failed}");
-
-            // Read every painted square back from the ground's records, per 64 m ground area, at once and 2 seconds later:
-            // shows whether written paint goes missing from the data (and when), or only from what is drawn.
-            Dictionary<string, int> Held()
-            {
-                var held = new Dictionary<string, int>();
-                foreach ((Vector3 world, string area) in checks)
-                {
-                    if (PaintAt(world).Length > 0)
-                    {
-                        held[area] = held.TryGetValue(area, out int h) ? h + 1 : 1;
                     }
                 }
 
-                return held;
-            }
-
-            Dictionary<string, int> now = Held();
-            yield return new WaitForSeconds(2f);
-            Dictionary<string, int> later = Held();
-            string areas = string.Join("; ", checks.GroupBy(c => c.Area).Select(g =>
-                $"area {g.Key}: {g.Count()} painted, {(now.TryGetValue(g.Key, out int a) ? a : 0)} held at once, {(later.TryGetValue(g.Key, out int b) ? b : 0)} after 2 s"));
-            string report = $"Board: ground check: {areas}" + (noGround > 0 ? $"; {noGround} spots had no ground found" : "") + ".";
-            Say(report);
-            VillheimPlugin.Log.LogInfo(report + " Written per area: " + string.Join(", ", written.Select(k => $"{k.Key}={k.Value}")));
+                if (lines.Count > 0)
+                {
+                    Say($"Board: ground put back in the copy with PlanBuild's terrain tools: {squares.Count} squares ({painted} painted) in {runs} strips.");
+                }
             }
             finally
             {

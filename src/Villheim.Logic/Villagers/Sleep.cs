@@ -105,8 +105,8 @@ namespace Villheim.Logic.Villagers
                     continue;
                 }
 
-                // Near his friend and away from his rival where he can (Neighbours).
-                float distance = Utils.DistanceXZ(bed.transform.position, home) + Neighbours.BedPenalty(villager, bed.transform.position);
+                // Near his friend and away from his rival where he can (Neighbors).
+                float distance = Utils.DistanceXZ(bed.transform.position, home) + Neighbors.BedPenalty(villager, bed.transform.position);
                 if (distance < bestDistance)
                 {
                     best = bed;

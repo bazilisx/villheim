@@ -10,7 +10,7 @@ namespace Villheim.Logic.Village
     /// The living village (config section "6 - Living village"): one place that calls the systems built on
     /// 2026-11-08 (day, round 2) from the hearth's tick, the villager's brain tick and the dialogue, so the files they
     /// touch only gain one line each. The systems are Prosperity, Calendar, Expectations, Standing, Complaints,
-    /// Leaving, VisitorJudging, WantPile, BossStages, Elders, Neighbours and Escort (the horn and help in a fight).
+    /// Leaving, VisitorJudging, WantPile, BossStages, Elders, Neighbors and Escort (the horn and help in a fight).
     /// </summary>
     internal static class Living
     {
@@ -87,7 +87,7 @@ namespace Villheim.Logic.Village
                 return;
             }
 
-            Safely("neighbours", () => Neighbours.Daily(villager));
+            Safely("neighbours", () => Neighbors.Daily(villager));
             Safely("complaints", () => Complaints.Daily(villager, hearth));
         }
 
@@ -118,7 +118,7 @@ namespace Villheim.Logic.Village
 
         /// <summary>Store prices for this player from this villager: standing, and the trader's view of his neighbours.</summary>
         public static float PriceFactor(VillageHearth hearth, Villager trader, Player player) =>
-            Standing.PriceFactor(hearth, player) * Neighbours.PriceFactor(trader);
+            Standing.PriceFactor(hearth, player) * Neighbors.PriceFactor(trader);
 
         /// <summary>A festival evening: no work after 16:00.</summary>
         public static bool Holiday(int villageId) => Calendar.HolidayNow;
@@ -136,7 +136,7 @@ namespace Villheim.Logic.Village
                 tags.AddRange(Standing.Tags(hearth));
                 tags.AddRange(Complaints.Tags(villager));
                 tags.AddRange(Elders.Tags(villager, hearth));
-                tags.AddRange(Neighbours.Tags(villager));
+                tags.AddRange(Neighbors.Tags(villager));
                 tags.AddRange(BossStages.Tags(hearth));
                 tags.AddRange(Leaving.Tags(villager));
                 tags.AddRange(Cultures.Tags(villager));

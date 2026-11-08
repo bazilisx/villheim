@@ -183,19 +183,19 @@ namespace Villheim.Logic.Villagers
             Warmth[pair] = Mathf.Min(0.4f, warmth + 0.02f);
         }
 
-        private static IEnumerable<Villager> Neighbours(Villager villager) =>
+        private static IEnumerable<Villager> Neighbors(Villager villager) =>
             Character.GetAllCharacters().OfType<Villager>()
                 .Where(o => o != villager && !o.IsDead() && o.VillageId != 0 && o.VillageId == villager.VillageId);
 
         public static Villager Friend(Villager villager)
         {
-            Villager best = Neighbours(villager).OrderByDescending(o => Liking(villager, o)).FirstOrDefault();
+            Villager best = Neighbors(villager).OrderByDescending(o => Liking(villager, o)).FirstOrDefault();
             return best != null && Liking(villager, best) > 0.3f ? best : null;
         }
 
         public static Villager Rival(Villager villager)
         {
-            Villager worst = Neighbours(villager).OrderBy(o => Liking(villager, o)).FirstOrDefault();
+            Villager worst = Neighbors(villager).OrderBy(o => Liking(villager, o)).FirstOrDefault();
             return worst != null && Liking(villager, worst) < -0.4f ? worst : null;
         }
 

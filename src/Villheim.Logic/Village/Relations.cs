@@ -42,7 +42,7 @@ namespace Villheim.Logic.Village
             int self = hearth.VillageId;
             Dictionary<int, int> views = Read(zdo);
             var rng = new System.Random(unchecked(self * 31 + Today * 7919));
-            foreach (ZDO other in Neighbours(hearth.transform.position, self))
+            foreach (ZDO other in Neighbors(hearth.transform.position, self))
             {
                 int id = other.GetInt(Keys.VillageId);
                 int before = Get(zdo, views, id, other);
@@ -94,7 +94,7 @@ namespace Villheim.Logic.Village
                 return;
             }
 
-            ZDO other = Neighbours(hearth.transform.position, hearth.VillageId)
+            ZDO other = Neighbors(hearth.transform.position, hearth.VillageId)
                 .FirstOrDefault(z => id != 0 ? z.GetInt(Keys.VillageId) == id : z.GetString(Keys.Name, "") == name);
             if (other == null)
             {
@@ -131,7 +131,7 @@ namespace Villheim.Logic.Village
                 return null;
             }
 
-            ZDO other = Neighbours(hearth.transform.position, hearth.VillageId)
+            ZDO other = Neighbors(hearth.transform.position, hearth.VillageId)
                 .OrderBy(z => Utils.DistanceXZ(z.GetPosition(), hearth.transform.position)).FirstOrDefault();
             if (other == null)
             {
@@ -146,7 +146,7 @@ namespace Villheim.Logic.Village
         {
             Dictionary<int, int> views = Read(hearth.Zdo);
             var parts = new List<string>();
-            foreach (ZDO other in Neighbours(hearth.transform.position, hearth.VillageId))
+            foreach (ZDO other in Neighbors(hearth.transform.position, hearth.VillageId))
             {
                 int view = Get(hearth.Zdo, views, other.GetInt(Keys.VillageId), other);
                 float distance = Utils.DistanceXZ(other.GetPosition(), hearth.transform.position);
@@ -186,7 +186,7 @@ namespace Villheim.Logic.Village
             return _hearths;
         }
 
-        private static IEnumerable<ZDO> Neighbours(Vector3 center, int self) =>
+        private static IEnumerable<ZDO> Neighbors(Vector3 center, int self) =>
             AllHearths().Where(z => z.GetInt(Keys.VillageId) != self && Utils.DistanceXZ(z.GetPosition(), center) < KnownWithin);
 
         private static Dictionary<int, int> Read(ZDO zdo)

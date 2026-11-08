@@ -95,7 +95,7 @@ namespace Villheim.Logic
         public static ConfigEntry<int> DaughtersPerVillage;
         public static ConfigEntry<float> DaughterChancePerDay;
         public static ConfigEntry<float> CaravanChancePerDay;
-        public static ConfigEntry<float> CaravanMetresPerDay;
+        public static ConfigEntry<float> CaravanMetersPerDay;
         public static ConfigEntry<float> CaravanReach;
         public static ConfigEntry<float> EventChancePerDay;
         public static ConfigEntry<bool> OutpostMaterials;
@@ -153,7 +153,7 @@ namespace Villheim.Logic
         public static ConfigEntry<bool> ElderDeaths;
         public static ConfigEntry<int> ElderDeathDays;
         public static ConfigEntry<float> ElderDeathChance;
-        public static ConfigEntry<bool> Neighbours;
+        public static ConfigEntry<bool> Neighbors;
         public static ConfigEntry<bool> Horn;
         public static ConfigEntry<float> HornSeconds;
         public static ConfigEntry<bool> HelpPlayers;
@@ -399,7 +399,7 @@ namespace Villheim.Logic
                 "villages send what they can spare to villages that lack it.");
             CaravanChancePerDay = Admin(config, life, "CaravanChancePerDay", 0.3f,
                 "Chance that a village sends a trader down the trail on a given day (0 to 1).");
-            CaravanMetresPerDay = Admin(config, life, "CaravanMetresPerDay", 2400f,
+            CaravanMetersPerDay = Admin(config, life, "CaravanMetersPerDay", 2400f,
                 "How far a caravan or a haul goes in an in-game day.");
             CaravanReach = Admin(config, life, "CaravanReach", 2500f,
                 "Villages farther apart than this (meters) do not send each other caravans.");
@@ -609,7 +609,7 @@ namespace Villheim.Logic
             ("Prosperity", Prosperity), ("Expectations", Expectations), ("Calendar", Calendar), ("Festivals", Festivals),
             ("WinterStores", WinterStores), ("PlayerStanding", PlayerStanding), ("Hostility", Hostility), ("Complaints", Complaints), ("VillagersLeave", Leaving),
             ("VisitorJudging", VisitorJudging), ("WantPile", WantPile), ("BossStageCap", BossStages), ("Elders", Elders),
-            ("EldersDieOfAge", ElderDeaths), ("Neighbours", Neighbours), ("Horn", Horn), ("HelpPlayers", HelpPlayers),
+            ("EldersDieOfAge", ElderDeaths), ("Neighbors", Neighbors), ("Horn", Horn), ("HelpPlayers", HelpPlayers),
             ("VillageKnowledge", VillageKnowledge), ("KnowledgeGearGate", KnowledgeGearGate), ("KnowledgeRequests", KnowledgeRequests),
             ("HarvestReach", HarvestReach), ("MapTable", MapTable),
             ("Cultures", Cultures), ("CultureSurnames", CultureSurnames), ("CultureDesigns", CultureDesigns),
@@ -731,7 +731,7 @@ namespace Villheim.Logic
                 "mourned.");
             ElderDeathDays = Admin(config, living, "ElderDeathDays", 60, "With EldersDieOfAge on: days in the village before an elder may die of age.");
             ElderDeathChance = Admin(config, living, "ElderDeathChance", 0.02f, "Chance each morning, from ElderDeathDays on.");
-            Neighbours = Admin(config, living, "Neighbours", true,
+            Neighbors = Admin(config, living, "Neighbors", true,
                 "Villagers pick beds near their friend and away from their rival, and are glad or sour about who lives " +
                 "next door. A trader's prices follow his mood about it.");
             Horn = Admin(config, living, "Horn", true,

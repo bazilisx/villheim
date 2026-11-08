@@ -13,11 +13,11 @@ namespace Villheim.Logic.Villagers
     ///   "badneighbour" (-3). Kept in his ZDO for the dialogue (nextdoor:friend, nextdoor:rival).
     /// - The village store opened through him: x0.94 when he is glad of his neighbours, x1.06 when sour.
     /// </summary>
-    internal static class Neighbours
+    internal static class Neighbors
     {
         private static readonly int KeyNextDoor = "villheim_nextdoor".GetStableHashCode();
 
-        private static bool On => Living.On(LogicConfig.Neighbours);
+        private static bool On => Living.On(LogicConfig.Neighbors);
 
         public static float BedPenalty(Villager villager, Vector3 bed)
         {

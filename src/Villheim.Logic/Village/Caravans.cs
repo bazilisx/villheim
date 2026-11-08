@@ -14,7 +14,7 @@ namespace Villheim.Logic.Village
     /// and Sim Settlements 2's caravans that join two settlements' stores. The rules, not the code.
     ///
     /// - A caravan is a line on the source hearth's ZDO: who sends it, where to, what it carries, when it left and its
-    ///   pace (CaravanMetresPerDay, 2,400 m a day as in Living Factions). Where it is follows from the time alone, so
+    ///   pace (CaravanMetersPerDay, 2,400 m a day as in Living Factions). Where it is follows from the time alone, so
     ///   nothing has to run while nobody is near; it goes along the planned trail when there is one, else straight.
     /// - Travellers (D-008, the default): with CaravanDeliveries off, a caravan carries no village goods. Once a day
     ///   (CaravanChancePerDay) a village sends a trader down the trail to a neighbour with an empty load; near a
@@ -80,8 +80,8 @@ namespace Villheim.Logic.Village
 
         private static float Hour => EnvMan.instance != null ? EnvMan.instance.GetDayFraction() * 24f : 12f;
 
-        /// <summary>Metres a second for a caravan, from CaravanMetresPerDay.</summary>
-        public static float Pace => (LogicConfig.CaravanMetresPerDay != null ? LogicConfig.CaravanMetresPerDay.Value : 2400f) /
+        /// <summary>Metres a second for a caravan, from CaravanMetersPerDay.</summary>
+        public static float Pace => (LogicConfig.CaravanMetersPerDay != null ? LogicConfig.CaravanMetersPerDay.Value : 2400f) /
                                     (float)System.Math.Max(60.0, VillageBrain.DayLength());
 
         // ---------------------------------------------------------------- records

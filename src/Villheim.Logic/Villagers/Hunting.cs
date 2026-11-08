@@ -131,6 +131,7 @@ namespace Villheim.Logic.Villagers
 
             Hunters[villager.VillageId] = villager;
             state.Prey = prey;
+            Defenders.CarryBow(villager);
             state.Phase = Phase.Chase;
             state.Deadline = Time.time + Mathf.Max(10f, LogicConfig.HuntChaseSeconds?.Value ?? 45f);
             state.LastPreyPosAt = 0f;
@@ -171,7 +172,16 @@ namespace Villheim.Logic.Villagers
             float distance = Vector3.Distance(villager.transform.position, prey.transform.position);
             float meleeRange = Mathf.Max(StrikeReach, LogicConfig.HuntMeleeRange?.Value ?? 4f);
             float bowRange = Mathf.Max(8f, LogicConfig.HuntBowRange?.Value ?? 25f);
-            state.Bow = IsDeer(prey) || distance > meleeRange;
+            bool arrows = Defenders.CarriedArrow(villager) != null;
+            if (IsDeer(prey) && !arrows)
+            {
+                // Deer are only hunted with the bow; with no arrows he lets it go until he has made more.
+                LetGo[prey.GetZDOID()] = Time.time + 180f;
+                End(villager, state);
+                return false;
+            }
+
+            state.Bow = arrows && (IsDeer(prey) || distance > meleeRange);
             if (state.Bow)
             {
                 bool seen = InSight(villager, prey);

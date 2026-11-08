@@ -263,7 +263,13 @@ namespace Villheim.Logic.Villagers
                 }
             }
 
-            ItemDrop.ItemData ammo = Ammo(villager);
+            ItemDrop.ItemData ammo = CarriedArrow(villager);
+            if (ammo == null)
+            {
+                // Out of arrows: the bow goes back and he fights with his weapon (Combat).
+                return Release(villager, state);
+            }
+
             Vector3 spawn = villager.transform.position + Vector3.up * 1.5f + villager.transform.forward * 0.6f;
             float speed = bow.m_shared.m_attack.m_projectileVel > 1f ? bow.m_shared.m_attack.m_projectileVel : 50f;
             GameObject projectile = ProjectilePrefab(bow, ammo);
@@ -278,6 +284,7 @@ namespace Villheim.Logic.Villagers
                 state.NextShot = Time.time + Mathf.Max(0.3f, LogicConfig.DefenderShotSeconds?.Value ?? 1.2f) * Random.Range(0.9f, 1.15f);
                 state.LastShotAt = Time.time;
                 Fire(villager, bow, ammo, projectile, spawn, aim, speed, profile.Spread());
+                UseArrow(villager, ammo);
             }
 
             Status.Set(villager, Status.Doer.Fight);
@@ -292,13 +299,18 @@ namespace Villheim.Logic.Villagers
         /// </summary>
         public static bool ShootAt(Villager villager, VillagerAI ai, Character target, Vector3 velocity, float spread)
         {
-            ItemDrop.ItemData bow = HeldBow(villager) ?? EquipBow(villager);
-            if (bow == null || target == null)
+            ItemDrop.ItemData ammo = CarriedArrow(villager);
+            if (ammo == null || target == null)
             {
                 return false;
             }
 
-            ItemDrop.ItemData ammo = Ammo(villager);
+            ItemDrop.ItemData bow = HeldBow(villager) ?? EquipBow(villager);
+            if (bow == null)
+            {
+                return false;
+            }
+
             Vector3 spawn = villager.transform.position + Vector3.up * 1.5f + villager.transform.forward * 0.6f;
             float speed = bow.m_shared.m_attack.m_projectileVel > 1f ? bow.m_shared.m_attack.m_projectileVel : 50f;
             GameObject projectile = ProjectilePrefab(bow, ammo);
@@ -327,6 +339,7 @@ namespace Villheim.Logic.Villagers
             }
 
             Fire(villager, bow, ammo, projectile, spawn, aim, speed, spread);
+            UseArrow(villager, ammo);
             return true;
         }
 
@@ -348,7 +361,47 @@ namespace Villheim.Logic.Villagers
         {
             int tier = Mathf.Clamp(Roles.GearTier(villager), 0, Bows.Length - 1);
             Carry(villager, Bows[tier], 1);
-            Carry(villager, Arrows[tier], 20);
+            if (villager.Zdo != null && !villager.Zdo.GetBool(KeyArrowsGiven))
+            {
+                // The first quiver comes with the bow; after that he makes his own when he runs low (Fletching).
+                villager.Zdo.Set(KeyArrowsGiven, true);
+                RefillArrows(villager);
+            }
+        }
+
+        // ---------------------------------------------------------------- arrows (Tyler, 2026-11-08)
+
+        public const int QuiverSize = 20;
+        private static readonly int KeyArrowsGiven = "villheim_arrows_given".GetStableHashCode();
+
+        /// <summary>True once he has been given his first quiver (so running low means making more).</summary>
+        public static bool HasQuiver(Villager villager) => villager.Zdo != null && villager.Zdo.GetBool(KeyArrowsGiven);
+
+        private static bool IsArrow(ItemDrop.ItemData item) =>
+            item?.m_shared != null && item.m_shared.m_itemType == ItemDrop.ItemData.ItemType.Ammo &&
+            (item.m_shared.m_ammoType ?? "").ToLowerInvariant().Contains("arrow");
+
+        /// <summary>The arrows he carries (any kind), or null when he has none.</summary>
+        public static ItemDrop.ItemData CarriedArrow(Villager villager) =>
+            villager.GetInventory()?.GetAllItems().FirstOrDefault(i => IsArrow(i) && i.m_stack > 0);
+
+        public static int ArrowCount(Villager villager) =>
+            villager.GetInventory()?.GetAllItems().Where(IsArrow).Sum(i => i.m_stack) ?? 0;
+
+        private static void UseArrow(Villager villager, ItemDrop.ItemData arrow)
+        {
+            villager.GetInventory()?.RemoveItem(arrow, 1);
+        }
+
+        /// <summary>Fills his quiver to QuiverSize with the arrows of his village's tier (made at no cost).</summary>
+        public static void RefillArrows(Villager villager)
+        {
+            int missing = QuiverSize - ArrowCount(villager);
+            GameObject prefab = ObjectDB.instance ? ObjectDB.instance.GetItemPrefab(Arrows[Mathf.Clamp(Roles.GearTier(villager), 0, Arrows.Length - 1)]) : null;
+            if (missing > 0 && prefab != null)
+            {
+                villager.PickupPrefab(prefab, missing, false);
+            }
         }
 
         private static void Carry(Villager villager, string prefabName, int amount)
@@ -436,7 +489,7 @@ namespace Villheim.Logic.Villagers
 
         private static bool Engage(Villager villager, State state)
         {
-            if (EquipBow(villager) == null)
+            if (CarriedArrow(villager) == null || EquipBow(villager) == null)
             {
                 return false;
             }
@@ -499,17 +552,8 @@ namespace Villheim.Logic.Villagers
                 return null;
             }
 
-            Carry(villager, Arrows[Mathf.Clamp(Roles.GearTier(villager), 0, Arrows.Length - 1)], 20);
             villager.EquipItem(bow, false);
             return bow;
-        }
-
-        /// <summary>The tier's arrow, read from its prefab (arrows are not carried or used up).</summary>
-        private static ItemDrop.ItemData Ammo(Villager villager)
-        {
-            string name = Arrows[Mathf.Clamp(Roles.GearTier(villager), 0, Arrows.Length - 1)];
-            GameObject prefab = ObjectDB.instance ? ObjectDB.instance.GetItemPrefab(name) ?? ObjectDB.instance.GetItemPrefab("ArrowWood") : null;
-            return prefab != null ? prefab.GetComponent<ItemDrop>()?.m_itemData : null;
         }
 
         private static GameObject ProjectilePrefab(ItemDrop.ItemData bow, ItemDrop.ItemData ammo)

@@ -531,7 +531,8 @@ namespace Villheim.Logic.Villagers
             // Flyers are shot at, and anything else he can see further off than FightBowFrom (D-050); up close, the weapon.
             bool flies = enemy.IsFlying() || enemy.m_flying;
             float bowFrom = Mathf.Max(BackRange, LogicConfig.FightBowFrom?.Value ?? 8f);
-            state.Ranged = !state.SelfDefense && distance > BackRange &&
+            // With no arrows left he closes in with the weapon; he makes more once the fight is over (Fletching).
+            state.Ranged = !state.SelfDefense && distance > BackRange && Defenders.CarriedArrow(villager) != null &&
                            (flies || (distance > bowFrom && InSight(villager.GetEyePoint(), enemy)));
             if (state.Ranged)
             {

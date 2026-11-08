@@ -39,6 +39,7 @@ namespace Villheim.Logic.Villagers
             Forage,
             Play,
             Fight,
+            Fletch,
         }
 
         private static readonly int KeyShort = "villheim_task".GetStableHashCode();
@@ -99,6 +100,7 @@ namespace Villheim.Logic.Villagers
                 case Doer.Forage: return Foraging.Describe(villager) ?? "foraging";
                 case Doer.Play: return ChildPlay.Describe(villager) ?? "playing";
                 case Doer.Fight: return Combat.Describe(villager) ?? "fighting";
+                case Doer.Fletch: return Fletching.Describe(villager) ?? "making arrows";
             }
 
             // Nothing of ours ran him lately: the game's own AI has him (a fight with a player), or he is loading.
@@ -140,6 +142,7 @@ namespace Villheim.Logic.Villagers
                 case Doer.Forage: return text.Contains("carrying") ? "hauling" : "harvesting";
                 case Doer.Play: return text.Contains("help") ? "helping" : "playing";
                 case Doer.Fight: return Combat.Short(villager);
+                case Doer.Fletch: return "making arrows";
                 case Doer.FreeTime: return FreeWord(text);
             }
 

@@ -63,6 +63,9 @@ namespace Villheim.Logic
         public static ConfigEntry<bool> Caravans;
         public static ConfigEntry<bool> CaravanDeliveries;
         public static ConfigEntry<bool> BroughtMaterials;
+        public static ConfigEntry<bool> WaterProofPieces;
+        public static ConfigEntry<string> BoardwalkCultures;
+        public static ConfigEntry<float> BoardwalkWetHeight;
         public static ConfigEntry<bool> StorageChests;
         public static ConfigEntry<string> StorageChestSteps;
         public static ConfigEntry<int> StorageChestPeople;
@@ -226,6 +229,12 @@ namespace Villheim.Logic
                 "nowhere to sort to (at most one a day).");
             StorageSortAt = Admin(config, work, "StorageSortAt", 0.75f,
                 "How full the main chest (share of its slots) gets before a villager carries stacks to the storage chests.");
+            WaterProofPieces = Admin(config, work, "WaterProofPieces", true,
+                "Pieces a village built take no rain or water damage. Pieces players build keep the game's own wear.");
+            BoardwalkCultures = Admin(config, work, "BoardwalkCultures", "fen-folk, celtic-crannog",
+                "Cultures whose villages lay raised wooden walkways on poles instead of dirt paths over wet ground.");
+            BoardwalkWetHeight = Admin(config, work, "BoardwalkWetHeight", 0.8f,
+                "Ground no higher than this many metres over the water counts as wet for boardwalks.");
             SecondsPerPiece = Admin(config, work, "SecondsPerPiece", 2.5f,
                 "How long a builder hammers at each piece before it goes up.");
             StartingStock = Admin(config, work, "StartingStock", 0,

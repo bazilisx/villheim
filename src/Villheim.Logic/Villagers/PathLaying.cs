@@ -15,6 +15,8 @@ namespace Villheim.Logic.Villagers
     /// stored on the hearth. One villager at a time takes the first path in the queue, walks it with a hoe and lays it
     /// a metre at a time where he stands. How far he got is stored too, so a fight, the night or a logout only pauses
     /// the path; the next villager carries on from there.
+    ///
+    /// Over wet ground in a fen-folk or crannog village the path is a boardwalk on poles (Village/Boardwalks, D-038).
     /// </summary>
     internal static class PathLaying
     {
@@ -155,7 +157,12 @@ namespace Villheim.Logic.Villagers
             Chores.ToolAnimation(villager, VillagerLooks.Tool.Hoe);
             // A stretch another path already uses is a shared road: laid wider, as a trunk.
             bool shared = PathPlanner.Network(hearth).Contains(PathPlanner.Cell(point));
-            PathBuilder.PaintAt(point, shared ? PathBuilder.Width * 1.8f : PathBuilder.Width);
+            // Fen-folk and crannog villages walk on boards over wet ground (D-038); dirt where that fails.
+            if (!(Boardwalks.Wants(hearth, point) && Boardwalks.Lay(hearth, point)))
+            {
+                PathBuilder.PaintAt(point, shared ? PathBuilder.Width * 1.8f : PathBuilder.Width);
+            }
+
             PathPlanner.AddToNetwork(hearth, point);
             hearth.Zdo.Set(KeyIndex, index + 1);
             state.GiveUpAt = Time.time + 30f;

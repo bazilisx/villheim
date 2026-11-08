@@ -166,8 +166,9 @@ namespace Villheim.Logic.Village
         }
 
         /// <summary>
-        /// The design an object belongs to: its design name, or for a piece with none (placed on the slotting board with
-        /// PlanBuild or the hammer) the board plot it stands in. "" for neither.
+        /// The design an object belongs to. On the slotting board it is always the plot the object stands in, whatever
+        /// design name it carries: a design name brought in with pieces pasted from elsewhere made a plot stop counting as
+        /// one design (2026-11-07). Elsewhere its design name. "" for neither.
         /// </summary>
         public static string DesignOf(GameObject go)
         {
@@ -176,22 +177,48 @@ namespace Villheim.Logic.Village
                 return "";
             }
 
-            string design = go.GetComponent<ZNetView>()?.GetZDO()?.GetString(Gallery.KeyDesign, "") ?? "";
-            return design.Length > 0 ? design : DesignBoard.PlotAt(go.transform.position) ?? "";
+            string plot = DesignBoard.PlotAt(go.transform.position);
+            if (plot != null)
+            {
+                return plot;
+            }
+
+            return go.GetComponent<ZNetView>()?.GetZDO()?.GetString(Gallery.KeyDesign, "") ?? "";
         }
 
-        /// <summary>The design under the crosshair, or the last one picked.</summary>
+        /// <summary>The design under the crosshair (on the board: the plot aimed at, or the one you stand in), or the last one picked.</summary>
         public static string DesignAimed(Player player)
         {
             GameObject target = LookAt.Target(player);
-            string design = target?.GetComponent<ZNetView>()?.GetZDO()?.GetString(Gallery.KeyDesign, "") ?? "";
+            string design = DesignOf(target);
             if (design.Length == 0)
             {
-                // Pieces placed on the slotting board (PlanBuild, the hammer) carry no design name: the plot they stand in.
-                design = DesignBoard.PlotAt(target != null ? target.transform.position : player.transform.position) ?? "";
+                design = DesignBoard.PlotAt(player.transform.position) ?? "";
             }
 
             return design.Length > 0 ? design : _design;
+        }
+
+        /// <summary>
+        /// Whether an object found by position belongs to a design's plot: anything inside the square that is part of a
+        /// plot. On a board plot that includes objects carrying a gallery mark or another design's name (pasted in), but
+        /// never the board's own beams, signs and labels; on a gallery plot only objects without a gallery mark.
+        /// </summary>
+        private static bool InPlot(ZNetView view, ZDO zdo, bool gallery, string design, Vector3 local, float half)
+        {
+            if (Mathf.Abs(local.x) > half || Mathf.Abs(local.z) > half || !PartOfPlot(view))
+            {
+                return false;
+            }
+
+            if (!gallery)
+            {
+                return true;
+            }
+
+            bool boardFurniture = zdo.GetInt(DesignBoard.KeyBeam) == 1 || zdo.GetString(DesignBoard.KeyPlot, "").Length > 0 ||
+                                  zdo.GetString(DesignBoard.KeyLabel, "").Length > 0 || zdo.GetFloat(Gallery.KeyPlotHalf, 0f) > 0f;
+            return design.StartsWith("board:") && !boardFurniture;
         }
 
         /// <summary>Ends picking and part locks (Shaping put away).</summary>
@@ -473,7 +500,7 @@ namespace Villheim.Logic.Village
                 bool gallery = zdo.GetInt(Gallery.KeyGallery) == 1;
                 bool ours = gallery && zdo.GetString(Gallery.KeyDesign, "") == design && zdo.GetFloat(Gallery.KeyPlotHalf, 0f) <= 0f;
                 Vector3 local = frame * (view.transform.position - center);
-                bool byHand = !gallery && PartOfPlot(view) && Mathf.Abs(local.x) <= half && Mathf.Abs(local.z) <= half;
+                bool byHand = InPlot(view, zdo, gallery, design, local, half);
                 Bounds? bounds = (ours || byHand) ? WorldBounds(view.gameObject) : null;
                 if (bounds.HasValue)
                 {
@@ -600,7 +627,7 @@ namespace Villheim.Logic.Village
                 bool gallery = zdo.GetInt(Gallery.KeyGallery) == 1;
                 bool ours = gallery && zdo.GetString(Gallery.KeyDesign, "") == design && zdo.GetFloat(Gallery.KeyPlotHalf, 0f) <= 0f;
                 Vector3 local = frame * (view.transform.position - center);
-                bool byHand = !gallery && PartOfPlot(view) && Mathf.Abs(local.x) <= half && Mathf.Abs(local.z) <= half;
+                bool byHand = InPlot(view, zdo, gallery, design, local, half);
                 if (ours || byHand)
                 {
                     views.Add(view);

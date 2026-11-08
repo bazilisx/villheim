@@ -349,7 +349,9 @@ namespace Villheim.Logic.Designs
             HashSet<string> allowed = Village.Materials.AllowedIn(biome);
             foreach (KeyValuePair<string, int> total in design.RawTotals)
             {
-                if (total.Value > 0 && !allowed.Contains(total.Key))
+                // A material the land does not give still counts when the village's chests hold all the design needs
+                // of it (D-007: whatever is brought in counts).
+                if (total.Value > 0 && !allowed.Contains(total.Key) && Village.Materials.Held(total.Key) < total.Value)
                 {
                     return total.Key;
                 }

@@ -232,6 +232,25 @@ namespace Villheim.Logic.Village
             return state.Get(material) + (chest != null ? Count(chest, material) : 0);
         }
 
+        /// <summary>
+        /// What the village holds of each building material, wherever it is kept: the main chest, the storage chests
+        /// and the saved-up stock (D-007).
+        /// </summary>
+        public static Dictionary<string, int> Holdings(VillageHearth hearth)
+        {
+            var held = new Dictionary<string, int>();
+            var state = new VillageState(hearth.Zdo);
+            foreach (string material in Materials.Tracked)
+            {
+                held[material] = HaveAnywhere(hearth, state, material);
+            }
+
+            return held;
+        }
+
+        /// <summary>What the village has of a material in all its chests plus saved up.</summary>
+        public static int HaveAnywhere(VillageHearth hearth, VillageState state, string material) => Have(hearth, state, material);
+
         /// <summary>Moves everything the village has saved up into the chest, as far as it fits.</summary>
         public static void MoveStockIn(VillageHearth hearth, VillageState state)
         {

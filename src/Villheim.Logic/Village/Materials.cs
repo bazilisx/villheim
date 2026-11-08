@@ -12,6 +12,11 @@ namespace Villheim.Logic.Village
     /// Meadows village only builds with core wood once it has a logging camp in the Black Forest sending it home. The
     /// biome table can be changed in the config; while the village brain runs for one village, From(hearth) adds what
     /// that village's outposts send (see Outposts.Gives).
+    ///
+    /// Anything brought into the village counts too (D-007): From(hearth) also notes what the village's chests hold
+    /// (the main chest, the storage chests and the saved-up stock), whoever put it there. A design that needs a
+    /// material the biome and the outposts do not give can be built once the chests hold all of it the design needs
+    /// (see Held and DesignLibrary.MissingIn). Gathering still follows AllowedIn, so nobody goes looking for it.
     /// </summary>
     internal static class Materials
     {
@@ -72,6 +77,12 @@ namespace Villheim.Logic.Village
 
         // What the outposts of the village being worked on send home, added to its biome's materials.
         private static HashSet<string> _extra;
+
+        // What the chests of the village being worked on hold, by material (D-007).
+        private static Dictionary<string, int> _held;
+
+        /// <summary>How much of a material the village being worked on holds in its chests and stock (0 outside a scope).</summary>
+        public static int Held(string material) => _held != null && _held.TryGetValue(material, out int n) ? n : 0;
         private static HashSet<string> _union;
         private static string _unionKey;
 
@@ -81,19 +92,31 @@ namespace Villheim.Logic.Village
         /// </summary>
         public static Scope From(VillageHearth hearth)
         {
-            var scope = new Scope(_extra);
+            var scope = new Scope(_extra, _held);
             HashSet<string> gives = hearth != null ? Outposts.Gives(hearth) : null;
             _extra = gives != null && gives.Count > 0 ? gives : null;
+            _held = hearth != null && hearth.IsValid && LogicConfig.IsOn(LogicConfig.BroughtMaterials)
+                ? VillageChest.Holdings(hearth)
+                : null;
             return scope;
         }
 
         internal readonly struct Scope : IDisposable
         {
             private readonly HashSet<string> _previous;
+            private readonly Dictionary<string, int> _previousHeld;
 
-            public Scope(HashSet<string> previous) => _previous = previous;
+            public Scope(HashSet<string> previous, Dictionary<string, int> previousHeld)
+            {
+                _previous = previous;
+                _previousHeld = previousHeld;
+            }
 
-            public void Dispose() => _extra = _previous;
+            public void Dispose()
+            {
+                _extra = _previous;
+                _held = _previousHeld;
+            }
         }
 
         private static readonly HashSet<string> Fallback = new HashSet<string> { Wood, Stone };

@@ -55,7 +55,7 @@ namespace Villheim.Logic
             "trails: plan the nearest village's trails again (to its outpost and its nearest neighbour)",
             "outpost [logging|flint|forget|haul]: the nearest village founds its next camp now, whatever its size and gear; 'forget' drops its camps, 'haul' sends every camp's load home now",
             "event [kind]: make something happen in the nearest village now (feast, skald, fair, takenin, sickness, beasts, quarrel, dispute)",
-            "caravan [list]: the nearest village sends a trade caravan now; 'list' shows every caravan on the road",
+            "caravan [list]: the nearest village sends a trader down the trail now (a load of goods with CaravanDeliveries on); 'list' shows every caravan on the road",
             "daughter [here]: the nearest village sends settlers to found a new village now; 'here' lights the hearth of the nearest settled site",
             "contract [clear]: the nearest village posts a contract for players now; 'clear' takes it down",
             "events: list the nearest village's recent events and how ready it is for a bad one",

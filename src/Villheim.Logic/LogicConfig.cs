@@ -61,6 +61,8 @@ namespace Villheim.Logic
         public static ConfigEntry<string> OutpostGear;
         public static ConfigEntry<bool> VillageEvents;
         public static ConfigEntry<bool> Caravans;
+        public static ConfigEntry<bool> CaravanDeliveries;
+        public static ConfigEntry<bool> BroughtMaterials;
         public static ConfigEntry<bool> Daughters;
         public static ConfigEntry<bool> Contracts;
         public static ConfigEntry<bool> Groves;
@@ -231,6 +233,10 @@ namespace Villheim.Logic
             OutpostGear = Admin(config, life, "OutpostGear", Village.Outposts.DefaultGear,
                 "Gear tier a village must have made before its people go out to a camp in that biome (0 rags, 1 leather, " +
                 "2 flint and leather, 3 troll leather, 4 bronze). Biome: tier, separated by semicolons.");
+            BroughtMaterials = Admin(config, work, "BroughtMaterials", true,
+                "Anything brought into the village counts toward what it can build, whoever brought it: a design that " +
+                "needs a material the biome does not give (core wood in the Meadows) can go up once the village's chests " +
+                "hold all of it the design needs. Villagers still only gather what their own land gives.");
             OutpostMaterials = Admin(config, life, "OutpostMaterials", true,
                 "What an outpost sends home counts toward what the village can build: a Meadows village with a logging " +
                 "camp in the Black Forest builds designs that need core wood.");
@@ -240,10 +246,15 @@ namespace Villheim.Logic
             EventChancePerDay = Admin(config, life, "EventChancePerDay", 0.35f,
                 "Chance that something happens in a village on a given day (0 to 1).");
             Caravans = Admin(config, life, "Caravans", true,
-                "With WorldLife on, villages send what they can spare to villages that lack it, along their trails. The " +
-                "caravan moves on the world clock and is a real person walking the road when you are near it.");
+                "With WorldLife on, traders travel the trails between villages, and outpost loads are carried home. A " +
+                "caravan moves on the world clock and is a real person walking the road when you are near it; Shift + Use " +
+                "on a trader opens his pack (his own wares, for coins).");
+            // Caravans no longer move goods between villages (Tyler, 2026-11-08, D-008).
+            CaravanDeliveries = Admin(config, life, "CaravanDeliveries", false,
+                "Off: a trader on the trail carries his own pack and nothing from a village chest. On (old behaviour): " +
+                "villages send what they can spare to villages that lack it.");
             CaravanChancePerDay = Admin(config, life, "CaravanChancePerDay", 0.3f,
-                "Chance that a village sends a trade caravan on a given day (0 to 1), when it has something to spare.");
+                "Chance that a village sends a trader down the trail on a given day (0 to 1).");
             CaravanMetresPerDay = Admin(config, life, "CaravanMetresPerDay", 2400f,
                 "How far a caravan, a haul or a party of settlers goes in an in-game day.");
             CaravanReach = Admin(config, life, "CaravanReach", 2500f,

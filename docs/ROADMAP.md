@@ -206,7 +206,8 @@ with its own look for its biome.
       set was found online; capture with `vh savebp` or PlanBuild, or use downloads with the author's permission.
 - [ ] More biomes (Plains, Mountain, Swamp) with their own materials.
 - [ ] Gear by biome and village level: basic Meadows tools for everyone, biome weapons and shields for protectors,
-      better materials and Black Forest gear as the village levels up (Tyler, 2026-11-05).
+      better materials and Black Forest gear as the village levels up (Tyler, 2026-11-05). (Since 2026-11-07 each tier
+      is made by the village's smith first; see Milestone 7.)
 
 ## Milestone 6: Millénaire village life
 
@@ -247,10 +248,12 @@ Villages that reach out past their fence, and a world with other people in it. D
 - [ ] Relations between villages that drift day by day (built 2026-11-07, needs testing; `vh village`).
 - [ ] Idle villagers watch others work and comment (built 2026-11-07, needs testing).
 - [ ] Caravans as records that move on the world clock and become real only near a player.
-- [ ] Outposts at far resources (core wood, ore, the coast), joined to the village by a path.
-- [ ] Roads between villages.
+- [ ] Outposts at far resources (core wood, ore, the coast), joined to the village by a path. (Logging camps and trails
+      built 2026-11-07, needs testing; `vh outpost`, `vh trails`.)
+- [ ] Roads between villages. (Dirt trails to the nearest neighbour built 2026-11-07, needs testing.)
 - [ ] Desire paths worn by villagers' feet.
-- [ ] A smith who crafts gear from the chest at a real station; villagers take gear from the chest.
+- [ ] A smith who crafts gear from the chest at a real station; villagers take gear from the chest. (Sets per tier
+      built 2026-11-07, needs testing; gear in the chest and a village forge to come.)
 - [ ] Requests and contracts on the notice board; bounties.
 - [ ] A village events director (feasts, quarrels, a lost villager, a skald).
 - [ ] Raids and help between villages by relation.

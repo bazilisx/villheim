@@ -6,7 +6,7 @@ and quests. What is built is marked; the rest is a plan in order of value. Resea
 `docs/RELATED_MODS.md` and the Millénaire notes in `docs/MILLENAIRE.md`. Ideas only from GPL, All Rights Reserved and
 unlicensed sources; code only from the MIT and Unlicense projects listed at the end, with their notices.
 
-## Built (2026-11-07 late session, not yet tested in game)
+## Built (2026-11-07 overnight session, not yet tested in game)
 
 All of it is logic only (hot-reloads). Visitors and hermits only appear with `WorldLife` on (config section
 "5 - World life", off by default during the design review). The test commands work either way.
@@ -22,6 +22,9 @@ All of it is logic only (hot-reloads). Visitors and hermits only appear with `Wo
 | Personality | `Villagers/Personality.cs` | From the seed: homeland, favourite food, fear, pastime, hope. Friend and rival from a fixed pair liking plus chats. Yesterday's main activity (sampled every 30 s, kept in the ZDO). Village events remembered two to five days (`mem:x`). Day tags `restday`, `tenthday`. |
 | Relations | `Village/Relations.cs` | Each village's view of each other village (-100 to 100), Millénaire's daily drift that leans toward where it stands, +3 per visitor from there, band changes in the chronicle. Tags `neighbour:<band>`, fill-in `{neighbour}`. |
 | Watching | `Villagers/FreeTime.cs` (Kind.Watch) | After Millénaire's observe goals: an idle villager walks to 3.5 m from a neighbour who is building, felling, cooking, mining, farming, repairing, laying a path or fencing (within 35 m), or a pedlar or pilgrim (within 40 m, weighted higher), watches 35 to 70 s and may comment (tags `watching`, `watch:<work>`, fill-in `{watched}`). |
+| Smith | `Villagers/Smithing.cs` | Gear tier = min(size tier, armoury tier). Sets per tier: leather; flint spear and leather helmet; troll leather; bronze chest, spear and buckler. Costs and station from `ObjectDB.GetRecipe`. The carpenter (or builder before trades) works 20 s at the station when the chest has the set's materials; the chronicle records it. No station (forge for bronze): a pedlar sells the tier for 40 coins a tier from the chest. `SmithMakesGear` (on by default, config 3b); villages from before keep their tier. The pedlar never takes the smith's materials as payment. |
+| Outposts | `Village/Outposts.cs` | With WorldLife and `Outposts` on: a village with 4 buildings and 4 villagers plans a logging camp 150 to 700 m out, 25 m inside the nearest Black Forest (core wood, for a Meadows village) or Meadows (fine wood, for a Black Forest village), from world generator heights. Camp (fire pit and two campers of kind `camper`) made on the host when a player is within 150 m. 10 wood a day into the village stock, up to three days caught up. `vh outpost`. |
+| Trails | `Village/Trails.cs` | With WorldLife and `Trails` on: A* from world generator heights to the outpost and the nearest neighbour within 2,500 m (planned by the lower village id), kept on the hearth ZDO, painted as dirt within 50 m of the player, 40 spots each ten seconds. `vh trails`. |
 | Lines | `Dialogue/wanderers.txt`, `Dialogue/personal.txt` | About 260 new lines. Wanderer sections need the tag `wanderer`; fill-ins can start a sentence (capitalised after filling). |
 
 Commands: `vh pedlar`, `vh pilgrim` (nearest village within 200 m), `vh hermit` (camp in front of you),
@@ -48,7 +51,7 @@ Effort is a rough guess: S an evening, M a session or two, L several sessions.
    world clock, a real pedlar (and a tamed boar or lox as pack animal later) appears when a player is close to the
    route. Millénaire's merchants pick the next village by what it lacks, stay two nights, and carry goods from one
    village's store to the next: route surplus from the village that has it to the one that needs it.
-4. **Outposts (L).** Millénaire hamlets and Living Factions outposts: a small owned camp where the land gives what home
+4. **Outposts, second step (L).** First version built (logging camps, daily haul). Still to do: Millénaire hamlets and Living Factions outposts: a small owned camp where the land gives what home
    lacks (core wood in the Black Forest for a Meadows village, copper, tin, a fishing spot on the coast), at most two
    per village, one or two huts and the trade's workshop, never growing into a village. Two villagers live there, carry
    stock home when it passes a set amount (Living Factions: 12), and a path joins it to the village. Site rules from
@@ -56,7 +59,8 @@ Effort is a rough guess: S an evening, M a session or two, L several sessions.
    2 + 0.2 r m, clear of vanilla locations, more than r + 60 m from any player while it is placed. Designs: small Work
    designs from the board (Mining, Woodworking, Harbour). The biome rule then reads "a village builds with what its
    biome and its outposts give".
-5. **Roads between villages (M to L).** Two routes:
+5. **Roads between villages (M to L).** First version built (`Trails.cs`: runtime, dirt only). Still to do: widen and
+   pave busy trails, signposts at junctions, road posts halfway on long trails. The other route:
    - Runtime, after Living Factions: each village links to its nearest reachable neighbour, A* on an 8 m grid in an
      ellipse corridor (2.2 times the straight distance, 40,000 nodes at most), never across water, price
      step x (1 + 12 grade squared). Paint only within 80 m of a player on loaded zones, 60 points a pass, with the same
@@ -68,7 +72,8 @@ Effort is a rough guess: S an evening, M a session or two, L several sessions.
 6. **Desire paths (M).** AntTrails (MIT): footsteps counted per terrain tile, 25 steps make a dirt path, unfinished
    charge fades over 12 days, finished paths fade over 30 days to a trace, very busy tiles can turn to stone. Feed it
    villager footsteps and villages wear their own paths between doors, the chest, the farms and the hearth.
-7. **A smith who makes gear (M).** No published Valheim mod has NPCs craft gear from materials. Plan: a smith trade
+7. **A smith who makes gear (M).** First version built (`Smithing.cs`, sets per tier). Still to do: a village forge so
+   bronze can be made at home, gear kept in the chest and taken by each villager, repairs. The full plan: a smith trade
    (from the Workshop subtype) runs a real recipe (`ObjectDB.GetRecipe`, `m_resources`, `m_minStationLevel`) at a
    village forge or workbench that passes `CheckUsable`, takes the materials from the chest, plays the station's craft
    effect, and puts the item in the chest; protectors and workers then take their weapon, shield, tool and armour from

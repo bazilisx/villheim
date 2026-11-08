@@ -87,5 +87,5 @@ New fire, new houses, same old faces.
 # ------------------------------------------------------------------ contracts on the notice board
 
 @ talk, event:contract
-There's a notice up by the chest. We need something we can't get ourselves, and we'll pay for it.
+There's a notice on the back of the board. We need something we can't get ourselves, and we'll pay for it.
 Read the board. If you can bring it, you'll be paid fair.

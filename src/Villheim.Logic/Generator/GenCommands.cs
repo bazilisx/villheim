@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Reflection;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
@@ -14,14 +15,16 @@ namespace Villheim.Logic.Generator
 {
     /// <summary>
     /// 'vh gen', 'vh ask', 'vh asks' and 'vh place': buildings made from a short request with the blueprint lab's own
-    /// generator (LabEngine), built in front of the player the way 'vh preview' builds a blueprint. Files go under
-    /// PlanBuild's inspiration folder, which villages never build from.
+    /// generator (LabEngine), built in front of the player the way 'vh preview' builds a blueprint. Files go under an
+    /// inspiration folder in PlanBuild's own save folder (villages never build from inspiration folders), with short
+    /// names (gen-12-norse-home) and the category Villheim, so PlanBuild lists them on a tab of their own.
     /// </summary>
     internal static class GenCommands
     {
         public static readonly string[] Help =
         {
-            "gen <biome> <type> <stage> [culture] [\"request\"] [seed]: make a new building with the blueprint lab and build it in front of you, e.g. gen md home s1d3 \"two stories with a porch\"; saved to PlanBuild/blueprints/inspiration/generated/ingame ('gen help' lists the codes)",
+            "gen <biome> <type> <stage> [culture] [\"request\"] [seed]: make a new building with the blueprint lab and build it in front of you, e.g. gen md home s1d3 \"two stories with a porch\"; saved with a short name (gen-12-norse-home) where PlanBuild finds it, on its Villheim tab ('gen help' lists the codes)",
+            "gen list: the last 10 designs made with 'gen', by their short names; 'preview last' or 'place last' builds the newest again",
             "ask <biome> <type> <stage> [culture] \"request\": write the request to BepInEx/config/Villheim/requests/requests.jsonl for Claude to make with more care; 'asks' lists them, 'place <id>' builds the result",
             "asks: list the requests made with 'ask' and their status",
             "place <id|name> [here]: build a finished request (R-0001) or an in-game generated design in front of you; 'here' builds a request where you stood when you asked",
@@ -42,7 +45,8 @@ namespace Villheim.Logic.Generator
             "  vh gen bf longhouse s3d2 norse-forest \"steep roof\" 7",
             "  vh gen pl home s2d2 middle-eastern \"courtyard, flat roof\"",
             "  vh gen sw storage s1d1",
-            "Saved to BepInEx/config/PlanBuild/blueprints/inspiration/generated/ingame/<name>.blueprint. 'vh place <name>' or 'vh preview <name>' builds it again.",
+            "Saved as gen-<number>-<culture>-<type>.blueprint in PlanBuild's save folder (inspiration/generated/ingame), category Villheim; PlanBuild lists it on its Villheim tab.",
+            "'vh gen list' shows the last 10. 'vh place <short name>', 'vh preview <short name>' or 'vh place last' builds one again.",
             "vh ask (same words) saves the request for Claude instead; 'vh asks' lists them; 'vh place R-0001 [here]' builds a finished one.",
         };
 
@@ -50,9 +54,72 @@ namespace Villheim.Logic.Generator
         private static readonly Regex StagePattern = new Regex(@"^s[123](d[123])?$", RegexOptions.IgnoreCase);
         private static readonly Regex RequestId = new Regex(@"^R-\d{4,}$", RegexOptions.IgnoreCase);
 
+        // Requests made by Claude ('vh ask') still go where lab/process_requests.js writes them.
         private static string Generated => Path.Combine(Paths.ConfigPath, "PlanBuild", "blueprints", "inspiration", "generated");
-        public static string IngameFolder => Path.Combine(Generated, "ingame");
         public static string ResultFolder => Path.Combine(Generated, "requests");
+
+        /// <summary>Where 'vh gen' saved before 2026-11-09 (the profile's config folder, which PlanBuild may not search).</summary>
+        private static string OldIngameFolder => Path.Combine(Generated, "ingame");
+
+        /// <summary>
+        /// 'vh gen' designs: an inspiration folder in PlanBuild's save folder. PlanBuild reads its folders from
+        /// marcopogo.PlanBuild.cfg, relative to the Valheim install (valheim.exe), which with r2modman is not the
+        /// profile. It loads blueprints only from its search folder, so when the save folder lies outside it the search
+        /// folder is used.
+        /// </summary>
+        public static string IngameFolder
+        {
+            get
+            {
+                string search = PlanBuildFolder("Search directory", ".");
+                string save = PlanBuildFolder("Save directory", "BepInEx/config/PlanBuild/blueprints");
+                string root = Inside(save, search) ? save : search;
+                return Path.Combine(root, "inspiration", "generated", "ingame");
+            }
+        }
+
+        /// <summary>A folder setting from PlanBuild's settings file, made absolute against the Valheim install.</summary>
+        private static string PlanBuildFolder(string key, string fallback)
+        {
+            string value = fallback;
+            try
+            {
+                string config = Path.Combine(Paths.ConfigPath, "marcopogo.PlanBuild.cfg");
+                if (File.Exists(config))
+                {
+                    string section = "";
+                    foreach (string raw in File.ReadAllLines(config))
+                    {
+                        string line = raw.Trim();
+                        if (line.StartsWith("["))
+                        {
+                            section = line;
+                            continue;
+                        }
+
+                        int equals = line.IndexOf('=');
+                        if (section.Equals("[Directories]", StringComparison.OrdinalIgnoreCase) && equals > 0 && !line.StartsWith("#") &&
+                            line.Substring(0, equals).Trim().Equals(key, StringComparison.OrdinalIgnoreCase) && line.Substring(equals + 1).Trim().Length > 0)
+                        {
+                            value = line.Substring(equals + 1).Trim();
+                        }
+                    }
+                }
+            }
+            catch (Exception e)
+            {
+                VillheimPlugin.Log.LogWarning($"Could not read PlanBuild's settings: {e.Message}");
+            }
+
+            return Path.GetFullPath(Path.IsPathRooted(value) ? value : Path.Combine(Paths.GameRootPath, value));
+        }
+
+        private static bool Inside(string folder, string parent)
+        {
+            string f = Path.GetFullPath(folder).TrimEnd('\\', '/') + Path.DirectorySeparatorChar;
+            string p = Path.GetFullPath(parent).TrimEnd('\\', '/') + Path.DirectorySeparatorChar;
+            return f.StartsWith(p, StringComparison.OrdinalIgnoreCase);
+        }
         public static string RequestsFile => Path.Combine(Paths.ConfigPath, "Villheim", "requests", "requests.jsonl");
 
         private static bool _busy;
@@ -157,6 +224,12 @@ namespace Villheim.Logic.Generator
                 return;
             }
 
+            if (args != null && args.Length > 0 && args[0].Equals("list", StringComparison.OrdinalIgnoreCase))
+            {
+                Say(context, List());
+                return;
+            }
+
             if (!Parse(args, out Parsed p, out string error))
             {
                 Say(context, error);
@@ -204,7 +277,7 @@ namespace Villheim.Logic.Generator
                 job.Done = true;
             }) { IsBackground = true, Name = "Villheim generator" };
             thread.Start();
-            VillheimPlugin.Instance.StartCoroutine(Finish(job, standing, yaw, context));
+            VillheimPlugin.Instance.StartCoroutine(Finish(job, p.Words, standing, yaw, context));
         }
 
         private sealed class Job
@@ -214,7 +287,7 @@ namespace Villheim.Logic.Generator
             public Exception Failure;
         }
 
-        private static IEnumerator Finish(Job job, Vector3 standing, float yaw, Terminal context)
+        private static IEnumerator Finish(Job job, string words, Vector3 standing, float yaw, Terminal context)
         {
             float started = Time.realtimeSinceStartup;
             while (!job.Done)
@@ -243,15 +316,212 @@ namespace Villheim.Logic.Generator
                 yield break;
             }
 
-            Directory.CreateDirectory(IngameFolder);
-            string file = Path.Combine(IngameFolder, SafeName(r.Name) + ".blueprint");
-            File.WriteAllText(file, r.Blueprint, new UTF8Encoding(false));
+            string folder = IngameFolder;
+            Directory.CreateDirectory(folder);
+            string shortName = NextShortName(folder, r.Culture, r.Type);
+            string file = Path.Combine(folder, shortName + ".blueprint");
+            File.WriteAllText(file, ForPlanBuild(r, shortName, words), new UTF8Encoding(false));
             Blueprints.Forget();
+            bool listed = TellPlanBuild(file);
 
             int built = Build(file, standing, yaw, out string problem);
-            Say(context, $"Villheim: {r.Name} in {Time.realtimeSinceStartup - started:0.0} s");
+            Say(context, $"Villheim: {shortName} ({r.Name}) in {Time.realtimeSinceStartup - started:0.0} s");
             Say(context, Summary(r));
-            Say(context, problem ?? $"   built {built} of {r.Pieces} pieces in front of you. 'vh place {SafeName(r.Name)}' builds it again.");
+            Say(context, problem ?? $"   built {built} of {r.Pieces} pieces in front of you. 'vh place {shortName}' or 'vh place last' builds it again.");
+            Say(context, listed
+                ? "   PlanBuild lists it on its Villheim tab."
+                : $"   saved to {file}; PlanBuild lists it on its Villheim tab after a restart.");
+        }
+
+        // ---------------------------------------------------------------- short names, PlanBuild
+
+        private static readonly Regex ShortPattern = new Regex(@"^gen-(\d+)-", RegexOptions.IgnoreCase);
+
+        /// <summary>gen-12-norse-home: a running number, then the culture and the type.</summary>
+        private static string NextShortName(string folder, string culture, string type)
+        {
+            int next = Saved(folder).Select(f => f.Number).DefaultIfEmpty(0).Max() + 1;
+            return SafeName($"gen-{next}-{culture}-{type}").ToLowerInvariant();
+        }
+
+        /// <summary>The 'vh gen' designs in a folder with their numbers, newest first.</summary>
+        private static List<(int Number, string File)> Saved(string folder)
+        {
+            var list = new List<(int, string)>();
+            if (!Directory.Exists(folder))
+            {
+                return list;
+            }
+
+            foreach (string file in Directory.GetFiles(folder, "gen-*.blueprint"))
+            {
+                Match m = ShortPattern.Match(Path.GetFileNameWithoutExtension(file));
+                if (m.Success && int.TryParse(m.Groups[1].Value, out int n))
+                {
+                    list.Add((n, file));
+                }
+            }
+
+            return list.OrderByDescending(x => x.Item1).ToList();
+        }
+
+        /// <summary>
+        /// The lab's file with PlanBuild's fields set: the short name as its name, category Villheim (its own tab in
+        /// PlanBuild's menu), the request in the description, and the lab's long design name kept in '#Design:'.
+        /// </summary>
+        private static string ForPlanBuild(LabResult r, string shortName, string words)
+        {
+            string request = $"{r.Description}. Request: {r.Biome} {r.Type} {r.Stage}{r.Decor} {r.Culture}" +
+                             $"{(string.IsNullOrEmpty(words) ? "" : " \"" + words + "\"")}, seed {r.Seed}. Design {r.Name}.";
+            var lines = new List<string>();
+            bool designWritten = false;
+            foreach (string raw in (r.Blueprint ?? "").Split('\n'))
+            {
+                string line = raw.TrimEnd('\r');
+                if (line.StartsWith("#Name:")) line = "#Name:" + shortName;
+                else if (line.StartsWith("#Description:")) line = "#Description:" + Json(request);
+                else if (line.StartsWith("#Category:")) line = "#Category:Villheim";
+                else if (!designWritten && (line == "#Pieces" || line == "#SnapPoints"))
+                {
+                    lines.Add("#Design:" + r.Name);
+                    designWritten = true;
+                }
+
+                lines.Add(line);
+            }
+
+            return string.Join("\n", lines).TrimEnd('\n') + "\n";
+        }
+
+        private static string Json(string text)
+        {
+            var sb = new StringBuilder("\"");
+            foreach (char c in text ?? "")
+            {
+                if (c == '"' || c == '\\') sb.Append('\\').Append(c);
+                else if (c < ' ') sb.Append(' ');
+                else sb.Append(c);
+            }
+
+            return sb.Append('"').ToString();
+        }
+
+        /// <summary>
+        /// Adds a new file to PlanBuild's list while the game runs, the way PlanBuild adds one it saved itself
+        /// (PlanBuild has no public call for it, so through reflection). False when PlanBuild is missing or has changed:
+        /// then it lists the file after a restart.
+        /// </summary>
+        private static bool TellPlanBuild(string file)
+        {
+            try
+            {
+                if (!BepInEx.Bootstrap.Chainloader.PluginInfos.TryGetValue("marcopogo.PlanBuild", out BepInEx.PluginInfo info) || info.Instance == null)
+                {
+                    return false;
+                }
+
+                Assembly assembly = info.Instance.GetType().Assembly;
+                const BindingFlags any = BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static | BindingFlags.Instance;
+                Type blueprintType = assembly.GetType("PlanBuild.Blueprints.Blueprint");
+                Type manager = assembly.GetType("PlanBuild.Blueprints.BlueprintManager");
+                Type gui = assembly.GetType("PlanBuild.Blueprints.BlueprintGUI");
+                Type location = assembly.GetType("PlanBuild.Blueprints.BlueprintLocation");
+                if (blueprintType == null || manager == null)
+                {
+                    return false;
+                }
+
+                object blueprint = blueprintType.GetMethod("FromFile", any, null, new[] { typeof(string) }, null)?.Invoke(null, new object[] { file });
+                string id = blueprintType.GetField("ID", any)?.GetValue(blueprint) as string;
+                if (!(manager.GetField("LocalBlueprints", any)?.GetValue(null) is System.Collections.IDictionary known) || id == null)
+                {
+                    return false;
+                }
+
+                if (known.Contains(id))
+                {
+                    blueprintType.GetMethod("DestroyBlueprint", any)?.Invoke(known[id], null);
+                    known.Remove(id);
+                }
+
+                if (!(blueprintType.GetMethod("CreatePiece", any)?.Invoke(blueprint, null) is bool made) || !made)
+                {
+                    return false;
+                }
+
+                known.Add(id, blueprint);
+                manager.GetMethod("RegisterKnownBlueprints", any)?.Invoke(null, null);
+                if (gui != null && location != null)
+                {
+                    gui.GetMethod("RefreshBlueprints", any)?.Invoke(null, new[] { Enum.Parse(location, "Local") });
+                }
+
+                return true;
+            }
+            catch (Exception e)
+            {
+                VillheimPlugin.Log.LogWarning($"Could not add {Path.GetFileName(file)} to PlanBuild's list: {e.GetBaseException().Message}");
+                return false;
+            }
+        }
+
+        /// <summary>'vh gen list': the last 10 designs, newest first.</summary>
+        private static string List()
+        {
+            List<(int Number, string File)> saved = Saved(IngameFolder);
+            if (saved.Count == 0)
+            {
+                return $"Villheim: no designs made with 'vh gen' yet (they go to {IngameFolder}).";
+            }
+
+            var lines = new List<string> { $"Villheim: the last {Math.Min(10, saved.Count)} of {saved.Count} designs in {IngameFolder}:" };
+            foreach ((int _, string file) in saved.Take(10))
+            {
+                string design = "";
+                try
+                {
+                    design = File.ReadLines(file).FirstOrDefault(l => l.StartsWith("#Design:"))?.Substring(8) ?? "";
+                }
+                catch (IOException)
+                {
+                }
+
+                lines.Add($"   {Path.GetFileNameWithoutExtension(file)}  {File.GetLastWriteTime(file):MM-dd HH:mm}  {design}");
+            }
+
+            lines.Add("   'vh place <name>' or 'vh preview <name>' builds one; 'last' is the newest.");
+            return string.Join("\n", lines);
+        }
+
+        /// <summary>
+        /// The file of a 'vh gen' design: 'last', a short name, or a long design name from before short names; null when
+        /// there is none.
+        /// </summary>
+        public static string FindDesign(string name)
+        {
+            if (string.IsNullOrWhiteSpace(name))
+            {
+                return null;
+            }
+
+            if (name.Equals("last", StringComparison.OrdinalIgnoreCase))
+            {
+                return Saved(IngameFolder).Select(x => x.File).FirstOrDefault();
+            }
+
+            string stem = SafeName(name.StartsWith(Blueprints.Prefix) ? name.Substring(Blueprints.Prefix.Length) : name);
+            foreach (string folder in new[] { IngameFolder, OldIngameFolder })
+            {
+                string file = Path.Combine(folder, stem + ".blueprint");
+                if (File.Exists(file))
+                {
+                    return file;
+                }
+            }
+
+            // "gen-12" alone
+            Match number = Regex.Match(stem, @"^gen-(\d+)$", RegexOptions.IgnoreCase);
+            return number.Success ? Saved(IngameFolder).Where(x => x.Number.ToString() == number.Groups[1].Value).Select(x => x.File).FirstOrDefault() : null;
         }
 
         private static string Summary(LabResult r)
@@ -421,7 +691,7 @@ namespace Villheim.Logic.Generator
             string[] tokens = (args ?? new string[0]).Where(a => !string.IsNullOrWhiteSpace(a)).ToArray();
             if (tokens.Length == 0)
             {
-                return "Usage: vh place <R-0001|design name> [here]";
+                return "Usage: vh place <R-0001|short name|last> [here]";
             }
 
             Player player = Player.m_localPlayer;
@@ -459,11 +729,10 @@ namespace Villheim.Logic.Generator
             }
             else
             {
-                string stem = SafeName(tokens[0].StartsWith(Blueprints.Prefix) ? tokens[0].Substring(Blueprints.Prefix.Length) : tokens[0]);
-                file = Path.Combine(IngameFolder, stem + ".blueprint");
-                if (!File.Exists(file))
+                file = FindDesign(tokens[0]);
+                if (file == null)
                 {
-                    return $"Villheim: no design {stem} in {IngameFolder}. 'vh preview <name>' finds blueprints anywhere.";
+                    return $"Villheim: no design {tokens[0]} in {IngameFolder}. 'vh gen list' shows the last 10; 'vh preview <name>' finds blueprints anywhere.";
                 }
 
                 if (here)

@@ -30,7 +30,7 @@ namespace Villheim.Logic
             "wood [amount] [material]: add materials to the nearest village (Wood, Stone, FineWood, RoundLog)",
             "empty: take every material out of the nearest village's stock and village chest",
             "version: show which Villheim.Logic build is running",
-            "preview <location>: build one design in front of you, outside any village",
+            "preview <location|blueprint|short name|last>: build one design in front of you, outside any village; 'last' and short names (gen-12-norse-home) are designs made with 'gen'",
             "clear: remove the nearest village (buildings, villagers and hearth)",
             Tidy.Help,
             "info: show loaded villages",
@@ -767,6 +767,13 @@ namespace Villheim.Logic
             if (args.Length == 0 || !TryGetPlayer(context, out Player player))
             {
                 Say(context, "Usage: villheim_preview <location name>");
+                return;
+            }
+
+            // 'last', a short name from 'vh gen' (gen-12-norse-home), or one of its older long names: built as 'vh place' builds it
+            if (Generator.GenCommands.FindDesign(args[0]) != null)
+            {
+                Say(context, Generator.GenCommands.Place(new[] { args[0] }));
                 return;
             }
 

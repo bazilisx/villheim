@@ -71,6 +71,7 @@ namespace Villheim.Logic.Villagers
             public float LastRun;
             public float FreeSince;
             public int Ring = -1;
+            public int FeastDay = -1;
             public readonly Dictionary<Kind, float> SkipUntil = new Dictionary<Kind, float>();
             public readonly Dictionary<long, int> WavedOnDay = new Dictionary<long, int>();
         }
@@ -605,8 +606,10 @@ namespace Villheim.Logic.Villagers
             // Most sit round the fire; the odd cheerful one stands, toasts and laughs. On a feast night (Gatherings)
             // half of them are up, and the dancing starts sooner.
             bool feast = Gatherings.FeastTonight(villager.VillageId);
-            if (feast && Time.time >= state.NextGesture)
+            int today = EnvMan.instance != null ? EnvMan.instance.GetDay() : 0;
+            if (feast && state.FeastDay != today)
             {
+                state.FeastDay = today;
                 Moods.Think(villager, "feast");
             }
 

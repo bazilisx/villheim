@@ -15,7 +15,8 @@ namespace Villheim.Logic.Villagers
     /// Wants: a bed of his own; a bigger house; to learn a skill he is poor at; to be the best at what he does best;
     /// to court a friend he likes a lot (five good chats with them and they are sweethearts, which both remember);
     /// to make peace with a rival (three chats); a feast; news from far off (a pedlar or pilgrim comes); to bring
-    /// down something big (a hunt); a quiet day (a rest day or a good mood); to see the player again.
+    /// down something big (a hunt); a quiet day (a rest day or a good mood); to see the player again. Wants that wait
+    /// on an event (a house, news, a hunt) are only met by one that happens after the want began.
     ///
     /// Met: a mood thought (+8, half a game day), a line, and for sweethearts a chronicle entry. Given up: a small
     /// low (-3). Dialogue tags goal:x, goal:any, goalmet:x and gaveup:x (the day after), courting, hassweetheart,
@@ -208,7 +209,7 @@ namespace Villheim.Logic.Villagers
             switch (goal.Kind)
             {
                 case "bed": return Beds.For(villager) != null;
-                case "house": return Personality.Remembers(villager, "upgrade") || (Personality.Remembers(villager, "finished") && goal.Progress > 0f);
+                case "house": return goal.Progress > 0f;
                 case "learn":
                 {
                     string[] f = (goal.Extra ?? "").Split(':');
@@ -225,8 +226,8 @@ namespace Villheim.Logic.Villagers
                 case "court": return goal.Progress >= 5f;
                 case "peace": return goal.Progress >= 3f;
                 case "feast": return Gatherings.FeastToday(villager.VillageId);
-                case "news": return Personality.Remembers(villager, "pedlar") || Personality.Remembers(villager, "pilgrim");
-                case "hunt": return Personality.Remembers(villager, "hunt") && goal.Progress > 0f;
+                case "news": return goal.Progress > 0f;
+                case "hunt": return goal.Progress > 0f;
                 case "rest": return Moods.Get(villager) >= 62f || (Today > goal.Start && Today % 7 == 0);
                 case "player": return goal.Progress > 0f;
                 default: return false;
@@ -321,7 +322,7 @@ namespace Villheim.Logic.Villagers
             }
         }
 
-        /// <summary>A village event happened while the want was open (a building finished, a hunt...).</summary>
+        /// <summary>A village event happened while the want was open (a building finished, a hunt, a visitor...).</summary>
         public static void VillageEvent(int villageId, string what)
         {
             foreach (Villager villager in Character.GetAllCharacters().OfType<Villager>())
@@ -332,7 +333,8 @@ namespace Villheim.Logic.Villagers
                 }
 
                 Goal goal = Read(villager);
-                if (goal != null && ((goal.Kind == "house" && (what == "finished" || what == "upgrade")) || (goal.Kind == "hunt" && what == "hunt")))
+                if (goal != null && ((goal.Kind == "house" && (what == "finished" || what == "upgrade")) || (goal.Kind == "hunt" && what == "hunt") ||
+                                     (goal.Kind == "news" && (what == "pedlar" || what == "pilgrim"))))
                 {
                     goal.Progress += 1f;
                     Write(villager, goal);

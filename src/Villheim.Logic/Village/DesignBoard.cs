@@ -342,6 +342,12 @@ namespace Villheim.Logic.Village
                 return Forget(args[1]);
             }
 
+            if (first == "reset" && args.Length > 1)
+            {
+                Plot target = FindPlot(args[1]);
+                return target != null ? ResetPlot(target.Name) : "Board: 'vh slot reset s1d3' puts a plot back as last saved (stage and decor stage, e.g. s1d3).";
+            }
+
             if (first == "save" && words.Count > 1 && words[1] == "all")
             {
                 return SaveAll();
@@ -492,10 +498,11 @@ namespace Villheim.Logic.Village
 
         private static string Usage() =>
             "Board: 'vh slot <biome> <kind> [number] [stages N]', e.g. 'vh slot meadows hearth' (a new hub) or 'vh slot meadows hearth 1' " +
-            "(hub1 again: each stage at the decor stage it is at; add 'review' to see every save).\nBiomes: meadows, blackforest, swamp, mountains, plains, mistlands, ashlands, deepnorth.\n" +
+            "(hub1 again: every plot shows its save, its draft or a copy of the stage above).\nBiomes: meadows, blackforest, swamp, mountains, plains, mistlands, ashlands, deepnorth.\n" +
             "'vh slot here' (stand where the board should start, facing along it) makes every board go up there; 'vh slot anchor <x> <z>' does the same from coordinates.\n" +
             "Kinds: house, hearth, tavern, longhouse, decor, farm, wood, forge, cook, store, guard, craft, dock, hunt, rune, mason, weave.\n" +
-            "'vh slot save <stage>' or 'vh slot save all' (or the Shaper Tool's Save on a plot; Shift on the second click saves all), 'vh slot forget hub1_s1d3' deletes a save, 'vh slot clear'. Saves go to blueprints/inspiration/board.";
+            "'vh slot save <stage>' or the Shaper Tool's Save on a plot saves it (it stays standing) and replaces the decor stage behind it with a copy; 'vh slot save all' (Shift on the second click) saves every plot as it stands. " +
+            "'vh slot reset s1d3' puts a plot back as last saved, 'vh slot forget hub1_s1d3' deletes a save, 'vh slot clear'. Saves go to blueprints/inspiration/board.";
 
         /// <summary>Plots whose pieces changed since their last save, as a sentence, or null.</summary>
         private static string Unsaved()
@@ -1021,7 +1028,7 @@ namespace Villheim.Logic.Village
                         string above = decor < 3 ? SavedFile(baseId, stage, decor + 1) : null;
                         if (saved[decor])
                         {
-                            MakePlot(name, Center(stage, decor), half, yaw, biome, kind.Label, review ? SavedFile(baseId, stage, decor) : null, "saved");
+                            MakePlot(name, Center(stage, decor), half, yaw, biome, kind.Label, SavedFile(baseId, stage, decor), "saved");
                         }
                         else if (decor == 3)
                         {
@@ -1884,8 +1891,12 @@ namespace Villheim.Logic.Village
 
         // ---------------------------------------------------------------- saving and resetting a plot
 
-        /// <summary>Shaper Tool Save on a plot: everything inside the green border, as &lt;baseID&gt;_s&lt;stage&gt;d3.</summary>
-        public static string Save(string plotName)
+        /// <summary>
+        /// Shaper Tool Save on a plot: everything inside the border, as &lt;baseID&gt;_s&lt;stage&gt;d&lt;n&gt;. The plot keeps
+        /// standing as it is. With cascade (a single save), the next decor stage behind it is replaced in full by a copy
+        /// of this save (its earlier save is kept in board/replaced). 'save all' saves every plot as it stands, with no copy.
+        /// </summary>
+        public static string Save(string plotName, bool cascade = true)
         {
             (ZDO sign, List<ZNetView> views) = SwapTool.DesignParts(plotName);
             if (sign == null)
@@ -1974,7 +1985,6 @@ namespace Villheim.Logic.Village
             // What the save replaces, for Undo.
             string oldText = File.Exists(file) ? File.ReadAllText(file) : null;
             Records().TryGetValue(stem, out string[] oldRecord);
-            List<EditHistory.Snapshot> snapshots = views.Select(EditHistory.Take).ToList();
             int oldPlaced = sign.GetInt(Gallery.KeyPlaced, 0);
             DesignSort.Entry sourceEntry = source != null ? DesignSort.Get(source.Design) : null;
             (string Biome, string Base, string Stage) oldSlot = sourceEntry != null ? (sourceEntry.Biome, sourceEntry.BaseId, sourceEntry.Stage) : ("", "", "");
@@ -2001,23 +2011,49 @@ namespace Villheim.Logic.Village
             Vector3 plotCenter = sign.GetVec3(Gallery.KeyPlotCenter, Vector3.zero);
             float half = sign.GetFloat(Gallery.KeyPlotHalf, 10f);
             float yaw = sign.GetFloat(Gallery.KeyPlotYaw, 0f);
-            // The pieces go; the plot stays, marked saved.
-            foreach (ZNetView view in views.Where(v => v != null && v.IsValid()))
-            {
-                view.ClaimOwnership();
-                ZNetScene.instance.Destroy(view.gameObject);
-            }
+            // The plot stays as it is, marked saved.
+            SetPlotState(plotName, views.Count, "saved");
 
-            SetPlotState(plotName, 0, "saved");
-            SetGround(null, plotCenter, yaw, half);
-
-            // The next decor stage appears behind, as a copy of this save to take decor away from.
+            // The next decor stage behind is replaced in full by a copy of this save to take decor away from (single
+            // saves only). What it held is kept for Undo: its pieces, its ground, its save file and record.
             string next = "";
             string nextPlot = null;
-            if (decor > 1)
+            List<EditHistory.Snapshot> nextBefore = new List<EditHistory.Snapshot>();
+            List<string> nextTerrain = null, nextExact = null;
+            int nextPlaced = 0;
+            string nextFile = null, nextOldText = null;
+            string[] nextRecord = null;
+            if (decor > 1 && cascade)
             {
                 string nextName = PlotName(baseId, stageNumber, decor - 1);
                 Plot behindPlot = Plots.FirstOrDefault(p => p.Name == nextName);
+                (ZDO nextSign, List<ZNetView> nextViews) = SwapTool.DesignParts(nextName);
+                nextBefore = nextViews.Where(v => v != null && v.IsValid()).Select(EditHistory.Take).ToList();
+                nextPlaced = nextSign?.GetInt(Gallery.KeyPlaced, 0) ?? 0;
+                if (behindPlot != null)
+                {
+                    nextTerrain = SampleTerrain(behindPlot.Center, behindPlot.Yaw, behindPlot.Half);
+                    nextExact = SampleGround(behindPlot.Center, behindPlot.Yaw, behindPlot.Half);
+                }
+
+                nextFile = SavedFile(baseId, stageNumber, decor - 1);
+                if (File.Exists(nextFile))
+                {
+                    nextOldText = File.ReadAllText(nextFile);
+                    string replaced = Path.Combine(SaveFolder, "replaced");
+                    Directory.CreateDirectory(replaced);
+                    File.WriteAllText(Path.Combine(replaced, $"{Path.GetFileNameWithoutExtension(nextFile)}_{System.DateTime.Now:yyyyMMdd-HHmmss}.blueprint"), nextOldText);
+                    File.Delete(nextFile);
+                }
+
+                string nextStem = StageName(nextName);
+                if (Records().TryGetValue(nextStem, out nextRecord))
+                {
+                    Unrecord(nextStem);
+                    DesignSort.PushSlot(new[] { nextStem });
+                }
+
+                DropDraft(nextName);
                 if (behindPlot == null)
                 {
                     Vector3 forward = -(Quaternion.Euler(0f, yaw, 0f) * Vector3.forward);
@@ -2041,16 +2077,14 @@ namespace Villheim.Logic.Village
                 nextPlot = nextName;
                 next = $" {StageName(nextName)} behind it now holds a copy: take decor away and save.";
             }
-            else
+            else if (decor == 1)
             {
                 next = $" {baseId}_s{stageNumber} is done (d3, d2, d1).";
             }
 
-            // Undo (8) walks the save back: the plot as it was, the copy behind it gone, the file and the sheet as before.
-            string state = decor < 3 ? $"copy of {baseId}_s{stageNumber}d{decor + 1}" : null;
-            // Undo (8, or 'vh slot undo' when other changes came after) walks the save back: first the design goes back
-            // into its plot with its ground, then the copy behind it goes, then the file, the records and the sheet, each
-            // on its own so one failing cannot stop the rest.
+            // Undo (8, or 'vh slot undo' when other changes came after) walks the save back: the plot's sign, then the plot
+            // behind as it was before the copy (pieces, ground, save file, record), then this save's file, records and the
+            // sheet, each on its own so one failing cannot stop the rest. The saved plot's pieces never moved.
             bool undone = false;
             void Back()
             {
@@ -2074,12 +2108,10 @@ namespace Villheim.Logic.Village
                     }
                 }
 
-                Step("the design", () => snapshots.ForEach(EditHistory.Restore));
-                Step("the ground", () => SetGround(terrain, plotCenter, yaw, half, exact));
-                Step("the sign", () => SetPlotState(plotName, oldPlaced, snapshots.Count > 0 ? state ?? "as before the save" : null));
+                Step("the sign", () => SetPlotState(plotName, oldText != null ? oldPlaced : -1, oldText != null ? "saved (earlier save)" : "not saved yet"));
                 if (nextPlot != null)
                 {
-                    Step("the copy behind", () =>
+                    Step("the plot behind", () =>
                     {
                         foreach (ZNetView view in SwapTool.DesignParts(nextPlot).Views.Where(v => v != null && v.IsValid()))
                         {
@@ -2087,12 +2119,25 @@ namespace Villheim.Logic.Village
                             ZNetScene.instance.Destroy(view.gameObject);
                         }
 
-                        SetPlotState(nextPlot, 0, $"waits for d{decor}");
+                        nextBefore.ForEach(EditHistory.Restore);
                         Plot behindNow = Plots.FirstOrDefault(p => p.Name == nextPlot);
                         if (behindNow != null)
                         {
-                            SetGround(null, behindNow.Center, behindNow.Yaw, behindNow.Half);
+                            SetGround(nextTerrain, behindNow.Center, behindNow.Yaw, behindNow.Half, nextExact);
                         }
+
+                        if (nextOldText != null)
+                        {
+                            File.WriteAllText(nextFile, nextOldText);
+                        }
+
+                        if (nextRecord != null)
+                        {
+                            Record(nextRecord);
+                            DesignSort.PushSlot(nextRecord);
+                        }
+
+                        SetPlotState(nextPlot, nextBefore.Count == 0 ? 0 : nextPlaced, nextBefore.Count == 0 ? $"waits for d{decor}" : "as before the save");
                     });
                 }
 
@@ -2125,8 +2170,8 @@ namespace Villheim.Logic.Village
                         DesignSort.SetSlot(source.Design, oldSlot.Biome, oldSlot.Base, oldSlot.Stage);
                     }
                 });
-                Say($"Board: the save of {stem} is walked back: {snapshots.Count} pieces back in {StageName(plotName)}" +
-                    (nextPlot != null ? $", {StageName(nextPlot)} emptied" : "") + (failed.Count > 0 ? ". Could not: " + string.Join("; ", failed) : "."));
+                Say($"Board: the save of {stem} is walked back" +
+                    (nextPlot != null ? $"; {StageName(nextPlot)} is as it was before ({nextBefore.Count} pieces)" : "") + (failed.Count > 0 ? ". Could not: " + string.Join("; ", failed) : "."));
             }
 
             EditHistory.Push($"saving {stem}", Back);
@@ -2138,7 +2183,7 @@ namespace Villheim.Logic.Village
                    " Undo (8) walks the save back.";
         }
 
-        /// <summary>Every plot of the board with something in it is saved (and put away).</summary>
+        /// <summary>Every plot of the board with something in it is saved as it stands; no plot is copied over another.</summary>
         public static string SaveAll()
         {
             Scan();
@@ -2147,7 +2192,7 @@ namespace Villheim.Logic.Village
             {
                 if (SwapTool.DesignParts(plot.Name).Views.Count > 0)
                 {
-                    said.Add(Save(plot.Name));
+                    said.Add(Save(plot.Name, cascade: false));
                 }
             }
 
@@ -2298,6 +2343,10 @@ namespace Villheim.Logic.Village
             if (File.Exists(file))
             {
                 made = PutSaved(file, resetCenter, resetYaw, resetHalf);
+                if (file == SavedFile(resetBase, resetStage, resetDecor))
+                {
+                    SetPlotState(plotName, made, "saved");
+                }
             }
             else
             {

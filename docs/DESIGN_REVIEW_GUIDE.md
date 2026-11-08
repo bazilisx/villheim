@@ -53,23 +53,24 @@ typed in the in-game console (F5) unless it says otherwise.
    where you aim, as the gallery sets them.
 5. The board always shows three rows of plots per band of stages: d3 (rich) in front, d2 (furnished) behind it, d1
    (sparse) at the back. Plots waiting for the one in front say so. The front row is d3, as placed. Save a plot with the Shaper Tool's Save (key 6, click anything in the plot, click again), or `vh slot save 2`.
-   Hold Shift on the second click (or `vh slot save all`) to save every plot that has something in it.
+   Hold Shift on the second click (or `vh slot save all`) to save every plot that has something in it, each as it
+   stands (no copies are made).
    The ground you change is kept too: every painted square metre (a circle of dirt, hoe paths, paving, tilled soil)
    with its height, and anything raised or dug more than 30 cm from the plot's floor; plain grass is not. A save is as
    big as what you made, not the plot, so roomy plots (`size 60`) cost nothing. It goes into the save's terrain section, which PlanBuild uses when it places the blueprint and the board
    uses for its copies. A plot's paint is cleared whenever it is emptied, saved, reset or given a new copy, so old
    dirt never adds up; Undo puts the ground back as it was.
    Everything inside the green border is written as `hub1_s2d3` to `BepInEx/config/Villheim/blueprints/inspiration/board/`.
-   The design it came from is found by comparing pieces. A saved plot is emptied and marked saved (its border and
-   sign stay as a guide).
-6. Saving a d3 plot fills the d2 plot right behind it with a copy of that save: take decor away (Delete, Delete
-   all) down to furnished and save it; that fills d1 behind it with a copy: strip it to the sparse minimum and save.
-   After d1 the stage is done.
-7. `vh slot meadows hearth 1` puts hub1 up again with every plot, the saved ones empty and marked saved, and the copy
-   to strip where work stopped. Add `review` to fill the saved plots with their saves.
+   The design it came from is found by comparing pieces. A saved plot stays standing as it is, marked saved.
+6. Saving one plot (d3 or d2) replaces the plot right behind it in full with a copy of that save, whatever it held:
+   take decor away (Delete, Delete all) down to furnished and save it; that replaces d1 behind it with a copy: strip it
+   to the sparse minimum and save. After d1 the stage is done. A save that is replaced this way is kept in
+   `board/replaced/` with the time in its name. `vh slot reset s1d3` puts a plot back as last saved.
+7. `vh slot meadows hearth 1` puts hub1 up again with every plot: saved plots show their saves, unsaved changes come
+   back as drafts, and a plot with no save shows a copy of the saved stage in front of it.
 8. Undo (8) right after a save walks it back (`vh slot undo` walks back the last save even when other changes came
-   after it; the console says what came back): the plot comes back as it was, the copy behind it goes, and the file,
-   board-saves.csv and the sheet are as before. For a save made earlier (or before this existed), `vh slot forget
+   after it; the console says what came back): the plot behind comes back as it was before the copy (pieces, ground,
+   its save), and the file, board-saves.csv and the sheet are as before. For a save made earlier (or before this existed), `vh slot forget
    hub1_s1d3` deletes it, then put the board up again.
    Undo only knows changes made since the newest build was loaded: every update starts it empty.
    `vh slot move s1d2 s1d3` moves everything in one plot (pieces, ground, markers) into another and empties the first

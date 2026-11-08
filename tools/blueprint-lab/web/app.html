@@ -64,6 +64,7 @@ button:disabled { opacity: 0.5; cursor: default; }
 .board canvas { display: block; width: 100%; height: auto; cursor: grab; touch-action: none; }
 .board .over { position: absolute; left: 12px; top: 10px; right: 12px; display: flex; justify-content: space-between; gap: 8px; pointer-events: none; }
 .board .over span { background: color-mix(in srgb, var(--panel) 85%, transparent); padding: 3px 8px; border-radius: 5px; font-size: 13px; }
+.rooftoggle { position: absolute; right: 12px; bottom: 10px; flex-direction: row; align-items: center; gap: 6px; background: color-mix(in srgb, var(--panel) 85%, transparent); padding: 4px 10px; border-radius: 5px; color: var(--ink); font-size: 13px; cursor: pointer; }
 .thumbs { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
 .thumbs figure { margin: 0; background: var(--board); border: 1px solid var(--line); border-radius: 8px; overflow: hidden; cursor: pointer; }
 .thumbs figcaption { font-size: 12px; color: var(--muted); padding: 3px 7px; }
@@ -141,6 +142,7 @@ td.n { text-align: right; font-family: var(--mono); font-variant-numeric: tabula
     <div class="board">
       <canvas id="view" width="1200" height="760" aria-label="The building. Drag to turn it, scroll to tilt."></canvas>
       <div class="over"><span id="title">Building</span><span id="viewhint">Drag to turn, scroll to tilt</span></div>
+      <label class="rooftoggle" for="roofoff"><input type="checkbox" id="roofoff"> Roof off</label>
     </div>
     <div class="thumbs" id="thumbs"></div>
     <div class="facts" id="facts"></div>
@@ -245,6 +247,7 @@ function build() {
   show();
 }
 $('go').onclick = build;
+$('roofoff').onchange = drawMain;
 $('next').onclick = () => { $('seed').value = (+$('seed').value || 1) + 1; build(); };
 
 // ---------- decorate an uploaded blueprint
@@ -270,7 +273,8 @@ function ground(pieces) { const ys = pieces.map(p => p.y).sort((a, b) => a - b);
 function drawMain() {
   if (!current) return;
   const c = $('view');
-  VHRender.draw(c.getContext('2d'), current.d.pieces, { az: view.az, el: view.el, width: c.width, height: c.height, background: getComputedStyle(document.body).getPropertyValue('--board').trim() || '#e9e4d8' });
+  const cut = $('roofoff').checked ? ground(current.d.pieces) + 2.6 : null;
+  VHRender.draw(c.getContext('2d'), current.d.pieces, { az: view.az, el: view.el, cut, width: c.width, height: c.height, background: getComputedStyle(document.body).getPropertyValue('--board').trim() || '#e9e4d8' });
 }
 function show() {
   const { d, ev } = current;
@@ -283,7 +287,7 @@ function show() {
     cv.width = 360; cv.height = 260;
     VHRender.draw(cv.getContext('2d'), d.pieces, { ...v, cut: v.cut != null ? g + v.cut : null, width: 360, height: 260, background: bg });
     fig.append(cv); const cap = document.createElement('figcaption'); cap.textContent = v.label; fig.append(cap);
-    fig.onclick = () => { view = { az: v.az, el: v.el }; drawMain(); };
+    fig.onclick = () => { view = { az: v.az, el: v.el }; $('roofoff').checked = v.cut != null; drawMain(); };
     $('thumbs').append(fig);
   }
   const counts = {}; for (const p of d.pieces) counts[p.name] = (counts[p.name] || 0) + 1;

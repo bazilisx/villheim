@@ -50,6 +50,8 @@ def parse(path):
 files = []
 for d, _, fs in os.walk(os.path.join(root, 'pb')):
     files += [os.path.join(d, f) for f in fs if f.endswith('.blueprint')]
+for d, _, fs in os.walk(os.path.join(root, 'vh')):  # valheimians downloads, sorted by category
+    files += [os.path.join(d, f) for f in fs if f.endswith('.blueprint')]
 hs_ok = set(open(os.path.join(root, 'hs_keepers.txt')).read().split())
 for d, _, fs in os.walk(os.path.join(root, 'hs')):
     files += [os.path.join(d, f) for f in fs if f.endswith('.blueprint') and f[:-10] in hs_ok]
@@ -69,11 +71,22 @@ with open(os.path.join(root, 'profile/Villheim/design-sort.csv'), encoding='utf-
         sort[r['Number']] = r
 
 designs = []
-for path in sorted(files):
+seen = set()
+dups = 0
+for path in sorted(files, key=lambda p: (0 if '/pb/' in p or '/hs/' in p else 1, p)):
     base = os.path.basename(path)[:-10]
     meta, pieces, snaps = parse(path)
     if not pieces:
         continue
+    # the same build downloaded twice (first crawl and tonight's) counts once
+    x0, y0, z0 = pieces[0][1], pieces[0][2], pieces[0][3]
+    sig = hash(tuple(sorted((p[0], round(p[1] - x0), round(p[2] - y0), round(p[3] - z0)) for p in pieces[:300])) + (len(pieces),))
+    if sig in seen:
+        dups += 1
+        continue
+    seen.add(sig)
+    if '/vh/' in path:
+        base = base.split('__')[0] if '__' in base else base  # slug for the index lookup
     key = 'bp:' + base
     num = numbers.get(key, {}).get('Number')
     verdict = review.get(num) if num else None
@@ -93,6 +106,7 @@ for path in sorted(files):
 
 json.dump(designs, open(out, 'w'), separators=(',', ':'))
 n = len(designs)
+print('duplicates skipped', dups)
 print(n, 'designs;', sum(len(d['pieces']) for d in designs), 'pieces;',
       'kept', sum(d['label'] == 1 for d in designs), 'dropped', sum(d['label'] == 0 for d in designs),
       'unreviewed', sum(d['label'] is None for d in designs), 'own', sum(d['own'] for d in designs))

@@ -85,6 +85,31 @@ namespace Villheim.Logic.Village
             return right?.m_dropPrefab != null && right.m_dropPrefab.name == name || left?.m_dropPrefab != null && left.m_dropPrefab.name == name;
         }
 
+        /// <summary>
+        /// The picked tool and the designs Move and Turn hold, kept in the game process (AppDomain data) so a logic update
+        /// loaded while the tool is in hand does not drop them: every update reset the tool to Swap and forgot Move's
+        /// design (2026-11-07).
+        /// </summary>
+        private static void Keep()
+        {
+            System.AppDomain.CurrentDomain.SetData("villheim.shaper", _active ? $"{_tool}\n{_moveDesign}\n{_turnDesign}" : null);
+        }
+
+        private static bool Kept(out int tool, out string move, out string turn)
+        {
+            tool = 0;
+            move = turn = null;
+            string[] kept = (System.AppDomain.CurrentDomain.GetData("villheim.shaper") as string)?.Split('\n');
+            if (kept == null || kept.Length < 3 || !int.TryParse(kept[0], out tool))
+            {
+                return false;
+            }
+
+            move = kept[1].Length > 0 ? kept[1] : null;
+            turn = kept[2].Length > 0 ? kept[2] : null;
+            return true;
+        }
+
         private static bool Typing() =>
             Console.IsVisible() || Menu.IsVisible() || InventoryGui.IsVisible() || Chat.instance != null && Chat.instance.HasFocus() || Minimap.IsOpen();
 
@@ -109,8 +134,18 @@ namespace Villheim.Logic.Village
                             SwapTool.Activate();
                             _lookBefore = LookAt.On;
                             LookAt.SetOn(true);
-                            _tool = ToolSwap;
-                            Say("Shaping on: 1 Move, 2 Turn, 3 Swap, 4 Delete, 5 Delete all, 6 Save, 7 Reset, 8 Undo. Press a key to pick the tool, left click to use it. Swap is picked.");
+                            if (Kept(out int keptTool, out string keptMove, out string keptTurn))
+                            {
+                                // A logic update loaded while the tool was in hand: carry on with the same tool and design.
+                                _tool = keptTool;
+                                _moveDesign = keptMove;
+                                _turnDesign = keptTurn;
+                            }
+                            else
+                            {
+                                _tool = ToolSwap;
+                                Say("Shaping on: 1 Move, 2 Turn, 3 Swap, 4 Delete, 5 Delete all, 6 Save, 7 Reset, 8 Undo. Press a key to pick the tool, left click to use it. Swap is picked.");
+                            }
                         }
                         else
                         {
@@ -125,6 +160,7 @@ namespace Villheim.Logic.Village
                         }
                     }
 
+                    Keep();
                     Glow(__instance);
                     Identity();
                     GlowOnGround();

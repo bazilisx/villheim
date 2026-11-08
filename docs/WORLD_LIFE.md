@@ -27,12 +27,58 @@ All of it is logic only (hot-reloads). Visitors and hermits only appear with `Wo
 | Trails | `Village/Trails.cs` | With WorldLife and `Trails` on: A* from world generator heights to the outpost and the nearest neighbour within 2,500 m (planned by the lower village id), kept on the hearth ZDO, painted as dirt within 50 m of the player, 40 spots each ten seconds. `vh trails`. |
 | Lines | `Dialogue/wanderers.txt`, `Dialogue/personal.txt` | About 260 new lines. Wanderer sections need the tag `wanderer`; fill-ins can start a sentence (capitalised after filling). |
 
-Commands: `vh pedlar`, `vh pilgrim` (nearest village within 200 m), `vh hermit` (camp in front of you),
+Commands (2026-11-07): `vh pedlar`, `vh pilgrim` (nearest village within 200 m), `vh hermit` (camp in front of you),
 `vh wanderers` or `vh news`. `vh villager` shows the personality line, `vh village` the neighbours.
 
 Known limits: hermit camps need a host (no dedicated server yet). Wanderers have no weapon; the game's AI fights for
 them (Dverger faction). Visitors walk only while their zone is loaded. A pedlar's chest trade ignores the biome rule
 for materials only in the sense that it brings what the village already needs.
+
+## Built (2026-11-08 night, world growth; compiles, not yet tested in game)
+
+All logic only (hot-reloads), all in config section "5 - World life", all behind WorldLife (off by default during
+the design review) and each behind its own switch (on by default). The `vh` commands work with WorldLife off, for
+testing. Research behind it: section 7 of `docs/RELATED_MODS.md`. Nothing here was run in the game: the build was
+checked with `scripts/build-cloud.sh` only.
+
+| Part | File | What it does |
+|---|---|---|
+| Gear before the wilds | `Village/Outposts.cs`, `Villagers/Smithing.cs` (`Armoury`) | Tyler's rule of 2026-11-08: no camp in a biome before the village has made the gear tier `OutpostGear` asks for there (Meadows 0, Black Forest 2 flint and leather, Swamp, Mountain and Plains 4). Until then the chronicle says what it waits for, every five days, and `vh village` shows it. |
+| Outpost materials | `Village/Materials.cs` (`From`), `Village/VillageBrain.cs` | Tyler's rule of 2026-11-08: the biome rule reads "a village builds with what its biome and its outposts give". While the brain ticks a village, `Materials.AllowedIn` adds what its camps send (`OutpostMaterials`). A Meadows village with a Black Forest logging camp can pick designs that need core wood. |
+| Outposts, second step | `Village/Outposts.cs` | Up to `OutpostsPerVillage` (2) camps, one of each kind: the logging camp as before, and a flint camp on the nearest shore (1 to 3 m above water, water within 15 m) while the smith's next set needs flint, so a Meadows village can make the flint spear it needs before it goes into the Black Forest. A camp gathers 10 wood or 5 flint a day into its own stock (three days caught up); at `OutpostCarryAt` (12) a camper carries the load home along the camp's trail as a haul caravan. Old single-camp saves still read. |
+| Caravans | `Village/Caravans.cs` | Records on the source hearth: kind, from, to, cargo, departure time, pace (`CaravanMetresPerDay`, 2,400 m a day, Living Factions' figure). Position follows from the clock along the trail (or a straight line). Once a day (`CaravanChancePerDay` 0.3) a village sends up to 20 of one or two things it can spare (over 30 wood or stone, 10 else, after the building going up and the smith's needs) to the village within `CaravanReach` (2,500 m) that lacks them most: not given by its biome first, then low in its stock; never to one it is wary of or hostile to. The destination's owner takes the load into its stock when due and keeps the id; the source forgets it after that or twenty days. Within 100 m of a player it is a real person (wanderer kind `carrier`) walking 15 m ahead of the record; gone past 110 m. A trade carrier who reaches the hearth becomes a visiting pedlar (WorldLife.Arrived: news, relations, trade). |
+| Daughter villages | `Village/Daughters.cs` | A full village (MaxVillagers or MaxBuildings), at most `DaughtersPerVillage` (2), one party every ten days, `DaughterChancePerDay` 0.25: a site 600 to 1,200 m away in its own biome or one it has the gear for, 3 m over water, flat within 2 m over 10 m, 500 m from villages and village sites, 120 m from game locations. Two grown villagers (not the builder) become the settlers' caravan and walk off, with up to 40 wood and 20 stone. When due, the site is settled; its hearth is lit (as settled by hand) the first time a player comes within 150 m. The new village gets the goods, a chronicle line about where it came from, and both sides start at 80 (close). |
+| Village events | `Village/VillageEvents.cs` | One roll a day after 07:00, `EventChancePerDay` 0.35, none for a lone camp. Good: feast (berries and mushrooms into the stock, `atewell`), skald (`blessing`), market day at a friendly neighbour (+5), lost traveller taken in (next arrival at once if a bed is free). Bad: fever (a third of one villager's health, `hurt`), beasts at night (`sleptrough`; a real raid only with RaidsEnabled and a player there), quarrel between rivals (`fight` for both), falling-out with a neighbour (-8). After RimWorld: no bad events in the first five days, within three days of a death (half as likely to six), or two days after another; a little more likely per size tier. Chronicle, news (`WorldLife.NoteNews`), `event:<kind>` lines. |
+| Contracts | `Village/Contracts.cs`, `Village/NoticeBoard.cs`, `Villagers/Smithing.cs` (`Shortfall`) | Once a day (`ContractChancePerDay` 0.5), with none up: a notice for what the smith still lacks for the next set, or a material the pending work needs that the biome does not give. Pays about 1.5 times the store price in chest coins, or spare goods when coins are short. Shown on the board's "Needed" sign, stands three days. Met when the chest holds the amount more than at posting; a player within 15 m of the chest is paid. |
+| Signposts | `Village/Trails.cs` | `TrailSigns`: a pair of the game's wooden signs back to back, standing 2.2 m beside the trail, where a trail leaves a village (where it goes, how far) and halfway along trails longer than 600 m; neighbour trails get one out of each village. Made on the host within 60 m of the player, marked so they are made once. Each camp has its own trail now. |
+| Groves | `Village/Groves.cs` | A village of four or more buildings with fewer than `GroveTrees` (25) standing trees within 60 m of its edge owes three extra saplings a day; the existing replanters plant them. |
+| Lines | `Dialogue/growth.txt` | About 45 lines for `event:feast`, `skald`, `fair`, `takenin`, `sickness`, `beasts`, `quarrel`, `dispute`, `outpostwait`, `caravan`, `cargo`, `daughter`, `founded`, `contract`. |
+
+Small hooks outside these files: `Villagers/Wanderers.cs` (the `carrier` kind runs `Caravans.WalkTick`),
+`Village/VillageChest.cs` (anything in the stock moves to the chest, not only building materials),
+`Village/Relations.cs` (`Adjust`, `Set`, `View`), `Village/WorldLife.cs` (news for the new events, the day of the last
+death, world-tick calls), `Village/VillageBrain.cs` (hearth-tick calls and `Daughters.Initialized`).
+
+Commands for testing, at the nearest village within 200 m unless said:
+
+- `vh outpost [logging|flint]` founds the next camp now whatever the size and gear; `vh outpost haul` sends every
+  camp's load home now; `vh outpost forget` drops the camps and their trails.
+- `vh caravan` sends a trade caravan now (or says why not); `vh caravan list` or `vh caravans` lists every caravan
+  with how far along it is and how far from you.
+- `vh daughter` sends settlers now; walk to the pin and `vh daughter here` lights the site's hearth at once.
+- `vh event [feast|skald|fair|takenin|sickness|beasts|quarrel|dispute]` makes one happen now; `vh events` lists the
+  recent ones and the bad-event factor.
+- `vh contract` posts a contract now; `vh contract clear` takes it down.
+- `vh trails` plans the trails again and checks the signposts again.
+- `vh village` shows outposts (and the gear they wait for), caravans, events, daughters and the contract.
+
+To see caravans and hauls walk, stand on a trail between two villages (or a village and its camp) after
+`vh caravan` or `vh outpost haul`, with WorldLife on. A caravan at 2,400 m a day covers about 80 m a minute.
+
+Known limits: caravans and daughters read other hearths' ZDOs, so on a multiplayer client a far village may not be
+seen (single player and the host see all). A settlers' party that never sees a player stays a site on paper. Trade
+caravans are one way and unpaid; the next caravan back evens it out. Cargo from a caravan does not count toward what
+a village can build (only outposts do, as Tyler decided). Groves count trees with a physics sweep once a day.
 
 ## Next, in order
 
@@ -45,13 +91,17 @@ Effort is a rough guess: S an evening, M a session or two, L several sessions.
    fire), as Stardew does with location keys.
 2. **Gatherings (S).** Built on watching: the whole village turns out for a finished building, a newcomer or a pedlar
    (Millénaire's listen_to_speech gathers people for a speech at set hours); a feast at the longhouse after a good hunt.
-3. **Caravans as records (M).** Living Factions keeps travelling bands as data (position, target, people, state) and
+3. **Caravans as records (M).** First version built (2026-11-08 night, `Caravans.cs`: trade caravans, hauls,
+   settlers; records on the world clock, real carriers near a player). Still to do: a pack animal, return loads and
+   payment, two nights' stay, raids on caravans. The plan as it was: Living Factions keeps travelling bands as data (position, target, people, state) and
    moves them at a set pace (2,400 m a day) while no one is near; within about 130 m of the nearest player they become
    real NPCs, and despawn past 200 m. Do the same for a pedlar's route between two hearths: the record moves on the
    world clock, a real pedlar (and a tamed boar or lox as pack animal later) appears when a player is close to the
    route. Millénaire's merchants pick the next village by what it lacks, stay two nights, and carry goods from one
    village's store to the next: route surplus from the village that has it to the one that needs it.
-4. **Outposts, second step (L).** First version built (logging camps, daily haul). Still to do: Millénaire hamlets and Living Factions outposts: a small owned camp where the land gives what home
+4. **Outposts, second step (L).** Built further (2026-11-08 night): the gear gate, outpost materials in the biome
+   rule, two camps, a flint camp on the shore, stock carried home along the trail at 12. Still to do: huts and the
+   trade's workshop at the camp, mining (copper, tin) and fishing camps, Living Factions' site rules. The plan as it was: Millénaire hamlets and Living Factions outposts: a small owned camp where the land gives what home
    lacks (core wood in the Black Forest for a Meadows village, copper, tin, a fishing spot on the coast), at most two
    per village, one or two huts and the trade's workshop, never growing into a village. Two villagers live there, carry
    stock home when it passes a set amount (Living Factions: 12), and a path joins it to the village. Site rules from
@@ -59,8 +109,9 @@ Effort is a rough guess: S an evening, M a session or two, L several sessions.
    2 + 0.2 r m, clear of vanilla locations, more than r + 60 m from any player while it is placed. Designs: small Work
    designs from the board (Mining, Woodworking, Harbour). The biome rule then reads "a village builds with what its
    biome and its outposts give".
-5. **Roads between villages (M to L).** First version built (`Trails.cs`: runtime, dirt only). Still to do: widen and
-   pave busy trails, signposts at junctions, road posts halfway on long trails. The other route:
+5. **Roads between villages (M to L).** First version built (`Trails.cs`: runtime, dirt only), with signposts where
+   trails leave a village and halfway on long ones (2026-11-08 night). Still to do: widen and pave busy trails (count
+   caravans along them), signposts at junctions, a watchtower design as a road post. The other route:
    - Runtime, after Living Factions: each village links to its nearest reachable neighbour, A* on an 8 m grid in an
      ellipse corridor (2.2 times the straight distance, 40,000 nodes at most), never across water, price
      step x (1 + 12 grade squared). Paint only within 80 m of a player on loaded zones, 60 points a pass, with the same
@@ -72,7 +123,8 @@ Effort is a rough guess: S an evening, M a session or two, L several sessions.
 6. **Desire paths (M).** AntTrails (MIT): footsteps counted per terrain tile, 25 steps make a dirt path, unfinished
    charge fades over 12 days, finished paths fade over 30 days to a trace, very busy tiles can turn to stone. Feed it
    villager footsteps and villages wear their own paths between doors, the chest, the farms and the hearth.
-7. **A smith who makes gear (M).** First version built (`Smithing.cs`, sets per tier). Still to do: a village forge so
+7. **A smith who makes gear (M).** First version built (`Smithing.cs`, sets per tier); its tier now gates outposts and
+   daughter sites, and its shortfall becomes a contract. Still to do: a village forge so
    bronze can be made at home, gear kept in the chest and taken by each villager, repairs. The full plan: a smith trade
    (from the Workshop subtype) runs a real recipe (`ObjectDB.GetRecipe`, `m_resources`, `m_minStationLevel`) at a
    village forge or workbench that passes `CheckUsable`, takes the materials from the chest, plays the station's craft
@@ -80,24 +132,32 @@ Effort is a rough guess: S an evening, M a session or two, L several sessions.
    the chest. The forge level caps the tier (MineColonies caps equipment by building level). Gear tiers by village
    tier stay as the fallback. Repairs after Offline Companions Reborn (MIT): worn items repaired at a station that can
    repair them.
-8. **Requests and contracts (M).** Notice board work for players: Millénaire quests (chance per hour, minimum
+8. **Requests and contracts (M).** First version built (2026-11-08 night, `Contracts.cs`: one notice at a time, paid
+   at the chest). Still to do: reputation per player, two-villager favours, bounties. The plan as it was: notice board work for players: Millénaire quests (chance per hour, minimum
    reputation, steps with goods, a time limit, reputation gained or lost) and MineColonies two-villager favours ("take
    this to my brother at the outpost", both moods up for a week). Bounties that only exist on paper until the player
    arrives (TraderQuests: a pinned spot, the target spawned when the player comes near). Social.cs already has a daily
    material request to build on.
-9. **Village events director (M).** Living Factions rolls 3.5% a day per settlement for a good harvest, sickness, a
+9. **Village events director (M).** First version built (2026-11-08 night, `VillageEvents.cs`, eight kinds). Still
+   to do: a feast that gathers everyone (needs gatherings, item 2), raids through `RandEventSystem`, a lost villager
+   the player finds. The plan as it was: Living Factions rolls 3.5% a day per settlement for a good harvest, sickness, a
    beast attack or newcomers; RimWorld spends an event budget that grows with wealth. A small director per village:
    feasts after a good harvest, a quarrel between rivals, a lost villager found by the player, a visiting skald. Raids
    go through the game's `RandEventSystem` (CustomRaids, Unlicense, shows how to add `RandomEvent`s and centre them on
    a point).
 10. **Raids and help between villages (M).** With relations in place: below -50 a village may send a raid party to a
     neighbour (Millénaire picks targets weaker than the raider), above 70 it sends help when the neighbour is attacked.
-    Needs caravans as records first.
+    Caravans as records now exist (`Caravans.cs`): a raid party or help is a new caravan kind.
 11. **Skills that grow (M).** MineColonies: each trade has a primary and secondary skill; practice raises them, the
     opposite skill slips a little, the home's level caps them, and children start from their parents' skills. Work
     speed and output scale with skill, so villagers grow apart over time.
 12. **Newcomers at the longhouse (S).** MineColonies taverns: wanderers sit in the longhouse with a backstory line and
     a price to stay (mead, a hide, coins). A way for villages to grow beyond births and the empty-bed arrivals.
+13. **Daughter villages (M).** First version built (2026-11-08 night, `Daughters.cs`). Still to do: a daughter that
+    starts as a hamlet of its parent (shared stock by caravan, as Sim Settlements 2), sites by what the land gives,
+    the parent's culture and designs carried over.
+14. **Groves and animals (S to M).** Groves built (2026-11-08 night). Still to do: a pen with tamed boars or chickens
+    fed from the chest (Hearth and Village's animal keeper), orchards of berry bushes by the farms.
 
 ## Sources that allow copying
 

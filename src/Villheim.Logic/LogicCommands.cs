@@ -53,7 +53,12 @@ namespace Villheim.Logic
             "note <text>: write a note with what you are aiming at and the nearest gallery sign to BepInEx/Villheim/notes.txt",
             "bp save <number|name> | bp save page [all]: save a design as it stands in the gallery now (pieces left, stand-ins, anything built on its plot) as blueprints/inspiration/pass3/p3-<number>-<name>; 'page' saves every changed design standing near you; the gallery shows the saves from then on",
             "trails: plan the nearest village's trails again (to its outpost and its nearest neighbour)",
-            "outpost: make the nearest village found its logging camp now (its old one is forgotten)",
+            "outpost [logging|flint|forget|haul]: the nearest village founds its next camp now, whatever its size and gear; 'forget' drops its camps, 'haul' sends every camp's load home now",
+            "event [kind]: make something happen in the nearest village now (feast, skald, fair, takenin, sickness, beasts, quarrel, dispute)",
+            "caravan [list]: the nearest village sends a trade caravan now; 'list' shows every caravan on the road",
+            "daughter [here]: the nearest village sends settlers to found a new village now; 'here' lights the hearth of the nearest settled site",
+            "contract [clear]: the nearest village posts a contract for players now; 'clear' takes it down",
+            "events: list the nearest village's recent events and how ready it is for a bad one",
             "pedlar: send a travelling pedlar walking in to the nearest village (works with WorldLife off)",
             "pilgrim: send a pilgrim walking in to the nearest village, to stay the night by the hearth",
             "hermit: make a hermit's camp fire and its hermit in front of you",
@@ -197,7 +202,13 @@ namespace Villheim.Logic
                 case "villheim_weather": Say(context, Village.LocalWeather.Run(args)); return true;
                 case "villheim_repair": Say(context, Village.RepairAll.Run()); return true;
                 case "villheim_trails": Say(context, Trails.Command()); return true;
-                case "villheim_outpost": Say(context, Outposts.Command()); return true;
+                case "villheim_outpost": Say(context, Outposts.Command(args)); return true;
+                case "villheim_event": Say(context, VillageEvents.Command(args)); return true;
+                case "villheim_events": Say(context, EventsReport()); return true;
+                case "villheim_caravan": Say(context, Caravans.Command(args)); return true;
+                case "villheim_daughter": Say(context, Daughters.Command(args)); return true;
+                case "villheim_contract": Say(context, Contracts.Command(args)); return true;
+                case "villheim_caravans": Say(context, Caravans.Command(new[] { "list" })); return true;
                 case "villheim_pedlar": Say(context, WorldLife.Command(Villagers.Wanderers.Pedlar)); return true;
                 case "villheim_pilgrim": Say(context, WorldLife.Command(Villagers.Wanderers.Pilgrim)); return true;
                 case "villheim_hermit": Say(context, WorldLife.Command(Villagers.Wanderers.Hermit)); return true;
@@ -206,6 +217,13 @@ namespace Villheim.Logic
                 case "villheim_shaper": Say(context, Village.Shaping.Status()); return true;
                 default: return false;
             }
+        }
+
+        private static string EventsReport()
+        {
+            Player player = Player.m_localPlayer;
+            VillageHearth hearth = player != null ? VillageHearth.Closest(player.transform.position, 200f) : null;
+            return hearth != null ? $"{hearth.VillageName}: {VillageEvents.Describe(hearth)}" : "No village within 200 m.";
         }
 
         private static VillageHearth NearestHearth(Player player)
@@ -264,6 +282,7 @@ namespace Villheim.Logic
             Say(context, $"   neighbours: {Relations.Describe(hearth)}");
             Say(context, $"   {Villagers.Smithing.Report(hearth)}");
             Say(context, $"   outpost: {Outposts.Describe(hearth)}; {Trails.Describe(hearth)}");
+            Say(context, $"   {Caravans.Describe(hearth)}; {VillageEvents.Describe(hearth)}; {Daughters.Describe(hearth)}; {Contracts.Describe(hearth)}");
             foreach (Villagers.Social.Known known in Villagers.Social.KnownPlayers(hearth))
             {
                 Say(context, $"   knows {known.Name}: reputation {known.Reputation}, first seen day {known.FirstDay}, last day {known.LastDay}");

@@ -92,10 +92,13 @@ namespace Villheim.Logic.Village
             }
 
             Trails.Paint(player.transform.position);
+            Caravans.Embody(player.transform.position);
             if (ZNet.instance.IsServer())
             {
                 MaybeMakeCamps(player.transform.position);
                 Outposts.EnsureCamps(player.transform.position);
+                Daughters.EnsureHearths(player.transform.position);
+                Trails.Signposts(player.transform.position);
             }
         }
 
@@ -176,7 +179,7 @@ namespace Villheim.Logic.Village
             return visitor;
         }
 
-        private static readonly int KeyFromVillage = "villheim_wfromid".GetStableHashCode();
+        internal static readonly int KeyFromVillage = "villheim_wfromid".GetStableHashCode();
 
         /// <summary>A visitor has reached the hearth: greetings, news, and for a pedlar a trade with the chest.</summary>
         public static void Arrived(Villager visitor, string kind, VillageHearth hearth)
@@ -321,6 +324,12 @@ namespace Villheim.Logic.Village
                 return;
             }
 
+            if (what == "death")
+            {
+                // The events director holds back bad luck for a few days after a death.
+                hearth.Zdo.Set(VillageEvents.KeyLastLoss, Day);
+            }
+
             string v = new VillageState(hearth.Zdo).Name;
             string text;
             switch (what)
@@ -332,6 +341,18 @@ namespace Villheim.Logic.Village
                 case "fightover": text = $"{v} fought off an attack"; break;
                 case "hunt": text = $"the hunters of {v} came home with plenty"; break;
                 case "upgrade": text = $"{v} is rebuilding bigger"; break;
+                case "outpost": text = $"{v} has sent people out to make a camp in the wilds"; break;
+                case "feast": text = $"{v} had a good harvest and a feast"; break;
+                case "skald": text = $"a skald sang at {v}"; break;
+                case "fair": text = $"people from {v} came to market"; break;
+                case "takenin": text = $"{v} took in a lost traveller"; break;
+                case "sickness": text = $"there's fever in {v}"; break;
+                case "beasts": text = $"beasts have been prowling round {v} at night"; break;
+                case "quarrel": text = $"two in {v} aren't speaking"; break;
+                case "dispute": text = $"{v} has fallen out with its neighbours"; break;
+                case "caravan": text = $"a caravan from {v} is on the road"; break;
+                case "daughter": text = $"people from {v} have gone off to found a village of their own"; break;
+                case "founded": text = $"a new village has been founded near {v}"; break;
                 default: return;
             }
 

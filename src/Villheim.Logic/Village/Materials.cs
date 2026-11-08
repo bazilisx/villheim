@@ -8,8 +8,10 @@ namespace Villheim.Logic.Village
     /// The building materials villages gather and spend. Other ingredients in a piece's vanilla recipe
     /// (resin, leather, metal) are not tracked, so they cost nothing for now.
     ///
-    /// A village only builds with what grows or lies around in its own biome. Meadows has no pine, so a Meadows
-    /// village never builds anything that needs core wood. The table can be changed in the config.
+    /// A village builds with what its biome and its outposts give (Tyler, 2026-11-08). Meadows has no pine, so a
+    /// Meadows village only builds with core wood once it has a logging camp in the Black Forest sending it home. The
+    /// biome table can be changed in the config; while the village brain runs for one village, From(hearth) adds what
+    /// that village's outposts send (see Outposts.Gives).
     /// </summary>
     internal static class Materials
     {
@@ -48,9 +50,50 @@ namespace Villheim.Logic.Village
             if (raw != _parsedFrom)
             {
                 Parse(raw);
+                _union = null;
             }
 
-            return Allowed.TryGetValue(biome, out HashSet<string> set) ? set : Fallback;
+            HashSet<string> own = Allowed.TryGetValue(biome, out HashSet<string> set) ? set : Fallback;
+            if (_extra == null || _extra.Count == 0 || own.IsSupersetOf(_extra))
+            {
+                return own;
+            }
+
+            string key = biome + "|" + string.Join(",", _extra);
+            if (_union == null || _unionKey != key)
+            {
+                _union = new HashSet<string>(own);
+                _union.UnionWith(_extra);
+                _unionKey = key;
+            }
+
+            return _union;
+        }
+
+        // What the outposts of the village being worked on send home, added to its biome's materials.
+        private static HashSet<string> _extra;
+        private static HashSet<string> _union;
+        private static string _unionKey;
+
+        /// <summary>
+        /// For the length of a using block, AllowedIn also gives what this village's outposts send home. Scopes nest;
+        /// the village brain opens one per hearth tick.
+        /// </summary>
+        public static Scope From(VillageHearth hearth)
+        {
+            var scope = new Scope(_extra);
+            HashSet<string> gives = hearth != null ? Outposts.Gives(hearth) : null;
+            _extra = gives != null && gives.Count > 0 ? gives : null;
+            return scope;
+        }
+
+        internal readonly struct Scope : IDisposable
+        {
+            private readonly HashSet<string> _previous;
+
+            public Scope(HashSet<string> previous) => _previous = previous;
+
+            public void Dispose() => _extra = _previous;
         }
 
         private static readonly HashSet<string> Fallback = new HashSet<string> { Wood, Stone };

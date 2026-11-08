@@ -25,6 +25,15 @@ namespace Villheim.Logic.Village
 
         public static void Tick(VillageHearth hearth)
         {
+            // What the village's outposts send home counts as its own material while it decides what to build.
+            using (Materials.From(hearth))
+            {
+                TickOwned(hearth);
+            }
+        }
+
+        private static void TickOwned(VillageHearth hearth)
+        {
             if (!hearth.NView.IsOwner() || hearth.Busy || ZNet.instance == null || ZoneSystem.instance == null ||
                 EnvMan.instance == null)
             {
@@ -54,9 +63,14 @@ namespace Villheim.Logic.Village
             VillageChest.MoveStockIn(hearth, state);
             Villagers.Social.VillageTick(hearth);
             Relations.Daily(hearth);
+            VillageEvents.Daily(hearth, state);
             Outposts.Tick(hearth, state);
             Trails.Tick(hearth, state);
+            Caravans.Tick(hearth, state);
+            Daughters.Tick(hearth, state);
             Raids.Tick(hearth);
+            Contracts.Tick(hearth, state);
+            Groves.Tick(hearth, state);
             NoticeBoard.Update(hearth);
             CheckDoorsDaily(hearth);
             Farms.Tick(hearth);
@@ -122,6 +136,7 @@ namespace Villheim.Logic.Village
             HearthGround.Prepare(hearth);
             hearth.Register();
             Chronicle.Add(hearth, $"{state.Name} was founded around a new hearth.");
+            Daughters.Initialized(hearth, state);
             VillheimPlugin.Log.LogInfo($"Founded {state.Name} ({state.Biome}) at {position}.");
         }
 

@@ -57,6 +57,24 @@ namespace Villheim.Logic
         public static ConfigEntry<bool> SmithMakesGear;
         public static ConfigEntry<bool> Outposts;
         public static ConfigEntry<bool> Trails;
+        public static ConfigEntry<bool> TrailSigns;
+        public static ConfigEntry<string> OutpostGear;
+        public static ConfigEntry<bool> VillageEvents;
+        public static ConfigEntry<bool> Caravans;
+        public static ConfigEntry<bool> Daughters;
+        public static ConfigEntry<bool> Contracts;
+        public static ConfigEntry<bool> Groves;
+        public static ConfigEntry<int> GroveTrees;
+        public static ConfigEntry<float> ContractChancePerDay;
+        public static ConfigEntry<int> DaughtersPerVillage;
+        public static ConfigEntry<float> DaughterChancePerDay;
+        public static ConfigEntry<float> CaravanChancePerDay;
+        public static ConfigEntry<float> CaravanMetresPerDay;
+        public static ConfigEntry<float> CaravanReach;
+        public static ConfigEntry<float> EventChancePerDay;
+        public static ConfigEntry<bool> OutpostMaterials;
+        public static ConfigEntry<int> OutpostsPerVillage;
+        public static ConfigEntry<int> OutpostCarryAt;
         public static ConfigEntry<float> VisitorChancePerDay;
         public static ConfigEntry<float> DaysBetweenVisitors;
         public static ConfigEntry<int> HermitChance;
@@ -110,12 +128,58 @@ namespace Villheim.Logic
                 "other villages, and a pedlar trading with the village chest), and hermits keep camps by some ruins and " +
                 "abandoned houses. 'vh pedlar', 'vh pilgrim' and 'vh hermit' work either way, for testing.");
             Outposts = Admin(config, life, "Outposts", true,
-                "With WorldLife on, a village of four buildings and four villagers founds a logging camp in the nearest " +
-                "other biome (Black Forest core wood for a Meadows village, Meadows fine wood for a Black Forest one) " +
-                "that sends wood home every day.");
+                "With WorldLife on, a village of four buildings and four villagers founds camps where the land gives what " +
+                "home lacks: a logging camp in the other wood biome (Black Forest core wood for a Meadows village, Meadows " +
+                "fine wood for a Black Forest one), and a flint camp on the shore while its smith needs flint. Campers " +
+                "carry the loads home.");
+            OutpostGear = Admin(config, life, "OutpostGear", Village.Outposts.DefaultGear,
+                "Gear tier a village must have made before its people go out to a camp in that biome (0 rags, 1 leather, " +
+                "2 flint and leather, 3 troll leather, 4 bronze). Biome: tier, separated by semicolons.");
+            OutpostMaterials = Admin(config, life, "OutpostMaterials", true,
+                "What an outpost sends home counts toward what the village can build: a Meadows village with a logging " +
+                "camp in the Black Forest builds designs that need core wood.");
+            VillageEvents = Admin(config, life, "VillageEvents", true,
+                "With WorldLife on, once a day something may happen in a village: a feast, a visiting skald, a market day, " +
+                "a lost traveller taken in, a fever, beasts at night, a quarrel, a falling-out with the neighbours.");
+            EventChancePerDay = Admin(config, life, "EventChancePerDay", 0.35f,
+                "Chance that something happens in a village on a given day (0 to 1).");
+            Caravans = Admin(config, life, "Caravans", true,
+                "With WorldLife on, villages send what they can spare to villages that lack it, along their trails. The " +
+                "caravan moves on the world clock and is a real person walking the road when you are near it.");
+            CaravanChancePerDay = Admin(config, life, "CaravanChancePerDay", 0.3f,
+                "Chance that a village sends a trade caravan on a given day (0 to 1), when it has something to spare.");
+            CaravanMetresPerDay = Admin(config, life, "CaravanMetresPerDay", 2400f,
+                "How far a caravan, a haul or a party of settlers goes in an in-game day.");
+            CaravanReach = Admin(config, life, "CaravanReach", 2500f,
+                "Villages farther apart than this (metres) do not send each other caravans.");
+            OutpostsPerVillage = Admin(config, life, "OutpostsPerVillage", 2,
+                "Most camps a village keeps: a logging camp in the other wood biome, and a flint camp on the shore while " +
+                "its smith needs flint.");
+            OutpostCarryAt = Admin(config, life, "OutpostCarryAt", 12,
+                "A camp sends its load home (a camper walks it along the trail) once it has gathered this much.");
+            Daughters = Admin(config, life, "Daughters", true,
+                "With WorldLife on, a full village (MaxVillagers or MaxBuildings) now and then sends two of its people to " +
+                "found a village of their own 600 to 1,200 m away. Its hearth is lit when you first come near the site.");
+            DaughtersPerVillage = Admin(config, life, "DaughtersPerVillage", 2,
+                "Most daughter villages one village founds.");
+            DaughterChancePerDay = Admin(config, life, "DaughterChancePerDay", 0.25f,
+                "Chance a full village sends settlers on a given day (0 to 1), at most one party every ten days.");
+            Contracts = Admin(config, life, "Contracts", true,
+                "With WorldLife on, a village puts up a notice for what its own people cannot get (flint or hides for the " +
+                "smith, a material its biome lacks), paid in coins or spare goods when you bring it to the chest.");
+            ContractChancePerDay = Admin(config, life, "ContractChancePerDay", 0.5f,
+                "Chance a village with nothing posted puts up a contract on a given day (0 to 1).");
+            Groves = Admin(config, life, "Groves", true,
+                "With WorldLife on, a village of four or more buildings with few trees left round it plants extra saplings " +
+                "(three a day) for later harvests.");
+            GroveTrees = Admin(config, life, "GroveTrees", 25,
+                "Standing trees within 60 m of a village's edge it wants to keep; below this it plants more.");
             Trails = Admin(config, life, "Trails", true,
                 "With WorldLife on, villages plan a dirt trail to their outpost and to their nearest neighbour within " +
                 "2,500 m, painted on the ground near you as you walk it.");
+            TrailSigns = Admin(config, life, "TrailSigns", true,
+                "With Trails on, wooden signposts where a trail leaves a village (where it goes and how far) and halfway " +
+                "along trails longer than 600 m.");
             VisitorChancePerDay = Admin(config, life, "VisitorChancePerDay", 0.5f,
                 "Chance that a pedlar or pilgrim comes to a village on a day you spend there (0 to 1).");
             DaysBetweenVisitors = Admin(config, life, "DaysBetweenVisitors", 1f,

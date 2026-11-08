@@ -82,6 +82,9 @@ namespace Villheim.Logic.Villagers
             return VillagerLooks.GearTier(VillageBrain.TierIndex(state.Plots.Count), state.Biome);
         }
 
+        /// <summary>The gear tier the village has made and wears (its armoury, held to its size).</summary>
+        public static int Armoury(VillageHearth hearth) => hearth == null || !hearth.IsValid ? 0 : Cap(hearth, SizeTier(hearth));
+
         /// <summary>The next tier the village wants to make, or -1 when its armoury is up to its size.</summary>
         public static int Behind(VillageHearth hearth)
         {
@@ -204,6 +207,30 @@ namespace Villheim.Logic.Villagers
         {
             int tier = Behind(hearth);
             return tier < 0 ? new HashSet<string>() : new HashSet<string>(Cost(tier, out _, out _).Keys);
+        }
+
+        /// <summary>What the chest still lacks for the next set (item prefab name, how many), or nothing.</summary>
+        public static Dictionary<string, int> Shortfall(VillageHearth hearth)
+        {
+            var missing = new Dictionary<string, int>();
+            int tier = Behind(hearth);
+            Container chest = tier >= 0 ? VillageChest.Find(hearth) : null;
+            if (chest == null)
+            {
+                return missing;
+            }
+
+            foreach (KeyValuePair<string, int> need in Cost(tier, out _, out _))
+            {
+                string name = Materials.SharedName(need.Key);
+                int have = name != null ? chest.GetInventory().CountItems(name) : 0;
+                if (have < need.Value)
+                {
+                    missing[need.Key] = need.Value - have;
+                }
+            }
+
+            return missing;
         }
 
         public static string TierName(int tier) => TierNames[Mathf.Clamp(tier, 0, TierNames.Length - 1)];

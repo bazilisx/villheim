@@ -30,6 +30,8 @@ namespace Villheim.Logic.Villagers
         public const string Pilgrim = "pilgrim";
         public const string Hermit = "hermit";
         public const string Camper = "camper";
+        /// <summary>Someone walking a caravan's road between two places (Village/Caravans.cs runs them).</summary>
+        public const string Carrier = "carrier";
         public static readonly int KeyCampKind = "villheim_wcampkind".GetStableHashCode();
 
         public static readonly int KeyKind = "villheim_wanderer".GetStableHashCode();
@@ -139,6 +141,9 @@ namespace Villheim.Logic.Villagers
                 case Hermit:
                 case Camper:
                     HermitTick(villager, ai, dt, zdo, state);
+                    break;
+                case Carrier:
+                    Village.Caravans.WalkTick(villager, ai, dt);
                     break;
                 default:
                     VisitorTick(villager, ai, dt, zdo, state, kind);

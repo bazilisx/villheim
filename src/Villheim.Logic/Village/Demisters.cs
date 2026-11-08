@@ -110,9 +110,10 @@ namespace Villheim.Logic.Village
             return false;
         }
 
+        // A tall capsule over the spot, so a demister counts as standing wherever its colliders sit.
         private static bool Standing(int villageId, Vector3 spot)
         {
-            foreach (Collider collider in Physics.OverlapSphere(spot + Vector3.up, 2.5f))
+            foreach (Collider collider in Physics.OverlapCapsule(spot, spot + Vector3.up * 8f, 3f))
             {
                 ZNetView view = collider.GetComponentInParent<ZNetView>();
                 if (view != null && view.IsValid() && Utils.GetPrefabName(view.gameObject) == Prefab &&

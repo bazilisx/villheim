@@ -336,6 +336,14 @@ Test plan (about 25 minutes, devcommands on):
 10. Set `VillageKnowledge = false` and save: no rumour lines, no new map table, `vh know` still lists. Set it back.
     `vh reload`: the survey starts again and `vh know` still lists the same discoveries.
 
+
+Name check (2026-11-08, main session): object prefabs `rock4_copper`, `MineRock_Tin`, `silvervein`, `rock3_silver`,
+`MineRock_Obsidian`, `mudpile2`, `MineRock_Meteorite`, `Spawner_GreydwarfNest`, `Spawner_DraugrPile`, `BonePileSpawner`,
+`DrakeNest`, `piece_cartographytable` and the creatures `Greydwarf_Elite`, `Hatchling`, `GoblinBrute`, `GoblinShaman`
+are in the game's own asset list (SoftRef manifest on Tyler's install). Location names are not in that list; the
+LocationFinder mod's notes confirm `Hildir_camp`, `BogWitch_Camp`, `FaderLocation`, `Dragonqueen`,
+`Mistlands_DvergrBossEntrance1` and `GoblinCamp2`, all caught by the prefix match. `vh know names` remains the check.
+
 ## Next, in order
 
 Effort is a rough guess: S an evening, M a session or two, L several sessions.

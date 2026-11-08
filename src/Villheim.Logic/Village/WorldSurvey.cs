@@ -289,7 +289,7 @@ namespace Villheim.Logic.Village
         /// <summary>What can spawn in the world, merged by creature: biomes, height, day or night.</summary>
         public static List<Spawn> Spawns()
         {
-            if (_spawns != null && Time.time - _spawnsAt < 600f)
+            if (_spawns != null && _spawns.Count > 0 && Time.time - _spawnsAt < 600f)
             {
                 return _spawns;
             }
@@ -339,9 +339,10 @@ namespace Villheim.Logic.Village
             SpawnSystem system = ZoneSystem.instance != null && ZoneSystem.instance.m_zoneCtrlPrefab != null
                 ? ZoneSystem.instance.m_zoneCtrlPrefab.GetComponent<SpawnSystem>()
                 : null;
-            if (system == null && SpawnSystem.m_instances != null)
+            if ((system == null || system.m_spawnLists == null || system.m_spawnLists.Count == 0) && SpawnSystem.m_instances != null)
             {
-                system = SpawnSystem.m_instances.FirstOrDefault(s => s != null);
+                // A loaded zone's controller has the same lists.
+                system = SpawnSystem.m_instances.FirstOrDefault(s => s != null && s.m_spawnLists != null && s.m_spawnLists.Count > 0) ?? system;
             }
 
             if (system?.m_spawnLists == null)

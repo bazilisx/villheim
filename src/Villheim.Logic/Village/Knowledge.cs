@@ -283,6 +283,7 @@ namespace Villheim.Logic.Village
             public int SampleNext;
             public bool SamplesDone;
             public bool LandAdded;
+            public bool SpawnsAdded;
             public int CheckNext;
             public float NextWitness;
             public readonly Dictionary<string, (Vector3 At, float Time)> Trips = new Dictionary<string, (Vector3, float)>();
@@ -379,7 +380,14 @@ namespace Villheim.Logic.Village
                 if (!survey.LandAdded)
                 {
                     survey.LandAdded = true;
-                    AddLandCandidates(hearth, survey);
+                    AddEdges(hearth, survey);
+                }
+
+                // The spawn lists may not be there in the first seconds after loading: tried again until they are.
+                if (!survey.SpawnsAdded && WorldSurvey.Spawns().Count > 0)
+                {
+                    survey.SpawnsAdded = true;
+                    AddGrounds(hearth, survey);
                 }
 
                 return;
@@ -405,8 +413,8 @@ namespace Villheim.Logic.Village
             }
         }
 
-        /// <summary>Biome edges (the nearest sample of each other biome) and the nearest ground each creature can come out on.</summary>
-        private static void AddLandCandidates(VillageHearth hearth, Survey survey)
+        /// <summary>Biome edges: the nearest sample of each other biome.</summary>
+        private static void AddEdges(VillageHearth hearth, Survey survey)
         {
             Vector3 home = hearth.transform.position;
             Heightmap.Biome own = WorldSurvey.Biome(home);
@@ -423,10 +431,16 @@ namespace Villheim.Logic.Village
             {
                 survey.Candidates.Add(new WorldSurvey.Feature { Kind = "biome", Key = edge.Key.ToString().ToLowerInvariant(), Position = edge.Value });
             }
+        }
 
+        /// <summary>The nearest sampled ground each creature can come out on.</summary>
+        private static void AddGrounds(VillageHearth hearth, Survey survey)
+        {
+            Vector3 home = hearth.transform.position;
+            var nearestFirst = survey.Samples.OrderBy(s => Utils.DistanceXZ(s.At, home)).ToList();
             foreach (WorldSurvey.Spawn spawn in WorldSurvey.Spawns())
             {
-                foreach (var s in survey.Samples.OrderBy(s => Utils.DistanceXZ(s.At, home)))
+                foreach (var s in nearestFirst)
                 {
                     if (WorldSurvey.CanSpawnAt(spawn, s.Biome, s.Height, s.Forest))
                     {

@@ -787,7 +787,8 @@ namespace Villheim.Logic.Villagers
         /// <summary>The held tool is good enough to break this (an antler pickaxe does nothing to copper, and so on).</summary>
         private static bool TierAllows(GameObject go, int tier)
         {
-            if (Village.VillageWood.IsVillageWood(go)) return true; // the village's own Yggdrasil shoots (D-052)
+            if (Village.VillageWood.GivesWood(go)) return true; // Yggdrasil shoots (D-052, T-55)
+            if (InMistlands(go) && IsRock(go)) return true; // Mistlands rock: villagers break it whatever their tools (T-55)
             if (go.TryGetComponent(out TreeBase tree)) return tree.m_minToolTier <= tier;
             if (go.TryGetComponent(out TreeLog log)) return log.m_minToolTier <= tier;
             if (go.TryGetComponent(out MineRock5 rock5)) return rock5.m_minToolTier <= tier;
@@ -1561,6 +1562,9 @@ namespace Villheim.Logic.Villagers
             return strength * Random.Range(0.75f, 1.15f);
         }
 
+        private static bool InMistlands(GameObject go) =>
+            go != null && WorldGenerator.instance != null && WorldGenerator.instance.GetBiome(go.transform.position) == Heightmap.Biome.Mistlands;
+
         private static void Hit(Villager villager, GameObject target, Vector3 point, Collider struck, bool pickaxe)
         {
             IDestructible destructible = target.GetComponentInParent<IDestructible>() ?? target.GetComponentInChildren<IDestructible>();
@@ -1576,7 +1580,8 @@ namespace Villheim.Logic.Villagers
             {
                 m_point = point,
                 m_dir = direction.sqrMagnitude > 0.01f ? direction.normalized : villager.transform.forward,
-                m_toolTier = (short)(weapon?.m_shared?.m_toolTier ?? 0),
+                // Mistlands rock gives way to villagers whatever their tools (T-55); the shoots see to themselves (VillageWood).
+                m_toolTier = (short)(pickaxe && InMistlands(target) ? 10 : weapon?.m_shared?.m_toolTier ?? 0),
                 m_attacker = villager.GetZDOID(),
 
                 // Big rocks pick the part that breaks from the collider that was hit, and ignore hits without one.
@@ -1763,7 +1768,8 @@ namespace Villheim.Logic.Villagers
             }
 
             string name = go.name.ToLowerInvariant();
-            if (!name.Contains("rock") || go.GetComponent<Piece>() != null)
+            bool mistlandsCliff = name.Contains("cliff_mistlands") || (name.Contains("mistland") && go.GetComponent<MineRock5>() != null);
+            if ((!name.Contains("rock") && !mistlandsCliff) || go.GetComponent<Piece>() != null)
             {
                 return false;
             }

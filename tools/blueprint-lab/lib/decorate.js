@@ -142,7 +142,7 @@ function decorate(b, ctx) {
     if (info.role === 'pole') occ.add(p.x, p.z, Math.round(p.y - 1), 0.4, 0.4, 0);
   }
   for (const room of b.rooms) {
-    if (room.door) occ.add(room.door.x, room.door.z + 1.2, room.y, 1.8, 2.4, 0); // keep the way in clear
+    if (room.door) occ.add(room.door.x, room.door.z + 1.5, room.y, 2.4, 3.0, 0); // keep the way in clear
     if (room.upper && ctx.use === 'hall') continue;
     furnishRoom(b, room, room.upper ? (ctx.use === 'home' ? 'home' : ctx.use) : ctx.use, ctx.decor, ctx.biome, R, occ, ctx, room.upper);
   }
@@ -197,8 +197,9 @@ function furnishRoom(b, room, use, decor, biome, R, occ, ctx, upper) {
         else if (kind === 'mount' || kind === 'light' && /brazierceiling|walltorch/.test(name)) putWall(name, true);
         else if (kind === 'bed') putWall(name, false);
         else if (kind === 'fire') {
-          if (upper) break;
-          const fx = use === 'home' ? (ctx.doorX ?? 0) : cx, fz = use === 'home' ? cz + 0.5 : cz;
+          if (upper || room.main === false) break; // one fire, in the main room
+          const doorIn = ctx.doorX != null && ctx.doorX > room.x0 && ctx.doorX < room.x1;
+          const fx = use === 'home' && doorIn ? ctx.doorX : cx, fz = use === 'home' ? cz + 0.5 : cz;
           const fire = use === 'hall' && ok('hearth', biome) ? 'hearth' : name;
           if (putCentre(fire, fx, fz, 0)) {
             if (decor !== 'd1' || use === 'hall') place(ok('piece_cookingstation_iron', biome) && use === 'hall' ? 'piece_cookingstation_iron' : 'piece_cookingstation', fx, y + 0.5, fz, 0);

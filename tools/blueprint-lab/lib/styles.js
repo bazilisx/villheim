@@ -81,6 +81,10 @@ const CULTURES = {
     label: 'Dwarven', roof: 'flat', parapet: true, frame: false, stoneWalls: true, arches: true, lanterns: true,
     note: 'Heavy stone or black marble blocks, flat roofs, arches, many lanterns.',
   },
+  'celtic': {
+    label: 'Celtic round', roof: 'conical', pitch: 45, eaves: 1, frame: true, round: true, porch: 0,
+    note: 'Round house of eight walls under a ring of thatch, one door, fire in the middle.',
+  },
   'slavic': {
     label: 'Slavic log', roof: 'gable', pitch: 45, eaves: 1, frame: false, logWalls: true, plinth: 'stone', porch: 0.8, carved: true,
     note: 'Log house on a stone footing, covered porch, carved ridge.',

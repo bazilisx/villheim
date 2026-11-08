@@ -15,6 +15,14 @@ if (set === 'review') {
     ['dock', 'Meadows', 'norse'], ['stall', 'Plains', 'middle-eastern'], ['temple', 'Mountain', 'norse'], ['well', 'Black Forest', 'norse'],
     ['camp', 'Meadows', 'norse'], ['home', 'Mistlands', 'dwarven'], ['workshop', 'Plains', 'norse'], ['home', 'Meadows', 'norse']];
   reqs = pairs.map(([type, biome, culture], i) => ({ type, biome, culture, stage: ['s1', 's2', 's3'][i % 3], decor: ['d2', 'd3', 'd1'][i % 3], seed: i + 1 }));
+} else if (set === 'shapes') {
+  const combos = [['home', 'Meadows', 'norse', 'rect', 'gable'], ['home', 'Black Forest', 'black-forest', 'L', 'gable'], ['home', 'Swamp', 'swamp', 'T', 'gable'],
+    ['home', 'Meadows', 'norse', 'square', 'hip'], ['home', 'Swamp', 'east-asian', 'rect', 'hip'], ['longhouse', 'Meadows', 'norse', 'long', 'gable'],
+    ['longhouse', 'Black Forest', 'norse', 'T', 'gable'], ['tavern', 'Swamp', 'norse', 'cross', 'gable'], ['home', 'Black Forest', 'middle-eastern', 'U', 'flat'],
+    ['home', 'Meadows', 'celtic', 'octagon', 'conical'], ['tower', 'Black Forest', 'black-forest', 'octagon', 'conical'], ['sawmill', 'Meadows', 'norse', 'rect', 'shed'],
+    ['smithy', 'Black Forest', 'black-forest', 'L', 'hip'], ['temple', 'Mountain', 'norse', 'cross', 'gable'], ['home', 'Plains', 'castle-medieval', 'L', 'hip'],
+    ['storage', 'Mistlands', 'dwarven', 'L', 'flat']];
+  reqs = combos.map(([type, biome, culture, plan, roof], i) => ({ type, biome, culture, plan, roof, stage: i % 2 ? 's3' : 's2', decor: 'd2', seed: i + 3 }));
 } else if (set === 'stages') {
   for (const st of ['s1', 's2', 's3']) for (const dc of ['d1', 'd2', 'd3']) reqs.push({ type: process.argv[4] || 'home', biome: process.argv[5] || 'Meadows', culture: process.argv[6], stage: st, decor: dc, seed: 3 });
 }
@@ -31,7 +39,7 @@ reqs.forEach((q, i) => {
   const x = (i % cols) * cell, y = Math.floor(i / cols) * (cell + 22);
   octx.drawImage(c, x, y + 22);
   octx.fillStyle = '#2b241c'; octx.font = '13px sans-serif';
-  octx.fillText(`${S.TYPES[q.type].label}, ${q.biome}, ${S.CULTURES[d.request.cultureKey].label}, ${q.stage}${q.decor}`, x + 6, y + 16);
+  octx.fillText(`${S.TYPES[q.type].label}, ${q.biome}, ${S.CULTURES[d.request.cultureKey].label}, ${d.request.plan || ''}/${d.request.roof || ''}, ${q.stage}${q.decor}`, x + 6, y + 16);
 });
 fs.writeFileSync(path.join(out, 'overview.png'), ov.toBuffer('image/png'));
 console.log('done', reqs.length);

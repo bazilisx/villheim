@@ -40,7 +40,10 @@ function material(n) {
 const RULES = [
   // roofs
   [/roof.*top|_top_45|roof_top/, 'roofTop', [2, 0.45, 2], 'cap'],
-  [/roof.*(ocorner|icorner)/, 'roofCorner', [2, 1, 2], 'slope26'],
+  [/roof.*ocorner.*45/, 'roofCorner', [2, 2, 2], 'hipcorner45'],
+  [/roof.*ocorner/, 'roofCorner', [2, 1, 2], 'hipcorner26'],
+  [/roof.*icorner.*45/, 'roofCorner', [2, 2, 2], 'slope45'],
+  [/roof.*icorner/, 'roofCorner', [2, 1, 2], 'slope26'],
   [/wall_roof.*upsidedown|roof.*upsidedown/, 'gable', [2, 1, 0.2], 'triInv'],
   [/wall_roof_45|wall_roof_67|wall_roof.*45/, 'gable', [2, 2, 0.2], 'tri'],
   [/wall_roof/, 'gable', [2, 1, 0.2], 'tri'],

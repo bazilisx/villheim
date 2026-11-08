@@ -56,6 +56,14 @@ function localFaces(info) {
     }
     case 'prop':
       return box(-hx, hx, 0, h, -hz, hz);
+    case 'hipcorner26': case 'hipcorner45': {
+      // outer hip corner: low along its +x and +z edges, rising to the inner corner (-x, -z); pivot on the low edge
+      const r = info.shape === 'hipcorner45' ? 2 : 1, t = 0.12;
+      const A = [hx, 0, hz], B = [hx, 0, -hz], Cc = [-hx, r, -hz], Dd = [-hx, 0, hz];
+      const tri1 = [A, B, Cc], tri2 = [A, Cc, Dd];
+      const dn = f => f.map(([x, y, z]) => [x, y - t, z]).reverse();
+      return [tri1, tri2, dn(tri1), dn(tri2)];
+    }
     case 'cap': {
       // ridge cap: a low inverted V 2 m across, its pivot at the height where the two slopes end
       const a = [[-hx, 0, -1], [hx, 0, -1], [hx, 0.45, 0], [-hx, 0.45, 0]], c = [[-hx, 0.45, 0], [hx, 0.45, 0], [hx, 0, 1], [-hx, 0, 1]];

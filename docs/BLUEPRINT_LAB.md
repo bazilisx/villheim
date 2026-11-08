@@ -18,7 +18,8 @@ Code in `tools/blueprint-lab/`. Built 2026-11-08 night. Nothing generated here i
 | Decorator | `lib/decorate.js` | Furnishes rooms to d1, d2 or d3; strips any design to d1; furnishes any existing blueprint against its real walls. |
 | Checks | `lib/checks.js` | Every piece connected to the ground, no doubled pieces, doors with room on both sides, materials the biome has, floor left free. |
 | Renderer | `lib/render.js`, `lib/sheet.js` | Four views (front left, back right, top, inside with the roof off) as PNG in Node or on a canvas in a browser. |
-| Request page | `web/app.html`, built to `web/index.html` by `lib/build_web.js` | Type or pick a request, get the best of up to 16 candidates, turn it round, download the `.blueprint`; a second tab strips or furnishes an uploaded blueprint. Published as the artifact "Villheim Blueprint Lab"; a copy is in `BepInEx/config/Villheim-tools/` on Tyler's PC and opens offline. |
+| Request page | `web/app.html`, built to `web/index.html` by `lib/build_web.js` | Type or pick a request, get the best of up to 16 candidates, turn it round, download the `.blueprint`; a second tab strips or furnishes an uploaded blueprint; a third repairs one. Published as the artifact "Villheim Blueprint Lab"; a copy is in `BepInEx/config/Villheim-tools/` on Tyler's PC and opens offline. |
+| Repair | `lib/repair.js`, tests `lab/test_repair.js` and `lab/test_repair_chunk.js` | Fills in pieces missing from an uploaded blueprint from the rest of the build: gaps in a row, a missing course in a stack, holes in a floor, the mirror of the other half when the build is mostly symmetric, and pieces that the build's own patterns call for. Each added piece carries a reason and a confidence. Third tab of the request page. |
 | Review set | `lib/gen_set.js` | Every type in five biomes at s1d1, s2d2, s3d3, plus six cultures; best of 8 each. 273 designs, all pass every check. |
 
 ## Measured building conventions
@@ -40,7 +41,13 @@ the way a hand build does.
 - Roof rows line up with wall bays only when the building's depth is an odd number of bays, so the generator keeps
   depths odd under pitched roofs.
 
-## What the corpus says (1,427 designs, 2026-11-08)
+## What the corpus says (1,968 designs, 2026-11-08)
+
+Rules, shapes and scorer were relearned on 1,968 designs after the valheimians downloads were sorted in. The counts
+below are from the first run on 1,427; the new totals for the 1,593 builds the shape reader could align are: plans
+irregular 557, none 198, T 175, rectangle 151, octagon or round 140, L 122, square 105, U 72, long 53, cross 20; roofs
+none 365, cross-gable 326, gable 310, flat 235, conical 223, hip 112, half-hip 15. The scorer is unchanged in
+substance because the new downloads carry no Yes or No (AUC 0.70 on the same 661 reviewed designs).
 
 - Plans: irregular 452, T 150, rectangle 130, octagon or round 113, L 94, square 84, U or courtyard 58, long 36,
   cross 17. Tyler's keepers: irregular 68, T 37, rectangle 35, L 21, octagon 15.
@@ -71,6 +78,33 @@ the way a hand build does.
 8. Porch, pier, field, pen, dragon heads where the type and culture call for them.
 9. Furnishing by room use and decor stage, then anything standing in a doorway is taken out.
 10. The page and the review set build several seeds and keep the one that passes the most checks, then scores highest.
+
+## Repair
+
+How a repair is chosen, in order of trust:
+
+1. Gaps in a row: a run of the same piece at the same height and turn with exactly one piece missing, where the row
+   above or below has that piece. Roofs use the rows up and down the slope.
+2. Gaps in a stack: one course missing between the same piece above and below, with the same piece beside it.
+3. Holes in a floor: a floor cell with floor on all four sides (three sides at lower confidence).
+4. Mirror: every line across both axes in 0.5 m steps is tried; the score is the share of pieces whose mirror exists,
+   counted only where the mirror would still lie inside the build. A mirror is used at 86 % or more. Mirrored pieces
+   must touch at least three existing pieces.
+5. Patterns: for each kind of piece, neighbours it has in at least 85 % of its five or more copies in this build.
+   A candidate needs two such votes.
+
+Measured on test damage (pieces removed at random or a slice cut from one side, then repaired):
+
+| Test | Builds | Found again | Right among those added |
+|---|---|---|---|
+| Random 3 % removed | corpus houses | 19 % | 31 % |
+| Random 3 % removed | generated | 58 % | 36 % |
+| 30 % of one side cut | corpus houses | 6 % | 54 % |
+| 30 % of one side cut | generated | 29 % | 63 % |
+
+Most hand builds are too irregular for the mirror rule (24 of 94 test houses read as mirrored). Added pieces show in
+teal and the page lists them by rule, so they can be checked before the file goes into the game. The confidence slider
+and the rule switches trade how much is filled against how much is right.
 
 ## Rules
 

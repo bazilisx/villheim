@@ -1,79 +1,79 @@
 {
- "n": 1279,
+ "n": 1593,
  "plan": [
   [
    "irregular",
-   452
-  ],
-  [
-   "T",
-   150
+   557
   ],
   [
    "none",
-   145
+   198
+  ],
+  [
+   "T",
+   175
   ],
   [
    "rectangle",
-   130
+   151
   ],
   [
    "octagon/round",
-   113
+   140
   ],
   [
    "L",
-   94
+   122
   ],
   [
    "square",
-   84
+   105
   ],
   [
    "U/courtyard",
-   58
+   72
   ],
   [
    "long",
-   36
+   53
   ],
   [
    "cross",
-   17
+   20
   ]
  ],
  "roof": [
   [
-   "cross-gable",
-   274
+   "none",
+   365
   ],
   [
-   "none",
-   272
+   "cross-gable",
+   326
   ],
   [
    "gable",
-   261
-  ],
-  [
-   "conical",
-   180
+   310
   ],
   [
    "flat",
-   178
+   235
+  ],
+  [
+   "conical",
+   223
   ],
   [
    "hip",
-   94
+   112
   ],
   [
    "half-hip",
-   14
+   15
   ],
   [
    "mixed",
-   4
+   5
   ],
   [
    "shed",
@@ -83,330 +83,340 @@
  "walls": [
   [
    "stone",
-   256
-  ],
-  [
-   "half-timber",
-   247
+   339
   ],
   [
    "plank",
-   227
+   291
+  ],
+  [
+   "half-timber",
+   278
   ],
   [
    "stone-base",
-   174
+   218
   ],
   [
    "none",
-   97
+   129
+  ],
+  [
+   "marble",
+   106
+  ],
+  [
+   "log",
+   89
   ],
   [
    "grausten",
    85
   ],
   [
-   "log",
-   72
-  ],
-  [
-   "marble",
-   71
-  ],
-  [
    "timber",
-   50
+   58
   ]
  ],
  "window": [
   [
    "arch",
-   383
+   454
   ],
   [
    "glass",
-   320
+   405
   ],
   [
    "none",
-   251
+   336
   ],
   [
    "half-wall gap",
-   192
+   246
   ],
   [
    "grate",
-   83
+   94
   ],
   [
    "window piece",
-   50
+   58
   ]
  ],
  "gable": [
   [
    "roof-wall pieces",
-   694
+   839
   ],
   [
    "none",
-   371
+   499
   ],
   [
    "stepped walls",
-   126
+   150
   ],
   [
    "open or plain",
-   88
+   105
   ]
  ],
  "plan_x_roof": [
   [
-   "irregular",
-   "cross-gable",
-   133
+   "none",
+   "none",
+   168
   ],
   [
-   "none",
-   "none",
-   124
+   "irregular",
+   "cross-gable",
+   159
   ],
   [
    "irregular",
    "gable",
-   103
+   126
   ],
   [
    "octagon/round",
    "conical",
-   65
+   77
   ],
   [
    "irregular",
    "none",
-   65
-  ],
-  [
-   "rectangle",
-   "gable",
-   59
+   76
   ],
   [
    "irregular",
    "flat",
-   52
+   73
+  ],
+  [
+   "rectangle",
+   "gable",
+   65
   ],
   [
    "irregular",
    "conical",
+   63
+  ],
+  [
+   "irregular",
+   "hip",
+   51
+  ],
+  [
+   "T",
+   "cross-gable",
    48
   ],
   [
-   "irregular",
-   "hip",
-   44
-  ],
-  [
-   "T",
-   "cross-gable",
-   41
-  ],
-  [
    "L",
    "cross-gable",
-   36
+   46
   ],
   [
    "square",
    "gable",
-   30
-  ],
-  [
-   "T",
-   "gable",
-   27
+   34
   ],
   [
    "T",
    "conical",
+   32
+  ],
+  [
+   "T",
+   "gable",
+   29
+  ],
+  [
+   "T",
+   "flat",
+   29
+  ],
+  [
+   "octagon/round",
+   "flat",
+   28
+  ],
+  [
+   "rectangle",
+   "none",
    27
   ],
   [
    "rectangle",
    "cross-gable",
+   27
+  ],
+  [
+   "long",
+   "flat",
+   25
+  ],
+  [
+   "octagon/round",
+   "none",
    24
   ],
   [
-   "octagon/round",
-   "flat",
-   23
-  ],
-  [
-   "T",
-   "flat",
-   23
-  ],
-  [
-   "rectangle",
-   "none",
-   21
-  ],
-  [
    "T",
    "none",
+   22
+  ],
+  [
+   "L",
+   "flat",
    20
   ],
   [
-   "long",
-   "flat",
-   18
-  ],
-  [
-   "square",
-   "cross-gable",
-   16
-  ],
-  [
    "square",
    "flat",
-   16
-  ],
-  [
-   "U/courtyard",
-   "gable",
-   15
+   20
   ],
   [
    "L",
    "conical",
-   15
+   19
   ],
   [
-   "octagon/round",
-   "none",
-   15
+   "square",
+   "cross-gable",
+   17
   ],
   [
-   "L",
-   "flat",
-   13
+   "U/courtyard",
+   "gable",
+   17
   ],
   [
    "L",
    "gable",
-   12
+   15
   ],
   [
    "rectangle",
    "flat",
+   15
+  ],
+  [
+   "long",
+   "none",
+   15
+  ],
+  [
+   "square",
+   "none",
+   14
+  ],
+  [
+   "square",
+   "hip",
+   14
+  ],
+  [
+   "U/courtyard",
+   "flat",
+   14
+  ],
+  [
+   "U/courtyard",
+   "cross-gable",
    12
   ],
   [
    "U/courtyard",
    "hip",
-   11
-  ],
-  [
-   "square",
-   "hip",
-   11
-  ],
-  [
-   "U/courtyard",
-   "flat",
-   11
-  ],
-  [
-   "U/courtyard",
-   "cross-gable",
-   10
+   12
   ],
   [
    "T",
    "hip",
-   9
+   12
+  ],
+  [
+   "none",
+   "gable",
+   11
   ],
   [
    "L",
    "hip",
+   11
+  ],
+  [
+   "U/courtyard",
+   "none",
+   10
+  ],
+  [
+   "L",
+   "none",
    9
   ],
   [
    "none",
    "flat",
-   7
+   8
   ],
   [
-   "U/courtyard",
-   "none",
+   "rectangle",
+   "hip",
    7
-  ],
-  [
-   "L",
-   "none",
-   7
-  ],
-  [
-   "long",
-   "none",
-   7
-  ],
-  [
-   "square",
-   "none",
-   6
   ],
   [
    "cross",
    "cross-gable",
-   6
+   7
   ],
   [
-   "none",
+   "U/courtyard",
    "conical",
-   6
+   7
   ],
   [
    "square",
    "conical",
-   5
-  ],
-  [
-   "none",
-   "gable",
-   5
-  ],
-  [
-   "rectangle",
-   "hip",
-   5
+   6
   ],
   [
    "octagon/round",
    "gable",
-   5
+   6
   ],
   [
    "irregular",
    "half-hip",
-   5
+   6
   ],
   [
-   "U/courtyard",
+   "none",
    "conical",
-   4
-  ],
-  [
-   "rectangle",
-   "conical",
-   4
+   6
   ],
   [
    "none",
    "cross-gable",
-   3
+   5
+  ],
+  [
+   "long",
+   "gable",
+   5
+  ],
+  [
+   "cross",
+   "conical",
+   5
+  ],
+  [
+   "rectangle",
+   "conical",
+   5
   ],
   [
    "long",
@@ -422,45 +432,35 @@
    "T",
    "half-hip",
    3
-  ],
-  [
-   "long",
-   "gable",
-   3
-  ],
-  [
-   "cross",
-   "conical",
-   3
-  ],
-  [
-   "cross",
-   "flat",
-   3
-  ],
-  [
-   "long",
-   "cross-gable",
-   2
-  ],
-  [
-   "cross",
-   "gable",
-   2
-  ],
-  [
-   "long",
-   "half-hip",
-   2
-  ],
-  [
-   "cross",
-   "hip",
-   2
   ],
   [
    "irregular",
    "mixed",
+   3
+  ],
+  [
+   "cross",
+   "flat",
+   3
+  ],
+  [
+   "long",
+   "cross-gable",
+   2
+  ],
+  [
+   "cross",
+   "gable",
+   2
+  ],
+  [
+   "long",
+   "half-hip",
+   2
+  ],
+  [
+   "cross",
+   "hip",
    2
   ]
  ],
@@ -468,67 +468,92 @@
   [
    "cross-gable",
    "half-timber",
-   94
+   108
   ],
   [
    "gable",
    "half-timber",
-   83
-  ],
-  [
-   "gable",
-   "plank",
-   68
+   89
   ],
   [
    "none",
-   "stone",
-   64
+   "plank",
+   83
+  ],
+  [
+   "none",
+   "none",
+   82
   ],
   [
    "cross-gable",
    "stone-base",
-   64
+   81
   ],
   [
    "none",
-   "none",
-   58
+   "stone",
+   79
   ],
   [
-   "none",
+   "gable",
    "plank",
-   56
+   78
   ],
   [
    "cross-gable",
    "stone",
-   46
+   62
   ],
   [
    "flat",
    "stone",
+   59
+  ],
+  [
+   "conical",
+   "stone",
+   53
+  ],
+  [
+   "gable",
+   "stone",
+   51
+  ],
+  [
+   "flat",
+   "plank",
+   47
+  ],
+  [
+   "gable",
+   "stone-base",
    45
   ],
   [
    "conical",
-   "stone",
-   39
+   "stone-base",
+   43
   ],
   [
    "conical",
-   "stone-base",
-   39
-  ],
-  [
-   "gable",
-   "stone",
+   "half-timber",
    38
   ],
   [
-   "gable",
-   "stone-base",
-   35
+   "flat",
+   "marble",
+   38
+  ],
+  [
+   "flat",
+   "none",
+   37
+  ],
+  [
+   "none",
+   "marble",
+   34
   ],
   [
    "flat",
@@ -536,14 +561,9 @@
    33
   ],
   [
-   "conical",
-   "half-timber",
+   "hip",
+   "stone",
    31
-  ],
-  [
-   "flat",
-   "none",
-   30
   ],
   [
    "none",
@@ -551,94 +571,74 @@
    30
   ],
   [
-   "flat",
-   "plank",
-   28
-  ],
-  [
-   "cross-gable",
-   "plank",
-   27
-  ],
-  [
    "conical",
    "plank",
-   25
-  ],
-  [
-   "flat",
-   "marble",
-   24
-  ],
-  [
-   "hip",
-   "plank",
-   20
-  ],
-  [
-   "hip",
-   "stone",
-   20
-  ],
-  [
-   "none",
-   "marble",
-   20
+   29
   ],
   [
    "cross-gable",
-   "log",
-   19
+   "plank",
+   29
   ],
   [
    "gable",
    "log",
-   19
+   29
+  ],
+  [
+   "hip",
+   "plank",
+   22
+  ],
+  [
+   "cross-gable",
+   "log",
+   21
   ],
   [
    "hip",
    "half-timber",
-   19
+   21
+  ],
+  [
+   "conical",
+   "marble",
+   20
   ],
   [
    "hip",
    "stone-base",
+   20
+  ],
+  [
+   "none",
+   "stone-base",
+   20
+  ],
+  [
+   "conical",
+   "timber",
    18
   ],
   [
    "none",
    "timber",
-   16
-  ],
-  [
-   "conical",
-   "marble",
-   15
+   18
   ],
   [
    "conical",
    "log",
-   14
-  ],
-  [
-   "conical",
-   "timber",
-   12
+   16
   ],
   [
    "none",
-   "stone-base",
+   "log",
    11
   ],
   [
    "cross-gable",
    "grausten",
    11
-  ],
-  [
-   "none",
-   "log",
-   9
   ],
   [
    "cross-gable",
@@ -649,6 +649,11 @@
    "none",
    "half-timber",
    8
+  ],
+  [
+   "flat",
+   "half-timber",
+   7
   ],
   [
    "gable",
@@ -657,8 +662,8 @@
   ],
   [
    "flat",
-   "half-timber",
-   6
+   "log",
+   5
   ],
   [
    "hip",
@@ -671,9 +676,14 @@
    5
   ],
   [
+   "hip",
+   "marble",
+   5
+  ],
+  [
    "flat",
-   "log",
-   4
+   "stone-base",
+   5
   ],
   [
    "hip",
@@ -691,18 +701,18 @@
    4
   ],
   [
+   "half-hip",
+   "stone-base",
+   4
+  ],
+  [
    "flat",
    "timber",
    4
   ],
   [
-   "hip",
+   "cross-gable",
    "marble",
-   4
-  ],
-  [
-   "flat",
-   "stone-base",
    4
   ],
   [
@@ -716,13 +726,8 @@
    3
   ],
   [
-   "half-hip",
-   "stone-base",
-   3
-  ],
-  [
-   "cross-gable",
-   "marble",
+   "conical",
+   "none",
    3
   ],
   [
@@ -746,19 +751,14 @@
    2
   ],
   [
+   "mixed",
+   "half-timber",
+   2
+  ],
+  [
    "half-hip",
    "log",
    2
-  ],
-  [
-   "conical",
-   "none",
-   2
-  ],
-  [
-   "mixed",
-   "half-timber",
-   1
   ],
   [
    "mixed",
@@ -770,186 +770,226 @@
   [
    "home",
    "irregular",
-   104
+   134
   ],
   [
    "defence",
    "irregular",
-   92
-  ],
-  [
-   "smithy",
-   "irregular",
-   61
+   110
   ],
   [
    "home",
    "none",
-   59
+   93
+  ],
+  [
+   "smithy",
+   "irregular",
+   76
   ],
   [
    "home",
    "rectangle",
+   53
+  ],
+  [
+   "decor",
+   "irregular",
+   46
+  ],
+  [
+   "tavern",
+   "irregular",
    44
   ],
   [
    "defence",
    "octagon/round",
-   37
-  ],
-  [
-   "longhouse",
-   "irregular",
-   37
-  ],
-  [
-   "decor",
-   "none",
-   36
-  ],
-  [
-   "tavern",
-   "irregular",
-   36
+   41
   ],
   [
    "home",
    "square",
-   35
+   40
   ],
   [
    "decor",
-   "irregular",
-   34
+   "none",
+   39
   ],
   [
    "defence",
    "T",
-   31
+   39
+  ],
+  [
+   "longhouse",
+   "irregular",
+   38
   ],
   [
    "home",
    "T",
-   27
+   34
+  ],
+  [
+   "home",
+   "L",
+   33
   ],
   [
    "barn",
    "irregular",
-   23
-  ],
-  [
-   "home",
-   "L",
-   23
-  ],
-  [
-   "longhouse",
-   "T",
-   20
+   27
   ],
   [
    "defence",
    "L",
-   20
+   25
+  ],
+  [
+   "decor",
+   "octagon/round",
+   25
   ],
   [
    "smithy",
    "T",
+   24
+  ],
+  [
+   "longhouse",
+   "T",
+   21
+  ],
+  [
+   "home",
+   "octagon/round",
+   20
+  ],
+  [
+   "smithy",
+   "rectangle",
    19
-  ],
-  [
-   "home",
-   "octagon/round",
-   16
-  ],
-  [
-   "defence",
-   "none",
-   15
-  ],
-  [
-   "smithy",
-   "rectangle",
-   14
-  ],
-  [
-   "tavern",
-   "rectangle",
-   14
-  ],
-  [
-   "smithy",
-   "octagon/round",
-   14
-  ],
-  [
-   "storage",
-   "irregular",
-   13
-  ],
-  [
-   "smithy",
-   "U/courtyard",
-   13
-  ],
-  [
-   "smithy",
-   "L",
-   13
-  ],
-  [
-   "tavern",
-   "T",
-   13
-  ],
-  [
-   "decor",
-   "octagon/round",
-   13
-  ],
-  [
-   "smithy",
-   "none",
-   13
-  ],
-  [
-   "decor",
-   "rectangle",
-   12
-  ],
-  [
-   "harbour",
-   "irregular",
-   12
-  ],
-  [
-   "longhouse",
-   "rectangle",
-   11
-  ],
-  [
-   "farm",
-   "irregular",
-   11
-  ],
-  [
-   "tavern",
-   "L",
-   10
   ],
   [
    "temple",
    "irregular",
-   10
+   18
   ],
   [
    "defence",
+   "none",
+   18
+  ],
+  [
+   "storage",
+   "irregular",
+   17
+  ],
+  [
+   "harbour",
+   "irregular",
+   16
+  ],
+  [
+   "smithy",
+   "octagon/round",
+   16
+  ],
+  [
+   "smithy",
    "U/courtyard",
-   10
+   15
+  ],
+  [
+   "smithy",
+   "L",
+   15
+  ],
+  [
+   "tavern",
+   "rectangle",
+   15
+  ],
+  [
+   "tavern",
+   "T",
+   15
+  ],
+  [
+   "decor",
+   "rectangle",
+   13
+  ],
+  [
+   "smithy",
+   "none",
+   13
+  ],
+  [
+   "home",
+   "long",
+   12
   ],
   [
    "home",
    "U/courtyard",
+   12
+  ],
+  [
+   "defence",
+   "U/courtyard",
+   12
+  ],
+  [
+   "longhouse",
+   "rectangle",
+   11
+  ],
+  [
+   "farm",
+   "irregular",
+   11
+  ],
+  [
+   "tavern",
+   "L",
+   11
+  ],
+  [
+   "farm",
+   "none",
+   10
+  ],
+  [
+   "defence",
+   "square",
+   10
+  ],
+  [
+   "tavern",
+   "octagon/round",
+   10
+  ],
+  [
+   "tavern",
+   "square",
+   10
+  ],
+  [
+   "storage",
+   "square",
+   10
+  ],
+  [
+   "defence",
+   "rectangle",
+   10
+  ],
+  [
+   "barn",
+   "rectangle",
    9
   ],
   [
@@ -958,8 +998,13 @@
    9
   ],
   [
+   "decor",
+   "L",
+   9
+  ],
+  [
    "tavern",
-   "octagon/round",
+   "U/courtyard",
    9
   ],
   [
@@ -968,33 +1013,23 @@
    9
   ],
   [
-   "defence",
-   "rectangle",
-   9
-  ],
-  [
-   "farm",
-   "none",
-   8
-  ],
-  [
    "decor",
-   "L",
-   8
-  ],
-  [
-   "tavern",
-   "U/courtyard",
-   8
-  ],
-  [
-   "tavern",
    "square",
+   8
+  ],
+  [
+   "barn",
+   "square",
+   8
+  ],
+  [
+   "smithy",
+   "long",
    8
   ],
   [
    "storage",
-   "square",
+   "long",
    8
   ],
   [
@@ -1003,8 +1038,13 @@
    7
   ],
   [
-   "barn",
-   "rectangle",
+   "farm",
+   "T",
+   7
+  ],
+  [
+   "decor",
+   "long",
    7
   ],
   [
@@ -1013,126 +1053,116 @@
    7
   ],
   [
+   "market",
+   "irregular",
+   7
+  ],
+  [
    "smithy",
    "square",
    7
   ],
   [
-   "barn",
-   "square",
-   6
-  ],
-  [
-   "farm",
-   "T",
-   6
-  ],
-  [
-   "defence",
-   "square",
-   6
-  ],
-  [
-   "smithy",
-   "long",
-   6
-  ],
-  [
-   "market",
-   "irregular",
-   6
-  ],
-  [
-   "defence",
-   "long",
-   6
-  ],
-  [
-   "tavern",
-   "cross",
-   5
-  ],
-  [
-   "barn",
-   "T",
-   5
-  ],
-  [
-   "harbour",
-   "U/courtyard",
-   5
-  ],
-  [
-   "decor",
-   "long",
-   5
+   "temple",
+   "rectangle",
+   7
   ]
  ],
  "category_x_roof": [
   [
    "home",
-   "gable",
-   89
+   "none",
+   124
   ],
   [
    "home",
-   "none",
-   82
+   "gable",
+   106
   ],
   [
    "home",
    "cross-gable",
-   66
+   76
   ],
   [
    "decor",
    "none",
-   59
-  ],
-  [
-   "defence",
-   "flat",
-   52
-  ],
-  [
-   "defence",
-   "conical",
-   45
-  ],
-  [
-   "defence",
-   "none",
-   44
-  ],
-  [
-   "longhouse",
-   "cross-gable",
-   41
+   75
   ],
   [
    "home",
    "flat",
-   40
+   67
+  ],
+  [
+   "defence",
+   "flat",
+   62
+  ],
+  [
+   "defence",
+   "conical",
+   54
+  ],
+  [
+   "defence",
+   "none",
+   53
   ],
   [
    "smithy",
    "cross-gable",
-   36
+   47
   ],
   [
    "defence",
    "cross-gable",
-   35
+   45
+  ],
+  [
+   "longhouse",
+   "cross-gable",
+   43
+  ],
+  [
+   "tavern",
+   "gable",
+   37
   ],
   [
    "smithy",
    "none",
-   33
+   37
   ],
   [
    "smithy",
    "flat",
+   35
+  ],
+  [
+   "decor",
+   "conical",
+   33
+  ],
+  [
+   "home",
+   "hip",
    32
+  ],
+  [
+   "decor",
+   "flat",
+   31
+  ],
+  [
+   "smithy",
+   "conical",
+   31
+  ],
+  [
+   "defence",
+   "gable",
+   30
   ],
   [
    "longhouse",
@@ -1140,83 +1170,98 @@
    29
   ],
   [
-   "defence",
+   "smithy",
    "gable",
+   29
+  ],
+  [
+   "tavern",
+   "cross-gable",
+   29
+  ],
+  [
+   "defence",
+   "hip",
    28
   ],
   [
-   "tavern",
-   "gable",
-   27
-  ],
-  [
    "home",
-   "hip",
-   27
-  ],
-  [
-   "tavern",
-   "cross-gable",
+   "conical",
    26
   ],
   [
-   "decor",
-   "flat",
-   24
-  ],
-  [
-   "decor",
+   "tavern",
    "conical",
-   24
-  ],
-  [
-   "smithy",
-   "conical",
-   23
-  ],
-  [
-   "smithy",
-   "gable",
    22
   ],
   [
-   "defence",
-   "hip",
-   21
-  ],
-  [
    "tavern",
-   "conical",
-   20
-  ],
-  [
-   "home",
-   "conical",
+   "none",
    18
   ],
   [
+   "barn",
+   "cross-gable",
+   17
+  ],
+  [
    "storage",
-   "conical",
-   12
+   "flat",
+   15
   ],
   [
    "smithy",
    "hip",
-   12
+   14
+  ],
+  [
+   "farm",
+   "cross-gable",
+   14
   ],
   [
    "barn",
-   "cross-gable",
+   "gable",
+   13
+  ],
+  [
+   "storage",
+   "gable",
+   13
+  ],
+  [
+   "storage",
+   "conical",
    12
   ],
   [
    "barn",
    "none",
-   11
+   12
   ],
   [
    "barn",
    "conical",
+   12
+  ],
+  [
+   "harbour",
+   "gable",
+   12
+  ],
+  [
+   "harbour",
+   "conical",
+   12
+  ],
+  [
+   "temple",
+   "cross-gable",
+   12
+  ],
+  [
+   "harbour",
+   "cross-gable",
    11
   ],
   [
@@ -1225,17 +1270,7 @@
    11
   ],
   [
-   "harbour",
-   "conical",
-   11
-  ],
-  [
-   "tavern",
-   "none",
-   11
-  ],
-  [
-   "storage",
+   "decor",
    "gable",
    11
   ],
@@ -1246,12 +1281,7 @@
   ],
   [
    "farm",
-   "cross-gable",
-   10
-  ],
-  [
-   "harbour",
-   "gable",
+   "none",
    10
   ],
   [
@@ -1260,39 +1290,29 @@
    10
   ],
   [
-   "farm",
+   "storage",
    "none",
-   9
+   10
   ],
   [
-   "barn",
-   "gable",
-   9
-  ],
-  [
-   "harbour",
-   "cross-gable",
-   9
-  ],
-  [
-   "decor",
+   "temple",
    "gable",
    9
   ],
   [
    "temple",
-   "cross-gable",
+   "none",
    9
   ],
   [
    "barn",
    "hip",
-   7
+   8
   ],
   [
-   "storage",
-   "flat",
-   7
+   "harbour",
+   "none",
+   8
   ],
   [
    "workshop",
@@ -1300,9 +1320,9 @@
    7
   ],
   [
-   "temple",
-   "gable",
-   6
+   "decor",
+   "cross-gable",
+   7
   ],
   [
    "temple",
@@ -1330,23 +1350,13 @@
    5
   ],
   [
-   "decor",
-   "cross-gable",
-   5
-  ],
-  [
-   "storage",
-   "none",
+   "longhouse",
+   "conical",
    5
   ],
   [
    "barn",
    "flat",
-   5
-  ],
-  [
-   "harbour",
-   "none",
    5
   ],
   [
@@ -1358,137 +1368,157 @@
    "tavern",
    "flat",
    4
-  ],
-  [
-   "temple",
-   "none",
-   4
-  ],
-  [
-   "longhouse",
-   "hip",
-   4
   ]
  ],
  "culture_x_roof": [
   [
    "norse",
    "gable",
-   222
+   260
   ],
   [
    "norse",
    "cross-gable",
-   208
+   247
   ],
   [
    "other",
    "none",
-   173
+   236
   ],
   [
    "norse",
    "conical",
-   156
+   192
   ],
   [
    "other",
    "flat",
-   129
-  ],
-  [
-   "norse",
-   "hip",
-   76
+   161
   ],
   [
    "norse",
    "none",
-   70
+   90
+  ],
+  [
+   "norse",
+   "hip",
+   87
   ],
   [
    "castle-medieval",
    "cross-gable",
-   39
+   50
   ],
   [
    "norse",
    "flat",
-   25
+   34
   ],
   [
    "castle-medieval",
    "gable",
+   30
+  ],
+  [
+   "castle-medieval",
+   "flat",
+   28
+  ],
+  [
+   "castle-medieval",
+   "none",
    24
   ],
   [
    "castle-medieval",
-   "none",
-   21
-  ],
-  [
-   "castle-medieval",
-   "flat",
-   21
-  ],
-  [
-   "castle-medieval",
    "hip",
-   14
+   19
+  ],
+  [
+   "other",
+   "gable",
+   12
   ],
   [
    "norse",
    "half-hip",
-   10
-  ],
-  [
-   "other",
-   "cross-gable",
-   10
+   11
   ],
   [
    "east-asian",
    "cross-gable",
-   9
+   10
   ],
   [
    "castle-medieval",
    "conical",
-   9
+   10
   ],
   [
    "other",
-   "gable",
-   7
-  ],
-  [
-   "other",
-   "conical",
-   7
+   "cross-gable",
+   10
   ],
   [
    "east-asian",
    "none",
-   6
+   8
   ],
   [
-   "norse",
-   "mixed",
-   4
-  ],
-  [
-   "east-asian",
-   "gable",
-   4
+   "other",
+   "conical",
+   8
   ],
   [
    "dwarven",
-   "cross-gable",
-   3
+   "flat",
+   8
   ],
   [
    "celtic",
    "conical",
+   5
+  ],
+  [
+   "norse",
+   "mixed",
+   5
+  ],
+  [
+   "east-asian",
+   "gable",
+   4
+  ],
+  [
+   "elven",
+   "none",
+   4
+  ],
+  [
+   "dwarven",
+   "conical",
+   4
+  ],
+  [
+   "hobbit",
+   "cross-gable",
+   3
+  ],
+  [
+   "dwarven",
+   "cross-gable",
+   3
+  ],
+  [
+   "east-asian",
+   "hip",
+   3
+  ],
+  [
+   "dwarven",
+   "none",
    3
   ],
   [
@@ -1497,28 +1527,23 @@
    3
   ],
   [
-   "dwarven",
-   "conical",
+   "elven",
+   "flat",
    3
   ],
   [
-   "hobbit",
-   "cross-gable",
+   "dwarven",
+   "hip",
+   2
+  ],
+  [
+   "elven",
+   "conical",
    2
   ],
   [
    "east-asian",
-   "hip",
-   2
-  ],
-  [
-   "dwarven",
-   "hip",
-   2
-  ],
-  [
-   "dwarven",
-   "flat",
+   "conical",
    2
   ],
   [
@@ -1537,11 +1562,6 @@
    1
   ],
   [
-   "dwarven",
-   "none",
-   1
-  ],
-  [
    "celtic",
    "gable",
    1
@@ -1549,16 +1569,6 @@
   [
    "elven",
    "cross-gable",
-   1
-  ],
-  [
-   "elven",
-   "none",
-   1
-  ],
-  [
-   "elven",
-   "conical",
    1
   ],
   [
@@ -1577,13 +1587,13 @@
    1
   ],
   [
-   "east-asian",
-   "conical",
+   "middle-eastern",
+   "gable",
    1
   ],
   [
-   "middle-eastern",
-   "gable",
+   "elven",
+   "hip",
    1
   ]
  ],
@@ -1591,17 +1601,17 @@
   [
    "Black Forest",
    "stone",
-   151
+   199
   ],
   [
    "Meadows",
    "half-timber",
-   144
+   158
   ],
   [
    "Meadows",
    "plank",
-   110
+   148
   ],
   [
    "Ashlands",
@@ -1609,8 +1619,18 @@
    77
   ],
   [
+   "Mistlands",
+   "marble",
+   65
+  ],
+  [
    "Ashlands",
    "plank",
+   61
+  ],
+  [
+   "Meadows",
+   "none",
    61
   ],
   [
@@ -1622,6 +1642,26 @@
    "Ashlands",
    "half-timber",
    61
+  ],
+  [
+   "Swamp",
+   "stone",
+   59
+  ],
+  [
+   "Black Forest",
+   "stone-base",
+   51
+  ],
+  [
+   "Swamp",
+   "stone-base",
+   45
+  ],
+  [
+   "Black Forest",
+   "log",
+   45
   ],
   [
    "Ashlands",
@@ -1629,7 +1669,7 @@
    43
   ],
   [
-   "Black Forest",
+   "Meadows",
    "stone-base",
    41
   ],
@@ -1639,29 +1679,9 @@
    41
   ],
   [
-   "Meadows",
-   "none",
-   36
-  ],
-  [
    "Swamp",
-   "stone",
-   36
-  ],
-  [
-   "Mistlands",
-   "marble",
-   36
-  ],
-  [
-   "Black Forest",
-   "log",
-   34
-  ],
-  [
-   "Swamp",
-   "stone-base",
-   33
+   "half-timber",
+   39
   ],
   [
    "Ashlands",
@@ -1669,33 +1689,63 @@
    32
   ],
   [
+   "Swamp",
+   "plank",
+   30
+  ],
+  [
    "Ashlands",
    "timber",
    28
   ],
   [
-   "Meadows",
-   "stone-base",
-   27
-  ],
-  [
-   "Swamp",
-   "half-timber",
-   27
-  ],
-  [
-   "Swamp",
-   "plank",
-   25
-  ],
-  [
    "Black Forest",
    "plank",
-   15
+   22
+  ],
+  [
+   "Meadows",
+   "stone",
+   16
+  ],
+  [
+   "Mountain",
+   "plank",
+   16
   ],
   [
    "Meadows",
    "log",
+   15
+  ],
+  [
+   "Swamp",
+   "log",
+   14
+  ],
+  [
+   "Mistlands",
+   "plank",
+   14
+  ],
+  [
+   "Swamp",
+   "timber",
+   14
+  ],
+  [
+   "Mountain",
+   "stone",
+   13
+  ],
+  [
+   "Black Forest",
+   "half-timber",
+   12
+  ],
+  [
+   "Meadows",
+   "timber",
    12
   ],
   [
@@ -1709,49 +1759,24 @@
    11
   ],
   [
-   "Swamp",
-   "log",
+   "Mountain",
+   "stone-base",
    11
-  ],
-  [
-   "Meadows",
-   "timber",
-   11
-  ],
-  [
-   "Black Forest",
-   "half-timber",
-   10
-  ],
-  [
-   "Meadows",
-   "stone",
-   10
   ],
   [
    "Mistlands",
-   "plank",
-   10
-  ],
-  [
-   "Mountain",
    "stone-base",
-   8
+   9
   ],
   [
    "Swamp",
-   "timber",
+   "none",
    8
-  ],
-  [
-   "Mountain",
-   "stone",
-   7
   ],
   [
    "Black Forest",
    "none",
-   7
+   8
   ],
   [
    "Mistlands",
@@ -1760,13 +1785,13 @@
   ],
   [
    "Mountain",
-   "plank",
+   "half-timber",
    6
   ],
   [
-   "Swamp",
-   "none",
-   5
+   "Meadows",
+   "marble",
+   6
   ],
   [
    "Mistlands",
@@ -1774,8 +1799,8 @@
    5
   ],
   [
-   "Mistlands",
-   "stone-base",
+   "Mountain",
+   "none",
    4
   ],
   [
@@ -1785,7 +1810,7 @@
   ],
   [
    "Mountain",
-   "half-timber",
+   "timber",
    3
   ],
   [
@@ -1794,12 +1819,7 @@
    2
   ],
   [
-   "Mountain",
-   "timber",
-   2
-  ],
-  [
-   "Meadows",
+   "Swamp",
    "marble",
    2
   ],
@@ -1809,18 +1829,13 @@
    1
   ],
   [
-   "Swamp",
-   "marble",
+   "Meadows",
+   "grausten",
    1
   ],
   [
    "Mountain",
-   "none",
-   1
-  ],
-  [
-   "Meadows",
-   "grausten",
+   "marble",
    1
   ],
   [

@@ -112,7 +112,7 @@ function polygons(pieces, opts = {}) {
       const lit = Math.abs(dot(nrm, light));
       const k = 0.55 + 0.6 * lit;
       const depth = cam.reduce((s, c) => s + c[2], 0) / cam.length;
-      polys.push({ pts: cam.map(c => [c[0], c[1]]), depth, fill: shade(info.color, k),
+      polys.push({ pts: cam.map(c => [c[0], c[1]]), depth, fill: shade(p.repaired ? (opts.repairColor || '#1fa595') : info.color, k),
         alpha: info.mat === 'glass' ? 0.45 : 1 });
       void cn;
     }

@@ -86,6 +86,9 @@ td.n { text-align: right; font-family: var(--mono); font-variant-numeric: tabula
 .notes { margin: 0; padding-left: 18px; color: var(--muted); font-size: 13px; }
 .status { font-size: 13px; color: var(--muted); min-height: 1.4em; }
 .hidden { display: none !important; }
+fieldset.rules { border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; display: flex; flex-direction: column; gap: 6px; }
+fieldset.rules label { flex-direction: row; align-items: center; gap: 8px; color: var(--ink); font-size: 13px; }
+legend { font-size: 13px; color: var(--muted); padding: 0 4px; }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
 </style>
 </head>
@@ -97,6 +100,7 @@ td.n { text-align: right; font-family: var(--mono); font-variant-numeric: tabula
 <div class="tabs" role="tablist">
   <button class="tab" id="tab-gen" role="tab" aria-selected="true">New building</button>
   <button class="tab" id="tab-dec" role="tab" aria-selected="false">Decorate a blueprint</button>
+  <button class="tab" id="tab-rep" role="tab" aria-selected="false">Repair a blueprint</button>
 </div>
 <main>
   <section class="panel" id="panel-gen" aria-label="Request">
@@ -137,6 +141,20 @@ td.n { text-align: right; font-family: var(--mono); font-variant-numeric: tabula
     </div>
     <div class="row"><button class="primary" id="dgo" disabled>Decorate</button></div>
     <p class="hint">Furniture goes against real walls facing in, tables and fires in the middle, banners high on walls, all from where the corpus puts them. Structure is never changed.</p>
+  </section>
+
+  <section class="panel hidden" id="panel-rep" aria-label="Repair">
+    <label for="rpfile">Blueprint file (.blueprint from PlanBuild)<input id="rpfile" type="file" accept=".blueprint,.txt"></label>
+    <label for="rpconf">Only repairs at least this sure: <span id="rpconfv">60 %</span><input id="rpconf" type="range" min="50" max="95" step="5" value="60"></label>
+    <fieldset class="rules"><legend>Ways to find what is missing</legend>
+      <label><input type="checkbox" id="rp-rows" checked> Gaps in a row (a wall or roof piece missing between two)</label>
+      <label><input type="checkbox" id="rp-stacks" checked> Gaps in a stack (a missing course or post)</label>
+      <label><input type="checkbox" id="rp-floors" checked> Holes in a floor</label>
+      <label><input type="checkbox" id="rp-mirror" checked> Mirror the other half (builds that are mostly symmetric)</label>
+      <label><input type="checkbox" id="rp-pattern" checked> Patterns of this build (neighbours each kind of piece nearly always has)</label>
+    </fieldset>
+    <div class="row"><button class="primary" id="rpgo" disabled>Repair</button></div>
+    <p class="hint">Added pieces show in teal. Each is a guess from the rest of the build; look them over before you take the file into the game. Tested on damaged builds: on symmetric builds it put back about a third of a missing side, and most of what it adds is right.</p>
   </section>
 
   <section class="stage" aria-label="Result">
@@ -271,6 +289,28 @@ $('dgo').onclick = () => {
   mode = 'dec'; show();
 };
 
+// ---------- repair an uploaded blueprint
+let repairBp = null;
+$('rpconf').oninput = () => { $('rpconfv').textContent = $('rpconf').value + ' %'; };
+$('rpfile').onchange = async e => {
+  const f = e.target.files[0]; if (!f) return;
+  repairBp = VHBlueprint.parse(await f.text());
+  $('rpgo').disabled = !repairBp.pieces.length;
+  current = { d: { meta: repairBp.meta, pieces: repairBp.pieces, notes: [`Loaded ${repairBp.pieces.length} pieces.`] }, ev: evaluate({ pieces: repairBp.pieces }, $('dbiome').value) };
+  mode = 'rep'; show();
+};
+$('rpgo').onclick = () => {
+  if (!repairBp) return;
+  const rules = {}; for (const k of ['rows', 'stacks', 'floors', 'mirror', 'pattern']) rules[k] = $('rp-' + k).checked;
+  const res = VHRepair.repair(repairBp.pieces, { minConfidence: +$('rpconf').value / 100, rules });
+  const notes = [`${res.added.length} pieces added to ${repairBp.pieces.length}.`];
+  for (const [k, n] of Object.entries(res.summary)) notes.push(`${n}: ${k}`);
+  if (res.mirror) notes.push(`Best mirror line: ${res.mirror.axis} = ${res.mirror.c}, ${Math.round(res.mirror.score * 100)} % of the pieces that can be checked have their mirror${res.mirror.score < 0.86 ? ' (too few to mirror)' : ''}.`);
+  const meta = { ...repairBp.meta, Name: `${repairBp.meta.Name || 'design'} repaired` };
+  current = { d: { meta, pieces: res.pieces, snaps: repairBp.snaps, notes }, ev: evaluate({ pieces: res.pieces }, $('dbiome').value) };
+  mode = 'rep'; show();
+};
+
 // ---------- drawing
 function ground(pieces) { const ys = pieces.map(p => p.y).sort((a, b) => a - b); return ys.length ? ys[Math.floor(ys.length * 0.05)] : 0; }
 function drawMain() {
@@ -295,8 +335,9 @@ function show() {
   }
   const counts = {}; for (const p of d.pieces) counts[p.name] = (counts[p.name] || 0) + 1;
   const furn = d.pieces.filter(p => !VHPieces.piece(p.name).structural).length;
+  const fixed = d.pieces.filter(p => p.repaired).length;
   $('facts').innerHTML = [
-    [d.pieces.length, 'pieces'], [Object.keys(counts).length, 'kinds of piece'], [furn, 'furniture and decor'],
+    [d.pieces.length, 'pieces'], ...(fixed ? [[fixed, 'pieces added by repair']] : []), [Object.keys(counts).length, 'kinds of piece'], [furn, 'furniture and decor'],
     [Math.round(ev.score * 100) + ' %', 'like your keepers'], [ev.pass + ' / ' + ev.checks.length, 'checks passed'],
   ].map(([b, s]) => `<div class="fact"><b>${b}</b><span>${s}</span></div>`).join('');
   $('checks').innerHTML = ev.checks.map(c => `<span class="pill ${c.ok ? 'ok' : 'no'}" title="${c.detail}">${c.ok ? 'OK' : 'Fix'}: ${c.check}, ${c.detail}</span>`).join('');
@@ -334,11 +375,11 @@ $('copy').onclick = async () => {
 
 // ---------- tabs
 function tab(which) {
-  $('tab-gen').setAttribute('aria-selected', which === 'gen'); $('tab-dec').setAttribute('aria-selected', which === 'dec');
-  $('panel-gen').classList.toggle('hidden', which !== 'gen'); $('panel-dec').classList.toggle('hidden', which !== 'dec');
+  for (const t of ['gen', 'dec', 'rep']) { $('tab-' + t).setAttribute('aria-selected', which === t); $('panel-' + t).classList.toggle('hidden', which !== t); }
 }
 $('tab-gen').onclick = () => { tab('gen'); build(); };
 $('tab-dec').onclick = () => tab('dec');
+$('tab-rep').onclick = () => tab('rep');
 
 apply(readLocal($('prompt').value));
 build();

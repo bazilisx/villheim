@@ -57,6 +57,7 @@ namespace Villheim.Logic
         public static ConfigEntry<bool> SmithMakesGear;
         public static ConfigEntry<bool> Outposts;
         public static ConfigEntry<bool> Trails;
+        public static ConfigEntry<bool> TrailSigns;
         public static ConfigEntry<string> OutpostGear;
         public static ConfigEntry<bool> VillageEvents;
         public static ConfigEntry<bool> Caravans;
@@ -162,6 +163,9 @@ namespace Villheim.Logic
             Trails = Admin(config, life, "Trails", true,
                 "With WorldLife on, villages plan a dirt trail to their outpost and to their nearest neighbour within " +
                 "2,500 m, painted on the ground near you as you walk it.");
+            TrailSigns = Admin(config, life, "TrailSigns", true,
+                "With Trails on, wooden signposts where a trail leaves a village (where it goes and how far) and halfway " +
+                "along trails longer than 600 m.");
             VisitorChancePerDay = Admin(config, life, "VisitorChancePerDay", 0.5f,
                 "Chance that a pedlar or pilgrim comes to a village on a day you spend there (0 to 1).");
             DaysBetweenVisitors = Admin(config, life, "DaysBetweenVisitors", 1f,

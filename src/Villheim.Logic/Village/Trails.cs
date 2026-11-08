@@ -285,6 +285,157 @@ namespace Villheim.Logic.Village
             hearth.Set(KeyOutpostTrail2, "");
         }
 
+        // ---------------------------------------------------------------- signposts (host)
+
+        private static readonly int KeyRoadSign = "villheim_roadsign".GetStableHashCode();
+        private static readonly HashSet<int> SignsChecked = new HashSet<int>();
+
+        /// <summary>
+        /// Signposts along the trails, after Living Factions' road posts: where a trail leaves a village (the name of
+        /// the place it goes to and how far), and halfway along a trail longer than 600 m (both ends). Each is a pair
+        /// of the game's wooden signs back to back, standing on the ground 2.2 m to the side of the trail. Made on the
+        /// host when the spot is within 60 m of the player, once (the signs carry a mark, so they are not made twice).
+        /// </summary>
+        public static void Signposts(Vector3 player)
+        {
+            if (!On || !(LogicConfig.TrailSigns?.Value ?? true) || ZNetScene.instance.GetPrefab("sign") == null)
+            {
+                return;
+            }
+
+            float villageRadius = VillheimConfig.VillageRadius.Value + 6f;
+            foreach (ZDO hearth in Relations.AllHearths().ToList())
+            {
+                string home = hearth.GetString(Keys.Name, "a village");
+                foreach (int key in new[] { KeyOutpostTrail, KeyOutpostTrail2, KeyNeighbourTrail })
+                {
+                    List<Vector3> points = Load(hearth, key);
+                    if (points.Count < 3)
+                    {
+                        continue;
+                    }
+
+                    float length = Caravans.Length(points);
+                    string there = key == KeyNeighbourTrail ? NeighbourName(hearth, points[points.Count - 1]) : $"{home}'s camp";
+                    // Out of the village, a few metres past its edge.
+                    float leave = 0f;
+                    while (leave < length && Utils.DistanceXZ(Caravans.PointAt(points, leave), hearth.GetPosition()) < villageRadius)
+                    {
+                        leave += 4f;
+                    }
+
+                    var posts = new List<(float At, string Ahead, string Behind)>
+                    {
+                        (leave, $"{there}\n{length - leave:0} m", home),
+                    };
+                    if (length > 600f)
+                    {
+                        posts.Add((length / 2f, $"{there}\n{length / 2f:0} m", $"{home}\n{length / 2f:0} m"));
+                    }
+
+                    if (key == KeyNeighbourTrail)
+                    {
+                        // The other end gets its own sign out of the neighbour's village.
+                        float back = length;
+                        while (back > 0f && Utils.DistanceXZ(Caravans.PointAt(points, back), points[points.Count - 1]) < villageRadius)
+                        {
+                            back -= 4f;
+                        }
+
+                        posts.Add((back, $"{home}\n{back:0} m", there));
+                    }
+
+                    for (int i = 0; i < posts.Count; i++)
+                    {
+                        (float at, string ahead, string behind) = posts[i];
+                        Vector3 spot = Caravans.PointAt(points, at);
+                        int id = unchecked(hearth.GetInt(Keys.VillageId) * 31 + key * 7 + i);
+                        if (at <= 0f || at >= length || Utils.DistanceXZ(spot, player) > 60f || SignsChecked.Contains(id) ||
+                            !ZNetScene.instance.IsAreaReady(spot))
+                        {
+                            continue;
+                        }
+
+                        SignsChecked.Add(id);
+                        // Toward where the trail goes from here.
+                        Vector3 along = (Caravans.PointAt(points, Mathf.Min(length, at + 6f)) - Caravans.PointAt(points, Mathf.Max(0f, at - 6f))).Horizontal();
+                        if (along.sqrMagnitude < 0.01f)
+                        {
+                            continue;
+                        }
+
+                        along.Normalize();
+                        if (!SignThere(id, spot, 8f))
+                        {
+                            PutPost(spot + Vector3.Cross(Vector3.up, along) * 2.2f, along, ahead, behind, id);
+                        }
+                    }
+                }
+            }
+        }
+
+        private static string NeighbourName(ZDO hearth, Vector3 end)
+        {
+            ZDO other = Relations.AllHearths().Where(z => z != hearth).OrderBy(z => Utils.DistanceXZ(z.GetPosition(), end)).FirstOrDefault();
+            return other != null && Utils.DistanceXZ(other.GetPosition(), end) < 60f ? other.GetString(Keys.Name, "the next village") : "the next village";
+        }
+
+        private static bool SignThere(int id, Vector3 spot, float radius)
+        {
+            var pieces = new List<Piece>();
+            Piece.GetAllPiecesInRadius(spot, radius, pieces);
+            return pieces.Any(p => p != null && p.m_nview != null && p.m_nview.IsValid() && p.m_nview.GetZDO().GetInt(KeyRoadSign) == id);
+        }
+
+        /// <summary>Two signs back to back: one read by someone walking on (<paramref name="ahead"/>), one by someone coming back.</summary>
+        private static void PutPost(Vector3 at, Vector3 along, string ahead, string behind, int id)
+        {
+            if (!ZoneSystem.instance.GetGroundHeight(at, out float ground))
+            {
+                return;
+            }
+
+            at.y = ground;
+            GameObject prefab = ZNetScene.instance.GetPrefab("sign");
+            foreach ((Vector3 facing, string text) in new[] { (along, ahead), (-along, behind) })
+            {
+                // A sign's text is on its back face (as the gallery's signs): turned along the trail, it reads for
+                // someone walking that way.
+                Quaternion rotation = Quaternion.LookRotation(facing);
+                GameObject sign = Object.Instantiate(prefab, at + facing * 0.03f, rotation);
+                Bounds? bounds = null;
+                foreach (Renderer renderer in sign.GetComponentsInChildren<Renderer>())
+                {
+                    if (bounds.HasValue)
+                    {
+                        Bounds b = bounds.Value;
+                        b.Encapsulate(renderer.bounds);
+                        bounds = b;
+                    }
+                    else
+                    {
+                        bounds = renderer.bounds;
+                    }
+                }
+
+                if (bounds.HasValue)
+                {
+                    sign.transform.position += Vector3.up * (ground - bounds.Value.min.y);
+                }
+
+                ZNetView view = sign.GetComponent<ZNetView>();
+                if (view != null && view.IsValid())
+                {
+                    view.GetZDO().SetPosition(sign.transform.position);
+                    view.GetZDO().Set(KeyRoadSign, id);
+                    view.GetZDO().Set(ZDOVars.s_text, text.Replace("\\n", "\n"));
+                    sign.GetComponent<Sign>()?.UpdateText();
+                }
+            }
+
+            VillheimPlugin.Log.LogInfo($"A signpost at {at}: {ahead.Replace("\\n", " ")} / {behind.Replace("\\n", " ")}.");
+        }
+
         public static string Describe(VillageHearth hearth)
         {
             int outpost = Load(hearth.Zdo, KeyOutpostTrail).Count + Load(hearth.Zdo, KeyOutpostTrail2).Count;
@@ -303,6 +454,7 @@ namespace Villheim.Logic.Village
             }
 
             ForgetOutposts(hearth.Zdo);
+            SignsChecked.Clear();
             hearth.Zdo.Set(KeyNeighbourTrail, "");
             hearth.Zdo.Set(KeyPlannedDay, -1);
             bool was = LogicConfig.WorldLife.Value;

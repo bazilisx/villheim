@@ -98,6 +98,7 @@ namespace Villheim.Logic.Village
                 MaybeMakeCamps(player.transform.position);
                 Outposts.EnsureCamps(player.transform.position);
                 Daughters.EnsureHearths(player.transform.position);
+                Trails.Signposts(player.transform.position);
             }
         }
 

@@ -20,6 +20,8 @@ namespace Villheim.Logic
         public static ConfigEntry<float> FenceWallSink;
         public static ConfigEntry<bool> AnimalPens;
         public static ConfigEntry<string> MapTablePrefab;
+        public static ConfigEntry<string> MapTableProp;
+        public static ConfigEntry<string> DecorProps;
         public static ConfigEntry<float> TestVillageFrameMs;
         public static ConfigEntry<int> StartingStock;
         public static ConfigEntry<float> FoodHealing;
@@ -304,6 +306,9 @@ namespace Villheim.Logic
                 "How much of the hamlet's fence goes into the ground (0.7: seven tenths, a low fence).");
             FenceWallSink = Admin(config, work, "FenceWallSink", 0.5f,
                 "How much of the village's stake wall goes into the ground (0.5: half). Gates are pairs of wood gates.");
+            DecorProps = Admin(config, work, "DecorProps", "Hildir_camp:tent",
+                "Models from locations a village puts up as decor on the outer ring by the hearth (D-047), as location:child " +
+                "separated by commas: Hildir's tents that flutter in the wind by default. 'vh props <location>' lists names.");
             AnimalPens = Admin(config, work, "AnimalPens", true,
                 "Farm animals are kept in a pen of wood fence with a gate, built by the farm before the first animal comes.");
             StartingStock = Admin(config, work, "StartingStock", 0,
@@ -773,6 +778,10 @@ namespace Villheim.Logic
             MapTablePrefab = Admin(config, know, "MapTablePrefab", "piece_cartographytable",
                 "The piece used for the village's map table. Vanilla has only the cartography table; Hildir's small map " +
                 "table is part of her camp and is not a piece (mods add one as hildir_maptable_coe).");
+            MapTableProp = Admin(config, know, "MapTableProp", "Hildir_camp:map",
+                "The village's map table copied from a location's own model (D-047), as location:child, the child found by " +
+                "the start of its name. Hildir's small map on a stool by default. 'vh props Hildir_camp' lists the names. " +
+                "Empty, or not found: MapTablePrefab is used.");
         }
 
         /// <summary>Sections "5d - Cultures" and "5e - Biome defenders".</summary>

@@ -29,9 +29,11 @@ namespace Villheim.Logic.Village
 
         private static int FromStage => LogicConfig.MapTableFromStage != null ? LogicConfig.MapTableFromStage.Value : 2;
 
-        private static string Prefab => string.IsNullOrWhiteSpace(LogicConfig.MapTablePrefab?.Value)
-            ? "piece_cartographytable"
-            : LogicConfig.MapTablePrefab.Value.Trim();
+        /// <summary>Hildir's small map table copied from her camp (MapTableProp, Props), else MapTablePrefab.</summary>
+        private static string Prefab => Props.Get(LogicConfig.MapTableProp?.Value, true) ??
+                                        (string.IsNullOrWhiteSpace(LogicConfig.MapTablePrefab?.Value)
+                                            ? "piece_cartographytable"
+                                            : LogicConfig.MapTablePrefab.Value.Trim());
 
         /// <summary>Kept for the knowledge tick, which used to put the table down: the builder makes it now (Job).</summary>
         public static void Ensure(VillageHearth hearth, VillageState state)

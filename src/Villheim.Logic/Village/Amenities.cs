@@ -212,9 +212,27 @@ namespace Villheim.Logic.Village
                    MapTables.Job(hearth, state);
         }
 
+        /// <summary>
+        /// Decor copied from locations (DecorProps, Props): the first on the outer ring once three buildings stand, the
+        /// next once five do, and so on.
+        /// </summary>
+        private static IEnumerable<Entry> Decor()
+        {
+            int i = 0;
+            foreach (string spec in Props.DecorSpecs())
+            {
+                string prefab = Props.Get(spec, false);
+                if (prefab != null)
+                {
+                    yield return new Entry { Prefab = prefab, Name = "tent", Slot = i % 2 == 0 ? 0 : 1, Radius = OuterRing + 3f * (i / 2), MinBuildings = 3 + 2 * i };
+                    i++;
+                }
+            }
+        }
+
         private static Job Outside(VillageHearth hearth, VillageState state, bool essential, bool onlyHearth)
         {
-            foreach (Entry entry in Entries)
+            foreach (Entry entry in essential ? Entries : Entries.Concat(Decor()))
             {
                 if (entry.Essential != essential || (entry.Slot < 0) != onlyHearth || state.Plots.Count < entry.MinBuildings ||
                     (entry.NeedsHub && !state.Plots.Any(p => p.Role == nameof(Designs.Role.Hub))))

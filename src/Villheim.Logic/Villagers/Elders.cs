@@ -115,6 +115,7 @@ namespace Villheim.Logic.Villagers
             }
 
             child.Zdo.Set(Personality.KeyHomeland, Personality.Homeland(parents[0]));
+            child.Zdo.Set(Cultures.KeyVillager, Cultures.OfVillager(parents[0]));
             child.Zdo.Set(Personality.KeyHobby, Personality.Hobby(parents[parents.Count - 1]));
         }
 

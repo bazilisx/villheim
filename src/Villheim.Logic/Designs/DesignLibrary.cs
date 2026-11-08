@@ -3,6 +3,8 @@ using System.Linq;
 using System.Globalization;
 using UnityEngine;
 
+using Villheim.Logic.Village;
+
 namespace Villheim.Logic.Designs
 {
     /// <summary>
@@ -226,19 +228,23 @@ namespace Villheim.Logic.Designs
         /// Level 1 blueprints for this role and biome. A blueprint with no biome goes anywhere its materials allow.
         /// Blueprints weigh twice as much as copied locations: someone picked them for a village.
         /// </summary>
-        private static void AddBlueprints(List<Design> pool, Heightmap.Biome biome, Role role)
+        private static void AddBlueprints(List<Design> pool, Heightmap.Biome biome, Role role, string culture = null)
         {
+            // A blueprint tagged with a culture (villheim: culture=slavic) goes only to villages of that culture, and
+            // weighs twice as much there. Untagged blueprints go to every culture of the biome.
+            bool cultures = culture != null && Cultures.On && LogicConfig.CultureDesigns != null && LogicConfig.CultureDesigns.Value;
             string biomeName = biome == Heightmap.Biome.BlackForest ? "blackforest" : "meadows";
             foreach (Blueprints.Blueprint blueprint in Blueprints.All().Values)
             {
                 if (blueprint.Inspiration || blueprint.Role != role || blueprint.Level != 1 ||
                     (blueprint.Biome != null && blueprint.Biome.Replace(" ", "") != biomeName) ||
-                    blueprint.Radius > VillheimConfig.MaxDesignRadius.Value || pool.Exists(d => d.Name == blueprint.Name))
+                    blueprint.Radius > VillheimConfig.MaxDesignRadius.Value || pool.Exists(d => d.Name == blueprint.Name) ||
+                    (cultures && blueprint.Culture != null && blueprint.Culture != culture))
                 {
                     continue;
                 }
 
-                pool.Add(new Design(blueprint, blueprint.Weight));
+                pool.Add(new Design(blueprint, blueprint.Weight * (cultures && blueprint.Culture == culture ? 2f : 1f)));
             }
         }
 
@@ -248,12 +254,12 @@ namespace Villheim.Logic.Designs
         /// Designs for one role of a village in this biome. Uses the culture's first design tier that has anything
         /// available, then adds the config lists (which count as homes) and AnyBiomeDesigns.
         /// </summary>
-        public static List<Design> PoolFor(Heightmap.Biome biome, Role role)
+        public static List<Design> PoolFor(Heightmap.Biome biome, Role role, string culture = null)
         {
             var pool = new List<Design>();
-            AddBlueprints(pool, biome, role);
+            AddBlueprints(pool, biome, role, culture);
             KeepBuildable(pool, biome);
-            foreach (string tier in Culture.For(biome).Tiers(role))
+            foreach (string tier in Culture.TiersFor(biome, culture, role))
             {
                 int before = pool.Count;
                 AddDesigns(pool, tier, warnIfMissing: false);
@@ -276,7 +282,7 @@ namespace Villheim.Logic.Designs
 
             if (pool.Count == 0 && role != Role.House)
             {
-                return PoolFor(biome, Role.House);
+                return PoolFor(biome, Role.House, culture);
             }
 
             return pool;
@@ -286,17 +292,17 @@ namespace Villheim.Logic.Designs
         /// Every design that could stand in for this role when the preferred ones do not fit the ground: all of the
         /// culture's tiers for the role, then the homes. Used smallest first.
         /// </summary>
-        public static List<Design> FallbackPool(Heightmap.Biome biome, Role role)
+        public static List<Design> FallbackPool(Heightmap.Biome biome, Role role, string culture = null)
         {
             var pool = new List<Design>();
-            foreach (string tier in Culture.For(biome).Tiers(role))
+            foreach (string tier in Culture.TiersFor(biome, culture, role))
             {
                 AddDesigns(pool, tier, warnIfMissing: false);
             }
 
             if (role != Role.House)
             {
-                foreach (Design design in PoolFor(biome, Role.House))
+                foreach (Design design in PoolFor(biome, Role.House, culture))
                 {
                     if (!pool.Exists(d => d.Name == design.Name))
                     {

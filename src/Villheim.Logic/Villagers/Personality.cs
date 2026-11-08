@@ -136,7 +136,15 @@ namespace Villheim.Logic.Villagers
         public static readonly int KeyHobby = "villheim_hobby".GetStableHashCode();
 
         /// <summary>A child born in the village carries a parent's homeland (Elders.Inherit), else it comes from the seed.</summary>
-        public static string Homeland(Villager v) => Own(v, KeyHomeland) ?? Pick(Homelands, v, 11u);
+        /// Norse villagers name a place from the list above; villagers of other peoples a place in their own tongue
+        /// (Names.Place, from the culture's place-name parts).
+        public static string Homeland(Villager v) => Own(v, KeyHomeland) ?? NativeHomeland(v);
+
+        private static string NativeHomeland(Villager v)
+        {
+            string culture = Village.Cultures.OfVillager(v);
+            return Village.Cultures.Get(culture).People == "norse" ? Pick(Homelands, v, 11u) : Names.Place(Seed(v), culture);
+        }
 
         private static string Own(Villager v, int key)
         {

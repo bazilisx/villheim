@@ -130,18 +130,33 @@ namespace Villheim.Logic.Villagers
                     if (!__instance.m_didGreet && distance < __instance.m_greetRange)
                     {
                         __instance.m_didGreet = true;
-                        __instance.QueueSay(__instance.m_randomGreets, "Greet", __instance.m_randomGreetFX);
+                        __instance.QueueSay(Picked(__instance, "greet") ?? __instance.m_randomGreets, "Greet", __instance.m_randomGreetFX);
                     }
 
                     if (__instance.m_didGreet && !__instance.m_didGoodbye && distance > __instance.m_byeRange)
                     {
                         __instance.m_didGoodbye = true;
-                        __instance.QueueSay(__instance.m_randomGoodbye, "Greet", __instance.m_randomGoodbyeFX);
+                        __instance.QueueSay(Picked(__instance, "bye") ?? __instance.m_randomGoodbye, "Greet", __instance.m_randomGoodbyeFX);
                     }
                 }
 
                 __instance.UpdateSayQueue();
                 return false;
+            }
+
+            /// <summary>
+            /// With cultures on, a village villager's greeting or goodbye is picked like his other lines, so the
+            /// culture's own (Dialogue/cultures.txt, "greet, people:slavic") come up alongside the plain ones.
+            /// </summary>
+            private static List<string> Picked(NpcTalk talk, string channel)
+            {
+                if (!(talk.m_character is Villager villager) || villager.VillageId == 0 || !Cultures.On)
+                {
+                    return null;
+                }
+
+                string line = Dialogue.LineFor(villager, channel);
+                return line != null ? new List<string> { line } : null;
             }
         }
     }

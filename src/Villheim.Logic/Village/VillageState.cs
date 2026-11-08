@@ -83,6 +83,18 @@ namespace Villheim.Logic.Village
             set => _zdo.Set(Keys.Biome, (int)value);
         }
 
+        private static readonly int KeyCulture = "villheim_culture".GetStableHashCode();
+
+        /// <summary>The culture key the village was given (Cultures.Of), or "" before it has one.</summary>
+        public string Culture
+        {
+            get => _zdo.GetString(KeyCulture, "");
+            set => _zdo.Set(KeyCulture, value ?? "");
+        }
+
+        /// <summary>The hearth's ZDO, for code that needs to know whether this client may write to it.</summary>
+        public ZDO Zdo => _zdo;
+
         /// <summary>World time (seconds) the growth clock last advanced to.</summary>
         public double LastGrowth
         {

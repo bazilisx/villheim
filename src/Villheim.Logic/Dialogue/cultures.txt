@@ -1,0 +1,367 @@
+# Villheim: lines by culture (Village/Cultures.cs). Same format as lines.txt.
+#
+# Tags: culture:<key> and people:<group> of the speaker, villageculture:<key> of his village, foreign (the speaker
+# is of another people than his village). Groups: norse (norse, norse-forest, norse-highland), anglo-saxon,
+# frankish-norman, celtic (celtic, celtic-crannog), slavic, baltic, fen-folk, saami, middle-eastern, byzantine,
+# steppe, caucasian. Fill-ins {people} (the speaker's culture name) and {leader} (the village leader's title).
+# {festival} gives the feast's name in the village's own way (Yule, Koliada, Nowruz...).
+# Biome defenders (Villagers/Defenders.cs): "defender" when villagers first take up bows against flyers.
+#
+# Keep it light: a word of greeting, a saying, how a feast is kept. Plain English, no spelled-out accents.
+
+# ================================================================== biome defenders
+
+@ self, defender
+Bows! Up, all of you!
+In the air, there! Shoot!
+Here they come. Take your bows.
+Arrows, quick. Aim ahead of it.
+Stand still and shoot. It will come to you.
+
+@ self, defender | gruff
+Bows.
+
+@ self, defender | worrier
+Not these. Anything but these. Shoot it!
+
+@ self, defender | young
+I've got my bow! Where is it? Where?
+
+@ self, defender | elder
+Aim where it is going, children. Where it is going.
+
+# ================================================================== Norse
+
+@ self, people:norse
+The old ones said a man's word should be as good as his axe.
+Cattle die, kin die. A good name lives on.
+Better a small house of your own than a great one owed to another.
+A guest wants water, a towel and a kind word. Mind that.
+
+@ talk, people:norse, culture:norse-highland
+Up here the turf keeps the cold out. Grass on the roof, sheep on the grass.
+The wind on this fell could take the beard off you.
+
+@ talk, people:norse, culture:norse-forest
+In the forest you learn to listen before you look.
+My grandfather marked his trees with a cut. I still see them sometimes.
+
+@ self, people:norse, festivalday
+{festival} today. We eat well and nobody counts the mead.
+Someone hang the greenery. It's {festival}.
+
+@ self, people:norse | elder
+The ancestors sit with us at the fire tonight. Leave them a seat.
+
+# ================================================================== Anglo-Saxon
+
+@ greet, people:anglo-saxon
+Wes hal, friend.
+Good day to you. Come in out of the wind.
+Wes hal. You're welcome here.
+
+@ bye, people:anglo-saxon
+Fare well.
+Speed well on your road.
+Mind the ford on the way out.
+
+@ talk, people:anglo-saxon
+The {leader} keeps the tally. Ask there if you need anything.
+At home we had a mead hall with a fire down the middle. This will do for now.
+A good word costs nothing and buys a lot.
+We plough in spring, cut hay in summer, and argue about the boundary all year.
+
+@ self, people:anglo-saxon, festivalday
+{festival}. Bread from the new grain and ale for everyone.
+Someone fetch the harp. It's {festival}.
+
+@ self, people:anglo-saxon | elder
+My father told the old songs by the fire. I remember half of one.
+
+@ self, people:anglo-saxon | wry
+They call it Harvest Home. I call it the one night my back stops hurting.
+
+# ================================================================== Frankish and Norman
+
+@ greet, people:frankish-norman
+Good day to you, friend.
+Welcome. Will you take a cup of cider?
+Well met. Come and sit.
+
+@ bye, people:frankish-norman
+Go safely.
+Until next time, friend.
+Safe road to you.
+
+@ talk, people:frankish-norman
+My grandmother's people came from the north by ship. Now we press apples.
+The {leader} keeps the accounts. Every egg, every nail.
+A horse, a good cloak and a dry cellar. What more does anyone need?
+We build in stone where we can. Wood burns.
+
+@ self, people:frankish-norman, festivalday
+{festival}! Fetch the cider from the cellar.
+Music tonight. {festival} only comes once a year.
+
+@ self, people:frankish-norman | cheerful
+There's an apple for everyone today. Two if you are quick.
+
+# ================================================================== Gaelic
+
+@ greet, people:celtic
+Failte. You're welcome at our fire.
+Well met, traveller.
+Come in, come in. There's always room by the hearth.
+
+@ bye, people:celtic
+Safe home to you.
+May the road rise with you.
+Go easy, now.
+
+@ talk, people:celtic
+A guest is never turned from the door here. That's the old law.
+My grandmother knew every hill and well for a day's walk. I know about three.
+The {leader} will tell you a story first, mind.
+The harp was played in my father's house every night. I miss it.
+
+@ talk, people:celtic, culture:celtic-crannog
+We live out on the water. Nothing walks up to your door unasked.
+The causeway is under the water if you know where to step.
+
+@ self, people:celtic, festivalday
+The fires are lit for {festival}. Jump over one for luck.
+{festival} tonight. The old ones say the door between worlds is thin.
+
+@ self, people:celtic, festivalsoon
+{festival} is coming. Time to bring in the cattle and mend the cloaks.
+
+@ self, people:celtic | elder
+Three things to keep: your word, your fire and your friends.
+
+@ self, people:celtic | young
+I'm going to win the race at {festival}. You'll see.
+
+# ================================================================== Slavic
+
+@ greet, people:slavic
+Zdrav bud. Come, sit.
+Welcome, guest. There's bread and salt for you.
+Peace to this house, and to you.
+
+@ bye, people:slavic
+Go well.
+Keep warm on the road.
+Come back. The door is open.
+
+@ talk, people:slavic
+In my village the {leader} sat under the big oak and settled every quarrel.
+The bathhouse is the best thing a village can have. Remember that.
+We cut honey from the wild hives in the forest. You climb, I'll hold the smoke.
+A guest from the road is a guest from the gods. That's what my mother said.
+
+@ self, people:slavic, festivalday
+{festival} tonight. Fires on the hill, and wreaths on the water.
+Sing, all of you. It's {festival}.
+
+@ self, people:slavic, festivalsoon
+{festival} soon. Somebody find the fern flower this year. Somebody.
+
+@ self, people:slavic | elder
+The ancestors are glad when the house is full. Make it full.
+
+# ================================================================== Baltic
+
+@ greet, people:baltic
+Labas. Welcome.
+Come in out of the wet. The fire is going.
+Good day, traveller.
+
+@ bye, people:baltic
+Go well.
+The bog paths are safe in daylight. Keep to them.
+Come back with the next moon.
+
+@ talk, people:baltic
+Amber washes up on our shores. My mother wore a string of it.
+The old trees are the oldest of us. We don't cut those.
+The {leader} knows the paths through the marsh.
+We keep the hearth fire burning all year. It went out once. Never again.
+
+@ self, people:baltic, festivalday
+{festival} tonight. Garlands, songs, and no sleep till sunrise.
+The last sheaf is cut. Somebody has to carry it home and sing.
+
+@ self, people:baltic | devout
+The fire has kept us. We keep the fire.
+
+# ================================================================== Frisian fen folk
+
+@ greet, people:fen-folk
+Good day. Mind your boots, it's wet.
+Welcome, friend. Come up out of the mud.
+Hello there. You found the dry path, then.
+
+@ bye, people:fen-folk
+Safe going.
+Keep to the high ground.
+Fare well, and watch the tide.
+
+@ talk, people:fen-folk
+At home we built the village on a mound so the sea couldn't reach it. Mostly.
+A Frisian with a boat and a cow needs nobody.
+We trade cloth up and down the coast. Good cloth, mind.
+The {leader} decides when to cut the peat. Everyone else complains.
+
+@ self, people:fen-folk, festivalday
+{festival} tonight. Big fires, so the whole marsh can see.
+Light it high. It's {festival}.
+
+@ self, people:fen-folk | wry
+Wet feet in spring, wet feet in winter. At least we're consistent.
+
+# ================================================================== Saami
+
+@ greet, people:saami
+Bures. Welcome.
+Come and sit. The fire is going.
+Welcome, traveller. Warm your hands.
+
+@ bye, people:saami
+Go well.
+Follow the river and you can't get lost. Mostly.
+Safe journey.
+
+@ talk, people:saami
+Where I come from, we followed the herd. Here the herd is very small.
+Every family had its own mark on the reindeer's ear.
+Sing a yoik for a person and they are with you, near or far.
+The {leader} decides when we move. Here we don't move. Strange.
+
+@ self, people:saami, festivalday
+{festival}. Everyone together, the old and the small ones too.
+The light is back. {festival}.
+
+@ self, people:saami | elder
+The land remembers who walked it. Walk it gently.
+
+# ================================================================== Persian and Arab
+
+@ greet, people:middle-eastern
+Salaam. Welcome, friend.
+Dorood. Come out of the sun.
+Peace be with you. Sit, there's water.
+Welcome, welcome. You honour us.
+
+@ bye, people:middle-eastern
+Go in peace.
+May your road be short and your water sweet.
+Peace on your road.
+
+@ talk, people:middle-eastern
+A guest is a gift. Sit, eat, then tell us your news.
+At home we had a garden with four channels of water. One day we will have it again.
+The {leader} reads the stars before we plant. The stars are right more often than not.
+Bread first, then talk. That is how it is done.
+Let the poets argue. I will make the bread.
+
+@ self, people:middle-eastern, festivalday
+{festival}! New clothes, sweets, and nobody works.
+Set the table for {festival}. Seven good things on it.
+{festival} tonight. We stay up till the sun comes back.
+
+@ self, people:middle-eastern, festivalsoon
+{festival} is coming. Clean the house, it is the custom.
+
+@ self, people:middle-eastern | elder
+Speak softly to the young. They remember everything.
+
+@ self, people:middle-eastern | cheerful
+Water on everyone! It's for luck! Mostly it's for fun.
+
+# ================================================================== Byzantine
+
+@ greet, people:byzantine
+Chaire, friend. Be welcome.
+Welcome, stranger. Come in and rest.
+Good day to you. Come out of the wind.
+
+@ bye, people:byzantine
+Go with care.
+Farewell, and come back to us.
+Safe road, friend.
+
+@ talk, people:byzantine
+In the city there were walls you could see a day's walk away. This is smaller.
+The {leader} keeps the tax roll. Old habits.
+Oil, wine and bread. Get those three right and the rest follows.
+My father made mosaics. Tiny stones, all day. I build with bigger ones.
+
+@ self, people:byzantine, festivalday
+{festival} today. Roses on the doors and music in the yard.
+The new wine is in. {festival}.
+
+@ self, people:byzantine | wry
+Everything was better in the city. Ask anyone from the city.
+
+# ================================================================== Steppe Turkic
+
+@ greet, people:steppe
+Welcome, guest. Come into the tent. The house, I mean.
+Be well, traveller. Sit down, drink.
+Welcome. Your horse can rest too, if you have one.
+
+@ bye, people:steppe
+Go well. May your road be wide.
+Ride safely.
+Come back when the grass is high.
+
+@ talk, people:steppe
+My people moved with the seasons. Staying in one place still feels odd.
+A good horse is worth more than a house. Don't tell the builders.
+The {leader} counts the herd every morning. Twice on a bad day.
+Under the open sky every man is a guest.
+
+@ self, people:steppe, festivalday
+{festival}! Races this afternoon, songs tonight.
+The first kumis of the year. Drink, it's {festival}.
+
+@ self, people:steppe | young
+I'll race anyone. On foot, since nobody here has a horse.
+
+@ self, people:steppe | elder
+The sky is wide and the steppe is long. Don't hurry.
+
+# ================================================================== Caucasian highland
+
+@ greet, people:caucasian
+Gamarjoba. Welcome.
+Come up, come up. You climbed a long way.
+Welcome, guest. Sit, the table is ready.
+
+@ bye, people:caucasian
+Go in peace.
+Mind the path down. It's steeper going down.
+Safe road. Come back for the next feast.
+
+@ talk, people:caucasian
+Every family keeps a tower. When trouble came, we went up.
+A guest is sent from the gods. At our table, he sits first.
+The {leader} gives the toasts. There are a lot of toasts.
+In the mist, keep a hand on the wall and your ears open.
+
+@ self, people:caucasian, festivalday
+{festival}! Torches, songs and a long table.
+The grapes are in. {festival} tonight.
+
+@ self, people:caucasian | elder
+One toast for the living, one for those before us, one for those to come.
+
+# ================================================================== a newcomer from another people
+
+@ talk, foreign
+I came from far off. The food here takes some getting used to.
+My people do things a little differently. I'm learning.
+They mean well here. They say my name wrong, but they mean well.
+
+@ self, foreign, festivalday
+At home we'd call this by another name. A feast is a feast.

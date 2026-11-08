@@ -47,6 +47,9 @@ namespace Villheim.Logic.Designs
             public string Family;
             public int Level = 1;
             public string Biome;
+
+            /// <summary>The culture this blueprint belongs to (villheim: culture=slavic), or null for any.</summary>
+            public string Culture;
             public float Radius;
 
             /// <summary>
@@ -475,7 +478,7 @@ namespace Villheim.Logic.Designs
             }
         }
 
-        /// <summary>"villheim: role=house family=cabin level=2 biome=meadows" in the description or category.</summary>
+        /// <summary>"villheim: role=house family=cabin level=2 biome=meadows culture=norse" in the description or category.</summary>
         private static void ReadTags(Blueprint blueprint, string text)
         {
             int at = text.IndexOf("villheim:", StringComparison.OrdinalIgnoreCase);
@@ -507,6 +510,9 @@ namespace Villheim.Logic.Designs
                         break;
                     case "biome":
                         blueprint.Biome = value;
+                        break;
+                    case "culture":
+                        blueprint.Culture = value;
                         break;
                 }
             }

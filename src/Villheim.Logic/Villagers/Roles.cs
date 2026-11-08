@@ -140,7 +140,8 @@ namespace Villheim.Logic.Villagers
 
             if (IsJarl(villager))
             {
-                return "Jarl";
+                // Jarl in a Norse village; each culture has its own word (Cultures/cultures.txt "leader").
+                return Cultures.LeaderTitle(villager.VillageId);
             }
 
             Trade trade = TradeOf(villager);
@@ -254,6 +255,23 @@ namespace Villheim.Logic.Villagers
                 armed.LastThreat = UnityEngine.Time.time;
             }
         }
+
+        /// <summary>
+        /// Takes up the village's weapon and shield again, for a protector who put his bow away while the fight goes
+        /// on (Villagers/Defenders.cs).
+        /// </summary>
+        public static void Rearm(Villager villager)
+        {
+            int tier = Gear(villager);
+            EquipNamed(villager, Weapons[tier]);
+            EquipNamed(villager, Shields[tier]);
+            Armed armed = ArmedStates.GetOrCreateValue(villager);
+            armed.Holding = true;
+            armed.LastThreat = UnityEngine.Time.time;
+        }
+
+        /// <summary>The village's gear tier for this villager (0 rags .. 4 bronze), capped by what the smith has made.</summary>
+        public static int GearTier(Villager villager) => Gear(villager);
 
         /// <summary>Some time after a fight, protectors put the shield away (work puts the tool back in hand).</summary>
         public static void AfterThreat(Villager villager)

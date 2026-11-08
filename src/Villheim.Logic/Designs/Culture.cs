@@ -59,6 +59,24 @@ namespace Villheim.Logic.Designs
 
         public static Culture For(Heightmap.Biome biome) => biome == Heightmap.Biome.BlackForest ? BlackForest : Meadows;
 
+        /// <summary>
+        /// The design tiers for a role in a village of this biome and culture: the culture's own sets first (from
+        /// Cultures/cultures.txt, "designs.house = ..."), then the biome's. A culture with no designs of its own, or
+        /// whose designs are missing or need materials the biome lacks, builds from the biome's set.
+        /// </summary>
+        public static IEnumerable<string> TiersFor(Heightmap.Biome biome, string culture, Role role)
+        {
+            foreach (string tier in Village.Cultures.DesignTiers(culture, role))
+            {
+                yield return tier;
+            }
+
+            foreach (string tier in For(biome).Tiers(role))
+            {
+                yield return tier;
+            }
+        }
+
         /// <summary>The role of the building with this index in the village (0 is the first building).</summary>
         public static Role RoleFor(int index)
         {

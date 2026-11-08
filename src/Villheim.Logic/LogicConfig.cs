@@ -148,6 +148,34 @@ namespace Villheim.Logic
         public static ConfigEntry<bool> MapTable;
         public static ConfigEntry<int> MapTableFromStage;
 
+        // Cultures (Village/Cultures.cs) and biome defenders (Villagers/Defenders.cs).
+        public static ConfigEntry<bool> Cultures;
+        public static ConfigEntry<string> CultureMap;
+        public static ConfigEntry<float> CultureForeignChance;
+        public static ConfigEntry<float> LooksOutlierChance;
+        public static ConfigEntry<bool> CultureSurnames;
+        public static ConfigEntry<bool> CultureDesigns;
+        public static ConfigEntry<bool> BiomeDefenders;
+        public static ConfigEntry<bool> DefenderCarers;
+        public static ConfigEntry<float> DefenderRange;
+        public static ConfigEntry<float> DefenderShotSeconds;
+        public static ConfigEntry<float> DefenderLead;
+        public static ConfigEntry<bool> DefenderBowAnimation;
+        public static ConfigEntry<bool> PlainsDefenders;
+        public static ConfigEntry<string> PlainsDefenderBiomes;
+        public static ConfigEntry<float> PlainsDefenderReach;
+        public static ConfigEntry<string> PlainsDefenderTargets;
+        public static ConfigEntry<float> PlainsDefenderDamage;
+        public static ConfigEntry<float> PlainsDefenderSpread;
+        public static ConfigEntry<float> PlainsDefenderReaction;
+        public static ConfigEntry<bool> MistlandsDefenders;
+        public static ConfigEntry<string> MistlandsDefenderBiomes;
+        public static ConfigEntry<float> MistlandsDefenderReach;
+        public static ConfigEntry<string> MistlandsDefenderTargets;
+        public static ConfigEntry<float> MistlandsDefenderDamage;
+        public static ConfigEntry<float> MistlandsDefenderSpread;
+        public static ConfigEntry<float> MistlandsDefenderReaction;
+
         public static void Bind()
         {
             ConfigFile config = VillheimPlugin.Instance?.Config;
@@ -292,6 +320,7 @@ namespace Villheim.Logic
                 "and get answers in each one's own voice and a third villager chiming in. Off: plain chats, as before.");
             BindLiving(config);
             BindKnowledge(config);
+            BindCultures(config);
 
             const string sites = "1b - Village sites";
             VillageChance = Admin(config, sites, "VillageChance", 50,
@@ -413,6 +442,9 @@ namespace Villheim.Logic
             ("ElderDeaths", ElderDeaths), ("Neighbours", Neighbours), ("Horn", Horn), ("HelpPlayers", HelpPlayers),
             ("VillageKnowledge", VillageKnowledge), ("KnowledgeGearGate", KnowledgeGearGate), ("KnowledgeRequests", KnowledgeRequests),
             ("HarvestReach", HarvestReach), ("MapTable", MapTable),
+            ("Cultures", Cultures), ("CultureSurnames", CultureSurnames), ("CultureDesigns", CultureDesigns),
+            ("BiomeDefenders", BiomeDefenders), ("PlainsDefenders", PlainsDefenders), ("MistlandsDefenders", MistlandsDefenders),
+            ("DefenderCarers", DefenderCarers), ("DefenderBowAnimation", DefenderBowAnimation),
         };
 
         // The config entries outlive a logic build (the config file hands back the same entry on every Bind), so the
@@ -571,6 +603,83 @@ namespace Villheim.Logic
                 "A village puts the game's cartography table by its hearth. Reading it copies the village's discoveries to " +
                 "your map as pins.");
             MapTableFromStage = Admin(config, know, "MapTableFromStage", 2, "Stage from which a village has a map table: 1 camp, 2 hamlet.");
+        }
+
+        /// <summary>Sections "5d - Cultures" and "5e - Biome defenders".</summary>
+        private static void BindCultures(ConfigFile config)
+        {
+            const string cultures = "5d - Cultures";
+            Cultures = Admin(config, cultures, "Cultures", true,
+                "Each village belongs to a culture of the old world (Norse, Anglo-Saxon, Gaelic, Slavic, Persian and Arab, " +
+                "Byzantine and others): it gives names, looks, clothes, the names of the four feasts, a few lines and, where " +
+                "the design library has them, building sets. Off: every village is Norse, as before. 'vh cultures' lists them.");
+            CultureMap = Admin(config, cultures, "CultureMap", Village.Cultures.DefaultMap,
+                "Which cultures a village of each biome may have, with weights: Biome=culture:weight,culture:weight; next " +
+                "biome. A new village rolls one with its own seed and keeps it. Biomes left out build like the Meadows. " +
+                "Culture keys are the [names] in Cultures/cultures.txt (see 'vh cultures').");
+            CultureForeignChance = Admin(config, cultures, "CultureForeignChance", 0.15f,
+                "Chance that a newcomer from outside is of another people than the village. He keeps his own names and " +
+                "looks and says he comes from a place in his own tongue.");
+            LooksOutlierChance = Admin(config, cultures, "LooksOutlierChance", 0.1f,
+                "Chance that a villager's skin tone comes from the whole range the game gives instead of the culture's.");
+            CultureSurnames = Admin(config, cultures, "CultureSurnames", true,
+                "Show the surname a villager's culture gives him (Haraldsson, ibn Hasan, de Falaise) after his name when " +
+                "you look at him. His name in lines stays the given name.");
+            CultureDesigns = Admin(config, cultures, "CultureDesigns", true,
+                "Use a culture's own design sets (cultures.txt) and blueprints tagged 'villheim: culture=key' before the " +
+                "biome's set. Off: only the biome decides what a village builds.");
+
+            const string defenders = "5e - Biome defenders";
+            BiomeDefenders = Admin(config, defenders, "BiomeDefenders", true,
+                "Villagers of villages in or near a hard biome are good at fighting its worst creatures: they pick those " +
+                "first, react at once, hit them harder, and shoot the flying ones out of the sky with bows. Fights with " +
+                "every other creature stay as they were. One profile each for the Plains and the Mistlands below.");
+            DefenderCarers = Admin(config, defenders, "DefenderCarers", true,
+                "Carers shoot too when a listed flying creature comes (running from a deathsquito does not work). Off: " +
+                "only protectors shoot.");
+            DefenderRange = Admin(config, defenders, "DefenderRange", 35f,
+                "How far away (metres) a villager starts shooting at a listed flying creature.");
+            DefenderShotSeconds = Admin(config, defenders, "DefenderShotSeconds", 1.2f,
+                "Seconds between one villager's arrows.");
+            DefenderLead = Admin(config, defenders, "DefenderLead", 1f,
+                "How much villagers aim ahead of a moving target, 0 (straight at it) to 1 (where it will be when the " +
+                "arrow gets there).");
+            DefenderBowAnimation = Admin(config, defenders, "DefenderBowAnimation", true,
+                "Play the bow's firing animation with each arrow. Turn off if villagers get stuck in a pose.");
+
+            PlainsDefenders = Admin(config, defenders, "PlainsDefenders", true,
+                "Plains profile: deathsquitos first, shot down at range.");
+            PlainsDefenderBiomes = Admin(config, defenders, "PlainsDefenderBiomes", "Plains",
+                "Villages in these biomes always use the Plains profile (comma separated).");
+            PlainsDefenderReach = Admin(config, defenders, "PlainsDefenderReach", 400f,
+                "A village also uses it when Plains ground lies within this many metres of its hearth. 0: biome only.");
+            PlainsDefenderTargets = Admin(config, defenders, "PlainsDefenderTargets", "Deathsquito",
+                "Creature prefab names the profile covers. Flying ones are shot with bows; the rest are fought as usual " +
+                "with the damage bonus.");
+            PlainsDefenderDamage = Admin(config, defenders, "PlainsDefenderDamage", 2f,
+                "Damage multiplier for villagers' blows and arrows against those creatures.");
+            PlainsDefenderSpread = Admin(config, defenders, "PlainsDefenderSpread", 1.5f,
+                "Aim spread in degrees for arrows at those creatures (lower is more accurate; a player's full draw is " +
+                "about 1 to 2).");
+            PlainsDefenderReaction = Admin(config, defenders, "PlainsDefenderReaction", 0.4f,
+                "Seconds from first seeing such a creature to the first arrow.");
+
+            MistlandsDefenders = Admin(config, defenders, "MistlandsDefenders", true,
+                "Mistlands profile: seekers, seeker soldiers, broods, ticks and gjall.");
+            MistlandsDefenderBiomes = Admin(config, defenders, "MistlandsDefenderBiomes", "Mistlands",
+                "Villages in these biomes always use the Mistlands profile (comma separated).");
+            MistlandsDefenderReach = Admin(config, defenders, "MistlandsDefenderReach", 300f,
+                "A village also uses it when Mistlands ground lies within this many metres of its hearth. 0: biome only.");
+            MistlandsDefenderTargets = Admin(config, defenders, "MistlandsDefenderTargets", "Seeker,SeekerBrute,SeekerBrood,Tick,Gjall",
+                "Creature prefab names the profile covers. Gjall fly and are shot with bows; the rest are fought as usual " +
+                "with the damage bonus.");
+            MistlandsDefenderDamage = Admin(config, defenders, "MistlandsDefenderDamage", 3f,
+                "Damage multiplier for villagers' blows and arrows against those creatures (village gear stays at bronze " +
+                "at most, far below what the Mistlands ask of a player).");
+            MistlandsDefenderSpread = Admin(config, defenders, "MistlandsDefenderSpread", 2f,
+                "Aim spread in degrees for arrows at those creatures.");
+            MistlandsDefenderReaction = Admin(config, defenders, "MistlandsDefenderReaction", 0.4f,
+                "Seconds from first seeing such a creature to the first arrow.");
         }
 
         /// <summary>Every look setting puts itself on the ghosts the moment it changes.</summary>

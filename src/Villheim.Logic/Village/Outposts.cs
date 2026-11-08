@@ -242,7 +242,7 @@ namespace Villheim.Logic.Village
             // Now and then, so the chronicle does not fill with it.
             if (Random.value < 0.25f)
             {
-                Chronicle.Add(hearth, $"{Names.Villager(haul.Seed)} carried {haul.CargoText()} home from the {(haul.Extra.Length > 0 ? haul.Extra : "camp")}.");
+                Chronicle.Add(hearth, $"{Names.Villager(haul.Seed, Cultures.Of(hearth))} carried {haul.CargoText()} home from the {(haul.Extra.Length > 0 ? haul.Extra : "camp")}.");
             }
         }
 

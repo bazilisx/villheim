@@ -158,7 +158,7 @@ namespace Villheim.Logic.Villagers
             }
 
             string village = villager.VillageName;
-            string text = villager.VillagerName;
+            string text = Cultures.FullName(villager);
             string title = Roles.Title(villager);
             if (!string.IsNullOrEmpty(village))
             {

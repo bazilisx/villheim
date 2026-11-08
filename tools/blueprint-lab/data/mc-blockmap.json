@@ -1,0 +1,158 @@
+{
+  "about": "Minecraft and Millenaire block names to Valheim prefabs and roles, for lab/mc_convert.py. Study use only: converted designs stay out of the repo. Rules are tried in order, first match wins. kind says how the converter treats the block; mat picks the Valheim family through the culture table. Furniture yaw: item yaw = direction of the inward normal + rel, where rel is the corpus value in rules.json placement (measured 2026-11-08). Normal 'facing' means the block's facing points into the room, 'back' means it points at the wall.",
+  "rules": [
+    {"match": "^minecraft:(air|cave_air|void_air)$", "kind": "air"},
+
+    {"match": "^millenaire:mock_marker$", "when": {"type": "^preserve_ground"}, "kind": "ground"},
+    {"match": "^millenaire:mock_marker$", "when": {"type": "^torch$"}, "kind": "furn", "prefab": "piece_walltorch", "role": "light", "mount": "wall", "normal": "auto", "rel": 0},
+    {"match": "^millenaire:mock_marker$", "kind": "marker"},
+    {"match": "^millenaire:mock_animal_spawn$", "kind": "marker"},
+    {"match": "^millenaire:mock_(free|source)$", "kind": "ground"},
+    {"match": "^millenaire:path_", "kind": "ground"},
+    {"match": "^minecraft:(dirt|coarse_dirt|grass_block|farmland|sand|gravel|clay|snow|snow_block|water|lava|bedrock|[a-z_]*_ore)$", "kind": "ground"},
+
+    {"match": "^millenaire:mock_facing_marker$", "when": {"type": "^furnace$"}, "kind": "furn", "prefab": "piece_oven", "role": "kitchen", "normal": "facing", "rel": 270},
+    {"match": "^millenaire:mock_facing_marker$", "when": {"type": "^sign_pos$"}, "kind": "furn", "prefab": "sign", "role": "sign", "mount": "wall", "normal": "facing", "rel": 0},
+    {"match": "^millenaire:mock_chest$|^minecraft:chest$", "kind": "furn", "prefab": "piece_chest_wood", "role": "storage", "normal": "facing", "rel": 0},
+    {"match": "^millenaire:mock_soil$", "kind": "crop"},
+    {"match": "^millenaire:mock_tree_spawn$", "kind": "tree"},
+    {"match": "^minecraft:[a-z_]*_sapling$", "kind": "tree"},
+    {"match": "^millenaire:mock_banner_(wall|standing)$", "when": {"subtype": "^culture$"}, "kind": "furn", "prefab": "piece_banner01", "role": "shrine", "mount": "wall", "normal": "facing", "rel": 90},
+    {"match": "^millenaire:mock_banner_(wall|standing)$", "kind": "furn", "prefab": "piece_banner02", "role": "deco", "mount": "wall", "normal": "facing", "rel": 270},
+    {"match": "^millenaire:mock_decor$", "when": {"decor_type": "icon"}, "kind": "furn", "prefab": "itemstand", "role": "shrine", "mount": "wall", "normal": "auto", "rel": 0},
+    {"match": "^millenaire:mock_decor$", "when": {"decor_type": "statue"}, "kind": "furn", "prefab": "blackmarble_head01", "role": "shrine", "normal": "auto", "rel": 90},
+    {"match": "^millenaire:mock_decor$", "when": {"decor_type": "hide"}, "kind": "furn", "prefab": "itemstand", "role": "deco", "mount": "wall", "normal": "auto", "rel": 0},
+    {"match": "^millenaire:mock_decor$", "kind": "furn", "prefab": "piece_banner04", "role": "deco", "mount": "wall", "normal": "auto", "rel": 90},
+    {"match": "^millenaire:inuit_carving$", "kind": "furn", "prefab": "darkwood_raven", "role": "shrine", "normal": "auto", "rel": 0},
+
+    {"match": "^millenaire:(straw_bed|charpoy)$", "when": {"part": "^head$"}, "kind": "furn", "prefab": "bed", "role": "bed", "bed": true, "normal": "back", "rel": 270},
+    {"match": "^millenaire:(straw_bed|charpoy)$", "kind": "partof"},
+    {"match": "^minecraft:[a-z_]*_bed$", "when": {"part": "^head$"}, "kind": "furn", "prefab": "piece_bed02", "role": "bed", "bed": true, "normal": "back", "rel": 0},
+    {"match": "^minecraft:[a-z_]*_bed$", "kind": "partof"},
+    {"match": "^minecraft:crafting_table$", "kind": "furn", "prefab": "piece_workbench", "role": "work", "normal": "none", "rel": 0},
+    {"match": "^minecraft:anvil$", "kind": "furn", "prefab": "forge", "role": "work", "normal": "none", "rel": 0},
+    {"match": "^minecraft:cauldron$", "kind": "furn", "prefab": "piece_cauldron", "role": "kitchen", "normal": "none", "rel": 180},
+    {"match": "^millenaire:fire_pit$|^minecraft:campfire$", "kind": "furn", "prefab": "fire_pit", "role": "kitchen", "normal": "none", "rel": 180},
+    {"match": "^minecraft:bookshelf$", "kind": "furn", "prefab": "piece_chest_wood", "role": "storage", "normal": "auto", "rel": 0, "note": "no vanilla bookshelf; a chest stands in"},
+    {"match": "^minecraft:hay_block$", "kind": "furn", "prefab": "rug_straw", "role": "deco", "normal": "none", "rel": 0},
+    {"match": "^minecraft:(wall_torch|redstone_wall_torch)$", "kind": "furn", "prefab": "piece_walltorch", "role": "light", "mount": "wall", "normal": "facing", "rel": 0},
+    {"match": "^minecraft:(torch|redstone_torch|end_rod|lantern)$", "kind": "furn", "prefab": "piece_groundtorch_wood", "role": "light", "normal": "none", "rel": 0},
+    {"match": "^minecraft:jack_o_lantern$", "kind": "furn", "prefab": "piece_jackoturnip", "role": "deco", "normal": "none", "rel": 0},
+    {"match": "^minecraft:[a-z_]*_sign$", "kind": "furn", "prefab": "sign", "role": "sign", "normal": "none", "rel": 0},
+    {"match": "^minecraft:[a-z_]*_carpet$", "kind": "carpet"},
+    {"match": "^minecraft:(potted_[a-z_]*|flower_pot)$", "kind": "nature", "prefab": "Pickable_Dandelion"},
+    {"match": "^minecraft:(dandelion|poppy|azure_bluet|[a-z]*_tulip|oxeye_daisy|allium|rose_bush|blue_orchid|cornflower|lily_of_the_valley)$", "kind": "nature", "prefab": "Pickable_Dandelion"},
+    {"match": "^minecraft:(short_grass|tall_grass|grass|fern|large_fern|vine|melon|pumpkin|[a-z_]*_leaves)$|^millenaire:[a-z_]*_leaves$", "kind": "nature"},
+    {"match": "^minecraft:nether_wart$", "kind": "crop", "crop": "netherwart"},
+    {"match": "^minecraft:(cake|note_block|stone_button|[a-z_]*_button|[a-z_]*pressure_plate|redstone_wire|nether_portal|lever|tripwire)$", "kind": "ignore"},
+
+    {"match": "^minecraft:ladder$", "kind": "ladder"},
+    {"match": "^minecraft:[a-z_]*_trapdoor$", "kind": "ignore", "note": "hatches; Valheim has no trapdoor"},
+    {"match": "^minecraft:[a-z_]*_fence_gate$", "kind": "gate"},
+    {"match": "^minecraft:[a-z_]*_door$", "kind": "door"},
+
+    {"match": "^minecraft:(glass|[a-z_]*_stained_glass|glass_pane|[a-z_]*_glass_pane|iron_bars|ice|packed_ice)$|^millenaire:(stained_glass_[a-z_]*|wooden_bars[a-z_]*)$", "kind": "window"},
+    {"match": "^millenaire:paper_wall$", "kind": "solid", "mat": "paper"},
+
+    {"match": "^minecraft:(oak|birch|acacia|jungle|cherry|mangrove)_fence$", "kind": "fence", "mat": "plank"},
+    {"match": "^minecraft:(spruce|dark_oak)_fence$", "kind": "fence", "mat": "darkplank"},
+
+    {"match": "^minecraft:(oak|birch|acacia|jungle)_stairs$", "kind": "stair", "mat": "plank"},
+    {"match": "^minecraft:(spruce|dark_oak)_stairs$", "kind": "stair", "mat": "darkplank"},
+    {"match": "^minecraft:(cobblestone|stone_brick|stone|mossy_cobblestone|brick)_stairs$", "kind": "stair", "mat": "stone"},
+    {"match": "^millenaire:thatch_stairs$", "kind": "stair", "mat": "thatch"},
+    {"match": "^millenaire:byzantine_tiles_stairs$", "kind": "stair", "mat": "tile"},
+    {"match": "^millenaire:timber_frame_stairs$", "kind": "stair", "mat": "plaster"},
+    {"match": "_stairs$", "kind": "stair", "mat": "lightstone"},
+
+    {"match": "^minecraft:(oak|birch|acacia|jungle)_slab$", "kind": "slab", "mat": "plank"},
+    {"match": "^minecraft:(spruce|dark_oak)_slab$", "kind": "slab", "mat": "darkplank"},
+    {"match": "^minecraft:(cobblestone|stone_brick|smooth_stone|stone|brick)_slab$", "kind": "slab", "mat": "stone"},
+    {"match": "^millenaire:thatch_slab$", "kind": "slab", "mat": "thatch"},
+    {"match": "^millenaire:byzantine_tiles_slab$", "kind": "slab", "mat": "tile"},
+    {"match": "_slab$", "kind": "slab", "mat": "lightstone"},
+
+    {"match": "^minecraft:(oak|birch|acacia|jungle)_(log|wood)$", "kind": "solid", "mat": "log"},
+    {"match": "^minecraft:(spruce|dark_oak)_(log|wood)$", "kind": "solid", "mat": "darklog"},
+    {"match": "^minecraft:(oak|birch|acacia|jungle|cherry)_planks$", "kind": "solid", "mat": "plank"},
+    {"match": "^minecraft:(spruce|dark_oak)_planks$", "kind": "solid", "mat": "darkplank"},
+    {"match": "^minecraft:(cobblestone|mossy_cobblestone|stone_bricks|mossy_stone_bricks|cracked_stone_bricks|chiseled_stone_bricks|stone|smooth_stone|andesite|diorite|polished_diorite|granite|gray_concrete|cobblestone_wall|stone_brick_wall)$", "kind": "solid", "mat": "stone"},
+    {"match": "^minecraft:(quartz_block|chiseled_quartz_block|quartz_pillar|smooth_sandstone|sandstone|bricks|bone_block)$", "kind": "solid", "mat": "lightstone"},
+    {"match": "^millenaire:(mud_brick[a-z_]*|painted_brick_[a-z_]*|decorated_brick_[a-z_]*|[a-z_]*sandstone[a-z_]*|byzantine_mosaic_red|byzantine_fresco|byzantine_stone_tiles|rosette|mayan_gold_block)$", "kind": "solid", "mat": "lightstone"},
+    {"match": "^millenaire:byzantine_tiles$", "kind": "solid", "mat": "tile"},
+    {"match": "^millenaire:(snow_brick|snow_wall|ice_brick)$", "kind": "solid", "mat": "snow"},
+    {"match": "^minecraft:(iron_block|gold_block|emerald_block|lapis_block|diamond_block|obsidian)$", "kind": "solid", "mat": "metal"},
+    {"match": "^minecraft:(glowstone|sea_lantern)$", "kind": "solid", "mat": "lightstone"},
+    {"match": "^millenaire:timber_frame_(plain|cross)$", "kind": "solid", "mat": "plaster"},
+    {"match": "^millenaire:dirt_wall$", "kind": "solid", "mat": "dirtwall"},
+    {"match": "^millenaire:thatch$", "kind": "solid", "mat": "thatch"},
+    {"match": "^millenaire:sod_[a-z]*$", "kind": "solid", "mat": "sod"},
+    {"match": "^minecraft:[a-z_]*_wool$", "kind": "solid", "mat": "cloth"}
+  ],
+
+  "crops": {
+    "wheat": "Pickable_Barley", "maize": "Pickable_Barley", "rice": "Pickable_Barley", "carrot": "Pickable_Carrot",
+    "potato": "Pickable_Turnip", "turmeric": "Pickable_Onion", "cotton": "Pickable_Flax", "sugarcane": "Pickable_Flax",
+    "vine": "RaspberryBush", "cacao": "BlueberryBush", "flower": "Pickable_Dandelion", "netherwart": "Pickable_Mushroom",
+    "default": "Pickable_Carrot"
+  },
+  "trees": {
+    "oak": "Oak1", "dark_oak": "Oak1", "birch": "Birch1", "pine": "Pinetree_01", "spruce": "Pinetree_01",
+    "apple": "Beech1", "olive": "Beech1", "pistachio": "Beech1", "acacia": "Beech1", "jungle": "Beech1", "default": "Beech1"
+  },
+  "carpets": {
+    "red": "jute_carpet", "yellow": "jute_carpet", "orange": "jute_carpet", "purple": "jute_carpet", "magenta": "jute_carpet",
+    "pink": "jute_carpet", "brown": "rug_deer", "blue": "jute_carpet_blue", "light_blue": "jute_carpet_blue",
+    "cyan": "jute_carpet_blue", "white": "rug_fur", "gray": "rug_fur", "light_gray": "rug_fur", "black": "rug_wolf",
+    "green": "rug_deer", "lime": "rug_deer", "default": "jute_carpet"
+  },
+
+  "families": {
+    "wood": {"thin": true, "thick": 0.2,
+      "walls": [[2, 2, [["woodwall", 0]]], [2, 1, [["wood_wall_half", 0]]], [1, 1, [["wood_wall_quarter", 0]]]],
+      "floor2": "wood_floor", "floor1": "wood_floor_1x1", "floorDepth": 0.25,
+      "pole2": "wood_pole2", "pole1": "wood_pole", "pole4": null, "stair": "wood_stair", "door": "wood_door"},
+    "log": {"thin": true, "thick": 0.4,
+      "walls": [[4, 1, [["wood_wall_log_4x0.5", -0.25], ["wood_wall_log_4x0.5", 0.25]]], [2, 1, [["wood_wall_log", -0.25], ["wood_wall_log", 0.25]]], [1, 1, [["wood_wall_quarter", 0]]]],
+      "floor2": "wood_floor", "floor1": "wood_floor_1x1", "floorDepth": 0.25,
+      "pole2": "wood_pole_log", "pole1": "wood_pole", "pole4": "wood_pole_log_4", "stair": "wood_stair", "door": "wood_door"},
+    "darkframe": {"thin": true, "thick": 0.2,
+      "walls": [[2, 2, [["woodwall", 0]]], [2, 1, [["wood_wall_half", 0]]], [1, 1, [["wood_wall_quarter", 0]]]],
+      "floor2": "wood_floor", "floor1": "wood_floor_1x1", "floorDepth": 0.25,
+      "pole2": "darkwood_pole", "pole1": "wood_pole", "pole4": "darkwood_pole4", "stair": "wood_stair", "door": "wood_door"},
+    "stone": {"thin": false, "thick": 1.0,
+      "walls": [[4, 2, [["stone_wall_4x2", 0]]], [2, 1, [["stone_wall_2x1", 0]]], [1, 1, [["stone_wall_1x1", 0]]]],
+      "floor2": "stone_floor_2x2", "floor1": "stone_wall_1x1", "floorDepth": 1.0,
+      "pole2": "stone_pillar", "pole1": "stone_wall_1x1", "pole4": null, "stair": "stone_stair", "door": "wood_door"},
+    "grausten": {"thin": false, "thick": 1.0,
+      "walls": [[4, 2, [["Piece_grausten_wall_4x2", 0]]], [2, 2, [["Piece_grausten_wall_2x2", 0]]], [1, 2, [["Piece_grausten_wall_1x2", 0]]], [1, 1, [["stone_wall_1x1", 0]]]],
+      "floor2": "Piece_grausten_floor_2x2", "floor1": "Piece_grausten_floor_1x1", "floorDepth": 0.25,
+      "pole2": "stone_pillar", "pole1": "stone_wall_1x1", "pole4": null, "stair": "piece_grausten_stonestair", "door": "ashwood_door"}
+  },
+  "roofs": {
+    "thatch": {"r45": "wood_roof_45", "r26": "wood_roof", "top45": "wood_roof_top_45"},
+    "darkwood": {"r45": "darkwood_roof_45", "r26": "darkwood_roof", "top45": "darkwood_roof_top_45"},
+    "grausten": {"r45": "piece_grausten_roof_45", "r26": "piece_grausten_roof_45", "top45": "piece_grausten_roof_45"}
+  },
+
+  "cultures": {
+    "default": {"plank": "wood", "darkplank": "wood", "log": "log", "darklog": "log", "stone": "stone", "lightstone": "stone",
+      "tile": "stone", "snow": "stone", "metal": "stone", "plaster": "wood", "dirtwall": "wood", "thatch": "wood",
+      "sod": "wood", "cloth": "wood", "paper": "wood", "roof": "thatch", "stoneStairRoof": "roof", "roofByMat": {"thatch": "thatch", "tile": "darkwood"}},
+    "norman": {},
+    "japanese": {"darkplank": "darkframe", "darklog": "darkframe", "log": "darkframe", "roof": "darkwood"},
+    "byzantines": {"roof": "darkwood"},
+    "seljuk": {"stoneStairRoof": "solid"},
+    "indian": {"stoneStairRoof": "solid"},
+    "mayan": {"stoneStairRoof": "solid"},
+    "inuits": {}
+  },
+
+  "colors": {
+    "plank": "#b8945f", "darkplank": "#5e4630", "log": "#7b5a36", "darklog": "#4a3524", "stone": "#8d8b84",
+    "lightstone": "#d6c79a", "tile": "#9a4a32", "snow": "#eef2f4", "metal": "#b0a070", "plaster": "#e8e2d2",
+    "dirtwall": "#8a6a48", "thatch": "#c9ad5c", "sod": "#5f7f3a", "cloth": "#d8d0c8", "paper": "#f2ecd8",
+    "window": "#b9dde8", "door": "#6b4a2b", "furn": "#c0392b", "crop": "#6aa84f", "nature": "#4f8a3a", "carpet": "#a83a3a",
+    "fence": "#8a6a48", "ladder": "#8a6a48"
+  }
+}

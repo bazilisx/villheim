@@ -26,6 +26,9 @@ Current facts only. Read this at the start of a session. Narrative is in `docs/d
   - Design numbers come from `BepInEx/Villheim/design-list.csv` (`vh report`) and never change.
   - Licensing to settle before shipping blueprints: valheimians builds and copied MWL locations belong to their
     creators; ship only Tyler's own or with permission.
+- **Millénaire translation pilot (2026-11-08, branch `night2/mc`, not merged):** `docs/MC_TRANSLATION.md`. Converted
+  designs and learned rules stay outside the repo under `/home/claude/corpus/`; the lab's data is unchanged. Usable
+  for plans, roofs and room uses in five of seven cultures; materials, hips and domes do not carry over.
 - **Blueprint lab (2026-11-08 night, not tested in game):** `tools/blueprint-lab`, `docs/BLUEPRINT_LAB.md`. Learns from
   2,134 designs (valheimians downloads and their `.vbuild` files included since 2026-11-08 day); generates by type,
   biome, style, plan, roof, walls, s1 to s3 and d1 to d3; strips or furnishes any blueprint; repairs missing pieces of
@@ -99,6 +102,7 @@ Current facts only. Read this at the start of a session. Narrative is in `docs/d
 
 ## Recent milestones
 
+- **2026-11-08 (Millénaire translation pilot, branch night2/mc)** - see docs/daily-notes/2026-11/2026-11-08.md
 - **2026-11-08 (blueprint repair tab; 2,134 designs learned; minds and world code hardened)** - see docs/daily-notes/2026-11/2026-11-08.md
 - **2026-11-08 (blueprint lab, villager minds, world growth; helper branches merged)** - see docs/daily-notes/2026-11/2026-11-08.md
 - **2026-11-08 (BiomeBlueprints blacklisted; access checks; decisions on generated designs and outposts)** - see docs/daily-notes/2026-11/2026-11-08.md

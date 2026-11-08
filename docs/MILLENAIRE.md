@@ -11,6 +11,10 @@ mayan, norman, seljuk), each with `buildings/`, `villages/`, `villagers/`, `goal
 
 ## Buildings, variants and levels (read 2026-11-07)
 
+- **Schematic files** (read 2026-11-08): each level's `.nbt` is a vanilla structure file holding only what that level
+  changes; air removes a block. Level L is levels 0 to L laid in order. A translation into Valheim pieces for study is
+  in `docs/MC_TRANSLATION.md`.
+
 - **One plan file per building.** `buildings/<category>/<id>.json`, for example `norman/buildings/houses/carpenterhouse.json`.
   Categories across all cultures: houses 179, lone 119, townhalls 76, walls 59, player 53, marvel 36, special 15,
   nodes 13, uninhabited 7, fields 7, extra 4, military 1.

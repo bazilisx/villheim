@@ -219,6 +219,9 @@ with its own look for its biome.
       `tools/blueprint-lab/data/`.)
 - [x] Repair tab: fill missing pieces of an uploaded blueprint from rows, stacks, floors, mirror and the build's own
       patterns, with a confidence for each (2026-11-08 day; measured accuracy in `docs/BLUEPRINT_LAB.md`).
+- [ ] Millénaire translation pilot (2026-11-08, branch `night2/mc`, `docs/MC_TRANSLATION.md`): converter and
+      measurements done; decide whether mc-learned rules may feed thin cultures behind an off switch; add hip corners
+      and triangle gables to the converter.
 - [ ] Repair for irregular hand builds: learn neighbour patterns across the whole corpus, so builds without a mirror
       line get more than row and floor fixes.
 - [ ] Villagers repair damaged buildings from the same rules (gap in a row, missing course) when no saved design

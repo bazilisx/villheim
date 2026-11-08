@@ -9,7 +9,8 @@ namespace Villheim.Logic.Villagers
     /// <summary>
     /// The farmer's day (a carer's, while the village has no farmer): plant the farm's rows one at a time with the hoe,
     /// harvest what is ripe into the village chest when it is low on food, and now and then go and see to the animals.
-    /// One farm worker per village at a time. No feeding and no breeding: the herd grows by the village's schedule.
+    /// One farm worker per village at a time. Seeing to an animal acts out feeding (he walks up and reaches out) with
+    /// no real food, and village animals never breed: the herd grows by the village's schedule (Farms, D-015).
     /// </summary>
     internal static class Farming
     {

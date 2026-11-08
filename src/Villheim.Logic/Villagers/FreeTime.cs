@@ -36,6 +36,7 @@ namespace Villheim.Logic.Villagers
             Night,
             Make,
             Seat,
+            Watch,
         }
 
         private enum Mode
@@ -65,6 +66,8 @@ namespace Villheim.Logic.Villagers
             public GameObject Station;
             public Amenities.Job Making;
             public Talk Chat;
+            public Character Watched;
+            public bool Commented;
             public float LastRun;
             public float FreeSince;
             public int Ring = -1;
@@ -207,6 +210,7 @@ namespace Villheim.Logic.Villagers
                 case Kind.Chat: return "chatting";
                 case Kind.Station: return state.Station != null ? "busy at the " + StationName(state.Station) : "keeping busy";
                 case Kind.Seat: return "sitting down for a while";
+                case Kind.Watch: return state.Watched != null ? "watching " + state.Watched.GetHoverName() : "watching";
                 case Kind.Evening: return "gathered at the hearth";
                 case Kind.Night: return IsLateNight() ? "resting by the fire" : "sitting by the fire";
                 case Kind.Make: return state.Making != null ? "making a " + state.Making.Name : "making something";
@@ -322,6 +326,7 @@ namespace Villheim.Logic.Villagers
                     : 0f),
                 (Kind.Station, FreeStation(villager) != null ? 3f : 0f),
                 (Kind.Seat, wet || mood < 35f ? 0f : (Seats.Free(villager) != null ? (carer ? 3f : 2f) : 0f)),
+                (Kind.Watch, WatchTarget(villager) != null ? (Wanderers.IsWanderer(WatchTarget(villager) as Villager) ? 3f : 1.2f) : 0f),
             };
 
             // A free bench or chair beats the ground: sitting about goes to the seat when there is one.
@@ -363,6 +368,24 @@ namespace Villheim.Logic.Villagers
                     state.Spot = Seats.Point(seat).position;
                     break;
 
+                case Kind.Watch:
+                    Character watched = WatchTarget(villager);
+                    if (watched == null)
+                    {
+                        state.Kind = Kind.Stroll;
+                        state.Spot = StrollSpot(villager, state, hearth);
+                        break;
+                    }
+
+                    state.Watched = watched;
+                    state.Commented = false;
+                    state.Until = Time.time + Random.Range(35f, 70f);
+                    Vector3 at = watched.transform.position;
+                    state.Spot = Ground(at + Quaternion.Euler(0f, Random.Range(-50f, 50f), 0f) * Flat(villager.transform.position - at) * 3.5f, at.y);
+                    state.Look = at + Vector3.up * 1.5f;
+                    state.HasLook = true;
+                    break;
+
                 case Kind.Station:
                     GameObject station = FreeStation(villager);
                     StationClaims[station] = villager;
@@ -376,6 +399,84 @@ namespace Villheim.Logic.Villagers
                     state.Spot = StrollSpot(villager, state, hearth);
                     break;
             }
+        }
+
+        /// <summary>
+        /// Someone worth watching, after Millenaire's "observe" goals: a neighbour within 35 m who is building, felling,
+        /// cooking, mining or farming, or a visitor by the hearth. Picked anew every 20 seconds at most.
+        /// </summary>
+        private static Character WatchTarget(Villager villager)
+        {
+            if (WatchCache.TryGetValue(villager, out WatchPick cached) && Time.time - cached.At < 20f)
+            {
+                return cached.Who != null && !cached.Who.IsDead() ? cached.Who : null;
+            }
+
+            Vector3 position = villager.transform.position;
+            var found = new List<Character>();
+            foreach (Character character in Character.GetAllCharacters())
+            {
+                if (!(character is Villager other) || other == villager || other.IsDead() ||
+                    Vector3.Distance(other.transform.position, position) > (Wanderers.IsWanderer(other) ? 40f : 35f))
+                {
+                    continue;
+                }
+
+                if (Wanderers.IsWanderer(other) ? Wanderers.KindOf(other) != Wanderers.Hermit
+                        : other.VillageId == villager.VillageId && WatchWord(other) != null)
+                {
+                    found.Add(other);
+                }
+            }
+
+            Character who = found.Count > 0 ? found[Random.Range(0, found.Count)] : null;
+            WatchPick pick = WatchCache.GetOrCreateValue(villager);
+            pick.Who = who;
+            pick.At = Time.time;
+            return who;
+        }
+
+        private sealed class WatchPick
+        {
+            public Character Who;
+            public float At;
+        }
+
+        private static readonly ConditionalWeakTable<Villager, WatchPick> WatchCache = new ConditionalWeakTable<Villager, WatchPick>();
+
+        /// <summary>The kind of work being watched ("building", "felling"...), or null when it isn't worth watching.</summary>
+        private static string WatchWord(Villager worker)
+        {
+            string word = Dialogue.ActivityWord(VillagerBehaviour.Activity(worker) ?? "");
+            return word == "building" || word == "felling" || word == "cooking" || word == "mining" || word == "farming" ||
+                   word == "repairing" || word == "path" || word == "fencing" ? word : null;
+        }
+
+        private static void ActWatch(Villager villager, VillagerAI ai, State state, float mood)
+        {
+            if (state.Watched == null || state.Watched.IsDead())
+            {
+                state.Until = 0f;
+                return;
+            }
+
+            ai.LookAt(state.Watched.GetEyePoint());
+            GestureByMood(villager, state, mood, 18f, 35f);
+            if (state.Commented || Time.time - state.ArrivedAt < 4f || Random.value > 0.02f)
+            {
+                return;
+            }
+
+            state.Commented = true;
+            if (!Dialogue.TakeTurn(villager.VillageId, 20f, 40f))
+            {
+                return;
+            }
+
+            var watched = state.Watched as Villager;
+            string what = watched != null && Wanderers.IsWanderer(watched) ? "watch:" + Wanderers.KindOf(watched) : "watch:" + (WatchWord(watched) ?? "work");
+            string line = Dialogue.LineFor(villager, "self", "watching", new[] { "watching", what });
+            Dialogue.Say(villager, line?.Replace("{watched}", state.Watched.GetHoverName()));
         }
 
         private static Kind Pick(List<(Kind Kind, float Weight)> options)
@@ -445,6 +546,10 @@ namespace Villheim.Logic.Villagers
 
                 case Kind.Make:
                     ActMake(villager, ai, state, facing);
+                    break;
+
+                case Kind.Watch:
+                    ActWatch(villager, ai, state, mood);
                     break;
 
                 default:

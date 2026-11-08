@@ -218,3 +218,31 @@ Villheim only builds existing designs, so mods that add locations are a direct s
 8. Village reputation, trade, and a village building the player a house (Millénaire).
 9. Cultures per biome: Fuling camps in the Plains, Dvergr outposts in the Mistlands (Millénaire cultures, Fuling Workforce).
 10. Raids through Valheim's own event system (VikingSettlements).
+
+## 5. Survey of 2026-11-08: the world between villages
+
+Sources read for traders, hermits, outposts, roads, dialogue and gear. What Villheim does with them is in
+`docs/WORLD_LIFE.md`. Licence decides use: MIT and Unlicense may be copied with the notice, everything else is ideas
+only.
+
+| Mod or source | Game | Licence | What is worth having |
+|---|---|---|---|
+| Living Factions (under2ker) | Valheim | none (ideas only) | Closest to Villheim: factions found camps that grow from hamlet to city, build from vanilla pieces, send bands, lay roads, hold outposts. Bands are records that become NPCs within 130 m of a player. Outposts (two per faction, resource camp or road post). Roads by A* in a corridor, painted near the player. Daily fortune rolls. Gear by settlement tier. |
+| ProceduralRoads (jneb802) | Valheim | MIT | Roads between locations at world generation: A* over 16 directions on an 8 m grid with slope, water and river costs, written into `TerrainComp` as zones spawn, vegetation cleared on the road. |
+| AntTrails (egaroib) | Valheim | MIT | Footsteps wear dirt paths that fade if unused; very busy paths can turn to stone. |
+| Offline Companions Reborn | Valheim | MIT | Tagged barks (`[home,night,!rain]`), a priority queue (order, problem, event, ambient) with repeat timers; NPC repairs at a real station. |
+| CustomRaids (ASharpPen) | Valheim | Unlicense | Adding `RandomEvent`s to `RandEventSystem`, conditions and centring on a point. |
+| TraderQuests (RustyMods) | Valheim | none | A travelling trader made by subclassing `Trader`; bounties and treasure that spawn only when the player reaches the pinned spot. |
+| Norsemen (RustyMods) | Valheim | none | Typed talk pools with a shared cooldown so a crowd never talks at once; weighted gear sets gated by boss keys. |
+| TravelingHaldor (OdinPlus) | Valheim | README only | Config set for a roaming trader: interval, chance, duration, spawn distance, biome, required boss key, item list, despawn when trapped. |
+| ServerGuide (yesu0725) | Valheim | "free to use", no licence file | Conversation nodes with requirements, rewards and a resume point; about 45 trigger types. |
+| Vikings Village (Northarun) | Valheim | README only | Village stone as a ward, markers for homes and work spots, daily contracts, reputation tiers, a 9-chapter saga. |
+| HaldorBounties, WanderingCompanions (ProfMags) | Valheim | README only | Bounty board with daily contracts; warbands idle round a fire until a player comes near; beaten wanderers join you. |
+| VanillaNPC, ImmersiveTrader, TravelingMerchant (BranchOfYore) | Valheim | README only or All Rights Reserved | A beggar and a drunkard who sells a trader's location; cargo runs between traders for reputation; a merchant who takes a free seat at a bonfire. |
+| Millénaire 9.0.3 data | Minecraft | All Rights Reserved | Hamlets owned by a parent village; lone buildings (hermits, bandit lairs) with a distance from spawn; merchants who move between villages by what they lack; village relations with a drift that leans where it stands; quests with villager roles and reputation. |
+| MCA Reborn | Minecraft | GPL | Dialogue key fallback chains and numbered variants; weighted outcomes with per-player fatigue; expiring memories; mood bands that change where villagers go; traits that children inherit. |
+| MineColonies | Minecraft | GPL | Tavern visitors who can be recruited; skills with complementary and adverse pairs, capped by the home's level; two-citizen quests with timed mood rewards; chat priority (blocking needs before small talk). |
+| Minecraft wandering trader | Minecraft | game | A daily attempt with a rising chance (25, 50, 75%), anchored to the village bell, despawns after two days. |
+| RimWorld, Dwarf Fortress, Stardew Valley, Skyrim, Bannerlord, Kenshi, Enshrouded, Medieval Dynasty | other games | games | Pair opinions from talk types; only extreme personality facets show; lines keyed by day, weather and spot; schedules and two-NPC scenes; caravans that carry goods for profit and can be raided; rescued specialists unlock crafting; output from skill and needs. |
+
+Clones from the survey were kept in `/tmp/study` for the session and are not committed.

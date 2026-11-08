@@ -585,7 +585,8 @@ namespace Villheim.Logic.Villagers
             if (d.Contains("cook")) yield return "cooking";
             if (d.Contains("fetching")) yield return "fetching";
             if (d.Contains("roasting")) yield return "roasting";
-            if (d.Contains("watch")) yield return "watch";
+            if (d.StartsWith("watching")) yield return "watching";
+            else if (d.Contains("watch")) yield return "watch";
             if (d.Contains("path")) yield return "path";
             if (d.Contains("making")) yield return "making";
             if (d.Contains("sitting down")) yield return "seat";

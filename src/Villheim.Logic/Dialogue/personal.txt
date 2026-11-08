@@ -299,3 +299,62 @@ What if {neighbour} comes for us in the night? Has anyone thought about that?
 
 @ chat, neighbour:wary
 Heard from {neighbour}? // Nothing good. // Nothing's what I like to hear from them.
+
+# ------------------------------------------------------------------ watching someone work (FreeTime, Kind.Watch)
+# Tags watching, watch:building watch:felling watch:cooking watch:mining watch:farming watch:repairing watch:path
+# watch:fencing watch:pedlar watch:pilgrim. Fill-in {watched}: the one being watched.
+
+@ self, watching, watch:building
+Look at {watched} go. That wall's straighter than mine ever were.
+Careful up there, {watched}.
+That beam's not level. No, it is. Carry on.
+I'm helping. I'm helping by watching.
+
+@ self, watching, watch:building | gruff
+Faster, {watched}. We'll all be old by the time that roof's on.
+
+@ self, watching, watch:building | young
+When I'm bigger I'll build a whole house. Two houses.
+
+@ self, watching, watch:felling
+Which way's it going to fall, {watched}?
+Good swing. Again. Again.
+I'll stand back here. Just in case.
+
+@ self, watching, watch:felling | worrier
+Not toward me. Please not toward me.
+
+@ self, watching, watch:cooking
+That smells good, {watched}. Is it ready? Is it ready now?
+Don't burn it like last time.
+I'll taste it for you. To be safe.
+
+@ self, watching, watch:mining
+Every swing, my teeth rattle.
+{watched} hits rocks like they owe money.
+
+@ self, watching, watch:farming
+Rows and rows. I couldn't keep them that straight.
+Mind the bushes, {watched}. Those are the good ones.
+
+@ self, watching, watch:repairing
+Good as new. Nearly new. New-ish.
+
+@ self, watching, watch:path
+A proper path. My boots thank you, {watched}.
+
+@ self, watching, watch:fencing
+A fence. Good. Let the greydwarfs read that.
+
+@ self, watching, watch:pedlar
+What's in the pack today? I'm only looking.
+I'd buy something if I had anything.
+That pedlar's been everywhere. I've been here.
+
+@ self, watching, watch:pilgrim
+The pilgrim's very still. Asleep, or praying. Hard to tell.
+I wonder where the pilgrim's going next.
+
+@ self, watching
+Somebody has to keep an eye on things.
+I'm not idle. I'm supervising.

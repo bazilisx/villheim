@@ -418,5 +418,6 @@ opens the profile's folder; the files below are in its `BepInEx` folder (on Wind
 | `vh snow [amount] [piece]` | Snow on the design you aim at, and nothing else. No amount: shows how much its pieces carry. `vh snow 0` takes it off, `vh snow 0.5` sets it. Add `piece` for the one piece you aim at. Undo (8) puts it back. Board saves do not keep snow. |
 | `vh weather` | Lists the game's local weather zones (EnvZone) within 100 m: the object, its weather, distance and the design or plot it stands in. A zone shows its weather as a patch seen from outside and makes you wet inside it under a clear sky. `vh weather remove N` takes one away; Undo (8) puts it back. |
 | `vh repair` | Repairs every item in your inventory that wears down (tools, weapons, armour, equipped or not) to full. |
+| `vh slot tab` | Puts the standing board's designs back into PlanBuild's "Villheim board" tab, without touching the board. |
 | `vh gravity` | Turns gravity on or off (`on`/`off` to set it). On: gallery and board pieces with no support break, as built pieces do; they may drop their materials. Off (the default): nothing falls. |
 | `vh help` | Every Villheim command. |

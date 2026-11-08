@@ -175,6 +175,33 @@ namespace Villheim.Logic.Village
             return null;
         }
 
+        /// <summary>
+        /// 'vh slot tab': puts the standing board's designs back into PlanBuild's "Villheim board" tab (from the files in
+        /// PlanBuild's villheim-board folder, pictures kept), without touching the board or anything on it.
+        /// </summary>
+        private static string ReloadTab()
+        {
+            Scan();
+            ZDO sign = Loaded().Select(v => v.GetZDO()).Where(z => z.GetString(Gallery.KeyDesign, "").StartsWith(Prefix) && z.GetFloat(Gallery.KeyPlotHalf, 0f) > 0f)
+                .OrderBy(z => Player.m_localPlayer != null ? Utils.DistanceXZ(z.GetPosition(), Player.m_localPlayer.transform.position) : 0f).FirstOrDefault();
+            string label = sign?.GetString(KeySubtype, "") ?? "";
+            Kind kind = Kinds.Values.FirstOrDefault(k => k.Label == label);
+            if (kind == null || VillheimPlugin.Instance == null)
+            {
+                return "Board: stand near a board plot for 'vh slot tab' (its sign tells which kind of design the tab shows).";
+            }
+
+            string biome = sign.GetString(KeyBiome, "");
+            VillheimPlugin.Instance.StartCoroutine(Tab(kind, biome));
+            return $"Board: putting the {biome} {kind.Label} designs back into PlanBuild's \"{Category}\" tab...";
+        }
+
+        private static IEnumerator Tab(Kind kind, string biome)
+        {
+            yield return WriteCandidates(kind, biome);
+            yield return LoadIntoPlanBuild(text => Say("Board: " + text));
+        }
+
         /// <summary>For 'vh shaper': the plots the board knows and the board signs standing within 60 m.</summary>
         internal static string Known(Vector3 near)
         {
@@ -442,6 +469,11 @@ namespace Villheim.Logic.Village
             if (first == "forget" && args.Length > 1)
             {
                 return Forget(args[1]);
+            }
+
+            if (first == "tab")
+            {
+                return ReloadTab();
             }
 
             if (first == "reset" && args.Length > 1)

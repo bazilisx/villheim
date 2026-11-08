@@ -175,11 +175,12 @@ The game runs the lab's own JavaScript, so `vh gen` makes the same building as t
 
 | Command | What it does |
 |---|---|
-| `vh gen <biome> <type> <stage> [culture] ["request"] [seed]` | Best of `GenCandidates` seeds (8; config section "4b - Generator"), built at once in front of you with the ground levelled, as `vh preview` does. Saved to `BepInEx/config/PlanBuild/blueprints/inspiration/generated/ingame/<name>.blueprint` and nothing else. Prints the name, plan, roof, walls, culture, piece count, checks passed and any failed check. Without a seed it takes a new one each time. |
+| `vh gen <biome> <type> <stage> [culture] ["request"] [seed]` | Best of `GenCandidates` seeds (8; config section "4b - Generator"), built at once in front of you with the ground levelled, as `vh preview` does. Saved with a short name, `gen-<number>-<culture>-<type>.blueprint` (gen-12-norse-home), in `inspiration/generated/ingame` under PlanBuild's save folder. That folder comes from `marcopogo.PlanBuild.cfg` ([Directories] "Save directory", relative to valheim.exe; the search folder when the save folder is outside it), so PlanBuild finds it with r2modman too. The file's category is Villheim, so PlanBuild lists it on its own tab; its description holds the request, and `#Design:` the lab's long design name. PlanBuild is told about the new file while the game runs; if that fails it lists it after a restart. Prints the name, plan, roof, walls, culture, piece count, checks passed and any failed check. Without a seed it takes a new one each time. |
+| `vh gen list` | The last 10 `vh gen` designs by short name, with time and long design name. |
 | `vh gen help` | Codes and examples. |
 | `vh ask <biome> <type> <stage> [culture] "request" [seed]` | Adds one line to `BepInEx/config/Villheim/requests/requests.jsonl`: id (R-0001 on), time, world, position, facing, biome code, type, stage, culture, request, seed (0: none), status "open". Works without the generator. |
 | `vh asks` | Every request, its status and its result. |
-| `vh place <R-0001\|name> [here]` | Builds a request's result (`.../inspiration/generated/requests/<id>.blueprint`) or a `vh gen` design in front of you. With `here`, a request is built where you stood when you asked. |
+| `vh place <R-0001\|short name\|last> [here]` | Builds a request's result (`.../inspiration/generated/requests/<id>.blueprint`) or a `vh gen` design in front of you (`last` is the newest; `gen-12` alone works too; older long names in the profile's folder still work). With `here`, a request is built where you stood when you asked. `vh preview` takes the same names. |
 
 Codes. Biomes: md Meadows, bf Black Forest, sw Swamp, mt Mountains, pl Plains, ml Mistlands, al Ashlands, dn Deep
 North (the lab has no Deep North kit yet, so it builds with the Mountain kit and says so). Types: home (house),
@@ -190,8 +191,7 @@ The console splits on spaces and keeps the quotes, so the command joins the word
 is the seed.
 
 Villages never build from `inspiration` folders, so nothing made here reaches a village. PlanBuild lists the files.
-`vh preview <name>` finds them too, except designs under 25 pieces (wells, small camps), which only `vh place <name>`
-builds.
+`vh preview <name>` builds them too, wells and small camps included.
 
 ### How the game runs the lab
 

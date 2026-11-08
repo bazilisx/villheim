@@ -69,6 +69,11 @@ namespace Villheim.Logic.Village
         /// <summary>Hearth tick: check the contract that is up, or maybe post one.</summary>
         public static void Tick(VillageHearth hearth, VillageState state)
         {
+            if (!LogicConfig.IsOn(LogicConfig.Contracts))
+            {
+                return;
+            }
+
             Container chest = VillageChest.Find(hearth);
             if (chest == null || !VillageChest.Usable(chest))
             {
@@ -204,11 +209,23 @@ namespace Villheim.Logic.Village
                 return false;
             }
 
-            chest.GetInventory().RemoveItem(name, paid);
-            if (!player.GetInventory().AddItem(prefab, paid))
+            ItemDrop drop = prefab.GetComponent<ItemDrop>();
+            if (drop == null)
             {
-                ItemDrop.DropItem(prefab.GetComponent<ItemDrop>().m_itemData, paid, player.transform.position + player.transform.forward + Vector3.up,
-                    Quaternion.identity);
+                return false;
+            }
+
+            chest.GetInventory().RemoveItem(name, paid);
+            // A stack at a time: the inventory takes no more than a full stack per call. What does not fit is dropped
+            // at the player's feet.
+            int stack = Mathf.Max(1, drop.m_itemData.m_shared.m_maxStackSize);
+            for (int left = paid; left > 0; left -= stack)
+            {
+                int amount = Mathf.Min(stack, left);
+                if (!player.GetInventory().CanAddItem(prefab, amount) || !player.GetInventory().AddItem(prefab, amount))
+                {
+                    ItemDrop.DropItem(drop.m_itemData, amount, player.transform.position + player.transform.forward + Vector3.up, Quaternion.identity);
+                }
             }
 
             return true;
@@ -228,7 +245,7 @@ namespace Villheim.Logic.Village
         /// <summary>The contract for the notice board's "Needed" sign, or null.</summary>
         public static string BoardText(VillageHearth hearth)
         {
-            Contract c = hearth != null && hearth.IsValid ? Read(hearth.Zdo) : null;
+            Contract c = hearth != null && hearth.IsValid && LogicConfig.IsOn(LogicConfig.Contracts) ? Read(hearth.Zdo) : null;
             return c != null ? $"{c.Amount} {Label(c.Item)}, pays {c.Reward} {Label(c.RewardItem)}" : null;
         }
 

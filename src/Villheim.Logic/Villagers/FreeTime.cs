@@ -780,6 +780,13 @@ namespace Villheim.Logic.Villagers
                     int next = say.IndexOf("//", System.StringComparison.Ordinal);
                     string part = next > 0 ? say.Substring(0, next).Trim() : say.Trim();
                     string rest = next > 0 ? say.Substring(next + 2).Trim() : null;
+                    if ((part.StartsWith("+") || part.StartsWith("@")) && !LogicConfig.IsOn(LogicConfig.ChatScenes))
+                    {
+                        // Chat scenes off: the exchange ends where a third villager or an answer would come in.
+                        chat.Reply = null;
+                        return;
+                    }
+
                     if (part.StartsWith("+"))
                     {
                         Dialogue.ChimeIn(villager, other, part.Substring(1).Trim());
@@ -814,6 +821,13 @@ namespace Villheim.Logic.Villagers
                     // One short exchange, then they just gesture; another one only after a while, if the village
                     // isn't busy talking already.
                     // Word passes on as they talk (PlayerMemory: what the player did, after Minecraft's gossip).
+                    // Only when a chat can open: this branch runs every frame while the village is talked out, and
+                    // gossip reads both villagers' records.
+                    if (!Dialogue.ChatCanOpen(villager))
+                    {
+                        return;
+                    }
+
                     string told = PlayerMemory.Gossip(villager, other);
                     string line = Dialogue.ChatOpening(villager, other, told);
                     if (line == null)

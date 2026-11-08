@@ -26,6 +26,21 @@ namespace Villheim.Logic
             _routine = plugin.StartCoroutine(Watch(_generation));
         }
 
+        /// <summary>
+        /// Stops this build's watcher. Each logic build is its own assembly with its own statics, so the generation
+        /// count alone never stops the watcher of an older build.
+        /// </summary>
+        public static void Stop()
+        {
+            _generation++;
+            if (_routine != null && VillheimPlugin.Instance != null)
+            {
+                VillheimPlugin.Instance.StopCoroutine(_routine);
+            }
+
+            _routine = null;
+        }
+
         private static IEnumerator Watch(int generation)
         {
             string path = VillheimPlugin.Instance.Config.ConfigFilePath;

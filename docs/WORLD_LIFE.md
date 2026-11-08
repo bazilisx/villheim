@@ -108,6 +108,105 @@ seen (single player and the host see all). A settlers' party that never sees a p
 caravans are one way and unpaid; the next caravan back evens it out. Cargo from a caravan does not count toward what
 a village can build (only outposts do, as Tyler decided). Groves count trees with a physics sweep once a day.
 
+## Review 2026-11-08 day
+
+A read-through of everything the minds and world branches added (`git diff f1f244f..main -- src`), before any of it
+has run in game. Branch `night2/harden`. Compiles with `scripts/build-cloud.sh`.
+
+### Fixed
+
+- **Logic loader.** Harmony patches go on one class at a time, each in its own try/catch with a warning that names
+  the class. Before, `PatchAll` threw at the first bad target, and `LogicConfig.Bind` (called after it) never ran, so
+  the whole logic ran without settings. Settings are now bound first. Unpatching on reload is unchanged
+  (`UnpatchSelf`, same Harmony id).
+- **Hot reload.** The old build's config watcher now stops on unload (each build has its own statics, so the
+  generation count never stopped it), and the look settings' change handlers come off (every reload added another
+  set to the same config entries).
+- **Player memory hooks** (`Piece.SetCreator`, `Character.OnDeath`, `Player.OnDeath`, `Character.Damage`) catch their
+  own errors and log each once. An exception in a prefix on `Character.Damage` would have stopped all damage.
+- **Hearth writes from clients.** The player record and reputation changes from those hooks are written only by the
+  hearth's owner. A client writing a hearth it does not own sends its whole copy, which can undo the owner's newer
+  stock and plots.
+- **Skills.** A record missing a skill (or holding an unknown one) is filled in on read; lookups by name threw
+  `KeyNotFoundException` in practice, tags and wants.
+- **Wants.** `{goalskill}` printed a villager's seed for court and peace wants. The sweetheart mark is written only on
+  a villager this machine owns, and the courting match skips the villager himself.
+- **Gossip** was worked out every frame while a village was talked out (the chat branch runs each frame until a line
+  is allowed). It now waits until a chat can open.
+- **Dialogue statics.** `{partner}` and `{beast}` are cleared in `finally`, so a line that throws does not leave them
+  set for every later line.
+- **Harvest feast.** The "feast" village event now makes the evening a feast (Gatherings only listened for hunts,
+  births, buildings and bosses).
+- **Caravans.** No carrier tick or spawn without a ZDO. A trade caravan judges what the other village lacks by that
+  village's biome alone; the brain's outpost scope was adding this village's outpost materials to it.
+- **Daughters.** The "hearth already lit" check looks at loaded hearths before scanning every ZDO (it ran every ten
+  seconds near a daughter village). The site search tests only game locations within 1,800 m (it tested all of them
+  for each of 312 points). Settlers without a ZDO are skipped.
+- **Trails.** One A* plan per hearth tick; the day is marked done once nothing is left. Up to three plans ran in one
+  tick before.
+- **Contracts.** Pay goes into the inventory a stack at a time; what does not fit is dropped at the player's feet.
+- **Kill switches.** Every system from 2026-11-07 and 08 has its own setting, all on by default. World life (section
+  5): WorldLife, Outposts, Trails, TrailSigns, VillageEvents, EventFever (new), Caravans, Daughters, Contracts, Groves.
+  Villager minds (new section 5b): PlayerMemory, VillagerSkills, VillagerWants, Gatherings, Noticing, IdleGlances,
+  SurroundingsTags, TopicFatigue, ChatScenes. `vh switches` lists them with their values; `vh help` names them.
+- **Piece export.** `vh exportpieces` writes `BepInEx/config/Villheim/pieces.json` for the blueprint lab (see
+  `tools/blueprint-lab/lib/pieces.js`; copy it to `tools/blueprint-lab/data/pieces-export.json`).
+
+### Still risky
+
+- **Patch targets.** The stubs used to compile are Valheim 1.0.21/22: `Piece.SetCreator(long, PlatformUserID)`. If
+  the installed game differs, that one patch is left off with a warning ("Patch ... failed") and building near a
+  village is not remembered. Check the log after the first load.
+- **Kills are seen by the creature's owner.** `Character.OnDeath` runs on the machine that owns the creature. In
+  multiplayer a kill by a player who does not own the creature is not remembered.
+- **Only the hearth owner remembers players.** With two players in a village, deeds of the one who does not own the
+  hearth are not recorded (by design of the fix above), and only the owner is paid for a contract.
+- **Daughter hearths and camps are made on the host only** (`ZNet.IsServer` in `WorldLife.Tick`, which runs from the
+  local player's update). On a dedicated server nobody lights daughter hearths or makes outpost camps.
+- **Far hearths on clients.** Caravans, relations and daughters read hearth ZDOs the machine knows. A client may not
+  have far hearths, so deliveries wait until someone near the destination has both, and a village that cannot see
+  that its trade caravan was taken sends no new one until the record ages out (20 days).
+- **Two players near one caravan** can each spawn its carrier (the check for one already walking sees only
+  characters this machine has loaded).
+- **Fever** lowers a villager's health by a third with `SetHealth`. It cannot kill (only villagers above 80% are
+  picked), but it has not been seen in game. `EventFever` turns it off.
+- **Trail planning** is still one A* search of up to 30,000 cells in a single tick: a short hitch when a village
+  plans a trail.
+- **Groves** count trees with one `Physics.OverlapSphere` of about 120 m on all layers, once a day per grown village.
+- **Signposts** check every hearth's trails every ten seconds on the host; cheap for a few villages, not measured.
+- **Statics reset on reload.** Feast days, the evening words, noticing cool-downs and topic fatigue live in memory, so
+  a logic reload during a feast evening ends the feast.
+- **Settlers** become wanderers (village 0, kind carrier). If the world is closed while they walk, they come back as
+  carriers whose record may be due; they walk to the site or vanish once nobody is within 70 m.
+
+### Test plan (about 20 minutes)
+
+Use a test world with a village of four or more buildings. Console: F5, `devcommands` first. Set `WorldLife = true`
+in `BepInEx/config/bazilisx.villheim.cfg` before step 4 (it reloads live).
+
+1. Load the world. In `BepInEx/LogOutput.log`, look for `Loaded logic #1` and any `Patch ... failed` lines.
+   `vh version`, then `vh switches`: every switch should read on except WorldLife.
+2. Walk into the village. `vh minds`: skills, a want, "sees" tags and the village's record of you (one visit).
+   Put 20 wood in the chest, then `vh minds` again: gifts and given count up, and nearby villagers know "gift".
+3. Place one piece within the village, kill a boar or deer nearby, and hit a villager once with a fist.
+   `vh minds` should show built, kills and hurtus. The game must place, kill and damage as normal.
+4. `vh feast`, then `vh speech` near the hearth with two villagers by it: one speaks, one or two answer.
+   `vh goal court`, `vh goal`: the want is set. `vh notice rainstart`: one to three villagers remark.
+5. `vh event feast`, `vh event sickness` (one villager loses about a third of health), `vh events`.
+6. `vh outpost logging` (or `flint`), `vh trails`, then `vh village`: camp and trail listed. `vh outpost haul`,
+   then `vh caravans`: a haul on the road. Walk along the trail: a carrier walks with it and signposts stand where
+   it leaves the village.
+7. `vh caravan`: a trade caravan to a neighbour within 2,500 m (or a reason why not). `vh contract`: a notice on the
+   board; `vh contract clear` takes it down.
+8. `vh daughter`: two villagers leave as settlers and a pin marks the site. Go to the pin, `vh daughter here`: a
+   hearth is lit and settles within a few ticks (`vh village` there shows where it came from).
+9. Turn one switch off in the config (for example `Gatherings = false`), save, `vh switches`: it reads off, and a
+   finished building gets the old few onlookers. Turn it back on.
+10. Hot reload: copy the logic DLL again (or `vh reload`). The log shows `Loaded logic #2` with no doubled "Config
+    reloaded" lines afterward when the config is saved once.
+11. `vh exportpieces`: `BepInEx/config/Villheim/pieces.json` is written with several hundred pieces. Spot-check
+    `wood_wall` (about 2 by 2 by 0.2 collider) and copy the file to `tools/blueprint-lab/data/pieces-export.json`.
+
 ## Next, in order
 
 Effort is a rough guess: S an evening, M a session or two, L several sessions.

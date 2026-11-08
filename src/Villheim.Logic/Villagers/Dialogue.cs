@@ -207,15 +207,24 @@ namespace Villheim.Logic.Villagers
                 return null;
             }
 
-            List<string> extra = partner != null ? PairTags(villager, partner) : new List<string>();
-            if (told != null)
+            bool scenes = LogicConfig.IsOn(LogicConfig.ChatScenes);
+            List<string> extra = partner != null && scenes ? PairTags(villager, partner) : new List<string>();
+            if (told != null && scenes)
             {
                 extra.Add("tell:" + told);
             }
 
+            string line;
             _partner = partner;
-            string line = LineFor(villager, "chat", null, extra.ToArray());
-            _partner = null;
+            try
+            {
+                line = LineFor(villager, "chat", null, extra.ToArray());
+            }
+            finally
+            {
+                _partner = null;
+            }
+
             if (line != null)
             {
                 UseAmbient(villager.VillageId);
@@ -223,6 +232,9 @@ namespace Villheim.Logic.Villagers
 
             return line;
         }
+
+        /// <summary>Whether a chat may open now in this villager's village (the same check ChatOpening makes first).</summary>
+        public static bool ChatCanOpen(Villager villager) => AmbientOpen(villager.VillageId) && VillheimConfig.VillagerChatter.Value;
 
         /// <summary>The one being talked to in the line being picked, for {partner}.</summary>
         private static Villager _partner;
@@ -269,15 +281,21 @@ namespace Villheim.Logic.Villagers
             List<string> extra = PairTags(answerer, asker);
             extra.Add("answer:" + key);
             _partner = asker;
-            string line = LineFor(answerer, "reply", "answer:" + key, extra.ToArray());
-            if (line == null && key != "any")
+            try
             {
-                extra.Add("answer:any");
-                line = LineFor(answerer, "reply", "answer:any", extra.ToArray());
-            }
+                string line = LineFor(answerer, "reply", "answer:" + key, extra.ToArray());
+                if (line == null && key != "any")
+                {
+                    extra.Add("answer:any");
+                    line = LineFor(answerer, "reply", "answer:any", extra.ToArray());
+                }
 
-            _partner = null;
-            return line;
+                return line;
+            }
+            finally
+            {
+                _partner = null;
+            }
         }
 
         /// <summary>A third villager standing close to a chat joins in with a line tagged "chime:key".</summary>
@@ -364,9 +382,14 @@ namespace Villheim.Logic.Villagers
                 }
 
                 _sighted = extra?.FirstOrDefault(e => e.StartsWith("sighted:"))?.Substring(8);
-                string filled = Fill(line, villager);
-                _sighted = null;
-                return filled;
+                try
+                {
+                    return Fill(line, villager);
+                }
+                finally
+                {
+                    _sighted = null;
+                }
             }
 
             return null;
@@ -389,9 +412,16 @@ namespace Villheim.Logic.Villagers
         private static float FatigueNow(Section section) =>
             Fatigue.TryGetValue(section, out var f) ? Mathf.Max(0f, f.Count - (Time.time - f.At) / FatigueWearsOff) : 0f;
 
-        private static float FatigueFactor(Section section) => 1f / (1f + 0.8f * FatigueNow(section));
+        private static float FatigueFactor(Section section) =>
+            LogicConfig.IsOn(LogicConfig.TopicFatigue) ? 1f / (1f + 0.8f * FatigueNow(section)) : 1f;
 
-        private static void Tire(Section section) => Fatigue[section] = (FatigueNow(section) + 1f, Time.time);
+        private static void Tire(Section section)
+        {
+            if (LogicConfig.IsOn(LogicConfig.TopicFatigue))
+            {
+                Fatigue[section] = (FatigueNow(section) + 1f, Time.time);
+            }
+        }
 
         /// <summary>The sections the player is most tired of, for the inspect command.</summary>
         public static string DescribeFatigue() =>

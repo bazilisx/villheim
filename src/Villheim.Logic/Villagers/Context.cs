@@ -26,6 +26,8 @@ namespace Villheim.Logic.Villagers
             public string Place;
         }
 
+        private static readonly List<string> Empty = new List<string>();
+
         private static readonly ConditionalWeakTable<Villager, Cache> Caches = new ConditionalWeakTable<Villager, Cache>();
 
         // Global keys of the bosses, strongest last, and how villagers name them.
@@ -61,6 +63,8 @@ namespace Villheim.Logic.Villagers
 
         public static IEnumerable<string> Tags(Villager villager)
         {
+            if (!LogicConfig.IsOn(LogicConfig.SurroundingsTags)) return Empty;
+
             Cache cache = Caches.GetOrCreateValue(villager);
             if (Time.time - cache.At > 3f)
             {

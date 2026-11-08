@@ -80,6 +80,19 @@ namespace Villheim.Logic
         public static ConfigEntry<int> HermitChance;
         public static ConfigEntry<string> HermitPlaces;
         public static ConfigEntry<string> HermitBiomes;
+        public static ConfigEntry<bool> PlayerMemory;
+        public static ConfigEntry<bool> VillagerSkills;
+        public static ConfigEntry<bool> VillagerWants;
+        public static ConfigEntry<bool> Gatherings;
+        public static ConfigEntry<bool> Noticing;
+        public static ConfigEntry<bool> IdleGlances;
+        public static ConfigEntry<bool> SurroundingsTags;
+        public static ConfigEntry<bool> TopicFatigue;
+        public static ConfigEntry<bool> ChatScenes;
+        public static ConfigEntry<bool> EventFever;
+
+        /// <summary>True when the setting is on, or not bound yet (every system defaults to on).</summary>
+        public static bool IsOn(ConfigEntry<bool> entry) => entry == null || entry.Value;
 
         public static void Bind()
         {
@@ -192,6 +205,38 @@ namespace Villheim.Logic
             HermitBiomes = Admin(config, life, "HermitBiomes", "Meadows,BlackForest,Mountain",
                 "Biomes where hermits camp.");
 
+            EventFever = Admin(config, life, "EventFever", true,
+                "With VillageEvents on, a fever is one of the bad events: one villager loses a third of their health and " +
+                "rests it off. Off: no fevers.");
+
+            const string minds = "5b - Villager minds";
+            PlayerMemory = Admin(config, minds, "PlayerMemory", true,
+                "Each village remembers what you do there (visits, gifts, building, kills, deaths, hurting its people) and " +
+                "villagers who saw it tell the others. Off: nothing new is remembered and villagers do not mention it.");
+            VillagerSkills = Admin(config, minds, "VillagerSkills", true,
+                "Villagers get better at what they do (woodcutting, mining, building and six more), which makes them work " +
+                "faster. Off: no practice, and everyone works at the plain speed.");
+            VillagerWants = Admin(config, minds, "VillagerWants", true,
+                "Each villager wants something for a few days (a bed, a feast, to court a friend, to make peace...) and " +
+                "is glad when it comes. Off: no new wants and no sweethearts.");
+            Gatherings = Admin(config, minds, "Gatherings", true,
+                "The village turns out for a finished building, a newcomer or a pedlar, feasts on good days and hears the " +
+                "evening words at the hearth. Off: a few villagers come to look, as before.");
+            Noticing = Admin(config, minds, "Noticing", true,
+                "Villagers remark on the weather turning, dawn and dusk, a boss felled, animals and enemies in sight, and " +
+                "your drawn weapon or sneaking. Off: they don't.");
+            IdleGlances = Admin(config, minds, "IdleGlances", true,
+                "Villagers standing about glance at whoever talks, at you, at animals, the sky and the fire, and make " +
+                "small gestures. Off: they stand still.");
+            SurroundingsTags = Admin(config, minds, "SurroundingsTags", true,
+                "Lines can fit where a villager stands, the sky, bosses down, creatures in sight and what you wear and " +
+                "carry. Off: those lines are not picked.");
+            TopicFatigue = Admin(config, minds, "TopicFatigue", true,
+                "A topic you have heard a lot of lately is picked less often. Off: every line keeps its weight.");
+            ChatScenes = Admin(config, minds, "ChatScenes", true,
+                "Chats between villagers fit the pair (friend, rival, sweetheart, trade), pass on what they know of you, " +
+                "and get answers in each one's own voice and a third villager chiming in. Off: plain chats, as before.");
+
             const string sites = "1b - Village sites";
             VillageChance = Admin(config, sites, "VillageChance", 50,
                 "Percent of generated village sites that become villages, so villages stay a rare find. Sites lit with " +
@@ -295,27 +340,63 @@ namespace Villheim.Logic
             WatchLooks();
         }
 
+        /// <summary>
+        /// The on/off settings for the systems added on 2026-11-07 and 2026-11-08, for 'vh switches' and the help
+        /// text. World systems also need WorldLife on.
+        /// </summary>
+        public static (string Name, ConfigEntry<bool> Entry)[] Switches => new[]
+        {
+            ("WorldLife", WorldLife), ("Outposts", Outposts), ("Trails", Trails), ("TrailSigns", TrailSigns),
+            ("VillageEvents", VillageEvents), ("EventFever", EventFever), ("Caravans", Caravans), ("Daughters", Daughters),
+            ("Contracts", Contracts), ("Groves", Groves), ("PlayerMemory", PlayerMemory), ("VillagerSkills", VillagerSkills),
+            ("VillagerWants", VillagerWants), ("Gatherings", Gatherings), ("Noticing", Noticing), ("IdleGlances", IdleGlances),
+            ("SurroundingsTags", SurroundingsTags), ("TopicFatigue", TopicFatigue), ("ChatScenes", ChatScenes),
+        };
+
+        // The config entries outlive a logic build (the config file hands back the same entry on every Bind), so the
+        // handlers this build adds are taken off again when it unloads. Otherwise every reload adds another set.
+        private static readonly System.Collections.Generic.List<System.Action> Unhook = new System.Collections.Generic.List<System.Action>();
+
+        private static void Hook<T>(ConfigEntry<T> entry, System.EventHandler handler)
+        {
+            entry.SettingChanged += handler;
+            Unhook.Add(() => entry.SettingChanged -= handler);
+        }
+
+        /// <summary>Takes this build's handlers off the config entries (logic unload).</summary>
+        public static void Unbind()
+        {
+            foreach (System.Action unhook in Unhook)
+            {
+                unhook();
+            }
+
+            Unhook.Clear();
+        }
+
         /// <summary>Every look setting puts itself on the ghosts the moment it changes.</summary>
         private static void WatchLooks()
         {
+            Unbind();
+            System.EventHandler apply = (_, __) => Villagers.GhostLook.ApplyNow();
             foreach (ConfigEntryBase entry in new ConfigEntryBase[]
                      {
                          GhostLook, GhostAlpha, GhostTint, GhostGlow, GhostAlphaDay, GhostTintDay, GhostGlowDay, GhostColor, GhostGlowColor,
                      })
             {
-                if (entry is ConfigEntry<float> f) f.SettingChanged += (_, __) => Villagers.GhostLook.ApplyNow();
-                else if (entry is ConfigEntry<bool> b) b.SettingChanged += (_, __) => Villagers.GhostLook.ApplyNow();
-                else if (entry is ConfigEntry<UnityEngine.Color> c) c.SettingChanged += (_, __) => Villagers.GhostLook.ApplyNow();
+                if (entry is ConfigEntry<float> f) Hook(f, apply);
+                else if (entry is ConfigEntry<bool> b) Hook(b, apply);
+                else if (entry is ConfigEntry<UnityEngine.Color> c) Hook(c, apply);
             }
 
-            GhostApplyNow.SettingChanged += (_, __) =>
+            Hook(GhostApplyNow, (_, __) =>
             {
                 if (GhostApplyNow.Value)
                 {
                     Villagers.GhostLook.ApplyNow();
                     GhostApplyNow.Value = false;
                 }
-            };
+            });
         }
 
         private static ConfigEntry<T> Admin<T>(ConfigFile config, string section, string key, T value, string description)

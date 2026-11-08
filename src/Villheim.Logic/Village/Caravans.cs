@@ -418,7 +418,13 @@ namespace Villheim.Logic.Village
                 }
 
                 var theirs = new VillageState(other);
-                HashSet<string> grows = Materials.AllowedIn(theirs.Biome);
+                HashSet<string> grows;
+                using (Materials.From(null))
+                {
+                    // Their own biome's materials: the scope the brain opened adds this village's outposts.
+                    grows = Materials.AllowedIn(theirs.Biome);
+                }
+
                 var load = new Dictionary<string, int>();
                 float score = 0f;
                 foreach (KeyValuePair<string, int> item in spare.OrderByDescending(s => Lacks(grows, theirs, s.Key)))
@@ -507,7 +513,7 @@ namespace Villheim.Logic.Village
         /// <summary>World tick: caravans near the player become people walking the road.</summary>
         public static void Embody(Vector3 player)
         {
-            if (!On)
+            if (!On || ZNetScene.instance == null)
             {
                 return;
             }
@@ -545,6 +551,11 @@ namespace Villheim.Logic.Village
 
                     int seed = c.Seed + i * 7919;
                     string name = Names.Villager(seed);
+                    if (walker.Zdo == null)
+                    {
+                        break;
+                    }
+
                     walker.Zdo.Set(KeyCaravanId, c.Id);
                     walker.Zdo.Set(Keys.VillagerSeed, seed);
                     walker.Zdo.Set(Keys.VillagerName, name);
@@ -585,6 +596,11 @@ namespace Villheim.Logic.Village
         public static void WalkTick(Villager villager, VillagerAI ai, float dt)
         {
             ZDO zdo = villager.Zdo;
+            if (zdo == null)
+            {
+                return;
+            }
+
             Caravan c = Find(zdo.GetLong(KeyCaravanId), out ZDO source);
             float nearest = NearestPlayer(villager.transform.position);
             if (c == null || Due(c))

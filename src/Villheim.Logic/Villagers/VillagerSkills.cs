@@ -70,15 +70,26 @@ namespace Villheim.Logic.Villagers
             foreach (string part in raw.Split(','))
             {
                 int eq = part.IndexOf('=');
-                if (eq > 0 && float.TryParse(part.Substring(eq + 1), NumberStyles.Float, CultureInfo.InvariantCulture, out float v))
+                if (eq > 0 && float.TryParse(part.Substring(eq + 1), NumberStyles.Float, CultureInfo.InvariantCulture, out float v) &&
+                    Pairs.ContainsKey(part.Substring(0, eq)))
                 {
                     skills[part.Substring(0, eq)] = v;
                 }
             }
 
-            if (skills.Count == 0)
+            if (skills.Count < Names.Length)
             {
-                Start(villager, skills);
+                // A new villager, or a record missing a skill (written by an older build): every skill is always there,
+                // so lookups by name never fail.
+                var start = new Dictionary<string, float>();
+                Start(villager, start);
+                foreach (KeyValuePair<string, float> s in start)
+                {
+                    if (!skills.ContainsKey(s.Key))
+                    {
+                        skills[s.Key] = s.Value;
+                    }
+                }
             }
 
             return skills;
@@ -129,6 +140,8 @@ namespace Villheim.Logic.Villagers
         /// <summary>How fast this villager works at this skill: 0.8 to 1.3, a quarter more on a good day.</summary>
         public static float WorkFactor(Villager villager, string skill)
         {
+            if (!LogicConfig.IsOn(LogicConfig.VillagerSkills)) return 1f;
+
             if (villager == null || Wanderers.IsWanderer(villager))
             {
                 return 1f;
@@ -141,6 +154,8 @@ namespace Villheim.Logic.Villagers
         /// <summary>Once a day a happy villager may wake up to a good day: (mood - 60) percent, at most 40.</summary>
         public static bool GoodDay(Villager villager)
         {
+            if (!LogicConfig.IsOn(LogicConfig.VillagerSkills)) return false;
+
             State state = States.GetOrCreateValue(villager);
             int day = EnvMan.instance != null ? EnvMan.instance.GetDay() : 0;
             if (state.RolledDay != day)
@@ -160,6 +175,8 @@ namespace Villheim.Logic.Villagers
         /// <summary>Every 30 seconds (from Personality.Sample): what he is doing trains its skill.</summary>
         public static void Practice(Villager villager, string activityWord)
         {
+            if (!LogicConfig.IsOn(LogicConfig.VillagerSkills)) return;
+
             if (villager.Zdo == null || villager.m_nview == null || !villager.m_nview.IsOwner() || Wanderers.IsWanderer(villager))
             {
                 return;
@@ -207,6 +224,8 @@ namespace Villheim.Logic.Villagers
 
         public static IEnumerable<string> Tags(Villager villager, string activityWord)
         {
+            if (!LogicConfig.IsOn(LogicConfig.VillagerSkills)) yield break;
+
             Dictionary<string, float> skills = Read(villager);
             foreach (KeyValuePair<string, float> s in skills)
             {

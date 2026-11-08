@@ -91,10 +91,10 @@ namespace Villheim.Logic.Village
         /// Keeps a plot that changed since its last save (pieces and ground) as a draft in board/drafts. False when the
         /// plot is as saved or empty.
         /// </summary>
-        private static bool WriteDraft(string plotName)
+        private static bool WriteDraft(string plotName, string path = null)
         {
             (ZDO sign, List<ZNetView> views) = SwapTool.DesignParts(plotName);
-            if (sign == null || views.Count == 0 || views.Count == sign.GetInt(Gallery.KeyPlaced, 0))
+            if (sign == null || views.Count == 0 || path == null && views.Count == sign.GetInt(Gallery.KeyPlaced, 0))
             {
                 return false;
             }
@@ -129,8 +129,9 @@ namespace Villheim.Logic.Village
                 lines.Add(Line(prefab, frame * (view.transform.position - center), frame * view.transform.rotation, view.transform.localScale));
             }
 
-            Directory.CreateDirectory(DraftFolder);
-            File.WriteAllLines(DraftFile(plotName), lines);
+            path = path ?? DraftFile(plotName);
+            Directory.CreateDirectory(Path.GetDirectoryName(path));
+            File.WriteAllLines(path, lines);
             return true;
         }
 
@@ -249,6 +250,11 @@ namespace Villheim.Logic.Village
                 }
 
                 return $"Board: taken down ({TakeDown()} objects).";
+            }
+
+            if (first == "move" && words.Count >= 3)
+            {
+                return MovePlot(words[1], words[2]);
             }
 
             if (first == "undo")
@@ -1290,6 +1296,61 @@ namespace Villheim.Logic.Village
             LogicConfig.SlotPathMarker.Value = prefab;
             return $"Board: {prefab} now marks \"connect roads and paths here\" ({DoorMarker} still does too). It is saved as a marker, never as a piece; " +
                    "the road leaves it away from the middle of the design, whichever way it is turned.";
+        }
+
+        /// <summary>The standing plot a word names: "s1d2" or "hub1_s1d2" (stage and decor stage).</summary>
+        private static Plot FindPlot(string word)
+        {
+            var match = System.Text.RegularExpressions.Regex.Match(word.ToLowerInvariant(), @"^(?:([a-z]+\d+)_)?s(\d+)d(\d+)$");
+            if (!match.Success)
+            {
+                return null;
+            }
+
+            Scan();
+            int stage = int.Parse(match.Groups[2].Value), decor = int.Parse(match.Groups[3].Value);
+            return Plots.FirstOrDefault(p =>
+            {
+                (string baseId, int s, int d) = Parse(p.Name);
+                return s == stage && d == decor && (!match.Groups[1].Success || baseId == match.Groups[1].Value);
+            });
+        }
+
+        /// <summary>
+        /// 'vh slot move s1d2 s1d3': everything in one plot (pieces, ground, markers) goes to another, which is emptied
+        /// first; the first is left empty. The moved plot counts as not saved.
+        /// </summary>
+        private static string MovePlot(string fromWord, string toWord)
+        {
+            Plot from = FindPlot(fromWord), to = FindPlot(toWord);
+            if (from == null || to == null || from == to)
+            {
+                return "Board: 'vh slot move s1d2 s1d3' moves everything in one plot of the standing board into another (stage and decor stage, e.g. s1d2).";
+            }
+
+            string carried = Path.Combine(DraftFolder, "moving.blueprint");
+            if (!WriteDraft(from.Name, carried))
+            {
+                return $"Board: {StageName(from.Name)} has nothing in it to move.";
+            }
+
+            foreach (string name in new[] { to.Name, from.Name })
+            {
+                foreach (ZNetView view in SwapTool.DesignParts(name).Views.Where(v => v != null && v.IsValid()))
+                {
+                    view.ClaimOwnership();
+                    ZNetScene.instance.Destroy(view.gameObject);
+                }
+            }
+
+            SetGround(null, from.Center, from.Yaw, from.Half);
+            int made = PutSaved(carried, to.Center, to.Yaw, to.Half);
+            File.Delete(carried);
+            SetPlotState(to.Name, -1, "moved here, not saved yet");
+            int fromDecor = Parse(from.Name).D;
+            SetPlotState(from.Name, 0, fromDecor < 3 ? $"waits for d{fromDecor + 1}" : null);
+            return $"Board: moved {made} pieces and the ground from {StageName(from.Name)} to {StageName(to.Name)}; {StageName(from.Name)} is empty. " +
+                   "Save it when it is right.";
         }
 
         private static string _lastGround = "";

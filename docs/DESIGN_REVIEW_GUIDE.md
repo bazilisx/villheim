@@ -71,6 +71,9 @@ typed in the in-game console (F5) unless it says otherwise.
    after it; the console says what came back): the plot comes back as it was, the copy behind it goes, and the file,
    board-saves.csv and the sheet are as before. For a save made earlier (or before this existed), `vh slot forget
    hub1_s1d3` deletes it, then put the board up again.
+   Undo only knows changes made since the newest build was loaded: every update starts it empty.
+   `vh slot move s1d2 s1d3` moves everything in one plot (pieces, ground, markers) into another and empties the first
+   (for example to bring a copy back to d3 after `vh slot forget`).
 9. The Shaper Tool's Reset (key 7) on a plot clears it back to its last save (a d2 or d1 copy goes back to the copy),
    or empty. Undo (8) brings back what was
    there.

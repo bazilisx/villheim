@@ -52,7 +52,8 @@ the way a hand build does.
   rooms, fewer modded pieces, less lighting.
 - Thin spots: only 3 builds read as Middle Eastern and 24 as East Asian. Those styles lean on hand-set rules
   (`styles.js`) more than on learned numbers. A slow keyword search of valheimians for desert, Asian, medieval,
-  Celtic and other styles was queued to run after the main download.
+  Celtic and other styles found 17 more downloadable builds (8 Japanese among them); they and about 200 late downloads
+  wait in Downloads to be sorted and added (see the 2026-11-08 note).
 
 ## Request to design
 

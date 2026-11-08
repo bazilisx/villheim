@@ -5,8 +5,8 @@
 Survey of 2026-11-08 (overnight). Question: what makes NPC settlements in other games and mods feel alive, growing
 and changing over time, and what of it fits Villheim. Millénaire is one input among many here; it is covered in
 `docs/MILLENAIRE.md`, and the Minecraft and Valheim village mods already read are in `docs/RELATED_MODS.md`. The
-world-life plan (visitors, hermits, outposts, trails, caravans) is in `docs/WORLD_LIFE.md`. This doc does not repeat
-them; it adds sources and turns them into proposals.
+world-life plan (visitors, hermits, outposts, trails, caravans) is in `docs/WORLD_LIFE.md`. This doc adds the sources
+those three leave out and turns the findings into proposals.
 
 How the sources were read:
 
@@ -43,7 +43,7 @@ Villheim files named under "For Villheim" are in `src/Villheim.Logic/Village` an
   0.85, the queue cleared after a day.
 - Bounty hunters come for a player every two days when his hearts with the village drop to -150.
 - Children start with 100 hearts toward their parents; 40 hearts makes a friend.
-- For Villheim: inn rolls map to `WorldLife.cs` visitors and proposal 12 (newcomers at the longhouse); gear by
+- For Villheim: inn rolls map to `WorldLife.cs` visitors and proposal 24 (wanderers at the longhouse); gear by
   buildings maps to `Smithing.cs`; gift fatigue to `Market.cs` and the player gift path in `PlayerReactions.cs`.
 
 #### MineColonies [code]
@@ -77,7 +77,7 @@ Villheim files named under "For Villheim" are in `src/Villheim.Logic/Village` an
 - Smiths repair guard gear below half durability; clerics heal guards; blacksmiths heal golems below 60 health.
 - Ringing the village bell orders guards to follow the player (option: only with Hero of the Village).
 - For Villheim: protectors in `Villagers/Roles.cs`; smith repairs of villagers' own gear in `Smithing.cs` and
-  `Repairs.cs`; the hearth as a rally point (a horn at the hearth) for proposal 27.
+  `Repairs.cs`; the hearth as a rally point (proposal 34, a horn at the hearth).
 
 #### Recruits and Workers (talhanation) [code]
 - Licence: All Rights Reserved. Ideas only.
@@ -110,7 +110,7 @@ Villheim files named under "For Villheim" are in `src/Villheim.Logic/Village` an
 - Licence: All Rights Reserved. Ideas only.
 - Four seasons of three sub-seasons each, 8 days a sub-season by default (96 days a year). Each crop has the seasons
   it grows in; out of season it does not grow. Temperature and snow follow the season; greenhouses override it.
-- For Villheim: Valheim has no seasons of its own, but a village calendar (proposal 14) can name the time of year,
+- For Villheim: Valheim has no seasons of its own, but a village calendar (proposal 3) can name the time of year,
   and `Village/Farms.cs` can plant and harvest by it.
 
 ### Valheim mods
@@ -192,8 +192,8 @@ Villheim files named under "For Villheim" are in `src/Villheim.Logic/Village` an
   farm, tend shop, miner, blacksmith, bake, sew, waiter, preach, patrol, desk work, kid games, dance, loiter, wander,
   sit, talk, duel, thief, lab, graze, and a few more. A schedule type knows which objects it uses (a bed, a forge, a
   loom) and what to do with them.
-- For Villheim: the trade list in `Villagers/Roles.cs`; three-hour blocks are a simple grid for proposal "Schedules
-  as tables".
+- For Villheim: the trade list in `Villagers/Roles.cs`; three-hour blocks are a simple grid for proposal 13 ("Daily routines
+  as tables").
 
 #### Banner Kings (Bannerlord mod) [code]
 - No licence file in the repo; ideas only.
@@ -360,7 +360,7 @@ Villheim files named under "For Villheim" are in `src/Villheim.Logic/Village` an
   resources allow. City plans give a whole layout that grows through city levels, run by a settlement leader whose
   traits change costs and speed.
 - For Villheim: the closest match to Villheim's design board (`DesignBoard.cs`, `Growth.cs`, `PlotFinder.cs`). Plot
-  types with random designs from the kept pool and level-ups by need is the shape of "Plot growth".
+  types with random designs from the kept pool and level-ups by need is the shape of proposal 6.
 
 #### Medieval Dynasty
 - Villagers need a house, food, water and firewood; reputation from tasks unlocks buildings and more villagers;
@@ -799,8 +799,131 @@ daughter villages). Proposals that touch their ground are marked "(minds)" or "(
 - From: MCA taxes, turned around to a gift.
 
 ### 42. Protectors who need feeding (S, 2) new
-- Player sees: unfed protectors grumble and stay home instead of patrolling.
+- Player sees: unfed protectors grumble and stay home at night.
 - Rules: each protector eats one meal from the chest a day; 2 days without, he skips the night watch and the horn
   (proposal 34) until fed.
 - Extends: `Roles.cs`, `Healing.cs`.
 - From: Recruits upkeep and morale.
+
+## A note on Valheim's own raids [known]
+
+Valheim's `RandEventSystem` checks for an event every 46 minutes with a 20% chance, and raid events marked "near base
+only" need the player close to a base, which the game measures from building pieces with a base value (workbenches,
+beds, fires and the like). Villages are built from those same pieces, so a player standing in a grown village may
+already count as being at a base for vanilla raids. Check `RandEventSystem` and `EffectArea` in the decompiled game
+before tuning proposal 10, so Villheim's raids and the game's own do not stack.
+
+## Worth a deeper look
+
+1. Sim Settlements 2 wiki (plots, plans, city plans): the closest match to how Villheim's design board could drive
+   growth. https://wiki.simsettlements2.com/gameplay/plots-and-plans
+2. Seasons by shudnal (Unlicense, Valheim): a season clock and per-season JSON that Villheim can read or copy from.
+   https://github.com/shudnal/Seasons
+3. MineColonies `RaidManager`, `CitizenHappinessHandler`, `TavernBuildingModule` (GPL, ideas): tuned numbers for
+   raids, happiness and visitors. https://github.com/ldtteam/minecolonies
+4. Hospitality `LordToil_VisitPoint.cs` (GPL, ideas): visit score, goodwill and return timing.
+   https://github.com/OrionFive/Hospitality
+5. Inside Gothic (routines, perceptions, news). https://ataulien.github.io/Inside-Gothic/DailyRoutine
+6. Stardew Valley schedule and event data docs. https://stardewvalleywiki.com/Modding:Schedule_data
+7. Emilien and others, villages on arbitrary terrains (2012). https://perso.liris.cnrs.fr/egalin/Articles/2012-villages.pdf
+8. ValheimCityBuilder (RustyProductions): unread tonight; settlers, production chains and research in Valheim.
+   https://thunderstore.io/c/valheim/p/RustyProductions/ValheimCityBuilder/
+9. Kenshi world states and town overrides. https://kenshi.wiki/w/World_States
+10. RimWorld storyteller and raid points pages. https://rimworldwiki.com/wiki/AI_Storytellers
+
+## Sources
+
+### Read from source tonight (shallow clones in `/tmp/lwr`, not committed)
+
+| Project | Licence | URL |
+|---|---|---|
+| MCA Reborn | GPL-3.0 | https://github.com/Luke100000/minecraft-comes-alive |
+| MineColonies | GPL-3.0 | https://github.com/ldtteam/minecolonies |
+| Guard Villagers | All Rights Reserved (assets, with a ban on AI-directed ports) | https://github.com/seymourimadeit/guardvillagers |
+| Recruits | All Rights Reserved | https://github.com/talhanation/recruits |
+| Workers | All Rights Reserved | https://github.com/talhanation/workers |
+| CustomNPC+ | custom licence | https://github.com/KAMKEEL/CustomNPC-Plus |
+| Dynamic Trees | MIT | https://github.com/DynamicTreesTeam/DynamicTrees |
+| Serene Seasons | All Rights Reserved | https://github.com/Glitchfiend/SereneSeasons |
+| Hospitality (RimWorld) | GPL-3.0 | https://github.com/OrionFive/Hospitality |
+| Vanilla Factions Expanded: Settlers | no licence file | https://github.com/Vanilla-Expanded/VanillaFactionsExpanded-Settlers |
+| Vanilla Expanded Framework | CC BY-NC-ND 4.0 | https://github.com/Vanilla-Expanded/VanillaExpandedFramework |
+| Vintage Story survival mod | proprietary, readable for modding | https://github.com/anegostudios/vssurvivalmod |
+| Vintage Story essentials mod | proprietary, readable for modding | https://github.com/anegostudios/vsessentialsmod |
+| df-structures (DFHack) | no licence file found | https://github.com/DFHack/df-structures |
+| Inside Gothic | no licence file | https://github.com/ataulien/Inside-Gothic |
+| Exult (Ultima VII engine) | GPL-2.0 | https://github.com/exult/exult |
+| Banner Kings (Bannerlord) | no licence file | https://github.com/R-Vaccari/bannerlord-banner-kings |
+| Seasons (Valheim, shudnal) | Unlicense | https://github.com/shudnal/Seasons |
+| Seasonality (Valheim, RustyMods) | no licence file | https://github.com/RustyMods/Seasonality |
+
+### Pages found by search, not opened tonight
+
+Mods and Valheim:
+- MCA Reborn: https://www.curseforge.com/minecraft/mc-mods/minecraft-comes-alive-reborn
+- MineColonies happiness: https://minecolonies.com/wiki/systems/happinessandsaturation
+- ValheimCityBuilder: https://thunderstore.io/c/valheim/p/RustyProductions/ValheimCityBuilder/
+- Living Factions: https://thunderstore.io/c/valheim/p/under2ker/LivingFactions/
+- VikingSettlements: https://thunderstore.io/c/valheim/p/morosmods/VikingSettlements/v/1.10.0/
+- Vikings Village: https://thunderstore.io/c/valheim/p/Northarun/Vikings_Village/
+- Traders and Markets: https://thunderstore.io/c/valheim/p/BlackViking/Traders_and_Markets/required
+- Aurora Land Economy: https://thunderstore.io/c/valheim/p/Arcadia/Aurora_Land_Economy
+- Balrond Elven Factions Reborn: https://thunderstore.io/c/valheim/p/Balrond/balrond_ElvenFactionsReborn/v/0.1.3/
+- Merchant NPCs: https://thunderstore.io/c/valheim/p/Ruijven/MerchantNPCs
+- Nexus Valheim NPC mod list: https://www.nexusmods.com/valheim/mods/2131
+
+Games:
+- Minecraft gossip types: https://maven.fabricmc.net/docs/yarn-1.21.11+build.4/net/minecraft/village/VillagerGossipType.html
+- Minecraft raids: https://minecraft.fandom.com/wiki/Raid
+- RimWorld storytellers: https://rimworldwiki.com/wiki/AI_Storytellers
+- RimWorld raid points: https://rimworldwiki.com/wiki/Raid_points
+- RimWorld wealth: https://rimworldwiki.com/wiki/Wealth
+- Sim Settlements 2 plots: https://wiki.simsettlements2.com/gameplay/plots-and-plans
+- Sim Settlements 2 leveled city plans: https://wiki.simsettlements2.com/CreateAddons/Leveled-City-Plans
+- Fallout 4 happiness: https://fallout.wiki/wiki/Happiness_(Fallout_4)
+- Terraria NPC happiness: https://terraria.wiki.gg/wiki/Guide:NPC_Happiness
+- Starbound colony deed: https://starbounder.org/Colony_Deed and tenants https://starbounder.org/Tenant
+- Necesse settlement: https://necessewiki.com/Settlement
+- Dragon Quest Builders 2 rooms: https://dragon-quest.org/wiki/List_of_room_recipes_in_Dragon_Quest_Builders_2
+- Manor Lords burgage plots: https://wiki.hoodedhorse.com/Manor_Lords/Burgage_Plot
+- Foundation desire paths: https://www.pcgamesn.com/foundation/roads-desire-paths-city-builders
+- Frostpunk hope and discontent: https://www.pcgamer.com/frostpunk-developers-on-hope-misery-and-the-ultimately-terrifying-book-of-laws
+- Stardew schedules: https://stardewvalleywiki.com/Modding:Schedule_data and events https://stardewvalleywiki.com/Modding:Event_data
+- Skyrim Radiant Story: https://ck.uesp.net/wiki/Radiant_Story
+- Radiant AI: https://en.wikipedia.org/wiki/Radiant_AI
+- Immersive Citizens: https://www.nexusmods.com/skyrimspecialedition/mods/173
+- Inconsequential NPCs: https://www.nexusmods.com/skyrim/mods/31241
+- Ultima VII schedules: https://lycaeum.ultimacodex.com/npc-schedules/
+- Inside Gothic routines: https://ataulien.github.io/Inside-Gothic/DailyRoutine
+- The Sims AI: https://users.cs.northwestern.edu/~forbus/c95-gd/lectures/The_Sims_Under_the_Hood_files/outline.htm
+- Crusader Kings III stress: https://admin-forum.paradoxplaza.com/forum/developer-diary/ck3-dev-diary-31-a-stressful-situation.1399764/page-2
+- Bannerlord passage of time: https://www.taleworlds.com/en/Games/Bannerlord/Blog/14
+- Kenshi world states: https://kenshi.wiki/w/World_States
+- Medieval Dynasty reputation: https://www.gamepressure.com/medieval-dynasty/reputation-and-approval/z2dfa7
+- Enshrouded survivors: https://enshrouded.wiki.gg/wiki/Survivors
+- V Rising servant hunts: https://gamerguides.com/v-rising/guide/dominance/servants/how-to-send-servants-out-for-hunts
+- Palworld sanity: https://palworld.wiki.gg/wiki/Sanity
+- 7 Days to Die traders: https://wiki.7d2d.net/game/traders/
+- Banished: https://wikiwand.com/en/articles/Banished_(video_game)
+
+Procedural settlements:
+- Emilien and others 2012: https://perso.liris.cnrs.fr/egalin/Articles/2012-villages.pdf (also https://hal.archives-ouvertes.fr/hal-00694525)
+- GDMC 2018: https://arxiv.org/pdf/1803.09853 and the first-year report https://arxiv.org/pdf/2103.14950
+
+### Sources not reachable
+
+Every web page above was found by search but not opened: WebFetch was turned off for the unattended run (it asks for
+approval per site) and reading pages through the Chrome tools was not done, since that would have gone around the
+same approval. So the [known] numbers are unchecked. The pages that matter most to check:
+
+- https://wiki.simsettlements2.com/gameplay/plots-and-plans
+- https://thunderstore.io/c/valheim/p/RustyProductions/ValheimCityBuilder/ (no public source found;
+  github.com/RustyMods/ValheimCityBuilder does not exist)
+- https://thunderstore.io/c/valheim/p/under2ker/LivingFactions/
+- https://rimworldwiki.com/wiki/AI_Storytellers and https://rimworldwiki.com/wiki/Raid_points
+- https://terraria.wiki.gg/wiki/Guide:NPC_Happiness
+- https://wiki.hoodedhorse.com/Manor_Lords/Burgage_Plot
+- https://kenshi.wiki/w/World_States
+- https://stardewvalleywiki.com/Modding:Schedule_data
+- https://minecolonies.com/wiki/systems/happinessandsaturation
+- https://perso.liris.cnrs.fr/egalin/Articles/2012-villages.pdf

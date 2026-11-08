@@ -452,6 +452,11 @@ namespace Villheim.Logic.Villagers
         {
             Personality.Sample(villager);
             Goals.Update(villager);
+            if (Pendings.Count > 0)
+            {
+                RunPendings();
+            }
+
             if (!VillheimConfig.VillagerChatter.Value || Sleep.IsAsleep(villager) || Player.m_localPlayer == null ||
                 global::Chat.instance == null)
             {
@@ -500,6 +505,112 @@ namespace Villheim.Logic.Villagers
             }
         }
 
+        // ---------------------------------------------------------------- follow-ups and answers
+
+        /// <summary>
+        /// The rest of a line said in more than one bubble. In any line, " >> " is a pause and the same speaker goes
+        /// on ("My grandmother said ... >> She mostly said it after I'd broken something."), and " // " outside a chat
+        /// is answered by the nearest other villager within ReplyRange ("Greydwarfs by the woodpile! // Get a torch
+        /// over there."); with nobody close, the line ends there. In a chat (FreeTime) "//" keeps its old meaning.
+        /// </summary>
+        private sealed class Pending
+        {
+            public Villager Who;
+            public Villager Back;
+            public string Rest;
+            public float At;
+        }
+
+        private static readonly List<Pending> Pendings = new List<Pending>();
+
+        private const float ReplyRange = 10f;
+
+        /// <summary>How long a bubble stays up: long enough to read, never less than asked.</summary>
+        public static float ReadTime(string text, float atLeast) => Mathf.Max(atLeast, Mathf.Clamp(2.5f + text.Length * 0.07f, 3f, 12f));
+
+        private static void RunPendings()
+        {
+            for (int i = Pendings.Count - 1; i >= 0; i--)
+            {
+                Pending p = Pendings[i];
+                if (p.Who == null || p.Who.IsDead() || Time.time - p.At > 20f)
+                {
+                    Pendings.RemoveAt(i);
+                }
+                else if (Time.time >= p.At)
+                {
+                    Pendings.RemoveAt(i);
+                    if (!Sleep.IsAsleep(p.Who))
+                    {
+                        if (p.Back != null)
+                        {
+                            Social.LookAt(p.Who, p.Back, 4f);
+                        }
+
+                        SayParts(p.Who, p.Rest, 5f, p.Back);
+                    }
+                }
+            }
+        }
+
+        private static Villager Responder(Villager speaker, Villager preferred)
+        {
+            if (preferred != null && !preferred.IsDead() && !Sleep.IsAsleep(preferred) &&
+                Vector3.Distance(preferred.transform.position, speaker.transform.position) <= ReplyRange)
+            {
+                return preferred;
+            }
+
+            return Character.GetAllCharacters().OfType<Villager>()
+                .Where(v => v != speaker && !v.IsDead() && v.VillageId == speaker.VillageId && !Sleep.IsAsleep(v) &&
+                            Vector3.Distance(v.transform.position, speaker.transform.position) <= ReplyRange)
+                .OrderBy(v => Vector3.Distance(v.transform.position, speaker.transform.position)).FirstOrDefault();
+        }
+
+        /// <summary>Says the first bubble of <paramref name="line"/> and queues the rest.</summary>
+        private static string SayParts(Villager villager, string line, float seconds, Villager back)
+        {
+            int pause = line.IndexOf(">>", StringComparison.Ordinal);
+            int answer = line.IndexOf("//", StringComparison.Ordinal);
+            int cut = pause < 0 ? answer : answer < 0 ? pause : Mathf.Min(pause, answer);
+            string first = (cut < 0 ? line : line.Substring(0, cut)).Trim();
+            string rest = cut < 0 ? null : line.Substring(cut + 2).Trim();
+            float shown = ReadTime(first, seconds);
+            if (!string.IsNullOrEmpty(rest))
+            {
+                if (cut == pause)
+                {
+                    // The same speaker goes on once the first bubble has been read.
+                    float wait = Mathf.Clamp(2.5f + first.Length * 0.08f, 6f, 10f);
+                    shown = Mathf.Max(shown, wait - 0.5f);
+                    Pendings.Add(new Pending { Who = villager, Back = back, Rest = rest, At = Time.time + wait });
+                }
+                else
+                {
+                    Villager other = Responder(villager, back);
+                    if (other != null)
+                    {
+                        float wait = Mathf.Clamp(1.5f + first.Length * 0.05f, 2.5f, 6f);
+                        Social.LookAt(other, villager, wait + 2f);
+                        Pendings.Add(new Pending { Who = other, Back = villager, Rest = rest, At = Time.time + wait });
+                    }
+                }
+            }
+
+            global::Chat.instance.SetNpcText(villager.gameObject, Vector3.up * 2.2f, 20f, shown, "", first, false);
+            return first;
+        }
+
+        /// <summary>What the player sees of a line in its first bubble (for checks and console samples).</summary>
+        public static string FirstBubble(string line)
+        {
+            if (line == null) return null;
+            int pause = line.IndexOf(">>", StringComparison.Ordinal);
+            int answer = line.IndexOf("//", StringComparison.Ordinal);
+            int cut = pause < 0 ? answer : answer < 0 ? pause : Mathf.Min(pause, answer);
+            return (cut < 0 ? line : line.Substring(0, cut)).Trim();
+        }
+
         public static void Say(Villager villager, string line, float seconds = 5f)
         {
             if (string.IsNullOrEmpty(line) || global::Chat.instance == null)
@@ -507,7 +618,7 @@ namespace Villheim.Logic.Villagers
                 return;
             }
 
-            global::Chat.instance.SetNpcText(villager.gameObject, Vector3.up * 2.2f, 20f, seconds, "", line, false);
+            SayParts(villager, line, seconds, null);
             Memory memory = Memories.GetOrCreateValue(villager);
             string tone = memory.LastTone;
             Vector3? place = memory.LastPlace;

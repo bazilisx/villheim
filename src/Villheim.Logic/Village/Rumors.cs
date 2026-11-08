@@ -261,14 +261,13 @@ namespace Villheim.Logic.Village
         private static string Direction(Knowledge.Discovery d, Vector3 home)
         {
             string compass = WorldSurvey.Compass(d.Position - home);
-            string dir = One("to the " + compass, compass + " of here", "off to the " + compass, "out " + compass);
-            if (d.Terrain == "shore" || d.Terrain == "sea") return dir;
-            return d.Lean == "sea" ? dir + One(", down toward the sea", ", near the water") : d.Lean == "inland" ? dir + ", away from the sea" : dir;
+            string dir = One("to the " + compass, compass + " of here", "out " + compass, "off " + compass);
+            return d.Lean == "sea" && d.Terrain != "shore" && d.Terrain != "sea" && _words.Next(3) == 0 ? dir + ", by the sea" : dir;
         }
 
         /// <summary>
-        /// Where it is, from the hearth, in one of several shapes: "over the ridge to the north", "north of here, a fair
-        /// way out", "past the tar pit, northeast". Every shape gives the direction; some leave out the distance.
+        /// Where it is, from the hearth, short and in one of several shapes: "over the ridge to the north", "north,
+        /// a fair walk", "past the tar pit". Every shape gives the direction or a known place on the way.
         /// </summary>
         public static string Where(VillageHearth hearth, Knowledge.Discovery d)
         {
@@ -278,26 +277,21 @@ namespace Villheim.Logic.Village
             string terrain = WorldSurvey.TerrainWords(d.Terrain, WorldSurvey.Biome(d.Position));
             if (distance < 150f)
             {
-                return One($"just outside the village on the {compass} side", $"a little way {compass} of the houses",
-                    $"right on our doorstep, {compass} side", $"barely past the fence to the {compass}");
+                return One($"just past the {compass} fence", $"right by us, {compass} side", $"a stone's throw {compass}");
             }
 
             string landmark = Landmark(hearth, d);
-            var shapes = new List<string>
-            {
-                $"{Direction(d, home)}, {DistanceWords(distance)}",
-                $"{DistanceWords(distance)} {compass} of here",
-            };
+            var shapes = new List<string> { Direction(d, home), $"{compass}, {DistanceWords(distance)}", $"{DistanceWords(distance)} {compass}" };
             if (terrain.Length > 0)
             {
-                shapes.Add($"{terrain} {Direction(d, home)}");
-                shapes.Add($"{terrain} to the {compass}, {DistanceWords(distance)}");
+                shapes.Add($"{terrain} to the {compass}");
+                shapes.Add($"{terrain}, {compass}");
             }
 
             if (landmark != null)
             {
-                shapes.Add($"past {landmark}, still heading {compass}");
-                shapes.Add($"{compass} of here, beyond {landmark}");
+                shapes.Add($"past {landmark}");
+                shapes.Add($"{compass}, beyond {landmark}");
             }
 
             return shapes[_words.Next(shapes.Count)];
@@ -357,12 +351,12 @@ namespace Villheim.Logic.Village
         /// <summary>Distance in plain words, said a few different ways for each band.</summary>
         public static string DistanceWords(float meters)
         {
-            if (meters < 150f) return One("close by", "not far at all", "hardly any way");
-            if (meters < 350f) return One("a short walk", "not much of a walk", "no distance, really");
-            if (meters < 700f) return One("a fair walk", "a good way out", "further than it looks");
-            if (meters < 1100f) return One("half a morning's walk", "a long way out", "a fair hike");
-            if (meters < 1600f) return One("half a day on foot", "a long way off", "most of a morning's walk and then some");
-            return One("a full day's walk", "a very long way off", "further than most of us ever go");
+            if (meters < 150f) return One("close by", "not far");
+            if (meters < 350f) return One("a short walk", "not far out");
+            if (meters < 700f) return One("a fair walk", "a good way out");
+            if (meters < 1100f) return One("a long walk", "a good hike");
+            if (meters < 1600f) return One("half a day out", "a long way off");
+            return One("a full day's walk", "a very long way");
         }
 
         private static string Witness(Knowledge.Discovery d)

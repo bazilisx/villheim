@@ -51,8 +51,9 @@ https://en.wikipedia.org/wiki/Wikipedia:Signs_of_AI_writing
   materials, people and needs (D-003, D-004, D-010).
 - **Village-built pieces take no water or rain damage** (D-038).
 - **Villages are a place of rest.** They are echoes of the old world in Valheim's afterlife. No raids, feuds, wars
-  between villages, outlaws or thieves; villages never fine, turn away or guard against a player by default. Local
-  creatures may wander in and be fought off. Empty villages are settled again.
+  between villages, outlaws or thieves; villages never fine, turn away or guard against a player by default. A player who
+  harms villagers is warned and banned for some days; one who kills a villager is never welcome there again (D-054).
+  Local creatures may wander in and be fought off. Empty villages are settled again.
 - **Biome materials.** A village only builds designs whose materials exist in its biome (Meadows has no core wood).
 - **Gathering order.** Material on the ground first, then half-harvested work (felled logs, cracked rocks), then
   fresh trees and rocks. Loose sticks and stones (one material each) only when there is nothing bigger to work, and

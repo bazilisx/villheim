@@ -88,6 +88,14 @@ namespace Villheim.Logic.Village
                 return step;
             }
 
+            // No project chosen yet (the village is between buildings or settling in): with people short of a bed the
+            // next thing is a home all the same.
+            if (state.Plots.Count == 0 || Villagers.Beds.Of(hearth).Count < VillageBrain.CountVillagers(state.Id))
+            {
+                step.What = "a home";
+                return step;
+            }
+
             if (job != null)
             {
                 Fill(step, job);

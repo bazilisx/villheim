@@ -268,11 +268,14 @@ namespace Villheim.Logic.Village
         /// </summary>
         private static bool Standing(Vector3 at, string prefab, int villageId, string backHeading)
         {
-            foreach (Collider collider in Physics.OverlapSphere(at, backHeading != null ? 0.3f : 0.5f))
+            // By where the piece itself stands, not by its colliders: a 1 m beam's end reached into the next beam's spot,
+            // and the pole below reached up into the next pole's, so those counted as standing and were never built
+            // (Tyler: the board was missing its upright 1 m beams and some cross beams).
+            foreach (Collider collider in Physics.OverlapSphere(at, 1.5f))
             {
                 ZNetView view = collider.GetComponentInParent<ZNetView>();
                 if (view == null || !view.IsValid() || Utils.GetPrefabName(view.gameObject) != prefab ||
-                    view.GetZDO().GetInt(Keys.BuiltBy) != villageId)
+                    view.GetZDO().GetInt(Keys.BuiltBy) != villageId || Vector3.Distance(view.transform.position, at) > 0.25f)
                 {
                     continue;
                 }
@@ -576,10 +579,10 @@ namespace Villheim.Logic.Village
             List<Sign> cells = rows.SelectMany(r => r.OrderBy(s => Vector3.Dot(s.transform.position - origin, right))).ToList();
             var state = new VillageState(hearth.Zdo);
             Dictionary<string, (string Value, string Color)> stats = Stats(hearth, state);
+            AssignHeadings(hearth, origin, signs);
             bool byHeading = signs.Any(s => s.GetComponent<ZNetView>().GetZDO().GetString(KeyHeading, null) != null);
             if (byHeading)
             {
-                GiveHeadings(signs, origin, right, stats);
 
                 // Each sign shows the stat its blueprint heading names, under that same heading.
                 foreach (Sign sign in signs)
@@ -611,63 +614,47 @@ namespace Villheim.Logic.Village
             }
         }
 
-        /// <summary>What a front sign without a usable heading shows, in reading order (top row, left to right).</summary>
-        private static readonly string[] FrontHeadings = { "Project", "Needed", "Morale", "Population", "Stock", "Buildings" };
-
         /// <summary>
-        /// Front signs with no heading, or one no stat answers to, get one by their place: the top sign the name, the
-        /// rest the front stats in reading order, skipping the ones another sign already shows. The front had shown
-        /// only "..." (T-11) where its signs had no heading to go by.
+        /// Gives every sign of the board the heading of the blueprint sign whose place it stands in: on the front, the
+        /// heading written on that sign in the blueprint (the name on top, then Buildings, Stock, Population over
+        /// Project, Needed, Morale in Tyler's board); on the back, the heading of the mirrored place (BackSigns). Worked
+        /// out from where each sign stands every time the board is written, so a sign that got a wrong heading earlier
+        /// (the front had shown the name low down and "..." on top) is put right.
         /// </summary>
-        private static void GiveHeadings(List<Sign> signs, Vector3 origin, Vector3 right, Dictionary<string, (string Value, string Color)> stats)
+        private static void AssignHeadings(VillageHearth hearth, Vector3 origin, List<Sign> signs)
         {
-            List<Sign> front = signs.Where(s => s.GetComponent<ZNetView>().GetZDO().GetInt(KeyBack) != 1)
-                .OrderByDescending(s => s.transform.position.y).ToList();
-            if (front.Count == 0)
+            Blueprints.Blueprint blueprint = Blueprint();
+            if (blueprint == null)
             {
                 return;
             }
 
-            bool Usable(Sign sign)
+            float yaw = hearth.Zdo.GetFloat(KeyYaw, 0f);
+            Quaternion toBoard = Quaternion.Inverse(Quaternion.Euler(0f, yaw, 0f));
+            List<(Vector3 At, string Heading)> front = blueprint.Pieces.Where(p => IsSign(p.Prefab) && p.Text != null)
+                .Select(p => (p.Position, Heading(p.Text))).ToList();
+            List<DesignSpawner.PlanEntry> plan = Blueprints.MakePlan(blueprint, origin, yaw).ToList();
+            List<(Vector3 At, string Heading)> back = BackSigns(plan).Select(b => (b.Entry.LocalPosition, b.Heading)).ToList();
+            foreach (Sign sign in signs)
             {
-                string heading = sign.GetComponent<ZNetView>().GetZDO().GetString(KeyHeading, null);
-                return heading != null && (heading.Length == 0 || stats.ContainsKey(heading.ToLowerInvariant()));
-            }
-
-            if (front.All(Usable))
-            {
-                return;
-            }
-
-            var used = new HashSet<string>(front.Where(Usable)
-                .Select(s => s.GetComponent<ZNetView>().GetZDO().GetString(KeyHeading, "").ToLowerInvariant()));
-            var rows = new List<List<Sign>>();
-            foreach (Sign sign in front.Skip(1))
-            {
-                List<Sign> row = rows.FirstOrDefault(r => Mathf.Abs(r[0].transform.position.y - sign.transform.position.y) < 0.25f);
-                if (row == null)
+                ZNetView view = sign.GetComponent<ZNetView>();
+                bool isBack = view.GetZDO().GetInt(KeyBack) == 1;
+                Vector3 local = toBoard * (sign.transform.position - origin);
+                List<(Vector3 At, string Heading)> places = isBack ? back : front;
+                if (places.Count == 0)
                 {
-                    rows.Add(row = new List<Sign>());
+                    continue;
                 }
 
-                row.Add(sign);
-            }
-
-            if (!Usable(front[0]) && !used.Contains(""))
-            {
-                front[0].GetComponent<ZNetView>().GetZDO().Set(KeyHeading, "");
-                used.Add("");
-            }
-
-            var free = new Queue<string>(FrontHeadings.Where(h => !used.Contains(h.ToLowerInvariant())));
-            foreach (Sign sign in rows.SelectMany(r => r.OrderBy(s => Vector3.Dot(s.transform.position - origin, right))))
-            {
-                if (!Usable(sign) && free.Count > 0)
+                (Vector3 At, string Heading) nearest = places.OrderBy(p => Vector3.Distance(p.At, local)).First();
+                if (Vector3.Distance(nearest.At, local) > 0.6f || view.GetZDO().GetString(KeyHeading, null) == nearest.Heading)
                 {
-                    ZNetView view = sign.GetComponent<ZNetView>();
-                    view.ClaimOwnership();
-                    view.GetZDO().Set(KeyHeading, free.Dequeue());
+                    continue;
                 }
+
+                view.ClaimOwnership();
+                view.GetZDO().Set(KeyHeading, nearest.Heading);
+                view.GetZDO().Set(ZDOVars.s_text, ""); // written again below
             }
         }
 
@@ -746,8 +733,11 @@ namespace Villheim.Logic.Village
             const string Value = "#bdf";
             int level = VillageBrain.TierIndex(state.Plots.Count) + 1;
 
+            // What the village is at: the building going up, else its next step as on the hearth (a bed, the notice
+            // board, a home). "Resting" only when there is truly nothing to do (T-37: it said Resting with no beds).
+            NextStep.Step next = NextStep.For(hearth, state);
             string project;
-            string projectColor;
+            string projectColor = "#bfb";
             if (ConstructionSite.IsActive(hearth.Zdo))
             {
                 Role role = ConstructionSite.Get(hearth.Zdo).Role;
@@ -756,9 +746,15 @@ namespace Villheim.Logic.Village
             }
             else
             {
-                string label = Growth.PendingLabel(hearth, state);
-                project = label == "nothing" ? "Resting" : Capital(label.StartsWith("a ") ? label.Substring(2) : label);
-                projectColor = "#bfb";
+                string label = next.What ?? "nothing for now";
+                int paren = label.IndexOf(" (", System.StringComparison.Ordinal);
+                if (paren > 0)
+                {
+                    label = label.Substring(0, paren);
+                }
+
+                label = label.StartsWith("a ") ? label.Substring(2) : label.StartsWith("an ") ? label.Substring(3) : label;
+                project = label == "nothing for now" || label == "nothing" ? "Resting" : Capital(label);
                 foreach (Role role in System.Enum.GetValues(typeof(Role)))
                 {
                     if (label.Contains(VillageBrain.RoleName(role)))
@@ -771,8 +767,7 @@ namespace Villheim.Logic.Village
             // What the next step lacks, as on the hearth (NextStep): have/need for the two biggest shortfalls. With the
             // chest full enough, a need still to be made (beds) is named: "Nothing" read wrong while homes had no
             // beds (T-37).
-            NextStep.Step step = NextStep.For(hearth, state);
-            List<string> lacking = NextStep.Lacking(hearth, state, step, 2);
+            List<string> lacking = NextStep.Lacking(hearth, state, next, 2);
             Amenities.Job due = Amenities.Upcoming(hearth);
             string needed = "Nothing";
             string neededColor = "#bfb";
@@ -784,6 +779,17 @@ namespace Villheim.Logic.Village
             else if (due != null && due.Essential)
             {
                 needed = Capital(due.Name == "bed" ? "beds" : due.Name);
+                neededColor = "#fd8";
+            }
+            else if (!string.IsNullOrEmpty(state.Waiting) && !state.Waiting.StartsWith("a "))
+            {
+                // Waiting on something other than materials (room to build, a closed chest).
+                needed = Capital(state.Waiting);
+                neededColor = "#fd8";
+            }
+            else if (state.Plots.Count == 0 || Villagers.Beds.Of(hearth).Count < VillageBrain.CountVillagers(state.Id))
+            {
+                needed = state.Plots.Count == 0 ? "A home" : "Beds";
                 neededColor = "#fd8";
             }
 

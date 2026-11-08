@@ -8,12 +8,11 @@ namespace Villheim.Logic.Village
     /// <summary>
     /// A fence around the village that grows with it, after Millenaire's village walls, and the animal pens of its farms.
     ///
-    /// - The ring (Tyler, T-12): from two buildings a hamlet puts up FenceLight (the stake wall by default) sunk
-    ///   FenceLightSink into the ground, a low fence; once it is a village, the stake wall sunk FenceWallSink (half),
-    ///   and every piece of the low fence is taken down and put up again at the new height, piece by piece. wood_fence
-    ///   is never used for the ring: it is for farm plots and pens.
-    /// - Gates: where a path crosses the ring, a pair of wood gates side by side, hung from opposite sides, on the
-    ///   ground (not sunk). The ring pieces next to them are left out.
+    /// - The ring (Tyler, 2026-11-08): from two buildings a hamlet puts up HamletFence (the small wood fence) on the
+    ///   ground, with a gap where each path crosses. Once it is a village, the stake wall sunk FenceWallSink (half) into
+    ///   the ground replaces it, piece by piece: each fence piece is taken down and a stake wall put up in its place.
+    /// - Gates in the stake wall: where a path crosses, a pair of wood gates side by side, hung from opposite sides, on
+    ///   the ground (not sunk). The ring pieces next to them are left out.
     /// - The ring sits a few metres outside the furthest building and skips water, buildings and steep ground. When
     ///   buildings go up beyond it, the old ring comes down (half the materials back) and a wider one goes up.
     /// - Pens come before the ring (Farms.PenSegments): a farm's animals only come once their pen is closed.
@@ -127,11 +126,11 @@ namespace Villheim.Logic.Village
 
             int tier = VillageBrain.TierIndex(state.Plots.Count) + (state.Type == "fortified" ? 1 : 0);
             bool wall = tier >= 2;
-            string light = (LogicConfig.FenceLight?.Value ?? WallPiece).Trim();
-            string prefabName = wall ? WallPiece : light;
-            if (prefabName.Length == 0 || prefabName == "wood_fence")
+            string hamlet = (LogicConfig.HamletFence?.Value ?? "wood_fence").Trim();
+            string prefabName = wall ? WallPiece : hamlet;
+            if (prefabName.Length == 0)
             {
-                return null; // no ring yet (wood fence is for pens and plots)
+                return null; // no ring yet
             }
 
             GameObject prefab = ZNetScene.instance ? ZNetScene.instance.GetPrefab(prefabName) : null;
@@ -140,11 +139,11 @@ namespace Villheim.Logic.Village
                 return null;
             }
 
-            float share = wall ? (LogicConfig.FenceWallSink?.Value ?? 0.5f) : (LogicConfig.FenceLightSink?.Value ?? 0.7f);
+            float share = wall ? (LogicConfig.FenceWallSink?.Value ?? 0.5f) : (LogicConfig.HamletFenceSink?.Value ?? 0f);
             float sink = SinkOffset(prefab, prefabName, share);
             GameObject gate = ZNetScene.instance.GetPrefab(GatePiece);
             Dictionary<string, int> gateCost = null;
-            bool gates = gate != null && Amenities.Buildable(gate, state.Biome, out gateCost);
+            bool gates = wall && gate != null && Amenities.Buildable(gate, state.Biome, out gateCost);
             float width = Mathf.Max(1f, Width(prefab, prefabName));
             float gateWidth = gates ? Mathf.Max(1f, Width(gate, GatePiece)) : 0f;
             int count = Mathf.CeilToInt(2f * Mathf.PI * current / width);

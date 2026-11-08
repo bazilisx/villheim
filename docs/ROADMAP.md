@@ -62,7 +62,8 @@ with its own look for its biome.
   Shaper Tool as `<baseID>_s<n>d3`, source design found by piece comparison, Slots tab in the sheet. Phase C (biome)
   is folded in: the board's biome is the design's biome.
 - [ ] Slotting done for Meadows, then the Black Forest: hearth first, then houses, then the work buildings.
-- [ ] Grow a plot (and slide its neighbours) when a build needs more room than the biggest candidate gave it.
+- [ ] Grow a plot (and slide its neighbours) when a build needs more room; for now 'size N' sets every plot of a board.
+- [ ] Villages build a save's terrain section (paths, paving, levelled spots) along with its pieces.
 - [ ] PNG pictures for saved stage files too (copy them to PlanBuild as a "Villheim saved" tab).
 - [x] Decor stages on the slotting board (2026-11-07): saving d3 brings up a d2 copy behind it, d2 a d1 copy.
 - [ ] Phase D: decor stages from the richest down. Save d3, it is copied to the d2 plot; strip and save d2, copied to

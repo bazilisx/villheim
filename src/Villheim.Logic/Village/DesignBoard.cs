@@ -968,7 +968,156 @@ namespace Villheim.Logic.Village
                 made++;
             }
 
+            List<string> terrain = TerrainLines(file);
+            if (terrain.Count > 0 && VillheimPlugin.Instance != null)
+            {
+                VillheimPlugin.Instance.StartCoroutine(ApplyTerrain(terrain, center, yaw));
+            }
+
             return made;
+        }
+
+        // ---------------------------------------------------------------- the ground of a plot
+
+        /// <summary>
+        /// Every square metre of the plot whose ground is not as the plot was laid out (raised or lowered by more than
+        /// 5 cm from the plot's middle, or painted as path, paving or tilled soil), as PlanBuild terrain lines:
+        /// "square;x;y;z;0.5;0;0;Paint" in the plot's own coordinates, y the ground's height above the plot's middle.
+        /// </summary>
+        private static List<string> SampleTerrain(Vector3 center, float yaw, float half)
+        {
+            var lines = new List<string>();
+            CultureInfo inv = CultureInfo.InvariantCulture;
+            Quaternion turn = Quaternion.Euler(0f, yaw, 0f);
+            int reach = Mathf.FloorToInt(half);
+            for (int x = -reach; x <= reach; x++)
+            for (int z = -reach; z <= reach; z++)
+            {
+                var local = new Vector3(x, 0f, z);
+                Vector3 world = center + turn * local;
+                if (ZoneSystem.instance == null || !ZoneSystem.instance.GetGroundHeight(world, out float ground))
+                {
+                    continue;
+                }
+
+                float rise = ground - center.y;
+                string paint = PaintAt(world);
+                if (Mathf.Abs(rise) < 0.05f && paint.Length == 0)
+                {
+                    continue;
+                }
+
+                lines.Add(string.Join(";", "square", x.ToString(inv), rise.ToString("0.###", inv), z.ToString(inv), "0.5", "0", "0", paint));
+            }
+
+            return lines;
+        }
+
+        /// <summary>The paint on the ground at a spot: Paved, Cultivate, Dirt, or "" for none.</summary>
+        private static string PaintAt(Vector3 world)
+        {
+            try
+            {
+                Heightmap map = Heightmap.FindHeightmap(world);
+                if (map == null || map.m_paintMask == null)
+                {
+                    return "";
+                }
+
+                map.WorldToVertexMask(world, out int x, out int y);
+                Color mask = map.m_paintMask.GetPixel(x, y);
+                return mask.b > 0.5f ? "Paved" : mask.g > 0.5f ? "Cultivate" : mask.r > 0.5f ? "Dirt" : "";
+            }
+            catch (System.Exception)
+            {
+                return "";
+            }
+        }
+
+        /// <summary>The terrain lines of a saved file (its "#Terrain" section).</summary>
+        private static List<string> TerrainLines(string file)
+        {
+            var lines = new List<string>();
+            bool inside = false;
+            foreach (string line in File.ReadAllLines(file))
+            {
+                if (line.StartsWith("#"))
+                {
+                    inside = line.StartsWith("#Terrain", System.StringComparison.OrdinalIgnoreCase);
+                    continue;
+                }
+
+                if (inside && line.Length > 0)
+                {
+                    lines.Add(line);
+                }
+            }
+
+            return lines;
+        }
+
+        /// <summary>
+        /// Puts a save's ground back round a plot's middle: each square metre levelled to its height and painted, the way
+        /// the hoe does (a terrain operation on the ground under it). A few squares a frame.
+        /// </summary>
+        private static IEnumerator ApplyTerrain(List<string> lines, Vector3 center, float yaw)
+        {
+            Quaternion turn = Quaternion.Euler(0f, yaw, 0f);
+            CultureInfo inv = CultureInfo.InvariantCulture;
+            var holder = new GameObject("VillheimTerrainOp");
+            holder.SetActive(false);
+            TerrainOp op = holder.AddComponent<TerrainOp>();
+            int done = 0;
+            try
+            {
+                foreach (string line in lines)
+                {
+                    string[] f = line.Split(';');
+                    if (f.Length < 8 || !float.TryParse(f[1], NumberStyles.Float, inv, out float x) ||
+                        !float.TryParse(f[2], NumberStyles.Float, inv, out float y) || !float.TryParse(f[3], NumberStyles.Float, inv, out float z))
+                    {
+                        continue;
+                    }
+
+                    Vector3 world = center + turn * new Vector3(x, y, z);
+                    try
+                    {
+                        TerrainComp ground = TerrainComp.FindTerrainCompiler(world);
+                        if (ground == null)
+                        {
+                            continue;
+                        }
+
+                        op.transform.position = world;
+                        op.m_settings = new TerrainOp.Settings
+                        {
+                            m_level = true,
+                            m_levelRadius = 0.5f,
+                            m_square = true,
+                            m_paintCleared = f[7].Length > 0,
+                            m_paintRadius = 0.5f,
+                            m_paintType = f[7] == "Paved" ? TerrainModifier.PaintType.Paved
+                                : f[7] == "Cultivate" ? TerrainModifier.PaintType.Cultivate
+                                : TerrainModifier.PaintType.Dirt,
+                        };
+                        ground.ApplyOperation(op);
+                    }
+                    catch (System.Exception e)
+                    {
+                        VillheimPlugin.Log.LogWarning($"Board: could not put the ground back at {world}: {e.Message}");
+                        yield break;
+                    }
+
+                    if (++done % 40 == 0)
+                    {
+                        yield return null;
+                    }
+                }
+            }
+            finally
+            {
+                Object.Destroy(holder);
+            }
         }
 
         // ---------------------------------------------------------------- saving and resetting a plot
@@ -1028,8 +1177,18 @@ namespace Villheim.Logic.Village
                 (source != null ? $"; from No. {source.Number} {source.Design} ({match:P0} alike)" : "") +
                 (fromD3 != null && fromD3[6].Length > 0 ? $"; from No. {fromD3[6]} {fromD3[7]} by way of d3" : "") + $"; saved {System.DateTime.Now:yyyy-MM-dd HH:mm}",
                 "#Category:Villheim saved",
-                "#Pieces",
             };
+
+            // The ground inside the plot (paths, paving, tilled soil, raised or lowered spots), as PlanBuild's terrain
+            // section: PlanBuild puts it back when it places the blueprint, and so does the board for its copies.
+            List<string> terrain = SampleTerrain(center, sign.GetFloat(Gallery.KeyPlotYaw, 0f), sign.GetFloat(Gallery.KeyPlotHalf, 10f));
+            if (terrain.Count > 0)
+            {
+                header.Add("#Terrain");
+                header.AddRange(terrain);
+            }
+
+            header.Add("#Pieces");
             Directory.CreateDirectory(SaveFolder);
             string file = Path.Combine(SaveFolder, stem + ".blueprint");
             // What the save replaces, for Undo.

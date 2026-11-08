@@ -51,6 +51,9 @@ typed in the in-game console (F5) unless it says otherwise.
 5. The board always shows three rows of plots per band of stages: d3 (rich) in front, d2 (furnished) behind it, d1
    (sparse) at the back. Plots waiting for the one in front say so. The front row is d3, as placed. Save a plot with the Shaper Tool's Save (key 6, click anything in the plot, click again), or `vh slot save 2`.
    Hold Shift on the second click (or `vh slot save all`) to save every plot that has something in it.
+   The ground inside the border is kept too: every square metre raised, lowered or painted (hoe paths, paving,
+   tilled soil) goes into the save's terrain section, which PlanBuild uses when it places the blueprint and the board
+   uses for its copies. Undo and Reset do not put the ground back.
    Everything inside the green border is written as `hub1_s2d3` to `BepInEx/config/Villheim/blueprints/inspiration/board/`.
    The design it came from is found by comparing pieces. A saved plot is emptied and marked saved (its border and
    sign stay as a guide).

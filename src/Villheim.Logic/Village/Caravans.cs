@@ -25,7 +25,7 @@ namespace Villheim.Logic.Village
     ///   give first (core wood to a Meadows village, fine wood to a Black Forest one), then what its stock is low on.
     ///   Never to a village it is wary of or hostile to. The goods leave the chest at once.
     /// - Hauls: an outpost's load carried home along its trail (Outposts.cs).
-    /// - Settlers: people going off to found a daughter village (Daughters.cs).
+    /// - Settlers: people going off to found a daughter village (Daughters.cs, off by default since D-010).
     /// - The destination's hearth owner takes the load into its stock once the caravan is due, and keeps the id so
     ///   it is taken once; the source forgets the record when the destination has it (or after twenty days).
     /// - Near a player (100 m) the caravan is a real person walking the road (wanderer kind "carrier"), a little ahead

@@ -23,7 +23,8 @@ namespace Villheim.Logic.Village
     ///   150 m of it (host), as a settled-by-hand village, so the spacing rules do not apply. The new village starts
     ///   with the goods, knows where it came from, and both villages start on close terms (80).
     ///
-    /// Runs with WorldLife and Daughters on. 'vh daughter' sends a party now, 'vh daughter here' lights the nearest
+    /// Runs with WorldLife and DaughterVillages on. Off by default: one village per site plus its resource outposts
+    /// (Tyler, 2026-11-08, D-010). The code is kept. 'vh daughter' sends a party now, 'vh daughter here' lights the nearest
     /// settled site at once.
     /// </summary>
     internal static class Daughters

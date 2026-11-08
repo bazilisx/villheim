@@ -256,7 +256,7 @@ namespace Villheim.Logic
             CaravanChancePerDay = Admin(config, life, "CaravanChancePerDay", 0.3f,
                 "Chance that a village sends a trader down the trail on a given day (0 to 1).");
             CaravanMetresPerDay = Admin(config, life, "CaravanMetresPerDay", 2400f,
-                "How far a caravan, a haul or a party of settlers goes in an in-game day.");
+                "How far a caravan or a haul goes in an in-game day.");
             CaravanReach = Admin(config, life, "CaravanReach", 2500f,
                 "Villages farther apart than this (metres) do not send each other caravans.");
             OutpostsPerVillage = Admin(config, life, "OutpostsPerVillage", 2,
@@ -264,11 +264,14 @@ namespace Villheim.Logic
                 "its smith needs flint.");
             OutpostCarryAt = Admin(config, life, "OutpostCarryAt", 12,
                 "A camp sends its load home (a camper walks it along the trail) once it has gathered this much.");
-            Daughters = Admin(config, life, "Daughters", true,
-                "With WorldLife on, a full village (MaxVillagers or MaxBuildings) now and then sends two of its people to " +
-                "found a village of their own 600 to 1,200 m away. Its hearth is lit when you first come near the site.");
+            // One village per site, plus resource outposts (Tyler, 2026-11-08, D-010): a new key, off by default, so a
+            // config file written while "Daughters" was on doesn't keep it on. The code stays.
+            Daughters = Admin(config, life, "DaughterVillages", false,
+                "Off: a village never founds another; each site is one village plus its resource outposts. On (old " +
+                "behaviour, needs WorldLife): a full village now and then sends two of its people to found a village of " +
+                "their own 600 to 1,200 m away.");
             DaughtersPerVillage = Admin(config, life, "DaughtersPerVillage", 2,
-                "Most daughter villages one village founds.");
+                "With DaughterVillages on: most daughter villages one village founds.");
             DaughterChancePerDay = Admin(config, life, "DaughterChancePerDay", 0.25f,
                 "Chance a full village sends settlers on a given day (0 to 1), at most one party every ten days.");
             Contracts = Admin(config, life, "Contracts", true,
@@ -447,7 +450,7 @@ namespace Villheim.Logic
         public static (string Name, ConfigEntry<bool> Entry)[] Switches => new[]
         {
             ("WorldLife", WorldLife), ("Outposts", Outposts), ("Trails", Trails), ("TrailSigns", TrailSigns),
-            ("VillageEvents", VillageEvents), ("EventFever", EventFever), ("Caravans", Caravans), ("Daughters", Daughters),
+            ("VillageEvents", VillageEvents), ("EventFever", EventFever), ("Caravans", Caravans), ("DaughterVillages", Daughters),
             ("Contracts", Contracts), ("Groves", Groves), ("PlayerMemory", PlayerMemory), ("VillagerSkills", VillagerSkills),
             ("VillagerWants", VillagerWants), ("Gatherings", Gatherings), ("Noticing", Noticing), ("IdleGlances", IdleGlances),
             ("SurroundingsTags", SurroundingsTags), ("TopicFatigue", TopicFatigue), ("ChatScenes", ChatScenes),

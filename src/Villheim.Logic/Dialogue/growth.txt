@@ -1,6 +1,5 @@
 # Lines about how a village grows and what happens to it: the events director (Village/VillageEvents.cs), the gear
-# an outpost waits for (Village/Outposts.cs), caravans (Village/Caravans.cs) and daughter villages
-# (Village/Daughters.cs). Format as in lines.txt. Every section here needs an event tag, which holds for ten minutes
+# an outpost waits for (Village/Outposts.cs) and caravans (Village/Caravans.cs). Format as in lines.txt. Every section here needs an event tag, which holds for ten minutes
 # after the thing happened.
 
 # ------------------------------------------------------------------ events
@@ -63,7 +62,7 @@ Things are cold with {neighbour} just now. It'll pass. Probably.
 Nobody's going out to that forest in what we're wearing. We need proper gear first.
 The camp can wait until we've spears and something on our heads.
 
-# ------------------------------------------------------------------ caravans and daughter villages
+# ------------------------------------------------------------------ caravans
 
 @ talk, event:caravan
 A load went out on the road this morning. Somebody else is short of what we have plenty of.
@@ -72,17 +71,8 @@ The pedlar took our spare wood. Off to some village that needs it more.
 @ talk, event:cargo
 A load came in from down the road. Somebody had more than they needed.
 
-@ self, event:daughter
-They've gone to start a village of their own. It's quiet without them.
-I hope they picked somewhere with good water.
-
-@ talk, event:daughter
-Some of ours set off to found a new village. We'll visit when they've a roof up.
-We're too many for this place now. A few of ours went off to build their own.
-
-@ talk, event:founded
-We're new here. Everyone came from the old village, down the road.
-New fire, new houses, same old faces.
+# Retired 2026-11-08 (D-010): no daughter villages, so the event:daughter and event:founded lines are gone. The tags
+# remain in Village/Daughters.cs (setting DaughterVillages, off).
 
 # ------------------------------------------------------------------ contracts on the notice board
 

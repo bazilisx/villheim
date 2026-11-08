@@ -39,6 +39,9 @@ https://en.wikipedia.org/wiki/Wikipedia:Signs_of_AI_writing
 - **Independent of other village mods.** VikingColonies and Innangard were studied for ideas
   (`docs/LEARNINGS.md`). Never copy their code, never depend on them. VikingColonies' license forbids publishing
   its code or changed copies of it; Innangard has no license.
+- **ValheimCityBuilder and World Edit (RustyProductions) are CC0** (the authors to Tyler, 2026-11-08). Their code
+  may be reused and changed in `src/Villheim.Logic`; note the source file in a comment and credit them in the README.
+  The designs they ship (BiomeBlueprints houses, `anno_*` blueprints) stay out. Study notes: `docs/CITYBUILDER_STUDY.md`.
 - **Biome materials.** A village only builds designs whose materials exist in its biome (Meadows has no core wood).
 - **Gathering order.** Material on the ground first, then half-harvested work (felled logs, cracked rocks), then
   fresh trees and rocks. Loose sticks and stones (one material each) only when there is nothing bigger to work, and

@@ -4,7 +4,8 @@ Study of ValheimCityBuilder 1.8.2 by RustyProductions (and World Edit 1.9.2, whi
 for ideas Villheim can build its own way. Tyler named it one of the closest mods to what he wants. The feature table
 is `docs/features/citybuilder.csv` (one row per mechanic, with status and effort).
 
-Ideas only. No code, text or assets from this mod go into Villheim (see the licence section).
+Code may be reused: Rusty and the contributors told Tyler on 2026-11-08 that the mod is CC0 (see the licence
+section). The designs it ships stay out.
 
 ## What the mod is
 
@@ -32,13 +33,16 @@ Ideas only. No code, text or assets from this mod go into Villheim (see the lice
   ValheimCityBuilder fork" and refers to a local checkout, with no public URL and no licence file.
 - Dropday.ai (https://dropday.ai/c/valheim-city-builder) labels the project "Open source" with no licence and a link
   to Thunderstore's own UI repository; the page itself warns its text may be generated or wrong. Not evidence.
-- Result: all rights reserved, the same case as Innangard. Reading the decompiled code to understand how it works is
-  fine; copying code, pasting decompiled code into the repo or docs, or shipping its blueprints is out.
-- Rights are spread over several people (Rusty, 1Day2Die, Ybivec228). To reuse code directly, ask Rusty in writing
-  (Discord https://discord.gg/k2MB8SrYdm or the YouTube channel), and the contributors for their parts.
+- 2026-11-08: Tyler asked Rusty and the contributors (1Day2Die, Ybivec228). They told him ValheimCityBuilder is
+  released under CC0 (public domain dedication). Code from it and from World Edit may be reused and changed in
+  Villheim. CC0 asks for no credit; Villheim credits them in the README anyway.
+- Still to do: a copy of their CC0 statement (a link to the message, or a LICENSE file in a later package) goes in
+  `docs/licences/` so the record does not depend on memory.
+- Before that note, the finding was: no licence anywhere, so all rights reserved, ideas only.
 - Designs: the Tavern, Expedition Hall, Smelter, Armorer, Silver Mine and Silversmith use OverDrive BiomeBlueprints
   houses, and the blueprint gallery downloads that pack. BiomeBlueprints is blacklisted for Villheim (2026-11-08).
-  The `anno_*` blueprints have no stated licence either. Villheim uses none of them.
+  The `anno_*` blueprints have no stated licence either. CC0 covers the authors' own work; it cannot cover designs
+  from other creators, so Villheim uses none of these until Tyler confirms who made the `anno_*` builds.
 
 ## Author's posts
 

@@ -499,6 +499,7 @@ namespace Villheim.Logic.Villagers
 
             Poses.Trigger(villager, "eat");
             Moods.Think(villager, "atewell");
+            Expectations.Ate(villager, prefabName);
             VillheimPlugin.Debug($"{villager.VillagerName} ate {prefabName}: {shared.m_foodRegen * scale:0.#} health every 10 s " +
                                  $"for {shared.m_foodBurnTime / 60f:0} min.");
         }

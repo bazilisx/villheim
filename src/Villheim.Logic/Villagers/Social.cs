@@ -165,7 +165,7 @@ namespace Villheim.Logic.Villagers
                 list.Add(known);
             }
 
-            known.Reputation = Mathf.Clamp(known.Reputation + amount, -20, 50);
+            known.Reputation = Mathf.Clamp(known.Reputation + amount, Standing.Floor, 50);
             Save(hearth, list);
             if (news != null)
             {
@@ -173,6 +173,23 @@ namespace Villheim.Logic.Villagers
             }
 
             VillheimPlugin.Debug($"{hearth.VillageName}: {player.GetPlayerName()} reputation {known.Reputation} ({news}).");
+        }
+
+        /// <summary>Every bad standing with this village comes <paramref name="amount"/> points back toward zero.</summary>
+        public static void Forgive(VillageHearth hearth, int amount)
+        {
+            List<Known> list = KnownPlayers(hearth);
+            bool changed = false;
+            foreach (Known known in list.Where(k => k.Reputation < 0))
+            {
+                known.Reputation = Mathf.Min(0, known.Reputation + amount);
+                changed = true;
+            }
+
+            if (changed)
+            {
+                Save(hearth, list);
+            }
         }
 
         private static void MarkSeen(VillageHearth hearth, Player player, out bool wasStranger, out bool returning)
@@ -259,7 +276,11 @@ namespace Villheim.Logic.Villagers
                 watch.SeenInside[id] = Time.time;
                 MarkSeen(hearth, player, out bool stranger, out bool returning);
                 PlayerMemory.Visited(hearth, player);
-                if ((stranger || returning) && !EnvMan.IsNight())
+                if (Standing.Greet(hearth, player))
+                {
+                    // A disliked player is met coldly, or by armed protectors (Standing).
+                }
+                else if ((stranger || returning) && !EnvMan.IsNight())
                 {
                     SendGreeter(hearth, player, stranger ? "event:stranger" : "event:returning");
                 }

@@ -70,7 +70,7 @@ namespace Villheim.Logic.Village
                 var state = new VillageState(hearth.Zdo);
                 int lastRaid = hearth.Zdo.GetInt(KeyLastRaid, -10);
                 float chance = LogicConfig.RaidChance.Value + VillageBrain.TierIndex(state.Plots.Count) * 0.03f;
-                if (VillageBrain.CountVillagers(id) < 3 || day - lastRaid < 2 || Random.value > chance)
+                if (VillageBrain.CountVillagers(id) < 3 || day - lastRaid < 2 || Random.value > chance || !Prosperity.RaidAllowed(hearth))
                 {
                     return;
                 }
@@ -105,6 +105,11 @@ namespace Villheim.Logic.Village
                 bool won = raid.Raiders.Count == 0;
                 Chronicle.Add(hearth, won ? "Raiders came in the night and were beaten back." : "Raiders prowled until dawn, then slunk away.");
                 Moods.VillageThink(id, won ? "raidwon" : "fight");
+                if (!won)
+                {
+                    Prosperity.Hurt(id, "a raid lost");
+                }
+
                 Dialogue.Event(id, "raidover", hearth.transform.position);
             }
         }
@@ -128,7 +133,7 @@ namespace Villheim.Logic.Village
             float ring = Palisade.WantedRadius(hearth, state) + 18f;
             Vector3 origin = hearth.transform.position + raid.From * ring;
             var list = new List<string>();
-            for (int i = 0; i < 2 + tier; i++)
+            for (int i = 0; i < 2 + tier + Prosperity.RaidExtra(hearth); i++)
             {
                 list.Add("Greydwarf");
             }

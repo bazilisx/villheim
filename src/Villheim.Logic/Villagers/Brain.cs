@@ -49,6 +49,7 @@ namespace Villheim.Logic.Villagers
 
             bool threat = ThreatNear(villager, ai, out Character enemy);
             Moods.Update(villager, threat);
+            Living.VillagerTick(villager);
             State brain = States.GetOrCreateValue(villager);
             if (threat != brain.WasThreat)
             {
@@ -98,6 +99,14 @@ namespace Villheim.Logic.Villagers
             {
                 // Healing comes first.
             }
+            else if (Leaving.Update(villager, ai, dt))
+            {
+                // Packed up and walking out of the village for good.
+            }
+            else if (Escort.Update(villager, ai, dt))
+            {
+                // A protector following the horn, or running to help a friend of the village in a fight.
+            }
             else if (Sleep.Update(villager, ai, dt))
             {
                 // Bedtime.
@@ -109,6 +118,11 @@ namespace Villheim.Logic.Villagers
             else if (MorningHearth.Update(villager, ai, dt))
             {
                 // A carer tends the hearth first thing in the morning.
+            }
+            else if (Living.Holiday(villager.VillageId))
+            {
+                // A festival evening: no work, everyone at the hearth.
+                FreeTime.Update(villager, ai, dt);
             }
             else if (!Chores.Update(villager, ai, dt))
             {

@@ -145,7 +145,8 @@ namespace Villheim.Logic.Villagers
                 ran.LastRun = Time.time;
             }
 
-            if (!VillheimConfig.VillagersChopTrees.Value || EnvMan.IsNight() || villager.IsDead() || Childhood.IsChild(villager))
+            if (!VillheimConfig.VillagersChopTrees.Value || EnvMan.IsNight() || villager.IsDead() || Childhood.IsChild(villager) ||
+                Elders.SkipsHeavyWork(villager))
             {
                 Stop(villager);
                 return false;

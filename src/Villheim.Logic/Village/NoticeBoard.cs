@@ -377,6 +377,7 @@ namespace Villheim.Logic.Village
                 ["morale"] = Parse(lines[5]),
                 ["mood"] = Parse(lines[5]),
                 ["stock"] = stockStat,
+                ["prosperity"] = (Prosperity.Get(hearth).ToString(System.Globalization.CultureInfo.InvariantCulture), "#bdf"),
                 ["stores"] = stockStat,
             };
             return stats;
@@ -431,7 +432,7 @@ namespace Villheim.Logic.Village
             string moodColor = mood >= 70f ? "#bfb" : mood >= 50f ? "#ffa" : mood >= 30f ? "#fc9" : "#f99";
             return new[]
             {
-                $"<#fff>Level:<br><{Value}>{level}",
+                $"<#fff>Level:<br><{Value}>{level}{(Prosperity.On ? $"<size=60%> ({Prosperity.Get(hearth)})" : "")}",
                 $"<#fff>Buildings:<br><{Value}>{state.Plots.Count}",
                 $"<#fff>Population:<br><{Value}>{VillageBrain.CountVillagers(state.Id)}",
                 $"<#fff>Next project:<br><{projectColor}>{project}",

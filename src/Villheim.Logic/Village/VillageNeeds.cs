@@ -109,6 +109,12 @@ namespace Villheim.Logic.Village
                     }
 
                     int goal = material == Materials.Wood || material == Materials.Stone ? target : target / 3;
+                    if (material == Materials.Wood)
+                    {
+                        // Autumn: wood put by for the winter (Calendar).
+                        goal = Mathf.RoundToInt(goal * Calendar.WoodFactor());
+                    }
+
                     int missing = goal - VillageChest.Have(hearth, state, material);
                     needs.Missing.TryGetValue(material, out int already);
                     if (missing > already)

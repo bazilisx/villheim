@@ -80,6 +80,41 @@ namespace Villheim.Logic
         public static ConfigEntry<int> HermitChance;
         public static ConfigEntry<string> HermitPlaces;
         public static ConfigEntry<string> HermitBiomes;
+        public static ConfigEntry<bool> Prosperity;
+        public static ConfigEntry<int> ProsperityRaidsFrom;
+        public static ConfigEntry<bool> Expectations;
+        public static ConfigEntry<string> ExpectationBonus;
+        public static ConfigEntry<bool> Calendar;
+        public static ConfigEntry<int> DaysPerSeason;
+        public static ConfigEntry<int> FestivalDay;
+        public static ConfigEntry<bool> ReadSeasonsMod;
+        public static ConfigEntry<bool> Festivals;
+        public static ConfigEntry<bool> WinterStores;
+        public static ConfigEntry<bool> PlayerStanding;
+        public static ConfigEntry<int> FineBelow;
+        public static ConfigEntry<int> GuardBelow;
+        public static ConfigEntry<int> ForgivePerDay;
+        public static ConfigEntry<bool> Complaints;
+        public static ConfigEntry<int> ComplainAfterDays;
+        public static ConfigEntry<int> DemandAfterDays;
+        public static ConfigEntry<int> LeaveAfterDays;
+        public static ConfigEntry<bool> Leaving;
+        public static ConfigEntry<int> ExodusMood;
+        public static ConfigEntry<int> ExodusDays;
+        public static ConfigEntry<bool> VisitorJudging;
+        public static ConfigEntry<bool> WantPile;
+        public static ConfigEntry<bool> BossStages;
+        public static ConfigEntry<int> BossStageStart;
+        public static ConfigEntry<string> BossStageSource;
+        public static ConfigEntry<bool> Elders;
+        public static ConfigEntry<int> ElderDays;
+        public static ConfigEntry<bool> ElderDeaths;
+        public static ConfigEntry<int> ElderDeathDays;
+        public static ConfigEntry<float> ElderDeathChance;
+        public static ConfigEntry<bool> Neighbours;
+        public static ConfigEntry<bool> Horn;
+        public static ConfigEntry<float> HornSeconds;
+        public static ConfigEntry<bool> HelpPlayers;
 
         public static void Bind()
         {
@@ -192,6 +227,8 @@ namespace Villheim.Logic
             HermitBiomes = Admin(config, life, "HermitBiomes", "Meadows,BlackForest,Mountain",
                 "Biomes where hermits camp.");
 
+            BindLiving(config);
+
             const string sites = "1b - Village sites";
             VillageChance = Admin(config, sites, "VillageChance", 50,
                 "Percent of generated village sites that become villages, so villages stay a rare find. Sites lit with " +
@@ -293,6 +330,92 @@ namespace Villheim.Logic
             RaidChance = Admin(config, work, "RaidChance", 0.2f,
                 "Chance each dusk of a raid (plus 3% per village tier), never two nights running.");
             WatchLooks();
+        }
+
+        /// <summary>Section "6 - Living village": prosperity, the calendar, standing, needs, leaving and the rest.</summary>
+        private static void BindLiving(ConfigFile config)
+        {
+            const string living = "6 - Living village";
+            Prosperity = Admin(config, living, "Prosperity", true,
+                "Each village keeps a prosperity number from its people, buildings, stock and mood, shown on the notice " +
+                "board. It falls after a death or a lost raid and comes back slowly. More prosperity brings more visitors " +
+                "and newcomers, and bigger raids.");
+            ProsperityRaidsFrom = Admin(config, living, "ProsperityRaidsFrom", 75,
+                "With Prosperity and RaidsEnabled on, no raids on a village below this prosperity.");
+            Expectations = Admin(config, living, "Expectations", true,
+                "A young village is content with little; a grown one expects a longhouse, varied food, seats and a fence. " +
+                "A standing mood bonus that shrinks as the village grows.");
+            ExpectationBonus = Admin(config, living, "ExpectationBonus", "18,12,6,0",
+                "Mood bonus for a camp, a hamlet, a village and a town, separated by commas.");
+            Calendar = Admin(config, living, "Calendar", true,
+                "Villages keep a calendar of four seasons. Villagers name the season, and the seasons change work (see " +
+                "WinterStores). Read from shudnal's Seasons mod when it is installed and ReadSeasonsMod is on.");
+            DaysPerSeason = Admin(config, living, "DaysPerSeason", 10,
+                "In-game days in a season of Villheim's own calendar (Seasons mod default: 10).");
+            FestivalDay = Admin(config, living, "FestivalDay", 5,
+                "Day of each season that is a festival: the sowing feast, the midsummer fire, the harvest feast, Yule.");
+            ReadSeasonsMod = Admin(config, living, "ReadSeasonsMod", true,
+                "Take the season and the day from the Seasons mod when it is installed.");
+            Festivals = Admin(config, living, "Festivals", true,
+                "On festival days work stops at 16:00, the evening is a feast at the hearth, everyone is glad of it for a " +
+                "day, and with WorldLife on visitors come more often.");
+            WinterStores = Admin(config, living, "WinterStores", true,
+                "Autumn: villages keep half again as much wood and twice the food. Winter: no farming or foraging, more " +
+                "time by the fire, and a village with no wood in its chest is cold and glum.");
+            PlayerStanding = Admin(config, living, "PlayerStanding", true,
+                "A player's standing with a village moves store prices (cheaper for friends, dearer for the disliked), " +
+                "brings a fine to pay when it falls low, and guards on watch when it falls very low.");
+            FineBelow = Admin(config, living, "FineBelow", -30,
+                "Below this standing the village asks a fine in coins before it trades again. Crouch and talk to a " +
+                "villager to pay it.");
+            GuardBelow = Admin(config, living, "GuardBelow", -60,
+                "Below this standing protectors arm themselves and watch you when you walk in.");
+            ForgivePerDay = Admin(config, living, "ForgivePerDay", 1,
+                "Points a bad standing comes back toward zero each day.");
+            Complaints = Admin(config, living, "Complaints", true,
+                "A villager without a bed, food or safety for days complains, then asks a player for it, then (with " +
+                "WorldLife and Leaving on) leaves.");
+            ComplainAfterDays = Admin(config, living, "ComplainAfterDays", 3, "Days without a need before complaining.");
+            DemandAfterDays = Admin(config, living, "DemandAfterDays", 6, "Days without a need before asking a player for it.");
+            LeaveAfterDays = Admin(config, living, "LeaveAfterDays", 10, "Days without a need before leaving.");
+            Leaving = Admin(config, living, "Leaving", true,
+                "With WorldLife on, villagers can leave: one who lacked a need too long, or the least content when the " +
+                "whole village is glum for days. They walk to the friendliest neighbour and settle there when it has a " +
+                "free bed.");
+            ExodusMood = Admin(config, living, "ExodusMood", 25, "Village mood below which people start to think of leaving.");
+            ExodusDays = Admin(config, living, "ExodusDays", 3, "Days in a row below ExodusMood before someone leaves.");
+            VisitorJudging = Admin(config, living, "VisitorJudging", true,
+                "Pedlars and pilgrims judge their stay (weather, a fight, the village's mood, a feast). A good stay " +
+                "warms their home village to this one and may leave a gift; a bad one cools it and keeps visitors away " +
+                "longer.");
+            WantPile = Admin(config, living, "WantPile", true,
+                "A pile or item stand beside the village chest shows what the village wants most, readable from afar. " +
+                "Filling it within a day cheers the village.");
+            BossStages = Admin(config, living, "BossStages", true,
+                "With WorldLife on, each boss felled (or its trophy hung on an item stand in the village) lets villages " +
+                "grow one stage further. Homes for villagers without a bed are always allowed.");
+            BossStageStart = Admin(config, living, "BossStageStart", 2,
+                "Stage a village can reach with no boss felled: 1 camp, 2 hamlet, 3 village, 4 town.");
+            BossStageSource = Admin(config, living, "BossStageSource", "Either",
+                "What counts as a boss felled: Keys (the world's boss keys), Trophies (hung in the village) or Either.");
+            Elders = Admin(config, living, "Elders", true,
+                "Villagers who have lived in a village long enough are elders: they leave felling and mining to others " +
+                "and tell the village's old stories.");
+            ElderDays = Admin(config, living, "ElderDays", 40, "Days in the village before a villager is an elder.");
+            ElderDeaths = Admin(config, living, "ElderDeaths", true,
+                "With WorldLife on, very old elders may die in their sleep and are mourned.");
+            ElderDeathDays = Admin(config, living, "ElderDeathDays", 60, "Days in the village before an elder may die of age.");
+            ElderDeathChance = Admin(config, living, "ElderDeathChance", 0.02f, "Chance each morning, from ElderDeathDays on.");
+            Neighbours = Admin(config, living, "Neighbours", true,
+                "Villagers pick beds near their friend and away from their rival, and are glad or sour about who lives " +
+                "next door. A trader's prices follow his mood about it.");
+            Horn = Admin(config, living, "Horn", true,
+                "Use the hearth while crouching to blow the horn: if the village counts you a friend, its protectors " +
+                "follow you for a while. Once a game hour.");
+            HornSeconds = Admin(config, living, "HornSeconds", 240f, "How long protectors follow the horn (seconds).");
+            HelpPlayers = Admin(config, living, "HelpPlayers", true,
+                "Up to two protectors run out to help a friend of the village who is fighting within 60 m of it (not at " +
+                "night unless the village is raided).");
         }
 
         /// <summary>Every look setting puts itself on the ghosts the moment it changes.</summary>

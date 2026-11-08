@@ -206,6 +206,11 @@ namespace Villheim.Logic.Villagers
             }
 
             VillageHearth hearth = VillageHearth.Find(villager.VillageId);
+            if (hearth != null && Standing.Talk(villager, player, hearth))
+            {
+                return true;
+            }
+
             string line = Dialogue.LineFor(villager, "talk") ?? VillagerTalk.InteractLine(hearth);
             Chat.instance?.SetNpcText(villager.gameObject, Vector3.up * 2.2f, 20f, 6f, "", line, false);
             if (hearth != null)

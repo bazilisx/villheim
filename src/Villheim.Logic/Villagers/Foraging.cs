@@ -141,7 +141,8 @@ namespace Villheim.Logic.Villagers
 
         private static bool Begin(Villager villager, State state)
         {
-            if (EnvMan.IsNight() || Time.time < state.NextLook || Roles.BackgroundOf(villager) != Roles.Background.Carer)
+            if (EnvMan.IsNight() || Time.time < state.NextLook || Roles.BackgroundOf(villager) != Roles.Background.Carer ||
+                Village.Calendar.FieldsRest)
             {
                 return false;
             }
@@ -155,7 +156,7 @@ namespace Villheim.Logic.Villagers
 
             VillageHearth hearth = VillageHearth.Find(villager.VillageId);
             Container chest = hearth != null && hearth.IsValid ? VillageChest.Find(hearth) : null;
-            int enough = new VillageState(hearth.Zdo).Type == "farming" ? EnoughFood * 2 : EnoughFood;
+            int enough = (new VillageState(hearth.Zdo).Type == "farming" ? EnoughFood * 2 : EnoughFood) * Village.Calendar.FoodFactor();
             if (chest == null || chest.GetInventory().GetAllItems().Where(i => i.m_shared.m_food > 0f).Sum(i => i.m_stack) >= enough ||
                 Nearest(hearth.transform.position, villager.transform.position) == null)
             {

@@ -327,7 +327,7 @@ namespace Villheim.Logic.Villagers
             bool carer = Roles.BackgroundOf(villager) == Roles.Background.Carer;
             var options = new List<(Kind Kind, float Weight)>
             {
-                (Kind.FireSit, wet ? 0f : (carer ? 4.5f : 2f)),
+                (Kind.FireSit, wet ? 0f : (carer ? 4.5f : 2f) * Village.Calendar.FireFactor()),
                 (Kind.GroundSit, wet ? 0f : (mood < 35f ? 2f : 1f)),
                 (Kind.Stroll, (mood < 35f ? 0.5f : 1f) * (carer ? 1f : 2.5f)),
                 (Kind.Chat, ReallyFree(villager, state) && FindChatPartner(villager) != null

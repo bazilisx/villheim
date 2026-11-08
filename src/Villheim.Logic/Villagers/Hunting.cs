@@ -95,7 +95,7 @@ namespace Villheim.Logic.Villagers
             }
 
             VillageHearth hearth = VillageHearth.Find(villager.VillageId);
-            if (hearth == null || !hearth.IsValid || FoodInChest(hearth) >= EnoughFood)
+            if (hearth == null || !hearth.IsValid || FoodInChest(hearth) >= EnoughFood * Village.Calendar.FoodFactor())
             {
                 return false;
             }

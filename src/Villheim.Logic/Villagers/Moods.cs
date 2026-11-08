@@ -79,6 +79,12 @@ namespace Villheim.Logic.Villagers
             ["gossip"] = (1f, 200f),
             ["bossdown"] = (8f, 1800f),
             ["gathering"] = (3f, 600f),
+            ["festival"] = (10f, 1800f),
+            ["promisekept"] = (6f, 1800f),
+            ["coldhome"] = (-6f, 900f),
+            ["goodneighbour"] = (2f, 1800f),
+            ["badneighbour"] = (-3f, 1800f),
+            ["leftus"] = (-4f, 900f),
         };
 
         private static readonly ConditionalWeakTable<Villager, State> States = new ConditionalWeakTable<Villager, State>();
@@ -195,6 +201,7 @@ namespace Villheim.Logic.Villagers
             if (EnvMan.IsWet() && !Cover.IsUnderRoof(villager.transform.position + Vector3.up)) mood += Scale(villager, -4f);
 
             mood += state.Thoughts.Sum(t => t.Value);
+            mood += Living.MoodTerm(villager);
             mood += (VillageMood.Get(villager.VillageId) - 50f) * 0.1f;
             return Mathf.Clamp(mood, 0f, 100f);
         }

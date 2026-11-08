@@ -225,6 +225,20 @@ namespace Villheim.Logic
                 case "villheim_speech": Say(context, Villagers.MindsCommands.Speech()); return true;
                 case "villheim_goal": Say(context, Villagers.MindsCommands.Goal(args)); return true;
                 case "villheim_notice": Say(context, Villagers.MindsCommands.Notice(args)); return true;
+                case "villheim_living":
+                case "villheim_prosperity":
+                case "villheim_season":
+                case "villheim_festival":
+                case "villheim_standing":
+                case "villheim_complain":
+                case "villheim_leave":
+                case "villheim_migrants":
+                case "villheim_judge":
+                case "villheim_want":
+                case "villheim_stages":
+                case "villheim_elder":
+                case "villheim_horn":
+                case "villheim_rescue": Say(context, LivingCommands.Run(name, args)); return true;
                 default: return false;
             }
         }

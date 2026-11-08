@@ -58,6 +58,11 @@ namespace Villheim.Logic
             "pilgrim: send a pilgrim walking in to the nearest village, to stay the night by the hearth",
             "hermit: make a hermit's camp fire and its hermit in front of you",
             "wanderers: list the pedlars, pilgrims and hermits nearby, and the nearest village's news",
+            "minds: the nearest villager's skills, want, what he knows of you (saw or heard, and from whom), what he sees round him, the village's record of you, and the topics you have heard most",
+            "feast: make this evening a feast at the nearest village (more up and dancing at the hearth)",
+            "speech: the Jarl or an elder says the evening words at the nearest hearth now",
+            "goal [bed|house|learn|master|court|peace|feast|news|hunt|rest|player]: show or set the nearest villager's want",
+            "notice <event>: the nearest village reacts to an event now, to hear its lines (rainstart, stormstart, snowstart, miststart, rainstop, dawn, dusk, bossdown, trophy, playergear, playerbuilt, playerkill)",
             "bp swap <number|name> <stage>: save a copy of a design with its walls, floors, roofs and beams in that stage's materials (to blueprints/inspiration/edits)",
         };
 
@@ -204,6 +209,11 @@ namespace Villheim.Logic
                 case "villheim_wanderers":
                 case "villheim_news": Say(context, WorldLife.Report()); return true;
                 case "villheim_shaper": Say(context, Village.Shaping.Status()); return true;
+                case "villheim_minds": Say(context, Villagers.MindsCommands.Minds()); return true;
+                case "villheim_feast": Say(context, Villagers.MindsCommands.Feast()); return true;
+                case "villheim_speech": Say(context, Villagers.MindsCommands.Speech()); return true;
+                case "villheim_goal": Say(context, Villagers.MindsCommands.Goal(args)); return true;
+                case "villheim_notice": Say(context, Villagers.MindsCommands.Notice(args)); return true;
                 default: return false;
             }
         }

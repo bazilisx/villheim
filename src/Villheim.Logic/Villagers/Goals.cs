@@ -261,6 +261,41 @@ namespace Villheim.Logic.Villagers
             VillheimPlugin.Debug($"{villager.VillagerName} {(met ? "got" : "gave up on")} {goal.Kind}.");
         }
 
+        public static readonly string[] Kinds = { "bed", "house", "learn", "master", "court", "peace", "feast", "news", "hunt", "rest", "player" };
+
+        /// <summary>Sets a want by hand ('vh goal'), with what it needs filled in from the villager's life.</summary>
+        public static bool Force(Villager villager, string kind)
+        {
+            if (!Kinds.Contains(kind))
+            {
+                return false;
+            }
+
+            string extra = "";
+            if (kind == "learn" || kind == "master")
+            {
+                string skill = kind == "learn"
+                    ? VillagerSkills.Read(villager).OrderBy(s => s.Value).First().Key
+                    : VillagerSkills.Best(villager);
+                float level = VillagerSkills.Level(villager, skill);
+                extra = skill + ":" + (kind == "learn" ? level.ToString("0.#", CultureInfo.InvariantCulture)
+                    : (Mathf.FloorToInt(level / 10f) * 10 + 10).ToString(CultureInfo.InvariantCulture));
+            }
+            else if (kind == "court")
+            {
+                Villager friend = Personality.Friend(villager) ?? Personality.Rival(villager);
+                extra = friend != null ? Seed(friend).ToString(CultureInfo.InvariantCulture) : "";
+            }
+            else if (kind == "peace")
+            {
+                Villager rival = Personality.Rival(villager);
+                extra = rival != null ? Seed(rival).ToString(CultureInfo.InvariantCulture) : "";
+            }
+
+            Write(villager, new Goal { Kind = kind, Start = Today, Until = Today + 3, Extra = extra });
+            return true;
+        }
+
         // ---------------------------------------------------------------- what moves a want along
 
         /// <summary>Two villagers chatted: courting and making peace move along.</summary>

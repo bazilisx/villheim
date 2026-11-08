@@ -120,12 +120,19 @@ namespace Villheim.Logic.Villagers
                 return;
             }
 
+            SpeakNow(hearth);
+        }
+
+        /// <summary>The evening words now (also 'vh speech'). False with fewer than two villagers by the hearth.</summary>
+        public static bool SpeakNow(VillageHearth hearth)
+        {
+            int id = hearth.VillageId;
             List<Villager> near = Character.GetAllCharacters().OfType<Villager>()
                 .Where(v => !v.IsDead() && v.VillageId == id && !Sleep.IsAsleep(v) && !Social.IsSent(v) && !Wanderers.IsWanderer(v) &&
                             Vector3.Distance(v.transform.position, hearth.transform.position) < 20f).ToList();
             if (near.Count < 2)
             {
-                return;
+                return false;
             }
 
             SpeechDays[id] = Today;
@@ -144,6 +151,8 @@ namespace Villheim.Logic.Villagers
             {
                 Moods.Think(listener, FeastToday(id) ? "feast" : "speech");
             }
+
+            return true;
         }
 
         public static IEnumerable<string> Tags(int villageId)

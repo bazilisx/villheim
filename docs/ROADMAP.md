@@ -62,6 +62,8 @@ with its own look for its biome.
   Shaper Tool as `<baseID>_s<n>d3`, source design found by piece comparison, Slots tab in the sheet. Phase C (biome)
   is folded in: the board's biome is the design's biome.
 - [ ] Slotting done for Meadows, then the Black Forest: hearth first, then houses, then the work buildings.
+- [ ] Board ground copies (d3 to d2) match the original exactly, all but the grass. Open as of 2026-11-07: pieces
+  match, the dirt outline differs. Methods tried are listed in the 2026-11-07 note, Session 5 end state.
 - [ ] Grow a plot (and slide its neighbours) when a build needs more room; for now 'size N' sets every plot of a board.
 - [x] Path markers on the board (2026-11-07): one meaning, "connect roads and paths here"; saved as "#VillheimPaths"
   (path;x;y;z;yaw, yaw = outward from the design's middle through the marker), read into Blueprint.Markers.

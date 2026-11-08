@@ -101,8 +101,9 @@ with its own look for its biome.
 - [ ] Villagers open and close doors. (Built 2026-11-05 session 4, needs testing.)
 - [ ] Support-aware build order: nothing goes up unsupported; openings before what rests on them. (Built 2026-11-05
       session 4, needs testing.)
-- [ ] Never copy bee hives from designs. (Built 2026-11-05 session 4; a bee hive still appeared in the session 8 test.
-      Names containing "hive" are also left out since 2026-11-06, needs testing.)
+- [ ] Never copy wild bee hives from designs; they poison villagers and players nearby. Crafted bee hives
+      (`piece_beehive`, made from a queen bee) are a normal piece and are copied (Tyler, 2026-11-08). (Built 2026-11-05
+      session 4; narrowed to wild hives 2026-11-08, needs testing.)
 - [ ] Villagers gather from nothing for their first building (no free starting stock). (Built 2026-11-05 session 5,
       needs testing.)
 - [ ] No swings from a distance: reach checked against the real surface before every blow. (Built 2026-11-05

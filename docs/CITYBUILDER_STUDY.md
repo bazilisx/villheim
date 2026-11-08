@@ -250,8 +250,8 @@ repair code to handle half-destroyed buildings well. Heroes are the largest piec
    biome has barley. The worker walks to the station with the inputs, adds them through the station's own add
    method, waits, takes the output to the chest. Station pieces come with the work designs. Files: new
    `Villagers/Production.cs` (after `Smithing.cs`), `Village/VillageNeeds.cs` (inputs to gather), `Villagers/Roles.cs`
-   (who works it). Settings: `Production` (on), `KeepCoal` (10), `KeepMead` (6), `KeepHoney` (10). Risk: beehives in
-   designs were left out on purpose (2026-11-05); a beehive the village places itself would need Tyler's yes.
+   (who works it). Settings: `Production` (on), `KeepCoal` (10), `KeepMead` (6), `KeepHoney` (10). Crafted bee hives are
+   fine (Tyler, 2026-11-08); only wild hives, which poison people nearby, stay out of designs.
 2. **Output caps** (new, S). Every product has a keep amount; a station worker stops at it and does other work.
    Fits "nobody harvests when the village needs nothing". `LogicConfig.cs` table.
 3. **Missing-input status** (new, S). The hearth hover and `vh village` name what each station lacks ("Kiln: needs

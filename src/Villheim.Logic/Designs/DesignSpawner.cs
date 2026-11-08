@@ -434,8 +434,11 @@ namespace Villheim.Logic.Designs
             if (prefab.GetComponent<DungeonGenerator>() || prefab.GetComponent<Teleport>()) return "dungeon";
             if (prefab.GetComponent<LocationProxy>()) return "location proxy";
             if (prefab.GetComponent<VillageHearth>()) return "village hearth";
-            if (prefab.GetComponentInChildren<Beehive>(true) ||
-                prefabName.IndexOf("hive", StringComparison.OrdinalIgnoreCase) >= 0) return "bee hive";
+            // Wild bee hives (no Piece) poison villagers and players nearby, so they never come with a design.
+            // The crafted bee hive (piece_beehive, a player piece that makes honey) is a normal building piece.
+            bool isPiece = prefab.GetComponent<Piece>();
+            if (!isPiece && (prefab.GetComponentInChildren<Beehive>(true) ||
+                prefabName.IndexOf("hive", StringComparison.OrdinalIgnoreCase) >= 0)) return "wild bee hive";
 
             if (!VillheimConfig.KeepLootContainers.Value && prefab.GetComponent<Container>() && !prefab.GetComponent<Piece>())
             {

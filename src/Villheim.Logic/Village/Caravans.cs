@@ -133,8 +133,11 @@ namespace Villheim.Logic.Village
         private static List<Caravan> Outgoing(ZDO hearth) =>
             hearth.GetString(KeyOut, "").Split('\n').Select(Parse).Where(c => c != null).ToList();
 
-        private static void Save(ZDO hearth, List<Caravan> caravans) =>
+        private static void Save(ZDO hearth, List<Caravan> caravans)
+        {
             hearth.Set(KeyOut, string.Join("\n", caravans.Select(Write)));
+            _allAt = -100f;
+        }
 
         private static HashSet<long> Got(ZDO hearth) =>
             new HashSet<long>(hearth.GetString(KeyGot, "").Split(',')
@@ -143,16 +146,22 @@ namespace Villheim.Logic.Village
         private static ZDO HearthZdo(int villageId) =>
             Relations.AllHearths().FirstOrDefault(z => z.GetInt(Keys.VillageId) == villageId);
 
-        /// <summary>Every caravan any known hearth has on the road, with the hearth that sent it.</summary>
+        private static List<(ZDO, Caravan)> _all = new List<(ZDO, Caravan)>();
+        private static float _allAt = -100f;
+
+        /// <summary>
+        /// Every caravan any known hearth has on the road, with the hearth that sent it. Read again at most every two
+        /// seconds (carriers ask on every AI tick), or at once after this machine changed one.
+        /// </summary>
         internal static IEnumerable<(ZDO Source, Caravan Caravan)> All()
         {
-            foreach (ZDO hearth in Relations.AllHearths())
+            if (Time.time - _allAt > 2f)
             {
-                foreach (Caravan c in Outgoing(hearth))
-                {
-                    yield return (hearth, c);
-                }
+                _all = Relations.AllHearths().SelectMany(h => Outgoing(h).Select(c => (h, c))).ToList();
+                _allAt = Time.time;
             }
+
+            return _all;
         }
 
         // ---------------------------------------------------------------- the road

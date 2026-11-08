@@ -67,6 +67,7 @@ namespace Villheim.Logic.Village
             Outposts.Tick(hearth, state);
             Trails.Tick(hearth, state);
             Caravans.Tick(hearth, state);
+            Daughters.Tick(hearth, state);
             Raids.Tick(hearth);
             NoticeBoard.Update(hearth);
             CheckDoorsDaily(hearth);
@@ -133,6 +134,7 @@ namespace Villheim.Logic.Village
             HearthGround.Prepare(hearth);
             hearth.Register();
             Chronicle.Add(hearth, $"{state.Name} was founded around a new hearth.");
+            Daughters.Initialized(hearth, state);
             VillheimPlugin.Log.LogInfo($"Founded {state.Name} ({state.Biome}) at {position}.");
         }
 

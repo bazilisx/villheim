@@ -60,6 +60,9 @@ namespace Villheim.Logic
         public static ConfigEntry<string> OutpostGear;
         public static ConfigEntry<bool> VillageEvents;
         public static ConfigEntry<bool> Caravans;
+        public static ConfigEntry<bool> Daughters;
+        public static ConfigEntry<int> DaughtersPerVillage;
+        public static ConfigEntry<float> DaughterChancePerDay;
         public static ConfigEntry<float> CaravanChancePerDay;
         public static ConfigEntry<float> CaravanMetresPerDay;
         public static ConfigEntry<float> CaravanReach;
@@ -149,6 +152,13 @@ namespace Villheim.Logic
                 "its smith needs flint.");
             OutpostCarryAt = Admin(config, life, "OutpostCarryAt", 12,
                 "A camp sends its load home (a camper walks it along the trail) once it has gathered this much.");
+            Daughters = Admin(config, life, "Daughters", true,
+                "With WorldLife on, a full village (MaxVillagers or MaxBuildings) now and then sends two of its people to " +
+                "found a village of their own 600 to 1,200 m away. Its hearth is lit when you first come near the site.");
+            DaughtersPerVillage = Admin(config, life, "DaughtersPerVillage", 2,
+                "Most daughter villages one village founds.");
+            DaughterChancePerDay = Admin(config, life, "DaughterChancePerDay", 0.25f,
+                "Chance a full village sends settlers on a given day (0 to 1), at most one party every ten days.");
             Trails = Admin(config, life, "Trails", true,
                 "With WorldLife on, villages plan a dirt trail to their outpost and to their nearest neighbour within " +
                 "2,500 m, painted on the ground near you as you walk it.");

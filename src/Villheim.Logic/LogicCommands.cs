@@ -56,6 +56,7 @@ namespace Villheim.Logic
             "outpost [logging|flint|forget|haul]: the nearest village founds its next camp now, whatever its size and gear; 'forget' drops its camps, 'haul' sends every camp's load home now",
             "event [kind]: make something happen in the nearest village now (feast, skald, fair, takenin, sickness, beasts, quarrel, dispute)",
             "caravan [list]: the nearest village sends a trade caravan now; 'list' shows every caravan on the road",
+            "daughter [here]: the nearest village sends settlers to found a new village now; 'here' lights the hearth of the nearest settled site",
             "events: list the nearest village's recent events and how ready it is for a bad one",
             "pedlar: send a travelling pedlar walking in to the nearest village (works with WorldLife off)",
             "pilgrim: send a pilgrim walking in to the nearest village, to stay the night by the hearth",
@@ -204,6 +205,7 @@ namespace Villheim.Logic
                 case "villheim_event": Say(context, VillageEvents.Command(args)); return true;
                 case "villheim_events": Say(context, EventsReport()); return true;
                 case "villheim_caravan": Say(context, Caravans.Command(args)); return true;
+                case "villheim_daughter": Say(context, Daughters.Command(args)); return true;
                 case "villheim_caravans": Say(context, Caravans.Command(new[] { "list" })); return true;
                 case "villheim_pedlar": Say(context, WorldLife.Command(Villagers.Wanderers.Pedlar)); return true;
                 case "villheim_pilgrim": Say(context, WorldLife.Command(Villagers.Wanderers.Pilgrim)); return true;
@@ -278,7 +280,7 @@ namespace Villheim.Logic
             Say(context, $"   neighbours: {Relations.Describe(hearth)}");
             Say(context, $"   {Villagers.Smithing.Report(hearth)}");
             Say(context, $"   outpost: {Outposts.Describe(hearth)}; {Trails.Describe(hearth)}");
-            Say(context, $"   {Caravans.Describe(hearth)}; {VillageEvents.Describe(hearth)}");
+            Say(context, $"   {Caravans.Describe(hearth)}; {VillageEvents.Describe(hearth)}; {Daughters.Describe(hearth)}");
             foreach (Villagers.Social.Known known in Villagers.Social.KnownPlayers(hearth))
             {
                 Say(context, $"   knows {known.Name}: reputation {known.Reputation}, first seen day {known.FirstDay}, last day {known.LastDay}");

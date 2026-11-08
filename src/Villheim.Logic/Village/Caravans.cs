@@ -290,7 +290,9 @@ namespace Villheim.Logic.Village
             HashSet<long> got = null;
             foreach ((ZDO source, Caravan c) in All().ToList())
             {
-                if (c.To != state.Id || !Due(c))
+                // Settlers are seen in by the village that sent them; everything else by the one it goes to.
+                bool mine = c.Kind == Settlers ? c.From == state.Id : c.To == state.Id;
+                if (!mine || !Due(c))
                 {
                     continue;
                 }
@@ -312,8 +314,9 @@ namespace Villheim.Logic.Village
         {
             foreach (KeyValuePair<string, int> load in c.Cargo)
             {
-                // People (settlers) are counted in the cargo too; only items go into the stock.
-                if (Materials.Prefab(load.Key) != null)
+                // People (settlers) are counted in the cargo too; only items go into the stock, and a settlers' load
+                // goes to their new village (Daughters).
+                if (c.Kind != Settlers && Materials.Prefab(load.Key) != null)
                 {
                     state.Add(load.Key, load.Value);
                 }
@@ -348,7 +351,7 @@ namespace Villheim.Logic.Village
             int before = outgoing.Count;
             outgoing.RemoveAll(c =>
             {
-                ZDO to = HearthZdo(c.To);
+                ZDO to = c.Kind == Settlers ? hearth.Zdo : HearthZdo(c.To);
                 bool taken = to != null && Got(to).Contains(c.Id);
                 return taken || Now - c.Departed > 20.0 * day;
             });
@@ -605,7 +608,7 @@ namespace Villheim.Logic.Village
         /// <summary>The caravan is due (or gone): a trader walks into the hearth and stays a while; anyone else goes.</summary>
         private static void Ending(Villager villager, VillagerAI ai, float dt, Caravan c, ZDO source, float nearest)
         {
-            VillageHearth to = c != null ? VillageHearth.Find(c.To) : null;
+            VillageHearth to = c != null && c.Kind != Settlers ? VillageHearth.Find(c.To) : null;
             if (to == null || Utils.DistanceXZ(villager.transform.position, to.transform.position) > 120f)
             {
                 if (nearest > SeenFrom)

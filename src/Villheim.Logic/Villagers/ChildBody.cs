@@ -52,13 +52,14 @@ namespace Villheim.Logic.Villagers
             public GameObject Model;
             public bool Female;
             public bool Child;
-            public string Hair;
-            public string Beard;
+            public Vector3 At;
+            public Quaternion Facing;
+            public string Look;
         }
 
         private static readonly List<RigModel> RigModels = new List<RigModel>();
+        private static bool _warned;
         private static bool _rigGhost;
-        private static string _rigCulture;
         private static Vector3 _rigCenter;
         private static Quaternion _rigFacing;
         private static Vector3 _rigRight;
@@ -233,7 +234,12 @@ namespace Villheim.Logic.Villagers
                 }
                 catch (Exception ex)
                 {
-                    VillheimPlugin.Debug($"Child body: {ex.Message}");
+                    // Into the log once, so a problem can be found (T-202 had nothing to go on).
+                    if (!_warned)
+                    {
+                        _warned = true;
+                        VillheimPlugin.Log.LogWarning($"Child body: {ex}");
+                    }
                 }
             }
         }
@@ -267,36 +273,74 @@ namespace Villheim.Logic.Villagers
 
         private static void PutUpRig()
         {
-            Vector3 right = _rigRight;
-            Vector3 center = _rigCenter;
-            Quaternion facing = _rigFacing;
             _rigGhost = LogicConfig.RigGhost != null && LogicConfig.RigGhost.Value;
-            _rigCulture = null;
             (bool Female, bool Child, float Offset)[] row = { (false, false, -2.25f), (false, true, -0.75f), (true, true, 0.75f), (true, false, 2.25f) };
             foreach ((bool female, bool child, float offset) in row)
             {
-                Vector3 at = center + right * offset;
+                Vector3 at = _rigCenter + _rigRight * offset;
                 if (ZoneSystem.instance != null && ZoneSystem.instance.GetGroundHeight(at, out float y))
                 {
                     at.y = y;
                 }
 
-                GameObject model = Model(at, facing, female, child);
-                if (model != null)
-                {
-                    Rig.Add(model);
-                    RigModels.Add(new RigModel { Model = model, Female = female, Child = child, Hair = DefaultRigHair(female), Beard = "Beard5" });
-                    if (child)
-                    {
-                        Bodies.Add(new Body { Root = model, Female = female, FixedAge = 0f });
-                    }
-                }
+                var rig = new RigModel { Female = female, Child = child, At = at, Facing = _rigFacing };
+                RigModels.Add(rig);
+                Make(rig);
             }
         }
 
         private static string DefaultRigHair(bool female) => female ? "Hair12" : "Hair3";
 
-        /// <summary>Every frame while the rig stands: the children's hair from the config, and the ghost look if asked for.</summary>
+        private static string HairFor(RigModel rig)
+        {
+            ConfigEntry<string> entry = rig.Child ? (rig.Female ? LogicConfig.RigHairGirl : LogicConfig.RigHairBoy)
+                : rig.Female ? LogicConfig.RigHairWoman : LogicConfig.RigHairMan;
+            string hair = entry?.Value?.Trim();
+            return string.IsNullOrEmpty(hair) ? DefaultRigHair(rig.Female) : hair;
+        }
+
+        private static string BeardFor(RigModel rig)
+        {
+            if (rig.Female || (rig.Child && (LogicConfig.ChildNoBeard == null || LogicConfig.ChildNoBeard.Value)))
+            {
+                return "none";
+            }
+
+            string beard = LogicConfig.RigBeardMan?.Value?.Trim();
+            return string.IsNullOrEmpty(beard) ? "none" : beard;
+        }
+
+        private static string LookOf(RigModel rig) => $"{HairFor(rig)}|{BeardFor(rig)}|{LogicConfig.RigCulture?.Value}";
+
+        /// <summary>
+        /// Makes (or makes again) one rig model with the look the settings ask for. A change of hair, beard or culture
+        /// puts up a fresh model: changing the hair on a model with no network object could leave it unseen (T-202).
+        /// </summary>
+        private static void Make(RigModel rig)
+        {
+            if (rig.Model != null)
+            {
+                Rig.Remove(rig.Model);
+                Bodies.RemoveAll(b => b.Root == rig.Model);
+                Object.Destroy(rig.Model);
+            }
+
+            HairReview.RigColors(out Vector3 skin, out Vector3 hairColor);
+            rig.Look = LookOf(rig);
+            rig.Model = Model(rig.At, rig.Facing, rig.Female, HairFor(rig), BeardFor(rig), skin, hairColor);
+            if (rig.Model == null)
+            {
+                return;
+            }
+
+            Rig.Add(rig.Model);
+            if (rig.Child)
+            {
+                Bodies.Add(new Body { Root = rig.Model, Female = rig.Female, FixedAge = 0f });
+            }
+        }
+
+        /// <summary>Every frame while the rig stands: a model whose look changed is made again, and the ghost look if asked for.</summary>
         private static void RigTick()
         {
             if (RigModels.Count == 0)
@@ -305,68 +349,32 @@ namespace Villheim.Logic.Villagers
             }
 
             bool ghost = LogicConfig.RigGhost != null && LogicConfig.RigGhost.Value;
-            if (ghost != _rigGhost && !ghost)
-            {
-                // The ghost look comes off by putting the models up again, plain.
-                ClearRig();
-                PutUpRig();
-                return;
-            }
-
+            bool plainAgain = ghost != _rigGhost && !ghost;
             _rigGhost = ghost;
-            string culture = LogicConfig.RigCulture?.Value ?? "";
-            bool recolor = culture != _rigCulture;
-            _rigCulture = culture;
-            HairReview.RigColors(out Vector3 skin, out Vector3 hairColor);
             foreach (RigModel rig in RigModels)
             {
-                if (rig.Model == null)
+                try
                 {
-                    continue;
-                }
-
-                VisEquipment vis = rig.Model.GetComponent<VisEquipment>();
-                if (vis == null)
-                {
-                    continue;
-                }
-
-                if (recolor)
-                {
-                    // The culture's own skin and hair colors (darker for some peoples, fairer for the Norse).
-                    vis.SetSkinColor(skin);
-                    vis.SetHairColor(hairColor);
-                }
-
-                ConfigEntry<string> entry = rig.Child ? (rig.Female ? LogicConfig.RigHairGirl : LogicConfig.RigHairBoy)
-                    : rig.Female ? LogicConfig.RigHairWoman : LogicConfig.RigHairMan;
-                string wanted = entry?.Value?.Trim();
-                wanted = string.IsNullOrEmpty(wanted) ? DefaultRigHair(rig.Female) : wanted;
-                if (wanted != rig.Hair)
-                {
-                    rig.Hair = wanted;
-                    vis.SetHairItem(wanted.GetStableHashCode());
-                }
-
-                if (!rig.Female && !rig.Child)
-                {
-                    string beard = LogicConfig.RigBeardMan?.Value?.Trim() ?? "";
-                    if (beard != rig.Beard)
+                    // The ghost look comes off by making the models again, plain.
+                    if (plainAgain || rig.Model == null || LookOf(rig) != rig.Look)
                     {
-                        rig.Beard = beard;
-                        vis.SetBeardItem(beard.Length == 0 || beard == "none" ? 0 : beard.GetStableHashCode());
+                        Make(rig);
+                    }
+
+                    if (ghost && rig.Model != null && rig.Model.GetComponent<Character>() is Character character)
+                    {
+                        GhostLook.Update(character);
                     }
                 }
-
-                if (ghost && rig.Model.GetComponent<Character>() is Character character)
+                catch (Exception ex)
                 {
-                    GhostLook.Update(character);
+                    VillheimPlugin.Log.LogWarning($"Kids rig: a model could not be shown: {ex}");
                 }
             }
         }
 
         /// <summary>A still copy of the villager body, dressed plainly, with no network object, AI or physics.</summary>
-        private static GameObject Model(Vector3 at, Quaternion facing, bool female, bool child)
+        private static GameObject Model(Vector3 at, Quaternion facing, bool female, string hair, string beard, Vector3 skin, Vector3 hairColor)
         {
             GameObject model;
             ZNetView.m_forceDisableInit = true;
@@ -410,11 +418,10 @@ namespace Villheim.Logic.Villagers
             if (vis != null)
             {
                 vis.SetModel(female ? 1 : 0);
-                vis.SetSkinColor(new Vector3(0.9f, 0.8f, 0.7f));
-                vis.SetHairColor(new Vector3(0.5f, 0.35f, 0.2f));
-                vis.SetHairItem(DefaultRigHair(female).GetStableHashCode());
-                bool beard = !female && !(child && (LogicConfig.ChildNoBeard == null || LogicConfig.ChildNoBeard.Value));
-                vis.SetBeardItem(beard ? "Beard5".GetStableHashCode() : 0);
+                vis.SetSkinColor(skin);
+                vis.SetHairColor(hairColor);
+                vis.SetHairItem(hair.GetStableHashCode());
+                vis.SetBeardItem(beard == "none" ? 0 : beard.GetStableHashCode());
                 vis.SetChestItem("ArmorRagsChest".GetStableHashCode());
                 vis.SetLegItem("ArmorRagsLegs".GetStableHashCode());
             }

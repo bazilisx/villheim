@@ -246,12 +246,11 @@ namespace Villheim.Logic
         public static ConfigEntry<string> RigHairBoy;
         public static ConfigEntry<string> RigHairGirl;
         public static ConfigEntry<bool> RigGhost;
-        public static ConfigEntry<string> HairAllowMen;
-        public static ConfigEntry<string> HairBlockMen;
-        public static ConfigEntry<string> HairAllowWomen;
-        public static ConfigEntry<string> HairBlockWomen;
-        public static ConfigEntry<string> HairAllowBoys;
-        public static ConfigEntry<string> HairAllowGirls;
+        public static ConfigEntry<float> HairLeanWeight;
+        public static ConfigEntry<string> HairLeans;
+        public static ConfigEntry<string> CultureLeans;
+        public static ConfigEntry<string> HairBlock;
+        public static ConfigEntry<string> HairChildren;
         public static ConfigEntry<bool> GhostDeath;
         public static ConfigEntry<int> YggaGrowDays;
         public static ConfigEntry<string> MistlandsDemisterPrefab;

@@ -241,6 +241,8 @@ function usable(m, mt, bud, wallStone) {
     if (PROPS.test(t[5]) && !bud.props) return false;
     if (CARVED.test(t[5]) && !bud.carvings) return false;
     if (mt.noBraces && m.kind !== 'gable' && /^beam(26|45|67)$/.test(t[5])) return false;
+    // no level beam ends standing out from a gable on their own (they read as stray sticks, 2026-11-09 review)
+    if (m.kind === 'gable' && /^beam[12]$/.test(t[5]) && t[2] > 0.35) return false;
     return true;
   });
   const lost = sw2.filter(t => t === null).length + (sw2.length - kept.length - sw2.filter(t => t === null || t === 'skip').length);

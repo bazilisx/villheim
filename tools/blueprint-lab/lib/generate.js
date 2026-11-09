@@ -784,6 +784,7 @@ function generate(req) {
   if (flatCell) { fireAt = { x: flatCell[0], z: flatCell[1] }; b.vents.push({ kind: 'flat', x: flatCell[0], z: flatCell[1], rect: flue, from: storeys > 1 ? F + SH : top }); }
   if (!req.skipDecor) Decor.decorate(b, { use: T.use, decor, biome, type, R, culture: cultureKey, doorX: b.doorX, fireAt });
   settle(b, { K, C, biome, use: T.use, type, stoneOK, F, SH, storeys, top, flat, cells, wing: w0, roofTop, skipDecor: !!req.skipDecor });
+  if (!req.skipDecor && stoneOK && F < 0.01 && !C.stoneWalls) hearthstone(b, K);
   if (!req.skipDecor) { const zones = keepClear(b); Details.interior(b, { ...dctx, zones }); Kitbash.apply(b, { ...dctx, decor }, zones); }
   return finish(b, info);
 }
@@ -1085,6 +1086,22 @@ function woodpilesOutside(b) {
     if (!moved) pile.gone = true;
   }
   b.pieces = b.pieces.filter(p => !p.gone);
+}
+
+// A hearthstone: the wooden floor under a ground-floor fire laid in stone instead (stone floors, flush with the planks
+// round them; stone stands on the ground). Half of the best-liked builds use stone floor pieces; the fire is where.
+function hearthstone(b, K) {
+  const stone = K.stoneFloor;
+  if (!stone || !thickFloor(stone)) return;
+  const Ck = checksLib();
+  for (const fire of b.pieces.filter(p => p.decor && /^(fire_pit|hearth)$/.test(p.name))) {
+    const o = Ck.aabb(fire);
+    for (const p of b.pieces) {
+      if (p.decor || p.name !== K.floor || Math.abs(p.y - fire.y) > 0.4 || p.y > 0.3) continue;
+      if (p.x - 1 < o.x1 - 0.1 && p.x + 1 > o.x0 + 0.1 && p.z - 1 < o.z1 - 0.1 && p.z + 1 > o.z0 + 0.1) { p.name = stone; p.y = +(p.y - 0.4).toFixed(3); p.hearth = true; }
+    }
+  }
+  if (b.pieces.some(p => p.hearth)) b.notes.push('Stone flags under the fire.');
 }
 
 // Things set on a table (dishes, candles) whose table came out later (a clash, a ladder, the fire's ring) come out too.

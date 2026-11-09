@@ -150,6 +150,133 @@ low roof), walls (plank, half-timber, log, stone, stone base), storeys (one, two
 loft), porch (porch, veranda, no porch), size (small, large) and decor (bare, cosy, rich), plus biome and culture
 words. A culture key written among the words (`middle-eastern`) counts as the culture.
 
+## Massing: shapes, sizes and growth (D-069, D-068)
+
+A building belongs to a household, and its later stages grow from its earlier ones. In the game a village upgrades a
+building piece by piece, so the s2 design keeps the s1 shell and adds to it, and the s3 keeps the s2. Data in
+`lib/styles.js` (`HOUSEHOLDS`, `LADDER`, `GROWTH`, `PLAN_SETS`); code in `lib/generate.js` (`massingPath`,
+`wingsFromSpec`, `planLabel`). Measured by `lab/massing.js`.
+
+How a request is read:
+
+- `lineage` names the household (the seed when left out). Every stage of the same type, culture and lineage comes
+  from one random stream that never sees the stage asked for, so s1, s2 and s3 agree. To build a house's next stage in
+  a village, ask with the same lineage (or seed) as the stage before it. `request.js` `best` holds the lineage at the
+  asked seed for every seed it tries, so the tries differ in detail and the household stays the same.
+- `fresh: true` asks for a plan drawn anew at each stage, as before this work. A named `plan` does the same.
+- Cultures whose form sets its own shape and size per stage keep it (round houses, tents, yurts, the Icelandic gable
+  row, courtyards, keeps, churches, sunken huts). Svan houses, raised storehouses and open sheds take the household's
+  size and storeys only.
+- Types with a growth set: home, longhouse, tavern, smithy, woodworker, workshop, storehouse, barn, crop farm (its
+  field lies in front, so it grows back and to the side). Docks, stalls, temples, towers, wells and camps keep their
+  stage tables.
+
+The path, drawn once per household:
+
+1. Roof and walls. A hip roof keeps to length and one end wing (a T, U or cross under a hip read as a broken
+   roof); a shed roof keeps to one ridge; flat roofs take no annex. The wall style holds for every stage; where D-012 keeps an early
+   stage in wood, a stone choice waits for the later stage.
+2. Size. Homes by household, in 2 m bays (along the ridge by across):
+
+   | Household | Odds | Main wing | Most wings ever |
+   |---|---|---|---|
+   | One person | 3 | 3x3 or 4x3 (6 x 6 m, 8 x 6 m) | 1 |
+   | Two people | 4 | 4x3 or 5x3 | 2 |
+   | A family | 3 | 5x3, 6x3, 4x5 or 5x5 | 3 |
+
+   Other types take a length between their s1 and s2 sizes; four longhouses in ten are as deep as an s2 hall from
+   the first. A house with metre-thick stone walls is at least 8 m long, so a bed fits beside the fire.
+3. One plan step at s1 and s2, two at s3, each from the odds of the steps the building can take then.
+4. Storeys: one more now and then at s2 and s3; a third only at s3 on a house 10 m deep that had two at s2. A
+   one-person house takes half the odds, a family half again as much. Cultures that build two storeys at a stage
+   (`storeys` in CULTURES) never get fewer. The tower-block rule still applies after (eave within 1.1 times the short
+   side).
+5. Extras, kept once built, within the stage's budget: porch, lean-to, balcony (two storeys only), dormers (the
+   cultures that build them), a tower at a back corner (s3, one-ridge halls of the cultures that build towers).
+
+Steps:
+
+| Step | What it adds |
+|---|---|
+| rect | one room under one ridge (s1) |
+| long | one bay more at each end (only while the house has no end wing or annex) |
+| side | a narrow side room at one end, toward the front (s1) |
+| back | a room or wing at one end, toward the back |
+| annex | a lower byre or store in line at one end (a second ridge line) |
+| extend | two bays more at one end under the same roof; the old gable wall comes out |
+| L | a wing at one end, toward the front; as deep as the house when it is 6 m deep and long enough |
+| T | a wing from the middle of the back |
+| cross | the T wing run through to the front, or a new wing through the middle |
+| U | wings at both ends toward the front, with a yard of 6 m between them |
+| round | a round house (Norse forest, 3 in 100; never Meadows Norse, Tyler 2026-11-09); it stays round |
+
+Wings stand a bay clear of each other outside the main wing. A front wing leaves at least one bay of the main front
+for the door, and the door goes a bay away from the inside corner of a wing that comes forward. Wings come forward
+4 m or 6 m. The plan's name joins its wing kinds: `L+T`, `T+nave`, `U+T`, `Z` (end wings toward front and back).
+
+The ladder, at most per stage (`LADDER`):
+
+| Stage | Wings | Storeys | Extras | Roof |
+|---|---|---|---|---|
+| s1 | 1 (a side room or annex only) | 1 | 1 | one main ridge |
+| s2 | 2 | 2 (uncommon) | 2 | ridges meeting at valleys |
+| s3 | 3 | 3 (rare, deep houses only) | 3 | towers and more |
+
+Each culture's homes have their own plan set (`PLAN_SETS`): Norse build in lines, L, T and cross (Norse forest seldom
+round); Anglo-Saxons in long straight halls with annexes; Frankish town houses turn L and T and rise to two storeys
+early; Slavs and fen folk add rooms in line; Byzantine houses go L, then U; Middle Eastern houses U. Other types
+share a set per type (`GROWTH`): longhouses grow long, taverns branch, barns lengthen.
+
+Footing over the stages: where a culture puts a stone course under its houses only once stone is allowed (Black
+Forest and Mountain s3, D-012), the household's house stands on short timber posts at the same height until then, so
+the course goes in under the walls later without moving the house. Open-sided sheds stay on the ground. A Slavic
+household on a log ground storey (families, and half the halls) has it from s1.
+
+Measured 2026-11-09 (`node lab/massing.js`, 8 seeds of every village culture's types; growth over 6 types, 6 biomes,
+4 seeds; the shell is walls, floors, posts, beams, doors and windows matched by role, material, place and turn):
+
+| | main before | after |
+|---|---|---|
+| s1 shell kept at s2: half or more (home, tavern, smithy; three biomes; 3 seeds) | 5 of 27 | 26 of 27 |
+| s2 shell kept at s3, same sample | 6 of 27 | 26 of 27 |
+| s1 kept at s2, mean over 144 | 34 % | 79 % |
+| s2 kept at s3, mean over 144 | 22 % | 66 % |
+| Plans at s1 | rect 52, round 21, square 11, long 8, gables 7, nave 2 | rect 46, round 21, square 10, long 9, gables 7, L 6, nave 2 |
+| Plans at s2 | rect 33, round 21, L 12, long 11, gables 7, T 6, nave 5 | long 22, round 21, rect 20, L 14, gables 7, nave 3, T 2 |
+| Plans at s3 | round 21, L 15, T 14, rect 12, long 9, cross 9, gables 7 | round 21, L 15, long 11, L+T 8, rect 8, cross 7, gables 7 |
+| Median ground footprint, homes with wings (s1, s2, s3) | 36, 68, 144 m2 | 56, 72, 96 m2 |
+| Median ground footprint, longhouses | 108, 204, 280 m2 | 120, 144, 204 m2 |
+| Two storeys or more, all types (s2, s3) | 9 %, 27 % | 6 %, 14 % |
+
+The s3 footprints are smaller than before: an s3 house is now its s1 house with wings added, where before it was
+drawn at the s3 table size (10 to 12 m by 10 m) from scratch. All checks pass on single seeds as well as at best of 8.
+
+### Handoff (2026-11-09)
+
+Done (branch `feat/massing`, main merged):
+- Stage 1, the ladder and plan sets as data (`styles.js`), and stage 2, growth lineage (`generate.js` `massingPath`),
+  as above. `request.js` `best` holds the lineage over its tries. Persona's household size follows the house (one
+  person, two, a family) and is seeded by the lineage. No household changes roof over its stages (0 of 5,760).
+- Test pool lines (Norse Meadows, tries 1) keep one shape per line; home 303 no longer turns round. Lead's measure on
+  these seeds: s1 to s2 keeps 70 to 96 % of the shell, s2 to s3 50 to 99 %; hall 11 and storehouse 41 drop to 50 %
+  at s3.
+
+Half done:
+- Hall 11 and storehouse 41: the s3 cross and T wings run through or behind the hall, and the storehouse's raised
+  floor and posts move with the new wing; look at `wingsFromSpec` and the footing code in `generate()`.
+- Two new interior findings in new hall shapes (decorator placements): a bench floating 0.4 m up in a fen-folk nave
+  longhouse (Swamp s2d2 seed 282), a table against a ground torch in a Byzantine T+nave longhouse (Mistlands s3d3
+  seed 116).
+- Footprints at s3 are smaller than before (homes 96 against 144 m2); more growth would come from a second storey on
+  more houses or longer wings.
+
+Next (stage 3 of the brief): wings at different heights, cross gables, more windows on some houses, towers on late
+halls of the cultures that build them, picture sheets per culture across seeds and stages.
+
+Checks on the merged branch: check_set 225, 90 and 147 pass; test_structure 36 hold; check_interiors bareFloors 7,
+beds 0, stairs 1 (main 4), floating 1, overlap 1; gen-test 5 of 5 the same byte for byte. Single seeds: 432 of 432
+(main 432), and 1,146 of 1,152 over every village culture (main 1,149; six furniture clips in half walls).
+
 ## Renderer
 
 `lib/render.js` draws every piece from its model in `data/piece-models.json` and falls back to the box shapes of

@@ -191,6 +191,181 @@ function wingsFor(plan, W, D, R, o = {}) {
   }
 }
 
+// ---------------------------------------------------------------- massing: a household's building over the stages
+//
+// A building grows from its own earlier stage (styles.js GROWTH, PLAN_SETS, LADDER): the main wing is set at s1 and
+// keeps its place; later stages add wings, a storey and extras. A wing is a spec: at 'end' (one end of the main wing,
+// side -1 or 1, toward the front or the back), 'mid' (the middle of the back, or through to the front) or 'inline' (a
+// lower annex in line at one end). Wings are narrow (a bay narrower than the main wing, at least 2 m) or full (as deep
+// as a 6 m main wing).
+
+const strHash = s => [...String(s)].reduce((h, ch) => (Math.imul(h, 31) + ch.charCodeAt(0)) >>> 0, 7);
+const oddUp = n => (n % 2 ? n : n + 1);
+function wingDepth(spec, D) { return spec.ext || (spec.full && D <= 3) ? D : Math.max(1, oddUp(D - 2)); }
+function wingsFromSpec(specs, W, D) {
+  const out0 = 2 * Math.round(Math.max(2, Math.ceil(D * 0.8)) / 2); // how far a wing sticks out, as wingsFor
+  const ws = [{ cx: 0, cz: 0, W, D, alpha: 0, main: true }];
+  for (const s of specs) {
+    const wD = wingDepth(s, D), out = out0 + (s.long ? 2 : 0);
+    if (s.at === 'end') ws.push({ cx: s.side * (W - wD), cz: (s.dir === 'back' ? 1 : -1) * out / 2, W: D + out / 2, D: wD, alpha: 270, spec: s });
+    else if (s.at === 'mid') {
+      const mid = (W % 2 === wD % 2) ? 0 : 1;
+      ws.push(s.dir === 'through' ? { cx: mid, cz: 0, W: D + out, D: wD, alpha: 270, spec: s } : { cx: mid, cz: out / 2, W: D + out / 2, D: wD, alpha: 270, spec: s });
+    } else if (s.at === 'inline') ws.push({ cx: s.side * (W + 2), cz: 0, W: 2, D: wD, alpha: 0, spec: s });
+  }
+  return ws;
+}
+// The plan's name from its wings, as the rest of the generator knows plans: rect, long, square, nave, L, T, cross, U,
+// and joined names for more than one kind of wing (L+T, T+nave).
+// An extension (a full-depth bay in line) only makes the hall longer.
+function planLabel(specs, W, D) {
+  const ext = specs.filter(s => s.ext).length, Wt = W + 2 * ext;
+  specs = specs.filter(s => !s.ext);
+  if (!specs.length) return Wt === D ? 'square' : Wt >= 2 * D ? 'long' : 'rect';
+  const ends = specs.filter(s => s.at === 'end'), mid = specs.find(s => s.at === 'mid'), inl = specs.filter(s => s.at === 'inline');
+  const parts = [];
+  if (ends.length === 2 && ends.every(s => s.dir === 'front')) parts.push('U');
+  else if (ends.length) parts.push(ends.length === 2 ? 'Z' : 'L');
+  if (mid) parts.push(mid.dir === 'through' ? 'cross' : 'T');
+  if (inl.length) parts.push('nave');
+  return parts.join('+');
+}
+// Wings stand clear of each other outside the main wing: a bay of ground between them, so roofs do not clash.
+function wingsClear(ws) {
+  const main = ws[0], own = ws.slice(1).map(w => [...cellsOf([w]).values()].filter(([x, z]) => !inside(main, x, z)));
+  for (let i = 0; i < own.length; i++) for (let j = i + 1; j < own.length; j++)
+    for (const [x, z] of own[i]) if (own[j].some(([u, v]) => Math.abs(u - x) <= 2 && Math.abs(v - z) <= 2)) return false;
+  return true;
+}
+
+// The household's whole path, s1 to s3, from its own random stream: nothing here may depend on the stage asked for,
+// so every stage of the same household agrees. Returns the state at each stage.
+function massingPath(o) {
+  const { type, T, C, cultureKey, form, lineage } = o;
+  const g = S.growthFor(cultureKey, type);
+  if (!g) return null;
+  const FR = rng((lineage * 6151 + strHash(type) * 31 + strHash(cultureKey)) >>> 0);
+  const fam = { household: null };
+  // roof and walls first: they decide which steps a building can take
+  const flatOnly = (C.roofs || ROOF_BY_CULTURE[cultureKey] || {}).flat && !(C.roofs || ROOF_BY_CULTURE[cultureKey] || {}).gable;
+  fam.roof = C.roof === 'flat' || flatOnly ? 'flat' : pick(FR, C.roofs || ROOF_BY_CULTURE[cultureKey] || { gable: 1 });
+  if (T.open === 'sides' && FR() < 0.4) fam.roof = 'shed';
+  if (fam.roof === 'conical') fam.roof = 'hip';
+  const wAll = { ...(C.walls || WALLS_BY_CULTURE[cultureKey] || WALLS_BY_BIOME[C.biome] || { plank: 1 }) };
+  if (C.biome === 'Meadows') { delete wAll.stone; delete wAll['stone-base']; delete wAll.log; }
+  const wEarly = { ...wAll }; delete wEarly.stone; delete wEarly['stone-base']; delete wEarly.marble;
+  fam.walls = pick(FR, Object.keys(wAll).length ? wAll : { plank: 1 });
+  fam.wallsEarly = pick(FR, Object.keys(wEarly).length ? wEarly : { plank: 1 });
+  // the main wing
+  let W, D;
+  if (type === 'home') {
+    fam.household = pick(FR, Object.fromEntries(Object.entries(S.HOUSEHOLDS).map(([k, h]) => [k, h.weight])));
+    [W, D] = pick(FR, S.HOUSEHOLDS[fam.household].bays).split('x').map(Number);
+  } else {
+    // between the type's s1 and s2 sizes: a hall built small or built well from the start
+    const b1 = (C.bays && C.bays[type] && C.bays[type].s1) || T.bays.s1, b2 = (C.bays && C.bays[type] && C.bays[type].s2) || T.bays.s2;
+    [W, D] = b1;
+    W = Math.max(W, D) + Math.floor(FR() * (Math.max(1, b2[0] - b1[0]) + 1));
+    // a longhouse is laid out long; some are built as deep as a stage 2 hall from the first
+    if (type === 'longhouse') { if (FR() < 0.4) D = b2[1]; W = Math.max(W + 2, Math.round(oddUp(D) * 1.6)); }
+  }
+  if (D % 2 === 0 && fam.roof !== 'flat') D += 1;
+  if (fam.roof === 'hip' && W <= D) W = D + 1;
+  if (C.stoneWalls && W * D < 12) W += 1; // a metre-thick wall leaves a 6 m house no room for a bed beside the fire
+  const side = FR() < 0.5 ? -1 : 1, full = FR() < 0.75;
+  fam.porchWide = FR() < 0.5;
+  fam.stilt2 = !!C.stiltChance && FR() < C.stiltChance;
+  fam.podklet = fam.household === 'family' || (type !== 'home' && FR() < 0.5);
+  const sMult = { cozy: 0.5, couple: 1, family: 1.5 }[fam.household] || 1;
+  const maxW = { home: 8, longhouse: 14, barn: 10, tavern: 9 }[type] || 8;
+  // the steps a roof and form allow: one ridge only under a shed roof and on posts; hip roofs keep to L and length
+  const allowed = fam.roof === 'shed' || ['raised', 'open'].includes(form) ? ['rect', 'keep', 'long']
+    : form === 'svan' ? ['rect', 'keep'] : fam.roof === 'hip' ? ['rect', 'keep', 'long', 'side', 'back', 'L']
+      : fam.roof === 'flat' ? ['rect', 'keep', 'long', 'extend', 'side', 'back', 'L', 'T', 'cross', 'U'] : null;
+  const states = {};
+  let st = { W, D, specs: [], storeys: 1, extras: {} };
+  const apply = (step, s, budget, long, i0) => {
+    const n = { ...s, specs: s.specs.map(x => ({ ...x })) };
+    const ends = n.specs.filter(x => x.at === 'end'), endAt = sd => n.specs.some(x => (x.at === 'end' || x.at === 'inline') && x.side === sd);
+    const freeSide = endAt(side) ? (endAt(-side) ? 0 : -side) : side;
+    switch (step) {
+      case 'rect': case 'keep': return n;
+      case 'round': return { ...n, round: true };
+      case 'long': if (n.specs.some(x => x.at !== 'mid') || n.W + 2 > maxW) return null; n.W += 2; return n;
+      case 'extend': // two bays more at one end under the same roof (the old gable wall comes out)
+        if (!freeSide || n.W + 2 > maxW + 2 || n.specs.some(x => x.ext)) return null;
+        n.specs.push({ at: 'inline', side: freeSide, ext: true }); break;
+      case 'side': case 'back': case 'L': {
+        if (!freeSide) return null;
+        const dir = step === 'back' ? 'back' : 'front';
+        const narrow = step === 'side' || (step === 'back' && i0 === 0) || !full || n.W - n.D < (dir === 'front' ? 2 : 1);
+        n.specs.push({ at: 'end', side: freeSide, dir, full: !narrow, long: step !== 'side' && long });
+        break;
+      }
+      case 'T': if (n.specs.some(x => x.at === 'mid')) return null; n.specs.push({ at: 'mid', dir: 'back', full, long }); break;
+      case 'cross': {
+        const m = n.specs.find(x => x.at === 'mid');
+        if (m) { if (m.dir === 'through') return null; m.dir = 'through'; } else n.specs.push({ at: 'mid', dir: 'through', full });
+        break;
+      }
+      case 'U': {
+        const f = ends.filter(x => x.dir === 'front');
+        if (ends.length > 1 || (ends.length === 1 && !f.length)) return null;
+        if (f.length) n.specs.push({ ...f[0], side: -f[0].side });
+        else n.specs.push({ at: 'end', side: -1, dir: 'front', full, long: true }, { at: 'end', side: 1, dir: 'front', full, long: true });
+        break;
+      }
+      case 'annex': if (!freeSide) return null; n.specs.push({ at: 'inline', side: freeSide }); break;
+      default: return null;
+    }
+    if (n.specs.length > budget || (fam.household && n.specs.length > S.HOUSEHOLDS[fam.household].wings)) return null;
+    if (fam.roof === 'hip' && n.specs.filter(x => x.at === 'end').length > 1) return null; // a hip roof takes one wing (an L) and keeps its roof
+    // an end wing must not reach the middle: a front one leaves the door a bay of the main wing's front
+    if (n.specs.some(x => x.at === 'end' && n.W - wingDepth(x, n.D) < (x.dir === 'front' ? 2 : 1))) return null;
+    return wingsClear(wingsFromSpec(n.specs, n.W, n.D)) ? n : null;
+  };
+  const cStoreys = C.storeys && C.storeys[type];
+  ['s1', 's2', 's3'].forEach((stage, i) => {
+    const L = S.LADDER[stage];
+    // the plan steps (one at s1 and s2, two at s3, where wings branch): each drawn from the odds of the steps this
+    // building can take then
+    const odds = Object.entries(g[stage] || { keep: 1 }).filter(([k]) => !allowed || allowed.includes(k));
+    for (let k = 0; k < (i === 2 ? 2 : 1); k++) {
+      const r = FR(), long = FR() < (i === 0 ? 0 : 0.5), tries = odds.map(([q, w]) => [q, w, apply(q, st, L.wings, long, i)]).filter(t => t[2]);
+      if (!tries.length) continue;
+      let x = r * tries.reduce((a, t) => a + t[1], 0);
+      st = (tries.find(t => (x -= t[1]) <= 0) || tries[tries.length - 1])[2];
+    }
+    // storeys: one more now and then, never fewer than the culture builds at this stage
+    const rs = FR(), rt = FR();
+    if (i > 0 && st.storeys < L.storeys) {
+      const p = (g.storey && g.storey[stage] || 0) * sMult;
+      if (i === 2 && st.storeys >= 2) { if (st.D >= 5 && rt < ((g.storey && g.storey.third) || 0)) st = { ...st, storeys: 3 }; }
+      else if (rs < p) st = { ...st, storeys: st.storeys + 1 };
+    }
+    if (cStoreys && cStoreys[stage] > st.storeys) st = { ...st, storeys: cStoreys[stage] };
+    if (st.round) st = { ...st, storeys: 1 };
+    // extras: each may come at this stage, within the stage's budget, and stays
+    const ex = { ...st.extras };
+    for (const [k, table] of Object.entries(g.extras || {})) {
+      const rr = FR();
+      if (ex[k] || Object.keys(ex).length >= L.extras) continue;
+      let p = table[i] || 0;
+      if (k === 'porch') p = C.porch ? Math.min(0.9, p + 0.3 * C.porch) : 0;
+      if (k === 'balcony' && st.storeys < 2) p = 0;
+      if (k === 'tower' && (st.specs.length || !['frankish-norman', 'castle-medieval', 'slavic', 'norse-highland', 'anglo-saxon'].includes(cultureKey))) p = 0;
+      if (rr < p) ex[k] = stage;
+    }
+    // dormers: the cultures that build them, from s2
+    const rd = FR();
+    if (i > 0 && !ex.dormers && Object.keys(ex).length < L.extras && ['frankish-norman', 'anglo-saxon', 'castle-medieval', 'slavic', 'norse-highland', 'baltic'].includes(cultureKey) &&
+      ['home', 'tavern', 'longhouse', 'storage', 'workshop'].includes(type) && rd < 0.4) ex.dormers = stage;
+    st = { ...st, extras: ex };
+    states[stage] = { ...st, label: st.round ? 'octagon' : planLabel(st.specs, st.W, st.D) };
+  });
+  return { fam, states };
+}
+
 // Floor cells (2 m, keyed by centre) and the outside edges of their union.
 function cellsOf(wings) {
   const cells = new Map();
@@ -229,7 +404,9 @@ function generate(req) {
   const T = { ...S.TYPES[type] };
   const biome = S.BIOMES.includes(req.biome) ? req.biome : 'Meadows';
   const seed = req.seed ?? 1;
-  const cultureKey = S.cultureKey(req.culture) || S.cultureFor(biome, rng(seed * 104729 + type.length * 13 + 7));
+  // the household: every stage of a building with the same lineage grows from the one before (massingPath)
+  const lineage = req.lineage != null && isFinite(+req.lineage) ? +req.lineage : seed;
+  const cultureKey = S.cultureKey(req.culture) || S.cultureFor(biome, rng(lineage * 104729 + type.length * 13 + 7));
   const C = { ...S.CULTURES[cultureKey], biome };
   const stage = ['s1', 's2', 's3'].includes(req.stage) ? req.stage : 's1';
   // Decor grows in stages as the household decorates (D-071): the design is furnished at d3 and each piece is tagged
@@ -244,8 +421,19 @@ function generate(req) {
   const b = new Build();
   const form = req.form || formFor(C, type, stage);
   const info = { type, biome, cultureKey, stage, decor: decorAsked, seed, form, grow: !req.skipDecor && req.stages !== false };
-  // the household (lib/persona.js), from a random stream of its own: what the furnishing, the yard and the stands lean to
-  const household = Persona.persona({ type, biome, culture: cultureKey, seed, persona: req.persona });
+  // the household's path over the stages (massingPath), unless a plan or a fresh plan is asked for, or the culture's
+  // form sets its own shape and size per stage
+  const M = !req.fresh && !(req.plan && req.plan !== 'auto') && [null, 'svan', 'raised', 'open'].includes(form || null) && S.growthFor(cultureKey, type) && !T.tower
+    ? massingPath({ type, T, C, cultureKey, form, lineage }) : null;
+  const MS = M && M.states[stage];
+  if (MS) info.massing = M.fam.household || 'hall';
+  // the household (lib/persona.js), from a random stream of its own: what the furnishing, the yard and the stands lean
+  // to. The same lineage keeps the same people; in a home their number fits the house (one, two, three or more).
+  let household = Persona.persona({ type, biome, culture: cultureKey, seed: lineage, persona: req.persona });
+  if (M && M.fam.household && typeof req.persona !== 'string') {
+    const want = { cozy: 1, couple: 2 }[M.fam.household] || Math.max(3, household.size);
+    if (want !== household.size && !(req.persona && req.persona.size)) household = Persona.persona({ type, biome, culture: cultureKey, seed: lineage, persona: { ...(req.persona || {}), size: want } });
+  }
   info.household = household;
   // asked-for storeys, porch and pitch go into the name, so different requests never share a file name
   info.asked = (req.storeys >= 1 && req.storeys <= 3 ? `-${Math.round(req.storeys)}st` : '') + (req.porch === true ? '-porch' : req.porch === false ? '-noporch' : '') + (req.pitch ? `-p${+req.pitch}` : '')
@@ -262,6 +450,7 @@ function generate(req) {
   if (T.camp && !form) return finish(campDesign(b, K, biome, stage, R, decor), info);
 
   let plan = req.plan && req.plan !== 'auto' ? req.plan : null;
+  if (MS && MS.round) plan = 'octagon';
 
   // ---- round forms: round houses, crannogs, goahti, lavvu, yurts, round towers
   if (['round', 'tent', 'yurt'].includes(form) || plan === 'octagon' || (!plan && T.camp)) {
@@ -311,6 +500,7 @@ function generate(req) {
 
   // ---- plan and roof
   if (form === 'sunken') Object.assign(C, { eaves: 2, porch: 0, pitch: 45 });
+  if (!plan && MS) plan = MS.label;
   if (!plan) {
     const fixed = { gables: 'gables', court: 'court', keep: 'square', svan: 'rect', drum: 'rect', stave: 'rect', sunken: 'rect' }[form];
     if (fixed) plan = fixed;
@@ -335,15 +525,17 @@ function generate(req) {
     if (plan === 'court') roofKind = 'flat';
     else if (['gables', 'greek', 'nave'].includes(plan) || ['drum', 'stave', 'sunken', 'svan'].includes(form) || (form === 'dome')) roofKind = 'gable';
     else if (form === 'keep') roofKind = stoneOK ? 'flat' : 'hip';
+    else if (MS && plan !== 'octagon') roofKind = M.fam.roof;
     else roofKind = plan === 'octagon' ? 'conical' : pick(R, C.roofs || ROOF_BY_CULTURE[cultureKey] || { gable: 1 });
   }
-  if (T.open === 'sides' && !req.roof && R() < 0.4) roofKind = 'shed';
+  if (T.open === 'sides' && !req.roof && !MS && R() < 0.4) roofKind = 'shed';
   if (plan === 'octagon' && roofKind !== 'flat') roofKind = 'conical';
   if (plan !== 'octagon' && roofKind === 'conical') roofKind = 'hip';
   if (roofKind === 'shed' && plan !== 'rect' && plan !== 'long' && plan !== 'square') plan = 'rect';
   // T and cross plans keep gables: a hip main wing with gabled wings through it read as a broken roof (r5 review)
-  if (roofKind === 'hip' && ['gables', 'court', 'greek', 'nave', 'U', 'T', 'cross'].includes(plan)) roofKind = 'gable';
-  let wallStyle = req.walls && req.walls !== 'auto' ? req.walls : wallStyleFor(R, C, cultureKey, biome);
+  if (roofKind === 'hip' && (['gables', 'court', 'greek', 'nave', 'U', 'T', 'cross'].includes(plan) || plan.includes('+'))) roofKind = 'gable';
+  let wallStyle = req.walls && req.walls !== 'auto' ? req.walls
+    : MS ? (early && /stone|marble/.test(M.fam.walls) ? M.fam.wallsEarly : M.fam.walls) : wallStyleFor(R, C, cultureKey, biome);
   if (form === 'keep') wallStyle = stoneOK ? 'stone' : (biome === 'Meadows' ? 'half-timber' : wallStyle);
   if (form === 'stave') wallStyle = 'plank';
   if (C.typeWalls && C.typeWalls[type] && !req.walls) wallStyle = C.typeWalls[type];
@@ -365,7 +557,8 @@ function generate(req) {
   } else if (plan === 'court') {
     Object.assign(wingOpts, { Q: stage === 's3' && type !== 'home' ? 8 : 6, dW: 2 });
     bx = wingOpts.Q; bz = 2;
-  } else if (form === 'keep') { bx = bz = { s1: 3, s2: 3, s3: 5 }[stage]; }
+  } else if (MS) { bx = MS.W; bz = MS.D; if (roofKind === 'hip' && bx < bz) bx = bz; }
+  else if (form === 'keep') { bx = bz = { s1: 3, s2: 3, s3: 5 }[stage]; }
   else if (form === 'dome') { bx = { s1: 3, s2: 5, s3: 7 }[stage]; bz = { s1: 3, s2: 3, s3: 5 }[stage]; }
   else if (form === 'stave' || form === 'drum') { bx = { s1: 3, s2: 4, s3: 5 }[stage]; bz = 3; }
   else if (form === 'sunken') { bx = { s1: 2, s2: 3, s3: 4 }[stage]; bz = 3; }
@@ -378,7 +571,7 @@ function generate(req) {
     if (roofKind === 'hip' && bx < bz) bx = bz;
   }
   let W = bx; const D = bz;
-  let storeys = form === 'open' ? 1 : ['keep'].includes(form) ? { s1: 2, s2: 3, s3: 3 }[stage] : ['stave', 'court', 'dome', 'drum', 'sunken', 'gables'].includes(form) || plan === 'gables' ? 1 : storeysOf();
+  let storeys = form === 'open' ? 1 : ['keep'].includes(form) ? { s1: 2, s2: 3, s3: 3 }[stage] : ['stave', 'court', 'dome', 'drum', 'sunken', 'gables'].includes(form) || plan === 'gables' ? 1 : MS && !askedStoreys ? MS.storeys : storeysOf();
   let SH = T.low ? 2 : T.tower ? 3 : (['longhouse', 'tavern', 'temple'].includes(type) || stage === 's3') ? 3 : 2;
   if (form === 'keep' || plan === 'court') SH = 3;
   if (form === 'stave') SH = 4;
@@ -396,11 +589,18 @@ function generate(req) {
   // a stone footing under timber walls: by culture, and from stage 3 for the cultures that had none (round 2 and 4
   // reviews: buildings standing straight on the grass looked dropped there; D-012 keeps early Meadows and Black
   // Forest buildings in wood)
-  const footingLate = C.plinth == null && !C.stilts && !C.raised && !C.podklet && stage === 's3' && ['anglo-saxon', 'frankish-norman', 'celtic', 'norse-highland'].includes(cultureKey);
-  const stoneBase = (C.plinth === 'stone' || (C.plinth === 'byBiome' && biome !== 'Meadows') || C.stoneGround || footingLate) && K.plinth && !early;
-  const podklet = C.podklet && stage !== 's1' && ['home', 'longhouse', 'tavern'].includes(type);
+  const earlyAt = st => (biome === 'Meadows' || biome === 'Black Forest') && (st === 's1' || (st === 's2' && !['longhouse', 'tavern', 'temple', 'tower'].includes(type)));
+  const stoneBaseAt = st => !!((C.plinth === 'stone' || (C.plinth === 'byBiome' && biome !== 'Meadows') || C.stoneGround ||
+    (C.plinth == null && !C.stilts && !C.raised && !C.podklet && st === 's3' && ['anglo-saxon', 'frankish-norman', 'celtic', 'norse-highland'].includes(cultureKey))) && K.plinth && !earlyAt(st));
+  const stoneBase = stoneBaseAt(stage) && !(MS && T.open && !stoneBaseAt('s1'));
+  // a household whose house gets a stone course later stands on short timber posts until then, at the same height, so
+  // the course goes in under the walls without moving the house (D-012 keeps the early stages in wood)
+  // (open-sided sheds stay on the ground: a stair to an open front would run under its beam)
+  const postsTillStone = MS && !T.open && !stoneBase && stoneBaseAt('s3');
+  const podklet = C.podklet && ['home', 'longhouse', 'tavern'].includes(type) && (MS ? M.fam.podklet : stage !== 's1');
   if (plan === 'gables') F = 0; else if (T.dock) F = 1; else if (C.stilts) F = C.stiltH || 2; else if (podklet) F = 2; else if (form === 'raised') F = C.storeH || 1;
-  else if (T.raised || C.raised) F = C.stiltChance && R() < C.stiltChance ? 2 : 1; else if (stoneBase) F = C.plinthHigh ? 2 : 1;
+  else if (T.raised || C.raised) F = C.stiltChance && (MS ? M.fam.stilt2 : R() < C.stiltChance) ? 2 : 1; else if (stoneBase) F = C.plinthHigh ? 2 : 1;
+  else if (postsTillStone) F = C.plinthHigh ? 2 : 1;
   const deck = C.stilts && plan !== 'octagon' ? (C.deck || 2) : 0;
   // no tower blocks: the eave stays within 1.1 times the short side of the footprint (2026-11-09 review: three storeys
   // on a 6 to 8 m plan read as a tower); towers, keeps and the like keep their height
@@ -410,7 +610,7 @@ function generate(req) {
   const onPosts = F > 0.01 && !podklet && (C.stilts || T.dock || T.raised || C.raised || form === 'raised' || !stoneBase);
   if (onPosts && /stone|marble|grausten/.test(C.wallStyle)) { C.wallStyle = C.logWalls ? 'log' : 'plank'; C.stoneWalls = false; C.parapet = false; info.walls = C.wallStyle; }
 
-  const wings = wingsFor(plan, W, D, R, wingOpts);
+  const wings = MS && plan !== 'octagon' ? wingsFromSpec(MS.specs, W, D) : wingsFor(plan, W, D, R, wingOpts);
   W = wings[0].W; // a U plan may widen the main wing
   const cells = cellsOf(wings);
   const edges = edgesOf(cells);
@@ -478,7 +678,9 @@ function generate(req) {
   let door;
   if (form === 'sunken') door = edges.filter(e => e.out[0] < 0 && inside(wings[0], e.cell[0], e.cell[1])).sort((a, c) => Math.abs(a.z) - Math.abs(c.z))[0];
   if (!door) {
-    const front = gEdges.filter(e => e.out[1] < 0 && inside(wings[0], e.cell[0], e.cell[1])).sort((a, c) => Math.abs(a.x - wings[0].cx) - Math.abs(c.x - wings[0].cx));
+    // not in the inside corner of a wing that comes forward (a household's plan): a bay of wall between them
+    const crowded = e => MS && wings.slice(1).some(w => inside(w, e.x - 2, e.z - 1) || inside(w, e.x + 2, e.z - 1)) ? 1 : 0;
+    const front = gEdges.filter(e => e.out[1] < 0 && inside(wings[0], e.cell[0], e.cell[1])).sort((a, c) => crowded(a) - crowded(c) || Math.abs(a.x - wings[0].cx) - Math.abs(c.x - wings[0].cx));
     door = front.length ? front[0] : gEdges.filter(e => e.out[1] < 0)[0] || gEdges[0];
   }
   const doorX = door.x, doorZ = door.z;
@@ -559,6 +761,8 @@ function generate(req) {
   dctx.profile.dormerPair = dctx.R() < 0.5;
   // a gate as the front door of work and store buildings (coverage audit: gates on 65 % of the best-liked builds)
   dctx.profile.gateDoor = +stage[1] >= 2 && !T.bigDoor && ['longhouse', 'storage', 'workshop', 'smithy', 'sawmill', 'farm'].includes(type) && SH >= 3 && dctx.R() < 0.6;
+  // the household's extras (massingPath): a lean-to, a balcony and dormers stay once built
+  if (MS) Object.assign(dctx.profile, { outshut: !!MS.extras.outshut, balcony: !!MS.extras.balcony, dormers: !!MS.extras.dormers });
   if (req.details) Object.assign(dctx.profile, req.details);
   if (loggia) Object.assign(dctx.profile, { svalgang: false, gablePorch: false, doorHood: false });
   dctx.wallSegment = wallSegment;
@@ -676,7 +880,7 @@ function generate(req) {
   // them (the skyline of the best liked builds rises and falls twice as much as ours did)
   const towerCultures = ['frankish-norman', 'castle-medieval', 'slavic', 'norse-highland', 'anglo-saxon'];
   const cornerTower = stage === 's3' && ['tavern', 'temple', 'longhouse', 'home'].includes(type) && towerCultures.includes(cultureKey) &&
-    ['rect', 'long'].includes(plan) && !lookout && F < 0.01 && dctx.R() < (type === 'home' ? 0.25 : 0.4);
+    ['rect', 'long'].includes(plan) && !lookout && F < 0.01 && (MS ? !!MS.extras.tower : dctx.R() < (type === 'home' ? 0.25 : 0.4));
   const svanTower = (form === 'svan' && stage !== 's1') || cornerTower ? { cx: W - 3, cz: D + 3, n: 3 } : null;
   if (svanTower) holes.push({ x0: W - 6, x1: W + 0.01, z0: D - 0.01, z1: D + 6 });
   const inHole = p => holes.some(h => p.x > h.x0 && p.x < h.x1 && p.z > h.z0 && p.z < h.z1);
@@ -723,8 +927,9 @@ function generate(req) {
   // a low roof's eaves already run 2 m past the wall, so only steep roofs get a porch roof of their own
   const porchFits = !flat && roofKind !== 'shed' && !T.dock && !T.tower && !['U', 'cross', 'court', 'gables', 'greek'].includes(plan) && !deck && !podklet && form !== 'sunken' && r === 2 && (C.eaves || 1) < 2;
   if (req.porch === true && !porchFits) b.notes.push('No porch: this plan, roof or form has no front for one.');
-  if (req.porch === true ? porchFits : req.porch !== false && !flat && roofKind !== 'shed' && !T.dock && !T.tower && C.porch && R() < C.porch + (stage === 's1' ? -0.3 : 0.2) + (wings[0].W >= 6 ? 0.4 : 0) && porchFits && !dctx.profile.svalgang && !dctx.profile.gablePorch && !dctx.profile.dormerOverDoor && !loggia) {
-    const h = R() < 0.5 ? 0 : 1, zf = doorZ;
+  const porchOdds = () => MS && req.porch == null ? !!MS.extras.porch : R() < C.porch + (stage === 's1' ? -0.3 : 0.2) + (wings[0].W >= 6 ? 0.4 : 0);
+  if (req.porch === true ? porchFits : req.porch !== false && !flat && roofKind !== 'shed' && !T.dock && !T.tower && C.porch && porchOdds() && porchFits && !dctx.profile.svalgang && !dctx.profile.gablePorch && !dctx.profile.dormerOverDoor && !loggia) {
+    const h = (MS ? !M.fam.porchWide : R() < 0.5) ? 0 : 1, zf = doorZ;
     const bays = [];
     for (let k = -h; k <= h; k++) { const x = doorX + 2 * k; if (!cells.has(`${x},${zf - 1}`) && !cells.has(`${x},${zf - 3}`)) bays.push(x); }
     if (bays.length) {
@@ -781,9 +986,11 @@ function generate(req) {
       for (let x = -W + 1; x < W; x += 2) for (let z = zmin + 1; z < -D; z += 2)
         if (!cells.has(`${x},${z}`)) b.put(pave, x, 0, z);
       const yz = Math.round((zmin - D) / 2);
-      const well = new Build(); wellDesign(well, K, biome, 's1');
-      const lift = thickFloor(pave) ? 0.5 : 0; // on top of the paving
-      for (const p of well.pieces) b.put(p.name, p.x, p.y + lift, p.z + yz, p.yaw);
+      if (-D - zmin >= 5.9) { // a well only where the yard leaves room in front of the door
+        const well = new Build(); wellDesign(well, K, biome, 's1');
+        const lift = thickFloor(pave) ? 0.5 : 0; // on top of the paving
+        for (const p of well.pieces) b.put(p.name, p.x, p.y + lift, p.z + yz, p.yaw);
+      }
     }
     if ((stage === 's3' && type === 'home') || type === 'temple') {
       stoneTowerAt(b, K, W + 1, D - 1, top + 6, F);
@@ -847,7 +1054,7 @@ function generate(req) {
   if (roofKind === 'gable' && plan !== 'gables' && ((C.dragons && ['longhouse', 'temple', 'tavern'].includes(type)) || (C.carved && stage !== 's1')))
     for (const sx of [-1, 1]) {
       // the carving rides on the ridge beam's end, run out a metre past the gable (it stood on nothing)
-      const rk = dctx.rake || 0; // past the rake when the roof overhangs the gable
+      const rk = (dctx.rake || 0) + (wings.some(w => w.spec && w.spec.ext && w.spec.side === sx) ? 4 : 0); // past the rake, and past an extension
       // a 2 m ridge beam from inside the gable to half a metre past the rake, so it rests on the gable wall
       b.put(rk ? (K.beam || 'wood_beam') : (K.beam1 || 'wood_beam_1'), sx * (rk ? W + rk - 0.5 : W + 0.5), roofTop + r * (D - 1) / 2 - 0.35, 0, 0, { trim: true });
       b.put('wood_dragon1', sx * (W + rk + 0.6), roofTop + r * (D - 1) / 2 + 0.3, 0, sx > 0 ? 90 : 270);

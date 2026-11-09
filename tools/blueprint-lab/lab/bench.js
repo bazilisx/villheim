@@ -58,7 +58,7 @@ function autoFocus(full, bare) {
   const x0 = Math.min(...add.map(p => p.x)) - 1.8, x1 = Math.max(...add.map(p => p.x)) + 1.8;
   const z0 = Math.min(...add.map(p => p.z)) - 1.8, z1 = Math.max(...add.map(p => p.z)) + 1.8;
   const y0 = Math.min(...add.map(p => p.y)) - 1.5, y1 = Math.max(...add.map(p => p.y)) + 2.5;
-  return { az: Math.atan2(dx, -dz) * 180 / Math.PI + 20, el: 14, crop: { x0, x1, z0, z1, y0, y1 } };
+  return { az: Math.atan2(dx, -dz) * 180 / Math.PI + 20, el: 14, crop: { x0, x1, z0, z1, y0, y1 }, floor: Math.min(...add.map(p => p.y)) };
 }
 
 const PARTS = {
@@ -121,6 +121,14 @@ const PARTS = {
       const sx = st.length ? Math.sign(st[0].x - cx) : 1;
       return { az: sx > 0 ? 60 : -120, el: 16, crop: null };
     },
+  },
+  bed: {
+    bases: [
+      { type: 'home', biome: 'Meadows', stage: 's3', decor: 'd3' },
+      { type: 'longhouse', biome: 'Black Forest', stage: 's3', decor: 'd3' },
+      { type: 'home', biome: 'Plains', stage: 's3', decor: 'd3' }],
+    flags: ['canopyBed'],
+    focus: 'auto', inside: true,
   },
   wall: {
     bases: [
@@ -189,19 +197,20 @@ for (const { base, seed } of fx) {
   // the camera is set once per building, so every picture of it is framed the same: on the pieces the part adds
   // (full variant against bare variant), looking at them from outside the building
   const full = G.generate({ ...base, seed, details: Object.fromEntries(spec.flags.map(x => [x, true])) });
-  const f0 = spec.focus === 'auto' || !spec.focus ? autoFocus(full, G.generate({ ...base, seed, details: Object.fromEntries(spec.flags.map(x => [x, false])) })) : spec.focus(full);
+  let f0 = spec.focus === 'auto' || !spec.focus ? autoFocus(full, G.generate({ ...base, seed, details: Object.fromEntries(spec.flags.map(x => [x, false])) })) : spec.focus(full);
   for (const v of variants(spec, perBase, seed)) {
     const req = { ...base, seed, details: v.details, style: v.style };
     const d = G.generate(req);
     const fails = Ck.check(d, base.biome).filter(c => !c.ok).map(c => c.check + ': ' + c.detail);
     const f = f0;
+    if (spec.inside && f.crop && !f.cut) { f.cut = f.floor + 1.3; f.el = 50; f.crop.y1 = f.cut; f.az += 160; }
     const on = Object.entries(v.details).filter(([, x]) => x).map(([k]) => k);
     const label = `${bi}.${rows.filter(r => r.base === bi).length + 1}`;
     const row = { id: label, base: bi, name: d.meta.Name, details: on, style: v.style, pieces: d.pieces.length, fails };
     if (f && f.crop) row.near = d.pieces.filter(p => p.x >= f.crop.x0 && p.x <= f.crop.x1 && p.z >= f.crop.z0 && p.z <= f.crop.z1 && p.y < f.crop.y1).length;
     rows.push(row);
     const c = createCanvas(W, H), cx = c.getContext('2d');
-    if (f) R.draw(cx, d.pieces, { az: f.az, el: f.el, crop: f.crop || undefined, width: W, height: H - 34, ss: 2, background: fails.length ? '#e8c9c0' : '#e9e4d8' });
+    if (f) R.draw(cx, d.pieces, { az: f.az, el: f.el, crop: f.crop || undefined, cut: f.cut, width: W, height: H - 34, ss: 2, background: fails.length ? '#e8c9c0' : '#e9e4d8' });
     cx.fillStyle = '#d9d2c3'; cx.fillRect(0, H - 34, W, 34);
     cx.fillStyle = fails.length ? '#a02010' : '#2b241c'; cx.font = 'bold 13px sans-serif';
     cx.fillText(`${label}${fails.length ? '  FAILS' : ''}  ${Object.values(v.style).join(' ')}`, 5, H - 20);

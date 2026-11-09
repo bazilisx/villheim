@@ -2247,8 +2247,11 @@ function audit(design, decor) {
   const res = { overlap: [], door: [], mountOnOpening: [], floating: [], stairs: [], indoorPile: [], torchHeight: [], bareFloors: [] };
   const marked = pieces.some(p => p.decor);
   const isDeco = p => (marked ? !!p.decor : !!F[p.name] && !P.piece(p.name).structural);
-  const deco = pieces.filter(isDeco);
-  const struct = pieces.filter(p => !isDeco(p)).map(structBox);
+  // furniture built from building pieces (a bar counter of half walls and beams) is held up by the support check;
+  // here it is structure that other furniture stands on
+  const built = p => isDeco(p) && !F[p.name] && P.piece(p.name).structural;
+  const deco = pieces.filter(p => isDeco(p) && !built(p));
+  const struct = pieces.filter(p => !isDeco(p) || built(p)).map(structBox);
   const boxOf = p => { const [w, h, d] = size(p.name); const f = F[p.name] || {}; const y0 = p.y - (f.base || 0) - (f.at === 'hang' ? 0 : 0); return { p, f, b: obox(p.x, p.z, w, d, pyaw(p)), y0: f.at === 'hang' ? p.y : y0, y1: f.at === 'hang' ? p.y + h : y0 + h }; };
   const items = deco.map(boxOf);
   const floorsAt = struct.filter(s => s.role === 'floor');
@@ -2300,6 +2303,7 @@ function audit(design, decor) {
     const fa = it.f.at || 'floor';
     if (fa === 'mount' || fa === 'hang') continue;
     if (fa === 'top' && wallish.some(s => ptDist(s.b, it.p.x, it.p.z) < 0.4 && s.y0 < it.p.y && s.y1 > it.p.y)) continue; // hung on a wall as a shelf
+    if (fa === 'top' && struct.some(s => built(s.p) && ptDist(s.b, it.p.x, it.p.z) < 0.05 && Math.abs(s.y1 - it.p.y) < 0.2)) continue; // on a built counter
     if (fa === 'top') { if (!items.some(o => (o.f.cat === 'table') && ptDist(o.b, it.p.x, it.p.z) < 0.05 && Math.abs(o.p.y + (o.f.top || 0.75) - it.p.y) < 0.15)) res.floating.push(`${it.p.name} at ${it.p.x.toFixed(1)},${it.p.y.toFixed(1)},${it.p.z.toFixed(1)}`); continue; }
     if (fa === 'fire') { if (!items.some(o => o.f.cat === 'fire' && ptDist(o.b, it.p.x, it.p.z) < 0.1)) res.floating.push(`${it.p.name} at ${it.p.x.toFixed(1)},${it.p.z.toFixed(1)}`); continue; }
     const yb = it.y0;

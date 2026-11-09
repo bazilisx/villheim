@@ -959,13 +959,16 @@ function chimney(b, ctx, v) {
   // under a ridge with no floor to pass through, a smoke louver: the ridge caps raised 0.6 m on short posts over the
   // opening, open at the sides (the Norse ljore), in place of a plank box standing on the ridge
   const louver = v.kind === 'ridge' && v.from >= yRoof - 0.01;
-  const yTop = louver ? yRoof + 0.1 : yRoof + (stone ? 2 : 1);
+  // a shaft up through an upper floor stops at the ridge inside the roof; above it the same raised caps as a louver
+  // (a plank box standing a metre over the ridge read as a doghouse on the roof, 2026-11-09 review)
+  const yTop = louver || v.kind === 'ridge' ? yRoof + 0.1 : yRoof + (stone ? 2 : 1);
   // floors above the fire inside the chimney's footprint come out (the upper floors and a flat roof)
   b.pieces = b.pieces.filter(p => !(P.piece(p.name).role === 'floor' && !p.decor && p.y > ctx.F + 0.5 && inRect(r, p.x, p.z)));
   const sides = [];
   for (let x = r.x0 + 1; x < r.x1; x += 2) { sides.push([x, r.z0, 0]); sides.push([x, r.z1, 0]); }
   for (let z = r.z0 + 1; z < r.z1; z += 2) { sides.push([r.x0, z, 90]); sides.push([r.x1, z, 90]); }
-  if (!louver) for (let y = v.from; y < yTop - 0.01; y += course) for (const [x, z, yaw] of sides) b.put(piece, x, y + course / 2, z, yaw);
+  const yBox = v.kind === 'ridge' ? yRoof - 0.9 : yTop; // the shaft's sides end under the ridge, inside the roof
+  if (!louver) for (let y = v.from; y < yBox - 0.01; y += course) for (const [x, z, yaw] of sides) b.put(piece, x, y + course / 2, z, yaw);
   if (!stone) {
     // the cap: short posts at the corners, the ridge caps (or flat roof caps) half a metre over the box
     const cap = v.caps ? v.caps : null;

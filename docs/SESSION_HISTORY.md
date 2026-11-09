@@ -5,7 +5,7 @@ Current facts only. Read this at the start of a session. Narrative is in `docs/d
 
 ## Current State (as of 2026-11-09)
 
-- **Next session:** the eight "Next test build" items at the top of the open list in `docs/ROADMAP.md` (beds
+- **Next session:** the eight items under "Next test build" in `docs/ROADMAP.md` (beds
   assigned and used and not claimable, sign placement, the Norse s1d1 to s3d3 test pool, no floor sitting, hidden
   protector and carer, role colors (D-075), short hover texts, role displays (D-074)). Then merge the helpers still
   running on 2026-11-09: room layout (feat/layout), households (feat/persona), shapes (feat/massing).

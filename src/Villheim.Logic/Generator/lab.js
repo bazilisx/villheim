@@ -5495,6 +5495,8 @@ const FENCE_BY_CULTURE = {
 // 'side' (along one gable end). A shape that would run through something already there (a field, a pen, a woodshed)
 // gives way to the next. Farms keep their field in front, so they mostly get a side yard.
 const SHAPES = { home: { front: 4, L: 2, wrap: 2, side: 1 }, farm: { side: 3, wrap: 1, front: 1, L: 1 } };
+const CULTURE_YARD = { 'norse-highland': 'stones', 'celtic': 'stones', 'saami': 'stones', 'norse-forest': 'logs', 'slavic': 'logs', 'baltic': 'logs',
+  'frankish-norman': 'bed', 'anglo-saxon': 'bed', 'byzantine': 'bed', 'steppe': 'cart' };
 const CROP = [['Ashlands', 'Pickable_Barley'], ['Plains', 'Pickable_Barley'], ['Mountain', 'Pickable_Onion'], ['Swamp', 'Pickable_Turnip'], ['Black Forest', 'Pickable_Carrot']];
 // bushes that stay within about 1.5 m across (shrub_2 spreads 3.6 m and swallows a fence)
 const BUSHES = { 'Meadows': ['Bush01', 'RaspberryBush'], 'Black Forest': ['BlueberryBush', 'Bush02_en'], 'Swamp': ['Bush02_en'],
@@ -5769,7 +5771,7 @@ function add(b, ctx) {
         // an open shape's ends meet the house walls
         // (its first and last pieces stop at the wall's face: a wood fence's rail runs 0.25 m past its snap point)
         if (shape !== 'wrap') {
-          const r0 = runs[0], r1 = runs[runs.length - 1], cut = kit.kind === 'rail' ? 0.2 : 0.25;
+          const r0 = runs[0], r1 = runs[runs.length - 1], cut = kit.kind === 'rail' ? 0.35 : 0.25; // a post is 0.4 m across
           r0.attach = 'start'; r1.attach = 'end';
           r0.a = { x: r0.a.x + r0.u[0] * cut, z: r0.a.z + r0.u[1] * cut }; r0.L -= cut;
           r1.b = { x: r1.b.x - r1.u[0] * cut, z: r1.b.z - r1.u[1] * cut }; r1.L -= cut;
@@ -5804,7 +5806,12 @@ function add(b, ctx) {
   // under the eaves (they reach 1 m past the walls, with braces under them) only low things: beds, benches, flowers
   const eave = o => o.y1 > G0 + 1.05 && o.x0 < S.W.x1 + 1.2 && o.x1 > S.W.x0 - 1.2 && o.z0 < S.W.z1 + 1.2 && o.z1 > S.W.z0 - 1.2;
   const soft = p => { const o = Ck.aabb({ ...p, y: p.y + G0 }), c = { ...o, x0: o.x0 + 0.3, x1: o.x1 - 0.3, z0: o.z0 + 0.3, z1: o.z1 - 0.3 }; return !keep.some(z => hitBox(c, z, 0)) && inYard(c) && !placed.some(q => q.name === p.name && Math.hypot(q.x - p.x, q.z - p.z) < 0.35); };
-  const free = (p, pad = 0.1) => { const o = Ck.aabb({ ...p, y: p.y + G0 }); return !solidNow().some(z => hitBox(o, z, pad)) && !keep.some(z => hitBox(o, z, 0)) && inYard(o) && !eave(o); };
+  const free = (p, pad = 0.1) => {
+    const o = Ck.aabb({ ...p, y: p.y + G0 });
+    const why = solidNow().some(z => hitBox(o, z, pad)) ? 'solid' : keep.some(z => hitBox(o, z, 0)) ? 'keep' : !inYard(o) ? 'out' : eave(o) ? 'eave' : null;
+    if (why) dbg('free ' + p.name + ' ' + why + (why === 'solid' && typeof global !== 'undefined' && global.YV ? ' ' + ((solidNow().find(z => hitBox(o, z, pad)).info || {}).name) : ''));
+    return !why;
+  };
   // inside the yard: every corner of the piece's box inside the fence line (an open shape closes through the house)
   const yb = plan.box, poly = plan.poly;
   const inPoly = (x, z) => { let c = false; for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) { const a = poly[i], d = poly[j]; if ((a[1] > z) !== (d[1] > z) && x < (d[0] - a[0]) * (z - a[1]) / (d[1] - a[1]) + a[0]) c = !c; } return c; };
@@ -5880,13 +5887,16 @@ function add(b, ctx) {
     return g;
   };
   if (decorOn('yardBeds', 'd2')) {
-    const n = ctx.type === 'farm' ? (big ? 3 : 2) : (big ? 2 : 1);
+    const n = ctx.type === 'farm' ? (big ? 3 : 2) : (big || plan.shape === 'wrap' ? 2 : 1);
     got.push(['bed', tryAt([...fenceSpots(1.0), ...wallSpots(1.3)], bedOf, n)]);
   }
   // firewood against the fence when there is no woodshed or lean-to stack already
-  if ((decorOn('yardProps', 'd2') || loose.length) && !b.pieces.some(p => /^wood_(fine_|core_)?stack$/.test(p.name) && !p.yard && p.y < 1)) {
+  // (one firewood stack outside is enough: the woodshed's or the lean-to's counts)
+  const outside = p => p.x < S.W.x0 || p.x > S.W.x1 || p.z < S.W.z0 || p.z > S.W.z1;
+  if ((decorOn('yardProps', 'd2') || loose.length) && !b.pieces.some(p => /^wood_(fine_|core_)?stack$/.test(p.name) && !p.yard && p.y < 1 && outside(p))) {
     const name = loose.length ? loose[0].name : 'wood_stack';
-    got.push(['woodpile', tryAt(fenceSpots(0.75), s => [{ name, x: s.x, y: 0.57, z: s.z, yaw: s.yaw }])]);
+    // a stack is 2.4 m square: its middle 1.5 m in from the fence
+    got.push(['woodpile', tryAt(fenceSpots(1.5), s => [{ name, x: s.x, y: 0.57, z: s.z, yaw: s.yaw }])]);
   }
   // a bench against the front wall beside the door, facing out
   if (decorOn('yardProps', 'd2') && ctx.type === 'home') {
@@ -5894,20 +5904,31 @@ function add(b, ctx) {
     const spots = [];
     // the wall's outer face beside the door
     const face = Math.min(front.z - 0.1, ...S.wallBoxes.filter(o => Math.abs(o.z0 + o.z1 - 2 * front.z) < 1.2 && Math.abs((o.x0 + o.x1) / 2 - front.x) < 4 && o.x1 - o.x0 > 0.9).map(o => o.z0));
-    for (const sg of [-1, 1]) for (const dx of [2.4, 2.9, 3.4]) spots.push({ x: front.x + sg * dx, z: face - 0.36, yaw: 0 });
-    got.push(['bench', tryAt(spots, s => [{ name: bench, x: s.x, y: 0, z: s.z, yaw: s.yaw }])]);
+    for (const sg of [-1, 1]) for (const dx of [2.4, 2.9, 3.4, 3.9]) spots.push({ x: front.x + sg * dx, z: face - 0.5, yaw: 0 });
+    got.push(['bench', tryAt(spots, s => [{ name: bench, x: s.x, y: 0, z: s.z, yaw: s.yaw, pad: 0.04 }])]);
   }
   // a lamp inside the gate, to one side of it
   if (decorOn('yardLamp', 'd3')) {
     const torch = 'piece_groundtorch_wood', g0 = plan.gateAt;
-    const spots = [-1.5, 1.5, -2, 2].map(a => ({ x: g0.x + g0.u[0] * a + g0.n[0] * 0.45, z: g0.z + g0.u[1] * a + g0.n[1] * 0.45 }));
+    const spots = [-1.8, 1.8, -2.3, 2.3, -2.8, 2.8].map(a => ({ x: g0.x + g0.u[0] * a + g0.n[0] * 0.45, z: g0.z + g0.u[1] * a + g0.n[1] * 0.45 }));
     got.push(['lamp', tryAt(spots, s => [{ name: torch, x: s.x, y: 0.66, z: s.z, yaw: 0 }])]);
   }
   // bushes in the outer corners and along the fence, flowers along the walls
   if (decorOn('yardProps', 'd3')) {
     const bushes = BUSHES[ctx.biome] || BUSHES.Meadows;
-    got.push(['bush', tryAt(fenceSpots(1.1), s => [{ name: bushes[Math.floor(R() * bushes.length)], x: s.x, y: 0, z: s.z, yaw: Math.floor(R() * 16) * 22.5, pad: 0.05 }], big ? 3 : 2)]);
+    // a bush spreads about 3 m: 1.4 m in from the fence and 3 m from the next one
+    const apart = s => !placed.some(q => bushes.includes(q.name) && Math.hypot(q.x - s.x, q.z - s.z) < 3);
+    got.push(['bush', tryAt(fenceSpots(1.4).filter(apart), s => (apart(s) ? [{ name: bushes[Math.floor(R() * bushes.length)], x: s.x, y: 0, z: s.z, yaw: Math.floor(R() * 16) * 22.5, pad: 0.05 }] : null), big ? 3 : 2)]);
     got.push(['flowers', tryAt(wallSpots(0.45), s => [0, 0.45, -0.45].map(a => ({ name: 'Pickable_Dandelion', x: s.x + (s.n[1] ? a : 0), y: 0, z: s.z + (s.n[0] ? a : 0), yaw: Math.floor(R() * 4) * 90, soft: true, pad: 0 })), big ? 2 : 1)]);
+  }
+  // what the culture keeps in its yard (docs/CULTURE_STYLES.md): stone builders a pile of field stone, log builders a
+  // second stack of logs, kitchen-garden cultures a second bed, the steppe a cart
+  const extra = CULTURE_YARD[ctx.cultureKey];
+  if (extra && decorOn('yardProps', 'd2')) {
+    if (extra === 'stones' && canY(ctx.biome, 'stone_pile')) got.push(['stones', tryAt(fenceSpots(0.9), s => [{ name: 'stone_pile', x: s.x, y: 0, z: s.z, yaw: s.yaw }])]);
+    if (extra === 'logs' && canY(ctx.biome, 'wood_core_stack')) got.push(['logs', tryAt(fenceSpots(0.75), s => [{ name: 'wood_core_stack', x: s.x, y: 0, z: s.z, yaw: s.yaw }])]);
+    if (extra === 'bed') got.push(['bed', tryAt([...fenceSpots(1.0), ...wallSpots(1.3)], bedOf, 1)]);
+    if (extra === 'cart' && ctx.type !== 'farm' && canY(ctx.biome, 'Cart')) got.push(['cart', tryAt(fenceSpots(1.4), s => [{ name: 'Cart', x: s.x, y: 0, z: s.z, yaw: normY(s.yaw + 90) }])]);
   }
   // a farm's cart in the yard (it takes bronze nails: the Black Forest on)
   if (decorOn('yardProps', 'd2') && ctx.type === 'farm' && canY(ctx.biome, 'Cart')) {
@@ -5951,7 +5972,7 @@ function tryPlan(runs, kit, S, door, clear) {
     }
   }
   cands.sort((a, c) => a.d - c.d);
-  for (const g of cands.slice(0, 8)) {
+  for (const g of cands.slice(0, 16)) {
     const fence = [];
     let ok = true;
     for (const r of runs) {

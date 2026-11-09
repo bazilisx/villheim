@@ -1194,6 +1194,26 @@ function tidyFurniture(b) {
     if (!anchors.some(q => !gone.has(q) && q !== p && near(o, q, -0.3))) gone.add(p);
   }
   if (gone.size) b.pieces = b.pieces.filter(p => !gone.has(p));
+  // a long table with nobody's seat at it gets a bench along each long side where there is room
+  const zones = keepClear(b);
+  for (const t of b.pieces.filter(p => p.decor && /^piece_table(_oak)?$/.test(p.name))) {
+    const o = Ck.aabb(t);
+    if (b.pieces.some(q => q.decor && P.piece(q.name).role === 'seat' && (() => { const r = Ck.aabb(q); return r.x0 < o.x1 + 0.9 && r.x1 > o.x0 - 0.9 && r.z0 < o.z1 + 0.9 && r.z1 > o.z0 - 0.9; })())) continue;
+    const a = (t.yaw || 0) * Math.PI / 180, nx = Math.sin(a), nz = Math.cos(a); // across the table
+    const depth = (F[t.name] || {}).s ? F[t.name].s[2] : 1.2;
+    const bench = 'piece_bench01';
+    const len = (F[t.name] || {}).s ? F[t.name].s[0] : 2.4, spots = len > 4 ? [-1.5, 1.5] : [0];
+    for (const sg of [1, -1]) for (const along of spots) {
+      const ux = Math.cos(a), uz = -Math.sin(a);
+      const cand = { name: bench, x: +(t.x + nx * sg * (depth / 2 + 0.45) + ux * along).toFixed(3), y: t.y, z: +(t.z + nz * sg * (depth / 2 + 0.45) + uz * along).toFixed(3), yaw: t.yaw || 0, q: quat(t.yaw || 0) };
+      const cb = Ck.aabb(cand);
+      const clash = b.pieces.some(q => { if (q === t || ['floor', 'rug'].includes(P.piece(q.name).role)) return false; const r = Ck.aabb(q); return r.x0 < cb.x1 - 0.03 && r.x1 > cb.x0 + 0.03 && r.z0 < cb.z1 - 0.03 && r.z1 > cb.z0 + 0.03 && r.y0 < cb.y1 && r.y1 > cb.y0 + 0.05; })
+        || zones.some(z => hits(cb, z));
+      // and on the same floor
+      const floored = b.pieces.some(q => !q.decor && P.piece(q.name).role === 'floor' && (() => { const r = Ck.aabb(q); return cand.x > r.x0 && cand.x < r.x1 && cand.z > r.z0 && cand.z < r.z1 && Math.abs(r.y1 - cb.y0) < 0.2; })());
+      if (!clash && floored) b.pieces.push({ ...cand, decor: true });
+    }
+  }
 }
 
 // Things set on a table (dishes, candles) whose table came out later (a clash, a ladder, the fire's ring) come out too.

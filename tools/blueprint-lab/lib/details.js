@@ -163,7 +163,7 @@ function exterior(b, ctx) {
     // a lamp post beside the door on the ground
     if (X.doorLamp && F < 0.01 && !o.back) {
       for (const s of [1, -1]) {
-        const cand = { name: 'piece_groundtorch_wood', x: +(e.x + ux * s * 1.8 + ox * 0.8).toFixed(3), y: F + 0.75, z: +(e.z + uz * s * 1.8 + oz * 0.8).toFixed(3), q: quatD(0), yaw: 0 };
+        const cand = { name: 'piece_groundtorch_wood', x: +(e.x + ux * s * 1.8 + ox * 0.8).toFixed(3), y: F + 0.65, z: +(e.z + uz * s * 1.8 + oz * 0.8).toFixed(3), q: quatD(0), yaw: 0 };
         if (!clear(b, cand)) continue;
         b.pieces.push({ ...cand, decor: true, trim: true });
         break;
@@ -260,9 +260,11 @@ function svalgang(b, ctx) {
   }
   for (const x of xs) b.put(beam, x, yU - 0.15, zf - 2, 0, T);
   for (const x of [x0, x1]) b.put(beam, x, yU - 0.15, zf - 1, 90, T);
-  const rail = K.fence || 'wood_fence';
-  for (const x of xs) b.put(rail, x, yU + 0.5, zf - 2, 0, T);
-  for (const x of [x0, x1]) b.put(rail, x, yU + 0.5, zf - 1, 90, T);
+  // the rail: two beams on the posts (the round pole fence stands 2 m tall in the game, too high for a rail)
+  for (const yr of [yU + 0.55, yU + 1.05]) {
+    for (const x of xs) b.put(beam, x, yr, zf - 2, 0, T);
+    for (const x of [x0, x1]) b.put(beam, x, yr, zf - 1, 90, T);
+  }
   b.gallery = true;
   b.notes.push('An upper gallery over the front door with a door from the upper room, after the Norwegian lofts.');
   return true;

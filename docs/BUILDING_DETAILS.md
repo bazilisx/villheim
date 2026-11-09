@@ -65,6 +65,11 @@ flat-roofed cultures keep their own forms and get the door and window frames onl
 | Back room | A wall across the main wing 4 m from one end with a door in its middle bay. The decorator furnishes both rooms. | homes and taverns with a main wing at least 10 m long, s3 (s2 at d3) |
 | Fire kerb | Four beams round a fire pit on the floor, so it reads as a hearth set into the floor. | d2 on |
 | Hall benches (pallr) | A platform 0.3 m up and 1 m deep along the long walls of a hall, on short beams; beds, chests and benches against the wall go up onto it, the platform widened under them. | longhouses and halls, s2 on |
+| Stone-wall bands | A timber beam along each upper floor line of a stone or black marble wall, 0.25 m proud. | stone walls, s2 on (review 5: blank stone walls) |
+| Stone-wall corners | Timber posts the height of the walls on the outside corners of stone walls; stone pillars on black marble. Not beside a door. | stone walls, s2 on |
+| Iron-bound posts | Corner posts and the 2 m posts of motifs in iron-bound wood (44 % of well-liked builds use it, `docs/COVERAGE.md`). | northern cultures, Swamp on, s2 on, two buildings in five; not on log walls |
+| Window boxes | Two 1 x 1 boards on the wall under a ground-floor front window, a 1 m beam as the lip, dandelions in them. Tested and placed like a motif. | homes, taverns and longhouses, d2 on, not in the Ashlands |
+| Gable banner | A banner hung from just under the apex of each gable of the main wing. On a low gable it hangs on down the wall when that wall has no opening in its middle. | d3, where no loft window, gable-motif apex piece or carved head is |
 
 Every check in `lib/checks.js` still passes on the review set (225) and the culture samples (147), and the interior
 checks are unchanged. The rules were revised on 2026-11-09 after a review of the component bench (`lab/bench.js`).

@@ -6,7 +6,7 @@ set -euo pipefail
 here="$(cd "$(dirname "$0")" && pwd)"
 list="$(cd "$(dirname "${1:-$here/requests.txt}")" && pwd)/$(basename "${1:-$here/requests.txt}")"
 tries="${2:-8}"
-out=/tmp/vh-gen-test
+out="${VH_GEN_OUT:-/tmp/vh-gen-test}" # VH_GEN_OUT: a directory of its own when two worktrees test at once
 node "$here/../blueprint-lab/lib/build_engine.js"
 (cd "$here" && dotnet run -c Release -- "$list" "$out/cs" "$tries")
 (cd "$here/../blueprint-lab" && node lab/compare_engine.js "$list" "$out/cs" "$out/node" "$tries")

@@ -176,6 +176,8 @@ function materials(ctx) {
     // the crossed gable boards are a Norse and Slavic mark, not every culture's (round 4 review)
     crossOK: ['norse', 'norse-forest', 'norse-highland', 'slavic', 'baltic'].includes(ctx.cultureKey),
     roof26: K.roof26 || 'wood_roof', roof45: K.roof45 || 'wood_roof_45',
+    // the motif's 2 m posts iron-bound where the building's corner posts are (details.js ironPosts)
+    ironPoles: !!(ctx.profile && ctx.profile.ironPosts) && reachesM(biome, 'Swamp'),
   };
 }
 const nameIn = (cls, mat) => (NAMES[mat] && NAMES[mat][cls]) || null;
@@ -191,7 +193,7 @@ function swap(m, mt) {
     if (TIMBER.includes(mat)) {
       // the motif's main wood becomes the building's trim wood; a second wood stays where the biome has it
       const want = mat === primary || mat === 'stave' || !mt.timber.includes(mat) ? mt.trim : mat;
-      name = nameIn(cls, want) || nameIn(cls, 'wood');
+      name = (mt.ironPoles && cls === 'pole2' && want === 'wood' ? 'woodiron_pole' : null) || nameIn(cls, want) || nameIn(cls, 'wood');
       if (!name) for (const alt of NEAREST[cls] || []) { name = nameIn(alt, want) || nameIn(alt, 'wood'); if (name) break; }
       if (!name && mt.timber.includes(mat) && mat !== 'stave') name = n;
     } else if (STONY.includes(mat)) {

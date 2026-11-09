@@ -31,5 +31,17 @@ namespace Villheim.Logic.Village
         public static bool On => LogicConfig.LagLog != null && LogicConfig.LagLog.Value;
 
         public static IDisposable Time(string what) => On ? new Timer(what) : null;
+
+        /// <summary>DebugLog is on: village decisions are written to the log.</summary>
+        public static bool Debugging => LogicConfig.DebugLog != null && LogicConfig.DebugLog.Value;
+
+        /// <summary>Writes a village decision to the log when DebugLog is on.</summary>
+        public static void Debug(string message)
+        {
+            if (Debugging)
+            {
+                VillheimPlugin.Log.LogInfo("Debug: " + message);
+            }
+        }
     }
 }

@@ -848,7 +848,7 @@ namespace Villheim.Logic.Village
                             break;
                         }
                     }
-                });
+                }, "PlaceAll");
 
                 if (stuck)
                 {
@@ -880,9 +880,21 @@ namespace Villheim.Logic.Village
             for (int guard = 0; guard < 5000 && run.Hearth != null && run.Hearth.IsValid; guard++)
             {
                 int laid = 0;
-                Freely(run.Hearth, () => laid = PathLaying.LayAllNow(run.Hearth, 6));
+                bool more = true;
+                var watch = System.Diagnostics.Stopwatch.StartNew();
+                float budget = Mathf.Clamp(LogicConfig.TestVillagePathMs?.Value ?? 4f, 1f, 50f);
+                Freely(run.Hearth, () =>
+                {
+                    // A few meters at a time while the frame has time left; the ground is rebuilt once at the end.
+                    while (more && watch.Elapsed.TotalMilliseconds < budget)
+                    {
+                        int now = PathLaying.LayAllNow(run.Hearth, 3);
+                        laid += now;
+                        more = now > 0;
+                    }
+                }, "LayPaths");
                 run.Paths += laid;
-                if (laid == 0)
+                if (laid == 0 || !more)
                 {
                     yield break;
                 }
@@ -902,7 +914,13 @@ namespace Villheim.Logic.Village
                 Physics.SyncTransforms();
                 Amenities.Forget(hearth.VillageId);
                 Amenities.Job job = null;
-                Freely(hearth, () => job = Amenities.Due(hearth));
+                Freely(hearth, () => job = Amenities.Due(hearth), "Furnish");
+                if (job == null && Amenities.IsDeferred(hearth.VillageId))
+                {
+                    yield return null; // a furniture search waits for the next frame
+                    continue;
+                }
+
                 if (job == null)
                 {
                     yield break;
@@ -918,7 +936,7 @@ namespace Villheim.Logic.Village
                 }
 
                 bool made = false;
-                Freely(hearth, () => made = Amenities.Make(hearth, job));
+                Freely(hearth, () => made = Amenities.Make(hearth, job), "Make " + job.Name);
                 if (made && repeats == 0)
                 {
                     run.Made.TryGetValue(job.Name, out int n);
@@ -938,13 +956,13 @@ namespace Villheim.Logic.Village
             {
                 Palisade.Forget(hearth.VillageId);
                 Palisade.Segment segment = null;
-                Freely(hearth, () => segment = Palisade.Next(hearth));
+                Freely(hearth, () => segment = Palisade.Next(hearth), "Palisade.Next");
                 if (segment == null)
                 {
                     yield break;
                 }
 
-                Freely(hearth, () => Palisade.Build(hearth, segment));
+                Freely(hearth, () => Palisade.Build(hearth, segment), "Palisade.Build");
                 if (segment.Remove == null)
                 {
                     run.Fence++;
@@ -1013,11 +1031,19 @@ namespace Villheim.Logic.Village
             // Slopes between the building pads eased, so the levels don't meet in steps (T-57). Before the fence and
             // the paths, which go on the ground as it ends up.
             int eased = 0;
-            Freely(hearth, () => eased = GroundBlend.Between(hearth));
+            Freely(hearth, () => eased = GroundBlend.Between(hearth), "GroundBlend");
             if (eased > 0)
             {
                 Say(run, $"eased the slopes between the buildings ({eased} ground points)");
                 yield return new WaitForSeconds(0.5f);
+            }
+
+            // Paths again on the eased ground: every door joined to the network (routes that were too steep before the
+            // slopes were eased find their way now), laid before the fence so its gaps line up with them.
+            if (!run.Options.NoPaths && VillheimConfig.BuildPaths.Value)
+            {
+                Freely(hearth, () => PathPlanner.CheckDoors(hearth), "CheckDoors");
+                yield return LayPaths(run);
             }
 
             Say(run, "fence, farms and map table");
@@ -1236,7 +1262,21 @@ namespace Villheim.Logic.Village
         /// Runs <paramref name="action"/> with the village's chests paying for anything without losing it, or, with no
         /// chest, with plenty in its stock that is put back as it was after. Within this frame only.
         /// </summary>
-        private static void Freely(VillageHearth hearth, Action action)
+        /// <summary>
+        /// Runs a step of the setup with the village's materials free, timed under LagLog (<paramref name="what"/>), and
+        /// with the ground rebuilt once at the end for all terrain edits made in it (TerrainShaper.Batch): paths, pads and
+        /// floors had rebuilt the same ground dozens of times a frame (Tyler: the frame rate halved during setup).
+        /// </summary>
+        private static void Freely(VillageHearth hearth, Action action, string what = "step")
+        {
+            using (Perf.Time("TestVillage " + what))
+            using (TerrainShaper.Batch())
+            {
+                FreelyNow(hearth, action);
+            }
+        }
+
+        private static void FreelyNow(VillageHearth hearth, Action action)
         {
             var state = new VillageState(hearth.Zdo);
             Dictionary<string, int> saved = null;

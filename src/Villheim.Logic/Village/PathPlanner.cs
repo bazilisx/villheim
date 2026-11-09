@@ -140,6 +140,35 @@ namespace Villheim.Logic.Village
             return best;
         }
 
+        /// <summary>
+        /// Some cell of the network lies within <paramref name="radius"/> of the point. Looks only at the cells round
+        /// it, not at the whole network as DistanceToNetwork does (a search over dozens of spots had walked every cell
+        /// of the village's paths for each).
+        /// </summary>
+        public static bool NearNetwork(HashSet<Vector2Int> network, Vector3 point, float radius)
+        {
+            if (network == null || network.Count == 0)
+            {
+                return false;
+            }
+
+            int reach = Mathf.CeilToInt(radius);
+            Vector2Int center = Cell(point);
+            for (int dx = -reach; dx <= reach; dx++)
+            {
+                for (int dz = -reach; dz <= reach; dz++)
+                {
+                    var cell = new Vector2Int(center.x + dx, center.y + dz);
+                    if (network.Contains(cell) && Vector2.Distance(new Vector2(point.x, point.z), new Vector2(cell.x, cell.y)) < radius)
+                    {
+                        return true;
+                    }
+                }
+            }
+
+            return false;
+        }
+
         public static Vector2Int Cell(Vector3 point) => new Vector2Int(Mathf.RoundToInt(point.x), Mathf.RoundToInt(point.z));
 
         // ---------------------------------------------------------------- taking up a road

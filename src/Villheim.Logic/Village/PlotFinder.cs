@@ -98,18 +98,21 @@ namespace Villheim.Logic.Village
             int searches = 0;
             const int MostSearches = 10;
             List<Vector2> ordered = candidates.OrderBy(c => c.magnitude + (float)rng.NextDouble() * step).ToList();
-            for (int pass = 0; pass < 2 && good.Count == 0; pass++)
+            // Passes: ground at the hearth's level with nothing on it, then at that level with trees or bushes the site
+            // clears when it starts (thick forest); then the same at any height.
+            for (int pass = 0; pass < 4 && good.Count == 0; pass++)
             {
+                bool allowClutter = pass % 2 == 1;
                 foreach (Vector2 local in ordered)
                 {
                     Vector3 candidate = hearth + axis * new Vector3(local.x, 0f, local.y);
-                    if (!IsGoodSpot(candidate, hearth, radius, maxTerrainDelta, plots, out float groundY))
+                    if (!IsGoodSpot(candidate, hearth, radius, maxTerrainDelta, plots, out float groundY, allowClutter))
                     {
                         continue;
                     }
 
                     bool level = Mathf.Abs(groundY - hearth.y) <= LevelTolerance;
-                    if (pass == 0 && !level)
+                    if (pass < 2 && !level)
                     {
                         continue;
                     }
@@ -328,7 +331,7 @@ namespace Villheim.Logic.Village
         }
 
         public static bool IsGoodSpot(Vector3 p, Vector3 hearth, float radius, float maxTerrainDelta, IReadOnlyList<Plot> plots,
-            out float groundY)
+            out float groundY, bool allowClutter = true)
         {
             groundY = 0f;
 
@@ -383,7 +386,77 @@ namespace Villheim.Logic.Village
                 }
             }
 
+            // Nothing but the ground: no model, player's thing, rock or cliff where the walls go (Tyler: the first house
+            // went up on the 'vh kids rig' models and the builder hammered at it for good).
+            string what = InTheWay(p, radius, allowClutter);
+            if (what != null)
+            {
+                Perf.Debug($"Plot at {p} passed over: {what} stands there.");
+                return false;
+            }
+
             return true;
+        }
+
+        private static readonly Collider[] Overlaps = new Collider[512];
+
+        /// <summary>
+        /// What stands on the ground where a building of this size would go, or null when it is bare. Counted: anything
+        /// placed (pieces, the test models, carts and the like), rocks and cliffs, and, unless
+        /// <paramref name="allowClutter"/>, trees, logs and bushes (the site clears those when it starts). People,
+        /// creatures, berries and flowers, and things lying on the ground don't count.
+        /// </summary>
+        public static string InTheWay(Vector3 p, float radius, bool allowClutter)
+        {
+            float reach = Mathf.Max(2f, radius * 0.8f);
+            int count = Physics.OverlapSphereNonAlloc(p + Vector3.up * 1f, reach, Overlaps, ~0, QueryTriggerInteraction.Ignore);
+            for (int i = 0; i < count; i++)
+            {
+                Collider collider = Overlaps[i];
+                if (collider == null || collider.GetComponentInParent<Heightmap>() != null)
+                {
+                    continue;
+                }
+
+                ZNetView view = collider.GetComponentInParent<ZNetView>();
+                GameObject go = view != null ? view.gameObject : collider.transform.root.gameObject;
+                if (go.name.StartsWith("villheim_kids_rig"))
+                {
+                    return "a test model";
+                }
+
+                if (go.GetComponent<Character>() != null || go.GetComponent<ItemDrop>() != null || go.GetComponent<VillageHearth>() != null ||
+                    go.GetComponent<Pickable>() != null)
+                {
+                    continue;
+                }
+
+                if (go.GetComponent<Piece>() != null)
+                {
+                    return Utils.GetPrefabName(go);
+                }
+
+                if (go.GetComponent<MineRock5>() != null || go.GetComponent<MineRock>() != null || PathPlanner.BigObstacle(go))
+                {
+                    return Utils.GetPrefabName(go);
+                }
+
+                bool clutter = go.GetComponent<TreeBase>() || go.GetComponent<TreeLog>() || go.GetComponent<Destructible>();
+                if (clutter)
+                {
+                    if (!allowClutter)
+                    {
+                        return Utils.GetPrefabName(go);
+                    }
+
+                    continue;
+                }
+
+                // Anything else: a location's walls, a cliff, a ship, another mod's object.
+                return view != null ? Utils.GetPrefabName(go) : go.name;
+            }
+
+            return null;
         }
 
         /// <summary>

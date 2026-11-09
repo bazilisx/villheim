@@ -34,13 +34,14 @@ namespace Villheim.Logic.Village
         public const float SmallHomeRadius = 9f;
 
         private const float Step = 0.75f;
-        private const int EnoughCandidates = 6;
-        private const int MaxCoverTests = 16;
+        private const int EnoughCandidates = 4;
+        private const int MaxCoverTests = 8;
         private const float MinCover = 0.7f;
         private const float DoorClearance = 1.8f;
 
-        private static readonly Dictionary<string, (float Time, bool Found, Vector3 Spot, Quaternion Rotation)> SpotCache =
-            new Dictionary<string, (float, bool, Vector3, Quaternion)>();
+        // Forced: a bed's fallback spot (the design's own, the middle of the floor), kept even though it doesn't fit.
+        private static readonly Dictionary<string, (float Time, bool Found, Vector3 Spot, Quaternion Rotation, bool Forced)> SpotCache =
+            new Dictionary<string, (float, bool, Vector3, Quaternion, bool)>();
 
         private static int _solidMask;
 
@@ -111,15 +112,25 @@ namespace Villheim.Logic.Village
         /// <summary>
         /// A covered spot on the building's ground floor where the piece fits, or false. Results are kept for a minute
         /// per building and piece, so a building with no room isn't searched again every few seconds.
+        ///
+        /// A bed always gets a spot (Tyler: the first house got a chair and a chest and no bed): the ideal search, then
+        /// one that lets go of the room in front and asks less cover, then one closer to the doors, then the design's
+        /// own bed, then the best spot that fits under any roof, then the middle of the floor. Each step that fails is
+        /// written to the log with DebugLog on.
+        ///
+        /// Searches are spread out: at most one building is searched each frame (they cost a few hundred rays each,
+        /// and several in one frame were the lag when a chest went up next to the notice board). One asked for after
+        /// that is put off: false, with <see cref="Deferred"/> set.
         /// </summary>
         public static bool FindSpot(Plot plot, GameObject prefab, string prefabName, out Vector3 spot, out Quaternion rotation)
         {
+            Deferred = false;
             string key = $"{plot.Position}|{prefabName}";
             if (SpotCache.TryGetValue(key, out var cached) && Time.time - cached.Time < 60f)
             {
                 spot = cached.Spot;
                 rotation = cached.Rotation;
-                if (cached.Found && Fits(prefab, prefabName, spot, rotation, false))
+                if (cached.Found && (cached.Forced || Fits(prefab, prefabName, spot, rotation, false)))
                 {
                     return true;
                 }
@@ -130,11 +141,54 @@ namespace Villheim.Logic.Village
                 }
             }
 
-            bool found = Search(plot, prefab, prefabName, out spot, out rotation, false);
-            if (!found && prefabName.IndexOf("bed", System.StringComparison.OrdinalIgnoreCase) >= 0)
+            if (_searchFrame == Time.frameCount)
             {
-                // A bed comes first in a home (T-105): with no ideal spot, any covered spot that fits will do.
-                found = Search(plot, prefab, prefabName, out spot, out rotation, true);
+                Deferred = true;
+                spot = plot.Position;
+                rotation = Quaternion.identity;
+                return false;
+            }
+
+            _searchFrame = Time.frameCount;
+            bool bed = IsBed(prefab, prefabName);
+            bool forced = false;
+            // A bed's searches, from the ideal to the loosest, one a frame (each is a few hundred rays).
+            Strictness tier = bed && BedTier.TryGetValue(key, out var started) && Time.time - started.Time < 30f ? started.Tier : Strictness.Ideal;
+            bool found = Search(plot, prefab, prefabName, out spot, out rotation, tier);
+            if (!found && bed && tier < Strictness.Loose)
+            {
+                Perf.Debug($"No {tier} spot for a bed in the {plot.Design} at {plot.Position}: {_lastReasons}. Trying looser.");
+                BedTier[key] = (Time.time, tier + 1);
+                Deferred = true;
+                return false;
+            }
+
+            BedTier.Remove(key);
+            if (!found && bed)
+            {
+                if (DesignBed(plot, out spot, out rotation))
+                {
+                    Perf.Debug($"No bed spot fits in the {plot.Design} ({_lastReasons}); using the design's own bed place at {spot}.");
+                    found = forced = true;
+                }
+
+                if (!found)
+                {
+                    found = Search(plot, prefab, prefabName, out spot, out rotation, Strictness.AnyRoof);
+                    forced = found;
+                    if (found)
+                    {
+                        Perf.Debug($"The bed in the {plot.Design} goes at {spot}, a spot that fits with little cover.");
+                    }
+                }
+
+                if (!found && Floor(plot, plot.Position, out float middle))
+                {
+                    spot = new Vector3(plot.Position.x, middle, plot.Position.z);
+                    rotation = Quaternion.Euler(0f, plot.Yaw, 0f);
+                    found = forced = true;
+                    Perf.Debug($"Nothing fits a bed in the {plot.Design} ({_lastReasons}); it goes in the middle of the floor.");
+                }
             }
 
             if (SpotCache.Count > 64)
@@ -142,20 +196,145 @@ namespace Villheim.Logic.Village
                 SpotCache.Clear();
             }
 
-            SpotCache[key] = (Time.time, found, spot, rotation);
+            SpotCache[key] = (Time.time, found, spot, rotation, forced);
             if (!found)
             {
-                VillheimPlugin.Debug($"No covered room for a {prefabName} in the {plot.Design} at {plot.Position}.");
+                Perf.Debug($"No covered room for a {prefabName} in the {plot.Design} at {plot.Position}: {_lastReasons}.");
             }
 
             return found;
         }
 
-        private static bool Search(Plot plot, GameObject prefab, string prefabName, out Vector3 spot, out Quaternion rotation, bool relaxed)
+        /// <summary>The last FindSpot was put off to a later frame (another building was searched this frame).</summary>
+        public static bool Deferred { get; private set; }
+
+        private static int _searchFrame = -1;
+        private static readonly Dictionary<string, (float Time, Strictness Tier)> BedTier = new Dictionary<string, (float, Strictness)>();
+        private static string _lastReasons = "";
+
+        private static bool IsBed(GameObject prefab, string prefabName) =>
+            prefab.GetComponent<Bed>() != null || prefabName.IndexOf("bed", System.StringComparison.OrdinalIgnoreCase) >= 0;
+
+        private enum Strictness
         {
-            using (Perf.On ? Perf.Time($"Interior.Search {prefabName} in {plot.Design}") : null)
+            Ideal,
+            Relaxed,
+            Loose,
+            AnyRoof,
+        }
+
+        private static readonly Dictionary<string, (bool Found, Vector3 Spot, Quaternion Rotation)> DesignBeds =
+            new Dictionary<string, (bool, Vector3, Quaternion)>();
+
+        /// <summary>Where the design itself has a bed (a blueprint's or a location's own), free of any bed now.</summary>
+        private static bool DesignBed(Plot plot, out Vector3 spot, out Quaternion rotation)
+        {
+            string key = $"{plot.Design}|{plot.Position}|{plot.Yaw}";
+            if (!DesignBeds.TryGetValue(key, out var found))
             {
-                return SearchOnce(plot, prefab, prefabName, out spot, out rotation, relaxed);
+                found = (false, plot.Position, Quaternion.identity);
+                Quaternion turn = Quaternion.Euler(0f, plot.Yaw, 0f);
+                try
+                {
+                    foreach ((Vector3 local, Quaternion localRotation) in BedsInDesign(plot.Design))
+                    {
+                        Vector3 world = plot.Position + turn * local;
+                        if (!BedNear(world))
+                        {
+                            found = (true, world, turn * localRotation);
+                            break;
+                        }
+                    }
+                }
+                catch (System.Exception e)
+                {
+                    Perf.Debug($"The {plot.Design}'s own beds could not be read: {e.Message}");
+                }
+
+                if (DesignBeds.Count > 32)
+                {
+                    DesignBeds.Clear();
+                }
+
+                DesignBeds[key] = found;
+            }
+
+            spot = found.Spot;
+            rotation = found.Rotation;
+            return found.Found && !BedNear(spot);
+        }
+
+        private static IEnumerable<(Vector3, Quaternion)> BedsInDesign(string design)
+        {
+            var beds = new List<(Vector3, Quaternion)>();
+            bool IsBedPrefab(string name)
+            {
+                GameObject prefab = ZNetScene.instance ? ZNetScene.instance.GetPrefab(name) : null;
+                return prefab != null && prefab.GetComponent<Bed>() != null;
+            }
+
+            Blueprints.Blueprint blueprint = Blueprints.Find(design);
+            if (blueprint != null)
+            {
+                foreach (Blueprints.Piece piece in blueprint.Pieces)
+                {
+                    if (IsBedPrefab(piece.Prefab))
+                    {
+                        beds.Add((piece.Position, piece.Rotation));
+                    }
+                }
+
+                return beds;
+            }
+
+            ZoneSystem.ZoneLocation location = DesignLibrary.Find(design);
+            if (location == null)
+            {
+                return beds;
+            }
+
+            AssetGuard.Load(location);
+            try
+            {
+                GameObject asset = location.m_prefab.Asset;
+                if (asset != null)
+                {
+                    foreach (ZNetView view in asset.GetComponentsInChildren<ZNetView>(true))
+                    {
+                        if (view.gameObject != asset && IsBedPrefab(Utils.GetPrefabName(view.gameObject)))
+                        {
+                            beds.Add((asset.transform.InverseTransformPoint(view.transform.position),
+                                Quaternion.Inverse(asset.transform.rotation) * view.transform.rotation));
+                        }
+                    }
+                }
+            }
+            finally
+            {
+                location.m_prefab.Release();
+            }
+
+            return beds;
+        }
+
+        private static bool BedNear(Vector3 spot)
+        {
+            foreach (Collider collider in Physics.OverlapSphere(spot, 0.8f, LayerMask.GetMask("piece", "piece_nonsolid")))
+            {
+                if (collider.GetComponentInParent<Bed>() != null)
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        private static bool Search(Plot plot, GameObject prefab, string prefabName, out Vector3 spot, out Quaternion rotation, Strictness strictness)
+        {
+            using (Perf.On ? Perf.Time($"Interior.Search {prefabName} in {plot.Design} ({strictness})") : null)
+            {
+                return SearchOnce(plot, prefab, prefabName, out spot, out rotation, strictness);
             }
         }
 
@@ -165,16 +344,25 @@ namespace Villheim.Logic.Village
         /// search for a chest or a chair in a cluttered home a lag spike once the notice board was done and the village
         /// went on to furnishing (Tyler: lag when the board finished).
         /// </summary>
-        private static bool SearchOnce(Plot plot, GameObject prefab, string prefabName, out Vector3 spot, out Quaternion rotation, bool relaxed)
+        private static bool SearchOnce(Plot plot, GameObject prefab, string prefabName, out Vector3 spot, out Quaternion rotation, Strictness strictness)
         {
             spot = plot.Position;
             rotation = Quaternion.identity;
+            bool relaxed = strictness != Strictness.Ideal;
             float reach = Mathf.Max(3f, plot.Radius * 0.7f);
             List<(Vector3 A, Vector3 B)> doorways = Doorways(plot);
             List<Vector3> doors = DoorsNear(plot);
             Bounds? measured = BuildOrder.Measure(prefab, prefabName, Vector3.zero, Quaternion.identity, prefab.transform.localScale);
-            float itemReach = measured.HasValue ? Mathf.Max(measured.Value.extents.x, measured.Value.extents.z) : 1f;
-            int cells = Mathf.CeilToInt(reach / Step);
+            Bounds footprint = measured ?? new Bounds(new Vector3(0f, 0.5f, 0f), new Vector3(1.5f, 1f, 2f));
+            // The way through a door is kept clear by the piece's own outline, turned as it would stand: a bed along a
+            // side wall is fine. The old test took the piece's longest half-length as a radius round its middle, which
+            // left no room for a 2 m bed anywhere in a small home while a chair and a chest still fitted.
+            float corridor = strictness >= Strictness.Loose ? DoorHalfWidth : DoorHalfWidth + 0.2f;
+            float doorGap = strictness >= Strictness.Loose ? 0.4f : 0.9f;
+            float minCover = strictness == Strictness.Ideal ? MinCover : strictness == Strictness.AnyRoof ? 0f : MinCover * 0.6f;
+            float step = strictness >= Strictness.Loose ? 0.5f : Step;
+            int noFloor = 0, byDoor = 0, noRoof = 0, noFit = 0, lowCover = 0;
+            int cells = Mathf.CeilToInt(reach / step);
             Quaternion plotTurn = Quaternion.Euler(0f, plot.Yaw, 0f);
             var fitting = new List<(float Score, Vector3 Spot, Quaternion Rotation)>();
             int roofMask = LayerMask.GetMask("piece");
@@ -183,7 +371,7 @@ namespace Villheim.Logic.Village
             {
                 for (int z = -cells; z <= cells; z++)
                 {
-                    Vector3 local = new Vector3(x * Step, 0f, z * Step);
+                    Vector3 local = new Vector3(x * step, 0f, z * step);
                     if (local.magnitude > reach)
                     {
                         continue;
@@ -192,23 +380,34 @@ namespace Villheim.Logic.Village
                     Vector3 point = plot.Position + plotTurn * local;
                     if (!Floor(plot, point, out float floorY))
                     {
+                        noFloor++;
                         continue;
                     }
 
                     point.y = floorY;
-                    if (NearDoor(doors, point) || InDoorway(doorways, point, itemReach) ||
-                        !Physics.Raycast(point + Vector3.up * 1f, Vector3.up, 10f, roofMask, QueryTriggerInteraction.Ignore))
+                    if (!Physics.Raycast(point + Vector3.up * 1f, Vector3.up, 10f, roofMask, QueryTriggerInteraction.Ignore))
                     {
+                        noRoof++;
                         continue;
                     }
 
                     for (int turn = 0; turn < 4; turn++)
                     {
                         Quaternion candidate = plotTurn * Quaternion.Euler(0f, 90f * turn, 0f);
+                        if (NearDoor(doors, point, candidate, footprint, doorGap) || InDoorway(doorways, point, candidate, footprint, corridor))
+                        {
+                            byDoor++;
+                            continue;
+                        }
+
                         if (Fits(prefab, prefabName, point, candidate, !relaxed))
                         {
                             // Back to the wall: a wall close behind scores best.
                             fitting.Add((WallBehind(point, candidate) + local.magnitude * 0.05f, point, candidate));
+                        }
+                        else
+                        {
+                            noFit++;
                         }
                     }
                 }
@@ -233,8 +432,9 @@ namespace Villheim.Logic.Village
                     covered[point] = cover = underRoof ? cover : -1f;
                 }
 
-                if (cover < (relaxed ? MinCover * 0.6f : MinCover))
+                if (cover < minCover && !(strictness == Strictness.AnyRoof && cover >= -0.5f))
                 {
+                    lowCover++;
                     continue;
                 }
 
@@ -251,6 +451,8 @@ namespace Villheim.Logic.Village
                 }
             }
 
+            _lastReasons = $"{fitting.Count} fitting of {noFloor + noRoof + byDoor + noFit + fitting.Count} tried " +
+                           $"(no floor {noFloor}, no roof {noRoof}, in a doorway {byDoor}, no room {noFit}, too little cover {lowCover})";
             if (!best.HasValue)
             {
                 return false;
@@ -291,11 +493,12 @@ namespace Villheim.Logic.Village
             return y > plot.Position.y - 1f && y < plot.Position.y + 1.5f;
         }
 
-        private static bool NearDoor(List<Vector3> doors, Vector3 point)
+        /// <summary>The piece's outline, turned as it would stand, comes within <paramref name="gap"/> of a door.</summary>
+        private static bool NearDoor(List<Vector3> doors, Vector3 point, Quaternion rotation, Bounds footprint, float gap)
         {
             foreach (Vector3 door in doors)
             {
-                if (Vector3.Distance(door, point) < DoorClearance + 0.5f)
+                if (Mathf.Abs(door.y - point.y) < 2.5f && OutlineDistance(point, rotation, footprint, door, door) < gap)
                 {
                     return true;
                 }
@@ -352,19 +555,96 @@ namespace Villheim.Logic.Village
             return ways;
         }
 
-        private static bool InDoorway(List<(Vector3 A, Vector3 B)> ways, Vector3 point, float itemReach)
+        /// <summary>The piece's outline, turned as it would stand, comes within <paramref name="corridor"/> of a way through a door.</summary>
+        private static bool InDoorway(List<(Vector3 A, Vector3 B)> ways, Vector3 point, Quaternion rotation, Bounds footprint, float corridor)
         {
             foreach ((Vector3 a, Vector3 b) in ways)
             {
-                Vector3 ab = (b - a).Horizontal();
-                float t = ab.sqrMagnitude > 0.001f ? Mathf.Clamp01(Vector3.Dot((point - a).Horizontal(), ab) / ab.sqrMagnitude) : 0f;
-                if (Utils.DistanceXZ(point, a + ab * t) < DoorHalfWidth + itemReach + 0.2f)
+                if (OutlineDistance(point, rotation, footprint, a, b) < corridor)
                 {
                     return true;
                 }
             }
 
             return false;
+        }
+
+        /// <summary>
+        /// Distance, seen from above, between the line a-b and the piece's outline (its measured box, at the spot, turned
+        /// by the rotation): 0 when the line crosses it.
+        /// </summary>
+        private static float OutlineDistance(Vector3 spot, Quaternion rotation, Bounds footprint, Vector3 a, Vector3 b)
+        {
+            Quaternion back = Quaternion.Inverse(rotation);
+            Vector3 la = back * (a - spot);
+            Vector3 lb = back * (b - spot);
+            var p = new Vector2(la.x, la.z);
+            var q = new Vector2(lb.x, lb.z);
+            var min = new Vector2(footprint.min.x, footprint.min.z);
+            var max = new Vector2(footprint.max.x, footprint.max.z);
+            if (SegmentCrosses(p, q, min, max))
+            {
+                return 0f;
+            }
+
+            float best = Mathf.Min(ToRect(p, min, max), ToRect(q, min, max));
+            best = Mathf.Min(best, ToSegment(new Vector2(min.x, min.y), p, q));
+            best = Mathf.Min(best, ToSegment(new Vector2(min.x, max.y), p, q));
+            best = Mathf.Min(best, ToSegment(new Vector2(max.x, min.y), p, q));
+            best = Mathf.Min(best, ToSegment(new Vector2(max.x, max.y), p, q));
+            return best;
+        }
+
+        private static float ToRect(Vector2 p, Vector2 min, Vector2 max)
+        {
+            float dx = Mathf.Max(min.x - p.x, 0f, p.x - max.x);
+            float dy = Mathf.Max(min.y - p.y, 0f, p.y - max.y);
+            return Mathf.Sqrt(dx * dx + dy * dy);
+        }
+
+        private static float ToSegment(Vector2 c, Vector2 p, Vector2 q)
+        {
+            Vector2 pq = q - p;
+            float t = pq.sqrMagnitude > 1e-6f ? Mathf.Clamp01(Vector2.Dot(c - p, pq) / pq.sqrMagnitude) : 0f;
+            return Vector2.Distance(c, p + pq * t);
+        }
+
+        /// <summary>The segment p-q passes through the box (clipped against each side in turn).</summary>
+        private static bool SegmentCrosses(Vector2 p, Vector2 q, Vector2 min, Vector2 max)
+        {
+            float t0 = 0f, t1 = 1f;
+            Vector2 d = q - p;
+            float[] pp = { -d.x, d.x, -d.y, d.y };
+            float[] qq = { p.x - min.x, max.x - p.x, p.y - min.y, max.y - p.y };
+            for (int i = 0; i < 4; i++)
+            {
+                if (Mathf.Abs(pp[i]) < 1e-6f)
+                {
+                    if (qq[i] < 0f)
+                    {
+                        return false;
+                    }
+
+                    continue;
+                }
+
+                float r = qq[i] / pp[i];
+                if (pp[i] < 0f)
+                {
+                    t0 = Mathf.Max(t0, r);
+                }
+                else
+                {
+                    t1 = Mathf.Min(t1, r);
+                }
+
+                if (t0 > t1)
+                {
+                    return false;
+                }
+            }
+
+            return true;
         }
 
         /// <summary>The piece's box at that spot is empty, with a little headroom and a walkable strip in front.</summary>

@@ -36,7 +36,8 @@ namespace Villheim.Logic.Village
 
             // Each step on its own, so one that fails can't skip the others; a failure goes to the log.
             Step("clearing trees, rocks and bushes", () => ClearAround(center, ClearRadius));
-            Step("levelling the ground", () => TerrainShaper.LevelPad(at, LevelRadius, LevelRadius + 4f));
+            // The hearth's own pad: not held back by the guard that keeps other edits off a hearth's flat ground.
+            Step("leveling the ground", () => TerrainShaper.LevelPad(at, LevelRadius, LevelRadius + 4f, 16f, false));
             Step("setting the hearth on the new ground", () => SetOnGround(hearth, chest, level));
 
             string paint = (LogicConfig.HearthGroundPaint?.Value ?? "Both").Trim().ToLowerInvariant();
@@ -110,6 +111,10 @@ namespace Villheim.Logic.Village
                 yield break;
             }
 
+            // Checked once the ground's collider is rebuilt: one more leveling if it is not flat (Tyler: lumpy hearth
+            // ground after founding).
+            CheckFlat(hearth, "after founding", true);
+
             Container chest = VillageChest.Find(hearth);
             if (chest != null && Mathf.Abs(chest.transform.position.y - level) > 0.05f &&
                 Utils.DistanceXZ(chest.transform.position, hearth.transform.position) < LevelRadius)
@@ -117,6 +122,31 @@ namespace Villheim.Logic.Village
                 Move(chest.gameObject, level);
                 VillageChest.Moved(hearth, chest);
             }
+        }
+
+        /// <summary>
+        /// How flat the hearth's ground is: the largest step up or down from the hearth's height within the flat area,
+        /// written to the log with DebugLog on. With <paramref name="fix"/>, ground that strays more than 8 cm is
+        /// leveled once more.
+        /// </summary>
+        public static float CheckFlat(VillageHearth hearth, string when, bool fix)
+        {
+            if (hearth == null || !hearth.IsValid)
+            {
+                return 0f;
+            }
+
+            Vector3 center = hearth.transform.position;
+            float radius = TerrainShaper.HearthPadRadius - 0.5f;
+            float worst = TerrainShaper.MaxDeviation(center, radius, center.y);
+            Perf.Debug($"{hearth.VillageName}: hearth ground {when}: the ground within {radius:0} m strays at most {worst:0.00} m from the hearth's height.");
+            if (fix && worst > 0.08f)
+            {
+                TerrainShaper.LevelPad(center, LevelRadius, LevelRadius + 4f, 16f, false);
+                Perf.Debug($"{hearth.VillageName}: hearth ground leveled again.");
+            }
+
+            return worst;
         }
 
         /// <summary>The middle height of the ground in the circle: half the ground is above it, half below.</summary>
@@ -280,6 +310,7 @@ namespace Villheim.Logic.Village
             float bestScore = float.MaxValue;
             var pieces = new System.Collections.Generic.List<Piece>();
             var heights = new System.Collections.Generic.List<float>();
+            int rejectedCovered = 0, rejectedCut = 0;
             for (float ring = 0f; ring <= 80f; ring += 10f)
             {
                 int steps = ring < 1f ? 1 : Mathf.Max(8, Mathf.RoundToInt(ring * 0.6f));
@@ -301,6 +332,7 @@ namespace Villheim.Logic.Village
 
                     heights.Clear();
                     bool dry = true;
+                    int covered = 0;
                     for (int r = 0; r <= 3 && dry; r++)
                     {
                         float at = radius * r / 3f;
@@ -315,6 +347,12 @@ namespace Villheim.Logic.Village
                                 break;
                             }
 
+                            // Bare ground only: no rock, cliff or anything else standing over the terrain there.
+                            if (r <= 2 && Covered(sample, h))
+                            {
+                                covered++;
+                            }
+
                             heights.Add(h);
                         }
                     }
@@ -324,20 +362,139 @@ namespace Villheim.Logic.Village
                         continue;
                     }
 
+                    if (covered > 1)
+                    {
+                        rejectedCovered++;
+                        continue;
+                    }
+
                     heights.Sort();
+                    ZoneSystem.instance.GetGroundHeight(spot, out float centerY);
                     // The spread of the middle nine tenths: one boulder or ditch doesn't spoil a site.
                     float spread = heights[heights.Count * 19 / 20] - heights[heights.Count / 20];
-                    float score = spread + ring * 0.03f;
-                    if (score < bestScore)
+                    float score = spread + ring * 0.03f + LowGroundPenalty(spot, centerY);
+                    if (score >= bestScore)
                     {
-                        bestScore = score;
-                        best = new Vector3(spot.x, heights[0], spot.z);
-                        ZoneSystem.instance.GetGroundHeight(spot, out best.y);
+                        continue;
+                    }
+
+                    // Walkable to the land round it, not a rock top or a ledge cut off by cliffs (Tyler: Mistlands
+                    // villages went up high where the villagers could not move anywhere).
+                    if (!Connected(spot, centerY, radius))
+                    {
+                        rejectedCut++;
+                        continue;
+                    }
+
+                    bestScore = score;
+                    best = new Vector3(spot.x, centerY, spot.z);
+                }
+            }
+
+            Perf.Debug($"Village spot near {near}: {(bestScore < float.MaxValue ? $"chose {best} (score {bestScore:0.00})" : "none found")}; " +
+                       $"{rejectedCovered} spots passed over for rock or objects on the ground, {rejectedCut} for being cut off by slopes.");
+            return bestScore < float.MaxValue ? best : FlatSpotNear(near);
+        }
+
+        private static int _solidMask;
+
+        private static int SolidMask => _solidMask != 0
+            ? _solidMask
+            : _solidMask = LayerMask.GetMask("Default", "static_solid", "Default_small", "piece", "terrain");
+
+        /// <summary>
+        /// Something solid that is not the ground stands over the terrain at this point (a rock, a cliff, a tree's
+        /// base): the first thing a ray down from above meets is not the terrain, and stands more than 0.4 m above it.
+        /// </summary>
+        public static bool Covered(Vector3 point, float ground)
+        {
+            Vector3 from = new Vector3(point.x, ground + 60f, point.z);
+            if (!Physics.Raycast(from, Vector3.down, out RaycastHit hit, 80f, SolidMask, QueryTriggerInteraction.Ignore))
+            {
+                return false;
+            }
+
+            if (hit.collider.GetComponentInParent<Heightmap>() != null || hit.point.y <= ground + 0.4f)
+            {
+                return false;
+            }
+
+            // Trees, stumps, logs and bushes are cleared when the village is founded; rocks and cliffs count.
+            GameObject go = hit.collider.GetComponentInParent<ZNetView>()?.gameObject;
+            return go == null || !(go.GetComponent<TreeBase>() || go.GetComponent<TreeLog>() || go.GetComponent<Pickable>() ||
+                                   (go.GetComponent<Destructible>() && !go.GetComponent<MineRock>() && !go.GetComponent<MineRock5>() &&
+                                    !PathPlanner.BigObstacle(go)));
+        }
+
+        /// <summary>
+        /// The ground leads away from the village on gentle slopes: going out from its edge 24 m in 2 m steps, no step
+        /// climbs or drops more than WalkStep and none runs into rock, in at least three of eight directions.
+        /// </summary>
+        public static bool Connected(Vector3 spot, float centerY, float radius)
+        {
+            float walkStep = LogicConfig.SiteWalkStep != null ? Mathf.Max(0.3f, LogicConfig.SiteWalkStep.Value) : 1.1f;
+            int open = 0;
+            for (int d = 0; d < 8; d++)
+            {
+                float angle = d * Mathf.PI / 4f;
+                var dir = new Vector3(Mathf.Sin(angle), 0f, Mathf.Cos(angle));
+                float last = centerY;
+                bool ok = true;
+                for (float r = 2f; r <= radius + 24f; r += 2f)
+                {
+                    Vector3 p = spot + dir * r;
+                    if (!ZoneSystem.instance.GetGroundHeight(p, out float h) || h < ZoneSystem.instance.m_waterLevel - 0.5f)
+                    {
+                        ok = false;
+                        break;
+                    }
+
+                    // Inside the village the ground is leveled later; only the way out has to be walkable as it is.
+                    if (r > radius && (Mathf.Abs(h - last) > walkStep || Covered(p, h)))
+                    {
+                        ok = false;
+                        break;
+                    }
+
+                    last = h;
+                }
+
+                if (ok && ++open >= 3)
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        /// <summary>
+        /// In the Mistlands, a site above the low ground round it scores worse (Tyler: villages there went up on the
+        /// tall rocks). The penalty grows with the height over the lowest dry ground within 50 m.
+        /// </summary>
+        private static float LowGroundPenalty(Vector3 spot, float y)
+        {
+            if (WorldGenerator.instance == null || WorldGenerator.instance.GetBiome(spot) != Heightmap.Biome.Mistlands)
+            {
+                return 0f;
+            }
+
+            float low = y;
+            for (int ring = 1; ring <= 2; ring++)
+            {
+                for (int k = 0; k < 12; k++)
+                {
+                    float a = k * Mathf.PI / 6f;
+                    Vector3 p = spot + new Vector3(Mathf.Sin(a), 0f, Mathf.Cos(a)) * (25f * ring);
+                    if (ZoneSystem.instance.GetGroundHeight(p, out float h) && h > ZoneSystem.instance.m_waterLevel + 0.8f)
+                    {
+                        low = Mathf.Min(low, h);
                     }
                 }
             }
 
-            return bestScore < float.MaxValue ? best : FlatSpotNear(near);
+            float weight = LogicConfig.MistlandsLowGround != null ? LogicConfig.MistlandsLowGround.Value : 0.3f;
+            return Mathf.Max(0f, y - low) * weight;
         }
 
         private static bool Flatness(Vector3 center, out float spread, out float centerY)
@@ -351,7 +508,7 @@ namespace Villheim.Logic.Village
 
             var pieces = new System.Collections.Generic.List<Piece>();
             Piece.GetAllPiecesInRadius(center, ClearRadius, pieces);
-            if (pieces.Count > 0)
+            if (pieces.Count > 0 || Covered(center, centerY))
             {
                 return false;
             }

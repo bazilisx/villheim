@@ -30,6 +30,12 @@ namespace Villheim.Logic
         public static ConfigEntry<float> FenceWallSink;
         public static ConfigEntry<bool> AnimalPens;
         public static ConfigEntry<float> VillageLevelSnap;
+        public static ConfigEntry<float> SiteWalkStep;
+        public static ConfigEntry<float> MistlandsLowGround;
+        public static ConfigEntry<float> GroundBlendReach;
+        public static ConfigEntry<float> GroundBlendMinGap;
+        public static ConfigEntry<float> BuildBlockedSeconds;
+        public static ConfigEntry<float> TestVillagePathMs;
         public static ConfigEntry<string> MapTablePrefab;
         public static ConfigEntry<string> MapTableProp;
         public static ConfigEntry<string> DecorProps;
@@ -375,6 +381,22 @@ namespace Villheim.Logic
                 "A new building whose ground lies within this many meters of the hearth's is set at the hearth's level, so " +
                 "the middle of the village is one even floor instead of steps (T-28). Further off, it sits at the middle " +
                 "height of the ground under it. 0: always the ground under it.");
+            SiteWalkStep = Admin(config, work, "SiteWalkStep", 1.1f,
+                "A new village's site must lead away to the land round it: going out from its edge in 2 m steps, no step may " +
+                "climb or drop more than this many meters, in at least three directions. Keeps villages off rock tops and " +
+                "ledges cut off by cliffs.");
+            MistlandsLowGround = Admin(config, work, "MistlandsLowGround", 0.3f,
+                "In the Mistlands, how much a site's height over the lowest ground within 50 m counts against it when the " +
+                "village picks where to settle (per meter). Higher: villages keep to the low ground between the rocks.");
+            GroundBlendReach = Admin(config, work, "GroundBlendReach", 24f,
+                "How far (meters) the ground between two building pads at different heights is eased into one slope. " +
+                "Higher: gentler slopes that reach further out.");
+            GroundBlendMinGap = Admin(config, work, "GroundBlendMinGap", 0.3f,
+                "Pads whose heights differ by less than this many meters are left as they are when the slopes between " +
+                "buildings are eased.");
+            BuildBlockedSeconds = Admin(config, work, "BuildBlockedSeconds", 20f,
+                "How long the builder waits for something standing where the next piece goes before he works on another " +
+                "piece; after three times this he puts the piece up anyway (players are always waited for).");
             AnimalPens = Admin(config, work, "AnimalPens", true,
                 "Farm animals are kept in a pen of wood fence with a gate, built by the farm before the first animal comes.");
             StartingStock = Admin(config, work, "StartingStock", 0,
@@ -1174,6 +1196,9 @@ namespace Villheim.Logic
             TestVillageFrameMs = Admin(config, test, "TestVillageFrameMs", 6f,
                 "Milliseconds a test village may spend each frame putting up pieces, fences and plants before it waits " +
                 "for the next frame. Lower: smoother frame rate, slower setup.");
+            TestVillagePathMs = Admin(config, test, "TestVillagePathMs", 4f,
+                "Milliseconds a test village (and 'vh paths now') may spend each frame laying paths. The ground is rebuilt " +
+                "once a frame for all of them.");
             LagLog = Admin(config, test, "LagLog", false,
                 "Log every village step (the hearth's tick, the notice board, the search for the next thing to make, " +
                 "furniture spots, plot search) that takes longer than LagLogMs, to find what makes the game stutter.");

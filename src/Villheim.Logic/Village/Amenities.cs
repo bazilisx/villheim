@@ -168,7 +168,22 @@ namespace Villheim.Logic.Village
                 job = Find(hearth);
             }
 
-            Cache[id] = (Time.time, job, plots);
+            // A furniture search put off to the next frame (Interior.Deferred): looked at again in a second, not in ten,
+            // and meanwhile the answer from before stands (a null here had let the village think it was settled).
+            if (_deferred)
+            {
+                DeferredVillages.Add(id);
+                if (cached.Job != null)
+                {
+                    job = cached.Job;
+                }
+            }
+            else
+            {
+                DeferredVillages.Remove(id);
+            }
+
+            Cache[id] = (_deferred ? Time.time - 9f : Time.time, job, plots);
             return job;
         }
 
@@ -182,6 +197,12 @@ namespace Villheim.Logic.Village
         {
             missing = null;
             Job next = Upcoming(hearth);
+            if (next == null && IsDeferred(hearth.VillageId))
+            {
+                missing = "furnishing";
+                return false; // still looking: not settled yet
+            }
+
             if (next == null || !next.Essential)
             {
                 return true;
@@ -212,8 +233,15 @@ namespace Villheim.Logic.Village
 
         public static void Forget(int villageId) => Cache.Remove(villageId);
 
+        private static bool _deferred;
+        private static readonly HashSet<int> DeferredVillages = new HashSet<int>();
+
+        /// <summary>The last look for the village's next job was cut short by a furniture search put off to a later frame.</summary>
+        public static bool IsDeferred(int villageId) => DeferredVillages.Contains(villageId);
+
         private static Job Find(VillageHearth hearth)
         {
+            _deferred = false;
             var state = new VillageState(hearth.Zdo);
             int tier = VillageBrain.TierIndex(state.Plots.Count);
 
@@ -249,6 +277,11 @@ namespace Villheim.Logic.Village
                 using (Perf.On ? Perf.Time($"Amenities.Find step {i}") : null)
                 {
                     job = steps[i]();
+                }
+
+                if (_deferred)
+                {
+                    return null; // a furniture search waits for the next frame; nothing later jumps the queue meanwhile
                 }
 
                 if (job == null || IsStuck(hearth, job))
@@ -388,9 +421,28 @@ namespace Villheim.Logic.Village
                     }
 
                     GameObject prefab = ZNetScene.instance ? ZNetScene.instance.GetPrefab(want.Prefab) : null;
-                    if (prefab == null || !Buildable(prefab, state.Biome, out Dictionary<string, int> cost, true) ||
-                        !Interior.FindSpot(plot, prefab, want.Prefab, out Vector3 spot, out Quaternion rotation))
+                    if (prefab == null || !Buildable(prefab, state.Biome, out Dictionary<string, int> cost, true))
                     {
+                        continue;
+                    }
+
+                    if (!Interior.FindSpot(plot, prefab, want.Prefab, out Vector3 spot, out Quaternion rotation))
+                    {
+                        if (Interior.Deferred)
+                        {
+                            _deferred = true;
+                            return null;
+                        }
+
+                        if (want.Prefab == "bed")
+                        {
+                            // The bed goes in first (Tyler: the first house got a chair and a chest and no bed). With no
+                            // spot for it, the home waits; the reason is in the log with DebugLog on.
+                            Perf.Debug($"{state.Name}: the {plot.Design} at {plot.Position} has no bed yet and no spot for one; " +
+                                       "its other furniture waits.");
+                            break;
+                        }
+
                         continue;
                     }
 
@@ -441,6 +493,10 @@ namespace Villheim.Logic.Village
                 if (built && now.Pieces <= 1)
                 {
                     VillheimPlugin.Log.LogInfo($"{state.Name} finished its notice board.");
+                    if (Perf.Debugging)
+                    {
+                        HearthGround.CheckFlat(hearth, "with the notice board finished", false);
+                    }
                     Chronicle.Add(hearth, "The notice board by the chest was finished.");
                 }
 

@@ -678,6 +678,7 @@ function generate(req) {
       const vent = w.main && !domeCfg ? ventAt : null;
       parts.push(...(kind === 'hip' ? hipPieces(K, w, roofTop, r, C.eaves, { kick: C.kick, vent }) : gablePieces(K, C, w, roofTop, r, ends, vent, dctx)));
     }
+    if (dctx.profile.valleys !== false) valleys(parts, b);
     const caps = [];
     // where wings cross, keep the higher roof so the lower roof runs into the higher one
     const placed = new Set();
@@ -1633,6 +1634,45 @@ function surfaceAt(w, x, z, top, r) {
   const a = w.alpha * Math.PI / 180, dx = x - w.cx, dz = z - w.cz;
   const v = Math.abs(dx * Math.sin(a) + dz * Math.cos(a));
   return capOf(w, top, r) - (r / 2) * Math.max(0, v - 1);
+}
+
+// Roof valleys (coverage audit: inner corner pieces on 38 % of the best-liked builds, none of ours). Where two wings'
+// roof pieces of the same kind fill the same 2 m cell at the same height with their slopes at right angles, the cell is
+// on the valley line (the roof there is the higher of the two slopes, highest along the diagonal away from the low
+// corner): one inner corner piece takes the place of both. Snap points (data/piece-models.json): the inner corner's low
+// corner is at local (+1, +1) with its pivot there, its slopes rise toward local -x and -z; a roof piece rises toward
+// its local -z, the 45 degree piece pivoting a metre above its low edge.
+const ICORNER = { wood_roof: 'wood_roof_icorner', wood_roof_45: 'wood_roof_icorner_45', darkwood_roof: 'darkwood_roof_icorner', darkwood_roof_45: 'darkwood_roof_icorner_45' };
+function valleys(parts, b) {
+  const cellsR = new Map();
+  for (const p of parts) {
+    if (p.role !== 'roof' || p.eave || !ICORNER[p.name]) continue; // eave rows half a cell out cross on the wall lines, not on the valley
+    const k = `${Math.round(p.x * 10)},${Math.round(p.z * 10)},${Math.round(p.y * 10)}`;
+    if (!cellsR.has(k)) cellsR.set(k, []);
+    cellsR.get(k).push(p);
+  }
+  const up = p => { const a = p.yaw * Math.PI / 180; return [-Math.sin(a), -Math.cos(a)]; };
+  let n = 0;
+  for (const list of cellsR.values()) {
+    if (list.length !== 2) continue;
+    const [A, B] = list;
+    if (A.wing === B.wing || A.name !== B.name) continue;
+    const dA = up(A), dB = up(B);
+    if (Math.abs(dA[0] * dB[0] + dA[1] * dB[1]) > 0.1) continue;
+    let yaw = null;
+    for (const [d1, d2] of [[dA, dB], [dB, dA]]) {
+      const y = Math.atan2(-d1[0], -d1[1]), mx = [-Math.cos(y), Math.sin(y)];
+      if (Math.abs(mx[0] - d2[0]) < 0.1 && Math.abs(mx[1] - d2[1]) < 0.1) { yaw = ((Math.round(y * 180 / Math.PI) % 360) + 360) % 360; break; }
+    }
+    if (yaw == null) continue;
+    const name = ICORNER[A.name], y = /_45$/.test(A.name) ? A.y - 1 : A.y;
+    Object.assign(A, { name, y, yaw, valley: true });
+    B.role = 'gone';
+    n++;
+  }
+  for (let i = parts.length - 1; i >= 0; i--) if (parts[i].role === 'gone') parts.splice(i, 1);
+  if (n) b.notes.push(`${n} roof valley pieces where wings meet.`);
+  return n;
 }
 
 function gablePieces(K, C, w, top, r, ends, vent, dctx) {

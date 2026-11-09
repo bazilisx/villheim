@@ -462,6 +462,7 @@ function generate(req) {
   const dctx = { K, C, cultureKey, T, type, stage, decor, biome, plan, F, SH, storeys, edges, verts, cells, door, wings, flat,
     ladders, flue, dragonsHere, R: rng(seed * 31337 + 7) };
   dctx.profile = Details.profile(dctx);
+  dctx.wallSegment = wallSegment;
 
   // walls, frame and top plates per storey
   const open = T.open || null;
@@ -598,7 +599,7 @@ function generate(req) {
   // a low roof's eaves already run 2 m past the wall, so only steep roofs get a porch roof of their own
   const porchFits = !flat && roofKind !== 'shed' && !T.dock && !T.tower && !['U', 'cross', 'court', 'gables', 'greek'].includes(plan) && !deck && !podklet && form !== 'sunken' && r === 2 && (C.eaves || 1) < 2;
   if (req.porch === true && !porchFits) b.notes.push('No porch: this plan, roof or form has no front for one.');
-  if (req.porch === true ? porchFits : req.porch !== false && !flat && roofKind !== 'shed' && !T.dock && !T.tower && C.porch && R() < C.porch + (stage === 's1' ? -0.3 : 0.2) && porchFits) {
+  if (req.porch === true ? porchFits : req.porch !== false && !flat && roofKind !== 'shed' && !T.dock && !T.tower && C.porch && R() < C.porch + (stage === 's1' ? -0.3 : 0.2) && porchFits && !dctx.profile.svalgang) {
     const h = R() < 0.5 ? 0 : 1, zf = doorZ;
     const bays = [];
     for (let k = -h; k <= h; k++) { const x = doorX + 2 * k; if (!cells.has(`${x},${zf - 1}`) && !cells.has(`${x},${zf - 3}`)) bays.push(x); }

@@ -59,6 +59,9 @@ function profile(ctx) {
       ['home', 'storage', 'tavern'].includes(ctx.type) && (sN >= 3 || (sN === 2 && dN >= 3)) && ['rect', 'long', 'L', 'T'].includes(ctx.plan) &&
       !C.awnings && !ctx.flat && roll(0.75),
     gableWindow: north && sN >= 2,
+    rafterTails: north && sN >= 2 && !C.eaves2 && (C.eaves || 1) < 2,
+    purlinEnds: north && sN >= 2,
+    gableTruss: north && sN >= 2 && roll(0.6),
     roofCross: false, // Wood Roof Cross at the gable apex: off until its shape is checked against the game model
 
     braces: BRACED.includes(cultureKey) && sN >= 2 && (T.use === 'hall' || ctx.type === 'longhouse'),
@@ -280,8 +283,30 @@ function svalgang(b, ctx) {
 // which ends get a gable, and helpers to place a part in wing-local coordinates.
 function bargeboards(K, C, w, ctx, rows, ends, add, low, pivot, r) {
   const X = ctx.profile;
-  if (!X || !X.bargeboards) return;
-  const name = slopeBeam(K, r === 2 ? 45 : 26);
+  if (!X) return;
+  const name = slopeBeam(K, r === 2 ? 45 : 26), beam = K.beam || 'wood_beam', capY = low(-1);
+  // rafter tails: a sloped beam at every seam of the lowest roof row, half a metre out past its edge and just under it
+  // (the exposed rafters of Norse halls; the corpus lays sloped beams along roof piece edges)
+  if (X.rafterTails) for (let u = -w.W + 2; u <= w.W - 2 + 0.01; u += 2) for (const sv of [-1, 1]) {
+    const v = sv * (2 + 2 * rows + 0.7);
+    add(name, u, pivot(rows) - 0.7 - (r === 2 ? 0 : 0), v, (sv < 0 ? 180 : 0) + 90, 'trim', low(rows));
+  }
+  // the ridge beam's end out past each gable
+  if (X.purlinEnds && !ctx.dragonsHere) [-1, 1].forEach((sg, k) => { if (ends[k]) add(K.beam1 || 'wood_beam_1', sg * (w.W + 0.45), capY - 0.35, 0, 0, 'trim', capY); });
+  // a timber truss on the face of each gable: a king post up the middle and a collar beam across at half height
+  if (X.gableTruss) [-1, 1].forEach((sg, k) => {
+    if (!ends[k] || capY - low(rows) < 2.9) return;
+    const u = sg * (w.W + 0.1), top = low(rows) + (r === 2 ? 0 : 0), h = capY - top;
+    const from = X.gableWindow && h >= 3.9 ? top + 2.2 : top;
+    for (let y = from; y < capY - 0.6;) { const step = capY - 0.6 - y >= 2 ? 2 : 1; add(step === 2 ? (K.pole || 'wood_pole2') : (K.pole1 || 'wood_pole'), u, y + step / 2, 0, 0, 'trim', y + step); y += step; }
+    const yc = top + Math.round(h / 2);
+    // collar beams wherever 2 m of beam fits under the roof at that height
+    for (let v = -w.D + 2; v <= w.D - 2 + 0.01; v += 2) {
+      const edge = Math.abs(v) + 1, surf = capY - (r / 2) * Math.max(0, edge - 1);
+      if (surf > yc + 0.3) add(beam, u, yc, v, 90, 'trim', yc + 0.1);
+    }
+  });
+  if (!X.bargeboards) return;
   [-1, 1].forEach((sg, k) => {
     if (!ends[k]) return;
     const u = sg * (w.W + 0.06);

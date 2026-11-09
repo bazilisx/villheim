@@ -8495,8 +8495,8 @@ function column(b, K, x, z, y0, y1) {
 }
 
 // Arcade along the yard edges of a courtyard. Black marble: a column at every 2 m and an arch over each bay.
-// Stone (measured in the corpus): a block, a 2 m pillar on it, a 2 m arch between pillars 3 m apart, its top level
-// with the pillar tops; the run is centred on its side of the yard.
+// Stone (measured in the corpus): a block, a 2 m pillar on it, an arch of two half-arch pieces between pillars 3 m
+// apart, its top level with the pillar tops; the run is centred on its side of the yard.
 function arcadeAlong(b, K, edges, y0, SH) {
   const marble = /blackmarble/.test(K.stoneWall || '');
   const runs = new Map();
@@ -8514,7 +8514,9 @@ function arcadeAlong(b, K, edges, y0, SH) {
     } else if (K.stonePillar) {
       const n = Math.max(1, Math.floor((r.hi - r.lo) / 3)), mid = (r.lo + r.hi) / 2, start = mid - n * 1.5;
       for (let k = 0; k <= n; k++) { const [x, z] = at(r, start + 3 * k); column(b, K, x, z, y0, y0 + SH); }
-      for (let k = 0; k < n; k++) { const [x, z] = at(r, start + 3 * k + 1.5); b.put(K.stoneArch || 'stone_arch', x, y0 + SH - 0.5, z, r.yaw); }
+      // the stone arch piece is half an arch (piece models: full height at its local +x end, a thin top across to -x):
+      // two of them back to back span a gap, their feet set into the pillar tops
+      for (let k = 0; k < n; k++) for (const sd of [-1, 1]) { const [x, z] = at(r, start + 3 * k + 1.5 + sd); b.put(K.stoneArch || 'stone_arch', x, y0 + SH - 0.5, z, ((r.yaw === 0 ? 0 : 270) + (sd < 0 ? 180 : 0)) % 360, { clip: 0.4 }); } // local +x along +t: yaw 0 on x runs, 270 on z runs
     } else {
       for (let t = r.lo; t <= r.hi + 0.01; t += 2) { const [x, z] = at(r, t); for (let y = y0; y < y0 + SH - 0.01; y += 1) b.put(K.pole1, x, y + 0.5, z); }
     }

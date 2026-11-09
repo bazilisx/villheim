@@ -53,10 +53,12 @@ namespace Villheim.Logic.Villagers
             public bool Female;
             public bool Child;
             public string Hair;
+            public string Beard;
         }
 
         private static readonly List<RigModel> RigModels = new List<RigModel>();
         private static bool _rigGhost;
+        private static string _rigCulture;
         private static Vector3 _rigCenter;
         private static Quaternion _rigFacing;
         private static Vector3 _rigRight;
@@ -258,10 +260,9 @@ namespace Villheim.Logic.Villagers
             _rigCenter = player.transform.position + forward * 4f;
             _rigFacing = Quaternion.LookRotation(-forward);
             PutUpRig();
-            return $"Villheim: {Rig.Count} tuning models in front of you: grown man, boy, girl, grown woman. Change the ChildBoy and " +
-                   "ChildGirl settings in '3c - Villager looks' (F1) and the children change at once. 'vh kids hair next [boy|girl]' " +
-                   "or ChildRigHairBoy and ChildRigHairGirl change the children's hair; ChildRigGhost gives them the ghost look. " +
-                   "'vh kids rig clear' takes them away.";
+            return $"Villheim: {Rig.Count} tuning models in front of you: grown man, boy, girl, grown woman. In F1, '3c - Villager " +
+                   "looks' shapes the children (ChildBoy and ChildGirl), and '3d - Hair review' picks the culture, each model's hair " +
+                   "and the man's beard, with buttons to allow or block what is shown. 'vh kids rig clear' takes them away.";
         }
 
         private static void PutUpRig()
@@ -269,7 +270,8 @@ namespace Villheim.Logic.Villagers
             Vector3 right = _rigRight;
             Vector3 center = _rigCenter;
             Quaternion facing = _rigFacing;
-            _rigGhost = LogicConfig.IsOn(LogicConfig.ChildRigGhost) && LogicConfig.ChildRigGhost != null;
+            _rigGhost = LogicConfig.RigGhost != null && LogicConfig.RigGhost.Value;
+            _rigCulture = null;
             (bool Female, bool Child, float Offset)[] row = { (false, false, -2.25f), (false, true, -0.75f), (true, true, 0.75f), (true, false, 2.25f) };
             foreach ((bool female, bool child, float offset) in row)
             {
@@ -283,7 +285,7 @@ namespace Villheim.Logic.Villagers
                 if (model != null)
                 {
                     Rig.Add(model);
-                    RigModels.Add(new RigModel { Model = model, Female = female, Child = child, Hair = DefaultRigHair(female) });
+                    RigModels.Add(new RigModel { Model = model, Female = female, Child = child, Hair = DefaultRigHair(female), Beard = "Beard5" });
                     if (child)
                     {
                         Bodies.Add(new Body { Root = model, Female = female, FixedAge = 0f });
@@ -302,7 +304,7 @@ namespace Villheim.Logic.Villagers
                 return;
             }
 
-            bool ghost = LogicConfig.ChildRigGhost != null && LogicConfig.ChildRigGhost.Value;
+            bool ghost = LogicConfig.RigGhost != null && LogicConfig.RigGhost.Value;
             if (ghost != _rigGhost && !ghost)
             {
                 // The ghost look comes off by putting the models up again, plain.
@@ -312,6 +314,10 @@ namespace Villheim.Logic.Villagers
             }
 
             _rigGhost = ghost;
+            string culture = LogicConfig.RigCulture?.Value ?? "";
+            bool recolor = culture != _rigCulture;
+            _rigCulture = culture;
+            HairReview.RigColors(out Vector3 skin, out Vector3 hairColor);
             foreach (RigModel rig in RigModels)
             {
                 if (rig.Model == null)
@@ -319,14 +325,36 @@ namespace Villheim.Logic.Villagers
                     continue;
                 }
 
-                if (rig.Child)
+                VisEquipment vis = rig.Model.GetComponent<VisEquipment>();
+                if (vis == null)
                 {
-                    string wanted = (rig.Female ? LogicConfig.ChildRigHairGirl?.Value : LogicConfig.ChildRigHairBoy?.Value)?.Trim();
-                    wanted = string.IsNullOrEmpty(wanted) ? DefaultRigHair(rig.Female) : wanted;
-                    if (wanted != rig.Hair)
+                    continue;
+                }
+
+                if (recolor)
+                {
+                    // The culture's own skin and hair colors (darker for some peoples, fairer for the Norse).
+                    vis.SetSkinColor(skin);
+                    vis.SetHairColor(hairColor);
+                }
+
+                ConfigEntry<string> entry = rig.Child ? (rig.Female ? LogicConfig.RigHairGirl : LogicConfig.RigHairBoy)
+                    : rig.Female ? LogicConfig.RigHairWoman : LogicConfig.RigHairMan;
+                string wanted = entry?.Value?.Trim();
+                wanted = string.IsNullOrEmpty(wanted) ? DefaultRigHair(rig.Female) : wanted;
+                if (wanted != rig.Hair)
+                {
+                    rig.Hair = wanted;
+                    vis.SetHairItem(wanted.GetStableHashCode());
+                }
+
+                if (!rig.Female && !rig.Child)
+                {
+                    string beard = LogicConfig.RigBeardMan?.Value?.Trim() ?? "";
+                    if (beard != rig.Beard)
                     {
-                        rig.Hair = wanted;
-                        rig.Model.GetComponent<VisEquipment>()?.SetHairItem(wanted.GetStableHashCode());
+                        rig.Beard = beard;
+                        vis.SetBeardItem(beard.Length == 0 || beard == "none" ? 0 : beard.GetStableHashCode());
                     }
                 }
 
@@ -336,105 +364,6 @@ namespace Villheim.Logic.Villagers
                 }
             }
         }
-
-        /// <summary>'vh kids hair [next|prev|name] [boy|girl]': the rig children's hair, saved to the config.</summary>
-        public static string Hair(string[] args)
-        {
-            string how = args.Length > 0 ? args[0] : "next";
-            bool? onlyFemale = args.Length > 1 ? args[1].StartsWith("g", StringComparison.OrdinalIgnoreCase) ? true
-                : args[1].StartsWith("b", StringComparison.OrdinalIgnoreCase) ? false : (bool?)null : null;
-            var said = new List<string>();
-            foreach (bool female in new[] { false, true })
-            {
-                if (onlyFemale.HasValue && onlyFemale.Value != female)
-                {
-                    continue;
-                }
-
-                ConfigEntry<string> entry = female ? LogicConfig.ChildRigHairGirl : LogicConfig.ChildRigHairBoy;
-                List<string> styles = VillagerLooks.HairList(female);
-                if (entry == null || styles.Count == 0)
-                {
-                    continue;
-                }
-
-                string current = string.IsNullOrEmpty(entry.Value) ? DefaultRigHair(female) : entry.Value;
-                int at = styles.IndexOf(current);
-                string next = how.Equals("next", StringComparison.OrdinalIgnoreCase) ? styles[(at + 1 + styles.Count) % styles.Count]
-                    : how.Equals("prev", StringComparison.OrdinalIgnoreCase) ? styles[(at - 1 + styles.Count) % styles.Count]
-                    : how;
-                entry.Value = next;
-                said.Add($"{(female ? "girl" : "boy")}: {next} ({styles.IndexOf(next) + 1} of {styles.Count})");
-            }
-
-            return said.Count == 0 ? "Villheim: no hair styles found." : "Villheim: rig hair " + string.Join(", ", said) + ".";
-        }
-
-        /// <summary>
-        /// A child's hair style from ChildHairCultures (his culture's list, with weights), else ChildHairAllow (or any
-        /// style of his sex), less ChildHairBlock. Null when the settings leave nothing, so the usual style stays.
-        /// </summary>
-        public static string ChildHair(int seed, bool female, string culture, List<string> styles)
-        {
-            var weights = new Dictionary<string, float>(StringComparer.OrdinalIgnoreCase);
-            foreach (string part in (LogicConfig.ChildHairCultures?.Value ?? "").Split(';'))
-            {
-                int eq = part.IndexOf('=');
-                if (eq <= 0 || !part.Substring(0, eq).Trim().Equals(culture ?? "", StringComparison.OrdinalIgnoreCase))
-                {
-                    continue;
-                }
-
-                foreach (string item in part.Substring(eq + 1).Split(','))
-                {
-                    string[] bits = item.Split(':');
-                    string name = bits[0].Trim();
-                    float weight = bits.Length > 1 && float.TryParse(bits[1].Trim(), System.Globalization.NumberStyles.Float,
-                        System.Globalization.CultureInfo.InvariantCulture, out float w) ? w : 1f;
-                    if (name.Length > 0 && weight > 0f)
-                    {
-                        weights[name] = weight;
-                    }
-                }
-            }
-
-            if (weights.Count == 0)
-            {
-                List<string> allow = Names(LogicConfig.ChildHairAllow?.Value);
-                foreach (string style in allow.Count > 0 ? allow : styles)
-                {
-                    weights[style] = 1f;
-                }
-            }
-
-            foreach (string blocked in Names(LogicConfig.ChildHairBlock?.Value))
-            {
-                weights.Remove(blocked);
-            }
-
-            List<KeyValuePair<string, float>> pool = weights
-                .Where(w => ObjectDB.instance != null && ObjectDB.instance.GetItemPrefab(w.Key) != null).ToList();
-            if (pool.Count == 0)
-            {
-                return null;
-            }
-
-            var rng = new System.Random(seed ^ 0x6b1d5);
-            double roll = rng.NextDouble() * pool.Sum(w => w.Value);
-            foreach (KeyValuePair<string, float> w in pool)
-            {
-                roll -= w.Value;
-                if (roll <= 0)
-                {
-                    return w.Key;
-                }
-            }
-
-            return pool[pool.Count - 1].Key;
-        }
-
-        private static List<string> Names(string text) =>
-            (text ?? "").Split(',').Select(n => n.Trim()).Where(n => n.Length > 0).ToList();
 
         /// <summary>A still copy of the villager body, dressed plainly, with no network object, AI or physics.</summary>
         private static GameObject Model(Vector3 at, Quaternion facing, bool female, bool child)

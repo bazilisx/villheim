@@ -381,7 +381,7 @@ function interior(b, ctx) {
         if (!want.length || want.some(([x, k]) => blocked(cellBox(x, k)))) { l.skip = true; continue; }
         for (const [x, k] of want) cells.set(`${x}|${k}`, true);
       }
-      // only runs of three metres or more along the wall make a bench; lifted pieces keep their own platform
+      // only runs of three meters or more along the wall make a bench; lifted pieces keep their own platform
       const row0 = [...cells.keys()].filter(c => c.endsWith('|0')).map(c => +c.split('|')[0]).sort((a, c) => a - c);
       const runs = [];
       for (const x of row0) { const r = runs[runs.length - 1]; if (r && x - r[r.length - 1] < 1.01) r.push(x); else runs.push([x]); }

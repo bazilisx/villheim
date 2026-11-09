@@ -100,7 +100,7 @@ const RULES = [
   [/wall_1x1|1x1|stoneblock/i, 'wall', [1, 1, 0.5], 'box'],
   [/2x2x1/, 'wall', [2, 1, 2], 'box'],
   [/wall_half|halfwall/i, 'wall', [2, 1, 0.2], 'box'],
-  // 'Wood Wall 1x1': neighbours in the corpus stack 1 m apart up and sideways (it was read as 2 x 0.5 m before 2026-11-09)
+  // 'Wood Wall 1x1': neighbors in the corpus stack 1 m apart up and sideways (it was read as 2 x 0.5 m before 2026-11-09)
   [/wall_quarter|quarterwall/i, 'wall', [1, 1, 0.2], 'box'],
   [/wall_log/, 'wall', [2, 0.5, 0.4], 'box'],
   [/stake_wall|stakewall|sharpstakes/, 'fence', [4, 3, 0.5], 'box'],

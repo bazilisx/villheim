@@ -1,0 +1,19 @@
+{
+ "builds": 49,
+ "top": {
+  "ridges": 4,
+  "skyline": 0.1815,
+  "kinds": 25,
+  "mats": 4,
+  "trim": 0.6078,
+  "height": 0.7727
+ },
+ "p90": {
+  "ridges": 11,
+  "skyline": 0.3222,
+  "kinds": 44,
+  "mats": 9,
+  "trim": 1.2767,
+  "height": 1.2098
+ }
+}

@@ -5,11 +5,12 @@
 const fs = require('fs'), path = require('path');
 const dir = __dirname;
 const out = process.argv[2] || path.join(dir, '../../../src/Villheim.Logic/Generator/lab.js');
-const libs = ['pieces.js', 'styles.js', 'blueprint.js', 'checks.js', 'features.js', 'decorate.js', 'details.js', 'generate.js', 'request.js', 'floorplan.js'];
+const libs = ['pieces.js', 'styles.js', 'blueprint.js', 'checks.js', 'features.js', 'decorate.js', 'details.js', 'generate.js', 'critic.js', 'request.js', 'floorplan.js'];
 const code = libs.map(f => `// ---- ${f}\n(function () {\n${fs.readFileSync(path.join(dir, f), 'utf8')}\n})();`).join('\n');
 const rules = fs.readFileSync(path.join(dir, '../data/rules-lite.json'), 'utf8').trim();
 const scorer = fs.readFileSync(path.join(dir, '../data/scorer.json'), 'utf8').trim();
 const interior = fs.readFileSync(path.join(dir, '../data/interior-lite.json'), 'utf8').trim();
+const critic = fs.readFileSync(path.join(dir, '../data/critic.json'), 'utf8').trim();
 // room templates (D-058) without what only the lab reads (source, popularity, area, the ID key), and Tyler's weights
 const rooms = JSON.parse(fs.readFileSync(path.join(dir, '../data/room-templates.json'), 'utf8'));
 const roomsLite = JSON.stringify({ templates: rooms.templates.map(t => { const o = { ...t }; delete o.src; delete o.pop; delete o.area; delete o.key; delete o.ceil; delete o.doorW; return o; }) });
@@ -22,6 +23,7 @@ ${code}
 window.VH_RULES = ${rules};
 window.VH_SCORER = ${scorer};
 window.VH_INTERIOR = ${interior};
+window.VH_CRITIC = ${critic};
 window.VH_ROOMS = ${roomsLite};
 window.VH_ROOM_WEIGHTS = ${roomWeights};
 VHDecorate.setRules(VH_RULES);

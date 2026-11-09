@@ -9,6 +9,17 @@ const CQ = NODE_Q ? require('./checks.js') : window.VHChecks;
 const FQ = NODE_Q ? require('./features.js') : window.VHFeatures;
 const BQ = NODE_Q ? require('./blueprint.js') : window.VHBlueprint;
 const DQ = NODE_Q ? require('./decorate.js') : window.VHDecorate;
+const KQ = NODE_Q ? require('./critic.js') : window.VHCritic;
+// the critic's targets (data/critic.json, from lab/learn_critic.js); in the bundle and the page they are inlined
+function criticModel() {
+  if (NODE_Q) { try { return require('../data/critic.json'); } catch (e) { return null; } }
+  return (typeof window !== 'undefined' && window.VH_CRITIC) || null;
+}
+// A seed's rank: the keep scorer (Tyler's review) and the critic (how close to the best-liked builds), 40 and 60 parts
+function rank(scorer, pieces, stage) {
+  const k = KQ ? KQ.score(criticModel(), pieces, stage) : 0;
+  return 0.4 * (scorer ? FQ.score(scorer, pieces) : 0) + 0.6 * k;
+}
 
 // Words to choices. The first match per field wins, so the more specific words come first.
 const WORDS = [
@@ -57,7 +68,7 @@ const TYPE_WORDS = { house: 'home', hall: 'longhouse', greathall: 'longhouse', i
 
 function evaluate(d, biome, scorer) {
   const checks = CQ.check(d, biome);
-  const score = scorer ? FQ.score(scorer, d.pieces) : 0;
+  const score = rank(scorer, d.pieces, d.request && d.request.stage);
   return { checks, score, pass: checks.filter(c => c.ok).length };
 }
 
@@ -71,7 +82,7 @@ function best(req, n, scorer) {
   for (let i = 0; i < Math.max(1, n | 0); i++) {
     const seed = base + i * 101;
     const d = GQ.generate({ ...req, seed, skipDecor: true });
-    bare.push({ seed, key: scorer ? FQ.score(scorer, d.pieces) : 0 });
+    bare.push({ seed, key: rank(scorer, d.pieces, req.stage) });
   }
   bare.sort((a, c) => c.key - a.key || a.seed - c.seed);
   let top = null;

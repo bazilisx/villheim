@@ -6,6 +6,7 @@ const { createCanvas } = require('@napi-rs/canvas');
 const G = require('./generate.js'), BP = require('./blueprint.js'), Sh = require('./sheet.js'), R = require('./render.js');
 const Ch = require('./checks.js'), F = require('./features.js'), S = require('./styles.js');
 const scorer = JSON.parse(fs.readFileSync(path.join(__dirname, '../data/scorer.json'), 'utf8'));
+const K = require('./critic.js'), critic = JSON.parse(fs.readFileSync(path.join(__dirname, '../data/critic.json'), 'utf8'));
 const out = process.argv[2], tries = +(process.argv[3] || 8);
 const reqs = [];
 const stages = [['s1', 'd1'], ['s2', 'd2'], ['s3', 'd3']];
@@ -19,7 +20,7 @@ for (const q of reqs) {
   let best = null;
   for (let i = 0; i < tries; i++) {
     const d = G.generate({ ...q, seed: 1 + i * 37 + n * 1009 });
-    const checks = Ch.check(d, q.biome), pass = checks.filter(c => c.ok).length, score = F.score(scorer, d.pieces);
+    const checks = Ch.check(d, q.biome), pass = checks.filter(c => c.ok).length, score = 0.4 * F.score(scorer, d.pieces) + 0.6 * K.score(critic, d.pieces, q.stage);
     if (!best || pass * 10 + score > best.key) best = { d, checks, pass, score, key: pass * 10 + score };
   }
   const d = best.d, dir = path.join(out, q.group, q.type);

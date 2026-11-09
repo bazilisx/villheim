@@ -327,28 +327,51 @@ torches, deer rugs, iron chests, fur rugs, armor stands. Builders clip often and
 90th percentile of 10 to 40 cm (forges and black metal chests 0.52 and 0.57 m); a tenth of the banners reach 0.55 m
 into the floor.
 
-Built-up furniture (`lib/kitbash.js` `BUILT_KITS`), hand-made in the library's format: a cabinet (a chest set into a
-half wall so its front shows as drawers, a plank top of two ledges, a pot and a candle), drawers of barrels, a bedside
-barrel with a candle and a mead, a nightstand of a post and a ledge, a couch (a bench with a pelt over its seat), a
-living room (the couch, a rug, a chest for a low table with mead and a candle, an armchair each side), drapes (a banner
-each side of a window, a bench under it), a window seat, wall shelves of ledges with pots, candles, mead and bread over
-two barrels, a kitchen wall (a half-wall counter, the spice rack, pots and pans over barrels), a feast table (the
-village biome's own feast, candles, meads), a kitchen island, a wash corner and a bath corner. Each building type has
-its own first anchor: the smithy's forge corner (the tool rack, a quench barrel, an armor stand, a chest), the home's
-bedside, the tavern's serving corner (stacked barrels behind a counter) and its kitchen wall.
+Built-up furniture (`lib/kitbash.js` `BUILT_KITS`), hand-made in the library's format (second round after the
+2026-11-09 review of the inside cuts):
+- Against walls: a cabinet (a chest set into a half wall so its front shows as drawers, a plank top of two ledges, a
+  candle, mead and a jug); a chest of drawers (two chests stacked, a plank top); shelves (two ledges with candles, meads
+  and jam over two barrels); a kitchen wall (a half-wall counter with a plank top, the spice rack over it, sausages and
+  carrots, barrels with the pots and pans hung over them); a couch (a log bench against a half wall for its back, a
+  post at each end for arms, a pelt in front, a torch); a living room (the couch, a rug, a chest for a low table with
+  mead and a candle, an armchair each side).
+- By windows: drapes (a banner each side, hung 2.35 m up so the hem reaches the floor, a bench under the window).
+- By beds: a bedside barrel with a candle and a mead; a nightstand (a barrel with a plank top and a candle); a
+  sleeping alcove (a half wall along the bed's open side, a bedside barrel with a candle on the other).
+- On tables: a feast table (the village biome's own feast, candles, meads); a kitchen island (sausages, carrots, a
+  jug, a barrel at each end).
+- On the free floor (points a metre apart with the room's floor 2.2 m all round, turned along the longest wall and
+  across, 0.7 m kept clear round the set): dining sets (a table with a bench each side on a fur rug; a round table
+  with four chairs on a deer rug; a long oak table with four benches on two carpets; a Dvergr table with stools), a
+  smith's work zone (anvil, grinding wheel, quench barrel, a chest of stock) and a joiner's (a workbench with the
+  chopping block, a chest and a barrel). One set to a room; a tavern's, hall's or temple's room takes one per 25 m2,
+  four at most. Dining sets may move the decorator's tables and seats out of their way.
+- On stations: the smithy's forge gets an anvil, the grinding wheel, the tool rack on the wall behind, a quench barrel
+  and an armor stand; the workshop's workbench the chopping block, the tool shelf and a barrel.
+- In corners: the tavern's serving corner (stacked barrels behind a half-wall counter with meads); a bath corner.
+- Under stairs: two barrels under the highest flight, below the audit's stair box.
+- Walls between the furniture: every 2.5 m at d3 (3.2 m at d2) where nothing hangs between 1.3 and 2.4 m within
+  0.9 m either side, a ledge with a candle and a mead, or a banner.
+
+A kit's core pieces (the table of a dining set, the forge's anvil, the half wall of a counter) are marked `key`: a kit
+whose core piece cannot go is left out, so no rug or bench is left without its table. Each building type comes first
+with its own: the home's bedside, the smithy's forge, the workshop's bench, the tavern's serving corner and kitchen
+wall. In homes and their rooms the decorator's second and later tables in one room go, with their seats, so each room
+has one dining place (`spreadTables`). Pots, bread and cooked meat are left out: their proxies draw as grey-green
+boxes and planks.
 
 Placing. After the furnishing, `furnishRooms` reads every room as the decorator does (`readLevel`), with its anchors:
 wall runs every half metre, windows, inside corners where two wall faces meet at any angle, fires, tables, beds, free
 posts and stairs. Assemblies are drawn by room kind and decor stage from a random stream of their own (seeded from the
 detail stream after everything else, so the rest of a design is unchanged): at most one per room at d1 (rooms of 30 m2
-or more), up to three at d2 and eight at d3, weighted by score, by how many kinds of piece they hold, and down for
+or more), up to three at d2 and eight at d3 plus the dining sets, weighted by score, by how many kinds of piece they hold, and down for
 repeats and for pairs of chests; each built kit at most once in a building (shelves, cabinets, drapes, bedsides twice).
 Each slot takes the source's prefab when the village's biome makes it, or the first of its class that it does; minor
 decor goes in any biome; item stands, seasonal pieces and woodpiles are left out. Every piece is tested: on this room's
 floor or against its wall, under its ceiling, out of doorways, climbs, the chimney and the fire's ring, under the sill
 of any window behind it, plain wall behind anything hung, what it rests on there (the audit's own tests), no deeper in
 the floor than its source, and clipping into walls, the anchor and its own assembly no deeper than its source builds did
-(into anything else, not at all). Floor pieces keep 0.9 m of floor in front of them and at most 45 % of a room's floor
+(into anything else, not at all). Floor pieces keep 0.9 m of floor in front of them and at most 50 % of a room's floor
 is furnished. Built kits may move the decorator's chests, seats and lights out of their way (two at most). A piece that
 fails is left out when nothing rests on it, as long as three fifths of the assembly stay.
 
@@ -361,7 +384,8 @@ Materials (D-066). `pieces.js` `minor`: rugs, banners, food and feasts, pots, ca
 props, treasure, signs. They pass the materials check in any biome, and the generator's last pass (`biomeSafe`) keeps
 them; stations, beds, chests, tables, seats, fires and building pieces still need their own.
 
-Cost: about 50 ms more per furnished d2 or d3 design in Node (the room reading and the fits), 2026-11-09.
+Cost: in Node the 154-design comparison (every type, seven biomes, s2d2 and s3d3) took 88 ms a design without the
+library and 183 ms with it (second round, 2026-11-09).
 
 ### Items on stands (for the mod)
 

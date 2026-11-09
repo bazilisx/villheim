@@ -213,8 +213,8 @@ well (Tyler, 2026-11-08). The Features tab of the review sheet (`docs/features/b
 - [ ] Newcomers only arrive for an empty bed, as in Millénaire (Tyler, 2026-11-06). (Built 2026-11-06, needs testing.)
 - [ ] Dialogue about what villagers are doing, want and need, with conditions; grow into a large library of lines
       (Tyler, 2026-11-05). (Library of about 670 lines in eight voices with chats built 2026-11-06; about 3,000 lines
-      after 2026-11-08 night; keep growing it.) Rewrite needed: Tyler failed the lines as AI-sounding (T-20); new
-      lines wait until he passes a sample. Rules in `docs/DIALOGUE_STYLE.md`.
+      after 2026-11-08 night; keep growing it.) Rewrite needed: T-20 failed (lines read as AI-written); new
+      lines wait until a sample passes. Rules in `docs/DIALOGUE_STYLE.md`.
 - [ ] Villager minds (built 2026-11-08 night, needs testing; `docs/WORLD_LIFE.md`): memory of each player and gossip
       about them, place, weather and player tags, per-player topic fatigue, skills, wants and sweethearts, gatherings
       and feasts, noticing, idle glances, chats of three. Feasts only after big buildings (D-005); mood changes free

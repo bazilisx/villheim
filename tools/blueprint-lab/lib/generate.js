@@ -1245,7 +1245,7 @@ function biomeSafe(b, biome) {
   const ord = P.BIOME_ORDER, limit = ord.indexOf(biome), fits = n => ord.indexOf(P.needs(n)) <= limit;
   const Ck = checksLib(), gone = [];
   b.pieces = b.pieces.filter(p => {
-    if (fits(p.name) || P.piece(p.name).structural) return true;
+    if (fits(p.name) || P.piece(p.name).structural || (p.decor && P.minor(p.name))) return true; // minor decor goes anywhere (D-066)
     const alt = STAND_IN[p.name];
     if (alt && fits(alt)) { p.name = alt; return true; }
     if (p.decor) gone.push(Ck.aabb(p));

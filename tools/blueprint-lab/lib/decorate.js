@@ -2452,15 +2452,40 @@ function itemOf(p) {
 // The audit's tests for one kitbash piece, for the fitter (lib/kitbash.js) to ask before it places it: what it rests
 // on, and plain wall behind a wall piece. ctx from auditContext(pieces), kept up to date with add().
 function auditContext(pieces) {
-  const struct = pieces.filter(p => !p.decor || (!F[p.name] && P.piece(p.name).structural)).map(structBox);
-  const ctx = { pieces, struct, wallish: struct.filter(s => WALLISH.has(s.role)) };
-  ctx.add = p => { if (!F[p.name] && P.piece(p.name).structural) { const sb = structBox(p); ctx.struct.push(sb); if (WALLISH.has(sb.role)) ctx.wallish.push(sb); } };
+  // filed on a 4 m grid by pivot, so a test looks only at what is near
+  const grid = new Map(), K = 4, key = (x, z) => Math.floor(x / K) * 65536 + Math.floor(z / K);
+  const cell = (x, z) => { const k = key(x, z); if (!grid.has(k)) grid.set(k, { pieces: [], struct: [], wallish: [] }); return grid.get(k); };
+  const file = p => {
+    const c = cell(p.x, p.z);
+    c.pieces.push(p);
+    if (!p.decor || (!F[p.name] && P.piece(p.name).structural)) { const sb = structBox(p); c.struct.push(sb); if (WALLISH.has(sb.role)) c.wallish.push(sb); }
+  };
+  for (const p of pieces) file(p);
+  const ctx = {
+    add: p => file(p),
+    remove: p => { const c = grid.get(key(p.x, p.z)); if (!c) return; c.pieces = c.pieces.filter(q => q !== p); c.struct = c.struct.filter(sb => sb.p !== p); c.wallish = c.wallish.filter(sb => sb.p !== p); },
+    // what lies within about 4 to 8 m of a point
+    around(x, z) {
+      const out = { pieces: [], struct: [], wallish: [] };
+      for (let i = -1; i <= 1; i++) for (let j = -1; j <= 1; j++) {
+        const c = grid.get(key(x + i * K, z + j * K));
+        if (c) { out.pieces.push(...c.pieces); out.struct.push(...c.struct); out.wallish.push(...c.wallish); }
+      }
+      return out;
+    },
+  };
   return ctx;
 }
-function auditOne(p, ctx) {
+function auditOne(p, ctx, extra) {
   const it = itemOf(p);
-  if (it.f.at === 'mount' && !mountOk(it, ctx.wallish)) return false;
-  if (p.rest && !kbRests(it, ctx.pieces, ctx.wallish, ctx.struct)) return false;
+  // only what is within reach (the audit's tests look no further than 3 m)
+  const A = ctx.around(p.x, p.z);
+  // pieces of the same assembly not yet in the building count (a ledge on the half wall laid just before it)
+  const more = (extra || []).filter(q => q !== p);
+  const built = more.filter(q => !F[q.name] && P.piece(q.name).structural).map(structBox);
+  const wallish = A.wallish.concat(built.filter(sb => WALLISH.has(sb.role)));
+  if (it.f.at === 'mount' && !mountOk(it, wallish)) return false;
+  if (p.rest && !kbRests(it, A.pieces.concat(more), wallish, A.struct.concat(built))) return false;
   return true;
 }
 // How deep two pieces' solids reach into each other (0 for pieces with none, rugs and food).
@@ -2528,6 +2553,6 @@ function decorateExisting(pieces, { use = 'home', decor = 'd2', biome = 'Meadows
   return b.pieces;
 }
 
-const api = { decorate, strip, findRooms, decorateExisting, setRules, setInterior, setTemplates, templateById, audit, auditContext, auditOne, ITEM_BIOME, FURNITURE: F, readLevel,
+const api = { decorate, strip, findRooms, decorateExisting, setRules, setInterior, setTemplates, templateById, audit, auditContext, auditOne, itemOf, ITEM_BIOME, FURNITURE: F, readLevel,
   _int: { floorLevels, standGuess, roleFor, stretch, size, ok, obox, overlap, ptDist, yawOfDir, pyaw, standOf, norm, WALLISH } };
 if (NODE_D) module.exports = api; else window.VHDecorate = api;

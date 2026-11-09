@@ -161,18 +161,13 @@ namespace Villheim.Logic.Villagers
         }
 
         /// <summary>
-        /// The villager's role in a word: child, the leader's title (Jarl), elder, his trade (cook, farmer...), and with
-        /// no trade (a village under six) his background: guard for a protector, carer for a carer.
+        /// The villager's role in a word: child, the leader's title (Jarl), elder, his trade (cook, farmer...), and
+        /// "villager" with none. Protector and carer are internal and never shown.
         /// </summary>
         public static string RoleWord(Villager villager)
         {
             string title = Roles.Title(villager);
-            if (!string.IsNullOrEmpty(title))
-            {
-                return title;
-            }
-
-            return Roles.BackgroundOf(villager) == Roles.Background.Protector ? "guard" : "carer";
+            return !string.IsNullOrEmpty(title) ? title : "villager";
         }
 
         /// <summary>A light color that goes with the role, readable on a wooden sign.</summary>
@@ -192,8 +187,6 @@ namespace Villheim.Logic.Villagers
                 case "miner": return "#ccd";      // stone gray
                 case "cook": return "#fa8";       // warm orange
                 case "farmer": return "#bfb";     // green
-                case "guard": return "#f99";      // red
-                case "carer": return "#ffc";      // pale yellow
                 default: return "#ddd";
             }
         }

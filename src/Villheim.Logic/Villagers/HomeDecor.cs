@@ -242,15 +242,7 @@ namespace Villheim.Logic.Villagers
                 return null;
             }
 
-            string piece = state.Work.Entry != null ? Piece(state.Work.Entry.Prefab) : "something";
-            return state.Work.Helping ? $"helping fix up a neighbor's home ({piece})" : $"fixing up his home ({piece})";
-        }
-
-        private static string Piece(string prefab)
-        {
-            GameObject go = ZNetScene.instance ? ZNetScene.instance.GetPrefab(prefab) : null;
-            string name = go != null ? go.GetComponent<global::Piece>()?.m_name : null;
-            return !string.IsNullOrEmpty(name) && Localization.instance != null ? Localization.instance.Localize(name).ToLowerInvariant() : prefab;
+            return state.Work.Helping ? "helping a neighbor" : "fixing up the home";
         }
 
         /// <summary>True while fixing up a home. Called in idle time only (Brain), after all village work.</summary>

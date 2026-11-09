@@ -226,8 +226,8 @@ namespace Villheim.Logic.Villagers
         }
 
         /// <summary>
-        /// Every part he plays, for the hover (Tyler: "I don't know who a protector is"): leader, protector or carer,
-        /// his trade, builder, hunter, elder, tonight's watch.
+        /// Every part he plays, for the hover: leader, elder, his trade, builder, hunter, tonight's watch. Protector and
+        /// carer are internal and never shown (Tyler, 2026-11-09).
         /// </summary>
         private static string RoleLine(Villager villager)
         {
@@ -242,7 +242,6 @@ namespace Villheim.Logic.Villagers
                 parts.Add("Leader");
             }
 
-            parts.Add(Roles.BackgroundOf(villager) == Roles.Background.Protector ? "Protector" : "Carer");
             if (Elders.IsElder(villager))
             {
                 parts.Add("Elder");
@@ -269,7 +268,7 @@ namespace Villheim.Logic.Villagers
                 parts.Add("Night watch");
             }
 
-            return string.Join(", ", parts);
+            return parts.Count > 0 ? string.Join(", ", parts) : null;
         }
 
         public static bool Interact(Villager villager, Humanoid user)

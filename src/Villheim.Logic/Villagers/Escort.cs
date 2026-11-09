@@ -92,7 +92,7 @@ namespace Villheim.Logic.Villagers
 
             Dialogue.Note(hearth.VillageId, "horn");
             player.Message(MessageHud.MessageType.Center, count > 0
-                ? $"You blow the horn. {PlayerMemory.Number(count)} of {hearth.VillageName}'s protectors come to your side."
+                ? $"You blow the horn. {PlayerMemory.Number(count)} of {hearth.VillageName}'s people come to your side."
                 : "You blow the horn. Nobody comes.");
             return true;
         }

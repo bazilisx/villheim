@@ -238,6 +238,10 @@ Parts added on 2026-11-09:
 | Barn stalls | Half-wall partitions every 2 m along a long wall, a gate across each stall, straw inside. | barns, d2 on |
 | Loft window | One clear 2 m light framed by beams, a third of the way up a gable 6 m tall or more (1 m up a lower one). | with gableWindow |
 | Ridge chimney | The shaft through an upper floor ends inside the roof; above the ridge, raised caps on short posts. | ridge vents |
+| Dais | The throne the furnishing set against a hall's wall goes up 0.3 m onto a 4 m by 3 m platform (1 m floor pieces on short beams), with its rug, lamps, table and what stands on them; round posts, never over a stair, door or the fire. | longhouses and temples, d2 on, where a throne stands |
+| Gable-end windows | One window per floor, in the middle bay of a gable end. | gable roofs |
+| Stone walls | Windows in every fourth bay instead of every second (each opening needs a timber bay). | stone wall styles |
+| No tower blocks | The eave stays within 1.1 times the plan's short side; storeys come off until it does. | all but towers and fixed forms |
 | Kitchen | A butcher's table against the wall nearest the cauldron, the spice rack and pots and pans hung on the walls nearest it, all within 4.5 m. Gated by their materials: turnips (Swamp), silver (Mountain), black metal (Plains). | wherever a cauldron is |
 
 ## Repair

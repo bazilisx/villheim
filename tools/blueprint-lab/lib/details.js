@@ -52,7 +52,7 @@ function profile(ctx) {
     doorLamp: dN >= 2,
     cornerPosts: wood && !C.frame && !T.tower,
     bands: wood && sN >= 2 && !C.frame,
-    midRail: C.wallStyle === 'half-timber' && sN >= 2,
+    midRail: false, // with the braces and window frames a rail at 1 m made half-timbered walls too busy (2026-11-09 render)
     bargeboards: north && (sN >= 2 || C.carved),
     crossed: CROSSED.includes(cultureKey) && sN >= 2,
     svalgang: ['norse', 'norse-forest', 'norse-highland', 'slavic', 'baltic'].includes(cultureKey) && ctx.storeys >= 2 &&
@@ -114,7 +114,7 @@ function exterior(b, ctx) {
     if (o.kind !== 'window') continue;
     const { e, y0 } = o, { ux, uz, ox, oz } = axes(e);
     const stone = /stone|marble|grausten/.test(C.wallStyle || '') && !(b.woodBays && b.woodBays.has(`${Math.round(e.x * 10)},${Math.round(e.z * 10)}`));
-    const f = 0.2; // trim stands proud of the wall face (the corpus puts it 0.25 to 0.5 m out)
+    const f = 0.1; // trim stands a little proud of the wall face
     if (X.mullion && C.windowStyle !== 'single') put(pole1, e.x, y0 + 1.5, e.z, 0); // two 1 m lights
     if (X.windowFrame) {
       put(beam, e.x + ox * f, y0 + 0.9, e.z + oz * f, e.yaw); // sill under the opening

@@ -207,7 +207,7 @@ function structBox(p) {
 function structBox0(p) {
   const info = P.piece(p.name);
   const [w, h, d] = info.size;
-  const prop = info.shape === 'prop' || info.shape === 'cap' || info.shape === 'tri' || info.shape === 'triInv';
+  const prop = info.shape === 'prop' || info.shape === 'cap' || info.shape === 'tri' || info.shape === 'triInv' || info.onPivot;
   const y0 = prop ? p.y : p.y - h / 2, y1 = prop ? p.y + h : p.y + h / 2;
   return { p, info, role: info.role, b: obox(p.x, p.z, w, d, pyaw(p)), y0, y1 };
 }

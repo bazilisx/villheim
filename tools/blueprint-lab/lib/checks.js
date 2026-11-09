@@ -30,7 +30,7 @@ function aabb(p) {
   }
   const a = yawDeg(p) * Math.PI / 180, c = Math.abs(Math.cos(a)), sn = Math.abs(Math.sin(a));
   const ex = (w * c + d * sn) / 2, ez = (w * sn + d * c) / 2;
-  const prop = info.shape === 'prop' || info.shape === 'cap' || info.shape === 'tri' || info.shape === 'triInv';
+  const prop = info.shape === 'prop' || info.shape === 'cap' || info.shape === 'tri' || info.shape === 'triInv' || info.onPivot;
   let y0 = prop ? p.y : p.y - h / 2, y1 = prop ? p.y + h : p.y + h / 2;
   if (info.shape === 'hang') { y0 = p.y - h; y1 = p.y; }
   if (info.shape === 'slope26') { y0 = p.y - 0.15; y1 = p.y + h; }

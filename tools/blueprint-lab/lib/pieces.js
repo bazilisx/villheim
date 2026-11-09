@@ -78,7 +78,9 @@ const RULES = [
   [/spiralstair/, 'stair', [2, 4, 2], 'box'],
   // a step ladder stands on its pivot and climbs 2 m over 2 m toward its local -z (CLIMB below)
   [/stepladder|ladder/i, 'stair', [1, 2, 2], 'ladder'],
-  [/stair/i, 'stair', [1, 2, 2], 'stair'],
+  // a wood or stone stair is 2 m wide and climbs 1 m over 2 m toward its local -z from its pivot at its foot (corpus:
+  // stairs stack 1 m up and 2 m on; the game's mesh, 2026-11-09)
+  [/stair/i, 'stair', [2, 1, 2], 'stair'],
   // wall torches before the wall rules, or 'piece_walltorch' reads as a 2x2 wall
   [/walltorch/i, 'light', [0.3, 0.8, 0.3], 'prop'],
   // floor torches pivot 0.75 m above their foot (measured by the interior helper, 2026-11-09)
@@ -176,7 +178,10 @@ function piece(name) {
   if (SIZES[n]) size = SIZES[n];
   const mat = material(n);
   const structural = ['wall', 'floor', 'roof', 'roofTop', 'roofCorner', 'gable', 'beam', 'pole', 'stair', 'door', 'window', 'fence'].includes(role);
-  c = { name, role, size, shape, mat, color: MAT[mat], structural, exact: false };
+  // walls that stand on their pivot in the game (measured from the game's meshes, 2026-11-09): the generator writes
+  // walls by their middle, and finish() in generate.js moves these down to their foot
+  const onPivot = /^(wood_wall_quarter|Piece_grausten_wall_|Piece_grausten_window_|darkwood_decowall$|crystal_wall_1x1$)/.test(n);
+  c = { name, role, size, shape, mat, color: MAT[mat], structural, exact: false, onPivot };
   const e = exported() && exported()[name];
   if (e) {
     // Solid colliders first (what the game tests against), the meshes when the piece has none.
@@ -271,7 +276,7 @@ function yawOfQ(q) { const [x, y, z, w] = q || [0, 0, 0, 1]; return Math.atan2(2
 // 2 m over 2 m toward its local -z.
 const CLIMB = {
   wood_stepladder: { bottom: 0, rise: 2, run: 2 },
-  wood_stair: { bottom: -1, rise: 2, run: 2 },
+  wood_stair: { bottom: 0, rise: 1, run: 2 },
 };
 function climbSpec(name) { return CLIMB[name] || (/ladder/i.test(name) ? CLIMB.wood_stepladder : /stair/i.test(name) ? CLIMB.wood_stair : null); }
 

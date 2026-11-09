@@ -636,7 +636,7 @@ function generate(req) {
     }
   }
   // the back door of a hall with doors on both long sides
-  if (backDoor && F >= 0.9 && F <= 2.01 && !deck) b.put(K.stair || 'wood_stair', backDoor.x, F >= 1.99 ? F / 2 : F - 1, backDoor.z + 1 + lip, 0);
+  if (backDoor && F >= 0.9 && F <= 2.01 && !deck) for (let k = 0; k < Math.round(F); k++) b.put(K.stair || 'wood_stair', backDoor.x, F - (k + 1), backDoor.z + 1 + lip + 2 * k, 0);
   // a door in a gable end (sunken huts) on raised ground
   if (F >= 0.9 && F < 1.99 && door.out[0] !== 0) stairUpX(b, K, door.x, doorZ, F, door.out[0]);
   if (C.boardwalk && door.out[1] < 0 && !T.dock) {
@@ -1013,6 +1013,8 @@ function biomeSafe(b, biome) {
 
 function finish(b, info) {
   biomeSafe(b, info.biome);
+  // the generator places walls by their middle; the pieces that stand on their pivot go down to their foot
+  for (const p of b.pieces) { const pi = P.piece(p.name); if (pi.onPivot && !p.decor && !p.footed) { p.y = +(p.y - pi.size[1] / 2).toFixed(3); p.footed = true; } }
   const name = `${info.type}_${info.biome.replace(' ', '')}_${info.cultureKey}_${info.plan || 'x'}-${info.roof || 'x'}-${info.walls || 'x'}${info.asked || ''}_${info.stage}${info.decor}_${info.seed}`;
   return {
     ground: 0,
@@ -1506,14 +1508,15 @@ function octagonDesign(b, K, C, o) {
 // A stair from the ground up to a floor whose front edge is at zEdge, climbing toward +z. wood_stair pivots in its
 // middle and climbs 2 m over 2 m: for a floor 2 m up it stands on the ground; for one 1 m up it is set half in the
 // ground so its top meets the floor.
+// A stair climbs 1 m over 2 m from its foot: one per metre of height, each 2 m further out and 1 m lower.
 function stairUp(b, K, x, zEdge, F) {
   if (F < 0.9 || F > 2.01) return;
-  b.put(K.stair || 'wood_stair', x, F >= 1.99 ? F / 2 : F - 1, zEdge - 1, 180);
+  for (let k = 0; k < Math.round(F); k++) b.put(K.stair || 'wood_stair', x, F - (k + 1), zEdge - 1 - 2 * k, 180);
 }
 // The same up to a door in a side wall at xEdge; out is -1 for the left side, 1 for the right.
 function stairUpX(b, K, xEdge, z, F, out) {
   if (F < 0.9 || F > 2.01) return;
-  b.put(K.stair || 'wood_stair', xEdge + out, F >= 1.99 ? F / 2 : F - 1, z, out < 0 ? 270 : 90);
+  for (let k = 0; k < Math.round(F); k++) b.put(K.stair || 'wood_stair', xEdge + out * (1 + 2 * k), F - (k + 1), z, out < 0 ? 270 : 90);
 }
 
 // Timber trackway out from a door at (x, zDoor), len metres, on short posts.

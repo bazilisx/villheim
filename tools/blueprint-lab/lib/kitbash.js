@@ -58,9 +58,12 @@ function canopyBed(b, ctx) {
   for (const bed of b.pieces.filter(p => p.name === 'bed' && p.decor)) {
     const a = (bed.yaw || 0) * Math.PI / 180, ca = Math.cos(a), sa = Math.sin(a);
     const at = (lx, lz) => [bed.x + lx * ca + lz * sa, bed.z - lx * sa + lz * ca]; // local x across, z along the bed
-    // posts at the corners of the bed's true footprint, a little in
+    // posts at the corners of the bed's true footprint
     const bb = Ck.aabb(bed);
-    const corners = [[bb.x0 + 0.12, bb.z0 + 0.12], [bb.x1 - 0.12, bb.z0 + 0.12], [bb.x0 + 0.12, bb.z1 - 0.12], [bb.x1 - 0.12, bb.z1 - 0.12]];
+    const g = 0.15; // just outside the bed's frame, so the posts stand clear of it
+    const inWallPre = ([x, z]) => b.pieces.some(p => !p.decor && ['wall', 'pole', 'window', 'door'].includes(PB.piece(p.name).role) &&
+      (() => { const o = Ck.aabb(p); return x > o.x0 - 0.13 && x < o.x1 + 0.13 && z > o.z0 - 0.13 && z < o.z1 + 0.13 && o.y0 < bed.y + 2 && o.y1 > bed.y + 0.2; })());
+    const corners = [[bb.x0 - g, bb.z0 - g], [bb.x1 + g, bb.z0 - g], [bb.x0 - g, bb.z1 + g], [bb.x1 + g, bb.z1 + g]];
     void at;
     // the room over the bed: the lowest thing above it that is not the bed itself
     let ceil = Infinity;
@@ -73,15 +76,24 @@ function canopyBed(b, ctx) {
     }
     if (ceil < bed.y + 2.5) continue;
     // nothing else stands where a post goes
-    const busy = corners.some(([x, z]) => b.pieces.some(p => {
+    const busy = corners.filter(c => !inWallPre(c)).some(([x, z]) => b.pieces.some(p => {
       if (p === bed || !p.decor || PB.piece(p.name).role === 'rug' || p.y > bed.y + 2.2) return false;
       const o = Ck.aabb(p);
       return x > o.x0 - 0.25 && x < o.x1 + 0.25 && z > o.z0 - 0.25 && z < o.z1 + 0.25; // another bed, a chest, a table
     }));
-    if (busy) continue;
+    // a corner at the wall needs no post: the canopy's head end rests on the wall (a half-tester); two posts at least
+    const inWall = ([x, z]) => b.pieces.some(p => !p.decor && ['wall', 'pole', 'window', 'door'].includes(PB.piece(p.name).role) &&
+      (() => { const o = Ck.aabb(p); return x > o.x0 - 0.13 && x < o.x1 + 0.13 && z > o.z0 - 0.13 && z < o.z1 + 0.13 && o.y0 < bed.y + 2 && o.y1 > bed.y + 0.2; })());
+    const standing = corners.filter(c => !inWall(c));
+    // each post on a floor, not over a gap or a step
+    const floored = ([x, z]) => b.pieces.some(p => !p.decor && PB.piece(p.name).role === 'floor' && (() => { const o = Ck.aabb(p); return x > o.x0 + 0.1 && x < o.x1 - 0.1 && z > o.z0 + 0.1 && z < o.z1 - 0.1 && Math.abs(o.y1 - bed.y) < 0.2; })());
+    if (busy || standing.length < 2 || !standing.every(floored)) continue;
     const T = { decor: true, trim: true };
-    for (const [x, z] of corners) b.put(post, x, bed.y + 1, z, 0, T);
-    b.put(canopy, bed.x, bed.y + 2.02, bed.z, bed.yaw || 0, T);
+    // the posts stand on the floor's top (a bed's pivot can sit a little above it)
+    const fl = b.pieces.find(p => !p.decor && PB.piece(p.name).role === 'floor' && (() => { const o = Ck.aabb(p); return bed.x > o.x0 - 0.5 && bed.x < o.x1 + 0.5 && bed.z > o.z0 - 0.5 && bed.z < o.z1 + 0.5 && Math.abs(o.y1 - bed.y) < 0.2; })());
+    const top = fl ? Ck.aabb(fl).y1 : bed.y;
+    for (const [x, z] of standing) b.put(post, x, top + 1, z, 0, T);
+    b.put(canopy, bed.x, top + 2.02, bed.z, bed.yaw || 0, T);
     n++;
   }
   if (n) b.notes.push(n > 1 ? `${n} beds with canopies of a rug on four posts.` : 'A bed with a canopy of a rug on four posts.');

@@ -776,6 +776,10 @@ function generate(req) {
   b.outer = edges;
   if (['home', 'longhouse', 'smithy', 'workshop', 'sawmill', 'barn', 'farm'].includes(type) && stage !== 's1' && roofKind === 'gable' && !flat &&
     F < 0.01 && !T.tower && dctx.R() < 0.5) woodshed(b, K, C, wings, edges, F, SH, svanTower);
+  // a lean-to (outshut) along the back: a lower roof against the main mass (bench: req.details.outshut)
+  const wantOut = dctx.profile.outshut != null ? dctx.profile.outshut
+    : ['home', 'longhouse', 'barn', 'smithy', 'workshop', 'storage', 'farm', 'tavern'].includes(type) && stage !== 's1' && dctx.R() < 0.4;
+  if (wantOut && ['gable', 'hip'].includes(roofKind) && !flat && F < 1.01 && !T.tower && !C.stoneWalls) outshut(b, K, C, wings, edges, F, SH, dctx.R, decor);
   // a stone chimney stack against a gable end, from the ground to past the ridge (bench: req.details.stack)
   const wantStack = dctx.profile.stack != null ? dctx.profile.stack
     : stoneOK && stage !== 's1' && ['home', 'longhouse', 'tavern', 'smithy', 'temple'].includes(type) && dctx.R() < 0.35;
@@ -1855,6 +1859,50 @@ function woodshed(b, K, C, wings, edges, F, SH, tower) {
     return true;
   }
   return false;
+}
+
+// An outshut: a lean-to 2 m deep along the back wall of the main wing, its 26 degree roof from 3.4 m at the wall down
+// to 2.4 m at a row of posts, open at the front; firewood, barrels or a bench under it. The second, lower mass the
+// best-liked builds have against a main block (Hurstwic farmsteads, corpus barns and smithies). Not over the back
+// door's path, not where another wing, a tower, a pen or a woodshed stands.
+function outshut(b, K, C, wings, edges, F, SH, R, decor) {
+  const w0 = wings[0];
+  if (w0.alpha !== 0 || w0.W < 4) return false;
+  const zWall = w0.cz + w0.D, xs = [];
+  for (let x = w0.cx - w0.W + 1; x < w0.cx + w0.W; x += 2) xs.push(x);
+  const Ck = checksLib();
+  const free = x => {
+    if (wings.some(o => o !== w0 && inside(o, x, zWall + 1.2, 0.3))) return false;
+    if (!edges.some(e => Math.abs(e.x - x) < 0.01 && Math.abs(e.z - zWall) < 0.01)) return false;
+    return !b.pieces.some(p => {
+      if (Math.abs(p.z - zWall) < 0.6 && ['wall', 'window', 'pole', 'gable'].includes(P.piece(p.name).role)) return false; // the wall itself and its footing
+      const o = Ck.aabb(p);
+      return o.x0 < x + 1.1 && o.x1 > x - 1.1 && o.z0 < zWall + 2.6 && o.z1 > zWall + 0.55 && o.y0 < F + 3.6 && o.y1 > 0.05;
+    });
+  };
+  // the longest run of free bays, at least three, leaving the end bays (corners stay clean)
+  let best = [], run = [];
+  for (const x of xs.slice(1, -1)) { if (free(x)) { run.push(x); if (run.length > best.length) best = run.slice(); } else run = []; }
+  if (best.length < 3) return false;
+  const T2 = { trim: true }, roof = K.roof26 || 'wood_roof', pole = framePole(K, C), pole1 = K.pole1 || 'wood_pole', beam = K.beam || 'wood_beam';
+  for (const x of best) b.put(roof, x, F + SH - 0.6, zWall + 1, 0, T2); // 2.4 m at its outer edge, against the wall
+  const posts = [best[0] - 1, ...best.map(x => x + 1)];
+  // posts from the ground (a raised floor's lean-to stands on the ground below it) up to the beam
+  for (const x of posts) for (let y = 0; y < F + 2.3 - 0.01;) { const h = F + 2.3 - y >= 1.99 ? 2 : 1; b.put(h === 2 ? pole : pole1, x, y + h / 2, zWall + 2, 0, T2); y += h; }
+  for (const x of best) b.put(beam, x, F + 2.35, zWall + 2, 0, T2);
+  // what is kept under it
+  if (decor !== 'd1') {
+    const goods = ['wood_stack', 'piece_chest_barrel', 'wood_stack', 'piece_bench01'];
+    best.forEach((x, i) => {
+      if (i % 2) return;
+      const g = goods[Math.floor(R() * goods.length)];
+      if (g === 'wood_stack') b.put('wood_stack', x, 0.57, zWall + 1.05, 0, { decor: true, trim: true });
+      else if (g === 'piece_chest_barrel' && reaches(C.biome || 'Meadows', 'Swamp')) b.put(g, x, 0, zWall + 0.9, 180, { decor: true, trim: true });
+      else if (g === 'piece_bench01' && F < 0.01) b.put(g, x, 0, zWall + 0.75, 180, { decor: true, trim: true });
+    });
+  }
+  b.notes.push(`A lean-to ${best.length * 2} m long against the back wall.`);
+  return true;
 }
 
 // A stone stack built against the outside of a gable wall: two blocks deep for the first 2 m (the shoulder), one block

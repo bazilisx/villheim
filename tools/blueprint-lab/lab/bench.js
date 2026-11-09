@@ -139,6 +139,14 @@ const PARTS = {
     flags: ['stair'],
     focus: 'auto', inside: true, cutAt: 2.6,
   },
+  outshut: {
+    bases: [
+      { type: 'home', biome: 'Meadows', stage: 's3', decor: 'd3' },
+      { type: 'smithy', biome: 'Black Forest', stage: 's3', decor: 'd3' },
+      { type: 'longhouse', biome: 'Meadows', stage: 's3', decor: 'd3' }],
+    flags: ['outshut'],
+    focus: d => { const [cx, cz] = centre(d); return { az: 200, el: 18, crop: null, centre: [cx, cz] }; },
+  },
   dormer: {
     bases: [
       { type: 'home', biome: 'Meadows', stage: 's3', decor: 'd3', culture: 'anglo-saxon', roof: 'gable' },

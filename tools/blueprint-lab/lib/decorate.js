@@ -2394,7 +2394,7 @@ function audit(design, decor) {
     const fa = it.f.at || 'floor';
     if (fa === 'mount' || fa === 'hang') continue;
     if (fa === 'top' && wallish.some(s => ptDist(s.b, it.p.x, it.p.z) < 0.4 && s.y0 < it.p.y && s.y1 > it.p.y)) continue; // hung on a wall as a shelf
-    if (fa === 'rug' && struct.filter(s => built(s.p) && s.role === 'pole' && Math.abs(s.y1 - it.p.y) < 0.15 && overlap(s.b, it.b, 0)).length >= 3) continue; // a canopy on posts
+    if (fa === 'rug' && struct.filter(s => built(s.p) && s.role === 'pole' && Math.abs(s.y1 - it.p.y) < 0.15 && overlap(s.b, it.b, 0.2)).length >= 2) continue; // a canopy on posts (its head end on the wall)
     if (fa === 'top' && struct.some(s => built(s.p) && ptDist(s.b, it.p.x, it.p.z) < 0.05 && Math.abs(s.y1 - it.p.y) < 0.2)) continue; // on a built counter
     if (fa === 'top') { if (!items.some(o => (o.f.cat === 'table') && ptDist(o.b, it.p.x, it.p.z) < 0.05 && Math.abs(o.p.y + (o.f.top || 0.75) - it.p.y) < 0.15)) res.floating.push(`${it.p.name} at ${it.p.x.toFixed(1)},${it.p.y.toFixed(1)},${it.p.z.toFixed(1)}`); continue; }
     if (fa === 'fire') { if (!items.some(o => o.f.cat === 'fire' && ptDist(o.b, it.p.x, it.p.z) < 0.1)) res.floating.push(`${it.p.name} at ${it.p.x.toFixed(1)},${it.p.z.toFixed(1)}`); continue; }

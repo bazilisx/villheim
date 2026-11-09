@@ -245,7 +245,7 @@ function svalgang(b, ctx) {
   if (ux == null) return false;
   // take out the upper bay's wall and window pieces, and build it again as a door
   const inBay = p => Math.abs(p.x - ux) < 1.01 && Math.abs(p.z - zf) < 0.3 && p.y > yU + 0.05 && p.y < yU + SH - 0.05 &&
-    ['wall', 'window', 'door'].includes(PD.piece(p.name).role) && !p.decor;
+    ['wall', 'window', 'door', 'beam'].includes(PD.piece(p.name).role) && !p.decor; // a half-timber brace too
   b.pieces = b.pieces.filter(p => !inBay(p));
   b.openings = (b.openings || []).filter(o => !(o.e.x === ux && Math.abs(o.y0 - yU) < 0.01));
   const e = front.get(ux);

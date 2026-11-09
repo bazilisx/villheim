@@ -1273,7 +1273,14 @@ function gablePieces(K, C, w, top, r, ends, vent, dctx) {
   [-1, 1].forEach((sg, k) => {
     if (!ends[k]) return;
     const u = sg * w.W;
-    gableFill(K, add, u, top, 0, capY - top, C.stoneWalls);
+    // a window high in a tall gable lights the loft (a 2 m opening with a post in the middle, 1 m up the gable)
+    const gw = dctx && dctx.profile.gableWindow && !C.stoneWalls && capY - top >= 3.9;
+    if (gw) {
+      add(K.wallHalf, u, top + 0.5, 0, 90, 'gable', top + 1);
+      add(K.pole1 || 'wood_pole', u, top + 1.5, 0, 0, 'gable', top + 2);
+      for (const yb of [top + 0.9, top + 2.1]) add(K.beam || 'wood_beam', u + Math.sign(u) * 0.2, yb, 0, 90, 'trim', yb + 0.1);
+      gableFill(K, add, u, top + 2, 0, capY - top - 2, C.stoneWalls);
+    } else gableFill(K, add, u, top, 0, capY - top, C.stoneWalls);
     for (let i = 0; i <= wallRow; i++) for (const sv of [-1, 1]) {
       const v = sv * (2 + 2 * i);
       gableFill(K, add, u, top, v, low(i) - top, C.stoneWalls);

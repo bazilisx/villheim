@@ -152,6 +152,8 @@ function materials(ctx) {
     // stone trim only on stone walls, and in Meadows and Black Forest villages only on later, larger buildings (D-012)
     stone: stoneWalls && reachesM(biome, 'Black Forest') && (sN >= 2 || reachesM(biome, 'Swamp')),
     glass: !!C.glass && reachesM(biome, 'Mountain'),
+    // no diagonal braces laid on log or stone walls (they belong to framed walls; 2026-11-09 review)
+    noBraces: /log|stone|marble|grausten/.test(C.wallStyle || '') || !!C.stoneWalls,
     roof26: K.roof26 || 'wood_roof', roof45: K.roof45 || 'wood_roof_45',
   };
 }
@@ -238,6 +240,7 @@ function usable(m, mt, bud, wallStone) {
     if (t === 'skip' || !t) return false;
     if (PROPS.test(t[5]) && !bud.props) return false;
     if (CARVED.test(t[5]) && !bud.carvings) return false;
+    if (mt.noBraces && m.kind !== 'gable' && /^beam(26|45|67)$/.test(t[5])) return false;
     return true;
   });
   const lost = sw2.filter(t => t === null).length + (sw2.length - kept.length - sw2.filter(t => t === null || t === 'skip').length);

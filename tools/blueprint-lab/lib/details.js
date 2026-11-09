@@ -66,14 +66,15 @@ function profile(ctx) {
     bargeboards: north && (sN >= 2 || C.carved),
     // the game's Roof Cross is 4 m across: one building in five (from the building's make, so the random stream the
     // rest of the details draw from stays as it was)
-    crossed: CROSSED.includes(cultureKey) && sN >= 2 && makeHash(ctx) % 5 === 0,
+    // the crossed boards are a Norse signature (round 3 review missed them): three buildings in five
+    crossed: CROSSED.includes(cultureKey) && sN >= 2 && makeHash(ctx) % 5 < 3,
     svalgang: ['norse', 'norse-forest', 'norse-highland', 'slavic', 'baltic'].includes(cultureKey) && ctx.storeys >= 2 &&
       ['home', 'storage', 'tavern'].includes(ctx.type) && (sN >= 3 || (sN === 2 && dN >= 3)) && ['rect', 'long', 'L', 'T'].includes(ctx.plan) &&
       !C.awnings && !ctx.flat && roll(0.75),
     gableWindow: north && sN >= 2,
     rafterTails: north && sN >= 2 && !C.eaves2 && (C.eaves || 1) < 2,
     eaveTrim: north && sN >= 2 && !C.eaves2 && (C.eaves || 1) < 2,
-    purlinEnds: north && sN >= 2,
+    purlinEnds: false, // a 1 m beam end out past the gable read as a stray stick (2026-11-09 review)
     gableTruss: north && sN >= 2 && roll(0.6),
     gablePorch: north && (sN >= 3 || (sN === 2 && dN >= 3)) && ['home', 'longhouse', 'tavern', 'temple'].includes(ctx.type) && roll(0.5),
     braces: false, // the leaning posts ran from the eaves past the wall foot and across windows (bench review): off until redone

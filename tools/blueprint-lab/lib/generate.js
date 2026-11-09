@@ -392,7 +392,8 @@ function generate(req) {
     const yaws = new Map();
     for (const e of edges) { const ux = e.yaw === 0 ? 1 : 0, uz = e.yaw === 0 ? 0 : 1; for (const sg of [-1, 1]) { const k = `${e.x + sg * ux},${e.z + sg * uz}`; yaws.set(k, (yaws.get(k) || 0) | (e.yaw === 0 ? 1 : 2)); } }
     const corner = k => yaws.get(k) === 3;
-    b.braceBay = (x, z, yaw) => { const ux = yaw % 180 === 0 ? 1 : 0, uz = 1 - ux; return corner(`${x - ux},${z - uz}`) || corner(`${x + ux},${z + uz}`); };
+    // corner bays and every other bay between (a brace in every panel was busy; none between read as plain planks)
+    b.braceBay = (x, z, yaw) => { const ux = yaw % 180 === 0 ? 1 : 0, uz = 1 - ux; return corner(`${x - ux},${z - uz}`) || corner(`${x + ux},${z + uz}`) || Math.round((x + z) / 2) % 2 === 0; };
   }
 
   // a loggia: the ground storey's front row of cells left open under the upper floor, on posts, the front wall and
@@ -408,7 +409,7 @@ function generate(req) {
   let gEdges = edges;
   if (loggia) {
     const inYaw = (edges.find(e => e.out[1] < 0) || {}).inYaw;
-    gEdges = edges.filter(e => !inLoggia(e.cell));
+    gEdges = edges.filter(e => !inLoggia(e.cell) || e.out[0] !== 0); // the loggia's ends stay walled; its front is open
     for (const [, c] of cells) if (inLoggia(c)) gEdges.push({ x: c[0], z: zFront + 2, yaw: 0, out: [0, -1], cell: [c[0], rowZ + 2], inYaw });
   }
 
@@ -814,7 +815,7 @@ function generate(req) {
   if (wantOut && ['gable', 'hip'].includes(roofKind) && !flat && F < 1.01 && !T.tower && !C.stoneWalls) outshut(b, K, C, wings, edges, F, SH, dctx.R, decor);
   // a stone chimney stack against a gable end, from the ground to past the ridge (bench: req.details.stack)
   const wantStack = dctx.profile.stack != null ? dctx.profile.stack
-    : stoneOK && stage !== 's1' && ['home', 'longhouse', 'tavern', 'smithy', 'temple'].includes(type) && dctx.R() < 0.35;
+    : stoneOK && stage !== 's1' && ['home', 'longhouse', 'tavern', 'smithy', 'temple'].includes(type) && dctx.R() < 0.6;
   if (wantStack && roofKind === 'gable' && plan !== 'gables' && !flat && !T.tower) chimneyStack(b, K, wings, edges, dctx.profile, dctx.R);
   Details.exterior(b, dctx);
   clearDoorways(b);

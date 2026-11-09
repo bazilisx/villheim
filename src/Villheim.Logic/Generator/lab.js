@@ -4057,6 +4057,8 @@ function materials(ctx) {
     // stone trim only on stone walls, and in Meadows and Black Forest villages only on later, larger buildings (D-012)
     stone: stoneWalls && reachesM(biome, 'Black Forest') && (sN >= 2 || reachesM(biome, 'Swamp')),
     glass: !!C.glass && reachesM(biome, 'Mountain'),
+    // no diagonal braces laid on log or stone walls (they belong to framed walls; 2026-11-09 review)
+    noBraces: /log|stone|marble|grausten/.test(C.wallStyle || '') || !!C.stoneWalls,
     roof26: K.roof26 || 'wood_roof', roof45: K.roof45 || 'wood_roof_45',
   };
 }
@@ -4143,6 +4145,7 @@ function usable(m, mt, bud, wallStone) {
     if (t === 'skip' || !t) return false;
     if (PROPS.test(t[5]) && !bud.props) return false;
     if (CARVED.test(t[5]) && !bud.carvings) return false;
+    if (mt.noBraces && m.kind !== 'gable' && /^beam(26|45|67)$/.test(t[5])) return false;
     return true;
   });
   const lost = sw2.filter(t => t === null).length + (sw2.length - kept.length - sw2.filter(t => t === null || t === 'skip').length);
@@ -4403,14 +4406,15 @@ function profile(ctx) {
     bargeboards: north && (sN >= 2 || C.carved),
     // the game's Roof Cross is 4 m across: one building in five (from the building's make, so the random stream the
     // rest of the details draw from stays as it was)
-    crossed: CROSSED.includes(cultureKey) && sN >= 2 && makeHash(ctx) % 5 === 0,
+    // the crossed boards are a Norse signature (round 3 review missed them): three buildings in five
+    crossed: CROSSED.includes(cultureKey) && sN >= 2 && makeHash(ctx) % 5 < 3,
     svalgang: ['norse', 'norse-forest', 'norse-highland', 'slavic', 'baltic'].includes(cultureKey) && ctx.storeys >= 2 &&
       ['home', 'storage', 'tavern'].includes(ctx.type) && (sN >= 3 || (sN === 2 && dN >= 3)) && ['rect', 'long', 'L', 'T'].includes(ctx.plan) &&
       !C.awnings && !ctx.flat && roll(0.75),
     gableWindow: north && sN >= 2,
     rafterTails: north && sN >= 2 && !C.eaves2 && (C.eaves || 1) < 2,
     eaveTrim: north && sN >= 2 && !C.eaves2 && (C.eaves || 1) < 2,
-    purlinEnds: north && sN >= 2,
+    purlinEnds: false, // a 1 m beam end out past the gable read as a stray stick (2026-11-09 review)
     gableTruss: north && sN >= 2 && roll(0.6),
     gablePorch: north && (sN >= 3 || (sN === 2 && dN >= 3)) && ['home', 'longhouse', 'tavern', 'temple'].includes(ctx.type) && roll(0.5),
     braces: false, // the leaning posts ran from the eaves past the wall foot and across windows (bench review): off until redone
@@ -5608,7 +5612,8 @@ function generate(req) {
     const yaws = new Map();
     for (const e of edges) { const ux = e.yaw === 0 ? 1 : 0, uz = e.yaw === 0 ? 0 : 1; for (const sg of [-1, 1]) { const k = `${e.x + sg * ux},${e.z + sg * uz}`; yaws.set(k, (yaws.get(k) || 0) | (e.yaw === 0 ? 1 : 2)); } }
     const corner = k => yaws.get(k) === 3;
-    b.braceBay = (x, z, yaw) => { const ux = yaw % 180 === 0 ? 1 : 0, uz = 1 - ux; return corner(`${x - ux},${z - uz}`) || corner(`${x + ux},${z + uz}`); };
+    // corner bays and every other bay between (a brace in every panel was busy; none between read as plain planks)
+    b.braceBay = (x, z, yaw) => { const ux = yaw % 180 === 0 ? 1 : 0, uz = 1 - ux; return corner(`${x - ux},${z - uz}`) || corner(`${x + ux},${z + uz}`) || Math.round((x + z) / 2) % 2 === 0; };
   }
 
   // a loggia: the ground storey's front row of cells left open under the upper floor, on posts, the front wall and
@@ -5624,7 +5629,7 @@ function generate(req) {
   let gEdges = edges;
   if (loggia) {
     const inYaw = (edges.find(e => e.out[1] < 0) || {}).inYaw;
-    gEdges = edges.filter(e => !inLoggia(e.cell));
+    gEdges = edges.filter(e => !inLoggia(e.cell) || e.out[0] !== 0); // the loggia's ends stay walled; its front is open
     for (const [, c] of cells) if (inLoggia(c)) gEdges.push({ x: c[0], z: zFront + 2, yaw: 0, out: [0, -1], cell: [c[0], rowZ + 2], inYaw });
   }
 
@@ -6030,7 +6035,7 @@ function generate(req) {
   if (wantOut && ['gable', 'hip'].includes(roofKind) && !flat && F < 1.01 && !T.tower && !C.stoneWalls) outshut(b, K, C, wings, edges, F, SH, dctx.R, decor);
   // a stone chimney stack against a gable end, from the ground to past the ridge (bench: req.details.stack)
   const wantStack = dctx.profile.stack != null ? dctx.profile.stack
-    : stoneOK && stage !== 's1' && ['home', 'longhouse', 'tavern', 'smithy', 'temple'].includes(type) && dctx.R() < 0.35;
+    : stoneOK && stage !== 's1' && ['home', 'longhouse', 'tavern', 'smithy', 'temple'].includes(type) && dctx.R() < 0.6;
   if (wantStack && roofKind === 'gable' && plan !== 'gables' && !flat && !T.tower) chimneyStack(b, K, wings, edges, dctx.profile, dctx.R);
   Details.exterior(b, dctx);
   clearDoorways(b);
@@ -6216,7 +6221,9 @@ function chimney(b, ctx, v) {
   for (let x = r.x0 + 1; x < r.x1; x += 2) { sides.push([x, r.z0, 0]); sides.push([x, r.z1, 0]); }
   for (let z = r.z0 + 1; z < r.z1; z += 2) { sides.push([r.x0, z, 90]); sides.push([r.x1, z, 90]); }
   const yBox = v.kind === 'ridge' ? yRoof - 0.9 : yTop; // the shaft's sides end under the ridge, inside the roof
-  if (!louver) for (let y = v.from; y < yBox - 0.01; y += course) for (const [x, z, yaw] of sides) b.put(piece, x, y + course / 2, z, yaw);
+  // (a side where a wall already stands, a tower's stone beside a flat-roof chimney, is that wall)
+  const walled = (x, z, y) => b.pieces.some(p => !p.decor && P.piece(p.name).role === 'wall' && Math.abs(p.x - x) < 0.3 && Math.abs(p.z - z) < 0.3 && Math.abs(p.y - y) < 0.9);
+  if (!louver) for (let y = v.from; y < yBox - 0.01; y += course) for (const [x, z, yaw] of sides) if (!walled(x, z, y + course / 2)) b.put(piece, x, y + course / 2, z, yaw);
   if (!stone) {
     // the cap: short posts at the corners, the ridge caps (or flat roof caps) half a metre over the box
     const cap = v.caps ? v.caps : null;

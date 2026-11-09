@@ -1030,6 +1030,339 @@ if (typeof module !== 'undefined') module.exports = api;
 else window.VHStyles = api;
 
 })();
+// ---- persona.js
+(function () {
+// Households (D-068): the broad preferences of whoever lives in a building, drawn once per design from a random stream
+// of its own, so the rest of the design comes out of its own streams as before. The decorator, the interior library,
+// the yards and the item stands read their weights from it, so two houses of the same request and size differ the
+// way two families do: one tidy and plain, one busy with half-done projects, one with drapes, one with pots on the
+// sill. Traits lean by culture and building type; nothing is fixed by them.
+//
+// A request may name a household (req.persona): a preset name ('neat', 'messy', 'cosy', 'plants', ...), a list of
+// them ('neat,plants'), or an object of traits that override the drawn ones.
+const NODE_P = typeof module !== 'undefined';
+
+function rngP(seed) {
+  let s = (seed >>> 0) || 1;
+  return () => { s ^= s << 13; s >>>= 0; s ^= s >> 17; s ^= s << 5; s >>>= 0; return s / 4294967296; };
+}
+function hashP(str) {
+  let h = 2166136261;
+  for (let i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 16777619) >>> 0; }
+  return h >>> 0;
+}
+const clamp = (v, a = 0, b = 1) => Math.max(a, Math.min(b, v));
+const BIOMES_P = ['Meadows', 'Black Forest', 'Swamp', 'Mountain', 'Plains', 'Mistlands', 'Ashlands'];
+const tierP = b => Math.max(0, BIOMES_P.indexOf(b));
+function pickWP(R, w) {
+  const e = Object.entries(w).filter(([, v]) => v > 0), t = e.reduce((s, [, v]) => s + v, 0);
+  let x = R() * t;
+  for (const [k, v] of e) if ((x -= v) <= 0) return k;
+  return e.length ? e[e.length - 1][0] : null;
+}
+
+// Households are broad preferences, never a trade (Tyler, 2026-11-09): the villager who lives in a house is chosen in
+// the game and can change, so nothing here says "hunter" or "cook". The traits:
+//   tidy      how organized the space is: 1 is bed made and chairs pushed in, 0 things left where they were used
+//   busy      how actively the space is used: half-done projects, things in use lying about
+//   comfort   comfort against austerity: rugs, pelts, a couch, cushioned seats
+//   wealth    showing wealth and status against keeping modest
+//   size      people in the household: 1 alone, 2 a couple, 3 to 6 a family with children
+//   hobby     broad interests shown by what lies about: crafts (making things), collect (collecting and display),
+//             plants (growing things), games (games and music), maps (maps and charts), food (food and drink)
+//   likes     decor taste: drapes, sill (pots and plants on the sill), rugs (rugs and pelts), banners (banners and
+//             color), shelves, lights, hung (things hung up on show); a plain household has them all low
+//   yard      'garden' (a tended garden and paths), 'work' (materials and work leftovers), 'plain'
+// Role props (a resident's own tools or shield) are left to the game: lib/kitbash.js marks the slots where they could
+// go (design.slots) and fills none of them.
+const HOBBIES = ['crafts', 'collect', 'plants', 'games', 'maps', 'food'];
+// Culture odds (docs/CULTURE_STYLES.md): shifts of tidiness, comfort and wealth, a factor on each hobby's odds, a
+// factor on each like, and the odds of each kind of yard.
+const CULTURE_P = {
+  'norse': { hobby: { collect: 1.3, food: 1.3 }, likes: { banners: 1.2, hung: 1.3, rugs: 1.1 }, yard: { garden: 1, work: 1.4, plain: 1 } },
+  'norse-forest': { tidy: -0.05, hobby: { crafts: 1.5 }, likes: { rugs: 1.3, hung: 1.2 }, yard: { garden: 0.7, work: 2, plain: 0.8 } },
+  'norse-highland': { comfort: 0.05, hobby: { crafts: 1.2 }, likes: { rugs: 1.4 }, yard: { garden: 1, work: 1.3, plain: 1 } },
+  'anglo-saxon': { tidy: 0.05, hobby: { plants: 1.6, food: 1.3 }, likes: { sill: 1.5, drapes: 0.8 }, yard: { garden: 2.2, work: 0.8, plain: 0.6 } },
+  'frankish-norman': { tidy: 0.1, wealth: 0.1, hobby: { plants: 1.3, maps: 1.3 }, likes: { drapes: 1.6, banners: 1.3 }, yard: { garden: 2, work: 0.8, plain: 0.8 } },
+  'celtic': { tidy: -0.05, hobby: { plants: 1.4, games: 1.3 }, likes: { sill: 1.4, rugs: 1.2 }, yard: { garden: 1.6, work: 1.2, plain: 0.6 } },
+  'celtic-crannog': { tidy: -0.1, hobby: { crafts: 1.3 }, likes: { sill: 1.2 }, yard: { garden: 0.6, work: 1.4, plain: 1.4 } },
+  'slavic': { hobby: { plants: 1.4, crafts: 1.3, food: 1.2 }, likes: { drapes: 1.2, shelves: 1.3, sill: 1.3 }, yard: { garden: 1.6, work: 1.4, plain: 0.6 } },
+  'baltic': { hobby: { crafts: 1.4 }, likes: { shelves: 1.3 }, yard: { garden: 1.2, work: 1.5, plain: 0.8 } },
+  'fen-folk': { tidy: -0.15, wealth: -0.1, hobby: { crafts: 1.3 }, likes: { hung: 1.3, rugs: 1.2 }, yard: { garden: 0.7, work: 1.6, plain: 1 } },
+  'saami': { tidy: -0.05, wealth: -0.1, comfort: 0.1, hobby: { crafts: 1.5 }, likes: { rugs: 1.9, drapes: 0.4 }, yard: { garden: 0.3, work: 1.6, plain: 1.4 } },
+  'byzantine': { tidy: 0.15, wealth: 0.2, comfort: 0.1, hobby: { collect: 1.3, maps: 1.5 }, likes: { drapes: 1.5, banners: 1.4, lights: 1.3 }, yard: { garden: 1.8, work: 0.6, plain: 1 } },
+  'steppe': { tidy: -0.05, comfort: 0.1, hobby: { collect: 1.3, games: 1.3 }, likes: { rugs: 2, drapes: 0.4 }, yard: { garden: 0.4, work: 1.4, plain: 1.6 } },
+  'lamari': { hobby: { collect: 1.4 }, likes: { hung: 1.4, rugs: 1.3 }, yard: { garden: 1, work: 1.4, plain: 1 } },
+  'middle-eastern': { tidy: 0.1, wealth: 0.1, comfort: 0.15, hobby: { food: 1.4, games: 1.3 }, likes: { rugs: 2, drapes: 1.3, lights: 1.2 }, yard: { garden: 1.6, work: 0.8, plain: 1 } },
+  'east-asian': { tidy: 0.2, hobby: { plants: 1.6, games: 1.4 }, likes: { sill: 1.4, rugs: 1.3, banners: 0.7 }, yard: { garden: 2, work: 0.6, plain: 1 } },
+  'castle-medieval': { tidy: 0.1, wealth: 0.15, hobby: { collect: 1.6, maps: 1.3 }, likes: { banners: 1.8, hung: 1.3, drapes: 1.3 }, yard: { garden: 1.4, work: 1, plain: 1 } },
+  'dwarven': { tidy: 0.05, wealth: 0.15, hobby: { crafts: 1.8, collect: 1.3 }, likes: { lights: 1.6, shelves: 1.5 }, yard: { garden: 0.4, work: 1.8, plain: 1 } },
+  'swamp': { tidy: -0.1, yard: { garden: 0.6, work: 1.4, plain: 1.2 } },
+};
+// Building types shift a few traits (a temple is kept, a tavern busy); work buildings keep their own stations and
+// props from the decorator, whatever the household is like.
+const TYPE_P = { longhouse: { wealth: 0.2 }, temple: { wealth: 0.15, tidy: 0.2 }, tavern: { wealth: 0.1, busy: 0.2 }, storage: { busy: 0.1 },
+  barn: { wealth: -0.1, tidy: -0.1 }, farm: { busy: 0.15 }, smithy: { busy: 0.2, tidy: -0.1 }, workshop: { busy: 0.2, tidy: -0.1 }, sawmill: { busy: 0.2 }, dock: { busy: 0.1 } };
+
+// Presets for requests and the bench: each sets some traits.
+const PRESETS = {
+  neat: { tidy: 0.92, busy: 0.25 }, tidy: { tidy: 0.92 }, orderly: { tidy: 0.92, busy: 0.2 }, messy: { tidy: 0.08, busy: 0.8 }, cluttered: { tidy: 0.12, busy: 0.6 },
+  busy: { busy: 0.92 }, projects: { busy: 0.92, tidy: 0.2, hobby: { crafts: 0.9 } },
+  wealthy: { wealth: 0.9, comfort: 0.75 }, rich: { wealth: 0.9 }, poor: { wealth: 0.1, comfort: 0.25 }, modest: { wealth: 0.3 },
+  cosy: { comfort: 0.9 }, comfort: { comfort: 0.9 }, austere: { comfort: 0.1, likes: { rugs: 0.35, banners: 0.4, drapes: 0.4 } },
+  plain: { likes: { banners: 0.35, shelves: 0.45, hung: 0.35, drapes: 0.4, sill: 0.4, rugs: 0.5 } }, bare: { tidy: 0.95, busy: 0.1, likes: { banners: 0.35, shelves: 0.45, hung: 0.35 } },
+  alone: { size: 1 }, single: { size: 1 }, couple: { size: 2 }, family: { size: 5 },
+  crafts: { hobby: { crafts: 0.95 } }, collector: { hobby: { collect: 0.95 } }, collect: { hobby: { collect: 0.95 } }, plants: { hobby: { plants: 0.95 }, likes: { sill: 1.8, drapes: 0.4 } },
+  games: { hobby: { games: 0.95 } }, music: { hobby: { games: 0.95 } }, maps: { hobby: { maps: 0.95 } }, books: { hobby: { maps: 0.95 } }, food: { hobby: { food: 0.95 } },
+  drapes: { likes: { drapes: 1.8, sill: 0.3 } }, sill: { likes: { sill: 1.8, drapes: 0.3 } },
+  banners: { likes: { banners: 1.8 } }, color: { likes: { banners: 1.8 } }, rugs: { likes: { rugs: 1.8 } }, pelts: { likes: { rugs: 1.8 } },
+  garden: { yard: 'garden', hobby: { plants: 0.85 } }, workyard: { yard: 'work' }, plainyard: { yard: 'plain' },
+};
+
+/**
+ * The household of a design. o: { type, biome, culture (key), seed, persona (request override) }.
+ * Traits are 0 to 1; likes are factors round 1 (0.25 to 2.2).
+ */
+function persona(o) {
+  const type = o.type || 'home', biome = o.biome || 'Meadows', culture = o.culture || 'norse';
+  const R = rngP(hashP(`${type}|${biome}|${culture}`) ^ Math.imul((o.seed || 1) >>> 0, 2654435761));
+  const C = CULTURE_P[culture] || {}, T = TYPE_P[type] || {};
+  let over = {};
+  if (typeof o.persona === 'string') for (const w of o.persona.split(/[ ,+]+/)) over = merge(over, PRESETS[w.toLowerCase()] || {});
+  else if (o.persona && typeof o.persona === 'object') over = o.persona;
+  const avg2 = () => (R() + R()) / 2;
+  // the draws come in a fixed order whatever is overridden, so one trait asked for leaves the others as drawn
+  const P = {
+    tidy: clamp(avg2() + (C.tidy || 0) + (T.tidy || 0)),
+    busy: clamp(avg2() + (T.busy || 0)),
+    comfort: clamp(avg2() + (C.comfort || 0)),
+    wealth: clamp(avg2() + (C.wealth || 0) + (T.wealth || 0) + tierP(biome) * 0.02),
+    size: type === 'home' ? 1 + Math.floor(R() * 6) : 2 + Math.floor(R() * 5),
+  };
+  // one or two hobbies stand out; the others stay low
+  const hw = Object.fromEntries(HOBBIES.map(h => [h, (C.hobby || {})[h] || 1]));
+  const main = pickWP(R, hw), second = R() < 0.55 ? pickWP(R, hw) : null;
+  P.hobby = Object.fromEntries(HOBBIES.map(h => [h, +clamp(h === main ? 0.65 + R() * 0.35 : h === second ? 0.4 + R() * 0.35 : R() * 0.3).toFixed(2)]));
+  const like = () => 0.5 + R();
+  const sillFirst = R() < 0.5 + (P.hobby.plants - 0.3) * 0.5;
+  const plainHouse = R() < 0.18;
+  const L = C.likes || {};
+  P.likes = {
+    drapes: (sillFirst ? 0.4 : 1.3) * like() * (L.drapes || 1),
+    sill: (sillFirst ? 1.3 : 0.4) * like() * (L.sill || 1),
+    rugs: like() * (L.rugs || 1) * (0.7 + P.comfort * 0.6),
+    banners: like() * (L.banners || 1),
+    shelves: like() * (L.shelves || 1),
+    lights: like() * (L.lights || 1),
+    hung: like() * (L.hung || 1) * (0.7 + P.hobby.collect * 0.6),
+  };
+  for (const k of Object.keys(P.likes)) P.likes[k] = +clamp(P.likes[k] * (plainHouse ? 0.45 : 1), 0.25, 2.2).toFixed(2);
+  P.yard = pickWP(R, { garden: (C.yard || {}).garden || 1, work: ((C.yard || {}).work || 1) * (0.6 + P.busy * 0.8), plain: ((C.yard || {}).plain || 1) * (0.5 + P.tidy * 0.5) });
+  // the override wins
+  for (const [k, v] of Object.entries(over)) if (!['likes', 'hobby'].includes(k)) P[k] = v;
+  if (over.hobby) Object.assign(P.hobby, over.hobby);
+  if (over.likes) Object.assign(P.likes, over.likes);
+  if (over.hobby && over.hobby.plants > 0.8 && !over.yard) P.yard = 'garden';
+  for (const k of ['tidy', 'busy', 'comfort', 'wealth']) P[k] = +clamp(P[k]).toFixed(2);
+  P.clutter = +clamp(0.65 * (1 - P.tidy) + 0.35 * P.busy).toFixed(2);
+  P.household = P.size <= 1 ? 'alone' : P.size === 2 ? 'couple' : 'family';
+  P.plain = plainHouse;
+  P.label = label(P);
+  // a stream for the parts that read the household after the design is built (item stands, jitter): by place, so the
+  // same stand gets the same item at every decor stage
+  P.salt = hashP(`${o.seed || 1}|${type}|${culture}|${biome}`);
+  return P;
+}
+function merge(a, b) {
+  const o = { ...a, ...b };
+  if (a.likes || b.likes) o.likes = { ...(a.likes || {}), ...(b.likes || {}) };
+  if (a.hobby || b.hobby) o.hobby = { ...(a.hobby || {}), ...(b.hobby || {}) };
+  return o;
+}
+function label(P) {
+  const t = P.tidy > 0.66 ? 'tidy' : P.tidy < 0.36 ? 'messy' : 'lived-in';
+  const w = P.wealth > 0.68 ? 'well-off' : P.wealth < 0.3 ? 'modest' : '';
+  const c = P.comfort > 0.7 ? 'cosy' : P.comfort < 0.28 ? 'austere' : '';
+  const h = HOBBIES.filter(k => P.hobby[k] >= 0.6).sort((a, b) => P.hobby[b] - P.hobby[a]).slice(0, 2);
+  const words = { crafts: 'crafts', collect: 'collects', plants: 'plants', games: 'games', maps: 'maps', food: 'food and drink' };
+  return [t, c, w, P.household].filter(Boolean).join(' ') + (h.length ? `, ${h.map(k => words[k]).join(' and ')}` : '') + `, ${P.yard} yard`;
+}
+
+// ---------------------------------------------------------------- weights the furnishing reads
+// A household's weight on each of the decorator's extras (decorate.js EXTRAS).
+function extraWeights(P) {
+  if (!P) return null;
+  const L = P.likes, H = P.hobby, c = 0.6 + P.clutter * 0.8;
+  return {
+    trophies: 0.3 + 1.6 * H.collect * L.hung, shelf: L.shelves * c, barrels: c, crates: c * (0.7 + P.busy * 0.6), chest: 0.7 + 0.5 * P.wealth,
+    armor: 0.3 + 0.9 * H.collect + 0.6 * P.wealth, fermenter: 0.6 + H.food, seating: 0.5 + P.size * 0.15 + H.games * 0.4, rug: L.rugs, banners: L.banners * (0.6 + P.wealth),
+    carving: 0.5 + P.wealth + H.collect * 0.4, torches: L.lights * (0.6 + 0.6 * P.wealth), tabletop: c * (0.6 + H.food * 0.6 + H.games * 0.3),
+    tools: 0.3 + 1.4 * H.crafts * L.hung, chart: 0.3 + 1.6 * H.maps, bench: 0.6 + P.size * 0.1, footBench: 0.8 + P.tidy * 0.4,
+    doorBench: 1, nook: 0.4 + P.comfort * 0.6 + H.maps * 0.4, groupRug: L.rugs, evenLights: L.lights, storeWall: 0.5 + P.busy + P.clutter * 0.3, ring: 1,
+  };
+}
+// How full the decorator fills a room: a cluttered, busy house a little past the corpus rate, a tidy one short of it.
+function fillShare(P) { return P ? 0.82 + 0.36 * P.clutter : 1; }
+
+// What a household hangs between the furniture on a plain wall: a weight per kind of wall dressing.
+function wallWeights(P, role) {
+  if (!P) return { ledge: 1, banner: 1 };
+  const L = P.likes, H = P.hobby, work = ['smithy', 'workshop'].includes(role);
+  return {
+    ledge: L.shelves * (0.7 + P.clutter * 0.6) * (role === 'temple' ? 0.3 : 1),
+    banner: L.banners * (0.5 + P.wealth) * (work ? 0.3 : 1) * (role === 'temple' || role === 'hall' ? 1.6 : 1),
+    trophy: (0.15 + 1.5 * H.collect) * L.hung * (work ? 0.4 : 1),
+    weapons: (0.1 + 0.7 * H.collect + 0.5 * P.wealth) * L.hung * (role === 'smithy' ? 2 : 1),
+    tools: (0.1 + 1.5 * H.crafts + 0.5 * H.plants) * L.hung * (work ? 2 : 0.7),
+    candles: (0.25 + P.comfort * 0.6 + L.lights * 0.3) * (role === 'temple' ? 2.5 : 1),
+  };
+}
+// How far apart the household hangs things on a wall (a base gap times this), and how often it leaves a spot bare.
+function wallGap(P) { return P ? (0.75 + 0.6 * P.tidy) * (P.plain ? 1.4 : 1) : 1; }
+function wallSkip(P) { return P ? 0.05 + 0.3 * P.tidy : 0; }
+// Torches: a well-off household lights its walls closer; a modest one makes do.
+function torchGap(P) { return P ? 4 * (1.35 - 0.5 * P.wealth) / Math.sqrt(P.likes.lights) : 4; }
+// Under the stairs: what a household keeps there.
+function underStair(P) {
+  if (!P) return { chest: 1 };
+  return { chest: 0.6 + P.wealth * 0.6 + P.tidy * 0.3, barrels: 0.5 + P.hobby.food + P.clutter * 0.4, crates: 0.3 + P.busy * 0.8 + P.clutter * 0.4,
+    stacked: 0.2 + P.clutter * 0.9, none: 0.15 + P.tidy * 0.7 };
+}
+// A factor on an interior library assembly by what it holds (lib/kitbash.js slots) and which built kit it is.
+function kitWeight(P, a) {
+  if (!P) return 1;
+  const L = P.likes, H = P.hobby;
+  let w = 1;
+  const ks = new Set(a.pieces.map(p => p.k));
+  if (ks.has('rug')) w *= 0.6 + 0.4 * L.rugs;
+  if (ks.has('banner')) w *= 0.5 + 0.5 * L.banners;
+  if (ks.has('food')) w *= 0.6 + 0.5 * P.clutter + 0.5 * H.food;
+  if (ks.has('candle')) w *= 0.7 + 0.4 * P.comfort;
+  if (ks.has('chest') || ks.has('barrel') || ks.has('crate')) w *= 0.6 + 0.5 * P.clutter + 0.3 * P.busy;
+  if (ks.has('pot')) w *= 0.6 + 0.6 * H.plants + 0.4 * H.food;
+  if (ks.has('itemstand') || ks.has('itemstandh')) w *= 0.6 + 0.8 * H.collect;
+  if (ks.has('walllight') || ks.has('floorlight')) w *= 0.6 + 0.4 * L.lights;
+  const id = a.id || '';
+  if (id === 'BK-drapes') w *= L.drapes;
+  if (id === 'BK-sill') w *= L.sill;
+  if (/BK-(shelf|wledge)/.test(id)) w *= L.shelves;
+  if (id === 'BK-living' || id === 'BK-couch') w *= 0.4 + P.comfort + P.size * 0.05;
+  if (id === 'BK-cabinet' || id === 'BK-drawers') w *= 0.6 + P.wealth * 0.5 + P.tidy * 0.4;
+  if (id === 'BK-bath') w *= 0.3 + P.wealth * 0.8 + P.comfort * 0.6;
+  if (/BK-(kitchen|island|feast)/.test(id)) w *= 0.6 + H.food;
+  if (/^BK-dining/.test(id)) w *= 0.7 + P.size * 0.08 + H.games * 0.3;
+  if (/BK-(project|clutter|corner)/.test(id)) w *= 0.3 + P.busy * 1.4;
+  return w;
+}
+// How many assemblies a room takes, as a factor on the library's budget.
+function kitBudget(P) { return P ? (0.75 + 0.5 * P.clutter + 0.15 * P.wealth) * (P.plain ? 0.75 : 1) : 1; }
+
+// ---------------------------------------------------------------- items on stands
+// Vanilla item prefabs by the biome a village first has them in. Wall stands (itemstand) take trophies, shields,
+// weapons and tools; horizontal stands (itemstandh) take drinks, food and small things (src/Villheim.Logic/Designs/
+// StandItems.cs leaves a stand empty when ItemStand.CanAttach refuses the item). Names checked against the corpus's
+// stands.
+const ITEMS = {
+  trophy: [['Meadows', 'TrophyDeer', 3], ['Meadows', 'TrophyBoar', 3], ['Meadows', 'TrophyNeck', 1], ['Black Forest', 'TrophyGreydwarf', 1],
+    ['Black Forest', 'TrophyGreydwarfBrute', 2], ['Black Forest', 'TrophyGreydwarfShaman', 1], ['Black Forest', 'TrophySkeleton', 1], ['Black Forest', 'TrophyFrostTroll', 2],
+    ['Swamp', 'TrophyDraugr', 2], ['Swamp', 'TrophyLeech', 1], ['Swamp', 'TrophyBlob', 1], ['Swamp', 'TrophyWraith', 1], ['Swamp', 'TrophyAbomination', 2], ['Swamp', 'TrophySurtling', 1],
+    ['Mountain', 'TrophyWolf', 3], ['Mountain', 'TrophyFenring', 2], ['Mountain', 'TrophyHatchling', 2], ['Mountain', 'TrophySGolem', 1],
+    ['Plains', 'TrophyLox', 3], ['Plains', 'TrophyDeathsquito', 2], ['Plains', 'TrophyGoblin', 2], ['Plains', 'TrophyGrowth', 1],
+    ['Mistlands', 'TrophySeeker', 2], ['Mistlands', 'TrophyTick', 1], ['Mistlands', 'TrophyHare', 2], ['Mistlands', 'TrophyGjall', 1],
+    ['Ashlands', 'TrophyAsksvin', 2], ['Ashlands', 'TrophyVolture', 2], ['Ashlands', 'TrophyCharredMelee', 1], ['Ashlands', 'TrophyMorgen', 1]],
+  boss: [['Meadows', 'TrophyEikthyr'], ['Black Forest', 'TrophyTheElder'], ['Swamp', 'TrophyBonemass'], ['Mountain', 'TrophyDragonQueen'],
+    ['Plains', 'TrophyGoblinKing'], ['Mistlands', 'TrophySeekerQueen'], ['Ashlands', 'TrophyFader']],
+  shield: [['Meadows', 'ShieldWood', 3], ['Meadows', 'ShieldWoodTower', 2], ['Black Forest', 'ShieldBronzeBuckler', 3], ['Black Forest', 'ShieldBoneTower', 1],
+    ['Swamp', 'ShieldBanded', 3], ['Swamp', 'ShieldIronBuckler', 2], ['Swamp', 'ShieldIronTower', 1], ['Mountain', 'ShieldSilver', 3], ['Mountain', 'ShieldSerpentscale', 1],
+    ['Plains', 'ShieldBlackmetal', 2], ['Plains', 'ShieldBlackmetalTower', 1], ['Mistlands', 'ShieldCarapace', 2], ['Mistlands', 'ShieldCarapaceBuckler', 1],
+    ['Ashlands', 'ShieldFlametal', 2], ['Ashlands', 'ShieldFlametalTower', 1]],
+  weapon: [['Meadows', 'AxeFlint', 2], ['Meadows', 'SpearFlint', 2], ['Meadows', 'Bow', 2], ['Meadows', 'Club', 1], ['Meadows', 'KnifeFlint', 1],
+    ['Black Forest', 'SwordBronze', 3], ['Black Forest', 'MaceBronze', 2], ['Black Forest', 'SpearBronze', 2], ['Black Forest', 'AtgeirBronze', 1], ['Black Forest', 'KnifeCopper', 1],
+    ['Swamp', 'SwordIron', 3], ['Swamp', 'MaceIron', 2], ['Swamp', 'Battleaxe', 1], ['Mountain', 'SwordSilver', 2], ['Mountain', 'BowHuntsman', 2], ['Mountain', 'SpearWolfFang', 1],
+    ['Plains', 'SwordBlackmetal', 2], ['Plains', 'AxeBlackMetal', 1], ['Plains', 'AtgeirBlackmetal', 1], ['Mistlands', 'SwordMistwalker', 1], ['Mistlands', 'KnifeChitin', 1]],
+  tool: [['Meadows', 'Hammer', 3], ['Meadows', 'AxeStone', 1], ['Meadows', 'PickaxeAntler', 2], ['Meadows', 'Hoe', 2], ['Black Forest', 'AxeBronze', 2], ['Black Forest', 'PickaxeBronze', 2],
+    ['Black Forest', 'Cultivator', 2], ['Swamp', 'AxeIron', 2], ['Swamp', 'PickaxeIron', 2], ['Plains', 'PickaxeBlackMetal', 1], ['Mistlands', 'AxeJotunBane', 1]],
+  farm: [['Meadows', 'Hoe', 3], ['Black Forest', 'Cultivator', 3], ['Meadows', 'AxeStone', 1]],
+  drink: [['Meadows', 'Tankard', 4], ['Black Forest', 'MeadTasty', 2], ['Black Forest', 'MeadHealthMinor', 1], ['Black Forest', 'MeadStaminaMinor', 1], ['Swamp', 'MeadPoisonResist', 1],
+    ['Mountain', 'MeadFrostResist', 1], ['Plains', 'BarleyWine', 2], ['Plains', 'MeadHealthMedium', 1], ['Mistlands', 'Tankard_dvergr', 2]],
+  food: [['Meadows', 'Raspberry', 2], ['Meadows', 'CookedMeat', 2], ['Meadows', 'Honey', 1], ['Meadows', 'Mushroom', 1], ['Black Forest', 'Blueberries', 2], ['Black Forest', 'QueensJam', 2],
+    ['Black Forest', 'MushroomYellow', 1], ['Black Forest', 'Carrot', 1], ['Swamp', 'Turnip', 1], ['Swamp', 'Sausages', 1], ['Mountain', 'Onion', 1], ['Plains', 'Cloudberry', 1], ['Plains', 'Bread', 2],
+    ['Plains', 'LoxPie', 1], ['Mistlands', 'MushroomMagecap', 1]],
+  herbs: [['Meadows', 'Mushroom', 2], ['Meadows', 'Dandelion', 2], ['Black Forest', 'MushroomYellow', 2], ['Mountain', 'Onion', 1], ['Mistlands', 'MushroomJotunPuffs', 1]],
+  valuable: [['Black Forest', 'Ruby', 1], ['Black Forest', 'Amber', 1], ['Swamp', 'AmberPearl', 1], ['Mistlands', 'DragonEgg', 0]],
+};
+function itemFrom(kind, biome, R, own = 2, seen) {
+  const t = tierP(biome);
+  const list = (ITEMS[kind] || []).filter(([b]) => tierP(b) <= t);
+  if (!list.length) return null;
+  // the village's own biome counts more; older ones still turn up
+  // what the house already shows weighs less, so a wall of stands is not five of one thing
+  const got = pickWP(R, Object.fromEntries(list.map(([b, n, w]) => [n, (w == null ? 1 : w) * (tierP(b) === t ? own : 1) / (1 + 2 * ((seen && seen[n]) || 0))])));
+  if (seen && got) seen[got] = (seen[got] || 0) + 1;
+  return got;
+}
+// What a stand holds, from the household's hobbies and the room: kind 'wall' or 'top'; want is what its kit asked for.
+// Nothing here follows a trade: a work building's stands hold its own work (the smithy's tools and weapons), a home's
+// what its household collects, makes, grows and eats.
+function standItem(P, kind, o, R) {
+  const biome = o.biome || 'Meadows', role = o.role || 'home', want = o.want, seen = o.seen;
+  const H = P ? P.hobby : { crafts: 0.3, collect: 0.3, plants: 0.3, food: 0.3 };
+  if (want === 'tool' && R() < H.plants / (H.plants + H.crafts + 0.2)) return itemFrom('farm', biome, R, 2, seen);
+  if (want && ITEMS[want]) return itemFrom(want, biome, R, 2, seen);
+  if (kind === 'wall') {
+    const w = role === 'smithy' ? { tool: 2, weapon: 2.5, shield: 1.5 }
+      : role === 'workshop' || role === 'storage' ? { tool: 3, farm: 0.6 + H.plants }
+        : role === 'temple' ? { shield: 1, trophy: 1.5 }
+          : role === 'tavern' ? { trophy: 2, shield: 1 }
+            : { trophy: 0.4 + 2 * H.collect, shield: 0.3 + 0.8 * H.collect + (P ? P.wealth * 0.4 : 0), weapon: 0.2 + 0.6 * H.collect,
+              tool: 0.2 + 1.4 * H.crafts, farm: 0.2 + H.plants };
+    // a well-off collector may keep one great trophy
+    if (P && H.collect > 0.6 && P.wealth > 0.6 && seen && !seen.boss && R() < 0.3) { seen.boss = 1; return itemFrom('boss', biome, R, 3, seen); }
+    return itemFrom(pickWP(R, w), biome, R, 2, seen);
+  }
+  const w = role === 'tavern' || role === 'guest' ? { drink: 4, food: 1.5 }
+    : { drink: 1 + H.food, food: 1 + H.food * 1.5 + (P ? P.clutter * 0.5 : 0.3), herbs: 0.2 + H.plants * 1.5,
+      valuable: P ? Math.max(0, P.wealth - 0.5) * 1.5 + H.collect * 0.3 : 0, trophy: H.collect * 0.6 };
+  return itemFrom(pickWP(R, w), biome, R, 2, seen);
+}
+// The room a point lies in (a design's room rectangles) and its role, roughly: the main floor by the building's use,
+// upper floors sleeping or storage, as the decorator reads them.
+function roleAt(b, p, type, use) {
+  const rooms = b.rooms || [];
+  const r = rooms.find(q => p.x > q.x0 - 0.3 && p.x < q.x1 + 0.3 && p.z > q.z0 - 0.3 && p.z < q.z1 + 0.3 && p.y > q.y - 0.5 && p.y < q.y + 3.2);
+  const upper = r ? r.upper || r.y > 1.6 : p.y > 2.5;
+  if (upper) return use === 'home' || use === 'hall' ? (type === 'tavern' ? 'guest' : 'sleeping') : 'storage';
+  return { home: 'home', hall: type === 'tavern' ? 'tavern' : type === 'temple' ? 'temple' : 'hall', smithy: 'smithy', workshop: 'workshop', storage: 'storage', farm: 'storage', guard: 'home', temple: 'temple' }[use] || 'home';
+}
+/**
+ * Puts an item on every item stand of a design (p.item, written to the blueprint's info field) by the household and
+ * the room, or takes the stand out when nothing fits. Each stand draws from a stream seeded by its place, so the same
+ * stand holds the same item at every decor stage. Returns how many stands got an item.
+ */
+function dressStands(b, ctx) {
+  const P = ctx.persona;
+  let n = 0;
+  const out = new Set(), seen = {};
+  // in a fixed order (by place), so the same stands draw the same items whatever else the design holds
+  const stands = b.pieces.filter(p => /^itemstandh?$/.test(p.name) && !p.item).sort((a, c) => a.x - c.x || a.z - c.z || a.y - c.y);
+  for (const p of stands) {
+    const R = rngP(((P ? P.salt : 7) ^ Math.imul(Math.round(p.x * 20) + 4096, 73856093) ^ Math.imul(Math.round(p.y * 20) + 4096, 19349663) ^ Math.imul(Math.round(p.z * 20) + 4096, 83492791)) >>> 0);
+    R(); R();
+    const name = standItem(P, p.name === 'itemstand' ? 'wall' : 'top', { biome: ctx.biome, role: roleAt(b, p, ctx.type, ctx.use), want: p.want, seen }, R);
+    if (!name) { out.add(p); continue; }
+    p.item = { name, variant: 0, quality: 1 };
+    delete p.want;
+    n++;
+  }
+  if (out.size) b.pieces = b.pieces.filter(p => !out.has(p));
+  return n;
+}
+
+const apiPer = { persona, PRESETS, CULTURE_P, HOBBIES, ITEMS, extraWeights, fillShare, wallWeights, wallGap, wallSkip, torchGap, underStair, kitWeight, kitBudget,
+  standItem, itemFrom, dressStands, roleAt, rng: rngP, hash: hashP, pickW: pickWP };
+if (NODE_P) module.exports = apiPer; else window.VHPersona = apiPer;
+
+})();
 // ---- render.js
 (function () {
 // Draws a blueprint from any angle with no game needed: each piece from its low-poly model (data/piece-models.json,
@@ -2468,6 +2801,7 @@ if (NODE_F) module.exports = { features, score, NAMES }; else window.VHFeatures 
 const NODE_D = typeof module !== 'undefined';
 const P = NODE_D ? require('./pieces.js') : window.VHPieces;
 const SHD = NODE_D ? require('./shapes.js') : window.VHShapes;
+const PERS = () => (NODE_D ? require('./persona.js') : window.VHPersona);
 let RULES = null, LEARN = null;
 function setRules(r) { RULES = r; }
 function setInterior(d) { LEARN = d; }
@@ -3913,7 +4247,9 @@ function fill(room, role, c) {
   const tune = ((learned().tuning || {}).density || {})[role] || 1;
   let dens = density(LEARN_KIND[role] || 'home', c.decor) * tune;
   if (role === 'storage' || role === 'farm') dens = Math.min(dens, 4.5); // small store rooms set the corpus rate
-  const target = Math.round(room.area / 10 * dens * (c.fillShare || 1));
+  // the household (lib/persona.js): a cluttered house fills a little past the corpus rate, a neat one stops short
+  const share = (c.fillShare || 1) * (c.persona && PERS() ? PERS().fillShare(c.persona) : 1);
+  const target = Math.round(room.area / 10 * dens * share);
   if (c.fillOnly && room.count >= target * c.fillOnly / (c.fillShare || 1)) return;
   const floorUsed = () => room.placed.reduce((a, q) => a + (q.rug || q.mount || q.onTable || q.onFire ? 0 : q.b.hw * q.b.hd * 4), 0);
   const barrel = ok('dvergrprops_barrel', biome) && room.R() < 0.4 ? 'dvergrprops_barrel' : ok('piece_chest_barrel', biome) ? 'piece_chest_barrel' : null;
@@ -3950,7 +4286,7 @@ function fill(room, role, c) {
       let n = 0;
       for (const t of room.placed.filter(q => (F[q.name] || {}).cat === 'table' && !q.topped)) {
         t.topped = true;
-        n += placeOnTable(room, t, [ok('treasure_stack', biome) && room.R() < 0.3 ? 'treasure_stack' : 'itemstandh', ok('Candle_resin', biome) ? 'Candle_resin' : 'itemstandh']);
+        n += placeOnTable(room, t, [ok('treasure_stack', biome) && room.R() < 0.3 ? 'itemstandh' : 'itemstandh', ok('Candle_resin', biome) ? 'Candle_resin' : 'itemstandh']);
         if (n) break;
       }
       return n;
@@ -3977,7 +4313,8 @@ function fill(room, role, c) {
     footBench: 2, doorBench: 1, nook: 1, ring: 1, storeWall: 1, groupRug: 2, evenLights: 2 };
   const used = {};
   const rugs = () => room.placed.filter(q => q.rug).length;
-  const live = Object.entries(extras).filter(([kk]) => run[kk]);
+  const pw = c.persona && PERS() ? PERS().extraWeights(c.persona) : null;
+  const live = Object.entries(extras).filter(([kk]) => run[kk]).map(([kk, w]) => [kk, w * (pw && pw[kk] != null ? pw[kk] : 1)]);
   for (let tries = 0; tries < 40 && live.length && room.count < target; tries++) {
     const key = pickW(room.R, live);
     const floor = !['trophies', 'shelf', 'banners', 'carving', 'tabletop', 'rug', 'groupRug'].includes(key);
@@ -6446,6 +6783,7 @@ if (NODE_D) module.exports = apiD; else window.VHDetails = apiD;
 const NODE_B = typeof module !== 'undefined';
 const PB = NODE_B ? require('./pieces.js') : window.VHPieces;
 const checksB = () => (NODE_B ? require('./checks.js') : window.VHChecks);
+const personaB = () => (NODE_B ? require('./persona.js') : window.VHPersona);
 const quatB = yaw => { const a = yaw * Math.PI / 360; return [0, +Math.sin(a).toFixed(6), 0, +Math.cos(a).toFixed(6)]; };
 const BIOMES_B = ['Meadows', 'Black Forest', 'Swamp', 'Mountain', 'Plains', 'Mistlands', 'Ashlands'];
 const can = (biome, name) => BIOMES_B.indexOf(PB.needs(name)) <= BIOMES_B.indexOf(biome);
@@ -6700,15 +7038,17 @@ function vignettes(b, ctx, zones) {
   const Ck = checksB();
   const edges = b.outer || [];
   const open = new Set((b.openings || []).map(o => `${o.e.x},${o.e.z},${Math.round(o.y0 * 10)}`));
-  let placed = 0, k = 0;
-  const kinds = [];
-  if (can(ctx.biome, 'piece_walltorch')) kinds.push('bench');
-  if (can(ctx.biome, 'piece_chest_barrel')) kinds.push('store');
-  if (can(ctx.biome, 'ArmorStand') && ['home', 'longhouse', 'tavern', 'temple'].includes(ctx.type)) kinds.push('armor');
-  if (!kinds.length) return 0;
+  let placed = 0;
+  // which corner a household dresses, by its traits (lib/persona.js): a bench under a torch, storage, an armor stand
+  const P = ctx.persona, RV = rngB(((P ? P.salt : 1) ^ 0x7167) >>> 0);
+  const kw = {};
+  if (can(ctx.biome, 'piece_walltorch')) kw.bench = P ? 0.5 + P.size * 0.12 + P.likes.lights * 0.2 : 1;
+  if (can(ctx.biome, 'piece_chest_barrel')) kw.store = P ? 0.3 + P.clutter + P.busy * 0.5 : 1;
+  if (can(ctx.biome, 'ArmorStand') && ['home', 'longhouse', 'tavern', 'temple'].includes(ctx.type)) kw.armor = P ? 0.15 + 0.9 * P.hobby.collect + 0.5 * P.wealth : 1;
+  if (!Object.keys(kw).length) return 0;
   for (const room of (b.rooms || []).filter(r => !r.upper)) {
     const mine = edges.filter(e => e.cell[0] > room.x0 && e.cell[0] < room.x1 && e.cell[1] > room.z0 && e.cell[1] < room.z1);
-    const budget = Math.floor(mine.length / 3);
+    const budget = Math.floor(mine.length / 3 * (P ? 0.45 + 0.55 * P.clutter : 1));
     let used = 0;
     for (const e of mine) {
       if (used >= budget) break;
@@ -6729,7 +7069,7 @@ function vignettes(b, ctx, zones) {
       if (!fl) continue;
       const top = Ck.aabb(fl).y1, T = { decor: true };
       const at = (d, t = 0) => [+(e.x + nx * (half + d) + ux * t).toFixed(3), +(e.z + nz * (half + d) + uz * t).toFixed(3)];
-      const kind = kinds[(k++) % kinds.length], yaw = e.inYaw;
+      const kind = personaB().pickW(RV, kw), yaw = e.inYaw;
       if (kind === 'bench') {
         const [x, z] = at(0.4); b.put('piece_bench01', x, top, z, yaw, T);
         const [tx, tz] = at(0.28); b.put('piece_walltorch', tx, top + 1.55, tz, (Math.atan2(nx, nz) * 180 / Math.PI + 270 + 360) % 360, { decor: true });
@@ -6781,9 +7121,9 @@ const ROOM_KINDS = {
   temple: ['temple', 'hall'], smithy: ['smithy', 'workshop'], workshop: ['workshop', 'smithy'], storage: ['storage'], farm: ['storage', 'barn'],
   market: ['tavern', 'storage'], guard: ['home'], lookout: [], kitchen: ['kitchen', 'tavern', 'home'],
 };
-// slots the fitter leaves out: stands that would stand empty until the mod can put an item on them (BLUEPRINT_LAB.md,
-// "Items on stands"), seasonal pieces, goblin and ruin pieces, woodpiles (they go outside)
-const SKIP_N = /^(itemstand|itemstandh|piece_xmas|piece_gift|piece_mistletoe|piece_jackoturnip|piece_(Celebration|Fairylight)Garland|goblin|Morkhalla|piece_asksvinskeleton|lox_ribs|piece_barber|piece_icecube|Skull|ancient_skull|wood_(fine_|core_)?stack|treasure_pile|Pickable|TreasureChest|loot_chest|piece_chest_private|piece_chest_treasure)/;
+// slots the fitter leaves out: seasonal pieces, goblin and ruin pieces, woodpiles (they go outside). Item stands go in:
+// lib/persona.js puts an item on each by the household and the room (BLUEPRINT_LAB.md, "Items on stands").
+const SKIP_N = /^(piece_xmas|piece_gift|piece_mistletoe|piece_jackoturnip|piece_(Celebration|Fairylight)Garland|goblin|Morkhalla|piece_asksvinskeleton|lox_ribs|piece_barber|piece_icecube|Skull|ancient_skull|wood_(fine_|core_)?stack|treasure_pile|treasure_stack|Pickable|TreasureChest|loot_chest|piece_chest_private|piece_chest_treasure)/;
 // a 1 x 1 floor counts as a floor to stand on in the checks; shelves use beams
 const NO_BUILT = ['floor1'];
 
@@ -7002,6 +7342,7 @@ function fit(b, ctx, room, idx, zones, anc, a, mirror, fires) {
     const cell = m.cellAt(x, z);
     const stand = cell ? cell.st : m.stand;
     const p = { name, x: +x.toFixed(3), y: +(stand + Math.max(mm.y, -(mm.sink || 0))).toFixed(3), z: +z.toFixed(3), q: quatB(yaw), yaw, decor: true, kb, rest: mm.rest };
+    if (mm.want) p.want = mm.want; // what an item stand should hold (lib/persona.js)
     if (BUILT_SLOTS.includes(mm.k)) p.trim = true;
     let bx = Ck.aabbShapes(p);
     // set the piece on what it rests on, so a substitute of another height sits right
@@ -7189,9 +7530,19 @@ function budget(decor, area) {
   return Math.max(2, Math.min(8, Math.round(area / 12)));
 }
 
+// What a household keeps under its stairs (lib/persona.js underStair): one choice per building, from the household's
+// own stream; 'none' leaves the space open.
+const UNDER = { chest: 'BK-understair', barrels: 'BK-understair2', crates: 'BK-understair3', stacked: 'BK-understair4' };
+function underChoice(P) {
+  if (!P) return 'chest';
+  return personaB().pickW(rngB((P.salt ^ 0x5717) >>> 0), personaB().underStair(P));
+}
+
 function furnishRooms(b, ctx, zones, R2, extra, rooms) {
   const Ck = checksB();
-  const lib = library().assemblies.concat(extra || []);
+  const P = ctx.persona, PS = personaB();
+  const under = underChoice(P);
+  const lib = library().assemblies.concat(extra || []).filter(a => !/^BK-understair/.test(a.id) || a.id === UNDER[under]);
   const idx = boxIndex(b.pieces);
   let placed = 0;
   const used = {};
@@ -7217,15 +7568,17 @@ function furnishRooms(b, ctx, zones, R2, extra, rooms) {
         // more kinds of piece weigh more; a pair of chests is common in the corpus and dull in every room
         const ks = new Set(a.pieces.map(p => p.k).filter(k => !BUILT_SLOTS.includes(k)));
         const store = [...ks].every(k => ['chest', 'barrel', 'crate', 'sign'].includes(k));
-        const w = Math.log(1 + a.score) * (kinds.includes((a.rooms || [])[0]) ? 1.5 : 1) * (a.built ? 2.5 : 1) * (1 + 0.35 * (ks.size - 1)) * (store && room.role !== 'storage' ? 0.3 : 1);
+        const w = Math.log(1 + a.score) * (kinds.includes((a.rooms || [])[0]) ? 1.5 : 1) * (a.built ? 2.5 : 1) * (1 + 0.35 * (ks.size - 1)) * (store && room.role !== 'storage' ? 0.3 : 1)
+          * PS.kitWeight(P, a); // the household's taste
         return { a, w, sig: [...ks].sort().join(',') };
       });
     if (!cands.length) continue;
-    let want = budget(ctx.decor, room.m.area) + (ctx.decor === 'd1' ? 0 : sets);
+    let want = Math.round(budget(ctx.decor, room.m.area) * (ctx.decor === 'd1' ? 1 : PS.kitBudget(P))) + (ctx.decor === 'd1' ? 0 : sets);
     const floorArea = room.m.area;
     let footprint = 0;
     for (const r of idx.all) if (r.p.decor && room.m.inside(r.p.x, r.p.z) && !r.b.pass && r.b.y0 < room.m.stand + 0.3 && r.b.y1 > room.m.stand + 0.2 && room.m.inside((r.b.x0 + r.b.x1) / 2, (r.b.z0 + r.b.z1) / 2)) footprint += (r.b.x1 - r.b.x0) * (r.b.z1 - r.b.z0);
-    const firsts = cands.filter(x => x.a.first && x.a.first.includes(ctx.type));
+    // a building's own kits first, and what the household keeps under the stairs where a room has a stair
+    const firsts = cands.filter(x => (x.a.first && x.a.first.includes(ctx.type)) || (x.a.id === UNDER[under] && anchors.some(an => an.anchor === 'stair')));
     // a dining set first in every room that takes one (from d2), drawn by weight
     const dining = cands.filter(x => x.a.dining);
     let diningTries = ctx.decor === 'd1' ? 0 : sets * 2 + 1;
@@ -7288,40 +7641,91 @@ function furnishRooms(b, ctx, zones, R2, extra, rooms) {
       if (!done) misses++;
     }
     if (ctx.decor !== 'd1') placed += dressWalls(b, ctx, room, idx, zones, anchors, fires, R2, used);
+    residentSlots(b, ctx, room, idx, zones, anchors, fires);
   }
   return placed;
 }
 
-// Walls between the furniture (review 2026-11-09: walls bare above 1 m). Three passes along each plain wall: every
-// 2.5 m at d3 (3.2 m at d2) where nothing hangs between 1.3 and 2.4 m within 0.9 m either side, a ledge with a candle
-// and a mead, or a banner; at d3 every 3 m where nothing is between 2.0 and 2.7 m, a second ledge near 2.2 m; and a wall
-// torch where no light is within 2 m either side (a torch every 4 m).
+// Places a resident's own things could go, left empty (Tyler, 2026-11-09): the villager who lives in a house is chosen
+// in the game and can change, so role props (a cook's pots, a guard's shield) come from the mod when that villager
+// decorates. In each home, sleeping and guest room: a wall spot by the bed, a shelf spot, and a wall spot by the way
+// in, each tested as a wall item stand would be. They go to design.slots as { kind, role, x, y, z, yaw }; nothing is
+// placed there.
+let SLOT_KITS = null;
+const slotKits = () => SLOT_KITS || (SLOT_KITS = { bed: kit('BK-slot-bed', 'wall', [], [kp('itemstand', 0, 1.7, 0.045, 0, 'wall')], { min: 1 }),
+  shelf: kit('BK-slot-shelf', 'wall', [], [kp('itemstand', 0, 1.45, 0.045, 0, 'wall')], { min: 1 }),
+  door: kit('BK-slot-door', 'wall', [], [kp('itemstand', 0, 1.6, 0.045, 0, 'wall')], { min: 1 }) });
+function residentSlots(b, ctx, room, idx, zones, anchors, fires) {
+  if (!['home', 'sleeping', 'guest', 'hall'].includes(room.role)) return 0;
+  const m = room.m, walls = anchors.filter(a => a.anchor === 'wall');
+  const beds = idx.all.filter(r => r.p.decor && /^(bed|piece_bed02|ashwood_bed)$/.test(r.p.name) && m.inside(r.p.x, r.p.z) && Math.abs(r.p.y - m.stand) < 0.7).map(r => r.p);
+  const doors = (m.doors || []).filter(d => !d.open);
+  const taken = (b.slots || []).filter(sl => Math.abs(sl.y - m.stand) < 3);
+  const want = [['bed', a => (beds.length ? Math.min(...beds.map(q => Math.hypot(q.x - a.x, q.z - a.z))) : 99), d => d < 2.4],
+    ['door', a => (doors.length ? Math.min(...doors.map(q => Math.abs(Math.hypot(q.x - a.x, q.z - a.z) - 1.8))) : 99), d => d < 1.2],
+    ['shelf', a => -Math.min(4, ...taken.map(t => Math.hypot(t.x - a.x, t.z - a.z)), 4), () => true]];
+  let n = 0;
+  for (const [kind, score, okD] of want) {
+    const list = walls.map(a => ({ a, d: score(a) })).filter(x => okD(x.d) && !taken.some(t => Math.hypot(t.x - x.a.x, t.z - x.a.z) < 1.2)).sort((x, y) => x.d - y.d);
+    for (const { a } of list.slice(0, 12)) {
+      const got = fit(b, ctx, room, idx, zones, a, slotKits()[kind], false, fires);
+      if (!got) continue;
+      const p = got[0];
+      const sl = { kind, role: room.role, x: p.x, y: p.y, z: p.z, yaw: p.yaw };
+      (b.slots = b.slots || []).push(sl);
+      taken.push(sl);
+      n++;
+      break;
+    }
+  }
+  return n;
+}
+
+// Walls between the furniture (review 2026-11-09: walls bare above 1 m), as the household dresses them (D-068: no fixed
+// intervals). Three passes along each plain wall: things hung between 1.3 and 2.4 m where nothing hangs within 0.9 m
+// either side; a second shelf near 2.2 m in some households at d3; and a wall torch where no light is within 2 m. The
+// gap to the next piece is a base (2.5 m at d3, 3.2 m at d2) times the household's spacing (neat households hang
+// less), drawn anew after each piece (0.7 to 1.5 times), a neat household leaves some spots bare, and what goes up is
+// drawn by its weights: shelves, banners, trophies, weapons, tools or candles (lib/persona.js wallWeights). Torches
+// are spaced by wealth and the liking for light.
 function dressWalls(b, ctx, room, idx, zones, anchors, fires, R2, used) {
-  const m = room.m;
+  const m = room.m, P = ctx.persona, PS = personaB();
   const byFace = new Map();
   for (const an of anchors) if (an.anchor === 'wall') { if (!byFace.has(an.face)) byFace.set(an.face, []); byFace.get(an.face).push(an); }
-  const passes = [{ kits: WALL_DRESS, step: ctx.decor === 'd3' ? 2.5 : 3.2, y0: 1.3, y1: 2.4, reach: 0.9 }];
-  if (ctx.decor === 'd3') passes.push({ kits: [WALL_HIGH], step: 3, y0: 2.0, y1: 2.7, reach: 0.9 });
-  passes.push({ kits: [WALL_LIGHT], step: 4, y0: 0, y1: 4, reach: 2, light: true });
+  const d3 = ctx.decor === 'd3';
+  const gap = PS.wallGap(P), skip = PS.wallSkip(P);
+  const ww = PS.wallWeights(P, room.role);
+  const kinds = Object.keys(WALL_KITS).filter(k => ww[k] > 0);
+  const passes = [{ main: true, step: (d3 ? 2.5 : 3.2) * gap, y0: 1.3, y1: 2.4, reach: 0.9 }];
+  if (d3 && (!P || R2() < 0.2 + 0.5 * P.clutter * P.likes.shelves)) passes.push({ kits: [WALL_HIGH], step: 3 * gap, y0: 2.0, y1: 2.7, reach: 0.9 });
+  passes.push({ kits: [WALL_LIGHT], step: PS.torchGap(P), y0: 0, y1: 4, reach: 2, light: true });
   let n = 0;
   for (const pass of passes) for (const list of byFace.values()) {
     list.sort((p, q) => p.t - q.t);
-    let last = -Infinity;
+    let next = -Infinity;
     for (const an of list) {
-      if (an.t - last < pass.step) continue;
+      if (an.t < next) continue;
       const f = an.face, ux = f.ux, uz = f.uz, R = pass.reach;
       const box = { x0: Math.min(an.x - ux * R, an.x + ux * R, an.x + f.nx * 0.7) - 0.05, x1: Math.max(an.x - ux * R, an.x + ux * R, an.x + f.nx * 0.7) + 0.05,
         z0: Math.min(an.z - uz * R, an.z + uz * R, an.z + f.nz * 0.7) - 0.05, z1: Math.max(an.z - uz * R, an.z + uz * R, an.z + f.nz * 0.7) + 0.05 };
       const busy = idx.near(box, 0).some(r => r.p.decor && PB.piece(r.p.name).role !== 'rug' && (!pass.light || PB.piece(r.p.name).role === 'light') &&
         r.b.y1 > m.stand + pass.y0 && r.b.y0 < m.stand + pass.y1 && r.b.x0 < box.x1 && r.b.x1 > box.x0 && r.b.z0 < box.z1 && r.b.z1 > box.z0);
-      if (busy) { last = an.t; continue; }
-      const kits = pass.kits.length > 1 && R2() < 0.4 ? pass.kits.slice().reverse() : pass.kits;
+      const jit = 0.7 + 0.8 * R2();
+      if (busy) { next = an.t + pass.step * 0.6 * jit; continue; }
+      // a neat household leaves some of the wall bare
+      if (!pass.light && R2() < skip) { next = an.t + pass.step * 0.5 * jit; continue; }
+      let kits = pass.kits;
+      if (pass.main) {
+        // the kind drawn by the household's weights first, the others after it by weight
+        const first = PS.pickW(R2, Object.fromEntries(kinds.map(k => [k, ww[k]])));
+        kits = [first, ...kinds.filter(k => k !== first).sort((a, c) => ww[c] - ww[a])].flatMap(k => WALL_KITS[k]);
+      }
       for (const k of kits) {
         const got = fit(b, ctx, room, idx, zones, an, k, false, fires);
         if (!got) continue;
         for (const p of got) { b.pieces.push(p); idx.add(p); }
         used[k.id] = (used[k.id] || 0) + 1;
-        last = an.t; n++;
+        next = an.t + pass.step * jit; n++;
         break;
       }
     }
@@ -7458,7 +7862,7 @@ function apply(b, ctx, zones) {
   if (ctx.type === 'barn' && ctx.decor !== 'd1') stalls(b, ctx, zones || []);
   if (ctx.type === 'tavern' && ctx.decor !== 'd1') barCounter(b, ctx, zones || []);
   const X = ctx.profile || {};
-  if (X.canopyBed != null ? X.canopyBed : (ctx.decor === 'd3' && ['home', 'longhouse'].includes(ctx.type) && ctx.R() < 0.5)) canopyBed(b, ctx);
+  if (X.canopyBed != null ? X.canopyBed : (ctx.decor === 'd3' && ['home', 'longhouse'].includes(ctx.type) && ctx.R() < (ctx.persona ? 0.15 + 0.7 * ctx.persona.wealth : 0.5))) canopyBed(b, ctx);
   // the interior library last, from its own stream (drawn after everything above, so the rest comes out as before)
   if (X.interiorKit !== false) {
     const R2 = rngB(Math.floor(ctx.R() * 4294967296) ^ 0x6b62);
@@ -7582,10 +7986,17 @@ const BUILT_KITS = [
     kp('piece_bathtub', 0, 0, 2.35, 45, 'floor', null, { key: true }), kp('rug_straw', along1(2.9, 0.9)[0], 0, along1(2.9, 0.9)[1], 45, 'floor')],
   { angle: 90, decor: ['d3'], score: 2 }),
   // storage under the stairs: a chest under the highest flight, or two barrels where the village makes them
+  // (one of these per building, by what the household keeps there: lib/persona.js underStair)
   kit('BK-understair', 'stair', ['home', 'tavern', 'hall', 'storage', 'workshop', 'sleeping'], [
-    kp('piece_chest_wood', 0, 0, -0.35, 0, 'floor', null, { key: true })], { score: 8, min: 1, first: ['home', 'tavern', 'longhouse', 'workshop', 'storage', 'temple'] }),
+    kp('piece_chest_wood', 0, 0, -0.35, 0, 'floor', null, { key: true })], { score: 8, min: 1 }),
   kit('BK-understair2', 'stair', ['home', 'tavern', 'hall', 'storage', 'workshop', 'sleeping'], [
     kp('piece_chest_barrel', -0.45, 0, -0.35, 0, 'floor'), kp('piece_chest_barrel', 0.45, 0, -0.35, 0, 'floor')], { score: 8 }),
+  // crates, one turned a little, the way they get pushed in
+  kit('BK-understair3', 'stair', ['home', 'tavern', 'hall', 'storage', 'workshop', 'sleeping'], [
+    kp('dvergrprops_crate', -0.4, 0, -0.3, 0, 'floor', null, { key: true }), kp('dvergrprops_crate', 0.75, 0, -0.25, 12, 'floor')], { score: 7, min: 1 }),
+  // a chest with a barrel beside it and a pot in front
+  kit('BK-understair4', 'stair', ['home', 'tavern', 'hall', 'storage', 'workshop', 'sleeping'], [
+    kp('piece_chest_wood', -0.35, 0, -0.35, 0, 'floor', null, { key: true }), kp('piece_chest_barrel', 0.85, 0, -0.3, 0, 'floor'), kp('piece_pot2', 0.2, 0, 0.45, 30, 'floor')], { score: 7, min: 1 }),
   // dining sets on the free floor: a table with a bench each side facing it, a rug under them reaching past, a
   // candle and a mead on the table
   kit('BK-dining', 'floor', ['home', 'hall', 'tavern', 'kitchen', 'guest'], [
@@ -7613,6 +8024,17 @@ const WALL_DRESS = [
   kit('BK-wledge', 'wall', [], [kp('wood_ledge', 0, 1.6, 0.3, 0, 'wall'), kp('Candle_resin', -0.25, 1.65, 0.3, 0, 'on', 0), kp('MeadTasty', 0.25, 1.65, 0.32, 0, 'on', 0)]),
   kit('BK-wbanner', 'wall', [], [kp('piece_banner01', 0, 2.35, 0.2, 90, 'wall', null, { any: true })], { min: 1 }),
 ];
+// what households hang on a plain wall, by kind (lib/persona.js wallWeights); item stands get their item from
+// lib/persona.js dressStands, by what the kit asks for (want)
+const stand = (x, y, want) => kp('itemstand', x, y, 0.045, 0, 'wall', null, { want });
+const WALL_KITS = {
+  ledge: [WALL_DRESS[0], kit('BK-wledge-b', 'wall', [], [kp('wood_ledge', 0, 1.55, 0.3, 0, 'wall'), kp('QueensJam', -0.3, 1.6, 0.3, 0, 'on', 0), kp('BarleyWine', 0.1, 1.6, 0.33, 0, 'on', 0)])],
+  banner: [WALL_DRESS[1]],
+  trophy: [kit('BK-wtrophy', 'wall', [], [stand(0, 1.9, 'trophy')], { min: 1 }), kit('BK-wtrophy2', 'wall', [], [stand(-0.45, 1.85, 'trophy'), stand(0.5, 1.95, 'trophy')], { min: 1 })],
+  weapons: [kit('BK-wweapons', 'wall', [], [stand(-0.4, 1.6, 'shield'), stand(0.45, 1.7, 'weapon')], { min: 1 }), kit('BK-wshield', 'wall', [], [stand(0, 1.65, 'shield')], { min: 1 })],
+  tools: [kit('BK-wtools', 'wall', [], [stand(-0.55, 1.5, 'tool'), stand(0.02, 1.58, 'tool'), stand(0.6, 1.5, 'tool')], { min: 2 })],
+  candles: [kit('BK-wcandles', 'wall', [], [kp('wood_ledge', 0, 1.45, 0.3, 0, 'wall'), kp('Candle_resin', -0.3, 1.5, 0.3, 0, 'on', 0), kp('Candle_resin', 0.25, 1.5, 0.28, 0, 'on', 0)])],
+};
 // a second tier near 2.2 m: a ledge with a jug and a jar of jam
 const WALL_HIGH = kit('BK-wledge2', 'wall', [], [kp('wood_ledge', 0, 2.2, 0.3, 0, 'wall'), kp('BarleyWine', -0.25, 2.25, 0.3, 0, 'on', 0), kp('QueensJam', 0.25, 2.25, 0.3, 0, 'on', 0)]);
 // a wall torch where none is within 4 m
@@ -7628,7 +8050,7 @@ function fitDebug(b, ctx, room, anc, a) {
   const got = fit(b, ctx, room, idx, ctx.zones || [], anc, a, false, fires);
   return { ok: !!got, why: WHY_B, piece: LAST_B, q: LASTQ_B };
 }
-const apiB = { WALL_DRESS, groupStorage, spreadTables, spaceBeds, seatRugs, dressWalls, why: () => WHY_B, _fitDebug: fitDebug, BUILT: BUILT_KITS, apply, library, setLibrary, lite, furnishRooms, anchorsOf, roomsB, fit, barCounter, canopyBed, stalls, dais, vignettes, CLASSES, SLOT, FOOD, BUILT_SLOTS, slotOf, isDecor, canDecor };
+const apiB = { WALL_DRESS, WALL_KITS, UNDER, underChoice, residentSlots, slotKits, groupStorage, spreadTables, spaceBeds, seatRugs, dressWalls, why: () => WHY_B, _fitDebug: fitDebug, BUILT: BUILT_KITS, apply, library, setLibrary, lite, furnishRooms, anchorsOf, roomsB, fit, barCounter, canopyBed, stalls, dais, vignettes, CLASSES, SLOT, FOOD, BUILT_SLOTS, slotOf, isDecor, canDecor };
 if (NODE_B) module.exports = apiB; else window.VHKitbash = apiB;
 
 })();
@@ -8290,6 +8712,7 @@ const P = NODE ? require('./pieces.js') : window.VHPieces;
 const Details = NODE ? require('./details.js') : window.VHDetails;
 const Kitbash = NODE ? require('./kitbash.js') : window.VHKitbash;
 const Yards = NODE ? require('./yards.js') : window.VHYards;
+const Persona = NODE ? require('./persona.js') : window.VHPersona;
 const checksLib = () => (NODE ? require('./checks.js') : window.VHChecks);
 
 // Heights (Tyler's in-game review, 2026-11-09). A player is about 1.8 m tall: rooms get walls of 3 m, so doors, beams
@@ -8493,8 +8916,12 @@ function generate(req) {
   const b = new Build();
   const form = req.form || formFor(C, type, stage);
   const info = { type, biome, cultureKey, stage, decor, seed, form };
+  // the household (lib/persona.js), from a random stream of its own: what the furnishing, the yard and the stands lean to
+  const household = Persona.persona({ type, biome, culture: cultureKey, seed, persona: req.persona });
+  info.household = household;
   // asked-for storeys, porch and pitch go into the name, so different requests never share a file name
-  info.asked = (req.storeys >= 1 && req.storeys <= 3 ? `-${Math.round(req.storeys)}st` : '') + (req.porch === true ? '-porch' : req.porch === false ? '-noporch' : '') + (req.pitch ? `-p${+req.pitch}` : '');
+  info.asked = (req.storeys >= 1 && req.storeys <= 3 ? `-${Math.round(req.storeys)}st` : '') + (req.porch === true ? '-porch' : req.porch === false ? '-noporch' : '') + (req.pitch ? `-p${+req.pitch}` : '')
+    + (typeof req.persona === 'string' && req.persona ? `-${req.persona.toLowerCase().replace(/[^a-z]+/g, '-')}` : req.persona && typeof req.persona === 'object' ? `-hh${Persona.hash(JSON.stringify(req.persona)) % 1000}` : '');
   // Meadows and Black Forest villages build in wood at first; stone for later stages and for halls from s2 (D-012)
   const early = (biome === 'Meadows' || biome === 'Black Forest') && (stage === 's1' || (stage === 's2' && !['longhouse', 'tavern', 'temple', 'tower'].includes(type)));
   C.early = early;
@@ -8533,11 +8960,11 @@ function generate(req) {
     info.plan = 'octagon'; info.roof = kind === 'yurt' ? 'crown' : 'conical'; info.walls = kind === 'tent' ? 'none' : wallStyle;
     const ctx = { K: Kr, C, biome, use: T.use, stoneOK, F, SH, storeys, top: F + storeys * SH };
     clearDoorways(b);
-    if (!req.skipDecor) Decor.decorate(b, { use: T.use, decor, biome, type, R, culture: cultureKey, doorX: b.doorX, fireAt: { x: 0, z: 0 } });
+    if (!req.skipDecor) Decor.decorate(b, { use: T.use, decor, biome, type, R, culture: cultureKey, doorX: b.doorX, fireAt: { x: 0, z: 0 }, persona: household });
     // corner and wall-face motifs on the eight-sided walls (details.js), after the furnishing
     if (kind === 'round' && !(req.details && req.details.motifs === false)) Details.roundTrim(b, { K: Kr, C, cultureKey, T, type, stage, decor, biome, plan: 'octagon', F, SH, storeys, edges: [], wings: [], seed });
     settle(b, { ...ctx, type, skipDecor: !!req.skipDecor });
-    if (Yards.wants(req, type, stage)) Yards.add(b, { K, C, type, stage, biome, cultureKey, decor: req.skipDecor ? 'd1' : decor, seed, opts: req.yard, details: req.details }); // a yard round stage 2 and 3 homes and farms (lib/yards.js, D-060)
+    if (Yards.wants(req, type, stage)) Yards.add(b, { K, C, type, stage, biome, cultureKey, decor: req.skipDecor ? 'd1' : decor, seed, opts: req.yard, details: req.details, persona: household }); // a yard round stage 2 and 3 homes and farms (lib/yards.js, D-060)
     return finish(b, info);
   }
 
@@ -8549,7 +8976,7 @@ function generate(req) {
     info.plan = 'square'; info.roof = 'hip'; info.walls = C.wallStyle;
     b.notes.push('Square stone tower with wooden floors, slit windows and a low pyramid roof.');
     clearDoorways(b);
-    if (!req.skipDecor) Decor.decorate(b, { use: 'guard', decor, biome, type, R, culture: cultureKey, doorX: b.doorX });
+    if (!req.skipDecor) Decor.decorate(b, { use: 'guard', decor, biome, type, R, culture: cultureKey, doorX: b.doorX, persona: household });
     settle(b, { K, C, biome, use: 'guard', stoneOK, F: 0, SH: MIN_STOREY, storeys: n, top: n * MIN_STOREY, skipDecor: !!req.skipDecor });
     return finish(b, info);
   }
@@ -8794,7 +9221,7 @@ function generate(req) {
   C.windowStyle = req.style && req.style.windowStyle ? req.style.windowStyle : (T.low || ['storage', 'barn'].includes(type) || form === 'sunken' || (stage === 's1' && !['longhouse', 'tavern', 'temple'].includes(type))) ? 'single' : 'twin';
   const dragonsHere = roofKind === 'gable' && plan !== 'gables' && ((C.dragons && ['longhouse', 'temple', 'tavern'].includes(type)) || (C.carved && stage !== 's1'));
   const dctx = { K, C, cultureKey, T, type, stage, decor, biome, plan, F, SH, storeys, edges, verts, cells, door, wings, flat,
-    ladders, flue, dragonsHere, R: rng(seed * 31337 + 7) };
+    ladders, flue, dragonsHere, R: rng(seed * 31337 + 7), persona: household };
   dctx.profile = Details.profile(dctx);
   dctx.notes = b.notes;
   // wall dormers: Frankish, English, Slavic and medieval cultures, from stage 2 (bench: req.details.dormers)
@@ -9119,13 +9546,13 @@ function generate(req) {
   // clear of the ladders
   let fireAt = ventAt && lit && flue ? { x: avg(rectXs(flue)), z: avg(rectZs(flue)) } : null;
   if (flatCell) { fireAt = { x: flatCell[0], z: flatCell[1] }; b.vents.push({ kind: 'flat', x: flatCell[0], z: flatCell[1], rect: flue, from: storeys > 1 ? F + SH : top }); }
-  if (!req.skipDecor) Decor.decorate(b, { use: T.use, decor, biome, type, R, culture: cultureKey, doorX: b.doorX, fireAt });
+  if (!req.skipDecor) Decor.decorate(b, { use: T.use, decor, biome, type, R, culture: cultureKey, doorX: b.doorX, fireAt, persona: household });
   settle(b, { K, C, biome, use: T.use, type, stoneOK, F, SH, storeys, top, flat, cells, wing: w0, roofTop, skipDecor: !!req.skipDecor });
   if (!req.skipDecor) tidyFurniture(b);
   if (!req.skipDecor && stoneOK && F < 0.01 && !C.stoneWalls) hearthstone(b, K);
   if (!req.skipDecor) { const zones = keepClear(b); Details.interior(b, { ...dctx, zones }); Kitbash.apply(b, { ...dctx, decor }, zones); doorLights(b, { biome, decor, F }); }
   else Details.commitMotifs(b, dctx); // bare builds (ranked before furnishing) carry the same wall trim
-  if (Yards.wants(req, type, stage)) Yards.add(b, { K, C, type, stage, biome, cultureKey, decor: req.skipDecor ? 'd1' : decor, seed, opts: req.yard, details: req.details }); // a yard round stage 2 and 3 homes and farms (lib/yards.js, D-060)
+  if (Yards.wants(req, type, stage)) Yards.add(b, { K, C, type, stage, biome, cultureKey, decor: req.skipDecor ? 'd1' : decor, seed, opts: req.yard, details: req.details, persona: household }); // a yard round stage 2 and 3 homes and farms (lib/yards.js, D-060)
   return finish(b, info);
 }
 
@@ -9362,7 +9789,6 @@ function settle(b, ctx) {
 
   // nothing in a doorway, on a ladder or its foot, or in a chimney
   const zones = keepClear(b), gone = [];
-  if (!ctx.skipDecor && ['home', 'longhouse'].includes(ctx.type)) bedIfNone(b, ctx, fire, zones);
   b.pieces = b.pieces.filter(p => {
     if (!p.decor || p === fire || /cookingstation|piece_cauldron/.test(p.name) && fire && Math.hypot(p.x - fire.x, p.z - fire.z) < 0.4) return true;
     const bx = Ck.aabb(p);
@@ -9375,6 +9801,8 @@ function settle(b, ctx) {
     const bx = Ck.aabb(p);
     return !gone.some(g => bx.y0 >= g.y0 + 0.3 && bx.y0 <= g.y1 + 0.2 && p.x > g.x0 && p.x < g.x1 && p.z > g.z0 && p.z < g.z1);
   });
+  // a bed the furnishing set in a kept-clear place came out above: the house still sleeps someone
+  if (!ctx.skipDecor && ['home', 'longhouse'].includes(ctx.type)) bedIfNone(b, ctx, fire, zones);
 }
 
 // A chimney over the fire: through any floor above it and out of the roof, of stone where the culture may build in
@@ -9629,6 +10057,8 @@ function biomeSafe(b, biome) {
 }
 
 function finish(b, info) {
+  // every item stand holds something the household would keep there, or goes (lib/persona.js)
+  Persona.dressStands(b, { persona: info.household, biome: info.biome, type: info.type, use: S.TYPES[info.type].use });
   biomeSafe(b, info.biome);
   dropOrphans(b);
   // the generator places walls by their middle; the pieces that stand on their pivot go down to their foot
@@ -9639,6 +10069,8 @@ function finish(b, info) {
     meta: { Name: name, Creator: 'Villheim generator', Category: 'Villheim generated',
       Description: `${S.TYPES[info.type].label}, ${info.biome}, ${S.CULTURES[info.cultureKey].label}, ${info.plan || ''} plan, ${info.roof || ''} roof, ${info.walls || ''} walls, ${info.stage}${info.decor}, seed ${info.seed}` },
     pieces: b.pieces, rooms: b.rooms, notes: [...new Set(b.notes)], request: info,
+    // places a resident's own role props could go, left empty for the game (lib/kitbash.js residentSlots)
+    slots: b.slots || [],
   };
 }
 

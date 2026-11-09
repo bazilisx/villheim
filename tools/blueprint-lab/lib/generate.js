@@ -34,6 +34,7 @@ const P = NODE ? require('./pieces.js') : window.VHPieces;
 const Details = NODE ? require('./details.js') : window.VHDetails;
 const Kitbash = NODE ? require('./kitbash.js') : window.VHKitbash;
 const Yards = NODE ? require('./yards.js') : window.VHYards;
+const Persona = NODE ? require('./persona.js') : window.VHPersona;
 const checksLib = () => (NODE ? require('./checks.js') : window.VHChecks);
 
 // Heights (Tyler's in-game review, 2026-11-09). A player is about 1.8 m tall: rooms get walls of 3 m, so doors, beams
@@ -237,8 +238,12 @@ function generate(req) {
   const b = new Build();
   const form = req.form || formFor(C, type, stage);
   const info = { type, biome, cultureKey, stage, decor, seed, form };
+  // the household (lib/persona.js), from a random stream of its own: what the furnishing, the yard and the stands lean to
+  const household = Persona.persona({ type, biome, culture: cultureKey, seed, persona: req.persona });
+  info.household = household;
   // asked-for storeys, porch and pitch go into the name, so different requests never share a file name
-  info.asked = (req.storeys >= 1 && req.storeys <= 3 ? `-${Math.round(req.storeys)}st` : '') + (req.porch === true ? '-porch' : req.porch === false ? '-noporch' : '') + (req.pitch ? `-p${+req.pitch}` : '');
+  info.asked = (req.storeys >= 1 && req.storeys <= 3 ? `-${Math.round(req.storeys)}st` : '') + (req.porch === true ? '-porch' : req.porch === false ? '-noporch' : '') + (req.pitch ? `-p${+req.pitch}` : '')
+    + (typeof req.persona === 'string' && req.persona ? `-${req.persona.toLowerCase().replace(/[^a-z]+/g, '-')}` : req.persona && typeof req.persona === 'object' ? `-hh${Persona.hash(JSON.stringify(req.persona)) % 1000}` : '');
   // Meadows and Black Forest villages build in wood at first; stone for later stages and for halls from s2 (D-012)
   const early = (biome === 'Meadows' || biome === 'Black Forest') && (stage === 's1' || (stage === 's2' && !['longhouse', 'tavern', 'temple', 'tower'].includes(type)));
   C.early = early;
@@ -277,11 +282,11 @@ function generate(req) {
     info.plan = 'octagon'; info.roof = kind === 'yurt' ? 'crown' : 'conical'; info.walls = kind === 'tent' ? 'none' : wallStyle;
     const ctx = { K: Kr, C, biome, use: T.use, stoneOK, F, SH, storeys, top: F + storeys * SH };
     clearDoorways(b);
-    if (!req.skipDecor) Decor.decorate(b, { use: T.use, decor, biome, type, R, culture: cultureKey, doorX: b.doorX, fireAt: { x: 0, z: 0 } });
+    if (!req.skipDecor) Decor.decorate(b, { use: T.use, decor, biome, type, R, culture: cultureKey, doorX: b.doorX, fireAt: { x: 0, z: 0 }, persona: household });
     // corner and wall-face motifs on the eight-sided walls (details.js), after the furnishing
     if (kind === 'round' && !(req.details && req.details.motifs === false)) Details.roundTrim(b, { K: Kr, C, cultureKey, T, type, stage, decor, biome, plan: 'octagon', F, SH, storeys, edges: [], wings: [], seed });
     settle(b, { ...ctx, type, skipDecor: !!req.skipDecor });
-    if (Yards.wants(req, type, stage)) Yards.add(b, { K, C, type, stage, biome, cultureKey, decor: req.skipDecor ? 'd1' : decor, seed, opts: req.yard, details: req.details }); // a yard round stage 2 and 3 homes and farms (lib/yards.js, D-060)
+    if (Yards.wants(req, type, stage)) Yards.add(b, { K, C, type, stage, biome, cultureKey, decor: req.skipDecor ? 'd1' : decor, seed, opts: req.yard, details: req.details, persona: household }); // a yard round stage 2 and 3 homes and farms (lib/yards.js, D-060)
     return finish(b, info);
   }
 
@@ -293,7 +298,7 @@ function generate(req) {
     info.plan = 'square'; info.roof = 'hip'; info.walls = C.wallStyle;
     b.notes.push('Square stone tower with wooden floors, slit windows and a low pyramid roof.');
     clearDoorways(b);
-    if (!req.skipDecor) Decor.decorate(b, { use: 'guard', decor, biome, type, R, culture: cultureKey, doorX: b.doorX });
+    if (!req.skipDecor) Decor.decorate(b, { use: 'guard', decor, biome, type, R, culture: cultureKey, doorX: b.doorX, persona: household });
     settle(b, { K, C, biome, use: 'guard', stoneOK, F: 0, SH: MIN_STOREY, storeys: n, top: n * MIN_STOREY, skipDecor: !!req.skipDecor });
     return finish(b, info);
   }
@@ -538,7 +543,7 @@ function generate(req) {
   C.windowStyle = req.style && req.style.windowStyle ? req.style.windowStyle : (T.low || ['storage', 'barn'].includes(type) || form === 'sunken' || (stage === 's1' && !['longhouse', 'tavern', 'temple'].includes(type))) ? 'single' : 'twin';
   const dragonsHere = roofKind === 'gable' && plan !== 'gables' && ((C.dragons && ['longhouse', 'temple', 'tavern'].includes(type)) || (C.carved && stage !== 's1'));
   const dctx = { K, C, cultureKey, T, type, stage, decor, biome, plan, F, SH, storeys, edges, verts, cells, door, wings, flat,
-    ladders, flue, dragonsHere, R: rng(seed * 31337 + 7) };
+    ladders, flue, dragonsHere, R: rng(seed * 31337 + 7), persona: household };
   dctx.profile = Details.profile(dctx);
   dctx.notes = b.notes;
   // wall dormers: Frankish, English, Slavic and medieval cultures, from stage 2 (bench: req.details.dormers)
@@ -863,13 +868,13 @@ function generate(req) {
   // clear of the ladders
   let fireAt = ventAt && lit && flue ? { x: avg(rectXs(flue)), z: avg(rectZs(flue)) } : null;
   if (flatCell) { fireAt = { x: flatCell[0], z: flatCell[1] }; b.vents.push({ kind: 'flat', x: flatCell[0], z: flatCell[1], rect: flue, from: storeys > 1 ? F + SH : top }); }
-  if (!req.skipDecor) Decor.decorate(b, { use: T.use, decor, biome, type, R, culture: cultureKey, doorX: b.doorX, fireAt });
+  if (!req.skipDecor) Decor.decorate(b, { use: T.use, decor, biome, type, R, culture: cultureKey, doorX: b.doorX, fireAt, persona: household });
   settle(b, { K, C, biome, use: T.use, type, stoneOK, F, SH, storeys, top, flat, cells, wing: w0, roofTop, skipDecor: !!req.skipDecor });
   if (!req.skipDecor) tidyFurniture(b);
   if (!req.skipDecor && stoneOK && F < 0.01 && !C.stoneWalls) hearthstone(b, K);
   if (!req.skipDecor) { const zones = keepClear(b); Details.interior(b, { ...dctx, zones }); Kitbash.apply(b, { ...dctx, decor }, zones); doorLights(b, { biome, decor, F }); }
   else Details.commitMotifs(b, dctx); // bare builds (ranked before furnishing) carry the same wall trim
-  if (Yards.wants(req, type, stage)) Yards.add(b, { K, C, type, stage, biome, cultureKey, decor: req.skipDecor ? 'd1' : decor, seed, opts: req.yard, details: req.details }); // a yard round stage 2 and 3 homes and farms (lib/yards.js, D-060)
+  if (Yards.wants(req, type, stage)) Yards.add(b, { K, C, type, stage, biome, cultureKey, decor: req.skipDecor ? 'd1' : decor, seed, opts: req.yard, details: req.details, persona: household }); // a yard round stage 2 and 3 homes and farms (lib/yards.js, D-060)
   return finish(b, info);
 }
 
@@ -1106,7 +1111,6 @@ function settle(b, ctx) {
 
   // nothing in a doorway, on a ladder or its foot, or in a chimney
   const zones = keepClear(b), gone = [];
-  if (!ctx.skipDecor && ['home', 'longhouse'].includes(ctx.type)) bedIfNone(b, ctx, fire, zones);
   b.pieces = b.pieces.filter(p => {
     if (!p.decor || p === fire || /cookingstation|piece_cauldron/.test(p.name) && fire && Math.hypot(p.x - fire.x, p.z - fire.z) < 0.4) return true;
     const bx = Ck.aabb(p);
@@ -1119,6 +1123,8 @@ function settle(b, ctx) {
     const bx = Ck.aabb(p);
     return !gone.some(g => bx.y0 >= g.y0 + 0.3 && bx.y0 <= g.y1 + 0.2 && p.x > g.x0 && p.x < g.x1 && p.z > g.z0 && p.z < g.z1);
   });
+  // a bed the furnishing set in a kept-clear place came out above: the house still sleeps someone
+  if (!ctx.skipDecor && ['home', 'longhouse'].includes(ctx.type)) bedIfNone(b, ctx, fire, zones);
 }
 
 // A chimney over the fire: through any floor above it and out of the roof, of stone where the culture may build in
@@ -1373,6 +1379,8 @@ function biomeSafe(b, biome) {
 }
 
 function finish(b, info) {
+  // every item stand holds something the household would keep there, or goes (lib/persona.js)
+  Persona.dressStands(b, { persona: info.household, biome: info.biome, type: info.type, use: S.TYPES[info.type].use });
   biomeSafe(b, info.biome);
   dropOrphans(b);
   // the generator places walls by their middle; the pieces that stand on their pivot go down to their foot
@@ -1383,6 +1391,8 @@ function finish(b, info) {
     meta: { Name: name, Creator: 'Villheim generator', Category: 'Villheim generated',
       Description: `${S.TYPES[info.type].label}, ${info.biome}, ${S.CULTURES[info.cultureKey].label}, ${info.plan || ''} plan, ${info.roof || ''} roof, ${info.walls || ''} walls, ${info.stage}${info.decor}, seed ${info.seed}` },
     pieces: b.pieces, rooms: b.rooms, notes: [...new Set(b.notes)], request: info,
+    // places a resident's own role props could go, left empty for the game (lib/kitbash.js residentSlots)
+    slots: b.slots || [],
   };
 }
 

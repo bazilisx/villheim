@@ -1029,7 +1029,7 @@ function woodpilesOutside(b) {
     let moved = false;
     for (const s of spots) {
       if (s.taken || doors.some(o => Math.hypot(o.x - s.x, o.z - s.z) < 2.6)) continue;
-      const cand = { ...pile, x: +s.x.toFixed(3), y: 0, z: +s.z.toFixed(3), yaw: s.yaw, q: quat(s.yaw) };
+      const cand = { ...pile, x: +s.x.toFixed(3), y: +((Decor.FURNITURE[pile.name] || {}).base || 0).toFixed(3), z: +s.z.toFixed(3), yaw: s.yaw, q: quat(s.yaw) };
       const cb = Ck.aabb(cand);
       const clash = b.pieces.some(p => p !== pile && P.piece(p.name).role !== 'floor' && hits(cb, Ck.aabb(p)));
       if (clash) continue;
@@ -1038,6 +1038,21 @@ function woodpilesOutside(b) {
     if (!moved) pile.gone = true;
   }
   b.pieces = b.pieces.filter(p => !p.gone);
+}
+
+// Things set on a table (dishes, candles) whose table came out later (a clash, a ladder, the fire's ring) come out too.
+function dropOrphans(b) {
+  const F = Decor.FURNITURE;
+  const tables = b.pieces.filter(p => p.decor && (F[p.name] || {}).cat === 'table');
+  const built = b.pieces.filter(p => p.decor && !F[p.name] && P.piece(p.name).structural);
+  const Ck = checksLib();
+  b.pieces = b.pieces.filter(p => {
+    if (!p.decor || (F[p.name] || {}).at !== 'top') return true;
+    if (tables.some(t => Math.hypot(t.x - p.x, t.z - p.z) < 1.6 && Math.abs(t.y + ((F[t.name] || {}).top || 0.75) - p.y) < 0.25)) return true;
+    if (built.some(t => { const o = Ck.aabb(t); return p.x > o.x0 - 0.1 && p.x < o.x1 + 0.1 && p.z > o.z0 - 0.1 && p.z < o.z1 + 0.1 && Math.abs(o.y1 - p.y) < 0.25; })) return true;
+    // or hung on a wall as a shelf
+    return b.pieces.some(w => !w.decor && P.piece(w.name).role === 'wall' && Math.hypot(w.x - p.x, w.z - p.z) < 1.2 && Math.abs(w.y - p.y) < 1.2);
+  });
 }
 
 // Pieces the biome cannot make yet, swapped for the nearest it can, or left out (props the generator sets itself:
@@ -1064,6 +1079,7 @@ function biomeSafe(b, biome) {
 
 function finish(b, info) {
   biomeSafe(b, info.biome);
+  dropOrphans(b);
   // the generator places walls by their middle; the pieces that stand on their pivot go down to their foot
   for (const p of b.pieces) { const pi = P.piece(p.name); if (pi.onPivot && !p.decor && !p.footed) { p.y = +(p.y - pi.size[1] / 2).toFixed(3); p.footed = true; } }
   const name = `${info.type}_${info.biome.replace(' ', '')}_${info.cultureKey}_${info.plan || 'x'}-${info.roof || 'x'}-${info.walls || 'x'}${info.asked || ''}_${info.stage}${info.decor}_${info.seed}`;
@@ -1764,7 +1780,8 @@ function woodshed(b, K, C, wings, edges, F, SH, tower) {
     const zp = [zs[0] - 1, zs[0] + 1, zs[1] + 1];
     for (const z of zp) { b.put(framePole(K, C), xp, F + 1, z, 0, T2); b.put(K.pole1 || 'wood_pole', xp, F + 1.9, z, 0, T2); }
     for (const z of zs) b.put(K.beam || 'wood_beam', xp, F + 2.35, z, 90, T2);
-    for (const z of zs) b.put('wood_stack', xWall + sg * 1.05, F, z, 90, { decor: true, trim: true });
+    // one stack, its long side (2.5 m) along the wall, standing on its bottom (the pivot is 0.57 m up)
+    b.put('wood_stack', xWall + sg * 1.0, F + 0.57, (zs[0] + zs[1]) / 2, 90, { decor: true, trim: true });
     b.notes.push('An open woodshed against the gable end.');
     return true;
   }
@@ -1860,7 +1877,7 @@ function penDesign(b, K, W, D, stage) {
   for (let x = x0 + 1; x < x1; x += 2) { b.put(K.fence, x, 0.5, -pd, 0); b.put(K.fence, x, 0.5, pd, 0); }
   for (let z = -pd + 1; z < pd; z += 2) if (Math.abs(z) > 1.5) b.put(K.fence, x1, 0.5, z, 90);
   b.put('piece_chest_barrel', x1 - 1, 0, pd - 1, 0);
-  b.put('wood_stack', x0 + 1.2, 0, pd - 1, 0);
+  b.put('wood_stack', x0 + 1.2, 0.57, pd - 1, 0);
   b.notes.push('Pen beside the barn; its gap faces away from the barn.');
 }
 
@@ -1884,7 +1901,7 @@ function campDesign(b, K, biome, stage, R, decor) {
   for (let i = 0; i < n; i++) { const a = (i / n) * 2 * Math.PI + R() * 0.4; b.put('piece_logbench01', Math.sin(a) * 2.6, 0, Math.cos(a) * 2.6, (a * 180 / Math.PI + 180) % 360); }
   for (const x of [-1, 1]) { b.put(K.pole, x * 2, 1, 5, 0); b.put(K.roof45, x, 1.2, 4.6, 0); }
   b.put('bed', 0, 0, 5, 90);
-  if (decor !== 'd1') { b.put('wood_stack', 3.5, 0, 3, 30); b.put('piece_chest_wood', -3.5, 0, 3, 150); }
+  if (decor !== 'd1') { b.put('wood_stack', 3.5, 0.57, 3, 30); b.put('piece_chest_wood', -3.5, 0, 3, 150); }
   if (decor === 'd3') { b.put('piece_groundtorch_wood', 3.6, 0.75, -2, 0); b.put('rug_deer', 0, 0.02, 4.3, 0); b.put('itemstand', -2, 1.5, 5.3, 180); }
   return b;
 }

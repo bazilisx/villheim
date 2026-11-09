@@ -14,7 +14,9 @@ const solids = fs.readFileSync(path.join(dir, '../data/piece-solids.json'), 'utf
 const Mo = require('./motifs.js');
 const motifScores = path.join(dir, '../data/motif-scores.json');
 const motifLite = Mo.lite(JSON.parse(fs.readFileSync(path.join(dir, '../data/motifs.json'), 'utf8')), fs.existsSync(motifScores) ? JSON.parse(fs.readFileSync(motifScores, 'utf8')).weights : null);
-const code = `window.VH_INTERIOR = ${interior};\nwindow.VH_MOTIFS = ${JSON.stringify({ motifs: motifLite.motifs })};\nwindow.VH_MOTIF_WEIGHTS = ${JSON.stringify(motifLite.weights)};\nwindow.VH_CRITIC = ${critic};\nwindow.VH_SOLIDS = ${solids};\nwindow.VHModels = ${JSON.stringify({ pieces: lite })};\n` + libs.map(f => `// ---- ${f}\n(function () {\n${fs.readFileSync(path.join(dir, f), 'utf8')}\n})();`).join('\n');
+// the interior library (lib/kitbash.js), without sources and the decor table
+const kitbash = JSON.stringify(require('./kitbash.js').lite(JSON.parse(fs.readFileSync(path.join(dir, '../data/kitbash-interior.json'), 'utf8'))));
+const code = `window.VH_INTERIOR = ${interior};\nwindow.VH_KITBASH = ${kitbash};\nwindow.VH_MOTIFS = ${JSON.stringify({ motifs: motifLite.motifs })};\nwindow.VH_MOTIF_WEIGHTS = ${JSON.stringify(motifLite.weights)};\nwindow.VH_CRITIC = ${critic};\nwindow.VH_SOLIDS = ${solids};\nwindow.VHModels = ${JSON.stringify({ pieces: lite })};\n` + libs.map(f => `// ---- ${f}\n(function () {\n${fs.readFileSync(path.join(dir, f), 'utf8')}\n})();`).join('\n');
 const rules = fs.readFileSync(path.join(dir, '../data/rules-lite.json'), 'utf8');
 const scorer = fs.readFileSync(path.join(dir, '../data/scorer.json'), 'utf8');
 let html = fs.readFileSync(path.join(dir, '../web/app.html'), 'utf8');

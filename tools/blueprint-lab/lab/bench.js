@@ -246,6 +246,44 @@ function fixtures(spec, want) {
   return out.slice(0, want);
 }
 
+// The interior library (lib/kitbash.js): one close-up per assembly it placed, seen from inside the room toward its
+// anchor with everything above 2.6 m cut away, labelled with the assembly and its anchor.
+//   node lab/bench.js interior [out dir] [designs] [type,biome,stage,decor,seed;...]
+if (part === 'interior') {
+  const list = (process.argv[5] || 'home,Black Forest,s3,d3,5;tavern,Meadows,s3,d3,2;smithy,Swamp,s3,d3,3;longhouse,Plains,s3,d3,4;home,Meadows,s2,d3,3,octagon;home,Mistlands,s3,d3,7;temple,Mountain,s3,d3,2;workshop,Black Forest,s2,d2,6')
+    .split(';').slice(0, +(process.argv[4] || 99)).map(t => { const [type, biome, stage, decor, seed, plan] = t.split(','); return { type, biome, stage, decor, seed: +seed, plan: plan || undefined }; });
+  const W2 = 360, H2 = 300, tiles2 = [], rows2 = [];
+  for (const q of list) {
+    const d = G.generate(q);
+    const fails = Ck.check(d, q.biome).filter(c => !c.ok).map(c => c.check + ': ' + c.detail);
+    const groups = new Map();
+    for (const p of d.pieces) if (p.kb) { if (!groups.has(p.kb)) groups.set(p.kb, []); groups.get(p.kb).push(p); }
+    const [cx, cz] = centre(d);
+    for (const [kb, ps] of groups) {
+      const mx = ps.reduce((a, p) => a + p.x, 0) / ps.length, mz = ps.reduce((a, p) => a + p.z, 0) / ps.length, y0 = Math.min(...ps.map(p => p.y));
+      let nx = cx - mx, nz = cz - mz; const l = Math.hypot(nx, nz) || 1; nx /= l; nz /= l;
+      const r = 2.6, crop = { x0: mx - r, x1: mx + r, z0: mz - r, z1: mz + r, y0: y0 - 0.8, y1: y0 + 2.6 };
+      const c = createCanvas(W2, H2), g2 = c.getContext('2d');
+      R.draw(g2, d.pieces, { az: Math.atan2(nx, -nz) * 180 / Math.PI + 15, el: 38, crop, cut: y0 + 2.5, width: W2, height: H2 - 30, ss: 2, background: fails.length ? '#e8c9c0' : '#e9e4d8' });
+      g2.fillStyle = '#d9d2c3'; g2.fillRect(0, H2 - 30, W2, 30);
+      g2.fillStyle = '#2b241c'; g2.font = 'bold 12px sans-serif';
+      const id = kb.split('@')[0], label = `${tiles2.length + 1}  ${id}  ${q.type} ${q.biome}`;
+      g2.fillText(label, 5, H2 - 17);
+      g2.font = '10px sans-serif';
+      g2.fillText([...new Set(ps.map(p => p.name))].join(' ').slice(0, 64), 5, H2 - 4);
+      tiles2.push(c);
+      rows2.push({ n: tiles2.length, id, design: d.meta.Name, pieces: ps.map(p => p.name + (p.clip ? `~${p.clip}` : '')), fails });
+    }
+  }
+  const cols = 5, sh = createCanvas(cols * W2, Math.ceil(tiles2.length / cols) * H2), g3 = sh.getContext('2d');
+  g3.fillStyle = '#d9d2c3'; g3.fillRect(0, 0, sh.width, sh.height);
+  tiles2.forEach((t, i) => g3.drawImage(t, (i % cols) * W2, Math.floor(i / cols) * H2));
+  fs.writeFileSync(path.join(outDir, 'interior.png'), sh.toBuffer('image/png'));
+  fs.writeFileSync(path.join(outDir, 'interior.json'), JSON.stringify(rows2, null, 1));
+  console.log(`interior: ${tiles2.length} assemblies in ${list.length} designs -> ${path.join(outDir, 'interior.png')}`);
+  process.exit(0);
+}
+
 const spec = PARTS[part];
 if (!spec) { console.error('parts:', Object.keys(PARTS).join(', ')); process.exit(1); }
 

@@ -242,9 +242,14 @@ well (Tyler, 2026-11-08). The Features tab of the review sheet (`docs/features/b
       PC (models v2, 2026-11-09; `data/piece-solids.json`, `lib/shapes.js`; checks use them by default).
 - [x] Building details and motifs from the best-liked builds, component bench, design critic, new parts (stairs,
       dormers, chimney stacks, lean-tos, hearthstones, kitchens, bar counters, canopy beds, barn stalls) (2026-11-09).
-- [ ] Next for building quality (2026-11-09 review): roof overhangs (D-059), an upper storey over a loggia on posts or a
-      jetty, varied heights between wings, inner roof corners at L and T valleys, yards and gates (D-060), better
-      proxies for roof corners and carvings, the middle-eastern court tavern fire, the two middle-eastern temples.
+- [x] Roof overhangs (D-059), inner roof corners at L and T valleys, yards, fences, gates and paths (D-060), door
+      lights, gates as front doors, gable-end balconies (2026-11-09).
+- [ ] Next for building quality: an upper storey over a loggia on posts or a jetty, varied heights between wings,
+      arches (check `stone_arch` in the game first), stone paving outside, taller and larger s3 buildings, door
+      lights on octagon plans, better proxies for roof corners and carvings, the middle-eastern court tavern fire,
+      the two middle-eastern temples.
+- [ ] Kitbash libraries in stages (helpers, 2026-11-09): interior assemblies and clips (stages 1 and 2 merged), yards
+      (stages 1 and 2 merged), exterior accents and the coverage audit (stage 1 merged).
 - [ ] Interiors (2026-11-09 review; vignettes on bare walls done): at most two chests side by side,
       an anchor per building type (smithy forge corner, home bed corner), square yaws for clutter, fuller main halls.
 - [ ] Later, for Tyler to look at: redraw `docs/rooms` and `docs/generated` with the v2 models, a Motifs tab, before

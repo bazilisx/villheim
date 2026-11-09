@@ -330,7 +330,8 @@ function generate(req) {
   if (plan === 'octagon' && roofKind !== 'flat') roofKind = 'conical';
   if (plan !== 'octagon' && roofKind === 'conical') roofKind = 'hip';
   if (roofKind === 'shed' && plan !== 'rect' && plan !== 'long' && plan !== 'square') plan = 'rect';
-  if (roofKind === 'hip' && ['gables', 'court', 'greek', 'nave', 'U'].includes(plan)) roofKind = 'gable';
+  // T and cross plans keep gables: a hip main wing with gabled wings through it read as a broken roof (r5 review)
+  if (roofKind === 'hip' && ['gables', 'court', 'greek', 'nave', 'U', 'T', 'cross'].includes(plan)) roofKind = 'gable';
   let wallStyle = req.walls && req.walls !== 'auto' ? req.walls : wallStyleFor(R, C, cultureKey, biome);
   if (form === 'keep') wallStyle = stoneOK ? 'stone' : (biome === 'Meadows' ? 'half-timber' : wallStyle);
   if (form === 'stave') wallStyle = 'plank';
@@ -680,6 +681,7 @@ function generate(req) {
       const vent = w.main && !domeCfg ? ventAt : null;
       parts.push(...(kind === 'hip' ? hipPieces(K, w, roofTop, r, C.eaves, { kick: C.kick, vent }) : gablePieces(K, C, w, roofTop, r, ends, vent, dctx)));
     }
+    if (dctx.profile.valleys !== false) valleys(parts, b);
     const caps = [];
     // where wings cross, keep the higher roof so the lower roof runs into the higher one
     const placed = new Set();
@@ -871,8 +873,8 @@ function generate(req) {
   return finish(b, info);
 }
 
-// A balcony on a gable end: the upper storey's middle bay becomes a door onto a 2 m square floor with a rail of two
-// beams on corner posts. Under a 3 m storey it stands on 26 degree brackets from the wall; under a 2 m storey on posts
+// A balcony on a gable end: the upper storey's middle bay becomes a door onto a 2 m square floor with a hand rail on
+// corner posts. Under a 3 m storey it stands on 26 degree brackets from the wall; under a 2 m storey on posts
 // from the ground. Gable ends keep their rake overhang well above it; long walls are left alone (the eaves come down
 // to about a metre over a balcony there).
 function balcony(b, K, C, w, edges, o) {
@@ -908,10 +910,9 @@ function balcony(b, K, C, w, edges, o) {
       else for (let y = 0; y < yU - 0.01;) { const h = yU - y >= 2 ? 2 : 1; b.put(h === 2 ? pole : pole1, xo, y + h / 2, z + dz, 0, T); y += h; }
       b.put(pole1, xo, yU + 0.5, z + dz, 0, T); // the rail's posts
     }
-    for (const yr of [yU + 0.55, yU + 1.05]) {
-      b.put(beam, xo, yr, z, 90, T);
-      for (const dz of [-1, 1]) b.put(beam, x0 + sg, yr, z + dz, 0, T);
-    }
+    // one hand rail on the posts (two rows read as a crate stuck to the wall, r5 review)
+    b.put(beam, xo, yU + 1.05, z, 90, T);
+    for (const dz of [-1, 1]) b.put(beam, x0 + sg, yU + 1.05, z + dz, 0, T);
     b.balcony = true;
     b.notes.push('A balcony on a gable end, with a door from the upper room.');
     return true;
@@ -938,12 +939,20 @@ function doorLights(b, o) {
     const wo = Ck.aabb(wall), half = e.yaw === 0 ? (wo.z1 - wo.z0) / 2 : (wo.x1 - wo.x0) / 2;
     const dw = op.kind === 'gate' ? 1.45 : 1.15;
     for (const sg of [-1, 1]) {
+      // the bay beside the door holds the light: not when it is a window, another door or a gate
+      const nx = e.x + ux * sg * 2, nz = e.z + uz * sg * 2;
+      if ((b.openings || []).some(q => q.storey === 0 && Math.abs(q.e.x - nx) < 0.3 && Math.abs(q.e.z - nz) < 0.3)) continue;
+      if (name && !b.pieces.some(p => !p.decor && P.piece(p.name).role === 'wall' && Math.abs(p.x - nx) < 0.3 && Math.abs(p.z - nz) < 0.3 && p.y > op.y0 && p.y < op.y0 + 2.5)) continue; // a wall there to hang on
       let put = null;
       for (const t of [dw, dw + 0.2, dw - 0.15]) {
         const yaw = (Math.atan2(ox, oz) * 180 / Math.PI + 270 + 360) % 360;
         const q = name
           ? { name, x: +(e.x + ox * (half + 0.28) + ux * sg * t).toFixed(3), y: +(op.y0 + 1.55).toFixed(3), z: +(e.z + oz * (half + 0.28) + uz * sg * t).toFixed(3), yaw }
           : { name: ground, x: +(e.x + ox * (half + 0.6) + ux * sg * (t + 0.2)).toFixed(3), y: 0.75, z: +(e.z + oz * (half + 0.6) + uz * sg * (t + 0.2)).toFixed(3), yaw: 0 };
+        if (!name) { // a standing torch stands on the doorstep or floor under it, if any
+          const tops = b.pieces.filter(p => P.piece(p.name).role === 'floor').map(p => Ck.aabb(p)).filter(a => q.x > a.x0 && q.x < a.x1 && q.z > a.z0 && q.z < a.z1 && a.y1 < 1.5).map(a => a.y1);
+          if (tops.length) q.y = +(Math.max(0, ...tops) + 0.75).toFixed(3);
+        }
         const qb = Ck.aabb(q), m = 0.04;
         const hit = b.pieces.some(p => {
           const r = P.piece(p.name).role;
@@ -1349,7 +1358,7 @@ function biomeSafe(b, biome) {
   const ord = P.BIOME_ORDER, limit = ord.indexOf(biome), fits = n => ord.indexOf(P.needs(n)) <= limit;
   const Ck = checksLib(), gone = [];
   b.pieces = b.pieces.filter(p => {
-    if (fits(p.name) || P.piece(p.name).structural) return true;
+    if (fits(p.name) || P.piece(p.name).structural || (p.decor && P.minor(p.name))) return true; // minor decor goes anywhere (D-066)
     const alt = STAND_IN[p.name];
     if (alt && fits(alt)) { p.name = alt; return true; }
     if (p.decor) gone.push(Ck.aabb(p));
@@ -1637,6 +1646,45 @@ function surfaceAt(w, x, z, top, r) {
   return capOf(w, top, r) - (r / 2) * Math.max(0, v - 1);
 }
 
+// Roof valleys (coverage audit: inner corner pieces on 38 % of the best-liked builds, none of ours). Where two wings'
+// roof pieces of the same kind fill the same 2 m cell at the same height with their slopes at right angles, the cell is
+// on the valley line (the roof there is the higher of the two slopes, highest along the diagonal away from the low
+// corner): one inner corner piece takes the place of both. Snap points (data/piece-models.json): the inner corner's low
+// corner is at local (+1, +1) with its pivot there, its slopes rise toward local -x and -z; a roof piece rises toward
+// its local -z, the 45 degree piece pivoting a metre above its low edge.
+const ICORNER = { wood_roof: 'wood_roof_icorner', wood_roof_45: 'wood_roof_icorner_45', darkwood_roof: 'darkwood_roof_icorner', darkwood_roof_45: 'darkwood_roof_icorner_45' };
+function valleys(parts, b) {
+  const cellsR = new Map();
+  for (const p of parts) {
+    if (p.role !== 'roof' || p.eave || !ICORNER[p.name]) continue; // eave rows half a cell out cross on the wall lines, not on the valley
+    const k = `${Math.round(p.x * 10)},${Math.round(p.z * 10)},${Math.round(p.y * 10)}`;
+    if (!cellsR.has(k)) cellsR.set(k, []);
+    cellsR.get(k).push(p);
+  }
+  const up = p => { const a = p.yaw * Math.PI / 180; return [-Math.sin(a), -Math.cos(a)]; };
+  let n = 0;
+  for (const list of cellsR.values()) {
+    if (list.length !== 2) continue;
+    const [A, B] = list;
+    if (A.wing === B.wing || A.name !== B.name) continue;
+    const dA = up(A), dB = up(B);
+    if (Math.abs(dA[0] * dB[0] + dA[1] * dB[1]) > 0.1) continue;
+    let yaw = null;
+    for (const [d1, d2] of [[dA, dB], [dB, dA]]) {
+      const y = Math.atan2(-d1[0], -d1[1]), mx = [-Math.cos(y), Math.sin(y)];
+      if (Math.abs(mx[0] - d2[0]) < 0.1 && Math.abs(mx[1] - d2[1]) < 0.1) { yaw = ((Math.round(y * 180 / Math.PI) % 360) + 360) % 360; break; }
+    }
+    if (yaw == null) continue;
+    const name = ICORNER[A.name], y = /_45$/.test(A.name) ? A.y - 1 : A.y;
+    Object.assign(A, { name, y, yaw, valley: true });
+    B.role = 'gone';
+    n++;
+  }
+  for (let i = parts.length - 1; i >= 0; i--) if (parts[i].role === 'gone') parts.splice(i, 1);
+  if (n) b.notes.push(`${n} roof valley pieces where wings meet.`);
+  return n;
+}
+
 function gablePieces(K, C, w, top, r, ends, vent, dctx) {
   const roof = r === 2 ? K.roof45 : K.roof26, roofTop = r === 2 ? K.roofTop45 : K.roofTop26, gable = r === 2 ? K.gable45 : K.gable26;
   const capY = capOf(w, top, r), low = i => capY - r * (i + 1), pivot = i => low(i) + (r === 2 ? 1 : 0);
@@ -1682,14 +1730,17 @@ function gablePieces(K, C, w, top, r, ends, vent, dctx) {
     for (let u = -w.W + 1; u < w.W; u += 2) cols.push(u);
     const rakeCols = [-1, 1].filter((sg, k) => ends[k]).map(sg => sg * w.W);
     const n0 = out.length;
-    for (const u of [...cols, ...rakeCols]) { add(roof, u, yE, -vE, 180, 'roof', surfE); add(roof, u, yE, vE, 0, 'roof', surfE); }
+    // the eave row only where its edge stays 2.3 m over the ground (r5 review: eaves at 1 to 1.5 m on 2 m walls under
+    // a 45 degree roof made houses read as tents); the rake overhang on the gables stays
+    const eaveOK = low(wallRow) - r / 2 >= 2.3;
+    if (eaveOK) for (const u of [...cols, ...rakeCols]) { add(roof, u, yE, -vE, 180, 'roof', surfE); add(roof, u, yE, vE, 0, 'roof', surfE); }
     for (let k = n0; k < out.length; k++) out[k].eave = true;
     for (const u of rakeCols) {
       for (let i = 0; i <= wallRow; i++) { const v = 2 + 2 * i; add(roof, u, pivot(i), -v, 180, 'roof', low(i) + r / 2); add(roof, u, pivot(i), v, 0, 'roof', low(i) + r / 2); }
       add(roofTop, u, capY, 0, 0, 'cap', capY + 0.3);
     }
   }
-  if (dctx) { dctx.rake = over ? 1 : 0; dctx.eaveOut = over ? 1 : 0; }
+  if (dctx) { dctx.rake = over ? 1 : 0; dctx.eaveOut = over && low(wallRow) - r / 2 >= 2.3 ? 1 : 0; }
   if (dctx && !(C.kick && (C.eaves || 1) > 1)) Details.bargeboards(K, C, w, dctx, rows, ends, add, low, pivot, r);
   if (dctx && dctx.profile.dormers && r === 2 && !C.stoneWalls && w === dctx.wings[0]) dormers(K, w, top, add, dctx);
   return out;

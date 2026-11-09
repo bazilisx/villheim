@@ -218,7 +218,10 @@ flags (`req.details` overrides the detail profile, `req.style` the culture), che
 of the part on a contact sheet (`<part>.png`, `<part>.json`). It picks test buildings where the part shows (each flag,
 turned off alone from the full set, changes pieces near the part), frames the camera once per building on the pieces
 the part adds, seen from outside, and cuts the roof away for inside parts. Parts: `door`, `window`, `gable`, `wall`,
-`stack`, `dormer`, `bed`, `stair`, `yard`. Sheets go to a reviewer that has not seen the code; its findings become fixes and
+`stack`, `dormer`, `bed`, `stair`, `yard`, and `interior` (one close-up per assembly the interior library placed, seen
+from inside the room with everything over 2.6 m cut away:
+`node lab/bench.js interior [out dir] [designs] ["type,biome,stage,decor,seed;..."]`). Sheets go to a reviewer that has
+not seen the code; its findings become fixes and
 odds, and the part goes back on the bench.
 
 `lib/critic.js` measures a design the way `lab/learn_critic.js` measured the top quarter of corpus house builds by
@@ -249,7 +252,11 @@ Parts added on 2026-11-09:
 | Kitchen | A butcher's table against the wall nearest the cauldron, the spice rack and pots and pans hung on the walls nearest it, all within 4.5 m. Gated by their materials: turnips (Swamp), silver (Mountain), black metal (Plains). | wherever a cauldron is |
 | Yard fence | A fence 2 to 4 m out from the walls (D-060 B), as 'front' (round the front from the side walls), 'L' (front and one side, meeting the back wall), 'wrap' (all round) or 'side' (along one end wall); a shape that runs into something already there (a field, a woodshed, a stair, a door's 2 m) gives way to the next, and the plot's radius as the game reads it (Blueprints.cs: farthest pivot from the middle of the pivots' box, plus 2 m) grows by 4 m at most. Wood fence, dry stone fence (where the stage allows stone, D-012) or posts and rails, by culture. Winding: outer corners cut with 2 m chords at 45 degrees, or at 22.5 and 67.5 degrees, the turns corpus fences make. Fence ends meet the wall; the last panel of a run laps the one before it (marked `clip`). | stage 2 and 3 homes and farms (`req.yard` true or false overrides), not on stilts or boardwalks |
 | Yard gate and path | A `wood_fence_gate` (2 m opening, the corpus's 2 m gap) on the run nearest the door, with 1.2 m clear either side; 2 m posts beside it at s3. A path of 1 m planks from the door out to a lane 1.5 m in front of it, along to the gate's line and through the gate, round anything already there. | with a yard fence |
-| Yard contents | Raised beds of beams on the ground (2 m by 1 m, as the corpus's 2.2 by 1) with a row of the biome's crop (carrot, turnip, onion, barley; dandelions, mushrooms and thistles in the Meadows); firewood against the fence (a woodpile the furnishing left against an outside wall moves here); a bench against the front wall beside the door; a lamp inside the gate; bushes along the fence, dandelions along the walls; a cart (Black Forest on) and a scarecrow (armor stand, Swamp on) on farms. Plants are part of the build; the rest is furnishing. Nothing taller than 1 m within 1.2 m of the walls (the eaves and their braces), nothing in kept-clear places. | beds, firewood, bench d2 on; lamp, bushes, flowers, scarecrow d3; bench switches `yardOrganic`, `yardBeds`, `yardProps`, `yardLamp`, `yardPath` |
+| Yard contents | Raised beds of beams on the ground (2 m by 1 m, as the corpus's 2.2 by 1) with a row of the biome's crop (carrot, turnip, onion, barley; dandelions, mushrooms and thistles in the Meadows); firewood against the fence (a woodpile the furnishing left against an outside wall moves here); a bench against the front wall beside the door; a lamp inside the gate; bushes along the fence, dandelions along the walls; a cart (Black Forest on) and a scarecrow (armor stand, Swamp on) on farms. By culture: a pile of field stone (Celtic, Norse highland, Saami), a stack of core wood logs (Norse forest, Slavic, Baltic), a second bed (Frankish, Anglo-Saxon, Byzantine), a cart (steppe). Where the house stands on 1 m stone floors, the ground in front of the door is laid in the same stone, level with the floor inside (two or three cells, six at s3). On a yard below y = 0 (the turf houses' sunk floors) only the fence, path and plants. Plants are part of the build; the rest is furnishing. Nothing taller than 1 m within 1.2 m of the walls (the eaves and their braces), nothing in kept-clear places. | beds, firewood, bench d2 on; lamp, bushes, flowers, scarecrow d3; bench switches `yardOrganic`, `yardBeds`, `yardProps`, `yardLamp`, `yardPath`, `yardPave` |
+| Door lights | A wall torch on each side of a ground-floor door (1.15 m from its middle, 1.45 m for a gate), 1.55 m up on the outside face; where the biome has no wall torch (Meadows), a standing torch beside the door on the ground. A side that would touch trim, a window or a post stays bare. | front doors d2 on, back doors d3 |
+| Gate as front door | The front door is a `wood_gate` (2 m wide, 3 m tall) on a 3 m storey. | longhouses, stores, workshops, smithies, sawmills, farms, s2 on, 60 % |
+| Balcony | The upper storey's middle bay of a free gable end becomes a door onto a 2 m square floor with a rail of two beams on corner posts; 26 degree brackets from the wall under a 3 m storey, posts from the ground under a 2 m one. Not on long walls (the overhang's eaves come down to about a metre over it there), not where a stair, stack, woodshed or porch is. | homes, taverns, longhouses, workshops with two storeys or more, gable roofs, s2 on, 50 % (`details.balcony`) |
+| Roof valleys | Where two wings' roof pieces of the same kind fill one cell at one height with their slopes at right angles, one inner corner piece takes their place (wood and darkwood, 26 and 45 degrees; eave rows left as they were). | gable roofs where wings meet (`details.valleys: false` turns it off) |
 
 ### Yards
 
@@ -281,6 +288,101 @@ village gives already takes in the yard; an off-centre yard (a side yard) moves 
 `PlotFinder` keeps plots a radius apart, samples the slope at 70 % of the radius and looks for clutter within 80 %;
 `Growth` builds a blueprint set's next level where its radius fits. `lib/yards.js` keeps the radius growth to 4 m
 (homes: 9.7 to 11.8 m at s2, 11.6 to 13.4 m at s3 on average). No change to the mod was needed.
+
+Pictures: `docs/yards/yard-bench.png` (the bench sheet: four buildings, the switches on and off) and
+`docs/yards/yard-examples.png` (four yards, three-quarter and top views).
+
+## Interior kitbash (D-065, D-066)
+
+Rooms furnished the way the best builders do it: any prefab that ships with the game may dress a room (stations and
+their upgrades, stands, food and feasts, pots, Dvergr and trader props, banners, pelts), pieces may be stacked and may
+clip into each other, into walls and into the floor, and furniture the game lacks is built from building pieces.
+
+The library. `node --max-old-space-size=10000 lab/mine_kitbash.js [compact.json] [out.json]` reads the 1,561 vanilla
+builds of the corpus (242 well-liked: the top quarter by downloads). Every decor piece inside a building is given an
+anchor: a table, a bed, the fire, a stair's underside, an inside corner, a window, a wall run or a free post. The pieces
+of one anchor are an assembly of 2 to 10, put in the anchor's frame with what each rests on (the floor, the anchor,
+another piece, the wall, or hung from structure), how deep it clips into the others and the wall (the penetration depth
+of the game's solids, `shapes.js` `clipDepth`) and how far it sinks below the floor. Assemblies with the same anchor
+and the same slots (a wood chest and an iron chest fill one slot) within 0.35 m are one. Kept: those in two builds or
+more, and groups of three kinds or more seen once in a well-liked build. 12,762 found; 459 kept.
+
+| Anchor | Found | Kept |
+|---|---|---|
+| Wall run | 4,750 | 100 |
+| Corner, 90 degrees | 3,818 | 100 |
+| Corner, 135 degrees (octagon) | 439 | 8 |
+| Corner, 120 degrees (hexagon) | 84 | 3 |
+| Corner, other angles | 228 | 0 |
+| Table | 1,091 | 74 |
+| Hearth | 584 | 67 |
+| Bed | 660 | 63 |
+| Window | 542 | 22 |
+| Post | 377 | 15 |
+| Stair underside | 189 | 7 |
+
+The file also holds the 220 decor prefabs builders use in two builds or more, with their anchors, rests and clip and
+sink depths (median and 90th percentile). Item stands lead (291 and 287 builds), then wood chests, chairs, signs, wall
+torches, deer rugs, iron chests, fur rugs, armor stands. Builders clip often and shallow: a median of 4 to 19 cm, a
+90th percentile of 10 to 40 cm (forges and black metal chests 0.52 and 0.57 m); a tenth of the banners reach 0.55 m
+into the floor.
+
+Built-up furniture (`lib/kitbash.js` `BUILT_KITS`), hand-made in the library's format: a cabinet (a chest set into a
+half wall so its front shows as drawers, a plank top of two ledges, a pot and a candle), drawers of barrels, a bedside
+barrel with a candle and a mead, a nightstand of a post and a ledge, a couch (a bench with a pelt over its seat), a
+living room (the couch, a rug, a chest for a low table with mead and a candle, an armchair each side), drapes (a banner
+each side of a window, a bench under it), a window seat, wall shelves of ledges with pots, candles, mead and bread over
+two barrels, a kitchen wall (a half-wall counter, the spice rack, pots and pans over barrels), a feast table (the
+village biome's own feast, candles, meads), a kitchen island, a wash corner and a bath corner. Each building type has
+its own first anchor: the smithy's forge corner (the tool rack, a quench barrel, an armor stand, a chest), the home's
+bedside, the tavern's serving corner (stacked barrels behind a counter) and its kitchen wall.
+
+Placing. After the furnishing, `furnishRooms` reads every room as the decorator does (`readLevel`), with its anchors:
+wall runs every half metre, windows, inside corners where two wall faces meet at any angle, fires, tables, beds, free
+posts and stairs. Assemblies are drawn by room kind and decor stage from a random stream of their own (seeded from the
+detail stream after everything else, so the rest of a design is unchanged): at most one per room at d1 (rooms of 30 m2
+or more), up to three at d2 and eight at d3, weighted by score, by how many kinds of piece they hold, and down for
+repeats and for pairs of chests; each built kit at most once in a building (shelves, cabinets, drapes, bedsides twice).
+Each slot takes the source's prefab when the village's biome makes it, or the first of its class that it does; minor
+decor goes in any biome; item stands, seasonal pieces and woodpiles are left out. Every piece is tested: on this room's
+floor or against its wall, under its ceiling, out of doorways, climbs, the chimney and the fire's ring, under the sill
+of any window behind it, plain wall behind anything hung, what it rests on there (the audit's own tests), no deeper in
+the floor than its source, and clipping into walls, the anchor and its own assembly no deeper than its source builds did
+(into anything else, not at all). Floor pieces keep 0.9 m of floor in front of them and at most 45 % of a room's floor
+is furnished. Built kits may move the decorator's chests, seats and lights out of their way (two at most). A piece that
+fails is left out when nothing rests on it, as long as three fifths of the assembly stay.
+
+Clips on purpose. A piece placed with a clip carries `p.clip`, the deepest it reaches into anything. `lib/checks.js`
+(the overlap check) and the decorator's audit allow a pair to clip as deep as the larger mark of the two, and no deeper;
+a piece set into the floor carries `p.sink`. Kitbash pieces also carry `kb` (assembly and anchor) and `rest`, and the
+audit checks what each rests on. These marks are not written to the `.blueprint` file.
+
+Materials (D-066). `pieces.js` `minor`: rugs, banners, food and feasts, pots, candles, garlands, cloth hangings, Dvergr
+props, treasure, signs. They pass the materials check in any biome, and the generator's last pass (`biomeSafe`) keeps
+them; stations, beds, chests, tables, seats, fires and building pieces still need their own.
+
+Cost: about 50 ms more per furnished d2 or d3 design in Node (the room reading and the fits), 2026-11-09.
+
+### Items on stands (for the mod)
+
+Item stands and armor stands stand empty in a design, so the library leaves them out for now. PlanBuild already saves
+what a stand holds in the piece line's tenth field (the one `lib/blueprint.js` reads as `info` and
+`Blueprints.cs` as `Piece.Text`): the corpus has `itemstandh;...;"Tankard:0:1"` (item prefab, variant, quality, and on
+newer saves a fourth number) on 2,518 horizontal stands and trophies such as `"TrophySurtling:0:1:0"` on wall stands;
+an armor stand saves `pose:slot:item:variant:...` per slot (`"0:7::0::0::0::0::0::0::0:"`). The design:
+
+1. The lab: a piece may carry `item` ({ name, variant, quality }); `blueprint.js` writes it to `info` as
+   `name:variant:quality` for `itemstand` and `itemstandh`, and reads it back. Choices by room and biome: trophies of
+   the village's own biome on wall stands in halls and homes, tankards and meads on horizontal stands on tables and bar
+   counters, shields and tools on walls in smithies.
+2. The mod: when `DesignSpawner` or a village build places a piece whose prefab has an `ItemStand` and whose `Text`
+   splits into a known item prefab and two numbers, it sets `ZDOVars.s_item`, `s_variant` and `s_quality` on the new
+   piece and calls `UpdateVisual`, the way `Trophies.Hang` does, and locks the stand as `WantPile.Lock` does, so the item
+   cannot be taken. Armor stands the same way per slot, once the format is checked in the game.
+3. Cost: the item counts as minor decor (D-066); the stand itself is built from the chest as any piece.
+
+Placed food (meads, bread, cooked meat; the feasts) spawns as items lying where they are put, which a player can pick
+up. Until the mod locks them as above, the kits use only a few, on tables, counters and shelves.
 
 ## Repair
 

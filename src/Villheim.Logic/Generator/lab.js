@@ -5276,7 +5276,61 @@ function dais(b, ctx, zones) {
   return false;
 }
 
+// Vignettes on bare walls (2026-11-09 interior review: "no bare wall run over 4 m"): in a ground room's plain wall
+// bays with nothing within 1.4 m in front, one of a bench under a wall torch, a chest beside a barrel, or an armor
+// stand, by what the biome makes; one bay in three at most, never by a door, a window or a stair.
+function vignettes(b, ctx, zones) {
+  const Ck = checksB();
+  const edges = b.outer || [];
+  const open = new Set((b.openings || []).map(o => `${o.e.x},${o.e.z},${Math.round(o.y0 * 10)}`));
+  let placed = 0, k = 0;
+  const kinds = [];
+  if (can(ctx.biome, 'piece_walltorch')) kinds.push('bench');
+  if (can(ctx.biome, 'piece_chest_barrel')) kinds.push('store');
+  if (can(ctx.biome, 'ArmorStand') && ['home', 'longhouse', 'tavern', 'temple'].includes(ctx.type)) kinds.push('armor');
+  if (!kinds.length) return 0;
+  for (const room of (b.rooms || []).filter(r => !r.upper)) {
+    const mine = edges.filter(e => e.cell[0] > room.x0 && e.cell[0] < room.x1 && e.cell[1] > room.z0 && e.cell[1] < room.z1);
+    const budget = Math.floor(mine.length / 3);
+    let used = 0;
+    for (const e of mine) {
+      if (used >= budget) break;
+      if (open.has(`${e.x},${e.z},${Math.round(room.y * 10)}`)) continue;
+      // neighbours with a door are too busy
+      if ((b.openings || []).some(o => o.kind !== 'window' && Math.hypot(o.e.x - e.x, o.e.z - e.z) < 2.5)) continue;
+      const nx = -e.out[0], nz = -e.out[1], ux = e.yaw === 0 ? 1 : 0, uz = 1 - ux;
+      const wall = b.pieces.find(p => !p.decor && PB.piece(p.name).role === 'wall' && Math.abs(p.x - e.x) < 0.3 && Math.abs(p.z - e.z) < 0.3 && p.y > room.y && p.y < room.y + 2.5);
+      if (!wall) continue;
+      const wo = Ck.aabb(wall), half = e.yaw === 0 ? (wo.z1 - wo.z0) / 2 : (wo.x1 - wo.x0) / 2;
+      const box = { x0: e.x + Math.min(0, nx * 1.6) - (ux ? 1.3 : 0.05) + nx * half, x1: e.x + Math.max(0, nx * 1.6) + (ux ? 1.3 : 0.05) + nx * half,
+        z0: e.z + Math.min(0, nz * 1.6) - (uz ? 1.3 : 0.05) + nz * half, z1: e.z + Math.max(0, nz * 1.6) + (uz ? 1.3 : 0.05) + nz * half };
+      const inPlane = p => !p.decor && Math.abs((p.x - e.x) * nx + (p.z - e.z) * nz) < half + 0.35; // the wall's own posts, trim and courses
+      const busy = b.pieces.some(p => { if (p === wall || inPlane(p) || ['floor', 'rug'].includes(PB.piece(p.name).role)) return false; const o = Ck.aabb(p); return o.x0 < box.x1 && o.x1 > box.x0 && o.z0 < box.z1 && o.z1 > box.z0 && o.y0 < room.y + 2.2 && o.y1 > room.y + 0.15; })
+        || zones.some(z => z.x0 < box.x1 && z.x1 > box.x0 && z.z0 < box.z1 && z.z1 > box.z0 && z.y0 < room.y + 2 && z.y1 > room.y);
+      if (busy) continue;
+      const fl = b.pieces.find(p => !p.decor && PB.piece(p.name).role === 'floor' && (() => { const o = Ck.aabb(p); const cx = e.x + nx * (half + 0.5), cz = e.z + nz * (half + 0.5); return cx > o.x0 && cx < o.x1 && cz > o.z0 && cz < o.z1 && Math.abs(o.y1 - (room.y + 0.1)) < 0.6; })());
+      if (!fl) continue;
+      const top = Ck.aabb(fl).y1, T = { decor: true };
+      const at = (d, t = 0) => [+(e.x + nx * (half + d) + ux * t).toFixed(3), +(e.z + nz * (half + d) + uz * t).toFixed(3)];
+      const kind = kinds[(k++) % kinds.length], yaw = e.inYaw;
+      if (kind === 'bench') {
+        const [x, z] = at(0.4); b.put('piece_bench01', x, top, z, yaw, T);
+        const [tx, tz] = at(0.28); b.put('piece_walltorch', tx, top + 1.55, tz, (Math.atan2(nx, nz) * 180 / Math.PI + 270 + 360) % 360, { decor: true });
+      } else if (kind === 'store') {
+        const [x, z] = at(0.42, -0.45); b.put('piece_chest_wood', x, top, z, yaw, T);
+        const [x2, z2] = at(0.4, 0.75); b.put('piece_chest_barrel', x2, top, z2, yaw, T);
+      } else {
+        const [x, z] = at(0.35); b.put('ArmorStand', x, top, z, yaw, T);
+      }
+      used++; placed++;
+    }
+  }
+  if (placed) b.notes.push(`${placed} corners dressed along bare walls.`);
+  return placed;
+}
+
 function apply(b, ctx, zones) {
+  if (ctx.decor === 'd3' && !['barn', 'storage', 'dock', 'farm'].includes(ctx.type)) vignettes(b, ctx, zones || []);
   if (ctx.decor !== 'd1' && ['longhouse', 'temple'].includes(ctx.type)) dais(b, ctx, zones || []);
   if (ctx.type === 'barn' && ctx.decor !== 'd1') stalls(b, ctx, zones || []);
   if (ctx.type === 'tavern' && ctx.decor !== 'd1') barCounter(b, ctx, zones || []);
@@ -5284,7 +5338,7 @@ function apply(b, ctx, zones) {
   if (X.canopyBed != null ? X.canopyBed : (ctx.decor === 'd3' && ['home', 'longhouse'].includes(ctx.type) && ctx.R() < 0.5)) canopyBed(b, ctx);
 }
 
-const apiB = { apply, barCounter, canopyBed, stalls, dais };
+const apiB = { apply, barCounter, canopyBed, stalls, dais, vignettes };
 if (NODE_B) module.exports = apiB; else window.VHKitbash = apiB;
 
 })();

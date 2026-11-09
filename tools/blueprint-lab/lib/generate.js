@@ -463,11 +463,13 @@ function generate(req) {
 
   // details (lib/details.js): what trim this building gets, drawn from its own random stream so the rest of the
   // design comes out as before
-  C.windowStyle = (T.low || ['storage', 'barn'].includes(type) || form === 'sunken' || (stage === 's1' && !['longhouse', 'tavern', 'temple'].includes(type))) ? 'single' : 'twin';
+  if (req.style) Object.assign(C, req.style); // the component bench (lab/bench.js) holds the rest fixed and varies one part
+  C.windowStyle = req.style && req.style.windowStyle ? req.style.windowStyle : (T.low || ['storage', 'barn'].includes(type) || form === 'sunken' || (stage === 's1' && !['longhouse', 'tavern', 'temple'].includes(type))) ? 'single' : 'twin';
   const dragonsHere = roofKind === 'gable' && plan !== 'gables' && ((C.dragons && ['longhouse', 'temple', 'tavern'].includes(type)) || (C.carved && stage !== 's1'));
   const dctx = { K, C, cultureKey, T, type, stage, decor, biome, plan, F, SH, storeys, edges, verts, cells, door, wings, flat,
     ladders, flue, dragonsHere, R: rng(seed * 31337 + 7) };
   dctx.profile = Details.profile(dctx);
+  if (req.details) Object.assign(dctx.profile, req.details);
   dctx.wallSegment = wallSegment;
 
   // walls, frame and top plates per storey

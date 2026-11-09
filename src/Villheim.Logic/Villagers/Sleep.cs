@@ -96,6 +96,9 @@ namespace Villheim.Logic.Villagers
             }
 
             Vector3 home = villager.Zdo.GetVec3(Keys.VillagerHome, hearth.transform.position);
+            Villager partner = Goals.Sweetheart(villager);
+            Vector3 partnerBed = partner != null ? Claimed(partner) : Vector3.zero;
+            Plot partnerHome = partnerBed != Vector3.zero ? PlotAt(hearth, partnerBed) : null;
             Bed best = null;
             float bestDistance = float.MaxValue;
             foreach (Bed bed in beds)
@@ -105,8 +108,14 @@ namespace Villheim.Logic.Villagers
                     continue;
                 }
 
-                // Near his friend and away from his rival where he can (Neighbors).
+                // Near his friend and away from his rival where he can (Neighbors), and in the same home as his
+                // sweetheart (D-073: a family shares a home, each in his own bed).
                 float distance = Utils.DistanceXZ(bed.transform.position, home) + Neighbors.BedPenalty(villager, bed.transform.position);
+                Plot bedHome = partnerHome != null ? PlotAt(hearth, bed.transform.position) : null;
+                if (bedHome != null && Utils.DistanceXZ(bedHome.Position, partnerHome.Position) < 0.5f)
+                {
+                    distance -= 40f;
+                }
                 if (distance < bestDistance)
                 {
                     best = bed;
@@ -209,7 +218,8 @@ namespace Villheim.Logic.Villagers
             return lines;
         }
 
-        private static Plot PlotAt(VillageHearth hearth, Vector3 point)
+        /// <summary>The village building that stands at the point (the nearest plot whose circle holds it), or null.</summary>
+        internal static Plot PlotAt(VillageHearth hearth, Vector3 point)
         {
             var state = new VillageState(hearth.Zdo);
             Plot best = null;

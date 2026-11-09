@@ -632,6 +632,24 @@ villages made with `vh village spawn`; `vh clear` removes the nearest village of
 - Map pins copied from the map table to your map are your own pins and stay after a clear.
 - With `nopaths`, the daily door check plans any missing path again for the villagers, as usual.
 
+## Home life (D-073, 2026-11-09, branch feat/homelife; compiles, not yet tested in game)
+
+Tyler's order of operations: a house goes up with spartan furnishing (beds first); each villager is given a bed, and
+the house is his home or his family's; a sign goes on the house; residents decorate it in stages in idle time; families
+spend evenings at home or at the hearth; everyone but the night watch sleeps in his own bed.
+
+| Part | Where | What it does |
+|---|---|---|
+| Households | `Villagers/Households.cs` | A villager's home is the building his claimed bed stands in (`Beds`, kept on his ZDO, so the same after a reload). Everyone whose bed is in the same home is its household: one is a lone villager, two or more a family, each in his own bed. Only House plots (and plots from before roles) are homes; a bed in the longhouse is no home of one's own. Members: grown ones in arrival order, then children. The head is the first member; the family name is his surname where his people use one, else "Bjorn's house". A new villager picks a free bed in his sweetheart's home before others (counted 40 m nearer). |
+| House signs | `Village/HouseSigns.cs`, `Village/Amenities.cs` | Once a home has people, a vanilla sign goes on the outside wall beside the front door at eye height (or over the door when there is no wall beside it). Lone villager: full name on top, role below in its color. Family: family name on top, members below, comma separated, each name in its role color; plus one sign per member on the inside wall by the door, laid out like a lone villager's. The front door is the ground floor door nearest the design's door side. Each sign is an amenity job after the storage chests: made by the builder (or anyone free when he is not about), paid from the chest (one wood, the coal let off), one at a time. Texts are written again every 20 seconds. A sign nobody needs any more comes down after a minute, its wood back in the stock. `HouseSigns` switch. |
+| Role colors | `Households.RoleColor` | Leader (Jarl) gold, carpenter light wood, woodcutter bark brown, miner stone gray, cook orange, farmer green, elder pale violet, child light blue. In a village under six (no trades) a protector is "guard" (red) and a carer "carer" (pale yellow). |
+
+Command: `vh homes [signs]` lists each home, who lives there, its front door and what its signs say; `signs` writes
+them again now.
+
+To check in game: which face of the vanilla sign shows the text (the code turns the sign as the storage chest labels
+are turned), and that signs on walls hold (no breaking).
+
 ## Next, in order
 
 Effort is a rough guess: S an evening, M a session or two, L several sessions.

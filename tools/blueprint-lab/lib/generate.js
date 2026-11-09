@@ -599,7 +599,7 @@ function generate(req) {
   // a low roof's eaves already run 2 m past the wall, so only steep roofs get a porch roof of their own
   const porchFits = !flat && roofKind !== 'shed' && !T.dock && !T.tower && !['U', 'cross', 'court', 'gables', 'greek'].includes(plan) && !deck && !podklet && form !== 'sunken' && r === 2 && (C.eaves || 1) < 2;
   if (req.porch === true && !porchFits) b.notes.push('No porch: this plan, roof or form has no front for one.');
-  if (req.porch === true ? porchFits : req.porch !== false && !flat && roofKind !== 'shed' && !T.dock && !T.tower && C.porch && R() < C.porch + (stage === 's1' ? -0.3 : 0.2) && porchFits && !dctx.profile.svalgang) {
+  if (req.porch === true ? porchFits : req.porch !== false && !flat && roofKind !== 'shed' && !T.dock && !T.tower && C.porch && R() < C.porch + (stage === 's1' ? -0.3 : 0.2) && porchFits && !dctx.profile.svalgang && !dctx.profile.gablePorch) {
     const h = R() < 0.5 ? 0 : 1, zf = doorZ;
     const bays = [];
     for (let k = -h; k <= h; k++) { const x = doorX + 2 * k; if (!cells.has(`${x},${zf - 1}`) && !cells.has(`${x},${zf - 3}`)) bays.push(x); }
@@ -622,6 +622,8 @@ function generate(req) {
   // stair set half in the ground in front of a door 1 m up
   const porchBuilt = b.pieces.some(p => p.name === K.floor && Math.abs(p.z - (doorZ - 1)) < 0.01 && Math.abs(p.x - doorX) < 0.01 && Math.abs(p.y - F) < 0.01);
   // a stone course is thick: the stair stops at its outer face
+  // steps of stone up to a door on a stone footing (Black Forest on, once stone is built)
+  if (stoneBase && K.stoneStair && !early && F >= 0.9 && !podklet) b.stairName = K.stoneStair;
   const lip = F >= 0.9 && stoneBase && !podklet && !C.stilts && !T.raised && !C.raised && form !== 'raised' && K.plinth ? P.piece(K.plinth).size[2] / 2 : 0;
   if (F >= 0.9 && door.out[1] < 0 && !T.dock) {
     if (deck && !C.boardwalk) {
@@ -1511,7 +1513,7 @@ function octagonDesign(b, K, C, o) {
 // A stair climbs 1 m over 2 m from its foot: one per metre of height, each 2 m further out and 1 m lower.
 function stairUp(b, K, x, zEdge, F) {
   if (F < 0.9 || F > 2.01) return;
-  for (let k = 0; k < Math.round(F); k++) b.put(K.stair || 'wood_stair', x, F - (k + 1), zEdge - 1 - 2 * k, 180);
+  for (let k = 0; k < Math.round(F); k++) b.put(b.stairName || K.stair || 'wood_stair', x, F - (k + 1), zEdge - 1 - 2 * k, 180);
 }
 // The same up to a door in a side wall at xEdge; out is -1 for the left side, 1 for the right.
 function stairUpX(b, K, xEdge, z, F, out) {

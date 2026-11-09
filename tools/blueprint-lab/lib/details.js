@@ -59,6 +59,10 @@ function profile(ctx) {
       ['home', 'storage', 'tavern'].includes(ctx.type) && (sN >= 3 || (sN === 2 && dN >= 3)) && ['rect', 'long', 'L', 'T'].includes(ctx.plan) &&
       !C.awnings && !ctx.flat && roll(0.75),
     gableWindow: north && sN >= 2,
+    rafterTails: north && sN >= 2 && !C.eaves2 && (C.eaves || 1) < 2,
+    purlinEnds: north && sN >= 2,
+    gableTruss: north && sN >= 2 && roll(0.6),
+    gablePorch: north && (sN >= 3 || (sN === 2 && dN >= 3)) && ['home', 'longhouse', 'tavern', 'temple'].includes(ctx.type) && roll(0.5),
     roofCross: false, // Wood Roof Cross at the gable apex: off until its shape is checked against the game model
 
     braces: BRACED.includes(cultureKey) && sN >= 2 && (T.use === 'hall' || ctx.type === 'longhouse'),
@@ -108,6 +112,7 @@ function exterior(b, ctx) {
   const isOpen = new Set(openings.map(o => `${o.e.x},${o.e.z},${o.y0}`));
   const added = { windows: 0, doors: 0, corners: 0, gables: 0, braces: 0, gallery: 0 };
   if (X.svalgang && ctx.wallSegment) added.gallery = svalgang(b, ctx) ? 1 : 0;
+  if (X.gablePorch && !added.gallery) added.porch = gablePorch(b, ctx) ? 1 : 0;
 
   // ---- windows
   for (const o of openings) {
@@ -275,13 +280,62 @@ function svalgang(b, ctx) {
   return true;
 }
 
+// A gabled porch over the front door (the entrance dormer of the community longhouses in the corpus): posts 4 m apart
+// two metres out, a small 45 degree gable roof whose ridge runs from the door out, closed against the wall by a gable,
+// and a gable triangle over the open front. Its eaves are 2.4 m up, clear of anyone walking in.
+function gablePorch(b, ctx) {
+  const { K, C, F, SH, edges, door, roofKind, flat } = ctx;
+  if (!door || door.out[1] >= 0 || F > 0.01 || flat || ctx.dragonsHere === undefined) return false;
+  if (!K.roof45 || !K.gable45) return false;
+  const zf = door.z, x = door.x;
+  const front = new Set(edges.filter(e => e.out[1] < 0 && Math.abs(e.z - zf) < 0.01).map(e => e.x));
+  if (!front.has(x - 2) || !front.has(x + 2)) return false;
+  if (b.pieces.some(p => p.z < zf - 0.3 && p.z > zf - 3.2 && Math.abs(p.x - x) < 2.6 && p.y > F - 0.5 && !['floor'].includes(PD.piece(p.name).role))) return false;
+  const yR = F + 4.4, T = { trim: true }, pole = framePoleD(K, C), pole1 = K.pole1 || 'wood_pole', beam = K.beam || 'wood_beam';
+  for (const s of [-1, 1]) {
+    b.put(pole, x + 2 * s, F + 1, zf - 2, 0, T);
+    b.put(pole1, x + 2 * s, F + 1.9, zf - 2, 0, T);
+    b.put(beam, x + 2 * s, F + 2.35, zf - 1, 90, T); // plate from the wall to the post
+    b.put(beam, x + s, F + 2.35, zf - 2, 0, T); // tie beam across the front
+    b.put(K.roof45, x + s, yR - 1, zf - 1, s > 0 ? 90 : 270, T);
+    for (const z of [zf - 2, zf]) b.put(K.gable45, x + s, yR - 2, z, s > 0 ? 180 : 0, T); // the open front, and the back closing it against the wall
+    b.put(slopeBeam(K, 45), x + s, yR - 1, zf - 2.08, s > 0 ? 180 : 0, T); // bargeboard on the open front
+  }
+  b.put(K.roofTop45, x, yR, zf - 1, 90, T);
+  if (!b.pieces.some(p => p.name === K.floor && Math.abs(p.x - x) < 0.1 && Math.abs(p.z - (zf - 1)) < 0.1)) b.put(K.floor, x, F, zf - 1, 0, T);
+  b.notes.push('A gabled porch over the front door.');
+  return true;
+}
+
 // Bargeboards for one wing's gable ends, as roof parts (generate.js lays them with the rest of the roof so crossing
 // wings hide them where another roof runs over). Arguments as gablePieces: K, C, the wing, the roof top, rise per row,
 // which ends get a gable, and helpers to place a part in wing-local coordinates.
 function bargeboards(K, C, w, ctx, rows, ends, add, low, pivot, r) {
   const X = ctx.profile;
-  if (!X || !X.bargeboards) return;
-  const name = slopeBeam(K, r === 2 ? 45 : 26);
+  if (!X) return;
+  const name = slopeBeam(K, r === 2 ? 45 : 26), beam = K.beam || 'wood_beam', capY = low(-1);
+  // rafter tails: a sloped beam at every seam of the lowest roof row, half a metre out past its edge and just under it
+  // (the exposed rafters of Norse halls; the corpus lays sloped beams along roof piece edges)
+  if (X.rafterTails) for (let u = -w.W + 2; u <= w.W - 2 + 0.01; u += 2) for (const sv of [-1, 1]) {
+    const v = sv * (2 + 2 * rows + 0.7);
+    add(name, u, pivot(rows) - 0.7 - (r === 2 ? 0 : 0), v, (sv < 0 ? 180 : 0) + 90, 'trim', low(rows));
+  }
+  // the ridge beam's end out past each gable
+  if (X.purlinEnds && !ctx.dragonsHere) [-1, 1].forEach((sg, k) => { if (ends[k]) add(K.beam1 || 'wood_beam_1', sg * (w.W + 0.45), capY - 0.35, 0, 0, 'trim', capY); });
+  // a timber truss on the face of each gable: a king post up the middle and a collar beam across at half height
+  if (X.gableTruss) [-1, 1].forEach((sg, k) => {
+    if (!ends[k] || capY - low(rows) < 2.9) return;
+    const u = sg * (w.W + 0.1), top = low(rows) + (r === 2 ? 0 : 0), h = capY - top;
+    const from = X.gableWindow && h >= 3.9 ? top + 2.2 : top;
+    for (let y = from; y < capY - 0.6;) { const step = capY - 0.6 - y >= 2 ? 2 : 1; add(step === 2 ? (K.pole || 'wood_pole2') : (K.pole1 || 'wood_pole'), u, y + step / 2, 0, 0, 'trim', y + step); y += step; }
+    const yc = top + Math.round(h / 2);
+    // collar beams wherever 2 m of beam fits under the roof at that height
+    for (let v = -w.D + 2; v <= w.D - 2 + 0.01; v += 2) {
+      const edge = Math.abs(v) + 1, surf = capY - (r / 2) * Math.max(0, edge - 1);
+      if (surf > yc + 0.3) add(beam, u, yc, v, 90, 'trim', yc + 0.1);
+    }
+  });
+  if (!X.bargeboards) return;
   [-1, 1].forEach((sg, k) => {
     if (!ends[k]) return;
     const u = sg * (w.W + 0.06);

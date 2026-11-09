@@ -144,16 +144,18 @@ namespace Villheim.Logic.Villagers
             vis.SetHairColor(new Vector3(hair.r, hair.g, hair.b));
 
             // The culture's allowed and blocked styles (HairReview) apply to everyone of that culture.
-            List<string> styles = HairReview.ForAdult(culture.Key, female, HairStyles(female));
-            string hairItem = styles.Count > 0 ? PickStyle(looks, styles, culture.HairPrefer) : FirstExisting($"Hair{looks.Next(1, 21)}", "Hair1");
+            // Blocked styles are never given, and the culture's lean makes its styles likelier (HairReview).
+            List<string> styles = HairReview.ForAdult(HairStyles(female));
+            System.Func<string, float> lean = HairReview.LeanWeight(culture.Key);
+            string hairItem = styles.Count > 0 ? PickStyle(looks, styles, culture.HairPrefer, lean) : FirstExisting($"Hair{looks.Next(1, 21)}", "Hair1");
             if (Childhood.IsChild(villager))
             {
                 // A child's style must also be on his culture's list for children (HairReview), drawn from his own
                 // random stream, so the grown villager's looks stay the same.
-                List<string> young = HairReview.ForChild(culture.Key, female, styles);
+                List<string> young = HairReview.ForChild(styles);
                 if (young.Count > 0)
                 {
-                    hairItem = PickStyle(new System.Random(seed ^ 0x6b1d5), young, culture.HairPrefer);
+                    hairItem = PickStyle(new System.Random(seed ^ 0x6b1d5), young, culture.HairPrefer, lean);
                 }
             }
 
@@ -374,9 +376,10 @@ namespace Villheim.Logic.Villagers
         }
 
         /// <summary>A style, with the ones whose shown name holds one of the culture's words given more often.</summary>
-        private static string PickStyle(System.Random rng, List<string> prefabs, Dictionary<string, float> prefer)
+        private static string PickStyle(System.Random rng, List<string> prefabs, Dictionary<string, float> prefer,
+            System.Func<string, float> extra = null)
         {
-            if (prefer == null || prefer.Count == 0)
+            if ((prefer == null || prefer.Count == 0) && extra == null)
             {
                 return prefabs[rng.Next(prefabs.Count)];
             }
@@ -387,7 +390,7 @@ namespace Villheim.Logic.Villagers
             {
                 ShownNames.TryGetValue(prefabs[i], out string shown);
                 float weight = 1f;
-                foreach (KeyValuePair<string, float> word in prefer)
+                foreach (KeyValuePair<string, float> word in prefer ?? new Dictionary<string, float>())
                 {
                     if (shown != null && shown.Contains(word.Key))
                     {
@@ -395,8 +398,8 @@ namespace Villheim.Logic.Villagers
                     }
                 }
 
-                weights[i] = weight;
-                total += weight;
+                weights[i] = weight * (extra != null ? extra(prefabs[i]) : 1f);
+                total += weights[i];
             }
 
             double roll = rng.NextDouble() * total;

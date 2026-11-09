@@ -8,135 +8,156 @@ using Villheim.Logic.Village;
 namespace Villheim.Logic.Villagers
 {
     /// <summary>
-    /// Hair by culture, and the F1 controls to review it on the 'vh kids rig' models (T-104). Config section
-    /// "3d - Hair review".
+    /// Hair styles by lean, and the F1 controls to review them on the 'vh kids rig' models (T-104, T-202). Config
+    /// section "3d - Hair review".
     ///
-    /// - Lists for everyone of a culture: HairAllowMen, HairBlockMen, HairAllowWomen, HairBlockWomen, in the form
-    ///   culture=Hair1,Hair5; other=Hair3 (the key * means every culture). A culture with an allow list only gives
-    ///   styles on it; a blocked style is never given. Children must also be on HairAllowBoys or HairAllowGirls for
-    ///   their culture when it has a list there, as well as pass the grown-up lists for their sex.
-    /// - The rig: RigCulture picks a culture (its skin and hair colors go on all four models), and RigHairMan,
-    ///   RigHairWoman, RigHairBoy, RigHairGirl and RigBeardMan pick what each model wears. Each shows the style's name
-    ///   between arrows; the buttons beside it put the shown style on the culture's lists or take it off, and the
-    ///   label says whether villagers of that culture would get it. RigGhost gives the models the ghost look.
+    /// - Leans (HairLeans): a few broad looks, northern, southern, steppe and celtic, each a list of styles that suit
+    ///   it. Each culture has a lean (CultureLeans). A villager of that culture gets the styles in its lean
+    ///   HairLeanWeight times as often as any other; every other style can still come up.
+    /// - HairBlock: styles nobody gets. HairChildren: when it lists any, the only styles children get (still never a
+    ///   blocked one).
+    /// - The rig: RigCulture picks the culture (its lean, skin and hair colors go on all four models), and RigHairMan,
+    ///   RigHairWoman, RigHairBoy, RigHairGirl and RigBeardMan pick what each model wears, browsed with arrows. Beside
+    ///   each style are three buttons: add it to (or take it off) the culture's lean, block (or unblock) it, allow (or
+    ///   disallow) it for children. So a style is ruled in by lean first, then for grown-ups, then for children.
     ///
-    /// The arrows and buttons are drawn by this logic build in the config manager (its CustomDrawer); each logic load
-    /// puts its own drawers in.
+    /// The arrows and buttons are this logic build's own drawers in the config manager; each logic load puts its own in.
     /// </summary>
     internal static class HairReview
     {
         public const string Section = "3d - Hair review";
-        private const string AllCultures = "*";
+
+        public const string DefaultLeans = "northern=; southern=; steppe=; celtic=";
+
+        public const string DefaultCultureLeans =
+            "norse=northern, norse-forest=northern, norse-highland=northern, saami=northern, anglo-saxon=northern, " +
+            "frankish-norman=northern, slavic=northern, baltic=northern, fen-folk=northern, celtic=celtic, " +
+            "celtic-crannog=celtic, middle-eastern=southern, byzantine=southern, lamari=southern, steppe=steppe";
 
         // ---------------------------------------------------------------- the lists
 
-        private static Dictionary<string, List<string>> Parse(string text)
+        private static List<string> Names(string text) =>
+            (text ?? "").Split(',').Select(n => n.Trim()).Where(n => n.Length > 0).ToList();
+
+        private static Dictionary<string, List<string>> Leans()
         {
             var map = new Dictionary<string, List<string>>(StringComparer.OrdinalIgnoreCase);
-            foreach (string part in (text ?? "").Split(';'))
+            foreach (string part in (LogicConfig.HairLeans?.Value ?? DefaultLeans).Split(';'))
             {
                 int eq = part.IndexOf('=');
-                if (eq <= 0)
-                {
-                    continue;
-                }
-
-                string key = part.Substring(0, eq).Trim();
-                List<string> names = part.Substring(eq + 1).Split(',').Select(n => n.Trim()).Where(n => n.Length > 0).ToList();
+                string key = eq > 0 ? part.Substring(0, eq).Trim() : part.Trim();
                 if (key.Length > 0)
                 {
-                    map[key] = names;
+                    map[key] = eq > 0 ? Names(part.Substring(eq + 1)) : new List<string>();
                 }
             }
 
             return map;
         }
 
-        private static string Write(Dictionary<string, List<string>> map) =>
-            string.Join("; ", map.Where(e => e.Value.Count > 0).OrderBy(e => e.Key == AllCultures ? "" : e.Key)
-                .Select(e => $"{e.Key}={string.Join(",", e.Value)}"));
-
-        /// <summary>The styles on a list for this culture (with those listed for every culture), or null when it has none.</summary>
-        private static HashSet<string> For(ConfigEntry<string> entry, string culture)
+        private static void WriteLeans(Dictionary<string, List<string>> map)
         {
-            Dictionary<string, List<string>> map = Parse(entry?.Value);
-            var set = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-            bool any = false;
-            foreach (string key in new[] { AllCultures, culture ?? "" })
+            LogicConfig.HairLeans.Value = string.Join("; ", map.Select(e => $"{e.Key}={string.Join(",", e.Value)}"));
+        }
+
+        /// <summary>The lean of a culture (CultureLeans), or null when it has none.</summary>
+        public static string LeanOf(string culture)
+        {
+            foreach (string part in (LogicConfig.CultureLeans?.Value ?? DefaultCultureLeans).Split(','))
             {
-                if (map.TryGetValue(key, out List<string> names))
+                int eq = part.IndexOf('=');
+                if (eq > 0 && part.Substring(0, eq).Trim().Equals(culture ?? "", StringComparison.OrdinalIgnoreCase))
                 {
-                    any = true;
-                    set.UnionWith(names);
+                    string lean = part.Substring(eq + 1).Trim();
+                    return lean.Length > 0 ? lean : null;
                 }
             }
 
-            return any ? set : null;
+            return null;
         }
 
-        private static void Edit(ConfigEntry<string> entry, string culture, string style, bool add)
+        private static bool InLean(string lean, string style) =>
+            lean != null && Leans().TryGetValue(lean, out List<string> styles) && styles.Contains(style, StringComparer.OrdinalIgnoreCase);
+
+        public static bool Blocked(string style) => Names(LogicConfig.HairBlock?.Value).Contains(style, StringComparer.OrdinalIgnoreCase);
+
+        private static bool ChildListed(string style) => Names(LogicConfig.HairChildren?.Value).Contains(style, StringComparer.OrdinalIgnoreCase);
+
+        private static void Toggle(ConfigEntry<string> entry, string style)
         {
-            if (entry == null || string.IsNullOrEmpty(style))
-            {
-                return;
-            }
-
-            Dictionary<string, List<string>> map = Parse(entry.Value);
-            if (!map.TryGetValue(culture, out List<string> names))
-            {
-                names = new List<string>();
-                map[culture] = names;
-            }
-
-            names.RemoveAll(n => n.Equals(style, StringComparison.OrdinalIgnoreCase));
-            if (add)
+            List<string> names = Names(entry.Value);
+            if (names.RemoveAll(n => n.Equals(style, StringComparison.OrdinalIgnoreCase)) == 0)
             {
                 names.Add(style);
             }
 
-            entry.Value = Write(map);
+            entry.Value = string.Join(",", names);
         }
 
-        private static ConfigEntry<string> AllowList(bool female) => female ? LogicConfig.HairAllowWomen : LogicConfig.HairAllowMen;
-        private static ConfigEntry<string> BlockList(bool female) => female ? LogicConfig.HairBlockWomen : LogicConfig.HairBlockMen;
-        private static ConfigEntry<string> ChildList(bool female) => female ? LogicConfig.HairAllowGirls : LogicConfig.HairAllowBoys;
-
-        /// <summary>Whether a grown villager of this culture and sex may have the style.</summary>
-        public static bool AdultMay(string culture, bool female, string style)
+        private static void ToggleLean(string lean, string style)
         {
-            HashSet<string> allow = For(AllowList(female), culture);
-            HashSet<string> block = For(BlockList(female), culture);
-            return (allow == null || allow.Contains(style)) && (block == null || !block.Contains(style));
+            Dictionary<string, List<string>> map = Leans();
+            if (!map.TryGetValue(lean, out List<string> styles))
+            {
+                styles = new List<string>();
+                map[lean] = styles;
+            }
+
+            if (styles.RemoveAll(n => n.Equals(style, StringComparison.OrdinalIgnoreCase)) == 0)
+            {
+                styles.Add(style);
+            }
+
+            WriteLeans(map);
         }
 
-        /// <summary>A grown villager's styles: those the lists allow, or all of them when the lists leave none.</summary>
-        public static List<string> ForAdult(string culture, bool female, List<string> styles)
+        /// <summary>A grown villager's styles: all of them less the blocked ones (all of them if that leaves none).</summary>
+        public static List<string> ForAdult(List<string> styles)
         {
-            List<string> kept = styles.Where(s => AdultMay(culture, female, s)).ToList();
+            List<string> kept = styles.Where(s => !Blocked(s)).ToList();
             return kept.Count > 0 ? kept : styles;
         }
 
-        /// <summary>A child's styles: the grown-up ones also on the culture's list for children. Empty when none pass.</summary>
-        public static List<string> ForChild(string culture, bool female, List<string> adultStyles)
+        /// <summary>A child's styles: the grown-up ones that HairChildren lists, when it lists any.</summary>
+        public static List<string> ForChild(List<string> adultStyles)
         {
-            HashSet<string> young = For(ChildList(female), culture);
-            return young == null ? adultStyles : adultStyles.Where(young.Contains).ToList();
+            List<string> listed = Names(LogicConfig.HairChildren?.Value);
+            if (listed.Count == 0)
+            {
+                return adultStyles;
+            }
+
+            List<string> kept = adultStyles.Where(s => listed.Contains(s, StringComparer.OrdinalIgnoreCase)).ToList();
+            return kept.Count > 0 ? kept : adultStyles;
+        }
+
+        /// <summary>The extra weight of each style for a culture (its lean's styles HairLeanWeight times), or null when the lean lists none.</summary>
+        public static Func<string, float> LeanWeight(string culture)
+        {
+            string lean = LeanOf(culture);
+            if (lean == null || !Leans().TryGetValue(lean, out List<string> styles) || styles.Count == 0)
+            {
+                return null;
+            }
+
+            var set = new HashSet<string>(styles, StringComparer.OrdinalIgnoreCase);
+            float weight = Mathf.Max(1f, LogicConfig.HairLeanWeight?.Value ?? 4f);
+            return style => set.Contains(style) ? weight : 1f;
         }
 
         // ---------------------------------------------------------------- binding
 
-        private static ConfigurationManagerAttributes Attributes(int order, Action<ConfigEntryBase> drawer = null) =>
-            new ConfigurationManagerAttributes { IsAdminOnly = true, Order = order, CustomDrawer = drawer };
-
-        private static ConfigEntry<T> Bind<T>(ConfigFile config, string key, T value, string description, int order, Action<ConfigEntryBase> drawer = null)
+        private static ConfigEntry<T> Bind<T>(ConfigFile config, string key, T value, string description, int order,
+            Action<ConfigEntryBase> drawer = null, AcceptableValueBase range = null)
         {
-            ConfigEntry<T> entry = config.Bind(Section, key, value, new ConfigDescription(description, null, Attributes(order, drawer)));
+            var attributes = new ConfigurationManagerAttributes { IsAdminOnly = true, Order = order, CustomDrawer = drawer };
+            ConfigEntry<T> entry = config.Bind(Section, key, value, new ConfigDescription(description, range, attributes));
             // The entry outlives a logic build: this build's drawer replaces the one an earlier build put in.
             foreach (object tag in entry.Description.Tags ?? new object[0])
             {
-                if (tag is ConfigurationManagerAttributes attributes)
+                if (tag is ConfigurationManagerAttributes existing)
                 {
-                    attributes.CustomDrawer = drawer;
+                    existing.CustomDrawer = drawer;
                 }
             }
 
@@ -146,26 +167,24 @@ namespace Villheim.Logic.Villagers
         public static void Bind(ConfigFile config)
         {
             LogicConfig.RigCulture = Bind(config, "RigCulture", "norse",
-                "Culture shown on the 'vh kids rig' models: their skin and hair colors, and the lists the buttons below edit. " +
-                "* edits the lists for every culture.", 100, DrawCulture);
-            LogicConfig.RigHairMan = Bind(config, "RigHairMan", "Hair3", "Hair on the grown man of the rig.", 90, e => DrawStyle(e, false, false));
+                "Culture shown on the 'vh kids rig' models: its skin and hair colors, and the lean the buttons below add to.", 100, DrawCulture);
+            LogicConfig.RigHairMan = Bind(config, "RigHairMan", "Hair3", "Hair on the grown man of the rig.", 90, e => DrawStyle(e, false));
             LogicConfig.RigBeardMan = Bind(config, "RigBeardMan", "Beard5", "Beard on the grown man of the rig.", 85, DrawBeard);
-            LogicConfig.RigHairWoman = Bind(config, "RigHairWoman", "Hair12", "Hair on the grown woman of the rig.", 80, e => DrawStyle(e, true, false));
-            LogicConfig.RigHairBoy = Bind(config, "RigHairBoy", "Hair3", "Hair on the boy of the rig.", 70, e => DrawStyle(e, false, true));
-            LogicConfig.RigHairGirl = Bind(config, "RigHairGirl", "Hair12", "Hair on the girl of the rig.", 60, e => DrawStyle(e, true, true));
+            LogicConfig.RigHairWoman = Bind(config, "RigHairWoman", "Hair12", "Hair on the grown woman of the rig.", 80, e => DrawStyle(e, false));
+            LogicConfig.RigHairBoy = Bind(config, "RigHairBoy", "Hair3", "Hair on the boy of the rig.", 70, e => DrawStyle(e, true));
+            LogicConfig.RigHairGirl = Bind(config, "RigHairGirl", "Hair12", "Hair on the girl of the rig.", 60, e => DrawStyle(e, true));
             LogicConfig.RigGhost = Bind(config, "RigGhost", false,
                 "Give the rig models the villagers' ghost look (they blink out for a moment as it goes on or off).", 50);
-            LogicConfig.HairAllowMen = Bind(config, "HairAllowMen", "",
-                "Styles men of a culture may have: culture=Hair1,Hair5; other=Hair3 (* for every culture). A culture with " +
-                "no list here may have any style. The Allow buttons above write here.", 40);
-            LogicConfig.HairBlockMen = Bind(config, "HairBlockMen", "", "Styles men of a culture never have (same form).", 39);
-            LogicConfig.HairAllowWomen = Bind(config, "HairAllowWomen", "", "Styles women of a culture may have (same form).", 38);
-            LogicConfig.HairBlockWomen = Bind(config, "HairBlockWomen", "", "Styles women of a culture never have (same form).", 37);
-            LogicConfig.HairAllowBoys = Bind(config, "HairAllowBoys", "",
-                "Styles boys of a culture may have (same form). A boy's style must also pass HairAllowMen and HairBlockMen. " +
-                "A culture with no list here gives boys any style its men may have.", 36);
-            LogicConfig.HairAllowGirls = Bind(config, "HairAllowGirls", "",
-                "Styles girls of a culture may have; they must also pass the lists for women.", 35);
+            LogicConfig.HairLeanWeight = Bind(config, "HairLeanWeight", 4f,
+                "How many times as often a villager gets a style in his culture's lean as any other style.", 45, null,
+                new AcceptableValueRange<float>(1f, 20f));
+            LogicConfig.HairLeans = Bind(config, "HairLeans", DefaultLeans,
+                "The leans and their styles: lean=Hair1,Hair5; next lean=... The 'Add to lean' buttons above write here.", 44);
+            LogicConfig.CultureLeans = Bind(config, "CultureLeans", DefaultCultureLeans,
+                "Each culture's lean: culture=lean, separated by commas. Culture keys as in 'vh cultures'.", 43);
+            LogicConfig.HairBlock = Bind(config, "HairBlock", "", "Styles nobody gets (comma separated). The Block buttons write here.", 42);
+            LogicConfig.HairChildren = Bind(config, "HairChildren", "",
+                "Styles children may have (comma separated). Empty: any style that is not blocked. The 'Children' buttons write here.", 41);
         }
 
         // ---------------------------------------------------------------- the drawers
@@ -174,9 +193,7 @@ namespace Villheim.Logic.Villagers
 
         private static GUIStyle Center => _center ?? (_center = new GUIStyle(GUI.skin.label) { alignment = TextAnchor.MiddleCenter });
 
-        /// <summary>The culture keys, * first.</summary>
-        private static List<string> CultureKeys() =>
-            new[] { AllCultures }.Concat(Cultures.All.Select(c => c.Key).OrderBy(k => k, StringComparer.OrdinalIgnoreCase)).ToList();
+        private static List<string> CultureKeys() => Cultures.All.Select(c => c.Key).OrderBy(k => k, StringComparer.OrdinalIgnoreCase).ToList();
 
         private static string Step(List<string> items, string current, int by)
         {
@@ -203,9 +220,27 @@ namespace Villheim.Logic.Villagers
             }
         }
 
-        private static string RigCultureKey => string.IsNullOrEmpty(LogicConfig.RigCulture?.Value) ? AllCultures : LogicConfig.RigCulture.Value;
+        private static string RigCultureKey => LogicConfig.RigCulture?.Value ?? "norse";
 
-        private static void DrawCulture(ConfigEntryBase entryBase)
+        /// <summary>Any trouble in a drawer is logged once and the row left blank, so the window and the rig carry on.</summary>
+        private static void Safely(string what, Action draw)
+        {
+            try
+            {
+                draw();
+            }
+            catch (Exception ex) when (!(ex is ExitGUIException))
+            {
+                if (_logged.Add(what))
+                {
+                    VillheimPlugin.Log.LogWarning($"Hair review: the {what} control failed: {ex}");
+                }
+            }
+        }
+
+        private static readonly HashSet<string> _logged = new HashSet<string>();
+
+        private static void DrawCulture(ConfigEntryBase entryBase) => Safely("culture", () =>
         {
             if (!(entryBase is ConfigEntry<string> entry))
             {
@@ -213,81 +248,59 @@ namespace Villheim.Logic.Villagers
             }
 
             string key = entry.Value;
-            string name = key == AllCultures ? "every culture" : Cultures.Known(key) ? $"{Cultures.Get(key).Name} ({key})" : key;
+            string lean = LeanOf(key) ?? "no lean";
+            string name = Cultures.Known(key) ? $"{Cultures.Get(key).Name} ({key}), {lean}" : key;
             GUILayout.BeginHorizontal();
             Arrows(entry, CultureKeys(), name);
             GUILayout.EndHorizontal();
-        }
+        });
 
-        private static void DrawStyle(ConfigEntryBase entryBase, bool female, bool child)
+        private static void DrawStyle(ConfigEntryBase entryBase, bool child) => Safely(entryBase.Definition.Key, () =>
         {
             if (!(entryBase is ConfigEntry<string> entry))
             {
                 return;
             }
 
-            string culture = RigCultureKey;
             string style = entry.Value;
             List<string> all = VillagerLooks.AllHair();
             int at = all.FindIndex(n => n.Equals(style ?? "", StringComparison.OrdinalIgnoreCase));
+            string lean = LeanOf(RigCultureKey);
+            bool inLean = InLean(lean, style);
+            bool blocked = Blocked(style);
+            bool forChildren = ChildListed(style);
+
             GUILayout.BeginVertical();
             GUILayout.BeginHorizontal();
             Arrows(entry, all, $"{VillagerLooks.ShownName(style)}  ({style}, {at + 1} of {all.Count})");
             GUILayout.EndHorizontal();
 
             GUILayout.BeginHorizontal();
-            string who = child ? (female ? "girls" : "boys") : (female ? "women" : "men");
-            string where = culture == AllCultures ? "every culture" : culture;
-            if (child)
+            if (lean != null && GUILayout.Button(inLean ? $"Take off {lean}" : $"Add to lean: {lean}", GUILayout.ExpandWidth(true)))
             {
-                HashSet<string> young = For(ChildList(female), culture);
-                bool listed = young != null && young.Contains(style);
-                bool adultOk = culture == AllCultures || AdultMay(culture, female, style);
-                GUILayout.Label(!adultOk ? $"{where} {who}: not given (not allowed for grown-ups)"
-                    : young == null ? $"{where} {who}: given (no list for {who} yet)"
-                    : listed ? $"{where} {who}: given" : $"{where} {who}: not given", GUILayout.ExpandWidth(true));
-                if (GUILayout.Button("Allow", GUILayout.Width(60)))
-                {
-                    Edit(ChildList(female), culture, style, true);
-                }
-
-                if (GUILayout.Button("Remove", GUILayout.Width(66)))
-                {
-                    Edit(ChildList(female), culture, style, false);
-                }
+                ToggleLean(lean, style);
             }
-            else
+
+            if (GUILayout.Button(blocked ? "Unblock" : "Block", GUILayout.Width(80)))
             {
-                HashSet<string> allow = For(AllowList(female), culture);
-                HashSet<string> block = For(BlockList(female), culture);
-                string state = block != null && block.Contains(style) ? "blocked"
-                    : allow == null ? "given (no allow list yet)"
-                    : allow.Contains(style) ? "allowed" : "not given (not on the allow list)";
-                GUILayout.Label($"{where} {who}: {state}", GUILayout.ExpandWidth(true));
-                if (GUILayout.Button("Allow", GUILayout.Width(60)))
-                {
-                    Edit(BlockList(female), culture, style, false);
-                    Edit(AllowList(female), culture, style, true);
-                }
+                Toggle(LogicConfig.HairBlock, style);
+            }
 
-                if (GUILayout.Button("Block", GUILayout.Width(60)))
-                {
-                    Edit(AllowList(female), culture, style, false);
-                    Edit(BlockList(female), culture, style, true);
-                }
-
-                if (GUILayout.Button("Clear", GUILayout.Width(60)))
-                {
-                    Edit(AllowList(female), culture, style, false);
-                    Edit(BlockList(female), culture, style, false);
-                }
+            if (GUILayout.Button(forChildren ? "Not for children" : "Allow for children", GUILayout.Width(130)))
+            {
+                Toggle(LogicConfig.HairChildren, style);
             }
 
             GUILayout.EndHorizontal();
-            GUILayout.EndVertical();
-        }
 
-        private static void DrawBeard(ConfigEntryBase entryBase)
+            bool childList = Names(LogicConfig.HairChildren?.Value).Count > 0;
+            string grown = blocked ? "blocked for everyone" : inLean ? $"in the {lean} lean (more likely)" : "possible";
+            string young = blocked ? "no" : !childList || forChildren ? "yes" : "no";
+            GUILayout.Label($"{(child ? "This child's style" : "This style")}: {grown}; children: {young}.");
+            GUILayout.EndVertical();
+        });
+
+        private static void DrawBeard(ConfigEntryBase entryBase) => Safely("beard", () =>
         {
             if (!(entryBase is ConfigEntry<string> entry))
             {
@@ -299,21 +312,18 @@ namespace Villheim.Logic.Villagers
             GUILayout.BeginHorizontal();
             Arrows(entry, all, beard == "none" || string.IsNullOrEmpty(beard) ? "no beard" : $"{VillagerLooks.ShownName(beard)}  ({beard})");
             GUILayout.EndHorizontal();
-        }
+        });
 
         /// <summary>The rig culture's skin and hair colors.</summary>
-        public static bool RigColors(out Vector3 skin, out Vector3 hair)
+        public static void RigColors(out Vector3 skin, out Vector3 hair)
         {
             skin = new Vector3(0.9f, 0.8f, 0.7f);
             hair = new Vector3(0.5f, 0.35f, 0.2f);
             string key = RigCultureKey;
-            if (key == AllCultures || !Cultures.Known(key))
+            if (Cultures.Known(key))
             {
-                return false;
+                VillagerLooks.CultureColors(Cultures.Get(key), out skin, out hair);
             }
-
-            VillagerLooks.CultureColors(Cultures.Get(key), out skin, out hair);
-            return true;
         }
     }
 }

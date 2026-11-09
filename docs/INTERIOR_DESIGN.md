@@ -167,10 +167,12 @@ furniture arrangement of one real room in a well-liked build, which the decorato
 - 2026-11-09 the miner was loosened where the reader was at fault: an open way in (an arch, a doorway with no door)
   slides along its stretch to the clear place nearest its middle; seats round a fire or a table, torches and pieces
   square to their own wall in a round room are never askew; one or two clipping pieces drop out instead of the whole
-  room; scaled roofs count as ceiling. 496 templates (was 213): sleeping 107, storage 117, smithy 49, home 42,
-  hall 35, living 34, workshop 32, tavern 11, kitchen 9, temple 2, other 58. Of 2,810 furnished rooms the rest were
-  skipped: too few pieces 644, no way in 486 (mostly nooks under 15 m2 open on one side), open to the sky 381,
-  askew 156, too sparse 154, thin 92, door blocked 77, and smaller counts.
+  room; scaled roofs count as ceiling. A room whose walls stand at an odd angle to the rest of its build (a wing
+  turned 30 degrees) is skipped, since its anchors would be wrong; walls at 45 degrees (eight-sided rooms) are fine.
+  464 templates (was 213): storage 113, sleeping 100, smithy 48, home 42, workshop 31, hall 30, living 27,
+  tavern 10, kitchen 9, temple 2, other 52. Of 2,810 furnished rooms the rest were skipped: too few pieces 644, no
+  way in 486 (mostly nooks under 15 m2 open on one side), open to the sky 381, askew 156, too sparse 154, thin 92,
+  door blocked 77, turned walls 32, and smaller counts.
 - IDs (RT-0001) stay with their room from one run to the next (a key of the source build and the room's place), so
   scores in the sheet keep their room. Main's reader changes of 2026-11-09 (stairs, walls on their pivot) move 85 of
   them, 10 in the first batch; the template file was kept from before those changes until batch 1 is scored.
@@ -211,8 +213,10 @@ room, as built.
 - Tyler's columns: **Score 1 to 5** (1 poor, 3 fine, 5 copy it), **Tags** (pick one or type several with commas:
   natural flow, cozy, cluttered, sparse, odd placement, good lighting, good storage, good seating, bed nook, copy
   this), **Notes**. A blank score is fine; tags and notes count on their own.
-- Batch 1 is 70 rooms over every kind and size, best-liked builds first, about 20 minutes. The pictures are
-  `docs/rooms/RT-0001.png`, made by `lab/render_rooms.js` (they show once the branch is on main).
+- Batch 1 is 68 rooms over every kind and size, best-liked builds first, about 20 minutes. The pictures are
+  `docs/rooms/RT-0001.png`, made by `lab/render_rooms.js` with the renderer's true-size top-down plan (`RENDER=lab`,
+  cut at 1.8 m, 50 px to the meter) and labels laid over (they show once the branch is on main). Without
+  `RENDER=lab` the script draws a flat plan of its own.
 - `vh floorplan template RT-0014 [biome]` lays one template out in the game as it is, nothing added (biome default
   dn, where every piece can be made), to walk through.
 
@@ -283,8 +287,8 @@ node lab/rooms_sheet.js <corpus dir> rows.json [batch]                          
 
 ## Open
 
-- The room pictures are flat plans drawn by `lab/render_rooms.js`; they are to be redrawn with the renderer's true-size
-  top-down view (`RENDER=lab`) when it lands. The file names stay the same, so the Rooms tab needs no change.
+- Batch 1's pictures were drawn with the renderer of feat/renderer at 4636763 (RENDER_LIB pointed at its lib).
+  Once that branch is on main, `RENDER=lab node lab/render_rooms.js` redraws them; the file names stay the same.
 - Halls and taverns at d3 fill to 2.3 to 2.4 pieces per 10 m2 against 3.0 to 3.5 before the templates: the fill stops
   when its extras run out in big rooms.
 - One tavern template (RT-0035) fits most generated taverns: 18 of the 36 tavern rooms in the sample. More tavern

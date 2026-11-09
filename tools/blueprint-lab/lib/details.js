@@ -63,8 +63,6 @@ function profile(ctx) {
     purlinEnds: north && sN >= 2,
     gableTruss: north && sN >= 2 && roll(0.6),
     gablePorch: north && (sN >= 3 || (sN === 2 && dN >= 3)) && ['home', 'longhouse', 'tavern', 'temple'].includes(ctx.type) && roll(0.5),
-    roofCross: false, // Wood Roof Cross at the gable apex: off until its shape is checked against the game model
-
     braces: BRACED.includes(cultureKey) && sN >= 2 && (T.use === 'hall' || ctx.type === 'longhouse'),
     benchOut: dN >= 2 && ['home', 'hall'].includes(T.use),
     fireKerb: dN >= 2,
@@ -292,6 +290,7 @@ function gablePorch(b, ctx) {
     b.put(slopeBeam(K, 45), x + s, yR - 1, zf - 2.08, s > 0 ? 180 : 0, T); // bargeboard on the open front
   }
   b.put(K.roofTop45, x, yR, zf - 1, 90, T);
+  if (ctx.profile.crossed) b.put('wood_wall_roof_top_45', x, yR, zf - 2, 0, T); // crossed boards over the porch gable
   if (!b.pieces.some(p => p.name === K.floor && Math.abs(p.x - x) < 0.1 && Math.abs(p.z - (zf - 1)) < 0.1)) b.put(K.floor, x, F, zf - 1, 0, T);
   b.notes.push('A gabled porch over the front door.');
   return true;
@@ -333,11 +332,9 @@ function bargeboards(K, C, w, ctx, rows, ends, add, low, pivot, r) {
       const v = sv * (2 + 2 * i), roofYaw = sv < 0 ? 180 : 0;
       add(name, u, pivot(i), v, roofYaw + 90, 'trim', low(i) + r);
     }
-    // the roof cross on the apex of a thatched gable, as a quarter of the corpus builds do (the ridge cap turned 90
-    // degrees at the gable end)
-    if (X.roofCross && /^wood_roof/.test(K.roof45 || '')) add(r === 2 ? 'wood_wall_roof_top_45' : 'wood_wall_roof_top', sg * w.W, low(-1) + (r === 2 ? 0 : 0) + 0, 0, 90, 'trim', low(-1) + 0.4);
-    // crossed boards over the ridge: each slope's board carried one row past the ridge, so the two cross
-    if (X.crossed && r === 2 && !ctx.dragonsHere) for (const sv of [-1, 1]) add(name, u, pivot(-1), 0, (sv < 0 ? 180 : 0) + 90, 'trim', low(-1) + r);
+    // crossed boards over the apex: the game's Wood Roof Cross (the piece is the pair of crossed boards that Norwegian
+    // vindskier end in), on the ridge where it meets the gable, as a quarter of the corpus builds have it
+    if (X.crossed && !ctx.dragonsHere) add(r === 2 ? 'wood_wall_roof_top_45' : 'wood_wall_roof_top', sg * w.W, capY, 0, 90, 'trim', capY + 1);
   });
 }
 

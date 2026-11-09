@@ -370,6 +370,21 @@ function add(b, ctx) {
   const inPoly = (x, z) => { let c = false; for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) { const a = poly[i], d = poly[j]; if ((a[1] > z) !== (d[1] > z) && x < (d[0] - a[0]) * (z - a[1]) / (d[1] - a[1]) + a[0]) c = !c; } return c; };
   const inYard = o => [[o.x0, o.z0], [o.x0, o.z1], [o.x1, o.z0], [o.x1, o.z1]].every(([x, z]) => inPoly(x, z));
 
+  // paving: where the house stands on 1 m stone floors (half in the ground), the ground in front of the door is laid
+  // in the same stone, level with the floor inside (outside stone floors are on 39 % of the corpus builds)
+  let paved = 0;
+  const stoneIn = b.pieces.find(p => !p.yard && /^(stone_floor_2x2|blackmarble_floor|Piece_grausten_floor_2x2)$/.test(p.name) && Math.abs(p.x - front.x) < 2.1 && Math.abs(p.z - front.z) < 2.1);
+  if (stoneIn && X.yardPave !== false) {
+    const nOut = front.z <= (S.W.z0 + S.W.z1) / 2 ? -1 : 1;
+    const rows = big ? [1, 3] : [1];
+    for (const dz of rows) for (const dx of [0, -2, 2]) {
+      const p = { name: stoneIn.name, x: stoneIn.x + 2 * Math.round((front.x - stoneIn.x) / 2) + dx, y: stoneIn.y - G0, z: front.z + nOut * dz, yaw: 0 };
+      const o = Ck.aabb({ ...p, y: p.y + G0 });
+      const c = { ...o, x0: o.x0 + 0.05, x1: o.x1 - 0.05, z0: o.z0 + 0.05, z1: o.z1 - 0.05 };
+      if (S.solid.some(z => hitBox(c, z, 0)) || placed.some(q => hitBox(c, Ck.aabb(q), 0)) || !inYard(c)) continue;
+      put(p); paved++;
+    }
+  }
   let path = 0;
   if (X.yardPath !== false) {
     // the path goes round anything there (a floor or step already there is path enough) and under the gate
@@ -387,7 +402,7 @@ function add(b, ctx) {
   // ---- what is in the yard
   const got = [];
   const D = { ...(ctx.details || {}) };
-  const decorOn = (flag, lvl) => (D[flag] != null ? !!D[flag] : decor >= lvl);
+  const decorOn = (flag, lvl) => G0 > -0.01 && (D[flag] != null ? !!D[flag] : decor >= lvl);
   const insideRuns = plan.runs.filter(r => !r.chord && r.L >= 2.4);
   const mid = [(S.W.x0 + S.W.x1) / 2, (S.W.z0 + S.W.z1) / 2];
   const inward = r => { const n = [-r.u[1], r.u[0]], mx = (r.a.x + r.b.x) / 2, mz = (r.a.z + r.b.z) / 2; return Math.hypot(mx + n[0] - mid[0], mz + n[1] - mid[1]) < Math.hypot(mx - n[0] - mid[0], mz - n[1] - mid[1]) ? n : [-n[0], -n[1]]; };
@@ -449,7 +464,7 @@ function add(b, ctx) {
   if ((decorOn('yardProps', 'd2') || loose.length) && !b.pieces.some(p => /^wood_(fine_|core_)?stack$/.test(p.name) && !p.yard && p.y < 1 && outside(p))) {
     const name = loose.length ? loose[0].name : 'wood_stack';
     // a stack is 2.4 m square: its middle 1.5 m in from the fence
-    got.push(['woodpile', tryAt(fenceSpots(1.5), s => [{ name, x: s.x, y: 0.57, z: s.z, yaw: s.yaw }])]);
+    got.push(['woodpile', tryAt(fenceSpots(1.5), s => [{ name, x: s.x, y: name === 'wood_stack' ? 0.57 : 0, z: s.z, yaw: s.yaw }])]);
   }
   // a bench against the front wall beside the door, facing out
   if (decorOn('yardProps', 'd2') && ctx.type === 'home') {
@@ -494,7 +509,7 @@ function add(b, ctx) {
   }
 
   const grow = Math.max(S.B.x0 - yb.x0, yb.x1 - S.B.x1, S.B.z0 - yb.z0, yb.z1 - S.B.z1, 0);
-  const summary = { radius: [+radius0.toFixed(2), +plotRadius(b.pieces).toFixed(2)], shape: plan.shape, fence: kit.kind, organic: plan.organic, margins: plan.m, grows: +grow.toFixed(2), path, pieces: placed.length, contents: got.filter(([, n]) => n).reduce((o, [k, n]) => { o[k] = n; return o; }, {}) };
+  const summary = { radius: [+radius0.toFixed(2), +plotRadius(b.pieces).toFixed(2)], shape: plan.shape, fence: kit.kind, organic: plan.organic, margins: plan.m, grows: +grow.toFixed(2), path, paved, pieces: placed.length, contents: got.filter(([, n]) => n).reduce((o, [k, n]) => { o[k] = n; return o; }, {}) };
   b.yard = summary;
   b.notes.push(`A ${plan.organic ? 'winding ' : ''}${{ wood: 'wood', stone: 'dry stone', rail: 'post and rail' }[kit.kind]} fence round the ${{ front: 'front yard', L: 'front and side yard', wrap: 'yard', side: 'side yard' }[plan.shape]}, a gate on the path to the door.`);
   return summary;

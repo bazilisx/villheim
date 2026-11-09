@@ -567,16 +567,7 @@ namespace Villheim.Logic.Generator
                 TerrainShaper.LevelPad(at, blueprint.Radius * 0.7f, blueprint.Radius * 0.7f + 3f);
             }
 
-            int count = 0;
-            foreach (DesignSpawner.PlanEntry entry in Blueprints.MakePlan(blueprint, at, yaw))
-            {
-                if (DesignSpawner.SpawnEntry(entry, at, turn, 0, false) != null)
-                {
-                    count++;
-                }
-            }
-
-            return count;
+            return DesignSpawner.SpawnAll(Blueprints.Entries(blueprint), at, turn);
         }
 
         // ---------------------------------------------------------------- vh ask, vh asks

@@ -700,5 +700,5 @@ function interior(b, ctx) {
   }
 }
 
-const apiD = { profile, exterior, bargeboards, partition, interior, slopeBeam };
+const apiD = { profile, exterior, bargeboards, partition, interior, slopeBeam, commitMotifs };
 if (NODE_D) module.exports = apiD; else window.VHDetails = apiD;

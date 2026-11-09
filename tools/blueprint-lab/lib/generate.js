@@ -794,6 +794,7 @@ function generate(req) {
   settle(b, { K, C, biome, use: T.use, type, stoneOK, F, SH, storeys, top, flat, cells, wing: w0, roofTop, skipDecor: !!req.skipDecor });
   if (!req.skipDecor && stoneOK && F < 0.01 && !C.stoneWalls) hearthstone(b, K);
   if (!req.skipDecor) { const zones = keepClear(b); Details.interior(b, { ...dctx, zones }); Kitbash.apply(b, { ...dctx, decor }, zones); }
+  else Details.commitMotifs(b, dctx); // bare builds (ranked before furnishing) carry the same wall trim
   return finish(b, info);
 }
 
@@ -1446,10 +1447,11 @@ function gablePieces(K, C, w, top, r, ends, vent, dctx) {
     // a window high in a tall gable lights the loft (a 2 m opening with a post in the middle, 1 m up the gable)
     const gw = dctx && dctx.profile.gableWindow && !C.stoneWalls && capY - top >= 3.9;
     if (gw) {
-      add(K.wallHalf, u, top + 0.5, 0, 90, 'gable', top + 1);
-      add(K.pole1 || 'wood_pole', u, top + 1.5, 0, 0, 'gable', top + 2);
-      for (const yb of [top + 0.9, top + 2.1]) add(K.beam || 'wood_beam', u + Math.sign(u) * 0.2, yb, 0, 90, 'trim', yb + 0.1);
-      gableFill(K, add, u, top + 2, 0, capY - top - 2, C.stoneWalls);
+      // one clear 2 m light (the post in the middle made two slits), a third of the way up a tall gable, framed
+      const yw = capY - top >= 5.9 ? top + 2 : top + 1;
+      gableFill(K, add, u, top, 0, yw - top, C.stoneWalls);
+      for (const yb of [yw - 0.1, yw + 1.1]) add(K.beam || 'wood_beam', u + Math.sign(u) * 0.25, yb, 0, 90, 'trim', yb + 0.1);
+      gableFill(K, add, u, yw + 1, 0, capY - yw - 1, C.stoneWalls);
     } else gableFill(K, add, u, top, 0, capY - top, C.stoneWalls);
     for (let i = 0; i <= wallRow; i++) for (const sv of [-1, 1]) {
       const v = sv * (2 + 2 * i);

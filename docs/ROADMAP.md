@@ -51,6 +51,8 @@ well (Tyler, 2026-11-08). The Features tab of the review sheet (`docs/features/b
   chests); then more homes, farms and workshops as trades appear. Built session 11, needs testing.
 - [ ] Notice board from the `villagenotice` blueprint over the village chest (session 13; repeated-board bug fixed
   2026-11-08, needs testing).
+- [ ] Food and dishes in interiors: food on horizontal item stands (all food but honey can go on one, per the wiki)
+  and the serving tray (Feaster) on tables, for village-built buildings; empty stands stand in for now (Tyler, 2026-11-08).
 - [ ] Clickable notice board signs with a menu, like Haldor's or Millénaire's: accept a contract, see the list of
   buildings to come, move or prioritize them, or ask for a different building (Tyler, 2026-11-08, later). Its back
   carries the contract, season, next feast and prosperity (D-009, built 2026-11-08, needs testing).

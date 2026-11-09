@@ -235,7 +235,8 @@ namespace Villheim.Logic.Villagers
                     ? "nobody"
                     : string.Join(", ", home.Members.Select(m => $"{m.VillagerName} ({RoleWord(m)})"));
                 string kind = home == null ? "empty" : home.IsFamily ? $"family {FamilyName(home)}" : "lone villager";
-                lines.Add($"{plot.Design} at {plot.Position.ToString("F0")}: {kind}: {who}. {HouseSigns.Describe(hearth, plot)}");
+                string tonight = home != null && HomeLife.On ? $" Tonight: {HomeLife.Tonight(home.Head)}." : "";
+                lines.Add($"{plot.Design} at {plot.Position.ToString("F0")}: {kind}: {who}.{tonight} {HouseSigns.Describe(hearth, plot)}");
             }
 
             return lines;

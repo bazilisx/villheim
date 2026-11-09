@@ -53,6 +53,7 @@ The models keep all of this, so pictures are right whatever the catalog says. A 
 |---|---|---|---|---|---|---|
 | `ArmorStand` | deco | 0.90 x 1.90 x 0.60 | 0.55 x 1.92 x 0.30 | 1.35 x 2.03 x 1.13 | 0 / 0 | x -0.35, z -0.3 |
 | `Candle_resin` | light | 0.40 x 1.20 x 0.40 | 0.15 x 0.30 x 0.15 | 0.25 x 0.32 x 0.25 | 0 / -0.02 | x -0.25, y -0.9, z -0.25 |
+| `Fiddleheadfern` | deco | 1.00 x 1.00 x 0.20 | 0.42 x 0.13 x 0.54 | 0.34 x 0.33 x 0.40 | 0 / -0.11 | x -0.58, y -0.87, z +0.34, bottom -0.11 |
 | `Pickable_Barley` | nature | 1.00 x 1.00 x 1.00 | 0.80 x 1.45 x 0.80 | 1.04 x 1.46 x 1.18 | 0 / -0.05 | x -0.2, y +0.45, z -0.2 |
 | `Pickable_Carrot` | nature | 1.00 x 1.00 x 1.00 | 0.28 x 0.89 x 0.28 | 0.42 x 1.14 x 0.42 | 0 / -0.32 | x -0.72, y -0.11, z -0.72, bottom -0.32 |
 | `Pickable_Onion` | nature | 1.00 x 1.00 x 1.00 | 0.28 x 1.00 x 0.28 | 0.82 x 1.64 x 0.83 | 0 / -0.18 | x -0.72, z -0.72, bottom -0.18 |
@@ -77,6 +78,7 @@ The models keep all of this, so pictures are right whatever the catalog says. A 
 | `ashwood_wall_roof_26` | gable | 2.00 x 1.00 x 0.20 | 2.32 x 1.63 x 0.40 | 2.29 x 1.57 x 0.44 | 0 / -0.27 | x +0.32, y +0.63, z +0.2, bottom -0.27 |
 | `ashwood_wall_roof_45` | gable | 2.00 x 2.00 x 0.20 | 2.43 x 2.43 x 0.40 | 2.40 x 2.39 x 0.43 | 0 / -0.21 | x +0.43, y +0.43, z +0.2, bottom -0.21 |
 | `bed` | bed | 1.20 x 0.80 x 2.80 | 1.20 x 0.40 x 2.80 | 1.70 x 0.68 x 3.13 | 0 / 0 | y -0.4 |
+| `blackforge` | craft | 1.40 x 1.40 x 1.20 | 3.60 x 0.91 x 1.00 | 3.66 x 1.16 x 1.78 | 0 / 0.01 | x +2.2, y -0.49, z -0.2 |
 | `blackforge_ext2_vise` | craft | 1.40 x 1.40 x 1.20 | 0.73 x 1.20 x 0.53 | 0.71 x 1.21 x 0.84 | 0 / -0.02 | x -0.67, y -0.2, z -0.67 |
 | `blackmarble_1x1` | wall | 1.00 x 1.00 x 0.50 | 1.00 x 1.00 x 1.00 | 1.00 x 1.00 x 1.00 | -0.5 / -0.5 | z +0.5 |
 | `blackmarble_arch` | wall | 2.00 x 2.00 x 0.50 | 2.00 x 2.00 x 1.00 | 1.99 x 2.00 x 1.00 | -1 / -1 | z +0.5 |

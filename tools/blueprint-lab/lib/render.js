@@ -321,7 +321,7 @@ function partColor(part, info) {
   const mc = hexRgb(Pieces.MAT[part.m] || info.color);
   if (part.m === 'glass') return [0, 1, 2].map(i => base[i] * 0.3 + mc[i] * 0.7);
   const l = 0.3 * base[0] + 0.59 * base[1] + 0.11 * base[2];
-  const lift = c => Math.min(1, (c * 0.8 + l * 0.2) * 1.3 + 0.04);
+  const lift = c => Math.min(1, (c * 0.8 + l * 0.2) * 1.45 + 0.06);
   return [0, 1, 2].map(i => lift(base[i]) * 0.78 + mc[i] * 0.22);
 }
 
@@ -380,7 +380,7 @@ function sceneFaces(pieces, opts = {}) {
   const ca = Math.cos(az), sa = Math.sin(az), ce = Math.cos(el), se = Math.sin(el);
   const D = [sa * ce, se, ca * ce]; // toward the camera, in the drawn (z flipped) world
   const light = norm(opts.sun || [-0.45, 0.85, -0.3]);
-  const amb = opts.ambient ?? 0.5, dif = 1 - amb + 0.12;
+  const amb = opts.ambient ?? 0.55, dif = 1 - amb + 0.1;
   const cut = opts.cut, crop = opts.crop;
   const out = [];
   let id = 0;

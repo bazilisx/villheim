@@ -10,7 +10,7 @@ Current facts only. Read this at the start of a session. Narrative is in `docs/d
   before Tyler tests it: `node /tmp/det/lineage.js <lab dir>` style measure (decor stages must keep the shell, about
   80 % or more, for `HomeDecor`; on feat/massing at acff118 shells kept 82 to 100 % across decor, growth 50 to 99 %).
   Then the open "Next test build" items in `docs/ROADMAP.md` (items 3 and 8 to 11). Nothing from 2026-11-09 has been
-  tried in the game yet.
+  tried in the game yet; Tyler's results go in the Tests tab, T-601 to T-630 (round 6).
 - **Kitbash libraries (2026-11-09, not tested in game):** interior assemblies mined from the corpus and placed in
   every room with 18 built kits (`data/kitbash-interior.json`, `lib/kitbash.js`); yards with fences, gates, paths,
   beds and lamps on s2 and s3 homes and farms (`lib/yards.js`, `data/yards.json`); exterior accents and a coverage

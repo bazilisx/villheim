@@ -244,12 +244,38 @@ Measured 2026-11-09 (`node lab/massing.js`, 8 seeds of every village culture's t
 | Plans at s1 | rect 52, round 21, square 11, long 8, gables 7, nave 2 | rect 46, round 21, square 10, long 9, gables 7, L 6, nave 2 |
 | Plans at s2 | rect 33, round 21, L 12, long 11, gables 7, T 6, nave 5 | long 22, round 21, rect 20, L 14, gables 7, nave 3, T 2 |
 | Plans at s3 | round 21, L 15, T 14, rect 12, long 9, cross 9, gables 7 | round 21, L 15, long 11, L+T 8, rect 8, cross 7, gables 7 |
-| Median ground footprint, homes with wings (s1, s2, s3) | 36, 68, 144 m2 | 48, 72, 96 m2 |
+| Median ground footprint, homes with wings (s1, s2, s3) | 36, 68, 144 m2 | 56, 72, 96 m2 |
 | Median ground footprint, longhouses | 108, 204, 280 m2 | 120, 144, 204 m2 |
-| Two storeys or more, all types (s2, s3) | 9 %, 27 % | 6 %, 13 % |
+| Two storeys or more, all types (s2, s3) | 9 %, 27 % | 6 %, 14 % |
 
 The s3 footprints are smaller than before: an s3 house is now its s1 house with wings added, where before it was
 drawn at the s3 table size (10 to 12 m by 10 m) from scratch. All checks pass on single seeds as well as at best of 8.
+
+### Handoff (2026-11-09)
+
+Done (branch `feat/massing`, main merged):
+- Stage 1, the ladder and plan sets as data (`styles.js`), and stage 2, growth lineage (`generate.js` `massingPath`),
+  as above. `request.js` `best` holds the lineage over its tries. Persona's household size follows the house (one
+  person, two, a family) and is seeded by the lineage. No household changes roof over its stages (0 of 5,760).
+- Test pool lines (Norse Meadows, tries 1) keep one shape per line; home 303 no longer turns round. Lead's measure on
+  these seeds: s1 to s2 keeps 70 to 96 % of the shell, s2 to s3 50 to 99 %; hall 11 and storehouse 41 drop to 50 %
+  at s3.
+
+Half done:
+- Hall 11 and storehouse 41: the s3 cross and T wings run through or behind the hall, and the storehouse's raised
+  floor and posts move with the new wing; look at `wingsFromSpec` and the footing code in `generate()`.
+- Two new interior findings in new hall shapes (decorator placements): a bench floating 0.4 m up in a fen-folk nave
+  longhouse (Swamp s2d2 seed 282), a table against a ground torch in a Byzantine T+nave longhouse (Mistlands s3d3
+  seed 116).
+- Footprints at s3 are smaller than before (homes 96 against 144 m2); more growth would come from a second storey on
+  more houses or longer wings.
+
+Next (stage 3 of the brief): wings at different heights, cross gables, more windows on some houses, towers on late
+halls of the cultures that build them, picture sheets per culture across seeds and stages.
+
+Checks on the merged branch: check_set 225, 90 and 147 pass; test_structure 36 hold; check_interiors bareFloors 7,
+beds 0, stairs 1 (main 4), floating 1, overlap 1; gen-test 5 of 5 the same byte for byte. Single seeds: 432 of 432
+(main 432), and 1,146 of 1,152 over every village culture (main 1,149; six furniture clips in half walls).
 
 ## Renderer
 

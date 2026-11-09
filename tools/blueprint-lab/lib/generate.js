@@ -415,8 +415,19 @@ function generate(req) {
   const b = new Build();
   const form = req.form || formFor(C, type, stage);
   const info = { type, biome, cultureKey, stage, decor, seed, form };
-  // the household (lib/persona.js), from a random stream of its own: what the furnishing, the yard and the stands lean to
-  const household = Persona.persona({ type, biome, culture: cultureKey, seed, persona: req.persona });
+  // the household's path over the stages (massingPath), unless a plan or a fresh plan is asked for, or the culture's
+  // form sets its own shape and size per stage
+  const M = !req.fresh && !(req.plan && req.plan !== 'auto') && [null, 'svan', 'raised', 'open'].includes(form || null) && S.growthFor(cultureKey, type) && !T.tower
+    ? massingPath({ type, T, C, cultureKey, form, lineage }) : null;
+  const MS = M && M.states[stage];
+  if (MS) info.massing = M.fam.household || 'hall';
+  // the household (lib/persona.js), from a random stream of its own: what the furnishing, the yard and the stands lean
+  // to. The same lineage keeps the same people; in a home their number fits the house (one, two, three or more).
+  let household = Persona.persona({ type, biome, culture: cultureKey, seed: lineage, persona: req.persona });
+  if (M && M.fam.household && typeof req.persona !== 'string') {
+    const want = { cozy: 1, couple: 2 }[M.fam.household] || Math.max(3, household.size);
+    if (want !== household.size && !(req.persona && req.persona.size)) household = Persona.persona({ type, biome, culture: cultureKey, seed: lineage, persona: { ...(req.persona || {}), size: want } });
+  }
   info.household = household;
   // asked-for storeys, porch and pitch go into the name, so different requests never share a file name
   info.asked = (req.storeys >= 1 && req.storeys <= 3 ? `-${Math.round(req.storeys)}st` : '') + (req.porch === true ? '-porch' : req.porch === false ? '-noporch' : '') + (req.pitch ? `-p${+req.pitch}` : '')
@@ -433,13 +444,7 @@ function generate(req) {
   if (T.camp && !form) return finish(campDesign(b, K, biome, stage, R, decor), info);
 
   let plan = req.plan && req.plan !== 'auto' ? req.plan : null;
-  // the household's path over the stages, unless a plan or a fresh plan is asked for, or the culture's form sets its
-  // own shape and size per stage
-  const M = !req.fresh && !plan && [null, 'svan', 'raised', 'open'].includes(form || null) && S.growthFor(cultureKey, type) && !T.tower
-    ? massingPath({ type, T, C, cultureKey, form, lineage }) : null;
-  const MS = M && M.states[stage];
   if (MS && MS.round) plan = 'octagon';
-  if (MS) info.household = M.fam.household;
 
   // ---- round forms: round houses, crannogs, goahti, lavvu, yurts, round towers
   if (['round', 'tent', 'yurt'].includes(form) || plan === 'octagon' || (!plan && T.camp)) {

@@ -478,7 +478,9 @@ function generate(req) {
     // a courtyard wing has doors to the yard near its middle: its fire goes to the far end
     // and off the outer walls when they are thick (a 1 m stone wall reaches half a metre into the cell beside it)
     const thick = /stone|marble|grausten/.test(C.wallStyle || '');
-    const walled = ([x, z]) => [[2, 0], [-2, 0], [0, 2], [0, -2]].some(([dx, dz]) => !cells.has(`${x + dx},${z + dz}`));
+    // a courtyard's gallery is walled off from the rooms behind it, so it counts as outside here
+    const roomCell = (cx, cz) => cells.has(`${cx},${cz}`) && !gallery.has(`${cx},${cz}`);
+    const walled = ([x, z]) => [[2, 0], [-2, 0], [0, 2], [0, -2]].some(([dx, dz]) => !roomCell(x + dx, z + dz));
     const score = ([x, z]) => (doorEdges.some(e => Math.hypot(e.x - x, e.z - z) < 2.5) ? 100 : 0) + (thick && walled([x, z]) ? 50 : 0) +
       (plan === 'court' ? -1 : 1) * Math.hypot(x - doorX, z - w0.cz);
     flatCell = [...cells.values()].filter(([x, z]) => inside(w0, x, z) && !gallery.has(`${x},${z}`)).sort((a, c) => score(a) - score(c))[0] || null;
@@ -487,7 +489,7 @@ function generate(req) {
     // wall, under a 4 x 2 m opening over both
     if (flatCell && thick) {
       // a side is walled where the next cell is not the building's (outer walls and a courtyard's alike)
-      const [x, z] = flatCell, has = (cx, cz) => cells.has(`${cx},${cz}`);
+      const [x, z] = flatCell, has = roomCell;
       const sx = !has(x - 2, z) && has(x + 2, z) ? 2 : !has(x + 2, z) && has(x - 2, z) ? -2 : 0;
       const sz = !has(x, z - 2) && has(x, z + 2) ? 2 : !has(x, z + 2) && has(x, z - 2) ? -2 : 0;
       const near = sx || sz ? [1] : [];

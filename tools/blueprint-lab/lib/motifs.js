@@ -1,0 +1,370 @@
+// Villheim exterior motifs: whole assemblies of trim round windows, doors, corners, gables and eaves, taken from the
+// best-liked community builds (lab/mine_motifs.js, data/motifs.json) and built on a generated building by
+// lib/details.js. A motif is a list of pieces in its feature's frame: a along the wall, o out from it, h up from the
+// feature's foot, r the piece's yaw from the frame. docs/BUILDING_DETAILS.md, "Motifs".
+//
+// Per building one family of trim: the door's motif first, then windows, gables and corners from the same source
+// build where it has them, else the best-weighted motif that fits. The front gets the richer window; small and early
+// buildings get plain ones. Every piece becomes the same shape in a material the biome and culture can make. A piece
+// that would stand in a doorway, in another piece or in the air is left out; a motif that loses too much is not used
+// and the rules in details.js do that feature instead.
+
+const NODE_M = typeof module !== 'undefined';
+const PM = NODE_M ? require('./pieces.js') : window.VHPieces;
+const checksM = () => (NODE_M ? require('./checks.js') : window.VHChecks);
+
+const normM = a => ((a % 360) + 360) % 360;
+const quatM = yaw => { const a = yaw * Math.PI / 360; return [0, +Math.sin(a).toFixed(6), 0, +Math.cos(a).toFixed(6)]; };
+const BIOMES_M = ['Meadows', 'Black Forest', 'Swamp', 'Mountain', 'Plains', 'Mistlands', 'Ashlands', 'Deep North'];
+const reachesM = (biome, b) => BIOMES_M.indexOf(biome) >= BIOMES_M.indexOf(b);
+
+// ---------------------------------------------------------------- piece classes (shared with lab/mine_motifs.js)
+
+// the shape of a piece whatever it is made of
+function classOf(n) {
+  const R = [
+    [/wall_roof_top_45|roof_top_45/, n.includes('wall_roof_top') ? 'cross45' : 'cap45'], [/wall_roof_top|roof_top/, n.includes('wall_roof_top') ? 'cross26' : 'cap26'],
+    [/wall_roof.*upsidedown/, /45/.test(n) ? 'gable45inv' : /67/.test(n) ? 'gable67inv' : 'gable26inv'],
+    [/wall_roof|scale_wall_roof/, /45/.test(n) ? 'gable45' : /67/.test(n) ? 'gable67' : 'gable26'],
+    [/roof.*ocorner/, /45/.test(n) ? 'ocorner45' : 'ocorner26'], [/roof.*icorner/, /45/.test(n) ? 'icorner45' : 'icorner26'],
+    [/roof_67/, 'roof67'], [/roof_45|roof.*_45/, 'roof45'], [/roof/, 'roof26'],
+    [/wall_cross_26|cross_26/, 'xbrace26'], [/wall_cross_45|cross_45/, 'xbrace45'], [/wall_cross_67/, 'xbrace67'],
+    [/beam_26|log_26/, 'beam26'], [/beam_45|log_45/, 'beam45'], [/beam_67|log_67/, 'beam67'],
+    [/beam4x4|beam_4m|log_4x0\.5/, 'beam4'], [/beam_1|beam_1m|pillarbeam_small/, 'beam1'], [/beam|pillarbeam/, 'beam2'],
+    [/pole4|pole_log_4|pole_4m/, 'pole4'], [/pole2|pole_log$|pole_2m|darkwood_pole$|woodiron_pole|dvergr_pole/, 'pole2'], [/pole$|pole_1m/, 'pole1'],
+    [/^stone_pillar$|pillar$|column_2/, 'pillar'], [/column_1|pillarbase/, 'pillarBase'],
+    [/floor_1x1|tile_floor_1x1/, 'floor1'], [/floor_triangle/, 'floorTri'], [/floor/, 'floor2'],
+    [/stepladder|ladder/, 'ladder'], [/spiralstair/, 'spiral'], [/stair/, 'stair'],
+    [/crystal_wall|window_glass/, 'glass'], [/^wood_window$/, 'shutter'], [/grausten_window/, 'stoneWindow'],
+    [/iron_grate/, 'grate'], [/door|gate/, 'door'],
+    [/stone_arch|blackmarble_arch|darkwood_arch|wall_arch|arch_top|arch_bottom|arch_big|pillar_arch/, 'arch'],
+    [/decowall|divider|stave_deco_wall/, 'panel'], [/wall_quarter|quarterwall/, 'wall1x1'], [/wall_half|halfwall/, 'wallHalf'],
+    [/wall_log_4/, 'logWall4'], [/wall_log/, 'logWall'], [/stone_wall_1x1|blackmarble_1x1|iron_wall_1x1|tile_wall_1x1/, 'block1'],
+    [/stone_wall_2x1|blackmarble_2x1x1/, 'block2'], [/wall_4x2/, 'wall4'], [/woodwall$|wall_2x2|stave_wall|tile_wall_2x2/, 'wall2'],
+    [/wood_ledge/, 'ledge'], [/fence_gate/, 'fenceGate'], [/fence/, 'fence'], [/stake_wall|stakewall|sharpstakes/, 'stakes'],
+    [/walltorch/, 'wallTorch'], [/groundtorch|lantern_standing/, 'groundTorch'], [/brazierceiling|hoodedlantern|dvergr_lantern$/, 'hangLight'],
+    [/brazierfloor|brazier/, 'brazier'], [/lantern/, 'lantern'], [/Candle/, 'candle'],
+    [/wood_dragon/, 'dragon'], [/raven/, 'raven'], [/darkwood_wolf/, 'wolf'], [/itemstandh/, 'standH'], [/itemstand/, 'stand'],
+    [/banner/, 'banner'], [/^sign/, 'sign'], [/garland/, 'garland'],
+  ];
+  for (const [re, c] of R) if (re.test(n)) return c;
+  return n;
+}
+function matOf(n) {
+  if (/^stave_|^scale_/.test(n)) return 'stave';
+  if (/crystal|glass/.test(n)) return 'glass';
+  if (/darkwood|blackwood/.test(n)) return 'darkwood';
+  if (/ashwood/.test(n)) return 'ashwood';
+  if (/grausten/.test(n)) return 'grausten';
+  if (/blackmarble/.test(n)) return 'marble';
+  if (/flametal/.test(n)) return 'flametal';
+  if (/dvergr/.test(n)) return 'dvergr';
+  if (/iron/.test(n)) return 'iron';
+  if (/^stone_/.test(n)) return 'stone';
+  if (/_log|wood_pole_log/.test(n)) return 'log';
+  if (/^wood_roof|turf/.test(n)) return 'thatch';
+  if (/torch|brazier|lantern|banner|sign|itemstand|dragon|raven|wolf|Candle|garland/.test(n)) return 'prop';
+  return 'wood';
+}
+// pieces whose shape is not the same turned end for end along their local x (sloped beams and half gables)
+const xAsym = c => /^(beam26|beam45|beam67|gable\d\dinv|gable\d\d)$/.test(c);
+// how far round a piece can turn and look the same
+const symOf = c => /^(pole\d|pillar|pillarBase)$/.test(c) ? 90 : /^(beam1|beam2|beam4|floor1|floor2|wall1x1|wallHalf|wall2|wall4|block1|block2|logWall|logWall4|panel|glass|shutter|fence|ledge|stakes|xbrace\d\d|cap26|cap45|cross26|cross45)$/.test(c) ? 180 : 360;
+const TIMBER = ['wood', 'darkwood', 'iron', 'log', 'ashwood', 'stave'];
+const STONY = ['stone', 'marble', 'grausten'];
+
+// the same shape in each material (null: the material has none)
+const NAMES = {
+  wood: { beam2: 'wood_beam', beam1: 'wood_beam_1', beam26: 'wood_beam_26', beam45: 'wood_beam_45', beam67: 'wood_beam_67', pole1: 'wood_pole', pole2: 'wood_pole2',
+    floor1: 'wood_floor_1x1', floor2: 'wood_floor', stair: 'wood_stair', wall1x1: 'wood_wall_quarter', wallHalf: 'wood_wall_half', wall2: 'woodwall',
+    logWall: 'wood_wall_log', logWall4: 'wood_wall_log_4x0.5', shutter: 'wood_window', fence: 'wood_fence', ledge: 'wood_ledge',
+    roof26: 'wood_roof', roof45: 'wood_roof_45', cap26: 'wood_roof_top', cap45: 'wood_roof_top_45', cross26: 'wood_wall_roof_top', cross45: 'wood_wall_roof_top_45',
+    gable26: 'wood_wall_roof', gable45: 'wood_wall_roof_45', gable26inv: 'wood_wall_roof_upsidedown', gable45inv: 'wood_wall_roof_45_upsidedown' },
+  darkwood: { beam2: 'darkwood_beam', beam26: 'darkwood_beam_26', beam45: 'darkwood_beam_45', beam4: 'darkwood_beam4x4', pole2: 'darkwood_pole', pole4: 'darkwood_pole4',
+    roof26: 'darkwood_roof', roof45: 'darkwood_roof_45', cap26: 'darkwood_roof_top', cap45: 'darkwood_roof_top_45', arch: 'darkwood_arch', panel: 'darkwood_decowall' },
+  iron: { beam2: 'woodiron_beam', beam26: 'woodiron_beam_26', beam45: 'woodiron_beam_45', beam67: 'woodiron_beam_67', pole2: 'woodiron_pole' },
+  log: { pole2: 'wood_pole_log', pole4: 'wood_pole_log_4', beam26: 'wood_log_26', beam45: 'wood_log_45', beam67: 'wood_log_67', logWall: 'wood_wall_log', logWall4: 'wood_wall_log_4x0.5' },
+  ashwood: { beam1: 'ashwood_beam_1m', beam2: 'ashwood_beam_2m', pole1: 'ashwood_pole_1m', pole2: 'ashwood_pole_2m', beam26: 'ashwood_wall_beam_26', beam45: 'ashwood_wall_beam_45',
+    beam67: 'ashwood_wall_beam_67', floor1: 'ashwood_floor_1x1', floor2: 'ashwood_floor_2x2', wall1x1: 'ashwood_quarterwall_1x1', wallHalf: 'ashwood_halfwall_1x2',
+    wall2: 'ashwood_wall_2x2', stair: 'ashwood_stair', xbrace26: 'ashwood_wall_cross_26', xbrace45: 'ashwood_wall_cross_45', arch: 'ashwood_wall_arch', panel: 'ashwood_decowall_divider' },
+  stone: { block1: 'stone_wall_1x1', block2: 'stone_wall_2x1', wall4: 'stone_wall_4x2', arch: 'stone_arch', pillar: 'stone_pillar', floor2: 'stone_floor_2x2', stair: 'stone_stair', fence: 'stone_fence' },
+};
+// a shape the material lacks, in the nearest one it has
+const NEAREST = { beam4: ['beam2'], pole4: ['pole2'], beam1: ['beam1'], xbrace26: [], xbrace45: [] };
+
+// ---------------------------------------------------------------- data
+
+let DATA = null, WEIGHTS = null;
+function lite(m) {
+  return { id: m.id, kind: m.kind, fit: m.fit, p: m.p || m.pieces.map(t => [t.n, t.a, t.o, t.h, t.r]), src: m.srcBuild || m.src, biome: m.biome, w: m.w };
+}
+function data() {
+  if (DATA) return DATA;
+  let raw = null;
+  if (NODE_M) { try { raw = require('../data/motifs.json'); } catch (e) { raw = null; } }
+  if (!raw && typeof window !== 'undefined' && window.VH_MOTIFS) raw = window.VH_MOTIFS;
+  DATA = raw ? raw.motifs.map(lite) : [];
+  return DATA;
+}
+function weights() {
+  if (WEIGHTS) return WEIGHTS;
+  let w = null;
+  if (NODE_M) { try { w = require('../data/motif-scores.json').weights; } catch (e) { w = null; } }
+  if (!w && typeof window !== 'undefined' && window.VH_MOTIF_WEIGHTS) w = window.VH_MOTIF_WEIGHTS;
+  WEIGHTS = w || {};
+  return WEIGHTS;
+}
+function setData(d, w) { DATA = d ? d.motifs.map(lite) : null; WEIGHTS = w || null; }
+// a motif's weight: Tyler's score where there is one, else the seed from how many builds use it
+const weightOf = m => { const w = weights()[m.id]; return w != null ? w : (m.w != null ? m.w : 1); };
+
+// ---------------------------------------------------------------- materials for one building
+
+function materials(ctx) {
+  const { K, C, biome } = ctx;
+  const trim = TIMBER.includes(matOf(K.beam || 'wood_beam')) ? matOf(K.beam || 'wood_beam') : 'wood';
+  const stoneWalls = /stone|marble|grausten/.test(C.wallStyle || '') || !!C.stoneWalls;
+  const sN = +String(ctx.stage || 's2')[1];
+  return {
+    trim, biome,
+    timber: TIMBER.filter(m => ({ wood: 'Meadows', log: 'Black Forest', iron: 'Swamp', darkwood: 'Plains', ashwood: 'Ashlands', stave: 'Deep North' })[m] && reachesM(biome, { wood: 'Meadows', log: 'Black Forest', iron: 'Swamp', darkwood: 'Plains', ashwood: 'Ashlands', stave: 'Deep North' }[m])),
+    // stone trim only on stone walls, and in Meadows and Black Forest villages only on later, larger buildings (D-012)
+    stone: stoneWalls && reachesM(biome, 'Black Forest') && (sN >= 2 || reachesM(biome, 'Swamp')),
+    glass: !!C.glass && reachesM(biome, 'Mountain'),
+    roof26: K.roof26 || 'wood_roof', roof45: K.roof45 || 'wood_roof_45',
+  };
+}
+const nameIn = (cls, mat) => (NAMES[mat] && NAMES[mat][cls]) || null;
+// the motif's pieces in this building's materials: [name, a, o, h, r, cls] or null where a piece cannot be made
+function swap(m, mt) {
+  const counts = {};
+  for (const t of m.p) { const mm = matOf(t[0]); if (TIMBER.includes(mm)) counts[mm] = (counts[mm] || 0) + 1; }
+  const primary = Object.keys(counts).sort((a, b) => counts[b] - counts[a])[0];
+  const out = [];
+  for (const t of m.p) {
+    const [n, a, o, h, r] = t, cls = classOf(n), mat = matOf(n);
+    let name = null;
+    if (TIMBER.includes(mat)) {
+      // the motif's main wood becomes the building's trim wood; a second wood stays where the biome has it
+      const want = mat === primary || mat === 'stave' || !mt.timber.includes(mat) ? mt.trim : mat;
+      name = nameIn(cls, want) || nameIn(cls, 'wood');
+      if (!name) for (const alt of NEAREST[cls] || []) { name = nameIn(alt, want) || nameIn(alt, 'wood'); if (name) break; }
+      if (!name && mt.timber.includes(mat) && mat !== 'stave') name = n;
+    } else if (STONY.includes(mat)) {
+      name = mt.stone ? nameIn(cls, 'stone') : null;
+      if (!name) return null; // stone work is the motif: no stone, no motif
+    } else if (mat === 'thatch') {
+      name = /45/.test(cls) ? mt.roof45 : mt.roof26;
+      if (!/^roof/.test(cls)) name = null;
+    } else if (mat === 'glass') {
+      name = mt.glass ? n : null;
+    } else if (mat === 'prop') {
+      name = n;
+      if (cls === 'groundTorch') name = reachesM(mt.biome, 'Swamp') ? 'piece_groundtorch' : 'piece_groundtorch_wood';
+    } else name = null; // dvergr, flametal and odd pieces
+    if (name && !reachesM(mt.biome, PM.needs(name))) name = cls === 'wallTorch' || cls === 'shutter' ? null : name === n ? null : name;
+    if (name && !reachesM(mt.biome, PM.needs(name))) name = null;
+    out.push(name ? [name, a, o, h, r, cls] : null);
+  }
+  return out;
+}
+
+// ---------------------------------------------------------------- choosing
+
+// how much a building may carry: plain at s1, more at s3 and on the front; d1 has no lamps or carvings
+function budget(ctx, front) {
+  const sN = +String(ctx.stage)[1], dN = +String(ctx.decor)[1];
+  return { max: sN === 1 ? 3 : sN === 2 ? (front ? 7 : 5) : (front ? 10 : 7), props: dN >= 2, carvings: dN >= 3 || (dN >= 2 && sN >= 3) };
+}
+// does a motif fit this feature: kind, size (an opening a meter larger or smaller is fitted by its edges), slope
+function fits(m, kind, f) {
+  if (m.kind !== kind) return false;
+  const g = m.fit || {};
+  if (kind === 'window' || kind === 'door') {
+    if (Math.abs(g.w - f.w) > 1.01 || Math.abs(Math.min(g.h, 3) - f.h) > 1.01 || g.w < 1 || g.h < 0.5) return false;
+    if (kind === 'door' && g.w !== f.w) return false;
+  }
+  if ((kind === 'gable' || kind === 'eave') && g.slope !== f.slope) return false;
+  if (kind === 'gable' && Math.abs(g.overhang || 0) > 0.3) return false;
+  if (kind === 'eave' && Math.abs((g.overhang || 0) - (f.overhang || 0)) > 0.5) return false;
+  return true;
+}
+const PROPS = /^(wallTorch|groundTorch|hangLight|brazier|lantern|candle|banner|sign|stand|standH|garland)$/, CARVED = /^(dragon|raven|wolf)$/;
+// the motif's pieces this building may have (lamps and carvings by decor stage), or null when the motif is too much
+function usable(m, mt, bud, wallStone) {
+  if ((m.fit.wall && /stone|marble|grausten|iron_wall/.test(m.fit.wall)) !== !!wallStone && (m.kind === 'window' || m.kind === 'door')) return null;
+  const sw = swap(m, mt);
+  if (!sw) return null;
+  const kept = sw.filter((t, i) => {
+    if (!t) return false;
+    if (PROPS.test(t[5]) && !bud.props) return false;
+    if (CARVED.test(t[5]) && !bud.carvings) return false;
+    return true;
+  });
+  const lost = m.p.length - kept.length;
+  if (!kept.length || kept.length > bud.max || lost > Math.max(1, m.p.length * 0.34)) return null;
+  // nothing but lamps and carvings is not trim
+  if (kept.every(t => PROPS.test(t[5]) || CARVED.test(t[5]))) return null;
+  return kept;
+}
+// a seeded weighted pick; motifs from the family's source builds count three times
+function pick(R, cands, family) {
+  let tot = 0;
+  const ws = cands.map(c => { const w = c.w * (family && family.has(c.m.src) ? 3 : 1) * (c.exact ? 2 : 1); tot += w; return w; });
+  if (!tot) return null;
+  let x = R() * tot;
+  for (let i = 0; i < cands.length; i++) { x -= ws[i]; if (x <= 0) return cands[i]; }
+  return cands[cands.length - 1];
+}
+// the motifs for one building: { door, back, windowFront, window, gable, corner, eave, family }
+function plan(ctx) {
+  const all = data();
+  if (!all.length) return null;
+  const mt = materials(ctx), R = ctx.R, family = new Set();
+  const wallStone = /stone|marble|grausten/.test(ctx.C.wallStyle || '') && !/base/.test(ctx.C.wallStyle || '');
+  const choose = (kind, f, front) => {
+    const bud = budget(ctx, front), cands = [];
+    for (const m of all) {
+      if (!fits(m, kind, f)) continue;
+      const w = weightOf(m);
+      if (w <= 0) continue;
+      const kept = usable(m, mt, bud, wallStone);
+      if (!kept) continue;
+      const g = m.fit;
+      cands.push({ m, w, kept, exact: kind === 'window' ? g.w === f.w && g.h === f.h : true });
+    }
+    const c = pick(R, cands, family);
+    if (c) family.add(c.m.src);
+    return c;
+  };
+  const out = { mt, family };
+  const twin = ctx.C.windowStyle !== 'single';
+  out.door = choose('door', { w: 2, h: 2 }, true);
+  out.windowFront = choose('window', { w: twin ? 2 : 1, h: 1 }, true);
+  // the other walls take a plainer window of the same family where there is one
+  out.window = out.windowFront;
+  if (out.windowFront && ctx.stage !== 's1') {
+    const plain = choose('window', { w: twin ? 2 : 1, h: 1 }, false);
+    if (plain && plain.kept.length <= out.windowFront.kept.length) out.window = plain;
+  }
+  out.single = choose('window', { w: 1, h: 1 }, false);
+  return out;
+}
+function planRoof(ctx, slope) {
+  const all = data(), mt = materials(ctx), R = ctx.R, family = (ctx.motifs && ctx.motifs.family) || new Set();
+  const choose = (kind, f) => {
+    const bud = budget(ctx, true), cands = [];
+    for (const m of all) {
+      if (!fits(m, kind, f)) continue;
+      const w = weightOf(m);
+      if (w <= 0) continue;
+      const kept = usable(m, mt, { ...bud, max: bud.max + 4 }, false);
+      if (kept) cands.push({ m, w, kept, exact: true });
+    }
+    const c = pick(R, cands, family);
+    if (c) family.add(c.m.src);
+    return c;
+  };
+  return { gable: choose('gable', { slope }), eave: choose('eave', { slope, overhang: 0 }) };
+}
+
+// ---------------------------------------------------------------- placing
+
+// a frame: origin, outward (nx, nz); the motif's pieces to world pieces, mirrored when asked
+function toWorld(fr, t, mirror) {
+  let [name, a, o, h, r, cls] = t;
+  if (mirror) { a = -a; r = xAsym(cls) ? 180 - r : -r; }
+  const Y = normM(Math.atan2(fr.nx, fr.nz) * 180 / Math.PI), c = Math.cos(Y * Math.PI / 180), s = Math.sin(Y * Math.PI / 180);
+  return { name, x: fr.x + a * c + o * s, y: fr.y + h, z: fr.z - a * s + o * c, yaw: normM(Y + r), cls, a, o, h };
+}
+// windows and doors: pieces at the sides keep their distance from the opening's edge, pieces over it from its head
+function refit(t, g, f) {
+  if (!f || (g.w === f.w && g.h === f.h)) return t;
+  let [name, a, o, h, r, cls] = t;
+  const dw = (f.w - g.w) / 2, dh = f.h - g.h;
+  const inside = Math.abs(a) < g.w / 2 - 0.15 && h > 0.15 && h < g.h - 0.15 && Math.abs(o) < 0.3;
+  if (inside) return null; // a mullion or a lattice belongs to its own opening size
+  if (a > g.w / 2 - 0.3) a += dw; else if (a < -g.w / 2 + 0.3) a -= dw;
+  if (h > g.h - 0.3) h += dh; else if (h > 0.3) h = h * f.h / g.h;
+  // a post as tall as the old opening, beside a lower one, is a short post
+  if (dh <= -0.99 && cls === 'pole2' && h > 0 && h < f.h + 0.5) { name = name.replace(/pole2$/, 'pole').replace(/pole_2m$/, 'pole_1m'); if (name === 'darkwood_pole' || name === 'woodiron_pole' || name === 'wood_pole_log') name = 'wood_pole'; cls = 'pole1'; }
+  return [name, a, o, h, r, cls];
+}
+
+const BLOCKING = ['door', 'stair', 'storage', 'craft', 'seat', 'table', 'bed', 'light', 'fence', 'deco', 'window', 'roof', 'roofTop', 'roofCorner', 'gable', 'fire', 'floor'];
+// put a motif on a feature; returns the number of pieces placed, or 0 when it would lose too much (nothing placed)
+//   fr: { x, y, z, nx, nz } the feature frame; g: the motif's own fit; f: the feature's size (windows, doors);
+//   opts: { mirror, ground, keepOut: [boxes], minShare }
+function place(b, c, fr, f, opts = {}) {
+  const Ck = checksM();
+  const cand = [];
+  for (const t0 of c.kept) {
+    const t = refit(t0, c.m.fit, f);
+    if (!t) continue;
+    const p = toWorld(fr, t, opts.mirror);
+    p.q = quatM(p.yaw);
+    cand.push(p);
+  }
+  if (!cand.length) return 0;
+  const own = (p, wall) => {
+    // a wall piece in the feature's own wall plane (trim laid on or in the wall is fine there)
+    const info = PM.piece(wall.name);
+    if (info.role !== 'wall' && info.role !== 'window') return false;
+    const d = (wall.x - fr.x) * fr.nx + (wall.z - fr.z) * fr.nz;
+    const yw = normM(wall.yaw != null ? wall.yaw : 0), Y = normM(Math.atan2(fr.nx, fr.nz) * 180 / Math.PI);
+    return Math.abs(d) < 0.45 && Math.abs(Math.sin((yw - Y) * Math.PI / 180)) < 0.1;
+  };
+  const doors = b.pieces.filter(p => PM.piece(p.name).role === 'door').map(p => {
+    const o = PM.doorOpening(p);
+    return { x0: Math.min(o.x - o.ux * o.w / 2, o.x + o.ux * o.w / 2) - Math.abs(o.nx) * 1.0 - 0.05, x1: Math.max(o.x - o.ux * o.w / 2, o.x + o.ux * o.w / 2) + Math.abs(o.nx) * 1.0 + 0.05,
+      z0: Math.min(o.z - o.uz * o.w / 2, o.z + o.uz * o.w / 2) - Math.abs(o.nz) * 1.0 - 0.05, z1: Math.max(o.z - o.uz * o.w / 2, o.z + o.uz * o.w / 2) + Math.abs(o.nz) * 1.0 + 0.05,
+      y0: o.y + 0.05, y1: o.y + 2.35 };
+  });
+  const keepOut = [...doors, ...(opts.keepOut || [])];
+  const hit = (a, o, pad) => o.x0 < a.x1 - pad && o.x1 > a.x0 + pad && o.y0 < a.y1 - pad && o.y1 > a.y0 + pad && o.z0 < a.z1 - pad && o.z1 > a.z0 + pad;
+  const ok = [];
+  for (const p of cand) {
+    const bx = Ck.aabb(p), info = PM.piece(p.name);
+    if (bx.y0 < (opts.ground != null ? opts.ground : -Infinity) - 0.05) continue;
+    if (keepOut.some(z => hit(bx, z, 0.02))) continue;
+    let clash = false;
+    for (const q of b.pieces) {
+      const qi = PM.piece(q.name);
+      const qb = Ck.aabb(q);
+      if (!hit(bx, qb, 0.06)) continue;
+      if (qi.role === 'wall' && own(p, q)) continue; // laid on its own wall
+      if (!q.decor && !q.trim && ['beam', 'pole'].includes(qi.role) && ['beam', 'pole'].includes(info.role)) continue; // timber meeting timber
+      if (q.trim && ['beam', 'pole'].includes(qi.role) && ['beam', 'pole'].includes(info.role) && !(q.name === p.name && Math.hypot(q.x - p.x, q.y - p.y, q.z - p.z) < 0.3)) continue;
+      if (BLOCKING.includes(qi.role) || qi.role === 'wall' || q.decor || (q.trim && qi.role === info.role)) { clash = true; break; }
+    }
+    if (!clash) ok.push(p);
+  }
+  // nothing in the air: each piece touches the building or a placed piece that does
+  const boxes = ok.map(p => Ck.aabb(p)), held = ok.map(() => false);
+  const touch = (a, o, g) => a.x0 <= o.x1 + g && a.x1 >= o.x0 - g && a.y0 <= o.y1 + g && a.y1 >= o.y0 - g && a.z0 <= o.z1 + g && a.z1 >= o.z0 - g;
+  const struct = b.pieces.filter(q => PM.piece(q.name).structural && !q.decor);
+  boxes.forEach((bx, i) => { if (bx.y0 <= (opts.ground != null ? opts.ground : 0) + 0.3 || struct.some(q => touch(bx, Ck.aabb(q), 0.12))) held[i] = true; });
+  for (let k = 0, more = true; more && k < 12; k++) {
+    more = false;
+    boxes.forEach((bx, i) => { if (!held[i] && boxes.some((o, j) => held[j] && touch(bx, o, 0.12))) { held[i] = true; more = true; } });
+  }
+  const placed = ok.filter((p, i) => held[i]);
+  if (placed.length < Math.max(1, Math.ceil(c.kept.length * (opts.minShare != null ? opts.minShare : 0.6)))) return 0;
+  for (const p of placed) b.put(p.name, p.x, p.y, p.z, p.yaw, { trim: true, motif: c.m.id, footed: true, ...(PROPS.test(p.cls) || CARVED.test(p.cls) ? { decor: true } : {}) });
+  return placed.length;
+}
+
+// gables and eaves go in with the roof (generate.js's roof parts, wing-local): the frame there is wing-local too
+function roofParts(c, fr, add, opts = {}) {
+  let n = 0;
+  for (const t of c.kept) {
+    const p = toWorld(fr, t, opts.mirror);
+    if (opts.skip && opts.skip(p)) continue;
+    add(p.name, p.x, p.y, p.z, p.yaw, 'trim', p.y + 0.5);
+    n++;
+  }
+  return n;
+}
+
+const apiM = { classOf, matOf, xAsym, symOf, NAMES, data, setData, weights, weightOf, materials, swap, fits, usable, plan, planRoof, place, roofParts, toWorld, refit };
+if (NODE_M) module.exports = apiM; else window.VHMotifs = apiM;

@@ -130,8 +130,9 @@ floating. Furniture per design:
 d1 2.7, d2 12.7, d3 21.5 (was 3.0, 9.6, 18.4). Two seeds of the same request share 54 % of their furniture list (was 85 %).
 
 2026-11-09, with room templates and the new extras, on main of that day: every count the same as main or lower (main
-had a blocked door in 2 designs and things floating in 3; here 0 and 1). The one left floating is a dish on a table
-that the building details took out (lib/details.js clears the table, not what stands on it). Furniture per design
+had a blocked door in 2 designs and things floating in 3; here 0 and 1). The one left floating is a dish whose table
+the generator took out after the furnishing (longhouse, Black Forest, s2, seed 175; the step that removes it is not
+traced yet). Furniture per design
 d1 2.8, d2 17.1, d3 30.2.
 Two seeds of the same request share 48 % of their furniture list. Placing now also keeps furniture out of the door
 box on both sides of every door, as the audit measures it.

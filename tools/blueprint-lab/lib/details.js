@@ -153,7 +153,9 @@ function exterior(b, ctx) {
       const posts = (!C.frame || stone) && C.wallStyle !== 'log';
       const bm = lw === 2 || !posts ? beam : (K.beam1 || 'wood_beam_1'), bx = lw === 2 || !posts ? e.x : cx, bz = lw === 2 || !posts ? e.z : cz;
       put(bm, bx + ox * f, y0 + 0.9, bz + oz * f, e.yaw);
-      put(bm, bx + ox * f, y0 + 2.1, bz + oz * f, e.yaw);
+      // no head board: sill and head pairs stacked floor over floor read as a ladder (round 4 review); the head only
+      // where the wall is stone (the timber lintel shows there anyway)
+      if (stone) put(bm, bx + ox * f, y0 + 2.1, bz + oz * f, e.yaw);
       if (posts) for (const s of [-1, 1]) put(pole1, cx + ux * s * (lw / 2) + ox * f, y0 + 1.5, cz + uz * s * (lw / 2) + oz * f, 0);
     }
     if (X.shutters && !stone) {

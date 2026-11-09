@@ -834,7 +834,7 @@ function generate(req) {
   // a stone chimney stack against a gable end, from the ground to past the ridge (bench: req.details.stack)
   const wantStack = dctx.profile.stack != null ? dctx.profile.stack
     : stoneOK && stage !== 's1' && ['home', 'longhouse', 'tavern', 'smithy', 'temple'].includes(type) && dctx.R() < 0.6;
-  if (wantStack && roofKind === 'gable' && plan !== 'gables' && !flat && !T.tower) chimneyStack(b, K, wings, edges, dctx.profile, dctx.R);
+  if (wantStack && roofKind === 'gable' && plan !== 'gables' && !flat && !T.tower && F < 1.01 && !/stone|marble|grausten/.test(C.wallStyle || '')) chimneyStack(b, K, wings, edges, dctx.profile, dctx.R, { C, SH, F, storeys });
   Details.exterior(b, dctx);
   clearDoorways(b);
   // the fire's place for the decorator: under the ridge vent, or a cell of a flat roof (a chimney goes up from it),
@@ -1967,7 +1967,7 @@ function outshut(b, K, C, wings, edges, F, SH, R, decor) {
 // deep above it, up to a metre past the ridge, a crown course on top. It stands on the ground, so stone carries it
 // (stone takes no support from wood). It goes on a stretch of gable wall with no door or window in it, at the end
 // without a woodshed. X.stackShoulder (default true) and X.stackCrown (default true) are bench switches.
-function chimneyStack(b, K, wings, edges, X, R) {
+function chimneyStack(b, K, wings, edges, X, R, o = {}) {
   const w0 = wings[0];
   if (w0.alpha !== 0 || !K.stoneWall || !/2x1/.test(K.stoneWall)) return false;
   const block = K.stoneWall, cube = K.stoneBlock || 'stone_wall_1x1';
@@ -1996,15 +1996,22 @@ function chimneyStack(b, K, wings, edges, X, R) {
         return o.x0 < x1 - 0.05 && o.x1 > x0 + 0.05 && o.z0 < z + 0.95 && o.z1 > z - 0.95 && o.y1 > 0.05;
       });
     };
-    const e = end.find(x => !opened.has(`${x.x},${x.z}`) && clearAt(x.z));
+    // the middle bay of the gable only (a stack at a corner cut into the eave, round 4 review); a window there is walled up
+    const e = end.find(x => Math.abs(x.z - w0.cz) < 1.1 && clearAt(x.z));
     if (!e) continue;
+    if (opened.has(`${e.x},${e.z}`) && o.C) {
+      const inBay = p => !p.decor && Math.abs(p.x - e.x) < 0.6 && Math.abs(p.z - e.z) < 1.01 && ['wall', 'window', 'pole', 'beam'].includes(P.piece(p.name).role) && p.y > (o.F || 0) && p.y < (o.F || 0) + o.storeys * o.SH - 0.05;
+      b.pieces = b.pieces.filter(p => !inBay(p));
+      for (const op of (b.openings || []).filter(op => op.e === e)) wallSegment(b, K, o.C, e.x, op.y0, e.z, e.yaw, o.SH, 'wall');
+      b.openings = (b.openings || []).filter(op => op.e !== e);
+    }
     // the ridge over this end: the highest roof piece within 3 m of the wall
     const tops = b.pieces.filter(p => /roof/.test(P.piece(p.name).role) && Math.abs(p.x - xWall) < 3);
     if (!tops.length) continue;
     const ridge = Math.max(...tops.map(p => Ck.aabb(p).y1)); // the top of the ridge pieces, not their pivots
     const yTop = Math.ceil(ridge + 0.8);
     const T2 = { trim: true };
-    const shoulder = (X.stackShoulder != null ? X.stackShoulder : R() < 0.5) ? 2 : 0; // a wider foot on half of them
+    const shoulder = X.stackShoulder ? 2 : 0; // a wider foot only when asked (it read as a stray block, round 4 review)
     for (let y = 0; y < yTop; y++) {
       b.put(block, xs, y + 0.5, e.z, 90, T2);
       if (y < shoulder) b.put(block, xs + sg, y + 0.5, e.z, 90, T2);

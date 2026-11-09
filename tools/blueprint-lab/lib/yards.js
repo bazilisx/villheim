@@ -216,7 +216,7 @@ function fill(kit, run, t0, t1, out, anchor) {
   if (L < 1.5) return false; // no piece shorter than 2 m in a wood or stone fence
   // one piece, square to the gate (anchor) and lapping past the other end
   if (L < 1.95) { out.push(segment(kit, run, anchor === 'end' ? t1 - 2 : anchor === 'start' ? t0 : t0 - (2 - L) / 2, { clip: +(2 - L).toFixed(2) })); return true; }
-  const n = Math.ceil(L / 2 - 0.02);
+  const n = Math.max(1, Math.ceil(L / 2 - 0.12)); // a run a few cm over 2 m takes one piece (a second would lap it almost whole)
   for (let i = 0; i < n; i++) {
     const s = i < n - 1 ? t0 + 2 * i : t1 - 2;
     const lap = i === n - 1 && n > 1 ? +(2 * n - L).toFixed(2) : 0;

@@ -942,12 +942,17 @@ function doorLights(b, o) {
       // the bay beside the door holds the light: not when it is a window, another door or a gate
       const nx = e.x + ux * sg * 2, nz = e.z + uz * sg * 2;
       if ((b.openings || []).some(q => q.storey === 0 && Math.abs(q.e.x - nx) < 0.3 && Math.abs(q.e.z - nz) < 0.3)) continue;
+      if (name && !b.pieces.some(p => !p.decor && P.piece(p.name).role === 'wall' && Math.abs(p.x - nx) < 0.3 && Math.abs(p.z - nz) < 0.3 && p.y > op.y0 && p.y < op.y0 + 2.5)) continue; // a wall there to hang on
       let put = null;
       for (const t of [dw, dw + 0.2, dw - 0.15]) {
         const yaw = (Math.atan2(ox, oz) * 180 / Math.PI + 270 + 360) % 360;
         const q = name
           ? { name, x: +(e.x + ox * (half + 0.28) + ux * sg * t).toFixed(3), y: +(op.y0 + 1.55).toFixed(3), z: +(e.z + oz * (half + 0.28) + uz * sg * t).toFixed(3), yaw }
           : { name: ground, x: +(e.x + ox * (half + 0.6) + ux * sg * (t + 0.2)).toFixed(3), y: 0.75, z: +(e.z + oz * (half + 0.6) + uz * sg * (t + 0.2)).toFixed(3), yaw: 0 };
+        if (!name) { // a standing torch stands on the doorstep or floor under it, if any
+          const tops = b.pieces.filter(p => P.piece(p.name).role === 'floor').map(p => Ck.aabb(p)).filter(a => q.x > a.x0 && q.x < a.x1 && q.z > a.z0 && q.z < a.z1 && a.y1 < 1.5).map(a => a.y1);
+          if (tops.length) q.y = +(Math.max(0, ...tops) + 0.75).toFixed(3);
+        }
         const qb = Ck.aabb(q), m = 0.04;
         const hit = b.pieces.some(p => {
           const r = P.piece(p.name).role;

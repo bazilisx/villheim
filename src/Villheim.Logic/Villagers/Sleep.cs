@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.CompilerServices;
+using HarmonyLib;
 using UnityEngine;
 using Villheim.Logic.Village;
 
@@ -15,8 +16,127 @@ namespace Villheim.Logic.Villagers
     {
         private static readonly int KeyBed = "villheim_bed".GetStableHashCode();
         private static readonly Dictionary<int, (float Time, List<Bed> Beds)> Cache = new Dictionary<int, (float, List<Bed>)>();
+        private static readonly Dictionary<int, float> NextTick = new Dictionary<int, float>();
+
+        // A village bed gets an owner in the game's own bed fields (as a player's claimed bed has), so its hover shows
+        // the villager's name. The owner id is made up: these top bits mark it as a village one, the low bits are the
+        // villager's seed, or the village id with bit 32 set for a bed nobody has yet.
+        private const long OwnerMark = 0x5648000000000000L;
+        private const long OwnerMarkMask = unchecked((long)0xFFFF000000000000UL);
+        private const long SpareBit = 0x100000000L;
 
         public static void Forget(int villageId) => Cache.Remove(villageId);
+
+        private static long OwnerId(Villager villager) => OwnerMark | (uint)villager.Zdo.GetInt(Keys.VillagerSeed);
+
+        private static long SpareId(int villageId) => OwnerMark | SpareBit | (uint)villageId;
+
+        /// <summary>A bed of a village: marked by the village (its owner fields) or built by one.</summary>
+        public static bool IsVillageBed(Bed bed)
+        {
+            ZDO zdo = bed != null && bed.m_nview != null && bed.m_nview.IsValid() ? bed.m_nview.GetZDO() : null;
+            if (zdo == null)
+            {
+                return false;
+            }
+
+            return (zdo.GetLong(ZDOVars.s_owner, 0L) & OwnerMarkMask) == OwnerMark || zdo.GetInt(Keys.BuiltBy) != 0;
+        }
+
+        /// <summary>The villager's name on a village bed, or "" when nobody has it.</summary>
+        public static string SleeperName(Bed bed)
+        {
+            ZDO zdo = bed?.m_nview != null && bed.m_nview.IsValid() ? bed.m_nview.GetZDO() : null;
+            if (zdo == null || (zdo.GetLong(ZDOVars.s_owner, 0L) & OwnerMarkMask) != OwnerMark)
+            {
+                return "";
+            }
+
+            return zdo.GetString(ZDOVars.s_ownerName, "");
+        }
+
+        /// <summary>
+        /// From the hearth's tick, every five seconds: two villagers with the same bed (an old save, or two claims in
+        /// the same moment) keep it for the one who came first; everyone without a bed takes a free one; and each
+        /// village bed shows whose it is in the game's own owner fields ("Bjorn's bed"), which also keeps players
+        /// from claiming it (the game lets nobody claim a bed that has an owner).
+        /// </summary>
+        public static void Tick(VillageHearth hearth)
+        {
+            if (hearth == null || !hearth.IsValid || !LogicConfig.IsOn(LogicConfig.VillageBeds))
+            {
+                return;
+            }
+
+            int id = hearth.VillageId;
+            if (NextTick.TryGetValue(id, out float next) && Time.time < next)
+            {
+                return;
+            }
+
+            NextTick[id] = Time.time + 5f;
+            List<Bed> beds = Of(hearth);
+            List<Villager> people = Character.GetAllCharacters().OfType<Villager>()
+                .Where(v => !v.IsDead() && v.VillageId == id && v.Zdo != null && !Wanderers.IsWanderer(v))
+                .OrderBy(v => v.Zdo.GetInt(Roles.KeyArrival, -1)).ThenBy(v => v.Zdo.GetInt(Keys.VillagerSeed))
+                .ToList();
+
+            var sleepers = new Dictionary<Bed, Villager>();
+            foreach (Villager villager in people)
+            {
+                Vector3 claimed = Claimed(villager);
+                if (claimed == Vector3.zero)
+                {
+                    continue;
+                }
+
+                Bed bed = beds.FirstOrDefault(b => Vector3.Distance(b.transform.position, claimed) < 0.6f);
+                if (bed == null)
+                {
+                    continue;
+                }
+
+                if (sleepers.TryGetValue(bed, out Villager first))
+                {
+                    if (villager.NView != null && villager.NView.IsOwner())
+                    {
+                        villager.Zdo.Set(KeyBed, Vector3.zero);
+                        VillheimPlugin.Log.LogInfo($"Beds: {villager.VillagerName} and {first.VillagerName} had the same bed; {first.VillagerName} keeps it.");
+                    }
+
+                    continue;
+                }
+
+                sleepers[bed] = villager;
+            }
+
+            foreach (Villager villager in people)
+            {
+                if (sleepers.ContainsValue(villager) || villager.NView == null || !villager.NView.IsOwner())
+                {
+                    continue;
+                }
+
+                Bed bed = For(villager);
+                if (bed != null && !sleepers.ContainsKey(bed))
+                {
+                    sleepers[bed] = villager;
+                }
+            }
+
+            foreach (Bed bed in beds)
+            {
+                sleepers.TryGetValue(bed, out Villager sleeper);
+                long owner = sleeper != null ? OwnerId(sleeper) : SpareId(id);
+                string name = sleeper != null ? sleeper.VillagerName : "";
+                ZDO zdo = bed.m_nview.GetZDO();
+                if (zdo.GetLong(ZDOVars.s_owner, 0L) != owner || zdo.GetString(ZDOVars.s_ownerName, "") != name)
+                {
+                    // Through the game's own call, so the bed's owner machine writes it.
+                    bed.SetOwner(owner, name);
+                }
+            }
+        }
 
         /// <summary>Where this villager's claimed bed stands, or zero when he has none.</summary>
         public static Vector3 Claimed(Villager villager) => villager?.Zdo != null ? villager.Zdo.GetVec3(KeyBed, Vector3.zero) : Vector3.zero;
@@ -128,7 +248,7 @@ namespace Villheim.Logic.Villagers
                 villager.Zdo.Set(KeyBed, best.transform.position);
                 Plot plot = PlotAt(hearth, best.transform.position);
                 villager.Zdo.Set(Keys.VillagerHome, plot != null ? plot.Position : best.transform.position);
-                VillheimPlugin.Debug($"{villager.VillagerName} claims a bed{(plot != null ? " in the " + plot.Design : "")}.");
+                VillheimPlugin.Log.LogInfo($"Beds: {villager.VillagerName} claims a bed{(plot != null ? " in the " + plot.Design : "")}.");
             }
 
             return best;
@@ -212,10 +332,49 @@ namespace Villheim.Logic.Villagers
                 Plot plot = PlotAt(hearth, bed.transform.position);
                 lines.Add($"{Utils.GetPrefabName(bed.gameObject)} at {bed.transform.position.ToString("F1")}: " +
                           $"{(counted.Contains(bed) ? "village bed" : "not counted")} (built by {bed.m_nview.GetZDO().GetInt(Keys.BuiltBy)}, " +
-                          $"creator {bed.GetComponent<Piece>()?.GetCreator() ?? 0}), in {plot?.Design ?? "no building"}, sleeper {sleeper}");
+                          $"creator {bed.GetComponent<Piece>()?.GetCreator() ?? 0}), in {plot?.Design ?? "no building"}, sleeper {sleeper}, " +
+                          $"shows \"{(IsVillageBed(bed) ? SleeperName(bed) : bed.GetOwnerName())}\"");
             }
 
             return lines;
+        }
+
+        /// <summary>A village bed's hover: whose bed it is, with no claim or sleep prompt.</summary>
+        [HarmonyPatch(typeof(Bed), nameof(Bed.GetHoverText))]
+        internal static class HoverPatch
+        {
+            private static void Postfix(Bed __instance, ref string __result)
+            {
+                if (!LogicConfig.IsOn(LogicConfig.VillageBeds) || !IsVillageBed(__instance))
+                {
+                    return;
+                }
+
+                string name = SleeperName(__instance);
+                __result = Localization.instance.Localize(name.Length > 0 ? name + "'s $piece_bed" : "Spare $piece_bed");
+            }
+        }
+
+        /// <summary>Players can neither claim nor sleep in a village bed.</summary>
+        [HarmonyPatch(typeof(Bed), nameof(Bed.Interact))]
+        internal static class InteractPatch
+        {
+            private static bool Prefix(Bed __instance, Humanoid human, bool repeat, ref bool __result)
+            {
+                if (!LogicConfig.IsOn(LogicConfig.VillageBeds) || !IsVillageBed(__instance))
+                {
+                    return true;
+                }
+
+                __result = false;
+                if (!repeat && human != null && human == Player.m_localPlayer)
+                {
+                    string name = SleeperName(__instance);
+                    human.Message(MessageHud.MessageType.Center, name.Length > 0 ? $"This is {name}'s bed." : "This bed is kept for the villagers.");
+                }
+
+                return false;
+            }
         }
 
         /// <summary>The village building that stands at the point (the nearest plot whose circle holds it), or null.</summary>
@@ -255,6 +414,8 @@ namespace Villheim.Logic.Villagers
             public int HeldFrame;
             public float GiveUpAt;
             public Bed Bed;
+            public int Failures;
+            public bool LoggedNoBed;
         }
 
         private static readonly ConditionalWeakTable<Villager, State> States = new ConditionalWeakTable<Villager, State>();
@@ -270,9 +431,9 @@ namespace Villheim.Logic.Villagers
 
         public static bool IsAsleep(Villager villager) => States.TryGetValue(villager, out State state) && state.Asleep;
 
-        /// <summary>"asleep" in a bed, "resting under a roof" with no bed, else null.</summary>
+        /// <summary>"asleep" in a bed, "resting (no bed)" with none, else null. 'vh beds' gives the reason.</summary>
         public static string Describe(Villager villager) =>
-            !States.TryGetValue(villager, out State state) ? null : state.Asleep ? "asleep" : state.Rough && Bedtime(villager) ? $"resting under a roof ({Beds.NoBedReason(villager)})" : null;
+            !States.TryGetValue(villager, out State state) ? null : state.Asleep ? "asleep" : state.Rough && Bedtime(villager) ? "resting (no bed)" : null;
 
         /// <summary>Hours (0 to 24) when this villager goes to bed and gets up.</summary>
         public static void Hours(Villager villager, out float bedtime, out float wake)
@@ -333,7 +494,8 @@ namespace Villheim.Logic.Villagers
                 }
 
                 state.Rough = false;
-
+                state.Failures = 0;
+                state.LoggedNoBed = false;
                 state.GiveUpAt = 0f;
                 return false;
             }
@@ -343,30 +505,60 @@ namespace Villheim.Logic.Villagers
                 state.Bed = Beds.For(villager);
                 if (state.Bed == null)
                 {
+                    if (!state.LoggedNoBed)
+                    {
+                        state.LoggedNoBed = true;
+                        VillheimPlugin.Log.LogInfo($"Bedtime: {villager.VillagerName} has no bed ({Beds.NoBedReason(villager)}).");
+                    }
+
                     return SleepUnderRoof(villager, ai, dt, state);
                 }
 
                 state.GiveUpAt = Time.time + 90f;
                 Walker.For(villager).Reset();
+                VillheimPlugin.Debug($"Bedtime: {villager.VillagerName} walks to his bed, {Utils.DistanceXZ(villager.transform.position, state.Bed.transform.position):0} m away.");
             }
 
             Transform point = state.Bed.m_spawnPoint != null ? state.Bed.m_spawnPoint : state.Bed.transform;
             if (!state.Asleep)
             {
-                WalkResult step = Walker.For(villager).Go(villager, ai, dt, point.position, 1f);
+                // Off a chair first: getting up from a seat later in the tick would pull him out of bed again.
+                Seats.StandUp(villager);
                 float distance = Utils.DistanceXZ(villager.transform.position, point.position);
-                if (step == WalkResult.Walking && Time.time < state.GiveUpAt)
+                if (EnvMan.instance.IsTimeSkipping())
                 {
-                    return true;
+                    // A player is sleeping the night away: the villager had all those hours to get to bed.
+                    VillheimPlugin.Debug($"Bedtime: {villager.VillagerName} is put in his bed while the night is skipped.");
+                    PutInBed(villager, point);
                 }
-
-                if (distance > 4f)
+                else if (distance > 2.5f)
                 {
-                    // Can't reach the bed tonight: back to the fire.
-                    VillheimPlugin.Debug($"{villager.VillagerName} can't get to his bed.");
-                    state.Bed = null;
-                    state.GiveUpAt = float.MaxValue;
-                    return false;
+                    // Close enough to lie down: the bed itself is in the way of the last step, and pushing into it
+                    // only made him hop and sidestep about.
+                    WalkResult step = Walker.For(villager).Go(villager, ai, dt, point.position, 1f);
+                    if (step == WalkResult.Walking && Time.time < state.GiveUpAt)
+                    {
+                        return true;
+                    }
+
+                    distance = Utils.DistanceXZ(villager.transform.position, point.position);
+                    if (distance > 4f)
+                    {
+                        state.Failures++;
+                        Plot plot = Beds.PlotAt(VillageHearth.Find(villager.VillageId), point.position);
+                        VillheimPlugin.Log.LogInfo($"Bedtime: {villager.VillagerName} can't get to his bed in the {plot?.Design ?? "open"} " +
+                                                   $"({step}, {distance:0.0} m short, try {state.Failures}).");
+                        if (state.Failures < 2 || PlayerNear(villager.transform.position, point.position))
+                        {
+                            // Back to the fire for a moment, then he tries again.
+                            state.Bed = null;
+                            state.GiveUpAt = float.MaxValue;
+                            return false;
+                        }
+
+                        // Tried twice, and nobody is about to see: he got there in the end.
+                        PutInBed(villager, point);
+                    }
                 }
 
                 state.Asleep = true;
@@ -425,6 +617,31 @@ namespace Villheim.Logic.Villagers
             ai.StopMoving();
             Poses.Hold(villager, Poses.Rest);
             return true;
+        }
+
+        /// <summary>Straight to the bed's resting point, for when the walk can't be seen (a skipped night, nobody near).</summary>
+        private static void PutInBed(Villager villager, Transform point)
+        {
+            Walker.For(villager).Reset();
+            villager.transform.position = point.position;
+            if (villager.m_body != null)
+            {
+                villager.m_body.position = point.position;
+                villager.m_body.velocity = Vector3.zero;
+            }
+        }
+
+        private static bool PlayerNear(Vector3 a, Vector3 b)
+        {
+            foreach (Player player in Player.GetAllPlayers())
+            {
+                if (player != null && (Vector3.Distance(player.transform.position, a) < 30f || Vector3.Distance(player.transform.position, b) < 30f))
+                {
+                    return true;
+                }
+            }
+
+            return false;
         }
 
         /// <summary>Gets out of bed (morning, or an enemy close by).</summary>

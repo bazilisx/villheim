@@ -60,10 +60,10 @@ namespace Villheim.Logic.Villagers
 
             if (!state.Arrived)
             {
-                return "going home for the evening";
+                return "going home";
             }
 
-            return state.Family ? "spending the evening at home with the family" : "spending the evening at home";
+            return "at home";
         }
 
         /// <summary>Whether the household spends tonight at home, and whether this member goes to the hearth anyway.</summary>

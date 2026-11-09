@@ -169,6 +169,7 @@ namespace Villheim.Logic
         public static ConfigEntry<bool> HomeDecor;
         public static ConfigEntry<bool> HomeEvenings;
         public static ConfigEntry<float> HomeEveningShare;
+        public static ConfigEntry<bool> VillageBeds;
         public static ConfigEntry<int> ElderDays;
         public static ConfigEntry<bool> ElderDeaths;
         public static ConfigEntry<int> ElderDeathDays;
@@ -710,7 +711,7 @@ namespace Villheim.Logic
             ("SurroundingsTags", SurroundingsTags), ("TopicFatigue", TopicFatigue), ("ChatScenes", ChatScenes),
             ("Prosperity", Prosperity), ("Expectations", Expectations), ("Calendar", Calendar), ("Festivals", Festivals),
             ("WinterStores", WinterStores), ("PlayerStanding", PlayerStanding), ("Hostility", Hostility), ("Complaints", Complaints), ("VillagersLeave", Leaving),
-            ("VisitorJudging", VisitorJudging), ("WantPile", WantPile), ("BossStageCap", BossStages), ("Elders", Elders), ("HouseSigns", HouseSigns), ("HomeDecor", HomeDecor), ("HomeEvenings", HomeEvenings),
+            ("VisitorJudging", VisitorJudging), ("WantPile", WantPile), ("BossStageCap", BossStages), ("Elders", Elders), ("HouseSigns", HouseSigns), ("HomeDecor", HomeDecor), ("HomeEvenings", HomeEvenings), ("VillageBeds", VillageBeds),
             ("EldersDieOfAge", ElderDeaths), ("Neighbors", Neighbors), ("Horn", Horn), ("HelpPlayers", HelpPlayers),
             ("VillageKnowledge", VillageKnowledge), ("KnowledgeGearGate", KnowledgeGearGate), ("KnowledgeRequests", KnowledgeRequests),
             ("HarvestReach", HarvestReach), ("MapTable", MapTable),
@@ -835,6 +836,9 @@ namespace Villheim.Logic
             HomeEveningShare = Admin(config, living, "HomeEveningShare", 0.6f,
                 "With HomeEvenings on: the chance that a family spends a given evening at home (a lone villager stays " +
                 "home half as often).");
+            VillageBeds = Admin(config, living, "VillageBeds", true,
+                "Every villager is given a free bed of the village, and the bed shows his name. Players cannot claim or " +
+                "sleep in a village bed. Off: beds are claimed only when a villager needs one, and show nothing.");
             PlayerHitsToFight = Admin(config, living, "PlayerHitsToFight", 3,
                 "Hits on a village's people by one player within PlayerHitWindow before its protectors fight him. Before " +
                 "that a hit protector only complains, and carers, elders and children run to the hearth.");

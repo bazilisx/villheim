@@ -87,7 +87,7 @@ namespace Villheim.Logic.Villagers
                 case Doer.Test: return TestActs.Describe(villager) ?? "testing";
                 case Doer.Heal: return Healing.Describe(villager) ?? "resting to heal";
                 case Doer.Leave: return "leaving the village";
-                case Doer.Escort: return "going with a friend of the village";
+                case Doer.Escort: return "escorting a friend";
                 case Doer.Sleep: return Sleep.Describe(villager) ?? "going to bed";
                 case Doer.Social: return "greeting someone";
                 case Doer.Hearth: return "tending the hearth";
@@ -107,7 +107,7 @@ namespace Villheim.Logic.Villagers
                 case Doer.Fletch: return Fletching.Describe(villager) ?? "making arrows";
                 case Doer.Trophy: return Trophies.Describe(villager) ?? "seeing to a trophy";
                 case Doer.Elder: return ElderWork.Describe(villager) ?? "helping about the village";
-                case Doer.Decor: return HomeDecor.Describe(villager) ?? "fixing up a home";
+                case Doer.Decor: return HomeDecor.Describe(villager) ?? "fixing up the home";
                 case Doer.Home: return HomeLife.Describe(villager) ?? "at home";
             }
 
@@ -153,7 +153,7 @@ namespace Villheim.Logic.Villagers
                 case Doer.Fletch: return "making arrows";
                 case Doer.Trophy: return text.Contains("hanging") ? "hanging a trophy" : "fetching a trophy";
                 case Doer.FreeTime: return FreeWord(text);
-                case Doer.Decor: return "decorating";
+                case Doer.Decor: return text.Contains("helping") ? "helping" : "decorating";
                 case Doer.Home: return "at home";
                 case Doer.Elder:
                     return text.Contains("fire") ? "tending fire" : text.Contains("cook") ? "cooking" : text.Contains("farm") ? "farming" :
@@ -185,7 +185,7 @@ namespace Villheim.Logic.Villagers
             if (text.Contains("chat")) return "chatting";
             if (text.Contains("stroll")) return "strolling";
             if (text.Contains("busy at") || text.Contains("making") || text.Contains("keeping busy")) return "crafting";
-            if (text.Contains("gathered")) return "at the hearth";
+            if (text.Contains("at the hearth")) return "at the hearth";
             return "relaxing";
         }
 

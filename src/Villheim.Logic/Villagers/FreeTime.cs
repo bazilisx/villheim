@@ -222,7 +222,7 @@ namespace Villheim.Logic.Villagers
                 case Kind.Station: return state.Station != null ? "busy at the " + StationName(state.Station) : "keeping busy";
                 case Kind.Seat: return "sitting down for a while";
                 case Kind.Watch: return state.Watched != null ? "watching " + state.Watched.GetHoverName() : "watching";
-                case Kind.Evening: return "gathered at the hearth";
+                case Kind.Evening: return "at the hearth";
                 case Kind.Night: return IsLateNight() ? "resting by the fire" : "sitting by the fire";
                 case Kind.Make: return state.Making != null ? "making a " + state.Making.Name : "making something";
                 default: return "idle";

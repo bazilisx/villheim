@@ -6,8 +6,8 @@ Current facts only. Read this at the start of a session. Narrative is in `docs/d
 ## Current State (as of 2026-11-09)
 
 - **Next session:** work the open bug list in the 2026-11-08 note, Session 12 (round 5 results, build 0908775). Read
-  The interior helper is on a stage 4 from the 2026-11-09 interior review (feat/kitbash-interior); the accent helper
-  continues on feat/motifs2. The yard library is finished.
+  The three kitbash helpers are finished and merged (interiors to stage 5, yards to stage 3, accents to stage 3).
+  Waiting on Tyler: D-067 and which next jobs to start (2026-11-09 note, end).
 - **Kitbash libraries (2026-11-09, not tested in game):** interior assemblies mined from the corpus and placed in
   every room with 18 built kits (`data/kitbash-interior.json`, `lib/kitbash.js`); yards with fences, gates, paths,
   beds and lamps on s2 and s3 homes and farms (`lib/yards.js`, `data/yards.json`); exterior accents and a coverage

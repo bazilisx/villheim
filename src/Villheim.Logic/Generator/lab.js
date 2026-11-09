@@ -1258,6 +1258,7 @@ for (const [k, v] of Object.entries(F)) ITEM_BIOME[k] = v.b;
 
 const bi = b => { const i = ORDER.indexOf(b); return i < 0 ? 0 : i; };
 const ok = (name, biome) => !!F[name] && bi(F[name].b) <= bi(biome);
+const ok0 = ok;
 const size = name => (F[name] ? F[name].s : P.piece(name).size);
 // Biome where a culture's own taste is wanted: no tar, darkwood, black marble or Plains goods before their biome.
 // Choice lists per kind of piece; the learned shares in each room kind weight the choice.
@@ -3035,6 +3036,8 @@ const tplExt = (name, yaw) => { const [w, , d] = size(name), a = yaw * PI / 180,
 function tplSwap(name, room, c, along) {
   const biome = c.biome;
   const f = F[name] || {};
+  // the biome as this table and the generator's own (pieces.js, which takes out what the biome cannot make) both read it
+  const ok = (n2, b) => ok0(n2, b) && P.BIOME_ORDER.indexOf(P.needs(n2)) <= Math.max(0, P.BIOME_ORDER.indexOf(b));
   let n = name;
   if (n === 'piece_table_oak' && along != null && along < size(n)[0] + 2.4) n = 'piece_table';
   if (ok(n, biome)) return n;

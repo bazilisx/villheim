@@ -94,6 +94,9 @@ namespace Villheim.Logic.Village
             // own ground.
             var good = new List<Vector3>();
             int wanted = 6;
+            // The way to the hearth is a grid search for each spot: a few dozen of them in one go were a lag spike (T-105).
+            int searches = 0;
+            const int MostSearches = 10;
             List<Vector2> ordered = candidates.OrderBy(c => c.magnitude + (float)rng.NextDouble() * step).ToList();
             for (int pass = 0; pass < 2 && good.Count == 0; pass++)
             {
@@ -115,9 +118,18 @@ namespace Villheim.Logic.Village
                     // kept every building off the straight hearth-to-building lines is gone: Millénaire lets buildings
                     // line the roads, and so does this.
                     float floor = level ? hearth.y : groundY;
-                    if ((network == null || PathPlanner.DistanceToNetwork(network, candidate) > radius * 0.6f + 1.5f) &&
-                        (village == null || PathPlanner.Reachable(village, new Vector3(candidate.x, floor, candidate.z), radius,
-                            FaceHearth(candidate, hearth, axisYaw) - doorAngle, doorAngle)))
+                    if (network != null && PathPlanner.DistanceToNetwork(network, candidate) <= radius * 0.6f + 1.5f)
+                    {
+                        continue;
+                    }
+
+                    if (village != null && searches++ >= MostSearches)
+                    {
+                        break;
+                    }
+
+                    if (village == null || PathPlanner.Reachable(village, new Vector3(candidate.x, floor, candidate.z), radius,
+                            FaceHearth(candidate, hearth, axisYaw) - doorAngle, doorAngle))
                     {
                         good.Add(new Vector3(candidate.x, floor, candidate.z));
                         if (good.Count >= wanted)

@@ -15,7 +15,7 @@ namespace Villheim.Logic.Village
     ///   time the main chest is full with nowhere to sort to (at most one a day). Never more than StorageChestMax.
     /// - What each holds, in the order they come: wood, stone, fine wood and core wood (where the village has them),
     ///   food, ore and metal, other; past seven, wood and stone again. The kind is kept on the chest.
-    /// - Where: a block by the main chest, in stacks two high side by side, rows behind (FreeSpot), all facing the
+    /// - Where: a block by the main chest, one chest high, side by side, rows behind (FreeSpot), all facing the
     ///   hearth, never touching the notice board, the hearth or a path (ClearFor); another side when that one is full. They are amenity jobs (Amenities) the builder makes: paid from the chest like a bench, the sign after
     ///   its chest, both made again if destroyed. While the village has no storehouse, a full main chest asks for one
     ///   more chest every quarter day.
@@ -31,7 +31,7 @@ namespace Villheim.Logic.Village
 
         public static readonly int KeyVillage = "villheim_storage".GetStableHashCode();
         public static readonly int KeyKind = "villheim_storage_kind".GetStableHashCode();
-        private static readonly int KeySign = "villheim_storage_sign".GetStableHashCode();
+        public static readonly int KeySign = "villheim_storage_sign".GetStableHashCode();
         private static readonly int KeyExtra = "villheim_storage_extra".GetStableHashCode();
         private static readonly int KeyExtraDay = "villheim_storage_extra_day".GetStableHashCode();
 
@@ -451,8 +451,9 @@ namespace Villheim.Logic.Village
         }
 
         /// <summary>
-        /// The next place in the store block (Tyler, T-15): chests in stacks two high, the stacks side by side in a row,
-        /// rows behind, every chest facing the hearth so the block reads as one. A stack's lower chest comes first, then
+        /// The next place in the store block (Tyler, T-15, T-110): chests one high, side by side in a row, rows behind,
+        /// every chest facing the hearth so the block reads as one, each with its own sign on its front. Earlier builds'
+        /// stacks keep their shared label; no new ones are made. Formerly a stack's lower chest came first, then
         /// the one on top. Tried in turn, each checked to stand clear (ClearFor): along the main chest's side, beyond the
         /// notice board's posts; then a row behind the main chest; then the far side of the hearth.
         /// </summary>
@@ -494,7 +495,7 @@ namespace Villheim.Logic.Village
                             }
 
                             var at = new Vector3(ground.x, y, ground.z);
-                            if (!ClearFor(hearth, paths, at, facing, 2, null))
+                            if (!ClearFor(hearth, paths, at, facing, 1, null))
                             {
                                 continue;
                             }
@@ -504,13 +505,9 @@ namespace Villheim.Logic.Village
                             return true;
                         }
 
-                        Vector3 top = bottom.transform.position + Vector3.up * size.y;
-                        if (StorageAt(hearth.VillageId, top) == null && ClearFor(hearth, paths, top, bottom.transform.rotation, 1, bottom))
-                        {
-                            spot = top;
-                            rotation = bottom.transform.rotation;
-                            return true;
-                        }
+                        // One chest high (T-110: one sign per chest, each on its own chest's front, where it has the chest to
+                        // hang on). Stacks from before keep their shared label.
+                        continue;
                     }
                 }
             }

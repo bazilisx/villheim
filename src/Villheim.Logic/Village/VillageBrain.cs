@@ -338,7 +338,11 @@ namespace Villheim.Logic.Village
             }
 
             bool strictHub = hearth.PlotAttempts < 2;
-            foreach (DesignLibrary.Design design in candidates)
+            // One design looked for a place per tick, the next one on the next tick: looking for a plot is the heaviest
+            // thing a village does (every spot is tested for a way to the hearth), and doing four at once was a lag
+            // spike (T-105).
+            HashSet<Vector2Int> planned = PathPlanner.PlannedNetwork(hearth);
+            foreach (DesignLibrary.Design design in candidates.Skip(Mathf.Min(hearth.PlotAttempts, candidates.Count - 1)).Take(1))
             {
                 // Breaking ground needs a share of the materials; the rest is paid piece by piece as it goes up.
                 string missing = MissingToStart(hearth, state, design);
@@ -361,7 +365,7 @@ namespace Villheim.Logic.Village
                     VillheimPlugin.Log.LogInfo($"{state.Name} builds its {design.Name} around the hearth.");
                 }
                 else if (!PlotFinder.TryFind(hearth.transform.position, state.Axis, role, strictHub, radius,
-                             design.MaxTerrainDelta, plots, rng, out position, out yaw, PathPlanner.PlannedNetwork(hearth), hearth,
+                             design.MaxTerrainDelta, plots, rng, out position, out yaw, planned, hearth,
                              Doors.Angle(design)))
                 {
                     VillheimPlugin.Debug($"{state.Name}: no room for {design.Name}.");
@@ -753,12 +757,28 @@ namespace Villheim.Logic.Village
             state.LastGrowth = ZNet.instance.GetTimeSeconds() - GrowthInterval();
         }
 
+        private static readonly Dictionary<int, (float Time, string Text)> SummaryCache = new Dictionary<int, (float, string)>();
+
+        /// <summary>The hearth's hover text, made at most once a second (the game asks for it every frame it is looked at).</summary>
         public static string Summary(VillageHearth hearth)
         {
             if (!hearth.IsValid)
             {
                 return "";
             }
+
+            if (SummaryCache.TryGetValue(hearth.VillageId, out var cached) && Time.time - cached.Time < 1f)
+            {
+                return cached.Text;
+            }
+
+            string text = MakeSummary(hearth);
+            SummaryCache[hearth.VillageId] = (Time.time, text);
+            return text;
+        }
+
+        private static string MakeSummary(VillageHearth hearth)
+        {
 
             var state = new VillageState(hearth.Zdo);
             if (!state.Initialized)

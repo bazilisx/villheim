@@ -364,17 +364,8 @@ namespace Villheim.Logic.Villagers
                 return;
             }
 
-            if (needs.Missing.Count == 0)
-            {
-                if (!TryClear(villager, work, needs, false) && !TryTidy(villager, work))
-                {
-                    NoWork(villager, work, "the village needs nothing right now");
-                }
-
-                return;
-            }
-
-            // Trades (from six villagers on): a cook keeps the hearth and only gathers when hands are short.
+            // Trades (from six villagers on) keep to their work, however big the village gets (T-108): a cook keeps the
+            // hearth, a farmer the farm. Neither clears ground, tidies up or helps build.
             Roles.Trade trade = Roles.TradeOf(villager);
             if (trade == Roles.Trade.Cook && !builder)
             {
@@ -385,6 +376,16 @@ namespace Villheim.Logic.Villagers
             if (trade == Roles.Trade.Farmer && !builder)
             {
                 NoWork(villager, work, "tends the farm");
+                return;
+            }
+
+            if (needs.Missing.Count == 0)
+            {
+                if (!TryClear(villager, work, needs, false) && !TryTidy(villager, work))
+                {
+                    NoWork(villager, work, "the village needs nothing right now");
+                }
+
                 return;
             }
 
@@ -1168,18 +1169,25 @@ namespace Villheim.Logic.Villagers
             }
 
             Vector3 position = villager.transform.position;
+            int slot = HelperSlot(villager);
             if (Vector3.Distance(piece, work.Contact) > 0.3f)
             {
-                // A new piece: work out where to stand for it.
+                // A new piece: work out where to stand for it (a helper at his own side of it).
                 work.Contact = piece;
                 work.Stand = ConstructionSite.StandSpot(hearth, piece, position);
+                if (slot > 0)
+                {
+                    work.Stand = HelperStand(hearth, piece, ConstructionSite.StandSpot(hearth, piece, hearth.transform.position), slot);
+                }
+
                 work.Picks = 0;
                 work.Deadline = Time.time + 30f;
                 Walker.For(villager).Reset();
             }
 
             bool stubborn = work.Misses >= 2 && Vector3.Distance(work.MissedPiece, piece) < 0.3f;
-            bool inReach = ConstructionSite.InBuildReach(hearth, position, piece) ||
+            bool inReach = (slot > 0 ? Utils.DistanceXZ(position, work.Stand) < 0.8f && Mathf.Abs(piece.y - position.y) < 7f
+                                     : ConstructionSite.InBuildReach(hearth, position, piece)) ||
                            (stubborn && Utils.DistanceXZ(position, piece) < 5f && Mathf.Abs(piece.y - position.y) < 10f);
             if (inReach && ConstructionSite.InsideNextPiece(hearth, villager))
             {
@@ -1220,14 +1228,15 @@ namespace Villheim.Logic.Villagers
             VillagerLooks.Hold(villager, VillagerLooks.Tool.Hammer);
             Face(villager, ai, piece);
             work.Timer += dt;
-            if (work.Timer % HammerInterval < dt)
+            // Each helper keeps his own beat, so no two swing together (T-107).
+            if ((work.Timer + slot * 0.37f) % HammerInterval < dt)
             {
                 ToolAnimation(villager, VillagerLooks.Tool.Hammer);
             }
 
             // Mood never changes how fast anyone works (D-014); only skill does. Mood changes free time.
             float perPiece = (LogicConfig.SecondsPerPiece != null ? LogicConfig.SecondsPerPiece.Value : 2.5f) /
-                             VillagerSkills.WorkFactor(villager, "building");
+                             VillagerSkills.WorkFactor(villager, "building") + slot * 0.45f;
             if (work.Timer < perPiece)
             {
                 return true;
@@ -1274,7 +1283,9 @@ namespace Villheim.Logic.Villagers
         private static bool JoinsBuilding(Villager villager, Work work)
         {
             int most = LogicConfig.BuildHelpers != null ? LogicConfig.BuildHelpers.Value : 3;
-            if (most <= 0 || work.Phase != Phase.Idle || work.Carrying.Count > 0 || Wanderers.IsWanderer(villager))
+            Roles.Trade trade = Roles.TradeOf(villager);
+            if (most <= 0 || work.Phase != Phase.Idle || work.Carrying.Count > 0 || Wanderers.IsWanderer(villager) ||
+                trade == Roles.Trade.Cook || trade == Roles.Trade.Farmer)
             {
                 return false;
             }
@@ -1297,6 +1308,49 @@ namespace Villheim.Logic.Villagers
             helping[villager] = Time.time;
             VillheimPlugin.Debug($"{villager.VillagerName} goes to help with the building.");
             return true;
+        }
+
+        /// <summary>
+        /// A helper's place among the helpers (1, 2, 3...), 0 for the builder or someone not helping. Helpers stand
+        /// round the piece at their own side (HelperStand), so nobody works on top of anyone else (T-105, T-107).
+        /// </summary>
+        private static int HelperSlot(Villager villager)
+        {
+            if (!Helpers.TryGetValue(villager.VillageId, out Dictionary<Villager, float> helping) || !helping.ContainsKey(villager))
+            {
+                return 0;
+            }
+
+            int slot = 1;
+            foreach (Villager other in helping.Keys)
+            {
+                if (other == villager)
+                {
+                    return slot;
+                }
+
+                slot++;
+            }
+
+            return slot;
+        }
+
+        /// <summary>
+        /// Where a helper stands: round the next piece from the builder's side, a third of a turn apart for each helper
+        /// and further out, so every two of them are at least about 2.5 m apart.
+        /// </summary>
+        private static Vector3 HelperStand(VillageHearth hearth, Vector3 piece, Vector3 builderStand, int slot)
+        {
+            Vector3 out_ = (builderStand - piece).Horizontal();
+            out_ = out_.sqrMagnitude > 0.01f ? out_.normalized : Vector3.forward;
+            Vector3 dir = Quaternion.Euler(0f, 120f * slot + (slot > 2 ? 60f : 0f), 0f) * out_;
+            Vector3 spot = piece + dir * (ConstructionSite.NextPieceHalfWidth(hearth) + 1.6f + 0.5f * slot);
+            if (ZoneSystem.instance.GetGroundHeight(spot, out float y))
+            {
+                spot.y = y;
+            }
+
+            return spot;
         }
 
         /// <summary>Still building as a helper: keeps his place among the helpers.</summary>

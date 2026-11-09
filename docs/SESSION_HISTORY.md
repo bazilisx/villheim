@@ -6,7 +6,8 @@ Current facts only. Read this at the start of a session. Narrative is in `docs/d
 ## Current State (as of 2026-11-09)
 
 - **Next session:** work the open bug list in the 2026-11-08 note, Session 12 (round 5 results, build 0908775). Read
-  Decisions D-059 to D-064 (overhangs, yards, game hit boxes, screenshots folder, community renders, stairs).
+  Helpers on interior kitbash, yards and exterior coverage merge in stages (branches feat/kitbash-interior,
+  feat/yards, feat/motifs2).
 - **Blueprint lab, building quality (2026-11-09 overnight, Session 13, not tested in game):** room templates, exterior
   details and motifs from the best-liked builds, game-measured piece models with the game's colliders in the checks,
   a design critic, the component bench (`lab/bench.js`), and new parts: stairs, dormers, chimney stacks, lean-tos,
@@ -35,6 +36,11 @@ Current facts only. Read this at the start of a session. Narrative is in `docs/d
 - **Decisions (2026-11-08):** questions and answers live in the review sheet's Decisions tab. Knowledge (true
   rumours, map table), cultures by biome, biome defenders and D-003 to D-040 are in main; none tested in game. Tyler
   starts a new test world for village testing.
+- **Decisions D-059 to D-066 (2026-11-09):** roof overhangs back (eaves 1 m, rakes 1 m); yards on stage 2 and 3
+  homes and farms inside the plot; game hit boxes stay on in the checks; no screenshots folder; community renders
+  in `docs/renderer/corpus` with credit; stairs where they fit; interiors and accents may use any prefab that ships
+  with Valheim (walls and roofs follow the biome's materials); minor decor is free or paid in the village biome's
+  own materials.
 - **Feature checklist (2026-11-08):** every built, planned and proposed feature plus ideas from other mods, 730 rows,
   in the review sheet's Features tab (Yes, No or Later). Source files in `docs/features/`. ValheimCityBuilder is CC0
   per its authors; study in `docs/CITYBUILDER_STUDY.md`.

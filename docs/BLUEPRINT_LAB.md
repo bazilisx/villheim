@@ -399,8 +399,8 @@ props, treasure, signs. They pass the materials check in any biome, and the gene
 them; stations, beds, chests, tables, seats, fires and building pieces still need their own.
 
 Cost: in Node the 154-design comparison (every type, seven biomes, s2d2 and s3d3) took 74 ms a design without the
-library and 113 ms with it (2026-11-09, third round; after filing pieces by their own reach, reading the rooms once and passing
-over free-floor spots with fixed furniture on them).
+library and 113 ms with it (2026-11-09, third round; after filing pieces by their own reach, reading the rooms once
+and passing over free-floor spots with fixed furniture on them).
 
 ### Items on stands (for the mod)
 

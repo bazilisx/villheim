@@ -251,10 +251,12 @@ well (Tyler, 2026-11-08). The Features tab of the review sheet (`docs/features/b
 - [ ] **Next test build (Tyler, 2026-11-09), do first:**
   1. Beds: every villager gets a bed, the bed shows his name as a player's claimed bed does, villagers sleep in their
      beds, and village beds cannot be claimed by players (today beds show "unassigned, claim bed" and nobody uses them).
-  2. House signs in a fixed place: outside, right of the front door at about head height (where a house number goes);
-     inside (families), right of the door as seen from inside looking out, one column, stacked. A sign may clip a
-     little into the wall so it counts as supported.
-  3. Swap the test village's random buildings for the generated Norse s1d1 to s3d3 set: a small pool of Norse
+  2. [done 2026-11-09] House signs in a fixed place: outside, right of the front door at about head height (where a
+     house number goes); inside (families), right of the door as seen from inside looking out, one column, stacked;
+     set 2 cm into the wall.
+  3. [built 2026-11-09: `vh testpool make`, setting TestPool; waits for additive decor stages and growth lineage
+     from the helpers before the test] Swap the test village's random buildings for the generated Norse s1d1 to s3d3
+     set: a small pool of Norse
      variants in the building pools, so the test covers villagers building, living in, expanding and decorating
      houses, and the role buildings where each role spends its day.
   4. Evenings at home: no sitting on the floor (only at the earliest stages or with no seats); sit on chairs,

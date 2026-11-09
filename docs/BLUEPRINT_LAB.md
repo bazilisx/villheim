@@ -18,7 +18,8 @@ Code in `tools/blueprint-lab/`. Built 2026-11-08 night. Nothing generated here i
 | Cultures | `lib/styles.js`, `lib/generate.js`, `lib/gen_cultures.js` | The 14 approved village cultures, up to three per biome with weights, and their forms: round houses, crannogs, goahti, lavvu, yurts, Icelandic gable rows, courtyards with arcades, keeps, Svan towers, domed and drum churches, stave churches, sunken huts. Style guide and sources in `docs/CULTURE_STYLES.md`; overview pictures in `docs/cultures/`. |
 | Decorator | `lib/decorate.js`, `lab/learn_interior.py`, `data/interior-lite.json` | Furnishes every floor to d1, d2 or d3 from rules learned from the best-liked builds; strips any design to d1; furnishes any existing blueprint against its real walls; checks its own work (`audit`, `lab/check_interiors.js`). See `docs/INTERIOR_DESIGN.md`. |
 | Checks | `lib/checks.js`, `lab/check_set.js` | Every piece connected to the ground, no doubled pieces, doors you can walk through, headroom under roofs and ceilings, ladders and stairs you can climb, no woodpiles indoors, materials the biome has (furnishing too), floor left free. See "Structure rules". |
-| Renderer | `lib/render.js`, `lib/sheet.js` | Four views (front left, back right, top, inside with the roof off) as PNG in Node or on a canvas in a browser. |
+| Renderer | `lib/render.js`, `lib/sheet.js` | Four views (front left, back right, top, inside with the roof off) and top-down room plans at a true scale, as PNG in Node or on a canvas in a browser. Each piece is drawn from its model in `data/piece-models.json`. See "Renderer". |
+| Piece models | `lab/extract_models.py`, `lab/build_models.js`, `data/piece-models.json`, `lab/piece_sizes.js` | Bounds, colliders, pivot and a low-poly proxy (boxes and prisms with colors) for 682 vanilla pieces, measured from the game's prefabs on Tyler's PC. Catalog sizes against the game: `docs/PIECE_SIZES.md`. |
 | Request page | `web/app.html`, built to `web/index.html` by `lib/build_web.js` | Type or pick a request, get the best of up to 16 candidates, turn it round, download the `.blueprint`; a second tab strips or furnishes an uploaded blueprint; a third repairs one. Published as the artifact "Villheim Blueprint Lab"; a copy is in `BepInEx/config/Villheim-tools/` on Tyler's PC and opens offline. |
 | Requests | `lib/request.js` | Request words to choices, the best of several seeds, and one request made from short codes. Shared by the page, the game (`vh gen`) and `lab/process_requests.js`. |
 | Game bundle | `lib/build_engine.js` to `src/Villheim.Logic/Generator/lab.js` | The generator for the game, run by Jint. See "In the game". |
@@ -147,6 +148,53 @@ low roof), walls (plank, half-timber, log, stone, stone base), storeys (one, two
 loft), porch (porch, veranda, no porch), size (small, large) and decor (bare, cosy, rich), plus biome and culture
 words. A culture key written among the words (`middle-eastern`) counts as the culture.
 
+## Renderer
+
+`lib/render.js` draws every piece from its model in `data/piece-models.json` and falls back to the box shapes of
+`lib/pieces.js` for pieces without one (mod pieces, placed food and items). A small z-buffer rasterizer fills the faces
+two by two samples per pixel, so faces never sort wrong; each face is lit by a sun and an ambient term, gets a dark
+line where it meets another part, piece or the background, and gets a simple pattern for what it is made of: boards on
+plank walls and floors, courses and mortar on stone, cross-hatching on thatch, zigzag shingles on dark wood roofs,
+log seams, lattices on shutters, braces on doors, rails on fences, borders on rugs, bands on chests and banners, veins
+on black marble, rivets on Dvergr and iron. A pattern is left out when its smallest feature would be under about 4 px,
+so small pictures stay clean. The same code runs in Node (@napi-rs/canvas) and on the request page.
+
+The models. `lab/extract_models.py` runs on Tyler's PC only (UnityPy over the game's asset bundles). For each
+prefab it walks the GameObject tree with its transforms, keeps the active LOD0 meshes, measures the render bounds and
+the solid colliders in the piece's own frame, and fits a proxy: each connected part of the mesh becomes one box, one
+prism (a triangle, wedge or n-gon outline pushed out along one axis) or, for a concave part, a few boxes from a 2.5 to
+10 cm voxel grid; at most 40 parts a piece, nails and other small bits left out. Each part's color is the game texture
+sampled at the part's own UVs, with a material class from the material's name. `lab/build_models.js` turns the raw
+file into `data/piece-models.json` (1.3 MB, 682 pieces, 7,820 parts). The meshes and textures stay on Tyler's PC; the
+repo holds measurements and our own boxes and prisms.
+
+API (old calls work as before):
+
+- `draw(ctx, pieces, opts)`: `az`, `el` (90 is straight down), `cut` (structural pieces are cut at that height and
+  the cut shows dark; furniture is drawn whole or, when it hangs above the cut, left out; roofs are left out), `hide`,
+  `width`, `height`, `background`, `label`, `ss` (samples per pixel each way, default 2), `crop` ({x0, x1, z0, z1},
+  world metres, to frame one room), `ppm` (pixels per metre), `grid` (1 m grid, top views), `scale` (scale bar),
+  `outline`, `patterns`, `models` (false for the old shapes). Returns `{ppm, ms, faces}`.
+- `plan(ctx, pieces, {cut, crop, ppm, margin})`: straight down at a true scale with grid and scale bar;
+  `planSize(pieces, {crop, ppm, margin})` gives the canvas size for it.
+- `sheet.plan(pieces, out.png, opts)` writes one; `node lib/cli.js plan in.blueprint out.png 50 1.8 x0 x1 z0 z1` does
+  the same from the command line.
+- `coverage(pieces)` counts which pieces have a model and which fall back.
+
+One room from above at 50 px per metre, cut 1.8 m over its floor:
+
+```
+const R = require('./lib/render.js'), { createCanvas } = require('@napi-rs/canvas');
+const crop = { x0: -4, x1: 4, z0: -3, z1: 3 };
+const { width, height } = R.planSize(pieces, { crop, ppm: 50, margin: 0.3 });
+const c = createCanvas(width, height);
+R.plan(c.getContext('2d'), pieces, { crop, ppm: 50, margin: 0.3, cut: floorY + 1.8 });
+```
+
+Times in Node (2026-11-09): 1600 x 1000 views of 150 to 550 piece designs take 0.5 to 0.8 s each; a 8 x 6 m room plan
+at 50 px per metre 0.1 to 0.3 s. On the request page the main view takes about 0.65 s at two samples and 0.3 s at one
+(headless Chrome); it draws at one while dragging. Old and new pictures: `docs/renderer/`.
+
 ## Repair
 
 How a repair is chosen, in order of trust:
@@ -260,7 +308,9 @@ running it again makes the same design. Then `vh place <id>` in the game.
 
 ## Limits
 
-- Piece sizes come from names and corpus measurements, so the pictures are close. An in-game export of each piece's
+- The checks, the decorator and the generator still use the catalog sizes in `lib/pieces.js`, which come from names and
+  corpus measurements; the pictures use the measured models. Where the two differ by more than 10 cm:
+  `docs/PIECE_SIZES.md`. An in-game export of each piece's
   collider would make them exact.
 - Crop fields need the ground cultivated in game for crops to grow back.
 - Furniture sizes in the decorator are measured in the corpus (`docs/INTERIOR_DESIGN.md`); the renderer still draws
@@ -284,6 +334,10 @@ node lib/gen_set.js out/set 8                                      # the review 
 node lab/check_set.js 8 --list                                     # every check on the review set and culture samples
 node lib/gen_cultures.js out/cultures 6 ../../docs/cultures       # culture samples and overview pictures
 node lib/build_web.js web/index.html                               # the request page
+node lib/cli.js plan <in.blueprint> <out.png> [ppm] [cut] [x0 x1 z0 z1]   # top-down plan, optionally one room
+python3 lab/extract_models.py index|run|collect ...                # piece models, on Tyler's PC only (see the script)
+node lab/build_models.js <piece-models-raw.json>                    # to data/piece-models.json
+node lab/piece_sizes.js                                            # catalog sizes against the game
 node lib/build_engine.js                                           # the game's bundle, src/Villheim.Logic/Generator/lab.js
 python3 lab/learn_interior.py <corpus dir> data/interior.json      # interior rules; then node lab/interior_lite.js
 node lab/check_interiors.js lib out.json 3                         # furniture checks over a sample

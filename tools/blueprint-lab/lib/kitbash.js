@@ -46,9 +46,46 @@ function barCounter(b, ctx, zones) {
   return false;
 }
 
-function apply(b, ctx, zones) {
-  if (ctx.type === 'tavern' && ctx.decor !== 'd1') barCounter(b, ctx, zones || []);
+// A canopy bed: a 2 m post at each corner of a bed and a rug laid over their tops for the canopy (corpus homes and the
+// "posts and a rug" trick; vanilla has no canopy bed). Only where nothing else stands within the posts' reach and the
+// ceiling over the bed is at least 2.5 m up.
+function canopyBed(b, ctx) {
+  const Ck = checksB();
+  const canopy = ['jute_carpet', 'rug_deer', 'rug_straw'].find(n => can(ctx.biome, n));
+  if (!canopy) return 0;
+  const post = ctx.K.pole && /pole2|pole_log$|darkwood_pole$/.test(ctx.K.pole) ? ctx.K.pole : 'wood_pole2';
+  let n = 0;
+  for (const bed of b.pieces.filter(p => p.name === 'bed' && p.decor)) {
+    const a = (bed.yaw || 0) * Math.PI / 180, ca = Math.cos(a), sa = Math.sin(a);
+    const at = (lx, lz) => [bed.x + lx * ca + lz * sa, bed.z - lx * sa + lz * ca]; // local x across, z along the bed
+    const corners = [[-0.62, -1.3], [0.62, -1.3], [-0.62, 1.3], [0.62, 1.3]].map(([lx, lz]) => at(lx, lz));
+    // the room over the bed: the lowest thing above it that is not the bed itself
+    let ceil = Infinity;
+    for (const p of b.pieces) {
+      if (p === bed) continue;
+      const o = Ck.aabb(p), bo = Ck.aabb(bed);
+      // structure over the bed's footprint, or furniture at the canopy's height (a torch over the bed's head)
+      if (!PB.piece(p.name).structural && !(o.y1 > bed.y + 1.8 && o.y0 < bed.y + 2.3)) continue;
+      if (o.y0 > bed.y + 0.5 && o.x0 < bo.x1 - 0.25 && o.x1 > bo.x0 + 0.25 && o.z0 < bo.z1 - 0.25 && o.z1 > bo.z0 + 0.25) ceil = Math.min(ceil, o.y0);
+    }
+    if (ceil < bed.y + 2.5) continue;
+    // nothing else stands where a post goes
+    const busy = corners.some(([x, z]) => b.pieces.some(p => p !== bed && p.decor && PB.piece(p.name).role !== 'rug' && Math.hypot(p.x - x, p.z - z) < 0.45 && p.y < bed.y + 2.2));
+    if (busy) continue;
+    const T = { decor: true, trim: true };
+    for (const [x, z] of corners) b.put(post, x, bed.y + 1, z, 0, T);
+    b.put(canopy, bed.x, bed.y + 2.02, bed.z, bed.yaw || 0, T);
+    n++;
+  }
+  if (n) b.notes.push(n > 1 ? `${n} beds with canopies of a rug on four posts.` : 'A bed with a canopy of a rug on four posts.');
+  return n;
 }
 
-const apiB = { apply, barCounter };
+function apply(b, ctx, zones) {
+  if (ctx.type === 'tavern' && ctx.decor !== 'd1') barCounter(b, ctx, zones || []);
+  const X = ctx.profile || {};
+  if (X.canopyBed != null ? X.canopyBed : (ctx.decor === 'd3' && ['home', 'longhouse'].includes(ctx.type) && ctx.R() < 0.5)) canopyBed(b, ctx);
+}
+
+const apiB = { apply, barCounter, canopyBed };
 if (NODE_B) module.exports = apiB; else window.VHKitbash = apiB;

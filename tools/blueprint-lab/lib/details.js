@@ -35,6 +35,13 @@ const BRACED = ['norse', 'norse-forest', 'norse-highland', 'anglo-saxon', 'black
 const SHUTTERS = ['norse', 'norse-forest', 'norse-highland', 'slavic', 'baltic', 'anglo-saxon', 'frankish-norman',
   'celtic', 'fen-folk', 'black-forest', 'mountain', 'swamp', 'castle-medieval'];
 
+function makeHash(ctx) {
+  const sig = [ctx.cultureKey, ctx.type, ctx.stage, ctx.decor, ctx.biome, ctx.plan, ctx.F, ctx.storeys, ctx.door && ctx.door.x, ctx.door && ctx.door.z, (ctx.edges || []).length].join('|');
+  let h = 2166136261;
+  for (let i = 0; i < sig.length; i++) { h ^= sig.charCodeAt(i); h = Math.imul(h, 16777619); }
+  return h >>> 0;
+}
+
 // What a building gets, from its culture, type, size stage (s1 to s3) and decor stage (d1 to d3).
 function profile(ctx) {
   const { C, cultureKey, T, stage, decor, biome, R } = ctx;
@@ -49,14 +56,16 @@ function profile(ctx) {
     mullion: false, // a 0.4 m pole in a 2 m opening did not show (bench review 2026-11-09)
     shutters: sN >= 2 && dN >= 2 && SHUTTERS.includes(cultureKey) && reachesD(biome, 'Black Forest') && !C.glass && roll(0.6),
     doorFrame: !C.arches,
-    doorHood: north && sN >= 2 && !C.awnings && !C.arches && roll(0.7), // never without the frame
+    doorHood: north && sN >= 2 && !C.awnings && roll(0.7) && !C.arches, // never without the frame
     doorstep: true,
     doorLamp: dN >= 2 && !C.arches,
     cornerPosts: boards && !C.frame && !T.tower,
     bands: boards && sN >= 2 && !C.frame,
     midRail: false, // with the braces and window frames a rail at 1 m made half-timbered walls too busy (2026-11-09 render)
     bargeboards: north && (sN >= 2 || C.carved),
-    crossed: CROSSED.includes(cultureKey) && sN >= 2 && roll(0.2), // the game's Roof Cross is 4 m across: rare
+    // the game's Roof Cross is 4 m across: one building in five (from the building's make, so the random stream the
+    // rest of the details draw from stays as it was)
+    crossed: CROSSED.includes(cultureKey) && sN >= 2 && makeHash(ctx) % 5 === 0,
     svalgang: ['norse', 'norse-forest', 'norse-highland', 'slavic', 'baltic'].includes(cultureKey) && ctx.storeys >= 2 &&
       ['home', 'storage', 'tavern'].includes(ctx.type) && (sN >= 3 || (sN === 2 && dN >= 3)) && ['rect', 'long', 'L', 'T'].includes(ctx.plan) &&
       !C.awnings && !ctx.flat && roll(0.75),
@@ -129,13 +138,15 @@ function exterior(b, ctx) {
     const { e, y0 } = o, { ux, uz, ox, oz } = axes(e);
     if (MT && motifWindow(b, ctx, MT, o, used)) { added.windows++; added.motifs++; continue; }
     const stone = /stone|marble|grausten/.test(C.wallStyle || '') && !(b.woodBays && b.woodBays.has(`${Math.round(e.x * 10)},${Math.round(e.z * 10)}`));
-    const f = 0.1; // trim stands a little proud of the wall face
+    const f = 0.25; // trim stands proud of the wall face (a beam is 0.4 m deep in the game: at 0.25 out it clears the inside)
     // the light: the whole 2 m bay, or 1 m beside a 1 x 1 wall piece
     const quarter = K.wallQuarter && b.pieces.find(p => p.name === K.wallQuarter && Math.abs(p.y - (y0 + 1.5)) < 0.3 && Math.abs((p.x - e.x) * ox + (p.z - e.z) * oz) < 0.2 && Math.abs((p.x - e.x) * ux + (p.z - e.z) * uz) < 0.8);
     const sd = quarter ? ((quarter.x - e.x) * ux + (quarter.z - e.z) * uz > 0 ? 1 : -1) : 0;
     const lw = quarter ? 1 : 2, cx = e.x - ux * sd * 0.5, cz = e.z - uz * sd * 0.5;
     if (X.mullion && lw === 2) put(pole1, e.x, y0 + 1.5, e.z, 0);
-    if (X.windowFrame) {
+    // a deck or gallery floor outside the window: no frame (the sill and head would hang over people walking there)
+    const deckOut = b.pieces.some(p => PD.piece(p.name).role === 'floor' && Math.hypot(p.x - (e.x + ox), p.z - (e.z + oz)) < 1.1 && Math.abs(p.y - y0) < 0.6);
+    if (X.windowFrame && !deckOut) {
       // sill and head no wider than the light and a little over; posts at its sides on board walls only
       // a 1 m light takes 1 m boards where posts carry them; without posts the 2 m beam rests on the wall beside
       const posts = (!C.frame || stone) && C.wallStyle !== 'log';
@@ -171,7 +182,7 @@ function exterior(b, ctx) {
     const framed = X.doorFrame && o.kind === 'door' && !mo;
     if (framed) {
       if (!C.frame) for (const s of [-1, 1]) put(pole, dx + ux * s * (dw / 2 + 0.05) + ox * 0.1, y0 + 1, dz + uz * s * (dw / 2 + 0.05) + oz * 0.1, 0);
-      put(dw < 1.5 ? (K.beam1 || 'wood_beam_1') : beam, dx + ox * 0.12, y0 + dh + 0.1, dz + oz * 0.12, e.yaw); // the lintel, its underside at the door's top
+      put(dw < 1.5 ? (K.beam1 || 'wood_beam_1') : beam, dx + ox * 0.25, y0 + dh + 0.2, dz + oz * 0.25, e.yaw); // the lintel, just over the door's frame
     }
     if (o.storey > 0) continue;
     const outside = { x: dx + ox, z: dz + oz };
@@ -231,8 +242,8 @@ function exterior(b, ctx) {
     for (let s = 0; s < storeys; s++) {
       const y0 = F + s * SH;
       const opening = openings.find(o => o.e === e && o.y0 === y0);
-      if (X.bands && !(opening && opening.kind !== 'window')) put(beam, e.x + ox * 0.08, y0 + 0.1, e.z + oz * 0.08, e.yaw);
-      if (X.midRail && !opening) put(beam, e.x + ox * 0.08, y0 + 1, e.z + oz * 0.08, e.yaw);
+      if (X.bands && !(opening && opening.kind !== 'window')) put(beam, e.x + ox * 0.25, y0 + 0.1, e.z + oz * 0.25, e.yaw);
+      if (X.midRail && !opening) put(beam, e.x + ox * 0.25, y0 + 1, e.z + oz * 0.25, e.yaw);
     }
   }
 
@@ -276,10 +287,17 @@ function commitMotifs(b, ctx) {
   const pend = b.motifPending || [];
   delete b.motifPending;
   if (!pend.length) return;
-  const Ck = checksD(), furn = b.pieces.filter(p => p.decor).map(p => Ck.aabb(p));
-  const hit = (a, o) => o.x0 < a.x1 - 0.04 && o.x1 > a.x0 + 0.04 && o.y0 < a.y1 - 0.04 && o.y1 > a.y0 + 0.04 && o.z0 < a.z1 - 0.04 && o.z1 > a.z0 + 0.04;
+  // with the game's solids where they are known (checks.js gameBox), as the overlap check reads furniture
+  const Ck = checksD(), gb = p => (Ck.gameBox ? Ck.gameBox(p) : Ck.aabb(p)), furn = b.pieces.filter(p => p.decor).map(gb);
+  const SH = NODE_D ? (() => { try { return require('./shapes.js'); } catch (e) { return null; } })() : window.VHShapes;
+  const hit = (a, o) => {
+    if (!(o.x0 < a.x1 - 0.02 && o.x1 > a.x0 + 0.02 && o.y0 < a.y1 - 0.02 && o.y1 > a.y0 + 0.02 && o.z0 < a.z1 - 0.02 && o.z1 > a.z0 + 0.02)) return false;
+    if (a.pass || o.pass) return false;
+    return !(a.sol && o.sol && SH) || SH.overlapVolume(a.sol, o.sol) > 0.01;
+  };
   for (const p of pend) {
-    if (furn.some(o => hit(Ck.aabb(p), o))) continue; // what the furnishing put there first stays
+    const pb = gb({ ...p, q: p.q || quatD(p.yaw) });
+    if (furn.some(o => hit(pb, o))) continue; // what the furnishing put there first stays
     b.put(p.name, p.x, p.y, p.z, p.yaw, { trim: true, motif: p.motif, footed: true });
   }
   pruneMotifs(b, ctx);
@@ -392,7 +410,7 @@ function svalgang(b, ctx) {
   if (b.pieces.some(p => p.z < zf - 0.5 && p.z > zf - 2.6 && p.x > x0 + 0.3 && p.x < x1 - 0.3 && p.y < yU + 1)) return false;
   // the upper door: a bay beside the middle whose inside cell is no ladder hole or landing
   const L = ladders || [];
-  const freeCell = x => cells.has(`${x},${zf + 1}`) && !L.some(l => [l.hole, l.land, l.stand].some(c => c[0] === x && c[1] === zf + 1));
+  const freeCell = x => cells.has(`${x},${zf + 1}`) && !L.some(l => [l.hole, l.land, l.stand, ...(l.run || [])].some(c => c[0] === x && c[1] === zf + 1));
   const ux = xs.filter(x => x !== door.x).sort((a, c) => Math.abs(a - door.x) - Math.abs(c - door.x)).find(freeCell);
   if (ux == null) return false;
   // take out the upper bay's wall and window pieces, and build it again as a door
@@ -488,12 +506,15 @@ function bargeboards(K, C, w, ctx, rows, ends, add, low, pivot, r) {
     if (n) gableDone = true;
   });
   if (gableDone) ctx.motifUsed = [...(ctx.motifUsed || []), gm.m.id];
-  // the eaves: one bay of the motif on every 2 m of the lowest row, both sides
+  const a = (w.alpha || 0) * Math.PI / 180;
+  const overDoor = (u, v) => { const x = w.cx + u * Math.cos(a) + v * Math.sin(a), z = w.cz - u * Math.sin(a) + v * Math.cos(a);
+    return (ctx.openings || []).some(o => o.kind !== 'window' && o.storey === 0 && Math.hypot(o.e.x - x, o.e.z - z) < 2.2); };
+  // the eaves: one bay of the motif on every 2 m of the lowest row, both sides, never over a door
   if (em && X.eaveTrim) {
     const edge = 3 + 2 * rows;
     let n = 0;
     for (let u = -w.W + 1; u <= w.W - 1 + 0.01; u += 2) for (const sv of [-1, 1])
-      n += MotifsD.roofParts(em, { x: u, y: low(rows), z: sv * edge, nx: 0, nz: sv }, addM, { mirror: MT.mirror, skip: p => {
+      if (!overDoor(u, sv * w.D)) n += MotifsD.roofParts(em, { x: u, y: low(rows), z: sv * edge, nx: 0, nz: sv }, addM, { mirror: MT.mirror, skip: p => {
         if (p.o < -0.05 || p.h < -0.9 || Math.abs(p.a) > 1.05) return true;
         // under the roof: nothing through it (the roof rises inward from the edge)
         const half = PD.piece(p.name).size[1] / 2, under = (r / 2) * Math.max(0, -p.o) - 0.15;
@@ -503,8 +524,10 @@ function bargeboards(K, C, w, ctx, rows, ends, add, low, pivot, r) {
   }
   // rafter tails: a sloped beam at every seam of the lowest roof row, half a metre out past its edge and just under it
   // (the exposed rafters of Norse halls; the corpus lays sloped beams along roof piece edges)
+  // (never over a door or gate: a 45 degree beam is 0.4 m thick in the game and hangs into the doorway)
   if (X.rafterTails && !eaveDone) for (let u = -w.W + 2; u <= w.W - 2 + 0.01; u += 2) for (const sv of [-1, 1]) {
     const v = sv * (2 + 2 * rows + 1.2);
+    if (overDoor(u, sv * w.D)) continue;
     add(name, u, pivot(rows) - 0.7 - (r === 2 ? 0 : 0), v, (sv < 0 ? 180 : 0) + 90, 'trim', low(rows));
   }
   // the ridge beam's end out past each gable
@@ -552,7 +575,7 @@ function partition(b, ctx, wallSegment) {
     const zs = [...cells.values()].filter(([x, z]) => Math.abs(x - (xp - sg)) < 0.01 && Math.abs(z - w0.cz) < w0.D).map(([, z]) => z).sort((a, c) => a - c);
     if (zs.length < 3) continue;
     // ladders keep their foot, hole and landing
-    const blocked = (ladders || []).some(L => [L.stand, L.hole, L.land].some(c => Math.abs(c[0] - xp) < 1.01));
+    const blocked = (ladders || []).some(L => [L.stand, L.hole, L.land, ...(L.run || [])].some(c => Math.abs(c[0] - xp) < 1.01));
     if (blocked) continue;
     const mid = zs.slice().sort((a, c) => Math.abs(a - w0.cz) - Math.abs(c - w0.cz))[0];
     for (const z of zs) wallSegment(b, K, C, xp, F, z, 90, SH, z === mid ? 'door' : 'wall');

@@ -160,13 +160,19 @@ on black marble, rivets on Dvergr and iron. A pattern is left out when its small
 so small pictures stay clean. The same code runs in Node (@napi-rs/canvas) and on the request page.
 
 The models. `lab/extract_models.py` runs on Tyler's PC only (UnityPy over the game's asset bundles). For each
-prefab it walks the GameObject tree with its transforms, keeps the active LOD0 meshes, measures the render bounds and
-the solid colliders in the piece's own frame, and fits a proxy: each connected part of the mesh becomes one box, one
-prism (a triangle, wedge or n-gon outline pushed out along one axis) or, for a concave part, a few boxes from a 2.5 to
-10 cm voxel grid; at most 40 parts a piece, nails and other small bits left out. Each part's color is the game texture
-sampled at the part's own UVs, with a material class from the material's name. `lab/build_models.js` turns the raw
-file into `data/piece-models.json` (1.3 MB, 682 pieces, 7,820 parts). The meshes and textures stay on Tyler's PC; the
-repo holds measurements and our own boxes and prisms.
+prefab it walks the GameObject tree with its transforms, keeps the active LOD0 meshes, measures the render bounds,
+reads every collider (box, sphere, capsule; a mesh collider as one or a few boxes) with its layer, and marks it solid
+when it is not a trigger and its layer collides with the player in the game's collision matrix (`globalgamemanagers`;
+`python3 extract_models.py layers` writes it to `<work>/layers.json`). It also keeps the snap points (inactive children
+tagged `snappoint`). Then it fits a proxy: flat parts of one material and color that touch and still form one layer
+(gable boards, thatch, shingle rows, blankets, rugs) are joined first; each part then becomes the one box, prism (a
+triangle, wedge, trapezoid or n-gon outline pushed out along one axis) or few boxes that best cover its voxels, with
+flat parts fitted by their outline seen square on. Up to 150 parts a piece (40 for small ones), nails and other small
+bits left out. Each part's color is the game texture sampled at the part's own UVs, with a material class from the
+material's name. `lab/build_models.js` turns the raw file into `data/piece-models.json` (1.9 MB, 685 pieces, 12,501
+parts, with `solids`, `pass` and `snap` per piece) and `data/piece-solids.json` (115 KB, the solids only, read by
+`lib/shapes.js` and bundled for the game and the request page). The meshes and textures stay on Tyler's PC; the repo
+holds measurements, collider boxes and our own boxes and prisms.
 
 API (old calls work as before):
 

@@ -374,7 +374,8 @@ function place(b, c, fr, f, opts = {}) {
     if (bx.y0 < (opts.ground != null ? opts.ground : -Infinity) - 0.05) continue;
     // nothing reaches into the building past the wall (a hood board half indoors, a sill through the wall)
     if (opts.inward !== false) {
-      const ins = Math.min(...[[bx.x0, bx.z0], [bx.x0, bx.z1], [bx.x1, bx.z0], [bx.x1, bx.z1]].map(([x, z]) => (x - fr.x) * fr.nx + (z - fr.z) * fr.nz));
+      const gb = Ck.gameBox ? Ck.gameBox(p) : bx; // the game's own solids, a beam is 0.4 m deep
+      const ins = Math.min(...[[gb.x0, gb.z0], [gb.x0, gb.z1], [gb.x1, gb.z0], [gb.x1, gb.z1]].map(([x, z]) => (x - fr.x) * fr.nx + (z - fr.z) * fr.nz));
       if (ins < -0.2) continue;
     }
     if (keepOut.some(z => hit(bx, z, 0.02))) continue;

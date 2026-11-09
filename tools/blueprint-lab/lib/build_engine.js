@@ -1,16 +1,18 @@
 // Build the generator bundle the game runs: node lib/build_engine.js [out.js]
 // Default out: src/Villheim.Logic/Generator/lab.js, built into Villheim.Logic.dll as a resource and run by Jint
 // (src/Villheim.Logic/Generator/LabEngine.cs). The same libraries as the request page, without the drawing, plus the
-// rules-lite, scorer and interior-lite data. Run it after every change to the lab; CI runs it too before building the mod.
+// rules-lite, scorer, interior-lite and piece-solids data. Run it after every change to the lab; CI runs it too before building the mod.
 const fs = require('fs'), path = require('path');
 const dir = __dirname;
 const out = process.argv[2] || path.join(dir, '../../../src/Villheim.Logic/Generator/lab.js');
-const libs = ['pieces.js', 'styles.js', 'blueprint.js', 'checks.js', 'features.js', 'decorate.js', 'motifs.js', 'details.js', 'kitbash.js', 'generate.js', 'critic.js', 'request.js', 'floorplan.js'];
+const libs = ['pieces.js', 'shapes.js', 'styles.js', 'blueprint.js', 'checks.js', 'features.js', 'decorate.js', 'motifs.js', 'details.js', 'kitbash.js', 'generate.js', 'critic.js', 'request.js', 'floorplan.js'];
 const code = libs.map(f => `// ---- ${f}\n(function () {\n${fs.readFileSync(path.join(dir, f), 'utf8')}\n})();`).join('\n');
 const rules = fs.readFileSync(path.join(dir, '../data/rules-lite.json'), 'utf8').trim();
 const scorer = fs.readFileSync(path.join(dir, '../data/scorer.json'), 'utf8').trim();
 const interior = fs.readFileSync(path.join(dir, '../data/interior-lite.json'), 'utf8').trim();
 const critic = fs.readFileSync(path.join(dir, '../data/critic.json'), 'utf8').trim();
+// the game's solid colliders per piece (lib/shapes.js), for the checks and the furniture sizes
+const solids = fs.readFileSync(path.join(dir, '../data/piece-solids.json'), 'utf8').trim();
 // room templates (D-058) without what only the lab reads (source, popularity, area, the ID key), and Tyler's weights
 const rooms = JSON.parse(fs.readFileSync(path.join(dir, '../data/room-templates.json'), 'utf8'));
 const roomsLite = JSON.stringify({ templates: rooms.templates.map(t => { const o = { ...t }; delete o.src; delete o.pop; delete o.area; delete o.key; delete o.ceil; delete o.doorW; return o; }) });
@@ -28,6 +30,7 @@ window.VH_RULES = ${rules};
 window.VH_SCORER = ${scorer};
 window.VH_INTERIOR = ${interior};
 window.VH_CRITIC = ${critic};
+window.VH_SOLIDS = ${solids};
 window.VH_ROOMS = ${roomsLite};
 window.VH_ROOM_WEIGHTS = ${roomWeights};
 window.VH_MOTIFS = ${JSON.stringify({ motifs: motifLite.motifs })};

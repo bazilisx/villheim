@@ -47,6 +47,25 @@ Measured in the game files, in order of how much they move things:
 The models keep all of this, so pictures are right whatever the catalog says. A check that wants game sizes can read
 `collider` or `colliders` from `data/piece-models.json` the same way `pieces.js` reads an in-game export.
 
+## The checks use the game's colliders (2026-11-09)
+
+`data/piece-solids.json` holds every piece's solid colliders (not a trigger, on a layer the player collides with in
+the game's collision matrix: Default, piece, terrain, static_solid, blocker, vehicle and a few more; `piece_nonsolid`
+and `item` are walked through). 578 of 685 pieces have solids; 107 have none (rugs, cloth doors, food, plants).
+`lib/shapes.js` turns them into oriented boxes in world space. `lib/checks.js` uses them by default
+(`check(design, biome, {shapes: false})` or `setShapes(false)` for the catalog boxes): overlaps by solid volume,
+furniture clipping into walls, posts and other furniture, doorways and climbs against the solids, headroom from the
+real underside of roofs, floors and level beams (anything under 0.5 m over the floor is a kerb or dais, never the
+ceiling), support and stability from the catalog box and the solids together. `Ck.aabb` gives the catalog box grown
+to the solids, so the generator and the details test against true sizes too. `lib/decorate.js` sizes furniture at
+least as large as its solids.
+
+`node lab/check_set.js 8` after the change: set 225 of 225 either way; cultures 147 of 147 with `--no-shapes`, 143
+of 147 with the colliders. The four that fail are middle-eastern homes and taverns on Plains: the fire pit or hearth
+the generator lays at the flat roof's vent stands 0.2 m or more into a 1 m stone wall, and the barrel by the court
+stands in a stone_wall_1x1. Doorways blocked by a `wood_beam_45` brace (0.4 m thick in the game) and a `wood_beam`
+lintel 0.1 m into the door's top were the most common new finds; the lintel is allowed (0.15 m), the brace is not.
+
 ## Every piece off by more than 10 cm
 
 | Piece | Role | Catalog (x y z) | Game, solid collider (x y z) | Game, mesh (x y z) | Bottom below pivot: catalog / game mesh | Off by more than 10 cm |

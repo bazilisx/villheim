@@ -283,57 +283,165 @@ def greedy_boxes(S, max_boxes, cover=0.93, min_frac=0.008, seed=1):
 # ---------------------------------------------------------------- fitting
 
 
-def fit_component(V, T, maxdim_piece):
-    """Primitives for one connected part: a box, a prism (triangle, wedge, n-gon) or a few boxes."""
-    P = V
-    R = best_frame(P)
-    L = P @ R
+def convex_mask(poly, X, Y, pad):
+    """Cells (centers X, Y) inside a convex outline grown by 'pad'."""
+    poly = np.asarray(poly, float)
+    if poly_signed(poly) < 0:
+        poly = poly[::-1]
+    m = np.ones(X.shape, bool)
+    for i in range(len(poly)):
+        a, b = poly[i], poly[(i + 1) % len(poly)]
+        e = b - a
+        L = math.hypot(e[0], e[1])
+        if L < 1e-9:
+            continue
+        m &= (e[0] * (Y - a[1]) - e[1] * (X - a[0])) / L >= -pad
+    return m
+
+
+def poly_signed(h):
+    x, y = h[:, 0], h[:, 1]
+    return 0.5 * (np.dot(x, np.roll(y, -1)) - np.dot(y, np.roll(x, -1)))
+
+
+def prism_record(R, k, hs, lo, hi):
+    o = [i for i in range(3) if i != k]
+    Rp = np.stack([R[:, o[0]], R[:, o[1]], R[:, k]], 1)
+    sgn = 1.0
+    if np.linalg.det(Rp) < 0:
+        Rp[:, 2] *= -1; sgn = -1.0
+    c2 = (hs.min(0) + hs.max(0)) / 2
+    cz = (lo[k] + hi[k]) / 2 * sgn
+    cen = Rp @ np.array([c2[0], c2[1], cz])
+    return ('prism', cen, hs - c2, float(hi[k] - lo[k]), Rp)
+
+
+def _dil2(g):
+    n = g.copy()
+    n[1:, :] |= g[:-1, :]; n[:-1, :] |= g[1:, :]; n[:, 1:] |= g[:, :-1]; n[:, :-1] |= g[:, 1:]
+    return n
+
+
+def fill2d(F, r=2):
+    """Close gaps of up to about 2 r cells in a 2D occupancy (seams between boards, the spaces between shingles and
+    thatch tufts); real openings such as the pit of a hearth stay open."""
+    g = np.pad(F, r + 1)
+    for _ in range(r):
+        g = _dil2(g)
+    for _ in range(r):
+        g = ~_dil2(~g)
+    return g[r + 1:-r - 1, r + 1:-r - 1] | F
+
+
+def layer_fit(V, T, R, L, nmax):
+    """A flat part (a board, a slab, a sheet, a roof face) fitted by its outline seen square on: a rectangle, a convex
+    outline (triangle, trapezoid, n-gon) or a few rectangles, with the thickness of the middle 90 % of its surface."""
+    lo, hi = L.min(0), L.max(0)
+    ext = np.maximum(hi - lo, 0.005)
+    k = int(np.argmin(ext)); o = [i for i in range(3) if i != k]
+    v2 = float(np.clip(max(ext[o]) / 40, 0.01, 0.06))
+    pts = sample_tris(L, T, v2 * 0.5)
+    t0, t1 = np.percentile(pts[:, k], 5), np.percentile(pts[:, k], 95)
+    if t1 - t0 < 0.02:
+        mid = (t0 + t1) / 2; t0, t1 = mid - 0.01, mid + 0.01
+    t0, t1 = max(t0, lo[k]), min(t1, hi[k])
+    if t1 - t0 < 0.02:
+        mid = (t0 + t1) / 2; t0, t1 = mid - 0.01, mid + 0.01
+    d2 = [max(1, int(math.ceil(ext[i] / v2))) for i in o]
+    ij = np.clip(np.floor((pts[:, o] - lo[o]) / v2).astype(int), 0, np.array(d2) - 1)
+    F = np.zeros(d2, bool); F[ij[:, 0], ij[:, 1]] = True
+    F = fill2d(F)
+    llo, lhi = lo.copy(), hi.copy(); llo[k], lhi[k] = t0, t1
+    sz = lhi - llo
+    box = ('box', R @ ((llo + lhi) / 2), sz, R)
+    cands = [(float(F.mean()), 0.0, [box])]
+    X, Y = np.meshgrid(lo[o[0]] + (np.arange(d2[0]) + 0.5) * v2, lo[o[1]] + (np.arange(d2[1]) + 0.5) * v2, indexing='ij')
+    h = hull2d(L[:, o])
+    if len(h) >= 3 and min(d2) >= 2:
+        seen = set()
+        for nv in (3, 4, 5, 6, 8, 10):
+            hs = simplify(h, nv) if len(h) > nv else h
+            if len(hs) in seen or len(hs) < 3:
+                continue
+            seen.add(len(hs))
+            m2 = convex_mask(hs, X, Y, v2 * 0.6)
+            iou = float((F & m2).sum() / max((F | m2).sum(), 1))
+            cands.append((iou, 0.012 + 0.003 * len(hs), [prism_record(R, k, np.asarray(hs, float), llo, lhi)]))
+    best = max(cands, key=lambda c: c[0] - c[1])
+    if best[0] >= 0.8 or nmax <= 1:
+        return best[2], best[0]
+    rects = greedy_boxes(F[:, :, None], min(nmax, 6), cover=0.93, min_frac=0.02)
+    if rects:
+        U = np.zeros_like(F)
+        for (a, b) in rects:
+            U[a[0]:b[0], a[1]:b[1]] = True
+        giou = float((F & U).sum() / max((F | U).sum(), 1))
+        if giou > best[0] + 0.1:
+            out = []
+            for (a, b) in rects:
+                c = (llo + lhi) / 2; s3 = sz.copy()
+                for j, ax in enumerate(o):
+                    c[ax] = lo[ax] + (a[j] + b[j]) / 2 * v2; s3[ax] = (b[j] - a[j]) * v2
+                out.append(('box', R @ c, s3, R))
+            return out, giou
+    return best[2], best[0]
+
+
+def fit_component(V, T, nmax=10):
+    """Primitives for one part, chosen by how well they cover its solid voxels: one box, one prism (a triangle,
+    wedge, trapezoid or n-gon outline pushed out along one axis), or a few boxes for a concave part."""
+    R = best_frame(V)
+    L = V @ R
     lo, hi = L.min(0), L.max(0)
     ext = np.maximum(hi - lo, 0.01)
-    box_vol = float(np.prod(ext))
-    # prism along each frame axis: hull of the other two coordinates
-    best = None
+    se = np.sort(ext)
+    if len(T) and se[0] < 0.5 * se[1] and se[1] > 0.08:
+        return layer_fit(V, T, R, L, nmax)
+    hi = lo + ext
+    vox = float(np.clip(ext.max() / 28, 0.012, 0.08))
+    while np.prod([math.ceil(e / vox) for e in ext]) > 150000:
+        vox *= 1.25
+    dims = [max(1, int(math.ceil(e / vox))) for e in ext]
+    box = ('box', R @ ((lo + hi) / 2), ext, R)
+    if len(T) == 0:
+        return [box], 1.0
+    S, _ = solid_grid(sample_tris(L, T, vox * 0.5), lo, vox, dims)
+    tot = S.sum()
+    if tot == 0:
+        return [box], 1.0
+    cands = [(float(S.mean()), 0.0, [box])]
+    ctr = [lo[i] + (np.arange(dims[i]) + 0.5) * vox for i in range(3)]
     for k in range(3):
         o = [i for i in range(3) if i != k]
+        if dims[o[0]] < 2 or dims[o[1]] < 2:
+            continue
         h = hull2d(L[:, o])
         if len(h) < 3:
             continue
-        hs = simplify(h, 8)
-        ratio = poly_area(hs) / max(ext[o[0]] * ext[o[1]], 1e-6)
-        if best is None or ratio < best[0]:
-            best = (ratio, k, hs)
-    vox = float(np.clip(ext.max() / 22, 0.025, 0.10))
-    dims = [max(1, int(math.ceil(e / vox))) for e in ext]
-    surf = sample_tris(L, T, vox * 0.5)
-    S, _ = solid_grid(surf, lo, vox, dims)
-    solid = S.sum() * vox ** 3
-    prim_vol = box_vol if best is None or best[0] >= 0.86 else box_vol * best[0]
-    thin = sum(1 for d in dims if d <= 2)
-    fill = min(1.0, solid / max(prim_vol, 1e-9))
-    parts = []
-    if fill < 0.5 and thin < 1 and max(ext) > 0.25 and S.sum() > 30:
-        for (a, b) in greedy_boxes(S, 10):
-            c = lo + (a + b) / 2 * vox
-            s = (b - a) * vox
-            parts.append(('box', R @ c, s, R))
-        if parts:
-            return parts
-    if best is not None and best[0] < 0.86:
-        ratio, k, hs = best
-        o = [i for i in range(3) if i != k]
-        # frame with the extrusion axis last, kept right handed
-        Rp = np.stack([R[:, o[0]], R[:, o[1]], R[:, k]], 1)
-        if np.linalg.det(Rp) < 0:
-            Rp[:, 2] *= -1
-        Lp = P @ Rp
-        clo, chi = Lp.min(0), Lp.max(0)
-        c2 = (clo + chi) / 2
-        pts = hs - c2[:2]
-        parts.append(('prism', Rp @ c2, pts, float(chi[2] - clo[2]), Rp))
-        return parts
-    c = (lo + hi) / 2
-    parts.append(('box', R @ c, ext, R))
-    return parts
+        X, Y = np.meshgrid(ctr[o[0]], ctr[o[1]], indexing='ij')
+        seen = set()
+        for nv in (3, 4, 5, 6, 8, 10):
+            hs = simplify(h, nv) if len(h) > nv else h
+            if len(hs) in seen or len(hs) < 3:
+                continue
+            seen.add(len(hs))
+            m2 = convex_mask(hs, X, Y, vox * 0.6)
+            mask = np.expand_dims(m2, k)
+            mask = np.broadcast_to(mask, S.shape)
+            iou = float((S & mask).sum() / max((S | mask).sum(), 1))
+            cands.append((iou, 0.012 + 0.003 * len(hs), [prism_record(R, k, np.asarray(hs, float), lo, hi)]))
+    best = max(cands, key=lambda c: c[0] - c[1])
+    if best[0] >= 0.72 or nmax <= 1 or min(dims) < 1:
+        return best[2], best[0]
+    boxes = greedy_boxes(S, nmax, cover=0.93, min_frac=0.01)
+    if boxes:
+        U = np.zeros_like(S)
+        for (a, b) in boxes:
+            U[tuple(slice(a[i], b[i]) for i in range(3))] = True
+        giou = float((S & U).sum() / max((S | U).sum(), 1))
+        if giou > best[0] + 0.08:
+            return [('box', R @ (lo + (a + b) / 2 * vox), (b - a) * vox, R) for (a, b) in boxes], giou
+    return best[2], best[0]
 
 
 def components(V, T):
@@ -426,6 +534,135 @@ class Reader:
         return info
 
 
+# Layers and the collision matrix come from globalgamemanagers ('layers' writes them to <work>/layers.json). A
+# collider blocks the player when it is not a trigger and its GameObject's layer collides with 'character'.
+LAYERS = {}
+CHAR_HITS = None
+SNAP_TAG = 20000  # first custom tag; 'snappoint' is the first entry of Valheim's tag list
+
+
+def load_layers(work):
+    global LAYERS, CHAR_HITS, SNAP_TAG
+    f = os.path.join(work, 'layers.json')
+    if not os.path.exists(f):
+        return
+    d = json.load(open(f))
+    LAYERS = {int(k): v for k, v in d['layers'].items()}
+    CHAR_HITS = set(d['character_hits'])
+    if 'snappoint' in d.get('tags', []):
+        SNAP_TAG = 20000 + d['tags'].index('snappoint')
+
+
+def write_layers(data_dir, work):
+    import UnityPy
+    env = UnityPy.load(os.path.join(data_dir, 'globalgamemanagers'))
+    layers, tags, matrix = {}, [], None
+    for o in env.objects:
+        if o.type.name == 'TagManager':
+            d = o.read_typetree()
+            tags = d.get('tags', [])
+            layers = {i: n for i, n in enumerate(d.get('layers', [])) if n}
+        elif o.type.name == 'PhysicsManager':
+            matrix = o.read_typetree().get('m_LayerCollisionMatrix')
+    ch = [k for k, v in layers.items() if v == 'character'][0]
+    hits = [i for i in range(32) if matrix[ch] >> i & 1]
+    os.makedirs(work, exist_ok=True)
+    json.dump({'layers': layers, 'tags': tags, 'character_hits': hits, 'character_hits_names': [layers.get(i, str(i)) for i in hits]},
+              open(os.path.join(work, 'layers.json'), 'w'), indent=1)
+    print('character collides with', [layers.get(i, str(i)) for i in hits])
+
+
+def frame_of(M):
+    """Rotation (orthonormal, right handed) and per-axis scale of a 4x4 transform."""
+    A = M[:3, :3]
+    sc = np.linalg.norm(A, axis=0)
+    R = A / np.maximum(sc, 1e-9)[None, :]
+    u, _, vt = np.linalg.svd(R)
+    R = u @ vt
+    if np.linalg.det(R) < 0:
+        R[:, 2] *= -1
+    return R, sc
+
+
+def obb_record(R, c, size):
+    d = {'c': np.round(c, 3).tolist(), 's': np.round(np.abs(size), 3).tolist()}
+    q = mat_quat(R)
+    if abs(q[3]) < 0.99999:
+        d['q'] = [round(v, 4) for v in q]
+    return d
+
+
+def collider_of(cr, t, M, go):
+    """One collider in the piece's frame: oriented box, sphere, capsule, or a mesh as one or a few oriented boxes."""
+    if not getattr(cr, 'm_Enabled', True):
+        return None
+    trig = bool(getattr(cr, 'm_IsTrigger', False))
+    layer = int(getattr(go, 'm_Layer', 0))
+    R, sc = frame_of(M)
+    rec = {'type': t.replace('Collider', '').lower(), 'go': go.m_Name, 'trigger': trig, 'layer': LAYERS.get(layer, str(layer)),
+           'solid': (not trig) and (CHAR_HITS is None or layer in CHAR_HITS)}
+    corners = None
+    if t == 'BoxCollider':
+        ce, sz = cr.m_Center, cr.m_Size
+        c = M[:3, :3] @ np.array([ce.x, ce.y, ce.z]) + M[:3, 3]
+        rec.update(obb_record(R, c, np.array([sz.x, sz.y, sz.z]) * sc))
+        lo = np.array([ce.x - sz.x / 2, ce.y - sz.y / 2, ce.z - sz.z / 2]); hi = lo + [sz.x, sz.y, sz.z]
+        corners = np.array([[x, y, z] for x in (lo[0], hi[0]) for y in (lo[1], hi[1]) for z in (lo[2], hi[2])])
+    elif t == 'SphereCollider':
+        ce, rr = cr.m_Center, cr.m_Radius
+        c = M[:3, :3] @ np.array([ce.x, ce.y, ce.z]) + M[:3, 3]
+        r = float(rr * sc.max())
+        rec.update({'c': np.round(c, 3).tolist(), 'r': round(r, 3)})
+        corners = None
+        rec['min'] = np.round(c - r, 3).tolist(); rec['max'] = np.round(c + r, 3).tolist()
+    elif t == 'CapsuleCollider':
+        ce, rr, hh, d = cr.m_Center, cr.m_Radius, cr.m_Height, cr.m_Direction
+        c = M[:3, :3] @ np.array([ce.x, ce.y, ce.z]) + M[:3, 3]
+        o = [i for i in range(3) if i != d]
+        r = float(rr * max(sc[o[0]], sc[o[1]]))
+        h = float(max(hh * sc[d], 2 * r))
+        ax = R[:, d]
+        rec.update({'c': np.round(c, 3).tolist(), 'r': round(r, 3), 'h': round(h, 3), 'ax': np.round(ax, 4).tolist()})
+        half = np.abs(ax) * (h / 2 - r) + r
+        rec['min'] = np.round(c - half, 3).tolist(); rec['max'] = np.round(c + half, 3).tolist()
+    else:
+        rec['convex'] = bool(getattr(cr, 'm_Convex', False))
+        mm = cr.m_Mesh.read()
+        from UnityPy.helpers.MeshHelper import MeshHandler
+        h = MeshHandler(mm); h.process()
+        if not h.m_Vertices:
+            return None
+        Vl = np.array(h.m_Vertices, dtype=np.float64)[:, :3]
+        V = (M[:3, :3] @ Vl.T).T + M[:3, 3]
+        T = np.concatenate([np.array(x, dtype=np.int64).reshape(-1, 3) for x in h.get_triangles() if len(x)]) if h.get_triangles() else None
+        rec['boxes'] = collider_boxes(V, T)
+        rec['min'] = np.round(V.min(0), 3).tolist(); rec['max'] = np.round(V.max(0), 3).tolist()
+    if corners is not None:
+        W = (M[:3, :3] @ corners.T).T + M[:3, 3]
+        rec['min'] = W.min(0).round(3).tolist(); rec['max'] = W.max(0).round(3).tolist()
+    return rec
+
+
+def collider_boxes(V, T, nmax=6):
+    """A mesh collider as one oriented box, or a few when one box would be far too large (a concave or L shape)."""
+    R = best_frame(V)
+    L = V @ R
+    lo, hi = L.min(0), L.max(0)
+    ext = np.maximum(hi - lo, 0.01)
+    one = [obb_record(R, R @ ((lo + hi) / 2), ext)]
+    if T is None or len(T) == 0 or len(V) < 8:
+        return one
+    vox = float(np.clip(ext.max() / 24, 0.025, 0.25))
+    dims = [max(1, int(math.ceil(e / vox))) for e in ext]
+    S, _ = solid_grid(sample_tris(L, T, vox * 0.5), lo, vox, dims)
+    if S.mean() >= 0.75 or min(dims) <= 2 and S.mean() >= 0.6:
+        return one
+    out = []
+    for (a, b) in greedy_boxes(S, nmax, cover=0.92, min_frac=0.03):
+        out.append(obb_record(R, R @ (lo + (a + b) / 2 * vox), (b - a) * vox))
+    return out or one
+
+
 def comp_of(go, tname):
     for c in go.m_Component:
         o = c.component.deref()
@@ -436,20 +673,23 @@ def comp_of(go, tname):
 
 def measure(reader, root):
     """Walk the prefab; returns meshes (piece-frame verts, tris, per-tri colors/material names) and colliders."""
-    meshes, colliders, lod_skip = [], [], set()
-    stack = [(root, np.eye(4), True)]
+    meshes, colliders, lod_skip, snaps = [], [], set(), []
+    stack = [(root, np.eye(4), True, True)]
     nodes = []
     while stack:
-        go, M, is_root = stack.pop()
+        go, M, is_root, active = stack.pop()
         tr = (comp_of(go, 'Transform') or comp_of(go, 'RectTransform')).read()
         if not is_root:
             lp, lr, ls = tr.m_LocalPosition, tr.m_LocalRotation, tr.m_LocalScale
             M = M @ trs((lp.x, lp.y, lp.z), (lr.x, lr.y, lr.z, lr.w), (ls.x, ls.y, ls.z))
-        nodes.append((go, M))
+        # snap points are inactive children tagged 'snappoint'; nothing else of an inactive branch is read
+        if getattr(go, 'm_Tag', 0) == SNAP_TAG:
+            snaps.append(np.round(M[:3, 3], 3).tolist())
+        if active:
+            nodes.append((go, M))
         for ch in tr.m_Children:
             cgo = ch.read().m_GameObject.read()
-            if cgo.m_IsActive:
-                stack.append((cgo, M, False))
+            stack.append((cgo, M, False, active and bool(cgo.m_IsActive)))
     for go, M in nodes:
         for c in go.m_Component:
             o = c.component.deref()
@@ -511,33 +751,13 @@ def measure(reader, root):
                     meshes.append({'go': name, 'V': V, 'T': T, 'col': np.clip(col, 0, 1), 'mat': mi['name'], 'tex': mi['texname'],
                                    'cls': mat_class(mi['name'] + ' ' + mi['texname'] + ' ' + name)})
             elif t in ('BoxCollider', 'MeshCollider', 'CapsuleCollider', 'SphereCollider'):
-                cr = o.read()
-                if not getattr(cr, 'm_Enabled', True):
-                    continue
-                trig = bool(getattr(cr, 'm_IsTrigger', False))
-                if t == 'BoxCollider':
-                    ce, sz = cr.m_Center, cr.m_Size
-                    lo = np.array([ce.x - sz.x / 2, ce.y - sz.y / 2, ce.z - sz.z / 2]); hi = lo + [sz.x, sz.y, sz.z]
-                elif t == 'SphereCollider':
-                    ce, rr = cr.m_Center, cr.m_Radius
-                    lo = np.array([ce.x - rr, ce.y - rr, ce.z - rr]); hi = lo + 2 * rr
-                elif t == 'CapsuleCollider':
-                    ce, rr, hh, d = cr.m_Center, cr.m_Radius, cr.m_Height, cr.m_Direction
-                    half = [rr, rr, rr]; half[d] = max(hh / 2, rr)
-                    lo = np.array([ce.x, ce.y, ce.z]) - half; hi = np.array([ce.x, ce.y, ce.z]) + half
-                else:
-                    try:
-                        mm = cr.m_Mesh.read()
-                        b = mm.m_LocalAABB
-                        ce, ex = b.m_Center, b.m_Extent
-                        lo = np.array([ce.x - ex.x, ce.y - ex.y, ce.z - ex.z]); hi = np.array([ce.x + ex.x, ce.y + ex.y, ce.z + ex.z])
-                    except Exception:
-                        continue
-                corners = np.array([[x, y, z] for x in (lo[0], hi[0]) for y in (lo[1], hi[1]) for z in (lo[2], hi[2])])
-                W = (M[:3, :3] @ corners.T).T + M[:3, 3]
-                colliders.append({'type': t.replace('Collider', '').lower(), 'go': name, 'trigger': trig,
-                                  'min': W.min(0).round(3).tolist(), 'max': W.max(0).round(3).tolist()})
-    return meshes, colliders
+                try:
+                    col = collider_of(o.read(), t, M, go)
+                except Exception as e:
+                    print('  collider?', name, t, str(e)[:60]); col = None
+                if col:
+                    colliders.append(col)
+    return meshes, colliders, snaps
 
 
 def hexcol(c):
@@ -545,7 +765,108 @@ def hexcol(c):
     return '#%02x%02x%02x' % tuple(int(round(v * 255)) for v in c)
 
 
-def proxy(meshes, max_parts=40):
+def comp_shape(V):
+    """Thickness and width of a part in its best frame (sorted extents)."""
+    if len(V) > 600:
+        V = V[np.random.default_rng(0).choice(len(V), 600, replace=False)]
+    R = best_frame(V)
+    return np.sort(np.ptp(V @ R, axis=0))
+
+
+def merge_sheets(comps, g=0.04):
+    """Flat parts of one material that touch or overlap and still form one flat layer become one part: shingle rows,
+    thatch, blanket folds, rug pieces, the planks of a gable, wall or floor. Each joined part is fitted once, so it draws as a clean slab or
+    outline instead of a heap of tilted scraps."""
+    n = len(comps)
+    if n < 2:
+        return comps
+    ext = [comp_shape(c['V']) for c in comps]
+    sheet = [e[0] < 0.4 and e[0] < 0.5 * e[1] for e in ext]
+    idx = [i for i in range(n) if sheet[i]]
+    if len(idx) < 2:
+        return comps
+    lo = np.array([comps[i]['V'].min(0) for i in range(n)]) - g
+    hi = np.array([comps[i]['V'].max(0) for i in range(n)]) + g
+    cells = {}
+    for i in idx:
+        pts = sample_tris(comps[i]['V'], comps[i]['T'], g) if len(comps[i]['T']) < 4000 else comps[i]['V']
+        k = np.unique(np.floor(pts / g).astype(np.int64), axis=0)
+        sh = np.array([[a, b, c] for a in (-1, 0, 1) for b in (-1, 0, 1) for c in (-1, 0, 1)])
+        cells[i] = set(map(tuple, np.unique((k[:, None, :] + sh[None]).reshape(-1, 3), axis=0)))
+    pairs = []
+    for ii, i in enumerate(idx):
+        for j in idx[ii + 1:]:
+            if (comps[i]['cls'] or comps[i]['mat']) != (comps[j]['cls'] or comps[j]['mat']):
+                continue
+            if np.abs(np.asarray(comps[i]['col']) - np.asarray(comps[j]['col'])).max() > 0.2:
+                continue
+            if np.any(lo[i] > hi[j]) or np.any(lo[j] > hi[i]):
+                continue
+            sh = len(cells[i] & cells[j])
+            if sh >= 3:
+                pairs.append((-sh / min(len(cells[i]), len(cells[j])), i, j))
+    pairs.sort()
+    parent = list(range(n))
+    members = {i: [i] for i in range(n)}
+    thick = {i: ext[i][0] for i in range(n)}
+
+    def find(a):
+        while parent[a] != a:
+            parent[a] = parent[parent[a]]; a = parent[a]
+        return a
+    for _, i, j in pairs:
+        ri, rj = find(i), find(j)
+        if ri == rj:
+            continue
+        V = np.concatenate([comps[m]['V'] for m in members[ri] + members[rj]])
+        e = comp_shape(V)
+        if e[0] > max(0.25, 1.4 * max(thick[ri], thick[rj])) or e[0] > 0.45 * e[1]:
+            continue
+        parent[rj] = ri
+        members[ri] += members.pop(rj)
+        thick[ri] = e[0]
+    out = []
+    for r, ms in members.items():
+        if len(ms) == 1:
+            out.append(comps[ms[0]]); continue
+        out.append(join_comps([comps[m] for m in ms]))
+    return out
+
+
+def join_comps(cs):
+    off, Vs, Ts = 0, [], []
+    for c in cs:
+        Vs.append(c['V']); Ts.append(c['T'] + off); off += len(c['V'])
+    area = sum(c['area'] for c in cs)
+    col = sum(c['col'] * c['area'] for c in cs) / max(area, 1e-9)
+    big = max(cs, key=lambda c: c['area'])
+    V = np.concatenate(Vs)
+    return {'V': V, 'T': np.concatenate(Ts), 'area': area, 'ext': np.ptp(V, axis=0), 'col': col, 'mat': big['mat'],
+            'cls': big['cls'], 'go': big['go'], 'n': sum(c.get('n', 1) for c in cs)}
+
+
+def cluster(comps, target):
+    """Too many parts: join parts of one material class whose centers fall in the same cell of a grid that grows
+    until few enough are left."""
+    g = 0.1
+    while True:
+        groups = {}
+        for c in comps:
+            ctr = (c['V'].min(0) + c['V'].max(0)) / 2
+            groups.setdefault((c['cls'], c['mat']) + tuple(np.floor(ctr / g).astype(int)), []).append(c)
+        if len(groups) <= target or g > 8:
+            break
+        g *= 1.4
+    return [cs[0] if len(cs) == 1 else join_comps(cs) for cs in groups.values()]
+
+
+def part_volume(pr):
+    if pr[0] == 'box':
+        return float(np.prod(np.maximum(pr[2], 0.01)))
+    return poly_area(np.asarray(pr[2])) * max(pr[3], 0.01)
+
+
+def proxy(meshes, budget=None):
     allV = np.concatenate([m['V'] for m in meshes])
     lo, hi = allV.min(0), allV.max(0)
     maxdim = float((hi - lo).max())
@@ -563,37 +884,26 @@ def proxy(meshes, max_parts=40):
             col = (m['col'][idx] * area[:, None]).sum(0) / max(area.sum(), 1e-9) if area.sum() > 0 else m['col'][idx].mean(0)
             comps.append({'V': Vc, 'T': Tl, 'area': float(area.sum()), 'ext': ext, 'col': col, 'mat': m['mat'], 'cls': m['cls'], 'go': m['go']})
     total_area = sum(c['area'] for c in comps) or 1
+    if budget is None:
+        budget = int(np.clip(30 + 30 * maxdim, 40, 150))
     # leave out nails and other small details
-    keep = [c for c in comps if not (c['ext'].max() < 0.06 or (c['area'] < 0.002 * total_area and c['ext'].max() < 0.15))]
+    keep = [c for c in comps if not (c['ext'].max() < 0.04 or (c['area'] < 0.001 * total_area and c['ext'].max() < 0.12))]
     if not keep:
         keep = comps
+    if len(keep) > 3 * budget:
+        keep = cluster(keep, 2 * budget)
+    keep = merge_sheets(keep)
+    if len(keep) > 0.75 * budget:
+        keep = cluster(keep, int(0.75 * budget))
     parts = []
-    if len(keep) <= max_parts:
-        for c in keep:
-            for pr in fit_component(c['V'], c['T'], maxdim):
-                parts.append((pr, c))
-    if len(parts) > max_parts or len(keep) > max_parts:
-        # too many parts: one voxel cover of the whole piece in its best frame, colored by the nearest part
-        parts = []
-        V = np.concatenate([c['V'] for c in keep])
-        R = best_frame(V)
-        L = V @ R
-        llo, lhi = L.min(0), L.max(0)
-        ext = np.maximum(lhi - llo, 0.01)
-        vox = float(np.clip(ext.max() / 30, 0.04, 0.12))
-        dims = [max(1, int(math.ceil(e / vox))) for e in ext]
-        pts, owner = [], []
-        for i, c in enumerate(keep):
-            s = sample_tris(c['V'] @ R, c['T'], vox * 0.5)
-            pts.append(s); owner.append(np.full(len(s), i))
-        pts = np.concatenate(pts); owner = np.concatenate(owner)
-        S, _ = solid_grid(pts, llo, vox, dims)
-        ij = np.clip(np.floor((pts - llo) / vox).astype(int), 0, np.array(dims) - 1)
-        for (a, b) in greedy_boxes(S, max_parts, cover=0.95, min_frac=0.002):
-            inside = np.all((ij >= a) & (ij < b), axis=1)
-            near = np.bincount(owner[inside], minlength=len(keep)).argmax() if inside.any() else 0
-            cc = llo + (a + b) / 2 * vox
-            parts.append((('box', R @ cc, (b - a) * vox, R), keep[near]))
+    for c in keep:
+        share = int(np.clip(budget * c['area'] / total_area * 1.5 + 2, 2, 14))
+        prs, _ = fit_component(c['V'], c['T'], share)
+        for pr in prs:
+            parts.append((pr, c))
+    if len(parts) > budget:
+        parts.sort(key=lambda pc: -part_volume(pc[0]))
+        parts = parts[:budget]
     out = []
     for pr, c in parts:
         d = {'col': hexcol(c['col']), 'm': c['cls'] or mat_class(c['go'])}
@@ -640,12 +950,12 @@ def decimate(meshes, grid=0.03):
 
 
 def do_piece(reader, root, name, path, work=None):
-    meshes, colliders = measure(reader, root)
+    meshes, colliders, snaps = measure(reader, root)
     if work and os.environ.get('VH_MESHES') and meshes:
         os.makedirs(os.path.join(work, 'meshes'), exist_ok=True)
         json.dump(decimate(meshes), open(os.path.join(work, 'meshes', name + '.json'), 'w'), separators=(',', ':'))
-    res = {'name': name, 'path': path, 'colliders': colliders}
-    solid = [c for c in colliders if not c['trigger']]
+    res = {'name': name, 'path': path, 'colliders': colliders, 'snaps': snaps}
+    solid = [c for c in colliders if c['solid']]
     if solid:
         res['collider'] = {'min': np.min([c['min'] for c in solid], 0).round(3).tolist(), 'max': np.max([c['max'] for c in solid], 0).round(3).tolist()}
     if meshes:
@@ -653,7 +963,7 @@ def do_piece(reader, root, name, path, work=None):
         res['bounds'] = {'min': V.min(0).round(3).tolist(), 'max': V.max(0).round(3).tolist()}
         res['tris'] = int(sum(len(m['T']) for m in meshes))
         res['materials'] = sorted(set(m['mat'] for m in meshes))
-        if res['tris'] <= 30000:
+        if res['tris'] <= 60000:
             parts, nc = proxy(meshes)
             res['parts'] = parts
             res['components'] = nc
@@ -664,6 +974,7 @@ def run(data_dir, work, names_file, seconds=150):
     import UnityPy
     t0 = time.time()
     idx = json.load(open(os.path.join(work, 'index.json')))
+    load_layers(work)
     names = [n.strip() for n in open(names_file) if n.strip()]
     outdir = os.path.join(work, 'out'); os.makedirs(outdir, exist_ok=True)
     todo = {}
@@ -733,6 +1044,9 @@ if __name__ == '__main__':
     cmd = sys.argv[1]
     if cmd == 'index':
         build_index(sys.argv[2], sys.argv[3])
+        write_layers(sys.argv[2], sys.argv[3])
+    elif cmd == 'layers':
+        write_layers(sys.argv[2], sys.argv[3])
     elif cmd == 'run':
         run(sys.argv[2], sys.argv[3], sys.argv[4], float(sys.argv[5]) if len(sys.argv) > 5 else 150)
     elif cmd == 'collect':

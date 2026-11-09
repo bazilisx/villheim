@@ -4,10 +4,13 @@
 
 const NODE_C = typeof module !== 'undefined';
 const PC = NODE_C ? require('./pieces.js') : window.VHPieces;
+const SHP = NODE_C ? require('./shapes.js') : window.VHShapes;
 
 // A player is about 1.8 m tall. Walkable rooms need 2.4 m clear under every roof and ceiling piece; a doorway needs its
 // own height, and 2.3 m in front of it and behind it, for a metre each way.
 const HEADROOM = 2.4, DOOR_CLEAR = 2.3, CORRIDOR = 1.0, WALL_MIN = 2.5;
+// check() uses the game's colliders unless told otherwise ({shapes: false})
+let SHAPES_DEFAULT = true;
 
 function yawOf(q) { const [x, y, z, w] = q || [0, 0, 0, 1]; return Math.atan2(2 * (w * y + x * z), 1 - 2 * (y * y + x * x)) * 180 / Math.PI; }
 function tilted(q) { return q && (Math.abs(q[0]) > 0.02 || Math.abs(q[2]) > 0.02); }
@@ -19,7 +22,10 @@ function localOf(p, x, z) {
   return [dx * Math.cos(a) - dz * Math.sin(a), dx * Math.sin(a) + dz * Math.cos(a)];
 }
 
-function aabb(p) {
+// The catalog box (lib/pieces.js), or, with the game's colliders on (the default), the catalog box and the solids
+// together, with the solids in 'sol' (see gameBox).
+function aabb(p) { return SHAPES_DEFAULT && SHP ? gameBox(p) : catBox(p); }
+function catBox(p) {
   const info = PC.piece(p.name);
   let [w, h, d] = info.size;
   const s = p.s || [1, 1, 1];
@@ -38,6 +44,50 @@ function aabb(p) {
   if (climb && (info.shape === 'stair' || info.shape === 'ladder')) { y0 = p.y + climb.bottom; y1 = y0 + climb.rise; }
   if (tilted(p.q)) { const m = Math.max(w, h, d) / 2; return { x0: p.x - m, x1: p.x + m, y0: p.y - m, y1: p.y + m, z0: p.z - m, z1: p.z + m, info }; }
   return { x0: p.x - ex, x1: p.x + ex, y0, y1, z0: p.z - ez, z1: p.z + ez, info };
+}
+
+// With the game's colliders (lib/shapes.js): the box round the piece's solids, with the solids themselves in 'sol'
+// and 'pass' for a piece nothing of which is solid (rugs, cloth doors). Doors keep their opening as the box. Pieces
+// with no measurement keep the catalog box.
+function aabbShapes(p) {
+  const b = catBox(p);
+  const W = SHP && SHP.world(p);
+  if (!W) return b;
+  b.sol = W;
+  if (!W.length) { b.pass = true; return b; }
+  if (b.info.role === 'door') return b;
+  const s = SHP.aabb(p);
+  b.x0 = s.x0; b.x1 = s.x1; b.y0 = s.y0; b.y1 = s.y1; b.z0 = s.z0; b.z1 = s.z1;
+  return b;
+}
+// The catalog box grown to hold the game's solids too, with the solids in 'sol' and 'pass' for pieces nothing of which
+// is solid: what the generator and the decorator test against, so a table or bench takes the room it takes in the game.
+function gameBox(p) {
+  const b = catBox(p);
+  const W = SHP && SHP.world(p);
+  if (!W) return b;
+  b.sol = W;
+  if (!W.length) { b.pass = true; return b; }
+  if (b.info.role === 'door') return b;
+  const s = SHP.aabb(p);
+  b.x0 = Math.min(b.x0, s.x0); b.x1 = Math.max(b.x1, s.x1); b.y0 = Math.min(b.y0, s.y0);
+  b.y1 = Math.max(b.y1, s.y1); b.z0 = Math.min(b.z0, s.z0); b.z1 = Math.max(b.z1, s.z1);
+  return b;
+}
+const ROOFISH = ['roof', 'roofTop', 'roofCorner'];
+// Does piece j's box (or, with shapes, any of its solids) reach into the box col?
+function blocks(col, b, e) {
+  if (b.sol) return !b.pass && SHP.hitsBox(b.sol, col, e);
+  return touch(col, b, e);
+}
+// Underside over a point: the catalog's shapes, or with shapes the lowest solid surface of a roof, floor or level beam.
+function undersideOf(p, x, z, b) {
+  if (b.sol && b.sol.length) {
+    const info = b.info;
+    if (ROOFISH.includes(info.role) || info.role === 'floor' || (info.role === 'beam' && info.shape === 'box')) return SHP.undersideAt(b.sol, x, z);
+    return null;
+  }
+  return underside(p, x, z, b.info);
 }
 
 // Height of the underside of a roof or ceiling piece over a world point, or null when the piece is not over it.
@@ -193,13 +243,19 @@ function doorBlockers(o, pieces, boxes, near, skip) {
       for (const j of near(col, 0)) {
         if (skip && skip(j)) continue;
         const b = boxes[j], role = b.info.role;
-        if (['floor', 'rug', 'door', 'stair', 'nature', 'misc'].includes(role)) continue;
-        const u = underside(pieces[j], x, z, b.info);
-        if (u != null) { if (u > yLo && u < yHi) out.add(j); continue; }
-        if (role === 'beam' && b.info.shape !== 'box') continue; // braces lie in the wall beside the door
-        if (touch(col, b, -0.02)) {
-          // walls and gables over the opening, in its own wall, are its lintel
+        if (['floor', 'rug', 'door', 'stair', 'nature', 'misc'].includes(role) || b.pass) continue;
+        const u = undersideOf(pieces[j], x, z, b);
+        if (u != null) {
+          // with the game's colliders a ceiling or beam may reach 0.15 m into the top of the frame, as a lintel does
+          if (u > yLo && u < yHi && !(inPlane && b.sol && u >= o.y + o.h - 0.15)) out.add(j);
+          continue;
+        }
+        if (!b.sol && role === 'beam' && b.info.shape !== 'box') continue; // braces lie in the wall beside the door
+        if (blocks(col, b, -0.02)) {
+          // walls and gables over the opening, in its own wall, are its lintel; with the game's colliders a beam is
+          // too, and a lintel may reach 0.15 m into the top of the frame (the opening is 2 m, a player 1.8 m)
           if (inPlane && WALLISH.includes(role) && b.y0 >= o.y + o.h - 0.06) continue;
+          if (inPlane && b.sol && (WALLISH.includes(role) || role === 'beam') && b.y0 >= o.y + o.h - 0.15) continue;
           out.add(j);
         }
       }
@@ -269,23 +325,28 @@ function stability(pieces, boxes, near, ground) {
   return out;
 }
 
-function check(design, biome) {
+// opts.shapes: use the game's colliders (lib/shapes.js) for boxes, overlaps, doorways, headroom and climbs
+function check(design, biome, opts = {}) {
   const pieces = design.pieces;
-  const boxes = pieces.map(aabb);
-  const near = index(boxes);
-  const ys = boxes.filter(b => b.info.structural).map(b => b.y0).sort((a, b) => a - b);
+  const useShapes = opts.shapes != null ? !!opts.shapes : SHAPES_DEFAULT;
+  const boxes = pieces.map(useShapes && SHP ? aabbShapes : catBox);
+  // support and stability: the catalog box and the solids together, so a collider that leaves out legs or a base
+  // never cuts a piece off; the index uses the same, larger boxes
+  const held_ = useShapes && SHP ? pieces.map(gameBox) : boxes;
+  const near = index(held_);
+  const ys = held_.filter(b => b.info.structural).map(b => b.y0).sort((a, b) => a - b);
   const ground = design.ground != null ? design.ground : ys.length ? ys[Math.floor(ys.length * 0.02)] : 0;
   const results = [];
 
   // support: Valheim holds a piece up through any touching piece that is itself held up, back to the ground.
   // Walk outward from everything that stands on the ground; whatever is never reached floats.
   const held = new Array(boxes.length).fill(false), queue = [];
-  boxes.forEach((b, i) => { if (b.y0 <= ground + 0.35) { held[i] = true; queue.push(i); } });
+  held_.forEach((b, i) => { if (b.y0 <= ground + 0.35) { held[i] = true; queue.push(i); } });
   while (queue.length) {
-    const i = queue.pop(), b = boxes[i];
+    const i = queue.pop(), b = held_[i];
     for (const j of near(b)) {
       if (held[j]) continue;
-      const o = boxes[j];
+      const o = held_[j];
       if (touch(b, o, 0.16) && (b.info.structural || o.info.role === 'craft' || o.info.role === 'deco' || o.info.role === 'light')) { held[j] = true; queue.push(j); }
     }
   }
@@ -296,7 +357,7 @@ function check(design, biome) {
   // support any touching piece below or beside it passes on: that piece's support less the share the receiving
   // material loses that way (straight down: vertical loss; sideways: horizontal loss; in between, a blend), never more
   // than its own material's max. Under its material's min it falls.
-  const crumble = stability(pieces, boxes, near, ground);
+  const crumble = stability(pieces, held_, near, ground);
   results.push({ check: 'stability', ok: crumble.length === 0,
     detail: crumble.length ? `${crumble.length} pieces would fall (${[...new Set(crumble.map(i => pieces[i].name))].slice(0, 4).join(', ')})` : 'every piece holds by its material' });
 
@@ -312,11 +373,37 @@ function check(design, biome) {
       if (j <= i) continue;
       const o = boxes[j];
       if (o.info.role !== b.info.role || !o.info.structural) continue;
-      const v = inter(b, o), m = Math.min(vol(b), vol(o));
+      const solid = b.sol && o.sol && b.sol.length && o.sol.length;
+      if (solid && !touch(b, o, -0.02)) continue;
+      const v = solid ? SHP.overlapVolume(b.sol, o.sol) : inter(b, o), m = solid ? Math.min(SHP.volume(b.sol), SHP.volume(o.sol)) : Math.min(vol(b), vol(o));
       if (m > 0.05 && v / m > 0.6 && pieces[j].name !== p.name) crushed++;
     }
   });
-  results.push({ check: 'overlap', ok: doubles === 0 && crushed <= 2, detail: `${doubles} doubled, ${crushed} pieces inside another of the same kind` });
+  // with shapes: furniture whose solids reach into a wall, door, post or other furniture (it clips in the game)
+  const clips = [];
+  if (useShapes) {
+    const FURN = ['bed', 'table', 'seat', 'storage', 'craft', 'fire'], HARD = ['wall', 'door', 'window', 'pole', 'stair', 'gable'];
+    pieces.forEach((p, i) => {
+      const b = boxes[i];
+      if (!FURN.includes(b.info.role) || !b.sol || !b.sol.length) return;
+      const v0 = SHP.volume(b.sol);
+      for (const j of near(b, 0)) {
+        if (j === i) continue;
+        const o = boxes[j];
+        if (!o.sol || !o.sol.length || !(HARD.includes(o.info.role) || (FURN.includes(o.info.role) && j > i))) continue;
+        // a station's extensions stand against it in the game
+        if (/_ext\d/.test(pieces[i].name) || /_ext\d/.test(pieces[j].name)) continue;
+        // cooking stations and cauldrons stand over the fire
+        if ((b.info.role === 'fire' || o.info.role === 'fire') && /cookingstation|cauldron/.test(pieces[i].name + pieces[j].name)) continue;
+        if (!touch(b, o, -0.03)) continue;
+        const v = SHP.overlapVolume(b.sol, o.sol);
+        if (v > 0.03 && v > 0.08 * Math.min(v0, SHP.volume(o.sol))) clips.push([i, j, v]);
+      }
+    });
+  }
+  const clipNames = [...new Set(clips.map(([i, j]) => `${pieces[i].name} in ${pieces[j].name}`))];
+  results.push({ check: 'overlap', ok: doubles === 0 && crushed <= 2 && clips.length === 0, clips: clips.map(([i, j, v]) => ({ a: i, b: j, v: +v.toFixed(3) })),
+    detail: `${doubles} doubled, ${crushed} pieces inside another of the same kind` + (useShapes ? `, ${clips.length} furniture clipping${clipNames.length ? ` (${clipNames.slice(0, 3).join('; ')})` : ''}` : '') });
 
   // doors: nothing in the doorway or in the metre in front and behind it up to 2.3 m, and something to step on
   const doors = pieces.map((p, i) => i).filter(i => boxes[i].info.role === 'door');
@@ -353,8 +440,10 @@ function check(design, biome) {
     let lowest = Infinity, by = null;
     for (const j of near(col, 0)) {
       if (j === pt.floor) continue;
-      const u = underside(pieces[j], pt.x, pt.z, boxes[j].info);
-      if (u != null && u > pt.y + 0.05 && u < lowest) { lowest = u; by = pieces[j].name; }
+      const u = undersideOf(pieces[j], pt.x, pt.z, boxes[j]);
+      // what is less than 0.5 m over the floor is a kerb, sill or dais on it, never the ceiling (with the game's
+      // colliders a beam laid on the floor shows 5 cm over it)
+      if (u != null && u > pt.y + (useShapes ? 0.5 : 0.05) && u < lowest) { lowest = u; by = pieces[j].name; }
     }
     if (!isFinite(lowest)) continue;
     if (!walls.inside(pt.x, pt.y, pt.z) || walls.near(pt.x, pt.y, pt.z, 0.45)) continue;
@@ -383,9 +472,9 @@ function check(design, biome) {
         for (const j of near(col, 0)) {
           if (climbIdx.has(j)) continue;
           const b = boxes[j];
-          if (['floor', 'rug', 'nature', 'misc'].includes(b.info.role)) continue;
-          const u = underside(pieces[j], x, z, b.info);
-          if (u != null ? u > col.y0 && u < col.y1 : touch(col, b, -0.02)) { clear = false; break; }
+          if (['floor', 'rug', 'nature', 'misc'].includes(b.info.role) || b.pass) continue;
+          const u = undersideOf(pieces[j], x, z, b);
+          if (u != null ? u > col.y0 && u < col.y1 : blocks(col, b, -0.02)) { clear = false; break; }
         }
       }
       if (!clear) problems.push(`${name}: no room at the foot`);
@@ -404,8 +493,8 @@ function check(design, biome) {
         const b = boxes[j];
         if (!b.info.structural || ['door', 'stair'].includes(b.info.role)) continue;
         if (b.info.role === 'floor' && b.y1 <= y + 0.35) continue; // the landing at the top
-        const u = underside(pieces[j], x, z, b.info);
-        if (u != null ? u > col.y0 && u < col.y1 : touch(col, b, -0.02)) { hit = pieces[j].name; break; }
+        const u = undersideOf(pieces[j], x, z, b);
+        if (u != null ? u > col.y0 && u < col.y1 : blocks(col, b, -0.02)) { hit = pieces[j].name; break; }
       }
     }
     if (hit) problems.push(`${name}: ${hit} over the climb`);
@@ -423,7 +512,7 @@ function check(design, biome) {
 
   // woodpiles stand outside: none under a roof inside walls
   const piles = pieces.filter((p, i) => /^wood_(fine_|core_)?stack$/.test(p.name) && walls.inside(p.x, p.y, p.z) &&
-    [...near(ptBox(p.x, p.y + 0.5, p.y + 30, p.z), 0)].some(j => j !== i && (underside(pieces[j], p.x, p.z, boxes[j].info) ?? -1) > p.y + 0.5));
+    [...near(ptBox(p.x, p.y + 0.5, p.y + 30, p.z), 0)].some(j => j !== i && (undersideOf(pieces[j], p.x, p.z, boxes[j]) ?? -1) > p.y + 0.5));
   results.push({ check: 'woodpiles', ok: piles.length === 0, detail: piles.length ? `${piles.length} woodpiles indoors` : 'no woodpiles indoors' });
 
   // materials for the biome, building pieces and furnishing alike
@@ -446,5 +535,6 @@ function check(design, biome) {
   return results;
 }
 
-const apiC = { check, stability, aabb, underside, localOf, doorBlockers, index, HEADROOM, DOOR_CLEAR, CORRIDOR };
+const apiC = { check, stability, aabb, catBox, gameBox, aabbShapes, underside, undersideOf, blocks, localOf, doorBlockers, index, HEADROOM, DOOR_CLEAR, CORRIDOR,
+  setShapes(on) { SHAPES_DEFAULT = !!on; }, get shapes() { return SHAPES_DEFAULT; } };
 if (NODE_C) module.exports = apiC; else window.VHChecks = apiC;

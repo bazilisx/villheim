@@ -156,6 +156,16 @@ namespace Villheim.Logic.Villagers
                 // nobody hunted, the protectors were always busy with something else first).
                 doer = Status.Doer.Hunt;
             }
+            else if (Tending.Update(villager, ai, dt))
+            {
+                // The healer goes to someone hurt (D-075).
+                doer = Status.Doer.Tend;
+            }
+            else if (!Ages.OutOfVillageWork(villager) && Fishing.Update(villager, ai, dt))
+            {
+                // The fisher at the shore while the chests are short of fish (D-075).
+                doer = Status.Doer.Fish;
+            }
             else if (Chores.Update(villager, ai, dt))
             {
                 doer = Status.Doer.Chores;

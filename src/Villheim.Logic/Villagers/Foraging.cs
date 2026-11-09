@@ -9,13 +9,16 @@ namespace Villheim.Logic.Villagers
     /// <summary>
     /// Foraging, the Meadows stand-in for Millenaire's farms (Meadows villages have no seeds to plant): by day, when the
     /// village chest holds little food, one carer at a time picks berries and mushrooms near the village (anything a
-    /// bush or patch gives that can be eaten) and brings them to the chest.
+    /// bush or patch gives that can be eaten) and brings them to the chest. The healer (D-075) also goes for herbs
+    /// (dandelions and thistles) while the chests hold fewer than HerbTarget of them.
     /// </summary>
     internal static class Foraging
     {
         private const float SearchFromHearth = 45f;
         private const int EnoughFood = 6;
         private const int PerTrip = 8;
+        private const int HerbTarget = 10;
+        private static readonly HashSet<string> Herbs = new HashSet<string> { "Dandelion", "Thistle" };
 
         private sealed class State
         {
@@ -25,6 +28,7 @@ namespace Villheim.Logic.Villagers
             public float NextLook;
             public float PickedAt;
             public bool Delivering;
+            public bool Herbs;
             public readonly Dictionary<string, int> Carrying = new Dictionary<string, int>();
         }
 
@@ -32,7 +36,9 @@ namespace Villheim.Logic.Villagers
         private static readonly Dictionary<int, Villager> Foragers = new Dictionary<int, Villager>();
 
         public static string Describe(Villager villager) =>
-            States.TryGetValue(villager, out State s) && s.Active ? (s.Delivering ? "carrying berries to the chest" : "foraging") : null;
+            States.TryGetValue(villager, out State s) && s.Active
+                ? (s.Delivering ? (s.Herbs ? "carrying herbs to the chest" : "carrying berries to the chest") : s.Herbs ? "gathering herbs" : "foraging")
+                : null;
 
         public static bool Update(Villager villager, VillagerAI ai, float dt)
         {
@@ -80,7 +86,7 @@ namespace Villheim.Logic.Villagers
 
             if (state.Target == null || state.Target.GetPicked() || Time.time > state.Deadline)
             {
-                state.Target = state.Carrying.Values.Sum() < PerTrip ? Nearest(villager.VillageId, hearth.transform.position, villager.transform.position) : null;
+                state.Target = state.Carrying.Values.Sum() < PerTrip ? Nearest(villager.VillageId, hearth.transform.position, villager.transform.position, state.Herbs) : null;
                 state.Deadline = Time.time + 25f;
                 Walker.For(villager).Reset();
                 if (state.Target == null)
@@ -122,7 +128,8 @@ namespace Villheim.Logic.Villagers
             foreach (Collider collider in Physics.OverlapSphere(at, 2.5f))
             {
                 ItemDrop item = collider.GetComponentInParent<ItemDrop>();
-                if (item == null || item.m_nview == null || !item.m_nview.IsValid() || item.m_itemData.m_shared.m_food <= 0f)
+                if (item == null || item.m_nview == null || !item.m_nview.IsValid() ||
+                    (item.m_itemData.m_shared.m_food <= 0f && !(state.Herbs && Herbs.Contains(Utils.GetPrefabName(item.gameObject)))))
                 {
                     continue;
                 }
@@ -141,8 +148,9 @@ namespace Villheim.Logic.Villagers
 
         private static bool Begin(Villager villager, State state)
         {
+            bool healer = Roles.TradeOf(villager) == Roles.Trade.Healer;
             if (EnvMan.IsNight() || Time.time < state.NextLook ||
-                (Roles.BackgroundOf(villager) != Roles.Background.Carer && !Elders.IsElder(villager)) || Village.Calendar.FieldsRest)
+                (Roles.BackgroundOf(villager) != Roles.Background.Carer && !Elders.IsElder(villager) && !healer) || Village.Calendar.FieldsRest)
             {
                 return false;
             }
@@ -157,11 +165,16 @@ namespace Villheim.Logic.Villagers
             VillageHearth hearth = VillageHearth.Find(villager.VillageId);
             Container chest = hearth != null && hearth.IsValid ? VillageChest.Find(hearth) : null;
             int enough = (new VillageState(hearth.Zdo).Type == "farming" ? EnoughFood * 2 : EnoughFood) * Village.Calendar.FoodFactor();
-            if (chest == null || chest.GetInventory().GetAllItems().Where(i => i.m_shared.m_food > 0f).Sum(i => i.m_stack) >= enough ||
-                Nearest(villager.VillageId, hearth.transform.position, villager.transform.position) == null)
+            bool fed = chest == null || chest.GetInventory().GetAllItems().Where(i => i.m_shared.m_food > 0f).Sum(i => i.m_stack) >= enough;
+            bool herbs = healer && chest != null && Healing.Chests(hearth).Sum(c => c.GetInventory().GetAllItems()
+                .Where(i => i.m_dropPrefab != null && Herbs.Contains(i.m_dropPrefab.name)).Sum(i => i.m_stack)) < HerbTarget;
+            if (chest == null || (fed && !herbs) ||
+                Nearest(villager.VillageId, hearth.transform.position, villager.transform.position, herbs) == null)
             {
                 return false;
             }
+
+            state.Herbs = herbs;
 
             Foragers[villager.VillageId] = villager;
             state.Active = true;
@@ -184,9 +197,9 @@ namespace Villheim.Logic.Villagers
         }
 
         /// <summary>The nearest bush or patch near the village that gives something to eat as it is (for the hurt, Healing).</summary>
-        public static Pickable NearestFood(int villageId, Vector3 hearth, Vector3 from) => Nearest(villageId, hearth, from);
+        public static Pickable NearestFood(int villageId, Vector3 hearth, Vector3 from) => Nearest(villageId, hearth, from, false);
 
-        private static Pickable Nearest(int villageId, Vector3 hearth, Vector3 from)
+        private static Pickable Nearest(int villageId, Vector3 hearth, Vector3 from, bool herbs)
         {
             Pickable best = null;
             float bestDistance = float.MaxValue;
@@ -202,7 +215,7 @@ namespace Villheim.Logic.Villagers
                 }
 
                 ItemDrop drop = pickable.m_itemPrefab.GetComponent<ItemDrop>();
-                if (drop == null || drop.m_itemData.m_shared.m_food <= 0f)
+                if (drop == null || (drop.m_itemData.m_shared.m_food <= 0f && !(herbs && Herbs.Contains(drop.gameObject.name))))
                 {
                     continue;
                 }

@@ -62,7 +62,7 @@ namespace Villheim.Logic.Villagers
         private static float WarnSeconds => Mathf.Max(0f, LogicConfig.PlayerWarnSeconds?.Value ?? 15f);
 
         public static bool Protects(Villager villager) =>
-            !Childhood.IsChild(villager) && !Elders.IsElder(villager) && Roles.BackgroundOf(villager) == Roles.Background.Protector;
+            !Childhood.IsChild(villager) && !Elders.IsElder(villager) && Roles.IsFighter(villager);
 
         private static readonly Dictionary<int, (float Time, int Kind)> DefenderKinds = new Dictionary<int, (float, int)>();
 

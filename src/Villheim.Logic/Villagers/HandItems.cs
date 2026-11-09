@@ -32,6 +32,7 @@ namespace Villheim.Logic.Villagers
             Nothing,
             Tool,
             Weapons,
+            Anything,
         }
 
         /// <summary>What he may have in hand for what he is doing, and the tool when it is one.</summary>
@@ -60,6 +61,9 @@ namespace Villheim.Logic.Villagers
                 case Status.Doer.Farm:
                     tool = VillagerLooks.Tool.Hoe;
                     break;
+                case Status.Doer.Fish:
+                    // The fishing rod (Fishing takes it out and puts it away).
+                    return Allowed.Anything;
                 case Status.Doer.Hunt:
                 case Status.Doer.Test:
                 case Status.Doer.Escort:
@@ -118,6 +122,8 @@ namespace Villheim.Logic.Villagers
                         PutAway(villager, "a work tool during " + doer);
                     }
 
+                    return;
+                case Allowed.Anything:
                     return;
                 default:
                     PutAway(villager, "nothing in hand for " + doer);

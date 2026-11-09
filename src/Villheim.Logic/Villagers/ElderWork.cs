@@ -13,11 +13,11 @@ namespace Villheim.Logic.Villagers
     /// rests between them (free time, usually by the fire):
     ///
     /// - tending the fire, cooking at the cooking station, seeing to the chests,
-    /// - sweeping and tidying by the homes, tending the farm, feeding the animals (acted: no feed is used, D-015),
+    /// - sweeping and tidying by the homes, feeding the animals (acted: no feed is used, D-015); never the farm (D-075),
     /// - making arrows at the workbench (acted),
     /// - carrying things lying about in the village to the chest (real: what he carries goes in).
     ///
-    /// Mending (Repairs) and sorting a full chest (Sorting) are real work the elders also take, ahead of these.
+    /// Sorting a full chest (Sorting) is real work the elders also take, ahead of these. Mending is the builder's.
     /// </summary>
     internal static class ElderWork
     {
@@ -267,7 +267,7 @@ namespace Villheim.Logic.Villagers
                 (Kind.Chests, VillageChest.Find(hearth) != null ? 1.5f : 0f),
                 (Kind.Tidy, state0.Plots.Count > 0 ? 1.5f : 0f),
                 (Kind.Cook, 0f), // real cooking happens through Healing; no pretend cooking
-                (Kind.Farm, state0.Plots.Any(p => p.Role == nameof(Designs.Role.Farm)) ? 2f : 0f),
+                (Kind.Farm, 0f), // elders never farm (D-075)
                 (Kind.Animals, Animal(center) != null ? 1.5f : 0f),
                 (Kind.Arrows, Workbench(center) != null ? 1f : 0f),
                 (Kind.Carry, Loose(center) != null ? 3f : 0f),

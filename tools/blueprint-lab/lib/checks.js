@@ -9,6 +9,9 @@ const SHP = NODE_C ? require('./shapes.js') : window.VHShapes;
 // A player is about 1.8 m tall. Walkable rooms need 2.4 m clear under every roof and ceiling piece; a doorway needs its
 // own height, and 2.3 m in front of it and behind it, for a metre each way.
 const HEADROOM = 2.4, DOOR_CLEAR = 2.3, CORRIDOR = 1.0, WALL_MIN = 2.5;
+// A clip the generator means (a piece marked p.clip = depth in metres, set into a fence, a wall or another piece) is
+// allowed up to its mark and never past the median clip of props in the corpus builds (lab/mine_yards.js: 0.36 m).
+const CLIP_MAX = 0.36;
 // check() uses the game's colliders unless told otherwise ({shapes: false})
 let SHAPES_DEFAULT = true;
 
@@ -401,6 +404,9 @@ function check(design, biome, opts = {}) {
         // a clip made on purpose (lib/kitbash.js marks it with the depth its source builds used) is allowed that deep
         const allow = Math.max(p.clip || 0, pieces[j].clip || 0);
         if (allow > 0 && SHP.clipDepth(b.sol, o.sol) <= allow + 0.02) continue;
+        // yard pieces: a marked clip whose shallowest way out of the overlap is within the mark (lib/yards.js)
+        const mark = Math.min(CLIP_MAX, allow);
+        if (mark > 0 && Math.min(Math.min(b.x1, o.x1) - Math.max(b.x0, o.x0), Math.min(b.z1, o.z1) - Math.max(b.z0, o.z0), Math.min(b.y1, o.y1) - Math.max(b.y0, o.y0)) <= mark) continue;
         const v = SHP.overlapVolume(b.sol, o.sol);
         if (v > 0.03 && v > 0.08 * Math.min(v0, SHP.volume(o.sol))) clips.push([i, j, v]);
       }
@@ -541,6 +547,6 @@ function check(design, biome, opts = {}) {
   return results;
 }
 
-const apiC = { check, stability, aabb, catBox, gameBox, aabbShapes, underside, undersideOf, blocks, localOf, doorBlockers, index, HEADROOM, DOOR_CLEAR, CORRIDOR,
+const apiC = { check, CLIP_MAX, stability, aabb, catBox, gameBox, aabbShapes, underside, undersideOf, blocks, localOf, doorBlockers, index, HEADROOM, DOOR_CLEAR, CORRIDOR,
   setShapes(on) { SHAPES_DEFAULT = !!on; }, get shapes() { return SHAPES_DEFAULT; } };
 if (NODE_C) module.exports = apiC; else window.VHChecks = apiC;

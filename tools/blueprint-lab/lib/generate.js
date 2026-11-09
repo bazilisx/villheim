@@ -539,6 +539,7 @@ function generate(req) {
   dctx.profile = Details.profile(dctx);
   dctx.notes = b.notes;
   // wall dormers: Frankish, English, Slavic and medieval cultures, from stage 2 (bench: req.details.dormers)
+  dctx.profile.overhang = req.details && req.details.overhang != null ? req.details.overhang : true;
   dctx.profile.dormers = +stage[1] >= 2 && ['frankish-norman', 'anglo-saxon', 'castle-medieval', 'slavic', 'norse-highland', 'baltic'].includes(cultureKey) &&
     ['home', 'tavern', 'longhouse', 'storage', 'workshop'].includes(type) && dctx.R() < 0.45;
   dctx.profile.dormerPair = dctx.R() < 0.5;
@@ -690,6 +691,9 @@ function generate(req) {
         // where another wing's gable already fills the spot, nothing more is needed
         if (b.pieces.some(q => Math.abs(q.x - p.x) < 0.05 && Math.abs(q.z - p.z) < 0.05 && Math.abs(q.y - p.y) < 0.9 && P.piece(q.name).role === 'wall')) continue;
       }
+      // an overhanging eave over a deck, gallery or walkway floor would hang into the heads of people on it
+      if (p.eave && b.pieces.some(q => P.piece(q.name).role === 'floor' && !inside(p.wing, q.x, q.z, 0.1) &&
+        Math.abs(q.x - p.x) < 1.6 && Math.abs(q.z - p.z) < 1.6 && q.y < p.y && q.y > p.y - 3.2)) continue;
       const hidden = wings.some(o => o !== p.wing && inside(o, p.x, p.z, -0.2) && p.surf < surfaceAt(o, p.x, p.z, roofTop, r) - 0.25);
       if (!hidden) b.put(p.name, p.x, p.y, p.z, p.yaw);
     }
@@ -826,8 +830,10 @@ function generate(req) {
   if (roofKind === 'gable' && plan !== 'gables' && ((C.dragons && ['longhouse', 'temple', 'tavern'].includes(type)) || (C.carved && stage !== 's1')))
     for (const sx of [-1, 1]) {
       // the carving rides on the ridge beam's end, run out a metre past the gable (it stood on nothing)
-      b.put(K.beam1 || 'wood_beam_1', sx * (W + 0.5), roofTop + r * (D - 1) / 2 - 0.35, 0, 0, { trim: true });
-      b.put('wood_dragon1', sx * (W + 0.6), roofTop + r * (D - 1) / 2 + 0.3, 0, sx > 0 ? 90 : 270);
+      const rk = dctx.rake || 0; // past the rake when the roof overhangs the gable
+      // a 2 m ridge beam from inside the gable to half a metre past the rake, so it rests on the gable wall
+      b.put(rk ? (K.beam || 'wood_beam') : (K.beam1 || 'wood_beam_1'), sx * (rk ? W + rk - 0.5 : W + 0.5), roofTop + r * (D - 1) / 2 - 0.35, 0, 0, { trim: true });
+      b.put('wood_dragon1', sx * (W + rk + 0.6), roofTop + r * (D - 1) / 2 + 0.3, 0, sx > 0 ? 90 : 270);
     }
 
   b.outer = edges;
@@ -1565,6 +1571,24 @@ function gablePieces(K, C, w, top, r, ends, vent, dctx) {
       add(gable, u, low(i), v, sv < 0 ? 270 : 90, 'gable', low(i) + r);
     }
   });
+  // overhangs (Tyler, D-059 B, 2026-11-09; T-102 had them off): one more row half a row further out along the long
+  // walls, so the eaves stand 1 m past the wall, and one more column at each free gable end, so the rake stands 1 m
+  // past the gable. The new pieces overlap the old ones by a metre, the way builders half-snap roofs.
+  const over = dctx && dctx.profile.overhang !== false && !kick && (C.eaves || 1) <= 1;
+  if (over) {
+    const vE = 2 + 2 * wallRow + 1, yE = pivot(wallRow) - r / 2, surfE = low(wallRow) + r / 2 - r / 2;
+    const cols = [];
+    for (let u = -w.W + 1; u < w.W; u += 2) cols.push(u);
+    const rakeCols = [-1, 1].filter((sg, k) => ends[k]).map(sg => sg * w.W);
+    const n0 = out.length;
+    for (const u of [...cols, ...rakeCols]) { add(roof, u, yE, -vE, 180, 'roof', surfE); add(roof, u, yE, vE, 0, 'roof', surfE); }
+    for (let k = n0; k < out.length; k++) out[k].eave = true;
+    for (const u of rakeCols) {
+      for (let i = 0; i <= wallRow; i++) { const v = 2 + 2 * i; add(roof, u, pivot(i), -v, 180, 'roof', low(i) + r / 2); add(roof, u, pivot(i), v, 0, 'roof', low(i) + r / 2); }
+      add(roofTop, u, capY, 0, 0, 'cap', capY + 0.3);
+    }
+  }
+  if (dctx) { dctx.rake = over ? 1 : 0; dctx.eaveOut = over ? 1 : 0; }
   if (dctx && !(C.kick && (C.eaves || 1) > 1)) Details.bargeboards(K, C, w, dctx, rows, ends, add, low, pivot, r);
   if (dctx && dctx.profile.dormers && r === 2 && !C.stoneWalls && w === dctx.wings[0]) dormers(K, w, top, add, dctx);
   return out;

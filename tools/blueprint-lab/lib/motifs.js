@@ -317,11 +317,10 @@ function place(b, c, fr, f, opts = {}) {
     const yw = normM(wall.yaw != null ? wall.yaw : 0), Y = normM(Math.atan2(fr.nx, fr.nz) * 180 / Math.PI);
     return Math.abs(d) < 0.45 && Math.abs(Math.sin((yw - Y) * Math.PI / 180)) < 0.1;
   };
+  // the way through each door: its width less a little, its height (up to 2.3 m), a metre each side
   const doors = b.pieces.filter(p => PM.piece(p.name).role === 'door').map(p => {
-    const o = PM.doorOpening(p);
-    return { x0: Math.min(o.x - o.ux * o.w / 2, o.x + o.ux * o.w / 2) - Math.abs(o.nx) * 1.0 - 0.05, x1: Math.max(o.x - o.ux * o.w / 2, o.x + o.ux * o.w / 2) + Math.abs(o.nx) * 1.0 + 0.05,
-      z0: Math.min(o.z - o.uz * o.w / 2, o.z + o.uz * o.w / 2) - Math.abs(o.nz) * 1.0 - 0.05, z1: Math.max(o.z - o.uz * o.w / 2, o.z + o.uz * o.w / 2) + Math.abs(o.nz) * 1.0 + 0.05,
-      y0: o.y + 0.05, y1: o.y + 2.35 };
+    const o = PM.doorOpening(p), hw = o.w / 2 - 0.12, ex = Math.abs(o.ux) * hw + Math.abs(o.nx) * 1.0, ez = Math.abs(o.uz) * hw + Math.abs(o.nz) * 1.0;
+    return { x0: o.x - ex, x1: o.x + ex, z0: o.z - ez, z1: o.z + ez, y0: o.y + 0.05, y1: o.y + Math.min(o.h, 2.3) - 0.02 };
   });
   // stairs and ladders keep the room over them to climb, and a metre at their foot
   const climbs = b.pieces.filter(p => PM.piece(p.name).role === 'stair').map(p => { const o = boxOf(Ck, p); return { x0: o.x0 - 1, x1: o.x1 + 1, y0: o.y0 + 0.05, y1: o.y1 + 2.4, z0: o.z0 - 1, z1: o.z1 + 1 }; });

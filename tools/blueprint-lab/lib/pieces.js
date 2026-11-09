@@ -100,7 +100,8 @@ const RULES = [
   [/wall_1x1|1x1|stoneblock/i, 'wall', [1, 1, 0.5], 'box'],
   [/2x2x1/, 'wall', [2, 1, 2], 'box'],
   [/wall_half|halfwall/i, 'wall', [2, 1, 0.2], 'box'],
-  [/wall_quarter|quarterwall/i, 'wall', [2, 0.5, 0.2], 'box'],
+  // 'Wood Wall 1x1': neighbours in the corpus stack 1 m apart up and sideways (it was read as 2 x 0.5 m before 2026-11-09)
+  [/wall_quarter|quarterwall/i, 'wall', [1, 1, 0.2], 'box'],
   [/wall_log/, 'wall', [2, 0.5, 0.4], 'box'],
   [/stake_wall|stakewall|sharpstakes/, 'fence', [4, 3, 0.5], 'box'],
   [/fence/, 'fence', [2, 1, 0.2], 'box'],
@@ -215,7 +216,7 @@ const NEEDS = {
   charcoal_kiln: 'Black Forest', piece_stonecutter: 'Black Forest', piece_spinningwheel: 'Plains', piece_artisanstation: 'Mountain',
   rug_deer: 'Meadows', rug_wolf: 'Mountain', rug_fur: 'Plains', rug_hare: 'Mistlands', rug_straw: 'Meadows', jute_carpet: 'Mistlands',
   itemstand: 'Meadows', itemstandh: 'Meadows', ArmorStand: 'Swamp', sign: 'Meadows', piece_banner01: 'Plains', piece_banner02: 'Plains',
-  piece_banner05: 'Plains', piece_groundtorch_wood: 'Meadows', piece_groundtorch: 'Swamp', piece_walltorch: 'Black Forest',
+  piece_banner05: 'Plains', piece_groundtorch_wood: 'Meadows', piece_groundtorch: 'Swamp', piece_walltorch: 'Black Forest', wood_window: 'Black Forest',
   piece_brazierceiling01: 'Black Forest', piece_dvergr_lantern: 'Mistlands', Candle_resin: 'Black Forest', wood_stack: 'Meadows',
   wood_fine_stack: 'Meadows', wood_core_stack: 'Black Forest', stone_pile: 'Meadows', coal_pile: 'Black Forest',
   wood_dragon1: 'Meadows', darkwood_raven: 'Plains', darkwood_wolf: 'Plains', piece_jackoturnip: 'Swamp', piece_xmastree: 'Meadows',

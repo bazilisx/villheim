@@ -5,7 +5,7 @@
 const fs = require('fs'), path = require('path');
 const dir = __dirname;
 const out = process.argv[2] || path.join(dir, '../../../src/Villheim.Logic/Generator/lab.js');
-const libs = ['pieces.js', 'styles.js', 'blueprint.js', 'checks.js', 'features.js', 'decorate.js', 'generate.js', 'request.js', 'floorplan.js'];
+const libs = ['pieces.js', 'styles.js', 'blueprint.js', 'checks.js', 'features.js', 'decorate.js', 'details.js', 'generate.js', 'request.js', 'floorplan.js'];
 const code = libs.map(f => `// ---- ${f}\n(function () {\n${fs.readFileSync(path.join(dir, f), 'utf8')}\n})();`).join('\n');
 const rules = fs.readFileSync(path.join(dir, '../data/rules-lite.json'), 'utf8').trim();
 const scorer = fs.readFileSync(path.join(dir, '../data/scorer.json'), 'utf8').trim();

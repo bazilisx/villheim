@@ -31,6 +31,7 @@ const NODE = typeof module !== 'undefined';
 const S = NODE ? require('./styles.js') : window.VHStyles;
 const Decor = NODE ? require('./decorate.js') : window.VHDecorate;
 const P = NODE ? require('./pieces.js') : window.VHPieces;
+const Details = NODE ? require('./details.js') : window.VHDetails;
 const checksLib = () => (NODE ? require('./checks.js') : window.VHChecks);
 
 // Heights (Tyler's in-game review, 2026-11-09). A player is about 1.8 m tall: rooms get walls of 3 m, so doors, beams
@@ -454,6 +455,14 @@ function generate(req) {
   const ladders = climbsUp > 0 ? ladderPlan(cells, climbsUp, { door: doorCell, back: backCell, flue }) : [];
   if (climbsUp > 0 && ladders.length < climbsUp) b.notes.push('No room for a ladder with a clear foot and landing in this plan.');
 
+  // details (lib/details.js): what trim this building gets, drawn from its own random stream so the rest of the
+  // design comes out as before
+  C.windowStyle = (T.low || ['storage', 'barn'].includes(type) || form === 'sunken' || (stage === 's1' && !['longhouse', 'tavern', 'temple'].includes(type))) ? 'single' : 'twin';
+  const dragonsHere = roofKind === 'gable' && plan !== 'gables' && ((C.dragons && ['longhouse', 'temple', 'tavern'].includes(type)) || (C.carved && stage !== 's1'));
+  const dctx = { K, C, cultureKey, T, type, stage, decor, biome, plan, F, SH, storeys, edges, verts, cells, door, wings, flat,
+    ladders, flue, dragonsHere, R: rng(seed * 31337 + 7) };
+  dctx.profile = Details.profile(dctx);
+
   // walls, frame and top plates per storey
   const open = T.open || null;
   let top = F;
@@ -467,7 +476,7 @@ function generate(req) {
     }
     const isTopLookout = lookout && s === storeys - 1;
     for (const e of edges) {
-      if (isTopLookout) { b.put(K.fence || K.wallQuarter, e.x, y0 + 0.5, e.z, e.yaw); continue; }
+      if (isTopLookout) { b.put(K.fence || K.wallHalf, e.x, y0 + 0.5, e.z, e.yaw); continue; }
       if (open === 'all') continue;
       if (open === 'front' && e.out[1] < 0) continue;
       if (open === 'sides' && !(e.out[1] > 0)) continue;
@@ -479,6 +488,7 @@ function generate(req) {
       if (plan === 'gables' && e.out[1] >= 0) isWindow = false;
       const style = C.frontWood && plan === 'gables' ? (e.out[1] < 0 ? 'plank' : null) : null;
       wallSegment(b, K, C, e.x, y0, e.z, e.yaw, SH, isGate ? 'gate' : isDoor ? 'door' : isWindow ? 'window' : 'wall', style);
+      if (isWindow || isDoor || isGate) (b.openings = b.openings || []).push({ e, y0, SH, storey: s, kind: isGate ? 'gate' : isDoor ? 'door' : 'window', back: e === backDoor });
     }
     if (C.frame || open || T.tower || form === 'stave') for (const [x, z] of verts) {
       for (let y = y0; y < y0 + SH - 0.01;) { const h = (y0 + SH - y) >= 2 ? 2 : 1; b.put(h === 2 ? framePole(K, C) : K.pole1, x, y + h / 2, z); y += h; }
@@ -532,6 +542,9 @@ function generate(req) {
     b.notes.push('Rooms on four sides of a yard, an arcade on the yard side.');
   }
 
+  // a back room in a big house (before the furnishing, so the rooms are read with it)
+  if (!open && plan !== 'court' && !req.skipDecor) Details.partition(b, dctx, wallSegment);
+
   // inner aisle posts for halls
   if (T.aisles && D >= 3 && plan === 'long') for (let x = -W + 2; x <= W - 2; x += 2) for (const z of [-(D - 2), D - 2])
     for (let y = F; y < top - 0.01; y += 2) b.put(framePole(K, C), x, y + 1, z);
@@ -556,7 +569,7 @@ function generate(req) {
       const ends = [-1, 1].map(sg => { const [x, z] = toWorld(w, sg * (w.W + 0.5), 0, 0); return !others.some(o => inside(o, x, z) && o.D >= w.D); });
       const kind = roofKind === 'hip' && w.main && w.W >= w.D ? 'hip' : 'gable';
       const vent = w.main && !domeCfg ? ventAt : null;
-      parts.push(...(kind === 'hip' ? hipPieces(K, w, roofTop, r, C.eaves, { kick: C.kick, vent }) : gablePieces(K, C, w, roofTop, r, ends, vent)));
+      parts.push(...(kind === 'hip' ? hipPieces(K, w, roofTop, r, C.eaves, { kick: C.kick, vent }) : gablePieces(K, C, w, roofTop, r, ends, vent, dctx)));
     }
     const caps = [];
     // where wings cross, keep the higher roof so the lower roof runs into the higher one
@@ -705,6 +718,7 @@ function generate(req) {
     for (const sx of [-1, 1]) b.put('wood_dragon1', sx * (W + 0.6), roofTop + r * (D - 1) / 2 + 0.3, 0, sx > 0 ? 90 : 270);
 
   b.outer = edges;
+  if (!flat || plan === 'court' || true) Details.exterior(b, dctx);
   clearDoorways(b);
   // the fire's place for the decorator: under the ridge vent, or a cell of a flat roof (a chimney goes up from it),
   // clear of the ladders
@@ -712,6 +726,7 @@ function generate(req) {
   if (flatCell) { fireAt = { x: flatCell[0], z: flatCell[1] }; b.vents.push({ kind: 'flat', x: flatCell[0], z: flatCell[1], rect: flue, from: storeys > 1 ? F + SH : top }); }
   if (!req.skipDecor) Decor.decorate(b, { use: T.use, decor, biome, type, R, culture: cultureKey, doorX: b.doorX, fireAt });
   settle(b, { K, C, biome, use: T.use, type, stoneOK, F, SH, storeys, top, flat, cells, wing: w0, roofTop, skipDecor: !!req.skipDecor });
+  if (!req.skipDecor) Details.interior(b, { ...dctx, zones: keepClear(b) });
   return finish(b, info);
 }
 
@@ -1162,7 +1177,7 @@ function wallSegment(b, K, C, x, y0, z, yaw, SH, kind, styleOverride) {
       // a 1 m course in a wall of 2 m stone courses is stone too (a plank course there would leave the stone above it
       // standing on wood, which falls)
       else if (left >= 0.99 && main !== 'wood_wall_log') { b.put(course === 1 ? main : (main === stonePiece ? 'stone_wall_2x1' : K.wallHalf), x, y + 0.5, z, yaw); y += 1; }
-      else { b.put(main === 'wood_wall_log' ? main : K.wallQuarter, x, y + Math.min(0.5, left) / 2, z, yaw); y += 0.5; }
+      else { if (main === 'wood_wall_log') b.put(main, x, y + 0.25, z, yaw); else b.put(K.wallHalf, x, y + 0.5, z, yaw); y += 0.5; } // a half wall standing on the gap pokes 0.5 m up into the roof
     }
   };
   if (kind === 'door' || kind === 'gate') {
@@ -1175,7 +1190,11 @@ function wallSegment(b, K, C, x, y0, z, yaw, SH, kind, styleOverride) {
   if (kind === 'window' && SH >= 2) {
     fill(y0, y0 + 1);
     if (K.glass && C.glass) { const dx = Math.cos(yaw * Math.PI / 180) * 0.5, dz = -Math.sin(yaw * Math.PI / 180) * 0.5; b.put(K.glass, x - dx, y0 + 1.5, z - dz, yaw); b.put(K.glass, x + dx, y0 + 1.5, z + dz, yaw); }
-    else if (!C.arches && !C.stoneWalls) b.put(K.wallQuarter, x, y0 + 1.75, z, yaw);
+    else if (!C.arches && !C.stoneWalls && C.windowStyle === 'single' && K.wallQuarter && !stoneLike) {
+      // the light on the side toward the middle of the wall, the 1 m square wall piece in the other half
+      const ux = Math.cos(yaw * Math.PI / 180), uz = -Math.sin(yaw * Math.PI / 180), side = (x * ux + z * uz) > 0 ? 1 : -1;
+      b.put(K.wallQuarter, x + ux * side * 0.5, y0 + 1.5, z + uz * side * 0.5, yaw);
+    }
     lintel();
     fill(y0 + 2, y0 + SH); return;
   }
@@ -1233,7 +1252,7 @@ function surfaceAt(w, x, z, top, r) {
   return capOf(w, top, r) - (r / 2) * Math.max(0, v - 1);
 }
 
-function gablePieces(K, C, w, top, r, ends, vent) {
+function gablePieces(K, C, w, top, r, ends, vent, dctx) {
   const roof = r === 2 ? K.roof45 : K.roof26, roofTop = r === 2 ? K.roofTop45 : K.roofTop26, gable = r === 2 ? K.gable45 : K.gable26;
   const capY = capOf(w, top, r), low = i => capY - r * (i + 1), pivot = i => low(i) + (r === 2 ? 1 : 0);
   // the last row ends on the wall (Tyler, T-102: roofs stuck out too far); only cultures with eaves 2 (fen houses,
@@ -1260,6 +1279,7 @@ function gablePieces(K, C, w, top, r, ends, vent) {
       add(gable, u, low(i), v, sv < 0 ? 270 : 90, 'gable', low(i) + r);
     }
   });
+  if (dctx && !(C.kick && (C.eaves || 1) > 1)) Details.bargeboards(K, C, w, dctx, rows, ends, add, low, pivot, r);
   return out;
 }
 function gableFill(K, add, u, from, v, h, stone) {
@@ -1271,7 +1291,7 @@ function gableFill(K, add, u, from, v, h, stone) {
     if (course && left >= course - 0.01) { add(K.stoneWall, u, y + course / 2, v, 90, 'gable', y + course); y += course; continue; } // masonry gable in courses
     if (left >= 2) { add(wall, u, y + 1, v, 90, 'gable', y + 2); y += 2; }
     else if (left >= 1) { add(K.wallHalf, u, y + 0.5, v, 90, 'gable', y + 1); y += 1; }
-    else { add(K.wallQuarter, u, y + 0.25, v, 90, 'gable', y + 0.5); y += 0.5; }
+    else { add(K.wallHalf, u, y + 0.25, v, 90, 'gable', y + 0.5); y += 0.5; }
   }
 }
 
@@ -1327,7 +1347,7 @@ function flatRoof(b, K, C, cells, edges, top, F, SH, L) {
     if (C.stoneWalls && K.stoneBlock && stoneUnder(e)) {
       const ux = e.yaw === 0 ? 1 : 0, uz = e.yaw === 0 ? 0 : 1;
       b.put(K.stoneBlock, e.x - ux * 0.5, top + 0.5, e.z - uz * 0.5, e.yaw); // a block every other metre
-    } else b.put(K.wallQuarter, e.x, top + 0.25, e.z, e.yaw);
+    } else b.put(K.wallHalf, e.x, top + 0.5, e.z, e.yaw); // a 1 m parapet of planks
   }
   // a ladder up to a hatch in the roof
   if (L) putLadder(b, K, L, top - SH, SH);
@@ -1636,7 +1656,7 @@ function penDesign(b, K, W, D, stage) {
 }
 
 function wellDesign(b, K, biome, stage) {
-  const st = biome === 'Meadows' ? 'wood_wall_quarter' : (K.stoneBlock || 'stone_wall_1x1');
+  const st = biome === 'Meadows' ? (K.wallHalf || 'wood_wall_half') : (K.stoneBlock || 'stone_wall_1x1');
   for (const [x, z, yaw] of [[0, -1, 0], [0, 1, 0], [-1, 0, 90], [1, 0, 90]]) b.put(st, x, 0.5, z, yaw);
   // posts 3.5 m tall and the roof from 2.5 m up, so nobody walking round the well hits the eaves
   for (const x of [-0.9, 0.9]) { b.put(K.pole, x, 1, 0); b.put(K.pole1, x, 2.5, 0); b.put(K.pole1, x, 3, 0); } // under the beam's ends

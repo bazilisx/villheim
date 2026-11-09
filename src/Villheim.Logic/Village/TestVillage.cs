@@ -1198,7 +1198,7 @@ namespace Villheim.Logic.Village
             var roles = new Dictionary<string, int>();
             foreach (Villager villager in people)
             {
-                string title = Roles.Title(villager) ?? Roles.BackgroundOf(villager).ToString().ToLowerInvariant();
+                string title = Roles.Title(villager) ?? "villager";
                 if (Elders.IsElder(villager))
                 {
                     title += " (elder)";

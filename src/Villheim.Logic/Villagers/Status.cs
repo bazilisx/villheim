@@ -44,6 +44,8 @@ namespace Villheim.Logic.Villagers
             Elder,
             Decor,
             Home,
+            Tend,
+            Fish,
         }
 
         private static readonly int KeyShort = "villheim_task".GetStableHashCode();
@@ -109,6 +111,8 @@ namespace Villheim.Logic.Villagers
                 case Doer.Elder: return ElderWork.Describe(villager) ?? "helping about the village";
                 case Doer.Decor: return HomeDecor.Describe(villager) ?? "fixing up the home";
                 case Doer.Home: return HomeLife.Describe(villager) ?? "at home";
+                case Doer.Tend: return Tending.Describe(villager) ?? "tending the hurt";
+                case Doer.Fish: return Fishing.Describe(villager) ?? "fishing";
             }
 
             // Nothing of ours ran him lately: the game's own AI has him (a fight with a player), or he is loading.
@@ -155,6 +159,8 @@ namespace Villheim.Logic.Villagers
                 case Doer.FreeTime: return FreeWord(text);
                 case Doer.Decor: return text.Contains("helping") ? "helping" : "decorating";
                 case Doer.Home: return "at home";
+                case Doer.Tend: return "tending";
+                case Doer.Fish: return text.Contains("carrying") ? "hauling fish" : "fishing";
                 case Doer.Elder:
                     return text.Contains("fire") ? "tending fire" : text.Contains("cook") ? "cooking" : text.Contains("farm") ? "farming" :
                         text.Contains("animal") ? "tending animals" : text.Contains("arrow") ? "making arrows" :

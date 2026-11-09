@@ -108,11 +108,14 @@ namespace Villheim.Logic.Villagers
 
             switch (Roles.TradeOf(villager))
             {
-                case Roles.Trade.Carpenter: skills["building"] += 20f; skills["crafting"] += 10f; break;
-                case Roles.Trade.Woodcutter: skills["woodcutting"] += 20f; break;
-                case Roles.Trade.Miner: skills["mining"] += 20f; break;
+                case Roles.Trade.Carpenter: skills["building"] += 20f; skills["woodcutting"] += 15f; break;
+                case Roles.Trade.Smith: skills["mining"] += 20f; skills["crafting"] += 15f; break;
                 case Roles.Trade.Cook: skills["cooking"] += 20f; break;
                 case Roles.Trade.Farmer: skills["farming"] += 20f; break;
+                case Roles.Trade.Guard: skills["hunting"] += 10f; skills["hauling"] += 10f; break;
+                case Roles.Trade.Hunter: skills["hunting"] += 20f; break;
+                case Roles.Trade.Fisher: skills["foraging"] += 10f; skills["hauling"] += 10f; break;
+                case Roles.Trade.Healer: skills["foraging"] += 20f; break;
             }
 
             if (Roles.BackgroundOf(villager) == Roles.Background.Protector) skills["hunting"] += 8f;

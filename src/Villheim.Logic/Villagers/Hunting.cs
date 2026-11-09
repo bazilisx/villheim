@@ -83,9 +83,10 @@ namespace Villheim.Logic.Villagers
         private static readonly Dictionary<int, float> MeatWantedUntil = new Dictionary<int, float>();
 
         /// <summary>
-        /// The one villager who hunts for the village (Tyler: nobody hunted in a village of mostly elders): a protector
-        /// who is not an elder, else any grown villager who is not an elder (the builder last), else an elder, who
-        /// hunts at a walk with the bow. The healthiest of them, so a hurt village sends its fittest.
+        /// The one villager who hunts for the village (Tyler: nobody hunted in a village of mostly elders): the hunter by
+        /// trade (D-075), else a protector who is not an elder, else any grown villager who is not an elder (the
+        /// builder, cooks, farmers and healers last), else an elder, who hunts at a walk with the bow. The healthiest of
+        /// them, so a hurt village sends its fittest.
         /// </summary>
         public static bool IsVillageHunter(Villager villager)
         {
@@ -117,7 +118,10 @@ namespace Villheim.Logic.Villagers
                     }
 
                     bool elder = Elders.IsElder(v);
-                    int rank = !elder && Roles.BackgroundOf(v) == Roles.Background.Protector ? 0
+                    Roles.Trade trade = Roles.TradeOf(v);
+                    int rank = trade == Roles.Trade.Hunter ? -1
+                        : !elder && (trade == Roles.Trade.Cook || trade == Roles.Trade.Farmer || trade == Roles.Trade.Healer) ? 2
+                        : !elder && Roles.BackgroundOf(v) == Roles.Background.Protector ? 0
                         : !elder && !Chores.IsVillageBuilder(v) ? 1
                         : !elder ? 2
                         : 3;
@@ -229,8 +233,11 @@ namespace Villheim.Logic.Villagers
                 return false;
             }
 
+            // A hunter by trade keeps the chests fuller than anyone else would (twice the target).
             VillageHearth hearth = VillageHearth.Find(villager.VillageId);
-            if (hearth == null || !hearth.IsValid || !WantsMeat(hearth))
+            bool byTrade = Roles.TradeOf(villager) == Roles.Trade.Hunter;
+            if (hearth == null || !hearth.IsValid ||
+                !(WantsMeat(hearth) || (byTrade && MeatInChests(hearth) < 2 * Mathf.Max(0, LogicConfig.HuntMeatTarget?.Value ?? EnoughFood) * Village.Calendar.FoodFactor())))
             {
                 return false;
             }

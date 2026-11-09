@@ -194,7 +194,9 @@ namespace Villheim.Logic.Villagers
             string title = Roles.Title(villager);
             if (!string.IsNullOrEmpty(village))
             {
-                text += $"\n<color=#b0b0b0>{(title != null ? char.ToUpperInvariant(title[0]) + title.Substring(1) + " of " : "of ")}{village}</color>";
+                // The title in his role's color (D-075).
+                string shown = title != null ? $"<color={Households.RoleColor(villager)}>{char.ToUpperInvariant(title[0]) + title.Substring(1)}</color> of " : "of ";
+                text += $"\n<color=#b0b0b0>{shown}{village}</color>";
             }
 
             string roles = RoleLine(villager);
@@ -250,7 +252,7 @@ namespace Villheim.Logic.Villagers
             Roles.Trade trade = Roles.TradeOf(villager);
             if (trade != Roles.Trade.None)
             {
-                parts.Add(trade.ToString());
+                parts.Add($"<color={Households.TradeColor(trade)}>{trade}</color>");
             }
 
             if (Chores.IsVillageBuilder(villager) && trade != Roles.Trade.Carpenter)
@@ -258,7 +260,7 @@ namespace Villheim.Logic.Villagers
                 parts.Add("Builder");
             }
 
-            if (Hunting.IsVillageHunter(villager))
+            if (Hunting.IsVillageHunter(villager) && trade != Roles.Trade.Hunter)
             {
                 parts.Add("Hunter");
             }

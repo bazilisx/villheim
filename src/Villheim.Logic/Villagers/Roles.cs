@@ -10,14 +10,19 @@ namespace Villheim.Logic.Villagers
     /// Who does what in the village.
     ///
     /// Background role: every villager is a protector or a carer, by order of arrival (protector, carer, protector...),
-    /// never by looks or gender. It does not limit work. It shows when there is nothing to do (protectors keep watch at
-    /// the edge of the village, carers stay by the hearth, cook and make things) and in a fight: protectors take up a
-    /// weapon and shield and defend, carers keep working, or get out of the way while a protector fights (Combat).
+    /// never by looks or gender. It is internal and never shown (signs, hover, chat). It does not limit work. It shows
+    /// when there is nothing to do (protectors keep watch at the edge of the village, carers stay by the hearth, cook and
+    /// make things) and in a fight: protectors take up a weapon and shield and defend, carers keep working, or get out of
+    /// the way while a protector fights (Combat).
     ///
-    /// Trade: a small village (under six villagers) has no trades; everyone does a bit of everything, going where the
-    /// village's need is greatest. From six villagers on, like Millenaire's villager types, each villager gets a trade
-    /// in order of arrival (carpenter, woodcutter, miner, cook, then more of the same as the village grows) and spends
-    /// most of his time on it, helping elsewhere only when his own work has nothing to do.
+    /// Trade (D-075): with two or three villagers there are no trades and everyone does a bit of everything, going where
+    /// the village's need is greatest. From four villagers the first two get carpenter (builds, cuts wood) and smith
+    /// (mines, makes gear); the rest stay generalists. From six every villager gets a trade, in order of arrival, from
+    /// the full list: carpenter, smith, cook, farmer, guard, hunter, healer, fisher (no fisher without a shore in reach),
+    /// then more of the same as the village grows. Elders take only the light trades (cook, healer), and they take them
+    /// first; otherwise an elder is a generalist who does only light work. Leader, elder and child are no trades: the
+    /// leader gets a trade like anyone. Trades are worked out from the roster each time, never stored, so old saves load
+    /// as they are.
     /// </summary>
     internal static class Roles
     {
@@ -31,20 +36,33 @@ namespace Villheim.Logic.Villagers
         {
             None,
             Carpenter,
-            Woodcutter,
-            Miner,
+            Smith,
             Cook,
             Farmer,
+            Guard,
+            Hunter,
+            Fisher,
+            Healer,
         }
 
+        /// <summary>From this many grown villagers every one gets a trade.</summary>
         public const int TradesFrom = 6;
+
+        /// <summary>From this many grown villagers there is a carpenter and a smith.</summary>
+        public const int FirstTradesFrom = 4;
+
         public static readonly int KeyArrival = "villheim_arrival".GetStableHashCode();
+
+        private static readonly Trade[] FirstTrades = { Trade.Carpenter, Trade.Smith };
 
         private static readonly Trade[] TradeOrder =
         {
-            Trade.Carpenter, Trade.Woodcutter, Trade.Miner, Trade.Cook, Trade.Farmer, Trade.Woodcutter,
-            Trade.Miner, Trade.Carpenter, Trade.Farmer, Trade.Woodcutter, Trade.Cook, Trade.Miner,
+            Trade.Carpenter, Trade.Smith, Trade.Cook, Trade.Farmer, Trade.Guard, Trade.Hunter, Trade.Healer, Trade.Fisher,
+            Trade.Carpenter, Trade.Guard, Trade.Farmer, Trade.Smith, Trade.Hunter, Trade.Cook, Trade.Fisher, Trade.Guard,
+            Trade.Healer, Trade.Carpenter, Trade.Farmer,
         };
+
+        private static bool IsLight(Trade trade) => trade == Trade.Cook || trade == Trade.Healer;
 
         // A weapon for each gear tier (0 rags .. 4 bronze), made of what that tier's smith works with (D-050: these for
         // now, each culture's own weapons later). Everyone who fights also carries a bow and arrows (Defenders.CarryBow).
@@ -55,6 +73,7 @@ namespace Villheim.Logic.Villagers
         {
             public float Time;
             public List<Villager> Villagers;
+            public Dictionary<Villager, Trade> Trades;
         }
 
         private sealed class Armed
@@ -92,7 +111,9 @@ namespace Villheim.Logic.Villagers
                 return byArrival != 0 ? byArrival : a.Zdo.GetInt(Keys.VillagerSeed).CompareTo(b.Zdo.GetInt(Keys.VillagerSeed));
             });
 
-            Rosters[villageId] = new Roster { Time = UnityEngine.Time.time, Villagers = list };
+            var roster = new Roster { Time = UnityEngine.Time.time, Villagers = list };
+            Rosters[villageId] = roster;
+            roster.Trades = Assign(villageId, list);
             return list;
         }
 
@@ -110,20 +131,81 @@ namespace Villheim.Logic.Villagers
 
         public static Trade TradeOf(Villager villager)
         {
-            if (Childhood.IsChild(villager))
+            if (villager == null || Childhood.IsChild(villager) || villager.Zdo == null)
             {
                 return Trade.None;
             }
 
-            List<Villager> roster = Of(villager.VillageId);
-            if (roster.Count < TradesFrom)
-            {
-                return Trade.None;
-            }
-
-            int index = Index(villager);
-            return TradeOrder[index % TradeOrder.Length];
+            Of(villager.VillageId);
+            return Rosters.TryGetValue(villager.VillageId, out Roster roster) && roster.Trades != null &&
+                   roster.Trades.TryGetValue(villager, out Trade trade)
+                ? trade
+                : Trade.None;
         }
+
+        /// <summary>Who has which trade, for the roster just built (see the class notes).</summary>
+        private static Dictionary<Villager, Trade> Assign(int villageId, List<Villager> roster)
+        {
+            var trades = new Dictionary<Villager, Trade>();
+            int count = roster.Count;
+            if (count < FirstTradesFrom)
+            {
+                return trades;
+            }
+
+            var open = new List<Trade>();
+            if (count < TradesFrom)
+            {
+                open.AddRange(FirstTrades);
+            }
+            else
+            {
+                VillageHearth hearth = VillageHearth.Find(villageId);
+                bool shore = hearth != null && hearth.IsValid && Fishing.ShoreOf(hearth) != null;
+                for (int i = 0; open.Count < count && i < count * 3; i++)
+                {
+                    Trade trade = TradeOrder[i % TradeOrder.Length];
+                    if (trade != Trade.Fisher || shore)
+                    {
+                        open.Add(trade);
+                    }
+                }
+            }
+
+            // Elders first, and only to a light trade; then the others in order of arrival.
+            foreach (Villager villager in roster.Where(Elders.IsElder))
+            {
+                int light = open.FindIndex(IsLight);
+                if (light >= 0)
+                {
+                    trades[villager] = open[light];
+                    open.RemoveAt(light);
+                }
+            }
+
+            foreach (Villager villager in roster)
+            {
+                if (open.Count == 0)
+                {
+                    break;
+                }
+
+                if (!Elders.IsElder(villager))
+                {
+                    trades[villager] = open[0];
+                    open.RemoveAt(0);
+                }
+            }
+
+            return trades;
+        }
+
+        /// <summary>Fights for the village: a guard, or a protector (internal).</summary>
+        public static bool IsFighter(Villager villager) =>
+            TradeOf(villager) == Trade.Guard || BackgroundOf(villager) == Background.Protector;
+
+        /// <summary>The trade in a word for signs and hover ("carpenter"), or null for none.</summary>
+        public static string Word(Trade trade) => trade == Trade.None ? null : trade.ToString().ToLowerInvariant();
 
         /// <summary>The village's Jarl, like Millenaire's town hall chief: the first settler still living.</summary>
         public static bool IsJarl(Villager villager)
@@ -152,12 +234,13 @@ namespace Villheim.Logic.Villagers
                 return "elder";
             }
 
-            return trade != Trade.None ? trade.ToString().ToLowerInvariant() : null;
+            return Word(trade);
         }
 
         /// <summary>
-        /// Tonight's watch, as Millenaire's guards keep watch: with three or more villagers, one protector each night (in
-        /// turn, by day) stays up and patrols the edge of the village with a torch instead of sleeping.
+        /// Tonight's watch, as Millenaire's guards keep watch: with three or more villagers, one guard (or with no guard,
+        /// one protector) each night, in turn by day, stays up and patrols the edge of the village with a torch instead
+        /// of sleeping.
         /// </summary>
         public static bool IsNightWatch(Villager villager)
         {
@@ -169,7 +252,21 @@ namespace Villheim.Logic.Villagers
                 return false;
             }
 
-            List<Villager> protectors = roster.Where(v => BackgroundOf(v) == Background.Protector).ToList();
+            // Two or more guards take it in turn. A lone guard keeps every other night, the protectors who are not
+            // elders the nights between. With no guard, those protectors, then any protector.
+            List<Villager> guards = roster.Where(v => TradeOf(v) == Trade.Guard).ToList();
+            List<Villager> others = roster.Where(v => TradeOf(v) != Trade.Guard && BackgroundOf(v) == Background.Protector && !Elders.IsElder(v)).ToList();
+            List<Villager> protectors = guards.Count >= 2 ? guards : guards.Count == 1 ? others.SelectMany(o => new[] { guards[0], o }).ToList() : others;
+            if (protectors.Count == 0)
+            {
+                protectors = guards;
+            }
+
+            if (protectors.Count == 0)
+            {
+                protectors = roster.Where(v => BackgroundOf(v) == Background.Protector).ToList();
+            }
+
             if (protectors.Count == 0)
             {
                 return false;
@@ -319,6 +416,9 @@ namespace Villheim.Logic.Villagers
             var state = new VillageState(hearth.Zdo);
             return Mathf.Clamp(Smithing.Cap(hearth, VillagerLooks.GearTier(VillageBrain.TierIndex(state.Plots.Count), state.Biome)), 0, Weapons.Length - 1);
         }
+
+        /// <summary>Takes the item out (from his pack, or a new one) and holds it, for work like fishing.</summary>
+        public static void Hold(Villager villager, string prefabName) => EquipNamed(villager, prefabName);
 
         private static void EquipNamed(Villager villager, string prefabName)
         {

@@ -167,7 +167,7 @@ namespace Villheim.Logic.Villagers
             Social.SendOne(people[0], player, null, hated ? "event:guard" : "event:unwelcome", "nonono", 20f, 4f, false, 2f);
             if (hated)
             {
-                foreach (Villager guard in people.Where(v => v != people[0] && Roles.BackgroundOf(v) == Roles.Background.Protector).Take(2))
+                foreach (Villager guard in people.Where(v => v != people[0] && Roles.IsFighter(v)).Take(2))
                 {
                     Roles.ArmForHunt(guard);
                     Social.SendOne(guard, player, null, "event:guard", null, 40f, 5f, true, 20f);

@@ -161,34 +161,82 @@ namespace Villheim.Logic.Villagers
         }
 
         /// <summary>
-        /// The villager's role in a word: child, the leader's title (Jarl), elder, his trade (cook, farmer...), and
-        /// "villager" with none. Protector and carer are internal and never shown.
+        /// The villager's role for his sign (D-075): his trade ("carpenter"), with the leader's title and "elder" before
+        /// it when they apply ("Jarl, carpenter", "Elder, cook"); "child" for a child, "elder" or "villager" with no
+        /// trade. Protector and carer are internal and never shown.
         /// </summary>
         public static string RoleWord(Villager villager)
         {
-            string title = Roles.Title(villager);
-            return !string.IsNullOrEmpty(title) ? title : "villager";
-        }
+            if (Childhood.IsChild(villager))
+            {
+                return "child";
+            }
 
-        /// <summary>A light color that goes with the role, readable on a wooden sign.</summary>
-        public static string RoleColor(Villager villager)
-        {
+            var words = new List<string>();
             if (Roles.IsJarl(villager))
             {
-                return "#fd6"; // gold
+                words.Add(Cultures.LeaderTitle(villager.VillageId));
             }
 
-            switch (RoleWord(villager))
+            if (Elders.IsElder(villager))
             {
-                case "child": return "#adf";      // light blue
-                case "elder": return "#dcf";      // pale violet
-                case "carpenter": return "#eca";  // light wood
-                case "woodcutter": return "#cb8"; // bark brown
-                case "miner": return "#ccd";      // stone gray
-                case "cook": return "#fa8";       // warm orange
-                case "farmer": return "#bfb";     // green
-                default: return "#ddd";
+                words.Add("elder");
             }
+
+            string trade = Roles.Word(Roles.TradeOf(villager));
+            if (trade != null)
+            {
+                words.Add(trade);
+            }
+
+            if (words.Count == 0)
+            {
+                words.Add("villager");
+            }
+
+            return string.Join(", ", words.Select((w, i) => i == 0 ? w : w.ToLowerInvariant()));
+        }
+
+        /// <summary>
+        /// A color for each trade (D-075), light enough to read on a wooden sign: carpenter brown, smith iron ore,
+        /// cook coral, farmer green, guard blue, hunter dark green, fisher teal, healer white-pink. Null for none.
+        /// </summary>
+        public static string TradeColor(Roles.Trade trade)
+        {
+            switch (trade)
+            {
+                case Roles.Trade.Carpenter: return "#c48f5a";
+                case Roles.Trade.Smith: return "#9fb2c4";
+                case Roles.Trade.Cook: return "#ff8a75";
+                case Roles.Trade.Farmer: return "#8fdc6f";
+                case Roles.Trade.Guard: return "#6fa3ff";
+                case Roles.Trade.Hunter: return "#4e9a55";
+                case Roles.Trade.Fisher: return "#3fc1b5";
+                case Roles.Trade.Healer: return "#ffdbe8";
+                default: return null;
+            }
+        }
+
+        /// <summary>The color his role is shown in: the leader gold, else his trade's, else elder gray, child light blue.</summary>
+        public static string RoleColor(Villager villager)
+        {
+            if (Childhood.IsChild(villager))
+            {
+                return "#add8ff"; // light blue
+            }
+
+            if (Roles.IsJarl(villager))
+            {
+                return "#ffd65c"; // gold
+            }
+
+            string trade = TradeColor(Roles.TradeOf(villager));
+            if (trade != null)
+            {
+                return trade;
+            }
+
+            return Elders.IsElder(villager) ? "#b0b0b0" : "#dddddd";
         }
 
         private static string Capital(string text) =>

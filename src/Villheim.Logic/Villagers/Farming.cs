@@ -99,7 +99,9 @@ namespace Villheim.Logic.Villagers
 
             state.NextLook = Time.time + Random.Range(8f, 15f);
             bool farmer = Roles.TradeOf(villager) == Roles.Trade.Farmer;
-            bool stands = !Roles.HasTrade(villager.VillageId, Roles.Trade.Farmer) && Roles.BackgroundOf(villager) == Roles.Background.Carer;
+            // With no farmer a carer stands in; never an elder (D-075).
+            bool stands = !Roles.HasTrade(villager.VillageId, Roles.Trade.Farmer) && Roles.BackgroundOf(villager) == Roles.Background.Carer &&
+                          !Elders.IsElder(villager) && Roles.TradeOf(villager) == Roles.Trade.None;
             if ((!farmer && !stands) || (Workers.TryGetValue(villager.VillageId, out Villager other) && other != null && other != villager &&
                                          !other.IsDead() && Describe(other) != null))
             {

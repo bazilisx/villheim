@@ -2,11 +2,12 @@
 // node lab/room_pictures.js <room-geo.json> <out dir> [ID ...]
 //
 // room-geo.json is the side file lab/mine_room_templates.js writes with GEO=<file>: each room as built in its
-// source, turned so its main way in is at the bottom. Two pictures per room, each 600 px wide:
-//   RT-0001.png     the plan from above: floor, walls, doors (brown, with the way in marked), windows (blue), every
-//                   piece of furniture at its true size, colored by use and labelled where the label fits; pieces
-//                   the template leaves out are dashed. Wall pieces are ticks on the wall with a letter.
-//   RT-0001-3d.png  the room from above the way in, with the near walls and the roof taken off.
+// source, turned so its main way in is at the bottom. One picture per room, RT-0001.png: the plan from above at 50 px
+// to the meter (at most 900 px across): floor, walls, doors with their swing, windows (blue), every piece of furniture
+// at its true size (the decorator's measured sizes), colored by use and labelled where the label fits, a 1 m grid.
+// Pieces the template leaves out are dashed. Wall pieces are ticks on the wall with a letter.
+// RENDER=lab draws the room with lib/render.js instead (a straight-down view with the roof cut off), for when the
+// renderer has its true-size top-down mode.
 const fs = require('fs'), path = require('path');
 const lab = path.join(__dirname, '..');
 const { createCanvas } = require('@napi-rs/canvas');
@@ -17,7 +18,7 @@ const geoPath = process.argv[2] || '/tmp/int/room-geo.json';
 const outDir = process.argv[3] || path.join(lab, '../../docs/rooms');
 const only = process.argv.slice(4);
 const geo = JSON.parse(fs.readFileSync(geoPath, 'utf8'));
-const TPL = JSON.parse(fs.readFileSync(path.join(lab, 'data/room-templates.json'), 'utf8')).templates;
+const TPL = JSON.parse(fs.readFileSync(process.env.TEMPLATES || path.join(lab, 'data/room-templates.json'), 'utf8')).templates;
 const byId = new Map(TPL.map(t => [t.id, t]));
 fs.mkdirSync(outDir, { recursive: true });
 
@@ -43,13 +44,18 @@ const mountLetter = n => MOUNT[n] || (/banner/.test(n) ? 'B' : '?');
 
 const yawQ = q => Math.atan2(2 * (q[3] * q[1] + q[0] * q[2]), 1 - 2 * (q[1] * q[1] + q[0] * q[0])) * 180 / Math.PI;
 
+const PPM = 50, MAXPX = 900, MINW = 520;
+function frameBox(g) {
+  const u0 = -g.W / 2 - 0.7, u1 = g.W / 2 + 0.7, v0 = -0.9, v1 = g.D + 0.7;
+  const s = Math.min(PPM, MAXPX / (u1 - u0), MAXPX / (v1 - v0));
+  return { u0, u1, v0, v1, s, Wpx: Math.max(MINW, Math.ceil(s * (u1 - u0) + 20)), Hpl: Math.ceil(s * (v1 - v0)) };
+}
 function plan(id, g, t, file) {
-  const Wpx = 600, Hpx = 600, foot = 92;
+  const { u0, u1, v0, v1, s, Wpx, Hpl } = frameBox(g);
+  const foot = 92, Hpx = Hpl + 34 + foot;
   const cv = createCanvas(Wpx, Hpx), x = cv.getContext('2d');
   x.fillStyle = '#f4f1ea'; x.fillRect(0, 0, Wpx, Hpx);
-  const u0 = -g.W / 2 - 0.7, u1 = g.W / 2 + 0.7, v0 = -0.9, v1 = g.D + 0.7;
-  const s = Math.min((Wpx - 20) / (u1 - u0), (Hpx - foot - 34) / (v1 - v0));
-  const ox = Wpx / 2 - s * (u0 + u1) / 2, oy = 30 + (Hpx - foot - 34) / 2 + s * (v0 + v1) / 2;
+  const ox = Wpx / 2 - s * (u0 + u1) / 2, oy = 30 + Hpl / 2 + s * (v0 + v1) / 2;
   const X = u => ox + s * u, Y = v => oy - s * v; // v grows up the picture, the way in is at the bottom
   // the box of a footprint, in pixels
   const poly = (u, v, w, d, yaw) => {
@@ -57,6 +63,8 @@ function plan(id, g, t, file) {
     return [[-1, -1], [1, -1], [1, 1], [-1, 1]].map(([i, j]) => { const lx = i * w / 2, lz = j * d / 2; return [X(u + lx * c + lz * sn), Y(v - lx * sn + lz * c)]; });
   };
   const path2 = pts => { x.beginPath(); pts.forEach(([a, b], i) => (i ? x.lineTo(a, b) : x.moveTo(a, b))); x.closePath(); };
+  // everything of the room stays in the plan's box, clear of the title and the legend
+  x.save(); x.beginPath(); x.rect(0, 28, Wpx, Hpl + 4); x.clip();
   // floor
   x.fillStyle = '#e3d6bd';
   for (const [u, v] of g.cells) x.fillRect(X(u - 0.25) - 0.5, Y(v + 0.25) - 0.5, s * 0.5 + 1, s * 0.5 + 1);
@@ -81,6 +89,17 @@ function plan(id, g, t, file) {
     const glass = /glass|window|crystal/i.test(name) || role === 'window';
     x.fillStyle = role === 'door' ? '#8a5a2b' : glass ? '#9cc7e0' : role === 'stair' ? '#b9b2a4' : role === 'fence' ? '#8c7a62' : '#4a4038';
     path2(poly(u, v, Math.max(w, 0.12), Math.max(d, 0.12), yaw)); x.fill();
+    if (role === 'door' && w >= 0.8 && w <= 3) {
+      // the swing, on the room's side: a quarter circle from one jamb
+      const a = yaw * Math.PI / 180, ax = Math.cos(a), az = -Math.sin(a);
+      let nx = Math.sin(a), nz = Math.cos(a);
+      if ((0 - u) * nx + (g.D / 2 - v) * nz < 0) { nx = -nx; nz = -nz; }
+      const hu = u - ax * w / 2, hv = v - az * w / 2;
+      x.strokeStyle = 'rgba(138,90,43,0.8)'; x.lineWidth = 1.2; x.setLineDash([4, 3]);
+      x.beginPath(); x.moveTo(X(hu + ax * w), Y(hv + az * w));
+      for (let k = 1; k <= 12; k++) { const t2 = k / 12 * Math.PI / 2, cx2 = Math.cos(t2), sx2 = Math.sin(t2); x.lineTo(X(hu + (ax * cx2 + nx * sx2) * w), Y(hv + (az * cx2 + nz * sx2) * w)); }
+      x.lineTo(X(hu), Y(hv)); x.stroke(); x.setLineDash([]);
+    }
     if (role === 'stair') { x.strokeStyle = '#6e675b'; x.stroke(); }
     void cn;
   }
@@ -139,11 +158,12 @@ function plan(id, g, t, file) {
     }
   }
   x.setLineDash([]);
+  x.restore();
   // title
   x.textAlign = 'left'; x.textBaseline = 'alphabetic'; x.fillStyle = '#2b241c'; x.font = 'bold 16px sans-serif';
   x.fillText(`${id}  ${t ? t.kind : ''}  ${g.W.toFixed(1)} x ${g.D.toFixed(1)} m`, 10, 20);
   x.font = '12px sans-serif'; x.textAlign = 'right';
-  x.fillText('1 m grid', Wpx - 10, 20);
+  x.fillText(`1 m grid, ${g.area || Math.round(g.cells.length / 4)} m2 of floor`, Wpx - 10, 20);
   // legend
   let lx = 10, ly = Hpx - foot + 14;
   x.textAlign = 'left'; x.textBaseline = 'middle'; x.font = '12px sans-serif';
@@ -165,18 +185,13 @@ function plan(id, g, t, file) {
   return counts;
 }
 
-function view(id, g, file) {
-  // the near wall and the left wall come off, and anything over the walls
-  const ps = [];
-  for (const [name, u, y, v, q, flag] of g.pcs) {
-    const info = P.piece(name);
-    if (!flag && info.structural && (v < 0.35 || u < -g.W / 2 + 0.35) && info.role !== 'floor') continue;
-    if (!flag && y > 2.9) continue;
-    ps.push({ name, x: u, y, z: v, q });
-  }
-  const cv = createCanvas(600, 450), x = cv.getContext('2d');
-  Rn.draw(x, ps, { az: 200, el: 50, cut: 2.9, cull: true, background: '#f4f1ea' });
-  x.fillStyle = '#2b241c'; x.font = 'bold 15px sans-serif'; x.fillText(`${id}  from the way in`, 10, 20);
+// the room through lib/render.js, straight down with the roof cut off, cropped to the room
+function labPlan(id, g, file) {
+  const { u0, u1, v0, v1, s, Wpx, Hpl } = frameBox(g);
+  const ps = g.pcs.map(([name, u, y, v, q]) => ({ name, x: u, y, z: v, q }));
+  const cv = createCanvas(Wpx, Hpl + 30), x = cv.getContext('2d');
+  Rn.draw(x, ps, { el: 90, az: 0, cut: g.ceil - 0.2, crop: { x0: u0, x1: u1, z0: v0, z1: v1 }, width: Wpx, height: Hpl + 30, grid: true, scale: true, background: '#f4f1ea' });
+  void s;
   fs.writeFileSync(file, cv.toBuffer('image/png'));
 }
 
@@ -185,8 +200,8 @@ let n = 0;
 for (const id of ids) {
   const g = geo[id];
   if (!g) { console.error('no room for', id); continue; }
-  plan(id, g, byId.get(id), path.join(outDir, id + '.png'));
-  view(id, g, path.join(outDir, id + '-3d.png'));
+  if (process.env.RENDER === 'lab') labPlan(id, g, path.join(outDir, id + '.png'));
+  else plan(id, g, byId.get(id), path.join(outDir, id + '.png'));
   n++;
 }
 console.log(n, 'rooms drawn to', outDir);

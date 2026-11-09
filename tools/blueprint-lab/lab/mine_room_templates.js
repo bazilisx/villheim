@@ -445,7 +445,7 @@ function mineRoom(build, m, all) {
       if (p.decor && !it) continue;
       pcs.push([p.name, r2(u), r2(p.y - m.stand), r2(v), qmul(rq, p.q || [0, 0, 0, 1]).map(x => Math.round(x * 1e4) / 1e4), it ? (keptP.has(p) ? 1 : 2) : 0, it ? it.n : 0]);
     }
-    t._geo = { cells: m.cells.map(c => [r2(fr.u(c.x, c.z) - fr.uc), r2(fr.v(c.x, c.z) - fr.v0)]), pcs, W: r2(W), D: r2(Dp), doorU: r2(doorU), ceil };
+    t._geo = { area: m.area, cells: m.cells.map(c => [r2(fr.u(c.x, c.z) - fr.uc), r2(fr.v(c.x, c.z) - fr.v0)]), pcs, W: r2(W), D: r2(Dp), doorU: r2(doorU), ceil };
   }
   stats.kept++;
   templates.push(t);

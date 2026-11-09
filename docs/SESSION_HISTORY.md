@@ -5,11 +5,10 @@ Current facts only. Read this at the start of a session. Narrative is in `docs/d
 
 ## Current State (as of 2026-11-09)
 
-- **Next session:** work the open bug list in the 2026-11-08 note, Session 12 (round 5 results, build 0908775). Read
-  The three kitbash helpers are finished and merged. Three new helpers started 2026-11-09 (Session 2 of that day's
-  note): room layout from professional game interiors (feat/layout), households and messy realism with additive
-  decor stages and working yards (feat/persona), shapes, stage ladder and growth lineage (feat/massing); then home life in the mod
-  (feat/homelife) and a picture study of game interiors. Items on stands are done (lead).
+- **Next session:** the eight "Next test build" items at the top of the open list in `docs/ROADMAP.md` (beds
+  assigned and used and not claimable, sign placement, the Norse s1d1 to s3d3 test pool, no floor sitting, hidden
+  protector and carer, role colors (D-075), short hover texts, role displays (D-074)). Then merge the helpers still
+  running on 2026-11-09: room layout (feat/layout), households (feat/persona), shapes (feat/massing).
 - **Kitbash libraries (2026-11-09, not tested in game):** interior assemblies mined from the corpus and placed in
   every room with 18 built kits (`data/kitbash-interior.json`, `lib/kitbash.js`); yards with fences, gates, paths,
   beds and lamps on s2 and s3 homes and farms (`lib/yards.js`, `data/yards.json`); exterior accents and a coverage

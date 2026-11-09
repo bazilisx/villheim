@@ -161,6 +161,34 @@ function outward(ps, near, x, z, nx, nz, foot, mid) {
   return (x - mid[0]) * nx + (z - mid[1]) * nz >= 0 ? 1 : -1;
 }
 
+// ---------------------------------------------------------------- what belongs to a feature
+
+// the trim each feature takes; anything else near it (stairs passing by, a deck, the next roof) is the building
+const TRIM = /^(beam\d+|beam26|beam45|beam67|pole\d|pillar|pillarBase|xbrace\d\d|cross26|cross45|arch|ledge|fence|panel|wallTorch|groundTorch|hangLight|brazier|lantern|candle|dragon|raven|wolf|stand|standH|banner|sign|garland)$/;
+function allowed(kind, c, fb, fit) {
+  const mh = (fb.h0 + fb.h1) / 2, mo = (fb.o0 + fb.o1) / 2;
+  if (TRIM.test(c)) return !(kind === 'gable' && c === 'fence');
+  if (kind === 'window') {
+    if (/^(shutter|glass|grate)$/.test(c)) return true;
+    if (/^(floor1|floor2)$/.test(c)) return mo > -0.1 && ((mh > -0.45 && mh < 0.25) || (mh > fit.h - 0.2 && mh < fit.h + 0.5)); // a sill board or a hood
+    if (/^(roof26|roof45|gable26|gable45)$/.test(c)) return fb.h0 > fit.h - 0.4; // a hood over it
+    if (/^(wall1x1|wallHalf|logWall|block1)$/.test(c)) return true; // box sides, sills
+    return false;
+  }
+  if (kind === 'door') {
+    if (/^(floor1|floor2|stair)$/.test(c)) return mh < 0.25; // a step, a landing, stairs down
+    if (/^(roof26|roof45|gable26|gable45|cap26|cap45)$/.test(c)) return fb.h0 > fit.h - 0.4; // a hood or a porch roof
+    if (/^(shutter|wall1x1|wallHalf|logWall)$/.test(c)) return true;
+    return false;
+  }
+  if (kind === 'gable') return /^(shutter|glass|gable26inv|gable45inv)$/.test(c) && false || /^(shutter|glass)$/.test(c);
+  if (kind === 'corner') return /^(logWall|logWall4|block1|wall1x1)$/.test(c);
+  return false; // eaves: timber, lamps and carvings only
+}
+// in front of an opening, a person (doors) or the light (windows) has to get through: only a mullion, a lattice,
+// glass or a shutter may stand in it
+const OPEN_OK = /^(glass|shutter|grate|fence|beam1|beam2|pole1|pole2|beam26|beam45|xbrace26|xbrace45|panel)$/;
+
 // ---------------------------------------------------------------- collecting one feature
 
 const stats = { features: {}, why: {} };
@@ -194,6 +222,7 @@ function collect(kind, B, ctx, f, box, isBase, fit, clear, keep) {
     }
     const role = p.info.role;
     if (keep && !keep(p, q, fb)) { if (p.info.structural) anchors.push(fb); continue; }
+    if (!allowed(kind, classOf(p.name), fb, fit)) { if (p.info.structural) anchors.push(fb); continue; }
     if (!TRIM_ROLES.has(role) && !/garland|banner|sign|itemstand|dragon|raven|wolf/.test(p.name)) {
       if (['nature', 'misc', 'clutter'].includes(role)) continue; // plants and odds and ends are not trim
       if (p.info.structural) anchors.push(fb);
@@ -231,7 +260,15 @@ function collect(kind, B, ctx, f, box, isBase, fit, clear, keep) {
     return null;
   }
   if (hidden.size) { const keepI = items.filter((t, i) => !hidden.has(i)); items.length = 0; items.push(...keepI); tally(kind, 'hidden piece dropped'); }
-  if (clear && items.some(t => overlap3(t.sb, clear, 0.05) && !/^(glass|shutter|grate|fence)$/.test(classOf(t.p.name)))) { tally(kind, 'blocked'); return null; }
+  // in front of the opening: a piece covering more than a third of it (seen from outside) blocks it
+  const cover = t => {
+    if (!overlap3(t.fb, clear, 0.05)) return 0;
+    const da = Math.max(0, Math.min(t.fb.a1, clear.a1) - Math.max(t.fb.a0, clear.a0)), dh = Math.max(0, Math.min(t.fb.h1, clear.h1) - Math.max(t.fb.h0, clear.h0));
+    return da * dh / ((clear.a1 - clear.a0) * (clear.h1 - clear.h0));
+  };
+  if (clear && items.some(t => !(clear.ok || /^(glass|shutter|grate|fence)$/).test(classOf(t.p.name)) && (kind === 'door' ? cover(t) > 0.05 : cover(t) > 0.34))) { tally(kind, 'blocked'); return null; }
+  // a motif is trim: wall pieces alone are the wall
+  if (!items.some(t => TRIM.test(classOf(t.p.name)) || /^(shutter|glass|floor1|floor2|stair|roof26|roof45)$/.test(classOf(t.p.name)))) { tally(kind, 'no trim'); return null; }
   const out = items.map(t => ({ n: t.p.name, c: classOf(t.p.name), m: matOf(t.p.name), a: t.a, o: t.o, h: t.h, r: t.r }));
   const wall = Object.entries(baseNames).sort((x, y) => y[1] - x[1])[0];
   instances.push({ kind, fit: { ...fit, wall: wall ? wall[0] : null }, items: out, b: B.ix });
@@ -261,7 +298,8 @@ function mine(B) {
       const key = `${k}|${line}|${t}`; let l = cols.get(key); if (!l) cols.set(key, l = []); l.push([Math.round(b.y0 * 20) / 20, Math.round(b.y1 * 20) / 20]);
     }
   }
-  const inPlane = (k, line) => (p, q) => WALL_FILL(p) && planeOf(p).k === k && Math.abs(planeOf(p).line - line) < 0.8;
+  const cube = p => /^(stone_wall_1x1|blackmarble_1x1|blackmarble_2x2x2|iron_wall_1x1|stone_wall_2x1|blackmarble_2x1x1)$/.test(p.name);
+  const inPlane = (k, line) => (p, q) => WALL_FILL(p) && ((planeOf(p).k === k && Math.abs(planeOf(p).line - line) < 0.8) || (cube(p) && Math.abs(q.o) < 0.8));
 
   // ---- windows: a gap 0.4 to 2.2 m tall between wall below and wall above, the same over neighboring columns
   const gaps = new Map(); // `${k}|${line}|${g0}|${g1}` -> [t...]
@@ -294,7 +332,7 @@ function mine(B) {
       if (!sg) { tally('window', 'unsure side'); continue; }
       const f = { x, y: g0, z, Y: frameYaw(nx * sg, nz * sg) };
       collect('window', B, ctx, f, { a0: -W / 2 - 1.3, a1: W / 2 + 1.3, o0: -0.35, o1: 1.4, h0: -1.0, h1: H + 1.0 }, inPlane(k, line),
-        { w: W, h: H, sill: Math.round((g0 - foot) * 4) / 4 }, null);
+        { w: W, h: H, sill: Math.round((g0 - foot) * 4) / 4 }, { a0: -W / 2 + 0.1, a1: W / 2 - 0.1, o0: -0.15, o1: 1.0, h0: 0.1, h1: H - 0.1, ok: OPEN_OK });
     }
   }
 

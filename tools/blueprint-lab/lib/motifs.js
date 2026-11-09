@@ -216,56 +216,39 @@ function pick(R, cands, family) {
   for (let i = 0; i < cands.length; i++) { x -= ws[i]; if (x <= 0) return cands[i]; }
   return cands[cands.length - 1];
 }
-// the motifs for one building: { door, back, windowFront, window, gable, corner, eave, family }
+// the motifs for one building: get(kind, size, front) picks once per kind, size and front/back and keeps it, so all
+// windows of a size on a facade match; family holds the source builds already used (their other motifs count more)
+let ENABLED = true;
+function setEnabled(v) { ENABLED = !!v; }
+function rngM(seed) { let a = seed >>> 0; return () => { a = (a + 0x6D2B79F5) >>> 0; let t = a; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
 function plan(ctx) {
-  const all = data();
-  if (!all.length) return null;
-  const mt = materials(ctx), R = ctx.R, family = new Set();
+  if (!ENABLED || !data().length) return null;
+  const mt = materials(ctx), R = rngM(Math.floor(ctx.R() * 2147483647)), family = new Set(), cache = new Map();
   const wallStone = /stone|marble|grausten/.test(ctx.C.wallStyle || '') && !/base/.test(ctx.C.wallStyle || '');
-  const choose = (kind, f, front) => {
+  const get = (kind, f, front) => {
+    const key = `${kind}|${f.w || ''}x${f.h || ''}|${f.slope || ''}|${front ? 1 : 0}`;
+    if (cache.has(key)) return cache.get(key);
     const bud = budget(ctx, front), cands = [];
-    for (const m of all) {
+    for (const m of data()) {
       if (!fits(m, kind, f)) continue;
       const w = weightOf(m);
       if (w <= 0) continue;
-      const kept = usable(m, mt, bud, wallStone);
+      const kept = usable(m, mt, kind === 'gable' ? { ...bud, max: bud.max + 4 } : bud, kind === 'window' || kind === 'door' ? wallStone : false);
       if (!kept) continue;
       const g = m.fit;
       cands.push({ m, w, kept, exact: kind === 'window' ? g.w === f.w && g.h === f.h : true });
     }
-    const c = pick(R, cands, family);
-    if (c) family.add(c.m.src);
-    return c;
-  };
-  const out = { mt, family };
-  const twin = ctx.C.windowStyle !== 'single';
-  out.door = choose('door', { w: 2, h: 2 }, true);
-  out.windowFront = choose('window', { w: twin ? 2 : 1, h: 1 }, true);
-  // the other walls take a plainer window of the same family where there is one
-  out.window = out.windowFront;
-  if (out.windowFront && ctx.stage !== 's1') {
-    const plain = choose('window', { w: twin ? 2 : 1, h: 1 }, false);
-    if (plain && plain.kept.length <= out.windowFront.kept.length) out.window = plain;
-  }
-  out.single = choose('window', { w: 1, h: 1 }, false);
-  return out;
-}
-function planRoof(ctx, slope) {
-  const all = data(), mt = materials(ctx), R = ctx.R, family = (ctx.motifs && ctx.motifs.family) || new Set();
-  const choose = (kind, f) => {
-    const bud = budget(ctx, true), cands = [];
-    for (const m of all) {
-      if (!fits(m, kind, f)) continue;
-      const w = weightOf(m);
-      if (w <= 0) continue;
-      const kept = usable(m, mt, { ...bud, max: bud.max + 4 }, false);
-      if (kept) cands.push({ m, w, kept, exact: true });
+    let c = pick(R, cands, family);
+    // the back and side walls: a plainer motif of the same family where one fits, else the front's own
+    if (!front && kind === 'window' && cache.has(key.slice(0, -1) + '1')) {
+      const fr = cache.get(key.slice(0, -1) + '1');
+      if (fr && c && c.kept.length > fr.kept.length) c = fr;
     }
-    const c = pick(R, cands, family);
     if (c) family.add(c.m.src);
+    cache.set(key, c);
     return c;
   };
-  return { gable: choose('gable', { slope }), eave: choose('eave', { slope, overhang: 0 }) };
+  return { mt, family, get, mirror: R() < 0.5, R };
 }
 
 // ---------------------------------------------------------------- placing
@@ -294,13 +277,15 @@ function refit(t, g, f) {
 const BLOCKING = ['door', 'stair', 'storage', 'craft', 'seat', 'table', 'bed', 'light', 'fence', 'deco', 'window', 'roof', 'roofTop', 'roofCorner', 'gable', 'fire', 'floor'];
 // put a motif on a feature; returns the number of pieces placed, or 0 when it would lose too much (nothing placed)
 //   fr: { x, y, z, nx, nz } the feature frame; g: the motif's own fit; f: the feature's size (windows, doors);
-//   opts: { mirror, ground, keepOut: [boxes], minShare }
+//   opts: { mirror, ground, minH (lowest h kept), noInfill (glass in the opening), keepOut: [boxes], minShare }
 function place(b, c, fr, f, opts = {}) {
   const Ck = checksM();
   const cand = [];
   for (const t0 of c.kept) {
     const t = refit(t0, c.m.fit, f);
     if (!t) continue;
+    if (opts.minH != null && t[3] < opts.minH) continue;
+    if (opts.noInfill && f && Math.abs(t[1]) < f.w / 2 - 0.1 && t[3] > 0.1 && t[3] < f.h - 0.1 && Math.abs(t[2]) < 0.35) continue;
     const p = toWorld(fr, t, opts.mirror);
     p.q = quatM(p.yaw);
     cand.push(p);
@@ -323,8 +308,11 @@ function place(b, c, fr, f, opts = {}) {
   const keepOut = [...doors, ...(opts.keepOut || [])];
   const hit = (a, o, pad) => o.x0 < a.x1 - pad && o.x1 > a.x0 + pad && o.y0 < a.y1 - pad && o.y1 > a.y0 + pad && o.z0 < a.z1 - pad && o.z1 > a.z0 + pad;
   const ok = [];
+  const trimNear = b.pieces.filter(q => q.trim && Math.hypot(q.x - fr.x, q.z - fr.z) < 8);
   for (const p of cand) {
     const bx = Ck.aabb(p), info = PM.piece(p.name);
+    // the same shape already there from the rules (a corner post, a sill): one is enough
+    if (trimNear.some(q => classOf(q.name) === p.cls && Math.hypot(q.x - p.x, q.y - p.y, q.z - p.z) < 0.3)) continue;
     if (bx.y0 < (opts.ground != null ? opts.ground : -Infinity) - 0.05) continue;
     if (keepOut.some(z => hit(bx, z, 0.02))) continue;
     let clash = false;
@@ -349,9 +337,9 @@ function place(b, c, fr, f, opts = {}) {
     boxes.forEach((bx, i) => { if (!held[i] && boxes.some((o, j) => held[j] && touch(bx, o, 0.12))) { held[i] = true; more = true; } });
   }
   const placed = ok.filter((p, i) => held[i]);
-  if (placed.length < Math.max(1, Math.ceil(c.kept.length * (opts.minShare != null ? opts.minShare : 0.6)))) return 0;
-  for (const p of placed) b.put(p.name, p.x, p.y, p.z, p.yaw, { trim: true, motif: c.m.id, footed: true, ...(PROPS.test(p.cls) || CARVED.test(p.cls) ? { decor: true } : {}) });
-  return placed.length;
+  if (placed.length < Math.max(1, Math.ceil(c.kept.length * (opts.minShare != null ? opts.minShare : 0.6)))) return [];
+  for (const p of placed) b.put(p.name, p.x, p.y, p.z, p.yaw, { trim: true, motif: c.m.id, footed: true });
+  return placed;
 }
 
 // gables and eaves go in with the roof (generate.js's roof parts, wing-local): the frame there is wing-local too
@@ -366,5 +354,5 @@ function roofParts(c, fr, add, opts = {}) {
   return n;
 }
 
-const apiM = { classOf, matOf, xAsym, symOf, NAMES, data, setData, weights, weightOf, materials, swap, fits, usable, plan, planRoof, place, roofParts, toWorld, refit };
+const apiM = { classOf, matOf, xAsym, symOf, NAMES, data, setData, weights, weightOf, materials, swap, fits, usable, plan, place, roofParts, toWorld, refit, setEnabled, PROPS, CARVED };
 if (NODE_M) module.exports = apiM; else window.VHMotifs = apiM;

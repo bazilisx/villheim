@@ -6,8 +6,13 @@ Current facts only. Read this at the start of a session. Narrative is in `docs/d
 ## Current State (as of 2026-11-09)
 
 - **Next session:** work the open bug list in the 2026-11-08 note, Session 12 (round 5 results, build 0908775). Read
-  Helpers on interior kitbash, yards and exterior coverage merge in stages (branches feat/kitbash-interior,
-  feat/yards, feat/motifs2).
+  The interior helper is on a stage 4 from the 2026-11-09 interior review (feat/kitbash-interior); the accent helper
+  continues on feat/motifs2. The yard library is finished.
+- **Kitbash libraries (2026-11-09, not tested in game):** interior assemblies mined from the corpus and placed in
+  every room with 18 built kits (`data/kitbash-interior.json`, `lib/kitbash.js`); yards with fences, gates, paths,
+  beds and lamps on s2 and s3 homes and farms (`lib/yards.js`, `data/yards.json`); exterior accents and a coverage
+  audit (`lab/coverage.js`, `docs/COVERAGE.md`). New parts: roof overhangs, door lights, gate front doors, gable
+  balconies, roof valleys. Marked clips (`p.clip`) pass the checks up to their mark.
 - **Blueprint lab, building quality (2026-11-09 overnight, Session 13, not tested in game):** room templates, exterior
   details and motifs from the best-liked builds, game-measured piece models with the game's colliders in the checks,
   a design critic, the component bench (`lab/bench.js`), and new parts: stairs, dormers, chimney stacks, lean-tos,

@@ -5779,6 +5779,11 @@ function generate(req) {
       const isGate = T.bigDoor && s === 0 && e.out[1] < 0 && Math.abs(e.x - doorX) <= (F >= 0.9 ? 0.01 : 2.01) && Math.abs(e.z - doorZ) < 0.1;
       let isWindow = !isDoor && !isGate && (!T.tower || (form === 'keep' && s > 0)) && (Math.round((e.x + e.z) / 2) % 2 === 0) && Math.abs(e.x - doorX) + Math.abs(e.z - doorZ) > 2.5;
       if (plan === 'gables' && e.out[1] >= 0) isWindow = false;
+      // a gable end gets one window per floor, in its middle bay (2026-11-09 review: windows scattered over gable ends)
+      const w0g = wings[0];
+      if (isWindow && w0g.alpha === 0 && roofKind === 'gable' && plan !== 'gables' && e.yaw === 90 && Math.abs(Math.abs(e.x - w0g.cx) - w0g.W) < 0.01 && Math.abs(e.z - w0g.cz) > 1.1) isWindow = false;
+      if (!isWindow && !isDoor && !isGate && !T.tower && w0g.alpha === 0 && roofKind === 'gable' && plan !== 'gables' && e.yaw === 90 && Math.abs(Math.abs(e.x - w0g.cx) - w0g.W) < 0.01 &&
+        Math.abs(e.z - w0g.cz) < 1.1 && Math.abs(e.x - doorX) + Math.abs(e.z - doorZ) > 2.5 && !(open || arcade.has(e))) isWindow = true;
       // a stone wall needs a timber bay over every opening (stone cannot span): half as many windows there, so the
       // wall reads as stone with openings, not timber between stone piers (2026-11-09 review)
       if (isWindow && /^stone$|marble|grausten/.test(C.wallStyle || '') && Math.round((e.x + e.z) / 2) % 4 !== 0) isWindow = false;

@@ -333,26 +333,34 @@ Built-up furniture (`lib/kitbash.js` `BUILT_KITS`), hand-made in the library's f
   candle, mead and a jug); a chest of drawers (two chests stacked, a plank top); shelves (two ledges with candles, meads
   and jam over two barrels); a kitchen wall (a half-wall counter with a plank top, the spice rack over it, sausages and
   carrots, barrels with the pots and pans hung over them); a couch (a log bench against a half wall for its back, a
-  post at each end for arms, a pelt in front, a torch); a living room (the couch, a rug, a chest for a low table with
-  mead and a candle, an armchair each side).
-- By windows: drapes (a banner each side, hung 2.35 m up so the hem reaches the floor, a bench under the window).
+  post at each end for arms, a pelt in front, a torch); a living room (the couch, a rug, a low table of two short beams
+  and a ledge with mead and a candle, a stool each side).
+- By windows: drapes (a banner each side, hung 2.35 m up so the hem reaches the floor, from a rod of two beams over
+  the window, a bench under it).
 - By beds: a bedside barrel with a candle and a mead; a nightstand (a barrel with a plank top and a candle); a
-  sleeping alcove (a half wall along the bed's open side, a bedside barrel with a candle on the other).
-- On tables: a feast table (the village biome's own feast, candles, meads); a kitchen island (sausages, carrots, a
-  jug, a barrel at each end).
+  sleeping alcove (a half wall along the bed's open side with a 2 m post at each end, a bedside barrel with a candle
+  on the other).
+- On tables: a feast table (the village biome's own feast, candles, meads, a bench each side); a kitchen island
+  (sausages, carrots, a jug, a barrel at each end).
 - On the free floor (points a metre apart with the room's floor 2.2 m all round, turned along the longest wall and
   across, 0.7 m kept clear round the set): dining sets (a table with a bench each side on a fur rug; a round table
   with four chairs on a deer rug; a long oak table with four benches on two carpets; a Dvergr table with stools), a
   smith's work zone (anvil, grinding wheel, quench barrel, a chest of stock) and a joiner's (a workbench with the
-  chopping block, a chest and a barrel). One set to a room; a tavern's, hall's or temple's room takes one per 25 m2,
-  four at most. Dining sets may move the decorator's tables and seats out of their way.
-- On stations: the smithy's forge gets an anvil, the grinding wheel, the tool rack on the wall behind, a quench barrel
-  and an armor stand; the workshop's workbench the chopping block, the tool shelf and a barrel.
+  chopping block, a chest and a barrel), each in its own kind of room. Each set's footprint stays 0.6 m inside the
+  walls and 1.8 m from where a stair or ladder lands. One set to a room; a tavern's, hall's or temple's room takes
+  one per 16 m2 (six at most), a smithy's or workshop's one per 24 m2 (three at most). Sets may move the decorator's
+  tables, seats, chests and lights out of their way and out of the 0.7 m round them, so a hall's tables become a grid
+  of sets where they fit and stay where they don't.
+- On stations: the smithy's forge gets an anvil, the grinding wheel and a quench barrel; the workshop's workbench the
+  chopping block, a barrel and a chest.
 - In corners: the tavern's serving corner (stacked barrels behind a half-wall counter with meads); a bath corner.
 - Under stairs: a wood chest under the highest flight (two barrels where the village makes them), below the audit's
-  stair box.
-- Walls between the furniture: every 2.5 m at d3 (3.2 m at d2) where nothing hangs between 1.3 and 2.4 m within
-  0.9 m either side, a ledge with a candle and a mead, or a banner.
+  stair box; tried first in every room with a stair. The generator's keep-clear rectangle over the flight does not
+  apply under it; the climb's own zone does.
+- Walls between the furniture, three passes: every 2.5 m at d3 (3.2 m at d2) where nothing hangs between 1.3 and
+  2.4 m within 0.9 m either side, a ledge with a candle and a mead, or a banner; at d3 every 3 m where nothing is
+  between 2.0 and 2.7 m, a second ledge near 2.2 m with a jug and jam; and a wall torch where no light is within 2 m
+  either side (Black Forest on).
 
 A kit's core pieces (the table of a dining set, the forge's anvil, the half wall of a counter) are marked `key`: a kit
 whose core piece cannot go is left out, so no rug or bench is left without its table. Each building type comes first
@@ -360,7 +368,10 @@ with its own: the home's bedside, the smithy's forge, the workshop's bench, the 
 wall. In homes and their rooms the decorator's second and later tables in one room go, with their seats, so each room
 has one dining place (`spreadTables`). A rug the furnishing laid with nothing standing on it (four of a table's, bed's
 or bench's five footprint points on the rug) goes under the nearest of them within 2.5 m, long side along theirs, or
-out when that one has a rug already or there is none (`seatRugs`). Pots, bread and cooked meat are left out: their proxies draw as grey-green
+out when that one has a rug already or there is none (`seatRugs`). Beds the furnishing packed within 0.35 m of each
+other or within 1.2 m of a stair go with the chest at their foot, a house keeping one (`spaceBeds`). In a row of four
+chests or barrels or more along a wall every third goes, so they stand in twos (`groupStorage`). Woodpiles and stone
+piles stay out of the interiors: the checks forbid woodpiles indoors and the audit any pile. Pots, bread and cooked meat are left out: their proxies draw as grey-green
 boxes and planks.
 
 Placing. After the furnishing, `furnishRooms` reads every room as the decorator does (`readLevel`), with its anchors:
@@ -387,8 +398,8 @@ Materials (D-066). `pieces.js` `minor`: rugs, banners, food and feasts, pots, ca
 props, treasure, signs. They pass the materials check in any biome, and the generator's last pass (`biomeSafe`) keeps
 them; stations, beds, chests, tables, seats, fires and building pieces still need their own.
 
-Cost: in Node the 154-design comparison (every type, seven biomes, s2d2 and s3d3) took 81 ms a design without the
-library and 125 ms with it (2026-11-09, after filing pieces by their own reach, reading the rooms once and passing
+Cost: in Node the 154-design comparison (every type, seven biomes, s2d2 and s3d3) took 74 ms a design without the
+library and 113 ms with it (2026-11-09, third round; after filing pieces by their own reach, reading the rooms once and passing
 over free-floor spots with fixed furniture on them).
 
 ### Items on stands (for the mod)

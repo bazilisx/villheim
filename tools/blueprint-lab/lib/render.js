@@ -365,6 +365,20 @@ function pieceModel(name, useMesh) {
       faces.push({ pts, n, U: [1, 0, 0], V: [0, 1, 0], u0: 0, v0: 0, du: 1, dv: 1, col, pat: 0, part: 0, alpha: 1, closed: false, mesh: true });
     }
     m = { name, info, faces, model: true, mesh: true };
+  } else if (md && md.parts && md.parts.length && /roof_ocorner/.test(name) && md.snap && md.snap.length === 4) {
+    // an outer roof corner (hip corner) as its two sloped triangles meeting on the diagonal; the fitted boxes stepped
+    // (the four snap points are the three low corners and the high one)
+    const ys = md.snap.map(p => p[1]), hi = md.snap[ys.indexOf(Math.max(...ys))], lows = md.snap.filter(p => p !== hi);
+    const mid = lows.find(p => Math.abs(p[0] - hi[0]) > 0.5 && Math.abs(p[2] - hi[2]) > 0.5); // the corner opposite the high point
+    const ends = lows.filter(p => p !== mid);
+    const part = md.parts[0], col = partColor(part, info), pat = patternFor(info, part, name);
+    for (const e of ends) {
+      const tri = [hi, e, mid].map(p => [p[0], p[1] + 0.05, p[2]]);
+      let n = norm(cross(sub(tri[1], tri[0]), sub(tri[2], tri[0])));
+      if (n[1] < 0) { tri.reverse(); n = n.map(v => -v); }
+      faces.push({ pts: tri, n, ...faceFrame(tri, n), col, pat, part: 0, alpha: 1, closed: false });
+    }
+    m = { name, info, faces, model: true };
   } else if (md && md.parts && md.parts.length) {
     md.parts.forEach((part, pi) => {
       const col = partColor(part, info), pat = patternFor(info, part, name);

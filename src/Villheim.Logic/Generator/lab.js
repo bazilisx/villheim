@@ -5095,7 +5095,10 @@ function barCounter(b, ctx, zones) {
   const lx = room.x1 - room.x0, lz = room.z1 - room.z0;
   if (lx >= 8) for (const sz of [1, -1]) sides.push({ along: 'x', wall: sz > 0 ? room.z1 : room.z0, n: -sz, lo: room.x0, hi: room.x1 });
   if (lz >= 8) for (const sx of [1, -1]) sides.push({ along: 'z', wall: sx > 0 ? room.x1 : room.x0, n: -sx, lo: room.z0, hi: room.z1 });
-  const solid = b.pieces.filter(p => !['floor', 'rug', 'roof', 'roofTop', 'roofCorner', 'gable'].includes(PB.piece(p.name).role) || p.decor).map(p => ({ p, o: Ck.aabb(p) }));
+  // tables, seats, chests and the like may give way to the bar (it went in only where the floor was still bare,
+  // one tavern in a hundred); the fire, beds, stations and anything built stay
+  const movable = p => p.decor && ['table', 'seat', 'storage', 'rug', 'deco', 'clutter', 'light'].includes(PB.piece(p.name).role);
+  const solid = b.pieces.filter(p => (!['floor', 'rug', 'roof', 'roofTop', 'roofCorner', 'gable'].includes(PB.piece(p.name).role) || p.decor) && !movable(p)).map(p => ({ p, o: Ck.aabb(p) }));
   for (const s of sides) {
     for (let c = s.lo + 3; c <= s.hi - 3 + 0.01; c += 1) {
       // the counter's line 1.5 m in from the wall, the whole working area from the wall to 1 m in front of it kept free
@@ -5105,13 +5108,18 @@ function barCounter(b, ctx, zones) {
       const hit = solid.some(({ p, o }) => o.y1 > y + 0.2 && o.y0 < y + 2.2 && o.x0 < box.x1 && o.x1 > box.x0 && o.z0 < box.z1 && o.z1 > box.z0 && !(PB.piece(p.name).role === 'wall' && !p.decor && (s.along === 'x' ? Math.abs(p.z - s.wall) < 0.3 : Math.abs(p.x - s.wall) < 0.3)))
         || zones.some(z => z.x0 < box.x1 && z.x1 > box.x0 && z.z0 < box.z1 && z.z1 > box.z0 && z.y0 < y + 2 && z.y1 > y);
       if (hit) continue;
+      // what stood there goes, with whatever stood on it
+      const out = b.pieces.filter(p => { if (!movable(p)) return false; const o = Ck.aabb(p); return o.x0 < box.x1 && o.x1 > box.x0 && o.z0 < box.z1 && o.z1 > box.z0 && o.y0 < y + 2.2; });
+      const riders = b.pieces.filter(q => q.decor && !out.includes(q) && out.some(p => { const o = Ck.aabb(p); return q.x > o.x0 && q.x < o.x1 && q.z > o.z0 && q.z < o.z1 && q.y > p.y + 0.2 && q.y < p.y + 1.5; }));
+      b.pieces = b.pieces.filter(p => !out.includes(p) && !riders.includes(p));
       const at = (a, d) => (s.along === 'x' ? [a, s.wall + s.n * d] : [s.wall + s.n * d, a]);
       const yaw = s.along === 'x' ? 0 : 90, T = { decor: true, trim: true };
       for (const a of [c - 1, c + 1]) { const [x, z] = at(a, dIn); b.put(half, x, y + 0.5, z, yaw, T); }
       // the top: a beam along each half wall (a 1 x 1 floor here would count as a floor to stand on in the checks)
       for (const a of [c - 1, c + 1]) { const [x, z] = at(a, dIn); b.put(ctx.K.beam || 'wood_beam', x, y + 1.1, z, yaw, T); }
       const barrel = can(ctx.biome, 'piece_chest_barrel') ? 'piece_chest_barrel' : 'piece_chest_wood';
-      for (const a of [c - 1.2, c + 1.2]) { const [x, z] = at(a, 0.5); b.put(barrel, x, y + 0.1, z, yaw + 180, T); }
+      const thick = /stone|marble|grausten/.test((ctx.C && ctx.C.wallStyle) || '') ? 0.5 : 0; // a stone wall is a metre thick
+      for (const a of [c - 1.2, c + 1.2]) { const [x, z] = at(a, 0.5 + thick); b.put(barrel, x, y + 0.1, z, yaw + 180, T); }
       if (can(ctx.biome, 'itemstandh')) for (const a of [c - 1.1, c + 0.4]) { const [x, z] = at(a, dIn); b.put('itemstandh', x, y + 1.35, z, yaw, T); }
       b.notes.push('A bar counter of half walls and planks, barrels behind it.');
       return true;
@@ -6131,6 +6139,7 @@ function generate(req) {
   if (flatCell) { fireAt = { x: flatCell[0], z: flatCell[1] }; b.vents.push({ kind: 'flat', x: flatCell[0], z: flatCell[1], rect: flue, from: storeys > 1 ? F + SH : top }); }
   if (!req.skipDecor) Decor.decorate(b, { use: T.use, decor, biome, type, R, culture: cultureKey, doorX: b.doorX, fireAt });
   settle(b, { K, C, biome, use: T.use, type, stoneOK, F, SH, storeys, top, flat, cells, wing: w0, roofTop, skipDecor: !!req.skipDecor });
+  if (!req.skipDecor) tidyFurniture(b);
   if (!req.skipDecor && stoneOK && F < 0.01 && !C.stoneWalls) hearthstone(b, K);
   if (!req.skipDecor) { const zones = keepClear(b); Details.interior(b, { ...dctx, zones }); Kitbash.apply(b, { ...dctx, decor }, zones); }
   else Details.commitMotifs(b, dctx); // bare builds (ranked before furnishing) carry the same wall trim
@@ -6455,6 +6464,28 @@ function hearthstone(b, K) {
     }
   }
   if (b.pieces.some(p => p.hearth)) b.notes.push('Stone flags under the fire.');
+}
+
+// Tidy the furnishing (2026-11-09 interior review): a rug with nothing on it goes, and so does a chair with no table
+// to sit at (one chair on a rug facing nothing read as dropped). Benches by walls and seats round a fire stay.
+function tidyFurniture(b) {
+  const Ck = checksLib(), F = Decor.FURNITURE;
+  const deco = b.pieces.filter(p => p.decor && !p.trim);
+  const boxes = new Map(deco.map(p => [p, Ck.aabb(p)]));
+  const tables = deco.filter(p => (F[p.name] || {}).cat === 'table');
+  const anchors = deco.filter(p => ['table', 'bed', 'seat', 'craft', 'storage', 'fire'].includes(P.piece(p.name).role) && P.piece(p.name).role !== 'rug');
+  const near = (o, q, m) => { const r = boxes.get(q); return r.x0 < o.x1 + m && r.x1 > o.x0 - m && r.z0 < o.z1 + m && r.z1 > o.z0 - m && Math.abs(r.y0 - o.y0) < 0.6; };
+  const gone = new Set();
+  for (const p of deco) {
+    if (/^piece_chair/.test(p.name)) { const o = boxes.get(p); if (!tables.some(t => near(o, t, 0.9)) && !deco.some(f => /fire_pit|hearth/.test(f.name) && near(o, f, 1.6))) gone.add(p); }
+  }
+  for (const p of deco) {
+    if (P.piece(p.name).role !== 'rug') continue;
+    const o = boxes.get(p);
+    // something standing on it (inside its footprint, not just touching an edge)
+    if (!anchors.some(q => !gone.has(q) && q !== p && near(o, q, -0.3))) gone.add(p);
+  }
+  if (gone.size) b.pieces = b.pieces.filter(p => !gone.has(p));
 }
 
 // Things set on a table (dishes, candles) whose table came out later (a clash, a ladder, the fire's ring) come out too.

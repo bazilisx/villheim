@@ -847,6 +847,7 @@ function generate(req) {
   if (flatCell) { fireAt = { x: flatCell[0], z: flatCell[1] }; b.vents.push({ kind: 'flat', x: flatCell[0], z: flatCell[1], rect: flue, from: storeys > 1 ? F + SH : top }); }
   if (!req.skipDecor) Decor.decorate(b, { use: T.use, decor, biome, type, R, culture: cultureKey, doorX: b.doorX, fireAt });
   settle(b, { K, C, biome, use: T.use, type, stoneOK, F, SH, storeys, top, flat, cells, wing: w0, roofTop, skipDecor: !!req.skipDecor });
+  if (!req.skipDecor) tidyFurniture(b);
   if (!req.skipDecor && stoneOK && F < 0.01 && !C.stoneWalls) hearthstone(b, K);
   if (!req.skipDecor) { const zones = keepClear(b); Details.interior(b, { ...dctx, zones }); Kitbash.apply(b, { ...dctx, decor }, zones); }
   else Details.commitMotifs(b, dctx); // bare builds (ranked before furnishing) carry the same wall trim
@@ -1171,6 +1172,28 @@ function hearthstone(b, K) {
     }
   }
   if (b.pieces.some(p => p.hearth)) b.notes.push('Stone flags under the fire.');
+}
+
+// Tidy the furnishing (2026-11-09 interior review): a rug with nothing on it goes, and so does a chair with no table
+// to sit at (one chair on a rug facing nothing read as dropped). Benches by walls and seats round a fire stay.
+function tidyFurniture(b) {
+  const Ck = checksLib(), F = Decor.FURNITURE;
+  const deco = b.pieces.filter(p => p.decor && !p.trim);
+  const boxes = new Map(deco.map(p => [p, Ck.aabb(p)]));
+  const tables = deco.filter(p => (F[p.name] || {}).cat === 'table');
+  const anchors = deco.filter(p => ['table', 'bed', 'seat', 'craft', 'storage', 'fire'].includes(P.piece(p.name).role) && P.piece(p.name).role !== 'rug');
+  const near = (o, q, m) => { const r = boxes.get(q); return r.x0 < o.x1 + m && r.x1 > o.x0 - m && r.z0 < o.z1 + m && r.z1 > o.z0 - m && Math.abs(r.y0 - o.y0) < 0.6; };
+  const gone = new Set();
+  for (const p of deco) {
+    if (/^piece_chair/.test(p.name)) { const o = boxes.get(p); if (!tables.some(t => near(o, t, 0.9)) && !deco.some(f => /fire_pit|hearth/.test(f.name) && near(o, f, 1.6))) gone.add(p); }
+  }
+  for (const p of deco) {
+    if (P.piece(p.name).role !== 'rug') continue;
+    const o = boxes.get(p);
+    // something standing on it (inside its footprint, not just touching an edge)
+    if (!anchors.some(q => !gone.has(q) && q !== p && near(o, q, -0.3))) gone.add(p);
+  }
+  if (gone.size) b.pieces = b.pieces.filter(p => !gone.has(p));
 }
 
 // Things set on a table (dishes, candles) whose table came out later (a clash, a ladder, the fire's ring) come out too.

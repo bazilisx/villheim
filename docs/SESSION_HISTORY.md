@@ -6,8 +6,7 @@ Current facts only. Read this at the start of a session. Narrative is in `docs/d
 ## Current State (as of 2026-11-08)
 
 - **Next session:** work the open bug list in the 2026-11-08 note, Session 12 (round 5 results, build 0908775). Room
-  templates unfinished on feat/room-templates; lab structure on fix/lab-round3. Verify fixes by tracing code paths and
-  say plainly what is untested in game.
+  templates unfinished on feat/room-templates; lab structure on fix/lab-round3.
 - **Design review (the current work):** how-to for Tyler in `docs/DESIGN_REVIEW_GUIDE.md`. Review sheet
   https://docs.google.com/spreadsheets/d/1rHaZArWhEa8V43UTZePM9EQSBwS6bvjsmAFPhnlQs6o/edit (tabs Pass 2, Review,
   All data, Variants, Mods; sheet script `scripts/review-sheet.gs`).

@@ -191,7 +191,23 @@ function fits(m, kind, f) {
 }
 const PROPS = /^(wallTorch|groundTorch|hangLight|brazier|lantern|candle|banner|sign|stand|standH|garland)$/, CARVED = /^(dragon|raven|wolf)$/;
 // the motif's pieces this building may have (lamps and carvings by decor stage), or null when the motif is too much
+// a window's trim lies on the wall: a sloped beam standing out from it, or a long beam reaching out, is a strut or a
+// bracket of something else in its source build and reads as debris on a plain wall
+function flatOnWall(m) {
+  if (m.kind !== 'window' && m.kind !== 'corner') return true;
+  // the motif built on a frame at the origin facing +z (windows) or the corner of two walls facing +x and +z
+  const fr = m.kind === 'window' ? { x: 0, y: 0, z: 0, nx: 0, nz: 1 } : { x: 0, y: 0, z: 0, nx: Math.SQRT1_2, nz: Math.SQRT1_2 };
+  const Ck = checksM();
+  return !m.p.some(t => {
+    const c = classOf(t[0]), p = toWorld(fr, [t[0], t[1], t[2], t[3], t[4], c]);
+    const bx = Ck.aabb({ ...p, q: quatM(p.yaw) });
+    if (m.kind === 'corner') return bx.x1 > 0.8 || bx.z1 > 0.8; // log ends and posts close to the corner, nothing reaching out
+    const across = Math.abs(Math.sin(t[4] * Math.PI / 180)) > 0.5;
+    return /^cross/.test(c) || (/^beam(26|45|67)$/.test(c) && across) || bx.z1 > (/^floor/.test(c) ? 1.0 : 0.75);
+  });
+}
 function usable(m, mt, bud, wallStone) {
+  if (!flatOnWall(m)) return null;
   if ((m.fit.wall && /stone|marble|grausten|iron_wall/.test(m.fit.wall)) !== !!wallStone && (m.kind === 'window' || m.kind === 'door')) return null;
   const sw = swap(m, mt);
   if (!sw) return null;
@@ -308,7 +324,7 @@ function place(b, c, fr, f, opts = {}) {
     p.q = quatM(p.yaw);
     cand.push(p);
   }
-  if (!cand.length) return 0;
+  if (!cand.length) return [];
   const own = (p, wall) => {
     // a wall piece in the feature's own wall plane (trim laid on or in the wall is fine there)
     const info = PM.piece(wall.name);
@@ -327,7 +343,9 @@ function place(b, c, fr, f, opts = {}) {
   const keepOut = [...doors, ...climbs, ...(opts.keepOut || [])];
   const hit = (a, o, pad) => o.x0 < a.x1 - pad && o.x1 > a.x0 + pad && o.y0 < a.y1 - pad && o.y1 > a.y0 + pad && o.z0 < a.z1 - pad && o.z1 > a.z0 + pad;
   const ok = [];
-  const trimNear = b.pieces.filter(q => q.trim && Math.hypot(q.x - fr.x, q.z - fr.z) < 8);
+  // pieces already there, and motif pieces waiting to go in after the furnishing (details.js)
+  const there = b.motifPending && b.motifPending.length ? b.pieces.concat(b.motifPending.map(p => ({ ...p, trim: true, q: p.q || quatM(p.yaw) }))) : b.pieces;
+  const trimNear = there.filter(q => q.trim && Math.hypot(q.x - fr.x, q.z - fr.z) < 8);
   for (const p of cand) {
     const bx = Ck.aabb(p), info = PM.piece(p.name);
     // the same shape already there from the rules (a corner post, a sill): one is enough
@@ -336,11 +354,11 @@ function place(b, c, fr, f, opts = {}) {
     // nothing reaches into the building past the wall (a hood board half indoors, a sill through the wall)
     if (opts.inward !== false) {
       const ins = Math.min(...[[bx.x0, bx.z0], [bx.x0, bx.z1], [bx.x1, bx.z0], [bx.x1, bx.z1]].map(([x, z]) => (x - fr.x) * fr.nx + (z - fr.z) * fr.nz));
-      if (ins < -0.4) continue;
+      if (ins < -0.2) continue;
     }
     if (keepOut.some(z => hit(bx, z, 0.02))) continue;
     let clash = false;
-    for (const q of b.pieces) {
+    for (const q of there) {
       const qb = boxOf(Ck, q);
       if (!hit(bx, qb, 0.06)) continue;
       const qi = PM.piece(q.name);
@@ -355,7 +373,7 @@ function place(b, c, fr, f, opts = {}) {
   // nothing in the air: each piece touches the building or a placed piece that does
   const boxes = ok.map(p => Ck.aabb(p)), held = ok.map(() => false);
   const touch = (a, o, g) => a.x0 <= o.x1 + g && a.x1 >= o.x0 - g && a.y0 <= o.y1 + g && a.y1 >= o.y0 - g && a.z0 <= o.z1 + g && a.z1 >= o.z0 - g;
-  const struct = b.pieces.filter(q => PM.piece(q.name).structural && !q.decor);
+  const struct = there.filter(q => PM.piece(q.name).structural && !q.decor);
   boxes.forEach((bx, i) => { if (bx.y0 <= (opts.ground != null ? opts.ground : 0) + 0.3 || struct.some(q => touch(bx, boxOf(Ck, q), 0.12))) held[i] = true; });
   for (let k = 0, more = true; more && k < 12; k++) {
     more = false;
@@ -363,6 +381,7 @@ function place(b, c, fr, f, opts = {}) {
   }
   const placed = ok.filter((p, i) => held[i]);
   if (placed.length < Math.max(1, Math.ceil(c.kept.length * (opts.minShare != null ? opts.minShare : 0.6)))) return [];
+  if (opts.dry) { for (const p of placed) p.motif = c.m.id; return placed; }
   for (const p of placed) b.put(p.name, p.x, p.y, p.z, p.yaw, { trim: true, motif: c.m.id, footed: true });
   return placed;
 }

@@ -61,7 +61,9 @@ function profile(ctx) {
       ['home', 'storage', 'tavern'].includes(ctx.type) && (sN >= 3 || (sN === 2 && dN >= 3)) && ['rect', 'long', 'L', 'T'].includes(ctx.plan) &&
       !C.awnings && !ctx.flat && roll(0.75),
     gableWindow: north && sN >= 2,
-    rafterTails: north && sN >= 2 && !C.eaves2 && (C.eaves || 1) < 2,
+    // the rule's rafter tails read as planks lying on the roof (2026-11-09 renders): eaves take motifs only
+    rafterTails: false,
+    eaveTrim: north && sN >= 2 && !C.eaves2 && (C.eaves || 1) < 2,
     purlinEnds: north && sN >= 2,
     gableTruss: north && sN >= 2 && roll(0.6),
     gablePorch: north && (sN >= 3 || (sN === 2 && dN >= 3)) && ['home', 'longhouse', 'tavern', 'temple'].includes(ctx.type) && roll(0.5),
@@ -264,6 +266,25 @@ function exterior(b, ctx) {
 
 // ---------------------------------------------------------------- motifs (lib/motifs.js)
 
+// Motif pieces on the walls wait until the rooms are furnished (details interior), so the decorator lays out the rooms
+// as it would without them; meanwhile they count for the motifs that follow.
+function hold(b, placed) {
+  b.motifPending = b.motifPending || [];
+  for (const p of placed) b.motifPending.push(p);
+}
+function commitMotifs(b, ctx) {
+  const pend = b.motifPending || [];
+  delete b.motifPending;
+  if (!pend.length) return;
+  const Ck = checksD(), furn = b.pieces.filter(p => p.decor).map(p => Ck.aabb(p));
+  const hit = (a, o) => o.x0 < a.x1 - 0.04 && o.x1 > a.x0 + 0.04 && o.y0 < a.y1 - 0.04 && o.y1 > a.y0 + 0.04 && o.z0 < a.z1 - 0.04 && o.z1 > a.z0 + 0.04;
+  for (const p of pend) {
+    if (furn.some(o => hit(Ck.aabb(p), o))) continue; // what the furnishing put there first stays
+    b.put(p.name, p.x, p.y, p.z, p.yaw, { trim: true, motif: p.motif, footed: true });
+  }
+  pruneMotifs(b, ctx);
+}
+
 // The last pass over the motifs' pieces: one that doubles another piece, is not connected to the ground or would
 // fall by its material (the game's support, checks.js) comes out, and what hung on it with it.
 function pruneMotifs(b, ctx) {
@@ -308,7 +329,8 @@ function motifWindow(b, ctx, MT, o, used) {
   const front = ctx.door && e.out[0] === ctx.door.out[0] && e.out[1] === ctx.door.out[1];
   const c = MT.get('window', f, front);
   if (!c) return false;
-  const placed = MotifsD.place(b, c, { x, y: y0 + 1, z, nx: ox, nz: oz }, f, { mirror: MT.mirror, ground: 0, noInfill: glass });
+  const placed = MotifsD.place(b, c, { x, y: y0 + 1, z, nx: ox, nz: oz }, f, { mirror: MT.mirror, ground: 0, noInfill: glass, dry: true });
+  hold(b, placed);
   if (!placed.length) return false;
   used.add(c.m.id);
   return true;
@@ -324,8 +346,9 @@ function motifDoor(b, ctx, MT, o, used) {
   if (!c) return null;
   const rise = c.m.fit.rise || 0, F = ctx.F;
   const placed = MotifsD.place(b, c, { x: e.x, y: y0, z: e.z, nx: ox, nz: oz }, f,
-    { mirror: MT.mirror, ground: 0, minH: Math.abs(rise - (o.storey ? 99 : F)) < 0.3 ? null : -0.2 });
+    { mirror: MT.mirror, ground: 0, minH: Math.abs(rise - (o.storey ? 99 : F)) < 0.3 ? null : -0.2, dry: true });
   if (!placed.length) return null;
+  hold(b, placed);
   used.add(c.m.id);
   return { id: c.m.id, lit: placed.some(p => PD.piece(p.name).role === 'light'), step: placed.some(p => PD.piece(p.name).role === 'floor' && p.y < y0 + 0.3) };
 }
@@ -346,8 +369,8 @@ function motifCorners(b, ctx, MT, used) {
     // outside: each wall lies on the far side of the other's outward direction
     if ((a.x - x) * bb.out[0] + (a.z - z) * bb.out[1] > -0.5 || (bb.x - x) * a.out[0] + (bb.z - z) * a.out[1] > -0.5) continue;
     const dx = a.out[0] + bb.out[0], dz = a.out[1] + bb.out[1], l = Math.hypot(dx, dz);
-    const placed = MotifsD.place(b, c, { x, y: F, z, nx: dx / l, nz: dz / l }, null, { mirror: MT.mirror, ground: 0, inward: false });
-    if (placed.length) n++;
+    const placed = MotifsD.place(b, c, { x, y: F, z, nx: dx / l, nz: dz / l }, null, { mirror: MT.mirror, ground: 0, inward: false, dry: true });
+    if (placed.length) { n++; hold(b, placed); }
   }
   if (n) used.add(c.m.id);
   return n;
@@ -451,6 +474,8 @@ function bargeboards(K, C, w, ctx, rows, ends, add, low, pivot, r) {
     const n = MotifsD.roofParts(gm, { x: sg * w.W, y: capY, z: 0, nx: sg, nz: 0 }, addM, { mirror: MT.mirror, skip: p => {
       const v = Math.abs(p.z), h = PD.piece(p.name).size[1] / 2;
       if (v > w.D - 0.3 || p.y - h < top - 0.05 || p.o < -0.35 || p.o > 1.3) return true; // inside the gable, in front of it
+      // a long beam standing straight out of the gable face reads as a stray plank
+      if (/^beam(2|4)$/.test(p.cls) && Math.abs(Math.cos((p.yaw - (sg > 0 ? 90 : 270)) * Math.PI / 180)) < 0.5) return true;
       // under the roof line: the motif's piece may not stand out through the roof
       if (p.y > capY - (r / 2) * Math.max(0, v - 1) + 0.6) return true;
       if (ctx.dragonsHere && v < 1.5 && p.y > capY - 1.5) return true;
@@ -464,11 +489,16 @@ function bargeboards(K, C, w, ctx, rows, ends, add, low, pivot, r) {
   });
   if (gableDone) ctx.motifUsed = [...(ctx.motifUsed || []), gm.m.id];
   // the eaves: one bay of the motif on every 2 m of the lowest row, both sides
-  if (em && X.rafterTails) {
+  if (em && X.eaveTrim) {
     const edge = 3 + 2 * rows;
     let n = 0;
     for (let u = -w.W + 1; u <= w.W - 1 + 0.01; u += 2) for (const sv of [-1, 1])
-      n += MotifsD.roofParts(em, { x: u, y: low(rows), z: sv * edge, nx: 0, nz: sv }, addM, { mirror: MT.mirror, skip: p => p.o < -0.05 || p.h < -0.9 || Math.abs(p.a) > 1.05 });
+      n += MotifsD.roofParts(em, { x: u, y: low(rows), z: sv * edge, nx: 0, nz: sv }, addM, { mirror: MT.mirror, skip: p => {
+        if (p.o < -0.05 || p.h < -0.9 || Math.abs(p.a) > 1.05) return true;
+        // under the roof: nothing through it (the roof rises inward from the edge)
+        const half = PD.piece(p.name).size[1] / 2, under = (r / 2) * Math.max(0, -p.o) - 0.15;
+        return p.h + half > under;
+      } });
     if (n) { eaveDone = true; ctx.motifUsed = [...(ctx.motifUsed || []), em.m.id]; }
   }
   // rafter tails: a sloped beam at every seam of the lowest roof row, half a metre out past its edge and just under it
@@ -561,6 +591,7 @@ function benchByDoor(b, ctx) {
 function interior(b, ctx) {
   const X = ctx.profile;
   if (!X) return;
+  commitMotifs(b, ctx);
   const { K } = ctx, Ck = checksD();
   benchByDoor(b, ctx);
   const furniture = () => b.pieces.filter(p => p.decor);

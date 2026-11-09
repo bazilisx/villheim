@@ -78,7 +78,9 @@ const RULES = [
   [/spiralstair/, 'stair', [2, 4, 2], 'box'],
   // a step ladder stands on its pivot and climbs 2 m over 2 m toward its local -z (CLIMB below)
   [/stepladder|ladder/i, 'stair', [1, 2, 2], 'ladder'],
-  [/stair/i, 'stair', [1, 2, 2], 'stair'],
+  // a wood or stone stair is 2 m wide and climbs 1 m over 2 m toward its local -z from its pivot at its foot (corpus:
+  // stairs stack 1 m up and 2 m on; the game's mesh, 2026-11-09)
+  [/stair/i, 'stair', [2, 1, 2], 'stair'],
   // wall torches before the wall rules, or 'piece_walltorch' reads as a 2x2 wall
   [/walltorch/i, 'light', [0.3, 0.8, 0.3], 'prop'],
   // floor torches pivot 0.75 m above their foot (measured by the interior helper, 2026-11-09)
@@ -88,7 +90,7 @@ const RULES = [
   // banners hang down from their pivot
   [/banner/i, 'deco', [1, 2, 0.2], 'hang'],
   // openings; the cloth door hangs from its pivot, its leaf along its local z (DOORS below)
-  [/cloth_hanging_door/, 'door', [0.2, 3, 2], 'hang'],
+  [/cloth_hanging_door/, 'door', [0.2, 2, 2], 'hang'],
   [/door|gate/i, 'door', [2, 2, 0.2], 'box'],
   [/window/i, 'window', [1, 1, 0.2], 'box'],
   [/arch/i, 'wall', [2, 2, 0.3], 'box'],
@@ -100,7 +102,8 @@ const RULES = [
   [/wall_1x1|1x1|stoneblock/i, 'wall', [1, 1, 0.5], 'box'],
   [/2x2x1/, 'wall', [2, 1, 2], 'box'],
   [/wall_half|halfwall/i, 'wall', [2, 1, 0.2], 'box'],
-  [/wall_quarter|quarterwall/i, 'wall', [2, 0.5, 0.2], 'box'],
+  // 'Wood Wall 1x1': neighbors in the corpus stack 1 m apart up and sideways (it was read as 2 x 0.5 m before 2026-11-09)
+  [/wall_quarter|quarterwall/i, 'wall', [1, 1, 0.2], 'box'],
   [/wall_log/, 'wall', [2, 0.5, 0.4], 'box'],
   [/stake_wall|stakewall|sharpstakes/, 'fence', [4, 3, 0.5], 'box'],
   [/fence/, 'fence', [2, 1, 0.2], 'box'],
@@ -175,7 +178,10 @@ function piece(name) {
   if (SIZES[n]) size = SIZES[n];
   const mat = material(n);
   const structural = ['wall', 'floor', 'roof', 'roofTop', 'roofCorner', 'gable', 'beam', 'pole', 'stair', 'door', 'window', 'fence'].includes(role);
-  c = { name, role, size, shape, mat, color: MAT[mat], structural, exact: false };
+  // walls that stand on their pivot in the game (measured from the game's meshes, 2026-11-09): the generator writes
+  // walls by their middle, and finish() in generate.js moves these down to their foot
+  const onPivot = /^(wood_wall_quarter|Piece_grausten_wall_|Piece_grausten_window_|darkwood_decowall$|crystal_wall_1x1$)/.test(n);
+  c = { name, role, size, shape, mat, color: MAT[mat], structural, exact: false, onPivot };
   const e = exported() && exported()[name];
   if (e) {
     // Solid colliders first (what the game tests against), the meshes when the piece has none.
@@ -215,7 +221,7 @@ const NEEDS = {
   charcoal_kiln: 'Black Forest', piece_stonecutter: 'Black Forest', piece_spinningwheel: 'Plains', piece_artisanstation: 'Mountain',
   rug_deer: 'Meadows', rug_wolf: 'Mountain', rug_fur: 'Plains', rug_hare: 'Mistlands', rug_straw: 'Meadows', jute_carpet: 'Mistlands',
   itemstand: 'Meadows', itemstandh: 'Meadows', ArmorStand: 'Swamp', sign: 'Meadows', piece_banner01: 'Plains', piece_banner02: 'Plains',
-  piece_banner05: 'Plains', piece_groundtorch_wood: 'Meadows', piece_groundtorch: 'Swamp', piece_walltorch: 'Black Forest',
+  piece_banner05: 'Plains', piece_groundtorch_wood: 'Meadows', piece_groundtorch: 'Swamp', piece_walltorch: 'Black Forest', wood_window: 'Black Forest',
   piece_brazierceiling01: 'Black Forest', piece_dvergr_lantern: 'Mistlands', Candle_resin: 'Black Forest', wood_stack: 'Meadows',
   wood_fine_stack: 'Meadows', wood_core_stack: 'Black Forest', stone_pile: 'Meadows', coal_pile: 'Black Forest',
   wood_dragon1: 'Meadows', darkwood_raven: 'Plains', darkwood_wolf: 'Plains', piece_jackoturnip: 'Swamp', piece_xmastree: 'Meadows',
@@ -239,16 +245,17 @@ function needs(name) {
 // Door pieces, measured in the corpus from the walls, beams and floors around 2,500 placed doors (2026-11-09):
 //   w, h     the opening the piece fills, metres
 //   bottom   the opening's bottom relative to the pivot (wood_door pivots in its middle, 1 m up; the dark wood gate
-//            stands on its pivot; the cloth door hangs from its pivot at the top of a 3 m opening)
+//            stands on its pivot; the cloth door hangs about 2 m from its pivot, so its pivot is the top of a 2 m
+//            opening: hung at 3 m it stopped a metre short of the floor, T-102)
 //   along    the piece's local axis the leaf runs along: x for wooden doors, z for the cloth door (it is turned 90
 //            degrees against the wall it hangs in, and hangs 0.3 m to one side of the wall's middle)
 const DOORS = {
   wood_door: { w: 2, h: 2, bottom: -1, along: 'x', offset: 0 },
   wood_gate: { w: 2, h: 3, bottom: -1, along: 'x', offset: 0 },
   darkwood_gate: { w: 2, h: 4, bottom: 0, along: 'x', offset: 0 },
-  piece_cloth_hanging_door: { w: 2, h: 3, bottom: -3, along: 'z', offset: 0.3 },
-  piece_cloth_hanging_door_blue: { w: 2, h: 3, bottom: -3, along: 'z', offset: 0.3 },
-  piece_cloth_hanging_door_blue2: { w: 2, h: 3, bottom: -3, along: 'z', offset: 0.3 },
+  piece_cloth_hanging_door: { w: 2, h: 2, bottom: -2, along: 'z', offset: 0.3 },
+  piece_cloth_hanging_door_blue: { w: 2, h: 2, bottom: -2, along: 'z', offset: 0.3 },
+  piece_cloth_hanging_door_blue2: { w: 2, h: 2, bottom: -2, along: 'z', offset: 0.3 },
 };
 function doorSpec(name) { return DOORS[name] || { w: 2, h: 2, bottom: -1, along: 'x', offset: 0, guessed: true }; }
 
@@ -269,12 +276,31 @@ function yawOfQ(q) { const [x, y, z, w] = q || [0, 0, 0, 1]; return Math.atan2(2
 // 2 m over 2 m toward its local -z.
 const CLIMB = {
   wood_stepladder: { bottom: 0, rise: 2, run: 2 },
-  wood_stair: { bottom: -1, rise: 2, run: 2 },
+  wood_stair: { bottom: 0, rise: 1, run: 2 },
 };
 function climbSpec(name) { return CLIMB[name] || (/ladder/i.test(name) ? CLIMB.wood_stepladder : /stair/i.test(name) ? CLIMB.wood_stair : null); }
 
 const BIOME_ORDER = ['Meadows', 'Black Forest', 'Swamp', 'Mountain', 'Plains', 'Mistlands', 'Ashlands', 'Deep North'];
 
-const apiP = { piece, needs, MAT, BIOME_ORDER, exportSize, NEEDS, DOORS, doorSpec, doorOpening, CLIMB, climbSpec };
+// Valheim's structural support by material (WearNTear; numbers from the community wiki): a piece on the ground has
+// the material's max; each piece up loses the vertical share of its support, each piece out sideways the horizontal
+// share; under min it breaks. A piece takes no more than its own material's max, so stone (min 100) on wood (max 100)
+// always falls, and stone (horizontal loss 1) cannot reach out sideways at all.
+const SUPPORT = {
+  wood: { max: 100, min: 10, v: 1 / 8, h: 1 / 5 }, hardwood: { max: 140, min: 10, v: 1 / 10, h: 1 / 6 },
+  stone: { max: 1000, min: 100, v: 1 / 8, h: 1 }, iron: { max: 1500, min: 20, v: 1 / 13, h: 1 / 13 },
+  marble: { max: 1500, min: 100, v: 1 / 8, h: 1 / 2 }, ashstone: { max: 2000, min: 100, v: 1 / 10, h: 1 / 3 },
+};
+function supportClass(n) {
+  if (/grausten|Ashlands_/i.test(n)) return 'ashstone';
+  if (/blackmarble/.test(n)) return 'marble';
+  if (/woodiron|iron|dvergr|flametal|metal/i.test(n)) return 'iron';
+  if (/^stone_|_stone|stone$/.test(n) && !/crystal/.test(n)) return 'stone';
+  if (/_log|corewood|wood_core|roundlog/i.test(n)) return 'hardwood';
+  return 'wood';
+}
+function support(n) { return SUPPORT[supportClass(n)]; }
+
+const apiP = { piece, support, supportClass, SUPPORT, needs, MAT, BIOME_ORDER, exportSize, NEEDS, DOORS, doorSpec, doorOpening, CLIMB, climbSpec };
 if (typeof module !== 'undefined') module.exports = apiP;
 else window.VHPieces = apiP;

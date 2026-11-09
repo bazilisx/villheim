@@ -30,7 +30,7 @@ function aabb(p) {
   }
   const a = yawDeg(p) * Math.PI / 180, c = Math.abs(Math.cos(a)), sn = Math.abs(Math.sin(a));
   const ex = (w * c + d * sn) / 2, ez = (w * sn + d * c) / 2;
-  const prop = info.shape === 'prop' || info.shape === 'cap' || info.shape === 'tri' || info.shape === 'triInv';
+  const prop = info.shape === 'prop' || info.shape === 'cap' || info.shape === 'tri' || info.shape === 'triInv' || info.onPivot;
   let y0 = prop ? p.y : p.y - h / 2, y1 = prop ? p.y + h : p.y + h / 2;
   if (info.shape === 'hang') { y0 = p.y - h; y1 = p.y; }
   if (info.shape === 'slope26') { y0 = p.y - 0.15; y1 = p.y + h; }
@@ -233,6 +233,42 @@ function climbs(pieces) {
   return out;
 }
 
+function stability(pieces, boxes, near, ground) {
+  const n = pieces.length, sup = new Float64Array(n).fill(-1), mat = new Array(n);
+  const heap = [];
+  const push = i => { heap.push(i); let k = heap.length - 1; while (k > 0) { const pk = (k - 1) >> 1; if (sup[heap[pk]] >= sup[heap[k]]) break; [heap[pk], heap[k]] = [heap[k], heap[pk]]; k = pk; } };
+  const pop = () => { const top = heap[0], last = heap.pop(); if (heap.length) { heap[0] = last; let k = 0; for (;;) { const l = 2 * k + 1, r = l + 1; let m = k; if (l < heap.length && sup[heap[l]] > sup[heap[m]]) m = l; if (r < heap.length && sup[heap[r]] > sup[heap[m]]) m = r; if (m === k) break; [heap[m], heap[k]] = [heap[k], heap[m]]; k = m; } } return top; };
+  for (let i = 0; i < n; i++) {
+    if (!boxes[i].info.structural) continue;
+    mat[i] = PC.support(pieces[i].name);
+    if (boxes[i].y0 <= ground + 0.1) { sup[i] = mat[i].max; push(i); }
+  }
+  const done = new Uint8Array(n);
+  while (heap.length) {
+    const i = pop();
+    if (done[i]) continue;
+    done[i] = 1;
+    const a = boxes[i];
+    for (const j of near(a)) {
+      if (j === i || !mat[j] || done[j]) continue;
+      const o = boxes[j];
+      if (!touch(a, o, 0.02)) continue;
+      const cx = (o.x0 + o.x1) / 2, cy = (o.y0 + o.y1) / 2, cz = (o.z0 + o.z1) / 2;
+      const px = Math.max(a.x0, Math.min(a.x1, cx)), py = Math.max(a.y0, Math.min(a.y1, cy)), pz = Math.max(a.z0, Math.min(a.z1, cz));
+      if (py > cy + 0.05) continue; // a piece is held from below or beside, never from above
+      const d = Math.hypot(px - cx, py - cy, pz - cz);
+      // arches stand on their feet, which the boxes here do not show
+      const t = d < 1e-3 || /arch/.test(pieces[j].name) ? 1 : Math.acos(1 - Math.abs(py - cy) / d) / (Math.PI / 2);
+      const loss = mat[j].h + (mat[j].v - mat[j].h) * t;
+      const got = Math.min(mat[j].max, sup[i] * (1 - loss));
+      if (got > sup[j] + 1e-6) { sup[j] = got; push(j); }
+    }
+  }
+  const out = [];
+  for (let i = 0; i < n; i++) if (mat[i] && sup[i] < mat[i].min) out.push(i);
+  return out;
+}
+
 function check(design, biome) {
   const pieces = design.pieces;
   const boxes = pieces.map(aabb);
@@ -255,6 +291,14 @@ function check(design, biome) {
   }
   const unsupported = pieces.filter((p, i) => !held[i] && (boxes[i].info.structural || ['craft', 'storage', 'bed', 'table', 'seat', 'fire'].includes(boxes[i].info.role))).map(p => p.name);
   results.push({ check: 'support', ok: unsupported.length === 0, detail: unsupported.length ? `${unsupported.length} pieces not connected to the ground (${[...new Set(unsupported)].slice(0, 4).join(', ')})` : 'every piece connects to the ground' });
+
+  // stability: Valheim's support by material, from the ground up (pieces.js SUPPORT). Each piece takes the best
+  // support any touching piece below or beside it passes on: that piece's support less the share the receiving
+  // material loses that way (straight down: vertical loss; sideways: horizontal loss; in between, a blend), never more
+  // than its own material's max. Under its material's min it falls.
+  const crumble = stability(pieces, boxes, near, ground);
+  results.push({ check: 'stability', ok: crumble.length === 0,
+    detail: crumble.length ? `${crumble.length} pieces would fall (${[...new Set(crumble.map(i => pieces[i].name))].slice(0, 4).join(', ')})` : 'every piece holds by its material' });
 
   // doubles and crushed pieces
   let doubles = 0, crushed = 0;
@@ -369,6 +413,14 @@ function check(design, biome) {
   results.push({ check: 'ladders', ok: problems.length === 0,
     detail: ls.length ? (problems.length ? `${problems.length} problems: ${[...new Set(problems)].slice(0, 3).join('; ')}` : `${ls.length} ladder and stair pieces, all climbable`) : 'no ladders or stairs' });
 
+  // beds: every house and longhouse sleeps someone, in a bed its biome can make (Tyler, T-102)
+  const kind = design.request && design.request.type;
+  if (['home', 'longhouse'].includes(kind)) {
+    const ord = PC.BIOME_ORDER, limit = biome ? ord.indexOf(biome) : 99;
+    const beds = pieces.filter(p => PC.piece(p.name).role === 'bed' && ord.indexOf(PC.needs(p.name)) <= limit).length;
+    results.push({ check: 'beds', ok: beds > 0, detail: beds ? `${beds} beds` : `no bed in this ${kind}` });
+  }
+
   // woodpiles stand outside: none under a roof inside walls
   const piles = pieces.filter((p, i) => /^wood_(fine_|core_)?stack$/.test(p.name) && walls.inside(p.x, p.y, p.z) &&
     [...near(ptBox(p.x, p.y + 0.5, p.y + 30, p.z), 0)].some(j => j !== i && (underside(pieces[j], p.x, p.z, boxes[j].info) ?? -1) > p.y + 0.5));
@@ -394,5 +446,5 @@ function check(design, biome) {
   return results;
 }
 
-const apiC = { check, aabb, underside, localOf, doorBlockers, index, HEADROOM, DOOR_CLEAR, CORRIDOR };
+const apiC = { check, stability, aabb, underside, localOf, doorBlockers, index, HEADROOM, DOOR_CLEAR, CORRIDOR };
 if (NODE_C) module.exports = apiC; else window.VHChecks = apiC;

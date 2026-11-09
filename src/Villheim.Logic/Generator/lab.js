@@ -4059,6 +4059,8 @@ function materials(ctx) {
     glass: !!C.glass && reachesM(biome, 'Mountain'),
     // no diagonal braces laid on log or stone walls (they belong to framed walls; 2026-11-09 review)
     noBraces: /log|stone|marble|grausten/.test(C.wallStyle || '') || !!C.stoneWalls,
+    // the crossed gable boards are a Norse and Slavic mark, not every culture's (round 4 review)
+    crossOK: ['norse', 'norse-forest', 'norse-highland', 'slavic', 'baltic'].includes(ctx.cultureKey),
     roof26: K.roof26 || 'wood_roof', roof45: K.roof45 || 'wood_roof_45',
   };
 }
@@ -4146,6 +4148,7 @@ function usable(m, mt, bud, wallStone) {
     if (PROPS.test(t[5]) && !bud.props) return false;
     if (CARVED.test(t[5]) && !bud.carvings) return false;
     if (mt.noBraces && m.kind !== 'gable' && /^beam(26|45|67)$/.test(t[5])) return false;
+    if (!mt.crossOK && /^cross(26|45)$/.test(t[5])) return false;
     // no level beam ends standing out from a gable on their own (they read as stray sticks, 2026-11-09 review)
     if (m.kind === 'gable' && /^beam[12]$/.test(t[5]) && t[2] > 0.35) return false;
     return true;

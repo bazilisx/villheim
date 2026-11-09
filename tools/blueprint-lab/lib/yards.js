@@ -67,6 +67,17 @@ function wants(req, type, stage) {
   return ['home', 'farm'].includes(type) && (stage === 's2' || stage === 's3');
 }
 
+// The plot the game gives a design (src/Villheim.Logic/Designs/Blueprints.cs, Center): the farthest piece pivot from
+// the middle of the box round the pivots, plus 2 m, at least 4 m.
+function plotRadius(pieces) {
+  let x0 = Infinity, x1 = -Infinity, z0 = Infinity, z1 = -Infinity;
+  for (const p of pieces) { if (p.x < x0) x0 = p.x; if (p.x > x1) x1 = p.x; if (p.z < z0) z0 = p.z; if (p.z > z1) z1 = p.z; }
+  const cx = (x0 + x1) / 2, cz = (z0 + z1) / 2;
+  let r = 0;
+  for (const p of pieces) r = Math.max(r, Math.hypot(p.x - cx, p.z - cz));
+  return Math.max(4, r + 2);
+}
+
 // ---------------------------------------------------------------- what is already there
 
 const dbg = m => { if (typeof global !== 'undefined' && global.YDBG) global.YDBG.push(m); };
@@ -185,7 +196,7 @@ function segment(kit, run, s, extra) {
 // The pieces along one run from t0 to t1 (metres along it). Wood and stone: 2 m segments from t0, the last one ending
 // at t1 and overlapping the one before it (a clip along the line, as players lap fence panels). Posts and rails: a
 // post at each end and every 2 m, a rail between each pair.
-function fill(kit, run, t0, t1, out) {
+function fill(kit, run, t0, t1, out, anchor) {
   const L = t1 - t0;
   if (L < 0.3) return true;
   if (kit.kind === 'rail') {
@@ -200,7 +211,9 @@ function fill(kit, run, t0, t1, out) {
     }
     return true;
   }
-  if (L < 1.95) return false; // no piece shorter than 2 m in a wood or stone fence
+  if (L < 1.5) return false; // no piece shorter than 2 m in a wood or stone fence
+  // one piece, square to the gate (anchor) and lapping past the other end
+  if (L < 1.95) { out.push(segment(kit, run, anchor === 'end' ? t1 - 2 : anchor === 'start' ? t0 : t0 - (2 - L) / 2, { clip: +(2 - L).toFixed(2) })); return true; }
   const n = Math.ceil(L / 2 - 0.02);
   for (let i = 0; i < n; i++) {
     const s = i < n - 1 ? t0 + 2 * i : t1 - 2;
@@ -243,16 +256,23 @@ function add(b, ctx) {
   // no yard for buildings on stilts over water, or with a boardwalk (crannogs)
   if (C.stilts || C.boardwalk) return null;
   const R = rngY((ctx.seed || 1) * 7121 + 404);
+  // a woodpile the furnishing set against an outside wall (not the woodshed's or the lean-to's) moves into the yard
+  const loose = b.pieces.filter(p => p.decor && !p.trim && /^wood_(fine_|core_)?stack$/.test(p.name) && p.y < 1);
+  const kept = b.pieces;
+  b.pieces = b.pieces.filter(p => !loose.includes(p));
   const S = survey(b);
-  if (!S) return null;
-  if (S.minY < -0.01) return null; // the design's lowest pivot is under the ground: the yard's ground is not y = 0
+  if (!S) { b.pieces = kept; return null; }
+  // the game sets the design's lowest pivot on the terrain: that is the yard's ground (0, or a sunk stone floor's
+  // middle, -0.4 in the turf houses)
+  const G0 = S.minY;
+  if (G0 < -0.6 || G0 > 0.01) { b.pieces = kept; return null; }
   const kit = kitFor({ ...ctx, fence: opts.fence || C.yardFence }, R);
   const decor = ctx.decor || 'd2';
   const big = ctx.stage === 's3';
 
   // the main door: the ground door nearest the front (-z)
   const front = S.doors.filter(o => Math.abs(o.nz) > 0.9).sort((a, c) => a.z - c.z)[0] || S.doors[0];
-  if (!front) return null;
+  if (!front) { b.pieces = kept; return null; }
 
   // shapes to try, the chosen one first, then the others by weight; margins in the measured range
   const weights = { ...(SHAPES[ctx.type] || SHAPES.home) };
@@ -261,11 +281,13 @@ function add(b, ctx) {
   const organic = X.yardOrganic != null ? !!X.yardOrganic : R() < 0.45;
   const side0 = R() < 0.5 ? 1 : -1;
   const pickM = (lo, hi) => Math.round((lo + R() * (hi - lo)) * 2) / 2;
-  const base = { f: pickM(big ? 3.5 : 3, MARGIN.max), s: pickM(MARGIN.min, big ? 3 : 2.5), r: pickM(MARGIN.min, big ? 3 : 2.5), k: pickM(MARGIN.min, 3) };
+  const base = { f: pickM(big ? 3.5 : 3, MARGIN.max), s: pickM(2.5, big ? 3.5 : 3), r: pickM(2.5, big ? 3.5 : 3), k: pickM(2.5, 3) };
 
   const placed = [];
   const clear = (p, pad = 0.1, more) => {
-    const o = Ck.aabb(p);
+    const o0 = Ck.aabb({ ...p, y: p.y + G0 });
+    // a fence's post tips may pass under an eave brace (a brace starts about 1.8 m up, 1 m out from the wall)
+    const o = p.name === kit.fence || p.post ? { ...o0, y1: Math.min(o0.y1, 1.65) } : o0;
     // a fence's end piece meets the wall: it may go into it as far as a marked clip goes
     const skipWall = z => p.attach && S.wallBoxes.includes(z) && Math.min(o.x1, z.x1) - Math.max(o.x0, z.x0) <= MAX_CLIP + 0.3 && Math.min(o.z1, z.z1) - Math.max(o.z0, z.z0) <= MAX_CLIP + 0.3;
     const by = S.solid.find(z => hitBox(o, z, pad) && !skipWall(z));
@@ -274,13 +296,14 @@ function add(b, ctx) {
     return true;
   };
 
+  const radius0 = plotRadius(b.pieces);
   let plan = null;
   search: for (const shape of order) {
     for (const side of ['L', 'side'].includes(shape) ? [side0, -side0] : [side0]) {
-      for (const [grow, back] of [[0, 1], [0.5, 1], [1, 1], [0, 3], [1, 3]]) {
+      for (const [grow, back] of [[0, 1], [0.5, 1], [1, 1], [0, 3], [1, 3], [0, 5], [1, 5]]) {
         const m = { f: Math.min(MARGIN.max, base.f + grow), s: Math.min(MARGIN.max, base.s + grow), r: Math.min(MARGIN.max, base.r + grow), k: Math.min(MARGIN.max, base.k + grow) };
         // a side yard's gate fills its front run, or takes half of it: 2 or 4 m out
-        if (shape === 'side') { if (side > 0) m.r = m.r >= 3 ? 4 : 2; else m.s = m.s >= 3 ? 4 : 2; }
+        if (shape === 'side') { if (side > 0) m.r = m.r >= 3 ? 4 : 2.25; else m.s = m.s >= 3 ? 4 : 2.25; }
         const pts = outline(shape, S.W, m, side, back);
         // corner cuts where the runs on both sides keep 2 m of straight fence (or none) after every cut
         const cuts = {};
@@ -297,13 +320,22 @@ function add(b, ctx) {
         }
         const runs = runsOf(pts, cuts);
         // an open shape's ends meet the house walls
-        if (shape !== 'wrap') { runs[0].attach = 'start'; runs[runs.length - 1].attach = 'end'; }
+        // (its first and last pieces stop at the wall's face: a wood fence's rail runs 0.25 m past its snap point)
+        if (shape !== 'wrap') {
+          const r0 = runs[0], r1 = runs[runs.length - 1], cut = kit.kind === 'rail' ? 0.2 : 0.25;
+          r0.attach = 'start'; r1.attach = 'end';
+          r0.a = { x: r0.a.x + r0.u[0] * cut, z: r0.a.z + r0.u[1] * cut }; r0.L -= cut;
+          r1.b = { x: r1.b.x - r1.u[0] * cut, z: r1.b.z - r1.u[1] * cut }; r1.L -= cut;
+        }
         const found = tryPlan(runs, kit, S, front, clear);
+        // D-060: the plot the village gives (Blueprints.cs: the farthest pivot from the middle of the pivots' box,
+        // plus 2 m) grows by 4 m at most
+        if (found && plotRadius([...b.pieces, ...found.fence, found.gate]) - radius0 > MARGIN.max + 0.01) { dbg('radius'); continue; }
         if (found) { plan = { ...found, shape, m, organic: Object.keys(cuts).length > 0, side }; break search; }
       }
     }
   }
-  if (!plan) return null;
+  if (!plan) { b.pieces = kept; return null; }
 
   // the fence, the gate (and its posts), the path
   // through the Build's put where there is one (pivot shifts of the Ashlands timber, one piece per spot)
@@ -312,9 +344,9 @@ function add(b, ctx) {
     for (const k of ['clip', 'attach']) if (p[k]) more[k] = p[k];
     if (more.attach) more.clip = Math.max(more.clip || 0, 0.25);
     delete more.attach;
-    const n0 = b.pieces.length;
-    if (typeof b.put === 'function') b.put(p.name, p.x, p.y, p.z, yaw, more);
-    else b.pieces.push({ name: p.name, x: +p.x.toFixed(3), y: +p.y.toFixed(3), z: +p.z.toFixed(3), yaw, q: quatY(yaw), ...more });
+    const n0 = b.pieces.length, y = p.y + G0;
+    if (typeof b.put === 'function') b.put(p.name, p.x, y, p.z, yaw, more);
+    else b.pieces.push({ name: p.name, x: +p.x.toFixed(3), y: +y.toFixed(3), z: +p.z.toFixed(3), yaw, q: quatY(yaw), ...more });
     if (b.pieces.length > n0) placed.push(b.pieces[b.pieces.length - 1]);
   };
   for (const p of plan.fence) put(p);
@@ -322,7 +354,10 @@ function add(b, ctx) {
   if (plan.gatePosts && (big || R() < 0.25)) for (const p of plan.gatePosts) put(p);
   const keep = [...S.zones, ...plan.keep];
   const solidNow = () => [...S.solid, ...placed.map(p => Ck.aabb(p))];
-  const free = (p, pad = 0.1) => { const o = Ck.aabb(p); return !solidNow().some(z => hitBox(o, z, pad)) && !keep.some(z => hitBox(o, z, 0)) && inYard(o); };
+  // under the eaves (they reach 1 m past the walls, with braces under them) only low things: beds, benches, flowers
+  const eave = o => o.y1 > G0 + 1.05 && o.x0 < S.W.x1 + 1.2 && o.x1 > S.W.x0 - 1.2 && o.z0 < S.W.z1 + 1.2 && o.z1 > S.W.z0 - 1.2;
+  const soft = p => { const o = Ck.aabb({ ...p, y: p.y + G0 }), c = { ...o, x0: o.x0 + 0.3, x1: o.x1 - 0.3, z0: o.z0 + 0.3, z1: o.z1 - 0.3 }; return !keep.some(z => hitBox(c, z, 0)) && inYard(c) && !placed.some(q => q.name === p.name && Math.hypot(q.x - p.x, q.z - p.z) < 0.35); };
+  const free = (p, pad = 0.1) => { const o = Ck.aabb({ ...p, y: p.y + G0 }); return !solidNow().some(z => hitBox(o, z, pad)) && !keep.some(z => hitBox(o, z, 0)) && inYard(o) && !eave(o); };
   // inside the yard: every corner of the piece's box inside the fence line (an open shape closes through the house)
   const yb = plan.box, poly = plan.poly;
   const inPoly = (x, z) => { let c = false; for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) { const a = poly[i], d = poly[j]; if ((a[1] > z) !== (d[1] > z) && x < (d[0] - a[0]) * (z - a[1]) / (d[1] - a[1]) + a[0]) c = !c; } return c; };
@@ -334,7 +369,7 @@ function add(b, ctx) {
     const there = [...S.solid, ...placed.filter(q => q.name !== kit.gate).map(q => Ck.aabb(q))];
     for (const c of plan.path) {
       const p = { name: kit.floor, x: c[0], y: 0, z: c[1], yaw: 0 };
-      const o = Ck.aabb(p);
+      const o = Ck.aabb({ ...p, y: G0 });
       if (there.some(z => hitBox(o, z, -0.02)) || placed.some(q => q.name === kit.floor && Math.hypot(q.x - c[0], q.z - c[1]) < 0.7)) continue;
       put(p); path++;
     }
@@ -372,8 +407,9 @@ function add(b, ctx) {
       if (k >= n) break;
       const group = make(s);
       if (!group || !group.length) continue;
-      if (!group.every(p => p.soft || free(p, p.pad != null ? p.pad : 0.1))) continue;
-      for (const p of group) { const q = { ...p }; delete q.soft; delete q.pad; put(q, { decor: true, trim: true }); }
+      if (!group.every(p => (p.soft ? soft(p) : free(p, p.pad != null ? p.pad : 0.1)))) continue;
+      // plants are part of the build, as a field's crops are; the rest is furnishing (stripped at d1)
+      for (const p of group) { const q = { ...p }; delete q.soft; delete q.pad; put(q, PY.piece(q.name).role === 'nature' ? { garden: true } : { decor: true, trim: true }); }
       k++;
     }
     return k;
@@ -401,8 +437,8 @@ function add(b, ctx) {
     got.push(['bed', tryAt([...fenceSpots(1.0), ...wallSpots(1.3)], bedOf, n)]);
   }
   // firewood against the fence when there is no woodshed or lean-to stack already
-  if (decorOn('yardProps', 'd2') && !b.pieces.some(p => /^wood_stack$/.test(p.name) && !p.yard && p.y < 1)) {
-    const name = 'wood_stack';
+  if ((decorOn('yardProps', 'd2') || loose.length) && !b.pieces.some(p => /^wood_(fine_|core_)?stack$/.test(p.name) && !p.yard && p.y < 1)) {
+    const name = loose.length ? loose[0].name : 'wood_stack';
     got.push(['woodpile', tryAt(fenceSpots(0.75), s => [{ name, x: s.x, y: 0.57, z: s.z, yaw: s.yaw }])]);
   }
   // a bench against the front wall beside the door, facing out
@@ -432,11 +468,12 @@ function add(b, ctx) {
   }
   // a scarecrow by the beds (an armor stand; it takes iron, so the Swamp on)
   if (decorOn('yardProps', 'd3') && ctx.type === 'farm' && canY(ctx.biome, 'ArmorStand')) {
-    got.push(['scarecrow', tryAt(fenceSpots(1.8), s => [{ name: 'ArmorStand', x: s.x, y: 0, z: s.z, yaw: s.yaw }])]);
+    const farFromDoors = s => Math.hypot(s.x - plan.gateAt.x, s.z - plan.gateAt.z) > 3 && S.doors.every(o => Math.hypot(s.x - o.x, s.z - o.z) > 3);
+    got.push(['scarecrow', tryAt(fenceSpots(1.8).filter(farFromDoors), s => [{ name: 'ArmorStand', x: s.x, y: 0, z: s.z, yaw: s.yaw }])]);
   }
 
   const grow = Math.max(S.B.x0 - yb.x0, yb.x1 - S.B.x1, S.B.z0 - yb.z0, yb.z1 - S.B.z1, 0);
-  const summary = { shape: plan.shape, fence: kit.kind, organic: plan.organic, margins: plan.m, grows: +grow.toFixed(2), path, pieces: placed.length, contents: Object.fromEntries(got.filter(([, n]) => n)) };
+  const summary = { radius: [+radius0.toFixed(2), +plotRadius(b.pieces).toFixed(2)], shape: plan.shape, fence: kit.kind, organic: plan.organic, margins: plan.m, grows: +grow.toFixed(2), path, pieces: placed.length, contents: got.filter(([, n]) => n).reduce((o, [k, n]) => { o[k] = n; return o; }, {}) };
   b.yard = summary;
   b.notes.push(`A ${plan.organic ? 'winding ' : ''}${{ wood: 'wood', stone: 'dry stone', rail: 'post and rail' }[kit.kind]} fence round the ${{ front: 'front yard', L: 'front and side yard', wrap: 'yard', side: 'side yard' }[plan.shape]}, a gate on the path to the door.`);
   return summary;
@@ -457,7 +494,7 @@ function tryPlan(runs, kit, S, door, clear) {
     const ts = [];
     for (let t = 1; t <= r.L - 1 + 0.001; t += 0.5) {
       const left = t - 1, right = r.L - t - 1;
-      const ok = v => v < 0.05 || v >= 1.95 || kit.kind === 'rail';
+      const ok = v => v < 0.3 || v >= 1.5 || kit.kind === 'rail';
       if (ok(left) && ok(right)) ts.push(t);
     }
     if (r.L >= 2 && r.L < 2.05) ts.push(r.L / 2);
@@ -472,7 +509,7 @@ function tryPlan(runs, kit, S, door, clear) {
     let ok = true;
     for (const r of runs) {
       const n0 = fence.length;
-      if (r === g.r) { ok = fill(kit, r, 0, g.t - 1, fence) && fill(kit, r, g.t + 1, r.L, fence); }
+      if (r === g.r) { ok = fill(kit, r, 0, g.t - 1, fence, 'end') && fill(kit, r, g.t + 1, r.L, fence, 'start'); }
       else ok = fill(kit, r, 0, r.L, fence);
       if (!ok) break;
       // the piece that meets the house wall
@@ -529,5 +566,5 @@ function inwardOf(r, S) {
   return Math.hypot(mx + n[0] - mid[0], mz + n[1] - mid[1]) < Math.hypot(mx - n[0] - mid[0], mz - n[1] - mid[1]) ? n : [-n[0], -n[1]];
 }
 
-const apiY = { add, wants, MEASURED, MARGIN, MAX_CLIP, FENCE_BY_CULTURE, SHAPES };
+const apiY = { add, wants, plotRadius, MEASURED, MARGIN, MAX_CLIP, FENCE_BY_CULTURE, SHAPES };
 if (NODE_Y) module.exports = apiY; else window.VHYards = apiY;

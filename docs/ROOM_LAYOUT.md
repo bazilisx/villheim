@@ -323,31 +323,121 @@ own within that lean. The persona hook (below) sets the household's draw.
 The persona helper (feat/persona) owns the clutter and the story props. The layout gives it:
 
 - free spots by work places (the fire, the bench, the bed's side, the table's end) where clutter belongs [S19];
-- a "story spot" per building: a place in view of the main lane, by the focal point or at the end of the main lane,
-  kept for the one thing that tells the household's story [S2], [S3], [S9] **(inference)**;
+- a "story spot" per room: a plain wall at the end of the main lane, in view from the door, named for the one thing
+  that tells the household's story [S2], [S3], [S9] **(inference)**;
 - the tidy or cluttered setting, which moves how far the loose layer may stray from the grid and how much floor it
   may take.
 
-## The planner (stage 2, being built)
+## From pictures
 
-`lib/layout.js` reads `data/room-layouts.json` and, for each room the decorator furnishes:
+A picture study for this note [S21] looked at 79 interiors: Baldur's Gate 3 17, The Witcher 3 9 (some concept art),
+Skyrim 26, Valheim player builds 11, ESO player homes 6, WoW Midnight preview homes 6, Enshrouded player bases 4. Most
+are three-quarter views, so the distances are by eye and rough. Studio rooms weigh more than player builds. No temple
+was seen, so the temple rules rest on the written sources alone.
 
-1. Reads the room's frame: the main way in, the depth axis away from it, the long axis, the walls with their plain,
-   window and door stretches, the fire's place, the stairs.
-2. Lays the lanes: from each door to the hearth or focal point, to each stair and to the other doors, on the 0.5 m
-   cells, as the decorator's `planPaths` already does; lanes are laid before any anchor.
-3. Draws a scheme for the room's role from the JSON weights, times the culture's lean and the persona's weights. The
-   scheme names the zones (which end sleeps, which wall works, where the table stands, where storage gathers).
-4. Scores every spot the decorator tries for a bed, table, station, chest, bench or high seat by its zone and the
-   orientation rules, so the decorator's placers put each anchor where the scheme wants it; their usual tests
-   (nothing through anything, doors and stairs clear, plain wall behind) still decide.
-5. After the library and the persona pass have dressed the room, checks the lanes once more and takes out the
-   loose piece or library assembly that blocks one, never a bed, station, fire, main chest or table.
+What the pictures show, and what it changed in `data/room-layouts.json`:
 
-The hook for the persona pass is an options object on the decorate context (`ctx.layout`): `{ tidy: 0..1, prefs:
-{ ... } }`. `tidy` near 1 keeps the room to the grid; near 0 lets the loose layer stray and take more floor. `prefs`
-multiplies the JSON weights by key (for example `{ 'home.scheme.side-sleep': 2, 'table.window': 1.5 }`). See the
-comments at the top of `lib/layout.js`.
+| Seen | Count | Change |
+|---|---|---|
+| Every bed touches a wall | 22 of 22 | none; confirms "walls are for furniture" |
+| A double bed has its head centered on the end wall, both long sides open, a nightstand each side | 6 of 6 | double beds always head to the wall |
+| A single bed in a small room, a corner or under the eaves lies long side to the wall | 8 of 12 | `orient.bed.sideToWallSmall` 0.6 to 0.8 for single beds in rooms under 5.5 m across or upstairs bedrooms; 0.1 to 0.3 elsewhere |
+| Several beds stand side by side on one wall, 1 to 2 m apart, a nightstand or desk between | 2 of 2 | `one-wall` scheme for sleeping and guest rooms, `bedGap` 1.0 to 2.0 m |
+| No bed head under a window; a nightstand takes the window between beds | 0 of about 8 | confirms `underWindow` |
+| In one-room homes and longhouses the beds share the room with the fire, 2 to 5 m off, facing it | 4 of 4 | the bed keeps 1.8 m from the fire in homes and halls (was 2.6 m) |
+| Long halls: long tables flank a long central fire, parallel, 0.5 to 1.5 m off it; the walls hold sleeping platforms and side floors | 4 of 6 long halls (the other 2 are player builds with tables on the walls) | `fire-flank` zone and a `fire-flank` hall scheme (weight 3, the old `benches` scheme down to 1.5); beds on the long walls |
+| The fire in the middle of the floor | 12 of 17 rooms with a fire, 10 of 12 Norse and Valheim | none; confirms the central hearth |
+| High seat or high table at the far end, across the axis | 2 of 3 | `far-mid` for the high seat in every hall scheme but `benches` |
+| Tables run along the long axis | 7 of 8 | stronger `alongLong` in `fire-flank` |
+| Homes: the dining table 1 to 3 m from the fire | 4 of 5 | `far-sleep` puts the table in the fire zone (was the middle) |
+| Taverns: the bar at the back or side facing the room, a keeper lane of about 1 m and shelves or barrels behind | 4 of 4, lane 3 of 4 | none; the bar counter (`kitbash.js` `barCounter`) already stands 1.5 m off its wall with barrels behind |
+| Taverns: each inn its own seating plan (rows, benches at the pit, chairs on the walls, booths) | 5 inns, 5 plans | tavern schemes `fire-flank` and `wall-seats` |
+| Kitchens: a work counter as an island in front of the fire | 2 of 6 | `island` kitchen scheme |
+| Forge against a wall, the far wall | 5 of 5, far 3 of 4 | `forge-far` weight 3 |
+| Anvil 1 to 1.5 m in front of the forge | 3 of 3 | `clearance.forgeAnvil` 1.0 to 1.8 m; the smith's work zone pulled to about 2.3 m from the forge |
+| Open floor | 45 to 70 % in studio rooms, about 55 % typical; ESO player homes about 30 % and read as a hoard | none; confirms `walkableShare` 0.45 to 0.65 |
+| Big pieces square to the walls; stools and chairs a little off line | every studio room; loose seats in about half | none; confirms the alignment rule |
+
+Seen and left to the library and the persona pass (listed under `picture` in the JSON): shields, banners, pelts or a
+shelf on the wall above a bed head, a fireplace or a counter (10 of 22 beds); herbs, meat, fish and pots hung over or
+by the fire, baskets and rope in the rafters (5 rooms); barrels under the stair; runner rugs along the main lanes and
+round rugs under seating groups (7 and 8 places); a performer spot by the fire or in a corner of a tavern (2 of 5
+inns); zones split by steps, post rows, railings and curtains more than by walls. Story spots sat at the focal point
+or a work spot in view of the main lane in 6 of 7 rooms, which is where the planner's story spot goes.
+
+## The planner
+
+`lib/layout.js` reads `data/room-layouts.json`. It works inside the existing furnishing; nothing in it places a piece
+without the decorator's or the library's own tests.
+
+1. **The plan** (`plan`, called by `decorate.js` `furnish` for each room). From the room's frame (the main way in,
+   the depth away from it, the side to side, the long axis, the walls with their plain, window and door stretches,
+   the fire, the stairs) and a stream of its own (one draw from the design's stream), it draws:
+   - a scheme for the room's role, by the JSON weight times the culture's lean, the village's lean and the
+     household's prefs;
+   - which side the private end takes;
+   - whether the room tries a room template first (`templateShare`; templates are Tyler's scored rooms, D-058) or is
+     laid out by the rules;
+   - whether beds stand side to the wall (a box bed or alcove) or head to the wall;
+   - how many dining sets the library may lay (a hall with benches along its walls takes fewer);
+   - a story spot: the plain wall at the end of the main lane, in view from the door. It is written to the
+     decorator's report for the persona pass; nothing is kept free for it yet.
+2. **Anchors** (`plan.bias`). Every spot the decorator's placers try for a bed, table, station, forge, chest row,
+   hall bench, fermenter or high seat gets the plan's score added to its own: how well it sits in the zone the
+   scheme names for that kind, and the orientation rules (a bed on a long wall, out of the door's line, off the
+   wall with the door, with a long side open, away from the fire; a table along the long axis; a bench on a long
+   wall). The placers' own tests still decide, so the audit holds.
+3. **The library's free floor** (`floorScore`, called by `kitbash.js` `furnishRooms`). Dining sets and work zones
+   rank their spots by the plan: the table's zone and axis, a pull toward rows along a hall's or tavern's long axis
+   once one set is down, a smith's work zone about 3 m from the forge.
+4. **Lanes** (`clearLanes`, last in `kitbash.js` `apply`). On a 0.25 m grid of each room's floor, a point is
+   walkable when nothing at body height (0.45 to 1.4 m) comes within 0.45 m of it. From the first door, every
+   door, the fire, each stair and each bed's open side must be reached; then the main lanes (door to fire, door to
+   stairs) at 1.2 m wide (1.6 m in halls, taverns and temples). Where loose furniture or a library assembly stands in
+   the way, the cheapest way through is found and what blocks it goes, with what stands on it; never a bed, fire,
+   station, table, throne or the building's first chest, and at most one piece per 12 m2 of the room.
+5. **Measures** (`measure`): per room, the walkable share, the share joined to the first door, targets reached
+   (with the furniture and with the structure alone) and the widest main lane.
+
+The hook for the persona pass is `layout` on the request, passed to the decorate context and the library
+(`req.layout`, `ctx.layout`): `{ tidy: 0..1, traits: { tidiness, comfort, display, size, hobbies }, prefs: {
+'<role>.<scheme>': mult, '<kind>.<zone>': mult }, village, scheme: { <role>: '<scheme id>' }, lanes: false }`.
+Traits are broad household traits, never professions (Tyler, 2026-11-09); the JSON's `traits` table turns each into
+scheme and zone multipliers (comfort leans to the hearth ring, a large household to beds along the walls, crafts to a
+bench by the window). `tidy` near 1 keeps anchors on their zones; near 0 the zones
+widen and weigh less. `village` seeds a lean every house of one village shares. `layout: false` turns the planner
+off. See the comments at the top of `lib/layout.js`.
+
+## Measures
+
+`node lab/layout_measure.js [lib dir] [seeds] [out.json] [--household]` over 7 types (home, longhouse, tavern, smithy,
+workshop, storage, temple), 4 biomes, 3 stages and 4 seeds; rooms of 8 m2 or more (399). Lanes are measured on the
+0.25 m grid at a player radius of 0.4 m. The "before" column is the lab before the planner (commit a58f3e3).
+2026-11-09:
+
+| Measure | Before | With the planner |
+|---|---|---|
+| Floor a player can walk | 46.2 % | 46.8 % |
+| Walkable floor joined to the first door | 92.3 % | 93.1 % |
+| Rooms where every door, the fire, each stair and each bed is reached | 91.0 % | 93.0 % |
+| The same with the structure alone (arcades, posts and towers that split a room) | 94.2 % | 94.2 % |
+| Rooms where furniture, not structure, cuts a target off | 13 | 5 |
+| Widest main lane, door to fire and stairs (mean) | 1.83 m | 1.94 m |
+| Main lanes narrower than 1.2 m | 12.8 % | 7.9 % |
+| Anchor layout alike between two seeds of one request | 40.4 % | 39.2 % |
+| Anchor layout alike between two households of one building (`--household`) | 100 % (one layout) | 61.8 % |
+
+The anchor layout is each bed, table, station, fire and chest by its depth from the door in thirds, middle or side,
+and facing the door, away or across. Between two seeds of a request the building itself changes (plan, size, culture),
+which already makes most of the difference, so the planner moves that number little; inside one building it now gives
+other households other rooms. The rooms still cut off by structure are courtyard and arcade plans (Plains taverns) and
+towers, which the layout cannot fix.
+
+Contact sheets (inside cut over a top-down cut at 1.6 m), not committed:
+`/tmp/layout/var-home-norse.png` and `/tmp/layout/var-tavern.png` (six seeds of one request),
+`/tmp/layout/var-household-home.png` and `/tmp/layout/var-household-longhouse.png` (one building, six households),
+`/tmp/layout/traits-home.png` (one building, six household traits), `/tmp/layout/var-smithy.png`,
+`/tmp/layout/s2-main.png` against `/tmp/layout/s2-layout.png` (before and after).
 
 ## Sources
 
@@ -392,5 +482,49 @@ comments at the top of `lib/layout.js`.
   https://www.creativebloq.com/art/digital-art/how-to-use-interior-design-to-build-narrative-in-digital-art
 - [S20] Josh Lynch, "5 rules of environment design", 80.lv, 2016: https://80.lv/articles/5-rules-of-environment-design
 
+- [S21] Picture study for this note, 2026-11-09: 79 interiors with per-picture notes. Main pages: Elfsong Tavern
+  art by Tim Coddens, https://akagekun.artstation.com/projects/KeJbgW ;
+  https://gamerant.com/baldurs-gate-3-bg3-how-to-get-room-elfsong-tavern/ ;
+  https://gamerant.com/bg3-baldurs-gate-3-how-win-laff-riot-elfsong-tavern-answers/ ; Last Light Inn top-down on
+  https://primagames.com ("How to wake up Art Cullagh"); BG3 forges and rooms on gamerguides.com, sportskeeda.com,
+  vg247.com and trace_studio.artstation.com/projects/WB9xnN; Witcher 3 Skellige interior by Len de Gracia and Blood
+  and Wine concept art by Andrzej Dybowski on artstation.com, CDPR concept art reposted on pinterest.com; Skyrim
+  interiors on UESP, https://en.uesp.net/wiki/Skyrim:The_Bannered_Mare , https://en.uesp.net/wiki/Skyrim:Breezehome
+  and the pages of Jorrvaskr, Dragonsreach, the Sleeping Giant Inn, Candlehearth Hall, Alvor and Sigrid's House and
+  Warmaiden's; Hearthfire rooms in the gamerguides.com Skyrim Anniversary Edition guide; Valheim builds,
+  https://www.valheimians.com/build/long-house-inn/ , https://www.valheimians.com/build/our-longhouse-build/ and the
+  "Decorating Garllok's longhouse" series on valheimians.com; ESO homes on spicyeconomics.com and mmogah.com; WoW
+  Midnight homes on warcrafttavern.com, conquestcapped.com, boosting-ground.com and ign.com; Enshrouded bases on
+  4netplayers.com.
+
 Searched and found little to cite on room layout: Larian has no public written talk on interiors beyond [S2]; ESO
 and WoW write about tools more than layouts; the Witcher 3 environment interviews on 80.lv are short teasers.
+
+## Handoff (2026-11-09)
+
+Done (branch feat/layout):
+- Stage 1: research, sources S1 to S21, the picture study ("From pictures") and `data/room-layouts.json`.
+- Stage 2: `lib/layout.js` (plan, floor-spot scores for the library, lane clearing, measures), wired into
+  `decorate.js` (`furnish`, the anchor placers, a hall's beds by its scheme, templates drawn from the layout stream),
+  `kitbash.js` (dining sets ranked and counted by the plan, `clearLanes` last in `apply`) and `generate.js`
+  (`req.layout` passed through). Bundles list `layout.js` and carry the rules as `VH_LAYOUTS`.
+- Fixes found on the way: `kitbash.js` `dais` no longer lifts a piece standing across its edge or one already on a
+  raised wall bench; `generate.js` `settle` runs `bedIfNone` after the keep-clear pass, so a bed taken out of a
+  doorway or climb is replaced.
+- Stage 3: `lab/layout_measure.js` and the numbers under "Measures".
+
+Checks on the last code (2026-11-09): `test_structure` 36 of 36. On the code before the last three changes (smithy and
+workshop set counts, the bed weight with a plan, the `bedIfNone` move): `check_set` 225, 90 and 147 of 147 pass;
+`check_interiors` bareFloors 5, beds 1, stairs 2 of 4, nothing else; gen-test 5 of 5 the same byte for byte. The full
+run on the last code was stopped (usage limit), so `check_set`, `check_interiors` and gen-test need one more run
+before merging.
+
+Half done and next:
+1. Run the checks on the last code: `node lab/check_set.js 8 --list`, `node lab/check_interiors.js lib out.json`,
+   `node lib/build_engine.js && node lib/build_web.js web/index.html`, then gen-test.
+2. Story spot: written to the decorator's report only; the persona pass should claim it.
+3. From the pictures, not built: the wall above a bed head, fireplace or counter; things hung over the fire; runner
+   rugs on the main lanes; a performer spot in taverns; zones split by steps and post rows.
+4. `generate.js` `bedIfNone` tests the game's solid boxes while the audit uses the decorator's sizes, so a bed it adds
+   can clip a chair the decorator placed (seen once, longhouse Mistlands s3 d3 seed 312, before the hall beds).
+5. Guest and upper sleeping rooms lost a little joined floor in the measures (small samples); check them on a sheet.

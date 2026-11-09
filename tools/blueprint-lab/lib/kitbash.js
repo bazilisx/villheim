@@ -231,14 +231,18 @@ function dais(b, ctx, zones) {
     }
     const box = { x0: Math.min(...cells.map(c => c[0])) - 0.5, x1: Math.max(...cells.map(c => c[0])) + 0.5, z0: Math.min(...cells.map(c => c[1])) - 0.5, z1: Math.max(...cells.map(c => c[1])) + 0.5 };
     const inBox = o => o.x0 < box.x1 - 0.02 && o.x1 > box.x0 + 0.02 && o.z0 < box.z1 - 0.02 && o.z1 > box.z0 + 0.02;
-    // only what stands on the room's floor goes up (a bench already on the hall's raised wall bench would go up twice)
-    const goesUp = p => p.decor && p.y < room.y + 0.25 && inBox(Ck.aabb(p));
+    // a piece goes up with the dais only when it stands wholly on it; one across its edge keeps the dais out
+    const within = o => o.x0 > box.x0 - 0.15 && o.x1 < box.x1 + 0.15 && o.z0 > box.z0 - 0.15 && o.z1 < box.z1 + 0.15;
+    // what already stands on a raised wall bench at the dais's height stays where it is
+    const footOf = p => p.y - ((decorB().FURNITURE[p.name] || {}).base || 0);
+    const raised = p => p.decor && Math.abs(footOf(p) - (room.y + 0.1 + lift)) < 0.08 && inBox(Ck.aabb(p));
+    const goesUp = p => p.decor && !raised(p) && p.y < room.y + 0.6 && inBox(Ck.aabb(p)) && (PB.piece(p.name).role === 'rug' || within(Ck.aabb(p)));
     // nothing built in the way (a post, a stair, a doorway, the fire's ring), nothing tall that cannot go up
     const blocked = b.pieces.some(p => {
       const role = PB.piece(p.name).role, o = Ck.aabb(p);
       if (!inBox(o) || o.y1 < room.y + 0.15 || o.y0 > room.y + 2.2) return false;
       if (!p.decor && ['wall', 'window', 'beam', 'floor', 'roof', 'roofTop', 'gable', 'pole'].includes(role)) return false; // the platform goes round posts
-      return !goesUp(p) || ['fire', 'stair'].includes(role);
+      return (!goesUp(p) && !raised(p)) || ['fire', 'stair'].includes(role);
     }) || zones.some(z => z.x0 < box.x1 && z.x1 > box.x0 && z.z0 < box.z1 && z.z1 > box.z0 && z.y0 < room.y + 2 && z.y1 > room.y);
     if (blocked) continue;
     const up = b.pieces.filter(goesUp);
@@ -786,8 +790,12 @@ function furnishRooms(b, ctx, zones, R2, extra, rooms) {
     // each built kit once in a building (shelves, cabinets, drapes, bedsides, alcoves twice), each mined assembly
     // twice; dining sets one to a room, a grid of them in a tavern's or a hall's main room (one per 25 m2)
     const many = ['BK-shelf', 'BK-cabinet', 'BK-drapes', 'BK-bedside', 'BK-bedside2', 'BK-alcove', 'BK-alcove2', 'BK-understair', 'BK-understair2'];
-    const sets = ['tavern', 'hall', 'temple'].includes(room.role) ? Math.max(1, Math.min(6, Math.floor(room.m.area / 16)))
+    let sets = ['tavern', 'hall', 'temple'].includes(room.role) ? Math.max(1, Math.min(6, Math.floor(room.m.area / 16)))
       : ['smithy', 'workshop'].includes(room.role) ? Math.max(1, Math.min(3, Math.floor(room.m.area / 24))) : 1;
+    // the room's layout plan (lib/layout.js): how many sets its scheme takes, and where the floor spots rank
+    const Lay = NODE_B ? require('./layout.js') : window.VHLayout;
+    const plan = Lay ? Lay.planFor(b, room.m) : null;
+    if (plan && plan.sets != null) sets = Math.max(1, Math.min(sets, plan.sets));
     let setsHere = 0;
     const cap = a => (a.dining ? (setsHere < sets ? 9 : 0) : a.built ? (many.includes(a.id) ? 2 : 1) : 2);
     const cands = lib.filter(a => (used[a.id] || 0) < cap(a) && (a.rooms || []).some(k => kinds.includes(k) || k === 'any') && anchors.some(an => takes(an, a)) &&
@@ -841,8 +849,12 @@ function furnishRooms(b, ctx, zones, R2, extra, rooms) {
       const fixed = an => idx.near({ x0: an.x - 1.2, x1: an.x + 1.2, z0: an.z - 1.2, z1: an.z + 1.2 }, 0).some(r => r.p.decor && !r.b.pass &&
         r.b.y0 < room.m.stand + 1.5 && r.b.y1 > room.m.stand + 0.1 && (r.p.kb || r.p.trim || !['storage', 'seat', 'deco', 'clutter', 'light', 'table', 'rug'].includes(PB.piece(r.p.name).role)));
       const ancs = anchors.filter(an => takes(an, a) && !takenAnchors.some(t => Math.hypot(t.x - an.x, t.z - an.z) < 1.2 && t.anchor === an.anchor) && (an.anchor !== 'floor' || !fixed(an)));
-      // shuffled from the room's own stream
+      // shuffled from the room's own stream; free-floor spots ranked by the layout plan, with the stream's noise
       for (let k = ancs.length - 1; k > 0; k--) { const j = Math.floor(R2() * (k + 1)); const t = ancs[k]; ancs[k] = ancs[j]; ancs[j] = t; }
+      if (plan && a.anchor === 'floor') {
+        const sc = new Map(ancs.map(an => [an, Lay.floorScore(plan, an, a, b) + R2() * 1.2]));
+        ancs.sort((p, q) => sc.get(q) - sc.get(p));
+      }
       let done = false;
       for (const an of ancs.slice(0, a.anchor === 'floor' ? 16 : 10)) {
         for (const mir of a.anchor === 'floor' ? [false] : R2() < 0.5 ? [false, true] : [true, false]) {
@@ -864,7 +876,7 @@ function furnishRooms(b, ctx, zones, R2, extra, rooms) {
           takenAnchors.push(an);
           used[a.id] = (used[a.id] || 0) + 1;
           used[pick.sig] = (used[pick.sig] || 0) + 1;
-          if (a.dining) setsHere++;
+          if (a.dining) { setsHere++; if (plan) Lay.noteSet(plan, an); }
           placed++; want--; done = true; misses = 0;
           break;
         }
@@ -1253,6 +1265,9 @@ function apply(b, ctx, zones) {
     if (ctx.decor !== 'd1') { spreadTables(b, ctx, rooms); spaceBeds(b, ctx); seatRugs(b); groupStorage(b); }
     const n = furnishRooms(b, { ...ctx, _R2: R2 }, zones || [], R2, BUILT_KITS, rooms);
     if (n) b.notes.push(`${n} furnished corners and walls from the interior library.`);
+    // the walking lanes last: what still stands in the way from a door to the fire, a stair or a bed goes (lib/layout.js)
+    const Lay = NODE_B ? require('./layout.js') : window.VHLayout;
+    if (Lay) Lay.clearLanes(b, ctx, rooms);
   }
   // lived in: movable things a little off square, by the household (lib/persona.js)
   if (X.lived !== false && ctx.decor !== 'd1') {

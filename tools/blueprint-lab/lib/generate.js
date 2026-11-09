@@ -435,6 +435,14 @@ function generate(req) {
     if (want !== household.size && !(req.persona && req.persona.size)) household = Persona.persona({ type, biome, culture: cultureKey, seed: lineage, persona: { ...(req.persona || {}), size: want } });
   }
   info.household = household;
+  // the room layout planner (lib/layout.js) reads the same household: its broad traits lean the room schemes, and
+  // its own number draws the layout, so the same people keep the same habits at every stage
+  const layoutCtx = req.layout === false ? false : {
+    traits: { tidiness: household.tidy, comfort: household.comfort, display: household.wealth, size: household.size,
+      hobbies: Object.entries(household.hobby || {}).filter(([, v]) => v >= 0.4).map(([k]) => k) },
+    seed: household.salt % 997,
+    ...(req.layout || {}),
+  };
   // asked-for storeys, porch and pitch go into the name, so different requests never share a file name
   info.asked = (req.storeys >= 1 && req.storeys <= 3 ? `-${Math.round(req.storeys)}st` : '') + (req.porch === true ? '-porch' : req.porch === false ? '-noporch' : '') + (req.pitch ? `-p${+req.pitch}` : '')
     + (typeof req.persona === 'string' && req.persona ? `-${req.persona.toLowerCase().replace(/[^a-z]+/g, '-')}` : req.persona && typeof req.persona === 'object' ? `-hh${Persona.hash(JSON.stringify(req.persona)) % 1000}` : '');
@@ -477,7 +485,7 @@ function generate(req) {
     info.plan = 'octagon'; info.roof = kind === 'yurt' ? 'crown' : 'conical'; info.walls = kind === 'tent' ? 'none' : wallStyle;
     const ctx = { K: Kr, C, biome, use: T.use, stoneOK, F, SH, storeys, top: F + storeys * SH };
     clearDoorways(b);
-    if (!req.skipDecor) Decor.decorate(b, { use: T.use, decor, biome, type, R, culture: cultureKey, doorX: b.doorX, fireAt: { x: 0, z: 0 }, persona: household });
+    if (!req.skipDecor) Decor.decorate(b, { use: T.use, decor, biome, type, R, culture: cultureKey, doorX: b.doorX, fireAt: { x: 0, z: 0 }, persona: household, layout: layoutCtx });
     // corner and wall-face motifs on the eight-sided walls (details.js), after the furnishing
     if (kind === 'round' && !(req.details && req.details.motifs === false)) Details.roundTrim(b, { K: Kr, C, cultureKey, T, type, stage, decor, biome, plan: 'octagon', F, SH, storeys, edges: [], wings: [], seed });
     settle(b, { ...ctx, type, skipDecor: !!req.skipDecor });
@@ -493,7 +501,7 @@ function generate(req) {
     info.plan = 'square'; info.roof = 'hip'; info.walls = C.wallStyle;
     b.notes.push('Square stone tower with wooden floors, slit windows and a low pyramid roof.');
     clearDoorways(b);
-    if (!req.skipDecor) Decor.decorate(b, { use: 'guard', decor, biome, type, R, culture: cultureKey, doorX: b.doorX, persona: household });
+    if (!req.skipDecor) Decor.decorate(b, { use: 'guard', decor, biome, type, R, culture: cultureKey, doorX: b.doorX, persona: household, layout: layoutCtx });
     settle(b, { K, C, biome, use: 'guard', stoneOK, F: 0, SH: MIN_STOREY, storeys: n, top: n * MIN_STOREY, skipDecor: !!req.skipDecor });
     return finish(b, info);
   }
@@ -1081,11 +1089,11 @@ function generate(req) {
   // clear of the ladders
   let fireAt = ventAt && lit && flue ? { x: avg(rectXs(flue)), z: avg(rectZs(flue)) } : null;
   if (flatCell) { fireAt = { x: flatCell[0], z: flatCell[1] }; b.vents.push({ kind: 'flat', x: flatCell[0], z: flatCell[1], rect: flue, from: storeys > 1 ? F + SH : top }); }
-  if (!req.skipDecor) Decor.decorate(b, { use: T.use, decor, biome, type, R, culture: cultureKey, doorX: b.doorX, fireAt, persona: household });
+  if (!req.skipDecor) Decor.decorate(b, { use: T.use, decor, biome, type, R, culture: cultureKey, doorX: b.doorX, fireAt, persona: household, layout: layoutCtx });
   settle(b, { K, C, biome, use: T.use, type, stoneOK, F, SH, storeys, top, flat, cells, wing: w0, roofTop, skipDecor: !!req.skipDecor });
   if (!req.skipDecor) tidyFurniture(b);
   if (!req.skipDecor && stoneOK && F < 0.01 && !C.stoneWalls) hearthstone(b, K);
-  if (!req.skipDecor) { const zones = keepClear(b); Details.interior(b, { ...dctx, zones }); Kitbash.apply(b, { ...dctx, decor }, zones); doorLights(b, { biome, decor, F }); }
+  if (!req.skipDecor) { const zones = keepClear(b); Details.interior(b, { ...dctx, zones }); Kitbash.apply(b, { ...dctx, decor, layout: layoutCtx }, zones); doorLights(b, { biome, decor, F }); }
   else Details.commitMotifs(b, dctx); // bare builds (ranked before furnishing) carry the same wall trim
   if (Yards.wants(req, type, stage)) Yards.add(b, { K, C, type, stage, biome, cultureKey, decor: req.skipDecor ? 'd1' : decor, seed, opts: req.yard, details: req.details, persona: household }); // a yard round stage 2 and 3 homes and farms (lib/yards.js, D-060)
   return finish(b, info);
@@ -1336,7 +1344,7 @@ function settle(b, ctx) {
     const bx = Ck.aabb(p);
     return !gone.some(g => bx.y0 >= g.y0 + 0.3 && bx.y0 <= g.y1 + 0.2 && p.x > g.x0 && p.x < g.x1 && p.z > g.z0 && p.z < g.z1);
   });
-  // a bed the furnishing set in a kept-clear place came out above: the house still sleeps someone
+  // a bed last, after the clearing above, so a bed that stood in a doorway or a climb is replaced and not lost
   if (!ctx.skipDecor && ['home', 'longhouse'].includes(ctx.type)) bedIfNone(b, ctx, fire, zones);
 }
 

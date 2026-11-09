@@ -5,7 +5,7 @@
 const fs = require('fs'), path = require('path');
 const dir = __dirname;
 const out = process.argv[2] || path.join(dir, '../../../src/Villheim.Logic/Generator/lab.js');
-const libs = ['pieces.js', 'shapes.js', 'styles.js', 'persona.js', 'blueprint.js', 'checks.js', 'features.js', 'decorate.js', 'motifs.js', 'details.js', 'kitbash.js', 'yards.js', 'generate.js', 'critic.js', 'request.js', 'floorplan.js'];
+const libs = ['pieces.js', 'shapes.js', 'styles.js', 'persona.js', 'blueprint.js', 'checks.js', 'features.js', 'decorate.js', 'motifs.js', 'details.js', 'kitbash.js', 'layout.js', 'yards.js', 'generate.js', 'critic.js', 'request.js', 'floorplan.js'];
 const code = libs.map(f => `// ---- ${f}\n(function () {\n${fs.readFileSync(path.join(dir, f), 'utf8')}\n})();`).join('\n');
 const rules = fs.readFileSync(path.join(dir, '../data/rules-lite.json'), 'utf8').trim();
 const scorer = fs.readFileSync(path.join(dir, '../data/scorer.json'), 'utf8').trim();
@@ -24,6 +24,8 @@ const motifScores = path.join(dir, '../data/motif-scores.json');
 const motifLite = Mo.lite(JSON.parse(fs.readFileSync(path.join(dir, '../data/motifs.json'), 'utf8')), fs.existsSync(motifScores) ? JSON.parse(fs.readFileSync(motifScores, 'utf8')).weights : null);
 // the interior library (lib/kitbash.js), without sources and the decor table
 const kitbash = JSON.stringify(require('./kitbash.js').lite(JSON.parse(fs.readFileSync(path.join(dir, '../data/kitbash-interior.json'), 'utf8'))));
+// the room layout rules (lib/layout.js)
+const layouts = JSON.stringify(JSON.parse(fs.readFileSync(path.join(dir, '../data/room-layouts.json'), 'utf8')));
 const text = `// Villheim blueprint lab, bundled for the game. Made by tools/blueprint-lab/lib/build_engine.js; do not edit.
 var window = this;
 ${code}
@@ -32,6 +34,7 @@ window.VH_RULES = ${rules};
 window.VH_SCORER = ${scorer};
 window.VH_INTERIOR = ${interior};
 window.VH_KITBASH = ${kitbash};
+window.VH_LAYOUTS = ${layouts};
 window.VH_CRITIC = ${critic};
 window.VH_SOLIDS = ${solids};
 window.VH_ROOMS = ${roomsLite};

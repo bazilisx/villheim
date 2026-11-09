@@ -16,6 +16,10 @@ let RULES = null, LEARN = null;
 function setRules(r) { RULES = r; }
 function setInterior(d) { LEARN = d; }
 if (NODE_D) { try { LEARN = require('../data/interior-lite.json'); } catch (e) { LEARN = null; } }
+// the room layout planner (lib/layout.js, D-070); read when first asked, so either file may load first
+const layoutD = () => (NODE_D ? require('./layout.js') : window.VHLayout);
+// the plan's score for a spot (0 without a plan)
+const pb = (room, kind, s, name) => (room.plan ? room.plan.bias(kind, s, name) : 0);
 function learned() { return LEARN || (typeof window !== 'undefined' && window.VH_INTERIOR) || { items: {}, rooms: {}, doors: {} }; }
 
 const ORDER = ['Meadows', 'Black Forest', 'Swamp', 'Mountain', 'Plains', 'Mistlands', 'Ashlands', 'Deep North'];
@@ -892,20 +896,26 @@ function doorZones(room, kind) {
 // Beds: head to a wall, far from the door, on the sleeping side; side by side with room between; a chest at the foot.
 function placeBeds(room, k, n, d, row = 1.5) {
   const fr = room.frame(), out = [];
+  // the plan's row, gap between beds and ring kept round the fire (lib/layout.js)
+  const P = room.plan;
+  if (P && P.bedRow) row = P.bedRow;
+  const gap = P && P.bedGap ? P.bedGap : 0.7, fireNear = P && P.bedFire ? P.bedFire : 2.6;
   const L = learned().items || {};
   for (let i = 0; i < n; i++) {
     const name = k.bed;
     const doorMin = Math.min(3.0, fr.D * 0.55);
-    const spots = wallSpots(room, name, { noWindow: false });
+    // a bed turned side to the wall (an alcove or a box bed) when the plan draws one, else head to the wall
+    const spots = room.plan && room.plan.bedSideways ? [...wallSpots(room, name, { rel: 90 }), ...wallSpots(room, name, { rel: 270 })] : wallSpots(room, name, { noWindow: false });
     const prev = out[out.length - 1];
     const rec = best(room, name, spots, s => {
-      let v = 2 * fr.v(s.x, s.z) / fr.D + (fr.u(s.x, s.z) * k.side > 0 ? 1 : 0);
+      // far from the door and on the household's side; with a plan its zones decide more of it
+      let v = (P ? 0.7 : 2) * fr.v(s.x, s.z) / fr.D + (fr.u(s.x, s.z) * k.side > 0 ? 1 : 0);
       if (room.doorDist(s.x, s.z) < doorMin) v -= 3;
       if (room.sideCells && room.sideCells(s.x, s.z)) v += 1.5;
-      if (room.fire && Math.hypot(s.x - room.fire.x, s.z - room.fire.z) < 2.6) v -= 2;
-      if (prev) { const dd = Math.hypot(s.x - prev.x, s.z - prev.z); v += (s.face === prev.spot.face ? row : 0) - Math.abs(dd - (size(name)[0] + 0.7)) * 0.6 * (row > 1 ? 1 : 0.3); }
+      if (room.fire && Math.hypot(s.x - room.fire.x, s.z - room.fire.z) < fireNear) v -= 2;
+      if (prev) { const dd = Math.hypot(s.x - prev.x, s.z - prev.z); v += (s.face === prev.spot.face ? row : 0) - Math.abs(dd - (size(name)[0] + gap)) * 0.6 * (row > 1 ? 1 : 0.3); }
       if (s.win) v -= 0.3;
-      return v;
+      return v + pb(room, 'bed', s, name);
     }, { noise: 0.25 });
     if (!rec) break;
     out.push(rec);
@@ -978,7 +988,7 @@ function placeTable1(room, k, o = {}) {
     // room to sit: the spots for seats must be on the floor
     const ax = Math.sin(s.yaw * PI / 180), az = Math.cos(s.yaw * PI / 180);
     for (const sg of s.wallSide ? [1] : [1, -1]) if (!room.inside(s.x + ax * sg * (td / 2 + 0.7), s.z + az * sg * (td / 2 + 0.7))) v -= 2;
-    return v;
+    return v + pb(room, o.kind || 'table', s, name);
   }, { noise: 0.4 });
   if (!rec) return null;
   // seats: benches along long sides (learned 1.0 m out), chairs round round tables (1.25 to 1.5 m)
@@ -1069,7 +1079,7 @@ function placeStorageRow(room, k, n, o = {}) {
       if (last) v += (s.face === last.spot.face ? 2 : -1) - Math.abs(Math.hypot(s.x - last.x, s.z - last.z) - (w + 0.2)) * 1.5;
       if (o.near) v -= Math.hypot(s.x - o.near.x, s.z - o.near.z) * 0.3;
       if (o.side) v += (fr.u(s.x, s.z) * o.side > 0 ? 0.8 : 0);
-      return v;
+      return v + (last ? 0.4 : 1) * pb(room, o.kind || 'storage', s, name);
     }, { noise: 0.2 });
     if (!rec) break;
     placed.push(rec);
@@ -1101,7 +1111,7 @@ function placeStation(room, k, name, exts, o = {}) {
     // room either side for the extensions
     const st = stretch(s.face, s.t - w / 2 - 1.2, s.t + w / 2 + 1.2);
     if (!st.ks.has('wall') || st.ks.has('door') || st.ks.has('none')) v -= 0.8;
-    return v;
+    return v + pb(room, name === 'forge' ? 'forge' : 'station', s, name);
   }, { noise: 0.3 });
   if (!rec) return null;
   // the place to stand and work, kept clear
@@ -1206,7 +1216,7 @@ function placeAgainst(room, name, score, o = {}) {
   return best(room, name, wallSpots(room, name, o), s => {
     let v = score ? score(s) : 0;
     if (room.doorDist(s.x, s.z) < 1.8) v -= 3;
-    return v;
+    return v + (o.kind ? pb(room, o.kind, s, name) : 0);
   }, { noise: 0.4 });
 }
 
@@ -1306,6 +1316,9 @@ function decorate(b, ctx) {
   const kit = chooseKit(R, biome, ctx.culture, kitKind);
   const report = [], furnished = [];
   const usedTemplates = ctx.usedTemplates || new Set();
+  // the layout plans' own stream, drawn once from the design's, so the plans can change without moving the rest
+  // (ctx.layout.seed, a household's own number, draws another layout for the same building)
+  const layoutR = rngFrom((Math.floor(R() * 4294967296) ^ 0x1a70) + ((ctx.layout && +ctx.layout.seed) || 0) * 7919);
   ys.forEach((y, li) => {
     const rects = byY.get(y);
     const hintY = rects.length ? standGuess(b.pieces, rects, y) : y;
@@ -1340,8 +1353,9 @@ function decorate(b, ctx) {
       // over the fire on an upper floor: the generator clears what stands over a fire it moves under the smoke hole
       if (room.upper && ctx.fireAt) room.zones.push({ b: obox(ctx.fireAt.x, ctx.fireAt.z, 4.0, 2.8, 0), why: 'flue' });
       for (const r of rects) for (const kp of r.keep || []) room.zones.push({ b: obox((kp.x0 + kp.x1) / 2, (kp.z0 + kp.z1) / 2, kp.x1 - kp.x0, kp.z1 - kp.z0, 0), why: 'keep' });
-      furnish(room, role, { ...ctx, use, type, decor, biome, kit, counts, mainRect: main, levels: ys.length, usedTemplates });
-      report.push({ level: li, role, area: room.area, items: room.count, room, template: room.template || null });
+      furnish(room, role, { ...ctx, use, type, decor, biome, kit, counts, mainRect: main, levels: ys.length, usedTemplates, layoutR });
+      if (room.plan) (b.layoutPlans || (b.layoutPlans = [])).push({ plan: room.plan, stand: room.stand, inside: room.inside });
+      report.push({ level: li, role, area: room.area, items: room.count, room, template: room.template || null, scheme: room.plan ? room.plan.scheme : null, story: room.plan ? room.plan.story : null });
       furnished.push({ room, role });
     }
   });
@@ -1415,7 +1429,11 @@ function roleFor(use, type, room, mainShare, rects, nLevels, li) {
 // ---------------------------------------------------------------- room plans
 function furnish(room, role, c) {
   const store = role === 'storage' && c.decor !== 'd1' && c.storeFinish !== false;
-  if (tplFurnish(room, role, c)) {
+  // the room's layout plan: its scheme, zones and the side its private end takes (lib/layout.js)
+  const L = c.layout !== false && layoutD();
+  room.plan = L ? L.plan(room, role, c) : null;
+  if (room.plan) c = { ...c, kit: { ...c.kit, side: room.plan.side } };
+  if ((!room.plan || room.plan.templateFirst) && tplFurnish(room, role, c)) {
     if (c.templateOnly) return; // 'vh floorplan template': the room as the template lays it out, nothing added
     // a template thin for a big room is topped up with the extras toward the corpus rate, a little short of it at d2 so
     // the template's own layout stays the larger part
@@ -1747,7 +1765,7 @@ function furnishPlan(room, role, c) {
     // the seat of honor at the far end, facing the way in
     let throne = null;
     if (d >= 2 && !tavern && ok('piece_throne01', biome)) {
-      throne = best(room, 'piece_throne01', wallSpots(room, 'piece_throne01'), s => fr0.v(s.x, s.z) / fr0.D * 3 - Math.abs(fr0.u(s.x, s.z)) * 0.8 - (s.win ? 2 : 0), { noise: 0.1 });
+      throne = best(room, 'piece_throne01', wallSpots(room, 'piece_throne01'), s => (room.plan ? 1 : fr0.v(s.x, s.z) / fr0.D * 3 - Math.abs(fr0.u(s.x, s.z)) * 0.8) - (s.win ? 2 : 0) + 1.5 * pb(room, 'highSeat', s, 'piece_throne01'), { noise: 0.1 });
       if (throne) { if (k.rug) placeRug(room, k, throne, { mode: 'front' }); placeLights(room, { ...k, wallLight: null }, 2, { flank: [throne] }); }
     }
     // corpus taverns: about one table per 45 m2 (tables, round tables and long heavy tables together)
@@ -1762,17 +1780,20 @@ function furnishPlan(room, role, c) {
       if (d >= 3 && i < 2) placeOnTable(room, t, ['itemstandh', 'Candle_resin', 'itemstandh']);
     }
     placeStorageRow(room, k, d >= 2 ? 2 : 1, { sign: d >= 2 });
+    // a hall sleeps its household where the plan's scheme puts the beds: along the long walls or at the far end (the
+    // picture study: sleeping platforms on the walls of every long hall it saw)
+    if (!tavern && room.plan && room.plan.zoneOf('bed')) bed(d >= 3 ? 2 : 1, 1.5);
     if (!tavern && d >= 2) {
       // benches along the long walls, where the household sat and slept
       const bench = k.bench || 'piece_bench01';
       const longX = (room.x1 - room.x0) >= (room.z1 - room.z0);
       for (let i = 0; i < (d >= 3 ? 4 : 2); i++) placeAgainst(room, bench, s => (Math.abs(longX ? s.face.nz : s.face.nx) > 0.7 ? 2 : -2)
-        - room.placed.filter(q => q.name === bench).reduce((a, q) => a + Math.max(0, 4 - Math.hypot(q.x - s.x, q.z - s.z)), 0), { rel: (F[bench] || {}).back ? 180 : 0 });
+        - room.placed.filter(q => q.name === bench).reduce((a, q) => a + Math.max(0, 4 - Math.hypot(q.x - s.x, q.z - s.z)), 0), { rel: (F[bench] || {}).back ? 180 : 0, kind: 'bench' });
     }
     if (tavern && d >= 2) {
       // the bar: barrels and fermenters along one wall
-      placeAgainst(room, 'fermenter', s => (s.corner ? 1 : 0) + fr().v(s.x, s.z) / fr().D);
-      if (d >= 3) placeAgainst(room, 'fermenter', s => (s.corner ? 1 : 0) + fr().v(s.x, s.z) / fr().D);
+      placeAgainst(room, 'fermenter', s => (s.corner ? 1 : 0) + fr().v(s.x, s.z) / fr().D, { kind: 'fermenter' });
+      if (d >= 3) placeAgainst(room, 'fermenter', s => (s.corner ? 1 : 0) + fr().v(s.x, s.z) / fr().D, { kind: 'fermenter' });
       placeStorageRow(room, k, d >= 3 ? 3 : 2, { chest: ok('piece_chest_barrel', biome) ? 'piece_chest_barrel' : k.chest });
     }
     if (d >= 2) {
@@ -2101,8 +2122,9 @@ function tplChoose(room, role, c, fr, needFire) {
         if (taste.noTable && t.p.some(q => q[1] === 'piece_table' || q[1] === 'piece_table_oak')) s -= 1.5;
         if (!!t.stair === !!room.entry.stair) s += 0.3;
         // the score, the room score's weight, and a seeded draw (a Gumbel draw, so the choice among close fits is a
-        // weighted lottery and two seeds of one request pick different rooms)
-        const g = -Math.log(-Math.log(Math.max(1e-6, Math.min(1 - 1e-6, room.R()))));
+        // weighted lottery and two seeds of one request pick different rooms; from the layout stream when there is a
+        // plan, so two households in one building can pick different rooms too)
+        const g = -Math.log(-Math.log(Math.max(1e-6, Math.min(1 - 1e-6, (room.plan && c.layoutR ? c.layoutR : room.R)()))));
         out.push({ o, s: s + Math.log(tw) + g * TPL_SPREAD, rw, rd });
       }
     }

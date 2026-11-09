@@ -404,6 +404,11 @@ and passing over free-floor spots with fixed furniture on them).
 
 ### Items on stands (for the mod)
 
+Done 2026-11-09 (lead): `lib/blueprint.js` writes `p.item` of an `itemstand` or `itemstandh` to the info field as
+`Name:variant:quality`; `src/Villheim.Logic/Designs/StandItems.cs` puts the item on the stand when the design's piece
+goes up and locks it (no taking, swapping or hammer removal; the lock is kept in the ZDO). An item the stand cannot
+hold leaves it empty. Armor stands are not done. The design notes below are the plan this follows.
+
 Item stands and armor stands stand empty in a design, so the library leaves them out for now. PlanBuild already saves
 what a stand holds in the piece line's tenth field (the one `lib/blueprint.js` reads as `info` and
 `Blueprints.cs` as `Piece.Text`): the corpus has `itemstandh;...;"Tankard:0:1"` (item prefab, variant, quality, and on

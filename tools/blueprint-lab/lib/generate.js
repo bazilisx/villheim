@@ -377,7 +377,11 @@ function generate(req) {
 
   // ---- foundation height
   let F = 0;
-  const stoneBase = (C.plinth === 'stone' || (C.plinth === 'byBiome' && biome !== 'Meadows') || C.stoneGround) && K.plinth && !early;
+  // a stone footing under timber walls: by culture, and from stage 3 for the cultures that had none (round 2 and 4
+  // reviews: buildings standing straight on the grass looked dropped there; D-012 keeps early Meadows and Black
+  // Forest buildings in wood)
+  const footingLate = C.plinth == null && !C.stilts && !C.raised && !C.podklet && stage === 's3' && ['anglo-saxon', 'frankish-norman', 'celtic', 'norse-highland'].includes(cultureKey);
+  const stoneBase = (C.plinth === 'stone' || (C.plinth === 'byBiome' && biome !== 'Meadows') || C.stoneGround || footingLate) && K.plinth && !early;
   const podklet = C.podklet && stage !== 's1' && ['home', 'longhouse', 'tavern'].includes(type);
   if (plan === 'gables') F = 0; else if (T.dock) F = 1; else if (C.stilts) F = C.stiltH || 2; else if (podklet) F = 2; else if (form === 'raised') F = C.storeH || 1;
   else if (T.raised || C.raised) F = C.stiltChance && R() < C.stiltChance ? 2 : 1; else if (stoneBase) F = C.plinthHigh ? 2 : 1;

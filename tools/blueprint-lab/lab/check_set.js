@@ -22,6 +22,9 @@ const reqs = [];
 if (!only) {
   for (const type of Object.keys(S.TYPES)) for (const biome of ['Meadows', 'Black Forest', 'Swamp', 'Mountain', 'Plains'])
     for (const [stage, decor] of stages) reqs.push({ type, biome, stage, decor, group: 'set', seed0: 1 });
+  // the late biomes, kept apart so the set's count stays comparable (Ashlands timber pivots, 2026-11-09)
+  for (const type of Object.keys(S.TYPES)) for (const biome of ['Mistlands', 'Ashlands'])
+    for (const [stage, decor] of stages) reqs.push({ type, biome, stage, decor, group: 'late', seed0: 1 });
 }
 for (const [key, C] of Object.entries(S.CULTURES)) {
   if (!C.village || (only && !only.split(',').includes(key))) continue;

@@ -8,8 +8,8 @@ Current facts only. Read this at the start of a session. Narrative is in `docs/d
 - **Next session:** work the open bug list in the 2026-11-08 note, Session 12 (round 5 results, build 0908775). Read
   The three kitbash helpers are finished and merged. Three new helpers started 2026-11-09 (Session 2 of that day's
   note): room layout from professional game interiors (feat/layout), households and messy realism with additive
-  decor stages and working yards (feat/persona), shapes, stage ladder and growth lineage (feat/massing). The lead
-  works on items on stands.
+  decor stages and working yards (feat/persona), shapes, stage ladder and growth lineage (feat/massing); then home life in the mod
+  (feat/homelife) and a picture study of game interiors. Items on stands are done (lead).
 - **Kitbash libraries (2026-11-09, not tested in game):** interior assemblies mined from the corpus and placed in
   every room with 18 built kits (`data/kitbash-interior.json`, `lib/kitbash.js`); yards with fences, gates, paths,
   beds and lamps on s2 and s3 homes and farms (`lib/yards.js`, `data/yards.json`); exterior accents and a coverage
@@ -54,6 +54,9 @@ Current facts only. Read this at the start of a session. Narrative is in `docs/d
   and NPC, with no fixed-interval rules applied every time; a complexity ladder per stage (s1 and s2 one storey and
   simple, three storeys rare and late) and houses that grow from their own earlier stage; room layout learned from
   professional game interiors (BG3 first) plus the kitbash library; decor stages additive (d2 keeps d1, d3 keeps d2).
+  D-072: household traits are broad (tidiness and use, decor taste, hobbies, comfort, wealth display, size), never
+  professions. D-073: home life (assigned homes, house signs with name and role or family and members, residents
+  decorate their own homes in stages in idle time, evenings at home or the hearth, bed by about 22:00, doors closed).
 - **Feature checklist (2026-11-08):** every built, planned and proposed feature plus ideas from other mods, 730 rows,
   in the review sheet's Features tab (Yes, No or Later). Source files in `docs/features/`. ValheimCityBuilder is CC0
   per its authors; study in `docs/CITYBUILDER_STUDY.md`.

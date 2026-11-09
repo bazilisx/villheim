@@ -32,6 +32,7 @@ const S = NODE ? require('./styles.js') : window.VHStyles;
 const Decor = NODE ? require('./decorate.js') : window.VHDecorate;
 const P = NODE ? require('./pieces.js') : window.VHPieces;
 const Details = NODE ? require('./details.js') : window.VHDetails;
+const Kitbash = NODE ? require('./kitbash.js') : window.VHKitbash;
 const checksLib = () => (NODE ? require('./checks.js') : window.VHChecks);
 
 // Heights (Tyler's in-game review, 2026-11-09). A player is about 1.8 m tall: rooms get walls of 3 m, so doors, beams
@@ -743,7 +744,7 @@ function generate(req) {
   if (flatCell) { fireAt = { x: flatCell[0], z: flatCell[1] }; b.vents.push({ kind: 'flat', x: flatCell[0], z: flatCell[1], rect: flue, from: storeys > 1 ? F + SH : top }); }
   if (!req.skipDecor) Decor.decorate(b, { use: T.use, decor, biome, type, R, culture: cultureKey, doorX: b.doorX, fireAt });
   settle(b, { K, C, biome, use: T.use, type, stoneOK, F, SH, storeys, top, flat, cells, wing: w0, roofTop, skipDecor: !!req.skipDecor });
-  if (!req.skipDecor) Details.interior(b, { ...dctx, zones: keepClear(b) });
+  if (!req.skipDecor) { const zones = keepClear(b); Details.interior(b, { ...dctx, zones }); Kitbash.apply(b, { ...dctx, decor }, zones); }
   return finish(b, info);
 }
 

@@ -2,7 +2,7 @@
 // Each library goes in its own function scope; they publish themselves on window.
 const fs = require('fs'), path = require('path');
 const dir = __dirname;
-const libs = ['pieces.js', 'styles.js', 'render.js', 'blueprint.js', 'checks.js', 'features.js', 'decorate.js', 'details.js', 'generate.js', 'critic.js', 'request.js', 'repair.js', 'floorplan.js'];
+const libs = ['pieces.js', 'styles.js', 'render.js', 'blueprint.js', 'checks.js', 'features.js', 'decorate.js', 'details.js', 'kitbash.js', 'generate.js', 'critic.js', 'request.js', 'repair.js', 'floorplan.js'];
 const interior = fs.readFileSync(path.join(dir, '../data/interior-lite.json'), 'utf8').trim();
 // piece models for the renderer: the proxy parts and bounds only (the page has no use for colliders)
 const models = JSON.parse(fs.readFileSync(path.join(dir, '../data/piece-models.json'), 'utf8')).pieces;

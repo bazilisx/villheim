@@ -94,7 +94,7 @@ function wallGrid(pieces, boxes) {
   const g = new Map(), key = (i, j) => i * 100003 + j;
   pieces.forEach((p, n) => {
     const b = boxes[n];
-    if (!WALLISH.includes(b.info.role) || tilted(p.q)) return;
+    if (!WALLISH.includes(b.info.role) || tilted(p.q) || p.decor) return; // furniture made of wall pieces (a bar counter) is no wall
     const s = p.s || [1, 1, 1], w = b.info.size[0] * s[0], d = Math.max(0.2, b.info.size[2] * s[2]);
     for (let i = Math.round(b.x0 * 4); i <= Math.round(b.x1 * 4); i++) for (let j = Math.round(b.z0 * 4); j <= Math.round(b.z1 * 4); j++) {
       const [u, v] = localOf(p, i / 4, j / 4);

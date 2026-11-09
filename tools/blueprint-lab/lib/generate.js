@@ -278,6 +278,8 @@ function generate(req) {
     const ctx = { K: Kr, C, biome, use: T.use, stoneOK, F, SH, storeys, top: F + storeys * SH };
     clearDoorways(b);
     if (!req.skipDecor) Decor.decorate(b, { use: T.use, decor, biome, type, R, culture: cultureKey, doorX: b.doorX, fireAt: { x: 0, z: 0 } });
+    // corner and wall-face motifs on the eight-sided walls (details.js), after the furnishing
+    if (kind === 'round' && !(req.details && req.details.motifs === false)) Details.roundTrim(b, { K: Kr, C, cultureKey, T, type, stage, decor, biome, plan: 'octagon', F, SH, storeys, edges: [], wings: [], seed });
     settle(b, { ...ctx, type, skipDecor: !!req.skipDecor });
     if (Yards.wants(req, type, stage)) Yards.add(b, { K, C, type, stage, biome, cultureKey, decor: req.skipDecor ? 'd1' : decor, seed, opts: req.yard, details: req.details }); // a yard round stage 2 and 3 homes and farms (lib/yards.js, D-060)
     return finish(b, info);
@@ -1896,6 +1898,7 @@ function octagonDesign(b, K, C, o) {
   }
   let top = F;
   const slots = [], keep = [];
+  b.octo = { verts: [], bays: [] }; // for the trim (details.js roundTrim)
   const sideAt = (i, k) => {
     const a = i * 45, ar = a * Math.PI / 180;
     const nx = Math.sin(ar), nz = Math.cos(ar), tx = Math.cos(ar), tz = -Math.sin(ar);
@@ -1933,11 +1936,14 @@ function octagonDesign(b, K, C, o) {
         for (let k = 0; k < seg; k++) {
           const sd = sideAt(i, k);
           const isDoor = s === 0 && i === 4 && k === Math.floor(seg / 2);
-          wallSegment(b, K, C, sd.x, y0, sd.z, sd.a, SH, isDoor ? 'door' : (k === 0 && i % 2 && !T.tower ? 'window' : 'wall'));
+          const bayKind = isDoor ? 'door' : (k === 0 && i % 2 && !T.tower ? 'window' : 'wall');
+          wallSegment(b, K, C, sd.x, y0, sd.z, sd.a, SH, bayKind);
+          if (s === 0) b.octo.bays.push({ x: sd.x, z: sd.z, nx: sd.nx, nz: sd.nz, i, k, kind: bayKind });
           if (s === 0 && !isDoor) for (const dt of [-0.5, 0.5]) slots.push({ x: sd.x + sd.tx * dt, z: sd.z + sd.tz * dt, y: y0, yaw: norm(sd.a + 180), nx: -sd.nx, nz: -sd.nz });
           b.put(K.beam, sd.x, y0 + SH, sd.z, sd.a);
         }
         const sd = sideAt(i, 0), vx = sd.nx * ap + sd.tx * side / 2, vz = sd.nz * ap + sd.tz * side / 2;
+        if (s === 0) b.octo.verts.push({ x: vx, z: vz });
         for (let y = y0; y < y0 + SH - 0.01;) { const h = (y0 + SH - y) >= 2 ? 2 : 1; b.put(h === 2 ? K.pole : K.pole1, vx, y + h / 2, vz); y += h; }
       }
       top = y0 + SH;

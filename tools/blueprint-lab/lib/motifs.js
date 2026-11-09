@@ -36,6 +36,7 @@ function classOf(n) {
     [/floor_1x1|tile_floor_1x1/, 'floor1'], [/floor_triangle/, 'floorTri'], [/floor/, 'floor2'],
     [/stepladder|ladder/, 'ladder'], [/spiralstair/, 'spiral'], [/stair/, 'stair'],
     [/crystal_wall|window_glass/, 'glass'], [/^wood_window$/, 'shutter'], [/grausten_window/, 'stoneWindow'],
+    [/hooknchain|WallChain/, 'chain'], [/cloth_hanging_long|fenrirhide_hanging/, 'cloth'],
     [/iron_grate/, 'grate'], [/door|gate/, 'door'],
     [/stone_arch|blackmarble_arch|darkwood_arch|wall_arch|arch_top|arch_bottom|arch_big|pillar_arch/, 'arch'],
     [/decowall|divider|stave_deco_wall/, 'panel'], [/wall_quarter|quarterwall/, 'wall1x1'], [/wall_half|halfwall/, 'wallHalf'],
@@ -100,18 +101,36 @@ function liteSet(full, weightsIn) {
   const r2 = v => Math.round(v * 100) / 100;
   const ok = m => m.kind === 'window' ? Math.abs(m.fit.w - 2) <= 1 && Math.abs(Math.min(m.fit.h, 3) - 1) <= 1 && m.fit.w >= 1
     : m.kind === 'door' ? m.fit.w === 2 && Math.abs(Math.min(m.fit.h, 3) - 2) <= 1 : m.kind === 'gable' ? Math.abs(m.fit.overhang || 0) <= 0.3
-      : m.kind === 'eave' ? Math.abs(m.fit.overhang || 0) <= 0.5 : true;
-  const motifs = [], weights = {};
+      : m.kind === 'eave' ? (m.fit.overhang || 0) >= 0.4 && (m.fit.overhang || 0) <= 1.5 : m.kind === 'corner' ? [90, 135].includes(m.fit.angle)
+        : m.kind === 'icorner' ? m.fit.angle === 270
+          // a foot trim seen in one or two builds, or of one piece, says little; accents hang 1 to 3 m up the wall
+          // and it lies flat at the foot: a paving strip, a sill board, a stone course (blocks standing along the foot read
+          // as clutter)
+          : m.kind === 'base' ? m.builds >= 2 && m.p.length >= 2 && m.p.every(t => t[3] <= 0.35 && /^(floor1|floor2|beam1|beam2|block1|block2|logWall|logWall4)$/.test(classOf(t[0])))
+            // an item stand is kept only beside a lamp, a banner, a sign or a carving: the blueprint cannot hold the shield
+            // or trophy on it, and an empty stand reads as a stray bracket
+            : m.kind === 'wallface' ? m.p.every(t => !PROPS.test(classOf(t[0])) || (t[3] >= 0.9 && t[3] <= 3)) && m.p.every(t => t[3] < 3.6) &&
+              m.p.some(t => /^(wallTorch|hangLight|lantern|candle|banner|sign|garland|dragon|raven|wolf|chain|cloth)$/.test(classOf(t[0]))) : !!LITE_CAP[m.kind];
+  const motifs = [], weights = {}, nKind = {};
   for (const m of full.motifs) {
     const L = lite(m);
     if (!ok(m) || !flatOnWall(L) || (weightsIn && weightsIn[m.id] === 0)) continue;
+    // the kinds the generator places, the best-ranked first (the full file is in rank order), so the bundle stays small
+    if (LITE_CAP[m.kind] && (nKind[m.kind] = (nKind[m.kind] || 0) + 1) > LITE_CAP[m.kind]) continue;
     const fit = { ...m.fit };
     delete fit.sill; delete fit.door;
-    motifs.push({ id: m.id, kind: m.kind, fit, src: m.srcBuild, p: L.p.map(t => [t[0], r2(t[1]), r2(t[2]), r2(t[3]), Math.round(t[4])]) });
+    delete fit.storey;
+    motifs.push({ id: m.id, kind: m.kind, fit, src: m.srcBuild, p: L.p.map(t => (t[5] ? [t[0], r2(t[1]), r2(t[2]), r2(t[3]), Math.round(t[4]), t[5]] : [t[0], r2(t[1]), r2(t[2]), r2(t[3]), Math.round(t[4])])) });
     if (weightsIn && weightsIn[m.id] != null) weights[m.id] = weightsIn[m.id];
   }
   return { motifs, weights };
 }
+
+// how many of each kind go in the bundle (windows, doors, gables and eaves by the cuts above)
+const LITE_CAP = { corner: 90, icorner: 50, base: 70, wallface: 120, eave: 120 };
+// the wall types a motif's own wall can stand for: boards for boards, logs for logs, stone for stone
+const WT_FAMILY = { plank: 'boards', 'half-timber': 'boards', log: 'log', stone: 'stone', marble: 'stone', grausten: 'stone', 'stone-base': 'stone-base' };
+const wtFamily = w => WT_FAMILY[w] || 'boards';
 
 let DATA = null, WEIGHTS = null;
 function lite(m) {
@@ -167,7 +186,7 @@ function swap(m, mt) {
   const primary = Object.keys(counts).sort((a, b) => counts[b] - counts[a])[0];
   const out = [];
   for (const t of m.p) {
-    const [n, a, o, h, r] = t, cls = classOf(n), mat = matOf(n);
+    const [n, a, o, h, r, clip] = t, cls = classOf(n), mat = matOf(n);
     let name = null;
     if (TIMBER.includes(mat)) {
       // the motif's main wood becomes the building's trim wood; a second wood stays where the biome has it
@@ -189,7 +208,7 @@ function swap(m, mt) {
     } else name = null; // dvergr, flametal and odd pieces
     if (name && !reachesM(mt.biome, PM.needs(name))) name = cls === 'wallTorch' || cls === 'shutter' ? null : name === n ? null : name;
     if (name && !reachesM(mt.biome, PM.needs(name))) name = null;
-    out.push(name ? [name, a, o, h, r, cls] : null);
+    out.push(name ? [name, a, o, h, r, cls, clip || 0] : null);
   }
   return out;
 }
@@ -210,15 +229,24 @@ function fits(m, kind, f) {
     if (kind === 'door' && g.w !== f.w) return false;
   }
   if ((kind === 'gable' || kind === 'eave') && g.slope !== f.slope) return false;
+  if ((kind === 'corner' || kind === 'icorner') && f.angle != null && (g.angle || 90) !== f.angle) return false;
+  // the foot of a wall and what hangs on it come from the same kind of wall (a log sill on stone reads wrong)
+  if ((kind === 'base' || kind === 'wallface' || kind === 'corner' || kind === 'icorner') && f.wt && g.wt && wtFamily(g.wt) !== wtFamily(f.wt)) return false;
   if (kind === 'gable' && Math.abs(g.overhang || 0) > 0.3) return false;
   if (kind === 'eave' && Math.abs((g.overhang || 0) - (f.overhang || 0)) > 0.5) return false;
   return true;
 }
-const PROPS = /^(wallTorch|groundTorch|hangLight|brazier|lantern|candle|banner|sign|stand|standH|garland)$/, CARVED = /^(dragon|raven|wolf)$/;
+const PROPS = /^(wallTorch|groundTorch|hangLight|brazier|lantern|candle|banner|sign|stand|standH|garland|chain|cloth)$/, CARVED = /^(dragon|raven|wolf)$/;
 // the motif's pieces this building may have (lamps and carvings by decor stage), or null when the motif is too much
 // a window's trim lies on the wall: a sloped beam standing out from it, or a long beam reaching out, is a strut or a
 // bracket of something else in its source build and reads as debris on a plain wall
 function flatOnWall(m) {
+  if (m.kind === 'icorner' || (m.kind === 'corner' && (m.fit.angle || 90) !== 90)) {
+    // close to the corner, nothing reaching out more than a meter
+    return !m.p.some(t => Math.hypot(t[1], t[2]) > 1.1 || t[2] > 0.9);
+  }
+  if (m.kind === 'base') return !m.p.some(t => t[2] > 0.7 || t[3] > 1.2 || Math.abs(t[1]) > 1.3);
+  if (m.kind === 'wallface') return !m.p.some(t => t[2] > 0.8 || Math.abs(t[1]) > 1.3);
   if (m.kind !== 'window' && m.kind !== 'corner') return true;
   // the motif built on a frame at the origin facing +z (windows) or the corner of two walls facing +x and +z
   const fr = m.kind === 'window' ? { x: 0, y: 0, z: 0, nx: 0, nz: 1 } : { x: 0, y: 0, z: 0, nx: Math.SQRT1_2, nz: Math.SQRT1_2 };
@@ -277,7 +305,8 @@ function plan(ctx) {
   for (let i = 0; i < sig.length; i++) { hsh ^= sig.charCodeAt(i); hsh = Math.imul(hsh, 16777619); }
   const mt = materials(ctx), R = rngM(hsh), family = new Set(), cache = new Map();
   const wallStone = /stone|marble|grausten/.test(ctx.C.wallStyle || '') && !/base/.test(ctx.C.wallStyle || '');
-  const get = (kind, f, front) => {
+  // accept: an optional test of a candidate on this building (eaves: most of its pieces fit under this roof)
+  const get = (kind, f, front, accept) => {
     const key = `${kind}|${f.w || ''}x${f.h || ''}|${f.slope || ''}|${front ? 1 : 0}`;
     if (cache.has(key)) return cache.get(key);
     const bud = budget(ctx, front), cands = [];
@@ -288,7 +317,9 @@ function plan(ctx) {
       const kept = usable(m, mt, kind === 'gable' ? { ...bud, max: bud.max + 4 } : bud, kind === 'window' || kind === 'door' ? wallStone : false);
       if (!kept) continue;
       const g = m.fit;
-      cands.push({ m, w, kept, exact: kind === 'window' ? g.w === f.w && g.h === f.h : true });
+      const cand = { m, w, kept, exact: kind === 'window' ? g.w === f.w && g.h === f.h : (kind === 'base' || kind === 'wallface' || kind === 'corner') ? g.wt === f.wt : true };
+      if (accept && !accept(cand)) continue;
+      cands.push(cand);
     }
     let c = pick(R, cands, family);
     // the back and side walls: a plainer motif of the same family where one fits, else the front's own
@@ -307,15 +338,17 @@ function plan(ctx) {
 
 // a frame: origin, outward (nx, nz); the motif's pieces to world pieces, mirrored when asked
 function toWorld(fr, t, mirror) {
-  let [name, a, o, h, r, cls] = t;
+  let [name, a, o, h, r, cls, clip] = t;
   if (mirror) { a = -a; r = xAsym(cls) ? 180 - r : -r; }
   const Y = normM(Math.atan2(fr.nx, fr.nz) * 180 / Math.PI), c = Math.cos(Y * Math.PI / 180), s = Math.sin(Y * Math.PI / 180);
-  return { name, x: fr.x + a * c + o * s, y: fr.y + h, z: fr.z - a * s + o * c, yaw: normM(Y + r), cls, a, o, h };
+  const p = { name, x: fr.x + a * c + o * s, y: fr.y + h, z: fr.z - a * s + o * c, yaw: normM(Y + r), cls, a, o, h };
+  if (clip) p.clip = clip;
+  return p;
 }
 // windows and doors: pieces at the sides keep their distance from the opening's edge, pieces over it from its head
 function refit(t, g, f) {
   if (!f || (g.w === f.w && g.h === f.h)) return t;
-  let [name, a, o, h, r, cls] = t;
+  let [name, a, o, h, r, cls, clip] = t;
   const dw = (f.w - g.w) / 2, dh = f.h - g.h;
   const inside = Math.abs(a) < g.w / 2 - 0.15 && h > 0.15 && h < g.h - 0.15 && Math.abs(o) < 0.3;
   if (inside) return null; // a mullion or a lattice belongs to its own opening size
@@ -323,9 +356,10 @@ function refit(t, g, f) {
   if (h > g.h - 0.3) h += dh; else if (h > 0.3) h = h * f.h / g.h;
   // a post as tall as the old opening, beside a lower one, is a short post
   if (dh <= -0.99 && cls === 'pole2' && h > 0 && h < f.h + 0.5) { name = name.replace(/pole2$/, 'pole').replace(/pole_2m$/, 'pole_1m'); if (name === 'darkwood_pole' || name === 'woodiron_pole' || name === 'wood_pole_log') name = 'wood_pole'; cls = 'pole1'; }
-  return [name, a, o, h, r, cls];
+  return [name, a, o, h, r, cls, clip];
 }
 
+const depthM = (a, o) => Math.max(0, Math.min(Math.min(a.x1, o.x1) - Math.max(a.x0, o.x0), Math.min(a.y1, o.y1) - Math.max(a.y0, o.y0), Math.min(a.z1, o.z1) - Math.max(a.z0, o.z0)));
 const volM = a => Math.max(0, a.x1 - a.x0) * Math.max(0, a.y1 - a.y0) * Math.max(0, a.z1 - a.z0);
 const interM = (a, o) => Math.max(0, Math.min(a.x1, o.x1) - Math.max(a.x0, o.x0)) * Math.max(0, Math.min(a.y1, o.y1) - Math.max(a.y0, o.y0)) * Math.max(0, Math.min(a.z1, o.z1) - Math.max(a.z0, o.z0));
 // boxes of the pieces already placed, kept while they stay where they are
@@ -354,12 +388,19 @@ function place(b, c, fr, f, opts = {}) {
     cand.push(p);
   }
   if (!cand.length) return [];
+  // opts.lift: a foot trim half sunk in the ground in its source build comes up to stand on it (at most 0.3 m)
+  if (opts.lift && opts.ground != null) {
+    const low = Math.min(...cand.map(p => Ck.aabb(p).y0));
+    if (low < opts.ground - 0.05 && low > opts.ground - 0.31) for (const p of cand) p.y += opts.ground - low;
+  }
   const own = (p, wall) => {
     // a wall piece in the feature's own wall plane (trim laid on or in the wall is fine there)
     const info = PM.piece(wall.name);
     if (info.role !== 'wall' && info.role !== 'window') return false;
-    const d = (wall.x - fr.x) * fr.nx + (wall.z - fr.z) * fr.nz;
     const yw = normM(wall.yaw != null ? wall.yaw : 0), Y = normM(Math.atan2(fr.nx, fr.nz) * 180 / Math.PI);
+    // a corner of a many-sided plan: laid on either wall, whatever its angle to the frame (the piece close to its plane)
+    if (opts.anyWall) { const wn = [Math.sin(yw * Math.PI / 180), Math.cos(yw * Math.PI / 180)]; return Math.abs((p.x - wall.x) * wn[0] + (p.z - wall.z) * wn[1]) < 0.45; }
+    const d = (wall.x - fr.x) * fr.nx + (wall.z - fr.z) * fr.nz;
     return Math.abs(d) < 0.45 && Math.abs(Math.sin((yw - Y) * Math.PI / 180)) < 0.1;
   };
   // the way through each door: its width less a little, its height (up to 2.3 m), a metre each side
@@ -375,8 +416,10 @@ function place(b, c, fr, f, opts = {}) {
   // pieces already there, and motif pieces waiting to go in after the furnishing (details.js)
   const there = b.motifPending && b.motifPending.length ? b.pieces.concat(b.motifPending.map(p => ({ ...p, trim: true, q: p.q || quatM(p.yaw) }))) : b.pieces;
   const trimNear = there.filter(q => q.trim && Math.hypot(q.x - fr.x, q.z - fr.z) < 8);
-  // floors people walk on (rooms, decks): nothing of the motif hangs lower than 2.35 m over them
-  const floors = b.pieces.filter(q => !q.trim && !q.decor && PM.piece(q.name).role === 'floor' && Math.hypot(q.x - fr.x, q.z - fr.z) < 6).map(q => boxOf(Ck, q));
+  // floors people walk on outside the wall (decks, galleries, the inner corner of a cross plan): nothing of the motif
+  // hangs lower than 2.35 m over them (the rooms are behind the wall, where no motif piece goes)
+  const floors = b.pieces.filter(q => !q.trim && !q.decor && PM.piece(q.name).role === 'floor' && Math.hypot(q.x - fr.x, q.z - fr.z) < 6 &&
+    (q.x - fr.x) * fr.nx + (q.z - fr.z) * fr.nz > 0.6).map(q => boxOf(Ck, q));
   const overFloor = bx => floors.some(o => (bx.x0 + bx.x1) / 2 > o.x0 && (bx.x0 + bx.x1) / 2 < o.x1 && (bx.z0 + bx.z1) / 2 > o.z0 && (bx.z0 + bx.z1) / 2 < o.z1 && bx.y0 >= o.y1 - 0.05 && bx.y0 - o.y1 < 2.35 && bx.y0 - o.y1 > 0.3);
   for (const p of cand) {
     const bx = Ck.aabb(p), info = PM.piece(p.name);
@@ -388,7 +431,8 @@ function place(b, c, fr, f, opts = {}) {
     if (opts.inward !== false) {
       const gb = Ck.gameBox ? Ck.gameBox(p) : bx; // the game's own solids, a beam is 0.4 m deep
       const ins = Math.min(...[[gb.x0, gb.z0], [gb.x0, gb.z1], [gb.x1, gb.z0], [gb.x1, gb.z1]].map(([x, z]) => (x - fr.x) * fr.nx + (z - fr.z) * fr.nz));
-      if (ins < -0.2) continue;
+      // a lamp or a banner hangs from a bracket that reaches into the wall
+      if (ins < (PROPS.test(p.cls) || CARVED.test(p.cls) ? -0.45 : -0.2)) continue;
     }
     if (keepOut.some(z => hit(bx, z, 0.02))) continue;
     let clash = false;
@@ -396,9 +440,13 @@ function place(b, c, fr, f, opts = {}) {
       const qb = boxOf(Ck, q);
       if (!hit(bx, qb, 0.06)) continue;
       const qi = PM.piece(q.name);
+      // set into a wall or a post no deeper than its source build had it (D-065)
+      if (p.clip && ['wall', 'pole', 'beam'].includes(qi.role) && depthM(bx, qb) <= p.clip + 0.03) continue;
       // laid on its own wall; a wall piece of the motif inside the wall is the wall twice
       if (qi.role === 'wall' && own(p, q) && !(info.role === 'wall' && interM(bx, qb) > 0.3 * volM(bx))) continue;
       if (!q.decor && !q.trim && ['beam', 'pole'].includes(qi.role) && ['beam', 'pole'].includes(info.role)) continue; // timber meeting timber
+      // a post or beam end meeting the edge of a floor or a roof (builders let them run in a little, D-065)
+      if (!q.decor && !q.trim && ['floor', 'roof', 'roofCorner', 'gable'].includes(qi.role) && ['beam', 'pole'].includes(info.role) && interM(bx, qb) < 0.02) continue;
       if (q.trim && ['beam', 'pole'].includes(qi.role) && ['beam', 'pole'].includes(info.role) && !(q.name === p.name && Math.hypot(q.x - p.x, q.y - p.y, q.z - p.z) < 0.3)) continue;
       if (BLOCKING.includes(qi.role) || qi.role === 'wall' || q.decor || (q.trim && qi.role === info.role)) { clash = true; break; }
     }
@@ -416,21 +464,24 @@ function place(b, c, fr, f, opts = {}) {
   const placed = ok.filter((p, i) => held[i]);
   if (placed.length < Math.max(1, Math.ceil(c.kept.length * (opts.minShare != null ? opts.minShare : 0.6)))) return [];
   if (opts.dry) { for (const p of placed) p.motif = c.m.id; return placed; }
-  for (const p of placed) b.put(p.name, p.x, p.y, p.z, p.yaw, { trim: true, motif: c.m.id, footed: true });
+  for (const p of placed) b.put(p.name, p.x, p.y, p.z, p.yaw, p.clip ? { trim: true, motif: c.m.id, footed: true, clip: p.clip } : { trim: true, motif: c.m.id, footed: true });
   return placed;
 }
 
 // gables and eaves go in with the roof (generate.js's roof parts, wing-local): the frame there is wing-local too
+// opts.minShare: put nothing unless that share of the motif's pieces fits (opts.skip says which do not)
 function roofParts(c, fr, add, opts = {}) {
-  let n = 0;
+  const go = [];
   for (const t of c.kept) {
     const p = toWorld(fr, t, opts.mirror);
     if (opts.skip && opts.skip(p)) continue;
-    add(p.name, p.x, p.y, p.z, p.yaw, 'trim', p.y + 0.5);
-    n++;
+    go.push(p);
   }
-  return n;
+  if (opts.minShare && go.length < Math.ceil(c.kept.length * opts.minShare)) return 0;
+  if (opts.dry) return go.length;
+  for (const p of go) add(p.name, p.x, p.y, p.z, p.yaw, 'trim', p.y + 0.5);
+  return go.length;
 }
 
-const apiM = { flatOnWall, lite: liteSet, classOf, matOf, xAsym, symOf, NAMES, data, setData, weights, weightOf, materials, swap, fits, usable, plan, place, roofParts, toWorld, refit, setEnabled, PROPS, CARVED };
+const apiM = { wtFamily, depthM, flatOnWall, lite: liteSet, classOf, matOf, xAsym, symOf, NAMES, data, setData, weights, weightOf, materials, swap, fits, usable, plan, place, roofParts, toWorld, refit, setEnabled, PROPS, CARVED };
 if (NODE_M) module.exports = apiM; else window.VHMotifs = apiM;

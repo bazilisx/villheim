@@ -157,12 +157,45 @@ meter.
 The game's bundle and the request page carry the 701 motifs the generator can use, with their weights (about 230 KB,
 `lib/build_engine.js`, `lib/build_web.js`); Node reads the full file through the same cut, so both pick alike.
 
+### More kinds (2026-11-09, second pass)
+
+D-065 lets exterior trim use every prefab that ships with the game, the way builders use them (lamps, banners, item
+stands, Dvergr and trader decor, crafting stations as props, pieces set into walls). The miner now reads every model
+in `data/piece-models.json` (the Ashlands ruin pieces excepted) and these features as well:
+
+| Kind (ID) | Read from | Fit | Mined | Used by the generator |
+|---|---|---|---|---|
+| Outside corner (MC) | two walls ending at one point at any angle, the building in the wedge between them (90 on a box, 135 on an octagon, 157.5 on a 16-sided tower) | angle, wall type | 200 | 90 on timber walls, 135 on round plans (`roundTrim`) |
+| Inside corner (MI) | the same with the building round the other three sides: where wings meet | angle, wall type | 124 | 270 on L, T, U and cross plans |
+| Wall foot (MF) | one 2 m wall bay, what lies low along its foot and stands proud of it | wall type | 200 | flat strips only (a 1 m board path along the foot), s2 on |
+| Wall face (MA) | a plain 2 m bay (no opening in it) with a lamp, banner, item stand, sign, carving, chain or cloth hung on it; the frame stands on the storey's floor | wall type | 300 | d2 on, two bays (four at d3), never on a corner bay or within 3 m of a door; an item stand only beside a lamp, banner or sign (the blueprint cannot hold its shield) |
+| Eave (ME) | the lowest roof row, now fitted to the overhang (D-059 B): eaves 0.5 to 1.5 m past the wall's face | slope, overhang | 300 | northern cultures s2 on, on roofs with the 1 m eave; the beam-end rule does the rest |
+| Porch (MP), stair entry (MS), balcony (MB) | a ground door read 5 m out with posts or a roof in front; a raised door with stairs; an upper door with a deck and rail | width, rise, run | 55, 99, 31 | data only (the lead's generate.js work) |
+| Chimney cap (MH) | stone pieces standing over the roof, the top 1.2 m of the stack | section | 20 | data only |
+| Dormer (MR), valley (MV), wall top (MT) | a short cross ridge lower than the main one; an inner roof corner piece; the top of a wall under a roof | slope | 6, 100, 200 | data only |
+
+Each motif records the wall type of its source (plank, half-timber, log, stone, stone-base, read from the wall pieces
+round the feature), and the generator picks corner, foot and face motifs from walls of the same kind (boards for
+boards, logs for logs, stone for stone).
+
+Deliberate clips: a piece set into the wall it stands on, or partly through another piece of the motif (a beam end in
+a post, a sconce sunk in a wall), keeps how deep it went as a sixth field (`p.clip`, at most 0.4 m between pieces and
+0.5 m into the wall). `lib/motifs.js` lets such a piece into a wall, post or beam no deeper than that, and the overlap
+check in `lib/checks.js` allows the same depth. Timber through timber was allowed before and is not marked. 1,985 of
+the 2,750 mined motifs carry one.
+
+Motif IDs stay with their motif from one run to the next; a motif whose fit gained a field (corners now carry their
+angle and wall type) keeps its ID by kind and pieces. The old corner motifs were inside corners read as outside ones
+and are gone. `lab/bench.js` has `corner`, `entry`, `eave`, `face` and `base` parts.
+
 ### Still to do with motifs
 
 - The Motifs tab and its pictures (`docs/motifs/`), for Tyler to score.
 - Openings of other sizes (2 m tall windows, 1.5 m lights): most well-liked wood windows are 2 x 2 or 1.5 x 2, and
   the generator makes only 2 x 1 and 1 x 1.
-- Porches and canopies, balconies, chimney caps and yard edges are not mined yet.
+- Porches, stair entries, balconies, chimney caps, dormers and roof valleys are mined (see the table above) and wait
+  for generate.js frames to put them on. Yard edges are not mined.
+- Item stands with shields or trophies: the blueprint keeps the stand only; the game side could hang an item on it.
 - Nothing of a motif may hang lower than 2.35 m over a floor (an inner corner of a cross plan, a deck).
 - Kitbash canopy beds: where a gable motif replaces the rule truss, a canopy goes on a bed the truss boxes used to
   block, and its log posts clip the bed (longhouse Black Forest norse-forest s3d3 seed 178 in the interior check).

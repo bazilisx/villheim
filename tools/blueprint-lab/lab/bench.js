@@ -131,6 +131,14 @@ const PARTS = {
     flags: ['canopyBed'],
     focus: 'auto', inside: true,
   },
+  stair: {
+    bases: [
+      { type: 'home', biome: 'Meadows', stage: 's3', decor: 'd3' },
+      { type: 'tavern', biome: 'Black Forest', stage: 's3', decor: 'd3' },
+      { type: 'longhouse', biome: 'Swamp', stage: 's3', decor: 'd3' }],
+    flags: ['stair'],
+    focus: 'auto', inside: true, cutAt: 2.6,
+  },
   dormer: {
     bases: [
       { type: 'home', biome: 'Meadows', stage: 's3', decor: 'd3', culture: 'anglo-saxon', roof: 'gable' },
@@ -216,7 +224,7 @@ for (const { base, seed } of fx) {
     const d = G.generate(req);
     const fails = Ck.check(d, base.biome).filter(c => !c.ok).map(c => c.check + ': ' + c.detail);
     const f = f0;
-    if (spec.inside && f.crop && !f.cut) { f.cut = f.floor + 1.3; f.el = 50; f.crop.y1 = f.cut; f.az += 160; }
+    if (spec.inside && f.crop && !f.cut) { f.cut = f.floor + (spec.cutAt || 1.3); f.el = 50; f.crop.y1 = f.cut; f.az += 160; }
     const on = Object.entries(v.details).filter(([, x]) => x).map(([k]) => k);
     const label = `${bi}.${rows.filter(r => r.base === bi).length + 1}`;
     const row = { id: label, base: bi, name: d.meta.Name, details: on, style: v.style, pieces: d.pieces.length, fails };

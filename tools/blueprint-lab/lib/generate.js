@@ -459,6 +459,14 @@ function generate(req) {
   // last one up to a hatch
   const climbsUp = storeys - 1 + (flat && !lookout ? 1 : 0);
   const ladders = climbsUp > 0 ? ladderPlan(cells, climbsUp, { door: doorCell, back: backCell, flue }) : [];
+  // a straight stair along a wall in place of the first ladder, where a long enough wall has room for it (most of the
+  // best-liked builds climb by stairs; bench: req.details.stair true or false)
+  const stairWanted = req.details && req.details.stair != null ? req.details.stair
+    : climbsUp === 1 && !flat && +stage[1] >= 2 && ['home', 'tavern', 'longhouse', 'storage', 'workshop'].includes(type) && rng(seed * 7 + 3)() < 0.75;
+  if (stairWanted && climbsUp === 1 && !flat && Math.abs(SH - Math.round(SH)) < 0.01) {
+    const st = stairPlan(cells, Math.round(SH), { door: doorCell, back: backCell, flue });
+    if (st) { ladders[0] = st; b.notes.push('A stair along the wall up to the floor above.'); }
+  }
   if (climbsUp > 0 && ladders.length < climbsUp) b.notes.push('No room for a ladder with a clear foot and landing in this plan.');
 
   // details (lib/details.js): what trim this building gets, drawn from its own random stream so the rest of the
@@ -485,7 +493,8 @@ function generate(req) {
     const up = ladders[s - 1], next = ladders[s];
     if (s > 0) {
       for (const [, [x, z]] of cells) if (!onLadder(up, x, z, SH) && !(flue && inRect(flue, x, z))) b.put(K.floor, x, y0, z);
-      if (up) putLadder(b, K, up, y0 - SH, SH);
+      if (up && up.run) putStairRun(b, K, up, y0 - SH);
+      else if (up) putLadder(b, K, up, y0 - SH, SH);
       else b.notes.push('Upper floor without a ladder.');
     }
     const isTopLookout = lookout && s === storeys - 1;
@@ -523,8 +532,8 @@ function generate(req) {
       if (s > 0 && up) room.hole = up.hole;
       // keep the ladders, their feet and landings, and the chimney free of furniture
       room.keep = [];
-      if (up && s > 0) room.keep.push(cellRect(up.hole), cellRect(up.land));
-      if (next) room.keep.push(cellRect(next.stand), cellRect(next.hole));
+      if (up && s > 0) room.keep.push(...(up.run || [up.hole]).map(cellRect), cellRect(up.land));
+      if (next) room.keep.push(cellRect(next.stand), ...(next.run || [next.hole]).map(cellRect));
       if (flue && s > 0) room.keep.push(flue);
       if (room.slots) room.slots = room.slots.filter(sl => !room.keep.some(k => inRect(k, sl.x, sl.z, 0.6)));
       if (form === 'open') delete room.slots; // no walls: things stand along the edges of the floor
@@ -1168,7 +1177,36 @@ function putLadder(b, K, L, yLow, rise) {
 }
 const cutLanding = rise => ladderFoot(rise) + rise > 1.01;
 // cells a floor leaves out for a ladder: the hole, and the landing cell when its near half is open
-const onLadder = (L, x, z, rise) => !!L && ((x === L.hole[0] && z === L.hole[1]) || (cutLanding(rise) && x === L.land[0] && z === L.land[1]));
+const onLadder = (L, x, z, rise) => !!L && (L.run ? L.run.some(c => c[0] === x && c[1] === z)
+  : ((x === L.hole[0] && z === L.hole[1]) || (cutLanding(rise) && x === L.land[0] && z === L.land[1])));
+
+// Where a straight stair goes: a 2 m wide flight of n wood_stair pieces (each climbs 1 m over 2 m) along a wall, a clear
+// cell at its foot and a landing cell at its top; the floor above is open over the whole flight (head room). Returns a
+// plan entry like a ladder's, with run: the flight's cells, or null.
+function stairPlan(cells, n, o = {}) {
+  const has = (x, z) => cells.has(`${x},${z}`);
+  const near = (a, c) => a && c && a[0] === c[0] && a[1] === c[1];
+  let best = null, bestScore = -Infinity;
+  for (const [, [x, z]] of cells) for (const [dx, dz] of [[1, 0], [0, 1], [-1, 0], [0, -1]]) {
+    const stand = [x - 2 * dx, z - 2 * dz], run = [], land = [x + 2 * n * dx, z + 2 * n * dz];
+    for (let k = 0; k < n; k++) run.push([x + 2 * k * dx, z + 2 * k * dz]);
+    const all = [stand, ...run, land];
+    if (!all.every(c => has(...c))) continue;
+    if (o.flue && all.some(c => inRect(o.flue, c[0], c[1], 1.6))) continue; // the fire and its ring stay clear of the flight
+    if ([o.door, o.back].some(d => d && all.slice(0, -1).some(c => near(c, d)))) continue;
+    // a wall along one whole side of the flight
+    const side = [1, -1].find(sg => run.every(([cx, cz]) => !has(cx + sg * 2 * dz, cz + sg * 2 * dx)));
+    if (side == null) continue;
+    // the foot near the door is handy; a flight along the back wall keeps the front room open
+    const score = (o.door ? -0.3 * Math.hypot(stand[0] - o.door[0], stand[1] - o.door[1]) : 0) + (o.door && Math.abs(run[0][1] - o.door[1]) > 3 ? 2 : 0);
+    if (score > bestScore) { bestScore = score; best = { hole: run[0], run, stand, land, dir: [dx, dz], wallSide: true, stair: true, side }; }
+  }
+  return best;
+}
+function putStairRun(b, K, L, yLow) {
+  const [dx, dz] = L.dir, yaw = norm(Math.atan2(-dx, -dz) * 180 / Math.PI);
+  L.run.forEach(([x, z], k) => b.put(K.stair || 'wood_stair', x, yLow + k, z, yaw));
+}
 
 // ---------------------------------------------------------------- walls
 

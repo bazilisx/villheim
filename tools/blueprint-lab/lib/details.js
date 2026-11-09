@@ -238,7 +238,7 @@ function svalgang(b, ctx) {
   if (b.pieces.some(p => p.z < zf - 0.5 && p.z > zf - 2.6 && p.x > x0 + 0.3 && p.x < x1 - 0.3 && p.y < yU + 1)) return false;
   // the upper door: a bay beside the middle whose inside cell is no ladder hole or landing
   const L = ladders || [];
-  const freeCell = x => cells.has(`${x},${zf + 1}`) && !L.some(l => [l.hole, l.land, l.stand].some(c => c[0] === x && c[1] === zf + 1));
+  const freeCell = x => cells.has(`${x},${zf + 1}`) && !L.some(l => [l.hole, l.land, l.stand, ...(l.run || [])].some(c => c[0] === x && c[1] === zf + 1));
   const ux = xs.filter(x => x !== door.x).sort((a, c) => Math.abs(a - door.x) - Math.abs(c - door.x)).find(freeCell);
   if (ux == null) return false;
   // take out the upper bay's wall and window pieces, and build it again as a door
@@ -354,7 +354,7 @@ function partition(b, ctx, wallSegment) {
     const zs = [...cells.values()].filter(([x, z]) => Math.abs(x - (xp - sg)) < 0.01 && Math.abs(z - w0.cz) < w0.D).map(([, z]) => z).sort((a, c) => a - c);
     if (zs.length < 3) continue;
     // ladders keep their foot, hole and landing
-    const blocked = (ladders || []).some(L => [L.stand, L.hole, L.land].some(c => Math.abs(c[0] - xp) < 1.01));
+    const blocked = (ladders || []).some(L => [L.stand, L.hole, L.land, ...(L.run || [])].some(c => Math.abs(c[0] - xp) < 1.01));
     if (blocked) continue;
     const mid = zs.slice().sort((a, c) => Math.abs(a - w0.cz) - Math.abs(c - w0.cz))[0];
     for (const z of zs) wallSegment(b, K, C, xp, F, z, 90, SH, z === mid ? 'door' : 'wall');

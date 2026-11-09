@@ -387,6 +387,13 @@ function generate(req) {
   const cells = cellsOf(wings);
   const edges = edgesOf(cells);
   const verts = vertsOf(edges);
+  // half-timber braces go in the bays at the corners only (a brace in every panel read as busy, 2026-11-09 review)
+  {
+    const yaws = new Map();
+    for (const e of edges) { const ux = e.yaw === 0 ? 1 : 0, uz = e.yaw === 0 ? 0 : 1; for (const sg of [-1, 1]) { const k = `${e.x + sg * ux},${e.z + sg * uz}`; yaws.set(k, (yaws.get(k) || 0) | (e.yaw === 0 ? 1 : 2)); } }
+    const corner = k => yaws.get(k) === 3;
+    b.braceBay = (x, z, yaw) => { const ux = yaw % 180 === 0 ? 1 : 0, uz = 1 - ux; return corner(`${x - ux},${z - uz}`) || corner(`${x + ux},${z + uz}`); };
+  }
 
   // courtyard: cells next to the yard are a gallery; their yard side is an arcade
   const Q = wingOpts.Q;
@@ -1374,7 +1381,7 @@ function wallSegment(b, K, C, x, y0, z, yaw, SH, kind, styleOverride) {
     fill(y0 + 2, y0 + SH); return;
   }
   fill(y0, y0 + SH);
-  if (style === 'half-timber' && SH >= 2) {
+  if (style === 'half-timber' && SH >= 2 && (!b.braceBay || b.braceBay(x, z, yaw))) {
     const brace = (C.darkFrame && reaches(C.biome || 'Meadows', 'Plains')) || /darkwood/.test(K.beam || '') ? 'darkwood_beam_45' : 'wood_beam_45';
     const flip = Math.round(x + z) % 4 === 0 ? 180 : 0; // braces lean both ways along a wall
     b.put(brace, x, y0 + 1, z, yaw + flip);

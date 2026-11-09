@@ -122,6 +122,8 @@ Current facts only. Read this at the start of a session. Narrative is in `docs/d
 
 ## Recent milestones
 
+- **2026-11-09 (overhangs, decisions D-059 to D-066, kitbash helpers in stages)** - see docs/daily-notes/2026-11/2026-11-09.md
+
 - **2026-11-09 (building details, motifs, game colliders, component bench, new parts)** - see docs/daily-notes/2026-11/2026-11-08.md
 
 - **2026-11-08 (test rounds 4 and 5)** - see docs/daily-notes/2026-11/2026-11-08.md

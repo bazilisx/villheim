@@ -260,6 +260,17 @@ Parts added on 2026-11-09:
 
 ### Yards
 
+Working yards (D-067) and household yards (D-068), 2026-11-09: smithies, taverns, workshops and woodworkers get a yard at
+stage 2 and 3 as homes and farms do (docks stand over water and get none). What is in it follows the work: the forge's
+cooler and tool rack against the fence, an anvil and the grinding wheel, coal (smithy); tables with a bench each side
+and barrels (tavern); core-wood logs, the chopping block with a crate of offcuts, the tanning rack (workshop and
+woodworker). Base crafting stations never stand outside without a roof; their extensions may, as decor. A home's yard
+follows its household (`persona.yard`): a tended garden takes a garden bed more when the household grows things; a
+work yard has no beds and holds logs, the chopping block, a stone pile and, for a household that makes things, the
+tanning rack; a plain yard has neither. A building open on a side (a smithy's open front) counts that side as its way
+in and keeps it clear. A gate is not set where another run of the fence would cross its way through, and no path
+plank goes under a roof, eave or floor less than 2.6 m up.
+
 `node lab/mine_yards.js [compact.json] [out]` reads the corpus (`/home/claude/study/compact.json`, vanilla-only builds,
 modded pieces filtered as `lab/learn_critic.js` does), turns each build to its main axis and takes what stands on the
 ground outside its roofed area, within 15 m. Measures go to `data/yards.json` for the well-liked builds (top quarter by
@@ -478,10 +489,80 @@ Where the weights go:
   `persona.size`, `persona.comfort` and `persona.likes` are on `design.request.household` and on every context the
   furnishing gets (`ctx.persona`).
 
-Role props are left to the game. In every home, sleeping, guest and hall room `kitbash.js` `residentSlots` marks up
-to three places a resident's own things could go, each tested as a wall item stand would be: by the bed, by the way in,
-and a shelf spot. They go to `design.slots` as `{ kind: 'bed' | 'door' | 'shelf', role, x, y, z, yaw }` and nothing is
-placed there; the mod can fill them from the villager's actual role when that villager decorates.
+Role props are left to the game (D-074): a resident adds one or two touches from their own role when they decorate,
+as a role display fitted to a free spot. In every home, sleeping, guest, hall and kitchen room `kitbash.js`
+`residentSlots` marks candidate spots, each wall spot tested as a wall item stand would be: a wall bay by the bed, by
+the hearth and by the way in, a shelf spot, and up to three table tops. They go to `design.slots` as
+`{ kind: 'bed' | 'hearth' | 'door' | 'shelf' | 'table', role, x, y, z, yaw, free }`, where `free` is the space measured
+there: for a wall spot `width` (plain wall clear of anything at 1.0 to 2.4 m, in 0.25 m steps up to 3.25 m), `depth`
+(clear floor in front, up to 1.5 m) and `height`; for a table `area` (m2 of top with nothing on it) and `share`.
+Nothing is placed there. `kitbash.js` `ROLE_DISPLAYS` holds role displays as data, never placed by the generator: a
+shield and a weapon, two trophies, three tools, a hoe and cultivator, a ledge with herbs and food over a pot, the
+spice rack and pots, tools or a meal on a table corner, a fishing rod over a fish. Each has the library's format, the
+roles it suits (`roles`) and what it needs from a slot (`need`: width, depth, area); the mod picks one that fits and runs
+the same fit tests before placing it piece by piece.
+
+### Handoff (2026-11-09)
+
+Done, on feat/persona: households (`lib/persona.js`), persona-weighted wall passes, under-stair choice, kit weights,
+item stands with items, resident slots with measured free space and role displays as data (D-074), the lived-in pass,
+hobby and habit kits, additive decor stages with the same structure at every stage (D-071), working yards and
+household yards (D-067). Checks on the final code: check_set 225, 90 and 147 of 147 pass; test_structure 36;
+check_interiors as main's baseline (bareFloors 7, beds 1, stairs 2 of 4); gen-test 5 of 5 byte for byte;
+`lab/stages.js` d1 in d2 and d2 in d3 both 100 %; the lead's nine Norse Meadows lines at tries 1 are file supersets
+d1 in d2 in d3 at s1 to s3.
+
+Half done: the d2 to d3 split puts most pieces at d2 (a Meadows s3 home: 6, 90, 107 decor pieces); the decorator's
+own d3 branches (`decorate.js` `furnishPlan`) are tagged 2 by default. Working yards fit about two buildings in three
+(smithy 8 of 12, workshop 8 of 12, woodworker 3 of 12: open sides and gates crossing runs); the forge cooler and tool
+rack rarely find room. Window kits (drapes, sill pots) seldom fit next to octagon corners and log corner posts.
+
+Next: tag the d3-only branches of `furnishPlan` as stage 3 so d2 sits nearer the corpus d2 rate; tune the work yards'
+spots; give the mod `design.slots` and `ROLE_DISPLAYS` (in the bundle already) for residents' role touches.
+
+### Lived in (D-068)
+
+Messy realism, after the library (`kitbash.js` `liveIn`, d2 and d3): rugs turn up to 9 degrees and shift up to 14 cm,
+chairs and stools up to 24 degrees and 12 cm, benches 5 degrees, barrels and pots any way, crates 10 degrees, and the
+dishes, candles and mugs on a table up to 45 degrees and 7 cm; all of it times 0.12 to 1 by the household's clutter,
+and a tidy household leaves most things square (a piece moves with odds 0.3 + 0.7 times clutter). Beds, doors,
+stations, tables, chests, anything hung or built, and anything with something standing on it stay put. A move stands
+only when it makes no new problem for that piece (solids clipping past their marks, the audit's overlap, a doorway or a
+stair's way, a kept-clear place, off its floor or table, out of its room); otherwise half the move is tried, then none.
+Each piece draws from a stream seeded by its own place, so it moves the same way at every decor stage.
+
+What lies about, by hobbies and habits (built kits weighed by `kitWeight`): pots by a window and a cluster of pots in a
+corner (plants), a half-done project (the chopping block with timber lying by it, a crate, a tool on the wall over it)
+and a tanning rack with a hide before it (crafts), a pelt half under the bed (comfort, rugs), a table left as it was
+used with dishes, a jug, a mug and a candle turned every way (clutter, food) or kept clear with a candle and a jug in the
+middle (tidy), a corner of a crate, a barrel and a pot (busy and untidy). Station extensions stand indoors as decor;
+no base station is added.
+
+### Decor stages (D-071)
+
+A household decorates over time, and in the game a resident decorates their own home: d1 is what it moves in with, d2
+and d3 add to it. The generator furnishes every design at d3 and tags each piece with the stage it goes up in (`p.ds`):
+the passes that know tag their own (the decorator's fill past the d2 rate, the library's assemblies past the d2 budget,
+every other piece on a wall and the high shelf, the vignettes, the canopy bed, back-door lights, the yard's lamp,
+bushes, flowers and scarecrow: 3; dining sets, the building's own kits, under the stairs, front-door lights, the lean-to's
+goods, the yard's beds, firewood, bench and work things: 2). `persona.js` `growth` tags the rest: d1's essentials (beds,
+two chests, the fire and what cooks on it, the forge and workbench, the smelter; in a tavern or longhouse also two
+tables and their seats, in a temple its altar and what stands on it; a building with none of these its first two pieces
+of furniture) at 1, anything else at 2; an assembly goes up at the latest of its pieces, and a thing never before the
+table, chest, seat, station or built furniture it stands on. An asked d1 or d2 keeps the pieces of that stage and
+those before it. `lib/request.js` `best` ranks seeds on the bare d3 structure and checks the d3 design, then cuts the
+asked stage from the chosen seed, so d1, d2 and d3 of one request take the same seed. The building and its
+yard fence are the same at every decor stage (before, the structure of the same seed differed between d1 and d3 in 68
+of 80 requests: shutters, galleries, partitions and yard fences followed the decor). `req.stages: false` furnishes at
+the asked stage alone, the old way.
+
+Measured with `node lab/stages.js lib 2` (192 requests, twelve types, four biomes, s2 and s3, the same seed at d1, d2
+and d3; a piece counts when the same prefab stands in the same place within 5 cm, turned the same within 3 degrees):
+
+| | Before | After |
+|---|---|---|
+| d1 pieces kept in d2 | 34 % (413 of 1,230) | 100 % (735 of 735) |
+| d2 pieces kept in d3 | 59 % (4,006 of 6,822) | 100 % (6,837 of 6,837) |
 
 ## Repair
 

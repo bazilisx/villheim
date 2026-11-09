@@ -85,14 +85,18 @@ function best(req, n, scorer) {
     bare.push({ seed, key: rank(scorer, d.pieces, req.stage) });
   }
   bare.sort((a, c) => c.key - a.key || a.seed - c.seed);
+  // decor grows in stages (D-071): the seed is chosen on the full d3 design, so d1, d2 and d3 of one request take the
+  // same seed and each holds the one before it; the asked stage is then cut from that seed
+  const grow = req.stages !== false && req.decor && req.decor !== 'd3';
   let top = null;
   for (const c of bare.slice(0, 4)) {
-    const d = GQ.generate({ ...req, seed: c.seed });
+    const d = GQ.generate({ ...req, seed: c.seed, decor: grow ? 'd3' : req.decor });
     const ev = evaluate(d, req.biome, scorer);
     const key = ev.pass * 10 + ev.score;
-    if (!top || key > top.key) top = { d, ev, key };
+    if (!top || key > top.key) top = { d, ev, key, seed: c.seed };
     if (ev.pass === ev.checks.length) break;
   }
+  if (grow && top) { const d = GQ.generate({ ...req, seed: top.seed }); top = { d, ev: evaluate(d, req.biome, scorer), key: top.key, seed: top.seed }; }
   return top;
 }
 

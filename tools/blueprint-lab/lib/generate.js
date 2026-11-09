@@ -232,12 +232,18 @@ function generate(req) {
   const cultureKey = S.cultureKey(req.culture) || S.cultureFor(biome, rng(seed * 104729 + type.length * 13 + 7));
   const C = { ...S.CULTURES[cultureKey], biome };
   const stage = ['s1', 's2', 's3'].includes(req.stage) ? req.stage : 's1';
-  const decor = ['d1', 'd2', 'd3'].includes(req.decor) ? req.decor : 'd2';
+  // Decor grows in stages as the household decorates (D-071): the design is furnished at d3 and each piece is tagged
+  // with the stage it goes up in; an asked d1 or d2 keeps the pieces of that stage and those before it
+  // (lib/persona.js growth), so d2 holds all of d1 in the same places and d3 all of d2, and the building is the same at
+  // every decor stage. req.stages false furnishes at the asked stage alone (the old way, for comparison).
+  const decorAsked = ['d1', 'd2', 'd3'].includes(req.decor) ? req.decor : 'd2';
+  // (a bare build for ranking seeds takes the same d3 structure, so every decor stage ranks its seeds alike)
+  const decor = req.stages === false ? decorAsked : 'd3';
   const R = rng(seed * 7919 + type.length * 31 + stage.charCodeAt(1) * 7 + cultureKey.length);
   const K = S.roofKit(S.kitFor(biome), C, biome);
   const b = new Build();
   const form = req.form || formFor(C, type, stage);
-  const info = { type, biome, cultureKey, stage, decor, seed, form };
+  const info = { type, biome, cultureKey, stage, decor: decorAsked, seed, form, grow: !req.skipDecor && req.stages !== false };
   // the household (lib/persona.js), from a random stream of its own: what the furnishing, the yard and the stands lean to
   const household = Persona.persona({ type, biome, culture: cultureKey, seed, persona: req.persona });
   info.household = household;
@@ -971,7 +977,7 @@ function doorLights(b, o) {
           const bx = q.x - ox * 0.35, bz = q.z - oz * 0.35; return bx > pb.x0 - 0.02 && bx < pb.x1 + 0.02 && bz > pb.z0 - 0.02 && bz < pb.z1 + 0.02 && q.y > pb.y0 && q.y < pb.y1; });
         if (!hit && back) { put = q; break; }
       }
-      if (put) { b.put(put.name, put.x, put.y, put.z, put.yaw, { decor: true }); n++; }
+      if (put) { b.put(put.name, put.x, put.y, put.z, put.yaw, { decor: true, ds: op.back ? 3 : 2 }); n++; }
     }
   }
   if (n) b.notes.push(`${n} lights by the doors.`);
@@ -1381,6 +1387,8 @@ function biomeSafe(b, biome) {
 function finish(b, info) {
   // every item stand holds something the household would keep there, or goes (lib/persona.js)
   Persona.dressStands(b, { persona: info.household, biome: info.biome, type: info.type, use: S.TYPES[info.type].use });
+  // the decor stage asked for: what the household has put up by then (D-071)
+  if (info.grow) Persona.growth(b, info.decor, info.type === 'temple' ? 'temple' : ['tavern', 'longhouse'].includes(info.type));
   biomeSafe(b, info.biome);
   dropOrphans(b);
   // the generator places walls by their middle; the pieces that stand on their pivot go down to their foot
@@ -2196,9 +2204,9 @@ function outshut(b, K, C, wings, edges, F, SH, R, decor) {
     best.forEach((x, i) => {
       if (i % 2) return;
       const g = goods[Math.floor(R() * goods.length)];
-      if (g === 'wood_stack') b.put('wood_stack', x, 0.57, zWall + 1.05, 0, { decor: true, trim: true });
-      else if (g === 'piece_chest_barrel' && reaches(C.biome || 'Meadows', 'Swamp')) b.put(g, x, 0, zWall + 0.9, 180, { decor: true, trim: true });
-      else if (g === 'piece_bench01' && F < 0.01) b.put(g, x, 0, zWall + 0.75, 180, { decor: true, trim: true });
+      if (g === 'wood_stack') b.put('wood_stack', x, 0.57, zWall + 1.05, 0, { decor: true, trim: true, ds: 2 });
+      else if (g === 'piece_chest_barrel' && reaches(C.biome || 'Meadows', 'Swamp')) b.put(g, x, 0, zWall + 0.9, 180, { decor: true, trim: true, ds: 2 });
+      else if (g === 'piece_bench01' && F < 0.01) b.put(g, x, 0, zWall + 0.75, 180, { decor: true, trim: true, ds: 2 });
     });
   }
   b.notes.push(`A lean-to ${best.length * 2} m long against the back wall.`);
@@ -2325,8 +2333,8 @@ function campDesign(b, K, biome, stage, R, decor) {
   for (let i = 0; i < n; i++) { const a = (i / n) * 2 * Math.PI + R() * 0.4; b.put('piece_logbench01', Math.sin(a) * 2.6, 0, Math.cos(a) * 2.6, (a * 180 / Math.PI + 180) % 360); }
   for (const x of [-1, 1]) { b.put(K.pole, x * 2, 1, 5, 0); b.put(K.roof45, x, 1.2, 4.6, 0); }
   b.put('bed', 0, 0, 5, 90);
-  if (decor !== 'd1') { b.put('wood_stack', 3.5, 0.57, 3, 30); b.put('piece_chest_wood', -3.5, 0, 3, 150); }
-  if (decor === 'd3') { b.put('piece_groundtorch_wood', 3.6, 0.75, -2, 0); b.put('rug_deer', 0, 0.02, 4.3, 0); b.put('itemstand', -2, 1.5, 5.3, 180); }
+  if (decor !== 'd1') { b.put('wood_stack', 3.5, 0.57, 3, 30, { ds: 2 }); b.put('piece_chest_wood', -3.5, 0, 3, 150, { ds: 2 }); }
+  if (decor === 'd3') { b.put('piece_groundtorch_wood', 3.6, 0.75, -2, 0, { ds: 3 }); b.put('rug_deer', 0, 0.02, 4.3, 0, { ds: 3 }); b.put('itemstand', -2, 1.5, 5.3, 180, { ds: 3 }); }
   return b;
 }
 

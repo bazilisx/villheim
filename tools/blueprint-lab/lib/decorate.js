@@ -1522,6 +1522,9 @@ function fill(room, role, c) {
   const MAX = { barrels: 2, crates: 1, chest: 2, armor: 2, fermenter: 1, seating: 2, rug: 2, banners: 1, carving: 2, torches: 1, tabletop: 4, tools: 2, chart: 1, bench: 2, trophies: 2, shelf: 2,
     footBench: 2, doorBench: 1, nook: 1, ring: 1, storeWall: 1, groupRug: 2, evenLights: 2 };
   const used = {};
+  // at d3 what goes up past the d2 rate waits for the third stage (D-071): those pieces carry ds 3
+  const target2 = c.decor === 'd3' ? Math.round(room.area / 10 * density(LEARN_KIND[role] || 'home', 'd2') * tune * (c.persona && PERS() ? PERS().fillShare(c.persona) : 1) * 0.9) : Infinity;
+  const late = from => { if (!room.out) return; for (let i = from; i < room.out.length; i++) if (room.out[i].decor && room.out[i].ds == null) room.out[i].ds = 3; };
   const rugs = () => room.placed.filter(q => q.rug).length;
   const pw = c.persona && PERS() ? PERS().extraWeights(c.persona) : null;
   const live = Object.entries(extras).filter(([kk]) => run[kk]).map(([kk, w]) => [kk, w * (pw && pw[kk] != null ? pw[kk] : 1)]);
@@ -1530,7 +1533,9 @@ function fill(room, role, c) {
     const floor = !['trophies', 'shelf', 'banners', 'carving', 'tabletop', 'rug', 'groupRug'].includes(key);
     let got = 0;
     const full = (used[key] || 0) >= (MAX[key] || 2) || (key === 'rug' && rugs() >= Math.max(1, Math.floor(room.area / 15)));
+    const pre = room.count, at = room.out ? room.out.length : 0;
     if (!full && !(floor && floorUsed() > room.area * 0.5)) got = run[key]();
+    if (pre >= target2) late(at);
     used[key] = (used[key] || 0) + 1;
     if (!got || full) live.splice(live.findIndex(([kk]) => kk === key), 1);
   }
@@ -2328,7 +2333,7 @@ function outside(b, c) {
       if (placed.some(q => overlap(q, bb, 0.3))) continue;
       placed.push(bb);
       const [px, pz] = pivotOf(name, cc.x, cc.z, cc.yaw);
-      b.pieces.push({ name, x: +px.toFixed(3), y: +(ground + ((F[name] || {}).base || 0)).toFixed(3), z: +pz.toFixed(3), q: quatY(cc.yaw), yaw: cc.yaw, decor: true, outside: true });
+      b.pieces.push({ name, x: +px.toFixed(3), y: +(ground + ((F[name] || {}).base || 0)).toFixed(3), z: +pz.toFixed(3), q: quatY(cc.yaw), yaw: cc.yaw, decor: true, outside: true, ds: wants.indexOf(name) > 0 ? 3 : 2 });
       break;
     }
   }

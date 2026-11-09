@@ -233,6 +233,11 @@ Parts added on 2026-11-09:
 | Wall dormers | A 4 m gable on the wall top with its own two roof pieces and ridge cap running back into the 45 degree main roof; one over the middle of the front or a pair. A dormer over the door takes the place of a gable porch. | Frankish, English, medieval, Slavic, highland and Baltic cultures, s2 on, homes, taverns, longhouses, stores, workshops, 45 % |
 | Stairs | A straight flight of `wood_stair` along a wall (each climbs 1 m over 2 m), a clear cell at its foot, a landing at the top, the floor above open over the flight. Replaces the first ladder. | two-storey homes, taverns, longhouses, stores, workshops, s2 on, storey heights in whole metres, 75 % |
 | Hearthstone | The plank floor under a ground-floor fire laid in stone floor pieces, flush with the planks. | stone-capable, floors on the ground, no stone walls |
+| Lean-to (outshut) | A 2 m deep lean-to along the back wall of the main wing (at least three bays, not the end bays): 26 degree roof pieces from the wall, posts from the ground, a beam, firewood, barrels or a bench under it. | homes, longhouses, barns, smithies, workshops, stores, farms, taverns, s2 on, 40 %, timber walls, floors up to 1 m |
+| Loggia | The front row of the ground floor left open under the upper storey on posts; the front wall and door set back a row; no porch, gallery or door hood. | two-storey rect and long timber homes, taverns, stores, workshops of the Anglo-Saxon, Frankish, medieval, Slavic and Norse cultures, s3, 60 %, on the ground, 10 m deep or more |
+| Barn stalls | Half-wall partitions every 2 m along a long wall, a gate across each stall, straw inside. | barns, d2 on |
+| Loft window | One clear 2 m light framed by beams, a third of the way up a gable 6 m tall or more (1 m up a lower one). | with gableWindow |
+| Ridge chimney | The shaft through an upper floor ends inside the roof; above the ridge, raised caps on short posts. | ridge vents |
 | Kitchen | A butcher's table against the wall nearest the cauldron, the spice rack and pots and pans hung on the walls nearest it, all within 4.5 m. Gated by their materials: turnips (Swamp), silver (Mountain), black metal (Plains). | wherever a cauldron is |
 
 ## Repair

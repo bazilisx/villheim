@@ -10,6 +10,7 @@
 
 const NODE_D = typeof module !== 'undefined';
 const P = NODE_D ? require('./pieces.js') : window.VHPieces;
+const SHD = NODE_D ? require('./shapes.js') : window.VHShapes;
 let RULES = null, LEARN = null;
 function setRules(r) { RULES = r; }
 function setInterior(d) { LEARN = d; }
@@ -25,48 +26,53 @@ const ORDER = ['Meadows', 'Black Forest', 'Swamp', 'Mountain', 'Plains', 'Mistla
 // hang (from the ceiling). rel: turn from the wall's inward normal when standing against a wall (0: local +z faces
 // the room). base: pivot height above the floor (floor torches stand 0.75 m below their pivot). b: the first biome
 // whose village can make it, the lower of the game's notes (design-list.csv) and the recipe.
+// Sizes are at least the game's own: the box round each piece's solid colliders (its mesh for rugs), from
+// data/piece-models.json, so furniture does not clip into walls or each other in the game. For pieces turned 90 or
+// 270 degrees against a wall the size is [along the wall, height, out from the wall]. c: [x, z], where the middle of the
+// footprint is from the piece's pivot in its own frame, when the game's piece is not centered on its pivot (the
+// carvings run 3 m to one side); the decorator places footprints and writes the pivot.
 const F = {
   bed: { s: [1.2, 0.8, 2.8], at: 'wall', b: 'Meadows', cat: 'bed' },
-  piece_bed02: { s: [2.0, 1.0, 3.3], at: 'wall', b: 'Swamp', cat: 'bed' },
+  piece_bed02: { s: [2.3, 1.5, 3.43], c: [0.0, 0.12], at: 'wall', b: 'Swamp', cat: 'bed' },
   ashwood_bed: { s: [1.6, 1.0, 2.8], at: 'wall', b: 'Ashlands', cat: 'bed' },
-  piece_chest_wood: { s: [1.3, 0.8, 0.75], at: 'wall', b: 'Meadows', cat: 'storage' },
-  piece_chest_barrel: { s: [0.7, 1.0, 0.7], at: 'wall', b: 'Black Forest', cat: 'storage' },
-  piece_chest: { s: [1.4, 0.9, 0.8], at: 'wall', b: 'Swamp', cat: 'storage' },
-  piece_chest_blackmetal: { s: [1.6, 1.0, 0.9], at: 'wall', b: 'Plains', cat: 'storage' },
-  piece_table: { s: [2.0, 0.8, 0.9], at: 'floor', b: 'Meadows', cat: 'table', top: 0.75 },
-  piece_table_round: { s: [1.7, 0.8, 1.7], at: 'floor', b: 'Black Forest', cat: 'table', top: 0.75, round: true },
-  piece_table_oak: { s: [4.2, 0.8, 1.6], at: 'floor', b: 'Swamp', cat: 'table', top: 0.75 },
+  piece_chest_wood: { s: [1.65, 0.8, 0.75], at: 'wall', b: 'Meadows', cat: 'storage' },
+  piece_chest_barrel: { s: [0.79, 1.0, 0.71], at: 'wall', b: 'Black Forest', cat: 'storage' },
+  piece_chest: { s: [1.84, 1.0, 1.0], at: 'wall', b: 'Swamp', cat: 'storage' },
+  piece_chest_blackmetal: { s: [2.06, 1.0, 1.29], at: 'wall', b: 'Plains', cat: 'storage' },
+  piece_table: { s: [2.45, 0.8, 1.22], at: 'floor', b: 'Meadows', cat: 'table', top: 0.75 },
+  piece_table_round: { s: [2.53, 0.86, 2.43], at: 'floor', b: 'Black Forest', cat: 'table', top: 0.75, round: true },
+  piece_table_oak: { s: [6.45, 0.8, 1.85], c: [0.07, 0.0], at: 'floor', b: 'Swamp', cat: 'table', top: 0.75 },
   piece_chair: { s: [0.6, 0.6, 0.6], at: 'floor', b: 'Meadows', cat: 'seat' },
-  piece_chair02: { s: [0.7, 1.1, 0.7], at: 'floor', b: 'Black Forest', cat: 'seat' },
+  piece_chair02: { s: [0.7, 1.2, 0.94], c: [0.04, -0.08], at: 'floor', b: 'Black Forest', cat: 'seat' },
   piece_chair03: { s: [0.8, 1.2, 0.8], at: 'floor', b: 'Swamp', cat: 'seat' },
-  piece_bench01: { s: [2.0, 0.9, 0.7], at: 'floor', b: 'Meadows', cat: 'seat', long: true },
-  piece_logbench01: { s: [1.4, 0.5, 0.6], at: 'floor', b: 'Black Forest', cat: 'seat', long: true, back: true },
-  piece_throne01: { s: [1.2, 2.0, 1.0], at: 'wall', b: 'Swamp', cat: 'seat' },
+  piece_bench01: { s: [2.41, 0.9, 0.7], c: [0.06, -0.04], at: 'floor', b: 'Meadows', cat: 'seat', long: true },
+  piece_logbench01: { s: [2.38, 0.5, 0.6], at: 'floor', b: 'Black Forest', cat: 'seat', long: true, back: true },
+  piece_throne01: { s: [1.4, 2.5, 1.0], at: 'wall', b: 'Swamp', cat: 'seat' },
   fire_pit: { s: [1.4, 0.4, 1.4], at: 'floor', b: 'Meadows', cat: 'fire' },
-  hearth: { s: [3.2, 0.6, 2.0], at: 'floor', b: 'Swamp', cat: 'fire' },
+  hearth: { s: [4.0, 0.6, 3.0], at: 'floor', b: 'Swamp', cat: 'fire' },
   piece_cookingstation: { s: [2.0, 0.8, 0.5], at: 'fire', b: 'Meadows', cat: 'craft', lift: 0.25 },
-  piece_cookingstation_iron: { s: [2.0, 0.8, 0.6], at: 'fire', b: 'Swamp', cat: 'craft', lift: 0.25 },
-  piece_cauldron: { s: [1.0, 0.8, 1.0], at: 'fire', b: 'Black Forest', cat: 'craft', lift: 0.25 },
-  fermenter: { s: [1.4, 1.8, 1.4], at: 'wall', b: 'Black Forest', cat: 'craft', tall: true },
-  piece_workbench: { s: [1.8, 1.0, 1.0], at: 'wall', b: 'Meadows', cat: 'craft' },
-  piece_workbench_ext1: { s: [0.8, 0.8, 0.8], at: 'wall', b: 'Meadows', cat: 'craft' },
-  piece_workbench_ext2: { s: [1.6, 1.8, 0.5], at: 'wall', b: 'Meadows', cat: 'craft', tall: true },
-  piece_workbench_ext3: { s: [0.9, 0.9, 0.9], at: 'wall', b: 'Black Forest', cat: 'craft' },
+  piece_cookingstation_iron: { s: [3.6, 2.0, 0.73], at: 'fire', b: 'Swamp', cat: 'craft', lift: 0.25 },
+  piece_cauldron: { s: [1.0, 1.4, 1.0], at: 'fire', b: 'Black Forest', cat: 'craft', lift: 0.25 },
+  fermenter: { s: [1.6, 2.2, 1.55], at: 'wall', b: 'Black Forest', cat: 'craft', tall: true },
+  piece_workbench: { s: [3.01, 1.03, 1.1], at: 'wall', b: 'Meadows', cat: 'craft' },
+  piece_workbench_ext1: { s: [0.81, 1.01, 0.8], c: [-0.06, 0.0], at: 'wall', b: 'Meadows', cat: 'craft' },
+  piece_workbench_ext2: { s: [2.01, 1.8, 0.6], at: 'wall', b: 'Meadows', cat: 'craft', tall: true },
+  piece_workbench_ext3: { s: [2.13, 1.23, 1.1], at: 'wall', b: 'Black Forest', cat: 'craft' },
   piece_workbench_ext4: { s: [1.6, 1.6, 0.5], at: 'wall', b: 'Swamp', cat: 'craft', tall: true },
-  forge: { s: [1.6, 2.2, 1.0], at: 'wall', b: 'Black Forest', cat: 'craft', tall: true },
-  forge_ext1: { s: [1.0, 0.8, 0.6], at: 'wall', b: 'Black Forest', cat: 'craft' },
+  forge: { s: [1.8, 2.2, 1.0], at: 'wall', b: 'Black Forest', cat: 'craft', tall: true },
+  forge_ext1: { s: [1.1, 0.8, 0.88], c: [-0.12, 0.01], at: 'wall', b: 'Black Forest', cat: 'craft' },
   forge_ext2: { s: [0.8, 1.0, 0.8], at: 'wall', b: 'Black Forest', cat: 'craft' },
-  forge_ext3: { s: [0.9, 1.0, 1.0], at: 'wall', b: 'Swamp', cat: 'craft' },
-  forge_ext4: { s: [1.0, 0.8, 0.8], at: 'wall', b: 'Black Forest', cat: 'craft' },
-  forge_ext5: { s: [1.6, 1.6, 0.5], at: 'wall', b: 'Black Forest', cat: 'craft', tall: true },
-  forge_ext6: { s: [1.2, 0.8, 0.8], at: 'wall', b: 'Swamp', cat: 'craft' },
-  piece_stonecutter: { s: [1.6, 1.2, 1.2], at: 'wall', b: 'Swamp', cat: 'craft' },
+  forge_ext3: { s: [0.9, 1.41, 1.0], at: 'wall', b: 'Swamp', cat: 'craft' },
+  forge_ext4: { s: [1.0, 1.4, 0.9], at: 'wall', b: 'Black Forest', cat: 'craft' },
+  forge_ext5: { s: [1.6, 1.6, 0.83], at: 'wall', b: 'Black Forest', cat: 'craft', tall: true },
+  forge_ext6: { s: [2.5, 0.8, 0.8], at: 'wall', b: 'Swamp', cat: 'craft' },
+  piece_stonecutter: { s: [3.23, 1.81, 1.5], c: [-0.11, 0.0], at: 'wall', b: 'Swamp', cat: 'craft' },
   // kitchen pieces from the Mistlands, for the kitchen templates; sizes estimated from screenshots, not measured yet
-  piece_oven: { s: [1.6, 1.8, 1.4], at: 'wall', b: 'Mistlands', cat: 'craft', tall: true },
-  piece_preptable: { s: [2.0, 1.0, 1.0], at: 'wall', b: 'Mistlands', cat: 'craft' },
-  piece_artisanstation: { s: [2.0, 1.4, 1.0], at: 'wall', b: 'Mountain', cat: 'craft' },
-  piece_spinningwheel: { s: [1.0, 1.4, 1.4], at: 'wall', b: 'Plains', cat: 'craft', rel: 270 },
-  piece_cartographytable: { s: [2.0, 1.0, 1.6], at: 'floor', b: 'Black Forest', cat: 'table' },
+  piece_oven: { s: [3.0, 2.37, 2.0], at: 'wall', b: 'Mistlands', cat: 'craft', tall: true },
+  piece_preptable: { s: [2.54, 1.12, 1.0], at: 'wall', b: 'Mistlands', cat: 'craft' },
+  piece_artisanstation: { s: [2.65, 2.46, 1.15], at: 'wall', b: 'Mountain', cat: 'craft' },
+  piece_spinningwheel: { s: [1.78, 1.82, 1.59], c: [0.43, -0.13], at: 'wall', b: 'Plains', cat: 'craft', rel: 270 },
+  piece_cartographytable: { s: [3.93, 1.39, 1.95], c: [0.07, 0.07], at: 'floor', b: 'Black Forest', cat: 'table' },
   ArmorStand: { s: [0.9, 1.9, 0.6], at: 'wall', b: 'Swamp', cat: 'deco', tall: true },
   // cauldron upgrades: the spice rack and the pots and pans hang on a wall near the cauldron, the butcher's table
   // stands against one (sizes estimated until the models are measured)
@@ -75,39 +81,39 @@ const F = {
   cauldron_ext3_butchertable: { s: [2.0, 0.9, 1.0], at: 'wall', b: 'Mountain', cat: 'craft' },
   itemstand: { s: [0.6, 0.6, 0.25], at: 'mount', b: 'Meadows', cat: 'deco', wall: 0.14, y: 1.6 },
   itemstandh: { s: [0.9, 0.2, 0.5], at: 'top', b: 'Meadows', cat: 'deco' },
-  sign: { s: [1.0, 0.5, 0.1], at: 'mount', b: 'Black Forest', cat: 'deco', wall: 0.12, y: 1.3 },
-  piece_banner01: { s: [1.0, 2.0, 0.1], at: 'mount', b: 'Black Forest', cat: 'deco', wall: 0.2, under: 0.33, rel: 90 },
-  piece_banner02: { s: [1.0, 2.0, 0.1], at: 'mount', b: 'Black Forest', cat: 'deco', wall: 0.2, under: 0.33, rel: 90 },
-  piece_banner03: { s: [1.0, 2.0, 0.1], at: 'mount', b: 'Black Forest', cat: 'deco', wall: 0.2, under: 0.33, rel: 90 },
-  piece_banner04: { s: [1.0, 2.0, 0.1], at: 'mount', b: 'Swamp', cat: 'deco', wall: 0.2, under: 0.33, rel: 90 },
-  piece_banner05: { s: [1.0, 2.0, 0.1], at: 'mount', b: 'Swamp', cat: 'deco', wall: 0.2, under: 0.33, rel: 90 },
-  wood_dragon1: { s: [0.5, 1.2, 1.0], at: 'mount', b: 'Black Forest', cat: 'deco', wall: -0.1, y: 1.7, rel: 90 },
-  darkwood_raven: { s: [0.6, 1.2, 0.8], at: 'mount', b: 'Swamp', cat: 'deco', wall: -0.1, y: 1.7, rel: 90 },
-  darkwood_wolf: { s: [0.6, 1.2, 0.8], at: 'mount', b: 'Swamp', cat: 'deco', wall: -0.1, y: 1.7, rel: 90 },
+  sign: { s: [1.0, 0.55, 0.1], at: 'mount', b: 'Black Forest', cat: 'deco', wall: 0.12, y: 1.3 },
+  piece_banner01: { s: [1.41, 2.0, 0.1], at: 'mount', b: 'Black Forest', cat: 'deco', wall: 0.2, under: 0.33, rel: 90 },
+  piece_banner02: { s: [1.41, 2.0, 0.1], at: 'mount', b: 'Black Forest', cat: 'deco', wall: 0.2, under: 0.33, rel: 90 },
+  piece_banner03: { s: [1.41, 2.0, 0.1], at: 'mount', b: 'Black Forest', cat: 'deco', wall: 0.2, under: 0.33, rel: 90 },
+  piece_banner04: { s: [1.41, 2.0, 0.1], at: 'mount', b: 'Swamp', cat: 'deco', wall: 0.2, under: 0.33, rel: 90 },
+  piece_banner05: { s: [1.41, 2.0, 0.1], at: 'mount', b: 'Swamp', cat: 'deco', wall: 0.2, under: 0.33, rel: 90 },
+  wood_dragon1: { s: [3.34, 1.46, 1.0], c: [0.0, 1.69], at: 'mount', b: 'Black Forest', cat: 'deco', wall: -0.1, y: 1.7, rel: 90 },
+  darkwood_raven: { s: [3.09, 1.46, 0.8], c: [0.0, 1.54], at: 'mount', b: 'Swamp', cat: 'deco', wall: -0.1, y: 1.7, rel: 90 },
+  darkwood_wolf: { s: [2.18, 1.79, 0.83], c: [0.0, 1.09], at: 'mount', b: 'Swamp', cat: 'deco', wall: -0.1, y: 1.7, rel: 90 },
   piece_groundtorch_wood: { s: [0.4, 1.6, 0.4], at: 'floor', b: 'Meadows', cat: 'light', base: 0.75 },
   piece_groundtorch: { s: [0.4, 1.6, 0.4], at: 'floor', b: 'Swamp', cat: 'light', base: 0.75 },
   piece_groundtorch_green: { s: [0.4, 1.6, 0.4], at: 'floor', b: 'Swamp', cat: 'light', base: 0.75 },
   piece_groundtorch_mist: { s: [0.4, 1.6, 0.4], at: 'floor', b: 'Mistlands', cat: 'light', base: 0.75 },
-  piece_walltorch: { s: [0.3, 0.7, 0.4], at: 'mount', b: 'Black Forest', cat: 'light', wall: 0.28, y: 1.55, rel: 270 },
-  piece_dvergr_lantern: { s: [0.4, 0.7, 0.4], at: 'mount', b: 'Mistlands', cat: 'light', wall: -0.1, under: 0.35, rel: 90 },
-  piece_brazierceiling01: { s: [0.8, 1.6, 0.8], at: 'hang', b: 'Swamp', cat: 'light', under: 1.6 },
-  Candle_resin: { s: [0.2, 0.3, 0.2], at: 'top', b: 'Mountain', cat: 'light' },
-  rug_deer: { s: [2.0, 0.05, 2.5], at: 'rug', b: 'Meadows', cat: 'rug' },
-  rug_wolf: { s: [2.0, 0.05, 2.6], at: 'rug', b: 'Mountain', cat: 'rug' },
-  jute_carpet: { s: [2.0, 0.05, 3.0], at: 'rug', b: 'Mountain', cat: 'rug' },
-  rug_fur: { s: [2.4, 0.05, 3.0], at: 'rug', b: 'Plains', cat: 'rug' },
-  rug_straw: { s: [2.0, 0.05, 2.6], at: 'rug', b: 'Plains', cat: 'rug' },
+  piece_walltorch: { s: [0.31, 0.95, 0.45], at: 'mount', b: 'Black Forest', cat: 'light', wall: 0.28, y: 1.55, rel: 270 },
+  piece_dvergr_lantern: { s: [0.78, 1.21, 1.11], c: [-0.55, 0.0], at: 'mount', b: 'Mistlands', cat: 'light', wall: -0.1, under: 0.35, rel: 90 },
+  piece_brazierceiling01: { s: [0.97, 1.6, 0.91], at: 'hang', b: 'Swamp', cat: 'light', under: 1.6 },
+  Candle_resin: { s: [0.25, 0.32, 0.25], c: [0.06, 0.01], at: 'top', b: 'Mountain', cat: 'light' },
+  rug_deer: { s: [3.11, 0.05, 3.11], at: 'rug', b: 'Meadows', cat: 'rug' },
+  rug_wolf: { s: [2.55, 0.05, 3.46], at: 'rug', b: 'Mountain', cat: 'rug' },
+  jute_carpet: { s: [3.99, 0.05, 3.0], at: 'rug', b: 'Mountain', cat: 'rug' },
+  rug_fur: { s: [3.06, 0.05, 3.97], at: 'rug', b: 'Plains', cat: 'rug' },
+  rug_straw: { s: [2.12, 0.05, 2.6], at: 'rug', b: 'Plains', cat: 'rug' },
   rug_hare: { s: [2.0, 0.05, 2.5], at: 'rug', b: 'Mistlands', cat: 'rug' },
-  jute_carpet_blue: { s: [2.0, 0.05, 3.0], at: 'rug', b: 'Mistlands', cat: 'rug' },
-  rug_asksvin: { s: [2.4, 0.05, 2.8], at: 'rug', b: 'Ashlands', cat: 'rug' },
-  treasure_stack: { s: [0.5, 0.3, 0.5], at: 'top', b: 'Black Forest', cat: 'deco' },
-  dvergrprops_crate: { s: [1.2, 1.0, 0.8], at: 'wall', b: 'Mistlands', cat: 'storage' },
-  dvergrprops_barrel: { s: [0.8, 1.1, 0.8], at: 'wall', b: 'Mistlands', cat: 'storage' },
-  wood_stack: { s: [2.0, 1.0, 1.0], at: 'out', b: 'Meadows', cat: 'clutter' },
-  wood_fine_stack: { s: [2.0, 1.0, 1.0], at: 'out', b: 'Black Forest', cat: 'clutter' },
-  wood_core_stack: { s: [2.0, 1.0, 1.0], at: 'out', b: 'Black Forest', cat: 'clutter' },
-  stone_pile: { s: [1.6, 0.8, 1.6], at: 'out', b: 'Meadows', cat: 'clutter' },
-  coal_pile: { s: [1.6, 0.8, 1.6], at: 'out', b: 'Black Forest', cat: 'clutter' },
+  jute_carpet_blue: { s: [3.0, 0.05, 3.0], at: 'rug', b: 'Mistlands', cat: 'rug' },
+  rug_asksvin: { s: [3.0, 0.05, 3.0], at: 'rug', b: 'Ashlands', cat: 'rug' },
+  treasure_stack: { s: [0.5, 0.54, 0.5], at: 'top', b: 'Black Forest', cat: 'deco' },
+  dvergrprops_crate: { s: [1.2, 1.02, 1.02], at: 'wall', b: 'Mistlands', cat: 'storage' },
+  dvergrprops_barrel: { s: [1.5, 1.6, 2.0], at: 'wall', b: 'Mistlands', cat: 'storage' },
+  wood_stack: { s: [2.46, 1.14, 2.05], c: [-0.07, -0.04], base: 0.57, at: 'out', b: 'Meadows', cat: 'clutter' },
+  wood_fine_stack: { s: [2.0, 1.0, 1.9], at: 'out', b: 'Black Forest', cat: 'clutter' },
+  wood_core_stack: { s: [2.0, 1.31, 2.22], at: 'out', b: 'Black Forest', cat: 'clutter' },
+  stone_pile: { s: [1.6, 0.81, 1.6], c: [0.08, 0.07], at: 'out', b: 'Meadows', cat: 'clutter' },
+  coal_pile: { s: [1.6, 0.82, 1.6], c: [0.02, 0.1], at: 'out', b: 'Black Forest', cat: 'clutter' },
 };
 // Older names kept for callers that read the table.
 const ITEM_BIOME = {};
@@ -146,6 +152,19 @@ const CULTURE_TASTE = {
 
 // ---------------------------------------------------------------- small helpers
 const PI = Math.PI;
+// Footprint middle to pivot and back, for pieces whose game footprint is off their pivot (F c).
+function pivotOf(name, x, z, yaw) {
+  const c = F[name] && F[name].c;
+  if (!c) return [x, z];
+  const a = yaw * PI / 180, ca = Math.cos(a), sa = Math.sin(a);
+  return [x - (c[0] * ca + c[1] * sa), z - (-c[0] * sa + c[1] * ca)];
+}
+function middleOf(name, x, z, yaw) {
+  const c = F[name] && F[name].c;
+  if (!c) return [x, z];
+  const a = yaw * PI / 180, ca = Math.cos(a), sa = Math.sin(a);
+  return [x + c[0] * ca + c[1] * sa, z - c[0] * sa + c[1] * ca];
+}
 function quatY(yaw) { const a = yaw * PI / 360; return [0, +Math.sin(a).toFixed(6), 0, +Math.cos(a).toFixed(6)]; }
 function yawOf(q) { const [x, y, z, w] = q || [0, 0, 0, 1]; return Math.atan2(2 * (w * y + x * z), 1 - 2 * (y * y + x * x)) * 180 / PI; }
 const norm = a => ((a % 360) + 360) % 360;
@@ -213,12 +232,35 @@ function structBox(p) {
   if (SB) SB.set(p, { x: p.x, y: p.y, z: p.z, v });
   return v;
 }
+// The game's solids of a wall, post, window, fence or stair in the piece's own frame, as width and depth: walls are
+// 0.3 m and posts 0.4 m thick in the game, so furniture against them keeps that much clear.
+const GAME_WD = new Map();
+function gameWD(name) {
+  if (GAME_WD.has(name)) return GAME_WD.get(name);
+  let v = null;
+  const L = SHD && SHD.local(name);
+  if (L && L.length) {
+    let x0 = Infinity, x1 = -Infinity, z0 = Infinity, z1 = -Infinity;
+    for (const o of L) for (const sx of [-1, 1]) for (const sy of [-1, 1]) for (const sz of [-1, 1]) {
+      const x = o.c[0] + sx * o.a[0][0] * o.h[0] + sy * o.a[1][0] * o.h[1] + sz * o.a[2][0] * o.h[2];
+      const z = o.c[2] + sx * o.a[0][2] * o.h[0] + sy * o.a[1][2] * o.h[1] + sz * o.a[2][2] * o.h[2];
+      x0 = Math.min(x0, x); x1 = Math.max(x1, x); z0 = Math.min(z0, z); z1 = Math.max(z1, z);
+    }
+    v = [2 * Math.max(-x0, x1), 2 * Math.max(-z0, z1)];
+  }
+  GAME_WD.set(name, v);
+  return v;
+}
 function structBox0(p) {
   const info = P.piece(p.name);
   const [w, h, d] = info.size;
+  const g = BLOCKING.has(info.role) && info.role !== 'door' && gameWD(p.name);
   const prop = info.shape === 'prop' || info.shape === 'cap' || info.shape === 'tri' || info.shape === 'triInv' || info.onPivot;
   const y0 = prop ? p.y : p.y - h / 2, y1 = prop ? p.y + h : p.y + h / 2;
-  return { p, info, role: info.role, b: obox(p.x, p.z, w, d, pyaw(p)), y0, y1 };
+  const out = { p, info, role: info.role, b: obox(p.x, p.z, w, d, pyaw(p)), y0, y1 };
+  // gb: the box the game's solids take, where larger (furniture keeps clear of it; rooms are read from b)
+  if (g && (g[0] > w + 0.02 || g[1] > d + 0.02)) out.gb = obox(p.x, p.z, Math.max(w, g[0]), Math.max(d, g[1]), pyaw(p));
+  return out;
 }
 
 const G = 0.5; // grid step
@@ -357,7 +399,8 @@ function roomModel(cellList, stand, boxes, over, pieces, near) {
     const ux = Math.cos(ar), uz = -Math.sin(ar), nx = Math.sin(ar), nz = Math.cos(ar);
     const off = s.p.x * nx + s.p.z * nz, along = s.p.x * ux + s.p.z * uz;
     // half thickness of this piece across its line
-    const ht = s.b.hw * Math.abs(s.b.c * nx - s.b.s * nz) + s.b.hd * Math.abs(s.b.s * nx + s.b.c * nz);
+    const gb = s.gb || s.b;
+    const ht = gb.hw * Math.abs(gb.c * nx - gb.s * nz) + gb.hd * Math.abs(gb.s * nx + gb.c * nz);
     const hl = s.b.hw * Math.abs(s.b.c * ux - s.b.s * uz) + s.b.hd * Math.abs(s.b.s * ux + s.b.c * uz);
     for (const side of [1, -1]) {
       if (![0.3, 0.6, 0.9].some(e => room.inside(s.p.x + nx * side * (ht + e), s.p.z + nz * side * (ht + e)))) continue;
@@ -426,7 +469,7 @@ function edgeFaces(room) {
     const flush = (lo, hi) => {
       // along runs the same way as wall faces: ux, uz is the face's own direction
       const ux = r.nx ? 0 : 1, uz = r.nx ? 1 : 0;
-      const f = { ux, uz, nx: r.nx, nz: r.nz, off: 0, side: 1, a0: lo - G / 2, a1: hi + G / 2, ht: 0, edge: true, runs: [], samples: [] };
+      const f = { ux, uz, nx: r.nx, nz: r.nz, off: 0, side: 1, a0: lo - G / 2, a1: hi + G / 2, ht: 0.15, edge: true, runs: [], samples: [] };
       f.len = f.a1 - f.a0;
       f.px = t => (r.nx ? r.line : t);
       f.pz = t => (r.nx ? t : r.line);
@@ -523,7 +566,7 @@ class Room {
     if (!rug) {
       for (const s of this.near(x, z, b.r + 0.1)) {
         if (s.y1 < y0 + 0.05 || s.y0 > y1 - 0.05) continue;
-        if (overlap(s.b, b, -0.02)) return false;
+        if (overlap(s.gb || s.b, b, -0.02)) return false;
       }
       // both sides of every door within reach, as the audit sees them, whichever room they open into
       if (f.at !== 'mount' && f.at !== 'hang') for (const s of this.near(x, z, b.r + 2.4)) {
@@ -531,6 +574,11 @@ class Room {
         const dy = pyaw(s.p), ar = dy * PI / 180, nx = Math.sin(ar), nz = Math.cos(ar);
         for (const sg of [1, -1]) if (overlap(obox(s.p.x + nx * sg * (s.b.hd + 0.6), s.p.z + nz * sg * (s.b.hd + 0.6), s.b.hw * 2, 1.2, dy), b, -0.02)) return false;
       }
+    }
+    // furnishing already in the building that this floor's rooms do not know of (another room's, laid earlier)
+    if (!rug) for (const q of this.outBoxes()) {
+      if (q.y0 > y1 - 0.05 || q.y1 < y0 + 0.05) continue;
+      if (overlap(q.b, b, -0.02)) return false;
     }
     for (const q of this.mates) {
       if (q.room === this || q.mount || q.rug || rug) continue;
@@ -564,6 +612,20 @@ class Room {
     }
     return true;
   }
+  outBoxes() {
+    const out = this.out || [];
+    if (this._ob && this._obN === out.length) return this._ob;
+    const mine = new Set(this.mates.map(q => q.p).filter(Boolean));
+    this._ob = [];
+    for (const p of out) {
+      const f = F[p.name];
+      if (!p.decor || !f || mine.has(p) || !['floor', 'wall'].includes(f.at)) continue;
+      const [w, h, d] = size(p.name), yaw = pyaw(p), [mx, mz] = middleOf(p.name, p.x, p.z, yaw), y0 = p.y - (f.base || 0);
+      this._ob.push({ b: obox(mx, mz, w, d, yaw), y0, y1: y0 + h });
+    }
+    this._obN = out.length;
+    return this._ob;
+  }
   add(name, x, y, z, yaw, extra = {}) {
     const [w, h, d] = size(name);
     const f = F[name] || {};
@@ -572,7 +634,10 @@ class Room {
     this.placed.push(rec);
     rec.room = this;
     this.mates.push(rec);
-    this.out.push({ name, x: +x.toFixed(3), y: +y.toFixed(3), z: +z.toFixed(3), q: quatY(norm(yaw)), yaw: norm(yaw), decor: true });
+    const [px, pz] = pivotOf(name, x, z, yaw);
+    const piece = { name, x: +px.toFixed(3), y: +y.toFixed(3), z: +pz.toFixed(3), q: quatY(norm(yaw)), yaw: norm(yaw), decor: true };
+    rec.p = piece;
+    this.out.push(piece);
     if (!rec.rug && f.cat !== 'fire') this.count++;
     return rec;
   }
@@ -878,7 +943,7 @@ function placeTable(room, k, o = {}) {
     room.mates.splice(room.mates.indexOf(t), 1);
     for (let j = room.out.length - 1; j >= 0; j--) {
       const p = room.out[j];
-      if (p.decor && p.name === t.name && Math.abs(p.x - t.x) < 0.001 && Math.abs(p.z - t.z) < 0.001 && Math.abs(p.y - t.y0) < 0.001) { room.out.splice(j, 1); break; }
+      if (p === t.p) { room.out.splice(j, 1); break; }
     }
     room.count--;
   }
@@ -1406,7 +1471,7 @@ function fill(room, role, c) {
       const done = [];
       for (const sp of spots) { const r = putMount(room, name, sp); if (!r) break; done.push(r); }
       if (done.length === spots.length) return done.length;
-      for (const r of done) { room.placed.splice(room.placed.indexOf(r), 1); room.mates.splice(room.mates.indexOf(r), 1); room.mounts.pop(); room.count--; const j = room.out.lastIndexOf(room.out.find(p => p.decor && p.name === r.name && p.x === +r.x.toFixed(3) && p.z === +r.z.toFixed(3))); if (j >= 0) room.out.splice(j, 1); }
+      for (const r of done) { room.placed.splice(room.placed.indexOf(r), 1); room.mates.splice(room.mates.indexOf(r), 1); room.mounts.pop(); room.count--; const j = room.out.lastIndexOf(r.p); if (j >= 0) room.out.splice(j, 1); }
     }
     return 0;
   };
@@ -2253,7 +2318,8 @@ function outside(b, c) {
       if (walls.some(s => overlap(s.b, bb, -0.03))) continue;
       if (placed.some(q => overlap(q, bb, 0.3))) continue;
       placed.push(bb);
-      b.pieces.push({ name, x: +cc.x.toFixed(3), y: +ground.toFixed(3), z: +cc.z.toFixed(3), q: quatY(cc.yaw), yaw: cc.yaw, decor: true, outside: true });
+      const [px, pz] = pivotOf(name, cc.x, cc.z, cc.yaw);
+      b.pieces.push({ name, x: +px.toFixed(3), y: +(ground + ((F[name] || {}).base || 0)).toFixed(3), z: +pz.toFixed(3), q: quatY(cc.yaw), yaw: cc.yaw, decor: true, outside: true });
       break;
     }
   }
@@ -2272,7 +2338,7 @@ function audit(design, decor) {
   const built = p => isDeco(p) && !F[p.name] && P.piece(p.name).structural;
   const deco = pieces.filter(p => isDeco(p) && !built(p));
   const struct = pieces.filter(p => !isDeco(p) || built(p)).map(structBox);
-  const boxOf = p => { const [w, h, d] = size(p.name); const f = F[p.name] || {}; const y0 = p.y - (f.base || 0) - (f.at === 'hang' ? 0 : 0); return { p, f, b: obox(p.x, p.z, w, d, pyaw(p)), y0: f.at === 'hang' ? p.y : y0, y1: f.at === 'hang' ? p.y + h : y0 + h }; };
+  const boxOf = p => { const [w, h, d] = size(p.name); const f = F[p.name] || {}; const y0 = p.y - (f.base || 0) - (f.at === 'hang' ? 0 : 0); const [mx, mz] = middleOf(p.name, p.x, p.z, pyaw(p)); return { p, f, b: obox(mx, mz, w, d, pyaw(p)), y0: f.at === 'hang' ? p.y : y0, y1: f.at === 'hang' ? p.y + h : y0 + h }; };
   const items = deco.map(boxOf);
   const floorsAt = struct.filter(s => s.role === 'floor');
   const tops = struct.filter(s => s.role === 'floor' || s.role === 'stair');
@@ -2308,7 +2374,7 @@ function audit(design, decor) {
       // walk back from the piece to the first wall piece behind it at its height
       let here = [];
       for (let back = 0; back <= 1.0 && !here.length; back += 0.05) {
-        const px = it.p.x + ux * t - nx * back, pz = it.p.z + uz * t - nz * back;
+        const px = it.b.x + ux * t - nx * back, pz = it.b.z + uz * t - nz * back;
         here = wallish.filter(s => ptDist(s.b, px, pz) < 0.01 && s.y0 <= y + 0.01 && s.y1 >= y - 0.01);
       }
       if (!here.length || here.some(s => s.role !== 'wall' || isGlass(s.p.name))) bad = true;

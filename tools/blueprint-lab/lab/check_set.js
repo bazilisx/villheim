@@ -1,8 +1,9 @@
 // Runs every check on the review set and the culture samples, without drawing anything.
-//   node lab/check_set.js [tries] [--gen <lib dir>] [--list] [--only <culture,...>]
+//   node lab/check_set.js [tries] [--gen <lib dir>] [--list] [--only <culture,...>] [--shapes | --no-shapes]
 // tries: seeds per request, the best kept as in lib/gen_set.js and lib/gen_cultures.js (default 8).
 // --gen: make the designs with another copy of the lib (an older one, to compare), checked with this one.
 // --list: print every design that fails a check, with the reason.
+// --shapes / --no-shapes: check with or without the game's colliders (lib/shapes.js); default as checks.js has it.
 const path = require('path');
 const args = process.argv.slice(2);
 const opt = (k, d) => { const i = args.indexOf(k); return i >= 0 ? args[i + 1] : d; };
@@ -12,6 +13,9 @@ const only = opt('--only', null);
 const G = require(path.join(genDir, 'generate.js')), S = require(path.join(genDir, 'styles.js'));
 const Ch = require('../lib/checks.js'), F = require('../lib/features.js');
 const scorer = require('../data/scorer.json');
+const copt = args.includes('--shapes') ? { shapes: true } : args.includes('--no-shapes') ? { shapes: false } : {};
+// the switch also decides what the generator and decorator test against
+if (copt.shapes != null) Ch.setShapes(copt.shapes);
 
 const stages = [['s1', 'd1'], ['s2', 'd2'], ['s3', 'd3']];
 const reqs = [];
@@ -34,7 +38,7 @@ for (const q of reqs) {
   let best = null;
   for (let i = 0; i < tries; i++) {
     const d = G.generate({ ...q, seed: q.seed0 + i * 37 + (q.group === 'set' ? n * 1009 : 0) });
-    const checks = Ch.check(d, q.biome), pass = checks.filter(c => c.ok).length, score = F.score(scorer, d.pieces);
+    const checks = Ch.check(d, q.biome, copt), pass = checks.filter(c => c.ok).length, score = F.score(scorer, d.pieces);
     if (!best || pass * 10 + score > best.key) best = { d, checks, pass, key: pass * 10 + score };
   }
   const g = perGroup[q.group] || (perGroup[q.group] = { n: 0, ok: 0 });

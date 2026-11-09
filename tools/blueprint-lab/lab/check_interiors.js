@@ -1,14 +1,19 @@
 // Checks on furnished interiors over a sample of generated designs.
-// node lab/check_interiors.js [lib dir] [out.json] [seeds per request]
+// node lab/check_interiors.js [lib dir] [out.json] [seeds per request] [--shapes | --no-shapes]
 // The lib dir is the generator to test (default ../lib); the checks are always this tree's decorate.js audit, so an
 // older generator can be measured the same way. Prints a table of problems per check and writes the details.
 const fs = require('fs'), path = require('path');
+const flags = process.argv.filter(a => /^--/.test(a));
+process.argv = process.argv.filter(a => !/^--/.test(a));
+const copt = flags.includes('--shapes') ? { shapes: true } : flags.includes('--no-shapes') ? { shapes: false } : {};
 const libDir = path.resolve(process.argv[2] || path.join(__dirname, '../lib'));
 const out = process.argv[3] || null;
 const seeds = +(process.argv[4] || 3);
 const G = require(path.join(libDir, 'generate.js'));
 const Ck = require(path.join(libDir, 'checks.js'));
 const D = require('../lib/decorate.js');
+// the switch also decides what the generator and decorator test against
+if (copt.shapes != null) Ck.setShapes(copt.shapes);
 const types = ['home', 'longhouse', 'tavern', 'smithy', 'sawmill', 'workshop', 'barn', 'farm', 'storage', 'tower', 'dock', 'stall', 'temple'];
 const biomes = ['Meadows', 'Black Forest', 'Swamp', 'Mountain', 'Plains', 'Mistlands'];
 const stages = [['s1', 'd1'], ['s2', 'd2'], ['s3', 'd3']];
@@ -27,7 +32,7 @@ for (const type of types) for (const biome of biomes) for (const [stage, decor] 
   const marked = d.pieces.some(p => p.decor);
   const deco = d.pieces.filter(p => (marked ? p.decor : D.FURNITURE[p.name] && !require('../lib/pieces.js').piece(p.name).structural));
   const biomeBad = deco.filter(p => D.FURNITURE[p.name] && ORDER.indexOf(D.FURNITURE[p.name].b) > ORDER.indexOf(biome)).map(p => p.name);
-  const checks = Ck.check(d, biome);
+  const checks = Ck.check(d, biome, copt);
   const row = { type, biome, stage, decor, seed, name: d.meta.Name, items: deco.length, kinds: new Set(deco.map(p => p.name)).size };
   for (const [k, v] of Object.entries(a)) { add(k, v.length); if (v.length) row[k] = v.slice(0, 6); }
   add('decorBiome', biomeBad.length); if (biomeBad.length) row.decorBiome = [...new Set(biomeBad)];

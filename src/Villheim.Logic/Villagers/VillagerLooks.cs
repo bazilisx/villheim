@@ -143,13 +143,18 @@ namespace Villheim.Logic.Villagers
             Color hair = Color.Lerp(HairLight, HairDark, red) * shade;
             vis.SetHairColor(new Vector3(hair.r, hair.g, hair.b));
 
-            List<string> styles = HairStyles(female);
+            // The culture's allowed and blocked styles (HairReview) apply to everyone of that culture.
+            List<string> styles = HairReview.ForAdult(culture.Key, female, HairStyles(female));
             string hairItem = styles.Count > 0 ? PickStyle(looks, styles, culture.HairPrefer) : FirstExisting($"Hair{looks.Next(1, 21)}", "Hair1");
             if (Childhood.IsChild(villager))
             {
-                // Children's styles from ChildHairAllow, ChildHairBlock and ChildHairCultures (T-53), from their own
+                // A child's style must also be on his culture's list for children (HairReview), drawn from his own
                 // random stream, so the grown villager's looks stay the same.
-                hairItem = ChildBody.ChildHair(seed, female, culture.Key, styles) ?? hairItem;
+                List<string> young = HairReview.ForChild(culture.Key, female, styles);
+                if (young.Count > 0)
+                {
+                    hairItem = PickStyle(new System.Random(seed ^ 0x6b1d5), young, culture.HairPrefer);
+                }
             }
 
             villager.m_hairItem = hairItem;
@@ -466,13 +471,43 @@ namespace Villheim.Logic.Villagers
 
         private static readonly Dictionary<bool, List<string>> Styles = new Dictionary<bool, List<string>>();
 
+        /// <summary>Every hair style grown villagers of this sex may have (for children's hair and the tuning rig).</summary>
+        internal static List<string> HairList(bool female) => HairStyles(female);
+
+        /// <summary>Every hair the game has, none left out, in the game's own order (Hair2 before Hair10), for the rig.</summary>
+        internal static List<string> AllHair() =>
+            ObjectDB.instance == null ? new List<string>()
+                : ObjectDB.instance.m_items.Where(i => i != null && i.name.StartsWith("Hair") && i.name != "HairNone")
+                    .Select(i => i.name).Distinct().OrderBy(n => n.Length).ThenBy(n => n, System.StringComparer.Ordinal).ToList();
+
+        /// <summary>"none" and every beard the game has, for the rig.</summary>
+        internal static List<string> AllBeards() =>
+            ObjectDB.instance == null ? new List<string> { "none" }
+                : new[] { "none" }.Concat(ObjectDB.instance.m_items.Where(i => i != null && i.name.StartsWith("Beard") && i.name != "BeardNone")
+                    .Select(i => i.name).Distinct().OrderBy(n => n.Length).ThenBy(n => n, System.StringComparer.Ordinal)).ToList();
+
+        /// <summary>A hair or beard style's name as the game shows it ("Braided 2"), or the prefab name.</summary>
+        internal static string ShownName(string prefab)
+        {
+            GameObject item = ObjectDB.instance != null && !string.IsNullOrEmpty(prefab) ? ObjectDB.instance.GetItemPrefab(prefab) : null;
+            string token = item != null ? item.GetComponent<ItemDrop>()?.m_itemData?.m_shared?.m_name : null;
+            return token != null && Localization.instance != null ? Localization.instance.Localize(token) : prefab ?? "";
+        }
+
+        /// <summary>The middle of a culture's skin and hair color ranges, for the rig.</summary>
+        internal static void CultureColors(Cultures.Culture culture, out Vector3 skin, out Vector3 hair)
+        {
+            Color s = Color.Lerp(SkinLight, SkinDark, Mathf.Clamp((culture.Skin.x + culture.Skin.y) / 2f, 0.25f, 1f));
+            Color h = Color.Lerp(HairLight, HairDark, (culture.HairRed.x + culture.HairRed.y) / 2f) *
+                      Mathf.Clamp((culture.HairShade.x + culture.HairShade.y) / 2f, 0.05f, 1f);
+            skin = new Vector3(s.r, s.g, s.b);
+            hair = new Vector3(h.r, h.g, h.b);
+        }
+
         /// <summary>
         /// The hair prefabs a villager may get: every hair the game has (Hair1, Hair2...), less the ones left out for
         /// women or men, judged by the style's name as the game shows it. Worked out once per model.
         /// </summary>
-        /// <summary>Every hair style grown villagers of this sex may have (for children's hair and the tuning rig).</summary>
-        internal static List<string> HairList(bool female) => HairStyles(female);
-
         private static List<string> HairStyles(bool female)
         {
             if (Styles.TryGetValue(female, out List<string> cached) && cached.Count > 0)

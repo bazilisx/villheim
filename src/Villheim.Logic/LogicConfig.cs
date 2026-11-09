@@ -238,12 +238,20 @@ namespace Villheim.Logic
         public static ConfigEntry<float> VillagerRegen;
         public static ConfigEntry<float> RestRegenFactor;
         public static ConfigEntry<float> GhostDeathSeconds;
-        public static ConfigEntry<string> ChildRigHairBoy;
-        public static ConfigEntry<string> ChildRigHairGirl;
-        public static ConfigEntry<bool> ChildRigGhost;
-        public static ConfigEntry<string> ChildHairAllow;
-        public static ConfigEntry<string> ChildHairBlock;
-        public static ConfigEntry<string> ChildHairCultures;
+        // Hair review and the kids rig (Villagers/HairReview.cs), section "3d - Hair review".
+        public static ConfigEntry<string> RigCulture;
+        public static ConfigEntry<string> RigHairMan;
+        public static ConfigEntry<string> RigBeardMan;
+        public static ConfigEntry<string> RigHairWoman;
+        public static ConfigEntry<string> RigHairBoy;
+        public static ConfigEntry<string> RigHairGirl;
+        public static ConfigEntry<bool> RigGhost;
+        public static ConfigEntry<string> HairAllowMen;
+        public static ConfigEntry<string> HairBlockMen;
+        public static ConfigEntry<string> HairAllowWomen;
+        public static ConfigEntry<string> HairBlockWomen;
+        public static ConfigEntry<string> HairAllowBoys;
+        public static ConfigEntry<string> HairAllowGirls;
         public static ConfigEntry<bool> GhostDeath;
         public static ConfigEntry<int> YggaGrowDays;
         public static ConfigEntry<string> MistlandsDemisterPrefab;
@@ -518,6 +526,7 @@ namespace Villheim.Logic
             ChatScenes = Admin(config, minds, "ChatScenes", true,
                 "Chats between villagers fit the pair (friend, rival, sweetheart, trade), pass on what they know of you, " +
                 "and get answers in each one's own voice and a third villager chiming in. Off: plain chats, as before.");
+            Villagers.HairReview.Bind(config);
             BindLiving(config);
             BindKnowledge(config);
             BindCultures(config);
@@ -550,24 +559,11 @@ namespace Villheim.Logic
             ChildProportions = Admin(config, looks, "ChildProportions", true,
                 "Children are shaped as children (the ChildBoy and ChildGirl settings): a bigger head for their size, a " +
                 "shorter neck, legs and arms, narrower shoulders and hips. Off: a child is a grown villager scaled down " +
-                "to ChildBoyHeight or ChildGirlHeight. 'vh kids rig' puts up models to tune these against.");
+                "to ChildBoyHeight or ChildGirlHeight. 'vh kids rig' puts up models to tune these against (see '3d - Hair review').");
             ChildNoBeard = Admin(config, looks, "ChildNoBeard", true, "Boys have no beard until they grow up.");
             BindChildShape(config, looks);
             GhostDeathSeconds = Admin(config, looks, "GhostDeathSeconds", 2.5f,
                 "Seconds a dying villager takes to fade out as he rises, after the ghost's vanishing effect.");
-            ChildRigHairBoy = Admin(config, looks, "ChildRigHairBoy", "",
-                "Hair on the boy model of 'vh kids rig' (a hair prefab such as Hair3; empty: the rig's default). " +
-                "'vh kids hair next' cycles through the game's styles.");
-            ChildRigHairGirl = Admin(config, looks, "ChildRigHairGirl", "", "The same for the girl model.");
-            ChildRigGhost = Admin(config, looks, "ChildRigGhost", false,
-                "Give the 'vh kids rig' models the villagers' ghost look, to see children as they will be.");
-            ChildHairAllow = Admin(config, looks, "ChildHairAllow", "",
-                "Hair styles children may have (comma separated, e.g. Hair3, Hair12). Empty: any style grown villagers of " +
-                "their sex may have, less ChildHairBlock.");
-            ChildHairBlock = Admin(config, looks, "ChildHairBlock", "", "Hair styles children never have (comma separated).");
-            ChildHairCultures = Admin(config, looks, "ChildHairCultures", "",
-                "Children's hair styles by culture, with weights: culture=Hair3:2,Hair5:1; next culture. A child of a culture " +
-                "listed here picks from its list only (still less ChildHairBlock). Culture keys as in 'vh cultures'.");
             GhostDeath = Admin(config, looks, "GhostDeath", true,
                 "A villager who dies fades away the way the game's ghosts do: no body falls, no blood, and he stays an " +
                 "echo to the end. Hits on villagers show the ghosts' hit effect too. Takes effect on the next logic load.");

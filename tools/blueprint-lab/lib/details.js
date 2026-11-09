@@ -545,7 +545,7 @@ function bargeboards(K, C, w, ctx, rows, ends, add, low, pivot, r) {
   // rafter tails: a sloped beam at every seam of the lowest roof row, half a metre out past its edge and just under it
   // (the exposed rafters of Norse halls; the corpus lays sloped beams along roof piece edges)
   // (never over a door or gate: a 45 degree beam is 0.4 m thick in the game and hangs into the doorway)
-  if (X.rafterTails && !eaveDone) for (let u = -w.W + 2; u <= w.W - 2 + 0.01; u += 2) for (const sv of [-1, 1]) {
+  if (X.rafterTails && !eaveDone && !(ctx.eaveOut || 0)) for (let u = -w.W + 2; u <= w.W - 2 + 0.01; u += 2) for (const sv of [-1, 1]) {
     const v = sv * (2 + 2 * rows + 0.7);
     if (overDoor(u, sv * w.D)) continue;
     add(name, u, pivot(rows) - 0.7 - (r === 2 ? 0 : 0), v, (sv < 0 ? 180 : 0) + 90, 'trim', low(rows));
@@ -565,19 +565,27 @@ function bargeboards(K, C, w, ctx, rows, ends, add, low, pivot, r) {
       if (surf > yc + 0.3) add(beam, u, yc, v, 90, 'trim', yc + 0.1);
     }
   });
+  // beam ends under the overhanging eaves, one at every roof seam, a metre long, just under the roof (D-059)
+  const rk = ctx.rake || 0, eo = ctx.eaveOut || 0;
+  if (eo && !eaveDone) for (let u = -w.W + 2; u <= w.W - 2 + 0.01; u += 2) for (const sv of [-1, 1]) {
+    if (overDoor(u, sv * w.D)) continue;
+    add(K.beam1 || 'wood_beam_1', u, top - r / 4 - 0.3, sv * (w.D + 0.5), 90, 'trim', top - r / 4 - 0.2);
+  }
   if (!X.bargeboards) return;
   [-1, 1].forEach((sg, k) => {
     if (!ends[k]) return;
-    const u = sg * (w.W + 0.06);
+    const u = sg * (w.W + rk + 0.06);
     for (let i = 0; i <= rows; i++) for (const sv of [-1, 1]) {
       const v = sv * (2 + 2 * i), roofYaw = sv < 0 ? 180 : 0;
       add(name, u, pivot(i), v, roofYaw + 90, 'trim', low(i) + r);
     }
+    // and along the overhanging eave row
+    if (eo) for (const sv of [-1, 1]) if (!overDoor(sg * w.W, sv * w.D) && !overDoor(sg * w.W, sv * (w.D - 2))) add(name, u, pivot(rows) - r / 2, sv * (2 + 2 * rows + 1), (sv < 0 ? 180 : 0) + 90, 'trim', low(rows));
     // crossed boards over the apex: the game's Wood Roof Cross (the piece is the pair of crossed boards that Norwegian
     // vindskier end in), on the ridge where it meets the gable, as a quarter of the corpus builds have it
     // the piece's boards cross 1 m (26 degrees: 0.5 m) over its pivot, so the crossing sits on the apex (it stood a
     // metre too high, its arms 2 m over the ridge)
-    if (X.crossed && !ctx.dragonsHere && !apex) add(r === 2 ? 'wood_wall_roof_top_45' : 'wood_wall_roof_top', sg * w.W, capY - (r === 2 ? 1 : 0.5), 0, 90, 'trim', capY + 1);
+    if (X.crossed && !ctx.dragonsHere && !apex) add(r === 2 ? 'wood_wall_roof_top_45' : 'wood_wall_roof_top', sg * (w.W + rk), capY - (r === 2 ? 1 : 0.5), 0, 90, 'trim', capY + 1);
   });
 }
 

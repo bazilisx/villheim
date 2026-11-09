@@ -93,7 +93,8 @@ function floorplan(spec) {
     void wx; void dz;
   }
   const fireAt = R0.fire ? (() => { const c = cells.slice().sort((a, b2) => Math.hypot(a[0], a[1]) - Math.hypot(b2[0], b2[1]))[0]; return { x: c[0], z: c[1] }; })() : null;
-  DF.decorate(b, { use: R0.use, type: R0.type, role: R0.role, decor, biome, culture, R, doorX: door.x, fireAt });
+  DF.decorate(b, { use: R0.use, type: R0.type, role: R0.role, decor, biome, culture, R, doorX: door.x, fireAt, usedTemplates: spec.used });
+  const template = (b.decorReport || []).map(r => r.template).filter(Boolean).join(' ');
   const furniture = b.pieces.filter(p => p.decor && !p.outside);
   // keep a full wall wherever something hangs on it, so nothing floats
   const F = DF.FURNITURE;
@@ -125,7 +126,7 @@ function floorplan(spec) {
   const id = spec.id || 'FP-000';
   const command = `vh floorplan ${shape} ${w}x${dpt} ${roomKind} ${Object.keys(BIOME_CODES).find(k => BIOME_CODES[k] === biome)} ${culture} ${decor} ${seed}${spec.ladder ? ' ladder' : ''}`;
   return {
-    id, command, shape, w, d: dpt, room: roomKind, biome, culture, decor, seed, area,
+    id, command, shape, w, d: dpt, room: roomKind, biome, culture, decor, seed, area, template,
     perTenM2: +(items / area * 10).toFixed(2), items,
     summary: Object.entries(counts).sort((a, c) => c[1] - a[1]).map(([n, c]) => `${n} ${c}`).join(', '),
     pieces: out, sign: { text: `${id} ${roomKind} ${w}x${dpt} ${decor}` },
@@ -196,7 +197,9 @@ function layout(plans) {
 }
 
 function make(specs, name) {
-  const plans = specs.map(floorplan);
+  // the plans of one set share their templates, so no two plans show the same one
+  const used = new Set();
+  const plans = specs.map(s => floorplan({ ...s, used }));
   const { pieces, signs, pads, floorY } = layout(plans);
   const blueprint = BF.write({ meta: { Name: name, Creator: 'Villheim floorplan', Category: 'Villheim floorplans', Description: plans.map(p => `${p.id} ${p.command}`).join('; ') }, pieces });
   return {

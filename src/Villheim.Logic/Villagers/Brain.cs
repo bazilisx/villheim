@@ -251,6 +251,7 @@ namespace Villheim.Logic.Villagers
             HandItems.Tidy(villager, doer);
             Poses.EndTick(villager);
             LoopWatch.Update(villager);
+            HomeLife.AfterTick(villager);
             Seats.AfterTick(villager);
             Sleep.AfterTick(villager);
             Dialogue.Tick(villager);

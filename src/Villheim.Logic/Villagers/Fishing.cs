@@ -144,6 +144,11 @@ namespace Villheim.Logic.Villagers
         public static bool Update(Villager villager, VillagerAI ai, float dt)
         {
             State state = States.GetOrCreateValue(villager);
+            if (!state.Active && Roles.TradeOf(villager) != Roles.Trade.Fisher)
+            {
+                return false;
+            }
+
             if (state.Active && Time.time - state.LastRun > 5f)
             {
                 // Something else ran him for a while: the trip is off, the catch so far kept for the next one.

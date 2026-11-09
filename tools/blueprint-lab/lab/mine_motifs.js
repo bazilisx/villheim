@@ -170,8 +170,9 @@ function allowed(kind, c, fb, fit) {
   if (TRIM.test(c)) return !(kind === 'gable' && c === 'fence');
   if (kind === 'window') {
     if (/^(shutter|glass|grate)$/.test(c)) return true;
-    if (/^(floor1|floor2)$/.test(c)) return mo > -0.1 && ((mh > -0.45 && mh < 0.25) || (mh > fit.h - 0.2 && mh < fit.h + 0.5)); // a sill board or a hood
-    if (/^(roof26|roof45|gable26|gable45)$/.test(c)) return fb.h0 > fit.h - 0.4; // a hood over it
+    // a 1 m board as a sill or a head; floors and roofs out from a window make a box round it, which is a dormer or a
+    // bay and not window trim
+    if (c === 'floor1') return mo > -0.1 && ((mh > -0.45 && mh < 0.25) || (mh > fit.h - 0.2 && mh < fit.h + 0.5));
     if (/^(wall1x1|wallHalf|logWall|block1)$/.test(c)) return true; // box sides, sills
     return false;
   }

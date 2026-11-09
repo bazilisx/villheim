@@ -195,13 +195,15 @@ function usable(m, mt, bud, wallStone) {
   if ((m.fit.wall && /stone|marble|grausten|iron_wall/.test(m.fit.wall)) !== !!wallStone && (m.kind === 'window' || m.kind === 'door')) return null;
   const sw = swap(m, mt);
   if (!sw) return null;
-  const kept = sw.filter((t, i) => {
-    if (!t) return false;
+  // the generator lays its own entry stairs and steps to the door's height
+  const sw2 = sw.map((t, i) => (t && /^(stair|ladder|spiral)$/.test(t[5]) ? 'skip' : t));
+  const kept = sw2.filter((t, i) => {
+    if (t === 'skip' || !t) return false;
     if (PROPS.test(t[5]) && !bud.props) return false;
     if (CARVED.test(t[5]) && !bud.carvings) return false;
     return true;
   });
-  const lost = m.p.length - kept.length;
+  const lost = sw2.filter(t => t === null).length + (sw2.length - kept.length - sw2.filter(t => t === null || t === 'skip').length);
   if (!kept.length || kept.length > bud.max || lost > Math.max(1, m.p.length * 0.34)) return null;
   // nothing but lamps and carvings is not trim
   if (kept.every(t => PROPS.test(t[5]) || CARVED.test(t[5]))) return null;
@@ -218,12 +220,17 @@ function pick(R, cands, family) {
 }
 // the motifs for one building: get(kind, size, front) picks once per kind, size and front/back and keeps it, so all
 // windows of a size on a facade match; family holds the source builds already used (their other motifs count more)
-let ENABLED = true;
+let ENABLED = !(NODE_M && typeof process !== 'undefined' && process.env && process.env.VH_NO_MOTIFS);
 function setEnabled(v) { ENABLED = !!v; }
 function rngM(seed) { let a = seed >>> 0; return () => { a = (a + 0x6D2B79F5) >>> 0; let t = a; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
 function plan(ctx) {
   if (!ENABLED || !data().length) return null;
-  const mt = materials(ctx), R = rngM(Math.floor(ctx.R() * 2147483647)), family = new Set(), cache = new Map();
+  // its own random stream, from the building's own make, so the rest of the design draws as it did without motifs
+  const sig = [ctx.cultureKey, ctx.type, ctx.stage, ctx.decor, ctx.biome, ctx.plan, ctx.F, ctx.SH, ctx.storeys, ctx.door && ctx.door.x, ctx.door && ctx.door.z,
+    (ctx.edges || []).length, ...(ctx.wings || []).map(w => `${w.cx},${w.cz},${w.W},${w.D}`), ctx.seed].join('|');
+  let hsh = 2166136261;
+  for (let i = 0; i < sig.length; i++) { hsh ^= sig.charCodeAt(i); hsh = Math.imul(hsh, 16777619); }
+  const mt = materials(ctx), R = rngM(hsh), family = new Set(), cache = new Map();
   const wallStone = /stone|marble|grausten/.test(ctx.C.wallStyle || '') && !/base/.test(ctx.C.wallStyle || '');
   const get = (kind, f, front) => {
     const key = `${kind}|${f.w || ''}x${f.h || ''}|${f.slope || ''}|${front ? 1 : 0}`;
@@ -274,6 +281,17 @@ function refit(t, g, f) {
   return [name, a, o, h, r, cls];
 }
 
+const volM = a => Math.max(0, a.x1 - a.x0) * Math.max(0, a.y1 - a.y0) * Math.max(0, a.z1 - a.z0);
+const interM = (a, o) => Math.max(0, Math.min(a.x1, o.x1) - Math.max(a.x0, o.x0)) * Math.max(0, Math.min(a.y1, o.y1) - Math.max(a.y0, o.y0)) * Math.max(0, Math.min(a.z1, o.z1) - Math.max(a.z0, o.z0));
+// boxes of the pieces already placed, kept while they stay where they are
+const BOXES = new WeakMap();
+function boxOf(Ck, p) {
+  const c = BOXES.get(p);
+  if (c && c.x === p.x && c.y === p.y && c.z === p.z && c.n === p.name) return c.b;
+  const bx = Ck.aabb(p);
+  BOXES.set(p, { x: p.x, y: p.y, z: p.z, n: p.name, b: bx });
+  return bx;
+}
 const BLOCKING = ['door', 'stair', 'storage', 'craft', 'seat', 'table', 'bed', 'light', 'fence', 'deco', 'window', 'roof', 'roofTop', 'roofCorner', 'gable', 'fire', 'floor'];
 // put a motif on a feature; returns the number of pieces placed, or 0 when it would lose too much (nothing placed)
 //   fr: { x, y, z, nx, nz } the feature frame; g: the motif's own fit; f: the feature's size (windows, doors);
@@ -305,7 +323,9 @@ function place(b, c, fr, f, opts = {}) {
       z0: Math.min(o.z - o.uz * o.w / 2, o.z + o.uz * o.w / 2) - Math.abs(o.nz) * 1.0 - 0.05, z1: Math.max(o.z - o.uz * o.w / 2, o.z + o.uz * o.w / 2) + Math.abs(o.nz) * 1.0 + 0.05,
       y0: o.y + 0.05, y1: o.y + 2.35 };
   });
-  const keepOut = [...doors, ...(opts.keepOut || [])];
+  // stairs and ladders keep the room over them to climb, and a metre at their foot
+  const climbs = b.pieces.filter(p => PM.piece(p.name).role === 'stair').map(p => { const o = boxOf(Ck, p); return { x0: o.x0 - 1, x1: o.x1 + 1, y0: o.y0 + 0.05, y1: o.y1 + 2.4, z0: o.z0 - 1, z1: o.z1 + 1 }; });
+  const keepOut = [...doors, ...climbs, ...(opts.keepOut || [])];
   const hit = (a, o, pad) => o.x0 < a.x1 - pad && o.x1 > a.x0 + pad && o.y0 < a.y1 - pad && o.y1 > a.y0 + pad && o.z0 < a.z1 - pad && o.z1 > a.z0 + pad;
   const ok = [];
   const trimNear = b.pieces.filter(q => q.trim && Math.hypot(q.x - fr.x, q.z - fr.z) < 8);
@@ -314,13 +334,19 @@ function place(b, c, fr, f, opts = {}) {
     // the same shape already there from the rules (a corner post, a sill): one is enough
     if (trimNear.some(q => classOf(q.name) === p.cls && Math.hypot(q.x - p.x, q.y - p.y, q.z - p.z) < 0.3)) continue;
     if (bx.y0 < (opts.ground != null ? opts.ground : -Infinity) - 0.05) continue;
+    // nothing reaches into the building past the wall (a hood board half indoors, a sill through the wall)
+    if (opts.inward !== false) {
+      const ins = Math.min(...[[bx.x0, bx.z0], [bx.x0, bx.z1], [bx.x1, bx.z0], [bx.x1, bx.z1]].map(([x, z]) => (x - fr.x) * fr.nx + (z - fr.z) * fr.nz));
+      if (ins < -0.4) continue;
+    }
     if (keepOut.some(z => hit(bx, z, 0.02))) continue;
     let clash = false;
     for (const q of b.pieces) {
-      const qi = PM.piece(q.name);
-      const qb = Ck.aabb(q);
+      const qb = boxOf(Ck, q);
       if (!hit(bx, qb, 0.06)) continue;
-      if (qi.role === 'wall' && own(p, q)) continue; // laid on its own wall
+      const qi = PM.piece(q.name);
+      // laid on its own wall; a wall piece of the motif inside the wall is the wall twice
+      if (qi.role === 'wall' && own(p, q) && !(info.role === 'wall' && interM(bx, qb) > 0.3 * volM(bx))) continue;
       if (!q.decor && !q.trim && ['beam', 'pole'].includes(qi.role) && ['beam', 'pole'].includes(info.role)) continue; // timber meeting timber
       if (q.trim && ['beam', 'pole'].includes(qi.role) && ['beam', 'pole'].includes(info.role) && !(q.name === p.name && Math.hypot(q.x - p.x, q.y - p.y, q.z - p.z) < 0.3)) continue;
       if (BLOCKING.includes(qi.role) || qi.role === 'wall' || q.decor || (q.trim && qi.role === info.role)) { clash = true; break; }
@@ -331,7 +357,7 @@ function place(b, c, fr, f, opts = {}) {
   const boxes = ok.map(p => Ck.aabb(p)), held = ok.map(() => false);
   const touch = (a, o, g) => a.x0 <= o.x1 + g && a.x1 >= o.x0 - g && a.y0 <= o.y1 + g && a.y1 >= o.y0 - g && a.z0 <= o.z1 + g && a.z1 >= o.z0 - g;
   const struct = b.pieces.filter(q => PM.piece(q.name).structural && !q.decor);
-  boxes.forEach((bx, i) => { if (bx.y0 <= (opts.ground != null ? opts.ground : 0) + 0.3 || struct.some(q => touch(bx, Ck.aabb(q), 0.12))) held[i] = true; });
+  boxes.forEach((bx, i) => { if (bx.y0 <= (opts.ground != null ? opts.ground : 0) + 0.3 || struct.some(q => touch(bx, boxOf(Ck, q), 0.12))) held[i] = true; });
   for (let k = 0, more = true; more && k < 12; k++) {
     more = false;
     boxes.forEach((bx, i) => { if (!held[i] && boxes.some((o, j) => held[j] && touch(bx, o, 0.12))) { held[i] = true; more = true; } });

@@ -5577,7 +5577,7 @@ function generate(req) {
     if (roofKind === 'hip' && bx < bz) bx = bz;
   }
   let W = bx; const D = bz;
-  const storeys = form === 'open' ? 1 : ['keep'].includes(form) ? { s1: 2, s2: 3, s3: 3 }[stage] : ['stave', 'court', 'dome', 'drum', 'sunken', 'gables'].includes(form) || plan === 'gables' ? 1 : storeysOf();
+  let storeys = form === 'open' ? 1 : ['keep'].includes(form) ? { s1: 2, s2: 3, s3: 3 }[stage] : ['stave', 'court', 'dome', 'drum', 'sunken', 'gables'].includes(form) || plan === 'gables' ? 1 : storeysOf();
   let SH = T.low ? 2 : T.tower ? 3 : (['longhouse', 'tavern', 'temple'].includes(type) || stage === 's3') ? 3 : 2;
   if (form === 'keep' || plan === 'court') SH = 3;
   if (form === 'stave') SH = 4;
@@ -5597,6 +5597,9 @@ function generate(req) {
   if (plan === 'gables') F = 0; else if (T.dock) F = 1; else if (C.stilts) F = C.stiltH || 2; else if (podklet) F = 2; else if (form === 'raised') F = C.storeH || 1;
   else if (T.raised || C.raised) F = C.stiltChance && R() < C.stiltChance ? 2 : 1; else if (stoneBase) F = C.plinthHigh ? 2 : 1;
   const deck = C.stilts && plan !== 'octagon' ? (C.deck || 2) : 0;
+  // no tower blocks: the eave stays within 1.1 times the short side of the footprint (2026-11-09 review: three storeys
+  // on a 6 to 8 m plan read as a tower); towers, keeps and the like keep their height
+  if (!T.tower && !form && !req.storeys) while (storeys > 1 && F + storeys * SH > 1.1 * 2 * Math.min(W, D) + 0.01) storeys--;
   // stone and marble walls take no support from wooden posts or floors in Valheim: on posts the walls are planks
   C.baseTop = F + 0.6; // stone-base courses only at the bottom (F may still become 0.5 for a stone floor)
   const onPosts = F > 0.01 && !podklet && (C.stilts || T.dock || T.raised || C.raised || form === 'raised' || !stoneBase);
@@ -5898,7 +5901,7 @@ function generate(req) {
   // a low roof's eaves already run 2 m past the wall, so only steep roofs get a porch roof of their own
   const porchFits = !flat && roofKind !== 'shed' && !T.dock && !T.tower && !['U', 'cross', 'court', 'gables', 'greek'].includes(plan) && !deck && !podklet && form !== 'sunken' && r === 2 && (C.eaves || 1) < 2;
   if (req.porch === true && !porchFits) b.notes.push('No porch: this plan, roof or form has no front for one.');
-  if (req.porch === true ? porchFits : req.porch !== false && !flat && roofKind !== 'shed' && !T.dock && !T.tower && C.porch && R() < C.porch + (stage === 's1' ? -0.3 : 0.2) && porchFits && !dctx.profile.svalgang && !dctx.profile.gablePorch && !dctx.profile.dormerOverDoor && !loggia) {
+  if (req.porch === true ? porchFits : req.porch !== false && !flat && roofKind !== 'shed' && !T.dock && !T.tower && C.porch && R() < C.porch + (stage === 's1' ? -0.3 : 0.2) + (wings[0].W >= 6 ? 0.4 : 0) && porchFits && !dctx.profile.svalgang && !dctx.profile.gablePorch && !dctx.profile.dormerOverDoor && !loggia) {
     const h = R() < 0.5 ? 0 : 1, zf = doorZ;
     const bays = [];
     for (let k = -h; k <= h; k++) { const x = doorX + 2 * k; if (!cells.has(`${x},${zf - 1}`) && !cells.has(`${x},${zf - 3}`)) bays.push(x); }

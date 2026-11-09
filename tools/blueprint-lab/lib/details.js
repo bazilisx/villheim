@@ -62,6 +62,7 @@ function profile(ctx) {
     rafterTails: north && sN >= 2 && !C.eaves2 && (C.eaves || 1) < 2,
     purlinEnds: north && sN >= 2,
     gableTruss: north && sN >= 2 && roll(0.6),
+    gablePorch: north && (sN >= 3 || (sN === 2 && dN >= 3)) && ['home', 'longhouse', 'tavern', 'temple'].includes(ctx.type) && roll(0.5),
     roofCross: false, // Wood Roof Cross at the gable apex: off until its shape is checked against the game model
 
     braces: BRACED.includes(cultureKey) && sN >= 2 && (T.use === 'hall' || ctx.type === 'longhouse'),
@@ -111,6 +112,7 @@ function exterior(b, ctx) {
   const isOpen = new Set(openings.map(o => `${o.e.x},${o.e.z},${o.y0}`));
   const added = { windows: 0, doors: 0, corners: 0, gables: 0, braces: 0, gallery: 0 };
   if (X.svalgang && ctx.wallSegment) added.gallery = svalgang(b, ctx) ? 1 : 0;
+  if (X.gablePorch && !added.gallery) added.porch = gablePorch(b, ctx) ? 1 : 0;
 
   // ---- windows
   for (const o of openings) {
@@ -275,6 +277,33 @@ function svalgang(b, ctx) {
   for (const x of [x0, x1]) b.put(rail, x, yU + 0.5, zf - 1, 90, T);
   b.gallery = true;
   b.notes.push('An upper gallery over the front door with a door from the upper room, after the Norwegian lofts.');
+  return true;
+}
+
+// A gabled porch over the front door (the entrance dormer of the community longhouses in the corpus): posts 4 m apart
+// two metres out, a small 45 degree gable roof whose ridge runs from the door out, closed against the wall by a gable,
+// and a gable triangle over the open front. Its eaves are 2.4 m up, clear of anyone walking in.
+function gablePorch(b, ctx) {
+  const { K, C, F, SH, edges, door, roofKind, flat } = ctx;
+  if (!door || door.out[1] >= 0 || F > 0.01 || flat || ctx.dragonsHere === undefined) return false;
+  if (!K.roof45 || !K.gable45) return false;
+  const zf = door.z, x = door.x;
+  const front = new Set(edges.filter(e => e.out[1] < 0 && Math.abs(e.z - zf) < 0.01).map(e => e.x));
+  if (!front.has(x - 2) || !front.has(x + 2)) return false;
+  if (b.pieces.some(p => p.z < zf - 0.3 && p.z > zf - 3.2 && Math.abs(p.x - x) < 2.6 && p.y > F - 0.5 && !['floor'].includes(PD.piece(p.name).role))) return false;
+  const yR = F + 4.4, T = { trim: true }, pole = framePoleD(K, C), pole1 = K.pole1 || 'wood_pole', beam = K.beam || 'wood_beam';
+  for (const s of [-1, 1]) {
+    b.put(pole, x + 2 * s, F + 1, zf - 2, 0, T);
+    b.put(pole1, x + 2 * s, F + 1.9, zf - 2, 0, T);
+    b.put(beam, x + 2 * s, F + 2.35, zf - 1, 90, T); // plate from the wall to the post
+    b.put(beam, x + s, F + 2.35, zf - 2, 0, T); // tie beam across the front
+    b.put(K.roof45, x + s, yR - 1, zf - 1, s > 0 ? 90 : 270, T);
+    for (const z of [zf - 2, zf]) b.put(K.gable45, x + s, yR - 2, z, s > 0 ? 180 : 0, T); // the open front, and the back closing it against the wall
+    b.put(slopeBeam(K, 45), x + s, yR - 1, zf - 2.08, s > 0 ? 180 : 0, T); // bargeboard on the open front
+  }
+  b.put(K.roofTop45, x, yR, zf - 1, 90, T);
+  if (!b.pieces.some(p => p.name === K.floor && Math.abs(p.x - x) < 0.1 && Math.abs(p.z - (zf - 1)) < 0.1)) b.put(K.floor, x, F, zf - 1, 0, T);
+  b.notes.push('A gabled porch over the front door.');
   return true;
 }
 

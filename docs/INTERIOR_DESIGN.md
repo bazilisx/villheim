@@ -157,6 +157,15 @@ two rows of posts). Rooms: home, sleeping, hall, tavern, kitchen, smithy, worksh
 - In the game: `vh floorplan <shape> <width>x<depth> <room> [biome] [culture] [d1|d2|d3] [seed] [ladder]` builds one
   plan in front of the player (IDs FP-101 on); `vh floorplan set [n]` lays out the first n of the 24 catalog plans in a
   grid of four to a row (IDs FP-001 to FP-024). Each plan's row goes to `BepInEx/config/Villheim/floorplans/floorplans.csv`.
+- Placement: the first row starts 3 m in front of the player, each row centered on the player's line, plan 1 at the
+  front left. Each plan takes its own box (its pieces plus 0.5 m) with 2 m to the next. The box is cleared, levelled
+  at the average ground height under it and painted dirt before anything goes up, and the plan stands on that ground.
+- Each plan's post has two signs back to back with its ID on the first line and room, shape and size on the second.
+  The console lists every plan with its direction and distance from where you stood; `vh floorplan where` names the
+  plan you stand in or the nearest one.
+- Floorplan pieces carry `villheim_floorplan` and the plan ID (`villheim_floorplan_id`) in their ZDO and never wear
+  or fall, since a floor with no walls has little holding it up. `vh gravity on` lets them fall. `vh tidy 70 yes`
+  removes a set of 12 (24 plans need about 100 m).
 - The review sheet's Floorplans tab holds the 24 catalog plans with the same IDs and columns for Tyler: Density (too
   sparse / right / too dense), Layout notes, Keep/Change. A single plan's row can be copied from the CSV into the tab.
 - Feedback back into the rules: download the tab as CSV, then `node lab/floorplan_feedback.js floorplans.csv` and

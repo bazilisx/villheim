@@ -119,6 +119,84 @@ namespace Villheim.Logic.Designs
             }
         }
 
+        /// <summary>
+        /// A flat box at the height of <paramref name="center"/>, turned by <paramref name="yaw"/>, blending back to
+        /// the ground over <paramref name="blend"/> meters around it. The same direct height writes as LevelPad.
+        /// </summary>
+        public static void LevelBox(Vector3 center, float yaw, float halfX, float halfZ, float blend, float maxChange = 16f)
+        {
+            blend = Mathf.Max(0.25f, blend);
+            Quaternion back = Quaternion.Inverse(Quaternion.Euler(0f, yaw, 0f));
+            float reach = Mathf.Sqrt(halfX * halfX + halfZ * halfZ) + blend;
+            Heightmaps.Clear();
+            Heightmap.FindHeightmap(center, reach + 1f, Heightmaps);
+            foreach (Heightmap heightmap in Heightmaps)
+            {
+                TerrainComp compiler = heightmap.GetAndCreateTerrainCompiler();
+                if (compiler == null || compiler.m_nview == null || !compiler.m_nview.IsValid() || compiler.m_levelDelta == null)
+                {
+                    continue;
+                }
+
+                if (!compiler.IsOwner())
+                {
+                    compiler.m_nview.ClaimOwnership();
+                }
+
+                int width = compiler.m_width + 1;
+                float scale = heightmap.m_scale;
+                Vector3 origin = heightmap.transform.position;
+                bool changed = false;
+                for (int y = 0; y < width; y++)
+                {
+                    for (int x = 0; x < width; x++)
+                    {
+                        var point = new Vector3(origin.x + (x - compiler.m_width / 2f) * scale, 0f, origin.z + (y - compiler.m_width / 2f) * scale);
+                        Vector3 local = back * new Vector3(point.x - center.x, 0f, point.z - center.z);
+                        float outside = new Vector2(Mathf.Max(0f, Mathf.Abs(local.x) - halfX), Mathf.Max(0f, Mathf.Abs(local.z) - halfZ)).magnitude;
+                        if (outside > blend || !heightmap.GetWorldBaseHeight(point, out float baseHeight))
+                        {
+                            continue;
+                        }
+
+                        int i = y * width + x;
+                        float current = baseHeight + compiler.m_levelDelta[i] + compiler.m_smoothDelta[i];
+                        float weight = outside <= 0f ? 1f : Mathf.SmoothStep(1f, 0f, outside / blend);
+                        float wanted = Mathf.Lerp(current, center.y, weight);
+                        compiler.m_levelDelta[i] = Mathf.Clamp(wanted - baseHeight, -maxChange, maxChange);
+                        compiler.m_smoothDelta[i] = 0f;
+                        compiler.m_modifiedHeight[i] = true;
+                        changed = true;
+                    }
+                }
+
+                if (changed)
+                {
+                    compiler.m_operations++;
+                    compiler.Save();
+                    heightmap.Poke(0, false);
+                }
+            }
+        }
+
+        /// <summary>Paints bare dirt over a box turned by <paramref name="yaw"/>, without changing the height.</summary>
+        public static void PaintBox(Vector3 center, float yaw, float halfX, float halfZ)
+        {
+            Quaternion turn = Quaternion.Euler(0f, yaw, 0f);
+            TerrainOp.Settings settings = NewSettings();
+            settings.m_paintCleared = true;
+            settings.m_paintType = TerrainModifier.PaintType.Dirt;
+            settings.m_paintRadius = 1.5f;
+            settings.m_paintHeightCheck = false;
+            for (float x = -halfX + 1f; x <= halfX - 0.5f; x += 2f)
+            {
+                for (float z = -halfZ + 1f; z <= halfZ - 0.5f; z += 2f)
+                {
+                    Apply(center + turn * new Vector3(x, 0f, z), settings);
+                }
+            }
+        }
+
         /// <summary>Same operation as a location's terrain modifier, as a permanent edit.</summary>
         public static void ApplyModifier(Vector3 position, TerrainModifier modifier)
         {

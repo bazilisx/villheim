@@ -111,9 +111,10 @@ const PARTS = {
     bases: [
       { type: 'longhouse', biome: 'Black Forest', stage: 's3', decor: 'd3', culture: 'norse-forest' },
       { type: 'home', biome: 'Swamp', stage: 's2', decor: 'd2' },
-      { type: 'tavern', biome: 'Mountain', stage: 's3', decor: 'd3' },
+      { type: 'tavern', biome: 'Swamp', stage: 's3', decor: 'd3' },
       { type: 'smithy', biome: 'Plains', stage: 's3', decor: 'd3' }],
     flags: ['stack', 'stackShoulder', 'stackCrown'],
+    requires: { stackShoulder: 'stack', stackCrown: 'stack' },
     // the whole building, three-quarter view from the stack's side
     focus: d => {
       const st = d.pieces.filter(p => /stone_wall_2x1/.test(p.name) && p.trim);
@@ -177,6 +178,9 @@ function variants(spec, n, seed) {
     const style = {}; let k = s; for (const [key, vals] of styles) { style[key] = vals[k % vals.length]; k = Math.floor(k / vals.length); }
     all.push({ details, style });
   }
+  // drop combinations where a flag is on without the flag it depends on (they repeat the bare variant)
+  const req = spec.requires || {};
+  for (let i = all.length - 1; i >= 0; i--) if (Object.entries(req).some(([f, need]) => all[i].details[f] && !all[i].details[need])) all.splice(i, 1);
   if (all.length <= n) return all;
   // keep the bare one and the full one, the rest a seeded sample
   let x = seed * 9301 + 49297;

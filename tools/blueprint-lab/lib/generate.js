@@ -741,7 +741,7 @@ function generate(req) {
   // a stone chimney stack against a gable end, from the ground to past the ridge (bench: req.details.stack)
   const wantStack = dctx.profile.stack != null ? dctx.profile.stack
     : stoneOK && stage !== 's1' && ['home', 'longhouse', 'tavern', 'smithy', 'temple'].includes(type) && dctx.R() < 0.35;
-  if (wantStack && roofKind === 'gable' && plan !== 'gables' && !flat && !T.tower) chimneyStack(b, K, wings, edges, dctx.profile);
+  if (wantStack && roofKind === 'gable' && plan !== 'gables' && !flat && !T.tower) chimneyStack(b, K, wings, edges, dctx.profile, dctx.R);
   Details.exterior(b, dctx);
   clearDoorways(b);
   // the fire's place for the decorator: under the ridge vent, or a cell of a flat roof (a chimney goes up from it),
@@ -1692,7 +1692,7 @@ function woodshed(b, K, C, wings, edges, F, SH, tower) {
 // deep above it, up to a metre past the ridge, a crown course on top. It stands on the ground, so stone carries it
 // (stone takes no support from wood). It goes on a stretch of gable wall with no door or window in it, at the end
 // without a woodshed. X.stackShoulder (default true) and X.stackCrown (default true) are bench switches.
-function chimneyStack(b, K, wings, edges, X) {
+function chimneyStack(b, K, wings, edges, X, R) {
   const w0 = wings[0];
   if (w0.alpha !== 0 || !K.stoneWall || !/2x1/.test(K.stoneWall)) return false;
   const block = K.stoneWall, cube = K.stoneBlock || 'stone_wall_1x1';
@@ -1712,6 +1712,8 @@ function chimneyStack(b, K, wings, edges, X) {
     const clearAt = z => {
       const x0 = Math.min(xs - sg * 0.45, xs + sg * 1.5), x1 = Math.max(xs - sg * 0.45, xs + sg * 1.5);
       if (wings.some(o => o !== w0 && (inside(o, xs, z, 0.6) || inside(o, xs + sg, z, 0.6)))) return false;
+      // no window anywhere up the wall behind it (a loft window in the gable included)
+      if (b.pieces.some(p => (P.piece(p.name).role === 'window' || /window/.test(p.name)) && Math.abs(p.x - xWall) < 0.6 && Math.abs(p.z - z) < 1.6)) return false;
       return !b.pieces.some(p => {
         const r = P.piece(p.name).role;
         if ((/roof/.test(r) && Math.abs(p.x - xWall) < 1.6) || inWall(p)) return false;
@@ -1724,10 +1726,10 @@ function chimneyStack(b, K, wings, edges, X) {
     // the ridge over this end: the highest roof piece within 3 m of the wall
     const tops = b.pieces.filter(p => /roof/.test(P.piece(p.name).role) && Math.abs(p.x - xWall) < 3);
     if (!tops.length) continue;
-    const ridge = Math.max(...tops.map(p => p.y));
-    const yTop = Math.ceil(ridge + 1);
+    const ridge = Math.max(...tops.map(p => Ck.aabb(p).y1)); // the top of the ridge pieces, not their pivots
+    const yTop = Math.ceil(ridge + 0.8);
     const T2 = { trim: true };
-    const shoulder = X.stackShoulder !== false ? 2 : 0;
+    const shoulder = (X.stackShoulder != null ? X.stackShoulder : R() < 0.5) ? 2 : 0; // a wider foot on half of them
     for (let y = 0; y < yTop; y++) {
       b.put(block, xs, y + 0.5, e.z, 90, T2);
       if (y < shoulder) b.put(block, xs + sg, y + 0.5, e.z, 90, T2);

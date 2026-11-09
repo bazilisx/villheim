@@ -88,11 +88,52 @@ function canopyBed(b, ctx) {
   return n;
 }
 
+// Stalls along a long wall of a barn: half-wall partitions 2 m deep every 2 m and a gate across the front of each
+// (wood_gate is in three fifths of the best-liked builds; none of ours had one). Furnishing standing in the stalls'
+// floor goes. Animals come on the village's schedule (D-015); the stalls are their place.
+function stalls(b, ctx, zones) {
+  const Ck = checksB();
+  const room = (b.rooms || []).find(r => r.main && !r.upper);
+  if (!room || !can(ctx.biome, 'wood_gate')) return false;
+  const y = room.y, half = ctx.K.wallHalf || 'wood_wall_half';
+  const sides = [];
+  if (room.x1 - room.x0 >= 8) for (const sz of [1, -1]) sides.push({ along: 'x', wall: sz > 0 ? room.z1 : room.z0, n: -sz, lo: room.x0, hi: room.x1 });
+  if (room.z1 - room.z0 >= 8) for (const sx of [1, -1]) sides.push({ along: 'z', wall: sx > 0 ? room.x1 : room.x0, n: -sx, lo: room.z0, hi: room.z1 });
+  const solid = b.pieces.filter(p => !p.decor && !['floor', 'rug', 'roof', 'roofTop', 'roofCorner', 'gable'].includes(PB.piece(p.name).role)).map(p => ({ p, o: Ck.aabb(p) }));
+  const doors = b.pieces.filter(p => PB.piece(p.name).role === 'door' && !p.decor);
+  for (const s of sides) {
+    const span = Math.floor((s.hi - s.lo - 1) / 2), n = Math.min(4, span);
+    if (n < 2) continue;
+    const a0 = Math.round((s.lo + s.hi) / 2 - n); // stalls centered on the wall, on the 2 m grid
+    const box = s.along === 'x'
+      ? { x0: a0 - 0.1, x1: a0 + 2 * n + 0.1, z0: Math.min(s.wall, s.wall + s.n * 3.4), z1: Math.max(s.wall, s.wall + s.n * 3.4) }
+      : { z0: a0 - 0.1, z1: a0 + 2 * n + 0.1, x0: Math.min(s.wall, s.wall + s.n * 3.4), x1: Math.max(s.wall, s.wall + s.n * 3.4) };
+    const inner = o => o.x0 < box.x1 && o.x1 > box.x0 && o.z0 < box.z1 && o.z1 > box.z0 && o.y1 > y + 0.2 && o.y0 < y + 2.4;
+    // the wall itself is fine; anything else built there, a door in that wall, a ladder or stair zone is not
+    const onWall = p => (s.along === 'x' ? Math.abs(p.z - s.wall) < 0.6 : Math.abs(p.x - s.wall) < 0.6);
+    if (solid.some(({ p, o }) => inner(o) && !(onWall(p) && ['wall', 'window', 'pole'].includes(PB.piece(p.name).role)))) continue;
+    if (doors.some(p => inner(Ck.aabb(p)) || (onWall(p) && (s.along === 'x' ? p.x > box.x0 - 1 && p.x < box.x1 + 1 : p.z > box.z0 - 1 && p.z < box.z1 + 1)))) continue;
+    if (zones.some(z => z.x0 < box.x1 && z.x1 > box.x0 && z.z0 < box.z1 && z.z1 > box.z0 && z.y0 < y + 2 && z.y1 > y && !z.flue)) continue;
+    // clear the stalls' floor of furnishing
+    b.pieces = b.pieces.filter(p => !(p.decor && inner(Ck.aabb(p))));
+    const at = (a, d) => (s.along === 'x' ? [a, s.wall + s.n * d] : [s.wall + s.n * d, a]);
+    const T = { decor: true, trim: true };
+    const yawAcross = s.along === 'x' ? 90 : 0, yawAlong = s.along === 'x' ? 0 : 90;
+    for (let k = 0; k <= n; k++) { const [x, z] = at(a0 + 2 * k, 1.1); b.put(half, x, y + 0.5, z, yawAcross, T); }
+    for (let k = 0; k < n; k++) { const [x, z] = at(a0 + 1 + 2 * k, 2.1); b.put('wood_gate', x, y + 1, z, yawAlong, T); }
+    if (can(ctx.biome, 'rug_straw')) for (let k = 0; k < n; k++) { const [x, z] = at(a0 + 1 + 2 * k, 1.1); b.put('rug_straw', x, y + 0.1, z, yawAcross, T); }
+    b.notes.push(`${n} stalls with gates along the wall.`);
+    return true;
+  }
+  return false;
+}
+
 function apply(b, ctx, zones) {
+  if (ctx.type === 'barn' && ctx.decor !== 'd1') stalls(b, ctx, zones || []);
   if (ctx.type === 'tavern' && ctx.decor !== 'd1') barCounter(b, ctx, zones || []);
   const X = ctx.profile || {};
   if (X.canopyBed != null ? X.canopyBed : (ctx.decor === 'd3' && ['home', 'longhouse'].includes(ctx.type) && ctx.R() < 0.5)) canopyBed(b, ctx);
 }
 
-const apiB = { apply, barCounter, canopyBed };
+const apiB = { apply, barCounter, canopyBed, stalls };
 if (NODE_B) module.exports = apiB; else window.VHKitbash = apiB;

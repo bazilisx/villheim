@@ -24,6 +24,7 @@ namespace Villheim.Logic
             "props [location] [filter]: list a location's child objects with their meshes and components (to find Hildir's map table and tents); written to BepInEx/Villheim/props-<location>.txt",
             "board [now]: show the notice board's blueprint, place and what it waits for ('now' puts it up at once, free)",
             "beds: list the beds round the nearest village, whether they count and who sleeps in each",
+            "homes [signs]: each home of the nearest village, who lives there (a lone villager or a family), its front door and what its signs say; 'signs' writes the signs again now",
             "paths now|show: 'now' plans a path for every door not yet joined and lays all waiting paths of the nearest village at once, clearing trees and stones on the way; 'show' lists the waiting paths and marks their points on the map for a minute",
             "buildingground: level the ground under the nearest village building to its foundation",
             "hearthground: clear and level the ground round the nearest village's hearth again",
@@ -177,6 +178,28 @@ namespace Villheim.Logic
                             {
                                 Say(context, "   " + line);
                             }
+                        }
+                    }
+                    else
+                    {
+                        Say(context, "Villheim: no village hearth within 150 m.");
+                    }
+
+                    return true;
+                case "villheim_homes":
+                    if (TryGetPlayer(context, out Player homesNear) && VillageHearth.Closest(homesNear.transform.position, 150f) is VillageHearth hv)
+                    {
+                        if (args.Length > 0 && args[0] == "signs")
+                        {
+                            Villagers.Households.Forget(hv.VillageId);
+                            HouseSigns.Update(hv, true);
+                        }
+
+                        List<string> homes = Villagers.Households.Report(hv);
+                        Say(context, $"Villheim: {homes.Count} homes in {hv.VillageName}:");
+                        foreach (string line in homes)
+                        {
+                            Say(context, "   " + line);
                         }
                     }
                     else

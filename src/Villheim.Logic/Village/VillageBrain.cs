@@ -85,6 +85,7 @@ namespace Villheim.Logic.Village
             using (Perf.Time("Groves.Tick")) Groves.Tick(hearth, state);
             using (Perf.Time("Living.HearthTick")) Living.HearthTick(hearth, state);
             using (Perf.Time("NoticeBoard.Update")) NoticeBoard.Update(hearth);
+            using (Perf.Time("HouseSigns.Update")) HouseSigns.Update(hearth);
             using (Perf.Time("CheckDoorsDaily")) CheckDoorsDaily(hearth);
             using (Perf.Time("Farms.Tick")) Farms.Tick(hearth);
             if (VillageChest.IsLost(hearth))

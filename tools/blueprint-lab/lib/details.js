@@ -91,6 +91,14 @@ function profile(ctx) {
     motifBase: sN >= 2 && !T.tower,
     motifFaces: dN >= 2,
     eaveMotifs: true,
+    // stone walls read blank from the street (review 5): a timber band at each upper floor line, corners in a
+    // contrasting material (timber posts on stone, stone pillars on black marble), from s2
+    stoneBands: /stone|marble|grausten/.test(C.wallStyle || '') && !/base/.test(C.wallStyle || '') && sN >= 2 && !T.tower,
+    stoneCorners: /stone|marble|grausten/.test(C.wallStyle || '') && !/base/.test(C.wallStyle || '') && sN >= 2 && !T.tower,
+    // the decor stage shows outside: window boxes with flowers under the front windows from d2, a banner on the gables
+    // at d3
+    windowBoxes: dN >= 2 && ['home', 'tavern', 'longhouse'].includes(ctx.type) && biome !== 'Ashlands',
+    gableBanner: dN >= 3,
     motifRoof: north && sN >= 2,
     ironPosts: north && sN >= 2 && reachesD(biome, 'Swamp') && makeHash(ctx) % 5 >= 3,
   };
@@ -267,6 +275,53 @@ function exterior(b, ctx) {
     }
   }
 
+  // ---- stone walls: a timber band along each upper floor line, the joists' ends showing; contrasting corners
+  if (X.stoneBands) for (const e of edges) {
+    const { ox, oz } = axes(e);
+    for (let s = 1; s < storeys; s++) {
+      const y0 = F + s * SH;
+      if (openings.some(o => o.e === e && Math.abs(o.y0 - y0) < 0.01 && o.kind !== 'window')) continue;
+      put(beam, e.x + ox * 0.25, y0 - 0.1, e.z + oz * 0.25, e.yaw);
+    }
+  }
+  if (X.stoneCorners) {
+    const marble = /marble/.test(C.wallStyle || '') || /blackmarble/.test(K.wall || '');
+    const doorEdge = openings.filter(o => o.kind !== 'window' && o.storey === 0).map(o => o.e);
+    const dirs = new Map();
+    for (const e of edges) {
+      const { ux, uz } = axes(e);
+      for (const s of [-1, 1]) { const k = `${e.x + ux * s},${e.z + uz * s}`; if (!dirs.has(k)) dirs.set(k, { ys: new Set(), es: [] }); dirs.get(k).ys.add(e.yaw); dirs.get(k).es.push(e); }
+    }
+    const top = F + storeys * SH;
+    for (const [k, v] of dirs) {
+      if (v.ys.size < 2 || v.es.some(e => doorEdge.includes(e))) continue;
+      const [x, z] = k.split(',').map(Number);
+      // outside corners only: each wall lies on the far side of the other's outward direction
+      const [a, c] = v.es;
+      if ((a.x - x) * c.out[0] + (a.z - z) * c.out[1] > -0.5 || (c.x - x) * a.out[0] + (c.z - z) * a.out[1] > -0.5) continue;
+      if (marble && reachesD(ctx.biome, 'Black Forest')) for (let y = F; y + 2 <= top + 0.01; y += 2) put('stone_pillar', x, y + 1, z, 0);
+      else for (let y = F; y < top - 0.01;) { const h = top - y >= 2 ? 2 : 1; put(h === 2 ? pole : pole1, x, y + h / 2, z, 0); y += h; }
+      added.corners++;
+    }
+  }
+
+  // ---- window boxes under the ground-floor front windows: two 1 m boards on the wall under the sill, a lip in front,
+  // flowers in them (a motif of its own so it is tested the same way)
+  if (X.windowBoxes && ctx.door) for (const o of openings) {
+    if (o.kind !== 'window' || o.storey) continue;
+    const { e, y0 } = o, { ux, uz, ox, oz } = axes(e);
+    if (e.out[0] !== ctx.door.out[0] || e.out[1] !== ctx.door.out[1]) continue;
+    if (b.pieces.some(p => PD.piece(p.name).role === 'floor' && Math.hypot(p.x - (e.x + ox), p.z - (e.z + oz)) < 1.1 && Math.abs(p.y - y0) < 0.6)) continue;
+    const quarter = K.wallQuarter && b.pieces.find(p => p.name === K.wallQuarter && Math.abs(p.y - (y0 + 1.5)) < 0.3 && Math.abs((p.x - e.x) * ox + (p.z - e.z) * oz) < 0.2 && Math.abs((p.x - e.x) * ux + (p.z - e.z) * uz) < 0.8);
+    const sd = quarter ? ((quarter.x - e.x) * ux + (quarter.z - e.z) * uz > 0 ? 1 : -1) : 0;
+    const as = quarter ? [-sd * 0.5] : [-0.5, 0.5], lip = K.beam1 || 'wood_beam_1';
+    const kept = [];
+    for (const a of as) kept.push(['wood_floor_1x1', a, 0.6, -0.3, 0, 'floor1', 0], [lip, a, 1.05, -0.2, 0, 'beam1', 0], ['Pickable_Dandelion', a, 0.6, -0.25, 0, 'flower', 0]);
+    const c = { m: { id: 'window-box', kind: 'box', fit: {} }, kept };
+    const placed = MotifsD.place(b, c, { x: e.x, y: y0 + 1, z: e.z, nx: ox, nz: oz }, null, { ground: 0, dry: true, minShare: 1 });
+    if (placed.length) { hold(b, placed); added.boxes = (added.boxes || 0) + 1; }
+  }
+
   // ---- bands: a beam at the foot of the walls and along the floor line of each upper storey; a rail at 1 m on
   // half-timbered walls. Laid a little proud of the outside face, never across a door.
   if (X.bands || X.midRail) for (const e of edges) {
@@ -441,7 +496,8 @@ function motifBases(b, ctx, MT, used) {
   if (!c) return done;
   const doorAt = (b.openings || []).filter(o => o.kind !== 'window' && o.storey === 0).map(o => o.e);
   for (const e of edges) {
-    if (doorAt.includes(e)) continue;
+    // the bay of a door and the bays beside it stay clear (the doorstep, the door's lamps)
+    if (doorAt.some(d => Math.hypot(d.x - e.x, d.z - e.z) < 2.1)) continue;
     const { ox, oz } = axes(e);
     const placed = MotifsD.place(b, c, { x: e.x, y: F, z: e.z, nx: ox, nz: oz }, null, { mirror: MT.mirror, ground: 0, dry: true, minShare: 0.5, lift: true });
     if (placed.length) { hold(b, placed); done.add(e); }
@@ -693,6 +749,19 @@ function bargeboards(K, C, w, ctx, rows, ends, add, low, pivot, r) {
   if (eo && !eaveDone) for (let u = -w.W + 2; u <= w.W - 2 + 0.01; u += 2) for (const sv of [-1, 1]) {
     if (overDoor(u, sv * w.D)) continue;
     add(K.beam1 || 'wood_beam_1', u, top - r / 4 - 0.3, sv * (w.D + 0.5), 90, 'trim', top - r / 4 - 0.2);
+  }
+  // a banner on the face of each gable of the main wing at d3, hung from just under the apex, where no loft window,
+  // gable motif apex piece or carving is in the way and the gable is tall enough that it clears the wall under it
+  // (on a low gable it hangs on down the wall under it, where that wall has no opening in its middle bays)
+  if (X.gableBanner && w === ctx.wings[0] && !gw && !apex && !ctx.dragonsHere && capY - top >= 1.9) {
+    const B = reachesD(ctx.biome, 'Plains') ? ['piece_banner01', 'piece_banner02', 'piece_banner05', 'piece_banner07'] : ['piece_banner03', 'piece_banner04', 'piece_banner06', 'piece_banner07', 'piece_banner08', 'piece_banner09'];
+    const name = B[makeHash(ctx) % B.length], yTop = capY - 0.8, low2 = yTop - 2.95;
+    [-1, 1].forEach((sg, k) => {
+      if (!ends[k]) return;
+      const x = w.cx + sg * w.W * Math.cos(al), z = w.cz - sg * w.W * Math.sin(al);
+      if (low2 < top - 0.05 && (ctx.openings || []).some(o => Math.hypot(o.e.x - x, o.e.z - z) < 1.6 && o.y0 + (o.SH || 3) > low2)) return;
+      add(name, sg * (w.W + 0.2), yTop, 0, 0, 'trim', yTop);
+    });
   }
   if (!X.bargeboards) return;
   [-1, 1].forEach((sg, k) => {

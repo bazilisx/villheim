@@ -256,6 +256,8 @@ Each vanilla prefab seen on or outside the walls of 5 % or more of the corpus bu
 | Many-sided plans | no trim | corners and accents | 135 degree corner motifs and wall faces on octagons (`roundTrim`) |
 | Iron-bound timber | 3 % | 6 % (11 % at s3) | iron-bound corner posts and motif posts on two northern buildings in five from the Swamp on |
 | Pieces set into walls | none | up to the source build's depth | `p.clip` on mined pieces, allowed by `motifs.place` and `checks.js` |
+| Blank stone walls (review 5) | none | bands and corners | a timber band at each upper floor line; timber corner posts on stone, stone pillars on black marble |
+| Decor stage seen from outside (review 5) | none | window boxes from d2, gable banners at d3 | `details.js` windowBoxes, gableBanner |
 
 ## Left for the lead (generate.js and plans)
 

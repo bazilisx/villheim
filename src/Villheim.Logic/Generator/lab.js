@@ -1162,6 +1162,9 @@ const F = {
   rug_hare: { s: [2.0, 0.05, 2.5], at: 'rug', b: 'Mistlands', cat: 'rug' },
   jute_carpet_blue: { s: [2.0, 0.05, 3.0], at: 'rug', b: 'Mistlands', cat: 'rug' },
   rug_asksvin: { s: [2.4, 0.05, 2.8], at: 'rug', b: 'Ashlands', cat: 'rug' },
+  treasure_stack: { s: [0.5, 0.3, 0.5], at: 'top', b: 'Black Forest', cat: 'deco' },
+  dvergrprops_crate: { s: [1.2, 1.0, 0.8], at: 'wall', b: 'Mistlands', cat: 'storage' },
+  dvergrprops_barrel: { s: [0.8, 1.1, 0.8], at: 'wall', b: 'Mistlands', cat: 'storage' },
   wood_stack: { s: [2.0, 1.0, 1.0], at: 'out', b: 'Meadows', cat: 'clutter' },
   wood_fine_stack: { s: [2.0, 1.0, 1.0], at: 'out', b: 'Black Forest', cat: 'clutter' },
   wood_core_stack: { s: [2.0, 1.0, 1.0], at: 'out', b: 'Black Forest', cat: 'clutter' },
@@ -1382,12 +1385,12 @@ function roomModel(cellList, stand, boxes, over, pieces, near) {
   room.cellAt = (x, z) => set.get(ck(Math.floor(x / G), Math.floor(z / G)));
   room.inside = (x, z) => !!room.cellAt(x, z);
   // a corner of a piece may hang over a small gap between the floor and a wall (round plans leave one)
-  room.nearWall = (x, z) => {
+  room.nearWall = (x, z, reach = 0.45) => {
     if (room.inside(x, z)) return true;
     let near = false;
-    for (const [dx, dz] of [[0.45, 0], [-0.45, 0], [0, 0.45], [0, -0.45]]) if (room.inside(x + dx, z + dz)) near = true;
+    for (const [dx, dz] of [[reach, 0], [-reach, 0], [0, reach], [0, -reach]]) if (room.inside(x + dx, z + dz)) near = true;
     if (!near) return false;
-    for (const s of room.near(x, z, 0.8)) if (WALLISH.has(s.role) && ptDist(s.b, x, z) < 0.7) return true;
+    for (const s of room.near(x, z, reach + 0.4)) if (WALLISH.has(s.role) && ptDist(s.b, x, z) < reach + 0.25) return true;
     return false;
   };
   let sx = 0, sz = 0;
@@ -1575,7 +1578,7 @@ class Room {
     const hw = Math.max(0.01, b.hw - 0.04), hd = Math.max(0.01, b.hd - 0.04);
     for (let q = 0; q < 8; q++) {
       const u = CU[q] * hw, v = CV[q] * hd;
-      if (!this.nearWall(x + u * b.c + v * b.s, z - u * b.s + v * b.c)) return false;
+      if (!this.nearWall(x + u * b.c + v * b.s, z - u * b.s + v * b.c, o.overhang)) return false;
     }
     const y0 = this.stand + (o.lift || 0), y1 = y0 + (rug ? 0.05 : h);
     if (!rug) {
@@ -1677,7 +1680,7 @@ function wallSpots(room, name, o = {}) {
       const { ks, top } = stretch(face, t - along / 2, t + along / 2);
       if (ks.has('none') || ks.has('door') || ks.has('open')) continue;
       // under a window or a rail only what stays below the sill
-      if (ks.has('window') && (h > top + 0.15 || f.tall || o.noWindow)) continue;
+      if (ks.has('window') && !o.tallOk && (h > top + 0.15 || f.tall || o.noWindow)) continue;
       const dist = face.ht + 0.04 + deep / 2 + (o.gap || 0);
       const x = face.px(t) + face.nx * dist, z = face.pz(t) + face.nz * dist;
       const yaw = norm(yawOfDir(face.nx, face.nz) + rel);
@@ -1763,7 +1766,7 @@ function placeFire(room, ctx, kind) {
   const yaw = name === 'hearth' ? (long ? 0 : 90) : 0;
   let rec = null;
   for (const [dx, dz] of [[0, 0], [0, 0.5], [0, -0.5], [0.5, 0], [-0.5, 0], [0, 1], [0, -1]]) {
-    rec = room.put(name, spot.x + dx, spot.z + dz, yaw, { ignore: ['door'] });
+    rec = room.put(name, spot.x + dx, spot.z + dz, yaw, { ignore: ['door', 'flue', 'keep'] });
     if (rec) break;
   }
   if (!rec) return null;
@@ -1845,6 +1848,7 @@ function planPaths(room) {
 // Keep the ways in clear: a box in front of each door as wide as the door and as deep as builders leave it.
 function doorZones(room, kind) {
   const L = learned().doors || {};
+  if (kind === 'lookout') kind = 'other';
   const p10 = (L.byRoom && L.byRoom[kind] && L.byRoom[kind][0]) || (L.freeDepth && L.freeDepth[0]) || 2;
   for (const d of room.doors) {
     let depth = 0;
@@ -1883,6 +1887,16 @@ function placeBeds(room, k, n, d, row = 1.5) {
       const off = size(name)[2] / 2 + size(ch)[2] / 2 + 0.3;
       const ax = Math.sin(rec.yaw * PI / 180), az = Math.cos(rec.yaw * PI / 180);
       if (i < (d >= 3 ? 3 : d >= 2 ? 2 : 1)) room.put(ch, rec.x + ax * off, rec.z + az * off, rec.yaw);
+    }
+  }
+  if (!out.length && n > 0) {
+    // a house always has a bed: side to a wall, then free-standing, then the plain wooden bed, the way in kept clear
+    for (const name of [...new Set([k.bed, 'bed'])]) {
+      const spots = [...wallSpots(room, name, { rel: 90 }), ...wallSpots(room, name, { rel: 270 }),
+        ...room.cells.filter(c => room.area < 40 || (c.i % 2 === 0 && c.j % 2 === 0)).flatMap(c => [0, 90, 45, 135].map(yaw => ({ x: c.x, z: c.z, yaw }))),
+        ...room.cells.filter(c => room.area < 40).flatMap(c => [0, 90].map(yaw => ({ x: c.x + 0.25, z: c.z + 0.25, yaw })))];
+      const rec = best(room, name, spots, sp => 2 * fr.v(sp.x, sp.z) / fr.D - (room.fire ? Math.max(0, 2.6 - Math.hypot(sp.x - room.fire.x, sp.z - room.fire.z)) * 2 : 0), { noise: 0.2, ignore: ['work', 'fire'], tries: 2000, overhang: 0.9 });
+      if (rec) { out.push(rec); break; }
     }
   }
   return out;
@@ -2108,7 +2122,7 @@ function placeLights(room, k, n, o = {}) {
   }
   if (done < n && k.floorLight && ok(k.floorLight, room.biome)) {
     const name = k.floorLight;
-    const spots = wallSpots(room, name, { gap: 0.05 });
+    const spots = wallSpots(room, name, { gap: 0.05, tallOk: o.tallOk });
     while (done < n) {
       const rec = best(room, name, spots, s => {
         let v = s.corner ? 1.5 : 0;
@@ -2165,6 +2179,7 @@ function placeAgainst(room, name, score, o = {}) {
 // On a table: horizontal item stands (dishes and goods), candles from the Mountain on.
 function placeOnTable(room, table, names) {
   if (!table) return 0;
+  table.topped = true;
   const f = F[table.name] || {};
   const top = table.y0 + (f.top || 0.75);
   const [tw] = size(table.name);
@@ -2255,7 +2270,7 @@ function decorate(b, ctx) {
   const counts = { bed: 0, table: 0 };
   const kitKind = { home: 'home', hall: type === 'tavern' ? 'tavern' : 'hall', smithy: 'smithy', workshop: 'workshop', storage: 'storage', temple: 'hall', guard: 'sleeping', farm: 'storage', market: 'living' }[use] || 'home';
   const kit = chooseKit(R, biome, ctx.culture, kitKind);
-  const report = [];
+  const report = [], furnished = [];
   ys.forEach((y, li) => {
     const rects = byY.get(y);
     const hintY = rects.length ? standGuess(b.pieces, rects, y) : y;
@@ -2271,7 +2286,7 @@ function decorate(b, ctx) {
       room.level = li;
       room.upper = li > 0 || (rects.length && rects.every(r => r.upper));
       const inMain = main && m.cells.filter(c => c.x > main.x0 && c.x < main.x1 && c.z > main.z0 && c.z < main.z1).length;
-      const role = roleFor(use, type, room, inMain / m.cells.length, rects, ys.length, li);
+      const role = ctx.role || roleFor(use, type, room, inMain / m.cells.length, rects, ys.length, li);
       if (!role) continue;
       // the main way in: a door, else the top of the stairs, else the room's longest open side
       room.entry = room.doors.slice().sort((a, c) => (a.open ? 1 : 0) - (c.open ? 1 : 0) || Math.abs(a.x - (ctx.doorX ?? a.x)) - Math.abs(c.x - (ctx.doorX ?? c.x)))[0] || null;
@@ -2285,10 +2300,20 @@ function decorate(b, ctx) {
         room.sideCells = (x, z) => side.some(r => x > r.x0 && x < r.x1 && z > r.z0 && z < r.z1) && !(x > main.x0 && x < main.x1 && z > main.z0 && z < main.z1);
       }
       doorZones(room, role);
+      // what the building keeps clear: the chimney over the fire (every floor) and its rooms' own keep-clear boxes
+      for (const v of b.vents || []) if (v.rect) room.zones.push({ b: obox((v.rect.x0 + v.rect.x1) / 2, (v.rect.z0 + v.rect.z1) / 2, v.rect.x1 - v.rect.x0, v.rect.z1 - v.rect.z0, 0), why: 'flue' });
+      for (const r of rects) for (const kp of r.keep || []) room.zones.push({ b: obox((kp.x0 + kp.x1) / 2, (kp.z0 + kp.z1) / 2, kp.x1 - kp.x0, kp.z1 - kp.z0, 0), why: 'keep' });
       furnish(room, role, { ...ctx, use, type, decor, biome, kit, counts, mainRect: main, levels: ys.length });
-      report.push({ level: li, role, area: room.area, items: room.count });
+      report.push({ level: li, role, area: room.area, items: room.count, room });
+      furnished.push({ room, role });
     }
   });
+  // a house always has at least one bed, whatever its floors made room for
+  if (counts.bed === 0 && (ctx.role ? ['home', 'sleeping', 'guest'].includes(ctx.role) : use === 'home')) {
+    const order = furnished.slice().sort((a, c2) => (a.role === 'sleeping' ? 0 : 1) - (c2.role === 'sleeping' ? 0 : 1) || c2.room.area - a.room.area);
+    for (const { room } of order) { if (placeBeds(room, kit, 1, decor === 'd1' ? 1 : decor === 'd2' ? 2 : 3, 0.4).length) { counts.bed++; break; } }
+  }
+  for (const r of report) { r.items = r.room.count; delete r.room; }
   if (decor !== 'd1') outside(b, { use, type, decor, biome, kit, R });
   b.decorReport = report;
   return b;
@@ -2352,6 +2377,103 @@ function roleFor(use, type, room, mainShare, rects, nLevels, li) {
 
 // ---------------------------------------------------------------- room plans
 function furnish(room, role, c) {
+  furnishPlan(room, role, c);
+  if (c.decor !== 'd1') fill(room, role, c);
+}
+
+const LEARN_KIND = { lookout: 'sleeping', home: 'home', sleeping: 'sleeping', guest: 'sleeping', hall: 'hall', tavern: 'tavern', temple: 'hall', smithy: 'smithy', workshop: 'workshop', storage: 'storage', guard: 'sleeping', farm: 'storage', market: 'living', kitchen: 'kitchen' };
+
+// What builders add once the needs are met, per room role, with weights. Each is a cluster from the corpus pairs:
+// trophies (item stands in a row on one wall), shelves (horizontal item stands), barrels and crates in a corner, a
+// seating corner, rugs, armor stands, banners in pairs, carvings, things on tables, tools on a work wall.
+const EXTRAS = {
+  home: { trophies: 2, shelf: 2, barrels: 2, chest: 1, armor: 1, fermenter: 1, seating: 2, rug: 2, banners: 1, carving: 1, torches: 1, tabletop: 2 },
+  sleeping: { rug: 2, armor: 2, chest: 2, shelf: 1, trophies: 1, seating: 1, torches: 1, banners: 1 },
+  guest: { rug: 2, chest: 2, armor: 1, shelf: 1, torches: 1, seating: 1 },
+  hall: { banners: 3, trophies: 2, shelf: 1, barrels: 2, armor: 2, rug: 2, tabletop: 2, torches: 2, carving: 1, chart: 1, bench: 2 },
+  tavern: { barrels: 3, fermenter: 2, shelf: 2, tabletop: 3, trophies: 1, rug: 1, seating: 3, torches: 1, banners: 1 },
+  smithy: { tools: 3, barrels: 2, chest: 2, armor: 2, shelf: 1, torches: 1 },
+  workshop: { tools: 3, barrels: 2, chest: 2, shelf: 2, torches: 1, bench: 1 },
+  storage: { chest: 4, barrels: 3, crates: 2, shelf: 2, torches: 1 },
+  farm: { barrels: 2, chest: 2, fermenter: 1, shelf: 1 },
+  temple: { banners: 3, carving: 2, torches: 2, rug: 1, bench: 2 },
+  kitchen: { barrels: 3, shelf: 3, tabletop: 2, chest: 2, fermenter: 1, crates: 1 },
+  guard: { armor: 2, trophies: 2, chest: 1, barrels: 1, torches: 1 },
+  lookout: { chest: 1, barrels: 1, rug: 1 },
+};
+
+// Top the room up toward the corpus density for its kind (d2 the median, d3 the 75th percentile), with seeded choice
+// among the extras. Stops at the target, when every extra has failed, or when half the floor is taken.
+function fill(room, role, c) {
+  const extras = EXTRAS[role];
+  if (!extras) return;
+  const d = c.decor === 'd2' ? 2 : 3;
+  const k = c.kit, biome = c.biome;
+  const tune = ((learned().tuning || {}).density || {})[role] || 1;
+  let dens = density(LEARN_KIND[role] || 'home', c.decor) * tune;
+  if (role === 'storage' || role === 'farm') dens = Math.min(dens, 4.5); // small store rooms set the corpus rate
+  const target = Math.round(room.area / 10 * dens);
+  const floorUsed = () => room.placed.reduce((a, q) => a + (q.rug || q.mount || q.onTable || q.onFire ? 0 : q.b.hw * q.b.hd * 4), 0);
+  const barrel = ok('dvergrprops_barrel', biome) && room.R() < 0.4 ? 'dvergrprops_barrel' : ok('piece_chest_barrel', biome) ? 'piece_chest_barrel' : null;
+  const pairOn = (name, y, gap, n) => {
+    // n pieces in a row centered on the freest plain wall face
+    const faces = room.faces.filter(f => !f.edge).sort((a, b2) => (b2.len - room.mounts.filter(m => m.face === b2).length * 2) - (a.len - room.mounts.filter(m => m.face === a).length * 2));
+    for (const face of faces) {
+      const mid = (face.a0 + face.a1) / 2;
+      const ts = n === 3 ? [mid, mid - gap, mid + gap] : n === 2 ? [mid - gap / 2, mid + gap / 2] : [mid];
+      const spots = ts.map(t => mountSpots(room, name, { face, at: t, y }).find(m => Math.abs(m.t - t) < 0.01));
+      if (spots.some(x => !x)) continue;
+      const done = [];
+      for (const sp of spots) { const r = putMount(room, name, sp); if (!r) break; done.push(r); }
+      if (done.length === spots.length) return done.length;
+      for (const r of done) { room.placed.splice(room.placed.indexOf(r), 1); room.mates.splice(room.mates.indexOf(r), 1); room.mounts.pop(); room.count--; const j = room.out.lastIndexOf(room.out.find(p => p.decor && p.name === r.name && p.x === +r.x.toFixed(3) && p.z === +r.z.toFixed(3))); if (j >= 0) room.out.splice(j, 1); }
+    }
+    return 0;
+  };
+  const before = () => room.count;
+  const run = {
+    trophies: () => pairOn('itemstand', 1.6, 1.0, d >= 3 ? 3 : 2),
+    shelf: () => pairOn('itemstandh', 1.3, 1.0, 2),
+    barrels: () => barrel ? placeStorageRow(room, k, d >= 3 ? 3 : 2, { chest: barrel, back: 1 }).length : 0,
+    crates: () => ok('dvergrprops_crate', biome) ? placeStorageRow(room, k, 2, { chest: 'dvergrprops_crate' }).length : 0,
+    chest: () => placeStorageRow(room, k, 1).length,
+    armor: () => placeAgainst(room, 'ArmorStand', s => (s.corner ? 0.5 : 0)) ? 1 : 0,
+    fermenter: () => placeAgainst(room, 'fermenter', s => (s.corner ? 1 : 0)) ? 1 : 0,
+    seating: () => { if (!ok('piece_table_round', biome) || (k.taste || {}).noTable) return 0; const n0 = before(); const t = placeTable(room, k, { table: 'piece_table_round', seats: 2, seat: k.chair || k.seat, depth: 0.7, spread: 3.5 }); if (t && d >= 3) placeOnTable(room, t, [ok('Candle_resin', biome) ? 'Candle_resin' : 'itemstandh']); return room.count - n0; },
+    rug: () => (k.rug && placeRug(room, k, null) ? 1 : 0),
+    banners: () => (k.banner && room.ceiling - room.stand >= 2.9 ? pairOn(k.banner, 0, 2.0, 2) : 0),
+    carving: () => (k.carving ? pairOn(k.carving, 1.7, 0, 1) : 0),
+    torches: () => placeLights(room, k, 2),
+    tabletop: () => {
+      let n = 0;
+      for (const t of room.placed.filter(q => (F[q.name] || {}).cat === 'table' && !q.topped)) {
+        t.topped = true;
+        n += placeOnTable(room, t, [ok('treasure_stack', biome) && room.R() < 0.3 ? 'treasure_stack' : 'itemstandh', ok('Candle_resin', biome) ? 'Candle_resin' : 'itemstandh']);
+        if (n) break;
+      }
+      return n;
+    },
+    tools: () => pairOn('itemstand', 1.5, 0.8, 3) + (placeAgainst(room, ok('piece_workbench_ext4', biome) ? 'piece_workbench_ext4' : 'forge_ext5') ? 1 : 0),
+    chart: () => placeAgainst(room, 'piece_cartographytable') ? 1 : 0,
+    bench: () => placeAgainst(room, k.bench || 'piece_bench01', null, { rel: (F[k.bench] || {}).back ? 180 : 0 }) ? 1 : 0,
+  };
+  // how often one extra may repeat in a room, so a room is a mix and never twenty of one thing
+  const MAX = { barrels: 2, crates: 1, chest: 2, armor: 2, fermenter: 1, seating: 2, rug: 2, banners: 1, carving: 2, torches: 1, tabletop: 4, tools: 2, chart: 1, bench: 2, trophies: 2, shelf: 2 };
+  const used = {};
+  const rugs = () => room.placed.filter(q => q.rug).length;
+  const live = Object.entries(extras).filter(([kk]) => run[kk]);
+  for (let tries = 0; tries < 40 && live.length && room.count < target; tries++) {
+    const key = pickW(room.R, live);
+    const floor = !['trophies', 'shelf', 'banners', 'carving', 'tabletop', 'rug'].includes(key);
+    let got = 0;
+    const full = (used[key] || 0) >= (MAX[key] || 2) || (key === 'rug' && rugs() >= Math.max(1, Math.floor(room.area / 15)));
+    if (!full && !(floor && floorUsed() > room.area * 0.5)) got = run[key]();
+    used[key] = (used[key] || 0) + 1;
+    if (!got || full) live.splice(live.findIndex(([kk]) => kk === key), 1);
+  }
+}
+
+function furnishPlan(room, role, c) {
   const { decor, kit: k, counts } = c;
   const d = decor === 'd1' ? 1 : decor === 'd2' ? 2 : 3;
   const biome = c.biome;
@@ -2375,9 +2497,10 @@ function furnish(room, role, c) {
 
   if (role === 'home') {
     if (isFire) { placeFire(room, c, 'fire_pit'); onFire(room, d >= 2 && ok('piece_cauldron', biome) && room.R() < 0.4 ? 'piece_cauldron' : 'piece_cookingstation'); }
-    planPaths(room);
+    // beds first: a house always sleeps someone (Tyler, T-102)
     const nb = c.levels > 1 ? (d === 1 ? 1 : 0) : Math.max(1, Math.min(d + 1, Math.round(room.area / (d >= 3 ? 22 : 30))));
     const beds = bed(nb, 0.4);
+    planPaths(room);
     placeStorageRow(room, k, d >= 2 ? 1 : 0, { side: k.side });
     if (d >= 2) {
       const t = table({ seats: d >= 3 ? 4 : 2 });
@@ -2399,9 +2522,9 @@ function furnish(room, role, c) {
     return;
   }
   if (role === 'sleeping' || role === 'guest') {
-    planPaths(room);
     const nb = role === 'guest' ? Math.max(2, Math.round(room.area / 14)) : Math.max(1, Math.round(room.area / 18));
     const beds = bed(d === 1 ? Math.min(nb, 2) : nb, role === 'guest' ? 1.5 : 0.4);
+    planPaths(room);
     if (d >= 2 || !beds.length) placeStorageRow(room, k, beds.length ? 0 : 1);
     if (d >= 2) {
       for (const bd of beds.slice(0, d >= 3 ? 2 : 1)) if (k.rug) placeRug(room, k, bd, { mode: 'beside' });
@@ -2497,7 +2620,7 @@ function furnish(room, role, c) {
       placeLights(room, k, lights(d >= 3 ? 4 : 2));
       if (d >= 3 && k.rug) {
         // a runner down the aisle
-        for (let dist = 1.6; dist < 12; dist += size(k.rug)[2]) if (!room.put(k.rug, altar.x + ax * dist, altar.z + az * dist, norm(yawIn), { clearOf: ['seat', 'table'] })) break;
+        for (let dist = 1.6, n = 0; dist < 12 && n < 3; dist += size(k.rug)[2], n++) if (!room.put(k.rug, altar.x + ax * dist, altar.z + az * dist, norm(yawIn), { clearOf: ['seat', 'table'] })) break;
       }
     }
     return;
@@ -2556,7 +2679,7 @@ function furnish(room, role, c) {
   }
   if (role === 'lookout') {
     // a roofed lookout: a chest and a bench against the rail
-    if (d >= 2) { placeStorageRow(room, k, 1); placeAgainst(room, k.bench || 'piece_bench01'); placeLights(room, k, 1); }
+    if (d >= 2) { placeStorageRow(room, k, 1); placeAgainst(room, k.bench || 'piece_bench01'); placeLights(room, { ...k, wallLight: null }, 1, { tallOk: true }); }
     return;
   }
   if (role === 'market') {
@@ -2569,6 +2692,16 @@ function furnish(room, role, c) {
       placeLights(room, k, 1);
       placeMounts(room, ['sign']);
     }
+    return;
+  }
+  if (role === 'kitchen') {
+    // a fire with a cauldron or a spit, a work table against a wall, barrels and a chest
+    placeFire(room, c, 'fire_pit');
+    onFire(room, ok('piece_cauldron', biome) && room.R() < 0.6 ? 'piece_cauldron' : 'piece_cookingstation');
+    planPaths(room);
+    const t = table({ seats: 1, wallBias: 2, depth: 0.6 });
+    placeStorageRow(room, k, 1, { chest: ok('piece_chest_barrel', biome) ? 'piece_chest_barrel' : k.chest });
+    if (d >= 2) { placeLights(room, k, lights(1)); if (t) placeOnTable(room, t, ['itemstandh', 'itemstandh']); }
     return;
   }
   // anything else: one chest and a light
@@ -4472,6 +4605,200 @@ const apiQ = { WORDS, read, best, evaluate, make, BIOME_CODES, BIOME_STAND_IN, T
 if (NODE_Q) module.exports = apiQ; else window.VHRequest = apiQ;
 
 })();
+// ---- floorplan.js
+(function () {
+// Floorplans: one room furnished by the decorator and shown without walls or roof, so the layout can be judged from
+// above. The decorator works in a full temporary room (floor, walls with a door and windows, a ceiling); the plan
+// keeps the floor, a low curb where walls stand, a rail where windows are, the door, the ladder, full wall stubs only
+// where something hangs, and a post with a sign that carries the plan's ID (FP-001).
+//
+// floorplan({ shape, w, d, room, biome, culture, decor, seed, id, ladder }) gives { pieces, sign, summary, ... }.
+// set(n) lays the first n plans of the catalog out in a grid, IDs FP-001 on, the same IDs as the review sheet's
+// Floorplans tab. Shapes: rect, L, octagon (round), long (a hall with two rows of posts).
+// Rooms: home, sleeping, hall, tavern, kitchen, smithy, workshop, temple, storage.
+
+const NODE_FP = typeof module !== 'undefined';
+const DF = NODE_FP ? require('./decorate.js') : window.VHDecorate;
+const SF = NODE_FP ? require('./styles.js') : window.VHStyles;
+const BF = NODE_FP ? require('./blueprint.js') : window.VHBlueprint;
+
+const SHAPES = ['rect', 'L', 'octagon', 'long'];
+const ROOMS = {
+  home: { use: 'home', type: 'home', fire: true },
+  sleeping: { use: 'home', type: 'home', role: 'sleeping' },
+  hall: { use: 'hall', type: 'longhouse', fire: true },
+  tavern: { use: 'hall', type: 'tavern', fire: true },
+  kitchen: { use: 'home', type: 'home', role: 'kitchen' },
+  smithy: { use: 'smithy', type: 'smithy' },
+  workshop: { use: 'workshop', type: 'workshop' },
+  temple: { use: 'hall', type: 'temple', role: 'temple' },
+  storage: { use: 'storage', type: 'storage' },
+};
+const BIOME_CODES = { md: 'Meadows', bf: 'Black Forest', sw: 'Swamp', mt: 'Mountain', pl: 'Plains', ml: 'Mistlands', al: 'Ashlands', dn: 'Deep North' };
+
+function rngFP(seed) {
+  let s = (seed >>> 0) || 1;
+  return () => { s ^= s << 13; s >>>= 0; s ^= s >> 17; s ^= s << 5; s >>>= 0; return s / 4294967296; };
+}
+const quatFP = yaw => { const a = yaw * Math.PI / 360; return [0, +Math.sin(a).toFixed(6), 0, +Math.cos(a).toFixed(6)]; };
+
+// Floor cells (2 m) of a shape, centered on 0, 0.
+function cellsOf(shape, w, d) {
+  const W = Math.max(2, Math.round(w / 2)), D = Math.max(2, Math.round(d / 2));
+  const out = [];
+  for (let i = 0; i < W; i++) for (let j = 0; j < D; j++) {
+    const x = -W + 1 + 2 * i, z = -D + 1 + 2 * j;
+    if (shape === 'L' && i >= Math.ceil(W / 2) && j >= Math.ceil(D / 2)) continue;
+    if (shape === 'octagon') {
+      const R = Math.min(W, D);
+      if (Math.abs(x) + Math.abs(z) > R * 1.42 - 0.5) continue;
+    }
+    out.push([x, z]);
+  }
+  return { cells: out, W, D };
+}
+
+function floorplan(spec) {
+  const shape = SHAPES.includes(spec.shape) ? spec.shape : 'rect';
+  const roomKind = ROOMS[spec.room] ? spec.room : 'home';
+  const R0 = ROOMS[roomKind];
+  const biome = BIOME_CODES[String(spec.biome || '').toLowerCase()] || (SF.BIOMES.concat(['Deep North']).includes(spec.biome) ? spec.biome : 'Meadows');
+  const seed = +spec.seed || 1;
+  const R = rngFP(seed * 7919 + 13);
+  const culture = SF.CULTURES[spec.culture] ? spec.culture : SF.cultureFor(biome === 'Deep North' ? 'Mountain' : biome, rngFP(seed * 104729 + 7));
+  const decor = ['d1', 'd2', 'd3'].includes(spec.decor) ? spec.decor : 'd2';
+  const w = shape === 'long' ? Math.max(spec.w || 20, 2 * (spec.d || 8)) : spec.w || 10, dpt = spec.d || 8;
+  const { cells, W, D } = cellsOf(shape, w, dpt);
+  const key = new Set(cells.map(([x, z]) => `${x},${z}`));
+  const H = 3;
+  const shell = [], keep = [];
+  const put = (list, name, x, y, z, yaw = 0, extra) => list.push({ name, x: +x.toFixed(3), y: +y.toFixed(3), z: +z.toFixed(3), q: quatFP(yaw), yaw, ...(extra || {}) });
+  for (const [x, z] of cells) { put(keep, 'wood_floor', x, 0, z); put(shell, 'wood_floor', x, H, z); }
+  // walls on every outside edge; the door on the front edge nearest the middle; windows on every other edge
+  const edges = [];
+  for (const [x, z] of cells) for (const [dx, dz] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+    if (key.has(`${x + 2 * dx},${z + 2 * dz}`)) continue;
+    edges.push({ x: x + dx, z: z + dz, yaw: dx ? 90 : 0, out: [dx, dz] });
+  }
+  const front = edges.filter(e => e.out[1] < 0).sort((a, b) => Math.abs(a.x) - Math.abs(b.x) || a.z - b.z);
+  const door = front[0] || edges[0];
+  for (const e of edges) {
+    e.kind = e === door ? 'door' : (Math.round((e.x + e.z) / 2) % 2 === 0 && Math.hypot(e.x - door.x, e.z - door.z) > 2.5 ? 'window' : 'wall');
+    if (e.kind === 'door') { put(keep, 'wood_door', e.x, 1, e.z, e.yaw); put(shell, 'woodwall', e.x, 2.5, e.z, e.yaw); }
+    else if (e.kind === 'window') { put(shell, 'wood_wall_half', e.x, 0.5, e.z, e.yaw); put(shell, 'wood_wall_half', e.x, 2.5, e.z, e.yaw); }
+    else { put(shell, 'woodwall', e.x, 1, e.z, e.yaw); put(shell, 'wood_wall_half', e.x, 2.5, e.z, e.yaw); }
+  }
+  // a long hall has two rows of posts, two cells in from the long walls
+  if (shape === 'long' && D >= 3) for (let x = -W + 2; x <= W - 2; x += 2) for (const z of [-(D - 2), D - 2]) put(keep, 'wood_pole2', x, 1, z);
+  // a ladder in the back corner when asked (it shows the way kept clear to it)
+  if (spec.ladder) {
+    const corner = cells.slice().sort((a, b) => (b[0] + b[1]) - (a[0] + a[1]))[0];
+    put(keep, 'wood_stepladder', corner[0], 0, corner[1] - 0.5, 180);
+  }
+  const b = { pieces: [...keep, ...shell], rooms: [{ x0: -W, x1: W, z0: -D, z1: D, y: 0, h: H, use: R0.use, upper: false, main: true, door: { x: door.x, z: door.z } }], notes: [] };
+  if (shape === 'L') {
+    const wx = 2 * Math.ceil(W / 2) - W, dz = 2 * Math.ceil(D / 2) - D;
+    b.rooms = [{ ...b.rooms[0], z1: -D + 2 * Math.ceil(D / 2) - 0 }, { ...b.rooms[0], x1: -W + 2 * Math.ceil(W / 2), main: false, door: null }];
+    void wx; void dz;
+  }
+  const fireAt = R0.fire ? (() => { const c = cells.slice().sort((a, b2) => Math.hypot(a[0], a[1]) - Math.hypot(b2[0], b2[1]))[0]; return { x: c[0], z: c[1] }; })() : null;
+  DF.decorate(b, { use: R0.use, type: R0.type, role: R0.role, decor, biome, culture, R, doorX: door.x, fireAt });
+  const furniture = b.pieces.filter(p => p.decor && !p.outside);
+  // keep a full wall wherever something hangs on it, so nothing floats
+  const F = DF.FURNITURE;
+  const hung = furniture.filter(p => { const f = F[p.name] || {}; return f.at === 'mount' || (p.name === 'itemstandh' && p.y > 0.6 && !furniture.some(t => (F[t.name] || {}).cat === 'table' && Math.hypot(t.x - p.x, t.z - p.z) < 2.2 && Math.abs(t.y + 0.75 - p.y) < 0.2)); });
+  const stubs = new Set();
+  for (const p of hung) {
+    let bestE = null, bd = 1.2;
+    for (const e of edges) { const dd = Math.hypot(p.x - e.x, p.z - e.z); if (dd < bd && e.kind !== 'door') { bd = dd; bestE = e; } }
+    if (bestE) stubs.add(bestE);
+  }
+  const out = [...keep];
+  for (const e of edges) {
+    if (e.kind === 'door') continue;
+    if (stubs.has(e)) { put(out, 'woodwall', e.x, 1, e.z, e.yaw); put(out, 'wood_wall_half', e.x, 2.5, e.z, e.yaw); }
+    else if (e.kind === 'window') put(out, 'wood_fence', e.x, 0.5, e.z, e.yaw);
+    else put(out, 'wood_wall_quarter', e.x, 0.25, e.z, e.yaw);
+  }
+  // hanging braziers need the ceiling the plan leaves out
+  for (const p of furniture) if ((F[p.name] || {}).at !== 'hang') out.push(p);
+  // the ID: a post at the front left corner, outside, with a sign facing the front
+  const sx = -W - 1, sz = -D - 1;
+  put(out, 'wood_pole2', sx, 1, sz);
+  put(out, 'sign', sx, 1.5, sz - 0.15, 180, { idSign: true });
+  const counts = {};
+  for (const p of furniture) { const n = p.name.replace(/^piece_/, ''); counts[n] = (counts[n] || 0) + 1; }
+  const area = cells.length * 4;
+  const items = furniture.filter(p => (F[p.name] || {}).at !== 'rug').length;
+  const id = spec.id || 'FP-000';
+  const command = `vh floorplan ${shape} ${w}x${dpt} ${roomKind} ${Object.keys(BIOME_CODES).find(k => BIOME_CODES[k] === biome)} ${culture} ${decor} ${seed}${spec.ladder ? ' ladder' : ''}`;
+  return {
+    id, command, shape, w, d: dpt, room: roomKind, biome, culture, decor, seed, area,
+    perTenM2: +(items / area * 10).toFixed(2), items,
+    summary: Object.entries(counts).sort((a, c) => c[1] - a[1]).map(([n, c]) => `${n} ${c}`).join(', '),
+    pieces: out, sign: { text: `${id} ${roomKind} ${w}x${dpt} ${decor}` },
+  };
+}
+
+// The catalog behind 'vh floorplan set': every room, every shape, three decor stages, seven biomes.
+const CATALOG = [
+  ['rect', 10, 8, 'home', 'md', 'norse', 'd2'], ['rect', 10, 8, 'home', 'md', 'norse', 'd3'],
+  ['L', 12, 10, 'home', 'bf', 'norse-forest', 'd2'], ['octagon', 10, 10, 'home', 'sw', 'celtic-crannog', 'd2'],
+  ['rect', 8, 6, 'sleeping', 'bf', 'slavic', 'd2'], ['rect', 12, 8, 'sleeping', 'mt', 'norse-highland', 'd3', true],
+  ['long', 20, 8, 'hall', 'bf', 'norse-forest', 'd2'], ['long', 24, 10, 'hall', 'sw', 'fen-folk', 'd3'],
+  ['rect', 14, 10, 'tavern', 'pl', 'byzantine', 'd2'], ['L', 16, 12, 'tavern', 'md', 'anglo-saxon', 'd3'],
+  ['rect', 8, 6, 'kitchen', 'bf', 'celtic', 'd2'], ['rect', 10, 8, 'kitchen', 'mt', 'norse-highland', 'd3'],
+  ['rect', 10, 8, 'smithy', 'bf', 'norse-forest', 'd2'], ['octagon', 10, 10, 'smithy', 'pl', 'steppe', 'd3'],
+  ['rect', 10, 8, 'workshop', 'md', 'frankish-norman', 'd2'], ['L', 12, 10, 'workshop', 'sw', 'baltic', 'd3'],
+  ['rect', 12, 8, 'temple', 'mt', 'norse-highland', 'd2'], ['octagon', 12, 12, 'temple', 'ml', 'byzantine', 'd3'],
+  ['rect', 8, 6, 'storage', 'sw', 'fen-folk', 'd2'], ['rect', 10, 8, 'storage', 'pl', 'middle-eastern', 'd3'],
+  ['rect', 6, 6, 'home', 'md', 'anglo-saxon', 'd1'], ['octagon', 8, 8, 'home', 'mt', 'saami', 'd2'],
+  ['rect', 14, 10, 'home', 'pl', 'middle-eastern', 'd3'], ['rect', 12, 10, 'home', 'ml', 'lamari', 'd3', true],
+];
+const catalogSpec = i => {
+  const [shape, w, d, room, biome, culture, decor, ladder] = CATALOG[i];
+  return { shape, w, d, room, biome, culture, decor, ladder: !!ladder, seed: 101 + i, id: 'FP-' + String(i + 1).padStart(3, '0') };
+};
+
+// One plan, or several in a grid (four to a row, each in its own square), as one blueprint.
+function layout(plans) {
+  const pieces = [], signs = [], pads = [];
+  const step = Math.max(...plans.map(p => Math.max(p.w, p.d))) + 8;
+  plans.forEach((p, i) => {
+    const ox = (i % 4) * step, oz = -Math.floor(i / 4) * step;
+    pads.push({ x: ox, z: oz, r: Math.hypot(p.w, p.d) / 2 + 2 });
+    for (const q of p.pieces) {
+      const c = { ...q, x: +(q.x + ox).toFixed(3), z: +(q.z + oz).toFixed(3) };
+      delete c.decor; delete c.idSign; delete c.outside;
+      pieces.push(c);
+      if (q.idSign) signs.push({ x: c.x, y: c.y, z: c.z, text: p.sign.text, id: p.id });
+    }
+  });
+  // the game centers a blueprint on the middle of its pieces and its lowest piece: the signs, the same way
+  const xs = pieces.map(p => p.x), zs = pieces.map(p => p.z), ys = pieces.map(p => p.y);
+  const cx = (Math.min(...xs) + Math.max(...xs)) / 2, cz = (Math.min(...zs) + Math.max(...zs)) / 2, y0 = Math.min(...ys);
+  for (const s of signs) { s.lx = +(s.x - cx).toFixed(3); s.ly = +(s.y - y0).toFixed(3); s.lz = +(s.z - cz).toFixed(3); }
+  for (const p of pads) { p.x = +(p.x - cx).toFixed(3); p.z = +(p.z - cz).toFixed(3); }
+  return { pieces, signs, pads };
+}
+
+function make(specs, name) {
+  const plans = specs.map(floorplan);
+  const { pieces, signs, pads } = layout(plans);
+  const blueprint = BF.write({ meta: { Name: name, Creator: 'Villheim floorplan', Category: 'Villheim floorplans', Description: plans.map(p => `${p.id} ${p.command}`).join('; ') }, pieces });
+  return {
+    name, blueprint, pieces: pieces.length, signs, pads,
+    rows: plans.map(p => ({ id: p.id, command: p.command, shape: p.shape, size: `${p.w}x${p.d}`, room: p.room, biome: p.biome, culture: p.culture, stage: p.decor, seed: p.seed, area: p.area, perTenM2: p.perTenM2, summary: p.summary })),
+  };
+}
+
+function one(spec) { return make([spec], spec.id || 'floorplan'); }
+function set(n) { const k = Math.max(1, Math.min(CATALOG.length, n | 0)); return make([...Array(k).keys()].map(catalogSpec), `floorplans-${k}`); }
+
+const apiFP = { floorplan, one, set, CATALOG, catalogSpec, SHAPES, ROOMS: Object.keys(ROOMS), BIOME_CODES };
+if (NODE_FP) module.exports = apiFP; else window.VHFloorplan = apiFP;
+
+})();
 // ---- data
 window.VH_RULES = {"placement": {"Candle_resin": {"rel": 0, "lift": 0.8}, "itemstandh": {"rel": 180, "lift": 0.6}, "piece_brazierceiling01": {"rel": 0, "lift": 4.6}, "piece_chair02": {"rel": 0, "lift": 0.5}, "piece_chest_barrel": {"rel": 0, "lift": 0.3}, "rug_straw": {"rel": 0, "lift": 0.35}, "fire_pit": {"rel": 180, "lift": 0.5}, "piece_cookingstation": {"rel": 0, "lift": 0.7}, "piece_workbench": {"rel": 0, "lift": 0.1}, "piece_workbench_ext1": {"rel": 0, "lift": 0.1}, "rug_deer": {"rel": 90, "lift": 0.4}, "portal_wood": {"rel": 0, "lift": 0.5}, "bed": {"rel": 270, "lift": 0.1}, "piece_workbench_ext2": {"rel": 0, "lift": 0.1}, "piece_groundtorch_wood": {"rel": 0, "lift": 0.7}, "piece_chest_wood": {"rel": 0, "lift": 0.1}, "sign": {"rel": 0, "lift": 0.7}, "piece_groundtorch": {"rel": 0, "lift": 1.2}, "piece_chest": {"rel": 0, "lift": 0.1}, "rug_fur": {"rel": 270, "lift": 0.1}, "fermenter": {"rel": 0, "lift": 0.1}, "itemstand": {"rel": 0, "lift": 2.1}, "piece_dvergr_lantern": {"rel": 90, "lift": 3.7}, "MountainKit_brazier": {"rel": 270, "lift": 2.0}, "piece_groundtorch_blue": {"rel": 0, "lift": 1.7}, "piece_jackoturnip": {"rel": 90, "lift": 0.6}, "guard_stone": {"rel": 0, "lift": 0.5}, "piece_workbench_ext3": {"rel": 0, "lift": 0.1}, "windmill": {"rel": 180, "lift": 0.3}, "fire_pit_iron": {"rel": 270, "lift": 0.5}, "forge_ext2": {"rel": 0, "lift": 0.1}, "piece_beehive": {"rel": 90, "lift": 0.6}, "forge_ext4": {"rel": 0, "lift": 0.2}, "forge": {"rel": 0, "lift": 0.2}, "forge_ext3": {"rel": 90, "lift": 0.3}, "forge_ext5": {"rel": 180, "lift": 0.3}, "forge_ext1": {"rel": 180, "lift": 0.3}, "piece_workbench_ext4": {"rel": 0, "lift": 1.9}, "forge_ext6": {"rel": 0, "lift": 2.3}, "ArmorStand": {"rel": 0, "lift": 0.1}, "cauldron_ext1_spice": {"rel": 0, "lift": 3.0}, "cauldron_ext3_butchertable": {"rel": 180, "lift": 0.2}, "cauldron_ext4_pots": {"rel": 0, "lift": 2.6}, "cauldron_ext5_mortarandpestle": {"rel": 0, "lift": 0.5}, "cauldron_ext6_rollingpins": {"rel": 0, "lift": 1.8}, "jute_carpet": {"rel": 0, "lift": 0.2}, "piece_cauldron": {"rel": 180, "lift": 0.8}, "piece_chair03": {"rel": 0, "lift": 0.1}, "piece_preptable": {"rel": 0, "lift": 0.2}, "piece_table_oak": {"rel": 90, "lift": 0.1}, "wood_core_stack": {"rel": 270, "lift": 0.5}, "hearth": {"rel": 0, "lift": 0.5}, "piece_groundtorch_green": {"rel": 270, "lift": 1.2}, "piece_stonecutter": {"rel": 180, "lift": 0.1}, "piece_groundtorch_mist": {"rel": 0, "lift": 4.6}, "piece_chair": {"rel": 270, "lift": 0.9}, "wood_fine_stack": {"rel": 0, "lift": 0.2}, "rug_wolf": {"rel": 270, "lift": 0.1}, "stone_pile": {"rel": 0, "lift": 0.5}, "wood_stack": {"rel": 270, "lift": 0.7}, "piece_chest_blackmetal": {"rel": 0, "lift": 0.1}, "$custompiece_stackedpoetrybooks1": {"rel": 0, "lift": 1.2}, "$custompiece_stackedpoetrybooks2": {"rel": 180, "lift": 0.7000000000000001}, "piece_chest_private": {"rel": 0, "lift": 0.1}, "hildir_maptable_coe": {"rel": 90, "lift": 0.2}, "hildir_chest_coe": {"rel": 90, "lift": 0.3}, "piece_banner04": {"rel": 270, "lift": 5.0}, "$custompiece_candlebottle": {"rel": 90, "lift": 1.0}, "rug_asksvin": {"rel": 180, "lift": 0.1}, "piece_table": {"rel": 0, "lift": 0.1}, "wood_dragon1": {"rel": 0, "lift": 2.5}, "piece_oven": {"rel": 270, "lift": 0.5}, "rug_Bjorn": {"rel": 0, "lift": 0.1}, "piece_Lavalantern": {"rel": 180, "lift": 0.9}, "piece_cookingstation_iron": {"rel": 0, "lift": 1.1}, "piece_bench01": {"rel": 0, "lift": 0.1}, "rug_hare": {"rel": 90, "lift": 0.6}, "piece_table_round": {"rel": 180, "lift": 0.1}, "piece_banner11": {"rel": 90, "lift": 8.2}, "piece_chest_treasure": {"rel": 0, "lift": 0.5}, "piece_throne01": {"rel": 0, "lift": 0.1}, "jute_carpet_blue": {"rel": 90, "lift": 0.5}, "piece_bed02": {"rel": 0, "lift": 0.1}, "treasure_stack": {"rel": 0, "lift": 0.5}, "piece_banner05": {"rel": 90, "lift": 3.9}, "smelter": {"rel": 90, "lift": 0.5}, "charcoal_kiln": {"rel": 270, "lift": 0.5}, "piece_banner01": {"rel": 90, "lift": 4.3}, "piece_logbench01": {"rel": 180, "lift": 0.1}, "eitrrefinery": {"rel": 180, "lift": 0.5}, "blackforge": {"rel": 0, "lift": 0.5}, "piece_spinningwheel": {"rel": 270, "lift": 0.1}, "piece_artisanstation": {"rel": 0, "lift": 2.0}, "piece_magetable": {"rel": 0, "lift": 0.2}, "piece_magetable_ext": {"rel": 0, "lift": 0.2}, "piece_magetable_ext2": {"rel": 0, "lift": 0.1}, "wood_yggdrasil_stack": {"rel": 270, "lift": 0.3}, "blastfurnace": {"rel": 0, "lift": 0.5}, "blackforge_ext2_vise": {"rel": 0, "lift": 0.5}, "blackforge_ext1": {"rel": 0, "lift": 0.2}, "piece_bone_throne": {"rel": 0, "lift": 0.5}, "skull_pile": {"rel": 270, "lift": 0.2}, "piece_banner10": {"rel": 270, "lift": 4.0}, "darkwood_raven": {"rel": 0, "lift": 3.0}, "piece_cartographytable": {"rel": 0, "lift": 0.1}, "piece_blackwood_bench01": {"rel": 180, "lift": 0.1}, "piece_xmastree": {"rel": 180, "lift": 0.4}, "blackforge_ext3_metalcutter": {"rel": 90, "lift": 0.2}, "blackforge_ext4_gemcutter": {"rel": 270, "lift": 1.2}, "ashwood_bed": {"rel": 90, "lift": 0.1}, "piece_banner07": {"rel": 270, "lift": 1.4}, "piece_banner03": {"rel": 90, "lift": 8.45}, "piece_banner06": {"rel": 270, "lift": 3.6500000000000004}, "piece_banner02": {"rel": 270, "lift": 3.4}, "darkwood_wolf": {"rel": 180, "lift": 6.6}, "barrell": {"rel": 90, "lift": 0.9}, "blackmarble_head_big01": {"rel": 0, "lift": 3.0}, "blackmarble_head_big02": {"rel": 0, "lift": 10.5}, "bone_stack": {"rel": 270, "lift": 1.0}, "CastleKit_groundtorch": {"rel": 90, "lift": 2.2}, "dvergrprops_chair": {"rel": 0, "lift": 0.1}, "dvergrprops_crate": {"rel": 90, "lift": 0.0}, "dvergrprops_crate_long": {"rel": 0, "lift": 4.5}, "dvergrprops_lantern_standing": {"rel": 270, "lift": 2.45}, "dvergrprops_stool": {"rel": 180, "lift": 0.7}, "dvergrprops_table": {"rel": 90, "lift": 2.2}, "piece_banner08": {"rel": 90, "lift": 3.9}, "piece_banner09": {"rel": 90, "lift": 4.2}, "piece_magetable_ext3": {"rel": 0, "lift": 2.7}, "trader_wagon_destructable": {"rel": 270, "lift": -0.2}, "piece_xmasgarland": {"rel": 270, "lift": 2.2}, "piece_xmascrown": {"rel": 90, "lift": 3.2}, "piece_world_blueprint_rune_stack": {"rel": 0, "lift": 0.7}, "artisan_ext1": {"rel": 0, "lift": 1.5}, "piece_throne02": {"rel": 0, "lift": 0.5}, "piece_bathtub": {"rel": 0, "lift": 0.1}, "piece_blackmarble_bench": {"rel": 0, "lift": 0.2}, "piece_blackmarble_throne": {"rel": 0, "lift": 6.6}, "goblinking_totemholder": {"rel": 180, "lift": 0.4}, "dvergrprops_lantern": {"rel": 270, "lift": 5.35}, "dvergrprops_barrel": {"rel": 270, "lift": 0.1}, "treasure_pile": {"rel": 0, "lift": 0.4}, "piece_blackmarble_table": {"rel": 0, "lift": 0.3}, "Fiddleheadfern": {"rel": 180, "lift": 0.1}, "Placeable_Stone": {"rel": 0, "lift": -0.8}, "CastleKit_groundtorch_green": {"rel": 180, "lift": 0.1}, "mudpile": {"rel": 0, "lift": 0.0}, "coal_pile": {"rel": 270, "lift": 0.2}, "mountainkit_table": {"rel": 180, "lift": 0.5}, "goblin_bed": {"rel": 0, "lift": 2.1}, "piece_wisplure": {"rel": 0, "lift": 0.6}, "blackwood_stack": {"rel": 180, "lift": 0.8}, "surtling_lantern_1": {"rel": 270, "lift": 0.6}, "Pickable_Fiddlehead": {"rel": 90, "lift": -0.95}, "portal": {"rel": 0, "lift": 0.8}, "MountainKit_brazier_blue": {"rel": 0, "lift": 2.0}, "blackmarble_pile": {"rel": 180, "lift": 0.6}, "volture_strawpile": {"rel": 0, "lift": 5.65}, "mm_corewood_stackable_chest": {"rel": 270, "lift": 1.0}, "blackmarble_head02": {"rel": 0, "lift": 4.3}, "blackmarble_head01": {"rel": 90, "lift": 0.8}, "sign_notext": {"rel": 180, "lift": 2.3}, "GB_Hanging_Candles": {"rel": 0, "lift": 3.6}, "$custompiece_roundtablewithcloth": {"rel": 0, "lift": 0.5}, "mm_corewood_crate_onion": {"rel": 90, "lift": 2.55}, "MountainKit_brazier_purple": {"rel": 0, "lift": 1.5}, "cauldron_ext7_smoker": {"rel": 0, "lift": 0.5}, "piece_chest_warderobe": {"rel": 180, "lift": 0.1}, "piece_magetable_ext4": {"rel": 0, "lift": 0.5}, "piece_moose_throne": {"rel": 270, "lift": 0.2}, "blackforge_ext5_apron": {"rel": 0, "lift": 2.0}, "pressurePlate_stone_PressurePlate_Items_AddPlateItem": {"rel": 270, "lift": 0.5}, "pressurePlate_PressurePlate_Items_AddPlateItem": {"rel": 180, "lift": 0.1}, "apiary_ext2": {"rel": 180, "lift": -0.1}, "apiary_ext1": {"rel": 180, "lift": 0.7}, "M_Werewolf_Throne": {"rel": 90, "lift": 0.5}, "piece_chest_grausten": {"rel": 0, "lift": 0.1}, "piece_bench_runed": {"rel": 0, "lift": 0.1}, "rug_seal": {"rel": 180, "lift": 0.1}, "piece_table_runed_small": {"rel": 0, "lift": 0.5}, "piece_chair_runed": {"rel": 180, "lift": 0.3}, "piece_table_runed": {"rel": 0, "lift": 0.5}, "piece_hoodedlantern": {"rel": 0, "lift": 5.4}, "rug_moose": {"rel": 180, "lift": 0.1}, "CastleKit_groundtorch_blue": {"rel": 180, "lift": 0.4}, "piece_chest_barrel_bal": {"rel": 270, "lift": 1.3}, "piece_chest_seedbasket_bal": {"rel": 0, "lift": 0.8}, "fire_pit_hildir": {"rel": 270, "lift": 0.5}, "piece_drawer": {"rel": 180, "lift": 1.5}, "deepnorth_lantern_standing": {"rel": 270, "lift": 0.2}, "portal_stone": {"rel": 0, "lift": 0.9}, "flint_pile": {"rel": 270, "lift": 0.6}, "grausten_pile": {"rel": 180, "lift": -0.1}, "prop_itemstand_TrophyGoblinBrute": {"rel": 0, "lift": 1.5}, "rug_bogwitch_deer": {"rel": 0, "lift": 0.5}, "Candle_resin_bogwitch": {"rel": 270, "lift": 0.1}, "VC_Eldhrimnir_ext2": {"rel": 180, "lift": 0.6}, "teq_dv_ferm_fermenter": {"rel": 180, "lift": 0.1}, "corewood_crate_bal": {"rel": 180, "lift": 0.5}, "$custompiece_rug_fur_tablecloth": {"rel": 270, "lift": 1.2}, "$custompiece_rug_wolf_tablecloth": {"rel": 180, "lift": 1.2}, "h_woodtorch_white": {"rel": 0, "lift": 1.8}, "CastleKit_brazier": {"rel": 270, "lift": 14.75}, "loot_chest_wood": {"rel": 180, "lift": 15.2}, "goblin_banner": {"rel": 180, "lift": 6.7}, "piece_banner_BlackSaga1": {"rel": 90, "lift": 4.3}, "$custompiece_stool": {"rel": 0, "lift": -0.1}, "rk_rugsmall": {"rel": 270, "lift": 0.2}, "loot_chest_stone": {"rel": 0, "lift": 9.75}, "mudpile_old": {"rel": 0, "lift": 8.7}, "piece_seed_totem_auto_field": {"rel": 0, "lift": -0.5}, "dvergr_chest_bal": {"rel": 0, "lift": 0.1}, "piece_chest_private_bal": {"rel": 180, "lift": 1.0}, "itemstand45_inner_bal": {"rel": 0, "lift": 1.5}, "rk_oven": {"rel": 180, "lift": 0.1}, "goblin_trashpile": {"rel": 180, "lift": 0.8}, "rae_darkwood_iron_raven": {"rel": 90, "lift": 2.8}, "goblin_strawpile": {"rel": 0, "lift": -2.0}, "dvergrprops_bed": {"rel": 0, "lift": 3.25}, "$custompiece_couchbed1": {"rel": 0, "lift": 0.1}}};
 window.VH_SCORER = {
@@ -4579,6 +4906,15 @@ function vhMake(type, biome, culture, stage, words, seed, tries) {
   return VHRequest.make({ type: type, biome: biome, culture: culture || undefined, stage: stage, words: words, seed: seed, tries: tries }, VH_SCORER, VH_RULES);
 }
 function vhRead(words) { return JSON.stringify(VHRequest.read(words)); }
+// floorplans ('vh floorplan'): one plan or the first n of the catalog, as JSON { name, blueprint, signs, rows }
+function vhFloorplan(shape, w, d, room, biome, culture, decor, seed, id, ladder) {
+  try { return JSON.stringify(VHFloorplan.one({ shape: shape, w: w, d: d, room: room, biome: biome, culture: culture || undefined, decor: decor, seed: seed, id: id, ladder: !!ladder })); }
+  catch (e) { return JSON.stringify({ error: String(e && e.message || e) }); }
+}
+function vhFloorplanSet(n) {
+  try { return JSON.stringify(VHFloorplan.set(n)); } catch (e) { return JSON.stringify({ error: String(e && e.message || e) }); }
+}
+function vhFloorplanLists() { return JSON.stringify({ shapes: VHFloorplan.SHAPES, rooms: VHFloorplan.ROOMS, catalog: VHFloorplan.CATALOG.length }); }
 function vhLists() {
   return JSON.stringify({ types: Object.keys(VHStyles.TYPES), cultures: Object.keys(VHStyles.CULTURES), biomes: VHRequest.BIOME_CODES });
 }

@@ -5,7 +5,7 @@
 const fs = require('fs'), path = require('path');
 const dir = __dirname;
 const out = process.argv[2] || path.join(dir, '../../../src/Villheim.Logic/Generator/lab.js');
-const libs = ['pieces.js', 'styles.js', 'blueprint.js', 'checks.js', 'features.js', 'decorate.js', 'generate.js', 'request.js'];
+const libs = ['pieces.js', 'styles.js', 'blueprint.js', 'checks.js', 'features.js', 'decorate.js', 'generate.js', 'request.js', 'floorplan.js'];
 const code = libs.map(f => `// ---- ${f}\n(function () {\n${fs.readFileSync(path.join(dir, f), 'utf8')}\n})();`).join('\n');
 const rules = fs.readFileSync(path.join(dir, '../data/rules-lite.json'), 'utf8').trim();
 const scorer = fs.readFileSync(path.join(dir, '../data/scorer.json'), 'utf8').trim();
@@ -23,6 +23,15 @@ function vhMake(type, biome, culture, stage, words, seed, tries) {
   return VHRequest.make({ type: type, biome: biome, culture: culture || undefined, stage: stage, words: words, seed: seed, tries: tries }, VH_SCORER, VH_RULES);
 }
 function vhRead(words) { return JSON.stringify(VHRequest.read(words)); }
+// floorplans ('vh floorplan'): one plan or the first n of the catalog, as JSON { name, blueprint, signs, rows }
+function vhFloorplan(shape, w, d, room, biome, culture, decor, seed, id, ladder) {
+  try { return JSON.stringify(VHFloorplan.one({ shape: shape, w: w, d: d, room: room, biome: biome, culture: culture || undefined, decor: decor, seed: seed, id: id, ladder: !!ladder })); }
+  catch (e) { return JSON.stringify({ error: String(e && e.message || e) }); }
+}
+function vhFloorplanSet(n) {
+  try { return JSON.stringify(VHFloorplan.set(n)); } catch (e) { return JSON.stringify({ error: String(e && e.message || e) }); }
+}
+function vhFloorplanLists() { return JSON.stringify({ shapes: VHFloorplan.SHAPES, rooms: VHFloorplan.ROOMS, catalog: VHFloorplan.CATALOG.length }); }
 function vhLists() {
   return JSON.stringify({ types: Object.keys(VHStyles.TYPES), cultures: Object.keys(VHStyles.CULTURES), biomes: VHRequest.BIOME_CODES });
 }

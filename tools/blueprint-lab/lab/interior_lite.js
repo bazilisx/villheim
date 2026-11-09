@@ -13,5 +13,8 @@ for (const [k, it] of Object.entries(d.items)) {
   lite.items[k] = { n: it.n, rel: it.rel && it.rel[0] ? it.rel[0][0] : null, wall: it.wallDist ? it.wallDist[1] : null, lift: it.lift ? it.lift[1] : null,
     under: it.underCeiling ? it.underCeiling[1] : null, door: it.door ? it.door[0] : null, corner: it.corner, back: it.back ? it.back[0] : null };
 }
+// Tyler's floorplan feedback (lab/floorplan_feedback.js): how full to fill each room, on top of the corpus rate
+const tuning = path.join(path.dirname(inp), 'interior-tuning.json');
+if (fs.existsSync(tuning)) lite.tuning = { density: JSON.parse(fs.readFileSync(tuning, 'utf8')).density || {} };
 fs.writeFileSync(out, JSON.stringify(lite));
 console.log(out, JSON.stringify(lite).length, 'bytes');

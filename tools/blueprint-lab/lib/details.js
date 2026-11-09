@@ -342,40 +342,71 @@ function interior(b, ctx) {
       if (ok) { for (const c of ring) b.put(c.name, c.x, c.y, c.z, c.yaw, { trim: true }); b.notes.push('A kerb of beams round the fire pit.'); }
     }
   }
-  // raised benches along the long walls of a hall: 1 m deep, 0.3 m up, edged with a beam, wherever the wall is free
+  // raised benches along the long walls of a hall (the Viking pallr): a platform 0.3 m up and 1 m deep wherever the
+  // wall is free, widened under beds, chests and benches that stand against the wall, which are lifted onto it
   if (X.wallBenches && ctx.F < 0.01) {
-    const w0 = ctx.wings[0], y = ctx.F + 0.3, f1 = K.floor1 || 'wood_floor_1x1', beam = K.beam || 'wood_beam';
+    const w0 = ctx.wings[0], lift = 0.3, f1 = K.floor1 || 'wood_floor_1x1', beam = K.beam || 'wood_beam';
     const zones = ctx.zones || [];
+    const liftable = p => p.decor && ['bed', 'storage', 'seat'].includes(PD.piece(p.name).role) && !/throne/.test(p.name);
     let laid = 0;
     for (const sz of [-1, 1]) {
-      const zWall = w0.cz + sz * w0.D, zc = zWall - sz * 0.5;
-      let run = [];
-      const flush = () => {
-        if (run.length >= 3) {
-          for (const x of run) { b.put(f1, x, y, zc, 0, { trim: true }); laid++; }
-          // the bench rests on beams laid on the floor along its front and back edges
-          for (let i = 0; i < run.length; i += 2) {
-            const two = i + 1 < run.length, x = two ? run[i] + 0.5 : run[i];
-            for (const e of [-0.45, 0.45]) b.put(two ? beam : (K.beam1 || 'wood_beam_1'), x, y - 0.1, zc + e, 0, { trim: true });
-          }
-        }
-        run = [];
-      };
-      for (let x = w0.cx - w0.W + 0.5; x < w0.cx + w0.W; x += 1) {
-        const cand = { name: f1, x, y, z: zc, yaw: 0, q: quatD(0) }, cb = Ck.aabb(cand);
-        const box = { x0: cb.x0, x1: cb.x1, y0: y - 0.3, y1: y + 2.0, z0: zc - 0.6, z1: zc + 0.6 };
-        const hit = b.pieces.some(p => {
-          const role = PD.piece(p.name).role;
-          if (['floor', 'roof', 'roofTop', 'roofCorner', 'gable', 'wall', 'beam', 'rug'].includes(role) && !p.decor) return false;
-          if (role === 'rug') return false;
-          const o = Ck.aabb(p);
-          return o.x0 < box.x1 && o.x1 > box.x0 && o.y0 < box.y1 && o.y1 > box.y0 && o.z0 < box.z1 && o.z1 > box.z0;
-        }) || zones.some(zn => zn.x0 < box.x1 && zn.x1 > box.x0 && zn.z0 < box.z1 && zn.z1 > box.z0 && zn.y0 < box.y1 && zn.y1 > box.y0);
-        if (hit) flush(); else run.push(x);
+      const zWall = w0.cz + sz * w0.D, y = ctx.F + lift;
+      const rowZ = k => zWall - sz * (0.5 + k); // 1 m rows out from the wall
+      const cellBox = (x, k) => ({ x0: x - 0.5, x1: x + 0.5, z0: rowZ(k) - 0.5, z1: rowZ(k) + 0.5 });
+      const ov = (a, o) => o.x0 < a.x1 - 0.02 && o.x1 > a.x0 + 0.02 && o.z0 < a.z1 - 0.02 && o.z1 > a.z0 + 0.02;
+      const cells = new Map(); // "x|k" -> true
+      const lifted = [];
+      // furniture against this wall: its footprint becomes platform, the piece goes up onto it
+      for (const p of b.pieces) {
+        if (!liftable(p)) continue;
+        const o = Ck.aabb(p);
+        const near = sz > 0 ? zWall - o.z1 : o.z0 - zWall;
+        if (near > 0.6 || near < -0.3 || Math.abs(o.y0 - (ctx.F + 0.1)) > 0.3) continue;
+        const depth = sz > 0 ? zWall - o.z0 : o.z1 - zWall;
+        if (depth > 3.1 || o.x0 < w0.cx - w0.W || o.x1 > w0.cx + w0.W) continue;
+        lifted.push({ p, o, k: Math.ceil(depth - 0.05) });
       }
-      flush();
+      const blocked = box => b.pieces.some(p => {
+        if (lifted.some(l => l.p === p)) return false;
+        const role = PD.piece(p.name).role;
+        if (!p.decor && ['floor', 'roof', 'roofTop', 'roofCorner', 'gable', 'wall', 'beam'].includes(role)) return false;
+        if (role === 'rug') return false;
+        const o = Ck.aabb(p);
+        return o.y0 < y + 2 && o.y1 > y - lift && ov(box, o);
+      }) || zones.some(zn => zn.y0 < y + 2 && zn.y1 > y - lift && ov(box, zn));
+      for (let x = w0.cx - w0.W + 0.5; x < w0.cx + w0.W; x += 1) if (!blocked(cellBox(x, 0))) cells.set(`${x}|0`, true);
+      for (const l of lifted) {
+        const want = [];
+        for (let x = w0.cx - w0.W + 0.5; x < w0.cx + w0.W; x += 1) for (let k = 0; k < l.k; k++) if (ov(cellBox(x, k), l.o)) want.push([x, k]);
+        if (!want.length || want.some(([x, k]) => blocked(cellBox(x, k)))) { l.skip = true; continue; }
+        for (const [x, k] of want) cells.set(`${x}|${k}`, true);
+      }
+      // only runs of three metres or more along the wall make a bench; lifted pieces keep their own platform
+      const row0 = [...cells.keys()].filter(c => c.endsWith('|0')).map(c => +c.split('|')[0]).sort((a, c) => a - c);
+      const runs = [];
+      for (const x of row0) { const r = runs[runs.length - 1]; if (r && x - r[r.length - 1] < 1.01) r.push(x); else runs.push([x]); }
+      const keep = new Set();
+      for (const r of runs) {
+        const hasLift = lifted.some(l => !l.skip && r.some(x => x > l.o.x0 - 0.5 && x < l.o.x1 + 0.5));
+        if (r.length >= 3 || hasLift) for (const x of r) keep.add(`${x}|0`);
+      }
+      for (const l of lifted) if (!l.skip) for (const c of cells.keys()) { const [x, k] = c.split('|').map(Number); if (k > 0 && x > l.o.x0 - 0.5 && x < l.o.x1 + 0.5) keep.add(c); }
+      if (!keep.size) continue;
+      for (const c of keep) {
+        const [x, k] = c.split('|').map(Number);
+        b.put(f1, x, y, rowZ(k), 0, { trim: true });
+        // it rests on short beams laid across under each cell
+        b.put(K.beam1 || 'wood_beam_1', x, y - 0.1, rowZ(k), 90, { trim: true });
+        laid++;
+      }
+      for (const l of lifted) if (!l.skip) {
+        const ok = [...keep].some(c => { const [x] = c.split('|').map(Number); return x > l.o.x0 - 0.5 && x < l.o.x1 + 0.5; });
+        if (!ok) continue;
+        // whatever stands on the piece goes up with it
+        for (const q of b.pieces) if (q === l.p || (q.decor && q.x > l.o.x0 && q.x < l.o.x1 && q.z > l.o.z0 && q.z < l.o.z1 && q.y > l.p.y + 0.2 && q.y < l.p.y + 1.5)) q.y = +(q.y + lift).toFixed(3);
+      }
     }
-    if (laid) b.notes.push('Raised benches along the long walls.');
+    if (laid) b.notes.push('Raised benches along the long walls, with the beds and chests up on them.');
   }
 }
 

@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 using Villheim.Logic.Designs;
 
@@ -115,7 +116,7 @@ namespace Villheim.Logic.Village
             {
                 spot = cached.Spot;
                 rotation = cached.Rotation;
-                if (cached.Found && Fits(prefab, prefabName, spot, rotation))
+                if (cached.Found && Fits(prefab, prefabName, spot, rotation, false))
                 {
                     return true;
                 }
@@ -126,7 +127,13 @@ namespace Villheim.Logic.Village
                 }
             }
 
-            bool found = Search(plot, prefab, prefabName, out spot, out rotation);
+            bool found = Search(plot, prefab, prefabName, out spot, out rotation, false);
+            if (!found && prefabName.IndexOf("bed", System.StringComparison.OrdinalIgnoreCase) >= 0)
+            {
+                // A bed comes first in a home (T-105): with no ideal spot, any covered spot that fits will do.
+                found = Search(plot, prefab, prefabName, out spot, out rotation, true);
+            }
+
             if (SpotCache.Count > 64)
             {
                 SpotCache.Clear();
@@ -141,11 +148,14 @@ namespace Villheim.Logic.Village
             return found;
         }
 
-        private static bool Search(Plot plot, GameObject prefab, string prefabName, out Vector3 spot, out Quaternion rotation)
+        private static bool Search(Plot plot, GameObject prefab, string prefabName, out Vector3 spot, out Quaternion rotation, bool relaxed)
         {
             spot = plot.Position;
             rotation = Quaternion.identity;
             float reach = Mathf.Max(3f, plot.Radius * 0.7f);
+            List<(Vector3 A, Vector3 B)> doorways = Doorways(plot);
+            Bounds? measured = BuildOrder.Measure(prefab, prefabName, Vector3.zero, Quaternion.identity, prefab.transform.localScale);
+            float itemReach = measured.HasValue ? Mathf.Max(measured.Value.extents.x, measured.Value.extents.z) : 1f;
             int cells = Mathf.CeilToInt(reach / Step);
             Quaternion plotTurn = Quaternion.Euler(0f, plot.Yaw, 0f);
             var candidates = new List<(float Score, Vector3 Spot, Quaternion Rotation)>();
@@ -167,7 +177,7 @@ namespace Villheim.Logic.Village
                     }
 
                     point.y = floorY;
-                    if (NearDoor(point))
+                    if (NearDoor(point) || InDoorway(doorways, point, itemReach))
                     {
                         continue;
                     }
@@ -177,7 +187,7 @@ namespace Villheim.Logic.Village
                     for (int turn = 0; turn < 4; turn++)
                     {
                         Quaternion candidate = plotTurn * Quaternion.Euler(0f, 90f * turn, 0f);
-                        if (Fits(prefab, prefabName, point, candidate))
+                        if (Fits(prefab, prefabName, point, candidate, !relaxed))
                         {
                             fits.Add(candidate);
                         }
@@ -189,7 +199,7 @@ namespace Villheim.Logic.Village
                     }
 
                     Cover.GetCoverForPoint(point + Vector3.up * 1f, out float cover, out bool underRoof);
-                    if (!underRoof || cover < MinCover)
+                    if (!underRoof || cover < (relaxed ? MinCover * 0.6f : MinCover))
                     {
                         continue;
                     }
@@ -247,8 +257,71 @@ namespace Villheim.Logic.Village
             return false;
         }
 
+        // The blueprint lab's door rule (lib/checks.js): a doorway needs its opening clear for a metre in front and behind,
+        // 0.45 m to each side of its middle. Here the way in reaches 2.5 m into the room, so a chest or chair never sits
+        // in it (T-105: a chest and a chair blocked a home's door).
+        private const float DoorCorridor = 1f;
+        private const float DoorHalfWidth = 0.45f;
+        private const float DoorInside = 2.5f;
+
+        /// <summary>
+        /// The ways in: from each door piece, and from the design's door side (its path markers, or Doors.Angle), as a
+        /// line from a metre outside to DoorInside metres in.
+        /// </summary>
+        private static List<(Vector3 A, Vector3 B)> Doorways(Plot plot)
+        {
+            var ways = new List<(Vector3, Vector3)>();
+            Vector3 center = plot.Position;
+            foreach ((Vector3 at, Vector3 out_) in PathPlanner.Exits(plot.Design, plot.Position, plot.Yaw))
+            {
+                ways.Add((at + out_ * DoorCorridor, at - out_ * (DoorInside + 1f)));
+            }
+
+            if (ways.Count == 0)
+            {
+                Vector3 front = PathPlanner.Front(plot.Position, plot.Radius, plot.Yaw, Designs.Doors.Angle(plot.Design));
+                Vector3 inward = (center - front).Horizontal();
+                inward = inward.sqrMagnitude > 0.01f ? inward.normalized : Vector3.forward;
+                ways.Add((front - inward * DoorCorridor, front + inward * (0.5f + DoorInside)));
+            }
+
+            foreach (Collider collider in Physics.OverlapSphere(center, plot.Radius * 0.8f, LayerMask.GetMask("piece", "piece_nonsolid")))
+            {
+                Door door = collider.GetComponentInParent<Door>();
+                if (door == null)
+                {
+                    continue;
+                }
+
+                Vector3 normal = door.transform.forward.Horizontal().normalized;
+                Vector3 p = door.transform.position;
+                if (!ways.Any(w => Vector3.Distance(w.Item1, p - normal * DoorCorridor) < 0.5f))
+                {
+                    // Both ways through: which side is in depends on the door.
+                    ways.Add((p - normal * (DoorCorridor + DoorInside - 1f), p + normal * (DoorCorridor + DoorInside - 1f)));
+                }
+            }
+
+            return ways;
+        }
+
+        private static bool InDoorway(List<(Vector3 A, Vector3 B)> ways, Vector3 point, float itemReach)
+        {
+            foreach ((Vector3 a, Vector3 b) in ways)
+            {
+                Vector3 ab = (b - a).Horizontal();
+                float t = ab.sqrMagnitude > 0.001f ? Mathf.Clamp01(Vector3.Dot((point - a).Horizontal(), ab) / ab.sqrMagnitude) : 0f;
+                if (Utils.DistanceXZ(point, a + ab * t) < DoorHalfWidth + itemReach + 0.2f)
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
         /// <summary>The piece's box at that spot is empty, with a little headroom and a walkable strip in front.</summary>
-        private static bool Fits(GameObject prefab, string prefabName, Vector3 spot, Quaternion rotation)
+        private static bool Fits(GameObject prefab, string prefabName, Vector3 spot, Quaternion rotation, bool roomInFront = true)
         {
             Bounds? measured = BuildOrder.Measure(prefab, prefabName, Vector3.zero, Quaternion.identity, prefab.transform.localScale);
             Bounds local = measured ?? new Bounds(new Vector3(0f, 0.5f, 0f), new Vector3(1.5f, 1f, 2f));
@@ -262,7 +335,7 @@ namespace Villheim.Logic.Village
 
             // Room to stand in front of it.
             Vector3 front = spot + rotation * new Vector3(local.center.x, 1f, local.max.z + 0.5f);
-            return !Physics.CheckBox(front, new Vector3(0.35f, 0.8f, 0.35f), rotation, SolidMask, QueryTriggerInteraction.Ignore);
+            return !roomInFront || !Physics.CheckBox(front, new Vector3(0.35f, 0.8f, 0.35f), rotation, SolidMask, QueryTriggerInteraction.Ignore);
         }
 
         /// <summary>How far behind the spot the nearest wall is (5 when there is none within reach).</summary>

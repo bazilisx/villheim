@@ -31,7 +31,7 @@ namespace Villheim.Logic.Village
 
         public static readonly int KeyVillage = "villheim_storage".GetStableHashCode();
         public static readonly int KeyKind = "villheim_storage_kind".GetStableHashCode();
-        private static readonly int KeySign = "villheim_storage_sign".GetStableHashCode();
+        public static readonly int KeySign = "villheim_storage_sign".GetStableHashCode();
         private static readonly int KeyExtra = "villheim_storage_extra".GetStableHashCode();
         private static readonly int KeyExtraDay = "villheim_storage_extra_day".GetStableHashCode();
 

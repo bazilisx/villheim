@@ -124,7 +124,7 @@ namespace Villheim.Logic.Village
             }
 
             Quaternion turn = Quaternion.Euler(0f, yaw, 0f);
-            List<DesignSpawner.PlanEntry> plan = Blueprints.MakePlan(blueprint, origin, yaw).ToList();
+            List<DesignSpawner.PlanEntry> plan = PlanOf(blueprint, origin, yaw);
             foreach (DesignSpawner.PlanEntry entry in plan)
             {
                 if (onChest && IsChest(entry.Prefab))
@@ -156,6 +156,29 @@ namespace Villheim.Logic.Village
                 .ThenBy(x => x.Entry.Shell ? 0 : 1)
                 .ThenBy(x => x.Index)
                 .Select(x => x.Entry).ToList();
+        }
+
+        private static readonly Dictionary<string, List<DesignSpawner.PlanEntry>> Plans = new Dictionary<string, List<DesignSpawner.PlanEntry>>();
+
+        /// <summary>
+        /// The board's plan at its place, worked out once (the build order compares every piece with every other and looks
+        /// at the ground under each): it was made again on every look at the board, and twice a minute for its signs.
+        /// </summary>
+        private static List<DesignSpawner.PlanEntry> PlanOf(Blueprints.Blueprint blueprint, Vector3 origin, float yaw)
+        {
+            string key = $"{blueprint.File}|{origin}|{yaw}";
+            if (!Plans.TryGetValue(key, out List<DesignSpawner.PlanEntry> plan))
+            {
+                if (Plans.Count > 16)
+                {
+                    Plans.Clear();
+                }
+
+                plan = Blueprints.MakePlan(blueprint, origin, yaw).ToList();
+                Plans[key] = plan;
+            }
+
+            return plan;
         }
 
         private static int _planCount;
@@ -483,12 +506,17 @@ namespace Villheim.Logic.Village
 
         private static void RemoveOldSigns(VillageHearth hearth)
         {
+            // Only the old single sign and name sign by the fire: the storage chests' labels stay (they had been taken
+            // away here and made again, over and over, T-43). Looked for round the hearth, not through every object in
+            // the world, which was a lag spike when the board was finished (T-105).
             var old = new List<ZNetView>();
-            foreach (ZNetView view in ZNetScene.instance.m_instances.Values)
+            foreach (Collider collider in Physics.OverlapSphere(hearth.transform.position, 12f))
             {
-                if (view != null && view.IsValid() && view.GetComponent<Sign>() != null &&
+                Sign sign = collider.GetComponentInParent<Sign>();
+                ZNetView view = sign != null ? sign.GetComponent<ZNetView>() : null;
+                if (view != null && view.IsValid() && !old.Contains(view) &&
                     view.GetZDO().GetInt(Keys.BuiltBy) == hearth.VillageId && view.GetZDO().GetInt(Key) != BoardPiece &&
-                    Utils.DistanceXZ(view.transform.position, hearth.transform.position) < 12f)
+                    view.GetZDO().GetInt(StorageChests.KeySign) == 0)
                 {
                     old.Add(view);
                 }
@@ -534,11 +562,11 @@ namespace Villheim.Logic.Village
                 return;
             }
 
-            NextUpdate[hearth.VillageId] = Time.time + 20f;
+            NextUpdate[hearth.VillageId] = Time.time + 30f;
             Vector3 origin = hearth.Zdo.GetVec3(KeyOrigin, Vector3.zero);
-            if (origin == Vector3.zero)
+            if (origin == Vector3.zero || (!now && Player.GetClosestPlayer(origin, 80f) == null))
             {
-                return;
+                return; // nobody near enough to read it
             }
 
             var signs = new List<Sign>();
@@ -632,7 +660,7 @@ namespace Villheim.Logic.Village
             float yaw = hearth.Zdo.GetFloat(KeyYaw, 0f);
             Quaternion toBoard = Quaternion.Inverse(Quaternion.Euler(0f, yaw, 0f));
             List<(Vector3 At, string Heading)> front = FrontPlaces(blueprint);
-            List<DesignSpawner.PlanEntry> plan = Blueprints.MakePlan(blueprint, origin, yaw).ToList();
+            List<DesignSpawner.PlanEntry> plan = PlanOf(blueprint, origin, yaw);
             List<(Vector3 At, string Heading)> back = BackSigns(plan).Select(b => (b.Entry.LocalPosition, b.Heading)).ToList();
             foreach (Sign sign in signs)
             {

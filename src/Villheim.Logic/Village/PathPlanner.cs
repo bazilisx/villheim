@@ -37,10 +37,27 @@ namespace Villheim.Logic.Village
 
         // ---------------------------------------------------------------- the network
 
+        private static readonly Dictionary<int, (string Raw, HashSet<Vector2Int> Cells)> NetworkCache =
+            new Dictionary<int, (string, HashSet<Vector2Int>)>();
+
+        /// <summary>The laid path cells (a copy: callers change it). Read again only when the stored list changes.</summary>
         public static HashSet<Vector2Int> Network(VillageHearth hearth)
         {
+            string raw = hearth.Zdo.GetString(KeyNetwork, "");
+            if (NetworkCache.TryGetValue(hearth.VillageId, out var cached) && cached.Raw == raw)
+            {
+                return new HashSet<Vector2Int>(cached.Cells);
+            }
+
+            HashSet<Vector2Int> parsed = ParseNetwork(raw);
+            NetworkCache[hearth.VillageId] = (raw, parsed);
+            return new HashSet<Vector2Int>(parsed);
+        }
+
+        private static HashSet<Vector2Int> ParseNetwork(string raw)
+        {
             var cells = new HashSet<Vector2Int>();
-            foreach (string pair in hearth.Zdo.GetString(KeyNetwork, "").Split(' '))
+            foreach (string pair in raw.Split(' '))
             {
                 int comma = pair.IndexOf(',');
                 if (comma > 0 && int.TryParse(pair.Substring(0, comma), out int x) && int.TryParse(pair.Substring(comma + 1), out int z))
@@ -358,7 +375,7 @@ namespace Villheim.Logic.Village
         {
             Vector3 front = Front(building, buildingRadius, buildingYaw, doorAngle);
             var state = new VillageState(hearth.Zdo);
-            return Search(hearth.transform.position, front, building, buildingRadius, state.Plots, Network(hearth), 1.6f) != null;
+            return Search(hearth.transform.position, front, building, buildingRadius, state.Plots, Network(hearth), 1.6f, null, false, 2500) != null;
         }
 
         /// <summary>
@@ -418,7 +435,7 @@ namespace Villheim.Logic.Village
         /// </summary>
         private static List<Vector3> Search(Vector3 hearth, Vector3 start, Vector3 building, float buildingRadius,
             IReadOnlyList<Plot> plots, HashSet<Vector2Int> network, float maxStep = float.MaxValue, Vector3? target = null,
-            bool road = false)
+            bool road = false, int maxNodes = MaxNodes)
         {
             Vector2Int from = Cell(start);
             Vector2Int goal = Cell(target ?? hearth);
@@ -433,7 +450,7 @@ namespace Villheim.Logic.Village
             open.Push(from, Heuristic(from, goal));
             int expanded = 0;
 
-            while (open.Count > 0 && expanded++ < MaxNodes)
+            while (open.Count > 0 && expanded++ < maxNodes)
             {
                 Vector2Int current = open.Pop();
                 bool arrived = Vector2.Distance(current, goal) <= HearthReach || (network.Contains(current) && current != from);

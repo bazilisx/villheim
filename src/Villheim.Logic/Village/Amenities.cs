@@ -184,8 +184,9 @@ namespace Villheim.Logic.Village
                 PendingSince[key] = since = Time.time;
             }
 
-            // Something half made (the notice board) is finished first, however long it takes (T-37).
-            if (Time.time - since > (float)VillageBrain.DayLength() && !next.Started)
+            // A day with no progress on this one piece (the key is the piece's spot, so each piece made starts the clock
+            // again) and the village goes on without it.
+            if (Time.time - since > (float)VillageBrain.DayLength())
             {
                 if (since > 0f)
                 {
@@ -224,8 +225,17 @@ namespace Villheim.Logic.Village
                 () => MapTables.Job(hearth, state),
             };
 
+            // While a home has fewer beds than it should, nothing else for the homes or the hearth area is made (T-105:
+            // a bench by the hearth and a chest and chair in the home went up before its bed): only the cooking station,
+            // the beds themselves, the notice board and a storage chest for a full main chest.
+            bool bedsShort = BedsShort(state, tier);
             for (int i = 0; i < steps.Length; i++)
             {
+                if (bedsShort && i >= 4)
+                {
+                    break;
+                }
+
                 Job job = steps[i]();
                 if (job == null || IsStuck(hearth, job))
                 {
@@ -241,6 +251,23 @@ namespace Villheim.Logic.Village
             }
 
             return null;
+        }
+
+        /// <summary>Some home of the village has fewer beds than it should.</summary>
+        private static bool BedsShort(VillageState state, int tier)
+        {
+            foreach (Plot plot in state.Plots)
+            {
+                foreach (Interior.Want want in Interior.WantsFor(plot, tier))
+                {
+                    if (want.Essential && Interior.CountInside(plot, want.Prefab) < want.Count)
+                    {
+                        return true;
+                    }
+                }
+            }
+
+            return false;
         }
 
         // ---------------------------------------------------------------- pieces that keep falling
@@ -260,8 +287,8 @@ namespace Villheim.Logic.Village
                 : (1, now);
             if (Remakes[key].Count == 3)
             {
-                VillheimPlugin.Log.LogWarning($"{hearth.VillageName}: the {job.Name} at {job.Spot} fell and was made again three times " +
-                                              "today; it is left alone until tomorrow.");
+                VillheimPlugin.Log.LogWarning($"{hearth.VillageName}: the {job.Name} at {job.Spot} was made or tried three times today " +
+                                              "and is still missing; it is left alone until tomorrow.");
             }
         }
 
@@ -370,6 +397,12 @@ namespace Villheim.Logic.Village
             bool made = MakeOnce(hearth, job);
             if (made)
             {
+                NoteMade(hearth, job);
+            }
+            else
+            {
+                // A job that can't be made (its spot taken, the chest short at the last moment) counts too, so it can't
+                // hold the village up for good (T-105: the village stood idle with 100 of everything).
                 NoteMade(hearth, job);
             }
 

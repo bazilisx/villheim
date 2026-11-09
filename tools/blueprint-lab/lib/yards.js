@@ -578,12 +578,22 @@ function tryPlan(runs, kit, S, door, clear) {
     // gate and through it (1 m planks on a 0.5 m grid)
     const path = [];
     const step = (x, z) => { const k = [Math.round(x * 2) / 2, Math.round(z * 2) / 2]; if (!path.some(c => Math.hypot(c[0] - k[0], c[1] - k[1]) < 0.6)) path.push(k); };
-    for (let t = 1; t < 1.5 - 0.01; t += 1) step(door.x, door.z + nOut * t);
-    step(door.x, zLane);
-    const xs = [door.x, g.x].sort((a, c) => a - c);
-    for (let x = xs[0]; x <= xs[1] + 0.01; x += 1) step(x, zLane);
-    step(g.x, zLane);
-    const zs = [zLane, g.z].sort((a, c) => a - c);
+    // a door up a stair: the path starts at the stair's foot (r5 review: paths ran along the wall past the stair)
+    const stairs = S.solid.filter(o => o.info && o.info.role === 'stair' && Math.hypot((o.x0 + o.x1) / 2 - door.x, (o.z0 + o.z1) / 2 - door.z) < 6 &&
+      ((o.z0 + o.z1) / 2 - door.z) * nOut > -0.5);
+    let sx = door.x, lane = zLane;
+    if (stairs.length) {
+      const lo = stairs.reduce((m, o) => (o.y0 < m.y0 ? o : m)), cx = (lo.x0 + lo.x1) / 2, cz = (lo.z0 + lo.z1) / 2, dx = cx - door.x, dz = cz - door.z;
+      const foot = Math.abs(dx) > Math.abs(dz) ? [cx + Math.sign(dx) * ((lo.x1 - lo.x0) / 2 + 0.6), cz] : [cx, cz + nOut * ((lo.z1 - lo.z0) / 2 + 0.6)];
+      sx = foot[0]; lane = nOut > 0 ? Math.max(zLane, foot[1]) : Math.min(zLane, foot[1]);
+      const zs0 = [foot[1], lane].sort((a, c) => a - c);
+      for (let z = zs0[0]; z <= zs0[1] + 0.01; z += 1) step(sx, z);
+    } else for (let t = 1; t < 1.5 - 0.01; t += 1) step(door.x, door.z + nOut * t);
+    step(sx, lane);
+    const xs = [sx, g.x].sort((a, c) => a - c);
+    for (let x = xs[0]; x <= xs[1] + 0.01; x += 1) step(x, lane);
+    step(g.x, lane);
+    const zs = [lane, g.z].sort((a, c) => a - c);
     for (let z = zs[0]; z <= zs[1] + 0.01; z += 1) step(g.x, z);
     step(g.x, g.z);
     // one plank past the gate on its far side, when the far side is outside the yard

@@ -371,9 +371,21 @@ function pieceModel(name, useMesh) {
     const ys = md.snap.map(p => p[1]), hi = md.snap[ys.indexOf(Math.max(...ys))], lows = md.snap.filter(p => p !== hi);
     const mid = lows.find(p => Math.abs(p[0] - hi[0]) > 0.5 && Math.abs(p[2] - hi[2]) > 0.5); // the corner opposite the high point
     const ends = lows.filter(p => p !== mid);
-    const part = md.parts[0], col = partColor(part, info), pat = patternFor(info, part, name);
+    const part = md.parts.find(q => q.m !== 'wood') || md.parts[0], col = partColor(part, info), pat = patternFor(info, part, name);
     for (const e of ends) {
       const tri = [hi, e, mid].map(p => [p[0], p[1] + 0.05, p[2]]);
+      let n = norm(cross(sub(tri[1], tri[0]), sub(tri[2], tri[0])));
+      if (n[1] < 0) { tri.reverse(); n = n.map(v => -v); }
+      faces.push({ pts: tri, n, ...faceFrame(tri, n), col, pat, part: 0, alpha: 1, closed: false });
+    }
+    m = { name, info, faces, model: true };
+  } else if (md && md.parts && md.parts.length && /roof_icorner/.test(name) && md.snap && md.snap.length === 4) {
+    // an inner roof corner (valley) as its two sloped triangles meeting on the diagonal from its one low corner
+    const ys = md.snap.map(p => p[1]), lo = md.snap[ys.indexOf(Math.min(...ys))], highs = md.snap.filter(p => p !== lo);
+    const opp = highs.find(p => Math.abs(p[0] - lo[0]) > 0.5 && Math.abs(p[2] - lo[2]) > 0.5);
+    const part = md.parts.find(q => q.m !== 'wood') || md.parts[0], col = partColor(part, info), pat = patternFor(info, part, name);
+    for (const e of highs.filter(p => p !== opp)) {
+      const tri = [lo, e, opp].map(p => [p[0], p[1] + 0.05, p[2]]);
       let n = norm(cross(sub(tri[1], tri[0]), sub(tri[2], tri[0])));
       if (n[1] < 0) { tri.reverse(); n = n.map(v => -v); }
       faces.push({ pts: tri, n, ...faceFrame(tri, n), col, pat, part: 0, alpha: 1, closed: false });

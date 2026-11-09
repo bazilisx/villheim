@@ -64,6 +64,7 @@ namespace Villheim.Logic.Villagers
         private sealed class VillageWatch
         {
             public int LastTotal = -1;
+            public int LastFood = -1;
             public float NextGreetCheck;
             public readonly Dictionary<long, float> SeenInside = new Dictionary<long, float>();
             public readonly Dictionary<string, float> News = new Dictionary<string, float>();
@@ -299,9 +300,25 @@ namespace Villheim.Logic.Villagers
             VillageChest.AddedByVillage[chest.GetInstanceID()] = 0;
             int previous = watch.LastTotal;
             watch.LastTotal = total;
+
+            // Food counts as a gift too (T-112), but only what goes in while a player has the chest open: villagers put
+            // their own meat and berries in straight into the chest.
+            int food = FoodIn(chest);
+            int previousFood = watch.LastFood;
+            watch.LastFood = food;
+            bool open = InventoryGui.instance != null && InventoryGui.instance.m_currentContainer == chest;
+            int foodGift = open && previousFood >= 0 ? Mathf.Max(0, food - previousFood) : 0;
             if (previous < 0 || player == null || Vector3.Distance(player.transform.position, chest.transform.position) > 6f)
             {
                 return;
+            }
+
+            if (foodGift > 0)
+            {
+                AddReputation(hearth, player, Mathf.Clamp(foodGift / 3, 1, 5), "gift");
+                PlayerMemory.Gave(hearth, player, foodGift);
+                Dialogue.Event(hearth.VillageId, "gift", player.transform.position);
+                player.Message(MessageHud.MessageType.TopLeft, $"{hearth.VillageName} is glad of the food.");
             }
 
             int gift = total - previous - byVillage;
@@ -517,6 +534,47 @@ namespace Villheim.Logic.Villagers
                 .FirstOrDefault();
         }
 
+        /// <summary>Raw and ready food in a chest (anything to eat, and what the cooking station takes in).</summary>
+        private static int FoodIn(Container chest)
+        {
+            int count = 0;
+            foreach (ItemDrop.ItemData item in chest.GetInventory().GetAllItems())
+            {
+                if (item?.m_shared != null && item.m_dropPrefab != null && (item.m_shared.m_food > 0f || IsRaw(item.m_dropPrefab.name)))
+                {
+                    count += item.m_stack;
+                }
+            }
+
+            return count;
+        }
+
+        /// <summary>
+        /// 'vh gift': the nearest free villager walks up to the player and gives him the best cooked food in the chest,
+        /// as when a player is hurt in the village (T-112).
+        /// </summary>
+        public static string GiftCommand()
+        {
+            Player player = Player.m_localPlayer;
+            VillageHearth hearth = player != null ? VillageHearth.Closest(player.transform.position, 200f) : null;
+            if (hearth == null || !hearth.IsValid)
+            {
+                return "Villheim: no village within 200 m.";
+            }
+
+            Container chest = VillageChest.Find(hearth);
+            ItemDrop.ItemData meal = chest != null ? BestMeal(chest.GetInventory()) : null;
+            if (meal == null)
+            {
+                return $"Villheim: {hearth.VillageName} has no cooked food to give (raw food is never given).";
+            }
+
+            bool sent = SendTo(player, hearth.VillageId, "event:givefood", "comehere", 0f, true);
+            return sent
+                ? $"Villheim: a villager of {hearth.VillageName} is bringing you {Localization.instance.Localize(meal.m_shared.m_name)}."
+                : $"Villheim: no free villager within 25 m of you in {hearth.VillageName}.";
+        }
+
         /// <summary>A cooked meal from the village chest into the player's hands.</summary>
         private static void GiveMeal(Villager villager, Player player)
         {
@@ -649,7 +707,10 @@ namespace Villheim.Logic.Villagers
                     Dialogue.QueueLine(listener, "reply", "tone:" + tone, new[] { "tone:" + tone }, Random.Range(1.6f, 2.6f));
                 }
 
-                string gesture = gestured || Random.value > 0.35f ? null : Reaction(listener, tone);
+                // Only a listener with nothing to do answers with a gesture; one at work or in a fight goes on (T-111).
+                Status.Doer busy = Status.Current(listener);
+                bool free = busy == Status.Doer.FreeTime || busy == Status.Doer.BetweenJobs || busy == Status.Doer.Social;
+                string gesture = gestured || !free || Random.value > 0.35f ? null : Reaction(listener, tone);
                 if (gesture != null)
                 {
                     gestured = true;

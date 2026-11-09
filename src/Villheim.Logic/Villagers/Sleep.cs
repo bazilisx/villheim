@@ -367,7 +367,7 @@ namespace Villheim.Logic.Villagers
             ai.StopMoving();
             if (villager.GetRightItem() != null)
             {
-                villager.HideHandItems(false, false);
+                HandItems.PutAway(villager);
             }
 
             // Held in place every physics step, like the game's own attach (see Body.PinTo).

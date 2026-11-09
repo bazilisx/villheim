@@ -25,7 +25,11 @@ namespace Villheim.Logic.Villagers
             public int DuskDay = -1;
             public HashSet<string> Bosses;
             public readonly Dictionary<string, float> Cool = new Dictionary<string, float>();
+            public bool WasCrouching;
         }
+
+        // The day each villager last remarked on each player's sneaking (T-111: once a day at most, and not every time).
+        private static readonly Dictionary<(ZDOID, long), int> SneakRemarked = new Dictionary<(ZDOID, long), int>();
 
         private static readonly Dictionary<int, Watch> Watches = new Dictionary<int, Watch>();
 
@@ -160,11 +164,18 @@ namespace Villheim.Logic.Villagers
                 }
             }
 
-            if (player.IsCrouching())
+            // Sneaking: only as he crouches down, now and then, once an in-game day per villager at most.
+            bool crouching = player.IsCrouching();
+            bool started = crouching && !watch.WasCrouching;
+            watch.WasCrouching = crouching;
+            if (started && Random.value < 0.25f)
             {
                 Villager close = NearestTo(id, at, 6f);
-                if (close != null && Ready(watch, "sneaking", 300f))
+                int day = EnvMan.instance != null ? EnvMan.instance.GetDay() : 0;
+                var key = (close != null ? close.GetZDOID() : ZDOID.None, player.GetPlayerID());
+                if (close != null && (!SneakRemarked.TryGetValue(key, out int last) || last != day) && Ready(watch, "sneaking", 600f))
                 {
+                    SneakRemarked[key] = day;
                     Social.LookAt(close, player, 3f);
                     Dialogue.QueueLine(close, "talk", "event:sneaking", new[] { "event:sneaking" }, 1f);
                 }

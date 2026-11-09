@@ -130,6 +130,13 @@ namespace Villheim.Logic.Villagers
                 return;
             }
 
+            // Never in a fight, while running from one, or on a hunt: a wave mid-fight looked random (T-111).
+            Status.Doer doer = Status.Current(villager);
+            if (doer == Status.Doer.Fight || doer == Status.Doer.Hunt)
+            {
+                return;
+            }
+
             villager.m_zanim.SetTrigger(trigger);
         }
 

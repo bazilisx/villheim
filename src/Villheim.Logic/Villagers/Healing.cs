@@ -204,7 +204,52 @@ namespace Villheim.Logic.Villagers
                 return true;
             }
 
+            // Nothing cooked at all and raw food waiting: a carer leaves his work and cooks, so the village is never
+            // without a meal because everyone is out harvesting (T-109). At most once every two minutes per village.
+            if (!idle && !hurt && chest != null && station != null && station.IsFireLit() && station.GetFreeSlot() >= 0 &&
+                RawIn(chest, station).Count > 0 && CookedIn(chest, station).Count == 0 && CookFree(villager) &&
+                Roles.BackgroundOf(villager) == Roles.Background.Carer && !Childhood.IsChild(villager) &&
+                (!NextHungryCook.TryGetValue(villager.VillageId, out float next) || Time.time >= next))
+            {
+                NextHungryCook[villager.VillageId] = Time.time + 120f;
+                Cooks[villager.VillageId] = villager;
+                state.Urgent = true;
+                Start(villager, state, Phase.ToChest, Goal.Store);
+                return true;
+            }
+
             return false;
+        }
+
+        private static readonly Dictionary<int, float> NextHungryCook = new Dictionary<int, float>();
+
+        /// <summary>
+        /// 'vh act near cookmeat': the villager runs the real cooking now: raw food from the chest, onto the station,
+        /// off when it is done, into the chest. Says what stops it when it can't.
+        /// </summary>
+        public static string ForceCook(Villager villager)
+        {
+            VillageHearth hearth = VillageHearth.Find(villager.VillageId);
+            Container chest = hearth != null && hearth.IsValid ? VillageChest.Find(hearth) : null;
+            CookingStation station = hearth != null && hearth.IsValid ? Station(hearth) : null;
+            string why = chest == null ? "the village has no chest"
+                : station == null ? "the village has no cooking station"
+                : !station.IsFireLit() ? "the cooking station has no fire under it"
+                : station.GetFreeSlot() < 0 ? "the cooking station is full"
+                : RawIn(chest, station).Count == 0 ? "there is no raw food in the chest that the station can cook"
+                : null;
+            if (why != null)
+            {
+                return $"Villheim: {villager.VillagerName} can't cook: {why}.";
+            }
+
+            State state = States.GetOrCreateValue(villager);
+            Reset(villager, state);
+            Cooks[villager.VillageId] = villager;
+            state.Urgent = true;
+            state.NextAllowed = 0f;
+            Start(villager, state, Phase.ToChest, Goal.Store);
+            return $"Villheim: {villager.VillagerName} goes to cook what is raw in the chest.";
         }
 
         private static void Start(Villager villager, State state, Phase phase, Goal goal)

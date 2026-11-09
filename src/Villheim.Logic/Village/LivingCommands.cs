@@ -25,7 +25,7 @@ namespace Villheim.Logic.Village
             "judge: the nearest pedlar or pilgrim's score for his stay so far",
             "want: put up the nearest village's want pile now",
             "stages: what the nearest village may grow to, and which bosses count",
-            "elder [days|die]: the nearest villager's days in the village; set them, or let an elder die",
+            "elder [days|off|die]: make the nearest villager an elder now, or set his days in the village, make him young again (off), or let an elder die",
             "horn: blow the nearest village's horn (no standing or wait needed)",
             "rescue: protectors run to you now if anything is fighting you",
         };
@@ -240,7 +240,18 @@ namespace Villheim.Logic.Village
                 return $"Villheim: {name} died of old age.";
             }
 
-            if (int.TryParse(arg, NumberStyles.Integer, CultureInfo.InvariantCulture, out int days))
+            // 'vh elder' alone makes the nearest villager an elder now (T-118: it used to only report); 'off' makes him
+            // young again; a number sets the days he has lived here.
+            int elderDays = LogicConfig.ElderDays != null ? LogicConfig.ElderDays.Value : 40;
+            if (string.IsNullOrEmpty(arg))
+            {
+                Elders.SetDaysHere(villager, Mathf.Max(elderDays, Elders.DaysHere(villager)));
+            }
+            else if (arg == "off")
+            {
+                Elders.SetDaysHere(villager, 0);
+            }
+            else if (int.TryParse(arg, NumberStyles.Integer, CultureInfo.InvariantCulture, out int days))
             {
                 Elders.SetDaysHere(villager, days);
             }

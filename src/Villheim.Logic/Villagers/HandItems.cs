@@ -57,6 +57,16 @@ namespace Villheim.Logic.Villagers
                 return;
             }
 
+            PutAway(villager);
+        }
+
+        /// <summary>
+        /// Both hands emptied, the torch of the night watch kept. Nothing is left on his back either: the game's
+        /// "hide hand items" kept a hidden tool showing on the back, which is how nearly everyone came to carry a
+        /// pickaxe over the shoulder everywhere (T-108).
+        /// </summary>
+        public static void PutAway(Villager villager)
+        {
             ItemDrop.ItemData right = villager.GetRightItem();
             if (right != null && right.m_shared.m_itemType != ItemDrop.ItemData.ItemType.Torch)
             {
@@ -64,10 +74,16 @@ namespace Villheim.Logic.Villagers
             }
 
             ItemDrop.ItemData left = villager.GetLeftItem();
-            if (left != null && (left.m_shared.m_itemType == ItemDrop.ItemData.ItemType.Shield ||
-                                 left.m_shared.m_itemType == ItemDrop.ItemData.ItemType.Bow))
+            if (left != null && left.m_shared.m_itemType != ItemDrop.ItemData.ItemType.Torch)
             {
                 villager.UnequipItem(left, false);
+            }
+
+            if (villager.m_hiddenRightItem != null || villager.m_hiddenLeftItem != null)
+            {
+                villager.m_hiddenRightItem = null;
+                villager.m_hiddenLeftItem = null;
+                villager.SetupVisEquipment(villager.m_visEquipment, false);
             }
         }
     }

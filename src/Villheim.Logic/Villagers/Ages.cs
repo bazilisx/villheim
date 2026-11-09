@@ -1,5 +1,11 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Runtime.CompilerServices;
+using HarmonyLib;
 using UnityEngine;
+using Villheim.Logic.Designs;
+using Villheim.Logic.Village;
 using Villheim.Prefabs;
 
 namespace Villheim.Logic.Villagers
@@ -10,7 +16,10 @@ namespace Villheim.Logic.Villagers
     /// - Elders move slower (ElderSpeed of a grown villager's walk and run) and keep to chores inside the village:
     ///   cooking, sorting, the farm, the hearth, mending if they are the builder. They leave hunting, foraging and
     ///   planting out past the edge to the young.
+    /// - Elders stoop a little (T-118): after the animator has posed them each frame, the spine and the neck are
+    ///   bent forward by ElderSpineBend and ElderNeckBend degrees, the same bone method the children's shape uses.
     /// - Children take no jobs at all and play instead (ChildPlay); the same check keeps them out of work outside.
+    /// - 'vh villager add child|elder [n]' adds villagers of that age to the nearest village, for testing.
     /// </summary>
     internal static class Ages
     {
@@ -34,7 +43,12 @@ namespace Villheim.Logic.Villagers
                 return;
             }
 
-            state.Next = Time.time + 5f + Random.Range(0f, 1f);
+            state.Next = Time.time + 5f + UnityEngine.Random.Range(0f, 1f);
+            if (Elders.IsElder(villager) && !Stooped.Contains(villager))
+            {
+                Stooped.Add(villager);
+            }
+
             float factor = Elders.IsElder(villager) ? Mathf.Clamp(LogicConfig.ElderSpeed?.Value ?? 0.75f, 0.3f, 1.5f) : 1f;
             if (Mathf.Approximately(factor, state.Factor))
             {
@@ -52,5 +66,136 @@ namespace Villheim.Logic.Villagers
             villager.m_speed = template.m_speed * factor;
             villager.m_runSpeed = template.m_runSpeed * factor;
         }
-    }
+    
+        // ---------------------------------------------------------------- the stoop
+
+        private static readonly List<Villager> Stooped = new List<Villager>();
+        private static readonly ConditionalWeakTable<Villager, Bones> BoneCache = new ConditionalWeakTable<Villager, Bones>();
+
+        private sealed class Bones
+        {
+            public Transform Spine;
+            public Transform Neck;
+        }
+
+        private static Bones BonesOf(Villager villager)
+        {
+            if (BoneCache.TryGetValue(villager, out Bones bones))
+            {
+                return bones;
+            }
+
+            GameObject visual = villager.m_visual != null ? villager.m_visual : villager.gameObject;
+            Transform[] all = visual.GetComponentsInChildren<Transform>(true);
+            bones = new Bones
+            {
+                Spine = all.FirstOrDefault(t => t.name == "Spine1") ?? all.FirstOrDefault(t => t.name == "Spine"),
+                Neck = all.FirstOrDefault(t => t.name == "Neck"),
+            };
+            BoneCache.Add(villager, bones);
+            return bones;
+        }
+
+        private static void LateTick()
+        {
+            float spine = LogicConfig.ElderSpineBend?.Value ?? 12f;
+            float neck = LogicConfig.ElderNeckBend?.Value ?? 10f;
+            for (int i = Stooped.Count - 1; i >= 0; i--)
+            {
+                Villager villager = Stooped[i];
+                if (villager == null || villager.IsDead() || !Elders.IsElder(villager))
+                {
+                    Stooped.RemoveAt(i);
+                    continue;
+                }
+
+                // Lying in bed or seated, the pose itself is left alone.
+                if (Sleep.IsAsleep(villager) || Poses.IsPosed(villager))
+                {
+                    continue;
+                }
+
+                Bones bones = BonesOf(villager);
+                Vector3 axis = villager.transform.right;
+                if (bones.Spine != null && Mathf.Abs(spine) > 0.01f)
+                {
+                    bones.Spine.rotation = Quaternion.AngleAxis(spine, axis) * bones.Spine.rotation;
+                }
+
+                if (bones.Neck != null && Mathf.Abs(neck) > 0.01f)
+                {
+                    bones.Neck.rotation = Quaternion.AngleAxis(neck, axis) * bones.Neck.rotation;
+                }
+            }
+        }
+
+        [HarmonyPatch(typeof(MonoUpdaters), nameof(MonoUpdaters.LateUpdate))]
+        internal static class StoopPatch
+        {
+            private static void Postfix()
+            {
+                if (Stooped.Count == 0)
+                {
+                    return;
+                }
+
+                try
+                {
+                    LateTick();
+                }
+                catch (Exception ex)
+                {
+                    VillheimPlugin.Debug($"Elder stoop: {ex.Message}");
+                    Stooped.Clear();
+                }
+            }
+        }
+
+        // ---------------------------------------------------------------- 'vh villager add'
+
+        /// <summary>'vh villager add child|elder [n]': n new villagers of that age in the nearest village (up to 10).</summary>
+        public static string AddCommand(string[] args)
+        {
+            string kind = args.Length > 1 ? args[1].ToLowerInvariant() : "";
+            int count = args.Length > 2 && int.TryParse(args[2], out int n) ? Mathf.Clamp(n, 1, 10) : 1;
+            if (kind != "child" && kind != "elder")
+            {
+                return "Villheim: vh villager add child|elder [n]";
+            }
+
+            Player player = Player.m_localPlayer;
+            VillageHearth hearth = player != null ? VillageHearth.Closest(player.transform.position, 200f) : null;
+            if (hearth == null || !hearth.IsValid)
+            {
+                return "Villheim: no village within 200 m.";
+            }
+
+            var state = new VillageState(hearth.Zdo);
+            Plot home = state.Plots.FirstOrDefault(p => Growth.RoleOf(p) == Role.House) ??
+                        state.Plots.FirstOrDefault(p => p.Role != "Farm") ?? new Plot { Position = hearth.transform.position, Radius = 6f };
+            int elderDays = LogicConfig.ElderDays != null ? LogicConfig.ElderDays.Value : 40;
+            var names = new List<string>();
+            for (int i = 0; i < count; i++)
+            {
+                // A child is born in a home; an elder is a newcomer who has been here ElderDays already.
+                Villager villager = VillageBrain.SpawnVillager(hearth, state, kind == "child" ? home : null, true);
+                if (villager == null)
+                {
+                    continue;
+                }
+
+                if (kind == "elder")
+                {
+                    Elders.SetDaysHere(villager, elderDays);
+                }
+
+                names.Add(villager.VillagerName);
+            }
+
+            return names.Count == 0
+                ? "Villheim: nobody could be added."
+                : $"Villheim: {string.Join(", ", names)} {(names.Count == 1 ? "is" : "are")} now {(kind == "child" ? "a child" : "an elder")}" +
+                  $"{(names.Count == 1 ? "" : "s")} of {state.Name}.";
+        }
+}
 }

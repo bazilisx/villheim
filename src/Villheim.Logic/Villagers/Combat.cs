@@ -660,12 +660,12 @@ namespace Villheim.Logic.Villagers
             enemy.Damage(hit);
         }
 
-        /// <summary>The weapon in hand if it is one (an axe or club counts), else the village's weapon of his tier.</summary>
+        /// <summary>The weapon in hand if it is one (never a work tool), else the village's weapon of his tier.</summary>
         private static ItemDrop.ItemData Arm(Villager villager)
         {
+            // A real weapon only: an axe or pickaxe from his work goes back for the village's weapon (T-108, T-111).
             ItemDrop.ItemData right = villager.GetRightItem();
-            if (right != null && right.m_shared.m_itemType != ItemDrop.ItemData.ItemType.Torch &&
-                right.m_shared.m_itemType != ItemDrop.ItemData.ItemType.Bow && right.GetDamage().GetTotalDamage() > 1f)
+            if (Roles.IsWeapon(right) && right.m_shared.m_itemType != ItemDrop.ItemData.ItemType.Bow)
             {
                 return right;
             }

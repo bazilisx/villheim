@@ -86,6 +86,12 @@ namespace Villheim.Logic.Villagers
             }
         }
 
+        /// <summary>An event is no longer news (its "event:x" tag ends now): a new hunt makes the last one's meat talk stale.</summary>
+        public static void Forget(int villageId, string what)
+        {
+            Events.Remove((villageId, what));
+        }
+
         // ---------------------------------------------------------------- cadence
 
         /// <summary>When the village may next say something unprompted (any villager), by village.</summary>

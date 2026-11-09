@@ -83,6 +83,8 @@ namespace Villheim.Logic
             "cultures: the CultureMap (which cultures each biome's villages may have) and every culture's names, surnames, skin range and feasts",
             "relook [culture]: the nearest villager gets a new seed, name, face and clothes, of his own culture or the one named",
             "defenders: the nearest village's biome defender profile (Plains, Mistlands), the creatures it covers, who would shoot, and arrows loosed so far",
+            "villager add child|elder [n]: add villagers of that age to the nearest village (children are born in a home)",
+            "gift: the nearest free villager brings you the best cooked food in the chest",
             "kids rig [clear]: a grown man, a boy, a girl and a grown woman, standing still in front of you, to tune the ChildBoy and ChildGirl settings ('3c - Villager looks') against; clear takes them away",
             "grudges [clear]: what the nearest village holds against players who harmed its people, and clear it",
             "keepapart: the creatures villagers and villages leave alone (KeepApartCreatures), and the camps the nearest village keeps away from",
@@ -230,7 +232,18 @@ namespace Villheim.Logic
 
                     return true;
                 case "villheim_blueprints": ListBlueprints(context); return true;
-                case "villheim_villager": InspectVillager(context); return true;
+                case "villheim_villager":
+                    if (args.Length > 0 && args[0].Equals("add", System.StringComparison.OrdinalIgnoreCase))
+                    {
+                        Say(context, Villagers.Ages.AddCommand(args));
+                    }
+                    else
+                    {
+                        InspectVillager(context);
+                    }
+
+                    return true;
+                case "villheim_gift": Say(context, Villagers.Social.GiftCommand()); return true;
                 case "villheim_village":
                     if (args.Length > 0 && TestVillage.Handles(args[0]))
                     {

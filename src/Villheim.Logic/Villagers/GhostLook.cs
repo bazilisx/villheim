@@ -399,6 +399,46 @@ namespace Villheim.Logic.Villagers
         /// A transparent shader from the game's own creatures: preferring ghostly ones by name, then any creature whose
         /// material renders in the transparent queue. Looked up once.
         /// </summary>
+        /// <summary>
+        /// A new item went into a villager's hand or onto his body: it gets the look in the same frame, before it is
+        /// ever drawn solid (T-105). A postfix on VisEquipment.AttachItem, which makes every held and worn item.
+        /// </summary>
+        [HarmonyLib.HarmonyPatch(typeof(VisEquipment), nameof(VisEquipment.AttachItem))]
+        internal static class AttachPatch
+        {
+            private static void Postfix(VisEquipment __instance, GameObject __result)
+            {
+                try
+                {
+                    if (__result == null || !(LogicConfig.GhostLook != null && LogicConfig.GhostLook.Value))
+                    {
+                        return;
+                    }
+
+                    Character owner = __instance.GetComponent<Character>();
+                    if (owner == null || owner.IsPlayer() || !(owner is Villager || Animals.IsVillageAnimal(owner)))
+                    {
+                        return;
+                    }
+
+                    State state = States.GetOrCreateValue(owner);
+                    if (!state.Revealed)
+                    {
+                        // Not shown yet: the reveal gives everything the look together.
+                        return;
+                    }
+
+                    state.NextScan = 0f;
+                    state.Next = 0f;
+                    Update(owner);
+                }
+                catch (System.Exception ex)
+                {
+                    VillheimPlugin.Debug($"Ghost look on a new item: {ex.Message}");
+                }
+            }
+        }
+
         /// <summary>The borrowed see-through shader, or null (GhostDeath fades a dying villager with it).</summary>
         public static Shader SeeThroughShader() => GhostShader();
 

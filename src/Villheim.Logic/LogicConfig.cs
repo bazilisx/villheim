@@ -268,6 +268,8 @@ namespace Villheim.Logic
         public static ConfigEntry<int> CopseSaplingsPerDay;
         // Ages (Villagers/Ages.cs, Villagers/ChildPlay.cs).
         public static ConfigEntry<float> ElderSpeed;
+        public static ConfigEntry<float> ElderSpineBend;
+        public static ConfigEntry<float> ElderNeckBend;
         public static ConfigEntry<float> ChildHelpChance;
         public static ConfigEntry<bool> ChildProportions;
         public static ConfigEntry<bool> ChildNoBeard;
@@ -797,6 +799,12 @@ namespace Villheim.Logic
                 "Percent of his health a hurt villager gets back each minute, food or no food, while he is not fighting.");
             RestRegenFactor = Admin(config, living, "RestRegenFactor", 3f,
                 "How many times faster that is while he sits or rests by the hearth, or lies in bed.");
+            ElderSpineBend = config.Bind(living, "ElderSpineBend", 12f, new ConfigDescription(
+                "Degrees an elder's back bends forward as he stands and walks (0 for upright). Changes show at once.",
+                new AcceptableValueRange<float>(0f, 40f), new ConfigurationManagerAttributes { IsAdminOnly = true }));
+            ElderNeckBend = config.Bind(living, "ElderNeckBend", 10f, new ConfigDescription(
+                "Degrees an elder's neck bends forward on top of that.",
+                new AcceptableValueRange<float>(0f, 40f), new ConfigurationManagerAttributes { IsAdminOnly = true }));
             ElderSpeed = Admin(config, living, "ElderSpeed", 0.75f,
                 "How fast elders walk and run against a grown villager (1 for the same speed). Elders keep to chores in the " +
                 "village: cooking, sorting, the farm and the hearth.");

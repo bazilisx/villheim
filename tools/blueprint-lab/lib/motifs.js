@@ -94,6 +94,25 @@ const NEAREST = { beam4: ['beam2'], pole4: ['pole2'], beam1: ['beam1'], xbrace26
 
 // ---------------------------------------------------------------- data
 
+// the motifs the generator can use, small enough to carry in the game's bundle and the request page: sizes it builds,
+// trim that keeps to the wall, weight above 0; source and popularity left out (lib/build_engine.js, lib/build_web.js)
+function liteSet(full, weightsIn) {
+  const r2 = v => Math.round(v * 100) / 100;
+  const ok = m => m.kind === 'window' ? Math.abs(m.fit.w - 2) <= 1 && Math.abs(Math.min(m.fit.h, 3) - 1) <= 1 && m.fit.w >= 1
+    : m.kind === 'door' ? m.fit.w === 2 && Math.abs(Math.min(m.fit.h, 3) - 2) <= 1 : m.kind === 'gable' ? Math.abs(m.fit.overhang || 0) <= 0.3
+      : m.kind === 'eave' ? Math.abs(m.fit.overhang || 0) <= 0.5 : true;
+  const motifs = [], weights = {};
+  for (const m of full.motifs) {
+    const L = lite(m);
+    if (!ok(m) || !flatOnWall(L) || (weightsIn && weightsIn[m.id] === 0)) continue;
+    const fit = { ...m.fit };
+    delete fit.sill; delete fit.door;
+    motifs.push({ id: m.id, kind: m.kind, fit, src: m.srcBuild, p: L.p.map(t => [t[0], r2(t[1]), r2(t[2]), r2(t[3]), Math.round(t[4])]) });
+    if (weightsIn && weightsIn[m.id] != null) weights[m.id] = weightsIn[m.id];
+  }
+  return { motifs, weights };
+}
+
 let DATA = null, WEIGHTS = null;
 function lite(m) {
   return { id: m.id, kind: m.kind, fit: m.fit, p: m.p || m.pieces.map(t => [t.n, t.a, t.o, t.h, t.r]), src: m.srcBuild || m.src, biome: m.biome, w: m.w };
@@ -103,6 +122,8 @@ function data() {
   let raw = null;
   if (NODE_M) { try { raw = require('../data/motifs.json'); } catch (e) { raw = null; } }
   if (!raw && typeof window !== 'undefined' && window.VH_MOTIFS) raw = window.VH_MOTIFS;
+  // the lab's full file goes through the same cut as the bundle, so Node and the game pick alike
+  if (raw && raw.motifs.length && raw.motifs[0].srcBuild !== undefined) raw = liteSet(raw, weights());
   DATA = raw ? raw.motifs.map(lite) : [];
   return DATA;
 }
@@ -398,5 +419,5 @@ function roofParts(c, fr, add, opts = {}) {
   return n;
 }
 
-const apiM = { classOf, matOf, xAsym, symOf, NAMES, data, setData, weights, weightOf, materials, swap, fits, usable, plan, place, roofParts, toWorld, refit, setEnabled, PROPS, CARVED };
+const apiM = { flatOnWall, lite: liteSet, classOf, matOf, xAsym, symOf, NAMES, data, setData, weights, weightOf, materials, swap, fits, usable, plan, place, roofParts, toWorld, refit, setEnabled, PROPS, CARVED };
 if (NODE_M) module.exports = apiM; else window.VHMotifs = apiM;

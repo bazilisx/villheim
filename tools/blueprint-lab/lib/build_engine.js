@@ -5,7 +5,7 @@
 const fs = require('fs'), path = require('path');
 const dir = __dirname;
 const out = process.argv[2] || path.join(dir, '../../../src/Villheim.Logic/Generator/lab.js');
-const libs = ['pieces.js', 'styles.js', 'blueprint.js', 'checks.js', 'features.js', 'decorate.js', 'details.js', 'kitbash.js', 'generate.js', 'critic.js', 'request.js', 'floorplan.js'];
+const libs = ['pieces.js', 'styles.js', 'blueprint.js', 'checks.js', 'features.js', 'decorate.js', 'motifs.js', 'details.js', 'kitbash.js', 'generate.js', 'critic.js', 'request.js', 'floorplan.js'];
 const code = libs.map(f => `// ---- ${f}\n(function () {\n${fs.readFileSync(path.join(dir, f), 'utf8')}\n})();`).join('\n');
 const rules = fs.readFileSync(path.join(dir, '../data/rules-lite.json'), 'utf8').trim();
 const scorer = fs.readFileSync(path.join(dir, '../data/scorer.json'), 'utf8').trim();
@@ -16,6 +16,10 @@ const rooms = JSON.parse(fs.readFileSync(path.join(dir, '../data/room-templates.
 const roomsLite = JSON.stringify({ templates: rooms.templates.map(t => { const o = { ...t }; delete o.src; delete o.pop; delete o.area; delete o.key; delete o.ceil; delete o.doorW; return o; }) });
 const scoresPath = path.join(dir, '../data/room-scores.json');
 const roomWeights = fs.existsSync(scoresPath) ? JSON.stringify(JSON.parse(fs.readFileSync(scoresPath, 'utf8')).weights) : '{}';
+// exterior motifs (lib/motifs.js): the ones the generator can use, and their weights from the Motifs tab
+const Mo = require('./motifs.js');
+const motifScores = path.join(dir, '../data/motif-scores.json');
+const motifLite = Mo.lite(JSON.parse(fs.readFileSync(path.join(dir, '../data/motifs.json'), 'utf8')), fs.existsSync(motifScores) ? JSON.parse(fs.readFileSync(motifScores, 'utf8')).weights : null);
 const text = `// Villheim blueprint lab, bundled for the game. Made by tools/blueprint-lab/lib/build_engine.js; do not edit.
 var window = this;
 ${code}
@@ -26,6 +30,8 @@ window.VH_INTERIOR = ${interior};
 window.VH_CRITIC = ${critic};
 window.VH_ROOMS = ${roomsLite};
 window.VH_ROOM_WEIGHTS = ${roomWeights};
+window.VH_MOTIFS = ${JSON.stringify({ motifs: motifLite.motifs })};
+window.VH_MOTIF_WEIGHTS = ${JSON.stringify(motifLite.weights)};
 VHDecorate.setRules(VH_RULES);
 // ---- entry point for the game: one request, best of 'tries' seeds
 function vhMake(type, biome, culture, stage, words, seed, tries) {

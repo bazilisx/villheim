@@ -185,13 +185,44 @@ function plan(id, g, t, file) {
   return counts;
 }
 
-// the room through lib/render.js, straight down with the roof cut off, cropped to the room
-function labPlan(id, g, file) {
-  const { u0, u1, v0, v1, s, Wpx, Hpl } = frameBox(g);
+// the room through lib/render.js (RENDER_LIB=<other lib dir> to try another renderer): its true-size top-down plan
+// cut at 1.8 m (walls, doors and windows in section), with this script's labels, way in and legend laid over it
+function labPlan(id, g, t, file) {
+  const R2 = process.env.RENDER_LIB ? require(path.resolve(process.env.RENDER_LIB, 'render.js')) : Rn;
+  if (!R2.plan) throw new Error('this render.js has no top-down plan (plan, planSize)');
   const ps = g.pcs.map(([name, u, y, v, q]) => ({ name, x: u, y, z: v, q }));
-  const cv = createCanvas(Wpx, Hpl + 30), x = cv.getContext('2d');
-  Rn.draw(x, ps, { el: 90, az: 0, cut: g.ceil - 0.2, crop: { x0: u0, x1: u1, z0: v0, z1: v1 }, width: Wpx, height: Hpl + 30, grid: true, scale: true, background: '#f4f1ea' });
-  void s;
+  const margin = 0.4, crop = { x0: -g.W / 2 - 0.6, x1: g.W / 2 + 0.6, z0: -0.8, z1: g.D + 0.6 };
+  const ppm = Math.min(PPM, MAXPX / (crop.x1 - crop.x0 + 2 * margin), MAXPX / (crop.z1 - crop.z0 + 2 * margin));
+  const sz = R2.planSize(ps, { crop, ppm, margin });
+  const head = 30, foot = 46, Wpx = Math.max(MINW + 40, sz.width);
+  const cv = createCanvas(Wpx, sz.height + head + foot), x = cv.getContext('2d');
+  x.fillStyle = '#f4f1ea'; x.fillRect(0, 0, Wpx, sz.height + head + foot);
+  const pc = createCanvas(sz.width, sz.height);
+  R2.plan(pc.getContext('2d'), ps, { cut: Math.min(1.8, g.ceil - 0.2), crop, ppm, margin, grid: true, scale: true });
+  const ox = (Wpx - sz.width) / 2;
+  x.drawImage(pc, ox, head);
+  // world to picture, as the renderer frames it: x right, z up, the crop box plus the margin
+  const X = u => ox + (u - crop.x0 + margin) * ppm, Y = v => head + (crop.z1 + margin - v) * ppm;
+  // labels on the furniture where they fit
+  x.textAlign = 'center'; x.textBaseline = 'middle'; x.font = 'bold 11px sans-serif';
+  for (const [name, u, y, v, q, flag, cn] of g.pcs) {
+    if (!flag || !F[cn]) continue;
+    const f = F[cn];
+    if (f.at === 'top' || f.at === 'fire') continue;
+    const lab2 = f.at === 'mount' ? mountLetter(cn) : (SHORT[cn] || cn.replace(/^piece_/, ''));
+    const [w, , d] = f.s, yaw = yawQ(q), a = ((yaw % 180) + 180) % 180, along = a < 45 || a > 135 ? w : d, across = a < 45 || a > 135 ? d : w;
+    const tw = x.measureText(lab2).width;
+    if (f.at !== 'mount' && (tw + 4 > Math.max(along, across) * ppm || Math.min(along, across) * ppm < 11)) continue;
+    x.lineWidth = 3; x.strokeStyle = 'rgba(255,255,255,0.85)'; x.fillStyle = flag === 2 ? '#8a7f70' : '#1d1712';
+    x.strokeText(lab2, X(u), Y(v)); x.fillText(lab2, X(u), Y(v));
+  }
+  const du = t ? t.doorU : 0;
+  x.fillStyle = '#8a5a2b'; x.beginPath(); x.moveTo(X(du), Y(-0.05)); x.lineTo(X(du) - 7, Y(-0.6)); x.lineTo(X(du) + 7, Y(-0.6)); x.closePath(); x.fill();
+  x.textAlign = 'left'; x.textBaseline = 'alphabetic'; x.fillStyle = '#2b241c'; x.font = 'bold 16px sans-serif';
+  x.fillText(`${id}  ${t ? t.kind : ''}  ${g.W.toFixed(1)} x ${g.D.toFixed(1)} m, ${g.area || ''} m2`, 10, 20);
+  x.font = '12px sans-serif';
+  x.fillText('Way in: the arrow at the bottom. Cut at 1.8 m, 1 m grid. Gray labels: left out of the template.', 10, head + sz.height + 18);
+  x.fillText('Wall letters: I item stand, S sign, T torch, L lantern, B banner, C carving.', 10, head + sz.height + 35);
   fs.writeFileSync(file, cv.toBuffer('image/png'));
 }
 
@@ -200,7 +231,7 @@ let n = 0;
 for (const id of ids) {
   const g = geo[id];
   if (!g) { console.error('no room for', id); continue; }
-  if (process.env.RENDER === 'lab') labPlan(id, g, path.join(outDir, id + '.png'));
+  if (process.env.RENDER === 'lab') labPlan(id, g, byId.get(id), path.join(outDir, id + '.png'));
   else plan(id, g, byId.get(id), path.join(outDir, id + '.png'));
   n++;
 }

@@ -237,6 +237,15 @@ function mineRoom(build, m, all) {
   const { d: door, fr } = fr0;
   const W = fr.W, Dp = fr.D;
   if (W < 2 || Dp < 2) return why('thin');
+  // walls at an odd angle to the frame (a wing turned 30 degrees off the rest of the build): the frame's anchors would
+  // be wrong. Walls square to the frame or at 45 degrees (an eight-sided room) are fine.
+  let sqLen = 0, oddLen = 0;
+  for (const fc of m.faces) {
+    if (fc.edge) continue;
+    const a = ((Math.atan2(fc.uz, fc.ux) * 180 / Math.PI) % 90 + 90) % 90;
+    if (Math.min(a, 90 - a) < 8 || Math.abs(a - 45) < 8) sqLen += fc.len; else oddLen += fc.len;
+  }
+  if (oddLen > 0.4 * (sqLen + oddLen)) return why('turned walls');
   // place every piece in the frame
   const recs = [];
   for (const it of items) {

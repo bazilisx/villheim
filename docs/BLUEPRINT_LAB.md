@@ -218,7 +218,10 @@ flags (`req.details` overrides the detail profile, `req.style` the culture), che
 of the part on a contact sheet (`<part>.png`, `<part>.json`). It picks test buildings where the part shows (each flag,
 turned off alone from the full set, changes pieces near the part), frames the camera once per building on the pieces
 the part adds, seen from outside, and cuts the roof away for inside parts. Parts: `door`, `window`, `gable`, `wall`,
-`stack`, `dormer`, `bed`, `stair`, `yard`. Sheets go to a reviewer that has not seen the code; its findings become fixes and
+`stack`, `dormer`, `bed`, `stair`, `yard`, and `interior` (one close-up per assembly the interior library placed, seen
+from inside the room with everything over 2.6 m cut away:
+`node lab/bench.js interior [out dir] [designs] ["type,biome,stage,decor,seed;..."]`). Sheets go to a reviewer that has
+not seen the code; its findings become fixes and
 odds, and the part goes back on the bench.
 
 `lib/critic.js` measures a design the way `lab/learn_critic.js` measured the top quarter of corpus house builds by
@@ -288,6 +291,98 @@ village gives already takes in the yard; an off-centre yard (a side yard) moves 
 
 Pictures: `docs/yards/yard-bench.png` (the bench sheet: four buildings, the switches on and off) and
 `docs/yards/yard-examples.png` (four yards, three-quarter and top views).
+
+## Interior kitbash (D-065, D-066)
+
+Rooms furnished the way the best builders do it: any prefab that ships with the game may dress a room (stations and
+their upgrades, stands, food and feasts, pots, Dvergr and trader props, banners, pelts), pieces may be stacked and may
+clip into each other, into walls and into the floor, and furniture the game lacks is built from building pieces.
+
+The library. `node --max-old-space-size=10000 lab/mine_kitbash.js [compact.json] [out.json]` reads the 1,561 vanilla
+builds of the corpus (242 well-liked: the top quarter by downloads). Every decor piece inside a building is given an
+anchor: a table, a bed, the fire, a stair's underside, an inside corner, a window, a wall run or a free post. The pieces
+of one anchor are an assembly of 2 to 10, put in the anchor's frame with what each rests on (the floor, the anchor,
+another piece, the wall, or hung from structure), how deep it clips into the others and the wall (the penetration depth
+of the game's solids, `shapes.js` `clipDepth`) and how far it sinks below the floor. Assemblies with the same anchor
+and the same slots (a wood chest and an iron chest fill one slot) within 0.35 m are one. Kept: those in two builds or
+more, and groups of three kinds or more seen once in a well-liked build. 12,762 found; 459 kept.
+
+| Anchor | Found | Kept |
+|---|---|---|
+| Wall run | 4,750 | 100 |
+| Corner, 90 degrees | 3,818 | 100 |
+| Corner, 135 degrees (octagon) | 439 | 8 |
+| Corner, 120 degrees (hexagon) | 84 | 3 |
+| Corner, other angles | 228 | 0 |
+| Table | 1,091 | 74 |
+| Hearth | 584 | 67 |
+| Bed | 660 | 63 |
+| Window | 542 | 22 |
+| Post | 377 | 15 |
+| Stair underside | 189 | 7 |
+
+The file also holds the 220 decor prefabs builders use in two builds or more, with their anchors, rests and clip and
+sink depths (median and 90th percentile). Item stands lead (291 and 287 builds), then wood chests, chairs, signs, wall
+torches, deer rugs, iron chests, fur rugs, armor stands. Builders clip often and shallow: a median of 4 to 19 cm, a
+90th percentile of 10 to 40 cm (forges and black metal chests 0.52 and 0.57 m); a tenth of the banners reach 0.55 m
+into the floor.
+
+Built-up furniture (`lib/kitbash.js` `BUILT_KITS`), hand-made in the library's format: a cabinet (a chest set into a
+half wall so its front shows as drawers, a plank top of two ledges, a pot and a candle), drawers of barrels, a bedside
+barrel with a candle and a mead, a nightstand of a post and a ledge, a couch (a bench with a pelt over its seat), a
+living room (the couch, a rug, a chest for a low table with mead and a candle, an armchair each side), drapes (a banner
+each side of a window, a bench under it), a window seat, wall shelves of ledges with pots, candles, mead and bread over
+two barrels, a kitchen wall (a half-wall counter, the spice rack, pots and pans over barrels), a feast table (the
+village biome's own feast, candles, meads), a kitchen island, a wash corner and a bath corner. Each building type has
+its own first anchor: the smithy's forge corner (the tool rack, a quench barrel, an armor stand, a chest), the home's
+bedside, the tavern's serving corner (stacked barrels behind a counter) and its kitchen wall.
+
+Placing. After the furnishing, `furnishRooms` reads every room as the decorator does (`readLevel`), with its anchors:
+wall runs every half metre, windows, inside corners where two wall faces meet at any angle, fires, tables, beds, free
+posts and stairs. Assemblies are drawn by room kind and decor stage from a random stream of their own (seeded from the
+detail stream after everything else, so the rest of a design is unchanged): at most one per room at d1 (rooms of 30 m2
+or more), up to three at d2 and eight at d3, weighted by score, by how many kinds of piece they hold, and down for
+repeats and for pairs of chests; each built kit at most once in a building (shelves, cabinets, drapes, bedsides twice).
+Each slot takes the source's prefab when the village's biome makes it, or the first of its class that it does; minor
+decor goes in any biome; item stands, seasonal pieces and woodpiles are left out. Every piece is tested: on this room's
+floor or against its wall, under its ceiling, out of doorways, climbs, the chimney and the fire's ring, under the sill
+of any window behind it, plain wall behind anything hung, what it rests on there (the audit's own tests), no deeper in
+the floor than its source, and clipping into walls, the anchor and its own assembly no deeper than its source builds did
+(into anything else, not at all). Floor pieces keep 0.9 m of floor in front of them and at most 45 % of a room's floor
+is furnished. Built kits may move the decorator's chests, seats and lights out of their way (two at most). A piece that
+fails is left out when nothing rests on it, as long as three fifths of the assembly stay.
+
+Clips on purpose. A piece placed with a clip carries `p.clip`, the deepest it reaches into anything. `lib/checks.js`
+(the overlap check) and the decorator's audit allow a pair to clip as deep as the larger mark of the two, and no deeper;
+a piece set into the floor carries `p.sink`. Kitbash pieces also carry `kb` (assembly and anchor) and `rest`, and the
+audit checks what each rests on. These marks are not written to the `.blueprint` file.
+
+Materials (D-066). `pieces.js` `minor`: rugs, banners, food and feasts, pots, candles, garlands, cloth hangings, Dvergr
+props, treasure, signs. They pass the materials check in any biome, and the generator's last pass (`biomeSafe`) keeps
+them; stations, beds, chests, tables, seats, fires and building pieces still need their own.
+
+Cost: about 50 ms more per furnished d2 or d3 design in Node (the room reading and the fits), 2026-11-09.
+
+### Items on stands (for the mod)
+
+Item stands and armor stands stand empty in a design, so the library leaves them out for now. PlanBuild already saves
+what a stand holds in the piece line's tenth field (the one `lib/blueprint.js` reads as `info` and
+`Blueprints.cs` as `Piece.Text`): the corpus has `itemstandh;...;"Tankard:0:1"` (item prefab, variant, quality, and on
+newer saves a fourth number) on 2,518 horizontal stands and trophies such as `"TrophySurtling:0:1:0"` on wall stands;
+an armor stand saves `pose:slot:item:variant:...` per slot (`"0:7::0::0::0::0::0::0::0:"`). The design:
+
+1. The lab: a piece may carry `item` ({ name, variant, quality }); `blueprint.js` writes it to `info` as
+   `name:variant:quality` for `itemstand` and `itemstandh`, and reads it back. Choices by room and biome: trophies of
+   the village's own biome on wall stands in halls and homes, tankards and meads on horizontal stands on tables and bar
+   counters, shields and tools on walls in smithies.
+2. The mod: when `DesignSpawner` or a village build places a piece whose prefab has an `ItemStand` and whose `Text`
+   splits into a known item prefab and two numbers, it sets `ZDOVars.s_item`, `s_variant` and `s_quality` on the new
+   piece and calls `UpdateVisual`, the way `Trophies.Hang` does, and locks the stand as `WantPile.Lock` does, so the item
+   cannot be taken. Armor stands the same way per slot, once the format is checked in the game.
+3. Cost: the item counts as minor decor (D-066); the stand itself is built from the chest as any piece.
+
+Placed food (meads, bread, cooked meat; the feasts) spawns as items lying where they are put, which a player can pick
+up. Until the mod locks them as above, the kits use only a few, on tables, counters and shelves.
 
 ## Repair
 

@@ -631,8 +631,7 @@ namespace Villheim.Logic.Village
 
             float yaw = hearth.Zdo.GetFloat(KeyYaw, 0f);
             Quaternion toBoard = Quaternion.Inverse(Quaternion.Euler(0f, yaw, 0f));
-            List<(Vector3 At, string Heading)> front = blueprint.Pieces.Where(p => IsSign(p.Prefab) && p.Text != null)
-                .Select(p => (p.Position, Heading(p.Text))).ToList();
+            List<(Vector3 At, string Heading)> front = FrontPlaces(blueprint);
             List<DesignSpawner.PlanEntry> plan = Blueprints.MakePlan(blueprint, origin, yaw).ToList();
             List<(Vector3 At, string Heading)> back = BackSigns(plan).Select(b => (b.Entry.LocalPosition, b.Heading)).ToList();
             foreach (Sign sign in signs)
@@ -656,6 +655,56 @@ namespace Villheim.Logic.Village
                 view.GetZDO().Set(KeyHeading, nearest.Heading);
                 view.GetZDO().Set(ZDOVars.s_text, ""); // written again below
             }
+        }
+
+        // Tyler's board, read left to right from the front: the name on top, then these two rows (T-123).
+        private static readonly string[][] FrontRows =
+        {
+            new[] { "Buildings", "Stock", "Population" },
+            new[] { "Project", "Needed", "Morale" },
+        };
+
+        /// <summary>
+        /// The heading of each front sign place. The board copy the game reads has its sign texts cleared, so the
+        /// headings come from where the signs sit: the highest sign is the name, the rows below take FrontRows, each
+        /// row read along the board from the end where Tyler's board has Buildings. A copy that still carries its
+        /// texts uses them.
+        /// </summary>
+        private static List<(Vector3 At, string Heading)> FrontPlaces(Blueprints.Blueprint blueprint)
+        {
+            List<Blueprints.Piece> signs = blueprint.Pieces.Where(p => IsSign(p.Prefab)).ToList();
+            if (signs.Count > 0 && signs.All(p => p.Text != null))
+            {
+                return signs.Select(p => (p.Position, Heading(p.Text))).ToList();
+            }
+
+            var places = new List<(Vector3 At, string Heading)>();
+            var rows = new List<List<Blueprints.Piece>>();
+            foreach (Blueprints.Piece sign in signs.OrderByDescending(p => p.Position.y))
+            {
+                List<Blueprints.Piece> row = rows.LastOrDefault();
+                if (row == null || Mathf.Abs(row[0].Position.y - sign.Position.y) > 0.3f)
+                {
+                    rows.Add(row = new List<Blueprints.Piece>());
+                }
+
+                row.Add(sign);
+            }
+
+            for (int r = 0; r < rows.Count; r++)
+            {
+                List<Blueprints.Piece> row = rows[r].OrderByDescending(p => p.Position.x + p.Position.z).ToList();
+                for (int i = 0; i < row.Count; i++)
+                {
+                    string heading = r == 0 ? "" : r - 1 < FrontRows.Length && i < FrontRows[r - 1].Length ? FrontRows[r - 1][i] : null;
+                    if (heading != null)
+                    {
+                        places.Add((row[i].Position, heading));
+                    }
+                }
+            }
+
+            return places;
         }
 
         /// <summary>For 'vh board': each sign of the board, its heading and what it shows.</summary>

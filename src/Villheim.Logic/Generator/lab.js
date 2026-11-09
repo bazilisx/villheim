@@ -230,6 +230,10 @@ const NEEDS = {
   wood_fine_stack: 'Meadows', wood_core_stack: 'Black Forest', stone_pile: 'Meadows', coal_pile: 'Black Forest',
   wood_dragon1: 'Meadows', darkwood_raven: 'Plains', darkwood_wolf: 'Plains', piece_jackoturnip: 'Swamp', piece_xmastree: 'Meadows',
   piece_beehive: 'Meadows', piece_bathtub: 'Black Forest', guard_stone: 'Black Forest',
+  // cauldron upgrades: turnips for the spice rack, silver for the butcher's table, black metal for the pots and pans,
+  // black marble for the mortar, flametal for the rolling pins
+  cauldron_ext1_spice: 'Swamp', cauldron_ext3_butchertable: 'Mountain', cauldron_ext4_pots: 'Plains',
+  cauldron_ext5_mortarandpestle: 'Mistlands', cauldron_ext6_rollingpins: 'Ashlands',
 };
 function needs(name) {
   if (NEEDS[name]) return NEEDS[name];
@@ -1498,6 +1502,11 @@ const F = {
   piece_spinningwheel: { s: [1.78, 1.82, 1.59], c: [0.43, -0.13], at: 'wall', b: 'Plains', cat: 'craft', rel: 270 },
   piece_cartographytable: { s: [3.93, 1.39, 1.95], c: [0.07, 0.07], at: 'floor', b: 'Black Forest', cat: 'table' },
   ArmorStand: { s: [0.9, 1.9, 0.6], at: 'wall', b: 'Swamp', cat: 'deco', tall: true },
+  // cauldron upgrades: the spice rack and the pots and pans hang on a wall near the cauldron, the butcher's table
+  // stands against one (sizes estimated until the models are measured)
+  cauldron_ext1_spice: { s: [1.0, 0.8, 0.3], at: 'mount', b: 'Swamp', cat: 'craft', wall: 0.15, y: 1.4 },
+  cauldron_ext4_pots: { s: [1.2, 0.9, 0.35], at: 'mount', b: 'Plains', cat: 'craft', wall: 0.18, y: 1.3 },
+  cauldron_ext3_butchertable: { s: [2.0, 0.9, 1.0], at: 'wall', b: 'Mountain', cat: 'craft' },
   itemstand: { s: [0.6, 0.6, 0.25], at: 'mount', b: 'Meadows', cat: 'deco', wall: 0.14, y: 1.6 },
   itemstandh: { s: [0.9, 0.2, 0.5], at: 'top', b: 'Meadows', cat: 'deco' },
   sign: { s: [1.0, 0.55, 0.1], at: 'mount', b: 'Black Forest', cat: 'deco', wall: 0.12, y: 1.3 },
@@ -2213,7 +2222,22 @@ function onFire(room, name) {
   const fire = room.fire;
   if (!fire || fire.name !== 'fire_pit') return null;
   const f = F[name];
-  return room.add(name, fire.x, fire.y0 + (f.lift || 0.25), fire.z, fire.yaw, { onFire: true });
+  const rec = room.add(name, fire.x, fire.y0 + (f.lift || 0.25), fire.z, fire.yaw, { onFire: true });
+  if (rec && name === 'piece_cauldron') kitchenExtras(room, rec);
+  return rec;
+}
+
+// The cauldron's upgrades within 5 m of it (the game's range for station upgrades): a butcher's table against the
+// nearest wall, the spice rack and the pots and pans hung on the walls nearest the pot. Corpus: half of the
+// best-liked builds have them, none of ours did.
+function kitchenExtras(room, pot) {
+  const dist = s => Math.hypot(s.x - pot.x, s.z - pot.z);
+  if (ok('cauldron_ext3_butchertable', room.biome)) placeAgainst(room, 'cauldron_ext3_butchertable', s => (dist(s) > 4.5 ? -100 : -dist(s)));
+  for (const name of ['cauldron_ext1_spice', 'cauldron_ext4_pots']) {
+    if (!ok(name, room.biome)) continue;
+    const spots = mountSpots(room, name, { pairs: true }).filter(s => dist(s) < 4.5).sort((a, c) => dist(a) - dist(c));
+    for (const sp of spots) if (putMount(room, name, sp)) break;
+  }
 }
 
 // Paths: from each way in to the fire, the stairs and ladders and the other ways in, through the middle of the room.
@@ -3998,9 +4022,11 @@ function exterior(b, ctx) {
     if (o.kind !== 'window') continue;
     const { e, y0 } = o, { ux, uz, ox, oz } = axes(e);
     const stone = /stone|marble|grausten/.test(C.wallStyle || '') && !(b.woodBays && b.woodBays.has(`${Math.round(e.x * 10)},${Math.round(e.z * 10)}`));
-    const f = 0.1; // trim stands a little proud of the wall face
+    const f = 0.25; // trim stands proud of the wall face (a beam is 0.4 m deep in the game: at 0.25 out it clears the inside)
     if (X.mullion && C.windowStyle !== 'single') put(pole1, e.x, y0 + 1.5, e.z, 0); // two 1 m lights
-    if (X.windowFrame) {
+    // a deck or gallery floor outside the window: no frame (the sill and head would hang over people walking there)
+    const deckOut = b.pieces.some(p => PD.piece(p.name).role === 'floor' && Math.hypot(p.x - (e.x + ox), p.z - (e.z + oz)) < 1.1 && Math.abs(p.y - y0) < 0.6);
+    if (X.windowFrame && !deckOut) {
       put(beam, e.x + ox * f, y0 + 0.9, e.z + oz * f, e.yaw); // sill under the opening
       put(beam, e.x + ox * f, y0 + 2.1, e.z + oz * f, e.yaw); // head over it
       if (!C.frame || stone) for (const s of [-1, 1]) put(pole1, e.x + ux * s * 1 + ox * f, y0 + 1.5, e.z + uz * s * 1 + oz * f, 0); // side posts
@@ -4023,7 +4049,7 @@ function exterior(b, ctx) {
     const h = o.kind === 'gate' ? 3 : 2;
     if (X.doorFrame && o.kind === 'door') {
       if (!C.frame) for (const s of [-1, 1]) put(pole, e.x + ux * s * 1.05 + ox * 0.1, y0 + 1, e.z + uz * s * 1.05 + oz * 0.1, 0);
-      put(beam, e.x + ox * 0.12, y0 + h + 0.1, e.z + oz * 0.12, e.yaw); // the lintel, its underside at the door's top
+      put(beam, e.x + ox * 0.25, y0 + h + 0.2, e.z + oz * 0.25, e.yaw); // the lintel, just over the door's frame
     }
     if (o.storey > 0) continue;
     const outside = { x: e.x + ox, z: e.z + oz };
@@ -4074,8 +4100,8 @@ function exterior(b, ctx) {
     for (let s = 0; s < storeys; s++) {
       const y0 = F + s * SH;
       const opening = openings.find(o => o.e === e && o.y0 === y0);
-      if (X.bands && !(opening && opening.kind !== 'window')) put(beam, e.x + ox * 0.08, y0 + 0.1, e.z + oz * 0.08, e.yaw);
-      if (X.midRail && !opening) put(beam, e.x + ox * 0.08, y0 + 1, e.z + oz * 0.08, e.yaw);
+      if (X.bands && !(opening && opening.kind !== 'window')) put(beam, e.x + ox * 0.25, y0 + 0.1, e.z + oz * 0.25, e.yaw);
+      if (X.midRail && !opening) put(beam, e.x + ox * 0.25, y0 + 1, e.z + oz * 0.25, e.yaw);
     }
   }
 
@@ -4119,7 +4145,7 @@ function svalgang(b, ctx) {
   if (b.pieces.some(p => p.z < zf - 0.5 && p.z > zf - 2.6 && p.x > x0 + 0.3 && p.x < x1 - 0.3 && p.y < yU + 1)) return false;
   // the upper door: a bay beside the middle whose inside cell is no ladder hole or landing
   const L = ladders || [];
-  const freeCell = x => cells.has(`${x},${zf + 1}`) && !L.some(l => [l.hole, l.land, l.stand].some(c => c[0] === x && c[1] === zf + 1));
+  const freeCell = x => cells.has(`${x},${zf + 1}`) && !L.some(l => [l.hole, l.land, l.stand, ...(l.run || [])].some(c => c[0] === x && c[1] === zf + 1));
   const ux = xs.filter(x => x !== door.x).sort((a, c) => Math.abs(a - door.x) - Math.abs(c - door.x)).find(freeCell);
   if (ux == null) return false;
   // take out the upper bay's wall and window pieces, and build it again as a door
@@ -4186,8 +4212,13 @@ function bargeboards(K, C, w, ctx, rows, ends, add, low, pivot, r) {
   const name = slopeBeam(K, r === 2 ? 45 : 26), beam = K.beam || 'wood_beam', capY = low(-1);
   // rafter tails: a sloped beam at every seam of the lowest roof row, half a metre out past its edge and just under it
   // (the exposed rafters of Norse halls; the corpus lays sloped beams along roof piece edges)
+  // (never over a door or gate: a 45 degree beam is 0.4 m thick in the game and hangs into the doorway)
+  const a = (w.alpha || 0) * Math.PI / 180;
+  const overDoor = (u, v) => { const x = w.cx + u * Math.cos(a) + v * Math.sin(a), z = w.cz - u * Math.sin(a) + v * Math.cos(a);
+    return (ctx.openings || []).some(o => o.kind !== 'window' && o.storey === 0 && Math.hypot(o.e.x - x, o.e.z - z) < 2.2); };
   if (X.rafterTails) for (let u = -w.W + 2; u <= w.W - 2 + 0.01; u += 2) for (const sv of [-1, 1]) {
     const v = sv * (2 + 2 * rows + 0.7);
+    if (overDoor(u, sv * w.D)) continue;
     add(name, u, pivot(rows) - 0.7 - (r === 2 ? 0 : 0), v, (sv < 0 ? 180 : 0) + 90, 'trim', low(rows));
   }
   // the ridge beam's end out past each gable
@@ -4235,7 +4266,7 @@ function partition(b, ctx, wallSegment) {
     const zs = [...cells.values()].filter(([x, z]) => Math.abs(x - (xp - sg)) < 0.01 && Math.abs(z - w0.cz) < w0.D).map(([, z]) => z).sort((a, c) => a - c);
     if (zs.length < 3) continue;
     // ladders keep their foot, hole and landing
-    const blocked = (ladders || []).some(L => [L.stand, L.hole, L.land].some(c => Math.abs(c[0] - xp) < 1.01));
+    const blocked = (ladders || []).some(L => [L.stand, L.hole, L.land, ...(L.run || [])].some(c => Math.abs(c[0] - xp) < 1.01));
     if (blocked) continue;
     const mid = zs.slice().sort((a, c) => Math.abs(a - w0.cz) - Math.abs(c - w0.cz))[0];
     for (const z of zs) wallSegment(b, K, C, xp, F, z, 90, SH, z === mid ? 'door' : 'wall');
@@ -4424,7 +4455,10 @@ function canopyBed(b, ctx) {
   for (const bed of b.pieces.filter(p => p.name === 'bed' && p.decor)) {
     const a = (bed.yaw || 0) * Math.PI / 180, ca = Math.cos(a), sa = Math.sin(a);
     const at = (lx, lz) => [bed.x + lx * ca + lz * sa, bed.z - lx * sa + lz * ca]; // local x across, z along the bed
-    const corners = [[-0.62, -1.3], [0.62, -1.3], [-0.62, 1.3], [0.62, 1.3]].map(([lx, lz]) => at(lx, lz));
+    // posts at the corners of the bed's true footprint, a little in
+    const bb = Ck.aabb(bed);
+    const corners = [[bb.x0 + 0.12, bb.z0 + 0.12], [bb.x1 - 0.12, bb.z0 + 0.12], [bb.x0 + 0.12, bb.z1 - 0.12], [bb.x1 - 0.12, bb.z1 - 0.12]];
+    void at;
     // the room over the bed: the lowest thing above it that is not the bed itself
     let ceil = Infinity;
     for (const p of b.pieces) {
@@ -4436,7 +4470,11 @@ function canopyBed(b, ctx) {
     }
     if (ceil < bed.y + 2.5) continue;
     // nothing else stands where a post goes
-    const busy = corners.some(([x, z]) => b.pieces.some(p => p !== bed && p.decor && PB.piece(p.name).role !== 'rug' && Math.hypot(p.x - x, p.z - z) < 0.45 && p.y < bed.y + 2.2));
+    const busy = corners.some(([x, z]) => b.pieces.some(p => {
+      if (p === bed || !p.decor || PB.piece(p.name).role === 'rug' || p.y > bed.y + 2.2) return false;
+      const o = Ck.aabb(p);
+      return x > o.x0 - 0.25 && x < o.x1 + 0.25 && z > o.z0 - 0.25 && z < o.z1 + 0.25; // another bed, a chest, a table
+    }));
     if (busy) continue;
     const T = { decor: true, trim: true };
     for (const [x, z] of corners) b.put(post, x, bed.y + 1, z, 0, T);
@@ -4909,9 +4947,27 @@ function generate(req) {
   if (lit && flat && !lookout) {
     const doorEdges = [door, backDoor].filter(Boolean);
     // a courtyard wing has doors to the yard near its middle: its fire goes to the far end
-    const score = ([x, z]) => (doorEdges.some(e => Math.hypot(e.x - x, e.z - z) < 2.5) ? 100 : 0) + (plan === 'court' ? -1 : 1) * Math.hypot(x - doorX, z - w0.cz);
+    // and off the outer walls when they are thick (a 1 m stone wall reaches half a metre into the cell beside it)
+    const thick = /stone|marble|grausten/.test(C.wallStyle || '');
+    const walled = ([x, z]) => [[2, 0], [-2, 0], [0, 2], [0, -2]].some(([dx, dz]) => !cells.has(`${x + dx},${z + dz}`));
+    const score = ([x, z]) => (doorEdges.some(e => Math.hypot(e.x - x, e.z - z) < 2.5) ? 100 : 0) + (thick && walled([x, z]) ? 50 : 0) +
+      (plan === 'court' ? -1 : 1) * Math.hypot(x - doorX, z - w0.cz);
     flatCell = [...cells.values()].filter(([x, z]) => inside(w0, x, z) && !gallery.has(`${x},${z}`)).sort((a, c) => score(a) - score(c))[0] || null;
     if (flatCell) flue = cellRect(flatCell);
+    // beside a thick wall the fire would reach into it: it goes between this cell and the next one away from the
+    // wall, under a 4 x 2 m opening over both
+    if (flatCell && thick) {
+      // a side is walled where the next cell is not the building's (outer walls and a courtyard's alike)
+      const [x, z] = flatCell, has = (cx, cz) => cells.has(`${cx},${cz}`);
+      const sx = !has(x - 2, z) && has(x + 2, z) ? 2 : !has(x + 2, z) && has(x - 2, z) ? -2 : 0;
+      const sz = !has(x, z - 2) && has(x, z + 2) ? 2 : !has(x, z + 2) && has(x, z - 2) ? -2 : 0;
+      const near = sx || sz ? [1] : [];
+      const over = [[x, z], [x + sx, z], [x, z + sz], [x + sx, z + sz]].filter(([cx, cz], i, a) => a.findIndex(([ax, az]) => ax === cx && az === cz) === i);
+      if (near.length && over.every(([cx, cz]) => cells.has(`${cx},${cz}`) && !gallery.has(`${cx},${cz}`) && !doorEdges.some(d => Math.hypot(d.x - cx, d.z - cz) < 1.1))) {
+        flue = { x0: Math.min(x, x + sx) - 1, x1: Math.max(x, x + sx) + 1, z0: Math.min(z, z + sz) - 1, z1: Math.max(z, z + sz) + 1 };
+        flatCell = [x + sx / 2, z + sz / 2];
+      }
+    }
   }
   const doorCell = [door.cell[0], door.cell[1]];
   const backCell = backDoor ? [backDoor.cell[0], backDoor.cell[1]] : null;
@@ -4920,6 +4976,14 @@ function generate(req) {
   // last one up to a hatch
   const climbsUp = storeys - 1 + (flat && !lookout ? 1 : 0);
   const ladders = climbsUp > 0 ? ladderPlan(cells, climbsUp, { door: doorCell, back: backCell, flue }) : [];
+  // a straight stair along a wall in place of the first ladder, where a long enough wall has room for it (most of the
+  // best-liked builds climb by stairs; bench: req.details.stair true or false)
+  const stairWanted = req.details && req.details.stair != null ? req.details.stair
+    : climbsUp === 1 && !flat && +stage[1] >= 2 && ['home', 'tavern', 'longhouse', 'storage', 'workshop'].includes(type) && rng(seed * 7 + 3)() < 0.75;
+  if (stairWanted && climbsUp === 1 && !flat && Math.abs(SH - Math.round(SH)) < 0.01) {
+    const st = stairPlan(cells, Math.round(SH), { door: doorCell, back: backCell, flue });
+    if (st) { ladders[0] = st; b.notes.push('A stair along the wall up to the floor above.'); }
+  }
   if (climbsUp > 0 && ladders.length < climbsUp) b.notes.push('No room for a ladder with a clear foot and landing in this plan.');
 
   // details (lib/details.js): what trim this building gets, drawn from its own random stream so the rest of the
@@ -4946,7 +5010,8 @@ function generate(req) {
     const up = ladders[s - 1], next = ladders[s];
     if (s > 0) {
       for (const [, [x, z]] of cells) if (!onLadder(up, x, z, SH) && !(flue && inRect(flue, x, z))) b.put(K.floor, x, y0, z);
-      if (up) putLadder(b, K, up, y0 - SH, SH);
+      if (up && up.run) putStairRun(b, K, up, y0 - SH);
+      else if (up) putLadder(b, K, up, y0 - SH, SH);
       else b.notes.push('Upper floor without a ladder.');
     }
     const isTopLookout = lookout && s === storeys - 1;
@@ -4984,8 +5049,8 @@ function generate(req) {
       if (s > 0 && up) room.hole = up.hole;
       // keep the ladders, their feet and landings, and the chimney free of furniture
       room.keep = [];
-      if (up && s > 0) room.keep.push(cellRect(up.hole), cellRect(up.land));
-      if (next) room.keep.push(cellRect(next.stand), cellRect(next.hole));
+      if (up && s > 0) room.keep.push(...(up.run || [up.hole]).map(cellRect), cellRect(up.land));
+      if (next) room.keep.push(cellRect(next.stand), ...(next.run || [next.hole]).map(cellRect));
       if (flue && s > 0) room.keep.push(flue);
       if (room.slots) room.slots = room.slots.filter(sl => !room.keep.some(k => inRect(k, sl.x, sl.z, 0.6)));
       if (form === 'open') delete room.slots; // no walls: things stand along the edges of the floor
@@ -5018,6 +5083,7 @@ function generate(req) {
   }
 
   // a back room in a big house (before the furnishing, so the rooms are read with it)
+  dctx.openings = b.openings || [];
   if (!open && plan !== 'court' && !req.skipDecor) Details.partition(b, dctx, wallSegment);
 
   // inner aisle posts for halls
@@ -5150,7 +5216,8 @@ function generate(req) {
     for (let x = -yard + 1; x < yard; x += 2) for (let z = -yard + 1; z < yard; z += 2) b.put(pave, x, 0, z);
     const well = new Build(); wellDesign(well, K, biome, 's1');
     const lift = thickFloor(pave) ? 0.5 : 0; // on top of the paving
-    for (const p of well.pieces) b.put(p.name, p.x, p.y + lift, p.z, p.yaw);
+    // the barrel by the well only where the yard has room for it (a small yard's walls are a metre thick)
+    for (const p of well.pieces) if (!(p.name === 'piece_chest_barrel' && yard < 3.1)) b.put(p.name, p.x, p.y + lift, p.z, p.yaw);
     if (stage === 's3' && type !== 'home') {
       for (const sx of [-1, 1]) for (const sz of [-1, 1]) stoneTowerAt(b, K, sx * (Q + 1), sz * (Q + 1), top + 2, 0, true);
       b.notes.push('Corner towers, after the caravanserais.');
@@ -5292,15 +5359,45 @@ function settle(b, ctx) {
     // a hearth is 3 m across: in a small room a fire pit takes its place
     if (fire.name === 'hearth' && mainRoom && (mainRoom.x1 - mainRoom.x0) * (mainRoom.z1 - mainRoom.z0) < 40) fire.name = 'fire_pit';
     const dx = target.x - fire.x, dz = target.z - fire.z, ox = fire.x, oz = fire.z;
-    const moving = b.pieces.filter(p => p.decor && (p === fire || (/cookingstation/.test(p.name) && Math.hypot(p.x - ox, p.z - oz) < 0.4)));
+    const moving = b.pieces.filter(p => p.decor && (p === fire || (/cookingstation|piece_cauldron/.test(p.name) && Math.hypot(p.x - ox, p.z - oz) < 0.4)));
     for (const p of moving) { p.x = +(p.x + dx).toFixed(3); p.z = +(p.z + dz).toFixed(3); }
     // whatever now stands where the fire went comes out
     const fb = Ck.aabb(fire), pad = 0.4;
     b.pieces = b.pieces.filter(p => {
-      if (!p.decor || p === fire || /cookingstation/.test(p.name)) return true;
+      if (!p.decor || p === fire || /cookingstation|piece_cauldron/.test(p.name)) return true;
       const o = Ck.aabb(p);
       return !(o.x0 < fb.x1 + pad && o.x1 > fb.x0 - pad && o.z0 < fb.z1 + pad && o.z1 > fb.z0 - pad && Math.abs(p.y - fire.y) < 1);
     });
+    // a fire that now reaches into a thick wall (a 1 m stone wall beside the vent cell) slides away from it, up to
+    // 0.75 m toward the room's middle; a hearth (4 x 3 m in the game) that still does not fit becomes a fire pit
+    const walls = b.pieces.filter(p => !p.decor && ['wall', 'pole', 'stair'].includes(P.piece(p.name).role)).map(p => Ck.aabb(p));
+    const clear0 = keepClear(b).filter(z => !(fire.x > z.x0 && fire.x < z.x1 && fire.z > z.z0 && fire.z < z.z1)); // doorways and climbs, not the zone it is in already
+    const clips = () => { const o = Ck.aabb(fire); return walls.some(w => w.x0 < o.x1 - 0.05 && w.x1 > o.x0 + 0.05 && w.z0 < o.z1 - 0.05 && w.z1 > o.z0 + 0.05 && w.y0 < o.y1 && w.y1 > o.y0 + 0.05) ||
+      clear0.some(z => hits({ ...o, x0: o.x0 + 0.15, x1: o.x1 - 0.15, z0: o.z0 + 0.15, z1: o.z1 - 0.15 }, z)); };
+    if (clips()) {
+      const rm = mainRoom || { x0: fire.x - 1, x1: fire.x + 1, z0: fire.z - 1, z1: fire.z + 1 };
+      const cx = (rm.x0 + rm.x1) / 2, cz = (rm.z0 + rm.z1) / 2, L = Math.hypot(cx - fire.x, cz - fire.z) || 1;
+      const x0 = fire.x, z0 = fire.z, sit = b.pieces.filter(p => p.decor && p !== fire && /cookingstation|piece_cauldron/.test(p.name) && Math.hypot(p.x - x0, p.z - z0) < 0.4);
+      for (const nm of fire.name === 'hearth' ? ['hearth', 'fire_pit'] : [fire.name]) {
+        fire.name = nm;
+        let ok = false;
+        // the smallest slide that clears every wall, toward the room's middle first
+        const tries = [[0, 0]];
+        for (const t of [0.25, 0.5, 0.75, 1]) for (const [dx, dz] of [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [-1, 1], [1, -1], [-1, -1]]) tries.push([dx * t, dz * t]);
+        tries.sort((p1, p2) => Math.hypot(...p1) - Math.hypot(...p2) || ((p2[0] * (cx - x0) + p2[1] * (cz - z0)) - (p1[0] * (cx - x0) + p1[1] * (cz - z0))));
+        for (const [dx, dz] of tries) {
+          fire.x = +(x0 + dx).toFixed(3); fire.z = +(z0 + dz).toFixed(3);
+          if (!clips()) { ok = true; break; }
+        }
+        if (!ok) { fire.x = x0; fire.z = z0; }
+        if (ok) break;
+      }
+      void L;
+      for (const p of sit) { p.x = fire.x; p.z = fire.z; }
+    }
+    // the cauldron's upgrades work within 5 m of it: those left farther away by the move come out
+    const pot = b.pieces.find(p => p.decor && p.name === 'piece_cauldron');
+    b.pieces = b.pieces.filter(p => !/^cauldron_ext/.test(p.name) || (pot && Math.hypot(p.x - pot.x, p.z - pot.z) < 5));
     if (target.kind !== 'crown') chimney(b, ctx, target);
     else b.notes.push('Fire under the open crown of the roof.');
   }
@@ -5325,7 +5422,7 @@ function settle(b, ctx) {
   const zones = keepClear(b), gone = [];
   if (!ctx.skipDecor && ['home', 'longhouse'].includes(ctx.type)) bedIfNone(b, ctx, fire, zones);
   b.pieces = b.pieces.filter(p => {
-    if (!p.decor || p === fire || /cookingstation/.test(p.name) && fire && Math.hypot(p.x - fire.x, p.z - fire.z) < 0.4) return true;
+    if (!p.decor || p === fire || /cookingstation|piece_cauldron/.test(p.name) && fire && Math.hypot(p.x - fire.x, p.z - fire.z) < 0.4) return true;
     const bx = Ck.aabb(p);
     if (!zones.some(z => hits(bx, z))) return true;
     gone.push(bx); return false;
@@ -5478,7 +5575,7 @@ function woodpilesOutside(b) {
     let moved = false;
     for (const s of spots) {
       if (s.taken || doors.some(o => Math.hypot(o.x - s.x, o.z - s.z) < 2.6)) continue;
-      const cand = { ...pile, x: +s.x.toFixed(3), y: 0, z: +s.z.toFixed(3), yaw: s.yaw, q: quat(s.yaw) };
+      const cand = { ...pile, x: +s.x.toFixed(3), y: +((Decor.FURNITURE[pile.name] || {}).base || 0).toFixed(3), z: +s.z.toFixed(3), yaw: s.yaw, q: quat(s.yaw) };
       const cb = Ck.aabb(cand);
       const clash = b.pieces.some(p => p !== pile && P.piece(p.name).role !== 'floor' && hits(cb, Ck.aabb(p)));
       if (clash) continue;
@@ -5487,6 +5584,21 @@ function woodpilesOutside(b) {
     if (!moved) pile.gone = true;
   }
   b.pieces = b.pieces.filter(p => !p.gone);
+}
+
+// Things set on a table (dishes, candles) whose table came out later (a clash, a ladder, the fire's ring) come out too.
+function dropOrphans(b) {
+  const F = Decor.FURNITURE;
+  const tables = b.pieces.filter(p => p.decor && (F[p.name] || {}).cat === 'table');
+  const built = b.pieces.filter(p => p.decor && !F[p.name] && P.piece(p.name).structural);
+  const Ck = checksLib();
+  b.pieces = b.pieces.filter(p => {
+    if (!p.decor || (F[p.name] || {}).at !== 'top') return true;
+    if (tables.some(t => Math.hypot(t.x - p.x, t.z - p.z) < 1.6 && Math.abs(t.y + ((F[t.name] || {}).top || 0.75) - p.y) < 0.25)) return true;
+    if (built.some(t => { const o = Ck.aabb(t); return p.x > o.x0 - 0.1 && p.x < o.x1 + 0.1 && p.z > o.z0 - 0.1 && p.z < o.z1 + 0.1 && Math.abs(o.y1 - p.y) < 0.25; })) return true;
+    // or hung on a wall as a shelf
+    return b.pieces.some(w => !w.decor && P.piece(w.name).role === 'wall' && Math.hypot(w.x - p.x, w.z - p.z) < 1.2 && Math.abs(w.y - p.y) < 1.2);
+  });
 }
 
 // Pieces the biome cannot make yet, swapped for the nearest it can, or left out (props the generator sets itself:
@@ -5513,6 +5625,7 @@ function biomeSafe(b, biome) {
 
 function finish(b, info) {
   biomeSafe(b, info.biome);
+  dropOrphans(b);
   // the generator places walls by their middle; the pieces that stand on their pivot go down to their foot
   for (const p of b.pieces) { const pi = P.piece(p.name); if (pi.onPivot && !p.decor && !p.footed) { p.y = +(p.y - pi.size[1] / 2).toFixed(3); p.footed = true; } }
   const name = `${info.type}_${info.biome.replace(' ', '')}_${info.cultureKey}_${info.plan || 'x'}-${info.roof || 'x'}-${info.walls || 'x'}${info.asked || ''}_${info.stage}${info.decor}_${info.seed}`;
@@ -5626,7 +5739,36 @@ function putLadder(b, K, L, yLow, rise) {
 }
 const cutLanding = rise => ladderFoot(rise) + rise > 1.01;
 // cells a floor leaves out for a ladder: the hole, and the landing cell when its near half is open
-const onLadder = (L, x, z, rise) => !!L && ((x === L.hole[0] && z === L.hole[1]) || (cutLanding(rise) && x === L.land[0] && z === L.land[1]));
+const onLadder = (L, x, z, rise) => !!L && (L.run ? L.run.some(c => c[0] === x && c[1] === z)
+  : ((x === L.hole[0] && z === L.hole[1]) || (cutLanding(rise) && x === L.land[0] && z === L.land[1])));
+
+// Where a straight stair goes: a 2 m wide flight of n wood_stair pieces (each climbs 1 m over 2 m) along a wall, a clear
+// cell at its foot and a landing cell at its top; the floor above is open over the whole flight (head room). Returns a
+// plan entry like a ladder's, with run: the flight's cells, or null.
+function stairPlan(cells, n, o = {}) {
+  const has = (x, z) => cells.has(`${x},${z}`);
+  const near = (a, c) => a && c && a[0] === c[0] && a[1] === c[1];
+  let best = null, bestScore = -Infinity;
+  for (const [, [x, z]] of cells) for (const [dx, dz] of [[1, 0], [0, 1], [-1, 0], [0, -1]]) {
+    const stand = [x - 2 * dx, z - 2 * dz], run = [], land = [x + 2 * n * dx, z + 2 * n * dz];
+    for (let k = 0; k < n; k++) run.push([x + 2 * k * dx, z + 2 * k * dz]);
+    const all = [stand, ...run, land];
+    if (!all.every(c => has(...c))) continue;
+    if (o.flue && all.some(c => inRect(o.flue, c[0], c[1], 1.6))) continue; // the fire and its ring stay clear of the flight
+    if ([o.door, o.back].some(d => d && all.slice(0, -1).some(c => near(c, d)))) continue;
+    // a wall along one whole side of the flight
+    const side = [1, -1].find(sg => run.every(([cx, cz]) => !has(cx + sg * 2 * dz, cz + sg * 2 * dx)));
+    if (side == null) continue;
+    // the foot near the door is handy; a flight along the back wall keeps the front room open
+    const score = (o.door ? -0.3 * Math.hypot(stand[0] - o.door[0], stand[1] - o.door[1]) : 0) + (o.door && Math.abs(run[0][1] - o.door[1]) > 3 ? 2 : 0);
+    if (score > bestScore) { bestScore = score; best = { hole: run[0], run, stand, land, dir: [dx, dz], wallSide: true, stair: true, side }; }
+  }
+  return best;
+}
+function putStairRun(b, K, L, yLow) {
+  const [dx, dz] = L.dir, yaw = norm(Math.atan2(-dx, -dz) * 180 / Math.PI);
+  L.run.forEach(([x, z], k) => b.put(K.stair || 'wood_stair', x, yLow + k, z, yaw));
+}
 
 // ---------------------------------------------------------------- walls
 
@@ -6184,7 +6326,8 @@ function woodshed(b, K, C, wings, edges, F, SH, tower) {
     const zp = [zs[0] - 1, zs[0] + 1, zs[1] + 1];
     for (const z of zp) { b.put(framePole(K, C), xp, F + 1, z, 0, T2); b.put(K.pole1 || 'wood_pole', xp, F + 1.9, z, 0, T2); }
     for (const z of zs) b.put(K.beam || 'wood_beam', xp, F + 2.35, z, 90, T2);
-    for (const z of zs) b.put('wood_stack', xWall + sg * 1.05, F, z, 90, { decor: true, trim: true });
+    // one stack, its long side (2.5 m) along the wall, standing on its bottom (the pivot is 0.57 m up)
+    b.put('wood_stack', xWall + sg * 1.0, F + 0.57, (zs[0] + zs[1]) / 2, 90, { decor: true, trim: true });
     b.notes.push('An open woodshed against the gable end.');
     return true;
   }
@@ -6280,7 +6423,7 @@ function penDesign(b, K, W, D, stage) {
   for (let x = x0 + 1; x < x1; x += 2) { b.put(K.fence, x, 0.5, -pd, 0); b.put(K.fence, x, 0.5, pd, 0); }
   for (let z = -pd + 1; z < pd; z += 2) if (Math.abs(z) > 1.5) b.put(K.fence, x1, 0.5, z, 90);
   b.put('piece_chest_barrel', x1 - 1, 0, pd - 1, 0);
-  b.put('wood_stack', x0 + 1.2, 0, pd - 1, 0);
+  b.put('wood_stack', x0 + 1.2, 0.57, pd - 1, 0);
   b.notes.push('Pen beside the barn; its gap faces away from the barn.');
 }
 
@@ -6304,7 +6447,7 @@ function campDesign(b, K, biome, stage, R, decor) {
   for (let i = 0; i < n; i++) { const a = (i / n) * 2 * Math.PI + R() * 0.4; b.put('piece_logbench01', Math.sin(a) * 2.6, 0, Math.cos(a) * 2.6, (a * 180 / Math.PI + 180) % 360); }
   for (const x of [-1, 1]) { b.put(K.pole, x * 2, 1, 5, 0); b.put(K.roof45, x, 1.2, 4.6, 0); }
   b.put('bed', 0, 0, 5, 90);
-  if (decor !== 'd1') { b.put('wood_stack', 3.5, 0, 3, 30); b.put('piece_chest_wood', -3.5, 0, 3, 150); }
+  if (decor !== 'd1') { b.put('wood_stack', 3.5, 0.57, 3, 30); b.put('piece_chest_wood', -3.5, 0, 3, 150); }
   if (decor === 'd3') { b.put('piece_groundtorch_wood', 3.6, 0.75, -2, 0); b.put('rug_deer', 0, 0.02, 4.3, 0); b.put('itemstand', -2, 1.5, 5.3, 180); }
   return b;
 }

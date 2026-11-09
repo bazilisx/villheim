@@ -253,3 +253,18 @@ lintel 0.1 m into the door's top were the most common new finds; the lintel is a
 | `wood_wall_roof` | gable | 2.00 x 1.00 x 0.20 | 2.27 x 1.54 x 0.40 | 2.26 x 1.51 x 0.40 | 0 / -0.26 | x +0.27, y +0.54, z +0.2, bottom -0.26 |
 | `wood_wall_roof_45` | gable | 2.00 x 2.00 x 0.20 | 2.43 x 2.43 x 0.40 | 2.41 x 2.41 x 0.40 | 0 / -0.2 | x +0.43, y +0.43, z +0.2, bottom -0.2 |
 | `wood_window` | window | 1.00 x 1.00 x 0.20 | 1.15 x 1.05 x 0.36 | 1.15 x 1.05 x 0.36 | -0.5 / -0.52 | x +0.15, z +0.16 |
+
+## Pivots that differ from the wood pieces (2026-11-09)
+
+Measured from the game's snap points in `data/piece-models.json`. The generator places Ashlands timber as if it were
+the wood piece it stands in for, so `lib/generate.js` (`PIVOT_SHIFT`) moves these by the difference:
+
+| Piece | Where it sits from its pivot | Shift |
+|---|---|---|
+| `ashwood_beam_2m` | 1 m below (the wood beam is centered) | +1 m |
+| `ashwood_pole_1m` | from 1 m below up to the pivot | +0.5 m |
+| `ashwood_wall_beam_45` (and `_alt`) | rises 2 m from its pivot (the wood 45 degree beam is centered) | -1 m |
+
+The 26 degree beams (`wood_beam_26`, `ashwood_wall_beam_26`) and the 67 degree ones rise from their foot in wood and
+ashwood alike, so they need no shift. The Wood Roof Cross (`wood_wall_roof_top_45`) has its boards crossing 1 m
+over its pivot (the 26 degree one 0.5 m); the generator sets that crossing on the gable's apex.

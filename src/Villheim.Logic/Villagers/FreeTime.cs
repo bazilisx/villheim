@@ -1067,7 +1067,8 @@ namespace Villheim.Logic.Villagers
                 }
 
                 GameObject go = view.gameObject;
-                if (go.GetComponent<CraftingStation>() != null || go.GetComponent<CookingStation>() != null ||
+                // No pretend cooking: a cooking station is only used to really cook (Healing).
+                if (go.GetComponent<CraftingStation>() != null ||
                     go.GetComponent<Fireplace>() != null || go.GetComponent<Smelter>() != null ||
                     go.GetComponent<Fermenter>() != null)
                 {

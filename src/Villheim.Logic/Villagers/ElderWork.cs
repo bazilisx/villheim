@@ -266,7 +266,7 @@ namespace Villheim.Logic.Villagers
                 (Kind.Fire, 2f),
                 (Kind.Chests, VillageChest.Find(hearth) != null ? 1.5f : 0f),
                 (Kind.Tidy, state0.Plots.Count > 0 ? 1.5f : 0f),
-                (Kind.Cook, Nearest<CookingStation>(center, VillageReach) != null ? 2f : 0f),
+                (Kind.Cook, 0f), // real cooking happens through Healing; no pretend cooking
                 (Kind.Farm, state0.Plots.Any(p => p.Role == nameof(Designs.Role.Farm)) ? 2f : 0f),
                 (Kind.Animals, Animal(center) != null ? 1.5f : 0f),
                 (Kind.Arrows, Workbench(center) != null ? 1f : 0f),

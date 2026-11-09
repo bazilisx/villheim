@@ -14,13 +14,13 @@ namespace Villheim.Logic.Villagers
     {
         public static readonly string[] Actions =
         {
-            "come", "patrol", "sit", "ground", "rest", "kneel", "dance", "bed", "fire", "cook", "hammer", "chop",
+            "come", "patrol", "sit", "ground", "rest", "kneel", "dance", "bed", "fire", "hammer", "chop",
             "wave", "cheer", "point", "thumbsup", "laugh", "cookmeat", "stop",
         };
 
         public const string Help =
             "come (walk to you), patrol (walk back and forth 10 m), sit (nearest bench or chair), ground (sit on the ground), " +
-            "rest, kneel, dance, bed (lie in the nearest village bed), fire (see to the hearth fire), cook (the cooking pose at the station), " +
+            "rest, kneel, dance, bed (lie in the nearest village bed), fire (see to the hearth fire), " +
             "cookmeat (the real cooking: raw food from the chest onto the station, off when done, into the chest), " +
             "hammer, chop (tool swings on the spot), wave, cheer, point, thumbsup, laugh (gestures), stop";
 
@@ -62,7 +62,7 @@ namespace Villheim.Logic.Villagers
 
             Act act = Acts.GetOrCreateValue(villager);
             End(villager, act);
-            if (what == "cookmeat")
+            if (what == "cookmeat" || what == "cook")
             {
                 // Not a pose: the village's own cooking routine runs (Healing), before his work.
                 return Healing.ForceCook(villager);

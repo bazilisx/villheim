@@ -19,6 +19,7 @@
 const NODE_D = typeof module !== 'undefined';
 const PD = NODE_D ? require('./pieces.js') : window.VHPieces;
 const checksD = () => (NODE_D ? require('./checks.js') : window.VHChecks);
+const MotifsD = NODE_D ? require('./motifs.js') : window.VHMotifs;
 
 const normD = a => ((a % 360) + 360) % 360;
 const quatD = yaw => { const a = yaw * Math.PI / 360; return [0, +Math.sin(a).toFixed(6), 0, +Math.cos(a).toFixed(6)]; };
@@ -34,40 +35,57 @@ const BRACED = ['norse', 'norse-forest', 'norse-highland', 'anglo-saxon', 'black
 const SHUTTERS = ['norse', 'norse-forest', 'norse-highland', 'slavic', 'baltic', 'anglo-saxon', 'frankish-norman',
   'celtic', 'fen-folk', 'black-forest', 'mountain', 'swamp', 'castle-medieval'];
 
+function makeHash(ctx) {
+  const sig = [ctx.cultureKey, ctx.type, ctx.stage, ctx.decor, ctx.biome, ctx.plan, ctx.F, ctx.storeys, ctx.door && ctx.door.x, ctx.door && ctx.door.z, (ctx.edges || []).length].join('|');
+  let h = 2166136261;
+  for (let i = 0; i < sig.length; i++) { h ^= sig.charCodeAt(i); h = Math.imul(h, 16777619); }
+  return h >>> 0;
+}
+
 // What a building gets, from its culture, type, size stage (s1 to s3) and decor stage (d1 to d3).
 function profile(ctx) {
   const { C, cultureKey, T, stage, decor, biome, R } = ctx;
   const sN = +stage[1], dN = +decor[1];
   const north = NORTH.includes(cultureKey);
   const wood = /plank|half-timber|log/.test(C.wallStyle || 'plank');
+  const boards = /plank|half-timber/.test(C.wallStyle || 'plank') && !/log/.test(C.wallStyle || ''); // posts and bands read on boards, not on logs
   const roll = p => R() < p;
   return {
     sN, dN, north, wood,
     windowFrame: (sN >= 2 || C.frame) && !C.arches,
-    mullion: !C.glass && C.windowStyle !== 'single' && !C.arches,
+    mullion: !C.glass && C.windowStyle !== 'single' && !C.arches, // one centered post, twin lights only
     shutters: sN >= 2 && dN >= 2 && SHUTTERS.includes(cultureKey) && reachesD(biome, 'Black Forest') && !C.glass && roll(0.6),
     doorFrame: !C.arches,
-    doorHood: north && sN >= 2 && !C.awnings && roll(0.7),
-    doorstep: sN >= 2,
-    doorLamp: dN >= 2,
+    doorHood: north && sN >= 2 && !C.awnings && roll(0.7) && !C.arches, // never without the frame
+    doorstep: true,
+    doorLamp: dN >= 2 && !C.arches,
+    // log walls keep theirs (log poles) for now: without them the decorator sets chests into the 0.55 m log corners
     cornerPosts: wood && !C.frame && !T.tower,
-    bands: wood && sN >= 2 && !C.frame,
+    bands: boards && sN >= 2 && !C.frame,
     midRail: false, // with the braces and window frames a rail at 1 m made half-timbered walls too busy (2026-11-09 render)
     bargeboards: north && (sN >= 2 || C.carved),
-    crossed: CROSSED.includes(cultureKey) && sN >= 2,
+    // the game's Roof Cross is 4 m across: one building in five (from the building's make, so the random stream the
+    // rest of the details draw from stays as it was)
+    crossed: CROSSED.includes(cultureKey) && sN >= 2 && makeHash(ctx) % 5 === 0,
     svalgang: ['norse', 'norse-forest', 'norse-highland', 'slavic', 'baltic'].includes(cultureKey) && ctx.storeys >= 2 &&
       ['home', 'storage', 'tavern'].includes(ctx.type) && (sN >= 3 || (sN === 2 && dN >= 3)) && ['rect', 'long', 'L', 'T'].includes(ctx.plan) &&
       !C.awnings && !ctx.flat && roll(0.75),
     gableWindow: north && sN >= 2,
     rafterTails: north && sN >= 2 && !C.eaves2 && (C.eaves || 1) < 2,
+    eaveTrim: north && sN >= 2 && !C.eaves2 && (C.eaves || 1) < 2,
     purlinEnds: north && sN >= 2,
     gableTruss: north && sN >= 2 && roll(0.6),
     gablePorch: north && (sN >= 3 || (sN === 2 && dN >= 3)) && ['home', 'longhouse', 'tavern', 'temple'].includes(ctx.type) && roll(0.5),
-    braces: BRACED.includes(cultureKey) && sN >= 2 && (T.use === 'hall' || ctx.type === 'longhouse'),
+    braces: false, // the leaning posts ran from the eaves past the wall foot and across windows (bench review): off until redone
     benchOut: dN >= 2 && ['home', 'hall'].includes(T.use),
     fireKerb: dN >= 2,
     wallBenches: (ctx.type === 'longhouse' || (T.use === 'hall' && ['long', 'rect'].includes(ctx.plan))) && sN >= 2,
     partition: ['home', 'tavern'].includes(ctx.type) && (sN >= 3 || (sN === 2 && dN >= 3)) && ['rect', 'long', 'L', 'T'].includes(ctx.plan),
+    // assemblies from the best-liked builds (lib/motifs.js) on windows and doors everywhere, on corners of timber walls,
+    // on gables and eaves of the northern cultures; the rules above do whatever no motif fits
+    motifs: true,
+    motifCorners: wood && !T.tower,
+    motifRoof: north && sN >= 2,
   };
 }
 
@@ -108,7 +126,9 @@ function exterior(b, ctx) {
   const edgeAt = new Map(edges.map(e => [`${e.x},${e.z}`, e]));
   const openings = b.openings || [];
   const isOpen = new Set(openings.map(o => `${o.e.x},${o.e.z},${o.y0}`));
-  const added = { windows: 0, doors: 0, corners: 0, gables: 0, braces: 0, gallery: 0 };
+  const added = { windows: 0, doors: 0, corners: 0, gables: 0, braces: 0, gallery: 0, motifs: 0 };
+  const MT = X.motifs ? (ctx.motifs || (ctx.motifs = MotifsD.plan(ctx))) : null;
+  const used = new Set();
   if (X.svalgang && ctx.wallSegment) added.gallery = svalgang(b, ctx) ? 1 : 0;
   if (X.gablePorch && !added.gallery) added.porch = gablePorch(b, ctx) ? 1 : 0;
 
@@ -116,23 +136,34 @@ function exterior(b, ctx) {
   for (const o of openings) {
     if (o.kind !== 'window') continue;
     const { e, y0 } = o, { ux, uz, ox, oz } = axes(e);
+    if (MT && motifWindow(b, ctx, MT, o, used)) { added.windows++; added.motifs++; continue; }
     const stone = /stone|marble|grausten/.test(C.wallStyle || '') && !(b.woodBays && b.woodBays.has(`${Math.round(e.x * 10)},${Math.round(e.z * 10)}`));
     const f = 0.25; // trim stands proud of the wall face (a beam is 0.4 m deep in the game: at 0.25 out it clears the inside)
-    if (X.mullion && C.windowStyle !== 'single') put(pole1, e.x, y0 + 1.5, e.z, 0); // two 1 m lights
+    // the light: the whole 2 m bay, or 1 m beside a 1 x 1 wall piece
+    const quarter = K.wallQuarter && b.pieces.find(p => p.name === K.wallQuarter && Math.abs(p.y - (y0 + 1.5)) < 0.3 && Math.abs((p.x - e.x) * ox + (p.z - e.z) * oz) < 0.2 && Math.abs((p.x - e.x) * ux + (p.z - e.z) * uz) < 0.8);
+    const sd = quarter ? ((quarter.x - e.x) * ux + (quarter.z - e.z) * uz > 0 ? 1 : -1) : 0;
+    const lw = quarter ? 1 : 2, cx = e.x - ux * sd * 0.5, cz = e.z - uz * sd * 0.5;
+    if (X.mullion && lw === 2) put(pole1, e.x, y0 + 1.5, e.z, 0);
     // a deck or gallery floor outside the window: no frame (the sill and head would hang over people walking there)
     const deckOut = b.pieces.some(p => PD.piece(p.name).role === 'floor' && Math.hypot(p.x - (e.x + ox), p.z - (e.z + oz)) < 1.1 && Math.abs(p.y - y0) < 0.6);
     if (X.windowFrame && !deckOut) {
-      put(beam, e.x + ox * f, y0 + 0.9, e.z + oz * f, e.yaw); // sill under the opening
-      put(beam, e.x + ox * f, y0 + 2.1, e.z + oz * f, e.yaw); // head over it
-      if (!C.frame || stone) for (const s of [-1, 1]) put(pole1, e.x + ux * s * 1 + ox * f, y0 + 1.5, e.z + uz * s * 1 + oz * f, 0); // side posts
+      // sill and head no wider than the light and a little over; posts at its sides on board walls only
+      // a 1 m light takes 1 m boards where posts carry them; without posts the 2 m beam rests on the wall beside
+      const posts = (!C.frame || stone) && C.wallStyle !== 'log';
+      const bm = lw === 2 || !posts ? beam : (K.beam1 || 'wood_beam_1'), bx = lw === 2 || !posts ? e.x : cx, bz = lw === 2 || !posts ? e.z : cz;
+      put(bm, bx + ox * f, y0 + 0.9, bz + oz * f, e.yaw);
+      put(bm, bx + ox * f, y0 + 2.1, bz + oz * f, e.yaw);
+      if (posts) for (const s of [-1, 1]) put(pole1, cx + ux * s * (lw / 2) + ox * f, y0 + 1.5, cz + uz * s * (lw / 2) + oz * f, 0);
     }
-    if (X.shutters && !stone && o.storey === 0 + o.storey) {
-      // open shutters flat against the wall either side, only where wall continues beside the window
-      for (const s of [-1, 1]) {
-        const n = edgeAt.get(`${e.x + ux * s * 2},${e.z + uz * s * 2}`);
-        if (!n || n.yaw !== e.yaw || isOpen.has(`${n.x},${n.z},${y0}`)) continue;
-        put('wood_window', e.x + ux * s * 1.5 + ox * 0.12, y0 + 1.5, e.z + uz * s * 1.5 + oz * 0.12, e.yaw);
-      }
+    if (X.shutters && !stone) {
+      // open shutters flat on the wall either side, only where a plain bay is beside the window and the bay past it
+      // is no window wanting the same wall; both sides or none
+      const room = s => {
+        const n1 = edgeAt.get(`${e.x + ux * s * 2},${e.z + uz * s * 2}`), n2 = edgeAt.get(`${e.x + ux * s * 4},${e.z + uz * s * 4}`);
+        if (!n1 || n1.yaw !== e.yaw || isOpen.has(`${n1.x},${n1.z},${y0}`)) return false;
+        return !(n2 && n2.yaw === e.yaw && isOpen.has(`${n2.x},${n2.z},${y0}`));
+      };
+      if (room(-1) && room(1)) for (const s of [-1, 1]) put('wood_window', cx + ux * s * (lw / 2 + 0.6) + ox * 0.12, y0 + 1.5, cz + uz * s * (lw / 2 + 0.6) + oz * 0.12, e.yaw);
     }
     added.windows++;
   }
@@ -142,35 +173,51 @@ function exterior(b, ctx) {
     if (o.kind === 'window') continue;
     const { e, y0 } = o, { ux, uz, ox, oz } = axes(e);
     const h = o.kind === 'gate' ? 3 : 2;
-    if (X.doorFrame && o.kind === 'door') {
-      if (!C.frame) for (const s of [-1, 1]) put(pole, e.x + ux * s * 1.05 + ox * 0.1, y0 + 1, e.z + uz * s * 1.05 + oz * 0.1, 0);
-      put(beam, e.x + ox * 0.25, y0 + h + 0.2, e.z + oz * 0.25, e.yaw); // the lintel, just over the door's frame
+    const mo = MT && o.kind === 'door' && !o.gallery ? motifDoor(b, ctx, MT, o, used) : null;
+    if (mo) { added.motifs++; o.motif = mo; }
+    // the opening as the door piece fills it (a cloth door hangs beside the wall's middle)
+    const dp = b.pieces.find(p => PD.piece(p.name).role === 'door' && Math.hypot(p.x - e.x, p.z - e.z) < 1.2 && p.y > y0 - 0.5 && p.y < y0 + 3);
+    const op = dp ? PD.doorOpening(dp) : null;
+    const dx = op ? op.x : e.x, dz = op ? op.z : e.z, dw = op ? Math.min(2, op.w) : 2, dh = op ? Math.min(3, op.h) : h;
+    const framed = X.doorFrame && o.kind === 'door' && !mo;
+    if (framed) {
+      if (!C.frame) for (const s of [-1, 1]) put(pole, dx + ux * s * (dw / 2 + 0.05) + ox * 0.1, y0 + 1, dz + uz * s * (dw / 2 + 0.05) + oz * 0.1, 0);
+      put(dw < 1.5 ? (K.beam1 || 'wood_beam_1') : beam, dx + ox * 0.25, y0 + dh + 0.2, dz + oz * 0.25, e.yaw); // the lintel, just over the door's frame
     }
     if (o.storey > 0) continue;
-    const outside = { x: e.x + ox, z: e.z + oz };
-    // a step or landing in front of a ground-level door, unless a porch, stair or deck is already there
+    const outside = { x: dx + ox, z: dz + oz };
+    // a step in front of a ground-level door: two beams laid along the threshold (a 2 x 2 floor there read as a mat),
+    // unless a porch, stair or deck is already there
     const busy = b.pieces.some(p => Math.hypot(p.x - outside.x, p.z - outside.z) < 1.1 && ['floor', 'stair'].includes(PD.piece(p.name).role) && Math.abs(p.y - F) < 1.2);
-    if (X.doorstep && F < 0.01 && !busy) put(K.floor, outside.x, F, outside.z, 0);
-    // a small roof over the door (pent hood) with a rafter under each side, where no porch or awning covers it
-    const covered = b.pieces.some(p => /roof/.test(p.name) && Math.hypot(p.x - outside.x, p.z - outside.z) < 1.2 && p.y > y0 + 2 && p.y < y0 + SH + 0.6);
-    if (X.doorHood && !covered && !(b.gallery && o.storey === 0) && SH >= 3 && !(ctx.flat && storeys === 1 && false)) {
-      const yaw = normD(Math.atan2(ox, oz) * 180 / Math.PI + 180);
-      put(K.roof26, outside.x, y0 + SH - 0.5, outside.z, yaw);
+    if (X.doorstep && F < 0.01 && !busy && !(mo && mo.step)) for (const d of [0.35, 0.75]) put(beam, dx + ox * d, F + 0.1, dz + oz * d, e.yaw);
+    // a small roof over the door (pent hood) on a rafter each side, falling away from the wall, its low edge level with
+    // the door's head 2 m out (so the doorway keeps its headroom); never without the frame, never under an eave or a
+    // porch less than 1.5 m over the door
+    const covered = b.pieces.some(p => {
+      const r = PD.piece(p.name).role;
+      if (!['roof', 'roofTop', 'roofCorner', 'floor'].includes(r)) return false;
+      const bx = checksD().aabb(p), out = (p.x - dx) * ox + (p.z - dz) * oz, side = Math.abs((p.x - dx) * ux + (p.z - dz) * uz);
+      return out > -1.2 && out < 3.2 && side < 2.5 && bx.y0 > y0 + dh - 0.3 && bx.y0 < y0 + dh + 1.5;
+    });
+    if (X.doorHood && framed && !covered && !(b.gallery && o.storey === 0) && SH >= 3) {
+      const yaw = normD(Math.atan2(ox, oz) * 180 / Math.PI);
+      put(K.roof26, outside.x, y0 + dh, outside.z, yaw);
       const r26 = slopeBeam(K, 26);
-      for (const s of [-1, 1]) put(r26, outside.x + ux * s * 1, y0 + SH - 0.5, outside.z + uz * s * 1, yaw + 90);
+      for (const s of [-1, 1]) put(r26, outside.x + ux * s * 0.85, y0 + dh - 0.15, outside.z + uz * s * 0.85, yaw + 90);
       b.notes.push('A small roof over the door.');
     }
-    // a lamp post beside the door on the ground
-    if (X.doorLamp && F < 0.01 && !o.back) {
-      for (const s of [1, -1]) {
-        const cand = { name: 'piece_groundtorch_wood', x: +(e.x + ux * s * 1.8 + ox * 0.8).toFixed(3), y: F + 0.65, z: +(e.z + uz * s * 1.8 + oz * 0.8).toFixed(3), q: quatD(0), yaw: 0 };
-        if (!clear(b, cand)) continue;
-        b.pieces.push({ ...cand, decor: true, trim: true });
-        break;
-      }
+    // lamps: a pair in line with the door posts, a little outside them, with a frame only; on a raised house at the top
+    // of the entry stair where a landing is
+    if (X.doorLamp && framed && !o.back && !(mo && mo.lit)) {
+      const cands = [-1, 1].map(s => ({ name: 'piece_groundtorch_wood', x: +(dx + ux * s * (dw / 2 + 0.7) + ox * 0.35).toFixed(3), y: F + 0.65, z: +(dz + uz * s * (dw / 2 + 0.7) + oz * 0.35).toFixed(3), q: quatD(0), yaw: 0 }));
+      const footing = c => F < 0.01 || b.pieces.some(p => PD.piece(p.name).role === 'floor' && Math.abs(p.y - F) < 0.2 && Math.abs(p.x - c.x) < 1.05 && Math.abs(p.z - c.z) < 1.05);
+      if (cands.every(c => footing(c) && clear(b, c))) for (const c of cands) b.pieces.push({ ...c, decor: true, trim: true });
     }
     added.doors++;
   }
+
+  // ---- corner motifs on the outside corners of the ground storey, before the posts so one post stands there
+  if (MT && X.motifCorners) added.corners += motifCorners(b, ctx, MT, used);
 
   // ---- corner posts, from the foot of the walls to their top, on every outside corner
   if (X.cornerPosts) {
@@ -179,11 +226,11 @@ function exterior(b, ctx) {
       const { ux, uz } = axes(e);
       for (const s of [-1, 1]) { const k = `${e.x + ux * s},${e.z + uz * s}`; if (!dirs.has(k)) dirs.set(k, new Set()); dirs.get(k).add(e.yaw); }
     }
-    const top = F + storeys * SH, p = C.wallStyle === 'log' ? (K.pole || pole) : pole;
+    const top = F + storeys * SH, p = C.wallStyle === 'log' ? (K.pole || pole) : pole, foot = F > 0.01 && F < 2.01 ? F - Math.ceil(F) : F; // from the ground under a raised floor
     for (const [k, ys] of dirs) {
       if (ys.size < 2) continue;
       const [x, z] = k.split(',').map(Number);
-      for (let y = F; y < top - 0.01;) { const h = top - y >= 2 ? 2 : 1; put(h === 2 ? p : pole1, x, y + h / 2, z, 0); y += h; }
+      for (let y = foot; y < top - 0.01;) { const h = top - y >= 2 ? 2 : 1; put(h === 2 ? p : pole1, x, y + h / 2, z, 0); y += h; }
       added.corners++;
     }
   }
@@ -220,8 +267,131 @@ function exterior(b, ctx) {
     if (added.braces) b.notes.push('Leaning posts against the long walls, after the Viking halls at Trelleborg.');
   }
 
+  for (const id of ctx.motifUsed || []) used.add(id);
+  if (used.size) pruneMotifs(b, ctx);
+  if (used.size) b.notes.push(`Trim after community builds: ${[...used].sort().join(', ')}.`);
+  b.motifs = [...used];
   b.detailReport = added;
   return added;
+}
+
+// ---------------------------------------------------------------- motifs (lib/motifs.js)
+
+// Motif pieces on the walls wait until the rooms are furnished (details interior), so the decorator lays out the rooms
+// as it would without them; meanwhile they count for the motifs that follow.
+function hold(b, placed) {
+  b.motifPending = b.motifPending || [];
+  for (const p of placed) b.motifPending.push(p);
+}
+function commitMotifs(b, ctx) {
+  const pend = b.motifPending || [];
+  delete b.motifPending;
+  if (!pend.length) return;
+  // with the game's solids where they are known (checks.js gameBox), as the overlap check reads furniture
+  const Ck = checksD(), gb = p => (Ck.gameBox ? Ck.gameBox(p) : Ck.aabb(p)), furn = b.pieces.filter(p => p.decor).map(gb);
+  const SH = NODE_D ? (() => { try { return require('./shapes.js'); } catch (e) { return null; } })() : window.VHShapes;
+  const hit = (a, o) => {
+    if (!(o.x0 < a.x1 - 0.02 && o.x1 > a.x0 + 0.02 && o.y0 < a.y1 - 0.02 && o.y1 > a.y0 + 0.02 && o.z0 < a.z1 - 0.02 && o.z1 > a.z0 + 0.02)) return false;
+    if (a.pass || o.pass) return false;
+    return !(a.sol && o.sol && SH) || SH.overlapVolume(a.sol, o.sol) > 0.01;
+  };
+  for (const p of pend) {
+    const pb = gb({ ...p, q: p.q || quatD(p.yaw) });
+    if (furn.some(o => hit(pb, o))) continue; // what the furnishing put there first stays
+    b.put(p.name, p.x, p.y, p.z, p.yaw, { trim: true, motif: p.motif, footed: true });
+  }
+  pruneMotifs(b, ctx);
+}
+
+// The last pass over the motifs' pieces: one that doubles another piece, is not connected to the ground or would
+// fall by its material (the game's support, checks.js) comes out, and what hung on it with it.
+function pruneMotifs(b, ctx) {
+  const Ck = checksD(), keys = ctx.motifKeys || new Set();
+  const isMotif = p => p.motif || keys.has(`${p.name}|${Math.round(p.x * 10)}|${Math.round(p.y * 10)}|${Math.round(p.z * 10)}`);
+  for (let round = 0; round < 4; round++) {
+    const ps = b.pieces, boxes = ps.map(p => Ck.aabb(p)), near = Ck.index(boxes);
+    const ys = boxes.filter(x => x.info.structural).map(x => x.y0).sort((a, c) => a - c), ground = ys.length ? ys[Math.floor(ys.length * 0.02)] : 0;
+    const out = new Set();
+    // doubles
+    const seen = new Map();
+    ps.forEach((p, i) => {
+      const k = `${p.name}|${p.x.toFixed(1)}|${p.y.toFixed(1)}|${p.z.toFixed(1)}|${Math.round(Ck.localOf ? (p.yaw != null ? p.yaw : 0) : 0) % 360}`;
+      if (!seen.has(k)) { seen.set(k, i); return; }
+      const j = seen.get(k);
+      if (isMotif(p)) out.add(i); else if (isMotif(ps[j])) { out.add(j); seen.set(k, i); }
+    });
+    // connected to the ground through touching pieces (as checks.js reads it)
+    const held = boxes.map(x => x.y0 <= ground + 0.35), queue = held.map((h, i) => (h ? i : -1)).filter(i => i >= 0);
+    const tch = (a, o, e) => a.x0 <= o.x1 + e && o.x0 <= a.x1 + e && a.y0 <= o.y1 + e && o.y0 <= a.y1 + e && a.z0 <= o.z1 + e && o.z0 <= a.z1 + e;
+    while (queue.length) {
+      const i = queue.pop(), a = boxes[i];
+      for (const j of near(a)) if (!held[j] && tch(a, boxes[j], 0.16) && (a.info.structural || ['craft', 'deco', 'light'].includes(boxes[j].info.role))) { held[j] = true; queue.push(j); }
+    }
+    ps.forEach((p, i) => { if (!held[i] && boxes[i].info.structural && isMotif(p)) out.add(i); });
+    for (const i of Ck.stability(ps, boxes, near, ground)) if (isMotif(ps[i])) out.add(i);
+    if (!out.size) break;
+    b.pieces = ps.filter((p, i) => !out.has(i));
+  }
+}
+
+// a window bay: a 2 m opening, or a 1 m light beside a 1 x 1 wall piece; the motif for its size and facade
+function motifWindow(b, ctx, MT, o, used) {
+  const { e, y0 } = o, { ux, uz, ox, oz } = axes(e), K = ctx.K;
+  const quarter = K.wallQuarter && b.pieces.find(p => p.name === K.wallQuarter && Math.abs(p.y - (y0 + 1.5)) < 0.3 && Math.abs((p.x - e.x) * ox + (p.z - e.z) * oz) < 0.2 && Math.abs((p.x - e.x) * ux + (p.z - e.z) * uz) < 0.8);
+  let f = { w: 2, h: 1 }, x = e.x, z = e.z;
+  if (quarter) { const sd = (quarter.x - e.x) * ux + (quarter.z - e.z) * uz > 0 ? 1 : -1; f = { w: 1, h: 1 }; x -= ux * sd * 0.5; z -= uz * sd * 0.5; }
+  const glass = b.pieces.some(p => /crystal|glass/.test(p.name) && Math.hypot(p.x - e.x, p.z - e.z) < 1.1 && Math.abs(p.y - (y0 + 1.5)) < 0.6);
+  // a window under a lean-to or behind a stack stays plain
+  const shed = b.pieces.some(p => { const d = (p.x - x) * ox + (p.z - z) * oz, s = Math.abs((p.x - x) * ux + (p.z - z) * uz); return d > 0.3 && d < 2.6 && s < 2 && p.y < y0 + 3 && (p.decor || /roof/.test(PD.piece(p.name).role)); });
+  if (shed) return false;
+  const front = ctx.door && e.out[0] === ctx.door.out[0] && e.out[1] === ctx.door.out[1];
+  const c = MT.get('window', f, front);
+  if (!c) return false;
+  const placed = MotifsD.place(b, c, { x, y: y0 + 1, z, nx: ox, nz: oz }, f, { mirror: MT.mirror, ground: 0, noInfill: glass, dry: true });
+  hold(b, placed);
+  if (!placed.length) return false;
+  used.add(c.m.id);
+  return true;
+}
+// the door: its motif, without what would stand below the floor when the house is raised more or less than the
+// motif's own (its steps were for that height)
+function motifDoor(b, ctx, MT, o, used) {
+  const { e, y0 } = o, { ox, oz } = axes(e);
+  const dp = b.pieces.find(p => PD.piece(p.name).role === 'door' && Math.hypot(p.x - e.x, p.z - e.z) < 1.2 && p.y > y0 - 0.5 && p.y < y0 + 2.5);
+  if (!dp) return null;
+  const f = { w: 2, h: Math.min(3, PD.doorSpec(dp.name).h) };
+  const c = MT.get('door', f, !o.back);
+  if (!c) return null;
+  const rise = c.m.fit.rise || 0, F = ctx.F;
+  const placed = MotifsD.place(b, c, { x: e.x, y: y0, z: e.z, nx: ox, nz: oz }, f,
+    { mirror: MT.mirror, ground: 0, minH: Math.abs(rise - (o.storey ? 99 : F)) < 0.3 ? null : -0.2, dry: true });
+  if (!placed.length) return null;
+  hold(b, placed);
+  used.add(c.m.id);
+  return { id: c.m.id, lit: placed.some(p => PD.piece(p.name).role === 'light'), step: placed.some(p => PD.piece(p.name).role === 'floor' && p.y < y0 + 0.3) };
+}
+// outside corners of the ground storey: where two walls meet with the building behind both
+function motifCorners(b, ctx, MT, used) {
+  const { edges, F } = ctx, c = MT.get('corner', {}, true);
+  if (!c) return 0;
+  const at = new Map();
+  for (const e of edges) {
+    const { ux, uz } = axes(e);
+    for (const s of [-1, 1]) { const k = `${e.x + ux * s},${e.z + uz * s}`; if (!at.has(k)) at.set(k, []); at.get(k).push(e); }
+  }
+  let n = 0;
+  for (const [k, es] of at) {
+    const a = es.find(e => e.yaw === 0), bb = es.find(e => e.yaw !== 0);
+    if (!a || !bb || es.length !== 2) continue;
+    const [x, z] = k.split(',').map(Number);
+    // outside: each wall lies on the far side of the other's outward direction
+    if ((a.x - x) * bb.out[0] + (a.z - z) * bb.out[1] > -0.5 || (bb.x - x) * a.out[0] + (bb.z - z) * a.out[1] > -0.5) continue;
+    const dx = a.out[0] + bb.out[0], dz = a.out[1] + bb.out[1], l = Math.hypot(dx, dz);
+    const placed = MotifsD.place(b, c, { x, y: F, z, nx: dx / l, nz: dz / l }, null, { mirror: MT.mirror, ground: 0, inward: false, dry: true });
+    if (placed.length) { n++; hold(b, placed); }
+  }
+  if (n) used.add(c.m.id);
+  return n;
 }
 
 // The upper gallery of a Norwegian loft (svalgang): a balcony three bays wide over the front door, on posts from the
@@ -305,21 +475,66 @@ function bargeboards(K, C, w, ctx, rows, ends, add, low, pivot, r) {
   const X = ctx.profile;
   if (!X) return;
   const name = slopeBeam(K, r === 2 ? 45 : 26), beam = K.beam || 'wood_beam', capY = low(-1);
-  // rafter tails: a sloped beam at every seam of the lowest roof row, half a metre out past its edge and just under it
-  // (the exposed rafters of Norse halls; the corpus lays sloped beams along roof piece edges)
-  // (never over a door or gate: a 45 degree beam is 0.4 m thick in the game and hangs into the doorway)
+  // motifs from the best-liked builds for the gable faces and the eaves (lib/motifs.js), in wing-local terms
+  const MT = X.motifs && X.motifRoof ? (ctx.motifs || (ctx.motifs = MotifsD.plan(ctx))) : null;
+  const gm = MT && MT.get('gable', { slope: r === 2 ? 45 : 26 }, true);
+  // eave motifs are off for now: few fit a roof that ends at the wall, and they hardly show from the ground
+  const em = X.eaveMotifs && MT && rows === (w.D - 3) / 2 && MT.get('eave', { slope: r === 2 ? 45 : 26, overhang: 0 }, true);
+  const top = low((w.D - 3) / 2), gw = X.gableWindow && !C.stoneWalls && capY - top >= 3.9;
+  let gableDone = false, apex = false, eaveDone = false;
+  // the roof's parts go in by generate.js; their world places are kept so the last pass can find them
+  const al = (w.alpha || 0) * Math.PI / 180, keys = ctx.motifKeys || (ctx.motifKeys = new Set());
+  const addM = (n, u, y, v, yaw, role, surf) => {
+    add(n, u, y, v, yaw, role, surf);
+    keys.add(`${n}|${Math.round((w.cx + u * Math.cos(al) + v * Math.sin(al)) * 10)}|${Math.round(y * 10)}|${Math.round((w.cz - u * Math.sin(al) + v * Math.cos(al)) * 10)}`);
+  };
+  if (gm) [-1, 1].forEach((sg, k) => {
+    if (!ends[k]) return;
+    const n = MotifsD.roofParts(gm, { x: sg * w.W, y: capY, z: 0, nx: sg, nz: 0 }, addM, { mirror: MT.mirror, skip: p => {
+      const v = Math.abs(p.z), h = PD.piece(p.name).size[1] / 2;
+      if (v > w.D - 0.3 || p.y - h < top - 0.05 || p.o < -0.35 || p.o > 1.3) return true; // inside the gable, in front of it
+      // a long beam standing straight out of the gable face reads as a stray plank
+      if (/^beam(2|4)$/.test(p.cls) && Math.abs(Math.cos((p.yaw - (sg > 0 ? 90 : 270)) * Math.PI / 180)) < 0.5) return true;
+      // under the roof line: the motif's piece may not stand out through the roof
+      if (p.y > capY - (r / 2) * Math.max(0, v - 1) + 0.6) return true;
+      if (ctx.dragonsHere && v < 1.5 && p.y > capY - 1.5) return true;
+      if (gw && v < 1.4 && p.y > top - 0.2 && p.y < top + 2.4) return true; // the loft window
+      // the rules' bargeboards run the whole edge: the motif's own on that line would double them
+      if (X.bargeboards && /^beam(26|45|67)$/.test(p.cls) && Math.abs((capY - p.y) - (r / 2) * v) < 0.9) return true;
+      if (p.y > capY - 1.2 && v < 1) apex = true;
+      return false;
+    } });
+    if (n) gableDone = true;
+  });
+  if (gableDone) ctx.motifUsed = [...(ctx.motifUsed || []), gm.m.id];
   const a = (w.alpha || 0) * Math.PI / 180;
   const overDoor = (u, v) => { const x = w.cx + u * Math.cos(a) + v * Math.sin(a), z = w.cz - u * Math.sin(a) + v * Math.cos(a);
     return (ctx.openings || []).some(o => o.kind !== 'window' && o.storey === 0 && Math.hypot(o.e.x - x, o.e.z - z) < 2.2); };
-  if (X.rafterTails) for (let u = -w.W + 2; u <= w.W - 2 + 0.01; u += 2) for (const sv of [-1, 1]) {
+  // the eaves: one bay of the motif on every 2 m of the lowest row, both sides, never over a door
+  if (em && X.eaveTrim) {
+    const edge = 3 + 2 * rows;
+    let n = 0;
+    for (let u = -w.W + 1; u <= w.W - 1 + 0.01; u += 2) for (const sv of [-1, 1])
+      if (!overDoor(u, sv * w.D)) n += MotifsD.roofParts(em, { x: u, y: low(rows), z: sv * edge, nx: 0, nz: sv }, addM, { mirror: MT.mirror, skip: p => {
+        if (p.o < -0.05 || p.h < -0.9 || Math.abs(p.a) > 1.05) return true;
+        // under the roof: nothing through it (the roof rises inward from the edge)
+        const half = PD.piece(p.name).size[1] / 2, under = (r / 2) * Math.max(0, -p.o) - 0.15;
+        return p.h + half > under;
+      } });
+    if (n) { eaveDone = true; ctx.motifUsed = [...(ctx.motifUsed || []), em.m.id]; }
+  }
+  // rafter tails: a sloped beam at every seam of the lowest roof row, half a metre out past its edge and just under it
+  // (the exposed rafters of Norse halls; the corpus lays sloped beams along roof piece edges)
+  // (never over a door or gate: a 45 degree beam is 0.4 m thick in the game and hangs into the doorway)
+  if (X.rafterTails && !eaveDone) for (let u = -w.W + 2; u <= w.W - 2 + 0.01; u += 2) for (const sv of [-1, 1]) {
     const v = sv * (2 + 2 * rows + 0.7);
     if (overDoor(u, sv * w.D)) continue;
     add(name, u, pivot(rows) - 0.7 - (r === 2 ? 0 : 0), v, (sv < 0 ? 180 : 0) + 90, 'trim', low(rows));
   }
   // the ridge beam's end out past each gable
-  if (X.purlinEnds && !ctx.dragonsHere && ctx.wings.length === 1) [-1, 1].forEach((sg, k) => { if (ends[k]) add(K.beam1 || 'wood_beam_1', sg * (w.W + 0.45), capY - 0.35, 0, 0, 'trim', capY); });
+  if (X.purlinEnds && !ctx.dragonsHere && ctx.wings.length === 1) [-1, 1].forEach((sg, k) => { if (ends[k]) add(K.beam1 || 'wood_beam_1', sg * (w.W + 0.55), capY - 0.35, 0, 0, 'trim', capY); });
   // a timber truss on the face of each gable: a king post up the middle and a collar beam across at half height
-  if (X.gableTruss) [-1, 1].forEach((sg, k) => {
+  if (X.gableTruss && !gableDone) [-1, 1].forEach((sg, k) => {
     if (!ends[k] || capY - low(rows) < 2.9) return;
     const u = sg * (w.W + 0.1), top = low(rows) + (r === 2 ? 0 : 0), h = capY - top;
     const from = X.gableWindow && h >= 3.9 ? top + 2.2 : top;
@@ -341,7 +556,7 @@ function bargeboards(K, C, w, ctx, rows, ends, add, low, pivot, r) {
     }
     // crossed boards over the apex: the game's Wood Roof Cross (the piece is the pair of crossed boards that Norwegian
     // vindskier end in), on the ridge where it meets the gable, as a quarter of the corpus builds have it
-    if (X.crossed && !ctx.dragonsHere) add(r === 2 ? 'wood_wall_roof_top_45' : 'wood_wall_roof_top', sg * w.W, capY, 0, 90, 'trim', capY + 1);
+    if (X.crossed && !ctx.dragonsHere && !apex) add(r === 2 ? 'wood_wall_roof_top_45' : 'wood_wall_roof_top', sg * w.W, capY, 0, 90, 'trim', capY + 1);
   });
 }
 
@@ -400,6 +615,7 @@ function benchByDoor(b, ctx) {
 function interior(b, ctx) {
   const X = ctx.profile;
   if (!X) return;
+  commitMotifs(b, ctx);
   const { K } = ctx, Ck = checksD();
   benchByDoor(b, ctx);
   const furniture = () => b.pieces.filter(p => p.decor);

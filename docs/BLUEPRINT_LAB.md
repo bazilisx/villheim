@@ -227,7 +227,7 @@ Parts added on 2026-11-09:
 
 | Part | Where | When |
 |---|---|---|
-| Bar counter | Half walls with beams on top 1.5 m out from a long wall of a tavern's main room, barrels behind, mugs on it (`lib/kitbash.js`). | taverns, d2 on, main room 8 m or longer |
+| Bar counter | Half walls with beams on top 1.5 m out from a long wall of a tavern's main room, barrels behind, mugs on it (`lib/kitbash.js`); tables, seats and chests in its way give way to it. | taverns, d2 on, main room 8 m or longer |
 | Canopy bed | A 2 m post at each corner of a bed's footprint and a rug laid over them. | homes and longhouses, d3, 50 %, where the ceiling is 2.5 m up and nothing stands at the corners |
 | Chimney stack | Stone blocks against the outside of a gable wall from the ground to 0.8 m past the ridge's top, two deep for the first 2 m on half of them, a 2 x 2 slab and a 1 m pot on top; clear of windows, other wings, decks and the woodshed. | stone-capable biomes and stages, homes, longhouses, taverns, smithies, temples, gable roofs, 35 % |
 | Wall dormers | A 4 m gable on the wall top with its own two roof pieces and ridge cap running back into the 45 degree main roof; one over the middle of the front or a pair. A dormer over the door takes the place of a gable porch. | Frankish, English, medieval, Slavic, highland and Baltic cultures, s2 on, homes, taverns, longhouses, stores, workshops, 45 % |
@@ -242,6 +242,7 @@ Parts added on 2026-11-09:
 | Gable-end windows | One window per floor, in the middle bay of a gable end. | gable roofs |
 | Stone walls | Windows in every fourth bay instead of every second (each opening needs a timber bay). | stone wall styles |
 | No tower blocks | The eave stays within 1.1 times the plan's short side; storeys come off until it does. | all but towers and fixed forms |
+| Tidy furnishing | A rug with nothing standing on it and a chair with no table within 0.9 m (or fire within 1.6 m) come out; a long table with no seat gets a bench along each long side where there is room. | all furnished designs |
 | Kitchen | A butcher's table against the wall nearest the cauldron, the spice rack and pots and pans hung on the walls nearest it, all within 4.5 m. Gated by their materials: turnips (Swamp), silver (Mountain), black metal (Plains). | wherever a cauldron is |
 
 ## Repair

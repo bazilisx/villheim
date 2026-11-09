@@ -147,13 +147,16 @@ namespace Villheim.Logic.Villagers
             }
 
             Hunters[villager.VillageId] = villager;
+            // The last hunt's "meat in the chest" talk is over once someone sets out again (T-108).
+            Dialogue.Forget(villager.VillageId, "hunt");
             if (Random.value < 0.5f)
             {
                 Say(villager, "hunt:start");
             }
 
             state.Prey = prey;
-            Defenders.CarryBow(villager);
+            // The weapon in hand from the start (never the pickaxe from his last job), the bow and arrows in his pack.
+            Roles.ArmForHunt(villager);
             state.Phase = Phase.Chase;
             state.Deadline = Time.time + Mathf.Max(10f, LogicConfig.HuntChaseSeconds?.Value ?? 45f);
             state.LastPreyPosAt = 0f;
@@ -171,7 +174,7 @@ namespace Villheim.Logic.Villagers
             Character prey = state.Prey;
             if (prey == null || prey.IsDead())
             {
-                Say(villager, "hunt:kill");
+                // The kill line waits for the meat on the ground (Collect), so nobody talks of meat too soon (T-108).
                 state.Phase = Phase.Collect;
                 state.Deadline = Time.time + 20f;
                 state.DropsSeenAt = -1f;
@@ -236,7 +239,7 @@ namespace Villheim.Logic.Villagers
                 Defenders.PutBowAway(villager);
             }
 
-            if (villager.GetRightItem() == null || villager.GetRightItem().GetDamage().GetTotalDamage() < 1f)
+            if (!Roles.IsWeapon(villager.GetRightItem()))
             {
                 Roles.ArmForHunt(villager);
             }
@@ -361,6 +364,11 @@ namespace Villheim.Logic.Villagers
                 state.Carrying[name] = count + item.m_itemData.m_stack;
                 item.m_nview.ClaimOwnership();
                 ZNetScene.instance.Destroy(item.gameObject);
+            }
+
+            if (state.Carrying.Keys.Any(CookableName))
+            {
+                Say(villager, "hunt:kill");
             }
 
             state.Phase = Phase.Deliver;

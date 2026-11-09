@@ -147,6 +147,11 @@ namespace Villheim.Logic.Villagers
             }
 
             Trade trade = TradeOf(villager);
+            if (trade == Trade.None && Elders.IsElder(villager))
+            {
+                return "elder";
+            }
+
             return trade != Trade.None ? trade.ToString().ToLowerInvariant() : null;
         }
 
@@ -256,6 +261,32 @@ namespace Villheim.Logic.Villagers
             Armed armed = ArmedStates.GetOrCreateValue(villager);
             armed.Holding = true;
             armed.LastThreat = UnityEngine.Time.time;
+        }
+
+        /// <summary>
+        /// A weapon for a fight or a hunt: clubs, spears, swords, knives, polearms and bows. Axes and pickaxes are the
+        /// villagers' work tools and never count (T-108).
+        /// </summary>
+        public static bool IsWeapon(ItemDrop.ItemData item)
+        {
+            if (item?.m_shared == null)
+            {
+                return false;
+            }
+
+            switch (item.m_shared.m_skillType)
+            {
+                case Skills.SkillType.Clubs:
+                case Skills.SkillType.Spears:
+                case Skills.SkillType.Swords:
+                case Skills.SkillType.Knives:
+                case Skills.SkillType.Polearms:
+                case Skills.SkillType.Bows:
+                    return item.m_shared.m_itemType != ItemDrop.ItemData.ItemType.Tool &&
+                           item.m_shared.m_itemType != ItemDrop.ItemData.ItemType.Torch;
+                default:
+                    return false;
+            }
         }
 
         /// <summary>The village's gear tier for this villager (0 rags .. 4 bronze), capped by what the smith has made.</summary>

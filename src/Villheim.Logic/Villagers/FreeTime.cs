@@ -151,7 +151,7 @@ namespace Villheim.Logic.Villagers
             // Off work in the evening and at night: tools are put away (not on watch); work takes them out again.
             if (mode != Mode.Day && !Roles.IsNightWatch(villager) && villager.GetRightItem() != null)
             {
-                villager.HideHandItems(false, true);
+                HandItems.PutAway(villager);
             }
 
             if (Time.time - state.LastRun > 1f || state.Mode != mode || Time.time > state.Until ||

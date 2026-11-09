@@ -6,8 +6,10 @@ Current facts only. Read this at the start of a session. Narrative is in `docs/d
 ## Current State (as of 2026-11-09)
 
 - **Next session:** work the open bug list in the 2026-11-08 note, Session 12 (round 5 results, build 0908775). Read
-  The three kitbash helpers are finished and merged (interiors to stage 5, yards to stage 3, accents to stage 3).
-  Waiting on Tyler: D-067 and which next jobs to start (2026-11-09 note, end).
+  The three kitbash helpers are finished and merged. Three new helpers started 2026-11-09 (Session 2 of that day's
+  note): room layout from professional game interiors (feat/layout), households and messy realism with additive
+  decor stages and working yards (feat/persona), shapes, stage ladder and growth lineage (feat/massing). The lead
+  works on items on stands.
 - **Kitbash libraries (2026-11-09, not tested in game):** interior assemblies mined from the corpus and placed in
   every room with 18 built kits (`data/kitbash-interior.json`, `lib/kitbash.js`); yards with fences, gates, paths,
   beds and lamps on s2 and s3 homes and farms (`lib/yards.js`, `data/yards.json`); exterior accents and a coverage
@@ -46,6 +48,12 @@ Current facts only. Read this at the start of a session. Narrative is in `docs/d
   in `docs/renderer/corpus` with credit; stairs where they fit; interiors and accents may use any prefab that ships
   with Valheim (walls and roofs follow the biome's materials); minor decor is free or paid in the village biome's
   own materials.
+- **Decisions D-067 to D-071 (2026-11-09):** working yards for work and community buildings, with no base crafting
+  station outside without a roof (extensions as decor are fine), market area later and no village square; three
+  drivers for the whole generator: messy realism, environmental storytelling, variance by culture, village, family
+  and NPC, with no fixed-interval rules applied every time; a complexity ladder per stage (s1 and s2 one storey and
+  simple, three storeys rare and late) and houses that grow from their own earlier stage; room layout learned from
+  professional game interiors (BG3 first) plus the kitbash library; decor stages additive (d2 keeps d1, d3 keeps d2).
 - **Feature checklist (2026-11-08):** every built, planned and proposed feature plus ideas from other mods, 730 rows,
   in the review sheet's Features tab (Yes, No or Later). Source files in `docs/features/`. ValheimCityBuilder is CC0
   per its authors; study in `docs/CITYBUILDER_STUDY.md`.

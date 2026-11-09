@@ -24,6 +24,7 @@ namespace Villheim.Logic
             "props [location] [filter]: list a location's child objects with their meshes and components (to find Hildir's map table and tents); written to BepInEx/Villheim/props-<location>.txt",
             "board [now]: show the notice board's blueprint, place and what it waits for ('now' puts it up at once, free)",
             "beds: list the beds round the nearest village, whether they count and who sleeps in each",
+            "decor [now]: each home of the nearest village, its design, its next decor stage and how many of that stage's pieces are still to make; 'now' puts up the nearest home's next stage at once, free (a test)",
             "homes [signs]: each home of the nearest village, who lives there (a lone villager or a family), its front door and what its signs say; 'signs' writes the signs again now",
             "paths now|show: 'now' plans a path for every door not yet joined and lays all waiting paths of the nearest village at once, clearing trees and stones on the way; 'show' lists the waiting paths and marks their points on the map for a minute",
             "buildingground: level the ground under the nearest village building to its foundation",
@@ -178,6 +179,22 @@ namespace Villheim.Logic
                             {
                                 Say(context, "   " + line);
                             }
+                        }
+                    }
+                    else
+                    {
+                        Say(context, "Villheim: no village hearth within 150 m.");
+                    }
+
+                    return true;
+                case "villheim_decor":
+                    if (TryGetPlayer(context, out Player decorNear) && VillageHearth.Closest(decorNear.transform.position, 150f) is VillageHearth dv)
+                    {
+                        List<string> decor = Villagers.HomeDecor.Report(dv, decorNear.transform.position, args.Length > 0 && args[0] == "now");
+                        Say(context, $"Villheim: homes of {dv.VillageName} and their decor:");
+                        foreach (string line in decor)
+                        {
+                            Say(context, "   " + line);
                         }
                     }
                     else

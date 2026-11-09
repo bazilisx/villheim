@@ -282,6 +282,8 @@ node lib/build_web.js web/index.html                               # the request
 node lib/build_engine.js                                           # the game's bundle, src/Villheim.Logic/Generator/lab.js
 python3 lab/learn_interior.py <corpus dir> data/interior.json      # interior rules; then node lab/interior_lite.js
 node lab/check_interiors.js lib out.json 3                         # furniture checks over a sample
+node -e "require('./lib/floorplan.js').set(24)"                   # the floorplan catalog ('vh floorplan set' in the game)
+node lab/floorplan_feedback.js floorplans.csv                      # Tyler's Floorplans tab into the fill rates
 node lab/process_requests.js <requests.jsonl> [result dir]         # make the designs asked for with 'vh ask'
 ../gen-test/run.sh [list] [tries]                                  # game engine and node, byte for byte
 ```

@@ -79,9 +79,12 @@ tables, stools, benches, deer rugs, wooden floor torches, item stands, workbench
    meter marked wall, window, door or open), doors, stairs and ladders, the ceiling over each cell. Floor edges with no
    wall become edges things may stand against (open sheds, tents). Nothing here assumes a height or a wall thickness.
 2. Keep clear: a box in front of every door (the learned depth for the room kind, at most 3 m and 40 % of the room),
-   the stairs and ladders with 0.8 m round them, the work place in front of each station, a ring round the fire.
-3. Fire first in homes, halls and taverns (under the ridge vent), then paths from each door to the fire, the stairs and
-   the other doors, through the middle of the room. Nothing but rugs goes on a path.
+   the stairs and ladders with 0.8 m round them, the work place in front of each station, a ring round the fire, the
+   chimney's footprint and the boxes the generator marks to keep clear. Nothing but rugs ever goes in a door's box.
+3. Fire first in homes, halls and taverns (under the smoke hole), then beds in homes (a house always has one: if no
+   bed fits head to a wall, one goes side on or free-standing, and a house with no bed after all its floors gets one on
+   the largest floor), then paths from each door to the fire, the stairs and the other doors, through the middle of the
+   room. Nothing but rugs goes on a path.
 4. Furnish by the room's role, in clusters: beds with a chest at the foot and a rug beside; a table with its seats and a
    rug under it; the fire with its cooking station or cauldron and seats facing it; chests in a row with a sign over the
    middle; stations with their extensions beside them; the throne at the far end with a rug and a torch either side;
@@ -90,7 +93,14 @@ tables, stools, benches, deer rugs, wooden floor torches, item stands, workbench
    door or window; torches in pairs either side of a face's middle.
 6. Woodpiles, stone and coal heaps go outside, against a back or side wall, 3 m from doors, never in an enclosed space.
 7. Every floor is furnished: upper floors of homes sleep, inns get guest rooms, workshops and storehouses store, guard
-   towers get a bed, chest, armor stand and lights per storey and a chest, bench and torch on a roofed lookout.
+   towers get a bed, chest, armor stand and lights per story and a chest, bench and torch on a roofed lookout.
+8. Fill (d2 and d3): once the needs are met, the room is topped up toward the corpus rate for its kind (d2 the median,
+   d3 the 75th percentile, times Tyler's floorplan factor) with the extras builders add: item stands in a row on one
+   wall, shelves of horizontal item stands, barrels and Dvergr crates in a corner, a round table with two chairs, rugs,
+   armor stands, banners in a pair, carvings, things on tables (horizontal stands, candles, coin stacks), tools on the
+   work wall, a cartography table. The choice is seeded and weighted per room; each extra repeats at most once or twice,
+   rugs stay at one per 15 m2, and the fill stops when half the floor is taken. The same rules hold: no clipping, wall
+   pieces in the middle of a wall, never over a window or door, paths and door boxes clear.
 
 Each building gets one kit (bed, chest, table, seats, rug, lights, banner, carving), drawn by seed from what its biome
 can make and weighted by how often each shows in that kind of room. Cultures lean: Saami and steppe homes have no
@@ -119,17 +129,59 @@ one is 0.5 m above its pivot, 370 cases), but `pieces.js` gives it 0.25 m, so fu
 floating. Furniture per design:
 d1 2.7, d2 12.7, d3 21.5 (was 3.0, 9.6, 18.4). Two seeds of the same request share 54 % of their furniture list (was 85 %).
 
+## How full rooms are
+
+Pieces per 10 m2 (rugs not counted), median over the sample, before and after the fill, against the corpus.
+
+| Room | d2 before | d2 now | d3 before | d3 now | Corpus p25 / p50 / p75 |
+|---|---|---|---|---|---|
+| home | 1.47 | 2.32 | 2.04 | 3.08 | 1.48 / 2.27 / 3.08 |
+| sleeping | 1.95 | 1.90 | 1.51 | 2.82 | 1.09 / 1.85 / 3.27 |
+| hall | 1.06 | 1.75 | 1.95 | 3.00 | 0.86 / 1.76 / 3.33 |
+| tavern | 1.59 | 2.28 | 1.79 | 3.45 | 1.31 / 2.22 / 3.43 |
+| smithy | 1.96 | 2.29 | 2.25 | 2.50 | 1.33 / 2.34 / 4.15 |
+| workshop | 1.33 | 2.11 | 1.56 | 2.47 | 1.13 / 2.16 / 5.71 |
+| temple | 1.68 | 1.81 | 1.82 | 2.00 | 0.86 / 1.76 / 3.33 (halls) |
+| guest room | 0.73 | 1.40 | 0.76 | 1.53 | 1.09 / 1.85 / 3.27 (sleeping) |
+| storage | 2.92 | 3.16 | 1.69 | 2.46 | 4.0 / 7.6 / 10.0 (small store rooms) |
+
+d1 stays at the needs (bed, chest, fire, a station). `node lab/interior_density.js [seeds]` makes this table.
+
+## Floorplans
+
+`lib/floorplan.js` furnishes one room in a full temporary shell (floor, 3 m walls with a door and windows, a ceiling),
+then keeps the floor, a low curb where the walls stand, a rail at the windows, the door, any ladder, full wall stubs only
+behind wall pieces, and a post with a sign carrying the plan's ID. Shapes: rect, L, round (octagon), long (a hall with
+two rows of posts). Rooms: home, sleeping, hall, tavern, kitchen, smithy, workshop, temple, storage.
+
+- In the game: `vh floorplan <shape> <width>x<depth> <room> [biome] [culture] [d1|d2|d3] [seed] [ladder]` builds one
+  plan in front of the player (IDs FP-101 on); `vh floorplan set [n]` lays out the first n of the 24 catalog plans in a
+  grid of four to a row (IDs FP-001 to FP-024). Each plan's row goes to `BepInEx/config/Villheim/floorplans/floorplans.csv`.
+- The review sheet's Floorplans tab holds the 24 catalog plans with the same IDs and columns for Tyler: Density (too
+  sparse / right / too dense), Layout notes, Keep/Change. A single plan's row can be copied from the CSV into the tab.
+- Feedback back into the rules: download the tab as CSV, then `node lab/floorplan_feedback.js floorplans.csv` and
+  `node lab/interior_lite.js`. Density marks become a fill factor per room (too sparse 1.25, right 1, too dense 0.8,
+  multiplied onto the last round, kept between 0.5 and 2) in `data/interior-tuning.json`, which the fill reads. Rows
+  marked Change and every layout note are listed for the next round of rule changes; they are worked into
+  `decorate.js` by hand and the same plan IDs are laid out again to compare.
+- The node and game bundles give the same plan byte for byte, so the sheet's rows match what is built in the game.
+
 ## Commands
 
 ```
 python3 lab/learn_interior.py <corpus dir> data/interior.json --top 0.5 --list chosen.csv   # about 10 minutes
 node lab/interior_lite.js                          # data/interior.json to data/interior-lite.json
 node lab/check_interiors.js lib out.json 3         # the checks; give an older lib dir to compare
+node lab/interior_density.js 3                     # pieces per 10 m2 by room against the corpus
+node lab/floorplan_feedback.js floorplans.csv      # the sheet's Floorplans tab into data/interior-tuning.json
 ```
 
 ## Open
 
 - Large hand-made builds furnished with `decorateExisting` still show a few blocked doors and bare small rooms.
 - The renderer draws pieces with the sizes in `pieces.js`, so beds and rugs look smaller in the pictures than they are.
-- The decorator costs about three times the old one in the game's engine (a large house at best of 8: 4.4 s, was 1.2 s).
-  Decorating only the winning seed would remove most of that.
+- Round huts with 12 to 19 m2 of floor (Saami goahti, small Celtic round houses, crannogs) have no room for a 2.8 m bed
+  beside a fire under the smoke hole; they need the minimum house size the generator sets.
+- With the fill a large building takes 6 to 7 s at best of 8 in the game's engine (the generator decorates its four
+  best bare seeds).
+- Plants and food on tables have no vanilla buildable piece; empty horizontal item stands stand in for dishes.

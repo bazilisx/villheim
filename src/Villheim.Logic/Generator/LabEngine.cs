@@ -105,6 +105,15 @@ namespace Villheim.Logic.Generator
             }
         }
 
+        /// <summary>Calls one of the bundle's entry points (vhFloorplan and the like) and gives back what it returns.</summary>
+        public static string Call(string function, params object[] arguments)
+        {
+            lock (Gate)
+            {
+                return LabJint.CallString(function, arguments);
+            }
+        }
+
         /// <summary>Types, cultures and biome codes the lab knows, as JSON.</summary>
         public static string Lists()
         {

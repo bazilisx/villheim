@@ -5,10 +5,12 @@ Current facts only. Read this at the start of a session. Narrative is in `docs/d
 
 ## Current State (as of 2026-11-09)
 
-- **Next session:** the eight items under "Next test build" in `docs/ROADMAP.md` (beds
-  assigned and used and not claimable, sign placement, the Norse s1d1 to s3d3 test pool, no floor sitting, hidden
-  protector and carer, role colors (D-075), short hover texts, role displays (D-074)). Then merge the helpers still
-  running on 2026-11-09: room layout (feat/layout), households (feat/persona), shapes (feat/massing).
+- **Next session (handoff 2026-11-09, usage ran low):** merge whatever the three helpers pushed before stopping
+  (feat/layout, feat/persona, feat/massing; each wrote a "Handoff (2026-11-09)" note in its doc). Check the test pool
+  before Tyler tests it: `node /tmp/det/lineage.js <lab dir>` style measure (decor stages must keep the shell, about
+  80 % or more, for `HomeDecor`; on feat/massing at acff118 shells kept 82 to 100 % across decor, growth 50 to 99 %).
+  Then the open "Next test build" items in `docs/ROADMAP.md` (items 3 and 8 to 11). Nothing from 2026-11-09 has been
+  tried in the game yet.
 - **Kitbash libraries (2026-11-09, not tested in game):** interior assemblies mined from the corpus and placed in
   every room with 18 built kits (`data/kitbash-interior.json`, `lib/kitbash.js`); yards with fences, gates, paths,
   beds and lamps on s2 and s3 homes and farms (`lib/yards.js`, `data/yards.json`); exterior accents and a coverage

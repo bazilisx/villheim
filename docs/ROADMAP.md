@@ -265,6 +265,14 @@ well (Tyler, 2026-11-08). The Features tab of the review sheet (`docs/features/b
   6. [done 2026-11-09; small choices in D-076] Role colors and the role set (D-075): carpenter (brown, also cuts wood), smith (charcoal or ore, also mines),
      cook coral, farmer green, guard blue, elder gray, child light blue or pink, leader gold.
   7. [done 2026-11-09] Short hover texts ("at home", "fixing up the home").
+  9. D-076 follow-ups: guards gather by day between watches; the guard on watch fights without an alarm, other
+     guards wake at 50 % of his health, all able adults under 25 %; a villager stuck on the way to bed is put in it
+     at bedtime even with a player near.
+  10. D-077: pre-rolled village roster at settling (families up to 4, elders with elders), first two adults alone in
+     their own houses, houses sized for the family to come, beds permanent, children outside the cap.
+  11. D-078: elders mend inside the village, feed animals, forage, help harvest; fish by biome; hunters hunt real game
+     or go away overnight with a roll for success, catch, drops and health; healers use potions and healing foods and
+     herbs; children light blue or light pink; rafts for fishers only after a feasibility check.
   8. Role touches only through kitbashed role displays that fit many arrangements (D-074).
 - [ ] Home life (D-073, built 2026-11-09, not tried in the game): try signs, home decor, evenings and bedtime; get
       `_s#d#` designs (board saves, approved generated designs) into the village building pools so home decor has

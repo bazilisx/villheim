@@ -226,6 +226,10 @@ const NEEDS = {
   wood_fine_stack: 'Meadows', wood_core_stack: 'Black Forest', stone_pile: 'Meadows', coal_pile: 'Black Forest',
   wood_dragon1: 'Meadows', darkwood_raven: 'Plains', darkwood_wolf: 'Plains', piece_jackoturnip: 'Swamp', piece_xmastree: 'Meadows',
   piece_beehive: 'Meadows', piece_bathtub: 'Black Forest', guard_stone: 'Black Forest',
+  // cauldron upgrades: turnips for the spice rack, silver for the butcher's table, black metal for the pots and pans,
+  // black marble for the mortar, flametal for the rolling pins
+  cauldron_ext1_spice: 'Swamp', cauldron_ext3_butchertable: 'Mountain', cauldron_ext4_pots: 'Plains',
+  cauldron_ext5_mortarandpestle: 'Mistlands', cauldron_ext6_rollingpins: 'Ashlands',
 };
 function needs(name) {
   if (NEEDS[name]) return NEEDS[name];

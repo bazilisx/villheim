@@ -831,15 +831,18 @@ function settle(b, ctx) {
     // a hearth is 3 m across: in a small room a fire pit takes its place
     if (fire.name === 'hearth' && mainRoom && (mainRoom.x1 - mainRoom.x0) * (mainRoom.z1 - mainRoom.z0) < 40) fire.name = 'fire_pit';
     const dx = target.x - fire.x, dz = target.z - fire.z, ox = fire.x, oz = fire.z;
-    const moving = b.pieces.filter(p => p.decor && (p === fire || (/cookingstation/.test(p.name) && Math.hypot(p.x - ox, p.z - oz) < 0.4)));
+    const moving = b.pieces.filter(p => p.decor && (p === fire || (/cookingstation|piece_cauldron/.test(p.name) && Math.hypot(p.x - ox, p.z - oz) < 0.4)));
     for (const p of moving) { p.x = +(p.x + dx).toFixed(3); p.z = +(p.z + dz).toFixed(3); }
     // whatever now stands where the fire went comes out
     const fb = Ck.aabb(fire), pad = 0.4;
     b.pieces = b.pieces.filter(p => {
-      if (!p.decor || p === fire || /cookingstation/.test(p.name)) return true;
+      if (!p.decor || p === fire || /cookingstation|piece_cauldron/.test(p.name)) return true;
       const o = Ck.aabb(p);
       return !(o.x0 < fb.x1 + pad && o.x1 > fb.x0 - pad && o.z0 < fb.z1 + pad && o.z1 > fb.z0 - pad && Math.abs(p.y - fire.y) < 1);
     });
+    // the cauldron's upgrades work within 5 m of it: those left farther away by the move come out
+    const pot = b.pieces.find(p => p.decor && p.name === 'piece_cauldron');
+    b.pieces = b.pieces.filter(p => !/^cauldron_ext/.test(p.name) || (pot && Math.hypot(p.x - pot.x, p.z - pot.z) < 5));
     if (target.kind !== 'crown') chimney(b, ctx, target);
     else b.notes.push('Fire under the open crown of the roof.');
   }
@@ -864,7 +867,7 @@ function settle(b, ctx) {
   const zones = keepClear(b), gone = [];
   if (!ctx.skipDecor && ['home', 'longhouse'].includes(ctx.type)) bedIfNone(b, ctx, fire, zones);
   b.pieces = b.pieces.filter(p => {
-    if (!p.decor || p === fire || /cookingstation/.test(p.name) && fire && Math.hypot(p.x - fire.x, p.z - fire.z) < 0.4) return true;
+    if (!p.decor || p === fire || /cookingstation|piece_cauldron/.test(p.name) && fire && Math.hypot(p.x - fire.x, p.z - fire.z) < 0.4) return true;
     const bx = Ck.aabb(p);
     if (!zones.some(z => hits(bx, z))) return true;
     gone.push(bx); return false;

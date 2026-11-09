@@ -68,6 +68,11 @@ const F = {
   piece_spinningwheel: { s: [1.0, 1.4, 1.4], at: 'wall', b: 'Plains', cat: 'craft', rel: 270 },
   piece_cartographytable: { s: [2.0, 1.0, 1.6], at: 'floor', b: 'Black Forest', cat: 'table' },
   ArmorStand: { s: [0.9, 1.9, 0.6], at: 'wall', b: 'Swamp', cat: 'deco', tall: true },
+  // cauldron upgrades: the spice rack and the pots and pans hang on a wall near the cauldron, the butcher's table
+  // stands against one (sizes estimated until the models are measured)
+  cauldron_ext1_spice: { s: [1.0, 0.8, 0.3], at: 'mount', b: 'Swamp', cat: 'craft', wall: 0.15, y: 1.4 },
+  cauldron_ext4_pots: { s: [1.2, 0.9, 0.35], at: 'mount', b: 'Plains', cat: 'craft', wall: 0.18, y: 1.3 },
+  cauldron_ext3_butchertable: { s: [2.0, 0.9, 1.0], at: 'wall', b: 'Mountain', cat: 'craft' },
   itemstand: { s: [0.6, 0.6, 0.25], at: 'mount', b: 'Meadows', cat: 'deco', wall: 0.14, y: 1.6 },
   itemstandh: { s: [0.9, 0.2, 0.5], at: 'top', b: 'Meadows', cat: 'deco' },
   sign: { s: [1.0, 0.5, 0.1], at: 'mount', b: 'Black Forest', cat: 'deco', wall: 0.12, y: 1.3 },
@@ -724,7 +729,22 @@ function onFire(room, name) {
   const fire = room.fire;
   if (!fire || fire.name !== 'fire_pit') return null;
   const f = F[name];
-  return room.add(name, fire.x, fire.y0 + (f.lift || 0.25), fire.z, fire.yaw, { onFire: true });
+  const rec = room.add(name, fire.x, fire.y0 + (f.lift || 0.25), fire.z, fire.yaw, { onFire: true });
+  if (rec && name === 'piece_cauldron') kitchenExtras(room, rec);
+  return rec;
+}
+
+// The cauldron's upgrades within 5 m of it (the game's range for station upgrades): a butcher's table against the
+// nearest wall, the spice rack and the pots and pans hung on the walls nearest the pot. Corpus: half of the
+// best-liked builds have them, none of ours did.
+function kitchenExtras(room, pot) {
+  const dist = s => Math.hypot(s.x - pot.x, s.z - pot.z);
+  if (ok('cauldron_ext3_butchertable', room.biome)) placeAgainst(room, 'cauldron_ext3_butchertable', s => (dist(s) > 4.5 ? -100 : -dist(s)));
+  for (const name of ['cauldron_ext1_spice', 'cauldron_ext4_pots']) {
+    if (!ok(name, room.biome)) continue;
+    const spots = mountSpots(room, name, { pairs: true }).filter(s => dist(s) < 4.5).sort((a, c) => dist(a) - dist(c));
+    for (const sp of spots) if (putMount(room, name, sp)) break;
+  }
 }
 
 // Paths: from each way in to the fire, the stairs and ladders and the other ways in, through the middle of the room.

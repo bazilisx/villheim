@@ -395,6 +395,23 @@ function generate(req) {
     b.braceBay = (x, z, yaw) => { const ux = yaw % 180 === 0 ? 1 : 0, uz = 1 - ux; return corner(`${x - ux},${z - uz}`) || corner(`${x + ux},${z + uz}`); };
   }
 
+  // a loggia: the ground storey's front row of cells left open under the upper floor, on posts, the front wall and
+  // door set back a row (2026-11-09 review: a second mass and depth on the front; an upper storey carried on posts)
+  const w0L = wings[0];
+  const loggia = (req.details && req.details.loggia != null ? req.details.loggia
+    : ['anglo-saxon', 'frankish-norman', 'castle-medieval', 'slavic', 'norse', 'norse-forest'].includes(cultureKey) && stage === 's3' &&
+      ['home', 'tavern', 'storage', 'workshop'].includes(type) && rng(seed * 13 + 5)() < 0.6) &&
+    ['rect', 'long'].includes(plan) && wings.length === 1 && w0L.alpha === 0 && w0L.D >= 5 && storeys >= 2 && F === 0 &&
+    !C.stoneWalls && !deck && !podklet && roofKind === 'gable' && !T.tower && !form;
+  const zFront = w0L.cz - w0L.D, rowZ = zFront + 1;
+  const inLoggia = c => loggia && Math.abs(c[1] - rowZ) < 0.01;
+  let gEdges = edges;
+  if (loggia) {
+    const inYaw = (edges.find(e => e.out[1] < 0) || {}).inYaw;
+    gEdges = edges.filter(e => !inLoggia(e.cell));
+    for (const [, c] of cells) if (inLoggia(c)) gEdges.push({ x: c[0], z: zFront + 2, yaw: 0, out: [0, -1], cell: [c[0], rowZ + 2], inYaw });
+  }
+
   // courtyard: cells next to the yard are a gallery; their yard side is an arcade
   const Q = wingOpts.Q;
   const inYard = (x, z) => plan === 'court' && Math.abs(x) < Q && Math.abs(z) < Q && !cells.has(`${x},${z}`);
@@ -432,8 +449,8 @@ function generate(req) {
   let door;
   if (form === 'sunken') door = edges.filter(e => e.out[0] < 0 && inside(wings[0], e.cell[0], e.cell[1])).sort((a, c) => Math.abs(a.z) - Math.abs(c.z))[0];
   if (!door) {
-    const front = edges.filter(e => e.out[1] < 0 && inside(wings[0], e.cell[0], e.cell[1])).sort((a, c) => Math.abs(a.x - wings[0].cx) - Math.abs(c.x - wings[0].cx));
-    door = front.length ? front[0] : edges.filter(e => e.out[1] < 0)[0] || edges[0];
+    const front = gEdges.filter(e => e.out[1] < 0 && inside(wings[0], e.cell[0], e.cell[1])).sort((a, c) => Math.abs(a.x - wings[0].cx) - Math.abs(c.x - wings[0].cx));
+    door = front.length ? front[0] : gEdges.filter(e => e.out[1] < 0)[0] || gEdges[0];
   }
   const doorX = door.x, doorZ = door.z;
   const backDoor = C.opposedDoors && !T.tower && form !== 'sunken'
@@ -483,13 +500,14 @@ function generate(req) {
   // ladders: one per storey above the ground, each with a clear foot, a hole above it and a landing; a flat roof gets a
   // last one up to a hatch
   const climbsUp = storeys - 1 + (flat && !lookout ? 1 : 0);
-  const ladders = climbsUp > 0 ? ladderPlan(cells, climbsUp, { door: doorCell, back: backCell, flue }) : [];
+  const cellsG = loggia ? new Map([...cells].filter(([, c]) => !inLoggia(c))) : cells; // the ground rooms' cells
+  const ladders = climbsUp > 0 ? ladderPlan(cellsG, climbsUp, { door: doorCell, back: backCell, flue }) : [];
   // a straight stair along a wall in place of the first ladder, where a long enough wall has room for it (most of the
   // best-liked builds climb by stairs; bench: req.details.stair true or false)
   const stairWanted = req.details && req.details.stair != null ? req.details.stair
     : climbsUp === 1 && !flat && +stage[1] >= 2 && ['home', 'tavern', 'longhouse', 'storage', 'workshop'].includes(type) && rng(seed * 7 + 3)() < 0.75;
   if (stairWanted && climbsUp === 1 && !flat && Math.abs(SH - Math.round(SH)) < 0.01) {
-    const st = stairPlan(cells, Math.round(SH), { door: doorCell, back: backCell, flue });
+    const st = stairPlan(cellsG, Math.round(SH), { door: doorCell, back: backCell, flue });
     if (st) { ladders[0] = st; b.notes.push('A stair along the wall up to the floor above.'); }
   }
   if (climbsUp > 0 && ladders.length < climbsUp) b.notes.push('No room for a ladder with a clear foot and landing in this plan.');
@@ -508,6 +526,7 @@ function generate(req) {
     ['home', 'tavern', 'longhouse', 'storage', 'workshop'].includes(type) && dctx.R() < 0.45;
   dctx.profile.dormerPair = dctx.R() < 0.5;
   if (req.details) Object.assign(dctx.profile, req.details);
+  if (loggia) Object.assign(dctx.profile, { svalgang: false, gablePorch: false, doorHood: false });
   dctx.wallSegment = wallSegment;
 
   // walls, frame and top plates per storey
@@ -523,7 +542,7 @@ function generate(req) {
       else b.notes.push('Upper floor without a ladder.');
     }
     const isTopLookout = lookout && s === storeys - 1;
-    for (const e of edges) {
+    for (const e of (s === 0 ? gEdges : edges)) {
       if (isTopLookout) { b.put(K.fence || K.wallHalf, e.x, y0 + 0.5, e.z, e.yaw); continue; }
       if (open === 'all') continue;
       if (open === 'front' && e.out[1] < 0) continue;
@@ -542,11 +561,17 @@ function generate(req) {
       for (let y = y0; y < y0 + SH - 0.01;) { const h = (y0 + SH - y) >= 2 ? 2 : 1; b.put(h === 2 ? framePole(K, C) : K.pole1, x, y + h / 2, z); y += h; }
     }
     for (const e of edges) b.put(K.beam, e.x, y0 + SH, e.z, e.yaw);
+    if (s === 0 && loggia) {
+      for (const e of gEdges) if (!edges.includes(e)) b.put(K.beam, e.x, y0 + SH, e.z, e.yaw); // over the set-back wall
+      // posts along the open front and down its sides, carrying the upper storey
+      for (let x = w0L.cx - w0L.W; x <= w0L.cx + w0L.W + 0.01; x += 2) for (let y = y0; y < y0 + SH - 0.01;) { const h = (y0 + SH - y) >= 2 ? 2 : 1; b.put(h === 2 ? framePole(K, C) : K.pole1, x, y + h / 2, zFront); y += h; }
+      b.notes.push('A loggia: the front of the ground floor open under the upper storey, on posts.');
+    }
     for (const w of wings) {
       const a = w.alpha === 270;
-      const room = { x0: w.cx - (a ? w.D : w.W), x1: w.cx + (a ? w.D : w.W), z0: w.cz - (a ? w.W : w.D), z1: w.cz + (a ? w.W : w.D),
+      const room = { x0: w.cx - (a ? w.D : w.W), x1: w.cx + (a ? w.D : w.W), z0: w.cz - (a ? w.W : w.D) + (loggia && s === 0 && w === w0L ? 2 : 0), z1: w.cz + (a ? w.W : w.D),
         y: y0, h: SH, use: T.use, upper: s > 0, door: s === 0 && w.main ? { x: doorX, z: doorZ } : null, main: !!w.main, slots: [] };
-      for (const e of edges) {
+      for (const e of (s === 0 ? gEdges : edges)) {
         if (!(e.cell[0] > room.x0 && e.cell[0] < room.x1 && e.cell[1] > room.z0 && e.cell[1] < room.z1)) continue;
         if (s === 0 && Math.abs(e.x - doorX) + Math.abs(e.z - doorZ) < 1.8) continue;
         if (backDoor && s === 0 && Math.abs(e.x - backDoor.x) + Math.abs(e.z - backDoor.z) < 1.8) continue;
@@ -652,7 +677,7 @@ function generate(req) {
   // a low roof's eaves already run 2 m past the wall, so only steep roofs get a porch roof of their own
   const porchFits = !flat && roofKind !== 'shed' && !T.dock && !T.tower && !['U', 'cross', 'court', 'gables', 'greek'].includes(plan) && !deck && !podklet && form !== 'sunken' && r === 2 && (C.eaves || 1) < 2;
   if (req.porch === true && !porchFits) b.notes.push('No porch: this plan, roof or form has no front for one.');
-  if (req.porch === true ? porchFits : req.porch !== false && !flat && roofKind !== 'shed' && !T.dock && !T.tower && C.porch && R() < C.porch + (stage === 's1' ? -0.3 : 0.2) && porchFits && !dctx.profile.svalgang && !dctx.profile.gablePorch && !dctx.profile.dormerOverDoor) {
+  if (req.porch === true ? porchFits : req.porch !== false && !flat && roofKind !== 'shed' && !T.dock && !T.tower && C.porch && R() < C.porch + (stage === 's1' ? -0.3 : 0.2) && porchFits && !dctx.profile.svalgang && !dctx.profile.gablePorch && !dctx.profile.dormerOverDoor && !loggia) {
     const h = R() < 0.5 ? 0 : 1, zf = doorZ;
     const bays = [];
     for (let k = -h; k <= h; k++) { const x = doorX + 2 * k; if (!cells.has(`${x},${zf - 1}`) && !cells.has(`${x},${zf - 3}`)) bays.push(x); }

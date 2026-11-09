@@ -4572,6 +4572,22 @@ function exterior(b, ctx) {
     }
   }
 
+  // ---- bay posts: on plank walls, a post the full height of the wall every 4 m along the long sides of the main
+  // wing, a little proud of the face, so the wall reads in bays (2026-11-09 review); not beside a door
+  if (X.cornerPosts && (C.wallStyle || 'plank') === 'plank' && ctx.wings && ctx.wings[0].alpha === 0 && X.sN >= 2) {
+    const w0 = ctx.wings[0], top = F + storeys * SH, foot = F > 0.01 && F < 2.01 ? F - Math.ceil(F) : F;
+    const doorAt = openings.filter(o => o.kind !== 'window').map(o => o.e);
+    for (const sz of [-1, 1]) {
+      const z = w0.cz + sz * w0.D;
+      for (let x = w0.cx - w0.W + 4; x <= w0.cx + w0.W - 4 + 0.01; x += 4) {
+        if (!edges.some(e => e.yaw === 0 && Math.abs(e.z - z) < 0.01 && Math.abs(e.x - x) < 1.01)) continue;
+        if (doorAt.some(e => Math.abs(e.z - z) < 0.01 && Math.abs(e.x - x) < 1.2)) continue;
+        const zz = z + sz * 0.15;
+        for (let y = foot; y < top - 0.01;) { const h = top - y >= 2 ? 2 : 1; put(h === 2 ? pole : pole1, x, y + h / 2, zz, 0); y += h; }
+      }
+    }
+  }
+
   // ---- bands: a beam at the foot of the walls and along the floor line of each upper storey; a rail at 1 m on
   // half-timbered walls. Laid a little proud of the outside face, never across a door.
   if (X.bands || X.midRail) for (const e of edges) {
@@ -5037,7 +5053,7 @@ function interior(b, ctx) {
   }
 }
 
-const apiD = { profile, exterior, bargeboards, partition, interior, slopeBeam };
+const apiD = { profile, exterior, bargeboards, partition, interior, slopeBeam, commitMotifs };
 if (NODE_D) module.exports = apiD; else window.VHDetails = apiD;
 
 })();
@@ -5587,6 +5603,30 @@ function generate(req) {
   const cells = cellsOf(wings);
   const edges = edgesOf(cells);
   const verts = vertsOf(edges);
+  // half-timber braces go in the bays at the corners only (a brace in every panel read as busy, 2026-11-09 review)
+  {
+    const yaws = new Map();
+    for (const e of edges) { const ux = e.yaw === 0 ? 1 : 0, uz = e.yaw === 0 ? 0 : 1; for (const sg of [-1, 1]) { const k = `${e.x + sg * ux},${e.z + sg * uz}`; yaws.set(k, (yaws.get(k) || 0) | (e.yaw === 0 ? 1 : 2)); } }
+    const corner = k => yaws.get(k) === 3;
+    b.braceBay = (x, z, yaw) => { const ux = yaw % 180 === 0 ? 1 : 0, uz = 1 - ux; return corner(`${x - ux},${z - uz}`) || corner(`${x + ux},${z + uz}`); };
+  }
+
+  // a loggia: the ground storey's front row of cells left open under the upper floor, on posts, the front wall and
+  // door set back a row (2026-11-09 review: a second mass and depth on the front; an upper storey carried on posts)
+  const w0L = wings[0];
+  const loggia = (req.details && req.details.loggia != null ? req.details.loggia
+    : ['anglo-saxon', 'frankish-norman', 'castle-medieval', 'slavic', 'norse', 'norse-forest'].includes(cultureKey) && stage === 's3' &&
+      ['home', 'tavern', 'storage', 'workshop'].includes(type) && rng(seed * 13 + 5)() < 0.6) &&
+    ['rect', 'long'].includes(plan) && wings.length === 1 && w0L.alpha === 0 && w0L.D >= 5 && storeys >= 2 && F === 0 &&
+    !C.stoneWalls && !deck && !podklet && roofKind === 'gable' && !T.tower && !form;
+  const zFront = w0L.cz - w0L.D, rowZ = zFront + 1;
+  const inLoggia = c => loggia && Math.abs(c[1] - rowZ) < 0.01;
+  let gEdges = edges;
+  if (loggia) {
+    const inYaw = (edges.find(e => e.out[1] < 0) || {}).inYaw;
+    gEdges = edges.filter(e => !inLoggia(e.cell));
+    for (const [, c] of cells) if (inLoggia(c)) gEdges.push({ x: c[0], z: zFront + 2, yaw: 0, out: [0, -1], cell: [c[0], rowZ + 2], inYaw });
+  }
 
   // courtyard: cells next to the yard are a gallery; their yard side is an arcade
   const Q = wingOpts.Q;
@@ -5625,8 +5665,8 @@ function generate(req) {
   let door;
   if (form === 'sunken') door = edges.filter(e => e.out[0] < 0 && inside(wings[0], e.cell[0], e.cell[1])).sort((a, c) => Math.abs(a.z) - Math.abs(c.z))[0];
   if (!door) {
-    const front = edges.filter(e => e.out[1] < 0 && inside(wings[0], e.cell[0], e.cell[1])).sort((a, c) => Math.abs(a.x - wings[0].cx) - Math.abs(c.x - wings[0].cx));
-    door = front.length ? front[0] : edges.filter(e => e.out[1] < 0)[0] || edges[0];
+    const front = gEdges.filter(e => e.out[1] < 0 && inside(wings[0], e.cell[0], e.cell[1])).sort((a, c) => Math.abs(a.x - wings[0].cx) - Math.abs(c.x - wings[0].cx));
+    door = front.length ? front[0] : gEdges.filter(e => e.out[1] < 0)[0] || gEdges[0];
   }
   const doorX = door.x, doorZ = door.z;
   const backDoor = C.opposedDoors && !T.tower && form !== 'sunken'
@@ -5676,13 +5716,14 @@ function generate(req) {
   // ladders: one per storey above the ground, each with a clear foot, a hole above it and a landing; a flat roof gets a
   // last one up to a hatch
   const climbsUp = storeys - 1 + (flat && !lookout ? 1 : 0);
-  const ladders = climbsUp > 0 ? ladderPlan(cells, climbsUp, { door: doorCell, back: backCell, flue }) : [];
+  const cellsG = loggia ? new Map([...cells].filter(([, c]) => !inLoggia(c))) : cells; // the ground rooms' cells
+  const ladders = climbsUp > 0 ? ladderPlan(cellsG, climbsUp, { door: doorCell, back: backCell, flue }) : [];
   // a straight stair along a wall in place of the first ladder, where a long enough wall has room for it (most of the
   // best-liked builds climb by stairs; bench: req.details.stair true or false)
   const stairWanted = req.details && req.details.stair != null ? req.details.stair
     : climbsUp === 1 && !flat && +stage[1] >= 2 && ['home', 'tavern', 'longhouse', 'storage', 'workshop'].includes(type) && rng(seed * 7 + 3)() < 0.75;
   if (stairWanted && climbsUp === 1 && !flat && Math.abs(SH - Math.round(SH)) < 0.01) {
-    const st = stairPlan(cells, Math.round(SH), { door: doorCell, back: backCell, flue });
+    const st = stairPlan(cellsG, Math.round(SH), { door: doorCell, back: backCell, flue });
     if (st) { ladders[0] = st; b.notes.push('A stair along the wall up to the floor above.'); }
   }
   if (climbsUp > 0 && ladders.length < climbsUp) b.notes.push('No room for a ladder with a clear foot and landing in this plan.');
@@ -5701,6 +5742,7 @@ function generate(req) {
     ['home', 'tavern', 'longhouse', 'storage', 'workshop'].includes(type) && dctx.R() < 0.45;
   dctx.profile.dormerPair = dctx.R() < 0.5;
   if (req.details) Object.assign(dctx.profile, req.details);
+  if (loggia) Object.assign(dctx.profile, { svalgang: false, gablePorch: false, doorHood: false });
   dctx.wallSegment = wallSegment;
 
   // walls, frame and top plates per storey
@@ -5716,7 +5758,7 @@ function generate(req) {
       else b.notes.push('Upper floor without a ladder.');
     }
     const isTopLookout = lookout && s === storeys - 1;
-    for (const e of edges) {
+    for (const e of (s === 0 ? gEdges : edges)) {
       if (isTopLookout) { b.put(K.fence || K.wallHalf, e.x, y0 + 0.5, e.z, e.yaw); continue; }
       if (open === 'all') continue;
       if (open === 'front' && e.out[1] < 0) continue;
@@ -5735,11 +5777,17 @@ function generate(req) {
       for (let y = y0; y < y0 + SH - 0.01;) { const h = (y0 + SH - y) >= 2 ? 2 : 1; b.put(h === 2 ? framePole(K, C) : K.pole1, x, y + h / 2, z); y += h; }
     }
     for (const e of edges) b.put(K.beam, e.x, y0 + SH, e.z, e.yaw);
+    if (s === 0 && loggia) {
+      for (const e of gEdges) if (!edges.includes(e)) b.put(K.beam, e.x, y0 + SH, e.z, e.yaw); // over the set-back wall
+      // posts along the open front and down its sides, carrying the upper storey
+      for (let x = w0L.cx - w0L.W; x <= w0L.cx + w0L.W + 0.01; x += 2) for (let y = y0; y < y0 + SH - 0.01;) { const h = (y0 + SH - y) >= 2 ? 2 : 1; b.put(h === 2 ? framePole(K, C) : K.pole1, x, y + h / 2, zFront); y += h; }
+      b.notes.push('A loggia: the front of the ground floor open under the upper storey, on posts.');
+    }
     for (const w of wings) {
       const a = w.alpha === 270;
-      const room = { x0: w.cx - (a ? w.D : w.W), x1: w.cx + (a ? w.D : w.W), z0: w.cz - (a ? w.W : w.D), z1: w.cz + (a ? w.W : w.D),
+      const room = { x0: w.cx - (a ? w.D : w.W), x1: w.cx + (a ? w.D : w.W), z0: w.cz - (a ? w.W : w.D) + (loggia && s === 0 && w === w0L ? 2 : 0), z1: w.cz + (a ? w.W : w.D),
         y: y0, h: SH, use: T.use, upper: s > 0, door: s === 0 && w.main ? { x: doorX, z: doorZ } : null, main: !!w.main, slots: [] };
-      for (const e of edges) {
+      for (const e of (s === 0 ? gEdges : edges)) {
         if (!(e.cell[0] > room.x0 && e.cell[0] < room.x1 && e.cell[1] > room.z0 && e.cell[1] < room.z1)) continue;
         if (s === 0 && Math.abs(e.x - doorX) + Math.abs(e.z - doorZ) < 1.8) continue;
         if (backDoor && s === 0 && Math.abs(e.x - backDoor.x) + Math.abs(e.z - backDoor.z) < 1.8) continue;
@@ -5845,7 +5893,7 @@ function generate(req) {
   // a low roof's eaves already run 2 m past the wall, so only steep roofs get a porch roof of their own
   const porchFits = !flat && roofKind !== 'shed' && !T.dock && !T.tower && !['U', 'cross', 'court', 'gables', 'greek'].includes(plan) && !deck && !podklet && form !== 'sunken' && r === 2 && (C.eaves || 1) < 2;
   if (req.porch === true && !porchFits) b.notes.push('No porch: this plan, roof or form has no front for one.');
-  if (req.porch === true ? porchFits : req.porch !== false && !flat && roofKind !== 'shed' && !T.dock && !T.tower && C.porch && R() < C.porch + (stage === 's1' ? -0.3 : 0.2) && porchFits && !dctx.profile.svalgang && !dctx.profile.gablePorch && !dctx.profile.dormerOverDoor) {
+  if (req.porch === true ? porchFits : req.porch !== false && !flat && roofKind !== 'shed' && !T.dock && !T.tower && C.porch && R() < C.porch + (stage === 's1' ? -0.3 : 0.2) && porchFits && !dctx.profile.svalgang && !dctx.profile.gablePorch && !dctx.profile.dormerOverDoor && !loggia) {
     const h = R() < 0.5 ? 0 : 1, zf = doorZ;
     const bays = [];
     for (let k = -h; k <= h; k++) { const x = doorX + 2 * k; if (!cells.has(`${x},${zf - 1}`) && !cells.has(`${x},${zf - 3}`)) bays.push(x); }
@@ -5994,6 +6042,7 @@ function generate(req) {
   settle(b, { K, C, biome, use: T.use, type, stoneOK, F, SH, storeys, top, flat, cells, wing: w0, roofTop, skipDecor: !!req.skipDecor });
   if (!req.skipDecor && stoneOK && F < 0.01 && !C.stoneWalls) hearthstone(b, K);
   if (!req.skipDecor) { const zones = keepClear(b); Details.interior(b, { ...dctx, zones }); Kitbash.apply(b, { ...dctx, decor }, zones); }
+  else Details.commitMotifs(b, dctx); // bare builds (ranked before furnishing) carry the same wall trim
   return finish(b, info);
 }
 
@@ -6158,13 +6207,16 @@ function chimney(b, ctx, v) {
   // under a ridge with no floor to pass through, a smoke louver: the ridge caps raised 0.6 m on short posts over the
   // opening, open at the sides (the Norse ljore), in place of a plank box standing on the ridge
   const louver = v.kind === 'ridge' && v.from >= yRoof - 0.01;
-  const yTop = louver ? yRoof + 0.1 : yRoof + (stone ? 2 : 1);
+  // a shaft up through an upper floor stops at the ridge inside the roof; above it the same raised caps as a louver
+  // (a plank box standing a metre over the ridge read as a doghouse on the roof, 2026-11-09 review)
+  const yTop = louver || v.kind === 'ridge' ? yRoof + 0.1 : yRoof + (stone ? 2 : 1);
   // floors above the fire inside the chimney's footprint come out (the upper floors and a flat roof)
   b.pieces = b.pieces.filter(p => !(P.piece(p.name).role === 'floor' && !p.decor && p.y > ctx.F + 0.5 && inRect(r, p.x, p.z)));
   const sides = [];
   for (let x = r.x0 + 1; x < r.x1; x += 2) { sides.push([x, r.z0, 0]); sides.push([x, r.z1, 0]); }
   for (let z = r.z0 + 1; z < r.z1; z += 2) { sides.push([r.x0, z, 90]); sides.push([r.x1, z, 90]); }
-  if (!louver) for (let y = v.from; y < yTop - 0.01; y += course) for (const [x, z, yaw] of sides) b.put(piece, x, y + course / 2, z, yaw);
+  const yBox = v.kind === 'ridge' ? yRoof - 0.9 : yTop; // the shaft's sides end under the ridge, inside the roof
+  if (!louver) for (let y = v.from; y < yBox - 0.01; y += course) for (const [x, z, yaw] of sides) b.put(piece, x, y + course / 2, z, yaw);
   if (!stone) {
     // the cap: short posts at the corners, the ridge caps (or flat roof caps) half a metre over the box
     const cap = v.caps ? v.caps : null;
@@ -6570,7 +6622,7 @@ function wallSegment(b, K, C, x, y0, z, yaw, SH, kind, styleOverride) {
     fill(y0 + 2, y0 + SH); return;
   }
   fill(y0, y0 + SH);
-  if (style === 'half-timber' && SH >= 2) {
+  if (style === 'half-timber' && SH >= 2 && (!b.braceBay || b.braceBay(x, z, yaw))) {
     const brace = (C.darkFrame && reaches(C.biome || 'Meadows', 'Plains')) || /darkwood/.test(K.beam || '') ? 'darkwood_beam_45' : 'wood_beam_45';
     const flip = Math.round(x + z) % 4 === 0 ? 180 : 0; // braces lean both ways along a wall
     b.put(brace, x, y0 + 1, z, yaw + flip);
@@ -6646,10 +6698,11 @@ function gablePieces(K, C, w, top, r, ends, vent, dctx) {
     // a window high in a tall gable lights the loft (a 2 m opening with a post in the middle, 1 m up the gable)
     const gw = dctx && dctx.profile.gableWindow && !C.stoneWalls && capY - top >= 3.9;
     if (gw) {
-      add(K.wallHalf, u, top + 0.5, 0, 90, 'gable', top + 1);
-      add(K.pole1 || 'wood_pole', u, top + 1.5, 0, 0, 'gable', top + 2);
-      for (const yb of [top + 0.9, top + 2.1]) add(K.beam || 'wood_beam', u + Math.sign(u) * 0.2, yb, 0, 90, 'trim', yb + 0.1);
-      gableFill(K, add, u, top + 2, 0, capY - top - 2, C.stoneWalls);
+      // one clear 2 m light (the post in the middle made two slits), a third of the way up a tall gable, framed
+      const yw = capY - top >= 5.9 ? top + 2 : top + 1;
+      gableFill(K, add, u, top, 0, yw - top, C.stoneWalls);
+      for (const yb of [yw - 0.1, yw + 1.1]) add(K.beam || 'wood_beam', u + Math.sign(u) * 0.25, yb, 0, 90, 'trim', yb + 0.1);
+      gableFill(K, add, u, yw + 1, 0, capY - yw - 1, C.stoneWalls);
     } else gableFill(K, add, u, top, 0, capY - top, C.stoneWalls);
     for (let i = 0; i <= wallRow; i++) for (const sv of [-1, 1]) {
       const v = sv * (2 + 2 * i);

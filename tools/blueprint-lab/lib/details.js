@@ -235,6 +235,22 @@ function exterior(b, ctx) {
     }
   }
 
+  // ---- bay posts: on plank walls, a post the full height of the wall every 4 m along the long sides of the main
+  // wing, a little proud of the face, so the wall reads in bays (2026-11-09 review); not beside a door
+  if (X.cornerPosts && (C.wallStyle || 'plank') === 'plank' && ctx.wings && ctx.wings[0].alpha === 0 && X.sN >= 2) {
+    const w0 = ctx.wings[0], top = F + storeys * SH, foot = F > 0.01 && F < 2.01 ? F - Math.ceil(F) : F;
+    const doorAt = openings.filter(o => o.kind !== 'window').map(o => o.e);
+    for (const sz of [-1, 1]) {
+      const z = w0.cz + sz * w0.D;
+      for (let x = w0.cx - w0.W + 4; x <= w0.cx + w0.W - 4 + 0.01; x += 4) {
+        if (!edges.some(e => e.yaw === 0 && Math.abs(e.z - z) < 0.01 && Math.abs(e.x - x) < 1.01)) continue;
+        if (doorAt.some(e => Math.abs(e.z - z) < 0.01 && Math.abs(e.x - x) < 1.2)) continue;
+        const zz = z + sz * 0.15;
+        for (let y = foot; y < top - 0.01;) { const h = top - y >= 2 ? 2 : 1; put(h === 2 ? pole : pole1, x, y + h / 2, zz, 0); y += h; }
+      }
+    }
+  }
+
   // ---- bands: a beam at the foot of the walls and along the floor line of each upper storey; a rail at 1 m on
   // half-timbered walls. Laid a little proud of the outside face, never across a door.
   if (X.bands || X.midRail) for (const e of edges) {

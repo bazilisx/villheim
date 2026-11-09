@@ -76,8 +76,11 @@ function evaluate(d, biome, scorer) {
 // Furnishing and the checks are the slow parts (most of a few seconds a design in the game), so the seeds are built
 // bare and ranked on their keep score alone; then the best are furnished and checked in that order until one passes
 // every check (at most four; else the best of those). Bare and furnished builds of a seed share the same structure.
+// Every seed tried is the same household (lineage: the asked seed unless the request names one), so a building's
+// stages agree whatever the tries (generate.js massingPath).
 function best(req, n, scorer) {
   const base = +req.seed || 1;
+  req = { ...req, lineage: req.lineage != null ? req.lineage : base };
   const bare = [];
   for (let i = 0; i < Math.max(1, n | 0); i++) {
     const seed = base + i * 101;

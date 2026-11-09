@@ -275,6 +275,88 @@ const TYPES = {
   camp:      { label: 'Camp', bays: { s1: [2, 2], s2: [3, 2], s3: [3, 3] }, storeys: { s1: 1, s2: 1, s3: 1 }, use: 'yard', camp: true },
 };
 
-const api = { BIOMES, kitFor, CULTURES, BIOME_CULTURE, TYPES, ROOF_SETS, cultureFor, roofKit, ID, RENAMED, cultureKey };
+// ---------------------------------------------------------------- massing: shapes, sizes and growth (D-069, D-068)
+//
+// A building belongs to a household and grows from its own earlier stage: its s2 keeps the s1 shell and adds to it,
+// its s3 keeps the s2. generate.js draws the whole path (s1, s2, s3) from the household's own random stream
+// (req.lineage, the seed by default), then builds the stage asked for. req.fresh asks for a plan drawn anew at each
+// stage, as before. See docs/BLUEPRINT_LAB.md, "Massing".
+
+// Household sizes for homes: the main wing in 2 m bays, [along the ridge, across], with odds, and the most wings the
+// house ever gets (a one-person house stays small). The depth across stays odd under a pitched roof.
+const HOUSEHOLDS = {
+  cozy: { label: 'one person', weight: 3, bays: { '3x3': 1, '4x3': 2 }, wings: 1 },
+  couple: { label: 'two people', weight: 4, bays: { '4x3': 2, '5x3': 2 }, wings: 2 },
+  family: { label: 'a family', weight: 3, bays: { '5x3': 2, '6x3': 2, '4x5': 1, '5x5': 1 }, wings: 3 },
+};
+
+// The complexity ladder: what a building may have at each stage, at most. wings counts side rooms, annexes,
+// extensions and wings together; at s1 only a narrow side room or an annex. extras: porch, lean-to, balcony, dormers,
+// a tower. roof: plain is one main ridge (a side room or byre has its own lower roof); crossed allows ridges meeting at
+// valleys; any allows towers and more.
+const LADDER = {
+  s1: { wings: 1, storeys: 1, extras: 1, roof: 'plain', note: 'One room or two, one storey, one main ridge; a side room or a byre at one end at most.' },
+  s2: { wings: 2, storeys: 2, extras: 2, roof: 'crossed', note: 'A wing or a longer hall; a second storey is uncommon; a porch or a lean-to.' },
+  s3: { wings: 3, storeys: 3, extras: 3, roof: 'any', note: 'Branching wings, two storeys common, three rare (deep houses only); balconies, dormers, towers on halls.' },
+};
+
+// Growth steps. Start shapes (s1): rect (one room under one ridge), long (one bay longer each end), side (a narrow side
+// room at one end, toward the front), back (the same toward the back), annex (a lower byre or store in line at one
+// end), round (a round house; it stays round). Steps (s2, s3): keep, L (a wing at one end, toward the front), back (a
+// wing at one end, toward the back), T (a wing from the middle of the back), cross (the T wing run through to the
+// front, or a new wing through the middle), U (wings at both ends, toward the front), annex, long, extend (two bays
+// more at one end under the same roof).
+// storey: the odds of one more storey at s2 and at s3 (third: of a third at s3, deep houses with two at s2 only);
+// one-person houses take half the odds, families half again as much.
+// extras: the odds a stage adds each, s1 to s3 (kept once built). Per type, with a culture's own set for its homes.
+const GROWTH = {
+  home: {
+    s1: { rect: 7, side: 1.5, annex: 1, back: 0.5 },
+    s2: { keep: 1.5, L: 3, T: 2, annex: 1, back: 1, extend: 1.5 },
+    s3: { keep: 0.5, L: 2, T: 2, cross: 1.5, U: 1, annex: 1, back: 1, extend: 1 },
+    storey: { s2: 0.1, s3: 0.5, third: 0.5 }, extras: { porch: [0.1, 0.2, 0.3], outshut: [0, 0.35, 0.25], balcony: [0, 0.5, 0.5], tower: [0, 0, 0.2] },
+  },
+  longhouse: { s1: { rect: 1 }, s2: { keep: 0.5, long: 2, extend: 2, annex: 1, T: 1 }, s3: { keep: 0.5, long: 1.5, extend: 1.5, T: 2, cross: 1, annex: 1 },
+    storey: { s2: 0, s3: 0 }, extras: { porch: [0, 0.3, 0.3], outshut: [0, 0.4, 0.2], tower: [0, 0, 0.35] } },
+  tavern: { s1: { rect: 3, side: 1 }, s2: { keep: 1, L: 2, T: 2, extend: 1 }, s3: { keep: 0.5, T: 2, cross: 1, U: 1, L: 1, extend: 1 },
+    storey: { s2: 0.5, s3: 0.6 }, extras: { porch: [0, 0.3, 0.3], outshut: [0, 0.3, 0.2], balcony: [0, 0.5, 0.5], tower: [0, 0, 0.35] } },
+  smithy: { s1: { rect: 3, side: 1 }, s2: { keep: 0.5, L: 1, T: 1, back: 1, extend: 1.5, long: 1 }, s3: { keep: 0.5, L: 2, T: 2, U: 1, extend: 1, long: 1 },
+    storey: { s2: 0, s3: 0 }, extras: { outshut: [0, 0.4, 0.3] } },
+  sawmill: { s1: { rect: 1 }, s2: { keep: 0.5, L: 1, long: 1.5, extend: 1 }, s3: { keep: 0.5, L: 1, long: 1, extend: 1 }, storey: { s2: 0, s3: 0 }, extras: {} },
+  workshop: { s1: { rect: 3, side: 1 }, s2: { keep: 0.5, L: 1, back: 1, extend: 1.5, long: 1 }, s3: { keep: 0.5, L: 2, T: 1, extend: 1, long: 1 },
+    storey: { s2: 0, s3: 0.5 }, extras: { outshut: [0, 0.4, 0.3], balcony: [0, 0.4, 0.4] } },
+  storage: { s1: { rect: 1 }, s2: { keep: 1, L: 1, long: 1.5, extend: 1 }, s3: { keep: 0.5, L: 1, T: 1, extend: 1, long: 1 }, storey: { s2: 0, s3: 0.5 }, extras: { outshut: [0, 0.4, 0.3] } },
+  // a crop farm's field lies in front of its door: it grows back and to the side
+  farm: { s1: { rect: 1 }, s2: { keep: 1, long: 1, extend: 1 }, s3: { keep: 1, extend: 1, back: 1, T: 1 }, storey: { s2: 0, s3: 0 }, extras: { outshut: [0, 0.3, 0.3] } },
+  barn: { s1: { rect: 1 }, s2: { keep: 0.5, long: 2, extend: 1.5 }, s3: { keep: 0.5, long: 1.5, extend: 1.5, L: 1, T: 0.5 }, storey: { s2: 0, s3: 0 }, extras: { outshut: [0, 0.4, 0.3] } },
+};
+// A culture's plan set for its homes: start and step odds that replace the type's, and its storey odds. Norse build
+// in lines, L, T and cross (Meadows Norse never round, Tyler 2026-11-09; forest Norse seldom); Anglo-Saxons in long straight halls; Frankish town houses rise to two
+// storeys early and turn L and T; Slavs and fen folk add rooms in line; Byzantine houses wrap a yard (L, then U).
+const PLAN_SETS = {
+  'norse': { s1: { rect: 6, side: 2, annex: 1, back: 0.5 }, s2: { keep: 1.5, L: 3, T: 2.5, annex: 1, back: 1, extend: 1 },
+    s3: { keep: 1, L: 1.5, T: 2.5, cross: 2, U: 0.5, annex: 0.5, back: 1, extend: 0.5 } },
+  'anglo-saxon': { s1: { rect: 5, long: 2, annex: 1.5 }, s2: { keep: 2, long: 2, extend: 2, annex: 2, T: 0.5, L: 0.5 },
+    s3: { keep: 1.5, long: 1.5, extend: 1.5, annex: 1, T: 1, L: 1, cross: 0.5 } },
+  'frankish-norman': { s1: { rect: 6, side: 1, back: 1 }, s2: { keep: 2, L: 3, back: 1.5, annex: 1, T: 1, extend: 1 }, s3: { keep: 1, L: 2, T: 2, U: 1, cross: 1 },
+    storey: { s2: 0.25, s3: 0.6, third: 0.5 } },
+  'norse-forest': { s1: { rect: 6, side: 2, annex: 1, back: 0.5, round: 0.3 }, s2: { keep: 1.5, L: 3, T: 2, annex: 1, back: 1, extend: 1 },
+    s3: { keep: 1, L: 1.5, T: 2, cross: 1.5, U: 0.5, annex: 0.5, back: 1, extend: 0.5 } },
+  'slavic': { s1: { rect: 6, annex: 2, side: 0.5 }, s2: { keep: 2, annex: 2, extend: 1.5, long: 1, L: 2, T: 1 }, s3: { keep: 1, L: 2, T: 2, cross: 1.5, annex: 1, extend: 1 } },
+  'baltic': { s1: { rect: 7, long: 1 }, s2: { keep: 2, long: 1, extend: 1, L: 2, T: 1 }, s3: { keep: 1, L: 2, T: 2, cross: 1.5, long: 1, extend: 1 } },
+  'fen-folk': { s1: { rect: 5, long: 3 }, s2: { keep: 2, long: 3, extend: 2, annex: 1, L: 1 }, s3: { keep: 1, long: 2, extend: 2, L: 2, T: 1, annex: 1 } },
+  'byzantine': { s1: { rect: 6, side: 1 }, s2: { keep: 2, L: 3, back: 1 }, s3: { keep: 1, L: 1, U: 2, T: 1.5 } },
+  'middle-eastern': { s1: { rect: 7, side: 1 }, s2: { keep: 1, U: 2, L: 2 }, s3: { keep: 1, U: 1, L: 1, T: 1 } },
+};
+// The plan set for a culture and type: the culture's own for homes, else the type's.
+function growthFor(cultureKey, type) {
+  const g = GROWTH[type];
+  if (!g) return null;
+  const own = type === 'home' && PLAN_SETS[cultureKey];
+  return own ? { ...g, ...own, storey: own.storey || g.storey, extras: own.extras || g.extras } : g;
+}
+
+const api = { BIOMES, kitFor, CULTURES, BIOME_CULTURE, TYPES, ROOF_SETS, cultureFor, roofKit, ID, RENAMED, cultureKey,
+  HOUSEHOLDS, LADDER, GROWTH, PLAN_SETS, growthFor };
 if (typeof module !== 'undefined') module.exports = api;
 else window.VHStyles = api;

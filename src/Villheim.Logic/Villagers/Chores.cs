@@ -63,6 +63,12 @@ namespace Villheim.Logic.Villagers
             public Vector3 TargetSeenAt;
             public Vector3 Stand;
             public Vector3 Contact;
+
+            /// <summary>His place among the helpers when the stand was worked out (0: the builder).</summary>
+            public int HelperSlot = -1;
+
+            /// <summary>When a helper next checks that nobody has moved in on his spot.</summary>
+            public float StandCheckAt;
             public Vector3 Spot;
             public float Timer;
             public float Deadline;
@@ -300,6 +306,32 @@ namespace Villheim.Logic.Villagers
                     return work.Target != null && profile.IsPartial(work.Target) ? profile.PartialActivity : profile.Activity;
                 default:
                     return "heading out to work";
+            }
+        }
+
+        /// <summary>
+        /// The tool his chore has in hand right now: the axe or pickaxe on the way to the tree or rock and while working
+        /// it, the hammer at the building. Null for everything else (carrying, picking things up, heading out), when
+        /// tools are put away (Tyler: pickaxes over the shoulder while traveling; only on the way to mining).
+        /// </summary>
+        public static VillagerLooks.Tool? ToolInUse(Villager villager)
+        {
+            if (!States.TryGetValue(villager, out Work work) || Time.time - work.LastRun > 1f)
+            {
+                return null;
+            }
+
+            switch (work.Phase)
+            {
+                case Phase.Build:
+                case Phase.BuildChest:
+                case Phase.Make:
+                    return VillagerLooks.Tool.Hammer;
+                case Phase.Approach:
+                case Phase.Work:
+                    return work.Target != null && work.Profile != null ? work.Profile.Tool : (VillagerLooks.Tool?)null;
+                default:
+                    return null;
             }
         }
 
@@ -1169,21 +1201,31 @@ namespace Villheim.Logic.Villagers
             }
 
             Vector3 position = villager.transform.position;
+            NoteHelping(villager);
             int slot = HelperSlot(villager);
-            if (Vector3.Distance(piece, work.Contact) > 0.3f)
+            if (Vector3.Distance(piece, work.Contact) > 0.3f || slot != work.HelperSlot)
             {
                 // A new piece: work out where to stand for it (a helper at his own side of it).
                 work.Contact = piece;
-                work.Stand = ConstructionSite.StandSpot(hearth, piece, position);
-                if (slot > 0)
-                {
-                    work.Stand = HelperStand(hearth, piece, ConstructionSite.StandSpot(hearth, piece, hearth.transform.position), slot);
-                }
-
+                work.HelperSlot = slot;
+                work.Stand = slot > 0 ? HelperStand(hearth, villager, piece, slot) : ConstructionSite.StandSpot(hearth, piece, position);
                 work.Picks = 0;
                 work.Deadline = Time.time + 30f;
                 Walker.For(villager).Reset();
             }
+            else if (slot > 0 && Time.time >= work.StandCheckAt)
+            {
+                // The builder (or another helper) moved in on his spot: a new one, so two never work on top of each
+                // other (Tyler: two of them stacked, making the same motions).
+                work.StandCheckAt = Time.time + 0.75f;
+                if (Crowded(villager, work.Stand))
+                {
+                    work.Stand = HelperStand(hearth, villager, piece, slot);
+                    Walker.For(villager).Reset();
+                }
+            }
+
+            NoteStand(villager, work.Stand);
 
             bool stubborn = work.Misses >= 2 && Vector3.Distance(work.MissedPiece, piece) < 0.3f;
             bool inReach = (slot > 0 ? Utils.DistanceXZ(position, work.Stand) < 0.8f && Mathf.Abs(piece.y - position.y) < 7f
@@ -1229,7 +1271,7 @@ namespace Villheim.Logic.Villagers
             Face(villager, ai, piece);
             work.Timer += dt;
             // Each helper keeps his own beat, so no two swing together (T-107).
-            if ((work.Timer + slot * 0.37f) % HammerInterval < dt)
+            if ((work.Timer + slot * HammerInterval * 0.37f) % HammerInterval < dt)
             {
                 ToolAnimation(villager, VillagerLooks.Tool.Hammer);
             }
@@ -1257,7 +1299,6 @@ namespace Villheim.Logic.Villagers
 
             work.Reason = "";
             work.Timer = 0f;
-            NoteHelping(villager);
             if (ConstructionSite.PlaceNext(hearth, true))
             {
                 ConstructionSite.NoteBuilder(villager.VillageId);
@@ -1274,7 +1315,19 @@ namespace Villheim.Logic.Villagers
             return false;
         }
 
-        private static readonly Dictionary<int, Dictionary<Villager, float>> Helpers = new Dictionary<int, Dictionary<Villager, float>>();
+        // Each helper keeps the place he was given when he joined (1, 2, 3...), and stays on the list while he is at
+        // the building. The list had been refreshed only when a piece went up and emptied of anyone not refreshed for 3
+        // seconds, so a helper still walking over lost his place, counted as the builder and stood where the builder
+        // stood (Tyler: two of them stacked on top of each other).
+        private static readonly Dictionary<int, Dictionary<Villager, (float Time, int Slot)>> Helpers =
+            new Dictionary<int, Dictionary<Villager, (float, int)>>();
+
+        // Where everyone at the building stands right now, so a helper can keep clear of the builder and the others.
+        private static readonly Dictionary<int, Dictionary<Villager, (float Time, Vector3 Stand)>> Stands =
+            new Dictionary<int, Dictionary<Villager, (float, Vector3)>>();
+
+        private const float HelperSeconds = 10f;
+        private const float HelperGap = 2.5f;
 
         /// <summary>
         /// A villager between jobs (not carrying, not out at a tree or rock) joins the builder while the chest covers the
@@ -1285,17 +1338,18 @@ namespace Villheim.Logic.Villagers
             int most = LogicConfig.BuildHelpers != null ? LogicConfig.BuildHelpers.Value : 3;
             Roles.Trade trade = Roles.TradeOf(villager);
             if (most <= 0 || work.Phase != Phase.Idle || work.Carrying.Count > 0 || Wanderers.IsWanderer(villager) ||
-                trade == Roles.Trade.Cook || trade == Roles.Trade.Farmer)
+                trade == Roles.Trade.Cook || trade == Roles.Trade.Farmer || Elders.IsElder(villager))
             {
                 return false;
             }
 
-            if (!Helpers.TryGetValue(villager.VillageId, out Dictionary<Villager, float> helping))
+            if (!Helpers.TryGetValue(villager.VillageId, out Dictionary<Villager, (float Time, int Slot)> helping))
             {
-                Helpers[villager.VillageId] = helping = new Dictionary<Villager, float>();
+                Helpers[villager.VillageId] = helping = new Dictionary<Villager, (float, int)>();
             }
 
-            foreach (Villager gone in helping.Where(h => h.Key == null || h.Key.IsDead() || Time.time - h.Value > 3f).Select(h => h.Key).ToList())
+            foreach (Villager gone in helping.Where(h => h.Key == null || h.Key.IsDead() || Time.time - h.Value.Time > HelperSeconds)
+                         .Select(h => h.Key).ToList())
             {
                 helping.Remove(gone);
             }
@@ -1305,7 +1359,13 @@ namespace Villheim.Logic.Villagers
                 return false;
             }
 
-            helping[villager] = Time.time;
+            int slot = helping.TryGetValue(villager, out var mine) ? mine.Slot : 1;
+            while (!helping.ContainsKey(villager) && helping.Values.Any(h => h.Slot == slot))
+            {
+                slot++;
+            }
+
+            helping[villager] = (Time.time, slot);
             VillheimPlugin.Debug($"{villager.VillagerName} goes to help with the building.");
             return true;
         }
@@ -1316,50 +1376,96 @@ namespace Villheim.Logic.Villagers
         /// </summary>
         private static int HelperSlot(Villager villager)
         {
-            if (!Helpers.TryGetValue(villager.VillageId, out Dictionary<Villager, float> helping) || !helping.ContainsKey(villager))
-            {
-                return 0;
-            }
-
-            int slot = 1;
-            foreach (Villager other in helping.Keys)
-            {
-                if (other == villager)
-                {
-                    return slot;
-                }
-
-                slot++;
-            }
-
-            return slot;
-        }
-
-        /// <summary>
-        /// Where a helper stands: round the next piece from the builder's side, a third of a turn apart for each helper
-        /// and further out, so every two of them are at least about 2.5 m apart.
-        /// </summary>
-        private static Vector3 HelperStand(VillageHearth hearth, Vector3 piece, Vector3 builderStand, int slot)
-        {
-            Vector3 out_ = (builderStand - piece).Horizontal();
-            out_ = out_.sqrMagnitude > 0.01f ? out_.normalized : Vector3.forward;
-            Vector3 dir = Quaternion.Euler(0f, 120f * slot + (slot > 2 ? 60f : 0f), 0f) * out_;
-            Vector3 spot = piece + dir * (ConstructionSite.NextPieceHalfWidth(hearth) + 1.6f + 0.5f * slot);
-            if (ZoneSystem.instance.GetGroundHeight(spot, out float y))
-            {
-                spot.y = y;
-            }
-
-            return spot;
+            return !IsVillageBuilder(villager) && Helpers.TryGetValue(villager.VillageId, out var helping) &&
+                   helping.TryGetValue(villager, out var mine) && Time.time - mine.Time <= HelperSeconds
+                ? mine.Slot
+                : 0;
         }
 
         /// <summary>Still building as a helper: keeps his place among the helpers.</summary>
         private static void NoteHelping(Villager villager)
         {
-            if (Helpers.TryGetValue(villager.VillageId, out Dictionary<Villager, float> helping) && helping.ContainsKey(villager))
+            if (Helpers.TryGetValue(villager.VillageId, out var helping) && helping.TryGetValue(villager, out var mine))
             {
-                helping[villager] = Time.time;
+                helping[villager] = (Time.time, mine.Slot);
             }
+        }
+
+        private static void NoteStand(Villager villager, Vector3 stand)
+        {
+            if (!Stands.TryGetValue(villager.VillageId, out var stands))
+            {
+                Stands[villager.VillageId] = stands = new Dictionary<Villager, (float, Vector3)>();
+            }
+
+            stands[villager] = (Time.time, stand);
+        }
+
+        /// <summary>The others at the building right now: where each stands, and where each is going to stand.</summary>
+        private static IEnumerable<Vector3> OthersAtBuilding(Villager villager)
+        {
+            if (!Stands.TryGetValue(villager.VillageId, out var stands))
+            {
+                yield break;
+            }
+
+            foreach (KeyValuePair<Villager, (float Time, Vector3 Stand)> other in stands)
+            {
+                if (other.Key == villager || other.Key == null || other.Key.IsDead() || Time.time - other.Value.Time > 2f)
+                {
+                    continue;
+                }
+
+                yield return other.Value.Stand;
+                yield return other.Key.transform.position;
+            }
+        }
+
+        /// <summary>Someone else at the building stands, or means to stand, within HelperGap of the spot.</summary>
+        private static bool Crowded(Villager villager, Vector3 spot) =>
+            OthersAtBuilding(villager).Any(p => Utils.DistanceXZ(p, spot) < HelperGap);
+
+        /// <summary>
+        /// Where a helper stands: round the next piece, starting a third of a turn from the builder's side for each
+        /// helper, at the first place at least HelperGap from the builder and every other helper (where they stand and
+        /// where they are headed). Further out when the near ring is full.
+        /// </summary>
+        private static Vector3 HelperStand(VillageHearth hearth, Villager villager, Vector3 piece, int slot)
+        {
+            Vector3 builderStand = ConstructionSite.StandSpot(hearth, piece, hearth.transform.position);
+            Vector3 out_ = (builderStand - piece).Horizontal();
+            out_ = out_.sqrMagnitude > 0.01f ? out_.normalized : Vector3.forward;
+            List<Vector3> others = OthersAtBuilding(villager).ToList();
+            float near = ConstructionSite.NextPieceHalfWidth(hearth) + 1.4f;
+            Vector3 fallback = piece;
+            float fallbackGap = -1f;
+            for (int ring = 0; ring < 3; ring++)
+            {
+                float radius = near + ring * 1.2f + 0.3f * slot;
+                for (int step = 0; step < 12; step++)
+                {
+                    float angle = 120f * slot + (slot > 2 ? 60f : 0f) + (step % 2 == 0 ? 1 : -1) * 30f * ((step + 1) / 2);
+                    Vector3 spot = piece + Quaternion.Euler(0f, angle, 0f) * out_ * radius;
+                    if (ZoneSystem.instance.GetGroundHeight(spot, out float y))
+                    {
+                        spot.y = y;
+                    }
+
+                    float gap = others.Count == 0 ? float.MaxValue : others.Min(p => Utils.DistanceXZ(p, spot));
+                    if (gap >= HelperGap)
+                    {
+                        return spot;
+                    }
+
+                    if (gap > fallbackGap)
+                    {
+                        fallbackGap = gap;
+                        fallback = spot;
+                    }
+                }
+            }
+
+            return fallback;
         }
 
         /// <summary>An essential amenity (see Amenities.Find) is due and the chest pays for it. Looked at every few seconds.</summary>
@@ -1478,9 +1584,14 @@ namespace Villheim.Logic.Villagers
             }
 
             work.Timer = 0f;
-            bool made = Amenities.Make(hearth, job);
-            VillageNeeds.Forget(villager.VillageId);
-            Amenities.Forget(villager.VillageId);
+            bool made;
+            using (Perf.Time("Amenities.Make " + job.Name))
+            {
+                made = Amenities.Make(hearth, job);
+                VillageNeeds.Forget(villager.VillageId);
+                Amenities.Forget(villager.VillageId);
+            }
+
             if (made)
             {
                 work.Progressed = true;
@@ -1492,7 +1603,12 @@ namespace Villheim.Logic.Villagers
             }
 
             // The next piece of the same thing, if the chest pays for it: he stays on it.
-            Amenities.Job next = made ? Amenities.Due(hearth, true) : null;
+            Amenities.Job next;
+            using (Perf.Time("Amenities.Due after making"))
+            {
+                next = made ? Amenities.Due(hearth, true) : null;
+            }
+
             if (next != null && next.Name == job.Name && Utils.DistanceXZ(next.Spot, job.Spot) < 8f)
             {
                 work.Making = next;
@@ -1785,6 +1901,7 @@ namespace Villheim.Logic.Villagers
 
             ReleaseTarget(work);
             work.Phase = Phase.Idle;
+            work.HelperSlot = -1;
             work.Making = null;
             work.Tidying = false;
             work.Skip.Clear();

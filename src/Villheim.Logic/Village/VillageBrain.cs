@@ -56,32 +56,37 @@ namespace Villheim.Logic.Village
                     return;
                 }
 
+                if (hearth.Zdo.GetInt(KeyManual) == 0)
+                {
+                    MoveToFlatSite(hearth);
+                }
+
                 Initialize(hearth, state);
             }
 
             double now = ZNet.instance.GetTimeSeconds();
             double unloadedSeconds = AddPassiveWood(hearth, state, now);
 
-            NoticeBoard.RemoveStrayBoards(hearth, state);
-            Demisters.Founding(hearth, state);
-            Villagers.Healing.ClearStation(hearth);
-            VillageChest.Ensure(hearth);
-            VillageChest.MoveStockIn(hearth, state);
-            Villagers.Social.VillageTick(hearth);
-            Relations.Daily(hearth);
-            VillageEvents.Daily(hearth, state);
-            Outposts.Tick(hearth, state);
-            Trails.Tick(hearth, state);
-            Caravans.Tick(hearth, state);
-            Daughters.Tick(hearth, state);
-            Raids.Tick(hearth);
-            Contracts.Tick(hearth, state);
-            Knowledge.Tick(hearth, state);
-            Groves.Tick(hearth, state);
-            Living.HearthTick(hearth, state);
-            NoticeBoard.Update(hearth);
-            CheckDoorsDaily(hearth);
-            Farms.Tick(hearth);
+            using (Perf.Time("NoticeBoard.RemoveStrayBoards")) NoticeBoard.RemoveStrayBoards(hearth, state);
+            using (Perf.Time("Demisters.Founding")) Demisters.Founding(hearth, state);
+            using (Perf.Time("Villagers.Healing.ClearStation")) Villagers.Healing.ClearStation(hearth);
+            using (Perf.Time("VillageChest.Ensure")) VillageChest.Ensure(hearth);
+            using (Perf.Time("VillageChest.MoveStockIn")) VillageChest.MoveStockIn(hearth, state);
+            using (Perf.Time("Villagers.Social.VillageTick")) Villagers.Social.VillageTick(hearth);
+            using (Perf.Time("Relations.Daily")) Relations.Daily(hearth);
+            using (Perf.Time("VillageEvents.Daily")) VillageEvents.Daily(hearth, state);
+            using (Perf.Time("Outposts.Tick")) Outposts.Tick(hearth, state);
+            using (Perf.Time("Trails.Tick")) Trails.Tick(hearth, state);
+            using (Perf.Time("Caravans.Tick")) Caravans.Tick(hearth, state);
+            using (Perf.Time("Daughters.Tick")) Daughters.Tick(hearth, state);
+            using (Perf.Time("Raids.Tick")) Raids.Tick(hearth);
+            using (Perf.Time("Contracts.Tick")) Contracts.Tick(hearth, state);
+            using (Perf.Time("Knowledge.Tick")) Knowledge.Tick(hearth, state);
+            using (Perf.Time("Groves.Tick")) Groves.Tick(hearth, state);
+            using (Perf.Time("Living.HearthTick")) Living.HearthTick(hearth, state);
+            using (Perf.Time("NoticeBoard.Update")) NoticeBoard.Update(hearth);
+            using (Perf.Time("CheckDoorsDaily")) CheckDoorsDaily(hearth);
+            using (Perf.Time("Farms.Tick")) Farms.Tick(hearth);
             if (VillageChest.IsLost(hearth))
             {
                 // Nothing gets built until the chest is back.
@@ -97,14 +102,14 @@ namespace Villheim.Logic.Village
 
             if (ConstructionSite.IsActive(hearth.Zdo))
             {
-                AdvanceSite(hearth, unloadedSeconds);
+                using (Perf.Time("AdvanceSite")) AdvanceSite(hearth, unloadedSeconds);
             }
             else
             {
-                TryGrow(hearth, state, now);
+                using (Perf.Time("TryGrow")) TryGrow(hearth, state, now);
             }
 
-            TryPopulate(hearth, state, now);
+            using (Perf.Time("TryPopulate")) TryPopulate(hearth, state, now);
         }
 
         private static readonly Dictionary<int, int> DoorsCheckedOn = new Dictionary<int, int>();
@@ -121,6 +126,26 @@ namespace Villheim.Logic.Village
             DoorsCheckedOn[hearth.VillageId] = day;
             PathPlanner.CheckDoors(hearth);
             PathPlanner.CheckDetours(hearth);
+        }
+
+        /// <summary>
+        /// A hearth the world generator put down moves, before the village is founded, to the most even ground for a
+        /// whole village within 80 m (D-056), as test villages and settled ones do: the generator only checks a small
+        /// circle round the hearth.
+        /// </summary>
+        private static void MoveToFlatSite(VillageHearth hearth)
+        {
+            Vector3 from = hearth.transform.position;
+            Vector3 spot = HearthGround.FlatVillageSpot(from, VillheimConfig.VillageRadius.Value * 0.6f);
+            // The site rules (spacing, rarity) were checked where the generator put it; they go by that spot.
+            if (Utils.DistanceXZ(spot, from) < 2f)
+            {
+                return;
+            }
+
+            hearth.transform.position = spot;
+            hearth.Zdo.SetPosition(spot);
+            VillheimPlugin.Log.LogInfo($"Village site moved {Utils.DistanceXZ(spot, from):0} m from {from} to flatter ground at {spot}.");
         }
 
         public static void Initialize(VillageHearth hearth, VillageState state)

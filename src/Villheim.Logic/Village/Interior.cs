@@ -26,7 +26,7 @@ namespace Villheim.Logic.Village
             public string Name;
             public int Count;
 
-            /// <summary>Part of settling in (beds, the workbench): made before the village grows any further.</summary>
+            /// <summary>Part of settling in (a home's beds and furnishing): made before the village grows any further.</summary>
             public bool Essential;
         }
 
@@ -34,7 +34,8 @@ namespace Villheim.Logic.Village
         public const float SmallHomeRadius = 9f;
 
         private const float Step = 0.75f;
-        private const int EnoughCandidates = 24;
+        private const int EnoughCandidates = 6;
+        private const int MaxCoverTests = 16;
         private const float MinCover = 0.7f;
         private const float DoorClearance = 1.8f;
 
@@ -71,10 +72,12 @@ namespace Villheim.Logic.Village
                 case nameof(Role.Farm):
                     break;
                 default:
+                    // A home is furnished before the village starts its next building (Tyler: the second house went up
+                    // with nothing in the first): its beds first, then its chest, chairs and table.
                     yield return new Want { Prefab = "bed", Name = "bed", Count = BedsInHome(plot), Essential = true };
-                    yield return new Want { Prefab = "piece_chest_wood", Name = "chest", Count = 1 };
-                    yield return new Want { Prefab = "piece_chair", Name = "chair", Count = BedsInHome(plot) };
-                    if (tier >= 1) yield return new Want { Prefab = "piece_table", Name = "table", Count = 1 };
+                    yield return new Want { Prefab = "piece_chest_wood", Name = "chest", Count = 1, Essential = true };
+                    yield return new Want { Prefab = "piece_chair", Name = "chair", Count = BedsInHome(plot), Essential = true };
+                    if (tier >= 1) yield return new Want { Prefab = "piece_table", Name = "table", Count = 1, Essential = true };
                     break;
             }
         }
@@ -150,17 +153,33 @@ namespace Villheim.Logic.Village
 
         private static bool Search(Plot plot, GameObject prefab, string prefabName, out Vector3 spot, out Quaternion rotation, bool relaxed)
         {
+            using (Perf.On ? Perf.Time($"Interior.Search {prefabName} in {plot.Design}") : null)
+            {
+                return SearchOnce(plot, prefab, prefabName, out spot, out rotation, relaxed);
+            }
+        }
+
+        /// <summary>
+        /// The cheap tests (floor, doors, does it fit, a roof straight overhead) run on every cell; the game's cover test
+        /// (a few hundred rays) only on the best few that pass them. It had run on every cell that fit, which made the
+        /// search for a chest or a chair in a cluttered home a lag spike once the notice board was done and the village
+        /// went on to furnishing (Tyler: lag when the board finished).
+        /// </summary>
+        private static bool SearchOnce(Plot plot, GameObject prefab, string prefabName, out Vector3 spot, out Quaternion rotation, bool relaxed)
+        {
             spot = plot.Position;
             rotation = Quaternion.identity;
             float reach = Mathf.Max(3f, plot.Radius * 0.7f);
             List<(Vector3 A, Vector3 B)> doorways = Doorways(plot);
+            List<Vector3> doors = DoorsNear(plot);
             Bounds? measured = BuildOrder.Measure(prefab, prefabName, Vector3.zero, Quaternion.identity, prefab.transform.localScale);
             float itemReach = measured.HasValue ? Mathf.Max(measured.Value.extents.x, measured.Value.extents.z) : 1f;
             int cells = Mathf.CeilToInt(reach / Step);
             Quaternion plotTurn = Quaternion.Euler(0f, plot.Yaw, 0f);
-            var candidates = new List<(float Score, Vector3 Spot, Quaternion Rotation)>();
+            var fitting = new List<(float Score, Vector3 Spot, Quaternion Rotation)>();
+            int roofMask = LayerMask.GetMask("piece");
 
-            for (int x = -cells; x <= cells && candidates.Count < EnoughCandidates; x++)
+            for (int x = -cells; x <= cells; x++)
             {
                 for (int z = -cells; z <= cells; z++)
                 {
@@ -177,57 +196,85 @@ namespace Villheim.Logic.Village
                     }
 
                     point.y = floorY;
-                    if (NearDoor(point) || InDoorway(doorways, point, itemReach))
+                    if (NearDoor(doors, point) || InDoorway(doorways, point, itemReach) ||
+                        !Physics.Raycast(point + Vector3.up * 1f, Vector3.up, 10f, roofMask, QueryTriggerInteraction.Ignore))
                     {
                         continue;
                     }
 
-                    // Cheap tests first (does it fit), the game's cover test (many rays) only for spots that fit.
-                    var fits = new List<Quaternion>();
                     for (int turn = 0; turn < 4; turn++)
                     {
                         Quaternion candidate = plotTurn * Quaternion.Euler(0f, 90f * turn, 0f);
                         if (Fits(prefab, prefabName, point, candidate, !relaxed))
                         {
-                            fits.Add(candidate);
+                            // Back to the wall: a wall close behind scores best.
+                            fitting.Add((WallBehind(point, candidate) + local.magnitude * 0.05f, point, candidate));
                         }
-                    }
-
-                    if (fits.Count == 0)
-                    {
-                        continue;
-                    }
-
-                    Cover.GetCoverForPoint(point + Vector3.up * 1f, out float cover, out bool underRoof);
-                    if (!underRoof || cover < (relaxed ? MinCover * 0.6f : MinCover))
-                    {
-                        continue;
-                    }
-
-                    // Back to the wall: keep the turn with a wall closest behind.
-                    foreach (Quaternion candidate in fits)
-                    {
-                        float behind = WallBehind(point, candidate);
-                        float score = behind + (1f - cover) * 2f + local.magnitude * 0.05f;
-                        candidates.Add((score, point, candidate));
-                    }
-
-                    if (candidates.Count >= EnoughCandidates)
-                    {
-                        break;
                     }
                 }
             }
 
-            if (candidates.Count == 0)
+            fitting.Sort((a, b) => a.Score.CompareTo(b.Score));
+            var covered = new Dictionary<Vector3, float>();
+            (float Score, Vector3 Spot, Quaternion Rotation)? best = null;
+            int tested = 0;
+            int passed = 0;
+            foreach ((float score, Vector3 point, Quaternion candidate) in fitting)
+            {
+                if (!covered.TryGetValue(point, out float cover))
+                {
+                    if (tested >= MaxCoverTests)
+                    {
+                        break;
+                    }
+
+                    tested++;
+                    Cover.GetCoverForPoint(point + Vector3.up * 1f, out cover, out bool underRoof);
+                    covered[point] = cover = underRoof ? cover : -1f;
+                }
+
+                if (cover < (relaxed ? MinCover * 0.6f : MinCover))
+                {
+                    continue;
+                }
+
+                passed++;
+                float total = score + (1f - cover) * 2f;
+                if (!best.HasValue || total < best.Value.Score)
+                {
+                    best = (total, point, candidate);
+                }
+
+                if (passed >= EnoughCandidates)
+                {
+                    break;
+                }
+            }
+
+            if (!best.HasValue)
             {
                 return false;
             }
 
-            candidates.Sort((a, b) => a.Score.CompareTo(b.Score));
-            spot = candidates[0].Spot;
-            rotation = candidates[0].Rotation;
+            spot = best.Value.Spot;
+            rotation = best.Value.Rotation;
             return true;
+        }
+
+        /// <summary>The doors in and round the building, looked for once per search.</summary>
+        private static List<Vector3> DoorsNear(Plot plot)
+        {
+            var doors = new List<Vector3>();
+            foreach (Collider collider in Physics.OverlapSphere(plot.Position, plot.Radius + DoorClearance, LayerMask.GetMask("piece", "piece_nonsolid")))
+            {
+                Door door = collider.GetComponentInParent<Door>();
+                if (door != null && !doors.Contains(door.transform.position))
+                {
+                    doors.Add(door.transform.position);
+                }
+            }
+
+            return doors;
         }
 
         /// <summary>The ground floor under the point: a piece or the ground, near the building's own floor height.</summary>
@@ -244,11 +291,11 @@ namespace Villheim.Logic.Village
             return y > plot.Position.y - 1f && y < plot.Position.y + 1.5f;
         }
 
-        private static bool NearDoor(Vector3 point)
+        private static bool NearDoor(List<Vector3> doors, Vector3 point)
         {
-            foreach (Collider collider in Physics.OverlapSphere(point, DoorClearance, LayerMask.GetMask("piece", "piece_nonsolid")))
+            foreach (Vector3 door in doors)
             {
-                if (collider.GetComponentInParent<Door>() != null)
+                if (Vector3.Distance(door, point) < DoorClearance + 0.5f)
                 {
                     return true;
                 }

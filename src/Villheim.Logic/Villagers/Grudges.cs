@@ -229,28 +229,64 @@ namespace Villheim.Logic.Villagers
             VillheimPlugin.Debug($"{villager.VillageName}: {player.GetPlayerName()} keeps hitting our people; the protectors turn on him.");
         }
 
-        /// <summary>A villager died: if a player struck him in the last ten seconds, that player killed him.</summary>
+        /// <summary>
+        /// A villager died: the player who struck him last killed him. Taken from the game's own last hit first (an arrow
+        /// or a blow that killed at once), else from a hit counted in the last ten seconds (Tyler: villagers he killed
+        /// left no grudge). The killing is written on the hearth for good, and every protector near him turns on him.
+        /// </summary>
         public static void Died(Villager villager)
         {
-            if (!On || villager == null || !Marks.TryGetValue(villager, out Mark mark) || mark.LastHitBy == null ||
-                Time.time - mark.LastHitAt > 10f)
+            if (!On || villager == null || villager.VillageId == 0 || Wanderers.IsWanderer(villager))
             {
                 return;
+            }
+
+            Player killer = villager.m_lastHit != null ? villager.m_lastHit.GetAttacker() as Player : null;
+            if (killer == null && Marks.TryGetValue(villager, out Mark mark) && mark.LastHitBy != null && Time.time - mark.LastHitAt <= 10f)
+            {
+                killer = mark.LastHitBy;
             }
 
             VillageHearth hearth = VillageHearth.Find(villager.VillageId);
-            if (hearth == null || !hearth.IsValid)
+            if (killer == null || hearth == null || !hearth.IsValid)
             {
                 return;
             }
 
-            List<Record> list = Read(hearth);
-            RecordFor(hearth, mark.LastHitBy.GetPlayerID(), list).Killed = true;
-            Write(hearth, list);
-            Chronicle.Add(hearth, $"{mark.LastHitBy.GetPlayerName()} killed {villager.VillagerName}. He will never be welcome here again.");
-            if (!Episodes.ContainsKey(villager.VillageId))
+            if (!hearth.NView.IsOwner())
             {
-                Start(villager.VillageId, mark.LastHitBy);
+                hearth.NView.ClaimOwnership();
+            }
+
+            List<Record> list = Read(hearth);
+            Record record = RecordFor(hearth, killer.GetPlayerID(), list);
+            bool first = !record.Killed;
+            record.Killed = true;
+            Write(hearth, list);
+            if (first)
+            {
+                Chronicle.Add(hearth, $"{killer.GetPlayerName()} killed {villager.VillagerName}. He will never be welcome here again.");
+            }
+            else
+            {
+                Chronicle.Add(hearth, $"{killer.GetPlayerName()} killed {villager.VillagerName} too.");
+            }
+
+            VillheimPlugin.Log.LogInfo($"{hearth.VillageName}: {killer.GetPlayerName()} killed {villager.VillagerName}; never welcome again.");
+            if (!Episodes.TryGetValue(villager.VillageId, out Episode episode) || episode.Player != killer)
+            {
+                episode = Start(villager.VillageId, killer);
+            }
+
+            // A killing is no accident: the protectors close by fight at once, without a warning first.
+            foreach (Villager protector in People(villager.VillageId).Where(v => v != villager && Protects(v) &&
+                         Vector3.Distance(v.transform.position, killer.transform.position) < WarnRadius * 2f))
+            {
+                if (episode.Fighters.Add(protector))
+                {
+                    episode.Warned.Remove(protector);
+                    Line(protector, "playerfight", true);
+                }
             }
         }
 

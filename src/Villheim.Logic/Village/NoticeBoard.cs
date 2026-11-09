@@ -849,7 +849,7 @@ namespace Villheim.Logic.Village
             if (due != null && due.Essential)
             {
                 // Beds, the board or a chest come before the next building, so the Project sign names them.
-                project = Capital(due.Name == "bed" ? "beds" : due.Name);
+                project = Capital(due.Name == "bed" ? "beds" : due.Inside ? "furnishing" : due.Name);
                 projectColor = "#fd8";
             }
 

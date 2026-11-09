@@ -84,11 +84,15 @@ namespace Villheim.Logic.Villagers
         }
 
         private static readonly List<Fade> Fades = new List<Fade>();
+        private static readonly Color GhostBlue = new Color(0.55f, 0.85f, 1f, 0.85f);
+
+        // Odin's vanishing smoke, played where the villager stood: the ghost's own effect alone was small and quick.
+        private static readonly string[] VanishEffects = { "vfx_odin_despawn" };
 
         /// <summary>A still, ghostly copy of the dying villager that rises and fades away.</summary>
         private static void Linger(Villager villager)
         {
-            float seconds = LogicConfig.GhostDeathSeconds?.Value ?? 2.5f;
+            float seconds = LogicConfig.GhostDeathSeconds?.Value ?? 3.5f;
             if (!On || seconds <= 0.05f)
             {
                 return;
@@ -131,13 +135,26 @@ namespace Villheim.Logic.Villagers
                 Material[] materials = renderer.sharedMaterials.Where(m => m != null).Select(m => new Material(m)).ToArray();
                 foreach (Material m in materials)
                 {
+                    // His own ghostly tint when his material already had one, else a pale ghost blue. The tint was read
+                    // after the shader was swapped, from a material that never had it set: black and clear, so the
+                    // copy could not be seen at all (Tyler: the ghostly effect was not visible).
+                    Color tint = m.HasProperty("_TintColor") ? m.GetColor("_TintColor") : GhostBlue;
+                    if (tint.a < 0.3f || tint.r + tint.g + tint.b < 0.3f)
+                    {
+                        tint = GhostBlue;
+                    }
+
                     if (seeThrough != null && m.shader != seeThrough)
                     {
                         m.shader = seeThrough;
                         m.renderQueue = 3000;
                     }
 
-                    Color tint = m.HasProperty("_TintColor") ? m.GetColor("_TintColor") : new Color(0.55f, 0.85f, 1f, 0.8f);
+                    if (m.HasProperty("_TintColor"))
+                    {
+                        m.SetColor("_TintColor", tint);
+                    }
+
                     fade.Materials.Add((m, tint));
                 }
 
@@ -146,6 +163,14 @@ namespace Villheim.Logic.Villagers
             }
 
             Fades.Add(fade);
+            foreach (string name in VanishEffects)
+            {
+                GameObject effect = ZNetScene.instance != null ? ZNetScene.instance.GetPrefab(name) : null;
+                if (effect != null)
+                {
+                    Object.Instantiate(effect, villager.transform.position, Quaternion.identity);
+                }
+            }
         }
 
         /// <summary>Every frame: the fading copies rise and fade, and go when they are done.</summary>
@@ -162,8 +187,9 @@ namespace Villheim.Logic.Villagers
                     continue;
                 }
 
-                fade.Root.transform.position += Vector3.up * (0.5f * Time.deltaTime);
-                float left = 1f - Mathf.SmoothStep(0f, 1f, t);
+                // Rises slowly the whole time; stays clear to see for the first third, then fades.
+                fade.Root.transform.position += Vector3.up * (0.4f * Time.deltaTime);
+                float left = 1f - Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(0.3f, 1f, t));
                 foreach ((Material m, Color tint) in fade.Materials)
                 {
                     if (m != null && m.HasProperty("_TintColor"))

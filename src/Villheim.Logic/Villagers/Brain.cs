@@ -208,6 +208,12 @@ namespace Villheim.Logic.Villagers
                 // Low on arrows with nothing else to do: more made at the workbench.
                 doer = Status.Doer.Fletch;
             }
+            else if (ElderWork.Update(villager, ai, dt))
+            {
+                // An elder's share of the village work: the fire, cooking, the chests, the farm and the like, slowly,
+                // with rests between.
+                doer = Status.Doer.Elder;
+            }
             else
             {
                 FreeTime.Update(villager, ai, dt);

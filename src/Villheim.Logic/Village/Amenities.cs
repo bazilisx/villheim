@@ -85,7 +85,7 @@ namespace Villheim.Logic.Village
             new Entry { Prefab = "stone_pile", Name = "stone pile", Slot = 3, Radius = OuterRing, MinBuildings = 3 },
         };
 
-        private static readonly Dictionary<int, (float Time, Job Job)> Cache = new Dictionary<int, (float, Job)>();
+        private static readonly Dictionary<int, (float Time, Job Job, string Plots)> Cache = new Dictionary<int, (float, Job, string)>();
 
         /// <summary>
         /// The next thing the village should make, or null: the first thing still missing, once the chest can spare
@@ -152,14 +152,23 @@ namespace Villheim.Logic.Village
                 return null;
             }
 
+            // A building finished since the last look counts at once: its beds and furnishing come before the next
+            // building (Tyler: the second house was started before the first had anything in it; the answer kept from
+            // before it was finished let the village grow straight on).
             int id = hearth.VillageId;
-            if (Cache.TryGetValue(id, out var cached) && Time.time - cached.Time < 10f)
+            string plots = hearth.Zdo.GetString(Keys.Plots, "");
+            if (Cache.TryGetValue(id, out var cached) && Time.time - cached.Time < 10f && string.Equals(cached.Plots, plots))
             {
                 return cached.Job;
             }
 
-            Job job = Find(hearth);
-            Cache[id] = (Time.time, job);
+            Job job;
+            using (Perf.Time("Amenities.Find"))
+            {
+                job = Find(hearth);
+            }
+
+            Cache[id] = (Time.time, job, plots);
             return job;
         }
 
@@ -236,7 +245,12 @@ namespace Villheim.Logic.Village
                     break;
                 }
 
-                Job job = steps[i]();
+                Job job;
+                using (Perf.On ? Perf.Time($"Amenities.Find step {i}") : null)
+                {
+                    job = steps[i]();
+                }
+
                 if (job == null || IsStuck(hearth, job))
                 {
                     continue;
@@ -260,7 +274,7 @@ namespace Villheim.Logic.Village
             {
                 foreach (Interior.Want want in Interior.WantsFor(plot, tier))
                 {
-                    if (want.Essential && Interior.CountInside(plot, want.Prefab) < want.Count)
+                    if (want.Prefab == "bed" && Interior.CountInside(plot, want.Prefab) < want.Count)
                     {
                         return true;
                     }

@@ -322,7 +322,7 @@ namespace Villheim.Logic.Village
                 spot.y = y;
             }
 
-            spot = HearthGround.FlatSpotNear(spot);
+            spot = HearthGround.FlatVillageSpot(spot, VillheimConfig.VillageRadius.Value * 0.6f);
             Vector3 facing = (parent.GetPosition() - spot).Horizontal();
             GameObject made = Object.Instantiate(HearthPrefab.Prefab, spot,
                 facing.sqrMagnitude > 0.01f ? Quaternion.LookRotation(facing) : Quaternion.identity);

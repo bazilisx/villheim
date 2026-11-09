@@ -347,7 +347,9 @@ function check(design, biome, opts = {}) {
     for (const j of near(b)) {
       if (held[j]) continue;
       const o = held_[j];
-      if (touch(b, o, 0.16) && (b.info.structural || o.info.role === 'craft' || o.info.role === 'deco' || o.info.role === 'light')) { held[j] = true; queue.push(j); }
+      // furniture holds what stands on it (a chest on a chest, a pot on a crate): Valheim's furniture carries load
+      const onTop = !b.info.structural && o.y0 >= b.y1 - 0.15 && o.y0 <= b.y1 + 0.16 && o.x0 < b.x1 && o.x1 > b.x0 && o.z0 < b.z1 && o.z1 > b.z0;
+      if (touch(b, o, 0.16) && (b.info.structural || onTop || o.info.role === 'craft' || o.info.role === 'deco' || o.info.role === 'light')) { held[j] = true; queue.push(j); }
     }
   }
   const unsupported = pieces.filter((p, i) => !held[i] && (boxes[i].info.structural || ['craft', 'storage', 'bed', 'table', 'seat', 'fire'].includes(boxes[i].info.role))).map(p => p.name);
@@ -396,9 +398,9 @@ function check(design, biome, opts = {}) {
         // cooking stations and cauldrons stand over the fire
         if ((b.info.role === 'fire' || o.info.role === 'fire') && /cookingstation|cauldron/.test(pieces[i].name + pieces[j].name)) continue;
         if (!touch(b, o, -0.03)) continue;
-        // a piece set into a wall or another piece on purpose, no deeper than its source build had it (p.clip, D-065)
-        const cl = Math.max(pieces[i].clip || 0, pieces[j].clip || 0);
-        if (cl && Math.min(Math.min(b.x1, o.x1) - Math.max(b.x0, o.x0), Math.min(b.y1, o.y1) - Math.max(b.y0, o.y0), Math.min(b.z1, o.z1) - Math.max(b.z0, o.z0)) <= cl + 0.03) continue;
+        // a clip made on purpose (lib/kitbash.js marks it with the depth its source builds used) is allowed that deep
+        const allow = Math.max(p.clip || 0, pieces[j].clip || 0);
+        if (allow > 0 && SHP.clipDepth(b.sol, o.sol) <= allow + 0.02) continue;
         const v = SHP.overlapVolume(b.sol, o.sol);
         if (v > 0.03 && v > 0.08 * Math.min(v0, SHP.volume(o.sol))) clips.push([i, j, v]);
       }
@@ -521,7 +523,8 @@ function check(design, biome, opts = {}) {
   // materials for the biome, building pieces and furnishing alike
   if (biome) {
     const ord = PC.BIOME_ORDER, limit = ord.indexOf(biome);
-    const over = [...new Set(pieces.filter(p => ord.indexOf(PC.needs(p.name)) > limit).map(p => p.name))];
+    // minor decor goes in any biome (D-066): it costs nothing or is paid in the village's own materials
+    const over = [...new Set(pieces.filter(p => ord.indexOf(PC.needs(p.name)) > limit && !(p.decor && PC.minor(p.name))).map(p => p.name))];
     results.push({ check: 'materials', ok: over.length === 0, detail: over.length ? `needs later biomes: ${over.slice(0, 5).join(', ')}` : `all pieces available in ${biome}` });
   }
 

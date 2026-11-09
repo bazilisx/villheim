@@ -2174,7 +2174,9 @@ function check(design, biome, opts = {}) {
     for (const j of near(b)) {
       if (held[j]) continue;
       const o = held_[j];
-      if (touch(b, o, 0.16) && (b.info.structural || o.info.role === 'craft' || o.info.role === 'deco' || o.info.role === 'light')) { held[j] = true; queue.push(j); }
+      // furniture holds what stands on it (a chest on a chest, a pot on a crate): Valheim's furniture carries load
+      const onTop = !b.info.structural && o.y0 >= b.y1 - 0.15 && o.y0 <= b.y1 + 0.16 && o.x0 < b.x1 && o.x1 > b.x0 && o.z0 < b.z1 && o.z1 > b.z0;
+      if (touch(b, o, 0.16) && (b.info.structural || onTop || o.info.role === 'craft' || o.info.role === 'deco' || o.info.role === 'light')) { held[j] = true; queue.push(j); }
     }
   }
   const unsupported = pieces.filter((p, i) => !held[i] && (boxes[i].info.structural || ['craft', 'storage', 'bed', 'table', 'seat', 'fire'].includes(boxes[i].info.role))).map(p => p.name);
@@ -2223,9 +2225,9 @@ function check(design, biome, opts = {}) {
         // cooking stations and cauldrons stand over the fire
         if ((b.info.role === 'fire' || o.info.role === 'fire') && /cookingstation|cauldron/.test(pieces[i].name + pieces[j].name)) continue;
         if (!touch(b, o, -0.03)) continue;
-        // a piece set into a wall or another piece on purpose, no deeper than its source build had it (p.clip, D-065)
-        const cl = Math.max(pieces[i].clip || 0, pieces[j].clip || 0);
-        if (cl && Math.min(Math.min(b.x1, o.x1) - Math.max(b.x0, o.x0), Math.min(b.y1, o.y1) - Math.max(b.y0, o.y0), Math.min(b.z1, o.z1) - Math.max(b.z0, o.z0)) <= cl + 0.03) continue;
+        // a clip made on purpose (lib/kitbash.js marks it with the depth its source builds used) is allowed that deep
+        const allow = Math.max(p.clip || 0, pieces[j].clip || 0);
+        if (allow > 0 && SHP.clipDepth(b.sol, o.sol) <= allow + 0.02) continue;
         const v = SHP.overlapVolume(b.sol, o.sol);
         if (v > 0.03 && v > 0.08 * Math.min(v0, SHP.volume(o.sol))) clips.push([i, j, v]);
       }
@@ -2348,7 +2350,8 @@ function check(design, biome, opts = {}) {
   // materials for the biome, building pieces and furnishing alike
   if (biome) {
     const ord = PC.BIOME_ORDER, limit = ord.indexOf(biome);
-    const over = [...new Set(pieces.filter(p => ord.indexOf(PC.needs(p.name)) > limit).map(p => p.name))];
+    // minor decor goes in any biome (D-066): it costs nothing or is paid in the village's own materials
+    const over = [...new Set(pieces.filter(p => ord.indexOf(PC.needs(p.name)) > limit && !(p.decor && PC.minor(p.name))).map(p => p.name))];
     results.push({ check: 'materials', ok: over.length === 0, detail: over.length ? `needs later biomes: ${over.slice(0, 5).join(', ')}` : `all pieces available in ${biome}` });
   }
 
@@ -4777,6 +4780,9 @@ function audit(design, decor) {
       const c = items[j];
       const fc = c.f.at;
       if (fc === 'mount' || fc === 'hang' || fc === 'top' || fc === 'fire' || fc === 'rug') continue;
+      // kitbash pieces (lib/kitbash.js) are judged by the game's solids: they may clip as deep as their source builds
+      // did (p.clip), and no deeper
+      if ((a.p.kb || c.p.kb) && SHD) { if (kbClip(a.p, c.p) > Math.max(a.p.clip || 0, c.p.clip || 0) + 0.02) res.overlap.push(`${a.p.name} / ${c.p.name} at ${a.p.x.toFixed(1)},${a.p.z.toFixed(1)}`); continue; }
       if (a.y0 > c.y1 - 0.05 || c.y0 > a.y1 - 0.05) continue;
       if (overlap(a.b, c.b, -0.06)) res.overlap.push(`${a.p.name} / ${c.p.name} at ${a.p.x.toFixed(1)},${a.p.z.toFixed(1)}`);
     }
@@ -4793,19 +4799,7 @@ function audit(design, decor) {
   const wallish = struct.filter(s => WALLISH.has(s.role));
   for (const it of items) {
     if (it.f.at !== 'mount') continue;
-    const yaw = pyaw(it.p) - (it.f.rel || 0), ar = yaw * PI / 180, nx = Math.sin(ar), nz = Math.cos(ar), ux = Math.cos(ar), uz = -Math.sin(ar);
-    const w = size(it.p.name)[0];
-    let bad = false;
-    const y = it.f.under != null ? it.p.y - size(it.p.name)[1] / 2 : it.p.y + size(it.p.name)[1] / 2;
-    for (const t of [-w / 2 + 0.05, 0, w / 2 - 0.05]) {
-      // walk back from the piece to the first wall piece behind it at its height
-      let here = [];
-      for (let back = 0; back <= 1.0 && !here.length; back += 0.05) {
-        const px = it.b.x + ux * t - nx * back, pz = it.b.z + uz * t - nz * back;
-        here = wallish.filter(s => ptDist(s.b, px, pz) < 0.01 && s.y0 <= y + 0.01 && s.y1 >= y - 0.01);
-      }
-      if (!here.length || here.some(s => s.role !== 'wall' || isGlass(s.p.name))) bad = true;
-    }
+    const bad = !mountOk(it, wallish);
     if (bad) res.mountOnOpening.push(`${it.p.name} at ${it.p.x.toFixed(1)},${it.p.y.toFixed(1)},${it.p.z.toFixed(1)}`);
   }
   // floating: floor pieces need a floor (or the ground) under them; table pieces a table; fire pieces a fire
@@ -4814,6 +4808,8 @@ function audit(design, decor) {
   const ground = design.ground != null ? design.ground : ys.length ? ys[Math.floor(ys.length * 0.02)] : 0;
   for (const it of items) {
     const fa = it.f.at || 'floor';
+    // a kitbash piece says what it rests on: another piece, a wall or the structure over it; that must be there
+    if (it.p.kb && it.p.rest) { if (!kbRests(it, pieces, wallish, struct)) res.floating.push(`${it.p.name} at ${it.p.x.toFixed(1)},${it.p.y.toFixed(2)},${it.p.z.toFixed(1)}`); continue; }
     if (fa === 'mount' || fa === 'hang') continue;
     if (fa === 'top' && wallish.some(s => ptDist(s.b, it.p.x, it.p.z) < 0.4 && s.y0 < it.p.y && s.y1 > it.p.y)) continue; // hung on a wall as a shelf
     if (fa === 'rug' && struct.filter(s => built(s.p) && s.role === 'pole' && Math.abs(s.y1 - it.p.y) < 0.15 && overlap(s.b, it.b, 0.2)).length >= 2) continue; // a canopy on posts (its head end on the wall)
@@ -4857,6 +4853,73 @@ function audit(design, decor) {
   return res;
 }
 
+// A wall piece needs plain wall behind it across its width, at its height (no window, door or glass).
+function mountOk(it, wallish) {
+  const yaw = pyaw(it.p) - (it.f.rel || 0), ar = yaw * PI / 180, nx = Math.sin(ar), nz = Math.cos(ar), ux = Math.cos(ar), uz = -Math.sin(ar);
+  const w = size(it.p.name)[0];
+  const y = it.f.under != null ? it.p.y - size(it.p.name)[1] / 2 : it.p.y + size(it.p.name)[1] / 2;
+  for (const t of [-w / 2 + 0.05, 0, w / 2 - 0.05]) {
+    // walk back from the piece to the first wall piece behind it at its height
+    let here = [];
+    for (let back = 0; back <= 1.0 && !here.length; back += 0.05) {
+      const px = it.b.x + ux * t - nx * back, pz = it.b.z + uz * t - nz * back;
+      here = wallish.filter(s => ptDist(s.b, px, pz) < 0.01 && s.y0 <= y + 0.01 && s.y1 >= y - 0.01);
+    }
+    if (!here.length || here.some(s => s.role !== 'wall' || isGlass(s.p.name))) return false;
+  }
+  return true;
+}
+// The audit's box for one piece, as boxOf in audit() makes it.
+function itemOf(p) {
+  const [w, h, d] = size(p.name), f = F[p.name] || {}, y0 = p.y - (f.base || 0), [mx, mz] = middleOf(p.name, p.x, p.z, pyaw(p));
+  return { p, f, b: obox(mx, mz, w, d, pyaw(p)), y0: f.at === 'hang' ? p.y : y0, y1: f.at === 'hang' ? p.y + h : y0 + h };
+}
+// The audit's tests for one kitbash piece, for the fitter (lib/kitbash.js) to ask before it places it: what it rests
+// on, and plain wall behind a wall piece. ctx from auditContext(pieces), kept up to date with add().
+function auditContext(pieces) {
+  const struct = pieces.filter(p => !p.decor || (!F[p.name] && P.piece(p.name).structural)).map(structBox);
+  const ctx = { pieces, struct, wallish: struct.filter(s => WALLISH.has(s.role)) };
+  ctx.add = p => { if (!F[p.name] && P.piece(p.name).structural) { const sb = structBox(p); ctx.struct.push(sb); if (WALLISH.has(sb.role)) ctx.wallish.push(sb); } };
+  return ctx;
+}
+function auditOne(p, ctx) {
+  const it = itemOf(p);
+  if (it.f.at === 'mount' && !mountOk(it, ctx.wallish)) return false;
+  if (p.rest && !kbRests(it, ctx.pieces, ctx.wallish, ctx.struct)) return false;
+  return true;
+}
+// How deep two pieces' solids reach into each other (0 for pieces with none, rugs and food).
+function kbClip(a, b) {
+  const A = SHD.world(a), B = SHD.world(b);
+  return A && B && A.length && B.length ? SHD.clipDepth(A, B) : 0;
+}
+// Is there what a kitbash piece rests on: a piece under its middle whose top is at its foot ('on'), a wall behind it
+// at its height ('wall'), or structure just over it ('hang')?
+function kbRests(it, pieces, wallish, struct) {
+  const p = it.p, y0 = it.y0, y1 = it.y1, [mx, mz] = [it.b.x, it.b.z];
+  if (p.rest === 'on') {
+    for (const q of pieces) {
+      if (q === p || Math.abs(q.x - mx) > 3 || Math.abs(q.z - mz) > 3) continue;
+      const W = SHD && SHD.world(q);
+      let top = W && W.length ? SHD.topAt(W, mx, mz) : null;
+      if (top == null) { const sb = structBox(q); if (ptDist(sb.b, mx, mz) < 0.01) top = sb.y1; }
+      if (top != null && top > y0 - 0.15 && top < y0 + 0.12) return true;
+    }
+    return false;
+  }
+  if (p.rest === 'floor') {
+    // the solids' foot on a floor's top, or sunk into it no deeper than the piece says (its source builds' depth)
+    const W = SHD && SHD.world(p), foot = W && W.length ? Math.min(...W.map(o => o.y0)) : y0;
+    return pieces.some(q => !q.decor && P.piece(q.name).role === 'floor' && Math.abs(q.x - mx) < 3 && Math.abs(q.z - mz) < 3 && (() => {
+      const sb = structBox(q), top = q.y + standOf(q.name);
+      return ptDist(sb.b, mx, mz) < 0.45 && foot > top - (p.sink || 0) - 0.12 && foot < top + 0.12;
+    })());
+  }
+  if (p.rest === 'wall') return wallish.some(s => ptDist(s.gb || s.b, mx, mz) < 0.6 && s.y0 < y1 && s.y1 > y0);
+  if (p.rest === 'hang') return struct.some(s => s.info.structural && ptDist(s.b, mx, mz) < 0.3 && s.y0 > y1 - 0.3 && s.y0 < y1 + 0.6);
+  return true;
+}
+
 // ---------------------------------------------------------------- existing blueprints
 const ESSENTIAL = /^(bed|piece_bed02|ashwood_bed|piece_chest_wood|piece_chest|hearth|fire_pit|forge|piece_workbench|piece_cookingstation|smelter|portal_wood)$/;
 
@@ -4890,8 +4953,8 @@ function decorateExisting(pieces, { use = 'home', decor = 'd2', biome = 'Meadows
   return b.pieces;
 }
 
-const api = { decorate, strip, findRooms, decorateExisting, setRules, setInterior, setTemplates, templateById, audit, ITEM_BIOME, FURNITURE: F, readLevel,
-  _int: { floorLevels, stretch, size, ok, obox, overlap, ptDist, yawOfDir, pyaw, standOf, norm, WALLISH } };
+const api = { decorate, strip, findRooms, decorateExisting, setRules, setInterior, setTemplates, templateById, audit, auditContext, auditOne, ITEM_BIOME, FURNITURE: F, readLevel,
+  _int: { floorLevels, standGuess, roleFor, stretch, size, ok, obox, overlap, ptDist, yawOfDir, pyaw, standOf, norm, WALLISH } };
 if (NODE_D) module.exports = api; else window.VHDecorate = api;
 
 })();

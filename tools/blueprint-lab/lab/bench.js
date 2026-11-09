@@ -43,6 +43,24 @@ const lowest = (d, rl) => {
   return all.filter(p => p.y < y + 0.6).sort((a, b) => Math.hypot(b.x - cx, b.z - cz) - Math.hypot(a.x - cx, a.z - cz))[0];
 };
 
+function autoFocus(full, bare) {
+  const key = p => `${p.name}@${p.x.toFixed(1)},${p.y.toFixed(1)},${p.z.toFixed(1)}`;
+  const s0 = new Set(bare.pieces.map(key));
+  let add = full.pieces.filter(p => !s0.has(key(p)));
+  if (!add.length) return { az: 35, el: 18, crop: null };
+  // the biggest cluster of added pieces (a part repeated on every window would otherwise frame the whole house)
+  const seed = add.reduce((m, p) => (add.filter(q => Math.hypot(q.x - p.x, q.z - p.z) < 3).length > add.filter(q => Math.hypot(q.x - m.x, q.z - m.z) < 3).length ? p : m), add[0]);
+  add = add.filter(q => Math.hypot(q.x - seed.x, q.z - seed.z) < 3.5);
+  const [cx, cz] = centre(full);
+  const mx = add.reduce((a, p) => a + p.x, 0) / add.length, mz = add.reduce((a, p) => a + p.z, 0) / add.length;
+  let dx = mx - cx, dz = mz - cz; const L = Math.hypot(dx, dz);
+  if (L < 0.5) { dx = 1; dz = -1; }
+  const x0 = Math.min(...add.map(p => p.x)) - 1.8, x1 = Math.max(...add.map(p => p.x)) + 1.8;
+  const z0 = Math.min(...add.map(p => p.z)) - 1.8, z1 = Math.max(...add.map(p => p.z)) + 1.8;
+  const y0 = Math.min(...add.map(p => p.y)) - 1.5, y1 = Math.max(...add.map(p => p.y)) + 2.5;
+  return { az: Math.atan2(dx, -dz) * 180 / Math.PI + 20, el: 14, crop: { x0, x1, z0, z1, y0, y1 } };
+}
+
 const PARTS = {
   door: {
     bases: [
@@ -51,12 +69,12 @@ const PARTS = {
       { type: 'tavern', biome: 'Plains', stage: 's3', decor: 'd3' },
       { type: 'home', biome: 'Mountain', stage: 's3', decor: 'd3' }],
     flags: ['doorFrame', 'doorHood', 'doorstep', 'doorLamp'],
-    focus: d => { const p = lowest(d, 'door'); return p && faceOn(d, p); },
+    focus: 'auto',
   },
   window: {
     bases: [
       { type: 'home', biome: 'Black Forest', stage: 's2', decor: 'd2' },
-      { type: 'tavern', biome: 'Meadows', stage: 's3', decor: 'd3' },
+      { type: 'tavern', biome: 'Black Forest', stage: 's3', decor: 'd3' },
       { type: 'longhouse', biome: 'Swamp', stage: 's3', decor: 'd3' }],
     flags: ['windowFrame', 'mullion', 'shutters'],
     style: { windowStyle: ['single', 'twin'] },
@@ -68,13 +86,25 @@ const PARTS = {
       { type: 'home', biome: 'Black Forest', stage: 's2', decor: 'd2', culture: 'norse-forest' },
       { type: 'tavern', biome: 'Mountain', stage: 's3', decor: 'd3', culture: 'norse-highland' }],
     flags: ['bargeboards', 'crossed', 'gableWindow', 'gableTruss', 'purlinEnds', 'rafterTails'],
-    // the whole building from off the end of its ridge
-    focus: d => {
+    focus: 'auto',
+    oldFocus: d => {
       const tops = d.pieces.filter(p => role(p) === 'roofTop');
       if (!tops.length) return null;
+      // the end of the main ridge: along the ridge's axis, the roof-top piece farthest out; the frame is that gable
       const [cx, cz] = centre(d);
-      const a = yawOf(tops[0]) * Math.PI / 180, ux = Math.cos(a), uz = -Math.sin(a);
-      return { az: Math.atan2(ux, -uz) * 180 / Math.PI + 25, el: 14, crop: null, centre: [cx, cz] };
+      const hi = Math.max(...tops.map(p => p.y)), main = tops.filter(p => p.y > hi - 0.3);
+      // the ridge's axis: the line through the two main ridge pieces farthest apart
+      let A = main[0], B = main[0];
+      for (const p of main) for (const q of main) if (Math.hypot(p.x - q.x, p.z - q.z) > Math.hypot(A.x - B.x, A.z - B.z)) { A = p; B = q; }
+      const L = Math.hypot(A.x - B.x, A.z - B.z) || 1;
+      let ux = (A.x - B.x) / L, uz = (A.z - B.z) / L;
+      const along = p => (p.x - cx) * ux + (p.z - cz) * uz;
+      let end = main.reduce((m, p) => (along(p) > along(m) ? p : m), main[0]);
+      if (along(end) < 0) { ux = -ux; uz = -uz; }
+      end = main.reduce((m, p) => (along(p) > along(m) ? p : m), main[0]);
+      const half = 5;
+      return { az: Math.atan2(ux, -uz) * 180 / Math.PI + 22, el: 10,
+        crop: { x0: end.x - half, x1: end.x + half, z0: end.z - half, z1: end.z + half, y0: end.y - 5.5, y1: end.y + 1.5 } };
     },
   },
   stack: {
@@ -98,7 +128,7 @@ const PARTS = {
       { type: 'home', biome: 'Black Forest', stage: 's2', decor: 'd2' },
       { type: 'tavern', biome: 'Meadows', stage: 's3', decor: 'd3', culture: 'anglo-saxon' }],
     flags: ['cornerPosts', 'bands', 'midRail', 'braces', 'windowFrame'],
-    focus: () => ({ az: 35, el: 18, crop: null }),
+    focus: 'auto',
   },
 };
 
@@ -111,7 +141,7 @@ function fixtures(spec, want) {
       // ablation from the full set: a flag shows when turning it off alone changes pieces near the part
       const off = Object.fromEntries(spec.flags.map(f => [f, true]));
       const d0 = G.generate({ ...base, seed, details: off });
-      const f = spec.focus(d0);
+      const f = typeof spec.focus === 'function' ? spec.focus(d0) : { crop: null };
       if (!f) continue;
       const key = p => `${p.name}@${p.x.toFixed(1)},${p.y.toFixed(1)},${p.z.toFixed(1)}`;
       const s0 = new Set(d0.pieces.map(key));
@@ -156,8 +186,10 @@ const fx = fixtures(spec, 6);
 console.log('test buildings:', fx.map(f => `${f.base.type} ${f.base.biome} seed ${f.seed} (${f.hits}/${spec.flags.length} flags show)`).join('; '));
 for (const { base, seed } of fx) {
   bi++;
-  // the camera is set on the full variant and kept, so every picture of one building is framed the same
-  const f0 = spec.focus(G.generate({ ...base, seed, details: Object.fromEntries(spec.flags.map(x => [x, true])) }));
+  // the camera is set once per building, so every picture of it is framed the same: on the pieces the part adds
+  // (full variant against bare variant), looking at them from outside the building
+  const full = G.generate({ ...base, seed, details: Object.fromEntries(spec.flags.map(x => [x, true])) });
+  const f0 = spec.focus === 'auto' || !spec.focus ? autoFocus(full, G.generate({ ...base, seed, details: Object.fromEntries(spec.flags.map(x => [x, false])) })) : spec.focus(full);
   for (const v of variants(spec, perBase, seed)) {
     const req = { ...base, seed, details: v.details, style: v.style };
     const d = G.generate(req);

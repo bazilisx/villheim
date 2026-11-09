@@ -43,7 +43,7 @@ flat-roofed cultures keep their own forms and get the door and window frames onl
 
 | Detail | Pieces | When |
 |---|---|---|
-| Window | A 1 m tall opening from 1 m up (was 0.5 m). Twin lights (a 2 m opening); a single 1 m light beside a Wood Wall 1x1 on small and early buildings. The post in the middle of twin lights is off: it did not show. | always |
+| Window | A 1 m tall opening from 1 m up (was 0.5 m). Twin lights with a 1 m post in the middle; a single 1 m light beside a Wood Wall 1x1 on small and early buildings. | always |
 | Window frame | A beam under (sill) and over (head) the light, 0.1 m proud of the wall, sized to it (1 m boards on a single light where posts carry them); 1 m posts at its sides where the culture has no timber frame, never on log walls. | s2 on, or timber-frame cultures |
 | Shutters | Two Wood Shutters flat on the wall either side of the window: both or none, only where a plain bay is beside it and the bay past that is no window. | s2 d2 on, Black Forest on, 60 % of buildings of the northern cultures |
 | Door frame | 2 m posts at both sides of the door piece's own opening (a cloth door hangs beside the wall's middle), a beam over it with its underside at the door's top. | always (posts where there is no timber frame) |
@@ -51,12 +51,12 @@ flat-roofed cultures keep their own forms and get the door and window frames onl
 | Door hood | A 26 degree roof piece falling away from the wall, its low edge level with the door's head 2 m out (the doorway keeps its headroom), on a 26 degree rafter each side inside the frame width. Only with the frame, never where an eave or porch is less than 1.5 m over the door. | s2 on, northern cultures, 70 % |
 | Lamp | A pair of standing wood torches just outside the door posts; with a frame only; on a raised house only where a landing is. | d2 on |
 | Bench by the door | A wood bench or sitting log against the wall beside the front door, facing out. | d2 on, homes and halls |
-| Corner posts | Posts the full height of the walls on every outside corner, from the ground under a raised floor. | plank and half-timber walls without a frame, never log |
+| Corner posts | Posts the full height of the walls on every outside corner, from the ground under a raised floor. | timber walls without a frame (log poles on log walls: without them the decorator set chests into the log corners) |
 | Wall bands | A beam along the foot of every wall and every upper floor line. | plank and half-timber walls, s2 on |
 | Bargeboards | A 45 or 26 degree beam along each roof edge at the gable end. | northern cultures, s2 on |
 | Crossed gable boards | The game's Wood Roof Cross on the ridge at the gable (Norwegian vindskier). It is 4 m across and rises 1.5 m over the ridge, so it is rare. | Norse, Slavic, Baltic and mountain cultures, one building in five, where no dragon head stands and no gable motif has its own apex piece |
 | Loft window | A 2 m opening with a post in the middle, 1 m up a gable that is at least 4 m tall, framed by beams. | northern cultures, s2 on |
-| Rafter tails | Off: the sloped beams read as planks lying on the roof. The eaves take motifs instead. | |
+| Rafter tails | A sloped beam at every seam of the lowest roof row, 0.7 m out past the roof edge and under it, never over a door. They read as planks lying on the roof in renders; kept because the canopy beds depend on them (see Motifs, still to do). | northern cultures, s2 on, roofs that end at the wall |
 | Ridge beam ends | A 1 m beam where the ridge would run out past each gable, 0.55 m out. | northern cultures, s2 on, where no dragon head stands |
 | Gable truss | A king post up the middle of the gable face (above the loft window when there is one) and collar beams across at half height. | northern cultures, s2 on, 60 % |
 | Leaning hall posts | Off: they ran from the eaves past the wall foot and across windows. To redo as short knee braces in the wall plane. | |
@@ -129,7 +129,7 @@ IDs (MW-0001 windows, MD doors, MC corners, MG gables, ME eaves) stay with their
   edge, pieces over it from its head, and what stood inside a different-sized opening is left out. Window motifs keep
   to the wall face (no struts, crosses or beams reaching out more than 0.75 m), corner motifs stay within 0.8 m of the
   corner, gable motifs stay inside the gable and under the roof line and leave the bargeboards to the rules, eave
-  motifs stay under the roof. The generator lays its own entry stairs, so motif stairs are left out.
+  motifs stay under the roof (eave motifs are off for now: few fit a roof that ends at the wall, and they hardly show). The generator lays its own entry stairs, so motif stairs are left out.
 - Each piece is tested as it goes in: nothing in a doorway's passage or over a stair, nothing through a wall, a door,
   a window, a roof or furniture, nothing into the building past the wall face, nothing below ground, and every piece
   touching the building or a placed piece. A motif that loses more than two pieces in five is not used and the rules
@@ -163,6 +163,9 @@ The game's bundle and the request page carry the 701 motifs the generator can us
 - Openings of other sizes (2 m tall windows, 1.5 m lights): most well-liked wood windows are 2 x 2 or 1.5 x 2, and
   the generator makes only 2 x 1 and 1 x 1.
 - Porches and canopies, balconies, chimney caps and yard edges are not mined yet.
+- Nothing of a motif may hang lower than 2.35 m over a floor (an inner corner of a cross plan, a deck).
+- Kitbash canopy beds: where a gable motif replaces the rule truss, a canopy goes on a bed the truss boxes used to
+  block, and its log posts clip the bed (longhouse Black Forest norse-forest s3d3 seed 178 in the interior check).
 - Requests with `skipDecor` (request.js ranks bare builds that way) carry no wall motifs, since those go in after the
   furnishing.
 

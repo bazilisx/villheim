@@ -367,11 +367,15 @@ function place(b, c, fr, f, opts = {}) {
   // pieces already there, and motif pieces waiting to go in after the furnishing (details.js)
   const there = b.motifPending && b.motifPending.length ? b.pieces.concat(b.motifPending.map(p => ({ ...p, trim: true, q: p.q || quatM(p.yaw) }))) : b.pieces;
   const trimNear = there.filter(q => q.trim && Math.hypot(q.x - fr.x, q.z - fr.z) < 8);
+  // floors people walk on (rooms, decks): nothing of the motif hangs lower than 2.35 m over them
+  const floors = b.pieces.filter(q => !q.trim && !q.decor && PM.piece(q.name).role === 'floor' && Math.hypot(q.x - fr.x, q.z - fr.z) < 6).map(q => boxOf(Ck, q));
+  const overFloor = bx => floors.some(o => (bx.x0 + bx.x1) / 2 > o.x0 && (bx.x0 + bx.x1) / 2 < o.x1 && (bx.z0 + bx.z1) / 2 > o.z0 && (bx.z0 + bx.z1) / 2 < o.z1 && bx.y0 >= o.y1 - 0.05 && bx.y0 - o.y1 < 2.35 && bx.y0 - o.y1 > 0.3);
   for (const p of cand) {
     const bx = Ck.aabb(p), info = PM.piece(p.name);
     // the same shape already there from the rules (a corner post, a sill): one is enough
     if (trimNear.some(q => classOf(q.name) === p.cls && Math.hypot(q.x - p.x, q.y - p.y, q.z - p.z) < 0.3)) continue;
     if (bx.y0 < (opts.ground != null ? opts.ground : -Infinity) - 0.05) continue;
+    if (overFloor(bx)) continue;
     // nothing reaches into the building past the wall (a hood board half indoors, a sill through the wall)
     if (opts.inward !== false) {
       const gb = Ck.gameBox ? Ck.gameBox(p) : bx; // the game's own solids, a beam is 0.4 m deep

@@ -53,13 +53,14 @@ function profile(ctx) {
   return {
     sN, dN, north, wood,
     windowFrame: (sN >= 2 || C.frame) && !C.arches,
-    mullion: false, // a 0.4 m pole in a 2 m opening did not show (bench review 2026-11-09)
+    mullion: !C.glass && C.windowStyle !== 'single' && !C.arches, // one centered post, twin lights only
     shutters: sN >= 2 && dN >= 2 && SHUTTERS.includes(cultureKey) && reachesD(biome, 'Black Forest') && !C.glass && roll(0.6),
     doorFrame: !C.arches,
     doorHood: north && sN >= 2 && !C.awnings && roll(0.7) && !C.arches, // never without the frame
     doorstep: true,
     doorLamp: dN >= 2 && !C.arches,
-    cornerPosts: boards && !C.frame && !T.tower,
+    // log walls keep theirs (log poles) for now: without them the decorator sets chests into the 0.55 m log corners
+    cornerPosts: wood && !C.frame && !T.tower,
     bands: boards && sN >= 2 && !C.frame,
     midRail: false, // with the braces and window frames a rail at 1 m made half-timbered walls too busy (2026-11-09 render)
     bargeboards: north && (sN >= 2 || C.carved),
@@ -70,8 +71,7 @@ function profile(ctx) {
       ['home', 'storage', 'tavern'].includes(ctx.type) && (sN >= 3 || (sN === 2 && dN >= 3)) && ['rect', 'long', 'L', 'T'].includes(ctx.plan) &&
       !C.awnings && !ctx.flat && roll(0.75),
     gableWindow: north && sN >= 2,
-    // the rule's rafter tails read as planks lying on the roof (2026-11-09 renders): eaves take motifs only
-    rafterTails: false,
+    rafterTails: north && sN >= 2 && !C.eaves2 && (C.eaves || 1) < 2,
     eaveTrim: north && sN >= 2 && !C.eaves2 && (C.eaves || 1) < 2,
     purlinEnds: north && sN >= 2,
     gableTruss: north && sN >= 2 && roll(0.6),
@@ -226,7 +226,7 @@ function exterior(b, ctx) {
       const { ux, uz } = axes(e);
       for (const s of [-1, 1]) { const k = `${e.x + ux * s},${e.z + uz * s}`; if (!dirs.has(k)) dirs.set(k, new Set()); dirs.get(k).add(e.yaw); }
     }
-    const top = F + storeys * SH, p = pole, foot = F > 0.01 && F < 2.01 ? F - Math.ceil(F) : F; // from the ground under a raised floor
+    const top = F + storeys * SH, p = C.wallStyle === 'log' ? (K.pole || pole) : pole, foot = F > 0.01 && F < 2.01 ? F - Math.ceil(F) : F; // from the ground under a raised floor
     for (const [k, ys] of dirs) {
       if (ys.size < 2) continue;
       const [x, z] = k.split(',').map(Number);
@@ -478,7 +478,8 @@ function bargeboards(K, C, w, ctx, rows, ends, add, low, pivot, r) {
   // motifs from the best-liked builds for the gable faces and the eaves (lib/motifs.js), in wing-local terms
   const MT = X.motifs && X.motifRoof ? (ctx.motifs || (ctx.motifs = MotifsD.plan(ctx))) : null;
   const gm = MT && MT.get('gable', { slope: r === 2 ? 45 : 26 }, true);
-  const em = MT && rows === (w.D - 3) / 2 && MT.get('eave', { slope: r === 2 ? 45 : 26, overhang: 0 }, true);
+  // eave motifs are off for now: few fit a roof that ends at the wall, and they hardly show from the ground
+  const em = X.eaveMotifs && MT && rows === (w.D - 3) / 2 && MT.get('eave', { slope: r === 2 ? 45 : 26, overhang: 0 }, true);
   const top = low((w.D - 3) / 2), gw = X.gableWindow && !C.stoneWalls && capY - top >= 3.9;
   let gableDone = false, apex = false, eaveDone = false;
   // the roof's parts go in by generate.js; their world places are kept so the last pass can find them
@@ -526,7 +527,7 @@ function bargeboards(K, C, w, ctx, rows, ends, add, low, pivot, r) {
   // (the exposed rafters of Norse halls; the corpus lays sloped beams along roof piece edges)
   // (never over a door or gate: a 45 degree beam is 0.4 m thick in the game and hangs into the doorway)
   if (X.rafterTails && !eaveDone) for (let u = -w.W + 2; u <= w.W - 2 + 0.01; u += 2) for (const sv of [-1, 1]) {
-    const v = sv * (2 + 2 * rows + 1.2);
+    const v = sv * (2 + 2 * rows + 0.7);
     if (overDoor(u, sv * w.D)) continue;
     add(name, u, pivot(rows) - 0.7 - (r === 2 ? 0 : 0), v, (sv < 0 ? 180 : 0) + 90, 'trim', low(rows));
   }

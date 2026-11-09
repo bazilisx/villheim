@@ -4272,11 +4272,15 @@ function place(b, c, fr, f, opts = {}) {
   // pieces already there, and motif pieces waiting to go in after the furnishing (details.js)
   const there = b.motifPending && b.motifPending.length ? b.pieces.concat(b.motifPending.map(p => ({ ...p, trim: true, q: p.q || quatM(p.yaw) }))) : b.pieces;
   const trimNear = there.filter(q => q.trim && Math.hypot(q.x - fr.x, q.z - fr.z) < 8);
+  // floors people walk on (rooms, decks): nothing of the motif hangs lower than 2.35 m over them
+  const floors = b.pieces.filter(q => !q.trim && !q.decor && PM.piece(q.name).role === 'floor' && Math.hypot(q.x - fr.x, q.z - fr.z) < 6).map(q => boxOf(Ck, q));
+  const overFloor = bx => floors.some(o => (bx.x0 + bx.x1) / 2 > o.x0 && (bx.x0 + bx.x1) / 2 < o.x1 && (bx.z0 + bx.z1) / 2 > o.z0 && (bx.z0 + bx.z1) / 2 < o.z1 && bx.y0 >= o.y1 - 0.05 && bx.y0 - o.y1 < 2.35 && bx.y0 - o.y1 > 0.3);
   for (const p of cand) {
     const bx = Ck.aabb(p), info = PM.piece(p.name);
     // the same shape already there from the rules (a corner post, a sill): one is enough
     if (trimNear.some(q => classOf(q.name) === p.cls && Math.hypot(q.x - p.x, q.y - p.y, q.z - p.z) < 0.3)) continue;
     if (bx.y0 < (opts.ground != null ? opts.ground : -Infinity) - 0.05) continue;
+    if (overFloor(bx)) continue;
     // nothing reaches into the building past the wall (a hood board half indoors, a sill through the wall)
     if (opts.inward !== false) {
       const gb = Ck.gameBox ? Ck.gameBox(p) : bx; // the game's own solids, a beam is 0.4 m deep
@@ -4386,13 +4390,14 @@ function profile(ctx) {
   return {
     sN, dN, north, wood,
     windowFrame: (sN >= 2 || C.frame) && !C.arches,
-    mullion: false, // a 0.4 m pole in a 2 m opening did not show (bench review 2026-11-09)
+    mullion: !C.glass && C.windowStyle !== 'single' && !C.arches, // one centered post, twin lights only
     shutters: sN >= 2 && dN >= 2 && SHUTTERS.includes(cultureKey) && reachesD(biome, 'Black Forest') && !C.glass && roll(0.6),
     doorFrame: !C.arches,
     doorHood: north && sN >= 2 && !C.awnings && roll(0.7) && !C.arches, // never without the frame
     doorstep: true,
     doorLamp: dN >= 2 && !C.arches,
-    cornerPosts: boards && !C.frame && !T.tower,
+    // log walls keep theirs (log poles) for now: without them the decorator sets chests into the 0.55 m log corners
+    cornerPosts: wood && !C.frame && !T.tower,
     bands: boards && sN >= 2 && !C.frame,
     midRail: false, // with the braces and window frames a rail at 1 m made half-timbered walls too busy (2026-11-09 render)
     bargeboards: north && (sN >= 2 || C.carved),
@@ -4403,8 +4408,7 @@ function profile(ctx) {
       ['home', 'storage', 'tavern'].includes(ctx.type) && (sN >= 3 || (sN === 2 && dN >= 3)) && ['rect', 'long', 'L', 'T'].includes(ctx.plan) &&
       !C.awnings && !ctx.flat && roll(0.75),
     gableWindow: north && sN >= 2,
-    // the rule's rafter tails read as planks lying on the roof (2026-11-09 renders): eaves take motifs only
-    rafterTails: false,
+    rafterTails: north && sN >= 2 && !C.eaves2 && (C.eaves || 1) < 2,
     eaveTrim: north && sN >= 2 && !C.eaves2 && (C.eaves || 1) < 2,
     purlinEnds: north && sN >= 2,
     gableTruss: north && sN >= 2 && roll(0.6),
@@ -4559,7 +4563,7 @@ function exterior(b, ctx) {
       const { ux, uz } = axes(e);
       for (const s of [-1, 1]) { const k = `${e.x + ux * s},${e.z + uz * s}`; if (!dirs.has(k)) dirs.set(k, new Set()); dirs.get(k).add(e.yaw); }
     }
-    const top = F + storeys * SH, p = pole, foot = F > 0.01 && F < 2.01 ? F - Math.ceil(F) : F; // from the ground under a raised floor
+    const top = F + storeys * SH, p = C.wallStyle === 'log' ? (K.pole || pole) : pole, foot = F > 0.01 && F < 2.01 ? F - Math.ceil(F) : F; // from the ground under a raised floor
     for (const [k, ys] of dirs) {
       if (ys.size < 2) continue;
       const [x, z] = k.split(',').map(Number);
@@ -4811,7 +4815,8 @@ function bargeboards(K, C, w, ctx, rows, ends, add, low, pivot, r) {
   // motifs from the best-liked builds for the gable faces and the eaves (lib/motifs.js), in wing-local terms
   const MT = X.motifs && X.motifRoof ? (ctx.motifs || (ctx.motifs = MotifsD.plan(ctx))) : null;
   const gm = MT && MT.get('gable', { slope: r === 2 ? 45 : 26 }, true);
-  const em = MT && rows === (w.D - 3) / 2 && MT.get('eave', { slope: r === 2 ? 45 : 26, overhang: 0 }, true);
+  // eave motifs are off for now: few fit a roof that ends at the wall, and they hardly show from the ground
+  const em = X.eaveMotifs && MT && rows === (w.D - 3) / 2 && MT.get('eave', { slope: r === 2 ? 45 : 26, overhang: 0 }, true);
   const top = low((w.D - 3) / 2), gw = X.gableWindow && !C.stoneWalls && capY - top >= 3.9;
   let gableDone = false, apex = false, eaveDone = false;
   // the roof's parts go in by generate.js; their world places are kept so the last pass can find them
@@ -4859,7 +4864,7 @@ function bargeboards(K, C, w, ctx, rows, ends, add, low, pivot, r) {
   // (the exposed rafters of Norse halls; the corpus lays sloped beams along roof piece edges)
   // (never over a door or gate: a 45 degree beam is 0.4 m thick in the game and hangs into the doorway)
   if (X.rafterTails && !eaveDone) for (let u = -w.W + 2; u <= w.W - 2 + 0.01; u += 2) for (const sv of [-1, 1]) {
-    const v = sv * (2 + 2 * rows + 1.2);
+    const v = sv * (2 + 2 * rows + 0.7);
     if (overDoor(u, sv * w.D)) continue;
     add(name, u, pivot(rows) - 0.7 - (r === 2 ? 0 : 0), v, (sv < 0 ? 180 : 0) + 90, 'trim', low(rows));
   }
@@ -5926,6 +5931,7 @@ function generate(req) {
   if (flatCell) { fireAt = { x: flatCell[0], z: flatCell[1] }; b.vents.push({ kind: 'flat', x: flatCell[0], z: flatCell[1], rect: flue, from: storeys > 1 ? F + SH : top }); }
   if (!req.skipDecor) Decor.decorate(b, { use: T.use, decor, biome, type, R, culture: cultureKey, doorX: b.doorX, fireAt });
   settle(b, { K, C, biome, use: T.use, type, stoneOK, F, SH, storeys, top, flat, cells, wing: w0, roofTop, skipDecor: !!req.skipDecor });
+  if (!req.skipDecor && stoneOK && F < 0.01 && !C.stoneWalls) hearthstone(b, K);
   if (!req.skipDecor) { const zones = keepClear(b); Details.interior(b, { ...dctx, zones }); Kitbash.apply(b, { ...dctx, decor }, zones); }
   return finish(b, info);
 }
@@ -6227,6 +6233,22 @@ function woodpilesOutside(b) {
     if (!moved) pile.gone = true;
   }
   b.pieces = b.pieces.filter(p => !p.gone);
+}
+
+// A hearthstone: the wooden floor under a ground-floor fire laid in stone instead (stone floors, flush with the planks
+// round them; stone stands on the ground). Half of the best-liked builds use stone floor pieces; the fire is where.
+function hearthstone(b, K) {
+  const stone = K.stoneFloor;
+  if (!stone || !thickFloor(stone)) return;
+  const Ck = checksLib();
+  for (const fire of b.pieces.filter(p => p.decor && /^(fire_pit|hearth)$/.test(p.name))) {
+    const o = Ck.aabb(fire);
+    for (const p of b.pieces) {
+      if (p.decor || p.name !== K.floor || Math.abs(p.y - fire.y) > 0.4 || p.y > 0.3) continue;
+      if (p.x - 1 < o.x1 - 0.1 && p.x + 1 > o.x0 + 0.1 && p.z - 1 < o.z1 - 0.1 && p.z + 1 > o.z0 + 0.1) { p.name = stone; p.y = +(p.y - 0.4).toFixed(3); p.hearth = true; }
+    }
+  }
+  if (b.pieces.some(p => p.hearth)) b.notes.push('Stone flags under the fire.');
 }
 
 // Things set on a table (dishes, candles) whose table came out later (a clash, a ladder, the fire's ring) come out too.

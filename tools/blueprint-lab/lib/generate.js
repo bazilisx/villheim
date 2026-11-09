@@ -1007,11 +1007,19 @@ const STAND_IN = { piece_chest_barrel: 'piece_chest_wood', piece_logbench01: 'pi
   piece_chest: 'piece_chest_wood', piece_cookingstation_iron: 'piece_cookingstation', hearth: 'fire_pit' };
 function biomeSafe(b, biome) {
   const ord = P.BIOME_ORDER, limit = ord.indexOf(biome), fits = n => ord.indexOf(P.needs(n)) <= limit;
+  const Ck = checksLib(), gone = [];
   b.pieces = b.pieces.filter(p => {
     if (fits(p.name) || P.piece(p.name).structural) return true;
     const alt = STAND_IN[p.name];
     if (alt && fits(alt)) { p.name = alt; return true; }
+    if (p.decor) gone.push(Ck.aabb(p));
     return false;
+  });
+  // and what stood on a table or chest that came out (a dish on a table, T-interior 2026-11-09)
+  if (gone.length) b.pieces = b.pieces.filter(p => {
+    if (!p.decor) return true;
+    const bx = Ck.aabb(p);
+    return !gone.some(g => bx.y0 >= g.y0 + 0.3 && bx.y0 <= g.y1 + 0.2 && p.x > g.x0 && p.x < g.x1 && p.z > g.z0 && p.z < g.z1);
   });
 }
 

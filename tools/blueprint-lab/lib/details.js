@@ -431,6 +431,9 @@ function interior(b, ctx) {
         if (near > 0.6 || near < -0.3 || Math.abs(o.y0 - (ctx.F + 0.1)) > 0.3) continue;
         const depth = sz > 0 ? zWall - o.z0 : o.z1 - zWall;
         if (depth > 3.1 || o.x0 < w0.cx - w0.W || o.x1 > w0.cx + w0.W) continue;
+        // a piece that would rise into a stair's or doorway's keep-clear box stays where it is
+        const up = { x0: o.x0, x1: o.x1, z0: o.z0, z1: o.z1, y0: o.y0 + lift, y1: o.y1 + lift };
+        if (zones.some(zn => ov(up, zn) && zn.y0 < up.y1 && zn.y1 > up.y0)) continue;
         lifted.push({ p, o, k: Math.ceil(depth - 0.05) });
       }
       const blocked = box => b.pieces.some(p => {

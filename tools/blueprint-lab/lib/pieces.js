@@ -226,6 +226,8 @@ const NEEDS = {
   wood_fine_stack: 'Meadows', wood_core_stack: 'Black Forest', stone_pile: 'Meadows', coal_pile: 'Black Forest',
   wood_dragon1: 'Meadows', darkwood_raven: 'Plains', darkwood_wolf: 'Plains', piece_jackoturnip: 'Swamp', piece_xmastree: 'Meadows',
   piece_beehive: 'Meadows', piece_bathtub: 'Black Forest', guard_stone: 'Black Forest',
+  // the cart takes bronze nails
+  Cart: 'Black Forest',
   // cauldron upgrades: turnips for the spice rack, silver for the butcher's table, black metal for the pots and pans,
   // black marble for the mortar, flametal for the rolling pins
   cauldron_ext1_spice: 'Swamp', cauldron_ext3_butchertable: 'Mountain', cauldron_ext4_pots: 'Plains',
@@ -257,6 +259,9 @@ const DOORS = {
   wood_door: { w: 2, h: 2, bottom: -1, along: 'x', offset: 0 },
   wood_gate: { w: 2, h: 3, bottom: -1, along: 'x', offset: 0 },
   darkwood_gate: { w: 2, h: 4, bottom: 0, along: 'x', offset: 0 },
+  // the fence gate (lib/yards.js): snap points at -1.2 and 0.8 along x, 1 m under and over its pivot, so its 2 m
+  // opening is 0.2 m to the -x side of the pivot; the leaf is 1.5 m tall
+  wood_fence_gate: { w: 2, h: 2, bottom: -1, along: 'x', offset: -0.2 },
   piece_cloth_hanging_door: { w: 2, h: 2, bottom: -2, along: 'z', offset: 0.3 },
   piece_cloth_hanging_door_blue: { w: 2, h: 2, bottom: -2, along: 'z', offset: 0.3 },
   piece_cloth_hanging_door_blue2: { w: 2, h: 2, bottom: -2, along: 'z', offset: 0.3 },

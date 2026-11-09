@@ -7,15 +7,17 @@ namespace Villheim.Logic.Village
 {
     /// <summary>
     /// Signs on the village's homes (Tyler, D-073, step 3). Once someone lives in a home (Households), a vanilla sign
-    /// goes on the outside wall beside its front door: a lone villager's name over his role, in the role's color; for a
-    /// family, the family's name over its members, comma separated. A family's home also gets one sign per member on the
+    /// goes on the outside wall right of its front door at about head height (where a house number goes): a lone
+    /// villager's name over his role, in the role's color; for a family, the family's name over its members, comma
+    /// separated. A family's home also gets one sign per member on the
     /// inside wall by the door, laid out like a lone villager's outside sign.
     ///
     /// - Each sign is an amenity job (Amenities), made by the builder like a storage chest's label: paid from the
     ///   village chest (one wood; the sign's coal is let off), never placed at once.
     /// - The front door is the ground floor door nearest the building's door side (its path marker, or Doors). The sign
-    ///   goes on the wall beside it (either side), or over it when there is no wall beside it; a sign needs a wall of the
-    ///   house behind it to hang on. A home with no door or no wall found gets no sign (logged with DebugLog on).
+    ///   goes on the wall right of it as seen from outside (the left, or over the door, when that wall is missing or
+    ///   taken); members' signs go inside right of the door as seen from inside, in one column. A sign needs a wall of
+    ///   the house behind it to hang on and is set 2 cm into it. A home with no door or no wall found gets no sign (logged with DebugLog on).
     /// - Each sign is marked with its home (by the plot's position) and its place: the front sign, or the member's
     ///   number for a sign inside. The text is written again every 20 seconds, so a new member, a new role or a grown
     ///   child shows. A sign nobody needs any more (the family is smaller, the home is empty) comes down after a minute,
@@ -382,26 +384,28 @@ namespace Villheim.Logic.Village
             Vector3 along = Vector3.Cross(Vector3.up, outward).normalized;
             var places = new List<Vector3>(); // middle of the sign, in the plane of the door
             Vector3 facing;
+            // 'along' points to the right of someone inside looking out; the right as seen from outside is -along.
+            // Tyler (2026-11-09): where a house number goes, right of the door at about head height; inside, right of
+            // the door as seen from inside, in one column. The other side and over the door only when the wall there
+            // is missing or taken.
+            float lateral = halfWidth + signHalfWidth + 0.15f;
             if (slot == FrontSlot)
             {
                 facing = outward;
-                float lateral = halfWidth + signHalfWidth + 0.15f;
-                float height = bottom + 1.55f;
-                places.Add(Flat(middle, height) + along * lateral);
+                float height = bottom + 1.65f;
                 places.Add(Flat(middle, height) - along * lateral);
+                places.Add(Flat(middle, height) + along * lateral);
                 places.Add(Flat(middle, top + signHalfHeight + 0.12f));
             }
             else
             {
                 facing = -outward;
-                for (int column = 0; column < 2; column++)
+                foreach (float side in new[] { 1f, -1f })
                 {
-                    float lateral = halfWidth + signHalfWidth + 0.15f + column * (signHalfWidth * 2f + 0.1f);
-                    for (int row = 0; row < 3; row++)
+                    for (int row = 0; row < 4; row++)
                     {
-                        float height = bottom + 1.75f - row * (signHalfHeight * 2f + 0.1f);
-                        places.Add(Flat(middle, height) + along * lateral);
-                        places.Add(Flat(middle, height) - along * lateral);
+                        float height = bottom + 1.8f - row * (signHalfHeight * 2f + 0.08f);
+                        places.Add(Flat(middle, height) + along * side * lateral);
                     }
                 }
             }
@@ -452,7 +456,8 @@ namespace Villheim.Logic.Village
 
             // The sign's back against the wall, its middle at the place.
             Vector3 face = hit.point;
-            spot = face + facing * (-sign.min.z + 0.02f) - rotation * new Vector3(sign.center.x, sign.center.y, 0f);
+            // set 2 cm into the wall so the game counts it as resting on the wall (Tyler: a sign may clip a little)
+            spot = face + facing * (-sign.min.z - 0.02f) - rotation * new Vector3(sign.center.x, sign.center.y, 0f);
             spot.y = place.y - sign.center.y;
 
             // Nothing in front of the wall where the sign goes (a torch, a shelf, a window frame).

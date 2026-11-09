@@ -97,7 +97,7 @@ namespace Villheim.Logic
             "keepapart: the creatures villagers and villages leave alone (KeepApartCreatures), and the camps the nearest village keeps away from",
             "demist: the nearest Mistlands village's clear air, and the game's prefabs that carry a demister",
             "exportpieces: write every buildable piece's collider and mesh bounds, pivot height, color, texture, category, comfort, cost and station to BepInEx/config/Villheim/pieces.json (copy it to tools/blueprint-lab/data/pieces-export.json)",
-        }).Concat(Generator.GenCommands.Help).Concat(Generator.FloorplanCommands.Help).ToArray();
+        }).Concat(Generator.GenCommands.Help).Concat(Generator.TestPool.Help).Concat(Generator.FloorplanCommands.Help).ToArray();
 
         /// <summary>'vh switches': each system's on/off setting and its value now.</summary>
         private static string Switches()
@@ -364,6 +364,7 @@ namespace Villheim.Logic
                 case "villheim_demist": Say(context, Demisting.Command()); return true;
                 case "villheim_exportpieces": Say(context, PieceExport.Run()); return true;
                 case "villheim_gen": Generator.GenCommands.Gen(args, context); return true;
+                case "villheim_testpool": Say(context, Generator.TestPool.Run(args, context)); return true;
                 case "villheim_ask": Say(context, Generator.GenCommands.Ask(args)); return true;
                 case "villheim_asks": Say(context, Generator.GenCommands.Asks()); return true;
                 case "villheim_place": Say(context, Generator.GenCommands.Place(args)); return true;

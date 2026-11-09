@@ -207,6 +207,7 @@ namespace Villheim.Logic
         public static ConfigEntry<float> LooksOutlierChance;
         public static ConfigEntry<bool> CultureSurnames;
         public static ConfigEntry<bool> CultureDesigns;
+        public static ConfigEntry<bool> TestPool;
         public static ConfigEntry<bool> BiomeDefenders;
         public static ConfigEntry<bool> DefenderCarers;
         public static ConfigEntry<float> DefenderRange;
@@ -1007,6 +1008,11 @@ namespace Villheim.Logic
             CultureDesigns = Admin(config, cultures, "CultureDesigns", true,
                 "Use a culture's own design sets (cultures.txt) and blueprints tagged 'villheim: culture=key' before the " +
                 "biome's set. Off: only the biome decides what a village builds.");
+
+            TestPool = Admin(config, cultures, "TestPool", false,
+                "Villages build only the test pool's designs ('vh testpool make' writes them to " +
+                "BepInEx/config/Villheim/blueprints/testpool-<culture>), for every role the pool has. Other designs " +
+                "are used only for roles the pool lacks. Plots already built keep their designs.");
 
             const string defenders = "5e - Biome defenders";
             BiomeDefenders = Admin(config, defenders, "BiomeDefenders", true,

@@ -236,7 +236,7 @@ namespace Villheim.Logic.Designs
             string biomeName = biome == Heightmap.Biome.BlackForest ? "blackforest" : "meadows";
             foreach (Blueprints.Blueprint blueprint in Blueprints.All().Values)
             {
-                if (blueprint.Inspiration || blueprint.Role != role || blueprint.Level != 1 ||
+                if (blueprint.Inspiration || blueprint.Role != role || blueprint.Level != 1 || Blueprints.LaterStage(blueprint) ||
                     (blueprint.Biome != null && blueprint.Biome.Replace(" ", "") != biomeName) ||
                     blueprint.Radius > VillheimConfig.MaxDesignRadius.Value || pool.Exists(d => d.Name == blueprint.Name) ||
                     (cultures && blueprint.Culture != null && blueprint.Culture != culture))
@@ -256,6 +256,16 @@ namespace Villheim.Logic.Designs
         /// </summary>
         public static List<Design> PoolFor(Heightmap.Biome biome, Role role, string culture = null)
         {
+            // The test pool ('vh testpool make', TestPool on): only its designs for the roles it has.
+            if (LogicConfig.TestPool != null && LogicConfig.TestPool.Value)
+            {
+                List<Design> test = Generator.TestPool.PoolFor(biome, role, culture);
+                if (test.Count > 0)
+                {
+                    return test;
+                }
+            }
+
             var pool = new List<Design>();
             AddBlueprints(pool, biome, role, culture);
             KeepBuildable(pool, biome);

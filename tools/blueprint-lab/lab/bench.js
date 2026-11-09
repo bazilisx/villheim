@@ -156,6 +156,17 @@ const PARTS = {
     requires: { dormerPair: 'dormers' },
     focus: () => ({ az: 20, el: 18, crop: null }),
   },
+  // the yard (lib/yards.js): a winding or square fence, the beds, the props and the lamp at the gate, seen from above
+  // the front corner so the fence line, the gate and the path show
+  yard: {
+    bases: [
+      { type: 'home', biome: 'Meadows', stage: 's2', decor: 'd2' },
+      { type: 'home', biome: 'Black Forest', stage: 's3', decor: 'd3' },
+      { type: 'farm', biome: 'Meadows', stage: 's3', decor: 'd3' },
+      { type: 'home', biome: 'Plains', stage: 's3', decor: 'd3' }],
+    flags: ['yardOrganic', 'yardBeds', 'yardProps', 'yardLamp'],
+    focus: () => ({ az: 28, el: 38, crop: null }),
+  },
   wall: {
     bases: [
       { type: 'longhouse', biome: 'Meadows', stage: 's3', decor: 'd3' },

@@ -26,6 +26,7 @@ Code in `tools/blueprint-lab/`. Built 2026-11-08 night. Nothing generated here i
 | Game bundle | `lib/build_engine.js` to `src/Villheim.Logic/Generator/lab.js` | The generator for the game, run by Jint. See "In the game". |
 | Repair | `lib/repair.js`, tests `lab/test_repair.js` and `lab/test_repair_chunk.js` | Fills in pieces missing from an uploaded blueprint from the rest of the build: gaps in a row, a missing course in a stack, holes in a floor, the mirror of the other half when the build is mostly symmetric, and pieces that the build's own patterns call for. Each added piece carries a reason and a confidence. Third tab of the request page. |
 | Millénaire study | `lab/mc_convert.py`, `lab/mc_eval.js`, `lab/mc_render.js`, `lab/mc_compare.py`, `data/mc-blockmap.json` | Translates Millénaire schematics into blueprints for study and measures how well they translate. Kept apart from the lab's data; see `docs/MC_TRANSLATION.md`. |
+| Yards | `lab/mine_yards.js`, `data/yards.json`, `lib/yards.js` | What stands outside the walls of the corpus builds (fences, gates, paths, beds, piles, lamps, carts), how far out, how fences turn and how deep pieces sit in the ground; the yard a stage 2 or 3 home or farm gets from it. See "Yards" under the component bench. |
 | Review set | `lib/gen_set.js` | Every type in five biomes at s1d1, s2d2, s3d3, plus six cultures; best of 8 each. 273 designs, all pass every check (2026-11-09). |
 
 ## Measured building conventions
@@ -217,8 +218,10 @@ flags (`req.details` overrides the detail profile, `req.style` the culture), che
 of the part on a contact sheet (`<part>.png`, `<part>.json`). It picks test buildings where the part shows (each flag,
 turned off alone from the full set, changes pieces near the part), frames the camera once per building on the pieces
 the part adds, seen from outside, and cuts the roof away for inside parts. Parts: `door`, `window`, `gable`, `wall`,
-`stack`, `dormer`, `bed`, `stair`, and `interior` (one close-up per assembly the interior library placed, seen from
-inside the room with everything over 2.6 m cut away: `node lab/bench.js interior [out dir] [designs] ["type,biome,stage,decor,seed;..."]`). Sheets go to a reviewer that has not seen the code; its findings become fixes and
+`stack`, `dormer`, `bed`, `stair`, `yard`, and `interior` (one close-up per assembly the interior library placed, seen
+from inside the room with everything over 2.6 m cut away:
+`node lab/bench.js interior [out dir] [designs] ["type,biome,stage,decor,seed;..."]`). Sheets go to a reviewer that has
+not seen the code; its findings become fixes and
 odds, and the part goes back on the bench.
 
 `lib/critic.js` measures a design the way `lab/learn_critic.js` measured the top quarter of corpus house builds by
@@ -247,6 +250,40 @@ Parts added on 2026-11-09:
 | Tidy furnishing | A rug with nothing standing on it and a chair with no table within 0.9 m (or fire within 1.6 m) come out; a long table with no seat gets a bench along each long side where there is room. | all furnished designs |
 | Vignettes | On a ground room's plain wall bays with nothing 1.6 m in front: a bench under a wall torch, a chest beside a barrel, or an armor stand, by what the biome makes; one bay in three at most, not near doors. | d3, all but barns, stores, docks and farms |
 | Kitchen | A butcher's table against the wall nearest the cauldron, the spice rack and pots and pans hung on the walls nearest it, all within 4.5 m. Gated by their materials: turnips (Swamp), silver (Mountain), black metal (Plains). | wherever a cauldron is |
+| Yard fence | A fence 2 to 4 m out from the walls (D-060 B), as 'front' (round the front from the side walls), 'L' (front and one side, meeting the back wall), 'wrap' (all round) or 'side' (along one end wall); a shape that runs into something already there (a field, a woodshed, a stair, a door's 2 m) gives way to the next, and the plot's radius as the game reads it (Blueprints.cs: farthest pivot from the middle of the pivots' box, plus 2 m) grows by 4 m at most. Wood fence, dry stone fence (where the stage allows stone, D-012) or posts and rails, by culture. Winding: outer corners cut with 2 m chords at 45 degrees, or at 22.5 and 67.5 degrees, the turns corpus fences make. Fence ends meet the wall; the last panel of a run laps the one before it (marked `clip`). | stage 2 and 3 homes and farms (`req.yard` true or false overrides), not on stilts or boardwalks |
+| Yard gate and path | A `wood_fence_gate` (2 m opening, the corpus's 2 m gap) on the run nearest the door, with 1.2 m clear either side; 2 m posts beside it at s3. A path of 1 m planks from the door out to a lane 1.5 m in front of it, along to the gate's line and through the gate, round anything already there. | with a yard fence |
+| Yard contents | Raised beds of beams on the ground (2 m by 1 m, as the corpus's 2.2 by 1) with a row of the biome's crop (carrot, turnip, onion, barley; dandelions, mushrooms and thistles in the Meadows); firewood against the fence (a woodpile the furnishing left against an outside wall moves here); a bench against the front wall beside the door; a lamp inside the gate; bushes along the fence, dandelions along the walls; a cart (Black Forest on) and a scarecrow (armor stand, Swamp on) on farms. Plants are part of the build; the rest is furnishing. Nothing taller than 1 m within 1.2 m of the walls (the eaves and their braces), nothing in kept-clear places. | beds, firewood, bench d2 on; lamp, bushes, flowers, scarecrow d3; bench switches `yardOrganic`, `yardBeds`, `yardProps`, `yardLamp`, `yardPath` |
+
+### Yards
+
+`node lab/mine_yards.js [compact.json] [out]` reads the corpus (`/home/claude/study/compact.json`, vanilla-only builds,
+modded pieces filtered as `lab/learn_critic.js` does), turns each build to its main axis and takes what stands on the
+ground outside its roofed area, within 15 m. Measures go to `data/yards.json` for the well-liked builds (top quarter by
+downloads, 115 that read as a building) and for all 733 vanilla builds, with up to 40 assemblies of each kind (gates
+with what stands by them, fence runs and corners, paths, beds with their borders, piles, carts, seats, lamps,
+signposts), each with its source build, downloads and earliest biome. What it found (all vanilla builds):
+
+| Measure | Value |
+|---|---|
+| Fence segments | 2 m (median); lines 7 m long (median), 22 m at the 90th percentile; one in thirteen lines closes on itself |
+| Turns at a joint, lines of four or more | straight 3,017; 22.5 to 25 degrees 673; 45 degrees 312; square 556; others rare |
+| Openings in a line | 2 m (median), 1 to 3 m |
+| Gates | rare (77 in 733 builds); usually no posts of their own (a quarter have two) |
+| Yard depth from the walls | 5.7 m (median of each build's 90th percentile), 4.6 m on the door side |
+| Garden beds (three or more plants within 1.5 m) | 2.2 by 1.0 m (median) |
+| Path pieces | stone 2 x 2 floors most, then wood floors; 2 m wide |
+| Set into the ground | fences up to 0.2 m (75th percentile), props 0.16 m, floors flush |
+| Props clipping into a fence, wall or prop | 0.36 m (median), 0.6 m (75th percentile) |
+
+The checks allow a clip marked on a piece (`p.clip`, metres) up to its mark and never past the 0.36 m median
+(`checks.js` `CLIP_MAX`).
+
+How the game reads a yard's size: `Blueprints.cs` `Center` moves a blueprint so the middle of the box round its piece
+pivots is at the origin and sets its radius to the farthest pivot plus 2 m. Every yard piece counts, so the plot the
+village gives already takes in the yard; an off-centre yard (a side yard) moves the house off the plot's middle.
+`PlotFinder` keeps plots a radius apart, samples the slope at 70 % of the radius and looks for clutter within 80 %;
+`Growth` builds a blueprint set's next level where its radius fits. `lib/yards.js` keeps the radius growth to 4 m
+(homes: 9.7 to 11.8 m at s2, 11.6 to 13.4 m at s3 on average). No change to the mod was needed.
 
 ## Interior kitbash (D-065, D-066)
 

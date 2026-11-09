@@ -42,6 +42,8 @@ namespace Villheim.Logic.Villagers
             Fletch,
             Trophy,
             Elder,
+            Decor,
+            Home,
         }
 
         private static readonly int KeyShort = "villheim_task".GetStableHashCode();
@@ -105,6 +107,7 @@ namespace Villheim.Logic.Villagers
                 case Doer.Fletch: return Fletching.Describe(villager) ?? "making arrows";
                 case Doer.Trophy: return Trophies.Describe(villager) ?? "seeing to a trophy";
                 case Doer.Elder: return ElderWork.Describe(villager) ?? "helping about the village";
+                case Doer.Decor: return HomeDecor.Describe(villager) ?? "fixing up a home";
             }
 
             // Nothing of ours ran him lately: the game's own AI has him (a fight with a player), or he is loading.
@@ -149,6 +152,7 @@ namespace Villheim.Logic.Villagers
                 case Doer.Fletch: return "making arrows";
                 case Doer.Trophy: return text.Contains("hanging") ? "hanging a trophy" : "fetching a trophy";
                 case Doer.FreeTime: return FreeWord(text);
+                case Doer.Decor: return "decorating";
                 case Doer.Elder:
                     return text.Contains("fire") ? "tending fire" : text.Contains("cook") ? "cooking" : text.Contains("farm") ? "farming" :
                         text.Contains("animal") ? "tending animals" : text.Contains("arrow") ? "making arrows" :

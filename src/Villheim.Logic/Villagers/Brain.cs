@@ -215,6 +215,11 @@ namespace Villheim.Logic.Villagers
                 // with rests between.
                 doer = Status.Doer.Elder;
             }
+            else if (HomeDecor.Update(villager, ai, dt))
+            {
+                // Nothing to do for the village: fixing up his home, or helping a neighbor with theirs (D-073).
+                doer = Status.Doer.Decor;
+            }
             else
             {
                 FreeTime.Update(villager, ai, dt);

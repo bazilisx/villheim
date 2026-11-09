@@ -305,6 +305,12 @@ function supportClass(n) {
 }
 function support(n) { return SUPPORT[supportClass(n)]; }
 
-const apiP = { piece, support, supportClass, SUPPORT, needs, MAT, BIOME_ORDER, exportSize, NEEDS, DOORS, doorSpec, doorOpening, CLIMB, climbSpec };
+// Minor decor (Tyler, D-066): small pieces that dress a room. They cost nothing or are paid in the village biome's own
+// materials, so any biome may have them; stations, beds, chests, tables, seats, fires and building pieces still need
+// their own materials.
+const MINOR = /^(rug_|jute_carpet|piece_banner\d|piece_pot\d|ashland_pot|piece_gift\d|piece_mistletoe|piece_xmas|piece_jackoturnip|piece_(Celebration|Fairylight)Garland|Candle_resin|Skull\d|ancient_skull|cloth_hanging_long|fenrirhide_hanging|dvergrprops_(barrel|crate|crate_long|shelf|hooknchain|lantern|lantern_standing)$|treasure_stack$|sign$|sign_notext$|Feast[A-Z]|Mead[A-Z]|BarleyWine$|Bread$|CookedMeat$|Sausages$|Honey|MeatPlatter$|LoxPie$|PiquantPie$|RoastedCrustPie$|SerpentStew$|MashedMeat$|MarinatedGreens$|MisthareSupreme$|QueensJam$|Salad$|Eyescream$|ShocklateSmoothie$|SparklingShroomshake$|SizzlingBerryBroth$|ScorchingMedley$|SpicyMarmalade$|Blueberries$|Raspberry$|Cloudberry$|Carrot$|Onion$|Pukeberries$|Fish\d+$)/;
+function minor(name) { return MINOR.test(name); }
+
+const apiP = { piece, minor, support, supportClass, SUPPORT, needs, MAT, BIOME_ORDER, exportSize, NEEDS, DOORS, doorSpec, doorOpening, CLIMB, climbSpec };
 if (typeof module !== 'undefined') module.exports = apiP;
 else window.VHPieces = apiP;

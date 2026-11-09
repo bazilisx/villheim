@@ -309,7 +309,13 @@ function supportClass(n) {
 }
 function support(n) { return SUPPORT[supportClass(n)]; }
 
-const apiP = { piece, support, supportClass, SUPPORT, needs, MAT, BIOME_ORDER, exportSize, NEEDS, DOORS, doorSpec, doorOpening, CLIMB, climbSpec };
+// Minor decor (Tyler, D-066): small pieces that dress a room. They cost nothing or are paid in the village biome's own
+// materials, so any biome may have them; stations, beds, chests, tables, seats, fires and building pieces still need
+// their own materials.
+const MINOR = /^(rug_|jute_carpet|piece_banner\d|piece_pot\d|ashland_pot|piece_gift\d|piece_mistletoe|piece_xmas|piece_jackoturnip|piece_(Celebration|Fairylight)Garland|Candle_resin|Skull\d|ancient_skull|cloth_hanging_long|fenrirhide_hanging|dvergrprops_(barrel|crate|crate_long|shelf|hooknchain|lantern|lantern_standing)$|treasure_stack$|sign$|sign_notext$|Feast[A-Z]|Mead[A-Z]|BarleyWine$|Bread$|CookedMeat$|Sausages$|Honey|MeatPlatter$|LoxPie$|PiquantPie$|RoastedCrustPie$|SerpentStew$|MashedMeat$|MarinatedGreens$|MisthareSupreme$|QueensJam$|Salad$|Eyescream$|ShocklateSmoothie$|SparklingShroomshake$|SizzlingBerryBroth$|ScorchingMedley$|SpicyMarmalade$|Blueberries$|Raspberry$|Cloudberry$|Carrot$|Onion$|Pukeberries$|Fish\d+$)/;
+function minor(name) { return MINOR.test(name); }
+
+const apiP = { piece, minor, support, supportClass, SUPPORT, needs, MAT, BIOME_ORDER, exportSize, NEEDS, DOORS, doorSpec, doorOpening, CLIMB, climbSpec };
 if (typeof module !== 'undefined') module.exports = apiP;
 else window.VHPieces = apiP;
 
@@ -496,7 +502,39 @@ function overlapVolume(A, B) {
 }
 function volume(list) { return (list || []).reduce((s, o) => s + 8 * o.h[0] * o.h[1] * o.h[2], 0); }
 
-const apiSh = { has, pass, local, world, aabb, hit, hitsBox, boxOf, inside, spanY, undersideAt, topAt, overlapVolume, volume, setData };
+// How far two pieces' solids reach into each other, in metres: for the deepest pair of their boxes, the least overlap
+// over the separating axes (how far one would have to move to come clear). 0 when they are apart. The interior library
+// (lab/mine_kitbash.js) records the depth of every clip builders made on purpose, and the checks allow that much.
+function penetration(A, B) {
+  const d = [B.c[0] - A.c[0], B.c[1] - A.c[1], B.c[2] - A.c[2]];
+  let m = Infinity;
+  const test = L => {
+    const l = Math.hypot(L[0], L[1], L[2]);
+    if (l < 1e-4) return true;
+    const u = [L[0] / l, L[1] / l, L[2] / l];
+    const ra = A.h[0] * Math.abs(dot(A.a[0], u)) + A.h[1] * Math.abs(dot(A.a[1], u)) + A.h[2] * Math.abs(dot(A.a[2], u));
+    const rb = B.h[0] * Math.abs(dot(B.a[0], u)) + B.h[1] * Math.abs(dot(B.a[1], u)) + B.h[2] * Math.abs(dot(B.a[2], u));
+    const ov = ra + rb - Math.abs(dot(d, u));
+    if (ov <= 0) return false;
+    if (ov < m) m = ov;
+    return true;
+  };
+  for (let i = 0; i < 3; i++) if (!test(A.a[i]) || !test(B.a[i])) return 0;
+  for (let i = 0; i < 3; i++) for (let j = 0; j < 3; j++) if (!test(cross(A.a[i], B.a[j]))) return 0;
+  return isFinite(m) ? m : 0;
+}
+function clipDepth(A, B) {
+  if (!A || !B) return 0;
+  let best = 0;
+  for (const a of A) for (const b of B) {
+    if (a.x0 >= b.x1 || b.x0 >= a.x1 || a.y0 >= b.y1 || b.y0 >= a.y1 || a.z0 >= b.z1 || b.z0 >= a.z1) continue;
+    const v = penetration(a, b);
+    if (v > best) best = v;
+  }
+  return best;
+}
+
+const apiSh = { has, pass, local, world, aabb, hit, hitsBox, boxOf, inside, spanY, undersideAt, topAt, overlapVolume, volume, clipDepth, setData };
 if (NODE_SH) module.exports = apiSh; else window.VHShapes = apiSh;
 
 })();
@@ -5090,6 +5128,50 @@ const checksB = () => (NODE_B ? require('./checks.js') : window.VHChecks);
 const quatB = yaw => { const a = yaw * Math.PI / 360; return [0, +Math.sin(a).toFixed(6), 0, +Math.cos(a).toFixed(6)]; };
 const BIOMES_B = ['Meadows', 'Black Forest', 'Swamp', 'Mountain', 'Plains', 'Mistlands', 'Ashlands'];
 const can = (biome, name) => BIOMES_B.indexOf(PB.needs(name)) <= BIOMES_B.indexOf(biome);
+// minor decor goes in any biome (D-066): it costs nothing or is paid in the village's own materials
+const canDecor = (biome, name) => can(biome, name) || PB.minor(name);
+
+// ---------------------------------------------------------------- the interior library (data/kitbash-interior.json)
+// The slot each piece fills in an assembly. The miner (lab/mine_kitbash.js) matches the corpus by slot, so a wood chest
+// and an iron chest in the same place count as one assembly; the placer fills each slot with what the village's biome
+// makes. Pieces with no class here are their own slot. Small building pieces count when they carry something (a beam
+// shelf, a half-wall counter).
+const CLASSES = {
+  chest: ['piece_chest_wood', 'piece_chest', 'piece_chest_blackmetal', 'piece_chest_private'],
+  barrel: ['piece_chest_barrel'],
+  crate: ['dvergrprops_crate', 'dvergrprops_crate_long'],
+  chair: ['piece_chair', 'piece_chair02', 'piece_chair03', 'dvergrprops_stool', 'dvergrprops_chair', 'piece_chair_runed'],
+  bench: ['piece_bench01', 'piece_logbench01', 'piece_blackwood_bench01', 'piece_blackmarble_bench', 'piece_bench_runed'],
+  rug: ['rug_deer', 'rug_straw', 'rug_wolf', 'jute_carpet', 'rug_fur', 'rug_hare', 'jute_carpet_blue', 'rug_asksvin', 'rug_bogwitch_deer', 'rug_moose', 'rug_seal', 'rug_Bjorn'],
+  banner: ['piece_banner01', 'piece_banner02', 'piece_banner03', 'piece_banner04', 'piece_banner05', 'piece_banner06', 'piece_banner07',
+    'piece_banner08', 'piece_banner09', 'piece_banner10', 'piece_banner11'],
+  walllight: ['piece_walltorch', 'piece_dvergr_lantern'],
+  floorlight: ['piece_groundtorch_wood', 'piece_groundtorch', 'piece_groundtorch_green', 'piece_groundtorch_mist', 'piece_groundtorch_blue'],
+  candle: ['Candle_resin', 'Candle_resin_bogwitch'],
+  pot: ['piece_pot1', 'piece_pot2', 'piece_pot3', 'piece_pot2_red', 'ashland_pot2_red', 'piece_pot1_cracked', 'piece_pot2_cracked'],
+  gift: ['piece_gift1', 'piece_gift2', 'piece_gift3'],
+  carving: ['wood_dragon1', 'darkwood_raven', 'darkwood_wolf'],
+  feast: ['FeastMeadows', 'FeastBlackforest', 'FeastSwamps', 'FeastMountains', 'FeastOceans', 'FeastPlains', 'FeastMistlands', 'FeastAshlands'],
+  beam1: ['wood_beam_1', 'darkwood_beam_1', 'ashwood_beam_1m'], beam2: ['wood_beam', 'darkwood_beam', 'woodiron_beam', 'ashwood_beam_2m'],
+  floor1: ['wood_floor_1x1'], half: ['wood_wall_half', 'darkwood_wall_half'], quarter: ['wood_wall_quarter'],
+  pole1: ['wood_pole', 'ashwood_pole_1m'], pole2: ['wood_pole2', 'darkwood_pole', 'ashwood_pole_2m'], ledge: ['wood_ledge'],
+};
+const SLOT = {};
+for (const [k, list] of Object.entries(CLASSES)) for (const n of list) SLOT[n] = k;
+// placed food: every dish and drink that stands on a table or a shelf
+const FOOD = /^(Mead[A-Z]\w*|BarleyWine|Bread|CookedMeat|Sausages|Honey|HoneyGlazedChicken|MeatPlatter|LoxPie|PiquantPie|RoastedCrustPie|SerpentStew|MashedMeat|MarinatedGreens|MisthareSupreme|QueensJam|Salad|Eyescream|ShocklateSmoothie|SparklingShroomshake|SizzlingBerryBroth|ScorchingMedley|SpicyMarmalade|Blueberries|Raspberry|Cloudberry|Carrot|Onion|Turnip|Pukeberries|RoyalJelly|Fish\d+)$/;
+// building pieces that join an assembly only when they carry or frame furniture
+const BUILT_SLOTS = ['beam1', 'beam2', 'floor1', 'half', 'quarter', 'pole1', 'pole2', 'ledge'];
+function slotOf(name) { return SLOT[name] || (FOOD.test(name) ? 'food' : name); }
+// what counts as furnishing or decor in a build: every prefab that is not structure, ground or a plant, less what
+// stands outside or is a building block of its own (portals, mills, carts, kilns, black marble trim)
+const NOT_DECOR = /^(portal|windmill|Cart|bonfire|blastfurnace|smelter|charcoal_kiln|eitrrefinery|piece_beehive|piece_sapcollector|guard_stone|piece_shieldgenerator|piece_turret|piece_trap_troll|incinerator|LocationProxy|blackmarble_(base|out|tip|slope|2x2|basecorner|outcorner|post)|iron_grate|Ashlands_|dverger_demister|dvergrtown_|giant_|tarlump|highstone|widestone|metalbar|flying_core|Seeker|YggaShoot|Greydwarf_Root|HugeRoot|CreepProp|Charred_|Morkhalla_Eye|wood_(fine_|core_|yggdrasil_)?stack|stone_pile|coal_pile|flint_pile|grausten_pile|blackmarble_pile|blackwood_stack|mudpile|goblin_(trash|straw)pile|volture_strawpile|bone_stack)/;
+function isDecor(name) {
+  if (NOT_DECOR.test(name)) return false;
+  const r = PB.piece(name).role;
+  if (['bed', 'table', 'seat', 'storage', 'fire', 'craft', 'deco', 'light', 'rug', 'clutter'].includes(r)) return true;
+  return r === 'misc' && (FOOD.test(name) || SLOT[name] != null || /^(piece_pot|piece_gift|piece_mistletoe|Skull|ancient_skull|cloth_hanging_long|fenrirhide_hanging|dvergrprops_|piece_barber|piece_asksvinskeleton|piece_icecube|lox_ribs|Feast)/.test(name));
+}
 
 // A tavern's bar: a 4 m counter of half walls with a beam along the top, 1.5 m out from a long wall of the main room,
 // barrels against the wall behind it, a few mugs (horizontal item stands) on it. Returns true when it found room.
@@ -5346,7 +5428,7 @@ function apply(b, ctx, zones) {
   if (X.canopyBed != null ? X.canopyBed : (ctx.decor === 'd3' && ['home', 'longhouse'].includes(ctx.type) && ctx.R() < 0.5)) canopyBed(b, ctx);
 }
 
-const apiB = { apply, barCounter, canopyBed, stalls, dais, vignettes };
+const apiB = { apply, barCounter, canopyBed, stalls, dais, vignettes, CLASSES, SLOT, FOOD, BUILT_SLOTS, slotOf, isDecor, canDecor };
 if (NODE_B) module.exports = apiB; else window.VHKitbash = apiB;
 
 })();

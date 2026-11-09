@@ -178,5 +178,37 @@ function overlapVolume(A, B) {
 }
 function volume(list) { return (list || []).reduce((s, o) => s + 8 * o.h[0] * o.h[1] * o.h[2], 0); }
 
-const apiSh = { has, pass, local, world, aabb, hit, hitsBox, boxOf, inside, spanY, undersideAt, topAt, overlapVolume, volume, setData };
+// How far two pieces' solids reach into each other, in metres: for the deepest pair of their boxes, the least overlap
+// over the separating axes (how far one would have to move to come clear). 0 when they are apart. The interior library
+// (lab/mine_kitbash.js) records the depth of every clip builders made on purpose, and the checks allow that much.
+function penetration(A, B) {
+  const d = [B.c[0] - A.c[0], B.c[1] - A.c[1], B.c[2] - A.c[2]];
+  let m = Infinity;
+  const test = L => {
+    const l = Math.hypot(L[0], L[1], L[2]);
+    if (l < 1e-4) return true;
+    const u = [L[0] / l, L[1] / l, L[2] / l];
+    const ra = A.h[0] * Math.abs(dot(A.a[0], u)) + A.h[1] * Math.abs(dot(A.a[1], u)) + A.h[2] * Math.abs(dot(A.a[2], u));
+    const rb = B.h[0] * Math.abs(dot(B.a[0], u)) + B.h[1] * Math.abs(dot(B.a[1], u)) + B.h[2] * Math.abs(dot(B.a[2], u));
+    const ov = ra + rb - Math.abs(dot(d, u));
+    if (ov <= 0) return false;
+    if (ov < m) m = ov;
+    return true;
+  };
+  for (let i = 0; i < 3; i++) if (!test(A.a[i]) || !test(B.a[i])) return 0;
+  for (let i = 0; i < 3; i++) for (let j = 0; j < 3; j++) if (!test(cross(A.a[i], B.a[j]))) return 0;
+  return isFinite(m) ? m : 0;
+}
+function clipDepth(A, B) {
+  if (!A || !B) return 0;
+  let best = 0;
+  for (const a of A) for (const b of B) {
+    if (a.x0 >= b.x1 || b.x0 >= a.x1 || a.y0 >= b.y1 || b.y0 >= a.y1 || a.z0 >= b.z1 || b.z0 >= a.z1) continue;
+    const v = penetration(a, b);
+    if (v > best) best = v;
+  }
+  return best;
+}
+
+const apiSh = { has, pass, local, world, aabb, hit, hitsBox, boxOf, inside, spanY, undersideAt, topAt, overlapVolume, volume, clipDepth, setData };
 if (NODE_SH) module.exports = apiSh; else window.VHShapes = apiSh;

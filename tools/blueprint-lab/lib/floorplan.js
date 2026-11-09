@@ -113,10 +113,11 @@ function floorplan(spec) {
   }
   // hanging braziers need the ceiling the plan leaves out
   for (const p of furniture) if ((F[p.name] || {}).at !== 'hang') out.push(p);
-  // the ID: a post at the front left corner, outside, with a sign facing the front
+  // the ID: a post at the front left corner, outside, with two signs back to back so it reads from either side
   const sx = -W - 1, sz = -D - 1;
   put(out, 'wood_pole2', sx, 1, sz);
   put(out, 'sign', sx, 1.5, sz - 0.15, 180, { idSign: true });
+  put(out, 'sign', sx, 1.5, sz + 0.15, 0, { idSign: true });
   const counts = {};
   for (const p of furniture) { const n = p.name.replace(/^piece_/, ''); counts[n] = (counts[n] || 0) + 1; }
   const area = cells.length * 4;
@@ -151,34 +152,55 @@ const catalogSpec = i => {
   return { shape, w, d, room, biome, culture, decor, ladder: !!ladder, seed: 101 + i, id: 'FP-' + String(i + 1).padStart(3, '0') };
 };
 
-// One plan, or several in a grid (four to a row, each in its own square), as one blueprint.
+// One plan, or several in a grid four to a row, as one blueprint. Each plan sits in its own box (its pieces plus
+// half a meter), 2 m from the next. The first row is the front (lowest z), plan 1 at its left; each row is centered
+// on x = 0. 'pads' gives each plan's box and middle in the game's centered coordinates, and floorY the height of the
+// floors there, so the game can set each plan on the ground under it.
+const GAP_FP = 2, MARGIN_FP = 0.5, COLS_FP = 4;
 function layout(plans) {
   const pieces = [], signs = [], pads = [];
-  const step = Math.max(...plans.map(p => Math.max(p.w, p.d))) + 8;
-  plans.forEach((p, i) => {
-    const ox = (i % 4) * step, oz = -Math.floor(i / 4) * step;
-    pads.push({ x: ox, z: oz, r: Math.hypot(p.w, p.d) / 2 + 2 });
-    for (const q of p.pieces) {
-      const c = { ...q, x: +(q.x + ox).toFixed(3), z: +(q.z + oz).toFixed(3) };
-      delete c.decor; delete c.idSign; delete c.outside;
-      pieces.push(c);
-      if (q.idSign) signs.push({ x: c.x, y: c.y, z: c.z, text: p.sign.text, id: p.id });
-    }
+  const boxes = plans.map(p => {
+    const xs = p.pieces.map(q => q.x), zs = p.pieces.map(q => q.z);
+    return { x0: Math.min(...xs) - MARGIN_FP, x1: Math.max(...xs) + MARGIN_FP, z0: Math.min(...zs) - MARGIN_FP, z1: Math.max(...zs) + MARGIN_FP };
   });
-  // the game centers a blueprint on the middle of its pieces and its lowest piece: the signs, the same way
+  let rowZ = 0;
+  for (let first = 0; first < plans.length; first += COLS_FP) {
+    const row = [...Array(Math.min(COLS_FP, plans.length - first)).keys()].map(k => first + k);
+    const width = row.reduce((a, i) => a + boxes[i].x1 - boxes[i].x0, 0) + GAP_FP * (row.length - 1);
+    const depth = Math.max(...row.map(i => boxes[i].z1 - boxes[i].z0));
+    let x = -width / 2;
+    for (const i of row) {
+      const p = plans[i], b = boxes[i];
+      const ox = x - b.x0, oz = rowZ - b.z0;
+      pads.push({ id: p.id, x: ox, z: oz, r: Math.hypot(b.x1 - b.x0, b.z1 - b.z0) / 2, x0: b.x0 + ox, x1: b.x1 + ox, z0: b.z0 + oz, z1: b.z1 + oz });
+      for (const q of p.pieces) {
+        const c = { ...q, x: +(q.x + ox).toFixed(3), z: +(q.z + oz).toFixed(3) };
+        delete c.decor; delete c.idSign; delete c.outside;
+        pieces.push(c);
+        if (q.idSign) signs.push({ x: c.x, y: c.y, z: c.z, text: p.sign.text, id: p.id });
+      }
+      x += b.x1 - b.x0 + GAP_FP;
+    }
+    rowZ += depth + GAP_FP;
+  }
+  // the game centers a blueprint on the middle of its pieces and its lowest piece: the signs and boxes, the same way
   const xs = pieces.map(p => p.x), zs = pieces.map(p => p.z), ys = pieces.map(p => p.y);
   const cx = (Math.min(...xs) + Math.max(...xs)) / 2, cz = (Math.min(...zs) + Math.max(...zs)) / 2, y0 = Math.min(...ys);
-  for (const s of signs) { s.lx = +(s.x - cx).toFixed(3); s.ly = +(s.y - y0).toFixed(3); s.lz = +(s.z - cz).toFixed(3); }
-  for (const p of pads) { p.x = +(p.x - cx).toFixed(3); p.z = +(p.z - cz).toFixed(3); }
-  return { pieces, signs, pads };
+  const r3 = v => +v.toFixed(3);
+  for (const s of signs) { s.lx = r3(s.x - cx); s.ly = r3(s.y - y0); s.lz = r3(s.z - cz); }
+  for (const p of pads) {
+    p.x = r3(p.x - cx); p.z = r3(p.z - cz);
+    p.x0 = r3(p.x0 - cx); p.x1 = r3(p.x1 - cx); p.z0 = r3(p.z0 - cz); p.z1 = r3(p.z1 - cz);
+  }
+  return { pieces, signs, pads, floorY: r3(-y0) };
 }
 
 function make(specs, name) {
   const plans = specs.map(floorplan);
-  const { pieces, signs, pads } = layout(plans);
+  const { pieces, signs, pads, floorY } = layout(plans);
   const blueprint = BF.write({ meta: { Name: name, Creator: 'Villheim floorplan', Category: 'Villheim floorplans', Description: plans.map(p => `${p.id} ${p.command}`).join('; ') }, pieces });
   return {
-    name, blueprint, pieces: pieces.length, signs, pads,
+    name, blueprint, pieces: pieces.length, signs, pads, floorY,
     rows: plans.map(p => ({ id: p.id, command: p.command, shape: p.shape, size: `${p.w}x${p.d}`, room: p.room, biome: p.biome, culture: p.culture, stage: p.decor, seed: p.seed, area: p.area, perTenM2: p.perTenM2, summary: p.summary })),
   };
 }

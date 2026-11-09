@@ -18,7 +18,10 @@ namespace Villheim.Logic.Generator
     /// a low curb where the walls stand, a rail where the windows are, the door and the furniture, and no walls or roof,
     /// so the layout can be judged from above. Each plan has an ID (FP-001) on a sign at its front corner and a row in
     /// BepInEx/config/Villheim/floorplans/floorplans.csv, the same columns as the review sheet's Floorplans tab.
-    /// 'vh floorplan set 12' lays out the first 12 plans of the lab's catalog in a grid (FP-001 to FP-012).
+    /// 'vh floorplan set 12' lays out the first 12 plans of the lab's catalog in a grid (FP-001 to FP-012), four to a
+    /// row, the first row a few meters in front of the player. Each plan stands on the ground under it, levelled and
+    /// bare first. Floorplan pieces carry the plan's ID in their ZDO and never wear or fall, since a floor with no
+    /// walls has nothing holding it up; 'vh tidy' removes them like any piece a command built.
     /// </summary>
     internal static class FloorplanCommands
     {
@@ -26,6 +29,7 @@ namespace Villheim.Logic.Generator
         {
             "floorplan <shape> <width>x<depth> <room> [biome] [culture] [d1|d2|d3] [seed] [ladder]: one furnished room with no walls or roof, to judge the layout from above; shapes rect, L, round, long; rooms home, sleeping, hall, tavern, kitchen, smithy, workshop, temple, storage",
             "floorplan set [n]: lay out the first n plans of the catalog (up to 24) in a grid, each with its ID sign (FP-001 on), the same IDs as the review sheet's Floorplans tab",
+            "floorplan where: the ID of the floorplan you are standing in or nearest to",
         };
 
         private static readonly string[] Usage =
@@ -37,6 +41,7 @@ namespace Villheim.Logic.Generator
             "  biome: md bf sw mt pl ml al dn (default md); culture: a culture key ('vh cultures'), default by biome",
             "  decor: d1 bare, d2 lived in (default), d3 rich; seed: a number; ladder: put a ladder in the back corner",
             "vh floorplan set [n]: the first n plans of the catalog (default 12, at most 24) in a grid, IDs FP-001 on.",
+            "vh floorplan where: the ID of the plan you are standing in or nearest to.",
             "Each plan gets an ID on a sign at its front left corner and a row in BepInEx/config/Villheim/floorplans/floorplans.csv.",
             "Examples:",
             "  vh floorplan rect 10x8 home md norse d2",
@@ -59,6 +64,15 @@ namespace Villheim.Logic.Generator
 
         private static bool _busy;
 
+        /// <summary>Marks every piece of a floorplan: it never wears or falls (see HoldPatch).</summary>
+        internal static readonly int KeyFloorplan = "villheim_floorplan".GetStableHashCode();
+
+        /// <summary>The plan's ID (FP-001) on every piece of it, for 'vh floorplan where'.</summary>
+        internal static readonly int KeyFloorplanId = "villheim_floorplan_id".GetStableHashCode();
+
+        /// <summary>Space between the player and the front of the first row.</summary>
+        private const float Ahead = 3f;
+
         // Filled by JsonUtility from the lab's answer.
 #pragma warning disable CS0649
         [Serializable]
@@ -71,7 +85,8 @@ namespace Villheim.Logic.Generator
         [Serializable]
         private sealed class Pad
         {
-            public float x, z, r;
+            public string id;
+            public float x, z, r, x0, x1, z0, z1;
         }
 
         [Serializable]
@@ -90,6 +105,7 @@ namespace Villheim.Logic.Generator
             public Sign[] signs;
             public Pad[] pads;
             public Row[] rows;
+            public float floorY;
         }
 #pragma warning restore CS0649
 
@@ -106,6 +122,12 @@ namespace Villheim.Logic.Generator
             if (player == null)
             {
                 Say(context, "Villheim: you need to be in a world to use this.");
+                return;
+            }
+
+            if (t[0].Equals("where", StringComparison.OrdinalIgnoreCase))
+            {
+                Say(context, Where(player));
                 return;
             }
 
@@ -278,79 +300,243 @@ namespace Villheim.Logic.Generator
             Directory.CreateDirectory(Folder);
             string file = Path.Combine(Folder, r.name + ".blueprint");
             File.WriteAllText(file, r.blueprint, new UTF8Encoding(false));
-            int built = Build(file, r, standing, yaw, out string problem);
+            var build = new BuildResult();
+            yield return Build(file, r, standing, yaw, build);
             WriteRows(r.rows);
-            Say(context, $"Villheim: {r.rows.Length} floorplan{(r.rows.Length == 1 ? "" : "s")} in {Time.realtimeSinceStartup - started:0.0} s, {built} of {r.pieces} pieces built.");
+            Say(context, $"Villheim: {r.rows.Length} floorplan{(r.rows.Length == 1 ? "" : "s")} in {Time.realtimeSinceStartup - started:0.0} s, {build.Built} of {r.pieces} pieces built.");
             foreach (Row row in r.rows)
             {
-                Say(context, $"   {row.id}: {row.room} {row.size} {row.shape}, {row.biome}, {row.culture}, {row.stage}, seed {row.seed}: {row.perTenM2.ToString("0.0", CultureInfo.InvariantCulture)} pieces per 10 m2");
+                string place = build.Middles.TryGetValue(row.id, out Vector3 middle) ? Direction(standing, yaw, middle) : "not placed";
+                Say(context, $"   {row.id}: {row.room} {row.shape} {row.size}, {place}. {row.biome}, {row.culture}, {row.stage}, seed {row.seed}, {row.perTenM2.ToString("0.0", CultureInfo.InvariantCulture)} pieces per 10 m2");
             }
 
-            if (problem != null)
+            if (build.Problem != null)
             {
-                Say(context, problem);
+                Say(context, build.Problem);
             }
+
+            Say(context, "   'vh floorplan where' names the plan you stand in. 'vh tidy 70 yes' takes them all away.");
 
             Say(context, $"   rows written to {FeedbackFile}; feedback goes in the review sheet's Floorplans tab under the same IDs.");
         }
 
-        /// <summary>Builds the plans in front of the player, the ground levelled under each, and writes each ID on its sign.</summary>
-        private static int Build(string file, Result r, Vector3 standing, float yaw, out string problem)
+        private sealed class BuildResult
         {
-            problem = null;
+            public int Built;
+            public string Problem;
+            public readonly Dictionary<string, Vector3> Middles = new Dictionary<string, Vector3>();
+        }
+
+        /// <summary>
+        /// Builds the plans in front of the player. Each plan's box is cleared, levelled at the ground height under
+        /// it and painted bare first; then its pieces go up on that ground, every one marked as a floorplan piece
+        /// with its ID, and its signs get the ID and the room, shape and size.
+        /// </summary>
+        private static IEnumerator Build(string file, Result r, Vector3 standing, float yaw, BuildResult result)
+        {
             Blueprints.Blueprint blueprint = Blueprints.FromFile(file);
             if (blueprint == null || blueprint.Pieces.Count == 0)
             {
-                problem = $"   could not read {file}.";
-                return 0;
+                result.Problem = $"   could not read {file}.";
+                yield break;
             }
 
+            Pad[] pads = (r.pads ?? new Pad[0]).Where(p => !string.IsNullOrEmpty(p.id)).ToArray();
             Quaternion turn = Quaternion.Euler(0f, yaw, 0f);
-            Vector3 at = standing + turn * Vector3.forward * (blueprint.Radius + 3f);
-            if (ZoneSystem.instance != null && ZoneSystem.instance.GetGroundHeight(at, out float ground))
-            {
-                at.y = ground;
-            }
+            float front = pads.Length > 0 ? pads.Min(p => p.z0) : -blueprint.Radius;
+            Vector3 at = standing + turn * new Vector3(0f, 0f, Ahead - front);
+            at.y = standing.y;
 
-            if (LogicConfig.GenLevelGround?.Value ?? true)
+            // The height of each plan: the ground under its box (middle and corners), averaged.
+            var heights = new Dictionary<string, float>();
+            foreach (Pad pad in pads)
             {
-                foreach (Pad pad in r.pads ?? new Pad[0])
+                Vector3 middle = at + turn * new Vector3(pad.x, 0f, pad.z);
+                float sum = 0f;
+                int n = 0;
+                foreach (Vector3 local in new[]
+                         {
+                             new Vector3(pad.x, 0f, pad.z), new Vector3(pad.x0, 0f, pad.z0), new Vector3(pad.x1, 0f, pad.z0),
+                             new Vector3(pad.x0, 0f, pad.z1), new Vector3(pad.x1, 0f, pad.z1),
+                         })
                 {
-                    TerrainShaper.LevelPad(at + turn * new Vector3(pad.x, 0f, pad.z), pad.r, pad.r + 3f);
+                    if (ZoneSystem.instance != null && ZoneSystem.instance.GetGroundHeight(at + turn * local, out float h))
+                    {
+                        sum += h;
+                        n++;
+                    }
+                }
+
+                float ground = n > 0 ? sum / n : standing.y;
+                heights[pad.id] = ground;
+                middle.y = ground;
+                result.Middles[pad.id] = middle;
+
+                float halfX = (pad.x1 - pad.x0) / 2f, halfZ = (pad.z1 - pad.z0) / 2f;
+                Vector3 boxMiddle = at + turn * new Vector3((pad.x0 + pad.x1) / 2f, 0f, (pad.z0 + pad.z1) / 2f);
+                boxMiddle.y = ground - 0.1f;
+                DesignSpawner.ClearArea(boxMiddle, Mathf.Sqrt(halfX * halfX + halfZ * halfZ));
+                if (LogicConfig.GenLevelGround?.Value ?? true)
+                {
+                    TerrainShaper.LevelBox(boxMiddle, yaw, halfX, halfZ, 0.75f);
+                    TerrainShaper.PaintBox(boxMiddle, yaw, halfX, halfZ);
                 }
             }
 
-            int count = 0;
+            // Give the heightmaps a moment to rebuild before anything is placed on them.
+            yield return new WaitForSeconds(0.75f);
+
+            var rows = (r.rows ?? new Row[0]).Where(w => w != null && !string.IsNullOrEmpty(w.id)).ToDictionary(w => w.id, w => w);
+            int sinceYield = 0;
             foreach (DesignSpawner.PlanEntry entry in Blueprints.MakePlan(blueprint, at, yaw))
             {
-                GameObject made = DesignSpawner.SpawnEntry(entry, at, turn, 0, false);
+                Pad pad = PadOf(pads, entry.LocalPosition);
+                Vector3 origin = at;
+                if (pad != null && heights.TryGetValue(pad.id, out float ground))
+                {
+                    origin.y = ground - r.floorY;
+                }
+                else if (ZoneSystem.instance != null && ZoneSystem.instance.GetGroundHeight(at + turn * entry.LocalPosition, out float here))
+                {
+                    origin.y = here - r.floorY;
+                }
+
+                GameObject made = DesignSpawner.SpawnEntry(entry, origin, turn, 0, false);
                 if (made == null)
                 {
                     continue;
                 }
 
-                count++;
-                if (entry.Prefab != "sign" || r.signs == null)
+                result.Built++;
+                ZNetView view = made.GetComponent<ZNetView>();
+                if (view == null || !view.IsValid())
                 {
                     continue;
                 }
 
-                foreach (Sign s in r.signs)
+                ZDO zdo = view.GetZDO();
+                zdo.Set(KeyFloorplan, 1);
+                if (pad != null)
                 {
-                    if (Mathf.Abs(entry.LocalPosition.x - s.lx) < 0.15f && Mathf.Abs(entry.LocalPosition.z - s.lz) < 0.15f && made.TryGetComponent(out global::Sign sign))
-                    {
-                        ZNetView view = sign.GetComponent<ZNetView>();
-                        if (view != null && view.IsValid())
-                        {
-                            view.ClaimOwnership();
-                            view.GetZDO().Set(ZDOVars.s_text, s.text);
-                            sign.UpdateText();
-                        }
-                    }
+                    zdo.Set(KeyFloorplanId, pad.id);
+                }
+
+                if (pad != null && made.TryGetComponent(out global::Sign sign))
+                {
+                    view.ClaimOwnership();
+                    zdo.Set(ZDOVars.s_text, SignText(pad.id, rows.TryGetValue(pad.id, out Row row) ? row : null));
+                    sign.UpdateText();
+                }
+
+                if (++sinceYield >= 150)
+                {
+                    sinceYield = 0;
+                    yield return null;
+                }
+            }
+        }
+
+        /// <summary>The plan whose box holds a piece, by its place in the blueprint.</summary>
+        private static Pad PadOf(Pad[] pads, Vector3 local)
+        {
+            foreach (Pad pad in pads)
+            {
+                if (local.x >= pad.x0 - 0.05f && local.x <= pad.x1 + 0.05f && local.z >= pad.z0 - 0.05f && local.z <= pad.z1 + 0.05f)
+                {
+                    return pad;
                 }
             }
 
-            return count;
+            return null;
+        }
+
+        private static string SignText(string id, Row row) =>
+            row == null ? id : $"{id}\n{row.room} {row.shape} {row.size}";
+
+        /// <summary>"12 m ahead-left": where a spot is from the player, by the way the player faced.</summary>
+        private static string Direction(Vector3 from, float yaw, Vector3 to)
+        {
+            Vector3 local = Quaternion.Inverse(Quaternion.Euler(0f, yaw, 0f)) * (to - from);
+            local.y = 0f;
+            float distance = local.magnitude;
+            if (distance < 1.5f)
+            {
+                return "here";
+            }
+
+            string[] names = { "ahead", "ahead-right", "right", "behind-right", "behind", "behind-left", "left", "ahead-left" };
+            float angle = Mathf.Atan2(local.x, local.z) * Mathf.Rad2Deg;
+            int sector = Mathf.RoundToInt(((angle + 360f) % 360f) / 45f) % 8;
+            return $"{distance:0} m {names[sector]}";
+        }
+
+        /// <summary>The plan the player stands in, or the nearest one, from the IDs on the floorplan pieces nearby.</summary>
+        private static string Where(Player player)
+        {
+            Vector3 me = player.transform.position;
+            var boxes = new Dictionary<string, (float x0, float x1, float z0, float z1, string text)>();
+            foreach (ZNetView view in UnityEngine.Object.FindObjectsByType<ZNetView>(FindObjectsSortMode.None))
+            {
+                if (view == null || !view.IsValid())
+                {
+                    continue;
+                }
+
+                ZDO zdo = view.GetZDO();
+                string id = zdo.GetInt(KeyFloorplan) == 1 ? zdo.GetString(KeyFloorplanId, "") : "";
+                if (id.Length == 0)
+                {
+                    continue;
+                }
+
+                Vector3 p = view.transform.position;
+                string text = view.GetComponent<global::Sign>() != null ? zdo.GetString(ZDOVars.s_text, "") : null;
+                if (boxes.TryGetValue(id, out var b))
+                {
+                    boxes[id] = (Mathf.Min(b.x0, p.x), Mathf.Max(b.x1, p.x), Mathf.Min(b.z0, p.z), Mathf.Max(b.z1, p.z), b.text ?? text);
+                }
+                else
+                {
+                    boxes[id] = (p.x, p.x, p.z, p.z, text);
+                }
+            }
+
+            if (boxes.Count == 0)
+            {
+                return "Villheim: no floorplan nearby. 'vh floorplan set 12' lays some out.";
+            }
+
+            string best = null;
+            float bestDistance = float.MaxValue;
+            foreach (var kv in boxes)
+            {
+                var b = kv.Value;
+                float distance = new Vector2(Mathf.Max(0f, b.x0 - me.x, me.x - b.x1), Mathf.Max(0f, b.z0 - me.z, me.z - b.z1)).magnitude;
+                if (distance < bestDistance)
+                {
+                    bestDistance = distance;
+                    best = kv.Key;
+                }
+            }
+
+            var found = boxes[best];
+            string about = string.IsNullOrEmpty(found.text) ? "" : " (" + found.text.Replace("\n", ", ") + ")";
+            var middle = new Vector3((found.x0 + found.x1) / 2f, me.y, (found.z0 + found.z1) / 2f);
+            return bestDistance <= 0.5f
+                ? $"Villheim: you are standing in {best}{about}."
+                : $"Villheim: nearest floorplan is {best}{about}, {Direction(me, player.transform.eulerAngles.y, middle)}.";
+        }
+
+        /// <summary>
+        /// Floorplan pieces never wear or fall: a floor with no walls or roof has little holding it up, and the game's
+        /// support check brought the plans down piece by piece. 'vh gravity on' lets them fall again, as for the gallery.
+        /// </summary>
+        [HarmonyLib.HarmonyPatch(typeof(WearNTear), nameof(WearNTear.UpdateWear))]
+        internal static class HoldPatch
+        {
+            private static bool Prefix(WearNTear __instance) =>
+                Villheim.Logic.Village.Gallery.Gravity || __instance.m_nview == null || !__instance.m_nview.IsValid() ||
+                __instance.m_nview.GetZDO().GetInt(KeyFloorplan) != 1;
         }
 
         /// <summary>One row per plan; a catalog plan already in the file is written once only.</summary>

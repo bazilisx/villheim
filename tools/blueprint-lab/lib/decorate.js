@@ -2118,7 +2118,12 @@ function tplFit(room, role, c, fr, ch, needFire) {
       } else if (f.at === 'fire') {
         if (!par.fire) return;
         if (par.name === 'fire_pit') { if (!room.placed.some(r => r.onFire)) rec = onFire(room, n); }
-        else { const [x, z] = at(Math.max(-pw / 2 + 0.3, Math.min(pw / 2 - 0.3, lx)), Math.max(-pd / 2 + 0.2, Math.min(pd / 2 - 0.2, lz))); rec = room.add(n, x, par.y0 + (f.lift || 0.25), z, yaw, { onFire: true }); }
+        else {
+          const [x, z] = at(Math.max(-pw / 2 + 0.3, Math.min(pw / 2 - 0.3, lx)), Math.max(-pd / 2 + 0.2, Math.min(pd / 2 - 0.2, lz)));
+          // two pots or spits over one hearth keep apart (they cross each other in the game otherwise)
+          const [fw, , fd] = size(n);
+          if (!room.placed.some(r => r.onFire && overlap(r.b, obox(x, z, fw, fd, yaw), -0.05))) rec = room.add(n, x, par.y0 + (f.lift || 0.25), z, yaw, { onFire: true });
+        }
       } else {
         // a seat tucked under a table in the build comes out until it is clear
         const outDir = f.cat === 'seat' ? [Math.sign(lx) * (Math.abs(lx) > pw / 2 ? 1 : 0), Math.sign(lz) * (Math.abs(lz) > pd / 2 - 0.2 || Math.abs(lx) <= pw / 2 ? 1 : 0)] : [0, 0];

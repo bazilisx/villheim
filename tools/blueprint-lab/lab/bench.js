@@ -77,6 +77,21 @@ const PARTS = {
       return { az: Math.atan2(ux, -uz) * 180 / Math.PI + 25, el: 14, crop: null, centre: [cx, cz] };
     },
   },
+  stack: {
+    bases: [
+      { type: 'longhouse', biome: 'Black Forest', stage: 's3', decor: 'd3', culture: 'norse-forest' },
+      { type: 'home', biome: 'Swamp', stage: 's2', decor: 'd2' },
+      { type: 'tavern', biome: 'Mountain', stage: 's3', decor: 'd3' },
+      { type: 'smithy', biome: 'Plains', stage: 's3', decor: 'd3' }],
+    flags: ['stack', 'stackShoulder', 'stackCrown'],
+    // the whole building, three-quarter view from the stack's side
+    focus: d => {
+      const st = d.pieces.filter(p => /stone_wall_2x1/.test(p.name) && p.trim);
+      const [cx, cz] = centre(d);
+      const sx = st.length ? Math.sign(st[0].x - cx) : 1;
+      return { az: sx > 0 ? 60 : -120, el: 16, crop: null };
+    },
+  },
   wall: {
     bases: [
       { type: 'longhouse', biome: 'Meadows', stage: 's3', decor: 'd3' },
@@ -93,7 +108,8 @@ function fixtures(spec, want) {
   for (const base of spec.bases) {
     let best = null;
     for (let seed = 1; seed <= 60 && !(best && best.hits === spec.flags.length); seed++) {
-      const off = Object.fromEntries(spec.flags.map(f => [f, false]));
+      // ablation from the full set: a flag shows when turning it off alone changes pieces near the part
+      const off = Object.fromEntries(spec.flags.map(f => [f, true]));
       const d0 = G.generate({ ...base, seed, details: off });
       const f = spec.focus(d0);
       if (!f) continue;
@@ -101,7 +117,7 @@ function fixtures(spec, want) {
       const s0 = new Set(d0.pieces.map(key));
       const inBox = p => !f.crop || (p.x >= f.crop.x0 && p.x <= f.crop.x1 && p.z >= f.crop.z0 && p.z <= f.crop.z1);
       let hits = 0;
-      for (const fl of spec.flags) if (G.generate({ ...base, seed, details: { ...off, [fl]: true } }).pieces.some(p => !s0.has(key(p)) && inBox(p))) hits++;
+      for (const fl of spec.flags) { const d1 = G.generate({ ...base, seed, details: { ...off, [fl]: false } }); const s1 = new Set(d1.pieces.map(key)); if (d0.pieces.some(p => !s1.has(key(p)) && inBox(p))) hits++; }
       if (!best || hits > best.hits) best = { seed, hits };
     }
     if (best) out.push({ base, seed: best.seed, hits: best.hits });
@@ -140,8 +156,8 @@ const fx = fixtures(spec, 6);
 console.log('test buildings:', fx.map(f => `${f.base.type} ${f.base.biome} seed ${f.seed} (${f.hits}/${spec.flags.length} flags show)`).join('; '));
 for (const { base, seed } of fx) {
   bi++;
-  // the camera is set on the bare variant and kept, so every picture of one building is framed the same
-  const f0 = spec.focus(G.generate({ ...base, seed, details: Object.fromEntries(spec.flags.map(x => [x, false])) }));
+  // the camera is set on the full variant and kept, so every picture of one building is framed the same
+  const f0 = spec.focus(G.generate({ ...base, seed, details: Object.fromEntries(spec.flags.map(x => [x, true])) }));
   for (const v of variants(spec, perBase, seed)) {
     const req = { ...base, seed, details: v.details, style: v.style };
     const d = G.generate(req);

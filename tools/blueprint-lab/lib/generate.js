@@ -738,6 +738,10 @@ function generate(req) {
   b.outer = edges;
   if (['home', 'longhouse', 'smithy', 'workshop', 'sawmill', 'barn', 'farm'].includes(type) && stage !== 's1' && roofKind === 'gable' && !flat &&
     F < 0.01 && !T.tower && dctx.R() < 0.5) woodshed(b, K, C, wings, edges, F, SH, svanTower);
+  // a stone chimney stack against a gable end, from the ground to past the ridge (bench: req.details.stack)
+  const wantStack = dctx.profile.stack != null ? dctx.profile.stack
+    : stoneOK && stage !== 's1' && ['home', 'longhouse', 'tavern', 'smithy', 'temple'].includes(type) && dctx.R() < 0.35;
+  if (wantStack && roofKind === 'gable' && plan !== 'gables' && !flat && !T.tower) chimneyStack(b, K, wings, edges, dctx.profile);
   Details.exterior(b, dctx);
   clearDoorways(b);
   // the fire's place for the decorator: under the ridge vent, or a cell of a flat roof (a chimney goes up from it),
@@ -1679,6 +1683,61 @@ function woodshed(b, K, C, wings, edges, F, SH, tower) {
     for (const z of zs) b.put(K.beam || 'wood_beam', xp, F + 2.35, z, 90, T2);
     for (const z of zs) b.put('wood_stack', xWall + sg * 1.05, F, z, 90, { decor: true, trim: true });
     b.notes.push('An open woodshed against the gable end.');
+    return true;
+  }
+  return false;
+}
+
+// A stone stack built against the outside of a gable wall: two blocks deep for the first 2 m (the shoulder), one block
+// deep above it, up to a metre past the ridge, a crown course on top. It stands on the ground, so stone carries it
+// (stone takes no support from wood). It goes on a stretch of gable wall with no door or window in it, at the end
+// without a woodshed. X.stackShoulder (default true) and X.stackCrown (default true) are bench switches.
+function chimneyStack(b, K, wings, edges, X) {
+  const w0 = wings[0];
+  if (w0.alpha !== 0 || !K.stoneWall || !/2x1/.test(K.stoneWall)) return false;
+  const block = K.stoneWall, cube = K.stoneBlock || 'stone_wall_1x1';
+  const opened = new Set((b.openings || []).map(o => `${o.e.x},${o.e.z}`));
+  for (const sg of [1, -1]) {
+    const xWall = w0.cx + sg * w0.W;
+    if (wings.some(o => o !== w0 && inside(o, xWall + sg * 1.5, w0.cz, 0.01))) continue;
+    if (b.pieces.some(p => p.name === 'wood_stack' && Math.abs(p.x - xWall) < 2)) continue; // the woodshed's end
+    const end = edges.filter(e => e.yaw === 90 && Math.abs(e.x - xWall) < 0.01).sort((a, c) => Math.abs(a.z - w0.cz) - Math.abs(c.z - w0.cz));
+    // the stack's column must be clear: outside every other wing, no deck, wall, post or stair in it (roof eaves of
+    // this gable may run over it; the stack goes up through them)
+    const Ck = checksLib();
+    // the wall's outer face (a stone wall is a metre thick, a log wall less)
+    const inWall = p => Math.abs(p.x - xWall) < 0.15 && P.piece(p.name).role === 'wall';
+    const face = Math.max(0.1, ...b.pieces.filter(inWall).map(p => { const o = Ck.aabb(p); return sg > 0 ? o.x1 - xWall : xWall - o.x0; }).filter(v => v < 0.8));
+    const xs = xWall + sg * (face + 0.5);
+    const clearAt = z => {
+      const x0 = Math.min(xs - sg * 0.45, xs + sg * 1.5), x1 = Math.max(xs - sg * 0.45, xs + sg * 1.5);
+      if (wings.some(o => o !== w0 && (inside(o, xs, z, 0.6) || inside(o, xs + sg, z, 0.6)))) return false;
+      return !b.pieces.some(p => {
+        const r = P.piece(p.name).role;
+        if ((/roof/.test(r) && Math.abs(p.x - xWall) < 1.6) || inWall(p)) return false;
+        const o = Ck.aabb(p);
+        return o.x0 < x1 - 0.05 && o.x1 > x0 + 0.05 && o.z0 < z + 0.95 && o.z1 > z - 0.95 && o.y1 > 0.05;
+      });
+    };
+    const e = end.find(x => !opened.has(`${x.x},${x.z}`) && clearAt(x.z));
+    if (!e) continue;
+    // the ridge over this end: the highest roof piece within 3 m of the wall
+    const tops = b.pieces.filter(p => /roof/.test(P.piece(p.name).role) && Math.abs(p.x - xWall) < 3);
+    if (!tops.length) continue;
+    const ridge = Math.max(...tops.map(p => p.y));
+    const yTop = Math.ceil(ridge + 1);
+    const T2 = { trim: true };
+    const shoulder = X.stackShoulder !== false ? 2 : 0;
+    for (let y = 0; y < yTop; y++) {
+      b.put(block, xs, y + 0.5, e.z, 90, T2);
+      if (y < shoulder) b.put(block, xs + sg, y + 0.5, e.z, 90, T2);
+    }
+    // the crown: a 2 x 2 slab overhanging the stack on every side but the wall's, and a 1 m pot on it
+    if (X.stackCrown !== false) {
+      b.put(K.stoneFloor || 'stone_floor_2x2', xs + sg * 0.25, yTop + 0.5, e.z, 0, T2);
+      b.put(cube, xs, yTop + 1.5, e.z, 0, T2);
+    }
+    b.notes.push('A stone chimney stack against the gable end.');
     return true;
   }
   return false;

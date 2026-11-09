@@ -209,6 +209,32 @@ Times in Node (2026-11-09): 1600 x 1000 views of 150 to 550 piece designs take 0
 at 50 px per metre 0.1 to 0.3 s. On the request page the main view takes about 0.65 s at two samples and 0.3 s at one
 (headless Chrome); it draws at one while dragging. Old and new pictures: `docs/renderer/`.
 
+## Component bench and critic
+
+`node lab/bench.js <part> [out dir] [variants per building]` holds a building fixed and varies one part through its
+flags (`req.details` overrides the detail profile, `req.style` the culture), checks every variant and draws a close-up
+of the part on a contact sheet (`<part>.png`, `<part>.json`). It picks test buildings where the part shows (each flag,
+turned off alone from the full set, changes pieces near the part), frames the camera once per building on the pieces
+the part adds, seen from outside, and cuts the roof away for inside parts. Parts: `door`, `window`, `gable`, `wall`,
+`stack`, `dormer`, `bed`, `stair`. Sheets go to a reviewer that has not seen the code; its findings become fixes and
+odds, and the part goes back on the bench.
+
+`lib/critic.js` measures a design the way `lab/learn_critic.js` measured the top quarter of corpus house builds by
+downloads (ridge lines, skyline rise and fall, piece kinds, materials, height, trim per wall area, with a limit on busy
+trim). `lib/request.js` ranks the seeds of a request by 0.4 keep scorer plus 0.6 critic.
+
+Parts added on 2026-11-09:
+
+| Part | Where | When |
+|---|---|---|
+| Bar counter | Half walls with beams on top 1.5 m out from a long wall of a tavern's main room, barrels behind, mugs on it (`lib/kitbash.js`). | taverns, d2 on, main room 8 m or longer |
+| Canopy bed | A 2 m post at each corner of a bed's footprint and a rug laid over them. | homes and longhouses, d3, 50 %, where the ceiling is 2.5 m up and nothing stands at the corners |
+| Chimney stack | Stone blocks against the outside of a gable wall from the ground to 0.8 m past the ridge's top, two deep for the first 2 m on half of them, a 2 x 2 slab and a 1 m pot on top; clear of windows, other wings, decks and the woodshed. | stone-capable biomes and stages, homes, longhouses, taverns, smithies, temples, gable roofs, 35 % |
+| Wall dormers | A 4 m gable on the wall top with its own two roof pieces and ridge cap running back into the 45 degree main roof; one over the middle of the front or a pair. A dormer over the door takes the place of a gable porch. | Frankish, English, medieval, Slavic, highland and Baltic cultures, s2 on, homes, taverns, longhouses, stores, workshops, 45 % |
+| Stairs | A straight flight of `wood_stair` along a wall (each climbs 1 m over 2 m), a clear cell at its foot, a landing at the top, the floor above open over the flight. Replaces the first ladder. | two-storey homes, taverns, longhouses, stores, workshops, s2 on, storey heights in whole metres, 75 % |
+| Hearthstone | The plank floor under a ground-floor fire laid in stone floor pieces, flush with the planks. | stone-capable, floors on the ground, no stone walls |
+| Kitchen | A butcher's table against the wall nearest the cauldron, the spice rack and pots and pans hung on the walls nearest it, all within 4.5 m. Gated by their materials: turnips (Swamp), silver (Mountain), black metal (Plains). | wherever a cauldron is |
+
 ## Repair
 
 How a repair is chosen, in order of trust:

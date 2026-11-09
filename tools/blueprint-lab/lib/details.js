@@ -169,18 +169,6 @@ function exterior(b, ctx) {
         break;
       }
     }
-    // a bench against the wall beside the front door, facing out (a place to sit in the evening)
-    if (X.benchOut && F < 0.01 && !o.back && o.kind === 'door') {
-      const name = reachesD(ctx.biome, 'Black Forest') && ctx.R() < 0.4 ? 'piece_logbench01' : 'piece_bench01';
-      const faceOut = name === 'piece_logbench01' ? outYaw(-ox, -oz) : outYaw(ox, oz); // the log bench faces its local -z
-      for (const s of ctx.R() < 0.5 ? [1, -1] : [-1, 1]) {
-        const cand = { name, x: +(e.x + ux * s * 3 + ox * 0.45).toFixed(3), y: F + 0.1, z: +(e.z + uz * s * 3 + oz * 0.45).toFixed(3), yaw: faceOut, q: quatD(faceOut) };
-        if (!edgeAt.has(`${e.x + ux * s * 2},${e.z + uz * s * 2}`) || !edgeAt.has(`${e.x + ux * s * 4},${e.z + uz * s * 4}`)) continue; // wall behind it
-        if (!clear(b, cand)) continue;
-        b.pieces.push({ ...cand, decor: true, trim: true });
-        break;
-      }
-    }
     added.doors++;
   }
 
@@ -321,7 +309,7 @@ function bargeboards(K, C, w, ctx, rows, ends, add, low, pivot, r) {
     add(name, u, pivot(rows) - 0.7 - (r === 2 ? 0 : 0), v, (sv < 0 ? 180 : 0) + 90, 'trim', low(rows));
   }
   // the ridge beam's end out past each gable
-  if (X.purlinEnds && !ctx.dragonsHere) [-1, 1].forEach((sg, k) => { if (ends[k]) add(K.beam1 || 'wood_beam_1', sg * (w.W + 0.45), capY - 0.35, 0, 0, 'trim', capY); });
+  if (X.purlinEnds && !ctx.dragonsHere && ctx.wings.length === 1) [-1, 1].forEach((sg, k) => { if (ends[k]) add(K.beam1 || 'wood_beam_1', sg * (w.W + 0.45), capY - 0.35, 0, 0, 'trim', capY); });
   // a timber truss on the face of each gable: a king post up the middle and a collar beam across at half height
   if (X.gableTruss) [-1, 1].forEach((sg, k) => {
     if (!ends[k] || capY - low(rows) < 2.9) return;
@@ -379,12 +367,35 @@ function partition(b, ctx, wallSegment) {
   return false;
 }
 
+// A bench against the wall beside the front door, facing out (a place to sit in the evening). After the furnishing,
+// so the woodpiles and stacks the decorator sets outside keep their places.
+function benchByDoor(b, ctx) {
+  const X = ctx.profile, F = ctx.F;
+  if (!X.benchOut || F > 0.01) return;
+  const edgeAt = new Map(ctx.edges.map(e => [`${e.x},${e.z}`, e]));
+  for (const o of b.openings || []) {
+    if (o.kind !== 'door' || o.back || o.storey > 0 || o.gallery) continue;
+    const { e } = o, { ux, uz, ox, oz } = axes(e);
+    const name = reachesD(ctx.biome, 'Black Forest') && ctx.R() < 0.4 ? 'piece_logbench01' : 'piece_bench01';
+    const faceOut = name === 'piece_logbench01' ? outYaw(-ox, -oz) : outYaw(ox, oz); // the log bench faces its local -z
+    for (const s of ctx.R() < 0.5 ? [1, -1] : [-1, 1]) {
+      const cand = { name, x: +(e.x + ux * s * 3 + ox * 0.45).toFixed(3), y: F + 0.1, z: +(e.z + uz * s * 3 + oz * 0.45).toFixed(3), yaw: faceOut, q: quatD(faceOut) };
+      if (!edgeAt.has(`${e.x + ux * s * 2},${e.z + uz * s * 2}`) || !edgeAt.has(`${e.x + ux * s * 4},${e.z + uz * s * 4}`)) continue; // wall behind it
+      if (!clear(b, cand)) continue;
+      b.pieces.push({ ...cand, decor: true, trim: true });
+      break;
+    }
+    return;
+  }
+}
+
 // ---------------------------------------------------------------- interior (after the furnishing)
 
 function interior(b, ctx) {
   const X = ctx.profile;
   if (!X) return;
   const { K } = ctx, Ck = checksD();
+  benchByDoor(b, ctx);
   const furniture = () => b.pieces.filter(p => p.decor);
   // a kerb of beams round a fire pit on the floor, so it reads as a hearth set into the floor
   if (X.fireKerb) {

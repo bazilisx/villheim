@@ -89,6 +89,12 @@ namespace Villheim.Logic.Villagers
             // same piece may place it from further away, as Millenaire's builders do when stuck); jobs that end
             // within seconds with nothing done twice in a row earn a proper break instead of an instant retry.
             public float BuildRetryAt;
+
+            /// <summary>A piece past the next one this villager works on (a helper's own part of the building), or -1.</summary>
+            public int OwnPiece = -1;
+            public float BlockedSince = -1f;
+            public Vector3 BlockedPiece;
+            public float BlockedLogAt;
             public Vector3 MissedPiece;
             public int Misses;
             public float StartedAt;
@@ -1225,12 +1231,29 @@ namespace Villheim.Logic.Villagers
             Vector3 position = villager.transform.position;
             NoteHelping(villager);
             int slot = HelperSlot(villager);
+
+            // A helper works on his own piece in another part of the building when one is held up already (Tyler: they
+            // all walked to the same spot); the builder too, while someone stands where the next piece goes.
+            int own = -1;
+            if (slot > 0 && ConstructionSite.HelperPiece(hearth, slot, out int helperIndex, out Vector3 helperAt))
+            {
+                own = helperIndex;
+                piece = helperAt;
+            }
+            else if (slot == 0 && work.OwnPiece >= 0 && ConstructionSite.AheadStillOpen(hearth, work.OwnPiece) &&
+                     ConstructionSite.PiecePosition(hearth, work.OwnPiece, out Vector3 detour))
+            {
+                own = work.OwnPiece;
+                piece = detour;
+            }
+
+            work.OwnPiece = own;
             if (Vector3.Distance(piece, work.Contact) > 0.3f || slot != work.HelperSlot)
             {
                 // A new piece: work out where to stand for it (a helper at his own side of it).
                 work.Contact = piece;
                 work.HelperSlot = slot;
-                work.Stand = slot > 0 ? HelperStand(hearth, villager, piece, slot) : ConstructionSite.StandSpot(hearth, piece, position);
+                work.Stand = slot > 0 && own < 0 ? HelperStand(hearth, villager, piece, slot) : ConstructionSite.StandSpot(hearth, piece, position);
                 work.Picks = 0;
                 work.Deadline = Time.time + 30f;
                 Walker.For(villager).Reset();
@@ -1242,7 +1265,7 @@ namespace Villheim.Logic.Villagers
                 work.StandCheckAt = Time.time + 0.75f;
                 if (Crowded(villager, work.Stand))
                 {
-                    work.Stand = HelperStand(hearth, villager, piece, slot);
+                    work.Stand = own < 0 ? HelperStand(hearth, villager, piece, slot) : ConstructionSite.StandSpot(hearth, piece, position, 1.2f);
                     Walker.For(villager).Reset();
                 }
             }
@@ -1250,10 +1273,10 @@ namespace Villheim.Logic.Villagers
             NoteStand(villager, work.Stand);
 
             bool stubborn = work.Misses >= 2 && Vector3.Distance(work.MissedPiece, piece) < 0.3f;
-            bool inReach = (slot > 0 ? Utils.DistanceXZ(position, work.Stand) < 0.8f && Mathf.Abs(piece.y - position.y) < 7f
-                                     : ConstructionSite.InBuildReach(hearth, position, piece)) ||
+            bool inReach = (slot > 0 && own < 0 ? Utils.DistanceXZ(position, work.Stand) < 0.8f && Mathf.Abs(piece.y - position.y) < 7f
+                                                : ConstructionSite.InBuildReach(hearth, position, piece)) ||
                            (stubborn && Utils.DistanceXZ(position, piece) < 5f && Mathf.Abs(piece.y - position.y) < 10f);
-            if (inReach && ConstructionSite.InsideNextPiece(hearth, villager))
+            if (inReach && own < 0 && ConstructionSite.InsideNextPiece(hearth, villager))
             {
                 // Standing where the piece goes: step further out first.
                 inReach = false;
@@ -1277,9 +1300,38 @@ namespace Villheim.Logic.Villagers
 
                 if (!ConstructionSite.InBuildReach(hearth, villager.transform.position, piece))
                 {
+                    if (own >= 0)
+                    {
+                        // His own piece is out of reach: he helps at the next one instead for a while.
+                        work.OwnPiece = -1;
+                        Village.Perf.Debug($"{villager.VillagerName} can't get to his piece of the building; helping at the next one.");
+                        Finish(work);
+                        work.Cooldown = 2f;
+                        return false;
+                    }
+
                     // Can't get next to it: gather for a while before trying again, instead of walking back at once.
                     work.Misses = Vector3.Distance(work.MissedPiece, piece) < 0.3f ? work.Misses + 1 : 1;
                     work.MissedPiece = piece;
+                    if (work.Misses >= 4 && slot == 0)
+                    {
+                        // Four times and he still can't reach it: it goes up from where he is, rather than the
+                        // building standing still for good.
+                        VillheimPlugin.Log.LogWarning($"{hearth.VillageName}: {villager.VillagerName} could not reach the next piece of " +
+                                                      $"the building at {piece} four times; it is put up from where he stands.");
+                        work.Misses = 0;
+                        if (ConstructionSite.PlaceNext(hearth, true))
+                        {
+                            ConstructionSite.NoteBuilder(villager.VillageId);
+                            work.Progressed = true;
+                        }
+
+                        VillageNeeds.Forget(villager.VillageId);
+                        Finish(work);
+                        work.Cooldown = 1f;
+                        return false;
+                    }
+
                     work.BuildRetryAt = Time.time + 25f;
                     VillheimPlugin.Debug($"{villager.VillagerName} can't get next to the next piece (miss {work.Misses}); trying again later.");
                     Finish(work);
@@ -1306,27 +1358,78 @@ namespace Villheim.Logic.Villagers
                 return true;
             }
 
-            if (ConstructionSite.NextPieceBlocked(hearth, villager, out string who))
+            if (ConstructionSite.PieceBlocked(hearth, own, villager, out string who, out bool player))
             {
-                // Someone stands where the piece goes: keep hammering and try again in a moment.
+                if (Vector3.Distance(work.BlockedPiece, piece) > 0.3f || work.BlockedSince < 0f)
+                {
+                    work.BlockedPiece = piece;
+                    work.BlockedSince = Time.time;
+                }
+
+                float waited = Time.time - work.BlockedSince;
+                float patience = LogicConfig.BuildBlockedSeconds != null ? Mathf.Max(3f, LogicConfig.BuildBlockedSeconds.Value) : 20f;
                 if (work.Reason != "blocked:" + who)
                 {
                     work.Reason = "blocked:" + who;
-                    VillheimPlugin.Debug($"{villager.VillagerName} waits for {who} to move out of the way.");
+                    Village.Perf.Debug($"{villager.VillagerName} waits for {who} to move out of the way.");
                 }
 
-                work.Timer = perPiece - 1f;
-                return true;
+                if (own < 0 && slot == 0 && waited > patience && ConstructionSite.SparePiece(hearth, out int spare))
+                {
+                    // He works on another part of the building meanwhile.
+                    work.OwnPiece = spare;
+                    work.Timer = 0f;
+                    Village.Perf.Debug($"{villager.VillagerName}: {who} has stood where the next piece goes for {waited:0} s; " +
+                                       "working on another part of the building meanwhile.");
+                    return true;
+                }
+
+                if (!player && waited > patience * 3f)
+                {
+                    // Nothing has moved for a long while (a model, a stuck animal): the piece goes up anyway, rather
+                    // than the builder hammering at nothing for good.
+                    VillheimPlugin.Log.LogWarning($"{hearth.VillageName}: {who} stood where a piece of the building goes for " +
+                                                  $"{waited:0} s; {villager.VillagerName} put it up anyway.");
+                }
+                else
+                {
+                    if (player && Time.time > work.BlockedLogAt)
+                    {
+                        work.BlockedLogAt = Time.time + 60f;
+                        Village.Perf.Debug($"{villager.VillagerName} waits for {who} (a player) to step off the next piece.");
+                    }
+
+                    work.Timer = perPiece - 1f;
+                    return true;
+                }
             }
 
             work.Reason = "";
+            if (own < 0)
+            {
+                work.BlockedSince = -1f; // a piece put up meanwhile keeps the clock on the blocked one running
+            }
+
             work.Timer = 0f;
-            if (ConstructionSite.PlaceNext(hearth, true))
+            bool placed = own >= 0 ? ConstructionSite.PlaceAhead(hearth, own, true) : ConstructionSite.PlaceNext(hearth, true);
+            if (placed)
             {
                 ConstructionSite.NoteBuilder(villager.VillageId);
                 VillageNeeds.Forget(villager.VillageId);
                 work.Progressed = true;
                 work.Misses = 0;
+                if (own >= 0 && slot == 0)
+                {
+                    work.OwnPiece = -1; // back to the next piece
+                }
+
+                return true;
+            }
+
+            if (own >= 0 && !ConstructionSite.AheadStillOpen(hearth, own))
+            {
+                // Someone else put it up, or it waits on another piece now: a new one next frame.
+                work.OwnPiece = -1;
                 return true;
             }
 
@@ -1624,11 +1727,13 @@ namespace Villheim.Logic.Villagers
                 }
             }
 
-            // The next piece of the same thing, if the chest pays for it: he stays on it.
+            // The next piece of the same thing, if the chest pays for it: he stays on it. Only for things of several
+            // pieces (the notice board): after a single piece (a chest, its sign) the next job is looked for on a later
+            // frame, not in the same frame the piece went up (Tyler: lag when a chest went up by the notice board).
             Amenities.Job next;
             using (Perf.Time("Amenities.Due after making"))
             {
-                next = made ? Amenities.Due(hearth, true) : null;
+                next = made && job.Pieces > 1 ? Amenities.Due(hearth, true) : null;
             }
 
             if (next != null && next.Name == job.Name && Utils.DistanceXZ(next.Spot, job.Spot) < 8f)

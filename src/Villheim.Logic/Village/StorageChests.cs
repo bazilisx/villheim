@@ -66,6 +66,7 @@ namespace Villheim.Logic.Village
 
             var chests = new List<Container>();
             VillageHearth hearth = VillageHearth.Find(villageId);
+            using (Perf.Time("StorageChests.Of"))
             if (hearth != null && hearth.IsValid)
             {
                 foreach (Collider collider in Physics.OverlapSphere(hearth.transform.position, 25f, LayerMask.GetMask("piece", "piece_nonsolid")))
@@ -230,8 +231,20 @@ namespace Villheim.Logic.Village
             }
 
             GameObject prefab = ZNetScene.instance ? ZNetScene.instance.GetPrefab(ChestPrefab) : null;
-            if (kind == null || prefab == null || !Amenities.Buildable(prefab, state.Biome, out Dictionary<string, int> cost, true) ||
-                !FreeSpot(hearth, state, main, out Vector3 spot, out Quaternion rotation))
+            if (kind == null || prefab == null || !Amenities.Buildable(prefab, state.Biome, out Dictionary<string, int> cost, true))
+            {
+                return null;
+            }
+
+            bool free;
+            Vector3 spot;
+            Quaternion rotation;
+            using (Perf.Time("StorageChests.FreeSpot"))
+            {
+                free = FreeSpot(hearth, state, main, out spot, out rotation);
+            }
+
+            if (!free)
             {
                 return null;
             }
@@ -421,7 +434,7 @@ namespace Villheim.Logic.Village
         /// </summary>
         private static bool ClearFor(VillageHearth hearth, HashSet<Vector2Int> paths, Vector3 spot, Quaternion rotation, int levels, Container below)
         {
-            if (Utils.DistanceXZ(spot, hearth.transform.position) < 3f || PathPlanner.DistanceToNetwork(paths, spot) < 1.6f)
+            if (Utils.DistanceXZ(spot, hearth.transform.position) < 3f || PathPlanner.NearNetwork(paths, spot, 1.6f))
             {
                 return false;
             }

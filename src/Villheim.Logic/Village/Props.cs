@@ -383,18 +383,15 @@ namespace Villheim.Logic.Village
                 return $"Villheim: {location.m_prefabName} could not be loaded.";
             }
 
-            var lines = new List<string>();
+            // Every child, and those the filter picks. 'cloth': the children that flutter in the wind (a Cloth under
+            // them) or are named or meshed as cloth, tents, banners and the like, to find tents and banners.
+            var all = new List<string>();
+            var picked = new List<string>();
+            var shortPicked = new List<string>();
+            bool cloth = filter.Equals("cloth", System.StringComparison.OrdinalIgnoreCase);
             foreach (Transform t in asset.GetComponentsInChildren<Transform>(true))
             {
                 string path = t == asset.transform ? "(root)" : Path(asset.transform, t);
-                // 'cloth': the children that flutter in the wind (a Cloth anywhere under them), to find tents and banners.
-                bool cloth = filter.Equals("cloth", System.StringComparison.OrdinalIgnoreCase);
-                if (cloth ? t.GetComponentInChildren<Cloth>(true) == null || t == asset.transform
-                          : filter.Length > 0 && path.IndexOf(filter, System.StringComparison.OrdinalIgnoreCase) < 0)
-                {
-                    continue;
-                }
-
                 var parts = new List<string>();
                 MeshFilter mesh = t.GetComponent<MeshFilter>();
                 if (mesh != null && mesh.sharedMesh != null)
@@ -417,16 +414,82 @@ namespace Villheim.Logic.Village
                 }
 
                 Vector3 at = asset.transform.InverseTransformPoint(t.position);
-                lines.Add($"{path} @ {at.x:0.0},{at.y:0.0},{at.z:0.0}" + (parts.Count > 0 ? " | " + string.Join(" | ", parts) : ""));
+                string line = $"{path} @ {at.x:0.0},{at.y:0.0},{at.z:0.0}" + (parts.Count > 0 ? " | " + string.Join(" | ", parts) : "");
+                all.Add(line);
+
+                bool match = filter.Length == 0 ||
+                             (cloth ? t != asset.transform && IsCloth(t) : path.IndexOf(filter, System.StringComparison.OrdinalIgnoreCase) >= 0);
+                if (match)
+                {
+                    picked.Add(line);
+                    shortPicked.Add($"{t.name} @ {at.x:0.0},{at.y:0.0},{at.z:0.0}" + (parts.Count > 0 ? "  (" + parts[0] + ")" : ""));
+                }
             }
 
             string folder = System.IO.Path.Combine(BepInEx.Paths.BepInExRootPath, "Villheim");
             Directory.CreateDirectory(folder);
-            string file = System.IO.Path.Combine(folder, $"props-{Clean(location.m_prefabName)}.txt");
-            File.WriteAllLines(file, lines, Encoding.UTF8);
-            VillheimPlugin.Log.LogInfo($"Props of {location.m_prefabName}{(filter.Length > 0 ? $" ('{filter}')" : "")}:\n" + string.Join("\n", lines));
-            return $"Villheim: {lines.Count} objects in {location.m_prefabName}{(filter.Length > 0 ? $" matching '{filter}'" : "")}, " +
-                   $"written to {file} and the log. First ones:\n" + string.Join("\n", lines.Take(25));
+            var utf8 = new UTF8Encoding(false);
+            string name = Clean(location.m_prefabName);
+            string file = System.IO.Path.Combine(folder, $"props-{name}.txt");
+            // The whole listing always goes to props-<location>.txt; a filtered one to its own file beside it, so it
+            // never overwrites the whole one (Tyler: the file was empty after 'vh props Hildir_camp cloth').
+            File.WriteAllLines(file, all.Count > 0 ? all : new List<string> { "(no objects)" }, utf8);
+            string filtered = null;
+            if (filter.Length > 0)
+            {
+                filtered = System.IO.Path.Combine(folder, $"props-{name}-{Clean(filter)}.txt");
+                File.WriteAllLines(filtered, picked.Count > 0 ? picked : new List<string> { $"(nothing matches '{filter}')" }, utf8);
+            }
+
+            VillheimPlugin.Log.LogInfo($"Props of {location.m_prefabName}{(filter.Length > 0 ? $" ('{filter}')" : "")}:\n" + string.Join("\n", picked));
+            // The console gets one short entry per line (a long line ran into the next ones and read as one line).
+            var console = new List<string>
+            {
+                $"Villheim: {picked.Count} of {all.Count} objects in {location.m_prefabName}{(filter.Length > 0 ? $" match '{filter}'" : "")}.",
+                $"   all: {file}",
+            };
+            if (filtered != null)
+            {
+                console.Add($"   matching: {filtered}");
+            }
+
+            foreach (string entry in shortPicked.Take(25))
+            {
+                console.Add("   " + (entry.Length > 90 ? entry.Substring(0, 87) + "..." : entry));
+            }
+
+            if (shortPicked.Count > 25)
+            {
+                console.Add($"   ... {shortPicked.Count - 25} more in the file.");
+            }
+
+            return string.Join("\n", console);
+        }
+
+        private static readonly string[] ClothWords = { "cloth", "tent", "banner", "curtain", "canvas", "rug", "fabric", "flag", "awning", "sail" };
+
+        /// <summary>A child that is cloth: a Cloth component under it, or a name, mesh or material that says so.</summary>
+        private static bool IsCloth(Transform t)
+        {
+            if (t.GetComponentInChildren<Cloth>(true) != null)
+            {
+                return true;
+            }
+
+            var names = new List<string> { t.name };
+            MeshFilter mesh = t.GetComponent<MeshFilter>();
+            if (mesh != null && mesh.sharedMesh != null)
+            {
+                names.Add(mesh.sharedMesh.name);
+            }
+
+            Renderer renderer = t.GetComponent<Renderer>();
+            if (renderer != null && renderer.sharedMaterials != null)
+            {
+                names.AddRange(renderer.sharedMaterials.Where(m => m != null).Select(m => m.name));
+            }
+
+            return names.Any(n => ClothWords.Any(w => n.IndexOf(w, System.StringComparison.OrdinalIgnoreCase) >= 0));
         }
 
         private static string Describe(Component component)

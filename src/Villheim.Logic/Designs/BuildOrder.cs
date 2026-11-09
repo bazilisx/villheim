@@ -141,6 +141,15 @@ namespace Villheim.Logic.Designs
             return result;
         }
 
+        /// <summary>
+        /// <paramref name="below"/> holds up <paramref name="piece"/> (it rests on it, or stands beside it for a good
+        /// part of its height): the rule the build order uses, for placing a piece out of turn.
+        /// </summary>
+        public static bool Holds(Bounds piece, Bounds below) => RestsOn(piece, below) || Beside(piece, below);
+
+        /// <summary>The piece stands on the ground floor (its bottom within GroundSlack of the given floor height).</summary>
+        public static bool OnFloor(Bounds piece, float floor) => piece.min.y <= floor + GroundSlack;
+
         /// <summary>The unplaced piece with the lowest bottom among those allowed (design order breaks ties).</summary>
         private static int Lowest(Bounds[] bounds, bool[] placed, bool[] allowed)
         {

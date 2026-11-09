@@ -14,7 +14,8 @@ namespace Villheim.Logic.Village
     /// </summary>
     internal static class GroundBlend
     {
-        private const float BlendReach = 14f;
+        /// <summary>How far the slope between two pads reaches (GroundBlendReach). It had been 14 m: steep slopes (T-57 retest).</summary>
+        private static float BlendReach => LogicConfig.GroundBlendReach != null ? Mathf.Clamp(LogicConfig.GroundBlendReach.Value, 6f, 60f) : 24f;
         private const float Margin = 1f;
 
         private static readonly List<Heightmap> Heightmaps = new List<Heightmap>();
@@ -49,7 +50,9 @@ namespace Villheim.Logic.Village
             }
 
             Vector3 middle = hearth.transform.position;
-            float reach = pads.Max(p => Utils.DistanceXZ(p.Center, middle) + p.Radius) + BlendReach;
+            float blendReach = BlendReach;
+            float minGap = LogicConfig.GroundBlendMinGap != null ? Mathf.Max(0.05f, LogicConfig.GroundBlendMinGap.Value) : 0.3f;
+            float reach = pads.Max(p => Utils.DistanceXZ(p.Center, middle) + p.Radius) + blendReach;
             int moved = 0;
             Heightmaps.Clear();
             Heightmap.FindHeightmap(middle, reach, Heightmaps);
@@ -107,7 +110,7 @@ namespace Villheim.Logic.Village
                             }
                         }
 
-                        if (onPad || db > BlendReach || Mathf.Abs(a.Height - b.Height) < 0.3f ||
+                        if (onPad || db > blendReach || Mathf.Abs(a.Height - b.Height) < minGap ||
                             !heightmap.GetWorldBaseHeight(point, out float baseHeight))
                         {
                             continue;
@@ -116,7 +119,10 @@ namespace Villheim.Logic.Village
                         int i = z * width + x;
                         float current = baseHeight + compiler.m_levelDelta[i] + compiler.m_smoothDelta[i];
                         float target = (a.Height * db + b.Height * da) / (da + db);
-                        float weight = Mathf.Clamp01((BlendReach - db) / 4f) * Mathf.Clamp01((da - Margin) / 2f + 0.5f);
+                        // Full weight over most of the reach, fading out smoothly over its last third, so the eased
+                        // ground meets the land beyond without a new edge.
+                        float weight = Mathf.SmoothStep(0f, 1f, Mathf.Clamp01((blendReach - db) / (blendReach * 0.35f))) *
+                                       Mathf.Clamp01((da - Margin) / 2f + 0.5f);
                         float wanted = Mathf.Lerp(current, target, weight);
                         if (Mathf.Abs(wanted - current) < 0.02f)
                         {

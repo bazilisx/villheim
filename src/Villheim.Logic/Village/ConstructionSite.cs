@@ -43,6 +43,9 @@ namespace Villheim.Logic.Village
 
         private static readonly int KeySiteTeardown = "villheim_site_teardown".GetStableHashCode();
 
+        /// <summary>Pieces past the next one that helpers have already put up (indexes into the plan), comma separated.</summary>
+        private static readonly int KeySiteAhead = "villheim_site_ahead".GetStableHashCode();
+
         private sealed class CachedPlan
         {
             public string Key;
@@ -96,6 +99,7 @@ namespace Villheim.Logic.Village
             zdo.Set(KeySiteTeardown, site.Upgrade ? 1 : 0);
             zdo.Set(KeySiteIndex, 0);
             zdo.Set(KeySiteOwed, "");
+            zdo.Set(KeySiteAhead, "");
             zdo.Set(KeySiteOrder, SupportOrderVersion);
         }
 
@@ -111,6 +115,7 @@ namespace Villheim.Logic.Village
             zdo.Set(KeySite, "");
             zdo.Set(KeySiteIndex, 0);
             zdo.Set(KeySiteOwed, "");
+            zdo.Set(KeySiteAhead, "");
         }
 
         /// <summary>"walls 12/40" style progress for summaries, or null when nothing is being built.</summary>
@@ -167,9 +172,17 @@ namespace Villheim.Logic.Village
         /// Someone (a player or a villager) stands where the next piece goes. The builder waits rather than put a
         /// wall through them.
         /// </summary>
-        public static bool NextPieceBlocked(VillageHearth hearth, Character builder, out string who)
+        public static bool NextPieceBlocked(VillageHearth hearth, Character builder, out string who) =>
+            PieceBlocked(hearth, -1, builder, out who, out _);
+
+        /// <summary>
+        /// Someone stands where the piece at <paramref name="index"/> goes (-1: the next piece). <paramref name="player"/>:
+        /// it is a player. The 'vh kids rig' models and anything that cannot move out of the way never count.
+        /// </summary>
+        public static bool PieceBlocked(VillageHearth hearth, int index, Character builder, out string who, out bool player)
         {
             who = null;
+            player = false;
             if (TearingDown(hearth))
             {
                 return false;
@@ -177,7 +190,11 @@ namespace Villheim.Logic.Village
 
             Site site = Get(hearth.Zdo);
             CachedPlan plan = site != null ? GetPlan(hearth, site) : null;
-            int index = hearth.Zdo.GetInt(KeySiteIndex);
+            if (index < 0)
+            {
+                index = hearth.Zdo.GetInt(KeySiteIndex);
+            }
+
             if (plan == null || index >= plan.Entries.Count || !plan.Entries[index].Bounds.HasValue)
             {
                 return false;
@@ -189,7 +206,7 @@ namespace Villheim.Logic.Village
             Quaternion toDesign = Quaternion.Inverse(Quaternion.Euler(0f, site.Yaw, 0f));
             foreach (Character character in Character.GetAllCharacters())
             {
-                if (character == null || character == builder || character.IsDead())
+                if (character == null || character == builder || character.IsDead() || character.name.StartsWith("villheim_kids_rig"))
                 {
                     continue;
                 }
@@ -198,11 +215,248 @@ namespace Villheim.Logic.Village
                 if (local.Contains(feet) || local.Contains(feet + Vector3.up * 1f))
                 {
                     who = character.GetHoverName();
+                    if (string.IsNullOrEmpty(who))
+                    {
+                        who = Utils.GetPrefabName(character.gameObject);
+                    }
+
+                    player = character is Player;
                     return true;
                 }
             }
 
             return false;
+        }
+
+        // ---------------------------------------------------------------- helpers at their own pieces
+
+        private static readonly Dictionary<int, (string Key, List<int> Pieces)> HelperPieces = new Dictionary<int, (string, List<int>)>();
+
+        private static HashSet<int> ReadAhead(ZDO zdo)
+        {
+            var ahead = new HashSet<int>();
+            foreach (string part in zdo.GetString(KeySiteAhead, "").Split(','))
+            {
+                if (int.TryParse(part, out int i))
+                {
+                    ahead.Add(i);
+                }
+            }
+
+            return ahead;
+        }
+
+        private static void WriteAhead(ZDO zdo, HashSet<int> ahead) =>
+            zdo.Set(KeySiteAhead, string.Join(",", ahead.OrderBy(i => i)));
+
+        private const int AheadWindow = 40;
+        private const float HelperSpread = 2.5f;
+
+        /// <summary>
+        /// The pieces helpers can work on besides the next one, best first: later pieces in the build order (the same
+        /// stage) that are held up already (on the ground floor, or resting on or beside a piece that stands), with
+        /// nothing still missing under them, each at least 2.5 m from the next piece and from each other. So helpers
+        /// spread over the building instead of all walking to the one piece (Tyler, round 5). Worked out again
+        /// whenever a piece goes up.
+        /// </summary>
+        private static List<int> AheadPieces(VillageHearth hearth, Site site, CachedPlan plan)
+        {
+            ZDO zdo = hearth.Zdo;
+            int index = zdo.GetInt(KeySiteIndex);
+            string raw = zdo.GetString(KeySiteAhead, "");
+            string key = $"{plan.Key}|{index}|{raw}";
+            if (HelperPieces.TryGetValue(hearth.VillageId, out var cached) && cached.Key == key)
+            {
+                return cached.Pieces;
+            }
+
+            var result = new List<int>();
+            List<DesignSpawner.PlanEntry> entries = plan.Entries;
+            if (index < entries.Count && !TearingDown(hearth))
+            {
+                HashSet<int> ahead = ReadAhead(zdo);
+                DesignSpawner.PlanEntry first = entries[index];
+                var taken = new List<Vector3> { first.LocalPosition };
+                int end = Mathf.Min(entries.Count, index + AheadWindow);
+                for (int j = index + 1; j < end; j++)
+                {
+                    DesignSpawner.PlanEntry entry = entries[j];
+                    if (ahead.Contains(j) || entry.Stage != first.Stage || entry.Shell != first.Shell || !entry.Bounds.HasValue)
+                    {
+                        continue;
+                    }
+
+                    Bounds box = entry.Bounds.Value;
+                    bool waiting = false;
+                    for (int i = index; i < j && !waiting; i++)
+                    {
+                        waiting = !ahead.Contains(i) && entries[i].Bounds.HasValue && Designs.BuildOrder.Holds(box, entries[i].Bounds.Value);
+                    }
+
+                    if (waiting)
+                    {
+                        continue; // something it rests on is not up yet: doors and windows before what sits on them
+                    }
+
+                    bool held = Designs.BuildOrder.OnFloor(box, plan.Floor);
+                    for (int i = Mathf.Max(0, index - 120); i < index && !held; i++)
+                    {
+                        held = entries[i].Bounds.HasValue && Designs.BuildOrder.Holds(box, entries[i].Bounds.Value);
+                    }
+
+                    foreach (int i in ahead)
+                    {
+                        if (held)
+                        {
+                            break;
+                        }
+
+                        held = i < entries.Count && entries[i].Bounds.HasValue && Designs.BuildOrder.Holds(box, entries[i].Bounds.Value);
+                    }
+
+                    if (!held || taken.Any(t => Vector2.Distance(new Vector2(t.x, t.z), new Vector2(entry.LocalPosition.x, entry.LocalPosition.z)) < HelperSpread))
+                    {
+                        continue;
+                    }
+
+                    taken.Add(entry.LocalPosition);
+                    result.Add(j);
+                    if (result.Count >= 6)
+                    {
+                        break;
+                    }
+                }
+            }
+
+            HelperPieces[hearth.VillageId] = (key, result);
+            return result;
+        }
+
+        /// <summary>
+        /// The piece the helper in <paramref name="slot"/> (1, 2, 3...) works on: his own one from AheadPieces, or false
+        /// when there is none for him (he helps at the next piece then).
+        /// </summary>
+        public static bool HelperPiece(VillageHearth hearth, int slot, out int index, out Vector3 position)
+        {
+            index = -1;
+            position = Vector3.zero;
+            Site site = Get(hearth.Zdo);
+            CachedPlan plan = site != null ? GetPlan(hearth, site) : null;
+            if (plan == null || slot <= 0)
+            {
+                return false;
+            }
+
+            List<int> pieces = AheadPieces(hearth, site, plan);
+            if (slot > pieces.Count)
+            {
+                return false;
+            }
+
+            index = pieces[slot - 1];
+            position = site.Position + Quaternion.Euler(0f, site.Yaw, 0f) * plan.Entries[index].LocalPosition;
+            return true;
+        }
+
+        /// <summary>A piece the builder can work on while the next one is blocked: the last of AheadPieces (helpers take the first).</summary>
+        public static bool SparePiece(VillageHearth hearth, out int index)
+        {
+            index = -1;
+            Site site = Get(hearth.Zdo);
+            CachedPlan plan = site != null ? GetPlan(hearth, site) : null;
+            List<int> pieces = plan != null ? AheadPieces(hearth, site, plan) : null;
+            if (pieces == null || pieces.Count == 0)
+            {
+                return false;
+            }
+
+            index = pieces[pieces.Count - 1];
+            return true;
+        }
+
+        /// <summary>Where the piece at <paramref name="index"/> of the plan goes.</summary>
+        public static bool PiecePosition(VillageHearth hearth, int index, out Vector3 position)
+        {
+            position = Vector3.zero;
+            Site site = Get(hearth.Zdo);
+            CachedPlan plan = site != null ? GetPlan(hearth, site) : null;
+            if (plan == null || index < 0 || index >= plan.Entries.Count)
+            {
+                return false;
+            }
+
+            position = site.Position + Quaternion.Euler(0f, site.Yaw, 0f) * plan.Entries[index].LocalPosition;
+            return true;
+        }
+
+        /// <summary>The piece at <paramref name="index"/> is still to go up and can go up out of turn.</summary>
+        public static bool AheadStillOpen(VillageHearth hearth, int index)
+        {
+            Site site = Get(hearth.Zdo);
+            CachedPlan plan = site != null ? GetPlan(hearth, site) : null;
+            return plan != null && AheadPieces(hearth, site, plan).Contains(index);
+        }
+
+        /// <summary>
+        /// Puts up the piece at <paramref name="index"/> out of turn (a helper's own piece). False when it can't go up
+        /// now (taken, no longer held, materials short).
+        /// </summary>
+        public static bool PlaceAhead(VillageHearth hearth, int index, bool effects)
+        {
+            if (hearth == null || !hearth.IsValid)
+            {
+                return false;
+            }
+
+            ZDO zdo = hearth.Zdo;
+            Site site = Get(zdo);
+            CachedPlan plan = site != null ? GetPlan(hearth, site) : null;
+            if (plan == null || TearingDown(hearth) || !AheadPieces(hearth, site, plan).Contains(index))
+            {
+                return false;
+            }
+
+            var state = new VillageState(zdo);
+            DesignSpawner.PlanEntry entry = plan.Entries[index];
+            if (!Pay(hearth, state, plan, entry))
+            {
+                return false;
+            }
+
+            if (!hearth.NView.IsOwner())
+            {
+                hearth.NView.ClaimOwnership();
+            }
+
+            Quaternion rotation = Quaternion.Euler(0f, site.Yaw, 0f);
+            GroundUnder(site, entry, rotation, plan.Footprint);
+            DesignSpawner.SpawnEntry(entry, site.Position, rotation, state.Id, effects);
+            HashSet<int> ahead = ReadAhead(zdo);
+            ahead.Add(index);
+            WriteAhead(zdo, ahead);
+            state.Waiting = "";
+            return true;
+        }
+
+        /// <summary>Moves the site's index past pieces helpers already put up.</summary>
+        private static void SkipAhead(ZDO zdo, CachedPlan plan)
+        {
+            string raw = zdo.GetString(KeySiteAhead, "");
+            if (string.IsNullOrEmpty(raw))
+            {
+                return;
+            }
+
+            HashSet<int> ahead = ReadAhead(zdo);
+            int index = zdo.GetInt(KeySiteIndex);
+            while (ahead.Remove(index))
+            {
+                index++;
+            }
+
+            ahead.RemoveWhere(i => i < index || i >= plan.Entries.Count);
+            zdo.Set(KeySiteIndex, index);
+            WriteAhead(zdo, ahead);
         }
 
         public static void NoteBuilder(int villageId)
@@ -246,6 +500,7 @@ namespace Villheim.Logic.Village
                 return TakeDownNext(hearth, state, site);
             }
 
+            SkipAhead(zdo, plan);
             int index = zdo.GetInt(KeySiteIndex);
             if (index >= plan.Entries.Count)
             {
@@ -268,9 +523,10 @@ namespace Villheim.Logic.Village
             GroundUnder(site, entry, rotation, plan.Footprint);
             DesignSpawner.SpawnEntry(entry, site.Position, rotation, state.Id, effects);
             zdo.Set(KeySiteIndex, index + 1);
+            SkipAhead(zdo, plan);
             state.Waiting = "";
 
-            if (index + 1 >= plan.Entries.Count)
+            if (zdo.GetInt(KeySiteIndex) >= plan.Entries.Count)
             {
                 Complete(hearth, state, site);
             }

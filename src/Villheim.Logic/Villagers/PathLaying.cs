@@ -3,6 +3,7 @@ using System.Linq;
 using System.Globalization;
 using System.Runtime.CompilerServices;
 using UnityEngine;
+using Villheim.Logic.Designs;
 using Villheim.Logic.Village;
 
 namespace Villheim.Logic.Villagers
@@ -234,7 +235,7 @@ namespace Villheim.Logic.Villagers
         /// Lays every path in the village's queue at once, the same way a villager would lay it, and empties the queue.
         /// For a village set up at once (TestVillage). Returns how many metres were laid.
         /// </summary>
-        public static int LayAllNow(VillageHearth hearth, int most = int.MaxValue)
+        public static int LayAllNow(VillageHearth hearth, int most = int.MaxValue, bool clear = false)
         {
             var village = new VillageState(hearth.Zdo);
             int laid = 0;
@@ -244,6 +245,22 @@ namespace Villheim.Logic.Villagers
                 int i = Mathf.Max(0, hearth.Zdo.GetInt(KeyIndex));
                 for (; i < points.Count && laid < most; i++)
                 {
+                    if (clear)
+                    {
+                        // 'vh paths now': trees, stumps, logs and loose stones on the way go at once.
+                        for (GameObject clutter = ClutterAt(points[i]); clutter != null; clutter = ClutterAt(points[i]))
+                        {
+                            ZNetView view = clutter.GetComponent<ZNetView>();
+                            if (view == null || !view.IsValid())
+                            {
+                                break;
+                            }
+
+                            view.ClaimOwnership();
+                            ZNetScene.instance.Destroy(clutter);
+                        }
+                    }
+
                     LayPoint(hearth, points[i]);
                     laid++;
                 }
@@ -330,6 +347,143 @@ namespace Villheim.Logic.Villagers
             }
 
             return route.Count > 0 ? route : null;
+        }
+
+        // ---------------------------------------------------------------- 'vh paths'
+
+        /// <summary>
+        /// 'vh paths now': plans a path for every door not yet joined to the network (as the daily check does), then
+        /// lays every waiting path at once, clearing trees, stumps and loose stones on the way. The ground is rebuilt
+        /// once for all of it. 'vh paths show': lists the waiting paths and marks their points on the map for a minute.
+        /// </summary>
+        public static string Command(string[] args, VillageHearth hearth)
+        {
+            string what = args.Length > 0 ? args[0].ToLowerInvariant() : "show";
+            if (what == "now")
+            {
+                int before = Pending(hearth).Count;
+                PathPlanner.CheckDoors(hearth);
+                int planned = Pending(hearth).Count;
+                int laid;
+                using (TerrainShaper.Batch())
+                {
+                    laid = LayAllNow(hearth, 5000, true);
+                }
+
+                Village.Perf.Debug($"vh paths now: {planned} paths waiting ({planned - before} new), {laid} m laid.");
+                return $"Villheim: {hearth.VillageName}: {planned} paths were waiting ({planned - before} planned just now for doors " +
+                       $"not yet joined); laid {laid} m of path.";
+            }
+
+            if (what != "show")
+            {
+                return "Villheim: usage 'vh paths now' (plan and lay every waiting path at once) or 'vh paths show' (list them " +
+                       "and mark them on the map).";
+            }
+
+            List<(Vector3 Building, List<Vector3> Points)> pending = Pending(hearth);
+            var lines = new List<string> { $"Villheim: {hearth.VillageName}: {pending.Count} paths waiting, " +
+                                           $"{PathPlanner.Network(hearth).Count} m of path laid." };
+            int pins = 0;
+            foreach ((Vector3 building, List<Vector3> points) in pending)
+            {
+                string from = points.Count > 0 ? $"{points[0].x:0},{points[0].z:0}" : "?";
+                string to = points.Count > 0 ? $"{points[points.Count - 1].x:0},{points[points.Count - 1].z:0}" : "?";
+                lines.Add($"   to the building at {building.x:0},{building.z:0}: {points.Count} points, from {from} to {to}");
+                for (int i = 0; i < points.Count && Minimap.instance != null; i += 3)
+                {
+                    if (AddPin(points[i]) is Minimap.PinData pin)
+                    {
+                        Marks.Add(pin);
+                        pins++;
+                    }
+                }
+            }
+
+            if (pins > 0)
+            {
+                VillheimPlugin.Instance.StartCoroutine(ClearMarks(60f));
+                lines.Add($"   {pins} points marked on the map for a minute.");
+            }
+
+            return string.Join("\n", lines);
+        }
+
+        private static readonly List<Minimap.PinData> Marks = new List<Minimap.PinData>();
+
+        private static System.Reflection.MethodInfo _addPin;
+
+        /// <summary>A map pin at the point, not saved. Called by reflection: AddPin's last parameter is a type from an
+        /// assembly the logic doesn't reference.</summary>
+        private static object AddPin(Vector3 point)
+        {
+            if (_addPin == null)
+            {
+                _addPin = typeof(Minimap).GetMethods().FirstOrDefault(m => m.Name == "AddPin" && m.GetParameters().Length >= 5 &&
+                                                                          m.GetParameters()[0].ParameterType == typeof(Vector3));
+            }
+
+            if (_addPin == null)
+            {
+                return null;
+            }
+
+            System.Reflection.ParameterInfo[] parameters = _addPin.GetParameters();
+            var values = new object[parameters.Length];
+            values[0] = point;
+            values[1] = Minimap.PinType.Icon3;
+            values[2] = "";
+            values[3] = false;
+            values[4] = false;
+            for (int i = 5; i < parameters.Length; i++)
+            {
+                values[i] = parameters[i].HasDefaultValue && parameters[i].DefaultValue != null
+                    ? parameters[i].DefaultValue
+                    : parameters[i].ParameterType.IsValueType ? System.Activator.CreateInstance(parameters[i].ParameterType) : null;
+            }
+
+            return _addPin.Invoke(Minimap.instance, values);
+        }
+
+        private static System.Collections.IEnumerator ClearMarks(float seconds)
+        {
+            yield return new WaitForSeconds(seconds);
+            foreach (Minimap.PinData pin in Marks)
+            {
+                if (pin != null && Minimap.instance != null)
+                {
+                    Minimap.instance.RemovePin(pin);
+                }
+            }
+
+            Marks.Clear();
+        }
+
+        /// <summary>The paths waiting to be laid, in order: the building each leads to, and its planned points.</summary>
+        public static List<(Vector3 Building, List<Vector3> Points)> Pending(VillageHearth hearth)
+        {
+            var village = new VillageState(hearth.Zdo);
+            var result = new List<(Vector3, List<Vector3>)>();
+            foreach (string entry in hearth.Zdo.GetString(KeyQueue, "").Split(new[] { ';' }, System.StringSplitOptions.RemoveEmptyEntries))
+            {
+                string[] parts = entry.Split('|')[0].Split(',');
+                if (parts.Length < 4)
+                {
+                    continue;
+                }
+
+                var building = new Vector3(P(parts[0]), P(parts[1]), P(parts[2]));
+                int bar = entry.IndexOf('|');
+                List<Vector3> points = bar >= 0 ? PathPlanner.Decode(entry.Substring(bar + 1)) : null;
+                if (points == null || points.Count == 0)
+                {
+                    points = Points(hearth.transform.position, village.Axis, building, P(parts[3]));
+                }
+
+                result.Add((building, points));
+            }
+
+            return result;
         }
 
         /// <summary>Drops every path waiting for the building at this spot (it is being rebuilt; its new path comes after).</summary>

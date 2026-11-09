@@ -24,6 +24,7 @@ namespace Villheim.Logic
             "props [location] [filter]: list a location's child objects with their meshes and components (to find Hildir's map table and tents); written to BepInEx/Villheim/props-<location>.txt",
             "board [now]: show the notice board's blueprint, place and what it waits for ('now' puts it up at once, free)",
             "beds: list the beds round the nearest village, whether they count and who sleeps in each",
+            "paths now|show: 'now' plans a path for every door not yet joined and lays all waiting paths of the nearest village at once, clearing trees and stones on the way; 'show' lists the waiting paths and marks their points on the map for a minute",
             "buildingground: level the ground under the nearest village building to its foundation",
             "hearthground: clear and level the ground round the nearest village's hearth again",
             "previews: write a preview command for every design to BepInEx/Villheim/preview-commands.txt",
@@ -192,6 +193,17 @@ namespace Villheim.Logic
                             .OrderBy(p => Utils.DistanceXZ(p.Position, builderNear.transform.position)).FirstOrDefault();
                         Say(context, nearestPlot == null ? "Villheim: that village has no buildings yet."
                             : "Villheim: " + ConstructionSite.RelevelBuilding(bh, nearestPlot) + ".");
+                    }
+                    else
+                    {
+                        Say(context, "Villheim: no village hearth within 150 m.");
+                    }
+
+                    return true;
+                case "villheim_paths":
+                    if (TryGetPlayer(context, out Player pathsNear) && VillageHearth.Closest(pathsNear.transform.position, 150f) is VillageHearth ph)
+                    {
+                        Say(context, Villagers.PathLaying.Command(args, ph));
                     }
                     else
                     {

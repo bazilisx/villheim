@@ -31,7 +31,7 @@ for (const type of types) for (const biome of biomes) for (const [stage, decor] 
   const a = D.audit(d, decor);
   const marked = d.pieces.some(p => p.decor);
   const deco = d.pieces.filter(p => (marked ? p.decor : D.FURNITURE[p.name] && !require('../lib/pieces.js').piece(p.name).structural));
-  const biomeBad = deco.filter(p => D.FURNITURE[p.name] && ORDER.indexOf(D.FURNITURE[p.name].b) > ORDER.indexOf(biome)).map(p => p.name);
+  const biomeBad = deco.filter(p => D.FURNITURE[p.name] && ORDER.indexOf(D.FURNITURE[p.name].b) > ORDER.indexOf(biome) && !require('../lib/pieces.js').minor(p.name)).map(p => p.name);
   const checks = Ck.check(d, biome, copt);
   const row = { type, biome, stage, decor, seed, name: d.meta.Name, items: deco.length, kinds: new Set(deco.map(p => p.name)).size };
   for (const [k, v] of Object.entries(a)) { add(k, v.length); if (v.length) row[k] = v.slice(0, 6); }

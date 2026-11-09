@@ -12,11 +12,15 @@ namespace Villheim.Logic.Villagers
     /// Villagers eat the game's own foods and heal by the food's own numbers: like a player, every food in effect
     /// heals its regen value every 10 seconds until its time runs out, and a villager has up to three foods in effect.
     ///
-    /// A hurt villager (under half health, before any work; any missing health, when he has nothing else to do):
-    /// 1. eats cooked food from the village chest if there is some,
-    /// 2. otherwise takes raw meat or fish from the chest, puts it on the hearth's cooking station, waits the food's
-    ///    own cooking time beside the fire, takes it off and eats it,
-    /// 3. with no food at all, sits by the fire and roasts scraps, which heal a little.
+    /// A hurt villager (under half health, before any work; any missing health, when he has nothing else to do) goes
+    /// down this list and takes the first that is there (Tyler, 2026-11-09):
+    /// 1. a healing potion from the village chest or a storage chest,
+    /// 2. cooked food from those chests,
+    /// 3. raw meat or fish from them, cooked on the hearth's cooking station: the most hurt goes first, and he cooks
+    ///    enough for everyone hurt (what he does not eat goes into the chest for the others),
+    /// 4. berries, mushrooms and the like that grow near the village, picked and eaten there,
+    /// 5. the village wants meat, so its healthiest grown villager goes hunting (Hunting.WantMeat),
+    /// 6. last of all, he sits by the fire and roasts scraps, which heal a little.
     ///
     /// In free time, one villager per village cooks the raw food in the chest and puts the cooked food back, so the
     /// village keeps a few meals ready.
@@ -38,6 +42,7 @@ namespace Villheim.Logic.Villagers
             ToStation,
             Cooking,
             Roasting,
+            Forage,
         }
 
         private enum Goal
@@ -45,6 +50,7 @@ namespace Villheim.Logic.Villagers
             Eat,
             Cook,
             Store,
+            Potion,
         }
 
         private sealed class Food
@@ -64,6 +70,9 @@ namespace Villheim.Logic.Villagers
             public float Deadline;
             public float ReadyAt;
             public int Cooking;
+            public Container Source;
+            public Pickable Bush;
+            public float PickedAt;
             public readonly List<string> Raw = new List<string>();
             public readonly List<Food> Foods = new List<Food>();
         }
@@ -105,7 +114,9 @@ namespace Villheim.Logic.Villagers
 
             switch (state.Phase)
             {
-                case Phase.ToChest: return state.Goal == Goal.Eat ? "fetching something to eat" : "fetching food to cook";
+                case Phase.ToChest: return state.Goal == Goal.Potion ? "fetching a healing potion"
+                    : state.Goal == Goal.Eat ? "fetching something to eat" : "fetching food to cook";
+                case Phase.Forage: return "picking berries to eat";
                 case Phase.ToStation: return "taking food to the fire";
                 case Phase.Cooking: return state.Goal == Goal.Store ? "cooking for the village" : "cooking a meal";
                 case Phase.Roasting: return "roasting scraps by the fire";
@@ -152,6 +163,7 @@ namespace Villheim.Logic.Villagers
                 case Phase.ToStation: return UpdateStation(villager, ai, dt, state, hearth);
                 case Phase.Cooking: return UpdateCooking(villager, ai, dt, state, hearth);
                 case Phase.Roasting: return UpdateRoasting(villager, ai, dt, state, hearth);
+                case Phase.Forage: return UpdateForage(villager, ai, dt, state, hearth);
             }
 
             return false;
@@ -170,25 +182,69 @@ namespace Villheim.Logic.Villagers
             Container chest = VillageChest.Find(hearth);
             CookingStation station = Station(hearth);
 
-            if (hurt && canEat && (state.Foods.Count == 0 || health < StartBelow))
+            if (hurt && (state.Foods.Count == 0 || health < StartBelow))
             {
                 state.Urgent = !idle;
-                if (chest != null && CookedIn(chest, station).Count > 0)
+
+                // 1. A healing potion, whatever food he has in him.
+                Container potions = Chests(hearth).FirstOrDefault(c => Potions(c).Count > 0);
+                if (potions != null)
                 {
-                    Start(villager, state, Phase.ToChest, Goal.Eat);
+                    state.Source = potions;
+                    Start(villager, state, Phase.ToChest, Goal.Potion);
+                    Log(villager, health, "a healing potion from a chest");
                     return true;
                 }
 
-                if (chest != null && station != null && station.IsFireLit() && RawIn(chest, station).Count > 0 && station.GetFreeSlot() >= 0)
+                if (canEat)
                 {
-                    Start(villager, state, Phase.ToChest, Goal.Cook);
-                    return true;
-                }
+                    // 2. Cooked food from any of the village's chests (the sorting puts it in a storage chest).
+                    Container cooked = Chests(hearth).FirstOrDefault(c => CookedIn(c, station).Count > 0);
+                    if (cooked != null)
+                    {
+                        state.Source = cooked;
+                        Start(villager, state, Phase.ToChest, Goal.Eat);
+                        Log(villager, health, "cooked food from a chest");
+                        return true;
+                    }
 
-                if (state.Foods.Count == 0)
-                {
-                    Start(villager, state, Phase.Roasting, Goal.Eat);
-                    return true;
+                    // 3. Raw food cooked at the fire, the most hurt first; he cooks for everyone hurt.
+                    Container raw = station != null && station.IsFireLit() && station.GetFreeSlot() >= 0
+                        ? Chests(hearth).FirstOrDefault(c => RawIn(c, station).Count > 0)
+                        : null;
+                    if (raw != null && CookFree(villager) && MostHurt(villager))
+                    {
+                        state.Source = raw;
+                        Cooks[villager.VillageId] = villager;
+                        Start(villager, state, Phase.ToChest, Goal.Cook);
+                        Log(villager, health, "raw food to cook (the most hurt)");
+                        return true;
+                    }
+
+                    // 4. Something growing nearby that can be eaten as it is.
+                    Pickable bush = Foraging.NearestFood(villager.VillageId, hearth.transform.position, villager.transform.position);
+                    if (bush != null && !Picking.Contains(bush))
+                    {
+                        state.Bush = bush;
+                        Picking.Add(bush);
+                        Start(villager, state, Phase.Forage, Goal.Eat);
+                        Log(villager, health, $"berries to pick {Utils.DistanceXZ(bush.transform.position, villager.transform.position):0} m away");
+                        return true;
+                    }
+
+                    // 5. The village wants meat: the healthiest goes hunting (Hunting picks him).
+                    if (raw == null)
+                    {
+                        Hunting.WantMeat(villager.VillageId, 240f);
+                    }
+
+                    // 6. Last of all: rest by the fire with roasted scraps.
+                    if (state.Foods.Count == 0)
+                    {
+                        Start(villager, state, Phase.Roasting, Goal.Eat);
+                        Log(villager, health, raw != null ? "rest by the fire while someone else cooks" : "rest by the fire: nothing to eat, a hunter goes out");
+                        return true;
+                    }
                 }
             }
 
@@ -222,6 +278,104 @@ namespace Villheim.Logic.Villagers
         }
 
         private static readonly Dictionary<int, float> NextHungryCook = new Dictionary<int, float>();
+        private static readonly HashSet<Pickable> Picking = new HashSet<Pickable>();
+
+        private static void Log(Villager villager, float health, string choice)
+        {
+            if (LogicConfig.IsOn(LogicConfig.DebugLog))
+            {
+                VillheimPlugin.Log.LogInfo($"[healing] {villager.VillagerName} at {health * 100f:0}% health: {choice}.");
+            }
+        }
+
+        /// <summary>The village chest first, then its storage chests (D-016): food and potions may be in any of them.</summary>
+        public static List<Container> Chests(VillageHearth hearth)
+        {
+            var list = new List<Container>();
+            Container main = VillageChest.Find(hearth);
+            if (main != null)
+            {
+                list.Add(main);
+            }
+
+            if (StorageChests.On)
+            {
+                list.AddRange(StorageChests.Of(hearth.VillageId).Where(c => c && c != main));
+            }
+
+            return list;
+        }
+
+        /// <summary>Whether he is the most hurt of the village's hurt who still have room for a food.</summary>
+        private static bool MostHurt(Villager villager)
+        {
+            float mine = villager.GetHealth() / Mathf.Max(1f, villager.GetMaxHealth());
+            foreach (Character character in Character.GetAllCharacters())
+            {
+                if (!(character is Villager other) || other == villager || other.IsDead() || other.VillageId != villager.VillageId ||
+                    FoodCount(other) >= MaxFoods)
+                {
+                    continue;
+                }
+
+                float theirs = other.GetHealth() / Mathf.Max(1f, other.GetMaxHealth());
+                if (theirs < StopAbove && theirs < mine - 0.02f)
+                {
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
+        private static int HurtWaiting(Villager villager)
+        {
+            int count = 0;
+            foreach (Character character in Character.GetAllCharacters())
+            {
+                if (character is Villager other && !other.IsDead() && other.VillageId == villager.VillageId &&
+                    other.GetHealth() < other.GetMaxHealth() * StopAbove && FoodCount(other) < MaxFoods)
+                {
+                    count++;
+                }
+            }
+
+            return Mathf.Max(1, count);
+        }
+
+        /// <summary>How much a potion heals: its status effect's health at once plus over time.</summary>
+        private static float PotionHealing(ItemDrop.ItemData.SharedData shared)
+        {
+            if (shared?.m_consumeStatusEffect is SE_Stats stats)
+            {
+                return stats.m_healthUpFront + stats.m_healthOverTime;
+            }
+
+            return 0f;
+        }
+
+        /// <summary>Healing potions in a chest (by prefab name, with counts).</summary>
+        private static Dictionary<string, int> Potions(Container chest)
+        {
+            var result = new Dictionary<string, int>();
+            if (!VillageChest.Usable(chest))
+            {
+                return result;
+            }
+
+            foreach (ItemDrop.ItemData item in chest.GetInventory().GetAllItems())
+            {
+                string name = item.m_dropPrefab != null ? item.m_dropPrefab.name : null;
+                if (name != null && item.m_shared.m_itemType == ItemDrop.ItemData.ItemType.Consumable && item.m_shared.m_food <= 0f &&
+                    PotionHealing(item.m_shared) > 0f)
+                {
+                    result.TryGetValue(name, out int count);
+                    result[name] = count + item.m_stack;
+                }
+            }
+
+            return result;
+        }
 
         /// <summary>
         /// 'vh act near cookmeat': the villager runs the real cooking now: raw food from the chest, onto the station,
@@ -260,6 +414,7 @@ namespace Villheim.Logic.Villagers
             state.ReadyAt = 0f;
             state.Raw.Clear();
             state.Cooking = 0;
+            state.PickedAt = 0f;
             Walker.For(villager).Reset();
             VillheimPlugin.Debug($"{villager.VillagerName}: {Describe(villager)}.");
         }
@@ -274,6 +429,13 @@ namespace Villheim.Logic.Villagers
         {
             state.Phase = Phase.None;
             state.Raw.Clear();
+            if (state.Bush != null)
+            {
+                Picking.Remove(state.Bush);
+                state.Bush = null;
+            }
+
+            Picking.RemoveWhere(p => p == null);
             if (Cooks.TryGetValue(villager.VillageId, out Villager cook) && cook == villager)
             {
                 Cooks.Remove(villager.VillageId);
@@ -290,15 +452,18 @@ namespace Villheim.Logic.Villagers
 
         private static bool UpdateChest(Villager villager, VillagerAI ai, float dt, State state, VillageHearth hearth)
         {
-            Container chest = VillageChest.Find(hearth);
+            Container chest = state.Source ? state.Source : VillageChest.Find(hearth);
             if (chest == null || Time.time > state.Deadline)
             {
                 Done(villager, state, 20f);
                 return false;
             }
 
+            // Close enough to reach in counts as there: with the others crowding the chest, the path never "arrived"
+            // and he stood beside it until the minute ran out, over and over (Tyler: stuck by the fire).
             Vector3 at = chest.transform.position;
-            if (Walker.For(villager).Go(villager, ai, dt, at, 1.4f) == WalkResult.Walking)
+            if (Utils.DistanceXZ(villager.transform.position, at) > 2.5f &&
+                Walker.For(villager).Go(villager, ai, dt, at, 1.4f) == WalkResult.Walking)
             {
                 return true;
             }
@@ -308,6 +473,24 @@ namespace Villheim.Logic.Villagers
             Poses.Trigger(villager, "interact");
             Inventory inventory = chest.GetInventory();
             CookingStation station = Station(hearth);
+
+            if (state.Goal == Goal.Potion)
+            {
+                string potion = Potions(chest).Keys.OrderByDescending(n => PotionHealing(Shared(n))).FirstOrDefault();
+                if (potion == null)
+                {
+                    Done(villager, state, 2f);
+                    return false;
+                }
+
+                inventory.RemoveItem(Shared(potion).m_name, 1);
+                float amount = PotionHealing(Shared(potion));
+                villager.Heal(amount, true);
+                Poses.Trigger(villager, "eat");
+                VillheimPlugin.Debug($"{villager.VillagerName} drank {potion} ({amount:0} health).");
+                Done(villager, state, 20f);
+                return false;
+            }
 
             if (state.Goal == Goal.Eat)
             {
@@ -327,7 +510,7 @@ namespace Villheim.Logic.Villagers
 
             // Take raw food for the free slots on the station: one to eat, as many as fit to store.
             int slots = station != null ? FreeSlots(station) : 0;
-            int take = state.Goal == Goal.Cook ? 1 : Mathf.Min(slots, ReadyMeals);
+            int take = state.Goal == Goal.Cook ? Mathf.Clamp(HurtWaiting(villager), 1, Mathf.Max(1, slots)) : Mathf.Min(slots, ReadyMeals);
             foreach (KeyValuePair<string, int> raw in RawIn(chest, station))
             {
                 int count = Mathf.Min(raw.Value, take - state.Raw.Count);
@@ -526,6 +709,72 @@ namespace Villheim.Logic.Villagers
 
             VillheimPlugin.Debug($"{villager.VillagerName} took {string.Join(", ", taken)} off the fire.");
             Done(villager, state, state.Goal == Goal.Store ? 30f : RestBetween);
+            return false;
+        }
+
+        /// <summary>Picks a bush or patch near the village and eats what it gives (what he cannot eat is left for the chest).</summary>
+        private static bool UpdateForage(Villager villager, VillagerAI ai, float dt, State state, VillageHearth hearth)
+        {
+            Pickable bush = state.Bush;
+            if (bush == null || Time.time > state.Deadline || (state.PickedAt <= 0f && bush.GetPicked()))
+            {
+                Done(villager, state, 3f);
+                return false;
+            }
+
+            Vector3 at = bush.transform.position;
+            if (state.PickedAt <= 0f)
+            {
+                if (Walker.For(villager).Go(villager, ai, dt, at, 1.3f) == WalkResult.Walking)
+                {
+                    return true;
+                }
+
+                ai.StopMoving();
+                FaceTo(villager, ai, at);
+                Poses.Trigger(villager, "interact");
+                bush.Interact(villager, false, false);
+                state.PickedAt = Time.time;
+                return true;
+            }
+
+            if (Time.time - state.PickedAt < 0.6f)
+            {
+                return true;
+            }
+
+            int eaten = 0;
+            foreach (Collider collider in Physics.OverlapSphere(at, 2.5f))
+            {
+                ItemDrop item = collider.GetComponentInParent<ItemDrop>();
+                if (item == null || item.m_nview == null || !item.m_nview.IsValid() || item.m_itemData?.m_shared == null ||
+                    item.m_itemData.m_shared.m_food <= 0f || state.Foods.Count >= MaxFoods)
+                {
+                    continue;
+                }
+
+                string name = Utils.GetPrefabName(item.gameObject);
+                if (state.Foods.Any(f => f.Name == name && f.Until > Time.time))
+                {
+                    continue;
+                }
+
+                Eat(villager, state, name);
+                eaten++;
+                item.m_nview.ClaimOwnership();
+                if (item.m_itemData.m_stack > 1)
+                {
+                    item.m_itemData.m_stack--;
+                    item.Save();
+                }
+                else
+                {
+                    ZNetScene.instance.Destroy(item.gameObject);
+                }
+            }
+
+            VillheimPlugin.Debug($"{villager.VillagerName} ate {eaten} picked from {Utils.GetPrefabName(bush.gameObject)}.");
+            Done(villager, state, eaten > 0 ? RestBetween : 5f);
             return false;
         }
 

@@ -51,6 +51,10 @@ namespace Villheim.Logic.Villagers
                 ? state.Phase == Phase.Fetch ? "picking up a trophy" : state.Phase == Phase.Mount ? "hanging a trophy at home" : null
                 : null;
 
+        /// <summary>True while he is at the stand, hammering the trophy up (the only part of it that uses a tool).</summary>
+        public static bool Hammering(Villager villager) =>
+            States.TryGetValue(villager, out State state) && Time.time - state.LastRun < 1f && state.Phase == Phase.Mount && state.WorkUntil > 0f;
+
         private static bool IsTrophy(ItemDrop.ItemData item) => item?.m_shared != null && item.m_shared.m_itemType == ItemDrop.ItemData.ItemType.Trophy;
 
         /// <summary>From the hunt: a trophy among the drops goes into the hunter's own pack. True when it was taken.</summary>

@@ -217,8 +217,9 @@ namespace Villheim.Logic.Villagers
             {
                 ai.SetAggravated(true, BaseAI.AggravatedReason.Damage);
             }
-            else if (!againstPlayer && part != Part.None && ai.IsAggravated() && !(state.Enemy is Player))
+            else if (!againstPlayer && part != Part.None && ai.IsAggravated())
             {
+                // Running from him or sheltering: no red bar on someone who is not about to fight.
                 ai.SetAggravated(false, BaseAI.AggravatedReason.Damage);
             }
 
@@ -466,9 +467,22 @@ namespace Villheim.Logic.Villagers
             bool inFight = state.Part != Part.None || near != null || Grudges.Active(villager.VillageId);
             if (inFight && villager.GetHealth() < villager.GetMaxHealth() * retreat)
             {
-                enemy = state.Enemy ?? near;
-                state.Retreating = true;
-                return Part.Flee;
+                // Back toward the hearth while something is still close. Once it is clear he is let go, so the brain's
+                // healing runs (Tyler: they all stood by the fire, hurt, with cooked meat in the chest: the retreat held
+                // them there for as long as an angry player was anywhere in the village, and nobody ate).
+                Player angry = Grudges.Foe(villager.VillageId);
+                Character danger = near != null && state.NearestDistance < Mathf.Max(FleeRange, 10f) ? near
+                    : angry != null && Vector3.Distance(angry.transform.position, villager.transform.position) < 15f ? angry
+                    : null;
+                if (danger != null)
+                {
+                    enemy = danger;
+                    state.Retreating = true;
+                    return Part.Flee;
+                }
+
+                state.Retreating = false;
+                return Part.None;
             }
 
             state.Retreating = false;
@@ -491,6 +505,15 @@ namespace Villheim.Logic.Villagers
                 }
 
                 return Part.None;
+            }
+
+            // Carers and elders do not fight creatures (Tyler: the others were killed): with a threat this close they
+            // get out of its way, toward the hearth or their home, unless the village has nobody else to fight.
+            if (near != null && !protector && !fight.Responders.ContainsKey(villager) &&
+                state.NearestDistance < Mathf.Max(FleeRange, 10f))
+            {
+                enemy = near;
+                return state.NearestDistance < 6f ? Part.Flee : Part.Shelter;
             }
 
             // Fighting back: a creature on top of him, or one close by that has just hurt him.
@@ -557,12 +580,14 @@ namespace Villheim.Logic.Villagers
             fight.LastEngaged = Time.time;
             CallToArms(villager, fight, distance);
 
-            // Flyers are shot at, and anything else he can see further off than FightBowFrom (D-050); up close, the weapon.
+            // The bow first (Tyler: they ran up and meleed while others shot): anything further off than FightHoldRange
+            // that he can see is shot at, flyers at any distance, and he holds his ground while it comes. The weapon only
+            // when it is that close, or with no arrows left (he makes more once the fight is over, Fletching).
             bool flies = enemy.IsFlying() || enemy.m_flying;
-            float bowFrom = Mathf.Max(BackRange, LogicConfig.FightBowFrom?.Value ?? 8f);
-            // With no arrows left he closes in with the weapon; he makes more once the fight is over (Fletching).
-            state.Ranged = !state.SelfDefense && distance > BackRange && Defenders.CarriedArrow(villager) != null &&
+            float bowFrom = Mathf.Max(2f, LogicConfig.FightHoldRange?.Value ?? 4f);
+            state.Ranged = Defenders.CarriedArrow(villager) != null &&
                            (flies || (distance > bowFrom && InSight(villager.GetEyePoint(), enemy)));
+
             if (state.Ranged)
             {
                 if (distance > 30f)
@@ -572,7 +597,17 @@ namespace Villheim.Logic.Villagers
                     return true;
                 }
 
-                ai.StopMoving();
+                Vector3 away = (villager.transform.position - enemy.transform.position).Horizontal();
+                if (!flies && distance < bowFrom + 2f && Time.time < state.NextShot && away.sqrMagnitude > 0.01f)
+                {
+                    // Coming in close: a step back while the next arrow is nocked keeps him out of reach a little longer.
+                    ai.MoveTowards(away.normalized, false);
+                }
+                else
+                {
+                    ai.StopMoving();
+                }
+
                 if (Time.time >= state.NextShot)
                 {
                     float spread = Defenders.For(villager.VillageId) != null ? 2f : 3f;
@@ -803,6 +838,52 @@ namespace Villheim.Logic.Villagers
                 catch (System.Exception ex)
                 {
                     VillheimPlugin.Debug($"Combat player hit: {ex.Message}");
+                }
+            }
+        }
+
+        /// <summary>
+        /// Blows from creatures are softened by the village's gear (VillagerArmorPerTier), and no single one takes more
+        /// than VillagerMaxHitShare of his health (Tyler: a deathsquito killed two villagers at once in the Plains).
+        /// Players' blows are left as they are.
+        /// </summary>
+        [HarmonyLib.HarmonyPatch(typeof(Character), nameof(Character.RPC_Damage))]
+        internal static class CreatureHitPatch
+        {
+            private static void Prefix(Character __instance, HitData hit)
+            {
+                try
+                {
+                    if (!(__instance is Villager villager) || hit == null || villager.NView == null || !villager.NView.IsOwner() ||
+                        villager.IsDead() || !(hit.GetAttacker() is Character attacker) || attacker is Player || attacker is Villager)
+                    {
+                        return;
+                    }
+
+                    float before = hit.GetTotalDamage();
+                    float armor = Mathf.Max(0f, LogicConfig.VillagerArmorPerTier?.Value ?? 0.2f) * Roles.GearTier(villager);
+                    if (armor > 0f)
+                    {
+                        hit.m_damage.Modify(1f / (1f + armor));
+                    }
+
+                    float share = Mathf.Clamp(LogicConfig.VillagerMaxHitShare?.Value ?? 0.25f, 0.01f, 1f);
+                    float most = villager.GetMaxHealth() * share;
+                    float total = hit.GetTotalDamage();
+                    if (share < 1f && total > most && total > 0f)
+                    {
+                        hit.m_damage.Modify(most / total);
+                    }
+
+                    if (LogicConfig.IsOn(LogicConfig.DebugLog))
+                    {
+                        VillheimPlugin.Log.LogInfo($"[fight] {villager.VillagerName} hit by {attacker.GetHoverName()}: {before:0} damage, " +
+                                                   $"{hit.GetTotalDamage():0} after gear and cap (health {villager.GetHealth():0}/{villager.GetMaxHealth():0}).");
+                    }
+                }
+                catch (System.Exception ex)
+                {
+                    VillheimPlugin.Debug($"Combat creature hit: {ex.Message}");
                 }
             }
         }

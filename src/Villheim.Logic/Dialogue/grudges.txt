@@ -1,0 +1,79 @@
+# Villheim: a player who harms the village's people, and hunting. Same format as lines.txt.
+#
+# Grudges (Villagers/Grudges.cs): playerhit:protector, playerhit:carer, playerhit:child (a hit that may be an
+# accident), playerfight (a defender turns on him), playerfight:flee (the rest run), grudge:warn (leave, or else),
+# grudge:join (the warning ran out), grudge:killer (he killed one of us).
+# Hunting (Villagers/Hunting.cs): hunt:start, hunt:kill, hunt:lost.
+
+# ------------------------------------------------------------------ a hit that may be an accident
+
+@ self, playerhit:protector ~angry
+Watch it.
+Hey! Mind where you swing that.
+Do that again and we'll have a problem.
+That was me you hit.
+
+@ self, playerhit:protector | gruff ~angry
+Once more and you'll get it back.
+
+@ self, playerhit:carer ~worry
+Ow! What was that for?
+Stop it! I've done nothing to you.
+Please, leave me be.
+
+@ self, playerhit:carer | elder ~worry
+I'm too old for this. Leave me alone.
+
+@ self, playerhit:child ~worry
+Ow! Mama!
+Stop! That hurts!
+
+# ------------------------------------------------------------------ on purpose
+
+@ self, playerfight ~angry
+That's enough. You'll answer for that.
+Right. You asked for this.
+Nobody hurts our people. Nobody.
+You've had your warning.
+
+@ self, playerfight | elder ~angry
+Old I may be. I can still swing.
+
+@ self, playerfight:flee ~worry
+Run! Get away from him!
+Help! Someone help!
+To the hearth, quick!
+
+@ self, playerfight:flee, child ~worry
+Help! Help!
+
+@ self, grudge:warn ~angry
+You're not welcome here. Leave.
+Turn around and go. Now.
+I'll say it once. Get out of our village.
+We remember what you did. Go.
+
+@ self, grudge:join ~angry
+I told you to leave.
+You should have listened.
+
+@ self, grudge:killer ~angry
+Murderer! Get him!
+You killed one of us. You don't leave this place standing.
+For our dead!
+
+# ------------------------------------------------------------------ hunting
+
+@ self, hunt:start
+There's game out there. I'll bring back meat.
+Deer by the trees. Back soon.
+We need meat. I'm going out.
+
+@ self, hunt:kill ~happy
+Got it. There's meat tonight.
+That's dinner.
+Clean shot.
+
+@ self, hunt:lost
+Lost it. Too quick for me.
+It got away. Next time.

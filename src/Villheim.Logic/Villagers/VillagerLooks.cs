@@ -99,6 +99,13 @@ namespace Villheim.Logic.Villagers
         };
 
         /// <summary>Villager trades by seed: one in four builds (hammer), one in four mines (pickaxe), the rest cut wood (axe).</summary>
+        /// <summary>The ChildBoyLook setting: femaleface, male or female.</summary>
+        public static string BoyLook => (LogicConfig.ChildBoyLook?.Value ?? "femaleface").Trim().ToLowerInvariant();
+
+        /// <summary>Whether a villager is a woman or girl, from his seed (the model alone can be the female one for a boy).</summary>
+        public static bool IsFemale(Villager villager) =>
+            villager?.Zdo != null && new System.Random(villager.Zdo.GetInt(Keys.VillagerSeed)).Next(2) == 1;
+
         public static bool IsBuilder(int seed) => (seed & 0x7fffffff) % 4 == 0;
 
         public static bool IsMiner(int seed) => (seed & 0x7fffffff) % 4 == 1;
@@ -130,8 +137,9 @@ namespace Villheim.Logic.Villagers
             Cultures.Culture culture = Cultures.Get(Cultures.OfVillager(villager));
             var looks = new System.Random(seed);
             bool female = looks.Next(2) == 1;
-            // Children all use the female face; boys keep their own hair and proportions (Tyler, 2026-11-08).
-            vis.SetModel(female || Childhood.IsChild(villager) ? 1 : 0);
+            // A boy is on the male body unless ChildBoyLook says female; with femaleface the female skin and face
+            // texture goes over it (ChildBody.BoyFace). Boys keep their own hair and proportions (Tyler, 2026-11-09).
+            vis.SetModel(female || (Childhood.IsChild(villager) && BoyLook == "female") ? 1 : 0);
 
             float outlier = LogicConfig.LooksOutlierChance != null ? LogicConfig.LooksOutlierChance.Value : 0.1f;
             Vector2 skinRange = looks.NextDouble() < outlier ? new Vector2(0.25f, 1f) : culture.Skin;
@@ -164,8 +172,24 @@ namespace Villheim.Logic.Villagers
             vis.SetHairItem(Hash(hairItem));
 
             List<string> beards = BeardStyles();
-            string beard = female || looks.NextDouble() >= culture.Beard ? ""
+            bool bearded = looks.NextDouble() < culture.Beard;
+            string beard = female || !bearded ? ""
                 : beards.Count > 0 ? PickStyle(looks, beards, culture.BeardPrefer) : FirstExisting($"Beard{looks.Next(1, 11)}", "Beard1");
+            if (!female && Elders.IsElder(villager))
+            {
+                // Elder men mostly wear long beards (Tyler), drawn from their own stream so the rest of the look holds.
+                var old = new System.Random(seed ^ 0x51ed);
+                float chance = Mathf.Clamp01(LogicConfig.ElderLongBeard?.Value ?? 0.8f);
+                List<string> longBeards = beards.Where(IsLongBeard).ToList();
+                if (longBeards.Count > 0 && old.NextDouble() < chance)
+                {
+                    beard = longBeards[old.Next(longBeards.Count)];
+                }
+                else if (beard.Length == 0 && beards.Count > 0 && old.NextDouble() < chance)
+                {
+                    beard = beards[old.Next(beards.Count)];
+                }
+            }
             if (Childhood.IsChild(villager) && (LogicConfig.ChildNoBeard == null || LogicConfig.ChildNoBeard.Value))
             {
                 // No beard on a child (T-28); the random draw above still runs, so the grown man's beard is the same.
@@ -185,13 +209,14 @@ namespace Villheim.Logic.Villagers
             Equip(villager, Pick(gear, WithCulture(Helmets[tier], culture, "helmet", tier, female)));
             Equip(villager, Pick(gear, WithCulture(Capes[tier], culture, "cape", tier, female)));
 
-            // Everyone carries all three tools and starts out holding the one of their trade.
+            // Everyone carries all three tools in the pack. None is taken in hand here: the work that needs it does that
+            // (dressing had put the trade's tool in hand every time, and a villager dressed again on the way home from
+            // work walked home with it, Tyler: tools carried on the way back).
             string axe = Axes[tier];
             string pickaxe = Pickaxes[tier];
             Carry(villager, axe);
             Carry(villager, pickaxe);
             Carry(villager, "Hammer");
-            Hold(villager, IsBuilder(seed) ? Tool.Hammer : IsMiner(seed) ? Tool.Pickaxe : Tool.Axe);
         }
 
         /// <summary>Puts the tool in the villager's hand, if it isn't there already. Returns false if they don't carry one.</summary>
@@ -231,6 +256,13 @@ namespace Villheim.Logic.Villagers
 
             VillheimPlugin.Debug($"{villager.GetHoverName()} had lost the {tool.ToString().ToLowerInvariant()}; a new one was given.");
             return villager.EquipItem(given, false) && IsHolding(villager, tool);
+        }
+
+        /// <summary>Whether he has the tool in his pack (or hand).</summary>
+        public static bool Carries(Humanoid villager, Tool tool)
+        {
+            Inventory inventory = villager.GetInventory();
+            return inventory != null && inventory.GetAllItems().Any(item => IsTool(item, tool));
         }
 
         public static bool IsHolding(Humanoid villager, Tool tool)
@@ -449,6 +481,15 @@ namespace Villheim.Logic.Villagers
 
             _beards.Sort(System.StringComparer.Ordinal);
             return _beards;
+        }
+
+        /// <summary>A long beard by the name the game shows: long, thick, royal, braided, Stonedweller.</summary>
+        private static bool IsLongBeard(string prefab)
+        {
+            ShownNames.TryGetValue(prefab, out string shown);
+            shown = shown ?? "";
+            return shown.Contains("long") || shown.Contains("thick") || shown.Contains("royal") || shown.Contains("braid") ||
+                   shown.Contains("stone");
         }
 
         private static string Shown(GameObject item)

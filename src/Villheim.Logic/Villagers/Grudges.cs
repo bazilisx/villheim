@@ -64,6 +64,49 @@ namespace Villheim.Logic.Villagers
         public static bool Protects(Villager villager) =>
             !Childhood.IsChild(villager) && !Elders.IsElder(villager) && Roles.BackgroundOf(villager) == Roles.Background.Protector;
 
+        private static readonly Dictionary<int, (float Time, int Kind)> DefenderKinds = new Dictionary<int, (float, int)>();
+
+        /// <summary>
+        /// Who stands up to a player who harms the village: its protectors; when none is about (a village of elders,
+        /// Tyler: "I punched the leader 3x and nothing happened"), any grown villager who is not an elder; and when
+        /// there is nobody else, the elders. Children never.
+        /// </summary>
+        public static bool Defends(Villager villager)
+        {
+            if (Childhood.IsChild(villager))
+            {
+                return false;
+            }
+
+            if (Protects(villager))
+            {
+                return true;
+            }
+
+            int id = villager.VillageId;
+            if (!DefenderKinds.TryGetValue(id, out (float Time, int Kind) cached) || Time.time - cached.Time > 3f)
+            {
+                List<Villager> people = People(id).Where(v => !Childhood.IsChild(v)).ToList();
+                int kind = people.Any(Protects) ? 0 : people.Any(v => !Elders.IsElder(v)) ? 1 : 2;
+                cached = (Time.time, kind);
+                DefenderKinds[id] = cached;
+            }
+
+            return cached.Kind == 1 ? !Elders.IsElder(villager) : cached.Kind == 2;
+        }
+
+        /// <summary>The player the village is at odds with right now, if any.</summary>
+        public static Player Foe(int villageId) =>
+            Episodes.TryGetValue(villageId, out Episode episode) && episode.Player != null && !episode.Player.IsDead() ? episode.Player : null;
+
+        private static void Log(string message)
+        {
+            if (LogicConfig.IsOn(LogicConfig.DebugLog))
+            {
+                VillheimPlugin.Log.LogInfo("[grudges] " + message);
+            }
+        }
+
         // ---------------------------------------------------------------- the record on the hearth
 
         private sealed class Record
@@ -158,7 +201,7 @@ namespace Villheim.Logic.Villagers
             Mark mark = Marks.GetOrCreateValue(villager);
             mark.LastHitBy = player;
             mark.LastHitAt = Time.time;
-            bool protector = Protects(villager);
+            bool protector = Defends(villager);
             if (!protector)
             {
                 mark.FleeUntil = Time.time + 12f;
@@ -196,7 +239,9 @@ namespace Villheim.Logic.Villagers
             float window = Mathf.Max(1f, LogicConfig.PlayerHitWindow?.Value ?? 30f);
             hits.RemoveAll(h => Time.time - h.Time > window);
             hits.Add((Time.time, villager.GetZDOID()));
-            if (hits.Count < Mathf.Max(1, LogicConfig.PlayerHitsToFight?.Value ?? 3))
+            int needed = Mathf.Max(1, LogicConfig.PlayerHitsToFight?.Value ?? 3);
+            Log($"{villager.VillagerName} ({(protector ? "stands up" : "runs")}) hit by {player.GetPlayerName()}: {hits.Count} of {needed} hits in {window:0} s.");
+            if (hits.Count < needed)
             {
                 Line(villager, protector ? "playerhit:protector" : Childhood.IsChild(villager) ? "playerhit:child" : "playerhit:carer");
                 return;
@@ -213,7 +258,7 @@ namespace Villheim.Logic.Villagers
             Ban(hearth, player, episode.Harmed.Count);
             Villager first = protector
                 ? villager
-                : People(villager.VillageId).Where(Protects)
+                : People(villager.VillageId).Where(Defends)
                     .OrderBy(v => Vector3.Distance(v.transform.position, player.transform.position)).FirstOrDefault();
             if (first != null && Vector3.Distance(first.transform.position, player.transform.position) < WarnRadius * 2f)
             {
@@ -226,7 +271,8 @@ namespace Villheim.Logic.Villagers
                 Line(villager, "playerfight:flee", true);
             }
 
-            VillheimPlugin.Debug($"{villager.VillageName}: {player.GetPlayerName()} keeps hitting our people; the protectors turn on him.");
+            VillheimPlugin.Log.LogInfo($"{villager.VillageName}: {player.GetPlayerName()} keeps hitting our people; " +
+                                       $"{(first != null ? first.VillagerName + " turns on him" : "nobody is near enough to stand up to him")}.");
         }
 
         /// <summary>
@@ -248,6 +294,8 @@ namespace Villheim.Logic.Villagers
             }
 
             VillageHearth hearth = VillageHearth.Find(villager.VillageId);
+            Log($"{villager.VillagerName} died; last hit by {villager.m_lastHit?.GetAttacker()?.GetHoverName() ?? "nobody known"}, " +
+                $"killer {(killer != null ? killer.GetPlayerName() : "none")}.");
             if (killer == null || hearth == null || !hearth.IsValid)
             {
                 return;
@@ -279,7 +327,7 @@ namespace Villheim.Logic.Villagers
             }
 
             // A killing is no accident: the protectors close by fight at once, without a warning first.
-            foreach (Villager protector in People(villager.VillageId).Where(v => v != villager && Protects(v) &&
+            foreach (Villager protector in People(villager.VillageId).Where(v => v != villager && Defends(v) &&
                          Vector3.Distance(v.transform.position, killer.transform.position) < WarnRadius * 2f))
             {
                 if (episode.Fighters.Add(protector))
@@ -329,7 +377,7 @@ namespace Villheim.Logic.Villagers
                 {
                     player = foe;
                     float distance = Vector3.Distance(foe.transform.position, villager.transform.position);
-                    if (!Protects(villager))
+                    if (!Defends(villager))
                     {
                         if (distance < 30f)
                         {
@@ -352,7 +400,7 @@ namespace Villheim.Logic.Villagers
                             return Role.None;
                         }
 
-                        if (Time.time >= joinAt && distance <= WarnRadius)
+                        if (Time.time >= joinAt && distance <= WarnRadius * 1.5f)
                         {
                             episode.Warned.Remove(villager);
                             episode.Fighters.Add(villager);
@@ -361,6 +409,15 @@ namespace Villheim.Logic.Villagers
                         }
 
                         return Role.Warn;
+                    }
+
+                    if (distance <= WarnRadius * 1.5f && Unwelcome(hearth, foe, out bool murderer) && murderer)
+                    {
+                        // He has killed one of them: no warning, they go for him (Tyler: two of them turned red and
+                        // only stood by the fire).
+                        episode.Fighters.Add(villager);
+                        Line(villager, "grudge:killer", true);
+                        return Role.Fight;
                     }
 
                     if (distance <= WarnRadius)
@@ -377,7 +434,7 @@ namespace Villheim.Logic.Villagers
             }
 
             // Hit by a player before it counted as on purpose: carers, elders and children run home a while.
-            if (!Protects(villager) && Time.time < mark.FleeUntil && mark.FleeFrom != null && !mark.FleeFrom.IsDead())
+            if (!Defends(villager) && Time.time < mark.FleeUntil && mark.FleeFrom != null && !mark.FleeFrom.IsDead())
             {
                 player = mark.FleeFrom;
                 return Role.Flee;

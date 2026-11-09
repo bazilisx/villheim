@@ -128,7 +128,7 @@ namespace Villheim.Logic.Villagers
         private static void LateTick()
         {
             float spine = LogicConfig.ElderSpineBend?.Value ?? 12f;
-            float neck = LogicConfig.ElderNeckBend?.Value ?? 10f;
+            float neck = LogicConfig.ElderNeckBend?.Value ?? 0f;
             for (int i = Stooped.Count - 1; i >= 0; i--)
             {
                 Villager villager = Stooped[i];
@@ -160,6 +160,33 @@ namespace Villheim.Logic.Villagers
                 }
 
                 bones.Started = true;
+            }
+        }
+
+        /// <summary>
+        /// Elders always walk, never run or jog (Tyler), whatever asks him to hurry: work, a hunt, a fight, fleeing.
+        /// </summary>
+        [HarmonyPatch(typeof(Character), nameof(Character.SetRun))]
+        internal static class ElderRunPatch
+        {
+            private static void Prefix(Character __instance, ref bool run)
+            {
+                if (run && Stooped.Count > 0 && __instance is Villager villager && Stooped.Contains(villager))
+                {
+                    run = false;
+                }
+            }
+        }
+
+        [HarmonyPatch(typeof(Character), nameof(Character.SetWalk))]
+        internal static class ElderWalkPatch
+        {
+            private static void Prefix(Character __instance, ref bool walk)
+            {
+                if (!walk && Stooped.Count > 0 && __instance is Villager villager && Stooped.Contains(villager))
+                {
+                    walk = true;
+                }
             }
         }
 

@@ -15,6 +15,12 @@ namespace Villheim.Logic
         public static ConfigEntry<float> BuildStartShare;
         public static ConfigEntry<bool> LagLog;
         public static ConfigEntry<float> LagLogMs;
+        public static ConfigEntry<bool> DebugLog;
+        public static ConfigEntry<float> VillagerHealthPerTier;
+        public static ConfigEntry<float> VillagerArmorPerTier;
+        public static ConfigEntry<float> VillagerMaxHitShare;
+        public static ConfigEntry<float> FightHoldRange;
+        public static ConfigEntry<int> HuntMeatTarget;
         public static ConfigEntry<int> BuildHelpers;
         public static ConfigEntry<string> YggdrasilYield;
         public static ConfigEntry<float> ClearingRadius;
@@ -275,6 +281,8 @@ namespace Villheim.Logic
         public static ConfigEntry<float> ChildHelpChance;
         public static ConfigEntry<bool> ChildProportions;
         public static ConfigEntry<bool> ChildNoBeard;
+        public static ConfigEntry<string> ChildBoyLook;
+        public static ConfigEntry<float> ElderLongBeard;
         // Child body proportions, [0] boys and [1] girls: Height, Head, Neck, Torso, Arms, Legs, Shoulders, Hips.
         public static readonly ConfigEntry<float>[][] ChildShape = { new ConfigEntry<float>[8], new ConfigEntry<float>[8] };
         public static readonly string[] ChildShapeParts = { "Height", "Head", "Neck", "Torso", "Arms", "Legs", "Shoulders", "Hips" };
@@ -392,6 +400,9 @@ namespace Villheim.Logic
                 "Hunters shoot from up to this far (meters). Deer are only ever hunted with a bow, since they always run.");
             HuntMeleeRange = Admin(config, work, "HuntMeleeRange", 4f,
                 "A boar or other slow game this close is fought with the hunter's weapon instead of the bow.");
+            HuntMeatTarget = Admin(config, work, "HuntMeatTarget", 6,
+                "The village wants meat, and its hunter goes out, while the village chests hold less than this much raw " +
+                "and cooked meat (more in a hard season).");
             HuntChaseSeconds = Admin(config, work, "HuntChaseSeconds", 45f,
                 "A hunter gives up on an animal he has not brought down after this many seconds and goes back to other work.");
             HuntChaseDistance = Admin(config, work, "HuntChaseDistance", 30f,
@@ -565,6 +576,14 @@ namespace Villheim.Logic
                 "shorter neck, legs and arms, narrower shoulders and hips. Off: a child is a grown villager scaled down " +
                 "to ChildBoyHeight or ChildGirlHeight. 'vh kids rig' puts up models to tune these against (see '3d - Hair review').");
             ChildNoBeard = Admin(config, looks, "ChildNoBeard", true, "Boys have no beard until they grow up.");
+            ChildBoyLook = config.Bind(looks, "ChildBoyLook", "femaleface", new ConfigDescription(
+                "How boys look. femaleface: the male body with the female model's skin and face texture laid over it (the " +
+                "game's two bodies are one mesh each, head included, so the female head itself cannot go on the male body; " +
+                "this softens the face as far as vanilla allows). male: the male body and face as they are. female: the " +
+                "female model, as before. Boys keep their own hair and proportions in all three. Changes show at once.",
+                new AcceptableValueList<string>("femaleface", "male", "female"), new ConfigurationManagerAttributes { IsAdminOnly = true }));
+            ElderLongBeard = Admin(config, looks, "ElderLongBeard", 0.8f,
+                "Chance that an elder man wears a long beard (long, thick, royal, braided or Stonedweller), and has a beard at all.");
             BindChildShape(config, looks);
             GhostDeathSeconds = Admin(config, looks, "GhostDeathSeconds", 3.5f,
                 "Seconds a dying villager takes to fade out as he rises, after the ghost's vanishing effect.");
@@ -804,8 +823,8 @@ namespace Villheim.Logic
             ElderSpineBend = config.Bind(living, "ElderSpineBend", 12f, new ConfigDescription(
                 "Degrees an elder's back bends forward as he stands and walks (0 for upright). Changes show at once.",
                 new AcceptableValueRange<float>(0f, 40f), new ConfigurationManagerAttributes { IsAdminOnly = true }));
-            ElderNeckBend = config.Bind(living, "ElderNeckBend", 10f, new ConfigDescription(
-                "Degrees an elder's neck bends forward on top of that.",
+            ElderNeckBend = config.Bind(living, "ElderNeckBend", 0f, new ConfigDescription(
+                "Degrees an elder's neck bends forward on top of that (0 by default: the spine bend alone looks right).",
                 new AcceptableValueRange<float>(0f, 40f), new ConfigurationManagerAttributes { IsAdminOnly = true }));
             ElderSpeed = Admin(config, living, "ElderSpeed", 0.75f,
                 "How fast elders walk and run against a grown villager (1 for the same speed). Elders keep to chores in the " +
@@ -1040,6 +1059,17 @@ namespace Villheim.Logic
             FightBowFrom = Admin(config, defenders, "FightBowFrom", 8f,
                 "Responders shoot at anything further than this (meters) that they can see, and close in with the weapon " +
                 "when it is nearer. Everyone who fights carries a bow and arrows of the village's tier.");
+            VillagerHealthPerTier = Admin(config, defenders, "VillagerHealthPerTier", 0.35f,
+                "Extra health for each gear tier of the village (0 rags .. 4 bronze): a share of VillagerHealth, so 0.35 " +
+                "gives a bronze-tier villager 2.4 times the base health.");
+            VillagerArmorPerTier = Admin(config, defenders, "VillagerArmorPerTier", 0.2f,
+                "Damage from creatures is divided by 1 plus this for each gear tier, standing in for the armor they wear.");
+            VillagerMaxHitShare = Admin(config, defenders, "VillagerMaxHitShare", 0.25f,
+                "No single blow from a creature takes more than this share of a villager's full health, so one or two " +
+                "deathsquitos never kill a villager in a moment. 1 turns it off.");
+            FightHoldRange = Admin(config, defenders, "FightHoldRange", 4f,
+                "A villager with a bow and arrows holds his ground and shoots at anything further off than this, and " +
+                "only closes in with the weapon when it is nearer (or he has no arrows). Keeps archers out of melee.");
             FightRetreatHealth = Admin(config, defenders, "FightRetreatHealth", 0.25f,
                 "A villager in a fight with less than this share of his health left goes back to the hearth to heal.");
             FightTargetOrder = Admin(config, defenders, "FightTargetOrder", true,
@@ -1149,6 +1179,9 @@ namespace Villheim.Logic
                 "furniture spots, plot search) that takes longer than LagLogMs, to find what makes the game stutter.");
             LagLogMs = Admin(config, test, "LagLogMs", 4f,
                 "With LagLog on: steps taking at least this many milliseconds are logged.");
+            DebugLog = Admin(config, test, "DebugLog", false,
+                "Log villager decisions to the BepInEx log for testing: who takes a tool in hand and why, which healing " +
+                "step a hurt villager picks, who goes hunting, hits and kills counted for grudges, and the ghost death effect.");
         }
 
         private static ConfigEntry<T> Admin<T>(ConfigFile config, string section, string key, T value, string description)

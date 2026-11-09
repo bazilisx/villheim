@@ -141,8 +141,8 @@ namespace Villheim.Logic.Villagers
 
         private static bool Begin(Villager villager, State state)
         {
-            if (EnvMan.IsNight() || Time.time < state.NextLook || Roles.BackgroundOf(villager) != Roles.Background.Carer ||
-                Village.Calendar.FieldsRest)
+            if (EnvMan.IsNight() || Time.time < state.NextLook ||
+                (Roles.BackgroundOf(villager) != Roles.Background.Carer && !Elders.IsElder(villager)) || Village.Calendar.FieldsRest)
             {
                 return false;
             }
@@ -182,6 +182,9 @@ namespace Villheim.Logic.Villagers
                 Foragers.Remove(villager.VillageId);
             }
         }
+
+        /// <summary>The nearest bush or patch near the village that gives something to eat as it is (for the hurt, Healing).</summary>
+        public static Pickable NearestFood(int villageId, Vector3 hearth, Vector3 from) => Nearest(villageId, hearth, from);
 
         private static Pickable Nearest(int villageId, Vector3 hearth, Vector3 from)
         {

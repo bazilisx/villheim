@@ -39,7 +39,91 @@ namespace Villheim.Logic.Villagers
         private static List<string> Names(string text) =>
             (text ?? "").Split(',').Select(n => n.Trim()).Where(n => n.Length > 0).ToList();
 
+        // Default leans, by words in the name the game shows for each style (Tyler, 2026-11-09: sorting every style by
+        // hand was too much; these are a start to correct). A style can be in more than one lean.
+        private static readonly Dictionary<string, string[]> LeanWords = new Dictionary<string, string[]>(StringComparer.OrdinalIgnoreCase)
+        {
+            { "northern", new[] { "braid", "long", "ponytail", "royal", "matronly", "gathered" } },
+            { "southern", new[] { "short", "loc", "shav", "bald", "parted", "sideswept", "bun", "crop" } },
+            { "steppe", new[] { "ponytail", "topknot", "bun", "mohawk", "shav", "sideswept", "speeddemon", "tail" } },
+            { "celtic", new[] { "curl", "long", "wild", "scruff", "pulledback", "twin", "neat" } },
+        };
+
+        private static bool _seeded;
+
+        /// <summary>The styles whose shown name has one of the lean's words, among every hair the game has.</summary>
+        public static List<string> DefaultLean(string lean)
+        {
+            if (!LeanWords.TryGetValue(lean ?? "", out string[] words))
+            {
+                return new List<string>();
+            }
+
+            return VillagerLooks.AllHair().Where(style =>
+            {
+                string shown = new string(VillagerLooks.ShownName(style).ToLowerInvariant().Where(char.IsLetter).ToArray());
+                return words.Any(w => shown.Contains(w));
+            }).ToList();
+        }
+
+        /// <summary>
+        /// Once per game, when the hair styles are known: every lean still empty in HairLeans gets its default list,
+        /// written to the config so it shows in the config manager to be corrected there or on the rig.
+        /// </summary>
+        private static void SeedLeans(Dictionary<string, List<string>> map)
+        {
+            if (_seeded || ObjectDB.instance == null || Localization.instance == null || LogicConfig.HairLeans == null ||
+                VillagerLooks.AllHair().Count == 0)
+            {
+                return;
+            }
+
+            _seeded = true;
+            var filled = new List<string>();
+            foreach (string lean in LeanWords.Keys)
+            {
+                if (!map.TryGetValue(lean, out List<string> styles) || styles.Count == 0)
+                {
+                    map[lean] = DefaultLean(lean);
+                    filled.Add($"{lean}: {string.Join(", ", map[lean].Select(h => $"{h} ({VillagerLooks.ShownName(h)})"))}");
+                }
+            }
+
+            if (filled.Count > 0)
+            {
+                WriteLeans(map);
+                VillheimPlugin.Log.LogInfo("Villheim: default hair leans filled in (HairLeans, correct what looks wrong):\n   " +
+                                           string.Join("\n   ", filled));
+            }
+        }
+
+        /// <summary>'vh hair leans': every lean's styles with their shown names, and the defaults by name.</summary>
+        public static string LeansCommand()
+        {
+            Dictionary<string, List<string>> map = Leans();
+            var lines = new List<string> { "Villheim hair leans (HairLeans in 3d - Hair review):" };
+            foreach (KeyValuePair<string, List<string>> lean in map)
+            {
+                lines.Add($"   {lean.Key}: {string.Join(", ", lean.Value.Select(h => $"{h} ({VillagerLooks.ShownName(h)})"))}");
+            }
+
+            lines.Add("   In no lean: " + string.Join(", ", VillagerLooks.AllHair().Where(h => !map.Values.Any(l => l.Contains(h, StringComparer.OrdinalIgnoreCase)))
+                .Select(h => $"{h} ({VillagerLooks.ShownName(h)})")));
+            return string.Join("\n", lines);
+        }
+
         private static Dictionary<string, List<string>> Leans()
+        {
+            Dictionary<string, List<string>> map = ReadLeans();
+            if (!_seeded)
+            {
+                SeedLeans(map);
+            }
+
+            return map;
+        }
+
+        private static Dictionary<string, List<string>> ReadLeans()
         {
             var map = new Dictionary<string, List<string>>(StringComparer.OrdinalIgnoreCase);
             foreach (string part in (LogicConfig.HairLeans?.Value ?? DefaultLeans).Split(';'))

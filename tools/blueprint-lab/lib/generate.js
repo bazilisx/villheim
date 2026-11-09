@@ -469,6 +469,11 @@ function generate(req) {
   const dctx = { K, C, cultureKey, T, type, stage, decor, biome, plan, F, SH, storeys, edges, verts, cells, door, wings, flat,
     ladders, flue, dragonsHere, R: rng(seed * 31337 + 7) };
   dctx.profile = Details.profile(dctx);
+  dctx.notes = b.notes;
+  // wall dormers: Frankish, English, Slavic and medieval cultures, from stage 2 (bench: req.details.dormers)
+  dctx.profile.dormers = +stage[1] >= 2 && ['frankish-norman', 'anglo-saxon', 'castle-medieval', 'slavic', 'norse-highland', 'baltic'].includes(cultureKey) &&
+    ['home', 'tavern', 'longhouse', 'storage', 'workshop'].includes(type) && dctx.R() < 0.45;
+  dctx.profile.dormerPair = dctx.R() < 0.5;
   if (req.details) Object.assign(dctx.profile, req.details);
   dctx.wallSegment = wallSegment;
 
@@ -1324,7 +1329,44 @@ function gablePieces(K, C, w, top, r, ends, vent, dctx) {
     }
   });
   if (dctx && !(C.kick && (C.eaves || 1) > 1)) Details.bargeboards(K, C, w, dctx, rows, ends, add, low, pivot, r);
+  if (dctx && dctx.profile.dormers && r === 2 && !C.stoneWalls && w === dctx.wings[0]) dormers(K, w, top, add, dctx);
   return out;
+}
+
+// Wall dormers (cross gables) on the front slope of a 45 degree roof: a 4 m gable standing on the wall top, its own
+// small roof running back into the main roof, which carries on under it (the usual Valheim way: the dormer sits on
+// the roof, nothing is cut away). One over the middle of the front, or a pair on a long front.
+function dormers(K, w, top, add, dctx) {
+  if (w.W < 4 || w.D < 3) return;
+  // the front: the long side facing -z in the world
+  const sv = toWorld(w, 0, 1, 0)[1] < w.cz ? 1 : -1;
+  const grid = [];
+  for (let u = -w.W + 2; u <= w.W - 2; u += 2) grid.push(u);
+  const mid = grid.reduce((m, u) => (Math.abs(u) < Math.abs(m) ? u : m), grid[0]);
+  const pair = w.W >= 8 ? [grid.find(u => u >= -w.W / 2 - 0.01), -grid.find(u => u >= -w.W / 2 - 0.01)] : null;
+  const choice = dctx.profile.dormerPair && pair && pair[0] !== pair[1] ? pair : [mid];
+  const other = dctx.wings.filter(o => o !== w);
+  const gable = K.gable45, roof = K.roof45, cap = K.roofTop45;
+  let n = 0;
+  for (const u0 of choice) {
+    // nothing else joins the wall here (another wing, a tower)
+    const [fx, fz] = toWorld(w, u0, sv * (w.D + 1), 0);
+    if (other.some(o => inside(o, fx, fz, 0.5))) continue;
+    // nor does another wing's roof cover the patch of this roof it would stand on (a cross wing flush with the front)
+    if (other.some(o => [[-2.5, 0.5], [2.5, 0.5], [0, 0.5], [-2.5, 2.5], [2.5, 2.5]].some(([du, dv]) => { const [x, z] = toWorld(w, u0 + du, sv * (w.D - dv), 0); return inside(o, x, z, 0.3); }))) continue;
+    // a dormer over the door takes the place of a gable porch there
+    if (Math.abs(toWorld(w, u0, 0, 0)[0] - dctx.door.x) < 3 && sv * (dctx.door.z - w.cz) > 0) dctx.profile.gablePorch = false;
+    const v = sv * w.D, vr = sv * (w.D - 1);
+    // the front triangle in two halves, each falling away from the middle
+    add(gable, u0 - 1, top, v, 0, 'gable', top + 2);
+    add(gable, u0 + 1, top, v, 180, 'gable', top + 2);
+    // its roof, two 2 m pieces back to where the main roof meets its ridge, and a ridge cap
+    add(roof, u0 - 1, top + 1, vr, 270, 'roof', top + 1);
+    add(roof, u0 + 1, top + 1, vr, 90, 'roof', top + 1);
+    add(cap, u0, top + 2, vr, 90, 'cap', top + 2.3);
+    n++;
+  }
+  if (n) dctx.notes.push(n > 1 ? 'Two wall dormers on the front slope.' : 'A wall dormer over the middle of the front.');
 }
 function gableFill(K, add, u, from, v, h, stone) {
   const wall = /^(wood_wall_log|blackmarble|stone|Piece_grausten)/.test(K.wall) ? 'woodwall' : K.wall;

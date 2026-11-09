@@ -131,6 +131,15 @@ const PARTS = {
     flags: ['canopyBed'],
     focus: 'auto', inside: true,
   },
+  dormer: {
+    bases: [
+      { type: 'home', biome: 'Meadows', stage: 's3', decor: 'd3', culture: 'anglo-saxon', roof: 'gable' },
+      { type: 'tavern', biome: 'Black Forest', stage: 's3', decor: 'd3', culture: 'frankish-norman', roof: 'gable' },
+      { type: 'longhouse', biome: 'Black Forest', stage: 's3', decor: 'd3', culture: 'slavic', roof: 'gable' }],
+    flags: ['dormers', 'dormerPair'],
+    requires: { dormerPair: 'dormers' },
+    focus: () => ({ az: 20, el: 18, crop: null }),
+  },
   wall: {
     bases: [
       { type: 'longhouse', biome: 'Meadows', stage: 's3', decor: 'd3' },

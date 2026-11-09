@@ -349,7 +349,8 @@ Built-up furniture (`lib/kitbash.js` `BUILT_KITS`), hand-made in the library's f
 - On stations: the smithy's forge gets an anvil, the grinding wheel, the tool rack on the wall behind, a quench barrel
   and an armor stand; the workshop's workbench the chopping block, the tool shelf and a barrel.
 - In corners: the tavern's serving corner (stacked barrels behind a half-wall counter with meads); a bath corner.
-- Under stairs: two barrels under the highest flight, below the audit's stair box.
+- Under stairs: a wood chest under the highest flight (two barrels where the village makes them), below the audit's
+  stair box.
 - Walls between the furniture: every 2.5 m at d3 (3.2 m at d2) where nothing hangs between 1.3 and 2.4 m within
   0.9 m either side, a ledge with a candle and a mead, or a banner.
 
@@ -357,7 +358,9 @@ A kit's core pieces (the table of a dining set, the forge's anvil, the half wall
 whose core piece cannot go is left out, so no rug or bench is left without its table. Each building type comes first
 with its own: the home's bedside, the smithy's forge, the workshop's bench, the tavern's serving corner and kitchen
 wall. In homes and their rooms the decorator's second and later tables in one room go, with their seats, so each room
-has one dining place (`spreadTables`). Pots, bread and cooked meat are left out: their proxies draw as grey-green
+has one dining place (`spreadTables`). A rug the furnishing laid with nothing standing on it (four of a table's, bed's
+or bench's five footprint points on the rug) goes under the nearest of them within 2.5 m, long side along theirs, or
+out when that one has a rug already or there is none (`seatRugs`). Pots, bread and cooked meat are left out: their proxies draw as grey-green
 boxes and planks.
 
 Placing. After the furnishing, `furnishRooms` reads every room as the decorator does (`readLevel`), with its anchors:
@@ -384,8 +387,9 @@ Materials (D-066). `pieces.js` `minor`: rugs, banners, food and feasts, pots, ca
 props, treasure, signs. They pass the materials check in any biome, and the generator's last pass (`biomeSafe`) keeps
 them; stations, beds, chests, tables, seats, fires and building pieces still need their own.
 
-Cost: in Node the 154-design comparison (every type, seven biomes, s2d2 and s3d3) took 88 ms a design without the
-library and 183 ms with it (second round, 2026-11-09).
+Cost: in Node the 154-design comparison (every type, seven biomes, s2d2 and s3d3) took 81 ms a design without the
+library and 125 ms with it (2026-11-09, after filing pieces by their own reach, reading the rooms once and passing
+over free-floor spots with fixed furniture on them).
 
 ### Items on stands (for the mod)
 

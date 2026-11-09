@@ -5758,34 +5758,64 @@ function fillSlot(m, biome, ctx) {
   return list ? list.find(okN) || null : null;
 }
 
-// A small grid of boxes for the fitter: everything in the building, and what it adds as it goes. Pieces are filed by
-// their pivot; a piece's box is worked out the first time a query comes near it (most of a building never is).
+// A small grid of boxes for the fitter: everything in the building, and what it adds as it goes. A piece is filed in
+// every 2 m cell its reach from its pivot can touch (its solids, or its catalog size, by prefab); its box is worked out
+// the first time a query comes near it (most of a building never is).
+const REACH_B = new Map();
+function reachOf(name) {
+  if (REACH_B.has(name)) return REACH_B.get(name);
+  const L = shapesB().local(name), sz = PB.piece(name).size;
+  let r = Math.hypot(sz[0], sz[2]) / 2;
+  if (L && L.length) for (const o of L) for (const sx of [-1, 1]) for (const sy of [-1, 1]) for (const sz2 of [-1, 1]) {
+    const x = o.c[0] + sx * o.a[0][0] * o.h[0] + sy * o.a[1][0] * o.h[1] + sz2 * o.a[2][0] * o.h[2];
+    const z = o.c[2] + sx * o.a[0][2] * o.h[0] + sy * o.a[1][2] * o.h[1] + sz2 * o.a[2][2] * o.h[2];
+    r = Math.max(r, Math.hypot(x, z));
+  }
+  r += 0.3;
+  REACH_B.set(name, r);
+  return r;
+}
 function boxIndex(pieces) {
   const Ck = checksB(), cells = new Map(), all = [];
   const key = (i, j) => i * 65536 + j;
-  const REACH = 4; // no piece reaches further than this from its pivot (the oak table, 4 m beams, the carvings)
   const add = (p, b) => {
-    const rec = { p, _b: b || null };
+    const rec = { p, _b: b || null, cells: [] };
     Object.defineProperty(rec, 'b', { get() { if (!this._b) this._b = Ck.aabbShapes(this.p); return this._b; } });
     all.push(rec);
-    const k = key(Math.floor(p.x / 2), Math.floor(p.z / 2));
-    if (!cells.has(k)) cells.set(k, []);
-    cells.get(k).push(rec);
+    const r = reachOf(p.name);
+    for (let i = Math.floor((p.x - r) / 2); i <= Math.floor((p.x + r) / 2); i++) for (let j = Math.floor((p.z - r) / 2); j <= Math.floor((p.z + r) / 2); j++) {
+      const k = key(i, j);
+      if (!cells.has(k)) cells.set(k, []);
+      cells.get(k).push(rec);
+      rec.cells.push(k);
+    }
     return rec;
   };
   for (const p of pieces) add(p);
   const audit = decorB().auditContext(pieces);
+  // doors and stairs, few in a building, kept apart for the door and stair tests
+  const passages = all.filter(r => ['door', 'stair'].includes(PB.piece(r.p.name).role) && (!r.p.decor || r.p.trim));
+  let stamp = 0;
   const near = (b, pad = 0.2) => {
     const out = [];
-    const i0 = Math.floor((b.x0 - pad - REACH) / 2), i1 = Math.floor((b.x1 + pad + REACH) / 2), j0 = Math.floor((b.z0 - pad - REACH) / 2), j1 = Math.floor((b.z1 + pad + REACH) / 2);
-    for (let i = i0; i <= i1; i++) for (let j = j0; j <= j1; j++) for (const r of cells.get(key(i, j)) || []) {
+    stamp++;
+    for (let i = Math.floor((b.x0 - pad) / 2); i <= Math.floor((b.x1 + pad) / 2); i++) for (let j = Math.floor((b.z0 - pad) / 2); j <= Math.floor((b.z1 + pad) / 2); j++) for (const r of cells.get(key(i, j)) || []) {
+      if (r.seen === stamp) continue;
+      r.seen = stamp;
       const o = r.b;
       if (o.x0 <= b.x1 + pad && o.x1 >= b.x0 - pad && o.z0 <= b.z1 + pad && o.z1 >= b.z0 - pad) out.push(r);
     }
     return out;
   };
-  const remove = p => { const l = cells.get(key(Math.floor(p.x / 2), Math.floor(p.z / 2))); if (l) for (let i = l.length - 1; i >= 0; i--) if (l[i].p === p) l.splice(i, 1); const k = all.findIndex(r => r.p === p); if (k >= 0) all.splice(k, 1); audit.remove(p); };
-  return { add: (p, b) => { audit.add(p); return add(p, b); }, near, remove, all, audit };
+  const remove = p => {
+    const k0 = all.findIndex(r => r.p === p);
+    if (k0 < 0) return;
+    const rec = all[k0];
+    for (const k of rec.cells) { const l = cells.get(k); const i = l ? l.indexOf(rec) : -1; if (i >= 0) l.splice(i, 1); }
+    all.splice(k0, 1);
+    audit.remove(p);
+  };
+  return { add: (p, b) => { audit.add(p); const r = add(p, b); if (['door', 'stair'].includes(PB.piece(p.name).role) && (!p.decor || p.trim)) passages.push(r); return r; }, near, remove, all, audit, passages };
 }
 
 // The rooms of a building as the decorator saw them, with their role.
@@ -6006,7 +6036,8 @@ function placeable(p, bx, mm, i, b, ctx, room, idx, zones, made, clipOf, anc, fi
   // the audit's own box for the piece (the furniture table's size where it has one)
   const it = D.itemOf(p), ob = it.b;
   void yawP;
-  for (const r of idx.near(bx, 2.6)) {
+  for (const r of idx.passages) {
+    if (Math.abs(r.p.x - cx) > 4 || Math.abs(r.p.z - cz) > 4) continue;
     const q = r.p, qi = r.b.info;
     // built gates count (the stalls' gates are furniture made of building pieces)
     if ((q.decor && !q.trim) || !(qi.role === 'door' || qi.role === 'stair')) continue;
@@ -6087,13 +6118,13 @@ function budget(decor, area) {
   return Math.max(2, Math.min(8, Math.round(area / 12)));
 }
 
-function furnishRooms(b, ctx, zones, R2, extra) {
+function furnishRooms(b, ctx, zones, R2, extra, rooms) {
   const Ck = checksB();
   const lib = library().assemblies.concat(extra || []);
   const idx = boxIndex(b.pieces);
   let placed = 0;
   const used = {};
-  for (const room of roomsB(b, ctx)) {
+  for (const room of rooms || roomsB(b, ctx)) {
     const kinds = ROOM_KINDS[room.role] || [room.role];
     if (!kinds.length) continue;
     const anchors = anchorsOf(room, b);
@@ -6104,7 +6135,7 @@ function furnishRooms(b, ctx, zones, R2, extra) {
     // each built kit once in a building (shelves, cabinets and drapes twice), each mined assembly twice
     // each built kit once in a building (shelves, cabinets, drapes, bedsides, alcoves twice), each mined assembly
     // twice; dining sets one to a room, a grid of them in a tavern's or a hall's main room (one per 25 m2)
-    const many = ['BK-shelf', 'BK-cabinet', 'BK-drapes', 'BK-bedside', 'BK-bedside2', 'BK-alcove', 'BK-alcove2', 'BK-understair'];
+    const many = ['BK-shelf', 'BK-cabinet', 'BK-drapes', 'BK-bedside', 'BK-bedside2', 'BK-alcove', 'BK-alcove2', 'BK-understair', 'BK-understair2'];
     const sets = ['tavern', 'hall', 'temple'].includes(room.role) ? Math.max(1, Math.min(4, Math.floor(room.m.area / 25))) : 1;
     let setsHere = 0;
     const cap = a => (a.dining ? (setsHere < sets ? 9 : 0) : a.built ? (many.includes(a.id) ? 2 : 1) : 2);
@@ -6125,7 +6156,7 @@ function furnishRooms(b, ctx, zones, R2, extra) {
     const firsts = cands.filter(x => x.a.first && x.a.first.includes(ctx.type));
     // a dining set first in every room that takes one (from d2), drawn by weight
     const dining = cands.filter(x => x.a.dining);
-    let diningTries = ctx.decor === 'd1' ? 0 : sets * 3;
+    let diningTries = ctx.decor === 'd1' ? 0 : sets * 2 + 1;
     let tries = 0;
     const takenAnchors = [];
     let misses = 0;
@@ -6150,12 +6181,15 @@ function furnishRooms(b, ctx, zones, R2, extra) {
       }
       const a = pick.a;
       if ((used[a.id] || 0) >= cap(a)) { cands.splice(cands.indexOf(pick), 1); if (!cands.length) break; continue; }
-      const ancs = anchors.filter(an => takes(an, a) && !takenAnchors.some(t => Math.hypot(t.x - an.x, t.z - an.z) < 1.2 && t.anchor === an.anchor));
+      // a free-floor spot with something fixed on it (a bed, a station, the fire, built furniture, another set) is passed by
+      const fixed = an => idx.near({ x0: an.x - 1.2, x1: an.x + 1.2, z0: an.z - 1.2, z1: an.z + 1.2 }, 0).some(r => r.p.decor && !r.b.pass &&
+        r.b.y0 < room.m.stand + 1.5 && r.b.y1 > room.m.stand + 0.1 && (r.p.kb || r.p.trim || !['storage', 'seat', 'deco', 'clutter', 'light', 'table', 'rug'].includes(PB.piece(r.p.name).role)));
+      const ancs = anchors.filter(an => takes(an, a) && !takenAnchors.some(t => Math.hypot(t.x - an.x, t.z - an.z) < 1.2 && t.anchor === an.anchor) && (an.anchor !== 'floor' || !fixed(an)));
       // shuffled from the room's own stream
       for (let k = ancs.length - 1; k > 0; k--) { const j = Math.floor(R2() * (k + 1)); const t = ancs[k]; ancs[k] = ancs[j]; ancs[j] = t; }
       let done = false;
-      for (const an of ancs.slice(0, a.anchor === 'floor' ? 30 : 10)) {
-        for (const mir of R2() < 0.5 ? [false, true] : [true, false]) {
+      for (const an of ancs.slice(0, a.anchor === 'floor' ? 16 : 10)) {
+        for (const mir of a.anchor === 'floor' ? [false] : R2() < 0.5 ? [false, true] : [true, false]) {
           const got = fit(b, ctx, room, idx, zones, an, a, mir, fires);
           if (!got) continue;
           // floor kept free
@@ -6219,15 +6253,45 @@ function dressWalls(b, ctx, room, idx, zones, anchors, fires, R2, used) {
   return n;
 }
 
+// Rugs the furnishing laid with nothing standing on them (review 2026-11-09: a rug alone, a chest on a rug): each goes
+// under the nearest table, bed or bench within 2.5 m on its floor, its long side along theirs, or out when that piece
+// has a rug already or there is none.
+function seatRugs(b) {
+  const D = decorB(), I = D._int, F = D.FURNITURE;
+  const box = p => { const [w, , d] = I.size(p.name); return I.obox(p.x, p.z, w, d, I.pyaw(p)); };
+  const holders = b.pieces.filter(p => p.decor && ['table', 'bed', 'seat'].includes(PB.piece(p.name).role) && !/^piece_chair/.test(p.name));
+  const rugs = b.pieces.filter(p => p.decor && !p.kb && PB.piece(p.name).role === 'rug');
+  const out = new Set();
+  let moved = 0;
+  for (const r of rugs) {
+    const rb = box(r);
+    // standing on it: four of the piece's five footprint points (its middle and corners) on the rug
+    const onRug = h => { const hb = box(h); return [[0, 0], [-1, -1], [1, -1], [-1, 1], [1, 1]].filter(([u, v]) => {
+      const x = hb.x + u * hb.hw * hb.c + v * hb.hd * hb.s, z = hb.z - u * hb.hw * hb.s + v * hb.hd * hb.c; return I.ptDist(rb, x, z) < 0.01; }).length >= 4; };
+    const on = holders.some(h => Math.abs(h.y - r.y) < 0.5 && onRug(h));
+    if (on) continue;
+    const near = holders.filter(h => Math.abs(h.y - r.y) < 0.5 && Math.hypot(h.x - r.x, h.z - r.z) < 2.5).sort((p, q) => Math.hypot(p.x - r.x, p.z - r.z) - Math.hypot(q.x - r.x, q.z - r.z))[0];
+    const taken = near && rugs.concat(b.pieces.filter(p => p.kb && PB.piece(p.name).role === 'rug')).some(o => o !== r && !out.has(o) && Math.abs(o.y - r.y) < 0.3 && I.ptDist(box(o), near.x, near.z) < 0.01);
+    if (!near || taken) { out.add(r); continue; }
+    const [rw, , rd] = I.size(r.name), [hw, , hd] = I.size(near.name);
+    const yaw = normB(I.pyaw(near) + ((rw >= rd) === (hw >= hd) ? 0 : 90));
+    r.x = near.x; r.z = near.z; r.yaw = yaw; r.q = quatB(yaw);
+    moved++;
+    void F;
+  }
+  if (out.size) b.pieces = b.pieces.filter(p => !out.has(p));
+  return moved + out.size;
+}
+
 // Rooms where the furnishing set two tables or more (a house's tables bunched in one wing): the one nearest the
 // room's middle stays with its seats, the rest go with theirs and what stood on them, so each room has one dining
 // place and the library can lay one in a room without. Only in homes and their rooms; halls, taverns, temples and
 // towers keep theirs.
-function spreadTables(b, ctx) {
+function spreadTables(b, ctx, rooms) {
   const Ck = checksB();
   const isTable = p => p.decor && !p.kb && PB.piece(p.name).role === 'table' && !/cartography|workbench|butcher|preptable|magetable/.test(p.name);
   let gone = 0;
-  for (const room of roomsB(b, ctx)) {
+  for (const room of rooms || roomsB(b, ctx)) {
     if (!['home', 'sleeping', 'guest', 'kitchen'].includes(room.role)) continue;
     const m = room.m;
     const tables = b.pieces.filter(p => isTable(p) && m.inside(p.x, p.z) && Math.abs(p.y - m.stand) < 0.4);
@@ -6261,8 +6325,10 @@ function apply(b, ctx, zones) {
   // the interior library last, from its own stream (drawn after everything above, so the rest comes out as before)
   if (X.interiorKit !== false) {
     const R2 = rngB(Math.floor(ctx.R() * 4294967296) ^ 0x6b62);
-    if (ctx.decor !== 'd1') spreadTables(b, ctx);
-    const n = furnishRooms(b, { ...ctx, _R2: R2 }, zones || [], R2, BUILT_KITS);
+    // the rooms are read from the structure alone, so one reading serves both passes
+    const rooms = roomsB(b, ctx);
+    if (ctx.decor !== 'd1') { spreadTables(b, ctx, rooms); seatRugs(b); }
+    const n = furnishRooms(b, { ...ctx, _R2: R2 }, zones || [], R2, BUILT_KITS, rooms);
     if (n) b.notes.push(`${n} furnished corners and walls from the interior library.`);
   }
 }
@@ -6374,9 +6440,11 @@ const BUILT_KITS = [
   kit('BK-bath', 'corner', ['home', 'sleeping'], [
     kp('piece_bathtub', 0, 0, 2.35, 45, 'floor', null, { key: true }), kp('rug_straw', along1(2.9, 0.9)[0], 0, along1(2.9, 0.9)[1], 45, 'floor')],
   { angle: 90, decor: ['d3'], score: 2 }),
-  // storage under the stairs: two barrels and a crate of the highest flight's underside
+  // storage under the stairs: a chest under the highest flight, or two barrels where the village makes them
   kit('BK-understair', 'stair', ['home', 'tavern', 'hall', 'storage', 'workshop', 'sleeping'], [
-    kp('piece_chest_barrel', -0.45, 0, -0.35, 0, 'floor'), kp('piece_chest_barrel', 0.45, 0, -0.35, 0, 'floor')], { score: 8, under: true }),
+    kp('piece_chest_wood', 0, 0, -0.35, 0, 'floor', null, { key: true })], { score: 8, min: 1 }),
+  kit('BK-understair2', 'stair', ['home', 'tavern', 'hall', 'storage', 'workshop', 'sleeping'], [
+    kp('piece_chest_barrel', -0.45, 0, -0.35, 0, 'floor'), kp('piece_chest_barrel', 0.45, 0, -0.35, 0, 'floor')], { score: 8 }),
   // dining sets on the free floor: a table with a bench each side facing it, a rug under them reaching past, a
   // candle and a mead on the table
   kit('BK-dining', 'floor', ['home', 'hall', 'tavern', 'kitchen', 'guest'], [
@@ -6415,7 +6483,7 @@ function fitDebug(b, ctx, room, anc, a) {
   const got = fit(b, ctx, room, idx, ctx.zones || [], anc, a, false, fires);
   return { ok: !!got, why: WHY_B, piece: LAST_B, q: LASTQ_B };
 }
-const apiB = { WALL_DRESS, spreadTables, dressWalls, why: () => WHY_B, _fitDebug: fitDebug, BUILT: BUILT_KITS, apply, library, setLibrary, lite, furnishRooms, anchorsOf, roomsB, fit, barCounter, canopyBed, stalls, dais, vignettes, CLASSES, SLOT, FOOD, BUILT_SLOTS, slotOf, isDecor, canDecor };
+const apiB = { WALL_DRESS, spreadTables, seatRugs, dressWalls, why: () => WHY_B, _fitDebug: fitDebug, BUILT: BUILT_KITS, apply, library, setLibrary, lite, furnishRooms, anchorsOf, roomsB, fit, barCounter, canopyBed, stalls, dais, vignettes, CLASSES, SLOT, FOOD, BUILT_SLOTS, slotOf, isDecor, canDecor };
 if (NODE_B) module.exports = apiB; else window.VHKitbash = apiB;
 
 })();

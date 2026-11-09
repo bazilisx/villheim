@@ -1,0 +1,197 @@
+{
+  "about": "Room layout rules for the blueprint lab (docs/ROOM_LAYOUT.md, D-070). Read by lib/layout.js. Distances in meters at Valheim scale (2 m grid, 0.5 m floor cells, a player about 1 m wide). Ranges are [low, high]; a value inside is drawn per room from the design's layout stream. Weights are relative. Nothing here is placed every time: each rule is a score the decorator's placers add to their own, so the usual tests still decide. Source ids [S#] refer to the list in docs/ROOM_LAYOUT.md.",
+  "version": 1,
+  "scale": { "grid": 2, "cell": 0.5, "player": 1.0, "wall": 0.3, "realToValheim": 1.4 },
+  "clearance": {
+    "mainLane": { "min": 1.2, "want": [1.4, 1.8], "src": "S15 36 in walkway x1.4; S1 two characters pass" },
+    "hallLane": { "min": 1.6, "want": [1.8, 2.2], "roles": ["hall", "tavern", "temple"], "src": "S1, S8 wider reads as the main way" },
+    "sideLane": { "min": 1.0, "want": [1.0, 1.3], "src": "S15 24 to 30 in x1.4, never below one player" },
+    "doorFront": { "depth": [1.5, 2.5], "widthPad": 0.8, "src": "audit 1.2 m box; corpus door depths" },
+    "stairFoot": { "depth": [1.2, 1.8], "src": "audit 0.6 m round the flight" },
+    "bedSide": { "min": 0.7, "want": [0.8, 1.2], "src": "S15" },
+    "seatPullout": { "min": 0.7, "want": [0.9, 1.1], "src": "S16 24 to 30 in" },
+    "workStand": { "min": 1.0, "want": [1.2, 1.6], "src": "S17 one pace" },
+    "stationGap": { "want": [1.5, 2.5], "src": "S17 triangle one to two paces" },
+    "hearthRing": { "min": 0.7, "want": [0.9, 1.4], "src": "decorator fire ring 0.7 m" }
+  },
+  "lanes": {
+    "radius": 0.45,
+    "targets": ["door", "fire", "stair", "focal"],
+    "walkableShare": [0.45, 0.65],
+    "neverRemove": ["bed", "fire", "craft", "table"],
+    "keepFirstChest": true,
+    "src": "S8 circulation; corpus: half the floor furnished at most"
+  },
+  "weight": { "zone": 2.0, "orient": 1.0 },
+  "zones": {
+    "far": { "v": [0.62, 1.0] },
+    "mid": { "v": [0.3, 0.75] },
+    "near": { "v": [0.0, 0.42] },
+    "side": { "u": [0.3, 1.0] },
+    "other": { "u": [-1.0, -0.3] },
+    "far-side": { "v": [0.5, 1.0], "u": [0.25, 1.0] },
+    "far-other": { "v": [0.5, 1.0], "u": [-1.0, -0.25] },
+    "near-side": { "v": [0.0, 0.5], "u": [0.25, 1.0] },
+    "near-other": { "v": [0.0, 0.5], "u": [-1.0, -0.25] },
+    "center": { "v": [0.3, 0.75], "u": [-0.45, 0.45] },
+    "far-center": { "v": [0.7, 1.0], "u": [-0.4, 0.4] },
+    "fire": { "fire": [2.4, 4.0] },
+    "fire-far": { "fire": [2.4, 4.5], "v": [0.45, 1.0] },
+    "window": { "window": 1.5 },
+    "long-walls": { "longWall": true },
+    "corners": { "corner": true },
+    "door-side": { "v": [0.0, 0.45], "corner": true },
+    "anywhere": {}
+  },
+  "orient": {
+    "bed": {
+      "longWall": 0.6, "underWindow": -0.8, "doorWall": -0.7, "inDoorLine": -1.4, "sideAccess": 1.0, "nearFire": -1.2,
+      "sideToWall": [0.1, 0.3],
+      "src": "S15 head to the longest unbroken wall, see the door without lining up with it, not under a window; S10 box beds"
+    },
+    "table": { "alongLong": 0.6, "window": 0.0, "src": "S13, S16 long tables on the long axis" },
+    "station": { "light": 0.0, "doorDist": [2.2, 6.0], "src": "S17; light from door or window (inference)" },
+    "storage": { "corner": 0.6, "group": 2, "src": "S10, S12 storage at the ends, under benches; D-016 sorted groups" },
+    "bench": { "longWall": 2.0, "src": "S10, S11 benches along both long walls facing the fire" },
+    "highSeat": { "src": "S11 middle of the higher bench; S13 dais at the upper end" }
+  },
+  "roles": {
+    "home": {
+      "focal": "fire",
+      "templateShare": [0.35, 0.6],
+      "schemes": [
+        { "id": "far-sleep", "w": 3, "zones": { "bed": "far", "table": "mid", "storage": "door-side", "station": "near-side" }, "src": "S12, S13 private at the upper end" },
+        { "id": "side-sleep", "w": 2, "zones": { "bed": "far-side", "table": "other", "storage": "near-other", "station": "near-side" } },
+        { "id": "corner-sleep", "w": 1.5, "zones": { "bed": "far-other", "table": "window", "storage": "door-side", "station": "far-side" }, "orient": { "table": { "window": 1.2 } } },
+        { "id": "hearth-ring", "w": 1, "zones": { "bed": "long-walls", "table": "fire", "storage": "corners", "station": "near" }, "src": "S10 benches and beds round the fire" },
+        { "id": "box-bed", "w": 0.6, "zones": { "bed": "far", "table": "fire", "storage": "door-side", "station": "near-other" }, "orient": { "bed": { "sideToWall": [0.7, 0.9] } }, "src": "S10 box bed for the master and mistress" }
+      ]
+    },
+    "sleeping": {
+      "focal": "bed",
+      "schemes": [
+        { "id": "far-wall", "w": 3, "zones": { "bed": "far", "storage": "near", "table": "near-side" } },
+        { "id": "facing-walls", "w": 1.5, "zones": { "bed": "long-walls", "storage": "far-center", "table": "near" } },
+        { "id": "eaves", "w": 1, "zones": { "bed": "long-walls", "storage": "corners", "table": "far-center" }, "orient": { "bed": { "sideToWall": [0.5, 0.8] } } },
+        { "id": "corner", "w": 1.2, "zones": { "bed": "far-side", "storage": "door-side", "table": "window" } }
+      ]
+    },
+    "guest": {
+      "focal": "bed",
+      "schemes": [
+        { "id": "rows", "w": 2, "zones": { "bed": "long-walls", "storage": "near", "table": "far-center" }, "src": "S14 two or three beds to a chamber" },
+        { "id": "far-wall", "w": 2, "zones": { "bed": "far", "storage": "near", "table": "near-side" } }
+      ]
+    },
+    "hall": {
+      "focal": "highSeat",
+      "templateShare": [0.3, 0.5],
+      "schemes": [
+        { "id": "benches", "w": 2, "zones": { "table": "center", "storage": "door-side", "highSeat": "long-mid", "bench": "long-walls", "bed": "far" }, "src": "S10, S11" },
+        { "id": "dais", "w": 2, "zones": { "table": "mid", "storage": "door-side", "highSeat": "far-mid", "bench": "long-walls", "bed": "far-side" }, "orient": { "table": { "alongLong": 1.2 } }, "src": "S13" },
+        { "id": "open", "w": 1, "zones": { "table": "fire", "storage": "corners", "highSeat": "far-mid", "bench": "anywhere", "bed": "far-other" } }
+      ]
+    },
+    "tavern": {
+      "focal": "bar",
+      "templateShare": [0.3, 0.55],
+      "schemes": [
+        { "id": "bar-back", "w": 2, "zones": { "table": "mid", "storage": "far", "fermenter": "far", "station": "far" }, "src": "S14 tap and casks at the back" },
+        { "id": "bar-side", "w": 2, "zones": { "table": "other", "storage": "far-side", "fermenter": "side", "station": "side" } },
+        { "id": "fireside", "w": 1.2, "zones": { "table": "fire", "storage": "corners", "fermenter": "far-side", "station": "far" } }
+      ]
+    },
+    "kitchen": {
+      "focal": "fire",
+      "schemes": [
+        { "id": "triangle", "w": 2, "zones": { "table": "fire", "storage": "door-side", "station": "fire" }, "src": "S17 work triangle, applied to cooking (inference)" },
+        { "id": "back-store", "w": 1, "zones": { "table": "fire", "storage": "far", "station": "side" }, "src": "S12 cold stores away from the fire" }
+      ]
+    },
+    "storage": {
+      "focal": "none",
+      "schemes": [
+        { "id": "long-walls", "w": 2, "zones": { "storage": "long-walls" } },
+        { "id": "u", "w": 1.5, "zones": { "storage": "far" } },
+        { "id": "corners", "w": 1, "zones": { "storage": "corners" } }
+      ]
+    },
+    "farm": {
+      "focal": "none",
+      "schemes": [
+        { "id": "long-walls", "w": 2, "zones": { "storage": "long-walls" } },
+        { "id": "far", "w": 1, "zones": { "storage": "far" } }
+      ]
+    },
+    "smithy": {
+      "focal": "forge",
+      "schemes": [
+        { "id": "forge-far", "w": 2, "zones": { "forge": "far", "station": "near-side", "storage": "near-other", "table": "near" } },
+        { "id": "forge-side", "w": 2, "zones": { "forge": "far-side", "station": "far-other", "storage": "door-side", "table": "near" } },
+        { "id": "forge-door", "w": 1, "zones": { "forge": "near-side", "station": "far", "storage": "far-other", "table": "far-center" }, "src": "forge near the big door for air and light (inference)" }
+      ]
+    },
+    "workshop": {
+      "focal": "station",
+      "schemes": [
+        { "id": "bench-window", "w": 2, "zones": { "station": "window", "storage": "door-side", "table": "center" }, "orient": { "station": { "light": 1.0 } } },
+        { "id": "bench-far", "w": 2, "zones": { "station": "far", "storage": "near-side", "table": "mid" } },
+        { "id": "bench-side", "w": 1.5, "zones": { "station": "side", "storage": "far-other", "table": "near-other" } }
+      ]
+    },
+    "temple": {
+      "focal": "altar",
+      "schemes": [
+        { "id": "axis", "w": 1, "zones": { "storage": "door-side" } }
+      ]
+    },
+    "guard": {
+      "focal": "none",
+      "schemes": [
+        { "id": "bunk-far", "w": 2, "zones": { "bed": "far", "storage": "near", "table": "center" } },
+        { "id": "bunk-side", "w": 1, "zones": { "bed": "side", "storage": "other", "table": "near" } }
+      ]
+    },
+    "market": {
+      "focal": "table",
+      "schemes": [
+        { "id": "counter", "w": 1, "zones": { "table": "near", "storage": "far" } }
+      ]
+    }
+  },
+  "special": {
+    "long-mid": { "longWall": true, "midWall": true, "src": "S11 the öndvegi in the middle of the long bench" },
+    "far-mid": { "v": [0.75, 1.0], "u": [-0.3, 0.3], "midWall": true, "src": "S13 high table at the upper end" }
+  },
+  "cultures": {
+    "norse": { "home.box-bed": 2, "home.hearth-ring": 1.5, "hall.benches": 2.5, "hall.dais": 0.5 },
+    "norse-forest": { "home.box-bed": 1.6, "home.hearth-ring": 1.4, "hall.benches": 2.2, "hall.dais": 0.6 },
+    "norse-highland": { "home.box-bed": 1.8, "home.hearth-ring": 1.6, "hall.benches": 2.2 },
+    "anglo-saxon": { "home.far-sleep": 1.4, "hall.dais": 1.8, "hall.benches": 1.2 },
+    "frankish-norman": { "home.far-sleep": 1.5, "home.corner-sleep": 1.3, "hall.dais": 2.5, "hall.benches": 0.6 },
+    "castle-medieval": { "home.far-sleep": 1.4, "hall.dais": 3, "hall.benches": 0.4, "tavern.bar-side": 1.4 },
+    "celtic": { "home.hearth-ring": 2.5, "sleeping.facing-walls": 1.5, "hall.open": 2 },
+    "celtic-crannog": { "home.hearth-ring": 2.5, "hall.open": 2 },
+    "baltic": { "home.hearth-ring": 1.6, "home.side-sleep": 1.3 },
+    "fen-folk": { "home.hearth-ring": 1.8, "home.side-sleep": 1.4 },
+    "slavic": { "home.corner-sleep": 2, "home.side-sleep": 1.3, "kitchen.triangle": 1.5 },
+    "saami": { "home.hearth-ring": 3, "guard.bunk-side": 1.5 },
+    "steppe": { "home.hearth-ring": 3, "hall.open": 2 },
+    "byzantine": { "home.corner-sleep": 1.4, "hall.dais": 1.6, "workshop.bench-window": 1.5 },
+    "middle-eastern": { "home.side-sleep": 1.6, "hall.open": 1.5, "workshop.bench-window": 1.6 },
+    "lamari": { "home.hearth-ring": 1.5, "home.side-sleep": 1.3 },
+    "dwarven": { "workshop.bench-far": 1.6, "smithy.forge-far": 1.6 },
+    "east-asian": { "home.side-sleep": 1.5, "hall.dais": 1.3 }
+  },
+  "variance": {
+    "schemeSpread": 1.0,
+    "villageLean": [1.0, 2.2],
+    "zoneJitter": [0.0, 0.12],
+    "sideFlip": 0.5,
+    "src": "S1 repeated detail is noticed first; S3 every interior decorated on its own"
+  },
+  "persona": {
+    "about": "ctx.layout = { tidy: 0..1, prefs: { '<role>.<scheme>': mult, '<kind>.<zone>': mult }, village: number }. tidy near 1 keeps anchors on the zone and the grid; near 0 widens the zones and lowers the zone weight so the layout wanders. village seeds a lean shared by every house of one village.",
+    "tidyDefault": 0.6
+  }
+}

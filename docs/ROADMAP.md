@@ -238,9 +238,15 @@ well (Tyler, 2026-11-08). The Features tab of the review sheet (`docs/features/b
 - [ ] Review the Generated tab; Yes and No feed the scorer (`lab/train_scorer.py`).
 - [ ] Decorator takes over Phase D: strip any design to d1 and furnish to d2 and d3 (`lib/decorate.js`, built
       2026-11-08 night; try it on the board's d3 saves).
-- [ ] Exact piece shapes for the lab's pictures from an in-game export of each piece's collider. (`vh exportpieces`
-      and the lab's loader built 2026-11-08 day; run it in game and copy `BepInEx/config/Villheim/pieces.json` into
-      `tools/blueprint-lab/data/`.)
+- [x] Exact piece shapes for the lab's pictures and checks: the game's colliders read from the game files on Tyler's
+      PC (models v2, 2026-11-09; `data/piece-solids.json`, `lib/shapes.js`; checks use them by default).
+- [x] Building details and motifs from the best-liked builds, component bench, design critic, new parts (stairs,
+      dormers, chimney stacks, lean-tos, hearthstones, kitchens, bar counters, canopy beds, barn stalls) (2026-11-09).
+- [ ] Next for building quality (2026-11-09 review): roof overhangs (D-059), an upper storey over a loggia on posts or a
+      jetty, varied heights between wings, inner roof corners at L and T valleys, yards and gates (D-060), better
+      proxies for roof corners and carvings, the middle-eastern court tavern fire, the two middle-eastern temples.
+- [ ] Later, for Tyler to look at: redraw `docs/rooms` and `docs/generated` with the v2 models, a Motifs tab, before
+      and after renderer pictures, the renderer preview page on Tyler's PC, republish the lab page.
 - [x] Repair tab: fill missing pieces of an uploaded blueprint from rows, stacks, floors, mirror and the build's own
       patterns, with a confidence for each (2026-11-08 day; measured accuracy in `docs/BLUEPRINT_LAB.md`).
 - [ ] Millénaire translation pilot (2026-11-08, branch `night2/mc`, `docs/MC_TRANSLATION.md`): converter and

@@ -3,10 +3,14 @@
 Current facts only. Read this at the start of a session. Narrative is in `docs/daily-notes/`, goals in
 `docs/ROADMAP.md`, how-to in `docs/DEVELOPMENT.md`.
 
-## Current State (as of 2026-11-08)
+## Current State (as of 2026-11-09)
 
-- **Next session:** work the open bug list in the 2026-11-08 note, Session 12 (round 5 results, build 0908775). Room
-  templates unfinished on feat/room-templates; lab structure on fix/lab-round3.
+- **Next session:** work the open bug list in the 2026-11-08 note, Session 12 (round 5 results, build 0908775). Read
+  Decisions D-059 to D-064 (overhangs, yards, game hit boxes, screenshots folder, community renders, stairs).
+- **Blueprint lab, building quality (2026-11-09 overnight, Session 13, not tested in game):** room templates, exterior
+  details and motifs from the best-liked builds, game-measured piece models with the game's colliders in the checks,
+  a design critic, the component bench (`lab/bench.js`), and new parts: stairs, dormers, chimney stacks, lean-tos,
+  hearthstones, kitchens, bar counters, canopy beds, barn stalls. Parts table in `docs/BLUEPRINT_LAB.md`.
 - **Design review (the current work):** how-to for Tyler in `docs/DESIGN_REVIEW_GUIDE.md`. Review sheet
   https://docs.google.com/spreadsheets/d/1rHaZArWhEa8V43UTZePM9EQSBwS6bvjsmAFPhnlQs6o/edit (tabs Pass 2, Review,
   All data, Variants, Mods; sheet script `scripts/review-sheet.gs`).
@@ -111,6 +115,8 @@ Current facts only. Read this at the start of a session. Narrative is in `docs/d
 - Use PlanBuild blueprints and prefabs as design sources; interior and exterior upgrades; biome cultures.
 
 ## Recent milestones
+
+- **2026-11-09 (building details, motifs, game colliders, component bench, new parts)** - see docs/daily-notes/2026-11/2026-11-08.md
 
 - **2026-11-08 (test rounds 4 and 5)** - see docs/daily-notes/2026-11/2026-11-08.md
 - **2026-11-08 (test round 3 fixes merged)** - see docs/daily-notes/2026-11/2026-11-08.md

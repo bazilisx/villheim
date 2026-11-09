@@ -875,13 +875,16 @@ function chimney(b, ctx, v) {
   void stoneOK;
   const piece = stone ? K.stoneWall : K.wallHalf, course = stone && /2x2/.test(K.stoneWall) ? 2 : 1;
   const yRoof = v.kind === 'ridge' ? v.y : ctx.top; // the ridge, or the flat roof
-  const yTop = yRoof + (stone ? 2 : 1);
+  // under a ridge with no floor to pass through, a smoke louver: the ridge caps raised 0.6 m on short posts over the
+  // opening, open at the sides (the Norse ljore), in place of a plank box standing on the ridge
+  const louver = v.kind === 'ridge' && v.from >= yRoof - 0.01;
+  const yTop = louver ? yRoof + 0.1 : yRoof + (stone ? 2 : 1);
   // floors above the fire inside the chimney's footprint come out (the upper floors and a flat roof)
   b.pieces = b.pieces.filter(p => !(P.piece(p.name).role === 'floor' && !p.decor && p.y > ctx.F + 0.5 && inRect(r, p.x, p.z)));
   const sides = [];
   for (let x = r.x0 + 1; x < r.x1; x += 2) { sides.push([x, r.z0, 0]); sides.push([x, r.z1, 0]); }
   for (let z = r.z0 + 1; z < r.z1; z += 2) { sides.push([r.x0, z, 90]); sides.push([r.x1, z, 90]); }
-  for (let y = v.from; y < yTop - 0.01; y += course) for (const [x, z, yaw] of sides) b.put(piece, x, y + course / 2, z, yaw);
+  if (!louver) for (let y = v.from; y < yTop - 0.01; y += course) for (const [x, z, yaw] of sides) b.put(piece, x, y + course / 2, z, yaw);
   if (!stone) {
     // the cap: short posts at the corners, the ridge caps (or flat roof caps) half a metre over the box
     const cap = v.caps ? v.caps : null;
@@ -889,7 +892,7 @@ function chimney(b, ctx, v) {
     if (cap) for (const c of cap) b.put(c.name, c.x, yTop + 0.5, c.z, c.yaw);
     else for (let x = r.x0 + 1; x < r.x1; x += 2) for (let z = r.z0 + 1; z < r.z1; z += 2) b.put(K.floor, x, yTop + 0.55, z);
   }
-  b.notes.push(stone ? 'Stone chimney over the fire.' : 'Plank chimney over the fire with a raised cap for the smoke.');
+  b.notes.push(stone ? 'Stone chimney over the fire.' : louver ? 'A smoke louver on the ridge over the fire.' : 'Plank chimney over the fire with a raised cap for the smoke.');
 }
 
 // Ceiling braziers hang on their chain (the pivot 1.6 m below what it hangs from) from the lowest roof or ceiling piece

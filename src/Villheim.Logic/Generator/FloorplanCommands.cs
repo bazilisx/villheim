@@ -30,6 +30,7 @@ namespace Villheim.Logic.Generator
             "floorplan <shape> <width>x<depth> <room> [biome] [culture] [d1|d2|d3] [seed] [ladder]: one furnished room with no walls or roof, to judge the layout from above; shapes rect, L, round, long; rooms home, sleeping, hall, tavern, kitchen, smithy, workshop, temple, storage",
             "floorplan set [n]: lay out the first n plans of the catalog (up to 24) in a grid, each with its ID sign (FP-001 on), the same IDs as the review sheet's Floorplans tab",
             "floorplan where: the ID of the floorplan you are standing in or nearest to",
+            "floorplan template <RT-0001> [biome]: one room template from the review sheet's Rooms tab, laid out as it is",
         };
 
         private static readonly string[] Usage =
@@ -42,6 +43,7 @@ namespace Villheim.Logic.Generator
             "  decor: d1 bare, d2 lived in (default), d3 rich; seed: a number; ladder: put a ladder in the back corner",
             "vh floorplan set [n]: the first n plans of the catalog (default 12, at most 24) in a grid, IDs FP-001 on.",
             "vh floorplan where: the ID of the plan you are standing in or nearest to.",
+            "vh floorplan template <RT-0001> [biome]: a room template from the Rooms tab as it is, nothing added (biome default dn).",
             "Each plan gets an ID on a sign at its front left corner and a row in BepInEx/config/Villheim/floorplans/floorplans.csv.",
             "Examples:",
             "  vh floorplan rect 10x8 home md norse d2",
@@ -153,6 +155,20 @@ namespace Villheim.Logic.Generator
                 function = "vhFloorplanSet";
                 call = new object[] { n };
                 label = $"floorplans FP-001 to FP-{n:000}";
+            }
+            else if (t[0].Equals("template", StringComparison.OrdinalIgnoreCase))
+            {
+                if (t.Length < 2 || !Regex.IsMatch(t[1], @"^RT-\d+$", RegexOptions.IgnoreCase))
+                {
+                    Say(context, "Usage: vh floorplan template <RT-0001> [biome]");
+                    return;
+                }
+
+                string rt = t[1].ToUpperInvariant();
+                string tb = t.Length > 2 && BiomeCodes.Contains(t[2].ToLowerInvariant()) ? t[2].ToLowerInvariant() : "dn";
+                function = "vhFloorplanTemplate";
+                call = new object[] { rt, tb };
+                label = $"room template {rt}";
             }
             else
             {

@@ -49,6 +49,18 @@ function cellsOf(shape, w, d) {
   return { cells: out, W, D };
 }
 
+// 'vh floorplan template RT-0001 [biome]': one room template laid out as it is, in a plain room of its size (rounded up
+// to the 2 m floor), its fire where the template has it, nothing added, so a room scored in the Rooms tab can be walked
+// through. The biome defaults to the Deep North, where every piece can be made.
+const KIND_ROOM = { home: 'home', sleeping: 'sleeping', hall: 'hall', tavern: 'tavern', kitchen: 'kitchen', smithy: 'smithy', workshop: 'workshop',
+  temple: 'temple', storage: 'storage', living: 'home', other: 'home' };
+function templatePlan(id, biome) {
+  const t = DF.templateById(id);
+  if (!t) throw new Error(`no room template ${id}`);
+  const w = Math.max(4, 2 * Math.ceil((t.W - 0.1) / 2)), d = Math.max(4, 2 * Math.ceil((t.D - 0.1) / 2));
+  return { shape: 'rect', w, d, room: KIND_ROOM[t.kind] || 'home', biome: biome || 'dn', decor: 'd3', seed: 1, id: t.id, template: t };
+}
+
 function floorplan(spec) {
   const shape = SHAPES.includes(spec.shape) ? spec.shape : 'rect';
   const roomKind = ROOMS[spec.room] ? spec.room : 'home';
@@ -92,8 +104,10 @@ function floorplan(spec) {
     b.rooms = [{ ...b.rooms[0], z1: -D + 2 * Math.ceil(D / 2) - 0 }, { ...b.rooms[0], x1: -W + 2 * Math.ceil(W / 2), main: false, door: null }];
     void wx; void dz;
   }
-  const fireAt = R0.fire ? (() => { const c = cells.slice().sort((a, b2) => Math.hypot(a[0], a[1]) - Math.hypot(b2[0], b2[1]))[0]; return { x: c[0], z: c[1] }; })() : null;
-  DF.decorate(b, { use: R0.use, type: R0.type, role: R0.role, decor, biome, culture, R, doorX: door.x, fireAt, usedTemplates: spec.used });
+  const tp = spec.template || null;
+  const fireAt = tp ? (tp.fire ? { x: Math.round(tp.fire[0] * (2 * W) / tp.W), z: Math.round(tp.fire[1] * (2 * D) / tp.D) } : null) : R0.fire ? (() => { const c = cells.slice().sort((a, b2) => Math.hypot(a[0], a[1]) - Math.hypot(b2[0], b2[1]))[0]; return { x: c[0], z: c[1] }; })() : null;
+  DF.decorate(b, { use: R0.use, type: R0.type, role: tp ? (R0.role || roomKind) : R0.role, decor, biome, culture, R, doorX: door.x, fireAt, usedTemplates: spec.used,
+    ...(tp ? { forceTemplate: tp.id, templateOnly: true } : {}) });
   const template = (b.decorReport || []).map(r => r.template).filter(Boolean).join(' ');
   const furniture = b.pieces.filter(p => p.decor && !p.outside);
   // keep a full wall wherever something hangs on it, so nothing floats
@@ -125,12 +139,13 @@ function floorplan(spec) {
   const area = cells.length * 4;
   const items = furniture.filter(p => (F[p.name] || {}).at !== 'rug').length;
   const id = spec.id || 'FP-000';
-  const command = `vh floorplan ${shape} ${w}x${dpt} ${roomKind} ${Object.keys(BIOME_CODES).find(k => BIOME_CODES[k] === biome)} ${culture} ${decor} ${seed}${spec.ladder ? ' ladder' : ''}`;
+  const bcode = Object.keys(BIOME_CODES).find(k => BIOME_CODES[k] === biome);
+  const command = tp ? `vh floorplan template ${tp.id} ${bcode}` : `vh floorplan ${shape} ${w}x${dpt} ${roomKind} ${bcode} ${culture} ${decor} ${seed}${spec.ladder ? ' ladder' : ''}`;
   return {
     id, command, shape, w, d: dpt, room: roomKind, biome, culture, decor, seed, area, template,
     perTenM2: +(items / area * 10).toFixed(2), items,
     summary: Object.entries(counts).sort((a, c) => c[1] - a[1]).map(([n, c]) => `${n} ${c}`).join(', '),
-    pieces: out, sign: { text: `${id} ${roomKind} ${w}x${dpt} ${decor}` },
+    pieces: out, sign: { text: tp ? `${id} ${tp.kind} ${tp.W}x${tp.D}` : `${id} ${roomKind} ${w}x${dpt} ${decor}` },
   };
 }
 
@@ -210,7 +225,8 @@ function make(specs, name) {
 }
 
 function one(spec) { return make([spec], spec.id || 'floorplan'); }
+function template(id, biome) { const sp = templatePlan(id, biome); return make([sp], sp.id); }
 function set(n) { const k = Math.max(1, Math.min(CATALOG.length, n | 0)); return make([...Array(k).keys()].map(catalogSpec), `floorplans-${k}`); }
 
-const apiFP = { floorplan, one, set, CATALOG, catalogSpec, SHAPES, ROOMS: Object.keys(ROOMS), BIOME_CODES };
+const apiFP = { floorplan, one, set, template, CATALOG, catalogSpec, SHAPES, ROOMS: Object.keys(ROOMS), BIOME_CODES };
 if (NODE_FP) module.exports = apiFP; else window.VHFloorplan = apiFP;

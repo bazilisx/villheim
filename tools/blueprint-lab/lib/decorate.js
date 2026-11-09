@@ -519,6 +519,12 @@ class Room {
         if (s.y1 < y0 + 0.05 || s.y0 > y1 - 0.05) continue;
         if (overlap(s.b, b, -0.02)) return false;
       }
+      // both sides of every door within reach, as the audit sees them, whichever room they open into
+      if (f.at !== 'mount' && f.at !== 'hang') for (const s of this.near(x, z, b.r + 2.4)) {
+        if (s.role !== 'door' || s.y0 > y0 + 1.8 || s.y1 < y0 + 0.05) continue;
+        const dy = pyaw(s.p), ar = dy * PI / 180, nx = Math.sin(ar), nz = Math.cos(ar);
+        for (const sg of [1, -1]) if (overlap(obox(s.p.x + nx * sg * (s.b.hd + 0.6), s.p.z + nz * sg * (s.b.hd + 0.6), s.b.hw * 2, 1.2, dy), b, -0.02)) return false;
+      }
     }
     for (const q of this.mates) {
       if (q.room === this || q.mount || q.rug || rug) continue;
@@ -535,6 +541,9 @@ class Room {
       if (o.on && o.on === q) continue;
       if (rug && o.clearOf && !q.rug && o.clearOf.includes((F[q.name] || {}).cat) && q !== o.near && overlap(q.b, b, 0.05)) return false;
       if (rug !== q.rug) { if (q.fire || f.cat === 'fire') { if (overlap(q.b, b, 0.3)) return false; } continue; }
+      // a table and a bed keep a meter apart (Tyler, FP-003: the table too close to the beds)
+      const qc = (F[q.name] || {}).cat;
+      if (((f.cat === 'table' && qc === 'bed') || (f.cat === 'bed' && qc === 'table')) && overlap(q.b, b, 0.9)) return false;
       if (overlap(q.b, b, rug ? -0.05 : (o.tight ? 0.02 : 0.08))) return false;
     }
     if (!rug || f.cat === 'fire') {
@@ -901,7 +910,8 @@ function placeTable1(room, k, o = {}) {
     const [sw, , sd] = size(seat);
     const long = (F[seat] || {}).long;
     for (const sg of sides) {
-      const dist = td / 2 + sd / 2 + 0.12;
+      // learned 1.0 m from the table's middle line to a bench's (Tyler, FP-003: the log benches too close to the table)
+      const dist = td / 2 + sd / 2 + 0.2;
       const sx0 = rec.x + ax * sg * dist, sz0 = rec.z + az * sg * dist;
       const faceYaw = norm(yawOfDir(-ax * sg, -az * sg) + backs);
       const perSide = Math.ceil(seatsWanted / sides.length);
@@ -1314,8 +1324,10 @@ function roleFor(use, type, room, mainShare, rects, nLevels, li) {
 // ---------------------------------------------------------------- room plans
 function furnish(room, role, c) {
   if (tplFurnish(room, role, c)) {
-    // a template thin for a big room is topped up with the extras, to most of the corpus rate
-    if (c.decor !== 'd1') fill(room, role, { ...c, fillShare: 0.75, fillOnly: 0.6 });
+    if (c.templateOnly) return; // 'vh floorplan template': the room as the template lays it out, nothing added
+    // a template thin for a big room is topped up with the extras toward the corpus rate, a little short of it at d2 so
+    // the template's own layout stays the larger part
+    if (c.decor !== 'd1') fill(room, role, { ...c, fillShare: c.decor === 'd3' ? 1 : 0.9 });
     return;
   }
   furnishPlan(room, role, c);
@@ -1327,18 +1339,23 @@ const LEARN_KIND = { lookout: 'sleeping', home: 'home', sleeping: 'sleeping', gu
 // What builders add once the needs are met, per room role, with weights. Each is a cluster from the corpus pairs:
 // trophies (item stands in a row on one wall), shelves (horizontal item stands), barrels and crates in a corner, a
 // seating corner, rugs, armor stands, banners in pairs, carvings, things on tables, tools on a work wall.
+// The touches Tyler asked for (2026-11-09) are extras too: a bench at the foot of a bed (footBench) or by the door
+// (doorBench), a reading corner (nook: a chair in a corner with a light beside it), seats on every side of the fire
+// (ring), storage along one wall with a sign (storeWall), a rug under a table or before a fire that has none (groupRug),
+// and a light where the room is darkest (evenLights).
 const EXTRAS = {
-  home: { trophies: 2, shelf: 2, barrels: 2, chest: 1, armor: 1, fermenter: 1, seating: 2, rug: 2, banners: 1, carving: 1, torches: 1, tabletop: 2 },
-  sleeping: { rug: 2, armor: 2, chest: 2, shelf: 1, trophies: 1, seating: 1, torches: 1, banners: 1 },
-  guest: { rug: 2, chest: 2, armor: 1, shelf: 1, torches: 1, seating: 1 },
-  hall: { banners: 3, trophies: 2, shelf: 1, barrels: 2, armor: 2, rug: 2, tabletop: 2, torches: 2, carving: 1, chart: 1, bench: 2 },
-  tavern: { barrels: 3, fermenter: 2, shelf: 2, tabletop: 3, trophies: 1, rug: 1, seating: 3, torches: 1, banners: 1 },
-  smithy: { tools: 3, barrels: 2, chest: 2, armor: 2, shelf: 1, torches: 1 },
-  workshop: { tools: 3, barrels: 2, chest: 2, shelf: 2, torches: 1, bench: 1 },
-  storage: { chest: 4, barrels: 3, crates: 2, shelf: 2, torches: 1 },
+  home: { trophies: 2, shelf: 2, barrels: 2, chest: 1, armor: 1, fermenter: 1, seating: 2, rug: 1, banners: 1, carving: 1, torches: 1, tabletop: 2,
+    footBench: 2, doorBench: 1, nook: 1, groupRug: 2, evenLights: 1, storeWall: 1 },
+  sleeping: { rug: 1, armor: 2, chest: 2, shelf: 1, trophies: 1, seating: 1, torches: 1, banners: 1, footBench: 3, nook: 1, groupRug: 1, evenLights: 1 },
+  guest: { rug: 2, chest: 2, armor: 1, shelf: 1, torches: 1, seating: 1, footBench: 2, evenLights: 1 },
+  hall: { banners: 3, trophies: 2, shelf: 1, barrels: 2, armor: 2, rug: 1, tabletop: 2, torches: 2, carving: 1, chart: 1, bench: 2, ring: 2, doorBench: 1, groupRug: 2, evenLights: 2 },
+  tavern: { barrels: 3, fermenter: 2, shelf: 2, tabletop: 3, trophies: 1, rug: 1, seating: 3, torches: 1, banners: 1, doorBench: 1, groupRug: 2, evenLights: 2, nook: 1 },
+  smithy: { tools: 3, barrels: 2, chest: 1, armor: 2, shelf: 1, torches: 1, storeWall: 2, evenLights: 1 },
+  workshop: { tools: 3, barrels: 2, chest: 1, shelf: 2, torches: 1, bench: 1, storeWall: 2, evenLights: 1 },
+  storage: { chest: 2, barrels: 3, crates: 2, shelf: 2, torches: 1, storeWall: 3 },
   farm: { barrels: 2, chest: 2, fermenter: 1, shelf: 1 },
-  temple: { banners: 3, carving: 2, torches: 2, rug: 1, bench: 2 },
-  kitchen: { barrels: 3, shelf: 3, tabletop: 2, chest: 2, fermenter: 1, crates: 1 },
+  temple: { banners: 3, carving: 2, torches: 2, rug: 1, bench: 2, evenLights: 1 },
+  kitchen: { barrels: 3, shelf: 3, tabletop: 2, chest: 2, fermenter: 1, crates: 1, storeWall: 1, evenLights: 1 },
   guard: { armor: 2, trophies: 2, chest: 1, barrels: 1, torches: 1 },
   lookout: { chest: 1, barrels: 1, rug: 1 },
 };
@@ -1398,21 +1415,101 @@ function fill(room, role, c) {
     tools: () => pairOn('itemstand', 1.5, 0.8, 3) + (placeAgainst(room, ok('piece_workbench_ext4', biome) ? 'piece_workbench_ext4' : 'forge_ext5') ? 1 : 0),
     chart: () => placeAgainst(room, 'piece_cartographytable') ? 1 : 0,
     bench: () => placeAgainst(room, k.bench || 'piece_bench01', null, { rel: (F[k.bench] || {}).back ? 180 : 0 }) ? 1 : 0,
+    footBench: () => footBench(room, k),
+    doorBench: () => {
+      const b = k.bench || 'piece_bench01';
+      if (!ok(b, biome)) return 0;
+      // against a wall a couple of meters from the door, where you sit to pull your boots on
+      return placeAgainst(room, b, s => -Math.abs(room.doorDist(s.x, s.z) - 2.4) * 1.5, { rel: (F[b] || {}).back ? 180 : 0 }) ? 1 : 0;
+    },
+    nook: () => nook(room, k),
+    // a ring of seats on every side of the fire, only in a big hall (a single bench by a fire read as out of place, FP-010)
+    ring: () => (room.fire && room.area >= 60 ? placeFireSeats(room, k, 4) : 0),
+    storeWall: () => placeStorageRow(room, k, d >= 3 ? 3 : 2, { sign: true, back: 1 }).length,
+    groupRug: () => groupRug(room, k),
+    evenLights: () => evenLights(room, k),
   };
   // how often one extra may repeat in a room, so a room is a mix and never twenty of one thing
-  const MAX = { barrels: 2, crates: 1, chest: 2, armor: 2, fermenter: 1, seating: 2, rug: 2, banners: 1, carving: 2, torches: 1, tabletop: 4, tools: 2, chart: 1, bench: 2, trophies: 2, shelf: 2 };
+  const MAX = { barrels: 2, crates: 1, chest: 2, armor: 2, fermenter: 1, seating: 2, rug: 2, banners: 1, carving: 2, torches: 1, tabletop: 4, tools: 2, chart: 1, bench: 2, trophies: 2, shelf: 2,
+    footBench: 2, doorBench: 1, nook: 1, ring: 1, storeWall: 1, groupRug: 2, evenLights: 2 };
   const used = {};
   const rugs = () => room.placed.filter(q => q.rug).length;
   const live = Object.entries(extras).filter(([kk]) => run[kk]);
   for (let tries = 0; tries < 40 && live.length && room.count < target; tries++) {
     const key = pickW(room.R, live);
-    const floor = !['trophies', 'shelf', 'banners', 'carving', 'tabletop', 'rug'].includes(key);
+    const floor = !['trophies', 'shelf', 'banners', 'carving', 'tabletop', 'rug', 'groupRug'].includes(key);
     let got = 0;
     const full = (used[key] || 0) >= (MAX[key] || 2) || (key === 'rug' && rugs() >= Math.max(1, Math.floor(room.area / 15)));
     if (!full && !(floor && floorUsed() > room.area * 0.5)) got = run[key]();
     used[key] = (used[key] || 0) + 1;
     if (!got || full) live.splice(live.findIndex(([kk]) => kk === key), 1);
   }
+}
+
+// A bench across the foot of a bed, facing the room, where no chest stands there already.
+function footBench(room, k) {
+  const b = ok('piece_bench01', room.biome) ? 'piece_bench01' : k.bench;
+  if (!b || !ok(b, room.biome)) return 0;
+  let n = 0;
+  for (const bed of room.placed.filter(q => (F[q.name] || {}).cat === 'bed' && !q.footed)) {
+    bed.footed = true;
+    const a = bed.yaw * PI / 180, ax = Math.sin(a), az = Math.cos(a);
+    const reach = size(bed.name)[2] / 2 + size(b)[2] / 2 + 0.12;
+    if (room.placed.some(q => q !== bed && !q.rug && !q.mount && Math.hypot(q.x - (bed.x + ax * reach), q.z - (bed.z + az * reach)) < 0.7)) continue;
+    // the bench's front (local +z) faces away from the bed; a log bench sits the other way round
+    const yaw = norm(bed.yaw + ((F[b] || {}).back ? 180 : 0));
+    for (const extra of [0, 0.15, 0.3]) {
+      if (room.put(b, bed.x + ax * (reach + extra), bed.z + az * (reach + extra), yaw)) { n++; break; }
+    }
+    if (n) break;
+  }
+  return n;
+}
+
+// A reading corner: a chair in a corner turned to the room, a light beside it, a rug in front where it fits.
+function nook(room, k) {
+  const chair = ok('piece_chair02', room.biome) ? 'piece_chair02' : k.chair || 'piece_chair';
+  if (!ok(chair, room.biome)) return 0;
+  const spots = wallSpots(room, chair, { gap: 0.15 }).filter(s => s.corner);
+  const rec = best(room, chair, spots, s => (room.doorDist(s.x, s.z) < 2.5 ? -99 : 0) + Math.min(4, room.doorDist(s.x, s.z)) * 0.2, { noise: 0.5 });
+  if (!rec) return 0;
+  // the chair turned 45 degrees out of the corner, toward the middle of the room
+  const yaw = norm(yawOfDir(room.cx - rec.x, room.cz - rec.z));
+  if (room.fits(chair, rec.x, rec.z, yaw, { on: rec })) { const o = room.out[room.out.length - 1]; rec.yaw = yaw; rec.b = obox(rec.x, rec.z, ...[size(chair)[0], size(chair)[2]], yaw); o.yaw = yaw; o.q = quatY(yaw); }
+  let n = 1;
+  n += placeLights(room, k, 1, { flank: [rec] });
+  if (k.rug && room.R() < 0.6 && placeRug(room, k, rec, { mode: 'front' })) n++;
+  return n;
+}
+
+// A rug under the table or before the fire that has none.
+function groupRug(room, k) {
+  if (!k.rug) return 0;
+  for (const t of room.placed.filter(q => (F[q.name] || {}).cat === 'table' || q.fire)) {
+    if (room.placed.some(r => r.rug && overlap(r.b, t.b, -0.1))) continue;
+    if (t.fire) { if (placeRug(room, k, t, { mode: 'fire' })) return 1; continue; }
+    if (placeRug(room, k, t, { mode: 'under' })) return 1;
+  }
+  return 0;
+}
+
+// A floor torch where the room is darkest: the wall spot farthest from every light, if that is more than 3.5 m.
+function evenLights(room, k) {
+  const name = k.floorLight;
+  if (!name || !ok(name, room.biome)) return 0;
+  const lights = room.placed.filter(q => (F[q.name] || {}).cat === 'light' || q.fire).map(q => [q.x, q.z]);
+  const far = (x, z) => (lights.length ? Math.min(...lights.map(([lx, lz]) => Math.hypot(lx - x, lz - z))) : 9);
+  // darkest floor cell
+  let dark = null, dd = 0;
+  for (const c of room.cells) { const v = far(c.x, c.z); if (v > dd) { dd = v; dark = c; } }
+  if (!dark || dd < 3.5) return 0;
+  const spots = wallSpots(room, name, { gap: 0.05 });
+  const rec = best(room, name, spots, s => {
+    for (const q of room.placed) if (!q.rug && !q.mount && ptDist(q.b, s.x, s.z) < 0.9) return -99;
+    if (room.doorDist(s.x, s.z) < 1.8) return -99;
+    return -Math.hypot(s.x - dark.x, s.z - dark.z) + (s.corner ? 0.5 : 0);
+  }, { noise: 0.2 });
+  return rec ? 1 : 0;
 }
 
 function furnishPlan(room, role, c) {
@@ -1452,7 +1549,7 @@ function furnishPlan(room, role, c) {
       placeMounts(room, mountsFor());
       if (d >= 3) {
         if (t) placeOnTable(room, t, ['itemstandh', 'Candle_resin']);
-        placeFireSeats(room, k, 1);
+        // no bench by the fire in a home (Tyler, FP-002: bench not necessary)
         placeAgainst(room, 'ArmorStand', s => (beds[0] ? -Math.hypot(s.x - beds[0].x, s.z - beds[0].z) * 0.3 : 0));
         if (room_ok()) placeAgainst(room, 'fermenter', s => (s.corner ? 1 : 0) - fr().v(s.x, s.z) / fr().D);
         if (room_ok()) placeStorageRow(room, k, 1, { chest: ok('piece_chest_barrel', biome) ? 'piece_chest_barrel' : k.chest });
@@ -1527,7 +1624,8 @@ function furnishPlan(room, role, c) {
         if (room_ok()) placeAgainst(room, 'ArmorStand', s => (throne ? -Math.abs(Math.hypot(s.x - throne.x, s.z - throne.z) - 2) : 0));
         if (room_ok() && !tavern) placeAgainst(room, 'piece_cartographytable', s => -Math.abs(fr().v(s.x, s.z) / fr().D - 0.6));
         if (k.rug) for (const t of tables.slice(0, 1)) placeRug(room, k, t, { mode: 'under' });
-        placeFireSeats(room, k, 2);
+        // seats by the fire in a hall only; a tavern sits at its tables (Tyler, FP-010: bench not needed next to campfire)
+        if (!tavern) placeFireSeats(room, k, 2);
       }
     }
     return;
@@ -1662,9 +1760,23 @@ function furnishPlan(room, role, c) {
 // where its length fits. The usual tests decide each placement (nothing through anything, doors and stairs clear,
 // wall pieces centered on plain wall, never over a window); a piece that fails is moved a little or left out. A room no
 // template fits is furnished by the rules above.
-let TPL = null, TPL_IDX = null;
-function setTemplates(d) { TPL = d; TPL_IDX = null; }
-if (NODE_D) { try { TPL = require('../data/room-templates.json'); } catch (e) { TPL = null; } }
+// Tyler scores the rooms the templates come from (the review sheet's Rooms tab, lab/room_feedback.js): each template
+// has a weight, 0 for a dropped one, 1 for a kept one, up to 2.5 for one to copy; rooms he has not scored carry the
+// model's guess. A template's weight adds log(weight) to its fit score.
+let TPL = null, TPL_IDX = null, TPL_W = null;
+function setTemplates(d, w) { TPL = d; TPL_IDX = null; if (w) TPL_W = w; }
+if (NODE_D) {
+  try { TPL = require('../data/room-templates.json'); } catch (e) { TPL = null; }
+  try { TPL_W = require('../data/room-scores.json').weights; } catch (e) { TPL_W = null; }
+}
+function templateById(id) {
+  const d = TPL || (typeof window !== 'undefined' && window.VH_ROOMS) || { templates: [] };
+  return (d.templates || []).find(t => t.id === String(id).toUpperCase()) || null;
+}
+function tplWeight(id) {
+  const w = TPL_W || (typeof window !== 'undefined' && window.VH_ROOM_WEIGHTS) || null;
+  return w && w[id] != null ? w[id] : 1;
+}
 function tplIndex() {
   if (TPL_IDX) return TPL_IDX;
   const d = TPL || (typeof window !== 'undefined' && window.VH_ROOMS) || { templates: [] };
@@ -1695,6 +1807,7 @@ const TPL_OFF = {
 };
 
 const tplA = s => [s[0], +s.slice(1)];
+const TPL_SPREAD = 2.0; // how wide the draw among fitting templates is
 // a template turned k quarter turns and mirrored: pieces with their anchors, the doors and the fire, in centered
 // coordinates (u across, w = v - D/2 into the room)
 function tplOriented(t, k, mir) {
@@ -1794,14 +1907,18 @@ function tplSwap(name, room, c, along) {
 // choose the templates to try for a room, best first
 function tplChoose(room, role, c, fr, needFire) {
   const idx = tplIndex(), out = [];
-  const kinds = (role === 'home' && c.levels > 1 && !room.upper) ? [['living', 0], ['home', 0.3]] : TPL_KINDS[role];
+  const forced = c.forceTemplate ? templateById(c.forceTemplate) : null;
+  const kinds = forced ? [[forced.kind, 0]] : (role === 'home' && c.levels > 1 && !room.upper) ? [['living', 0], ['home', 0.3]] : TPL_KINDS[role];
   if (!kinds) return out;
   const used = c.usedTemplates;
   const dens = density(LEARN_KIND[role] || 'home', 'd2');
   const fireAt = needFire && c.fireAt && room.inside(c.fireAt.x, c.fireAt.z) ? fr.local(c.fireAt.x, c.fireAt.z) : null;
   const taste = (c.kit && c.kit.taste) || {};
   for (const [kind, cost] of kinds) for (const t of idx[kind] || []) {
-    if (used && used.has(t.id)) continue;
+    if (forced && t.id !== forced.id) continue;
+    if (!forced && used && used.has(t.id)) continue;
+    const tw = forced ? 1 : tplWeight(t.id);
+    if (tw <= 0) continue;
     if (t.fire && !needFire) continue;
     if (!!t.stair !== !!room.entry.stair && (t.stair || room.entry.stair) && Math.min(t.W, t.D) < 3) continue;
     for (let k = 0; k < 4; k++) {
@@ -1819,7 +1936,10 @@ function tplChoose(room, role, c, fr, needFire) {
         else if (c.decor === 'd2') s -= Math.min(0.8, Math.abs(t.dens - dens) / dens * 0.4);
         if (taste.noTable && t.p.some(q => q[1] === 'piece_table' || q[1] === 'piece_table_oak')) s -= 1.5;
         if (!!t.stair === !!room.entry.stair) s += 0.3;
-        out.push({ o, s: s + room.R() * 1.2, rw, rd });
+        // the score, the room score's weight, and a seeded draw (a Gumbel draw, so the choice among close fits is a
+        // weighted lottery and two seeds of one request pick different rooms)
+        const g = -Math.log(-Math.log(Math.max(1e-6, Math.min(1 - 1e-6, room.R()))));
+        out.push({ o, s: s + Math.log(tw) + g * TPL_SPREAD, rw, rd });
       }
     }
   }
@@ -2012,6 +2132,7 @@ function tplFit(room, role, c, fr, ch, needFire) {
     storage: () => storage >= 2, farm: () => storage >= 1, market: () => tables >= 1 || storage >= 1, temple: () => tables >= 1,
   }[role];
   if (typeof process !== 'undefined' && process.env && process.env.TPLDBG) console.error('tpl', role, ch.o.t.id, ch.o.t.kind, `k${ch.o.k}${ch.o.mir ? 'm' : ''}`, 'want', want, 'got', got, 'need', need ? need() : '-', 'count', room.count, 'min', (0.5 * room.area / 10 * density(LEARN_KIND[role] || 'home', 'd1')).toFixed(1));
+  if (c.forceTemplate) return got > 0;
   if (want === 0 || got < Math.max(2, Math.ceil(want * 0.6)) || (need && !need()) || fresh < 2) return false;
   // and enough for the room's size: at d2 and d3 at least half the corpus rate for the kind
   const low = density(LEARN_KIND[role] || 'home', 'd1') * (role === 'storage' || role === 'farm' ? 0.5 : 1);
@@ -2036,7 +2157,8 @@ function tplFurnish(room, role, c) {
   if (c.templates === false || !room.entry) return false;
   const fr = tplFrame(room);
   if (!fr || fr.W < 2 || fr.D < 2) return false;
-  const needFire = (['home', 'hall', 'tavern'].includes(role) && !room.upper) || role === 'kitchen';
+  const forced = c.forceTemplate ? templateById(c.forceTemplate) : null;
+  const needFire = forced ? !!forced.fire : (['home', 'hall', 'tavern'].includes(role) && !room.upper) || role === 'kitchen';
   const list = tplChoose(room, role, c, fr, needFire);
   if (typeof process !== 'undefined' && process.env && process.env.TPLDBG) console.error('choose', role, fr.W, fr.D, 'cands', list.length);
   for (const ch of list.slice(0, 3)) {
@@ -2247,6 +2369,6 @@ function decorateExisting(pieces, { use = 'home', decor = 'd2', biome = 'Meadows
   return b.pieces;
 }
 
-const api = { decorate, strip, findRooms, decorateExisting, setRules, setInterior, setTemplates, audit, ITEM_BIOME, FURNITURE: F, readLevel,
+const api = { decorate, strip, findRooms, decorateExisting, setRules, setInterior, setTemplates, templateById, audit, ITEM_BIOME, FURNITURE: F, readLevel,
   _int: { floorLevels, stretch, size, ok, obox, overlap, ptDist, yawOfDir, pyaw, standOf, norm, WALLISH } };
 if (NODE_D) module.exports = api; else window.VHDecorate = api;

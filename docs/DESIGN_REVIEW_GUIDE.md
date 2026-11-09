@@ -356,6 +356,13 @@ originals.
   after "next ▶" to go on, the box after "◀ back" to go back, or type a page number in the white box.
 - The old guesses (kind, use, biome ticks, level) were removed on 2026-11-07; every design starts unsorted.
 
+## The Rooms tab of the sheet
+
+- One real room per row from a community build, drawn from above with the way in at the bottom, the source build's
+  picture beside it. Give it a Score (1 to 5), pick Tags, add Notes. A score of 1 or 2 drops that layout from the
+  villages, 4 or 5 makes it more common. How it works: `docs/INTERIOR_DESIGN.md`, section "Scoring rooms".
+- `vh floorplan template RT-0014` lays the room out in the game so you can walk through it.
+
 ## Settings (F1, section "4 - Design review")
 
 - **ShapingTool:** which item is the shaping knife (`KnifeWood`).

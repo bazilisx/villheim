@@ -140,12 +140,67 @@ function stalls(b, ctx, zones) {
   return false;
 }
 
+// A dais for the high seat: the throne the furnishing set against a hall's far wall goes up 0.3 m onto a platform
+// 4 m wide and 2.5 m deep (1 m floor pieces on short beams, as the raised wall benches), with its rug and lamps.
+// The step up to the high seat of the Viking hall (Hurstwic); "small steps to slightly higher levels".
+function dais(b, ctx, zones) {
+  const Ck = checksB();
+  const throne = b.pieces.find(p => p.decor && p.name === 'piece_throne01');
+  if (!throne) return false;
+  const room = (b.rooms || []).find(r => !r.upper && throne.x > r.x0 && throne.x < r.x1 && throne.z > r.z0 && throne.z < r.z1 && Math.abs(throne.y - r.y) < 0.6);
+  if (!room) return false;
+  const f1 = ctx.K.floor1 || 'wood_floor_1x1', b1 = ctx.K.beam1 || 'wood_beam_1';
+  // the platform's top 0.3 m over the floor's top (a stone floor's top is its pivot plus half a metre)
+  const under = b.pieces.find(p => !p.decor && PB.piece(p.name).role === 'floor' && (() => { const o = Ck.aabb(p); return throne.x > o.x0 && throne.x < o.x1 && throne.z > o.z0 && throne.z < o.z1 && Math.abs(o.y1 - throne.y) < 0.4; })());
+  if (!under) return false;
+  const lift = 0.3, half1 = Ck.aabb({ name: f1, x: 0, y: 0, z: 0, q: [0, 0, 0, 1] }).y1, y = Ck.aabb(under).y1 + lift - half1;
+  // the wall it stands against: the nearest side of its room
+  const d = [['x', room.x0, 1], ['x', room.x1, -1], ['z', room.z0, 1], ['z', room.z1, -1]]
+    .map(([ax, w, n]) => ({ ax, w, n, dist: Math.abs((ax === 'x' ? throne.x : throne.z) - w) })).sort((a, c) => a.dist - c.dist)[0];
+  if (d.dist > 1.6) return false;
+  const along = d.ax === 'x' ? throne.z : throne.x, lo = d.ax === 'x' ? room.z0 : room.x0, hi = d.ax === 'x' ? room.z1 : room.x1;
+  for (const half of [2, 1.5]) {
+    const a0 = Math.max(lo, Math.round(along - half - 0.5) + 0.5), a1 = Math.min(hi, a0 + 2 * half);
+    if (a1 - a0 < 2.9) continue;
+    const cells = [];
+    for (let a = a0 + 0.5; a < a1; a += 1) for (let k = 0; k < 3; k++) {
+      const out = d.w + d.n * (0.5 + k);
+      cells.push(d.ax === 'x' ? [out, a] : [a, out]);
+    }
+    const box = { x0: Math.min(...cells.map(c => c[0])) - 0.5, x1: Math.max(...cells.map(c => c[0])) + 0.5, z0: Math.min(...cells.map(c => c[1])) - 0.5, z1: Math.max(...cells.map(c => c[1])) + 0.5 };
+    const inBox = o => o.x0 < box.x1 - 0.02 && o.x1 > box.x0 + 0.02 && o.z0 < box.z1 - 0.02 && o.z1 > box.z0 + 0.02;
+    const goesUp = p => p.decor && p.y < room.y + 0.6 && inBox(Ck.aabb(p));
+    // nothing built in the way (a post, a stair, a doorway, the fire's ring), nothing tall that cannot go up
+    const blocked = b.pieces.some(p => {
+      const role = PB.piece(p.name).role, o = Ck.aabb(p);
+      if (!inBox(o) || o.y1 < room.y + 0.15 || o.y0 > room.y + 2.2) return false;
+      if (!p.decor && ['wall', 'window', 'beam', 'floor', 'roof', 'roofTop', 'gable', 'pole'].includes(role)) return false; // the platform goes round posts
+      return !goesUp(p) || ['fire', 'stair'].includes(role);
+    }) || zones.some(z => z.x0 < box.x1 && z.x1 > box.x0 && z.z0 < box.z1 && z.z1 > box.z0 && z.y0 < room.y + 2 && z.y1 > room.y);
+    if (blocked) continue;
+    const up = b.pieces.filter(goesUp);
+    // and whatever stands on them (dishes on a table)
+    const riders = b.pieces.filter(q => q.decor && !up.includes(q) && up.some(p => { const o = Ck.aabb(p); return q.x > o.x0 && q.x < o.x1 && q.z > o.z0 && q.z < o.z1 && q.y > p.y + 0.2 && q.y < p.y + 1.5; }));
+    for (const p of [...up, ...riders]) p.y = +(p.y + lift).toFixed(3);
+    for (const [x, z] of cells) {
+      // a raised wall bench already there at the same height is the dais
+      if (b.pieces.some(p => p.name === f1 && Math.abs(p.x - x) < 0.3 && Math.abs(p.z - z) < 0.3 && Math.abs(p.y - y) < 0.05)) continue;
+      b.put(f1, x, y, z, 0, { trim: true });
+      b.put(b1, x, y - 0.1, z, 90, { trim: true });
+    }
+    b.notes.push('A dais for the high seat, a step up at the end of the hall.');
+    return true;
+  }
+  return false;
+}
+
 function apply(b, ctx, zones) {
+  if (ctx.decor !== 'd1' && ['longhouse', 'temple'].includes(ctx.type)) dais(b, ctx, zones || []);
   if (ctx.type === 'barn' && ctx.decor !== 'd1') stalls(b, ctx, zones || []);
   if (ctx.type === 'tavern' && ctx.decor !== 'd1') barCounter(b, ctx, zones || []);
   const X = ctx.profile || {};
   if (X.canopyBed != null ? X.canopyBed : (ctx.decor === 'd3' && ['home', 'longhouse'].includes(ctx.type) && ctx.R() < 0.5)) canopyBed(b, ctx);
 }
 
-const apiB = { apply, barCounter, canopyBed, stalls };
+const apiB = { apply, barCounter, canopyBed, stalls, dais };
 if (NODE_B) module.exports = apiB; else window.VHKitbash = apiB;

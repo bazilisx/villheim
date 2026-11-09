@@ -3692,7 +3692,7 @@ function exterior(b, ctx) {
     // a lamp post beside the door on the ground
     if (X.doorLamp && F < 0.01 && !o.back) {
       for (const s of [1, -1]) {
-        const cand = { name: 'piece_groundtorch_wood', x: +(e.x + ux * s * 1.8 + ox * 0.8).toFixed(3), y: F + 0.75, z: +(e.z + uz * s * 1.8 + oz * 0.8).toFixed(3), q: quatD(0), yaw: 0 };
+        const cand = { name: 'piece_groundtorch_wood', x: +(e.x + ux * s * 1.8 + ox * 0.8).toFixed(3), y: F + 0.65, z: +(e.z + uz * s * 1.8 + oz * 0.8).toFixed(3), q: quatD(0), yaw: 0 };
         if (!clear(b, cand)) continue;
         b.pieces.push({ ...cand, decor: true, trim: true });
         break;
@@ -3789,9 +3789,11 @@ function svalgang(b, ctx) {
   }
   for (const x of xs) b.put(beam, x, yU - 0.15, zf - 2, 0, T);
   for (const x of [x0, x1]) b.put(beam, x, yU - 0.15, zf - 1, 90, T);
-  const rail = K.fence || 'wood_fence';
-  for (const x of xs) b.put(rail, x, yU + 0.5, zf - 2, 0, T);
-  for (const x of [x0, x1]) b.put(rail, x, yU + 0.5, zf - 1, 90, T);
+  // the rail: two beams on the posts (the round pole fence stands 2 m tall in the game, too high for a rail)
+  for (const yr of [yU + 0.55, yU + 1.05]) {
+    for (const x of xs) b.put(beam, x, yr, zf - 2, 0, T);
+    for (const x of [x0, x1]) b.put(beam, x, yr, zf - 1, 90, T);
+  }
   b.gallery = true;
   b.notes.push('An upper gallery over the front door with a door from the upper room, after the Norwegian lofts.');
   return true;
@@ -3958,6 +3960,9 @@ function interior(b, ctx) {
         if (near > 0.6 || near < -0.3 || Math.abs(o.y0 - (ctx.F + 0.1)) > 0.3) continue;
         const depth = sz > 0 ? zWall - o.z0 : o.z1 - zWall;
         if (depth > 3.1 || o.x0 < w0.cx - w0.W || o.x1 > w0.cx + w0.W) continue;
+        // a piece that would rise into a stair's or doorway's keep-clear box stays where it is
+        const up = { x0: o.x0, x1: o.x1, z0: o.z0, z1: o.z1, y0: o.y0 + lift, y1: o.y1 + lift };
+        if (zones.some(zn => ov(up, zn) && zn.y0 < up.y1 && zn.y1 > up.y0)) continue;
         lifted.push({ p, o, k: Math.ceil(depth - 0.05) });
       }
       const blocked = box => b.pieces.some(p => {
@@ -5019,11 +5024,19 @@ const STAND_IN = { piece_chest_barrel: 'piece_chest_wood', piece_logbench01: 'pi
   piece_chest: 'piece_chest_wood', piece_cookingstation_iron: 'piece_cookingstation', hearth: 'fire_pit' };
 function biomeSafe(b, biome) {
   const ord = P.BIOME_ORDER, limit = ord.indexOf(biome), fits = n => ord.indexOf(P.needs(n)) <= limit;
+  const Ck = checksLib(), gone = [];
   b.pieces = b.pieces.filter(p => {
     if (fits(p.name) || P.piece(p.name).structural) return true;
     const alt = STAND_IN[p.name];
     if (alt && fits(alt)) { p.name = alt; return true; }
+    if (p.decor) gone.push(Ck.aabb(p));
     return false;
+  });
+  // and what stood on a table or chest that came out (a dish on a table, T-interior 2026-11-09)
+  if (gone.length) b.pieces = b.pieces.filter(p => {
+    if (!p.decor) return true;
+    const bx = Ck.aabb(p);
+    return !gone.some(g => bx.y0 >= g.y0 + 0.3 && bx.y0 <= g.y1 + 0.2 && p.x > g.x0 && p.x < g.x1 && p.z > g.z0 && p.z < g.z1);
   });
 }
 

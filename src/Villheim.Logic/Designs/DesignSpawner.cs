@@ -345,11 +345,14 @@ namespace Villheim.Logic.Designs
                 return null;
             }
 
-            if (entry.Bounds.HasValue && entry.Prefab.IndexOf("floor", StringComparison.OrdinalIgnoreCase) >= 0)
+            if (!GroundDone && entry.Bounds.HasValue && entry.Prefab.IndexOf("floor", StringComparison.OrdinalIgnoreCase) >= 0)
             {
                 try
                 {
-                    GroundUnderFloor(entry, origin, rotation);
+                    if (FloorGround(entry, origin, rotation, out FloorSpot spot))
+                    {
+                        WriteGround(new List<FloorSpot> { spot });
+                    }
                 }
                 catch (Exception e)
                 {
@@ -413,37 +416,189 @@ namespace Villheim.Logic.Designs
         }
 
         /// <summary>
-        /// Bare earth under a floor that rests on the ground, so no grass grows up through it (Tyler, 2026-11-09). The
-        /// ground under the floor is painted dirt and levelled: just under a thin wooden floor, so no lump pokes
-        /// through, and up to 0.15 m under the top of a thick stone floor, so it sits in the ground with only its top
-        /// edge showing. Floors on posts or stilts, well above the ground, are left alone.
+        /// Set while a whole design goes up at once ('vh gen', 'vh place', 'vh preview'): GroundUnderFloors has already
+        /// made the ground under all its floors in one go, so SpawnEntry leaves it alone.
         /// </summary>
-        private static void GroundUnderFloor(PlanEntry entry, Vector3 origin, Quaternion rotation)
+        internal static bool GroundDone;
+
+        internal struct FloorSpot
         {
+            public Vector3 Center;
+            public float Radius;
+            public float Level;
+        }
+
+        /// <summary>
+        /// Bare, level earth under every floor of a design that lies on or in the ground, in one pass: each 64 m area
+        /// is written once and redrawn once (one terrain operation per floor took seconds on a big design, T-102).
+        /// </summary>
+        public static void GroundUnderFloors(IEnumerable<PlanEntry> plan, Vector3 origin, Quaternion rotation)
+        {
+            var spots = new List<FloorSpot>();
+            foreach (PlanEntry entry in plan)
+            {
+                if (entry.Bounds.HasValue && entry.Prefab.IndexOf("floor", StringComparison.OrdinalIgnoreCase) >= 0 &&
+                    FloorGround(entry, origin, rotation, out FloorSpot spot))
+                {
+                    spots.Add(spot);
+                }
+            }
+
+            WriteGround(spots);
+        }
+
+        /// <summary>
+        /// The ground a floor wants (Tyler, 2026-11-09 and T-102): dirt, no grass, and level: just under a thin wooden
+        /// floor, and 0.15 m under the top of a thick stone floor, so it sits in the ground with only its top edge
+        /// showing. Ground higher than that is dug down too, so no hump of earth shows through the floor (the lumpy
+        /// stone floors). Floors on posts or stilts, well above the ground, are left alone.
+        /// </summary>
+        private static bool FloorGround(PlanEntry entry, Vector3 origin, Quaternion rotation, out FloorSpot spot)
+        {
+            spot = default;
             if (ZoneSystem.instance == null)
             {
-                return;
+                return false;
             }
 
             Bounds bounds = entry.Bounds.Value;
             Vector3 center = origin + rotation * bounds.center;
             float bottom = center.y - bounds.extents.y;
             float top = center.y + bounds.extents.y;
-            if (!ZoneSystem.instance.GetGroundHeight(center, out float ground) || ground < bottom - 0.6f || ground > top + 0.3f)
+            if (!ZoneSystem.instance.GetGroundHeight(center, out float ground) || ground < bottom - 0.6f)
+            {
+                return false;
+            }
+
+            spot = new FloorSpot
+            {
+                Center = center,
+                Radius = Mathf.Sqrt(bounds.extents.x * bounds.extents.x + bounds.extents.z * bounds.extents.z) + 0.1f,
+                Level = bounds.size.y >= 0.5f ? top - 0.15f : bottom - 0.05f,
+            };
+            return true;
+        }
+
+        /// <summary>
+        /// Sets every ground point under the floors to its level and paints it dirt, the way TerrainShaper.LevelPad and
+        /// the slotting board write the ground: the stored height change set exactly (never added to), the paint at the
+        /// same point, then each touched area saved and redrawn once. Where two floors cover a point, the lower level
+        /// wins, so the ground never shows through either.
+        /// </summary>
+        private static void WriteGround(List<FloorSpot> spots)
+        {
+            if (spots.Count == 0)
             {
                 return;
             }
 
-            float radius = Mathf.Sqrt(bounds.extents.x * bounds.extents.x + bounds.extents.z * bounds.extents.z) + 0.1f;
-            float level = bounds.size.y >= 0.5f ? top - 0.15f : bottom - 0.05f;
-            TerrainOp.Settings settings = TerrainShaper.NewSettings();
-            settings.m_level = true;
-            settings.m_levelRadius = radius;
-            settings.m_paintCleared = true;
-            settings.m_paintType = TerrainModifier.PaintType.Dirt;
-            settings.m_paintRadius = radius;
-            settings.m_paintHeightCheck = false;
-            TerrainShaper.Apply(new Vector3(center.x, level, center.z), settings);
+            var maps = new HashSet<Heightmap>();
+            var found = new List<Heightmap>();
+            foreach (FloorSpot spot in spots)
+            {
+                found.Clear();
+                Heightmap.FindHeightmap(spot.Center, spot.Radius + 1f, found);
+                maps.UnionWith(found);
+            }
+
+            foreach (Heightmap map in maps)
+            {
+                TerrainComp ground = map.GetAndCreateTerrainCompiler();
+                if (ground == null || ground.m_nview == null || !ground.m_nview.IsValid() || ground.m_levelDelta == null)
+                {
+                    continue;
+                }
+
+                if (!ground.IsOwner())
+                {
+                    ground.m_nview.ClaimOwnership();
+                }
+
+                int width = ground.m_width + 1;
+                float scale = map.m_scale;
+                Vector3 corner = map.transform.position;
+                bool changed = false;
+                for (int y = 0; y < width; y++)
+                {
+                    for (int x = 0; x < width; x++)
+                    {
+                        var point = new Vector3(corner.x + (x - ground.m_width / 2f) * scale, 0f, corner.z + (y - ground.m_width / 2f) * scale);
+                        float level = float.MaxValue;
+                        foreach (FloorSpot spot in spots)
+                        {
+                            if (spot.Level < level && Utils.DistanceXZ(point, spot.Center) <= spot.Radius)
+                            {
+                                level = spot.Level;
+                            }
+                        }
+
+                        int i = y * width + x;
+                        if (level == float.MaxValue || i >= ground.m_levelDelta.Length || !map.GetWorldBaseHeight(point, out float baseHeight))
+                        {
+                            continue;
+                        }
+
+                        ground.m_levelDelta[i] = level - baseHeight;
+                        ground.m_smoothDelta[i] = 0f;
+                        ground.m_modifiedHeight[i] = true;
+                        if (i < ground.m_paintMask.Length && i < ground.m_modifiedPaint.Length)
+                        {
+                            ground.m_paintMask[i] = Heightmap.m_paintMaskDirt;
+                            ground.m_modifiedPaint[i] = true;
+                        }
+
+                        changed = true;
+                    }
+                }
+
+                if (changed)
+                {
+                    ground.m_operations++;
+                    ground.Save();
+                    map.Poke(0, false);
+                }
+            }
+
+            foreach (FloorSpot spot in spots)
+            {
+                ClutterSystem.instance?.ResetGrass(spot.Center, spot.Radius + 0.5f);
+            }
+        }
+
+        /// <summary>
+        /// Builds a whole design at once in front of the player ('vh gen', 'vh place', 'vh preview'): the ground under
+        /// its floors first, in one pass, then every piece in file order. Pieces placed together hold each other up, so
+        /// the support order villages need (BuildOrder, slow on big designs) is skipped. Returns how many were placed.
+        /// </summary>
+        public static int SpawnAll(List<PlanEntry> plan, Vector3 origin, Quaternion rotation)
+        {
+            try
+            {
+                GroundUnderFloors(plan, origin, rotation);
+            }
+            catch (Exception e)
+            {
+                VillheimPlugin.Log.LogWarning($"Ground under the floors: {e.Message}");
+            }
+
+            int count = 0;
+            GroundDone = true;
+            try
+            {
+                foreach (PlanEntry entry in plan)
+                {
+                    if (SpawnEntry(entry, origin, rotation, 0, false) != null)
+                    {
+                        count++;
+                    }
+                }
+            }
+            finally
+            {
+                GroundDone = false;
+            }
+
+            return count;
         }
 
         /// <summary>Fires marked lit by SpawnEntry never run out of fuel.</summary>

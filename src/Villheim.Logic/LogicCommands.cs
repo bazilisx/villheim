@@ -800,14 +800,7 @@ namespace Villheim.Logic
                 Vector3 at = GroundInFront(player, blueprint.Radius + 3f);
                 float turn = player.transform.eulerAngles.y;
                 TerrainShaper.LevelPad(at, blueprint.Radius * 0.7f, blueprint.Radius * 0.7f + 3f);
-                int count = 0;
-                foreach (DesignSpawner.PlanEntry entry in Blueprints.MakePlan(blueprint, at, turn))
-                {
-                    if (DesignSpawner.SpawnEntry(entry, at, Quaternion.Euler(0f, turn, 0f), 0, false) != null)
-                    {
-                        count++;
-                    }
-                }
+                int count = DesignSpawner.SpawnAll(Blueprints.Entries(blueprint), at, Quaternion.Euler(0f, turn, 0f));
 
                 Say(context, $"Villheim: built {blueprint.Name} ({blueprint.Role} '{blueprint.Family}' level {blueprint.Level}, {count} pieces).");
                 return;

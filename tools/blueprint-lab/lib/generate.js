@@ -697,7 +697,7 @@ function generate(req) {
 
   // awnings over the front of each wing, never out over a yard
   // an awning over each outside door only (a row of them along the front stuck out too far, T-102)
-  if (C.awnings) for (const e of [door, backDoor].filter(e => e && e.out[1] < 0)) b.put(K.roof26, e.x, F + SH - 1, e.z - 1, 180);
+  if (C.awnings) for (const e of [door, backDoor].filter(e => e && e.out[1] < 0)) b.put(K.roof26, e.x, F + SH - 0.5, e.z - 1, 180); // 2.5 m up at its edge
   if (T.dock) dockDesign(b, K, W, D, F, stage);
   if (T.field) fieldDesign(b, K, W, D + (C.boardwalk ? { s1: 4, s2: 6, s3: 8 }[stage] + 2 : F >= 0.9 ? 2 : 0), biome, stage, R, doorX);
   if (T.pen) penDesign(b, K, Math.max(...[...cells.values()].map(c => c[0])) + 1, D, stage); // beside the last wing
@@ -913,18 +913,24 @@ function bedIfNone(b, ctx, fire, zones) {
   const Ck = checksLib(), ord = P.BIOME_ORDER, limit = ord.indexOf(ctx.biome);
   const fits = n => ord.indexOf(P.needs(n)) <= limit;
   if (b.pieces.some(p => P.piece(p.name).role === 'bed' && fits(p.name))) return;
-  const name = ['ashwood_bed', 'piece_bed02', 'bed'].find(n => fits(n) && (n !== 'ashwood_bed' || ctx.biome === 'Ashlands')) || 'bed';
-  const [, , len] = P.piece(name).size;
-  const solid = b.pieces.filter(p => !['floor', 'rug'].includes(P.piece(p.name).role)).map(p => Ck.aabb(p));
+  // the best bed first, the narrow wooden one where the best does not fit (between a hall's aisle posts); head to the
+  // wall, else along the wall (a hall's side benches)
+  const names = ['ashwood_bed', 'piece_bed02', 'bed'].filter(n => fits(n) && (n !== 'ashwood_bed' || ctx.biome === 'Ashlands'));
   const doors = b.pieces.filter(p => P.piece(p.name).role === 'door').map(p => P.doorOpening(p));
   const rooms = [...b.rooms].sort((a, c) => (a.upper ? 1 : 0) - (c.upper ? 1 : 0) || (c.main ? 1 : 0) - (a.main ? 1 : 0));
-  for (const r of rooms) {
+  // first round: only free floor; second: a table, bench or other furnishing (not the fire or its pot) makes room
+  const movable = p => p.decor && !/^(fire_pit|hearth)$|cookingstation|cauldron/.test(p.name);
+  for (const pass of [0, 1]) {
+  const solid = b.pieces.filter(p => !['floor', 'rug'].includes(P.piece(p.name).role) && !(pass && movable(p))).map(p => Ck.aabb(p));
+  for (const name of names.length ? names : ['bed']) for (const along of [false, true]) for (const r of rooms) {
+    const [wid, , len] = P.piece(name).size, deep = along ? wid : len;
     const y = r.y + 0.1;
     const sides = [];
     for (let t = r.x0 + 1; t <= r.x1 - 1 + 0.001; t += 0.5) { sides.push([t, r.z0, 0, 1]); sides.push([t, r.z1, 0, -1]); }
     for (let t = r.z0 + 1; t <= r.z1 - 1 + 0.001; t += 0.5) { sides.push([r.x0, t, 1, 0]); sides.push([r.x1, t, -1, 0]); }
     for (const inset of [0.15, 0.55]) for (const [wx, wz, nx, nz] of sides) {
-      const x = wx + nx * (inset + len / 2), z = wz + nz * (inset + len / 2), yaw = norm(Math.atan2(nx, nz) * 180 / Math.PI);
+      const x = wx + nx * (inset + deep / 2), z = wz + nz * (inset + deep / 2);
+      const yaw = norm(Math.atan2(nx, nz) * 180 / Math.PI + (along ? 90 : 0));
       const cand = { name, x: +x.toFixed(3), y: +y.toFixed(3), z: +z.toFixed(3), yaw, q: quat(yaw), decor: true };
       const cb = Ck.aabb(cand);
       if (cb.x0 < r.x0 || cb.x1 > r.x1 || cb.z0 < r.z0 || cb.z1 > r.z1) continue;
@@ -933,9 +939,12 @@ function bedIfNone(b, ctx, fire, zones) {
       if (fire && Math.abs(fire.y - y) < 1 && Math.hypot(Math.max(cb.x0 - fire.x, 0, fire.x - cb.x1), Math.max(cb.z0 - fire.z, 0, fire.z - cb.z1)) < (fire.name === 'hearth' ? 2 : 1.4)) continue;
       if (zones.some(zn => hits(cb, zn))) continue;
       if (solid.some(o => o.x0 < cb.x1 && o.x1 > cb.x0 && o.z0 < cb.z1 && o.z1 > cb.z0 && o.y0 < cb.y1 - 0.05 && o.y1 > cb.y0 + 0.05)) continue;
+      // furnishing in the bed's place (and anything standing on it) goes
+      if (pass) b.pieces = b.pieces.filter(p => { if (!movable(p)) return true; const o = Ck.aabb(p); return !(o.x0 < cb.x1 + 0.1 && o.x1 > cb.x0 - 0.1 && o.z0 < cb.z1 + 0.1 && o.z1 > cb.z0 - 0.1 && o.y0 < cb.y1 + 1 && o.y1 > cb.y0); });
       b.pieces.push(cand);
       return;
     }
+  }
   }
   b.notes.push('No room for a bed: this building needs a larger plan.');
 }

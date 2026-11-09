@@ -645,7 +645,7 @@ function generate(req) {
   // a low roof's eaves already run 2 m past the wall, so only steep roofs get a porch roof of their own
   const porchFits = !flat && roofKind !== 'shed' && !T.dock && !T.tower && !['U', 'cross', 'court', 'gables', 'greek'].includes(plan) && !deck && !podklet && form !== 'sunken' && r === 2 && (C.eaves || 1) < 2;
   if (req.porch === true && !porchFits) b.notes.push('No porch: this plan, roof or form has no front for one.');
-  if (req.porch === true ? porchFits : req.porch !== false && !flat && roofKind !== 'shed' && !T.dock && !T.tower && C.porch && R() < C.porch + (stage === 's1' ? -0.3 : 0.2) && porchFits && !dctx.profile.svalgang && !dctx.profile.gablePorch) {
+  if (req.porch === true ? porchFits : req.porch !== false && !flat && roofKind !== 'shed' && !T.dock && !T.tower && C.porch && R() < C.porch + (stage === 's1' ? -0.3 : 0.2) && porchFits && !dctx.profile.svalgang && !dctx.profile.gablePorch && !dctx.profile.dormerOverDoor) {
     const h = R() < 0.5 ? 0 : 1, zf = doorZ;
     const bays = [];
     for (let k = -h; k <= h; k++) { const x = doorX + 2 * k; if (!cells.has(`${x},${zf - 1}`) && !cells.has(`${x},${zf - 3}`)) bays.push(x); }
@@ -767,7 +767,11 @@ function generate(req) {
   if (T.field) fieldDesign(b, K, W, D + (C.boardwalk ? { s1: 4, s2: 6, s3: 8 }[stage] + Math.max(2, stairRun) : stairRun), biome, stage, R, doorX);
   if (T.pen) penDesign(b, K, Math.max(...[...cells.values()].map(c => c[0])) + 1, D, stage); // beside the last wing
   if (roofKind === 'gable' && plan !== 'gables' && ((C.dragons && ['longhouse', 'temple', 'tavern'].includes(type)) || (C.carved && stage !== 's1')))
-    for (const sx of [-1, 1]) b.put('wood_dragon1', sx * (W + 0.6), roofTop + r * (D - 1) / 2 + 0.3, 0, sx > 0 ? 90 : 270);
+    for (const sx of [-1, 1]) {
+      // the carving rides on the ridge beam's end, run out a metre past the gable (it stood on nothing)
+      b.put(K.beam1 || 'wood_beam_1', sx * (W + 0.5), roofTop + r * (D - 1) / 2 - 0.35, 0, 0, { trim: true });
+      b.put('wood_dragon1', sx * (W + 0.6), roofTop + r * (D - 1) / 2 + 0.3, 0, sx > 0 ? 90 : 270);
+    }
 
   b.outer = edges;
   if (['home', 'longhouse', 'smithy', 'workshop', 'sawmill', 'barn', 'farm'].includes(type) && stage !== 's1' && roofKind === 'gable' && !flat &&
@@ -1476,7 +1480,8 @@ function dormers(K, w, top, add, dctx) {
     // nor does another wing's roof cover the patch of this roof it would stand on (a cross wing flush with the front)
     if (other.some(o => [[-2.5, 0.5], [2.5, 0.5], [0, 0.5], [-2.5, 2.5], [2.5, 2.5]].some(([du, dv]) => { const [x, z] = toWorld(w, u0 + du, sv * (w.D - dv), 0); return inside(o, x, z, 0.3); }))) continue;
     // a dormer over the door takes the place of a gable porch there
-    if (Math.abs(toWorld(w, u0, 0, 0)[0] - dctx.door.x) < 3 && sv * (dctx.door.z - w.cz) > 0) dctx.profile.gablePorch = false;
+    // (and of a porch: the porch roof would run into the dormer's foot)
+    if (Math.abs(toWorld(w, u0, 0, 0)[0] - dctx.door.x) < 4 && sv * (dctx.door.z - w.cz) > 0) { dctx.profile.gablePorch = false; dctx.profile.dormerOverDoor = true; }
     const v = sv * w.D, vr = sv * (w.D - 1);
     // the front triangle in two halves, each falling away from the middle
     add(gable, u0 - 1, top, v, 0, 'gable', top + 2);

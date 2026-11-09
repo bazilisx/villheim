@@ -156,6 +156,52 @@ const PARTS = {
     requires: { dormerPair: 'dormers' },
     focus: () => ({ az: 20, el: 18, crop: null }),
   },
+  // motif parts (lib/motifs.js): outside and inside corners, the door and its entry, eaves under the overhang, things
+  // hung on plain walls, the foot of the walls
+  corner: {
+    bases: [
+      { type: 'home', biome: 'Meadows', stage: 's3', decor: 'd3', culture: 'norse', plan: 'L' },
+      { type: 'tavern', biome: 'Black Forest', stage: 's3', decor: 'd3', culture: 'norse-forest', plan: 'T' },
+      { type: 'home', biome: 'Swamp', stage: 's2', decor: 'd2', plan: 'cross' },
+      { type: 'home', biome: 'Meadows', stage: 's3', decor: 'd3', culture: 'celtic' }],
+    flags: ['motifCorners', 'motifIcorners', 'cornerPosts'],
+    focus: 'auto',
+  },
+  entry: {
+    bases: [
+      { type: 'home', biome: 'Meadows', stage: 's3', decor: 'd3', culture: 'norse' },
+      { type: 'longhouse', biome: 'Black Forest', stage: 's3', decor: 'd3' },
+      { type: 'tavern', biome: 'Plains', stage: 's3', decor: 'd3' },
+      { type: 'home', biome: 'Mountain', stage: 's2', decor: 'd2' }],
+    flags: ['motifs', 'doorHood', 'gablePorch', 'doorLamp'],
+    focus: d => { const p = lowest(d, 'door'); return p && faceOn(d, p, 3.4, 4.2, 12); },
+  },
+  eave: {
+    bases: [
+      { type: 'home', biome: 'Meadows', stage: 's3', decor: 'd3', culture: 'norse' },
+      { type: 'longhouse', biome: 'Black Forest', stage: 's3', decor: 'd3', culture: 'norse-forest' },
+      { type: 'storage', biome: 'Swamp', stage: 's2', decor: 'd2' }],
+    flags: ['eaveMotifs'],
+    focus: 'auto', view: { el: 2, az: -35, pad: 1.5 },
+  },
+  face: {
+    bases: [
+      { type: 'home', biome: 'Meadows', stage: 's3', decor: 'd3' },
+      { type: 'tavern', biome: 'Black Forest', stage: 's3', decor: 'd3' },
+      { type: 'longhouse', biome: 'Plains', stage: 's2', decor: 'd2' },
+      { type: 'home', biome: 'Mistlands', stage: 's3', decor: 'd3' }],
+    flags: ['motifFaces'],
+    // face on to the first bay that carries a wall-face motif
+    focus: d => { const p = d.pieces.find(q => q.motif && /^MA-/.test(q.motif) && /torch|lantern|banner|itemstand|sign|dragon|raven|wolf|chain|cloth/.test(q.name)); return p && faceOn({ pieces: d.pieces }, p, 2.6, 4, 10); },
+  },
+  base: {
+    bases: [
+      { type: 'home', biome: 'Meadows', stage: 's3', decor: 'd3' },
+      { type: 'longhouse', biome: 'Black Forest', stage: 's2', decor: 'd2' },
+      { type: 'workshop', biome: 'Swamp', stage: 's3', decor: 'd3' }],
+    flags: ['motifBase', 'bands'],
+    focus: 'auto',
+  },
   wall: {
     bases: [
       { type: 'longhouse', biome: 'Meadows', stage: 's3', decor: 'd3' },
@@ -227,6 +273,8 @@ for (const { base, seed } of fx) {
   // (full variant against bare variant), looking at them from outside the building
   const full = G.generate({ ...base, seed, details: Object.fromEntries(spec.flags.map(x => [x, true])) });
   let f0 = spec.focus === 'auto' || !spec.focus ? autoFocus(full, G.generate({ ...base, seed, details: Object.fromEntries(spec.flags.map(x => [x, false])) })) : spec.focus(full);
+  // a part seen from low down (eaves from under them)
+  if (spec.view && f0) { f0.el = spec.view.el; f0.az += spec.view.az || 0; if (f0.crop && spec.view.pad) { f0.crop.y0 -= spec.view.pad; } }
   for (const v of variants(spec, perBase, seed)) {
     const req = { ...base, seed, details: v.details, style: v.style };
     const d = G.generate(req);

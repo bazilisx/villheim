@@ -396,6 +396,9 @@ function check(design, biome, opts = {}) {
         // cooking stations and cauldrons stand over the fire
         if ((b.info.role === 'fire' || o.info.role === 'fire') && /cookingstation|cauldron/.test(pieces[i].name + pieces[j].name)) continue;
         if (!touch(b, o, -0.03)) continue;
+        // a piece set into a wall or another piece on purpose, no deeper than its source build had it (p.clip, D-065)
+        const cl = Math.max(pieces[i].clip || 0, pieces[j].clip || 0);
+        if (cl && Math.min(Math.min(b.x1, o.x1) - Math.max(b.x0, o.x0), Math.min(b.y1, o.y1) - Math.max(b.y0, o.y0), Math.min(b.z1, o.z1) - Math.max(b.z0, o.z0)) <= cl + 0.03) continue;
         const v = SHP.overlapVolume(b.sol, o.sol);
         if (v > 0.03 && v > 0.08 * Math.min(v0, SHP.volume(o.sol))) clips.push([i, j, v]);
       }

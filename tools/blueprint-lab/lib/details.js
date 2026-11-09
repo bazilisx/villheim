@@ -86,6 +86,11 @@ function profile(ctx) {
     // on gables and eaves of the northern cultures; the rules above do whatever no motif fits
     motifs: true,
     motifCorners: wood && !T.tower,
+    motifIcorners: true,
+    // the foot of the walls from s2, things hung on the plain bays from d2 (D-065), eave trim under the overhang
+    motifBase: sN >= 2 && !T.tower,
+    motifFaces: dN >= 2,
+    eaveMotifs: true,
     motifRoof: north && sN >= 2,
   };
 }
@@ -219,8 +224,12 @@ function exterior(b, ctx) {
     added.doors++;
   }
 
-  // ---- corner motifs on the outside corners of the ground storey, before the posts so one post stands there
+  // ---- corner motifs on the outside and inside corners of the ground storey, before the posts so one post stands there
   if (MT && X.motifCorners) added.corners += motifCorners(b, ctx, MT, used);
+  // ---- the foot of the walls, and things hung on the plain bays
+  const based = MT && X.motifBase ? motifBases(b, ctx, MT, used) : new Set();
+  added.bases = based.size;
+  if (MT && X.motifFaces) added.faces = motifFaces(b, ctx, MT, used);
 
   // ---- corner posts, from the foot of the walls to their top, on every outside corner
   if (X.cornerPosts) {
@@ -261,7 +270,7 @@ function exterior(b, ctx) {
     for (let s = 0; s < storeys; s++) {
       const y0 = F + s * SH;
       const opening = openings.find(o => o.e === e && o.y0 === y0);
-      if (X.bands && !(opening && opening.kind !== 'window')) put(beam, e.x + ox * 0.25, y0 + 0.1, e.z + oz * 0.25, e.yaw);
+      if (X.bands && !(opening && opening.kind !== 'window') && !(s === 0 && based.has(e))) put(beam, e.x + ox * 0.25, y0 + 0.1, e.z + oz * 0.25, e.yaw);
       if (X.midRail && !opening) put(beam, e.x + ox * 0.25, y0 + 1, e.z + oz * 0.25, e.yaw);
     }
   }
@@ -389,10 +398,12 @@ function motifDoor(b, ctx, MT, o, used) {
   used.add(c.m.id);
   return { id: c.m.id, lit: placed.some(p => PD.piece(p.name).role === 'light'), step: placed.some(p => PD.piece(p.name).role === 'floor' && p.y < y0 + 0.3) };
 }
-// outside corners of the ground storey: where two walls meet with the building behind both
+// corners of the ground storey: outside corners (two walls meeting with the building behind both) and, where wings
+// meet, inside corners (the building round three sides), each with its own motif from walls of the same kind
 function motifCorners(b, ctx, MT, used) {
-  const { edges, F } = ctx, c = MT.get('corner', {}, true);
-  if (!c) return 0;
+  const { edges, F } = ctx, X = ctx.profile || {}, wt = ctx.C.wallStyle || 'plank';
+  const c = MT.get('corner', { angle: 90, wt }, true), ci = X.motifIcorners !== false ? MT.get('icorner', { angle: 270, wt }, true) : null;
+  if (!c && !ci) return 0;
   const at = new Map();
   for (const e of edges) {
     const { ux, uz } = axes(e);
@@ -403,13 +414,110 @@ function motifCorners(b, ctx, MT, used) {
     const a = es.find(e => e.yaw === 0), bb = es.find(e => e.yaw !== 0);
     if (!a || !bb || es.length !== 2) continue;
     const [x, z] = k.split(',').map(Number);
-    // outside: each wall lies on the far side of the other's outward direction
-    if ((a.x - x) * bb.out[0] + (a.z - z) * bb.out[1] > -0.5 || (bb.x - x) * a.out[0] + (bb.z - z) * a.out[1] > -0.5) continue;
+    // outside: each wall lies on the far side of the other's outward direction; inside: on the near side of it
+    const d1 = (a.x - x) * bb.out[0] + (a.z - z) * bb.out[1], d2 = (bb.x - x) * a.out[0] + (bb.z - z) * a.out[1];
+    const inner = d1 > 0.5 && d2 > 0.5;
+    if (!inner && (d1 > -0.5 || d2 > -0.5)) continue;
+    const m = inner ? ci : c;
+    if (!m) continue;
+    // the frame faces out of the corner: the outward diagonal, or into the open angle between the wings
     const dx = a.out[0] + bb.out[0], dz = a.out[1] + bb.out[1], l = Math.hypot(dx, dz);
-    const placed = MotifsD.place(b, c, { x, y: F, z, nx: dx / l, nz: dz / l }, null, { mirror: MT.mirror, ground: 0, inward: false, dry: true });
-    if (placed.length) { n++; hold(b, placed); }
+    const placed = MotifsD.place(b, m, { x, y: F, z, nx: dx / l, nz: dz / l }, null, { mirror: MT.mirror, ground: 0, inward: inner, dry: true });
+    if (placed.length) { n++; hold(b, placed); used.add(m.m.id); }
   }
-  if (n) used.add(c.m.id);
+  return n;
+}
+
+// The foot of the walls: a sill log, a stone course, a board laid out from the wall, from a motif of walls of the
+// same kind, on every ground-storey bay without a door. Returns the bays done (the rules' foot band leaves them).
+function motifBases(b, ctx, MT, used) {
+  const { edges, F } = ctx, wt = ctx.C.wallStyle || 'plank', done = new Set();
+  if (F > 0.01) return done; // a raised floor has posts under it, no wall foot on the ground
+  const c = MT.get('base', { wt }, true);
+  if (!c) return done;
+  const doorAt = (b.openings || []).filter(o => o.kind !== 'window' && o.storey === 0).map(o => o.e);
+  for (const e of edges) {
+    if (doorAt.includes(e)) continue;
+    const { ox, oz } = axes(e);
+    const placed = MotifsD.place(b, c, { x: e.x, y: F, z: e.z, nx: ox, nz: oz }, null, { mirror: MT.mirror, ground: 0, dry: true, minShare: 0.5, lift: true });
+    if (placed.length) { hold(b, placed); done.add(e); }
+  }
+  if (done.size) used.add(c.m.id);
+  return done;
+}
+
+// Things hung on a plain stretch of outside wall (D-065): a sconce or a lantern on a hook, a banner, an item stand
+// with a shield or a trophy, a sign, a carving, with the bracket or board that carries it. One motif per building,
+// on one bay in three at most, never on a corner bay or within 3 m of a door, from the front round; two at d2, four
+// at d3.
+function motifFaces(b, ctx, MT, used) {
+  const { edges, F, door } = ctx, X = ctx.profile, wt = ctx.C.wallStyle || 'plank';
+  if (X.dN < 2) return 0;
+  const openings = b.openings || [];
+  const openAt = new Set(openings.filter(o => o.storey === 0).map(o => `${o.e.x},${o.e.z}`));
+  const doors = openings.filter(o => o.kind !== 'window').map(o => o.e);
+  const edgeAt = new Map(edges.map(e => [`${e.x},${e.z}`, e]));
+  const plain = e => {
+    if (openAt.has(`${e.x},${e.z}`)) return false;
+    const { ux, uz } = axes(e);
+    for (const s of [-1, 1]) {
+      const n = edgeAt.get(`${e.x + ux * s * 2},${e.z + uz * s * 2}`);
+      if (!n || n.yaw !== e.yaw || n.out[0] !== e.out[0] || n.out[1] !== e.out[1]) return false; // a corner beside it (a window may be: a lamp between windows)
+    }
+    return !doors.some(d => Math.hypot(d.x - e.x, d.z - e.z) < 3.1);
+  };
+  const front = e => door && e.out[0] === door.out[0] && e.out[1] === door.out[1];
+  const cands = edges.filter(plain).sort((p, q) => (front(q) ? 1 : 0) - (front(p) ? 1 : 0) || Math.hypot(p.x - (door ? door.x : 0), p.z - (door ? door.z : 0)) - Math.hypot(q.x - (door ? door.x : 0), q.z - (door ? door.z : 0)));
+  const max = X.dN >= 3 ? 4 : 2, taken = [];
+  const hasAccent = placed => placed.some(p => MotifsD.PROPS.test(p.cls) || MotifsD.CARVED.test(p.cls));
+  const frameOf = e => { const { ox, oz } = axes(e); return { x: e.x, y: F, z: e.z, nx: ox, nz: oz }; };
+  const opts = { mirror: MT.mirror, ground: 0, dry: true, lift: true };
+  // the motif is chosen among those whose lamp or banner fits on the first plain bay
+  const test = cands[0] ? c => hasAccent(MotifsD.place(b, c, frameOf(cands[0]), null, opts)) : null;
+  for (const e of cands) {
+    if (taken.length >= max) break;
+    if (taken.some(t => Math.hypot(t.x - e.x, t.z - e.z) < 5.9)) continue;
+    const { ux, uz, ox, oz } = axes(e);
+    // nothing in front of the bay (a lean-to, a woodpile, a stack)
+    if (b.pieces.some(p => { const d = (p.x - e.x) * ox + (p.z - e.z) * oz, sd = Math.abs((p.x - e.x) * ux + (p.z - e.z) * uz); return d > 0.3 && d < 2.6 && sd < 1.6 && p.y < F + 3 && (p.decor || /roof|stair|floor/.test(PD.piece(p.name).role)); })) continue;
+    const c = MT.get('wallface', { wt }, front(e), test);
+    if (!c) break;
+    const placed = MotifsD.place(b, c, frameOf(e), null, opts);
+    if (!placed.length || !hasAccent(placed)) continue;
+    hold(b, placed); taken.push(e); used.add(c.m.id);
+  }
+  return taken.length;
+}
+
+// Round and many-sided plans (generate.js octagonDesign keeps b.octo): corner motifs from walls meeting at 135
+// degrees on the vertices of the ground storey, and things hung on the plain bays. Placed after the furnishing.
+function roundTrim(b, ctx) {
+  const o = b.octo;
+  if (!o || !MotifsD.plan) return 0;
+  const X = ctx.profile || (ctx.profile = { sN: +ctx.stage[1], dN: +ctx.decor[1] });
+  const MT = ctx.motifs || (ctx.motifs = MotifsD.plan(ctx));
+  if (!MT) return 0;
+  const used = new Set(), wt = ctx.C.wallStyle || 'plank';
+  let n = 0;
+  const c = X.sN >= 2 && /plank|half-timber|log/.test(wt) ? MT.get('corner', { angle: 135, wt }, true) : null;
+  if (c) for (const v of o.verts) {
+    const l = Math.hypot(v.x, v.z) || 1;
+    if (MotifsD.place(b, c, { x: v.x, y: ctx.F, z: v.z, nx: v.x / l, nz: v.z / l }, null, { mirror: MT.mirror, ground: 0, inward: false, anyWall: true, lift: true }).length) { n++; used.add(c.m.id); }
+  }
+  if (X.dN >= 2) {
+    let k = 0;
+    for (const bay of o.bays) {
+      if (bay.kind !== 'wall' || k >= (X.dN >= 3 ? 3 : 2) || (k && bay.i % 3)) continue;
+      const m = MT.get('wallface', { wt }, bay.i === 4);
+      if (!m) break;
+      const placed = MotifsD.place(b, m, { x: bay.x, y: ctx.F, z: bay.z, nx: bay.nx, nz: bay.nz }, null, { mirror: MT.mirror, ground: 0, dry: true });
+      // the lamp, banner or sign has to be there: its bracket alone is no accent
+      if (!placed.some(p => MotifsD.PROPS.test(p.cls) || MotifsD.CARVED.test(p.cls))) continue;
+      for (const p of placed) b.put(p.name, p.x, p.y, p.z, p.yaw, p.clip ? { trim: true, motif: m.m.id, footed: true, clip: p.clip } : { trim: true, motif: m.m.id, footed: true });
+      k++; n++; used.add(m.m.id);
+    }
+  }
+  if (used.size) { pruneMotifs(b, ctx); b.notes.push(`Trim after community builds: ${[...used].sort().join(', ')}.`); }
   return n;
 }
 
@@ -497,9 +605,24 @@ function bargeboards(K, C, w, ctx, rows, ends, add, low, pivot, r) {
   // motifs from the best-liked builds for the gable faces and the eaves (lib/motifs.js), in wing-local terms
   const MT = X.motifs && X.motifRoof ? (ctx.motifs || (ctx.motifs = MotifsD.plan(ctx))) : null;
   const gm = MT && MT.get('gable', { slope: r === 2 ? 45 : 26 }, true);
-  // eave motifs are off for now: few fit a roof that ends at the wall, and they hardly show from the ground
-  const em = X.eaveMotifs && MT && rows === (w.D - 3) / 2 && MT.get('eave', { slope: r === 2 ? 45 : 26, overhang: 0 }, true);
-  const top = low((w.D - 3) / 2), gw = X.gableWindow && !C.stoneWalls && capY - top >= 3.9;
+  // eave motifs where the roof runs a meter past the wall (D-059 B): the trim builders put under an overhang, fitted
+  // to eaves 0.5 to 1.5 m past the wall's face (the generator's stand 0.9 m past it); a roof ending at the wall has
+  // no room under it for them
+  const eo0 = ctx.eaveOut || 0, top = low((w.D - 3) / 2), yE = low(rows) - (r / 2) * eo0;
+  const eaveSkip = p => {
+    // between the wall's face and a little past the roof's edge, within the bay
+    if (p.o < -eo0 + 0.15 || p.o > 0.35 || Math.abs(p.a) > 1.05) return true;
+    // close to the wall no lower than 0.9 m under its top (the upper windows), further out no lower than 0.6 m under
+    // the eave's edge
+    const half = PD.piece(p.name).size[1] / 2;
+    if ((p.o < -eo0 + 0.6 && p.y - half < top - 0.9) || p.y - half < yE - 0.6) return true;
+    // under the roof: nothing through it (the roof rises inward from the edge; a board just under the edge is fine)
+    const under = (r / 2) * Math.max(0, -p.o) + 0.12;
+    return p.h + half > under;
+  };
+  const em = X.eaveMotifs !== false && eo0 && MT && rows === (w.D - 3) / 2 && MT.get('eave', { slope: r === 2 ? 45 : 26, overhang: eo0 - 0.1 }, true,
+    c => MotifsD.roofParts(c, { x: 0, y: yE, z: 3 + 2 * rows + eo0, nx: 0, nz: 1 }, null, { skip: eaveSkip, minShare: 0.75, dry: true }) > 0);
+  const gw = X.gableWindow && !C.stoneWalls && capY - top >= 3.9;
   let gableDone = false, apex = false, eaveDone = false;
   // the roof's parts go in by generate.js; their world places are kept so the last pass can find them
   const al = (w.alpha || 0) * Math.PI / 180, keys = ctx.motifKeys || (ctx.motifKeys = new Set());
@@ -529,17 +652,13 @@ function bargeboards(K, C, w, ctx, rows, ends, add, low, pivot, r) {
   const a = (w.alpha || 0) * Math.PI / 180;
   const overDoor = (u, v) => { const x = w.cx + u * Math.cos(a) + v * Math.sin(a), z = w.cz - u * Math.sin(a) + v * Math.cos(a);
     return (ctx.openings || []).some(o => o.kind !== 'window' && o.storey === 0 && Math.hypot(o.e.x - x, o.e.z - z) < 2.2); };
-  // the eaves: one bay of the motif on every 2 m of the lowest row, both sides, never over a door
+  // the eaves: one bay of the motif on every 2 m of the overhanging row, both sides, never over a door; the frame is
+  // the row's low edge, a meter past the wall line
   if (em && X.eaveTrim) {
     const edge = 3 + 2 * rows;
     let n = 0;
     for (let u = -w.W + 1; u <= w.W - 1 + 0.01; u += 2) for (const sv of [-1, 1])
-      if (!overDoor(u, sv * w.D)) n += MotifsD.roofParts(em, { x: u, y: low(rows), z: sv * edge, nx: 0, nz: sv }, addM, { mirror: MT.mirror, skip: p => {
-        if (p.o < -0.05 || p.h < -0.9 || Math.abs(p.a) > 1.05) return true;
-        // under the roof: nothing through it (the roof rises inward from the edge)
-        const half = PD.piece(p.name).size[1] / 2, under = (r / 2) * Math.max(0, -p.o) - 0.15;
-        return p.h + half > under;
-      } });
+      if (!overDoor(u, sv * w.D)) n += MotifsD.roofParts(em, { x: u, y: yE, z: sv * (edge + eo0), nx: 0, nz: sv }, addM, { mirror: MT.mirror, skip: eaveSkip });
     if (n) { eaveDone = true; ctx.motifUsed = [...(ctx.motifUsed || []), em.m.id]; }
   }
   // rafter tails: a sloped beam at every seam of the lowest roof row, half a metre out past its edge and just under it
@@ -729,5 +848,5 @@ function interior(b, ctx) {
   }
 }
 
-const apiD = { profile, exterior, bargeboards, partition, interior, slopeBeam, commitMotifs };
+const apiD = { profile, exterior, bargeboards, partition, interior, slopeBeam, commitMotifs, roundTrim };
 if (NODE_D) module.exports = apiD; else window.VHDetails = apiD;

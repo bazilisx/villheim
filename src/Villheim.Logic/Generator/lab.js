@@ -5098,7 +5098,10 @@ function canopyBed(b, ctx) {
   for (const bed of b.pieces.filter(p => p.name === 'bed' && p.decor)) {
     const a = (bed.yaw || 0) * Math.PI / 180, ca = Math.cos(a), sa = Math.sin(a);
     const at = (lx, lz) => [bed.x + lx * ca + lz * sa, bed.z - lx * sa + lz * ca]; // local x across, z along the bed
-    const corners = [[-0.62, -1.3], [0.62, -1.3], [-0.62, 1.3], [0.62, 1.3]].map(([lx, lz]) => at(lx, lz));
+    // posts at the corners of the bed's true footprint, a little in
+    const bb = Ck.aabb(bed);
+    const corners = [[bb.x0 + 0.12, bb.z0 + 0.12], [bb.x1 - 0.12, bb.z0 + 0.12], [bb.x0 + 0.12, bb.z1 - 0.12], [bb.x1 - 0.12, bb.z1 - 0.12]];
+    void at;
     // the room over the bed: the lowest thing above it that is not the bed itself
     let ceil = Infinity;
     for (const p of b.pieces) {
@@ -5110,7 +5113,11 @@ function canopyBed(b, ctx) {
     }
     if (ceil < bed.y + 2.5) continue;
     // nothing else stands where a post goes
-    const busy = corners.some(([x, z]) => b.pieces.some(p => p !== bed && p.decor && PB.piece(p.name).role !== 'rug' && Math.hypot(p.x - x, p.z - z) < 0.45 && p.y < bed.y + 2.2));
+    const busy = corners.some(([x, z]) => b.pieces.some(p => {
+      if (p === bed || !p.decor || PB.piece(p.name).role === 'rug' || p.y > bed.y + 2.2) return false;
+      const o = Ck.aabb(p);
+      return x > o.x0 - 0.25 && x < o.x1 + 0.25 && z > o.z0 - 0.25 && z < o.z1 + 0.25; // another bed, a chest, a table
+    }));
     if (busy) continue;
     const T = { decor: true, trim: true };
     for (const [x, z] of corners) b.put(post, x, bed.y + 1, z, 0, T);
@@ -5585,20 +5592,23 @@ function generate(req) {
     // a courtyard wing has doors to the yard near its middle: its fire goes to the far end
     // and off the outer walls when they are thick (a 1 m stone wall reaches half a metre into the cell beside it)
     const thick = /stone|marble|grausten/.test(C.wallStyle || '');
-    const score = ([x, z]) => (doorEdges.some(e => Math.hypot(e.x - x, e.z - z) < 2.5) ? 100 : 0) + (thick && edges.some(e => Math.hypot(e.x - x, e.z - z) < 1.1) ? 50 : 0) +
+    const walled = ([x, z]) => [[2, 0], [-2, 0], [0, 2], [0, -2]].some(([dx, dz]) => !cells.has(`${x + dx},${z + dz}`));
+    const score = ([x, z]) => (doorEdges.some(e => Math.hypot(e.x - x, e.z - z) < 2.5) ? 100 : 0) + (thick && walled([x, z]) ? 50 : 0) +
       (plan === 'court' ? -1 : 1) * Math.hypot(x - doorX, z - w0.cz);
     flatCell = [...cells.values()].filter(([x, z]) => inside(w0, x, z) && !gallery.has(`${x},${z}`)).sort((a, c) => score(a) - score(c))[0] || null;
     if (flatCell) flue = cellRect(flatCell);
     // beside a thick wall the fire would reach into it: it goes between this cell and the next one away from the
     // wall, under a 4 x 2 m opening over both
     if (flatCell && thick) {
-      const [x, z] = flatCell, e = edges.find(e2 => Math.hypot(e2.x - x, e2.z - z) < 1.1);
-      if (e) {
-        const nx = x + Math.sign(x - e.x) * 2, nz = z + Math.sign(z - e.z) * 2;
-        if (cells.has(`${nx},${nz}`) && !gallery.has(`${nx},${nz}`) && !doorEdges.some(d => Math.hypot(d.x - nx, d.z - nz) < 1.1)) {
-          flue = { x0: Math.min(x, nx) - 1, x1: Math.max(x, nx) + 1, z0: Math.min(z, nz) - 1, z1: Math.max(z, nz) + 1 };
-          flatCell = [(x + nx) / 2, (z + nz) / 2];
-        }
+      // a side is walled where the next cell is not the building's (outer walls and a courtyard's alike)
+      const [x, z] = flatCell, has = (cx, cz) => cells.has(`${cx},${cz}`);
+      const sx = !has(x - 2, z) && has(x + 2, z) ? 2 : !has(x + 2, z) && has(x - 2, z) ? -2 : 0;
+      const sz = !has(x, z - 2) && has(x, z + 2) ? 2 : !has(x, z + 2) && has(x, z - 2) ? -2 : 0;
+      const near = sx || sz ? [1] : [];
+      const over = [[x, z], [x + sx, z], [x, z + sz], [x + sx, z + sz]].filter(([cx, cz], i, a) => a.findIndex(([ax, az]) => ax === cx && az === cz) === i);
+      if (near.length && over.every(([cx, cz]) => cells.has(`${cx},${cz}`) && !gallery.has(`${cx},${cz}`) && !doorEdges.some(d => Math.hypot(d.x - cx, d.z - cz) < 1.1))) {
+        flue = { x0: Math.min(x, x + sx) - 1, x1: Math.max(x, x + sx) + 1, z0: Math.min(z, z + sz) - 1, z1: Math.max(z, z + sz) + 1 };
+        flatCell = [x + sx / 2, z + sz / 2];
       }
     }
   }
@@ -5849,7 +5859,8 @@ function generate(req) {
     for (let x = -yard + 1; x < yard; x += 2) for (let z = -yard + 1; z < yard; z += 2) b.put(pave, x, 0, z);
     const well = new Build(); wellDesign(well, K, biome, 's1');
     const lift = thickFloor(pave) ? 0.5 : 0; // on top of the paving
-    for (const p of well.pieces) b.put(p.name, p.x, p.y + lift, p.z, p.yaw);
+    // the barrel by the well only where the yard has room for it (a small yard's walls are a metre thick)
+    for (const p of well.pieces) if (!(p.name === 'piece_chest_barrel' && yard < 3.1)) b.put(p.name, p.x, p.y + lift, p.z, p.yaw);
     if (stage === 's3' && type !== 'home') {
       for (const sx of [-1, 1]) for (const sz of [-1, 1]) stoneTowerAt(b, K, sx * (Q + 1), sz * (Q + 1), top + 2, 0, true);
       b.notes.push('Corner towers, after the caravanserais.');
@@ -6005,7 +6016,7 @@ function settle(b, ctx) {
     const walls = b.pieces.filter(p => !p.decor && ['wall', 'pole', 'stair'].includes(P.piece(p.name).role)).map(p => Ck.aabb(p));
     const clear0 = keepClear(b).filter(z => !(fire.x > z.x0 && fire.x < z.x1 && fire.z > z.z0 && fire.z < z.z1)); // doorways and climbs, not the zone it is in already
     const clips = () => { const o = Ck.aabb(fire); return walls.some(w => w.x0 < o.x1 - 0.05 && w.x1 > o.x0 + 0.05 && w.z0 < o.z1 - 0.05 && w.z1 > o.z0 + 0.05 && w.y0 < o.y1 && w.y1 > o.y0 + 0.05) ||
-      clear0.some(z => hits(o, z)); };
+      clear0.some(z => hits({ ...o, x0: o.x0 + 0.15, x1: o.x1 - 0.15, z0: o.z0 + 0.15, z1: o.z1 - 0.15 }, z)); };
     if (clips()) {
       const rm = mainRoom || { x0: fire.x - 1, x1: fire.x + 1, z0: fire.z - 1, z1: fire.z + 1 };
       const cx = (rm.x0 + rm.x1) / 2, cz = (rm.z0 + rm.z1) / 2, L = Math.hypot(cx - fire.x, cz - fire.z) || 1;

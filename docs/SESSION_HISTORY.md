@@ -5,9 +5,9 @@ Current facts only. Read this at the start of a session. Narrative is in `docs/d
 
 ## Current State (as of 2026-11-08)
 
-- **Testing (now):** Tyler runs T-301 to T-328 (row 149 of the Tests tab) against build 294d691 or later. Lab round 3
-  is unfinished on branch fix/lab-round3 (not merged). Dialogue: original lines rewritten in place once Tyler passes a
-  sample (D-055). See the 2026-11-08 note, Sessions 9 to 11.
+- **Next session:** work the open bug list in the 2026-11-08 note, Session 12 (round 5 results, build 0908775). Room
+  templates unfinished on feat/room-templates; lab structure on fix/lab-round3. Verify fixes by tracing code paths and
+  say plainly what is untested in game.
 - **Design review (the current work):** how-to for Tyler in `docs/DESIGN_REVIEW_GUIDE.md`. Review sheet
   https://docs.google.com/spreadsheets/d/1rHaZArWhEa8V43UTZePM9EQSBwS6bvjsmAFPhnlQs6o/edit (tabs Pass 2, Review,
   All data, Variants, Mods; sheet script `scripts/review-sheet.gs`).
@@ -113,6 +113,7 @@ Current facts only. Read this at the start of a session. Narrative is in `docs/d
 
 ## Recent milestones
 
+- **2026-11-08 (test rounds 4 and 5)** - see docs/daily-notes/2026-11/2026-11-08.md
 - **2026-11-08 (test round 3 fixes merged)** - see docs/daily-notes/2026-11/2026-11-08.md
 - **2026-11-08 (test round 2 fixes merged)** - see docs/daily-notes/2026-11/2026-11-08.md
 - **2026-11-08 (test round 1 fixes merged)** - see docs/daily-notes/2026-11/2026-11-08.md

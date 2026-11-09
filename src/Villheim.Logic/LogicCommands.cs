@@ -75,6 +75,10 @@ namespace Villheim.Logic
 
         public static string[] CommandHelp() => Help.Concat(TestVillage.Help).Concat(new[]
         {
+            Villagers.TestSetups.Help,
+            "hair: list each hair lean's styles with the names the game shows (empty leans are filled in by name once a game)",
+        }).Concat(new[]
+        {
             "switches: list the settings that turn each world and villager-minds system off, and whether each is on now: " +
             string.Join(", ", LogicConfig.Switches.Select(s => s.Name)) +
             " (grouped by config section and sorted by name; the world ones also need WorldLife on)",
@@ -298,6 +302,8 @@ namespace Villheim.Logic
                 case "villheim_defenders": Say(context, Villagers.Defenders.Command()); return true;
                 case "villheim_keepapart": Say(context, KeepApart.Command()); return true;
                 case "villheim_grudges": Say(context, Villagers.Grudges.Command(args)); return true;
+                case "villheim_test": Say(context, Villagers.TestSetups.Command(args)); return true;
+                case "villheim_hair": Say(context, Villagers.HairReview.LeansCommand()); return true;
                 case "villheim_kids":
                     Say(context, args.Length > 0 && args[0].Equals("rig", System.StringComparison.OrdinalIgnoreCase)
                         ? Villagers.ChildBody.Command(args.Skip(1).ToArray())

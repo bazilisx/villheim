@@ -16,6 +16,9 @@ namespace Villheim.Logic.Villagers
         {
             public int Value = -1;
             public float NextDressCheck;
+            public bool Elder;
+            public string BoyLook;
+            public float MaxHealth;
         }
 
         private static readonly ConditionalWeakTable<Villager, AppliedTier> Applied =
@@ -39,6 +42,7 @@ namespace Villheim.Logic.Villagers
             GhostDeath.Apply(villager);
             Demisting.UpdateVillager(villager);
             Status.Publish(villager);
+            HandItems.Watch(villager);
 
             AppliedTier applied = Applied.GetOrCreateValue(villager);
             if (!villager.LooksApplied)
@@ -52,6 +56,13 @@ namespace Villheim.Logic.Villagers
             if (applied.Value >= 0 && Time.time >= applied.NextDressCheck)
             {
                 applied.NextDressCheck = Time.time + 3f;
+                // An elder's beard (VillagerLooks) and a boy's look (ChildBoyLook) follow him: dressed again when they change.
+                if (applied.Elder != Elders.IsElder(villager) ||
+                    (Childhood.IsChild(villager) && applied.BoyLook != VillagerLooks.BoyLook))
+                {
+                    applied.Value = -1;
+                }
+
                 if (villager.m_chestItem == null || villager.m_legItem == null)
                 {
                     VillheimPlugin.Log.LogInfo($"{villager.VillagerName} lost their clothes (holding " +
@@ -71,7 +82,20 @@ namespace Villheim.Logic.Villagers
                 if (tier != applied.Value && FrameBudget.Take("dress", 1))
                 {
                     applied.Value = tier;
+                    applied.Elder = Elders.IsElder(villager);
+                    applied.BoyLook = VillagerLooks.BoyLook;
                     VillagerLooks.Apply(villager, villager.Zdo.GetInt(Keys.VillagerSeed), tier);
+                    HandItems.PutAway(villager);
+                }
+
+                // Tougher with the village's gear (VillagerHealthPerTier): one or two deathsquitos never fell a villager.
+                float max = VillheimConfig.VillagerHealth.Value * (1f + Mathf.Max(0f, LogicConfig.VillagerHealthPerTier?.Value ?? 0.35f) * Mathf.Max(0, tier));
+                if (!Mathf.Approximately(max, applied.MaxHealth))
+                {
+                    float share = villager.GetMaxHealth() > 0f ? villager.GetHealth() / villager.GetMaxHealth() : 1f;
+                    applied.MaxHealth = max;
+                    villager.SetMaxHealth(max);
+                    villager.SetHealth(Mathf.Max(1f, max * Mathf.Clamp01(share)));
                 }
             }
 
@@ -173,6 +197,12 @@ namespace Villheim.Logic.Villagers
                 text += $"\n<color=#b0b0b0>{(title != null ? char.ToUpperInvariant(title[0]) + title.Substring(1) + " of " : "of ")}{village}</color>";
             }
 
+            string roles = RoleLine(villager);
+            if (roles != null)
+            {
+                text += $"\n<size=13><color=#c8b48c>{roles}</color></size>";
+            }
+
             string job = Activity(villager);
             if (job != null)
             {
@@ -193,6 +223,53 @@ namespace Villheim.Logic.Villagers
                 text += "\n[<color=yellow><b>Shift</b></color> + <color=yellow><b>$KEY_Use</b></color>] Trade";
             }
             return Localization.instance.Localize(text);
+        }
+
+        /// <summary>
+        /// Every part he plays, for the hover (Tyler: "I don't know who a protector is"): leader, protector or carer,
+        /// his trade, builder, hunter, elder, tonight's watch.
+        /// </summary>
+        private static string RoleLine(Villager villager)
+        {
+            if (Childhood.IsChild(villager))
+            {
+                return "Child";
+            }
+
+            var parts = new System.Collections.Generic.List<string>();
+            if (Roles.IsJarl(villager))
+            {
+                parts.Add("Leader");
+            }
+
+            parts.Add(Roles.BackgroundOf(villager) == Roles.Background.Protector ? "Protector" : "Carer");
+            if (Elders.IsElder(villager))
+            {
+                parts.Add("Elder");
+            }
+
+            Roles.Trade trade = Roles.TradeOf(villager);
+            if (trade != Roles.Trade.None)
+            {
+                parts.Add(trade.ToString());
+            }
+
+            if (Chores.IsVillageBuilder(villager) && trade != Roles.Trade.Carpenter)
+            {
+                parts.Add("Builder");
+            }
+
+            if (Hunting.IsVillageHunter(villager))
+            {
+                parts.Add("Hunter");
+            }
+
+            if (Roles.IsNightWatch(villager))
+            {
+                parts.Add("Night watch");
+            }
+
+            return string.Join(", ", parts);
         }
 
         public static bool Interact(Villager villager, Humanoid user)

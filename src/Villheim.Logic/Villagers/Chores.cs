@@ -211,7 +211,7 @@ namespace Villheim.Logic.Villagers
                 }
             }
             else if (needs.SiteActive && needs.CanBuildNow && work.Phase != Phase.Build && work.Phase != Phase.Make &&
-                     Time.time >= work.BuildRetryAt && (builder || JoinsBuilding(villager, work)))
+                     Time.time >= work.BuildRetryAt && !Elders.IsElder(villager) && (builder || JoinsBuilding(villager, work)))
             {
                 // The chest has what the next part needs: the builder drops what he is doing (keeping what he carries
                 // for the chest) and builds, and idle hands join him (T-54: building the village is the point; the
@@ -355,13 +355,17 @@ namespace Villheim.Logic.Villagers
                 return cached.Builder == villager.GetZDOID();
             }
 
+            // Elders never build houses (Tyler: "elders are helping to build and that doesn't mesh"): the builder is a
+            // grown villager who is not an elder whenever the village has one. Only a village of elders has an elder
+            // builder, and he only makes the small things (Update).
             Villager best = null;
             bool bestIsBuilder = false;
+            bool bestYoung = false;
             int bestSeed = int.MaxValue;
             foreach (Character character in Character.GetAllCharacters())
             {
                 if (!(character is Villager other) || other.IsDead() || other.VillageId != id || other.Zdo == null ||
-                    Childhood.IsChild(other))
+                    Childhood.IsChild(other) || Wanderers.IsWanderer(other))
                 {
                     continue;
                 }
@@ -369,10 +373,14 @@ namespace Villheim.Logic.Villagers
                 int seed = other.Zdo.GetInt(Keys.VillagerSeed);
                 Roles.Trade trade = Roles.TradeOf(other);
                 bool isBuilder = trade != Roles.Trade.None ? trade == Roles.Trade.Carpenter : VillagerLooks.IsBuilder(seed);
-                if (best == null || (isBuilder && !bestIsBuilder) || (isBuilder == bestIsBuilder && seed < bestSeed))
+                bool young = !Elders.IsElder(other);
+                bool better = best == null || (young && !bestYoung) ||
+                              (young == bestYoung && ((isBuilder && !bestIsBuilder) || (isBuilder == bestIsBuilder && seed < bestSeed)));
+                if (better)
                 {
                     best = other;
                     bestIsBuilder = isBuilder;
+                    bestYoung = young;
                     bestSeed = seed;
                 }
             }
@@ -393,6 +401,18 @@ namespace Villheim.Logic.Villagers
             // table, benches) before he goes out gathering. Building the house going up comes first (Update).
             if (builder && TryMake(villager, work))
             {
+                return;
+            }
+
+            if (Elders.IsElder(villager))
+            {
+                // An elder builder (a village of elders) makes the small things above and picks up what lies about;
+                // he never fells, mines or clears ground.
+                if (!TryTidy(villager, work))
+                {
+                    NoWork(villager, work, "an elder leaves the heavy work to younger hands");
+                }
+
                 return;
             }
 
@@ -741,8 +761,9 @@ namespace Villheim.Logic.Villagers
                 return null;
             }
 
-            // Everyone carries an axe and a pickaxe, so anyone can fell or mine; they take the right one in hand.
-            work.CanHarvest = VillagerLooks.Hold(villager, profile.Tool);
+            // Everyone carries an axe and a pickaxe, so anyone can fell or mine; the right one goes in hand only once
+            // there is something to work (looking for work had taken it out every few seconds).
+            work.CanHarvest = VillagerLooks.Carries(villager, profile.Tool) || VillagerLooks.Hold(villager, profile.Tool);
             int tier = ToolTier(villager);
             HashSet<string> wanted = work.Wanted;
             GameObject target = !work.CanHarvest ? null
@@ -772,6 +793,7 @@ namespace Villheim.Logic.Villagers
 
             Claimed.Add(target);
             Begin(villager, work, Phase.Approach, target, target.transform.position, 90f);
+            VillagerLooks.Hold(villager, profile.Tool);
             Started(villager, work, (profile.IsPartial(target) ? profile.PartialActivity : profile.Activity) +
                                     $" ({Utils.GetPrefabName(target)}, {Utils.DistanceXZ(position, target.transform.position):0} m away)");
             return null;

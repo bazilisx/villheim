@@ -144,6 +144,12 @@ namespace Villheim.Logic.Villagers
                 FreeTime.Update(villager, ai, dt);
                 doer = Status.Doer.FreeTime;
             }
+            else if (Hunting.Update(villager, ai, dt))
+            {
+                // The village wants meat: its hunter goes out before any chore (Tyler: deer near the village and
+                // nobody hunted, the protectors were always busy with something else first).
+                doer = Status.Doer.Hunt;
+            }
             else if (Chores.Update(villager, ai, dt))
             {
                 doer = Status.Doer.Chores;
@@ -179,19 +185,14 @@ namespace Villheim.Logic.Villagers
                 // Carrying stacks from the full main chest to the storage chests (D-016).
                 doer = Status.Doer.Sort;
             }
-            else if (!Ages.OutOfVillageWork(villager) && Hunting.Update(villager, ai, dt))
-            {
-                // A protector hunts when the chest is low on food.
-                doer = Status.Doer.Hunt;
-            }
             else if (Farming.Update(villager, ai, dt))
             {
                 // The farmer plants, harvests and sees to the animals.
                 doer = Status.Doer.Farm;
             }
-            else if (!Ages.OutOfVillageWork(villager) && Foraging.Update(villager, ai, dt))
+            else if (!Childhood.IsChild(villager) && Foraging.Update(villager, ai, dt))
             {
-                // A carer picks berries and mushrooms when the chest is low on food.
+                // A carer or an elder picks berries and mushrooms when the chest is low on food (elders may forage).
                 doer = Status.Doer.Forage;
             }
             else if (Healing.Update(villager, ai, dt, true))

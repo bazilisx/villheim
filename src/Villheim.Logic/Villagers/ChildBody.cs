@@ -42,6 +42,8 @@ namespace Villheim.Logic.Villagers
             public Transform Spine, Neck, Head, LeftArm, RightArm, LeftUpLeg, RightUpLeg, LeftShoulder, RightShoulder;
             public Vector3 LeftShoulderBase, RightShoulderBase, LeftUpLegBase, RightUpLegBase;
             public bool Ready;
+            public bool FaceSet;
+            public float NextFace;
         }
 
         private static readonly List<Body> Bodies = new List<Body>();
@@ -73,7 +75,6 @@ namespace Villheim.Logic.Villagers
             return entry != null ? entry.Value : 1f;
         }
 
-        private static bool IsFemale(Villager villager) => villager.m_visEquipment != null && villager.m_visEquipment.GetModelIndex() == 1;
 
         /// <summary>From Childhood: keeps a child's body shaped for his age (and lets go once he is grown).</summary>
         public static void Track(Villager villager)
@@ -83,7 +84,7 @@ namespace Villheim.Logic.Villagers
                 return;
             }
 
-            Bodies.Add(new Body { Root = villager.gameObject, Villager = villager, Female = IsFemale(villager) });
+            Bodies.Add(new Body { Root = villager.gameObject, Villager = villager, Female = VillagerLooks.IsFemale(villager) });
         }
 
         /// <summary>A child's age from 0 (born) to 1 (grown).</summary>
@@ -120,17 +121,86 @@ namespace Villheim.Logic.Villagers
 
                 if (body.Villager != null)
                 {
-                    body.Female = IsFemale(body.Villager);
+                    // His sex from his seed: boys had been on the female model, and so had the girl's proportions too.
+                    body.Female = VillagerLooks.IsFemale(body.Villager);
+                    BoyFace(body);
                 }
 
                 float age = Age(body);
                 Apply(body, age);
                 if (age >= 1f)
                 {
+                    if (body.Villager != null && body.FaceSet)
+                    {
+                        // Grown: his own face back.
+                        SetFace(body.Villager, 0);
+                    }
+
                     // Grown: everything is back at 1, so he is let go.
                     Bodies.RemoveAt(i);
                 }
             }
+        }
+
+        /// <summary>
+        /// ChildBoyLook femaleface: a boy on the male body wears the female model's skin texture, face and all. The two
+        /// bodies are each one mesh with the head in it, so the female head itself cannot be put on the male body
+        /// without a new model (D-013); the texture is what the game lets us change. Checked once a second, since the
+        /// game sets the body's texture again whenever it changes the model.
+        /// </summary>
+        private static void BoyFace(Body body)
+        {
+            if (Time.time < body.NextFace)
+            {
+                return;
+            }
+
+            body.NextFace = Time.time + 1f;
+            Villager villager = body.Villager;
+            bool want = !body.Female && VillagerLooks.BoyLook == "femaleface" && villager.m_visEquipment != null &&
+                        villager.m_visEquipment.GetModelIndex() == 0;
+            if (want)
+            {
+                body.FaceSet |= SetFace(villager, 1);
+            }
+            else if (body.FaceSet)
+            {
+                SetFace(villager, villager.m_visEquipment != null ? villager.m_visEquipment.GetModelIndex() : 0);
+                body.FaceSet = false;
+            }
+        }
+
+        /// <summary>Lays the skin textures of model <paramref name="model"/> (0 male, 1 female) on the body as it is. True when changed.</summary>
+        private static bool SetFace(Villager villager, int model)
+        {
+            VisEquipment vis = villager.m_visEquipment;
+            if (vis == null || vis.m_bodyModel == null || vis.m_models == null || vis.m_models.Length <= model ||
+                vis.m_models[model].m_baseMaterial == null)
+            {
+                return false;
+            }
+
+            Material source = vis.m_models[model].m_baseMaterial;
+            bool changed = false;
+            foreach (Material material in vis.m_bodyModel.materials)
+            {
+                foreach (string property in new[] { "_MainTex", "_SkinBumpMap" })
+                {
+                    if (material != null && material.HasProperty(property) && source.HasProperty(property) &&
+                        material.GetTexture(property) != source.GetTexture(property))
+                    {
+                        material.SetTexture(property, source.GetTexture(property));
+                        changed = true;
+                    }
+                }
+            }
+
+            if (changed)
+            {
+                VillheimPlugin.Debug($"{villager.VillagerName}: body textures of the {(model == 1 ? "female" : "male")} model laid on.");
+            }
+
+            return true;
         }
 
         private static void Apply(Body body, float age)

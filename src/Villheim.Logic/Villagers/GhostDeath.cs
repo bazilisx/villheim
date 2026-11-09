@@ -163,13 +163,26 @@ namespace Villheim.Logic.Villagers
             }
 
             Fades.Add(fade);
+            var played = new List<string>();
             foreach (string name in VanishEffects)
             {
                 GameObject effect = ZNetScene.instance != null ? ZNetScene.instance.GetPrefab(name) : null;
                 if (effect != null)
                 {
                     Object.Instantiate(effect, villager.transform.position, Quaternion.identity);
+                    played.Add(name);
                 }
+            }
+
+            Material first = fade.Materials.Count > 0 ? fade.Materials[0].Material : null;
+            string report = $"{villager.VillagerName} fades as a ghost: {fade.Root.transform.childCount} parts over {seconds:0.0} s, " +
+                            $"shader {(first != null ? first.shader.name : "none")} (see-through {(seeThrough != null ? seeThrough.name : "not found")}), " +
+                            $"tint {(fade.Materials.Count > 0 ? fade.Materials[0].Tint.ToString() : "none")}, " +
+                            $"death effects [{string.Join(", ", villager.m_deathEffects?.m_effectPrefabs?.Where(e => e?.m_prefab != null).Select(e => e.m_prefab.name) ?? new string[0])}], " +
+                            $"vanish [{string.Join(", ", played)}].";
+            if (LogicConfig.IsOn(LogicConfig.DebugLog) || fade.Root.transform.childCount == 0)
+            {
+                VillheimPlugin.Log.LogInfo(report);
             }
         }
 
@@ -244,10 +257,30 @@ namespace Villheim.Logic.Villagers
             {
                 try
                 {
-                    if (__instance is Villager villager && villager.NView != null && villager.NView.IsValid())
+                    if (!(__instance is Villager villager) || villager.NView == null || !villager.NView.IsValid())
+                    {
+                        return;
+                    }
+
+                    // Each on its own: a failure in the grudge record had also cost the ghostly fade (Tyler: no ghost
+                    // effect and no grudge when he killed a villager).
+                    try
                     {
                         Grudges.Died(villager);
+                    }
+                    catch (Exception ex)
+                    {
+                        VillheimPlugin.Log.LogWarning($"Villheim: grudge on death failed: {ex}");
+                    }
+
+                    try
+                    {
+                        Apply(villager);
                         Linger(villager);
+                    }
+                    catch (Exception ex)
+                    {
+                        VillheimPlugin.Log.LogWarning($"Villheim: ghost death failed: {ex}");
                     }
                 }
                 catch (Exception ex)

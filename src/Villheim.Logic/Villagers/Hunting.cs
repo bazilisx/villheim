@@ -77,6 +77,102 @@ namespace Villheim.Logic.Villagers
 
         public static bool IsHunting(Villager villager) => States.TryGetValue(villager, out State state) && state.Phase != Phase.None;
 
+        // ---------------------------------------------------------------- who hunts, and when
+
+        private static readonly Dictionary<int, (float Time, Villager Hunter)> HunterOf = new Dictionary<int, (float, Villager)>();
+        private static readonly Dictionary<int, float> MeatWantedUntil = new Dictionary<int, float>();
+
+        /// <summary>
+        /// The one villager who hunts for the village (Tyler: nobody hunted in a village of mostly elders): a protector
+        /// who is not an elder, else any grown villager who is not an elder (the builder last), else an elder, who
+        /// hunts at a walk with the bow. The healthiest of them, so a hurt village sends its fittest.
+        /// </summary>
+        public static bool IsVillageHunter(Villager villager)
+        {
+            if (villager == null || Childhood.IsChild(villager) || Wanderers.IsWanderer(villager))
+            {
+                return false;
+            }
+
+            int id = villager.VillageId;
+            if (!HunterOf.TryGetValue(id, out (float Time, Villager Hunter) cached) || Time.time - cached.Time > 3f ||
+                cached.Hunter == null || cached.Hunter.IsDead())
+            {
+                if (cached.Hunter != null && !cached.Hunter.IsDead() && IsHunting(cached.Hunter))
+                {
+                    // Out on a hunt: he stays the hunter until he is back.
+                    HunterOf[id] = (Time.time, cached.Hunter);
+                    return cached.Hunter == villager;
+                }
+
+                Villager best = null;
+                int bestRank = int.MaxValue;
+                float bestHealth = -1f;
+                foreach (Character character in Character.GetAllCharacters())
+                {
+                    if (!(character is Villager v) || v.IsDead() || v.VillageId != id || v.Zdo == null || Childhood.IsChild(v) ||
+                        Wanderers.IsWanderer(v))
+                    {
+                        continue;
+                    }
+
+                    bool elder = Elders.IsElder(v);
+                    int rank = !elder && Roles.BackgroundOf(v) == Roles.Background.Protector ? 0
+                        : !elder && !Chores.IsVillageBuilder(v) ? 1
+                        : !elder ? 2
+                        : 3;
+                    float health = v.GetHealth() / Mathf.Max(1f, v.GetMaxHealth());
+                    if (health < 0.5f)
+                    {
+                        // The badly hurt heal first; anyone fit goes before them, whatever his part.
+                        rank += 4;
+                    }
+
+                    if (rank < bestRank || (rank == bestRank && health > bestHealth + 0.05f))
+                    {
+                        best = v;
+                        bestRank = rank;
+                        bestHealth = health;
+                    }
+                }
+
+                cached = (Time.time, best);
+                HunterOf[id] = cached;
+            }
+
+            return cached.Hunter == villager;
+        }
+
+        /// <summary>The village wants meat for a while whatever its chests hold (the hurt with nothing to eat, 'vh test hunt').</summary>
+        public static void WantMeat(int villageId, float seconds)
+        {
+            float until = Time.time + seconds;
+            if (!MeatWantedUntil.TryGetValue(villageId, out float now) || now < until)
+            {
+                MeatWantedUntil[villageId] = until;
+            }
+        }
+
+        /// <summary>The village wants meat: asked for, or its chests hold less than HuntMeatTarget.</summary>
+        public static bool WantsMeat(VillageHearth hearth)
+        {
+            if (MeatWantedUntil.TryGetValue(hearth.VillageId, out float until) && Time.time < until)
+            {
+                return true;
+            }
+
+            int target = Mathf.Max(0, LogicConfig.HuntMeatTarget?.Value ?? EnoughFood) * Village.Calendar.FoodFactor();
+            return MeatInChests(hearth) < target;
+        }
+
+        private static void Log(string message)
+        {
+            if (LogicConfig.IsOn(LogicConfig.DebugLog))
+            {
+                VillheimPlugin.Log.LogInfo("[hunt] " + message);
+            }
+        }
+
         public static string Describe(Villager villager)
         {
             if (!States.TryGetValue(villager, out State state) || Time.time - state.LastRun > 1f)
@@ -121,13 +217,12 @@ namespace Villheim.Logic.Villagers
 
         private static bool Begin(Villager villager, State state)
         {
-            if (EnvMan.IsNight() || Time.time < state.NextLook || Roles.BackgroundOf(villager) != Roles.Background.Protector ||
-                Elders.IsElder(villager))
+            if (EnvMan.IsNight() || Time.time < state.NextLook || !IsVillageHunter(villager))
             {
                 return false;
             }
 
-            state.NextLook = Time.time + Random.Range(20f, 40f);
+            state.NextLook = Time.time + Random.Range(5f, 10f);
             if (Hunters.TryGetValue(villager.VillageId, out Villager hunter) && hunter != null && hunter != villager && !hunter.IsDead() &&
                 IsHunting(hunter))
             {
@@ -135,7 +230,7 @@ namespace Villheim.Logic.Villagers
             }
 
             VillageHearth hearth = VillageHearth.Find(villager.VillageId);
-            if (hearth == null || !hearth.IsValid || FoodInChest(hearth) >= EnoughFood * Village.Calendar.FoodFactor())
+            if (hearth == null || !hearth.IsValid || !WantsMeat(hearth))
             {
                 return false;
             }
@@ -143,8 +238,13 @@ namespace Villheim.Logic.Villagers
             Character prey = FindPrey(villager.VillageId, hearth.transform.position, villager.transform.position);
             if (prey == null)
             {
+                Log($"{villager.VillagerName} would hunt for {hearth.VillageName} but sees no game within " +
+                    $"{Village.Knowledge.WorkRadius(villager.VillageId, SearchFromHearth):0} m of the hearth.");
                 return false;
             }
+
+            Log($"{villager.VillagerName} goes after a {prey.m_name} {Utils.DistanceXZ(prey.transform.position, hearth.transform.position):0} m from the hearth " +
+                $"(meat in the chests: {MeatInChests(hearth)}).");
 
             Hunters[villager.VillageId] = villager;
             // The last hunt's "meat in the chest" talk is over once someone sets out again (T-108).
@@ -444,8 +544,10 @@ namespace Villheim.Logic.Villagers
         {
             Character best = null;
             // A grown village hunts further out, where it has the gear for the land (Knowledge).
+            // Anything within the search round the hearth, nearest to the hunter first. The nearest had also had to be
+            // within 35 m of the hunter himself, so deer 40 m out went unseen from the far side of the village.
             float search = Village.Knowledge.WorkRadius(villageId, SearchFromHearth);
-            float bestDistance = 35f + (search - SearchFromHearth) * 2f;
+            float bestDistance = float.MaxValue;
             foreach (Character character in Character.GetAllCharacters())
             {
                 if (character == null || character.IsDead() || character.IsPlayer() || character is Villager || character.IsTamed() ||
@@ -488,22 +590,19 @@ namespace Villheim.Logic.Villagers
 
         private static bool CookableName(string name) => name.StartsWith("Raw") || name.EndsWith("Meat") || name == "NeckTail";
 
-        /// <summary>Raw and cooked food in the village chest, counted together.</summary>
-        private static int FoodInChest(VillageHearth hearth)
+        /// <summary>Raw and cooked meat and fish in the village chest and its storage chests.</summary>
+        private static int MeatInChests(VillageHearth hearth)
         {
-            Container chest = VillageChest.Find(hearth);
-            if (chest == null)
-            {
-                return EnoughFood;
-            }
-
             int count = 0;
-            foreach (ItemDrop.ItemData item in chest.GetInventory().GetAllItems())
+            foreach (Container chest in Healing.Chests(hearth))
             {
-                string name = item.m_dropPrefab != null ? item.m_dropPrefab.name : "";
-                if (item.m_shared.m_food > 0f || CookableName(name))
+                foreach (ItemDrop.ItemData item in chest.GetInventory().GetAllItems())
                 {
-                    count += item.m_stack;
+                    string name = item.m_dropPrefab != null ? item.m_dropPrefab.name : "";
+                    if (CookableName(name) || (item.m_shared.m_food > 0f && (name.Contains("Meat") || name.Contains("Fish") || name.StartsWith("NeckTail"))))
+                    {
+                        count += item.m_stack;
+                    }
                 }
             }
 

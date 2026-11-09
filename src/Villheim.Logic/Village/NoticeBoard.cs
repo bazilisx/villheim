@@ -855,7 +855,7 @@ namespace Villheim.Logic.Village
 
             // Needed only ever names materials: have/need for the most pressing shortfalls (Tyler, T-304). What is
             // still to be made (beds, a home) belongs on the Project sign.
-            string needed = "In stock";
+            string needed = "Nothing";
             string neededColor = "#bfb";
             if (lacking.Count > 0)
             {

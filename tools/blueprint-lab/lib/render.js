@@ -388,7 +388,9 @@ function sceneFaces(pieces, opts = {}) {
     const m = pieceModel(p.name), info = m.info;
     if (opts.hide && opts.hide.includes(info.role)) continue;
     if (cut != null && (ROOF_ROLES.includes(info.role) || /^beam\d/.test(info.shape))) continue;
-    if (cut != null && opts.clip === false && p.y > cut) continue;
+    // the cut goes through walls, posts, doors and stairs; furniture is drawn whole, or left out when it hangs above
+    const clip = cut != null && opts.clip !== false && info.structural;
+    if (cut != null && !clip && p.y > cut) continue;
     if (crop && (p.x < crop.x0 - 3 || p.x > crop.x1 + 3 || p.z < crop.z0 - 3 || p.z > crop.z1 + 3)) continue;
     const q = p.q || [0, 0, 0, 1], sc = p.s || [1, 1, 1];
     const inst = id++;
@@ -400,7 +402,7 @@ function sceneFaces(pieces, opts = {}) {
       });
       const nr = rotate(q, f.n), n = [nr[0], nr[1], -nr[2]];
       const facing = dot(n, D);
-      if (f.closed && facing < -1e-4 && cut == null) continue; // back face of a closed part
+      if (f.closed && facing < -1e-4 && !clip) continue; // back face of a closed part
       const lit = amb + dif * Math.max(0, dot(n, light)) + 0.08 * Math.max(0, n[1]);
       const k = f.closed ? lit : amb + dif * Math.abs(dot(n, light));
       const cam = w.map(([x, y, z]) => {
@@ -409,7 +411,7 @@ function sceneFaces(pieces, opts = {}) {
       });
       const uv = f.pts.map(pt => [dot(pt, f.U) - f.u0, dot(pt, f.V) - f.v0]);
       const col = tint || f.col;
-      out.push({ cam, wy: w.map(v => v[1]), wx: w.map(v => v[0]), wz: w.map(v => -v[2]), uv, du: f.du, dv: f.dv, back: facing < 0,
+      out.push({ cam, wy: w.map(v => v[1]), uv, du: f.du, dv: f.dv, back: facing < 0, clip,
         col, k, pat: f.pat, alpha: f.alpha, inst, part: f.part, n, name: p.name });
     }
   }
@@ -531,7 +533,7 @@ function draw(ctx, pieces, opts = {}) {
       if ((f.alpha < 1) !== pass) continue;
       const P = f.cam.map(c => [OX + S * c[0], OY - S * c[1], c[2]]);
       const A = f.cam.map((c, i) => [f.wy[i], f.uv[i][0], f.uv[i][1]]);
-      for (let i = 1; i + 1 < P.length; i++) rasterTri(B, fi, P[0], P[i], P[i + 1], A[0], A[i], A[i + 1], cut, pass);
+      for (let i = 1; i + 1 < P.length; i++) rasterTri(B, fi, P[0], P[i], P[i + 1], A[0], A[i], A[i + 1], f.clip ? cut : null, pass);
     }
   }
   // shade
@@ -547,7 +549,7 @@ function draw(ctx, pieces, opts = {}) {
   const section = hexRgb(opts.sectionColor || '#3b3029');
   const shadeAt = (fi, u, v, out, j) => {
     const f = faces[fi];
-    if (f.back && cut != null) { out[0][j] = section[0]; out[1][j] = section[1]; out[2][j] = section[2]; return; }
+    if (f.back && f.clip) { out[0][j] = section[0]; out[1][j] = section[1]; out[2][j] = section[2]; return; }
     let k = f.k;
     const fd = fade[fi];
     if (fd > 0) k *= 1 + (pattern(f.pat, u, v, f.du, f.dv) - 1) * fd;

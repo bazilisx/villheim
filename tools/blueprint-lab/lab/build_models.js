@@ -27,8 +27,13 @@ let parts = 0;
 for (const [name, r] of Object.entries(raw.pieces).sort()) {
   if (r.error || !r.bounds) continue;
   const e = { bounds: r.bounds };
-  if (r.collider) e.collider = r.collider;
-  const solid = (r.colliders || []).filter(c => !c.trigger).map(c => ({ type: c.type, min: c.min, max: c.max }));
+  // solid colliders; one far larger than the mesh (a placement or comfort volume left solid) is left out
+  const msz = r.bounds.max.map((v, i) => v - r.bounds.min[i]);
+  const solid = (r.colliders || []).filter(c => !c.trigger && c.max.every((v, i) => v - c.min[i] <= msz[i] + 1))
+    .map(c => ({ type: c.type, min: c.min, max: c.max }));
+  if (solid.length) {
+    e.collider = { min: [0, 1, 2].map(i => Math.min(...solid.map(c => c.min[i]))), max: [0, 1, 2].map(i => Math.max(...solid.map(c => c.max[i]))) };
+  }
   if (solid.length && solid.length <= 12) e.colliders = solid;
   e.tris = r.tris;
   if (r.parts) { e.parts = r.parts.map(sheetToBox); parts += r.parts.length; }

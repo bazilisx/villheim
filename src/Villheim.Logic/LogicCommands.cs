@@ -576,13 +576,13 @@ namespace Villheim.Logic
                 return;
             }
 
-            // The nearest flat spot within 40 m, not wherever the player stands.
-            Vector3 spot = HearthGround.FlatSpotNear(GroundInFront(player, 4f));
+            // The most even ground for a whole village within 80 m, as for test villages (D-056).
+            Vector3 spot = HearthGround.FlatVillageSpot(GroundInFront(player, 4f), VillheimConfig.VillageRadius.Value * 0.6f);
             GameObject made = Object.Instantiate(HearthPrefab.Prefab, spot, Quaternion.Euler(0f, player.transform.eulerAngles.y, 0f));
 
             // Settled by hand: the world generator's spacing and rarity rules don't apply to it.
             made.GetComponent<ZNetView>()?.GetZDO()?.Set(VillageBrain.KeyManual, 1);
-            Say(context, $"Villheim: a hearth is lit {Vector3.Distance(spot, player.transform.position):0} m away, on the flattest ground nearby. " +
+            Say(context, $"Villheim: a hearth is lit {Vector3.Distance(spot, player.transform.position):0} m away, on the flattest ground for a village nearby. " +
                          "The first settlers arrive within a few seconds.");
         }
 

@@ -5,7 +5,7 @@ namespace Villheim.Logic.Villagers
 {
     /// <summary>
     /// Tools and weapons are only in hand for the work that needs them, or on the way to it (T-58: a woman tended the
-    /// fire with a pickaxe on her shoulder). Once a second, after the brain has run him, anything in his hands is put
+    /// fire with a pickaxe on her shoulder). Twice a second, after the brain has run him, anything in his hands is put
     /// away unless what he is doing uses it: felling, mining and building (not carrying the load home), mending,
     /// smithing, laying paths, farming, hunting, making arrows, going with a player, or a fight. The night watch keeps
     /// his torch. The work takes the tool out again when it starts.
@@ -19,21 +19,34 @@ namespace Villheim.Logic.Villagers
 
         private static readonly ConditionalWeakTable<Villager, State> States = new ConditionalWeakTable<Villager, State>();
 
-        private static bool Uses(Villager villager, Status.Doer doer)
+        /// <summary>
+        /// What he may have in hand for what he is doing: <c>true</c> with <paramref name="tool"/> null means anything
+        /// (a fight, a hunt, going with a player); with a tool, only that tool; <c>false</c> means nothing.
+        /// </summary>
+        private static bool Uses(Villager villager, Status.Doer doer, out VillagerLooks.Tool? tool)
         {
+            tool = null;
             switch (doer)
             {
                 case Status.Doer.Chores:
-                    // Walking the load back to camp needs nothing in hand.
-                    string doing = Chores.Describe(villager) ?? "";
-                    return !doing.Contains("carrying");
+                    // The tool of the chore on the way to it and at it; nothing while carrying the load home or
+                    // picking things up.
+                    tool = Chores.ToolInUse(villager);
+                    return tool.HasValue;
+                case Status.Doer.Elder:
+                    tool = ElderWork.ToolInUse(villager);
+                    return tool.HasValue;
                 case Status.Doer.Repair:
                 case Status.Doer.Smith:
-                case Status.Doer.Path:
-                case Status.Doer.Farm:
-                case Status.Doer.Hunt:
                 case Status.Doer.Fletch:
                 case Status.Doer.Trophy:
+                    tool = VillagerLooks.Tool.Hammer;
+                    return true;
+                case Status.Doer.Path:
+                case Status.Doer.Farm:
+                    tool = VillagerLooks.Tool.Hoe;
+                    return true;
+                case Status.Doer.Hunt:
                 case Status.Doer.Test:
                 case Status.Doer.Escort:
                 case Status.Doer.Fight:
@@ -51,9 +64,18 @@ namespace Villheim.Logic.Villagers
                 return;
             }
 
-            state.Next = Time.time + 1f;
-            if (Uses(villager, doer))
+            state.Next = Time.time + 0.5f;
+            if (Uses(villager, doer, out VillagerLooks.Tool? tool))
             {
+                // Another tool than the work's (the pickaxe kept from mining on the way to build) is put away; the
+                // work takes its own out when it needs it.
+                ItemDrop.ItemData right = villager.GetRightItem();
+                if (tool.HasValue && right != null && right.m_shared.m_itemType != ItemDrop.ItemData.ItemType.Torch &&
+                    !VillagerLooks.IsHolding(villager, tool.Value))
+                {
+                    PutAway(villager);
+                }
+
                 return;
             }
 

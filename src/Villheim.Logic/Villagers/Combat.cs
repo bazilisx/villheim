@@ -208,6 +208,20 @@ namespace Villheim.Logic.Villagers
 
             state.Part = part;
             state.Enemy = enemy;
+
+            // Squaring up to a player the village holds a grudge against (D-054): the game counts him as an enemy, so
+            // his health bar turns red and he fights back as the game's own angry Dvergr do (Tyler: villagers he had
+            // harmed still showed green).
+            bool againstPlayer = enemy is Player && (part == Part.Fighter || part == Part.Warn);
+            if (againstPlayer && !ai.IsAggravated())
+            {
+                ai.SetAggravated(true, BaseAI.AggravatedReason.Damage);
+            }
+            else if (!againstPlayer && part != Part.None && ai.IsAggravated() && !(state.Enemy is Player))
+            {
+                ai.SetAggravated(false, BaseAI.AggravatedReason.Damage);
+            }
+
             if (part == Part.None)
             {
                 Calm(ai);

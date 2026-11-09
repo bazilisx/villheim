@@ -76,6 +76,16 @@ namespace Villheim.Logic.Villagers
         {
             public Transform Spine;
             public Transform Neck;
+
+            // The pose the animator last gave each bone, and what the stoop made of it. A frame in which the animator
+            // did not pose the bone again (it runs with the physics steps, fewer than the frames at a low timescale)
+            // still holds the bent pose: bending that again had stacked the bend frame on frame until the animator
+            // reset it, a rapid nodding (Tyler: the elder headbanged, even at 0.5 timescale).
+            public Quaternion SpineBase, SpineSet, NeckBase, NeckSet;
+            public bool Started;
+
+            /// <summary>How far into the stoop he is (0 to 1): eased in and out, so sitting down or a changed slider is smooth.</summary>
+            public float Amount;
         }
 
         private static Bones BonesOf(Villager villager)
@@ -96,6 +106,25 @@ namespace Villheim.Logic.Villagers
             return bones;
         }
 
+        /// <summary>
+        /// The bone's pose this frame from the animator: its own rotation when the animator set it again, else the pose
+        /// it gave last time. Then bent forward by <paramref name="degrees"/> round the villager's right, as a fixed
+        /// offset from that pose, never from last frame's bent one.
+        /// </summary>
+        private static void Bend(Transform bone, ref Quaternion basePose, ref Quaternion set, bool started, float degrees, Vector3 axis)
+        {
+            Quaternion now = bone.localRotation;
+            if (!started || Quaternion.Angle(now, set) > 0.01f)
+            {
+                basePose = now; // posed again by the animator
+            }
+
+            Quaternion parent = bone.parent != null ? bone.parent.rotation : Quaternion.identity;
+            Quaternion world = Quaternion.AngleAxis(degrees, axis) * (parent * basePose);
+            bone.rotation = world;
+            set = bone.localRotation;
+        }
+
         private static void LateTick()
         {
             float spine = LogicConfig.ElderSpineBend?.Value ?? 12f;
@@ -109,23 +138,28 @@ namespace Villheim.Logic.Villagers
                     continue;
                 }
 
-                // Lying in bed or seated, the pose itself is left alone.
-                if (Sleep.IsAsleep(villager) || Poses.IsPosed(villager))
+                // Lying in bed or seated, the pose itself is left alone (eased out).
+                Bones bones = BonesOf(villager);
+                bool upright = !Sleep.IsAsleep(villager) && !Poses.IsPosed(villager);
+                bones.Amount = Mathf.MoveTowards(bones.Amount, upright ? 1f : 0f, Time.deltaTime * 2f);
+                if (bones.Amount <= 0f)
                 {
+                    bones.Started = false;
                     continue;
                 }
 
-                Bones bones = BonesOf(villager);
                 Vector3 axis = villager.transform.right;
-                if (bones.Spine != null && Mathf.Abs(spine) > 0.01f)
+                if (bones.Spine != null)
                 {
-                    bones.Spine.rotation = Quaternion.AngleAxis(spine, axis) * bones.Spine.rotation;
+                    Bend(bones.Spine, ref bones.SpineBase, ref bones.SpineSet, bones.Started, spine * bones.Amount, axis);
                 }
 
-                if (bones.Neck != null && Mathf.Abs(neck) > 0.01f)
+                if (bones.Neck != null)
                 {
-                    bones.Neck.rotation = Quaternion.AngleAxis(neck, axis) * bones.Neck.rotation;
+                    Bend(bones.Neck, ref bones.NeckBase, ref bones.NeckSet, bones.Started, neck * bones.Amount, axis);
                 }
+
+                bones.Started = true;
             }
         }
 

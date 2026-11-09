@@ -13,6 +13,8 @@ namespace Villheim.Logic
         public static ConfigEntry<bool> SiteChest;
         public static ConfigEntry<float> SecondsPerPiece;
         public static ConfigEntry<float> BuildStartShare;
+        public static ConfigEntry<bool> LagLog;
+        public static ConfigEntry<float> LagLogMs;
         public static ConfigEntry<int> BuildHelpers;
         public static ConfigEntry<string> YggdrasilYield;
         public static ConfigEntry<float> ClearingRadius;
@@ -564,7 +566,7 @@ namespace Villheim.Logic
                 "to ChildBoyHeight or ChildGirlHeight. 'vh kids rig' puts up models to tune these against (see '3d - Hair review').");
             ChildNoBeard = Admin(config, looks, "ChildNoBeard", true, "Boys have no beard until they grow up.");
             BindChildShape(config, looks);
-            GhostDeathSeconds = Admin(config, looks, "GhostDeathSeconds", 2.5f,
+            GhostDeathSeconds = Admin(config, looks, "GhostDeathSeconds", 3.5f,
                 "Seconds a dying villager takes to fade out as he rises, after the ghost's vanishing effect.");
             GhostDeath = Admin(config, looks, "GhostDeath", true,
                 "A villager who dies fades away the way the game's ghosts do: no body falls, no blood, and he stays an " +
@@ -1142,6 +1144,11 @@ namespace Villheim.Logic
             TestVillageFrameMs = Admin(config, test, "TestVillageFrameMs", 6f,
                 "Milliseconds a test village may spend each frame putting up pieces, fences and plants before it waits " +
                 "for the next frame. Lower: smoother frame rate, slower setup.");
+            LagLog = Admin(config, test, "LagLog", false,
+                "Log every village step (the hearth's tick, the notice board, the search for the next thing to make, " +
+                "furniture spots, plot search) that takes longer than LagLogMs, to find what makes the game stutter.");
+            LagLogMs = Admin(config, test, "LagLogMs", 4f,
+                "With LagLog on: steps taking at least this many milliseconds are logged.");
         }
 
         private static ConfigEntry<T> Admin<T>(ConfigFile config, string section, string key, T value, string description)

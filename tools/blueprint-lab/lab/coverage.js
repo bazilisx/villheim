@@ -54,7 +54,9 @@ const isAxis = yaw => Math.abs(((yaw + 45) % 90) - 45) < 4;
 
 const G = 0.5; // grid step, meters
 function measure(raw) {
+  // a yard's fence and its gate are not the building's walls (the generator marks its yard pieces)
   const ps = raw.filter(p => known(p.name)).map(p => ({ ...p, yaw: norm(p.yaw), r: role(p.name) }));
+  const yardish = p => p.yard || /fence_gate|stake_wall|sharpstakes/.test(p.name);
   const walls = ps.filter(p => p.r === 'wall' && !/arch|divider|decowall/.test(p.name));
   if (walls.length < 12) return null;
   // turn the build so most walls run along the axes
@@ -74,7 +76,7 @@ function measure(raw) {
 
   // ---- footprint: ground-storey walls and doors on a half-meter grid; the outside floods in; gaps up to 2 m are
   // closed by growing the walls a meter and shrinking the result again
-  const low = ps.filter(p => (p.r === 'wall' || p.r === 'door' || p.r === 'window') && p.b.y0 < ground + 3.2 && p.b.y1 > ground + 0.3);
+  const low = ps.filter(p => (p.r === 'wall' || p.r === 'door' || p.r === 'window') && !yardish(p) && p.b.y0 < ground + 3.2 && p.b.y1 > ground + 0.3);
   if (low.length < 6) return null;
   let X0 = Infinity, X1 = -Infinity, Z0 = Infinity, Z1 = -Infinity;
   for (const p of low) { X0 = Math.min(X0, p.b.x0); X1 = Math.max(X1, p.b.x1); Z0 = Math.min(Z0, p.b.z0); Z1 = Math.max(Z1, p.b.z1); }
@@ -377,7 +379,7 @@ const gen = [];
 for (const q of reqs) {
   let d;
   try { d = Gen.generate(q); } catch (e) { continue; }
-  const m = measure(d.pieces.map(p => ({ name: p.name, x: p.x, y: p.y, z: p.z, yaw: p.yaw != null ? p.yaw : yawOfQ(p.q || [0, 0, 0, 1]) })));
+  const m = measure(d.pieces.map(p => ({ name: p.name, x: p.x, y: p.y, z: p.z, yaw: p.yaw != null ? p.yaw : yawOfQ(p.q || [0, 0, 0, 1]), yard: !!p.yard })));
   if (!m) continue;
   const info = d.request || {};
   m.req = q; m.culture = info.cultureKey || q.culture || '?'; m.genPlan = info.plan; m.genRoof = info.roof; m.genWalls = info.walls;

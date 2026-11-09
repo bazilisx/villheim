@@ -92,6 +92,7 @@ function profile(ctx) {
     motifFaces: dN >= 2,
     eaveMotifs: true,
     motifRoof: north && sN >= 2,
+    ironPosts: north && sN >= 2 && reachesD(biome, 'Swamp') && makeHash(ctx) % 5 >= 3,
   };
 }
 
@@ -238,7 +239,10 @@ function exterior(b, ctx) {
       const { ux, uz } = axes(e);
       for (const s of [-1, 1]) { const k = `${e.x + ux * s},${e.z + uz * s}`; if (!dirs.has(k)) dirs.set(k, new Set()); dirs.get(k).add(e.yaw); }
     }
-    const top = F + storeys * SH, p = C.wallStyle === 'log' ? (K.pole || pole) : pole, foot = F > 0.01 && F < 2.01 ? F - Math.ceil(F) : F; // from the ground under a raised floor
+    // iron-bound corner posts on two buildings in five from the Swamp on (44 % of the well-liked builds use iron-bound
+    // timber, docs/COVERAGE.md); log walls keep their log poles
+    const iron = X.ironPosts && C.wallStyle !== 'log' && K.pole !== 'darkwood_pole' ? 'woodiron_pole' : null;
+    const top = F + storeys * SH, p = C.wallStyle === 'log' ? (K.pole || pole) : (iron || pole), foot = F > 0.01 && F < 2.01 ? F - Math.ceil(F) : F; // from the ground under a raised floor
     for (const [k, ys] of dirs) {
       if (ys.size < 2) continue;
       const [x, z] = k.split(',').map(Number);

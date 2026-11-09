@@ -6,7 +6,7 @@ Current facts only. Read this at the start of a session. Narrative is in `docs/d
 ## Current State (as of 2026-11-09)
 
 - **Next session (handoff 2026-11-09, usage ran low):** merge feat/layout (WIP b9a500d, run the full checks
-  first) and feat/massing (if its handoff says it is green); feat/persona is merged. Each wrote a handoff ( "Handoff (2026-11-09)" in its doc). Check the test pool
+  first) and feat/massing (if its handoff says it is green); feat/persona is merged. Each wrote a "Handoff (2026-11-09)" in its doc. Check the test pool
   before Tyler tests it: `node /tmp/det/lineage.js <lab dir>` style measure (decor stages must keep the shell, about
   80 % or more, for `HomeDecor`; on feat/massing at acff118 shells kept 82 to 100 % across decor, growth 50 to 99 %).
   Then the open "Next test build" items in `docs/ROADMAP.md` (items 3 and 8 to 11). Nothing from 2026-11-09 has been

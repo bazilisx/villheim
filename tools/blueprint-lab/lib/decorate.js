@@ -104,7 +104,7 @@ const F = {
   treasure_stack: { s: [0.5, 0.54, 0.5], at: 'top', b: 'Black Forest', cat: 'deco' },
   dvergrprops_crate: { s: [1.2, 1.02, 1.02], at: 'wall', b: 'Mistlands', cat: 'storage' },
   dvergrprops_barrel: { s: [1.5, 1.6, 2.0], at: 'wall', b: 'Mistlands', cat: 'storage' },
-  wood_stack: { s: [2.46, 1.14, 2.05], c: [-0.07, -0.04], at: 'out', b: 'Meadows', cat: 'clutter' },
+  wood_stack: { s: [2.46, 1.14, 2.05], c: [-0.07, -0.04], base: 0.57, at: 'out', b: 'Meadows', cat: 'clutter' },
   wood_fine_stack: { s: [2.0, 1.0, 1.9], at: 'out', b: 'Black Forest', cat: 'clutter' },
   wood_core_stack: { s: [2.0, 1.31, 2.22], at: 'out', b: 'Black Forest', cat: 'clutter' },
   stone_pile: { s: [1.6, 0.81, 1.6], c: [0.08, 0.07], at: 'out', b: 'Meadows', cat: 'clutter' },
@@ -2298,7 +2298,8 @@ function outside(b, c) {
       if (walls.some(s => overlap(s.b, bb, -0.03))) continue;
       if (placed.some(q => overlap(q, bb, 0.3))) continue;
       placed.push(bb);
-      b.pieces.push({ name, x: +cc.x.toFixed(3), y: +ground.toFixed(3), z: +cc.z.toFixed(3), q: quatY(cc.yaw), yaw: cc.yaw, decor: true, outside: true });
+      const [px, pz] = pivotOf(name, cc.x, cc.z, cc.yaw);
+      b.pieces.push({ name, x: +px.toFixed(3), y: +(ground + ((F[name] || {}).base || 0)).toFixed(3), z: +pz.toFixed(3), q: quatY(cc.yaw), yaw: cc.yaw, decor: true, outside: true });
       break;
     }
   }

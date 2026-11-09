@@ -245,7 +245,7 @@ well (Tyler, 2026-11-08). The Features tab of the review sheet (`docs/features/b
 - [ ] Next for building quality (2026-11-09 review): roof overhangs (D-059), an upper storey over a loggia on posts or a
       jetty, varied heights between wings, inner roof corners at L and T valleys, yards and gates (D-060), better
       proxies for roof corners and carvings, the middle-eastern court tavern fire, the two middle-eastern temples.
-- [ ] Interiors (2026-11-09 review): perimeter vignettes every 3 to 4 m of bare wall, at most two chests side by side,
+- [ ] Interiors (2026-11-09 review; vignettes on bare walls done): at most two chests side by side,
       an anchor per building type (smithy forge corner, home bed corner), square yaws for clutter, fuller main halls.
 - [ ] Later, for Tyler to look at: redraw `docs/rooms` and `docs/generated` with the v2 models, a Motifs tab, before
       and after renderer pictures, the renderer preview page on Tyler's PC, republish the lab page.

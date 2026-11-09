@@ -243,6 +243,7 @@ Parts added on 2026-11-09:
 | Stone walls | Windows in every fourth bay instead of every second (each opening needs a timber bay). | stone wall styles |
 | No tower blocks | The eave stays within 1.1 times the plan's short side; storeys come off until it does. | all but towers and fixed forms |
 | Tidy furnishing | A rug with nothing standing on it and a chair with no table within 0.9 m (or fire within 1.6 m) come out; a long table with no seat gets a bench along each long side where there is room. | all furnished designs |
+| Vignettes | On a ground room's plain wall bays with nothing 1.6 m in front: a bench under a wall torch, a chest beside a barrel, or an armor stand, by what the biome makes; one bay in three at most, not near doors. | d3, all but barns, stores, docks and farms |
 | Kitchen | A butcher's table against the wall nearest the cauldron, the spice rack and pots and pans hung on the walls nearest it, all within 4.5 m. Gated by their materials: turnips (Swamp), silver (Mountain), black metal (Plains). | wherever a cauldron is |
 
 ## Repair

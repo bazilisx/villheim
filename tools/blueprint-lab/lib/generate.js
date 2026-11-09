@@ -566,7 +566,7 @@ function generate(req) {
     }
     const isTopLookout = lookout && s === storeys - 1;
     for (const e of (s === 0 ? gEdges : edges)) {
-      if (isTopLookout) { b.put(K.fence || K.wallHalf, e.x, y0 + 0.5, e.z, e.yaw); continue; }
+      if (isTopLookout) { if (K.fence) b.put(K.fence, e.x, y0, e.z, e.yaw); else b.put(K.wallHalf, e.x, y0 + 0.5, e.z, e.yaw); continue; } // the fence's pivot is at its foot
       if (open === 'all') continue;
       if (open === 'front' && e.out[1] < 0) continue;
       if (open === 'sides' && !(e.out[1] > 0)) continue;
@@ -1985,7 +1985,7 @@ function octagonDesign(b, K, C, o) {
       for (let k = 0; k < n; k++) {
         const t = -(n - 1) + 2 * k;
         if (i === 4 && Math.abs(t) < 1.5) continue;
-        b.put(K.fence, nx * Rf + tx * t, F + 0.5, nz * Rf + tz * t, a);
+        b.put(K.fence, nx * Rf + tx * t, F, nz * Rf + tz * t, a);
       }
     }
   }
@@ -2275,8 +2275,8 @@ function fieldDesign(b, K, W, D, biome, stage, R, doorX = 0) {
   const crop = crops[biome] || 'Pickable_Carrot';
   const fw = stage === 's1' ? 4 : stage === 's2' ? 6 : 8, fd = stage === 's1' ? 3 : 4;
   const z0 = -D - 2 - fd * 2, x0 = -fw;
-  for (let x = x0 + 1; x < x0 + fw * 2; x += 2) { b.put(K.fence, x, 0.5, z0, 0); if (Math.abs(x - doorX) > 1.5) b.put(K.fence, x, 0.5, -D - 2, 0); }
-  for (let z = z0 + 1; z < -D - 2; z += 2) { b.put(K.fence, x0, 0.5, z, 90); b.put(K.fence, x0 + fw * 2, 0.5, z, 90); }
+  for (let x = x0 + 1; x < x0 + fw * 2; x += 2) { b.put(K.fence, x, 0, z0, 0); if (Math.abs(x - doorX) > 1.5) b.put(K.fence, x, 0, -D - 2, 0); }
+  for (let z = z0 + 1; z < -D - 2; z += 2) { b.put(K.fence, x0, 0, z, 90); b.put(K.fence, x0 + fw * 2, 0, z, 90); }
   const step = crop === 'RaspberryBush' ? 1.5 : 0.75;
   for (let x = x0 + 1; x < x0 + fw * 2 - 0.5; x += step * 1.5) for (let z = z0 + 1; z < -D - 2.5; z += step) b.put(crop, x, 0, z, Math.floor(R() * 4) * 90);
   if (reaches(biome, 'Swamp')) b.put('ArmorStand', x0 + fw, 0, z0 + fd, 0); // a scarecrow; the stand takes iron
@@ -2286,8 +2286,8 @@ function fieldDesign(b, K, W, D, biome, stage, R, doorX = 0) {
 
 function penDesign(b, K, W, D, stage) {
   const pw = stage === 's1' ? 3 : 4, pd = D, x0 = W, x1 = W + pw * 2;
-  for (let x = x0 + 1; x < x1; x += 2) { b.put(K.fence, x, 0.5, -pd, 0); b.put(K.fence, x, 0.5, pd, 0); }
-  for (let z = -pd + 1; z < pd; z += 2) if (Math.abs(z) > 1.5) b.put(K.fence, x1, 0.5, z, 90);
+  for (let x = x0 + 1; x < x1; x += 2) { b.put(K.fence, x, 0, -pd, 0); b.put(K.fence, x, 0, pd, 0); }
+  for (let z = -pd + 1; z < pd; z += 2) if (Math.abs(z) > 1.5) b.put(K.fence, x1, 0, z, 90);
   b.put('piece_chest_barrel', x1 - 1, 0, pd - 1, 0);
   b.put('wood_stack', x0 + 1.2, 0.57, pd - 1, 0);
   b.notes.push('Pen beside the barn; its gap faces away from the barn.');

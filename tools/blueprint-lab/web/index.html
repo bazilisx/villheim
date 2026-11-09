@@ -2182,7 +2182,9 @@ function check(design, biome, opts = {}) {
     for (const j of near(b)) {
       if (held[j]) continue;
       const o = held_[j];
-      if (touch(b, o, 0.16) && (b.info.structural || o.info.role === 'craft' || o.info.role === 'deco' || o.info.role === 'light')) { held[j] = true; queue.push(j); }
+      // furniture holds what stands on it (a chest on a chest, a pot on a crate): Valheim's furniture carries load
+      const onTop = !b.info.structural && o.y0 >= b.y1 - 0.15 && o.y0 <= b.y1 + 0.16 && o.x0 < b.x1 && o.x1 > b.x0 && o.z0 < b.z1 && o.z1 > b.z0;
+      if (touch(b, o, 0.16) && (b.info.structural || onTop || o.info.role === 'craft' || o.info.role === 'deco' || o.info.role === 'light')) { held[j] = true; queue.push(j); }
     }
   }
   const unsupported = pieces.filter((p, i) => !held[i] && (boxes[i].info.structural || ['craft', 'storage', 'bed', 'table', 'seat', 'fire'].includes(boxes[i].info.role))).map(p => p.name);
@@ -2231,8 +2233,11 @@ function check(design, biome, opts = {}) {
         // cooking stations and cauldrons stand over the fire
         if ((b.info.role === 'fire' || o.info.role === 'fire') && /cookingstation|cauldron/.test(pieces[i].name + pieces[j].name)) continue;
         if (!touch(b, o, -0.03)) continue;
-        // a marked clip: the shallowest way out of the overlap is within the mark
-        const mark = Math.min(CLIP_MAX, Math.max(p.clip || 0, pieces[j].clip || 0));
+        // a clip made on purpose (lib/kitbash.js marks it with the depth its source builds used) is allowed that deep
+        const allow = Math.max(p.clip || 0, pieces[j].clip || 0);
+        if (allow > 0 && SHP.clipDepth(b.sol, o.sol) <= allow + 0.02) continue;
+        // yard pieces: a marked clip whose shallowest way out of the overlap is within the mark (lib/yards.js)
+        const mark = Math.min(CLIP_MAX, allow);
         if (mark > 0 && Math.min(Math.min(b.x1, o.x1) - Math.max(b.x0, o.x0), Math.min(b.z1, o.z1) - Math.max(b.z0, o.z0), Math.min(b.y1, o.y1) - Math.max(b.y0, o.y0)) <= mark) continue;
         const v = SHP.overlapVolume(b.sol, o.sol);
         if (v > 0.03 && v > 0.08 * Math.min(v0, SHP.volume(o.sol))) clips.push([i, j, v]);
@@ -2356,7 +2361,8 @@ function check(design, biome, opts = {}) {
   // materials for the biome, building pieces and furnishing alike
   if (biome) {
     const ord = PC.BIOME_ORDER, limit = ord.indexOf(biome);
-    const over = [...new Set(pieces.filter(p => ord.indexOf(PC.needs(p.name)) > limit).map(p => p.name))];
+    // minor decor goes in any biome (D-066): it costs nothing or is paid in the village's own materials
+    const over = [...new Set(pieces.filter(p => ord.indexOf(PC.needs(p.name)) > limit && !(p.decor && PC.minor(p.name))).map(p => p.name))];
     results.push({ check: 'materials', ok: over.length === 0, detail: over.length ? `needs later biomes: ${over.slice(0, 5).join(', ')}` : `all pieces available in ${biome}` });
   }
 
@@ -4785,6 +4791,9 @@ function audit(design, decor) {
       const c = items[j];
       const fc = c.f.at;
       if (fc === 'mount' || fc === 'hang' || fc === 'top' || fc === 'fire' || fc === 'rug') continue;
+      // kitbash pieces (lib/kitbash.js) are judged by the game's solids: they may clip as deep as their source builds
+      // did (p.clip), and no deeper
+      if ((a.p.kb || c.p.kb) && SHD) { if (kbClip(a.p, c.p) > Math.max(a.p.clip || 0, c.p.clip || 0) + 0.02) res.overlap.push(`${a.p.name} / ${c.p.name} at ${a.p.x.toFixed(1)},${a.p.z.toFixed(1)}`); continue; }
       if (a.y0 > c.y1 - 0.05 || c.y0 > a.y1 - 0.05) continue;
       if (overlap(a.b, c.b, -0.06)) res.overlap.push(`${a.p.name} / ${c.p.name} at ${a.p.x.toFixed(1)},${a.p.z.toFixed(1)}`);
     }
@@ -4801,19 +4810,7 @@ function audit(design, decor) {
   const wallish = struct.filter(s => WALLISH.has(s.role));
   for (const it of items) {
     if (it.f.at !== 'mount') continue;
-    const yaw = pyaw(it.p) - (it.f.rel || 0), ar = yaw * PI / 180, nx = Math.sin(ar), nz = Math.cos(ar), ux = Math.cos(ar), uz = -Math.sin(ar);
-    const w = size(it.p.name)[0];
-    let bad = false;
-    const y = it.f.under != null ? it.p.y - size(it.p.name)[1] / 2 : it.p.y + size(it.p.name)[1] / 2;
-    for (const t of [-w / 2 + 0.05, 0, w / 2 - 0.05]) {
-      // walk back from the piece to the first wall piece behind it at its height
-      let here = [];
-      for (let back = 0; back <= 1.0 && !here.length; back += 0.05) {
-        const px = it.b.x + ux * t - nx * back, pz = it.b.z + uz * t - nz * back;
-        here = wallish.filter(s => ptDist(s.b, px, pz) < 0.01 && s.y0 <= y + 0.01 && s.y1 >= y - 0.01);
-      }
-      if (!here.length || here.some(s => s.role !== 'wall' || isGlass(s.p.name))) bad = true;
-    }
+    const bad = !mountOk(it, wallish);
     if (bad) res.mountOnOpening.push(`${it.p.name} at ${it.p.x.toFixed(1)},${it.p.y.toFixed(1)},${it.p.z.toFixed(1)}`);
   }
   // floating: floor pieces need a floor (or the ground) under them; table pieces a table; fire pieces a fire
@@ -4822,6 +4819,8 @@ function audit(design, decor) {
   const ground = design.ground != null ? design.ground : ys.length ? ys[Math.floor(ys.length * 0.02)] : 0;
   for (const it of items) {
     const fa = it.f.at || 'floor';
+    // a kitbash piece says what it rests on: another piece, a wall or the structure over it; that must be there
+    if (it.p.kb && it.p.rest) { if (!kbRests(it, pieces, wallish, struct)) res.floating.push(`${it.p.name} at ${it.p.x.toFixed(1)},${it.p.y.toFixed(2)},${it.p.z.toFixed(1)}`); continue; }
     if (fa === 'mount' || fa === 'hang') continue;
     if (fa === 'top' && wallish.some(s => ptDist(s.b, it.p.x, it.p.z) < 0.4 && s.y0 < it.p.y && s.y1 > it.p.y)) continue; // hung on a wall as a shelf
     if (fa === 'rug' && struct.filter(s => built(s.p) && s.role === 'pole' && Math.abs(s.y1 - it.p.y) < 0.15 && overlap(s.b, it.b, 0.2)).length >= 2) continue; // a canopy on posts (its head end on the wall)
@@ -4865,6 +4864,73 @@ function audit(design, decor) {
   return res;
 }
 
+// A wall piece needs plain wall behind it across its width, at its height (no window, door or glass).
+function mountOk(it, wallish) {
+  const yaw = pyaw(it.p) - (it.f.rel || 0), ar = yaw * PI / 180, nx = Math.sin(ar), nz = Math.cos(ar), ux = Math.cos(ar), uz = -Math.sin(ar);
+  const w = size(it.p.name)[0];
+  const y = it.f.under != null ? it.p.y - size(it.p.name)[1] / 2 : it.p.y + size(it.p.name)[1] / 2;
+  for (const t of [-w / 2 + 0.05, 0, w / 2 - 0.05]) {
+    // walk back from the piece to the first wall piece behind it at its height
+    let here = [];
+    for (let back = 0; back <= 1.0 && !here.length; back += 0.05) {
+      const px = it.b.x + ux * t - nx * back, pz = it.b.z + uz * t - nz * back;
+      here = wallish.filter(s => ptDist(s.b, px, pz) < 0.01 && s.y0 <= y + 0.01 && s.y1 >= y - 0.01);
+    }
+    if (!here.length || here.some(s => s.role !== 'wall' || isGlass(s.p.name))) return false;
+  }
+  return true;
+}
+// The audit's box for one piece, as boxOf in audit() makes it.
+function itemOf(p) {
+  const [w, h, d] = size(p.name), f = F[p.name] || {}, y0 = p.y - (f.base || 0), [mx, mz] = middleOf(p.name, p.x, p.z, pyaw(p));
+  return { p, f, b: obox(mx, mz, w, d, pyaw(p)), y0: f.at === 'hang' ? p.y : y0, y1: f.at === 'hang' ? p.y + h : y0 + h };
+}
+// The audit's tests for one kitbash piece, for the fitter (lib/kitbash.js) to ask before it places it: what it rests
+// on, and plain wall behind a wall piece. ctx from auditContext(pieces), kept up to date with add().
+function auditContext(pieces) {
+  const struct = pieces.filter(p => !p.decor || (!F[p.name] && P.piece(p.name).structural)).map(structBox);
+  const ctx = { pieces, struct, wallish: struct.filter(s => WALLISH.has(s.role)) };
+  ctx.add = p => { if (!F[p.name] && P.piece(p.name).structural) { const sb = structBox(p); ctx.struct.push(sb); if (WALLISH.has(sb.role)) ctx.wallish.push(sb); } };
+  return ctx;
+}
+function auditOne(p, ctx) {
+  const it = itemOf(p);
+  if (it.f.at === 'mount' && !mountOk(it, ctx.wallish)) return false;
+  if (p.rest && !kbRests(it, ctx.pieces, ctx.wallish, ctx.struct)) return false;
+  return true;
+}
+// How deep two pieces' solids reach into each other (0 for pieces with none, rugs and food).
+function kbClip(a, b) {
+  const A = SHD.world(a), B = SHD.world(b);
+  return A && B && A.length && B.length ? SHD.clipDepth(A, B) : 0;
+}
+// Is there what a kitbash piece rests on: a piece under its middle whose top is at its foot ('on'), a wall behind it
+// at its height ('wall'), or structure just over it ('hang')?
+function kbRests(it, pieces, wallish, struct) {
+  const p = it.p, y0 = it.y0, y1 = it.y1, [mx, mz] = [it.b.x, it.b.z];
+  if (p.rest === 'on') {
+    for (const q of pieces) {
+      if (q === p || Math.abs(q.x - mx) > 3 || Math.abs(q.z - mz) > 3) continue;
+      const W = SHD && SHD.world(q);
+      let top = W && W.length ? SHD.topAt(W, mx, mz) : null;
+      if (top == null) { const sb = structBox(q); if (ptDist(sb.b, mx, mz) < 0.01) top = sb.y1; }
+      if (top != null && top > y0 - 0.15 && top < y0 + 0.12) return true;
+    }
+    return false;
+  }
+  if (p.rest === 'floor') {
+    // the solids' foot on a floor's top, or sunk into it no deeper than the piece says (its source builds' depth)
+    const W = SHD && SHD.world(p), foot = W && W.length ? Math.min(...W.map(o => o.y0)) : y0;
+    return pieces.some(q => !q.decor && P.piece(q.name).role === 'floor' && Math.abs(q.x - mx) < 3 && Math.abs(q.z - mz) < 3 && (() => {
+      const sb = structBox(q), top = q.y + standOf(q.name);
+      return ptDist(sb.b, mx, mz) < 0.45 && foot > top - (p.sink || 0) - 0.12 && foot < top + 0.12;
+    })());
+  }
+  if (p.rest === 'wall') return wallish.some(s => ptDist(s.gb || s.b, mx, mz) < 0.6 && s.y0 < y1 && s.y1 > y0);
+  if (p.rest === 'hang') return struct.some(s => s.info.structural && ptDist(s.b, mx, mz) < 0.3 && s.y0 > y1 - 0.3 && s.y0 < y1 + 0.6);
+  return true;
+}
+
 // ---------------------------------------------------------------- existing blueprints
 const ESSENTIAL = /^(bed|piece_bed02|ashwood_bed|piece_chest_wood|piece_chest|hearth|fire_pit|forge|piece_workbench|piece_cookingstation|smelter|portal_wood)$/;
 
@@ -4898,8 +4964,8 @@ function decorateExisting(pieces, { use = 'home', decor = 'd2', biome = 'Meadows
   return b.pieces;
 }
 
-const api = { decorate, strip, findRooms, decorateExisting, setRules, setInterior, setTemplates, templateById, audit, ITEM_BIOME, FURNITURE: F, readLevel,
-  _int: { floorLevels, stretch, size, ok, obox, overlap, ptDist, yawOfDir, pyaw, standOf, norm, WALLISH } };
+const api = { decorate, strip, findRooms, decorateExisting, setRules, setInterior, setTemplates, templateById, audit, auditContext, auditOne, ITEM_BIOME, FURNITURE: F, readLevel,
+  _int: { floorLevels, standGuess, roleFor, stretch, size, ok, obox, overlap, ptDist, yawOfDir, pyaw, standOf, norm, WALLISH } };
 if (NODE_D) module.exports = api; else window.VHDecorate = api;
 
 })();
@@ -5523,7 +5589,7 @@ function exterior(b, ctx) {
     if (o.kind === 'window') continue;
     const { e, y0 } = o, { ux, uz, ox, oz } = axes(e);
     const h = o.kind === 'gate' ? 3 : 2;
-    const mo = MT && o.kind === 'door' && !o.gallery ? motifDoor(b, ctx, MT, o, used) : null;
+    const mo = MT && o.kind === 'door' && !o.gallery && !o.balcony ? motifDoor(b, ctx, MT, o, used) : null;
     if (mo) { added.motifs++; o.motif = mo; }
     // the opening as the door piece fills it (a cloth door hangs beside the wall's middle)
     const dp = b.pieces.find(p => PD.piece(p.name).role === 'door' && Math.hypot(p.x - e.x, p.z - e.z) < 1.2 && p.y > y0 - 0.5 && p.y < y0 + 3);
@@ -7517,6 +7583,8 @@ function generate(req) {
   dctx.profile.dormers = +stage[1] >= 2 && ['frankish-norman', 'anglo-saxon', 'castle-medieval', 'slavic', 'norse-highland', 'baltic'].includes(cultureKey) &&
     ['home', 'tavern', 'longhouse', 'storage', 'workshop'].includes(type) && dctx.R() < 0.45;
   dctx.profile.dormerPair = dctx.R() < 0.5;
+  // a gate as the front door of work and store buildings (coverage audit: gates on 65 % of the best-liked builds)
+  dctx.profile.gateDoor = +stage[1] >= 2 && !T.bigDoor && ['longhouse', 'storage', 'workshop', 'smithy', 'sawmill', 'farm'].includes(type) && SH >= 3 && dctx.R() < 0.6;
   if (req.details) Object.assign(dctx.profile, req.details);
   if (loggia) Object.assign(dctx.profile, { svalgang: false, gablePorch: false, doorHood: false });
   dctx.wallSegment = wallSegment;
@@ -7542,7 +7610,7 @@ function generate(req) {
       if (arcade.has(e)) continue;
       const isDoor = s === 0 && (e === door || e === backDoor);
       // a barn's gates: three bays on the ground, the door bay alone when the floor is raised (one stair up)
-      const isGate = T.bigDoor && s === 0 && e.out[1] < 0 && Math.abs(e.x - doorX) <= (F >= 0.9 ? 0.01 : 2.01) && Math.abs(e.z - doorZ) < 0.1;
+      const isGate = (dctx.profile.gateDoor && s === 0 && e === door) || T.bigDoor && s === 0 && e.out[1] < 0 && Math.abs(e.x - doorX) <= (F >= 0.9 ? 0.01 : 2.01) && Math.abs(e.z - doorZ) < 0.1;
       let isWindow = !isDoor && !isGate && (!T.tower || (form === 'keep' && s > 0)) && (Math.round((e.x + e.z) / 2) % 2 === 0) && Math.abs(e.x - doorX) + Math.abs(e.z - doorZ) > 2.5;
       if (plan === 'gables' && e.out[1] >= 0) isWindow = false;
       // a gable end gets one window per floor, in its middle bay (2026-11-09 review: windows scattered over gable ends)
@@ -7821,6 +7889,10 @@ function generate(req) {
   const wantStack = dctx.profile.stack != null ? dctx.profile.stack
     : stoneOK && stage !== 's1' && ['home', 'longhouse', 'tavern', 'smithy', 'temple'].includes(type) && dctx.R() < 0.6;
   if (wantStack && roofKind === 'gable' && plan !== 'gables' && !flat && !T.tower && F < 1.01 && !/stone|marble|grausten/.test(C.wallStyle || '')) chimneyStack(b, K, wings, edges, dctx.profile, dctx.R, { C, SH, F, storeys });
+  // a balcony on a gable end, from the upper room (coverage audit: on 46 % of the best-liked builds; bench: req.details.balcony)
+  const wantBalc = dctx.profile.balcony != null ? dctx.profile.balcony
+    : stage !== 's1' && storeys >= 2 && ['home', 'tavern', 'longhouse', 'workshop'].includes(type) && dctx.R() < 0.5;
+  if (wantBalc && !b.gallery && roofKind === 'gable' && plan !== 'gables' && !flat && !T.tower && !loggia) balcony(b, K, C, wings[0], edges, { F, SH, ladders, cells });
   Details.exterior(b, dctx);
   clearDoorways(b);
   // the fire's place for the decorator: under the ridge vent, or a cell of a flat roof (a chimney goes up from it),
@@ -7831,10 +7903,103 @@ function generate(req) {
   settle(b, { K, C, biome, use: T.use, type, stoneOK, F, SH, storeys, top, flat, cells, wing: w0, roofTop, skipDecor: !!req.skipDecor });
   if (!req.skipDecor) tidyFurniture(b);
   if (!req.skipDecor && stoneOK && F < 0.01 && !C.stoneWalls) hearthstone(b, K);
-  if (!req.skipDecor) { const zones = keepClear(b); Details.interior(b, { ...dctx, zones }); Kitbash.apply(b, { ...dctx, decor }, zones); }
+  if (!req.skipDecor) { const zones = keepClear(b); Details.interior(b, { ...dctx, zones }); Kitbash.apply(b, { ...dctx, decor }, zones); doorLights(b, { biome, decor, F }); }
   else Details.commitMotifs(b, dctx); // bare builds (ranked before furnishing) carry the same wall trim
   if (Yards.wants(req, type, stage)) Yards.add(b, { K, C, type, stage, biome, cultureKey, decor: req.skipDecor ? 'd1' : decor, seed, opts: req.yard, details: req.details }); // a yard round stage 2 and 3 homes and farms (lib/yards.js, D-060)
   return finish(b, info);
+}
+
+// A balcony on a gable end: the upper storey's middle bay becomes a door onto a 2 m square floor with a rail of two
+// beams on corner posts. Under a 3 m storey it stands on 26 degree brackets from the wall; under a 2 m storey on posts
+// from the ground. Gable ends keep their rake overhang well above it; long walls are left alone (the eaves come down
+// to about a metre over a balcony there).
+function balcony(b, K, C, w, edges, o) {
+  if (!w || w.alpha !== 0) return false;
+  const { F, SH, ladders, cells } = o, yU = F + SH, Ck = checksLib();
+  const L = ladders || [];
+  const busyCell = (x, z) => !cells.has(`${x},${z}`) || L.some(l => [l.hole, l.land, l.stand, ...(l.run || [])].some(c => c && c[0] === x && c[1] === z));
+  const ends = edges.filter(e => e.yaw === 90 && Math.abs(Math.abs(e.x - w.cx) - w.W) < 0.01 && Math.abs(e.z - w.cz) < w.D)
+    .sort((a, c) => Math.abs(a.z - w.cz) - Math.abs(c.z - w.cz) || a.x - c.x);
+  const brackets = SH >= 3;
+  for (const e of ends) {
+    const sg = e.out[0], x0 = e.x, z = e.z;
+    if (busyCell(x0 - sg, z)) continue;
+    // nothing out there already: a stack, a woodshed, a porch
+    const y0 = brackets ? yU - 1.4 : 0.1;
+    const box = { x0: Math.min(x0 + sg * 0.2, x0 + sg * 2.4), x1: Math.max(x0 + sg * 0.2, x0 + sg * 2.4), z0: z - 1.4, z1: z + 1.4 };
+    if (b.pieces.some(p => { if (Math.abs(p.x - x0) < 0.35) return false; const a = Ck.aabb(p); return a.x0 < box.x1 && a.x1 > box.x0 && a.z0 < box.z1 && a.z1 > box.z0 && a.y0 < yU + 2.1 && a.y1 > y0; })) continue;
+    // the upper bay: wall and window out, a door in
+    const inBay = p => Math.abs(p.z - z) < 1.01 && Math.abs(p.x - x0) < 0.3 && p.y > yU + 0.05 && p.y < yU + SH - 0.05 &&
+      ['wall', 'window', 'door', 'beam'].includes(P.piece(p.name).role) && !p.decor;
+    b.pieces = b.pieces.filter(p => !inBay(p));
+    b.openings = (b.openings || []).filter(op => !(op.e.x === x0 && op.e.z === z && Math.abs(op.y0 - yU) < 0.01));
+    wallSegment(b, K, C, x0, yU, z, e.yaw, SH, 'door', null);
+    b.openings.push({ e, y0: yU, SH, storey: 1, kind: 'door', balcony: true });
+    const T = { trim: true }, pole = framePole(K, C), pole1 = K.pole1 || 'wood_pole', beam = K.beam || 'wood_beam';
+    const xo = x0 + sg * 2;
+    b.put(K.floor, x0 + sg, yU, z, 0, T);
+    // beams under the outer edge and the sides
+    b.put(beam, xo, yU - 0.15, z, 90, T);
+    for (const dz of [-1, 1]) b.put(beam, x0 + sg, yU - 0.15, z + dz, 0, T);
+    for (const dz of [-1, 1]) {
+      if (brackets) b.put(/darkwood/.test(beam) ? 'darkwood_beam_26' : /ashwood/.test(beam) ? 'ashwood_wall_beam_26' : 'wood_beam_26', x0 + sg, yU - 0.75, z + dz * 0.85, sg > 0 ? 0 : 180, T);
+      else for (let y = 0; y < yU - 0.01;) { const h = yU - y >= 2 ? 2 : 1; b.put(h === 2 ? pole : pole1, xo, y + h / 2, z + dz, 0, T); y += h; }
+      b.put(pole1, xo, yU + 0.5, z + dz, 0, T); // the rail's posts
+    }
+    for (const yr of [yU + 0.55, yU + 1.05]) {
+      b.put(beam, xo, yr, z, 90, T);
+      for (const dz of [-1, 1]) b.put(beam, x0 + sg, yr, z + dz, 0, T);
+    }
+    b.balcony = true;
+    b.notes.push('A balcony on a gable end, with a door from the upper room.');
+    return true;
+  }
+  return false;
+}
+
+// Lights by the doors (coverage audit 2026-11-09: wall torches by the door on 47 % of the best-liked builds, 5 % of
+// ours). From d2 the front door gets a wall torch on each side on the outside face, from d3 the back door too; where
+// the biome has no wall torch yet (Meadows) a standing torch beside a door at ground level. A side that would touch
+// trim, a window or a post is left bare; one light alone is fine.
+function doorLights(b, o) {
+  if (o.decor === 'd1') return 0;
+  const Ck = checksLib();
+  const name = reaches(o.biome, 'Black Forest') ? 'piece_walltorch' : null, ground = !name && o.F < 0.01 ? 'piece_groundtorch_wood' : null;
+  if (!name && !ground) return 0;
+  let n = 0;
+  const doors = (b.openings || []).filter(op => op.storey === 0 && op.kind !== 'window' && (!op.back || o.decor === 'd3'));
+  for (const op of doors) {
+    const e = op.e, ox = e.out[0], oz = e.out[1], ux = e.yaw === 0 ? 1 : 0, uz = 1 - ux;
+    const wall = b.pieces.find(p => !p.decor && P.piece(p.name).role === 'wall' && Math.abs(p.x - e.x) < 0.3 && Math.abs(p.z - e.z) < 0.3 && p.y > op.y0 && p.y < op.y0 + op.SH + 0.5)
+      || b.pieces.find(p => !p.decor && P.piece(p.name).role === 'door' && Math.abs(p.x - e.x) < 0.3 && Math.abs(p.z - e.z) < 0.3);
+    if (!wall) continue;
+    const wo = Ck.aabb(wall), half = e.yaw === 0 ? (wo.z1 - wo.z0) / 2 : (wo.x1 - wo.x0) / 2;
+    const dw = op.kind === 'gate' ? 1.45 : 1.15;
+    for (const sg of [-1, 1]) {
+      let put = null;
+      for (const t of [dw, dw + 0.2, dw - 0.15]) {
+        const yaw = (Math.atan2(ox, oz) * 180 / Math.PI + 270 + 360) % 360;
+        const q = name
+          ? { name, x: +(e.x + ox * (half + 0.28) + ux * sg * t).toFixed(3), y: +(op.y0 + 1.55).toFixed(3), z: +(e.z + oz * (half + 0.28) + uz * sg * t).toFixed(3), yaw }
+          : { name: ground, x: +(e.x + ox * (half + 0.6) + ux * sg * (t + 0.2)).toFixed(3), y: 0.75, z: +(e.z + oz * (half + 0.6) + uz * sg * (t + 0.2)).toFixed(3), yaw: 0 };
+        const qb = Ck.aabb(q), m = 0.04;
+        const hit = b.pieces.some(p => {
+          const r = P.piece(p.name).role;
+          if (r === 'floor' || r === 'rug') return false;
+          if (name && Math.abs((p.x - e.x) * ox + (p.z - e.z) * oz) < half + 0.05 && r !== 'door') return false; // the wall it hangs on
+          const pb = Ck.aabb(p);
+          return pb.x0 < qb.x1 - m && pb.x1 > qb.x0 + m && pb.z0 < qb.z1 - m && pb.z1 > qb.z0 + m && pb.y0 < qb.y1 - m && pb.y1 > qb.y0 + m;
+        });
+        // a wall torch needs wall behind it
+        const back = !name || b.pieces.some(p => { if (p.decor) return false; const r = P.piece(p.name).role; if (!['wall', 'pole', 'beam'].includes(r)) return false; const pb = Ck.aabb(p);
+          const bx = q.x - ox * 0.35, bz = q.z - oz * 0.35; return bx > pb.x0 - 0.02 && bx < pb.x1 + 0.02 && bz > pb.z0 - 0.02 && bz < pb.z1 + 0.02 && q.y > pb.y0 && q.y < pb.y1; });
+        if (!hit && back) { put = q; break; }
+      }
+      if (put) { b.put(put.name, put.x, put.y, put.z, put.yaw, { decor: true }); n++; }
+    }
+  }
+  if (n) b.notes.push(`${n} lights by the doors.`);
+  return n;
 }
 
 // Before furnishing: roof, eave and beam pieces in a doorway or in the 2.3 m a person needs in front of and behind it

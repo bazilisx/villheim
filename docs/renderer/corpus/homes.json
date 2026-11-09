@@ -1,0 +1,386 @@
+[
+ {
+  "n": 1,
+  "sheet": "homes-1.png",
+  "title": "Starter Community Home",
+  "id": "starter-community-home",
+  "file": "vh/starter-home/starter-community-home__MACCommHomeBasicVB.blueprint",
+  "dls": 4000
+ },
+ {
+  "n": 2,
+  "sheet": "homes-1.png",
+  "title": "Open longboat dock",
+  "id": "open-longboat-dock",
+  "file": "vh/boat-house/open-longboat-dock.blueprint",
+  "dls": 3600
+ },
+ {
+  "n": 3,
+  "sheet": "homes-1.png",
+  "title": "Lin's Survival farm-all purpose base vbuild",
+  "id": "survival-farm-all-purpose-base",
+  "file": "vh/building/survival-farm-all-purpose-base.blueprint",
+  "dls": 2000
+ },
+ {
+  "n": 4,
+  "sheet": "homes-1.png",
+  "title": "Warehouse",
+  "id": "warehouse",
+  "file": "vh/storage/warehouse.blueprint",
+  "dls": 1400
+ },
+ {
+  "n": 5,
+  "sheet": "homes-1.png",
+  "title": "Decorative starter building for small community",
+  "id": "decorative-starter-building-for-small-community",
+  "file": "vh/starter-home/decorative-starter-building-for-small-community.blueprint",
+  "dls": 1300
+ },
+ {
+  "n": 6,
+  "sheet": "homes-1.png",
+  "title": "Community Longhouse",
+  "id": "community-longhouse",
+  "file": "vh/longhouse/community-longhouse__LH6bare.blueprint",
+  "dls": 1100
+ },
+ {
+  "n": 7,
+  "sheet": "homes-1.png",
+  "title": "Community Longhouse",
+  "id": "community-longhouse",
+  "file": "vh/longhouse/community-longhouse__LH6furn2.blueprint",
+  "dls": 1100
+ },
+ {
+  "n": 8,
+  "sheet": "homes-1.png",
+  "title": "Medieval Blacksmith's Home and dock w/Download",
+  "id": "small-blacksmith-s-house-and-dock-w-download",
+  "file": "vh/blacksmith/small-blacksmith-s-house-and-dock-w-download.blueprint",
+  "dls": 1000
+ },
+ {
+  "n": 9,
+  "sheet": "homes-2.png",
+  "title": "small house for the endgame",
+  "id": "small-house-for-the-endgame",
+  "file": "vh/other/small-house-for-the-endgame.blueprint",
+  "dls": 1000
+ },
+ {
+  "n": 10,
+  "sheet": "homes-2.png",
+  "title": "Upper Class Medieval Townhouse w/download",
+  "id": "upper-class-medieval-house-w-download",
+  "file": "vh/building/upper-class-medieval-house-w-download.blueprint",
+  "dls": 759
+ },
+ {
+  "n": 11,
+  "sheet": "homes-2.png",
+  "title": "Portal House",
+  "id": "portal-house",
+  "file": "vh/portal-hub/portal-house.blueprint",
+  "dls": 689
+ },
+ {
+  "n": 12,
+  "sheet": "homes-2.png",
+  "title": "Cosy home",
+  "id": "cosy-home",
+  "file": "vh/longhouse/cosy-home__CosyLHMv.blueprint",
+  "dls": 687
+ },
+ {
+  "n": 13,
+  "sheet": "homes-2.png",
+  "title": "HouseDungeon DeepNorth",
+  "id": "housedungeon-deepnorth",
+  "file": "vh/other/housedungeon-deepnorth.blueprint",
+  "dls": 670
+ },
+ {
+  "n": 14,
+  "sheet": "homes-2.png",
+  "title": "Large farm",
+  "id": "large-farm",
+  "file": "vh/other/large-farm__Mutantartcat_FarmEmpty.blueprint",
+  "dls": 666
+ },
+ {
+  "n": 15,
+  "sheet": "homes-2.png",
+  "title": "Starter community home 2",
+  "id": "starter-community-home-2",
+  "file": "vh/starter-home/starter-community-home-2.blueprint",
+  "dls": 659
+ },
+ {
+  "n": 16,
+  "sheet": "homes-2.png",
+  "title": "Automated Pig Farm",
+  "id": "automated-pig-farm",
+  "file": "vh/other/automated-pig-farm.blueprint",
+  "dls": 658
+ },
+ {
+  "n": 17,
+  "sheet": "homes-3.png",
+  "title": "Simple Forest Cabin",
+  "id": "simple-forest-cabin",
+  "file": "vh/other/simple-forest-cabin.blueprint",
+  "dls": 658
+ },
+ {
+  "n": 18,
+  "sheet": "homes-3.png",
+  "title": "Fully equipped warehouse/workshop",
+  "id": "fully-equipped-warehouse-workshop",
+  "file": "vh/storage/fully-equipped-warehouse-workshop__UpgradedWareshop.blueprint",
+  "dls": 633
+ },
+ {
+  "n": 19,
+  "sheet": "homes-3.png",
+  "title": "Houses, homes and tinies.",
+  "id": "houses-homes-and-tinies",
+  "file": "vh/building/houses-homes-and-tinies__MutantArtCat_Home10VB.blueprint",
+  "dls": 588
+ },
+ {
+  "n": 20,
+  "sheet": "homes-3.png",
+  "title": "Houses, homes and tinies.",
+  "id": "houses-homes-and-tinies",
+  "file": "vh/building/houses-homes-and-tinies__MutantArtCat_Home11VB.blueprint",
+  "dls": 588
+ },
+ {
+  "n": 21,
+  "sheet": "homes-3.png",
+  "title": "Houses, homes and tinies.",
+  "id": "houses-homes-and-tinies",
+  "file": "vh/building/houses-homes-and-tinies__MutantArtCat_Home12VB.blueprint",
+  "dls": 588
+ },
+ {
+  "n": 22,
+  "sheet": "homes-3.png",
+  "title": "Houses, homes and tinies.",
+  "id": "houses-homes-and-tinies",
+  "file": "vh/building/houses-homes-and-tinies__MutantArtCat_Home13VB.blueprint",
+  "dls": 588
+ },
+ {
+  "n": 23,
+  "sheet": "homes-3.png",
+  "title": "Houses, homes and tinies.",
+  "id": "houses-homes-and-tinies",
+  "file": "vh/building/houses-homes-and-tinies__MutantArtCat_Home14VB.blueprint",
+  "dls": 588
+ },
+ {
+  "n": 24,
+  "sheet": "homes-3.png",
+  "title": "Houses, homes and tinies.",
+  "id": "houses-homes-and-tinies",
+  "file": "vh/building/houses-homes-and-tinies__MutantArtCat_Home15VB.blueprint",
+  "dls": 588
+ },
+ {
+  "n": 25,
+  "sheet": "homes-4.png",
+  "title": "Houses, homes and tinies.",
+  "id": "houses-homes-and-tinies",
+  "file": "vh/building/houses-homes-and-tinies__MutantArtCat_Home16VB.blueprint",
+  "dls": 588
+ },
+ {
+  "n": 26,
+  "sheet": "homes-4.png",
+  "title": "Houses, homes and tinies.",
+  "id": "houses-homes-and-tinies",
+  "file": "vh/building/houses-homes-and-tinies__MutantArtCat_Home18VB.blueprint",
+  "dls": 588
+ },
+ {
+  "n": 27,
+  "sheet": "homes-4.png",
+  "title": "Houses, homes and tinies.",
+  "id": "houses-homes-and-tinies",
+  "file": "vh/building/houses-homes-and-tinies__MutantArtCat_Home19VB.blueprint",
+  "dls": 588
+ },
+ {
+  "n": 28,
+  "sheet": "homes-4.png",
+  "title": "Houses, homes and tinies.",
+  "id": "houses-homes-and-tinies",
+  "file": "vh/building/houses-homes-and-tinies__MutantArtCat_Home1VB.blueprint",
+  "dls": 588
+ },
+ {
+  "n": 29,
+  "sheet": "homes-4.png",
+  "title": "Houses, homes and tinies.",
+  "id": "houses-homes-and-tinies",
+  "file": "vh/building/houses-homes-and-tinies__MutantArtCat_Home20VB.blueprint",
+  "dls": 588
+ },
+ {
+  "n": 30,
+  "sheet": "homes-4.png",
+  "title": "Houses, homes and tinies.",
+  "id": "houses-homes-and-tinies",
+  "file": "vh/building/houses-homes-and-tinies__MutantArtCat_Home21VB.blueprint",
+  "dls": 588
+ },
+ {
+  "n": 31,
+  "sheet": "homes-4.png",
+  "title": "Bakedgoodsstall",
+  "id": "hs_ashlands_bakedgoodsstall",
+  "file": "hs/hs_ashlands_bakedgoodsstall.blueprint",
+  "dls": 0
+ },
+ {
+  "n": 32,
+  "sheet": "homes-4.png",
+  "title": "Meathousevanilla Brigames",
+  "id": "hs_ashlands_meathousevanilla_brigames",
+  "file": "hs/hs_ashlands_meathousevanilla_brigames.blueprint",
+  "dls": 0
+ },
+ {
+  "n": 33,
+  "sheet": "homes-5.png",
+  "title": "Sweettoothstall",
+  "id": "hs_ashlands_sweettoothstall",
+  "file": "hs/hs_ashlands_sweettoothstall.blueprint",
+  "dls": 0
+ },
+ {
+  "n": 34,
+  "sheet": "homes-5.png",
+  "title": "BaseStart Simple",
+  "id": "hs_blackforest_mister_basestart_simple",
+  "file": "hs/hs_blackforest_mister_basestart_simple.blueprint",
+  "dls": 0
+ },
+ {
+  "n": 35,
+  "sheet": "homes-5.png",
+  "title": "Duo - Meadows Log Cabin",
+  "id": "hs_blackforest_tester_meadows_log_cabin",
+  "file": "hs/hs_blackforest_tester_meadows_log_cabin.blueprint",
+  "dls": 0
+ },
+ {
+  "n": 36,
+  "sheet": "homes-5.png",
+  "title": "Starterhouse",
+  "id": "hs_meadows_starterhouse",
+  "file": "hs/hs_meadows_starterhouse.blueprint",
+  "dls": 0
+ },
+ {
+  "n": 37,
+  "sheet": "homes-5.png",
+  "title": "Storage",
+  "id": "hs_plains_abzul_storage",
+  "file": "hs/hs_plains_abzul_storage.blueprint",
+  "dls": 0
+ },
+ {
+  "n": 38,
+  "sheet": "homes-5.png",
+  "title": "Estacao de Trabalho",
+  "id": "hs_swamp_babe_estacao_de_trabalho",
+  "file": "hs/hs_swamp_babe_estacao_de_trabalho.blueprint",
+  "dls": 0
+ },
+ {
+  "n": 39,
+  "sheet": "homes-5.png",
+  "title": "WolfGDGDBreederFinal",
+  "id": "farm-greydwarf-farm-wolf-breeder-together-at-last",
+  "file": "pb/inspiration/farm-greydwarf-farm-wolf-breeder-together-at-last.blueprint",
+  "dls": 0
+ },
+ {
+  "n": 40,
+  "sheet": "homes-5.png",
+  "title": "Housebarn",
+  "id": "farm-house-with-barn-animal-shelter",
+  "file": "pb/inspiration/farm-house-with-barn-animal-shelter.blueprint",
+  "dls": 0
+ },
+ {
+  "n": 41,
+  "sheet": "homes-6.png",
+  "title": "Farm",
+  "id": "farm-quaint-little-farm",
+  "file": "pb/inspiration/farm-quaint-little-farm.blueprint",
+  "dls": 0
+ },
+ {
+  "n": 42,
+  "sheet": "homes-6.png",
+  "title": "Boar Pen v0.2",
+  "id": "farm-thortress-boar-pen",
+  "file": "pb/inspiration/farm-thortress-boar-pen.blueprint",
+  "dls": 0
+ },
+ {
+  "n": 43,
+  "sheet": "homes-6.png",
+  "title": "Garden Plot",
+  "id": "farm-thortress-garden-plot",
+  "file": "pb/inspiration/farm-thortress-garden-plot.blueprint",
+  "dls": 0
+ },
+ {
+  "n": 44,
+  "sheet": "homes-6.png",
+  "title": "Estacao de Trabalho",
+  "id": "farm-workstation-esta-o-de-trabalho",
+  "file": "pb/inspiration/farm-workstation-esta-o-de-trabalho.blueprint",
+  "dls": 0
+ },
+ {
+  "n": 45,
+  "sheet": "homes-6.png",
+  "title": "Первый Домик",
+  "id": "house-1597",
+  "file": "pb/inspiration/house-1597.blueprint",
+  "dls": 0
+ },
+ {
+  "n": 46,
+  "sheet": "homes-6.png",
+  "title": "Домик 2",
+  "id": "house-2-1607",
+  "file": "pb/inspiration/house-2-1607.blueprint",
+  "dls": 0
+ },
+ {
+  "n": 47,
+  "sheet": "homes-6.png",
+  "title": "Duo - Black Forest Home v0.2",
+  "id": "house-4-part-rebuild-set-duo-black-forest-home",
+  "file": "pb/inspiration/house-4-part-rebuild-set-duo-black-forest-home.blueprint",
+  "dls": 0
+ },
+ {
+  "n": 48,
+  "sheet": "homes-6.png",
+  "title": "MahoniBaba",
+  "id": "house-a-compact-ergonomic-base-for-3-4-players",
+  "file": "pb/inspiration/house-a-compact-ergonomic-base-for-3-4-players.blueprint",
+  "dls": 0
+ }
+]

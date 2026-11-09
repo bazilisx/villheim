@@ -176,7 +176,7 @@ function exterior(b, ctx) {
     if (o.kind === 'window') continue;
     const { e, y0 } = o, { ux, uz, ox, oz } = axes(e);
     const h = o.kind === 'gate' ? 3 : 2;
-    const mo = MT && o.kind === 'door' && !o.gallery ? motifDoor(b, ctx, MT, o, used) : null;
+    const mo = MT && o.kind === 'door' && !o.gallery && !o.balcony ? motifDoor(b, ctx, MT, o, used) : null;
     if (mo) { added.motifs++; o.motif = mo; }
     // the opening as the door piece fills it (a cloth door hangs beside the wall's middle)
     const dp = b.pieces.find(p => PD.piece(p.name).role === 'door' && Math.hypot(p.x - e.x, p.z - e.z) < 1.2 && p.y > y0 - 0.5 && p.y < y0 + 3);

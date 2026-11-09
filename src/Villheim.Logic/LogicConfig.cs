@@ -165,6 +165,11 @@ namespace Villheim.Logic
         public static ConfigEntry<int> BossStageStart;
         public static ConfigEntry<string> BossStageSource;
         public static ConfigEntry<bool> Elders;
+        public static ConfigEntry<bool> HouseSigns;
+        public static ConfigEntry<bool> HomeDecor;
+        public static ConfigEntry<bool> HomeEvenings;
+        public static ConfigEntry<float> HomeEveningShare;
+        public static ConfigEntry<bool> VillageBeds;
         public static ConfigEntry<int> ElderDays;
         public static ConfigEntry<bool> ElderDeaths;
         public static ConfigEntry<int> ElderDeathDays;
@@ -203,6 +208,7 @@ namespace Villheim.Logic
         public static ConfigEntry<float> LooksOutlierChance;
         public static ConfigEntry<bool> CultureSurnames;
         public static ConfigEntry<bool> CultureDesigns;
+        public static ConfigEntry<bool> TestPool;
         public static ConfigEntry<bool> BiomeDefenders;
         public static ConfigEntry<bool> DefenderCarers;
         public static ConfigEntry<float> DefenderRange;
@@ -705,7 +711,7 @@ namespace Villheim.Logic
             ("SurroundingsTags", SurroundingsTags), ("TopicFatigue", TopicFatigue), ("ChatScenes", ChatScenes),
             ("Prosperity", Prosperity), ("Expectations", Expectations), ("Calendar", Calendar), ("Festivals", Festivals),
             ("WinterStores", WinterStores), ("PlayerStanding", PlayerStanding), ("Hostility", Hostility), ("Complaints", Complaints), ("VillagersLeave", Leaving),
-            ("VisitorJudging", VisitorJudging), ("WantPile", WantPile), ("BossStageCap", BossStages), ("Elders", Elders),
+            ("VisitorJudging", VisitorJudging), ("WantPile", WantPile), ("BossStageCap", BossStages), ("Elders", Elders), ("HouseSigns", HouseSigns), ("HomeDecor", HomeDecor), ("HomeEvenings", HomeEvenings), ("VillageBeds", VillageBeds),
             ("EldersDieOfAge", ElderDeaths), ("Neighbors", Neighbors), ("Horn", Horn), ("HelpPlayers", HelpPlayers),
             ("VillageKnowledge", VillageKnowledge), ("KnowledgeGearGate", KnowledgeGearGate), ("KnowledgeRequests", KnowledgeRequests),
             ("HarvestReach", HarvestReach), ("MapTable", MapTable),
@@ -816,6 +822,23 @@ namespace Villheim.Logic
                 "Villagers who have lived in a village long enough are elders: they leave felling and mining to others " +
                 "and tell the village's old stories.");
             ElderDays = Admin(config, living, "ElderDays", 40, "Days in the village before a villager is an elder.");
+            // Home life (Tyler, 2026-11-09, D-073).
+            HouseSigns = Admin(config, living, "HouseSigns", true,
+                "Each home gets a sign by its front door, built from the village chest like any piece: a lone villager's " +
+                "name over his role, or a family's name over its members. A family's home also gets one sign per " +
+                "member just inside the door. The signs change when the people in the house change.");
+            HomeDecor = Admin(config, living, "HomeDecor", true,
+                "In idle time by day, villagers add their home's next decor stage (d1, then d2, then d3) piece by piece, " +
+                "paid from the village chest. Village work comes first. Others may help.");
+            HomeEvenings = Admin(config, living, "HomeEvenings", true,
+                "In the evening a household spends the time at home together, or goes to the hearth. Off: everyone " +
+                "gathers at the hearth every evening as before.");
+            HomeEveningShare = Admin(config, living, "HomeEveningShare", 0.6f,
+                "With HomeEvenings on: the chance that a family spends a given evening at home (a lone villager stays " +
+                "home half as often).");
+            VillageBeds = Admin(config, living, "VillageBeds", true,
+                "Every villager is given a free bed of the village, and the bed shows his name. Players cannot claim or " +
+                "sleep in a village bed. Off: beds are claimed only when a villager needs one, and show nothing.");
             PlayerHitsToFight = Admin(config, living, "PlayerHitsToFight", 3,
                 "Hits on a village's people by one player within PlayerHitWindow before its protectors fight him. Before " +
                 "that a hit protector only complains, and carers, elders and children run to the hearth.");
@@ -989,6 +1012,11 @@ namespace Villheim.Logic
             CultureDesigns = Admin(config, cultures, "CultureDesigns", true,
                 "Use a culture's own design sets (cultures.txt) and blueprints tagged 'villheim: culture=key' before the " +
                 "biome's set. Off: only the biome decides what a village builds.");
+
+            TestPool = Admin(config, cultures, "TestPool", false,
+                "Villages build only the test pool's designs ('vh testpool make' writes them to " +
+                "BepInEx/config/Villheim/blueprints/testpool-<culture>), for every role the pool has. Other designs " +
+                "are used only for roles the pool lacks. Plots already built keep their designs.");
 
             const string defenders = "5e - Biome defenders";
             BiomeDefenders = Admin(config, defenders, "BiomeDefenders", true,

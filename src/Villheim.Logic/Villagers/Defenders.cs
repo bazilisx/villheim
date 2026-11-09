@@ -237,7 +237,7 @@ namespace Villheim.Logic.Villagers
                 state.Target = null;
             }
 
-            bool mayShoot = Roles.BackgroundOf(villager) == Roles.Background.Protector || LogicConfig.IsOn(LogicConfig.DefenderCarers);
+            bool mayShoot = Roles.IsFighter(villager) || LogicConfig.IsOn(LogicConfig.DefenderCarers);
             if (state.Target == null || !mayShoot)
             {
                 Steer(villager, ai, profile, state);
@@ -517,7 +517,7 @@ namespace Villheim.Logic.Villagers
             state.Target = null;
             PutBowAway(villager);
 
-            if (Roles.BackgroundOf(villager) == Roles.Background.Protector)
+            if (Roles.IsFighter(villager))
             {
                 Roles.Rearm(villager);
             }
@@ -783,7 +783,7 @@ namespace Villheim.Logic.Villagers
 
             List<Villager> people = Character.GetAllCharacters().OfType<Villager>().Where(v => v.VillageId == state.Id && !v.IsDead() && !Childhood.IsChild(v)).ToList();
             bool carers = LogicConfig.IsOn(LogicConfig.DefenderCarers);
-            int archers = people.Count(v => carers || Roles.BackgroundOf(v) == Roles.Background.Protector);
+            int archers = people.Count(v => carers || Roles.IsFighter(v));
             Tallies.TryGetValue(state.Id, out Tally tally);
             return $"{state.Name} ({state.Biome}) uses the {profile.Name} profile: {string.Join(", ", profile.TargetSet())}; " +
                    $"damage x{profile.Damage():0.0}, spread {profile.Spread():0.0} degrees, reaction {profile.Reaction():0.00} s, " +

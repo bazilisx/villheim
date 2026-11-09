@@ -13,6 +13,8 @@ namespace Villheim.Logic.Village
     ///    station, and is mended first whenever a piece of it is destroyed (see NoticeBoard).
     /// 2. The hub area, once the longhouse stands: benches round the fire, a wood stack and a stone pile.
     /// 2b. Storage chests by the main chest as the village grows, each with its label (StorageChests, D-016).
+    /// 2c. A sign by the front door of each home that has people, and one per member inside a family's door
+    ///     (HouseSigns, D-073).
     /// 3. Furnishings: the workshop's workbench, the storehouse's chests, chests, chairs and tables in the homes and
     ///    the longhouse.
     ///
@@ -54,6 +56,10 @@ namespace Villheim.Logic.Village
 
             /// <summary>Something of several pieces with some of them already standing: finished before anything new.</summary>
             public bool Started;
+
+            /// <summary>A house sign (HouseSigns): the home it belongs to, by its plot's position, and its place.</summary>
+            public Vector3 HomePlot;
+            public int HomeSlot;
         }
 
         private sealed class Entry
@@ -141,7 +147,7 @@ namespace Villheim.Logic.Village
         /// notice board, the cooking station), which are cheap and come first. A long build had kept the notice board
         /// waiting on wood the site had set aside.
         /// </summary>
-        private static Dictionary<string, int> Reserved(VillageHearth hearth, Job job) =>
+        internal static Dictionary<string, int> Reserved(VillageHearth hearth, Job job) =>
             job.Essential ? new Dictionary<string, int>() : ConstructionSite.Remaining(hearth);
 
         /// <summary>The first thing still missing, affordable or not (what gatherers work toward). Every 10 seconds.</summary>
@@ -256,6 +262,7 @@ namespace Villheim.Logic.Village
                 () => NoticeBoard.Job(hearth),
                 () => StorageChests.Urgent(hearth) ? StorageChests.Job(hearth, state) : null,
                 () => StorageChests.Job(hearth, state),
+                () => HouseSigns.Job(hearth, state),
                 () => Outside(hearth, state, false, onlyHearth: false),
                 () => Inside(state, tier, false),
                 () => Demisters.Job(hearth, state),
@@ -503,6 +510,13 @@ namespace Villheim.Logic.Village
                 return built;
             }
 
+            if (job.Name == HouseSigns.JobName)
+            {
+                // A sign on a home (D-073): the spot was checked when the job was worked out.
+                return Affordable(hearth, state, job.Cost, Reserved(hearth, job)) && Pay(hearth, state, job.Cost) &&
+                       HouseSigns.Make(hearth, state, job);
+            }
+
             if (job.Kind != null)
             {
                 // A storage chest or its label: the spot was checked when the job was worked out.
@@ -618,7 +632,7 @@ namespace Villheim.Logic.Village
         }
 
         /// <summary>Takes the cost from the village chest, topping up from the saved-up stock.</summary>
-        private static bool Pay(VillageHearth hearth, VillageState state, Dictionary<string, int> cost)
+        internal static bool Pay(VillageHearth hearth, VillageState state, Dictionary<string, int> cost)
         {
             Container chest = VillageChest.Find(hearth);
             var fromChest = new Dictionary<string, int>();

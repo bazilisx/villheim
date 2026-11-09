@@ -222,7 +222,7 @@ namespace Villheim.Logic.Villagers
                 case Kind.Station: return state.Station != null ? "busy at the " + StationName(state.Station) : "keeping busy";
                 case Kind.Seat: return "sitting down for a while";
                 case Kind.Watch: return state.Watched != null ? "watching " + state.Watched.GetHoverName() : "watching";
-                case Kind.Evening: return "gathered at the hearth";
+                case Kind.Evening: return "at the hearth";
                 case Kind.Night: return IsLateNight() ? "resting by the fire" : "sitting by the fire";
                 case Kind.Make: return state.Making != null ? "making a " + state.Making.Name : "making something";
                 default: return "idle";
@@ -336,7 +336,7 @@ namespace Villheim.Logic.Villagers
             {
                 (Kind.FireSit, wet ? 0f : (carer ? 4.5f : 2f) * Village.Calendar.FireFactor()),
                 (Kind.GroundSit, wet ? 0f : (mood < 35f ? 2f : 1f)),
-                (Kind.Stroll, (mood < 35f ? 0.5f : 1f) * (carer ? 1f : 2.5f)),
+                (Kind.Stroll, (mood < 35f ? 0.5f : 1f) * (carer ? 1f : 2.5f) * (Roles.TradeOf(villager) == Roles.Trade.Guard ? 3f : 1f)),
                 (Kind.Chat, ReallyFree(villager, state) && FindChatPartner(villager) != null
                     ? (mood >= 65f ? 4f : mood < 35f ? 0.6f : 2f)
                     : 0f),
@@ -1158,7 +1158,8 @@ namespace Villheim.Logic.Villagers
         private static Vector3 StrollSpot(Villager villager, State state, Vector3 hearth, bool watch = false)
         {
             state.Watching = false;
-            if (!watch && (Roles.BackgroundOf(villager) != Roles.Background.Protector || Random.value > 0.6f))
+            bool guard = Roles.TradeOf(villager) == Roles.Trade.Guard;
+            if (!watch && (guard ? Random.value > 0.9f : Roles.BackgroundOf(villager) != Roles.Background.Protector || Random.value > 0.6f))
             {
                 return HomeSpot(villager, hearth);
             }

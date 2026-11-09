@@ -24,6 +24,8 @@ namespace Villheim.Logic
             "props [location] [filter]: list a location's child objects with their meshes and components (to find Hildir's map table and tents); written to BepInEx/Villheim/props-<location>.txt",
             "board [now]: show the notice board's blueprint, place and what it waits for ('now' puts it up at once, free)",
             "beds: list the beds round the nearest village, whether they count and who sleeps in each",
+            "decor [now]: each home of the nearest village, its design, its next decor stage and how many of that stage's pieces are still to make; 'now' puts up the nearest home's next stage at once, free (a test)",
+            "homes [signs]: each home of the nearest village, who lives there (a lone villager or a family), its front door and what its signs say; 'signs' writes the signs again now",
             "paths now|show: 'now' plans a path for every door not yet joined and lays all waiting paths of the nearest village at once, clearing trees and stones on the way; 'show' lists the waiting paths and marks their points on the map for a minute",
             "buildingground: level the ground under the nearest village building to its foundation",
             "hearthground: clear and level the ground round the nearest village's hearth again",
@@ -95,7 +97,7 @@ namespace Villheim.Logic
             "keepapart: the creatures villagers and villages leave alone (KeepApartCreatures), and the camps the nearest village keeps away from",
             "demist: the nearest Mistlands village's clear air, and the game's prefabs that carry a demister",
             "exportpieces: write every buildable piece's collider and mesh bounds, pivot height, color, texture, category, comfort, cost and station to BepInEx/config/Villheim/pieces.json (copy it to tools/blueprint-lab/data/pieces-export.json)",
-        }).Concat(Generator.GenCommands.Help).Concat(Generator.FloorplanCommands.Help).ToArray();
+        }).Concat(Generator.GenCommands.Help).Concat(Generator.TestPool.Help).Concat(Generator.FloorplanCommands.Help).ToArray();
 
         /// <summary>'vh switches': each system's on/off setting and its value now.</summary>
         private static string Switches()
@@ -177,6 +179,44 @@ namespace Villheim.Logic
                             {
                                 Say(context, "   " + line);
                             }
+                        }
+                    }
+                    else
+                    {
+                        Say(context, "Villheim: no village hearth within 150 m.");
+                    }
+
+                    return true;
+                case "villheim_decor":
+                    if (TryGetPlayer(context, out Player decorNear) && VillageHearth.Closest(decorNear.transform.position, 150f) is VillageHearth dv)
+                    {
+                        List<string> decor = Villagers.HomeDecor.Report(dv, decorNear.transform.position, args.Length > 0 && args[0] == "now");
+                        Say(context, $"Villheim: homes of {dv.VillageName} and their decor:");
+                        foreach (string line in decor)
+                        {
+                            Say(context, "   " + line);
+                        }
+                    }
+                    else
+                    {
+                        Say(context, "Villheim: no village hearth within 150 m.");
+                    }
+
+                    return true;
+                case "villheim_homes":
+                    if (TryGetPlayer(context, out Player homesNear) && VillageHearth.Closest(homesNear.transform.position, 150f) is VillageHearth hv)
+                    {
+                        if (args.Length > 0 && args[0] == "signs")
+                        {
+                            Villagers.Households.Forget(hv.VillageId);
+                            HouseSigns.Update(hv, true);
+                        }
+
+                        List<string> homes = Villagers.Households.Report(hv);
+                        Say(context, $"Villheim: {homes.Count} homes in {hv.VillageName}:");
+                        foreach (string line in homes)
+                        {
+                            Say(context, "   " + line);
                         }
                     }
                     else
@@ -324,6 +364,7 @@ namespace Villheim.Logic
                 case "villheim_demist": Say(context, Demisting.Command()); return true;
                 case "villheim_exportpieces": Say(context, PieceExport.Run()); return true;
                 case "villheim_gen": Generator.GenCommands.Gen(args, context); return true;
+                case "villheim_testpool": Say(context, Generator.TestPool.Run(args, context)); return true;
                 case "villheim_ask": Say(context, Generator.GenCommands.Ask(args)); return true;
                 case "villheim_asks": Say(context, Generator.GenCommands.Asks()); return true;
                 case "villheim_place": Say(context, Generator.GenCommands.Place(args)); return true;

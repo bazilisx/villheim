@@ -11,6 +11,7 @@
 const NODE_D = typeof module !== 'undefined';
 const P = NODE_D ? require('./pieces.js') : window.VHPieces;
 const SHD = NODE_D ? require('./shapes.js') : window.VHShapes;
+const PERS = () => (NODE_D ? require('./persona.js') : window.VHPersona);
 let RULES = null, LEARN = null;
 function setRules(r) { RULES = r; }
 function setInterior(d) { LEARN = d; }
@@ -1456,7 +1457,9 @@ function fill(room, role, c) {
   const tune = ((learned().tuning || {}).density || {})[role] || 1;
   let dens = density(LEARN_KIND[role] || 'home', c.decor) * tune;
   if (role === 'storage' || role === 'farm') dens = Math.min(dens, 4.5); // small store rooms set the corpus rate
-  const target = Math.round(room.area / 10 * dens * (c.fillShare || 1));
+  // the household (lib/persona.js): a cluttered house fills a little past the corpus rate, a neat one stops short
+  const share = (c.fillShare || 1) * (c.persona && PERS() ? PERS().fillShare(c.persona) : 1);
+  const target = Math.round(room.area / 10 * dens * share);
   if (c.fillOnly && room.count >= target * c.fillOnly / (c.fillShare || 1)) return;
   const floorUsed = () => room.placed.reduce((a, q) => a + (q.rug || q.mount || q.onTable || q.onFire ? 0 : q.b.hw * q.b.hd * 4), 0);
   const barrel = ok('dvergrprops_barrel', biome) && room.R() < 0.4 ? 'dvergrprops_barrel' : ok('piece_chest_barrel', biome) ? 'piece_chest_barrel' : null;
@@ -1493,7 +1496,7 @@ function fill(room, role, c) {
       let n = 0;
       for (const t of room.placed.filter(q => (F[q.name] || {}).cat === 'table' && !q.topped)) {
         t.topped = true;
-        n += placeOnTable(room, t, [ok('treasure_stack', biome) && room.R() < 0.3 ? 'treasure_stack' : 'itemstandh', ok('Candle_resin', biome) ? 'Candle_resin' : 'itemstandh']);
+        n += placeOnTable(room, t, [ok('treasure_stack', biome) && room.R() < 0.3 ? 'itemstandh' : 'itemstandh', ok('Candle_resin', biome) ? 'Candle_resin' : 'itemstandh']);
         if (n) break;
       }
       return n;
@@ -1520,7 +1523,8 @@ function fill(room, role, c) {
     footBench: 2, doorBench: 1, nook: 1, ring: 1, storeWall: 1, groupRug: 2, evenLights: 2 };
   const used = {};
   const rugs = () => room.placed.filter(q => q.rug).length;
-  const live = Object.entries(extras).filter(([kk]) => run[kk]);
+  const pw = c.persona && PERS() ? PERS().extraWeights(c.persona) : null;
+  const live = Object.entries(extras).filter(([kk]) => run[kk]).map(([kk, w]) => [kk, w * (pw && pw[kk] != null ? pw[kk] : 1)]);
   for (let tries = 0; tries < 40 && live.length && room.count < target; tries++) {
     const key = pickW(room.R, live);
     const floor = !['trophies', 'shelf', 'banners', 'carving', 'tabletop', 'rug', 'groupRug'].includes(key);

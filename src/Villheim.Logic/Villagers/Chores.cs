@@ -377,8 +377,10 @@ namespace Villheim.Logic.Villagers
                 }
 
                 int seed = other.Zdo.GetInt(Keys.VillagerSeed);
+                // The carpenter builds; with none, a generalist with a builder's looks (D-075).
                 Roles.Trade trade = Roles.TradeOf(other);
-                bool isBuilder = trade != Roles.Trade.None ? trade == Roles.Trade.Carpenter : VillagerLooks.IsBuilder(seed);
+                bool isBuilder = Roles.HasTrade(id, Roles.Trade.Carpenter) ? trade == Roles.Trade.Carpenter
+                    : trade == Roles.Trade.None && VillagerLooks.IsBuilder(seed);
                 bool young = !Elders.IsElder(other);
                 bool better = best == null || (young && !bestYoung) ||
                               (young == bestYoung && ((isBuilder && !bestIsBuilder) || (isBuilder == bestIsBuilder && seed < bestSeed)));
@@ -422,8 +424,9 @@ namespace Villheim.Logic.Villagers
                 return;
             }
 
-            // Trades (from six villagers on) keep to their work, however big the village gets (T-108): a cook keeps the
-            // hearth, a farmer the farm. Neither clears ground, tidies up or helps build.
+            // Some trades keep to their work, however big the village gets (T-108): a cook keeps the hearth, a farmer
+            // the farm, a guard the watch, a healer the hurt and his herbs. None of them clears ground, tidies up or
+            // helps build. Hunters and fishers gather like anyone when the village has no meat or fish to fetch.
             Roles.Trade trade = Roles.TradeOf(villager);
             if (trade == Roles.Trade.Cook && !builder)
             {
@@ -437,6 +440,18 @@ namespace Villheim.Logic.Villagers
                 return;
             }
 
+            if (trade == Roles.Trade.Guard && !builder)
+            {
+                NoWork(villager, work, "keeps watch over the village");
+                return;
+            }
+
+            if (trade == Roles.Trade.Healer && !builder)
+            {
+                NoWork(villager, work, "tends the hurt and gathers herbs");
+                return;
+            }
+
             if (needs.Missing.Count == 0)
             {
                 if (!TryClear(villager, work, needs, false) && !TryTidy(villager, work))
@@ -447,14 +462,13 @@ namespace Villheim.Logic.Villagers
                 return;
             }
 
-            // A woodcutter or carpenter goes for wood first, a miner for stone. Without trades, everyone goes where
-            // the need is greatest.
+            // A carpenter goes for wood first, a smith for stone and ore. Everyone else goes where the need is greatest.
             Profile first;
-            if (trade == Roles.Trade.Miner)
+            if (trade == Roles.Trade.Smith)
             {
                 first = Miner;
             }
-            else if (trade != Roles.Trade.None)
+            else if (trade == Roles.Trade.Carpenter)
             {
                 first = Woodcutter;
             }
@@ -1463,7 +1477,7 @@ namespace Villheim.Logic.Villagers
             int most = LogicConfig.BuildHelpers != null ? LogicConfig.BuildHelpers.Value : 3;
             Roles.Trade trade = Roles.TradeOf(villager);
             if (most <= 0 || work.Phase != Phase.Idle || work.Carrying.Count > 0 || Wanderers.IsWanderer(villager) ||
-                trade == Roles.Trade.Cook || trade == Roles.Trade.Farmer || Elders.IsElder(villager))
+                trade == Roles.Trade.Cook || trade == Roles.Trade.Farmer || trade == Roles.Trade.Healer || Elders.IsElder(villager))
             {
                 return false;
             }

@@ -5,9 +5,10 @@ Current facts only. Read this at the start of a session. Narrative is in `docs/d
 
 ## Current State (as of 2026-11-09)
 
-- **Next session:** work the open bug list in the 2026-11-08 note, Session 12 (round 5 results, build 0908775). Read
-  The three kitbash helpers are finished and merged (interiors to stage 5, yards to stage 3, accents to stage 3).
-  Waiting on Tyler: D-067 and which next jobs to start (2026-11-09 note, end).
+- **Next session:** the eight items under "Next test build" in `docs/ROADMAP.md` (beds
+  assigned and used and not claimable, sign placement, the Norse s1d1 to s3d3 test pool, no floor sitting, hidden
+  protector and carer, role colors (D-075), short hover texts, role displays (D-074)). Then merge the helpers still
+  running on 2026-11-09: room layout (feat/layout), households (feat/persona), shapes (feat/massing).
 - **Kitbash libraries (2026-11-09, not tested in game):** interior assemblies mined from the corpus and placed in
   every room with 18 built kits (`data/kitbash-interior.json`, `lib/kitbash.js`); yards with fences, gates, paths,
   beds and lamps on s2 and s3 homes and farms (`lib/yards.js`, `data/yards.json`); exterior accents and a coverage
@@ -46,6 +47,15 @@ Current facts only. Read this at the start of a session. Narrative is in `docs/d
   in `docs/renderer/corpus` with credit; stairs where they fit; interiors and accents may use any prefab that ships
   with Valheim (walls and roofs follow the biome's materials); minor decor is free or paid in the village biome's
   own materials.
+- **Decisions D-067 to D-071 (2026-11-09):** working yards for work and community buildings, with no base crafting
+  station outside without a roof (extensions as decor are fine), market area later and no village square; three
+  drivers for the whole generator: messy realism, environmental storytelling, variance by culture, village, family
+  and NPC, with no fixed-interval rules applied every time; a complexity ladder per stage (s1 and s2 one storey and
+  simple, three storeys rare and late) and houses that grow from their own earlier stage; room layout learned from
+  professional game interiors (BG3 first) plus the kitbash library; decor stages additive (d2 keeps d1, d3 keeps d2).
+  D-072: household traits are broad (tidiness and use, decor taste, hobbies, comfort, wealth display, size), never
+  professions. D-073: home life (assigned homes, house signs with name and role or family and members, residents
+  decorate their own homes in stages in idle time, evenings at home or the hearth, bed by about 22:00, doors closed).
 - **Feature checklist (2026-11-08):** every built, planned and proposed feature plus ideas from other mods, 730 rows,
   in the review sheet's Features tab (Yes, No or Later). Source files in `docs/features/`. ValheimCityBuilder is CC0
   per its authors; study in `docs/CITYBUILDER_STUDY.md`.

@@ -69,7 +69,8 @@ namespace Villheim.Logic.Villagers
         public static bool Update(Villager villager, VillagerAI ai, float dt)
         {
             // The builder mends, and so do the elders (Tyler: they help with everything but the heavy work).
-            if (EnvMan.IsNight() || (!Chores.IsVillageBuilder(villager) && !Elders.IsElder(villager)))
+            // The builder only: elders never build (D-075).
+            if (EnvMan.IsNight() || !Chores.IsVillageBuilder(villager))
             {
                 return false;
             }
@@ -367,7 +368,7 @@ namespace Villheim.Logic.Villagers
         /// A piece of that kind stands at that spot. Goes by the pieces' own positions (the game's piece list), never by
         /// colliders: many pieces have their pivot outside their collider, and a collider test would call them missing.
         /// </summary>
-        private static bool Present(string prefab, Vector3 world)
+        internal static bool Present(string prefab, Vector3 world)
         {
             Nearby.Clear();
             Piece.GetAllPiecesInRadius(world, 0.5f, Nearby);

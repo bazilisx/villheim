@@ -73,6 +73,7 @@ namespace Villheim.Logic.Village
             using (Perf.Time("VillageChest.Ensure")) VillageChest.Ensure(hearth);
             using (Perf.Time("VillageChest.MoveStockIn")) VillageChest.MoveStockIn(hearth, state);
             using (Perf.Time("Villagers.Social.VillageTick")) Villagers.Social.VillageTick(hearth);
+            using (Perf.Time("Villagers.Beds.Tick")) Villagers.Beds.Tick(hearth);
             using (Perf.Time("Relations.Daily")) Relations.Daily(hearth);
             using (Perf.Time("VillageEvents.Daily")) VillageEvents.Daily(hearth, state);
             using (Perf.Time("Outposts.Tick")) Outposts.Tick(hearth, state);
@@ -85,6 +86,7 @@ namespace Villheim.Logic.Village
             using (Perf.Time("Groves.Tick")) Groves.Tick(hearth, state);
             using (Perf.Time("Living.HearthTick")) Living.HearthTick(hearth, state);
             using (Perf.Time("NoticeBoard.Update")) NoticeBoard.Update(hearth);
+            using (Perf.Time("HouseSigns.Update")) HouseSigns.Update(hearth);
             using (Perf.Time("CheckDoorsDaily")) CheckDoorsDaily(hearth);
             using (Perf.Time("Farms.Tick")) Farms.Tick(hearth);
             if (VillageChest.IsLost(hearth))

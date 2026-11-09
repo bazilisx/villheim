@@ -245,9 +245,16 @@ namespace Villheim.Logic.Villagers
                 return false;
             }
 
+            // The smith; with none, the carpenter or a generalist with a builder's looks (as before D-075). Never an elder.
             Roles.Trade trade = Roles.TradeOf(villager);
-            return trade == Roles.Trade.Carpenter ||
-                   (trade == Roles.Trade.None && VillagerLooks.IsBuilder(villager.Zdo.GetInt(Keys.VillagerSeed)) && !Childhood.IsChild(villager));
+            if (trade == Roles.Trade.Smith)
+            {
+                return true;
+            }
+
+            return !Roles.HasTrade(id, Roles.Trade.Smith) && !Elders.IsElder(villager) &&
+                   (trade == Roles.Trade.Carpenter ||
+                    (trade == Roles.Trade.None && VillagerLooks.IsBuilder(villager.Zdo.GetInt(Keys.VillagerSeed)) && !Childhood.IsChild(villager)));
         }
 
         /// <summary>One brain tick. True while the smith is at work.</summary>

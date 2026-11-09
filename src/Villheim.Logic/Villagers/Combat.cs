@@ -410,7 +410,7 @@ namespace Villheim.Logic.Villagers
                 }
             }
 
-            List<Villager> pool = people.Where(v => Roles.BackgroundOf(v) == Roles.Background.Protector && !Elders.IsElder(v)).ToList();
+            List<Villager> pool = people.Where(v => Roles.IsFighter(v) && !Elders.IsElder(v)).ToList();
             if (pool.Count == 0)
             {
                 pool = people.Where(v => !Elders.IsElder(v)).ToList();
@@ -720,7 +720,7 @@ namespace Villheim.Logic.Villagers
             }
 
             Defenders.PutBowAway(villager);
-            Roles.ArmForFight(villager, Roles.BackgroundOf(villager) == Roles.Background.Protector);
+            Roles.ArmForFight(villager, Roles.IsFighter(villager));
             return villager.GetRightItem();
         }
 
@@ -819,7 +819,7 @@ namespace Villheim.Logic.Villagers
 
         /// <summary>A grown protector, not an elder: the ones who stand and fight.</summary>
         private static bool Protects(Villager villager) =>
-            !Childhood.IsChild(villager) && !Elders.IsElder(villager) && Roles.BackgroundOf(villager) == Roles.Background.Protector;
+            !Childhood.IsChild(villager) && !Elders.IsElder(villager) && Roles.IsFighter(villager);
 
         /// <summary>On the machine that owns the villager: a hit from a player is counted.</summary>
         [HarmonyLib.HarmonyPatch(typeof(Character), nameof(Character.RPC_Damage))]

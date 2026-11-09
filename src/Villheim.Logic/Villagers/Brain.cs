@@ -11,7 +11,8 @@ namespace Villheim.Logic.Villagers
     ///    back, those taking shelter). Everyone else goes on with the day below.
     /// 2. Healing when badly hurt, then bed at bedtime.
     /// 3. Work (gathering, carrying, building) when the village needs it.
-    /// 4. Otherwise free time: the fire, a stroll, a chat, a workbench; the evening ring and the night by the fire.
+    /// 4. Otherwise, by day, fixing up his home (HomeDecor); in the evening, some households at home (HomeLife).
+    /// 5. Otherwise free time: the fire, a stroll, a chat, a workbench; the evening ring and the night by the fire.
     ///    Children play instead of working (ChildPlay); elders keep to work inside the village (Ages).
     ///
     /// The routine that ran him is recorded each tick (Status), for the hover text and the map.
@@ -138,6 +139,11 @@ namespace Villheim.Logic.Villagers
                 // Children play and explore near the village; they take no jobs.
                 doer = Status.Doer.Play;
             }
+            else if (Childhood.IsChild(villager) && HomeLife.Update(villager, ai, dt))
+            {
+                // An evening at home with the family (D-073).
+                doer = Status.Doer.Home;
+            }
             else if (Childhood.IsChild(villager))
             {
                 // Out of play hours a child has free time like everyone else, and never a job.
@@ -149,6 +155,16 @@ namespace Villheim.Logic.Villagers
                 // The village wants meat: its hunter goes out before any chore (Tyler: deer near the village and
                 // nobody hunted, the protectors were always busy with something else first).
                 doer = Status.Doer.Hunt;
+            }
+            else if (Tending.Update(villager, ai, dt))
+            {
+                // The healer goes to someone hurt (D-075).
+                doer = Status.Doer.Tend;
+            }
+            else if (!Ages.OutOfVillageWork(villager) && Fishing.Update(villager, ai, dt))
+            {
+                // The fisher at the shore while the chests are short of fish (D-075).
+                doer = Status.Doer.Fish;
             }
             else if (Chores.Update(villager, ai, dt))
             {
@@ -215,6 +231,16 @@ namespace Villheim.Logic.Villagers
                 // with rests between.
                 doer = Status.Doer.Elder;
             }
+            else if (HomeDecor.Update(villager, ai, dt))
+            {
+                // Nothing to do for the village: fixing up his home, or helping a neighbor with theirs (D-073).
+                doer = Status.Doer.Decor;
+            }
+            else if (HomeLife.Update(villager, ai, dt))
+            {
+                // The day's work done: the evening at home, with the family if he has one, until bedtime (D-073).
+                doer = Status.Doer.Home;
+            }
             else
             {
                 FreeTime.Update(villager, ai, dt);
@@ -225,6 +251,7 @@ namespace Villheim.Logic.Villagers
             HandItems.Tidy(villager, doer);
             Poses.EndTick(villager);
             LoopWatch.Update(villager);
+            HomeLife.AfterTick(villager);
             Seats.AfterTick(villager);
             Sleep.AfterTick(villager);
             Dialogue.Tick(villager);

@@ -41,7 +41,7 @@ namespace Villheim.Logic.Villagers
 
         private static IEnumerable<Villager> Protectors(int villageId) =>
             Character.GetAllCharacters().OfType<Villager>().Where(v => !v.IsDead() && v.VillageId == villageId && !Childhood.IsChild(v) &&
-                                                                       Roles.BackgroundOf(v) == Roles.Background.Protector &&
+                                                                       Roles.IsFighter(v) &&
                                                                        !Leaving.IsLeaving(v) && !Wanderers.IsWanderer(v));
 
         private static void Send(Villager villager, Player player, float seconds, bool help)
@@ -92,7 +92,7 @@ namespace Villheim.Logic.Villagers
 
             Dialogue.Note(hearth.VillageId, "horn");
             player.Message(MessageHud.MessageType.Center, count > 0
-                ? $"You blow the horn. {PlayerMemory.Number(count)} of {hearth.VillageName}'s protectors come to your side."
+                ? $"You blow the horn. {PlayerMemory.Number(count)} of {hearth.VillageName}'s people come to your side."
                 : "You blow the horn. Nobody comes.");
             return true;
         }

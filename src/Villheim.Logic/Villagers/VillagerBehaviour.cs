@@ -194,7 +194,9 @@ namespace Villheim.Logic.Villagers
             string title = Roles.Title(villager);
             if (!string.IsNullOrEmpty(village))
             {
-                text += $"\n<color=#b0b0b0>{(title != null ? char.ToUpperInvariant(title[0]) + title.Substring(1) + " of " : "of ")}{village}</color>";
+                // The title in his role's color (D-075).
+                string shown = title != null ? $"<color={Households.RoleColor(villager)}>{char.ToUpperInvariant(title[0]) + title.Substring(1)}</color> of " : "of ";
+                text += $"\n<color=#b0b0b0>{shown}{village}</color>";
             }
 
             string roles = RoleLine(villager);
@@ -226,8 +228,8 @@ namespace Villheim.Logic.Villagers
         }
 
         /// <summary>
-        /// Every part he plays, for the hover (Tyler: "I don't know who a protector is"): leader, protector or carer,
-        /// his trade, builder, hunter, elder, tonight's watch.
+        /// Every part he plays, for the hover: leader, elder, his trade, builder, hunter, tonight's watch. Protector and
+        /// carer are internal and never shown (Tyler, 2026-11-09).
         /// </summary>
         private static string RoleLine(Villager villager)
         {
@@ -242,7 +244,6 @@ namespace Villheim.Logic.Villagers
                 parts.Add("Leader");
             }
 
-            parts.Add(Roles.BackgroundOf(villager) == Roles.Background.Protector ? "Protector" : "Carer");
             if (Elders.IsElder(villager))
             {
                 parts.Add("Elder");
@@ -251,7 +252,7 @@ namespace Villheim.Logic.Villagers
             Roles.Trade trade = Roles.TradeOf(villager);
             if (trade != Roles.Trade.None)
             {
-                parts.Add(trade.ToString());
+                parts.Add($"<color={Households.TradeColor(trade)}>{trade}</color>");
             }
 
             if (Chores.IsVillageBuilder(villager) && trade != Roles.Trade.Carpenter)
@@ -259,7 +260,7 @@ namespace Villheim.Logic.Villagers
                 parts.Add("Builder");
             }
 
-            if (Hunting.IsVillageHunter(villager))
+            if (Hunting.IsVillageHunter(villager) && trade != Roles.Trade.Hunter)
             {
                 parts.Add("Hunter");
             }
@@ -269,7 +270,7 @@ namespace Villheim.Logic.Villagers
                 parts.Add("Night watch");
             }
 
-            return string.Join(", ", parts);
+            return parts.Count > 0 ? string.Join(", ", parts) : null;
         }
 
         public static bool Interact(Villager villager, Humanoid user)

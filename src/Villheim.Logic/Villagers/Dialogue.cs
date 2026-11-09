@@ -821,6 +821,9 @@ namespace Villheim.Logic.Villagers
             tags.Add("voice:" + VoiceOf(villager));
             Roles.Trade trade = Roles.TradeOf(villager);
             tags.Add("trade:" + trade.ToString().ToLowerInvariant());
+            // Lines written for the trades before D-075: a carpenter also cuts wood, a smith also mines.
+            if (trade == Roles.Trade.Carpenter) tags.Add("trade:woodcutter");
+            if (trade == Roles.Trade.Smith) tags.Add("trade:miner");
             tags.Add(Roles.BackgroundOf(villager) == Roles.Background.Protector ? "protector" : "carer");
 
             float hour = EnvMan.instance != null ? EnvMan.instance.GetDayFraction() * 24f : 12f;

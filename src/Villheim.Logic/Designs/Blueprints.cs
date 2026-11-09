@@ -316,9 +316,43 @@ namespace Villheim.Logic.Designs
             return IsBlueprint(designName) && All().TryGetValue(designName, out Blueprint blueprint) ? blueprint : null;
         }
 
-        /// <summary>The next level of the same family, or null.</summary>
+        private static readonly System.Text.RegularExpressions.Regex StageName =
+            new System.Text.RegularExpressions.Regex(@"^(.*)_s(\d)d(\d)$", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+
+        /// <summary>
+        /// A design named by stage and decor (house1_s2d1, from the slotting board or 'vh testpool'): its base name,
+        /// stage and decor. False for other names.
+        /// </summary>
+        public static bool StageOf(string designName, out string baseName, out int stage, out int decor)
+        {
+            string stem = designName ?? "";
+            if (stem.StartsWith(Prefix, StringComparison.OrdinalIgnoreCase))
+            {
+                stem = stem.Substring(Prefix.Length);
+            }
+
+            System.Text.RegularExpressions.Match m = StageName.Match(stem);
+            baseName = m.Success ? m.Groups[1].Value : stem;
+            stage = m.Success ? int.Parse(m.Groups[2].Value) : 0;
+            decor = m.Success ? int.Parse(m.Groups[3].Value) : 0;
+            return m.Success;
+        }
+
+        /// <summary>A stage-named design that is not the first one of its line (s1d1): it is reached by growing.</summary>
+        public static bool LaterStage(Blueprint blueprint) =>
+            StageOf(blueprint.Name, out _, out int stage, out int decor) && (stage > 1 || decor > 1);
+
+        /// <summary>
+        /// The next level of the same family, or null. A stage-named design grows into the next stage's first decor
+        /// (house1_s1d3 to house1_s2d1); its decor stages are put up by the residents (HomeDecor).
+        /// </summary>
         public static Blueprint NextLevel(Blueprint blueprint)
         {
+            if (StageOf(blueprint.Name, out string baseName, out int stage, out _))
+            {
+                return Find(Prefix + baseName + "_s" + (stage + 1) + "d1");
+            }
+
             return All().Values.Where(b => b.Family == blueprint.Family && b.Role == blueprint.Role && b.Level > blueprint.Level &&
                                            b.Biome == blueprint.Biome)
                 .OrderBy(b => b.Level).FirstOrDefault();
@@ -672,6 +706,7 @@ namespace Villheim.Logic.Designs
                 DesignSpawner.PlanEntry entry = DesignSpawner.Entry(piece.Prefab, piece.Position, piece.Rotation, piece.Scale);
                 if (entry != null)
                 {
+                    entry.Text = piece.Text;
                     plan.Add(entry);
                 }
             }

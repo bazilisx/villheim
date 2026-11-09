@@ -248,6 +248,27 @@ well (Tyler, 2026-11-08). The Features tab of the review sheet (`docs/features/b
       arches (check `stone_arch` in the game first), stone paving outside, taller and larger s3 buildings, door
       lights on octagon plans, better proxies for roof corners and carvings, the middle-eastern court tavern fire,
       the two middle-eastern temples.
+- [ ] **Next test build (Tyler, 2026-11-09), do first:**
+  1. [done 2026-11-09, not tried in the game] Beds: every villager gets a bed, the bed shows his name as a player's claimed bed does, villagers sleep in their
+     beds, and village beds cannot be claimed by players (today beds show "unassigned, claim bed" and nobody uses them).
+  2. [done 2026-11-09] House signs in a fixed place: outside, right of the front door at about head height (where a
+     house number goes); inside (families), right of the door as seen from inside looking out, one column, stacked;
+     set 2 cm into the wall.
+  3. [built 2026-11-09: `vh testpool make`, setting TestPool; waits for additive decor stages and growth lineage
+     from the helpers before the test] Swap the test village's random buildings for the generated Norse s1d1 to s3d3
+     set: a small pool of Norse
+     variants in the building pools, so the test covers villagers building, living in, expanding and decorating
+     houses, and the role buildings where each role spends its day.
+  4. [done 2026-11-09] Evenings at home: no sitting on the floor (only at the earliest stages or with no seats); sit on chairs,
+     benches or beds (one per bed), stand and talk, or use shelves, cook stations and stock.
+  5. [done 2026-11-09] Hide protector and carer from signs and hover text (internal only).
+  6. [done 2026-11-09; small choices in D-076] Role colors and the role set (D-075): carpenter (brown, also cuts wood), smith (charcoal or ore, also mines),
+     cook coral, farmer green, guard blue, elder gray, child light blue or pink, leader gold.
+  7. [done 2026-11-09] Short hover texts ("at home", "fixing up the home").
+  8. Role touches only through kitbashed role displays that fit many arrangements (D-074).
+- [ ] Home life (D-073, built 2026-11-09, not tried in the game): try signs, home decor, evenings and bedtime; get
+      `_s#d#` designs (board saves, approved generated designs) into the village building pools so home decor has
+      stages to build; role touches (D-074); decor pieces overlapping amenity furniture or signs.
 - [ ] Kitbash libraries in stages (helpers, 2026-11-09): interior assemblies and clips (stages 1 and 2 merged), yards
       (stages 1 and 2 merged), exterior accents and the coverage audit (stage 1 merged).
 - [ ] Interiors (2026-11-09 review; vignettes on bare walls done): at most two chests side by side,

@@ -455,13 +455,14 @@ Built-up furniture (`lib/kitbash.js` `BUILT_KITS`), hand-made in the library's f
 - On stations: the smithy's forge gets an anvil, the grinding wheel and a quench barrel; the workshop's workbench the
   chopping block, a barrel and a chest.
 - In corners: the tavern's serving corner (stacked barrels behind a half-wall counter with meads); a bath corner.
-- Under stairs: a wood chest under the highest flight (two barrels where the village makes them), below the audit's
-  stair box; tried first in every room with a stair. The generator's keep-clear rectangle over the flight does not
-  apply under it; the climb's own zone does.
-- Walls between the furniture, three passes: every 2.5 m at d3 (3.2 m at d2) where nothing hangs between 1.3 and
-  2.4 m within 0.9 m either side, a ledge with a candle and a mead, or a banner; at d3 every 3 m where nothing is
-  between 2.0 and 2.7 m, a second ledge near 2.2 m with a jug and jam; and a wall torch where no light is within 2 m
-  either side (Black Forest on).
+- Under stairs: one choice per building by the household (see "Households"): a wood chest, two barrels, two crates
+  pushed in askew, a chest with a barrel and a pot, or nothing. Below the audit's stair box, under the highest flight;
+  tried first in every room with a stair. The generator's keep-clear rectangle over the flight does not apply under
+  it; the climb's own zone does.
+- Walls between the furniture, three passes, spaced and filled by the household (see "Households"): things hung
+  between 1.3 and 2.4 m where nothing hangs within 0.9 m either side (a ledge with a candle and a mead or with jam and a
+  jug, a banner, one or two trophies, a shield and a weapon, three tools, a ledge of candles); at d3 in some households
+  a second ledge near 2.2 m with a jug and jam; and a wall torch where no light is near (Black Forest on).
 
 A kit's core pieces (the table of a dining set, the forge's anvil, the half wall of a counter) are marked `key`: a kit
 whose core piece cannot go is left out, so no rug or bench is left without its table. Each building type comes first
@@ -482,7 +483,7 @@ detail stream after everything else, so the rest of a design is unchanged): at m
 or more), up to three at d2 and eight at d3 plus the dining sets, weighted by score, by how many kinds of piece they hold, and down for
 repeats and for pairs of chests; each built kit at most once in a building (shelves, cabinets, drapes, bedsides twice).
 Each slot takes the source's prefab when the village's biome makes it, or the first of its class that it does; minor
-decor goes in any biome; item stands, seasonal pieces and woodpiles are left out. Every piece is tested: on this room's
+decor goes in any biome; seasonal pieces and woodpiles are left out. Item stands go in and get an item (below). Every piece is tested: on this room's
 floor or against its wall, under its ceiling, out of doorways, climbs, the chimney and the fire's ring, under the sill
 of any window behind it, plain wall behind anything hung, what it rests on there (the audit's own tests), no deeper in
 the floor than its source, and clipping into walls, the anchor and its own assembly no deeper than its source builds did
@@ -505,6 +506,11 @@ and passing over free-floor spots with fixed furniture on them).
 
 ### Items on stands (for the mod)
 
+Done 2026-11-09 (lead): `lib/blueprint.js` writes `p.item` of an `itemstand` or `itemstandh` to the info field as
+`Name:variant:quality`; `src/Villheim.Logic/Designs/StandItems.cs` puts the item on the stand when the design's piece
+goes up and locks it (no taking, swapping or hammer removal; the lock is kept in the ZDO). An item the stand cannot
+hold leaves it empty. Armor stands are not done. The design notes below are the plan this follows.
+
 Item stands and armor stands stand empty in a design, so the library leaves them out for now. PlanBuild already saves
 what a stand holds in the piece line's tenth field (the one `lib/blueprint.js` reads as `info` and
 `Blueprints.cs` as `Piece.Text`): the corpus has `itemstandh;...;"Tankard:0:1"` (item prefab, variant, quality, and on
@@ -523,6 +529,60 @@ an armor stand saves `pose:slot:item:variant:...` per slot (`"0:7::0::0::0::0::0
 
 Placed food (meads, bread, cooked meat; the feasts) spawns as items lying where they are put, which a player can pick
 up. Until the mod locks them as above, the kits use only a few, on tables, counters and shelves.
+
+What each stand holds (`lib/persona.js` `dressStands`, last thing before a design is written): every `itemstand` and
+`itemstandh` gets an item or comes out. A kit may ask for a kind (`want`: trophy, shield, weapon, tool); otherwise the
+room and the household decide. Wall stands: in a home, trophies for a household that collects, shields and weapons for
+one that collects and shows wealth, tools for one that makes things, a hoe or cultivator for one that grows things; in
+a smithy tools, weapons and shields; in a workshop or store tools; in a tavern trophies and shields. Horizontal stands:
+drinks and food, herbs where the household grows things, valuables (amber, ruby) where it is well off; a tavern's are
+mostly tankards and meads. Items come from the village's biome or an earlier one (the own biome counts double), a
+design shows the same item twice less often, and a well-off collector may keep one boss trophy. Each stand draws from
+a stream seeded by its place, so it holds the same item at every decor stage. Names are vanilla item prefabs checked
+against the corpus's stands (`ITEMS`).
+
+## Households (D-068)
+
+`lib/persona.js` draws a household for every design from a stream of its own (seeded by the seed, type, biome and
+culture), so the rest of the design keeps its own streams. Households are broad preferences, never a trade: the
+villager who lives in a house is chosen in the game and can change (Tyler, 2026-11-09). A request may name one
+(`req.persona`: a preset such as `neat`, `messy`, `busy`, `cosy`, `austere`, `plain`, `wealthy`, `modest`, `alone`,
+`family`, `crafts`, `collector`, `plants`, `maps`, `food`, `drapes`, `sill`, `rugs`, `banners`, `garden`, or several
+joined by commas, or an object of traits); the name then ends in the preset (`-neat-plants`).
+
+| Trait | Range | What it changes |
+|---|---|---|
+| `tidy` | 0 to 1 | Wall spacing (neat: wider gaps, more bare spots), how full the decorator fills a room (with `busy`: 82 to 118 % of the corpus rate), the library's budget, what goes under the stairs (nothing or a chest when tidy, stacked things when not). |
+| `busy` | 0 to 1 | How actively the space is used: storage rows, crates, under-stair crates, a work yard. |
+| `comfort` | 0 to 1 | Rugs, the couch and living-room kits, reading nooks, candles, the bath corner. |
+| `wealth` | 0 to 1 | Banners, cabinets, canopy beds (15 to 85 %), torches closer together, armor stands, valuables on stands, one boss trophy for a collector. |
+| `size` | 1 to 6 | Seats and dining sets, benches, bench vignettes (`household`: alone, couple, family). |
+| `hobby` | crafts, collect, plants, games, maps, food; 0 to 1 each | One or two stand out. Crafts: tools on the walls and stands. Collect: trophies, shields and weapons on show, item stands in the library's kits, armor stands. Plants: pots, herbs, sill decor, a garden yard. Games: seating and tables. Maps: the cartography table, reading nooks. Food: fermenters, kitchen and feast kits, food on tables and shelves, barrels under the stairs. |
+| `likes` | drapes, sill, rugs, banners, shelves, lights, hung; 0.25 to 2.2 | Taste: drapes or things on the sill (one or the other), rugs and pelts, banners and color, shelves, light, things hung up on show. One household in six is plain: all its likes run low. |
+| `yard` | garden, work, plain | Outside: a tended garden and paths, a yard of materials and work leftovers, or plain. |
+
+Culture odds (`CULTURE_P`) shift tidiness, comfort and wealth and lean the hobbies, likes and yards: Frankish and
+Byzantine households to drapes and banners, Anglo-Saxon and East Asian ones to the sill and gardens, Saami and steppe
+ones to rugs and pelts with few drapes, Dwarven ones to light, shelves and crafts. Building types shift a few traits
+(a temple is kept, a smithy busy). Work buildings keep the stations and props the decorator gives their type whatever
+the household is like.
+
+Where the weights go:
+- Decorator (`decorate.js` `fill`): each extra's odds times `extraWeights` (trophies by collecting, tools by crafts,
+  chart by maps, seating by size and games, banners by taste and wealth, and so on); the fill target times `fillShare`.
+- Interior library (`kitbash.js`): each assembly's weight times `kitWeight` (rugs, banners, food, candles, storage,
+  pots, item stands, drapes against sill, couch, cabinet, bath, kitchen, dining by what the household likes); the budget
+  times `kitBudget`; the wall passes by `wallWeights`, `wallGap`, `wallSkip` and `torchGap`; under the stairs by
+  `underStair`; the d3 vignettes by size, clutter and collecting; the canopy bed by wealth.
+- Item stands: `dressStands` (above).
+- For the room layout planner (feat/layout): `persona.tidy`, `persona.clutter` (0.65 untidy plus 0.35 busy),
+  `persona.size`, `persona.comfort` and `persona.likes` are on `design.request.household` and on every context the
+  furnishing gets (`ctx.persona`).
+
+Role props are left to the game. In every home, sleeping, guest and hall room `kitbash.js` `residentSlots` marks up
+to three places a resident's own things could go, each tested as a wall item stand would be: by the bed, by the way in,
+and a shelf spot. They go to `design.slots` as `{ kind: 'bed' | 'door' | 'shelf', role, x, y, z, yaw }` and nothing is
+placed there; the mod can fill them from the villager's actual role when that villager decorates.
 
 ## Repair
 

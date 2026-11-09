@@ -105,6 +105,9 @@ namespace Villheim.Logic.Designs
             /// <summary>Tracked materials from the piece's vanilla recipe (Wood, Stone and so on).</summary>
             public Dictionary<string, int> Cost = new Dictionary<string, int>();
 
+            /// <summary>The text the blueprint saved with the piece: an item stand's item ("Tankard:0:1"), a sign's text.</summary>
+            public string Text;
+
             /// <summary>For a material swap stand-in: the piece it stands in for, and that piece's own rotation.</summary>
             public string SwappedFrom;
             public Quaternion OriginalRotation = Quaternion.identity;
@@ -405,6 +408,12 @@ namespace Villheim.Logic.Designs
                 // Fires, braziers and torches come lit, and KeepLitPatch keeps them so.
                 view.GetZDO().Set(ZDOVars.s_fuel, fire.m_maxFuel);
                 view.GetZDO().Set(KeyLit, 1);
+            }
+
+            // an item stand saved with its item gets the item, locked on (StandItems)
+            if (entry.Text != null)
+            {
+                StandItems.Apply(instance, entry.Text);
             }
 
             if (effects && instance.TryGetComponent(out Piece piece))

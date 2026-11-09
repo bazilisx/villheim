@@ -739,7 +739,7 @@ namespace Villheim.Logic.Village
         private static bool Fits(Villager v, string kind)
         {
             Roles.Trade trade = Roles.TradeOf(v);
-            bool protector = Roles.BackgroundOf(v) == Roles.Background.Protector;
+            bool protector = Roles.IsFighter(v) || trade == Roles.Trade.Hunter;
             switch (kind)
             {
                 case "game":
@@ -747,11 +747,11 @@ namespace Villheim.Logic.Village
                 case "nest":
                 case "dungeon":
                 case "boss": return protector;
-                case "ore": return trade == Roles.Trade.Miner;
-                case "forage": return trade == Roles.Trade.Cook || trade == Roles.Trade.Farmer || !protector;
+                case "ore": return trade == Roles.Trade.Smith;
+                case "forage": return trade == Roles.Trade.Cook || trade == Roles.Trade.Farmer || trade == Roles.Trade.Healer || !protector;
                 case "biome":
                 case "landmark":
-                case "ruin": return trade == Roles.Trade.Woodcutter || protector;
+                case "ruin": return trade == Roles.Trade.Carpenter || protector;
                 default: return true;
             }
         }

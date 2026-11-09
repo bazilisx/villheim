@@ -68,6 +68,19 @@ namespace Villheim.Logic.Villagers
 
         public static void Claim(Chair chair, Villager villager) => Taken[chair] = villager;
 
+        /// <summary>Gives up a seat he meant to take but is not sitting on.</summary>
+        public static void Unclaim(Chair chair, Villager villager)
+        {
+            if (chair != null && Taken.TryGetValue(chair, out Villager holder) && holder == villager && !SittingOn.ContainsKey(villager))
+            {
+                Taken.Remove(chair);
+            }
+        }
+
+        /// <summary>Someone other than this villager has the seat.</summary>
+        public static bool TakenByOther(Chair chair, Villager villager) =>
+            Taken.TryGetValue(chair, out Villager holder) && holder != null && holder != villager && !holder.IsDead();
+
         public static Transform Point(Chair chair) => chair.m_attachPoint != null ? chair.m_attachPoint : chair.transform;
 
         /// <summary>Holds the villager on the seat this tick. False when the seat is gone.</summary>

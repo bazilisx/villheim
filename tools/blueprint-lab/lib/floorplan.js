@@ -110,7 +110,8 @@ function floorplan(spec) {
     if (e.kind === 'door') continue;
     if (stubs.has(e)) { put(out, 'woodwall', e.x, 1, e.z, e.yaw); put(out, 'wood_wall_half', e.x, 2.5, e.z, e.yaw); }
     else if (e.kind === 'window') put(out, 'wood_fence', e.x, 0.5, e.z, e.yaw);
-    else put(out, 'wood_wall_quarter', e.x, 0.25, e.z, e.yaw);
+    // a low curb where the wall stands: a 2 m beam lying on the floor, 0.2 m high (wood_wall_quarter is a 1 x 1 m piece)
+    else put(out, 'wood_beam', e.x, 0.1, e.z, e.yaw);
   }
   // hanging braziers need the ceiling the plan leaves out
   for (const p of furniture) if ((F[p.name] || {}).at !== 'hang') out.push(p);

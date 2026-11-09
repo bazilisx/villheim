@@ -61,6 +61,9 @@ const F = {
   forge_ext5: { s: [1.6, 1.6, 0.5], at: 'wall', b: 'Black Forest', cat: 'craft', tall: true },
   forge_ext6: { s: [1.2, 0.8, 0.8], at: 'wall', b: 'Swamp', cat: 'craft' },
   piece_stonecutter: { s: [1.6, 1.2, 1.2], at: 'wall', b: 'Swamp', cat: 'craft' },
+  // kitchen pieces from the Mistlands, for the kitchen templates; sizes estimated from screenshots, not measured yet
+  piece_oven: { s: [1.6, 1.8, 1.4], at: 'wall', b: 'Mistlands', cat: 'craft', tall: true },
+  piece_preptable: { s: [2.0, 1.0, 1.0], at: 'wall', b: 'Mistlands', cat: 'craft' },
   piece_artisanstation: { s: [2.0, 1.4, 1.0], at: 'wall', b: 'Mountain', cat: 'craft' },
   piece_spinningwheel: { s: [1.0, 1.4, 1.4], at: 'wall', b: 'Plains', cat: 'craft', rel: 270 },
   piece_cartographytable: { s: [2.0, 1.0, 1.6], at: 'floor', b: 'Black Forest', cat: 'table' },
@@ -1233,6 +1236,8 @@ function decorate(b, ctx) {
       doorZones(room, role);
       // what the building keeps clear: the chimney over the fire (every floor) and its rooms' own keep-clear boxes
       for (const v of b.vents || []) if (v.rect) room.zones.push({ b: obox((v.rect.x0 + v.rect.x1) / 2, (v.rect.z0 + v.rect.z1) / 2, v.rect.x1 - v.rect.x0, v.rect.z1 - v.rect.z0, 0), why: 'flue' });
+      // over the fire on an upper floor: the generator clears what stands over a fire it moves under the smoke hole
+      if (room.upper && ctx.fireAt) room.zones.push({ b: obox(ctx.fireAt.x, ctx.fireAt.z, 4.0, 2.8, 0), why: 'flue' });
       for (const r of rects) for (const kp of r.keep || []) room.zones.push({ b: obox((kp.x0 + kp.x1) / 2, (kp.z0 + kp.z1) / 2, kp.x1 - kp.x0, kp.z1 - kp.z0, 0), why: 'keep' });
       furnish(room, role, { ...ctx, use, type, decor, biome, kit, counts, mainRect: main, levels: ys.length, usedTemplates });
       report.push({ level: li, role, area: room.area, items: room.count, room, template: room.template || null });
@@ -1894,7 +1899,10 @@ function tplFit(room, role, c, fr, ch, needFire) {
       let rec = null;
       if (f.at === 'top') {
         if ((F[par.name] || {}).cat !== 'table') return;
-        const [x, z] = at(Math.max(-pw / 2 + 0.2, Math.min(pw / 2 - 0.2, lx)), Math.max(-pd / 2 + 0.15, Math.min(pd / 2 - 0.15, lz)));
+        // well inside the top, by the smaller of the two sizes known for the table (the generator's own tidying reads
+        // pieces.js sizes)
+        const ps0 = P.piece(par.name).size, tw0 = Math.min(pw, ps0[0]), td0 = Math.min(pd, ps0[2]);
+        const [x, z] = at(Math.max(-tw0 / 2 + 0.2, Math.min(tw0 / 2 - 0.2, lx)), Math.max(-td0 / 2 + 0.15, Math.min(td0 / 2 - 0.15, lz)));
         // things on a table keep apart; a smaller table holds fewer
         const [tw2, , td2] = size(n);
         if (room.placed.some(r => r.onTable === par && overlap(r.b, obox(x, z, tw2, td2, yaw), 0.02))) return;
@@ -1963,7 +1971,8 @@ function tplFit(room, role, c, fr, ch, needFire) {
     const [eu, ev] = tplExt(n, fyaw);
     const tu = tplAxis(q.ua, eu, fr.W), tw = tplAxis(q.va, ev, fr.D);
     const [x0, z0] = fr.world(tu, tw);
-    const ign = { ignore: ['fire'] };
+    // seats may sit in the ring round the fire (a seating ring); everything else keeps out of it
+    const ign = (F[n] || {}).cat === 'seat' ? { ignore: ['fire'] } : {};
     let rec = null;
     // against a wall: the wall spots of that wall, nearest first (they know windows, doors and corners)
     const wallKey = (q.ua[0] === 'L' || q.ua[0] === 'R') && q.ua[1] < 0.35 ? q.ua[0] : (q.va[0] === 'F' || q.va[0] === 'B') && q.va[1] < 0.35 ? q.va[0] : null;
@@ -1972,7 +1981,7 @@ function tplFit(room, role, c, fr, ch, needFire) {
       const rel = Math.round(norm(yaw - yawOfDir(sideN[0], sideN[1])) / 90) % 4 * 90;
       const spots = wallSpots(room, n, { rel }).filter(s => s.face.nx * sideN[0] + s.face.nz * sideN[1] > 0.7 && Math.hypot(s.x - x0, s.z - z0) < 1.6);
       spots.sort((a, b) => Math.hypot(a.x - x0, a.z - z0) - Math.hypot(b.x - x0, b.z - z0));
-      for (const s of spots.slice(0, 10)) { rec = room.put(n, s.x, s.z, s.yaw, ign); if (rec) { rec.spot = s; break; } }
+      for (const s of spots.slice(0, 10)) { if (!fireAabbClear(room, n, s.x, s.z, s.yaw)) continue; rec = room.put(n, s.x, s.z, s.yaw, ign); if (rec) { rec.spot = s; break; } }
     }
     if (!rec) {
       const steps = [[0, 0], [0.25, 0], [-0.25, 0], [0, 0.25], [0, -0.25], [0.5, 0], [-0.5, 0], [0, 0.5], [0, -0.5], [0.5, 0.5], [-0.5, 0.5], [0.5, -0.5], [-0.5, -0.5], [0.75, 0], [-0.75, 0], [0, 0.75], [0, -0.75]];
@@ -1980,6 +1989,7 @@ function tplFit(room, role, c, fr, ch, needFire) {
         // a piece against a wall slides only along it
         if (wallKey && ((wallKey === 'L' || wallKey === 'R') ? du : dw)) continue;
         const [x, z] = fr.world(tu + du, tw + dw);
+        if (f.at !== 'rug' && !fireAabbClear(room, n, x, z, yaw)) continue;
         rec = room.put(n, x, z, yaw, f.at === 'rug' ? { clearOf: ['bed', 'storage', 'craft'] } : ign);
         if (rec) break;
       }
@@ -2008,6 +2018,17 @@ function tplFit(room, role, c, fr, ch, needFire) {
   if (d >= 2 && room.count < 0.5 * room.area / 10 * low) return false;
   void rw; void rd;
   return true;
+}
+
+// The generator takes out whatever stands within 0.4 m of the fire, measured on boxes square to the world with the
+// sizes in pieces.js (lib/generate.js settle). A piece turned at an angle near the fire is kept that far off, seats
+// excepted (they sit round it).
+function fireAabbClear(room, n, x, z, yaw) {
+  const fr = room.fire;
+  if (!fr || (F[n] || {}).cat === 'seat') return true;
+  const box = (name, px, pz, y) => { const [w, , d] = P.piece(name).size, a = y * PI / 180, c = Math.abs(Math.cos(a)), sn = Math.abs(Math.sin(a)); return [px - (w * c + d * sn) / 2, px + (w * c + d * sn) / 2, pz - (w * sn + d * c) / 2, pz + (w * sn + d * c) / 2]; };
+  const a = box(n, x, z, yaw), b = box(fr.name, fr.x, fr.z, fr.yaw || 0), pad = 0.45;
+  return !(a[0] < b[1] + pad && a[1] > b[0] - pad && a[2] < b[3] + pad && a[3] > b[2] - pad);
 }
 
 // furnish a room from a template; false when none fits (the room is then left as it was)

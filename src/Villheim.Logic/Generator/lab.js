@@ -4821,7 +4821,7 @@ function gablePorch(b, ctx) {
     b.put(slopeBeam(K, 45), x + s, yR - 1, zf - 2.08, s > 0 ? 180 : 0, T); // bargeboard on the open front
   }
   b.put(K.roofTop45, x, yR, zf - 1, 90, T);
-  if (ctx.profile.crossed) b.put('wood_wall_roof_top_45', x, yR, zf - 2, 0, T); // crossed boards over the porch gable
+  if (ctx.profile.crossed) b.put('wood_wall_roof_top_45', x, yR - 1, zf - 2, 0, T); // crossed boards over the porch gable, crossing on its apex
   if (!b.pieces.some(p => p.name === K.floor && Math.abs(p.x - x) < 0.1 && Math.abs(p.z - (zf - 1)) < 0.1)) b.put(K.floor, x, F, zf - 1, 0, T);
   b.notes.push('A gabled porch over the front door.');
   return true;
@@ -4915,7 +4915,9 @@ function bargeboards(K, C, w, ctx, rows, ends, add, low, pivot, r) {
     }
     // crossed boards over the apex: the game's Wood Roof Cross (the piece is the pair of crossed boards that Norwegian
     // vindskier end in), on the ridge where it meets the gable, as a quarter of the corpus builds have it
-    if (X.crossed && !ctx.dragonsHere && !apex) add(r === 2 ? 'wood_wall_roof_top_45' : 'wood_wall_roof_top', sg * w.W, capY, 0, 90, 'trim', capY + 1);
+    // the piece's boards cross 1 m (26 degrees: 0.5 m) over its pivot, so the crossing sits on the apex (it stood a
+    // metre too high, its arms 2 m over the ridge)
+    if (X.crossed && !ctx.dragonsHere && !apex) add(r === 2 ? 'wood_wall_roof_top_45' : 'wood_wall_roof_top', sg * w.W, capY - (r === 2 ? 1 : 0.5), 0, 90, 'trim', capY + 1);
   });
 }
 

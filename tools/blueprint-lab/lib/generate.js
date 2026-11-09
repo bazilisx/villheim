@@ -301,6 +301,11 @@ function generate(req) {
       if (!['norse', 'black-forest', 'mountain', 'swamp', 'norse-forest'].includes(cultureKey) && type !== 'tower') delete w.octagon;
       if (!['home', 'tavern', 'smithy'].includes(type)) delete w.U;
       if (form === 'raised' || form === 'open') { delete w.L; delete w.T; delete w.U; delete w.cross; delete w.octagon; }
+      // a lower, narrower annex in line with the main roof (a byre or store at one end, a second ridge line): the best
+      // liked builds have three or four ridge lines where ours had one or two (critic study, 2026-11-09)
+      const NAVE = { home: { s2: 1, s3: 1.5 }, longhouse: { s2: 1, s3: 1 }, barn: { s2: 1, s3: 1 }, storage: { s2: 0.6, s3: 0.6 }, smithy: { s3: 0.6 } };
+      const canGable = !!(C.roofs || ROOF_BY_CULTURE[cultureKey] || { gable: 1 }).gable && !(form === 'raised' || form === 'open');
+      if (canGable && NAVE[type] && NAVE[type][stage] && !(C.plans && C.plans[type])) w.nave = NAVE[type][stage];
       plan = pick(R, Object.keys(w).length ? w : { rect: 1 });
     }
   }
@@ -557,7 +562,12 @@ function generate(req) {
   const domeCfg = form === 'dome' ? { x: 0, z: 0, side: D >= 5 ? 4 : 2 } : form === 'drum' ? { x: 0, z: 0, side: 2 } : null;
   if (domeCfg) { const ap = domeCfg.side / 2 / Math.tan(Math.PI / 8); holes.push({ x0: -ap - 0.6, x1: ap + 0.6, z0: -ap - 0.6, z1: ap + 0.6 }); }
   if (form === 'dome' && plan === 'greek') holes.push({ x0: -D, x1: D, z0: -D, z1: D });
-  const svanTower = form === 'svan' && stage !== 's1' ? { cx: W - 3, cz: D + 3, n: 3 } : null;
+  // a tower at a back corner: the Svan tower, and a timber or stone tower on the big halls of the cultures that built
+  // them (the skyline of the best liked builds rises and falls twice as much as ours did)
+  const towerCultures = ['frankish-norman', 'castle-medieval', 'slavic', 'norse-highland', 'anglo-saxon'];
+  const cornerTower = stage === 's3' && ['tavern', 'temple', 'longhouse', 'home'].includes(type) && towerCultures.includes(cultureKey) &&
+    ['rect', 'long'].includes(plan) && !lookout && F < 0.01 && dctx.R() < (type === 'home' ? 0.25 : 0.4);
+  const svanTower = (form === 'svan' && stage !== 's1') || cornerTower ? { cx: W - 3, cz: D + 3, n: 3 } : null;
   if (svanTower) holes.push({ x0: W - 6, x1: W + 0.01, z0: D - 0.01, z1: D + 6 });
   const inHole = p => holes.some(h => p.x > h.x0 && p.x < h.x1 && p.z > h.z0 && p.z < h.z1);
   if (flat && !lookout) flatRoof(b, K, C, cells, edges, top, F, SH, ladders[storeys - 1]);
@@ -706,9 +716,9 @@ function generate(req) {
   }
   if (svanTower) {
     const houseTop = top;
-    towerAt(b, K, C, { cx: svanTower.cx, cz: svanTower.cz, n: 3, F, storeys: stage === 's3' ? 5 : 4, SH: 3, door: 'right', use: 'guard',
+    towerAt(b, K, C, { cx: svanTower.cx, cz: svanTower.cz, n: 3, F, storeys: cornerTower ? storeys + 2 : stage === 's3' ? 5 : 4, SH: 3, door: 'right', use: 'guard',
       skip: (e, y0, sh) => e.out[1] < 0 && y0 + sh <= houseTop + 0.01 });
-    b.notes.push('Tall square tower at a back corner of the house.');
+    b.notes.push(cornerTower ? 'A tower at a back corner of the hall.' : 'Tall square tower at a back corner of the house.');
   }
 
   // awnings over the front of each wing, never out over a yard
@@ -723,7 +733,9 @@ function generate(req) {
     for (const sx of [-1, 1]) b.put('wood_dragon1', sx * (W + 0.6), roofTop + r * (D - 1) / 2 + 0.3, 0, sx > 0 ? 90 : 270);
 
   b.outer = edges;
-  if (!flat || plan === 'court' || true) Details.exterior(b, dctx);
+  if (['home', 'longhouse', 'smithy', 'workshop', 'sawmill', 'barn', 'farm'].includes(type) && stage !== 's1' && roofKind === 'gable' && !flat &&
+    F < 0.01 && !T.tower && dctx.R() < 0.5) woodshed(b, K, C, wings, edges, F, SH, svanTower);
+  Details.exterior(b, dctx);
   clearDoorways(b);
   // the fire's place for the decorator: under the ridge vent, or a cell of a flat roof (a chimney goes up from it),
   // clear of the ladders
@@ -1641,6 +1653,30 @@ function skirtRoof(b, K, edges, yS) {
 }
 
 // ---------------------------------------------------------------- extras
+
+// An open woodshed against a gable end: a 26 degree lean-to roof from the gable wall out over posts 2 m out, with wood
+// stacked under it. Only on a free gable end (no wing, tower or annex there) of the main wing.
+function woodshed(b, K, C, wings, edges, F, SH, tower) {
+  const w0 = wings[0];
+  if (w0.alpha !== 0) return false;
+  for (const sg of [1, -1]) {
+    const xWall = w0.cx + sg * w0.W;
+    const end = edges.filter(e => e.yaw === 90 && Math.abs(e.x - xWall) < 0.01).map(e => e.z).sort((a, c) => a - c);
+    if (end.length < 3) continue;
+    if (wings.some(o => o !== w0 && inside(o, xWall + sg * 1.5, w0.cz, 0.01))) continue;
+    if (tower && Math.abs(tower.cx - xWall) < tower.n + 1) continue;
+    const zs = end.length >= 4 ? [end[1], end[2]] : [end[0], end[1]];
+    const xr = xWall + sg * 1, xp = xWall + sg * 2, yaw = sg > 0 ? 90 : 270, T2 = { trim: true };
+    for (const z of zs) b.put(K.roof26, xr, F + SH - 0.6, z, yaw, T2); // 2.4 m at its outer edge, up against the gable
+    const zp = [zs[0] - 1, zs[0] + 1, zs[1] + 1];
+    for (const z of zp) { b.put(framePole(K, C), xp, F + 1, z, 0, T2); b.put(K.pole1 || 'wood_pole', xp, F + 1.9, z, 0, T2); }
+    for (const z of zs) b.put(K.beam || 'wood_beam', xp, F + 2.35, z, 90, T2);
+    for (const z of zs) b.put('wood_stack', xWall + sg * 1.05, F, z, 90, { decor: true, trim: true });
+    b.notes.push('An open woodshed against the gable end.');
+    return true;
+  }
+  return false;
+}
 
 function dockDesign(b, K, W, D, F, stage) {
   const len = stage === 's1' ? 3 : stage === 's2' ? 5 : 7;

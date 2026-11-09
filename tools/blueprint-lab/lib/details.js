@@ -117,9 +117,11 @@ function exterior(b, ctx) {
     if (o.kind !== 'window') continue;
     const { e, y0 } = o, { ux, uz, ox, oz } = axes(e);
     const stone = /stone|marble|grausten/.test(C.wallStyle || '') && !(b.woodBays && b.woodBays.has(`${Math.round(e.x * 10)},${Math.round(e.z * 10)}`));
-    const f = 0.1; // trim stands a little proud of the wall face
+    const f = 0.25; // trim stands proud of the wall face (a beam is 0.4 m deep in the game: at 0.25 out it clears the inside)
     if (X.mullion && C.windowStyle !== 'single') put(pole1, e.x, y0 + 1.5, e.z, 0); // two 1 m lights
-    if (X.windowFrame) {
+    // a deck or gallery floor outside the window: no frame (the sill and head would hang over people walking there)
+    const deckOut = b.pieces.some(p => PD.piece(p.name).role === 'floor' && Math.hypot(p.x - (e.x + ox), p.z - (e.z + oz)) < 1.1 && Math.abs(p.y - y0) < 0.6);
+    if (X.windowFrame && !deckOut) {
       put(beam, e.x + ox * f, y0 + 0.9, e.z + oz * f, e.yaw); // sill under the opening
       put(beam, e.x + ox * f, y0 + 2.1, e.z + oz * f, e.yaw); // head over it
       if (!C.frame || stone) for (const s of [-1, 1]) put(pole1, e.x + ux * s * 1 + ox * f, y0 + 1.5, e.z + uz * s * 1 + oz * f, 0); // side posts
@@ -142,7 +144,7 @@ function exterior(b, ctx) {
     const h = o.kind === 'gate' ? 3 : 2;
     if (X.doorFrame && o.kind === 'door') {
       if (!C.frame) for (const s of [-1, 1]) put(pole, e.x + ux * s * 1.05 + ox * 0.1, y0 + 1, e.z + uz * s * 1.05 + oz * 0.1, 0);
-      put(beam, e.x + ox * 0.12, y0 + h + 0.1, e.z + oz * 0.12, e.yaw); // the lintel, its underside at the door's top
+      put(beam, e.x + ox * 0.25, y0 + h + 0.2, e.z + oz * 0.25, e.yaw); // the lintel, just over the door's frame
     }
     if (o.storey > 0) continue;
     const outside = { x: e.x + ox, z: e.z + oz };
@@ -193,8 +195,8 @@ function exterior(b, ctx) {
     for (let s = 0; s < storeys; s++) {
       const y0 = F + s * SH;
       const opening = openings.find(o => o.e === e && o.y0 === y0);
-      if (X.bands && !(opening && opening.kind !== 'window')) put(beam, e.x + ox * 0.08, y0 + 0.1, e.z + oz * 0.08, e.yaw);
-      if (X.midRail && !opening) put(beam, e.x + ox * 0.08, y0 + 1, e.z + oz * 0.08, e.yaw);
+      if (X.bands && !(opening && opening.kind !== 'window')) put(beam, e.x + ox * 0.25, y0 + 0.1, e.z + oz * 0.25, e.yaw);
+      if (X.midRail && !opening) put(beam, e.x + ox * 0.25, y0 + 1, e.z + oz * 0.25, e.yaw);
     }
   }
 
@@ -305,8 +307,13 @@ function bargeboards(K, C, w, ctx, rows, ends, add, low, pivot, r) {
   const name = slopeBeam(K, r === 2 ? 45 : 26), beam = K.beam || 'wood_beam', capY = low(-1);
   // rafter tails: a sloped beam at every seam of the lowest roof row, half a metre out past its edge and just under it
   // (the exposed rafters of Norse halls; the corpus lays sloped beams along roof piece edges)
+  // (never over a door or gate: a 45 degree beam is 0.4 m thick in the game and hangs into the doorway)
+  const a = (w.alpha || 0) * Math.PI / 180;
+  const overDoor = (u, v) => { const x = w.cx + u * Math.cos(a) + v * Math.sin(a), z = w.cz - u * Math.sin(a) + v * Math.cos(a);
+    return (ctx.openings || []).some(o => o.kind !== 'window' && o.storey === 0 && Math.hypot(o.e.x - x, o.e.z - z) < 2.2); };
   if (X.rafterTails) for (let u = -w.W + 2; u <= w.W - 2 + 0.01; u += 2) for (const sv of [-1, 1]) {
     const v = sv * (2 + 2 * rows + 0.7);
+    if (overDoor(u, sv * w.D)) continue;
     add(name, u, pivot(rows) - 0.7 - (r === 2 ? 0 : 0), v, (sv < 0 ? 180 : 0) + 90, 'trim', low(rows));
   }
   // the ridge beam's end out past each gable

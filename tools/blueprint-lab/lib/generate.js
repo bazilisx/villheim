@@ -448,9 +448,24 @@ function generate(req) {
   if (lit && flat && !lookout) {
     const doorEdges = [door, backDoor].filter(Boolean);
     // a courtyard wing has doors to the yard near its middle: its fire goes to the far end
-    const score = ([x, z]) => (doorEdges.some(e => Math.hypot(e.x - x, e.z - z) < 2.5) ? 100 : 0) + (plan === 'court' ? -1 : 1) * Math.hypot(x - doorX, z - w0.cz);
+    // and off the outer walls when they are thick (a 1 m stone wall reaches half a metre into the cell beside it)
+    const thick = /stone|marble|grausten/.test(C.wallStyle || '');
+    const score = ([x, z]) => (doorEdges.some(e => Math.hypot(e.x - x, e.z - z) < 2.5) ? 100 : 0) + (thick && edges.some(e => Math.hypot(e.x - x, e.z - z) < 1.1) ? 50 : 0) +
+      (plan === 'court' ? -1 : 1) * Math.hypot(x - doorX, z - w0.cz);
     flatCell = [...cells.values()].filter(([x, z]) => inside(w0, x, z) && !gallery.has(`${x},${z}`)).sort((a, c) => score(a) - score(c))[0] || null;
     if (flatCell) flue = cellRect(flatCell);
+    // beside a thick wall the fire would reach into it: it goes between this cell and the next one away from the
+    // wall, under a 4 x 2 m opening over both
+    if (flatCell && thick) {
+      const [x, z] = flatCell, e = edges.find(e2 => Math.hypot(e2.x - x, e2.z - z) < 1.1);
+      if (e) {
+        const nx = x + Math.sign(x - e.x) * 2, nz = z + Math.sign(z - e.z) * 2;
+        if (cells.has(`${nx},${nz}`) && !gallery.has(`${nx},${nz}`) && !doorEdges.some(d => Math.hypot(d.x - nx, d.z - nz) < 1.1)) {
+          flue = { x0: Math.min(x, nx) - 1, x1: Math.max(x, nx) + 1, z0: Math.min(z, nz) - 1, z1: Math.max(z, nz) + 1 };
+          flatCell = [(x + nx) / 2, (z + nz) / 2];
+        }
+      }
+    }
   }
   const doorCell = [door.cell[0], door.cell[1]];
   const backCell = backDoor ? [backDoor.cell[0], backDoor.cell[1]] : null;
@@ -566,6 +581,7 @@ function generate(req) {
   }
 
   // a back room in a big house (before the furnishing, so the rooms are read with it)
+  dctx.openings = b.openings || [];
   if (!open && plan !== 'court' && !req.skipDecor) Details.partition(b, dctx, wallSegment);
 
   // inner aisle posts for halls
@@ -849,6 +865,33 @@ function settle(b, ctx) {
       const o = Ck.aabb(p);
       return !(o.x0 < fb.x1 + pad && o.x1 > fb.x0 - pad && o.z0 < fb.z1 + pad && o.z1 > fb.z0 - pad && Math.abs(p.y - fire.y) < 1);
     });
+    // a fire that now reaches into a thick wall (a 1 m stone wall beside the vent cell) slides away from it, up to
+    // 0.75 m toward the room's middle; a hearth (4 x 3 m in the game) that still does not fit becomes a fire pit
+    const walls = b.pieces.filter(p => !p.decor && ['wall', 'pole', 'stair'].includes(P.piece(p.name).role)).map(p => Ck.aabb(p));
+    const clear0 = keepClear(b).filter(z => !(fire.x > z.x0 && fire.x < z.x1 && fire.z > z.z0 && fire.z < z.z1)); // doorways and climbs, not the zone it is in already
+    const clips = () => { const o = Ck.aabb(fire); return walls.some(w => w.x0 < o.x1 - 0.05 && w.x1 > o.x0 + 0.05 && w.z0 < o.z1 - 0.05 && w.z1 > o.z0 + 0.05 && w.y0 < o.y1 && w.y1 > o.y0 + 0.05) ||
+      clear0.some(z => hits(o, z)); };
+    if (clips()) {
+      const rm = mainRoom || { x0: fire.x - 1, x1: fire.x + 1, z0: fire.z - 1, z1: fire.z + 1 };
+      const cx = (rm.x0 + rm.x1) / 2, cz = (rm.z0 + rm.z1) / 2, L = Math.hypot(cx - fire.x, cz - fire.z) || 1;
+      const x0 = fire.x, z0 = fire.z, sit = b.pieces.filter(p => p.decor && p !== fire && /cookingstation|piece_cauldron/.test(p.name) && Math.hypot(p.x - x0, p.z - z0) < 0.4);
+      for (const nm of fire.name === 'hearth' ? ['hearth', 'fire_pit'] : [fire.name]) {
+        fire.name = nm;
+        let ok = false;
+        // the smallest slide that clears every wall, toward the room's middle first
+        const tries = [[0, 0]];
+        for (const t of [0.25, 0.5, 0.75, 1]) for (const [dx, dz] of [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [-1, 1], [1, -1], [-1, -1]]) tries.push([dx * t, dz * t]);
+        tries.sort((p1, p2) => Math.hypot(...p1) - Math.hypot(...p2) || ((p2[0] * (cx - x0) + p2[1] * (cz - z0)) - (p1[0] * (cx - x0) + p1[1] * (cz - z0))));
+        for (const [dx, dz] of tries) {
+          fire.x = +(x0 + dx).toFixed(3); fire.z = +(z0 + dz).toFixed(3);
+          if (!clips()) { ok = true; break; }
+        }
+        if (!ok) { fire.x = x0; fire.z = z0; }
+        if (ok) break;
+      }
+      void L;
+      for (const p of sit) { p.x = fire.x; p.z = fire.z; }
+    }
     // the cauldron's upgrades work within 5 m of it: those left farther away by the move come out
     const pot = b.pieces.find(p => p.decor && p.name === 'piece_cauldron');
     b.pieces = b.pieces.filter(p => !/^cauldron_ext/.test(p.name) || (pot && Math.hypot(p.x - pot.x, p.z - pot.z) < 5));

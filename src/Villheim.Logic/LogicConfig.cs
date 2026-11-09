@@ -173,6 +173,7 @@ namespace Villheim.Logic
         public static ConfigEntry<int> KnowledgeKeep;
         public static ConfigEntry<int> KnowledgeCommonDays;
         public static ConfigEntry<float> RumorChance;
+        public static ConfigEntry<bool> DialogueInChat;
         public static ConfigEntry<bool> KnowledgeRequests;
         public static ConfigEntry<bool> HarvestReach;
         public static ConfigEntry<string> HarvestReachByStage;
@@ -883,6 +884,8 @@ namespace Villheim.Logic
             KnowledgeCommonDays = Admin(config, know, "KnowledgeCommonDays", 2,
                 "Days after which everyone in the village has heard of a discovery. Before that only the one who saw it, " +
                 "and those he told in a chat, can talk about it.");
+            DialogueInChat = Admin(config, know, "DialogueInChat", true,
+                "Villagers' lines also go into the chat window when you are within 25 meters, so you can read them back.");
             RumorChance = Admin(config, know, "RumorChance", 0.4f,
                 "Chance that a villager who knows something of the land has it on his mind when he picks a line (0 to 1).");
             KnowledgeRequests = Admin(config, know, "KnowledgeRequests", true,

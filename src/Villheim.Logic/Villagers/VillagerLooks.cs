@@ -130,7 +130,8 @@ namespace Villheim.Logic.Villagers
             Cultures.Culture culture = Cultures.Get(Cultures.OfVillager(villager));
             var looks = new System.Random(seed);
             bool female = looks.Next(2) == 1;
-            vis.SetModel(female ? 1 : 0);
+            // Children all use the female face; boys keep their own hair and proportions (Tyler, 2026-11-08).
+            vis.SetModel(female || Childhood.IsChild(villager) ? 1 : 0);
 
             float outlier = LogicConfig.LooksOutlierChance != null ? LogicConfig.LooksOutlierChance.Value : 0.1f;
             Vector2 skinRange = looks.NextDouble() < outlier ? new Vector2(0.25f, 1f) : culture.Skin;

@@ -846,28 +846,21 @@ namespace Villheim.Logic.Village
             // beds (T-37).
             List<string> lacking = NextStep.Lacking(hearth, state, next, 2);
             Amenities.Job due = Amenities.Upcoming(hearth);
-            string needed = "Nothing";
+            if (due != null && due.Essential)
+            {
+                // Beds, the board or a chest come before the next building, so the Project sign names them.
+                project = Capital(due.Name == "bed" ? "beds" : due.Name);
+                projectColor = "#fd8";
+            }
+
+            // Needed only ever names materials: have/need for the most pressing shortfalls (Tyler, T-304). What is
+            // still to be made (beds, a home) belongs on the Project sign.
+            string needed = "In stock";
             string neededColor = "#bfb";
             if (lacking.Count > 0)
             {
                 needed = Capital(string.Join(", ", lacking));
                 neededColor = lacking[0].StartsWith(Materials.Label(Materials.Stone)) ? "#ddd" : "#eca";
-            }
-            else if (due != null && due.Essential)
-            {
-                needed = Capital(due.Name == "bed" ? "beds" : due.Name);
-                neededColor = "#fd8";
-            }
-            else if (!string.IsNullOrEmpty(state.Waiting) && !state.Waiting.StartsWith("a "))
-            {
-                // Waiting on something other than materials (room to build, a closed chest).
-                needed = Capital(state.Waiting);
-                neededColor = "#fd8";
-            }
-            else if (state.Plots.Count == 0 || Villagers.Beds.Of(hearth).Count < VillageBrain.CountVillagers(state.Id))
-            {
-                needed = state.Plots.Count == 0 ? "A home" : "Beds";
-                neededColor = "#fd8";
             }
 
             float mood = VillageMood.Get(hearth.VillageId);

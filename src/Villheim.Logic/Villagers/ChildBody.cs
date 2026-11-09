@@ -327,7 +327,7 @@ namespace Villheim.Logic.Villagers
 
             HairReview.RigColors(out Vector3 skin, out Vector3 hairColor);
             rig.Look = LookOf(rig);
-            rig.Model = Model(rig.At, rig.Facing, rig.Female, HairFor(rig), BeardFor(rig), skin, hairColor);
+            rig.Model = Model(rig.At, rig.Facing, rig.Female || rig.Child, HairFor(rig), BeardFor(rig), skin, hairColor);
             if (rig.Model == null)
             {
                 return;

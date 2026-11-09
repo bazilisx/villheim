@@ -611,6 +611,13 @@ namespace Villheim.Logic.Villagers
             }
 
             global::Chat.instance.SetNpcText(villager.gameObject, Vector3.up * 2.2f, 20f, shown, "", first, false);
+            if (LogicConfig.DialogueInChat.Value && Player.m_localPlayer != null &&
+                Vector3.Distance(Player.m_localPlayer.transform.position, villager.transform.position) < 25f)
+            {
+                // A copy in the chat window to read back later (T-309).
+                global::Chat.instance.AddString($"<color=#bdf>{villager.GetHoverName()}</color>: {first}");
+            }
+
             return first;
         }
 

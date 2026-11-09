@@ -7,7 +7,9 @@
 // of N seeds with the lab (checks first, then the keep score; N 24 unless --tries), writes <id>.blueprint and a
 // four-view <id>.png to the result dir, and marks the line done: status "done", result (the design's name), file,
 // done (time), note (failed checks, if any). Every other line stays as it was, byte for byte.
-// Result dir: BepInEx/config/PlanBuild/blueprints/inspiration/generated/requests, found from the requests file's
+// Result dir: pass PlanBuild's folder in the Valheim install, <Valheim>/BepInEx/config/PlanBuild/blueprints/
+// inspiration/generated/requests (D-057: next to the vh gen designs, Villheim tab). Without one it falls back to the
+// profile's BepInEx/config/PlanBuild/blueprints/inspiration/generated/requests, found from the requests file's
 // place, unless given. In game, 'vh place <id>' then builds it.
 const fs = require('fs'), path = require('path');
 const Q = require('../lib/request.js'), BP = require('../lib/blueprint.js');

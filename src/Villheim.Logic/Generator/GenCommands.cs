@@ -56,7 +56,13 @@ namespace Villheim.Logic.Generator
 
         // Requests made by Claude ('vh ask') still go where lab/process_requests.js writes them.
         private static string Generated => Path.Combine(Paths.ConfigPath, "PlanBuild", "blueprints", "inspiration", "generated");
-        public static string ResultFolder => Path.Combine(Generated, "requests");
+        /// <summary>
+        /// Finished 'vh ask' requests sit next to the 'vh gen' designs in PlanBuild's folder, on the same Villheim tab
+        /// (D-057). Results written before that stay readable in the profile's folder.
+        /// </summary>
+        public static string ResultFolder => Path.Combine(Path.GetDirectoryName(IngameFolder) ?? Generated, "requests");
+
+        private static string OldResultFolder => Path.Combine(Generated, "requests");
 
         /// <summary>Where 'vh gen' saved before 2026-11-09 (the profile's config folder, which PlanBuild may not search).</summary>
         private static string OldIngameFolder => Path.Combine(Generated, "ingame");
@@ -680,7 +686,13 @@ namespace Villheim.Logic.Generator
             return all;
         }
 
-        private static string ResultFile(string id) => Path.Combine(ResultFolder, id.ToUpperInvariant() + ".blueprint");
+        private static string ResultFile(string id)
+        {
+            string name = id.ToUpperInvariant() + ".blueprint";
+            string now = Path.Combine(ResultFolder, name);
+            string old = Path.Combine(OldResultFolder, name);
+            return File.Exists(now) || !File.Exists(old) ? now : old;
+        }
 
         private static float Round(float value) => Mathf.Round(value * 100f) / 100f;
 

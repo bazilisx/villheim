@@ -47,7 +47,13 @@ const FENCE_BY_CULTURE = {
 // Shapes: 'front' (a fence from the side walls round the front), 'L' (the front and one side), 'wrap' (all round),
 // 'side' (along one gable end). A shape that would run through something already there (a field, a pen, a woodshed)
 // gives way to the next. Farms keep their field in front, so they mostly get a side yard.
-const SHAPES = { home: { front: 4, L: 2, wrap: 2, side: 1 }, farm: { side: 3, wrap: 1, front: 1, L: 1 } };
+const SHAPES = { home: { front: 4, L: 2, wrap: 2, side: 1 }, farm: { side: 3, wrap: 1, front: 1, L: 1 },
+  // working yards (D-067): beside or round the work
+  smithy: { side: 3, L: 1, front: 1 }, tavern: { front: 3, L: 2, side: 1 }, workshop: { side: 3, L: 1, wrap: 1 }, sawmill: { side: 3, wrap: 1, L: 1 }, dock: { side: 2, front: 1 } };
+// Building types that get a working yard at stage 2 and 3 (D-067); docks stand over water and get none. Base crafting stations (workbench, forge, black forge,
+// artisan table, galdr table) never stand outside without a roof: players would try to use them. Their extensions and
+// upgrades may, as decor (the chopping block, the tanning rack, the forge's cooler, anvils and tool rack).
+const WORK_TYPES = ['smithy', 'tavern', 'workshop', 'sawmill'];
 const CULTURE_YARD = { 'norse-highland': 'stones', 'celtic': 'stones', 'saami': 'stones', 'norse-forest': 'logs', 'slavic': 'logs', 'baltic': 'logs',
   'frankish-norman': 'bed', 'anglo-saxon': 'bed', 'byzantine': 'bed', 'steppe': 'cart' };
 const CROP = [['Ashlands', 'Pickable_Barley'], ['Plains', 'Pickable_Barley'], ['Mountain', 'Pickable_Onion'], ['Swamp', 'Pickable_Turnip'], ['Black Forest', 'Pickable_Carrot']];
@@ -66,7 +72,7 @@ function pickW(R, w) {
 /** Does this request get a yard? req.yard true or false decides; otherwise stage 2 and 3 homes and farms. */
 function wants(req, type, stage) {
   if (req && req.yard != null) return !!req.yard;
-  return ['home', 'farm'].includes(type) && (stage === 's2' || stage === 's3');
+  return ['home', 'farm', ...WORK_TYPES].includes(type) && (stage === 's2' || stage === 's3');
 }
 
 // The plot the game gives a design (src/Villheim.Logic/Designs/Blueprints.cs, Center): the farthest piece pivot from
@@ -91,7 +97,7 @@ function survey(b) {
   const Ck = checksY();
   const boxes = b.pieces.map(p => ({ p, o: Ck.aabb(p), info: PY.piece(p.name) }));
   const walls = boxes.filter(x => !x.p.decor && !x.p.trim && ['wall', 'door', 'window'].includes(x.info.role) && x.o.y0 < 1.6);
-  if (walls.length < 3) return null;
+  if (walls.length < 3) { dbg('walls'); return null; }
   const W = { x0: Math.min(...walls.map(x => x.o.x0)), x1: Math.max(...walls.map(x => x.o.x1)), z0: Math.min(...walls.map(x => x.o.z0)), z1: Math.max(...walls.map(x => x.o.z1)) };
   // low things a fence or a prop could run into: anything starting under 2.2 m, roofs and gables aside
   const solid = boxes.filter(x => x.o.y0 < 2.2 && !['roof', 'roofTop', 'roofCorner', 'gable'].includes(x.info.role)).map(x => x.o);
@@ -128,7 +134,23 @@ function survey(b) {
   const on = (k, v) => walls.filter(x => Math.abs((k === 'x' ? (v < 0 ? x.o.x0 - W.x0 : x.o.x1 - W.x1) : (v < 0 ? x.o.z0 - W.z0 : x.o.z1 - W.z1))) < 0.6).map(x => x.o);
   const span = (list, a, c) => list.length ? [Math.min(...list.map(o => o[a])), Math.max(...list.map(o => o[c]))] : null;
   W.left = span(on('x', -1), 'z0', 'z1'); W.right = span(on('x', 1), 'z0', 'z1'); W.back = span(on('z', 1), 'x0', 'x1'); W.front = span(on('z', -1), 'x0', 'x1');
-  if (!W.left || !W.right || !W.back || !W.front) return null;
+  // an open side (a smithy's open front, a woodworker's open sides) is the box's edge, and the way in when there is
+  // no door
+  const open = [];
+  if (!W.front) { W.front = [W.x0, W.x1]; open.push({ x: (W.x0 + W.x1) / 2, z: W.z0, nx: 0, nz: -1, ux: 1, uz: 0, y: 0 }); }
+  if (!W.back) { W.back = [W.x0, W.x1]; open.push({ x: (W.x0 + W.x1) / 2, z: W.z1, nx: 0, nz: 1, ux: 1, uz: 0, y: 0 }); }
+  if (!W.left) { W.left = [W.z0, W.z1]; open.push({ x: W.x0, z: (W.z0 + W.z1) / 2, nx: -1, nz: 0, ux: 0, uz: 1, y: 0 }); }
+  if (!W.right) { W.right = [W.z0, W.z1]; open.push({ x: W.x1, z: (W.z0 + W.z1) / 2, nx: 1, nz: 0, ux: 0, uz: 1, y: 0 }); }
+  if (open.length > 2) { dbg('open ' + open.length); return null; }
+  // a building open on a side that still has its corner posts: the middle of its front is the way in
+  if (!doors.length && !open.length) open.push({ x: (W.x0 + W.x1) / 2, z: W.z0, nx: 0, nz: -1, ux: 1, uz: 0, y: 0 });
+  const noDoor = !doors.length;
+  for (const o of open) {
+    if (noDoor) doors.push(o);
+    // the open side's 2.2 m kept clear, as a door's
+    const ex = Math.abs(o.ux) * 2 + Math.abs(o.nx) * 1.15, ez = Math.abs(o.uz) * 2 + Math.abs(o.nz) * 1.15;
+    zones.push({ x0: o.x + o.nx * 1.15 - ex, x1: o.x + o.nx * 1.15 + ex, y0: -1, y1: 3, z0: o.z + o.nz * 1.15 - ez, z1: o.z + o.nz * 1.15 + ez, door: true });
+  }
   return { W, B, solid, wallBoxes, zones, doors, minY: Math.min(...b.pieces.map(p => p.y)) };
 }
 
@@ -263,18 +285,18 @@ function add(b, ctx) {
   const kept = b.pieces;
   b.pieces = b.pieces.filter(p => !loose.includes(p));
   const S = survey(b);
-  if (!S) { b.pieces = kept; return null; }
+  if (!S) { dbg('survey'); b.pieces = kept; return null; }
   // the game sets the design's lowest pivot on the terrain: that is the yard's ground (0, or a sunk stone floor's
   // middle, -0.4 in the turf houses)
   const G0 = S.minY;
-  if (G0 < -0.6 || G0 > 0.01) { b.pieces = kept; return null; }
+  if (G0 < -0.6 || G0 > 0.01) { dbg('ground ' + G0); b.pieces = kept; return null; }
   const kit = kitFor({ ...ctx, fence: opts.fence || C.yardFence }, R);
   const decor = ctx.decor || 'd2';
   const big = ctx.stage === 's3';
 
   // the main door: the ground door nearest the front (-z)
   const front = S.doors.filter(o => Math.abs(o.nz) > 0.9).sort((a, c) => a.z - c.z)[0] || S.doors[0];
-  if (!front) { b.pieces = kept; return null; }
+  if (!front) { dbg('front'); b.pieces = kept; return null; }
 
   // shapes to try, the chosen one first, then the others by weight; margins in the measured range
   const weights = { ...(SHAPES[ctx.type] || SHAPES.home) };
@@ -389,10 +411,13 @@ function add(b, ctx) {
   if (X.yardPath !== false) {
     // the path goes round anything there (a floor or step already there is path enough) and under the gate
     const there = [...S.solid, ...placed.filter(q => q.name !== kit.gate).map(q => Ck.aabb(q))];
+    // no plank under a low roof or eave (a lean-to's): the headroom check would read it as a floor too low to stand on
+    const low = b.pieces.filter(q => ['roof', 'roofTop', 'roofCorner', 'beam', 'gable', 'floor', 'stair'].includes(PY.piece(q.name).role)).map(q => Ck.aabb(q)).filter(o => o.y0 < G0 + 2.6 && o.y0 > G0 + 0.4);
     for (const c of plan.path) {
       const p = { name: kit.floor, x: c[0], y: 0, z: c[1], yaw: 0 };
       const o = Ck.aabb({ ...p, y: G0 });
       if (there.some(z => hitBox(o, z, -0.02)) || placed.some(q => q.name === kit.floor && Math.hypot(q.x - c[0], q.z - c[1]) < 0.7)) continue;
+      if (low.some(z => z.x0 < o.x1 - 0.05 && z.x1 > o.x0 + 0.05 && z.z0 < o.z1 - 0.05 && z.z1 > o.z0 + 0.05)) continue;
       put(p); path++;
     }
   }
@@ -423,6 +448,8 @@ function add(b, ctx) {
     return out;
   };
   const shuffle = a => { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(R() * (i + 1)); const t = a[i]; a[i] = a[j]; a[j] = t; } return a; };
+  // the decor stage what goes up now belongs to (D-071): set before each kind of thing below
+  let dsNow = 2;
   const tryAt = (spots, make, n = 1) => {
     let k = 0;
     for (const s of shuffle(spots.slice())) {
@@ -431,7 +458,7 @@ function add(b, ctx) {
       if (!group || !group.length) continue;
       if (!group.every(p => (p.soft ? soft(p) : free(p, p.pad != null ? p.pad : 0.1)))) continue;
       // plants are part of the build, as a field's crops are; the rest is furnishing (stripped at d1)
-      for (const p of group) { const q = { ...p }; delete q.soft; delete q.pad; put(q, PY.piece(q.name).role === 'nature' ? { garden: true } : { decor: true, trim: true }); }
+      for (const p of group) { const q = { ...p }; delete q.soft; delete q.pad; put(q, PY.piece(q.name).role === 'nature' ? { garden: true, ds: dsNow } : { decor: true, trim: true, ds: dsNow }); }
       k++;
     }
     return k;
@@ -454,8 +481,10 @@ function add(b, ctx) {
     }
     return g;
   };
-  if (decorOn('yardBeds', 'd2')) {
-    const n = ctx.type === 'farm' ? (big ? 3 : 2) : (big || plan.shape === 'wrap' ? 2 : 1);
+  // the household's yard (lib/persona.js yard): a tended garden takes a bed more, a work yard or a plain one none
+  const H = ctx.persona, kind = WORK_TYPES.includes(ctx.type) ? 'work' : ctx.type === 'home' && H ? H.yard : 'garden';
+  if (decorOn('yardBeds', 'd2') && kind !== 'plain' && (kind !== 'work' || ctx.type === 'farm')) {
+    const n = ctx.type === 'farm' ? (big ? 3 : 2) : (big || plan.shape === 'wrap' ? 2 : 1) + (kind === 'garden' && H && H.hobby.plants > 0.5 ? 1 : 0);
     got.push(['bed', tryAt([...fenceSpots(1.0), ...wallSpots(1.3)], bedOf, n)]);
   }
   // firewood against the fence when there is no woodshed or lean-to stack already
@@ -476,6 +505,7 @@ function add(b, ctx) {
     got.push(['bench', tryAt(spots, s => [{ name: bench, x: s.x, y: 0, z: s.z, yaw: s.yaw, pad: 0.04 }])]);
   }
   // a lamp inside the gate, to one side of it
+  dsNow = 3;
   if (decorOn('yardLamp', 'd3')) {
     const torch = 'piece_groundtorch_wood', g0 = plan.gateAt;
     const spots = [-1.8, 1.8, -2.3, 2.3, -2.8, 2.8].map(a => ({ x: g0.x + g0.u[0] * a + g0.n[0] * 0.45, z: g0.z + g0.u[1] * a + g0.n[1] * 0.45 }));
@@ -492,6 +522,7 @@ function add(b, ctx) {
   // what the culture keeps in its yard (docs/CULTURE_STYLES.md): stone builders a pile of field stone, log builders a
   // second stack of logs, kitchen-garden cultures a second bed, the steppe a cart
   const extra = CULTURE_YARD[ctx.cultureKey];
+  dsNow = 2;
   if (extra && decorOn('yardProps', 'd2')) {
     if (extra === 'stones' && canY(ctx.biome, 'stone_pile')) got.push(['stones', tryAt(fenceSpots(0.9), s => [{ name: 'stone_pile', x: s.x, y: 0, z: s.z, yaw: s.yaw }])]);
     if (extra === 'logs' && canY(ctx.biome, 'wood_core_stack')) got.push(['logs', tryAt(fenceSpots(0.75), s => [{ name: 'wood_core_stack', x: s.x, y: 0, z: s.z, yaw: s.yaw }])]);
@@ -502,7 +533,39 @@ function add(b, ctx) {
   if (decorOn('yardProps', 'd2') && ctx.type === 'farm' && canY(ctx.biome, 'Cart')) {
     got.push(['cart', tryAt(fenceSpots(1.4), s => [{ name: 'Cart', x: s.x, y: 0, z: s.z, yaw: normY(s.yaw + 90) }])]);
   }
+  // a working yard, or a household's yard of materials and work leftovers (D-067, D-068): what the work leaves about,
+  // against the fence, never a base station
+  dsNow = 2;
+  if (decorOn('yardProps', 'd2') && kind === 'work') {
+    const F = (NODE_Y ? require('./decorate.js') : window.VHDecorate).FURNITURE;
+    const okW = n => canY(ctx.biome, n) && (!F[n] || BIOMES_Y.indexOf(F[n].b) <= BIOMES_Y.indexOf(ctx.biome));
+    const along = (spots, list) => tryAt(spots, s => list.filter(([n]) => okW(n)).map(([n, a, d, turn, y]) => ({ name: n, x: s.x + Math.cos(s.yaw * Math.PI / 180) * a + s.n[0] * d,
+      y: y || 0, z: s.z - Math.sin(s.yaw * Math.PI / 180) * a + s.n[1] * d, yaw: normY(s.yaw + (turn || 0)), pad: 0.05 })));
+    const W = fenceSpots(0.8);
+    if (ctx.type === 'smithy') {
+      // the forge yard: the cooler and the tool rack against the fence, an anvil and the grinding wheel, coal
+      got.push(['forgeyard', along(W, [['forge_ext5', 0, 0, 180], ['forge_ext6', 2.3, 0.1, 180]])]);
+      got.push(['anvil', along(fenceSpots(1.4), [['forge_ext4', 0, 0, 180], ['forge_ext2', 1.4, 0, 200]])]);
+      got.push(['coal', along(fenceSpots(1.2), [['coal_pile', 0, 0, 0]])]);
+    } else if (ctx.type === 'tavern') {
+      // tables and benches out front
+      const set = [['piece_table', 0, 0, 0], ['piece_bench01', 0, -0.95, 0], ['piece_bench01', 0, 0.95, 180]];
+      got.push(['tables', tryAt(fenceSpots(2.0), s => set.map(([n, a, d, turn]) => ({ name: n, x: s.x + s.n[0] * d, y: 0, z: s.z + s.n[1] * d, yaw: normY(s.yaw + turn), pad: 0.05 }))
+        .map(q => ({ ...q, x: q.x, z: q.z })).filter(q => okW(q.name)), big ? 2 : 1)]);
+      got.push(['barrels', along(W, [['piece_chest_barrel', 0, 0, 0], ['piece_chest_barrel', 1.05, 0.05, 30]])]);
+    } else if (ctx.type === 'dock') {
+      got.push(['crates', along(W, [['dvergrprops_crate', 0, 0, 0], ['piece_chest_barrel', 1.2, 0, 15], ['dvergrprops_crate', 0.4, 0, 12, 1.02]])]);
+    } else {
+      // the woodworker's log yard, or a household's materials: logs and firewood, the chopping block, offcuts in a crate
+      got.push(['logs', along(fenceSpots(0.9), [['wood_core_stack', 0, 0, 0]])]);
+      got.push(['chopping', along(fenceSpots(1.0), [['piece_workbench_ext1', 0, 0, 180], ['dvergrprops_crate', 1.2, 0.1, 8]])]);
+      if (ctx.type !== 'home' || (H && H.hobby.crafts > 0.5)) got.push(['tanning', along(W, [['piece_workbench_ext2', 0, 0, 180]])]);
+      if (ctx.type === 'home') got.push(['stones', along(fenceSpots(0.9), [['stone_pile', 0, 0, 0]])]);
+    }
+  }
+  dsNow = 3;
   // a scarecrow by the beds (an armor stand; it takes iron, so the Swamp on)
+  dsNow = 3;
   if (decorOn('yardProps', 'd3') && ctx.type === 'farm' && canY(ctx.biome, 'ArmorStand')) {
     const farFromDoors = s => Math.hypot(s.x - plan.gateAt.x, s.z - plan.gateAt.z) > 3 && S.doors.every(o => Math.hypot(s.x - o.x, s.z - o.z) > 3);
     got.push(['scarecrow', tryAt(fenceSpots(1.8).filter(farFromDoors), s => [{ name: 'ArmorStand', x: s.x, y: 0, z: s.z, yaw: s.yaw }])]);
@@ -565,6 +628,9 @@ function tryPlan(runs, kit, S, door, clear) {
     const gz = { x0: Math.min(g.x - n[0] * 1.2, g.x + n[0] * 1.2) - Math.abs(u[0]) * 1.0 - 0.05, x1: Math.max(g.x - n[0] * 1.2, g.x + n[0] * 1.2) + Math.abs(u[0]) * 1.0 + 0.05, y0: -1, y1: 3,
       z0: Math.min(g.z - n[1] * 1.2, g.z + n[1] * 1.2) - Math.abs(u[1]) * 1.0 - 0.05, z1: Math.max(g.z - n[1] * 1.2, g.z + n[1] * 1.2) + Math.abs(u[1]) * 1.0 + 0.05 };
     if (S.solid.some(o => hitBox(o, { ...gz, x0: gz.x0 + 0.1, x1: gz.x1 - 0.1, z0: gz.z0 + 0.1, z1: gz.z1 - 0.1 }, 0) && o.y0 < 2.3)) { dbg('gatezone ' + S.solid.find(o => hitBox(o, { ...gz, x0: gz.x0 + 0.1, x1: gz.x1 - 0.1, z0: gz.z0 + 0.1, z1: gz.z1 - 0.1 }, 0) && o.y0 < 2.3).info.name); continue; }
+    // and clear of the fence's own other runs (a run close beside the gate on an open-sided building)
+    const gzIn = { ...gz, x0: gz.x0 + 0.15, x1: gz.x1 - 0.15, z0: gz.z0 + 0.15, z1: gz.z1 - 0.15 };
+    if (dedup.some(p => { const o = Ck.aabb(p); return hitBox(o, gzIn, 0) && Math.hypot(p.x - g.x, p.z - g.z) > 1.05 && Math.abs((p.x - g.x) * -u[1] + (p.z - g.z) * u[0]) > 0.3; })) { dbg('gate fence'); continue; }
     // every fence piece clear of what is there and of the doorways, stairs and woodpiles
     const bad = dedup.find(p => !clear(p, 0.08, S.zones));
     if (bad) { const o = Ck.aabb(bad); const by = clear.by; clear.by = null; const zz = S.zones.find(z => hitBox(o, z, 0.08)); dbg('fence ' + (bad.attach ? 'attach ' : '') + (by ? by.info.name : zz ? 'zone' + (zz.door ? ' door' : zz.tag || '') : '?') + (global.YV && by ? ' ' + JSON.stringify([bad.x, bad.z, bad.yaw, [o.x0, o.x1, o.z0, o.z1].map(v => +v.toFixed(2)), [by.x0, by.x1, by.y0, by.y1, by.z0, by.z1].map(v => +v.toFixed(2))]) : '')); continue; }

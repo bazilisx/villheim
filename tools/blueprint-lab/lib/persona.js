@@ -206,7 +206,7 @@ function kitWeight(P, a) {
   if (ks.has('candle')) w *= 0.7 + 0.4 * P.comfort;
   if (ks.has('chest') || ks.has('barrel') || ks.has('crate')) w *= 0.6 + 0.5 * P.clutter + 0.3 * P.busy;
   if (ks.has('pot')) w *= 0.6 + 0.6 * H.plants + 0.4 * H.food;
-  if (ks.has('itemstand') || ks.has('itemstandh')) w *= 0.6 + 0.8 * H.collect;
+  if (ks.has('itemstand') || ks.has('itemstandh')) w *= (0.6 + 0.8 * H.collect) * Math.min(1.2, L.hung);
   if (ks.has('walllight') || ks.has('floorlight')) w *= 0.6 + 0.4 * L.lights;
   const id = a.id || '';
   if (id === 'BK-drapes') w *= L.drapes;
@@ -217,7 +217,14 @@ function kitWeight(P, a) {
   if (id === 'BK-bath') w *= 0.3 + P.wealth * 0.8 + P.comfort * 0.6;
   if (/BK-(kitchen|island|feast)/.test(id)) w *= 0.6 + H.food;
   if (/^BK-dining/.test(id)) w *= 0.7 + P.size * 0.08 + H.games * 0.3;
-  if (/BK-(project|clutter|corner)/.test(id)) w *= 0.3 + P.busy * 1.4;
+  if (id === 'BK-sill') w *= 0.4 + H.plants * 1.2;
+  if (id === 'BK-pots') w *= 0.2 + H.plants * 1.4 + H.food * 0.3;
+  if (id === 'BK-project') w *= (0.1 + H.crafts * 1.4) * (0.4 + P.busy);
+  if (id === 'BK-tanning') w *= (0.1 + H.crafts) * (0.5 + 0.5 * L.rugs);
+  if (id === 'BK-bedpelt') w *= (0.3 + P.comfort) * L.rugs;
+  if (id === 'BK-tablemess') w *= (0.1 + P.clutter * 1.5) * (0.6 + H.food * 0.6);
+  if (id === 'BK-tableneat') w *= 0.15 + P.tidy * 1.3;
+  if (id === 'BK-clutter') w *= 0.1 + P.busy * P.clutter * 2.2;
   return w;
 }
 // How many assemblies a room takes, as a factor on the library's budget.
@@ -249,6 +256,9 @@ const ITEMS = {
   tool: [['Meadows', 'Hammer', 3], ['Meadows', 'AxeStone', 1], ['Meadows', 'PickaxeAntler', 2], ['Meadows', 'Hoe', 2], ['Black Forest', 'AxeBronze', 2], ['Black Forest', 'PickaxeBronze', 2],
     ['Black Forest', 'Cultivator', 2], ['Swamp', 'AxeIron', 2], ['Swamp', 'PickaxeIron', 2], ['Plains', 'PickaxeBlackMetal', 1], ['Mistlands', 'AxeJotunBane', 1]],
   farm: [['Meadows', 'Hoe', 3], ['Black Forest', 'Cultivator', 3], ['Meadows', 'AxeStone', 1]],
+  // for the game's role displays only (kitbash.js ROLE_DISPLAYS); no household draws these
+  fishing: [['Meadows', 'FishingRod', 1]],
+  fish: [['Meadows', 'Fish1', 2], ['Black Forest', 'Fish2', 2]],
   drink: [['Meadows', 'Tankard', 4], ['Black Forest', 'MeadTasty', 2], ['Black Forest', 'MeadHealthMinor', 1], ['Black Forest', 'MeadStaminaMinor', 1], ['Swamp', 'MeadPoisonResist', 1],
     ['Mountain', 'MeadFrostResist', 1], ['Plains', 'BarleyWine', 2], ['Plains', 'MeadHealthMedium', 1], ['Mistlands', 'Tankard_dvergr', 2]],
   food: [['Meadows', 'Raspberry', 2], ['Meadows', 'CookedMeat', 2], ['Meadows', 'Honey', 1], ['Meadows', 'Mushroom', 1], ['Black Forest', 'Blueberries', 2], ['Black Forest', 'QueensJam', 2],
@@ -324,6 +334,79 @@ function dressStands(b, ctx) {
   return n;
 }
 
-const apiPer = { persona, PRESETS, CULTURE_P, HOBBIES, ITEMS, extraWeights, fillShare, wallWeights, wallGap, wallSkip, torchGap, underStair, kitWeight, kitBudget,
+
+// ---------------------------------------------------------------- decor stages (D-071)
+// A household decorates over time: d1 is what it moves in with, d2 and d3 add to it. The generator furnishes every
+// design at d3, and the passes that know when a piece goes up tag it (p.ds: 2 or 3; lib/kitbash.js, decorate.js
+// fill, yards.js, the door lights). The rest is tagged here: the essentials of d1 (beds, two chests, the fire and
+// what cooks on it, the main stations; decorate.js strip keeps the same) at 1, anything else at 2. A piece never goes
+// up before what it stands on, and the pieces of one assembly go up together. growth(b, 'd1' | 'd2') then keeps the
+// pieces of that stage and those before it, so each stage holds the one before it, piece for piece and in place.
+const ESSENTIAL_P = /^(bed|piece_bed02|ashwood_bed|piece_chest_wood|piece_chest|hearth|fire_pit|fire_pit_iron|forge|piece_workbench|piece_cookingstation|piece_cookingstation_iron|piece_cauldron|smelter|portal_wood)$/;
+function stageOf(b, hall) {
+  let chests = 0;
+  // a hall or tavern opens with two of its tables and their seats (a dining set of the library goes whole)
+  // a temple opens with its altar (its first table) and what stands on it
+  if (hall === 'temple') {
+    const P_ = NODE_P ? require('./pieces.js') : window.VHPieces;
+    const t = b.pieces.find(p => p.decor && P_.piece(p.name).role === 'table');
+    if (t && t.kb) { for (const q of b.pieces) if (q.kb === t.kb) q.ds = 1; } else if (t) t.ds = 1;
+  } else if (hall) {
+    const P_ = NODE_P ? require('./pieces.js') : window.VHPieces;
+    const tables = b.pieces.filter(p => p.decor && P_.piece(p.name).role === 'table' && !/cartography|workbench|butcher|preptable|magetable/.test(p.name)).slice(0, 2);
+    for (const t of tables) {
+      if (t.kb) { for (const q of b.pieces) if (q.kb === t.kb) q.ds = 1; continue; }
+      t.ds = 1;
+      for (const q of b.pieces) if (q.decor && q.ds == null && !q.kb && P_.piece(q.name).role === 'seat' && Math.hypot(q.x - t.x, q.z - t.z) < 2.6 && Math.abs(q.y - t.y) < 0.4) q.ds = 1;
+    }
+  }
+  for (const p of b.pieces) {
+    if (p.ds != null) continue;
+    if (!p.decor) continue;
+    if (ESSENTIAL_P.test(p.name) && !p.kb && (!/chest/.test(p.name) || chests++ < 2)) p.ds = 1;
+    else p.ds = 2;
+  }
+  // one assembly goes up at once: at the latest of its pieces' stages
+  const unify = () => {
+    const kb = new Map();
+    for (const p of b.pieces) if (p.kb && p.ds != null) kb.set(p.kb, Math.max(kb.get(p.kb) || 0, p.ds));
+    for (const p of b.pieces) if (p.kb && kb.has(p.kb)) p.ds = kb.get(p.kb);
+  };
+  unify();
+  // never before what it stands on: a small thing whose middle is over the top of a table, a chest, a seat, a station
+  // or built furniture (never a banner, a torch or anything hung)
+  const P_ = NODE_P ? require('./pieces.js') : window.VHPieces, F = (NODE_P ? require('./decorate.js') : window.VHDecorate).FURNITURE;
+  const Ck = NODE_P ? require('./checks.js') : window.VHChecks;
+  const small = b.pieces.filter(p => p.ds != null && p.y > 0.3 && !(ESSENTIAL_P.test(p.name) && !/chest/.test(p.name)));
+  const base = q => q.decor && q.ds != null && (['table', 'storage', 'seat', 'craft'].includes(P_.piece(q.name).role) || q.trim) &&
+    !['mount', 'hang', 'rug'].includes((F[q.name] || {}).at) && !/^(bed|piece_bed02|ashwood_bed)$/.test(q.name);
+  const boxes = new Map(b.pieces.filter(base).map(q => [q, Ck.aabb(q)]));
+  for (let pass = 0; pass < 3; pass++) {
+    let changed = false;
+    for (const p of small) for (const [q, o] of boxes) {
+      if (q === p || q.ds <= p.ds || p.x <= o.x0 || p.x >= o.x1 || p.z <= o.z0 || p.z >= o.z1) continue;
+      if (p.y < o.y1 - 0.25 || p.y > o.y1 + 0.35 || q.y >= p.y) continue;
+      p.ds = q.ds; changed = true;
+    }
+    unify();
+    if (!changed) break;
+  }
+  // a building with nothing at d1 opens with its first two pieces of furniture
+  if (!b.pieces.some(p => p.ds === 1)) {
+    let n = 0;
+    for (const p of b.pieces) {
+      if (!p.decor || p.ds !== 2 || p.y > 3 || !['table', 'storage', 'seat', 'bed', 'craft', 'fire'].includes(P_.piece(p.name).role) || n++ >= 2) continue;
+      if (p.kb) { for (const q of b.pieces) if (q.kb === p.kb && q.ds === 2) q.ds = 1; } else p.ds = 1;
+    }
+  }
+}
+function growth(b, decor, hall) {
+  stageOf(b, hall);
+  const k = decor === 'd1' ? 1 : decor === 'd2' ? 2 : 3;
+  if (k < 3) b.pieces = b.pieces.filter(p => p.ds == null || p.ds <= k);
+  return k;
+}
+
+const apiPer = { growth, stageOf, persona, PRESETS, CULTURE_P, HOBBIES, ITEMS, extraWeights, fillShare, wallWeights, wallGap, wallSkip, torchGap, underStair, kitWeight, kitBudget,
   standItem, itemFrom, dressStands, roleAt, rng: rngP, hash: hashP, pickW: pickWP };
 if (NODE_P) module.exports = apiPer; else window.VHPersona = apiPer;

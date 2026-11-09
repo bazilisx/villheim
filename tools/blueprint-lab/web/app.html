@@ -280,11 +280,23 @@ $('rpgo').onclick = () => {
 
 // ---------- drawing
 function ground(pieces) { const ys = pieces.map(p => p.y).sort((a, b) => a - b); return ys.length ? ys[Math.floor(ys.length * 0.05)] : 0; }
-function drawMain() {
+// quick: one sample per pixel while dragging, two by two when still
+let drawPending = false;
+function drawMain(quick) {
+  if (!current) return;
+  if (quick) {
+    if (drawPending) return;
+    drawPending = true;
+    requestAnimationFrame(() => { drawPending = false; drawNow(true); });
+    return;
+  }
+  drawNow(false);
+}
+function drawNow(quick) {
   if (!current) return;
   const c = $('view');
   const cut = $('roofoff').checked ? ground(current.d.pieces) + 2.6 : null;
-  VHRender.draw(c.getContext('2d'), current.d.pieces, { az: view.az, el: view.el, cut, width: c.width, height: c.height, background: getComputedStyle(document.body).getPropertyValue('--board').trim() || '#e9e4d8' });
+  VHRender.draw(c.getContext('2d'), current.d.pieces, { az: view.az, el: view.el, cut, ss: quick ? 1 : 2, width: c.width, height: c.height, background: getComputedStyle(document.body).getPropertyValue('--board').trim() || '#e9e4d8' });
 }
 function show() {
   const { d, ev } = current;
@@ -295,7 +307,7 @@ function show() {
   for (const v of VHRender.VIEWS) {
     const fig = document.createElement('figure'), cv = document.createElement('canvas');
     cv.width = 360; cv.height = 260;
-    VHRender.draw(cv.getContext('2d'), d.pieces, { ...v, cut: v.cut != null ? g + v.cut : null, width: 360, height: 260, background: bg });
+    VHRender.draw(cv.getContext('2d'), d.pieces, { ...v, label: '', cut: v.cut != null ? g + v.cut : null, width: 360, height: 260, background: bg });
     fig.append(cv); const cap = document.createElement('figcaption'); cap.textContent = v.label; fig.append(cap);
     fig.onclick = () => { view = { az: v.az, el: v.el }; $('roofoff').checked = v.cut != null; drawMain(); };
     $('thumbs').append(fig);
@@ -317,9 +329,10 @@ function show() {
 (() => {
   const c = $('view'); let drag = null;
   c.addEventListener('pointerdown', e => { drag = { x: e.clientX, y: e.clientY, az: view.az, el: view.el }; c.setPointerCapture(e.pointerId); });
-  c.addEventListener('pointermove', e => { if (!drag) return; view.az = drag.az + (e.clientX - drag.x) * 0.5; view.el = Math.max(5, Math.min(89, drag.el + (e.clientY - drag.y) * 0.3)); drawMain(); });
-  c.addEventListener('pointerup', () => { drag = null; });
-  c.addEventListener('wheel', e => { e.preventDefault(); view.el = Math.max(5, Math.min(89, view.el - e.deltaY * 0.05)); drawMain(); }, { passive: false });
+  c.addEventListener('pointermove', e => { if (!drag) return; view.az = drag.az + (e.clientX - drag.x) * 0.5; view.el = Math.max(5, Math.min(90, drag.el + (e.clientY - drag.y) * 0.3)); drawMain(true); });
+  c.addEventListener('pointerup', () => { drag = null; drawMain(); });
+  let wheelT = null;
+  c.addEventListener('wheel', e => { e.preventDefault(); view.el = Math.max(5, Math.min(90, view.el - e.deltaY * 0.05)); drawMain(true); clearTimeout(wheelT); wheelT = setTimeout(() => drawMain(), 200); }, { passive: false });
 })();
 
 // ---------- save and copy

@@ -248,6 +248,9 @@ well (Tyler, 2026-11-08). The Features tab of the review sheet (`docs/features/b
       arches (check `stone_arch` in the game first), stone paving outside, taller and larger s3 buildings, door
       lights on octagon plans, better proxies for roof corners and carvings, the middle-eastern court tavern fire,
       the two middle-eastern temples.
+- [ ] Home life (D-073, built 2026-11-09, not tried in the game): try signs, home decor, evenings and bedtime; get
+      `_s#d#` designs (board saves, approved generated designs) into the village building pools so home decor has
+      stages to build; role touches (D-074); decor pieces overlapping amenity furniture or signs.
 - [ ] Kitbash libraries in stages (helpers, 2026-11-09): interior assemblies and clips (stages 1 and 2 merged), yards
       (stages 1 and 2 merged), exterior accents and the coverage audit (stage 1 merged).
 - [ ] Interiors (2026-11-09 review; vignettes on bare walls done): at most two chests side by side,

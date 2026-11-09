@@ -715,7 +715,9 @@ function generate(req) {
   // an awning over each outside door only (a row of them along the front stuck out too far, T-102)
   if (C.awnings) for (const e of [door, backDoor].filter(e => e && e.out[1] < 0)) b.put(K.roof26, e.x, F + SH - 0.5, e.z - 1, 180); // 2.5 m up at its edge
   if (T.dock) dockDesign(b, K, W, D, F, stage);
-  if (T.field) fieldDesign(b, K, W, D + (C.boardwalk ? { s1: 4, s2: 6, s3: 8 }[stage] + 2 : F >= 0.9 ? 2 : 0), biome, stage, R, doorX);
+  // the field starts past the walkway and the stairs (each stair takes 2 m for every metre of height)
+  const stairRun = F >= 0.9 ? 2 * Math.round(Math.min(F, 2)) : 0;
+  if (T.field) fieldDesign(b, K, W, D + (C.boardwalk ? { s1: 4, s2: 6, s3: 8 }[stage] + Math.max(2, stairRun) : stairRun), biome, stage, R, doorX);
   if (T.pen) penDesign(b, K, Math.max(...[...cells.values()].map(c => c[0])) + 1, D, stage); // beside the last wing
   if (roofKind === 'gable' && plan !== 'gables' && ((C.dragons && ['longhouse', 'temple', 'tavern'].includes(type)) || (C.carved && stage !== 's1')))
     for (const sx of [-1, 1]) b.put('wood_dragon1', sx * (W + 0.6), roofTop + r * (D - 1) / 2 + 0.3, 0, sx > 0 ? 90 : 270);

@@ -18,6 +18,9 @@ const F = D.FURNITURE;
 const root = process.argv[2] || '/home/claude/corpus';
 const chosenPath = process.argv[3] || '/tmp/int/chosen.csv';
 const outPath = process.argv[4] || path.join(lab, 'data/room-templates.json');
+// the rooms as built go to a side file for the pictures (not committed): GEO=/tmp/int/room-geo.json
+const geoPath = process.env.GEO || null;
+const geo = {};
 
 // ---------------------------------------------------------------- names the decorator knows
 // Vanilla pieces outside the decorator's table stand in as the nearest piece of the same use and size.
@@ -29,7 +32,12 @@ const ALIAS = {
   piece_blackmarble_throne: 'piece_throne01', piece_throne02: 'piece_throne01', dvergrprops_bed: 'bed', dvergrprops_table: 'piece_table',
   piece_blackmarble_table: 'piece_table', piece_groundtorch_blue: 'piece_groundtorch_mist', dvergrprops_lantern_standing: 'piece_groundtorch_mist',
   dvergrprops_chair: 'piece_chair02', dvergrprops_stool: 'piece_chair', piece_stool: 'piece_chair',
+  rug_Bjorn: 'rug_fur', rug_moose: 'rug_deer', piece_drawer: 'piece_chest_wood', piece_chair_runed: 'piece_chair02', piece_bone_throne: 'piece_throne01',
+  barrell: 'piece_chest_barrel', corewood_crate_bal: 'dvergrprops_crate',
 };
+// decoration the templates cannot carry (statues, trophies, a portal, piles of coin): left out of the template without
+// counting against the room
+const IGNORE = /^(goblinking_totemholder|portal_wood|portal|blackmarble_head0\d|treasure_pile|piece_xmastree|guard_stone|piece_jackoturnip|piece_Lavalantern|piece_wisplure|cauldron_ext\d_.*|piece_magetable_ext\d?|piece_beehive|bone_stack|wood_yggdrasil_stack|blackmarble_pile|MS_.*|piece_shieldgenerator|piece_bathtub|trophy.*|piece_cookingstation_.*)$/;
 function canon(n) {
   if (F[n]) return n;
   if (ALIAS[n]) return ALIAS[n];
@@ -84,8 +92,9 @@ const chosen = lines.slice(1).map(l => { const v = l.split(','); const o = {}; h
 
 const r2 = v => Math.round(v * 100) / 100;
 const q4 = v => Math.round(v * 4) / 4;
-const stats = { builds: 0, rooms: 0, kept: 0, why: {} };
-const why = k => { stats.why[k] = (stats.why[k] || 0) + 1; };
+const stats = { builds: 0, rooms: 0, kept: 0, why: {}, unk: {}, byKindWhy: {} };
+let curKind = '';
+const why = k => { stats.why[k] = (stats.why[k] || 0) + 1; const kk = curKind + ' ' + k; stats.byKindWhy[kk] = (stats.byKindWhy[kk] || 0) + 1; };
 const templates = [];
 
 function loadBuild(file) {
@@ -97,7 +106,9 @@ function loadBuild(file) {
     const info = P.piece(q.name);
     const furn = !info.structural && info.role !== 'nature' && info.role !== 'misc';
     if (furn && (tilt || scaled)) continue;
-    if (!furn && scaled) continue;
+    // a scaled roof still keeps the rain off: kept for the reader's ceiling (at its unscaled size); other scaled
+    // structure is left out
+    if (!furn && scaled && !/^(roof|roofTop|roofCorner|gable)$/.test(info.role)) continue;
     ps.push({ name: q.name, x: q.x, y: q.y, z: q.z, q: q.q, yaw: pyaw({ q: q.q }), decor: furn || !!canon(q.name), tilt });
   }
   // turn the build so its walls run along the axes
@@ -162,14 +173,19 @@ function mineRoom(build, m, all) {
     if (!near) for (const [dx, dz] of [[0.5, 0], [-0.5, 0], [0, 0.5], [0, -0.5]]) if (m.inside(p.x + dx, p.z + dz)) near = true;
     if (!near) continue;
     if (MODDED.test(p.name)) { modded++; continue; }
-    if (!f) { if (lift < 0.5 && inside && !/^(wood_ledge|raise|paved_road|mud_road|iron_grate)$/.test(p.name)) unknown++; continue; }
+    if (!f) { if (lift < 0.5 && inside && !IGNORE.test(p.name) && !/^(wood_ledge|raise|paved_road|mud_road|iron_grate)$/.test(p.name)) { unknown++; stats.unk[p.name] = (stats.unk[p.name] || 0) + 1; } continue; }
     if (at === 'out') { if (inside) unknown++; continue; }
     items.push({ p, n: cn, f, at, lift, inside });
   }
   if (items.filter(it => it.at !== 'rug' && it.inside).length < 3) return null;
   stats.furnished = (stats.furnished || 0) + 1;
+  const kind0 = classify(items.filter(it => it.inside && it.lift < 0.3).map(it => it.p.name), build.cat, m.area);
+  curKind = kind0;
   if (modded) return why('modded');
-  if (m.covered < 0.6) return why('open');
+  if (m.covered < 0.5) {
+    if (process.env.DBG) { const ab = {}; for (const p of all) if (p.y > m.stand + 1.2 && p.y < m.stand + 12 && m.inside(p.x, p.z)) { const r = P.piece(p.name).role; ab[p.name + '/' + r] = (ab[p.name + '/' + r] || 0) + 1; } console.error('opendbg', curKind, m.area, m.covered.toFixed(2), Object.entries(ab).sort((a, b) => b[1] - a[1]).slice(0, 5).map(x => x.join(':')).join(' ')); }
+    return why('open');
+  }
   // the doors clear: a box the door's width and 1.2 m deep inside each door
   const floorNow = items.filter(it => ['floor', 'wall'].includes(it.at) && it.lift < 0.3 && it.inside)
     .map(it => obox(it.p.x, it.p.z, size(it.n)[0], size(it.n)[2], pyaw(it.p)));
@@ -181,6 +197,25 @@ function mineRoom(build, m, all) {
   if (real.some(d => !clear(d))) return why('door blocked');
   // the main way in: a door, else a clear opening in the walls
   let doors = real.length ? real : m.doors.filter(d => d.w >= 1 && clear(d));
+  // the reader puts an open way in at the middle of the open stretch; a person walks in wherever it is clear, so slide
+  // a 1 m way along every open stretch in the walls (an arch, a doorway with no door) and keep the clear place nearest
+  // its middle
+  const slide = kinds => {
+    const out = [];
+    for (const face of m.faces) for (const run of face.runs) {
+      if (!kinds.includes(run.kind) || run.a1 - run.a0 < 1.0) continue;
+      const mid = (run.a0 + run.a1) / 2;
+      const ts = [];
+      for (let t = run.a0 + 0.5; t <= run.a1 - 0.5 + 1e-6; t += 0.25) ts.push(t);
+      ts.sort((a, b) => Math.abs(a - mid) - Math.abs(b - mid));
+      for (const t of ts) {
+        const d = { x: face.px(t), z: face.pz(t), nx: face.nx, nz: face.nz, w: 1, ht: face.ht, open: true, run: run.a1 - run.a0 };
+        if (clear(d)) { out.push(d); break; }
+      }
+    }
+    return out.sort((a, b) => b.run - a.run);
+  };
+  if (!doors.length) doors = slide(['open']).filter(d => d.ht > 0);
   if (!doors.length && m.stairs.length) {
     // a loft: the way in is the top of the stairs or ladder, facing the middle of the room
     const st = m.stairs[0];
@@ -189,8 +224,10 @@ function mineRoom(build, m, all) {
     const fp = floorNow.some(b => overlap({ ...st.b, hw: st.b.hw + 0.5, hd: st.b.hd + 0.5 }, b, -0.02));
     if (!fp) doors = [{ x: st.b.x, z: st.b.z, nx: ax ? Math.sign(dx) : 0, nz: ax ? 0 : Math.sign(dz), w: 1, ht: 0, stair: true }];
   }
+  // an open side with no wall at all (an open shed, a tent): the clear stretch of the longest
+  if (!doors.length) doors = slide(['open', 'edge']).slice(0, 1);
   if (!doors.length) {
-    if (process.env.DBG) { const ds = all.filter(p => P.piece(p.name).role === 'door' && Math.abs(p.y - m.stand) < 3 && m.cells.some(c => Math.hypot(c.x - p.x, c.z - p.z) < 1.2)); console.error('noway', build.id, m.area, m.doors.length, m.doors.map(d => (d.open ? 'o' : 'r') + d.w.toFixed(1)).join(' '), 'doorpieces', ds.map(p => p.name + '@' + (p.y - m.stand).toFixed(2) + '/' + P.piece(p.name).size.join('x') + '/' + P.piece(p.name).shape).join(' ')); }
+    if (process.env.DBG) { const ds = all.filter(p => P.piece(p.name).role === 'door' && Math.abs(p.y - m.stand) < 3 && m.cells.some(c => Math.hypot(c.x - p.x, c.z - p.z) < 1.2)); console.error('noway', build.id, m.area, m.doors.length, m.doors.map(d => (d.open ? 'o' : 'r') + d.w.toFixed(1) + (clear(d) ? 'c' : 'x') + (d.ht ? 'w' : 'e')).join(' '), 'stairs', m.stairs.length, 'cov', m.covered.toFixed(2), 'doorpieces', ds.map(p => p.name + '@' + (p.y - m.stand).toFixed(2) + '/' + P.piece(p.name).size.join('x') + '/' + P.piece(p.name).shape).join(' ')); }
     return why('no way in');
   }
   const floorish = items.filter(it => ['floor', 'wall', 'rug'].includes(it.at) && it.lift < 0.3 && it.inside);
@@ -200,6 +237,15 @@ function mineRoom(build, m, all) {
   const { d: door, fr } = fr0;
   const W = fr.W, Dp = fr.D;
   if (W < 2 || Dp < 2) return why('thin');
+  // walls at an odd angle to the frame (a wing turned 30 degrees off the rest of the build): the frame's anchors would
+  // be wrong. Walls square to the frame or at 45 degrees (an eight-sided room) are fine.
+  let sqLen = 0, oddLen = 0;
+  for (const fc of m.faces) {
+    if (fc.edge) continue;
+    const a = ((Math.atan2(fc.uz, fc.ux) * 180 / Math.PI) % 90 + 90) % 90;
+    if (Math.min(a, 90 - a) < 8 || Math.abs(a - 45) < 8) sqLen += fc.len; else oddLen += fc.len;
+  }
+  if (oddLen > 0.4 * (sqLen + oddLen)) return why('turned walls');
   // place every piece in the frame
   const recs = [];
   for (const it of items) {
@@ -218,25 +264,51 @@ function mineRoom(build, m, all) {
     recs.push(rec);
   }
   const floor = recs.filter(r => r.kind === 'floor' && r.at !== 'rug');
-  // clean: nothing through anything (seats tucked under a table excepted), nothing through the walls and posts
+  // clean: nothing through anything (seats tucked under a table excepted). Pieces of one kind set in a row (chests side
+  // by side, two tables end to end) may touch a little more, since the sizes are the decorator's and run a little large.
+  // One or two pieces through another are left out (the smaller of each pair); more and the room is skipped.
+  const clips = [];
   for (let i = 0; i < floor.length; i++) for (let j = i + 1; j < floor.length; j++) {
     const a = floor[i], b = floor[j];
     const seatTable = (a.f.cat === 'seat' && b.f.cat === 'table') || (b.f.cat === 'seat' && a.f.cat === 'table');
-    if (overlap(a.b, b.b, seatTable ? -0.4 : -0.15)) return why('clipping');
+    const same = a.f.cat === b.f.cat;
+    if (overlap(a.b, b.b, seatTable ? -0.4 : same ? -0.3 : -0.15)) clips.push([a, b]);
+  }
+  if (clips.length > 2) { if (process.env.DBG) console.error('clipdbg', curKind, clips[0][0].n, clips[0][1].n); return why('clipping'); }
+  for (const [a, b] of clips) {
+    if (a.drop || b.drop) continue;
+    const sm = size(a.n)[0] * size(a.n)[2] < size(b.n)[0] * size(b.n)[2] ? a : b;
+    sm.drop = true; floor.splice(floor.indexOf(sm), 1);
   }
   for (const a of floor) for (const s of m.near(a.p.x, a.p.z, a.b.r + 0.2)) {
     if (s.role === 'floor' || s.role === 'rug' || s.role === 'nature' || s.role === 'beam' || s.role === 'misc' || s.role === 'roof') continue;
     if (s.y1 < m.stand + 0.2 || s.y0 > m.stand + 1.0) continue;
     if (overlap(s.b, a.b, -0.2)) { a.intoWall = true; break; }
   }
-  if (floor.filter(a => a.intoWall).length > 1) return why('into walls');
-  for (const a of floor) if (a.intoWall) { a.drop = true; floor.splice(floor.indexOf(a), 1); break; }
+  if (floor.filter(a => a.intoWall).length > 2) return why('into walls');
+  for (const a of floor.filter(a2 => a2.intoWall)) { a.drop = true; floor.splice(floor.indexOf(a), 1); }
   // big pieces square to the walls (round tables, seats and rugs may sit at an angle)
   const sq = y => { const k = Math.round(y / 90) * 90; return Math.abs(norm(y - k + 180) - 180) < 8; };
-  const askew = floor.filter(r => (['bed', 'storage', 'craft'].includes(r.f.cat) || (r.f.cat === 'table' && !r.f.round) || r.f.long) && !sq(r.yaw));
-  if (askew.length > 1) return why('askew');
-  // a room laid out mostly at an angle reads as scattered
-  if (floor.filter(r => !sq(r.yaw) && !r.f.round).length + recs.filter(r => r.at === 'rug' && !sq(r.yaw)).length > 0.3 * (floor.length + recs.filter(r => r.at === 'rug').length)) return why('askew');
+  // seats in a ring round a fire or a round table face the middle at any angle, and a torch has no front: these are
+  // never askew
+  // A chair pulled out from a table stands at an angle too, and in a round or eight-sided room a chest stands square to
+  // its own wall, which is at an angle to the room's frame.
+  const sq90 = (a, b) => { const d = norm(a - b) % 90; return d < 8 || d > 82; };
+  const wallSquare = r => m.faces.some(fc => {
+    if (fc.edge) return false;
+    const t = r.p.x * fc.ux + r.p.z * fc.uz;
+    if (t < fc.a0 - 0.3 || t > fc.a1 + 0.3) return false;
+    const off = (r.p.x - fc.px(t)) * fc.nx + (r.p.z - fc.pz(t)) * fc.nz;
+    return off > 0 && off < fc.ht + Math.max(size(r.n)[0], size(r.n)[2]) / 2 + 0.6 && sq90(pyaw(r.p), Math.atan2(fc.nx, fc.nz) * 180 / Math.PI);
+  });
+  const ringed = r => r.f.cat === 'light' || wallSquare(r) || (r.f.cat === 'seat' && floor.some(o => (o.f.cat === 'fire' && ptDist(o.b, r.p.x, r.p.z) < 3) || (o.f.cat === 'table' && ptDist(o.b, r.p.x, r.p.z) < (o.f.round ? 1.3 : 1.0))));
+  const askew = floor.filter(r => (['bed', 'storage', 'craft'].includes(r.f.cat) || (r.f.cat === 'table' && !r.f.round) || r.f.long) && !sq(r.yaw) && !ringed(r));
+  if (process.env.DBG && !floor.every(r => sq(r.yaw))) console.error('askewdbg', build.id, m.area, 'floor', floor.length, 'big', askew.map(r => r.n + '@' + Math.round(r.yaw)).join(' '), 'other', floor.filter(r => !sq(r.yaw) && !askew.includes(r)).map(r => r.n + '@' + Math.round(r.yaw)).join(' '));
+  if (askew.length > 2 || (askew.length === 2 && floor.length < 6)) { if (process.env.DBG) console.error('askewskip', curKind, 'big', askew.map(r => r.n + '@' + Math.round(r.yaw)).join(' ')); return why('askew'); }
+  // a room laid out mostly at an angle reads as scattered (seats and rugs set at an angle are a person's choice, and
+  // the template keeps their angle)
+  const fixed = floor.filter(r => r.f.cat !== 'seat' && !r.f.round && !ringed(r));
+  if (fixed.filter(r => !sq(r.yaw)).length > Math.max(1, 0.3 * fixed.length)) { if (process.env.DBG) console.error('askewskip2', curKind, fixed.filter(r => !sq(r.yaw)).map(r => r.n + '@' + Math.round(r.yaw)).join(' ')); return why('askew'); }
   // one askew piece is left out, with what belongs to it
   for (const r of askew) { r.drop = true; floor.splice(floor.indexOf(r), 1); }
   // tops on a table, pots on a fire; otherwise left out
@@ -363,7 +435,27 @@ function mineRoom(build, m, all) {
     fire: fireAt, dens: r2(dens), open: openings, p: out, ...(door.stair ? { stair: 1 } : {}),
   };
   // the signature for near copies: kind, size to the meter, pieces by name and place to the half meter
+  t.key = `${build.id}@${Math.round(m.cx * 2) / 2},${Math.round(m.stand * 2) / 2},${Math.round(m.cz * 2) / 2}`;
   t.sig = `${kind}|${Math.round(W)}x${Math.round(Dp)}|` + order.map(r => `${r.n}@${Math.round(r.u * 2)},${Math.round(r.v * 2)}`).sort().join(';');
+  // the room as built, in the frame, for the pictures in the review sheet (lab/room_pictures.js): floor cells, every
+  // piece within reach of the room from the floor to the ceiling, and which furniture the template keeps
+  if (geoPath) {
+    const yawN = norm(Math.atan2(fr.nx, fr.nz) * 180 / Math.PI);
+    const rq = [0, Math.sin(-yawN * Math.PI / 360), 0, Math.cos(-yawN * Math.PI / 360)];
+    const qmul = (a, b) => [a[3] * b[0] + a[0] * b[3] + a[1] * b[2] - a[2] * b[1], a[3] * b[1] - a[0] * b[2] + a[1] * b[3] + a[2] * b[0],
+      a[3] * b[2] + a[0] * b[1] - a[1] * b[0] + a[2] * b[3], a[3] * b[3] - a[0] * b[0] - a[1] * b[1] - a[2] * b[2]];
+    const keptP = new Set(kept.map(r => r.p)), itemP = new Map(items.map(it => [it.p, it]));
+    const pcs = [];
+    for (const p of all) {
+      const u = fr.u(p.x, p.z) - fr.uc, v = fr.v(p.x, p.z) - fr.v0;
+      if (u < -W / 2 - 1.2 || u > W / 2 + 1.2 || v < -1.2 || v > Dp + 1.2) continue;
+      if (p.y < m.stand - 0.6 || p.y > m.ceiling + 0.3) continue;
+      const it = itemP.get(p);
+      if (p.decor && !it) continue;
+      pcs.push([p.name, r2(u), r2(p.y - m.stand), r2(v), qmul(rq, p.q || [0, 0, 0, 1]).map(x => Math.round(x * 1e4) / 1e4), it ? (keptP.has(p) ? 1 : 2) : 0, it ? it.n : 0]);
+    }
+    t._geo = { area: m.area, cells: m.cells.map(c => [r2(fr.u(c.x, c.z) - fr.uc), r2(fr.v(c.x, c.z) - fr.v0)]), pcs, W: r2(W), D: r2(Dp), doorU: r2(doorU), ceil };
+  }
   stats.kept++;
   templates.push(t);
   return null;
@@ -403,7 +495,23 @@ for (const t of list) {
   t._s = s;
   keep.push(t);
 }
-keep.forEach((t, i) => { t.id = 'RT-' + String(i + 1).padStart(4, '0'); delete t.sig; delete t._s; });
+// IDs stay with their room from one run to the next (Tyler's scores are by ID): a room mined before keeps its ID, a new
+// one takes the next free number
+const oldIds = new Map();
+let nextId = 1;
+try {
+  for (const t of JSON.parse(fs.readFileSync(outPath, 'utf8')).templates) {
+    if (t.key) oldIds.set(t.key, t.id);
+    nextId = Math.max(nextId, +t.id.slice(3) + 1);
+  }
+} catch (e) { /* first run */ }
+if (!oldIds.size) nextId = 1;
+const taken = new Set();
+keep.forEach(t => { const o = oldIds.get(t.key); if (o && !taken.has(o)) { t.id = o; taken.add(o); } });
+keep.forEach(t => { if (!t.id) t.id = 'RT-' + String(nextId++).padStart(4, '0'); });
+keep.sort((a, b) => (a.id < b.id ? -1 : 1));
+keep.forEach(t => { delete t.sig; delete t._s; if (t._geo) geo[t.id] = t._geo; delete t._geo; });
+if (geoPath) fs.writeFileSync(geoPath, JSON.stringify(geo));
 const byKind = {};
 for (const t of keep) byKind[t.kind] = (byKind[t.kind] || 0) + 1;
 const meta = { builds: stats.builds, rooms: stats.rooms, furnished: stats.furnished, clean: stats.kept, templates: keep.length, byKind, skipped: stats.why,
@@ -413,4 +521,6 @@ const meta = { builds: stats.builds, rooms: stats.rooms, furnished: stats.furnis
 const json = '{"meta":' + JSON.stringify(meta) + ',\n"templates":[\n' + keep.map(t => JSON.stringify(t)).join(',\n') + '\n]}\n';
 fs.writeFileSync(outPath, json);
 console.log(JSON.stringify(meta, null, 1));
+if (process.env.DBG) console.error('bykind', JSON.stringify(Object.entries(stats.byKindWhy).filter(x => /^(home|hall|tavern|kitchen|living) /.test(x[0])).sort().map(x => x.join(':'))));
+if (process.env.DBG) console.error('unknown', Object.entries(stats.unk).sort((a, b) => b[1] - a[1]).slice(0, 40).map(x => x.join(':')).join(' '));
 console.log(outPath, (json.length / 1024).toFixed(0), 'KB');

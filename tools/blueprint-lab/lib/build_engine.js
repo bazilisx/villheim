@@ -10,6 +10,11 @@ const code = libs.map(f => `// ---- ${f}\n(function () {\n${fs.readFileSync(path
 const rules = fs.readFileSync(path.join(dir, '../data/rules-lite.json'), 'utf8').trim();
 const scorer = fs.readFileSync(path.join(dir, '../data/scorer.json'), 'utf8').trim();
 const interior = fs.readFileSync(path.join(dir, '../data/interior-lite.json'), 'utf8').trim();
+// room templates (D-058) without what only the lab reads (source, popularity, area, the ID key), and Tyler's weights
+const rooms = JSON.parse(fs.readFileSync(path.join(dir, '../data/room-templates.json'), 'utf8'));
+const roomsLite = JSON.stringify({ templates: rooms.templates.map(t => { const o = { ...t }; delete o.src; delete o.pop; delete o.area; delete o.key; delete o.ceil; delete o.doorW; return o; }) });
+const scoresPath = path.join(dir, '../data/room-scores.json');
+const roomWeights = fs.existsSync(scoresPath) ? JSON.stringify(JSON.parse(fs.readFileSync(scoresPath, 'utf8')).weights) : '{}';
 const text = `// Villheim blueprint lab, bundled for the game. Made by tools/blueprint-lab/lib/build_engine.js; do not edit.
 var window = this;
 ${code}
@@ -17,6 +22,8 @@ ${code}
 window.VH_RULES = ${rules};
 window.VH_SCORER = ${scorer};
 window.VH_INTERIOR = ${interior};
+window.VH_ROOMS = ${roomsLite};
+window.VH_ROOM_WEIGHTS = ${roomWeights};
 VHDecorate.setRules(VH_RULES);
 // ---- entry point for the game: one request, best of 'tries' seeds
 function vhMake(type, biome, culture, stage, words, seed, tries) {
@@ -30,6 +37,10 @@ function vhFloorplan(shape, w, d, room, biome, culture, decor, seed, id, ladder)
 }
 function vhFloorplanSet(n) {
   try { return JSON.stringify(VHFloorplan.set(n)); } catch (e) { return JSON.stringify({ error: String(e && e.message || e) }); }
+}
+// 'vh floorplan template RT-0001 [biome]': one room template laid out as it is, for walking through a scored room
+function vhFloorplanTemplate(id, biome) {
+  try { return JSON.stringify(VHFloorplan.template(id, biome || undefined)); } catch (e) { return JSON.stringify({ error: String(e && e.message || e) }); }
 }
 function vhFloorplanLists() { return JSON.stringify({ shapes: VHFloorplan.SHAPES, rooms: VHFloorplan.ROOMS, catalog: VHFloorplan.CATALOG.length }); }
 function vhLists() {

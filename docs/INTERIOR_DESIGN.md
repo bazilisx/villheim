@@ -129,6 +129,14 @@ one is 0.5 m above its pivot, 370 cases), but `pieces.js` gives it 0.25 m, so fu
 floating. Furniture per design:
 d1 2.7, d2 12.7, d3 21.5 (was 3.0, 9.6, 18.4). Two seeds of the same request share 54 % of their furniture list (was 85 %).
 
+2026-11-09, with room templates and the new extras, on main of that day: every count the same as main or lower (main
+had a blocked door in 2 designs and things floating in 3; here 0 and 1). The one left floating is a dish whose table
+the generator took out after the furnishing (longhouse, Black Forest, s2, seed 175; the step that removes it is not
+traced yet). Furniture per design
+d1 2.8, d2 17.1, d3 30.2.
+Two seeds of the same request share 48 % of their furniture list. Placing now also keeps furniture out of the door
+box on both sides of every door, as the audit measures it.
+
 ## How full rooms are
 
 Pieces per 10 m2 (rugs not counted), median over the sample, before and after the fill, against the corpus.
@@ -146,6 +154,97 @@ Pieces per 10 m2 (rugs not counted), median over the sample, before and after th
 | storage | 2.92 | 3.16 | 1.69 | 2.46 | 4.0 / 7.6 / 10.0 (small store rooms) |
 
 d1 stays at the needs (bed, chest, fire, a station). `node lab/interior_density.js [seeds]` makes this table.
+
+## Room templates (D-058)
+
+Tyler, T-403: interiors looked repetitive and not laid out the way a person would. A room template is the whole
+furniture arrangement of one real room in a well-liked build, which the decorator fits to its own rooms.
+
+- Miner: `lab/mine_room_templates.js` reads every room of the builds in `chosen.csv` with the decorator's own reader
+  and writes `data/room-templates.json`. Each template is in the frame of the room's main way in (u across, v into
+  the room): each piece is tied to a wall (against the left wall, 1 m off the far wall), to the middle, to a share of
+  the room, or to the piece it belongs with (seats round a table, a pot on the fire, a chest at the foot of a bed).
+- Rooms are kept when clean: doors clear, every piece on the floor, a sensible number of pieces for the size, vanilla
+  pieces only (pieces the decorator does not know stand in as the nearest vanilla piece of the same use; statues,
+  trophies, portals and piles are left out). Near copies are dropped, and at most four rooms of one kind per build.
+- 2026-11-09 the miner was loosened where the reader was at fault: an open way in (an arch, a doorway with no door)
+  slides along its stretch to the clear place nearest its middle; seats round a fire or a table, torches and pieces
+  square to their own wall in a round room are never askew; one or two clipping pieces drop out instead of the whole
+  room; scaled roofs count as ceiling. A room whose walls stand at an odd angle to the rest of its build (a wing
+  turned 30 degrees) is skipped, since its anchors would be wrong; walls at 45 degrees (eight-sided rooms) are fine.
+  464 templates (was 213): storage 113, sleeping 100, smithy 48, home 42, workshop 31, hall 30, living 27,
+  tavern 10, kitchen 9, temple 2, other 52. Of 2,810 furnished rooms the rest were skipped: too few pieces 644, no
+  way in 486 (mostly nooks under 15 m2 open on one side), open to the sky 381, askew 156, too sparse 154, thin 92,
+  door blocked 77, turned walls 32, and smaller counts.
+- IDs (RT-0001) stay with their room from one run to the next (a key of the source build and the room's place), so
+  scores in the sheet keep their room. Main's reader changes of 2026-11-09 (stairs, walls on their pivot) move 85 of
+  them, 10 in the first batch; the template file was kept from before those changes until batch 1 is scored.
+- Decorator: a room picks a template of its kind (homes may take a sleeping or living room, halls a tavern), near its
+  size and shape, turned and mirrored so its door is on the room's door wall. The fit score adds log(weight) from
+  Tyler's scores and a seeded draw, so close fits are a weighted lottery. Pieces against a wall stay against that
+  wall, pieces a set gap off a wall keep the gap, centered pieces stay centered. Each piece becomes the nearest piece
+  of the same use that the biome and culture can make (the kit's choice first). The usual tests decide each piece;
+  one that fails moves a little or is left out. A template that loses too much is undone and the next one is tried;
+  a room no template fits is furnished by the rules above. Template rooms are then topped up toward the corpus rate.
+- Use in the check sample (`lab/interior_density.js` requests, 2 seeds): homes 22 of 39 rooms from a template, halls
+  30 of 36, taverns 22 of 36, workshops 40 of 72, storage 17 of 51, smithies 13 of 36, sleeping rooms 4 of 21; 80
+  different templates. Temples and guard towers have no template yet.
+
+### The touches people add
+
+Extras the fill draws from (`EXTRAS` in `decorate.js`), with Tyler's notes from the Floorplans tab applied:
+
+- A bench across the foot of a bed where no chest stands; a bench against a wall 2 to 3 m from the door.
+- A reading corner: a chair in a corner turned to the room, a light beside it, a rug in front.
+- Storage along one wall with a sign over the middle; item stands in rows; banners in pairs (as before).
+- A rug under a table or before a fire that has none.
+- A floor torch at the wall nearest the darkest part of the room, when that is more than 3.5 m from every light.
+- A ring of seats on every side of the fire, in halls of 60 m2 and more only. Tyler, FP-002 and FP-010: no bench
+  beside the fire in homes and taverns.
+- Tyler, FP-003: a table and a bed keep a meter apart; benches sit 1 m from the table's middle line (learned 1.0 m).
+- Tyler's density marks (FP-001 to FP-012) through `lab/floorplan_feedback.js`: halls 0.89, taverns and kitchens
+  1.12 times the corpus rate.
+
+## Scoring rooms
+
+The **Rooms** tab of the review sheet holds rooms from community builds to score. Each row is one template's source
+room, as built.
+
+- Columns: the ID, the plan from above (way in at the bottom, 1 m grid, furniture at true size and colored by use;
+  pieces the template leaves out are dashed; letters on the walls are wall pieces), the source build with its maker
+  and its picture on valheimians, the kind, size, pieces, popularity, the batch, and the current guess.
+- Tyler's columns: **Score 1 to 5** (1 poor, 3 fine, 5 copy it), **Tags** (pick one or type several with commas:
+  natural flow, cozy, cluttered, sparse, odd placement, good lighting, good storage, good seating, bed nook, copy
+  this), **Notes**. A blank score is fine; tags and notes count on their own.
+- Batch 1 is 68 rooms over every kind and size, best-liked builds first, about 20 minutes. The pictures are
+  `docs/rooms/RT-0001.png`, made by `lab/render_rooms.js` with the renderer's true-size top-down plan (`RENDER=lab`,
+  cut at 1.8 m, 50 px to the meter) and labels laid over (they show once the branch is on main). Without
+  `RENDER=lab` the script draws a flat plan of its own.
+- `vh floorplan template RT-0014 [biome]` lays one template out in the game as it is, nothing added (biome default
+  dn, where every piece can be made), to walk through.
+
+After scoring: download the tab (File, Download, CSV) and run `node lab/room_feedback.js rooms.csv`, or a session
+reads the tab with the Sheets tools and writes the same CSV. It writes `data/room-scores.json`:
+
+- Weights: a score of 1 or 2 drops the template, 3 keeps it (1), 4 weights it up (1.5), 5 more (2); "copy this" adds
+  a quarter.
+- A model for the rooms not scored: a ridge regression on room features (pieces per 10 m2, clear depth inside the way
+  in, share of pieces against a wall, groups of furniture and their size, mirror symmetry, lights per 10 m2 and the
+  mean distance to the nearest light, rugs and rugs under tables, the width of the clear way from the door to the
+  middle, free floor, kinds of piece, wall pieces per meter of wall). Its guess sets the weight of every room not
+  scored, never below 0.15, so the model alone never drops a room. With 40 bootstrap refits it says how sure it is.
+- The next batch: the unscored rooms the model is least sure of, spread over the kinds (40 by default). Add them to
+  the tab with `node lab/render_rooms.js` (pictures) and `node lab/rooms_sheet.js` (rows).
+- A summary of what rooms scored 4 or 5 do against rooms scored 1 or 2, which goes in the next section.
+- Then `node lib/build_engine.js` carries the weights into the game.
+
+Until there are scores, every weight is a seed: 3, plus up to half a point for the source build's popularity, and a
+few tenths for each clean-room check (a clear way in as deep as nine builders in ten leave for that kind of room, a
+density in the middle half of the corpus, a clear way through at least 0.9 m wide, a light in the room).
+
+## What high-scored rooms do
+
+No scores yet. This section is filled from the summary `lab/room_feedback.js` prints once batch 1 is scored.
 
 ## Floorplans
 
@@ -183,9 +282,21 @@ node lab/interior_lite.js                          # data/interior.json to data/
 node lab/check_interiors.js lib out.json 3         # the checks; give an older lib dir to compare
 node lab/interior_density.js 3                     # pieces per 10 m2 by room against the corpus
 node lab/floorplan_feedback.js floorplans.csv      # the sheet's Floorplans tab into data/interior-tuning.json
+GEO=/tmp/room-geo.json node lab/mine_room_templates.js <corpus dir> chosen.csv   # room templates, and the rooms as built
+node lab/render_rooms.js /tmp/room-geo.json docs/rooms [RT-0001 ...]           # plan pictures for the Rooms tab
+node lab/room_feedback.js rooms.csv                # the Rooms tab into data/room-scores.json (--first 70 with no scores)
+node lab/rooms_sheet.js <corpus dir> rows.json [batch]                          # the Rooms tab's rows for the next batch
 ```
 
 ## Open
+
+- Batch 1's pictures were drawn with the renderer of feat/renderer at 4636763 (RENDER_LIB pointed at its lib).
+  Once that branch is on main, `RENDER=lab node lab/render_rooms.js` redraws them; the file names stay the same.
+- Halls and taverns at d3 fill to 2.3 to 2.4 pieces per 10 m2 against 3.0 to 3.5 before the templates: the fill stops
+  when its extras run out in big rooms.
+- One tavern template (RT-0035) fits most generated taverns: 18 of the 36 tavern rooms in the sample. More tavern
+  rooms in the corpus, or a score from Tyler, would spread them.
+- Sizes of the oven and the prep table are estimates, not measured.
 
 - Large hand-made builds furnished with `decorateExisting` still show a few blocked doors and bare small rooms.
 - The renderer draws pieces with the sizes in `pieces.js`, so beds and rugs look smaller in the pictures than they are.

@@ -1,0 +1,95 @@
+{
+ "updated": "2026-11-09",
+ "density": {
+  "home": 1,
+  "hall": 0.894,
+  "tavern": 1.118,
+  "kitchen": 1.118
+ },
+ "notes": [
+  {
+   "id": "FP-001",
+   "room": "home",
+   "command": "x",
+   "keep": "Change",
+   "notes": ""
+  },
+  {
+   "id": "FP-002",
+   "room": "home",
+   "command": "x",
+   "keep": "Change",
+   "notes": "Bench not necessary. And this one too similar to 001"
+  },
+  {
+   "id": "FP-003",
+   "room": "home",
+   "command": "x",
+   "keep": "Change",
+   "notes": "log benches too close to the table, table too close to the beds."
+  },
+  {
+   "id": "FP-004",
+   "room": "home",
+   "command": "x",
+   "keep": "Change",
+   "notes": "this ones okay but not compelling. Just a bit boring"
+  },
+  {
+   "id": "FP-005",
+   "room": "sleeping",
+   "command": "x",
+   "keep": "Change",
+   "notes": "fine but boring"
+  },
+  {
+   "id": "FP-006",
+   "room": "sleeping",
+   "command": "x",
+   "keep": "Change",
+   "notes": "odd layout"
+  },
+  {
+   "id": "FP-007",
+   "room": "hall",
+   "command": "x",
+   "keep": "Change",
+   "notes": "fine looking tavern but boring"
+  },
+  {
+   "id": "FP-008",
+   "room": "hall",
+   "command": "x",
+   "keep": "Change",
+   "notes": "dense in the sense of things overlapping but not dense enough in terms of actual things. This one is janky"
+  },
+  {
+   "id": "FP-009",
+   "room": "tavern",
+   "command": "x",
+   "keep": "Change",
+   "notes": ""
+  },
+  {
+   "id": "FP-010",
+   "room": "tavern",
+   "command": "x",
+   "keep": "Change",
+   "notes": "fine but bench not needed next to campfire"
+  },
+  {
+   "id": "FP-011",
+   "room": "kitchen",
+   "command": "x",
+   "keep": "Change",
+   "notes": "fine but boring"
+  },
+  {
+   "id": "FP-012",
+   "room": "kitchen",
+   "command": "x",
+   "keep": "Change",
+   "notes": "fine but boring"
+  }
+ ]
+}

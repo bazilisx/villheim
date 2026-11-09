@@ -791,6 +791,25 @@ function models() {
   }
   return MODELS;
 }
+// Optional local pack of decimated game meshes (Tyler's PC only, never committed): window.VHMeshPack in the offline
+// page, or the file named by VH_MESHPACK in Node. When present, pieces in it are drawn from it; opts.meshes false
+// turns it off.
+let MESHPACK;
+function meshPack() {
+  if (MESHPACK !== undefined) return MESHPACK;
+  MESHPACK = null;
+  try {
+    if (typeof window !== 'undefined' && window.VHMeshPack) MESHPACK = window.VHMeshPack;
+    else if (typeof process !== 'undefined' && process.env && process.env.VH_MESHPACK) {
+      const t = require('fs').readFileSync(process.env.VH_MESHPACK, 'utf8');
+      MESHPACK = JSON.parse(t.slice(t.indexOf('{'), t.lastIndexOf('}') + 1));
+    }
+  } catch (e) {
+    MESHPACK = null;
+  }
+  return MESHPACK;
+}
+
 /** Use other models (or {} for none, to draw the old box shapes). */
 function setModels(m) { MODELS = m ? (m.pieces || m) : {}; MODEL_CACHE.clear(); }
 
@@ -1099,13 +1118,26 @@ function partColor(part, info) {
 
 const MODEL_CACHE = new Map();
 /** The faces of one piece in its own frame, from its model or the old box shapes. */
-function pieceModel(name) {
-  let m = MODEL_CACHE.get(name);
+function pieceModel(name, useMesh) {
+  const key = useMesh ? 'mesh:' + name : name;
+  let m = MODEL_CACHE.get(key);
   if (m) return m;
   const info = Pieces.piece(name);
   const md = models()[name];
+  const mesh = useMesh && meshPack() && meshPack()[name];
   const faces = [];
-  if (md && md.parts && md.parts.length) {
+  if (mesh) {
+    const v = mesh.v, t = mesh.t, c = mesh.c;
+    for (let i = 0, k = 0; i < t.length; i += 3, k++) {
+      const pts = [t[i], t[i + 1], t[i + 2]].map(j => [v[3 * j] / 1000, v[3 * j + 1] / 1000, v[3 * j + 2] / 1000]);
+      const n0 = cross(sub(pts[1], pts[0]), sub(pts[2], pts[0]));
+      if (Math.hypot(n0[0], n0[1], n0[2]) < 1e-9) continue;
+      const n = norm(n0), cc = c[k];
+      const col = [(cc >> 16) / 255, ((cc >> 8) & 255) / 255, (cc & 255) / 255].map(x => Math.min(1, x * 1.35 + 0.05));
+      faces.push({ pts, n, U: [1, 0, 0], V: [0, 1, 0], u0: 0, v0: 0, du: 1, dv: 1, col, pat: 0, part: 0, alpha: 1, closed: false, mesh: true });
+    }
+    m = { name, info, faces, model: true, mesh: true };
+  } else if (md && md.parts && md.parts.length) {
     md.parts.forEach((part, pi) => {
       const col = partColor(part, info), pat = patternFor(info, part, name);
       const alpha = part.m === 'glass' ? 0.5 : 1;
@@ -1126,7 +1158,7 @@ function pieceModel(name) {
     }
     m = { name, info, faces, model: false };
   }
-  MODEL_CACHE.set(name, m);
+  MODEL_CACHE.set(key, m);
   return m;
 }
 
@@ -1156,8 +1188,9 @@ function sceneFaces(pieces, opts = {}) {
   const cut = opts.cut, crop = opts.crop;
   const out = [];
   let id = 0;
+  const useMesh = opts.meshes !== false && !!meshPack();
   for (const p of pieces) {
-    const m = pieceModel(p.name), info = m.info;
+    const m = pieceModel(p.name, useMesh), info = m.info;
     if (opts.hide && opts.hide.includes(info.role)) continue;
     if (cut != null && (ROOF_ROLES.includes(info.role) || /^beam\d/.test(info.shape))) continue;
     // the cut goes through walls, posts, doors and stairs; furniture is drawn whole, or left out when it hangs above
@@ -1183,7 +1216,7 @@ function sceneFaces(pieces, opts = {}) {
       });
       const uv = f.pts.map(pt => [dot(pt, f.U) - f.u0, dot(pt, f.V) - f.v0]);
       const col = tint || f.col;
-      out.push({ cam, wy: w.map(v => v[1]), uv, du: f.du, dv: f.dv, back: facing < 0, clip,
+      out.push({ cam, wy: w.map(v => v[1]), uv, du: f.du, dv: f.dv, back: facing < 0 && !f.mesh, clip, mesh: f.mesh,
         col, k, pat: f.pat, alpha: f.alpha, inst, part: f.part, n, name: p.name });
     }
   }
@@ -1352,6 +1385,7 @@ function draw(ctx, pieces, opts = {}) {
       if (a === b) return false;
       if (a < 0 || b < 0) return true;
       const fa = faces[a], fb = faces[b];
+      if (fa.mesh && fb.mesh && fa.inst === fb.inst) return dot(fa.n, fb.n) < 0.8 && Math.abs(dot(fa.n, fb.n)) < 0.8;
       if (fa.inst !== fb.inst || fa.part !== fb.part) return Math.abs(dep[ia] - dep[ib]) > 0.004 || fa.inst !== fb.inst || dot(fa.n, fb.n) < 0.97;
       return dot(fa.n, fb.n) < 0.9;
     };
@@ -1466,7 +1500,7 @@ const VIEWS = [
   { key: 'inside', az: 35, el: 55, cut: 2.6, label: 'inside, roof off' },
 ];
 
-const api = { polygons, draw, plan, planSize, VIEWS, pieceModel, coverage, setModels, PAT, pattern };
+const api = { polygons, draw, plan, planSize, VIEWS, pieceModel, coverage, setModels, meshPack, PAT, pattern };
 if (typeof module !== 'undefined') module.exports = api;
 else window.VHRender = api;
 

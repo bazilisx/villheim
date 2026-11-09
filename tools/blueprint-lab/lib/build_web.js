@@ -1,4 +1,4 @@
-// Build the one-file request page: node lib/build_web.js <out.html>
+// Build the one-file request page: node lib/build_web.js <out.html> [--meshes villheim-meshes.js]
 // Each library goes in its own function scope; they publish themselves on window.
 const fs = require('fs'), path = require('path');
 const dir = __dirname;
@@ -13,5 +13,12 @@ const rules = fs.readFileSync(path.join(dir, '../data/rules-lite.json'), 'utf8')
 const scorer = fs.readFileSync(path.join(dir, '../data/scorer.json'), 'utf8');
 let html = fs.readFileSync(path.join(dir, '../web/app.html'), 'utf8');
 html = html.replace('/*LIBS*/', () => code).replace('/*RULES*/', () => rules).replace('/*SCORER*/', () => scorer);
+// --meshes <file.js>: the offline copy on Tyler's PC loads a local pack of decimated game meshes from beside the page
+// when the file is there (made by lab/extract_models.py meshpack; never committed or published)
+const mi = process.argv.indexOf('--meshes');
+if (mi > 0 && process.argv[mi + 1]) {
+  const src = process.argv[mi + 1].replace(/[^\w.\-]/g, '');
+  html = html.replace('<script>', () => `<script src="${src}"></script>\n<script>`);
+}
 fs.writeFileSync(process.argv[2], html);
 console.log(process.argv[2], html.length);

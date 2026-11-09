@@ -9,6 +9,12 @@ measurements and the proxy (our own coarse geometry) are written.
     python3 extract_models.py index   <Valheim_Data> <work dir>              # prefab name -> bundle
     python3 extract_models.py run     <Valheim_Data> <work dir> <names.txt> [seconds]
     python3 extract_models.py collect <work dir> <out.json>
+    python3 extract_models.py meshpack <work dir> <out.js>
+
+With VH_MESHES=1 in the environment, 'run' also writes a decimated copy of each piece's meshes (vertices merged on a
+3 cm grid, a color per triangle) to <work dir>/meshes/, and 'meshpack' joins them into one script for the offline
+copy of the lab page. That pack holds game geometry: it stays on Tyler's PC (BepInEx/config/Villheim-tools/) and is
+never committed or published.
 
 'run' does as many pieces as fit in the time given (default 150 s) and skips pieces already done, so it can be called
 again until it reports nothing left. Results go to <work dir>/out/<name>.json.
@@ -604,8 +610,40 @@ def proxy(meshes, max_parts=40):
     return out, len(comps)
 
 
-def do_piece(reader, root, name, path):
+def decimate(meshes, grid=0.03):
+    """Real mesh, merged on a grid: vertices in mm, triangles, one 24-bit color per triangle."""
+    V = np.concatenate([m['V'] for m in meshes])
+    off, Ts, Cs = 0, [], []
+    for m in meshes:
+        Ts.append(m['T'] + off); Cs.append(m['col']); off += len(m['V'])
+    T = np.concatenate(Ts); C = np.concatenate(Cs)
+    key = np.round(V / grid).astype(np.int64)
+    _, first, inv = np.unique(key, axis=0, return_index=True, return_inverse=True)
+    inv = inv.reshape(-1)
+    cnt = np.bincount(inv)
+    P = np.zeros((len(cnt), 3))
+    np.add.at(P, inv, V)
+    P /= cnt[:, None]
+    W = inv[T]
+    ok = (W[:, 0] != W[:, 1]) & (W[:, 1] != W[:, 2]) & (W[:, 0] != W[:, 2])
+    W, C = W[ok], C[ok]
+    srt = np.sort(W, axis=1)
+    _, keep = np.unique(srt, axis=0, return_index=True)
+    keep.sort()
+    W, C = W[keep], C[keep]
+    used = np.unique(W)
+    remap = -np.ones(len(P), np.int64); remap[used] = np.arange(len(used))
+    W = remap[W]; P = P[used]
+    ci = np.clip(np.round(C * 255), 0, 255).astype(np.int64)
+    return {'v': np.round(P * 1000).astype(int).reshape(-1).tolist(), 't': W.reshape(-1).tolist(),
+            'c': (ci[:, 0] * 65536 + ci[:, 1] * 256 + ci[:, 2]).tolist()}
+
+
+def do_piece(reader, root, name, path, work=None):
     meshes, colliders = measure(reader, root)
+    if work and os.environ.get('VH_MESHES') and meshes:
+        os.makedirs(os.path.join(work, 'meshes'), exist_ok=True)
+        json.dump(decimate(meshes), open(os.path.join(work, 'meshes', name + '.json'), 'w'), separators=(',', ':'))
     res = {'name': name, 'path': path, 'colliders': colliders}
     solid = [c for c in colliders if not c['trigger']]
     if solid:
@@ -658,7 +696,7 @@ def run(data_dir, work, names_file, seconds=150):
         json.dump({'name': n, 'path': p, 'error': 'crashed'}, open(os.path.join(outdir, n + '.json'), 'w'))
         try:
             ptr = cont[p]
-            res = do_piece(reader, ptr.read(), n, p)
+            res = do_piece(reader, ptr.read(), n, p, work)
         except Exception as e:
             res = {'name': n, 'path': p, 'error': repr(e)[:300]}
         json.dump(res, open(os.path.join(outdir, n + '.json'), 'w'))
@@ -679,6 +717,18 @@ def collect(work, out):
     print(out, len(res), 'pieces', os.path.getsize(out), 'bytes')
 
 
+def meshpack(work, out):
+    d = os.path.join(work, 'meshes')
+    parts = []
+    for f in sorted(os.listdir(d)):
+        if f.endswith('.json'):
+            parts.append(json.dumps(f[:-5]) + ':' + open(os.path.join(d, f)).read())
+    with open(out, 'w') as fo:
+        fo.write('// Decimated meshes of Valheim pieces for the offline lab page on this PC only. Do not share or commit.\n')
+        fo.write('window.VHMeshPack={' + ','.join(parts) + '};\n')
+    print(out, len(parts), 'pieces', os.path.getsize(out), 'bytes')
+
+
 if __name__ == '__main__':
     cmd = sys.argv[1]
     if cmd == 'index':
@@ -687,3 +737,5 @@ if __name__ == '__main__':
         run(sys.argv[2], sys.argv[3], sys.argv[4], float(sys.argv[5]) if len(sys.argv) > 5 else 150)
     elif cmd == 'collect':
         collect(sys.argv[2], sys.argv[3])
+    elif cmd == 'meshpack':
+        meshpack(sys.argv[2], sys.argv[3])

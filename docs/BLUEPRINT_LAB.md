@@ -191,6 +191,14 @@ const c = createCanvas(width, height);
 R.plan(c.getContext('2d'), pieces, { crop, ppm: 50, margin: 0.3, cut: floorY + 1.8 });
 ```
 
+On Tyler's PC only: `extract_models.py` with `VH_MESHES=1` also keeps a decimated copy of each piece's real meshes
+(vertices merged on a 3 cm grid, a color per triangle) and `meshpack` joins them into
+`BepInEx/config/Villheim-tools/villheim-meshes.js` (685 pieces, 14 MB). The page built with
+`node lib/build_web.js <out.html> --meshes villheim-meshes.js` loads it when it sits beside the page
+(`Villheim-tools/Villheim-Blueprint-Lab-renderer-preview.html`) and draws those pieces from the real meshes; in Node,
+`VH_MESHPACK=<path>` does the same. The pack is never committed or published. On a Meadows home the meshes and the
+proxies cover the same pixels to within 0.2 % in all four views.
+
 Times in Node (2026-11-09): 1600 x 1000 views of 150 to 550 piece designs take 0.5 to 0.8 s each; a 8 x 6 m room plan
 at 50 px per metre 0.1 to 0.3 s. On the request page the main view takes about 0.65 s at two samples and 0.3 s at one
 (headless Chrome); it draws at one while dragging. Old and new pictures: `docs/renderer/`.

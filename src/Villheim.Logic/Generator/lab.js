@@ -857,6 +857,14 @@ function parse(text) {
 
 const f = v => (Math.abs(v) < 1e-6 ? 0 : +v.toFixed(4)).toString();
 
+// An item stand's item goes in the info field as PlanBuild saves it ("Tankard:0:1": item prefab, variant, quality);
+// the mod puts it on the stand and locks it (src/Villheim.Logic/Designs/StandItems.cs).
+function standText(p) {
+  if (!p.item || !/^itemstand/.test(p.name)) return '';
+  const it = typeof p.item === 'string' ? { name: p.item } : p.item;
+  return `${it.name}:${it.variant || 0}:${it.quality || 1}`;
+}
+
 function write(bp) {
   const m = bp.meta || {};
   const out = [`#Name:${m.Name || 'Villheim design'}`, `#Creator:${m.Creator || 'Villheim generator'}`,
@@ -866,7 +874,7 @@ function write(bp) {
   for (const p of bp.pieces) {
     const q = p.q || [0, 0, 0, 1], s = p.s || [1, 1, 1];
     out.push([p.name, p.cat || 'Building', f(p.x), f(p.y), f(p.z), f(q[0]), f(q[1]), f(q[2]), f(q[3]),
-      JSON.stringify(p.info || ''), f(s[0]), f(s[1]), f(s[2])].join(';') + (p.data ? ';' + p.data : ''));
+      JSON.stringify(p.info || standText(p)), f(s[0]), f(s[1]), f(s[2])].join(';') + (p.data ? ';' + p.data : ''));
   }
   return out.join('\n') + '\n';
 }

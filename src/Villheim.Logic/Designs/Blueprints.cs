@@ -672,6 +672,7 @@ namespace Villheim.Logic.Designs
                 DesignSpawner.PlanEntry entry = DesignSpawner.Entry(piece.Prefab, piece.Position, piece.Rotation, piece.Scale);
                 if (entry != null)
                 {
+                    entry.Text = piece.Text;
                     plan.Add(entry);
                 }
             }

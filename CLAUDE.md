@@ -46,10 +46,10 @@ https://en.wikipedia.org/wiki/Wikipedia:Signs_of_AI_writing
 - **ValheimCityBuilder and World Edit (RustyProductions) are CC0** (the authors to Tyler, 2026-11-08). Their code
   may be reused and changed in `src/Villheim.Logic`; note the source file in a comment and credit them in the README.
   The designs they ship (BiomeBlueprints houses, `anno_*` blueprints) stay out. Study notes: `docs/CITYBUILDER_STUDY.md`.
-- **ValheimVillages (myrcutio) and VikingSettlements are CC0** (their LICENSE files, in `Inspiration_v2.zip` on the
-  `inspiration-v2` branch, Tyler 2026-11-10). Same terms: code may be reused in `src/Villheim.Logic` with the source
-  file noted in a comment and a README credit. The four decompiled mods in the same zip (Vikings Village, Living
-  Villages, Living World, Hearthfolk) carry no license in the upload: study only until Tyler confirms theirs.
+- **Every mod in `Inspiration_v2.zip` is CC0** (`inspiration-v2` branch: ValheimVillages, VikingSettlements, Vikings
+  Village, Living Villages, Living World, Hearthfolk; Tyler 2026-11-10, D-095). Same terms: code may be reused in
+  `src/Villheim.Logic` with the source file noted in a comment and a README credit. Innangard in `Inspiration.zip` on
+  main stays study only until D-097 is answered.
 - **One village per site.** Each village is one primary village plus resource outposts. No daughter villages.
   Villagers never move away and elders do not die of age. Growth is never capped by bosses felled; it follows
   materials, people and needs (D-003, D-004, D-010).

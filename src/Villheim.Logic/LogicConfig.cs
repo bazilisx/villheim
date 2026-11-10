@@ -1288,7 +1288,7 @@ namespace Villheim.Logic
                 "fine wood, core wood and stone are paid, as before.");
             ClearPlotsByHand = Admin(config, test, "ClearPlotsByHand", true,
                 "D-087: before a building goes up, the builders clear its plot themselves, one thing at a time: ruins and " +
-                "the village's own fence taken down (all materials to the chest, D-088), trees felled, rocks broken, plants " +
+                "the village's own fence taken down (all of a ruin's materials to the chest, D-088; half of the fence's), trees felled, rocks broken, plants " +
                 "picked, with the right tool. Off: the plot is cleared at once when ground is broken, as before.");
             StatusLineSeconds = Admin(config, test, "StatusLineSeconds", 60f,
                 "Every this many seconds, one 'Village status' line per loaded village in the log: buildings, the site and " +

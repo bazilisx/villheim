@@ -997,7 +997,7 @@ namespace Villheim.Logic.Village
         }
 
         /// <summary>
-        /// Takes down one piece of the old building and puts its materials back in the chest (all of them, D-088). When nothing is
+        /// Takes down one piece of the old building and puts half its materials back in the chest (D-035). When nothing is
         /// left, the ground is prepared for the new building and the build starts.
         /// </summary>
         private static bool TakeDownNext(VillageHearth hearth, VillageState state, Site site)
@@ -1024,8 +1024,8 @@ namespace Villheim.Logic.Village
             Container chest = VillageChest.Find(hearth);
             foreach (KeyValuePair<string, int> cost in DesignSpawner.RecipeCost(old.gameObject))
             {
-                // All of it back, as a player gets when he takes his own piece down (D-088).
-                int back = cost.Value;
+                // Half back on an upgrade (D-035). D-088's whole recipe is for ruins only.
+                int back = cost.Value / 2;
                 if (back <= 0)
                 {
                     continue;

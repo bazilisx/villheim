@@ -94,7 +94,8 @@ namespace Villheim.Logic.Village
 
         /// <summary>
         /// Clears a plot before ground is broken: trees, stumps, logs, bushes and rocks go (as before), the village's own
-        /// ring fence comes down, and old ruins on the plot are taken down with all their materials put in the chest (D-088).
+        /// ring fence comes down (half its materials back), and old ruins on the plot are taken down with all their materials
+        /// put in the chest (D-088).
         /// </summary>
         public static void ClearPlot(VillageHearth hearth, Foot foot)
         {
@@ -147,11 +148,12 @@ namespace Villheim.Logic.Village
 
                 foreach (KeyValuePair<string, int> c in DesignSpawner.RecipeCost(piece.gameObject))
                 {
-                    // All of it, as a player gets (D-088).
-                    if (chest != null && c.Value > 0)
+                    // A ruin gives all of it, as a player gets (D-088); the village's own fence half, as before.
+                    int back = own ? c.Value / 2 : c.Value;
+                    if (chest != null && back > 0)
                     {
-                        VillageChest.Add(chest, c.Key, c.Value);
-                        gained[c.Key] = (gained.TryGetValue(c.Key, out int had) ? had : 0) + c.Value;
+                        VillageChest.Add(chest, c.Key, back);
+                        gained[c.Key] = (gained.TryGetValue(c.Key, out int had) ? had : 0) + back;
                     }
                 }
 
@@ -246,7 +248,8 @@ namespace Villheim.Logic.Village
         }
 
         /// <summary>
-        /// Takes one thing off a plot after the villager's work on it: what it gives (a piece's whole recipe, a tree's
+        /// Takes one thing off a plot after the villager's work on it: what it gives (a ruin piece's whole recipe, a fence
+        /// piece's half, a tree's
         /// wood with its log's, a rock's stone, a plant's crop) goes to the chest, or to the village's stock when the
         /// chest is full.
         /// </summary>
@@ -281,13 +284,15 @@ namespace Villheim.Logic.Village
             Piece piece = target.GetComponent<Piece>();
             if (piece != null)
             {
+                // A ruin gives its whole recipe (D-088); the village's own fence half, as when it comes down elsewhere.
+                bool own = PlotFinder.OwnFence(target, hearth.VillageId);
                 foreach (KeyValuePair<string, int> c in DesignSpawner.RecipeCost(target))
                 {
-                    Add(c.Key, c.Value);
+                    Add(c.Key, own ? c.Value / 2 : c.Value);
                 }
 
                 effect = target.GetComponent<WearNTear>()?.m_destroyedEffect;
-                if (PlotFinder.OwnFence(target, hearth.VillageId))
+                if (own)
                 {
                     Palisade.Forget(hearth.VillageId);
                 }

@@ -94,8 +94,8 @@ namespace Villheim.Logic.Village
 
         /// <summary>
         /// Clears a plot before ground is broken: trees, stumps, logs, bushes and rocks go (as before), the village's own
-        /// ring fence comes down (half its materials back), and old ruins on the plot are taken down with all their materials
-        /// put in the chest (D-088).
+        /// ring fence and old ruins on the plot come down, and everything taken down gives all its materials to the
+        /// village (D-088).
         /// </summary>
         public static void ClearPlot(VillageHearth hearth, Foot foot)
         {
@@ -124,8 +124,7 @@ namespace Villheim.Logic.Village
                     continue;
                 }
 
-                view.ClaimOwnership();
-                ZNetScene.instance.Destroy(go);
+                Refund.TakeDown(hearth, go, false); // what it gives goes to the village (D-088)
             }
 
             var pieces = new List<Piece>();
@@ -146,19 +145,12 @@ namespace Villheim.Logic.Village
                     continue;
                 }
 
-                foreach (KeyValuePair<string, int> c in DesignSpawner.RecipeCost(piece.gameObject))
+                // All of its materials to the village, ruin or fence (D-088).
+                foreach (KeyValuePair<string, int> c in Refund.TakeDown(hearth, piece.gameObject))
                 {
-                    // A ruin gives all of it, as a player gets (D-088); the village's own fence half, as before.
-                    int back = own ? c.Value / 2 : c.Value;
-                    if (chest != null && back > 0)
-                    {
-                        VillageChest.Add(chest, c.Key, back);
-                        gained[c.Key] = (gained.TryGetValue(c.Key, out int had) ? had : 0) + back;
-                    }
+                    gained[c.Key] = (gained.TryGetValue(c.Key, out int had) ? had : 0) + c.Value;
                 }
 
-                piece.m_nview.ClaimOwnership();
-                ZNetScene.instance.Destroy(piece.gameObject);
                 if (own) fence++; else ruins++;
             }
 
@@ -248,119 +240,20 @@ namespace Villheim.Logic.Village
         }
 
         /// <summary>
-        /// Takes one thing off a plot after the villager's work on it: what it gives (a ruin piece's whole recipe, a fence
-        /// piece's half, a tree's
-        /// wood with its log's, a rock's stone, a plant's crop) goes to the chest, or to the village's stock when the
-        /// chest is full.
+        /// Takes one thing off a plot after the villager's work on it. Everything it gives goes to the village (Refund,
+        /// D-088): all of a piece's materials, a tree's wood with its log's, a rock's stone, a plant's crop.
         /// </summary>
         public static void TakeAway(VillageHearth hearth, VillageState state, GameObject target)
         {
-            var gives = new Dictionary<string, int>();
-            void Add(string item, int amount)
-            {
-                if (!string.IsNullOrEmpty(item) && amount > 0)
-                {
-                    gives[item] = (gives.TryGetValue(item, out int had) ? had : 0) + amount;
-                }
-            }
-
-            void Roll(DropTable table, int times = 1)
-            {
-                if (table == null)
-                {
-                    return;
-                }
-
-                for (int i = 0; i < Mathf.Clamp(times, 1, 12); i++)
-                {
-                    foreach (GameObject drop in table.GetDropList())
-                    {
-                        Add(drop != null ? drop.name : null, 1);
-                    }
-                }
-            }
-
-            EffectList effect = null;
-            Piece piece = target.GetComponent<Piece>();
-            if (piece != null)
-            {
-                // A ruin gives its whole recipe (D-088); the village's own fence half, as when it comes down elsewhere.
-                bool own = PlotFinder.OwnFence(target, hearth.VillageId);
-                foreach (KeyValuePair<string, int> c in DesignSpawner.RecipeCost(target))
-                {
-                    Add(c.Key, own ? c.Value / 2 : c.Value);
-                }
-
-                effect = target.GetComponent<WearNTear>()?.m_destroyedEffect;
-                if (own)
-                {
-                    Palisade.Forget(hearth.VillageId);
-                }
-            }
-            else if (target.TryGetComponent(out TreeBase tree))
-            {
-                Roll(tree.m_dropWhenDestroyed);
-                TreeLog log = tree.m_logPrefab != null ? tree.m_logPrefab.GetComponent<TreeLog>() : null;
-                for (int depth = 0; log != null && depth < 3; depth++)
-                {
-                    Roll(log.m_dropWhenDestroyed);
-                    TreeLog sub = log.m_subLogPrefab != null ? log.m_subLogPrefab.GetComponent<TreeLog>() : null;
-                    if (sub != null)
-                    {
-                        Roll(sub.m_dropWhenDestroyed, Mathf.Max(1, log.m_subLogPoints.Length) - 1);
-                    }
-
-                    log = sub;
-                }
-
-                effect = tree.m_destroyedEffect;
-            }
-            else if (target.TryGetComponent(out TreeLog loose))
-            {
-                Roll(loose.m_dropWhenDestroyed);
-                effect = loose.m_destroyedEffect;
-            }
-            else if (target.TryGetComponent(out MineRock5 big))
-            {
-                Roll(big.m_dropItems, big.m_hitAreas != null ? big.m_hitAreas.Count : 1);
-                effect = big.m_destroyedEffect;
-            }
-            else if (target.TryGetComponent(out MineRock rock))
-            {
-                Roll(rock.m_dropItems);
-                effect = rock.m_destroyedEffect;
-            }
-            else if (target.TryGetComponent(out Pickable plant))
-            {
-                Add(plant.m_itemPrefab != null ? plant.m_itemPrefab.name : null, plant.m_amount);
-            }
-            else if (target.TryGetComponent(out Destructible thing))
-            {
-                Roll(target.GetComponent<DropOnDestroyed>()?.m_dropWhenDestroyed);
-                effect = thing.m_destroyedEffect;
-            }
-
-            Container chest = VillageChest.Find(hearth);
-            foreach (KeyValuePair<string, int> give in gives)
-            {
-                int left = give.Value - (chest != null ? VillageChest.Add(chest, give.Key, give.Value) : 0);
-                if (left > 0 && Materials.Tracked.Contains(give.Key))
-                {
-                    state.Add(give.Key, left);
-                }
-            }
-
+            bool own = target.GetComponent<Piece>() != null && PlotFinder.OwnFence(target, hearth.VillageId);
             string what = Utils.GetPrefabName(target);
-            effect?.Create(target.transform.position, target.transform.rotation);
-            ZNetView view = target.GetComponent<ZNetView>();
-            if (view != null && view.IsValid())
+            Dictionary<string, int> gives = Refund.TakeDown(hearth, target);
+            if (own)
             {
-                view.ClaimOwnership();
-                ZNetScene.instance.Destroy(target);
+                Palisade.Forget(hearth.VillageId);
             }
 
-            Perf.Debug($"{hearth.VillageName}: took {what} off the plot" +
-                       (gives.Count > 0 ? " (" + string.Join(", ", gives.Select(g => $"{g.Value} {g.Key}")) + ")" : "") + ".");
+            Perf.Debug($"{hearth.VillageName}: took {what} off the plot ({Refund.Describe(gives)} to the village).");
         }
     }
 }

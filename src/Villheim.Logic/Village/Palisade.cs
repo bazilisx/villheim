@@ -14,7 +14,7 @@ namespace Villheim.Logic.Village
     /// - Gates in the stake wall: where a path crosses, a pair of wood gates side by side, hung from opposite sides, on
     ///   the ground (not sunk). The ring pieces next to them are left out.
     /// - The ring sits a few metres outside the furthest building and skips water, buildings and steep ground. When
-    ///   buildings go up beyond it, the old ring comes down (half the materials back) and a wider one goes up.
+    ///   buildings go up beyond it, the old ring comes down (all its materials back, D-088) and a wider one goes up.
     /// - Pens come before the ring (Farms.PenSegments): a farm's animals only come once their pen is closed.
     /// - Every piece is a builder's job (Villagers.Repairs), paid from the village chest after the building going up
     ///   has what it needs. Nothing appears by itself.
@@ -80,8 +80,7 @@ namespace Villheim.Logic.Village
         public static void Forget(int villageId) => Cache.Remove(villageId);
 
         /// <summary>
-        /// Takes down the village's ring fence where a building is about to go up (half the materials back, as for an
-        /// outgrown ring). The ring is laid again round the bigger village afterwards.
+        /// Takes down the village's ring fence where a building is about to go up (all its materials back, D-088). The ring is laid again round the bigger village afterwards.
         /// </summary>
         public static void ClearFor(VillageHearth hearth, Vector3 position, float radius)
         {
@@ -96,16 +95,7 @@ namespace Villheim.Logic.Village
                     continue;
                 }
 
-                foreach (KeyValuePair<string, int> c in DesignSpawner.RecipeCost(piece.gameObject))
-                {
-                    if (chest != null && c.Value / 2 > 0)
-                    {
-                        VillageChest.Add(chest, c.Key, c.Value / 2);
-                    }
-                }
-
-                piece.m_nview.ClaimOwnership();
-                ZNetScene.instance.Destroy(piece.gameObject);
+                Refund.TakeDown(hearth, piece.gameObject); // all its materials back (D-088)
                 removed++;
             }
 
@@ -329,7 +319,7 @@ namespace Villheim.Logic.Village
                                               p.m_nview.GetZDO().GetInt(KeyPen) == 0);
         }
 
-        /// <summary>Puts the segment up (paid from the chest) or takes the outgrown piece down (half back).</summary>
+        /// <summary>Puts the segment up (paid from the chest) or takes the outgrown piece down (all its materials back, D-088).</summary>
         public static void Build(VillageHearth hearth, Segment segment)
         {
             Forget(hearth.VillageId);
@@ -337,16 +327,7 @@ namespace Villheim.Logic.Village
             Container chest = VillageChest.Find(hearth);
             if (segment.Remove != null)
             {
-                foreach (KeyValuePair<string, int> c in DesignSpawner.RecipeCost(segment.Remove.gameObject))
-                {
-                    if (chest != null && c.Value / 2 > 0)
-                    {
-                        VillageChest.Add(chest, c.Key, c.Value / 2);
-                    }
-                }
-
-                segment.Remove.m_nview.ClaimOwnership();
-                ZNetScene.instance.Destroy(segment.Remove.gameObject);
+                Refund.TakeDown(hearth, segment.Remove.gameObject); // all its materials back (D-088)
                 return;
             }
 

@@ -261,19 +261,9 @@ namespace Villheim.Logic.Village
                 return;
             }
 
-            GameObject prefab = ZNetScene.instance.GetPrefab(SignPrefab);
-            if (prefab != null && Amenities.Buildable(prefab, state.Biome, out Dictionary<string, int> cost, true))
-            {
-                foreach (KeyValuePair<string, int> part in cost)
-                {
-                    state.Add(part.Key, part.Value);
-                }
-            }
-
             VillageSigns.Remove(hearth.VillageId);
             QuietUntil.Remove(hearth.VillageId);
-            view.ClaimOwnership();
-            ZNetScene.instance.Destroy(sign.gameObject);
+            Refund.TakeDown(hearth, sign.gameObject, false); // all its materials back (D-088)
             VillheimPlugin.Log.LogInfo($"{state.Name} took down a house sign on the {plot.Design} that nobody needs now.");
         }
 

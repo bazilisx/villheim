@@ -35,7 +35,7 @@ namespace Villheim.Logic.Village
             Container chest = VillageChest.Find(hearth);
 
             // Each step on its own, so one that fails can't skip the others; a failure goes to the log.
-            Step("clearing trees, rocks and bushes", () => ClearAround(center, ClearRadius));
+            Step("clearing trees, rocks and bushes", () => ClearAround(center, ClearRadius, hearth));
             // The hearth's own pad: not held back by the guard that keeps other edits off a hearth's flat ground.
             Step("leveling the ground", () => TerrainShaper.LevelPad(at, LevelRadius, LevelRadius + 4f, 16f, false));
             Step("setting the hearth on the new ground", () => SetOnGround(hearth, chest, level));
@@ -197,7 +197,7 @@ namespace Villheim.Logic.Village
         /// objects (not colliders, which missed small stones). Pieces, creatures, dropped items and the village's own
         /// things are never touched.
         /// </summary>
-        public static void ClearAround(Vector3 center, float radius)
+        public static void ClearAround(Vector3 center, float radius, VillageHearth hearth = null)
         {
             var doomed = new System.Collections.Generic.List<ZNetView>();
             foreach (ZNetView view in ZNetScene.instance.m_instances.Values)
@@ -223,6 +223,12 @@ namespace Villheim.Logic.Village
 
             foreach (ZNetView view in doomed)
             {
+                if (hearth != null)
+                {
+                    Refund.TakeDown(hearth, view.gameObject, false); // a village's ground: what it gives goes in (D-088)
+                    continue;
+                }
+
                 view.ClaimOwnership();
                 ZNetScene.instance.Destroy(view.gameObject);
             }

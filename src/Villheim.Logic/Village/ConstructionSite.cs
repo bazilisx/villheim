@@ -997,7 +997,7 @@ namespace Villheim.Logic.Village
         }
 
         /// <summary>
-        /// Takes down one piece of the old building and puts half its materials back in the chest (D-035). When nothing is
+        /// Takes down one piece of the old building and puts all its materials back in the chest (D-088). When nothing is
         /// left, the ground is prepared for the new building and the build starts.
         /// </summary>
         private static bool TakeDownNext(VillageHearth hearth, VillageState state, Site site)
@@ -1021,27 +1021,8 @@ namespace Villheim.Logic.Village
                 return true;
             }
 
-            Container chest = VillageChest.Find(hearth);
-            foreach (KeyValuePair<string, int> cost in DesignSpawner.RecipeCost(old.gameObject))
-            {
-                // Half back on an upgrade (D-035). D-088's whole recipe is for ruins only.
-                int back = cost.Value / 2;
-                if (back <= 0)
-                {
-                    continue;
-                }
-
-                int left = back - (chest != null ? VillageChest.Add(chest, cost.Key, back) : 0);
-                if (left > 0)
-                {
-                    state.Add(cost.Key, left);
-                }
-            }
-
-            WearNTear wear = old.GetComponent<WearNTear>();
-            wear?.m_destroyedEffect?.Create(old.transform.position, old.transform.rotation, old.transform);
-            old.m_nview.ClaimOwnership();
-            ZNetScene.instance.Destroy(old.gameObject);
+            // All of its materials back to the village, as a player gets (D-088).
+            Refund.TakeDown(hearth, old.gameObject);
             return true;
         }
 
@@ -1378,7 +1359,7 @@ namespace Villheim.Logic.Village
             Site site = Get(hearth.Zdo);
             VillheimPlugin.Log.LogInfo($"Ground for the {site?.Design ?? "building"} levelled at {floor.y:0.00} " +
                                        $"({floor.y - position.y:+0.00;-0.00} from its origin), out to {footprint + 1.5f:0.0} m.");
-            HearthGround.ClearAround(position, footprint + 3f);
+            HearthGround.ClearAround(position, footprint + 3f, hearth);
             // On a slope the blend back to the ground widens with the height to make up, so the pad's edge is a bank a
             // villager can walk (about 1 in 2.5) and not a step or a cliff (Tyler, T-57: stepped tiers on slopes).
             float rise = 0f;

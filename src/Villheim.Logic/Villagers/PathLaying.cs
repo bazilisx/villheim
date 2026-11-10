@@ -256,8 +256,7 @@ namespace Villheim.Logic.Villagers
                                 break;
                             }
 
-                            view.ClaimOwnership();
-                            ZNetScene.instance.Destroy(clutter);
+                            Refund.TakeDown(hearth, clutter, false); // what it gives goes to the village (D-088)
                         }
                     }
 

@@ -487,16 +487,7 @@ namespace Villheim.Logic.Village
 
             foreach (ZNetView view in doomed)
             {
-                foreach (KeyValuePair<string, int> cost in DesignSpawner.RecipeCost(view.gameObject))
-                {
-                    if (Materials.Tracked.Contains(cost.Key))
-                    {
-                        state.Add(cost.Key, cost.Value);
-                    }
-                }
-
-                view.ClaimOwnership();
-                ZNetScene.instance.Destroy(view.gameObject);
+                Refund.TakeDown(hearth, view.gameObject, false); // all its materials back (D-088)
                 pieces++;
             }
 
@@ -524,8 +515,7 @@ namespace Villheim.Logic.Village
 
             foreach (ZNetView view in old)
             {
-                view.ClaimOwnership();
-                ZNetScene.instance.Destroy(view.gameObject);
+                Refund.TakeDown(hearth, view.gameObject, false); // its materials back (D-088)
             }
         }
 

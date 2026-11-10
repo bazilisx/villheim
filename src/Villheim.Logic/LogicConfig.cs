@@ -455,7 +455,7 @@ namespace Villheim.Logic
                 "round it. Smaller rocks, and every tree, stump, log and bush, are cleared off a plot.");
             ClearRuins = Admin(config, work, "ClearRuins", true,
                 "Villagers take down the game's own small ruins (lean-tos, ruined huts and houses) that stand on a plot " +
-                "and keep half the materials. A player's pieces are never touched.");
+                "and keep all their materials (D-088). A player's pieces are never touched.");
             RuinMaxRadius = Admin(config, work, "RuinMaxRadius", 30f,
                 "With ClearRuins: only places up to this radius count as small ruins.");
             ProtectedPlaces = Admin(config, work, "ProtectedPlaces",
@@ -1288,7 +1288,7 @@ namespace Villheim.Logic
                 "fine wood, core wood and stone are paid, as before.");
             ClearPlotsByHand = Admin(config, test, "ClearPlotsByHand", true,
                 "D-087: before a building goes up, the builders clear its plot themselves, one thing at a time: ruins and " +
-                "the village's own fence taken down (all of a ruin's materials to the chest, D-088; half of the fence's), trees felled, rocks broken, plants " +
+                "the village's own fence taken down (all their materials to the chest, D-088), trees felled, rocks broken, plants " +
                 "picked, with the right tool. Off: the plot is cleared at once when ground is broken, as before.");
             StatusLineSeconds = Admin(config, test, "StatusLineSeconds", 60f,
                 "Every this many seconds, one 'Village status' line per loaded village in the log: buildings, the site and " +

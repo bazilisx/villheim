@@ -428,13 +428,12 @@ namespace Villheim.Logic.Village
                     ZNetView view = collider.GetComponentInParent<ZNetView>();
                     if (view != null && view.IsValid() && view.GetComponent<Sign>() != null && view.GetZDO().GetInt(KeySign) == state.Id)
                     {
-                        view.ClaimOwnership();
-                        ZNetScene.instance.Destroy(view.gameObject);
+                        Refund.TakeDown(hearth, view.gameObject, false); // its materials back (D-088)
                     }
                 }
 
                 VillheimPlugin.Log.LogInfo($"{state.Name}: the {Label(kind)} chest by the hearth moved into the storehouse.");
-                ZNetScene.instance.Destroy(old.gameObject);
+                Refund.TakeDown(hearth, old.gameObject, false); // its materials back (D-088)
             }
 
             // The storehouse's other chests take the kinds still missing, in the usual order.

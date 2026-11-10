@@ -2,7 +2,7 @@ const Q=require(process.cwd()+'/lib/request.js'),sc=require(process.cwd()+'/data
 const lines=[['home-a','home','house',101],['home-b','home','house',202],['home-c','home','house',303],['hall','longhouse','hub',11],['woodworker','sawmill','workshop',21],['smithy','smithy','workshop',22],['farm','farm','farm',31],['barn','barn','farm',32],['storehouse','storage','storage',41]];
 // Writes the Norse Meadows test pool (81 designs, same files as 'vh testpool make') in about 30 s.
 // Usage, from tools/blueprint-lab: node lab/make_testpool.js [out folder]; copy the folder into the game's blueprints folder.
-const out=process.argv[2]||'out/testpool-norse';let n=0,bad=[];const t0=Date.now();
+const out=process.argv[2]||'out/testpool-norse';fs.mkdirSync(out,{recursive:true});let n=0,bad=[];const t0=Date.now();
 for(const [name,type,role,seed] of lines)for(let s=1;s<=3;s++)for(let d=1;d<=3;d++){
  const r=Q.make({type,biome:'Meadows',culture:'norse',stage:'s'+s,decor:'d'+d,seed,tries:1},sc);
  if(!r.blueprint){bad.push(name+s+d);continue}

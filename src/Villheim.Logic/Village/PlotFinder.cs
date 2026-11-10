@@ -48,14 +48,45 @@ namespace Villheim.Logic.Village
             }
         }
 
+        /// <summary>
+        /// A spot in the building's own ring first. With no room there, the ring after it, and so on out to twice the
+        /// village radius: a village grows outward and never stops for want of room (Tyler, 2026-11-09, D-079).
+        /// </summary>
         public static bool TryFind(Vector3 hearth, float axisYaw, Role role, bool strictHub, float radius, float maxTerrainDelta,
             IReadOnlyList<Plot> plots, System.Random rng, out Vector3 position, out float yaw, HashSet<Vector2Int> network = null,
             VillageHearth village = null, float doorAngle = 0f)
         {
-            float villageRadius = VillheimConfig.VillageRadius.Value;
+            float inner = 0f;
+            foreach (float reach in new[] { 1f, 1.35f, 1.7f, 2f })
+            {
+                if (TryFindIn(hearth, axisYaw, role, strictHub && reach == 1f, radius, maxTerrainDelta, plots, rng, out position, out yaw,
+                        network, village, doorAngle, reach, inner, out float outer))
+                {
+                    if (reach > 1f)
+                    {
+                        VillheimPlugin.Log.LogInfo($"A {role} found room farther out, {Utils.DistanceXZ(position, hearth):0} m from the hearth.");
+                    }
+
+                    return true;
+                }
+
+                inner = outer - radius; // the next ring starts where this one ended
+            }
+
+            position = Vector3.zero;
+            yaw = 0f;
+            return false;
+        }
+
+        private static bool TryFindIn(Vector3 hearth, float axisYaw, Role role, bool strictHub, float radius, float maxTerrainDelta,
+            IReadOnlyList<Plot> plots, System.Random rng, out Vector3 position, out float yaw, HashSet<Vector2Int> network,
+            VillageHearth village, float doorAngle, float reach, float inner, out float outer)
+        {
+            float villageRadius = VillheimConfig.VillageRadius.Value * reach;
             Band(role, out float minShare, out float maxShare);
             float maxDistance = Mathf.Min(villageRadius, villageRadius * maxShare + radius * 0.5f);
-            float minDistance = Mathf.Max(radius + HearthClearance, villageRadius * minShare);
+            outer = maxDistance;
+            float minDistance = Mathf.Max(Mathf.Max(radius + HearthClearance, villageRadius * minShare), inner);
             if (minDistance > maxDistance - GridStep)
             {
                 // A big design in a small band: let it sit as close as it fits.
@@ -251,7 +282,7 @@ namespace Villheim.Logic.Village
         /// </summary>
         public static bool CanUpgrade(Plot plot, float radius, Vector3 hearth, float axisYaw, IReadOnlyList<Plot> plots, int villageId)
         {
-            if (Utils.DistanceXZ(plot.Position, hearth) + radius * 0.5f > VillheimConfig.VillageRadius.Value ||
+            if (Utils.DistanceXZ(plot.Position, hearth) + radius * 0.5f > VillheimConfig.VillageRadius.Value * 2f ||
                 Utils.DistanceXZ(plot.Position, hearth) < radius * 0.6f + HearthClearance)
             {
                 return false;

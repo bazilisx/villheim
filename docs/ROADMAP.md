@@ -248,6 +248,10 @@ well (Tyler, 2026-11-08). The Features tab of the review sheet (`docs/features/b
       arches (check `stone_arch` in the game first), stone paving outside, taller and larger s3 buildings, door
       lights on octagon plans, better proxies for roof corners and carvings, the middle-eastern court tavern fire,
       the two middle-eastern temples.
+- [ ] **From the first test pool test (2026-11-09 Session 3), do first:** benches on tables in game; bed through a
+  wall gap; outside benches and logs clipping walls; storehouse chests clipping and stair foot above ground; chests
+  around the hearth move into the storehouse once built; hunters find game farther out or go on trips (D-078); growth
+  stalls on "nowhere to put a home". Done: hearth kept clear, pool-only stand-ins, item stands at decor (df075f7).
 - [ ] **Next test build (Tyler, 2026-11-09), do first:**
   1. [done 2026-11-09, not tried in the game] Beds: every villager gets a bed, the bed shows his name as a player's claimed bed does, villagers sleep in their
      beds, and village beds cannot be claimed by players (today beds show "unassigned, claim bed" and nobody uses them).

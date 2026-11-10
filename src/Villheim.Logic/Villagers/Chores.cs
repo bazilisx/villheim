@@ -459,6 +459,14 @@ namespace Villheim.Logic.Villagers
                 return;
             }
 
+            // An essential the builder has not got to (beds, the cooking station, the notice board, a full chest's
+            // spare) is made by someone else after a while (2026-11-09: Fjallseter waited on its board while its only
+            // builder was out and Erling had nothing to do).
+            if (!builder && HelperMakes(villager, work))
+            {
+                return;
+            }
+
             if (needs.Missing.Count == 0)
             {
                 if (!TryClear(villager, work, needs, false) && !TryTidy(villager, work))
@@ -1652,6 +1660,54 @@ namespace Villheim.Logic.Villagers
         public static bool BuilderMakes(int villageId) =>
             Builders.TryGetValue(villageId, out var cached) && Time.time - cached.Time < 10f && cached.Builder != ZDOID.None;
 
+        private static readonly Dictionary<int, (string Job, float Since)> EssentialWaiting = new Dictionary<int, (string, float)>();
+        private static readonly Dictionary<int, (ZDOID Maker, float Until)> HelperMaking = new Dictionary<int, (ZDOID, float)>();
+
+        /// <summary>One helper at a time makes an essential that has waited 90 s for the builder.</summary>
+        private static bool HelperMakes(Villager villager, Work work)
+        {
+            if (Time.time < work.MakeRetryAt || Childhood.IsChild(villager))
+            {
+                return false;
+            }
+
+            VillageHearth hearth = VillageHearth.Find(villager.VillageId);
+            Amenities.Job job = hearth != null && hearth.IsValid ? Amenities.Due(hearth) : null;
+            int id = villager.VillageId;
+            if (job == null || !job.Essential)
+            {
+                EssentialWaiting.Remove(id);
+                return false;
+            }
+
+            string key = $"{job.Prefab}:{Mathf.RoundToInt(job.Spot.x)}:{Mathf.RoundToInt(job.Spot.z)}";
+            if (!EssentialWaiting.TryGetValue(id, out var waiting) || waiting.Job != key)
+            {
+                EssentialWaiting[id] = (key, Time.time);
+                return false;
+            }
+
+            if (Time.time - waiting.Since < 90f)
+            {
+                return false;
+            }
+
+            ZDOID me = villager.GetZDOID();
+            if (HelperMaking.TryGetValue(id, out var maker) && maker.Until > Time.time && maker.Maker != me)
+            {
+                return false;
+            }
+
+            HelperMaking[id] = (me, Time.time + 90f);
+            if (!TryMake(villager, work))
+            {
+                return false;
+            }
+
+            VillheimPlugin.Debug($"{villager.VillagerName} makes the {job.Name}: it waited {Time.time - waiting.Since:0} s for the builder.");
+            return true;
+        }
+
         /// <summary>Starts making the next amenity piece the chest can pay for. False when there is none.</summary>
         private static bool TryMake(Villager villager, Work work)
         {
@@ -2320,7 +2376,32 @@ namespace Villheim.Logic.Villagers
         private static bool Available(GameObject go, HashSet<GameObject> skip)
         {
             return !Claimed.Contains(go) && (skip == null || !skip.Contains(go)) &&
-                   !(Unreachable.TryGetValue(go, out float until) && until > Time.time);
+                   !(Unreachable.TryGetValue(go, out float until) && until > Time.time) && !UnderWater(go);
+        }
+
+        private static readonly Dictionary<GameObject, bool> Wet = new Dictionary<GameObject, bool>();
+
+        /// <summary>
+        /// The ground under it is more than half a metre under the sea: nobody swims out for it (2026-11-09: a miner swam
+        /// out to a rock in the water). Kept per object; the list is dropped when it grows large.
+        /// </summary>
+        private static bool UnderWater(GameObject go)
+        {
+            if (Wet.TryGetValue(go, out bool wet))
+            {
+                return wet;
+            }
+
+            if (Wet.Count > 4000)
+            {
+                Wet.Clear();
+            }
+
+            Vector3 p = go.transform.position;
+            float water = ZoneSystem.instance != null ? ZoneSystem.instance.m_waterLevel : 30f;
+            wet = ZoneSystem.instance != null && ZoneSystem.instance.GetGroundHeight(p, out float ground) && ground < water - 0.5f;
+            Wet[go] = wet;
+            return wet;
         }
 
         private static readonly Dictionary<(int, int, int), (float Time, List<GameObject> Objects)> Scans =

@@ -265,6 +265,9 @@ namespace Villheim.Logic
                     return true;
                 case "villheim_grow":
                 case "villheim_levelup": Grow(context); return true;
+                case "villheim_plot":
+                    if (TryGetPlayer(context, out Player plotter)) Say(context, PlotPick.Command(args, plotter));
+                    return true;
                 case "villheim_wood": AddWood(args, context); return true;
                 case "villheim_empty": Empty(context); return true;
                 case "villheim_version": Say(context, VillheimLogic.Build); return true;

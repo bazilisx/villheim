@@ -369,6 +369,13 @@ namespace Villheim.Logic.Village
             // thing a village does (every spot is tested for a way to the hearth), and doing four at once was a lag
             // spike (T-105).
             HashSet<Vector2Int> planned = PathPlanner.PlannedNetwork(hearth);
+            // A spot the player chose for this building comes before the village's own search (PlotPick).
+            bool byHand = PlotPick.TryTake(hearth, state, role, out DesignLibrary.Design pickDesign, out Vector3 pickAt, out float pickYaw);
+            if (byHand)
+            {
+                candidates = new List<DesignLibrary.Design> { pickDesign };
+            }
+
             foreach (DesignLibrary.Design design in candidates.Skip(Mathf.Min(hearth.PlotAttempts, candidates.Count - 1)).Take(1))
             {
                 // Breaking ground needs a share of the materials; the rest is paid piece by piece as it goes up.
@@ -387,7 +394,13 @@ namespace Villheim.Logic.Village
                 float yaw;
                 // The hearth is the village hub and is never built over (Tyler, 2026-11-09), so no hall goes up around it.
                 Vector3? fire = null;
-                if (fire.HasValue && PlotFinder.AroundHearth(hearth.transform.position, state.Axis, fire.Value, radius,
+                if (byHand)
+                {
+                    position = pickAt;
+                    yaw = pickYaw;
+                    VillheimPlugin.Log.LogInfo($"{state.Name} builds its {design.Name} on the spot chosen for it.");
+                }
+                else if (fire.HasValue && PlotFinder.AroundHearth(hearth.transform.position, state.Axis, fire.Value, radius,
                         design.MaxTerrainDelta, state.Id, out position, out yaw))
                 {
                     VillheimPlugin.Log.LogInfo($"{state.Name} builds its {design.Name} around the hearth.");
@@ -409,6 +422,7 @@ namespace Villheim.Logic.Village
                 hearth.PlotAttempts = 0;
                 state.Waiting = "";
                 PlotFinder.ClearHoldUp(state.Id);
+                PlotPick.Clear(hearth);
                 Growth.Clear(hearth);
                 int buildSeed = rng.Next(1, int.MaxValue);
                 hearth.StartCoroutine(BreakGround(hearth, design, role, position, yaw, radius, buildSeed, interval));

@@ -63,6 +63,18 @@ namespace Villheim.Logic.Village
 
         public static void Clear(VillageHearth hearth) => hearth.Zdo.Set(KeyPending, "");
 
+        /// <summary>The kind of building the village means to put up next (not an upgrade), or null.</summary>
+        public static Role? PendingRole(VillageHearth hearth, VillageState state)
+        {
+            Project pending = Read(hearth);
+            if (pending != null && !pending.IsUpgrade)
+            {
+                return pending.Role;
+            }
+
+            return pending == null ? Urgent(hearth, state) : null;
+        }
+
         // Projects that found no room: left out of the choice until the time given, so one building that fits nowhere
         // never stops the rest of the village (2026-11-09: a hall with no room held up every home). Kept on the hearth
         // ("Hub=123456;House=123999"), so it holds through a reload of the logic or the world.

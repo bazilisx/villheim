@@ -689,6 +689,26 @@ namespace Villheim.Logic.Village
             return true;
         }
 
+        /// <summary>
+        /// The verdict of every plot test on one spot and turn, for a plot chosen by hand (PlotPick). <paramref name="why"/>
+        /// names what is wrong when the result is false.
+        /// </summary>
+        public static bool JudgeAt(Vector3 hearth, float axisYaw, IReadOnlyList<Plot> plots, int villageId, string design, float radius,
+            float maxTerrainDelta, Vector3 p, float yaw, out string why, out float groundY, out bool clearing)
+        {
+            Design = design;
+            DesignRadius = radius;
+            DoorAngle = 0f;
+            Hearth = hearth;
+            AxisYaw = axisYaw;
+            Prepare(hearth, radius, villageId, plots);
+            LastWhat = null;
+            SpotFail fail = Check(Footprints.Of(design, p, yaw, radius, false), Footprints.Of(design, p, yaw, radius, true),
+                maxTerrainDelta, villageId, out groundY, out clearing);
+            why = fail == SpotFail.None ? "" : FailNames[(int)fail] + (LastWhat != null ? $" ({LastWhat})" : "");
+            return fail == SpotFail.None;
+        }
+
         /// <summary>The chosen spot with the building turned another way still passes every test.</summary>
         private static bool FitsTurned(Vector3 p, float yaw, float maxTerrainDelta, IReadOnlyList<Plot> plots, int villageId)
         {

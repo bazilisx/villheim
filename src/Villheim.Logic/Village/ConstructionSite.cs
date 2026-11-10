@@ -1379,7 +1379,37 @@ namespace Villheim.Logic.Village
             VillheimPlugin.Log.LogInfo($"Ground for the {site?.Design ?? "building"} levelled at {floor.y:0.00} " +
                                        $"({floor.y - position.y:+0.00;-0.00} from its origin), out to {footprint + 1.5f:0.0} m.");
             HearthGround.ClearAround(position, footprint + 3f);
-            TerrainShaper.LevelPad(floor, footprint + 1.5f, footprint + 5f);
+            // On a slope the blend back to the ground widens with the height to make up, so the pad's edge is a bank a
+            // villager can walk (about 1 in 2.5) and not a step or a cliff (Tyler, T-57: stepped tiers on slopes).
+            float rise = 0f;
+            for (int i = 0; i < 16; i++)
+            {
+                Vector3 probe = floor + Quaternion.Euler(0f, i * 22.5f, 0f) * Vector3.forward * (footprint + 5f);
+                if (ZoneSystem.instance.GetGroundHeight(probe, out float ground))
+                {
+                    rise = Mathf.Max(rise, Mathf.Abs(ground - floor.y));
+                }
+            }
+
+            float blend = Mathf.Clamp(rise * 2.5f, 3.5f, 14f);
+            // Never wider than the ground up to the next building, which must keep its own level.
+            foreach (Plot other in new VillageState(hearth.Zdo).Plots)
+            {
+                if (Utils.DistanceXZ(other.Position, position) < 0.5f)
+                {
+                    continue;
+                }
+
+                float room = Utils.DistanceXZ(other.Position, position) - other.Radius - footprint - 1.5f;
+                blend = Mathf.Min(blend, Mathf.Max(3.5f, room));
+            }
+
+            blend = Mathf.Min(blend, Mathf.Max(3.5f, Utils.DistanceXZ(hearth.transform.position, position) - HearthGround.LevelRadius - footprint - 1.5f));
+            TerrainShaper.LevelPad(floor, footprint + 1.5f, footprint + 1.5f + blend);
+            if (blend > 3.5f)
+            {
+                VillheimPlugin.Log.LogInfo($"Ground for the {site?.Design ?? "building"}: {rise:0.0} m to make up on the slope; banks {blend:0.0} m wide.");
+            }
             HearthGround.ClearVegetation(floor, footprint + 4f);
             HearthGround.Paint(floor, footprint + 1.5f, TerrainModifier.PaintType.Dirt);
         }

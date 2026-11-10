@@ -11,8 +11,8 @@ designs keep their saved origin, repairs put back every piece, storehouse takes 
 villagers, builder never hunts while settling, mining fixed for broken-up rocks. Next: let helpers build amenities,
 walkable building pads, underwater rocks, smaller lag spikes, D-080.
 
-- **Overnight branch (2026-11-09 Session 4, not on main until merged, not tried in the game past its first two
-  commits):** `overnight/2026-11-10`, handed over as a git bundle in `BepInEx/Villheim/handoff-2026-11-10/`. Plot
+- **Overnight work (2026-11-09 Session 4, merged to main 2026-11-10 as cluster A, not tried in the game past its
+  first two commits):** handed over as a git bundle in `BepInEx/Villheim/handoff-2026-11-10/`. Plot
   search by real footprints with causes named, ruins and all but house-size boulders cleared, hold-ups on the hearth's
   hover, projects with no room set aside, search spread over frames, tool and job churn, `vh plot`, store room chests
   stacked and labeled, `lab/audit_pool.js`. Read HANDOFF.md there first. Open: which pieces blocked the plots.

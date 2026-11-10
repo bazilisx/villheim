@@ -257,7 +257,7 @@ well (Tyler, 2026-11-08). The Features tab of the review sheet (`docs/features/b
 - [ ] **Walkable villages:** paths and building pads smooth slopes so no route needs a climb villagers cannot make
   (a path went down a 3 m embankment, 2026-11-09). Storehouse: stacked, labeled chests along the walls; hearth chests
   move in once it stands. Window flower beds need better pieces.
-- [ ] **Village placement and lag (Tyler, 2026-11-09 night), on the branch overnight/2026-11-10, not tried in the game:**
+- [ ] **Village placement and lag (Tyler, 2026-11-09 night), merged to main 2026-11-10 (cluster A), not tried in the game:**
   1. [built] Villages find room by themselves: real footprints, 2.5 m gap, hearth circle plus 4.5 m, every tree and
      all but house-size boulders cleared, the game's small ruins taken down for materials.
   2. [built] A building with no room is set aside and the next project goes on; the reason shows on the hearth's hover.

@@ -153,14 +153,17 @@ namespace Villheim.Logic.Village
             string what = step.What.StartsWith("building ") || step.What.StartsWith("taking down")
                 ? char.ToUpperInvariant(step.What[0]) + step.What.Substring(1)
                 : "Next: " + step.What;
+            // A building that found no room says so here, with what would help (Tyler, 2026-11-09).
+            string held = PlotFinder.HoldUp(state.Id);
+            string holdUp = held.Length > 0 ? " " + held : "";
             List<string> lacking = Lacking(hearth, state, step);
             if (lacking.Count == 0)
             {
-                return what + ".";
+                return what + "." + holdUp;
             }
 
             string list = string.Join(", ", lacking);
-            return $"{what}. {char.ToUpperInvariant(list[0])}{list.Substring(1)}.";
+            return $"{what}. {char.ToUpperInvariant(list[0])}{list.Substring(1)}.{holdUp}";
         }
     }
 }

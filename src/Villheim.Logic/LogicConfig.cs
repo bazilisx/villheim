@@ -16,6 +16,12 @@ namespace Villheim.Logic
         public static ConfigEntry<bool> LagLog;
         public static ConfigEntry<float> LagLogMs;
         public static ConfigEntry<float> PlotSearchMs;
+        public static ConfigEntry<float> HearthMargin;
+        public static ConfigEntry<float> BuildingGap;
+        public static ConfigEntry<float> BoulderStaysFrom;
+        public static ConfigEntry<bool> ClearRuins;
+        public static ConfigEntry<float> RuinMaxRadius;
+        public static ConfigEntry<string> ProtectedPlaces;
         public static ConfigEntry<bool> DebugLog;
         public static ConfigEntry<float> VillagerHealthPerTier;
         public static ConfigEntry<float> VillagerArmorPerTier;
@@ -429,6 +435,22 @@ namespace Villheim.Logic
                 "food's duration. This multiplies that healing.");
             HuntBowRange = Admin(config, work, "HuntBowRange", 25f,
                 "Hunters shoot from up to this far (meters). Deer are only ever hunted with a bow, since they always run.");
+            HearthMargin = Admin(config, work, "HearthMargin", 4.5f,
+                "How many meters past the hearth's dirt circle (10 m) a building's wall must stay. About 15 feet.");
+            BuildingGap = Admin(config, work, "BuildingGap", 2.5f,
+                "The clear strip, in meters, between two buildings' footprints (measured at their last growth stage): room for a path.");
+            BoulderStaysFrom = Admin(config, work, "BoulderStaysFrom", 12f,
+                "A boulder or rock formation at least this many meters across is the size of a house: villages build " +
+                "round it. Smaller rocks, and every tree, stump, log and bush, are cleared off a plot.");
+            ClearRuins = Admin(config, work, "ClearRuins", true,
+                "Villagers take down the game's own small ruins (lean-tos, ruined huts and houses) that stand on a plot " +
+                "and keep half the materials. A player's pieces are never touched.");
+            RuinMaxRadius = Admin(config, work, "RuinMaxRadius", 30f,
+                "With ClearRuins: only places up to this radius count as small ruins.");
+            ProtectedPlaces = Admin(config, work, "ProtectedPlaces",
+                "StartTemple,Eikthyrnir,GDKing,Bonemass,Dragonqueen,GoblinKing,Mistlands_DvergrBoss,Vendor,Hildir,BogWitch," +
+                "Runestone,Lorestone,Dolmen,ShipSetting,StoneCircle,Grave,Crypt,TrollCave,Cave,Mine,Altar,Tower,Fort,Portal",
+                "With ClearRuins: places whose name holds one of these words are never taken down.");
             RadiusPerStage = Admin(config, work, "RadiusPerStage", 0.25f,
                 "Each village stage after the first widens the rings buildings go in by this share of VillageRadius " +
                 "(VillageRadius is the first stage's radius).");

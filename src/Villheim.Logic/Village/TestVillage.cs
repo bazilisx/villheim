@@ -609,7 +609,7 @@ namespace Villheim.Logic.Village
                         for (int i = 0; i < plots.Count; i++)
                         {
                             DesignLibrary.Design? next = Growth.NextDesign(plots[i], state.Biome, Cultures.Of(state));
-                            if (next != null && PlotFinder.CanUpgrade(plots[i], next.Value.Radius, hearth.transform.position, state.Axis, plots, state.Id))
+                            if (next != null && PlotFinder.CanUpgrade(plots[i], next.Value.Radius, hearth.transform.position, state.Axis, plots, state.Id, next.Value.Name))
                             {
                                 options.Add((new Growth.Project { Role = Growth.RoleOf(plots[i]), UpgradeIndex = i }, 8f / plots.Count * 2f));
                             }
@@ -688,7 +688,7 @@ namespace Villheim.Logic.Village
                         if ((fire.HasValue && PlotFinder.AroundHearth(hearth.transform.position, state.Axis, fire.Value, design.Radius,
                                 design.MaxTerrainDelta, state.Id, out position, out yaw)) ||
                             PlotFinder.TryFind(hearth.transform.position, state.Axis, role, strictHub, design.Radius, design.MaxTerrainDelta,
-                                plots, run.Rng, out position, out yaw, PathPlanner.PlannedNetwork(hearth), hearth, Doors.Angle(design)))
+                                plots, run.Rng, out position, out yaw, PathPlanner.PlannedNetwork(hearth), hearth, Doors.Angle(design), 0f, design.Name))
                         {
                             chosen = design;
                             found = true;

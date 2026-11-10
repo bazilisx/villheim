@@ -63,24 +63,53 @@ namespace Villheim.Logic.Village
 
         public static void Clear(VillageHearth hearth) => hearth.Zdo.Set(KeyPending, "");
 
-        // Projects that found no room, by village: left out of the choice until the time given, so one building that
-        // fits nowhere never stops the rest of the village (2026-11-09: a hall with no room held up every home).
-        private static readonly Dictionary<int, Dictionary<Role, double>> Aside = new Dictionary<int, Dictionary<Role, double>>();
+        // Projects that found no room: left out of the choice until the time given, so one building that fits nowhere
+        // never stops the rest of the village (2026-11-09: a hall with no room held up every home). Kept on the hearth
+        // ("Hub=123456;House=123999"), so it holds through a reload of the logic or the world.
+        private static readonly int KeyAside = "villheim_aside".GetStableHashCode();
+
+        private static Dictionary<Role, double> ReadAside(VillageHearth hearth)
+        {
+            var roles = new Dictionary<Role, double>();
+            foreach (string part in hearth.Zdo.GetString(KeyAside, "").Split(';'))
+            {
+                string[] pair = part.Split('=');
+                if (pair.Length == 2 && System.Enum.TryParse(pair[0], out Role role) &&
+                    double.TryParse(pair[1], NumberStyles.Float, CultureInfo.InvariantCulture, out double until))
+                {
+                    roles[role] = until;
+                }
+            }
+
+            return roles;
+        }
+
+        private static void WriteAside(VillageHearth hearth, Dictionary<Role, double> roles)
+        {
+            hearth.Zdo.Set(KeyAside, string.Join(";", roles.Select(r => r.Key + "=" + r.Value.ToString("0", CultureInfo.InvariantCulture))));
+        }
 
         public static void SetAside(VillageHearth hearth, Role role, double until)
         {
-            if (!Aside.TryGetValue(hearth.VillageId, out Dictionary<Role, double> roles))
-            {
-                Aside[hearth.VillageId] = roles = new Dictionary<Role, double>();
-            }
-
+            Dictionary<Role, double> roles = ReadAside(hearth);
             roles[role] = until;
+            WriteAside(hearth, roles);
             VillheimPlugin.Log.LogInfo($"No room for a {VillageBrain.RoleName(role)} right now. The village goes on with other work and looks again later.");
         }
 
+        /// <summary>Every project is looked at again at once ('vh grow', or after the player has cleared some ground).</summary>
+        public static void ClearAside(VillageHearth hearth) => hearth.Zdo.Set(KeyAside, "");
+
         private static bool IsAside(VillageHearth hearth, Role role)
         {
-            if (!Aside.TryGetValue(hearth.VillageId, out Dictionary<Role, double> roles) || !roles.TryGetValue(role, out double until))
+            string raw = hearth.Zdo.GetString(KeyAside, "");
+            if (raw.Length == 0)
+            {
+                return false;
+            }
+
+            Dictionary<Role, double> roles = ReadAside(hearth);
+            if (!roles.TryGetValue(role, out double until))
             {
                 return false;
             }
@@ -91,6 +120,7 @@ namespace Villheim.Logic.Village
             }
 
             roles.Remove(role);
+            WriteAside(hearth, roles);
             return false;
         }
 
@@ -172,7 +202,7 @@ namespace Villheim.Logic.Village
                 {
                     DesignLibrary.Design? next = NextDesign(plots[i], state.Biome, Cultures.Of(state));
                     if (next != null && PlotFinder.CanUpgrade(plots[i], next.Value.Radius, hearth.transform.position, state.Axis,
-                            plots, state.Id))
+                            plots, state.Id, next.Value.Name))
                     {
                         options.Add((new Project { Role = RoleOf(plots[i]), UpgradeIndex = i }, UpgradeWeight / plots.Count * 2f));
                     }

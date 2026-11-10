@@ -394,7 +394,7 @@ namespace Villheim.Logic.Village
                 }
                 else if (!PlotFinder.TryFind(hearth.transform.position, state.Axis, role, strictHub, radius,
                              design.MaxTerrainDelta, plots, rng, out position, out yaw, planned, hearth,
-                             Doors.Angle(design), LogicConfig.PlotSearchMs?.Value ?? 25f))
+                             Doors.Angle(design), LogicConfig.PlotSearchMs?.Value ?? 25f, design.Name))
                 {
                     if (PlotFinder.Unfinished)
                     {
@@ -408,6 +408,7 @@ namespace Villheim.Logic.Village
 
                 hearth.PlotAttempts = 0;
                 state.Waiting = "";
+                PlotFinder.ClearHoldUp(state.Id);
                 Growth.Clear(hearth);
                 int buildSeed = rng.Next(1, int.MaxValue);
                 hearth.StartCoroutine(BreakGround(hearth, design, role, position, yaw, radius, buildSeed, interval));
@@ -435,7 +436,7 @@ namespace Villheim.Logic.Village
         {
             Plot plot = state.Plots[project.UpgradeIndex];
             DesignLibrary.Design? next = Growth.NextDesign(plot, state.Biome, Cultures.Of(state));
-            if (next == null || !PlotFinder.CanUpgrade(plot, next.Value.Radius, hearth.transform.position, state.Axis, state.Plots, state.Id))
+            if (next == null || !PlotFinder.CanUpgrade(plot, next.Value.Radius, hearth.transform.position, state.Axis, state.Plots, state.Id, next.Value.Name))
             {
                 VillheimPlugin.Debug($"{state.Name}: no room to make the {plot.Design} bigger.");
                 Growth.Clear(hearth);
@@ -521,8 +522,7 @@ namespace Villheim.Logic.Village
             {
                 // The design's own terrain shaping is not copied for village buildings: it fought the flat pad below
                 // and could leave a door below the ground.
-                DesignSpawner.ClearArea(position, radius);
-                Palisade.ClearFor(hearth, position, radius);
+                Ruins.ClearPlot(hearth, Footprints.Of(design.Name, position, yaw, radius, false));
 
                 // Give the heightmaps a moment to rebuild before pieces start going up.
                 yield return new WaitForSeconds(0.75f);
@@ -742,6 +742,8 @@ namespace Villheim.Logic.Village
         /// <summary>Makes the next building start on the following tick. Used by the console command.</summary>
         public static void ForceGrow(VillageHearth hearth, bool freeWood)
         {
+            Growth.ClearAside(hearth); // every project gets a new look
+            PlotFinder.ClearHoldUp(hearth.VillageId);
             if (!hearth.IsValid)
             {
                 return;

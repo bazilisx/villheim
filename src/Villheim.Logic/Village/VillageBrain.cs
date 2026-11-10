@@ -537,7 +537,10 @@ namespace Villheim.Logic.Village
             {
                 // The design's own terrain shaping is not copied for village buildings: it fought the flat pad below
                 // and could leave a door below the ground.
-                Ruins.ClearPlot(hearth, Footprints.Of(design.Name, position, yaw, radius, false));
+                if (!ConstructionSite.ClearsByHand)
+                {
+                    Ruins.ClearPlot(hearth, Footprints.Of(design.Name, position, yaw, radius, false));
+                }
 
                 // Give the heightmaps a moment to rebuild before pieces start going up.
                 yield return new WaitForSeconds(0.75f);
@@ -558,8 +561,12 @@ namespace Villheim.Logic.Village
                 ConstructionSite.SettleHeight(hearth);
 
                 // Ground first, like the hearth's: flat at the ground floor's height out past the walls, grass cleared,
-                // bare earth, before the first piece goes up.
-                ConstructionSite.PrepareGround(hearth, position);
+                // bare earth, before the first piece goes up. With the plot cleared by hand (D-087) that comes once the
+                // builders have cleared it (ConstructionSite.ClearNext).
+                if (!ConstructionSite.ClearsByHand)
+                {
+                    ConstructionSite.PrepareGround(hearth, position);
+                }
 
                 VillheimPlugin.Log.LogInfo($"{state.Name} broke ground for a {RoleName(role)} ({design.Name}) at {position}.");
                 Villagers.Dialogue.Note(state.Id, "groundbroken");

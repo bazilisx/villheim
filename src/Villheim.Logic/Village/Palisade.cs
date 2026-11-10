@@ -80,8 +80,7 @@ namespace Villheim.Logic.Village
         public static void Forget(int villageId) => Cache.Remove(villageId);
 
         /// <summary>
-        /// Takes down the village's ring fence where a building is about to go up (half the materials back, as for an
-        /// outgrown ring). The ring is laid again round the bigger village afterwards.
+        /// Takes down the village's ring fence where a building is about to go up (all the materials back, D-088). The ring is laid again round the bigger village afterwards.
         /// </summary>
         public static void ClearFor(VillageHearth hearth, Vector3 position, float radius)
         {
@@ -98,9 +97,9 @@ namespace Villheim.Logic.Village
 
                 foreach (KeyValuePair<string, int> c in DesignSpawner.RecipeCost(piece.gameObject))
                 {
-                    if (chest != null && c.Value / 2 > 0)
+                    if (chest != null && c.Value > 0)
                     {
-                        VillageChest.Add(chest, c.Key, c.Value / 2);
+                        VillageChest.Add(chest, c.Key, c.Value); // all of it back (D-088)
                     }
                 }
 

@@ -96,7 +96,7 @@ namespace Villheim.Logic.Village
                 F(site.Yaw), F(site.Radius), site.Role.ToString(), site.Seed.ToString(CultureInfo.InvariantCulture),
                 site.Upgrade ? "u" : "");
             zdo.Set(KeySite, raw);
-            zdo.Set(KeySiteTeardown, site.Upgrade ? 1 : 0);
+            zdo.Set(KeySiteTeardown, site.Upgrade ? TeardownOld : ClearsByHand ? ClearingPlot : 0);
             zdo.Set(KeySiteIndex, 0);
             zdo.Set(KeySiteOwed, "");
             zdo.Set(KeySiteAhead, "");
@@ -142,6 +142,11 @@ namespace Villheim.Logic.Village
             int index = Mathf.Clamp(hearth.Zdo.GetInt(KeySiteIndex), 0, plan.Entries.Count - 1);
             string stage = DesignSpawner.StageNames[plan.Entries[index].Stage];
             int percent = Mathf.RoundToInt(100f * hearth.Zdo.GetInt(KeySiteIndex) / plan.Entries.Count);
+            if (Clearing(hearth))
+            {
+                return $"clearing the plot for a {VillageBrain.RoleName(site.Role)}";
+            }
+
             if (TearingDown(hearth))
             {
                 return $"taking down the old {VillageBrain.RoleName(site.Role)} to build a bigger one";
@@ -154,6 +159,13 @@ namespace Villheim.Logic.Village
         public static bool NextPiecePosition(VillageHearth hearth, out Vector3 position)
         {
             position = Vector3.zero;
+            if (Clearing(hearth))
+            {
+                GameObject target = ClearTarget(hearth);
+                position = target != null ? target.transform.position : Get(hearth.Zdo)?.Position ?? hearth.transform.position;
+                return true;
+            }
+
             if (TearingDown(hearth))
             {
                 Piece old = OldPiece(hearth);
@@ -506,6 +518,11 @@ namespace Villheim.Logic.Village
             }
 
             var state = new VillageState(zdo);
+            if (Clearing(hearth))
+            {
+                return ClearNext(hearth, state, site);
+            }
+
             if (TearingDown(hearth))
             {
                 return TakeDownNext(hearth, state, site);
@@ -828,7 +845,122 @@ namespace Villheim.Logic.Village
             return entries.Where(e => e.Shell || e.Prefab == "bed" || e.Prefab == "piece_bed02").ToList();
         }
 
-        public static bool TearingDown(VillageHearth hearth) => IsActive(hearth.Zdo) && hearth.Zdo.GetInt(KeySiteTeardown) == 1;
+        private const int TeardownOld = 1;
+        private const int ClearingPlot = 2;
+
+        /// <summary>D-087: villagers clear a new building's plot themselves before it goes up (ClearPlotsByHand).</summary>
+        public static bool ClearsByHand => LogicConfig.ClearPlotsByHand == null || LogicConfig.ClearPlotsByHand.Value;
+
+        /// <summary>The site is not building yet: the old building comes down, or the plot is being cleared. Builders
+        /// work on OldPiece one at a time either way.</summary>
+        public static bool TearingDown(VillageHearth hearth) => IsActive(hearth.Zdo) && hearth.Zdo.GetInt(KeySiteTeardown) != 0;
+
+        /// <summary>How long the next thing takes against one building piece: felling and breaking take longer than
+        /// taking a plank down, picking a plant less.</summary>
+        public static float WorkTimeFactor(VillageHearth hearth)
+        {
+            if (!Clearing(hearth))
+            {
+                return 1f;
+            }
+
+            GameObject target = ClearTarget(hearth);
+            if (target == null || target.GetComponent<Piece>() != null)
+            {
+                return 1f;
+            }
+
+            if (target.GetComponent<Pickable>() != null)
+            {
+                return 0.5f;
+            }
+
+            return target.GetComponent<TreeBase>() != null || target.GetComponent<MineRock5>() != null ? 4f : 2f;
+        }
+
+        /// <summary>The plot is being cleared by hand (D-087).</summary>
+        public static bool Clearing(VillageHearth hearth) => IsActive(hearth.Zdo) && hearth.Zdo.GetInt(KeySiteTeardown) == ClearingPlot;
+
+        /// <summary>The tool for the next thing to take away: axe for wood, pickaxe for rock, nothing for a plant, else the hammer.</summary>
+        public static Villagers.VillagerLooks.Tool? WorkTool(VillageHearth hearth)
+        {
+            if (!Clearing(hearth))
+            {
+                return Villagers.VillagerLooks.Tool.Hammer;
+            }
+
+            GameObject target = ClearTarget(hearth);
+            if (target == null || target.GetComponent<Piece>() != null)
+            {
+                return Villagers.VillagerLooks.Tool.Hammer;
+            }
+
+            if (target.GetComponent<Pickable>() != null)
+            {
+                return null;
+            }
+
+            return target.GetComponent<MineRock>() != null || target.GetComponent<MineRock5>() != null ||
+                   target.name.IndexOf("rock", System.StringComparison.OrdinalIgnoreCase) >= 0
+                ? Villagers.VillagerLooks.Tool.Pickaxe
+                : Villagers.VillagerLooks.Tool.Axe;
+        }
+
+        private static readonly Dictionary<int, (GameObject Target, float At)> ClearTargets = new Dictionary<int, (GameObject, float)>();
+
+        /// <summary>
+        /// The next thing on the plot to take away (D-087), kept a few seconds: ruins and the village's own fence first
+        /// (the highest piece first, so roofs come off before walls), then trees, logs, stumps, bushes, rocks under
+        /// BoulderStaysFrom and plants, nearest to the plot's middle first. Null when the plot is clear.
+        /// </summary>
+        public static GameObject ClearTarget(VillageHearth hearth)
+        {
+            if (ClearTargets.TryGetValue(hearth.VillageId, out var kept) && kept.Target != null && Time.time - kept.At < 3f)
+            {
+                return kept.Target;
+            }
+
+            Site site = Get(hearth.Zdo);
+            if (site == null)
+            {
+                return null;
+            }
+
+            Foot area = Footprints.Of(site.Design, site.Position, site.Yaw, site.Radius, false).Grown(2f);
+            GameObject found = Ruins.NextOnPlot(hearth, area);
+            ClearTargets[hearth.VillageId] = (found, Time.time);
+            return found;
+        }
+
+        /// <summary>Takes away the next thing on the plot, everything it gives going to the chest (D-088). When nothing is
+        /// left, the ground is levelled and building starts.</summary>
+        private static bool ClearNext(VillageHearth hearth, VillageState state, Site site)
+        {
+            ClearTargets.Remove(hearth.VillageId);
+            GameObject target = ClearTarget(hearth);
+            ClearTargets.Remove(hearth.VillageId);
+            if (target == null)
+            {
+                hearth.Zdo.Set(KeySiteTeardown, 0);
+                PrepareGround(hearth, site.Position);
+                VillheimPlugin.Log.LogInfo($"{state.Name} cleared the plot for the {VillageBrain.RoleName(site.Role)}; building starts now.");
+                return true;
+            }
+
+            Ruins.TakeAway(hearth, state, target);
+            return true;
+        }
+
+        /// <summary>For test villages, which clear their plots at once: the site starts building straight away.</summary>
+        public static void SkipClearing(VillageHearth hearth)
+        {
+            if (hearth.Zdo.GetInt(KeySiteTeardown) == ClearingPlot)
+            {
+                hearth.Zdo.Set(KeySiteTeardown, 0);
+            }
+        }
+
+        public static bool TearingDownOld(VillageHearth hearth) => IsActive(hearth.Zdo) && hearth.Zdo.GetInt(KeySiteTeardown) == TeardownOld;
 
         /// <summary>The next piece of the old building to take down: the highest first, so roofs come off before walls.</summary>
         private static Piece OldPiece(VillageHearth hearth)
@@ -865,7 +997,7 @@ namespace Villheim.Logic.Village
         }
 
         /// <summary>
-        /// Takes down one piece of the old building and puts half its materials back in the chest. When nothing is
+        /// Takes down one piece of the old building and puts its materials back in the chest (all of them, D-088). When nothing is
         /// left, the ground is prepared for the new building and the build starts.
         /// </summary>
         private static bool TakeDownNext(VillageHearth hearth, VillageState state, Site site)
@@ -873,6 +1005,14 @@ namespace Villheim.Logic.Village
             Piece old = OldPiece(hearth);
             if (old == null)
             {
+                if (ClearsByHand)
+                {
+                    // The bigger building's ground is cleared by hand next (D-087).
+                    hearth.Zdo.Set(KeySiteTeardown, ClearingPlot);
+                    VillheimPlugin.Log.LogInfo($"{state.Name} took down the old building; clearing the bigger plot next.");
+                    return true;
+                }
+
                 hearth.Zdo.Set(KeySiteTeardown, 0);
                 // The bigger building's ground: trees and rocks, and any old ruin it now reaches (Ruins).
                 Ruins.ClearPlot(hearth, Footprints.Of(site.Design, site.Position, site.Yaw, site.Radius, false));
@@ -884,7 +1024,8 @@ namespace Villheim.Logic.Village
             Container chest = VillageChest.Find(hearth);
             foreach (KeyValuePair<string, int> cost in DesignSpawner.RecipeCost(old.gameObject))
             {
-                int back = cost.Value / 2;
+                // All of it back, as a player gets when he takes his own piece down (D-088).
+                int back = cost.Value;
                 if (back <= 0)
                 {
                     continue;
@@ -1290,6 +1431,28 @@ namespace Villheim.Logic.Village
         /// <summary>How far from its centre the next piece reaches sideways (half its width), 0.5 m when unknown.</summary>
         public static float NextPieceHalfWidth(VillageHearth hearth)
         {
+            if (Clearing(hearth))
+            {
+                // A tree's trunk or a rock's side: stand at its edge, not its middle.
+                GameObject target = ClearTarget(hearth);
+                if (target != null && target.GetComponent<Piece>() == null)
+                {
+                    Collider[] colliders = target.GetComponentsInChildren<Collider>();
+                    if (colliders.Length > 0)
+                    {
+                        Bounds b = colliders[0].bounds;
+                        foreach (Collider c in colliders)
+                        {
+                            b.Encapsulate(c.bounds);
+                        }
+
+                        return Mathf.Clamp(Mathf.Min(b.extents.x, b.extents.z), 0.4f, 4f);
+                    }
+                }
+
+                return 0.8f;
+            }
+
             if (TearingDown(hearth))
             {
                 return 0.8f;

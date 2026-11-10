@@ -19,6 +19,7 @@ namespace Villheim.Logic
         public static ConfigEntry<bool> BlueprintsInBackground;
         public static ConfigEntry<float> LagSummarySeconds;
         public static ConfigEntry<float> StatusLineSeconds;
+        public static ConfigEntry<bool> ClearPlotsByHand;
         public static ConfigEntry<float> PlotSearchMs;
         public static ConfigEntry<float> HearthMargin;
         public static ConfigEntry<float> BuildingGap;
@@ -1274,6 +1275,10 @@ namespace Villheim.Logic
                 "With LagLog on: every this many seconds, one 'Lag summary' line with the frame times (average, slowest " +
                 "1 %, hitches over 50 ms) and where the time went: the village's own work by part, and the game's work for " +
                 "villagers (their AI, body and animation, gear put on, villagers and pieces spawned). 0 turns it off.");
+            ClearPlotsByHand = Admin(config, test, "ClearPlotsByHand", true,
+                "D-087: before a building goes up, the builders clear its plot themselves, one thing at a time: ruins and " +
+                "the village's own fence taken down (all materials to the chest, D-088), trees felled, rocks broken, plants " +
+                "picked, with the right tool. Off: the plot is cleared at once when ground is broken, as before.");
             StatusLineSeconds = Admin(config, test, "StatusLineSeconds", 60f,
                 "Every this many seconds, one 'Village status' line per loaded village in the log: buildings, the site and " +
                 "its progress, the next step and any hold-up, the chest, and each villager's work, time on it, place and " +

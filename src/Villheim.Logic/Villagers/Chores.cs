@@ -299,7 +299,8 @@ namespace Villheim.Logic.Villagers
             switch (work.Phase)
             {
                 case Phase.Build:
-                    return "building";
+                    VillageHearth at = VillageHearth.Find(villager.VillageId);
+                    return at != null && at.IsValid && ConstructionSite.Clearing(at) ? "clearing the plot" : "building";
                 case Phase.BuildChest:
                     return "rebuilding the village chest";
                 case Phase.Make:
@@ -334,6 +335,8 @@ namespace Villheim.Logic.Villagers
             switch (work.Phase)
             {
                 case Phase.Build:
+                    VillageHearth site = VillageHearth.Find(villager.VillageId);
+                    return site != null && site.IsValid ? ConstructionSite.WorkTool(site) : VillagerLooks.Tool.Hammer;
                 case Phase.BuildChest:
                 case Phase.Make:
                     return VillagerLooks.Tool.Hammer;
@@ -1372,17 +1375,24 @@ namespace Villheim.Logic.Villagers
             }
 
             ai.StopMoving();
-            VillagerLooks.Hold(villager, VillagerLooks.Tool.Hammer);
+            // Clearing the plot (D-087): the axe for wood, the pickaxe for rock, bare hands for a plant.
+            VillagerLooks.Tool? tool = ConstructionSite.WorkTool(hearth);
+            if (tool.HasValue)
+            {
+                VillagerLooks.Hold(villager, tool.Value);
+            }
+
             Face(villager, ai, piece);
             work.Timer += dt;
             // Each helper keeps his own beat, so no two swing together (T-107).
-            if ((work.Timer + slot * HammerInterval * 0.37f) % HammerInterval < dt)
+            if (tool.HasValue && (work.Timer + slot * HammerInterval * 0.37f) % HammerInterval < dt)
             {
-                ToolAnimation(villager, VillagerLooks.Tool.Hammer);
+                ToolAnimation(villager, tool.Value);
             }
 
             // Mood never changes how fast anyone works (D-014); only skill does. Mood changes free time.
-            float perPiece = (LogicConfig.SecondsPerPiece != null ? LogicConfig.SecondsPerPiece.Value : 2.5f) /
+            float perPiece = (LogicConfig.SecondsPerPiece != null ? LogicConfig.SecondsPerPiece.Value : 2.5f) *
+                             ConstructionSite.WorkTimeFactor(hearth) /
                              VillagerSkills.WorkFactor(villager, "building") + slot * 0.45f;
             if (work.Timer < perPiece)
             {

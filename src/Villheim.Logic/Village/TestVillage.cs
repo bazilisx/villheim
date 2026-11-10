@@ -731,6 +731,7 @@ namespace Villheim.Logic.Village
                 Design = chosen.Name, Position = position, Yaw = yaw, Radius = chosen.Radius, Role = role,
                 Seed = run.Rng.Next(1, int.MaxValue),
             });
+            ConstructionSite.SkipClearing(hearth); // the plot was cleared above, at once
             ConstructionSite.SettleHeight(hearth);
             float floor = ConstructionSite.FloorHeight(hearth);
             ConstructionSite.PrepareGround(hearth, position);

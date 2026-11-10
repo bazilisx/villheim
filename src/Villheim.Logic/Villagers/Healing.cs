@@ -177,6 +177,14 @@ namespace Villheim.Logic.Villagers
             }
 
             state.Foods.RemoveAll(f => f.Until < Time.time);
+            // The builder of a settling or building village is never idle for this: he heals below half health, as anyone
+            // at work does, instead of cooking for himself between pieces (Tyler, 2026-11-09).
+            if (idle && Chores.IsVillageBuilder(villager) &&
+                (!Village.Amenities.Settled(hearth, out _) || Village.ConstructionSite.IsActive(hearth.Zdo)))
+            {
+                idle = false;
+            }
+
             bool hurt = health < (idle ? StopAbove : StartBelow);
             bool canEat = state.Foods.Count < MaxFoods && !state.Foods.Any(f => f.Until - Time.time > 600f && !idle && health > 0.3f);
             Container chest = VillageChest.Find(hearth);

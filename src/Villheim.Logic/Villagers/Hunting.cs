@@ -122,6 +122,9 @@ namespace Villheim.Logic.Villagers
                     Roles.Trade trade = Roles.TradeOf(v);
                     int rank = trade == Roles.Trade.Hunter ? -1
                         : !elder && (trade == Roles.Trade.Cook || trade == Roles.Trade.Farmer || trade == Roles.Trade.Healer) ? 2
+                        // The builder hunts only when nobody else can, protector or not: one man had leader, builder,
+                        // hunter and watch while the other had nothing (2026-11-09).
+                        : !elder && Chores.IsVillageBuilder(v) ? 2
                         : !elder && Roles.BackgroundOf(v) == Roles.Background.Protector ? 0
                         : !elder && !Chores.IsVillageBuilder(v) ? 1
                         : !elder ? 2

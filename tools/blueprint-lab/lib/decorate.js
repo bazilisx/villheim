@@ -1074,11 +1074,15 @@ function placeStorageRow(room, k, n, o = {}) {
     if (!rec) break;
     placed.push(rec);
   }
+  const tall = false;
+  // The label: a sign on the wall over the row's middle, or failing that on the nearest plain stretch beside it. It
+  // had to sit exactly over the middle, which a window or a post there ruled out, so most store rows had none.
   if (o.sign && placed.length >= 2 && ok('sign', room.biome)) {
     const f0 = placed[0].spot.face, ts = placed.filter(p => p.spot.face === f0).map(p => p.spot.t);
-    const mid = (Math.min(...ts) + Math.max(...ts)) / 2;
-    const s = mountSpots(room, 'sign', { face: f0, at: mid, y: 1.3 }).find(m => Math.abs(m.t - mid) < 0.01);
-    if (s) putMount(room, 'sign', s);
+    const lo = Math.min(...ts), hi = Math.max(...ts), mid = (lo + hi) / 2;
+    const spots = mountSpots(room, 'sign', { face: f0, at: mid, y: tall ? 1.95 : 1.3 })
+      .filter(m => m.t > lo - w - 1.2 && m.t < hi + w + 1.2).sort((p, q) => Math.abs(p.t - mid) - Math.abs(q.t - mid));
+    for (const s of spots) if (putMount(room, 'sign', s)) break;
   }
   return placed;
 }
@@ -1410,15 +1414,78 @@ function roleFor(use, type, room, mainShare, rects, nLevels, li) {
 
 // ---------------------------------------------------------------- room plans
 function furnish(room, role, c) {
+  const store = role === 'storage' && c.decor !== 'd1' && c.storeFinish !== false;
   if (tplFurnish(room, role, c)) {
     if (c.templateOnly) return; // 'vh floorplan template': the room as the template lays it out, nothing added
     // a template thin for a big room is topped up with the extras toward the corpus rate, a little short of it at d2 so
     // the template's own layout stays the larger part
+    if (store) storeLabels(room, c);
     if (c.decor !== 'd1') fill(room, role, { ...c, fillShare: c.decor === 'd3' ? 1 : 0.9 });
+    if (store) storeStacks(room, c);
     return;
   }
   furnishPlan(room, role, c);
+  if (store) storeLabels(room, c);
   if (c.decor !== 'd1') fill(room, role, c);
+  if (store) storeStacks(room, c);
+}
+
+// A store room's chests stand stacked and labeled along the walls (Tyler, 2026-11-09). Two finishing passes for a
+// room whose use is storage, at d2 and d3. Both are fixed by where things stand, never by chance, and d3 does all
+// that d2 does, so the decor stages still nest.
+const CHESTS = /^piece_chest(_wood|_barrel|_blackmetal)?$/;
+const chestsOf = room => room.placed.filter(q => CHESTS.test(q.name) && !q.stacked && !q.mount);
+// which wall face a piece stands against (within 1.1 m of it), and how far along
+function faceOf(room, q) {
+  let bestF = null, bestD = 1.1, bestT = 0;
+  for (const f of room.faces) {
+    const t = q.x * f.ux + q.z * f.uz;
+    if (t < f.a0 - 0.2 || t > f.a1 + 0.2) continue;
+    const d = Math.abs((q.x - f.px(t)) * f.nx + (q.z - f.pz(t)) * f.nz);
+    if (d < bestD) { bestD = d; bestF = f; bestT = t; }
+  }
+  return bestF ? { face: bestF, t: bestT } : null;
+}
+
+// Labels, before the room is topped up: one sign on each wall that has chests against it, on the plain stretch
+// nearest the wall's middle, high enough to clear a stack. Placed before the extras so d2 and d3 put it in the
+// same place.
+function storeLabels(room, c) {
+  // A sign is minor decor (D-066) and the village already makes signs in every biome (house signs, storage signs),
+  // so a label goes up in the Meadows too, though the table above dates the sign to the Black Forest.
+  if (!F.sign || !(ok('sign', room.biome) || P.minor('sign'))) return;
+  const byFace = new Map();
+  for (const q of chestsOf(room)) { const at = faceOf(room, q); if (at) byFace.set(at.face, (byFace.get(at.face) || 0) + 1); }
+  for (const [face] of byFace) {
+    const mid = (face.a0 + face.a1) / 2;
+    for (const y of [1.95, 1.3]) {
+      const spots = mountSpots(room, 'sign', { face, y }).sort((p, q) => Math.abs(p.t - mid) - Math.abs(q.t - mid) || p.t - q.t);
+      let done = false;
+      for (const sp of spots) {
+        if (Math.abs(sp.y - room.stand - y) > 0.05) continue; // the ceiling pushed it down: try the lower height instead
+        if (putMount(room, 'sign', sp)) { done = true; break; }
+      }
+      if (done) break;
+    }
+  }
+}
+
+// Stacks, after the room is topped up: a second chest of the same kind on some of the chests that stand against a
+// wall, where the ceiling and the wall hangings leave room. A chest's own place decides (a hash of its position):
+// about a third of them at d2, two thirds at d3, and every stack of d2 is a stack at d3.
+function storeStacks(room, c) {
+  const share = c.decor === 'd3' ? 2 : 1;
+  for (const q of chestsOf(room)) {
+    if (!faceOf(room, q)) continue;
+    const hash = Math.abs((Math.round(q.x * 2) * 73856093) ^ (Math.round(q.z * 2) * 19349663)) % 3;
+    if (hash >= share) continue;
+    const h = size(q.name)[1], top = q.y1 + h;
+    if (room.ceilAt(q.x, q.z) - top < 0.35) continue;
+    // nothing on the chest already, and no wall hanging in the way
+    if (room.placed.some(o => o !== q && o.y0 >= q.y1 - 0.05 && o.y0 < top + 0.1 && overlap(o.b, q.b, 0))) continue;
+    room.add(q.name, q.x, q.y1, q.z, q.yaw, { stacked: true });
+    room.count--; // a stack is one place in the room
+  }
 }
 
 const LEARN_KIND = { lookout: 'sleeping', home: 'home', sleeping: 'sleeping', guest: 'sleeping', hall: 'hall', tavern: 'tavern', temple: 'hall', smithy: 'smithy', workshop: 'workshop', storage: 'storage', guard: 'sleeping', farm: 'storage', market: 'living', kitchen: 'kitchen' };
@@ -2366,7 +2433,10 @@ function audit(design, decor) {
       if (fc === 'mount' || fc === 'hang' || fc === 'top' || fc === 'fire' || fc === 'rug') continue;
       // kitbash pieces (lib/kitbash.js) are judged by the game's solids: they may clip as deep as their source builds
       // did (p.clip), and no deeper
-      if ((a.p.kb || c.p.kb) && SHD) { if (kbClip(a.p, c.p) > Math.max(a.p.clip || 0, c.p.clip || 0) + 0.02) res.overlap.push(`${a.p.name} / ${c.p.name} at ${a.p.x.toFixed(1)},${a.p.z.toFixed(1)}`); continue; }
+      // Chests, stations and their extensions, beds and tables never reach into one another, whatever their source
+      // builds did: in the game a chest half inside a chopping block reads as a mistake (Tyler's test, 2026-11-09).
+      const solid = SOLID_CATS.has(a.f.cat) && SOLID_CATS.has(c.f.cat);
+      if ((a.p.kb || c.p.kb) && SHD) { if (kbClip(a.p, c.p) > (solid ? 0.03 : Math.max(a.p.clip || 0, c.p.clip || 0)) + 0.02) res.overlap.push(`${a.p.name} / ${c.p.name} at ${a.p.x.toFixed(1)},${a.p.z.toFixed(1)}`); continue; }
       if (a.y0 > c.y1 - 0.05 || c.y0 > a.y1 - 0.05) continue;
       if (overlap(a.b, c.b, -0.06)) res.overlap.push(`${a.p.name} / ${c.p.name} at ${a.p.x.toFixed(1)},${a.p.z.toFixed(1)}`);
     }
@@ -2458,6 +2528,7 @@ function itemOf(p) {
   const [w, h, d] = size(p.name), f = F[p.name] || {}, y0 = p.y - (f.base || 0), [mx, mz] = middleOf(p.name, p.x, p.z, pyaw(p));
   return { p, f, b: obox(mx, mz, w, d, pyaw(p)), y0: f.at === 'hang' ? p.y : y0, y1: f.at === 'hang' ? p.y + h : y0 + h };
 }
+const SOLID_CATS = new Set(['storage', 'craft', 'bed', 'table']);
 // The audit's tests for one kitbash piece, for the fitter (lib/kitbash.js) to ask before it places it: what it rests
 // on, and plain wall behind a wall piece. ctx from auditContext(pieces), kept up to date with add().
 function auditContext(pieces) {

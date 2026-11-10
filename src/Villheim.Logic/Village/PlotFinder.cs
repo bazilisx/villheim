@@ -95,6 +95,7 @@ namespace Villheim.Logic.Village
             // own ground.
             var good = new List<Vector3>();
             int wanted = 6;
+            int badSpot = 0, offLevel = 0, onPath = 0, unreachable = 0, capped = 0;
             // The way to the hearth is a grid search for each spot: a few dozen of them in one go were a lag spike (T-105).
             int searches = 0;
             const int MostSearches = 10;
@@ -109,12 +110,14 @@ namespace Villheim.Logic.Village
                     Vector3 candidate = hearth + axis * new Vector3(local.x, 0f, local.y);
                     if (!IsGoodSpot(candidate, hearth, radius, maxTerrainDelta, plots, out float groundY, allowClutter))
                     {
+                        badSpot++;
                         continue;
                     }
 
                     bool level = Mathf.Abs(groundY - hearth.y) <= LevelTolerance;
                     if (pass < 2 && !level)
                     {
+                        offLevel++;
                         continue;
                     }
 
@@ -124,11 +127,13 @@ namespace Villheim.Logic.Village
                     float floor = level ? hearth.y : groundY;
                     if (network != null && PathPlanner.DistanceToNetwork(network, candidate) <= radius * 0.6f + 1.5f)
                     {
+                        onPath++;
                         continue;
                     }
 
                     if (village != null && searches++ >= MostSearches)
                     {
+                        capped++;
                         break;
                     }
 
@@ -141,11 +146,19 @@ namespace Villheim.Logic.Village
                             break;
                         }
                     }
+                    else
+                    {
+                        unreachable++;
+                    }
                 }
             }
 
             if (good.Count == 0)
             {
+                // Why nothing fit, for test reports (2026-11-09: homes found no room).
+                VillheimPlugin.Log.LogInfo($"No room for a {role} of radius {radius:0.0} m: {candidates.Count} spots between {minDistance:0} and " +
+                                           $"{maxDistance:0} m; per pass totals: bad ground or crowded {badSpot}, off level {offLevel}, " +
+                                           $"on a path {onPath}, door unreachable {unreachable}, search cap hit {capped}.");
                 position = Vector3.zero;
                 yaw = 0f;
                 return false;

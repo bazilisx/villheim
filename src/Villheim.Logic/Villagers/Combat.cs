@@ -578,7 +578,11 @@ namespace Villheim.Logic.Villagers
             }
 
             fight.LastEngaged = Time.time;
-            CallToArms(villager, fight, distance);
+            if (!Hunting.IsGame(enemy))
+            {
+                // A boar or deer is game, even when it turns on someone: no call to arms for it (T-58).
+                CallToArms(villager, fight, distance);
+            }
 
             // The bow first (Tyler: they ran up and meleed while others shot): anything further off than FightHoldRange
             // that he can see is shot at, flyers at any distance, and he holds his ground while it comes. The weapon only

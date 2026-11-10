@@ -214,14 +214,27 @@ namespace Villheim.Logic.Villagers
 
         // ---------------------------------------------------------------- 'vh villager add'
 
-        /// <summary>'vh villager add child|elder [n]': n new villagers of that age in the nearest village (up to 10).</summary>
+        /// <summary>'vh villager add [adult|child|elder] [n]': n new villagers of that age in the nearest village (up to 10).
+        /// Adults are the default (T-616: only children and elders could be added, so a test village could not grow to the
+        /// sizes where trades are handed out).</summary>
         public static string AddCommand(string[] args)
         {
-            string kind = args.Length > 1 ? args[1].ToLowerInvariant() : "";
+            string kind = args.Length > 1 ? args[1].ToLowerInvariant() : "adult";
             int count = args.Length > 2 && int.TryParse(args[2], out int n) ? Mathf.Clamp(n, 1, 10) : 1;
-            if (kind != "child" && kind != "elder")
+            if (int.TryParse(kind, out int bare))
             {
-                return "Villheim: vh villager add child|elder [n]";
+                kind = "adult"; // 'vh villager add 3'
+                count = Mathf.Clamp(bare, 1, 10);
+            }
+
+            if (kind == "grown" || kind == "adults")
+            {
+                kind = "adult";
+            }
+
+            if (kind != "child" && kind != "elder" && kind != "adult")
+            {
+                return "Villheim: vh villager add [adult|child|elder] [n]";
             }
 
             Player player = Player.m_localPlayer;
@@ -255,8 +268,8 @@ namespace Villheim.Logic.Villagers
 
             return names.Count == 0
                 ? "Villheim: nobody could be added."
-                : $"Villheim: {string.Join(", ", names)} {(names.Count == 1 ? "is" : "are")} now {(kind == "child" ? "a child" : "an elder")}" +
-                  $"{(names.Count == 1 ? "" : "s")} of {state.Name}.";
+                : $"Villheim: {string.Join(", ", names)} {(names.Count == 1 ? "is" : "are")} now " +
+                  $"{(kind == "child" ? "a child" : kind == "elder" ? "an elder" : "a villager")}{(names.Count == 1 ? "" : "s")} of {state.Name}.";
         }
 }
 }

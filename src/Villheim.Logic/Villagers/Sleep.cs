@@ -516,7 +516,7 @@ namespace Villheim.Logic.Villagers
 
                 state.GiveUpAt = Time.time + 90f;
                 Walker.For(villager).Reset();
-                VillheimPlugin.Debug($"Bedtime: {villager.VillagerName} walks to his bed, {Utils.DistanceXZ(villager.transform.position, state.Bed.transform.position):0} m away.");
+                VillheimPlugin.Debug($"Bedtime: {villager.VillagerName} walks to {VillagerLooks.His(villager)} bed, {Utils.DistanceXZ(villager.transform.position, state.Bed.transform.position):0} m away.");
             }
 
             Transform point = state.Bed.m_spawnPoint != null ? state.Bed.m_spawnPoint : state.Bed.transform;
@@ -528,7 +528,7 @@ namespace Villheim.Logic.Villagers
                 if (EnvMan.instance.IsTimeSkipping())
                 {
                     // A player is sleeping the night away: the villager had all those hours to get to bed.
-                    VillheimPlugin.Debug($"Bedtime: {villager.VillagerName} is put in his bed while the night is skipped.");
+                    VillheimPlugin.Debug($"Bedtime: {villager.VillagerName} is put in {VillagerLooks.His(villager)} bed while the night is skipped.");
                     PutInBed(villager, point);
                 }
                 else if (distance > 2.5f)
@@ -546,9 +546,11 @@ namespace Villheim.Logic.Villagers
                     {
                         state.Failures++;
                         Plot plot = Beds.PlotAt(VillageHearth.Find(villager.VillageId), point.position);
-                        VillheimPlugin.Log.LogInfo($"Bedtime: {villager.VillagerName} can't get to his bed in the {plot?.Design ?? "open"} " +
+                        VillheimPlugin.Log.LogInfo($"Bedtime: {villager.VillagerName} can't get to {VillagerLooks.His(villager)} bed in the {plot?.Design ?? "open"} " +
                                                    $"({step}, {distance:0.0} m short, try {state.Failures}).");
-                        if (state.Failures < 2 || PlayerNear(villager.transform.position, point.position))
+                        // D-076: stuck on the way, he is put in his bed at bedtime even with a player near, after a
+                        // third try (Ivo stood 33 m short of his bed night after night, 2026-11-09).
+                        if (state.Failures < 2 || (state.Failures < 3 && PlayerNear(villager.transform.position, point.position)))
                         {
                             // Back to the fire for a moment, then he tries again.
                             state.Bed = null;
@@ -556,7 +558,7 @@ namespace Villheim.Logic.Villagers
                             return false;
                         }
 
-                        // Tried twice, and nobody is about to see: he got there in the end.
+                        // Tried twice with nobody about to see, or three times: he got there in the end.
                         PutInBed(villager, point);
                     }
                 }

@@ -494,6 +494,15 @@ namespace Villheim.Logic.Village
                         grown.GetComponent<Growup>() == null && Vector3.Distance(grown.transform.position, __state.Position) < 0.6f)
                     {
                         view.GetZDO().Set(Keys.BuiltBy, __state.Village);
+                        // Still the village's: tame, and never breeding by itself (D-015), as the animals born on the
+                        // schedule are.
+                        grown.GetComponent<Tameable>()?.Tame();
+                        Procreation breeding = grown.GetComponent<Procreation>();
+                        if (breeding != null)
+                        {
+                            breeding.enabled = false;
+                        }
+
                         return;
                     }
                 }

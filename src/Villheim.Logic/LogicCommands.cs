@@ -91,7 +91,7 @@ namespace Villheim.Logic
             "cultures: the CultureMap (which cultures each biome's villages may have) and every culture's names, surnames, skin range and feasts",
             "relook [culture]: the nearest villager gets a new seed, name, face and clothes, of his own culture or the one named",
             "defenders: the nearest village's biome defender profile (Plains, Mistlands), the creatures it covers, who would shoot, and arrows loosed so far",
-            "villager add child|elder [n]: add villagers of that age to the nearest village (children are born in a home)",
+            "villager add [adult|child|elder] [n]: add villagers to the nearest village (adults by default; children are born in a home)",
             "gift: the nearest free villager brings you the best cooked food in the chest",
             "kids rig [clear]: a grown man, a boy, a girl and a grown woman, standing still in front of you, to tune the ChildBoy and ChildGirl settings ('3c - Villager looks') against; clear takes them away",
             "grudges [clear]: what the nearest village holds against players who harmed its people, and clear it",

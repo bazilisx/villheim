@@ -1,0 +1,15 @@
+const Q=require(process.cwd()+'/lib/request.js'),sc=require(process.cwd()+'/data/scorer.json'),fs=require('fs');
+const lines=[['home-a','home','house',101],['home-b','home','house',202],['home-c','home','house',303],['hall','longhouse','hub',11],['woodworker','sawmill','workshop',21],['smithy','smithy','workshop',22],['farm','farm','farm',31],['barn','barn','farm',32],['storehouse','storage','storage',41]];
+// Writes the Norse Meadows test pool (81 designs, same files as 'vh testpool make') in about 30 s.
+// Usage, from tools/blueprint-lab: node lab/make_testpool.js [out folder]; copy the folder into the game's blueprints folder.
+const out=process.argv[2]||'out/testpool-norse';let n=0,bad=[];const t0=Date.now();
+for(const [name,type,role,seed] of lines)for(let s=1;s<=3;s++)for(let d=1;d<=3;d++){
+ const r=Q.make({type,biome:'Meadows',culture:'norse',stage:'s'+s,decor:'d'+d,seed,tries:1},sc);
+ if(!r.blueprint){bad.push(name+s+d);continue}
+ const file=`norse-${name}_s${s}d${d}`;
+ const desc=`villheim: role=${role} biome=meadows culture=norse ; Test pool ${type} s${s}d${d} seed ${seed} design ${r.name}`;
+ const txt=r.blueprint.split('\n').map(l=>{l=l.replace(/\r$/,'');if(l.startsWith('#Name:'))return '#Name:'+file;if(l.startsWith('#Description:'))return '#Description:"'+desc.replace(/"/g,"'")+'"';if(l.startsWith('#Category:'))return '#Category:Villheim';return l}).join('\n').replace(/\n+$/,'')+'\n';
+ fs.writeFileSync(`${out}/${file}.blueprint`,txt);n++;
+ if((r.failed||[]).length)bad.push(file+':'+r.failed.join(','));
+}
+console.log(n,'written in',Date.now()-t0,'ms; issues',bad.join(' | '));

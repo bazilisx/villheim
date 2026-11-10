@@ -260,9 +260,11 @@ namespace Villheim.Logic.Villagers
                 parts.Add("Builder");
             }
 
-            if (Hunting.IsVillageHunter(villager) && trade != Roles.Trade.Hunter)
+            // Hunter is a trade from six grown villagers on (D-075); before that whoever is free hunts when meat runs low,
+            // shown only while he is out (Tyler, 2026-11-09).
+            if (trade != Roles.Trade.Hunter && Hunting.IsHunting(villager))
             {
-                parts.Add("Hunter");
+                parts.Add("Hunting");
             }
 
             if (Roles.IsNightWatch(villager))

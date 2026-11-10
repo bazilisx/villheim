@@ -280,6 +280,7 @@ namespace Villheim.Logic
         // Hunting (Villagers/Hunting.cs) and copses (Village/Groves.cs).
         public static ConfigEntry<float> HuntBowRange;
         public static ConfigEntry<float> HuntSearchRadius;
+        public static ConfigEntry<float> RadiusPerStage;
         public static ConfigEntry<float> HuntMeleeRange;
         public static ConfigEntry<float> HuntChaseSeconds;
         public static ConfigEntry<float> HuntChaseDistance;
@@ -427,6 +428,9 @@ namespace Villheim.Logic
                 "food's duration. This multiplies that healing.");
             HuntBowRange = Admin(config, work, "HuntBowRange", 25f,
                 "Hunters shoot from up to this far (meters). Deer are only ever hunted with a bow, since they always run.");
+            RadiusPerStage = Admin(config, work, "RadiusPerStage", 0.25f,
+                "Each village stage after the first widens the rings buildings go in by this share of VillageRadius " +
+                "(VillageRadius is the first stage's radius).");
             HuntSearchRadius = Admin(config, work, "HuntBeyondVillage", 40f,
                 "Hunters look for game this far past the village radius (meters). Game seldom comes inside a village.");
             HuntMeleeRange = Admin(config, work, "HuntMeleeRange", 4f,

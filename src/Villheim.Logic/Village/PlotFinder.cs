@@ -82,7 +82,10 @@ namespace Villheim.Logic.Village
             IReadOnlyList<Plot> plots, System.Random rng, out Vector3 position, out float yaw, HashSet<Vector2Int> network,
             VillageHearth village, float doorAngle, float reach, float inner, out float outer)
         {
-            float villageRadius = VillheimConfig.VillageRadius.Value * reach;
+            // The village's rings step out with each stage, since by then the inner ones are mostly built (Tyler, 2026-11-09):
+            // VillageRadius is the first stage's radius, and each stage after adds RadiusPerStage of it.
+            float perStage = LogicConfig.RadiusPerStage?.Value ?? 0.25f;
+            float villageRadius = VillheimConfig.VillageRadius.Value * (1f + perStage * VillageBrain.TierIndex(plots.Count)) * reach;
             Band(role, out float minShare, out float maxShare);
             float maxDistance = Mathf.Min(villageRadius, villageRadius * maxShare + radius * 0.5f);
             outer = maxDistance;

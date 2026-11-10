@@ -56,6 +56,14 @@ namespace Villheim.Logic.Village
         /// </summary>
         public static IEnumerable<Want> WantsFor(Plot plot, int tier)
         {
+            // Generated designs (the test pool and approved lab designs) bring their own furniture, and their missing pieces
+            // are put back where the design has them. Adding more here dropped benches onto tables, put chests in the
+            // middle of the storehouse and a rebuilt bed outside (2026-11-09 test).
+            if (FurnishedByDesign(plot))
+            {
+                yield break;
+            }
+
             switch (plot.Role)
             {
                 case nameof(Role.Hub):
@@ -84,6 +92,12 @@ namespace Villheim.Logic.Village
         }
 
         /// <summary>One bed for a small home, two for a larger one.</summary>
+        public static bool FurnishedByDesign(Plot plot)
+        {
+            string file = (DesignLibrary.ByName(plot.Design)?.Blueprint?.File ?? "").Replace('\\', '/').ToLowerInvariant();
+            return file.Contains("/testpool-") || file.Contains("/approved-generated/");
+        }
+
         public static int BedsInHome(Plot plot) => plot.Radius < SmallHomeRadius ? 1 : 2;
 
         /// <summary>How many pieces of this kind (any bed, for beds) stand inside the building.</summary>

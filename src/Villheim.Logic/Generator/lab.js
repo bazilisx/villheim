@@ -5256,10 +5256,10 @@ function exterior(b, ctx) {
     }
     if (o.storey > 0) continue;
     const outside = { x: dx + ox, z: dz + oz };
-    // a step in front of a ground-level door: two beams laid along the threshold (a 2 x 2 floor there read as a mat),
+    // a step in front of a ground-level door: two beams laid along the threshold (a 2 x 2 floor there read as a mat), (sunk to 5 cm above the floor so villagers walk over it, Tyler 2026-11-09)
     // unless a porch, stair or deck is already there
     const busy = b.pieces.some(p => Math.hypot(p.x - outside.x, p.z - outside.z) < 1.1 && ['floor', 'stair'].includes(PD.piece(p.name).role) && Math.abs(p.y - F) < 1.2);
-    if (X.doorstep && F < 0.01 && !busy && !(mo && mo.step)) for (const d of [0.35, 0.75]) put(beam, dx + ox * d, F + 0.1, dz + oz * d, e.yaw);
+    if (X.doorstep && F < 0.01 && !busy && !(mo && mo.step)) for (const d of [0.35, 0.75]) put(beam, dx + ox * d, F - 0.05, dz + oz * d, e.yaw);
     // a small roof over the door (pent hood) on a rafter each side, falling away from the wall, its low edge level with
     // the door's head 2 m out (so the doorway keeps its headroom); never without the frame, never under an eave or a
     // porch less than 1.5 m over the door

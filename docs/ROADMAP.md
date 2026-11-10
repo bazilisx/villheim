@@ -254,7 +254,7 @@ well (Tyler, 2026-11-08). The Features tab of the review sheet (`docs/features/b
   stalls on "nowhere to put a home". Done: hearth kept clear, pool-only stand-ins, item stands at decor (df075f7).
 - [ ] **Later-biome decor (D-080, answered 2026-11-10):** pay for lox pelts, iron, silver, cloth and the like with
   stand-ins from the village biome and its neighbors (Meadows: Meadows and Black Forest; Black Forest: Meadows and
-  Swamp; and so on), from the chests. Never free. Lab side in the design session; mod side (HomeDecor costs) open.
+  Swamp; and so on), from the chests. Never free. Lab side in the design session; mod side done 2026-11-10 (5ba7984).
 - [ ] **Walkable villages:** paths and building pads smooth slopes so no route needs a climb villagers cannot make
   (a path went down a 3 m embankment, 2026-11-09). Storehouse: stacked, labeled chests along the walls; hearth chests
   move in once it stands. Window flower beds need better pieces.
@@ -267,7 +267,8 @@ well (Tyler, 2026-11-08). The Features tab of the review sheet (`docs/features/b
   4. [built] Tools stay in hand between job steps; fewer job changes shown.
   5. [built] Lag: plot search within 25 ms a tick, fence and sign scans listed once, next step cached 3 s.
   6. [ ] Confirm from the log which pieces blocked the plots before these changes.
-  7. [done 2026-11-10] Hold-up reason on the notice board. [ ] Plot clearing as villager work (D-087).
+  7. [done 2026-11-10] Hold-up reason on the notice board. [done 2026-11-10] Plot clearing as villager work (D-087),
+     full refunds (D-088), plot mode on the Shaper Tool (D-090 to D-093), `Village status` line and `vh snapshot`.
   8. [done 2026-11-10, cluster B, not tried in the game] Lag: shared piece list (PieceIndex), blueprints read in the
      background, lag summary line and `vh lag` A/B tests for villager draw cost, notice board and hearth tick split.
   9. [ ] Read the first lag summary; preload any villager gear or spawn that spikes; act on `vh lag hide` results.
@@ -292,12 +293,12 @@ well (Tyler, 2026-11-08). The Features tab of the review sheet (`docs/features/b
   6. [done 2026-11-09; small choices in D-076] Role colors and the role set (D-075): carpenter (brown, also cuts wood), smith (charcoal or ore, also mines),
      cook coral, farmer green, guard blue, elder gray, child light blue or pink, leader gold.
   7. [done 2026-11-09] Short hover texts ("at home", "fixing up the home").
-  9. D-076 follow-ups: guards gather by day between watches; the guard on watch fights without an alarm, other
+  9. [done 2026-11-10, 7d70f54 and a67b3d0] D-076 follow-ups: guards gather by day between watches; the guard on watch fights without an alarm, other
      guards wake at 50 % of his health, all able adults under 25 %; a villager stuck on the way to bed is put in it
      at bedtime even with a player near.
   10. D-077: pre-rolled village roster at settling (families up to 4, elders with elders), first two adults alone in
      their own houses, houses sized for the family to come, beds permanent, children outside the cap.
-  11. D-078: elders mend inside the village, feed animals, forage, help harvest; fish by biome; hunters hunt real game
+  11. [part done 2026-11-10: overnight hunting trips, children's colors] D-078: elders mend inside the village, feed animals, forage, help harvest; fish by biome; hunters hunt real game
      or go away overnight with a roll for success, catch, drops and health; healers use potions and healing foods and
      herbs; children light blue or light pink; rafts for fishers only after a feasibility check.
   8. Role touches only through kitbashed role displays that fit many arrangements (D-074).

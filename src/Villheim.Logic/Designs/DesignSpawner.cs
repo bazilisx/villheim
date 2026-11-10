@@ -410,6 +410,13 @@ namespace Villheim.Logic.Designs
                 view.GetZDO().Set(KeyLit, 1);
             }
 
+            // A loose item in the design (a mead on a table) is decor: it stays where it was put and cannot be picked up
+            // (T-626: a Tasty mead was picked up by walking past it).
+            if (view != null && view.GetZDO() != null && instance.GetComponent<ItemDrop>() != null)
+            {
+                StandItems.LockLoose(instance);
+            }
+
             // an item stand saved with its item gets the item, locked on (StandItems)
             if (entry.Text != null)
             {

@@ -867,6 +867,13 @@ namespace Villheim.Logic.Village
                 project = Capital(due.Name == "bed" ? "beds" : due.Inside ? "furnishing" : due.Name);
                 projectColor = "#fd8";
             }
+            else if (!ConstructionSite.IsActive(hearth.Zdo) && PlotFinder.HoldUp(state.Id).Length > 0)
+            {
+                // A building with no room anywhere (D-089, option A): the Project sign says so, and the hearth's hover
+                // says why and what would help.
+                project += "<br><size=60%>no room yet, see the hearth";
+                projectColor = "#fc9";
+            }
 
             // Needed only ever names materials: have/need for the most pressing shortfalls (Tyler, T-304). What is
             // still to be made (beds, a home) belongs on the Project sign.

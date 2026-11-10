@@ -73,6 +73,86 @@ namespace Villheim.Logic.Designs
             return true;
         }
 
+        /// <summary>A loose item placed as part of a design: it keeps its place, is never picked up and never despawns.</summary>
+        internal static void LockLoose(GameObject instance)
+        {
+            ItemDrop drop = instance.GetComponent<ItemDrop>();
+            ZNetView view = instance.GetComponent<ZNetView>();
+            if (drop == null || view == null || !view.IsValid())
+            {
+                return;
+            }
+
+            view.GetZDO().Set(KeyLocked, 1);
+            Hold(drop);
+        }
+
+        private static void Hold(ItemDrop drop)
+        {
+            drop.m_autoDestroy = false;
+            drop.m_autoPickup = false;
+            Rigidbody body = drop.GetComponent<Rigidbody>();
+            if (body != null)
+            {
+                body.isKinematic = true;
+            }
+        }
+
+        /// <summary>A locked loose item cannot be picked up by hand.</summary>
+        [HarmonyPatch(typeof(ItemDrop), nameof(ItemDrop.Interact))]
+        internal static class LooseInteractPatch
+        {
+            private static bool Prefix(ItemDrop __instance, ref bool __result)
+            {
+                if (!Locked(__instance.m_nview))
+                {
+                    return true;
+                }
+
+                __result = false;
+                return false;
+            }
+        }
+
+        /// <summary>... nor by walking past it.</summary>
+        [HarmonyPatch(typeof(ItemDrop), nameof(ItemDrop.CanPickup))]
+        internal static class LoosePickupPatch
+        {
+            private static void Postfix(ItemDrop __instance, ref bool __result)
+            {
+                if (__result && Locked(__instance.m_nview))
+                {
+                    __result = false;
+                }
+            }
+        }
+
+        /// <summary>The hover shows only the item's name, with no pick-up prompt.</summary>
+        [HarmonyPatch(typeof(ItemDrop), nameof(ItemDrop.GetHoverText))]
+        internal static class LooseHoverPatch
+        {
+            private static void Postfix(ItemDrop __instance, ref string __result)
+            {
+                if (Locked(__instance.m_nview))
+                {
+                    __result = Localization.instance.Localize(__instance.m_itemData.m_shared.m_name);
+                }
+            }
+        }
+
+        /// <summary>After a reload a locked loose item is held in place again.</summary>
+        [HarmonyPatch(typeof(ItemDrop), "Awake")]
+        internal static class LooseAwakePatch
+        {
+            private static void Postfix(ItemDrop __instance)
+            {
+                if (Locked(__instance.m_nview))
+                {
+                    Hold(__instance);
+                }
+            }
+        }
+
         private static bool Locked(ZNetView view)
         {
             return view != null && view.IsValid() && view.GetZDO().GetInt(KeyLocked) == 1;

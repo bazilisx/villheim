@@ -370,6 +370,24 @@ namespace Villheim.Logic.Villagers
         /// </summary>
         internal static bool Present(string prefab, Vector3 world)
         {
+            // A loose item in the design (a mead on a table) is no piece, so the piece list never held it: it counted as
+            // missing for good, decor put another one down each time, and the home never moved on to its next stage
+            // (T-626: still s1d1 after 'vh decor now'). Items are looked for by their colliders, within 0.6 m.
+            GameObject prefabObject = ZNetScene.instance != null ? ZNetScene.instance.GetPrefab(prefab) : null;
+            if (prefabObject != null && prefabObject.GetComponent<ItemDrop>() != null && prefabObject.GetComponent<Piece>() == null)
+            {
+                foreach (Collider collider in Physics.OverlapSphere(world, 0.6f, ~0, QueryTriggerInteraction.Ignore))
+                {
+                    ItemDrop drop = collider != null ? collider.GetComponentInParent<ItemDrop>() : null;
+                    if (drop != null && Utils.GetPrefabName(drop.gameObject) == prefab)
+                    {
+                        return true;
+                    }
+                }
+
+                return false;
+            }
+
             Nearby.Clear();
             PieceIndex.InRadius(world, 0.5f, Nearby);
             foreach (Piece piece in Nearby)

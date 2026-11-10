@@ -210,6 +210,7 @@ namespace Villheim.Logic.Villagers
             public Vector3 World;
             public Vector3 Stand;
             public float Deadline;
+            public int Attempt;
             public float Timer;
             public float SessionEnd;
             public int Made;
@@ -317,7 +318,7 @@ namespace Villheim.Logic.Villagers
 
             state.Work = work;
             Walker.For(villager).Reset();
-            VillheimPlugin.Debug($"{villager.VillagerName} goes to {(work.Helping ? "help fix up a neighbor's home" : "fix up his home")}: {work.Entry.Prefab}.");
+            VillheimPlugin.Debug($"{villager.VillagerName} goes to {(work.Helping ? "help fix up a neighbor's home" : $"fix up {VillagerLooks.His(villager)} home")}: {work.Entry.Prefab}.");
             return true;
         }
 
@@ -386,7 +387,8 @@ namespace Villheim.Logic.Villagers
                 work.Index = index;
                 work.Entry = entry;
                 work.World = world;
-                work.Stand = StandSpot(plot, world, villager.transform.position);
+                work.Attempt = 0;
+                work.Stand = StandSpot(plot, world, villager.transform.position, 0);
                 work.Deadline = Time.time + 40f;
                 work.Timer = 0f;
                 return work;
@@ -410,16 +412,36 @@ namespace Villheim.Logic.Villagers
             return false;
         }
 
-        /// <summary>A step from the piece toward the middle of the home (inside), or toward him for a piece in the middle.</summary>
-        private static Vector3 StandSpot(Plot plot, Vector3 world, Vector3 from)
+        private static readonly float[] StandTurns = { 0f, 45f, -45f, 90f, -90f, 135f, -135f, 180f };
+
+        /// <summary>
+        /// Where to stand to put a piece up: 1.3 m from it, on a clear spot. Under a roof the first try is toward the middle
+        /// of the home; in the open (a planter, a ground torch, a flower bed) the first try is toward him, since toward the
+        /// middle of the home is inside its wall (FINDINGS 4: "can't get to the Pickable_Dandelion", "piece_groundtorch_wood",
+        /// "piece_workbench_ext1", "itemstand"). Each later attempt turns the try 45 degrees, and a spot with something
+        /// solid at body height is passed over.
+        /// </summary>
+        private static Vector3 StandSpot(Plot plot, Vector3 world, Vector3 from, int attempt)
         {
-            Vector3 toward = (plot.Position - world).Horizontal();
+            bool roofed = Physics.Raycast(world + Vector3.up * 0.3f, Vector3.up, 8f, LayerMask.GetMask("piece"));
+            Vector3 toward = roofed ? (plot.Position - world).Horizontal() : (from - world).Horizontal();
             if (toward.sqrMagnitude < 1f)
             {
                 toward = (from - world).Horizontal();
             }
 
             toward = toward.sqrMagnitude > 0.01f ? toward.normalized : Vector3.forward;
+            int solid = LayerMask.GetMask("piece", "static_solid", "Default");
+            for (int i = 0; i < StandTurns.Length; i++)
+            {
+                Vector3 direction = Quaternion.Euler(0f, StandTurns[(attempt + i) % StandTurns.Length], 0f) * toward;
+                Vector3 spot = world + direction * 1.3f;
+                if (!Physics.CheckCapsule(spot + Vector3.up * 0.5f, spot + Vector3.up * 1.6f, 0.3f, solid, QueryTriggerInteraction.Ignore))
+                {
+                    return spot;
+                }
+            }
+
             return world + toward * 1.3f;
         }
 
@@ -449,9 +471,20 @@ namespace Villheim.Logic.Villagers
                     return true;
                 }
 
+                if (Utils.DistanceXZ(villager.transform.position, work.World) > 3.5f && work.Attempt < 2)
+                {
+                    // Another side of the piece before giving up on it.
+                    work.Attempt++;
+                    work.Stand = StandSpot(plot, work.World, villager.transform.position, work.Attempt * 2);
+                    work.Deadline = Time.time + 25f;
+                    Walker.For(villager).Reset();
+                    return true;
+                }
+
                 if (Utils.DistanceXZ(villager.transform.position, work.World) > 3.5f)
                 {
-                    VillheimPlugin.Debug($"{villager.VillagerName} can't get to the {work.Entry.Prefab} in the {plot.Design}; left for later.");
+                    VillheimPlugin.Debug($"{villager.VillagerName} can't get to the {work.Entry.Prefab} in the {plot.Design} " +
+                                         $"(tried {work.Attempt + 1} sides); left for later.");
                     SkipUntil[work.Key + ":" + work.Index] = Time.time + SkipSeconds;
                     return false;
                 }

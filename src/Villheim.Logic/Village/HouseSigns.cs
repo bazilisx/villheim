@@ -497,6 +497,39 @@ namespace Villheim.Logic.Village
         private static Vector3 Flat(Vector3 point, float y) => new Vector3(point.x, y, point.z);
 
         /// <summary>
+        /// How far the wall's model reaches past the collider face at <paramref name="face"/>, toward
+        /// <paramref name="facing"/>. From the box of each of its meshes that spans the sign's height, turned into the
+        /// world, so a bar or a log on that side counts and a flat face gives about 0. A guess from boxes: a wall with
+        /// a bar only at the top is passed over on that side too.
+        /// </summary>
+        private static float Proud(ZNetView wall, Vector3 facing, Vector3 face, float middleY, float halfHeight)
+        {
+            float faceDepth = Vector3.Dot(face, facing);
+            float most = 0f;
+            foreach (MeshFilter filter in wall.GetComponentsInChildren<MeshFilter>())
+            {
+                Mesh mesh = filter != null ? filter.sharedMesh : null;
+                Renderer renderer = filter != null ? filter.GetComponent<Renderer>() : null;
+                if (mesh == null || renderer == null || !renderer.enabled ||
+                    renderer.bounds.max.y < middleY - halfHeight || renderer.bounds.min.y > middleY + halfHeight)
+                {
+                    continue;
+                }
+
+                Bounds b = mesh.bounds;
+                for (int i = 0; i < 8; i++)
+                {
+                    Vector3 corner = new Vector3((i & 1) == 0 ? b.min.x : b.max.x, (i & 2) == 0 ? b.min.y : b.max.y,
+                        (i & 4) == 0 ? b.min.z : b.max.z);
+                    Vector3 world = filter.transform.TransformPoint(corner);
+                    most = Mathf.Max(most, Vector3.Dot(world, facing) - faceDepth);
+                }
+            }
+
+            return most;
+        }
+
+        /// <summary>
         /// A wall of the house stands at <paramref name="place"/> facing <paramref name="facing"/>, within half a metre of
         /// the door's plane, with room in front of it for the sign. Gives the sign's position and turn.
         /// </summary>
@@ -515,6 +548,13 @@ namespace Villheim.Logic.Village
             if (wall == null || !wall.IsValid() || wall.GetZDO().GetInt(Keys.BuiltBy) != hearth.VillageId ||
                 wall.GetComponentInChildren<Door>() != null || wall.GetComponent<Sign>() != null ||
                 Vector3.Dot(hit.normal, facing) < 0.7f || Mathf.Abs(Vector3.Dot(hit.point - doorMiddle, outward)) > 0.5f)
+            {
+                return false;
+            }
+
+            // A wall whose model stands proud of its collider on this side (the 2x2 wood wall's cross bar when it faces
+            // the sign, T-606 and T-612) would have the sign clip through it: try the next place instead.
+            if (Proud(wall, facing, hit.point, place.y, sign.extents.y) > 0.06f)
             {
                 return false;
             }

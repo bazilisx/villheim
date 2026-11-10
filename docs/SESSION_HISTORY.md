@@ -5,16 +5,18 @@ Current facts only. Read this at the start of a session. Narrative is in `docs/d
 
 ## Current State (as of 2026-11-10)
 
-Latest build 6666990 (2026-11-10 note, Sessions 1 and 2), in clusters that can be reverted one at a time: A the
+Latest build 87bf67a (2026-11-10 note, Sessions 1 to 3), in clusters that can be reverted one at a time: A the
 overnight branch (plots by real footprints, set-aside projects, tool churn, `vh plot`), B lag (PieceIndex,
 background blueprint reads, `Lag summary`, `vh lag`), C fixes (churn, decor reach, loose items, signs, bedtime),
 D `Village status` line and `vh snapshot`, E plots cleared by hand and full refunds (D-087, D-088), F Shaper Tool plot
 mode (D-090 to D-093), G decor paid in local stand-ins (D-080), H no swimming for rocks and helpers making essentials,
-I guards and the night watch (D-076), J overnight hunting trips and children's colors (D-078). New on/off settings in
-"9 - Test villages": PieceIndex, BlueprintsInBackground, ClearPlotsByHand, DecorPaidWithAnalogs, HuntTrips;
+I guards and the night watch (D-076), J overnight hunting trips and children's colors (D-078), K elders mend and
+help with crops, healers use remedies (D-078), L village roster at founding (D-077, new villages only), M homes sized
+for households, N fish by biome. New on/off settings in "9 - Test villages": PieceIndex, BlueprintsInBackground,
+ClearPlotsByHand, DecorPaidWithAnalogs, HuntTrips, VillageRoster;
 LagSummarySeconds and StatusLineSeconds. Nothing from 2026-11-10 tried in the game. The building generator is worked
-on in its own session on branch `design/kitbash`. Next: Tyler's test (Tests tab T-631 on), D-077 roster, the rest
-of D-078.
+on in its own session on branch `design/kitbash`. Next: Tyler's test (Tests tab T-631 on), rafts (D-078),
+walkable pads, preloading from the lag summaries.
 
 ### As of 2026-11-09
 
@@ -163,6 +165,7 @@ walkable building pads, underwater rocks, smaller lag spikes, D-080.
 
 ## Recent milestones
 
+- **2026-11-10 (roster, elders, healers, fish by biome)** - see docs/daily-notes/2026-11/2026-11-10.md
 - **2026-11-10 (status line, snapshot, D-080 to D-094, guards, hunting trips)** - see docs/daily-notes/2026-11/2026-11-10.md
 - **2026-11-10 (overnight merge, lag cluster, immediate fixes)** - see docs/daily-notes/2026-11/2026-11-10.md
 - **2026-11-09 (plot search audit and overnight fixes, handed over as a bundle)** - see docs/daily-notes/2026-11/2026-11-09.md

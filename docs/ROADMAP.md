@@ -296,9 +296,10 @@ well (Tyler, 2026-11-08). The Features tab of the review sheet (`docs/features/b
   9. [done 2026-11-10, 7d70f54 and a67b3d0] D-076 follow-ups: guards gather by day between watches; the guard on watch fights without an alarm, other
      guards wake at 50 % of his health, all able adults under 25 %; a villager stuck on the way to bed is put in it
      at bedtime even with a player near.
-  10. D-077: pre-rolled village roster at settling (families up to 4, elders with elders), first two adults alone in
+  10. [done 2026-11-10, d3bf766 and e93b3c4, not tried in the game] D-077: pre-rolled village roster at settling (families up to 4, elders with elders), first two adults alone in
      their own houses, houses sized for the family to come, beds permanent, children outside the cap.
-  11. [part done 2026-11-10: overnight hunting trips, children's colors] D-078: elders mend inside the village, feed animals, forage, help harvest; fish by biome; hunters hunt real game
+  11. [done 2026-11-10 except rafts: hunting trips, children's colors, elders mend and help with crops, healers'
+      remedies, fish by biome] D-078: elders mend inside the village, feed animals, forage, help harvest; fish by biome; hunters hunt real game
      or go away overnight with a roll for success, catch, drops and health; healers use potions and healing foods and
      herbs; children light blue or light pink; rafts for fishers only after a feasibility check.
   8. Role touches only through kitbashed role displays that fit many arrangements (D-074).

@@ -447,6 +447,7 @@ namespace Villheim.Logic.Village
         }
 
         private static readonly Collider[] Overlaps = new Collider[512];
+        private static readonly HashSet<string> ZoneNotes = new HashSet<string>();
 
         /// <summary>
         /// What stands on the ground where a building of this size would go, or null when it is bare. Counted: anything
@@ -468,6 +469,19 @@ namespace Villheim.Logic.Village
 
                 ZNetView view = collider.GetComponentInParent<ZNetView>();
                 GameObject go = view != null ? view.gameObject : collider.transform.root.gameObject;
+                // The world's own zone object (water, zone colliders without a net view) is no obstacle: counting it failed
+                // every spot round a village and froze the game for seconds (2026-11-09). Slopes and cliffs have their
+                // own checks.
+                if (view == null && go.name.StartsWith("_Zone"))
+                {
+                    if (ZoneNotes.Add(collider.name))
+                    {
+                        Perf.Debug($"Plot check: ignoring zone collider '{collider.name}' on layer {LayerMask.LayerToName(collider.gameObject.layer)}.");
+                    }
+
+                    continue;
+                }
+
                 if (go.name.StartsWith("villheim_kids_rig"))
                 {
                     return "a test model";

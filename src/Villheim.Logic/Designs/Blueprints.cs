@@ -448,7 +448,11 @@ namespace Villheim.Logic.Designs
                 }
             }
 
-            Center(blueprint, asSaved);
+            // Generated designs share one origin across all their stages: centering each on its own outline shifted a
+            // d2 against its d1, and 'vh decor now' then built the whole house again a little off (2026-11-09).
+            string path = file.Replace('\\', '/').ToLowerInvariant();
+            bool generated = path.Contains("/testpool-") || path.Contains("/approved-generated/");
+            Center(blueprint, asSaved || generated);
             return blueprint;
         }
 

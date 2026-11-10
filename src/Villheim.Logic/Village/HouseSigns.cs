@@ -44,6 +44,8 @@ namespace Villheim.Logic.Village
         // ---------------------------------------------------------------- jobs
 
         /// <summary>The next house sign to make, or null when every home that has people has its signs.</summary>
+        private static readonly Dictionary<string, float> RetryAt = new Dictionary<string, float>();
+
         public static Amenities.Job Job(VillageHearth hearth, VillageState state)
         {
             if (!On || ZNetScene.instance == null)
@@ -73,9 +75,16 @@ namespace Villheim.Logic.Village
                         continue;
                     }
 
+                    string retryKey = $"{hearth.VillageId}:{PlotKey(plot)}:{slot}";
+                    if (RetryAt.TryGetValue(retryKey, out float retry) && Time.time < retry)
+                    {
+                        break; // looked a moment ago and found no place: the search ran every few seconds (lag, 2026-11-09)
+                    }
+
                     if (!Place(hearth, plot, slot, standing.Select(s => s.Sign.transform.position).ToList(), out Vector3 spot, out Quaternion rotation))
                     {
-                        string key = $"{hearth.VillageId}:{PlotKey(plot)}:{slot}";
+                        RetryAt[retryKey] = Time.time + 120f;
+                        string key = retryKey;
                         if (Warned.Add(key))
                         {
                             VillheimPlugin.Debug($"{state.Name}: no place found for {(slot == FrontSlot ? "the front sign" : $"inside sign {slot + 1}")} " +

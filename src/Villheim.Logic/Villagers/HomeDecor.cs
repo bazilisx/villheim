@@ -571,6 +571,10 @@ namespace Villheim.Logic.Villagers
                 {
                     lines.Add($"The {nearest.Design} has no next decor stage.");
                 }
+                else if (!plan.Lines)
+                {
+                    lines.Add($"The {nearest.Design} does not line up with {plan.Next}; nothing built.");
+                }
                 else
                 {
                     Quaternion turn = Quaternion.Euler(0f, nearest.Yaw, 0f);

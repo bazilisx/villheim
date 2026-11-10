@@ -217,12 +217,12 @@ namespace Villheim.Logic.Villagers
             }
         }
 
-        /// <summary>The color his role is shown in: the leader gold, else his trade's, else elder gray, child light blue.</summary>
+        /// <summary>The color his role is shown in: the leader gold, else his trade's, else elder gray, children light blue (boys) or light pink (girls).</summary>
         public static string RoleColor(Villager villager)
         {
             if (Childhood.IsChild(villager))
             {
-                return "#add8ff"; // light blue
+                return VillagerLooks.IsFemale(villager) ? "#ffc0d9" : "#add8ff"; // light pink for girls, light blue for boys (D-078)
             }
 
             if (Roles.IsJarl(villager))

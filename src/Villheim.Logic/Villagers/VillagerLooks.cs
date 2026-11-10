@@ -103,6 +103,12 @@ namespace Villheim.Logic.Villagers
         public static string BoyLook => (LogicConfig.ChildBoyLook?.Value ?? "femaleface").Trim().ToLowerInvariant();
 
         /// <summary>Whether a villager is a woman or girl, from his seed (the model alone can be the female one for a boy).</summary>
+        /// <summary>"his" or "her" for log and hover lines about this villager.</summary>
+        public static string His(Villager villager) => IsFemale(villager) ? "her" : "his";
+
+        /// <summary>"he" or "she".</summary>
+        public static string He(Villager villager) => IsFemale(villager) ? "she" : "he";
+
         public static bool IsFemale(Villager villager) =>
             villager?.Zdo != null && new System.Random(villager.Zdo.GetInt(Keys.VillagerSeed)).Next(2) == 1;
 

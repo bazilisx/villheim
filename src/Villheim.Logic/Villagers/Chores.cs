@@ -57,6 +57,10 @@ namespace Villheim.Logic.Villagers
         {
             public Phase Phase;
             public Profile Profile;
+
+            /// <summary>The kind of gathering he last set off on, kept two minutes (FINDINGS 3, suspect 1).</summary>
+            public Profile Sticky;
+            public float StickyUntil;
             public bool CanHarvest;
             public readonly HashSet<string> Wanted = new HashSet<string>();
             public GameObject Target;
@@ -482,18 +486,31 @@ namespace Villheim.Logic.Villagers
                 }
 
                 first = stone > wood ? Miner : Woodcutter;
+
+                // He keeps to the material he went for last while the village still lacks it (FINDINGS 3, suspect 1):
+                // the need list was read again at each trip, and a small swing in it sent him from rock to tree and
+                // back, a new "setting off" each time.
+                if (work.Sticky != null && Time.time < work.StickyUntil &&
+                    (work.Sticky == Miner ? stone > 0 : wood > 0))
+                {
+                    first = work.Sticky;
+                }
             }
 
             Profile second = first == Miner ? Woodcutter : Miner;
             string firstReason = TryProfile(villager, work, needs, first);
             if (firstReason == null)
             {
+                work.Sticky = first;
+                work.StickyUntil = Time.time + 120f;
                 return;
             }
 
             string secondReason = TryProfile(villager, work, needs, second);
             if (secondReason == null)
             {
+                work.Sticky = second;
+                work.StickyUntil = Time.time + 120f;
                 return;
             }
 
@@ -1318,7 +1335,7 @@ namespace Villheim.Logic.Villagers
                     {
                         // His own piece is out of reach: he helps at the next one instead for a while.
                         work.OwnPiece = -1;
-                        Village.Perf.Debug($"{villager.VillagerName} can't get to his piece of the building; helping at the next one.");
+                        Village.Perf.Debug($"{villager.VillagerName} can't get to {VillagerLooks.His(villager)} piece of the building; helping at the next one.");
                         Finish(work);
                         work.Cooldown = 2f;
                         return false;
@@ -1944,6 +1961,15 @@ namespace Villheim.Logic.Villagers
             else
             {
                 hit.m_damage.m_chop = Mathf.Max(weapon?.m_shared?.m_damages.m_chop ?? 0f, 15f) * Strength() * VillagerSkills.WorkFactor(villager, "woodcutting");
+            }
+
+            if (hit.m_hitCollider == null && destructible is MineRock5)
+            {
+                // No part of the rock left standing as far as this client knows (FINDINGS 4: the game logged "Minerock
+                // hit has no collider or invalid hit area on Rock_3_frac" for each such swing). The swing does nothing;
+                // the swing count moves him on to another rock.
+                VillheimPlugin.Debug($"{villager.VillagerName} swung at {Utils.GetPrefabName(target)} with no part of it left to hit.");
+                return;
             }
 
             destructible.Damage(hit);

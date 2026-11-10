@@ -166,6 +166,15 @@ namespace Villheim.Logic.Villagers
                 End(villager, state);
                 state.Mode = mode;
                 Choose(villager, state, mode);
+                // A spot nobody could reach lately (any villager of the village) is not tried again for ten minutes
+                // (FINDINGS 3, suspect 4: "could not get to ... trying something else" 30 times in a session, mostly
+                // the same hearth-side spots).
+                for (int retry = 0; retry < 2 && KnownBad(villager.VillageId, state.Spot); retry++)
+                {
+                    state.SkipUntil[state.Kind] = Time.time + 300f;
+                    End(villager, state);
+                    Choose(villager, state, mode);
+                }
             }
 
             state.LastRun = Time.time;
@@ -183,6 +192,7 @@ namespace Villheim.Logic.Villagers
                 {
                     // Can't get there. Set this kind of activity aside for a while and pick another.
                     state.SkipUntil[state.Kind] = Time.time + 300f;
+                    NoteBad(villager.VillageId, state.Spot);
                     VillheimPlugin.Debug($"{villager.VillagerName} could not get to {Describe(state)}; trying something else.");
                     state.Until = 0f;
                     return true;
@@ -196,6 +206,40 @@ namespace Villheim.Logic.Villagers
             ai.StopMoving();
             Act(villager, ai, state, mood);
             return true;
+        }
+
+        private static readonly Dictionary<int, List<(Vector3 Spot, float Until)>> BadSpots = new Dictionary<int, List<(Vector3, float)>>();
+
+        private static void NoteBad(int villageId, Vector3 spot)
+        {
+            if (!BadSpots.TryGetValue(villageId, out var list))
+            {
+                BadSpots[villageId] = list = new List<(Vector3, float)>();
+            }
+
+            list.RemoveAll(b => b.Until < Time.time);
+            if (list.Count < 64)
+            {
+                list.Add((spot, Time.time + 600f));
+            }
+        }
+
+        private static bool KnownBad(int villageId, Vector3 spot)
+        {
+            if (!BadSpots.TryGetValue(villageId, out var list))
+            {
+                return false;
+            }
+
+            foreach (var bad in list)
+            {
+                if (bad.Until > Time.time && Utils.DistanceXZ(bad.Spot, spot) < 1.5f)
+                {
+                    return true;
+                }
+            }
+
+            return false;
         }
 
         public static string Describe(Villager villager)

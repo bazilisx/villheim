@@ -20,7 +20,7 @@ namespace Villheim.Logic.Villagers
     ///
     /// From about 16:00, once the day's work is done (work comes first in the Brain), until bedtime, when Sleep sends
     /// everyone but the night watch to his own bed. Doors are closed behind them on the way in and out (Walker). A
-    /// villager who can't get into his home goes to the hearth for the night.
+    /// villager who can't get into {VillagerLooks.His(villager)} home goes to the hearth for the night.
     /// </summary>
     internal static class HomeLife
     {
@@ -227,7 +227,7 @@ namespace Villheim.Logic.Villagers
                 if (Utils.DistanceXZ(villager.transform.position, goal) > 4f)
                 {
                     // Can't get in tonight: the hearth like everyone else.
-                    VillheimPlugin.Debug($"{villager.VillagerName} can't get into his home; off to the hearth.");
+                    VillheimPlugin.Debug($"{villager.VillagerName} can't get into {VillagerLooks.His(villager)} home; off to the hearth.");
                     state.Failed = true;
                     Let(villager, state);
                     return false;

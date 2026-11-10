@@ -124,8 +124,8 @@ namespace Villheim
                 "Villagers wear better armor and carry better tools as their village grows.");
 
             const string villagers = "4 - Villagers";
-            StartingVillagers = Admin(config, villagers, "StartingVillagers", 2,
-                "Villagers that arrive right away when a village is first found.", new AcceptableValueRange<int>(0, 20));
+            StartingVillagers = Admin(config, villagers, "StartingVillagers", 4,
+                "Villagers that arrive right away when a village is first found (4: a carpenter, a smith and two generalists, D-075).", new AcceptableValueRange<int>(0, 20));
             VillagersPerBuilding = Admin(config, villagers, "VillagersPerBuilding", 2,
                 "Population a village can support per building.", new AcceptableValueRange<int>(0, 10));
             MaxVillagers = Admin(config, villagers, "MaxVillagers", 12,

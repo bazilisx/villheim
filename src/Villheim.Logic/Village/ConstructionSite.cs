@@ -807,7 +807,8 @@ namespace Villheim.Logic.Village
                 factors[total.Key] = DesignLibrary.CostFactor(total.Value);
             }
 
-            return entries.Where(e => e.Shell).ToList();
+            // Beds too: a destroyed bed goes back where the design has it (Tyler, 2026-11-09).
+            return entries.Where(e => e.Shell || e.Prefab == "bed" || e.Prefab == "piece_bed02").ToList();
         }
 
         public static bool TearingDown(VillageHearth hearth) => IsActive(hearth.Zdo) && hearth.Zdo.GetInt(KeySiteTeardown) == 1;

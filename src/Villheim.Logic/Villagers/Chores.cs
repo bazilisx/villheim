@@ -1876,6 +1876,44 @@ namespace Villheim.Logic.Villagers
         private static bool InMistlands(GameObject go) =>
             go != null && WorldGenerator.instance != null && WorldGenerator.instance.GetBiome(go.transform.position) == Heightmap.Biome.Mistlands;
 
+        /// <summary>
+        /// The collider a blow on a big rock lands on: the one struck if it is one of the rock's live parts, else the
+        /// live part nearest the point. Any other collider made the game drop the hit ("Minerock hit has no collider or
+        /// invalid hit area", 2026-11-09), and the miner gave up after one swing.
+        /// </summary>
+        private static Collider RockPart(GameObject target, Collider struck, Vector3 point)
+        {
+            MineRock5 rock = target != null ? target.GetComponentInParent<MineRock5>() ?? target.GetComponentInChildren<MineRock5>() : null;
+            if (rock == null || rock.m_hitAreas == null)
+            {
+                return struck;
+            }
+
+            Collider best = null;
+            float bestDistance = float.MaxValue;
+            foreach (MineRock5.HitArea area in rock.m_hitAreas)
+            {
+                if (area == null || area.m_collider == null || area.m_health <= 0f)
+                {
+                    continue;
+                }
+
+                if (area.m_collider == struck)
+                {
+                    return struck;
+                }
+
+                float distance = (area.m_collider.ClosestPointOnBounds(point) - point).sqrMagnitude;
+                if (distance < bestDistance)
+                {
+                    best = area.m_collider;
+                    bestDistance = distance;
+                }
+            }
+
+            return best ?? struck;
+        }
+
         private static void Hit(Villager villager, GameObject target, Vector3 point, Collider struck, bool pickaxe)
         {
             IDestructible destructible = target.GetComponentInParent<IDestructible>() ?? target.GetComponentInChildren<IDestructible>();
@@ -1896,7 +1934,7 @@ namespace Villheim.Logic.Villagers
                 m_attacker = villager.GetZDOID(),
 
                 // Big rocks pick the part that breaks from the collider that was hit, and ignore hits without one.
-                m_hitCollider = struck,
+                m_hitCollider = RockPart(target, struck, point),
             };
 
             if (pickaxe)

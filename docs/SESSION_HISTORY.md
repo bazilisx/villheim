@@ -3,7 +3,16 @@
 Current facts only. Read this at the start of a session. Narrative is in `docs/daily-notes/`, goals in
 `docs/ROADMAP.md`, how-to in `docs/DEVELOPMENT.md`.
 
-## Current State (as of 2026-11-09)
+## Current State (as of 2026-11-10)
+
+Latest build a67b3d0 (2026-11-10 note, Session 1), in clusters that can be reverted one at a time: A the overnight
+branch (plots by real footprints, ruins cleared, set-aside projects, tool churn, `vh plot`), B lag (PieceIndex,
+background blueprint reads, `Lag summary` line and `vh lag` tests), C fixes (churn, decor reach, loose items, signs,
+`vh villager add`, bedtime, call to arms). Nothing from 2026-11-10 tried in the game. The building generator is worked
+on in its own session on branch `design/kitbash`. Next: Tyler's test (docs/handoffs/2026-11-10/TEST_PLAN.md plus the
+lag tests), the "In the way" line, D-080 mod side.
+
+### As of 2026-11-09
 
 Latest build fb15f86 (evening test fixes, see the 2026-11-09 note, Session 3): test pool only with TestPool on,
 hearth kept clear (11 m), rings widen per stage and overflow outward, zone collider no longer blocks plots, generated
@@ -150,6 +159,7 @@ walkable building pads, underwater rocks, smaller lag spikes, D-080.
 
 ## Recent milestones
 
+- **2026-11-10 (overnight merge, lag cluster, immediate fixes)** - see docs/daily-notes/2026-11/2026-11-10.md
 - **2026-11-09 (plot search audit and overnight fixes, handed over as a bundle)** - see docs/daily-notes/2026-11/2026-11-09.md
 - **2026-11-09 (first test pool test)** - see docs/daily-notes/2026-11/2026-11-09.md
 - **2026-11-09 (overhangs, decisions D-059 to D-066, kitbash helpers in stages)** - see docs/daily-notes/2026-11/2026-11-09.md

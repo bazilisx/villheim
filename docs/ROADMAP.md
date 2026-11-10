@@ -252,8 +252,9 @@ well (Tyler, 2026-11-08). The Features tab of the review sheet (`docs/features/b
   wall gap; outside benches and logs clipping walls; storehouse chests clipping and stair foot above ground; chests
   around the hearth move into the storehouse once built; hunters find game farther out or go on trips (D-078); growth
   stalls on "nowhere to put a home". Done: hearth kept clear, pool-only stand-ins, item stands at decor (df075f7).
-- [ ] **Later-biome decor (D-080):** pay for lox pelts, iron, silver, cloth and the like with local stand-ins from the
-  chests (troll or deer hide, bronze or copper, flint, leather scraps), free after some days if none come. Today they are free.
+- [ ] **Later-biome decor (D-080, answered 2026-11-10):** pay for lox pelts, iron, silver, cloth and the like with
+  stand-ins from the village biome and its neighbors (Meadows: Meadows and Black Forest; Black Forest: Meadows and
+  Swamp; and so on), from the chests. Never free. Lab side in the design session; mod side (HomeDecor costs) open.
 - [ ] **Walkable villages:** paths and building pads smooth slopes so no route needs a climb villagers cannot make
   (a path went down a 3 m embankment, 2026-11-09). Storehouse: stacked, labeled chests along the walls; hearth chests
   move in once it stands. Window flower beds need better pieces.
@@ -266,7 +267,13 @@ well (Tyler, 2026-11-08). The Features tab of the review sheet (`docs/features/b
   4. [built] Tools stay in hand between job steps; fewer job changes shown.
   5. [built] Lag: plot search within 25 ms a tick, fence and sign scans listed once, next step cached 3 s.
   6. [ ] Confirm from the log which pieces blocked the plots before these changes.
-  7. [ ] Hold-up reason on the notice board; plot clearing as villager work (to decide).
+  7. [done 2026-11-10] Hold-up reason on the notice board. [ ] Plot clearing as villager work (D-087).
+  8. [done 2026-11-10, cluster B, not tried in the game] Lag: shared piece list (PieceIndex), blueprints read in the
+     background, lag summary line and `vh lag` A/B tests for villager draw cost, notice board and hearth tick split.
+  9. [ ] Read the first lag summary; preload any villager gear or spawn that spikes; act on `vh lag hide` results.
+  10. [done 2026-11-10, cluster C] Churn (material kept two minutes, unreachable idle spots remembered), decor reach,
+      loose design items locked (T-626), signs off barred walls (T-606, T-612), `vh villager add` adults (T-616),
+      no call to arms for game (T-58), bedtime on the third try (D-076).
 - [x] Storehouse chests stacked and labeled along the walls (generator, 2026-11-09 night).
 - [ ] **Next test build (Tyler, 2026-11-09), do first:**
   1. [done 2026-11-09, not tried in the game] Beds: every villager gets a bed, the bed shows his name as a player's claimed bed does, villagers sleep in their

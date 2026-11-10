@@ -141,6 +141,7 @@ namespace Villheim.Logic.Village
             int wanted = 6;
             int offLevel = 0, onPath = 0, unreachable = 0, capped = 0, cluttered = 0;
             var fails = new int[FailNames.Length];
+            var things = new Dictionary<string, int>();
             int villageId = village != null ? village.VillageId : 0;
             // The way to the hearth is a grid search for each spot: a few dozen of them in one go were a lag spike (T-105).
             int searches = 0;
@@ -167,6 +168,10 @@ namespace Villheim.Logic.Village
                         if (pass == 0)
                         {
                             fails[(int)verdict.Fail]++;
+                            if (verdict.What != null)
+                            {
+                                things[verdict.What] = things.TryGetValue(verdict.What, out int n) ? n + 1 : 1;
+                            }
                         }
 
                         continue;
@@ -245,7 +250,8 @@ namespace Villheim.Logic.Village
                 VillheimPlugin.Log.LogInfo($"No room for a {role} of radius {radius:0.0} m: {candidates.Count} spots between {minDistance:0} and " +
                                            $"{maxDistance:0} m. Spots refused: {(why.Count > 0 ? string.Join(", ", why) : "none")}. " +
                                            $"Of the rest: needs clearing {cluttered}, off level {offLevel}, on a path {onPath}, " +
-                                           $"door unreachable {unreachable}, search cap hit {capped}.");
+                                           $"door unreachable {unreachable}, search cap hit {capped}." +
+                                           (things.Count > 0 ? " In the way: " + string.Join(", ", things.OrderByDescending(t => t.Value).Take(6).Select(t => $"{t.Key} {t.Value}")) + "." : ""));
                 position = Vector3.zero;
                 yaw = 0f;
                 return false;
@@ -447,6 +453,8 @@ namespace Villheim.Logic.Village
             public bool Clutter;
             public float GroundY;
             public float Time;
+            /// <summary>The piece or thing that stood in the way.</summary>
+            public string What;
         }
 
         /// <summary>True when the last TryFind ran out of its time for the frame; the next call picks up where it stopped.</summary>
@@ -457,7 +465,8 @@ namespace Villheim.Logic.Village
         private static readonly Dictionary<(int, int, int, int), Verdict> Verdicts = new Dictionary<(int, int, int, int), Verdict>();
         private static readonly Dictionary<int, int> VerdictPlots = new Dictionary<int, int>();
         private static readonly Dictionary<int, bool> TooBig = new Dictionary<int, bool>();
-        private static readonly List<Vector3> Standing = new List<Vector3>();
+        private static readonly List<(Vector3 At, string Name)> Standing = new List<(Vector3, string)>();
+        private static string LastWhat;
         private static readonly HashSet<int> SeenObjects = new HashSet<int>();
         private const float VerdictSeconds = 90f;
 
@@ -482,7 +491,7 @@ namespace Villheim.Logic.Village
             {
                 if (piece != null && !piece.GetComponent<VillageHearth>() && !OwnFence(piece.gameObject, villageId))
                 {
-                    Standing.Add(piece.transform.position);
+                    Standing.Add((piece.transform.position, Utils.GetPrefabName(piece.gameObject)));
                 }
             }
         }
@@ -515,7 +524,9 @@ namespace Villheim.Logic.Village
             }
 
             verdict = new Verdict { Time = Time.time };
+            LastWhat = null;
             verdict.Fail = Check(p, radius, maxTerrainDelta, plots, villageId, out verdict.GroundY, out verdict.Clutter);
+            verdict.What = LastWhat;
             Verdicts[key] = verdict;
             return true;
         }
@@ -544,10 +555,11 @@ namespace Villheim.Logic.Village
 
             // Never build on top of anything that is already there: player bases, other villages, ruins.
             float keep = radius + 1f;
-            foreach (Vector3 piece in Standing)
+            foreach ((Vector3 piece, string name) in Standing)
             {
                 if (Utils.DistanceXZ(p, piece) < keep)
                 {
+                    LastWhat = name;
                     return SpotFail.Pieces;
                 }
             }
@@ -595,7 +607,7 @@ namespace Villheim.Logic.Village
             string what = InTheWay(p, radius, out clutter, villageId);
             if (what != null)
             {
-                Perf.Debug($"Plot at {p} passed over: {what} stands there.");
+                LastWhat = what;
                 return SpotFail.Obstacle;
             }
 

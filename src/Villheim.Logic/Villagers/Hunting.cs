@@ -243,6 +243,15 @@ namespace Villheim.Logic.Villagers
                 return false;
             }
 
+            // Building first while the village gets on its feet (Tyler, 2026-11-09): until it is settled and nothing is going
+            // up, the builder never hunts, and others only when the chests hold no meat at all. Hunting while hurt and
+            // half-built kept a loop of fight, hurt, eat, fight.
+            bool settling = !Village.Amenities.Settled(hearth, out _) || Village.ConstructionSite.IsActive(hearth.Zdo);
+            if (settling && (Chores.IsVillageBuilder(villager) || MeatInChests(hearth) > 0))
+            {
+                return false;
+            }
+
             Character prey = FindPrey(villager.VillageId, hearth.transform.position, villager.transform.position);
             if (prey == null)
             {

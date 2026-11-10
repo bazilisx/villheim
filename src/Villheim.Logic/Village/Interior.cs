@@ -103,25 +103,40 @@ namespace Villheim.Logic.Village
         /// <summary>How many pieces of this kind (any bed, for beds) stand inside the building.</summary>
         public static int CountInside(Plot plot, string prefab)
         {
-            int count = 0;
-            var seen = new HashSet<GameObject>();
-            foreach (Collider collider in Physics.OverlapSphere(plot.Position, plot.Radius * 0.75f, LayerMask.GetMask("piece", "piece_nonsolid")))
+            // Kept 2 s per building and piece, and read from the village's piece list (lag cluster B): the old sphere of
+            // colliders walked every collider of the house for each want, each time the next job was looked for.
+            string key = $"{Mathf.RoundToInt(plot.Position.x)}:{Mathf.RoundToInt(plot.Position.z)}:{plot.Design}:{prefab}";
+            if (CountCache.TryGetValue(key, out var kept) && Time.time - kept.At < 2f)
             {
-                ZNetView view = collider.GetComponentInParent<ZNetView>();
-                if (view == null || !seen.Add(view.gameObject))
+                return kept.Count;
+            }
+
+            int count = 0;
+            CountPieces.Clear();
+            PieceIndex.InRadius(plot.Position, plot.Radius * 0.75f + 1f, CountPieces);
+            foreach (Piece piece in CountPieces)
+            {
+                if (piece == null)
                 {
                     continue;
                 }
 
-                bool match = prefab == "bed" ? view.GetComponent<Bed>() != null : Utils.GetPrefabName(view.gameObject) == prefab;
+                bool match = prefab == "bed" ? piece.GetComponent<Bed>() != null : Utils.GetPrefabName(piece.gameObject) == prefab;
                 if (match)
                 {
                     count++;
                 }
             }
 
+            CountCache[key] = (Time.time, count);
             return count;
         }
+
+        private static readonly Dictionary<string, (float At, int Count)> CountCache = new Dictionary<string, (float, int)>();
+        private static readonly List<Piece> CountPieces = new List<Piece>();
+
+        /// <summary>Forget the kept counts after a piece is made, so the next want sees it at once.</summary>
+        public static void ForgetCounts() => CountCache.Clear();
 
         /// <summary>
         /// A covered spot on the building's ground floor where the piece fits, or false. Results are kept for a minute

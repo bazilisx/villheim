@@ -86,7 +86,7 @@ namespace Villheim.Logic.Village
         public static void ClearFor(VillageHearth hearth, Vector3 position, float radius)
         {
             var pieces = new List<Piece>();
-            Piece.GetAllPiecesInRadius(position, radius + 1f, pieces);
+            PieceIndex.InRadius(position, radius + 1f, pieces);
             Container chest = VillageChest.Find(hearth);
             int removed = 0;
             foreach (Piece piece in pieces)
@@ -152,7 +152,7 @@ namespace Villheim.Logic.Village
             // piece in the world each time (146 ms a call on a finished ring, 2026-11-09).
             Ring.Clear();
             var pieces = new List<Piece>();
-            Piece.GetAllPiecesInRadius(center, current + 4f, pieces);
+            PieceIndex.InRadius(center, current + 4f, pieces);
             foreach (Piece piece in pieces)
             {
                 if (piece != null && piece.m_nview != null && piece.m_nview.IsValid() &&
@@ -322,7 +322,7 @@ namespace Villheim.Logic.Village
         private static Piece PieceAt(Vector3 spot, IEnumerable<string> prefabs, int villageId)
         {
             Nearby.Clear();
-            Piece.GetAllPiecesInRadius(spot, 3f, Nearby);
+            PieceIndex.InRadius(spot, 3f, Nearby);
             return Nearby.FirstOrDefault(p => p != null && Utils.DistanceXZ(p.transform.position, spot) < 0.8f &&
                                               prefabs.Contains(Utils.GetPrefabName(p.gameObject)) && p.m_nview != null &&
                                               p.m_nview.IsValid() && p.m_nview.GetZDO().GetInt(Keys.BuiltBy) == villageId &&
@@ -412,7 +412,7 @@ namespace Villheim.Logic.Village
         private static bool PresentAny(IEnumerable<string> prefabs, Vector3 spot)
         {
             Nearby.Clear();
-            Piece.GetAllPiecesInRadius(spot, 0.8f, Nearby);
+            PieceIndex.InRadius(spot, 0.8f, Nearby);
             return Nearby.Any(p => p != null && prefabs.Contains(Utils.GetPrefabName(p.gameObject)));
         }
     }

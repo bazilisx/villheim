@@ -324,7 +324,7 @@ namespace Villheim.Logic.Village
                     }
 
                     pieces.Clear();
-                    Piece.GetAllPiecesInRadius(spot, radius, pieces);
+                    PieceIndex.InRadius(spot, radius, pieces);
                     if (pieces.Count > 0)
                     {
                         continue;
@@ -507,7 +507,7 @@ namespace Villheim.Logic.Village
             }
 
             var pieces = new System.Collections.Generic.List<Piece>();
-            Piece.GetAllPiecesInRadius(center, ClearRadius, pieces);
+            PieceIndex.InRadius(center, ClearRadius, pieces);
             if (pieces.Count > 0 || Covered(center, centerY))
             {
                 return false;

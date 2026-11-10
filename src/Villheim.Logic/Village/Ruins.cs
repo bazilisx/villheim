@@ -128,7 +128,7 @@ namespace Villheim.Logic.Village
             }
 
             var pieces = new List<Piece>();
-            Piece.GetAllPiecesInRadius(area.CenterAt(y), area.Reach + 1f, pieces);
+            PieceIndex.InRadius(area.CenterAt(y), area.Reach + 1f, pieces);
             Container chest = VillageChest.Find(hearth);
             int ruins = 0, fence = 0;
             var gained = new Dictionary<string, int>();

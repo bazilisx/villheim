@@ -84,7 +84,7 @@ namespace Villheim.Logic.Village
                 }
 
                 pieces.Clear();
-                Piece.GetAllPiecesInRadius(new Vector3(p.x, y, p.z), 3f, pieces);
+                PieceIndex.InRadius(new Vector3(p.x, y, p.z), 3f, pieces);
                 if (pieces.Count > 0)
                 {
                     continue;

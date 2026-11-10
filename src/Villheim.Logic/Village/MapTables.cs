@@ -131,7 +131,7 @@ namespace Villheim.Logic.Village
                 }
 
                 pieces.Clear();
-                Piece.GetAllPiecesInRadius(new Vector3(p.x, y, p.z), 1.6f, pieces);
+                PieceIndex.InRadius(new Vector3(p.x, y, p.z), 1.6f, pieces);
                 if (pieces.Count == 0)
                 {
                     spot = new Vector3(p.x, y, p.z);

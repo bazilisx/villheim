@@ -15,6 +15,9 @@ namespace Villheim.Logic
         public static ConfigEntry<float> BuildStartShare;
         public static ConfigEntry<bool> LagLog;
         public static ConfigEntry<float> LagLogMs;
+        public static ConfigEntry<bool> PieceIndex;
+        public static ConfigEntry<bool> BlueprintsInBackground;
+        public static ConfigEntry<float> LagSummarySeconds;
         public static ConfigEntry<float> PlotSearchMs;
         public static ConfigEntry<float> HearthMargin;
         public static ConfigEntry<float> BuildingGap;
@@ -1266,6 +1269,17 @@ namespace Villheim.Logic
                 "furniture spots, plot search) that takes longer than LagLogMs, to find what makes the game stutter.");
             LagLogMs = Admin(config, test, "LagLogMs", 4f,
                 "With LagLog on: steps taking at least this many milliseconds are logged.");
+            LagSummarySeconds = Admin(config, test, "LagSummarySeconds", 60f,
+                "With LagLog on: every this many seconds, one 'Lag summary' line with the frame times (average, slowest " +
+                "1 %, hitches over 50 ms) and where the time went: the village's own work by part, and the game's work for " +
+                "villagers (their AI, body and animation, gear put on, villagers and pieces spawned). 0 turns it off.");
+            PieceIndex = Admin(config, test, "PieceIndex", true,
+                "Lag fix (cluster B, 2026-11-10): the village's 'which pieces are near here' questions read one shared list " +
+                "of the loaded pieces, built at most once a frame, instead of each walking every piece in the world. Off: " +
+                "every question asks the game, as before.");
+            BlueprintsInBackground = Admin(config, test, "BlueprintsInBackground", true,
+                "Lag fix (cluster B): blueprint files are read on a background thread, once when the world loads and again " +
+                "every two minutes, so the game never waits on the disk. Off: read in the game's own frame, as before.");
             PlotSearchMs = Admin(config, test, "PlotSearchMs", 25f,
                 "The most milliseconds a village spends in one frame looking for a place to build. The search goes on " +
                 "at the next tick from where it stopped. 0 looks through every spot at once.");

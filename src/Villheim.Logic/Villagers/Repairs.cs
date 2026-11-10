@@ -371,7 +371,7 @@ namespace Villheim.Logic.Villagers
         internal static bool Present(string prefab, Vector3 world)
         {
             Nearby.Clear();
-            Piece.GetAllPiecesInRadius(world, 0.5f, Nearby);
+            PieceIndex.InRadius(world, 0.5f, Nearby);
             foreach (Piece piece in Nearby)
             {
                 if (piece != null && Utils.GetPrefabName(piece.gameObject) == prefab)

@@ -468,6 +468,7 @@ namespace Villheim.Logic.Village
         public static bool Make(VillageHearth hearth, Job job)
         {
             bool made = MakeOnce(hearth, job);
+            Interior.ForgetCounts();
             if (made)
             {
                 NoteMade(hearth, job);

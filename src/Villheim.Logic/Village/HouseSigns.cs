@@ -305,7 +305,7 @@ namespace Villheim.Logic.Village
             {
                 var found = new List<(Sign, int, int)>();
                 Nearby.Clear();
-                Piece.GetAllPiecesInRadius(hearth.transform.position, VillheimConfig.VillageRadius.Value * 2f + 40f, Nearby);
+                PieceIndex.InRadius(hearth.transform.position, VillheimConfig.VillageRadius.Value * 2f + 40f, Nearby);
                 foreach (Piece piece in Nearby)
                 {
                     if (piece == null || piece.m_nview == null || !piece.m_nview.IsValid() || !piece.TryGetComponent(out Sign sign))
@@ -340,10 +340,33 @@ namespace Villheim.Logic.Village
         /// <summary>The home's front door: of its ground floor doors, the one nearest its door side. Null if it has none.</summary>
         public static Door FrontDoor(VillageHearth hearth, Plot plot)
         {
-            var doors = new List<Door>();
-            foreach (Collider collider in Physics.OverlapSphere(plot.Position, plot.Radius, LayerMask.GetMask("piece", "piece_nonsolid")))
+            // Kept 10 s per home (lag cluster B): the look round a whole house for its doors ran for every sign and every
+            // home each time the next job was searched for (Amenities.Find step 5, up to 51 ms on 2026-11-09).
+            string key = $"{hearth.VillageId}:{Mathf.RoundToInt(plot.Position.x)}:{Mathf.RoundToInt(plot.Position.z)}:{plot.Design}";
+            if (DoorCache.TryGetValue(key, out var kept) && Time.time - kept.At < 10f && (kept.Door == null || kept.Door))
             {
-                Door door = collider.GetComponentInParent<Door>();
+                return kept.Door;
+            }
+
+            Door found = FindFrontDoor(hearth, plot);
+            DoorCache[key] = (Time.time, found);
+            return found;
+        }
+
+        private static readonly Dictionary<string, (float At, Door Door)> DoorCache = new Dictionary<string, (float, Door)>();
+        private static readonly List<Piece> DoorPieces = new List<Piece>();
+
+        private static Door FindFrontDoor(VillageHearth hearth, Plot plot)
+        {
+            var doors = new List<Door>();
+            DoorPieces.Clear();
+            // The village's piece list (PieceIndex) in place of a sphere of colliders: a house has hundreds of colliders,
+            // each walked up to its piece, where the list holds each piece once. 1 m more than the plot, since a door's
+            // middle may stand a little past a collider at the edge.
+            PieceIndex.InRadius(plot.Position, plot.Radius + 1f, DoorPieces);
+            foreach (Piece piece in DoorPieces)
+            {
+                Door door = piece != null ? piece.GetComponent<Door>() : null;
                 if (door == null || doors.Contains(door) || door.m_keyItem != null || door.m_nview == null || !door.m_nview.IsValid() ||
                     door.m_nview.GetZDO().GetInt(Keys.BuiltBy) != hearth.VillageId)
                 {

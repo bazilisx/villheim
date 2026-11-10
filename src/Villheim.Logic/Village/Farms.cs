@@ -312,7 +312,7 @@ namespace Villheim.Logic.Village
         private static bool PenPieceAt(Vector3 at, string prefabName)
         {
             var near = new List<Piece>();
-            Piece.GetAllPiecesInRadius(at, 1f, near);
+            PieceIndex.InRadius(at, 1f, near);
             return near.Any(p => p != null && Utils.GetPrefabName(p.gameObject) == prefabName && Utils.DistanceXZ(p.transform.position, at) < 0.6f);
         }
 

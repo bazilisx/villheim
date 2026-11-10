@@ -646,7 +646,7 @@ namespace Villheim.Logic.Village
         private static Fireplace CampNear(Vector3 point, float radius, bool hermitsOnly = false)
         {
             var pieces = new List<Piece>();
-            Piece.GetAllPiecesInRadius(point, radius, pieces);
+            PieceIndex.InRadius(point, radius, pieces);
             foreach (Piece piece in pieces)
             {
                 if (piece != null && piece.m_nview != null && piece.m_nview.IsValid() && piece.m_nview.GetZDO().GetBool(KeyCamp) &&

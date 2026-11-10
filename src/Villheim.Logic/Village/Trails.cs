@@ -389,7 +389,7 @@ namespace Villheim.Logic.Village
         private static bool SignThere(int id, Vector3 spot, float radius)
         {
             var pieces = new List<Piece>();
-            Piece.GetAllPiecesInRadius(spot, radius, pieces);
+            PieceIndex.InRadius(spot, radius, pieces);
             return pieces.Any(p => p != null && p.m_nview != null && p.m_nview.IsValid() && p.m_nview.GetZDO().GetInt(KeyRoadSign) == id);
         }
 

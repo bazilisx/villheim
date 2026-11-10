@@ -57,6 +57,8 @@ namespace Villheim.Logic.Village
         private static readonly Dictionary<int, (float Time, List<Container> Chests)> Cache = new Dictionary<int, (float, List<Container>)>();
 
         /// <summary>The village's storage chests that are loaded, found again every three seconds.</summary>
+        private static readonly List<Piece> OfPieces = new List<Piece>();
+
         public static List<Container> Of(int villageId)
         {
             if (Cache.TryGetValue(villageId, out var cached) && Time.time - cached.Time < 3f && cached.Chests.All(c => c))
@@ -69,9 +71,13 @@ namespace Villheim.Logic.Village
             using (Perf.Time("StorageChests.Of"))
             if (hearth != null && hearth.IsValid)
             {
-                foreach (Collider collider in Physics.OverlapSphere(hearth.transform.position, 25f, LayerMask.GetMask("piece", "piece_nonsolid")))
+                // The village's piece list (lag cluster B): a chest's Container sits on its piece, so each piece is asked
+                // once, where the sphere of colliders walked every collider of every building within 25 m.
+                OfPieces.Clear();
+                PieceIndex.InRadius(hearth.transform.position, 26f, OfPieces);
+                foreach (Piece piece in OfPieces)
                 {
-                    Container container = collider.GetComponentInParent<Container>();
+                    Container container = piece != null ? piece.GetComponent<Container>() : null;
                     if (container && container.m_nview && container.m_nview.IsValid() && !chests.Contains(container) &&
                         container.m_nview.GetZDO().GetInt(KeyVillage) == villageId)
                     {
@@ -84,9 +90,11 @@ namespace Villheim.Logic.Village
             Plot store = hearth != null && hearth.IsValid ? StorehouseOf(new VillageState(hearth.Zdo)) : null;
             if (store != null)
             {
-                foreach (Collider collider in Physics.OverlapSphere(store.Position, store.Radius * 0.75f, LayerMask.GetMask("piece", "piece_nonsolid")))
+                OfPieces.Clear();
+                PieceIndex.InRadius(store.Position, store.Radius * 0.75f + 1f, OfPieces);
+                foreach (Piece piece in OfPieces)
                 {
-                    Container container = collider.GetComponentInParent<Container>();
+                    Container container = piece != null ? piece.GetComponent<Container>() : null;
                     if (container && container.m_nview && container.m_nview.IsValid() && !chests.Contains(container) &&
                         container.m_nview.GetZDO().GetInt(KeyVillage) == villageId)
                     {

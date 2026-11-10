@@ -144,7 +144,7 @@ namespace Villheim.Logic.Villagers
         private static CraftingStation StationFor(VillageHearth hearth, string station, int level)
         {
             var pieces = new List<Piece>();
-            Piece.GetAllPiecesInRadius(hearth.transform.position, VillheimConfig.VillageRadius.Value + 10f, pieces);
+            PieceIndex.InRadius(hearth.transform.position, VillheimConfig.VillageRadius.Value + 10f, pieces);
             return pieces.Select(p => p != null ? p.GetComponent<CraftingStation>() : null)
                 .FirstOrDefault(s => s != null && s.m_name == station && s.GetLevel() >= level);
         }

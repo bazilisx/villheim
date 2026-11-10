@@ -371,7 +371,7 @@ namespace Villheim.Logic.Village
 
                 bool blocked = false;
                 PieceBuffer.Clear();
-                Piece.GetAllPiecesInRadius(position, radius + 1f, PieceBuffer);
+                PieceIndex.InRadius(position, radius + 1f, PieceBuffer);
                 foreach (Piece piece in PieceBuffer)
                 {
                     // Only the village's own pieces (the hearth, its chest and cooking station) may be there already.
@@ -424,7 +424,7 @@ namespace Villheim.Logic.Village
             }
 
             PieceBuffer.Clear();
-            Piece.GetAllPiecesInRadius(plot.Position, foot.Reach + 1f, PieceBuffer);
+            PieceIndex.InRadius(plot.Position, foot.Reach + 1f, PieceBuffer);
             foreach (Piece piece in PieceBuffer)
             {
                 if (piece != null && foot.Holds(piece.transform.position) && Stays(piece, villageId, true))
@@ -615,7 +615,7 @@ namespace Villheim.Logic.Village
 
             Standing.Clear();
             PieceBuffer.Clear();
-            Piece.GetAllPiecesInRadius(hearth, VillheimConfig.VillageRadius.Value * 4f + radius + 2f, PieceBuffer);
+            PieceIndex.InRadius(hearth, VillheimConfig.VillageRadius.Value * 4f + radius + 2f, PieceBuffer);
             foreach (Piece piece in PieceBuffer)
             {
                 if (Stays(piece, villageId, false))

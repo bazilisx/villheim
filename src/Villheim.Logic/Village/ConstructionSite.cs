@@ -833,7 +833,7 @@ namespace Villheim.Logic.Village
             float radius = (old != null ? old.Radius : site.Radius) * 0.75f;
             Container chest = VillageChest.Find(hearth);
             var pieces = new List<Piece>();
-            Piece.GetAllPiecesInRadius(site.Position, radius, pieces);
+            PieceIndex.InRadius(site.Position, radius, pieces);
             Piece best = null;
             foreach (Piece piece in pieces)
             {

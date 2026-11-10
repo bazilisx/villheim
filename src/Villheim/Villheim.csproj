@@ -5,6 +5,8 @@
     Changes here need a game restart, so keep it small and stable.
   -->
   <PropertyGroup>
+    <!-- Keeps the core file the same between commits, so the updater only asks for a restart when the core really changed. -->
+    <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
     <AssemblyName>Villheim</AssemblyName>
     <RootNamespace>Villheim</RootNamespace>
     <!-- Fixed so logic builds always bind to the loaded core. -->

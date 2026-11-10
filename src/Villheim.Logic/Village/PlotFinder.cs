@@ -24,7 +24,8 @@ namespace Villheim.Logic.Village
     /// </summary>
     internal static class PlotFinder
     {
-        public const float HearthClearance = 6f;
+        // Buildings stay off the hearth's leveled ground (10 m) with a meter to spare (Tyler, 2026-11-09).
+        public const float HearthClearance = HearthGround.LevelRadius + 1f;
 
         /// <summary>How far above or below the hearth a building's ground may be and still be built on the hearth's level.</summary>
         public const float LevelTolerance = 2.5f;

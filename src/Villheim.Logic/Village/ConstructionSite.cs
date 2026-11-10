@@ -807,7 +807,13 @@ namespace Villheim.Logic.Village
                 factors[total.Key] = DesignLibrary.CostFactor(total.Value);
             }
 
-            // Beds too: a destroyed bed goes back where the design has it (Tyler, 2026-11-09).
+            // Generated designs: everything in the house as it stands now (furniture, decor, stands with their items), so
+            // whatever breaks is put back where it was (Tyler, 2026-11-09). Other designs: the shell and the beds.
+            if (Interior.FurnishedByDesign(plot))
+            {
+                return entries;
+            }
+
             return entries.Where(e => e.Shell || e.Prefab == "bed" || e.Prefab == "piece_bed02").ToList();
         }
 

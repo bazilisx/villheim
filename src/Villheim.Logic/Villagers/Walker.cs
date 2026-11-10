@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using UnityEngine;
 
@@ -174,6 +175,12 @@ namespace Villheim.Logic.Villagers
                 if (FindDoor(position, _goal))
                 {
                     VillheimPlugin.Debug($"{villager.VillagerName} goes through a door.");
+                    return WalkResult.Walking;
+                }
+
+                if (FindDoorByGoal(position, _goal))
+                {
+                    VillheimPlugin.Debug($"{villager.VillagerName} goes round to the door of the building the goal is in.");
                     return WalkResult.Walking;
                 }
             }
@@ -359,6 +366,61 @@ namespace Villheim.Logic.Villagers
             _doorNear = center + doorNormal * side * DoorStandOff;
             _doorFar = center - doorNormal * side * DoorPassDistance;
             _doorUntil = Time.time + DoorApproachSeconds;
+            return true;
+        }
+
+        /// <summary>
+        /// The goal is inside a building (or he is inside and the goal out), and he has come to a stop on the wrong side
+        /// of its walls, too far from any door for FindDoor. The game's paths treat a closed door as wall, so a path to
+        /// a bed or a workbench indoors ends somewhere along the outside wall (Ivo stood 33 m short of his bed; Waleran
+        /// could not reach the workbench in his home, 2026-11-09). Looks for a door within 15 m of the goal with him on
+        /// one side and the goal on the other, the one that makes the shortest way round, and walks to it first.
+        /// (The cause was found in ValheimVillages' notes, CC0, Patches/DoorRegistryPatch and DoorLinkPlacer; no code
+        /// taken.)
+        /// </summary>
+        private bool FindDoorByGoal(Vector3 position, Vector3 goal)
+        {
+            Door best = null;
+            float bestCost = float.MaxValue;
+            var seen = new HashSet<Door>();
+            foreach (Collider collider in Physics.OverlapSphere(goal, 15f, LayerMask.GetMask("piece", "piece_nonsolid")))
+            {
+                Door door = collider.GetComponentInParent<Door>();
+                if (door == null || !seen.Add(door) || door.m_keyItem != null || door.m_nview == null || !door.m_nview.IsValid())
+                {
+                    continue;
+                }
+
+                Vector3 normal = Flat(door.transform.forward);
+                float mySide = Vector3.Dot(position - door.transform.position, normal);
+                float goalSide = Vector3.Dot(goal - door.transform.position, normal);
+                if (Mathf.Sign(mySide) == Mathf.Sign(goalSide) || Mathf.Abs(door.transform.position.y - goal.y) > 4f)
+                {
+                    continue;
+                }
+
+                float cost = Utils.DistanceXZ(position, door.transform.position) + Utils.DistanceXZ(door.transform.position, goal);
+                if (cost < bestCost)
+                {
+                    best = door;
+                    bestCost = cost;
+                }
+            }
+
+            if (best == null)
+            {
+                return false;
+            }
+
+            Vector3 doorNormal = Flat(best.transform.forward);
+            Vector3 center = DoorCenter(best);
+            float side = Mathf.Sign(Vector3.Dot(position - center, doorNormal));
+            _door = best;
+            _doorPassing = false;
+            _doorNear = center + doorNormal * side * DoorStandOff;
+            _doorFar = center - doorNormal * side * DoorPassDistance;
+            // Time to walk round to it (about 2 m a second), as well as the usual approach.
+            _doorUntil = Time.time + DoorApproachSeconds + Mathf.Min(25f, Utils.DistanceXZ(position, _doorNear) * 0.5f);
             return true;
         }
 

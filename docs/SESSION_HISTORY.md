@@ -11,9 +11,8 @@ background blueprint reads, `Lag summary`, `vh lag`), C fixes (churn, decor reac
 D `Village status` line and `vh snapshot`, E plots cleared by hand and full refunds (D-087, D-088), F Shaper Tool plot
 mode (D-090 to D-093), G decor paid in local stand-ins (D-080), H no swimming for rocks and helpers making essentials,
 I guards and the night watch (D-076), J overnight hunting trips and children's colors (D-078), K elders mend and
-help with crops, healers use remedies (D-078), L village roster at founding (D-077, new villages only), M homes sized
-for households, N fish by biome, O walkable banks round pads on slopes. New on/off settings in "9 - Test villages": PieceIndex, BlueprintsInBackground,
-ClearPlotsByHand, DecorPaidWithAnalogs, HuntTrips, VillageRoster;
+help with crops, healers use remedies (D-078) (L roster and M home sizing reverted: not as decided), N fish by biome, O walkable banks round pads on slopes. New on/off settings in "9 - Test villages": PieceIndex, BlueprintsInBackground,
+ClearPlotsByHand, DecorPaidWithAnalogs, HuntTrips;
 LagSummarySeconds and StatusLineSeconds. Nothing from 2026-11-10 tried in the game. The building generator is worked
 on in its own session on branch `design/kitbash`. Next: Tyler's test (Tests tab T-631 on), rafts (D-078),
 walkable pads, preloading from the lag summaries.

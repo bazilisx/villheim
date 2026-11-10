@@ -257,6 +257,17 @@ well (Tyler, 2026-11-08). The Features tab of the review sheet (`docs/features/b
 - [ ] **Walkable villages:** paths and building pads smooth slopes so no route needs a climb villagers cannot make
   (a path went down a 3 m embankment, 2026-11-09). Storehouse: stacked, labeled chests along the walls; hearth chests
   move in once it stands. Window flower beds need better pieces.
+- [ ] **Village placement and lag (Tyler, 2026-11-09 night), on the branch overnight/2026-11-10, not tried in the game:**
+  1. [built] Villages find room by themselves: real footprints, 2.5 m gap, hearth circle plus 4.5 m, every tree and
+     all but house-size boulders cleared, the game's small ruins taken down for materials.
+  2. [built] A building with no room is set aside and the next project goes on; the reason shows on the hearth's hover.
+  3. [backend built: `vh plot check | here | clear`] A tool made at the notice board to choose a building's spot by
+     hand, with its size shown on the ground. The tool and its preview are open (item choice in DECISIONS).
+  4. [built] Tools stay in hand between job steps; fewer job changes shown.
+  5. [built] Lag: plot search within 25 ms a tick, fence and sign scans listed once, next step cached 3 s.
+  6. [ ] Confirm from the log which pieces blocked the plots before these changes.
+  7. [ ] Hold-up reason on the notice board; plot clearing as villager work (to decide).
+- [x] Storehouse chests stacked and labeled along the walls (generator, 2026-11-09 night).
 - [ ] **Next test build (Tyler, 2026-11-09), do first:**
   1. [done 2026-11-09, not tried in the game] Beds: every villager gets a bed, the bed shows his name as a player's claimed bed does, villagers sleep in their
      beds, and village beds cannot be claimed by players (today beds show "unassigned, claim bed" and nobody uses them).

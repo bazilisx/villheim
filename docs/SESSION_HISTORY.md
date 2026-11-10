@@ -11,6 +11,11 @@ designs keep their saved origin, repairs put back every piece, storehouse takes 
 villagers, builder never hunts while settling, mining fixed for broken-up rocks. Next: let helpers build amenities,
 walkable building pads, underwater rocks, smaller lag spikes, D-080.
 
+- **Overnight branch (2026-11-09 Session 4, not on main until merged, not tried in the game past its first two
+  commits):** `overnight/2026-11-10`, handed over as a git bundle in `BepInEx/Villheim/handoff-2026-11-10/`. Plot
+  search by real footprints with causes named, ruins and all but house-size boulders cleared, hold-ups on the hearth's
+  hover, projects with no room set aside, search spread over frames, tool and job churn, `vh plot`, store room chests
+  stacked and labeled, `lab/audit_pool.js`. Read HANDOFF.md there first. Open: which pieces blocked the plots.
 - **Next session (handoff 2026-11-09, usage ran low):** merge feat/layout (WIP b9a500d, run the full checks
   first); feat/persona and feat/massing are merged. Each wrote a "Handoff (2026-11-09)" in its doc. Check the test pool
   before Tyler tests it: `node /tmp/det/lineage.js <lab dir>` style measure (decor stages must keep the shell, about
@@ -145,6 +150,7 @@ walkable building pads, underwater rocks, smaller lag spikes, D-080.
 
 ## Recent milestones
 
+- **2026-11-09 (plot search audit and overnight fixes, handed over as a bundle)** - see docs/daily-notes/2026-11/2026-11-09.md
 - **2026-11-09 (first test pool test)** - see docs/daily-notes/2026-11/2026-11-09.md
 - **2026-11-09 (overhangs, decisions D-059 to D-066, kitbash helpers in stages)** - see docs/daily-notes/2026-11/2026-11-09.md
 

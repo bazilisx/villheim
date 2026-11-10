@@ -138,6 +138,43 @@ namespace Villheim.Logic.Villagers
             }
         }
 
+        private static readonly int KeyKept = "villheim_beds_kept".GetStableHashCode();
+
+        /// <summary>Beds of villagers who died, kept for them (D-077). Only in villages with a roster.</summary>
+        public static List<Vector3> Kept(VillageHearth hearth)
+        {
+            var kept = new List<Vector3>();
+            foreach (string part in hearth.Zdo.GetString(KeyKept, "").Split(';'))
+            {
+                string[] f = part.Split(',');
+                if (f.Length == 3 && float.TryParse(f[0], System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out float x) &&
+                    float.TryParse(f[1], System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out float y) &&
+                    float.TryParse(f[2], System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out float z))
+                {
+                    kept.Add(new Vector3(x, y, z));
+                }
+            }
+
+            return kept;
+        }
+
+        /// <summary>A villager died: his bed is kept for him (D-077), in a village with a roster.</summary>
+        public static void Keep(Villager villager)
+        {
+            VillageHearth hearth = VillageHearth.Find(villager.VillageId);
+            Vector3 bed = Claimed(villager);
+            if (hearth == null || !hearth.IsValid || bed == Vector3.zero || !Village.Roster.Has(hearth))
+            {
+                return;
+            }
+
+            string add = string.Join(",", new[] { bed.x, bed.y, bed.z }.Select(v => v.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture)));
+            string raw = hearth.Zdo.GetString(KeyKept, "");
+            hearth.Zdo.Set(KeyKept, raw.Length > 0 ? raw + ";" + add : add);
+            Forget(villager.VillageId);
+            VillheimPlugin.Log.LogInfo($"Beds: {villager.VillagerName}'s bed is kept for {VillagerLooks.His(villager)} memory.");
+        }
+
         /// <summary>Where this villager's claimed bed stands, or zero when he has none.</summary>
         public static Vector3 Claimed(Villager villager) => villager?.Zdo != null ? villager.Zdo.GetVec3(KeyBed, Vector3.zero) : Vector3.zero;
 
@@ -215,7 +252,28 @@ namespace Villheim.Logic.Villagers
                 }
             }
 
+            // Beds of villagers who died stay theirs (D-077).
+            taken.AddRange(Kept(hearth));
+
             Vector3 home = villager.Zdo.GetVec3(Keys.VillagerHome, hearth.transform.position);
+            // D-077: a household lives in one home. With family already in a bed, he takes one in that home; a new
+            // household takes a home nobody else has a bed in, where there is one.
+            int household = Village.Roster.HouseholdOf(villager);
+            Vector3 familyBed = household >= 0 ? Village.Roster.FamilyBed(villager) : Vector3.zero;
+            Plot familyHome = familyBed != Vector3.zero ? PlotAt(hearth, familyBed) : null;
+            var occupied = new List<Plot>();
+            if (household >= 0 && familyHome == null)
+            {
+                foreach (Vector3 t in taken)
+                {
+                    Plot p = PlotAt(hearth, t);
+                    if (p != null && !occupied.Contains(p))
+                    {
+                        occupied.Add(p);
+                    }
+                }
+            }
+
             Villager partner = Goals.Sweetheart(villager);
             Vector3 partnerBed = partner != null ? Claimed(partner) : Vector3.zero;
             Plot partnerHome = partnerBed != Vector3.zero ? PlotAt(hearth, partnerBed) : null;
@@ -235,6 +293,19 @@ namespace Villheim.Logic.Villagers
                 if (bedHome != null && Utils.DistanceXZ(bedHome.Position, partnerHome.Position) < 0.5f)
                 {
                     distance -= 40f;
+                }
+
+                if (household >= 0)
+                {
+                    Plot at = PlotAt(hearth, bed.transform.position);
+                    if (familyHome != null && at != null && Utils.DistanceXZ(at.Position, familyHome.Position) < 0.5f)
+                    {
+                        distance -= 80f;
+                    }
+                    else if (familyHome == null && at != null && occupied.Contains(at))
+                    {
+                        distance += 60f;
+                    }
                 }
                 if (distance < bestDistance)
                 {

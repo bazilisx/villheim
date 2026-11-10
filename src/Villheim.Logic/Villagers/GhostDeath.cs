@@ -266,6 +266,15 @@ namespace Villheim.Logic.Villagers
                     // effect and no grudge when he killed a villager).
                     try
                     {
+                        Beds.Keep(villager);
+                    }
+                    catch (Exception ex)
+                    {
+                        VillheimPlugin.Log.LogWarning($"Villheim: keeping the bed on death failed: {ex.Message}");
+                    }
+
+                    try
+                    {
                         Grudges.Died(villager);
                     }
                     catch (Exception ex)

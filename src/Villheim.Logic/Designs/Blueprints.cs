@@ -152,7 +152,7 @@ namespace Villheim.Logic.Designs
                 foreach (string file in Directory.GetFiles(folder, "*.*", SearchOption.AllDirectories))
                 {
                     string extension = Path.GetExtension(file).ToLowerInvariant();
-                    if (extension != ".blueprint" && extension != ".vbuild" || IsExcluded(file))
+                    if (extension != ".blueprint" && extension != ".vbuild" || IsExcluded(file) || OutsideTestPool(file))
                     {
                         continue;
                     }
@@ -199,6 +199,21 @@ namespace Villheim.Logic.Designs
             @"^hs_((meadows|blackforest|black_forest|swamp|mountain|mountains|plains|mistlands|ashlands|deepnorth|deep_north|ocean)_)?" +
             @"((stilt|stone|wood|wooden|log|timber)_)?(hut|cottage|house|manor|villa|longhouse|long_house|great_hall|hall|cabin)(_?\d+)?$",
             System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+
+        /// <summary>
+        /// With TestPool on, only the pool, approved generated designs and the hearth board's saves are read. Reading all
+        /// 1423 blueprints after each logic reload froze the game for 12 s (2026-11-09), and the rest is not built then.
+        /// </summary>
+        private static bool OutsideTestPool(string file)
+        {
+            if (LogicConfig.TestPool == null || !LogicConfig.TestPool.Value)
+            {
+                return false;
+            }
+
+            string path = file.Replace('\\', '/').ToLowerInvariant();
+            return !path.Contains("/testpool-") && !path.Contains("/approved-generated/") && !path.Contains("/inspiration/board/");
+        }
 
         private static bool IsExcluded(string file)
         {

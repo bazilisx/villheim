@@ -396,7 +396,8 @@ namespace Villheim.Logic.Village
                 return false;
             }
 
-            if (min < ZoneSystem.instance.m_waterLevel + 1f || max - min > maxTerrainDelta)
+            // 0.4 m over the sea: a shore village (hearth 0.3 m up) found no room within 43 m at 1 m (2026-11-09).
+            if (min < ZoneSystem.instance.m_waterLevel + 0.4f || max - min > maxTerrainDelta)
             {
                 return false;
             }

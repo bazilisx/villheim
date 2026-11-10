@@ -80,6 +80,21 @@ namespace Villheim.Logic.Village
                 }
             }
 
+            // The storehouse's chests count too, wherever it stands (2026-11-09).
+            Plot store = hearth != null && hearth.IsValid ? StorehouseOf(new VillageState(hearth.Zdo)) : null;
+            if (store != null)
+            {
+                foreach (Collider collider in Physics.OverlapSphere(store.Position, store.Radius * 0.75f, LayerMask.GetMask("piece", "piece_nonsolid")))
+                {
+                    Container container = collider.GetComponentInParent<Container>();
+                    if (container && container.m_nview && container.m_nview.IsValid() && !chests.Contains(container) &&
+                        container.m_nview.GetZDO().GetInt(KeyVillage) == villageId)
+                    {
+                        chests.Add(container);
+                    }
+                }
+            }
+
             Cache[villageId] = (Time.time, chests);
             return chests;
         }
@@ -188,6 +203,7 @@ namespace Villheim.Logic.Village
         /// <summary>The next storage chest or label to make, or null.</summary>
         public static Amenities.Job Job(VillageHearth hearth, VillageState state)
         {
+            Consolidate(hearth, state);
             int wanted = Wanted(hearth, state);
             Container main = VillageChest.Find(hearth);
             if (wanted <= 0 || main == null)
@@ -320,6 +336,129 @@ namespace Villheim.Logic.Village
         }
 
         /// <summary>Puts the chest or its sign down (already paid for). False when the spot is taken.</summary>
+        private static readonly Dictionary<int, float> NextConsolidate = new Dictionary<int, float>();
+
+        /// <summary>The village's finished storehouse, if it has one.</summary>
+        private static Plot StorehouseOf(VillageState state)
+        {
+            return state.Plots.FirstOrDefault(p => p.Role == "Storage");
+        }
+
+        /// <summary>
+        /// Once a storehouse stands, its own chests (the design's, along its walls) become the village's storage chests,
+        /// and the storage chests by the hearth move their goods into them and are taken down with their signs. The main
+        /// chest stays by the hearth (Tyler, 2026-11-09: the storehouse's purpose is to hold them).
+        /// </summary>
+        private static void Consolidate(VillageHearth hearth, VillageState state)
+        {
+            if (NextConsolidate.TryGetValue(state.Id, out float next) && Time.time < next)
+            {
+                return;
+            }
+
+            NextConsolidate[state.Id] = Time.time + 15f;
+            Plot store = StorehouseOf(state);
+            if (store == null || !ZoneSystem.instance.IsZoneLoaded(store.Position) ||
+                (ConstructionSite.IsActive(hearth.Zdo) && Utils.DistanceXZ(ConstructionSite.Get(hearth.Zdo).Position, store.Position) < 0.5f))
+            {
+                return;
+            }
+
+            Container main = VillageChest.Find(hearth);
+            var inside = new List<Container>();
+            foreach (Collider collider in Physics.OverlapSphere(store.Position, store.Radius * 0.75f, LayerMask.GetMask("piece", "piece_nonsolid")))
+            {
+                Container chest = collider.GetComponentInParent<Container>();
+                if (!chest || chest == main || !chest.m_nview || !chest.m_nview.IsValid() || inside.Contains(chest))
+                {
+                    continue;
+                }
+
+                ZDO zdo = chest.m_nview.GetZDO();
+                if (zdo.GetInt(Keys.BuiltBy) == state.Id || zdo.GetInt(KeyVillage) == state.Id)
+                {
+                    inside.Add(chest);
+                }
+            }
+
+            if (inside.Count == 0)
+            {
+                return;
+            }
+
+            List<Container> free = inside.Where(c => c.m_nview.GetZDO().GetInt(KeyVillage) != state.Id).ToList();
+            List<Container> outside = Of(state.Id).Where(c => c && !inside.Contains(c)).ToList();
+            foreach (Container old in outside)
+            {
+                string kind = KindOf(old);
+                Container into = inside.FirstOrDefault(c => c.m_nview.GetZDO().GetInt(KeyVillage) == state.Id && KindOf(c) == kind &&
+                                                            c.GetInventory().NrOfItems() + old.GetInventory().NrOfItems() <= c.GetInventory().GetWidth() * c.GetInventory().GetHeight())
+                                 ?? free.FirstOrDefault();
+                if (into == null)
+                {
+                    break; // the storehouse is full: the rest stay by the hearth
+                }
+
+                if (free.Remove(into))
+                {
+                    Claim(into);
+                    into.m_nview.GetZDO().Set(KeyVillage, state.Id);
+                    into.m_nview.GetZDO().Set(KeyKind, kind);
+                }
+
+                Claim(into);
+                Claim(old);
+                into.GetInventory().MoveAll(old.GetInventory());
+                if (old.GetInventory().NrOfItems() > 0)
+                {
+                    continue;
+                }
+
+                SignPlace(old, out Vector3 signSpot, out _);
+                foreach (Collider collider in Physics.OverlapSphere(signSpot, 0.4f))
+                {
+                    ZNetView view = collider.GetComponentInParent<ZNetView>();
+                    if (view != null && view.IsValid() && view.GetComponent<Sign>() != null && view.GetZDO().GetInt(KeySign) == state.Id)
+                    {
+                        view.ClaimOwnership();
+                        ZNetScene.instance.Destroy(view.gameObject);
+                    }
+                }
+
+                VillheimPlugin.Log.LogInfo($"{state.Name}: the {Label(kind)} chest by the hearth moved into the storehouse.");
+                ZNetScene.instance.Destroy(old.gameObject);
+            }
+
+            // The storehouse's other chests take the kinds still missing, in the usual order.
+            if (free.Count > 0)
+            {
+                List<string> have = inside.Where(c => c.m_nview.GetZDO().GetInt(KeyVillage) == state.Id).Select(KindOf).ToList();
+                foreach (string kind in Kinds(state, have.Count + free.Count))
+                {
+                    if (have.Remove(kind) || free.Count == 0)
+                    {
+                        continue;
+                    }
+
+                    Container chest = free[0];
+                    free.RemoveAt(0);
+                    Claim(chest);
+                    chest.m_nview.GetZDO().Set(KeyVillage, state.Id);
+                    chest.m_nview.GetZDO().Set(KeyKind, kind);
+                }
+            }
+
+            Cache.Remove(state.Id);
+        }
+
+        private static void Claim(Container chest)
+        {
+            if (chest && chest.m_nview && chest.m_nview.IsValid() && !chest.m_nview.IsOwner())
+            {
+                chest.m_nview.ClaimOwnership();
+            }
+        }
+
         public static bool Make(VillageHearth hearth, VillageState state, Amenities.Job job)
         {
             GameObject prefab = ZNetScene.instance ? ZNetScene.instance.GetPrefab(job.Prefab) : null;

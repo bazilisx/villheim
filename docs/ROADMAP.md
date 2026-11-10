@@ -252,6 +252,8 @@ well (Tyler, 2026-11-08). The Features tab of the review sheet (`docs/features/b
   wall gap; outside benches and logs clipping walls; storehouse chests clipping and stair foot above ground; chests
   around the hearth move into the storehouse once built; hunters find game farther out or go on trips (D-078); growth
   stalls on "nowhere to put a home". Done: hearth kept clear, pool-only stand-ins, item stands at decor (df075f7).
+- [ ] **Later-biome decor (D-080):** pay for lox pelts, iron, silver, cloth and the like with local stand-ins from the
+  chests (troll or deer hide, bronze or copper, flint, leather scraps), free after some days if none come. Today they are free.
 - [ ] **Walkable villages:** paths and building pads smooth slopes so no route needs a climb villagers cannot make
   (a path went down a 3 m embankment, 2026-11-09). Storehouse: stacked, labeled chests along the walls; hearth chests
   move in once it stands. Window flower beds need better pieces.

@@ -12,10 +12,10 @@ namespace Villheim.Logic.Villagers
     /// FishTarget fish, the fisher walks to the village's shore spot (open ground at the water's edge within the
     /// village's working reach), takes out a fishing rod (the vanilla item) and stands at the water facing out. Every
     /// half minute or so a fish may bite. With four fish, or after about four minutes, he carries the catch to the
-    /// village chest: raw perch (Fish1), the vanilla Meadows fish.
+    /// village chest: the fish of that water by biome (FishAt, D-078).
     ///
     /// Not yet: the cast and reel animations (the rod is only held), a float in the water, fishing from a dock or a
-    /// boat, other fish by biome, and bait. A village with no shore in reach has no fisher (Roles).
+    /// boat, and bait. A village with no shore in reach has no fisher (Roles).
     /// </summary>
     internal static class Fishing
     {
@@ -25,6 +25,51 @@ namespace Villheim.Logic.Villagers
         private const float TripSeconds = 240f;
         private const string Rod = "FishingRod";
         private const string Fish = "Fish1";
+
+        /// <summary>
+        /// The vanilla fish of the water at a shore spot (D-078): perch in the Meadows, pike in the Black Forest,
+        /// trollfish in the Swamp, grouper on the Plains, anglerfish in the Mistlands, northern salmon in the Deep
+        /// North, magmafish in the Ashlands; at the sea (deep water off the spot) tuna, or coral cod off the warmer
+        /// shores. The Mountains have no fishing water of their own: pike.
+        /// </summary>
+        private static string FishAt(Vector3 spot)
+        {
+            Heightmap.Biome biome = WorldGenerator.instance != null ? WorldGenerator.instance.GetBiome(spot) : Heightmap.Biome.Meadows;
+            float water = ZoneSystem.instance != null ? ZoneSystem.instance.m_waterLevel : 30f;
+            bool sea = biome == Heightmap.Biome.Ocean;
+            if (!sea && ZoneSystem.instance != null)
+            {
+                // Deep water a little way out: the sea, not a pond.
+                int deep = 0;
+                for (int i = 0; i < 8; i++)
+                {
+                    Vector3 probe = spot + Quaternion.Euler(0f, i * 45f, 0f) * Vector3.forward * 12f;
+                    if (ZoneSystem.instance.GetGroundHeight(probe, out float h) && h < water - 6f)
+                    {
+                        deep++;
+                    }
+                }
+
+                sea = deep >= 2;
+            }
+
+            if (sea)
+            {
+                return biome == Heightmap.Biome.Plains || biome == Heightmap.Biome.Mistlands ? "Fish8" : "Fish3";
+            }
+
+            switch (biome)
+            {
+                case Heightmap.Biome.BlackForest: return "Fish2";
+                case Heightmap.Biome.Swamp: return "Fish5";
+                case Heightmap.Biome.Mountain: return "Fish2";
+                case Heightmap.Biome.Plains: return "Fish7";
+                case Heightmap.Biome.Mistlands: return "Fish9";
+                case Heightmap.Biome.DeepNorth: return "Fish10";
+                case Heightmap.Biome.AshLands: return "Fish11";
+                default: return Fish;
+            }
+        }
 
         private sealed class Shore
         {
@@ -280,13 +325,17 @@ namespace Villheim.Logic.Villagers
             }
 
             Poses.Trigger(villager, "interact");
-            GameObject prefab = ObjectDB.instance != null ? ObjectDB.instance.GetItemPrefab(Fish) : null;
+            // The fish of the water he fished (D-078): by the biome at the shore, sea fish at the sea.
+            string kind = Shores.TryGetValue(hearth.VillageId, out Shore fished) && fished.Spot.HasValue
+                ? FishAt(fished.Spot.Value)
+                : Fish;
+            GameObject prefab = ObjectDB.instance != null ? ObjectDB.instance.GetItemPrefab(kind) ?? ObjectDB.instance.GetItemPrefab(Fish) : null;
             if (prefab != null && state.Caught > 0)
             {
                 chest.GetInventory().AddItem(prefab, state.Caught);
             }
 
-            Log($"{villager.VillagerName} brought back {state.Caught} fish.");
+            Log($"{villager.VillagerName} brought back {state.Caught} {kind}.");
             state.Caught = 0;
             state.Active = false;
             state.Delivering = false;

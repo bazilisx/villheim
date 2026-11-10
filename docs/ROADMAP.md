@@ -252,9 +252,26 @@ well (Tyler, 2026-11-08). The Features tab of the review sheet (`docs/features/b
   wall gap; outside benches and logs clipping walls; storehouse chests clipping and stair foot above ground; chests
   around the hearth move into the storehouse once built; hunters find game farther out or go on trips (D-078); growth
   stalls on "nowhere to put a home". Done: hearth kept clear, pool-only stand-ins, item stands at decor (df075f7).
-- [ ] **Later-biome decor (D-080, answered 2026-11-10):** pay for lox pelts, iron, silver, cloth and the like with
+- [x] **Later-biome decor (D-080, answered 2026-11-10):** pay for lox pelts, iron, silver, cloth and the like with
   stand-ins from the village biome and its neighbors (Meadows: Meadows and Black Forest; Black Forest: Meadows and
-  Swamp; and so on), from the chests. Never free. Lab side in the design session; mod side done 2026-11-10 (5ba7984).
+  Swamp; and so on), from the chests. Never free. Mod side 5ba7984; lab side d40b648 (decor reach one biome further,
+  stations, fires and chests at home).
+- [ ] **Generator, design session (branch `design/kitbash`, 2026-11-10):**
+  1. [x] Pool audit as a gate for `make_testpool.js` and `vh testpool make`; every round 6 screenshot defect is a
+     measure (558604b).
+  2. [x] One table of piece sizes from the game's models, `lab/test_sizes.js` (4496d51). Later, lower priority: one
+     more round of refining the piece models' sizes, used by the generator, the checks and the lab page (no textures).
+  3. [ ] Growth that adds to the earlier stage for storehouse (46 %), home a (49 %), hall (54 %), barn (63 %); origins
+     centered on the s3 footprint. Found: the storehouse's s2 back-room partition is planned again at s3 and moves;
+     home a loses floors, roof ridges and its yard fence. Keep the partition and yard decisions across a line's stages.
+  4. [ ] Household variance as a measure (same line and stage, other traits under 0.6; no two home lines over 0.7);
+     at s1d1 home a and home b are 0.86 alike since the layout planner.
+  5. [ ] Sort the corpus by culture and mine assemblies per culture (blueprints on Tyler's PC and branch `corpus`).
+  6. [ ] Interior study (valheimians, BG3 and the rest) into assemblies and room templates.
+  7. [ ] Store rooms at d3 (barrels, crates, sacks), window boxes. Slopes: walkable banks done mod side (fb96935).
+  8. [ ] Open from the checks: 7 decorator overlaps (a torch into an oak feast table, chests, a table against a forge
+     part), a bench in a tower's half wall, 11 barn chests outside the floor outline (watched).
+  9. [ ] Hung pieces keep their collider against the wall's: confirm in the game that stands, signs and banners hold.
 - [ ] **Walkable villages:** paths and building pads smooth slopes so no route needs a climb villagers cannot make
   (a path went down a 3 m embankment, 2026-11-09). Storehouse: stacked, labeled chests along the walls; hearth chests
   move in once it stands. Window flower beds need better pieces.

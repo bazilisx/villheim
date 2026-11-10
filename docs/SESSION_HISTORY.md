@@ -14,7 +14,10 @@ I guards and the night watch (D-076), J overnight hunting trips and children's c
 help with crops, healers use remedies (D-078) (L roster and M home sizing reverted: not as decided), N fish by biome, O walkable banks round pads on slopes. New on/off settings in "9 - Test villages": PieceIndex, BlueprintsInBackground,
 ClearPlotsByHand, DecorPaidWithAnalogs, HuntTrips;
 LagSummarySeconds and StatusLineSeconds. Nothing from 2026-11-10 tried in the game. The building generator is worked
-on in its own session on branch `design/kitbash`. Next: Tyler's test (Tests tab T-631 on), rafts (D-078),
+on in its own session on branch `design/kitbash`: merged 2026-11-10 as 6bf75ae (room layout planner, from feat/layout),
+558604b (pool audit gate, round 6 defects fixed in the lab), 4496d51 (piece sizes from the game's models, hung pieces
+held by the wall's collider), d40b648 (decor reach for D-080). `vh testpool make` now audits the pool before it
+replaces the old one ('force' to skip). Old design branches feat/* are all in main and can be deleted. Next: Tyler's test (Tests tab T-631 on), rafts (D-078),
 walkable pads, preloading from the lag summaries.
 
 ### As of 2026-11-09
@@ -164,6 +167,7 @@ walkable building pads, underwater rocks, smaller lag spikes, D-080.
 
 ## Recent milestones
 
+- **2026-11-10 (design: layout planner, pool gate, piece sizes, decor reach)** - see docs/daily-notes/2026-11/2026-11-10.md
 - **2026-11-10 (roster, elders, healers, fish by biome)** - see docs/daily-notes/2026-11/2026-11-10.md
 - **2026-11-10 (status line, snapshot, D-080 to D-094, guards, hunting trips)** - see docs/daily-notes/2026-11/2026-11-10.md
 - **2026-11-10 (overnight merge, lag cluster, immediate fixes)** - see docs/daily-notes/2026-11/2026-11-10.md

@@ -386,7 +386,18 @@ namespace Villheim.Logic.Village
                 }
             }
 
-            List<Vector3> found = Search(center, front, building, buildingRadius, state.Plots, network, float.MaxValue, goal, true);
+            // Gentle ways first: villagers cannot climb a steep bank, and a path laid down one helps nobody (Tyler,
+            // 2026-11-09: a path went down a 3 m embankment). Rise per meter of 0.8, then 1.2, then any.
+            List<Vector3> found = null;
+            foreach (float limit in new[] { 0.8f, 1.2f, float.MaxValue })
+            {
+                found = Search(center, front, building, buildingRadius, state.Plots, network, limit, goal, true);
+                if (found != null)
+                {
+                    break;
+                }
+            }
+
             if (found == null)
             {
                 VillheimPlugin.Debug($"{state.Name}: no path found by grid search to the building at {building}; using the straight route.");

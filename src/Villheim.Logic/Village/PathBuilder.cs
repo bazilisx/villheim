@@ -95,7 +95,30 @@ namespace Villheim.Logic.Village
             settings.m_paintType = TerrainModifier.PaintType.Dirt;
             settings.m_paintRadius = width > 0f ? width : Width;
             settings.m_paintHeightCheck = false;
+            // Where the path runs over a steep bank, the ground under it is smoothed so villagers can walk it (2026-11-09).
+            if (Steep(point))
+            {
+                settings.m_smooth = true;
+                settings.m_smoothRadius = (width > 0f ? width : Width) + 1.5f;
+                settings.m_smoothPower = 3f;
+            }
+
             TerrainShaper.Apply(point, settings);
+        }
+
+        private static bool Steep(Vector3 point)
+        {
+            float low = point.y, high = point.y;
+            foreach (Vector3 d in new[] { Vector3.forward, Vector3.back, Vector3.left, Vector3.right })
+            {
+                if (ZoneSystem.instance.GetGroundHeight(point + d * 1.5f, out float h))
+                {
+                    low = Mathf.Min(low, h);
+                    high = Mathf.Max(high, h);
+                }
+            }
+
+            return high - low > 0.9f;
         }
 
         public static void Build(Vector3 hearth, float axisYaw, Vector3 building, float buildingRadius)

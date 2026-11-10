@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using UnityEngine;
 using Villheim.Logic.Village;
@@ -44,6 +45,7 @@ namespace Villheim.Logic.Villagers
                 return false;
             }
 
+            long probe = LagProbe.Now();
             Body.Update(villager);
             Walker.For(villager).Tick(villager);
             if (Wanderers.IsWanderer(villager))
@@ -90,7 +92,9 @@ namespace Villheim.Logic.Villagers
             }
 
             Roles.AfterThreat(villager);
+            LagProbe.Add("villagers: brain, before the work chain (body, walker, threats, moods)", probe);
 
+            probe = LagProbe.Now();
             Poses.BeginTick(villager);
             Status.Doer doer = Status.Doer.None;
             if (TestActs.Update(villager, ai, dt))
@@ -247,6 +251,10 @@ namespace Villheim.Logic.Villagers
                 doer = Status.Doer.FreeTime;
             }
 
+            // The whole chain of checks down to the one that took the turn (lag cluster B): a high number for a doer far
+            // down the chain points at the checks above it.
+            LagProbe.Add(ChainLabel(doer), probe);
+            probe = LagProbe.Now();
             Status.Set(villager, doer);
             HandItems.Tidy(villager, doer);
             Poses.EndTick(villager);
@@ -255,7 +263,20 @@ namespace Villheim.Logic.Villagers
             Seats.AfterTick(villager);
             Sleep.AfterTick(villager);
             Dialogue.Tick(villager);
+            LagProbe.Add("villagers: brain, after the work chain (status, hands, poses, talk)", probe);
             return true;
+        }
+
+        private static readonly Dictionary<Status.Doer, string> ChainLabels = new Dictionary<Status.Doer, string>();
+
+        private static string ChainLabel(Status.Doer doer)
+        {
+            if (!ChainLabels.TryGetValue(doer, out string label))
+            {
+                ChainLabels[doer] = label = "villagers: brain work chain down to " + doer;
+            }
+
+            return label;
         }
 
         /// <summary>

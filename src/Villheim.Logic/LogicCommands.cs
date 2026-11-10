@@ -79,6 +79,7 @@ namespace Villheim.Logic
         public static string[] CommandHelp() => Help.Concat(TestVillage.Help).Concat(new[]
         {
             Villagers.TestSetups.Help,
+            LagProbe.Help,
             "hair: list each hair lean's styles with the names the game shows (empty leans are filled in by name once a game)",
         }).Concat(new[]
         {
@@ -366,6 +367,7 @@ namespace Villheim.Logic
                         : "Villheim: 'vh kids rig' puts up a grown man, a boy, a girl and a grown woman to tune the child settings against; 'vh kids rig clear' takes them away.");
                     return true;
                 case "villheim_demist": Say(context, Demisting.Command()); return true;
+                case "villheim_lag": Say(context, LagProbe.Command(args)); return true;
                 case "villheim_exportpieces": Say(context, PieceExport.Run()); return true;
                 case "villheim_gen": Generator.GenCommands.Gen(args, context); return true;
                 case "villheim_testpool": Say(context, Generator.TestPool.Run(args, context)); return true;

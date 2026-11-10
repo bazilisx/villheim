@@ -20,6 +20,7 @@ namespace Villheim.Logic.Village
             {
                 _watch.Stop();
                 double ms = _watch.Elapsed.TotalMilliseconds;
+                LagProbe.AddStep(_what, ms);
                 float limit = LogicConfig.LagLogMs != null ? LogicConfig.LagLogMs.Value : 4f;
                 if (ms >= limit)
                 {

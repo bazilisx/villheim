@@ -34,7 +34,11 @@ namespace Villheim.Logic.Village
         {
             try
             {
-                action();
+                // Each part timed (lag cluster B): the hearth tick reached 60 ms on 2026-11-09 with no way to tell which part.
+                using (Perf.Time("Living." + what))
+                {
+                    action();
+                }
             }
             catch (System.Exception e)
             {

@@ -607,8 +607,22 @@ namespace Villheim.Logic.Village
             List<Sign> cells = rows.SelectMany(r => r.OrderBy(s => Vector3.Dot(s.transform.position - origin, right))).ToList();
             var state = new VillageState(hearth.Zdo);
             Dictionary<string, (string Value, string Color)> stats;
-            using (Perf.Time("NoticeBoard.Stats")) stats = Stats(hearth, state);
-            using (Perf.Time("NoticeBoard.AssignHeadings")) AssignHeadings(hearth, origin, signs);
+            // Lines once per update (lag cluster B): Stats and the plain board each worked them out, and each time ran
+            // the next-step search. Headings only when the board's signs changed, or every five minutes.
+            string[] lines;
+            using (Perf.Time("NoticeBoard.Lines")) lines = Lines(hearth, state);
+            using (Perf.Time("NoticeBoard.Stats")) stats = Stats(hearth, state, lines);
+            int signature = signs.Count;
+            foreach (Sign s in signs)
+            {
+                signature = signature * 31 + s.GetInstanceID();
+            }
+
+            if (!HeadingsDone.TryGetValue(hearth.VillageId, out var done) || done.Signature != signature || Time.time - done.At > 300f)
+            {
+                using (Perf.Time("NoticeBoard.AssignHeadings")) AssignHeadings(hearth, origin, signs);
+                HeadingsDone[hearth.VillageId] = (signature, Time.time);
+            }
             bool byHeading = signs.Any(s => s.GetComponent<ZNetView>().GetZDO().GetString(KeyHeading, null) != null);
             if (byHeading)
             {
@@ -636,7 +650,6 @@ namespace Villheim.Logic.Village
             }
 
             Write(title, $"<#fff>{state.Name}");
-            string[] lines = Lines(hearth, state);
             for (int i = 0; i < cells.Count && i < lines.Length; i++)
             {
                 Write(cells[i], lines[i]);
@@ -766,9 +779,10 @@ namespace Villheim.Logic.Village
         }
 
         /// <summary>Every stat a board can show, by the heading words that ask for it.</summary>
-        private static Dictionary<string, (string Value, string Color)> Stats(VillageHearth hearth, VillageState state)
+        private static readonly Dictionary<int, (int Signature, float At)> HeadingsDone = new Dictionary<int, (int, float)>();
+
+        private static Dictionary<string, (string Value, string Color)> Stats(VillageHearth hearth, VillageState state, string[] lines)
         {
-            string[] lines = Lines(hearth, state);
             (string, string) Parse(string line)
             {
                 int br = line.IndexOf("<br><", System.StringComparison.Ordinal);

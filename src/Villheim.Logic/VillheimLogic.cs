@@ -32,6 +32,9 @@ namespace Villheim.Logic
             ConfigWatcher.Start();
             _harmony = new Harmony("bazilisx.villheim.logic");
             PatchEach(_harmony);
+            // Read the blueprint folders now, off the game's thread, so the first plan never waits on the disk.
+            Designs.Blueprints.Preload();
+            Village.LagProbe.Start();
         }
 
         /// <summary>
@@ -69,6 +72,7 @@ namespace Villheim.Logic
         public void OnUnload()
         {
             ConfigWatcher.Stop();
+            Village.LagProbe.Stop();
             Villagers.ChildBody.Unload();
             Villagers.GhostDeath.Unload();
             LogicConfig.Unbind();
@@ -81,7 +85,12 @@ namespace Villheim.Logic
             VillagerTuning.ApplyToAll();
         }
 
-        public void HearthTick(VillageHearth hearth) => VillageBrain.Tick(hearth);
+        public void HearthTick(VillageHearth hearth)
+        {
+            long start = LagProbe.Now();
+            VillageBrain.Tick(hearth);
+            LagProbe.Add("village: hearth tick (all of it)", start);
+        }
 
         public string HearthHoverText(VillageHearth hearth) =>
             $"{hearth.VillageName} hearth\n<color=#b0b0b0>{VillageBrain.Summary(hearth)}</color>" +
@@ -104,12 +113,21 @@ namespace Villheim.Logic
             }
         }
 
-        public void VillagerUpdate(Villager villager, float deltaTime) => VillagerBehaviour.Update(villager, deltaTime);
+        public void VillagerUpdate(Villager villager, float deltaTime)
+        {
+            LagProbe.Tick();
+            long start = LagProbe.Now();
+            VillagerBehaviour.Update(villager, deltaTime);
+            LagProbe.Add("villagers: update (looks, status, hands)", start);
+        }
 
         public bool VillagerUpdateAI(VillagerAI ai, float deltaTime)
         {
-            return ai.TryGetComponent(out Villager villager) && villager.IsValidVillager &&
-                   Brain.Update(villager, ai, deltaTime);
+            long start = LagProbe.Now();
+            bool handled = ai.TryGetComponent(out Villager villager) && villager.IsValidVillager &&
+                           Brain.Update(villager, ai, deltaTime);
+            LagProbe.Add("villagers: Villheim brain", start);
+            return handled;
         }
 
         public string VillagerHoverText(Villager villager) => VillagerBehaviour.HoverText(villager);

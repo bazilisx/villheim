@@ -125,6 +125,8 @@ namespace Villheim.Logic.Villagers
             }
         }
 
+        private static readonly List<Renderer> ScanList = new List<Renderer>(64);
+
         public static void Update(Character villager)
         {
             State state = States.GetOrCreateValue(villager);
@@ -188,7 +190,11 @@ namespace Villheim.Logic.Villagers
             float alpha = on ? Mathf.Clamp(Mathf.Lerp(LogicConfig.GhostAlphaDay.Value, LogicConfig.GhostAlpha.Value, dark), 0.02f, 1f) : 1f;
             float glow = on ? Mathf.Clamp01(Mathf.Lerp(LogicConfig.GhostGlowDay.Value, LogicConfig.GhostGlow.Value, dark)) : 0f;
             Shader ghost = alpha < 0.99f ? GhostShader() : null;
-            foreach (Renderer renderer in villager.GetComponentsInChildren<Renderer>(true))
+            // One shared list (lag cluster B): this runs about once a second for every villager and animal, and each
+            // call made a new array of all their renderers.
+            ScanList.Clear();
+            villager.GetComponentsInChildren(true, ScanList);
+            foreach (Renderer renderer in ScanList)
             {
                 if (renderer == null || renderer is ParticleSystemRenderer || renderer is LineRenderer || renderer is TrailRenderer)
                 {

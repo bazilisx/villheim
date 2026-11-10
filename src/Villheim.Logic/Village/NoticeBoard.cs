@@ -606,8 +606,9 @@ namespace Villheim.Logic.Village
 
             List<Sign> cells = rows.SelectMany(r => r.OrderBy(s => Vector3.Dot(s.transform.position - origin, right))).ToList();
             var state = new VillageState(hearth.Zdo);
-            Dictionary<string, (string Value, string Color)> stats = Stats(hearth, state);
-            AssignHeadings(hearth, origin, signs);
+            Dictionary<string, (string Value, string Color)> stats;
+            using (Perf.Time("NoticeBoard.Stats")) stats = Stats(hearth, state);
+            using (Perf.Time("NoticeBoard.AssignHeadings")) AssignHeadings(hearth, origin, signs);
             bool byHeading = signs.Any(s => s.GetComponent<ZNetView>().GetZDO().GetString(KeyHeading, null) != null);
             if (byHeading)
             {

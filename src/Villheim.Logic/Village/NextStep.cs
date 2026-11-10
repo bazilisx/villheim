@@ -42,7 +42,26 @@ namespace Villheim.Logic.Village
         public static int StartNeedOf(int villageId, string material) =>
             StartNeeds.TryGetValue(villageId, out Step step) && step.Needs.TryGetValue(material, out int need) ? need : 0;
 
+        private static readonly Dictionary<int, (float Time, Step Step)> Recent = new Dictionary<int, (float, Step)>();
+
+        /// <summary>
+        /// The village's next step, worked out at most every 3 seconds: the hearth's hover, the notice board and the
+        /// want pile all ask, and each asking ran the whole search for the next thing to make (Amenities.Upcoming).
+        /// </summary>
         public static Step For(VillageHearth hearth, VillageState state)
+        {
+            if (Recent.TryGetValue(state.Id, out var recent) && UnityEngine.Time.time - recent.Time < 3f)
+            {
+                return recent.Step;
+            }
+
+            Step made;
+            using (Perf.Time("NextStep.For")) made = Work(hearth, state);
+            Recent[state.Id] = (UnityEngine.Time.time, made);
+            return made;
+        }
+
+        private static Step Work(VillageHearth hearth, VillageState state)
         {
             var step = new Step();
             if (VillageChest.IsLost(hearth))

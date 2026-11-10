@@ -18,7 +18,7 @@ namespace Villheim.Logic.Villagers
     /// </summary>
     internal static class Hunting
     {
-        private const float SearchFromHearth = 45f;
+        private static float SearchFromHearth => Mathf.Max(45f, LogicConfig.HuntSearchRadius?.Value ?? 90f);
         private const float StrikeReach = 2.3f;
         private const float StrikeInterval = 1.4f;
         private const float ShotInterval = 1.6f;

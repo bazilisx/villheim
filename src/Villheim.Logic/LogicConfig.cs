@@ -279,6 +279,7 @@ namespace Villheim.Logic
         public static ConfigEntry<string> MistlandsDemisterCost;
         // Hunting (Villagers/Hunting.cs) and copses (Village/Groves.cs).
         public static ConfigEntry<float> HuntBowRange;
+        public static ConfigEntry<float> HuntSearchRadius;
         public static ConfigEntry<float> HuntMeleeRange;
         public static ConfigEntry<float> HuntChaseSeconds;
         public static ConfigEntry<float> HuntChaseDistance;
@@ -426,6 +427,9 @@ namespace Villheim.Logic
                 "food's duration. This multiplies that healing.");
             HuntBowRange = Admin(config, work, "HuntBowRange", 25f,
                 "Hunters shoot from up to this far (meters). Deer are only ever hunted with a bow, since they always run.");
+            HuntSearchRadius = Admin(config, work, "HuntSearchRadius", 90f,
+                "Hunters look for game this far from the hearth (meters). Game does not spawn next to buildings, so a " +
+                "small radius often finds nothing (2026-11-09 test).");
             HuntMeleeRange = Admin(config, work, "HuntMeleeRange", 4f,
                 "A boar or other slow game this close is fought with the hunter's weapon instead of the bow.");
             HuntMeatTarget = Admin(config, work, "HuntMeatTarget", 6,

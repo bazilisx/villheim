@@ -447,8 +447,10 @@ namespace Villheim.Logic.Villagers
                 return;
             }
 
-            if (trade == Roles.Trade.Guard && !builder)
+            if (trade == Roles.Trade.Guard && !builder && (Roles.IsNightWatch(villager) || needs.Missing.Count == 0))
             {
+                // Between watches a guard gathers with the rest when the village needs materials (D-076); the one
+                // whose night it is keeps to the watch.
                 NoWork(villager, work, "keeps watch over the village");
                 return;
             }

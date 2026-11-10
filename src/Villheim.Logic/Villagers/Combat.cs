@@ -73,6 +73,9 @@ namespace Villheim.Logic.Villagers
             public float LastThreat = -100f;
             public float LastShout = -100f;
             public int Shouts;
+
+            /// <summary>At night: 0 the watch alone, 1 the guards too, 2 every able adult; -1 by day or with no watch.</summary>
+            public int NightLevel = -1;
         }
 
         private static readonly ConditionalWeakTable<Villager, State> States = new ConditionalWeakTable<Villager, State>();
@@ -419,6 +422,35 @@ namespace Villheim.Logic.Villagers
             if (pool.Count == 0)
             {
                 pool = people;
+            }
+
+            // At night the guard on watch meets it alone and quietly; the other guards wake when he is down to half his
+            // health, every able adult when he is down to a quarter (D-076). Escorts above are not held back.
+            fight.NightLevel = -1;
+            Villager watch = EnvMan.IsNight() ? people.FirstOrDefault(Roles.IsNightWatch) : null;
+            if (watch != null)
+            {
+                float share = watch.GetMaxHealth() > 0f ? watch.GetHealth() / watch.GetMaxHealth() : 0f;
+                if (share >= 0.5f)
+                {
+                    fight.NightLevel = 0;
+                    pool = new List<Villager> { watch };
+                }
+                else if (share >= 0.25f)
+                {
+                    fight.NightLevel = 1;
+                    pool = people.Where(v => v == watch || (Roles.IsFighter(v) && !Elders.IsElder(v))).ToList();
+                }
+                else
+                {
+                    fight.NightLevel = 2;
+                    pool = people.Where(v => !Elders.IsElder(v)).ToList();
+                }
+
+                foreach (Villager v in fight.Responders.Keys.Where(v => !pool.Contains(v) && !Escort.IsEscorting(v)).ToList())
+                {
+                    fight.Responders.Remove(v); // back to bed: the watch has it in hand
+                }
             }
 
             // One each for the threats nearest the hearth first, then more on the same threats, up to the limit.
@@ -782,6 +814,11 @@ namespace Villheim.Logic.Villagers
         /// </summary>
         private static void CallToArms(Villager villager, Fight fight, float distance)
         {
+            if (fight.NightLevel == 0)
+            {
+                return; // the watch alone at night: no alarm to wake the village (D-076)
+            }
+
             if (!fight.Responders.ContainsKey(villager) || distance > 25f || fight.Shouts >= 2 ||
                 Time.time - fight.LastShout < (fight.Shouts == 0 ? 60f : 20f))
             {

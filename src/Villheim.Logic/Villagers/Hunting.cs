@@ -18,7 +18,8 @@ namespace Villheim.Logic.Villagers
     /// </summary>
     internal static class Hunting
     {
-        private static float SearchFromHearth => Mathf.Max(45f, LogicConfig.HuntSearchRadius?.Value ?? 90f);
+        // The village radius plus a band past it: game seldom comes inside a village once it stands (Tyler, 2026-11-09).
+        private static float SearchFromHearth => VillheimConfig.VillageRadius.Value + Mathf.Max(0f, LogicConfig.HuntSearchRadius?.Value ?? 40f);
         private const float StrikeReach = 2.3f;
         private const float StrikeInterval = 1.4f;
         private const float ShotInterval = 1.6f;

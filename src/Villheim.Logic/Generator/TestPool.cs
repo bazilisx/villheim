@@ -60,9 +60,8 @@ namespace Villheim.Logic.Generator
             {
                 string file = (blueprint.File ?? "").Replace('\\', '/').ToLowerInvariant();
                 string biomeName = biome == Heightmap.Biome.BlackForest ? "blackforest" : biome.ToString().ToLowerInvariant();
-                if (!file.Contains("/testpool-") || blueprint.Role != role || Blueprints.LaterStage(blueprint) ||
-                    (blueprint.Biome != null && blueprint.Biome.Replace(" ", "") != biomeName) ||
-                    (culture != null && blueprint.Culture != null && blueprint.Culture != culture))
+                // Any culture and biome: with TestPool on, only pool designs go up (Tyler, 2026-11-09).
+                if (!file.Contains("/testpool-") || blueprint.Role != role || Blueprints.LaterStage(blueprint))
                 {
                     continue;
                 }

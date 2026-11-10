@@ -259,11 +259,8 @@ namespace Villheim.Logic.Designs
             // The test pool ('vh testpool make', TestPool on): only its designs for the roles it has.
             if (LogicConfig.TestPool != null && LogicConfig.TestPool.Value)
             {
-                List<Design> test = Generator.TestPool.PoolFor(biome, role, culture);
-                if (test.Count > 0)
-                {
-                    return test;
-                }
+                // Nothing else, even when the pool has no design for this role.
+                return Generator.TestPool.PoolFor(biome, role, culture);
             }
 
             var pool = new List<Design>();
@@ -333,11 +330,7 @@ namespace Villheim.Logic.Designs
             // With the test pool on, stand-ins come from the pool too (WoodHouse11 got in this way on 2026-11-09).
             if (LogicConfig.TestPool != null && LogicConfig.TestPool.Value)
             {
-                List<Design> test = Generator.TestPool.PoolFor(biome, role, culture);
-                if (test.Count > 0)
-                {
-                    return test.OrderBy(d => d.Radius).ToList();
-                }
+                return Generator.TestPool.PoolFor(biome, role, culture).OrderBy(d => d.Radius).ToList();
             }
 
             var pool = new List<Design>();

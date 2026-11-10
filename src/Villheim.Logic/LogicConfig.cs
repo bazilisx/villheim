@@ -22,7 +22,6 @@ namespace Villheim.Logic
         public static ConfigEntry<bool> ClearPlotsByHand;
         public static ConfigEntry<bool> DecorPaidWithAnalogs;
         public static ConfigEntry<bool> HuntTrips;
-        public static ConfigEntry<bool> VillageRoster;
         public static ConfigEntry<float> PlotSearchMs;
         public static ConfigEntry<float> HearthMargin;
         public static ConfigEntry<float> BuildingGap;
@@ -1278,11 +1277,6 @@ namespace Villheim.Logic
                 "With LagLog on: every this many seconds, one 'Lag summary' line with the frame times (average, slowest " +
                 "1 %, hitches over 50 ms) and where the time went: the village's own work by part, and the game's work for " +
                 "villagers (their AI, body and animation, gear put on, villagers and pieces spawned). 0 turns it off.");
-            VillageRoster = Admin(config, test, "VillageRoster", true,
-                "D-077: a village founded with this on rolls its whole roster at founding: the first two grown villagers " +
-                "alone in homes of their own, then single adults, couples, families of up to four and elder pairs, in order. " +
-                "Each newcomer is the next on it; family members share a home; children do not count toward MaxVillagers; " +
-                "a dead villager's bed is kept. Villages founded before keep the old arrivals. 'vh roster' shows it.");
             HuntTrips = Admin(config, test, "HuntTrips", true,
                 "D-078: a hunter by trade who finds no game near the village while its meat runs low leaves in the " +
                 "afternoon, is away overnight and walks back in about 07:00. A roll decides what he caught (game of the " +

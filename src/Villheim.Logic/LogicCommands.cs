@@ -82,7 +82,6 @@ namespace Villheim.Logic
             LagProbe.Help,
             "status: the nearest village's status line now (the log has one a minute, StatusLineSeconds)",
             Snapshot.Help,
-            "roster: the nearest village's roster (D-077): who will come, in which households, and how many have",
             "hair: list each hair lean's styles with the names the game shows (empty leans are filled in by name once a game)",
         }).Concat(new[]
         {
@@ -371,13 +370,6 @@ namespace Villheim.Logic
                     return true;
                 case "villheim_demist": Say(context, Demisting.Command()); return true;
                 case "villheim_lag": Say(context, LagProbe.Command(args)); return true;
-                case "villheim_roster":
-                    if (TryGetPlayer(context, out Player rosterNear) && VillageHearth.Closest(rosterNear.transform.position, 200f) is VillageHearth rv)
-                    {
-                        Say(context, Roster.Report(rv));
-                    }
-
-                    return true;
                 case "villheim_status":
                     if (TryGetPlayer(context, out Player statusNear) && VillageHearth.Closest(statusNear.transform.position, 200f) is VillageHearth sv)
                     {

@@ -174,7 +174,6 @@ namespace Villheim.Logic.Village
             HearthGround.Prepare(hearth);
             hearth.Register();
             Chronicle.Add(hearth, $"{state.Name} was founded around a new hearth.");
-            Roster.Create(hearth, state); // D-077: who will come, in which families
             Daughters.Initialized(hearth, state);
             VillheimPlugin.Log.LogInfo($"Founded {state.Name} ({state.Biome}) at {position}.");
         }
@@ -336,24 +335,6 @@ namespace Villheim.Logic.Village
 
             Role role = project.Role;
             List<DesignLibrary.Design> pool = DesignLibrary.PoolFor(state.Biome, role, Cultures.Of(state));
-            if (role == Role.House && Roster.Has(hearth) && pool.Count > 1)
-            {
-                // D-077: a home sized for the household that will live in it.
-                int need = Roster.NextHomelessSize(hearth);
-                if (need > 1)
-                {
-                    List<DesignLibrary.Design> fitting = pool.Where(d => Roster.BedsIn(d) >= need).ToList();
-                    if (fitting.Count == 0)
-                    {
-                        int most = pool.Max(d => Roster.BedsIn(d));
-                        fitting = pool.Where(d => Roster.BedsIn(d) == most).ToList();
-                    }
-
-                    VillheimPlugin.Log.LogInfo($"{state.Name}: the next home is for a household of {need}; " +
-                                               $"{fitting.Count} of {pool.Count} designs have room ({string.Join(", ", fitting.Take(4).Select(d => $"{d.Name} {Roster.BedsIn(d)} beds"))}).");
-                    pool = fitting;
-                }
-            }
             // A storehouse is a modest shelter: the smallest design that will do.
             DesignLibrary.Design? picked = role == Role.Storage && pool.Count > 0
                 ? pool.OrderBy(d => d.Radius).First()
@@ -614,23 +595,7 @@ namespace Villheim.Logic.Village
 
         private static void TryPopulate(VillageHearth hearth, VillageState state, double now)
         {
-            if (VillagerPrefab.Prefab == null)
-            {
-                return;
-            }
-
-            if (Roster.Has(hearth))
-            {
-                // D-077: the roster decides who comes; when it is done, nobody more. Children do not count toward
-                // MaxVillagers, though they need a bed like everyone.
-                Roster.Entry next = Roster.Next(hearth, state.Arrivals);
-                if (next == null || (next.Age != 'C' && CountGrown(state.Id) >= VillheimConfig.MaxVillagers.Value) ||
-                    CountVillagers(state.Id) >= Math.Max(VillheimConfig.StartingVillagers.Value, Villagers.Beds.Of(hearth).Count))
-                {
-                    return;
-                }
-            }
-            else if (CountVillagers(state.Id) >= Capacity(state))
+            if (VillagerPrefab.Prefab == null || CountVillagers(state.Id) >= Capacity(state))
             {
                 return;
             }
@@ -664,8 +629,7 @@ namespace Villheim.Logic.Village
             }
 
             // A family home and food in the chest: sometimes the arrival is a child born there (Millenaire).
-            // With a roster the next on it comes (a child is born in his family's home: SpawnVillager).
-            Plot family = firstArrivals || Roster.Has(hearth) ? null : Villagers.Childhood.FamilyHome(hearth, state);
+            Plot family = firstArrivals ? null : Villagers.Childhood.FamilyHome(hearth, state);
             bool child = family != null && Villagers.Healing.ChestFood(hearth) != null && UnityEngine.Random.value < 0.5f;
             SpawnVillager(hearth, state, child ? family : null);
             state.LastArrival = now;
@@ -685,29 +649,6 @@ namespace Villheim.Logic.Village
             return count;
         }
 
-        /// <summary>The home where a household's members have their beds, or null when none of them has one yet.</summary>
-        private static Plot FamilyHome(VillageHearth hearth, VillageState state, int household)
-        {
-            foreach (Character character in Character.GetAllCharacters())
-            {
-                if (character is Villager member && !member.IsDead() && member.VillageId == state.Id &&
-                    Roster.HouseholdOf(member) == household && Villagers.Beds.Claimed(member) != Vector3.zero)
-                {
-                    Plot plot = Villagers.Beds.PlotAt(hearth, Villagers.Beds.Claimed(member));
-                    if (plot != null)
-                    {
-                        return plot;
-                    }
-                }
-            }
-
-            return null;
-        }
-
-        /// <summary>Grown villagers only (D-077: children do not count toward MaxVillagers).</summary>
-        public static int CountGrown(int villageId) =>
-            Character.GetAllCharacters().Count(c => c is Villager v && !v.IsDead() && v.VillageId == villageId && !Villagers.Childhood.IsChild(v));
-
         /// <summary>
         /// A new villager arrives (or is born at <paramref name="birthplace"/>). <paramref name="quiet"/> is for a village
         /// set up at once (TestVillage): everyone is found by the hearth, nobody walks over to greet them, no chronicle
@@ -717,13 +658,6 @@ namespace Villheim.Logic.Village
         {
             int arrival = state.Arrivals;
             var rng = new System.Random(unchecked(state.Seed * 31 + arrival * 6151));
-
-            // D-077: the roster says who this is. A child is born in his family's home once a parent lives there.
-            Roster.Entry entry = Roster.Has(hearth) ? Roster.Next(hearth, arrival) : null;
-            if (entry != null && entry.Age == 'C' && birthplace == null)
-            {
-                birthplace = FamilyHome(hearth, state, entry.Household);
-            }
 
             // New villagers move into a home when there is one, otherwise they stay by the hearth.
             List<Plot> homes = state.Plots
@@ -749,17 +683,12 @@ namespace Villheim.Logic.Village
                 Quaternion.Euler(0f, angle * Mathf.Rad2Deg, 0f));
             Villager villager = go.GetComponent<Villager>();
             int looksSeed = rng.Next(1, int.MaxValue);
-            if (entry != null)
-            {
-                looksSeed = Roster.SeedFor(looksSeed, entry.Female);
-            }
-
             // The village's people, or for a newcomer from outside now and then another people (Cultures).
             bool fromOutside = birthplace == null && arrival >= VillheimConfig.StartingVillagers.Value;
             string culture = Cultures.ForNewcomer(state, looksSeed, fromOutside);
             string name = Names.Villager(looksSeed, culture);
-            // A villager who left a neighbour comes as himself (Villagers.Leaving); not with a roster, which has him already.
-            string cameFrom = fromOutside && !quiet && entry == null
+            // A villager who left a neighbour comes as himself (Villagers.Leaving).
+            string cameFrom = fromOutside && !quiet
                 ? Villagers.Leaving.TakeMigrant(hearth, ref looksSeed, ref name, ref culture)
                 : null;
 
@@ -778,22 +707,11 @@ namespace Villheim.Logic.Village
                 zdo.Set(Villagers.Leaving.KeyCameFrom, cameFrom);
             }
 
-            if (entry != null)
-            {
-                zdo.Set(Roster.KeyHousehold, entry.Household);
-            }
-
-            if (birthplace != null || entry?.Age == 'C')
+            if (birthplace != null)
             {
                 zdo.Set(Villagers.Childhood.KeyBorn, EnvMan.instance != null ? EnvMan.instance.GetDay() : 0);
-                zdo.Set(Keys.VillagerHome, birthplace != null ? birthplace.Position : center);
+                zdo.Set(Keys.VillagerHome, birthplace.Position);
                 go.transform.localScale = Vector3.one * 0.65f;
-            }
-
-            if (entry?.Age == 'E')
-            {
-                // An elder comes as one (D-077: elders only with elders).
-                Villagers.Elders.SetDaysHere(villager, LogicConfig.ElderDays != null ? LogicConfig.ElderDays.Value : 40);
             }
             villager.m_name = name;
             villager.LooksApplied = false;

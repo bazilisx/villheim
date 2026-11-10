@@ -336,6 +336,24 @@ namespace Villheim.Logic.Village
 
             Role role = project.Role;
             List<DesignLibrary.Design> pool = DesignLibrary.PoolFor(state.Biome, role, Cultures.Of(state));
+            if (role == Role.House && Roster.Has(hearth) && pool.Count > 1)
+            {
+                // D-077: a home sized for the household that will live in it.
+                int need = Roster.NextHomelessSize(hearth);
+                if (need > 1)
+                {
+                    List<DesignLibrary.Design> fitting = pool.Where(d => Roster.BedsIn(d) >= need).ToList();
+                    if (fitting.Count == 0)
+                    {
+                        int most = pool.Max(d => Roster.BedsIn(d));
+                        fitting = pool.Where(d => Roster.BedsIn(d) == most).ToList();
+                    }
+
+                    VillheimPlugin.Log.LogInfo($"{state.Name}: the next home is for a household of {need}; " +
+                                               $"{fitting.Count} of {pool.Count} designs have room ({string.Join(", ", fitting.Take(4).Select(d => $"{d.Name} {Roster.BedsIn(d)} beds"))}).");
+                    pool = fitting;
+                }
+            }
             // A storehouse is a modest shelter: the smallest design that will do.
             DesignLibrary.Design? picked = role == Role.Storage && pool.Count > 0
                 ? pool.OrderBy(d => d.Radius).First()

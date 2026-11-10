@@ -20,7 +20,8 @@ namespace Villheim.Logic.Village
     /// - Children do not count toward MaxVillagers; they do count in the population shown.
     /// - A villager's bed stays his: the bed of one who died is kept for him (Beds.Kept).
     ///
-    /// Not yet (second stage): growth choosing a home with as many beds as the next household needs.
+    /// - A new home is chosen with as many beds as the next household without one will be, children to come included,
+    ///   where the village's designs have one that big (NextHomelessSize, BedsIn).
     /// Only villages founded with this build have a roster; older ones go on as before. Setting VillageRoster.
     /// </summary>
     internal static class Roster
@@ -157,6 +158,59 @@ namespace Villheim.Logic.Village
             }
 
             return Vector3.zero;
+        }
+
+        /// <summary>
+        /// D-077 second stage: how many people the first household without a home will be, counting those still to
+        /// come (its children too), so the next home is built with that many beds. 0 when every household has a home.
+        /// </summary>
+        public static int NextHomelessSize(VillageHearth hearth)
+        {
+            List<Entry> entries = Read(hearth);
+            if (entries == null)
+            {
+                return 0;
+            }
+
+            var housed = new HashSet<int>();
+            foreach (Character character in Character.GetAllCharacters())
+            {
+                if (character is Villager v && !v.IsDead() && v.VillageId == hearth.VillageId && HouseholdOf(v) >= 0)
+                {
+                    Plot home = Beds.Claimed(v) != Vector3.zero ? Beds.PlotAt(hearth, Beds.Claimed(v)) : null;
+                    if (home != null && Households.IsHome(home))
+                    {
+                        housed.Add(HouseholdOf(v));
+                    }
+                }
+            }
+
+            foreach (int household in entries.Select(e => e.Household).Distinct())
+            {
+                if (!housed.Contains(household))
+                {
+                    return entries.Count(e => e.Household == household);
+                }
+            }
+
+            return 0;
+        }
+
+        private static readonly Dictionary<string, int> BedCounts = new Dictionary<string, int>();
+
+        /// <summary>Beds in a design (blueprints; a copied location counts as one).</summary>
+        public static int BedsIn(Designs.DesignLibrary.Design design)
+        {
+            if (BedCounts.TryGetValue(design.Name, out int known))
+            {
+                return known;
+            }
+
+            int beds = design.Blueprint != null
+                ? design.Blueprint.Pieces.Count(p => p.Prefab == "bed" || p.Prefab.StartsWith("piece_bed"))
+                : 1;
+            BedCounts[design.Name] = beds;
+            return beds;
         }
 
         /// <summary>The seed nearest <paramref name="seed"/> that gives a man or a woman (VillagerLooks.IsFemale's rule).</summary>

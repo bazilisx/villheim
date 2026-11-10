@@ -129,7 +129,38 @@ for (const [k, v] of Object.entries(F)) ITEM_BIOME[k] = v.b;
 const bi = b => { const i = ORDER.indexOf(b); return i < 0 ? 0 : i; };
 const ok = (name, biome) => !!F[name] && bi(F[name].b) <= bi(biome);
 const ok0 = ok;
-const size = name => (F[name] ? F[name].s : P.piece(name).size);
+const size = name => (F[name] ? F[name].fp || F[name].s : P.piece(name).size);
+// The sizes above were measured in the corpus; the game's models (lib/mesh.js, data/piece-models.json) win where they
+// differ by more than 10 cm, turned into the decorator's frame (rel). What the furnishing keeps clear round a piece
+// beyond its body (a torch's 0.4 m round a 0.12 m post, a table setting's place) stays as pad, never less than the body:
+// s is the body as the game has it, fp the footprint the furnishing reserves (s plus pad). lab/test_sizes.js checks it.
+let MODELLED = false;
+function modelSizes() {
+  if (MODELLED) return;
+  const Me = MESH_D();
+  if (!Me || (!NODE_D && !window.VH_MESH)) return;
+  MODELLED = true;
+  for (const [name, f] of Object.entries(F)) {
+    const md = Me.dims(name);
+    if (!md || f.modelled) continue;
+    const hung = ['deco', 'light'].includes(f.cat) || f.at === 'rug' || f.at === 'mount' || f.at === 'hang';
+    const useSolid = !hung && md.solid && md.solid.every(v => v > 0.01);
+    // the footprint by what is solid (what blocks a walk), the height by what shows (what has to fit under a shelf
+    // or a ceiling: a bed's fur stands 0.68 m, its frame 0.4 m)
+    const m = (useSolid ? md.solid : md.show).slice();
+    m[1] = md.show[1];
+    if (Math.abs(f.rel || 0) % 180 === 90) [m[0], m[2]] = [m[2], m[0]];
+    const old = f.s;
+    const body = [0, 1, 2].map(i => (Math.abs(old[i] - m[i]) > 0.1 ? +m[i].toFixed(2) : old[i]));
+    // a piece set against a wall keeps no pad behind it: its back goes to the wall (the forge's tool rack, 0.2 m deep,
+    // stood 0.3 m off its wall when its 0.8 m corpus depth was taken for its body)
+    const pad = [Math.max(0, old[0] - body[0]), ['wall', 'mount'].includes(f.at) ? 0 : Math.max(0, old[2] - body[2])];
+    f.corpus = old;
+    f.s = body;
+    if (pad[0] > 0.1 || pad[1] > 0.1) { f.pad = pad.map(v => +v.toFixed(2)); f.fp = [body[0] + pad[0], body[1], body[2] + pad[1]]; }
+    f.modelled = true;
+  }
+}
 // Biome where a culture's own taste is wanted: no tar, darkwood, black marble or Plains goods before their biome.
 // Choice lists per kind of piece; the learned shares in each room kind weight the choice.
 const KIT = {
@@ -809,23 +840,21 @@ function mountSpots(room, name, o = {}) {
   }
   return out;
 }
+// How far a hung piece may touch what shows of a wall: a board (a sign, a stand) 1.5 cm, where a bar through it shows;
+// a banner's cloth 3 cm, as it hangs against the 2x2 wood wall's bars in any build (lib/audit.js uses the same).
+const HUNG_CLIP = name => (/^piece_banner\d+$/.test(name) ? 0.03 : 0.015);
 // Clear of the wall's own relief (lib/mesh.js), by what shows of the piece against what shows of the walls round it:
-// a height between the bars where one fits within 0.4 m, or else out on them (T-606, T-612). Gives the spot to use, or
-// null when neither works. Done here and not for every spot mountSpots offers, since most are never used.
+// a height between the bars within 0.4 m (T-606, T-612). A hung piece keeps its collider against the wall's, which is
+// what holds it up in the game, so it never moves out onto the bars; with no clear height the spot is not used. Gives
+// the spot to use, or null. Done here and not for every spot mountSpots offers, since most are never used.
 function clearOfRelief(room, name, spot) {
   const face = spot.face, f = F[name] || {};
   if (!face.wallClip || spot.x0 == null) return spot;
-  const clipAt = (yy, o2) => { const [px, pz] = pivotOf(name, spot.x0 + face.nx * o2, spot.z0 + face.nz * o2, spot.yaw); return face.wallClip({ name, x: px, y: yy, z: pz, q: quatY(spot.yaw) }); };
-  const d0 = clipAt(spot.y, spot.off);
-  if (d0 <= 0.015) return spot;
+  const clipAt = yy => { const [px, pz] = pivotOf(name, spot.x0 + face.nx * spot.off, spot.z0 + face.nz * spot.off, spot.yaw); return face.wallClip({ name, x: px, y: yy, z: pz, q: quatY(spot.yaw) }); };
+  const lim = HUNG_CLIP(name);
+  if (clipAt(spot.y) <= lim) return spot;
   if (f.under == null) for (let d = 0.1; d <= 0.401; d += 0.1) for (const yy of [spot.y + d, spot.y - d]) {
-    if (yy >= spot.lowY && yy <= spot.topY && clipAt(yy, spot.off) <= 0.015) return { ...spot, y: +yy.toFixed(2) };
-  }
-  // out by the depth it goes in (the bars are square to the wall), checked once more
-  for (let o2 = spot.off + d0 + 0.01, k = 0; k < 3 && o2 < spot.off + 0.2; k++) {
-    const dk = clipAt(spot.y, o2);
-    if (dk <= 0.015) return { ...spot, x: spot.x0 + face.nx * o2, z: spot.z0 + face.nz * o2, off: o2 };
-    o2 += dk + 0.01;
+    if (yy >= spot.lowY && yy <= spot.topY && clipAt(yy) <= lim) return { ...spot, y: +yy.toFixed(2) };
   }
   return null;
 }
@@ -1376,6 +1405,7 @@ function chooseKit(R, biome, culture, kind) {
 }
 
 function decorate(b, ctx) {
+  modelSizes();
   const R = ctx.R || Math.random;
   const decor = ['d1', 'd2', 'd3'].includes(ctx.decor) ? ctx.decor : 'd2';
   const biome = ctx.biome || 'Meadows';
@@ -2507,6 +2537,7 @@ function outside(b, c) {
 // Overlaps between furniture, things in a doorway, wall pieces over a window or door, things floating, things on the
 // way to stairs and ladders, woodpiles indoors, floor torches sunk in the floor, floors left bare at d2 and d3.
 function audit(design, decor) {
+  modelSizes();
   const pieces = design.pieces;
   const res = { overlap: [], door: [], mountOnOpening: [], floating: [], stairs: [], indoorPile: [], torchHeight: [], bareFloors: [] };
   const marked = pieces.some(p => p.decor);
@@ -2622,6 +2653,7 @@ function mountOk(it, wallish) {
 }
 // The audit's box for one piece, as boxOf in audit() makes it.
 function itemOf(p) {
+  modelSizes();
   const [w, h, d] = size(p.name), f = F[p.name] || {}, y0 = p.y - (f.base || 0), [mx, mz] = middleOf(p.name, p.x, p.z, pyaw(p));
   return { p, f, b: obox(mx, mz, w, d, pyaw(p)), y0: f.at === 'hang' ? p.y : y0, y1: f.at === 'hang' ? p.y + h : y0 + h };
 }
@@ -2629,6 +2661,7 @@ const SOLID_CATS = new Set(['storage', 'craft', 'bed', 'table']);
 // The audit's tests for one kitbash piece, for the fitter (lib/kitbash.js) to ask before it places it: what it rests
 // on, and plain wall behind a wall piece. ctx from auditContext(pieces), kept up to date with add().
 function auditContext(pieces) {
+  modelSizes();
   // filed on a 4 m grid by pivot, so a test looks only at what is near
   const grid = new Map(), K = 4, key = (x, z) => Math.floor(x / K) * 65536 + Math.floor(z / K);
   const cell = (x, z) => { const k = key(x, z); if (!grid.has(k)) grid.set(k, { pieces: [], struct: [], wallish: [] }); return grid.get(k); };
@@ -2677,6 +2710,7 @@ function showsInto(p, others) {
   return m;
 }
 function auditOne(p, ctx, extra) {
+  modelSizes();
   const it = itemOf(p);
   // only what is within reach (the audit's tests look no further than 3 m)
   const A = ctx.around(p.x, p.z);
@@ -2688,7 +2722,7 @@ function auditOne(p, ctx, extra) {
   if (p.rest && !kbRests(it, A.pieces.concat(more), wallish, A.struct.concat(built))) return false;
   if (SHOWS_DEEP.has(it.f.cat) && showsInto(p, A.struct.map(sb => sb.p)) > SHOWS_MAX) return false;
   // what hangs on a wall stays out of what shows of the walls round it (the cross bars, T-606, T-612)
-  if ((it.f.at === 'mount' || p.rest === 'wall') && hungInto(p, A.struct.map(sb => sb.p).concat(more)) > 0.015) return false;
+  if ((it.f.at === 'mount' || p.rest === 'wall') && hungInto(p, A.struct.map(sb => sb.p).concat(more)) > HUNG_CLIP(p.name)) return false;
   return true;
 }
 // How deep what shows of a hung piece goes into what shows of the walls, posts and beams near it.
@@ -2744,6 +2778,7 @@ const ESSENTIAL = /^(bed|piece_bed02|ashwood_bed|piece_chest_wood|piece_chest|he
 
 // Strip a design to d1: keep structure and the essentials (beds, two chests, fires and main stations).
 function strip(pieces) {
+  modelSizes();
   const keep = [], counts = {};
   for (const p of pieces) {
     const info = P.piece(p.name);
@@ -2760,6 +2795,7 @@ function strip(pieces) {
 
 // Rooms in any blueprint, as the decorator sees them (for the request page and tests).
 function findRooms(pieces) {
+  modelSizes();
   const out = [];
   for (const y of floorLevels(pieces)) for (const m of readLevel(pieces, y, null) || []) if (m.area >= 4) out.push({ y, area: m.area, x0: m.x0, x1: m.x1, z0: m.z0, z1: m.z1, faces: m.faces.length, doors: m.doors.length, stairs: m.stairs.length, covered: m.covered });
   return out;
@@ -2767,6 +2803,7 @@ function findRooms(pieces) {
 
 // Decorate an existing design to d2 or d3. Existing furniture stays and is worked round.
 function decorateExisting(pieces, { use = 'home', decor = 'd2', biome = 'Meadows', seed = 1, culture } = {}) {
+  modelSizes();
   const b = { pieces: pieces.map(p => ({ ...p })), rooms: [] };
   decorate(b, { use, type: use, decor, biome, culture, R: rngFrom(seed) });
   return b.pieces;

@@ -166,6 +166,7 @@ const SIZES = {
   piece_logbench01: [1.4, 0.5, 0.6],
 };
 
+const meshP = () => (typeof module !== 'undefined' ? require('./mesh.js') : window.VHMesh);
 const cache = new Map();
 function piece(name) {
   let c = cache.get(name);
@@ -183,6 +184,18 @@ function piece(name) {
   const onPivot = /^(wood_wall_quarter|Piece_grausten_wall_|Piece_grausten_window_|darkwood_decowall$|crystal_wall_1x1$)/.test(n);
   c = { name, role, size, shape, mat, color: MAT[mat], structural, exact: false, onPivot };
   const e = exported() && exported()[name];
+  // furniture and decor take their size from the game's model (lib/mesh.js, data/piece-models.json): what is solid, or
+  // what shows when nothing is (rugs, cloth). Walls, floors, roofs and the rest keep the sizes the generator's grid is
+  // built on; lab/test_sizes.js holds both to the models.
+  const md = !e && !structural && meshP() ? meshP().dims(name) : null;
+  if (md) {
+    // what hangs or lights (banners, signs, stands, torches) is judged by what shows: a banner's collider is its rod
+    const solid = md.solid && md.solid.every(v => v > 0.01) && !['deco', 'light', 'rug'].includes(role);
+    // footprint by what is solid, height by what shows (a spit's collider floats over its feet; its legs reach down)
+    c.size = (solid ? [md.solid[0], md.show[1], md.solid[2]] : md.show).map(round);
+    c.center = (solid ? [md.solidAt[0], md.showAt[1], md.solidAt[2]] : md.showAt).map(round);
+    c.exact = true;
+  }
   if (e) {
     // Solid colliders first (what the game tests against), the meshes when the piece has none.
     const box = e.collider && usable(e.collider.size) ? e.collider : e.renderer && usable(e.renderer.size) ? e.renderer : null;

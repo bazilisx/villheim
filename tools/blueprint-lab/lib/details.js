@@ -767,11 +767,12 @@ function bargeboards(K, C, w, ctx, rows, ends, add, low, pivot, r) {
   if (X.gableBanner && w === ctx.wings[0] && !gw && !apex && !ctx.dragonsHere && capY - top >= 1.9) {
     const B = reachesD(ctx.biome, 'Plains') ? ['piece_banner01', 'piece_banner02', 'piece_banner05', 'piece_banner07'] : ['piece_banner03', 'piece_banner04', 'piece_banner06', 'piece_banner07', 'piece_banner08', 'piece_banner09'];
     // the cloth hangs 2.95 m under its rod: its foot no more than 0.6 m over the ground floor, so it reads as hung on
-    // the house and not in the air (T-606: the purple banner, piece_banner09, hung with its foot 1.3 m up), and the
-    // rod clear of the wall's cross bars
+    // the house and not in the air (T-606: the purple banner, piece_banner09, hung with its foot 1.3 m up). The rod
+    // touches the wall (that holds it up in the game), so the cloth hangs 0.25 m out: it may lie against bars up to 3 cm
+    // further out (the 2x2 wood wall's stand 0.28 m), and over a wall with deeper relief no banner goes up
     const name = B[makeHash(ctx) % B.length], yTop = Math.min(capY - 0.8, ctx.F + 2.95 + 0.6), low2 = yTop - 2.95;
-    const out = Math.max(relief(K.wall || 'woodwall'), relief(K.halfWall || 'wood_wall_half'), 0.2) + 0.11;
-    if (low2 >= ctx.F + 0.1) [-1, 1].forEach((sg, k) => {
+    const out = 0.25, barred = low2 < top - 0.05 && relief(K.wall || 'woodwall') + 0.01 - out > 0.03; // the cloth is 2 cm thick
+    if (low2 >= ctx.F + 0.1 && !barred) [-1, 1].forEach((sg, k) => {
       if (!ends[k]) return;
       const x = w.cx + sg * w.W * Math.cos(al), z = w.cz - sg * w.W * Math.sin(al);
       if (low2 < top - 0.05 && (ctx.openings || []).some(o => Math.hypot(o.e.x - x, o.e.z - z) < 1.6 && o.y0 + (o.SH || 3) > low2)) return;

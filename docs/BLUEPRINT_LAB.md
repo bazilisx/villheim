@@ -732,7 +732,7 @@ game judge a pool the same way. A test pool's files are read as lines (`<culture
 | furnClip, stacked | yes | furniture inside furniture; furniture on furniture other than chest stacks and table settings |
 | overWin | yes | something hung over a window or door |
 | stairFoot, stations | yes | a stair with nothing under its foot; a base station with no roof (D-067) |
-| mountClip | yes | a sign, stand, banner or carving more than 1.5 cm into what shows of a wall, post or beam (the 2x2 wood wall's cross bars stand 13 cm proud of its collider; T-606, T-612) |
+| mountClip | yes | a sign, stand or carving more than 1.5 cm (a banner's cloth 3 cm) into what shows of a wall, post, beam or roof (the 2x2 wood wall's cross bars stand 13 cm proud of its collider; T-606, T-612) |
 | hang | yes | a banner's cloth into the floor or the roof, or its foot more than 1 m up (the purple banner, `piece_banner09`, T-606); signs and wall stands outside 1.0 to 2.3 m and 0.7 to 2.4 m |
 | loose | yes | food or drink set down loose: the game drops it and a player picks it up walking past (T-626) |
 | doorway | yes | anything solid in the middle 0.9 m of a door's way from 0.35 to 1.95 m, 0.7 m either side (a beam at the foot of a door, T-606) |
@@ -744,10 +744,24 @@ Built furniture (a cabinet whose back is a half wall) is left out of the wall me
 stage's d1 file count as the building. In the game the pool is made in `BepInEx/config/Villheim/testpool-staging-<culture>`
 and moved into the blueprints folder only when the audit passes; `vh testpool make ... force` moves it anyway.
 
-The furnishing keeps to the same lines as it places (`lib/decorate.js` `showsInto`, `hungInto`, `clearOfRelief`; the
-wall sets in `lib/kitbash.js` move out by the face's relief): hung pieces try a height between the bars first and
-sit out on them otherwise; banners hang where 3 m of cloth fits with its foot under a meter; kit food and drink go on
-flat item stands whose item the household picks.
+The furnishing keeps to the same lines as it places (`lib/decorate.js` `showsInto`, `hungInto`, `clearOfRelief`;
+`lib/kitbash.js`; the wall motifs in `lib/motifs.js`). A hung piece keeps its collider against the wall's, which is
+what holds it up in the game: it takes a height between the bars within 0.4 m, or that spot is not used. Sets that
+stand on the floor move out by the face's relief; what hangs in a set goes back to the wall's collider. Banners hang
+where 3 m of cloth fits with its foot under a meter; a gable banner over a wall with deeper relief than its cloth
+can lie against is left out. Kit food and drink go on flat item stands whose item the household picks; a kit's source
+clip holds only for its own pieces, never a substitute.
+
+## One table of piece sizes
+
+Furniture and decor take their size from the game's models (`data/piece-models.json` through `lib/mesh.js` `dims`):
+the footprint by what is solid, the height by what shows (a bed's frame is 0.4 m, its fur 0.68 m; a spit's legs
+reach the ground under a collider that floats). `lib/pieces.js` uses it for every piece that is not structural (walls,
+floors, roofs, beams and posts keep the sizes the generator's 2 m grid is built on). The decorator's table keeps the
+corpus size where it is within 10 cm of the model; where it reserved more round a piece (a torch's keep-clear, a
+table setting's place) the extra is `pad`, never less than the body and never behind a piece set against a wall.
+`node lab/test_sizes.js [--list]` fails when either table is more than 10 cm off a model.
+
 
 ## In the game
 
@@ -870,6 +884,7 @@ python3 lab/learn_interior.py <corpus dir> data/interior.json      # interior ru
 node lab/check_interiors.js lib out.json 3                         # furniture checks over a sample
 node lab/make_testpool.js <out> [--no-gate]                        # the Norse Meadows test pool, audited (exit 1 on a defect)
 node lab/audit_pool.js <folder> [--list] [--gate]                  # the pool audit on any folder of blueprints
+node lab/test_sizes.js [--list]                                    # decorator and catalog sizes against the models
 node -e "require('./lib/floorplan.js').set(24)"                   # the floorplan catalog ('vh floorplan set' in the game)
 node lab/floorplan_feedback.js floorplans.csv                      # Tyler's Floorplans tab into the fill rates
 node lab/process_requests.js <requests.jsonl> [result dir]         # make the designs asked for with 'vh ask'

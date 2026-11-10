@@ -558,13 +558,17 @@ function fit(b, ctx, room, idx, zones, anc, a, mirror, fires) {
   const kb = `${a.id}@${Math.round(anc.x * 10)},${Math.round(anc.z * 10)}`;
   // a set against a wall stands clear of the wall's own relief (the 2x2 wood wall's cross bars stand 13 cm proud of
   // its collider on one face): the whole set moves out by that much, so what hangs and what stands keep together
+  // (what stands on the floor only: what hangs on the wall keeps its collider against the wall's, which holds it up in
+  // the game, and goes back to the wall below)
   let push = 0;
   if (['wall', 'corner', 'window'].includes(anc.anchor) && anc.face && anc.face.proud && anc.t != null) {
     let lo = Infinity, hi = -Infinity, top = 0;
     for (const mm of a.pieces) {
+      if (mm.rest === 'wall' || mm.rest === 'hang') continue;
       const lx = mirror ? -mm.x : mm.x;
       lo = Math.min(lo, lx - 0.4); hi = Math.max(hi, lx + 0.4); top = Math.max(top, mm.y + 1);
     }
+    if (!isFinite(lo)) { lo = 0; hi = 0; top = 0; }
     // along the face, the set's local x runs the face's way or against it, so take the span both ways round
     const span = Math.max(Math.abs(lo), Math.abs(hi));
     push = anc.face.proud(anc.t - span, anc.t + span, m.stand + 0.05, m.stand + top);
@@ -618,6 +622,26 @@ function fit(b, ctx, room, idx, zones, anc, a, mirror, fires) {
           }
         }
         if (rodTop > ceil - 0.05) { if (fail()) return null; continue; }
+      }
+    }
+    // what hangs on the wall goes back to it: its solid back against the nearest wall face's collider (what holds it up
+    // in the game), whatever depth the source build gave a piece of another size (a tool shelf stood 0.25 m off)
+    if (mm.rest === 'wall' && m.faces) {
+      const V = SH.world(p);
+      if (V && V.length) {
+        let best = null;
+        for (const f of m.faces) {
+          if (f.edge) continue;
+          const t = p.x * f.ux + p.z * f.uz;
+          if (t < f.a0 - 0.3 || t > f.a1 + 0.3) continue;
+          let back = Infinity;
+          for (const o of V) {
+            const e = o.h[0] * Math.abs(o.a[0][0] * f.nx + o.a[0][2] * f.nz) + o.h[1] * Math.abs(o.a[1][0] * f.nx + o.a[1][2] * f.nz) + o.h[2] * Math.abs(o.a[2][0] * f.nx + o.a[2][2] * f.nz);
+            back = Math.min(back, (o.c[0] - f.px(t)) * f.nx + (o.c[2] - f.pz(t)) * f.nz - e - f.ht);
+          }
+          if (back > -0.3 && back < 0.6 && (!best || Math.abs(back) < Math.abs(best.back))) best = { f, back };
+        }
+        if (best && Math.abs(best.back) > 0.02) { p.x = +(p.x - best.f.nx * best.back).toFixed(3); p.z = +(p.z - best.f.nz * best.back).toFixed(3); }
       }
     }
     let bx = Ck.aabbShapes(p);
@@ -790,7 +814,11 @@ function placeable(p, bx, mm, i, b, ctx, room, idx, zones, made, clipOf, anc, fi
     if (!ob2.sol || !ob2.sol.length) return;
     const d = SH.clipDepth(bx.sol, ob2.sol);
     if (d <= 0.01) return;
-    if (d > Math.max(clipOf(i, j), 0.02) + 0.01) deepest = -1;
+    // the source build's own clip holds only for its own pieces: a piece put in its place (a 6.45 m oak table for a
+    // 2.45 m table) gets no more than 2 cm (a torch went 0.59 m into the oak table)
+    const own = name => (a.pieces[i].n === name || !a.pieces[i].n);
+    const allowIJ = own(p.name) && (!a.pieces[j].n || a.pieces[j].n === o.name) ? clipOf(i, j) : 0;
+    if (d > Math.max(allowIJ, 0.02) + 0.01) deepest = -1;
     else deepest = Math.max(deepest, d);
   });
   if (deepest < 0) return no(18);

@@ -21,6 +21,10 @@ function lite(models, all) {
   for (const [n, v] of Object.entries(models.pieces || models)) {
     const src = v.prefab ? v.prefab.split('/')[2] : null;
     const e = { src };
+    // its sizes in its own frame: what shows (bounds) and what is solid (collider), as [sx, sy, sz, cx, cy, cz]
+    const box = q => q && q.min && q.max ? [0, 1, 2].map(i => r3(q.max[i] - q.min[i])).concat([0, 1, 2].map(i => r3((q.max[i] + q.min[i]) / 2))) : null;
+    if (v.bounds) e.b = box(v.bounds);
+    if (v.collider) e.c = box(v.collider);
     const b = v.bounds, c = v.collider;
     const proud = !c || !b ? 1 : Math.max(...[0, 1, 2].map(i => Math.max(c.min[i] - b.min[i], b.max[i] - c.max[i])));
     if (v.parts && (all || proud >= 0.015) && /Pieces|Items/.test(v.prefab || '')) {
@@ -150,8 +154,15 @@ function source(name) {
   return m ? m.src : null;
 }
 
+/** The piece's sizes from the game's model: { show: [sx, sy, sz], showAt: [cx, cy, cz], solid, solidAt } or null. */
+function dims(name) {
+  const m = data()[name];
+  if (!m || !m.b) return null;
+  return { show: m.b.slice(0, 3), showAt: m.b.slice(3), solid: m.c ? m.c.slice(0, 3) : null, solidAt: m.c ? m.c.slice(3) : null };
+}
+
 /** Does the piece show past its collider (its parts are kept)? Where it does not, its solids are what shows. */
 function proud(name) { const m = data()[name]; return !!(m && m.p); }
 
-const apiM = { world, aabbOf, depth, deepest, source, lite, proud, setData: d => { LITE = d; LOCAL.clear(); } };
+const apiM = { world, aabbOf, depth, deepest, source, lite, proud, dims, setData: d => { LITE = d; LOCAL.clear(); } };
 if (NODE_M) module.exports = apiM; else window.VHMesh = apiM;

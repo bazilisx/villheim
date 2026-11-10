@@ -15,7 +15,8 @@
 //   stairFoot stairs whose lowest end has neither ground (y near 0) nor a floor piece under it
 //   stations  base crafting stations with no roof piece above them (D-067)
 //   mountClip things hung on a wall (signs, item stands, banners, shields, trophies) whose visible parts reach more
-//             than 1.5 cm into a wall, beam or post's visible parts (the 2x2 wood wall's cross bars, T-606, T-612)
+//             than 1.5 cm (a banner's cloth 3 cm) into a wall, beam, post or roof's visible parts (the 2x2 wood wall's
+//             cross bars, T-606, T-612)
 //   hang      banners whose cloth goes into the floor or up into the roof, or whose foot hangs more than 1 m over the
 //             floor or ground under it (T-606 "banners too high"); signs and wall item stands outside a sensible height
 //   loose     food and drink set down loose (not on an item stand): the game drops them and a player picks them up
@@ -164,11 +165,12 @@ function audit(pieces, shell) {
     for (const j of overIdx) { const u = SH.undersideAt(sol[j], x, z, above); if (u != null && (c == null || u < c)) c = u; }
     return c;
   };
+  const roofIdx = pieces.map((p, i) => i).filter(i => ['roof', 'roofCorner', 'roofTop'].includes(role(pieces[i])) && (!shell || shell.has(key(pieces[i]))));
   pieces.forEach((p, i) => {
     if (!MOUNT.test(p.name) || !visBox[i]) return;
     let deep = 0, what = '';
-    for (const j of structVis) { const d = M.deepest(vis[i], vis[j]); if (d > deep) { deep = d; what = pieces[j].name; } }
-    if (deep > 0.015) r.mountClip.push(`${p.name} ${Math.round(deep * 100)} cm into ${what} at ${p.x.toFixed(1)},${p.y.toFixed(1)},${p.z.toFixed(1)}`);
+    for (const j of structVis.concat(roofIdx)) { const d = M.deepest(vis[i], vis[j]); if (d > deep) { deep = d; what = pieces[j].name; } }
+    if (deep > (BANNER.test(p.name) ? 0.03 : 0.015)) r.mountClip.push(`${p.name} ${Math.round(deep * 100)} cm into ${what} at ${p.x.toFixed(1)},${p.y.toFixed(1)},${p.z.toFixed(1)}`);
     const b = visBox[i], mid = (b.y0 + b.y1) / 2;
     const floor = floorUnder(p.x, p.z, b.y0 + 0.05);
     if (BANNER.test(p.name)) {

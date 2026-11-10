@@ -12,6 +12,7 @@
 const NODE_M = typeof module !== 'undefined';
 const PM = NODE_M ? require('./pieces.js') : window.VHPieces;
 const checksM = () => (NODE_M ? require('./checks.js') : window.VHChecks);
+const meshMo = () => (NODE_M ? require('./mesh.js') : window.VHMesh);
 
 const normM = a => ((a % 360) + 360) % 360;
 const quatM = yaw => { const a = yaw * Math.PI / 360; return [0, +Math.sin(a).toFixed(6), 0, +Math.cos(a).toFixed(6)]; };
@@ -437,6 +438,14 @@ function place(b, c, fr, f, opts = {}) {
       if (ins < (PROPS.test(p.cls) || CARVED.test(p.cls) ? -0.45 : -0.2)) continue;
     }
     if (keepOut.some(z => hit(bx, z, 0.02))) continue;
+    // a lamp, banner, sign or carving keeps what shows of it out of what shows of the walls, posts, braces and roof
+    // round it (a banner on the barn's wall where an eave brace and the roof come down; the wall's cross bars)
+    const Me = (PROPS.test(p.cls) || CARVED.test(p.cls)) && meshMo();
+    if (Me) {
+      const A = Me.world(p);
+      if (A && A.length && there.some(q => (!q.decor || q.trim) && Math.abs(q.x - p.x) < 3.5 && Math.abs(q.z - p.z) < 3.5 && Math.abs(q.y - p.y) < 4 &&
+        ['wall', 'window', 'pole', 'beam', 'roof', 'roofCorner', 'roofTop', 'gable'].includes(PM.piece(q.name).role) && Me.deepest(A, Me.world(q)) > (/^piece_banner\d+$/.test(p.name) ? 0.03 : 0.015))) continue;
+    }
     let clash = false;
     for (const q of there) {
       const qb = boxOf(Ck, q);

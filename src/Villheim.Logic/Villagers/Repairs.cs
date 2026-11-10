@@ -229,7 +229,7 @@ namespace Villheim.Logic.Villagers
 
             if (job.Damaged != null)
             {
-                return job.Damaged && job.Damaged.GetHealthPercentage() < 0.9f;
+                return job.Damaged && Village.PieceHealth.Fraction(job.Damaged) < 0.9f;
             }
 
             return job.Missing != null && !Present(job.Missing.Prefab, job.Position);
@@ -268,7 +268,7 @@ namespace Villheim.Logic.Villagers
                     continue;
                 }
 
-                float health = wear.GetHealthPercentage();
+                float health = Village.PieceHealth.Fraction(wear);
                 if (health < worstHealth && !GivenUp(hearth, wear.transform.position, Utils.GetPrefabName(wear.gameObject)))
                 {
                     worst = wear;

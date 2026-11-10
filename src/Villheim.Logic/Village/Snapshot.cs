@@ -184,7 +184,7 @@ namespace Villheim.Logic.Village
                     WearNTear wear = t.Go.GetComponent<WearNTear>();
                     if (wear != null)
                     {
-                        json.Append($",\"health\":{F(wear.GetHealthPercentage())}");
+                        json.Append($",\"health\":{F(PieceHealth.Fraction(wear))}");
                     }
 
                     Location location = Location.GetLocation(t.Position, false);

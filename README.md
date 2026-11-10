@@ -177,6 +177,8 @@ Ideas from Millénaire that fit Valheim:
 - **Millénaire** by Kinniken, for the idea of villages that grow around the player.
 - **Norse Personality Construction System** and **Location Reset** by OrianaVenture (MIT). Villheim builds NPCs from the player model and re-spawns a location's contents the same way those mods do, and some AI settings come from them. See [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
 - **ValheimCityBuilder** and **World Edit** by RustyProductions, with 1Day2Die and Ybivec228 (CC0). Ideas for settlers, production, terrain and paths, and code where noted in the source.
+- **ValheimVillages** by myrcutio (CC0). Code where noted in the source (piece health as Repair measures it), and
+  ideas (doors in the game's paths).
 - **Jötunn** by the Valheim Modding team, for prefab, location and command management.
 - **Jint** by Sebastien Ros (BSD-2-Clause) and **Acornima** by Adam Simon (BSD-3-Clause) run the blueprint lab's JavaScript in the game. See [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
 - Other village mods for Valheim (VikingSettlements, ValheimVillages, VillageLife, PopVillages) were looked at for ideas.

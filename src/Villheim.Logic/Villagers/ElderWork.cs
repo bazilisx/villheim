@@ -413,7 +413,7 @@ namespace Villheim.Logic.Villagers
         private static WearNTear Damaged(VillageHearth hearth)
         {
             if (DamagedCache.TryGetValue(hearth.VillageId, out var kept) && Time.time - kept.At < 15f &&
-                (kept.Piece == null || kept.Piece.GetHealthPercentage() < 0.8f))
+                (kept.Piece == null || PieceHealth.Fraction(kept.Piece) < 0.8f))
             {
                 return kept.Piece;
             }
@@ -431,7 +431,7 @@ namespace Villheim.Logic.Villagers
                 }
 
                 WearNTear wear = piece.GetComponent<WearNTear>();
-                float health = wear != null ? wear.GetHealthPercentage() : 1f;
+                float health = wear != null ? PieceHealth.Fraction(wear) : 1f;
                 if (wear != null && health < lowest)
                 {
                     lowest = health;

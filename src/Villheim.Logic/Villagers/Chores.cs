@@ -2143,6 +2143,13 @@ namespace Villheim.Logic.Villagers
                 return false;
             }
 
+            // A whole rock turns into its broken-up copy (Rock_3 into Rock_3_frac) on the first blow, with every part still
+            // whole. That copy is started work: without this the miner took one swing and went to the next rock (2026-11-09).
+            if (go.name.Contains("_frac"))
+            {
+                return true;
+            }
+
             foreach (MineRock5.HitArea area in rock.m_hitAreas)
             {
                 if (area != null && area.m_health < rock.m_health)

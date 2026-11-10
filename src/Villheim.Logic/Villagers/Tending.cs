@@ -13,6 +13,10 @@ namespace Villheim.Logic.Villagers
     /// (Healing). Each villager is tended at most once every two minutes. With nobody hurt, the healer gathers herbs
     /// (Foraging takes dandelions and thistles for him as well as food).
     ///
+    /// The healer uses the best remedy in the chests, one per visit (D-078): a healing mead, else a herb or healing food
+    /// from the list in Remedies (thistle, honey, mushrooms, dandelion, berries, magecaps, jotun puffs and so on), each
+    /// giving back more than hands alone.
+    ///
     /// Not yet: sickness (the game has none for villagers), salves or potions made by the healer, tending players.
     /// </summary>
     internal static class Tending
@@ -114,13 +118,64 @@ namespace Villheim.Logic.Villagers
                 return true;
             }
 
-            float amount = patient.GetMaxHealth() * TendShare;
+            // A remedy from the chests if there is one (D-078): a healing potion does most, a herb or a healing food
+            // more than hands alone. One is used up.
+            VillageHearth home = VillageHearth.Find(villager.VillageId);
+            float share = TendShare;
+            string used = home != null && home.IsValid ? TakeRemedy(home, out share) : null;
+            if (used == null)
+            {
+                share = TendShare;
+            }
+
+            float amount = patient.GetMaxHealth() * share;
             patient.Heal(amount, true);
             TendedAt[patient.GetZDOID()] = Time.time;
             Moods.Think(patient, "chat");
-            Log($"{villager.VillagerName} tended {patient.VillagerName} (+{amount:0} health).");
+            Log($"{villager.VillagerName} tended {patient.VillagerName} (+{amount:0} health{(used != null ? ", with " + used : "")}).");
             state.Patient = null;
             return false;
+        }
+
+        /// <summary>
+        /// D-078: what a healer may use, best first, with the share of health it gives back. Healing meads first, then
+        /// the herbs and healing foods Tyler named.
+        /// </summary>
+        private static readonly (string Item, float Share)[] Remedies =
+        {
+            ("MeadHealthMajor", 0.9f), ("MeadHealthMedium", 0.7f), ("MeadHealthMinor", 0.55f), ("MeadHealthLingering", 0.6f),
+            ("MushroomJotunPuffs", 0.45f), ("MushroomMagecap", 0.45f), ("Cloudberry", 0.4f), ("Vineberry", 0.4f),
+            ("Fiddleheadfern", 0.4f), ("MushroomSmokePuff", 0.4f), ("ElderBark", 0.4f), ("Acorn", 0.35f),
+            ("MushroomYellow", 0.4f), ("Honey", 0.4f), ("Thistle", 0.4f), ("Dandelion", 0.35f),
+            ("Pukeberries", 0.3f), ("Blueberries", 0.35f), ("Raspberry", 0.35f), ("Mushroom", 0.35f),
+            ("Resin", 0.3f), ("GreydwarfEye", 0.3f),
+        };
+
+        /// <summary>Takes the best remedy the village's chests hold and gives its name, or null when there is none.</summary>
+        private static string TakeRemedy(VillageHearth hearth, out float share)
+        {
+            share = TendShare;
+            foreach ((string item, float gives) in Remedies)
+            {
+                string shared = Village.Materials.SharedName(item);
+                if (shared == null)
+                {
+                    continue;
+                }
+
+                foreach (Container chest in Healing.Chests(hearth))
+                {
+                    Inventory inventory = chest != null ? chest.GetInventory() : null;
+                    if (inventory != null && inventory.CountItems(shared) > 0)
+                    {
+                        inventory.RemoveItem(shared, 1);
+                        share = gives;
+                        return item;
+                    }
+                }
+            }
+
+            return null;
         }
 
         private static bool Begin(Villager villager, State state)

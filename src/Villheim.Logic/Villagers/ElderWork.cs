@@ -13,11 +13,13 @@ namespace Villheim.Logic.Villagers
     /// rests between them (free time, usually by the fire):
     ///
     /// - tending the fire, cooking at the cooking station, seeing to the chests,
-    /// - sweeping and tidying by the homes, feeding the animals (acted: no feed is used, D-015); never the farm (D-075),
+    /// - sweeping and tidying by the homes, feeding the animals (acted: no feed is used, D-015),
+    /// - helping with the crops now and then (acted, never as the farmer: D-075, D-078),
+    /// - mending worn pieces inside the village, never the outer fence (D-078),
     /// - making arrows at the workbench (acted),
     /// - carrying things lying about in the village to the chest (real: what he carries goes in).
     ///
-    /// Sorting a full chest (Sorting) is real work the elders also take, ahead of these. Mending is the builder's.
+    /// Sorting a full chest (Sorting) is real work the elders also take, ahead of these. Foraging is in Foraging.
     /// </summary>
     internal static class ElderWork
     {
@@ -32,6 +34,7 @@ namespace Villheim.Logic.Villagers
             Animals,
             Arrows,
             Carry,
+            Mend,
         }
 
         private sealed class State
@@ -49,6 +52,7 @@ namespace Villheim.Logic.Villagers
             public string Material;
             public int Amount;
             public bool ToChest;
+            public WearNTear Damaged;
         }
 
         private const float VillageReach = 30f;
@@ -73,6 +77,7 @@ namespace Villheim.Logic.Villagers
                 case Kind.Animals: return "feeding the animals";
                 case Kind.Arrows: return "making arrows at the workbench";
                 case Kind.Carry: return state.ToChest ? "carrying things to the chest" : "picking up things lying about";
+                case Kind.Mend: return "mending";
                 default: return null;
             }
         }
@@ -85,7 +90,8 @@ namespace Villheim.Logic.Villagers
                 return null;
             }
 
-            return state.Kind == Kind.Farm ? VillagerLooks.Tool.Hoe : state.Kind == Kind.Arrows ? VillagerLooks.Tool.Hammer : (VillagerLooks.Tool?)null;
+            return state.Kind == Kind.Farm ? VillagerLooks.Tool.Hoe :
+                state.Kind == Kind.Arrows || state.Kind == Kind.Mend ? VillagerLooks.Tool.Hammer : (VillagerLooks.Tool?)null;
         }
 
         /// <summary>True while an elder is at (or on his way to) one of his jobs.</summary>
@@ -174,6 +180,19 @@ namespace Villheim.Logic.Villagers
                     Chores.ToolAnimation(villager, VillagerLooks.Tool.Hammer);
                     state.NextAct = Time.time + Random.Range(3f, 4.5f);
                     break;
+                case Kind.Mend:
+                    VillagerLooks.Hold(villager, VillagerLooks.Tool.Hammer);
+                    Chores.ToolAnimation(villager, VillagerLooks.Tool.Hammer);
+                    state.NextAct = Time.time + Random.Range(2.5f, 3.5f);
+                    // A few slow swings, then it is whole again (as the hammer's repair does for a player).
+                    if (state.Damaged != null && ++state.Amount >= 3)
+                    {
+                        state.Damaged.Repair();
+                        state.Damaged = null;
+                        state.Until = Time.time + 1f;
+                    }
+
+                    break;
                 default:
                     Poses.Trigger(villager, "interact");
                     state.NextAct = Time.time + Random.Range(2.5f, 4.5f);
@@ -241,6 +260,7 @@ namespace Villheim.Logic.Villagers
             state.Kind = Kind.None;
             state.Arrived = false;
             state.Item = null;
+            state.Damaged = null;
             state.Amount = 0;
             state.ToChest = false;
             // Elders rest more than they work: a good while by the fire between jobs.
@@ -267,7 +287,10 @@ namespace Villheim.Logic.Villagers
                 (Kind.Chests, VillageChest.Find(hearth) != null ? 1.5f : 0f),
                 (Kind.Tidy, state0.Plots.Count > 0 ? 1.5f : 0f),
                 (Kind.Cook, 0f), // real cooking happens through Healing; no pretend cooking
-                (Kind.Farm, 0f), // elders never farm (D-075)
+                // Never the farmer (D-075), but an elder helps with the crops now and then (D-078).
+                (Kind.Farm, state0.Plots.Any(p => p.Role == nameof(Designs.Role.Farm)) ? 0.75f : 0f),
+                // Mending inside the village, never the outer fence (D-078).
+                (Kind.Mend, Damaged(hearth) != null ? 2f : 0f),
                 (Kind.Animals, Animal(center) != null ? 1.5f : 0f),
                 (Kind.Arrows, Workbench(center) != null ? 1f : 0f),
                 (Kind.Carry, Loose(center) != null ? 3f : 0f),
@@ -341,6 +364,13 @@ namespace Villheim.Logic.Villagers
                     target = animal.transform.position;
                     stand = 1.3f;
                     break;
+                case Kind.Mend:
+                    WearNTear damaged = Damaged(hearth);
+                    if (damaged == null) return false;
+                    state.Damaged = damaged;
+                    target = damaged.transform.position;
+                    stand = 1.6f;
+                    break;
                 case Kind.Arrows:
                     CraftingStation bench = Workbench(center);
                     if (bench == null) return false;
@@ -371,6 +401,46 @@ namespace Villheim.Logic.Villagers
             state.Spot = spot;
             state.Look = target + Vector3.up * 0.5f;
             return true;
+        }
+
+        private static readonly Dictionary<int, (float At, WearNTear Piece)> DamagedCache = new Dictionary<int, (float, WearNTear)>();
+        private static readonly List<Piece> MendPieces = new List<Piece>();
+
+        /// <summary>
+        /// A piece the village built, inside the village and off its outer fence, below 80 % of its health; the most
+        /// worn first. Looked for every 15 s per village.
+        /// </summary>
+        private static WearNTear Damaged(VillageHearth hearth)
+        {
+            if (DamagedCache.TryGetValue(hearth.VillageId, out var kept) && Time.time - kept.At < 15f &&
+                (kept.Piece == null || kept.Piece.GetHealthPercentage() < 0.8f))
+            {
+                return kept.Piece;
+            }
+
+            WearNTear worst = null;
+            float lowest = 0.8f;
+            MendPieces.Clear();
+            PieceIndex.InRadius(hearth.transform.position, VillheimConfig.VillageRadius.Value * 0.75f, MendPieces);
+            foreach (Piece piece in MendPieces)
+            {
+                if (piece == null || piece.m_nview == null || !piece.m_nview.IsValid() ||
+                    piece.m_nview.GetZDO().GetInt(Keys.BuiltBy) != hearth.VillageId || PlotFinder.OwnFence(piece.gameObject, hearth.VillageId))
+                {
+                    continue;
+                }
+
+                WearNTear wear = piece.GetComponent<WearNTear>();
+                float health = wear != null ? wear.GetHealthPercentage() : 1f;
+                if (wear != null && health < lowest)
+                {
+                    lowest = health;
+                    worst = wear;
+                }
+            }
+
+            DamagedCache[hearth.VillageId] = (Time.time, worst);
+            return worst;
         }
 
         private static T Nearest<T>(Vector3 center, float reach) where T : Component

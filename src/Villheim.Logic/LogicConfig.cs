@@ -18,6 +18,7 @@ namespace Villheim.Logic
         public static ConfigEntry<bool> PieceIndex;
         public static ConfigEntry<bool> BlueprintsInBackground;
         public static ConfigEntry<float> LagSummarySeconds;
+        public static ConfigEntry<float> StatusLineSeconds;
         public static ConfigEntry<float> PlotSearchMs;
         public static ConfigEntry<float> HearthMargin;
         public static ConfigEntry<float> BuildingGap;
@@ -1273,6 +1274,11 @@ namespace Villheim.Logic
                 "With LagLog on: every this many seconds, one 'Lag summary' line with the frame times (average, slowest " +
                 "1 %, hitches over 50 ms) and where the time went: the village's own work by part, and the game's work for " +
                 "villagers (their AI, body and animation, gear put on, villagers and pieces spawned). 0 turns it off.");
+            StatusLineSeconds = Admin(config, test, "StatusLineSeconds", 60f,
+                "Every this many seconds, one 'Village status' line per loaded village in the log: buildings, the site and " +
+                "its progress, the next step and any hold-up, the chest, and each villager's work, time on it, place and " +
+                "what he holds. STALLED and IDLE at the front flag a site with no piece in 10 minutes and villagers idle " +
+                "while materials are short. 0 turns it off.");
             PieceIndex = Admin(config, test, "PieceIndex", true,
                 "Lag fix (cluster B, 2026-11-10): the village's 'which pieces are near here' questions read one shared list " +
                 "of the loaded pieces, built at most once a frame, instead of each walking every piece in the world. Off: " +

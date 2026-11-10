@@ -80,6 +80,8 @@ namespace Villheim.Logic
         {
             Villagers.TestSetups.Help,
             LagProbe.Help,
+            "status: the nearest village's status line now (the log has one a minute, StatusLineSeconds)",
+            Snapshot.Help,
             "hair: list each hair lean's styles with the names the game shows (empty leans are filled in by name once a game)",
         }).Concat(new[]
         {
@@ -368,6 +370,24 @@ namespace Villheim.Logic
                     return true;
                 case "villheim_demist": Say(context, Demisting.Command()); return true;
                 case "villheim_lag": Say(context, LagProbe.Command(args)); return true;
+                case "villheim_status":
+                    if (TryGetPlayer(context, out Player statusNear) && VillageHearth.Closest(statusNear.transform.position, 200f) is VillageHearth sv)
+                    {
+                        Say(context, VillageStatus.Now(sv));
+                    }
+                    else
+                    {
+                        Say(context, "Villheim: no village hearth within 200 m.");
+                    }
+
+                    return true;
+                case "villheim_snapshot":
+                    if (TryGetPlayer(context, out Player snapNear))
+                    {
+                        Say(context, Snapshot.Command(snapNear, args));
+                    }
+
+                    return true;
                 case "villheim_exportpieces": Say(context, PieceExport.Run()); return true;
                 case "villheim_gen": Generator.GenCommands.Gen(args, context); return true;
                 case "villheim_testpool": Say(context, Generator.TestPool.Run(args, context)); return true;

@@ -256,6 +256,7 @@ namespace Villheim.Logic.Villagers
             LagProbe.Add(ChainLabel(doer), probe);
             probe = LagProbe.Now();
             Status.Set(villager, doer);
+            VillageStatus.Note(villager, doer, dt);
             HandItems.Tidy(villager, doer);
             Poses.EndTick(villager);
             LoopWatch.Update(villager);

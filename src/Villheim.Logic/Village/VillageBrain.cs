@@ -89,6 +89,7 @@ namespace Villheim.Logic.Village
             using (Perf.Time("HouseSigns.Update")) HouseSigns.Update(hearth);
             using (Perf.Time("CheckDoorsDaily")) CheckDoorsDaily(hearth);
             using (Perf.Time("Farms.Tick")) Farms.Tick(hearth);
+            using (Perf.Time("VillageStatus.Tick")) VillageStatus.Tick(hearth, state);
             if (VillageChest.IsLost(hearth))
             {
                 // Nothing gets built until the chest is back.

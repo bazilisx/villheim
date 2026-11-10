@@ -118,6 +118,17 @@ namespace Villheim.Logic.Village
             zdo.Set(KeySiteAhead, "");
         }
 
+        /// <summary>How many pieces of the site's plan are up (the index of the next one), for the status line.</summary>
+        public static int Index(VillageHearth hearth) => hearth.Zdo.GetInt(KeySiteIndex);
+
+        /// <summary>How many pieces the site's plan has, or 0 when it is not worked out yet.</summary>
+        public static int Total(VillageHearth hearth)
+        {
+            Site site = Get(hearth.Zdo);
+            CachedPlan plan = site != null ? GetPlan(hearth, site) : null;
+            return plan?.Entries?.Count ?? 0;
+        }
+
         /// <summary>"walls 12/40" style progress for summaries, or null when nothing is being built.</summary>
         public static string Progress(VillageHearth hearth)
         {

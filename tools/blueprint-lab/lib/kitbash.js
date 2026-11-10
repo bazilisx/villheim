@@ -8,13 +8,15 @@ const checksB = () => (NODE_B ? require('./checks.js') : window.VHChecks);
 const personaB = () => (NODE_B ? require('./persona.js') : window.VHPersona);
 const quatB = yaw => { const a = yaw * Math.PI / 360; return [0, +Math.sin(a).toFixed(6), 0, +Math.cos(a).toFixed(6)]; };
 const BIOMES_B = ['Meadows', 'Black Forest', 'Swamp', 'Mountain', 'Plains', 'Mistlands', 'Ashlands'];
-const can = (biome, name) => BIOMES_B.indexOf(PB.needs(name)) <= BIOMES_B.indexOf(biome);
+// in reach of the village (D-080): its own biome for stations, one further for furniture and decor (lib/pieces.js)
+const can = (biome, name) => PB.decorOk(name, biome);
 // minor decor goes in any biome (D-066): it costs nothing or is paid in the village's own materials
 // what a village makes: by the piece's materials and, for furniture, by the decorator's table too (the stricter)
 const canMake = (biome, name) => {
   if (!can(biome, name)) return false;
   const F = NODE_B ? require('./decorate.js').FURNITURE : (window.VHDecorate && window.VHDecorate.FURNITURE) || {};
-  return !F[name] || BIOMES_B.indexOf(F[name].b) <= BIOMES_B.indexOf(biome);
+  // furniture one biome further than the village's, stations and fires none (D-080, as decorate.js)
+  return !F[name] || BIOMES_B.indexOf(F[name].b) <= BIOMES_B.indexOf(biome) + (['craft', 'fire', 'storage'].includes(F[name].cat) ? 0 : 1);
 };
 const canDecor = (biome, name) => canMake(biome, name) || PB.minor(name);
 

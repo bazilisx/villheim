@@ -1600,6 +1600,15 @@ function biomeSafe(b, biome) {
 }
 
 function finish(b, info) {
+  // nothing left in the air: a piece set on another (a chest on a bench, a mug on a table) goes when what held it was
+  // taken out by a later pass (a lane cleared, a set undone), checked the way the interior library checks its pieces
+  for (let pass = 0; pass < 3; pass++) {
+    const ctx = Decor.auditContext(b.pieces);
+    const loose = b.pieces.filter(p => p.decor && p.rest === 'on' && !Decor.auditOne(p, ctx, []));
+    if (!loose.length) break;
+    const out = new Set(loose);
+    b.pieces = b.pieces.filter(p => !out.has(p));
+  }
   // every item stand holds something the household would keep there, or goes (lib/persona.js)
   Persona.dressStands(b, { persona: info.household, biome: info.biome, type: info.type, use: S.TYPES[info.type].use });
   // the decor stage asked for: what the household has put up by then (D-071)

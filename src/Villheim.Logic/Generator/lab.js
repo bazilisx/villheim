@@ -333,7 +333,23 @@ function support(n) { return SUPPORT[supportClass(n)]; }
 const MINOR = /^(rug_|jute_carpet|piece_banner\d|piece_pot\d|ashland_pot|piece_gift\d|piece_mistletoe|piece_xmas|piece_jackoturnip|piece_(Celebration|Fairylight)Garland|Candle_resin|Skull\d|ancient_skull|cloth_hanging_long|fenrirhide_hanging|dvergrprops_(barrel|crate|crate_long|shelf|hooknchain|lantern|lantern_standing)$|treasure_stack$|sign$|sign_notext$|Feast[A-Z]|Mead[A-Z]|BarleyWine$|Bread$|CookedMeat$|Sausages$|Honey|MeatPlatter$|LoxPie$|PiquantPie$|RoastedCrustPie$|SerpentStew$|MashedMeat$|MarinatedGreens$|MisthareSupreme$|QueensJam$|Salad$|Eyescream$|ShocklateSmoothie$|SparklingShroomshake$|SizzlingBerryBroth$|ScorchingMedley$|SpicyMarmalade$|Blueberries$|Raspberry$|Cloudberry$|Carrot$|Onion$|Pukeberries$|Fish\d+$)/;
 function minor(name) { return MINOR.test(name); }
 
-const apiP = { piece, minor, support, supportClass, SUPPORT, needs, MAT, BIOME_ORDER, exportSize, NEEDS, DOORS, doorSpec, doorOpening, CLIMB, climbSpec };
+// Decor reach (D-080, Tyler 2026-11-10): furniture and decor come from the village's biome and the next one (Meadows
+// draws on the Black Forest, the Black Forest on the Swamp, and so on), paid in local stand-ins from the chests (the
+// mod's DecorPaidWithAnalogs). Crafting stations, fires, chests and what is built (walls, floors, roofs) keep to the
+// village's own biome (D-066).
+function decorReach(biome) {
+  const i = Math.max(0, BIOME_ORDER.indexOf(biome));
+  return BIOME_ORDER[Math.min(BIOME_ORDER.length - 1, i + 1)];
+}
+function decorOk(name, biome) {
+  const info = piece(name), lim = BIOME_ORDER.indexOf(biome);
+  // storage keeps to the village's own biome too: the interior library's sets are laid out round the chest they were
+  // mined with, and a bigger iron chest from the next biome went into the workbench beside it
+  const station = info.structural || ['craft', 'fire', 'storage'].includes(info.role) || /^(piece_workbench|forge|piece_stonecutter|piece_artisanstation|blackforge|piece_magetable|piece_cauldron|piece_oven|smelter|charcoal_kiln|blastfurnace|eitrrefinery|windmill|piece_spinningwheel)/.test(name);
+  return BIOME_ORDER.indexOf(needs(name)) <= (station ? lim : BIOME_ORDER.indexOf(decorReach(biome)));
+}
+
+const apiP = { piece, minor, decorReach, decorOk, support, supportClass, SUPPORT, needs, MAT, BIOME_ORDER, exportSize, NEEDS, DOORS, doorSpec, doorOpening, CLIMB, climbSpec };
 if (typeof module !== 'undefined') module.exports = apiP;
 else window.VHPieces = apiP;
 
@@ -1366,8 +1382,9 @@ const ITEMS = {
   valuable: [['Black Forest', 'Ruby', 1], ['Black Forest', 'Amber', 1], ['Swamp', 'AmberPearl', 1], ['Mistlands', 'DragonEgg', 0]],
 };
 function itemFrom(kind, biome, R, own = 2, seen) {
+  // what the village's biome and the next one give (D-080): a Meadows house may keep mead and jam from the Black Forest
   const t = tierP(biome);
-  const list = (ITEMS[kind] || []).filter(([b]) => tierP(b) <= t);
+  const list = (ITEMS[kind] || []).filter(([b]) => tierP(b) <= t + 1);
   if (!list.length) return null;
   // the village's own biome counts more; older ones still turn up
   // what the house already shows weighs less, so a wall of stands is not five of one thing
@@ -2099,8 +2116,8 @@ function check(design, biome, opts = {}) {
   // materials for the biome, building pieces and furnishing alike
   if (biome) {
     const ord = PC.BIOME_ORDER, limit = ord.indexOf(biome);
-    // minor decor goes in any biome (D-066): it costs nothing or is paid in the village's own materials
-    const over = [...new Set(pieces.filter(p => ord.indexOf(PC.needs(p.name)) > limit && !(p.decor && PC.minor(p.name))).map(p => p.name))];
+    // minor decor goes in any biome (D-066); other decor reaches one biome further, paid in local stand-ins (D-080)
+    const over = [...new Set(pieces.filter(p => ord.indexOf(PC.needs(p.name)) > limit && !(p.decor && (PC.minor(p.name) || PC.decorOk(p.name, biome)))).map(p => p.name))];
     results.push({ check: 'materials', ok: over.length === 0, detail: over.length ? `needs later biomes: ${over.slice(0, 5).join(', ')}` : `all pieces available in ${biome}` });
   }
 
@@ -2301,7 +2318,8 @@ const ITEM_BIOME = {};
 for (const [k, v] of Object.entries(F)) ITEM_BIOME[k] = v.b;
 
 const bi = b => { const i = ORDER.indexOf(b); return i < 0 ? 0 : i; };
-const ok = (name, biome) => !!F[name] && bi(F[name].b) <= bi(biome);
+// furniture and decor reach one biome further than the village's own, stations and fires none (D-080, lib/pieces.js)
+const ok = (name, biome) => !!F[name] && bi(F[name].b) <= bi(biome) + (['craft', 'fire', 'storage'].includes(F[name].cat) ? 0 : 1);
 const ok0 = ok;
 const size = name => (F[name] ? F[name].fp || F[name].s : P.piece(name).size);
 // The sizes above were measured in the corpus; the game's models (lib/mesh.js, data/piece-models.json) win where they
@@ -6447,13 +6465,15 @@ const checksB = () => (NODE_B ? require('./checks.js') : window.VHChecks);
 const personaB = () => (NODE_B ? require('./persona.js') : window.VHPersona);
 const quatB = yaw => { const a = yaw * Math.PI / 360; return [0, +Math.sin(a).toFixed(6), 0, +Math.cos(a).toFixed(6)]; };
 const BIOMES_B = ['Meadows', 'Black Forest', 'Swamp', 'Mountain', 'Plains', 'Mistlands', 'Ashlands'];
-const can = (biome, name) => BIOMES_B.indexOf(PB.needs(name)) <= BIOMES_B.indexOf(biome);
+// in reach of the village (D-080): its own biome for stations, one further for furniture and decor (lib/pieces.js)
+const can = (biome, name) => PB.decorOk(name, biome);
 // minor decor goes in any biome (D-066): it costs nothing or is paid in the village's own materials
 // what a village makes: by the piece's materials and, for furniture, by the decorator's table too (the stricter)
 const canMake = (biome, name) => {
   if (!can(biome, name)) return false;
   const F = NODE_B ? require('./decorate.js').FURNITURE : (window.VHDecorate && window.VHDecorate.FURNITURE) || {};
-  return !F[name] || BIOMES_B.indexOf(F[name].b) <= BIOMES_B.indexOf(biome);
+  // furniture one biome further than the village's, stations and fires none (D-080, as decorate.js)
+  return !F[name] || BIOMES_B.indexOf(F[name].b) <= BIOMES_B.indexOf(biome) + (['craft', 'fire', 'storage'].includes(F[name].cat) ? 0 : 1);
 };
 const canDecor = (biome, name) => canMake(biome, name) || PB.minor(name);
 
@@ -8464,15 +8484,18 @@ function clearLanes(b, ctx, rooms) {
           if (budget <= 0) break;
           const list = units.get(u) || [];
           const drop = new Set(list);
-          // what stands on these pieces goes too
+          // what stands on these pieces goes too; when it may not go (the room's first chest), neither does what holds
+          // it up (a chest was left in the air over a bench taken out of a lane)
+          let keep = false;
           for (const p of list) {
             const o = Ck.aabbShapes(p);
             for (const q of b.pieces) if (q.decor && !drop.has(q) && q.x > o.x0 && q.x < o.x1 && q.z > o.z0 && q.z < o.z1 && q.y > o.y0 + 0.2 && q.y < o.y1 + 0.6) {
               const qu = units.get(unitOf.get(q)) || [q];
-              if (!removable(qu, firstChest)) continue;
+              if (!removable(qu, firstChest)) { keep = true; continue; }
               for (const r of qu) drop.add(r);
             }
           }
+          if (keep) continue;
           b.pieces = b.pieces.filter(p => !drop.has(p));
           budget--; gone++; any = true;
         }
@@ -10815,6 +10838,15 @@ function biomeSafe(b, biome) {
 }
 
 function finish(b, info) {
+  // nothing left in the air: a piece set on another (a chest on a bench, a mug on a table) goes when what held it was
+  // taken out by a later pass (a lane cleared, a set undone), checked the way the interior library checks its pieces
+  for (let pass = 0; pass < 3; pass++) {
+    const ctx = Decor.auditContext(b.pieces);
+    const loose = b.pieces.filter(p => p.decor && p.rest === 'on' && !Decor.auditOne(p, ctx, []));
+    if (!loose.length) break;
+    const out = new Set(loose);
+    b.pieces = b.pieces.filter(p => !out.has(p));
+  }
   // every item stand holds something the household would keep there, or goes (lib/persona.js)
   Persona.dressStands(b, { persona: info.household, biome: info.biome, type: info.type, use: S.TYPES[info.type].use });
   // the decor stage asked for: what the household has put up by then (D-071)

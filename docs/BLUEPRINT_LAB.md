@@ -844,6 +844,11 @@ running it again makes the same design. Then `vh place <id>` in the game.
 - Proposed wording for CLAUDE.md once Tyler agrees: "Generated designs from the blueprint lab may be built by villages
   once Tyler has marked them Yes in the Generated tab and they are copied to `blueprints/approved-generated`. They use
   only vanilla pieces and pass every check in `lib/checks.js`."
+- Decor reach (D-080, 2026-11-10): furniture and decor come from the village's biome and the next one (Meadows
+  draws on the Black Forest, the Black Forest on the Swamp), paid in local stand-ins by the mod
+  (DecorPaidWithAnalogs). Stations, fires, chests and anything built keep to the village's own biome; minor decor
+  (rugs, pots, crates) stays open to any biome (D-066). One rule for the lab: `lib/pieces.js` `decorReach`,
+  `decorOk`; the decorator, the interior library, the household's stand items and the checks read it.
 - The BiomeBlueprints pack stays blacklisted. Only the 12 builds by other creators listed in `Keepers.cs` are read.
 - Other creators' builds are study material. They are not committed to the repo and not shipped.
 

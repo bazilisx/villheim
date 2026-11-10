@@ -15,7 +15,7 @@ namespace Villheim.Logic
     {
         private static readonly string[] Help =
         {
-            "grow: make the nearest village start its next building now (adds the wood it needs)",
+            "grow (or levelup): make the nearest village start its next building now (adds the materials it needs)",
             "settle (or newvillage): light a new village hearth in front of you",
             "ghost: apply the look settings now and show the shader in use",
             "flatten [size]: clear everything from an area in front of you (360 by 260 m, enough for any gallery page) and level it at your feet's height, as far as the game allows; touch it up by hand, then 'gallery' lays out on it",
@@ -263,7 +263,8 @@ namespace Villheim.Logic
                     }
 
                     return true;
-                case "villheim_grow": Grow(context); return true;
+                case "villheim_grow":
+                case "villheim_levelup": Grow(context); return true;
                 case "villheim_wood": AddWood(args, context); return true;
                 case "villheim_empty": Empty(context); return true;
                 case "villheim_version": Say(context, VillheimLogic.Build); return true;

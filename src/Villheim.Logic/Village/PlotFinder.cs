@@ -40,7 +40,7 @@ namespace Villheim.Logic.Village
         {
             switch (role)
             {
-                case Role.Hub: min = 0f; max = 0.35f; break;
+                case Role.Hub: min = 0f; max = 0.6f; break; // 0.35 left a big hall no room past the hearth gap (2026-11-09)
                 case Role.House: min = 0.1f; max = 0.65f; break;
                 case Role.Workshop: min = 0.45f; max = 0.95f; break;
                 case Role.Storage: min = 0.1f; max = 0.5f; break;

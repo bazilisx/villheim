@@ -9,8 +9,8 @@ namespace Villheim.Logic.Village
     /// <summary>
     /// A plot chosen by hand for the village's next building, as in Millénaire (Tyler, 2026-11-09). This is the part
     /// behind the tool: the spot is judged by the same tests the village's own search uses, kept on the hearth, and
-    /// taken by the village the next time it looks for a place. The tool itself (made at the notice board, with the
-    /// building's size shown on the ground) is still to build; until then the commands below do the same job:
+    /// taken by the village the next time it looks for a place. The Shaper Tool's plot mode (key 9, PlotTool) shows the
+    /// building's outline on the ground and chooses with a click; the commands below do the same job:
     ///
     ///   vh plot check   what the village would say to building its next project where you stand
     ///   vh plot here    choose where you stand for the next project (door toward the hearth)
@@ -150,10 +150,19 @@ namespace Villheim.Logic.Village
                 return $"Villheim: {what} fits here{(why.Length > 0 ? ": " + why : "")}. 'vh plot here' chooses this spot.";
             }
 
+            Choose(hearth, pick);
+            return $"Villheim: {state.Name} will build {what} here{(why.Length > 0 ? " (" + why + ")" : "")}.";
+        }
+
+        /// <summary>Keeps the spot for the village's next building (the command and the Shaper Tool's plot mode).</summary>
+        public static string Choose(VillageHearth hearth, Pick pick)
+        {
             Write(hearth, pick);
             Growth.ClearAside(hearth);
+            var state = new VillageState(hearth.Zdo);
             PlotFinder.ClearHoldUp(state.Id);
-            return $"Villheim: {state.Name} will build {what} here{(why.Length > 0 ? " (" + why + ")" : "")}.";
+            VillheimPlugin.Log.LogInfo($"{state.Name}: the next {VillageBrain.RoleName(pick.Role)} ({pick.Design}) will go at {pick.Position.ToString("F1")}, chosen by hand.");
+            return $"{state.Name} will build its {VillageBrain.RoleName(pick.Role)} here.";
         }
     }
 }

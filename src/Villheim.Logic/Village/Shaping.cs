@@ -32,7 +32,7 @@ namespace Villheim.Logic.Village
     {
         private const float DeleteReach = 6f;
 
-        private const int ToolMove = 1, ToolTurn = 2, ToolSwap = 3, ToolDelete = 4, ToolDeleteAll = 5, ToolSave = 6, ToolReset = 7, ToolUndo = 8;
+        private const int ToolMove = 1, ToolTurn = 2, ToolSwap = 3, ToolDelete = 4, ToolDeleteAll = 5, ToolSave = 6, ToolReset = 7, ToolUndo = 8, ToolPlot = 9;
 
         private static bool _active;
         private static int _tool;
@@ -164,7 +164,7 @@ namespace Villheim.Logic.Village
                             else
                             {
                                 _tool = ToolSwap;
-                                Say("Shaping on: 1 Move, 2 Turn, 3 Swap, 4 Delete, 5 Delete all, 6 Save, 7 Reset, 8 Undo. Press a key to pick the tool, left click to use it. Swap is picked.");
+                                Say("Shaping on: 1 Move, 2 Turn, 3 Swap, 4 Delete, 5 Delete all, 6 Save, 7 Reset, 8 Undo, 9 Plot. Press a key to pick the tool, left click to use it. Swap is picked.");
                             }
                         }
                         else
@@ -213,6 +213,21 @@ namespace Villheim.Logic.Village
                     if (_active)
                     {
                         Selection(__instance);
+                    }
+
+                    // Plot mode (D-090): key 9, outside the hotbar's eight.
+                    if (_active && !Typing() && (Input.GetKeyDown(KeyCode.Alpha9) || Input.GetKeyDown(KeyCode.Keypad9)))
+                    {
+                        Select(__instance, ToolPlot);
+                    }
+
+                    if (_active && _tool == ToolPlot)
+                    {
+                        PlotTool.Update(__instance);
+                    }
+                    else
+                    {
+                        PlotTool.Hide();
                     }
                 }
                 catch (System.Exception e)
@@ -573,12 +588,13 @@ namespace Villheim.Logic.Village
             "Save: click a design, then click again within 6 seconds to save it.",
             "Reset: click a design, then click again within 6 seconds to put it up again as the gallery shows it.",
             "",
+            "Plot: aim at the ground near a village. The outline of its next building shows green where it fits and red where it does not; the white line is the door side, the yellow ring the hearth's kept ground. Click to choose the spot. 9 again to put it down.",
         };
 
         /// <summary>A hotbar key picks its tool; the same key again puts it down. 8 undoes on every press.</summary>
         private static void Select(Player player, int index)
         {
-            if (index < 1 || index > 8)
+            if (index < 1 || index > 9)
             {
                 return;
             }
@@ -610,7 +626,7 @@ namespace Villheim.Logic.Village
                     Say($"Move: {_moveDesign} (it stays picked, wherever you aim, until you press 1 again).");
                 }
             }
-            Say(same ? "Tool put down: clicks do nothing until you pick one (1 to 8)." : Picked[index - 1]);
+            Say(same ? "Tool put down: clicks do nothing until you pick one (1 to 9)." : Picked[index - 1]);
         }
 
         /// <summary>Lets go of what the current tool holds: Move's part, Turn's lock, unanswered questions.</summary>
@@ -677,6 +693,10 @@ namespace Villheim.Logic.Village
                 case ToolReset:
                     Swing(player);
                     Reset(player);
+                    break;
+                case ToolPlot:
+                    Swing(player);
+                    PlotTool.Click(player);
                     break;
             }
         }

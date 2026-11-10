@@ -73,6 +73,7 @@ namespace Villheim.Logic
         {
             ConfigWatcher.Stop();
             Village.LagProbe.Stop();
+            Village.PlotTool.Unload();
             Villagers.ChildBody.Unload();
             Villagers.GhostDeath.Unload();
             LogicConfig.Unbind();

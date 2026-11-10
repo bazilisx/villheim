@@ -327,6 +327,12 @@ function vignettes(b, ctx, zones) {
 // the fire's ring, clear of windows, resting on what its source rested on, and clipping into walls, furniture and its
 // own assembly no deeper than its source builds did (marked p.clip, which lib/checks.js and the audit allow).
 const decorB = () => (NODE_B ? require('./decorate.js') : window.VHDecorate);
+const meshB = () => (NODE_B ? require('./mesh.js') : window.VHMesh);
+// an item (food, drink) rather than a piece: what the game drops when it is placed loose
+function looseItem(name) {
+  const Me = meshB();
+  return !!Me && Me.source(name) === 'Items' && !/^(Pickable_|Placeable_|TreasureChest|loot_chest)/.test(name);
+}
 const shapesB = () => (NODE_B ? require('./shapes.js') : window.VHShapes);
 let LIB_B = null;
 function library() {
@@ -550,13 +556,27 @@ function fit(b, ctx, room, idx, zones, anc, a, mirror, fires) {
   let dropped = 0;
   const picks = {};
   const kb = `${a.id}@${Math.round(anc.x * 10)},${Math.round(anc.z * 10)}`;
+  // a set against a wall stands clear of the wall's own relief (the 2x2 wood wall's cross bars stand 13 cm proud of
+  // its collider on one face): the whole set moves out by that much, so what hangs and what stands keep together
+  let push = 0;
+  if (['wall', 'corner', 'window'].includes(anc.anchor) && anc.face && anc.face.proud && anc.t != null) {
+    let lo = Infinity, hi = -Infinity, top = 0;
+    for (const mm of a.pieces) {
+      const lx = mirror ? -mm.x : mm.x;
+      lo = Math.min(lo, lx - 0.4); hi = Math.max(hi, lx + 0.4); top = Math.max(top, mm.y + 1);
+    }
+    // along the face, the set's local x runs the face's way or against it, so take the span both ways round
+    const span = Math.max(Math.abs(lo), Math.abs(hi));
+    push = anc.face.proud(anc.t - span, anc.t + span, m.stand + 0.05, m.stand + top);
+    if (push < 0.015) push = 0; else if (push > 0.2) { WHY_B = 24; return null; } else push += 0.01;
+  }
   // a quick look first: each piece's spot on this room's floor (or at its wall), out of the keep-clear boxes
   let miss = 0;
   for (let i = 0; i < a.pieces.length; i++) {
     const mm = a.pieces[i];
     let lx = mirror ? -mm.x : mm.x;
     if (a.byWidth && anc.w) lx = Math.sign(lx) * (anc.w / 2 + Math.abs(lx));
-    const x = anc.x + lx * c + mm.z * s, z = anc.z - lx * s + mm.z * c, y = m.stand + mm.y;
+    const x = anc.x + lx * c + (mm.z + push) * s, z = anc.z - lx * s + (mm.z + push) * c, y = m.stand + mm.y;
     const out = (anc.anchor !== 'stair' && !m.nearWall(x, z, 0.5)) || (mm.k !== 'rug' && zones.some(zn => x > zn.x0 && x < zn.x1 && z > zn.z0 && z < zn.z1 && y + 0.3 > zn.y0 && y < zn.y1));
     if (out) { if (needed.has(i)) return null; miss++; }
   }
@@ -569,13 +589,37 @@ function fit(b, ctx, room, idx, zones, anc, a, mirror, fires) {
     if (!name || (mm.rest === 'on' && !made[mm.on])) { if (fail()) return null; continue; }
     let lx = mirror ? -mm.x : mm.x;
     if (a.byWidth && anc.w) lx = Math.sign(lx) * (anc.w / 2 + Math.abs(lx));
-    const lz = mm.z, lyaw = mirror ? -mm.yaw : mm.yaw;
+    const lz = mm.z + push, lyaw = mirror ? -mm.yaw : mm.yaw;
     const x = anc.x + lx * c + lz * s, z = anc.z - lx * s + lz * c, yaw = normB(anc.yaw + lyaw);
     const cell = m.cellAt(x, z);
     const stand = cell ? cell.st : m.stand;
     const p = { name, x: +x.toFixed(3), y: +(stand + Math.max(mm.y, -(mm.sink || 0))).toFixed(3), z: +z.toFixed(3), q: quatB(yaw), yaw, decor: true, kb, rest: mm.rest };
     if (mm.want) p.want = mm.want; // what an item stand should hold (lib/persona.js)
+    // food and drink from a source build go on a flat item stand: an item set down loose is dropped in the game and
+    // picked up by whoever walks past (T-626). What the stand holds is the household's pick of that kind
+    // (lib/persona.js), so one set of mugs and a candle is ale in one house and mead or jam in the next.
+    if (looseItem(name)) { p.name = 'itemstandh'; p.want = /^(Mead|BarleyWine|Tankard)/.test(name) ? 'drink' : 'food'; }
     if (BUILT_SLOTS.includes(mm.k)) p.trim = true;
+    // a banner's cloth hangs 2.9 m under its rod, most of it with no collider: the rod goes where the cloth's foot
+    // clears the floor by 10 cm (the corpus sets hung them at 2.35 m, the cloth 48 cm into the floor, T-606), and the
+    // set is out when that puts the rod into the ceiling
+    if (/^piece_banner\d+$/.test(p.name) && meshB()) {
+      const V = meshB().aabbOf(meshB().world(p));
+      if (V) {
+        p.y = +(p.y + (stand + 0.1) - V.y0).toFixed(3);
+        // the lowest roof, floor or beam over the rod (a sloped roof is lower at the wall than over the room's middle)
+        const rodTop = p.y + (V.y1 - V.y0) - 2.9;
+        let ceil = m.ceilAt(x, z);
+        for (const q of b.pieces) {
+          if (q.decor || Math.abs(q.x - x) > 3 || Math.abs(q.z - z) > 3 || !['roof', 'roofTop', 'roofCorner', 'floor', 'beam'].includes(PB.piece(q.name).role)) continue;
+          for (const [dx, dz] of [[0, 0], [0.6, 0], [-0.6, 0], [0, 0.6], [0, -0.6]]) {
+            const u = SH.undersideAt(SH.world(q) || [], x + dx, z + dz, stand + 1);
+            if (u != null && u < ceil) ceil = u;
+          }
+        }
+        if (rodTop > ceil - 0.05) { if (fail()) return null; continue; }
+      }
+    }
     let bx = Ck.aabbShapes(p);
     // set the piece on what it rests on, so a substitute of another height sits right
     const under = mm.rest === 'on' ? made[mm.on] : mm.rest === 'anchor' ? anc.of : null;

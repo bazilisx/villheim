@@ -20,6 +20,17 @@ const NODE_D = typeof module !== 'undefined';
 const PD = NODE_D ? require('./pieces.js') : window.VHPieces;
 const checksD = () => (NODE_D ? require('./checks.js') : window.VHChecks);
 const MotifsD = NODE_D ? require('./motifs.js') : window.VHMotifs;
+const meshDt = () => (NODE_D ? require('./mesh.js') : window.VHMesh);
+// How far a wall piece shows past its middle on its fuller side (lib/mesh.js): 0.15 for a flat wall, 0.28 for the
+// 2x2 wood wall with its cross bars. What hangs on its face goes at least that far out.
+const RELIEF = new Map();
+function relief(name) {
+  if (RELIEF.has(name)) return RELIEF.get(name);
+  const Me = meshDt(), W = Me && Me.world({ name, x: 0, y: 0, z: 0, q: [0, 0, 0, 1] });
+  const v = W && W.length ? Math.max(...W.map(o => Math.max(-o.z0, o.z1))) : 0.15;
+  RELIEF.set(name, v);
+  return v;
+}
 
 const normD = a => ((a % 360) + 360) % 360;
 const quatD = yaw => { const a = yaw * Math.PI / 360; return [0, +Math.sin(a).toFixed(6), 0, +Math.cos(a).toFixed(6)]; };
@@ -755,12 +766,16 @@ function bargeboards(K, C, w, ctx, rows, ends, add, low, pivot, r) {
   // (on a low gable it hangs on down the wall under it, where that wall has no opening in its middle bays)
   if (X.gableBanner && w === ctx.wings[0] && !gw && !apex && !ctx.dragonsHere && capY - top >= 1.9) {
     const B = reachesD(ctx.biome, 'Plains') ? ['piece_banner01', 'piece_banner02', 'piece_banner05', 'piece_banner07'] : ['piece_banner03', 'piece_banner04', 'piece_banner06', 'piece_banner07', 'piece_banner08', 'piece_banner09'];
-    const name = B[makeHash(ctx) % B.length], yTop = capY - 0.8, low2 = yTop - 2.95;
-    [-1, 1].forEach((sg, k) => {
+    // the cloth hangs 2.95 m under its rod: its foot no more than 0.6 m over the ground floor, so it reads as hung on
+    // the house and not in the air (T-606: the purple banner, piece_banner09, hung with its foot 1.3 m up), and the
+    // rod clear of the wall's cross bars
+    const name = B[makeHash(ctx) % B.length], yTop = Math.min(capY - 0.8, ctx.F + 2.95 + 0.6), low2 = yTop - 2.95;
+    const out = Math.max(relief(K.wall || 'woodwall'), relief(K.halfWall || 'wood_wall_half'), 0.2) + 0.11;
+    if (low2 >= ctx.F + 0.1) [-1, 1].forEach((sg, k) => {
       if (!ends[k]) return;
       const x = w.cx + sg * w.W * Math.cos(al), z = w.cz - sg * w.W * Math.sin(al);
       if (low2 < top - 0.05 && (ctx.openings || []).some(o => Math.hypot(o.e.x - x, o.e.z - z) < 1.6 && o.y0 + (o.SH || 3) > low2)) return;
-      add(name, sg * (w.W + 0.2), yTop, 0, 0, 'trim', yTop);
+      add(name, sg * (w.W + out), yTop, 0, 0, 'trim', yTop);
     });
   }
   if (!X.bargeboards) return;

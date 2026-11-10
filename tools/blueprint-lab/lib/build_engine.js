@@ -5,7 +5,7 @@
 const fs = require('fs'), path = require('path');
 const dir = __dirname;
 const out = process.argv[2] || path.join(dir, '../../../src/Villheim.Logic/Generator/lab.js');
-const libs = ['pieces.js', 'shapes.js', 'styles.js', 'persona.js', 'blueprint.js', 'checks.js', 'features.js', 'decorate.js', 'motifs.js', 'details.js', 'kitbash.js', 'layout.js', 'yards.js', 'generate.js', 'critic.js', 'request.js', 'floorplan.js'];
+const libs = ['pieces.js', 'shapes.js', 'mesh.js', 'styles.js', 'persona.js', 'blueprint.js', 'checks.js', 'features.js', 'decorate.js', 'motifs.js', 'details.js', 'kitbash.js', 'layout.js', 'yards.js', 'generate.js', 'critic.js', 'request.js', 'floorplan.js', 'audit.js'];
 const code = libs.map(f => `// ---- ${f}\n(function () {\n${fs.readFileSync(path.join(dir, f), 'utf8')}\n})();`).join('\n');
 const rules = fs.readFileSync(path.join(dir, '../data/rules-lite.json'), 'utf8').trim();
 const scorer = fs.readFileSync(path.join(dir, '../data/scorer.json'), 'utf8').trim();
@@ -24,6 +24,8 @@ const motifScores = path.join(dir, '../data/motif-scores.json');
 const motifLite = Mo.lite(JSON.parse(fs.readFileSync(path.join(dir, '../data/motifs.json'), 'utf8')), fs.existsSync(motifScores) ? JSON.parse(fs.readFileSync(motifScores, 'utf8')).weights : null);
 // the interior library (lib/kitbash.js), without sources and the decor table
 const kitbash = JSON.stringify(require('./kitbash.js').lite(JSON.parse(fs.readFileSync(path.join(dir, '../data/kitbash-interior.json'), 'utf8'))));
+// what shows of each piece (lib/mesh.js): the model's parts where they stand proud of its collider, and its prefab folder
+const meshLite = JSON.stringify(require('./mesh.js').lite(JSON.parse(fs.readFileSync(path.join(dir, '../data/piece-models.json'), 'utf8'))));
 // the room layout rules (lib/layout.js)
 const layouts = JSON.stringify(JSON.parse(fs.readFileSync(path.join(dir, '../data/room-layouts.json'), 'utf8')));
 const text = `// Villheim blueprint lab, bundled for the game. Made by tools/blueprint-lab/lib/build_engine.js; do not edit.
@@ -37,6 +39,7 @@ window.VH_KITBASH = ${kitbash};
 window.VH_LAYOUTS = ${layouts};
 window.VH_CRITIC = ${critic};
 window.VH_SOLIDS = ${solids};
+window.VH_MESH = ${meshLite};
 window.VH_ROOMS = ${roomsLite};
 window.VH_ROOM_WEIGHTS = ${roomWeights};
 window.VH_MOTIFS = ${JSON.stringify({ motifs: motifLite.motifs })};
@@ -47,6 +50,13 @@ function vhMake(type, biome, culture, stage, words, seed, tries) {
   return VHRequest.make({ type: type, biome: biome, culture: culture || undefined, stage: stage, words: words, seed: seed, tries: tries }, VH_SCORER, VH_RULES);
 }
 function vhRead(words) { return JSON.stringify(VHRequest.read(words)); }
+// the pool audit ('vh testpool make'): files as JSON { fileName: blueprint text }, gives { gate, failed, totals, text }
+function vhAudit(filesJson) {
+  try {
+    const r = VHAudit.pool(VHAudit.group(JSON.parse(filesJson), VHBlueprint.parse));
+    return JSON.stringify({ gate: r.gate, failed: r.failed, totals: r.totals, watch: r.watch, text: VHAudit.summary(r, 3) });
+  } catch (e) { return JSON.stringify({ error: String(e && e.message || e) }); }
+}
 // floorplans ('vh floorplan'): one plan or the first n of the catalog, as JSON { name, blueprint, signs, rows }
 function vhFloorplan(shape, w, d, room, biome, culture, decor, seed, id, ladder) {
   try { return JSON.stringify(VHFloorplan.one({ shape: shape, w: w, d: d, room: room, biome: biome, culture: culture || undefined, decor: decor, seed: seed, id: id, ladder: !!ladder })); }

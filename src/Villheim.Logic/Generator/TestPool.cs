@@ -5,6 +5,7 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading;
+using BepInEx;
 using UnityEngine;
 using Villheim.Logic.Designs;
 
@@ -20,12 +21,18 @@ namespace Villheim.Logic.Generator
     /// grows into the next stage's d1 (Blueprints.NextLevel).
     ///
     /// Each line keeps one seed for all nine designs, so a line's stages share as much as the generator allows.
+    ///
+    /// The pool is audited before villages see it (tools/blueprint-lab/lib/audit.js, the same audit as
+    /// lab/audit_pool.js): the designs are made in a staging folder outside the blueprints folder, and they replace the
+    /// pool only when no known defect shows (signs and stands into a wall's cross bars, banners into the floor or hung
+    /// high, food set down loose, a way through a door blocked, furniture on a station or through a post, decor stages
+    /// that do not nest). 'vh testpool make ... force' puts a failing pool in place anyway.
     /// </summary>
     internal static class TestPool
     {
         public static readonly string[] Help =
         {
-            "testpool [make|list] [culture] [biome] [lines]: 'make' writes the test pool (three homes, hall, woodworker, smithy, farm, barn, storehouse, each s1d1 to s3d3) for a culture, default norse in the Meadows; turn on TestPool in the settings and villages of that culture build only these; 'list' shows what is there; [lines] picks 'homes' or names such as home-a,hall,smithy",
+            "testpool [make|list] [culture] [biome] [lines] [force]: 'make' writes the test pool (three homes, hall, woodworker, smithy, farm, barn, storehouse, each s1d1 to s3d3) for a culture, default norse in the Meadows, and audits it first: a pool that shows a known defect stays in the staging folder unless 'force' is added; turn on TestPool in the settings and villages of that culture build only these; 'list' shows what is there; [lines] picks 'homes' or names such as home-a,hall,smithy",
         };
 
         private sealed class Line
@@ -51,6 +58,12 @@ namespace Villheim.Logic.Generator
         private static int _done, _total;
 
         public static string FolderFor(string culture) => Path.Combine(Blueprints.Folder, "testpool-" + culture.ToLowerInvariant());
+
+        /// <summary>Where a pool is made and audited, outside the blueprints folder so no village reads it early.</summary>
+        public static string StagingFor(string culture) => Path.Combine(Paths.ConfigPath, "Villheim", "testpool-staging-" + culture.ToLowerInvariant());
+
+        private static string _audit = "";
+        private static bool _auditPassed;
 
         /// <summary>The pool's s1d1 designs for a role, for villages of its culture (or every culture when untagged).</summary>
         public static List<DesignLibrary.Design> PoolFor(Heightmap.Biome biome, Role role, string culture)
@@ -96,7 +109,14 @@ namespace Villheim.Logic.Generator
 
             if (verb != "make")
             {
-                return "Villheim: vh testpool make|list [culture] [biome]";
+                return "Villheim: vh testpool make|list [culture] [biome] [lines] [force]";
+            }
+
+            // 'force' anywhere puts the pool in place even when the audit fails
+            bool force = args != null && args.Any(a => a.Equals("force", StringComparison.OrdinalIgnoreCase));
+            if (force)
+            {
+                args = args.Where(a => !a.Equals("force", StringComparison.OrdinalIgnoreCase)).ToArray();
             }
 
             // an optional fourth word picks lines: 'homes', or names joined by commas (home-a,hall,smithy)
@@ -111,8 +131,18 @@ namespace Villheim.Logic.Generator
             _done = 0;
             _total = lines.Length * 9;
             LabEngine.Prepare(Path.GetDirectoryName(typeof(VillheimPlugin).Assembly.Location));
-            string folder = FolderFor(culture);
+            string folder = StagingFor(culture);
+            if (Directory.Exists(folder))
+            {
+                foreach (string old in Directory.GetFiles(folder, "*.blueprint"))
+                {
+                    File.Delete(old);
+                }
+            }
+
             Directory.CreateDirectory(folder);
+            _audit = "";
+            _auditPassed = false;
             var results = new List<(Line Line, string Stage, LabResult Result, Exception Failure)>();
             var thread = new Thread(() =>
             {
@@ -144,14 +174,36 @@ namespace Villheim.Logic.Generator
                         }
                     }
                 }
+
+                // the audit, on this thread too: the lab's own measures of the defects found in game tests
+                try
+                {
+                    var json = new StringBuilder("{");
+                    bool first = true;
+                    foreach (string file in Directory.GetFiles(folder, "*.blueprint").OrderBy(f => f))
+                    {
+                        json.Append(first ? "" : ",").Append(Json(Path.GetFileName(file))).Append(':').Append(Json(File.ReadAllText(file)));
+                        first = false;
+                    }
+
+                    string reply = LabEngine.Call("vhAudit", json.Append('}').ToString()) ?? "";
+                    string error = Field(reply, "error");
+                    _audit = error != null ? "pool audit: could not run (" + error + ")" : Field(reply, "text") ?? reply;
+                    _auditPassed = error == null && reply.Contains("\"gate\":\"pass\"");
+                }
+                catch (Exception e)
+                {
+                    _audit = "pool audit: could not run (" + e.GetBaseException().Message + ")";
+                    _auditPassed = false;
+                }
             }) { IsBackground = true, Name = "Villheim test pool" };
             thread.Start();
-            VillheimPlugin.Instance.StartCoroutine(Write(thread, results, culture, biome, context));
+            VillheimPlugin.Instance.StartCoroutine(Write(thread, results, culture, biome, context, force));
             return $"Villheim: making the {culture} test pool ({lines.Length} lines, s1d1 to s3d3, {lines.Length * 9} designs) in the background. Each design takes some seconds; the log shows progress every minute and 'vh testpool' shows it any time.";
         }
 
         private static IEnumerator Write(Thread thread, List<(Line Line, string Stage, LabResult Result, Exception Failure)> results,
-            string culture, string biome, Terminal context)
+            string culture, string biome, Terminal context, bool force)
         {
             float started = Time.realtimeSinceStartup, nextNote = started + 60f;
             while (thread.IsAlive)
@@ -166,7 +218,7 @@ namespace Villheim.Logic.Generator
             }
 
             _busy = false;
-            string folder = FolderFor(culture);
+            string staging = StagingFor(culture), folder = FolderFor(culture);
             int written = 0;
             var failed = new List<string>();
             foreach ((Line line, string stage, LabResult r, Exception failure) in results)
@@ -181,8 +233,37 @@ namespace Villheim.Logic.Generator
                 written++;
             }
 
+            foreach (string line in (_audit ?? "").Split('\n'))
+            {
+                Say(context, "   " + line);
+            }
+
+            if (!_auditPassed && !force)
+            {
+                Say(context, $"Villheim: made {written} test pool designs in {Time.realtimeSinceStartup - started:0} s, but the audit found defects, so the pool in {folder} is unchanged. The new designs are in {staging}. Add 'force' to use them anyway.");
+                if (failed.Count > 0)
+                {
+                    Say(context, $"   {failed.Count} failed: {string.Join("; ", failed.Take(6))}");
+                }
+
+                yield break;
+            }
+
+            // the audited designs replace the pool's files of the lines made
+            Directory.CreateDirectory(folder);
+            foreach (string file in Directory.GetFiles(staging, "*.blueprint"))
+            {
+                string target = Path.Combine(folder, Path.GetFileName(file));
+                if (File.Exists(target))
+                {
+                    File.Delete(target);
+                }
+
+                File.Move(file, target);
+            }
+
             Blueprints.Forget();
-            Say(context, $"Villheim: wrote {written} test pool designs to {folder} in {Time.realtimeSinceStartup - started:0} s.");
+            Say(context, $"Villheim: wrote {written} test pool designs to {folder} in {Time.realtimeSinceStartup - started:0} s{(_auditPassed ? "" : " (audit failed; put in place with 'force')")}.");
             if (failed.Count > 0)
             {
                 Say(context, $"   {failed.Count} failed: {string.Join("; ", failed.Take(6))}");
@@ -209,6 +290,68 @@ namespace Villheim.Logic.Generator
             }
 
             return string.Join("\n", lines).TrimEnd('\n') + "\n";
+        }
+
+        /// <summary>A string as a JSON string literal.</summary>
+        private static string Json(string text)
+        {
+            var sb = new StringBuilder("\"");
+            foreach (char c in text ?? "")
+            {
+                switch (c)
+                {
+                    case '"': sb.Append("\\\""); break;
+                    case '\\': sb.Append("\\\\"); break;
+                    case '\n': sb.Append("\\n"); break;
+                    case '\r': sb.Append("\\r"); break;
+                    case '\t': sb.Append("\\t"); break;
+                    default:
+                        if (c < ' ')
+                        {
+                            sb.Append("\\u").Append(((int)c).ToString("x4"));
+                        }
+                        else
+                        {
+                            sb.Append(c);
+                        }
+
+                        break;
+                }
+            }
+
+            return sb.Append('"').ToString();
+        }
+
+        /// <summary>A top-level string field of a flat JSON reply, or null.</summary>
+        private static string Field(string json, string name)
+        {
+            string key = "\"" + name + "\":\"";
+            int i = json.IndexOf(key, StringComparison.Ordinal);
+            if (i < 0)
+            {
+                return null;
+            }
+
+            var sb = new StringBuilder();
+            for (i += key.Length; i < json.Length; i++)
+            {
+                char c = json[i];
+                if (c == '"')
+                {
+                    break;
+                }
+
+                if (c == '\\' && i + 1 < json.Length)
+                {
+                    char e = json[++i];
+                    sb.Append(e == 'n' ? '\n' : e == 't' ? '\t' : e == 'r' ? '\r' : e);
+                    continue;
+                }
+
+                sb.Append(c);
+            }
+
+            return sb.ToString();
         }
 
         private static void Say(Terminal context, string text)

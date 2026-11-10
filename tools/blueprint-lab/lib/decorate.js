@@ -12,6 +12,8 @@ const NODE_D = typeof module !== 'undefined';
 const P = NODE_D ? require('./pieces.js') : window.VHPieces;
 const SHD = NODE_D ? require('./shapes.js') : window.VHShapes;
 const PERS = () => (NODE_D ? require('./persona.js') : window.VHPersona);
+// what a piece shows, as boxes (lib/mesh.js): where a model stands proud of its collider (the 2x2 wood wall's bars)
+const MESH_D = () => (NODE_D ? require('./mesh.js') : window.VHMesh);
 let RULES = null, LEARN = null;
 function setRules(r) { RULES = r; }
 function setInterior(d) { LEARN = d; }
@@ -87,11 +89,11 @@ const F = {
   itemstand: { s: [0.6, 0.6, 0.25], at: 'mount', b: 'Meadows', cat: 'deco', wall: 0.14, y: 1.6 },
   itemstandh: { s: [0.9, 0.2, 0.5], at: 'top', b: 'Meadows', cat: 'deco' },
   sign: { s: [1.0, 0.55, 0.1], at: 'mount', b: 'Black Forest', cat: 'deco', wall: 0.12, y: 1.3 },
-  piece_banner01: { s: [1.41, 2.0, 0.1], at: 'mount', b: 'Black Forest', cat: 'deco', wall: 0.2, under: 0.33, rel: 90 },
-  piece_banner02: { s: [1.41, 2.0, 0.1], at: 'mount', b: 'Black Forest', cat: 'deco', wall: 0.2, under: 0.33, rel: 90 },
-  piece_banner03: { s: [1.41, 2.0, 0.1], at: 'mount', b: 'Black Forest', cat: 'deco', wall: 0.2, under: 0.33, rel: 90 },
-  piece_banner04: { s: [1.41, 2.0, 0.1], at: 'mount', b: 'Swamp', cat: 'deco', wall: 0.2, under: 0.33, rel: 90 },
-  piece_banner05: { s: [1.41, 2.0, 0.1], at: 'mount', b: 'Swamp', cat: 'deco', wall: 0.2, under: 0.33, rel: 90 },
+  piece_banner01: { s: [1.41, 3.03, 0.1], at: 'mount', b: 'Black Forest', cat: 'deco', wall: 0.2, under: 0.33, rel: 90 },
+  piece_banner02: { s: [1.41, 3.03, 0.1], at: 'mount', b: 'Black Forest', cat: 'deco', wall: 0.2, under: 0.33, rel: 90 },
+  piece_banner03: { s: [1.41, 3.03, 0.1], at: 'mount', b: 'Black Forest', cat: 'deco', wall: 0.2, under: 0.33, rel: 90 },
+  piece_banner04: { s: [1.41, 3.03, 0.1], at: 'mount', b: 'Swamp', cat: 'deco', wall: 0.2, under: 0.33, rel: 90 },
+  piece_banner05: { s: [1.41, 3.03, 0.1], at: 'mount', b: 'Swamp', cat: 'deco', wall: 0.2, under: 0.33, rel: 90 },
   wood_dragon1: { s: [3.34, 1.46, 1.0], c: [0.0, 1.69], at: 'mount', b: 'Black Forest', cat: 'deco', wall: -0.1, y: 1.7, rel: 90 },
   darkwood_raven: { s: [3.09, 1.46, 0.8], c: [0.0, 1.54], at: 'mount', b: 'Swamp', cat: 'deco', wall: -0.1, y: 1.7, rel: 90 },
   darkwood_wolf: { s: [2.18, 1.79, 0.83], c: [0.0, 1.09], at: 'mount', b: 'Swamp', cat: 'deco', wall: -0.1, y: 1.7, rel: 90 },
@@ -523,6 +525,47 @@ function faceModel(f, room) {
     samples.push({ t, kind, top });
   }
   face.samples = samples;
+  // How deep what shows of a piece hung on this face goes into what shows of the face's walls (lib/mesh.js): the 2x2
+  // wood wall's cross bars stand 13 cm proud of its collider, and a sign or a stand hung flat on the collider face
+  // goes into them (T-606, T-612).
+  face.wallClip = p => {
+    const Me = MESH_D();
+    if (!Me) return 0;
+    // this face's walls, and the walls, posts and beams round it (a wall coming in at a corner), where they show more
+    // than their colliders or are thin enough to pass behind a hung piece
+    const near = new Set(f.parts.filter(pt => Math.abs(pt.s.p.x - p.x) <= 2.5 && Math.abs(pt.s.p.z - p.z) <= 2.5).map(pt => pt.s.p));
+    if (room.near) for (const sb of room.near(p.x, p.z, 1.6)) if (sb.p && !sb.p.decor && ['wall', 'halfwall', 'window', 'beam', 'pole', 'gable', 'door'].includes(sb.role)) near.add(sb.p);
+    const look = [...near].filter(q => Me.proud(q.name) || SHOWS_THIN.has(P.piece(q.name).role));
+    if (!look.length) return 0;
+    const A = Me.world(p);
+    if (!A || !A.length) return 0;
+    let m = 0;
+    for (const q of look) {
+      const d = Me.deepest(A, Me.world(q));
+      if (d > m) m = d;
+    }
+    return m;
+  };
+  // How far the face's walls show past ht on the room's side over the stretch t0..t1 between heights y0 and y1
+  // (world); 0 where the face is flat. For sets that stand against the wall (lib/kitbash.js).
+  face.proud = (t0, t1, y0, y1) => {
+    const Me = MESH_D();
+    let out = 0;
+    if (!Me) return 0;
+    for (const pt of f.parts) {
+      if (pt.a1 < t0 - 0.05 || pt.a0 > t1 + 0.05) continue;
+      for (const o of Me.world(pt.s.p) || []) {
+        if (o.y1 < y0 + 0.01 || o.y0 > y1 - 0.01) continue;
+        const along = o.c[0] * f.ux + o.c[2] * f.uz;
+        const ea = o.h[0] * Math.abs(o.a[0][0] * f.ux + o.a[0][2] * f.uz) + o.h[1] * Math.abs(o.a[1][0] * f.ux + o.a[1][2] * f.uz) + o.h[2] * Math.abs(o.a[2][0] * f.ux + o.a[2][2] * f.uz);
+        if (along + ea < t0 + 0.01 || along - ea > t1 - 0.01) continue;
+        const en = o.h[0] * Math.abs(o.a[0][0] * f.nx + o.a[0][2] * f.nz) + o.h[1] * Math.abs(o.a[1][0] * f.nx + o.a[1][2] * f.nz) + o.h[2] * Math.abs(o.a[2][0] * f.nx + o.a[2][2] * f.nz);
+        const reach = (o.c[0] - face.px(along)) * f.nx + (o.c[2] - face.pz(along)) * f.nz + en - ht;
+        if (reach > out) out = reach;
+      }
+    }
+    return out;
+  };
   for (const s of samples) {
     const last = face.runs[face.runs.length - 1];
     if (last && last.kind === s.kind) { last.a1 = s.t + 0.125; last.top = Math.min(last.top, s.top); }
@@ -656,6 +699,11 @@ class Room {
     const f = F[name] || {};
     const [w, , d] = size(name);
     const y = this.floorY(obox(x, z, w, d, yaw)) + (f.base || 0) + (o.lift || 0) + (f.at === 'rug' ? 0.02 : 0);
+    // what shows of it stays out of the walls and posts (a bed's fur over its frame, T-606 "bed through a window")
+    if (SHOWS_DEEP.has(f.cat)) {
+      const [px, pz] = pivotOf(name, x, z, yaw);
+      if (showsInto({ name, x: px, y, z: pz, q: quatY(norm(yaw)) }, this.near(x, z, Math.hypot(w, d) / 2 + 0.6).map(sb => sb.p)) > SHOWS_MAX) return null;
+    }
     return this.add(name, x, y, z, yaw, o.extra);
   }
   // frame from the main way in: v runs into the room, u across
@@ -747,16 +795,43 @@ function mountSpots(room, name, o = {}) {
       if (f.under != null) y = ceil - f.under;
       else y = room.stand + Math.min(o.y || f.y || 1.6, ceil - room.stand - h - 0.25);
       if (y - room.stand < (f.under != null ? 1.8 : 0.9)) continue;
+      // a hanging cloth (a banner: 3 m under its rod) ends over the floor and no more than a meter above it (T-606)
+      if (f.under != null && /^piece_banner/.test(name) && (y - h < room.stand + 0.05 || y - h > room.stand + 1.0)) continue;
       const span = stretch(face, t - w / 2 - 0.35, t + w / 2 + 0.35);
       if (span.ks.size !== 1 || !span.ks.has('wall')) continue;  // keeps clear of doors and windows on either side
       if (span.top + room.stand < y + Math.min(h, 1.2) - 0.05) continue;
       const off = face.ht + (f.wall != null ? f.wall : 0.12);
-      out.push({ x: x0 + face.nx * off, z: z0 + face.nz * off, y, yaw: norm(yawOfDir(face.nx, face.nz) + (f.rel || 0)), face, t, centered: c.centered, pair: c.pair });
+      const yawM = norm(yawOfDir(face.nx, face.nz) + (f.rel || 0));
+      // what putMount needs to keep it clear of the wall's own relief
+      const lowY = room.stand + (f.under != null ? 1.8 : 0.9), topY = Math.min(ceil - 0.2 - h, span.top + room.stand + 0.05 - Math.min(h, 1.2));
+      out.push({ x: x0 + face.nx * off, z: z0 + face.nz * off, y, yaw: yawM, face, t, centered: c.centered, pair: c.pair, x0, z0, off, lowY, topY });
     }
   }
   return out;
 }
+// Clear of the wall's own relief (lib/mesh.js), by what shows of the piece against what shows of the walls round it:
+// a height between the bars where one fits within 0.4 m, or else out on them (T-606, T-612). Gives the spot to use, or
+// null when neither works. Done here and not for every spot mountSpots offers, since most are never used.
+function clearOfRelief(room, name, spot) {
+  const face = spot.face, f = F[name] || {};
+  if (!face.wallClip || spot.x0 == null) return spot;
+  const clipAt = (yy, o2) => { const [px, pz] = pivotOf(name, spot.x0 + face.nx * o2, spot.z0 + face.nz * o2, spot.yaw); return face.wallClip({ name, x: px, y: yy, z: pz, q: quatY(spot.yaw) }); };
+  const d0 = clipAt(spot.y, spot.off);
+  if (d0 <= 0.015) return spot;
+  if (f.under == null) for (let d = 0.1; d <= 0.401; d += 0.1) for (const yy of [spot.y + d, spot.y - d]) {
+    if (yy >= spot.lowY && yy <= spot.topY && clipAt(yy, spot.off) <= 0.015) return { ...spot, y: +yy.toFixed(2) };
+  }
+  // out by the depth it goes in (the bars are square to the wall), checked once more
+  for (let o2 = spot.off + d0 + 0.01, k = 0; k < 3 && o2 < spot.off + 0.2; k++) {
+    const dk = clipAt(spot.y, o2);
+    if (dk <= 0.015) return { ...spot, x: spot.x0 + face.nx * o2, z: spot.z0 + face.nz * o2, off: o2 };
+    o2 += dk + 0.01;
+  }
+  return null;
+}
 function putMount(room, name, spot) {
+  spot = clearOfRelief(room, name, spot);
+  if (!spot) return null;
   const [w, h] = size(name);
   const f = F[name] || {};
   const y0 = spot.y - (f.under != null ? h : 0), y1 = f.under != null ? spot.y : spot.y + h;
@@ -1574,7 +1649,7 @@ function fill(room, role, c) {
     fermenter: () => placeAgainst(room, 'fermenter', s => (s.corner ? 1 : 0)) ? 1 : 0,
     seating: () => { if (!ok('piece_table_round', biome) || (k.taste || {}).noTable) return 0; const n0 = before(); const t = placeTable(room, k, { table: 'piece_table_round', seats: 2, seat: k.chair || k.seat, depth: 0.7, spread: 3.5 }); if (t && d >= 3) placeOnTable(room, t, [ok('Candle_resin', biome) ? 'Candle_resin' : 'itemstandh']); return room.count - n0; },
     rug: () => (k.rug && placeRug(room, k, null) ? 1 : 0),
-    banners: () => (k.banner && room.ceiling - room.stand >= 2.9 ? pairOn(k.banner, 0, 2.0, 2) : 0),
+    banners: () => (k.banner && room.ceiling - room.stand >= 3.4 ? pairOn(k.banner, 0, 2.0, 2) : 0),
     carving: () => (k.carving ? pairOn(k.carving, 1.7, 0, 1) : 0),
     torches: () => placeLights(room, k, 2),
     tabletop: () => {
@@ -1707,7 +1782,7 @@ function furnishPlan(room, role, c) {
   const table = o => { if (!k.table || counts.table >= CAPS[decor].table) return null; const t = placeTable(room, k, o); if (t) counts.table++; return t; };
   const mountsFor = () => {
     const list = ['itemstand'];
-    if (d >= 3 && k.banner && room.ceiling - room.stand >= 2.9) list.push(k.banner);
+    if (d >= 3 && k.banner && room.ceiling - room.stand >= 3.4) list.push(k.banner);
     if (d >= 3 && k.carving) list.push(k.carving);
     if (d >= 3) list.push('itemstand');
     return list;
@@ -2578,6 +2653,29 @@ function auditContext(pieces) {
   };
   return ctx;
 }
+// How deep a piece goes into the building's walls, windows, beams and posts, by what shows (lib/mesh.js). Against a
+// flat wall or a wall post the piece's own frame counts (what is solid of it), so a bed's fur may tuck against them as
+// in the game; against a brace, a window or a door what shows of both counts (a brace through the fur). The
+// furnishing keeps furniture within SHOWS_MAX; lib/audit.js fails a pool past 15 cm.
+const SHOWS_MAX = 0.12, SHOWS_DEEP = new Set(['bed', 'table', 'storage', 'seat', 'craft']);
+const SHOWS_FLAT = new Set(['wall', 'halfwall', 'gable', 'pole']), SHOWS_THIN = new Set(['window', 'beam', 'door']);
+function showsInto(p, others) {
+  const Me = MESH_D();
+  if (!Me) return 0;
+  const V = Me.world(p), S = SHD.world(p);
+  if (!V || !V.length) return 0;
+  let m = 0;
+  for (const q of others) {
+    if (!q || q.decor) continue;
+    const role = P.piece(q.name).role;
+    const mine = SHOWS_FLAT.has(role) ? (S && S.length ? S : V) : SHOWS_THIN.has(role) ? V : null;
+    // a flat wall that shows no more than its collider is already kept clear by the furnishing's own tests
+    if (!mine || (SHOWS_FLAT.has(role) && !Me.proud(q.name))) continue;
+    const d = Me.deepest(mine, Me.world(q));
+    if (d > m) m = d;
+  }
+  return m;
+}
 function auditOne(p, ctx, extra) {
   const it = itemOf(p);
   // only what is within reach (the audit's tests look no further than 3 m)
@@ -2588,7 +2686,26 @@ function auditOne(p, ctx, extra) {
   const wallish = A.wallish.concat(built.filter(sb => WALLISH.has(sb.role)));
   if (it.f.at === 'mount' && !mountOk(it, wallish)) return false;
   if (p.rest && !kbRests(it, A.pieces.concat(more), wallish, A.struct.concat(built))) return false;
+  if (SHOWS_DEEP.has(it.f.cat) && showsInto(p, A.struct.map(sb => sb.p)) > SHOWS_MAX) return false;
+  // what hangs on a wall stays out of what shows of the walls round it (the cross bars, T-606, T-612)
+  if ((it.f.at === 'mount' || p.rest === 'wall') && hungInto(p, A.struct.map(sb => sb.p).concat(more)) > 0.015) return false;
   return true;
+}
+// How deep what shows of a hung piece goes into what shows of the walls, posts and beams near it.
+function hungInto(p, others) {
+  const Me = MESH_D();
+  if (!Me) return 0;
+  const A = Me.world(p);
+  if (!A || !A.length) return 0;
+  let m = 0;
+  for (const q of others) {
+    if (!q || q === p || (q.decor && !q.trim) || Math.abs(q.x - p.x) > 2.5 || Math.abs(q.z - p.z) > 2.5) continue;
+    const role = P.piece(q.name).role;
+    if (!SHOWS_THIN.has(role) && !(SHOWS_FLAT.has(role) && Me.proud(q.name))) continue;
+    const d = Me.deepest(A, Me.world(q));
+    if (d > m) m = d;
+  }
+  return m;
 }
 // How deep two pieces' solids reach into each other (0 for pieces with none, rugs and food).
 function kbClip(a, b) {

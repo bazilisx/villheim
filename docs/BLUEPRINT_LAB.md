@@ -28,6 +28,7 @@ Code in `tools/blueprint-lab/`. Built 2026-11-08 night. Nothing generated here i
 | Repair | `lib/repair.js`, tests `lab/test_repair.js` and `lab/test_repair_chunk.js` | Fills in pieces missing from an uploaded blueprint from the rest of the build: gaps in a row, a missing course in a stack, holes in a floor, the mirror of the other half when the build is mostly symmetric, and pieces that the build's own patterns call for. Each added piece carries a reason and a confidence. Third tab of the request page. |
 | Millénaire study | `lab/mc_convert.py`, `lab/mc_eval.js`, `lab/mc_render.js`, `lab/mc_compare.py`, `data/mc-blockmap.json` | Translates Millénaire schematics into blueprints for study and measures how well they translate. Kept apart from the lab's data; see `docs/MC_TRANSLATION.md`. |
 | Yards | `lab/mine_yards.js`, `data/yards.json`, `lib/yards.js` | What stands outside the walls of the corpus builds (fences, gates, paths, beds, piles, lamps, carts), how far out, how fences turn and how deep pieces sit in the ground; the yard a stage 2 or 3 home or farm gets from it. See "Yards" under the component bench. |
+| Pool audit and gate | `lib/audit.js`, `lib/mesh.js`, `lab/audit_pool.js`, `lab/make_testpool.js` | Every defect seen in a game test is a number for a whole pool (see "Pool audit"). `make_testpool.js` and `vh testpool make` refuse a pool that shows one. `lib/mesh.js` gives what shows of a piece (the model's parts in world space) beside what is solid (`lib/shapes.js`). |
 | Review set | `lib/gen_set.js` | Every type in five biomes at s1d1, s2d2, s3d3, plus six cultures; best of 8 each. 273 designs, all pass every check (2026-11-09). |
 
 ## Measured building conventions
@@ -719,6 +720,35 @@ Most hand builds are too irregular for the mirror rule (24 of 94 test houses rea
 teal and the page lists them by rule, so they can be checked before the file goes into the game. The confidence slider
 and the rule switches trade how much is filled against how much is right.
 
+## Pool audit (the gate)
+
+`lib/audit.js` measures a folder of designs against the defects found in game tests. It runs in Node
+(`lab/audit_pool.js <folder> [--json out] [--list] [--gate]`) and in the game's bundle (`vhAudit`), so the lab and the
+game judge a pool the same way. A test pool's files are read as lines (`<culture>-<line>_s#d#`); any other file alone.
+
+| Measure | Gated | What it catches |
+|---|---|---|
+| nestBroken | yes | a piece of d1 missing from d2, or of d2 from d3 (D-071) |
+| furnClip, stacked | yes | furniture inside furniture; furniture on furniture other than chest stacks and table settings |
+| overWin | yes | something hung over a window or door |
+| stairFoot, stations | yes | a stair with nothing under its foot; a base station with no roof (D-067) |
+| mountClip | yes | a sign, stand, banner or carving more than 1.5 cm into what shows of a wall, post or beam (the 2x2 wood wall's cross bars stand 13 cm proud of its collider; T-606, T-612) |
+| hang | yes | a banner's cloth into the floor or the roof, or its foot more than 1 m up (the purple banner, `piece_banner09`, T-606); signs and wall stands outside 1.0 to 2.3 m and 0.7 to 2.4 m |
+| loose | yes | food or drink set down loose: the game drops it and a player picks it up walking past (T-626) |
+| doorway | yes | anything solid in the middle 0.9 m of a door's way from 0.35 to 1.95 m, 0.7 m either side (a beam at the foot of a door, T-606) |
+| onStation | yes | furniture on or in a crafting station (a table on a workbench, T-606) |
+| intoWall | yes | furniture more than 15 cm into a wall, post, brace, window or door; against walls and posts by the furniture's frame (a bed's fur tucks against a wall as in the game), against braces, windows and doors by what shows of both |
+| outside, intoWallSoft | watched | furniture whose middle is outside the floor's outline; furniture 5 to 15 cm into a wall |
+
+Built furniture (a cabinet whose back is a half wall) is left out of the wall measures: only pieces already in the
+stage's d1 file count as the building. In the game the pool is made in `BepInEx/config/Villheim/testpool-staging-<culture>`
+and moved into the blueprints folder only when the audit passes; `vh testpool make ... force` moves it anyway.
+
+The furnishing keeps to the same lines as it places (`lib/decorate.js` `showsInto`, `hungInto`, `clearOfRelief`; the
+wall sets in `lib/kitbash.js` move out by the face's relief): hung pieces try a height between the bars first and
+sit out on them otherwise; banners hang where 3 m of cloth fits with its foot under a meter; kit food and drink go on
+flat item stands whose item the household picks.
+
 ## In the game
 
 The game runs the lab's own JavaScript, so `vh gen` makes the same building as the lab for the same request and seed.
@@ -838,6 +868,8 @@ node lab/piece_sizes.js                                            # catalog siz
 node lib/build_engine.js                                           # the game's bundle, src/Villheim.Logic/Generator/lab.js
 python3 lab/learn_interior.py <corpus dir> data/interior.json      # interior rules; then node lab/interior_lite.js
 node lab/check_interiors.js lib out.json 3                         # furniture checks over a sample
+node lab/make_testpool.js <out> [--no-gate]                        # the Norse Meadows test pool, audited (exit 1 on a defect)
+node lab/audit_pool.js <folder> [--list] [--gate]                  # the pool audit on any folder of blueprints
 node -e "require('./lib/floorplan.js').set(24)"                   # the floorplan catalog ('vh floorplan set' in the game)
 node lab/floorplan_feedback.js floorplans.csv                      # Tyler's Floorplans tab into the fill rates
 node lab/process_requests.js <requests.jsonl> [result dir]         # make the designs asked for with 'vh ask'

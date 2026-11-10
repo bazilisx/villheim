@@ -53,6 +53,7 @@ namespace Villheim.Logic.Villagers
                     tool = Trophies.Hammering(villager) ? VillagerLooks.Tool.Hammer : (VillagerLooks.Tool?)null;
                     break;
                 case Status.Doer.Repair:
+                case Status.Doer.Decor: // was left out: the hammer came out and went away again at every tick (2026-11-09)
                 case Status.Doer.Smith:
                 case Status.Doer.Fletch:
                     tool = VillagerLooks.Tool.Hammer;

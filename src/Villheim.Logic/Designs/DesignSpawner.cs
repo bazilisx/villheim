@@ -755,6 +755,12 @@ namespace Villheim.Logic.Designs
                     continue;
                 }
 
+                // Ore, trees the village can't fell and big rock formations stay (the plot search keeps off them).
+                if (!go.GetComponent<Pickable>() && Village.PlotFinder.TooBigToClear(go))
+                {
+                    continue;
+                }
+
                 view.ClaimOwnership();
                 ZNetScene.instance.Destroy(go);
             }

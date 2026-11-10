@@ -15,6 +15,7 @@ namespace Villheim.Logic
         public static ConfigEntry<float> BuildStartShare;
         public static ConfigEntry<bool> LagLog;
         public static ConfigEntry<float> LagLogMs;
+        public static ConfigEntry<float> PlotSearchMs;
         public static ConfigEntry<bool> DebugLog;
         public static ConfigEntry<float> VillagerHealthPerTier;
         public static ConfigEntry<float> VillagerArmorPerTier;
@@ -1239,6 +1240,9 @@ namespace Villheim.Logic
                 "furniture spots, plot search) that takes longer than LagLogMs, to find what makes the game stutter.");
             LagLogMs = Admin(config, test, "LagLogMs", 4f,
                 "With LagLog on: steps taking at least this many milliseconds are logged.");
+            PlotSearchMs = Admin(config, test, "PlotSearchMs", 25f,
+                "The most milliseconds a village spends in one frame looking for a place to build. The search goes on " +
+                "at the next tick from where it stopped. 0 looks through every spot at once.");
             DebugLog = Admin(config, test, "DebugLog", false,
                 "Log villager decisions to the BepInEx log for testing: who takes a tool in hand and why, which healing " +
                 "step a hurt villager picks, who goes hunting, hits and kills counted for grudges, and the ghost death effect.");

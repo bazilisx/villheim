@@ -594,7 +594,10 @@ namespace Villheim.Logic.Village
             return bounds.HasValue && Mathf.Max(bounds.Value.size.x, bounds.Value.size.z) > 4.5f;
         }
 
-        private static Bounds? SolidBounds(GameObject go)
+        /// <summary>An ore vein by its name.</summary>
+        public static bool IsOre(string name) => OreWords.Any(name.ToLowerInvariant().Contains);
+
+        internal static Bounds? SolidBounds(GameObject go)
         {
             Bounds? all = null;
             foreach (Collider collider in go.GetComponentsInChildren<Collider>())

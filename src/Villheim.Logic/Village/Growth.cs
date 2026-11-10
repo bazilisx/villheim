@@ -63,6 +63,37 @@ namespace Villheim.Logic.Village
 
         public static void Clear(VillageHearth hearth) => hearth.Zdo.Set(KeyPending, "");
 
+        // Projects that found no room, by village: left out of the choice until the time given, so one building that
+        // fits nowhere never stops the rest of the village (2026-11-09: a hall with no room held up every home).
+        private static readonly Dictionary<int, Dictionary<Role, double>> Aside = new Dictionary<int, Dictionary<Role, double>>();
+
+        public static void SetAside(VillageHearth hearth, Role role, double until)
+        {
+            if (!Aside.TryGetValue(hearth.VillageId, out Dictionary<Role, double> roles))
+            {
+                Aside[hearth.VillageId] = roles = new Dictionary<Role, double>();
+            }
+
+            roles[role] = until;
+            VillheimPlugin.Log.LogInfo($"No room for a {VillageBrain.RoleName(role)} right now. The village goes on with other work and looks again later.");
+        }
+
+        private static bool IsAside(VillageHearth hearth, Role role)
+        {
+            if (!Aside.TryGetValue(hearth.VillageId, out Dictionary<Role, double> roles) || !roles.TryGetValue(role, out double until))
+            {
+                return false;
+            }
+
+            if (ZNet.instance != null && ZNet.instance.GetTimeSeconds() < until)
+            {
+                return true;
+            }
+
+            roles.Remove(role);
+            return false;
+        }
+
         /// <summary>"a home", "to rebuild the longhouse bigger" and so on, for the hearth's summary.</summary>
         public static string Label(VillageState state, Project project)
         {
@@ -87,12 +118,12 @@ namespace Villheim.Logic.Village
         {
             int homes = state.Plots.Count(p => RoleOf(p) == Role.House);
             int beds = Villagers.Beds.Of(hearth).Count;
-            if (homes == 0 || beds < VillageBrain.CountVillagers(state.Id))
+            if ((homes == 0 || beds < VillageBrain.CountVillagers(state.Id)) && !IsAside(hearth, Role.House))
             {
                 return Role.House;
             }
 
-            return state.Plots.Any(p => RoleOf(p) == Role.Hub) ? (Role?)null : Role.Hub;
+            return state.Plots.Any(p => RoleOf(p) == Role.Hub) || IsAside(hearth, Role.Hub) ? (Role?)null : Role.Hub;
         }
 
         private static Project Choose(VillageHearth hearth, VillageState state, System.Random rng)
@@ -117,8 +148,8 @@ namespace Villheim.Logic.Village
 
             // While waiting to grow: the workbench house and the storehouse.
             var options = new List<(Project Project, float Weight)>();
-            if (count[Role.Workshop] == 0) options.Add((new Project { Role = Role.Workshop }, 1f));
-            if (count[Role.Storage] == 0) options.Add((new Project { Role = Role.Storage }, 1f));
+            if (count[Role.Workshop] == 0 && !IsAside(hearth, Role.Workshop)) options.Add((new Project { Role = Role.Workshop }, 1f));
+            if (count[Role.Storage] == 0 && !IsAside(hearth, Role.Storage)) options.Add((new Project { Role = Role.Storage }, 1f));
             if (options.Count == 0)
             {
                 bool bedsFull = Villagers.Beds.Free(hearth) == 0 && VillageBrain.Capacity(state) < VillheimConfig.MaxVillagers.Value;
@@ -148,6 +179,7 @@ namespace Villheim.Logic.Village
                 }
             }
 
+            options.RemoveAll(o => !o.Project.IsUpgrade && IsAside(hearth, o.Project.Role));
             float roll = (float)rng.NextDouble() * options.Sum(o => o.Weight);
             foreach ((Project project, float weight) in options)
             {

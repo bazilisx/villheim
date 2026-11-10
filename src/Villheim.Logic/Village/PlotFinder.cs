@@ -54,11 +54,21 @@ namespace Villheim.Logic.Village
         /// </summary>
         public static bool TryFind(Vector3 hearth, float axisYaw, Role role, bool strictHub, float radius, float maxTerrainDelta,
             IReadOnlyList<Plot> plots, System.Random rng, out Vector3 position, out float yaw, HashSet<Vector2Int> network = null,
-            VillageHearth village = null, float doorAngle = 0f)
+            VillageHearth village = null, float doorAngle = 0f, float budgetMs = 0f)
         {
+            Unfinished = false;
+            Budget = budgetMs;
+            Watch.Restart();
+            int villageId = village != null ? village.VillageId : 0;
+            Prepare(hearth, radius, villageId, plots.Count);
             float inner = 0f;
             foreach (float reach in new[] { 1f, 1.35f, 1.7f, 2f })
             {
+                if (Unfinished)
+                {
+                    break;
+                }
+
                 if (TryFindIn(hearth, axisYaw, role, strictHub && reach == 1f, radius, maxTerrainDelta, plots, rng, out position, out yaw,
                         network, village, doorAngle, reach, inner, out float outer))
                 {
@@ -129,24 +139,50 @@ namespace Villheim.Logic.Village
             // own ground.
             var good = new List<Vector3>();
             int wanted = 6;
-            int badSpot = 0, offLevel = 0, onPath = 0, unreachable = 0, capped = 0;
+            int offLevel = 0, onPath = 0, unreachable = 0, capped = 0, cluttered = 0;
+            var fails = new int[FailNames.Length];
+            int villageId = village != null ? village.VillageId : 0;
             // The way to the hearth is a grid search for each spot: a few dozen of them in one go were a lag spike (T-105).
             int searches = 0;
             const int MostSearches = 10;
             List<Vector2> ordered = candidates.OrderBy(c => c.magnitude + (float)rng.NextDouble() * step).ToList();
             // Passes: ground at the hearth's level with nothing on it, then at that level with trees or bushes the site
             // clears when it starts (thick forest); then the same at any height.
-            for (int pass = 0; pass < 4 && good.Count == 0; pass++)
+            // Each spot is judged once and remembered for a while, so the four passes and the next looks cost little.
+            for (int pass = 0; pass < 4 && good.Count == 0 && !Unfinished; pass++)
             {
                 bool allowClutter = pass % 2 == 1;
                 foreach (Vector2 local in ordered)
                 {
                     Vector3 candidate = hearth + axis * new Vector3(local.x, 0f, local.y);
-                    if (!IsGoodSpot(candidate, hearth, radius, maxTerrainDelta, plots, out float groundY, allowClutter))
+                    if (!Judge(candidate, radius, maxTerrainDelta, plots, villageId, out Verdict verdict))
                     {
-                        badSpot++;
+                        // Out of time for this frame: the search goes on at the next look, from what is remembered.
+                        Unfinished = true;
+                        break;
+                    }
+
+                    if (verdict.Fail != SpotFail.None)
+                    {
+                        if (pass == 0)
+                        {
+                            fails[(int)verdict.Fail]++;
+                        }
+
                         continue;
                     }
+
+                    if (verdict.Clutter && !allowClutter)
+                    {
+                        if (pass == 0)
+                        {
+                            cluttered++;
+                        }
+
+                        continue;
+                    }
+
+                    float groundY = verdict.GroundY;
 
                     bool level = Mathf.Abs(groundY - hearth.y) <= LevelTolerance;
                     if (pass < 2 && !level)
@@ -189,10 +225,27 @@ namespace Villheim.Logic.Village
 
             if (good.Count == 0)
             {
-                // Why nothing fit, for test reports (2026-11-09: homes found no room).
+                if (Unfinished)
+                {
+                    position = Vector3.zero;
+                    yaw = 0f;
+                    return false;
+                }
+
+                // Why nothing fit, for test reports, one count per cause (2026-11-09: a hall found no room anywhere).
+                var why = new List<string>();
+                for (int i = 1; i < fails.Length; i++)
+                {
+                    if (fails[i] > 0)
+                    {
+                        why.Add($"{FailNames[i]} {fails[i]}");
+                    }
+                }
+
                 VillheimPlugin.Log.LogInfo($"No room for a {role} of radius {radius:0.0} m: {candidates.Count} spots between {minDistance:0} and " +
-                                           $"{maxDistance:0} m; per pass totals: bad ground or crowded {badSpot}, off level {offLevel}, " +
-                                           $"on a path {onPath}, door unreachable {unreachable}, search cap hit {capped}.");
+                                           $"{maxDistance:0} m. Spots refused: {(why.Count > 0 ? string.Join(", ", why) : "none")}. " +
+                                           $"Of the rest: needs clearing {cluttered}, off level {offLevel}, on a path {onPath}, " +
+                                           $"door unreachable {unreachable}, search cap hit {capped}.");
                 position = Vector3.zero;
                 yaw = 0f;
                 return false;
@@ -378,88 +431,237 @@ namespace Villheim.Logic.Village
             return axisYaw + Mathf.Round(relative / 90f) * 90f;
         }
 
+        /// <summary>Why a spot was refused. Counted per cause in the log when a search finds nothing.</summary>
+        internal enum SpotFail { None, Crowded, Unloaded, Water, Steep, Cliff, Biome, Location, Pieces, Obstacle }
+
+        private static readonly string[] FailNames =
+        {
+            "", "too near another building", "ground not loaded", "water", "too steep", "by a cliff", "wrong biome",
+            "inside a location", "someone's pieces", "something that can't be cleared",
+        };
+
+        private struct Verdict
+        {
+            public SpotFail Fail;
+            /// <summary>Trees, stumps, bushes, logs or rocks stand there; the site clears them when it starts.</summary>
+            public bool Clutter;
+            public float GroundY;
+            public float Time;
+        }
+
+        /// <summary>True when the last TryFind ran out of its time for the frame; the next call picks up where it stopped.</summary>
+        public static bool Unfinished { get; private set; }
+
+        private static float Budget;
+        private static readonly System.Diagnostics.Stopwatch Watch = new System.Diagnostics.Stopwatch();
+        private static readonly Dictionary<(int, int, int, int), Verdict> Verdicts = new Dictionary<(int, int, int, int), Verdict>();
+        private static readonly Dictionary<int, int> VerdictPlots = new Dictionary<int, int>();
+        private static readonly Dictionary<int, bool> TooBig = new Dictionary<int, bool>();
+        private static readonly List<Vector3> Standing = new List<Vector3>();
+        private static readonly HashSet<int> SeenObjects = new HashSet<int>();
+        private const float VerdictSeconds = 90f;
+
+        /// <summary>
+        /// Before a search: forgets old verdicts when the village has changed, and lists once the pieces that stand
+        /// round the village and count as in the way (every piece but the hearth and the village's own ring fence, which
+        /// comes down where a building goes).
+        /// </summary>
+        private static void Prepare(Vector3 hearth, float radius, int villageId, int plotCount)
+        {
+            if (!VerdictPlots.TryGetValue(villageId, out int known) || known != plotCount || Verdicts.Count > 20000)
+            {
+                Verdicts.Clear();
+                TooBig.Clear();
+                VerdictPlots[villageId] = plotCount;
+            }
+
+            Standing.Clear();
+            PieceBuffer.Clear();
+            Piece.GetAllPiecesInRadius(hearth, VillheimConfig.VillageRadius.Value * 4f + radius + 2f, PieceBuffer);
+            foreach (Piece piece in PieceBuffer)
+            {
+                if (piece != null && !piece.GetComponent<VillageHearth>() && !OwnFence(piece.gameObject, villageId))
+                {
+                    Standing.Add(piece.transform.position);
+                }
+            }
+        }
+
+        /// <summary>A piece of this village's ring fence (pens stay).</summary>
+        public static bool OwnFence(GameObject go, int villageId)
+        {
+            if (villageId == 0 || go == null || !Palisade.IsFencePiece(Utils.GetPrefabName(go)))
+            {
+                return false;
+            }
+
+            ZNetView view = go.GetComponent<ZNetView>();
+            return view != null && view.IsValid() && view.GetZDO().GetInt(Keys.BuiltBy) == villageId &&
+                   view.GetZDO().GetInt(Palisade.KeyPen) == 0;
+        }
+
+        /// <summary>The remembered verdict on a spot, or a fresh one. False when the frame's time is used up.</summary>
+        private static bool Judge(Vector3 p, float radius, float maxTerrainDelta, IReadOnlyList<Plot> plots, int villageId, out Verdict verdict)
+        {
+            var key = (villageId, Mathf.RoundToInt(p.x), Mathf.RoundToInt(p.z), Mathf.RoundToInt(radius * 10f));
+            if (Verdicts.TryGetValue(key, out verdict) && Time.time - verdict.Time < VerdictSeconds)
+            {
+                return true;
+            }
+
+            if (Budget > 0f && Watch.Elapsed.TotalMilliseconds > Budget)
+            {
+                return false;
+            }
+
+            verdict = new Verdict { Time = Time.time };
+            verdict.Fail = Check(p, radius, maxTerrainDelta, plots, villageId, out verdict.GroundY, out verdict.Clutter);
+            Verdicts[key] = verdict;
+            return true;
+        }
+
         public static bool IsGoodSpot(Vector3 p, Vector3 hearth, float radius, float maxTerrainDelta, IReadOnlyList<Plot> plots,
             out float groundY, bool allowClutter = true)
         {
+            Prepare(hearth, radius, 0, plots.Count);
+            return Check(p, radius, maxTerrainDelta, plots, 0, out groundY, out bool clutter) == SpotFail.None && (allowClutter || !clutter);
+        }
+
+        /// <summary>The cheap tests first (distances, ground heights), the physics query last.</summary>
+        private static SpotFail Check(Vector3 p, float radius, float maxTerrainDelta, IReadOnlyList<Plot> plots, int villageId,
+            out float groundY, out bool clutter)
+        {
             groundY = 0f;
+            clutter = false;
 
             foreach (Plot plot in plots)
             {
                 if (Utils.DistanceXZ(p, plot.Position) < plot.Radius + radius + Gap)
                 {
-                    return false;
+                    return SpotFail.Crowded;
+                }
+            }
+
+            // Never build on top of anything that is already there: player bases, other villages, ruins.
+            float keep = radius + 1f;
+            foreach (Vector3 piece in Standing)
+            {
+                if (Utils.DistanceXZ(p, piece) < keep)
+                {
+                    return SpotFail.Pieces;
                 }
             }
 
             if (!SampleGround(p, radius, out float min, out float max, out groundY))
             {
-                return false;
+                return SpotFail.Unloaded;
             }
 
             // 0.4 m over the sea: a shore village (hearth 0.3 m up) found no room within 43 m at 1 m (2026-11-09).
-            if (min < ZoneSystem.instance.m_waterLevel + 0.4f || max - min > maxTerrainDelta)
+            if (min < ZoneSystem.instance.m_waterLevel + 0.4f)
             {
-                return false;
+                return SpotFail.Water;
+            }
+
+            if (max - min > maxTerrainDelta)
+            {
+                return SpotFail.Steep;
             }
 
             if (NearCliff(p, radius, groundY))
             {
-                return false;
+                return SpotFail.Cliff;
             }
 
             Heightmap.Biome biome = WorldGenerator.instance.GetBiome(p);
             if ((biome & (Heightmap.Biome.Meadows | Heightmap.Biome.BlackForest | Heightmap.Biome.Plains)) == 0)
             {
-                return false;
+                return SpotFail.Biome;
             }
 
             if (Location.IsInsideNoBuildLocation(p))
             {
-                return false;
+                return SpotFail.Location;
             }
 
             Location other = Location.GetLocation(p, false);
             if (other != null && Utils.GetPrefabName(other.gameObject) != VillageLocation.Name)
             {
-                return false;
+                return SpotFail.Location;
             }
 
-            // Never build on top of anything that is already there: player bases, other villages, ruins.
-            PieceBuffer.Clear();
-            Piece.GetAllPiecesInRadius(p, radius + 1f, PieceBuffer);
-            foreach (Piece piece in PieceBuffer)
-            {
-                if (piece != null && !piece.GetComponent<VillageHearth>())
-                {
-                    return false;
-                }
-            }
-
-            // Nothing but the ground: no model, player's thing, rock or cliff where the walls go (Tyler: the first house
-            // went up on the 'vh kids rig' models and the builder hammered at it for good).
-            string what = InTheWay(p, radius, allowClutter);
+            // Nothing the villagers can't clear where the walls go (Tyler: the first house went up on the 'vh kids rig'
+            // models and the builder hammered at it for good).
+            string what = InTheWay(p, radius, out clutter, villageId);
             if (what != null)
             {
                 Perf.Debug($"Plot at {p} passed over: {what} stands there.");
-                return false;
+                return SpotFail.Obstacle;
             }
 
-            return true;
+            return SpotFail.None;
         }
 
         private static readonly Collider[] Overlaps = new Collider[512];
         private static readonly HashSet<string> ZoneNotes = new HashSet<string>();
 
+        /// <summary>The widest a rock or other natural thing may be for the villagers to clear it off a plot.</summary>
+        public const float ClearableSize = 7f;
+
         /// <summary>
-        /// What stands on the ground where a building of this size would go, or null when it is bare. Counted: anything
-        /// placed (pieces, the test models, carts and the like), rocks and cliffs, and, unless
-        /// <paramref name="allowClutter"/>, trees, logs and bushes (the site clears those when it starts). People,
-        /// creatures, berries and flowers, and things lying on the ground don't count.
+        /// A natural thing the villagers leave standing and build elsewhere: an ore vein, a tree their axes can't fell,
+        /// or a rock formation more than ClearableSize across.
         /// </summary>
+        public static bool TooBigToClear(GameObject go)
+        {
+            int id = go.GetInstanceID();
+            if (TooBig.TryGetValue(id, out bool known))
+            {
+                return known;
+            }
+
+            bool big;
+            if (PathPlanner.IsOre(go.name))
+            {
+                big = true;
+            }
+            else if (go.TryGetComponent(out TreeBase tree))
+            {
+                big = tree.m_minToolTier > 1;
+            }
+            else if (go.GetComponent<TreeLog>() != null)
+            {
+                big = false;
+            }
+            else
+            {
+                Bounds? bounds = PathPlanner.SolidBounds(go);
+                big = bounds.HasValue && Mathf.Max(bounds.Value.size.x, bounds.Value.size.z) > ClearableSize;
+            }
+
+            TooBig[id] = big;
+            return big;
+        }
+
         public static string InTheWay(Vector3 p, float radius, bool allowClutter)
         {
+            string what = InTheWay(p, radius, out bool clutter, 0);
+            return what ?? (clutter && !allowClutter ? "trees, bushes or rocks" : null);
+        }
+
+        /// <summary>
+        /// What stands where a building of this size would go and can't be cleared, or null. Blocking: anything placed
+        /// (pieces, the test models, carts and the like), a location's walls, cliffs, ore, and trees and rocks too big
+        /// to clear. Trees, stumps, logs, bushes and ordinary rocks set <paramref name="clutter"/>: the site clears them
+        /// when it starts (Tyler, 2026-11-09: villagers prepare the land). People, creatures, berries, flowers, things
+        /// lying on the ground and the village's own ring fence don't count.
+        /// </summary>
+        public static string InTheWay(Vector3 p, float radius, out bool clutter, int villageId)
+        {
+            clutter = false;
             float reach = Mathf.Max(2f, radius * 0.8f);
             int count = Physics.OverlapSphereNonAlloc(p + Vector3.up * 1f, reach, Overlaps, ~0, QueryTriggerInteraction.Ignore);
+            SeenObjects.Clear();
             for (int i = 0; i < count; i++)
             {
                 Collider collider = Overlaps[i];
@@ -470,6 +672,11 @@ namespace Villheim.Logic.Village
 
                 ZNetView view = collider.GetComponentInParent<ZNetView>();
                 GameObject go = view != null ? view.gameObject : collider.transform.root.gameObject;
+                if (!SeenObjects.Add(go.GetInstanceID()))
+                {
+                    continue;
+                }
+
                 // The world's own zone object (water, zone colliders without a net view) is no obstacle: counting it failed
                 // every spot round a village and froze the game for seconds (2026-11-09). Slopes and cliffs have their
                 // own checks.
@@ -496,22 +703,24 @@ namespace Villheim.Logic.Village
 
                 if (go.GetComponent<Piece>() != null)
                 {
+                    if (OwnFence(go, villageId))
+                    {
+                        continue;
+                    }
+
                     return Utils.GetPrefabName(go);
                 }
 
-                if (go.GetComponent<MineRock5>() != null || go.GetComponent<MineRock>() != null || PathPlanner.BigObstacle(go))
+                bool natural = go.GetComponent<TreeBase>() || go.GetComponent<TreeLog>() || go.GetComponent<Destructible>() ||
+                               go.GetComponent<MineRock5>() || go.GetComponent<MineRock>();
+                if (natural && view != null)
                 {
-                    return Utils.GetPrefabName(go);
-                }
-
-                bool clutter = go.GetComponent<TreeBase>() || go.GetComponent<TreeLog>() || go.GetComponent<Destructible>();
-                if (clutter)
-                {
-                    if (!allowClutter)
+                    if (TooBigToClear(go))
                     {
                         return Utils.GetPrefabName(go);
                     }
 
+                    clutter = true;
                     continue;
                 }
 

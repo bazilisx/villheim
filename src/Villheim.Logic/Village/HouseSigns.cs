@@ -45,10 +45,19 @@ namespace Villheim.Logic.Village
 
         /// <summary>The next house sign to make, or null when every home that has people has its signs.</summary>
         private static readonly Dictionary<string, float> RetryAt = new Dictionary<string, float>();
+        private static readonly Dictionary<int, float> QuietUntil = new Dictionary<int, float>();
+        private static readonly Dictionary<int, (float Time, List<(Sign Sign, int Home, int Slot)> Signs)> VillageSigns =
+            new Dictionary<int, (float, List<(Sign, int, int)>)>();
 
         public static Amenities.Job Job(VillageHearth hearth, VillageState state)
         {
             if (!On || ZNetScene.instance == null)
+            {
+                return null;
+            }
+
+            // Every home had its signs a moment ago: the look round every home ran each few seconds (10 to 18 ms, 2026-11-09).
+            if (QuietUntil.TryGetValue(hearth.VillageId, out float quiet) && Time.time < quiet)
             {
                 return null;
             }
@@ -59,6 +68,7 @@ namespace Villheim.Logic.Village
                 return null;
             }
 
+            QuietUntil[hearth.VillageId] = Time.time + 20f;
             foreach (Households.Household home in Households.Of(hearth))
             {
                 Plot plot = home.Plot;
@@ -94,6 +104,7 @@ namespace Villheim.Logic.Village
                         break; // the inside signs wait for the front one
                     }
 
+                    QuietUntil.Remove(hearth.VillageId);
                     return new Amenities.Job
                     {
                         Prefab = SignPrefab, Name = JobName, Spot = spot, Rotation = rotation, Cost = cost, Inside = true,
@@ -146,6 +157,8 @@ namespace Villheim.Logic.Village
                 return false;
             }
 
+            VillageSigns.Remove(hearth.VillageId);
+            QuietUntil.Remove(hearth.VillageId);
             ZDO zdo = view.GetZDO();
             zdo.Set(Keys.BuiltBy, hearth.VillageId);
             zdo.Set(KeyHome, PlotKey(plot));
@@ -257,6 +270,8 @@ namespace Villheim.Logic.Village
                 }
             }
 
+            VillageSigns.Remove(hearth.VillageId);
+            QuietUntil.Remove(hearth.VillageId);
             view.ClaimOwnership();
             ZNetScene.instance.Destroy(sign.gameObject);
             VillheimPlugin.Log.LogInfo($"{state.Name} took down a house sign on the {plot.Design} that nobody needs now.");
@@ -283,21 +298,39 @@ namespace Villheim.Logic.Village
         /// <summary>The house signs of this home that stand now, with their places.</summary>
         private static List<(Sign Sign, int Slot)> Signs(VillageHearth hearth, Plot plot)
         {
-            var signs = new List<(Sign, int)>();
-            int key = PlotKey(plot);
-            Nearby.Clear();
-            Piece.GetAllPiecesInRadius(plot.Position, plot.Radius + 3f, Nearby);
-            foreach (Piece piece in Nearby)
+            // The village's house signs are listed once for all its homes and kept a few seconds: one walk over the
+            // world's pieces for the village where there was one for each home.
+            int id = hearth.VillageId;
+            if (!VillageSigns.TryGetValue(id, out var all) || Time.time - all.Time > 5f || all.Signs.Any(s => s.Sign == null))
             {
-                if (piece == null || piece.m_nview == null || !piece.m_nview.IsValid() || !piece.TryGetComponent(out Sign sign))
+                var found = new List<(Sign, int, int)>();
+                Nearby.Clear();
+                Piece.GetAllPiecesInRadius(hearth.transform.position, VillheimConfig.VillageRadius.Value * 2f + 40f, Nearby);
+                foreach (Piece piece in Nearby)
                 {
-                    continue;
+                    if (piece == null || piece.m_nview == null || !piece.m_nview.IsValid() || !piece.TryGetComponent(out Sign sign))
+                    {
+                        continue;
+                    }
+
+                    ZDO zdo = piece.m_nview.GetZDO();
+                    if (zdo.GetInt(Keys.BuiltBy) == id && zdo.GetInt(KeyHome) != 0)
+                    {
+                        found.Add((sign, zdo.GetInt(KeyHome), zdo.GetInt(KeySlot, FrontSlot)));
+                    }
                 }
 
-                ZDO zdo = piece.m_nview.GetZDO();
-                if (zdo.GetInt(Keys.BuiltBy) == hearth.VillageId && zdo.GetInt(KeyHome) == key)
+                all = (Time.time, found);
+                VillageSigns[id] = all;
+            }
+
+            var signs = new List<(Sign, int)>();
+            int key = PlotKey(plot);
+            foreach ((Sign sign, int home, int slot) in all.Signs)
+            {
+                if (home == key)
                 {
-                    signs.Add((sign, zdo.GetInt(KeySlot, FrontSlot)));
+                    signs.Add((sign, slot));
                 }
             }
 

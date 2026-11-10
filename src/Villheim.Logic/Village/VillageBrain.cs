@@ -394,8 +394,14 @@ namespace Villheim.Logic.Village
                 }
                 else if (!PlotFinder.TryFind(hearth.transform.position, state.Axis, role, strictHub, radius,
                              design.MaxTerrainDelta, plots, rng, out position, out yaw, planned, hearth,
-                             Doors.Angle(design)))
+                             Doors.Angle(design), LogicConfig.PlotSearchMs?.Value ?? 25f))
                 {
+                    if (PlotFinder.Unfinished)
+                    {
+                        // The look for a plot used up its time for this frame. It goes on at the next tick.
+                        return false;
+                    }
+
                     VillheimPlugin.Debug($"{state.Name}: no room for {design.Name}.");
                     continue;
                 }
@@ -414,10 +420,11 @@ namespace Villheim.Logic.Village
             {
                 // Nowhere to build this right now. Choose another project after a while instead of retrying every
                 // few seconds (Millenaire waits too).
+                // The village goes on with its other projects meanwhile and comes back to this one later.
                 hearth.PlotAttempts = 0;
+                Growth.SetAside(hearth, role, now + System.Math.Min(interval * 0.5, 900.0));
                 Growth.Clear(hearth);
-                state.LastGrowth = now - interval * 0.75;
-                state.Waiting = "room to build";
+                state.Waiting = "";
             }
 
             return false;
@@ -515,6 +522,7 @@ namespace Villheim.Logic.Village
                 // The design's own terrain shaping is not copied for village buildings: it fought the flat pad below
                 // and could leave a door below the ground.
                 DesignSpawner.ClearArea(position, radius);
+                Palisade.ClearFor(hearth, position, radius);
 
                 // Give the heightmaps a moment to rebuild before pieces start going up.
                 yield return new WaitForSeconds(0.75f);

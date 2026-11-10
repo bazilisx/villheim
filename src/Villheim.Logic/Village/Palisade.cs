@@ -59,7 +59,8 @@ namespace Villheim.Logic.Village
                 reach = Mathf.Max(reach, Utils.DistanceXZ(plot.Position, hearth.transform.position) + plot.Radius * 0.75f + Margin);
             }
 
-            return Mathf.Min(Mathf.Ceil(reach / 4f) * 4f, VillheimConfig.VillageRadius.Value + 6f);
+            // Buildings may stand out to twice the village radius (D-079), and the ring goes round them all.
+            return Mathf.Min(Mathf.Ceil(reach / 4f) * 4f, VillheimConfig.VillageRadius.Value * 2f + 6f);
         }
 
         /// <summary>The next fence job: a pen piece, a piece of an outgrown or too low ring to take down, or the next ring piece.</summary>
@@ -77,6 +78,43 @@ namespace Villheim.Logic.Village
         }
 
         public static void Forget(int villageId) => Cache.Remove(villageId);
+
+        /// <summary>
+        /// Takes down the village's ring fence where a building is about to go up (half the materials back, as for an
+        /// outgrown ring). The ring is laid again round the bigger village afterwards.
+        /// </summary>
+        public static void ClearFor(VillageHearth hearth, Vector3 position, float radius)
+        {
+            var pieces = new List<Piece>();
+            Piece.GetAllPiecesInRadius(position, radius + 1f, pieces);
+            Container chest = VillageChest.Find(hearth);
+            int removed = 0;
+            foreach (Piece piece in pieces)
+            {
+                if (piece == null || !PlotFinder.OwnFence(piece.gameObject, hearth.VillageId))
+                {
+                    continue;
+                }
+
+                foreach (KeyValuePair<string, int> c in DesignSpawner.RecipeCost(piece.gameObject))
+                {
+                    if (chest != null && c.Value / 2 > 0)
+                    {
+                        VillageChest.Add(chest, c.Key, c.Value / 2);
+                    }
+                }
+
+                piece.m_nview.ClaimOwnership();
+                ZNetScene.instance.Destroy(piece.gameObject);
+                removed++;
+            }
+
+            if (removed > 0)
+            {
+                Forget(hearth.VillageId);
+                VillheimPlugin.Debug($"Took down {removed} fence pieces to make room for a building.");
+            }
+        }
 
         /// <summary>How far down a piece goes so the given share of it is in the ground, from its measured height.</summary>
         public static float SinkOffset(GameObject prefab, string name, float share)
@@ -110,15 +148,26 @@ namespace Villheim.Logic.Village
 
             Vector3 center = hearth.transform.position;
 
-            // An outgrown ring comes down first, piece by piece. Pens stay.
+            // The village's ring pieces, listed once: asking the game for the pieces round every ring spot walked every
+            // piece in the world each time (146 ms a call on a finished ring, 2026-11-09).
+            Ring.Clear();
             var pieces = new List<Piece>();
-            Piece.GetAllPiecesInRadius(center, current - 2.5f, pieces);
+            Piece.GetAllPiecesInRadius(center, current + 4f, pieces);
             foreach (Piece piece in pieces)
             {
                 if (piece != null && piece.m_nview != null && piece.m_nview.IsValid() &&
                     piece.m_nview.GetZDO().GetInt(Keys.BuiltBy) == hearth.VillageId && piece.m_nview.GetZDO().GetInt(KeyPen) == 0 &&
-                    IsFencePiece(Utils.GetPrefabName(piece.gameObject)) &&
-                    Utils.DistanceXZ(piece.transform.position, center) > MinRadius - 4f)
+                    IsFencePiece(Utils.GetPrefabName(piece.gameObject)))
+                {
+                    Ring.Add((piece, Utils.GetPrefabName(piece.gameObject)));
+                }
+            }
+
+            // An outgrown ring comes down first, piece by piece. Pens stay.
+            foreach ((Piece piece, string _) in Ring)
+            {
+                float out_ = Utils.DistanceXZ(piece.transform.position, center);
+                if (out_ < current - 2.5f && out_ > MinRadius - 4f)
                 {
                     return new Segment { Remove = piece, Position = piece.transform.position };
                 }
@@ -154,7 +203,8 @@ namespace Villheim.Logic.Village
             var near = new float[count];
             for (int i = 0; i < count; i++)
             {
-                near[i] = PathPlanner.DistanceToNetwork(network, center + Outward(state, i, count) * current);
+                Vector3 at = center + Outward(state, i, count) * current;
+                near[i] = PathPlanner.NearNetwork(network, at, GateGap + 1f) ? PathPlanner.DistanceToNetwork(network, at) : float.MaxValue;
             }
 
             for (int i = 0; i < count; i++)
@@ -183,7 +233,7 @@ namespace Villheim.Logic.Village
                     {
                         Quaternion turn = side > 0 ? rotation : rotation * Quaternion.Euler(0f, 180f, 0f);
                         Vector3 at = Centered(gate, GatePiece, spot + tangent * (side * gateWidth * 0.5f), turn);
-                        if (!PresentAny(new[] { GatePiece }, at))
+                        if (!Ring.Any(r => r.Name == GatePiece && Utils.DistanceXZ(r.Piece.transform.position, at) < 0.8f))
                         {
                             return Affordable(hearth, state, gateCost, building)
                                 ? new Segment { Prefab = GatePiece, Position = at, Rotation = turn, Cost = gateCost }
@@ -195,7 +245,7 @@ namespace Villheim.Logic.Village
                 }
 
                 Vector3 place = spot + Vector3.up * sink;
-                Piece standing = PieceAt(spot, AllFencePieces, hearth.VillageId);
+                Piece standing = RingPieceAt(spot);
                 if (standing != null)
                 {
                     // The low fence, or the wrong kind, comes down to go up again at the new height.
@@ -250,6 +300,22 @@ namespace Villheim.Logic.Village
             }
 
             return at;
+        }
+
+        private static readonly List<(Piece Piece, string Name)> Ring = new List<(Piece, string)>();
+
+        /// <summary>A piece of the ring listed by Find standing on the spot (within 0.8 m across, any height).</summary>
+        private static Piece RingPieceAt(Vector3 spot)
+        {
+            foreach ((Piece piece, string _) in Ring)
+            {
+                if (piece != null && Utils.DistanceXZ(piece.transform.position, spot) < 0.8f)
+                {
+                    return piece;
+                }
+            }
+
+            return null;
         }
 
         /// <summary>A fence piece of this village standing on the spot (within 0.8 m across, any height).</summary>

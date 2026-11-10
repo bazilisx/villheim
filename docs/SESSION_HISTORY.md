@@ -5,6 +5,12 @@ Current facts only. Read this at the start of a session. Narrative is in `docs/d
 
 ## Current State (as of 2026-11-09)
 
+Latest build fb15f86 (evening test fixes, see the 2026-11-09 note, Session 3): test pool only with TestPool on,
+hearth kept clear (11 m), rings widen per stage and overflow outward, zone collider no longer blocks plots, generated
+designs keep their saved origin, repairs put back every piece, storehouse takes the storage chests, four starting
+villagers, builder never hunts while settling, mining fixed for broken-up rocks. Next: let helpers build amenities,
+walkable building pads, underwater rocks, smaller lag spikes, D-080.
+
 - **Next session (handoff 2026-11-09, usage ran low):** merge feat/layout (WIP b9a500d, run the full checks
   first); feat/persona and feat/massing are merged. Each wrote a "Handoff (2026-11-09)" in its doc. Check the test pool
   before Tyler tests it: `node /tmp/det/lineage.js <lab dir>` style measure (decor stages must keep the shell, about

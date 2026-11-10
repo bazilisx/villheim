@@ -23,9 +23,14 @@ namespace Villheim.Logic.Villagers
         {
             public float LastTidy = -100f;
             public Status.Doer Doer;
+            /// <summary>Since when what he holds has not been what his work uses (0 while it is).</summary>
+            public float WrongSince;
         }
 
         private static readonly ConditionalWeakTable<Villager, State> States = new ConditionalWeakTable<Villager, State>();
+
+        /// <summary>Seconds a tool may stay in hand after the work stopped using it.</summary>
+        private const float PutAwayAfter = 2.5f;
 
         private enum Allowed
         {
@@ -64,6 +69,10 @@ namespace Villheim.Logic.Villagers
                     break;
                 case Status.Doer.Fish:
                     // The fishing rod (Fishing takes it out and puts it away).
+                    return Allowed.Anything;
+                case Status.Doer.BetweenJobs:
+                    // The moment between one step of a job and the next: the tool stays in hand. It went away and came
+                    // out again at each step (pickaxe, 2026-11-09). A longer wait ends in free time, which puts it away.
                     return Allowed.Anything;
                 case Status.Doer.Hunt:
                 case Status.Doer.Test:
@@ -105,7 +114,32 @@ namespace Villheim.Logic.Villagers
                 return;
             }
 
-            switch (Uses(villager, doer, out VillagerLooks.Tool? tool))
+            Allowed allowed = Uses(villager, doer, out VillagerLooks.Tool? tool);
+            bool wrong = allowed == Allowed.Nothing ||
+                         (allowed == Allowed.Tool && ((right != null && right.m_shared.m_itemType != ItemDrop.ItemData.ItemType.Torch && !VillagerLooks.IsHolding(villager, tool.Value)) ||
+                                                      (left != null && left.m_shared.m_itemType != ItemDrop.ItemData.ItemType.Torch))) ||
+                         (allowed == Allowed.Weapons && (IsWorkTool(right) || IsWorkTool(left)));
+            if (!wrong)
+            {
+                state.WrongSince = 0f;
+                return;
+            }
+
+            // A tool is put away only once it has been the wrong thing to hold for a moment, so a short change of
+            // task (a greeting, a step aside, the gap between two jobs) does not make it flick in and out. Bed and
+            // fights don't wait.
+            if (state.WrongSince <= 0f)
+            {
+                state.WrongSince = Time.time;
+            }
+
+            if (doer != Status.Doer.Sleep && allowed != Allowed.Weapons && Time.time - state.WrongSince < PutAwayAfter)
+            {
+                return;
+            }
+
+            state.WrongSince = 0f;
+            switch (allowed)
             {
                 case Allowed.Tool:
                     // Another tool than the work's (the pickaxe kept from mining on the way to build) is put away; the

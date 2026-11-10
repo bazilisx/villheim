@@ -16,6 +16,18 @@ namespace Villheim.Logic.Villagers
     /// </summary>
     internal static class Status
     {
+        private sealed class ChoreNote
+        {
+            public string Text;
+            public float Time;
+        }
+
+        /// <summary>How long after a job's step ends the villager still counts as at that job.</summary>
+        public const float BetweenJobsGrace = 8f;
+
+        private static readonly System.Runtime.CompilerServices.ConditionalWeakTable<Villager, ChoreNote> LastChore =
+            new System.Runtime.CompilerServices.ConditionalWeakTable<Villager, ChoreNote>();
+
         internal enum Doer
         {
             None,
@@ -94,8 +106,20 @@ namespace Villheim.Logic.Villagers
                 case Doer.Social: return "greeting someone";
                 case Doer.Hearth: return "tending the hearth";
                 case Doer.FreeTime: return FreeTime.Describe(villager) ?? "relaxing";
-                case Doer.Chores: return Chores.Describe(villager) ?? "heading out to work";
-                case Doer.BetweenJobs: return "resting between jobs";
+                case Doer.Chores:
+                {
+                    string chore = Chores.Describe(villager) ?? "heading out to work";
+                    LastChore.Remove(villager);
+                    LastChore.Add(villager, new ChoreNote { Text = chore, Time = UnityEngine.Time.time });
+                    return chore;
+                }
+                case Doer.BetweenJobs:
+                    // The second or two between one step of a job and the next (felling, splitting, carrying; one rock
+                    // and the next) still reads as that job. It showed as "resting between jobs" each time, which is
+                    // most of what the loop watch flagged as nine changes in a minute (2026-11-09).
+                    return LastChore.TryGetValue(villager, out ChoreNote note) && UnityEngine.Time.time - note.Time < BetweenJobsGrace
+                        ? note.Text
+                        : "resting between jobs";
                 case Doer.Replant: return Replanting.Describe(villager) ?? "planting a tree";
                 case Doer.Repair: return Repairs.Describe(villager) ?? "repairing";
                 case Doer.Smith: return Smithing.Describe(villager) ?? "making gear";

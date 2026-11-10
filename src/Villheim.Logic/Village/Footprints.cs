@@ -78,6 +78,7 @@ namespace Villheim.Logic.Village
         /// <summary>The footprint in the design's own coordinates (x, z), pieces' reach included.</summary>
         public static Rect Local(string design, float radius, bool grown)
         {
+            grown &= LogicConfig.ReserveGrowthRoom == null || LogicConfig.ReserveGrowthRoom.Value;
             string key = (grown ? "g:" : "s:") + design;
             if (design != null && Cache.TryGetValue(key, out Rect known))
             {

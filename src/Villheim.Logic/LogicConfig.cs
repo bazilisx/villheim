@@ -18,6 +18,7 @@ namespace Villheim.Logic
         public static ConfigEntry<float> PlotSearchMs;
         public static ConfigEntry<float> HearthMargin;
         public static ConfigEntry<float> BuildingGap;
+        public static ConfigEntry<bool> ReserveGrowthRoom;
         public static ConfigEntry<float> BoulderStaysFrom;
         public static ConfigEntry<bool> ClearRuins;
         public static ConfigEntry<float> RuinMaxRadius;
@@ -439,6 +440,9 @@ namespace Villheim.Logic
                 "How many meters past the hearth's dirt circle (10 m) a building's wall must stay. About 15 feet.");
             BuildingGap = Admin(config, work, "BuildingGap", 2.5f,
                 "The clear strip, in meters, between two buildings' footprints (measured at their last growth stage): room for a path.");
+            ReserveGrowthRoom = Admin(config, work, "ReserveGrowthRoom", true,
+                "Neighbors keep off the ground a building will cover at its last stage, so it can always grow where it " +
+                "stands. Off: buildings are packed by their size today, closer together, and a building may find no room to grow.");
             BoulderStaysFrom = Admin(config, work, "BoulderStaysFrom", 12f,
                 "A boulder or rock formation at least this many meters across is the size of a house: villages build " +
                 "round it. Smaller rocks, and every tree, stump, log and bush, are cleared off a plot.");

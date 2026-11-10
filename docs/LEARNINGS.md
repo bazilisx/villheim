@@ -182,3 +182,38 @@ Moved to `docs/MILLENAIRE.md` (2026-11-07), with its building plans and levels.
   `piece_chest_wood`, `piece_workbench`, `piece_cookingstation`, `fire_pit`, `piece_groundtorch_wood`. Sharpened
   stakes need core wood; the stone hearth needs a stonecutter; tables, benches and chairs need fine wood.
 - Nexus pages answer 403 from the cloud container even with the hosts allowed.
+
+## Inspiration v2 (branch `inspiration-v2`, `Inspiration_v2.zip`, read 2026-11-10)
+
+Six mods. Two carry a CC0 LICENSE file (code may be reused, source noted, README credit); four are decompiled
+assemblies with no license in the upload (study only until Tyler confirms theirs, D-095).
+
+**ValheimVillages** (myrcutio, CC0, about 82,000 lines). Villagers who keep work orders stocked inside a walled
+village. What applies to Villheim:
+- *Doors are walls to the game's paths.* Valheim bakes closed doors into the navmesh as obstacles, so a path to a goal
+  indoors ends along the outside wall. They bake their own navmesh per village with links through doorways
+  (`Villager/AI/Navigation/NavMeshBakeManager.cs`, `DoorLinkPlacer.cs`, about 12,000 lines in all). Villheim's walker
+  now goes round to the door of the building its goal is in when it stops outside (no code taken). Their full
+  navmesh is the long-term answer if villagers still get stuck at walls and stairs.
+- *Piece health:* `WearNTear.GetHealthPercentage` reads below 1 for whole pieces on worlds past level 0, so repair
+  jobs chase pieces that need nothing. Taken: `Village/PieceHealth.cs`.
+- *Falling trees hurt villagers:* ImpactEffect spares players only. Taken: `Villagers/TreeImpact.cs`.
+- *Lag:* every structural change used to trigger a 700 ms rebuild per village; they record where each change happened
+  and rebuild only villages in reach (`Patches/PieceChangePatch.cs`), and keep a live set of doors from Awake instead
+  of scanning the scene (`Patches/DoorRegistryPatch.cs`, a 68 to 76 ms scan removed). Same pattern as PieceIndex.
+- *Robustness worth reading before multiplayer:* `VillagerZDOOwnershipPatch.cs` (one owner for village objects),
+  `VillagerTimedDestructionGuard.cs` (fresh spawns culled by a stray timer), `ZoneLoadRestorationPatch.cs`.
+- *Testing:* an in-game test runner with asserts (`Testing/ModTestRunner.cs`, `IntegrationTests/`). A model for
+  checks Villheim could run from a `vh` command.
+
+**VikingSettlements** (CC0, about 10,600 lines). Settlements from world generation, recruitment, jobs, raids. Homes
+are doors assigned to settlers (`Npcs/SettlerHousing.cs`); marriage rolled nightly between housed settlers
+(`Npcs/SettlerFamily.cs`). Different from D-077 (Villheim rolls families at founding); little to take.
+
+**Study only (no license in the upload):**
+- *Vikings Village* 0.2.4 (adrian): villages from blueprints, contracts, sagas, an architect.
+- *Living Villages*: terrain fitting for whole villages (FitVillageToTerrain, ConnectedTerrainFit, entrance and
+  frontage grading, garden and pen terrain), bedroom doors, elder quests, a forge master. The terrain grading ideas
+  bear on building pads and paths on slopes.
+- *Living World* (ValheimDynasty): towns, camps, seasons, needs, a PieceIndex and a Perf command of its own.
+- *Hearthfolk* 0.1.3: jobs (woodcutting, tree planting, fishing, guard), a needs engine, villager traits.

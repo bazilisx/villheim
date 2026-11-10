@@ -260,6 +260,9 @@ namespace Villheim.Logic.Villagers
             {
                 Log($"{villager.VillagerName} would hunt for {hearth.VillageName} but sees no game within " +
                     $"{Village.Knowledge.WorkRadius(villager.VillageId, SearchFromHearth):0} m of the hearth.");
+                // Nothing near and the stores low: the hunter goes away for the night (D-078).
+                int target = Mathf.RoundToInt(Mathf.Max(0, LogicConfig.HuntMeatTarget?.Value ?? EnoughFood) * Village.Calendar.FoodFactor());
+                HuntTrips.TryStart(villager, hearth, MeatInChests(hearth), target);
                 return false;
             }
 

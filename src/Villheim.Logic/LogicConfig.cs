@@ -21,6 +21,7 @@ namespace Villheim.Logic
         public static ConfigEntry<float> StatusLineSeconds;
         public static ConfigEntry<bool> ClearPlotsByHand;
         public static ConfigEntry<bool> DecorPaidWithAnalogs;
+        public static ConfigEntry<bool> HuntTrips;
         public static ConfigEntry<float> PlotSearchMs;
         public static ConfigEntry<float> HearthMargin;
         public static ConfigEntry<float> BuildingGap;
@@ -1276,6 +1277,10 @@ namespace Villheim.Logic
                 "With LagLog on: every this many seconds, one 'Lag summary' line with the frame times (average, slowest " +
                 "1 %, hitches over 50 ms) and where the time went: the village's own work by part, and the game's work for " +
                 "villagers (their AI, body and animation, gear put on, villagers and pieces spawned). 0 turns it off.");
+            HuntTrips = Admin(config, test, "HuntTrips", true,
+                "D-078: a hunter by trade who finds no game near the village while its meat runs low leaves in the " +
+                "afternoon, is away overnight and walks back in about 07:00. A roll decides what he caught (game of the " +
+                "village's biome), how much, and how hurt he comes back. At most one trip a day.");
             DecorPaidWithAnalogs = Admin(config, test, "DecorPaidWithAnalogs", true,
                 "D-080: home decor also costs its hides, metals, cloth and the like, from the chests: the material itself " +
                 "when it comes from the village's biome or a neighbor, otherwise the nearest of its kind that does (troll " +

@@ -102,6 +102,11 @@ namespace Villheim.Logic.Villagers
                 // 'vh act': a test action asked for by hand.
                 doer = Status.Doer.Test;
             }
+            else if (HuntTrips.Update(villager, ai, dt))
+            {
+                // Out on an overnight hunt, away, or walking back with what he got (D-078).
+                doer = Status.Doer.Hunt;
+            }
             else if (Healing.Update(villager, ai, dt, false))
             {
                 // Healing comes first.

@@ -745,6 +745,12 @@ namespace Villheim.Logic.Villagers
             {
                 try
                 {
+                    // Away on a hunting trip: out of the village and out of any fight (D-078).
+                    if (__instance.m_character is Villager away && HuntTrips.IsAway(away))
+                    {
+                        return true;
+                    }
+
                     if (Update(__instance, dt) || Combat.Update(__instance, dt))
                     {
                         __result = true;

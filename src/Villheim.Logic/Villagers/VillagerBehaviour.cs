@@ -178,7 +178,7 @@ namespace Villheim.Logic.Villagers
 
             // What the routine that runs him now says (Status), and only when nothing has run him lately the old
             // look through every routine.
-            return Status.Long(villager) ?? TestActs.Describe(villager) ?? Sleep.Describe(villager) ??
+            return HuntTrips.Activity(villager) ?? Status.Long(villager) ?? TestActs.Describe(villager) ?? Sleep.Describe(villager) ??
                    (MorningHearth.IsTending(villager) ? "tending the hearth" : null) ?? FreeTime.Describe(villager);
         }
 

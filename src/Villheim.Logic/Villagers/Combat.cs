@@ -401,7 +401,7 @@ namespace Villheim.Logic.Villagers
 
             List<Villager> people = Character.GetAllCharacters().OfType<Villager>()
                 .Where(v => !v.IsDead() && v.VillageId == villageId && v.Zdo != null && !Childhood.IsChild(v) &&
-                            !Wanderers.IsWanderer(v) && !Leaving.IsLeaving(v) && v.GetHealth() > v.GetMaxHealth() * 0.3f)
+                            !Wanderers.IsWanderer(v) && !Leaving.IsLeaving(v) && !HuntTrips.IsAway(v) && v.GetHealth() > v.GetMaxHealth() * 0.3f)
                 .ToList();
 
             // Anyone following the horn goes after the nearest threat.

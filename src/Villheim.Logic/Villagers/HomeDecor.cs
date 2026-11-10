@@ -179,7 +179,29 @@ namespace Villheim.Logic.Villagers
                 cost[material] = n + amount;
             }
 
+            // Hides, metals, cloth and the rest, in local stand-ins from the chests (D-080).
+            foreach (KeyValuePair<string, int> part in DecorAnalogs.Extra(entry.Prefab, biome))
+            {
+                cost.TryGetValue(part.Key, out int n);
+                cost[part.Key] = n + part.Value;
+            }
+
             return cost;
+        }
+
+        /// <summary>The piece is short of something besides building materials (a hide, a metal): it waits on its own,
+        /// and the pieces after it go on (D-080). A shortage of wood or stone holds the rest, as before.</summary>
+        private static bool ShortOfExtras(VillageHearth hearth, VillageState state, Dictionary<string, int> cost)
+        {
+            foreach (KeyValuePair<string, int> need in cost)
+            {
+                if (!Materials.Tracked.Contains(need.Key) && VillageChest.Have(hearth, state, need.Key) < need.Value)
+                {
+                    return true;
+                }
+            }
+
+            return false;
         }
 
         /// <summary>What decor may not touch: the building going up and the next amenity keep theirs.</summary>
@@ -200,6 +222,8 @@ namespace Villheim.Logic.Villagers
         }
 
         // ---------------------------------------------------------------- the villager at work
+
+        private static readonly HashSet<string> WarnedShort = new HashSet<string>();
 
         private sealed class Work
         {
@@ -373,7 +397,21 @@ namespace Villheim.Logic.Villagers
                     return null; // someone stands where it goes: later, so nothing goes up ahead of it
                 }
 
-                if (!Amenities.Affordable(hearth, state, Cost(entry, plan, state.Biome), reserved))
+                Dictionary<string, int> price = Cost(entry, plan, state.Biome);
+                if (!Amenities.Affordable(hearth, state, price, reserved) && ShortOfExtras(hearth, state, price))
+                {
+                    if (WarnedShort.Add(key + ":" + index))
+                    {
+                        VillheimPlugin.Debug($"{hearth.VillageName}: the {entry.Prefab} in the {plot.Design} waits for " +
+                                             string.Join(", ", price.Where(p => !Materials.Tracked.Contains(p.Key)).Select(p => $"{p.Value} {p.Key}")) +
+                                             " in the chests (D-080); the next pieces go on.");
+                    }
+
+                    SkipUntil[key + ":" + index] = Time.time + 600f;
+                    continue;
+                }
+
+                if (!Amenities.Affordable(hearth, state, price, reserved))
                 {
                     // In build order: the pieces after it wait for this one.
                     ShortUntil[hearth.VillageId] = Time.time + 120f;

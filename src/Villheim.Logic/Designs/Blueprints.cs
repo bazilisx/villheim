@@ -133,52 +133,95 @@ namespace Villheim.Logic.Designs
         }
 
         /// <summary>Every blueprint found, by design name ("bp:" + file name). The folders are looked at again every two minutes; a file is read again only when it changed.</summary>
+        /// <remarks>
+        /// With BlueprintsInBackground on (lag cluster B, 2026-11-10) the looking and reading happen on a worker thread:
+        /// once as soon as the logic loads (so the first plan after a world load or a reload never waits for the disk),
+        /// then every two minutes while the last list is still handed out. Only the very first call, if it comes before
+        /// that first read is done, waits for it.
+        /// </remarks>
         public static Dictionary<string, Blueprint> All()
         {
-            if (_loaded != null && Time.realtimeSinceStartup - _loadedAt < 120f)
+            bool background = LogicConfig.BlueprintsInBackground == null || LogicConfig.BlueprintsInBackground.Value;
+            float now = Time.realtimeSinceStartup;
+            if (!background)
             {
+                if (_loaded != null && now - _loadedAt < 120f)
+                {
+                    return _loaded;
+                }
+
+                _loadedAt = now;
+                Take(Scan());
                 return _loaded;
             }
 
-            _loadedAt = Time.realtimeSinceStartup;
-            var found = new Dictionary<string, Blueprint>(StringComparer.OrdinalIgnoreCase);
-            foreach (string folder in Folders())
+            System.Threading.Tasks.Task<Dictionary<string, Blueprint>> task = _scan;
+            if (task != null && task.IsCompleted)
             {
-                if (!Directory.Exists(folder))
+                _scan = null;
+                if (task.Status == System.Threading.Tasks.TaskStatus.RanToCompletion && task.Result != null)
                 {
-                    continue;
+                    Take(task.Result);
+                }
+                else if (task.Exception != null)
+                {
+                    VillheimPlugin.Log.LogWarning($"Blueprints: the background read failed ({task.Exception.GetBaseException().Message}); reading here.");
+                    Take(Scan());
                 }
 
-                foreach (string file in Directory.GetFiles(folder, "*.*", SearchOption.AllDirectories))
+                task = null;
+            }
+
+            if (_loaded == null)
+            {
+                if (task != null)
                 {
-                    string extension = Path.GetExtension(file).ToLowerInvariant();
-                    if (extension != ".blueprint" && extension != ".vbuild" || IsExcluded(file) || OutsideTestPool(file))
+                    using (Village.Perf.Time("Blueprints: waiting for the first background read"))
                     {
-                        continue;
+                        task.Wait();
                     }
 
-                    try
-                    {
-                        // Read once; read again only when the file changes (hundreds of review blueprints made rereading
-                        // all of them every two minutes too slow).
-                        DateTime written = File.GetLastWriteTimeUtc(file);
-                        if (!FileCache.TryGetValue(file, out var cached) || cached.Written != written)
-                        {
-                            cached = (written, Load(file));
-                            FileCache[file] = cached;
-                        }
-
-                        Blueprint blueprint = cached.Blueprint;
-                        if (blueprint != null && Usable(blueprint) && !found.ContainsKey(blueprint.Name))
-                        {
-                            found[blueprint.Name] = blueprint;
-                        }
-                    }
-                    catch (Exception e)
-                    {
-                        VillheimPlugin.Log.LogWarning($"Could not read the blueprint {file}: {e.Message}");
-                    }
+                    _scan = null;
+                    Take(task.Status == System.Threading.Tasks.TaskStatus.RanToCompletion && task.Result != null ? task.Result : Scan());
                 }
+                else
+                {
+                    Take(Scan());
+                }
+
+                _loadedAt = now;
+                return _loaded;
+            }
+
+            if (task == null && now - _loadedAt >= 120f)
+            {
+                _loadedAt = now;
+                Preload();
+            }
+
+            return _loaded;
+        }
+
+        private static volatile System.Threading.Tasks.Task<Dictionary<string, Blueprint>> _scan;
+        private static readonly object ScanLock = new object();
+
+        /// <summary>Starts reading the blueprint folders on a worker thread, unless a read is already running. Called when
+        /// the logic loads, and by All() every two minutes.</summary>
+        public static void Preload()
+        {
+            if (_scan != null || (LogicConfig.BlueprintsInBackground != null && !LogicConfig.BlueprintsInBackground.Value))
+            {
+                return;
+            }
+
+            _scan = System.Threading.Tasks.Task.Run(() => Scan());
+        }
+
+        private static void Take(Dictionary<string, Blueprint> found)
+        {
+            if (found == null)
+            {
+                return;
             }
 
             if (_loaded == null || _loaded.Count != found.Count)
@@ -187,7 +230,66 @@ namespace Villheim.Logic.Designs
             }
 
             _loaded = found;
-            return found;
+        }
+
+        /// <summary>Looks through the folders and reads new or changed files. No Unity calls: it may run on a worker
+        /// thread. One read at a time.</summary>
+        private static Dictionary<string, Blueprint> Scan()
+        {
+            lock (ScanLock)
+            {
+                var watch = System.Diagnostics.Stopwatch.StartNew();
+                int read = 0;
+                var found = new Dictionary<string, Blueprint>(StringComparer.OrdinalIgnoreCase);
+                foreach (string folder in Folders())
+                {
+                    if (!Directory.Exists(folder))
+                    {
+                        continue;
+                    }
+
+                    foreach (string file in Directory.GetFiles(folder, "*.*", SearchOption.AllDirectories))
+                    {
+                        string extension = Path.GetExtension(file).ToLowerInvariant();
+                        if (extension != ".blueprint" && extension != ".vbuild" || IsExcluded(file) || OutsideTestPool(file))
+                        {
+                            continue;
+                        }
+
+                        try
+                        {
+                            // Read once; read again only when the file changes (hundreds of review blueprints made rereading
+                            // all of them every two minutes too slow).
+                            DateTime written = File.GetLastWriteTimeUtc(file);
+                            if (!FileCache.TryGetValue(file, out var cached) || cached.Written != written)
+                            {
+                                cached = (written, Load(file));
+                                FileCache[file] = cached;
+                                read++;
+                            }
+
+                            Blueprint blueprint = cached.Blueprint;
+                            if (blueprint != null && Usable(blueprint) && !found.ContainsKey(blueprint.Name))
+                            {
+                                found[blueprint.Name] = blueprint;
+                            }
+                        }
+                        catch (Exception e)
+                        {
+                            VillheimPlugin.Log.LogWarning($"Could not read the blueprint {file}: {e.Message}");
+                        }
+                    }
+                }
+
+                if (LogicConfig.LagLog != null && LogicConfig.LagLog.Value && (read > 0 || watch.ElapsedMilliseconds >= 50))
+                {
+                    VillheimPlugin.Log.LogInfo($"Blueprints: looked through the folders in {watch.ElapsedMilliseconds} ms " +
+                                               $"({read} files read, {found.Count} designs) on " +
+                                               $"{(System.Threading.Thread.CurrentThread.IsBackground ? "a background thread" : "the game's thread")}.");
+                }
+
+                return found;
+            }
         }
 
         /// <summary>

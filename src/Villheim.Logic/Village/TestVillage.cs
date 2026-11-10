@@ -718,7 +718,7 @@ namespace Villheim.Logic.Village
             }
 
             Say(run, $"building a {kind}: {chosen.Name}");
-            DesignSpawner.ClearArea(position, chosen.Radius);
+            Ruins.ClearPlot(hearth, Footprints.Of(chosen.Name, position, yaw, chosen.Radius, false));
             yield return new WaitForSeconds(0.3f);
             if (hearth == null || !hearth.IsValid)
             {

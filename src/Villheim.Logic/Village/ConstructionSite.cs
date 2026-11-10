@@ -863,7 +863,8 @@ namespace Villheim.Logic.Village
             if (old == null)
             {
                 hearth.Zdo.Set(KeySiteTeardown, 0);
-                DesignSpawner.ClearArea(site.Position, site.Radius);
+                // The bigger building's ground: trees and rocks, and any old ruin it now reaches (Ruins).
+                Ruins.ClearPlot(hearth, Footprints.Of(site.Design, site.Position, site.Yaw, site.Radius, false));
                 PrepareGround(hearth, site.Position);
                 VillheimPlugin.Log.LogInfo($"{state.Name} took down the old building; the new one starts now.");
                 return true;

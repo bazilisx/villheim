@@ -51,9 +51,12 @@ namespace Villheim.Logic.Village
             {
                 case Role.Hub: min = 0f; max = 0.6f; break; // 0.35 left a big hall no room past the hearth gap (2026-11-09)
                 case Role.House: min = 0.1f; max = 0.65f; break;
-                case Role.Workshop: min = 0.45f; max = 0.95f; break;
+                // Workshops and farms began at 0.45 of the radius (27 to 34 m out), which is what kept a young village
+                // spread out on open ground more than any spacing rule did (packing test, 2026-11-10). The order by
+                // distance stays (hall, homes, workshops, farms; D-079), the rings start nearer.
+                case Role.Workshop: min = 0.3f; max = 0.95f; break;
                 case Role.Storage: min = 0.1f; max = 0.5f; break;
-                default: min = 0.45f; max = 1f; break;
+                default: min = 0.4f; max = 1f; break;
             }
         }
 

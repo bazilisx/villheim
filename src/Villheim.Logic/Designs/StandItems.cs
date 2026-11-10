@@ -43,7 +43,21 @@ namespace Villheim.Logic.Designs
 
             int variant = f.Length > 1 && int.TryParse(f[1], out int v) ? v : 0;
             int quality = f.Length > 2 && int.TryParse(f[2], out int q) ? Mathf.Max(1, q) : 1;
-            if (!stand.CanAttach(drop.m_itemData))
+            // A prefab's own item data has no drop prefab, and CanAttach needs one (it threw here in the 2026-11-09 test).
+            ItemDrop.ItemData data = drop.m_itemData.Clone();
+            data.m_dropPrefab = itemPrefab;
+            bool fits;
+            try
+            {
+                fits = stand.CanAttach(data);
+            }
+            catch (System.Exception e)
+            {
+                VillheimPlugin.Debug($"Stand item '{name}' could not be checked on a {instance.name} ({e.GetType().Name}).");
+                fits = false;
+            }
+
+            if (!fits)
             {
                 VillheimPlugin.Debug($"Stand item '{name}' does not fit a {instance.name}; the stand stays empty.");
                 return false;

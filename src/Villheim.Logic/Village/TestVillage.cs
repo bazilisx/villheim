@@ -683,7 +683,8 @@ namespace Villheim.Logic.Village
                     foreach (DesignLibrary.Design design in candidates)
                     {
                         tried++;
-                        Vector3? fire = role == Role.Hub && !plots.Any(p => p.Role == nameof(Role.Hub)) ? DesignLibrary.FireOf(design) : null;
+                        // The hearth is never built over (Tyler, 2026-11-09).
+                        Vector3? fire = null;
                         if ((fire.HasValue && PlotFinder.AroundHearth(hearth.transform.position, state.Axis, fire.Value, design.Radius,
                                 design.MaxTerrainDelta, state.Id, out position, out yaw)) ||
                             PlotFinder.TryFind(hearth.transform.position, state.Axis, role, strictHub, design.Radius, design.MaxTerrainDelta,

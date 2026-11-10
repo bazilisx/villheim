@@ -330,6 +330,16 @@ namespace Villheim.Logic.Designs
         /// </summary>
         public static List<Design> FallbackPool(Heightmap.Biome biome, Role role, string culture = null)
         {
+            // With the test pool on, stand-ins come from the pool too (WoodHouse11 got in this way on 2026-11-09).
+            if (LogicConfig.TestPool != null && LogicConfig.TestPool.Value)
+            {
+                List<Design> test = Generator.TestPool.PoolFor(biome, role, culture);
+                if (test.Count > 0)
+                {
+                    return test.OrderBy(d => d.Radius).ToList();
+                }
+            }
+
             var pool = new List<Design>();
             foreach (string tier in Culture.TiersFor(biome, culture, role))
             {

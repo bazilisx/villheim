@@ -385,7 +385,8 @@ namespace Villheim.Logic.Village
                 float radius = design.Radius;
                 Vector3 position;
                 float yaw;
-                Vector3? fire = role == Role.Hub && !plots.Any(p => p.Role == nameof(Role.Hub)) ? DesignLibrary.FireOf(design) : null;
+                // The hearth is the village hub and is never built over (Tyler, 2026-11-09), so no hall goes up around it.
+                Vector3? fire = null;
                 if (fire.HasValue && PlotFinder.AroundHearth(hearth.transform.position, state.Axis, fire.Value, radius,
                         design.MaxTerrainDelta, state.Id, out position, out yaw))
                 {

@@ -413,7 +413,14 @@ namespace Villheim.Logic.Designs
             // an item stand saved with its item gets the item, locked on (StandItems)
             if (entry.Text != null)
             {
-                StandItems.Apply(instance, entry.Text);
+                try
+                {
+                    StandItems.Apply(instance, entry.Text);
+                }
+                catch (System.Exception e)
+                {
+                    VillheimPlugin.Debug($"Stand item on {instance.name} failed: {e.Message}");
+                }
             }
 
             if (effects && instance.TryGetComponent(out Piece piece))

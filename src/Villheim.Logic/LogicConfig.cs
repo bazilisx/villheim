@@ -282,6 +282,9 @@ namespace Villheim.Logic
         public static ConfigEntry<float> MemoryTintDay;
         public static ConfigEntry<UnityEngine.Color> MemoryTintColor;
         public static ConfigEntry<float> MemoryBrightness;
+        public static ConfigEntry<float> MemoryMilk;
+        public static ConfigEntry<float> MemoryMilkDay;
+        public static ConfigEntry<UnityEngine.Color> MemoryMilkColor;
         public static ConfigEntry<float> MemoryGlow;
         public static ConfigEntry<float> MemoryGlowDay;
         public static ConfigEntry<UnityEngine.Color> MemoryGlowColor;
@@ -1218,6 +1221,7 @@ namespace Villheim.Logic
                      {
                          GhostLook, GhostAlpha, GhostTint, GhostGlow, GhostAlphaDay, GhostTintDay, GhostGlowDay, GhostColor, GhostGlowColor,
                          LookMode, MemoryAlpha, MemoryAlphaDay, MemoryTint, MemoryTintDay, MemoryTintColor, MemoryBrightness, MemoryGlow,
+                         MemoryMilk, MemoryMilkDay, MemoryMilkColor,
                          MemoryGlowDay, MemoryGlowColor, MemoryGlowSpread, MemoryGlowSoftness, MemoryGlowLayers, MemoryGlowEdge, MemoryFeetGlow,
                          MemoryFeetStrength, MemoryFeetSize, MemoryFeetColor, MemoryFeetLight,
                      })
@@ -1262,9 +1266,14 @@ namespace Villheim.Logic
                 "glow at their feet. 'vh memory' puts up a still model in front of you to tune these against.",
                 new AcceptableValueList<string>("Memory", "Ghost"));
             MemoryAlpha = Dial("MemoryAlpha", 0.6f,
-                "Body: how solid villagers are at night, from barely there near 0 to fully solid at 1 (at 1 they have " +
-                "their normal look and no glow around them).", Range(0.05f, 1f));
-            MemoryAlphaDay = Dial("MemoryAlphaDay", 0.75f, "Body: how solid villagers are by day.", Range(0.05f, 1f));
+                "Body: how strongly their own colors (skin, clothes, hair) show at night, from barely there near 0 to full " +
+                "at 0.99. At 1 they are fully solid with their normal look and none of the memory look.", Range(0.05f, 1f));
+            MemoryAlphaDay = Dial("MemoryAlphaDay", 0.75f, "Body: the same by day.", Range(0.05f, 1f));
+            MemoryMilk = Dial("MemoryMilk", 0.4f,
+                "Body: how milky they are at night, like frosted glass: how much of what is behind them is covered by " +
+                "MemoryMilkColor. 0 is clear (only their colors over what is behind), 1 hides what is behind.", Range(0f, 1f));
+            MemoryMilkDay = Dial("MemoryMilkDay", 0.5f, "Body: the same by day.", Range(0f, 1f));
+            MemoryMilkColor = Dial("MemoryMilkColor", new UnityEngine.Color(0.82f, 0.96f, 0.93f), "Body: the milk color, whitish teal by default.");
             MemoryTint = Dial("MemoryTint", 0.35f, "Body: how strongly their own colors are tinted toward MemoryTintColor at night, 0 for none.",
                 Range(0f, 1f));
             MemoryTintDay = Dial("MemoryTintDay", 0.45f, "Body: the same by day.", Range(0f, 1f));
@@ -1274,13 +1283,12 @@ namespace Villheim.Logic
             MemoryGlow = Dial("MemoryGlow", 0.35f, "Glow around them: how strong it is at night, 0 for none.", Range(0f, 1f));
             MemoryGlowDay = Dial("MemoryGlowDay", 0.18f, "Glow around them: how strong it is by day.", Range(0f, 1f));
             MemoryGlowColor = Dial("MemoryGlowColor", new UnityEngine.Color(0.35f, 1f, 0.85f), "Glow around them: its color.");
-            MemoryGlowSpread = Dial("MemoryGlowSpread", 0.02f,
-                "Glow around them: how far it reaches out from the body. In the game shader's own push units (its weapon " +
-                "glows use 0.004 to 0.008); drag it with 'vh memory' up to see the size.", Range(0f, 0.2f));
+            MemoryGlowSpread = Dial("MemoryGlowSpread", 0.015f,
+                "Glow around them: how far it reaches out from the body, in meters.", Range(0f, 0.08f));
             MemoryGlowSoftness = Dial("MemoryGlowSoftness", 0.6f,
                 "Glow around them: how gently it fades toward its outer edge. 0 is an even band, 1 fades fast from the body out.",
                 Range(0f, 1f));
-            MemoryGlowLayers = Dial("MemoryGlowLayers", 3,
+            MemoryGlowLayers = Dial("MemoryGlowLayers", 2,
                 "Glow around them: how many shells it is drawn in. More is smoother and costs a little more; 0 turns the glow off.",
                 new AcceptableValueRange<int>(0, 4));
             MemoryGlowEdge = Dial("MemoryGlowEdge", new UnityEngine.Vector4(-1.37f, 0.27f, 0.24f, 1.25f),

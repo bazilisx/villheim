@@ -88,13 +88,17 @@ In game:
 
 - `vh memory` puts a still villager in a T-pose (the model's rest pose, animator off) 3 m in front of you, facing
   you, with the look. `vh memory woman` for a woman, `vh memory clear` takes it away, `vh memory shaders` lists which
-  game materials each part copies and the values in use now. GhostLook ('3c - Villager looks') must be on.
+  game materials each part copies and the values in use now, `vh memory probe` writes each part of the model and of
+  the nearest villagers to the log (shader, render queue, keywords, the values the look sets, passes per part).
+  GhostLook ('3c - Villager looks') must be on.
 - F1, section `3e - Look: memory`. Every dial shows on villagers and the model as you drag it.
   - `LookMode`: Memory (default on this branch) or Ghost (the first look, with its `Ghost*` dials in '3c').
-  - Body: `MemoryAlpha` (night, 0.6), `MemoryAlphaDay` (0.75), `MemoryTint` (night, 0.35), `MemoryTintDay` (0.45),
-    `MemoryTintColor` (teal), `MemoryBrightness` (1.1).
+  - Body: `MemoryAlpha` (night, 0.6; how strongly their own colors show), `MemoryAlphaDay` (0.75), `MemoryMilk`
+    (night, 0.4; how much of what is behind them is covered, like frosted glass), `MemoryMilkDay` (0.5),
+    `MemoryMilkColor` (whitish teal), `MemoryTint` (night, 0.35), `MemoryTintDay` (0.45), `MemoryTintColor` (teal),
+    `MemoryBrightness` (1.1).
   - Glow around them: `MemoryGlow` (night, 0.35), `MemoryGlowDay` (0.18), `MemoryGlowColor` (teal),
-    `MemoryGlowSpread` (0.02, in the game shader's push units), `MemoryGlowSoftness` (0.6), `MemoryGlowLayers` (3, 0
+    `MemoryGlowSpread` (0.015 m), `MemoryGlowSoftness` (0.6), `MemoryGlowLayers` (2, 0
     for no glow), `MemoryGlowEdge` (the game glow shader's edge fading numbers; leave as is unless the edges look wrong).
   - Feet: `MemoryFeetGlow` (on), `MemoryFeetStrength` (0.6), `MemoryFeetSize` (0.35 m), `MemoryFeetColor` (teal),
     `MemoryFeetLight` (0.5, 0 for no light).

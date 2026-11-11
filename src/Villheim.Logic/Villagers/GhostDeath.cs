@@ -103,7 +103,7 @@ namespace Villheim.Logic.Villagers
             Shader seeThrough = GhostLook.SeeThroughShader();
             foreach (Renderer renderer in villager.GetComponentsInChildren<Renderer>())
             {
-                if (renderer == null || !renderer.enabled || !renderer.gameObject.activeInHierarchy)
+                if (renderer == null || !renderer.enabled || !renderer.gameObject.activeInHierarchy || MemoryLook.IsPass(renderer))
                 {
                     continue;
                 }

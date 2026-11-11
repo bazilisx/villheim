@@ -206,7 +206,9 @@ namespace Villheim.Logic.Villagers
             villager.GetComponentsInChildren(true, ScanList);
             foreach (Renderer renderer in ScanList)
             {
-                if (renderer == null || renderer is ParticleSystemRenderer || renderer is LineRenderer || renderer is TrailRenderer)
+                // The memory look's own passes and feet cards (MemoryLook.IsPass) keep their own materials.
+                if (renderer == null || renderer is ParticleSystemRenderer || renderer is LineRenderer || renderer is TrailRenderer ||
+                    MemoryLook.IsPass(renderer))
                 {
                     continue;
                 }

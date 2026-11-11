@@ -556,8 +556,31 @@ function frameOf(faces, opts, W, H) {
   }
   if (!isFinite(x0)) { x0 = -1; x1 = 1; y0 = -1; y1 = 1; }
   const pad = opts.pad ?? (opts.crop ? 0.03 : 0.06);
-  const s = opts.ppm || Math.min(W * (1 - 2 * pad) / (x1 - x0 || 1), H * (1 - 2 * pad) / (y1 - y0 || 1));
-  return { s, ox: W / 2 - s * (x0 + x1) / 2, oy: H / 2 + s * (y0 + y1) / 2, box: { x0, x1, y0, y1 } };
+  const fit = Math.min(W * (1 - 2 * pad) / (x1 - x0 || 1), H * (1 - 2 * pad) / (y1 - y0 || 1));
+  const s = opts.ppm || fit;
+  // a camera the viewer moved (lab page zoom and pan): the world point opts.target sits in the middle of the picture
+  if (opts.target) {
+    const [tx, ty] = project(opts.target, opts.az ?? 35, opts.el ?? 30);
+    return { s, fit, ox: W / 2 - s * tx, oy: H / 2 + s * ty, box: { x0, x1, y0, y1 } };
+  }
+  return { s, fit, ox: W / 2 - s * (x0 + x1) / 2, oy: H / 2 + s * (y0 + y1) / 2, box: { x0, x1, y0, y1 } };
+}
+
+// A world point [X, Y, Z] to camera space [x right, y up, depth toward the camera], metres, as sceneFaces turns it.
+function project(P, azDeg, elDeg) {
+  const az = azDeg * Math.PI / 180, el = elDeg * Math.PI / 180;
+  const ca = Math.cos(az), sa = Math.sin(az), ce = Math.cos(el), se = Math.sin(el);
+  const x = P[0], y = P[1], z = -P[2];
+  const x1 = x * ca - z * sa, z1 = x * sa + z * ca;
+  return [x1, y * ce - z1 * se, y * se + z1 * ce];
+}
+// Camera space back to a world point (the inverse of project).
+function unproject(C, azDeg, elDeg) {
+  const az = azDeg * Math.PI / 180, el = elDeg * Math.PI / 180;
+  const ca = Math.cos(az), sa = Math.sin(az), ce = Math.cos(el), se = Math.sin(el);
+  const [x1, yc, d] = C;
+  const y = yc * ce + d * se, z1 = -yc * se + d * ce;
+  return [x1 * ca + z1 * sa, y, -(-x1 * sa + z1 * ca)];
 }
 
 /**
@@ -566,7 +589,8 @@ function frameOf(faces, opts, W, H) {
  * filled dark, roofs left out), hide (roles), width, height, background, label, ss (supersampling, default 2),
  * crop {x0, x1, z0, z1} (world box to frame, for one room), ppm (pixels per metre; default fits the picture),
  * grid (1 m grid, top views), scale (scale bar), outline (default true), patterns (default true), models (false: old
- * box shapes). Returns {ppm, ms, faces} and the transform used.
+ * box shapes), target [X, Y, Z] (world point put in the middle of the picture; with ppm, the lab page's zoom and
+ * pan). Returns {ppm, fit (the pixels per metre that frame the whole design), ms, faces} and the transform used.
  */
 function draw(ctx, pieces, opts = {}) {
   const t0 = Date.now();
@@ -677,7 +701,7 @@ function draw(ctx, pieces, opts = {}) {
     ctx.font = `${Math.max(11, Math.round(Math.min(H, W) / 28))}px sans-serif`;
     ctx.fillText(opts.label, 10, H - 10);
   }
-  return { ppm: fr.s, ms: Date.now() - t0, faces: faces.length, ox: fr.ox, oy: fr.oy };
+  return { ppm: fr.s, fit: fr.fit, ms: Date.now() - t0, faces: faces.length, ox: fr.ox, oy: fr.oy };
 }
 
 // 1 m grid for top views: world x right, world z up the picture (az 0) or turned with az.
@@ -754,6 +778,6 @@ const VIEWS = [
   { key: 'inside', az: 35, el: 55, cut: 2.6, label: 'inside, roof off' },
 ];
 
-const api = { polygons, draw, plan, planSize, VIEWS, pieceModel, coverage, setModels, meshPack, PAT, pattern };
+const api = { polygons, draw, plan, planSize, VIEWS, pieceModel, coverage, setModels, meshPack, PAT, pattern, project, unproject };
 if (typeof module !== 'undefined') module.exports = api;
 else window.VHRender = api;

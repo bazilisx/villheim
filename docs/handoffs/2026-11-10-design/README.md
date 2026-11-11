@@ -266,6 +266,15 @@ Black Forest setShare: 444 set pieces of 1,319 decor (round 4) to 431 of 1,362. 
 dining set and stations at s2 and s3 (its door opens into a corner closed by furniture; openWays leaves them out
 under D-148); the decor kept by D-149 and by moving instead of removing is not from sets.
 
+Ideas measures (ideas.md commands gen_pool, learn_interior and ext.js, 612 designs; main 509744e as round 4 had it,
+then 4895d1f; corpus in brackets): home rooms with a wall torch 81 to 45 % (36), a candle 49 to 7 % (0 to 7), a Dvergr
+wall lantern 0 to 6 % (sleeping rooms 7, taverns 21; corpus wall lights 40 % lanterns); lights per 10 m2 in home
+rooms, median, 2.92 to 2.18 (the learner's count of all items); tables on a rug: piece_table 68 to 31 %, round tables
+79 to 18 % (27); relx: chests stacked 38 to 42 % (58), beds lit 35.6 to 12.9 (14), seats by a wall 28.5 to 30.9 (42),
+seats off axis 33.8 to 27.4 (42), tables off axis 25.2 to 26.0 (29), rugs off axis 32.5 to 42.6 (31), windows lit in
+pairs 5.4 to 0 (3). The culture miner's rows (seats at tables, tables dressed, rugs layered) were not run again; the
+essentials figures above stand for them.
+
 Renders: /tmp/int5-renders (not kept): households-home-meadows-s2d3-7 and views-tavern-swamp-s3d3-11, after and
 round 4. The households house has one door (x 0, the long wall); the bed of neat and cosy stands 1.85 m or more to its
 side, out of the entry zone, in round 4 and now; the right-hand steps in the round 4 sheet are outside the plain end

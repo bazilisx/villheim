@@ -351,3 +351,121 @@ listed by Tyler. Nothing taken from it.
 - Side rooms in round halls leave a gap of about 1 m where the partition meets the curved wall.
 - The cap uses s3 buildings; it should be measured again once the lab builds other types to s5.
 - Proposed Decisions rows are in the report to the lead.
+
+## Round 4 (2026-11-11): open floors, floors at the walls, hips, crowns, interiors, renders
+
+The lead's review of the round 3 renders set this round: open floors measured on the corpus, floors that meet curved
+walls, clean octagon hips and flat roof edges, crowns kept over the cap, interiors that differ by culture and line, and
+renders from one side. Tyler's correction stands: no parapets outside; galleries and walkways inside.
+
+Commits: b9a4ef4 (posts, floor band, hips, crowns, lanterns), 39003b5 (seating, gallery torches, checks, renders), this
+file. The Hub refs tab held only the lead's example row at the start and before the last commit.
+
+### 1. Corpus: free-standing inner posts
+
+`lab/hub_posts.py`, run read only over Villheim-blueprints on Tyler's PC (2,322 .blueprint files). A building counts
+when its ground floor (floor pieces within 0.6 m of the lowest floor level) is 300 m2 or more, it is at most 75 m long
+and 6 m high or more, with 20 or more wall pieces at the ground storey. Each build is first turned back by its commonest
+wall turn (blueprints keep their turn in the world). Round or polygon: 30 % or more of its walls off its own square.
+Halls: an orthogonal plan with hall, longhouse, mead, throne, jarl, chief or feast in the title or file. Folders of
+whole bases, castles, arenas, villages and art are left out. A free-standing inner post: a pole, pillar or column whose
+foot is within 2.6 m over the ground floor, over a floor cell and 0.7 m or more from every wall piece; stacked pieces
+count once.
+
+| Measure | Round or polygon (72 builds) | Halls (51 builds) |
+|---|---|---|
+| Ground floor, median | 514 m2 | 528 m2 |
+| Inner posts, median (quartiles) | 7.5 (2 to 14) | 4 (1 to 8) |
+| Per 100 m2, median (q3) | 1.45 (2.5) | 0.7 (1.2) |
+| None at all | 13 builds | 10 builds |
+| Layout (ring / rings / two rows / other) | 2 / 6 / 3 / 48 | 0 / 1 / 3 / 37 |
+| Clear radius round the middle, median (q1 to q3) | 6.0 m (2.6 to 8.5) | 4.7 m (2.9 to 7.0) |
+| Nearest post, median | 2.1 to 6.5 m by layout | 3 to 4 m |
+| Ring diameter (ring builds) | 20 to 30 m | |
+| Two rows apart | 10 to 16 m | 6 m |
+
+Most corpus posts stand in no clean layout ("other"); where there is one it is a ring. The hub now has one ring:
+the gallery's inner edge (from s4), posts 5.5 m or more apart, the drum on posts at every second to fourth corner, and
+at s4 under a drum the drum's posts are the gallery's ring. The inner ring of the Celtic s5 and the walkway's two posts
+are gone (the walkway spans from gallery to gallery; stability holds). The fire's middle and the way from the door to
+the high seat stay clear.
+
+Measured with the same rule on the hub (seed 1, d1/d3), before (round 3, c8f08aa) and after:
+
+| Line | s4 before | s4 after | s5 before | s5 after |
+|---|---|---|---|---|
+| Round (Celtic) | 9 posts, 3.1 / 100 m2 | 5, 1.4 | 24, 3.6 | 10, 1.3, clear radius 10.6 m |
+| Octagon (Anglo-Saxon) | 26, 10.0 | 8, 2.4 | 34, 5.4 | 16, 2.1, clear radius 5.8 m |
+| Part round (Middle Eastern) | 7, 3.0 | 3, 1.1 | 12, 2.1 | 8, 1.3 |
+| Cross (Norse) | 0 | 4 (tower) | 4, 0.7 | 4, 0.7 |
+
+`lab/test_hub.js` fails a hub of 300 m2 of ground floor or more with more than 2.5 inner posts per 100 m2 (round family)
+or 1.2 (cross), or a post nearer the middle than 2.6 m or 2.9 m (the corpus q3 and q1).
+
+### 2. Floors meet curved walls
+
+`polyFloor`: 2 m cells keep 0.9 m off the walls; 1 m pieces where their middle is 0.3 m or more inside (their corners
+run under the wall line); a band of 1 m pieces turned with each wall side along its inner face; the part round's front
+gets a row of 1 m pieces and closes against the ring with 1 m wall pieces. New check in `lab/test_hub.js`
+(`floorGaps`): points 0.3 and 0.8 m in from every ground-storey wall bay, on its floored side inside the hall, must lie
+on a floor piece. Open points before and after (s2 to s5, seed 1, d1):
+
+| Line | before | after |
+|---|---|---|
+| Round | 566, 932, 380, 700 | 0 at every stage |
+| Octagon | 188, 72, 520, 744 | 0 |
+| Part round | 180, 252, 270, 490 | 0 |
+| Cross | 0 | 0 |
+
+### 3. Octagon hips and the flat roof edge
+
+Each side's row of roof pieces stops inside its hips; one roof piece turned along each hip and set 0.12 m lower closes
+the wedge between two rows (a hip line). The flat roof's edge follows the walls with the same band of pieces turned with
+each side, so its rim is straight; no parapet.
+
+### 4. Crowns
+
+The cap applies to the main roof; a crown, lantern or finial may rise `CROWN_OVER` over it. Value in use: 3 m (lib/hub.js;
+the lead's call, 2026-11-11: up to one storey). Pieces of the drum, the lantern tower, the raised crown and the flat
+roof's lantern carry `crown: true`; `request.mainTop` and `request.top` record both. Tier order is now: 1 low roofs,
+2 no tower, drum or raised crown, 3 a wide open crown, 4 one storey. The raised crown is low (26 degrees) from tier 1.
+Celtic s5: tier 1, main roof 12.1 m under a cap of 15, crown and finial to 17.1 m. Steppe s5 still loses its crown
+(main roof 12.1 m against a cap of 12.2; the Steppe's tallest other building is a 6.2 m dock).
+The flat roof's dome is now a square lantern: corner walls (windows with the draw), the middle bay of each side open for
+the smoke, a flat top. The cross's lantern tower uses the same helper.
+
+### 5. Interiors by line and culture
+
+- Cross (Norse, Frankish-Norman, Norse forest, Lamari): long tables end to end with a bench row down each side, down
+  both sides of the front and back arms and along the side arms; at s5 the rows start in the crossing's corners inside
+  the stairs. High seat on its dais at the back arm's end facing the door.
+- Round under a drum (octagon and part round of the gable and hip cultures): up to five long tables like spokes from
+  the fire out to the gallery, clear of the seat's, door's and stair's sides; a few tables under the gallery.
+- Round under a cone (Celtic, Crannog, Saami, Steppe): benches round the fire and a ring of eight log benches at 5.4 m;
+  tables under the gallery.
+- Flat roof (Middle Eastern): rugs and carpets in a ring round the fire; tables under the gallery.
+- Galleries and walkways (as round 3) now carry standing torches by the rail (d2); chandeliers as round 3, inside the
+  drum's ring when the drum stands on the gallery's posts.
+
+The stair and side rooms still sit on the same side in every round hall.
+
+### 6. Renders
+
+All views are drawn from the same side (az 35): whole, cut at 2.6 m, and from s4 a cut 2.6 m over the gallery floor; the
+label says so. The six posts outside the wall in the round 3 cut views were the covered entrance's posts (porch draw, six
+posts) with its roof cut away. Renders: /tmp/hub4-renders, each line s1, s3, s5.
+
+### Checks run
+
+- `node lab/test_hub.js /tmp/hub4-renders 1`: all hub tests pass (the four lines s1 to s5 at d1 and d3, every
+  culture's line at s2 to s5 for lineages 1 and 2, with reach, floor gaps, inner posts, crown and cap).
+- `node lab/test_structure.js`: all structure rules hold on 36 designs.
+- `node lib/build_web.js` then `node lab/compare_page.js`: all seven same (web/index.html restored).
+
+### Open
+
+- Octagon hall s3 and s4 hold one table or none: the placer judges a turned piece by its whole box, so long tables off
+  the square stop at the octagon's walls.
+- The stair and side rooms do not change side by village.
+- Steppe s5 has no crown under its cap.
+- The hub_posts.py "round" test reads walls off the build's own square; houses with angled wings count as polygon.

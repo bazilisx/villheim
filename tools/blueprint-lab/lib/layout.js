@@ -435,7 +435,7 @@ function moveAside(b, list, path) {
   const S = spotsFor(b, W, grp, (path || []).map(c => ({ x: c.x, z: c.z })), h);
   for (const s of S.slice(0, 10)) {
     const u = placeGroup(grp, S.cx, S.cz, s);
-    if (meshClear(b, grp)) return true;
+    if (meshClear(b, grp) && kbClear(b, grp)) return true;
     u();
   }
   return false;
@@ -1130,6 +1130,30 @@ const meshL = () => (NODE_L ? require('./mesh.js') : window.VHMesh);
 const SHL = () => (NODE_L ? require('./shapes.js') : window.VHShapes);
 const W_STATION = /^(piece_workbench|forge|piece_stonecutter|piece_artisanstation|blackforge|piece_magetable|piece_cauldron)$/;
 const W_FURN = ['bed', 'table', 'seat', 'storage', 'craft', 'fire', 'clutter'];
+// A moved group against the library's set pieces round it, as the pool audit reads a set piece (lib/decorate.js audit
+// overlap, kbClip): the colliders no deeper than the pieces' own marked clip (p.clip), 3 cm between solid furniture
+// of two sets, and 2 cm more. A gem cutter moved alone went 0.5 m into the anvil of its own set (smithy Black Forest
+// s3d3 seed 384, round 7c).
+function kbClear(b, grp) {
+  const SH = SHL(), FD = decorL().FURNITURE;
+  if (!SH || !SH.world || !SH.clipDepth) return true;
+  const set = new Set(grp), SOLID = ['storage', 'craft', 'bed', 'table'];
+  const skip = q => ['mount', 'hang', 'top', 'fire', 'rug'].includes((FD[q.name] || {}).at);
+  for (const p of grp) {
+    if (!p.decor || skip(p)) continue;
+    let A = null;
+    for (const q of b.pieces) {
+      if (set.has(q) || !q.decor || !(p.kb || q.kb) || skip(q) || Math.abs(q.x - p.x) > 3 || Math.abs(q.z - p.z) > 3 || Math.abs(q.y - p.y) > 3) continue;
+      if (!A) { A = SH.world(p); if (!A || !A.length) break; }
+      const B = SH.world(q);
+      if (!B || !B.length) continue;
+      const solid = SOLID.includes((FD[p.name] || {}).cat) && SOLID.includes((FD[q.name] || {}).cat);
+      const lim = solid && p.kb !== q.kb ? 0.03 : Math.max(p.clip || 0, q.clip || 0);
+      if (SH.clipDepth(A, B) > lim + 0.02) return false;
+    }
+  }
+  return true;
+}
 function meshClear(b, grp) {
   const M = meshL(), SH = SHL();
   if (!M || !M.world || !M.deepest) return true;
@@ -1189,7 +1213,7 @@ function openWays(b, ctx) {
     const S = spotsFor(b, W, grp, keep, seedN++);
     for (const s of S.slice(0, 10)) {
       const undo = placeGroup(grp, S.cx, S.cz, s);
-      if (!meshClear(b, grp)) { undo(); continue; }
+      if (!meshClear(b, grp) || !kbClear(b, grp)) { undo(); continue; }
       const W2 = walkMap(b);
       if (accept(W2)) { W = W2; res.moved++; return true; }
       undo();
@@ -1305,7 +1329,7 @@ function openWays(b, ctx) {
             const S = undoAll.length ? spotsFor(b, W, grp, keep, seedN++) : S0;
             for (let i = Math.max(0, Math.min(r, S.length - 1)); i < S.length && i < r + 6; i++) {
               const u = placeGroup(grp, S.cx, S.cz, S[i]);
-              if (meshClear(b, grp)) { undoAll.push(u); break; }
+              if (meshClear(b, grp) && kbClear(b, grp)) { undoAll.push(u); break; }
               u();
             }
           }

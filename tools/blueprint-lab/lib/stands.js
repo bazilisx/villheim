@@ -534,6 +534,9 @@ function dressTops(b, ctx, zones, rooms) {
         DEBUG_S[k] = (DEBUG_S[k] || 0) + 1;
       }
       if (!got) continue;
+      // a set of stands never moves furniture aside: the fitter lists what a set would push out of its way (got.displace),
+      // which the interior library takes out and this pass would leave standing inside the set (a ledge over a bench)
+      if (got.displace && got.displace.length) continue;
       // a wall stand into the wall's relief stays against its collider, as the corpus's builders hang them (D-127)
       if (got.some(p => p.name === 'itemstand' && p.wclip && intoCollider(p, idx) > WALL_COLL + 0.005)) continue;
       // never before what it stands on (a bench of a set that comes at the third stage)

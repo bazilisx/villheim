@@ -481,6 +481,9 @@ function check(design, biome, opts = {}) {
       const u = undersideOf(pieces[j], pt.x, pt.z, boxes[j]);
       // what is less than 0.5 m over the floor is a kerb, sill or dais on it, never the ceiling (with the game's
       // colliders a beam laid on the floor shows 5 cm over it)
+      // a furnishing's piece (p.decor) under 1.8 m is furniture people walk round (a beam laid on a half wall and a
+      // chest as a counter top, creative set KC-100), never the ceiling; one hung higher still counts
+      if (u != null && pieces[j].decor && u < pt.y + 1.8) continue;
       if (u != null && u > pt.y + (useShapes ? 0.5 : 0.05) && u < lowest) { lowest = u; by = pieces[j].name; }
     }
     if (!isFinite(lowest)) continue;

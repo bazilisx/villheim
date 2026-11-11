@@ -286,9 +286,15 @@ function survey(b, G0) {
   for (const x of boxes) {
     if (x.info.role === 'stair' && x.o.y0 < G0 + 0.8) keep.push({ x0: x.o.x0 - 1.2, x1: x.o.x1 + 1.2, z0: x.o.z0 - 1.2, z1: x.o.z1 + 1.2, y0: -50, y1: 50, why: 'stair' });
     if (/^wood_(fine_|core_)?stack$/.test(x.p.name) && x.o.y0 < G0 + 0.5) keep.push({ x0: x.o.x0 - 1, x1: x.o.x1 + 1, z0: x.o.z0 - 1, z1: x.o.z1 + 1, y0: -50, y1: 50, why: 'woodpile' });
+    // and 0.65 m round any stair over its height, as the pool audit's stairs test reads it whatever stands between
+    // (a stair inside against the wall, pots outside it; workshop Meadows s3d3 seed 287, round 7c)
+    if (x.info.role === 'stair') keep.push({ x0: x.o.x0 - 0.65, x1: x.o.x1 + 0.65, z0: x.o.z0 - 0.65, z1: x.o.z1 + 0.65, y0: x.o.y0 - 0.1, y1: x.o.y1 + 0.3, why: 'stair' });
   }
   // what a plant may not stand in: anything but floors laid on the ground, rugs and other plants
   const solid = boxes.filter(x => !['rug'].includes(x.info.role) && !classOf(x.p.name) && !(x.info.role === 'floor' && x.o.y1 < G0 + 0.12)).map(x => x.o);
+  // the furnishing's own pieces by their catalog boxes too, as the pool audit's overlap test reads them (a ground torch
+  // by a door, whose collider is a thin stick, and a pot set into it; workshop Meadows s3d3 seed 287, round 7c)
+  for (const x of boxes) if (x.p.decor && !x.p.green && !['rug'].includes(x.info.role)) solid.push(Ck.catBox(x.p));
   const roofs = boxes.filter(x => ['roof', 'roofTop', 'roofCorner', 'gable', 'beam', 'floor'].includes(x.info.role) && x.o.y0 > G0 + 1.2).map(x => x.o);
   const fences = boxes.filter(x => x.p.yard && x.info.role === 'fence').map(x => x.o);
   // the gate closes the fence line for 'inside the yard'

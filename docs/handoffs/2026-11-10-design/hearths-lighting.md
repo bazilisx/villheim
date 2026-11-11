@@ -391,6 +391,80 @@ designs): the same as the base in every column. All 17 front homes and the 6 fal
 Scratch scripts (not committed): `/tmp/h3-r5/front.js` (fronts and checks), `why.js` (why a forced front was not
 built), `stackwhy.js` (why no gable stack), `fallback.js`, `close.js` (close renders).
 
+## Round 6 (2026-11-11): arch pair, the stack serves a fire, grausten fronts, big-room middle fires
+
+Commits 3646645 and the one with this section, in `tools/blueprint-lab/lib/generate.js` and `lib/details.js`.
+
+- Arch fronts as a mirrored pair (`hearthFront`). stone_arch is a half arch: its shoulder is at its +x end
+  (`data/piece-solids.json`). Corpus count on the device (`archpair.js`, every build in the corpus folder): of 3,828
+  stone_arch pieces with a parallel neighbor 2 m along at the same height, 2,954 (198 builds) are mirrored with the
+  shoulders out, 537 mirrored with the shoulders in, 337 turned the same way; over indoor home wall fires (`arch2.js` on
+  the round 4 `out.json`), 10 of 25 fires with arches have two at 1 m either side of the fire. Now: two stone_arch at
+  1 m either side of the mouth, turned so their shoulders are out, on jambs of 1 m blocks 1.5 m either side from the
+  ground to 2 m; the curves meet over the middle; mouth 2 m; no clip. The lintel form is as in round 5.
+- A middle-fire home that draws the gable stack moves its fire to that end (lead's call; D-132). `midStack` in
+  `generate` (before `hearthPlan`): a home at s2 or later with a stone hearth kit, a gable roof, no tower, a floor up
+  to 1 m and walls that are not stone, that draws the stack (0.6, the D-131 stack stream), gets the end `stackEndFor`
+  gives (only -x where a Svan or corner tower may stand at +x). `hearthPlan` turns a middle draw into a 'stack' hearth at
+  that end (`endAt(sg, true)`); where the end cell is not free (a door within 2.2 m, another wing) the fire stays in the
+  middle and no stack is built (`info.stackWhy` 'end not free'). A stack that cannot stand there becomes an end hearth
+  (round 5 `endFallback`). `chimneyStack` (the stack with no fire under it) is no longer built on homes; halls,
+  taverns, smithies and temples keep it, and only they keep the woodshed off its end. `req.hearth: 'middle'` keeps the
+  middle and builds no stack.
+- `lib/details.js` bands: the gable bay a stack hearth stands half in counts as an opening on the ground storey, so the
+  foot band and the half-timber rail at 1 m are not laid across it (`stackBay`). Before this, one moved-stack home
+  (norse-forest Black Forest s2 seed 2) failed `headroom` on the rail across the opening.
+- Ashlands fronts in grausten (lead's call). Corpus (device, `gr.js` and a grep for grausten): 56 builds with grausten
+  have indoor home wall fires; 32 of their 177 such fires (18 %) have grausten 1.3 to 2.9 m over them, most often a
+  2 x 2 or 4 x 2 m slab whose foot is 2 m over the fire's floor. Built: two `Piece_grausten_wall_1x2` slabs as jambs,
+  1.5 m either side, from the ground to 2 m over the floor, and a `Piece_grausten_wall_4x2` across them from 2 to 4 m,
+  2.2 m out from the wall line, the hood from 4 m. Skipped where an upper storey is under 4 m. Drawn at 0.35
+  (`FRONT_SHARE_GRAUSTEN`): about half the homes that draw one have no room (25 of 48 forced Ashlands wall hearths took
+  one), so 0.35 gives about 18 %. The clearance test now moves walls that stand on their pivot (grausten) down to their
+  foot before testing, as `finish()` does.
+- Middle fires in big rooms: `hearthDraw` uses the culture's middle odds times `MID_BIG_ROOM` 0.55 when the main wing
+  is 80 m2 or more, in place of the floor-area scale (0.3 under 120 m2, 0.6 under 250 m2).
+
+Measures (round 6; "Before" is 3646645 for the big-room rows, round 5 for the rest):
+
+| | Before | Now | Corpus |
+|---|---|---|---|
+| Stone front, s2 and s3 home wall hearths (`front.js`, 6 seeds) | 17 of 114: arch 6, lintel 11 | 14 of 111: arch 4, lintel 10 | stone over 14 % |
+| Grausten front, Ashlands home wall hearths (`ash.js`, every village culture, 6 seeds, s2 and s3) | 0 | 18 of 108 (17 %) | 18 % in builds with grausten |
+| Middle fires moved under the stack, 288 homes (`spotmix.js` sample) | | 0 (1 drew it, end not free) | |
+| The same with every home's middle draw forced (lib copy, 4 seeds, s2 and s3) | | 9 moved, all pass `checks.js` | |
+| Middle, main room 80 m2 and over (`roommix.js lib 6`, 39) | 5 (13 %) | 11 (28 %) | 74 of 325 (23 %) |
+| The same over 12 seeds (65; 0.5 gave 11, 17 %) | | 14 (22 %) | |
+| Middle, main room 35 to 80 m2 (174) | 6 (3 %) | 6 (3 %) | 0 of 67 |
+| Home middle, not round (`spotmix.js lib 6`, 213) | 6 % | 8 % | 16 % of all homes |
+| Against a wall, under 120 m2, not round | 99 % | 95 % | 92 % |
+| Halls and taverns over 80 m2, middle (`hallmix.js`) | 32 % | 32 % | 32 % |
+| Lines where the fire changes kind, s1-s2 / s2-s3 (96) | 10 / 12 | 11 / 12 | |
+
+The arch pair is 4 m wide along the wall against 3.6 m for the round 5 arch; 2 homes that had an arch front in round 5
+have none now (reason not traced). The moved-stack path has no case in the 6-seed sample: the middle homes there have hip
+roofs, stone walls or Z plans, or (one) a door by the free end.
+
+Checks: `test_structure.js` all hold on 36. Norse Meadows pool (`make_testpool.js /tmp/h3-pool6`): pass, 81 designs,
+nestBroken 0, lineage lines as round 4 and 5 (68/63, 86/84, 66/52, 83/48, 91/98, ...). `check_interiors` 1 seed (234
+designs) against cc82720: equal in every column. All 14 stone front homes, the 18 grausten front homes but 2, and the
+moved-stack homes pass `checks.js`; the 2 (baltic Ashlands s2 seed 4, s3 seed 6) fail `support`/`stability` on
+ashwood beams with or without the front.
+
+Renders (`/tmp/h3-r6/rend`, not committed; `close2.js` shows the front and what is behind it from the room): the four
+round 5 closes again (Anglo-Saxon Meadows s3 2 and Baltic Swamp s2 2 with the arch pair, Lamari Mistlands s2 4 marble
+lintel, Frankish-Norman Meadows s3 6 stone lintel), Norse Ashlands s2 1 (grausten jambs and slab on a raised floor),
+and a moved stack hearth (Norse Meadows s2 2 with the middle draw forced: the stack outside the gable, the fire in its
+alcove).
+
+Scratch scripts (not committed): `/tmp/h3-r6/front.js`, `ash.js`, `midstack.js`, `midprobe.js`, `big.js`, `close2.js`,
+`stackrend.js`; on the device `$HOME/vhfire/archpair.js`, `arch2.js`, `gr.js`.
+
+## Changes in other tracks' files (round 6)
+
+- `lib/details.js` bands and mid rail: `stackBay(e)` and one changed line, so the band and rail skip the bay a stack
+  hearth stands in.
+
 ## Changes in other tracks' files (round 5)
 
 - None outside the hearth parts. The woodshed's end is kept through its existing `avoid` argument at the call site in
@@ -433,6 +507,15 @@ built), `stackwhy.js` (why no gable stack), `fallback.js`, `close.js` (close ren
   the middle (1 of 174 mid-size homes), where an end hearth with a plank hood would serve. (Round 5: it becomes an end hearth, `endFallback`.)
 
 ## Next steps
+
+Round 6 next task:
+1. Baltic Ashlands homes fail `support`/`stability` on ashwood beams (seeds 4 and 6) with or without a front; another
+   track's parts (walls or decks), to pass on.
+2. The moved-stack path is tried only with forced draws; a larger sample (12 seeds or more, Meadows to Plains) would
+   show how often it happens and whether the stack share among wall fires stays near the corpus 3 %.
+3. Grausten fronts are skipped in two-storey Ashlands homes (storey under 4 m, 12 of 108); a 2 m mouth under a slab
+   needs 4 m. A lower slab or no front there are the options.
+4. Fronts still skip where the rake's 45 degree beams cross the place and on raised floors over 1 m.
 
 Round 5 next task:
 1. Ashlands hearth fronts in grausten (its 1 x 2 m blocks and `Piece_grausten_wall_arch`, 2 m tall): a geometry of its

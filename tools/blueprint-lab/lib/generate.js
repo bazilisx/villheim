@@ -1858,13 +1858,17 @@ const STACK_SHARE = 0.5;
 // The middle odds in a home whose main room is under 80 m2: about 2 % of those homes draw the middle (lab/hearths/
 // roommix.js), against 3 of 204 in the corpus.
 const MID_SMALL_ROOM = 0.05;
+// The middle odds in a home whose main wing is 80 m2 or more: the culture's odds times 0.55, in place of the floor-area
+// scale, which gave 5 of 39 such homes a middle fire (13 %) against 74 of 325 (23 %) in the corpus. With 0.55:
+// 14 of 65 (22 %) over 12 seeds, 11 of 39 (28 %) over 6 (lab/hearths/roommix.js, round 6).
+const MID_BIG_ROOM = 0.55;
 const HALL_HEARTH = { middle: 0.22, end: 0.4, side: 0.25, front: false, corner: 0.3 };
 function hearthDraw(lineage, cultureKey, stage, M, area, hall, salt = 0, room = null) {
   const wt = hall ? { ...(HEARTHS[cultureKey] || HEARTHS.default), ...HALL_HEARTH } : HEARTHS[cultureKey] || HEARTHS.default;
   // the culture's middle odds by the room the fire serves: in the corpus 3 of 204 home fires in rooms under 80 m2 stand
   // in the middle (none of 67 at 35 to 80 m2), 74 of 325 in rooms of 80 m2 or more (corpus-hearths-lights.json
   // homePlaceByServedRoom); over that, a big house's hall gathers round it more often (floor area)
-  const mid = hall ? wt.middle : wt.middle * (room != null && room < 80 ? MID_SMALL_ROOM : area == null ? 1 : area < 120 ? 0.3 : area < 250 ? 0.6 : 0.9);
+  const mid = hall ? wt.middle : wt.middle * (room != null && room < 80 ? MID_SMALL_ROOM : room != null ? MID_BIG_ROOM : area == null ? 1 : area < 120 ? 0.3 : area < 250 ? 0.6 : 0.9);
   const draw = (R, sgFirst) => {
     const spot0 = pick(R, { middle: mid, end: wt.end, side: wt.side });
     const sgR = R() < 0.5 ? -1 : 1;

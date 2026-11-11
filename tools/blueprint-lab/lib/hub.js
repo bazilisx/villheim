@@ -24,6 +24,7 @@ const NODE_H = typeof module !== 'undefined';
 const SH = NODE_H ? require('./styles.js') : window.VHStyles;
 const PH = NODE_H ? require('./pieces.js') : window.VHPieces;
 const CkH = () => (NODE_H ? require('./checks.js') : window.VHChecks);
+const DecH = () => (NODE_H ? require('./decorate.js') : window.VHDecorate);
 const BPH = () => (NODE_H ? require('./blueprint.js') : window.VHBlueprint);
 
 const STAGES = ['s1', 's2', 's3', 's4', 's5'];
@@ -73,8 +74,153 @@ function featureDraw(lineage, cultureKey) {
 // Furniture and decor go in only where they clip nothing hard (walls, doors, posts, stairs, other furniture) and leave
 // the keep-clear zones open (doorways, ladders, the way from the door to the fire and the high seat). D-148: a piece
 // that would block the way is not placed.
+// Walking the hall as a person does (D-148, D-152): the same reading as lab/reach.js on design/integration2. A 0.25 m
+// grid over the room rects on each floor; a cell is free when it is 0.45 m or more from every solid between 0.25 and
+// 1.8 m over that floor (floors, roofs, rugs, doors and things hung on walls are no obstacle). People come in at every
+// door to the outside and climb every stair and ladder (its foot cells to its top cells). test(p) says whether a
+// piece can go in with every room, every climb and every bed, table, station and chest placed so far still reached,
+// the piece itself included.
+function walker(b) {
+  const Ck = CkH(), Fu = DecH().FURNITURE;
+  const S = 0.25, RR = 0.45;
+  const PASS = new Set(['floor', 'rug', 'roof', 'roofTop', 'roofCorner', 'door', 'nature', 'misc']);
+  const MAIN = new Set(['bed', 'table', 'craft', 'storage']);
+  const rooms = b.rooms.filter(r => r.x1 > r.x0 && r.z1 > r.z0);
+  const levels = [...new Set(rooms.map(r => Math.round(r.y * 4) / 4))].sort((a, c) => a - c);
+  const L = levels.map(y => {
+    const rs = rooms.filter(r => Math.abs(r.y - y) < 0.2);
+    const x0 = Math.min(...rs.map(r => r.x0)), x1 = Math.max(...rs.map(r => r.x1)), z0 = Math.min(...rs.map(r => r.z0)), z1 = Math.max(...rs.map(r => r.z1));
+    const nx = Math.max(0, Math.ceil((x1 - x0) / S - 1e-9)), nz = Math.max(0, Math.ceil((z1 - z0) / S - 1e-9));
+    const inR = new Uint8Array(nx * nz), blk = new Int16Array(nx * nz);
+    for (let i = 0; i < nx; i++) for (let j = 0; j < nz; j++) {
+      const x = x0 + S / 2 + i * S, z = z0 + S / 2 + j * S;
+      if (x < x1 && z < z1 && rs.some(r => x > r.x0 && x < r.x1 && z > r.z0 && z < r.z1)) inR[i * nz + j] = 1;
+    }
+    return { y, rs, x0, z0, nx, nz, inR, blk };
+  });
+  const cx = (g, i) => g.x0 + S / 2 + i * S, cz = (g, j) => g.z0 + S / 2 + j * S;
+  const solidOf = p => {
+    const role = PH.piece(p.name).role, f = Fu[p.name];
+    if (PASS.has(role) || role === 'stair' || p.onTable) return null;
+    if (p.decor && f && ['mount', 'hang', 'top', 'rug'].includes(f.at)) return null;
+    const o = Ck.aabbShapes(p);
+    return o.pass ? null : o;
+  };
+  const dist = (o, x, z) => Math.hypot(Math.max(o.x0 - x, 0, x - o.x1), Math.max(o.z0 - z, 0, z - o.z1));
+  // cells of each level within 'r' of box o: [level index, cell index]
+  const cellsNear = (o, r, onlyBand) => {
+    const out = [];
+    L.forEach((g, li) => {
+      if (onlyBand && !(o.y0 < g.y + 1.8 && o.y1 > g.y + 0.25)) return;
+      const i0 = Math.max(0, Math.floor((o.x0 - r - g.x0) / S) - 1), i1 = Math.min(g.nx - 1, Math.ceil((o.x1 + r - g.x0) / S) + 1);
+      const j0 = Math.max(0, Math.floor((o.z0 - r - g.z0) / S) - 1), j1 = Math.min(g.nz - 1, Math.ceil((o.z1 + r - g.z0) / S) + 1);
+      for (let i = i0; i <= i1; i++) for (let j = j0; j <= j1; j++) if (g.inR[i * g.nz + j] && dist(o, cx(g, i), cz(g, j)) < r) out.push([li, i * g.nz + j]);
+    });
+    return out;
+  };
+  const mark = (o, d) => { for (const [li, c] of cellsNear(o, RR, true)) L[li].blk[c] += d; };
+  let seen = 0;
+  const cutAt = () => { for (; seen < b.pieces.length; seen++) { const o = solidOf(b.pieces[seen]); if (o) mark(o, 1); } };
+  cutAt();
+  // entry cells and climbs, from the structure
+  const levelAt = (y, tol) => L.findIndex(g => Math.abs(g.y - y) < tol);
+  const entries = [];
+  for (const p of b.pieces.filter(q => !q.decor && PH.piece(q.name).role === 'door')) {
+    const o = PH.doorOpening(p), li = levelAt(o.y, 0.6);
+    if (li < 0) continue;
+    const g = L[li], inRoom = (x, z) => g.rs.some(r => x > r.x0 && x < r.x1 && z > r.z0 && z < r.z1);
+    for (const sg of [1, -1]) {
+      if (inRoom(o.x + o.nx * sg * 0.8, o.z + o.nz * sg * 0.8) && !inRoom(o.x - o.nx * sg * 0.8, o.z - o.nz * sg * 0.8)) {
+        const px = o.x + o.nx * sg * 0.6, pz = o.z + o.nz * sg * 0.6;
+        for (const [l2, c] of cellsNear({ x0: px, x1: px, z0: pz, z1: pz }, 1.2, false)) if (l2 === li) entries.push([li, c]);
+      }
+    }
+  }
+  const climbs = [];
+  for (const p of b.pieces.filter(q => !q.decor && PH.piece(q.name).role === 'stair')) {
+    const o = Ck.aabb(p);
+    const touch = climbs.filter(c => c.some(q => q.x0 < o.x1 + 0.3 && q.x1 > o.x0 - 0.3 && q.z0 < o.z1 + 0.3 && q.z1 > o.z0 - 0.3 && q.y0 < o.y1 + 0.3 && q.y1 > o.y0 - 0.3));
+    const merged = [o, ...touch.flat()];
+    for (const t of touch) climbs.splice(climbs.indexOf(t), 1);
+    climbs.push(merged);
+  }
+  const links = [];
+  for (const c of climbs) {
+    const lo = c.reduce((a, q) => (q.y0 < a.y0 ? q : a)), hi = c.reduce((a, q) => (q.y1 > a.y1 ? q : a));
+    const yl = levels.filter(l => Math.abs(l - lo.y0) < 0.7).sort((a, d) => Math.abs(a - lo.y0) - Math.abs(d - lo.y0))[0];
+    const yh = levels.filter(l => Math.abs(l - hi.y1) < 0.9 && l !== yl).sort((a, d) => Math.abs(a - hi.y1) - Math.abs(d - hi.y1))[0];
+    if (yl == null || yh == null) continue;
+    const la = levels.indexOf(yl), lb = levels.indexOf(yh);
+    links.push([cellsNear(lo, 1.2, false).filter(([l]) => l === la), cellsNear(hi, 1.2, false).filter(([l]) => l === lb)]);
+  }
+  const flood = () => {
+    const seenA = L.map(g => new Uint8Array(g.nx * g.nz));
+    const q = [];
+    const add = ([li, c]) => { if (!seenA[li][c] && !L[li].blk[c]) { seenA[li][c] = 1; q.push([li, c]); } };
+    entries.forEach(add);
+    if (!q.length && L.length) {
+      const g = L[0];
+      for (let c = 0; c < g.nx * g.nz; c++) if (g.inR[c] && !g.blk[c]) { add([0, c]); break; }
+    }
+    const walk = () => {
+      while (q.length) {
+        const [li, c] = q.pop(), g = L[li], i = Math.floor(c / g.nz), j = c % g.nz;
+        for (const [di, dj] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+          const i2 = i + di, j2 = j + dj;
+          if (i2 < 0 || j2 < 0 || i2 >= g.nx || j2 >= g.nz) continue;
+          const c2 = i2 * g.nz + j2;
+          if (g.inR[c2]) add([li, c2]);
+        }
+      }
+    };
+    walk();
+    for (let k = 0; k <= links.length; k++) {
+      let more = false;
+      for (const [a, c] of links) {
+        const sa = a.some(([l, x]) => seenA[l][x]), sc = c.some(([l, x]) => seenA[l][x]);
+        if (sa && !sc) { c.forEach(add); more = true; }
+        if (sc && !sa) { a.forEach(add); more = true; }
+      }
+      walk();
+      if (!more) break;
+    }
+    return seenA;
+  };
+  const roomCells = rooms.map(r => { const li = levelAt(r.y, 0.2); return cellsNear({ x0: (r.x0 + r.x1) / 2, x1: (r.x0 + r.x1) / 2, z0: (r.z0 + r.z1) / 2, z1: (r.z0 + r.z1) / 2 }, Math.hypot(r.x1 - r.x0, r.z1 - r.z0), false).filter(([l, c]) => { if (l !== li) return false; const g = L[l], x = cx(g, Math.floor(c / g.nz)), z = cz(g, c % g.nz); return x > r.x0 && x < r.x1 && z > r.z0 && z < r.z1; }); });
+  const targets = [];
+  const reached = (sa, cells) => cells.some(([l, c]) => sa[l][c]);
+  const base = flood();
+  roomCells.forEach(cs => { if (reached(base, cs)) targets.push(cs); });
+  links.forEach(([a, c]) => { if (reached(base, a)) targets.push(a); if (reached(base, c)) targets.push(c); });
+  const mainNear = (p, o) => {
+    const f = Fu[p.name];
+    if (!p.decor || !f || !MAIN.has(f.cat) || p.outside || p.yard || /cauldron|cookingstation/.test(p.name)) return null;
+    const li = L.findIndex(g => p.y > g.y - 0.3 && p.y < g.y + 0.45);
+    return li < 0 ? null : cellsNear(o, 0.9, false).filter(([l]) => l === li);
+  };
+  return {
+    rooms: rooms.length,
+    // whether p can go in; when it can, it stays marked and, if it is a main piece, becomes a target
+    test(p) {
+      cutAt();
+      const o = solidOf(p);
+      if (!o || !L.length) return true;
+      mark(o, 1);
+      const sa = flood();
+      const own = mainNear(p, o);
+      const good = targets.every(cs => reached(sa, cs)) && (!own || reached(sa, own));
+      if (!good) { mark(o, -1); return false; }
+      if (own) targets.push(own);
+      return true;
+    },
+    // after test(p) said yes: the piece went in (already marked) or did not (b.put keeps one piece per place)
+    took(p, inSet) { const o = solidOf(p); if (!o || !L.length) return; if (inSet) seen++; else mark(o, -1); },
+  };
+}
+
 function placer(b, T) {
   const Ck = CkH();
+  let walk = null;
   const HARD = ['wall', 'door', 'window', 'pole', 'stair', 'gable', 'fence'];
   const FURN = ['bed', 'table', 'seat', 'storage', 'craft', 'fire', 'clutter', 'light'];
   const hard = [], furn = [];
@@ -98,7 +244,13 @@ function placer(b, T) {
         if (!o.onFurn && furn.some(h => over(bx, h, 0.01))) return false;
         if (keep.some(k => (k.always || !o.inKeep) && over(bx, k, 0))) return false;
       }
+      // the way through the hall stays open (D-148): built once the hall's rooms are known
+      if (!walk && b.rooms.length) walk = walker(b);
+      const q = { ...p, decor: true, ...extra };
+      if (walk && !o.free && !walk.test(q)) return false;
+      const n0 = b.pieces.length;
       b.put(name, x, y, z, yaw, { decor: true, ...extra });
+      if (walk && !o.free) walk.took(q, b.pieces.length > n0);
       return true;
     },
   };
@@ -195,6 +347,13 @@ function campDesign(b, K, T, o) {
 
 // ---------------------------------------------------------------- long hall
 
+// A straight flight of wood_stair pieces (each climbs 1 m over a 2 m cell) up the cells in St.run from the floor at
+// yLow toward St.dir, as lib/generate.js putStairRun.
+function putStair(b, K, St, yLow) {
+  const [dx, dz] = St.dir, yaw = normH(Math.atan2(-dx, -dz) * 180 / Math.PI);
+  St.run.forEach(([x, z], k) => b.put(K.stair || 'wood_stair', x, yLow + k, z, yaw));
+}
+
 // A rectangular hall W x D half-sizes in metres (both odd, so a 2 m floor cell sits on the fire at the middle), walls of
 // 'storeys' storeys of SHt metres. Returns the hall's frame for the furnishing.
 function longHall(b, K, C, T, o) {
@@ -213,7 +372,7 @@ function longHall(b, K, C, T, o) {
   // upper floors: a loft at the -x end from s4, the gallery over both aisles at s5
   const gallery = stage === 's5';
   const loftY = stage === 's5' ? SHt * 2 : SHt;
-  const loft = big ? { x: [-W + 1, -W + 3, -W + 5], v: stage === 's5' ? [-4, -2, 0, 2, 4] : [-2, 0, 2] } : null;
+  const loft = big ? { x: [-W + 1, -W + 3, -W + 5], v: [-4, -2, 0, 2, 4] } : null;
   // doors: the main door in the middle of the -z side; from s3 a back door on +z (Anglo-Saxon halls face both ways)
   const doors = [{ x: 0, z: -D, yaw: 0, main: true }];
   if (+stage[1] >= 3 || C.opposedDoors) doors.push({ x: C.opposedDoors ? 0 : -W + 5, z: D, yaw: 0 });
@@ -245,36 +404,39 @@ function longHall(b, K, C, T, o) {
   const postTop = gallery ? SHt * 2 : top;
   for (const x of postXs) for (const v of [-aisle, aisle]) { T.posts(b, K, x, v, postTop, K.poleLong && /log/.test(K.poleLong) ? null : null); }
   if (aisle) for (const v of [-aisle, aisle]) for (let x = postXs[0] + 1; x < postXs[postXs.length - 1]; x += 2) b.put(K.beam, x, (gallery ? SHt : postTop) + 0.1, v, 0);
-  // gallery floors over the aisles (s5), with a rail on the open side
-  const ladders = [];
+  // gallery floors over the aisles (s5), with a rail on the open side. A stair to each gallery in the outer aisle row at
+  // the +x end, rising toward the end wall (corpus halls put the stair in an aisle corner or at an end); the gallery
+  // floor stays open over the flight
+  const ladders = [], stairs = [];
   if (gallery) {
+    for (const sg of [-1, 1]) {
+      const z = sg * (D - 1), run = [W - 7, W - 5, W - 3].map(x => [x, z]);
+      stairs.push({ run, stand: [W - 9, z], land: [W - 1, z], dir: [1, 0] });
+    }
+    const open = (x, z) => stairs.some(St => St.run.some(c => c[0] === x && c[1] === z));
     const gv = [];
     for (let z = aisle + 1; z < D; z += 2) gv.push(z, -z);
-    const L1 = { hole: [-W + 3, aisle + 1], dir: [-1, 0], stand: [-W + 5, aisle + 1], land: [-W + 1, aisle + 1] };
-    for (let x = -W + 1; x < W; x += 2) for (const v of gv) {
-      if ((x === L1.hole[0] && v === L1.hole[1]) || (x === L1.land[0] && v === L1.land[1])) continue;
-      b.put(K.floor, x, SHt, v);
-    }
-    T.putLadder(b, K, L1, 0, SHt);
-    ladders.push(L1);
-    // (none where the ladder to the loft climbs past the rail)
+    for (let x = -W + 1; x < W; x += 2) for (const v of gv) if (!open(x, v)) b.put(K.floor, x, SHt, v);
+    for (const St of stairs) putStair(b, K, St, 0);
     for (const v of [-aisle, aisle]) for (let x = -W + 1; x < W; x += 2) if (!(v > 0 && x === -W + 5)) b.put(K.fence, x, SHt + 0.6, v, 0);
+    b.notes.push('A stair up to each gallery in an aisle corner at the high seat end.');
   }
-  // the loft at the -x end, a ladder up to it
+  // the loft at the -x end. s4: a ladder up along the aisle posts at the nave's side; s5: a ladder up from the gallery
   if (loft) {
     const yL = loftY;
     let L;
     if (gallery) L = { hole: [-W + 5, aisle + 1], dir: [0, -1], stand: [-W + 5, aisle + 3], land: [-W + 5, aisle - 1] };
-    else L = { hole: [-W + 7, 2], dir: [-1, 0], stand: [-W + 9, 2], land: [-W + 5, 2] };
+    else L = { hole: [-W + 7, aisle - 1], dir: [-1, 0], stand: [-W + 9, aisle - 1], land: [-W + 5, aisle - 1] };
     for (const x of loft.x) for (const v of loft.v) {
       if ((x === L.hole[0] && v === L.hole[1]) || (x === L.land[0] && v === L.land[1])) continue;
       b.put(K.floor, x, yL, v);
     }
     T.putLadder(b, K, L, yL - SHt, SHt);
     ladders.push(L);
-    // a rail along the loft's open edge
-    const xe = loft.x[loft.x.length - 1] + 1;
+    // a rail along the loft's open edges
+    const xe = loft.x[loft.x.length - 1] + 1, vm = loft.v[loft.v.length - 1] + 1;
     for (const v of loft.v) if (!(v === L.hole[1] && Math.abs(xe - L.hole[0]) < 1.1)) b.put(K.fence, xe, yL + 0.6, v, 90);
+    if (!gallery) for (const x of loft.x) for (const sg of [-1, 1]) if (!(x === L.hole[0] && Math.abs(sg * vm - L.hole[1]) < 1.1)) b.put(K.fence, x, yL + 0.6, sg * vm, 0);
   }
   // roof: a gable over the whole hall (lib/generate.js gablePieces)
   const r = (C.pitch || 45) === 45 ? 2 : 1;
@@ -294,8 +456,10 @@ function longHall(b, K, C, T, o) {
   }
   // stair or step at a door that is off the ground: none (the hall stands on the ground)
   b.rooms.push({ x0: -W, x1: W, z0: -D, z1: D, y: 0, h: SHt * storeys, use: 'hall', main: true, door: { x: 0, z: -D } });
+  if (gallery) for (const sg of [-1, 1]) b.rooms.push({ x0: -W, x1: W, z0: sg > 0 ? aisle : -D, z1: sg > 0 ? D : -aisle, y: SHt, h: top - SHt, use: 'gallery' });
+  if (loft) { const vm = loft.v[loft.v.length - 1] + 1; b.rooms.push({ x0: -W, x1: loft.x[loft.x.length - 1] + 1, z0: -vm, z1: vm, y: loftY, h: 2.4, use: 'loft' }); }
   b.doorX = 0;
-  return { W, D, top, capY, aisle, postXs, doors, loft, gallery, ladders, loftY, porch };
+  return { W, D, top, capY, aisle, postXs, doors, loft, gallery, ladders, stairs, loftY, porch };
 }
 
 // ---------------------------------------------------------------- round hall
@@ -453,6 +617,8 @@ function roundHall(b, K, C, T, o) {
     b.notes.push('A gallery round the hall at the first storey, a ladder up from the floor.');
   }
   b.rooms.push({ x0: -ap, x1: ap, z0: -ap, z1: ap, y: 0, h: top, use: 'hall', main: true, door: { x: door.x, z: door.z } });
+  // the gallery ring as one rect: its rail closes it off from the open middle
+  if (gallery) b.rooms.push({ x0: -ap, x1: ap, z0: -ap, z1: ap, y: SHt, h: SHt, use: 'gallery' });
   b.doorX = door.x;
   void roofTop; void has;
   return { ap, N, L, top, peak, door, doors, rings, postsOf, gallery, ladders, drum, drumR, SHt };
@@ -553,10 +719,13 @@ function courtDesign(b, K, C, T, o) {
     T.putLadder(b, K, L, 0, SHt);
     lad.push(L);
   }
-  // roofs: flat, at the wing top; the iwan and the towers higher
+  // roofs: flat, at the wing top; the iwan and the towers higher. Before there is a tower a ladder at the back wing's
+  // end climbs to the roof; from s4 a door in the tower opens onto it
   const roofCells = [], iwanCells = [], towerCells = [];
   for (const [, c] of cells) (inIwan(...c) ? iwanCells : inTower(...c) ? towerCells : roofCells).push(c);
-  for (const [x, z] of roofCells) b.put(K.floor, x, top, z);
+  const RL = !corners.length && storeys === 1 ? { stand: [-O + 3, Q + 1], hole: [-O + 3, Q + 3], land: [-O + 3, Q + 5], dir: [0, 1] } : null;
+  for (const [x, z] of roofCells) if (!(RL && ((x === RL.hole[0] && z === RL.hole[1]) || (x === RL.land[0] && z === RL.land[1])))) b.put(K.floor, x, top, z);
+  if (RL) { T.putLadder(b, K, RL, 0, SHt); lad.push(RL); }
   // iwan: side and back walls a storey higher
   if (iwan) {
     for (const e of edges.concat(inner)) {
@@ -573,7 +742,13 @@ function courtDesign(b, K, C, T, o) {
   for (const [sx, sz] of corners) {
     const tc = towerCells.filter(([x, z]) => x * sx > Q && z * sz > Q);
     const tEdges = edges.concat(inner).filter(e => (inTower(...e.cell) && inTower(...e.cell)[0] === sx && inTower(...e.cell)[1] === sz) || (e.other && inTower(...e.other) && inTower(...e.other)[0] === sx && inTower(...e.other)[1] === sz));
-    for (let s = storeys; s < 3; s++) for (const e of tEdges) T.wallSegment(b, K, C, e.x, s * SHt, e.z, e.yaw, SHt, s === 2 && (Math.abs(e.yaw === 0 ? e.x : e.z) % 4 === 2) ? 'window' : 'wall', o.wallStyle);
+    // a door from the tower onto each wing roof it stands between
+    const roofDoor = e => e.other && ((e.yaw === 90 && Math.abs(e.x - sx * Q) < 0.01 && Math.abs(e.z - sz * (Q + 3)) < 0.01) || (e.yaw === 0 && Math.abs(e.z - sz * Q) < 0.01 && Math.abs(e.x - sx * (Q + 3)) < 0.01));
+    for (let s = storeys; s < 3; s++) for (const e of tEdges) {
+      const kd = s === storeys && roofDoor(e) ? 'door' : s === 2 && (Math.abs(e.yaw === 0 ? e.x : e.z) % 4 === 2) ? 'window' : 'wall';
+      T.wallSegment(b, K, C, e.x, s * SHt, e.z, e.yaw, SHt, kd, o.wallStyle);
+      if (kd === 'door') doorList.push({ x: e.x, z: e.z, y: s * SHt });
+    }
     // ladders in the tower: a ladder per storey up from the wing's top floor, round the tower's walls
     const cx = sx * (Q + 3), cz = sz * (Q + 3);
     // up the outer column of cells, then along the inner row from that landing
@@ -581,14 +756,13 @@ function courtDesign(b, K, C, T, o) {
       { stand: [cx + 2 * sx, cz + 2 * sz], hole: [cx + 2 * sx, cz], land: [cx + 2 * sx, cz - 2 * sz], dir: [0, -sz] },
       { stand: [cx + 2 * sx, cz - 2 * sz], hole: [cx, cz - 2 * sz], land: [cx - 2 * sx, cz - 2 * sz], dir: [-sx, 0] },
     ];
-    for (let s = storeys; s < 3; s++) {
+    // one ladder per storey, from the floor below to this one, up to the lookout on top
+    for (let s = storeys; s <= 3; s++) {
       const y = s * SHt, L = Ls[(s - storeys) % 2];
-      // one ladder per storey: from the floor below to this one
       for (const [x, z] of tc) if (!((x === L.hole[0] && z === L.hole[1]) || (x === L.land[0] && z === L.land[1]))) b.put(K.floor, x, y, z);
       if (s > 0) T.putLadder(b, K, L, y - SHt, SHt);
       if (s === 0) for (const [x, z] of tc) b.put(K.floor, x, y, z);
     }
-    for (const [x, z] of tc) b.put(K.floor, x, towerTop, z);
     lad.push(...Ls);
   }
   // parapets: stone blocks on stone walls, planks elsewhere
@@ -620,7 +794,14 @@ function courtDesign(b, K, C, T, o) {
   }
   for (const [, [x, z]] of colPts) { if (K.stonePillar) T.column(b, K, x, z, 0, SHt); else T.posts(b, K, x, z, SHt); }
   const wellOn = k >= 3;
-  b.rooms.push({ x0: -O, x1: O, z0: -O, z1: O, y: 0, h: top, use: 'hall', main: true, door: gate ? { x: 0, z: -O } : { x: 0, z: -Q } });
+  // rooms: each wing on each floor, the towers' floors, the roofs as terraces; the yard is open air
+  const wingRects = [];
+  if (wing.back) wingRects.push([-O, O, Q, O]);
+  if (wing.front) wingRects.push([-O, O, -O, -Q]);
+  if (wing.left) wingRects.push([-O, -Q, wing.front ? -O : -Q, O]);
+  if (wing.right) wingRects.push([Q, O, wing.front ? -O : -Q, O]);
+  wingRects.forEach(([x0, x1, z0, z1], i) => { for (let s = 0; s <= storeys; s++) b.rooms.push({ x0, x1, z0, z1, y: s * SHt, h: s < storeys ? SHt : 2.4, use: s < storeys ? 'hall' : 'roof', main: i === 0 && s === 0, door: { x: 0, z: -Q } }); });
+  for (const [sx, sz] of corners) for (let s = storeys + 1; s <= 3; s++) b.rooms.push({ x0: sx > 0 ? Q : -O, x1: sx > 0 ? O : -Q, z0: sz > 0 ? Q : -O, z1: sz > 0 ? O : -Q, y: s * SHt, h: 2.4, use: s < 3 ? 'tower' : 'lookout' });
   b.doorX = 0;
   return { doors: doorList, Q, O, top, SHt, iwan, iwanTop, corners, cells, edges, wing, gate, ladders: lad, wellOn, towerTop };
 }
@@ -652,6 +833,7 @@ function furnish(b, K, C, T, o, F) {
   for (const d of (F.doors || [])) place.keep(d.x - 1.6, d.x + 1.6, d.z - 1.6, d.z + 1.6, 0, 3, true);
   if (F.door) place.keep(F.door.x - 1.3, F.door.x + 1.3, F.door.z - 0.5, F.door.z + 3, 0, 3);
   for (const L of F.ladders || []) for (const c of [L.stand, L.hole]) place.keep(c[0] - 1.1, c[0] + 1.1, c[1] - 1.1, c[1] + 1.1, -1, 100);
+  for (const St of F.stairs || []) for (const c of [St.stand, ...St.run, St.land]) place.keep(c[0] - 1.1, c[0] + 1.1, c[1] - 1.1, c[1] + 1.1, -1, 100);
   // the way from the door to the fire
   if (line === 'long') place.keep(-1.3, 1.3, -F.D, 0, 0, 3);
   else if (line === 'round') place.keep(F.door.x - 1.3, F.door.x + 1.3, F.door.z, 0, 0, 3);

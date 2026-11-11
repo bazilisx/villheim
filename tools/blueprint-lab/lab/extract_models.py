@@ -200,7 +200,14 @@ def best_frame(P):
 
 def sample_tris(V, T, step, cap=400):
     """Points on the triangles, at most 'step' apart (up to 'cap' steps along an edge; the collider boxes keep the
-    first round's 60)."""
+    first round's 60). cap None: as many steps as the longest edge needs, up to 1500 (a 4.4 m log sampled at 400 steps
+    leaves gaps wider than a 1 cm voxel, and its solid stays hollow)."""
+    if cap is None:
+        if len(T) == 0:
+            return V
+        a0, b0, c0 = V[T[:, 0]], V[T[:, 1]], V[T[:, 2]]
+        ed = float(max(np.linalg.norm(b0 - a0, axis=1).max(), np.linalg.norm(c0 - a0, axis=1).max()))
+        cap = int(np.clip(math.ceil(ed / step) + 1, 400, 1500))
     out = [V]
     a, b, c = V[T[:, 0]], V[T[:, 1]], V[T[:, 2]]
     L = np.maximum(np.linalg.norm(b - a, axis=1), np.linalg.norm(c - a, axis=1))
@@ -508,7 +515,7 @@ def tol_fit(V, T, tol):
         vox *= 1.1
     g0 = lo - vox
     dims = [int(math.ceil(e / vox)) + 2 for e in ext]
-    S = solid_fast(sample_tris(L, T, vox * 0.5), g0, vox, dims)
+    S = solid_fast(sample_tris(L, T, vox * 0.5, cap=None), g0, vox, dims)
     if not S.any():
         return [one], 0.0
     DS = nd.distance_transform_edt(~S) * vox  # how far each cell is from the solid
@@ -1181,7 +1188,7 @@ def fit_score(meshes, parts, tol=0.02):
             Vc, Tc = m['V'][used], remap[m['T'][idx]]
             a = np.clip(np.floor((Vc.min(0) - g0) / vox).astype(int) - 2, 0, None)
             b = np.minimum(np.ceil((Vc.max(0) - g0) / vox).astype(int) + 3, dims)
-            sub = solid_fast(sample_tris(Vc, Tc, vox * 0.5), g0 + a * vox, vox, list(b - a))
+            sub = solid_fast(sample_tris(Vc, Tc, vox * 0.5, cap=None), g0 + a * vox, vox, list(b - a))
             S[a[0]:b[0], a[1]:b[1], a[2]:b[2]] |= sub
     ctr = [g0[i] + (np.arange(dims[i]) + 0.5) * vox for i in range(3)]
     P = np.zeros(dims, bool)

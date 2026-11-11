@@ -1476,10 +1476,11 @@ function tasteD(n, P) {
 
 // The household's own bed and how it lays its beds out, from the household's stream (D-126: any bed, any biome;
 // weights only). Culture corpus (2,153 builds, data/culture-corpus/summary.json on the research branch): bed 910 and
-// piece_bed02 1,096 uses, ashwood_bed none in the lists; beds side by side in 21 % of furnished norse builds against a
-// bed in 71 % (about 3 in 10 of the houses with beds), 45 against 70 in the forest cabins; a rug beside or under about
-// 30 % of beds; a chest within 2.6 m of 17 to 38 %.
-const BED_W = { bed: 0.45, piece_bed02: 0.55, ashwood_bed: 0.12 };
+// piece_bed02 1,096 uses, ashwood_bed none in the lists (a share of 0.05 as the kit's other floors, so it can show);
+// of the norse builds with a bed (71 % of furnished builds): beds side by side 21 % (3 in 10), a bed on a rug 30 %
+// (4 in 10), a chest by a bed 34 % (5 in 10); forest cabins side by side 45 against 70 (6 in 10). D-136: the rates are
+// these counts.
+const BED_W = { bed: 0.5, piece_bed02: 0.6, ashwood_bed: 0.05 };
 const BED_ROW = { 'norse-forest': 0.64 };
 function bedTaste(kit, R, biome, culture, P) {
   const list = KIT.bed.filter(n => ok(n, biome));
@@ -1487,8 +1488,8 @@ function bedTaste(kit, R, biome, culture, P) {
   const tidy = P ? P.tidy : 0.5, comfort = P ? P.comfort : 0.5, clutter = P ? P.clutter : 0.5;
   // a tidy household lines its beds up a little more often
   kit.bedRow = R() < (BED_ROW[culture] != null ? BED_ROW[culture] : 0.3) * (0.7 + 0.6 * tidy);
-  kit.bedRug = 0.3 * (0.5 + comfort);
-  kit.bedChest = 0.17 + 0.35 * clutter;
+  kit.bedRug = 0.42 * (0.5 + comfort);
+  kit.bedChest = 0.3 + 0.36 * clutter;
   kit.hR = R;
 }
 
@@ -2896,8 +2897,10 @@ function auditOne(p, ctx, extra, allow) {
     if (d > Math.max(SHOWS_MAX, allow || 0)) { ONE_WHY = 'shows'; return false; }
     if (d > SHOWS_MAX) used = Math.max(used, d);
   }
-  // what hangs on a wall stays out of what shows of the walls round it (the cross bars, T-606, T-612)
-  if (it.f.at === 'mount' || p.rest === 'wall') {
+  // what hangs on a wall stays out of what shows of the walls round it (the cross bars, T-606, T-612); the pool
+  // audit's mountClip reads every stand, sign and banner that way wherever it rests (a flat stand on a shelf top went
+  // 9 cm into a stone wall's relief)
+  if (it.f.at === 'mount' || p.rest === 'wall' || MOUNT_LIKE.test(p.name)) {
     const d = hungInto(p, A.struct.map(sb => sb.p).concat(more));
     if (d > Math.max(HUNG_CLIP(p.name), allow || 0)) { ONE_WHY = 'hung'; return false; }
     if (d > HUNG_CLIP(p.name)) used = Math.max(used, d);
@@ -2905,6 +2908,8 @@ function auditOne(p, ctx, extra, allow) {
   if (used) p.wclip = +(used + 0.005).toFixed(3);
   return true;
 }
+// the names lib/audit.js MOUNT measures for mountClip
+const MOUNT_LIKE = /^(piece_banner\d+|sign|sign_notext|itemstand|piece_shieldgeneric|cloth_hanging_|fenrirhide_hanging|Trophy|wood_dragon)/;
 // which of auditOne's tests turned the last piece down (lab/richness.js)
 let ONE_WHY = '';
 // Furniture inside furniture as the pool audit measures it (lib/audit.js furnClip: the decorator's boxes, turned, more

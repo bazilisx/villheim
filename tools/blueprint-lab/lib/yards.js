@@ -380,7 +380,10 @@ function add(b, ctx) {
   const solidNow = () => [...S.solid, ...placed.map(p => Ck.aabb(p))];
   // under the eaves (they reach 1 m past the walls, with braces under them) only low things: beds, benches, flowers
   const eave = o => o.y1 > G0 + 1.05 && o.x0 < S.W.x1 + 1.2 && o.x1 > S.W.x0 - 1.2 && o.z0 < S.W.z1 + 1.2 && o.z1 > S.W.z0 - 1.2;
-  const soft = p => { const o = Ck.aabb({ ...p, y: p.y + G0 }), c = { ...o, x0: o.x0 + 0.3, x1: o.x1 - 0.3, z0: o.z0 + 0.3, z1: o.z1 - 0.3 }; return !keep.some(z => hitBox(c, z, 0)) && inYard(c) && !placed.some(q => q.name === p.name && Math.hypot(q.x - p.x, q.z - p.z) < 0.35); };
+  // a plant's spread on the ground (half its widest side), so two of one kind keep out of one another
+  const sizeY = (NODE_Y ? require('./decorate.js') : window.VHDecorate)._int.size;
+  const spread = n => { const sz = sizeY(n); return Math.max(0.225, Math.max(sz[0], sz[2]) / 2); };
+  const soft = p => { const o = Ck.aabb({ ...p, y: p.y + G0 }), c = { ...o, x0: o.x0 + 0.3, x1: o.x1 - 0.3, z0: o.z0 + 0.3, z1: o.z1 - 0.3 }; return !keep.some(z => hitBox(c, z, 0)) && inYard(c) && !placed.some(q => q.name === p.name && Math.hypot(q.x - p.x, q.z - p.z) < Math.max(0.35, 2 * spread(p.name) - 0.1)); };
   const free = (p, pad = 0.1) => {
     const o = Ck.aabb({ ...p, y: p.y + G0 });
     const why = solidNow().some(z => hitBox(o, z, pad)) ? 'solid' : keep.some(z => hitBox(o, z, 0)) ? 'keep' : !inYard(o) ? 'out' : eave(o) ? 'eave' : null;
@@ -521,7 +524,10 @@ function add(b, ctx) {
     // a bush spreads about 3 m: 1.4 m in from the fence and 3 m from the next one
     const apart = s => !placed.some(q => bushes.includes(q.name) && Math.hypot(q.x - s.x, q.z - s.z) < 3);
     got.push(['bush', tryAt(fenceSpots(1.4).filter(apart), s => (apart(s) ? [{ name: bushes[Math.floor(R() * bushes.length)], x: s.x, y: 0, z: s.z, yaw: Math.floor(R() * 16) * 22.5, pad: 0.05 }] : null), big ? 3 : 2)]);
-    got.push(['flowers', tryAt(wallSpots(0.45), s => [0, 0.45, -0.45].map(a => ({ name: FLOWERS[Math.abs(Math.round(s.x * 7 + s.z * 13 + a * 11)) % FLOWERS.length], x: s.x + (s.n[1] ? a : 0), y: 0, z: s.z + (s.n[0] ? a : 0), yaw: Math.floor(R() * 4) * 90, soft: true, pad: 0 })), big ? 2 : 1)]);
+    // three flowers in a row, spaced by their own spread so a fern and its neighbor do not grow into one another
+    const row = s => { const nm = a => FLOWERS[Math.abs(Math.round(s.x * 7 + s.z * 13 + a * 11)) % FLOWERS.length], m = nm(0), r = nm(0.45), l = nm(-0.45);
+      return [[m, 0], [r, spread(m) + spread(r)], [l, -(spread(m) + spread(l))]]; };
+    got.push(['flowers', tryAt(wallSpots(0.45), s => row(s).map(([name, a]) => ({ name, x: s.x + (s.n[1] ? a : 0), y: 0, z: s.z + (s.n[0] ? a : 0), yaw: Math.floor(R() * 4) * 90, soft: true, pad: 0 })), big ? 2 : 1)]);
   }
   // what the culture keeps in its yard (docs/CULTURE_STYLES.md): stone builders a pile of field stone, log builders a
   // second stack of logs, kitchen-garden cultures a second bed, the steppe a cart

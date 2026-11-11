@@ -20,6 +20,8 @@ const canDecor = (biome, name) => canMake(biome, name) || PB.minor(name);
 // and an iron chest in the same place count as one assembly; the placer fills each slot with what the village's biome
 // makes. Pieces with no class here are their own slot. Small building pieces count when they carry something (a beam
 // shelf, a half-wall counter).
+// the furniture roles the pool audit measures (lib/audit.js FURN)
+const FURN_B = new Set(['bed', 'table', 'seat', 'storage', 'craft', 'fire', 'clutter']);
 const CLASSES = {
   chest: ['piece_chest_wood', 'piece_chest', 'piece_chest_blackmetal', 'piece_chest_private'],
   barrel: ['piece_chest_barrel'],
@@ -185,8 +187,11 @@ function stalls(b, ctx, zones) {
     if (solid.some(({ p, o }) => inner(o) && !(onWall(p) && ['wall', 'window', 'pole'].includes(PB.piece(p.name).role)))) continue;
     if (doors.some(p => inner(Ck.aabb(p)) || (onWall(p) && (s.along === 'x' ? p.x > box.x0 - 1 && p.x < box.x1 + 1 : p.z > box.z0 - 1 && p.z < box.z1 + 1)))) continue;
     if (zones.some(z => z.x0 < box.x1 && z.x1 > box.x0 && z.z0 < box.z1 && z.z1 > box.z0 && z.y0 < y + 2 && z.y1 > y && !z.flue)) continue;
-    // clear the stalls' floor of furnishing
-    b.pieces = b.pieces.filter(p => !(p.decor && inner(Ck.aabb(p))));
+    // clear the stalls' floor of furnishing, and what stands against the end partitions' outer faces (a chest by the
+    // last half wall went into it)
+    const pad = s.along === 'x' ? { x0: box.x0 - 0.3, x1: box.x1 + 0.3, z0: box.z0, z1: box.z1 } : { x0: box.x0, x1: box.x1, z0: box.z0 - 0.3, z1: box.z1 + 0.3 };
+    const near = o => o.x0 < pad.x1 && o.x1 > pad.x0 && o.z0 < pad.z1 && o.z1 > pad.z0 && o.y1 > y + 0.2 && o.y0 < y + 2.4;
+    b.pieces = b.pieces.filter(p => !(p.decor && near(Ck.aabb(p))));
     const at = (a, d) => (s.along === 'x' ? [a, s.wall + s.n * d] : [s.wall + s.n * d, a]);
     const T = { decor: true, trim: true };
     const yawAcross = s.along === 'x' ? 90 : 0, yawAlong = s.along === 'x' ? 0 : 90;
@@ -290,7 +295,9 @@ function vignettes(b, ctx, zones) {
         z0: e.z + Math.min(0, nz * 1.6) - (uz ? 1.3 : 0.05) + nz * half, z1: e.z + Math.max(0, nz * 1.6) + (uz ? 1.3 : 0.05) + nz * half };
       const inPlane = p => !p.decor && Math.abs((p.x - e.x) * nx + (p.z - e.z) * nz) < half + 0.35; // the wall's own posts, trim and courses
       const busy = b.pieces.some(p => { if (p === wall || inPlane(p) || ['floor', 'rug'].includes(PB.piece(p.name).role)) return false; const o = Ck.aabb(p); return o.x0 < box.x1 && o.x1 > box.x0 && o.z0 < box.z1 && o.z1 > box.z0 && o.y0 < room.y + 2.2 && o.y1 > room.y + 0.15; })
-        || zones.some(z => z.x0 < box.x1 && z.x1 > box.x0 && z.z0 < box.z1 && z.z1 > box.z0 && z.y0 < room.y + 2 && z.y1 > room.y);
+        || zones.some(z => z.x0 < box.x1 && z.x1 > box.x0 && z.z0 < box.z1 && z.z1 > box.z0 && z.y0 < room.y + 2 && z.y1 > room.y)
+        // a stair along this wall counts though it stands in the wall's plane, with the audit's 0.6 m round its foot
+        || b.pieces.some(p => { if (p.decor || PB.piece(p.name).role !== 'stair') return false; const o = Ck.aabb(p); return o.x0 - 0.6 < box.x1 && o.x1 + 0.6 > box.x0 && o.z0 - 0.6 < box.z1 && o.z1 + 0.6 > box.z0 && o.y0 < room.y + 2.2 && o.y1 > room.y - 0.3; });
       if (busy) continue;
       const fl = b.pieces.find(p => !p.decor && PB.piece(p.name).role === 'floor' && (() => { const o = Ck.aabb(p); const cx = e.x + nx * (half + 0.5), cz = e.z + nz * (half + 0.5); return cx > o.x0 && cx < o.x1 && cz > o.z0 && cz < o.z1 && Math.abs(o.y1 - (room.y + 0.1)) < 0.6; })());
       if (!fl) continue;
@@ -686,6 +693,9 @@ function fit(b, ctx, room, idx, zones, anc, a, mirror, fires) {
       if (!okP) { p.y = y0; bx = Ck.aabbShapes(p); WHY_B = why0; }
     }
     if (!okP) { LAST_B = `${i} ${p.name}`; if (fail()) return null; continue; }
+    // two of the set's pieces filled with one name in one place (two slots of a creative set both drawn as a beam) are
+    // one piece in the game: the second is left out
+    if (made.some(q => q && q.name === p.name && Math.abs(q.x - p.x) < 0.06 && Math.abs(q.y - p.y) < 0.06 && Math.abs(q.z - p.z) < 0.06 && Math.abs(((q.yaw - p.yaw) % 360 + 540) % 360 - 180) < 3)) { dropped++; continue; }
     if (p.rest === 'floor' && made.lvl != null && made.level == null) made.level = made.lvl;
     made[i] = p;
   }
@@ -858,6 +868,17 @@ function placeable(p, bx, mm, i, b, ctx, room, idx, zones, made, clipOf, anc, fi
     return no(31);
   }
   if (fdeep) p.fclip = +(fdeep + 0.005).toFixed(3); else delete p.fclip;
+  // furniture the decorator has no size for (a mead ketill) the pool audit measures by its catalog box (furnClip) and
+  // by what shows when a crafting station is one of the pair (onStation): the same here, with nothing passed by a mark
+  if (FURN_B.has(info.role)) {
+    const pc = Ck.catBox(p);
+    for (const q of nearP(0.3).map(r => r.p).filter(q => q.decor && !displace.has(q)).concat(made.filter(Boolean))) {
+      if (q === p || (decorB().FURNITURE[p.name] && decorB().FURNITURE[q.name]) || !FURN_B.has(PB.piece(q.name).role) || /_ext\d/.test(q.name) || /_ext\d/.test(p.name)) continue;
+      if ([p.name, q.name].some(n => /^(fire_pit|hearth|bonfire)$/.test(n))) continue;
+      const qc = Ck.catBox(q), ov = k => Math.min(pc[k + '1'], qc[k + '1']) - Math.max(pc[k + '0'], qc[k + '0']);
+      if (ov('x') > 0.12 && ov('y') > 0.12 && ov('z') > 0.12 && !movable(q)) return no(31);
+    }
+  }
   // the audit's own tests (what it rests on is there, plain wall behind, out of what shows of the walls) come last,
   // as the dearest
   const audited = () => {
@@ -1397,8 +1418,11 @@ function liveIn(b, ctx, zones) {
   const problems = p => {
     const out = new Set(), bx = Ck.aabbShapes(p), it = D.itemOf(p), sp = p._sp;
     const flat = !!sp.rug;
+    // what stands near: by the game's solids and by the audit's furniture box, whichever reaches further (a barrel's
+    // solids are smaller than its box, and a chair by it went unseen)
+    const reach = { ...bx, x0: Math.min(bx.x0, it.b.x - it.b.r), x1: Math.max(bx.x1, it.b.x + it.b.r), z0: Math.min(bx.z0, it.b.z - it.b.r), z1: Math.max(bx.z1, it.b.z + it.b.r) };
     if (!flat) for (const z of zones) if (z.x0 < bx.x1 && z.x1 > bx.x0 && z.z0 < bx.z1 && z.z1 > bx.z0 && z.y0 < bx.y1 && z.y1 > bx.y0) out.add('z' + zones.indexOf(z));
-    for (const r of idx.near(bx, 0.1)) {
+    for (const r of idx.near(reach, 0.1)) {
       const q = r.p;
       if (q === p) continue;
       const role = PB.piece(q.name).role;
@@ -1502,6 +1526,26 @@ function apply(b, ctx, zones) {
     const m = liveIn(b, ctx, zones || []);
     if (m) b.notes.push(`${m} movable things set a little off square, as a household leaves them.`);
   }
+  dropFalling(b);
+}
+
+// A set's building piece the game would let fall (a creative set's hanging pole whose source build held it by a piece
+// the set left out) goes, with what then has nothing under it; the structure check (lib/checks.js stability) is the
+// judge. Only the library's own pieces go.
+function dropFalling(b) {
+  const Ck = checksB();
+  if (!b.pieces.some(p => p.kb && PB.piece(p.name).structural)) return 0;
+  let n = 0;
+  for (let pass = 0; pass < 3; pass++) {
+    const boxes = b.pieces.map(Ck.gameBox), near = Ck.index(boxes);
+    const ys = boxes.filter(x => x.info.structural).map(x => x.y0).sort((a, c) => a - c);
+    const ground = b.ground != null ? b.ground : ys.length ? ys[Math.floor(ys.length * 0.02)] : 0;
+    const out = new Set(Ck.stability(b.pieces, boxes, near, ground).map(i => b.pieces[i]).filter(p => p.kb));
+    if (!out.size) break;
+    b.pieces = b.pieces.filter(p => !out.has(p));
+    n += out.size;
+  }
+  return n;
 }
 
 // ---------------------------------------------------------------- built-up furniture

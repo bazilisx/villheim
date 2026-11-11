@@ -560,9 +560,9 @@ game needs no change. The info field is no place for the mark: the mod reads a s
 the section (its pieces then fail the pool audit if audited again). Over 72 s2d3 and s3d3 designs three pieces carry a
 mark: the recorded wall clips of the mined sets are mostly chests set into walls, and few of those sets get placed.
 
-Materials (D-066). `pieces.js` `minor`: rugs, banners, food and feasts, pots, candles, garlands, cloth hangings, Dvergr
-props, treasure, signs. They pass the materials check in any biome, and the generator's last pass (`biomeSafe`) keeps
-them; stations, beds, chests, tables, seats, fires and building pieces still need their own.
+Materials (D-065, D-126, 2026-11-10): every decor and furniture piece goes in any biome (Rules, "Decor in any biome");
+building pieces keep to the village's biome, the earlier ones and the next. `pieces.js` `minor` lists the small pieces
+(rugs, banners, food, pots, candles) for other uses only.
 
 Cost: in Node the 154-design comparison (every type, seven biomes, s2d2 and s3d3) took 74 ms a design without the
 library and 113 ms with it (2026-11-09, third round; after filing pieces by their own reach, reading the rooms once
@@ -753,7 +753,7 @@ game judge a pool the same way. A test pool's files are read as lines (`<culture
 
 | Measure | Gated | What it catches |
 |---|---|---|
-| nestBroken | yes | a piece of d1 missing from d2, or of d2 from d3 (D-071) |
+| shapeChange | yes | a line whose plan changes shape family between stages: square-cornered (rectangle, L, T, U, cross) against angled (octagon, round), read from the share of ground floor walls off the 90 degree grid (D-132) |
 | furnClip, stacked | yes | furniture inside furniture; furniture on furniture other than chest stacks and table settings |
 | overWin | yes | something hung over a window or door |
 | stairFoot, stations | yes | a stair with nothing under its foot; a base station with no roof (D-067) |
@@ -763,8 +763,9 @@ game judge a pool the same way. A test pool's files are read as lines (`<culture
 | doorway | yes | anything solid in the middle 0.9 m of a door's way from 0.35 to 1.95 m, 0.7 m either side (a beam at the foot of a door, T-606) |
 | onStation | yes | furniture on or in a crafting station (a table on a workbench, T-606) |
 | intoWall | yes | furniture more than 15 cm into a wall, post, brace, window or door; against walls and posts by the furniture's frame (a bed's fur tucks against a wall as in the game), against braces, windows and doors by what shows of both |
-| richness | yes, on pools of six lines or more | the corpus and the library slipping out of the designs: decor prefabs per d3 design (floor 11), the share of d2 and d3 decor pieces that came in a library set (0.36) and the corpus sets, mined and creative, per d3 design (0.9), from each file's `#VillheimSets` section |
+| richness | yes, on pools of six lines or more | the corpus and the library slipping out of the designs: decor prefabs per d3 design (floor 11), the share of d2 and d3 decor pieces that came in a library set (0.34 since 2026-11-11) and the corpus sets, mined and creative, per d3 design (0.9), from each file's `#VillheimSets` section |
 | outside, intoWallSoft | watched | furniture whose middle is outside the floor's outline; furniture 5 to 15 cm into a wall |
+| nestBroken, lineage | reported, never gated | a piece of d1 missing from d2, or of d2 from d3 (D-071); the share of a stage's shell kept at the next. D-132 (Tyler): decor, fires, tables, chairs, beds and walls may move and change as a house grows; only the shape family stays |
 
 Richness (2026-11-10). `lib/blueprint.js` writes a `#VillheimSets` section before `#Pieces` (`set id;decor pieces`, from
 each piece's `kb`), which PlanBuild and the mod skip; pools written before it carry none and are not measured. The
@@ -845,8 +846,8 @@ what the sets leave. Other changes in the same pass:
 - Hung pieces are kept out of what shows of every wall the pool audit counts, and the furnishing tests a piece set on
   its pivot (a quarter wall) where it will stand after `generate.js` `finish` (`decorate.js` `asBuilt`).
 - More tries per room (40 picks, 12 misses in a row).
-- `generate.js` `biomeSafe` keeps decor within the village's decor reach (D-080, `pieces.js` `decorOk`) and swaps only
-  what is past it; it had swapped a fitted log bench for a plank bench that went into the couch's half wall.
+- `generate.js` `biomeSafe` never swaps or removes decor for its biome (D-065); it had swapped a fitted log bench for a
+  plank bench that went into the couch's half wall.
 
 In the rooms people live in (home, sleeping, guest, kitchen, hall, tavern) the extras' barrels are one group in a
 corner by the fire or in the kitchen, two or three by the household, and its chests go by a bed or in a corner away
@@ -957,11 +958,18 @@ running it again makes the same design. Then `vh place <id>` in the game.
 - Proposed wording for CLAUDE.md once Tyler agrees: "Generated designs from the blueprint lab may be built by villages
   once Tyler has marked them Yes in the Generated tab and they are copied to `blueprints/approved-generated`. They use
   only vanilla pieces and pass every check in `lib/checks.js`."
-- Decor reach (D-080, 2026-11-10): furniture and decor come from the village's biome and the next one (Meadows
-  draws on the Black Forest, the Black Forest on the Swamp), paid in local stand-ins by the mod
-  (DecorPaidWithAnalogs). Stations, fires, chests and anything built keep to the village's own biome; minor decor
-  (rugs, pots, crates) stays open to any biome (D-066). One rule for the lab: `lib/pieces.js` `decorReach`,
-  `decorOk`; the decorator, the interior library, the household's stand items and the checks read it.
+- Decor in any biome (D-065, D-126; Tyler, 2026-11-10: "there are no restrictions on any level of furniture, decoration, or
+  limits on whats shown for any decor... decor can be freely used across any biome, but build pieces (walls, roofs,
+  etc.) should (mostly) come from the relevant biome and surrounding biomes ... Please ensure there are not limitations
+  on the number of rugs, flowers, or truly any type or quantity of decor"). Every furniture, decor, light, rug, station
+  and stand item of vanilla Valheim goes in every biome, inside and out; building pieces (walls, floors, roofs, beams,
+  posts, doors, windows, stairs) keep to the village's biome, the earlier ones and the next (`lib/pieces.js`
+  `decorOk`, `buildReach`); D-012 (stone later in the Meadows and the Black Forest) is unchanged. D-080 is about payment
+  only (the mod pays decor in local stand-ins, DecorPaidWithAnalogs). The village's own biome weighs a little more for
+  flavor (`decorate.js` `flavorD`, `kitbash.js` `flavorB`: a piece or set two biomes or more ahead weighs less), never
+  excludes. No decor kind or amount is held to a count: the decorator's extras halve their weight with each use in a
+  room, the library's sets weigh less with each repeat in a building, and the room's free floor, the corpus rate for the
+  room kind and the household set the amount.
 - The BiomeBlueprints pack stays blacklisted. Only the 12 builds by other creators listed in `Keepers.cs` are read.
 - Other creators' builds are study material. They are not committed to the repo and not shipped.
 

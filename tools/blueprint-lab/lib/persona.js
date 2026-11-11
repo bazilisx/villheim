@@ -274,9 +274,10 @@ const ITEMS = {
   valuable: [['Black Forest', 'Ruby', 1], ['Black Forest', 'Amber', 1], ['Swamp', 'AmberPearl', 1], ['Mistlands', 'DragonEgg', 0]],
 };
 function itemFrom(kind, biome, R, own = 2, seen) {
-  // what the village's biome and the next one give (D-080): a Meadows house may keep mead and jam from the Black Forest
+  // any biome's items (D-065; Tyler 2026-11-10: decor freely across any biome); the village's own biome weighs a little
+  // more for flavor
   const t = tierP(biome);
-  const list = (ITEMS[kind] || []).filter(([b]) => tierP(b) <= t + 1);
+  const list = ITEMS[kind] || [];
   if (!list.length) return null;
   // the village's own biome counts more; older ones still turn up
   // what the house already shows weighs less, so a wall of stands is not five of one thing

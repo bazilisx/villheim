@@ -245,6 +245,18 @@ const NEEDS = {
   // black marble for the mortar, flametal for the rolling pins
   cauldron_ext1_spice: 'Swamp', cauldron_ext3_butchertable: 'Mountain', cauldron_ext4_pots: 'Plains',
   cauldron_ext5_mortarandpestle: 'Mistlands', cauldron_ext6_rollingpins: 'Ashlands',
+  // stations and pieces of the later biomes (bamboogaming.net and metabot.gg recipe pages, 2026-11-11): the galdr table
+  // and its upgrades and the black forge with its cooler and vise take Mistlands materials; the metal cutter (black
+  // marble, flametal, ashwood, charred bone), the gem cutter, the lava lantern (flametal, proustite, sulfur) and the
+  // bone throne (charred bone, flametal, grausten, charred skulls) Ashlands ones. The mead ketill came with the
+  // Ashlands update; its recipe was not found, so Ashlands is a guess.
+  piece_magetable: 'Mistlands', piece_magetable_ext: 'Mistlands', piece_magetable_ext2: 'Mistlands',
+  blackforge: 'Mistlands', blackforge_ext1: 'Mistlands', blackforge_ext2_vise: 'Mistlands',
+  blackforge_ext3_metalcutter: 'Ashlands', blackforge_ext4_gemcutter: 'Ashlands', piece_Lavalantern: 'Ashlands',
+  piece_bone_throne: 'Ashlands', piece_MeadCauldron: 'Ashlands',
+  // feasts by the biome their food comes from (the sailor's bounty from the ocean, reached by ship after the Swamp)
+  FeastMeadows: 'Meadows', FeastBlackforest: 'Black Forest', FeastSwamps: 'Swamp', FeastOceans: 'Swamp',
+  FeastMountains: 'Mountain', FeastPlains: 'Plains', FeastMistlands: 'Mistlands', FeastAshlands: 'Ashlands',
 };
 function needs(name) {
   if (NEEDS[name]) return NEEDS[name];
@@ -329,22 +341,23 @@ function support(n) { return SUPPORT[supportClass(n)]; }
 const MINOR = /^(rug_|jute_carpet|piece_banner\d|piece_pot\d|ashland_pot|piece_gift\d|piece_mistletoe|piece_xmas|piece_jackoturnip|piece_(Celebration|Fairylight)Garland|Candle_resin|Skull\d|ancient_skull|cloth_hanging_long|fenrirhide_hanging|dvergrprops_(barrel|crate|crate_long|shelf|hooknchain|lantern|lantern_standing)$|treasure_stack$|sign$|sign_notext$|Feast[A-Z]|Mead[A-Z]|BarleyWine$|Bread$|CookedMeat$|Sausages$|Honey|MeatPlatter$|LoxPie$|PiquantPie$|RoastedCrustPie$|SerpentStew$|MashedMeat$|MarinatedGreens$|MisthareSupreme$|QueensJam$|Salad$|Eyescream$|ShocklateSmoothie$|SparklingShroomshake$|SizzlingBerryBroth$|ScorchingMedley$|SpicyMarmalade$|Blueberries$|Raspberry$|Cloudberry$|Carrot$|Onion$|Pukeberries$|Fish\d+$)/;
 function minor(name) { return MINOR.test(name); }
 
-// Decor reach (D-080, Tyler 2026-11-10): furniture and decor come from the village's biome and the next one (Meadows
-// draws on the Black Forest, the Black Forest on the Swamp, and so on), paid in local stand-ins from the chests (the
-// mod's DecorPaidWithAnalogs). Crafting stations, fires, chests and what is built (walls, floors, roofs) keep to the
-// village's own biome (D-066).
-function decorReach(biome) {
+// What a village may put up (D-065, D-126; Tyler, 2026-11-10: "there are no restrictions on any level of furniture,
+// decoration, or limits on whats shown for any decor... decor can be freely used across any biome, but build pieces
+// (walls, roofs, etc.) should (mostly) come from the relevant biome and surrounding biomes"). Furniture, decor, lights,
+// rugs, stations and what stands hold: any vanilla prefab in any biome, inside and out. Building pieces (walls, floors,
+// roofs, beams, posts, doors, windows, stairs): the village's biome and its neighbors (the earlier biomes and the next
+// one). D-080 is about payment only (the mod pays decor in local stand-ins, DecorPaidWithAnalogs), never placement.
+// D-012 (stone later in the Meadows and the Black Forest) is the styles' and the generator's.
+function buildReach(biome) {
   const i = Math.max(0, BIOME_ORDER.indexOf(biome));
   return BIOME_ORDER[Math.min(BIOME_ORDER.length - 1, i + 1)];
 }
+const decorReach = () => BIOME_ORDER[BIOME_ORDER.length - 1];
 function decorOk(name, biome) {
-  const info = piece(name), lim = BIOME_ORDER.indexOf(biome);
-  // storage keeps to the village's own biome too: the interior library's sets are laid out round the chest they were
-  // mined with, and a bigger iron chest from the next biome went into the workbench beside it
-  const station = info.structural || ['craft', 'fire', 'storage'].includes(info.role) || /^(piece_workbench|forge|piece_stonecutter|piece_artisanstation|blackforge|piece_magetable|piece_cauldron|piece_oven|smelter|charcoal_kiln|blastfurnace|eitrrefinery|windmill|piece_spinningwheel)/.test(name);
-  return BIOME_ORDER.indexOf(needs(name)) <= (station ? lim : BIOME_ORDER.indexOf(decorReach(biome)));
+  if (!piece(name).structural) return true;
+  return BIOME_ORDER.indexOf(needs(name)) <= BIOME_ORDER.indexOf(buildReach(biome));
 }
 
-const apiP = { piece, minor, decorReach, decorOk, support, supportClass, SUPPORT, needs, MAT, BIOME_ORDER, exportSize, NEEDS, DOORS, doorSpec, doorOpening, CLIMB, climbSpec };
+const apiP = { piece, minor, decorReach, buildReach, decorOk, support, supportClass, SUPPORT, needs, MAT, BIOME_ORDER, exportSize, NEEDS, DOORS, doorSpec, doorOpening, CLIMB, climbSpec };
 if (typeof module !== 'undefined') module.exports = apiP;
 else window.VHPieces = apiP;

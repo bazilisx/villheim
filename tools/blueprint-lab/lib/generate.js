@@ -1256,7 +1256,8 @@ const hits = (bx, z) => bx.x0 < z.x1 && bx.x1 > z.x0 && bx.y0 < z.y1 && bx.y1 > 
 // chimney.
 function settle(b, ctx) {
   const Ck = checksLib(), ord = P.BIOME_ORDER, limit = ord.indexOf(ctx.biome);
-  b.pieces = b.pieces.filter(p => !p.decor || ord.indexOf(P.needs(p.name)) <= limit);
+  // decor goes in any biome; building pieces the biome and the next (D-065, D-126: lib/pieces.js decorOk, the one rule)
+  b.pieces = b.pieces.filter(p => !p.decor || P.decorOk(p.name, ctx.biome));
 
   const isFire = p => p.decor && /^(fire_pit|hearth)$/.test(p.name);
   const ground = b.rooms.filter(r => !r.upper);
@@ -1442,7 +1443,7 @@ function hangBraziers(b, ctx, fire) {
 function bedIfNone(b, ctx, fire, zones) {
   const Ck = checksLib(), ord = P.BIOME_ORDER, limit = ord.indexOf(ctx.biome);
   const fits = n => ord.indexOf(P.needs(n)) <= limit;
-  if (b.pieces.some(p => P.piece(p.name).role === 'bed' && fits(p.name))) return;
+  if (b.pieces.some(p => P.piece(p.name).role === 'bed' && P.decorOk(p.name, ctx.biome))) return; // any bed counts (D-126)
   // the best bed first, the narrow wooden one where the best does not fit (between a hall's aisle posts); head to the
   // wall, else along the wall (a hall's side benches)
   const names = ['ashwood_bed', 'piece_bed02', 'bed'].filter(n => fits(n) && (n !== 'ashwood_bed' || ctx.biome === 'Ashlands'));
@@ -1589,13 +1590,12 @@ function dropOrphans(b) {
 const STAND_IN = { piece_chest_barrel: 'piece_chest_wood', piece_logbench01: 'piece_bench01', piece_groundtorch: 'piece_groundtorch_wood',
   piece_chest: 'piece_chest_wood', piece_cookingstation_iron: 'piece_cookingstation', hearth: 'fire_pit' };
 function biomeSafe(b, biome) {
-  const ord = P.BIOME_ORDER, limit = ord.indexOf(biome), fits = n => ord.indexOf(P.needs(n)) <= limit;
+  const ord = P.BIOME_ORDER, limit = ord.indexOf(biome) + 1, fits = n => ord.indexOf(P.needs(n)) <= limit;
   const Ck = checksLib(), gone = [];
   b.pieces = b.pieces.filter(p => {
-    // minor decor goes anywhere (D-066); other decor one biome further, as the furnishing chose it (D-080,
-    // lib/pieces.js decorOk: a log bench of a Meadows couch was swapped here for a plank bench that went into the
-    // couch's half wall)
-    if (fits(p.name) || P.piece(p.name).structural || (p.decor && (P.minor(p.name) || P.decorOk(p.name, biome)))) return true;
+    // decor goes in any biome (D-065, Tyler 2026-11-10), as the furnishing chose it (a log bench of a couch swapped
+    // here for a plank bench went into the couch's half wall); building pieces the village's biome and the next
+    if (fits(p.name) || P.piece(p.name).structural || (p.decor && P.decorOk(p.name, biome))) return true;
     const alt = STAND_IN[p.name];
     if (alt && fits(alt)) { p.name = alt; return true; }
     if (p.decor) gone.push(Ck.aabb(p));

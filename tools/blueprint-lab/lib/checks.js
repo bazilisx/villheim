@@ -524,11 +524,10 @@ function check(design, biome, opts = {}) {
   results.push({ check: 'ladders', ok: problems.length === 0,
     detail: ls.length ? (problems.length ? `${problems.length} problems: ${[...new Set(problems)].slice(0, 3).join('; ')}` : `${ls.length} ladder and stair pieces, all climbable`) : 'no ladders or stairs' });
 
-  // beds: every house and longhouse sleeps someone, in a bed its biome can make (Tyler, T-102)
+  // beds: every house and longhouse sleeps someone (Tyler, T-102); any vanilla bed in any biome (D-065)
   const kind = design.request && design.request.type;
   if (['home', 'longhouse'].includes(kind)) {
-    const ord = PC.BIOME_ORDER, limit = biome ? ord.indexOf(biome) : 99;
-    const beds = pieces.filter(p => PC.piece(p.name).role === 'bed' && ord.indexOf(PC.needs(p.name)) <= limit).length;
+    const beds = pieces.filter(p => PC.piece(p.name).role === 'bed').length;
     results.push({ check: 'beds', ok: beds > 0, detail: beds ? `${beds} beds` : `no bed in this ${kind}` });
   }
 
@@ -537,11 +536,10 @@ function check(design, biome, opts = {}) {
     [...near(ptBox(p.x, p.y + 0.5, p.y + 30, p.z), 0)].some(j => j !== i && (undersideOf(pieces[j], p.x, p.z, boxes[j]) ?? -1) > p.y + 0.5));
   results.push({ check: 'woodpiles', ok: piles.length === 0, detail: piles.length ? `${piles.length} woodpiles indoors` : 'no woodpiles indoors' });
 
-  // materials for the biome, building pieces and furnishing alike
+  // materials for the biome: building pieces from the village's biome and its neighbors; furniture and decor from any
+  // biome (D-065, Tyler 2026-11-10; lib/pieces.js decorOk)
   if (biome) {
-    const ord = PC.BIOME_ORDER, limit = ord.indexOf(biome);
-    // minor decor goes in any biome (D-066); other decor reaches one biome further, paid in local stand-ins (D-080)
-    const over = [...new Set(pieces.filter(p => ord.indexOf(PC.needs(p.name)) > limit && !(p.decor && (PC.minor(p.name) || PC.decorOk(p.name, biome)))).map(p => p.name))];
+    const over = [...new Set(pieces.filter(p => !PC.decorOk(p.name, biome)).map(p => p.name))];
     results.push({ check: 'materials', ok: over.length === 0, detail: over.length ? `needs later biomes: ${over.slice(0, 5).join(', ')}` : `all pieces available in ${biome}` });
   }
 

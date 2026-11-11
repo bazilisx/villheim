@@ -10,7 +10,16 @@ const fs = require('fs');
 const G = require('../lib/generate.js');
 const KB = require('../lib/kitbash.js');
 const probe = process.argv.includes('--probe');
-if (probe) {
+// --drop <library.json>: probe the picks lab/creative_sets.js leaves out for going into no room (the first DROP group),
+// from a library written with NODROP=1 (NODROP=1 node lab/creative_sets.js x /tmp/lib.json)
+const dropAt = process.argv.indexOf('--drop');
+if (dropAt > 0) {
+  const lib = JSON.parse(fs.readFileSync(process.argv[dropAt + 1], 'utf8'));
+  const first = [...require('./creative_sets.js').DROP].slice(0, 49);
+  KB.setLibrary(lib);
+  process.argv.splice(2, process.argv.length, '--probe', ...lib.assemblies.filter(a => first.includes(a.pick)).map(a => a.id));
+}
+if (probe || dropAt > 0) {
   const only = process.argv.slice(3);
   const all = KB.library();
   const built = KB.BUILT.splice(0);
@@ -26,7 +35,7 @@ if (probe) {
       if (d.pieces.some(p => p.kb && p.kb.startsWith(a.id + '@'))) ok++;
     }
     const top = Object.entries(globalThis.__kbNo).sort((x, y) => y[1] - x[1]).slice(0, +process.env.WHY || 4).map(([k, v]) => `${k}:${v}`).join(', ');
-    console.log(a.id, `${ok}/${tries}`.padStart(6), a.name.padEnd(40), ok ? '' : `why ${KB.why()}`, process.env.WHY ? top : '');
+    console.log(a.id, a.pick != null ? `pick ${a.pick}` : '', `${ok}/${tries}`.padStart(6), a.name.padEnd(40), ok ? '' : `why ${KB.why()}`, process.env.WHY ? top : '');
   }
   KB.BUILT.push(...built);
   KB.setLibrary(all);

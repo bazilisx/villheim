@@ -66,6 +66,8 @@ From ray distances to walls and spacing between two of the same piece. These are
 
 ## Biome of each piece
 
+Since 2026-11-10 (D-065, Tyler: decor freely across any biome) this biome is flavor only: every piece goes in every
+biome, and pieces two biomes or more ahead of the village weigh less (`decorate.js` `flavorD`).
 `decorate.js` gives each piece the first biome whose village can make it. Where the recipe was not certain, the
 game's own notes in `design-list.csv` set an upper bound: a design at a stage with no note for a material cannot hold a
 piece that needs it. Examples: banners 01, 02, 03 by the Black Forest; hanging brazier, reinforced chest, iron torch,
@@ -102,8 +104,11 @@ tables, stools, benches, deer rugs, wooden floor torches, item stands, workbench
    rugs stay at one per 15 m2, and the fill stops when half the floor is taken. The same rules hold: no clipping, wall
    pieces in the middle of a wall, never over a window or door, paths and door boxes clear.
 
-Each building gets one kit (bed, chest, table, seats, rug, lights, banner, carving), drawn by seed from what its biome
-can make and weighted by how often each shows in that kind of room. Cultures lean: Saami and steppe homes have no
+Each building gets one kit (bed, chest, table, seats, rug, lights, banner, carving), drawn by seed from every piece of
+each kind and weighted by how often each shows in that kind of room and by flavor (above); since 2026-11-10 each room
+draws its own rug, seats, table, lights, banner and carving again (`decorate.js` `varyKit`: the building's choice the
+likeliest, what the house already shows less likely), and the kinds hold more pieces (rugs of moose, seal, bear and
+bog witch deer, Dvergr tables and stools, black marble and blackwood benches, banners 06 to 11, the blue torch). Cultures lean: Saami and steppe homes have no
 tables; Middle Eastern and steppe sit on benches and lay more rugs; castle and Byzantine buildings hang more banners.
 
 ## Checks

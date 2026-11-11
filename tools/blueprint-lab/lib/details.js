@@ -33,6 +33,7 @@ function relief(name) {
 }
 
 const normD = a => ((a % 360) + 360) % 360;
+const SILL_PLANTS = ['Pickable_Dandelion', 'Pickable_Thistle', 'Pickable_Mushroom', 'Pickable_Mushroom_yellow', 'Pickable_Fiddlehead', 'Pickable_Carrot', 'Pickable_Onion', 'Pickable_Turnip', 'Pickable_Dandelion', 'Pickable_Mushroom_blue'];
 const quatD = yaw => { const a = yaw * Math.PI / 360; return [0, +Math.sin(a).toFixed(6), 0, +Math.cos(a).toFixed(6)]; };
 const BIOMES_D = ['Meadows', 'Black Forest', 'Swamp', 'Mountain', 'Plains', 'Mistlands', 'Ashlands'];
 const reachesD = (biome, b) => BIOMES_D.indexOf(biome) >= BIOMES_D.indexOf(b);
@@ -327,7 +328,9 @@ function exterior(b, ctx) {
     const sd = quarter ? ((quarter.x - e.x) * ux + (quarter.z - e.z) * uz > 0 ? 1 : -1) : 0;
     const as = quarter ? [-sd * 0.5] : [-0.5, 0.5], lip = K.beam1 || 'wood_beam_1';
     const kept = [];
-    for (const a of as) kept.push(['wood_floor_1x1', a, 0.6, -0.3, 0, 'floor1', 0], [lip, a, 1.05, -0.2, 0, 'beam1', 0], ['Pickable_Dandelion', a, 0.6, -0.25, 0, 'flower', 0]);
+    // what grows in each box: any flower, herb or vegetable (Tyler, 2026-11-10: no one plant per sill), by the box's
+    // place so it is the same at every decor stage
+    for (const a of as) kept.push(['wood_floor_1x1', a, 0.6, -0.3, 0, 'floor1', 0], [lip, a, 1.05, -0.2, 0, 'beam1', 0], [SILL_PLANTS[(Math.abs(Math.round((e.x + ux * a) * 7 + (e.z + uz * a) * 13 + y0 * 3)) + (makeHash({ ...ctx, decor: '' }) >>> 0)) % SILL_PLANTS.length], a, 0.6, -0.25, 0, 'flower', 0]);
     const c = { m: { id: 'window-box', kind: 'box', fit: {} }, kept };
     const placed = MotifsD.place(b, c, { x: e.x, y: y0 + 1, z: e.z, nx: ox, nz: oz }, null, { ground: 0, dry: true, minShare: 1 });
     if (placed.length) { hold(b, placed); added.boxes = (added.boxes || 0) + 1; }
@@ -789,7 +792,8 @@ function bargeboards(K, C, w, ctx, rows, ends, add, low, pivot, r) {
   // gable motif apex piece or carving is in the way and the gable is tall enough that it clears the wall under it
   // (on a low gable it hangs on down the wall under it, where that wall has no opening in its middle bays)
   if (X.gableBanner && w === ctx.wings[0] && !gw && !apex && !ctx.dragonsHere && capY - top >= 1.9) {
-    const B = reachesD(ctx.biome, 'Plains') ? ['piece_banner01', 'piece_banner02', 'piece_banner05', 'piece_banner07'] : ['piece_banner03', 'piece_banner04', 'piece_banner06', 'piece_banner07', 'piece_banner08', 'piece_banner09'];
+    // any banner in any biome (D-065); the gable's colors by the culture's lean are a style's, the list is whole
+    const B = ['piece_banner01', 'piece_banner02', 'piece_banner03', 'piece_banner04', 'piece_banner05', 'piece_banner06', 'piece_banner07', 'piece_banner08', 'piece_banner09'];
     // the cloth hangs 2.95 m under its rod: its foot no more than 0.6 m over the ground floor, so it reads as hung on
     // the house and not in the air (T-606: the purple banner, piece_banner09, hung with its foot 1.3 m up). The rod
     // touches the wall (that holds it up in the game), so the cloth hangs 0.25 m out: it may lie against bars up to 3 cm
@@ -858,7 +862,7 @@ function benchByDoor(b, ctx) {
   for (const o of b.openings || []) {
     if (o.kind !== 'door' || o.back || o.storey > 0 || o.gallery) continue;
     const { e } = o, { ux, uz, ox, oz } = axes(e);
-    const name = reachesD(ctx.biome, 'Black Forest') && ctx.R() < 0.4 ? 'piece_logbench01' : 'piece_bench01';
+    const name = ctx.R() < 0.4 ? 'piece_logbench01' : 'piece_bench01';
     const faceOut = name === 'piece_logbench01' ? outYaw(-ox, -oz) : outYaw(ox, oz); // the log bench faces its local -z
     for (const s of ctx.R() < 0.5 ? [1, -1] : [-1, 1]) {
       const cand = { name, x: +(e.x + ux * s * 3 + ox * 0.45).toFixed(3), y: F + 0.1, z: +(e.z + uz * s * 3 + oz * 0.45).toFixed(3), yaw: faceOut, q: quatD(faceOut) };

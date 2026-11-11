@@ -433,6 +433,352 @@ misty valleys.
 |---|---|
 | Svan tower storeys and house areas | tower base sizes and heights in metres; the stepped corbelled roof of the darbazi (hazarashen) with its smoke hole, not built yet |
 
+## Corpus by culture
+
+Counts from Tyler's downloads corpus (`C:\Users\tyler\Downloads\Villheim-blueprints`, valheimians downloads, 2,153
+`.blueprint` files), sorted by culture on 2026-11-11. Data: `tools/blueprint-lab/data/culture-corpus/summary.json`
+(counts) and `members.json` (builds sorted with high or medium confidence). Method, units and commands:
+`docs/handoffs/2026-11-10-design/research.md`. Nothing here is copied from a blueprint; titles and makers are credits.
+
+How to read the tables:
+
+- A group is a sort label. Confidence high means a style word in the title or slug, medium a word in the description or
+  a strong material sign (turf, dragon heads, grausten or ashwood walls), low a form and material rule only (wooden
+  walls under a pitched roof read as norse, tall stone as castle, stone under a pitched roof as stone-house, black
+  marble walls as mistlands, a small round thatched build as celtic). `norse-named` is the norse group without its low
+  builds.
+- "Buildings" are builds with 40+ building pieces outside the statue, bridge, arena, mini-game, portal-hub, farming and
+  artistic folders; plan, roof, storeys, size and materials are shares of those. "Furnished" are buildings with 5+
+  pieces of furniture inside (under a roof or floor); room uses, kinds and relations are shares of those.
+- Shares are percent of builds. Medians and shares are the numbers to use: a few very large bases dominate raw totals.
+- Several groups are named by a form or biome word, which says nothing about culture: `celtic` is mostly "roundhouse"
+  titles, `celtic-crannog` "lake house" and "on stilts" titles, `fen-folk` "swamp" titles, `saami` two "Teepee" builds
+  (a Plains Native form) and one description match.
+- The steppe build's height (4,979 m) is a stray piece far from the house; its footprint is right.
+
+### Forms
+
+| Group | Builds (high / medium / low) | Buildings, furnished | Plan % | Roof % | Storeys % | Footprint m (median) | Height m | Floor area m2 |
+|---|---|---|---|---|---|---|---|---|
+| norse | 495 (86 / 71 / 338) | 455, 387 | irregular 39, rectangle 15 | gable 42, cross-gable 32 | 2 34, 1 25 | 17 x 24 | 9.3 | 400 |
+| norse-named | 157 (86 / 71 / 0) | 142, 131 | irregular 41, T 19 | cross-gable 35, gable 34 | 4+ 35, 2 29 | 21 x 30 | 12.5 | 736 |
+| norse-forest | 48 (45 / 3 / 0) | 44, 44 | irregular 41, T 20 | cross-gable 45, gable 39 | 2 48, 1 20 | 18 x 22 | 10 | 368 |
+| norse-highland | 29 (22 / 7 / 0) | 27, 23 | irregular 44, octagon/round 15 | cross-gable 33, conical 26 | 4+ 44, 2 22 | 30 x 31 | 16 | 821 |
+| celtic | 15 (6 / 0 / 9) | 10, 8 | octagon/round 30, irregular 20 | conical 80, gable 10 | 1 70, 2 20 | 15 x 15 | 11.7 | 151 |
+| celtic-crannog | 6 (6 / 0 / 0) | 5, 5 | irregular 60, octagon/round 20 | gable 60, conical 20 | 1 40, 2 20 | 19 x 20 | 10.5 | 554 |
+| fen-folk | 18 (16 / 2 / 0) | 13, 12 | irregular 46, T 31 | conical 46, cross-gable 38 | 4+ 54, 1 23 | 24 x 36 | 14 | 694 |
+| saami | 3 (2 / 1 / 0) | 2, 2 | octagon/round 100 | conical 100 | 1 100 | 16 x 18 | 11.5 | 232 |
+| stone-house | 55 (0 / 0 / 55) | 46, 37 | irregular 41, rectangle 17 | gable 46, cross-gable 30 | 2 52, 1 24 | 14 x 20 | 8.7 | 289 |
+| medieval-timber | 31 (31 / 0 / 0) | 30, 27 | irregular 40, T 27 | cross-gable 47, gable 30 | 4+ 50, 3 30 | 19 x 29 | 17.1 | 580 |
+| castle | 264 (143 / 2 / 119) | 240, 176 | irregular 41, T 13 | gable 24, cross-gable 20 | 4+ 47, 1 25 | 22 x 31 | 15.5 | 645 |
+| mistlands | 81 (14 / 0 / 67) | 62, 44 | irregular 40, octagon/round 15 | flat 44, none 31 | 4+ 39, 1 23 | 20 x 22 | 15 | 421 |
+| ashlands | 175 (32 / 143 / 0) | 159, 119 | none 21, irregular 20 | none 29, flat 23 | 1 39, 4+ 23 | 20 x 28 | 10.6 | 264 |
+| east-asian | 22 (21 / 1 / 0) | 18, 14 | irregular 33, square 17 | cross-gable 50, hip 28 | 4+ 56, 1 33 | 22 x 27 | 14.6 | 552 |
+| fantasy | 41 (40 / 1 / 0) | 35, 31 | irregular 26, octagon/round 23 | conical 37, cross-gable 26 | 4+ 46, 3 29 | 20 x 26 | 22.3 | 730 |
+| greco-roman | 7 (7 / 0 / 0) | 6, 5 | irregular 50, rectangle 33 | flat 33, none 33 | 4+ 50, 3 33 | 22 x 43 | 17.3 | 1472 |
+| modern | 15 (14 / 1 / 0) | 13, 10 | irregular 31, rectangle 31 | flat 54, none 15 | 3 31, 4+ 31 | 14 x 20 | 10 | 401 |
+| tree-house | 7 (6 / 1 / 0) | 7, 6 | irregular 43, octagon/round 29 | cross-gable 43, conical 29 | 4+ 71, 1 14 | 24 x 25 | 45 | 1588 |
+| slavic | 1 (1 / 0 / 0) | 1, 1 | irregular 100 | gable 100 | 1 100 | 8 x 15 | 7.7 | 86 |
+| frankish-norman | 1 (0 / 1 / 0) | 1, 1 | L 100 | none 100 | 3 100 | 25 x 38 | 14.5 | 1097 |
+| middle-eastern | 1 (1 / 0 / 0) | 1, 1 | U/courtyard 100 | cross-gable 100 | 2 100 | 34 x 38 | 10 | 1010 |
+| steppe | 1 (1 / 0 / 0) | 1, 1 | octagon/round 100 | none 100 | 2 100 | 20 x 22 | 4979.1 | 344 |
+| unsorted | 837 (0 / 0 / 837) | 301, 139 | irregular 26, none 25 | none 41, flat 27 | 1 59, 2 18 | 14 x 17 | 7 | 58 |
+
+- Norse (495, 338 of them low): plank walls 79 %, thatch roofs 63 % (dark wood 36 %), gable 42 % and cross-gable
+  32 %, median 17 x 24 m and 9.3 m tall, 2 storeys most often. The named builds (`norse-named`) are larger (21 x 30 m,
+  12.5 m), with dark wood and thatch roofs about even and stone low walls in 30 %.
+- Norse-forest: log walls in 25 %, thatch 64 %, 2 storeys in 48 %. Norse-highland: stone walls 52 %, turf roofs 27 %,
+  round plans 15 %, and large (30 x 31 m, 16 m tall): strongholds and lodges more than houses.
+- Celtic: conical roofs 80 %, one storey 70 %, log walls 44 %, 15 x 15 m. Crannog: plank walls 80 %, gable roofs 60 %.
+  Fen-folk: conical roofs 46 % and 4+ storeys 54 % (towers and tree houses).
+- Stone-house: all stone walls, dark wood roofs 59 %, 2 storeys 52 %, 14 x 20 m and 8.7 m tall; 70 % add
+  diagonal beams on the stone (more than six 45 degree beams: braces or a half-timber look). Medieval-timber: stone low walls 70 %, dark wood roofs 74 %, half are 4+ storeys.
+- Castle: stone walls 75 %, 4+ storeys 47 %. Mistlands: black marble walls 95 %, flat roofs 44 %. Ashlands: ashwood
+  52 % and grausten 45 % of walls; 29 % have no roof (walls, yards, ruins).
+
+### Materials by part
+
+Dominant material of each part, percent of buildings.
+
+| Group | Walls % | Low walls % | Roof % | Floor % | Frame % |
+|---|---|---|---|---|---|
+| norse | plank 79, log 14 | plank 66, stone 17 | thatch 63, darkwood 36, grausten 0 | wood 86, stone 11 | timber 69, darkwood 12 |
+| norse-named | plank 61, log 18 | plank 46, stone 30 | darkwood 49, thatch 48, grausten 1 | wood 76, stone 18 | timber 67, darkwood 11 |
+| norse-forest | plank 52, log 25 | plank 42, log 26 | thatch 64, darkwood 36 | wood 84, marble 5 | timber 75, log 7 |
+| norse-highland | stone 52, plank 22 | stone 63, plank 17 | darkwood 36, thatch 32, turf 27 | wood 52, stone 37 | timber 38, darkwood 23 |
+| celtic | log 44, plank 33 | log 44, stone 33 | thatch 80, darkwood 20 | wood 100 | timber 90, iron 10 |
+| celtic-crannog | plank 80, darkwood 20 | plank 50, log 25 | other 40, thatch 40, darkwood 20 | wood 100 | timber 80, darkwood 20 |
+| fen-folk | plank 38, stone 31 | stone 50, marble 17 | darkwood 50, thatch 33, other 17 | wood 67, stone 25 | timber 62, iron 15 |
+| saami | stone 100 | stone 100 | thatch 100 | stone 50, wood 50 | timber 100 |
+| stone-house | stone 100 | stone 100 | darkwood 59, thatch 41 | wood 52, stone 48 | timber 76, darkwood 13 |
+| medieval-timber | stone 47, plank 40 | stone 70, plank 17 | darkwood 74, thatch 11, grausten 7 | wood 60, stone 23 | timber 57, ashwood 13 |
+| castle | stone 75, plank 10 | stone 74, plank 9 | darkwood 56, thatch 36, grausten 6 | wood 49, stone 35 | timber 51, iron 10 |
+| mistlands | marble 95, stone 2 | marble 87, stone 7 | darkwood 89, grausten 11 | marble 66, stone 10 | timber 24, iron 21 |
+| ashlands | ashwood 52, grausten 45 | grausten 38, ashwood 37 | darkwood 63, grausten 32, thatch 2 | grausten 47, ashwood 31 | grausten 46, ashwood 38 |
+| east-asian | plank 47, ashwood 18 | stone 50, plank 13 | darkwood 56, thatch 44 | wood 65, stone 29 | timber 76, ashwood 18 |
+| fantasy | stone 34, marble 26 | stone 40, marble 20 | darkwood 67, grausten 13, thatch 13 | wood 37, grausten 20 | timber 38, ashwood 21 |
+| greco-roman | stone 50, plank 17 | stone 80, marble 20 | darkwood 67, grausten 33 | stone 50, grausten 33 | timber 50, grausten 33 |
+| modern | plank 30, log 20 | stone 40, iron 20 | thatch 67, darkwood 33 | wood 62, ashwood 15 | timber 38, ashwood 31 |
+| tree-house | plank 43, marble 14 | marble 29, plank 29 | darkwood 67, thatch 33 | wood 71, marble 14 | timber 57, log 14 |
+| slavic | plank 100 | plank 100 | darkwood 100 | wood 100 | timber 100 |
+| frankish-norman | stone 100 | stone 100 | darkwood 100 | stone 100 | iron 100 |
+| middle-eastern | plank 100 | plank 100 | thatch 100 | wood 100 | plank 100 |
+| steppe | stone 100 | stone 100 | - | stone 100 | plank 100 |
+| unsorted | stone 38, plank 30 | stone 42, plank 30 | darkwood 47, thatch 24, other 17 | wood 57, stone 27 | timber 50, grausten 10 |
+
+### Room uses
+
+Percent of furnished buildings with a room or corner of each use (bed for sleeping, fire for hearth, cooking station
+or cauldron for cooking, crafting station, chests, a table with seats for feasting, item and armor stands for display,
+a bathtub for bathing).
+
+| Group | sleeping | hearth | cooking | crafting | storage | feasting | display | bathing |
+|---|---|---|---|---|---|---|---|---|
+| norse | 71 | 84 | 77 | 70 | 80 | 50 | 44 | 18 |
+| norse-named | 72 | 85 | 77 | 78 | 82 | 62 | 68 | 27 |
+| norse-forest | 70 | 91 | 86 | 84 | 77 | 50 | 55 | 18 |
+| norse-highland | 61 | 83 | 61 | 70 | 65 | 65 | 48 | 30 |
+| celtic | 50 | 63 | 50 | 63 | 50 | 25 | 50 | 13 |
+| celtic-crannog | 60 | 100 | 80 | 80 | 60 | 40 | 0 | 0 |
+| fen-folk | 50 | 67 | 67 | 83 | 75 | 50 | 58 | 17 |
+| saami | 100 | 100 | 50 | 50 | 50 | 0 | 50 | 0 |
+| stone-house | 27 | 81 | 65 | 57 | 78 | 32 | 41 | 11 |
+| medieval-timber | 56 | 78 | 81 | 63 | 74 | 67 | 63 | 30 |
+| castle | 44 | 63 | 53 | 58 | 57 | 47 | 44 | 16 |
+| mistlands | 25 | 48 | 36 | 52 | 45 | 34 | 39 | 14 |
+| ashlands | 28 | 40 | 43 | 55 | 54 | 35 | 55 | 17 |
+| east-asian | 29 | 36 | 29 | 43 | 43 | 21 | 50 | 14 |
+| fantasy | 45 | 71 | 71 | 71 | 74 | 65 | 65 | 35 |
+| greco-roman | 20 | 40 | 0 | 20 | 20 | 0 | 20 | 0 |
+| modern | 70 | 80 | 70 | 50 | 60 | 70 | 70 | 40 |
+| tree-house | 100 | 100 | 83 | 83 | 100 | 100 | 100 | 50 |
+| slavic | 0 | 0 | 0 | 100 | 0 | 0 | 100 | 0 |
+| frankish-norman | 0 | 100 | 100 | 0 | 0 | 0 | 0 | 0 |
+| middle-eastern | 0 | 0 | 0 | 100 | 100 | 0 | 0 | 0 |
+| steppe | 100 | 100 | 100 | 100 | 100 | 100 | 0 | 100 |
+| unsorted | 36 | 56 | 53 | 58 | 63 | 42 | 50 | 19 |
+
+- Most furnished builds mix home, workshop and storage in one building: in the norse group hearth 84, storage 80,
+  cooking 77, sleeping 71 and crafting 70.
+- Stone-house builds are mostly workshops, smithies and taverns (sleeping 27, hearth 81). Mistlands and Ashlands builds
+  sleep least (25 and 28): towers, refineries and forges.
+- Feasting is highest in medieval-timber (67), highland (65) and fantasy (65); bathing in fantasy (35) and
+  medieval-timber (30).
+
+### Interior sets and essentials
+
+Kinds of furniture inside: percent of furnished buildings with one or more, then the median count per build in
+brackets.
+
+| Group | bed | table | seat | rug | storage | fire | light | stand | craft | cook |
+|---|---|---|---|---|---|---|---|---|---|---|
+| norse | 71 (1) | 68 (2) | 83 (8) | 72 (4) | 89 (17) | 84 (1) | 84 (8) | 59 (3) | 70 (4) | 77 (5) |
+| norse-named | 72 (1) | 77 (3) | 89 (10) | 75 (11) | 92 (20) | 85 (1) | 92 (16) | 81 (15) | 78 (11) | 77 (7) |
+| norse-forest | 70 (1) | 77 (2) | 93 (10) | 84 (7) | 86 (15) | 91 (1) | 98 (14) | 70 (8) | 84 (6) | 86 (7) |
+| norse-highland | 61 (1) | 83 (3) | 96 (9) | 83 (9) | 74 (15) | 83 (1) | 91 (13) | 65 (5) | 70 (5) | 61 (4) |
+| celtic | 50 (1) | 50 (1) | 63 (3) | 50 (7) | 63 (4) | 63 (1) | 75 (6) | 63 (6) | 63 (3) | 50 (3) |
+| celtic-crannog | 60 (1) | 60 (1) | 80 (6) | 80 (2) | 80 (7) | 100 (1) | 100 (24) | 60 (2) | 80 (12) | 80 (2) |
+| fen-folk | 50 (1) | 83 (3) | 92 (9) | 75 (10) | 92 (7) | 67 (1) | 100 (33) | 67 (24) | 83 (12) | 67 (6) |
+| saami | 100 (2) | 0 (0) | 50 (3) | 100 (18) | 100 (11) | 100 (1) | 50 (5) | 50 (26) | 50 (10) | 50 (3) |
+| stone-house | 27 (0) | 76 (1) | 86 (5) | 68 (2) | 89 (12) | 81 (1) | 89 (6) | 59 (2) | 57 (3) | 65 (5) |
+| medieval-timber | 56 (1) | 74 (5) | 81 (11) | 81 (15) | 78 (14) | 78 (2) | 96 (21) | 70 (10) | 63 (2) | 81 (7) |
+| castle | 44 (0) | 63 (2) | 76 (7) | 64 (4) | 70 (6) | 63 (1) | 89 (16) | 59 (3) | 58 (2) | 53 (1) |
+| mistlands | 25 (0) | 45 (0) | 52 (1) | 45 (0) | 55 (2) | 48 (0) | 86 (13) | 55 (1) | 52 (3) | 36 (0) |
+| ashlands | 28 (0) | 54 (1) | 71 (5) | 52 (1) | 67 (5) | 40 (0) | 89 (13) | 76 (7) | 55 (1) | 43 (0) |
+| east-asian | 29 (0) | 43 (0) | 50 (2) | 50 (1) | 50 (1) | 36 (0) | 93 (33) | 57 (8) | 43 (0) | 29 (0) |
+| fantasy | 45 (0) | 77 (6) | 77 (16) | 84 (24) | 87 (15) | 71 (1) | 97 (33) | 68 (19) | 71 (9) | 71 (7) |
+| greco-roman | 20 (0) | 0 (0) | 60 (4) | 60 (4) | 20 (0) | 40 (0) | 80 (50) | 20 (0) | 20 (0) | 0 (0) |
+| modern | 70 (1) | 80 (4) | 80 (20) | 90 (17) | 80 (6) | 80 (1) | 80 (9) | 70 (15) | 50 (4) | 70 (3) |
+| tree-house | 100 (10) | 100 (14) | 100 (55) | 100 (56) | 100 (26) | 100 (9) | 100 (68) | 100 (32) | 83 (22) | 83 (18) |
+| slavic | 0 (0) | 0 (0) | 100 (6) | 100 (1) | 100 (2) | 0 (0) | 100 (39) | 100 (14) | 100 (1) | 0 (0) |
+| frankish-norman | 0 (0) | 100 (1) | 0 (0) | 0 (0) | 0 (0) | 100 (3) | 100 (13) | 0 (0) | 0 (0) | 100 (1) |
+| middle-eastern | 0 (0) | 0 (0) | 100 (4) | 0 (0) | 100 (78) | 0 (0) | 0 (0) | 0 (0) | 100 (7) | 0 (0) |
+| steppe | 100 (1) | 100 (7) | 100 (8) | 100 (18) | 100 (20) | 100 (1) | 100 (11) | 100 (3) | 100 (25) | 100 (11) |
+| unsorted | 36 (0) | 55 (1) | 71 (7) | 59 (3) | 73 (7) | 56 (1) | 79 (10) | 65 (8) | 58 (1) | 53 (1) |
+
+Relations between pieces, percent (furniture and lights per 10 m2 of floor are counts):
+
+| Group | beds above main floor | beds by a rug | beds with a chest | beds side by side | tables with seats | seats at tables | seats by fire | rugs layered | tables dressed | windows dressed | furniture per 10 m2 | lights per 10 m2 |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| norse | 64 | 30 | 34 | 21 | 51 | 28 | 4 | 23 | 41 | 17 | 2.2 | 0.2 |
+| norse-named | 65 | 30 | 29 | 26 | 52 | 25 | 3 | 22 | 43 | 19 | 2.2 | 0.2 |
+| norse-forest | 71 | 31 | 35 | 45 | 10 | 11 | 5 | 7 | 49 | 19 | 3.1 | 0.4 |
+| norse-highland | 51 | 35 | 19 | 7 | 68 | 50 | 8 | 18 | 24 | 22 | 1.6 | 0.2 |
+| celtic | 50 | 50 | 25 | 0 | 47 | 34 | 9 | 12 | 59 | 7 | 5.5 | 0.3 |
+| celtic-crannog | 40 | 0 | 20 | 0 | 67 | 7 | 1 | 2 | 0 | 16 | 3 | 0.3 |
+| fen-folk | 67 | 33 | 17 | 20 | 43 | 24 | 5 | 27 | 23 | 23 | 2.8 | 0.6 |
+| saami | 33 | 67 | 67 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 3.3 | 0.2 |
+| stone-house | 54 | 23 | 38 | 0 | 43 | 16 | 1 | 10 | 29 | 17 | 2 | 0.2 |
+| medieval-timber | 84 | 35 | 37 | 13 | 30 | 14 | 2 | 19 | 37 | 15 | 1.4 | 0.3 |
+| castle | 66 | 34 | 32 | 12 | 42 | 18 | 7 | 25 | 41 | 17 | 1.4 | 0.2 |
+| mistlands | 46 | 44 | 34 | 0 | 31 | 26 | 1 | 15 | 35 | 42 | 2.4 | 0.2 |
+| ashlands | 60 | 44 | 38 | 11 | 44 | 32 | 3 | 15 | 41 | 20 | 1.5 | 0.3 |
+| east-asian | 91 | 64 | 0 | 18 | 63 | 27 | 1 | 11 | 56 | 2 | 2 | 0.5 |
+| fantasy | 62 | 45 | 34 | 9 | 43 | 35 | 3 | 18 | 53 | 31 | 3.2 | 0.4 |
+| greco-roman | 0 | 0 | 0 | 60 | 0 | 0 | 0 | 10 | 0 | 0 | 0.9 | 0.2 |
+| modern | 60 | 20 | 12 | 16 | 34 | 14 | 3 | 13 | 47 | 19 | 1.9 | 0.2 |
+| tree-house | 50 | 71 | 38 | 8 | 43 | 16 | 13 | 25 | 26 | 33 | 3 | 0.4 |
+| slavic | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 100 | 7.9 | 4.8 |
+| frankish-norman | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 6 | 0.3 | 0.1 |
+| middle-eastern | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0.8 | 0 |
+| steppe | 0 | 0 | 100 | 0 | 0 | 0 | 0 | 0 | 43 | 39 | 5.4 | 0.3 |
+| unsorted | 39 | 18 | 33 | 40 | 32 | 23 | 3 | 28 | 47 | 24 | 2.6 | 0.2 |
+
+Kinds used most, and what stands on tables and under or in windows (furniture roles only; mod prefixes dropped):
+
+| Group | Kinds most used (bed; table; seat; rug; fire; light) | On tables | Under or in windows |
+|---|---|---|---|
+| norse | `bed`/`piece_bed02`; `piece_table`/`piece_table_round`; `piece_chair`/`piece_chair03`; `rug_deer`/`rug_fur`; `hearth`/`fire_pit`; `piece_walltorch`/`piece_dvergr_lantern` | `itemstandh`, `itemstand`, `treasure_stack` | `itemstandh`, `itemstand`, `piece_groundtorch_mist` |
+| norse-named | `piece_bed02`/`bed`; `piece_table`/`piece_table_round`; `piece_chair`/`piece_chair03`; `rug_deer`/`rug_fur`; `hearth`/`fire_pit`; `piece_walltorch`/`piece_dvergr_lantern` | `itemstandh`, `itemstand`, `treasure_stack` | `itemstandh`, `itemstand`, `piece_groundtorch_mist` |
+| norse-forest | `bed`/`piece_bed02`; `dvergrprops_table`/`piece_table`; `piece_chair`/`piece_chair03`; `jute_carpet`/`rug_deer`; `fire_pit`/`hearth`; `piece_walltorch`/`piece_groundtorch_wood` | `dvergrprops_table`, `itemstandh`, `Candle_resin` | `blackforge_ext1`, `itemstand`, `itemstandh` |
+| norse-highland | `piece_bed02`/`bed`; `piece_table`/`piece_table_round`; `piece_chair03`/`dvergrprops_stool`; `rug_fur`/`rug_wolf`; `hearth`/`fire_pit`; `piece_dvergr_lantern`/`piece_walltorch` | `itemstandh`, `piece_jackoturnip`, `sign` | `piece_dvergr_lantern`, `goblinking_totemholder`, `darkwood_raven` |
+| celtic | `bed`/`piece_bed02`; `piece_table`/`piece_table_oak`; `piece_chair`/`piece_chair03`; `rug_hare`/`rug_deer`; `hearth`/`fire_pit`; `piece_groundtorch_wood`/`piece_walltorch` | `itemstandh`, `sign`, `piece_magetable_ext` | `piece_groundtorch` |
+| celtic-crannog | `bed`; `cauldron_ext3_butchertable`/`piece_table`; `piece_chair`/`piece_chair03`; `rug_fur`/`rug_deer`; `hearth`/`fire_pit`; `piece_groundtorch_mist`/`piece_walltorch` | - | `piece_chest`, `piece_logbench01`, `piece_chest_barrel` |
+| fen-folk | `bed`/`piece_bed02`; `piece_table`/`piece_table_round`; `piece_chair03`/`piece_chair02`; `rug_deer`/`rug_straw`; `hearth`/`fire_pit`; `piece_walltorch`/`piece_groundtorch_green` | `itemstandh`, `treasure_stack`, `piece_groundtorch` | `piece_groundtorch_green`, `piece_chest_wood`, `itemstandh` |
+| saami | `bed`; -; `piece_workbench`/`piece_workbench_ext4`; `rug_deer`; `fire_pit`; `piece_groundtorch`/`piece_walltorch` | - | - |
+| stone-house | `piece_bed02`/`bed`; `piece_table`/`cauldron_ext3_butchertable`; `piece_chair`/`piece_chair02`; `rug_fur`/`rug_hare`; `hearth`/`fire_pit`; `piece_walltorch`/`piece_groundtorch_wood` | `itemstandh`, `itemstand`, `treasure_stack` | `itemstandh`, `piece_chest_wood`, `ArmorStand` |
+| medieval-timber | `piece_bed02`/`bed`; `piece_table_round`/`piece_table`; `piece_chair`/`piece_chair03`; `rug_fur`/`jute_carpet`; `hearth`/`fire_pit`; `piece_dvergr_lantern`/`piece_walltorch` | `itemstandh`, `Candle_resin`, `itemstand` | `goblinking_totemholder`, `piece_dvergr_lantern`, `piece_chest_treasure` |
+| castle | `piece_bed02`/`bed`; `piece_table`/`piece_blackmarble_table`; `piece_chair`/`piece_chair03`; `jute_carpet`/`rug_fur`; `hearth`/`fire_pit`; `piece_walltorch`/`piece_dvergr_lantern` | `itemstandh`, `treasure_stack`, `Candle_resin` | `blackmarble_head01`, `sign`, `itemstandh` |
+| mistlands | `piece_bed02`; `piece_table_round`/`piece_magetable_ext2`; `piece_chair03`/`piece_throne02`; `jute_carpet`/`rug_fur`; `fire_pit_hildir`/`hearth`; `piece_groundtorch_mist`/`piece_dvergr_lantern` | `piece_dvergr_lantern`, `piece_Lavalantern`, `piece_throne02` | `itemstandh`, `piece_groundtorch_mist`, `dvergrprops_crate_long` |
+| ashlands | `piece_bed02`/`bed`; `piece_table`/`piece_table_round`; `piece_chair03`/`piece_chair`; `rug_fur`/`jute_carpet`; `hearth`/`fire_pit_iron`; `piece_groundtorch_mist`/`piece_dvergr_lantern` | `itemstandh`, `Candle_resin`, `piece_Lavalantern` | `blackmarble_head01`, `itemstandh`, `itemstand` |
+| east-asian | `bed`/`piece_bed02`; `piece_table`/`piece_magetable_ext`; `piece_chair`/`piece_bench01`; `rug_asksvin`/`rug_fur`; `hearth`/`fire_pit_iron`; `piece_groundtorch`/`piece_dvergr_lantern` | `itemstandh`, `piece_chest_private`, `piece_jackoturnip` | `piece_bench01` |
+| fantasy | `piece_bed02`/`bed`; `piece_table`/`piece_table_round`; `piece_chair03`/`piece_chair`; `jute_carpet`/`rug_fur`; `hearth`/`fire_pit_iron`; `piece_groundtorch_mist`/`dvergrprops_lantern_standing` | `itemstandh`, `Candle_resin`, `itemstand` | `itemstandh`, `dvergrprops_lantern_standing`, `TreasureChest_dvergrtower` |
+| greco-roman | `bed`; -; `piece_chair02`/`piece_bench01`; `jute_carpet_blue`/`jute_carpet`; `fire_pit_iron`/`hearth`; `piece_groundtorch_mist`/`piece_walltorch` | - | - |
+| modern | `piece_bed02`/`bed`; `piece_table`/`cauldron_ext3_butchertable`; `piece_chair`/`piece_bench01`; `rug_fur`/`jute_carpet`; `hearth`/`rk_hearthsmall`; `piece_walltorch`/`piece_dvergr_lantern` | `itemstandh`, `sign`, `itemstand` | `itemstandh`, `sign`, `Candle_resin` |
+| tree-house | `bed`/`piece_bed02`; `piece_table`/`piece_table_round`; `piece_chair`/`piece_chair03`; `rug_deer`/`rug_wolf`; `hearth`/`fire_pit`; `piece_walltorch`/`piece_groundtorch_mist` | `itemstandh`, `piece_jackoturnip`, `piece_Lavalantern` | `itemstandh`, `goblinking_totemholder`, `itemstand` |
+| slavic | -; -; `piece_chair02`/`piece_workbench`; `rug_Rotten_TW`; -; `piece_groundtorch_mist`/`$custompiece_candlelit2` | - | `piece_groundtorch_mist`, `IG_Candle_Tray`, `piece_groundtorch_green` |
+| frankish-norman | -; `piece_table`; -; -; `fire_pit`/`hearth`; `piece_groundtorch_mist`/`piece_dvergr_lantern` | - | `piece_xmascrown`, `sign_notext`, `piece_groundtorch_mist` |
+| middle-eastern | -; -; `piece_workbench`/`piece_workbench_ext3`; -; -; - | - | - |
+| steppe | `piece_bed02`; `piece_table_round`/`piece_magetable`; `piece_chair`/`piece_workbench_ext2`; `jute_carpet`; `hearth`; `piece_dvergr_lantern`/`piece_Lavalantern` | `piece_Lavalantern`, `piece_magetable_ext2`, `goblinking_totemholder` | `sign`, `goblinking_totemholder` |
+| unsorted | `bed`/`piece_bed02`; `piece_table`/`piece_table_round`; `piece_chair`/`piece_chair03`; `jute_carpet`/`rug_fur`; `hearth`/`fire_pit`; `piece_dvergr_lantern`/`piece_groundtorch_mist` | `itemstandh`, `Candle_resin`, `piece_Lavalantern` | `itemstandh`, `piece_groundtorch_mist`, `itemstand` |
+
+- Essentials. In every group with more than 10 furnished builds the most common kind is light (79 to 100 %) or
+  storage (50 to 92 %); seats, fire and cooking follow in the house groups. A bed is in 71 % of furnished norse builds and 25 to 56 % of castle,
+  stone-house, Mistlands, Ashlands and medieval-timber builds.
+- Beds. `bed` and `piece_bed02` are near even in the norse group (389 and 375); `piece_bed02` leads in the named,
+  highland, castle, Ashlands, Mistlands, medieval-timber, fantasy and modern groups, `bed` in norse-forest, celtic,
+  fen-folk, crannog and tree-house. Beds stand above the main floor in 39 to 91 % of builds with beds (groups with 10+ furnished
+  builds). Beds side by side: norse-forest 45 %, unsorted 40 %, norse 21 %, castle 12 %, Ashlands 11 %, Mistlands 0.
+  A chest within 2.6 m: 17 to 38 %.
+- Seats. Most seats stand away from tables: 11 to 35 % stand at a table (highland 50 %). Seats by a fire: 1 to 13 %.
+- Tables. `piece_table` leads, then `piece_table_round`; the butcher table is third in the norse group. Tables carry
+  something in 23 to 59 % (so most tables are bare), and the thing on top is most often a horizontal item stand (`itemstandh`),
+  then candles, treasure stacks and lanterns. Two groups differ: in norse-forest the most common thing on a table is
+  another table (`dvergrprops_table`, 418 pieces), in Mistlands a Dvergr lantern.
+- Rugs. Median per furnished build: norse 4, norse-forest 7, highland 9, fen-folk 10, medieval-timber 15, fantasy 24,
+  tree-house 56. Layered rugs (another rug within 1.2 m) 7 to 28 %. `rug_deer` and `rug_fur` lead in norse groups,
+  `rug_wolf` second in highland, `jute_carpet` in castle, Mistlands and fantasy.
+- Windows. 2 to 42 % have something under or in them: `itemstandh` in most groups, black marble heads in castle (3,032
+  pieces) and Ashlands, the goblin totem holder in medieval-timber and highland, `darkwood_raven` in highland.
+- Light. 0.2 to 0.6 lights per 10 m2. Wall torches lead in norse, norse-forest, stone-house and fen-folk; Dvergr
+  lanterns in highland and medieval-timber; mist torches in Mistlands, Ashlands, fantasy and crannog.
+
+### Most downloaded builds
+
+By downloads in the corpus index (the site's like counts were not read). Low means the sort is a form rule only.
+
+| Group | Most downloaded (title, maker, downloads, sort confidence) |
+|---|---|
+| norse | NPC House 3 (AstridSinjesdottir, 910, low); Watch Tower/Outpost (ZomZero, 907, low); Standing Stone Sanctuary (HiccupTheHermit, 905, low) |
+| norse-named | Skyrim Nordic Home for Light Start (Luxfen, 894, high); core wood mansion (thepower3412, 842, medium); Concept Build (Artyfacts, 799, medium) |
+| norse-forest | Tiny home challenge, part 2: before The Elder (SorchaAzura, 838, medium); Cozy Blacksmith Cabin (Olivanderr, 789, high); The Raspberry Cabin (HiccupTheHermit, 689, high) |
+| norse-highland | Mountain Stronghold (mobiobi, 857, high); Mountain Lodge (FOB for 4+ vikings) (Fluffy-n-Dana, 821, high); A Mountain Home (smurfopax, 674, high) |
+| celtic | Plains triple round house (BuilderG, 857, high); Cooking hut (Veseljko, 567, low); A round house (smurfopax, 559, high) |
+| celtic-crannog | Epic Lake House (Drengr, 501, high); Home on Stilts - upgraded with a smelter and kiln! (LooneyBandit, 166, high); Home on Stilts (perfect for Swamp) (LooneyBandit, 117, high) |
+| fen-folk | Starter Swamp Home (LooneyBandit, 418, high); Swamp Mage Tower (Sven of Undenfell, 341, high); Kuppelen Base (Open Concept Swamp stage base for 4 vikings) (Fluffy-n-Dana, 300, high) |
+| saami | Teepee Supreme (Artyfacts, 606, high); Teepee (Artyfacts, 245, high) |
+| stone-house | NPC House 1 (AstridSinjesdottir, 839, low); Grill Market (Dorakanar, 537, low); medium sized house towards the end of the game (thepower3412, 511, low) |
+| medieval-timber | Upper Class Medieval Townhouse w/download (Apudma, 759, high); medieval watchtower #2 (thepower3412, 663, high); Vinland Manor (RAIZEN, 652, high) |
+| castle | Alfheim (Artyfacts, 850, high); Castle/Wall Tower (Maleficarum, 839, high); Dawn Hill Retreat (AstridSinjesdottir, 832, low) |
+| mistlands | Evil Tower (Pika, 713, low); Small Black Marble Base House (wolvendrake, 680, low); Refinery and Workshop (wolvendrake, 572, low) |
+| ashlands | Ashland's Materials Home for up to 10 (Fully Decorated) \*Basement added with storage\* (Fluffy-n-Dana, 793, high); the charred Dawn Hill Retreat (AstridSinjesdottir, 785, high); The TALLEST possible tower in valheim vanilla (Olivanderr, 677, medium) |
+| east-asian | Asian style Mountain Castle (Artyfacts, 932, high); Lin's Japanese themed base called Kuzuri (Lin, 886, high); Detailed Japanese village (Olivanderr, 728, high) |
+| fantasy | Mage Tower (jaylaxel, 571, high); Elven Feast Hall - 6.8k Instances (Con Seannery, 505, high); Stone Watch (aSoftPea, 454, high) |
+| greco-roman | full size Rome coloseum blueprint download (((READ DESCRIPTION))) (FlyRepresentative977, 539, high); The Parthenon of the Acropolis of Athens (Albireo, 227, high); The Martyr Colosseum (jlinde69, 197, high) |
+| modern | Modern Tiny Home (GH05T, 562, high); Tiny Home Challenge, Part 4: Before Moder (SorchaAzura, 439, medium); Modern Starter House - Unfurnished (MADZO, 373, high) |
+| tree-house | Simple Treehouse (HiccupTheHermit, 275, high); Skardvakt: The Black Watchtower (Aodi, 140, medium); The Rawcliffe Treehouse (Includes Old Mistland's Trees) \*IH BP\* Circa Oct/Nov 2021 (Fluffy-n-Dana, 133, high) |
+| slavic | Baba Yaga Hut (Kasoline, 215, high) |
+| frankish-norman | Falling Water (Kasoline, 78, medium) |
+| middle-eastern | Ottoman Turkish House with courtyard /storage room meadows (venoms3131, 18, high) |
+| steppe | Stone Yurt (RAIZEN, 312, high) |
+| unsorted | Дом комфорт (istego, 986, low); INCREDIBLE Tavern - Valheim Build (Olivanderr, 969, low); Honeycomb Blossom Bee Farm (1sot0pe, 930, low) |
+
+The most downloaded norse build, NPC House 3 by AstridSinjesdottir, is a shell made for an RP server's NPC village;
+its interior photos on valheimians.com show empty rooms. Downloads rank shells and bases as well as finished
+interiors, so this list is a list of credits and popular forms, and a poor guide to rooms.
+
+### Spot check of the low-confidence sort
+
+28 builds checked by title, description, materials and form on 2026-11-11 (spread through each group in slug order;
+14 norse, 3 castle, 3 Mistlands, 3 stone-house, 2 celtic, and 3 unsorted builds with 40+ building pieces).
+
+| Group (checked) | Right | Partly | Wrong | Notes |
+|---|---|---|---|---|
+| norse (14) | 12 | 1 | 1 | right: wooden houses, docks, a lodge and a log cabin with nothing pointing to another culture; partly: a farm base with plank, stone and marble walls and Ashlands wood; wrong: Silver Spire (RAIZEN), an 8-storey castle whose frame is grausten and marble |
+| castle (3) | 0 | 1 | 2 | partly: Cathedral (Maleficarum), stone and tall, a church; wrong: Broken Bridge 1 (a bridge, and outside the building measures by folder), Common hall (a 4-storey stone hall that reads as stone-house) |
+| mistlands (3) | 3 | 0 | 0 | Eitr Refinery, Mistlands Outpost, Eitr Temple |
+| stone-house (3) | 2 | 1 | 0 | partly: a base with stone and ashwood walls |
+| celtic (2) | 1 | 0 | 1 | right by form: The Flint Flat, a 6 x 6 m round thatched hut; wrong: Suspicious Turnip, a turnip-shaped novelty |
+| unsorted (3) | 2 | 0 | 1 | rightly unsorted: a cemetery statue, a giant snowflake; missed: a black marble pyramid portal room (Dvergr wall pieces, 613 marble pieces) that could be mistlands |
+
+Sorted low builds: 18 of 25 right (72 %), 3 partly, 4 wrong. "Right" for the norse rule means a wooden Valheim build
+with no sign of another culture; the rule cannot tell a Norse house from a culture-neutral one, and the corpus gives
+no way to tell them apart. The wrong ones are big mixed builds (castles with wooden walls), non-buildings in house
+folders, and novelty shapes.
+
+### Cultures with little or no corpus
+
+Counts above, checked against `members.json`:
+
+| Generator culture | Builds in the corpus | What they are |
+|---|---|---|
+| slavic | 1 | Baba Yaga Hut (Kasoline): a folklore hut; plank walls, dark wood roof, 8 x 15 m |
+| frankish-norman | 0 | the one match, Falling Water (Kasoline), is a modern house; its description names Frank Lloyd Wright and the word "Frank" matched |
+| middle-eastern | 1 | Ottoman Turkish House with courtyard (venoms3131, 18 downloads): plank walls and thatch round a courtyard, a storage and crafting building; later period |
+| steppe | 1 | Stone Yurt (RAIZEN): round, stone walls |
+| anglo-saxon | 0 | |
+| baltic | 0 | |
+| byzantine | 0 | greco-roman has 7 builds (colosseums, Parthenons, a temple): no houses |
+| caucasian-highland (lamari) | 0 | |
+| saami | 3 | two "Teepee" builds (Artyfacts) and one description match; no goahti or lavvu by name |
+| celtic-crannog | 6 | lake houses and homes on stilts; none names a crannog |
+
+Tyler on this gap (D-135, chat 2026-11-11): "corpus being all norse is okay because weve done research re: the other
+cultures and buildings, yes? Its not mission critical if there are options for inspiration from other sources outside
+the corpus that can be built via our generator. Minecraft, other building games, even actual historical or fantasy
+houses from other games that match the style are fair game."
+
+Options per culture, as found. None is chosen here. All are study only: facts, sizes, plans, room uses and credits go
+in the docs; no design, image or text is copied into the repo.
+
+| Culture | Corpus groups that could stand in (counts above) | Outside sources (read or found) |
+|---|---|---|
+| anglo-saxon | norse halls (wooden, gable); medieval-timber (31, mostly stone and tall); celtic round huts for small single rooms | West Stow (in use). Conquest Reforged (Minecraft project rebuilding Winchester about 927): an Anglo-Saxon longhouse and a set of sunken-feature buildings; posts set in the ground, wattle and daub or plank walls, earth or plank floors, thatch roofs, shingle and turf named; no licence stated. Assassin's Creed Valhalla in-game entry "Anglo-Saxon Homes": oak, wattle and daub; common homes are one room for cooking, eating and sleeping; richer homes have a hall with the family sleeping in a separate building. Not read: Lyminge royal hall (Archaeology magazine), Butser Ancient Farm's Saxon hall, the AC Valhalla historian interview (Ryan Lavelle) |
+| frankish-norman | stone-house (55, low); medieval-timber; castle keeps | Millénaire Norman (in use, study only). Lauresham open-air laboratory (Lorsch): a 1:1 Carolingian manor of the 8th and 9th centuries on 4.1 ha with houses, farm buildings, stables, granaries and a chapel; sizes not on the page read. Mount & Blade II: Bannerlord, Vlandia (a feudal western culture; the wiki page read gives no building facts) |
+| slavic | norse-forest log builds (48; log walls 25 %) | Izba (in use). "Early medieval dwelling houses of the northern Slavic region" (medievalheritage.eu): sunken houses often under 6 to 7 m2 inside; above-ground log, wattle or post-and-plank huts, no foundations; a clay dome stove in a corner (north-east corner, door in the south wall) taking about a quarter of the floor; one undivided room; bedding in opposite corners; stools and pegs and no tables; raised plank beds with animals beneath; lean-to porches holding work racks; upper floors only from the 12th century. Not read: Medieval Dynasty, Kingdom Come: Deliverance (Bohemia, 1403), "The medieval peasant house in Bohemia" (medievalists.net) |
+| baltic | norse-forest log builds; fen-folk; crannog stilt houses | Āraiši (in use). Not read: EXARC "How and why is the reconstruction of Āraiši lake fortress being built", Āraiši Archaeological Park pages |
+| byzantine | greco-roman (7, public buildings only); stone-house courtyard plans (U/courtyard 9 %) | Millénaire Byzantine (in use). "Middle Byzantine secular architecture" (Smarthistory): houses often of wood; rural houses at Armatova with small rectangular rooms and a porch; houses at Corinth round a courtyard with a well and ovens, rooms and storerooms; rock-cut Cappadocian houses round a courtyard with a portico and chapel; Myrelaion palace with a pi-shaped plan and front portico; a 12th century three-storey tenement with a family and pigs upstairs and hay below; kitchens, storerooms, cisterns, dovecotes and stables. Bannerlord, Empire |
+| middle-eastern | the one Ottoman courtyard build; stone-house courtyard plans | Ribat-i Sharaf and Millénaire Seljuk (in use). Bannerlord, Aserai. Not read: Assassin's Creed Mirage (Baghdad, 9th century) |
+| steppe | saami teepees (round, conical, one storey); celtic round huts | "Dwellings" (University of Washington, Silk Road Seattle): fire in the middle; the place of honor (tör) opposite the door for elders and guests; the right side as you enter for men (tools, saddle, saddlebags, whip), the left for women and the kitchen; things hung on pegs round the wall; rolled felts, bolsters and rugs piled in one quarter, the pile showing wealth; quilts against the wall by day on a raised platform; size counted in wall sections (kanat), 5 or 6 usual, 12 for the richest. Bannerlord, Khuzait |
+| caucasian-highland (lamari) | norse-highland (stone walls 52 %, towers); castle towers | Svan towers and Darbazi (in use). "Svaneti: traditional customs, the Svan house and the role of the man" (Stefan Applis): ground floor (machubi) shared by people and animals, rectangular, a hearth in the middle that always burns and a second hearth for bread; door on the east near a corner; stalls for oxen right of the door and the cow barn on the next wall; the family's sides on the fourth; the head of the family's seat and a long bench on one side with wine vessels, weapons and tools, household things on the other; the couple's bed through a door from one side; the upper floor (darbazi) over it. Not read: Ushguli Ethnographic Museum pages |
+
+Sources were found with web search on 2026-11-11; "not read" pages were found but not opened in the time set.
+
+### Where the counts differ from examples named in briefs
+
+D-136 (Tyler): "targets should never come from my words. Targets across the entire corpus should come only from what's
+observed and learned." These differences between the counts and examples named in earlier briefs and handoffs are
+recorded as found:
+
+- frankish-norman was listed with one build; the one match is a Frank Lloyd Wright style house, so the count is 0.
+- saami was listed with three builds; two are teepees and none is a goahti or lavvu.
+- The research brief asks for the best-liked builds; the corpus index holds downloads, the top norse build by
+  downloads is an empty shell (see above), and 3 of the top 5 norse builds are low-confidence sorts.
+- Seats: most seats stand away from tables (65 to 89 % of seats in most groups, 50 % in highland), and 1 to 13 % stand
+  by a fire.
+- Messy realism (a design driver): most tables are bare (dressed 23 to 59 %) and most rugs lie alone (layered 7 to
+  28 %). Where builders dress, they dress densely: builds that use horizontal item stands have a median of 18.
+
 ## Outside sources: licences and usefulness
 
 | Source | Licence or terms | Use |
@@ -452,6 +798,14 @@ misty valleys.
 | Thunderstore, More Vanilla Build Prefabs | mod page | confirms turf roofs are vanilla prefabs outside the hammer |
 | Thunderstore, MissingPieces | mod page | shows `stone_wall_1x1_triangular` and similar names in the corpus come from a mod; not used |
 | bamboogaming.net, hanging cloth door | fan database | recipe (red jute, fine wood) |
+| Conquest Reforged, Anglo-Saxon longhouse and sunken-feature buildings (planetminecraft.com) | none stated | facts only (D-135); Minecraft builds, nothing downloaded |
+| Assassin's Creed Valhalla, "Learnings: Anglo-Saxon Homes" (assassinscreedwiki.accesstheanimus.com) | fan wiki of game text | facts only (D-135) |
+| medievalheritage.eu, Early medieval dwelling houses of the northern Slavic region | copyright the site | facts only (D-135) |
+| Lauresham open-air laboratory (kloster-lorsch.de) | copyright the museum | facts only (D-135) |
+| Smarthistory, Middle Byzantine secular architecture | not checked | facts only (D-135) |
+| University of Washington, Silk Road Seattle, Dwellings | copyright the authors | facts only (D-135) |
+| Stefan Applis, Svaneti: the Svan house | copyright the author | facts only (D-135) |
+| Mount & Blade Wiki (fandom), Culture | not checked | names of Bannerlord cultures only; no building facts on the page |
 
 Not reached or not checked: Wikipedia Crannog and Yurt (permission prompts went unanswered), Planet Minecraft terms
 (the page failed). Building games with shareable designs (Enshrouded, Conan Exiles, Medieval Dynasty, Townscaper,

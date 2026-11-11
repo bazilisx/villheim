@@ -88,6 +88,7 @@ const F = {
   cauldron_ext1_spice: { s: [1.0, 0.8, 0.3], at: 'mount', b: 'Swamp', cat: 'craft', wall: 0.15, y: 1.4 },
   cauldron_ext4_pots: { s: [1.2, 0.9, 0.35], at: 'mount', b: 'Plains', cat: 'craft', wall: 0.18, y: 1.3 },
   cauldron_ext3_butchertable: { s: [2.0, 0.9, 1.0], at: 'wall', b: 'Mountain', cat: 'craft' },
+  cauldron_ext5_mortarandpestle: { s: [1.98, 0.94, 0.99], c: [-0.32, 0.04], at: 'wall', b: 'Mistlands', cat: 'craft' },
   itemstand: { s: [0.6, 0.6, 0.25], at: 'mount', b: 'Meadows', cat: 'deco', wall: 0.14, y: 1.6 },
   itemstandh: { s: [0.9, 0.2, 0.5], at: 'top', b: 'Meadows', cat: 'deco' },
   sign: { s: [1.0, 0.55, 0.1], at: 'mount', b: 'Black Forest', cat: 'deco', wall: 0.12, y: 1.3 },
@@ -818,7 +819,7 @@ class Room {
     return isFinite(y) ? y : this.stand;
   }
   put(name, x, z, yaw, o = {}) {
-    if (!this.fits(name, x, z, yaw, o)) return null;
+    if (lightFull(this, name) || !this.fits(name, x, z, yaw, o)) return null;
     const f = F[name] || {};
     const [w, , d] = size(name);
     const y = this.floorY(obox(x, z, w, d, yaw)) + (f.base || 0) + (o.lift || 0) + (f.at === 'rug' ? 0.02 : 0);
@@ -966,6 +967,7 @@ function putMount(room, name, spot) {
   const [w, h] = size(name);
   const f = F[name] || {};
   const y0 = spot.y - (f.under != null ? h : 0), y1 = f.under != null ? spot.y : spot.y + h;
+  if (lightFull(room, name)) return null;
   for (const m of room.mounts) if (m.face === spot.face && Math.abs(m.t - spot.t) < (m.w + w) / 2 + 0.3 && m.y0 < y1 + 0.2 && m.y1 > y0 - 0.2) return null;
   // in front of a tall piece standing against this wall: no
   const probe = obox(spot.x + spot.face.nx * 0.3, spot.z + spot.face.nz * 0.3, w, 0.6, spot.yaw);
@@ -1018,7 +1020,7 @@ function onFire(room, name, o = {}) {
 // best-liked builds have them, none of ours did.
 function kitchenExtras(room, pot) {
   const dist = s => Math.hypot(s.x - pot.x, s.z - pot.z);
-  if (ok('cauldron_ext3_butchertable', room.biome)) placeAgainst(room, 'cauldron_ext3_butchertable', s => (dist(s) > 4.5 ? -100 : -dist(s)));
+  if (ok('cauldron_ext3_butchertable', room.biome) && !room.placed.some(q => q.name === 'cauldron_ext3_butchertable')) placeAgainst(room, 'cauldron_ext3_butchertable', s => (dist(s) > 4.5 ? -100 : -dist(s)));
   for (const name of ['cauldron_ext1_spice', 'cauldron_ext4_pots']) {
     if (!ok(name, room.biome)) continue;
     const spots = mountSpots(room, name, { pairs: true }).filter(s => dist(s) < 4.5).sort((a, c) => dist(a) - dist(c));
@@ -1556,7 +1558,7 @@ function lightsIn(room, k, n, o) {
   const want = { door: 0.6 + R() * 1.2, bed: 0.4 + R() * 1.0, work: 0.4 + R() * 0.8 };
   const purpose = (x, z) => (room.doorDist(x, z) < 1.8 ? want.door : 0) + (near(x, z, ['bed'], 1.6) ? want.bed : 0) + (near(x, z, ['table', 'craft', 'seat'], 1.6) ? want.work : 0);
   // a hanging brazier over a bigger room
-  if (o.hang && done < n && lightOk('piece_brazierceiling01', room.biome) && room.area >= 30 && R() < o.hang * likes) {
+  if (o.hang && done < n && lightOk('piece_brazierceiling01', room.biome) && room.area >= 30 && R() < o.hang * likes && !lightFull(room, 'piece_brazierceiling01')) {
     const cells = room.cells.filter(c => !fireNear(c.x, c.z) && room.doorDist(c.x, c.z) > 1.5);
     cells.sort((a, b) => Math.hypot(a.x - room.cx, a.z - room.cz) - dark(a.x, a.z) * 0.5 - (Math.hypot(b.x - room.cx, b.z - room.cz) - dark(b.x, b.z) * 0.5));
     const c = cells[0];
@@ -1647,7 +1649,7 @@ function placeOnTable(room, table, names) {
   const bx = Math.cos(table.yaw * PI / 180), bz = -Math.sin(table.yaw * PI / 180);
   let n = 0;
   names.forEach((name, i) => {
-    if (!ok(name, room.biome)) return;
+    if (!ok(name, room.biome) || lightFull(room, name)) return;
     const off = f.round ? (i - (names.length - 1) / 2) * 0.45 : (i - (names.length - 1) / 2) * Math.min(0.9, tw / (names.length + 0.5));
     room.add(name, table.x + bx * off, top, table.z + bz * off, table.yaw + (name === 'itemstandh' ? 0 : 0), { onTable: table });
     n++;
@@ -1729,7 +1731,7 @@ function chooseKit(R, biome, culture, kind, P) {
     const ok2 = list.filter(n => ok(n, biome));
     if (!ok2.length) return null;
     const kind = SLOT_KIND[slot];
-    return pickW(R, ok2.map(n => [n, ((shares.get(n) || 0) + floor) * (kind ? corpusTilt(culture, kind, n) : 1) * flavorD(n, biome) * tasteD(n, P)]));
+    return pickW(R, ok2.map(n => [n, ((shares.get(n) || 0) + floor) * (kind ? corpusTilt(culture, kind, n) : 1) * lightFlavor(slot, n, biome) * tasteD(n, P)]));
   };
   const taste = CULTURE_TASTE[culture] || {};
   const k = {
@@ -1798,6 +1800,11 @@ function bedTaste(kit, R, biome, culture, P) {
 // chests stay the building's. From a stream of its own, so the rest of the design keeps its own.
 // the village's own biome, earlier ones and the next weigh fully; one further on less (flavor only, D-065)
 const flavorD = (n, biome) => { const d = bi((F[n] || {}).b || 'Meadows') - bi(biome); return d <= 1 ? 1 : 1 / (1 + 0.8 * (d - 1)); };
+// Lights take the corpus's shares as they are: Dvergr wall lanterns are 40 % of corpus wall lights and the Mistlands
+// standing torch the commonest floor light, in every culture group (lab/hearths/corpus-hearths-lights.json lightNames,
+// CORPUS_CULT), and decor goes in any biome (D-126). The biome flavor held both near none outside the Mistlands
+// (Dvergr lanterns on 1 % of generated floors). Other slots keep it.
+const lightFlavor = (slot, n, biome) => (slot === 'wallLight' || slot === 'floorLight' ? 1 : flavorD(n, biome));
 function varyKit(kit, R, kind, seen, biome, P, culture) {
   const L = learned().rooms || {};
   const shares = new Map(((L[kind] || L.home || {}).items || []).map(([n, s2]) => [n, s2]));
@@ -1811,7 +1818,7 @@ function varyKit(kit, R, kind, seen, biome, P, culture) {
     if (!kit[slot] || !KIT[slot] || R() < keep) continue;
     const list = KIT[slot].filter(n => F[n]);
     const kd = SLOT_KIND[slot], fl = kd ? FLOOR_C : 0.25;
-    const got = pickW(R, list.map(n => [n, ((shares.get(n) || 0) + fl) * (kd ? corpusTilt(culture, kd, n) : 1) * (n === kit[slot] ? 2 : 1) * flavorD(n, biome) * tasteD(n, P) / (1 + again * (seen[n] || 0))]));
+    const got = pickW(R, list.map(n => [n, ((shares.get(n) || 0) + fl) * (kd ? corpusTilt(culture, kd, n) : 1) * (n === kit[slot] ? 2 : 1) * lightFlavor(slot, n, biome) * tasteD(n, P) / (1 + again * (seen[n] || 0))]));
     if (got) { k[slot] = got; seen[got] = (seen[got] || 0) + 1; }
   }
   k.seat = kit.seat === kit.bench ? (k.bench || k.chair) : (k.chair || k.bench);
@@ -1859,6 +1866,7 @@ function decorate(b, ctx) {
       const room = new Room(m, { out: b.pieces, R, mates: levelPlaced });
       room.biome = biome;
       room.persona = ctx.persona || null;
+      room.village = ctx.village;
       room.uSeed = Math.floor(tabR() * 4294967296) >>> 0;
       room.level = li;
       room.upper = li > 0 || (rects.length && rects.every(r => r.upper));
@@ -1883,6 +1891,7 @@ function decorate(b, ctx) {
       if (room.upper && ctx.fireAt) room.zones.push({ b: obox(ctx.fireAt.x, ctx.fireAt.z, 4.0, 2.8, 0), why: 'flue' });
       for (const r of rects) for (const kp of r.keep || []) room.zones.push({ b: obox((kp.x0 + kp.x1) / 2, (kp.z0 + kp.z1) / 2, kp.x1 - kp.x0, kp.z1 - kp.z0, 0), why: 'keep' });
       furnish(room, role, { ...ctx, use, type, decor, biome, kit: varyKit(kit, kitR, kitKind, kitSeen, biome, HP, ctx.culture), counts, mainRect: main, levels: ys.length, usedTemplates, layoutR });
+      keepLightBudget(b, room);
       if (room.plan) (b.layoutPlans || (b.layoutPlans = [])).push({ plan: room.plan, stand: room.stand, inside: room.inside });
       report.push({ level: li, role, area: room.area, items: room.count, room, template: room.template || null, scheme: room.plan ? room.plan.scheme : null, story: room.plan ? room.plan.story : null });
       furnished.push({ room, role });
@@ -1967,6 +1976,7 @@ function furnish(room, role, c) {
   if (room.plan) c = { ...c, kit: { ...c.kit, side: room.plan.side } };
   if ((!room.plan || room.plan.templateFirst) && tplFurnish(room, role, c)) {
     if (c.templateOnly) return; // 'vh floorplan template': the room as the template lays it out, nothing added
+    cookCorner(room, role, c);
     // a template thin for a big room is topped up with the extras toward the corpus rate, a little short of it at d2 so
     // the template's own layout stays the larger part
     if (store) storeLabels(room, c);
@@ -1979,6 +1989,83 @@ function furnish(room, role, c) {
   if (c.decor !== 'd1') extras(room, () => fill(room, role, c));
   if (store) storeStacks(room, c);
 }
+// ---------------------------------------------------------------- cooking corners
+// Where food is made, beside the fire's own pot or spit: a butcher table, a prep table, an oven, a mortar and pestle,
+// standing together against a wall (ideas track gap 9: none of these stood in a generated kitchen against 26 to 54 % of
+// corpus kitchens). Corpus, data/interior.json (497 designs, 2,686 rooms): of the learner's kitchens (cooking stations,
+// no beds; 78 rooms) a butcher table stands in 54 %, an oven in 32 %, a prep table in 26 %, a mortar and pestle in 22 %;
+// of tavern rooms 27, 18, 14 and 16 %; of home rooms (beds) about 7, 5, 5 and 4 % (items' piece counts per room kind over
+// their mean counts). A house has a cooking corner as often as a corpus home room has one of the four or the design
+// has a kitchen room (78 in 497): 1 - (1 - 0.19)(1 - 0.157) = 0.32; a tavern as often as a corpus tavern room, 0.57
+// (each as if independent). In a corner the stations draw by those rooms' shares over the share with any (homes take
+// the kitchens' mix). Where they stand, from the items: against a wall (half of them in the corpus; the rest, islands in
+// the middle, are not built here), a corner as often as the item's corner share, from the fire and the door at
+// distances drawn from the item's quartiles (butcher table fire 2.2 / 2.9 / 7.0 m, mortar 2.3 / 3.1 / 9.5, prep table
+// 2.8 / 5.6 / 8.7, oven 3.0 / 6.0 / 12.8), the next one within about 3 m of the first. Over the first, a horizontal item
+// stand as a shelf as often as kitchens have one (33 %). By household: food and drink, a busy house and a big one cook
+// more. Stations are decor here: any biome (D-126), paid with stand-ins (D-080).
+const COOK_ST = ['cauldron_ext3_butchertable', 'piece_preptable', 'piece_oven', 'cauldron_ext5_mortarandpestle'];
+const COOK = {
+  home: { p: 0.32, st: [0.66, 0.32, 0.39, 0.27] },
+  tavern: { p: 0.57, st: [0.47, 0.25, 0.32, 0.28] },
+};
+const COOK_CORNER = { cauldron_ext3_butchertable: 0.51, piece_preptable: 0.4, piece_oven: 0.36, cauldron_ext5_mortarandpestle: 0.36 };
+// Take a placed piece out of the room again
+function unplace(room, rec) {
+  const i = room.placed.indexOf(rec);
+  if (i >= 0) room.placed.splice(i, 1);
+  const j = room.mates.indexOf(rec);
+  if (j >= 0) room.mates.splice(j, 1);
+  const k = room.out.lastIndexOf(rec.p);
+  if (k >= 0) room.out.splice(k, 1);
+  if (!rec.rug && !rec.fire) room.count--;
+}
+function cookCorner(room, role, c) {
+  const C = COOK[role];
+  if (!C || room.upper || c.decor === 'd1' || room.area < 20 || room.cooked) return 0;
+  room.cooked = true;
+  const P = c.persona;
+  const lean = P ? Math.max(0.4, Math.min(1.8, 0.55 + 0.6 * ((P.hobby || {}).food || 0) + 0.3 * (P.busy || 0) + 0.15 * Math.min(4, P.size || 2) / 2)) : 1;
+  if (roomU(room, 'cook', 0) >= Math.min(0.95, C.p * lean)) return 0;
+  const have = n => room.placed.some(q => q.name === n);
+  let want = COOK_ST.filter((n, i) => !have(n) && ok(n, room.biome) && roomU(room, 'cookSt', i) < C.st[i]);
+  if (!want.length && !COOK_ST.some(have)) want = [COOK_ST[0]];
+  // the butcher table and the mortar are the cauldron's upgrades: the game places them within 5 m of one (and
+  // lib/generate.js settle takes out any farther off). A spit on the fire pit gives way to the cauldron for them.
+  let pot = room.placed.find(q => q.name === 'piece_cauldron') || null;
+  if (!pot && want.some(n => /^cauldron_ext/.test(n)) && room.fire && room.fire.name === 'fire_pit' && ok('piece_cauldron', room.biome)) {
+    const spit = room.placed.find(q => q.onFire && /^piece_cookingstation/.test(q.name));
+    if (spit) unplace(room, spit);
+    if (!room.placed.some(q => q.onFire)) { pot = onFire(room, 'piece_cauldron', { later: true }); room.potLater = null; }
+  }
+  if (!pot) want = want.filter(n => !/^cauldron_ext/.test(n));
+  // the first goes where the corpus puts it; the rest by it
+  let n = 0, first = room.placed.find(q => COOK_ST.includes(q.name)) || null;
+  want.forEach((name, i) => {
+    const fw = corpusAt(name, 'fire', roomU(room, 'cookFire', i)), dw = doorWant(room, name, 'cook', i);
+    const beds = room.placed.filter(q => (F[q.name] || {}).cat === 'bed');
+    const rec = placeAgainst(room, name, s => {
+      let v = s.corner ? 2 * (COOK_CORNER[name] || 0.4) : 0;
+      if (room.fire && fw != null) v += 1.2 * nearWant(Math.hypot(s.x - room.fire.x, s.z - room.fire.z), fw);
+      if (dw != null) v += 0.6 * nearWant(room.doorDist(s.x, s.z), dw);
+      for (const q of beds) v -= Math.max(0, 2 - Math.hypot(s.x - q.x, s.z - q.z)) * 1.5;
+      if (first) v += 3 * Math.max(0, 1 - Math.max(0, Math.hypot(s.x - first.x, s.z - first.z) - 1.5) / 2);
+      if (/^cauldron_ext/.test(name) && Math.hypot(s.x - pot.x, s.z - pot.z) > 4.5) v -= 100;
+      return v;
+    }, { kind: 'station' });
+    if (!rec) return;
+    n++;
+    if (!first) first = rec;
+  });
+  // a shelf over the first, for its pots and jars
+  if (first && ok('itemstandh', room.biome) && roomU(room, 'cookShelf', 0) < 0.33 * lean) {
+    const spots = mountSpots(room, 'itemstandh', { pairs: true, y: 1.5 }).filter(s => Math.hypot(s.x0 - first.x, s.z0 - first.z) < 1.6)
+      .sort((a, b2) => Math.hypot(a.x0 - first.x, a.z0 - first.z) - Math.hypot(b2.x0 - first.x, b2.z0 - first.z));
+    for (const sp of spots) if (putMount(room, 'itemstandh', sp)) { n++; break; }
+  }
+  return n;
+}
+
 // What the extras pass adds is marked (p.extra, never written to the file): the interior library's sets come before
 // it and take its place where they fit (lib/kitbash.js), so the rule-based extras only top up what the sets leave.
 function extras(room, run) {
@@ -2330,6 +2417,90 @@ function lightCount(room, kind, d, taste) {
   const v = Math.max(0, room.area / 10 * (lo + (hi - lo) * R()) * (d >= 3 ? 1.6 : 1) * likes * ((taste || {}).lights || 1) - (room.fire ? 0.5 : 0));
   return Math.floor(v) + (R() < v - Math.floor(v) ? 1 : 0);
 }
+// ---------------------------------------------------------------- light budget
+// Every room has one budget of lights, by kind of light, shared by everything that lights it: the decorator's lights
+// here, the interior library's sets and wall torches and the stand pass's candles (lib/kitbash.js trimLights keeps the
+// best of what they put up to the budget, at d2 and at d3). Generated rooms had 0.7 lights per 10 m2 against the
+// corpus's 0.2 and resin candles in 36 to 77 % of rooms against 0 to 7 % (docs/handoffs/2026-11-10-design/ideas.md,
+// gap 8). Classes as lab/learn_interior.py reads lights: wall (sconces, Dvergr wall lanterns), floor (standing torches,
+// braziers and lanterns), small (candles, lava and hooded lanterns), hang (ceiling braziers).
+// LIGHT_ROOM: data/interior.json rooms (2,686 rooms of 497 designs), per kind: lights of each class per room (share of
+// the kind's rooms with the prefab times its mean count, summed per class), the share of rooms with none (the product
+// of one minus each light's share) and the median room area in m2.
+const LIGHT_CLASS = [['wall', /^(piece_walltorch|piece_dvergr_lantern)$/], ['hang', /^(piece_brazierceiling01|piece_dvergr_lantern_pole)$/],
+  ['small', /^(Candle_resin|Candle_resin_bogwitch|piece_Lavalantern|piece_hoodedlantern|dvergrprops_lantern)$/],
+  ['floor', /torch|lantern_standing|brazierfloor|MountainKit_brazier/]];
+const LCLS = new Map();
+function lightCls(name) {
+  if (!LCLS.has(name)) { const e = LIGHT_CLASS.find(([, re]) => re.test(name)); LCLS.set(name, e ? e[0] : null); }
+  return LCLS.get(name);
+}
+const LIGHT_KEYS = ['wall', 'floor', 'small', 'hang'];
+//                 wall  floor small hang  none  area
+const LIGHT_ROOM = { home: [1.89, 0.37, 0.21, 0.18, 0.36, 96.75], sleeping: [1.03, 0.37, 0.28, 0.06, 0.46, 39.25],
+  tavern: [2.54, 0.74, 0.53, 0, 0.27, 135.25], hall: [1.02, 0.48, 0.17, 0, 0.53, 55.25], kitchen: [0.96, 0.46, 0.09, 0.04, 0.52, 41.25],
+  living: [0.75, 0.41, 0.16, 0.07, 0.51, 36], smithy: [2.38, 0.58, 0, 0, 0.41, 76.5], workshop: [0.78, 0.55, 0.08, 0.03, 0.51, 29],
+  storage: [0.33, 0.16, 0.01, 0, 0.83, 7.5], other: [0.75, 0.32, 0.1, 0.01, 0.55, 12.25] };
+// The share of lights that already stand at d2 (the rest go up at d3, D-071)
+const LIGHT_D2 = 0.7;
+// The budget: none at all as often as the kind's corpus rooms have none (less often for a household that likes its
+// lights), else the corpus count of a lit room of the kind, scaled by the room's size against the kind's median room
+// (square root, 0.35 to 2 times), by the household's liking for lights, the culture's taste and the village's own
+// (a number per village, from c.village where the caller gives one, else per culture and biome), and a draw of 0.7 to
+// 1.3. Each light then draws its class by the kind's corpus mix (candles more for a comfortable household; a hanging
+// brazier only in a room of 30 m2 with 3.9 m under its ceiling). From a stream of its own, so the room's other draws
+// are as before.
+function lightBudget(room) {
+  if (room.lightB) return room.lightB;
+  const kind = LEARN_KIND[room.role] || 'other';
+  const [w, f, s, h, p0, med] = LIGHT_ROOM[kind] || LIGHT_ROOM.other;
+  const P = room.persona || null;
+  const R = rngFrom((hashD(`lb|${room.cx.toFixed(1)}|${room.cz.toFixed(1)}|${room.stand.toFixed(1)}`) ^ ((P && P.salt) || 0x5eed)) >>> 0);
+  const likes = P && P.likes ? Math.max(0.5, Math.min(1.6, P.likes.lights || 1)) : 1;
+  const taste = (CULTURE_TASTE[room.culture] || {}).lights || 1;
+  const village = 0.8 + 0.45 * hashD(`vl|${room.village != null ? room.village : `${room.culture}|${room.biome}`}`) / 4294967296;
+  const mult = likes * taste * village;
+  const zero = { wall: 0, floor: 0, small: 0, hang: 0 };
+  const B = { kind, 2: { ...zero }, 3: { ...zero }, n: 0 };
+  room.lightB = B;
+  if (R() < Math.min(0.9, p0 / mult)) return B;
+  const scale = Math.max(0.35, Math.min(2, Math.sqrt(room.area / med)));
+  const mean = (w + f + s + h) / (1 - p0) * scale * mult * (0.7 + 0.6 * R());
+  const n = Math.floor(mean) + (R() < mean - Math.floor(mean) ? 1 : 0);
+  const comfort = P ? P.comfort || 0 : 0.5;
+  const hangOk = room.area >= 30 && (room.ceiling || 0) - room.stand > 3.9;
+  const W = [['wall', w], ['floor', f], ['small', s * (0.6 + 0.8 * comfort)], ['hang', hangOk ? h : 0]].filter(([, v]) => v > 0);
+  const n2 = Math.round(n * LIGHT_D2);
+  for (let i = 0; i < n && W.length; i++) { const c = pickW(R, W); B[3][c]++; if (i < n2) B[2][c]++; }
+  B.n = n;
+  return B;
+}
+// Whether the room has its budget of this light's class (pieces that are no light are never full)
+function lightFull(room, name) {
+  const c = lightCls(name);
+  if (!c || !room.role) return false;
+  const B = lightBudget(room);
+  let used = 0;
+  for (const q of room.placed) if (lightCls(q.name) === c) used++;
+  return used >= B[3][c];
+}
+// The rooms' budgets on the design, for lib/kitbash.js trimLights: the room's floor cells (0.5 m keys), its stand and
+// ceiling, and the budget.
+function keepLightBudget(b, room) {
+  if (!room.role) return;
+  const keys = new Set(room.cells.map(cc => `${Math.round(cc.x / G)},${Math.round(cc.z / G)}`));
+  (b.lightRooms || (b.lightRooms = [])).push({ keys, y0: room.stand - 0.3, y1: Math.max(room.ceiling || 0, room.stand + 2.5) + 0.3, B: lightBudget(room), role: room.role });
+}
+// The budget record a point is in, or null
+function lightRoomOf(recs, x, y, z) {
+  const i = Math.round(x / G), j = Math.round(z / G);
+  for (const r of recs || []) {
+    if (y < r.y0 || y > r.y1) continue;
+    for (let di = -1; di <= 1; di++) for (let dj = -1; dj <= 1; dj++) if (r.keys.has(`${i + di},${j + dj}`)) return r;
+  }
+  return null;
+}
+
 function furnishPlan(room, role, c) {
   const { decor, kit: k, counts } = c;
   const d = decor === 'd1' ? 1 : decor === 'd2' ? 2 : 3;
@@ -2363,6 +2534,8 @@ function furnishPlan(room, role, c) {
     planPaths(room);
     placeStorageRow(room, k, d >= 2 ? 1 : 0, { side: k.side });
     if (d >= 2) {
+      // the cooking corner before the table, which has its own ways to find room (tableSure)
+      cookCorner(room, role, c);
       // a table where the household keeps one, as often as the culture's corpus buildings have one (corpusRate th:
       // 68 % of norse furnished buildings): made room for when the first tries find none (tableSure)
       const t = table({ seats: d >= 3 ? 4 : 2, sure: roomU(room, 'hasTable', 0) < corpusRate(c.culture, 'th') });
@@ -2409,6 +2582,7 @@ function furnishPlan(room, role, c) {
       if (room.fire && room.fire.name === 'fire_pit') onFire(room, ok('piece_cookingstation_iron', biome) && d >= 3 ? 'piece_cookingstation_iron' : 'piece_cookingstation');
     }
     planPaths(room);
+    if (tavern) cookCorner(room, role, c);
     const fr0 = fr();
     // the seat of honor at the far end, facing the way in
     let throne = null;
@@ -3458,5 +3632,6 @@ function decorateExisting(pieces, { use = 'home', decor = 'd2', biome = 'Meadows
 }
 
 const api = { lateClash, corpusPick, corpusRate, tableRate, tableDressed, corpusTilt, topPick, keepsBarrels, oneWhy: () => ONE_WHY, furnClash, asBuilt, decorate, strip, findRooms, decorateExisting, setRules, setInterior, setTemplates, templateById, audit, auditContext, auditOne, itemOf, ITEM_BIOME, FURNITURE: F, readLevel,
+  lightCls, lightBudget, lightRoomOf, LIGHT_D2,
   _int: { floorLevels, standGuess, roleFor, stretch, size, ok, obox, overlap, ptDist, yawOfDir, pyaw, standOf, norm, WALLISH } };
 if (NODE_D) module.exports = api; else window.VHDecorate = api;

@@ -143,6 +143,58 @@ longhouses at s3 (`lab/hearths/renders.js <out dir>`): the Norse fire stays at i
 woodpile outside that wall and becomes a stone stack at s3; the Slavic fire stays in the front corner by the door; the
 longhouses keep the middle fire. The Frankish s3 house (a U plan) took the back wall after its gable ends went to wings.
 
+## Round 2 (2026-11-11): D-132 moves, fewer middle fires, halls
+
+Main merged in (7f3ed3f, merge, conflicts in the daily note and `docs/INTERIOR_DESIGN.md` kept both sides). Work in
+4bc4dac, all in `tools/blueprint-lab/lib/generate.js` unless named:
+
+- `hearthDraw` (new): the fire's place per stage. s1 draws from the household's stream at the end the house does not
+  grow toward (as before). Each later stage draws again with odds `HEARTH_MOVE`: 30 % when the massing state changes
+  (size, wings, storeys), 8 % when the shell stays; the new place differs from the old. The rates are a choice (the
+  corpus has no house seen at two stages): moving a fire means a new hood or shaft and roof patching, so it mostly
+  happens with building work. No fixed interval. `info.hearthMoved` names the stage; a note is added when the fire
+  moved at the stage asked for. The rework round a new hearth comes from each stage being built whole: no window in
+  the bay behind the new wall hearth, the vent over the new place, the old ridge caps or roof row left in place.
+- Home middle odds scale with floor area (cells x 4 x storeys): x0.3 under 120 m2, x0.6 under 250, x0.9 above.
+- `hearthPlan`: returns `why` for a middle fire (`info.hearthWhy`). Icelandic gable rows (`plan 'gables'`): end hearth
+  at the back gable of the main row (`rot: true`, `xW: NaN` so `hearthBay` never matches; gable backs have no windows
+  already). Svan (`form 'svan'`): end or side at the end away from the tower (sg -1); `HEARTHS.lamari` middle 0.35.
+  Halls and taverns (`T.use 'hall'`) go through `hearthPlan` with `HALL_HEARTH` (middle 0.22, end 0.4, side 0.25),
+  salted by type.
+- Flat roofs (the `flatCell` block in `generate`): the stage's draw for homes and halls; thick stone walls now take a
+  wall fire half a cell out from the wall (a niche) under the 4 x 2 m opening, corners last; `HEARTHS['middle-eastern']`.
+- A stone stack that cannot be built (something outside the gable) falls back to a middle fire under ridge caps
+  taken out over it, clear of the climbs (before: a middle fire under a closed roof).
+- `settle`: the fire's slide off a wall also clears the pot or spit on it; a long iron spit turns, then becomes a
+  wooden spit, then comes off.
+
+Measures (`lab/hearths/spotmix.js lib 6`, 288 single-seed homes, village cultures, first two biomes, s1 to s3):
+
+| | Before (7f3ed3f) | After (4bc4dac) | Corpus |
+|---|---|---|---|
+| All homes | middle 32, end 15, side 26, stack 1, round 26 | middle 10, end 26, side 31, wall 6, stack 1, round 26 | middle 16 |
+| Middle, not round (213) | 44 % | 14 % | 16 % |
+| Against a wall, under 120 m2, not round (128) | 64 % | 94 % | 92 % |
+| Lines where the fire changes kind, s1-s2 / s2-s3 (96) | 3 / 11 | 12 / 20 | |
+
+Middle homes left (29): drawn 17, no free wall 9 (s3 cross, T, U and L+T plans over 140 m2 whose wings cover every
+wall of the main wing), stack blocked 3. Halls and taverns (`lab/hearths/hallmix.js`, 360 designs): before all
+middle; after 37 % middle among those over 80 m2 (corpus 32 %).
+
+Checks: `lab/test_structure.js` all hold on 36. Norse Meadows pool (`make_testpool.js /tmp/h3-pool`): pass, 81 designs;
+nestBroken 0 before and after. Lineage (shell kept) against 7f3ed3f: home-c s1-s2 94 to 79 %, s2-s3 70 to 64 %; hall
+68 to 66 %, 54 to 52 %; the rest equal. These drops are the fire moving (D-132); `audit.js` was not changed.
+Not run: `check_interiors` on a sample, `check_set`, other pools, `gen-test`, `dotnet build`, renders.
+
+Next steps (exact):
+1. `node lab/check_interiors.js lib /tmp/h3-ci.json 3` (small sample) and compare with main; look at hall and tavern
+   fires that moved to an end or side (tables and benches round the old middle place, `fireAt` in `generate`).
+2. Render a Norse-highland gable row s1 to s3, a Svan house s2, a Middle Eastern court house s3 and a longhouse with
+   an end hearth (`lab/hearths/renders.js <dir>`) and check the hood and shaft on the turned gable wing.
+3. Wall spots for the 9 "no free wall" plans: let the hearth stand against a wall of another wing (generalize the
+   side shaft and `hearthBay` to a turned wing), or accept the middle for those big houses.
+4. Then the rest of "Next steps" below; D-130 and D-131 stay Open (no Meadows stone stack, nothing on the mod side).
+
 ## Open problems
 
 - Rerun on the branch: `node lab/check_set.js 2`, `node lab/check_interiors.js lib out.json 3` (compare with main),

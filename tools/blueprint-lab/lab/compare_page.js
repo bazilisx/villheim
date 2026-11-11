@@ -1,6 +1,6 @@
 // Checks the lab page builds what node builds: node lab/compare_page.js [page.html] [requests JSON] [tries]
 // Runs the page's library script (web/index.html by default) in a vm with a window shim and compares VHRequest.best on
-// five requests (or the JSON list given) with node's lib/request.js best: seed, name and every piece.
+// seven requests, two of them hubs (or the JSON list given) with node's lib/request.js best: seed, name and every piece.
 const fs = require('fs'), vm = require('vm'), path = require('path');
 const LAB = path.join(__dirname, '..');
 const html = fs.readFileSync(process.argv[2] || path.join(LAB, 'web/index.html'), 'utf8');
@@ -18,6 +18,8 @@ const reqs = JSON.parse(process.argv[3] || 'null') || [
   { type: 'tavern', culture: 'middle-eastern', biome: 'Plains', stage: 's2', decor: 'd3', seed: 11 },
   { type: 'smithy', culture: undefined, biome: 'Mountain', stage: 's2', decor: 'd1', seed: 5 },
   { type: 'storage', culture: undefined, biome: 'Swamp', stage: 's1', decor: 'd2', seed: 3 },
+  { type: 'hub', culture: 'norse', biome: 'Meadows', stage: 's5', decor: 'd2', seed: 3 },
+  { type: 'hub', culture: 'celtic', biome: 'Black Forest', stage: 's4', decor: 'd3', seed: 2 },
 ];
 const tries = +process.argv[4] || 8;
 let bad = 0;

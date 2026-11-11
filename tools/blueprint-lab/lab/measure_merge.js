@@ -22,6 +22,7 @@ const table = (head, rows) => { md.push('| ' + head.join(' | ') + ' |', '|' + he
 const qs = x => x && x.n ? `${x.p25} / ${x.median} / ${x.p75}` : '';
 
 // ================================================================ trim
+const pitched = r => Object.entries(r.trim.pitch).filter(([k]) => !k.startsWith('slopeBeam') && !k.endsWith('|00-03')).reduce((s, [, v]) => s + v, 0);
 const T = { builds: B.length, files, skipped: skips, errors };
 const freeOf = r => (r.trim.kinds.beam || 0) + (r.trim.kinds.pole || 0), slopeOf = r => r.trim.kinds.slopeBeam || 0;
 T.shareBuilds = {
@@ -29,6 +30,7 @@ T.shareBuilds = {
   anyTilted: pct(B.filter(r => r.trim.tilted > 0).length, B.length),
   anySlopeBeam: pct(B.filter(r => slopeOf(r) > 0).length, B.length),
   anyFreeTilt: pct(B.filter(r => freeOf(r) > 0).length, B.length),
+  anyPitchedFree: pct(B.filter(r => pitched(r) > 0).length, B.length),
   anyTiltedBeam: pct(B.filter(r => r.trim.kinds.beam > 0).length, B.length),
   anyLeaningPole: pct(B.filter(r => r.trim.kinds.pole > 0).length, B.length),
   anyBrace: pct(B.filter(r => r.trim.place.brace > 0).length, B.length),
@@ -38,7 +40,7 @@ T.shareBuilds = {
   anyLoose: pct(B.filter(r => r.trim.place.loose > 0).length, B.length),
 };
 const withTilt = B.filter(r => r.trim.tilted > 0), withFree = B.filter(r => freeOf(r) > 0);
-T.countPerBuild = { tiltedAll_builds_with_any: Q(withTilt.map(r => r.trim.tilted)), freeTilt_builds_with_any: Q(withFree.map(r => freeOf(r))), slopeBeam_builds_with_any: Q(B.filter(r => slopeOf(r) > 0).map(slopeOf)),
+T.countPerBuild = { tiltedAll_builds_with_any: Q(withTilt.map(r => r.trim.tilted)), freeTilt_builds_with_any: Q(withFree.map(r => freeOf(r))), pitchedFree_builds_with_any: Q(B.filter(r => pitched(r) > 0).map(pitched)), slopeBeam_builds_with_any: Q(B.filter(r => slopeOf(r) > 0).map(slopeOf)),
   tiltedAll_every_build: Q(B.map(r => r.trim.tilted)), freeShareOfTrim_pct_builds_with_any: Q(withFree.map(r => 100 * freeOf(r) / r.trim.trimAll)) };
 const sumMaps = (rs, key) => { const m = {}; for (const r of rs) for (const [k, v] of Object.entries(r.trim[key])) sum(m, k, v); return m; };
 const PB = ['00-03', '03-10', '10-20', '20-35', '35-55', '55-75', '75-90'], YB = ['00-03', '03-10', '10-25', '25-40', '40-45'];
@@ -155,20 +157,20 @@ const S = { builds: SB.length };
 const stBin = n => n >= 4 ? '4+' : String(n);
 const TYPES = ['home', 'hall', 'tavern', 'workshop', 'tower', 'storehouse', 'temple', 'other'];
 const mains = SB.map(r => ({ r, b: r.st.buildings[0] }));
-const stBlock = list => {
+const stBlock = (list, full = true) => {
   const c = {}; for (const b of list) sum(c, stBin(b.storeys), 1);
   const fp = {};
-  for (const k of ['1', '2', '3', '4+']) { const l = list.filter(b => stBin(b.storeys) === k); fp[k] = { n: l.length, roofAreaM2: Q(l.map(b => b.area)), eaveM: Q(l.map(b => b.eave).filter(v => v != null)), widthM: Q(l.map(b => Math.min(b.w, b.l))), lengthM: Q(l.map(b => Math.max(b.w, b.l))) }; }
+  if (full) for (const k of ['1', '2', '3', '4+']) { const l = list.filter(b => stBin(b.storeys) === k); fp[k] = { n: l.length, roofAreaM2: Q(l.map(b => b.area)), eaveM: Q(l.map(b => b.eave).filter(v => v != null)), widthM: Q(l.map(b => Math.min(b.w, b.l))), lengthM: Q(l.map(b => Math.max(b.w, b.l))) }; }
   return { n: list.length, counts: c, pct: share(c, ['1', '2', '3', '4+']), footprintByStoreys: fp, roofAreaM2: Q(list.map(b => b.area)), storeysMean: r2(list.reduce((s, b) => s + b.storeys, 0) / Math.max(1, list.length)) };
 };
 S.mainBuildingByType = {};
 for (const t of TYPES) S.mainBuildingByType[t] = stBlock(mains.filter(m => m.r.type === t).map(m => m.b));
 S.mainBuildingAll = stBlock(mains.map(m => m.b));
-S.allBuildingsInFiles = stBlock(SB.flatMap(r => r.st.buildings));
-S.outbuildings = stBlock(SB.flatMap(r => r.st.buildings.slice(1)));
+S.allBuildingsInFiles = stBlock(SB.flatMap(r => r.st.buildings), false);
+S.outbuildings = stBlock(SB.flatMap(r => r.st.buildings.slice(1)), false);
 S.mainBuildingByBiome = {}; S.homesByCulture = {};
-for (const [k, l] of Object.entries(groupBy(mains.filter(m => m.r.type === 'home'), m => m.r.biome))) S.mainBuildingByBiome[k] = stBlock(l.map(m => m.b));
-for (const [k, l] of Object.entries(groupBy(mains.filter(m => m.r.type === 'home'), m => m.r.culture))) S.homesByCulture[k] = stBlock(l.map(m => m.b));
+for (const [k, l] of Object.entries(groupBy(mains.filter(m => m.r.type === 'home'), m => m.r.biome))) S.mainBuildingByBiome[k] = stBlock(l.map(m => m.b), false);
+for (const [k, l] of Object.entries(groupBy(mains.filter(m => m.r.type === 'home'), m => m.r.culture))) S.homesByCulture[k] = stBlock(l.map(m => m.b), false);
 // density: files with two or more buildings
 const MB = SB.filter(r => r.st.buildings.length >= 2);
 const gapOf = b => b.gap;
@@ -190,7 +192,7 @@ const gs = {}; for (const r of MB) for (const b of r.st.buildings) if (b.gap != 
 S.gapByStoreys = Object.fromEntries(Object.entries(gs).map(([k, v]) => [k, Q(v)]));
 // storeys in dense files (median nearest gap under 4 m) against sparse ones
 const denseF = MB.filter(r => qt(r.st.buildings.map(gapOf).filter(g => g != null), 0.5) < 4), sparseF = MB.filter(r => !(qt(r.st.buildings.map(gapOf).filter(g => g != null), 0.5) < 4));
-S.denseVsSparse = { dense_median_gap_under_4m: stBlock(denseF.flatMap(r => r.st.buildings)), sparse: stBlock(sparseF.flatMap(r => r.st.buildings)), denseFiles: denseF.length, sparseFiles: sparseF.length };
+S.denseVsSparse = { dense_median_gap_under_4m: stBlock(denseF.flatMap(r => r.st.buildings), false), sparse: stBlock(sparseF.flatMap(r => r.st.buildings), false), denseFiles: denseF.length, sparseFiles: sparseF.length };
 
 md.push('### Storeys and density', '');
 md.push(`Builds with a roofed building (10 m2 of roof or more): ${SB.length}. A storey is a floor level 2.4 m or more above the one below with 6 m2 of floor or more, plus the ground level. The main building is the largest roofed cluster of a file; it takes the type of the file (folder, or words in the title for the general folders).`, '');

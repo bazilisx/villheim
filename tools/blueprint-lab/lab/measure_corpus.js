@@ -340,7 +340,7 @@ function analyse(f) {
       if (mx < 0 || mz < 0 || mx >= W || mz >= H || interior[mz * W + mx]) continue;
       if (!near_int(mx, mz, 24)) continue;
       const dk = deckCells.get(mz * W + mx);
-      const ph = b.y1 - b.y0;
+      const ph = r === 'fence' ? info[i].size[1] * (ps[i].s || [1, 1, 1])[1] : b.y1 - b.y0; // fences: catalog height (the collider box reads 2.4 m)
       if (r === 'fence' && !/sharpstakes|stake_wall|stakewall/.test(nm)) { cls = 'fence'; len = info[i].size[0] * (ps[i].s || [1, 1, 1])[0]; }
       else if (r === 'wall' && ph <= 1.7 && ph >= 0.3 && !near_int(mx, mz, 1) && !/fence/.test(nm) && (dk ? b.y0 >= dk.y - 0.3 && b.y1 - dk.y <= 1.7 : botG <= 1.5)) { cls = 'lowWall'; len = Math.max(bb.x1 - bb.x0, bb.z1 - bb.z0); }
       else if (r === 'beam' && info[i].shape === 'box' && !BEAMNN.test(nm) && Math.abs(A[i].ax[1]) < 0.1 && !near_int(mx, mz, 1)) {

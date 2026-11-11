@@ -544,7 +544,10 @@ function roundHall(b, K, C, T, o) {
   const doorSide = N / 2, doorK = Math.floor(L / 4);
   const drum = style === 'drum' && k >= 4 && tier < 2;
   const Nd = k === 5 ? 18 : 16, apD = ringPoly(Nd, 2);
-  const rIn = gallery ? ap - (k === 5 ? 4.5 : 3.5) : 0;
+  // (at s4 under a drum the gallery's inner edge is the drum's ring, so one ring of posts carries both)
+  const vR0 = ringPoly(k === 5 ? 18 : 16, 2) / Math.cos(Math.PI / (k === 5 ? 18 : 16));
+  const drumOnGallery = gallery && k === 4 && style === 'drum' && tier < 2;
+  const rIn = gallery ? (drumOnGallery ? vR0 + 0.1 : ap - (k === 5 ? 4.5 : 3.5)) : 0;
   // the part round's straight front at z = zc (an odd metre, about 0.4 of the way out; clear of the drum, and at s5
   // behind the walkway along the front)
   let zc = null;
@@ -598,8 +601,9 @@ function roundHall(b, K, C, T, o) {
     const last = outer.rings[outer.rings.length - 1];
     const yd = Math.floor(last.low + last.r * Math.min(1, (last.rho + 1 - apD) / 2) - 0.2);
     const vR = apD / Math.cos(Math.PI / Nd);
-    // the drum stands on a post at every other corner (corpus round halls: a ring of posts about 4 m apart, below)
-    for (let i = 0; i < Nd; i += 2) { const a = (i + 0.5) * 360 / Nd; T.posts(b, K, Math.sin(rad(a)) * vR, Math.cos(rad(a)) * vR, yd); }
+    // the drum stands on posts at every second to fourth corner (corpus inner posts, below)
+    const every = Nd === 18 ? 3 : variant === 'part' ? 4 : 2;
+    for (let i = 0; i < Nd; i += every) { const a = (i + 0.5) * 360 / Nd; T.posts(b, K, Math.sin(rad(a)) * vR, Math.cos(rad(a)) * vR, yd); }
     for (let i = 0; i < Nd; i++) {
       const a = i * 360 / Nd, x = Math.sin(rad(a)) * apD, z = Math.cos(rad(a)) * apD;
       b.put(K.beam, x, yd + 0.1, z, a);
@@ -612,13 +616,13 @@ function roundHall(b, K, C, T, o) {
   });
   // post rings: the gallery's (from s4) carrying its inner edge; the cone's rings (posts style) at s2, s3 and s5
   const rings = [];
-  if (gallery) rings.push({ r: rIn - 0.1, h: style === 'flat' ? top : SHt });
+  if (gallery && !drumOnGallery) rings.push({ r: rIn - 0.1, h: style === 'flat' ? top : SHt });
   if (style === 'posts' && k <= 3) rings.push({ r: ap - 2.2 });
   const postsOf = [];
   for (const rr of rings) {
-    // posts about 4.5 m apart round the ring (corpus round and polygon buildings over 300 m2: 7.5 free-standing inner
+    // posts 5.5 m or more apart round the ring (corpus round and polygon buildings over 300 m2: 7.5 free-standing inner
     // posts in the median, 1.45 per 100 m2, clear radius round the middle 6 m, nearest post 2 to 4 m; lab/hub_posts.py)
-    const n = Math.max(8, Math.round(2 * Math.PI * rr.r / 4.5 / 2) * 2);
+    const n = Math.max(6, Math.floor(2 * Math.PI * rr.r / 5.5 / 2) * 2);
     const h = rr.h || Math.max(2, Math.floor(roofAt(rr.r) - 0.6));
     for (let i = 0; i < n; i++) {
       const a = (i + 0.5) * 360 / n, x = Math.sin(rad(a)) * rr.r, z = Math.cos(rad(a)) * rr.r;
@@ -998,21 +1002,72 @@ function furnish(b, K, C, T, o, F) {
     const nx = Math.sin(rad(yaw)), nz = Math.cos(rad(yaw));
     for (const s of [-1, 1]) place.put('piece_bench01', x + nx * s * 0.95, 0.125, z + nz * s * 0.95, yaw + (s > 0 ? 180 : 0), ds(d));
   };
-  if (line === 'cross') {
+  // a long table: tables end to end along (ux, uz) from (x0, z0) over len metres, a row of benches down each side
+  const longRow = (x0, z0, ux, uz, len, d) => {
+    const yaw = normH(Math.atan2(-uz, ux) * 180 / Math.PI), n = Math.floor((len + 0.3) / 2.45);
+    let put = 0;
+    for (let i = 0; i < n; i++) {
+      const x = x0 + ux * (1.225 + 2.45 * i), z = z0 + uz * (1.225 + 2.45 * i);
+      if (!place.put('piece_table', x, 0.125, z, yaw, ds(i < 2 ? d : 2))) continue;
+      put++;
+      for (const sg of [-1, 1]) place.put('piece_bench01', x - uz * sg * 0.95, 0.125, z + ux * sg * 0.95, yaw + (sg > 0 ? 0 : 180), ds(i < 2 ? d : 2));
+    }
+    return put;
+  };
+  // how the hall sits (by line and the culture's roof, the culture data in styles.js): long tables down the arms of a
+  // cross (the corpus long halls' feast tables); in a round hall under a cone, rings of benches round the fire; under a
+  // drum, long tables like spokes between the fire and the gallery; under a flat roof, rugs round the fire and tables
+  // along the walls
+  const seating = line === 'cross' ? 'rows' : F.style === 'posts' ? 'ring' : F.style === 'flat' ? 'rugs' : 'spokes';
+  let nRows = 0;
+  if (seating === 'rows') {
     if (k === 2) for (const sx of [-1, 1]) tryTable(sx * 5, 0, 90, 1);
     else {
-      const v = F.D - 2.4, end = F.sideX != null ? F.sideX - 1.5 : F.Wx - 3;
-      for (let z = F.D + 2.5; z <= F.Wz - 3; z += 3.4) for (const sz of [-1, 1]) for (const sx of [-1, 1]) tryTable(sx * v, sz * z, 90, z < F.D + 4 ? 1 : 2);
-      for (let x = F.D + 2.5; x <= end; x += 3.4) for (const sx of [-1, 1]) for (const sz of [-1, 1]) tryTable(sx * x, sz * v, 0, 2);
+      // (at s5 the rows start in the crossing's corners, inside the stairs)
+      const v = k === 5 ? 3.6 : F.D - 2.4, s0 = k === 5 ? 4 : F.D + 0.5, endX = F.sideX != null ? F.sideX - 0.6 : F.Wx - 1;
+      for (const sx of [-1, 1]) for (const sz of [-1, 1]) {
+        nRows += longRow(sx * v, sz * s0, 0, sz, (sz > 0 ? F.Wz - 4.5 : F.Wz - 2.5) - s0, 1) ? 1 : 0;
+        nRows += longRow(sx * s0, sz * v, sx, 0, endX - s0, 2) ? 1 : 0;
+      }
+    }
+  } else if (seating === 'spokes') {
+    const r0 = 4.0, r1 = F.gallery ? F.rIn - 0.6 : F.ap - 0.8;
+    // up to five spokes, tried every 22.5 degrees clear of the high seat's, the door's and the stair's sides
+    // (a turned piece takes its whole box: spokes off the square stop a metre shorter)
+    for (const a of [45, 135, 225, 315, 90, ...(F.St ? [] : [270]), 67.5, 112.5, 247.5, 292.5, 22.5, 337.5, 157.5, 202.5]) {
+      if (nRows >= 5) break;
+      const ux = Math.sin(rad(a)), uz = Math.cos(rad(a));
+      nRows += longRow(ux * r0, uz * r0, ux, uz, r1 - r0 - (a % 90 && !F.gallery ? 1 : 0), nRows < 3 ? 1 : 2) ? 1 : 0;
     }
   } else {
+    // a ring of log benches round the fire (cone halls), or rugs (flat roof halls), and a few tables at the walls
+    const rr = seating === 'ring' ? 5.4 : 3.6, n = seating === 'ring' ? 8 : 6;
+    for (let i = 0; i < n; i++) {
+      const a = (i + 0.5) * 360 / n, x = Math.sin(rad(a)) * rr, z = Math.cos(rad(a)) * rr;
+      if (seating === 'ring') place.put('piece_logbench01', x, 0.125, z, a + 180, ds(i % 2 ? 2 : 1));
+      else place.put(i % 2 ? 'rug_deer' : 'jute_carpet', x, 0.14, z, a, ds(i % 2 ? 2 : 1), { onFurn: true, inKeep: true });
+    }
+  }
+  if (line !== 'cross') {
     const rr = F.gallery ? F.rIn + 1.8 : Math.max(F.ap - 2.8, 4.8);
-    const n = Math.max(3, Math.floor(2 * Math.PI * rr / 5));
+    const n = Math.max(3, Math.floor(2 * Math.PI * rr / (seating === 'spokes' ? 8 : 5)));
     for (let i = 0; i < n; i++) {
       const a = (i + 0.5) * 360 / n, x = Math.sin(rad(a)) * rr, z = Math.cos(rad(a)) * rr;
       if ((F.sideX != null && x > F.sideX - 1.6) || (F.zc != null && z < F.zc + 1.6)) continue;
       tryTable(x, z, a, i % 2 ? 2 : 1);
     }
+  }
+  if (nRows) b.notes.push(`${nRows} long tables with benches${seating === 'spokes' ? ' like spokes round the fire' : ' down the arms'}.`);
+  if (seating === 'ring') b.notes.push('A ring of log benches round the fire.');
+  if (seating === 'rugs') b.notes.push('Rugs and carpets round the fire.');
+  // lights on the gallery and the walkway: standing torches by the rail (d2)
+  if (F.gallery || (F.G && F.G.size)) {
+    const yG = F.SHt + 0.125;
+    const spots = line === 'cross' ? [...F.G.values()].filter((c, i) => i % 4 === 1).map(([x, z]) => [x, z])
+      : [...Array(12).keys()].map(i => { const a = (i + 0.5) * 30; return [Math.sin(rad(a)) * (F.rIn + 0.7), Math.cos(rad(a)) * (F.rIn + 0.7)]; });
+    let nl = 0;
+    for (const [x, z] of spots) if (place.put('piece_groundtorch_wood', x, yG + 0.75, z, 0, ds(2))) nl++;
+    if (nl) b.notes.push(`${nl} standing torches along the gallery.`);
   }
   // the walls' inner faces: a stone course is 1 m thick at the floor, planks and logs 0.3 to 0.5 m (game colliders)
   const lowT = /stone|marble/.test(C.wallStyle || '') ? 0.5 : C.wallStyle === 'log' ? 0.25 : 0.15;
@@ -1069,7 +1124,7 @@ function furnish(b, K, C, T, o, F) {
     let hangs = F.hangs || [];
     if (line !== 'cross') {
       let rc = F.gallery ? F.rIn - 1.2 : F.ap * 0.5;
-      if (F.drum && rc < F.apD + 0.8) rc = F.apD + 0.8;
+      if (F.drum && rc < F.apD + 0.8) rc = F.gallery && F.rIn < F.apD + 1 ? F.apD - 1.4 : F.apD + 0.8;
       hangs = [45, 135, 225, 315].map(a => { const x = Math.sin(rad(a)) * rc, z = Math.cos(rad(a)) * rc; return { x, z, y: F.roofAt(rc) - 0.5 - 1.97 }; });
     }
     let nc = 0;

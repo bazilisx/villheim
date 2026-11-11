@@ -9,11 +9,16 @@
 // from s3 a high seat and the seat beside it for the spouse (D-154), from s4 a gallery reached by a stair.
 // Every floor of every stage s2 to s5 is reached on foot from a door to the outside, by its stairs and ladders, and so is
 // every bed, table, station and chest; nothing stands in a doorway's entry zone (the reach logic of lab/reach.js).
-// Renders each line s1, s3 and s5 into the render dir (default /tmp/hub3-renders). Exits 1 on a failure.
+// Floors meet the walls (no open floor 0.3 or 0.8 m in from any ground-storey wall bay on its floored side), and the
+// free-standing inner posts stay within the corpus (lab/hub_posts.py: round and polygon buildings over 300 m2 have at
+// most 2.5 posts per 100 m2 in three of four, halls 1.2; the clear radius round the middle at least 2.6 m and 2.9 m in
+// three of four). The height cap holds for the main roof, and a crown rises at most CROWN_OVER over it.
+// Renders each line s1, s3 and s5 into the render dir (default /tmp/hub4-renders), all views from the same side: the
+// whole, a cut at 2.6 m over the floor, and from s4 a cut 2.6 m over the gallery. Exits 1 on a failure.
 const path = require('path'), fs = require('fs');
 const G = require('../lib/generate.js'), Ck = require('../lib/checks.js'), P = require('../lib/pieces.js');
 const S = require('../lib/styles.js'), H = require('../lib/hub.js');
-const outDir = process.argv[2] || '/tmp/hub3-renders';
+const outDir = process.argv[2] || '/tmp/hub4-renders';
 const seeds = +(process.argv[3] || 2);
 let failed = 0;
 const ok = (cond, what) => { if (!cond) { failed++; console.log('FAIL', what); } };
@@ -170,6 +175,41 @@ function reach(design) {
   return out;
 }
 
+const rad = d => d * Math.PI / 180;
+// open floor at the wall: points 0.3 and 0.8 m in from every ground-storey wall bay, on a side with floor 1.6 m in and
+// inside the hall's rooms, that lie on no floor piece
+function floorGaps(d) {
+  const floors = d.pieces.filter(p => P.piece(p.name).role === 'floor' && !p.decor && !p.dais && !p.yard && Math.abs(p.y) < 0.3);
+  const onFloor = (x, z) => floors.some(f => { const sz = P.piece(f.name).size; if (Math.abs(f.x - x) > 1.6 || Math.abs(f.z - z) > 1.6) return false; const a = rad(f.yaw || 0), dx = x - f.x, dz = z - f.z; const u = dx * Math.cos(a) - dz * Math.sin(a), v = dx * Math.sin(a) + dz * Math.cos(a); return Math.abs(u) <= sz[0] / 2 + 0.02 && Math.abs(v) <= sz[2] / 2 + 0.02; });
+  const inHall = (x, z) => (d.rooms || []).some(r => Math.abs(r.y) < 0.3 && x > r.x0 && x < r.x1 && z > r.z0 && z < r.z1);
+  const walls = d.pieces.filter(p => ['wall', 'door', 'window'].includes(P.piece(p.name).role) && !p.decor && !p.notice && !p.crown && p.y > -0.1 && p.y < 2.5);
+  const doors = walls.filter(p => P.piece(p.name).role === 'door');
+  const out = [];
+  for (const w of walls) {
+    const a = rad(w.yaw || 0), tx = Math.cos(a), tz = -Math.sin(a), nx = Math.sin(a), nz = Math.cos(a), hw = P.piece(w.name).size[0] / 2;
+    for (let t = -hw + 0.15; t <= hw - 0.15 + 1e-6; t += 0.25) for (const sg of [-1, 1]) {
+      const bx = w.x + tx * t, bz = w.z + tz * t;
+      if (doors.some(q => Math.hypot(q.x - bx, q.z - bz) < 1.3) || !onFloor(bx + nx * sg * 1.6, bz + nz * sg * 1.6)) continue;
+      for (const dd of [0.3, 0.8]) { const x = bx + nx * sg * dd, z = bz + nz * sg * dd; if (inHall(x, z) && !onFloor(x, z)) out.push(`${x.toFixed(1)},${z.toFixed(1)}`); }
+    }
+  }
+  return out;
+}
+// free-standing inner posts: poles standing on the ground floor inside the hall, 0.7 m or more from every wall bay
+function innerPosts(d) {
+  const inHall = (x, z) => (d.rooms || []).some(r => Math.abs(r.y) < 0.3 && x > r.x0 + 0.5 && x < r.x1 - 0.5 && z > r.z0 + 0.5 && z < r.z1 - 0.5);
+  const walls = d.pieces.filter(p => ['wall', 'door', 'window'].includes(P.piece(p.name).role) && !p.decor && p.y < 3);
+  const near = (x, z) => walls.some(w => { const a = rad(w.yaw || 0), dx = x - w.x, dz = z - w.z, hw = P.piece(w.name).size[0] / 2; const u = dx * Math.cos(a) - dz * Math.sin(a), v = dx * Math.sin(a) + dz * Math.cos(a); return Math.abs(u) <= hw + 0.7 && Math.abs(v) < 0.7; });
+  const pts = new Map();
+  for (const p of d.pieces) {
+    if (p.decor || P.piece(p.name).role !== 'pole' || p.y > 1.2 || !inHall(p.x, p.z) || near(p.x, p.z)) continue;
+    pts.set(`${Math.round(p.x * 2)},${Math.round(p.z * 2)}`, [p.x, p.z]);
+  }
+  const ps = [...pts.values()];
+  const area = d.pieces.filter(p => P.piece(p.name).role === 'floor' && !p.decor && !p.dais && Math.abs(p.y) < 0.3).reduce((a, p) => a + P.piece(p.name).size[0] * P.piece(p.name).size[2], 0);
+  return { area: Math.round(area), n: ps.length, per100: +(100 * ps.length / Math.max(1, area)).toFixed(2), clearR: ps.length ? +Math.min(...ps.map(([x, z]) => Math.hypot(x, z))).toFixed(1) : null };
+}
+
 let render = null;
 try {
   const R = require('../lib/render.js');
@@ -177,22 +217,25 @@ try {
   fs.mkdirSync(outDir, { recursive: true });
   render = (d, file) => {
     const tiles = [];
-    for (const v of [{ az: 35, el: 35 }, { az: 215, el: 55, cut: 2.6 }]) {
+    const gy = (d.rooms || []).filter(r => r.use === 'gallery').map(r => r.y)[0];
+    const views = [{ az: 35, el: 35 }, { az: 35, el: 55, cut: 2.6 }];
+    if (gy != null) views.push({ az: 35, el: 55, cut: gy + 2.6 });
+    for (const v of views) {
       const c = createCanvas(800, 600);
       R.draw(c.getContext('2d'), d.pieces, { width: 800, height: 600, az: v.az, el: v.el, cut: v.cut, background: '#e9e4d8', ss: 1 });
       tiles.push(c);
     }
-    const Sc = createCanvas(1600, 630), g = Sc.getContext('2d');
-    g.fillStyle = '#fff'; g.fillRect(0, 0, 1600, 630);
+    const Sc = createCanvas(800 * views.length, 630), g = Sc.getContext('2d');
+    g.fillStyle = '#fff'; g.fillRect(0, 0, 800 * views.length, 630);
     tiles.forEach((t, i) => g.drawImage(t, i * 800, 30));
     g.fillStyle = '#222'; g.font = '20px sans-serif';
     const m = measure(d);
-    g.fillText(`${d.meta.Name}  ${d.pieces.length} pieces, ${m.area} m2 of floor, ${m.top} m high (left: whole; right: cut at 2.6 m)`, 8, 22);
+    g.fillText(`${d.meta.Name}  ${d.pieces.length} pieces, ${m.area} m2 of floor, ${m.top} m high. All views from the same side (the main door toward the lower left): whole; cut at 2.6 m${gy != null ? `; cut at ${(gy + 2.6).toFixed(1)} m (the gallery)` : ''}`, 8, 22);
     fs.writeFileSync(file, Sc.toBuffer('image/png'));
   };
 } catch (e) { console.log('no renders:', e.message); }
 
-const rows = [], rendered = [], reachRows = [];
+const rows = [], rendered = [], reachRows = [], postRows = [];
 // one design's checks; returns the reach result
 function checkOne(d, L, stage, decor) {
   const name = d.meta.Name;
@@ -207,7 +250,19 @@ function checkOne(d, L, stage, decor) {
   }
   if (+stage[1] >= 4 && (d.request.tier || 0) < 4) ok(d.rooms.some(r => r.use === 'gallery') && d.pieces.some(p => p.name === 'wood_stair'), `${name}: no gallery with a stair`);
   ok(d.pieces.filter(p => /^itemstand/.test(p.name) && p.memento).every(p => !p.item), `${name}: a memento stand holds an item`);
-  ok(d.request.top <= H.capFor(d.request.cultureKey) + 0.01, `${name}: ${d.request.top} m over the cap ${H.capFor(d.request.cultureKey)}`);
+  const cap = H.capFor(d.request.cultureKey);
+  ok(d.request.mainTop <= cap + 0.01 && d.request.top <= cap + H.CROWN_OVER + 0.01, `${name}: main roof ${d.request.mainTop} m, top ${d.request.top} m, cap ${cap}`);
+  if (+stage[1] >= 2) {
+    const gaps = floorGaps(d);
+    ok(gaps.length === 0, `${name}: open floor at the wall at ${gaps.length} points (${gaps.slice(0, 4).join('; ')})`);
+    // (the corpus measure covers buildings of 300 m2 of ground floor and more)
+    const ip = innerPosts(d), round = d.request.line !== 'cross';
+    if (ip.area >= 300) {
+      ok(ip.per100 <= (round ? 2.5 : 1.2), `${name}: ${ip.n} inner posts, ${ip.per100} per 100 m2`);
+      ok(ip.clearR == null || ip.clearR >= (round ? 2.6 : 2.9), `${name}: a post ${ip.clearR} m from the middle`);
+    }
+    if (decor === 'd3' && +stage[1] >= 4) postRows.push({ name, ...ip });
+  }
   let rr = null;
   if (+stage[1] >= 2) {
     rr = reach(d);
@@ -283,6 +338,8 @@ for (const L of LINES) {
   console.log(`${L.id}: s5 ${hub.area} m2, ${hub.top} m; largest other building ${best.type} s3 seed ${best.seed}: ${best.area} m2, ${best.top} m`);
 }
 
+console.log('\ninner posts (d3, s4 and s5): free-standing on the ground floor');
+for (const r of postRows) console.log(`${r.name.padEnd(44)} ${String(r.n).padStart(3)} posts, ${r.per100} per 100 m2, nearest to the middle ${r.clearR} m`);
 console.log('\nline           seed stage pieces  floor m2  top m  family  features');
 for (const r of rows) console.log(`${r.line.padEnd(14)} ${String(r.seed).padStart(4)} ${r.stage.padEnd(5)} ${String(r.pieces).padStart(6)} ${String(r.area).padStart(9)} ${String(r.top).padStart(6)}  ${r.family.padEnd(7)} ${r.features}`);
 console.log('\nreached on foot (d3): floors, rooms and main pieces');

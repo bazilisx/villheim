@@ -145,3 +145,91 @@ celtic-round_s1 to _s5, court_s1 to _s5 (`.png`).
   yurt ring, dome).
 3. The missing grand features above, and stairs to the galleries.
 4. Mod side: build the hub round the hearth (D-139), read `#VillheimLeader`.
+
+## Round 2 (2026-11-11)
+
+Lead's calls on the round 1 rows (no rows for Tyler): the `#VillheimLeader` marker with `seat;x;y;z;yaw` (A), the
+stone course on Meadows and Black Forest hubs from s4 under D-012 and D-125 (A), the fallback hub lines for cultures
+with no form yet (A).
+
+Commits: 37be34a (reach: stairs, ladders, rooms, furniture that leaves the way open), 82aa6b8 (exteriors, the round
+forms, the s2 woodshed), and this file.
+
+### Every floor reached on foot
+
+- `lib/hub.js walker(b)`: the reach logic of `lab/reach.js` (design/integration2) inside the hub's placer. Furniture
+  goes in only when every room, every stair and ladder and every bed, table, station and chest placed so far stays
+  reached from a door to the outside, the new piece included (D-148, D-152). Pieces tagged d2 or d3 are tested too, so
+  d1 stays inside d2 and d3 (D-071).
+- Room rects for every floor: the long hall's galleries and loft, the round hall's gallery ring, each court wing on
+  each floor, the court roofs, the tower floors and the tower tops.
+- Long hall s5: a stair of three `wood_stair` to each gallery in the outer aisle row at the high seat end, rising to the
+  end wall; the gallery floor is open over the flight. s4: the loft ladder stands at the nave's side by the aisle
+  posts at the -x end (it stood in the nave between the two fires). s5 loft: a ladder up from the gallery at the end.
+- Court: s2 and s3 a ladder through the roof at the back wing's end; from s4 each tower has a ladder per storey up to
+  a lookout on top and a door onto each wing roof it stands between.
+- `lab/test_hub.js`: the reach logic copied in (reach.js is not on this branch). Every stage s2 to s5 at d1 and d3:
+  no floor, room or main piece unreached, nothing in an entry zone.
+
+Measures (seed 1, d3; main pieces reached of those counted, reach logic, before / after):
+
+| Line | s2 | s3 | s4 | s5 |
+|---|---|---|---|---|
+| Norse long | 2/7 / 6/6 | 6/10 / 10/10 | 10/17 / 18/18 | 16/23 / 23/23, both galleries and the loft reached (one gallery before) |
+| Norse round | 1/2 / 1/1 | 3/4 / 3/3 | 6/6 / 6/6 | 9/9 / 9/9, gallery ring reached |
+| Court | 0/7 / 6/6, roof reached | 1/14 / 12/12, roof reached | 13/13, roofs and tower top reached | 12/12, 16 rooms on 4 levels reached |
+
+### Exteriors from s4
+
+- `GRAND` gains `tiers3` (3 or more roof tiers, 62 % rest, 68 % top tenth) and `dragons` (19 %, 26 %).
+  `exteriorOf()`: per line a list in the order of the top tenth's shares (long: tiers3, porch6, dragons, highWindows;
+  round: tiers3, porch6, dragons; court: porch6, towers2), each from the village's draw; s5 has at least three, s4 at
+  least one, and s5 keeps what s4 had. Dragons only where the culture has them (`C.dragons`). Recorded in
+  `request.features`.
+- Long hall, tiers3: lean-to roofs (26 degrees) over the aisles from the wall top to the aisle posts, a wall band on
+  the posts (3 m at s5, 2 m at s4; windows every other bay with highWindows), the nave's gable over it, and a lantern
+  over the main fire (posts on the ridge, a small roof, open at the sides). s5 is 17.6 m (14.2 before). The aisle
+  roofs' ends close with roof gable pieces. Dragons: heads on both gables (as before) and on the lantern.
+  porch6: the porch of 10 posts as before; without it a covered entrance on 4 posts with a small gable roof.
+- Round: a covered entrance at the main door from s4 (6 posts with porch6, else 4); a carved head on its gable with
+  dragons (Norse). Norse tiers3 is its drum.
+- Court: porch6 is a portico of six stone columns with a flat roof and parapet before the gate. Towers as before.
+
+### The two round forms
+
+| | Norse round | Celtic round |
+|---|---|---|
+| Walls s2 to s4 | 4 m, plank (stone course from s4) | 3 m, logs (`wood_wall_log`, Black Forest kit; stone course from s4) |
+| Roof | two low rings of 26 degrees, then 45 (drum from s4) | one ring of 26 degrees, then 45 (two at s5) |
+| Posts | clear inside to s4; the drum's posts at s4; outer ring at s5 | a ring from s2 (8 posts at s2), one at s4, two at s5 |
+| Crown | a smoke cap on four posts at s2 and s3; the drum's cone from s4 | open at s2 and s3; a raised roof on 8 posts over the open crown from s4, a finial post |
+| Height s2 / s3 / s4 / s5 | 6.9 / 8.9 / 10.7 / 14.7 m | 5.6 / 7.6 / 15.8 / 23.8 m |
+
+The Celtic s5 (23.8 m) is now taller than every other Celtic building (the tower s3, 17.6 m, test_hub.js).
+
+### Round s2 and the camp
+
+The s2 hall (10 m across) stands inside the camp's ring of lean-tos. The camp gives way (D-132); the mod tears an old
+stage down before the new one goes up (`ConstructionSite.cs` TeardownOld). One lean-to stands on behind the s2 hall as
+a woodshed, moved out clear of the eaves, with the wood stack under it.
+
+### Checks run
+
+- `node lab/test_hub.js /tmp/hub2-renders 2`: 4 lines x seeds 1, 2 x s1 to s5 x d1, d3, every check in
+  `lib/checks.js`, the reach checks above, the round 1 checks. All pass. s5 against the culture's set: Norse long
+  926 m2, 17.6 m (tavern 358 m2, 10.2 m); Norse round 942 m2, 14.7 m; Celtic 942 m2, 23.8 m (tower 356 m2, 17.6 m);
+  court 1,618 m2, 10 m (tavern 458 m2, 7 m).
+- `node lab/test_structure.js`: all structure rules hold on 36 designs.
+- Engine bundle built to `/tmp/hub2-lab.js` and run in a VM: `VHRequest.make` of a Norse long s5d2 hub passes its
+  checks and writes `#VillheimLeader`. Repo bundles not rebuilt.
+- Renders in `/tmp/hub2-renders` (whole and cut at 2.6 m): each line s1 to s5.
+
+### Open
+
+- Towers on the long and round lines are not built (towers2 and anyTower draw nothing there yet).
+- The round gallery and the long hall's loft use ladders; the round line has no stair.
+- The raised roof over the high seat end of the long hall is not built (the tiers are the aisle roofs, the nave and
+  the lantern).
+- The Celtic raised crown roof and the ring roofs of 45 degrees still show gaps between pieces near the crown.
+- Furniture refused by the reach test is left out; the s2 halls hold fewer tables than before (long s2: 6 main pieces
+  of 7).

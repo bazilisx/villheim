@@ -1899,6 +1899,7 @@ function decorate(b, ctx) {
       const rk = varyKit(kit, kitR, kitKind, kitSeen, biome, HP, ctx.culture);
       furnish(room, role, { ...ctx, use, type, decor, biome, kit: rk, counts, mainRect: main, levels: ys.length, usedTemplates, layoutR });
       if (decor !== 'd1') rugTopUp(room, rk, biome, ctx.culture);
+      if (decor !== 'd1') sparseTopUp(room, rk);
       keepLightBudget(b, room);
       if (room.plan) (b.layoutPlans || (b.layoutPlans = [])).push({ plan: room.plan, stand: room.stand, inside: room.inside });
       report.push({ level: li, role, area: room.area, items: room.count, room, template: room.template || null, scheme: room.plan ? room.plan.scheme : null, story: room.plan ? room.plan.story : null });
@@ -2566,6 +2567,27 @@ function rugTopUp(room, k, biome, culture) {
     for (let i = 0; have < B[3] && i < 6; i++) {
       const rug = corpusPick(room.R, KIT.rug.filter(nm => F[nm]), LEARN_KIND[room.role] || 'home', 'rug', culture, k.rug) || k.rug;
       if (placeRug(room, { ...k, rug }, null)) { have++; n++; }
+    }
+  } finally { room.R = R0; }
+  return n;
+}
+// A room of 8 m2 or more that the furnishing left with fewer than two pieces (a tower's upper floor once its light
+// came out under the light budget) gets a chest against a wall, then an armor stand or a barrel, up to two: every
+// corpus room kind holds 0.82 pieces per 10 m2 or more at its lower quartile (data/interior.json rooms perTenM2; other
+// rooms 0.82, sleeping 1.09, storage 4), 2.5 in a room of 30 m2. From a stream of its own.
+function sparseTopUp(room, k) {
+  if (!room.role || room.area < 8) return 0;
+  const count = () => room.placed.filter(q => !q.rug).length;
+  if (count() >= 2) return 0;
+  const R0 = room.R;
+  room.R = rngFrom(hashD(`sparse|${room.cx.toFixed(1)}|${room.cz.toFixed(1)}|${room.stand.toFixed(1)}|${(room.persona && room.persona.salt) || 0}`) >>> 0);
+  let n = 0;
+  try {
+    const order = [k.chest || 'piece_chest_wood', room.R() < 0.5 ? 'ArmorStand' : 'piece_chest_barrel', 'piece_chest_barrel', 'ArmorStand'];
+    for (const name of order) {
+      if (count() >= 2) break;
+      if (!F[name]) continue;
+      if (placeAgainst(room, name, sp => (sp.corner ? 1 : 0), { kind: (F[name] || {}).cat === 'storage' ? 'storage' : undefined })) n++;
     }
   } finally { room.R = R0; }
   return n;

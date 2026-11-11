@@ -715,7 +715,7 @@ solids before, which let a turned table group close a stair the reach test then 
 - `node lab/test_hub_variance.js`: 8 of 8 distinct in every culture; per choice now also the plan as built (2 to 6
   values), side-room wall (2 to 5), porch (3), annexes (1 to 3), personas (7 or 8 of 8).
 - Sweep, every village culture, lineages 1 to 8, s2 to s5, d3 (checks.js and lib/reach.js; /tmp/h7/sweep.js): 0 of 480
-  designs with a fault (before the wall cap; the run after it is in the report).
+  designs with a fault, before and after the wall cap.
 - `node lab/test_structure.js`: all structure rules hold on 36 designs.
 - `node lib/build_web.js /tmp/h7/index.html` then `node lab/compare_page.js /tmp/h7/index.html`: all same.
   web/index.html in the repo not rebuilt. Engine bundle `/tmp/h7/lab.js` in a VM: an Anglo-Saxon s5d3 hub writes

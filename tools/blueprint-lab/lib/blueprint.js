@@ -1,6 +1,6 @@
 // Read and write PlanBuild .blueprint files.
 function parse(text) {
-  const meta = {}, pieces = [], snaps = [];
+  const meta = {}, pieces = [], snaps = [], clips = [];
   let mode = null;
   for (const raw of text.split(/\r?\n/)) {
     const line = raw.trim();
@@ -8,7 +8,7 @@ function parse(text) {
     if (line[0] === '#') {
       const i = line.indexOf(':');
       const key = i < 0 ? line.slice(1) : line.slice(1, i);
-      if (['Pieces', 'SnapPoints', 'Terrain'].includes(key)) mode = key;
+      if (['Pieces', 'SnapPoints', 'Terrain', 'VillheimClips', 'VillheimPaths'].includes(key)) mode = key;
       else meta[key] = line.slice(i + 1).replace(/^"|"$/g, '');
       continue;
     }
@@ -20,6 +20,13 @@ function parse(text) {
       pieces.push({ name: p[0], cat: p[1], x: n[0], y: n[1], z: n[2], q: n.slice(3, 7),
         s: s.some(isNaN) ? [1, 1, 1] : s, info: p[9] || '', data: p[13] || '' });
     } else if (mode === 'SnapPoints' && p.length === 3) snaps.push(p.map(Number));
+    else if (mode === 'VillheimClips' && p.length >= 5) clips.push({ name: p[0], x: +p[1], y: +p[2], z: +p[3], d: +p[4], f: +(p[5] || 0) });
+  }
+  // clips made on purpose (D-098): the depth a piece may go into what shows of the walls, matched by prefab and place
+  for (const c of clips) {
+    const q = pieces.find(o => o.name === c.name && Math.abs(o.x - c.x) < 0.002 && Math.abs(o.y - c.y) < 0.002 && Math.abs(o.z - c.z) < 0.002);
+    if (q && c.d > 0) q.wclip = c.d;
+    if (q && c.f > 0) q.fclip = c.f;
   }
   return { meta, pieces, snaps };
 }
@@ -39,6 +46,14 @@ function write(bp) {
   const out = [`#Name:${m.Name || 'Villheim design'}`, `#Creator:${m.Creator || 'Villheim generator'}`,
     `#Description:"${(m.Description || '').replace(/"/g, "'")}"`, `#Category:${m.Category || 'Villheim'}`];
   if (bp.snaps && bp.snaps.length) { out.push('#SnapPoints'); for (const s of bp.snaps) out.push(s.map(f).join(';')); }
+  // Clips made on purpose (D-098): a kit set's piece that goes into what shows of a wall as deep as its source builds
+  // put it carries the depth, so lib/audit.js lets it pass up to that mark. A section of its own, before the pieces:
+  // PlanBuild skips sections it does not know (as '#VillheimPaths'), and the mod's reader (Designs/Blueprints.cs)
+  // reads only '#Pieces' and '#VillheimPaths'; the info field is no place for it, since the mod reads a sign's info
+  // as its heading and a stand's as its item.
+  // Each line: prefab;x;y;z;depth into walls;depth into the set's own furniture (as the audit's furniture boxes).
+  const marked = bp.pieces.filter(p => p.wclip > 0 || p.fclip > 0);
+  if (marked.length) { out.push('#VillheimClips'); for (const p of marked) out.push([p.name, f(p.x), f(p.y), f(p.z), f(p.wclip || 0), f(p.fclip || 0)].join(';')); }
   out.push('#Pieces');
   for (const p of bp.pieces) {
     const q = p.q || [0, 0, 0, 1], s = p.s || [1, 1, 1];

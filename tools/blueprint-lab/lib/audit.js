@@ -29,6 +29,9 @@
 //             shows of both; 5 to 15 cm is counted as intoWallSoft and watched, not gated yet
 //   storage   storehouse lines: chests, chests along a wall (within 1.2 m of a wall piece), chests stacked, signs
 //   beds      beds at d1 (beds come first)
+//   marks     a file's '#VillheimClips' section (lib/blueprint.js) lists pieces of the interior library's sets that go
+//             into a wall's visible parts (mountClip, intoWall) or into their own set's furniture (furnClip) as deep as
+//             the source builds put them; those pass up to their mark (clips made on purpose, D-098)
 //   same      how alike the home lines are (likeness: furniture list and arrangement); homeAlike counts pairs above 0.7
 //             at d2 and d3 (no cookie cutter; d1 is beds and a chest everywhere)
 const NODE_A = typeof module !== 'undefined';
@@ -108,6 +111,9 @@ function audit(pieces, shell) {
     }
     const fireSet = [pieces[furn[a]].name, pieces[furn[b]].name].some(n => /^(fire_pit|hearth|piece_cookingstation|piece_cauldron|piece_cookingstation_iron)$/.test(n)) && [pieces[furn[a]].name, pieces[furn[b]].name].some(n => /^(fire_pit|hearth|bonfire)$/.test(n));
     if (fireSet) continue; // a spit or a pot over its fire
+    // a pair a kit set stands as its source builds stood it (D-098), up to the mark the file carries
+    const fmark = Math.max(pa.fclip || 0, pb.fclip || 0);
+    if (fmark && Math.min(ox, oz) <= fmark + 0.005) continue;
     if (ox > 0.12 && oy > 0.12 && oz > 0.12) r.furnClip.push(`${pieces[furn[a]].name} in ${pieces[furn[b]].name} (${ox.toFixed(2)} x ${oy.toFixed(2)} x ${oz.toFixed(2)} m)`);
     else if (ox > 0.2 && oz > 0.2 && Math.abs(Bx.y0 - A.y1) < 0.15 && A.y0 < Bx.y0 || ox > 0.2 && oz > 0.2 && Math.abs(A.y0 - Bx.y1) < 0.15 && Bx.y0 < A.y0) {
       const lower = A.y0 < Bx.y0 ? pieces[furn[a]] : pieces[furn[b]], upper = A.y0 < Bx.y0 ? pieces[furn[b]] : pieces[furn[a]];
@@ -171,7 +177,8 @@ function audit(pieces, shell) {
     if (!MOUNT.test(p.name) || !visBox[i]) return;
     let deep = 0, what = '';
     for (const j of structVis.concat(roofIdx)) { const d = M.deepest(vis[i], vis[j]); if (d > deep) { deep = d; what = pieces[j].name; } }
-    if (deep > (BANNER.test(p.name) ? 0.03 : 0.015)) r.mountClip.push(`${p.name} ${Math.round(deep * 100)} cm into ${what} at ${p.x.toFixed(1)},${p.y.toFixed(1)},${p.z.toFixed(1)}`);
+    // a piece marked with a clip made on purpose (D-098, p.wclip from the file's '#VillheimClips') passes up to its mark
+    if (deep > Math.max(BANNER.test(p.name) ? 0.03 : 0.015, (p.wclip || 0) + 0.005)) r.mountClip.push(`${p.name} ${Math.round(deep * 100)} cm into ${what} at ${p.x.toFixed(1)},${p.y.toFixed(1)},${p.z.toFixed(1)}`);
     const b = visBox[i], mid = (b.y0 + b.y1) / 2;
     const floor = floorUnder(p.x, p.z, b.y0 + 0.05);
     if (BANNER.test(p.name)) {
@@ -225,7 +232,7 @@ function audit(pieces, shell) {
       if (d > deep) { deep = d; what = pieces[j].name; }
     }
     const msg = `${pieces[i].name} ${Math.round(deep * 100)} cm into ${what}`;
-    if (deep > 0.15) r.intoWall.push(msg); else if (deep > 0.05) r.intoWallSoft.push(msg);
+    if (deep > Math.max(0.15, (pieces[i].wclip || 0) + 0.005)) r.intoWall.push(msg); else if (deep > 0.05) r.intoWallSoft.push(msg);
   }
   // storage
   const chests = furn.filter(i => role(pieces[i]) === 'storage');

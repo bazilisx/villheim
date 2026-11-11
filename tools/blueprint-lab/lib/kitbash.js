@@ -836,15 +836,23 @@ function placeable(p, bx, mm, i, b, ctx, room, idx, zones, made, clipOf, anc, fi
     (q.extra || (a.built && (MOVABLE.includes(PB.piece(q.name).role) || (a.dining && PB.piece(q.name).role === 'table' && !/cartography|workbench|butcher|preptable/.test(q.name)))));
   // out of the furniture boxes as the pool audit measures them (furnClip): the decorator's extras move aside, anything
   // else keeps the piece out
-  const mine = [];
-  for (const [q] of D.furnClash(p, idx.near(bx, 0.3).map(r => r.p).filter(q => q.decor && !displace.has(q)).concat(made.filter(Boolean)))) {
+  // (two of the set's own pieces, each its source's prefab, stand as their source builds stood them: a chair pushed
+  // under its table; marked so the pool audit lets that depth pass, D-098)
+  const mine = [], ownP = !mm.n || mm.n === p.name;
+  let fdeep = 0;
+  for (const [q, deep] of D.furnClash(p, idx.near(bx, 0.3).map(r => r.p).filter(q => q.decor && !displace.has(q)).concat(made.filter(Boolean)))) {
+    const j = made.indexOf(q);
+    if (j >= 0 && ownP && (!a.pieces[j].n || a.pieces[j].n === q.name)) { fdeep = Math.max(fdeep, deep); continue; }
     if (movable(q)) { mine.push(q); continue; }
     return no(31);
   }
+  if (fdeep) p.fclip = +(fdeep + 0.005).toFixed(3); else delete p.fclip;
   // the audit's own tests (what it rests on is there, plain wall behind, out of what shows of the walls) come last,
   // as the dearest
   const audited = () => {
-    if (decorB().auditOne(p, idx.audit, made.filter(Boolean))) return true;
+    // a set's own piece may go into what shows of the walls as deep as its source builds put it (D-098: clips made on
+    // purpose); a piece put in its place gets nothing
+    if (decorB().auditOne(p, idx.audit, made.filter(Boolean), ownP ? clipOf(i, 'w') : 0)) return true;
     if (STATS_B) { const H = STATS_B.audit || (STATS_B.audit = {}); const k = decorB().oneWhy() + ' ' + p.name; H[k] = (H[k] || 0) + 1; }
     return no(13);
   };

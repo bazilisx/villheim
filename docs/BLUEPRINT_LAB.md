@@ -544,6 +544,19 @@ Clips on purpose. A piece placed with a clip carries `p.clip`, the deepest it re
 a piece set into the floor carries `p.sink`. Kitbash pieces also carry `kb` (assembly and anchor) and `rest`, and the
 audit checks what each rests on. These marks are not written to the `.blueprint` file.
 
+Clips made on purpose in the file (D-098, 2026-11-10). A set's own piece (its source's prefab, never a substitute) may
+go into what shows of the walls as deep as the library recorded for it (`a.clips`, slot 'w'): `decorate.js` `auditOne`
+takes that allowance for `hungInto` and `showsInto` and marks a piece that uses it with `p.wclip`. Two of a set's own
+pieces whose furniture boxes overlap as their source builds stood them (a chair under its table) pass the furniture
+test and the later one carries `p.fclip`. `lib/blueprint.js` writes both in a `#VillheimClips` section before
+`#Pieces` (`prefab;x;y;z;wall depth;furniture depth`) and reads them back onto the pieces; `lib/audit.js` lets
+`mountClip`, `intoWall` and `furnClip` pass up to a piece's mark. PlanBuild skips sections it does not know (as it does
+`#VillheimPaths`), and the mod's reader (`Designs/Blueprints.cs`) reads only `#Pieces` and `#VillheimPaths`, so the
+game needs no change. The info field is no place for the mark: the mod reads a sign's info as its heading
+(`DesignSpawner.cs`) and a stand's as its item (`StandItems.cs`). A board save rewritten by `BlueprintEdits.cs` drops
+the section (its pieces then fail the pool audit if audited again). Over 72 s2d3 and s3d3 designs three pieces carry a
+mark: the recorded wall clips of the mined sets are mostly chests set into walls, and few of those sets get placed.
+
 Materials (D-066). `pieces.js` `minor`: rugs, banners, food and feasts, pots, candles, garlands, cloth hangings, Dvergr
 props, treasure, signs. They pass the materials check in any biome, and the generator's last pass (`biomeSafe`) keeps
 them; stations, beds, chests, tables, seats, fires and building pieces still need their own.

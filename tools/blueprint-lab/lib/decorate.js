@@ -2749,8 +2749,11 @@ function showsInto(p, others) {
   }
   return m;
 }
-function auditOne(p, ctx, extra) {
+function auditOne(p, ctx, extra, allow) {
   modelSizes();
+  // allow: how deep the piece may go into what shows of the walls (a kit set's recorded clip, D-098); a piece that
+  // uses it carries the depth as p.wclip, which lib/blueprint.js writes for the pool audit
+  if (allow) delete p.wclip;
   const it = itemOf(p);
   // only what is within reach (the audit's tests look no further than 3 m)
   const A = ctx.around(p.x, p.z);
@@ -2760,9 +2763,19 @@ function auditOne(p, ctx, extra) {
   const wallish = A.wallish.concat(built.filter(sb => WALLISH.has(sb.role)));
   if (it.f.at === 'mount' && !mountOk(it, wallish)) { ONE_WHY = 'mount'; return false; }
   if (p.rest && !kbRests(it, A.pieces.concat(more), wallish, A.struct.concat(built))) { ONE_WHY = 'rest ' + p.rest; return false; }
-  if (SHOWS_DEEP.has(it.f.cat) && showsInto(p, A.struct.map(sb => sb.p)) > SHOWS_MAX) { ONE_WHY = 'shows'; return false; }
+  let used = 0;
+  if (SHOWS_DEEP.has(it.f.cat)) {
+    const d = showsInto(p, A.struct.map(sb => sb.p));
+    if (d > Math.max(SHOWS_MAX, allow || 0)) { ONE_WHY = 'shows'; return false; }
+    if (d > SHOWS_MAX) used = Math.max(used, d);
+  }
   // what hangs on a wall stays out of what shows of the walls round it (the cross bars, T-606, T-612)
-  if ((it.f.at === 'mount' || p.rest === 'wall') && hungInto(p, A.struct.map(sb => sb.p).concat(more)) > HUNG_CLIP(p.name)) { ONE_WHY = 'hung'; return false; }
+  if (it.f.at === 'mount' || p.rest === 'wall') {
+    const d = hungInto(p, A.struct.map(sb => sb.p).concat(more));
+    if (d > Math.max(HUNG_CLIP(p.name), allow || 0)) { ONE_WHY = 'hung'; return false; }
+    if (d > HUNG_CLIP(p.name)) used = Math.max(used, d);
+  }
+  if (used) p.wclip = +(used + 0.005).toFixed(3);
   return true;
 }
 // which of auditOne's tests turned the last piece down (lab/richness.js)

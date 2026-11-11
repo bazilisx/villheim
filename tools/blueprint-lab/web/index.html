@@ -2562,7 +2562,7 @@ else window.VHRender = api;
 (function () {
 // Read and write PlanBuild .blueprint files.
 function parse(text) {
-  const meta = {}, pieces = [], snaps = [];
+  const meta = {}, pieces = [], snaps = [], clips = [];
   let mode = null;
   for (const raw of text.split(/\r?\n/)) {
     const line = raw.trim();
@@ -2570,7 +2570,7 @@ function parse(text) {
     if (line[0] === '#') {
       const i = line.indexOf(':');
       const key = i < 0 ? line.slice(1) : line.slice(1, i);
-      if (['Pieces', 'SnapPoints', 'Terrain'].includes(key)) mode = key;
+      if (['Pieces', 'SnapPoints', 'Terrain', 'VillheimClips', 'VillheimPaths'].includes(key)) mode = key;
       else meta[key] = line.slice(i + 1).replace(/^"|"$/g, '');
       continue;
     }
@@ -2582,6 +2582,13 @@ function parse(text) {
       pieces.push({ name: p[0], cat: p[1], x: n[0], y: n[1], z: n[2], q: n.slice(3, 7),
         s: s.some(isNaN) ? [1, 1, 1] : s, info: p[9] || '', data: p[13] || '' });
     } else if (mode === 'SnapPoints' && p.length === 3) snaps.push(p.map(Number));
+    else if (mode === 'VillheimClips' && p.length >= 5) clips.push({ name: p[0], x: +p[1], y: +p[2], z: +p[3], d: +p[4], f: +(p[5] || 0) });
+  }
+  // clips made on purpose (D-098): the depth a piece may go into what shows of the walls, matched by prefab and place
+  for (const c of clips) {
+    const q = pieces.find(o => o.name === c.name && Math.abs(o.x - c.x) < 0.002 && Math.abs(o.y - c.y) < 0.002 && Math.abs(o.z - c.z) < 0.002);
+    if (q && c.d > 0) q.wclip = c.d;
+    if (q && c.f > 0) q.fclip = c.f;
   }
   return { meta, pieces, snaps };
 }
@@ -2601,6 +2608,14 @@ function write(bp) {
   const out = [`#Name:${m.Name || 'Villheim design'}`, `#Creator:${m.Creator || 'Villheim generator'}`,
     `#Description:"${(m.Description || '').replace(/"/g, "'")}"`, `#Category:${m.Category || 'Villheim'}`];
   if (bp.snaps && bp.snaps.length) { out.push('#SnapPoints'); for (const s of bp.snaps) out.push(s.map(f).join(';')); }
+  // Clips made on purpose (D-098): a kit set's piece that goes into what shows of a wall as deep as its source builds
+  // put it carries the depth, so lib/audit.js lets it pass up to that mark. A section of its own, before the pieces:
+  // PlanBuild skips sections it does not know (as '#VillheimPaths'), and the mod's reader (Designs/Blueprints.cs)
+  // reads only '#Pieces' and '#VillheimPaths'; the info field is no place for it, since the mod reads a sign's info
+  // as its heading and a stand's as its item.
+  // Each line: prefab;x;y;z;depth into walls;depth into the set's own furniture (as the audit's furniture boxes).
+  const marked = bp.pieces.filter(p => p.wclip > 0 || p.fclip > 0);
+  if (marked.length) { out.push('#VillheimClips'); for (const p of marked) out.push([p.name, f(p.x), f(p.y), f(p.z), f(p.wclip || 0), f(p.fclip || 0)].join(';')); }
   out.push('#Pieces');
   for (const p of bp.pieces) {
     const q = p.q || [0, 0, 0, 1], s = p.s || [1, 1, 1];
@@ -5971,8 +5986,11 @@ function showsInto(p, others) {
   }
   return m;
 }
-function auditOne(p, ctx, extra) {
+function auditOne(p, ctx, extra, allow) {
   modelSizes();
+  // allow: how deep the piece may go into what shows of the walls (a kit set's recorded clip, D-098); a piece that
+  // uses it carries the depth as p.wclip, which lib/blueprint.js writes for the pool audit
+  if (allow) delete p.wclip;
   const it = itemOf(p);
   // only what is within reach (the audit's tests look no further than 3 m)
   const A = ctx.around(p.x, p.z);
@@ -5982,9 +6000,19 @@ function auditOne(p, ctx, extra) {
   const wallish = A.wallish.concat(built.filter(sb => WALLISH.has(sb.role)));
   if (it.f.at === 'mount' && !mountOk(it, wallish)) { ONE_WHY = 'mount'; return false; }
   if (p.rest && !kbRests(it, A.pieces.concat(more), wallish, A.struct.concat(built))) { ONE_WHY = 'rest ' + p.rest; return false; }
-  if (SHOWS_DEEP.has(it.f.cat) && showsInto(p, A.struct.map(sb => sb.p)) > SHOWS_MAX) { ONE_WHY = 'shows'; return false; }
+  let used = 0;
+  if (SHOWS_DEEP.has(it.f.cat)) {
+    const d = showsInto(p, A.struct.map(sb => sb.p));
+    if (d > Math.max(SHOWS_MAX, allow || 0)) { ONE_WHY = 'shows'; return false; }
+    if (d > SHOWS_MAX) used = Math.max(used, d);
+  }
   // what hangs on a wall stays out of what shows of the walls round it (the cross bars, T-606, T-612)
-  if ((it.f.at === 'mount' || p.rest === 'wall') && hungInto(p, A.struct.map(sb => sb.p).concat(more)) > HUNG_CLIP(p.name)) { ONE_WHY = 'hung'; return false; }
+  if (it.f.at === 'mount' || p.rest === 'wall') {
+    const d = hungInto(p, A.struct.map(sb => sb.p).concat(more));
+    if (d > Math.max(HUNG_CLIP(p.name), allow || 0)) { ONE_WHY = 'hung'; return false; }
+    if (d > HUNG_CLIP(p.name)) used = Math.max(used, d);
+  }
+  if (used) p.wclip = +(used + 0.005).toFixed(3);
   return true;
 }
 // which of auditOne's tests turned the last piece down (lab/richness.js)
@@ -8393,15 +8421,23 @@ function placeable(p, bx, mm, i, b, ctx, room, idx, zones, made, clipOf, anc, fi
     (q.extra || (a.built && (MOVABLE.includes(PB.piece(q.name).role) || (a.dining && PB.piece(q.name).role === 'table' && !/cartography|workbench|butcher|preptable/.test(q.name)))));
   // out of the furniture boxes as the pool audit measures them (furnClip): the decorator's extras move aside, anything
   // else keeps the piece out
-  const mine = [];
-  for (const [q] of D.furnClash(p, idx.near(bx, 0.3).map(r => r.p).filter(q => q.decor && !displace.has(q)).concat(made.filter(Boolean)))) {
+  // (two of the set's own pieces, each its source's prefab, stand as their source builds stood them: a chair pushed
+  // under its table; marked so the pool audit lets that depth pass, D-098)
+  const mine = [], ownP = !mm.n || mm.n === p.name;
+  let fdeep = 0;
+  for (const [q, deep] of D.furnClash(p, idx.near(bx, 0.3).map(r => r.p).filter(q => q.decor && !displace.has(q)).concat(made.filter(Boolean)))) {
+    const j = made.indexOf(q);
+    if (j >= 0 && ownP && (!a.pieces[j].n || a.pieces[j].n === q.name)) { fdeep = Math.max(fdeep, deep); continue; }
     if (movable(q)) { mine.push(q); continue; }
     return no(31);
   }
+  if (fdeep) p.fclip = +(fdeep + 0.005).toFixed(3); else delete p.fclip;
   // the audit's own tests (what it rests on is there, plain wall behind, out of what shows of the walls) come last,
   // as the dearest
   const audited = () => {
-    if (decorB().auditOne(p, idx.audit, made.filter(Boolean))) return true;
+    // a set's own piece may go into what shows of the walls as deep as its source builds put it (D-098: clips made on
+    // purpose); a piece put in its place gets nothing
+    if (decorB().auditOne(p, idx.audit, made.filter(Boolean), ownP ? clipOf(i, 'w') : 0)) return true;
     if (STATS_B) { const H = STATS_B.audit || (STATS_B.audit = {}); const k = decorB().oneWhy() + ' ' + p.name; H[k] = (H[k] || 0) + 1; }
     return no(13);
   };

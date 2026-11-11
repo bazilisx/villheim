@@ -233,3 +233,35 @@ Open:
 - The mod side: reading `#VillheimGreen` and applying D-143, D-144 and D-147 (mod session).
 - The village layout placing the road kit (no roads in the lab).
 - Window boxes stay with `lib/details.js`; no planters or raised beds beyond the yard's.
+
+## Round 2 (design/wip-landscape2)
+
+2026-11-11, from 87fb2ad. Lead's brief: vines not seen in the Meadows norse render, greenery on one side of a yard,
+stage weights for s4 and s5 (D-153), planters.
+
+| Commit | What |
+|---|---|
+| 59f1892 | vines placed by their model at the corpus heights; groups spread by side as the corpus does; planters; `STAGE_W` s4 2.0, s5 2.5; `lab/mine_greenery_sides.js`, `data/landscape/corpus-sides.json`; the test's side and vine measures; `render_landscape.js --close` |
+
+- Vines: the `vines` model hangs round its pivot (`data/piece-models.json` bounds: 1.17 m under, 1.26 m over), so
+  vines placed with the pivot at the ground stood half under it. Round 1 placed them that way; the round 2 pass sets
+  each card by its model (`VINE_BOX`) with its back on the wall face, and takes the pivot height from the corpus
+  (1.03 / 5.6 / 16.72 m), held under the wall top. The rule that a vine grows from the ground or from a vine under it is
+  gone: corpus vines hang at those heights. The mesh set draws `vines` as one part (a flat card); close-up in
+  `/tmp/landscape2-renders/vines-close-home_Meadows_norse_L+T+nave-gable-half-timber_s3d3_1.png`.
+- Sides: measured in the compact corpus (135 houses with a ground-floor door, 62 with greenery; 18 with three or more
+  ground groups). Ground groups: front 0.32, back 0.24, ends 0.44; trees mostly back and ends, pots and mushrooms at the
+  front. The pass picks a face by the class's split, each side's own weight exp(1.3 z) for this house, and the face's
+  length. Before: faces drawn evenly, and the yard's room decided the rest.
+- Stages: `STAGE_W` s4 2.0, s5 2.5, the same 0.5 rise a stage as s1 to s3 (D-158 open, these values in use).
+- Planters: rare in the corpus and of mixed pieces; built as a beam border at the corpus share of bordered groups.
+
+Checks (round 2): `test_landscape.js 3` all rules hold (table and sides in `docs/BLUEPRINT_LAB.md`); `check_set.js 2
+--list` set 224 of 225 (the same temple Plains s2d2 overlap as on main), late 90 of 90, cultures 147 of 147;
+`test_structure.js` all hold on 36 designs; `compare_page.js` all same; `gen-test` 5 of 5 byte for byte (bundles
+restored). Renders: `/tmp/landscape2-renders` (the same 12 buildings and the vine close-up).
+
+Changes in other tracks' files: `lib/generate.js` passes `K` to the pass (for the planter beams).
+
+Open: the corpus side sample is small (18 houses for how lopsided); the lab's vines sit lower than the corpus's
+because its walls are lower; courtyard planting still not seen in a render.

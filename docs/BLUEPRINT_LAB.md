@@ -528,7 +528,10 @@ What it does, with the corpus numbers it uses (`data/landscape/corpus-greenery.j
 | Distance out in the yard | bush 1.39 / 3.25 / 5.43 m, flower 1.64 / 3.69 / 5.54 m, tree 1.74 / 3.74 / 5.47 m | `distance_from_walls_on_the_ground_m` |
 | Groups | singles, pairs, clusters of 3 to 6, masses of 7 and more by their counts; the share of groups in a line and of mixed prefabs | `groups`, `vines.groups` |
 | Scale | trees 79 % scaled, 0.49 to 1.46 (p10 to p90); bushes 28 %, 0.9 to 1.29; mushrooms 16 %, 1.0 to 1.55 | `scale` |
-| Vines | from a corner in 38 % of patches; heights 1.03 / 5.6 / 16.72 m (p10, median, p90), held under the wall top | `vines` |
+| Vines | from a corner in 38 % of patches; pivot heights over the ground 1.03 / 5.6 / 16.72 m (p10, median, p90), the card held on the wall under its top | `vines` |
+| Side of the house | groups by side: trees front 0.15, back 0.33, ends 0.53; bushes 0.29 / 0.27 / 0.44; flowers 0.34 / 0.15 / 0.51; vines 0.32 / 0.19 / 0.49; pots 0.75 / 0.25 / 0; mushrooms 0.87 / 0 / 0.13 (front is the side most ground-floor doors face) | `corpus-sides.json` `groups_by_side` |
+| How lopsided | each of a house's four sides gets its own weight exp(1.3 z) on top of the split; the corpus's busiest side holds a median 0.6 and a p75 0.68 of a house's ground groups | `corpus-sides.json` `lopsided` |
+| Planters | a group of two or more bushes or flowers gets a low border of the village's beams 0.41 m out from the stems, at the corpus share of bordered groups (bushes 74 of 805, flowers 29 of 334) | `groups` 'with a low border', `corpus-sides.json` `planters` |
 | Culture | a class's share in the culture group over its share in all builds, pulled toward 1 by 20 builds (norse, norse-forest, norse-highland, fen-folk, castle-medieval; Ashlands buildings without a group use the Ashlands group) | `by_culture` |
 
 Each draw comes from a log-normal through the corpus quantiles, so no two gaps are alike (no fixed intervals).
@@ -538,7 +541,8 @@ is one roll per village (`req.landscape.village` names the village; the design's
 profession enters (D-072).
 
 Settings with no corpus number (the corpus has no stages and 9 village builds), in use until set otherwise:
-`STAGE_W` s1 0.5, s2 1.0, s3 1.5 (the chance of each class, averaging 1 across the stages); `VILLAGE_GREEN` 0.6 to
+`STAGE_W` s1 0.5, s2 1.0, s3 1.5, s4 2.0, s5 2.5 (the chance of each class: averaging 1 over s1 to s3, the same rise
+on to s5 for D-153; Tyler is asked in D-158); `VILLAGE_GREEN` 0.6 to
 1.4; `PLOT_GROW` 0.5 m (the most the pass may widen the plot the game gives); `DS` the decor stage each class goes in
 at (flowers d1, pots, bushes, mushrooms and trees d2, vines d3).
 
@@ -552,9 +556,11 @@ Kept clear: each door's entry zone (the opening plus 0.3 m each side, 1.5 m out,
 on to 4 m out; the yard path's planks and 0.25 m round them; 1.3 m round the gate; the foot of outside stairs and
 the front of woodpiles. A bush's or flower's whole spread keeps off these (a tree's trunk and 0.6 m). Plants on the
 ground stay inside the yard fence, off the house floor and clear of every piece; the crown of a tree or bush stays
-under no roof, eave or upper floor. A vine stands on the wall over its whole height, grows from the ground or from a
-vine under it, stays clear of every door and its 0.3 m each side, and leaves alone any spot where more than a quarter
-of it would cover a window or other opening. A bush, tree or pot within 1.6 m of a window and covering more than
+under no roof, eave or upper floor. A vine is placed by its model (`VINE_BOX`: the `vines` card hangs round its pivot,
+1.17 m under it and 1.26 m over; the Ashlands vines stand on a pivot 0.4 m over their foot), its leaves outward and its
+back on the wall face. Its card stands on the wall over its whole height, under the wall top and no lower than the
+ground, clear of every door and its 0.3 m each side, and leaves alone any spot where more than a quarter of it would
+cover a window or other opening. A bush, tree or pot within 1.6 m of a window and covering more than
 80 % of its width is not placed.
 
 #### The marks: `#VillheimGreen`
@@ -607,25 +613,40 @@ board. Verge distances and spacing come from the corpus path edge (0.3 to 1.6 m 
 
 `node lab/test_landscape.js [seeds]`: the share of homes with each class and the pieces when they have any, against
 a band round the corpus (half to 1.7 times the share, 0.35 to 2.5 times the median); nothing in an entry zone or on
-the path; no vine over a door; no floating plant; the biome rule; the marks and their round trip through the file;
-every `lib/checks.js` check that passes without greenery passes with it; the road kit's kept boxes. With 3 seeds (117
-homes over 13 cultures and the three stages, 2026-11-11):
+the path; no vine over a door; no floating plant (a vine's card on a wall and no lower than the ground); the biome
+rule; the marks and their round trip through the file; every `lib/checks.js` check that passes without greenery passes
+with it; the side split and how lopsided homes are, against `corpus-sides.json`; the road kit's kept boxes. With 3
+seeds (117 homes over 13 cultures and the three stages, 2026-11-11, round 2):
 
 | Class | Share | Corpus | Pieces when any (median) | Corpus |
 |---|---|---|---|---|
-| Vine | 0.21 | 0.27 | 30 | 23 |
-| Bush | 0.28 | 0.36 | 6 | 6 |
+| Vine | 0.21 | 0.27 | 38 | 23 |
+| Bush | 0.29 | 0.36 | 5 | 6 |
 | Flower | 0.26 | 0.30 | 2 | 2 |
-| Tree | 0.29 | 0.28 | 4 | 3 |
-| Pot | 0.13 | 0.11 | 3 | 4 |
-| Mushroom | 0.15 | 0.16 | 4 | 8 |
+| Tree | 0.28 | 0.28 | 4 | 3 |
+| Pot | 0.11 | 0.11 | 2 | 4 |
+| Mushroom | 0.15 | 0.16 | 5 | 8 |
+
+Sides, same run: ground groups front 0.29, back 0.25, ends 0.47 (corpus 0.32, 0.24, 0.44; 394 groups). The busiest
+side holds a median 0.5 and a p75 0.67 of a home's ground groups (corpus 0.6 and 0.68), one side only in 4 % of homes
+(corpus 17 %; 52 homes against 18 corpus houses). Vine pivots stand 0.93 / 1.74 / 2.94 m over the ground (p10, median,
+p90) against the corpus's 1.03 / 5.6 / 16.72: the lab's walls are 3 to 6 m tall and the card stays under their top.
+Planter beams: 4.
+
+`node lab/mine_greenery_sides.js` measures the sides and planters from the compact corpus
+(`/home/claude/study/compact.json`): 135 vanilla houses with a ground-floor door, 62 of them with greenery, written
+to `data/landscape/corpus-sides.json`. The front is the side of the house box most of the lowest doors lie on.
 
 `node lab/render_landscape.js <dir> [type:biome:culture:stage:seed ...]` draws each building without and with its
-greenery (three-quarter and top views); `--kit` draws the road kit sets in four biomes.
+greenery (three-quarter and top views); `--kit` draws the road kit sets in four biomes; `--close
+type:biome:culture:stage:seed` draws the stretch of wall with the most vines from four sides. The mesh set holds the
+`vines` model as one part, so the renders show each vine as a flat dark green card.
 
 Not done: courtyard planting runs only where open ground lies between walls (`courtSpots`, the corpus's 6 of 8
 rays); none of the renders so far had such ground, so it has not been seen. Window boxes stay with
-`lib/details.js`. No raised beds or planters beyond the yard's beds.
+`lib/details.js`. The corpus planters are rare and built of mixed pieces (in the 135 houses: 5 of 104 bush groups
+and 1 of 41 flower groups bordered, by log walls laid low, Ashlands arches, stone floors and grausten pillar bases,
+none raised); the lab borders them with the village's beams, as the yard's beds.
 
 ## Interior kitbash (D-065, D-066)
 

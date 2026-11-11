@@ -666,6 +666,8 @@ function fit(b, ctx, room, idx, zones, anc, a, mirror, fires) {
     } else if (mm.rest === 'floor') {
       if (!bx.pass) { p.y = +(p.y + (stand - (mm.sink || 0)) - bx.y0).toFixed(3); bx = Ck.aabbShapes(p); }
       else p.y = +(stand + 0.02).toFixed(3);
+      // the depth its source set it into the floor goes with it, so the audit's rest test allows it (a post sunk 14 cm)
+      if (mm.sink) p.sink = mm.sink;
     }
     let okP = placeable(p, bx, mm, i, b, ctx, room, idx, zones, made, clipOf, anc, fires, displace, a);
     // a hung piece that meets the ceiling or the wall's own relief (the bars of a 2x2 wall) slides up or down the
@@ -993,7 +995,10 @@ function furnishRooms(b, ctx, zones, R2, extra, rooms) {
     // dining sets follow the room's plan of how many tables it holds
     const cap = a => (a.dining ? (setsHere < sets ? 9 : 0) : Infinity);
     const cands = lib.filter(a => (used[a.id] || 0) < cap(a) && (a.rooms || []).some(k => kinds.includes(k) || k === 'any') && anchors.some(an => takes(an, a)) &&
-      (!a.types || a.types.includes(ctx.type)) && (!a.roles || a.roles.includes(room.role)) && (!a.decor || a.decor.includes(ctx.decor)))
+      (!a.types || a.types.includes(ctx.type)) && (!a.roles || a.roles.includes(room.role)) && (!a.decor || a.decor.includes(ctx.decor)) &&
+      // a creative set only where the village makes the building pieces it keeps in their own prefab (pieces.js buildReach,
+      // the rule decorOk reads); its decor goes in any biome
+      (!a.creative || PB.BIOME_ORDER.indexOf(a.from) <= PB.BIOME_ORDER.indexOf(PB.buildReach(ctx.biome))))
       .map(a => {
         // more kinds of piece weigh more; a pair of chests is common in the corpus and dull in every room
         const ks = new Set(a.pieces.map(p => p.k).filter(k => !BUILT_SLOTS.includes(k)));

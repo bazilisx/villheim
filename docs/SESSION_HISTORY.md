@@ -17,10 +17,10 @@ LagSummarySeconds and StatusLineSeconds. Nothing from 2026-11-10 tried in the ga
 on in its own session on branch `design/kitbash`: merged 2026-11-10 as 6bf75ae (room layout planner, from feat/layout),
 558604b (pool audit gate, round 6 defects fixed in the lab), 4496d51 (piece sizes from the game's models, hung pieces
 held by the wall's collider), d40b648 (decor reach for D-080), c8c63f0 (Interiors tab, households arrange homes their own way). The lab page is
-republished. Next in the design session: tighten the piece models on Tyler's PC (ROADMAP design item 2b). `vh testpool make` now audits the pool before it
-replaces the old one ('force' to skip). Design helper (note, Session 9): 92 creative interior sets (KC-, combined and clipped objects by
-role and household trait); the interior library holds 193 of the 220 decor prefabs the corpus uses (was 109); the full
-corpus was not reachable this time, so `lab/mine_creative.js` waits for it. Design helper (note, Session 10): `lab/richness.js` measures how much of the corpus and the library reaches designs; room ceilings read from the game's solids (77452c3); the library's sets come before the decorator's extras (1545946); clips made on purpose marked in the file for the pool audit (e44db1e, D-098); richness floors in the pool gate and `make_testpool.js --sample` for Black Forest and Plains pools (d9103bf). Prefabs per sample 95 to 105, mined sets placed 43 to 78, decorator's own share 55.9 to 47 %; engine time per design up about a third. Old design branches feat/* are all in main and can be deleted. Next: Tyler's test (Tests tab T-631 on), rafts (D-078),
+republished. Design work paused 2026-11-10: creative sets merged (8f3cb45); decor-any-biome, item stands and hearths on branches design/wip-decor-limits, design/wip-stands, design/wip-hearths; index and resume prompts in docs/handoffs/2026-11-10-design/README.md. `vh testpool make` now audits the pool before it
+replaces the old one ('force' to skip). Design helper (note, Session 9): 148 creative interior sets (KC-, combined and clipped objects by
+role and household trait), 56 of them mined from the full corpus (1,536 builds); the interior library holds 201
+distinct prefabs (was 109). Design helper (note, Session 10): `lab/richness.js` measures how much of the corpus and the library reaches designs; room ceilings read from the game's solids (77452c3); the library's sets come before the decorator's extras (1545946); clips made on purpose marked in the file for the pool audit (e44db1e, D-098); richness floors in the pool gate and `make_testpool.js --sample` for Black Forest and Plains pools (d9103bf). Prefabs per sample 95 to 105, mined sets placed 43 to 78, decorator's own share 55.9 to 47 %; engine time per design up about a third. Old design branches feat/* are all in main and can be deleted. Next: Tyler's test (Tests tab T-631 on), rafts (D-078),
 walkable pads, preloading from the lag summaries.
 
 ### As of 2026-11-09
@@ -178,6 +178,7 @@ walkable building pads, underwater rocks, smaller lag spikes, D-080.
 
 ## Recent milestones
 
+- **2026-11-10 (design pause: four helper tracks, handoff)** - see docs/daily-notes/2026-11/2026-11-10.md
 - **2026-11-10 (design helper: library first, richness gate)** - see docs/daily-notes/2026-11/2026-11-10.md
 - **2026-11-10 (design helper: creative interior sets)** - see docs/daily-notes/2026-11/2026-11-10.md
 - **2026-11-10 (records audit: Decisions, Features, roadmap, comments, CLAUDE.md)** - see docs/daily-notes/2026-11/2026-11-10.md

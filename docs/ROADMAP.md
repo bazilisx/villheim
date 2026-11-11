@@ -96,8 +96,8 @@ well (Tyler, 2026-11-08). The Features tab of the review sheet (`docs/features/b
 - [ ] Board ground copies (d3 to d2) match the original exactly, all but the grass. Open as of 2026-11-07: pieces
   match, the dirt outline differs. Methods tried are listed in the 2026-11-07 note, Session 5 end state.
 - [ ] Slotting board only: grow a board plot (and slide its neighbors) when a design needs more room; for now
-  'size N' sets every plot of a board (`Village/DesignBoard.cs`). Villages do not need this: the first plot already
-  keeps the ground of the building's last stage (D-083, `ReserveGrowthRoom`, `Village/Footprints.cs`; Tyler
+  'size N' sets every plot of a board (`Village/DesignBoard.cs`). In villages the first plot already keeps the
+  ground of the building's last stage (D-083, `ReserveGrowthRoom`, `Village/Footprints.cs`; Tyler
   2026-11-10: "the very first plot is large enough to accommodate the final size").
 - [x] Path markers on the board (2026-11-07): one meaning, "connect roads and paths here"; saved as "#VillheimPaths"
   (path;x;y;z;yaw, yaw = outward from the design's middle through the marker), read into Blueprint.Markers.

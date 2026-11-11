@@ -73,21 +73,21 @@ walkable building pads, underwater rocks, smaller lag spikes, D-080.
 - **Decisions (2026-11-08):** questions and answers live in the review sheet's Decisions tab. Knowledge (true
   rumours, map table), cultures by biome, biome defenders and D-003 to D-040 are in main; none tested in game. Tyler
   starts a new test world for village testing.
-- **Decisions D-059 to D-066 (2026-11-09):** roof overhangs back (eaves 1 m, rakes 1 m); yards on stage 2 and 3
+- **Decisions D-059 to D-066 (2026-11-09):** roof overhangs back (eaves 1 m, rakes 0.5 to 1 m); yards on stage 2 and 3
   homes and farms inside the plot; game hit boxes stay on in the checks; no screenshots folder; community renders
   in `docs/renderer/corpus` with credit; stairs where they fit; interiors and accents may use any prefab that ships
   with Valheim (walls and roofs follow the biome's materials); minor decor is free or paid in the village biome's
   own materials. D-080 (2026-11-10) says decor is never free; home decor pays local stand-ins
   (`Village/DecorAnalogs.cs`), with the free cases listed in `docs/ROADMAP.md`.
-- **Decisions D-067 to D-071 (2026-11-09):** working yards for work and community buildings, with no base crafting
-  station outside without a roof (extensions as decor are fine), market area later and no village square; three
+- **Decisions D-067 to D-071 (2026-11-09):** working yards for work and community buildings; base crafting stations
+  outside without a roof are avoided (Tyler hesitant; extensions as decor are fine), market area later and no village square; three
   drivers for the whole generator: messy realism, environmental storytelling, variance by culture, village, family
   and NPC, with no fixed-interval rules applied every time; a complexity ladder per stage (s1 and s2 one storey and
   simple, three storeys rare and late) and houses that grow from their own earlier stage; room layout learned from
   professional game interiors (BG3 first) plus the kitbash library; decor stages additive (d2 keeps d1, d3 keeps d2).
   D-072: household traits are broad (tidiness and use, decor taste, hobbies, comfort, wealth display, size), never
   professions. D-073: home life (assigned homes, house signs with name and role or family and members, residents
-  decorate their own homes in stages in idle time, evenings at home or the hearth, bed by about 22:00, doors closed).
+  decorate their own homes in stages in idle time, evenings at home or the hearth, bed by about 22:00, doors usually closed).
   The code lets villagers take free beds (`Villagers/Sleep.cs`, `Villagers/Households.cs`); D-077 sets beds and
   houses by arrival order and is not built.
 - **Feature checklist (2026-11-08):** every built, planned and proposed feature plus ideas from other mods, 730 rows,
@@ -135,7 +135,7 @@ walkable building pads, underwater rocks, smaller lag spikes, D-080.
   branches `stage/2026-11-06-a` to `-l`.
 - **Network:** the cloud environment allows Thunderstore, Nexus, the Valheim wiki, CurseForge, Modrinth, the
   MineColonies wiki and millenaire.org. Nexus still answers 403 from the cloud.
-- **Blacklisted source (Tyler, 2026-11-08):** the OverDrive BiomeBlueprints pack. Never used as a design source, a
+- **Blacklisted source (D-022, recorded 2026-11-08; Tyler's own words not found in chat, D-112):** the OverDrive BiomeBlueprints pack. Never used as a design source, a
   study source or a reference (D-022). The 12 builds by other creators that shipped in that pack stay in `Keepers.cs`
   (`bp:hs_...`) by D-011 ("Keep"); D-011 and D-022 conflict (Open: D-108).
 - **Generated designs (Tyler, 2026-11-08; D-013, D-023):** villages may use generated designs that Tyler marked Yes in
@@ -163,15 +163,14 @@ walkable building pads, underwater rocks, smaller lag spikes, D-080.
 
 ## Outstanding work
 
-- Test the 2026-11-06 build in game. Watch: hammer animation, villagers in beds, cooking on the hearth station
+- Test the latest build in game (nothing from 2026-11-10 tried yet). Watch: hammer animation, villagers in beds, cooking on the hearth station
   (`IsFireLit`), bed and workbench spots ("No covered room for" in the log), `interact` and `eat` triggers, jitter.
 - Put blueprints in the blueprints folder (house-cabin-1, house-cabin-2...) to give villages curated buildings and
   upgrade chains; `vh savebp` can capture any build.
-- Placement reachability and cliff rule; hearth upgrades (core change); stone only later in the Meadows (to decide);
-  the village buying materials from players; raids.
+- Placement reachability and cliff rule; hearth upgrades (core change).
 - Gear by biome and village level beyond the protector weapons.
 - Dialogue lines as a data file; two-villager chats with conditions.
-- Inspiration.zip stays on main for now; Tyler will remove it with a force-push once the study is done.
+- Inspiration.zip on main: Innangard's license is open (D-097).
 - Use PlanBuild blueprints and prefabs as design sources; interior and exterior upgrades; biome cultures.
 
 ## Recent milestones

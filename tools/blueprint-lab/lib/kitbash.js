@@ -420,17 +420,15 @@ const BUILT_SWAP = {
   piece_table: ['piece_table', 'piece_blackmarble_table'],
   chest: ['piece_chest_wood', 'piece_chest'],
 };
+// the tables lab/essentials.js tablesDressed counts
+const TOP_TABLES = /^(piece_table|piece_table_round|piece_table_oak|dvergrprops_table|piece_blackmarble_table|cauldron_ext3_butchertable|piece_magetable|piece_table_runed)$/;
 const BUILT_LK = { home: 'home', longhouse: 'hall', tavern: 'tavern', smithy: 'smithy', workshop: 'workshop', storage: 'storage', temple: 'hall' };
 function builtPick(a, mm, ctx, picks, name) {
   if (!name) return undefined;
   const D = decorB(), culture = ctx.culture || ctx.cultureKey, LK = BUILT_LK[ctx.type] || 'home', R = ctx._R2;
   const onTable = (mm.rest === 'on' && a.pieces[mm.on] && /table/.test(a.pieces[mm.on].n)) || (mm.rest === 'anchor' && a.anchor === 'table');
-  if (onTable && !mm.key) {
-    if (picks._dressed == null) { const P = ctx.persona; picks._dressed = R() < Math.min(0.95, D.corpusRate(culture, 'td') * (P ? 0.6 + 0.8 * (P.clutter || 0) : 1)); }
-    if (!picks._dressed) return null;
-    if (/^Candle_resin/.test(name)) return D.topPick(R, culture, ctx.biome);
-    return undefined;
-  }
+  // whether the table holds anything is the table's one roll (apply, lib/decorate.js tableDressed)
+  if (onTable && !mm.key) return /^Candle_resin/.test(name) ? D.topPick(R, culture, ctx.biome) : undefined;
   // barrels only where the household keeps them (lib/decorate.js keepsBarrels)
   if (mm.k === 'barrel' && !mm.key && !D.keepsBarrels(ctx.persona, ctx.type)) return null;
   const grp = BUILT_SWAP[mm.k] ? mm.k : BUILT_SWAP[mm.n] ? mm.n : null;
@@ -648,6 +646,8 @@ function fit(b, ctx, room, idx, zones, anc, a, mirror, fires) {
   a.pieces.forEach((p, i) => { if (p.key) needed.add(i); });
   let dropped = 0, slide = 0;
   const picks = {};
+  // what would lie on a table the household leaves bare (and what stands on that): left out, the set goes on
+  const bareTop = new Set();
   const kb = `${a.id}@${Math.round(anc.x * 10)},${Math.round(anc.z * 10)}`;
   // a set against a wall stands clear of the wall's own relief (the 2x2 wood wall's cross bars stand 13 cm proud of
   // its collider on one face): the whole set moves out by that much, so what hangs and what stands keep together
@@ -685,13 +685,22 @@ function fit(b, ctx, room, idx, zones, anc, a, mirror, fires) {
   for (const i of order) {
     const mm = a.pieces[i];
     if (skip.has(i)) continue;
-    const fail = () => { if (needed.has(i)) return true; dropped++; return false; };
+    const fail = () => { if (needed.has(i) && !bareTop.has(i)) return true; dropped++; return false; };
     // a random pick (banners) is made once per assembly, so a pair matches
     let name = mm.any ? (picks[mm.k] || (picks[mm.k] = fillSlot(mm, ctx.biome, ctx))) : fillSlot(mm, ctx.biome, ctx);
     if (a.built && ctx._R2) { const bp = builtPick(a, mm, ctx, picks, name); if (bp !== undefined) name = bp; }
     // a creative set's piece the village does not make itself is left out: the last pass (generate.js biomeSafe) would
     // swap it for a stand-in of another size (a barrel of a stack turned into a chest)
     if (name && !can(ctx.biome, name)) name = null;
+    // what lies on a table goes only on a table the household dresses: one roll per table, shared with the decorator
+    // and the stand pass (lib/decorate.js tableDressed; rel.tablesDressed times the household's clutter). On a bare table the
+    // set goes on without them, even its key (a set that failed there would come back with a fresh table and a fresh
+    // roll until one came up dressed); a set that is all table top has nothing left and stays out.
+    if (name && ctx._R2) {
+      const tbl = mm.rest === 'on' ? made[mm.on] : mm.rest === 'anchor' && a.anchor === 'table' ? anc.of : null;
+      if (tbl && TOP_TABLES.test(tbl.name) && !decorB().tableDressed(tbl, ctx._R2, ctx.culture || ctx.cultureKey, ctx.persona)) { name = null; bareTop.add(i); }
+    }
+    if (mm.rest === 'on' && bareTop.has(mm.on)) bareTop.add(i);
     if (!name || (mm.rest === 'on' && !made[mm.on])) { if (!name) WHY_B = 30; if (fail()) return null; continue; }
     let lx = mirror ? -mm.x : mm.x;
     if (a.byWidth && anc.w) lx = Math.sign(lx) * (anc.w / 2 + Math.abs(lx));
@@ -787,7 +796,10 @@ function fit(b, ctx, room, idx, zones, anc, a, mirror, fires) {
     made[i] = p;
   }
   const got = made.filter(Boolean);
-  if (got.length < Math.min(a.min || 2, nAll) || got.length < Math.ceil(nAll * 0.6) || got.every(p => p.trim)) { WHY_B = WHY_B || 21; return null; }
+  // what a bare table leaves out does not count against the set (or a set would fail there and its next try would
+  // roll a fresh table)
+  const nKept = nAll - bareTop.size;
+  if (got.length < Math.min(a.min || 2, nKept) || got.length < Math.ceil(nKept * 0.6) || got.every(p => p.trim)) { WHY_B = WHY_B || 21; return null; }
   // a dining set keeps 0.7 m clear round it, the way round a table
   // two of one thing is a pair of chairs, not a corner; only a store room takes those
   if (!a.built && room.role !== 'storage' && new Set(got.map(p => slotOf(p.name))).size < 2) { WHY_B = 26; return null; }

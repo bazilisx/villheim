@@ -1667,10 +1667,19 @@ function topWeights(culture) {
   return TOP_OK.map(n => [n, (Gs ? l * Gs(n) + (1 - l) * A(n) : A(n)) + 0.01]);
 }
 function topPick(R, culture, biome) { return pickW(R, topWeights(culture).filter(([nm]) => ok(nm, biome) || nm === 'itemstandh')); }
+// One roll per table for whether anything lies on it, kept on the table's piece (td): the decorator, the library's
+// sets (lib/kitbash.js) and the stand pass (lib/stands.js) all ask it, so whoever comes to a table first decides for
+// all and the house's share stays at the household's rate.
+function tableRate(culture, P) { return Math.min(0.95, corpusRate(culture, 'td') * (P ? 0.6 + 0.8 * (P.clutter || 0) : 1)); }
+function tableDressed(p, R, culture, P) {
+  if (!p) return true;
+  if (p.td == null) p.td = R() < tableRate(culture, P);
+  return p.td;
+}
 function dressTable(room, t, c, n) {
   if (!t) return 0;
   const P = c.persona;
-  if (room.R() >= Math.min(0.95, corpusRate(c.culture, 'td') * (P ? 0.6 + 0.8 * (P.clutter || 0) : 1))) { t.topped = true; return 0; }
+  if (!tableDressed(t.p || t, room.R, c.culture, P)) { t.topped = true; return 0; }
   const W = topWeights(c.culture).filter(([nm]) => ok(nm, room.biome) || nm === 'itemstandh');
   const names = [];
   for (let i = 0; i < n; i++) names.push(pickW(room.R, W));
@@ -3446,6 +3455,6 @@ function decorateExisting(pieces, { use = 'home', decor = 'd2', biome = 'Meadows
   return b.pieces;
 }
 
-const api = { lateClash, corpusPick, corpusRate, corpusTilt, topPick, keepsBarrels, oneWhy: () => ONE_WHY, furnClash, asBuilt, decorate, strip, findRooms, decorateExisting, setRules, setInterior, setTemplates, templateById, audit, auditContext, auditOne, itemOf, ITEM_BIOME, FURNITURE: F, readLevel,
+const api = { lateClash, corpusPick, corpusRate, tableRate, tableDressed, corpusTilt, topPick, keepsBarrels, oneWhy: () => ONE_WHY, furnClash, asBuilt, decorate, strip, findRooms, decorateExisting, setRules, setInterior, setTemplates, templateById, audit, auditContext, auditOne, itemOf, ITEM_BIOME, FURNITURE: F, readLevel,
   _int: { floorLevels, standGuess, roleFor, stretch, size, ok, obox, overlap, ptDist, yawOfDir, pyaw, standOf, norm, WALLISH } };
 if (NODE_D) module.exports = api; else window.VHDecorate = api;

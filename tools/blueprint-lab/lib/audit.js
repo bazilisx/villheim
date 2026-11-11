@@ -70,6 +70,12 @@ const STAND_HI = (() => {
   return v.length ? Math.max(2.4, ...v) : 2.4;
 })();
 const MID = { sign: [1.0, 2.3], sign_notext: [1.0, 2.3], itemstand: [0.7, STAND_HI] };
+// A sign standing on the floor is a corpus use (D-127): in the interior library (data/kitbash-interior.json), 32 sign
+// members of 21 mined sets stand on the floor away from any chest, from 21 of its 472 source builds (KB-058, KC-142
+// among them), sunk into the floor 0 to 3.3 cm in 26 of them and 18 cm at the 90th percentile. A sign whose foot is on
+// the floor, or into it no deeper than that, passes the height test (lib/kitbash.js hangOff asks the same).
+const SIGN_FLOOR_SINK = 0.18;
+const floorSign = (name, y0, floor) => /^sign/.test(name) && y0 >= floor - SIGN_FLOOR_SINK - 0.005 && y0 <= floor + 0.05;
 const STRUCT_VIS = ['wall', 'halfwall', 'window', 'beam', 'pole', 'gable', 'door'];
 const FLAT = ['wall', 'halfwall', 'gable', 'pole'];
 const OVERHEAD = ['roof', 'roofTop', 'roofCorner', 'floor', 'beam'];
@@ -227,7 +233,7 @@ function audit(pieces, shell) {
       if (b.y0 < floor - 0.03) r.hang.push(`${p.name} ${Math.round((floor - b.y0) * 100)} cm into the floor`);
       else if (b.y0 > floor + 1.0) r.hang.push(`${p.name} foot ${(b.y0 - floor).toFixed(1)} m over the floor`);
       if (ceil != null && b.y1 > ceil + 0.03) r.hang.push(`${p.name} ${Math.round((b.y1 - ceil) * 100)} cm into the roof`);
-    } else if (MID[p.name] && role(p) !== 'floor' && !(/^sign/.test(p.name) && onChest(i))) {
+    } else if (MID[p.name] && role(p) !== 'floor' && !(/^sign/.test(p.name) && onChest(i)) && !floorSign(p.name, b.y0, floor)) {
       const h = mid - floor, [lo, hi] = MID[p.name];
       // a horizontal stand (itemstandh) is a table piece and has no entry here
       if (h < lo || h > hi) r.hang.push(`${p.name} middle ${h.toFixed(1)} m over the floor`);
@@ -446,5 +452,5 @@ function group(files, parse) {
   return out;
 }
 
-const apiA = { STAND_HI, MID, audit, pool, summary, group, likeness, signature, shapeOf, GATE, WATCH, REPORTED };
+const apiA = { STAND_HI, MID, floorSign, audit, pool, summary, group, likeness, signature, shapeOf, GATE, WATCH, REPORTED };
 if (NODE_A) module.exports = apiA; else window.VHAudit = apiA;

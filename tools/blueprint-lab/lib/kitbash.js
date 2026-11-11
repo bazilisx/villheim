@@ -786,8 +786,8 @@ function fit(b, ctx, room, idx, zones, anc, a, mirror, fires) {
     }
     if (!okP) { LAST_B = `${i} ${p.name}`; if (fail()) return null; continue; }
     // the pool audit's height for a sign or a wall stand (lib/audit.js MID, by the middle of what shows over the
-    // floor): a set's sign standing on the floor (KB-058, KC-142) or a stand hung too low stays out, as the audit
-    // would fail it; a sign on a chest's front is a label and passes, as the audit reads it
+    // floor): a stand hung too low stays out, as the audit would fail it; a sign on a chest's front is a label and a
+    // sign standing on the floor (KB-058, KC-142) is a corpus use, and both pass as the audit reads them
     if (hangOff(p, stand, idx, made)) { WHY_B = 33; LAST_B = `${i} ${p.name}`; if (fail()) return null; continue; }
     // two of the set's pieces filled with one name in one place (two slots of a creative set both drawn as a beam) are
     // one piece in the game: the second is left out
@@ -860,6 +860,8 @@ function hangOff(p, stand, idx, made) {
   if (!V) return false;
   const mid = (V.y0 + V.y1) / 2, h = mid - stand;
   if (h >= MID[0] && h <= MID[1]) return false;
+  // a sign standing on the floor, as corpus builders stand them (lib/audit.js floorSign, D-127)
+  if (A.floorSign && A.floorSign(p.name, V.y0, stand)) return false;
   if (/^sign/.test(p.name)) {
     const mx = (V.x0 + V.x1) / 2, mz = (V.z0 + V.z1) / 2;
     const store = idx.near({ x0: mx - 0.3, x1: mx + 0.3, z0: mz - 0.3, z1: mz + 0.3, y0: V.y0 - 1, y1: V.y1 + 1 }, 0).map(r => r.p).concat(made.filter(Boolean))

@@ -1,4 +1,5 @@
-// Checks on furnished interiors over a sample of generated designs.
+// Checks on furnished interiors over a sample of generated designs. reachRoom, reachPiece and entryZone come from
+// lab/reach.js (walking in and round, D-152).
 // node lab/check_interiors.js [lib dir] [out.json] [seeds per request] [--shapes | --no-shapes]
 // The lib dir is the generator to test (default ../lib); the checks are always this tree's decorate.js audit, so an
 // older generator can be measured the same way. Prints a table of problems per check and writes the details.
@@ -21,6 +22,7 @@ const ORDER = ['Meadows', 'Black Forest', 'Swamp', 'Mountain', 'Plains', 'Mistla
 const totals = {}, designs = {}, rows = [];
 const add = (k, n) => { totals[k] = (totals[k] || 0) + n; designs[k] = (designs[k] || 0) + (n ? 1 : 0); };
 const sets = new Map();
+const reach = require('./reach.js'), reachN = { rooms: 0, pieces: 0 };
 let n = 0, ms = 0;
 for (const type of types) for (const biome of biomes) for (const [stage, decor] of stages) for (let s = 0; s < seeds; s++) {
   const seed = 11 + s * 97 + n;
@@ -39,6 +41,15 @@ for (const type of types) for (const biome of biomes) for (const [stage, decor] 
   for (const [k, v] of Object.entries(a)) { add(k, v.length); if (v.length) row[k] = v.slice(0, 6); }
   add('decorBiome', biomeBad.length); if (biomeBad.length) row.decorBiome = [...new Set(biomeBad)];
   for (const c of checks) { add('check:' + c.check, c.ok ? 0 : 1); if (!c.ok) row['check:' + c.check] = c.detail; }
+  // walking in and round (lab/reach.js, D-152): rooms and main pieces a person cannot reach from the entrances on a
+  // 0.9 m lane, and things standing in the entry zone just inside a door; counted at d2 and d3
+  if (decor !== 'd1') {
+    const rc = reach(d, libDir);
+    add('reachRoom', rc.roomsOut.length); if (rc.roomsOut.length) row.reachRoom = rc.roomsOut.slice(0, 6);
+    add('reachPiece', rc.piecesOut.length); if (rc.piecesOut.length) row.reachPiece = rc.piecesOut.slice(0, 6);
+    add('entryZone', rc.entry.length); if (rc.entry.length) row.entryZone = rc.entry.slice(0, 6).map(e => `${e.name} at ${e.at}`);
+    reachN.rooms += rc.rooms; reachN.pieces += rc.pieces;
+  }
   rows.push(row);
   const key = `${type}|${biome}|${stage}`;
   if (!sets.has(key)) sets.set(key, []);
@@ -61,4 +72,5 @@ console.log('check'.padEnd(22), 'designs', 'problems');
 for (const k of Object.keys(totals).sort()) console.log(k.padEnd(22), String(designs[k]).padStart(7), String(totals[k]).padStart(8));
 for (const [k, v] of Object.entries(perStage)) console.log(`${k}: ${(v.items / v.n).toFixed(1)} pieces of furniture, ${(v.kinds / v.n).toFixed(1)} kinds per design`);
 console.log(`same request, other seed: furniture lists ${(100 * sim / pairs).toFixed(0)} % alike`);
+console.log(`reach (d2 and d3): ${totals.reachRoom || 0} of ${reachN.rooms} room rects and ${totals.reachPiece || 0} of ${reachN.pieces} main pieces not reached; ${totals.entryZone || 0} pieces in entry zones`);
 if (out) fs.writeFileSync(out, JSON.stringify({ totals, designs, perStage, similarity: sim / pairs, rows }, null, 1));

@@ -326,6 +326,13 @@ function targetsOf(m, b) {
     const role = PL.piece(p.name).role;
     if (role === 'fire') { const o = Ck.aabbShapes(p); T.push({ kind: 'fire', box: o, r: 1.2 }); }
     if (role === 'bed') { const o = Ck.aabbShapes(p); T.push({ kind: 'bed', box: o, r: 1.0 }); }
+    // a table, a station and a chest or barrel on the floor: a person walks up to each (D-152, Tyler 2026-11-11:
+    // "egress and room movement should always allow someone to move into rooms and explore"); a pot or station set
+    // on the fire is reached with the fire
+    if ((['table', 'craft'].includes(role) || (role === 'storage' && p.y - m.stand < 0.3)) && !/cauldron|cookingstation/.test(p.name)) {
+      const o = Ck.aabbShapes(p);
+      T.push({ kind: 'piece', box: o, r: 0.9 });
+    }
   }
   for (const s of m.stairs || []) {
     const B = s.b, ext = Math.hypot(B.hw, B.hd);

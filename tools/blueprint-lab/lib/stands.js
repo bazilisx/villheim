@@ -206,6 +206,8 @@ const FIRES_S = /^(hearth|fire_pit|fire_pit_iron)$/;
 // the tables and what is not table dressing, as lab/essentials.js reads them for tablesDressed
 const TD_TABLES = /^(piece_table|piece_table_round|piece_table_oak|dvergrprops_table|piece_blackmarble_table|cauldron_ext3_butchertable|piece_magetable)$/;
 const TD_NOT = /^(rug_|jute_carpet|piece_chair\d*$|piece_bench01$|piece_logbench01$|piece_blackwood_bench01$|piece_blackmarble_bench$|dvergrprops_stool$|dvergrprops_chair$|piece_throne0\d$|piece_blackmarble_throne$|piece_bone_throne$|bed$|piece_bed0\d$|ashwood_bed$)/;
+// workbenches and other stations as the corpus miner reads them for a wall stand over one (lab/mine_stands.js WORK)
+const WORK_M = /^(piece_workbench|forge|piece_artisanstation|blackforge|piece_magetable|piece_stonecutter|piece_cartographytable|piece_preptable|piece_MeadCauldron|piece_cauldron|piece_butcher|piece_spinningwheel|windmill|piece_cookingstation|piece_oven|fermenter|piece_workbench_ext|forge_ext|piece_alchemy)/i;
 const WORK_S = /^(piece_workbench|forge|piece_artisanstation|blackforge|piece_stonecutter|piece_cauldron|piece_spinningwheel)/;
 const FEAST_S = { Meadows: 'FeastMeadows', 'Black Forest': 'FeastBlackforest', Swamp: 'FeastSwamps', Mountain: 'FeastMountains', Plains: 'FeastPlains',
   Mistlands: 'FeastMistlands', Ashlands: 'FeastAshlands', 'Deep North': 'FeastMountains' };
@@ -594,7 +596,7 @@ function wallAtS(b, p) {
   const box = (q, x, z, r, y0, y1) => { const o = Ck.aabb(q); return C(o.x0) <= C(x + r) && C(o.x1) >= C(x - r) && C(o.z0) <= C(z + r) && C(o.z1) >= C(z - r) && o.y1 > y0 && o.y0 < y1 ? o : null; };
   const under = b.pieces.filter(q => q !== p && !/^itemstand/.test(q.name)).filter(q => { const o = box(q, ox, oz, 0.9, ft - 0.1, p.y - 0.1); return o && o.y0 < ft + 0.4; });
   const has = t => under.some(q => t(q.name, PBs.piece(q.name).role));
-  if (has(n => WORK_S.test(n))) return 'wall:workbench';
+  if (has(n => WORK_M.test(n))) return 'wall:workbench';
   if (has((n, r) => r === 'table')) return 'wall:table';
   if (has((n, r) => r === 'seat' && /bench|sofa/i.test(n))) return 'wall:bench';
   if (has((n, r) => r === 'bed')) return 'wall:bed';

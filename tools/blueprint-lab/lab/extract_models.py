@@ -14,6 +14,7 @@ measurements and the proxy (our own coarse geometry) are written.
     python3 extract_models.py fit     <work dir> <names.txt> [seconds] [pieces|items] [i/k]   # proxies from the cache
     python3 extract_models.py collect_items <work dir> <out.json>
     python3 extract_models.py meshpack <work dir> <out.js>
+    python3 extract_models.py tops    <work dir> <names.txt>   # level tops of the pieces flat stands rest on, exact
 
 With VH_MESHES=1 in the environment, 'run' also writes a decimated copy of each piece's meshes (vertices merged on a
 3 cm grid, a color per triangle) to <work dir>/meshes/, and 'meshpack' joins them into one script for the offline
@@ -468,8 +469,9 @@ def fit_component(V, T, nmax=10):
 
 ITEM_PARTS = 250
 TOL = {'pieces': 0.02, 'items': float(os.environ.get('VH_ITEM_TOL', 0.015)), 'stands': 0.004}
-CELL_CAP = 1200000
-MAX_BOXES = 400
+# VH_CELL_CAP and VH_MAX_BOXES raise the limits for pieces that hit them (roofs, hearths, the fermenter)
+CELL_CAP = int(os.environ.get('VH_CELL_CAP', 1200000))
+MAX_BOXES = int(os.environ.get('VH_MAX_BOXES', 400))
 
 
 def _nd():
@@ -1599,6 +1601,116 @@ def meshpack(work, out):
     print(out, len(parts), 'pieces', os.path.getsize(out), 'bytes')
 
 
+# ---------------------------------------------------------------- exact tops of the pieces flat stands rest on
+
+
+def ray_tops(parts, X, Z):
+    """For each point (X[i], Z[i]), the highest y where a vertical line there leaves the proxy, or -inf."""
+    top = np.full(len(X), -np.inf)
+    for pt in parts:
+        R = quat_mat(pt.get('q', [0, 0, 0, 1]))
+        c = np.asarray(pt['c'], float)
+        # the line (x, t, z) in the part's frame: a + t b
+        a = (np.stack([X, np.zeros_like(X), Z], 1) - c) @ R
+        b = R[1]
+        if pt['t'] == 'box':
+            h = np.maximum(np.asarray(pt['s'], float), 0.002) / 2
+            rows = [(np.eye(3)[i], h[i]) for i in range(3)] + [(-np.eye(3)[i], h[i]) for i in range(3)]
+        else:
+            P = np.asarray(pt['p'], float)
+            dd = max(pt['d'], 0.002) / 2
+            rows = [(np.array([0, 0, 1.0]), dd), (np.array([0, 0, -1.0]), dd)]
+            sg = 1 if poly_signed(P) > 0 else -1
+            for i in range(len(P)):
+                e = P[(i + 1) % len(P)] - P[i]
+                nrm = np.array([e[1], -e[0], 0.0]) * sg
+                nrm /= max(np.linalg.norm(nrm), 1e-12)
+                rows.append((nrm, float(nrm[:2] @ P[i])))
+        t0 = np.full(len(X), -np.inf); t1 = np.full(len(X), np.inf); ok = np.ones(len(X), bool)
+        for nrm, off in rows:
+            na, nb = a @ nrm, float(nrm @ b)
+            if abs(nb) < 1e-9:
+                ok &= na <= off + 1e-9
+            elif nb > 0:
+                t1 = np.minimum(t1, (off - na) / nb)
+            else:
+                t0 = np.maximum(t0, (off - na) / nb)
+        ok &= t1 >= t0
+        top = np.where(ok & (t1 > top), t1, top)
+    return top
+
+
+def mesh_tops(meshes, g=0.01):
+    """The mesh's height map on a g grid over x and z: the highest sampled point in each cell."""
+    V = np.concatenate([m['V'] for m in meshes])
+    pts = np.concatenate([sample_tris(m['V'], m['T'], 0.003, cap=800) for m in meshes])
+    lo = V.min(0)
+    nx, nz = int(np.ptp(V[:, 0]) / g) + 1, int(np.ptp(V[:, 2]) / g) + 1
+    H = np.full((nx, nz), -np.inf)
+    ij = np.clip(((pts[:, [0, 2]] - lo[[0, 2]]) / g).astype(int), 0, [nx - 1, nz - 1])
+    np.maximum.at(H, (ij[:, 0], ij[:, 1]), pts[:, 1])
+    X, Z = np.meshgrid(lo[0] + (np.arange(nx) + 0.5) * g, lo[2] + (np.arange(nz) + 0.5) * g, indexing='ij')
+    return H, X, Z, float(V[:, 1].max())
+
+
+def top_error(meshes, parts, M=None):
+    """How far the proxy's top lies from the mesh's top where a stand could rest (cells within 15 cm of the highest
+    point, one 1 cm cell in from the edge of that area), mm: median, 95th percentile, worst."""
+    nd = _nd()
+    H, X, Z, top = M or mesh_tops(meshes)
+    m = nd.binary_erosion(H > top - 0.15)
+    if not m.any():
+        m = H > top - 0.15
+    Hp = ray_tops(parts, X[m], Z[m])
+    d = np.abs(np.where(np.isfinite(Hp), Hp, top - 0.3) - H[m]) * 1000
+    return {'median': round(float(np.median(d)), 1), 'p95': round(float(np.percentile(d, 95)), 1), 'max': round(float(d.max()), 1), 'cells': int(m.sum())}
+
+
+def snap_tops(work, names_file, reach=0.04):
+    """Each box whose top face is level is set, where it is the proxy's top, to the mesh's height there (the median of
+    the mesh's top over those cells, when it lies within 'reach'). Writes the parts back with 'tops' (before, after)."""
+    for n in [l.strip() for l in open(names_file) if l.strip()]:
+        f = os.path.join(work, 'out', n + '.json')
+        ms = load_meshes(work, n)
+        if not ms or not os.path.exists(f):
+            continue
+        res = json.load(open(f))
+        parts = res.get('parts') or old_parts(n)
+        if not parts:
+            continue
+        M = mesh_tops(ms)
+        H, X, Z, top = M
+        before = top_error(ms, parts, M)
+        m = H > top - 0.15
+        Xs, Zs, Hs = X[m], Z[m], H[m]
+        for _ in range(2):
+            tops = np.stack([ray_tops([pt], Xs, Zs) for pt in parts])  # parts x cells
+            best = tops.argmax(0)
+            hi = tops.max(0)
+            for i, pt in enumerate(parts):
+                if pt['t'] != 'box':
+                    continue
+                R = quat_mat(pt.get('q', [0, 0, 0, 1]))
+                k = int(np.argmax(np.abs(R[1])))
+                if abs(R[1, k]) < 0.9995:
+                    continue
+                sel = (best == i) & np.isfinite(hi) & (np.abs(Hs - hi) <= reach)
+                if sel.sum() < 3:
+                    continue
+                want = float(np.median(Hs[sel]))
+                cur = float(pt['c'][1] + pt['s'][k] / 2)
+                bottom = float(pt['c'][1] - pt['s'][k] / 2)
+                if abs(want - cur) < 0.0002 or want - bottom < 0.003:
+                    continue
+                s = list(pt['s']); s[k] = round(want - bottom, 4)
+                c = list(pt['c']); c[1] = round((want + bottom) / 2, 4)
+                pt['s'], pt['c'] = s, c
+        after = top_error(ms, parts, M)
+        res['parts'], res['tops'] = parts, {'before': before, 'after': after}
+        json.dump(res, open(f, 'w'))
+        print(n, before, after, flush=True)
+
+
 if __name__ == '__main__':
     cmd = sys.argv[1]
     if cmd == 'index':
@@ -1619,5 +1731,7 @@ if __name__ == '__main__':
         collect_items(sys.argv[2], sys.argv[3])
     elif cmd == 'collect':
         collect(sys.argv[2], sys.argv[3])
+    elif cmd == 'tops':
+        snap_tops(sys.argv[2], sys.argv[3])
     elif cmd == 'meshpack':
         meshpack(sys.argv[2], sys.argv[3])

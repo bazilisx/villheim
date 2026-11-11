@@ -340,7 +340,9 @@ Before and after (round 5 record, then d75c7d8; full runs, 702 designs for check
 Other full checks at d75c7d8: check_set 224 of 225 (late 90 of 90, cultures 147 of 147), overlap 1 (same);
 test_structure 36 hold; test_sizes 0 off; every checks.js column in check_interiors 0, mountOnOpening 0; hearths
 spotmix homes 288, under 120 m2 against a wall 97 %, s3 middle 8 %, hallmix over 80 m2 middle 32 % (as round 4);
-compare_page all the same; GENTEST.
+compare_page all the same; dotnet build 0 errors, 43 warnings; gen-test (tools/gen-test/run.sh) FAILS: LabEngine (Jint) throws in LabJint.Make on the rebuilt lab.js (exit 134), cause not traced yet.
+
+Where round 6 stopped: every fix and the record are pushed; the bundles (lab.js, web/index.html) are rebuilt locally from d75c7d8 and not committed, because gen-test fails on them. Left: trace the Jint error (likely a construct in the round 6 code Jint does not take, in layout.js, generate.js or lab/reach.js is not bundled), fix it, run gen-test again, commit the bundles.
 
 One check_interiors seed (234 designs), round 5 tip, the two merges, then a6ffb0d: floating 1, 7, 0; overlap 1, 2, 1;
 bareFloors 1, 3, 3; reach rooms 4, 6, 6 of 323; d3 furniture 42.8, 42.3, 43.7. The windows track's own run gave

@@ -355,3 +355,80 @@ this track).
 Next: essentials as sets (bed corners with pelts, nightstands and foot chests; dining sets with fewer seats and some
 tables set against a wall; hearth seating); signs on chest fronts and other pieces in the fitter (D-127 item 5, 371 of
 4,450 signs); ledges, banners and Dvergr lanterns in relief (item 6).
+
+## Essentials, round 2 (2026-11-11, branch design/wip-essentials from 45d4e62)
+Commits: cb9bb0c (tables, seats, rugs, chests and barrels by corpus counts), and the commit with this section (pool
+fixes, docs).
+
+What the renders showed, checked against the pieces (lab script output, home Meadows s3d3 seed 11 and tavern Swamp
+s3d3 seed 11):
+- The "round dining set in the alcove" in all six households is the fire pit with its cooking spit and the beam kerb
+  (fire_pit and piece_cookingstation at -4, 0). The household's real table (piece_table_round at -0.8, 2.3) stood in
+  the same spot in five of six households.
+- The plants household's "four beds" are piece_chest_blackmetal (its chest pick; the plan render draws it as a dark
+  frame). Its one bed, piece_bed02, is upstairs.
+- The tavern's "wall seats in corner clusters" are piece_chest_barrel: 20 barrel chests on the ground floor (store rows,
+  stacks, the kitchen and serving kits), turned up to 50 degrees by liveIn. The crafts household's "chairs in the
+  corners" in home Meadows s2d3 seed 7 are barrel chests too (7 with stacks).
+- The bare half of the big home room is the half by the door. Tables, seats and chests stood 6.4 to 7.3 m from the
+  nearest door at the median against 3.7 to 4.8 m in the corpus (data/interior.json items door quartiles).
+
+Done (`lib/decorate.js`, `lib/kitbash.js`):
+- Corpus quartiles read at a household draw (`corpusAt`, `roomU`): data/interior.json items' nearest-fire and
+  nearest-door distances, kept in data/interior-lite.json as `fireQ` and `doorQ` (`lab/interior_lite.js`).
+- Tables: each table draws its distance from the fire (`tableFireAt`; the plans' 'fire' zone held every table 2.4 to
+  4 m off, short of the corpus first quartile of 3.7 m) and from the door (`doorWant`), for the decorator's tables and
+  the library's dining sets alike (`tableZone` wraps the plan's table bias). The 2.7 m keep-off from doors is 1.6 m
+  (0.6 of the corpus first quartile). The bed-side bias is 0.3 in a room with no bed. `spreadTables` keeps the first
+  table placed (it kept the one nearest the room's middle) and any side table nobody sits at.
+- Seats: tables are seated as often as the culture's corpus tables (`corpusRate` ts: 51 % norse, 44 % all); an
+  unseated table leans to a wall. Library dining sets keep 1 to 4 seats (weights 0.3, 0.3, 0.25, 0.15, about 2.2 seats
+  per seated table as in the corpus) or none at the same rate (`diningSeats`); taverns and halls keep at least one.
+  Seats go to the side away from the fire first. `wallSeat` puts a bench (generate.js tidyFurniture takes out a lone
+  chair) at the corpus door distance, off the fire and 2.2 m from other wall seats.
+- Extras by corpus counts per room kind (`kindNeed`: share times count summed per kind, scaled by the room's area to
+  the kind's median room; the home room of 97 m2 holds 5.6 rugs, 4.3 seats, 3.9 chests, 1.2 tables): an extra whose
+  kind the room is short of weighs up to four times as much. Rugs no longer count toward the density target (the
+  learner's `furn` leaves them out). A free rug goes under a lone seat, chest, station or bed on the barest floor at
+  the corpus door distance, drawn by the room kind's rug shares.
+- Tavern barrel chests by household (`keepsBarrels`, the 22 % rule; corpus tavern rooms: barrel chests in 14 %, plank
+  and iron chests in 24 % each). The bar counter keeps its two.
+- A table the household keeps (`corpusRate` th: 68 % of norse furnished buildings have one; new key from
+  `lab/culture_kinds.js`): `tableSure` tries every cell and wall, a seat or none, three tables, then 0.6 m from a bed
+  (`TABLE_BED_TIGHT`, see the proposed row below), then lets extras give way. A home sets its table before the
+  cauldron's butcher table. Homes with a dining table, 108 homes (6 biomes, s1d2, s2d3, s3d3, 6 households, seed 7):
+  39 before, 53 after.
+- Pool fixes: round tables are not turned by `turnLikeCorpus` (their box swung into the chairs); the turn finds seats
+  by the catalog role where the furniture list has no entry; `dvergrprops_chair` is out of `BUILT_SWAP` (its solids
+  reach into the sets' tables).
+
+Measures (`lab/essentials.js`, 216 designs, three seeds; corpus norse / all in brackets), before (45d4e62) and after:
+seats at a table 57.1 to 45.2 % (28 / 25); seats by a wall 36.1 to 45.6 % (41); seats by a fire 11.8 to 11.0 % (4);
+tables with seats 89.8 to 74.7 % (51 / 44); wall seats with another within 1.2 m 2.8 to 1.3 %; table to fire quartiles
+3.76 / 4.81 / 6.82 to 3.76 / 4.81 / 6.79 m (corpus 3.73 / 7.44 / 14.94); table to door median 7.29 to 6.37 m and chest
+to door 6.39 to 5.72 m (one seed before; corpus 3.75 and 3.69); rugs 537 to 612; rugs layered 20.1 to 14.1 % (23 / 21);
+seats 1,006 to 827; chests 2,431 to 2,107; tavern floors using barrel chests 99 to 71 %; beds above the main floor 49.7
+to 50 % (64 / 60), on a fire's storey 50.3 to 50 % (48 / 45), side by side 7.2 to 9.7 % (21 / 20, this file's reading);
+bare ground floor (points over 2.5 m from anything standing) 4.8 to 4.7 % mean. Beds already sit in sleeping rooms and
+upstairs at the corpus rates; placeBeds is unchanged.
+
+Checks: test_structure 36 hold. Pools: Norse Meadows pass (14.7, 0.352, 2.12); middle-eastern Plains pass (12.3, 0.453,
+1.4). test_variance means (closest pair), before to after: home-a s2d2 0.40 to 0.38 (0.56), s3d3 0.42 to 0.39; home-b
+s2d2 0.52 to 0.50 (0.64), s3d3 0.53 to 0.55 (0.73); home-c s2d2 0.52 to 0.45 (0.68), s3d3 0.48 to 0.46 (0.75); hall
+0.37 to 0.35 and 0.40 to 0.41. check_interiors, one seed, 234 designs (before / after): overlap 0 / 1 (a ground torch
+on a plank chest, tavern Swamp fen-folk s2d2), floating 5 / 6 (stacked barrels in store rooms), stairs 2 / 2, door 2 / 2,
+check:space 1 / 0.
+
+Renders (`/tmp/ess2-renders`, not committed): `views-*.png` and `households-*.png` for home Meadows, home Plains,
+tavern Swamp, longhouse Meadows (s3d3 seed 11), and `households-home-meadows-s2d3-7.png`.
+
+Changes in other tracks' files: data/interior-lite.json gains `doorQ` and `fireQ` per item (additive, rebuilt by
+lab/interior_lite.js; the other fields are unchanged).
+
+Open: seats by a fire stay at 11 % (halls' fire seats and long-wall benches, `placeFireSeats`); tables stand nearer
+the fire and farther from the door than the corpus (library sets rank floor spots with noise and the plan's other
+zones); rugs layered fell below the corpus; seats per design fell with the dining sets' seats; lights and item stands
+run above the corpus counts per building (hearths and stands tracks).
+
+Next: more seats and rugs by the corpus counts where the room has floor (rows of chairs along walls, rugs under
+benches), seats by stations; bring rugs layered back to the corpus rate.

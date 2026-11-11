@@ -3757,5 +3757,5 @@ function decorateExisting(pieces, { use = 'home', decor = 'd2', biome = 'Meadows
 
 const api = { lateClash, corpusPick, corpusRate, tableRate, tableDressed, corpusTilt, topPick, keepsBarrels, oneWhy: () => ONE_WHY, furnClash, asBuilt, decorate, strip, findRooms, decorateExisting, setRules, setInterior, setTemplates, templateById, audit, auditContext, auditOne, itemOf, ITEM_BIOME, FURNITURE: F, readLevel,
   lightCls, lightBudget, rugBudget, lightRoomOf, LIGHT_D2, topWeights, mountClear,
-  _int: { floorLevels, standGuess, roleFor, stretch, size, ok, obox, overlap, ptDist, yawOfDir, pyaw, standOf, norm, WALLISH } };
+  _int: { floorLevels, standGuess, roleFor, stretch, size, ok, obox, overlap, ptDist, yawOfDir, pyaw, standOf, norm, WALLISH, middleOf } };
 if (NODE_D) module.exports = api; else window.VHDecorate = api;

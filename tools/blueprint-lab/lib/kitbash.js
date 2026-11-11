@@ -1802,12 +1802,8 @@ function apply(b, ctx, zones) {
     const m = liveIn(b, ctx, zones || []);
     if (m) b.notes.push(`${m} movable things set a little off square, as a household leaves them.`);
   }
-  // the way in at every door and the lanes to every room's main pieces again, after the passes that set things late
-  // (stacked chests, stands, the lived-in moves) (D-152)
-  if (ctx.decor !== 'd1') {
-    const Lay = NODE_B ? require('./layout.js') : window.VHLayout;
-    if (Lay && Lay.clearEntries && X.lanes !== false) { Lay.clearEntries(b, ctx); Lay.clearLanes(b, ctx); }
-  }
+  // the way in at every door and the lanes to every room's main pieces are put right last, after every pass that sets
+  // or moves furniture, by moving pieces before leaving any out (lib/layout.js openWays, from lib/generate.js finish)
   dropFalling(b);
 }
 

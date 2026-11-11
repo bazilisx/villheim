@@ -36,6 +36,7 @@ const Kitbash = NODE ? require('./kitbash.js') : window.VHKitbash;
 const Yards = NODE ? require('./yards.js') : window.VHYards;
 const Persona = NODE ? require('./persona.js') : window.VHPersona;
 const checksLib = () => (NODE ? require('./checks.js') : window.VHChecks);
+const layoutLib = () => (NODE ? require('./layout.js') : window.VHLayout);
 
 // Heights (Tyler's in-game review, 2026-11-09). A player is about 1.8 m tall: rooms get walls of 3 m, so doors, beams
 // and roofs clear the head; sunken huts, low by nature, get 2.5 m under a steep roof.
@@ -1822,6 +1823,9 @@ function finish(b, info) {
   // the decor stage asked for: what the household has put up by then (D-071)
   if (info.grow) Persona.growth(b, info.decor, info.type === 'temple' ? 'temple' : ['tavern', 'longhouse'].includes(info.type));
   biomeSafe(b, info.biome);
+  // a person can walk in through every door, into every room and up to every bed, table, station and chest (D-152,
+  // D-148; lib/layout.js openWays), after every pass that sets or moves furniture
+  { const Lw = layoutLib(); if (Lw && Lw.openWays) Lw.openWays(b, info); }
   dropOrphans(b);
   // the generator places walls by their middle; the pieces that stand on their pivot go down to their foot
   for (const p of b.pieces) { const pi = P.piece(p.name); if (pi.onPivot && !p.decor && !p.footed) { p.y = +(p.y - pi.size[1] / 2).toFixed(3); p.footed = true; } }

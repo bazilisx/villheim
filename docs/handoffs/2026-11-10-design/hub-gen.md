@@ -236,3 +236,118 @@ a woodshed, moved out clear of the eaves, with the wood stack under it.
 - The Celtic raised crown roof and the ring roofs of 45 degrees still show gaps between pieces near the crown.
 - Furniture refused by the reach test is left out; the s2 halls hold fewer tables than before (long s2: 6 main pieces
   of 7). The Celtic s2 holds no chest or table: its ring of posts leaves no spot the reach test allows.
+
+## Round 3 (2026-11-11): lines by culture, the grand interior, the height cap, the lab page
+
+Tyler's words this round follows: D-137 "Strongly leanign toward circular/octagonal or partial variants thereof for
+most, and cross-shape for those that are more strongly rectangular or l-shaped sturectures throughout the rest of the
+settlement ... I want to avoid using the typical shotgun-style longhouse as the ultimate building ... folks gather from
+all corners" and "circular, semi-circular (i.e. half or 3/4 circle with open chunk on one side?), octagonal, etc.";
+D-154 "The hearth IS the central hub, the townhall, the primary resource. It holds storage ... It's where the leader
+and their spouse spend time ... the leader doesnt reside or sleep there"; the design brief (tall ceilings, chandeliers
+or braziers, warm hearths, seating for the leader, big open areas, a few side rooms); and his correction of the brief:
+"i misused the word parapet here, so strike it from outside. I was thinking about those raised platforms along higher
+inner walls or across ceilings for folks to walk and look down and observe the grandeur." No parapets are built.
+
+Commits: a49d246 (lines, interior, cap, tests), 14ad1ea (lab page), this file.
+
+### Lines per culture
+
+`lab/hub_lines.js` builds every other type of each village culture at s3 (seeds 1 to 3) and reads each plan from its
+pieces. Rule: long and branched (L, T, U, cross) plans together 70 % or more (`HUB.crossFrom`) take the cross; the rest
+the round family: round buildings of their own (measured, or round or yurt in the culture's `forms`) take the round
+hall (part round one village in four), a courtyard culture the part round (octagon one in four), the others the octagon
+(part round one in four). The village's lineage picks between them; a village keeps its line at every stage. The
+result is in `styles.js HUB.lines` and the script checks that it matches.
+
+| Culture | long + branched | Line |
+|---|---|---|
+| Norse, Frankish-Norman, Norse forest, Lamari | 76, 76, 73, 80 % | cross |
+| Celtic, Crannog, Saami, Steppe | 40, 4, 58, 47 % | round 3, part 1 |
+| Anglo-Saxon, Slavic, Baltic, Fen folk, Norse highland, Byzantine | 53 to 69 % | octagon 3, part 1 |
+| Middle Eastern | 64 % | part 3, octagon 1 |
+
+The Norse long hall and the court are gone as lines (lib/hub.js); an old request for 'long' or 'court' gets the
+culture's line. The cross keeps from the long hall the high seat at the far end, the porch, tie beams and the lantern.
+
+### What each line is (seed 1, d3)
+
+- Cross: s2 14 x 14 m, arms 6 m wide; s3 18 x 18 m, arms 10 m, 4 m walls; s4 22 x 26 m, two storeys of 3 m; s5 26 x
+  30 m, arms 14 m. Gables over each pair of arms with valleys where they cross; from s4 a lantern tower over the
+  crossing by the draw (posts at the crossing's inner corners, walls at its corners, the middle bays open for smoke).
+  Side rooms from s4 at the side arms' ends: a kitchen with its own door out, a storage closet.
+- Round: 16 or 24 sides, 10, 15, 20, 30 m across. Octagon: 8 sides, 10, 14.5, 19, 29 m. Part round: the round's ring
+  cut by a straight front with the door, 3 to 9 m in front of the fire; the cut-off part is the forecourt with the
+  notice board. Roof by the culture: rings of posts and an open crown under a cone (conical roofs), a drum of high
+  windows over the fire from s4 (gable and hip cultures), or a flat roof open over the fire with a lantern (flat roof
+  cultures). Octagon roofs are rows of pieces along each side. From s4 a kitchen and a storage closet against the +x
+  wall under the gallery, with the back door into the kitchen.
+
+### The grand interior (s3 on)
+
+- Galleries (Tyler's correction): from s4, at 3 m, railed, reached by wood_stair flights. Cross s4: over the door and
+  along one wall of the front arm, one stair. Cross s5: along both walls of every arm, so the gallery crosses the front,
+  back and side arms round the opening over the fire, lofts over the side rooms, two stairs. Round family s4 and s5: a
+  ring between a ring of posts and the wall, one stair along the -x wall; at s5 a walkway across the hall at z = -8 on
+  two posts, between the gallery's sides (part round: along the straight front). No gallery or walkway is over a fire.
+- High seat from s3 at the back facing the fire, on a dais by the draw and always at s5; piece_chair02 beside it for the
+  spouse, written as `spouse;x;y;z;yaw` under `#VillheimLeader`.
+- Trophy wall behind the high seat: 4, 8, 12 empty item stands at s3, s4, s5 (tagged `trophy`, `memento`), plus 2 to 4
+  more along the walls.
+- Chandeliers: piece_brazierceiling01 from s3, from tie beams across the cross's arms (2 to 6) or from the roof of a round
+  hall (4), never within 2.5 m of a fire.
+- Storage (D-154): hall chests 3, 6, 6, 8 at s2 to s5; the closet holds up to 8 more chests; the kitchen a prep table, a
+  butcher's table, a fermenter and chests.
+- Fires: the hearth at the heart with benches round it; the cross a second fire in the front arm from s4 and one in the
+  back arm at s5 by the draw; the round family two at s5 by the draw.
+
+### Height cap
+
+`styles.js HUB.capH` is each culture's tallest other building at s3 in the lab, leaving out the watchtower (measured by
+lab/hub_lines.js); a hub may stand `HUB.capStoreys` storeys of 3 m over it. Value in use: 2 storeys (one for the s5 rule
+in the brief, one for the other buildings' growth from s3 to s5, which the lab does not build). A hub over the cap is
+built again a step plainer (the TIERS loop in lib/hub.js generate(): 1 no tower, drum or raised crown; 2 low roofs; 3 a wide open
+crown; 4 one storey without a gallery); `request.tier` records the step.
+
+Measures at s5 (d3, seed 1), before (round 2) and after:
+
+| Line | before | after |
+|---|---|---|
+| Norse | long 926 m2, 17.6 m; round 942 m2, 14.7 m | cross 1,004 m2, 15.2 m (cap 16.2), tier 0 |
+| Celtic | round 942 m2, 23.8 m | round 974 m2, 12.1 m (cap 15), tier 2 |
+| Anglo-Saxon | long (no own line) | octagon 960 m2, 14.7 m (cap 16.2), tier 0 |
+| Middle Eastern | court 1,618 m2, 10 m | part round 1,360 m2 (floor and flat roof), 9.1 m (cap 17), tier 0 |
+
+Every culture at s5 for lineages 1 and 2 stays under its cap (test output): Steppe 12.1 of 12.2 m (tier 1), Norse
+highland 12.9 and 13.9 of 14.2 m (tier 2), Lamari 12.2 of 22.7 m.
+
+### Lab page
+
+`web/app.html`: Hub (the existing type) is in the Building choice of the New building tab and now of the Interiors tab;
+when it is chosen the size slider runs s1 to s5 (s1 camp, s2 hamlet, s3 village, s4 town, s5 city) and the ticks follow.
+`lab/compare_page.js` checks two hub requests besides the five others: all seven the same in node and the page.
+
+### Checks run
+
+- `node lab/test_hub.js /tmp/hub3-renders 1`: the four lines at s1 to s5, d1 and d3, and every village culture's own
+  line (lineages 1 and 2) at s2 to s5: every check in lib/checks.js, reach (every floor, gallery cell rect, side room and
+  main piece reached on foot, nothing in an entry zone), shape family kept, high seat and spouse seat from s3, gallery
+  with a stair from s4, height under the cap, s5 the largest in the culture's set. All pass.
+- `node lab/test_structure.js`: all structure rules hold on 36 designs.
+- `node lab/hub_lines.js 3`: styles.js HUB.lines and HUB.capH match.
+- `node lib/build_web.js` then `node lab/compare_page.js`: all same (web/index.html restored, not committed).
+- Renders in /tmp/hub3-renders, each line s1, s3, s5, whole and cut at 2.6 m.
+
+### Hub refs tab
+
+Read on 2026-11-11 before the first and the last commit: only the lead's example row (MASSIVE Viking Hall), no builds
+listed by Tyler. Nothing taken from it.
+
+### Open
+
+- Octagon roofs show ragged hips and stepped edges where the rows of pieces overlap.
+- The part round's front gable is stepped wall bays under the ring roof (no gable pieces).
+- The Celtic and Crannog s4 and s5 lose their raised crown roof to the cap (tier 1 and 2); the Steppe s5 its crown.
+- Side rooms in round halls leave a gap of about 1 m where the partition meets the curved wall.
+- The cap uses s3 buildings; it should be measured again once the lab builds other types to s5.
+- Proposed Decisions rows are in the report to the lead.

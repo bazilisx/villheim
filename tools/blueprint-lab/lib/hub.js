@@ -28,7 +28,7 @@
 // from s3 a line 'spouse;x;y;z;yaw' for the seat beside it. Empty item stands wait for the village's mementos and
 // trophies (D-134); the generator leaves them empty.
 // Height: the hub stands at most HUB.capStoreys storeys over the culture's tallest other building (styles.js HUB.capH);
-// a hub that would stand taller is built again a step plainer (see fitTiers).
+// a hub that would stand taller is built again a step plainer (see TIERS).
 
 const NODE_H = typeof module !== 'undefined';
 const SH = NODE_H ? require('./styles.js') : window.VHStyles;
@@ -1052,7 +1052,7 @@ function capFor(cultureKey) {
   return c == null ? Infinity : c + (H.capStoreys != null ? H.capStoreys : 2) * (H.storeyH || 3);
 }
 const topOf = pieces => pieces.reduce((m, p) => { const pi = PH.piece(p.name); return pi.structural ? Math.max(m, p.y + pi.size[1] / 2) : m; }, 0);
-// The steps a hub takes down when it would stand over its height (fitTiers): 0 as designed; 1 without the lantern
+// The steps a hub takes down when it would stand over its height: 0 as designed; 1 without the lantern
 // tower, drum or raised crown; 2 with low (26 degree) roofs; 3 with a wide open crown on a round hall; 4 one storey.
 const TIERS = 5;
 

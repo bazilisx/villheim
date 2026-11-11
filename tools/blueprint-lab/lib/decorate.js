@@ -819,7 +819,7 @@ class Room {
     return isFinite(y) ? y : this.stand;
   }
   put(name, x, z, yaw, o = {}) {
-    if (lightFull(this, name) || !this.fits(name, x, z, yaw, o)) return null;
+    if (lightFull(this, name) || rugFull(this, name) || !this.fits(name, x, z, yaw, o)) return null;
     const f = F[name] || {};
     const [w, , d] = size(name);
     const y = this.floorY(obox(x, z, w, d, yaw)) + (f.base || 0) + (o.lift || 0) + (f.at === 'rug' ? 0.02 : 0);
@@ -1872,6 +1872,7 @@ function decorate(b, ctx) {
       room.upper = li > 0 || (rects.length && rects.every(r => r.upper));
       const inMain = main && m.cells.filter(c => c.x > main.x0 && c.x < main.x1 && c.z > main.z0 && c.z < main.z1).length;
       const role = ctx.role || roleFor(use, type, room, inMain / m.cells.length, rects, ys.length, li);
+      room.mainRoom = li === 0 && (!main || inMain / m.cells.length > 0.5);
       if (!role) continue;
       // the main way in: a door, else the top of the stairs, else the room's longest open side
       room.entry = room.doors.slice().sort((a, c) => (a.open ? 1 : 0) - (c.open ? 1 : 0) || Math.abs(a.x - (ctx.doorX ?? a.x)) - Math.abs(c.x - (ctx.doorX ?? c.x)))[0] || null;
@@ -2441,6 +2442,11 @@ const LIGHT_ROOM = { home: [1.89, 0.37, 0.21, 0.18, 0.36, 96.75], sleeping: [1.0
   tavern: [2.54, 0.74, 0.53, 0, 0.27, 135.25], hall: [1.02, 0.48, 0.17, 0, 0.53, 55.25], kitchen: [0.96, 0.46, 0.09, 0.04, 0.52, 41.25],
   living: [0.75, 0.41, 0.16, 0.07, 0.51, 36], smithy: [2.38, 0.58, 0, 0, 0.41, 76.5], workshop: [0.78, 0.55, 0.08, 0.03, 0.51, 29],
   storage: [0.33, 0.16, 0.01, 0, 0.83, 7.5], other: [0.75, 0.32, 0.1, 0.01, 0.55, 12.25] };
+// The building's main room: as often lit as the corpus's buildings of its kind (lab/hearths/corpus-hearths-lights.json
+// lightsPer10m2 use: homes 67 %, halls 77 %, taverns 94 %, temples 88 %, work buildings 79 %, others 71 %); the
+// generator's buildings have one or two rooms where the corpus's have many, so the room's own share of none would
+// leave more of them dark than the corpus has.
+const LIGHT_MAIN_NONE = { home: 0.33, hall: 0.23, tavern: 0.06, smithy: 0.21, workshop: 0.21, storage: 0.29, kitchen: 0.33, living: 0.29 };
 // The share of lights that already stand at d2 (the rest go up at d3, D-071)
 const LIGHT_D2 = 0.7;
 // The budget: none at all as often as the kind's corpus rooms have none (less often for a household that likes its
@@ -2463,9 +2469,10 @@ function lightBudget(room) {
   const zero = { wall: 0, floor: 0, small: 0, hang: 0 };
   const B = { kind, 2: { ...zero }, 3: { ...zero }, n: 0 };
   room.lightB = B;
-  if (R() < Math.min(0.9, p0 / mult)) return B;
+  const none = room.mainRoom && LIGHT_MAIN_NONE[kind] != null ? LIGHT_MAIN_NONE[kind] : p0;
+  if (R() < Math.min(0.9, none / mult)) return B;
   const scale = Math.max(0.35, Math.min(2, Math.sqrt(room.area / med)));
-  const mean = (w + f + s + h) / (1 - p0) * scale * mult * (0.7 + 0.6 * R());
+  const mean = Math.max(1, (w + f + s + h) / (1 - none) * scale * mult * (0.7 + 0.6 * R()));
   const n = Math.floor(mean) + (R() < mean - Math.floor(mean) ? 1 : 0);
   const comfort = P ? P.comfort || 0 : 0.5;
   const hangOk = room.area >= 30 && (room.ceiling || 0) - room.stand > 3.9;
@@ -2475,21 +2482,73 @@ function lightBudget(room) {
   B.n = n;
   return B;
 }
-// Whether the room has its budget of this light's class (pieces that are no light are never full)
+// Whether the room has its budget of this light's class (pieces that are no light are never full). Candles keep to
+// their own count; wall, floor and hanging lights may take one another's places, so a room lit by what its walls and
+// kit allow still has its number of lights.
 function lightFull(room, name) {
   const c = lightCls(name);
   if (!c || !room.role) return false;
   const B = lightBudget(room);
-  let used = 0;
-  for (const q of room.placed) if (lightCls(q.name) === c) used++;
-  return used >= B[3][c];
+  let used = 0, big = 0;
+  for (const q of room.placed) { const qc = lightCls(q.name); if (qc === c) used++; if (qc && qc !== 'small') big++; }
+  if (c === 'small') return used >= B[3].small;
+  return used >= B[3][c] && big >= B[3].wall + B[3].floor + B[3].hang;
 }
+// Rugs, the same way (the lead's review of 2026-11-11: about a dozen rugs on the ground floor of a 20 x 8 m Norse
+// longhouse, most layered at angles). Corpus, data/culture-corpus/summary.json per culture group: the share of
+// furnished buildings with rugs (has), the median and upper quartile of rugs per building, over the median and upper
+// quartile floor area (rugs per 10 m2: norse 0.10 and 0.22, norse-forest 0.19 and 0.16, norse-highland 0.11 and 0.12,
+// medieval-timber 0.26 and 0.15; all groups weighted by their buildings 0.16 and 0.19, 68 % with rugs). A household
+// draws where it stands in that spread (no rugs as often as the group's buildings have none, then 0.7 of the median,
+// the median, the upper quartile and twice it at the top, one draw for the whole house; one rug at least in a room
+// lived in of 20 m2 or more), blended with the whole corpus by n / (n + 40)
+// as the other culture counts are. The room's kind moves it by data/interior.json rooms' rugs per 10 m2 against home
+// rooms (sleeping 1.5, other 1.35, hall 0.9, workshop and living 0.85, tavern, smithy and kitchen 0.6, storage 0.45).
+// Rugs on rugs (rugs layered, rl) are kept to the culture's share in lib/kitbash.js trimRugs.
+const RUG_RATE = { unsorted: [0.517, 0.324, 59], norse: [0.1, 0.222, 72], castle: [0.062, 0.119, 64], ashlands: [0.038, 0.1, 52], 'norse-named': [0.149, 0.219, 75],
+  mistlands: [0, 0.073, 45], 'stone-house': [0.069, 0.115, 68], 'norse-forest': [0.19, 0.162, 84], fantasy: [0.329, 0.247, 84], 'medieval-timber': [0.259, 0.148, 81],
+  'norse-highland': [0.11, 0.12, 83], 'east-asian': [0.018, 0.13, 50], 'fen-folk': [0.144, 0.105, 75], celtic: [0.464, 0.276, 50], modern: [0.424, 0.493, 90],
+  'greco-roman': [0.027, 0.528, 60], 'tree-house': [0.353, 0.309, 100], 'celtic-crannog': [0.036, 0.044, 80], saami: [0.776, 0.776, 100], slavic: [0.116, 0.116, 100],
+  'frankish-norman': [0, 0, 0], 'middle-eastern': [0, 0, 0], steppe: [0.523, 0.523, 100], all: [0.156, 0.195, 68] };
+const RUG_KIND = { home: 1, sleeping: 1.5, other: 1.35, hall: 0.9, workshop: 0.85, living: 0.85, tavern: 0.6, smithy: 0.6, kitchen: 0.6, storage: 0.45 };
+function rugBudget(room) {
+  if (room.rugB) return room.rugB;
+  const { g, l } = cultG(room.culture);
+  const key = g ? CULT_GROUP[room.culture] : null;
+  const G0 = RUG_RATE.all, G1 = (key && RUG_RATE[key]) || G0, lw = key && RUG_RATE[key] ? l : 0;
+  const mix = i => lw * G1[i] + (1 - lw) * G0[i];
+  const lo = Math.min(mix(0), mix(1)), hi = Math.max(mix(0), mix(1)), has = mix(2) / 100;
+  const P = room.persona || null;
+  // the household's place in the spread: one draw for the house, a little more per room
+  const u = hashD(`rugs|${(P && P.salt) || 0}|${room.culture}|${room.village != null ? room.village : room.biome}`) / 4294967296;
+  const ru = hashD(`rug|${room.cx.toFixed(1)}|${room.cz.toFixed(1)}|${room.stand.toFixed(1)}|${(P && P.salt) || 0}`) / 4294967296;
+  let rate = 0;
+  const u0 = 1 - has;
+  if (u >= u0) {
+    const pts = [[u0, lo * 0.7], [Math.max(u0 + 0.01, 0.5), lo], [0.75, hi], [1, hi * 2]];
+    for (let j = 1; j < pts.length; j++) if (u <= pts[j][0]) { const [a0, r0] = pts[j - 1], [a1, r1] = pts[j]; rate = r0 + (r1 - r0) * (u - a0) / Math.max(1e-6, a1 - a0); break; }
+  }
+  const likes = P && P.likes ? Math.max(0.5, Math.min(1.8, P.likes.rugs || 1)) : 1;
+  const taste = (CULTURE_TASTE[room.culture] || {}).rugs || 1;
+  const kind = LEARN_KIND[room.role] || 'other';
+  const v = room.area / 10 * rate * (RUG_KIND[kind] || 1) * likes * taste * (0.75 + 0.5 * ru);
+  let n3 = Math.floor(v) + (((ru * 7919) % 1) < v - Math.floor(v) ? 1 : 0);
+  // a household that keeps rugs has one at least in each room it lives in
+  if (rate > 0 && room.area >= 20 && ['home', 'sleeping', 'hall', 'tavern', 'living'].includes(kind)) n3 = Math.max(1, n3);
+  room.rugB = { 3: n3, 2: Math.round(n3 * LIGHT_D2), rl: corpusRate(room.culture, 'rl') };
+  return room.rugB;
+}
+function rugFull(room, name) {
+  if ((F[name] || {}).at !== 'rug' || !room.role) return false;
+  return room.placed.filter(q => q.rug).length >= rugBudget(room)[3];
+}
+
 // The rooms' budgets on the design, for lib/kitbash.js trimLights: the room's floor cells (0.5 m keys), its stand and
 // ceiling, and the budget.
 function keepLightBudget(b, room) {
   if (!room.role) return;
   const keys = new Set(room.cells.map(cc => `${Math.round(cc.x / G)},${Math.round(cc.z / G)}`));
-  (b.lightRooms || (b.lightRooms = [])).push({ keys, y0: room.stand - 0.3, y1: Math.max(room.ceiling || 0, room.stand + 2.5) + 0.3, B: lightBudget(room), role: room.role });
+  (b.lightRooms || (b.lightRooms = [])).push({ keys, y0: room.stand - 0.3, y1: Math.max(room.ceiling || 0, room.stand + 2.5) + 0.3, B: lightBudget(room), rug: rugBudget(room), role: room.role });
 }
 // The budget record a point is in, or null
 function lightRoomOf(recs, x, y, z) {
@@ -3632,6 +3691,6 @@ function decorateExisting(pieces, { use = 'home', decor = 'd2', biome = 'Meadows
 }
 
 const api = { lateClash, corpusPick, corpusRate, tableRate, tableDressed, corpusTilt, topPick, keepsBarrels, oneWhy: () => ONE_WHY, furnClash, asBuilt, decorate, strip, findRooms, decorateExisting, setRules, setInterior, setTemplates, templateById, audit, auditContext, auditOne, itemOf, ITEM_BIOME, FURNITURE: F, readLevel,
-  lightCls, lightBudget, lightRoomOf, LIGHT_D2,
+  lightCls, lightBudget, rugBudget, lightRoomOf, LIGHT_D2,
   _int: { floorLevels, standGuess, roleFor, stretch, size, ok, obox, overlap, ptDist, yawOfDir, pyaw, standOf, norm, WALLISH } };
 if (NODE_D) module.exports = api; else window.VHDecorate = api;

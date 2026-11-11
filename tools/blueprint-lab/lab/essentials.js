@@ -100,7 +100,8 @@ function run() {
       const cov = fl0.filter(f => ov.some(([q, o]) => q !== f && q.y > f.y + 2 && q.y < f.y + 9 && f.x > o.x0 && f.x < o.x1 && f.z > o.z0 && f.z < o.z1)).map(box);
       for (const p of dec) { const c = lcls(p.name); if (c && cov.some(o => p.x > o.x0 - 0.15 && p.x < o.x1 + 0.15 && p.z > o.z0 - 0.15 && p.z < o.z1 + 0.15 && p.y > o.y0 - 0.5 && p.y < o.y0 + 5)) cnt[c]++; }
       const tot = cnt.wall + cnt.floor + cnt.small + cnt.hang;
-      if (area > 4) (lightsT[type] || (lightsT[type] = [])).push({ all: tot / area * 10, ...Object.fromEntries(Object.entries(cnt).map(([k, v]) => [k, v / area * 10])), n: tot });
+      const nrug = dec.filter(p => CAT.rug.test(p.name)).length;
+      if (area > 4) (lightsT[type] || (lightsT[type] = [])).push({ all: tot / area * 10, ...Object.fromEntries(Object.entries(cnt).map(([k, v]) => [k, v / area * 10])), n: tot, rugs: nrug, rug10: nrug / area * 10 });
       if (['home', 'tavern', 'longhouse'].includes(type)) {
         const e = cook[type] || (cook[type] = { n: 0, any: 0, butcher: 0, oven: 0, prep: 0, mortar: 0, cauldron: 0 });
         e.n++;
@@ -203,6 +204,7 @@ function run() {
   out.tableFire = { n: tableFire.length, q: [q(tableFire, 0.25), q(tableFire, 0.5), q(tableFire, 0.75)] };
   out.lights = {};
   for (const [t, a] of Object.entries(lightsT)) out.lights[t] = { designs: a.length, none: Math.round(100 * a.filter(e => e.n === 0).length / a.length), all: [q(a.map(e => e.all), 0.25), q(a.map(e => e.all), 0.5), q(a.map(e => e.all), 0.75)],
+    rugs: [q(a.map(e => e.rugs), 0.25), q(a.map(e => e.rugs), 0.5), q(a.map(e => e.rugs), 0.75)], rug10: [q(a.map(e => e.rug10), 0.5), q(a.map(e => e.rug10), 0.75)], rugNone: Math.round(100 * a.filter(e => e.rugs === 0).length / a.length),
     mean: Object.fromEntries(['wall', 'floor', 'small', 'hang'].map(k => [k, Math.round(100 * a.reduce((s2, e) => s2 + e[k], 0) / a.length) / 100])) };
   out.lightFloors = { floors: lfloor.n, candle: Math.round(100 * lfloor.candle / lfloor.n), torch: Math.round(100 * lfloor.torch / lfloor.n), dvergr: Math.round(100 * lfloor.dvergr / lfloor.n), lava: Math.round(100 * lfloor.lava / lfloor.n) };
   out.cook = Object.fromEntries(Object.entries(cook).map(([t, e]) => [t, Object.fromEntries(Object.entries(e).map(([k, v]) => [k, k === 'n' ? v : Math.round(100 * v / e.n)]))]));
@@ -226,6 +228,9 @@ if (require.main === module) {
   console.log('lights per 10 m2 of covered floor (quartiles), share of designs with none, mean per 10 m2 by class');
   for (const [t, v] of Object.entries(o.lights)) console.log('  ' + t.padEnd(10), v.all.join(' / ').padEnd(20), `none ${v.none} %`.padEnd(11), Object.entries(v.mean).map(([k, x]) => `${k} ${x}`).join(', '), `(${v.designs})`);
   console.log('  (corpus lightsPer10m2: home 0 / 0.10 / 0.22 none 33 %, hall 0.03 / 0.10 / 0.22, tavern 0.11 / 0.20 / 0.33, work 0.05 / 0.13 / 0.30)');
+  console.log('rugs per design (quartiles), per 10 m2 (median, upper quartile), share with none');
+  for (const [t, v] of Object.entries(o.lights)) console.log('  ' + t.padEnd(10), v.rugs.join(' / ').padEnd(14), v.rug10.join(' / ').padEnd(14), `none ${v.rugNone} %`);
+  console.log('  (corpus, data/culture-corpus/summary.json per furnished building: norse median 4, upper quartile 19, 72 % with rugs; 0.10 and 0.22 per 10 m2)');
   console.log(`floors with a candle ${o.lightFloors.candle} %, a wall torch ${o.lightFloors.torch} %, a Dvergr wall lantern ${o.lightFloors.dvergr} %, a lava lantern ${o.lightFloors.lava} % (of ${o.lightFloors.floors})`);
   console.log('cooking stations, share of designs (%):');
   for (const [t, e] of Object.entries(o.cook)) console.log('  ' + t.padEnd(10), Object.entries(e).map(([k, v]) => `${k} ${v}`).join(', '));

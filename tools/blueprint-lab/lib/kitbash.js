@@ -1761,6 +1761,7 @@ function apply(b, ctx, zones) {
   if (St && X.stands !== false) St.dressTops(b, ctx, zones || []);
   // every room's lights to its budget (lib/decorate.js lightBudget)
   if (X.lightBudget !== false) { const t = trimLights(b); if (t) b.notes.push(`${t} lights over the rooms' budgets left out.`); }
+  if (X.rugBudget !== false) { const t = trimRugs(b); if (t) b.notes.push(`${t} rugs over the rooms' budgets left out.`); }
   // lived in: movable things a little off square, by the household (lib/persona.js)
   if (X.lived !== false && ctx.decor !== 'd1') {
     const m = liveIn(b, ctx, zones || []);
@@ -1809,22 +1810,32 @@ function trimLights(b) {
       e.v = v + ((hashB(`${p.name}|${p.x}|${p.z}`) % 1000) / 1000) * 0.4;
     }
     const used2 = {}, used3 = {}, kept = [];
-    const rest = list.slice();
-    while (rest.length) {
-      // the best of what is left, less for a kept light of its class within 3.9 m
-      let bi = 0, bv = -Infinity;
-      rest.forEach((e, i) => {
-        const v = e.v - kept.filter(k => k.c === e.c && Math.hypot(k.p.x - e.p.x, k.p.z - e.p.z) < 3.9).length * 0.8;
-        if (v > bv) { bv = v; bi = i; }
-      });
-      const [e] = rest.splice(bi, 1), c = e.c, p = e.p;
-      const has3 = (used3[c] || 0) < r.B[3][c], has2 = (used2[c] || 0) < r.B[2][c];
-      const late = p.ds === 3;
-      if (has3 && (late || has2)) { used3[c] = (used3[c] || 0) + 1; if (!late) used2[c] = (used2[c] || 0) + 1; kept.push(e); continue; }
-      if (has3 && !p.kb) { p.ds = 3; used3[c] = (used3[c] || 0) + 1; kept.push(e); continue; }
-      gone.add(p);
-      if (p.kb) kbs.add(p.kb);
+    // pass 1 by class; pass 2 lets wall, floor and hanging lights take one another's places left empty (candles keep
+    // to their own count), as lib/decorate.js lightFull does
+    const BIG = ['wall', 'floor', 'hang'], sum = (o, ks) => ks.reduce((t, k) => t + (o[k] || 0), 0);
+    let rest = list.slice();
+    for (const pool of [false, true]) {
+      const left = [];
+      while (rest.length) {
+        // the best of what is left, less for a kept light of its class within 3.9 m
+        let bi = 0, bv = -Infinity;
+        rest.forEach((e, i) => {
+          const v = e.v - kept.filter(k => k.c === e.c && Math.hypot(k.p.x - e.p.x, k.p.z - e.p.z) < 3.9).length * 0.8;
+          if (v > bv) { bv = v; bi = i; }
+        });
+        const [e] = rest.splice(bi, 1), c = e.c, p = e.p;
+        const ks = pool && c !== 'small' ? BIG : [c];
+        const has3 = sum(used3, ks) < sum(r.B[3], ks), has2 = sum(used2, ks) < sum(r.B[2], ks);
+        const late = p.ds === 3;
+        // a light kept for d3 goes up at d2 where d2 has room for it (one of a set keeps its set's stage)
+        if (has3 && late && has2 && !p.kb) { p.ds = 2; used3[c] = (used3[c] || 0) + 1; used2[c] = (used2[c] || 0) + 1; kept.push(e); continue; }
+        if (has3 && (late || has2)) { used3[c] = (used3[c] || 0) + 1; if (!late) used2[c] = (used2[c] || 0) + 1; kept.push(e); continue; }
+        if (has3 && !p.kb) { p.ds = 3; used3[c] = (used3[c] || 0) + 1; kept.push(e); continue; }
+        left.push(e);
+      }
+      rest = left;
     }
+    for (const { p } of rest) { gone.add(p); if (p.kb) kbs.add(p.kb); }
   }
   if (!gone.size) return 0;
   // a set's ledge or shelf with nothing left on it goes too
@@ -1832,6 +1843,50 @@ function trimLights(b) {
     const left = b.pieces.filter(q => q.kb === kb && !gone.has(q));
     if (left.length && left.every(q => LEDGES.test(q.name))) for (const q of left) gone.add(q);
   }
+  b.pieces = b.pieces.filter(q => !gone.has(q));
+  return gone.size;
+}
+
+// The rooms' rug budgets (lib/decorate.js rugBudget) over every rug laid by now, the same way as the lights: best
+// first, kept while the room has room at d3 (and at d2 for those that lie at d2), a rug on another rug (within 1.2 m,
+// 0.3 m in height: rel.rugsLayered) only while the room's layered rugs stay under the culture's share. Best: under or
+// by a bed, a table, a seat or the fire, the decorator's own (laid for a purpose) a little before a set's.
+function trimRugs(b) {
+  const D = decorB(), recs = b.lightRooms;
+  if (!recs || !recs.length) return 0;
+  const by = new Map();
+  for (const p of b.pieces) {
+    if (!p.decor || p.outside || p.yard || PB.piece(p.name).role !== 'rug') continue;
+    const r = D.lightRoomOf(recs, p.x, p.y, p.z);
+    if (!r || !r.rug) continue;
+    if (!by.has(r)) by.set(r, []);
+    by.get(r).push(p);
+  }
+  if (!by.size) return 0;
+  const near = (re, p, rad) => b.pieces.some(q => q.decor && re.test(PB.piece(q.name).role) && Math.abs(q.y - p.y) < 1 && Math.hypot(q.x - p.x, q.z - p.z) < rad);
+  const gone = new Set();
+  for (const [r, list] of by) {
+    const sc = new Map(list.map(p => [p, (near(/^bed$/, p, 1.8) ? 0.7 : 0) + (near(/^table$/, p, 1.6) ? 0.6 : 0) + (near(/^fire$/, p, 3) ? 0.5 : 0) +
+      (near(/^seat$/, p, 1.4) ? 0.3 : 0) + (!p.kb && !p.extra ? 0.3 : 0) + (hashB(`${p.name}|${p.x}|${p.z}`) % 1000) / 2500]));
+    const kept = [];
+    let n2 = 0;
+    const rest = list.slice().sort((a, c) => sc.get(c) - sc.get(a));
+    for (const p of rest) {
+      const on = kept.some(q => Math.abs(q.y - p.y) < 0.3 && Math.hypot(q.x - p.x, q.z - p.z) < 1.2);
+      const late = p.ds === 3;
+      const room3 = kept.length < r.rug[3], room2 = n2 < r.rug[2];
+      // a rug on a rug as often as the culture's rugs are (a draw per rug, so a room of two rugs can have its pair)
+      const layerOk = !on || (hashB(`lay|${p.x}|${p.z}`) % 1000) / 1000 < r.rug.rl * 1.5;
+      if (room3 && layerOk && (late || room2 || !p.kb)) {
+        if (!late && !room2) p.ds = 3; else if (late && room2 && !p.kb) p.ds = 2;
+        if (p.ds !== 3) n2++;
+        kept.push(p);
+        continue;
+      }
+      gone.add(p);
+    }
+  }
+  if (!gone.size) return 0;
   b.pieces = b.pieces.filter(q => !gone.has(q));
   return gone.size;
 }

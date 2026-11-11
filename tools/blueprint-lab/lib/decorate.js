@@ -2577,7 +2577,8 @@ function rugTopUp(room, k, biome, culture) {
 // rooms 0.82, sleeping 1.09, storage 4), 2.5 in a room of 30 m2. From a stream of its own.
 function sparseTopUp(room, k) {
   if (!room.role || room.area < 8) return 0;
-  const count = () => room.placed.filter(q => !q.rug).length;
+  // (lights left out: the light budget may take them out later, lib/kitbash.js trimLights)
+  const count = () => room.placed.filter(q => !q.rug && !lightCls(q.name)).length;
   if (count() >= 2) return 0;
   const R0 = room.R;
   room.R = rngFrom(hashD(`sparse|${room.cx.toFixed(1)}|${room.cz.toFixed(1)}|${room.stand.toFixed(1)}|${(room.persona && room.persona.salt) || 0}`) >>> 0);

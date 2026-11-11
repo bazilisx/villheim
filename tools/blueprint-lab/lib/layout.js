@@ -404,6 +404,17 @@ function removable(unit, firstChest) {
   return true;
 }
 
+// Whether taking these pieces out would leave a room of 8 m2 or more with fewer than two pieces standing in it (the
+// decorator's audit bareFloors: rugs left out); the lanes and the ways in keep to that.
+function leavesBare(b, m, drop) {
+  if (m.area < 8) return false;
+  let n = 0;
+  for (const q of b.pieces) {
+    if (!q.decor || drop.has(q) || q.outside || q.yard || PL.piece(q.name).role === 'rug') continue;
+    if (q.y > m.stand - 0.3 && q.y < m.stand + 3 && m.inside(q.x, q.z) && ++n >= 2) return false;
+  }
+  return true;
+}
 function roomsOf(b, ctx) {
   const K = NODE_L ? require('./kitbash.js') : window.VHKitbash;
   return K.roomsB(b, ctx);
@@ -464,7 +475,7 @@ function clearLanes(b, ctx, rooms) {
               for (const r of qu) drop.add(r);
             }
           }
-          if (keep) continue;
+          if (keep || leavesBare(b, m, drop)) continue;
           b.pieces = b.pieces.filter(p => !drop.has(p));
           budget--; gone++; any = true;
         }
@@ -507,7 +518,7 @@ function clearEntries(b, ctx, rooms) {
           const o = Ck.aabbShapes(p);
           return !o.pass && o.y0 < m.stand + 1.8 && o.y1 > m.stand + 0.05 && inZone(o);
         })) continue;
-        if (!removable(list, firstChest)) continue;
+        if (!removable(list, firstChest) || leavesBare(b, m, new Set([...out, ...list]))) continue;
         for (const p of list) out.add(p);
       }
       if (!out.size) continue;

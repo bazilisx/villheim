@@ -393,6 +393,60 @@ Of the 220 prefabs, 27 are not in any set:
 Food and drink in a set become flat item stands holding what the household keeps (T-626), and a feast is the
 village's own; so the many mead and feast prefabs in the sets differ in the data and by what goes round them.
 
+## Hearths and lights in the corpus (2026-11-10)
+
+Mined on Tyler's PC from `Downloads\Villheim-blueprints` (1,663 builds after copies and builds with more than 5 % modded
+pieces were left out; never the BiomeBlueprints pack) with a script that turns each build to its walls' axis and
+casts rays from each fire and light. Kinds come from the folder and title (starter homes and houses, longhouses and
+halls, taverns, castles, workshops). 3,434 fires, 1,647 of them indoors (walls on 12 of 16 sides and a roof).
+
+Where the fire stands, by the room it serves (rays from 2.5 m in front of it):
+
+| | Fires | Middle | Against a wall | Corner | Alcove | Half in the wall |
+|---|---|---|---|---|---|---|
+| Homes, main fire (one per build) | 291 | 16 % | 15 % | 11 % | 34 % | 24 % |
+| Homes under 120 m2 | 51 | 8 % | | | | 92 % in the four wall kinds |
+| Halls and taverns, rooms over 80 m2 | 148 | 32 % | 16 % | 3 % | 16 % | 29 % |
+| All indoor fires | 1,647 | 15 % | 11 % | 8 % | 22 % | 44 % |
+
+How the smoke gets out (what is over the fire):
+
+| | Gap within 1.5 m | Gap 2 to 4 m | Shaft (walls round an open column) | Roof hole | Stone stack past the roof | Closed |
+|---|---|---|---|---|---|---|
+| Home wall fires (443) | 48 % | 20 % | 13 % | 9 % | 3 % | 5 %, 2 % open to the sky |
+| Home middle fires (86) | 49 % | 13 % | 2 % | 20 % | 0 % | 15 % |
+| Castles (400) | 17 % | 12 % | 17 % | 7 % | 22 % | 6 %, 21 % open to the sky |
+
+What surrounds a home's wall fire (443): four or more stone pieces within 1.5 m 55 %, a beam over or beside it 77 %
+(the wall top counts), stone overhead 5 %, wood overhead 10 %, a pot or spit 67 %, stone floor under it 36 %, a
+woodpile within 3.5 m 7 %, raised 5 %, the hearth piece 54 % (the rest fire pits); a median of one seat within 4 m.
+Builders mostly let the smoke out through a gap right by the fire (a missing roof piece, the gap between roof and
+wall, an open gable) and less often through a built shaft or a stone stack.
+
+Lights indoors (18,380): wall lights 51 % (sconces 60 %, Dvergr wall lanterns 40 %), floor lights 33 % (standing
+torches of every kind, braziers, Dvergr pole lanterns), candles and small lanterns 12 %, hanging lights 4 % (hanging
+braziers 88 %). Builds that use each kind, and lights per 10 m2 of covered floor (median and upper quartile):
+
+| | Builds | Any light | Wall | Hanging | Floor | Candles | Per 10 m2 |
+|---|---|---|---|---|---|---|---|
+| Homes | 415 | 67 % | 50 % | 14 % | 39 % | 16 % | 0.10 to 0.22 |
+| Halls | 84 | 77 % | 67 % | 26 % | 43 % | 17 % | 0.10 to 0.22 |
+| Taverns | 48 | 94 % | 83 % | 29 % | 46 % | 35 % | 0.20 to 0.33 |
+| Temples | 32 | 88 % | 63 % | 31 % | 59 % | 25 % | 0.18 to 0.38 |
+
+Small homes have few lights: 70 % of homes under 60 m2 and 64 % of 60 to 120 m2 have none; 120 to 250 m2 have two at
+the median, bigger ones eight. Where lights stand: 14 % of sconces and 20 % of Dvergr wall lanterns within 1.5 m of a
+door; candles on a table 17 %, within 1.5 m of a table 29 %, by a bed 15 %; any kind within 3 m of a fire 2 to 4 %.
+Sconces hang with their foot 1.4 to 3.8 m over the floor (median 2.3). On one floor the nearest other wall light is
+1.7 to 5.9 m away (median 3.9), with a spread of 0.28 of that; builders space them by eye, often in pairs.
+
+Builds the rules rest on, among others: "A teeny house for a friendly family of 4 Vikings" and "Cute cozy house" by
+PUP (alcove hearths under stone), "The Safehouse" by LordCainhurst (an open shaft), "Custom Grausten Fireplace
+(Smokeless)" by Bri Games, "Hermits Mountain Hut" by Fluffy-n-Dana, "Beginner Cabin" by Abzul, "Tiny home challenge,
+Part 1" by SorchaAzura, "Artistic medieval house No. 2" by Alexlucker (a chimney stack), "Simple Start Base" by
+Deguinho, "New Year, New Home" by kinesthesia and "Modern Starter House" by MADZO (fire pits against the wall).
+The generator's rules from these are in docs/BLUEPRINT_LAB.md, "Hearths and light".
+
 ### Full corpus round (2026-11-10)
 
 `lab/mine_creative.js` ran over the whole corpus on Tyler's PC (the files read in place, nothing written there; the

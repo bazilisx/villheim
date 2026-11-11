@@ -62,7 +62,7 @@ through the floors. The generator now follows these rules, and `lib/checks.js` c
 | Rooms are tall enough | Walls of 3 m (sunken huts 2.5 m, under a steep roof); upper floors 3 m apart. | `headroom`: every covered floor point inside walls, away from the wall itself, has 2.4 m clear under every roof, ceiling and level beam, and the walls beside it are at least 2.5 m tall. Open floors (roof terraces, yards, decks) are left out. |
 | Doors can be walked through | The door piece fits the wall: `wood_door` for a 2 m opening, `piece_cloth_hanging_door` for a 2 m one too (it hangs about 2 m from its pivot; hung at 3 m it stopped a metre short of the floor, T-102), `wood_gate` for barns (3 m); never `darkwood_gate`. Roof, eave and beam pieces in a doorway, or lower than 2.3 m for a metre in front of it or behind it, are taken out (the eave is cut back over the door). A raised door gets a stair: from the ground at 2 m, set half in the ground at 1 m, stopping at the face of a stone course. | `doors`: nothing in the opening, nothing under 2.3 m for a metre either side, and a floor, stair or the ground to step on at both sides. |
 | Ladders can be climbed | Each ladder needs three cells in a row: a clear foot, the hole, and a landing. Cells along a wall come first, away from the door and the chimney. The foot stands at the near edge of the hole; in a 3 m storey the climb ends in the middle of the landing cell, whose near half stays open and whose far half gets two `wood_floor_1x1`. In towers each landing is the next ladder's foot, so they climb round the walls. Furniture is kept off the foot, the hole and the landing. Flat roofs get a ladder to a hatch. | `ladders`: a metre of clear floor in front of the foot, a floor to step onto at the top, and nothing lower than 1.9 m over the climb. |
-| Fires sit under the smoke | The fire goes to the middle of the smoke hole: the ridge caps left out over it, the open crown of a ring roof, or a cell of a flat roof. A chimney goes over a ridge or flat-roof hole, through any upper floor: a plank box with a raised cap on short posts (a smoke louver). A stone chimney would stand on the wooden roof or floor and fall, so there are none. Ring roofs keep their open crown. No fire laid: the ridge is closed again. A hearth in a room under 40 m2 becomes a fire pit. | (the fire's place is set by the generator) |
+| Fires sit under the smoke | Halls, taverns, temples, round houses and tents keep the fire in the middle under the smoke hole: the ridge caps left out over it, the open crown of a ring roof, or a cell of a flat roof. Homes put it against a wall most of the time (see "Hearths and light"), and the smoke outlet moves with it. Middle fires get a smoke louver (the ridge caps raised 0.6 m on short posts) or a plank shaft through an upper floor. No fire laid: the ridge or roof is closed again. A hearth in a room under 40 m2, or against a wall, becomes a fire pit. | (the fire's place is set by the generator) |
 | Ceiling braziers hang lit | `piece_brazierceiling01` hangs on its 2 m chain from the lowest roof or ceiling piece over the middle of its room (two in a hall are spread along it), at least 2.3 m up and away from the fire; where the room is too low it stands as a torch. The spawner lights every fire, brazier and torch a design brings and keeps it lit (`DesignSpawner.KeepLitPatch`). | |
 | Woodpiles outside | Woodpiles placed indoors move outside against an outside wall, away from the doors, or are left out. | `woodpiles`: none under a roof inside walls. |
 | Materials by biome | Dark wood takes tar (Plains): the Swamp kit is wood and iron; dark roofs, frames and porch roofs start in the Plains. Furnishing the biome cannot make comes out; the generator's own props (well and pen barrels, camp benches) are swapped for ones it can. | `materials`: every piece, structure and furnishing, by `pieces.js` `needs`. |
@@ -93,6 +93,49 @@ most over the 62 test requests.
 
 Culture ids that have changed or may change sit in `styles.js` `ID`; a renamed id goes in `RENAMED` so old requests
 still work (`caucasian-highland` is now `lamari`, D-046).
+
+## Hearths and light (Tyler, 2026-11-10)
+
+Tyler: firepits and chimneys in alcoves or partly in the wall are more common in homes than a fire in the middle of
+the floor; the middle fire belongs to rooms where people gather. The corpus agrees (docs/INTERIOR_DESIGN.md, "Hearths
+and lights in the corpus"): the main fire of 84 % of 291 homes with an indoor fire stands against a wall, in a corner,
+in an alcove or half in the wall.
+
+**Where a home's fire goes** (`lib/generate.js` `hearthPlan`, weights in `HEARTHS` per culture). Drawn from the
+household's own stream (the lineage), so the same household keeps its fire in the same place from stage to stage:
+
+| Spot | What is built | Smoke | Who |
+|---|---|---|---|
+| middle | the fire pit under the ridge, in line with the door (the old way) | ridge caps raised as a louver | Norse longhouse-style homes 35 %, fen folk 35 %, Celtic 40 %, East Asian 50 % (the irori), round houses and tents always |
+| end | against a gable end under the ridge, a hood of planks from 2.55 m with a mantel beam on its open sides, the shaft up through any upper floor | the ridge cap over it and the rake's cap raised on short posts | most cultures, 40 to 55 % |
+| side | against the back wall (the Slavic stove corner: the front wall by the door), in the corner or a bay in from it; same hood | a shaft out through the roof's lowest row and the eave, a plank lid on posts over it | 25 to 45 %, Slavic 85 % |
+| stack | rebuilt from an end hearth: the gable's middle bay opened 1.8 m high under a timber lintel, the fire in a stone alcove outside it, the alcove rising as a hollow stack with shoulders (a 2 m by 2 m firebox, a 1 m by 2 m flue above the opening) to a metre past the ridge, a plank lid on four posts | the stack | from s2 where the village may build in stone (D-012): never in Meadows, not in early Black Forest homes; 20 to 70 % of end hearths by culture |
+
+The end is the one the house does not grow toward (`massingPath` records `fam.growSide`), so later wings keep clear
+of it. A blocked spot falls back to the nearest other one: the other wall at the same end, the end itself, then the
+other end; only when all are taken (a small house with doors in both long walls, or wings at both ends) does the fire
+go to the middle. Over 96 culture and seed lines (288 homes), the fire changes kind between stages in 13.
+
+What moves with the fire: the window in the bay behind it is left out on every storey; ladders and stairs keep off its cell (`fireKeep`); the back room of a big house
+goes to the other end; the woodshed and the balcony keep to the other gable when the hearth has a stack or hood there;
+ridge carvings are left off a stack's end; a roof piece, rake cap, eave or bargeboard over the shaft comes out (and goes
+back if no fire is laid); dormers stay on the front slope, away from a back-wall shaft. The decorative stone stack
+(`chimneyStack`) goes only on homes whose fire is in the middle. A kerb of beams goes on a wall fire's open sides only.
+A request can ask for the old way with `hearth: 'middle'`.
+
+Valheim's smoke (valheim.weirdgloop.org, "Smoke"): fires, hearths and hanging braziers make it; each puff is 0.42 m
+across and needs about a metre to pass; it rises and drifts and collects under pieces; standing in it hurts. A fire
+needs a roof against rain (it stops in rain without one) and 70 % cover against strong wind. So every shaft here is at
+least 1 m clear and ends under a raised cap or lid that keeps the rain off and lets the smoke out at the sides.
+
+**Lights** (`lib/decorate.js` `placeLights`, `lightCount`). How many: the corpus's lights per 10 m2 of covered floor
+for the room's kind, drawn per room between the median and the upper quartile, more at d3, scaled by the household's
+liking for lights and the culture's taste, less half a light when the room has a fire. Where: one light at a time, at
+the spot with the best score: how dark it is (the distance to the nearest light; a fire counts as one 3 m across), what
+is done there (the way in, a bed, a table or bench, each weighed per room by the household), and a little noise. Never
+within 3 m of a fire. Wall lights hang at the household's height, 1.6 to 2.0 m, so the flame stays a metre under the
+3 m wall top as the game wants for a sconce. Halls (35 %) and d3 homes (20 %) may get a hanging brazier over the middle,
+which `settle` hangs from the ceiling. No fixed spacing anywhere.
 
 ## What the corpus says (2,134 designs, 2026-11-08)
 

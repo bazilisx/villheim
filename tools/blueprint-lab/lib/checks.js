@@ -539,7 +539,7 @@ function check(design, biome, opts = {}) {
   // materials for the biome: building pieces from the village's biome and its neighbors; furniture and decor from any
   // biome (D-065, Tyler 2026-11-10; lib/pieces.js decorOk)
   if (biome) {
-    const over = [...new Set(pieces.filter(p => !PC.decorOk(p.name, biome)).map(p => p.name))];
+    const over = [...new Set(pieces.filter(p => !PC.decorOk(p.name, biome) && !(p.hearthStone && PC.hearthStoneOk(p.name, design.request && design.request.stage))).map(p => p.name))];
     results.push({ check: 'materials', ok: over.length === 0, detail: over.length ? `needs later biomes: ${over.slice(0, 5).join(', ')}` : `all pieces available in ${biome}` });
   }
 

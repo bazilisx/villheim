@@ -1,0 +1,623 @@
+{
+ "source": "Downloads/Villheim-blueprints (valheimians downloads), 2026-11-10, lab/hearths/fire_mine.js",
+ "builds": 1663,
+ "fires": 3434,
+ "indoorFires": 1647,
+ "placeByKind": {
+  "other": {
+   "corner": 33,
+   "near-wall": 7,
+   "in-wall": 195,
+   "wall": 40,
+   "middle": 41,
+   "alcove": 64
+  },
+  "home": {
+   "in-wall": 172,
+   "alcove": 144,
+   "middle": 77,
+   "corner": 56,
+   "wall": 71,
+   "near-wall": 9
+  },
+  "castle": {
+   "in-wall": 214,
+   "wall": 32,
+   "middle": 30,
+   "alcove": 88,
+   "near-wall": 13,
+   "corner": 23
+  },
+  "tavern": {
+   "wall": 3,
+   "in-wall": 42,
+   "middle": 9,
+   "alcove": 23,
+   "near-wall": 1,
+   "corner": 2
+  },
+  "village": {
+   "corner": 2,
+   "alcove": 11,
+   "middle": 5,
+   "in-wall": 13,
+   "wall": 3
+  },
+  "hall": {
+   "in-wall": 58,
+   "middle": 42,
+   "corner": 6,
+   "wall": 26,
+   "alcove": 28,
+   "near-wall": 6
+  },
+  "work": {
+   "middle": 8,
+   "alcove": 9,
+   "wall": 3,
+   "in-wall": 21,
+   "corner": 7,
+   "near-wall": 1
+  },
+  "temple": {
+   "middle": 2,
+   "in-wall": 3,
+   "corner": 1,
+   "wall": 2,
+   "near-wall": 1
+  }
+ },
+ "placeByServedRoom": {
+  "80+": {
+   "corner": 101,
+   "near-wall": 33,
+   "in-wall": 246,
+   "alcove": 169,
+   "wall": 149,
+   "middle": 200
+  },
+  "35-80": {
+   "in-wall": 90,
+   "alcove": 63,
+   "middle": 9,
+   "corner": 26,
+   "wall": 30,
+   "near-wall": 2
+  },
+  "<35": {
+   "alcove": 135,
+   "in-wall": 382,
+   "near-wall": 3,
+   "middle": 5,
+   "corner": 3,
+   "wall": 1
+  }
+ },
+ "homePlaceByServedRoom": {
+  "80+": {
+   "in-wall": 77,
+   "alcove": 65,
+   "middle": 74,
+   "corner": 42,
+   "wall": 60,
+   "near-wall": 7
+  },
+  "35-80": {
+   "alcove": 24,
+   "in-wall": 17,
+   "corner": 14,
+   "wall": 11,
+   "near-wall": 1
+  },
+  "<35": {
+   "alcove": 55,
+   "in-wall": 78,
+   "near-wall": 1,
+   "middle": 3
+  }
+ },
+ "homeMainFire": {
+  "in-wall": 71,
+  "alcove": 98,
+  "middle": 41,
+  "corner": 31,
+  "wall": 44,
+  "near-wall": 6
+ },
+ "ventByPlace": {
+  "corner": {
+   "open shaft": 5,
+   "gap<=1.5m": 68,
+   "roof hole": 10,
+   "closed": 6,
+   "gap2-4m": 21,
+   "stack": 14,
+   "open sky": 6
+  },
+  "near-wall": {
+   "gap<=1.5m": 17,
+   "roof hole": 8,
+   "open shaft": 3,
+   "closed": 2,
+   "stack": 3,
+   "gap2-4m": 4,
+   "open sky": 1
+  },
+  "in-wall": {
+   "open shaft": 109,
+   "roof hole": 73,
+   "gap<=1.5m": 156,
+   "gap2-4m": 169,
+   "closed": 52,
+   "stack": 69,
+   "open sky": 90
+  },
+  "alcove": {
+   "gap2-4m": 46,
+   "roof hole": 31,
+   "open shaft": 69,
+   "gap<=1.5m": 163,
+   "stack": 33,
+   "closed": 18,
+   "open sky": 7
+  },
+  "wall": {
+   "closed": 11,
+   "open shaft": 8,
+   "gap<=1.5m": 75,
+   "gap2-4m": 40,
+   "roof hole": 24,
+   "stack": 11,
+   "open sky": 11
+  },
+  "middle": {
+   "closed": 34,
+   "open shaft": 11,
+   "gap<=1.5m": 79,
+   "gap2-4m": 34,
+   "roof hole": 42,
+   "stack": 7,
+   "open sky": 7
+  }
+ },
+ "ventByKind": {
+  "other": {
+   "open shaft": 46,
+   "gap<=1.5m": 111,
+   "gap2-4m": 80,
+   "closed": 38,
+   "roof hole": 59,
+   "stack": 24,
+   "open sky": 22
+  },
+  "home": {
+   "roof hole": 57,
+   "gap2-4m": 101,
+   "open shaft": 59,
+   "gap<=1.5m": 253,
+   "closed": 37,
+   "open sky": 9,
+   "stack": 13
+  },
+  "castle": {
+   "open shaft": 66,
+   "gap<=1.5m": 66,
+   "roof hole": 26,
+   "gap2-4m": 49,
+   "closed": 25,
+   "stack": 86,
+   "open sky": 82
+  },
+  "tavern": {
+   "gap<=1.5m": 31,
+   "gap2-4m": 26,
+   "roof hole": 6,
+   "closed": 2,
+   "open shaft": 8,
+   "stack": 7
+  },
+  "village": {
+   "gap<=1.5m": 12,
+   "open shaft": 4,
+   "closed": 2,
+   "gap2-4m": 11,
+   "roof hole": 4,
+   "stack": 1
+  },
+  "hall": {
+   "roof hole": 31,
+   "gap<=1.5m": 60,
+   "gap2-4m": 32,
+   "closed": 18,
+   "open sky": 6,
+   "open shaft": 15,
+   "stack": 4
+  },
+  "work": {
+   "gap2-4m": 11,
+   "gap<=1.5m": 22,
+   "roof hole": 4,
+   "open shaft": 7,
+   "open sky": 3,
+   "stack": 2
+  },
+  "temple": {
+   "roof hole": 1,
+   "closed": 1,
+   "gap2-4m": 4,
+   "gap<=1.5m": 3
+  }
+ },
+ "prefabByKind": {
+  "other": {
+   "hearth": 229,
+   "fire_pit_iron": 64,
+   "fire_pit": 82,
+   "fire_pit_hildir": 5
+  },
+  "home": {
+   "hearth": 278,
+   "fire_pit_iron": 39,
+   "fire_pit": 210,
+   "fire_pit_hildir": 2
+  },
+  "castle": {
+   "hearth": 204,
+   "fire_pit": 110,
+   "fire_pit_hildir": 18,
+   "fire_pit_iron": 68
+  },
+  "tavern": {
+   "fire_pit": 22,
+   "fire_pit_iron": 6,
+   "hearth": 52
+  },
+  "village": {
+   "hearth": 22,
+   "fire_pit_iron": 3,
+   "fire_pit": 9
+  },
+  "hall": {
+   "hearth": 103,
+   "fire_pit_iron": 22,
+   "fire_pit": 26,
+   "fire_pit_hildir": 15
+  },
+  "work": {
+   "hearth": 24,
+   "fire_pit": 18,
+   "fire_pit_iron": 7
+  },
+  "temple": {
+   "hearth": 4,
+   "fire_pit": 2,
+   "fire_pit_iron": 2,
+   "fire_pit_hildir": 1
+  }
+ },
+ "lightsPer10m2": {
+  "home": {
+   "builds": 415,
+   "all": {
+    "p25": 0,
+    "p50": 0.1,
+    "p75": 0.216,
+    "use": 0.67
+   },
+   "wall": {
+    "p25": 0,
+    "p50": 0,
+    "p75": 0.1,
+    "use": 0.5
+   },
+   "hang": {
+    "p25": 0,
+    "p50": 0,
+    "p75": 0,
+    "use": 0.14
+   },
+   "floor": {
+    "p25": 0,
+    "p50": 0,
+    "p75": 0.046,
+    "use": 0.39
+   },
+   "small": {
+    "p25": 0,
+    "p50": 0,
+    "p75": 0,
+    "use": 0.16
+   }
+  },
+  "hall": {
+   "builds": 84,
+   "all": {
+    "p25": 0.029,
+    "p50": 0.099,
+    "p75": 0.221,
+    "use": 0.77
+   },
+   "wall": {
+    "p25": 0,
+    "p50": 0.057,
+    "p75": 0.153,
+    "use": 0.67
+   },
+   "hang": {
+    "p25": 0,
+    "p50": 0,
+    "p75": 0.003,
+    "use": 0.26
+   },
+   "floor": {
+    "p25": 0,
+    "p50": 0,
+    "p75": 0.041,
+    "use": 0.43
+   },
+   "small": {
+    "p25": 0,
+    "p50": 0,
+    "p75": 0,
+    "use": 0.17
+   }
+  },
+  "tavern": {
+   "builds": 48,
+   "all": {
+    "p25": 0.113,
+    "p50": 0.198,
+    "p75": 0.325,
+    "use": 0.94
+   },
+   "wall": {
+    "p25": 0.029,
+    "p50": 0.08,
+    "p75": 0.187,
+    "use": 0.83
+   },
+   "hang": {
+    "p25": 0,
+    "p50": 0,
+    "p75": 0.016,
+    "use": 0.29
+   },
+   "floor": {
+    "p25": 0,
+    "p50": 0,
+    "p75": 0.028,
+    "use": 0.46
+   },
+   "small": {
+    "p25": 0,
+    "p50": 0,
+    "p75": 0.1,
+    "use": 0.35
+   }
+  },
+  "temple": {
+   "builds": 32,
+   "all": {
+    "p25": 0.053,
+    "p50": 0.18,
+    "p75": 0.381,
+    "use": 0.88
+   },
+   "wall": {
+    "p25": 0,
+    "p50": 0.049,
+    "p75": 0.259,
+    "use": 0.63
+   },
+   "hang": {
+    "p25": 0,
+    "p50": 0,
+    "p75": 0.024,
+    "use": 0.31
+   },
+   "floor": {
+    "p25": 0,
+    "p50": 0.02,
+    "p75": 0.093,
+    "use": 0.59
+   },
+   "small": {
+    "p25": 0,
+    "p50": 0,
+    "p75": 0.012,
+    "use": 0.25
+   }
+  },
+  "castle": {
+   "builds": 202,
+   "all": {
+    "p25": 0.003,
+    "p50": 0.113,
+    "p75": 0.276,
+    "use": 0.76
+   },
+   "wall": {
+    "p25": 0,
+    "p50": 0.032,
+    "p75": 0.121,
+    "use": 0.58
+   },
+   "hang": {
+    "p25": 0,
+    "p50": 0,
+    "p75": 0,
+    "use": 0.24
+   },
+   "floor": {
+    "p25": 0,
+    "p50": 0,
+    "p75": 0.078,
+    "use": 0.5
+   },
+   "small": {
+    "p25": 0,
+    "p50": 0,
+    "p75": 0,
+    "use": 0.2
+   }
+  },
+  "work": {
+   "builds": 47,
+   "all": {
+    "p25": 0.045,
+    "p50": 0.131,
+    "p75": 0.299,
+    "use": 0.79
+   },
+   "wall": {
+    "p25": 0,
+    "p50": 0.045,
+    "p75": 0.134,
+    "use": 0.53
+   },
+   "hang": {
+    "p25": 0,
+    "p50": 0,
+    "p75": 0,
+    "use": 0.21
+   },
+   "floor": {
+    "p25": 0,
+    "p50": 0,
+    "p75": 0.042,
+    "use": 0.34
+   },
+   "small": {
+    "p25": 0,
+    "p50": 0,
+    "p75": 0,
+    "use": 0.23
+   }
+  },
+  "village": {
+   "builds": 22,
+   "all": {
+    "p25": 0.057,
+    "p50": 0.135,
+    "p75": 0.216,
+    "use": 0.91
+   },
+   "wall": {
+    "p25": 0,
+    "p50": 0.019,
+    "p75": 0.061,
+    "use": 0.5
+   },
+   "hang": {
+    "p25": 0,
+    "p50": 0,
+    "p75": 0.014,
+    "use": 0.32
+   },
+   "floor": {
+    "p25": 0,
+    "p50": 0.007,
+    "p75": 0.058,
+    "use": 0.55
+   },
+   "small": {
+    "p25": 0,
+    "p50": 0,
+    "p75": 0.026,
+    "use": 0.27
+   }
+  },
+  "other": {
+   "builds": 310,
+   "all": {
+    "p25": 0,
+    "p50": 0.111,
+    "p75": 0.286,
+    "use": 0.71
+   },
+   "wall": {
+    "p25": 0,
+    "p50": 0.012,
+    "p75": 0.103,
+    "use": 0.52
+   },
+   "hang": {
+    "p25": 0,
+    "p50": 0,
+    "p75": 0,
+    "use": 0.18
+   },
+   "floor": {
+    "p25": 0,
+    "p50": 0,
+    "p75": 0.083,
+    "use": 0.46
+   },
+   "small": {
+    "p25": 0,
+    "p50": 0,
+    "p75": 0,
+    "use": 0.25
+   }
+  }
+ },
+ "lightNames": {
+  "piece_walltorch": 5604,
+  "piece_groundtorch_blue": 469,
+  "piece_jackoturnip": 162,
+  "piece_groundtorch_green": 332,
+  "piece_brazierceiling01": 691,
+  "Candle_resin": 964,
+  "MountainKit_brazier_purple": 65,
+  "piece_dvergr_lantern": 3814,
+  "piece_groundtorch_mist": 2017,
+  "piece_Lavalantern": 930,
+  "piece_groundtorch": 1147,
+  "MountainKit_brazier_blue": 52,
+  "MountainKit_brazier": 130,
+  "dvergrprops_lantern_standing": 289,
+  "piece_dvergr_lantern_pole": 257,
+  "piece_brazierfloor01": 266,
+  "piece_groundtorch_wood": 961,
+  "piece_FairylightGarland": 81,
+  "piece_brazierfloor02": 121,
+  "Candle_resin_bogwitch": 6,
+  "deepnorth_lantern_standing": 2,
+  "piece_hoodedlantern": 9,
+  "dvergrprops_lantern": 11
+ },
+ "lightPlaces": {
+  "wall": {
+   "n": 9418,
+   "door15": 0.163,
+   "bed15": 0.036,
+   "onTable": 0,
+   "table15": 0.052,
+   "fire3": 0.022
+  },
+  "hang": {
+   "n": 783,
+   "door15": 0.038,
+   "bed15": 0.046,
+   "onTable": 0,
+   "table15": 0.092,
+   "fire3": 0.04
+  },
+  "floor": {
+   "n": 5981,
+   "door15": 0.078,
+   "bed15": 0.037,
+   "onTable": 0.014,
+   "table15": 0.045,
+   "fire3": 0.017
+  },
+  "small": {
+   "n": 2198,
+   "door15": 0.122,
+   "bed15": 0.145,
+   "onTable": 0.173,
+   "table15": 0.215,
+   "fire3": 0.022
+  }
+ }
+}

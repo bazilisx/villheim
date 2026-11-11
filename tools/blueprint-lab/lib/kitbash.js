@@ -1739,6 +1739,8 @@ function stackChests(b, ctx) {
     const clear = { ...bx, y1: bx.y1 + 0.3 };
     // (decor by its catalog box as well: a ground torch's solids are thinner than the torch)
     if (idx.near(clear, 0.1).some(r => r.p !== p && PB.piece(r.p.name).role !== 'rug' && (hit(r.b, clear) || (r.p.decor && hit(Ck.catBox(r.p), clear))))) continue;
+    // and nothing the furnishing audit would list (decorate.js lateClash: its overlap and doorway tests)
+    if (D.lateClash && D.lateClash(q, b.pieces)) continue;
     b.pieces.push(q);
     idx.add(q);
     m--; n++;

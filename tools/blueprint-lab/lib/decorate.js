@@ -3150,10 +3150,11 @@ function audit(design, decor) {
     const zb = { ...s.b, hw: s.b.hw + 0.6, hd: s.b.hd + 0.6 };
     for (const it of items) if (it.f.at !== 'rug' && it.f.at !== 'mount' && it.f.at !== 'hang' && it.y0 < s.y1 + 0.3 && it.y1 > s.y0 && overlap(zb, it.b, -0.02)) res.stairs.push(`${it.p.name} at ${it.p.x.toFixed(1)},${it.p.y.toFixed(1)},${it.p.z.toFixed(1)}`);
   }
-  // woodpiles and heaps under a roof inside walls
+  // woodpiles and heaps under a roof inside walls (a pile of coins is table dressing: the corpus has 223 treasure_stack
+  // on tables, CORPUS_CULT.all.t)
   const over = struct.filter(s => OVERHEAD.has(s.role));
   for (const it of items) {
-    if (!/stack|pile/.test(it.p.name)) continue;
+    if (!/stack|pile/.test(it.p.name) || it.p.name === 'treasure_stack') continue;
     if (enclosed(it.p.x, it.p.z, it.p.y, over, wallish)) res.indoorPile.push(it.p.name);
   }
   // every floor furnished at d2 and d3: each roofed room of 8 m2 or more holds at least two pieces
@@ -3347,6 +3348,37 @@ function hungInto(p, others) {
   return m;
 }
 // How deep two pieces' solids reach into each other (0 for pieces with none, rugs and food).
+// The audit's overlap and doorway tests (audit above) for one piece added late, against the pieces round it: true when
+// the audit would list it. For lib/kitbash.js stackChests, whose second chest stood by an armor stand and in front of
+// a door where the chest under it did not (tavern Mistlands s3d3 seed 170, temple Mistlands s3d3 seed 808).
+const LATE_SKIP = ['mount', 'hang', 'top', 'fire', 'rug'];
+function lateClash(q, pieces) {
+  modelSizes();
+  const it = itemOf(q);
+  if (LATE_SKIP.includes(it.f.at)) return false;
+  for (const p of pieces) {
+    if (p === q || Math.abs(p.x - q.x) > 5 || Math.abs(p.z - q.z) > 5) continue;
+    if (!p.decor || (!F[p.name] && P.piece(p.name).structural)) {
+      if (P.piece(p.name).role !== 'door') continue;
+      const sb = structBox(p), yaw = pyaw(p), ar = yaw * PI / 180, nx = Math.sin(ar), nz = Math.cos(ar);
+      for (const sg of [1, -1]) {
+        const zb = obox(p.x + nx * sg * (sb.b.hd + 0.6), p.z + nz * sg * (sb.b.hd + 0.6), sb.b.hw * 2, 1.2, yaw);
+        if (it.y0 < sb.y0 + 1.8 && it.y1 > sb.y0 + 0.05 && overlap(zb, it.b, -0.02)) return true;
+      }
+      continue;
+    }
+    const c = itemOf(p);
+    if (LATE_SKIP.includes(c.f.at)) continue;
+    if ((q.kb || p.kb) && SHD) {
+      const solid = SOLID_CATS.has(it.f.cat) && SOLID_CATS.has(c.f.cat), pairOk = q.name === p.name && CHEST_PAIR_D[q.name] ? CHEST_PAIR_D[q.name] : 0;
+      if (kbClip(q, p) > Math.max(pairOk, solid && q.kb !== p.kb ? 0.03 : Math.max(q.clip || 0, p.clip || 0)) + 0.02) return true;
+      continue;
+    }
+    if (it.y0 > c.y1 - 0.05 || c.y0 > it.y1 - 0.05) continue;
+    if (overlap(it.b, c.b, -0.06)) return true;
+  }
+  return false;
+}
 function kbClip(a, b) {
   const A = SHD.world(a), B = SHD.world(b);
   return A && B && A.length && B.length ? SHD.clipDepth(A, B) : 0;
@@ -3414,6 +3446,6 @@ function decorateExisting(pieces, { use = 'home', decor = 'd2', biome = 'Meadows
   return b.pieces;
 }
 
-const api = { corpusPick, corpusRate, corpusTilt, topPick, keepsBarrels, oneWhy: () => ONE_WHY, furnClash, asBuilt, decorate, strip, findRooms, decorateExisting, setRules, setInterior, setTemplates, templateById, audit, auditContext, auditOne, itemOf, ITEM_BIOME, FURNITURE: F, readLevel,
+const api = { lateClash, corpusPick, corpusRate, corpusTilt, topPick, keepsBarrels, oneWhy: () => ONE_WHY, furnClash, asBuilt, decorate, strip, findRooms, decorateExisting, setRules, setInterior, setTemplates, templateById, audit, auditContext, auditOne, itemOf, ITEM_BIOME, FURNITURE: F, readLevel,
   _int: { floorLevels, standGuess, roleFor, stretch, size, ok, obox, overlap, ptDist, yawOfDir, pyaw, standOf, norm, WALLISH } };
 if (NODE_D) module.exports = api; else window.VHDecorate = api;

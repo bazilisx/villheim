@@ -330,7 +330,7 @@ function exterior(b, ctx) {
       b.notes.push('A small roof over the door.');
     }
     // banners by the main door (bannerPlan): the lamps give way to them
-    const bannered = X.banner && X.banner.site === 'door' && !o.back && o.kind === 'door' && !added.doorBanner && bannerDoor(b, ctx, { x: dx, y: y0, z: dz, nx: ox, nz: oz }, dw);
+    const bannered = X.banner && X.banner.site === 'door' && !o.back && o.kind === 'door' && !added.doorBanner && bannerDoor(b, ctx, { x: dx, y: y0 > 0.01 && y0 < 2.01 ? 0 : y0, z: dz, nx: ox, nz: oz }, dw);
     if (bannered) added.doorBanner = 1;
     // lamps: a pair in line with the door posts, a little outside them, with a frame only; on a raised house at the top
     // of the entry stair where a landing is
@@ -703,8 +703,10 @@ function motifFaces(b, ctx, MT, used) {
 // wall, as in the corpus motifs (o 0.3, r 90 or 270).
 function bannerPieces(X, as, h, o) { return as.map(a => [X.banner.name, a, o, h, 270, 'banner', 0]); }
 // hang them on a frame at the plan's height, else a little lower or higher (the corpus rods 2.9 to 3.6 m over the
-// floor: the cloth's foot 0 to 0.7 m up), 0.3 m out or, past a timber at the wall's head, 0.45 m out
-function hangBanners(b, X, fr, as, id) {
+// floor: the cloth's foot 0 to 0.7 m up), 0.3 m out from the wall's middle (0.1 m off a stone wall's face) or, past a
+// timber at the wall's head, 0.15 m further
+function hangBanners(b, X, fr, as, id, wall) {
+  const o0 = Math.max(0.3, (wall ? relief(wall) : 0.15) + 0.1);
   const pref = 2.98 + X.banner.lift, hs = [pref];
   // nothing hung over a window (the pool audit's overWin): the light of each window, a little round it
   const keepOut = (b.openings || []).filter(o => o.kind === 'window').map(o => {
@@ -712,7 +714,7 @@ function hangBanners(b, X, fr, as, id) {
     return { x0: o.e.x - ex, x1: o.e.x + ex, z0: o.e.z - ez, z1: o.e.z + ez, y0: o.y0 + 0.9, y1: o.y0 + 2.1 };
   });
   for (let d = 0.1; d <= 0.65; d += 0.1) for (const h of [pref - d, pref + d]) if (h >= 2.98 && h <= 3.62) hs.push(+h.toFixed(2));
-  for (const o of [0.3, 0.45]) for (const h of hs) {
+  for (const o of [o0, o0 + 0.15]) for (const h of hs) {
     const c = { m: { id, kind: 'wallface', fit: {} }, kept: bannerPieces(X, as, h, o) };
     const placed = MotifsD.place(b, c, fr, null, { ground: 0, dry: true, minShare: 1, keepOut });
     if (placed.length) { hold(b, placed); return true; }
@@ -724,7 +726,7 @@ function hangBanners(b, X, fr, as, id) {
 function bannerDoor(b, ctx, fr, dw) {
   const X = ctx.profile, d = dw / 2 + 0.9;
   const sides = X.banner.pair ? [[-d, d]] : unitD(X.hash, 'banner side') < 0.5 ? [[-d], [d]] : [[d], [-d]];
-  for (const as of sides) if (hangBanners(b, X, fr, as, 'banner-door')) { b.notes.push('Banners by the door.'); return true; }
+  for (const as of sides) if (hangBanners(b, X, fr, as, 'banner-door', ctx.K.wall)) { b.notes.push('Banners by the door.'); return true; }
   return false;
 }
 // a plain bay of the ground storey's outside wall: no opening in it, the bays either side on the same wall (a window
@@ -748,7 +750,8 @@ function bannerFace(b, ctx) {
   for (const e of cands) {
     const { ux, uz, ox, oz } = axes(e);
     if (b.pieces.some(p => { const d = (p.x - e.x) * ox + (p.z - e.z) * oz, sd = Math.abs((p.x - e.x) * ux + (p.z - e.z) * uz); return d > 0.3 && d < 2.6 && sd < 1.6 && p.y < F + 3 && (p.decor || /roof|stair|floor/.test(PD.piece(p.name).role)); })) continue;
-    if (!hangBanners(b, X, { x: e.x, y: F, z: e.z, nx: ox, nz: oz }, as, 'banner-face')) continue;
+    // on a raised floor the cloth hangs down the footing to the ground, as it hangs to the floor inside
+    if (!hangBanners(b, X, { x: e.x, y: F > 0.01 ? 0 : F, z: e.z, nx: ox, nz: oz }, as, 'banner-face', ctx.K.wall)) continue;
     ctx.bannerBays = [...(ctx.bannerBays || []), e];
     b.notes.push('A banner on the wall.');
     return true;

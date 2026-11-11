@@ -203,6 +203,51 @@ const CULTURE_TASTE = {
   dwarven: { lights: 1.4 },
 };
 
+// Corpus counts per culture group (lab/culture_kinds.js from the research branch's data/culture-corpus/summary.json,
+// 2,153 builds, 1,224 furnished; D-136: the weights and rates below are these counts). Per group: n furnished
+// buildings; k the top prefabs per kind with their uses; t what lies on tables; r relations in percent of pieces (sa
+// seats at tables, sf seats by a fire, rl rugs layered, td tables dressed, cs chests stacked, sw seats by a wall, so
+// seats turned, to tables turned, ro rugs turned more than 10 degrees off the wall axes). 'all' is every group.
+const CORPUS_CULT = {"unsorted":{"n":139,"k":{"bed":[["bed",112],["piece_bed02",92]],"table":[["piece_table",140],["piece_table_round",91],["piece_magetable_ext2",68]],"seat":[["piece_chair",549],["piece_chair03",547],["piece_bench01",196]],"rug":[["jute_carpet",673],["rug_fur",460],["rug_deer",430]],"storage":[["piece_chest",853],["piece_chest_blackmetal",851],["piece_chest_wood",605]],"light":[["piece_dvergr_lantern",1542],["piece_groundtorch_mist",954],["piece_walltorch",793]]},"t":[["itemstandh",324],["Candle_resin",30],["piece_Lavalantern",26],["treasure_stack",19],["itemstand",17],["sign",14]],"r":{"sa":23,"sf":3,"rl":28,"td":47,"cs":46,"sw":37,"so":48,"to":34,"ro":40}},"norse":{"n":387,"k":{"bed":[["bed",389],["piece_bed02",375]],"table":[["piece_table",441],["piece_table_round",263],["cauldron_ext3_butchertable",181]],"seat":[["piece_chair",2232],["piece_chair03",1490],["piece_chair02",482]],"rug":[["rug_deer",2350],["rug_fur",1916],["jute_carpet",1506]],"storage":[["piece_chest_wood",6324],["piece_chest",2797],["piece_chest_blackmetal",1377]],"light":[["piece_walltorch",2540],["piece_dvergr_lantern",1721],["piece_groundtorch_wood",812]]},"t":[["itemstandh",1054],["itemstand",55],["treasure_stack",44],["piece_chest_private",44],["sign",38],["piece_jackoturnip",36]],"r":{"sa":28,"sf":4,"rl":23,"td":41,"cs":60,"sw":41,"so":41,"to":27,"ro":30}},"castle":{"n":176,"k":{"bed":[["piece_bed02",166],["bed",97]],"table":[["piece_table",225],["piece_blackmarble_table",106],["piece_table_round",98]],"seat":[["piece_chair",2314],["piece_chair03",688],["piece_bench01",195]],"rug":[["jute_carpet",1083],["rug_fur",911],["rug_deer",419]],"storage":[["piece_chest_blackmetal",919],["piece_chest",910],["piece_chest_wood",796]],"light":[["piece_walltorch",1411],["piece_dvergr_lantern",1269],["piece_groundtorch",438]]},"t":[["itemstandh",452],["treasure_stack",107],["Candle_resin",59],["piece_table",16],["sign",13],["itemstand",12]],"r":{"sa":18,"sf":7,"rl":25,"td":41,"cs":55,"sw":45,"so":50,"to":28,"ro":37}},"ashlands":{"n":119,"k":{"bed":[["piece_bed02",56],["bed",4]],"table":[["piece_table",86],["piece_table_round",81],["piece_table_oak",45]],"seat":[["piece_chair03",483],["piece_chair",329],["piece_chair02",97]],"rug":[["rug_fur",670],["jute_carpet",329],["rug_wolf",168]],"storage":[["piece_chest",1695],["piece_chest_blackmetal",359],["piece_chest_barrel",298]],"light":[["piece_groundtorch_mist",1605],["piece_dvergr_lantern",1327],["piece_walltorch",591]]},"t":[["itemstandh",126],["Candle_resin",33],["piece_Lavalantern",21],["sign",10],["treasure_stack",9],["piece_jackoturnip",8]],"r":{"sa":32,"sf":3,"rl":15,"td":41,"cs":73,"sw":31,"so":43,"to":27,"ro":19}},"norse-named":{"n":131,"k":{"bed":[["piece_bed02",192],["bed",168]],"table":[["piece_table",213],["piece_table_round",137],["piece_table_oak",99]],"seat":[["piece_chair",1579],["piece_chair03",780],["piece_bench01",256]],"rug":[["rug_deer",1302],["rug_fur",1211],["jute_carpet",657]],"storage":[["piece_chest",1729],["piece_chest_wood",1624],["piece_chest_blackmetal",904]],"light":[["piece_walltorch",1540],["piece_dvergr_lantern",952],["piece_groundtorch_mist",502]]},"t":[["itemstandh",527],["itemstand",41],["treasure_stack",30],["piece_Lavalantern",25],["piece_chest_private",21],["piece_jackoturnip",17]],"r":{"sa":25,"sf":3,"rl":22,"td":43,"cs":57,"sw":40,"so":34,"to":25,"ro":24}},"mistlands":{"n":44,"k":{"bed":[["piece_bed02",18]],"table":[["piece_table_round",28],["piece_magetable_ext2",19],["trader_wagon_destructable",19]],"seat":[["piece_chair03",129],["piece_throne02",87],["piece_chair",49]],"rug":[["jute_carpet",604],["rug_fur",94],["rug_asksvin",51]],"storage":[["piece_chest_blackmetal",558],["piece_chest",262],["dvergrprops_crate_long",91]],"light":[["piece_groundtorch_mist",666],["piece_dvergr_lantern",250],["piece_walltorch",134]]},"t":[["piece_dvergr_lantern",18],["piece_Lavalantern",13],["piece_throne02",9],["fermenter",3],["itemstand",3]],"r":{"sa":26,"sf":1,"rl":15,"td":35,"cs":45,"sw":31,"so":48,"to":49,"ro":25}},"stone-house":{"n":37,"k":{"bed":[["piece_bed02",7],["bed",4]],"table":[["piece_table",20],["cauldron_ext3_butchertable",16],["piece_table_round",9]],"seat":[["piece_chair",362],["piece_chair02",45],["piece_chair03",34]],"rug":[["rug_fur",54],["rug_hare",42],["rug_deer",36]],"storage":[["piece_chest_wood",329],["piece_chest",281],["piece_chest_blackmetal",106]],"light":[["piece_walltorch",111],["piece_groundtorch_wood",67],["piece_dvergr_lantern",51]]},"t":[["itemstandh",26],["itemstand",4],["treasure_stack",3],["piece_chest_private",2],["Candle_resin",2],["ArmorStand",1]],"r":{"sa":16,"sf":1,"rl":10,"td":29,"cs":58,"sw":65,"so":17,"to":28,"ro":32}},"norse-forest":{"n":44,"k":{"bed":[["bed",32],["piece_bed02",20]],"table":[["dvergrprops_table",580],["piece_table",59],["cauldron_ext3_butchertable",18]],"seat":[["piece_chair",952],["piece_chair03",112],["piece_chair02",59]],"rug":[["jute_carpet",149],["rug_deer",134],["rug_fur",68]],"storage":[["piece_chest_wood",622],["piece_chest",298],["piece_chest_barrel",133]],"light":[["piece_walltorch",265],["piece_groundtorch_wood",177],["piece_dvergr_lantern",142]]},"t":[["dvergrprops_table",418],["itemstandh",108],["Candle_resin",8],["treasure_stack",6],["piece_cookingstation",6],["itemstand",5]],"r":{"sa":11,"sf":5,"rl":7,"td":49,"cs":63,"sw":47,"so":17,"to":28,"ro":21}},"fantasy":{"n":31,"k":{"bed":[["piece_bed02",47],["bed",3]],"table":[["piece_table",82],["piece_table_round",38],["piece_blackmarble_table",29]],"seat":[["piece_chair03",233],["piece_chair",170],["piece_blackmarble_bench",36]],"rug":[["jute_carpet",369],["rug_fur",326],["rug_deer",318]],"storage":[["piece_chest",306],["piece_chest_blackmetal",211],["piece_chest_wood",175]],"light":[["piece_groundtorch_mist",1571],["dvergrprops_lantern_standing",641],["piece_dvergr_lantern",355]]},"t":[["itemstandh",118],["Candle_resin",30],["itemstand",15],["sign",13],["piece_jackoturnip",11],["piece_chest_treasure",9]],"r":{"sa":35,"sf":3,"rl":18,"td":53,"cs":60,"sw":41,"so":50,"to":34,"ro":30}},"medieval-timber":{"n":27,"k":{"bed":[["piece_bed02",28],["bed",18]],"table":[["piece_table_round",25],["piece_table",24],["piece_magetable_ext2",14]],"seat":[["piece_chair",502],["piece_chair03",114],["piece_bench01",35]],"rug":[["rug_fur",153],["jute_carpet",99],["rug_deer",53]],"storage":[["piece_chest",152],["piece_chest_blackmetal",140],["piece_chest_wood",133]],"light":[["piece_dvergr_lantern",301],["piece_walltorch",235],["piece_groundtorch_wood",77]]},"t":[["itemstandh",57],["Candle_resin",8],["itemstand",6],["sign",4],["treasure_stack",3],["piece_chest_barrel",2]],"r":{"sa":14,"sf":2,"rl":19,"td":37,"cs":48,"sw":56,"so":31,"to":11,"ro":12}},"norse-highland":{"n":23,"k":{"bed":[["piece_bed02",53],["bed",14]],"table":[["piece_table",55],["piece_table_round",31],["dvergrprops_table",26]],"seat":[["piece_chair03",167],["dvergrprops_stool",49],["piece_workbench",43]],"rug":[["rug_fur",218],["rug_wolf",149],["jute_carpet",128]],"storage":[["piece_chest",522],["piece_chest_wood",109],["piece_chest_blackmetal",65]],"light":[["piece_dvergr_lantern",248],["piece_walltorch",114]]},"t":[["itemstandh",13],["piece_jackoturnip",6],["sign",6],["piece_chest_private",4],["Candle_resin",4]],"r":{"sa":50,"sf":8,"rl":18,"td":24,"cs":63,"sw":26,"so":45,"to":28,"ro":26}},"east-asian":{"n":14,"k":{"bed":[["bed",6],["piece_bed02",4]],"table":[["piece_table",31],["piece_magetable_ext",2],["piece_magetable",2]],"seat":[["piece_chair",66],["piece_bench01",43],["piece_blackmarble_throne",20]],"rug":[["rug_asksvin",68],["rug_fur",41],["rug_wolf",37]],"storage":[["piece_chest_blackmetal",51],["piece_chest",35],["piece_chest_private",22]],"light":[["piece_groundtorch",160],["piece_dvergr_lantern",139],["piece_brazierceiling01",63]]},"t":[["itemstandh",40],["piece_chest_private",16],["piece_jackoturnip",2],["piece_chest_wood",1],["piece_groundtorch_mist",1]],"r":{"sa":27,"sf":1,"rl":11,"td":56,"cs":49,"sw":51,"so":11,"to":5,"ro":39}},"fen-folk":{"n":12,"k":{"bed":[["bed",17],["piece_bed02",8]],"table":[["piece_table",17],["piece_table_round",5],["cauldron_ext3_butchertable",3]],"seat":[["piece_chair03",18],["piece_chair02",15],["piece_chair",15]],"rug":[["rug_deer",78],["rug_straw",34],["rug_asksvin",20]],"storage":[["piece_chest",129],["piece_chest_wood",124],["piece_chest_barrel",19]],"light":[["piece_walltorch",244],["piece_groundtorch_green",220],["piece_groundtorch",59]]},"t":[["itemstandh",13],["treasure_stack",2],["piece_groundtorch",1]],"r":{"sa":24,"sf":5,"rl":27,"td":23,"cs":69,"sw":40,"so":55,"to":58,"ro":46}},"celtic":{"n":8,"k":{"bed":[["bed",2],["piece_bed02",2]],"table":[["piece_table",4],["piece_table_oak",3],["cauldron_ext3_butchertable",3]],"seat":[["piece_chair",11],["piece_chair03",8],["piece_workbench",4]],"rug":[["rug_hare",14],["rug_deer",11],["rug_fur",9]],"storage":[["piece_chest",27],["piece_chest_barrel",9],["piece_chest_wood",8]],"light":[["piece_groundtorch_wood",16],["piece_walltorch",12],["piece_groundtorch_green",4]]},"t":[["itemstandh",27],["sign",1],["piece_magetable_ext",1],["piece_chest_private",1]],"r":{"sa":34,"sf":9,"rl":12,"td":59,"cs":11,"sw":44,"so":59,"to":82,"ro":59}},"modern":{"n":10,"k":{"bed":[["piece_bed02",12],["bed",1]],"table":[["piece_table",11],["cauldron_ext3_butchertable",4],["piece_table_round",4]],"seat":[["piece_chair",66],["piece_bench01",26],["piece_chair03",25]],"rug":[["rug_fur",230],["jute_carpet",64],["rug_wolf",29]],"storage":[["piece_chest_blackmetal",28],["piece_chest",14]],"light":[["piece_walltorch",129],["piece_dvergr_lantern",91],["piece_groundtorch",12]]},"t":[["itemstandh",239],["sign",18],["itemstand",5],["Candle_resin",3],["piece_jackoturnip",2]],"r":{"sa":14,"sf":3,"rl":13,"td":47,"cs":27,"sw":50,"so":18,"to":5,"ro":1}},"greco-roman":{"n":5,"k":{"bed":[["bed",10]],"table":[],"seat":[["piece_chair02",5],["piece_bench01",3],["piece_blackwood_bench01",2]],"rug":[["jute_carpet_blue",175],["jute_carpet",67],["rug_deer",2]],"storage":[["piece_chest_wood",6]],"light":[["piece_groundtorch_mist",77],["piece_walltorch",68],["piece_dvergr_lantern",26]]},"t":[],"r":{"sa":0,"sf":0,"rl":10,"td":0,"cs":0,"sw":17,"so":33,"ro":2}},"tree-house":{"n":6,"k":{"bed":[["bed",25],["piece_bed02",15]],"table":[["piece_table",14],["piece_table_round",9],["cauldron_ext3_butchertable",8]],"seat":[["piece_chair",170],["piece_chair03",59],["piece_workbench",25]],"rug":[["rug_deer",132],["rug_wolf",90],["rug_fur",70]],"storage":[["piece_chest",121],["piece_chest_wood",74],["piece_chest_blackmetal",17]],"light":[["piece_walltorch",89],["piece_groundtorch_mist",88],["piece_groundtorch",74]]},"t":[["itemstandh",17],["piece_jackoturnip",3],["piece_Lavalantern",2],["blackforge_ext4_gemcutter",1]],"r":{"sa":16,"sf":13,"rl":25,"td":26,"cs":32,"sw":32,"so":60,"to":37,"ro":66}},"celtic-crannog":{"n":5,"k":{"bed":[["bed",5]],"table":[["cauldron_ext3_butchertable",3],["piece_table",2],["piece_preptable",1]],"seat":[["piece_chair",178],["piece_chair03",13],["piece_workbench",4]],"rug":[["rug_fur",84],["rug_deer",5],["jute_carpet",1]],"storage":[["piece_chest_wood",77],["piece_chest",12],["piece_chest_barrel",3]],"light":[["piece_groundtorch_mist",66],["piece_walltorch",32],["piece_dvergr_lantern",30]]},"t":[],"r":{"sa":7,"sf":1,"rl":2,"td":0,"cs":93,"sw":66,"so":60,"to":0,"ro":81}},"saami":{"n":2,"k":{"bed":[["bed",3]],"table":[],"seat":[["piece_workbench",1],["piece_workbench_ext4",1],["piece_workbench_ext2",1]],"rug":[["rug_deer",29]],"storage":[["piece_chest_wood",12],["piece_chest_private",1]],"light":[["piece_groundtorch",3],["piece_walltorch",2]]},"t":[],"r":{"sa":0,"sf":0,"rl":0,"td":0}},"slavic":{"n":1,"k":{"bed":[],"table":[],"seat":[["piece_chair02",2],["piece_workbench",1]],"rug":[],"storage":[["piece_chest_wood",2]],"light":[["piece_groundtorch_mist",17],["piece_groundtorch_green",4]]},"t":[],"r":{"sa":0,"sf":0,"rl":0,"td":0}},"frankish-norman":{"n":1,"k":{"bed":[],"table":[["piece_table",1]],"seat":[],"rug":[],"storage":[],"light":[["piece_groundtorch_mist",7],["piece_dvergr_lantern",6]]},"t":[],"r":{"sa":0,"sf":0,"rl":0,"td":0}},"middle-eastern":{"n":1,"k":{"bed":[],"table":[],"seat":[["piece_workbench",1],["piece_workbench_ext3",1],["piece_workbench_ext1",1]],"rug":[],"storage":[["piece_chest_wood",78]],"light":[]},"t":[],"r":{"sa":0,"sf":0,"rl":0,"td":0}},"steppe":{"n":1,"k":{"bed":[["piece_bed02",1]],"table":[["piece_table_round",1],["piece_magetable",1],["piece_cartographytable",1]],"seat":[["piece_chair",2],["piece_workbench_ext2",1],["piece_workbench",1]],"rug":[["jute_carpet",18]],"storage":[["piece_chest_blackmetal",10],["piece_chest_wood",4],["piece_chest",4]],"light":[["piece_dvergr_lantern",10],["piece_Lavalantern",1]]},"t":[["piece_Lavalantern",1],["piece_magetable_ext2",1],["goblinking_totemholder",1]],"r":{"sa":0,"sf":0,"rl":0,"td":43}},"all":{"n":1224,"k":{"bed":[["piece_bed02",1096],["bed",910]],"table":[["piece_table",1425],["piece_table_round",820],["dvergrprops_table",606],["cauldron_ext3_butchertable",236],["piece_table_oak",147],["piece_blackmarble_table",135],["piece_magetable_ext2",101],["trader_wagon_destructable",19]],"seat":[["piece_chair",9546],["piece_chair03",4900],["piece_bench01",754],["piece_chair02",705],["piece_throne02",87],["piece_workbench",80],["dvergrprops_stool",49],["piece_blackmarble_bench",36]],"rug":[["rug_fur",6515],["jute_carpet",5747],["rug_deer",5299],["rug_wolf",473],["jute_carpet_blue",175],["rug_asksvin",139],["rug_hare",56],["rug_straw",34]],"storage":[["piece_chest_wood",11102],["piece_chest",10147],["piece_chest_blackmetal",5596],["piece_chest_barrel",462],["dvergrprops_crate_long",91],["piece_chest_private",23]],"light":[["piece_dvergr_lantern",8460],["piece_walltorch",8310],["piece_groundtorch_mist",5553],["piece_groundtorch_wood",1149],["piece_groundtorch",746],["dvergrprops_lantern_standing",641],["piece_groundtorch_green",228],["piece_brazierceiling01",63]]},"t":[["itemstandh",3141],["dvergrprops_table",418],["treasure_stack",223],["Candle_resin",177],["itemstand",163],["sign",117],["piece_Lavalantern",88],["piece_chest_private",88]],"r":{"sa":25,"sf":4,"rl":21,"td":41,"cs":57,"sw":41,"so":41,"to":29,"ro":30}}};
+// the generator's cultures to the corpus groups (null: no group of its own, the whole corpus)
+const CULT_GROUP = { norse: 'norse', 'anglo-saxon': 'medieval-timber', 'frankish-norman': 'medieval-timber', 'norse-forest': 'norse-forest',
+  celtic: 'celtic', slavic: 'slavic', 'celtic-crannog': 'celtic-crannog', baltic: null, 'fen-folk': 'fen-folk', 'norse-highland': 'norse-highland',
+  saami: 'saami', byzantine: 'greco-roman', steppe: 'steppe', lamari: 'mistlands', 'middle-eastern': 'middle-eastern', 'black-forest': 'norse-forest',
+  swamp: 'fen-folk', mountain: 'norse-highland', 'east-asian': 'east-asian', 'castle-medieval': 'castle', dwarven: 'mistlands' };
+// a small group counts for less: its counts are blended with the whole corpus by n / (n + 40) furnished buildings
+const cultG = culture => { const g = CORPUS_CULT[CULT_GROUP[culture]]; return g && g.n ? { g, l: g.n / (g.n + 40) } : { g: null, l: 0 }; };
+// A culture's rate for a relation, in 0..1, blended with the whole corpus.
+function corpusRate(culture, key) {
+  const A = CORPUS_CULT.all.r[key] || 0, { g, l } = cultG(culture);
+  const v = g && g.r[key] != null ? l * g.r[key] + (1 - l) * A : A;
+  return v / 100;
+}
+// How much more (or less) a culture uses a prefab of a kind than the corpus does: the group's share of the kind's
+// listed uses over the whole corpus share, blended; a prefab the corpus lists that the group leaves out of its list
+// weighs a little less; anything else stays at 1. Weights only (D-126).
+const SLOT_KIND = { bed: 'bed', table: 'table', chair: 'seat', bench: 'seat', seat: 'seat', rug: 'rug', chest: 'storage', floorLight: 'light', wallLight: 'light' };
+function corpusTilt(culture, kind, name) {
+  const { g, l } = cultG(culture);
+  if (!g || !l) return 1;
+  const gl = g.k[kind] || [], al = CORPUS_CULT.all.k[kind] || [];
+  const gs = gl.reduce((a, [, c]) => a + c, 0), as = al.reduce((a, [, c]) => a + c, 0);
+  const ge = gl.find(([n]) => n === name), ae = al.find(([n]) => n === name);
+  if (ge && ae && gs && as) return Math.min(3, Math.max(0.3, 1 + l * ((ge[1] / gs) / (ae[1] / as) - 1)));
+  if (ge && gs) return 1 + l;
+  if (ae && gl.length) return 1 - 0.5 * l;
+  return 1;
+}
+// A draw among prefabs of one kind for a room kind (data/interior.json shares plus the floor, times the culture's tilt),
+// the given one twice as likely: the interior library's rug slots use it (lib/kitbash.js fillSlot).
+function corpusPick(R, list, learnKind, kind, culture, own) {
+  const L = learned().rooms || {};
+  const shares = new Map(((L[learnKind] || L.home || {}).items || []).map(([n, s2]) => [n, s2]));
+  return pickW(R, list.map(n => [n, ((shares.get(n) || 0) + FLOOR_C) * corpusTilt(culture, kind, n) * (n === own ? 2 : 1)]));
+}
+// what a rare prefab weighs beside the room kind's shares (data/interior.json: share of rooms of the kind that use it),
+// so anything can show (D-126) and the corpus favorites lead
+const FLOOR_C = 0.04;
+
 // ---------------------------------------------------------------- small helpers
 const PI = Math.PI;
 // Footprint middle to pivot and back, for pieces whose game footprint is off their pivot (F c).
@@ -1126,7 +1171,7 @@ function placeTable1(room, k, o = {}) {
   // middle spots on the grid, along the room's axes
   for (const c of room.cells) if (c.i % 2 === 0 && c.j % 2 === 0) for (const yaw of round ? [0] : [0, 90]) spots.push({ x: c.x, z: c.z, yaw, mid: true });
   if (!round && o.wall !== false) for (const s of wallSpots(room, name, { gap: 0.15 })) spots.push({ ...s, wallSide: true });
-  const seatsWanted = o.seats != null ? o.seats : 4;
+  const seatsWanted0 = o.seats != null ? o.seats : 4, seatsWanted = seatsWanted0;
   const longX = (room.x1 - room.x0) >= (room.z1 - room.z0);
   const seatName = o.seat || k.seat, seatBack = seatName && (F[seatName] || {}).back ? 180 : 0;
   const seatD = seatName ? size(seatName)[2] : 0, seatR = seatName ? tw / 2 + seatD / 2 + 0.15 : 0;
@@ -1157,15 +1202,18 @@ function placeTable1(room, k, o = {}) {
     return v + pb(room, o.kind || 'table', s, name);
   }, { noise: 0.4 });
   if (!rec) return null;
-  // seats: benches along long sides (learned 1.0 m out), chairs round round tables (1.25 to 1.5 m)
+  // seats: benches along long sides (learned 1.0 m out), chairs round round tables (1.25 to 1.5 m); a table asked for
+  // more than two seats gets 40 to 90 % of them (corpus: a quarter of seats stand at a table, rel.seatsAtTables; the
+  // rest along walls and by stations, wallSeat)
   const seat = o.seat || k.seat;
+  const seatsTake = o.seats != null && o.seats > 2 ? Math.max(2, Math.round(o.seats * (0.4 + 0.5 * room.R()))) : seatsWanted0;
   const ax = Math.sin(rec.yaw * PI / 180), az = Math.cos(rec.yaw * PI / 180), bx = Math.cos(rec.yaw * PI / 180), bz = -Math.sin(rec.yaw * PI / 180);
   const sides = rec.spot && rec.spot.wallSide ? [1] : [1, -1];
   let n = 0;
   const backs = (F[seat] || {}).back ? 180 : 0;
   if (round) {
     const r = tw / 2 + size(seat)[2] / 2 + 0.15;
-    for (let i = 0; i < 4 && n < seatsWanted; i++) {
+    for (let i = 0; i < 4 && n < seatsTake; i++) {
       const a = (rec.yaw + i * 90) * PI / 180, sx = rec.x + Math.sin(a) * r, sz = rec.z + Math.cos(a) * r;
       if (room.put(seat, sx, sz, norm(yawOfDir(rec.x - sx, rec.z - sz) + backs), { tight: true })) n++;
     }
@@ -1177,17 +1225,17 @@ function placeTable1(room, k, o = {}) {
       const dist = td / 2 + sd / 2 + 0.2;
       const sx0 = rec.x + ax * sg * dist, sz0 = rec.z + az * sg * dist;
       const faceYaw = norm(yawOfDir(-ax * sg, -az * sg) + backs);
-      const perSide = Math.ceil(seatsWanted / sides.length);
+      const perSide = Math.ceil(seatsTake / sides.length);
       let onSide = 0;
       if (long) {
         const cnt = Math.max(1, Math.floor(tw / sw + 0.2));
-        for (let i = 0; i < cnt && n < seatsWanted && onSide < perSide; i++, onSide++) {
+        for (let i = 0; i < cnt && n < seatsTake && onSide < perSide; i++, onSide++) {
           const off = (i - (cnt - 1) / 2) * sw;
           if (room.put(seat, sx0 + bx * off, sz0 + bz * off, faceYaw, { tight: true })) n++;
         }
       } else {
         const per = Math.min(perSide, Math.max(1, Math.floor(tw / 1.0)));
-        for (let i = 0; i < per && n < seatsWanted; i++) {
+        for (let i = 0; i < per && n < seatsTake; i++) {
           const off = (i - (per - 1) / 2) * 1.0;
           if (room.put(seat, sx0 + bx * off, sz0 + bz * off, faceYaw, { tight: true })) n++;
         }
@@ -1404,6 +1452,27 @@ function placeOnTable(room, table, names) {
   return n;
 }
 
+// Whether a table is dressed at all, at the culture's corpus rate (rel.tablesDressed, 41 % of norse tables), more
+// often the more cluttered the household; and what lies on it, drawn by the corpus onTable counts (the culture's
+// blended with the whole corpus: horizontal item stands first, treasure and candles far behind), from what the
+// decorator sets on a top. Weights only (D-126, D-136).
+const TOP_OK = ['itemstandh', 'treasure_stack', 'Candle_resin'];
+function topWeights(culture) {
+  const { g, l } = cultG(culture);
+  const sh = list => { const m = new Map(list.filter(([n]) => TOP_OK.includes(n))); const t = [...m.values()].reduce((a, v) => a + v, 0) || 1; return n => (m.get(n) || 0) / t; };
+  const A = sh(CORPUS_CULT.all.t), Gs = g && g.t.length ? sh(g.t) : null;
+  return TOP_OK.map(n => [n, (Gs ? l * Gs(n) + (1 - l) * A(n) : A(n)) + 0.01]);
+}
+function dressTable(room, t, c, n) {
+  if (!t) return 0;
+  const P = c.persona;
+  if (room.R() >= Math.min(0.95, corpusRate(c.culture, 'td') * (P ? 0.6 + 0.8 * (P.clutter || 0) : 1))) { t.topped = true; return 0; }
+  const W = topWeights(c.culture).filter(([nm]) => ok(nm, room.biome) || nm === 'itemstandh');
+  const names = [];
+  for (let i = 0; i < n; i++) names.push(pickW(room.R, W));
+  return placeOnTable(room, t, names);
+}
+
 // Seats facing the fire, a little way back from it.
 function placeFireSeats(room, k, n) {
   if (!room.fire) return 0;
@@ -1441,24 +1510,28 @@ function density(kind, decor) {
 function chooseKit(R, biome, culture, kind, P) {
   const L = learned().rooms || {};
   const shares = new Map(((L[kind] || L.home || {}).items || []).map(([n, s]) => [n, s]));
-  const pick = (list, floor = 0.15) => {
+  // the essentials by the room kind's shares and the culture's corpus counts (corpusTilt), a small floor for the rest;
+  // banners, carvings and stacks keep their earlier floors
+  const pick = (list, floor = FLOOR_C, slot) => {
     const ok2 = list.filter(n => ok(n, biome));
     if (!ok2.length) return null;
-    return pickW(R, ok2.map(n => [n, ((shares.get(n) || 0) + floor) * flavorD(n, biome) * tasteD(n, P)]));
+    const kind = SLOT_KIND[slot];
+    return pickW(R, ok2.map(n => [n, ((shares.get(n) || 0) + floor) * (kind ? corpusTilt(culture, kind, n) : 1) * flavorD(n, biome) * tasteD(n, P)]));
   };
   const taste = CULTURE_TASTE[culture] || {};
   const k = {
-    bed: pick(KIT.bed.filter(n => n !== 'piece_bed02' || R() < 0.5), 0.2),
-    chest: pick(KIT.chest, 0.2),
-    table: taste.noTable ? null : pick(KIT.table),
-    chair: pick(KIT.chair),
-    bench: pick(KIT.bench, 0.3),
-    rug: pick(KIT.rug, 0.2),
-    floorLight: pick(KIT.floorLight, 0.3),
-    wallLight: pick(KIT.wallLight, 0.3),
+    bed: pick(KIT.bed.filter(n => n !== 'piece_bed02' || R() < 0.5), FLOOR_C, 'bed'),
+    chest: pick(KIT.chest, FLOOR_C, 'chest'),
+    table: taste.noTable ? null : pick(KIT.table, FLOOR_C, 'table'),
+    chair: pick(KIT.chair, FLOOR_C, 'chair'),
+    bench: pick(KIT.bench, FLOOR_C, 'bench'),
+    rug: pick(KIT.rug, FLOOR_C, 'rug'),
+    floorLight: pick(KIT.floorLight, FLOOR_C, 'floorLight'),
+    wallLight: pick(KIT.wallLight, FLOOR_C, 'wallLight'),
     banner: pick(KIT.banner, 0.2),
     carving: pick(KIT.carving, 0.2),
     stack: pick(KIT.stack, 0.3),
+    culture,
     side: R() < 0.5 ? 1 : -1,
     taste,
   };
@@ -1497,7 +1570,7 @@ const BED_W = { bed: 0.5, piece_bed02: 0.6, ashwood_bed: 0.05 };
 const BED_ROW = { 'norse-forest': 0.64 };
 function bedTaste(kit, R, biome, culture, P) {
   const list = KIT.bed.filter(n => ok(n, biome));
-  if (list.length) kit.bed = pickW(R, list.map(n => [n, (BED_W[n] || 0.1) * flavorD(n, biome) * tasteD(n, P)]));
+  if (list.length) kit.bed = pickW(R, list.map(n => [n, (BED_W[n] || 0.1) * corpusTilt(culture, 'bed', n) * flavorD(n, biome) * tasteD(n, P)]));
   const tidy = P ? P.tidy : 0.5, comfort = P ? P.comfort : 0.5, clutter = P ? P.clutter : 0.5;
   // a tidy household lines its beds up a little more often
   kit.bedRow = R() < (BED_ROW[culture] != null ? BED_ROW[culture] : 0.3) * (0.7 + 0.6 * tidy);
@@ -1512,17 +1585,20 @@ function bedTaste(kit, R, biome, culture, P) {
 // chests stay the building's. From a stream of its own, so the rest of the design keeps its own.
 // the village's own biome, earlier ones and the next weigh fully; one further on less (flavor only, D-065)
 const flavorD = (n, biome) => { const d = bi((F[n] || {}).b || 'Meadows') - bi(biome); return d <= 1 ? 1 : 1 / (1 + 0.8 * (d - 1)); };
-function varyKit(kit, R, kind, seen, biome, P) {
+function varyKit(kit, R, kind, seen, biome, P, culture) {
   const L = learned().rooms || {};
   const shares = new Map(((L[kind] || L.home || {}).items || []).map(([n, s2]) => [n, s2]));
   const k = { ...kit };
   // a tidy household keeps the building's matched choice more often; a cluttered one mixes and repeats what it has
   // (what the house shows already weighs less the tidier it is)
   const keep = P ? 0.15 + 0.4 * P.tidy : 0.35, again = P ? 0.5 + 2 * (1 - P.clutter) : 1.5;
-  for (const slot of ['rug', 'chair', 'table', 'bench', 'floorLight', 'banner', 'carving']) {
+  // chests and wall lights per room too (Tyler on the lab page: "Always the same tables. Candles."), the essentials by
+  // the culture's corpus counts with the small floor; banners and carvings as before
+  for (const slot of ['rug', 'chair', 'table', 'bench', 'floorLight', 'chest', 'wallLight', 'banner', 'carving']) {
     if (!kit[slot] || !KIT[slot] || R() < keep) continue;
     const list = KIT[slot].filter(n => F[n]);
-    const got = pickW(R, list.map(n => [n, ((shares.get(n) || 0) + 0.25) * (n === kit[slot] ? 2 : 1) * flavorD(n, biome) * tasteD(n, P) / (1 + again * (seen[n] || 0))]));
+    const kd = SLOT_KIND[slot], fl = kd ? FLOOR_C : 0.25;
+    const got = pickW(R, list.map(n => [n, ((shares.get(n) || 0) + fl) * (kd ? corpusTilt(culture, kd, n) : 1) * (n === kit[slot] ? 2 : 1) * flavorD(n, biome) * tasteD(n, P) / (1 + again * (seen[n] || 0))]));
     if (got) { k[slot] = got; seen[got] = (seen[got] || 0) + 1; }
   }
   k.seat = kit.seat === kit.bench ? (k.bench || k.chair) : (k.chair || k.bench);
@@ -1588,7 +1664,7 @@ function decorate(b, ctx) {
       // over the fire on an upper floor: the generator clears what stands over a fire it moves under the smoke hole
       if (room.upper && ctx.fireAt) room.zones.push({ b: obox(ctx.fireAt.x, ctx.fireAt.z, 4.0, 2.8, 0), why: 'flue' });
       for (const r of rects) for (const kp of r.keep || []) room.zones.push({ b: obox((kp.x0 + kp.x1) / 2, (kp.z0 + kp.z1) / 2, kp.x1 - kp.x0, kp.z1 - kp.z0, 0), why: 'keep' });
-      furnish(room, role, { ...ctx, use, type, decor, biome, kit: varyKit(kit, kitR, kitKind, kitSeen, biome, HP), counts, mainRect: main, levels: ys.length, usedTemplates, layoutR });
+      furnish(room, role, { ...ctx, use, type, decor, biome, kit: varyKit(kit, kitR, kitKind, kitSeen, biome, HP, ctx.culture), counts, mainRect: main, levels: ys.length, usedTemplates, layoutR });
       if (room.plan) (b.layoutPlans || (b.layoutPlans = [])).push({ plan: room.plan, stand: room.stand, inside: room.inside });
       report.push({ level: li, role, area: room.area, items: room.count, room, template: room.template || null, scheme: room.plan ? room.plan.scheme : null, story: room.plan ? room.plan.story : null });
       furnished.push({ room, role });
@@ -1759,17 +1835,17 @@ const LEARN_KIND = { lookout: 'sleeping', home: 'home', sleeping: 'sleeping', gu
 // and a light where the room is darkest (evenLights).
 const EXTRAS = {
   home: { trophies: 2, shelf: 2, barrels: 2, chest: 1, armor: 1, fermenter: 1, seating: 2, rug: 1, banners: 1, carving: 1, torches: 1, tabletop: 2,
-    footBench: 2, doorBench: 1, nook: 1, groupRug: 2, evenLights: 1, storeWall: 1 },
-  sleeping: { rug: 1, armor: 2, chest: 2, shelf: 1, trophies: 1, seating: 1, torches: 1, banners: 1, footBench: 3, nook: 1, groupRug: 1, evenLights: 1 },
+    footBench: 2, doorBench: 1, nook: 1, groupRug: 2, evenLights: 1, storeWall: 1, wallSeat: 2 },
+  sleeping: { rug: 1, armor: 2, chest: 2, shelf: 1, trophies: 1, seating: 1, torches: 1, banners: 1, footBench: 3, nook: 1, groupRug: 1, evenLights: 1, wallSeat: 1 },
   guest: { rug: 2, chest: 2, armor: 1, shelf: 1, torches: 1, seating: 1, footBench: 2, evenLights: 1 },
-  hall: { banners: 3, trophies: 2, shelf: 1, barrels: 2, armor: 2, rug: 1, tabletop: 2, torches: 2, carving: 1, chart: 1, bench: 2, ring: 2, doorBench: 1, groupRug: 2, evenLights: 2 },
-  tavern: { barrels: 3, fermenter: 2, shelf: 2, tabletop: 3, trophies: 1, rug: 1, seating: 3, torches: 1, banners: 1, doorBench: 1, groupRug: 2, evenLights: 2, nook: 1 },
-  smithy: { tools: 3, barrels: 2, chest: 1, armor: 2, shelf: 1, torches: 1, storeWall: 2, evenLights: 1 },
-  workshop: { tools: 3, barrels: 2, chest: 1, shelf: 2, torches: 1, bench: 1, storeWall: 2, evenLights: 1 },
+  hall: { banners: 3, trophies: 2, shelf: 1, barrels: 2, armor: 2, rug: 1, tabletop: 2, torches: 2, carving: 1, chart: 1, bench: 2, ring: 2, doorBench: 1, groupRug: 2, evenLights: 2, wallSeat: 2 },
+  tavern: { barrels: 3, fermenter: 2, shelf: 2, tabletop: 3, trophies: 1, rug: 1, seating: 3, torches: 1, banners: 1, doorBench: 1, groupRug: 2, evenLights: 2, nook: 1, wallSeat: 2 },
+  smithy: { tools: 3, barrels: 2, chest: 1, armor: 2, shelf: 1, torches: 1, storeWall: 2, evenLights: 1, wallSeat: 1 },
+  workshop: { tools: 3, barrels: 2, chest: 1, shelf: 2, torches: 1, bench: 1, storeWall: 2, evenLights: 1, wallSeat: 1 },
   storage: { chest: 2, barrels: 3, crates: 2, shelf: 2, torches: 1, storeWall: 3 },
   farm: { barrels: 2, chest: 2, fermenter: 1, shelf: 1 },
   temple: { banners: 3, carving: 2, torches: 2, rug: 1, bench: 2, evenLights: 1 },
-  kitchen: { barrels: 3, shelf: 3, tabletop: 2, chest: 2, fermenter: 1, crates: 1, storeWall: 1, evenLights: 1 },
+  kitchen: { barrels: 3, shelf: 3, tabletop: 2, chest: 2, fermenter: 1, crates: 1, storeWall: 1, evenLights: 1, wallSeat: 1 },
   guard: { armor: 2, trophies: 2, chest: 1, barrels: 1, torches: 1 },
   lookout: { chest: 1, barrels: 1, rug: 1 },
 };
@@ -1830,7 +1906,7 @@ function fill(room, role, c) {
     },
     armor: () => placeAgainst(room, 'ArmorStand', s => (s.corner ? 0.5 : 0)) ? 1 : 0,
     fermenter: () => placeAgainst(room, 'fermenter', s => (s.corner ? 1 : 0)) ? 1 : 0,
-    seating: () => { if (!ok('piece_table_round', biome) || (k.taste || {}).noTable) return 0; const n0 = before(); const t = placeTable(room, k, { table: 'piece_table_round', seats: 2, seat: k.chair || k.seat, depth: 0.7, spread: 3.5 }); if (t && d >= 3) placeOnTable(room, t, [ok('Candle_resin', biome) ? 'Candle_resin' : 'itemstandh']); return room.count - n0; },
+    seating: () => { if (!ok('piece_table_round', biome) || (k.taste || {}).noTable) return 0; const n0 = before(); const t = placeTable(room, k, { table: 'piece_table_round', seats: 2, seat: k.chair || k.seat, depth: 0.7, spread: 3.5 }); if (t && d >= 3) dressTable(room, t, c, 1); return room.count - n0; },
     rug: () => (k.rug && placeRug(room, k, null) ? 1 : 0),
     banners: () => (k.banner && room.ceiling - room.stand >= 3.4 ? pairOn(k.banner, 0, 2.0, 2) : 0),
     carving: () => (k.carving ? pairOn(k.carving, 1.7, 0, 1) : 0),
@@ -1839,7 +1915,7 @@ function fill(room, role, c) {
       let n = 0;
       for (const t of room.placed.filter(q => (F[q.name] || {}).cat === 'table' && !q.topped)) {
         t.topped = true;
-        n += placeOnTable(room, t, [ok('treasure_stack', biome) && room.R() < 0.3 ? 'itemstandh' : 'itemstandh', ok('Candle_resin', biome) ? 'Candle_resin' : 'itemstandh']);
+        n += dressTable(room, t, c, 2);
         if (n) break;
       }
       return n;
@@ -1868,10 +1944,11 @@ function fill(room, role, c) {
     storeWall: () => placeStorageRow(room, k, d >= 3 ? 3 : 2, { sign: true, back: 1 }).length,
     groupRug: () => groupRug(room, k),
     evenLights: () => evenLights(room, k),
+    wallSeat: () => wallSeat(room, k, c.persona),
   };
   // how often one extra may repeat in a room, so a room is a mix and never twenty of one thing
   const MAX = { barrels: 2, crates: 1, chest: 2, armor: 2, fermenter: 1, seating: 2, rug: 2, banners: 1, carving: 2, torches: 1, tabletop: 4, tools: 2, chart: 1, bench: 2, trophies: 2, shelf: 2,
-    footBench: 2, doorBench: 1, nook: 1, ring: 1, storeWall: 1, groupRug: 2, evenLights: 2 };
+    footBench: 2, doorBench: 1, nook: 1, ring: 1, storeWall: 1, groupRug: 2, evenLights: 2, wallSeat: 3 };
   const used = {};
   // at d3 what goes up past the d2 rate waits for the third stage (D-071): those pieces carry ds 3
   const target2 = c.decor === 'd3' ? Math.round(room.area / 10 * density(LEARN_KIND[role] || 'home', 'd2') * tune * (c.persona && PERS() ? PERS().fillShare(c.persona) : 1) * 0.9) : Infinity;
@@ -1898,7 +1975,8 @@ function fill(room, role, c) {
 
 // A bench across the foot of a bed, facing the room, where no chest stands there already.
 function footBench(room, k) {
-  const b = ok('piece_bench01', room.biome) ? 'piece_bench01' : k.bench;
+  // the household's own bench (a long seat), the plain bench where its pick is a chair
+  const b = k.bench && (F[k.bench] || {}).long && ok(k.bench, room.biome) ? k.bench : ok('piece_bench01', room.biome) ? 'piece_bench01' : k.bench;
   if (!b || !ok(b, room.biome)) return 0;
   let n = 0;
   for (const bed of room.placed.filter(q => (F[q.name] || {}).cat === 'bed' && !q.footed)) {
@@ -1918,7 +1996,8 @@ function footBench(room, k) {
 
 // A reading corner: a chair in a corner turned to the room, a light beside it, a rug in front where it fits.
 function nook(room, k) {
-  const chair = ok('piece_chair02', room.biome) ? 'piece_chair02' : k.chair || 'piece_chair';
+  // the room's own chair pick (a fixed piece_chair02 in every nook read as one more repeat)
+  const chair = k.chair && !(F[k.chair] || {}).long && ok(k.chair, room.biome) ? k.chair : 'piece_chair';
   if (!ok(chair, room.biome)) return 0;
   const spots = wallSpots(room, chair, { gap: 0.15 }).filter(s => s.corner);
   const rec = best(room, chair, spots, s => (room.doorDist(s.x, s.z) < 2.5 ? -99 : 0) + Math.min(4, room.doorDist(s.x, s.z)) * 0.2, { noise: 0.5 });
@@ -1930,6 +2009,21 @@ function nook(room, k) {
   n += placeLights(room, k, 1, { flank: [rec] });
   if (k.rug && room.R() < 0.6 && placeRug(room, k, rec, { mode: 'front' })) n++;
   return n;
+}
+
+// A seat along a wall away from the tables, by a station, a chest or a window where there is one (corpus
+// relx.seatsByWall: 41 % of seats within 1.1 m of a wall; rel.seatsAtTables about a quarter): the room's chair or
+// bench, as the household leans (a bigger household on benches).
+function wallSeat(room, k, P) {
+  const bench = k.bench && ok(k.bench, room.biome) ? k.bench : null, chair = k.chair && ok(k.chair, room.biome) ? k.chair : null;
+  const seat = bench && (!chair || room.R() < (P ? 0.15 + 0.09 * (P.size || 2) : 0.4)) ? bench : chair;
+  if (!seat) return 0;
+  const tables = room.placed.filter(q => (F[q.name] || {}).cat === 'table');
+  const by = room.placed.filter(q => ['craft', 'storage'].includes((F[q.name] || {}).cat));
+  const rec = placeAgainst(room, seat, s => -tables.reduce((v, t) => v + Math.max(0, 2.4 - Math.hypot(s.x - t.x, s.z - t.z)), 0) * 1.5 +
+    Math.max(0, ...by.map(q => 1.2 - 0.4 * Math.hypot(s.x - q.x, s.z - q.z))) + (s.win ? 0.5 : 0) -
+    (room.fire ? Math.max(0, 3.5 - Math.hypot(s.x - room.fire.x, s.z - room.fire.z)) * 0.6 : 0), { rel: (F[seat] || {}).back ? 180 : 0 });
+  return rec ? 1 : 0;
 }
 
 // A rug under the table or before the fire that has none.
@@ -2001,7 +2095,7 @@ function furnishPlan(room, role, c) {
       placeLights(room, k, lights(d >= 3 ? 3 : 1));
       placeMounts(room, mountsFor());
       if (d >= 3) {
-        if (t) placeOnTable(room, t, ['itemstandh', 'Candle_resin']);
+        if (t) dressTable(room, t, c, 2);
         // no bench by the fire in a home (Tyler, FP-002: bench not necessary)
         placeAgainst(room, 'ArmorStand', s => (beds[0] ? -Math.hypot(s.x - beds[0].x, s.z - beds[0].z) * 0.3 : 0));
         if (room_ok()) placeAgainst(room, 'fermenter', s => (s.corner ? 1 : 0) - fr().v(s.x, s.z) / fr().D);
@@ -2023,7 +2117,7 @@ function furnishPlan(room, role, c) {
       placeLights(room, k, lights(d >= 3 ? 2 : 1), { flank: beds });
       placeMounts(room, d >= 3 ? ['itemstand', k.banner, 'itemstand'] : ['itemstand']);
       if (d >= 3) placeAgainst(room, 'ArmorStand', s => (beds[0] ? -Math.hypot(s.x - beds[0].x, s.z - beds[0].z) * 0.3 : 0));
-      if (d >= 3 && room_ok() && room.area > 20) { const t = table({ seats: 2, depth: 0.5 }); if (t) placeOnTable(room, t, ['Candle_resin']); }
+      if (d >= 3 && room_ok() && room.area > 20) { const t = table({ seats: 2, depth: 0.5 }); if (t) dressTable(room, t, c, 1); }
     }
     return;
   }
@@ -2050,7 +2144,7 @@ function furnishPlan(room, role, c) {
       const t = table({ table: tn, seats: tn === 'piece_table_round' ? 4 : 6, seat: tavern && tn === 'piece_table_round' ? (k.chair || k.seat) : (k.bench || k.seat), head: !tavern && d >= 3, depth: 0.5, nearFire: tavern ? 0.5 : 0, sideBias: 0.3, wallBias: tavern ? 0.6 : -0.3, spread: tavern ? 4.5 : 6, axis: tavern ? 0.4 : 1.5 });
       if (!t) break;
       tables.push(t);
-      if (d >= 3 && i < 2) placeOnTable(room, t, ['itemstandh', 'Candle_resin', 'itemstandh']);
+      if (d >= 3 && i < 2) dressTable(room, t, c, 3);
     }
     placeStorageRow(room, k, d >= 2 ? 2 : 1, { sign: d >= 2 });
     // a hall sleeps its household where the plan's scheme puts the beds: along the long walls or at the far end (the
@@ -2183,7 +2277,7 @@ function furnishPlan(room, role, c) {
     const t = table({ seats: 0, wallBias: 0, depth: 0.3 });
     placeStorageRow(room, k, 1);
     if (d >= 2) {
-      placeOnTable(room, t, ['itemstandh', 'itemstandh']);
+      dressTable(room, t, c, 2);
       if (ok('piece_chest_barrel', biome)) placeStorageRow(room, k, 2, { chest: 'piece_chest_barrel' });
       placeLights(room, k, 1);
       placeMounts(room, ['sign']);
@@ -2197,7 +2291,7 @@ function furnishPlan(room, role, c) {
     planPaths(room);
     const t = table({ seats: 1, wallBias: 2, depth: 0.6 });
     placeStorageRow(room, k, 1, { chest: ok('piece_chest_barrel', biome) ? 'piece_chest_barrel' : k.chest });
-    if (d >= 2) { placeLights(room, k, lights(1)); if (t) placeOnTable(room, t, ['itemstandh', 'itemstandh']); }
+    if (d >= 2) { placeLights(room, k, lights(1)); if (t) dressTable(room, t, c, 2); }
     return;
   }
   // anything else: one chest and a light
@@ -3041,6 +3135,6 @@ function decorateExisting(pieces, { use = 'home', decor = 'd2', biome = 'Meadows
   return b.pieces;
 }
 
-const api = { oneWhy: () => ONE_WHY, furnClash, asBuilt, decorate, strip, findRooms, decorateExisting, setRules, setInterior, setTemplates, templateById, audit, auditContext, auditOne, itemOf, ITEM_BIOME, FURNITURE: F, readLevel,
+const api = { corpusPick, corpusRate, corpusTilt, oneWhy: () => ONE_WHY, furnClash, asBuilt, decorate, strip, findRooms, decorateExisting, setRules, setInterior, setTemplates, templateById, audit, auditContext, auditOne, itemOf, ITEM_BIOME, FURNITURE: F, readLevel,
   _int: { floorLevels, standGuess, roleFor, stretch, size, ok, obox, overlap, ptDist, yawOfDir, pyaw, standOf, norm, WALLISH } };
 if (NODE_D) module.exports = api; else window.VHDecorate = api;

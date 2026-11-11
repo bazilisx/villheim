@@ -390,6 +390,13 @@ function fillSlot(m, biome, ctx) {
   if (m.any && CLASSES[m.k] && ctx._R2) { const l = CLASSES[m.k].filter(okN); if (l.length) return l[Math.floor(ctx._R2() * l.length)]; }
   // a rug or a pot of a set is any of its kind, the source's own twice as likely (Tyler, 2026-11-10: "Same exact lox
   // rug"); flat or round, it takes the same place
+  // a rug by the room kind's corpus shares and the culture's counts (lib/decorate.js corpusPick; a uniform draw put
+  // hare and straw rugs as often as deer and fur), the source's own twice as likely
+  if (m.k === 'rug' && ctx._R2) {
+    const l = CLASSES.rug.filter(okN);
+    const LK = { home: 'home', longhouse: 'hall', tavern: 'tavern', smithy: 'smithy', workshop: 'workshop', storage: 'storage', temple: 'hall' }[ctx.type] || 'home';
+    if (l.length) return decorB().corpusPick(ctx._R2, l, LK, 'rug', ctx.culture || ctx.cultureKey, m.n);
+  }
   if (VARY_SLOTS.has(m.k) && CLASSES[m.k] && ctx._R2) {
     const l = CLASSES[m.k].filter(okN);
     if (l.length) { let r = ctx._R2() * (l.length + (l.includes(m.n) ? 1 : 0)); for (const n of l) { r -= n === m.n ? 2 : 1; if (r <= 0) return n; } return l[l.length - 1]; }
@@ -1470,6 +1477,7 @@ function liveIn(b, ctx, zones) {
   const bears = p => { const o = Ck.aabb(p); return b.pieces.some(q => q !== p && q.decor && q.x > o.x0 && q.x < o.x1 && q.z > o.z0 && q.z < o.z1 && q.y > p.y + 0.15 && q.y < o.y1 + 0.3); };
   const amp = 0.12 + 0.88 * P.clutter;
   let moved = 0;
+  moved += turnLikeCorpus(b, ctx, idx, problems, bears);
   for (const p of b.pieces.slice()) {
     // a piece standing as its source build stood it, marked for the pool audit (D-098), stays put
     if (!p.decor || p.trim || p.yard || p.outside || (p.rest && ['wall', 'hang'].includes(p.rest)) || p.fclip || p.wclip) continue;
@@ -1500,6 +1508,71 @@ function liveIn(b, ctx, zones) {
     if (ok) moved++;
   }
   return moved;
+}
+
+// Tables, seats and rugs turned off the wall axes as often as corpus builders turn them (relx: 29 % of tables, 41 % of
+// seats and 30 % of rugs more than 10 degrees, per culture group, lib/decorate.js corpusRate), more in a cluttered
+// household and less in a tidy one. A table turns with what lies on it and the seats drawn up to it; a turn that
+// makes a problem the pieces did not have is taken back, and two more angles are tried. Library pieces count as the
+// decorator's do (most tables and seats come from the library); hung pieces and pieces marked as clips stay as they are.
+const TURN = { table: ['to', 12, 30], seat: ['so', 12, 40], rug: ['ro', 12, 45] };
+function turnLikeCorpus(b, ctx, idx, problems, bears) {
+  const P = ctx.persona, D = decorB(), I = D._int, F = D.FURNITURE, culture = ctx.culture || ctx.cultureKey, corpusRate = D.corpusRate;
+  const R = rngB(((P.salt || 0) ^ 0x7e11) >>> 0);
+  const kindOf = p => { const c = (F[p.name] || {}).cat; return c === 'table' ? 'table' : c === 'seat' ? 'seat' : c === 'rug' ? 'rug' : null; };
+  const free = p => p.decor && !p.trim && !p.yard && !p.outside && !(p.rest && ['wall', 'hang'].includes(p.rest)) && !p.fclip && !p.wclip && !p.stacked;
+  const axis = (() => { const h = new Map(); for (const q of b.pieces) if (!q.decor && PB.piece(q.name).role === 'wall') { const k = Math.round(normB(I.pyaw(q)) % 90); h.set(k, (h.get(k) || 0) + 1); } const t = [...h.entries()].sort((a, c) => c[1] - a[1])[0]; return t ? t[0] : 0; })();
+  const off = p => { const m = normB(I.pyaw(p) - axis) % 90; return Math.min(m, 90 - m); };
+  const lean = 0.5 + (P.clutter || 0);
+  const turned = new Set();
+  let n = 0;
+  const tryTurn = (members, cx, cz) => {
+    const [, lo, hi] = TURN[kindOf(members[0])];
+    for (let t = 0; t < 3; t++) {
+      const dr = (R() < 0.5 ? -1 : 1) * (lo + R() * (hi - lo)), a = dr * Math.PI / 180, c = Math.cos(a), sn = Math.sin(a);
+      const olds = members.map(p => ({ p, x: p.x, z: p.z, yaw: p.yaw, q: p.q }));
+      const before = members.map(p => { p._sp = jitterSpec(p) || { rot: 0, off: 0 }; return problems(p); });
+      for (const p of members) {
+        idx.remove(p);
+        // world turn about (cx, cz): yaw grows clockwise seen from above (local +z is (sin, cos))
+        const dx = p.x - cx, dz = p.z - cz;
+        p.x = +(cx + dx * c + dz * sn).toFixed(3); p.z = +(cz - dx * sn + dz * c).toFixed(3);
+        p.yaw = +normB(I.pyaw(p) + dr).toFixed(2); p.q = quatB(p.yaw);
+        idx.add(p);
+      }
+      const ok = members.every((p, i) => [...problems(p)].every(k => before[i].has(k)));
+      for (const p of members) delete p._sp;
+      if (ok) { for (const p of members) turned.add(p); return true; }
+      for (const o of olds) { idx.remove(o.p); o.p.x = o.x; o.p.z = o.z; o.p.yaw = o.yaw; o.p.q = o.q; idx.add(o.p); }
+    }
+    return false;
+  };
+  // how many of a kind to turn: the corpus share of all of them (stochastic rounding), less those turned already; the
+  // candidates in a seeded order until that many have turned, so a turn taken back moves on to the next piece
+  const quota = kind => {
+    const all = b.pieces.filter(p => p.decor && !p.outside && !p.yard && kindOf(p) === kind);
+    const want = corpusRate(culture, TURN[kind][0]) * lean * all.length, q = Math.floor(want) + (R() < want % 1 ? 1 : 0);
+    return Math.max(0, q - all.filter(p => off(p) > 10).length);
+  };
+  const order = kind => b.pieces.filter(p => free(p) && kindOf(p) === kind && off(p) <= 10).map(p => [p, R()]).sort((x, y) => x[1] - y[1]).map(([p]) => p);
+  let left = quota('table');
+  for (const t of order('table')) {
+    if (left <= 0) break;
+    const ob = D.itemOf(t).b;
+    const on = b.pieces.filter(q => q !== t && q.decor && I.ptDist(ob, q.x, q.z) < 0.05 && q.y > t.y + 0.3 && q.y < t.y + 1.6);
+    if (on.some(q => !free(q))) continue;
+    const seats = b.pieces.filter(q => free(q) && kindOf(q) === 'seat' && Math.abs(q.y - t.y) < 0.5 && I.ptDist(ob, q.x, q.z) < 0.9);
+    if (tryTurn([t, ...on, ...seats], t.x, t.z)) { n++; left--; }
+  }
+  for (const kind of ['seat', 'rug']) {
+    left = quota(kind);
+    for (const p of order(kind)) {
+      if (left <= 0) break;
+      if (turned.has(p) || (kind !== 'rug' && bears(p))) continue;
+      if (tryTurn([p], p.x, p.z)) { n++; left--; }
+    }
+  }
+  return n;
 }
 
 function apply(b, ctx, zones) {

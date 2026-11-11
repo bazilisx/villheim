@@ -294,6 +294,9 @@ const any = a => a[Math.floor(Math.random() * a.length)];
 const newSeed = () => 1 + Math.floor(Math.random() * 99999);
 const STAGES = ['s1', 's2', 's3'], DECORS = ['d1', 'd2', 'd3'];
 const STAGE_TEXT = { s1: 's1 small', s2: 's2 middle', s3: 's3 large' }, DECOR_TEXT = { d1: 'd1 bare needs', d2: 'd2 lived in', d3: 'd3 rich' };
+// the hub (the village hearth) has five stages, named for the village's (D-138)
+const HUB_STAGES = ['s1', 's2', 's3', 's4', 's5'], HUB_TEXT = { s1: 's1 camp', s2: 's2 hamlet', s3: 's3 village', s4: 's4 town', s5: 's5 city' };
+const stagesOf = type => (type === 'hub' ? HUB_STAGES : STAGES), stageTextOf = type => (type === 'hub' ? HUB_TEXT : STAGE_TEXT);
 function biomesOf(key) {
   const c = S.CULTURES[key];
   if (c && c.biomes && c.biomes.length) return c.biomes;
@@ -310,7 +313,7 @@ const KEPT = ['type', 'culture', 'ghouse', 'biome', 'plan', 'roof', 'walls', 'st
 const OPENS = ['gmore', 'gwords', 'imore'];
 // the stage sliders the viewer has moved, by slider id ('gstage': 's3'); a slider not in here is drawn at each build
 let chosen = {};
-const SLIDERS = { gstage: STAGES, gdecor: DECORS };
+const SLIDERS = { gstage: HUB_STAGES, gdecor: DECORS };
 function loadKept() {
   try {
     const o = JSON.parse(localStorage.getItem(STORE) || '{}');
@@ -335,13 +338,20 @@ for (const k of ['type', 'culture']) $(k).addEventListener('change', saveKept);
 // which tab is open; the shared top group acts on its design
 let tabNow = 'gen';
 
-// ---------- stage sliders: s1 to s3 and d1 to d3; moving one rebuilds on release
+// ---------- stage sliders: s1 to s3 (s5 for the hub) and d1 to d3; moving one rebuilds on release. list and text may be
+// functions of the building in view; setting a value sets the slider's range and ticks to the list
 function slider(id, list, text, onset) {
   const el = $(id), out = $(id + 'v');
-  const val = () => list[Math.max(0, Math.min(list.length - 1, +el.value - 1))];
-  el.oninput = () => { out.textContent = text[val()]; };
-  el.onchange = () => { out.textContent = text[val()]; choose(id, val()); onset(val()); };
-  return v => { el.value = list.indexOf(v) + 1; out.textContent = text[v]; };
+  const L = () => (typeof list === 'function' ? list() : list), X = () => (typeof text === 'function' ? text() : text);
+  const val = () => L()[Math.max(0, Math.min(L().length - 1, +el.value - 1))];
+  el.oninput = () => { out.textContent = X()[val()]; };
+  el.onchange = () => { out.textContent = X()[val()]; choose(id, val()); onset(val()); };
+  return v => {
+    const l = L(), tk = el.parentNode.querySelector('.ticks');
+    el.max = l.length;
+    if (tk) tk.innerHTML = l.map(x => `<span>${x}</span>`).join('');
+    el.value = l.indexOf(v) + 1; out.textContent = X()[v];
+  };
 }
 
 // ---------- new building: the design drawn from Building and Culture, then changed one choice at a time
@@ -388,7 +398,8 @@ function draw(keep, fixed = {}) {
   const biome = $('biome').value || (prev && prev.culture === culture ? prev.biome : any(biomesOf(culture)));
   let seed;
   if (keep) { seed = newSeed(); if ($('seed').value) $('seed').value = seed; } else seed = Math.floor(+$('seed').value) || newSeed();
-  G = { type, culture, cultureAsked: !!asked, biome, stage: chosen.gstage || (prev ? prev.stage : any(STAGES)), decor: chosen.gdecor || (prev ? prev.decor : any(DECORS)),
+  const stages = stagesOf(type), gst = chosen.gstage && stages.includes(chosen.gstage) ? chosen.gstage : null;
+  G = { type, culture, cultureAsked: !!asked, biome, stage: fixed.stage || gst || (prev && stages.includes(prev.stage) ? prev.stage : any(stages)), decor: fixed.decor || chosen.gdecor || (prev ? prev.decor : any(DECORS)),
     persona: $('ghouse').value || undefined, seed, tries: triesOf(), more: moreChoices(), kept: null };
   setGStage(G.stage); setGDecor(G.decor);
   resetView(true);
@@ -400,13 +411,15 @@ function rebuild(change) {
   const fresh = change.seed != null || change.tries != null || G.kept == null;
   runGen(() => (fresh ? search(G) : rebuildKept(G)));
 }
-// the shared stage sliders and Interior act on the open tab's design; the other tab catches up when it is opened
+// the shared stage sliders and Interior act on the open tab's design; the other tab catches up when it is opened. The
+// size stages run s1 to s3, or s1 to s5 for the hub (stagesOf)
 function onStages(ch) {
   if (tabNow !== 'int') return rebuild(ch);
   if (!I) return iDraw();
   Object.assign(I, ch); showInteriors();
 }
-const setGStage = slider('gstage', STAGES, STAGE_TEXT, v => onStages({ stage: v }));
+const typeNow = () => (tabNow === 'int' ? (I ? I.type : $('type').value) : (G ? G.type : $('type').value));
+const setGStage = slider('gstage', () => stagesOf(typeNow()), () => stageTextOf(typeNow()), v => onStages({ stage: v }));
 const setGDecor = slider('gdecor', DECORS, DECOR_TEXT, v => onStages({ decor: v }));
 $('ghouse').onchange = () => {
   saveKept();
@@ -416,7 +429,7 @@ $('ghouse').onchange = () => {
 };
 $('grandst').onclick = () => {
   choose('gstage', null); choose('gdecor', null);
-  const st = any(STAGES), dc = any(DECORS);
+  const st = any(stagesOf(typeNow())), dc = any(DECORS);
   setGStage(st); setGDecor(dc);
   onStages({ stage: st, decor: dc });
 };
@@ -437,7 +450,7 @@ function captionGen() {
   if (G.cultureAsked) set.unshift('culture');
   const h = i.household && i.household.label ? `, household ${said(i.household.label)}` : '';
   $('caption').textContent = `${T.label || i.type}, ${cultureLabel(i.cultureKey)}, ${i.biome}, ${i.plan || 'no'} plan, ${i.roof || 'no'} roof, ${i.walls || 'no'} walls, `
-    + `${STAGE_TEXT[i.stage] || i.stage}, ${DECOR_TEXT[i.decor] || i.decor}${h}, seed ${G.seed}${G.kept != null && G.kept !== G.seed ? ` (candidate ${G.kept})` : ''}.` + (set.length ? ` You set: ${set.join(', ')}; the rest was drawn.` : ' All drawn at random.');
+    + `${stageTextOf(i.type)[i.stage] || i.stage}, ${DECOR_TEXT[i.decor] || i.decor}${h}, seed ${G.seed}${G.kept != null && G.kept !== G.seed ? ` (candidate ${G.kept})` : ''}.` + (set.length ? ` You set: ${set.join(', ')}; the rest was drawn.` : ' All drawn at random.');
 }
 $('go').onclick = () => draw(false);
 $('next').onclick = () => draw(true);
@@ -480,8 +493,8 @@ $('read').onclick = async () => {
     const sample = await Promise.race([window.claude ? claude.use('sample') : null, new Promise(r => setTimeout(() => r(null), 3000))]);
     if (sample) {
       $('readhint').textContent = 'Asking Claude...';
-      const opts = { walls: ['auto', 'plank', 'half-timber', 'log', 'stone-base', 'stone', 'marble', 'grausten'], type: Object.keys(S.TYPES), biome: S.BIOMES, culture: Object.keys(S.CULTURES), plan: ['auto', 'rect', 'long', 'square', 'L', 'T', 'cross', 'U', 'court', 'gables', 'nave', 'greek', 'octagon'], roof: ['auto', 'gable', 'hip', 'shed', 'flat', 'conical'], stage: ['s1', 's2', 's3'], decor: ['d1', 'd2', 'd3'] };
-      const ans = await sample.json(`Turn this request for a Valheim building into settings. Request: "${text}". Allowed values: ${JSON.stringify(opts)}. Answer with a JSON object holding only keys from that list whose value the request implies, each value one of the allowed values. s1 small, s2 middle, s3 large; d1 bare, d2 lived in, d3 richly decorated.`, { modelTier: 'quick' });
+      const opts = { walls: ['auto', 'plank', 'half-timber', 'log', 'stone-base', 'stone', 'marble', 'grausten'], type: Object.keys(S.TYPES), biome: S.BIOMES, culture: Object.keys(S.CULTURES), plan: ['auto', 'rect', 'long', 'square', 'L', 'T', 'cross', 'U', 'court', 'gables', 'nave', 'greek', 'octagon'], roof: ['auto', 'gable', 'hip', 'shed', 'flat', 'conical'], stage: ['s1', 's2', 's3', 's4', 's5'], decor: ['d1', 'd2', 'd3'] };
+      const ans = await sample.json(`Turn this request for a Valheim building into settings. Request: "${text}". Allowed values: ${JSON.stringify(opts)}. Answer with a JSON object holding only keys from that list whose value the request implies, each value one of the allowed values. s1 small, s2 middle, s3 large (s4 town and s5 city for the village hub only); d1 bare, d2 lived in, d3 richly decorated.`, { modelTier: 'quick' });
       if (ans && typeof ans === 'object') { const ok = {}; for (const [k, v] of Object.entries(ans)) if (opts[k] && opts[k].includes(v)) ok[k] = v; apply(ok); words = { ...words, ...ok }; $('readhint').textContent = 'Claude read your request.'; }
     }
   } catch (e) { $('readhint').textContent = 'Read from your words.'; }
@@ -741,9 +754,9 @@ let I = null, irun = 0, intResult = null;
 const HOUSEHOLDS = ['neat', 'messy', 'cosy', 'plants', 'crafts', 'collector', 'wealthy', 'austere', 'food'];
 const said = t => String(t).replace(/cosy/g, 'cozy');
 function iDraw() {
-  const asked = $('culture').value, culture = asked || any(VILLAGE)[0];
-  I = { type: $('type').value, culture, cultureAsked: !!asked, biome: $('ibiome').value || any(biomesOf(culture)),
-    stage: chosen.gstage || any(STAGES), decor: chosen.gdecor || any(DECORS), seed: Math.floor(+$('iseed').value) || newSeed(), sel: 0, fresh: true };
+  const asked = $('culture').value, culture = asked || any(VILLAGE)[0], type = $('type').value, stages = stagesOf(type);
+  I = { type, culture, cultureAsked: !!asked, biome: $('ibiome').value || any(biomesOf(culture)),
+    stage: chosen.gstage && stages.includes(chosen.gstage) ? chosen.gstage : any(stages), decor: chosen.gdecor || any(DECORS), seed: Math.floor(+$('iseed').value) || newSeed(), sel: 0, fresh: true };
   setGStage(I.stage); setGDecor(I.decor);
   showInteriors();
 }
@@ -766,7 +779,7 @@ function captionInt() {
   const set = [['ghouse', 'interior'], ['gstage', 'size stage'], ['gdecor', 'decor stage'], ['iseed', 'house seed'], ['ibiome', 'biome']]
     .filter(([id]) => (SLIDERS[id] ? chosen[id] : $(id).value) || '').map(([, t]) => t);
   if (I.cultureAsked) set.unshift('culture');
-  $('icaption').textContent = `${T.label || I.type}, ${cultureLabel(I.culture)}, ${I.biome}, ${STAGE_TEXT[I.stage]}, ${DECOR_TEXT[I.decor]}, house seed ${I.seed}.`
+  $('icaption').textContent = `${T.label || I.type}, ${cultureLabel(I.culture)}, ${I.biome}, ${stageTextOf(I.type)[I.stage]}, ${DECOR_TEXT[I.decor]}, house seed ${I.seed}.`
     + (set.length ? ` You set: ${set.join(', ')}; the rest was drawn.` : ' All drawn at random.');
 }
 function floorOf(pieces) {

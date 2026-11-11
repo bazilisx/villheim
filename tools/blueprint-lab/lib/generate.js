@@ -409,6 +409,8 @@ function slopeYaw(out) { return out[1] < 0 ? 180 : out[1] > 0 ? 0 : out[0] < 0 ?
 // ---------------------------------------------------------------- generator
 
 function generate(req) {
+  // the village hub (the hearth, D-139) has a generator of its own on the same pieces and helpers (lib/hub.js)
+  if (req.type === 'hub') return (NODE ? require('./hub.js') : window.VHHub).generate(req, HUB_TOOLS);
   const type = S.TYPES[req.type] ? req.type : 'home';
   const T = { ...S.TYPES[type] };
   const biome = S.BIOMES.includes(req.biome) ? req.biome : 'Meadows';
@@ -3371,6 +3373,9 @@ function campDesign(b, K, biome, stage, R, decor) {
   if (decor === 'd3') { b.put('piece_groundtorch_wood', 3.6, 0.75, -2, 0, { ds: 3 }); b.put('rug_deer', 0, 0.02, 4.3, 0, { ds: 3 }); b.put('itemstand', -2, 1.5, 5.3, 180, { ds: 3 }); }
   return b;
 }
+
+// what lib/hub.js builds with
+const HUB_TOOLS = { Build, quat, wallSegment, gablePieces, posts, putLadder, column, putDoor, valleys, inside, surfaceAt };
 
 if (NODE) module.exports = { generate, quat, PLAN_BY_TYPE, ROOF_BY_CULTURE, windowKit };
 else window.VHGenerate = { generate, quat, PLAN_BY_TYPE, ROOF_BY_CULTURE };

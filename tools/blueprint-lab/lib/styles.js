@@ -273,6 +273,29 @@ const TYPES = {
   temple:    { label: 'Temple', bays: { s1: [3, 2], s2: [5, 3], s3: [7, 4] }, storeys: { s1: 1, s2: 1, s3: 1 }, tall: 2, use: 'temple' },
   well:      { label: 'Well', bays: { s1: [1, 1], s2: [1, 1], s3: [2, 2] }, storeys: { s1: 1, s2: 1, s3: 1 }, use: 'yard', well: true, open: 'all', low: true },
   camp:      { label: 'Camp', bays: { s1: [2, 2], s2: [3, 2], s3: [3, 3] }, storeys: { s1: 1, s2: 1, s3: 1 }, use: 'yard', camp: true },
+  // the village hub, the hearth (D-139): five stages on one plot, built by lib/hub.js (sizes there per line)
+  hub:       { label: 'Village hub (hearth)', bays: { s1: [5, 5], s2: [9, 5], s3: [11, 7], s4: [15, 7], s5: [17, 9] }, storeys: { s1: 1, s2: 1, s3: 1, s4: 2, s5: 3 }, use: 'hall', hub: true },
+};
+
+// The hub's lines per culture (lib/hub.js), D-137 (Tyler 2026-11-11): "Strongly leanign toward circular/octagonal or
+// partial variants thereof for most, and cross-shape for those that are more strongly rectangular or l-shaped
+// sturectures throughout the rest of the settlement". cross: a cross-shaped hall; round: a ring of walls; octagon: eight
+// sides; part: a round hall with a flat front, the open chunk a forecourt. Weights per village. lab/hub_lines.js measures
+// and prints these: a culture whose other buildings at s3 are crossFrom (0.7) or more long or branched (L, T, U,
+// cross) takes the cross; the rest the round family (see that file for the rule).
+// capStoreys: how many storeys of storeyH a hub may stand over the culture's other buildings (D-156, Tyler 2026-11-11: the
+// storey limit does not limit roofs or crowns; "Roofs can be taller depending on the design, and that's okay. It should
+// not be cut off").
+// stoneFrom: the stage from which a Meadows or Black Forest hub stands on a stone course (D-012: stone for advanced
+// buildings and later stages); 's6' keeps them in wood throughout.
+const HUB = {
+  stoneFrom: 's4',
+  crossFrom: 0.7,
+  lines: { 'norse': { cross: 1 }, 'anglo-saxon': { octagon: 3, part: 1 }, 'frankish-norman': { cross: 1 }, 'norse-forest': { cross: 1 },
+    'celtic': { round: 3, part: 1 }, 'slavic': { octagon: 3, part: 1 }, 'celtic-crannog': { round: 3, part: 1 }, 'baltic': { octagon: 3, part: 1 },
+    'fen-folk': { octagon: 3, part: 1 }, 'norse-highland': { octagon: 3, part: 1 }, 'saami': { round: 3, part: 1 }, 'byzantine': { octagon: 3, part: 1 },
+    'steppe': { round: 3, part: 1 }, [ID.lamari]: { cross: 1 }, 'middle-eastern': { part: 3, octagon: 1 } },
+  capStoreys: 2, storeyH: 3,
 };
 
 // ---------------------------------------------------------------- massing: shapes, sizes and growth (D-069, D-068)
@@ -386,7 +409,7 @@ function growthFor(cultureKey, type) {
   return own ? { ...g, ...own, storey: own.storey || g.storey, extras: own.extras || g.extras } : g;
 }
 
-const api = { BIOMES, kitFor, CULTURES, BIOME_CULTURE, TYPES, ROOF_SETS, cultureFor, roofKit, ID, RENAMED, cultureKey,
+const api = { BIOMES, kitFor, CULTURES, BIOME_CULTURE, TYPES, HUB, ROOF_SETS, cultureFor, roofKit, ID, RENAMED, cultureKey,
   HOUSEHOLDS, LADDER, GROWTH, PLAN_SETS, UPPER_STOREY, LOFT, growthFor };
 if (typeof module !== 'undefined') module.exports = api;
 else window.VHStyles = api;

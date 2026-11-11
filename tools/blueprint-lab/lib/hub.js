@@ -38,6 +38,8 @@ const CkH = () => (NODE_H ? require('./checks.js') : window.VHChecks);
 const DecH = () => (NODE_H ? require('./decorate.js') : window.VHDecorate);
 const BPH = () => (NODE_H ? require('./blueprint.js') : window.VHBlueprint);
 const SHH = () => (NODE_H ? require('./shapes.js') : window.VHShapes);
+const PSH = () => (NODE_H ? require('./persona.js') : window.VHPersona);
+const KBH = () => (NODE_H ? require('./kitbash.js') : window.VHKitbash);
 // distance in plan from (x, z) to a piece's turned solids (o.sol, from checks.js gameBox), else to its box
 function distSol(o, x, z) {
   if (!o.sol || !o.sol.length) return Math.hypot(Math.max(o.x0 - x, 0, x - o.x1), Math.max(o.z0 - z, 0, z - o.z1));
@@ -263,6 +265,8 @@ function walker(b) {
     },
     // after test(p) said yes: the piece went in (already marked) or did not (b.put keeps one piece per place)
     took(p, inSet) { const o = solidOf(p); if (!o || !L.length) return; if (inSet) seen++; else mark(o, -1); },
+    // the last piece put after test(p) and took(p, true) comes out again
+    untake(p) { const o = solidOf(p); if (!o || !L.length) return; mark(o, -1); seen--; },
   };
 }
 
@@ -292,6 +296,23 @@ function placer(b, T) {
     : c.sol && c.sol.length ? a.sol.some(A => c.sol.some(B => SHP.hit(A, B, -e))) : SHP.hitsBox(a.sol, { x0: c.x0 + e, x1: c.x1 - e, y0: c.y0 + e, y1: c.y1 - e, z0: c.z0 + e, z1: c.z1 - e }));
   return {
     keep(x0, x1, z0, z1, y0 = -1, y1 = 100, always = false) { keep.push({ x0, x1, z0, z1, y0, y1, always }); },
+    // after pieces came out elsewhere: read the design again
+    reset() { walk = null; hard.length = 0; furn.length = 0; seen = 0; },
+    // the keep-clear boxes as zones for the shared furnishing (lib/kitbash.js)
+    zones: () => keep.map(k => ({ x0: k.x0, x1: k.x1, z0: k.z0, z1: k.z1, y0: k.y0 < 0 ? -1 : k.y0, y1: k.y1 })),
+    // a set of pieces fitted elsewhere (lib/kitbash.js) goes in whole when every room, climb and main piece stays reached
+    // with all of it in, else none of it (D-148)
+    admit(list) {
+      refresh();
+      if (!walk && b.rooms.length) walk = walker(b);
+      const n0 = b.pieces.length;
+      for (const p of list) {
+        if (walk && !walk.test(p)) { while (b.pieces.length > n0) walk.untake(b.pieces.pop()); seen = Math.min(seen, n0); return false; }
+        b.pieces.push(p);
+        if (walk) walk.took(p, true);
+      }
+      return true;
+    },
     put(name, x, y, z, yaw, extra = {}, o = {}) {
       refresh();
       const p = { name, x, y, z, yaw: normH(yaw), q: T.quat(normH(yaw)) };
@@ -642,6 +663,18 @@ function roundHall(b, K, C, T, o) {
   const stairCells = St ? [St.stand, ...St.run, St.land] : [];
   // the floor, the hearth's stone flags under the fire from s2 (D-131)
   polyFloor(b, K, N, ap, 0, { center: () => b.put('stone_floor_2x2', 0, -0.375, 0, 0, { hearthStone: true }) });
+  // annexes from s4 (corpus: 33 of the 55 round and polygon builds have floor out past their ring, SHAPE_Q.round.lobes):
+  // up to the village's draw, a room 6 m wide and 4 or 6 m deep against the wall square to an axis, with a door from
+  // the hall, a gable roof under the hall's eave; on the side rooms' side where the wall is 10 m long or more (clear of
+  // the kitchen's back door), and behind the hall where the high seat is not at the far end
+  const annexes = [];
+  if (k >= 4 && gallery && V.annex > 0) {
+    const sideBay = (i, want) => { const ts = [...Array(L / 2).keys()].map(kk => ({ kk, t: -L / 2 + 1 + 2 * kk })).filter(o => Math.abs(o.t) + 3 <= L / 2 + 1e-6); return ts.sort((p, q) => want(q.t) - want(p.t))[0]; };
+    const cand = [];
+    if (L >= 10) { const i = sR > 0 ? N / 4 : 3 * N / 4, a = i * 360 / N, tz = -Math.sin(rad(a)); const o = sideBay(i, t => t * tz); if (o) cand.push({ i, a, ...o }); }
+    if (V.seat !== 'far' && L >= 6) { const o = sideBay(0, t => -Math.abs(t)); if (o) cand.push({ i: 0, a: 0, ...o }); }
+    for (const c of cand.slice(0, V.annex)) annexes.push(c);
+  }
   // walls; the back door from s3 at the +x side, toward the door side of it (the kitchen's door from s4)
   const bays = [];
   for (let s = 0; s < storeys; s++) {
@@ -649,6 +682,7 @@ function roundHall(b, K, C, T, o) {
     bays.push(...polyWalls(b, K, C, T, N, L, ap, s * SHt, SHt, (i, kk) => {
       if (s === 0 && i === doorSide && kk === doorK && zc == null) return 'door';
       if (s === 0 && k >= 3 && i === (sR > 0 ? N / 4 : 3 * N / 4) && kk === (sR > 0 ? L / 2 - 1 : 0)) return 'door';
+      if (s === 0 && annexes.some(an => an.i === i && an.kk === kk)) return 'door';
       if (s === storeys - 1 && i % 3 === 1 && kk === 0) return 'window';
       return 'wall';
     }, st));
@@ -826,6 +860,24 @@ function roundHall(b, K, C, T, o) {
     }
     b.notes.push(two ? `Two side rooms under the gallery: ${V.second === 'food' ? 'food prep' : 'a closet'} and storage.` : 'A storage room under the gallery.');
   }
+  annexes.forEach((an, j) => {
+    const nx = Math.sin(rad(an.a)), nz = Math.cos(rad(an.a)), tx = Math.cos(rad(an.a)), tz = -Math.sin(rad(an.a));
+    const W = V.annexDeep, at = (u, v) => [nx * (ap + u) + tx * (an.t + v), nz * (ap + u) + tz * (an.t + v)];
+    for (let u = 1; u < 2 * W; u += 2) {
+      for (const v of [-2, 0, 2]) { const [x, z] = at(u, v); b.put(K.floor, x, 0, z, an.a); }
+      for (const v of [-3, 3]) { const [x, z] = at(u, v); T.wallSegment(b, K, C, x, 0, z, an.a + 90, 3, 'wall', o.wallStyle); b.put(K.beam, x, 3, z, an.a + 90); }
+    }
+    for (const v of [-2, 0, 2]) { const [x, z] = at(2 * W, v); T.wallSegment(b, K, C, x, 0, z, an.a, 3, v === 0 ? 'window' : 'wall', o.wallStyle); b.put(K.beam, x, 3, z, an.a); }
+    for (const v of [-3, 3]) { const [x, z] = at(2 * W, v); T.posts(b, K, x, z, 3); }
+    const [cx, cz] = at(W, 0);
+    for (const q of T.gablePieces(K, C, { cx, cz, W, D: 3, alpha: an.a - 90 }, 3, 1, [false, true], null, null)) b.put(/stone|marble|grausten/i.test(q.name) ? (K.wallHalf || 'wood_wall_half') : q.name, q.x, q.y, q.z, q.yaw);
+    const [x0, z0] = at(0, -3), [x1, z1] = at(2 * W, 3);
+    const room = { x0: Math.min(x0, x1), x1: Math.max(x0, x1), z0: Math.min(z0, z1), z1: Math.max(z0, z1), y: 0, h: 3, use: j === 0 ? 'storage' : 'closet', annex: true };
+    rooms.push(room);
+    const [dx, dz] = at(0, 0);
+    doors.push({ x: dx, z: dz });
+    b.notes.push(`An annex ${2 * W} by 6 m off the hall (${room.use}), with a door from the hall and a gable roof.`);
+  });
   // the hall, the gallery (its rail closes it off from the open middle), the walkway, the side rooms
   b.rooms.push({ x0: -ap, x1: ap, z0: zc != null ? zc : -ap, z1: ap, y: 0, h: top, use: 'hall', main: true, door: { x: door.x, z: door.z } });
   if (gallery) b.rooms.push({ x0: -ap, x1: ap, z0: zc != null ? zc : -ap, z1: ap, y: SHt, h: SHt, use: 'gallery' });
@@ -1019,6 +1071,93 @@ function crossHall(b, K, C, T, o) {
   return { inSide, Wz, Wx, D, top, SHt, capY, peak, doors, door: { x: 0, z: -Wz }, edges, stairs, G, rooms, porch, hangs, sideX: k >= 4 ? p : null, isRun };
 }
 
+// ---------------------------------------------------------------- the shared furnishing
+
+// How much of rug p would lie on the rugs among pieces, and they on it (8 x 8 points over each rug's area).
+function rugFits(pieces, p) {
+  const F = DecH().FURNITURE;
+  const sz = n => (F[n] || { s: [3, 0.05, 3] }).s;
+  const frame = q => { const [w, , l] = sz(q.name), a = rad(q.yaw || 0); return { q, w, l, c: Math.cos(a), s: Math.sin(a) }; };
+  const inR = (r, x, z) => { const dx = x - r.q.x, dz = z - r.q.z, u = dx * r.c - dz * r.s, v = dx * r.s + dz * r.c; return Math.abs(u) <= r.w / 2 && Math.abs(v) <= r.l / 2; };
+  const share = (r, others) => { let h = 0; for (let i = 0; i < 8; i++) for (let j = 0; j < 8; j++) { const u = -r.w / 2 + r.w * (i + 0.5) / 8, v = -r.l / 2 + r.l * (j + 0.5) / 8, x = r.q.x + u * r.c + v * r.s, z = r.q.z - u * r.s + v * r.c; if (others.some(o => inR(o, x, z))) h++; } return h / 64; };
+  const me = frame(p);
+  const near = pieces.filter(q => q !== p && PH.piece(q.name).role === 'rug' && Math.abs(q.y - p.y) < 0.3 && Math.hypot(q.x - p.x, q.z - p.z) < 6).map(frame);
+  if (!near.length) return true;
+  if (share(me, near) > RUG_OVER) return false;
+  return near.every(r => share(r, [...near.filter(o => o !== r), me]) <= RUG_OVER);
+}
+
+// The hub's rooms as the shared pipeline's room kinds (lib/kitbash.js ROOM_KINDS): the hall and the gallery as a hall,
+// the storage room, the closet and an annex as storage, food prep as a kitchen.
+const HUB_ROLE = { hall: 'hall', gallery: 'hall', storage: 'storage', closet: 'storage', kitchen: 'kitchen' };
+// Dressing through the interior library every other building uses (lib/kitbash.js furnishRooms: corner, wall, window,
+// table and hearth sets, and dressWalls: ledges, banners, stands, candles and torches, all weighted by the persona,
+// lib/persona.js), with the hub's own room kinds. The hall and the gallery keep their open floor: no set that stands on
+// the free floor goes there. Every set goes in whole only where the walk still reaches every room, climb and main piece
+// (placer admit); the hub's own pieces stay where they are (the sets never move them). Returns the number of sets.
+function sharedDress(b, o) {
+  const { P, decor, biome, cultureKey, place, R } = o;
+  const Kb = KBH(), D = DecH();
+  if (!Kb || !D || decor === 'd1') return 0;
+  // the rooms as the decorator reads them, each with the kind of the hub room it lies in
+  const byY = new Map();
+  for (const r of b.rooms) { const y = Math.round(r.y * 4) / 4; if (!byY.has(y)) byY.set(y, []); byY.get(y).push(r); }
+  const open = [], closed = [];
+  [...byY.keys()].sort((a, c) => a - c).forEach((y, li) => {
+    const rects = byY.get(y);
+    const models = D.readLevel(b.pieces, D._int.standGuess(b.pieces, rects, y), rects) || [];
+    for (const m of models) {
+      if (m.area < 4 || m.covered < 0.5) continue;
+      m.upper = li > 0;
+      const score = r => m.cells.filter(c => c.x > r.x0 && c.x < r.x1 && c.z > r.z0 && c.z < r.z1).length;
+      const own = rects.slice().sort((p, q) => score(q) - score(p) || (p.main ? 1 : 0) - (q.main ? 1 : 0))[0];
+      const role = HUB_ROLE[own.use] || 'hall';
+      (role === 'hall' ? open : closed).push({ m, role, li });
+    }
+  });
+  // the hub's own pieces are not moved by a set
+  const mine = b.pieces.filter(p => p.decor && !p.kb);
+  for (const p of mine) p.kb = 'hub';
+  const zones = place.zones();
+  const ctx = { type: 'hub', use: 'hall', biome, culture: cultureKey, cultureKey, decor, persona: P, R };
+  const L0 = Kb.library();
+  let sets = 0;
+  const run = (rooms, lib) => {
+    if (!rooms.length) return;
+    const n0 = b.pieces.length;
+    if (lib) Kb.setLibrary(lib);
+    try { Kb.furnishRooms(b, { ...ctx }, zones, rngH((P.salt ^ hashH(rooms.length + '|' + n0)) >>> 0), [], rooms); } finally { if (lib) Kb.setLibrary(L0); }
+    // what came in goes back out and in again set by set through the walk test
+    const fresh = b.pieces.splice(n0);
+    const groups = new Map();
+    for (const p of fresh) { const g = p.kb || `${p.name}@${p.x},${p.z}`; if (!groups.has(g)) groups.set(g, []); groups.get(g).push(p); }
+    for (const g0 of groups.values()) {
+      // (built frames of beams and posts stay out of the hall, which has its own; a rug lies on rugs already down by
+      // RUG_OVER of its area or less, as corpus builders lay them, else it stays out of the set)
+      if (g0.some(p => ['beam', 'pole'].includes(PH.piece(p.name).role))) continue;
+      // (a station's extension without its station stays out: the hub's sets are not workshops)
+      const acc = [];
+      const g = g0.filter(p => !/_ext\d/.test(p.name) && (PH.piece(p.name).role !== 'rug' || (rugFits([...b.pieces, ...acc], p) && acc.push(p))));
+      if (g.length && place.admit(g)) sets++;
+    }
+  };
+  // the side rooms take every set; the hall and the gallery none that stands on the free floor
+  run(closed, null);
+  run(open, { ...L0, assemblies: (L0.assemblies || []).filter(a => !['floor', 'bed', 'post'].includes(a.anchor)) });
+  for (const p of mine) if (p.kb === 'hub') delete p.kb;
+  // things on the item stands the sets brought, by the persona; the memento and trophy stands stay empty (D-134)
+  const PS = PSH();
+  if (PS && PS.dressStands) {
+    const proxy = { pieces: b.pieces.filter(p => !p.memento) };
+    PS.dressStands(proxy, { persona: P, biome, type: 'hub', use: 'hall' });
+    const keepSet = new Set(proxy.pieces);
+    b.pieces = b.pieces.filter(p => p.memento || keepSet.has(p));
+    place.reset();
+  }
+  if (sets) b.notes.push(`${sets} sets from the interior library on the walls, tables and corners, by the village's persona.`);
+  return sets;
+}
+
 // ---------------------------------------------------------------- furnishing a hall stage
 
 // Spots along a list of wall bays' inner faces at floor height y: { x, y, z, nx, nz (into the room), yawIn }
@@ -1059,6 +1198,15 @@ function furnish(b, K, C, T, o, F) {
   const { stage, line, place, has, skipDecor, V } = o;
   const k = +stage[1];
   const ds = n => ({ ds: n });
+  // the village's persona (lib/persona.js, village traits, never a trade): what the walls, stands, banners, lights and
+  // tables lean to, as in every other building
+  const PS = PSH(), P = o.persona, ww = PS.wallWeights(P, 'hall');
+  const tilt = (kind, n) => DecH().corpusTilt(o.cultureKey, kind, n);
+  const pR = rngH((P.salt ^ 0x5eed) >>> 0);
+  const light = PS.pickW(pR, { piece_walltorch: 3 * tilt('light', 'piece_walltorch'), piece_dvergr_lantern: tilt('light', 'piece_dvergr_lantern') * P.likes.lights * (0.5 + P.wealth) });
+  const rugK = PS.pickW(pR, Object.fromEntries(['rug_fur', 'rug_deer', 'rug_wolf', 'jute_carpet'].map(n => [n, tilt('rug', n) * (/jute/.test(n) ? 1 : P.likes.rugs)])));
+  V.light = light; V.rug = rugK;
+  V.trophyRows = ww.trophy >= 1 ? 3 : 2;
   // the fire at the heart (stone flags under it from s2, D-131), in the form the village drew (V.hearth): the stone
   // hearth, a fire pit, or a long fire of a hearth between two pits across the hall
   const form = k >= 2 ? V.hearth : 'pit';
@@ -1318,7 +1466,7 @@ function furnish(b, K, C, T, o, F) {
   // the side rooms: the closet full of chests, the kitchen with its prep table, butcher's table, fermenter and chests
   const inHall = line === 'cross' ? () => true : (x, z) => polyInside(F.N, F.ap)(x, z, 0.7);
   for (const room of F.rooms || []) {
-    const spots = roomSpots(room, inHall);
+    const spots = roomSpots(room, room.annex ? () => true : inHall);
     const items = room.use === 'storage' ? ['piece_chest', 'piece_chest', 'piece_chest_wood', 'piece_chest_wood', 'piece_chest_barrel', 'piece_chest_wood', 'piece_chest', 'piece_chest_barrel']
       : ['piece_preptable', 'cauldron_ext3_butchertable', 'fermenter', 'piece_chest_wood', 'piece_chest_barrel', 'piece_chest_wood'];
     let i = 0;
@@ -1350,13 +1498,17 @@ function furnish(b, K, C, T, o, F) {
     }
     if (nc) b.notes.push(`${nc} hanging braziers as chandeliers.`);
   }
+  // (wall lights about the persona's torch spacing apart, lib/persona.js torchGap, on wall bays of about 2 m)
   let nt = 0;
+  const tStep = Math.max(2, Math.round(PS.torchGap(P) / 2));
   for (const [i, sp] of edgeSpots.entries()) {
     if (nt >= 4 + 2 * k) break;
-    if (i % 3 !== 1) continue;
+    if (i % tStep !== 1) continue;
     if (place.put(V.light, sp.x + sp.nx * (highT + 0.17), sp.y + 1.6, sp.z + sp.nz * (highT + 0.17), sp.yawIn, ds(2), { inKeep: true })) nt++;
   }
-  if (k >= 4) for (const sp of edgeSpots.filter((s, i) => i % 5 === 2).slice(0, 6)) place.put(V.banner, sp.x + sp.nx * (highT + 0.12), sp.y + (F.top >= 6 ? 5.2 : 2.9), sp.z + sp.nz * (highT + 0.12), sp.yawIn, ds(3), { inKeep: true });
+  // (banners as the persona likes them, lib/persona.js wallWeights: none to six)
+  const nBan = Math.max(0, Math.min(6, Math.round(4 * ww.banner - 1)));
+  if (k >= 4) for (const sp of edgeSpots.filter((s, i) => i % 5 === 2).slice(0, nBan)) place.put(V.banner, sp.x + sp.nx * (highT + 0.12), sp.y + (F.top >= 6 ? 5.2 : 2.9), sp.z + sp.nz * (highT + 0.12), sp.yawIn, ds(3), { inKeep: true });
   // a cauldron by the main fire's side and a fermenter in the halls without a kitchen yet
   if (k === 3) {
     const sp = edgeSpots[Math.floor(edgeSpots.length / 3)];
@@ -1364,6 +1516,8 @@ function furnish(b, K, C, T, o, F) {
     const sp2 = edgeSpots[Math.floor(edgeSpots.length / 2)];
     if (sp2) place.put('fermenter', sp2.x + sp2.nx * (lowT + 0.8), sp2.y, sp2.z + sp2.nz * (lowT + 0.8), sp2.yawIn, ds(3));
   }
+  // the shared interior library and the persona's wall dressing (lib/kitbash.js, lib/persona.js)
+  if (k >= 2) sharedDress(b, { P, decor: o.decor, biome: o.biome, cultureKey: o.cultureKey, place, R: o.R });
   // the wall sides: corpus halls and round buildings of 300 m2 or more (lab/hub_dress.py) have furniture or dressing
   // within 1.3 m of 47 % of the ground storey's wall bays in round and polygon buildings and 36 % in halls (medians),
   // mostly lights, chests, seats, stands and stations. Undressed bays get, in turn, a wall torch, a chest, a bench along
@@ -1555,6 +1709,9 @@ function generate(req, T) {
   const info = { type: 'hub', biome, cultureKey, stage, decor, seed, line, family: k === 1 ? 'camp' : line === 'cross' ? 'cross' : 'round', walls: k === 1 ? 'none' : wallStyle };
   // the village's draws (D-155: every major choice by the village's seed, weighted by the corpus and the culture data)
   const V = drawLayout(lineage, cultureKey, C, line, k);
+  // the village's persona (lib/persona.js): the same traits the village's other buildings read, from its lineage
+  const P = PSH().persona({ type: 'hub', biome, culture: cultureKey, seed: lineage, persona: req.persona });
+  info.persona = P.label;
   const ext = exteriorOf(has, stage, line, C, V.porch);
   let b, F = {};
   if (k === 1) {
@@ -1575,7 +1732,7 @@ function generate(req, T) {
     noticeBoard(b, K, d0.x + (k >= 4 && !F.porch ? 4.6 : 3.6), nbz, 0);
     if (k >= 4) noticeWall(b, { x: d0.x - 3, z: d0.z + 0.2, yaw: 0, nx: 0, nz: 1 }, 0.125);
     b.markers.push({ kind: 'path', x: d0.x, y: 0, z: d0.z - (F.porch ? 5 : 2), yaw: 180 });
-    furnish(b, Kw, C, T, { stage, line, place, R, has, skipDecor: req.skipDecor, cultureKey, biome, V, lineage }, F);
+    furnish(b, Kw, C, T, { stage, line, place, R, has, skipDecor: req.skipDecor, cultureKey, biome, V, lineage, persona: P, decor }, F);
     // the last pass: anything the walk leaves unreached, or standing in a doorway's entry zone, comes out (D-148, D-152)
     for (let t = 0; t < 4 && !req.skipDecor; t++) {
       const r = reachH({ pieces: b.pieces, rooms: b.rooms });
@@ -1583,7 +1740,9 @@ function generate(req, T) {
       if (!bad.size) break;
       const key = p => `${p.name} at ${p.x.toFixed(1)},${p.y.toFixed(1)},${p.z.toFixed(1)}`, key2 = p => `${p.name} ${p.x.toFixed(1)},${p.y.toFixed(1)},${p.z.toFixed(1)}`;
       const n0 = b.pieces.length;
-      b.pieces = b.pieces.filter(p => !(p.decor && !p.highSeat && !p.hearth && (bad.has(key(p)) || bad.has(key2(p)))));
+      // (with the rest of its set: a station's extension or what stood on it does not stay behind)
+      const goneKb = new Set(b.pieces.filter(p => p.kb && (bad.has(key(p)) || bad.has(key2(p)))).map(p => p.kb));
+      b.pieces = b.pieces.filter(p => !(p.decor && !p.highSeat && !p.hearth && (bad.has(key(p)) || bad.has(key2(p)) || (p.kb && goneKb.has(p.kb)))));
       if (b.pieces.length === n0) break;
       b.notes.push(`${n0 - b.pieces.length} pieces left out where they would block the way.`);
     }

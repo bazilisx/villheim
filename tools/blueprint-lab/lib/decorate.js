@@ -122,13 +122,27 @@ const F = {
   stone_pile: { s: [1.6, 0.81, 1.6], c: [0.08, 0.07], at: 'out', b: 'Meadows', cat: 'clutter' },
   coal_pile: { s: [1.6, 0.82, 1.6], c: [0.02, 0.1], at: 'out', b: 'Black Forest', cat: 'clutter' },
 };
+// More of each kind the game ships, sized from the game's models (modelSizes) like the rest: the decorator picked from
+// a short list per kind, so every house had the same few rugs, tables and benches (Tyler, 2026-11-10: "Same exact
+// lox rug"). Each takes the placing rules of the piece it is listed under.
+const CLONES_D = {
+  rug_deer: ['rug_bogwitch_deer', 'rug_moose', 'rug_seal', 'rug_Bjorn'],
+  piece_banner01: ['piece_banner06', 'piece_banner07', 'piece_banner08', 'piece_banner09', 'piece_banner10', 'piece_banner11'],
+  piece_groundtorch_mist: ['piece_groundtorch_blue'],
+  piece_table: ['dvergrprops_table'],
+  piece_table_oak: ['piece_blackmarble_table'],
+  piece_bench01: ['piece_blackwood_bench01', 'piece_blackmarble_bench'],
+  piece_chair: ['dvergrprops_stool'],
+};
+for (const [t, list] of Object.entries(CLONES_D)) for (const n of list) if (!F[n]) { const o = { ...F[t], clone: true }; delete o.c; F[n] = o; }
 // Older names kept for callers that read the table.
 const ITEM_BIOME = {};
 for (const [k, v] of Object.entries(F)) ITEM_BIOME[k] = v.b;
 
 const bi = b => { const i = ORDER.indexOf(b); return i < 0 ? 0 : i; };
-// furniture and decor reach one biome further than the village's own, stations and fires none (D-080, lib/pieces.js)
-const ok = (name, biome) => !!F[name] && bi(F[name].b) <= bi(biome) + (['craft', 'fire', 'storage'].includes(F[name].cat) ? 0 : 1);
+// any furniture or decor in any biome (D-065, Tyler 2026-11-10; lib/pieces.js decorOk); F[name].b stays as the biome a
+// piece belongs to, for flavor only
+const ok = (name, biome) => !!F[name];
 const ok0 = ok;
 const size = name => (F[name] ? F[name].fp || F[name].s : P.piece(name).size);
 // The sizes above were measured in the corpus; the game's models (lib/mesh.js, data/piece-models.json) win where they
@@ -155,7 +169,7 @@ function modelSizes() {
     const body = [0, 1, 2].map(i => (Math.abs(old[i] - m[i]) > 0.1 ? +m[i].toFixed(2) : old[i]));
     // a piece set against a wall keeps no pad behind it: its back goes to the wall (the forge's tool rack, 0.2 m deep,
     // stood 0.3 m off its wall when its 0.8 m corpus depth was taken for its body)
-    const pad = [Math.max(0, old[0] - body[0]), ['wall', 'mount'].includes(f.at) ? 0 : Math.max(0, old[2] - body[2])];
+    const pad = f.clone ? [0, 0] : [Math.max(0, old[0] - body[0]), ['wall', 'mount'].includes(f.at) ? 0 : Math.max(0, old[2] - body[2])];
     f.corpus = old;
     f.s = body;
     if (pad[0] > 0.1 || pad[1] > 0.1) { f.pad = pad.map(v => +v.toFixed(2)); f.fp = [body[0] + pad[0], body[1], body[2] + pad[1]]; }
@@ -167,13 +181,13 @@ function modelSizes() {
 const KIT = {
   bed: ['bed', 'piece_bed02', 'ashwood_bed'],
   chest: ['piece_chest_wood', 'piece_chest_barrel', 'piece_chest', 'piece_chest_blackmetal'],
-  table: ['piece_table', 'piece_table_round', 'piece_table_oak'],
-  chair: ['piece_chair', 'piece_chair02', 'piece_chair03'],
-  bench: ['piece_bench01', 'piece_logbench01'],
-  rug: ['rug_deer', 'rug_wolf', 'jute_carpet', 'rug_fur', 'rug_straw', 'rug_hare', 'jute_carpet_blue', 'rug_asksvin'],
-  floorLight: ['piece_groundtorch_wood', 'piece_groundtorch', 'piece_groundtorch_green', 'piece_groundtorch_mist'],
+  table: ['piece_table', 'piece_table_round', 'piece_table_oak', 'dvergrprops_table', 'piece_blackmarble_table'],
+  chair: ['piece_chair', 'piece_chair02', 'piece_chair03', 'dvergrprops_stool'],
+  bench: ['piece_bench01', 'piece_logbench01', 'piece_blackwood_bench01', 'piece_blackmarble_bench'],
+  rug: ['rug_deer', 'rug_wolf', 'jute_carpet', 'rug_fur', 'rug_straw', 'rug_hare', 'jute_carpet_blue', 'rug_asksvin', 'rug_bogwitch_deer', 'rug_moose', 'rug_seal', 'rug_Bjorn'],
+  floorLight: ['piece_groundtorch_wood', 'piece_groundtorch', 'piece_groundtorch_green', 'piece_groundtorch_mist', 'piece_groundtorch_blue'],
   wallLight: ['piece_walltorch', 'piece_dvergr_lantern'],
-  banner: ['piece_banner01', 'piece_banner02', 'piece_banner03', 'piece_banner04', 'piece_banner05'],
+  banner: ['piece_banner01', 'piece_banner02', 'piece_banner03', 'piece_banner04', 'piece_banner05', 'piece_banner06', 'piece_banner07', 'piece_banner08', 'piece_banner09', 'piece_banner10', 'piece_banner11'],
   carving: ['wood_dragon1', 'darkwood_raven', 'darkwood_wolf'],
   stack: ['wood_stack', 'wood_fine_stack', 'wood_core_stack'],
 };
@@ -1402,7 +1416,7 @@ function chooseKit(R, biome, culture, kind) {
   const pick = (list, floor = 0.15) => {
     const ok2 = list.filter(n => ok(n, biome));
     if (!ok2.length) return null;
-    return pickW(R, ok2.map(n => [n, (shares.get(n) || 0) + floor]));
+    return pickW(R, ok2.map(n => [n, ((shares.get(n) || 0) + floor) * flavorD(n, biome)]));
   };
   const taste = CULTURE_TASTE[culture] || {};
   const k = {
@@ -1424,6 +1438,26 @@ function chooseKit(R, biome, culture, kind) {
   return k;
 }
 
+// Each room draws its own rug, seats, table, lights, banner and carving (Tyler, 2026-11-10: "Always the same tables...
+// Same exact lox rug"): the building's choice stays the likeliest, the rest of the kind come in weighted by how often
+// builders use them in that kind of room (data/interior.json), and what the house already shows weighs less. Beds and
+// chests stay the building's. From a stream of its own, so the rest of the design keeps its own.
+// the village's own biome, earlier ones and the next weigh fully; one further on less (flavor only, D-065)
+const flavorD = (n, biome) => { const d = bi((F[n] || {}).b || 'Meadows') - bi(biome); return d <= 1 ? 1 : 1 / (1 + 0.8 * (d - 1)); };
+function varyKit(kit, R, kind, seen, biome) {
+  const L = learned().rooms || {};
+  const shares = new Map(((L[kind] || L.home || {}).items || []).map(([n, s2]) => [n, s2]));
+  const k = { ...kit };
+  for (const slot of ['rug', 'chair', 'table', 'bench', 'floorLight', 'banner', 'carving']) {
+    if (!kit[slot] || !KIT[slot] || R() < 0.35) continue;
+    const list = KIT[slot].filter(n => F[n]);
+    const got = pickW(R, list.map(n => [n, ((shares.get(n) || 0) + 0.25) * (n === kit[slot] ? 2 : 1) * flavorD(n, biome) / (1 + 1.5 * (seen[n] || 0))]));
+    if (got) { k[slot] = got; seen[got] = (seen[got] || 0) + 1; }
+  }
+  k.seat = kit.seat === kit.bench ? (k.bench || k.chair) : (k.chair || k.bench);
+  return k;
+}
+
 function decorate(b, ctx) {
   modelSizes();
   const R = ctx.R || Math.random;
@@ -1439,6 +1473,7 @@ function decorate(b, ctx) {
   const counts = { bed: 0, table: 0 };
   const kitKind = { home: 'home', hall: type === 'tavern' ? 'tavern' : 'hall', smithy: 'smithy', workshop: 'workshop', storage: 'storage', temple: 'hall', guard: 'sleeping', farm: 'storage', market: 'living' }[use] || 'home';
   const kit = chooseKit(R, biome, ctx.culture, kitKind);
+  const kitR = rngFrom((Math.floor(R() * 4294967296) ^ 0x6b17) >>> 0), kitSeen = {};
   const report = [], furnished = [];
   const usedTemplates = ctx.usedTemplates || new Set();
   // the layout plans' own stream, drawn once from the design's, so the plans can change without moving the rest
@@ -1478,7 +1513,7 @@ function decorate(b, ctx) {
       // over the fire on an upper floor: the generator clears what stands over a fire it moves under the smoke hole
       if (room.upper && ctx.fireAt) room.zones.push({ b: obox(ctx.fireAt.x, ctx.fireAt.z, 4.0, 2.8, 0), why: 'flue' });
       for (const r of rects) for (const kp of r.keep || []) room.zones.push({ b: obox((kp.x0 + kp.x1) / 2, (kp.z0 + kp.z1) / 2, kp.x1 - kp.x0, kp.z1 - kp.z0, 0), why: 'keep' });
-      furnish(room, role, { ...ctx, use, type, decor, biome, kit, counts, mainRect: main, levels: ys.length, usedTemplates, layoutR });
+      furnish(room, role, { ...ctx, use, type, decor, biome, kit: varyKit(kit, kitR, kitKind, kitSeen, biome), counts, mainRect: main, levels: ys.length, usedTemplates, layoutR });
       if (room.plan) (b.layoutPlans || (b.layoutPlans = [])).push({ plan: room.plan, stand: room.stand, inside: room.inside });
       report.push({ level: li, role, area: room.area, items: room.count, room, template: room.template || null, scheme: room.plan ? room.plan.scheme : null, story: room.plan ? room.plan.story : null });
       furnished.push({ room, role });
@@ -1706,7 +1741,6 @@ function fill(room, role, c) {
     barrels: () => {
       if (!barrel) return 0;
       if (!LIVING.has(role)) return placeStorageRow(room, k, d >= 3 ? 3 : 2, { chest: barrel, back: 1 }).length;
-      if ((used.barrels || 0) > 0 || (!room.fire && role !== 'kitchen')) return 0;
       const P = c.persona, n = d >= 3 && room.R() < (P ? 0.25 + 0.5 * Math.max(P.clutter || 0, (P.hobby || {}).food || 0) : 0.5) ? 3 : 2;
       return placeStorageRow(room, k, n, { chest: barrel, back: 0.3, near: room.fire ? { x: room.fire.x, z: room.fire.z } : null, corner: 2.5 }).length;
     },
@@ -1774,12 +1808,15 @@ function fill(room, role, c) {
     const key = pickW(room.R, live);
     const floor = !['trophies', 'shelf', 'banners', 'carving', 'tabletop', 'rug', 'groupRug'].includes(key);
     let got = 0;
-    const full = (used[key] || 0) >= (MAX[key] || 2) || (key === 'rug' && rugs() >= Math.max(1, Math.floor(room.area / 15)));
+    // no extra is held to a count (Tyler, 2026-11-10): each use halves its weight in this room, so a room is a mix; the
+    // corpus rate for the room kind and the household (target) and the free floor are the limits
+    const full = false;
     const pre = room.count, at = room.out ? room.out.length : 0;
     if (!full && !(floor && floorUsed() > room.area * 0.5)) got = run[key]();
     if (pre >= target2) late(at);
     used[key] = (used[key] || 0) + 1;
     if (!got || full) live.splice(live.findIndex(([kk]) => kk === key), 1);
+    else { const e = live.find(([kk]) => kk === key); if (e) e[1] *= 0.5 * (MAX[key] || 2) / ((MAX[key] || 2) + (used[key] || 0)); }
   }
 }
 

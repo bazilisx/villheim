@@ -14,7 +14,7 @@
 //
 // Everything stands on the ground (y = 0, the design's lowest pivot, so the game sets it on the terrain). Nothing goes
 // in a doorway or the 2 m in front of a door, at the foot of a stair, or in front of the woodshed. Pieces made by the
-// generator's kit follow the biome's materials; the props (bushes, crops, flowers) are free in the game (D-066), and
+// generator's kit follow the biome's materials; props (bushes, crops, flowers, decor) go in any biome (D-065), and
 // every piece passes the materials check for the biome.
 const NODE_Y = typeof module !== 'undefined';
 const PY = NODE_Y ? require('./pieces.js') : window.VHPieces;
@@ -60,7 +60,7 @@ const CROP = [['Ashlands', 'Pickable_Barley'], ['Plains', 'Pickable_Barley'], ['
 // bushes that stay within about 1.5 m across (shrub_2 spreads 3.6 m and swallows a fence)
 const BUSHES = { 'Meadows': ['Bush01', 'RaspberryBush'], 'Black Forest': ['BlueberryBush', 'Bush02_en'], 'Swamp': ['Bush02_en'],
   'Mountain': ['Bush01_heath'], 'Plains': ['CloudberryBush', 'Bush01_heath'], 'Mistlands': ['Bush02_en'], 'Ashlands': ['AshlandsBush1', 'AshlandsBush2'] };
-const FLOWERS = ['Pickable_Dandelion', 'Pickable_Dandelion', 'Pickable_Mushroom', 'Pickable_Thistle'];
+const FLOWERS = ['Pickable_Dandelion', 'Pickable_Dandelion', 'Pickable_Mushroom', 'Pickable_Thistle', 'Pickable_Mushroom_yellow', 'Pickable_Fiddlehead', 'Pickable_Mushroom_blue'];
 
 function pickW(R, w) {
   const e = Object.entries(w).filter(([, v]) => v > 0), t = e.reduce((s, [, v]) => s + v, 0);
@@ -521,7 +521,7 @@ function add(b, ctx) {
     // a bush spreads about 3 m: 1.4 m in from the fence and 3 m from the next one
     const apart = s => !placed.some(q => bushes.includes(q.name) && Math.hypot(q.x - s.x, q.z - s.z) < 3);
     got.push(['bush', tryAt(fenceSpots(1.4).filter(apart), s => (apart(s) ? [{ name: bushes[Math.floor(R() * bushes.length)], x: s.x, y: 0, z: s.z, yaw: Math.floor(R() * 16) * 22.5, pad: 0.05 }] : null), big ? 3 : 2)]);
-    got.push(['flowers', tryAt(wallSpots(0.45), s => [0, 0.45, -0.45].map(a => ({ name: 'Pickable_Dandelion', x: s.x + (s.n[1] ? a : 0), y: 0, z: s.z + (s.n[0] ? a : 0), yaw: Math.floor(R() * 4) * 90, soft: true, pad: 0 })), big ? 2 : 1)]);
+    got.push(['flowers', tryAt(wallSpots(0.45), s => [0, 0.45, -0.45].map(a => ({ name: FLOWERS[Math.abs(Math.round(s.x * 7 + s.z * 13 + a * 11)) % FLOWERS.length], x: s.x + (s.n[1] ? a : 0), y: 0, z: s.z + (s.n[0] ? a : 0), yaw: Math.floor(R() * 4) * 90, soft: true, pad: 0 })), big ? 2 : 1)]);
   }
   // what the culture keeps in its yard (docs/CULTURE_STYLES.md): stone builders a pile of field stone, log builders a
   // second stack of logs, kitchen-garden cultures a second bed, the steppe a cart
@@ -542,7 +542,7 @@ function add(b, ctx) {
   dsNow = 2;
   if (decorOn('yardProps', 'd2') && kind === 'work') {
     const F = (NODE_Y ? require('./decorate.js') : window.VHDecorate).FURNITURE;
-    const okW = n => canY(ctx.biome, n) && (!F[n] || BIOMES_Y.indexOf(F[n].b) <= BIOMES_Y.indexOf(ctx.biome));
+    const okW = n => PY.decorOk(n, ctx.biome); // decor in any biome, building pieces the village's and the next (D-065)
     const along = (spots, list) => tryAt(spots, s => list.filter(([n]) => okW(n)).map(([n, a, d, turn, y]) => ({ name: n, x: s.x + Math.cos(s.yaw * Math.PI / 180) * a + s.n[0] * d,
       y: y || 0, z: s.z - Math.sin(s.yaw * Math.PI / 180) * a + s.n[1] * d, yaw: normY(s.yaw + (turn || 0)), pad: 0.05 })));
     const W = fenceSpots(0.8);

@@ -565,23 +565,24 @@ function support(n) { return SUPPORT[supportClass(n)]; }
 const MINOR = /^(rug_|jute_carpet|piece_banner\d|piece_pot\d|ashland_pot|piece_gift\d|piece_mistletoe|piece_xmas|piece_jackoturnip|piece_(Celebration|Fairylight)Garland|Candle_resin|Skull\d|ancient_skull|cloth_hanging_long|fenrirhide_hanging|dvergrprops_(barrel|crate|crate_long|shelf|hooknchain|lantern|lantern_standing)$|treasure_stack$|sign$|sign_notext$|Feast[A-Z]|Mead[A-Z]|BarleyWine$|Bread$|CookedMeat$|Sausages$|Honey|MeatPlatter$|LoxPie$|PiquantPie$|RoastedCrustPie$|SerpentStew$|MashedMeat$|MarinatedGreens$|MisthareSupreme$|QueensJam$|Salad$|Eyescream$|ShocklateSmoothie$|SparklingShroomshake$|SizzlingBerryBroth$|ScorchingMedley$|SpicyMarmalade$|Blueberries$|Raspberry$|Cloudberry$|Carrot$|Onion$|Pukeberries$|Fish\d+$)/;
 function minor(name) { return MINOR.test(name); }
 
-// Decor reach (D-080, Tyler 2026-11-10): furniture and decor come from the village's biome and the next one (Meadows
-// draws on the Black Forest, the Black Forest on the Swamp, and so on), paid in local stand-ins from the chests (the
-// mod's DecorPaidWithAnalogs). Crafting stations, fires, chests and what is built (walls, floors, roofs) keep to the
-// village's own biome (D-066).
-function decorReach(biome) {
+// What a village may put up (D-065, D-126; Tyler, 2026-11-10: "there are no restrictions on any level of furniture,
+// decoration, or limits on whats shown for any decor... decor can be freely used across any biome, but build pieces
+// (walls, roofs, etc.) should (mostly) come from the relevant biome and surrounding biomes"). Furniture, decor, lights,
+// rugs, stations and what stands hold: any vanilla prefab in any biome, inside and out. Building pieces (walls, floors,
+// roofs, beams, posts, doors, windows, stairs): the village's biome and its neighbors (the earlier biomes and the next
+// one). D-080 is about payment only (the mod pays decor in local stand-ins, DecorPaidWithAnalogs), never placement.
+// D-012 (stone later in the Meadows and the Black Forest) is the styles' and the generator's.
+function buildReach(biome) {
   const i = Math.max(0, BIOME_ORDER.indexOf(biome));
   return BIOME_ORDER[Math.min(BIOME_ORDER.length - 1, i + 1)];
 }
+const decorReach = () => BIOME_ORDER[BIOME_ORDER.length - 1];
 function decorOk(name, biome) {
-  const info = piece(name), lim = BIOME_ORDER.indexOf(biome);
-  // storage keeps to the village's own biome too: the interior library's sets are laid out round the chest they were
-  // mined with, and a bigger iron chest from the next biome went into the workbench beside it
-  const station = info.structural || ['craft', 'fire', 'storage'].includes(info.role) || /^(piece_workbench|forge|piece_stonecutter|piece_artisanstation|blackforge|piece_magetable|piece_cauldron|piece_oven|smelter|charcoal_kiln|blastfurnace|eitrrefinery|windmill|piece_spinningwheel)/.test(name);
-  return BIOME_ORDER.indexOf(needs(name)) <= (station ? lim : BIOME_ORDER.indexOf(decorReach(biome)));
+  if (!piece(name).structural) return true;
+  return BIOME_ORDER.indexOf(needs(name)) <= BIOME_ORDER.indexOf(buildReach(biome));
 }
 
-const apiP = { piece, minor, decorReach, decorOk, support, supportClass, SUPPORT, needs, MAT, BIOME_ORDER, exportSize, NEEDS, DOORS, doorSpec, doorOpening, CLIMB, climbSpec };
+const apiP = { piece, minor, decorReach, buildReach, decorOk, support, supportClass, SUPPORT, needs, MAT, BIOME_ORDER, exportSize, NEEDS, DOORS, doorSpec, doorOpening, CLIMB, climbSpec };
 if (typeof module !== 'undefined') module.exports = apiP;
 else window.VHPieces = apiP;
 
@@ -1648,9 +1649,10 @@ const ITEMS = {
   valuable: [['Black Forest', 'Ruby', 1], ['Black Forest', 'Amber', 1], ['Swamp', 'AmberPearl', 1], ['Mistlands', 'DragonEgg', 0]],
 };
 function itemFrom(kind, biome, R, own = 2, seen) {
-  // what the village's biome and the next one give (D-080): a Meadows house may keep mead and jam from the Black Forest
+  // any biome's items (D-065; Tyler 2026-11-10: decor freely across any biome); the village's own biome weighs a little
+  // more for flavor
   const t = tierP(biome);
-  const list = (ITEMS[kind] || []).filter(([b]) => tierP(b) <= t + 1);
+  const list = ITEMS[kind] || [];
   if (!list.length) return null;
   // the village's own biome counts more; older ones still turn up
   // what the house already shows weighs less, so a wall of stands is not five of one thing
@@ -3182,11 +3184,10 @@ function check(design, biome, opts = {}) {
   results.push({ check: 'ladders', ok: problems.length === 0,
     detail: ls.length ? (problems.length ? `${problems.length} problems: ${[...new Set(problems)].slice(0, 3).join('; ')}` : `${ls.length} ladder and stair pieces, all climbable`) : 'no ladders or stairs' });
 
-  // beds: every house and longhouse sleeps someone, in a bed its biome can make (Tyler, T-102)
+  // beds: every house and longhouse sleeps someone (Tyler, T-102); any vanilla bed in any biome (D-065)
   const kind = design.request && design.request.type;
   if (['home', 'longhouse'].includes(kind)) {
-    const ord = PC.BIOME_ORDER, limit = biome ? ord.indexOf(biome) : 99;
-    const beds = pieces.filter(p => PC.piece(p.name).role === 'bed' && ord.indexOf(PC.needs(p.name)) <= limit).length;
+    const beds = pieces.filter(p => PC.piece(p.name).role === 'bed').length;
     results.push({ check: 'beds', ok: beds > 0, detail: beds ? `${beds} beds` : `no bed in this ${kind}` });
   }
 
@@ -3195,11 +3196,10 @@ function check(design, biome, opts = {}) {
     [...near(ptBox(p.x, p.y + 0.5, p.y + 30, p.z), 0)].some(j => j !== i && (undersideOf(pieces[j], p.x, p.z, boxes[j]) ?? -1) > p.y + 0.5));
   results.push({ check: 'woodpiles', ok: piles.length === 0, detail: piles.length ? `${piles.length} woodpiles indoors` : 'no woodpiles indoors' });
 
-  // materials for the biome, building pieces and furnishing alike
+  // materials for the biome: building pieces from the village's biome and its neighbors; furniture and decor from any
+  // biome (D-065, Tyler 2026-11-10; lib/pieces.js decorOk)
   if (biome) {
-    const ord = PC.BIOME_ORDER, limit = ord.indexOf(biome);
-    // minor decor goes in any biome (D-066); other decor reaches one biome further, paid in local stand-ins (D-080)
-    const over = [...new Set(pieces.filter(p => ord.indexOf(PC.needs(p.name)) > limit && !(p.decor && (PC.minor(p.name) || PC.decorOk(p.name, biome)))).map(p => p.name))];
+    const over = [...new Set(pieces.filter(p => !PC.decorOk(p.name, biome)).map(p => p.name))];
     results.push({ check: 'materials', ok: over.length === 0, detail: over.length ? `needs later biomes: ${over.slice(0, 5).join(', ')}` : `all pieces available in ${biome}` });
   }
 
@@ -3395,13 +3395,27 @@ const F = {
   stone_pile: { s: [1.6, 0.81, 1.6], c: [0.08, 0.07], at: 'out', b: 'Meadows', cat: 'clutter' },
   coal_pile: { s: [1.6, 0.82, 1.6], c: [0.02, 0.1], at: 'out', b: 'Black Forest', cat: 'clutter' },
 };
+// More of each kind the game ships, sized from the game's models (modelSizes) like the rest: the decorator picked from
+// a short list per kind, so every house had the same few rugs, tables and benches (Tyler, 2026-11-10: "Same exact
+// lox rug"). Each takes the placing rules of the piece it is listed under.
+const CLONES_D = {
+  rug_deer: ['rug_bogwitch_deer', 'rug_moose', 'rug_seal', 'rug_Bjorn'],
+  piece_banner01: ['piece_banner06', 'piece_banner07', 'piece_banner08', 'piece_banner09', 'piece_banner10', 'piece_banner11'],
+  piece_groundtorch_mist: ['piece_groundtorch_blue'],
+  piece_table: ['dvergrprops_table'],
+  piece_table_oak: ['piece_blackmarble_table'],
+  piece_bench01: ['piece_blackwood_bench01', 'piece_blackmarble_bench'],
+  piece_chair: ['dvergrprops_stool'],
+};
+for (const [t, list] of Object.entries(CLONES_D)) for (const n of list) if (!F[n]) { const o = { ...F[t], clone: true }; delete o.c; F[n] = o; }
 // Older names kept for callers that read the table.
 const ITEM_BIOME = {};
 for (const [k, v] of Object.entries(F)) ITEM_BIOME[k] = v.b;
 
 const bi = b => { const i = ORDER.indexOf(b); return i < 0 ? 0 : i; };
-// furniture and decor reach one biome further than the village's own, stations and fires none (D-080, lib/pieces.js)
-const ok = (name, biome) => !!F[name] && bi(F[name].b) <= bi(biome) + (['craft', 'fire', 'storage'].includes(F[name].cat) ? 0 : 1);
+// any furniture or decor in any biome (D-065, Tyler 2026-11-10; lib/pieces.js decorOk); F[name].b stays as the biome a
+// piece belongs to, for flavor only
+const ok = (name, biome) => !!F[name];
 const ok0 = ok;
 const size = name => (F[name] ? F[name].fp || F[name].s : P.piece(name).size);
 // The sizes above were measured in the corpus; the game's models (lib/mesh.js, data/piece-models.json) win where they
@@ -3428,7 +3442,7 @@ function modelSizes() {
     const body = [0, 1, 2].map(i => (Math.abs(old[i] - m[i]) > 0.1 ? +m[i].toFixed(2) : old[i]));
     // a piece set against a wall keeps no pad behind it: its back goes to the wall (the forge's tool rack, 0.2 m deep,
     // stood 0.3 m off its wall when its 0.8 m corpus depth was taken for its body)
-    const pad = [Math.max(0, old[0] - body[0]), ['wall', 'mount'].includes(f.at) ? 0 : Math.max(0, old[2] - body[2])];
+    const pad = f.clone ? [0, 0] : [Math.max(0, old[0] - body[0]), ['wall', 'mount'].includes(f.at) ? 0 : Math.max(0, old[2] - body[2])];
     f.corpus = old;
     f.s = body;
     if (pad[0] > 0.1 || pad[1] > 0.1) { f.pad = pad.map(v => +v.toFixed(2)); f.fp = [body[0] + pad[0], body[1], body[2] + pad[1]]; }
@@ -3440,13 +3454,13 @@ function modelSizes() {
 const KIT = {
   bed: ['bed', 'piece_bed02', 'ashwood_bed'],
   chest: ['piece_chest_wood', 'piece_chest_barrel', 'piece_chest', 'piece_chest_blackmetal'],
-  table: ['piece_table', 'piece_table_round', 'piece_table_oak'],
-  chair: ['piece_chair', 'piece_chair02', 'piece_chair03'],
-  bench: ['piece_bench01', 'piece_logbench01'],
-  rug: ['rug_deer', 'rug_wolf', 'jute_carpet', 'rug_fur', 'rug_straw', 'rug_hare', 'jute_carpet_blue', 'rug_asksvin'],
-  floorLight: ['piece_groundtorch_wood', 'piece_groundtorch', 'piece_groundtorch_green', 'piece_groundtorch_mist'],
+  table: ['piece_table', 'piece_table_round', 'piece_table_oak', 'dvergrprops_table', 'piece_blackmarble_table'],
+  chair: ['piece_chair', 'piece_chair02', 'piece_chair03', 'dvergrprops_stool'],
+  bench: ['piece_bench01', 'piece_logbench01', 'piece_blackwood_bench01', 'piece_blackmarble_bench'],
+  rug: ['rug_deer', 'rug_wolf', 'jute_carpet', 'rug_fur', 'rug_straw', 'rug_hare', 'jute_carpet_blue', 'rug_asksvin', 'rug_bogwitch_deer', 'rug_moose', 'rug_seal', 'rug_Bjorn'],
+  floorLight: ['piece_groundtorch_wood', 'piece_groundtorch', 'piece_groundtorch_green', 'piece_groundtorch_mist', 'piece_groundtorch_blue'],
   wallLight: ['piece_walltorch', 'piece_dvergr_lantern'],
-  banner: ['piece_banner01', 'piece_banner02', 'piece_banner03', 'piece_banner04', 'piece_banner05'],
+  banner: ['piece_banner01', 'piece_banner02', 'piece_banner03', 'piece_banner04', 'piece_banner05', 'piece_banner06', 'piece_banner07', 'piece_banner08', 'piece_banner09', 'piece_banner10', 'piece_banner11'],
   carving: ['wood_dragon1', 'darkwood_raven', 'darkwood_wolf'],
   stack: ['wood_stack', 'wood_fine_stack', 'wood_core_stack'],
 };
@@ -4675,7 +4689,7 @@ function chooseKit(R, biome, culture, kind) {
   const pick = (list, floor = 0.15) => {
     const ok2 = list.filter(n => ok(n, biome));
     if (!ok2.length) return null;
-    return pickW(R, ok2.map(n => [n, (shares.get(n) || 0) + floor]));
+    return pickW(R, ok2.map(n => [n, ((shares.get(n) || 0) + floor) * flavorD(n, biome)]));
   };
   const taste = CULTURE_TASTE[culture] || {};
   const k = {
@@ -4697,6 +4711,26 @@ function chooseKit(R, biome, culture, kind) {
   return k;
 }
 
+// Each room draws its own rug, seats, table, lights, banner and carving (Tyler, 2026-11-10: "Always the same tables...
+// Same exact lox rug"): the building's choice stays the likeliest, the rest of the kind come in weighted by how often
+// builders use them in that kind of room (data/interior.json), and what the house already shows weighs less. Beds and
+// chests stay the building's. From a stream of its own, so the rest of the design keeps its own.
+// the village's own biome, earlier ones and the next weigh fully; one further on less (flavor only, D-065)
+const flavorD = (n, biome) => { const d = bi((F[n] || {}).b || 'Meadows') - bi(biome); return d <= 1 ? 1 : 1 / (1 + 0.8 * (d - 1)); };
+function varyKit(kit, R, kind, seen, biome) {
+  const L = learned().rooms || {};
+  const shares = new Map(((L[kind] || L.home || {}).items || []).map(([n, s2]) => [n, s2]));
+  const k = { ...kit };
+  for (const slot of ['rug', 'chair', 'table', 'bench', 'floorLight', 'banner', 'carving']) {
+    if (!kit[slot] || !KIT[slot] || R() < 0.35) continue;
+    const list = KIT[slot].filter(n => F[n]);
+    const got = pickW(R, list.map(n => [n, ((shares.get(n) || 0) + 0.25) * (n === kit[slot] ? 2 : 1) * flavorD(n, biome) / (1 + 1.5 * (seen[n] || 0))]));
+    if (got) { k[slot] = got; seen[got] = (seen[got] || 0) + 1; }
+  }
+  k.seat = kit.seat === kit.bench ? (k.bench || k.chair) : (k.chair || k.bench);
+  return k;
+}
+
 function decorate(b, ctx) {
   modelSizes();
   const R = ctx.R || Math.random;
@@ -4712,6 +4746,7 @@ function decorate(b, ctx) {
   const counts = { bed: 0, table: 0 };
   const kitKind = { home: 'home', hall: type === 'tavern' ? 'tavern' : 'hall', smithy: 'smithy', workshop: 'workshop', storage: 'storage', temple: 'hall', guard: 'sleeping', farm: 'storage', market: 'living' }[use] || 'home';
   const kit = chooseKit(R, biome, ctx.culture, kitKind);
+  const kitR = rngFrom((Math.floor(R() * 4294967296) ^ 0x6b17) >>> 0), kitSeen = {};
   const report = [], furnished = [];
   const usedTemplates = ctx.usedTemplates || new Set();
   // the layout plans' own stream, drawn once from the design's, so the plans can change without moving the rest
@@ -4751,7 +4786,7 @@ function decorate(b, ctx) {
       // over the fire on an upper floor: the generator clears what stands over a fire it moves under the smoke hole
       if (room.upper && ctx.fireAt) room.zones.push({ b: obox(ctx.fireAt.x, ctx.fireAt.z, 4.0, 2.8, 0), why: 'flue' });
       for (const r of rects) for (const kp of r.keep || []) room.zones.push({ b: obox((kp.x0 + kp.x1) / 2, (kp.z0 + kp.z1) / 2, kp.x1 - kp.x0, kp.z1 - kp.z0, 0), why: 'keep' });
-      furnish(room, role, { ...ctx, use, type, decor, biome, kit, counts, mainRect: main, levels: ys.length, usedTemplates, layoutR });
+      furnish(room, role, { ...ctx, use, type, decor, biome, kit: varyKit(kit, kitR, kitKind, kitSeen, biome), counts, mainRect: main, levels: ys.length, usedTemplates, layoutR });
       if (room.plan) (b.layoutPlans || (b.layoutPlans = [])).push({ plan: room.plan, stand: room.stand, inside: room.inside });
       report.push({ level: li, role, area: room.area, items: room.count, room, template: room.template || null, scheme: room.plan ? room.plan.scheme : null, story: room.plan ? room.plan.story : null });
       furnished.push({ room, role });
@@ -4979,7 +5014,6 @@ function fill(room, role, c) {
     barrels: () => {
       if (!barrel) return 0;
       if (!LIVING.has(role)) return placeStorageRow(room, k, d >= 3 ? 3 : 2, { chest: barrel, back: 1 }).length;
-      if ((used.barrels || 0) > 0 || (!room.fire && role !== 'kitchen')) return 0;
       const P = c.persona, n = d >= 3 && room.R() < (P ? 0.25 + 0.5 * Math.max(P.clutter || 0, (P.hobby || {}).food || 0) : 0.5) ? 3 : 2;
       return placeStorageRow(room, k, n, { chest: barrel, back: 0.3, near: room.fire ? { x: room.fire.x, z: room.fire.z } : null, corner: 2.5 }).length;
     },
@@ -5047,12 +5081,15 @@ function fill(room, role, c) {
     const key = pickW(room.R, live);
     const floor = !['trophies', 'shelf', 'banners', 'carving', 'tabletop', 'rug', 'groupRug'].includes(key);
     let got = 0;
-    const full = (used[key] || 0) >= (MAX[key] || 2) || (key === 'rug' && rugs() >= Math.max(1, Math.floor(room.area / 15)));
+    // no extra is held to a count (Tyler, 2026-11-10): each use halves its weight in this room, so a room is a mix; the
+    // corpus rate for the room kind and the household (target) and the free floor are the limits
+    const full = false;
     const pre = room.count, at = room.out ? room.out.length : 0;
     if (!full && !(floor && floorUsed() > room.area * 0.5)) got = run[key]();
     if (pre >= target2) late(at);
     used[key] = (used[key] || 0) + 1;
     if (!got || full) live.splice(live.findIndex(([kk]) => kk === key), 1);
+    else { const e = live.find(([kk]) => kk === key); if (e) e[1] *= 0.5 * (MAX[key] || 2) / ((MAX[key] || 2) + (used[key] || 0)); }
   }
 }
 
@@ -6740,6 +6777,7 @@ function relief(name) {
 }
 
 const normD = a => ((a % 360) + 360) % 360;
+const SILL_PLANTS = ['Pickable_Dandelion', 'Pickable_Thistle', 'Pickable_Mushroom', 'Pickable_Mushroom_yellow', 'Pickable_Fiddlehead', 'Pickable_Carrot', 'Pickable_Onion', 'Pickable_Turnip', 'Pickable_Dandelion', 'Pickable_Mushroom_blue'];
 const quatD = yaw => { const a = yaw * Math.PI / 360; return [0, +Math.sin(a).toFixed(6), 0, +Math.cos(a).toFixed(6)]; };
 const BIOMES_D = ['Meadows', 'Black Forest', 'Swamp', 'Mountain', 'Plains', 'Mistlands', 'Ashlands'];
 const reachesD = (biome, b) => BIOMES_D.indexOf(biome) >= BIOMES_D.indexOf(b);
@@ -7034,7 +7072,9 @@ function exterior(b, ctx) {
     const sd = quarter ? ((quarter.x - e.x) * ux + (quarter.z - e.z) * uz > 0 ? 1 : -1) : 0;
     const as = quarter ? [-sd * 0.5] : [-0.5, 0.5], lip = K.beam1 || 'wood_beam_1';
     const kept = [];
-    for (const a of as) kept.push(['wood_floor_1x1', a, 0.6, -0.3, 0, 'floor1', 0], [lip, a, 1.05, -0.2, 0, 'beam1', 0], ['Pickable_Dandelion', a, 0.6, -0.25, 0, 'flower', 0]);
+    // what grows in each box: any flower, herb or vegetable (Tyler, 2026-11-10: no one plant per sill), by the box's
+    // place so it is the same at every decor stage
+    for (const a of as) kept.push(['wood_floor_1x1', a, 0.6, -0.3, 0, 'floor1', 0], [lip, a, 1.05, -0.2, 0, 'beam1', 0], [SILL_PLANTS[(Math.abs(Math.round((e.x + ux * a) * 7 + (e.z + uz * a) * 13 + y0 * 3)) + (makeHash({ ...ctx, decor: '' }) >>> 0)) % SILL_PLANTS.length], a, 0.6, -0.25, 0, 'flower', 0]);
     const c = { m: { id: 'window-box', kind: 'box', fit: {} }, kept };
     const placed = MotifsD.place(b, c, { x: e.x, y: y0 + 1, z: e.z, nx: ox, nz: oz }, null, { ground: 0, dry: true, minShare: 1 });
     if (placed.length) { hold(b, placed); added.boxes = (added.boxes || 0) + 1; }
@@ -7496,7 +7536,8 @@ function bargeboards(K, C, w, ctx, rows, ends, add, low, pivot, r) {
   // gable motif apex piece or carving is in the way and the gable is tall enough that it clears the wall under it
   // (on a low gable it hangs on down the wall under it, where that wall has no opening in its middle bays)
   if (X.gableBanner && w === ctx.wings[0] && !gw && !apex && !ctx.dragonsHere && capY - top >= 1.9) {
-    const B = reachesD(ctx.biome, 'Plains') ? ['piece_banner01', 'piece_banner02', 'piece_banner05', 'piece_banner07'] : ['piece_banner03', 'piece_banner04', 'piece_banner06', 'piece_banner07', 'piece_banner08', 'piece_banner09'];
+    // any banner in any biome (D-065); the gable's colors by the culture's lean are a style's, the list is whole
+    const B = ['piece_banner01', 'piece_banner02', 'piece_banner03', 'piece_banner04', 'piece_banner05', 'piece_banner06', 'piece_banner07', 'piece_banner08', 'piece_banner09'];
     // the cloth hangs 2.95 m under its rod: its foot no more than 0.6 m over the ground floor, so it reads as hung on
     // the house and not in the air (T-606: the purple banner, piece_banner09, hung with its foot 1.3 m up). The rod
     // touches the wall (that holds it up in the game), so the cloth hangs 0.25 m out: it may lie against bars up to 3 cm
@@ -7565,7 +7606,7 @@ function benchByDoor(b, ctx) {
   for (const o of b.openings || []) {
     if (o.kind !== 'door' || o.back || o.storey > 0 || o.gallery) continue;
     const { e } = o, { ux, uz, ox, oz } = axes(e);
-    const name = reachesD(ctx.biome, 'Black Forest') && ctx.R() < 0.4 ? 'piece_logbench01' : 'piece_bench01';
+    const name = ctx.R() < 0.4 ? 'piece_logbench01' : 'piece_bench01';
     const faceOut = name === 'piece_logbench01' ? outYaw(-ox, -oz) : outYaw(ox, oz); // the log bench faces its local -z
     for (const s of ctx.R() < 0.5 ? [1, -1] : [-1, 1]) {
       const cand = { name, x: +(e.x + ux * s * 3 + ox * 0.45).toFixed(3), y: F + 0.1, z: +(e.z + uz * s * 3 + oz * 0.45).toFixed(3), yaw: faceOut, q: quatD(faceOut) };
@@ -7684,16 +7725,11 @@ const checksB = () => (NODE_B ? require('./checks.js') : window.VHChecks);
 const personaB = () => (NODE_B ? require('./persona.js') : window.VHPersona);
 const quatB = yaw => { const a = yaw * Math.PI / 360; return [0, +Math.sin(a).toFixed(6), 0, +Math.cos(a).toFixed(6)]; };
 const BIOMES_B = ['Meadows', 'Black Forest', 'Swamp', 'Mountain', 'Plains', 'Mistlands', 'Ashlands'];
-// in reach of the village (D-080): its own biome for stations, one further for furniture and decor (lib/pieces.js)
+// what a village may put up (lib/pieces.js decorOk): any decor in any biome, building pieces its biome and the next (D-065)
 const can = (biome, name) => PB.decorOk(name, biome);
-// minor decor goes in any biome (D-066): it costs nothing or is paid in the village's own materials
-// what a village makes: by the piece's materials and, for furniture, by the decorator's table too (the stricter)
-const canMake = (biome, name) => {
-  if (!can(biome, name)) return false;
-  const F = NODE_B ? require('./decorate.js').FURNITURE : (window.VHDecorate && window.VHDecorate.FURNITURE) || {};
-  // furniture one biome further than the village's, stations and fires none (D-080, as decorate.js)
-  return !F[name] || BIOMES_B.indexOf(F[name].b) <= BIOMES_B.indexOf(biome) + (['craft', 'fire', 'storage'].includes(F[name].cat) ? 0 : 1);
-};
+// any decor in any biome; building pieces of a set (a half wall, a beam) the village's biome and the next (D-065,
+// lib/pieces.js decorOk)
+const canMake = (biome, name) => can(biome, name);
 const canDecor = (biome, name) => canMake(biome, name) || PB.minor(name);
 
 // ---------------------------------------------------------------- the interior library (data/kitbash-interior.json)
@@ -8045,6 +8081,7 @@ const ROOM_KINDS = {
 const SKIP_N = /^(piece_xmas|piece_gift|piece_mistletoe|piece_jackoturnip|piece_(Celebration|Fairylight)Garland|goblin|Morkhalla|piece_asksvinskeleton|lox_ribs|piece_barber|piece_icecube|Skull|ancient_skull|wood_(fine_|core_)?stack|treasure_pile|treasure_stack|Pickable|TreasureChest|loot_chest|piece_chest_private|piece_chest_treasure)/;
 // a 1 x 1 floor counts as a floor to stand on in the checks; shelves use beams
 const NO_BUILT = ['floor1'];
+const VARY_SLOTS = new Set(['rug', 'pot']);
 
 // Which prefab fills a slot in this village: the source's own when the biome makes it (minor decor goes anywhere),
 // else the first of its class that it does. Null leaves the slot out.
@@ -8061,6 +8098,12 @@ function fillSlot(m, biome, ctx) {
   }
   if (m.k === 'feast') return okN(FEAST[biome]) ? FEAST[biome] : null;
   if (m.any && CLASSES[m.k] && ctx._R2) { const l = CLASSES[m.k].filter(okN); if (l.length) return l[Math.floor(ctx._R2() * l.length)]; }
+  // a rug or a pot of a set is any of its kind, the source's own twice as likely (Tyler, 2026-11-10: "Same exact lox
+  // rug"); flat or round, it takes the same place
+  if (VARY_SLOTS.has(m.k) && CLASSES[m.k] && ctx._R2) {
+    const l = CLASSES[m.k].filter(okN);
+    if (l.length) { let r = ctx._R2() * (l.length + (l.includes(m.n) ? 1 : 0)); for (const n of l) { r -= n === m.n ? 2 : 1; if (r <= 0) return n; } return l[l.length - 1]; }
+  }
   if (okN(m.n)) return m.n;
   const list = CLASSES[m.k];
   return list ? list.find(okN) || null : null;
@@ -8275,7 +8318,7 @@ function fit(b, ctx, room, idx, zones, anc, a, mirror, fires) {
     let name = mm.any ? (picks[mm.k] || (picks[mm.k] = fillSlot(mm, ctx.biome, ctx))) : fillSlot(mm, ctx.biome, ctx);
     // a creative set's piece the village does not make itself is left out: the last pass (generate.js biomeSafe) would
     // swap it for a stand-in of another size (a barrel of a stack turned into a chest)
-    if (name && a.creative && !PB.minor(name) && PB.BIOME_ORDER.indexOf(PB.needs(name)) > PB.BIOME_ORDER.indexOf(ctx.biome)) name = null;
+    if (name && !can(ctx.biome, name)) name = null;
     if (!name || (mm.rest === 'on' && !made[mm.on])) { if (!name) WHY_B = 30; if (fail()) return null; continue; }
     let lx = mirror ? -mm.x : mm.x;
     if (a.byWidth && anc.w) lx = Math.sign(lx) * (anc.w / 2 + Math.abs(lx));
@@ -8578,6 +8621,20 @@ function placeable(p, bx, mm, i, b, ctx, room, idx, zones, made, clipOf, anc, fi
   return true;
 }
 
+// Flavor, never a limit (D-065; Tyler 2026-11-10: the village's own biome may weigh a little more): a set of the
+// village's biome, an earlier one or the next weighs fully, one from further on less the further it is (a Dvergr
+// dining set in a Meadows house is possible, not common).
+function flavorB(a, biome) {
+  if (a._fl === undefined) {
+    const core = a.pieces.filter(m => m.key);
+    let hi = 0;
+    for (const m of core.length ? core : a.pieces) if (m.n && !PB.piece(m.n).structural) hi = Math.max(hi, PB.BIOME_ORDER.indexOf(PB.needs(m.n)));
+    a._fl = hi;
+  }
+  const d = a._fl - PB.BIOME_ORDER.indexOf(biome);
+  return d <= 1 ? 1 : 1 / (1 + 0.8 * (d - 1));
+}
+
 // What a set mostly is, for the room's layout plan (lib/layout.js zones): storage, a bench, a work station, a table.
 function setKind(a) {
   if (a._kind !== undefined) return a._kind;
@@ -8597,8 +8654,9 @@ function setKind(a) {
 // 55 % of the room.
 function budget(decor, area) {
   if (decor === 'd1') return area >= 30 ? 1 : 0;
-  if (decor === 'd2') return Math.max(1, Math.min(3, Math.round(area / 22)));
-  return Math.max(2, Math.min(8, Math.round(area / 12)));
+  // by the room's size, with no ceiling: the floor kept free (half the room) and the room's spots are the limit
+  if (decor === 'd2') return Math.max(1, Math.round(area / 22));
+  return Math.max(2, Math.round(area / 12));
 }
 
 // What a household keeps under its stairs (lib/persona.js underStair): one choice per building, from the household's
@@ -8623,10 +8681,10 @@ function furnishRooms(b, ctx, zones, R2, extra, rooms) {
     const need = new Set(a.pieces.filter(m => m.rest === 'on').map(m => m.on));
     a.pieces.forEach((m, i) => { if (m.key) need.add(i); });
     // (a set with a random pick, a pair of banners, draws from the stream inside the fitter: left to it)
-    const v = !a.pieces.some(m => m.any) && a.pieces.some((m, i) => {
-      if (!need.has(i) || m.any) return false;
+    const v = !a.pieces.some(m => m.any || VARY_SLOTS.has(m.k)) && a.pieces.some((m, i) => {
+      if (!need.has(i) || m.any || VARY_SLOTS.has(m.k)) return false;
       const name = fillSlot(m, ctx.biome, ctx);
-      return !name || (a.creative && !PB.minor(name) && PB.BIOME_ORDER.indexOf(PB.needs(name)) > PB.BIOME_ORDER.indexOf(ctx.biome));
+      return !name || !can(ctx.biome, name);
     });
     hopeK.set(a, v);
     return v;
@@ -8640,10 +8698,7 @@ function furnishRooms(b, ctx, zones, R2, extra, rooms) {
     const fires = b.pieces.filter(p => p.decor && /^(hearth|fire_pit|fire_pit_iron)$/.test(p.name)).map(p => ({ p, b: Ck.aabb(p) }));
     // candidates: assemblies for this room's kind that some anchor here takes, weighted by score and how well the
     // room kind fits; a building's own anchor first (the forge corner, the bed corner, the serving corner)
-    // each built kit once in a building (shelves, cabinets and drapes twice), each mined assembly twice
-    // each built kit once in a building (shelves, cabinets, drapes, bedsides, alcoves twice), each mined assembly
-    // twice; dining sets one to a room, a grid of them in a tavern's or a hall's main room (one per 25 m2)
-    const many = ['BK-shelf', 'BK-cabinet', 'BK-drapes', 'BK-bedside', 'BK-bedside2', 'BK-alcove', 'BK-alcove2', 'BK-understair', 'BK-understair2'];
+    // dining sets one to a room, a grid of them in a tavern's or a hall's main room
     let sets = ['tavern', 'hall', 'temple'].includes(room.role) ? Math.max(1, Math.min(6, Math.floor(room.m.area / 16)))
       : ['smithy', 'workshop'].includes(room.role) ? Math.max(1, Math.min(3, Math.floor(room.m.area / 24))) : 1;
     // the room's layout plan (lib/layout.js): how many sets its scheme takes, and where the floor spots rank
@@ -8651,18 +8706,17 @@ function furnishRooms(b, ctx, zones, R2, extra, rooms) {
     const plan = Lay ? Lay.planFor(b, room.m) : null;
     if (plan && plan.sets != null) sets = Math.max(1, Math.min(sets, plan.sets));
     let setsHere = 0;
-    const cap = a => (a.dining ? (setsHere < sets ? 9 : 0) : a.built ? (many.includes(a.id) ? 2 : 1) : 2);
+    // no set is held to a count in a building (Tyler, 2026-11-10: no limits on any decor): repeats weigh less (below);
+    // dining sets follow the room's plan of how many tables it holds
+    const cap = a => (a.dining ? (setsHere < sets ? 9 : 0) : Infinity);
     const cands = lib.filter(a => (used[a.id] || 0) < cap(a) && (a.rooms || []).some(k => kinds.includes(k) || k === 'any') && anchors.some(an => takes(an, a)) &&
-      (!a.types || a.types.includes(ctx.type)) && (!a.roles || a.roles.includes(room.role)) && (!a.decor || a.decor.includes(ctx.decor)) &&
-      // a creative set only where the village makes its core pieces itself (the rest are left out where it does not,
-      // in fit: the last pass, generate.js biomeSafe, would swap them for stand-ins of another size)
-      (!a.creative || PB.BIOME_ORDER.indexOf(a.from) <= PB.BIOME_ORDER.indexOf(ctx.biome)))
+      (!a.types || a.types.includes(ctx.type)) && (!a.roles || a.roles.includes(room.role)) && (!a.decor || a.decor.includes(ctx.decor)))
       .map(a => {
         // more kinds of piece weigh more; a pair of chests is common in the corpus and dull in every room
         const ks = new Set(a.pieces.map(p => p.k).filter(k => !BUILT_SLOTS.includes(k)));
         const store = [...ks].every(k => ['chest', 'barrel', 'crate', 'sign'].includes(k));
         const w = Math.log(1 + a.score) * (kinds.includes((a.rooms || [])[0]) ? 1.5 : 1) * (a.built ? 2.5 : 1) * (1 + 0.35 * (ks.size - 1)) * (store && room.role !== 'storage' ? 0.3 : 1)
-          * Math.pow(PS.kitWeight(P, a), 2); // the household's taste, squared so it shows (six households in one house
+          * flavorB(a, ctx.biome) * Math.pow(PS.kitWeight(P, a), 2); // the household's taste, squared so it shows (six households in one house
           // came out with the same rooms, lab/test_variance.js)
         return { a, w, sig: [...ks].sort().join(',') };
       });
@@ -9925,7 +9979,7 @@ if (NODE_L) module.exports = apiL; else window.VHLayout = apiL;
 //
 // Everything stands on the ground (y = 0, the design's lowest pivot, so the game sets it on the terrain). Nothing goes
 // in a doorway or the 2 m in front of a door, at the foot of a stair, or in front of the woodshed. Pieces made by the
-// generator's kit follow the biome's materials; the props (bushes, crops, flowers) are free in the game (D-066), and
+// generator's kit follow the biome's materials; props (bushes, crops, flowers, decor) go in any biome (D-065), and
 // every piece passes the materials check for the biome.
 const NODE_Y = typeof module !== 'undefined';
 const PY = NODE_Y ? require('./pieces.js') : window.VHPieces;
@@ -9971,7 +10025,7 @@ const CROP = [['Ashlands', 'Pickable_Barley'], ['Plains', 'Pickable_Barley'], ['
 // bushes that stay within about 1.5 m across (shrub_2 spreads 3.6 m and swallows a fence)
 const BUSHES = { 'Meadows': ['Bush01', 'RaspberryBush'], 'Black Forest': ['BlueberryBush', 'Bush02_en'], 'Swamp': ['Bush02_en'],
   'Mountain': ['Bush01_heath'], 'Plains': ['CloudberryBush', 'Bush01_heath'], 'Mistlands': ['Bush02_en'], 'Ashlands': ['AshlandsBush1', 'AshlandsBush2'] };
-const FLOWERS = ['Pickable_Dandelion', 'Pickable_Dandelion', 'Pickable_Mushroom', 'Pickable_Thistle'];
+const FLOWERS = ['Pickable_Dandelion', 'Pickable_Dandelion', 'Pickable_Mushroom', 'Pickable_Thistle', 'Pickable_Mushroom_yellow', 'Pickable_Fiddlehead', 'Pickable_Mushroom_blue'];
 
 function pickW(R, w) {
   const e = Object.entries(w).filter(([, v]) => v > 0), t = e.reduce((s, [, v]) => s + v, 0);
@@ -10432,7 +10486,7 @@ function add(b, ctx) {
     // a bush spreads about 3 m: 1.4 m in from the fence and 3 m from the next one
     const apart = s => !placed.some(q => bushes.includes(q.name) && Math.hypot(q.x - s.x, q.z - s.z) < 3);
     got.push(['bush', tryAt(fenceSpots(1.4).filter(apart), s => (apart(s) ? [{ name: bushes[Math.floor(R() * bushes.length)], x: s.x, y: 0, z: s.z, yaw: Math.floor(R() * 16) * 22.5, pad: 0.05 }] : null), big ? 3 : 2)]);
-    got.push(['flowers', tryAt(wallSpots(0.45), s => [0, 0.45, -0.45].map(a => ({ name: 'Pickable_Dandelion', x: s.x + (s.n[1] ? a : 0), y: 0, z: s.z + (s.n[0] ? a : 0), yaw: Math.floor(R() * 4) * 90, soft: true, pad: 0 })), big ? 2 : 1)]);
+    got.push(['flowers', tryAt(wallSpots(0.45), s => [0, 0.45, -0.45].map(a => ({ name: FLOWERS[Math.abs(Math.round(s.x * 7 + s.z * 13 + a * 11)) % FLOWERS.length], x: s.x + (s.n[1] ? a : 0), y: 0, z: s.z + (s.n[0] ? a : 0), yaw: Math.floor(R() * 4) * 90, soft: true, pad: 0 })), big ? 2 : 1)]);
   }
   // what the culture keeps in its yard (docs/CULTURE_STYLES.md): stone builders a pile of field stone, log builders a
   // second stack of logs, kitchen-garden cultures a second bed, the steppe a cart
@@ -10453,7 +10507,7 @@ function add(b, ctx) {
   dsNow = 2;
   if (decorOn('yardProps', 'd2') && kind === 'work') {
     const F = (NODE_Y ? require('./decorate.js') : window.VHDecorate).FURNITURE;
-    const okW = n => canY(ctx.biome, n) && (!F[n] || BIOMES_Y.indexOf(F[n].b) <= BIOMES_Y.indexOf(ctx.biome));
+    const okW = n => PY.decorOk(n, ctx.biome); // decor in any biome, building pieces the village's and the next (D-065)
     const along = (spots, list) => tryAt(spots, s => list.filter(([n]) => okW(n)).map(([n, a, d, turn, y]) => ({ name: n, x: s.x + Math.cos(s.yaw * Math.PI / 180) * a + s.n[0] * d,
       y: y || 0, z: s.z - Math.sin(s.yaw * Math.PI / 180) * a + s.n[1] * d, yaw: normY(s.yaw + (turn || 0)), pad: 0.05 })));
     const W = fenceSpots(0.8);
@@ -12190,13 +12244,12 @@ function dropOrphans(b) {
 const STAND_IN = { piece_chest_barrel: 'piece_chest_wood', piece_logbench01: 'piece_bench01', piece_groundtorch: 'piece_groundtorch_wood',
   piece_chest: 'piece_chest_wood', piece_cookingstation_iron: 'piece_cookingstation', hearth: 'fire_pit' };
 function biomeSafe(b, biome) {
-  const ord = P.BIOME_ORDER, limit = ord.indexOf(biome), fits = n => ord.indexOf(P.needs(n)) <= limit;
+  const ord = P.BIOME_ORDER, limit = ord.indexOf(biome) + 1, fits = n => ord.indexOf(P.needs(n)) <= limit;
   const Ck = checksLib(), gone = [];
   b.pieces = b.pieces.filter(p => {
-    // minor decor goes anywhere (D-066); other decor one biome further, as the furnishing chose it (D-080,
-    // lib/pieces.js decorOk: a log bench of a Meadows couch was swapped here for a plank bench that went into the
-    // couch's half wall)
-    if (fits(p.name) || P.piece(p.name).structural || (p.decor && (P.minor(p.name) || P.decorOk(p.name, biome)))) return true;
+    // decor goes in any biome (D-065, Tyler 2026-11-10), as the furnishing chose it (a log bench of a couch swapped
+    // here for a plank bench went into the couch's half wall); building pieces the village's biome and the next
+    if (fits(p.name) || P.piece(p.name).structural || (p.decor && P.decorOk(p.name, biome))) return true;
     const alt = STAND_IN[p.name];
     if (alt && fits(alt)) { p.name = alt; return true; }
     if (p.decor) gone.push(Ck.aabb(p));

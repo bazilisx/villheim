@@ -8,16 +8,11 @@ const checksB = () => (NODE_B ? require('./checks.js') : window.VHChecks);
 const personaB = () => (NODE_B ? require('./persona.js') : window.VHPersona);
 const quatB = yaw => { const a = yaw * Math.PI / 360; return [0, +Math.sin(a).toFixed(6), 0, +Math.cos(a).toFixed(6)]; };
 const BIOMES_B = ['Meadows', 'Black Forest', 'Swamp', 'Mountain', 'Plains', 'Mistlands', 'Ashlands'];
-// in reach of the village (D-080): its own biome for stations, one further for furniture and decor (lib/pieces.js)
+// what a village may put up (lib/pieces.js decorOk): any decor in any biome, building pieces its biome and the next (D-065)
 const can = (biome, name) => PB.decorOk(name, biome);
-// minor decor goes in any biome (D-066): it costs nothing or is paid in the village's own materials
-// what a village makes: by the piece's materials and, for furniture, by the decorator's table too (the stricter)
-const canMake = (biome, name) => {
-  if (!can(biome, name)) return false;
-  const F = NODE_B ? require('./decorate.js').FURNITURE : (window.VHDecorate && window.VHDecorate.FURNITURE) || {};
-  // furniture one biome further than the village's, stations and fires none (D-080, as decorate.js)
-  return !F[name] || BIOMES_B.indexOf(F[name].b) <= BIOMES_B.indexOf(biome) + (['craft', 'fire', 'storage'].includes(F[name].cat) ? 0 : 1);
-};
+// any decor in any biome; building pieces of a set (a half wall, a beam) the village's biome and the next (D-065,
+// lib/pieces.js decorOk)
+const canMake = (biome, name) => can(biome, name);
 const canDecor = (biome, name) => canMake(biome, name) || PB.minor(name);
 
 // ---------------------------------------------------------------- the interior library (data/kitbash-interior.json)
@@ -369,6 +364,7 @@ const ROOM_KINDS = {
 const SKIP_N = /^(piece_xmas|piece_gift|piece_mistletoe|piece_jackoturnip|piece_(Celebration|Fairylight)Garland|goblin|Morkhalla|piece_asksvinskeleton|lox_ribs|piece_barber|piece_icecube|Skull|ancient_skull|wood_(fine_|core_)?stack|treasure_pile|treasure_stack|Pickable|TreasureChest|loot_chest|piece_chest_private|piece_chest_treasure)/;
 // a 1 x 1 floor counts as a floor to stand on in the checks; shelves use beams
 const NO_BUILT = ['floor1'];
+const VARY_SLOTS = new Set(['rug', 'pot']);
 
 // Which prefab fills a slot in this village: the source's own when the biome makes it (minor decor goes anywhere),
 // else the first of its class that it does. Null leaves the slot out.
@@ -385,6 +381,12 @@ function fillSlot(m, biome, ctx) {
   }
   if (m.k === 'feast') return okN(FEAST[biome]) ? FEAST[biome] : null;
   if (m.any && CLASSES[m.k] && ctx._R2) { const l = CLASSES[m.k].filter(okN); if (l.length) return l[Math.floor(ctx._R2() * l.length)]; }
+  // a rug or a pot of a set is any of its kind, the source's own twice as likely (Tyler, 2026-11-10: "Same exact lox
+  // rug"); flat or round, it takes the same place
+  if (VARY_SLOTS.has(m.k) && CLASSES[m.k] && ctx._R2) {
+    const l = CLASSES[m.k].filter(okN);
+    if (l.length) { let r = ctx._R2() * (l.length + (l.includes(m.n) ? 1 : 0)); for (const n of l) { r -= n === m.n ? 2 : 1; if (r <= 0) return n; } return l[l.length - 1]; }
+  }
   if (okN(m.n)) return m.n;
   const list = CLASSES[m.k];
   return list ? list.find(okN) || null : null;
@@ -599,7 +601,7 @@ function fit(b, ctx, room, idx, zones, anc, a, mirror, fires) {
     let name = mm.any ? (picks[mm.k] || (picks[mm.k] = fillSlot(mm, ctx.biome, ctx))) : fillSlot(mm, ctx.biome, ctx);
     // a creative set's piece the village does not make itself is left out: the last pass (generate.js biomeSafe) would
     // swap it for a stand-in of another size (a barrel of a stack turned into a chest)
-    if (name && a.creative && !PB.minor(name) && PB.BIOME_ORDER.indexOf(PB.needs(name)) > PB.BIOME_ORDER.indexOf(ctx.biome)) name = null;
+    if (name && !can(ctx.biome, name)) name = null;
     if (!name || (mm.rest === 'on' && !made[mm.on])) { if (!name) WHY_B = 30; if (fail()) return null; continue; }
     let lx = mirror ? -mm.x : mm.x;
     if (a.byWidth && anc.w) lx = Math.sign(lx) * (anc.w / 2 + Math.abs(lx));
@@ -902,6 +904,20 @@ function placeable(p, bx, mm, i, b, ctx, room, idx, zones, made, clipOf, anc, fi
   return true;
 }
 
+// Flavor, never a limit (D-065; Tyler 2026-11-10: the village's own biome may weigh a little more): a set of the
+// village's biome, an earlier one or the next weighs fully, one from further on less the further it is (a Dvergr
+// dining set in a Meadows house is possible, not common).
+function flavorB(a, biome) {
+  if (a._fl === undefined) {
+    const core = a.pieces.filter(m => m.key);
+    let hi = 0;
+    for (const m of core.length ? core : a.pieces) if (m.n && !PB.piece(m.n).structural) hi = Math.max(hi, PB.BIOME_ORDER.indexOf(PB.needs(m.n)));
+    a._fl = hi;
+  }
+  const d = a._fl - PB.BIOME_ORDER.indexOf(biome);
+  return d <= 1 ? 1 : 1 / (1 + 0.8 * (d - 1));
+}
+
 // What a set mostly is, for the room's layout plan (lib/layout.js zones): storage, a bench, a work station, a table.
 function setKind(a) {
   if (a._kind !== undefined) return a._kind;
@@ -921,8 +937,9 @@ function setKind(a) {
 // 55 % of the room.
 function budget(decor, area) {
   if (decor === 'd1') return area >= 30 ? 1 : 0;
-  if (decor === 'd2') return Math.max(1, Math.min(3, Math.round(area / 22)));
-  return Math.max(2, Math.min(8, Math.round(area / 12)));
+  // by the room's size, with no ceiling: the floor kept free (half the room) and the room's spots are the limit
+  if (decor === 'd2') return Math.max(1, Math.round(area / 22));
+  return Math.max(2, Math.round(area / 12));
 }
 
 // What a household keeps under its stairs (lib/persona.js underStair): one choice per building, from the household's
@@ -947,10 +964,10 @@ function furnishRooms(b, ctx, zones, R2, extra, rooms) {
     const need = new Set(a.pieces.filter(m => m.rest === 'on').map(m => m.on));
     a.pieces.forEach((m, i) => { if (m.key) need.add(i); });
     // (a set with a random pick, a pair of banners, draws from the stream inside the fitter: left to it)
-    const v = !a.pieces.some(m => m.any) && a.pieces.some((m, i) => {
-      if (!need.has(i) || m.any) return false;
+    const v = !a.pieces.some(m => m.any || VARY_SLOTS.has(m.k)) && a.pieces.some((m, i) => {
+      if (!need.has(i) || m.any || VARY_SLOTS.has(m.k)) return false;
       const name = fillSlot(m, ctx.biome, ctx);
-      return !name || (a.creative && !PB.minor(name) && PB.BIOME_ORDER.indexOf(PB.needs(name)) > PB.BIOME_ORDER.indexOf(ctx.biome));
+      return !name || !can(ctx.biome, name);
     });
     hopeK.set(a, v);
     return v;
@@ -964,10 +981,7 @@ function furnishRooms(b, ctx, zones, R2, extra, rooms) {
     const fires = b.pieces.filter(p => p.decor && /^(hearth|fire_pit|fire_pit_iron)$/.test(p.name)).map(p => ({ p, b: Ck.aabb(p) }));
     // candidates: assemblies for this room's kind that some anchor here takes, weighted by score and how well the
     // room kind fits; a building's own anchor first (the forge corner, the bed corner, the serving corner)
-    // each built kit once in a building (shelves, cabinets and drapes twice), each mined assembly twice
-    // each built kit once in a building (shelves, cabinets, drapes, bedsides, alcoves twice), each mined assembly
-    // twice; dining sets one to a room, a grid of them in a tavern's or a hall's main room (one per 25 m2)
-    const many = ['BK-shelf', 'BK-cabinet', 'BK-drapes', 'BK-bedside', 'BK-bedside2', 'BK-alcove', 'BK-alcove2', 'BK-understair', 'BK-understair2'];
+    // dining sets one to a room, a grid of them in a tavern's or a hall's main room
     let sets = ['tavern', 'hall', 'temple'].includes(room.role) ? Math.max(1, Math.min(6, Math.floor(room.m.area / 16)))
       : ['smithy', 'workshop'].includes(room.role) ? Math.max(1, Math.min(3, Math.floor(room.m.area / 24))) : 1;
     // the room's layout plan (lib/layout.js): how many sets its scheme takes, and where the floor spots rank
@@ -975,18 +989,17 @@ function furnishRooms(b, ctx, zones, R2, extra, rooms) {
     const plan = Lay ? Lay.planFor(b, room.m) : null;
     if (plan && plan.sets != null) sets = Math.max(1, Math.min(sets, plan.sets));
     let setsHere = 0;
-    const cap = a => (a.dining ? (setsHere < sets ? 9 : 0) : a.built ? (many.includes(a.id) ? 2 : 1) : 2);
+    // no set is held to a count in a building (Tyler, 2026-11-10: no limits on any decor): repeats weigh less (below);
+    // dining sets follow the room's plan of how many tables it holds
+    const cap = a => (a.dining ? (setsHere < sets ? 9 : 0) : Infinity);
     const cands = lib.filter(a => (used[a.id] || 0) < cap(a) && (a.rooms || []).some(k => kinds.includes(k) || k === 'any') && anchors.some(an => takes(an, a)) &&
-      (!a.types || a.types.includes(ctx.type)) && (!a.roles || a.roles.includes(room.role)) && (!a.decor || a.decor.includes(ctx.decor)) &&
-      // a creative set only where the village makes its core pieces itself (the rest are left out where it does not,
-      // in fit: the last pass, generate.js biomeSafe, would swap them for stand-ins of another size)
-      (!a.creative || PB.BIOME_ORDER.indexOf(a.from) <= PB.BIOME_ORDER.indexOf(ctx.biome)))
+      (!a.types || a.types.includes(ctx.type)) && (!a.roles || a.roles.includes(room.role)) && (!a.decor || a.decor.includes(ctx.decor)))
       .map(a => {
         // more kinds of piece weigh more; a pair of chests is common in the corpus and dull in every room
         const ks = new Set(a.pieces.map(p => p.k).filter(k => !BUILT_SLOTS.includes(k)));
         const store = [...ks].every(k => ['chest', 'barrel', 'crate', 'sign'].includes(k));
         const w = Math.log(1 + a.score) * (kinds.includes((a.rooms || [])[0]) ? 1.5 : 1) * (a.built ? 2.5 : 1) * (1 + 0.35 * (ks.size - 1)) * (store && room.role !== 'storage' ? 0.3 : 1)
-          * Math.pow(PS.kitWeight(P, a), 2); // the household's taste, squared so it shows (six households in one house
+          * flavorB(a, ctx.biome) * Math.pow(PS.kitWeight(P, a), 2); // the household's taste, squared so it shows (six households in one house
           // came out with the same rooms, lab/test_variance.js)
         return { a, w, sig: [...ks].sort().join(',') };
       });

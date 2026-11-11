@@ -90,6 +90,11 @@ fieldset.rules { border: 1px solid var(--line); border-radius: 8px; padding: 8px
 fieldset.rules label { flex-direction: row; align-items: center; gap: 8px; color: var(--ink); font-size: 13px; }
 legend { font-size: 13px; color: var(--muted); padding: 0 4px; }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+  .plans { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; margin-top: 12px; }
+  .plans figure { margin: 0; background: var(--board, #e9e4d8); border-radius: 8px; padding: 6px; cursor: pointer; }
+  .plans figure.on { outline: 2px solid currentColor; }
+  .plans canvas { width: 100%; height: auto; display: block; }
+  .plans figcaption { font-size: 13px; padding: 4px 2px 0; line-height: 1.35; }
 </style>
 </head>
 <body>
@@ -101,6 +106,7 @@ legend { font-size: 13px; color: var(--muted); padding: 0 4px; }
   <button class="tab" id="tab-gen" role="tab" aria-selected="true">New building</button>
   <button class="tab" id="tab-dec" role="tab" aria-selected="false">Decorate a blueprint</button>
   <button class="tab" id="tab-rep" role="tab" aria-selected="false">Repair a blueprint</button>
+  <button class="tab" id="tab-int" role="tab" aria-selected="false">Interiors</button>
 </div>
 <main>
   <section class="panel" id="panel-gen" aria-label="Request">
@@ -157,6 +163,23 @@ legend { font-size: 13px; color: var(--muted); padding: 0 4px; }
     </fieldset>
     <div class="row"><button class="primary" id="rpgo" disabled>Repair</button></div>
     <p class="hint">Added pieces show in teal. Each is a guess from the rest of the build; look them over before you take the file into the game. Tested on damaged builds: on symmetric builds it put back about a third of a missing side, and most of what it adds is right.</p>
+  </section>
+
+  <section class="panel hidden" id="panel-int" aria-label="Interiors">
+    <p class="hint">One house furnished for several households, or one household laid out several ways. Each plan is the ground floor from above with the roof and the upper walls cut away. Click a plan to open it in the viewer.</p>
+    <div class="grid2">
+      <label for="itype">Building<select id="itype"><option value="home">Home</option><option value="longhouse">Longhouse (hall)</option><option value="tavern">Tavern</option><option value="smithy">Smithy</option><option value="workshop">Workshop</option><option value="sawmill">Woodworker</option><option value="storage">Storehouse</option><option value="barn">Barn</option><option value="temple">Temple</option></select></label>
+      <label for="ibiome">Biome<select id="ibiome"></select></label>
+      <label for="iculture">Style<select id="iculture"></select></label>
+      <label for="istage">Size stage<select id="istage"><option value="s1">s1 small</option><option value="s2" selected>s2 middle</option><option value="s3">s3 large</option></select></label>
+      <label for="idecor">Decor stage<select id="idecor"><option value="d1">d1 bare needs</option><option value="d2">d2 lived in</option><option value="d3" selected>d3 rich</option></select></label>
+      <label for="imode">Compare<select id="imode"><option value="households" selected>Same house, other households</option><option value="layouts">Same household, other layouts</option><option value="houses">Other houses of this kind</option></select></label>
+      <label for="ihouse">Household<select id="ihouse"><option value="">Drawn by the house</option><option value="neat">Neat</option><option value="messy">Messy, half-done projects</option><option value="cosy">Cosy (rugs, pelts)</option><option value="austere">Austere</option><option value="plants">Plants and garden</option><option value="crafts">Crafts</option><option value="collector">Collector (trophies)</option><option value="wealthy">Well off</option><option value="poor">Poor</option><option value="food">Food and drink</option><option value="family">Family</option><option value="alone">Lives alone</option></select></label>
+      <label for="iseed">House seed<input id="iseed" type="number" min="1" value="7"></label>
+      <label for="icount">Examples<select id="icount"><option value="4">4</option><option value="6" selected>6</option><option value="9">9</option></select></label>
+    </div>
+    <div class="row"><button class="primary" id="igo">Show interiors</button><span class="hint" id="ihint"></span></div>
+    <div class="plans" id="iplans"></div>
   </section>
 
   <section class="stage" aria-label="Result">
@@ -353,13 +376,75 @@ $('copy').onclick = async () => {
   if (!dl) $('save').title = 'Downloads are not available in this view; Copy works everywhere.';
 })();
 
+
+// ---------- interiors: one house for several households, or one household laid out several ways
+fill('ibiome', S.BIOMES.map(b => [b, b]));
+fill('iculture', [['', "Biome's cultures (by weight)"], ...Object.entries(S.CULTURES).filter(([, c]) => c.village).map(([k, c]) => [k, `${c.label}: ${c.biomes.join(', ')}`])]);
+const HOUSEHOLDS = ['neat', 'messy', 'cosy', 'plants', 'crafts', 'collector', 'wealthy', 'austere', 'food'];
+function interiorRequests() {
+  const n = +$('icount').value, seed = +$('iseed').value || 1, m = $('imode').value, hh = $('ihouse').value;
+  const base = { type: $('itype').value, biome: $('ibiome').value, culture: $('iculture').value || undefined, stage: $('istage').value, decor: $('idecor').value, yard: false };
+  const out = [];
+  for (let i = 0; i < n; i++) {
+    if (m === 'households') out.push({ ...base, seed, persona: HOUSEHOLDS[i % HOUSEHOLDS.length], label: HOUSEHOLDS[i % HOUSEHOLDS.length] });
+    else if (m === 'layouts') out.push({ ...base, seed, persona: hh || undefined, layout: { seed: i + 1 }, label: `layout ${i + 1}` });
+    else out.push({ ...base, seed: seed + i * 13, persona: hh || undefined, label: `house ${seed + i * 13}` });
+  }
+  return out;
+}
+function floorOf(pieces) {
+  const fl = pieces.filter(p => VHPieces.piece(p.name).role === 'floor').map(p => p.y).sort((a, b) => a - b);
+  return fl.length ? fl[0] : ground(pieces);
+}
+function showInteriors() {
+  const reqs = interiorRequests(), box = $('iplans');
+  box.innerHTML = '';
+  $('ihint').textContent = 'Building...';
+  const bg = getComputedStyle(document.body).getPropertyValue('--board').trim() || '#e9e4d8';
+  let i = 0;
+  const next = () => {
+    if (i >= reqs.length) { $('ihint').textContent = `${reqs.length} interiors.`; return; }
+    const q = reqs[i++];
+    let d;
+    try { d = VHGenerate.generate(q); } catch (e) { d = null; }
+    const fig = document.createElement('figure');
+    if (d) {
+      const pieces = d.pieces, f0 = floorOf(pieces), cut = f0 + 1.9;
+      const shell = pieces.filter(p => VHPieces.piece(p.name).structural);
+      const sz = VHRender.planSize(shell, { ppm: 30 });
+      const ppm = Math.max(12, Math.min(40, 30 * 520 / Math.max(sz.width, sz.height)));
+      const sz2 = VHRender.planSize(shell, { ppm });
+      const cv = document.createElement('canvas'); cv.width = sz2.width; cv.height = sz2.height;
+      VHRender.plan(cv.getContext('2d'), pieces, { cut, ppm, crop: sz2.crop, background: bg, ss: 1 });
+      const furn = pieces.filter(p => p.decor && Math.abs(p.y - f0) < 2.5).length;
+      const h = (d.meta && d.meta.household) || (d.info && d.info.household) || null;
+      const cap = document.createElement('figcaption');
+      cap.textContent = `${q.label}: ${furn} pieces of furniture and decor on this floor${h && h.label ? ', ' + h.label : ''}`;
+      fig.append(cv, cap);
+      fig.onclick = () => {
+        for (const o of box.children) o.classList.remove('on');
+        fig.classList.add('on');
+        current = { d, ev: evaluate(d, q.biome) }; mode = 'int'; $('roofoff').checked = true; view = { az: 35, el: 60 }; show();
+      };
+      if (i === 1) { current = { d, ev: evaluate(d, q.biome) }; mode = 'int'; $('roofoff').checked = true; view = { az: 35, el: 60 }; show(); fig.classList.add('on'); }
+    } else {
+      fig.append(Object.assign(document.createElement('figcaption'), { textContent: `${q.label}: no design for this request` }));
+    }
+    box.append(fig);
+    setTimeout(next, 0);
+  };
+  setTimeout(next, 0);
+}
+$('igo').onclick = showInteriors;
+
 // ---------- tabs
 function tab(which) {
-  for (const t of ['gen', 'dec', 'rep']) { $('tab-' + t).setAttribute('aria-selected', which === t); $('panel-' + t).classList.toggle('hidden', which !== t); }
+  for (const t of ['gen', 'dec', 'rep', 'int']) { $('tab-' + t).setAttribute('aria-selected', which === t); $('panel-' + t).classList.toggle('hidden', which !== t); }
 }
 $('tab-gen').onclick = () => { tab('gen'); build(); };
 $('tab-dec').onclick = () => tab('dec');
 $('tab-rep').onclick = () => tab('rep');
+$('tab-int').onclick = () => { tab('int'); if (!$('iplans').children.length) showInteriors(); };
 
 apply(readLocal($('prompt').value));
 build();

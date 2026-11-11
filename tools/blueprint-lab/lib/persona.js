@@ -408,6 +408,21 @@ function growth(b, decor, hall) {
   return k;
 }
 
-const apiPer = { growth, stageOf, persona, PRESETS, CULTURE_P, HOBBIES, ITEMS, extraWeights, fillShare, wallWeights, wallGap, wallSkip, torchGap, underStair, kitWeight, kitBudget,
+// The household's own corner for the story spot (lib/kitbash.js): its two strongest leanings, each with the sets that
+// show it. A theme, never a trade (D-072): the crafter may be the village's cook.
+function storyKits(P) {
+  if (!P) return [];
+  const H = P.hobby || {};
+  const themes = [
+    ['crafts', H.crafts, ['BK-project', 'BK-tanning']], ['collect', H.collect, ['BK-trophies']],
+    ['plants', H.plants, ['BK-pots', 'BK-sill']], ['food', H.food, ['BK-kitchen', 'BK-island', 'BK-tablemess']],
+    ['games', Math.max(H.games || 0, H.maps || 0), ['BK-living', 'BK-couch']],
+    ['messy', (P.clutter || 0) * 0.9, ['BK-clutter', 'BK-tablemess']], ['neat', (P.tidy || 0) * 0.8, ['BK-drawers', 'BK-tableneat']],
+    ['cosy', (P.comfort || 0) * 0.85, ['BK-couch', 'BK-bedpelt']],
+  ].sort((a, b) => b[1] - a[1]);
+  return themes.slice(0, 2).flatMap(t => t[2]);
+}
+
+const apiPer = { growth, storyKits, stageOf, persona, PRESETS, CULTURE_P, HOBBIES, ITEMS, extraWeights, fillShare, wallWeights, wallGap, wallSkip, torchGap, underStair, kitWeight, kitBudget,
   standItem, itemFrom, dressStands, roleAt, rng: rngP, hash: hashP, pickW: pickWP };
 if (NODE_P) module.exports = apiPer; else window.VHPersona = apiPer;

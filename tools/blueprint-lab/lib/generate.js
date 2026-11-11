@@ -440,7 +440,9 @@ function generate(req) {
   const layoutCtx = req.layout === false ? false : {
     traits: { tidiness: household.tidy, comfort: household.comfort, display: household.wealth, size: household.size,
       hobbies: Object.entries(household.hobby || {}).filter(([, v]) => v >= 0.4).map(([k]) => k) },
-    seed: household.salt % 997,
+    // the household's own draw: other people arrange the same house their own way (Interiors tab, 2026-11-10: six
+    // households in one house came out with the same rooms but for a rug's angle); one household keeps it every stage
+    seed: (household.salt ^ Persona.hash(household.label || '')) % 997,
     ...(req.layout || {}),
   };
   // asked-for storeys, porch and pitch go into the name, so different requests never share a file name
@@ -1604,7 +1606,9 @@ function finish(b, info) {
   // taken out by a later pass (a lane cleared, a set undone), checked the way the interior library checks its pieces
   for (let pass = 0; pass < 3; pass++) {
     const ctx = Decor.auditContext(b.pieces);
-    const loose = b.pieces.filter(p => p.decor && p.rest === 'on' && !Decor.auditOne(p, ctx, []));
+    // a chest stays up only on another chest (a set's chest left on the decorator's table, 2026-11-10)
+    const onChest = p => b.pieces.some(q => q !== p && /chest|barrel|crate/.test(q.name) && Math.abs(q.x - p.x) < 0.6 && Math.abs(q.z - p.z) < 0.6 && q.y < p.y - 0.3 && q.y > p.y - 1.3);
+    const loose = b.pieces.filter(p => p.decor && p.rest === 'on' && (!Decor.auditOne(p, ctx, []) || (/chest/.test(p.name) && !onChest(p))));
     if (!loose.length) break;
     const out = new Set(loose);
     b.pieces = b.pieces.filter(p => !out.has(p));

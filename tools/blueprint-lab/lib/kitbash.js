@@ -879,7 +879,8 @@ function furnishRooms(b, ctx, zones, R2, extra, rooms) {
         const ks = new Set(a.pieces.map(p => p.k).filter(k => !BUILT_SLOTS.includes(k)));
         const store = [...ks].every(k => ['chest', 'barrel', 'crate', 'sign'].includes(k));
         const w = Math.log(1 + a.score) * (kinds.includes((a.rooms || [])[0]) ? 1.5 : 1) * (a.built ? 2.5 : 1) * (1 + 0.35 * (ks.size - 1)) * (store && room.role !== 'storage' ? 0.3 : 1)
-          * PS.kitWeight(P, a); // the household's taste
+          * Math.pow(PS.kitWeight(P, a), 2); // the household's taste, squared so it shows (six households in one house
+          // came out with the same rooms, lab/test_variance.js)
         return { a, w, sig: [...ks].sort().join(',') };
       });
     if (!cands.length) continue;
@@ -892,16 +893,22 @@ function furnishRooms(b, ctx, zones, R2, extra, rooms) {
     for (const r of idx.all) if (r.p.decor && room.m.inside(r.p.x, r.p.z) && !r.b.pass && r.b.y0 < room.m.stand + 0.3 && r.b.y1 > room.m.stand + 0.2 && room.m.inside((r.b.x0 + r.b.x1) / 2, (r.b.z0 + r.b.z1) / 2)) footprint += (r.b.x1 - r.b.x0) * (r.b.z1 - r.b.z0);
     // a building's own kits first, and what the household keeps under the stairs where a room has a stair
     const firsts = cands.filter(x => (x.a.first && x.a.first.includes(ctx.type)) || (x.a.id === UNDER[under] && anchors.some(an => an.anchor === 'stair')));
+    // the story spot (lib/layout.js): the wall in view from the door goes to what the household cares about most, from
+    // d2 on, in the rooms people live in (a crafter's half-done project, a collector's trophies, pots and herbs, a
+    // kitchen, a couch by the fire)
+    const storyIds = ctx.decor !== 'd1' && ['home', 'sleeping', 'kitchen'].includes(room.role) && ctx.type === 'home' && PS.storyKits ? PS.storyKits(P) : [];
+    const story = storyIds.map(id => cands.find(x => x.a.id === id)).filter(Boolean).map(x => ({ ...x, story: true })).slice(0, 2);
     // a dining set first in every room that takes one (from d2), drawn by weight
     const dining = cands.filter(x => x.a.dining);
     let diningTries = ctx.decor === 'd1' ? 0 : sets * 2 + 1;
     let tries = 0;
     const takenAnchors = [];
     let misses = 0;
-    while (want > 0 && tries < 30 && misses < 10) {
+    while ((want > 0 || story.length) && tries < 30 && misses < 10) {
       tries++;
       let pick;
       if (firsts.length) pick = firsts.shift();
+      else if (story.length) pick = story.shift();
       else if (diningTries > 0 && setsHere < sets && dining.length) {
         diningTries--;
         let tot = 0;
@@ -925,6 +932,7 @@ function furnishRooms(b, ctx, zones, R2, extra, rooms) {
       const ancs = anchors.filter(an => takes(an, a) && !takenAnchors.some(t => Math.hypot(t.x - an.x, t.z - an.z) < 1.2 && t.anchor === an.anchor) && (an.anchor !== 'floor' || !fixed(an)));
       // shuffled from the room's own stream; free-floor spots ranked by the layout plan, with the stream's noise
       for (let k = ancs.length - 1; k > 0; k--) { const j = Math.floor(R2() * (k + 1)); const t = ancs[k]; ancs[k] = ancs[j]; ancs[j] = t; }
+      if (pick.story && plan && plan.story) { const st = plan.story; ancs.sort((p, q) => Math.hypot(p.x - st.x, p.z - st.z) - Math.hypot(q.x - st.x, q.z - st.z)); }
       if (plan && a.anchor === 'floor') {
         const sc = new Map(ancs.map(an => [an, Lay.floorScore(plan, an, a, b) + R2() * 1.2]));
         ancs.sort((p, q) => sc.get(q) - sc.get(p));
@@ -1484,6 +1492,10 @@ const BUILT_KITS = [
     kp('piece_pot2', 0, 0, 0.8, 15, 'floor', null, { key: true }), kp('piece_pot1', along1(1.55, 0.48)[0], 0, along1(1.55, 0.48)[1], 80, 'floor'), kp('piece_pot3', along2(1.5, 0.45)[0], 0, along2(1.5, 0.45)[1], 200, 'floor')],
   { angle: 90, score: 4, min: 2 }),
   // a half-done project: the chopping block with timber lying by it, a crate of offcuts, a tool on the wall over it
+  // a collector's wall: trophies on stands at eye height, between the 2x2 wood wall's bars, a bench under them
+  kit('BK-trophies', 'wall', ['home', 'hall', 'sleeping', 'tavern'], [
+    stand(-0.85, 1.15, 'trophy'), stand(0, 1.3, 'trophy'), stand(0.85, 1.15, 'trophy'),
+    kp('piece_bench01', 0, 0, 0.45, 0, 'floor')], { score: 5, min: 2 }),
   kit('BK-project', 'wall', ['home', 'workshop', 'storage', 'sleeping'], [
     kp('piece_workbench_ext1', -0.5, 0, 0.45, 0, 'floor', null, { key: true }), kp('dvergrprops_crate', 0.75, 0, 0.55, 8, 'floor'),
     kp('wood_beam_1', 0.1, 0.1, 1.25, 63, 'floor'), stand(-0.45, 1.65, 'tool')], { score: 5, min: 2 }),

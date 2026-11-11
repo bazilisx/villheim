@@ -29,7 +29,8 @@
 //             shows of both; 5 to 15 cm is counted as intoWallSoft and watched, not gated yet
 //   storage   storehouse lines: chests, chests along a wall (within 1.2 m of a wall piece), chests stacked, signs
 //   beds      beds at d1 (beds come first)
-//   same      how alike the furniture of the three home lines is at s2d2 (Jaccard on piece counts; no cookie cutter)
+//   same      how alike the home lines are (likeness: furniture list and arrangement); homeAlike counts pairs above 0.7
+//             at d2 and d3 (no cookie cutter; d1 is beds and a chest everywhere)
 const NODE_A = typeof module !== 'undefined';
 const PC = NODE_A ? require('./pieces.js') : window.VHPieces;
 const C = NODE_A ? require('./checks.js') : window.VHChecks;
@@ -37,7 +38,7 @@ const D = NODE_A ? require('./decorate.js') : window.VHDecorate;
 const M = NODE_A ? require('./mesh.js') : window.VHMesh;
 const SH = NODE_A ? require('./shapes.js') : window.VHShapes;
 // The gated measures: a pool fails when any of them is above zero.
-const GATE = ['nestBroken', 'furnClip', 'stacked', 'overWin', 'stairFoot', 'stations', 'mountClip', 'hang', 'loose', 'doorway', 'onStation', 'intoWall'];
+const GATE = ['homeAlike', 'nestBroken', 'furnClip', 'stacked', 'overWin', 'stairFoot', 'stations', 'mountClip', 'hang', 'loose', 'doorway', 'onStation', 'intoWall'];
 // Watched only: printed with the totals; to be gated once the generator clears them.
 const WATCH = ['outside', 'intoWallSoft'];
 const MOUNT = /^(piece_banner\d+|sign|sign_notext|itemstand|piece_shieldgeneric|cloth_hanging_|fenrirhide_hanging|Trophy|wood_dragon)/;
@@ -284,23 +285,52 @@ function pool(input, name) {
     if (/store|storage/.test(line)) L.storage = Object.fromEntries(Object.entries(d).map(([s, v]) => [s, `${v.a.chests} chests, ${v.a.chestsByWall} by a wall, ${v.a.chestsStacked} stacked, ${v.a.signs} signs`]));
   }
   report.totals = tot;
-  // likeness of the home lines
+  // likeness of the home lines (furniture and arrangement); at d2 and d3 no two above 0.7 (d1 is beds and a chest in
+  // every home by design)
   const homes = Object.keys(designs).filter(l => /home/.test(l));
   report.same = {};
+  tot.homeAlike = 0;
   for (let i = 0; i < homes.length; i++) for (let j = i + 1; j < homes.length; j++) for (const st of ['s1d1', 's2d2', 's3d3']) {
     const A = designs[homes[i]][st], Bd = designs[homes[j]][st];
     if (!A || !Bd) continue;
-    const names = new Set([...Object.keys(A.a.furn), ...Object.keys(Bd.a.furn)]);
-    let inter = 0, union = 0;
-    for (const n of names) { const x = A.a.furn[n] || 0, y = Bd.a.furn[n] || 0; inter += Math.min(x, y); union += Math.max(x, y); }
-    report.same[`${homes[i]} and ${homes[j]} ${st}`] = union ? +(inter / union).toFixed(2) : 0;
+    const v = likeness(A.pieces, Bd.pieces);
+    report.same[`${homes[i]} and ${homes[j]} ${st}`] = v;
+    if (st !== 's1d1' && v > 0.7) tot.homeAlike++;
   }
-
 
   report.failed = GATE.filter(k => tot[k] > 0);
   report.gate = report.failed.length ? 'fail' : 'pass';
   report.watch = Object.fromEntries(WATCH.map(k => [k, tot[k]]));
   return report;
+}
+
+// How alike two furnished designs are (1 = the same): the mean of their furniture lists (shared share of the piece
+// counts) and their arrangement (each piece's kind, its place in thirds of the building's footprint and its facing in
+// quarters). Two homes with the same kinds of furniture laid out differently score about half.
+const ARR = ['bed', 'table', 'seat', 'storage', 'craft', 'fire', 'rug', 'light', 'deco', 'clutter'];
+function signature(pieces) {
+  const furn = {}, arr = {};
+  const shell = pieces.filter(p => PC.piece(p.name).structural);
+  const xs = shell.map(p => p.x), zs = shell.map(p => p.z);
+  const x0 = Math.min(...xs), x1 = Math.max(...xs), z0 = Math.min(...zs), z1 = Math.max(...zs);
+  for (const p of pieces) {
+    const r = role(p);
+    if (!ARR.includes(r) || PC.piece(p.name).structural) continue;
+    furn[p.name] = (furn[p.name] || 0) + 1;
+    const q = p.q || [0, 0, 0, 1], yaw = Math.atan2(2 * (q[3] * q[1] + q[0] * q[2]), 1 - 2 * (q[1] * q[1] + q[0] * q[0])) * 180 / Math.PI;
+    const k = `${r}|${Math.min(2, Math.floor(3 * (p.x - x0) / Math.max(0.1, x1 - x0)))}|${Math.min(2, Math.floor(3 * (p.z - z0) / Math.max(0.1, z1 - z0)))}|${Math.floor(p.y / 2.5)}|${((Math.round(yaw / 90) % 4) + 4) % 4}`;
+    arr[k] = (arr[k] || 0) + 1;
+  }
+  return { furn, arr };
+}
+function jac(A, B) {
+  let i = 0, u = 0;
+  for (const k of new Set([...Object.keys(A), ...Object.keys(B)])) { const a = A[k] || 0, b = B[k] || 0; i += Math.min(a, b); u += Math.max(a, b); }
+  return u ? i / u : 1;
+}
+function likeness(a, b) {
+  const A = a.furn ? a : signature(a), B = b.furn ? b : signature(b);
+  return +((jac(A.furn, B.furn) + jac(A.arr, B.arr)) / 2).toFixed(2);
 }
 
 /** A short text of a report for the game's console: the gate, the totals and the first few issues of each failing measure. */
@@ -328,5 +358,5 @@ function group(files, parse) {
   return out;
 }
 
-const apiA = { audit, pool, summary, group, GATE, WATCH };
+const apiA = { audit, pool, summary, group, likeness, signature, GATE, WATCH };
 if (NODE_A) module.exports = apiA; else window.VHAudit = apiA;

@@ -2736,7 +2736,8 @@ function hungInto(p, others) {
   for (const q of others) {
     if (!q || q === p || (q.decor && !q.trim) || Math.abs(q.x - p.x) > 2.5 || Math.abs(q.z - p.z) > 2.5) continue;
     const role = P.piece(q.name).role;
-    if (!SHOWS_THIN.has(role) && !(SHOWS_FLAT.has(role) && Me.proud(q.name))) continue;
+    // a roof over it counts whatever its relief (a banner 40 cm into a sloped roof, 2026-11-10)
+    if (!SHOWS_THIN.has(role) && !['roof', 'roofCorner', 'roofTop'].includes(role) && !(SHOWS_FLAT.has(role) && Me.proud(q.name))) continue;
     const d = Me.deepest(A, Me.world(q));
     if (d > m) m = d;
   }

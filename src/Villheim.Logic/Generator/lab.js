@@ -1522,7 +1522,22 @@ function growth(b, decor, hall) {
   return k;
 }
 
-const apiPer = { growth, stageOf, persona, PRESETS, CULTURE_P, HOBBIES, ITEMS, extraWeights, fillShare, wallWeights, wallGap, wallSkip, torchGap, underStair, kitWeight, kitBudget,
+// The household's own corner for the story spot (lib/kitbash.js): its two strongest leanings, each with the sets that
+// show it. A theme, never a trade (D-072): the crafter may be the village's cook.
+function storyKits(P) {
+  if (!P) return [];
+  const H = P.hobby || {};
+  const themes = [
+    ['crafts', H.crafts, ['BK-project', 'BK-tanning']], ['collect', H.collect, ['BK-trophies']],
+    ['plants', H.plants, ['BK-pots', 'BK-sill']], ['food', H.food, ['BK-kitchen', 'BK-island', 'BK-tablemess']],
+    ['games', Math.max(H.games || 0, H.maps || 0), ['BK-living', 'BK-couch']],
+    ['messy', (P.clutter || 0) * 0.9, ['BK-clutter', 'BK-tablemess']], ['neat', (P.tidy || 0) * 0.8, ['BK-drawers', 'BK-tableneat']],
+    ['cosy', (P.comfort || 0) * 0.85, ['BK-couch', 'BK-bedpelt']],
+  ].sort((a, b) => b[1] - a[1]);
+  return themes.slice(0, 2).flatMap(t => t[2]);
+}
+
+const apiPer = { growth, storyKits, stageOf, persona, PRESETS, CULTURE_P, HOBBIES, ITEMS, extraWeights, fillShare, wallWeights, wallGap, wallSkip, torchGap, underStair, kitWeight, kitBudget,
   standItem, itemFrom, dressStands, roleAt, rng: rngP, hash: hashP, pickW: pickWP };
 if (NODE_P) module.exports = apiPer; else window.VHPersona = apiPer;
 
@@ -4927,7 +4942,8 @@ function hungInto(p, others) {
   for (const q of others) {
     if (!q || q === p || (q.decor && !q.trim) || Math.abs(q.x - p.x) > 2.5 || Math.abs(q.z - p.z) > 2.5) continue;
     const role = P.piece(q.name).role;
-    if (!SHOWS_THIN.has(role) && !(SHOWS_FLAT.has(role) && Me.proud(q.name))) continue;
+    // a roof over it counts whatever its relief (a banner 40 cm into a sloped roof, 2026-11-10)
+    if (!SHOWS_THIN.has(role) && !['roof', 'roofCorner', 'roofTop'].includes(role) && !(SHOWS_FLAT.has(role) && Me.proud(q.name))) continue;
     const d = Me.deepest(A, Me.world(q));
     if (d > m) m = d;
   }
@@ -7336,7 +7352,8 @@ function furnishRooms(b, ctx, zones, R2, extra, rooms) {
         const ks = new Set(a.pieces.map(p => p.k).filter(k => !BUILT_SLOTS.includes(k)));
         const store = [...ks].every(k => ['chest', 'barrel', 'crate', 'sign'].includes(k));
         const w = Math.log(1 + a.score) * (kinds.includes((a.rooms || [])[0]) ? 1.5 : 1) * (a.built ? 2.5 : 1) * (1 + 0.35 * (ks.size - 1)) * (store && room.role !== 'storage' ? 0.3 : 1)
-          * PS.kitWeight(P, a); // the household's taste
+          * Math.pow(PS.kitWeight(P, a), 2); // the household's taste, squared so it shows (six households in one house
+          // came out with the same rooms, lab/test_variance.js)
         return { a, w, sig: [...ks].sort().join(',') };
       });
     if (!cands.length) continue;
@@ -7349,16 +7366,22 @@ function furnishRooms(b, ctx, zones, R2, extra, rooms) {
     for (const r of idx.all) if (r.p.decor && room.m.inside(r.p.x, r.p.z) && !r.b.pass && r.b.y0 < room.m.stand + 0.3 && r.b.y1 > room.m.stand + 0.2 && room.m.inside((r.b.x0 + r.b.x1) / 2, (r.b.z0 + r.b.z1) / 2)) footprint += (r.b.x1 - r.b.x0) * (r.b.z1 - r.b.z0);
     // a building's own kits first, and what the household keeps under the stairs where a room has a stair
     const firsts = cands.filter(x => (x.a.first && x.a.first.includes(ctx.type)) || (x.a.id === UNDER[under] && anchors.some(an => an.anchor === 'stair')));
+    // the story spot (lib/layout.js): the wall in view from the door goes to what the household cares about most, from
+    // d2 on, in the rooms people live in (a crafter's half-done project, a collector's trophies, pots and herbs, a
+    // kitchen, a couch by the fire)
+    const storyIds = ctx.decor !== 'd1' && ['home', 'sleeping', 'kitchen'].includes(room.role) && ctx.type === 'home' && PS.storyKits ? PS.storyKits(P) : [];
+    const story = storyIds.map(id => cands.find(x => x.a.id === id)).filter(Boolean).map(x => ({ ...x, story: true })).slice(0, 2);
     // a dining set first in every room that takes one (from d2), drawn by weight
     const dining = cands.filter(x => x.a.dining);
     let diningTries = ctx.decor === 'd1' ? 0 : sets * 2 + 1;
     let tries = 0;
     const takenAnchors = [];
     let misses = 0;
-    while (want > 0 && tries < 30 && misses < 10) {
+    while ((want > 0 || story.length) && tries < 30 && misses < 10) {
       tries++;
       let pick;
       if (firsts.length) pick = firsts.shift();
+      else if (story.length) pick = story.shift();
       else if (diningTries > 0 && setsHere < sets && dining.length) {
         diningTries--;
         let tot = 0;
@@ -7382,6 +7405,7 @@ function furnishRooms(b, ctx, zones, R2, extra, rooms) {
       const ancs = anchors.filter(an => takes(an, a) && !takenAnchors.some(t => Math.hypot(t.x - an.x, t.z - an.z) < 1.2 && t.anchor === an.anchor) && (an.anchor !== 'floor' || !fixed(an)));
       // shuffled from the room's own stream; free-floor spots ranked by the layout plan, with the stream's noise
       for (let k = ancs.length - 1; k > 0; k--) { const j = Math.floor(R2() * (k + 1)); const t = ancs[k]; ancs[k] = ancs[j]; ancs[j] = t; }
+      if (pick.story && plan && plan.story) { const st = plan.story; ancs.sort((p, q) => Math.hypot(p.x - st.x, p.z - st.z) - Math.hypot(q.x - st.x, q.z - st.z)); }
       if (plan && a.anchor === 'floor') {
         const sc = new Map(ancs.map(an => [an, Lay.floorScore(plan, an, a, b) + R2() * 1.2]));
         ancs.sort((p, q) => sc.get(q) - sc.get(p));
@@ -7941,6 +7965,10 @@ const BUILT_KITS = [
     kp('piece_pot2', 0, 0, 0.8, 15, 'floor', null, { key: true }), kp('piece_pot1', along1(1.55, 0.48)[0], 0, along1(1.55, 0.48)[1], 80, 'floor'), kp('piece_pot3', along2(1.5, 0.45)[0], 0, along2(1.5, 0.45)[1], 200, 'floor')],
   { angle: 90, score: 4, min: 2 }),
   // a half-done project: the chopping block with timber lying by it, a crate of offcuts, a tool on the wall over it
+  // a collector's wall: trophies on stands at eye height, between the 2x2 wood wall's bars, a bench under them
+  kit('BK-trophies', 'wall', ['home', 'hall', 'sleeping', 'tavern'], [
+    stand(-0.85, 1.15, 'trophy'), stand(0, 1.3, 'trophy'), stand(0.85, 1.15, 'trophy'),
+    kp('piece_bench01', 0, 0, 0.45, 0, 'floor')], { score: 5, min: 2 }),
   kit('BK-project', 'wall', ['home', 'workshop', 'storage', 'sleeping'], [
     kp('piece_workbench_ext1', -0.5, 0, 0.45, 0, 'floor', null, { key: true }), kp('dvergrprops_crate', 0.75, 0, 0.55, 8, 'floor'),
     kp('wood_beam_1', 0.1, 0.1, 1.25, 63, 'floor'), stand(-0.45, 1.65, 'tool')], { score: 5, min: 2 }),
@@ -9678,7 +9706,9 @@ function generate(req) {
   const layoutCtx = req.layout === false ? false : {
     traits: { tidiness: household.tidy, comfort: household.comfort, display: household.wealth, size: household.size,
       hobbies: Object.entries(household.hobby || {}).filter(([, v]) => v >= 0.4).map(([k]) => k) },
-    seed: household.salt % 997,
+    // the household's own draw: other people arrange the same house their own way (Interiors tab, 2026-11-10: six
+    // households in one house came out with the same rooms but for a rug's angle); one household keeps it every stage
+    seed: (household.salt ^ Persona.hash(household.label || '')) % 997,
     ...(req.layout || {}),
   };
   // asked-for storeys, porch and pitch go into the name, so different requests never share a file name
@@ -10842,7 +10872,9 @@ function finish(b, info) {
   // taken out by a later pass (a lane cleared, a set undone), checked the way the interior library checks its pieces
   for (let pass = 0; pass < 3; pass++) {
     const ctx = Decor.auditContext(b.pieces);
-    const loose = b.pieces.filter(p => p.decor && p.rest === 'on' && !Decor.auditOne(p, ctx, []));
+    // a chest stays up only on another chest (a set's chest left on the decorator's table, 2026-11-10)
+    const onChest = p => b.pieces.some(q => q !== p && /chest|barrel|crate/.test(q.name) && Math.abs(q.x - p.x) < 0.6 && Math.abs(q.z - p.z) < 0.6 && q.y < p.y - 0.3 && q.y > p.y - 1.3);
+    const loose = b.pieces.filter(p => p.decor && p.rest === 'on' && (!Decor.auditOne(p, ctx, []) || (/chest/.test(p.name) && !onChest(p))));
     if (!loose.length) break;
     const out = new Set(loose);
     b.pieces = b.pieces.filter(p => !out.has(p));
@@ -12276,7 +12308,8 @@ if (NODE_FP) module.exports = apiFP; else window.VHFloorplan = apiFP;
 //             shows of both; 5 to 15 cm is counted as intoWallSoft and watched, not gated yet
 //   storage   storehouse lines: chests, chests along a wall (within 1.2 m of a wall piece), chests stacked, signs
 //   beds      beds at d1 (beds come first)
-//   same      how alike the furniture of the three home lines is at s2d2 (Jaccard on piece counts; no cookie cutter)
+//   same      how alike the home lines are (likeness: furniture list and arrangement); homeAlike counts pairs above 0.7
+//             at d2 and d3 (no cookie cutter; d1 is beds and a chest everywhere)
 const NODE_A = typeof module !== 'undefined';
 const PC = NODE_A ? require('./pieces.js') : window.VHPieces;
 const C = NODE_A ? require('./checks.js') : window.VHChecks;
@@ -12284,7 +12317,7 @@ const D = NODE_A ? require('./decorate.js') : window.VHDecorate;
 const M = NODE_A ? require('./mesh.js') : window.VHMesh;
 const SH = NODE_A ? require('./shapes.js') : window.VHShapes;
 // The gated measures: a pool fails when any of them is above zero.
-const GATE = ['nestBroken', 'furnClip', 'stacked', 'overWin', 'stairFoot', 'stations', 'mountClip', 'hang', 'loose', 'doorway', 'onStation', 'intoWall'];
+const GATE = ['homeAlike', 'nestBroken', 'furnClip', 'stacked', 'overWin', 'stairFoot', 'stations', 'mountClip', 'hang', 'loose', 'doorway', 'onStation', 'intoWall'];
 // Watched only: printed with the totals; to be gated once the generator clears them.
 const WATCH = ['outside', 'intoWallSoft'];
 const MOUNT = /^(piece_banner\d+|sign|sign_notext|itemstand|piece_shieldgeneric|cloth_hanging_|fenrirhide_hanging|Trophy|wood_dragon)/;
@@ -12531,23 +12564,52 @@ function pool(input, name) {
     if (/store|storage/.test(line)) L.storage = Object.fromEntries(Object.entries(d).map(([s, v]) => [s, `${v.a.chests} chests, ${v.a.chestsByWall} by a wall, ${v.a.chestsStacked} stacked, ${v.a.signs} signs`]));
   }
   report.totals = tot;
-  // likeness of the home lines
+  // likeness of the home lines (furniture and arrangement); at d2 and d3 no two above 0.7 (d1 is beds and a chest in
+  // every home by design)
   const homes = Object.keys(designs).filter(l => /home/.test(l));
   report.same = {};
+  tot.homeAlike = 0;
   for (let i = 0; i < homes.length; i++) for (let j = i + 1; j < homes.length; j++) for (const st of ['s1d1', 's2d2', 's3d3']) {
     const A = designs[homes[i]][st], Bd = designs[homes[j]][st];
     if (!A || !Bd) continue;
-    const names = new Set([...Object.keys(A.a.furn), ...Object.keys(Bd.a.furn)]);
-    let inter = 0, union = 0;
-    for (const n of names) { const x = A.a.furn[n] || 0, y = Bd.a.furn[n] || 0; inter += Math.min(x, y); union += Math.max(x, y); }
-    report.same[`${homes[i]} and ${homes[j]} ${st}`] = union ? +(inter / union).toFixed(2) : 0;
+    const v = likeness(A.pieces, Bd.pieces);
+    report.same[`${homes[i]} and ${homes[j]} ${st}`] = v;
+    if (st !== 's1d1' && v > 0.7) tot.homeAlike++;
   }
-
 
   report.failed = GATE.filter(k => tot[k] > 0);
   report.gate = report.failed.length ? 'fail' : 'pass';
   report.watch = Object.fromEntries(WATCH.map(k => [k, tot[k]]));
   return report;
+}
+
+// How alike two furnished designs are (1 = the same): the mean of their furniture lists (shared share of the piece
+// counts) and their arrangement (each piece's kind, its place in thirds of the building's footprint and its facing in
+// quarters). Two homes with the same kinds of furniture laid out differently score about half.
+const ARR = ['bed', 'table', 'seat', 'storage', 'craft', 'fire', 'rug', 'light', 'deco', 'clutter'];
+function signature(pieces) {
+  const furn = {}, arr = {};
+  const shell = pieces.filter(p => PC.piece(p.name).structural);
+  const xs = shell.map(p => p.x), zs = shell.map(p => p.z);
+  const x0 = Math.min(...xs), x1 = Math.max(...xs), z0 = Math.min(...zs), z1 = Math.max(...zs);
+  for (const p of pieces) {
+    const r = role(p);
+    if (!ARR.includes(r) || PC.piece(p.name).structural) continue;
+    furn[p.name] = (furn[p.name] || 0) + 1;
+    const q = p.q || [0, 0, 0, 1], yaw = Math.atan2(2 * (q[3] * q[1] + q[0] * q[2]), 1 - 2 * (q[1] * q[1] + q[0] * q[0])) * 180 / Math.PI;
+    const k = `${r}|${Math.min(2, Math.floor(3 * (p.x - x0) / Math.max(0.1, x1 - x0)))}|${Math.min(2, Math.floor(3 * (p.z - z0) / Math.max(0.1, z1 - z0)))}|${Math.floor(p.y / 2.5)}|${((Math.round(yaw / 90) % 4) + 4) % 4}`;
+    arr[k] = (arr[k] || 0) + 1;
+  }
+  return { furn, arr };
+}
+function jac(A, B) {
+  let i = 0, u = 0;
+  for (const k of new Set([...Object.keys(A), ...Object.keys(B)])) { const a = A[k] || 0, b = B[k] || 0; i += Math.min(a, b); u += Math.max(a, b); }
+  return u ? i / u : 1;
+}
+function likeness(a, b) {
+  const A = a.furn ? a : signature(a), B = b.furn ? b : signature(b);
+  return +((jac(A.furn, B.furn) + jac(A.arr, B.arr)) / 2).toFixed(2);
 }
 
 /** A short text of a report for the game's console: the gate, the totals and the first few issues of each failing measure. */
@@ -12575,7 +12637,7 @@ function group(files, parse) {
   return out;
 }
 
-const apiA = { audit, pool, summary, group, GATE, WATCH };
+const apiA = { audit, pool, summary, group, likeness, signature, GATE, WATCH };
 if (NODE_A) module.exports = apiA; else window.VHAudit = apiA;
 
 })();

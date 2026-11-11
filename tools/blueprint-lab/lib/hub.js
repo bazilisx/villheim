@@ -147,8 +147,8 @@ function walker(b) {
     if (p.decor && f && ['mount', 'hang', 'top', 'rug'].includes(f.at)) return null;
     const o = Ck.aabbShapes(p);
     if (o.pass) return null;
-    // a turned piece is judged by its turned solids
-    if (Math.abs(((p.yaw || 0) % 90 + 90) % 90) > 1) { const g = Ck.gameBox(p); if (g.sol && g.sol.length) o.sol = g.sol; }
+    // (the walk is judged by whole boxes, as lab/test_hub.js reach does; the placer judges turned pieces by their
+    // solids)
     return o;
   };
   const dist = (o, x, z) => distSol(o, x, z);
@@ -290,9 +290,12 @@ function placer(b, T) {
       const p = { name, x, y, z, yaw: normH(yaw), q: T.quat(normH(yaw)) };
       const bx = Ck.gameBox(p);
       if (!o.free) {
-        if (hard.some(h => hits(bx, h))) return false;
-        if (!o.onFurn && furn.some(h => hits(bx, h, 0.01))) return false;
-        if (keep.some(k => (k.always || !o.inKeep) && hits(bx, k, 0))) return false;
+        // (a turned table, and what stands or hangs at a wall (o.solid), is judged by its own solids against walls and
+        // furniture; everything else by its box)
+        const H = name === 'piece_table' || o.solid ? hits : over;
+        if (hard.some(h => H(bx, h))) return false;
+        if (!o.onFurn && furn.some(h => H(bx, h, 0.01))) return false;
+        if (keep.some(k => (k.always || !o.inKeep) && over(bx, k, 0))) return false;
       }
       // the way through the hall stays open (D-148): built once the hall's rooms are known
       if (!walk && b.rooms.length) walk = walker(b);
@@ -429,7 +432,11 @@ function polyInside(N, ap) {
 // face, so the floor meets the wall all the way round. skip(x, z) leaves a 2 m cell out (and its band pieces).
 function polyFloor(b, K, N, ap, y, o = {}) {
   const ins = polyInside(N, ap), Rr = Math.ceil(ap) + 1, rIn = o.rIn || 0;
-  const out = (x, z, h) => [[-h, -h], [-h, h], [h, -h], [h, h]].every(([dx, dz]) => Math.hypot(x + dx, z + dz) >= rIn);
+  // o.inner { M, a }: the opening is an M-gon of apothem a with 2 m sides (a gallery's): the floor keeps off it by
+  // two bands of 1 m pieces turned with its sides, so its edge is straight under the rail
+  const In = o.inner, nIn = In ? [...Array(In.M).keys()].map(i => [Math.sin(rad(i * 360 / In.M)), Math.cos(rad(i * 360 / In.M))]) : null;
+  const beyond = (x, z) => (In ? Math.max(...nIn.map(([a, c]) => x * a + z * c)) - In.a : Math.hypot(x, z) - rIn);
+  const out = (x, z, h) => [[-h, -h], [-h, h], [h, -h], [h, h]].every(([dx, dz]) => beyond(x + dx, z + dz) >= (In ? (h > 0.75 ? 2.05 : 0) : 0)) && (!In || h > 0.75 || beyond(x, z) >= 1.3);
   const cells = [], ones = [];
   for (let x = -2 * Math.ceil(Rr / 2); x <= Rr; x += 2) for (let z = -2 * Math.ceil(Rr / 2); z <= Rr; z += 2) {
     if (o.skip && o.skip(x, z)) continue;
@@ -442,6 +449,17 @@ function polyFloor(b, K, N, ap, y, o = {}) {
       if (ins(cx, cz, 0.3) && out(cx, cz, 0.5)) { b.put(K.floor1, cx, y, cz); ones.push([cx, cz]); }
     }
   }
+  if (In) for (const [d0, i0] of [[0.5, 0], [1.5, 1]]) for (let i = 0; i < In.M; i++) {
+    const a = i * 360 / In.M, nx = Math.sin(rad(a)), nz = Math.cos(rad(a)), tx = Math.cos(rad(a)), tz = -Math.sin(rad(a));
+    const len = 2 * (In.a + d0) * Math.tan(Math.PI / In.M), n = Math.ceil(len - 0.05);
+    for (let q = 0; q < n; q++) {
+      const t = -(n - 1) / 2 + q, x = nx * (In.a + d0) + tx * t, z = nz * (In.a + d0) + tz * t;
+      if (o.skip && o.skip(2 * Math.round(x / 2), 2 * Math.round(z / 2))) continue;
+      if (!ins(x, z, 0.3) || ones.some(([cx, cz]) => Math.hypot(x - cx, z - cz) < 0.2)) continue;
+      b.put(K.floor1, x, y, z, a, { band: true });
+    }
+    void i0;
+  }
   if (o.band !== false) {
     const L = 2 * ap * Math.tan(Math.PI / N);
     for (let i = 0; i < N; i++) {
@@ -449,7 +467,7 @@ function polyFloor(b, K, N, ap, y, o = {}) {
       for (let t = -L / 2 + 0.5; t < L / 2 - 0.01; t += 1) {
         const x = nx * (ap - 0.5) + tx * t, z = nz * (ap - 0.5) + tz * t;
         if (o.skip && o.skip(2 * Math.round(x / 2), 2 * Math.round(z / 2))) continue;
-        if (Math.hypot(x, z) - 0.71 < rIn) continue;
+        if (beyond(x, z) < (In ? 1.3 : 0.71)) continue;
         if (cells.some(([cx, cz]) => Math.abs(x - cx) < 0.75 && Math.abs(z - cz) < 0.75) || ones.some(([cx, cz]) => Math.hypot(x - cx, z - cz) < 0.2)) continue;
         b.put(K.floor1, x, y, z, a, { band: true });
       }
@@ -572,10 +590,13 @@ function roundHall(b, K, C, T, o) {
   // the part round's straight front at z = zc (an odd metre, about 0.4 of the way out; clear of the drum, and at s5
   // behind the walkway along the front)
   let zc = null;
+  const frontBays = [];
   if (variant === 'part') {
     let c = Math.max(3, 0.4 * ap);
     if (drum) c = Math.max(c, apD + 1.2);
     if (k === 5 && gallery) c = Math.max(c, 9);
+    // (at s4 the front stands clear of the gallery's opening, so the rail round it stays whole)
+    if (k === 4 && gallery) c = Math.max(c, ringPoly(2 * Math.max(4, Math.round(Math.PI / Math.atan(1 / rIn) / 2)), 2) + 0.7);
     zc = -(2 * Math.ceil((c - 1) / 2) + 1);
   }
   // the stair to the gallery: a flight of three along the -x wall rising toward the door side; the walkway across the
@@ -657,13 +678,18 @@ function roundHall(b, K, C, T, o) {
   // the gallery round the upper walls (from s4): floor between the gallery ring and the wall, open over the stair; a
   // rail on its inner edge; the stair up from the floor; at s5 the walkway across the hall on posts, railed both sides
   if (gallery) {
-    polyFloor(b, K, N, ap, SHt, { rIn, m: 0.02, skip: (x, z) => inCells(St.run, x, z) || inCells(bridge, x, z) });
+    // the opening over the hall: an even-sided polygon of 2 m sides as near the gallery ring as can be, so one 2 m rail
+    // piece fits each side and the rail runs round it joined at the corners
+    const M = 2 * Math.max(4, Math.round(Math.PI / Math.atan(1 / rIn) / 2)), aIn = ringPoly(M, 2);
+    polyFloor(b, K, N, ap, SHt, { rIn, inner: { M, a: aIn }, m: 0.02, skip: (x, z) => inCells(St.run, x, z) || inCells(bridge, x, z) });
     putStair(b, K, St, 0);
-    const nr = Math.round(2 * Math.PI * rIn / 2);
-    for (let i = 0; i < nr; i++) {
-      const a = (i + 0.5) * 360 / nr, x = Math.sin(rad(a)) * (rIn - 0.1), z = Math.cos(rad(a)) * (rIn - 0.1);
-      if (inCells(bridge, x, z, 0.4) || inCells(St.run, x, z, 0.4)) continue;
-      rail(b, K, x, SHt, z, normH(a + 90));
+    const strip = bridge.length ? { x0: -9.2, x1: 9.2, z0: -9.2, z1: -6.8 } : null;
+    for (let i = 0; i < M; i++) {
+      const a = i * 360 / M, x = Math.sin(rad(a)) * aIn, z = Math.cos(rad(a)) * aIn, tx = Math.cos(rad(a)), tz = -Math.sin(rad(a));
+      // (none where the walkway crosses the opening)
+      if (strip && [-1, 0, 1].some(t => { const px = x + tx * t, pz = z + tz * t; return px > strip.x0 && px < strip.x1 && pz > strip.z0 && pz < strip.z1; })) continue;
+      if (inCells(St.run, x, z, 0.4)) continue;
+      rail(b, K, x, SHt, z, a);
     }
     // the stairwell: rails along both sides of the flight and across its low end
     for (const [x, z] of St.run) for (const sx of [-1, 1]) rail(b, K, x + sx, SHt, z, 90);
@@ -731,6 +757,7 @@ function roundHall(b, K, C, T, o) {
       if (h >= 1) T.wallSegment(b, K, C, x, top, zc, 0, h, 'wall', 'plank');
     }
     door = { x: 0, z: zc };
+    for (let x = -2 * mm; x <= 2 * mm; x += 2) if (Math.abs(x) >= 3) frontBays.push({ x, z: zc, yaw: 0, nx: 0, nz: 1, kind: 'wall' });
     b.notes.push(`A straight front ${(2 * mm + 2)} m wide with the door, ${(-zc).toFixed(0)} m in front of the fire; the open part of the round in front is the forecourt.`);
   }
   const doors = [door, ...bays.filter(bb => bb.kind === 'door' && bb.i !== doorSide).map(bb => ({ x: bb.x, z: bb.z }))];
@@ -768,7 +795,7 @@ function roundHall(b, K, C, T, o) {
     coveredEntrance(b, K, C, T, door.x, door.z, wy, ext.porch6 ? 6 : 4);
     if (ext.dragons) b.put('wood_dragon1', door.x, wy + 1.3, door.z - (ext.porch6 ? 6 : 4) - 0.6, 180, { decor: true });
   }
-  return { ap, N, L, top, peak, door, doors, rings, postsOf, gallery, rIn, St, bridge, drum, apD, SHt, zc, style, roofAt, rooms, sideX: k >= 4 ? rooms[0].x0 : null };
+  return { groundBays: [...bays.slice(0, N * L / 2), ...frontBays], ap, N, L, top, peak, door, doors, rings, postsOf, gallery, rIn, St, bridge, drum, apD, SHt, zc, style, roofAt, rooms, sideX: k >= 4 ? rooms[0].x0 : null };
 }
 
 // ---------------------------------------------------------------- cross hall
@@ -931,14 +958,11 @@ function wallSpots(b, o, F, y) {
       out.push(spotOf(e.x, e.z, e.nx, e.nz, y));
     }
   } else {
-    const n = Math.round(2 * Math.PI * F.ap / 2.2);
-    for (let i = 0; i < n; i++) {
-      const a = (i + 0.5) * 360 / n, rr = F.ap * Math.cos(Math.PI / F.N) - 0.15;
-      const x = Math.sin(rad(a)) * rr, z = Math.cos(rad(a)) * rr;
-      if (F.zc != null && z < F.zc + 1) continue;
-      if (F.sideX != null && x > F.sideX - 0.5) continue;
-      if (Math.abs(normH(a + 180) - 180) < 40) continue; // the trophy wall
-      out.push(spotOf(x, z, -Math.sin(rad(a)), -Math.cos(rad(a)), y));
+    // a spot at each ground-storey wall bay, facing in (the doors' bays left out)
+    for (const bb of F.groundBays) {
+      if (bb.kind === 'door' || (F.zc != null && bb.z < F.zc + 1)) continue;
+      if (bb.z > 0 && Math.abs(normH(bb.yaw + 180) - 180) < 40) continue; // the trophy wall
+      out.push(spotOf(bb.x + bb.nx * 0.15, bb.z + bb.nz * 0.15, bb.nx, bb.nz, y));
     }
   }
   return out.sort((a, c) => Math.atan2(a.x, a.z) - Math.atan2(c.x, c.z));
@@ -1009,6 +1033,25 @@ function furnish(b, K, C, T, o, F) {
     for (const s of [-1, 1]) place.put('piece_groundtorch_wood', sx + s * 2.6, y + 0.75, sz + 0.4, 0, ds(2));
   }
   if (skipDecor) { b.leader = leader || { x: 0, y: 0.125, z: 3, yaw: 180 }; b.spouse = spouse; return; }
+  // rugs overlap as corpus builds lay them (lab/hub_dress.py, builds with 2 to 12 rugs: half the rugs overlap another,
+  // by a median 36 % of the rug and 52 % at the third quartile): a rug goes in only where it overlaps those already down by
+  // RUG_OVER of its area or less, and the second of two overlapping rugs only while half or fewer overlap
+  const rugs = [];
+  const rugSize = n => (DecH().FURNITURE[n] || { s: [3, 0.05, 3] }).s;
+  const inRug = (r, x, z) => { const a = rad(r.yaw), dx = x - r.x, dz = z - r.z, u = dx * Math.cos(a) - dz * Math.sin(a), v = dx * Math.sin(a) + dz * Math.cos(a); return Math.abs(u) <= r.w / 2 && Math.abs(v) <= r.l / 2; };
+  const putRug = (name, x, y, z, yaw, extra) => {
+    const [w, , l] = rugSize(name), a = rad(yaw);
+    let hit = 0;
+    for (let i = 0; i < 8; i++) for (let j = 0; j < 8; j++) {
+      const u = -w / 2 + w * (i + 0.5) / 8, v = -l / 2 + l * (j + 0.5) / 8;
+      if (rugs.some(r => Math.abs(r.y - y) < 0.3 && inRug(r, x + u * Math.cos(a) + v * Math.sin(a), z - u * Math.sin(a) + v * Math.cos(a)))) hit++;
+    }
+    const f = hit / 64, nOver = rugs.filter(r => r.over).length;
+    if (f > RUG_OVER || (f > 0.05 && nOver + 1 > (rugs.length + 1) / 2)) return false;
+    if (!place.put(name, x, y, z, yaw, extra, { onFurn: true, inKeep: true })) return false;
+    rugs.push({ x, y, z, yaw, w, l, over: f > 0.05 });
+    return true;
+  };
   // seats round the fires: benches on three sides at s2 and s3, two from s4 (corpus: rugs by 47 to 51 % of hall fires,
   // seats by a third), rugs by the fires (d2)
   const benches = [];
@@ -1018,7 +1061,7 @@ function furnish(b, K, C, T, o, F) {
       const x = f.x + Math.sin(rad(a)) * 3.2, z = f.z + Math.cos(rad(a)) * 3.2;
       if (place.put('piece_bench01', x, 0.125, z, a + 180, ds(f === fires[0] ? 1 : 2))) benches.push({ x, z, yaw: normH(a + 180), a, main: f === fires[0] });
     }
-    for (const a of [45, 225]) place.put('rug_fur', f.x + Math.sin(rad(a)) * 2.6, 0.14, f.z + Math.cos(rad(a)) * 2.6, a, ds(2), { onFurn: true, inKeep: true });
+    for (const a of [45, 225]) putRug('rug_fur', f.x + Math.sin(rad(a)) * 2.6, 0.14, f.z + Math.cos(rad(a)) * 2.6, a, ds(2));
   }
   if (!leader) {
     const bn = benches.find(bb => bb.main && bb.a === 0) || benches[0];
@@ -1063,17 +1106,19 @@ function furnish(b, K, C, T, o, F) {
     const under = F.gallery && F.rIn < 7, r0 = under ? F.rIn + 0.4 : 4.0, r1 = under ? F.ap - 0.8 : F.gallery ? F.rIn - 0.6 : F.ap - 0.8;
     // five spokes: the four diagonals and the side away from the stair, each a long table pointing at the fire with a
     // bench down each side (D-152: seats keep their spots; a spoke that does not fit is left out, never turned)
-    for (const a of [45, 135, 225, 315, 90]) {
+    for (const a of F.gallery ? [45, 135, 225, 315, 90] : [90, 270]) {
       const ux = Math.sin(rad(a)), uz = Math.cos(rad(a));
       nRows += longRow(ux * r0, uz * r0, ux, uz, r1 - r0, nRows < 3 ? 1 : 2) ? 1 : 0;
     }
   } else {
     // a ring of log benches round the fire (cone halls), or rugs (flat roof halls), and a few tables at the walls
-    const rr = seating === 'ring' ? 5.4 : 3.6, n = seating === 'ring' ? 8 : 6;
+    // (the log benches keep inside the cone's ring of posts at s2 and s3; none in a hall too small for both rings)
+    const ringR = F.rings && F.rings.length && !F.gallery ? Math.min(...F.rings.map(r => r.r)) : Infinity;
+    const rr = seating === 'ring' ? Math.min(5.4, ringR - 1.4) : 3.6, n = seating === 'ring' ? (rr >= 4.4 ? 8 : 0) : 6;
     for (let i = 0; i < n; i++) {
       const a = (i + 0.5) * 360 / n, x = Math.sin(rad(a)) * rr, z = Math.cos(rad(a)) * rr;
       if (seating === 'ring') place.put('piece_logbench01', x, 0.125, z, a + 180, ds(i % 2 ? 2 : 1));
-      else place.put(i % 2 ? 'rug_deer' : 'jute_carpet', x, 0.14, z, a, ds(i % 2 ? 2 : 1), { onFurn: true, inKeep: true });
+      else putRug(i % 2 ? 'rug_deer' : 'jute_carpet', x, 0.14, z, a, ds(i % 2 ? 2 : 1));
     }
   }
   if (line !== 'cross' && seating !== 'spokes') {
@@ -1101,6 +1146,13 @@ function furnish(b, K, C, T, o, F) {
   const lowT = /stone|marble/.test(C.wallStyle || '') ? 0.5 : C.wallStyle === 'log' ? 0.25 : 0.15;
   const highT = C.wallStyle === 'stone' || C.wallStyle === 'marble' ? 0.5 : C.wallStyle === 'log' ? 0.25 : 0.15;
   const edgeSpots = wallSpots(b, o, F, 0.125);
+  // a chest or bench at the wall keeps a step of clear floor in front of it (D-148: reached, never boxed in behind a
+  // bench or table)
+  const FRONT = new Set(['bed', 'table', 'seat', 'storage', 'craft', 'fire', 'pole']);
+  const frontClear = (sp, d0) => {
+    const cx = sp.x + sp.nx * (d0 + 1.0), cz = sp.z + sp.nz * (d0 + 1.0);
+    return !b.pieces.some(p => (p.decor || PH.piece(p.name).role === 'pole') && FRONT.has(PH.piece(p.name).role) && p.y < 1.5 && (() => { const g = CkH().gameBox(p); return g.x0 < cx + 0.6 && g.x1 > cx - 0.6 && g.z0 < cz + 0.6 && g.z1 > cz - 0.6; })());
+  };
   // the trophy wall behind the high seat (D-134: the bigger mementos go to the central hearth; D-154: it shows enemies
   // slain and trophies collected): empty item stands in two or three rows, more each stage
   const nTrophy = { s3: 4, s4: 8, s5: 12 }[stage] || 0;
@@ -1125,7 +1177,7 @@ function furnish(b, K, C, T, o, F) {
   let nChest = 0;
   for (const sp of edgeSpots) {
     if (nChest >= { s2: 3, s3: 6, s4: 6, s5: 8 }[stage]) break;
-    if (place.put('piece_chest_wood', sp.x + sp.nx * (lowT + 0.42), sp.y, sp.z + sp.nz * (lowT + 0.42), sp.yawIn, { ds: nChest < 2 ? 1 : nChest < 4 ? 2 : 3, chest: true })) nChest++;
+    if (!(F.sideX != null && sp.x > F.sideX - 0.5) && frontClear(sp, lowT + 0.42) && place.put('piece_chest_wood', sp.x + sp.nx * (lowT + 0.42), sp.y, sp.z + sp.nz * (lowT + 0.42), sp.yawIn, { ds: nChest < 2 ? 1 : nChest < 4 ? 2 : 3, chest: true })) nChest++;
   }
   // the side rooms: the closet full of chests, the kitchen with its prep table, butcher's table, fermenter and chests
   const inHall = line === 'cross' ? () => true : (x, z) => polyInside(F.N, F.ap)(x, z, 0.7);
@@ -1176,6 +1228,31 @@ function furnish(b, K, C, T, o, F) {
     const sp2 = edgeSpots[Math.floor(edgeSpots.length / 2)];
     if (sp2) place.put('fermenter', sp2.x + sp2.nx * (lowT + 0.8), sp2.y, sp2.z + sp2.nz * (lowT + 0.8), sp2.yawIn, ds(3));
   }
+  // the wall sides: corpus halls and round buildings of 300 m2 or more (lab/hub_dress.py) have furniture or dressing
+  // within 1.3 m of 47 % of the ground storey's wall bays in round and polygon buildings and 36 % in halls (medians),
+  // mostly lights, chests, seats, stands and stations. Undressed bays get, in turn, a wall torch, a chest, a bench along
+  // the wall, an item stand and a barrel until the hall reaches its share (d2 and d3)
+  if (k >= 3) {
+    const want = line === 'cross' ? 0.36 : 0.47;
+    const DRESS = /bench|chair|throne|stool|chest|crate|barrel|itemstand|ArmorStand|banner|table|torch|lantern|brazier|candle|cauldron|fermenter|cooking|preptable|butcher|bed|sign/i;
+    const dressed = sp => b.pieces.some(p => p.decor && DRESS.test(p.name) && Math.abs(p.y - sp.y) < 3.4 && (() => { const dx = p.x - sp.x, dz = p.z - sp.z, u = Math.abs(dx * sp.nz - dz * sp.nx), v = dx * sp.nx + dz * sp.nz; return u <= 1.1 && v > 0 && v <= 1.3; })());
+    const spots = edgeSpots.filter((sp, i) => i % 2 === 0).concat(edgeSpots.filter((sp, i) => i % 2 === 1));
+    let have = edgeSpots.filter(dressed).length, turn = 0;
+    const items = [
+      sp => place.put('piece_walltorch', sp.x + sp.nx * (highT + 0.17), sp.y + 1.6, sp.z + sp.nz * (highT + 0.17), sp.yawIn, ds(2), { inKeep: true, solid: true }),
+      sp => place.put('piece_chest_wood', sp.x + sp.nx * (lowT + 0.42), sp.y, sp.z + sp.nz * (lowT + 0.42), sp.yawIn, { ds: 2, chest: true }, { solid: true }),
+      sp => place.put('piece_bench01', sp.x + sp.nx * (lowT + 0.42), sp.y, sp.z + sp.nz * (lowT + 0.42), sp.yawIn, ds(2), { solid: true }),
+      sp => place.put('itemstand', sp.x + sp.nx * (highT + 0.12), sp.y + 1.85, sp.z + sp.nz * (highT + 0.12), sp.yawIn, { ds: 2, memento: true }, { inKeep: true, solid: true }),
+      sp => place.put('piece_chest_barrel', sp.x + sp.nx * (lowT + 0.4), sp.y, sp.z + sp.nz * (lowT + 0.4), sp.yawIn, { ds: 3, chest: true }, { solid: true }),
+    ];
+    for (const sp of spots) {
+      // (the share counts every ground-storey bay, the trophy wall's and the side rooms' among them)
+      if (have >= want * (F.groundBays ? F.groundBays.length : edgeSpots.length)) break;
+      if (dressed(sp)) continue;
+      for (let t = 0; t < items.length; t++) { const it = (turn + t) % items.length; if ([1, 2, 4].includes(it) && ((F.sideX != null && sp.x > F.sideX - 0.5) || !frontClear(sp, lowT + 0.42))) continue; if (items[it](sp)) { have++; turn = (it + 1) % items.length; break; } }
+    }
+    b.notes.push(`Wall sides: ${have} of ${edgeSpots.length} wall bays with furniture or dressing.`);
+  }
   b.leader = leader;
   b.spouse = spouse;
   void T;
@@ -1192,6 +1269,10 @@ const topOf = pieces => pieces.reduce((m, p) => { const pi = PH.piece(p.name); r
 // The steps a hub takes down when its main roof would stand over the cap or its crown more than CROWN_OVER over that:
 // 0 as designed; 1 with low (26 degree) roofs; 2 without the lantern tower, drum or raised crown; 3 with a wide open
 // crown on a round hall; 4 one storey without a gallery.
+// RUG_OVER: the most of a rug's area that may lie on rugs already down (corpus third quartile, lab/hub_dress.py).
+const RUG_OVER = 0.52;
+// MIRROR: build the stair and side rooms on the other side in half the villages (off, see generate)
+const MIRROR = false;
 // CROWN_OVER: how far a crown, lantern or finial may rise over the cap (the lead's call, 2026-11-11: up to one storey).
 const CROWN_OVER = 3;
 const TIERS = 5;
@@ -1265,9 +1346,20 @@ function generate(req, T) {
   for (const p of b.pieces) { const pi = PH.piece(p.name); if (pi.onPivot && !p.decor && !p.footed) { p.y = +(p.y - pi.size[1] / 2).toFixed(3); p.footed = true; } }
   // the stair and the side rooms stand on the left or the right, by the village (the whole hall mirrored across its
   // axis from the door to the high seat; the culture data give no side)
-  info.mirrored = k >= 2 && rngH(hashH(`${lineage}|${cultureKey}|side`))() < 0.5;
+  // (off: a mirrored hall moves pieces whose solids sit off their middle by a few cm, and fine clearances the walk test
+  // passed close up; MIRROR turns it on)
+  info.mirrored = MIRROR && k >= 2 && rngH(hashH(`${lineage}|${cultureKey}|side`))() < 0.5;
   if (info.mirrored) {
-    for (const p of b.pieces) { p.x = +(-p.x).toFixed(3); p.yaw = normH(-(p.yaw || 0)); p.q = T.quat(p.yaw); }
+    for (const p of b.pieces) {
+      // a door hangs off its bay's middle by its own offset (generate.js putDoor): it is hung again in the mirrored bay
+      if (!p.decor && PH.piece(p.name).role === 'door' && PH.doorSpec) {
+        const sp = PH.doorSpec(p.name), Y = rad(p.yaw || 0), bx = p.x + Math.cos(Y) * sp.offset, bz = p.z - Math.sin(Y) * sp.offset;
+        const Y2 = normH(-(p.yaw || 0) + (sp.along === 'z' ? 180 : 0)), a2 = rad(Y2);
+        p.x = +(-bx - Math.cos(a2) * sp.offset).toFixed(3); p.z = +(bz + Math.sin(a2) * sp.offset).toFixed(3); p.yaw = Y2; p.q = T.quat(Y2);
+        continue;
+      }
+      p.x = +(-p.x).toFixed(3); p.yaw = normH(-(p.yaw || 0)); p.q = T.quat(p.yaw);
+    }
     for (const r of b.rooms) { const x0 = r.x0; r.x0 = -r.x1; r.x1 = -x0; if (r.door) r.door = { ...r.door, x: -r.door.x }; }
     for (const m of b.markers) { m.x = -m.x; m.yaw = normH(-(m.yaw || 0)); }
     for (const m of [b.leader, b.spouse]) if (m) { m.x = -m.x; m.yaw = normH(-(m.yaw || 0)); }
@@ -1307,5 +1399,5 @@ function write(d) {
   return extra.length ? text.replace('#Pieces\n', extra.join('\n') + '\n#Pieces\n') : text;
 }
 
-const apiH = { generate, write, lineFor, featureDraw, capFor, GRAND, STAGES, LINES, CROWN_OVER };
+const apiH = { generate, write, lineFor, featureDraw, capFor, GRAND, STAGES, LINES, CROWN_OVER, RUG_OVER };
 if (NODE_H) module.exports = apiH; else window.VHHub = apiH;

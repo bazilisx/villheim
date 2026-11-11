@@ -13,12 +13,15 @@
 // free-standing inner posts stay within the corpus (lab/hub_posts.py: round and polygon buildings over 300 m2 have at
 // most 2.5 posts per 100 m2 in three of four, halls 1.2; the clear radius round the middle at least 2.6 m and 2.9 m in
 // three of four). The height cap holds for the main roof, and a crown rises at most CROWN_OVER over it.
-// Renders each line s1, s3 and s5 into the render dir (default /tmp/hub4-renders), all views from the same side: the
+// Gallery rails: every rail end meets another rail, a wall, a stair or the walkway, and no two rails cross. Rugs: none
+// lies on others by more than RUG_OVER of its area (corpus, lab/hub_dress.py). Wall sides: from s3 at d3 the share of
+// ground-storey wall bays with furniture or dressing within 1.3 m is at least the corpus first quartile (0.20).
+// Renders each line s1, s3 and s5 into the render dir (default /tmp/hub5-renders), all views from the same side: the
 // whole, a cut at 2.6 m over the floor, and from s4 a cut 2.6 m over the gallery. Exits 1 on a failure.
 const path = require('path'), fs = require('fs');
 const G = require('../lib/generate.js'), Ck = require('../lib/checks.js'), P = require('../lib/pieces.js');
 const S = require('../lib/styles.js'), H = require('../lib/hub.js');
-const outDir = process.argv[2] || '/tmp/hub4-renders';
+const outDir = process.argv[2] || '/tmp/hub5-renders';
 const seeds = +(process.argv[3] || 2);
 let failed = 0;
 const ok = (cond, what) => { if (!cond) { failed++; console.log('FAIL', what); } };
@@ -210,6 +213,69 @@ function innerPosts(d) {
   return { area: Math.round(area), n: ps.length, per100: +(100 * ps.length / Math.max(1, area)).toFixed(2), clearR: ps.length ? +Math.min(...ps.map(([x, z]) => Math.hypot(x, z))).toFixed(1) : null };
 }
 
+// rail ends and crossings on the gallery levels
+function railFaults(d) {
+  const segOf = p => { const a = rad(p.yaw || 0), hw = P.piece(p.name).size[0] / 2; return { y: p.y, x0: p.x - Math.cos(a) * hw, z0: p.z + Math.sin(a) * hw, x1: p.x + Math.cos(a) * hw, z1: p.z - Math.sin(a) * hw }; };
+  const fences = d.pieces.filter(p => /fence/.test(p.name) && !p.decor).map(segOf);
+  const walls = d.pieces.filter(p => ['wall', 'door', 'window'].includes(P.piece(p.name).role) && !p.decor).map(p => ({ ...segOf(p), h: P.piece(p.name).size[1] }));
+  const stairs = d.pieces.filter(p => P.piece(p.name).role === 'stair');
+  const walk = d.pieces.filter(p => P.piece(p.name).role === 'floor' && !p.decor);
+  const dseg = (x, z, sg) => { const vx = sg.x1 - sg.x0, vz = sg.z1 - sg.z0, L = vx * vx + vz * vz || 1; const t = Math.max(0, Math.min(1, ((x - sg.x0) * vx + (z - sg.z0) * vz) / L)); return Math.hypot(x - sg.x0 - t * vx, z - sg.z0 - t * vz); };
+  const gaps = [], cross = [];
+  fences.forEach((f, i) => {
+    for (const [x, z] of [[f.x0, f.z0], [f.x1, f.z1]]) {
+      if (fences.some((g, j) => j !== i && Math.abs(g.y - f.y) < 0.3 && dseg(x, z, g) < 0.45)) continue;
+      if (walls.some(w => Math.abs(w.y - f.y) < w.h / 2 + 0.7 && dseg(x, z, w) < 0.45)) continue;
+      if (stairs.some(st => Math.hypot(st.x - x, st.z - z) < 1.8)) continue;
+      // a rail end on the walkway's deck where the walkway runs onto the gallery
+      if (walk.filter(w => Math.abs(w.y - f.y + 0.6) < 0.3 && Math.abs(w.x - x) < 1.1 && Math.abs(w.z - z) < 1.1).length >= 2 && fences.some((g, j) => j !== i && Math.abs(g.y - f.y) < 0.3 && dseg(x, z, g) < 2.2)) continue;
+      gaps.push(`${x.toFixed(1)},${f.y.toFixed(1)},${z.toFixed(1)}`);
+    }
+    fences.forEach((g, j) => {
+      if (j <= i || Math.abs(g.y - f.y) > 0.3) return;
+      const den = (f.x1 - f.x0) * (g.z1 - g.z0) - (f.z1 - f.z0) * (g.x1 - g.x0);
+      if (Math.abs(den) < 1e-6) return;
+      const t = ((g.x0 - f.x0) * (g.z1 - g.z0) - (g.z0 - f.z0) * (g.x1 - g.x0)) / den, u = ((g.x0 - f.x0) * (f.z1 - f.z0) - (g.z0 - f.z0) * (f.x1 - f.x0)) / den;
+      const lf = Math.hypot(f.x1 - f.x0, f.z1 - f.z0), lg = Math.hypot(g.x1 - g.x0, g.z1 - g.z0);
+      if (t > 0 && t < 1 && u > 0 && u < 1 && t * lf > 0.45 && (1 - t) * lf > 0.45 && u * lg > 0.45 && (1 - u) * lg > 0.45) cross.push(`${(f.x0 + t * (f.x1 - f.x0)).toFixed(1)},${(f.z0 + t * (f.z1 - f.z0)).toFixed(1)}`);
+    });
+  });
+  return { gaps, cross, n: fences.length };
+}
+// the most of any rug's area lying on other rugs
+function rugOver(d) {
+  const D = require('../lib/decorate.js');
+  const rs = d.pieces.filter(p => /^rug_|^jute_carpet/.test(p.name)).map(p => { const sz = (D.FURNITURE[p.name] || { s: [3, 0, 3] }).s; return { ...p, w: sz[0], l: sz[2] }; });
+  const inR = (r, x, z) => { const a = rad(r.yaw || 0), dx = x - r.x, dz = z - r.z, u = dx * Math.cos(a) - dz * Math.sin(a), v = dx * Math.sin(a) + dz * Math.cos(a); return Math.abs(u) <= r.w / 2 && Math.abs(v) <= r.l / 2; };
+  let worst = 0, over = 0;
+  for (const r of rs) {
+    let hit = 0; const a = rad(r.yaw || 0);
+    for (let i = 0; i < 8; i++) for (let j = 0; j < 8; j++) { const u = -r.w / 2 + r.w * (i + 0.5) / 8, v = -r.l / 2 + r.l * (j + 0.5) / 8; if (rs.some(o => o !== r && Math.abs(o.y - r.y) < 0.3 && inR(o, r.x + u * Math.cos(a) + v * Math.sin(a), r.z - u * Math.sin(a) + v * Math.cos(a)))) hit++; }
+    worst = Math.max(worst, hit / 64); if (hit / 64 > 0.05) over++;
+  }
+  return { n: rs.length, over, worst: +worst.toFixed(2) };
+}
+// share of ground-storey wall bays (on their floored side, inside the hall) with furniture or dressing within 1.3 m
+function wallDress(d) {
+  const DRESS = /bench|chair|throne|stool|chest|crate|barrel|itemstand|ArmorStand|banner|table|torch|lantern|brazier|candle|cauldron|fermenter|cooking|preptable|butcher|bed|sign/i;
+  const floors = d.pieces.filter(p => P.piece(p.name).role === 'floor' && !p.decor && !p.dais && Math.abs(p.y) < 0.3);
+  const onFloor = (x, z) => floors.some(f => { const sz = P.piece(f.name).size; if (Math.abs(f.x - x) > 1.6 || Math.abs(f.z - z) > 1.6) return false; const a = rad(f.yaw || 0), dx = x - f.x, dz = z - f.z; const u = dx * Math.cos(a) - dz * Math.sin(a), v = dx * Math.sin(a) + dz * Math.cos(a); return Math.abs(u) <= sz[0] / 2 + 0.02 && Math.abs(v) <= sz[2] / 2 + 0.02; });
+  const inHall = (x, z) => (d.rooms || []).some(r => Math.abs(r.y) < 0.3 && x > r.x0 && x < r.x1 && z > r.z0 && z < r.z1);
+  const dec = d.pieces.filter(p => p.decor && DRESS.test(p.name) && p.y < 3.5);
+  let n = 0, k = 0;
+  const seen = new Set();
+  for (const w of d.pieces.filter(p => ['wall', 'window'].includes(P.piece(p.name).role) && !p.decor && !p.notice && !p.crown && p.y > 0.2 && p.y < 2.6 && P.piece(p.name).size[0] >= 2)) {
+    const key = `${Math.round(w.x * 2)},${Math.round(w.z * 2)}`;
+    if (seen.has(key)) continue; seen.add(key);
+    const a = rad(w.yaw || 0), tx = Math.cos(a), tz = -Math.sin(a), nx = Math.sin(a), nz = Math.cos(a);
+    const sides = [-1, 1].filter(sg => onFloor(w.x + nx * sg * 1.2, w.z + nz * sg * 1.2) && inHall(w.x + nx * sg * 1.2, w.z + nz * sg * 1.2));
+    if (!sides.length) continue;
+    n++;
+    if (dec.some(p => { const dx = p.x - w.x, dz = p.z - w.z, u = dx * tx + dz * tz, v = dx * nx + dz * nz; return Math.abs(u) <= 1.1 && sides.some(sg => v * sg > 0 && v * sg <= 1.3); })) k++;
+  }
+  return { n, share: n ? +(k / n).toFixed(2) : 0 };
+}
+
 let render = null;
 try {
   const R = require('../lib/render.js');
@@ -235,7 +301,7 @@ try {
   };
 } catch (e) { console.log('no renders:', e.message); }
 
-const rows = [], rendered = [], reachRows = [], postRows = [];
+const rows = [], rendered = [], reachRows = [], postRows = [], dressRows = [];
 // one design's checks; returns the reach result
 function checkOne(d, L, stage, decor) {
   const name = d.meta.Name;
@@ -262,6 +328,15 @@ function checkOne(d, L, stage, decor) {
       ok(ip.clearR == null || ip.clearR >= (round ? 2.6 : 2.9), `${name}: a post ${ip.clearR} m from the middle`);
     }
     if (decor === 'd3' && +stage[1] >= 4) postRows.push({ name, ...ip });
+    const rf = railFaults(d);
+    ok(rf.gaps.length === 0 && rf.cross.length === 0, `${name}: rails: ${rf.gaps.length} open ends (${rf.gaps.slice(0, 3).join('; ')}), ${rf.cross.length} crossings (${rf.cross.slice(0, 3).join('; ')})`);
+    const ro = rugOver(d);
+    ok(ro.worst <= H.RUG_OVER + 0.06, `${name}: a rug lies ${ro.worst} on others`);
+    if (decor === 'd3' && +stage[1] >= 3) {
+      const wd = wallDress(d);
+      ok(wd.share >= 0.2, `${name}: wall sides dressed ${wd.share} of ${wd.n} bays`);
+      dressRows.push({ name, ...wd, rugs: ro.n, rugsOver: ro.over, rugWorst: ro.worst, rails: rf.n });
+    }
   }
   let rr = null;
   if (+stage[1] >= 2) {
@@ -338,6 +413,8 @@ for (const L of LINES) {
   console.log(`${L.id}: s5 ${hub.area} m2, ${hub.top} m; largest other building ${best.type} s3 seed ${best.seed}: ${best.area} m2, ${best.top} m`);
 }
 
+console.log('\nwall sides, rugs and rails (d3, s3 to s5)');
+for (const r of dressRows) console.log(`${r.name.padEnd(44)} wall bays dressed ${r.share} of ${r.n}; rugs ${r.rugs}, ${r.rugsOver} on another, most ${r.rugWorst}; ${r.rails} rails`);
 console.log('\ninner posts (d3, s4 and s5): free-standing on the ground floor');
 for (const r of postRows) console.log(`${r.name.padEnd(44)} ${String(r.n).padStart(3)} posts, ${r.per100} per 100 m2, nearest to the middle ${r.clearR} m`);
 console.log('\nline           seed stage pieces  floor m2  top m  family  features');

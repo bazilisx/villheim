@@ -329,6 +329,10 @@ well (Tyler, 2026-11-08). The Features tab of the review sheet (`docs/features/b
      s2 to s5 made after the drafts were written (2026-11-07, 6:54 PM MT) may still stand on the board in the flat
      test world. Plan: docs/handoffs/2026-11-10-design/hubs.md (design/wip-hubs); questions D-137 to D-142. Plan first (docs and
      data), generator work after the interior tracks merge.
+  2j. [ ] **Landscaping and greenery across the village (Tyler, 2026-11-11, D-143):** trees, bushes, plants, vines
+     on houses, gardens and raised beds as beautification, placed along roads, around and on houses, in courtyards and
+     yards, and at road junctions. Research first from the corpus and outside sources (player builds and professionally
+     made games), then placement in the lab. Villagers never harvest village landscaping for materials (mod side).
   2b. [ ] **Next, asked for by Tyler (2026-11-10):** one more round of tightening the piece models: rerun
      `lab/extract_models.py` on Tyler's PC (game files under Z:\SteamLibrary\steamapps\common\Valheim, UnityPy) with
      a finer proxy (more parts than the 40 or so now), `lab/build_models.js`, then every check; and in `lib/mesh.js`

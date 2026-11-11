@@ -339,8 +339,15 @@ function massingPath(o) {
     }
     // storeys: one more now and then, never fewer than the culture builds at this stage
     const rs = FR(), rt = FR();
+    // at s3 homes, taverns and halls reach the corpus share of two storeys by culture (styles.js UPPER_STOREY): the
+    // odds here are what is left after the s2 draw, so the share holds over the whole path
+    const share = i === 2 && S.UPPER_STOREY.types.includes(type) ? S.UPPER_STOREY.s3[cultureKey] : null;
     if (i > 0 && st.storeys < L.storeys) {
-      const p = (g.storey && g.storey[stage] || 0) * sMult;
+      let p = (g.storey && g.storey[stage] || 0) * sMult;
+      if (share != null && st.storeys < 2) {
+        const p2 = Math.min(0.95, (g.storey && g.storey.s2) || 0);
+        p = Math.min(1, Math.max(0, (share - p2) / (1 - p2)) * sMult);
+      }
       if (i === 2 && st.storeys >= 2) { if (st.D >= 5 && rt < ((g.storey && g.storey.third) || 0)) st = { ...st, storeys: 3 }; }
       else if (rs < p) st = { ...st, storeys: st.storeys + 1 };
     }
@@ -621,7 +628,10 @@ function generate(req) {
   const deck = C.stilts && plan !== 'octagon' ? (C.deck || 2) : 0;
   // no tower blocks: the eave stays within 1.1 times the short side of the footprint (2026-11-09 review: three storeys
   // on a 6 to 8 m plan read as a tower); towers, keeps and the like keep their height
-  if (!T.tower && !form && !req.storeys) while (storeys > 1 && F + storeys * SH > 1.1 * 2 * Math.min(W, D) + 0.01) storeys--;
+  // (a second storey counts its walls from the ground floor up, without the footing under them: two 3 m storeys on a
+  // 6 m deep plan with a 1 m footing are 9 to 10 m to the ridge, the corpus median for Norse buildings is 9.3 m)
+  const eaveOf = n => (n <= 2 && stage === 's3' ? 0 : F) + n * SH;
+  if (!T.tower && !form && !req.storeys) while (storeys > 1 && eaveOf(storeys) > 1.1 * 2 * Math.min(W, D) + 0.01) storeys--;
   // stone and marble walls take no support from wooden posts or floors in Valheim: on posts the walls are planks
   C.baseTop = F + 0.6; // stone-base courses only at the bottom (F may still become 0.5 for a stone floor)
   const onPosts = F > 0.01 && !podklet && (C.stilts || T.dock || T.raised || C.raised || form === 'raised' || !stoneBase);

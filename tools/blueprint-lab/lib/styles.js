@@ -348,6 +348,22 @@ const PLAN_SETS = {
   'byzantine': { s1: { rect: 6, side: 1 }, s2: { keep: 2, L: 3, back: 1 }, s3: { keep: 1, L: 1, U: 2, T: 1.5 } },
   'middle-eastern': { s1: { rect: 7, side: 1 }, s2: { keep: 1, U: 2, L: 2 }, s3: { keep: 1, U: 1, L: 1, T: 1 } },
 };
+// Upper storeys at s3: the share of homes, taverns and halls with two storeys or more at s3, by culture. From the
+// culture corpus (data/culture-corpus/summary.json, storeys of buildings, 2 or more): a culture whose own group has 10
+// buildings or more takes its own share; one with fewer takes the first group of 10 or more that the research notes
+// list as its stand-in (docs/handoffs/2026-11-10-design/research.md): anglo-saxon the norse halls, frankish-norman,
+// byzantine and middle-eastern the stone houses, slavic and baltic the norse-forest log builds, lamari norse-highland,
+// steppe the celtic round huts (saami 2 builds, both one storey), celtic-crannog the celtic and crannog groups together
+// (6 of 15). The corpus gives no split by type, so the three types share the culture's figure. Round, tent, yurt,
+// gable-row and court forms keep their own storeys. massingPath draws the s3 storey from this share; a household's
+// size still leans it (one person less often, a family more).
+const UPPER_STOREY = {
+  types: ['home', 'tavern', 'longhouse'],
+  s3: { 'norse': 0.75, 'anglo-saxon': 0.75, 'frankish-norman': 0.76, 'norse-forest': 0.80, 'slavic': 0.80, 'celtic': 0.30,
+    'celtic-crannog': 0.40, 'baltic': 0.80, 'fen-folk': 0.77, 'norse-highland': 0.81, 'saami': 0, 'byzantine': 0.76,
+    'steppe': 0.30, 'middle-eastern': 0.76, [ID.lamari]: 0.81, 'castle-medieval': 0.75 },
+};
+
 // The plan set for a culture and type: the culture's own for homes, else the type's.
 function growthFor(cultureKey, type) {
   const g = GROWTH[type];
@@ -357,6 +373,6 @@ function growthFor(cultureKey, type) {
 }
 
 const api = { BIOMES, kitFor, CULTURES, BIOME_CULTURE, TYPES, ROOF_SETS, cultureFor, roofKit, ID, RENAMED, cultureKey,
-  HOUSEHOLDS, LADDER, GROWTH, PLAN_SETS, growthFor };
+  HOUSEHOLDS, LADDER, GROWTH, PLAN_SETS, UPPER_STOREY, growthFor };
 if (typeof module !== 'undefined') module.exports = api;
 else window.VHStyles = api;

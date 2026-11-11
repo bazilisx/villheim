@@ -6,8 +6,12 @@
 // piece-solids.json is the small part the checks need (lib/shapes.js), also bundled for the game and the request page.
 // Both hold measurements and our own boxes and prisms; no mesh data from the game.
 const fs = require('fs'), path = require('path');
-const [inp, out = path.join(__dirname, '../data/piece-models.json'), outSolids = path.join(__dirname, '../data/piece-solids.json')] = process.argv.slice(2);
+if (process.argv[2] === '--items') { buildItems(process.argv[3], process.argv[4] || path.join(__dirname, '../data/item-models.json'), process.argv[5]); process.exit(0); }
+const [inp, out = path.join(__dirname, '../data/piece-models.json'), outSolids = path.join(__dirname, '../data/piece-solids.json'), coarseFile] = process.argv.slice(2);
 const raw = JSON.parse(fs.readFileSync(inp, 'utf8'));
+// The coarse level (the first round's proxy, 40 to 150 parts a piece) for the quick overlap pre-test (lib/mesh.js):
+// the last data/piece-models.json's coarse parts, or its parts when it has none.
+const coarseOf = coarseFile ? (() => { const d = JSON.parse(fs.readFileSync(coarseFile, 'utf8')).pieces; return n => d[n] && (d[n].coarse || d[n].parts); })() : () => null;
 
 // A thin curved sheet (a blanket, a hide, a cloth) fits better as a flat box than as the outline of its wavy edge.
 function sheetToBox(p) {
@@ -64,6 +68,12 @@ for (const [name, r] of Object.entries(raw.pieces).sort()) {
   if (r.snaps && r.snaps.length) e.snap = r.snaps;
   e.tris = r.tris;
   if (r.parts) { e.parts = r.parts.map(sheetToBox); parts += r.parts.length; }
+  const co = coarseOf(name);
+  if (co && r.parts && !r.old && !r.kept) e.coarse = co;
+  // how close the parts are to the game's mesh (lab/extract_models.py fit_score, mm): miss, over (99th percentile),
+  // box (the parts' bounds against the mesh's); 'old' marks a piece not refitted yet
+  if (r.fit) e.err = { miss: r.fit.miss, over: r.fit.over, box: r.fit.box };
+  if (r.old) e.old = 1;
   e.prefab = r.path;
   pieces[name] = e;
   solidsOut[name] = e.solids ? { s: e.solids } : { pass: 1 };
@@ -73,8 +83,10 @@ const data = {
     'meaning not triggers and on a layer the player collides with, as oriented boxes c/s/q, spheres and capsules; snap points; ' +
     'all in the piece\'s own frame, metres) and a low-poly proxy per piece: boxes (c center, s size, q rotation) and prisms ' +
     '(p outline in the part\'s x-y plane, d depth along its z), each with a color sampled from the game texture (col) and a ' +
-    'material class (m). pass: no solid collider, a player walks through it. Built by lab/build_models.js.',
-  version: 2,
+    'material class (m), fitted to within 2 cm of the mesh (4 mm for the item stands; err gives the measure in mm); coarse: ' +
+    'the first, coarser proxy, for the quick overlap pre-test. pass: no solid collider, a player walks through it. Built by ' +
+    'lab/build_models.js.',
+  version: 3,
   pieces,
 };
 fs.writeFileSync(out, JSON.stringify(data));
@@ -86,3 +98,52 @@ fs.writeFileSync(outSolids, JSON.stringify({
 }));
 console.log(out, Object.keys(pieces).length, 'pieces,', parts, 'parts,', fs.statSync(out).size, 'bytes;', withSolid, 'with solid colliders,', pass, 'pass-through,', dropped, 'oversize solids left out');
 console.log(outSolids, fs.statSync(outSolids).size, 'bytes');
+
+// Items as an item stand shows them (lab/extract_models.py items, collect_items) to data/item-models.json:
+//   node lab/build_models.js --items <items-raw.json> [data/item-models.json] [item-gaps.json]
+// Per item: b, the bounds of the shown branch (the game's LOD0 meshes, exact) in its own frame; parts, the proxy
+// (boxes and prisms as in piece-models.json, to the tolerance tol); at, for each item stand, where the branch sits
+// in the stand's frame (c position, q rotation, s scale, as ItemStand.SetVisualItem sets it at quality 1, first
+// orientation); fits, whether the game lets that stand hold it (ItemStand.CanAttach: an 'attach' child, not on the
+// stand's unsupported list, and on its supported list or of a supported item type). 'none' lists the stand items the
+// game gives no model for.
+function buildItems(inp, out, gapsFile) {
+  const raw = JSON.parse(fs.readFileSync(inp, 'utf8'));
+  const r3 = v => Math.round(v * 1000) / 1000;
+  const round = pt => {
+    const o = { col: pt.col, m: pt.m, t: pt.t, c: pt.c.map(r3) };
+    if (pt.t === 'box') o.s = pt.s.map(r3); else { o.p = pt.p.map(v => v.map(r3)); o.d = r3(pt.d); }
+    if (pt.q) o.q = pt.q.map(v => Math.round(v * 10000) / 10000);
+    return o;
+  };
+  const gaps = gapsFile ? JSON.parse(fs.readFileSync(gapsFile, 'utf8')).gaps : {};
+  const items = {};
+  let parts = 0;
+  for (const [n, it] of Object.entries(raw.items).sort()) {
+    const fits = {};
+    for (const [sn, st] of Object.entries(raw.stands)) {
+      const un = (st.unsupported || []).includes(n);
+      const sup = !(st.supported || []).length || st.supported.includes(n) || (st.types || []).includes(it.type);
+      fits[sn] = !!it.at && !un && sup;
+    }
+    const e = { type: it.type, b: it.bounds, tris: it.tris, tol: it.tol, err: it.fit ? { miss: it.fit.miss, over: it.fit.over, box: it.fit.box } : null, at: it.at, fits };
+    if (gaps[n]) e.gap = gaps[n];
+    e.parts = (it.parts || []).map(round);
+    parts += e.parts.length;
+    items[n] = e;
+  }
+  const data = {
+    about: 'Items as the vanilla item stands show them, measured by lab/extract_models.py (items, collect_items) and built by ' +
+      'lab/build_models.js --items. b: bounds of the shown branch of the item prefab (its attach child, or attachobj) in its own ' +
+      'frame, metres, from the LOD0 meshes; parts: a low-poly proxy (boxes c/s/q, prisms p/d) within tol of the mesh; at: per ' +
+      'stand, the branch\'s position c, rotation q and scale s in the stand piece\'s frame (ItemStand.SetVisualItem, quality 1, ' +
+      'first orientation); fits: whether ItemStand.CanAttach takes it on that stand; gap: the mesh\'s and the proxy\'s lowest ' +
+      'point against the flat stand\'s top (itemstandh) and their back against the wall stand\'s face (itemstand), mm. ' +
+      'No mesh data from the game.',
+    stands: raw.stands,
+    items,
+    none: raw.none,
+  };
+  fs.writeFileSync(out, JSON.stringify(data));
+  console.log(out, Object.keys(items).length, 'items,', parts, 'parts,', fs.statSync(out).size, 'bytes;', Object.keys(raw.none || {}).length, 'without a model');
+}

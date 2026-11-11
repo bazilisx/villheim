@@ -28,16 +28,53 @@ function lite(models, all) {
     const b = v.bounds, c = v.collider;
     const proud = !c || !b ? 1 : Math.max(...[0, 1, 2].map(i => Math.max(c.min[i] - b.min[i], b.max[i] - c.max[i])));
     if (v.parts && (all || proud >= 0.015) && /Pieces|Items/.test(v.prefab || '')) {
-      e.p = v.parts.map(pt => {
-        if (pt.t === 'box') return [pt.c.map(r3), pt.s.map(r3), pt.q ? pt.q.map(r3) : 0];
-        let u0 = Infinity, u1 = -Infinity, v0 = Infinity, v1 = -Infinity;
-        for (const [u, w] of pt.p) { u0 = Math.min(u0, u); u1 = Math.max(u1, u); v0 = Math.min(v0, w); v1 = Math.max(v1, w); }
-        return [pt.c.map(r3), [r3(u1 - u0), r3(v1 - v0), r3(pt.d)], pt.q ? pt.q.map(r3) : 0, [r3((u0 + u1) / 2), r3((v0 + v1) / 2)]];
-      });
+      // two levels: p, the coarse parts (the first round's proxy) for the quick pre-test; f, the parts fitted to 2 cm
+      // of the game's mesh, the last word where the coarse parts meet (deepest below)
+      e.p = [].concat(...(v.coarse || v.parts).map(liteParts));
+      if (v.coarse) e.f = [].concat(...v.parts.map(liteParts));
     }
     out[n] = e;
   }
   return out;
+}
+
+// One part as boxes [center, size, rotation, polygon middle]: a box as it is; a prism as one box round its outline,
+// or, where that box would stand well past the outline (a hide, a blanket, a round table top), as strips along the
+// outline's longer side, each as wide as the outline is there.
+function liteParts(pt) {
+  if (pt.t === 'box') return [[pt.c.map(r3), pt.s.map(r3), pt.q ? pt.q.map(r3) : 0]];
+  const q = pt.q ? pt.q.map(r3) : 0;
+  return prismStrips(pt.p, pt.d).map(([u0, u1, v0, v1]) => [pt.c.map(r3), [r3(u1 - u0), r3(v1 - v0), r3(pt.d)], q, [r3((u0 + u1) / 2), r3((v0 + v1) / 2)]]);
+}
+/** A convex outline [[u, v], ...] as strips [u0, u1, v0, v1]: one when its box is close to it, else up to 6. */
+function prismStrips(poly, d) {
+  let u0 = Infinity, u1 = -Infinity, v0 = Infinity, v1 = -Infinity, a = 0;
+  for (let i = 0; i < poly.length; i++) {
+    const [x, y] = poly[i], [x2, y2] = poly[(i + 1) % poly.length];
+    u0 = Math.min(u0, x); u1 = Math.max(u1, x); v0 = Math.min(v0, y); v1 = Math.max(v1, y); a += x * y2 - x2 * y;
+  }
+  const W = u1 - u0, Hh = v1 - v0, area = Math.abs(a) / 2;
+  if (W * Hh <= 0 || area >= 0.85 * W * Hh || Math.max(W, Hh) < 0.3) return [[u0, u1, v0, v1]];
+  const along = W >= Hh ? 0 : 1, lo = along ? v0 : u0, L = along ? Hh : W;
+  const k = Math.max(2, Math.min(6, Math.round(L / 0.25)));
+  const out = [];
+  for (let s = 0; s < k; s++) {
+    const a0 = lo + L * s / k, a1 = lo + L * (s + 1) / k;
+    // the outline's reach across within [a0, a1]: its corners in the strip and where its edges cross the strip's ends
+    let c0 = Infinity, c1 = -Infinity;
+    for (let i = 0; i < poly.length; i++) {
+      const p0 = poly[i], p1 = poly[(i + 1) % poly.length];
+      const t0 = p0[along], t1 = p1[along], w0 = p0[1 - along], w1 = p1[1 - along];
+      if (t0 >= a0 - 1e-9 && t0 <= a1 + 1e-9) { c0 = Math.min(c0, w0); c1 = Math.max(c1, w0); }
+      for (const at of [a0, a1]) {
+        if ((t0 - at) * (t1 - at) < 0) { const w = w0 + (w1 - w0) * (at - t0) / (t1 - t0); c0 = Math.min(c0, w); c1 = Math.max(c1, w); }
+      }
+    }
+    if (!(c1 > c0)) continue;
+    out.push(along ? [c0, c1, a0, a1] : [a0, a1, c0, c1]);
+  }
+  void d;
+  return out.length ? out : [[u0, u1, v0, v1]];
 }
 
 function rot(q, v) {
@@ -55,16 +92,18 @@ function withBox(o) {
   return o;
 }
 
-const LOCAL = new Map();
+const LOCAL = new Map(), LOCALF = new Map();
 // The parts in the piece's own frame. A prism is its polygon (in local x, y) pushed d deep along local z; its box is
 // the polygon's bounds by that depth, which is close for the thin boards and planks the models are made of. A piece
 // with no parts kept (its model sits inside its collider) shows what is solid (lib/shapes.js).
-function local(name) {
-  if (LOCAL.has(name)) return LOCAL.get(name);
+function local(name, fine) {
+  const cache = fine ? LOCALF : LOCAL;
+  if (cache.has(name)) return cache.get(name);
   const m = data()[name];
   let out = null;
-  if (m && m.p) {
-    out = m.p.map(([c, sz, q0, mid]) => {
+  const list = m && (fine ? m.f : m.p);
+  if (list) {
+    out = list.map(([c, sz, q0, mid]) => {
       const q = q0 || [0, 0, 0, 1];
       const a = [rot(q, [1, 0, 0]), rot(q, [0, 1, 0]), rot(q, [0, 0, 1])];
       const h = sz.map(v => Math.max(v, 0.012) / 2);
@@ -73,7 +112,7 @@ function local(name) {
       return { c: [c[0] + off[0], c[1] + off[1], c[2] + off[2]], a, h };
     });
   }
-  LOCAL.set(name, out);
+  cache.set(name, out);
   return out;
 }
 
@@ -90,12 +129,23 @@ function world(p) {
   const c = SEEN && SEEN.get(p);
   if (c && c.x === p.x && c.y === p.y && c.z === p.z && c.q === p.q && c.n === p.name) return c.v;
   const v = world0(p);
+  // the piece it came from, so deepest can look again with the fine parts
+  if (v && p && typeof p === 'object') Object.defineProperty(v, '_p', { value: p, enumerable: false });
   if (SEEN && p && typeof p === 'object') SEEN.set(p, { x: p.x, y: p.y, z: p.z, q: p.q, n: p.name, v });
   return v;
 }
-function world0(p) {
-  const L = local(p.name);
-  if (!L) return shapesM().world(p);
+const SEENF = typeof WeakMap !== 'undefined' ? new WeakMap() : null;
+/** The piece's parts fitted to 2 cm of the game's mesh, in world space; null when it has no fine level. */
+function worldFine(p) {
+  const c = SEENF && SEENF.get(p);
+  if (c && c.x === p.x && c.y === p.y && c.z === p.z && c.q === p.q && c.n === p.name) return c.v;
+  const v = world0(p, true);
+  if (SEENF && p && typeof p === 'object') SEENF.set(p, { x: p.x, y: p.y, z: p.z, q: p.q, n: p.name, v });
+  return v;
+}
+function world0(p, fine) {
+  const L = local(p.name, fine);
+  if (!L) return fine ? null : shapesM().world(p);
   const q = pieceQ(p), sc = p.s || [1, 1, 1];
   return L.map(o => {
     const c = rot(q, [o.c[0] * sc[0], o.c[1] * sc[1], o.c[2] * sc[2]]);
@@ -138,8 +188,17 @@ function depth(A, B) {
   for (let i = 0; i < 3; i++) for (let j = 0; j < 3; j++) if (!test(cross(A.a[i], B.a[j]))) return 0;
   return isFinite(m) ? m : 0;
 }
-/** The deepest reach of any part of list A into any part of list B. */
+/** The deepest reach of any part of list A into any part of list B. Lists from world() are tested with the coarse
+ * parts first; where those meet, the fine parts (worldFine) of whichever side has them give the answer. */
 function deepest(A, B) {
+  const m = deepest0(A, B);
+  if (!(m > 0) || !FINE_ON) return m;
+  const fa = A._p ? worldFine(A._p) : null, fb = B._p ? worldFine(B._p) : null;
+  if (!fa && !fb) return m;
+  return deepest0(fa || A, fb || B);
+}
+let FINE_ON = !(typeof process !== 'undefined' && process.env && process.env.VH_COARSE);
+function deepest0(A, B) {
   if (!A || !B || !A.length || !B.length) return 0;
   const a = A._bb || (A._bb = aabbOf(A)), b = B._bb || (B._bb = aabbOf(B));
   if (a.x0 > b.x1 || b.x0 > a.x1 || a.y0 > b.y1 || b.y0 > a.y1 || a.z0 > b.z1 || b.z0 > a.z1) return 0;
@@ -164,5 +223,6 @@ function dims(name) {
 /** Does the piece show past its collider (its parts are kept)? Where it does not, its solids are what shows. */
 function proud(name) { const m = data()[name]; return !!(m && m.p); }
 
-const apiM = { world, aabbOf, depth, deepest, source, lite, proud, dims, setData: d => { LITE = d; LOCAL.clear(); } };
+const apiM = { world, worldFine, aabbOf, depth, deepest, source, lite, proud, dims, prismStrips, fine: on => { FINE_ON = on; },
+  setData: d => { LITE = d; LOCAL.clear(); LOCALF.clear(); } };
 if (NODE_M) module.exports = apiM; else window.VHMesh = apiM;

@@ -3,12 +3,16 @@
 
 Reads the game's asset bundles (UnityPy), walks each prefab's GameObject tree with its transforms, takes the visible
 LOD0 meshes and the colliders, and writes one small JSON per piece: render bounds, collider boxes, the pivot, and a
-proxy of up to about 40 boxes and prisms with a color per part. The meshes themselves never leave the PC; only the
+proxy of 90 to 220 boxes and prisms with a color per part. The meshes themselves never leave the PC; only the
 measurements and the proxy (our own coarse geometry) are written.
 
     python3 extract_models.py index   <Valheim_Data> <work dir>              # prefab name -> bundle
     python3 extract_models.py run     <Valheim_Data> <work dir> <names.txt> [seconds]
     python3 extract_models.py collect <work dir> <out.json>
+    python3 extract_models.py stands  <Valheim_Data> <work dir> <names.txt>   # item stands: attach point, what fits
+    python3 extract_models.py items   <Valheim_Data> <work dir> <names.txt> [seconds]  # items as a stand shows them
+    python3 extract_models.py fit     <work dir> <names.txt> [seconds] [pieces|items] [i/k]   # proxies from the cache
+    python3 extract_models.py collect_items <work dir> <out.json>
     python3 extract_models.py meshpack <work dir> <out.js>
 
 With VH_MESHES=1 in the environment, 'run' also writes a decimated copy of each piece's meshes (vertices merged on a
@@ -16,12 +20,22 @@ With VH_MESHES=1 in the environment, 'run' also writes a decimated copy of each 
 copy of the lab page. That pack holds game geometry: it stays on Tyler's PC (BepInEx/config/Villheim-tools/) and is
 never committed or published.
 
-'run' does as many pieces as fit in the time given (default 150 s) and skips pieces already done, so it can be called
-again until it reports nothing left. Results go to <work dir>/out/<name>.json.
+'run' (and 'items') reads the game files: it measures as many pieces as fit in the time given (default 150 s), skips
+pieces already done, writes <work dir>/out/<name>.json and keeps the measured meshes in <work dir>/cache (on this PC
+only). 'fit' then fits each proxy to the tolerance (TOL: 2 cm for pieces, 1.5 cm for stand items, 4 mm for the two
+item stands) from that cache, so a refit never reads the game again; a piece whose last proxy (VH_OLD names the last
+data/piece-models.json) is already within the tolerance keeps it. Both can be called again until nothing is left.
 """
 import json, math, os, re, sys, time
 
 import numpy as np
+
+# How fine the proxy is (2026-11-11 round: more parts for small and thin pieces). The first round used a budget of
+# 30 + 30 m per metre of the piece's largest size (40 to 150 parts), 28 voxels along a part, one primitive kept when it
+# covered 72 % of a part (80 % for a flat part), at most 14 primitives a part and 6 rectangles a flat part, and dropped
+# bits under 4 cm.
+FINE = {'budget': (60, 45, 90, 220), 'item_budget': (30, 60, 30, 70), 'cells': 40, 'layer_cells': 64, 'solid_ok': 0.84,
+        'layer_ok': 0.88, 'layer_rects': 12, 'cover': 0.95, 'gain': 0.05, 'share_max': 24, 'small': 0.04, 'small_rel': 0.05}
 
 # ---------------------------------------------------------------- index
 
@@ -183,12 +197,13 @@ def best_frame(P):
 # ---------------------------------------------------------------- voxels
 
 
-def sample_tris(V, T, step):
-    """Points on the triangles, at most 'step' apart."""
+def sample_tris(V, T, step, cap=400):
+    """Points on the triangles, at most 'step' apart (up to 'cap' steps along an edge; the collider boxes keep the
+    first round's 60)."""
     out = [V]
     a, b, c = V[T[:, 0]], V[T[:, 1]], V[T[:, 2]]
     L = np.maximum(np.linalg.norm(b - a, axis=1), np.linalg.norm(c - a, axis=1))
-    n = np.clip(np.ceil(L / step).astype(int), 1, 60)
+    n = np.clip(np.ceil(L / step).astype(int), 1, cap)
     for k in np.unique(n):
         sel = n == k
         if k <= 1:
@@ -339,7 +354,7 @@ def layer_fit(V, T, R, L, nmax):
     lo, hi = L.min(0), L.max(0)
     ext = np.maximum(hi - lo, 0.005)
     k = int(np.argmin(ext)); o = [i for i in range(3) if i != k]
-    v2 = float(np.clip(max(ext[o]) / 40, 0.01, 0.06))
+    v2 = float(np.clip(max(ext[o]) / FINE['layer_cells'], 0.006, 0.05))
     pts = sample_tris(L, T, v2 * 0.5)
     t0, t1 = np.percentile(pts[:, k], 5), np.percentile(pts[:, k], 95)
     if t1 - t0 < 0.02:
@@ -368,15 +383,15 @@ def layer_fit(V, T, R, L, nmax):
             iou = float((F & m2).sum() / max((F | m2).sum(), 1))
             cands.append((iou, 0.012 + 0.003 * len(hs), [prism_record(R, k, np.asarray(hs, float), llo, lhi)]))
     best = max(cands, key=lambda c: c[0] - c[1])
-    if best[0] >= 0.8 or nmax <= 1:
+    if best[0] >= FINE['layer_ok'] or nmax <= 1:
         return best[2], best[0]
-    rects = greedy_boxes(F[:, :, None], min(nmax, 6), cover=0.93, min_frac=0.02)
+    rects = greedy_boxes(F[:, :, None], min(nmax, FINE['layer_rects']), cover=FINE['cover'], min_frac=0.012)
     if rects:
         U = np.zeros_like(F)
         for (a, b) in rects:
             U[a[0]:b[0], a[1]:b[1]] = True
         giou = float((F & U).sum() / max((F | U).sum(), 1))
-        if giou > best[0] + 0.1:
+        if giou > best[0] + FINE['gain']:
             out = []
             for (a, b) in rects:
                 c = (llo + lhi) / 2; s3 = sz.copy()
@@ -398,7 +413,7 @@ def fit_component(V, T, nmax=10):
     if len(T) and se[0] < 0.5 * se[1] and se[1] > 0.08:
         return layer_fit(V, T, R, L, nmax)
     hi = lo + ext
-    vox = float(np.clip(ext.max() / 28, 0.012, 0.08))
+    vox = float(np.clip(ext.max() / FINE['cells'], 0.006, 0.06))
     while np.prod([math.ceil(e / vox) for e in ext]) > 150000:
         vox *= 1.25
     dims = [max(1, int(math.ceil(e / vox))) for e in ext]
@@ -431,17 +446,162 @@ def fit_component(V, T, nmax=10):
             iou = float((S & mask).sum() / max((S | mask).sum(), 1))
             cands.append((iou, 0.012 + 0.003 * len(hs), [prism_record(R, k, np.asarray(hs, float), lo, hi)]))
     best = max(cands, key=lambda c: c[0] - c[1])
-    if best[0] >= 0.72 or nmax <= 1 or min(dims) < 1:
+    if best[0] >= FINE['solid_ok'] or nmax <= 1 or min(dims) < 1:
         return best[2], best[0]
-    boxes = greedy_boxes(S, nmax, cover=0.93, min_frac=0.01)
+    boxes = greedy_boxes(S, nmax, cover=FINE['cover'], min_frac=0.006)
     if boxes:
         U = np.zeros_like(S)
         for (a, b) in boxes:
             U[tuple(slice(a[i], b[i]) for i in range(3))] = True
         giou = float((S & U).sum() / max((S | U).sum(), 1))
-        if giou > best[0] + 0.08:
+        if giou > best[0] + FINE['gain']:
             return [('box', R @ (lo + (a + b) / 2 * vox), (b - a) * vox, R) for (a, b) in boxes], giou
     return best[2], best[0]
+
+
+# ---------------------------------------------------------------- fitting to a tolerance (2026-11-11)
+#
+# Each part is fitted until its proxy lies within TOL of the real surface both ways: no point of the part's solid
+# farther than TOL from the proxy, and no point of the proxy farther than TOL from the solid (99th percentile, on a
+# voxel grid of TOL / 2 or finer where the grid allows). Detail under TOL (bevels, cracks, seams) is left out. One box
+# or one prism is kept when it meets the tolerance; otherwise boxes inside the solid are added until it does.
+
+ITEM_PARTS = 250
+TOL = {'pieces': 0.02, 'items': float(os.environ.get('VH_ITEM_TOL', 0.015)), 'stands': 0.004}
+CELL_CAP = 1200000
+MAX_BOXES = 400
+
+
+def _nd():
+    import scipy.ndimage as nd
+    return nd
+
+
+def solid_fast(pts, lo, vox, dims):
+    """As solid_grid, with scipy: surface cells, closed by one cell, holes filled."""
+    nd = _nd()
+    g = np.zeros(tuple(dims), bool)
+    ij = np.floor((pts - lo) / vox).astype(int)
+    for k in range(3):
+        ij[:, k] = np.clip(ij[:, k], 0, dims[k] - 1)
+    g[ij[:, 0], ij[:, 1], ij[:, 2]] = True
+    pad = np.pad(g, 2)
+    closed = nd.binary_closing(pad, iterations=1)
+    filled = nd.binary_fill_holes(closed)
+    return filled[2:-2, 2:-2, 2:-2] | g
+
+
+def tol_fit(V, T, tol):
+    """Primitives for one part within 'tol' (see above). Returns (records, error in metres)."""
+    nd = _nd()
+    R = best_frame(V)
+    L = V @ R
+    lo, hi = L.min(0), L.max(0)
+    ext = np.maximum(hi - lo, 0.002)
+    one = ('box', R @ ((lo + hi) / 2), ext, R)
+    if len(T) == 0 or ext.max() <= tol:
+        return [one], 0.0
+    vox = tol / 2
+    while np.prod([math.ceil(e / vox) + 2 for e in ext]) > CELL_CAP:
+        vox *= 1.1
+    g0 = lo - vox
+    dims = [int(math.ceil(e / vox)) + 2 for e in ext]
+    S = solid_fast(sample_tris(L, T, vox * 0.5), g0, vox, dims)
+    if not S.any():
+        return [one], 0.0
+    DS = nd.distance_transform_edt(~S) * vox  # how far each cell is from the solid
+    ctr = [g0[i] + (np.arange(dims[i]) + 0.5) * vox for i in range(3)]
+
+    def err(P):
+        if not P.any():
+            return 9.0
+        over = float(np.percentile(DS[P], 99))
+        if over > tol + vox * 0.5:
+            return over
+        DP = nd.distance_transform_edt(~P) * vox
+        return max(over, float(np.percentile(DP[S], 99)))
+
+    def boxmask(blo, bhi):
+        m = [(ctr[i] >= blo[i] - vox * 0.5) & (ctr[i] <= bhi[i] + vox * 0.5) for i in range(3)]
+        return m[0][:, None, None] & m[1][None, :, None] & m[2][None, None, :]
+
+    cands = [(err(boxmask(lo, hi)), 1, [one])]
+    if cands[0][0] <= tol:
+        return cands[0][2], cands[0][0]
+    for k in range(3):
+        o = [i for i in range(3) if i != k]
+        if dims[o[0]] < 3 or dims[o[1]] < 3:
+            continue
+        h = hull2d(L[:, o])
+        if len(h) < 3:
+            continue
+        X, Y = np.meshgrid(ctr[o[0]], ctr[o[1]], indexing='ij')
+        seen = set()
+        for nv in (3, 4, 5, 6, 8, 10, 12, 16):
+            hs = simplify(h, nv) if len(h) > nv else h
+            if len(hs) in seen or len(hs) < 3:
+                continue
+            seen.add(len(hs))
+            m2 = convex_mask(hs, X, Y, vox * 0.5)
+            zm = (ctr[k] >= lo[k] - vox * 0.5) & (ctr[k] <= hi[k] + vox * 0.5)
+            P = np.expand_dims(m2, k) & zm.reshape([-1 if i == k else 1 for i in range(3)])
+            e = err(P)
+            cands.append((e, 1, [prism_record(R, k, np.asarray(hs, float), lo, hi)]))
+            if e <= tol:
+                break
+    ok = [c for c in cands if c[0] <= tol]
+    if ok:
+        best = min(ok, key=lambda c: c[0])
+        return best[2], best[0]
+    # boxes inside the solid, each grown from a cell still too far from the boxes so far
+    rng = np.random.default_rng(1)
+    covered = np.zeros_like(S)
+    boxes = []
+    far = S.copy()
+    e = 9.0
+    while len(boxes) < MAX_BOXES:
+        rem = np.argwhere(far & ~covered)
+        if len(rem) == 0:
+            break
+        seeds = rem[rng.choice(len(rem), min(10, len(rem)), replace=False)]
+        best, bb = 0, None
+        for sd in seeds:
+            blo, bhi = sd.copy(), sd + 1
+            grow = True
+            while grow:
+                grow = False
+                for ax in range(3):
+                    for d in (-1, 1):
+                        nl, nh = blo.copy(), bhi.copy()
+                        if d < 0:
+                            if nl[ax] == 0: continue
+                            nl[ax] -= 1; sl = [slice(nl[i], nh[i]) for i in range(3)]; sl[ax] = slice(nl[ax], nl[ax] + 1)
+                        else:
+                            if nh[ax] >= S.shape[ax]: continue
+                            nh[ax] += 1; sl = [slice(nl[i], nh[i]) for i in range(3)]; sl[ax] = slice(nh[ax] - 1, nh[ax])
+                        if S[tuple(sl)].all():
+                            blo, bhi, grow = nl, nh, True
+            sl = tuple(slice(blo[i], bhi[i]) for i in range(3))
+            gain = (far[sl] & ~covered[sl]).sum()
+            if gain > best:
+                best, bb = gain, (blo, bhi)
+        if bb is None:
+            break
+        covered[tuple(slice(bb[0][i], bb[1][i]) for i in range(3))] = True
+        boxes.append(bb)
+        if len(boxes) % 4 == 0 or len(rem) < 50:
+            DP = nd.distance_transform_edt(~covered) * vox
+            far = S & (DP > tol)
+            e = float(np.percentile(DP[S], 99))
+            if not far.any() or e <= tol:
+                break
+    if boxes:
+        DP = nd.distance_transform_edt(~covered) * vox
+        e = float(np.percentile(DP[S], 99))
+    best1 = min(cands, key=lambda c: c[0])
+    if not boxes or best1[0] <= e:
+        return best1[2], best1[0]
+    return [('box', R @ (g0 + (a + b) / 2 * vox), (b - a) * vox, R) for (a, b) in boxes], e
 
 
 def components(V, T):
@@ -654,7 +814,7 @@ def collider_boxes(V, T, nmax=6):
         return one
     vox = float(np.clip(ext.max() / 24, 0.025, 0.25))
     dims = [max(1, int(math.ceil(e / vox))) for e in ext]
-    S, _ = solid_grid(sample_tris(L, T, vox * 0.5), lo, vox, dims)
+    S, _ = solid_grid(sample_tris(L, T, vox * 0.5, 60), lo, vox, dims)
     if S.mean() >= 0.75 or min(dims) <= 2 and S.mean() >= 0.6:
         return one
     out = []
@@ -671,8 +831,20 @@ def comp_of(go, tname):
     return None
 
 
-def measure(reader, root):
-    """Walk the prefab; returns meshes (piece-frame verts, tris, per-tri colors/material names) and colliders."""
+def all_nodes(root):
+    out, stack = [], [root]
+    while stack:
+        go = stack.pop()
+        out.append(go)
+        tr = (comp_of(go, 'Transform') or comp_of(go, 'RectTransform')).read()
+        for ch in tr.m_Children:
+            stack.append(ch.read().m_GameObject.read())
+    return out
+
+
+def measure(reader, root, lod_root=None):
+    """Walk the prefab; returns meshes (piece-frame verts, tris, per-tri colors/material names) and colliders. With
+    lod_root (an item's whole prefab when only its 'attach' branch is measured), the LOD groups come from all of it."""
     meshes, colliders, lod_skip, snaps = [], [], set(), []
     stack = [(root, np.eye(4), True, True)]
     nodes = []
@@ -690,7 +862,7 @@ def measure(reader, root):
         for ch in tr.m_Children:
             cgo = ch.read().m_GameObject.read()
             stack.append((cgo, M, False, active and bool(cgo.m_IsActive)))
-    for go, M in nodes:
+    for go in ([g for g, _ in nodes] if lod_root is None else all_nodes(lod_root)):
         for c in go.m_Component:
             o = c.component.deref()
             if o.type.name == 'LODGroup':
@@ -866,7 +1038,7 @@ def part_volume(pr):
     return poly_area(np.asarray(pr[2])) * max(pr[3], 0.01)
 
 
-def proxy(meshes, budget=None):
+def proxy(meshes, budget=None, kind='budget', tol=None):
     allV = np.concatenate([m['V'] for m in meshes])
     lo, hi = allV.min(0), allV.max(0)
     maxdim = float((hi - lo).max())
@@ -885,34 +1057,50 @@ def proxy(meshes, budget=None):
             comps.append({'V': Vc, 'T': Tl, 'area': float(area.sum()), 'ext': ext, 'col': col, 'mat': m['mat'], 'cls': m['cls'], 'go': m['go']})
     total_area = sum(c['area'] for c in comps) or 1
     if budget is None:
-        budget = int(np.clip(30 + 30 * maxdim, 40, 150))
-    # leave out nails and other small details
-    keep = [c for c in comps if not (c['ext'].max() < 0.04 or (c['area'] < 0.001 * total_area and c['ext'].max() < 0.12))]
+        b0, bm, blo, bhi = FINE[kind]
+        budget = int(np.clip(b0 + bm * maxdim, blo, bhi))
+    # leave out nails and other small details (smaller ones kept on small pieces: a mug's handle, a lantern's frame)
+    small = min(FINE['small'], max(0.008, FINE['small_rel'] * maxdim))
+    if tol is not None:
+        small = tol
+    keep = [c for c in comps if not (c['ext'].max() < small or (c['area'] < 0.001 * total_area and c['ext'].max() < 3 * small))]
     if not keep:
         keep = comps
-    if len(keep) > 3 * budget:
-        keep = cluster(keep, 2 * budget)
-    keep = merge_sheets(keep)
-    if len(keep) > 0.75 * budget:
-        keep = cluster(keep, int(0.75 * budget))
+    if tol is not None:
+        # parts of one material in one cell of a grid are fitted together (thatch tufts, shingles, rock chips); the
+        # fit is to the tolerance either way, so this only saves time
+        if len(keep) > 300:
+            keep = cluster(keep, 300)
+        keep = merge_sheets(keep)
+        budget = 10 ** 6
+    else:
+        if len(keep) > 3 * budget:
+            keep = cluster(keep, 2 * budget)
+        keep = merge_sheets(keep)
+        if len(keep) > 0.75 * budget:
+            keep = cluster(keep, int(0.75 * budget))
     parts = []
     for c in keep:
-        share = int(np.clip(budget * c['area'] / total_area * 1.5 + 2, 2, 14))
-        prs, _ = fit_component(c['V'], c['T'], share)
+        if tol is not None:
+            prs, _ = tol_fit(c['V'], c['T'], tol)
+        else:
+            share = int(np.clip(budget * c['area'] / total_area * 1.5 + 2, 2, FINE['share_max']))
+            prs, _ = fit_component(c['V'], c['T'], share)
         for pr in prs:
             parts.append((pr, c))
     if len(parts) > budget:
         parts.sort(key=lambda pc: -part_volume(pc[0]))
         parts = parts[:budget]
     out = []
+    nd_ = 4 if tol is not None and tol < 0.01 else 3
     for pr, c in parts:
         d = {'col': hexcol(c['col']), 'm': c['cls'] or mat_class(c['go'])}
         if pr[0] == 'box':
             _, cen, s, R = pr
-            d.update({'t': 'box', 'c': np.round(cen, 3).tolist(), 's': np.round(s, 3).tolist()})
+            d.update({'t': 'box', 'c': np.round(cen, nd_).tolist(), 's': np.round(s, nd_).tolist()})
         else:
             _, cen, pts, depth, R = pr
-            d.update({'t': 'prism', 'c': np.round(cen, 3).tolist(), 'p': np.round(pts, 3).tolist(), 'd': round(depth, 3)})
+            d.update({'t': 'prism', 'c': np.round(cen, nd_).tolist(), 'p': np.round(pts, nd_).tolist(), 'd': round(depth, nd_)})
         q = mat_quat(R)
         if abs(q[3]) < 0.99999:
             d['q'] = [round(v, 4) for v in q]
@@ -949,34 +1137,340 @@ def decimate(meshes, grid=0.03):
             'c': (ci[:, 0] * 65536 + ci[:, 1] * 256 + ci[:, 2]).tolist()}
 
 
-def do_piece(reader, root, name, path, work=None):
-    meshes, colliders, snaps = measure(reader, root)
+# ---------------------------------------------------------------- fit measure
+
+
+def part_mask(pt, X, pad):
+    """Which points X (n x 3) fall inside one proxy part (the parts' JSON form) grown by 'pad'."""
+    R = quat_mat(pt.get('q', [0, 0, 0, 1]))
+    L = (X - np.asarray(pt['c'])) @ R
+    if pt['t'] == 'box':
+        h = np.maximum(np.asarray(pt['s'], float), 0.012) / 2 + pad
+        return np.all(np.abs(L) <= h, axis=1)
+    m = np.abs(L[:, 2]) <= max(pt['d'], 0.012) / 2 + pad
+    if m.any():
+        m[m] = convex_mask(np.asarray(pt['p'], float), L[m, 0], L[m, 1], pad)
+    return m
+
+
+def fit_score(meshes, parts, tol=0.02):
+    """How close the proxy is to the real mesh, on one voxel grid (tol / 4, coarser only where the piece is too large
+    for that): 'miss' how far the mesh's solid reaches past the proxy and 'over' how far the proxy reaches past the
+    solid, in mm, as the 99th percentile and the worst cell; 'iou' of the two; 'box' the largest difference between
+    the proxy's bounds and the mesh's, in mm."""
+    if not meshes or not parts:
+        return None
+    nd = _nd()
+    V = np.concatenate([m['V'] for m in meshes])
+    lo, hi = V.min(0), V.max(0)
+    ext = np.maximum(hi - lo, 0.005)
+    vox = tol / 4
+    while np.prod([math.ceil(e / vox) + 4 for e in ext]) > 1500000:
+        vox *= 1.1
+    g0 = lo - 2 * vox
+    dims = [int(math.ceil(e / vox)) + 4 for e in ext]
+    # each connected part's own solid, as the fit sees it (an open cup is its wall and the drink's surface, never a
+    # solid block)
+    S = np.zeros(dims, bool)
+    for m in meshes:
+        for idx in components(m['V'], m['T']):
+            used = np.unique(m['T'][idx])
+            remap = -np.ones(len(m['V']), np.int64); remap[used] = np.arange(len(used))
+            Vc, Tc = m['V'][used], remap[m['T'][idx]]
+            a = np.clip(np.floor((Vc.min(0) - g0) / vox).astype(int) - 2, 0, None)
+            b = np.minimum(np.ceil((Vc.max(0) - g0) / vox).astype(int) + 3, dims)
+            sub = solid_fast(sample_tris(Vc, Tc, vox * 0.5), g0 + a * vox, vox, list(b - a))
+            S[a[0]:b[0], a[1]:b[1], a[2]:b[2]] |= sub
+    ctr = [g0[i] + (np.arange(dims[i]) + 0.5) * vox for i in range(3)]
+    P = np.zeros(dims, bool)
+    plo, phi = np.full(3, np.inf), np.full(3, -np.inf)
+    for pt in parts:
+        R = quat_mat(pt.get('q', [0, 0, 0, 1]))
+        if pt['t'] == 'box':
+            h = np.maximum(np.asarray(pt['s'], float), 0.002) / 2
+            cs = np.array([[x, y, z] for x in (-h[0], h[0]) for y in (-h[1], h[1]) for z in (-h[2], h[2])])
+        else:
+            dd = max(pt['d'], 0.002) / 2
+            cs = np.array([[u, w, z] for u, w in pt['p'] for z in (-dd, dd)])
+        W = cs @ R.T + np.asarray(pt['c'])
+        plo, phi = np.minimum(plo, W.min(0)), np.maximum(phi, W.max(0))
+        i0 = np.clip(np.floor((W.min(0) - vox - g0) / vox).astype(int), 0, np.array(dims))
+        i1 = np.clip(np.ceil((W.max(0) + vox - g0) / vox).astype(int), 0, np.array(dims))
+        if np.any(i1 <= i0):
+            continue
+        sub = np.stack(np.meshgrid(*[ctr[i][i0[i]:i1[i]] for i in range(3)], indexing='ij'), -1)
+        sh = sub.shape[:3]
+        sl = tuple(slice(i0[i], i1[i]) for i in range(3))
+        P[sl] |= part_mask(pt, sub.reshape(-1, 3), vox * 0.5).reshape(sh)
+    if not P.any() or not S.any():
+        return None
+    DS = nd.distance_transform_edt(~S) * vox
+    DP = nd.distance_transform_edt(~P) * vox
+    over, miss = DS[P], DP[S]
+    mm = lambda v: round(float(v) * 1000, 1)
+    return {'miss': mm(np.percentile(miss, 99)), 'miss_max': mm(miss.max()), 'over': mm(np.percentile(over, 99)),
+            'over_max': mm(over.max()), 'iou': round(float((S & P).sum() / max((S | P).sum(), 1)), 3), 'vox': mm(vox),
+            'box': mm(max(np.abs(plo - lo).max(), np.abs(phi - hi).max())), 'n': len(parts)}
+
+
+OLD = None
+
+
+def old_parts(name):
+    """The parts of the last committed data/piece-models.json (VH_OLD names it), to measure both rounds alike."""
+    global OLD
+    if OLD is None:
+        f = os.environ.get('VH_OLD')
+        OLD = json.load(open(f))['pieces'] if f and os.path.exists(f) else {}
+    return (OLD.get(name) or {}).get('parts')
+
+
+# ---------------------------------------------------------------- item stands and their items
+
+
+def transform_of(go):
+    return (comp_of(go, 'Transform') or comp_of(go, 'RectTransform'))
+
+
+def child(go, name):
+    for ch in transform_of(go).read().m_Children:
+        c = ch.read().m_GameObject.read()
+        if c.m_Name == name:
+            return c
+    return None
+
+
+def local_trs(go):
+    t = transform_of(go).read()
+    lp, lr, ls = t.m_LocalPosition, t.m_LocalRotation, t.m_LocalScale
+    return [lp.x, lp.y, lp.z], [lr.x, lr.y, lr.z, lr.w], [ls.x, ls.y, ls.z]
+
+
+def typetree_of(go, key):
+    for c in go.m_Component:
+        o = c.component.deref()
+        if o.type.name == 'MonoBehaviour':
+            try:
+                d = o.read_typetree()
+            except Exception:
+                continue
+            if key in d:
+                return d
+    return None
+
+
+def do_stand(reader, root, name, path):
+    """An item stand: its attach point (m_attachOther) in the piece's frame, its orientation type and what it takes."""
+    d = typetree_of(root, 'm_attachOther')
+    res = {'name': name, 'path': path}
+    if not d:
+        res['error'] = 'no ItemStand'
+        return res
+    want = d['m_attachOther']['m_PathID']
+    stack = [(root, np.eye(4), True)]
+    while stack:
+        go, M, is_root = stack.pop()
+        tobj = transform_of(go)
+        if not is_root:
+            t, q, s = local_trs(go)
+            M = M @ trs(t, q, s)
+        if tobj.path_id == want:
+            R, sc = frame_of(M)
+            res['attach'] = {'go': go.m_Name, 't': np.round(M[:3, 3], 4).tolist(), 'q': [round(v, 5) for v in mat_quat(R)],
+                             's': np.round(sc, 4).tolist()}
+        for ch in tobj.read().m_Children:
+            stack.append((ch.read().m_GameObject.read(), M, False))
+
+    def names(lst):
+        out = []
+        for ptr in lst or []:
+            try:
+                out.append(ptr_name(reader, ptr))
+            except Exception as e:
+                out.append('? ' + str(e)[:40])
+        return out
+    res['orientation'] = d.get('m_orientationType')
+    res['types'] = d.get('m_supportedTypes')
+    res['supported'] = names(d.get('m_supportedItems'))
+    res['unsupported'] = names(d.get('m_unsupportedItems'))
+    return res
+
+
+def ptr_name(reader, ptr):
+    """The GameObject name an ItemDrop pointer (a typetree dict) points at, within the loaded files."""
+    pid = ptr['m_PathID']
+    if not pid:
+        return None
+    if not hasattr(reader, 'by_pid'):
+        reader.by_pid = {o.path_id: o for o in reader.env.objects}
+    o = reader.by_pid.get(pid)
+    if o is None:
+        return str(pid)
+    return o.read().m_GameObject.read().m_Name
+
+
+def do_item(reader, root, name, path, work=None):
+    """An item as an item stand shows it (ItemStand.SetVisualItem): the prefab's 'attach' child, or its 'attachobj'
+    child when there is one, drawn in its own frame and set under the stand's attach point with attach's local
+    position, rotation and scale, then moved by the item's first stand offset for that kind of stand."""
+    res = {'name': name, 'path': path}
+    d = typetree_of(root, 'm_itemData')
+    if d:
+        sh = d['m_itemData']['m_shared']
+        res['type'] = sh.get('m_itemType')
+        res['scaleQ'] = sh.get('m_scaleByQuality', 0)
+        res['offsets'] = [{'p': [o['m_position'][k] for k in 'xyz'], 'r': [o['m_rotation'][k] for k in 'xyz'],
+                           's': [o['m_scale'][k] for k in 'xyz'], 'o': o['m_orientations']} for o in sh.get('m_itemStandOffsets') or []]
+    att = child(root, 'attach')
+    if att is None:
+        res['error'] = 'no attach child (an item stand cannot hold it)'
+        return res
+    obj = child(att, 'attachobj')
+    node = obj or att
+    t, q, s = local_trs(att)
+    res['attach'] = {'t': [round(v, 4) for v in t], 'q': [round(v, 5) for v in q], 's': [round(v, 4) for v in s]}
+    res['obj'] = 'attachobj' if obj else 'attach'
+    meshes, _, _ = measure(reader, node, lod_root=root)
     if work and os.environ.get('VH_MESHES') and meshes:
-        os.makedirs(os.path.join(work, 'meshes'), exist_ok=True)
-        json.dump(decimate(meshes), open(os.path.join(work, 'meshes', name + '.json'), 'w'), separators=(',', ':'))
-    res = {'name': name, 'path': path, 'colliders': colliders, 'snaps': snaps}
-    solid = [c for c in colliders if c['solid']]
-    if solid:
-        res['collider'] = {'min': np.min([c['min'] for c in solid], 0).round(3).tolist(), 'max': np.max([c['max'] for c in solid], 0).round(3).tolist()}
+        # the item's own triangles, merged only on a 0.5 mm grid, for the offline page on this PC (never committed)
+        os.makedirs(os.path.join(work, 'item_meshes'), exist_ok=True)
+        json.dump(decimate(meshes, 0.0005), open(os.path.join(work, 'item_meshes', name + '.json'), 'w'), separators=(',', ':'))
     if meshes:
         V = np.concatenate([m['V'] for m in meshes])
         res['bounds'] = {'min': V.min(0).round(3).tolist(), 'max': V.max(0).round(3).tolist()}
         res['tris'] = int(sum(len(m['T']) for m in meshes))
         res['materials'] = sorted(set(m['mat'] for m in meshes))
         if res['tris'] <= 60000:
-            parts, nc = proxy(meshes)
-            res['parts'] = parts
-            res['components'] = nc
+            res['components'] = len(meshes)
+            if work:
+                save_meshes(work, name, meshes)
+    else:
+        res['error'] = 'no mesh under ' + res['obj']
     return res
 
 
-def run(data_dir, work, names_file, seconds=150):
+def fit_item(res, meshes):
+    """An item's proxy to TOL['items'], or to 1/50 of its largest size for a large one (a boss trophy, a tower
+    shield), fitted once more at 1.8 times that when it still needs more than ITEM_PARTS parts."""
+    V = np.concatenate([m['V'] for m in meshes])
+    tol = max(TOL['items'], float(np.ptp(V, axis=0).max()) / 50)
+    parts, nc = proxy(meshes, kind='item_budget', tol=tol)
+    if len(parts) > ITEM_PARTS:
+        tol *= 1.8
+        parts, nc = proxy(meshes, kind='item_budget', tol=tol)
+    res['tol'] = round(tol, 4)
+    res['parts'] = parts
+    res['components'] = nc
+    res['fit'] = fit_score(meshes, parts, tol)
+
+
+def fit_piece(res, meshes):
+    """The proxy of one piece to the tolerance. A piece whose last proxy is within it already keeps that one."""
+    name = res['name']
+    tl = TOL['stands'] if name.startswith('itemstand') else TOL['pieces']
+    op = old_parts(name)
+    if op:
+        res['fit_old'] = fit_score(meshes, op, tl)
+        f = res['fit_old']
+        if f and f['miss'] <= tl * 1000 and f['over'] <= tl * 1000 and f['box'] <= tl * 1000:
+            res['parts'], res['fit'], res['kept'] = op, f, 1
+            return
+    parts, nc = proxy(meshes, tol=tl)
+    res['parts'] = parts
+    res['components'] = nc
+    res['fit'] = fit_score(meshes, parts, tl)
+
+
+def save_meshes(work, name, meshes):
+    """The measured meshes of one prefab, kept on this PC between calls (never committed), so a refit does not read
+    the game files again."""
+    d = os.path.join(work, 'cache'); os.makedirs(d, exist_ok=True)
+    arr = {}
+    for i, m in enumerate(meshes):
+        arr['V%d' % i], arr['T%d' % i], arr['C%d' % i] = m['V'].astype(np.float32), m['T'].astype(np.int32), m['col'].astype(np.float32)
+    np.savez_compressed(os.path.join(d, name + '.npz'), **arr)
+    json.dump([{k: m[k] for k in ('go', 'mat', 'tex', 'cls')} for m in meshes], open(os.path.join(d, name + '.json'), 'w'))
+
+
+def load_meshes(work, name):
+    d = os.path.join(work, 'cache')
+    f = os.path.join(d, name + '.npz')
+    if not os.path.exists(f):
+        return None
+    z = np.load(f)
+    info = json.load(open(os.path.join(d, name + '.json')))
+    return [dict(info[i], V=z['V%d' % i].astype(np.float64), T=z['T%d' % i].astype(np.int64), col=z['C%d' % i].astype(np.float64))
+            for i in range(len(info))]
+
+
+def rescore(work, names_file, mode='pieces', part='0/1', seconds=150):
+    """The fit measures again (after a change to fit_score), without fitting."""
+    t0 = time.time()
+    i0, k = map(int, part.split('/'))
+    outdir = os.path.join(work, 'out' if mode == 'pieces' else 'items')
+    n_ = 0
+    for n in [n.strip() for n in open(names_file) if n.strip()][i0::k]:
+        f = os.path.join(outdir, n + '.json')
+        if time.time() - t0 > seconds or not os.path.exists(f):
+            continue
+        res = json.load(open(f))
+        if not res.get('parts') or res.get('rescored'):
+            continue
+        ms = load_meshes(work, n)
+        tl = res.get('tol') or (TOL['stands'] if n.startswith('itemstand') else TOL['pieces'] if mode == 'pieces' else TOL['items'])
+        res['fit'] = fit_score(ms, res['parts'], tl)
+        if mode == 'pieces' and old_parts(n):
+            res['fit_old'] = fit_score(ms, old_parts(n), tl)
+        res['rescored'] = 1
+        json.dump(res, open(f, 'w'))
+        n_ += 1
+    print('rescored', n_, round(time.time() - t0, 1), 's')
+
+
+def fit(work, names_file, seconds=150, mode='pieces', part='0/1'):
+    """Fit the proxies from the cached meshes ('run' or 'items' first), as many as fit in the time given; part 'i/k'
+    takes every k-th name from the i-th, so k processes can share a list."""
+    t0 = time.time()
+    i0, k = map(int, part.split('/'))
+    names = [n.strip() for n in open(names_file) if n.strip()][i0::k]
+    outdir = os.path.join(work, 'out' if mode == 'pieces' else 'items')
+    done = left = 0
+    for n in names:
+        f = os.path.join(outdir, n + '.json')
+        if not os.path.exists(f):
+            continue
+        res = json.load(open(f))
+        if 'fit' in res or res.get('error') or res.get('fit_error') or (res.get('fit_started') and not os.environ.get('VH_RETRY')):
+            continue
+        if time.time() - t0 > seconds:
+            left += 1
+            continue
+        meshes = load_meshes(work, n)
+        if not meshes:
+            continue
+        t1 = time.time()
+        # marked first, so a fit cut off by the call's time limit is not tried again (VH_RETRY=1 tries those)
+        json.dump(dict(res, fit_started=1), open(f, 'w'))
+        try:
+            (fit_piece if mode == 'pieces' else fit_item)(res, meshes)
+        except Exception as e:
+            res['fit_error'] = repr(e)[:200]
+        res['fit_s'] = round(time.time() - t1, 1)
+        res.pop('fit_started', None)
+        json.dump(res, open(f, 'w'))
+        done += 1
+        print(n, len(res.get('parts', [])), 'parts', 'kept' if res.get('kept') else '', res.get('fit'), res['fit_s'], 's', flush=True)
+    print('fitted', done, 'left', left, round(time.time() - t0, 1), 's')
+
+
+def run(data_dir, work, names_file, seconds=150, mode='pieces'):
     import UnityPy
     t0 = time.time()
     idx = json.load(open(os.path.join(work, 'index.json')))
     load_layers(work)
     names = [n.strip() for n in open(names_file) if n.strip()]
-    outdir = os.path.join(work, 'out'); os.makedirs(outdir, exist_ok=True)
+    outdir = os.path.join(work, {'pieces': 'out', 'items': 'items', 'stands': 'stands'}[mode]); os.makedirs(outdir, exist_ok=True)
+    do = {'pieces': lambda r, g, n, p: do_piece(r, g, n, p, work), 'items': lambda r, g, n, p: do_item(r, g, n, p, work), 'stands': do_stand}[mode]
     todo = {}
     missing = []
     for n in names:
@@ -986,7 +1480,7 @@ def run(data_dir, work, names_file, seconds=150):
         if not c:
             missing.append(n); continue
         todo.setdefault(c[0][0], []).append((n, c[0][1]))
-    json.dump(missing, open(os.path.join(work, 'missing.json'), 'w'))
+    json.dump(missing, open(os.path.join(work, 'missing.json' if mode == 'pieces' else 'missing-' + mode + '.json'), 'w'))
     if not todo:
         print('nothing left; not in the game files:', len(missing)); return
     # biggest group first
@@ -1007,7 +1501,7 @@ def run(data_dir, work, names_file, seconds=150):
         json.dump({'name': n, 'path': p, 'error': 'crashed'}, open(os.path.join(outdir, n + '.json'), 'w'))
         try:
             ptr = cont[p]
-            res = do_piece(reader, ptr.read(), n, p, work)
+            res = do(reader, ptr.read(), n, p)
         except Exception as e:
             res = {'name': n, 'path': p, 'error': repr(e)[:300]}
         json.dump(res, open(os.path.join(outdir, n + '.json'), 'w'))
@@ -1022,10 +1516,75 @@ def collect(work, out):
     for f in sorted(os.listdir(outdir)):
         if f.endswith('.json'):
             d = json.load(open(os.path.join(outdir, f)))
+            # not fitted yet: the last proxy stays (VH_OLD), marked so
+            if not d.get('parts') and old_parts(d['name']):
+                d['parts'], d['old'] = old_parts(d['name']), 1
+            d.pop('fit_started', None)
             res[d['name']] = d
     missing = json.load(open(os.path.join(work, 'missing.json'))) if os.path.exists(os.path.join(work, 'missing.json')) else []
     json.dump({'pieces': res, 'missing': missing}, open(out, 'w'), separators=(',', ':'))
     print(out, len(res), 'pieces', os.path.getsize(out), 'bytes')
+
+
+def qmul(a, b):
+    ax, ay, az, aw = a; bx, by, bz, bw = b
+    return [aw * bx + ax * bw + ay * bz - az * by, aw * by - ax * bz + ay * bw + az * bx,
+            aw * bz + ax * by - ay * bx + az * bw, aw * bw - ax * bx - ay * by - az * bz]
+
+
+def euler_q(e):
+    """Unity's Quaternion.Euler(x, y, z) in degrees: z first, then x, then y."""
+    def ax(i, a):
+        h = math.radians(a) / 2
+        q = [0.0, 0.0, 0.0, math.cos(h)]; q[i] = math.sin(h)
+        return q
+    return qmul(ax(1, e[1]), qmul(ax(0, e[0]), ax(2, e[2])))
+
+
+def collect_items(work, out):
+    """The items with their proxies, and for each item stand where the item sits in the stand's own frame (c, q, s:
+    the shown branch's position, rotation and scale), as ItemStand.SetVisualItem places it at quality 1 and the first
+    orientation."""
+    stands = {}
+    sd = os.path.join(work, 'stands')
+    for f in sorted(os.listdir(sd)):
+        d = json.load(open(os.path.join(sd, f)))
+        if d.get('attach'):
+            stands[d['name']] = d
+    items, none = {}, {}
+    idir = os.path.join(work, 'items')
+    for f in sorted(os.listdir(idir)):
+        d = json.load(open(os.path.join(idir, f)))
+        n = d['name']
+        if d.get('error') or not d.get('parts'):
+            none[n] = d.get('error', 'no parts')
+            if not d.get('attach'):
+                continue
+        e = {k: d[k] for k in ('type', 'bounds', 'tris', 'parts', 'fit', 'obj', 'path', 'tol') if k in d}
+        at = {}
+        for sn, st in stands.items():
+            A = trs(st['attach']['t'], st['attach']['q'], [1, 1, 1])
+            offs = [o for o in d.get('offsets', []) if int(st['orientation']) & int(o['o'])]
+            off = offs[0] if offs else {'p': [0, 0, 0], 'r': [0, 0, 0], 's': [1, 1, 1]}
+            a = d['attach']
+            k = 1.0  # GetScale(quality 1) = 1 + (1 - 1) * m_scaleByQuality
+            t = np.array(a['t']) + np.array(off['p'])
+            q = qmul(a['q'], euler_q(off['r']))
+            sc = np.array(a['s']) * k * np.array(off['s'])
+            c = A[:3, :3] @ t + A[:3, 3]
+            qq = qmul(st['attach']['q'], q)
+            if qq[3] < 0:
+                qq = [-v for v in qq]
+            at[sn] = {'c': np.round(c, 4).tolist(), 'q': [round(v, 5) for v in qq], 's': np.round(sc, 4).tolist()}
+            if offs:
+                at[sn]['off'] = 1
+        e['at'] = at
+        items[n] = e
+    res = {'stands': {n: {k: st[k] for k in ('attach', 'orientation', 'types', 'supported', 'unsupported')} for n, st in stands.items()},
+           'items': items, 'none': none,
+           'missing': json.load(open(os.path.join(work, 'missing-items.json'))) if os.path.exists(os.path.join(work, 'missing-items.json')) else []}
+    json.dump(res, open(out, 'w'), separators=(',', ':'))
+    print(out, len(items), 'items', len(none), 'without a model', len(res['missing']), 'not found', os.path.getsize(out), 'bytes')
 
 
 def meshpack(work, out):
@@ -1049,6 +1608,15 @@ if __name__ == '__main__':
         write_layers(sys.argv[2], sys.argv[3])
     elif cmd == 'run':
         run(sys.argv[2], sys.argv[3], sys.argv[4], float(sys.argv[5]) if len(sys.argv) > 5 else 150)
+    elif cmd in ('items', 'stands'):
+        run(sys.argv[2], sys.argv[3], sys.argv[4], float(sys.argv[5]) if len(sys.argv) > 5 else 150, mode=cmd)
+    elif cmd == 'fit':
+        fit(sys.argv[2], sys.argv[3], float(sys.argv[4]) if len(sys.argv) > 4 else 150, sys.argv[5] if len(sys.argv) > 5 else 'pieces',
+            sys.argv[6] if len(sys.argv) > 6 else '0/1')
+    elif cmd == 'rescore':
+        rescore(sys.argv[2], sys.argv[3], sys.argv[4], sys.argv[5] if len(sys.argv) > 5 else '0/1')
+    elif cmd == 'collect_items':
+        collect_items(sys.argv[2], sys.argv[3])
     elif cmd == 'collect':
         collect(sys.argv[2], sys.argv[3])
     elif cmd == 'meshpack':

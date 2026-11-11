@@ -5,13 +5,13 @@ Current facts only. Read this at the start of a session. Narrative is in `docs/d
 
 ## Current State (as of 2026-11-10)
 
-Latest build fb96935 (2026-11-10 note, Sessions 1 to 3), in clusters that can be reverted one at a time: A the
+Latest build: the newest commit on main (CI publishes every push; `vh version` shows the hash). Work of 2026-11-10 (note, Sessions 1 to 5), in clusters that can be reverted one at a time: A the
 overnight branch (plots by real footprints, set-aside projects, tool churn, `vh plot`), B lag (PieceIndex,
 background blueprint reads, `Lag summary`, `vh lag`), C fixes (churn, decor reach, loose items, signs, bedtime),
 D `Village status` line and `vh snapshot`, E plots cleared by hand and full refunds (D-087, D-088), F Shaper Tool plot
 mode (D-090 to D-093), G decor paid in local stand-ins (D-080), H no swimming for rocks and helpers making essentials,
 I guards and the night watch (D-076), J overnight hunting trips and children's colors (D-078), K elders mend and
-help with crops, healers use remedies (D-078) (L roster and M home sizing reverted: not as decided), N fish by biome, O walkable banks round pads on slopes. New on/off settings in "9 - Test villages": PieceIndex, BlueprintsInBackground,
+help with crops, healers use remedies (D-078) (L roster and M home sizing reverted, 6014028), N fish by biome, O walkable banks round pads on slopes; then full refunds for everything broken down (69f8b65, D-088), the walker going round to a goal's door (6ef4364), piece health as Repair reads it (74111a7) and no harm from falling trees (5b054da), both from ValheimVillages (CC0). New on/off settings in "9 - Test villages": PieceIndex, BlueprintsInBackground,
 ClearPlotsByHand, DecorPaidWithAnalogs, HuntTrips;
 LagSummarySeconds and StatusLineSeconds. Nothing from 2026-11-10 tried in the game. The building generator is worked
 on in its own session on branch `design/kitbash`: merged 2026-11-10 as 6bf75ae (room layout planner, from feat/layout),
@@ -176,8 +176,9 @@ walkable building pads, underwater rocks, smaller lag spikes, D-080.
 
 ## Recent milestones
 
+- **2026-11-10 (records audit: Decisions, Features, roadmap, comments, CLAUDE.md)** - see docs/daily-notes/2026-11/2026-11-10.md
 - **2026-11-10 (design: layout planner, pool gate, piece sizes, decor reach)** - see docs/daily-notes/2026-11/2026-11-10.md
-- **2026-11-10 (roster, elders, healers, fish by biome)** - see docs/daily-notes/2026-11/2026-11-10.md
+- **2026-11-10 (elders, healers, fish by biome; roster reverted)** - see docs/daily-notes/2026-11/2026-11-10.md
 - **2026-11-10 (status line, snapshot, D-080 to D-094, guards, hunting trips)** - see docs/daily-notes/2026-11/2026-11-10.md
 - **2026-11-10 (overnight merge, lag cluster, immediate fixes)** - see docs/daily-notes/2026-11/2026-11-10.md
 - **2026-11-09 (plot search audit and overnight fixes, handed over as a bundle)** - see docs/daily-notes/2026-11/2026-11-09.md

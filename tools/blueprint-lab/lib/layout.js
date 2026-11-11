@@ -770,6 +770,9 @@ function spotsFor(b, W, grp, keep, seedN) {
   const ob = Ck.aabbShapes(a), cx = (ob.x0 + ob.x1) / 2, cz = (ob.z0 + ob.z1) / 2;
   const rel = grp.map(p => { const o = Ck.aabbShapes(p); return { p, x0: o.x0 - cx, x1: o.x1 - cx, z0: o.z0 - cz, z1: o.z1 - cz, y0: o.y0, y1: o.y1, dx: p.x - cx, dz: p.z - cz, floor: p.y < y + 0.45 }; });
   if (!rel[0].floor) return [];
+  // a set built of building pieces (a beam shelf over a chest, a half-wall counter) keeps the wall it was built against:
+  // a beam moved out into the room is a low beam over the walking floor (lib/checks.js headroom)
+  if (grp.some(p => PL.piece(p.name).structural)) return [];
   // the decorator's own reading of furniture against furniture (lib/decorate.js audit overlap), a little stricter
   const DI = decorL()._int, FD = decorL().FURNITURE;
   const skipAt = n => { const f = FD[n] || {}; return ['mount', 'hang', 'top', 'fire', 'rug'].includes(f.at); };

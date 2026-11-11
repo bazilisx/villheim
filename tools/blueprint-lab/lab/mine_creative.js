@@ -287,17 +287,25 @@ function run(src, likedSet) {
   // well-liked: the top quarter by downloads among the vanilla builds (as lab/mine_kitbash.js), or every board build
   const bySig = new Map();
   let n = 0, nb = 0, nv = 0;
-  const pending = [];
-  for (const d of each()) {
+  let pending = [];
+  // Long runs (VH_SHAPES=fine) go in slices: SLICE=i/k mines every k-th vanilla build starting at i, DUMP=file writes the builds and
+  // their objects and stops; MERGE=file1,file2,... reads the dumps in place of mining (same ranking and matching after).
+  const SLICE = (process.env.SLICE || '0/1').split('/').map(Number);
+  if (process.env.MERGE) for (const f of process.env.MERGE.split(',')) {
+    const D = JSON.parse(fs.readFileSync(f, 'utf8'));
+    for (const [meta, res] of D.pending) { builds.push(meta); pending.push([meta, res]); }
+  }
+  else for (const d of each()) {
     if (++nb % 100 === 0) console.error(`${nb} builds read, ${nv} vanilla, ${n} objects`);
     if (!d.p || d.p.length < 20 || d.p.some(p => MOD.test(p[0])) || d.p.length > 15000) continue;
-    nv++;
+    if (nv++ % SLICE[1] !== SLICE[0]) continue;
     let res;
     try { res = mine(d); } catch (e) { console.error(d.file, e.message); continue; }
     const meta = { file: d.file, title: d.title, by: d.by, dls: d.dls, board: d.board };
     builds.push(meta);
     pending.push([meta, res]);
   }
+  if (process.env.DUMP) { fs.writeFileSync(process.env.DUMP, JSON.stringify({ pending })); console.log('dumped', pending.length, 'builds'); process.exit(0); }
   const ranked = builds.filter(d => d.dls > 0).sort((a, b) => b.dls - a.dls);
   const liked = likedSet || new Set(ranked.slice(0, Math.ceil(ranked.length / 4)).map(d => d.file));
   for (const [d, res] of pending) {

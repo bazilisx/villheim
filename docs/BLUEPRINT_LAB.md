@@ -952,7 +952,7 @@ because one run takes over 5 minutes on the device):
 
 Fine parts see more overlap between trim pieces (window trim, eaves) and more contact (fewer floating).
 
-Creative sets (`lab/mine_creative.js`). One run of the fine shapes takes over 20 minutes (contact tests between fine parts), so both
+Creative sets (`lab/mine_creative.js`). The sample ran first (a single fine process was killed by memory twice on the device); both
 settings ran on every 6th vanilla build (256 of 1,536; `data/creative-mined-fine-sample.json`). The unchanged miner and the
 collider path give the same 2,706 objects on the sample.
 
@@ -969,12 +969,35 @@ collider path give the same 2,706 objects on the sample.
 Contact grouping (shown shapes touch within 2 cm) makes the object set change; the library keeps different entries where the fine
 parts join or separate pieces.
 
+Creative sets, full run (2026-11-11, cloud, all 1,536 vanilla builds from `/home/claude/study/compact.json`). `lab/mine_creative.js` has
+`SLICE=i/k`, `DUMP` and `MERGE` as `mine_motifs.js` does (every k-th vanilla build, dump the objects, merge before the ranking and
+matching). The fine run took 8 slices (`SLICE=i/8`, Node `--max-old-space-size=5000`), 29 to 156 s each, 594 s in all, peak memory
+2.9 to 3.2 GB per slice (mostly `compact.json`); the merge took 3 s. The colliders run took 41 s in one process, peak 3.2 GB. Data:
+`data/creative-mined-fine.json` (fine, full; the sample file stays) and `data/creative-compare-full.json` (rows in the shape of
+`data/recount2-compare.json`; made with `lab/recount2_compare.js`).
+
+| Measure | Colliders | Fine | Change | Feeds |
+|---|---|---|---|---|
+| Combined objects found, distinct entries | 16,256, 9,800 | 16,622, 10,335 | +366, +535 | `data/creative-mined.json` size |
+| Distinct keys (anchor, pieces at the same spots) | 9,584 | 10,118 | | library membership |
+| Keys in both runs | 6,181 | 6,181 | 3,403 only colliders (35.5 % of its keys), 3,937 only fine (38.9 % of its keys) (past) | creative set library membership |
+| Clips between members: count, 50th, 90th | 33,253, 11.3, 27.8 cm | 43,946, 9.8, 24.2 cm | +10,693, -1.5, -3.6 cm (past) | `objects[].clips`, `fclip` marks |
+| Clips to the anchor: count, 50th, 90th | 1,727, 7.9, 24.4 cm | 2,988, 5.6, 23.7 cm | +1,261, -2.3, -0.7 cm (past) | same |
+| Clips to the wall: count, 50th, 90th | 13,232, 19.3, 31.7 cm | 17,249, 18.2, 30.8 cm | +4,017, -1.1, -0.9 cm | `wclip` |
+| Entries with a clip of 3 cm or more | 83.6 % | 90.3 % | +6.7 pt (past) | which sets count as clipped on purpose |
+| Entries with a clip of 12 cm or more | 66.6 % | 69.4 % | +2.8 pt | furnClip |
+
+On the full run 35.5 % of the colliders run's keys are absent from the fine run (the sample gave 31.8 %, 596 of 1,872). Counted over
+all keys of both runs, 7,340 of 13,521 (54.3 %) are in one run only. Entries seen in a build liked by the board (`liked` above 0):
+2,578 (colliders) and 2,704 (fine). A split by the lead's rule (collision boxes for what rests on or snaps to what, fine shapes for
+what shows) has not been run.
+
 Coverage (`lab/coverage.js --quick`, 239 well-liked buildings): buildings with 3 or more props set into a wall, 5.4 % (colliders) to 6.3 %
 (fine), +0.9 pt, inside tolerance. Generated side 0 % both ways. The COVERAGE.md gap is unchanged.
 
-Rows past tolerance (summary): creative sets: membership (about 31 % of entries differ), clip percentiles to members and anchor, clip share 3 cm; kitbash clip counts, percentiles and shares (all three clip kinds); yards prop clip depth, prop and fence
+Rows past tolerance (summary): creative sets: membership (about 31 % of entries differ on the sample, 35.5 % on the full run), clip percentiles to members and anchor, clip share 3 cm; kitbash clip counts, percentiles and shares (all three clip kinds); yards prop clip depth, prop and fence
 sink, fence, wall and post heights; motif clip 90th percentile, motif key set, hidden/clipping/floating site rates. Library membership
-changes: kitbash none; motifs about 9 % of keys differ; creative sets about 31 % of entries differ (sample).
+changes: kitbash none; motifs about 9 % of keys differ; creative sets about 31 % of entries differ (sample), 35.5 % (full run).
 
 ## Households (D-068)
 

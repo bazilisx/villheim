@@ -840,6 +840,8 @@ function generate(req) {
   // design comes out as before
   if (req.style) Object.assign(C, req.style); // the component bench (lab/bench.js) holds the rest fixed and varies one part
   C.windowStyle = req.style && req.style.windowStyle ? req.style.windowStyle : (T.low || ['storage', 'barn'].includes(type) || form === 'sunken' || (stage === 's1' && !['longhouse', 'tavern', 'temple'].includes(type))) ? 'single' : 'twin';
+  // the window kit: size and what fills the light, by culture and biome (windowKit); the component bench may set one
+  if (!(req.style && req.style.windowStyle)) C.winKit = req.style && req.style.winKit ? req.style.winKit : windowKit(cultureKey, biome, type, seed, SH);
   const dragonsHere = roofKind === 'gable' && plan !== 'gables' && ((C.dragons && ['longhouse', 'temple', 'tavern'].includes(type)) || (C.carved && stage !== 's1'));
   const dctx = { K, C, cultureKey, T, type, stage, decor, biome, plan, F, SH, storeys, edges, verts, cells, door, wings, flat,
     ladders, flue, fireKeep: stackKeep || flue, hearth, dragonsHere, R: rng(seed * 31337 + 7), persona: household };
@@ -884,7 +886,10 @@ function generate(req) {
       const isDoor = s === 0 && (e === door || e === backDoor);
       // a barn's gates: three bays on the ground, the door bay alone when the floor is raised (one stair up)
       const isGate = (dctx.profile.gateDoor && s === 0 && e === door) || T.bigDoor && s === 0 && e.out[1] < 0 && Math.abs(e.x - doorX) <= (F >= 0.9 ? 0.01 : 2.01) && Math.abs(e.z - doorZ) < 0.1;
-      let isWindow = !knee && !isDoor && !isGate && (!T.tower || (form === 'keep' && s > 0)) && (Math.round((e.x + e.z) / 2) % 2 === 0) && Math.abs(e.x - doorX) + Math.abs(e.z - doorZ) > 2.5;
+      // every other bay, and with the window kit some of the bays between (windowExtra: corpus walls carry 0.56 windows
+      // per plain wall bay, the generator had 0.31 with every other bay)
+      const evenBay = Math.round((e.x + e.z) / 2) % 2 === 0;
+      let isWindow = !knee && !isDoor && !isGate && (!T.tower || (form === 'keep' && s > 0)) && (evenBay || windowExtra(C, seed, e, s)) && Math.abs(e.x - doorX) + Math.abs(e.z - doorZ) > 2.5;
       if (plan === 'gables' && e.out[1] >= 0) isWindow = false;
       // a gable end gets one window per floor, in its middle bay (2026-11-09 review: windows scattered over gable ends)
       const w0g = wings[0];
@@ -897,8 +902,14 @@ function generate(req) {
       // no window behind a wall hearth, on any storey (its hood and shaft stand against that bay)
       if (isWindow && hearthBay(e)) isWindow = false;
       const style = C.frontWood && plan === 'gables' ? (e.out[1] < 0 ? 'plank' : null) : null;
+      b.lastLight = null;
+      // a 2 m tall light keeps to bays with wall on both sides along the wall (at a corner two of them left the corner
+      // with no wall 2.5 m up, which the headroom check refuses)
+      if (isWindow && C.winKit) { const ex = e.yaw === 0 ? 2 : 0, ez = e.yaw === 0 ? 0 : 2, es = s === 0 ? gEdges : edges;
+        b.lightLow = ![-1, 1].every(sg => es.some(q => q.yaw === e.yaw && Math.abs(q.x - (e.x + ex * sg)) < 0.01 && Math.abs(q.z - (e.z + ez * sg)) < 0.01)); }
       wallSegment(b, K, C, e.x, y0, e.z, e.yaw, SHw, isGate ? 'gate' : isDoor ? 'door' : isWindow ? 'window' : 'wall', style);
-      if (isWindow || isDoor || isGate) (b.openings = b.openings || []).push({ e, y0, SH: SHw, storey: s, kind: isGate ? 'gate' : isDoor ? 'door' : 'window', back: e === backDoor });
+      if (isWindow || isDoor || isGate) (b.openings = b.openings || []).push({ e, y0, SH: SHw, storey: s, kind: isGate ? 'gate' : isDoor ? 'door' : 'window', back: e === backDoor, light: isWindow ? b.lastLight : null });
+      b.lightLow = false;
     }
     if (C.frame || open || T.tower || form === 'stave') for (const [x, z] of verts) {
       for (let y = y0; y < y0 + SHw - 0.01;) { const h = (y0 + SHw - y) >= 2 ? 2 : 1; b.put(h === 2 ? framePole(K, C) : K.pole1, x, y + h / 2, z); y += h; }
@@ -2187,6 +2198,78 @@ function putStairRun(b, K, L, yLow) {
   L.run.forEach(([x, z], k) => b.put(K.stair || 'wood_stair', x, yLow + k, z, yaw));
 }
 
+// ---------------------------------------------------------------- window kit (ideas gap 3, D-151)
+
+// What fills a window's light, by culture group: the builds of the group with a light of that kind set in a wall
+// (a piece with wall in its plane on both sides and under it), counted on the corpus with the culture members of
+// data/culture-corpus/members.json (2026-11-11, docs/handoffs/2026-11-10-design/windows.md). Open is the builds
+// with none of these kinds. glass: crystal_wall_1x1; bars: iron_wall_1x1 and 2x2 (and iron_grate); mesh: the Dvergr
+// metal wall (piece_dvergr_metal_wall_2x2); arch: stone_arch and darkwood_arch; shutter: wood_window.
+// Tyler (2026-11-11, through the lead): "Not mandatory, perhaps only some cultures. Other can use shutters, iron 1x1
+// or 2x2 gates as windows, the dveger copper mesh things too, etc etc depending on culture... don't force glass
+// windows." D-151: glass is a building piece (D-125), so it comes in from the Swamp on (the Mountain is its neighbor).
+const WINDOW_FILL = {
+  norse: { n: 112, glass: 26, bars: 49, mesh: 19, arch: 22, shutter: 14, open: 47 },
+  'norse-forest': { n: 42, glass: 4, bars: 8, mesh: 4, arch: 6, shutter: 3, open: 29 },
+  'norse-highland': { n: 19, glass: 2, bars: 2, mesh: 1, arch: 6, shutter: 1, open: 11 },
+  'medieval-timber': { n: 28, glass: 11, bars: 6, mesh: 4, arch: 11, shutter: 3, open: 9 },
+  castle: { n: 61, glass: 10, bars: 24, mesh: 7, arch: 16, shutter: 3, open: 27 },
+  'fen-folk': { n: 13, glass: 1, bars: 4, mesh: 2, arch: 2, shutter: 3, open: 8 },
+  all: { n: 1416, glass: 213, bars: 258, mesh: 124, arch: 177, shutter: 76, open: 867 },
+};
+// Generator culture to its corpus group (10 builds or more); smaller groups take all builds, with glass only where
+// the culture's own builds show it (celtic 0 of 5, saami 0 of 2, steppe and middle-eastern 0 of 1; crannog 1 of 5).
+const WINDOW_GROUP = { norse: 'norse', 'anglo-saxon': 'norse', 'norse-forest': 'norse-forest', slavic: 'norse-forest', baltic: 'norse-forest',
+  'norse-highland': 'norse-highland', lamari: 'norse-highland', 'frankish-norman': 'medieval-timber', 'castle-medieval': 'castle',
+  byzantine: 'castle', 'fen-folk': 'fen-folk' };
+const NO_GLASS = ['celtic', 'saami', 'steppe', 'middle-eastern'];
+// The light's size, from the kept window motifs of data/motifs.json (2,008 uses): 1 m wide and 1 m tall 83 % (0.5 m
+// slits counted here), 2 m wide 5.5 %, 1 x 2 m 4.2 %, 2 x 2 m 5.8 % (1.5 to 4 m wide, 2 m tall).
+const WINDOW_SIZE = [['single', 1666], ['twin', 110], ['tall', 84], ['big', 116]];
+function windowKit(cultureKey, biome, type, seed, SH) {
+  let h = 2166136261;
+  for (const ch of `${cultureKey}|${type}|${seed}|windows`) { h ^= ch.charCodeAt(0); h = Math.imul(h, 16777619); }
+  const R = rng(h >>> 0);
+  const reach = n => P.BIOME_ORDER.indexOf(P.needs(n)) <= P.BIOME_ORDER.indexOf(P.buildReach(biome || 'Meadows'));
+  const g = WINDOW_FILL[WINDOW_GROUP[cultureKey] || 'all'];
+  const ok = { glass: reach('crystal_wall_1x1') && !NO_GLASS.includes(cultureKey), bars: reach('iron_wall_1x1'), mesh: reach('piece_dvergr_metal_wall_2x2'), arch: true, shutter: true, open: true };
+  const fills = Object.keys(ok).filter(k => ok[k] && g[k] > 0).map(k => [k, g[k]]);
+  const pickK = list => { const t = list.reduce((s, x) => s + x[1], 0); let x = R() * t; for (const [k, w] of list) { x -= w; if (x <= 0) return k; } return list[list.length - 1][0]; };
+  const fill = pickK(fills);
+  let size = pickK(WINDOW_SIZE);
+  if (fill === 'mesh') size = 'big'; // the Dvergr metal wall is a 2 x 2 panel
+  if (SH < 3 && (size === 'tall' || size === 'big')) size = size === 'big' ? 'twin' : 'single'; // a 2 m light needs a 3 m storey
+  if (fill === 'mesh' && size !== 'big') return { size, fill: 'open' };
+  return { size, fill };
+}
+// A bay between two window bays takes a window too at this share (WINDOW_EXTRA), drawn per bay from the building's
+// seed, so the walls come nearer the corpus count of windows per plain bay (ideas gap 3).
+const WINDOW_EXTRA = 0.45;
+function windowExtra(C, seed, e, s) {
+  // (2 m tall lights keep a plain bay between them: the headroom check wants wall 2.5 m up within 1.6 m)
+  if (!C.winKit || C.winKit.size === 'tall' || C.winKit.size === 'big') return false;
+  let h = 2166136261;
+  for (const ch of `${seed}|${e.x}|${e.z}|${s}|extra`) { h ^= ch.charCodeAt(0); h = Math.imul(h, 16777619); }
+  return rng(h >>> 0)() < WINDOW_EXTRA;
+}
+// the pieces that fill one light: its middle along the wall (x, z), its foot y, width and height, the wall's yaw
+function fillLight(b, kit, x, y, z, yaw, w, h) {
+  if (!kit || kit.fill === 'open' || kit.fill === 'arch') return;
+  const ux = Math.cos(yaw * Math.PI / 180), uz = -Math.sin(yaw * Math.PI / 180);
+  const cells = [];
+  for (let i = 0; i < w; i++) for (let j = 0; j < h; j++) cells.push([(i - (w - 1) / 2), j]);
+  const tag = { winFill: kit.fill };
+  if (kit.fill === 'glass') for (const [a, j] of cells) b.put('crystal_wall_1x1', x + ux * a, y + j + 0.5, z + uz * a, yaw, tag);
+  else if (kit.fill === 'mesh') b.put('piece_dvergr_metal_wall_2x2', x, y + 1, z, yaw, tag);
+  else if (kit.fill === 'bars') {
+    if (w === 2 && h === 2) b.put('iron_wall_2x2', x, y + 1, z, yaw, tag);
+    else for (const [a, j] of cells) b.put('iron_wall_1x1', x + ux * a, y + j + 0.5, z + uz * a, yaw, tag);
+  } else if (kit.fill === 'shutter' && kit.closed) {
+    // a closed Wood Shutter in each 1 m cell (its leaf runs 1 m to the -x side of its hinge)
+    for (const [a, j] of cells) b.put('wood_window', x + ux * (a + 0.5), y + j + 0.5, z + uz * (a + 0.5), yaw, tag);
+  }
+}
+
 // ---------------------------------------------------------------- walls
 
 // Dark wood takes tar, so dark frames start in the Plains.
@@ -2248,6 +2331,24 @@ function wallSegment(b, K, C, x, y0, z, yaw, SH, kind, styleOverride) {
     const h = putDoor(b, name, x, y0, z, yaw);
     lintel();
     fill(y0 + h, y0 + SH); return;
+  }
+  if (kind === 'window' && SH >= 2 && C.winKit) {
+    // the window kit (windowKit): a 1 m light on the side toward the middle of the wall with a 1 m wall piece in the
+    // other half, a 2 m light, or either of them 2 m tall; the light filled by the kit (fillLight)
+    const kit = C.winKit, ux = Math.cos(yaw * Math.PI / 180), uz = -Math.sin(yaw * Math.PI / 180);
+    const block = stoneLike ? (/^(stone_wall_1x1|blackmarble_1x1)$/.test(K.stoneBlock || '') ? K.stoneBlock : null) : K.wallQuarter;
+    const tall = (kit.size === 'tall' || kit.size === 'big') && SH >= 3 && !b.lightLow, lw = (kit.size === 'single' || kit.size === 'tall') && block ? 1 : 2, lh = tall ? 2 : 1;
+    fill(y0, y0 + 1);
+    let lx = x, lz = z;
+    if (lw === 1) {
+      const side = (x * ux + z * uz) > 0 ? 1 : -1;
+      for (let j = 0; j < lh; j++) b.put(block, x + ux * side * 0.5, y0 + 1.5 + j, z + uz * side * 0.5, yaw);
+      lx = x - ux * side * 0.5; lz = z - uz * side * 0.5;
+    }
+    fillLight(b, kit, lx, y0 + 1, lz, yaw, lw, lh);
+    b.lastLight = { x: lx, z: lz, w: lw, h: lh, fill: kit.fill, block: lw === 1 ? block : null };
+    lintel();
+    fill(y0 + 1 + lh, y0 + SH); return;
   }
   if (kind === 'window' && SH >= 2) {
     fill(y0, y0 + 1);
@@ -3167,5 +3268,5 @@ function campDesign(b, K, biome, stage, R, decor) {
   return b;
 }
 
-if (NODE) module.exports = { generate, quat, PLAN_BY_TYPE, ROOF_BY_CULTURE };
+if (NODE) module.exports = { generate, quat, PLAN_BY_TYPE, ROOF_BY_CULTURE, windowKit };
 else window.VHGenerate = { generate, quat, PLAN_BY_TYPE, ROOF_BY_CULTURE };

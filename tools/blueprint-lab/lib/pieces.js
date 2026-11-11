@@ -181,7 +181,7 @@ function piece(name) {
   const structural = ['wall', 'floor', 'roof', 'roofTop', 'roofCorner', 'gable', 'beam', 'pole', 'stair', 'door', 'window', 'fence'].includes(role);
   // walls that stand on their pivot in the game (measured from the game's meshes, 2026-11-09): the generator writes
   // walls by their middle, and finish() in generate.js moves these down to their foot
-  const onPivot = /^(wood_wall_quarter|Piece_grausten_wall_|Piece_grausten_window_|darkwood_decowall$|crystal_wall_1x1$)/.test(n);
+  const onPivot = /^(wood_wall_quarter|Piece_grausten_wall_|Piece_grausten_window_|darkwood_decowall$|crystal_wall_1x1$|iron_wall_1x1)/.test(n);
   c = { name, role, size, shape, mat, color: MAT[mat], structural, exact: false, onPivot };
   const e = exported() && exported()[name];
   // furniture and decor take their size from the game's model (lib/mesh.js, data/piece-models.json): what is solid, or

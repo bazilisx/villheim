@@ -319,7 +319,7 @@ function plan(ctx) {
   const wallStone = /stone|marble|grausten/.test(ctx.C.wallStyle || '') && !/base/.test(ctx.C.wallStyle || '');
   // accept: an optional test of a candidate on this building (eaves: most of its pieces fit under this roof)
   const get = (kind, f, front, accept) => {
-    const key = `${kind}|${f.w || ''}x${f.h || ''}|${f.slope || ''}|${front ? 1 : 0}`;
+    const key = `${kind}|${f.w || ''}x${f.h || ''}|${f.slope || ''}${f.arch ? 'a' : ''}|${front ? 1 : 0}`; // (arch: an arched window, windows track)
     if (cache.has(key)) return cache.get(key);
     const bud = budget(ctx, front), cands = [];
     for (const m of data()) {

@@ -143,8 +143,10 @@ function profile(ctx) {
   return {
     sN, dN, north, wood,
     windowFrame: (sN >= 2 || C.frame) && !C.arches,
-    mullion: !C.glass && C.windowStyle !== 'single' && !C.arches, // one centered post, twin lights only
-    shutters: sN >= 2 && dN >= 2 && SHUTTERS.includes(cultureKey) && reachesD(biome, 'Black Forest') && !C.glass && roll(0.6),
+    mullion: C.winKit ? !C.arches : !C.glass && C.windowStyle !== 'single' && !C.arches, // one centered post, twin lights only
+    shutters: !C.winKit && sN >= 2 && dN >= 2 && SHUTTERS.includes(cultureKey) && reachesD(biome, 'Black Forest') && !C.glass && roll(0.6),
+    // the window kit's shutters (generate.js windowKit, by culture from the corpus) take the place of the rule above
+    shutterKit: !!(C.winKit && C.winKit.fill === 'shutter'),
     doorFrame: !C.arches,
     doorHood: north && sN >= 2 && !C.awnings && roll(0.7) && !C.arches, // never without the frame
     doorstep: true,
@@ -264,14 +266,16 @@ function exterior(b, ctx) {
     // the trim budget: a window left bare as corpus builders leave three in ten, no frame, mullion or shutters
     const frontW = !!ctx.door && e.out[0] === ctx.door.out[0] && e.out[1] === ctx.door.out[1];
     if (!dressed(ctx, 'window', `${e.x},${e.z},${y0}`, frontW)) { o.bare = true; added.bare = (added.bare || 0) + 1; continue; }
-    if (MT && motifWindow(b, ctx, MT, o, used)) { added.windows++; added.motifs++; continue; }
+    if (MT && motifWindow(b, ctx, MT, o, used)) { added.windows++; added.motifs++; if (X.shutterKit) shutterKit(b, ctx, o, edgeAt, isOpen, added); continue; }
     const stone = /stone|marble|grausten/.test(C.wallStyle || '') && !(b.woodBays && b.woodBays.has(`${Math.round(e.x * 10)},${Math.round(e.z * 10)}`));
     const f = 0.25; // trim stands proud of the wall face (a beam is 0.4 m deep in the game: at 0.25 out it clears the inside)
     // the light: the whole 2 m bay, or 1 m beside a 1 x 1 wall piece
     const quarter = K.wallQuarter && b.pieces.find(p => p.name === K.wallQuarter && Math.abs(p.y - (y0 + 1.5)) < 0.3 && Math.abs((p.x - e.x) * ox + (p.z - e.z) * oz) < 0.2 && Math.abs((p.x - e.x) * ux + (p.z - e.z) * uz) < 0.8);
     const sd = quarter ? ((quarter.x - e.x) * ux + (quarter.z - e.z) * uz > 0 ? 1 : -1) : 0;
-    const lw = quarter ? 1 : 2, cx = e.x - ux * sd * 0.5, cz = e.z - uz * sd * 0.5;
-    if (X.mullion && lw === 2) put(pole1, e.x, y0 + 1.5, e.z, 0);
+    let lw = quarter ? 1 : 2, cx = e.x - ux * sd * 0.5, cz = e.z - uz * sd * 0.5;
+    const L = o.light, lh = L ? L.h : 1;
+    if (L) { lw = L.w; cx = L.x; cz = L.z; }
+    if (X.mullion && lw === 2 && (!L || ['open', 'shutter', 'arch'].includes(L.fill))) for (let j = 0; j < lh; j++) put(pole1, cx, y0 + 1.5 + j, cz, 0);
     // a deck or gallery floor outside the window: no frame (the sill and head would hang over people walking there)
     const deckOut = b.pieces.some(p => PD.piece(p.name).role === 'floor' && Math.hypot(p.x - (e.x + ox), p.z - (e.z + oz)) < 1.1 && Math.abs(p.y - y0) < 0.6);
     if (X.windowFrame && !deckOut) {
@@ -282,9 +286,10 @@ function exterior(b, ctx) {
       put(bm, bx + ox * f, y0 + 0.9, bz + oz * f, e.yaw);
       // no head board: sill and head pairs stacked floor over floor read as a ladder (round 4 review); the head only
       // where the wall is stone (the timber lintel shows there anyway)
-      if (stone) put(bm, bx + ox * f, y0 + 2.1, bz + oz * f, e.yaw);
-      if (posts) for (const s of [-1, 1]) put(pole1, cx + ux * s * (lw / 2) + ox * f, y0 + 1.5, cz + uz * s * (lw / 2) + oz * f, 0);
+      if (stone && lh === 1) put(bm, bx + ox * f, y0 + 2.1, bz + oz * f, e.yaw);
+      if (posts) for (const s of [-1, 1]) for (let j = 0; j < lh; j++) put(pole1, cx + ux * s * (lw / 2) + ox * f, y0 + 1.5 + j, cz + uz * s * (lw / 2) + oz * f, 0);
     }
+    if (X.shutterKit) { shutterKit(b, ctx, o, edgeAt, isOpen, added); added.windows++; continue; }
     if (X.shutters && !stone) {
       // open shutters flat on the wall either side, only where a plain bay is beside the window and the bay past it
       // is no window wanting the same wall; both sides or none
@@ -591,18 +596,54 @@ function pruneMotifs(b, ctx) {
   }
 }
 
+// Shutters as the window kit's fill (generate.js windowKit, 'shutter'): Wood Shutters open flat on the wall either
+// side of a 1 m tall light where the wall beside it is plain (both or none), else closed in the light. On every
+// window of the building, the motif's trim or the rules' frame round it.
+function shutterKit(b, ctx, o, edgeAt, isOpen, added) {
+  const { e, y0 } = o, { ux, uz, ox, oz } = axes(e), L = o.light;
+  if (!L || L.h !== 1) return;
+  const cx = L.x, cz = L.z, lw = L.w, Ck = checksD();
+  const at = s => ({ name: 'wood_window', x: cx + ux * s * (lw / 2 + 0.6) + ox * 0.12, y: y0 + 1.5, z: cz + uz * s * (lw / 2 + 0.6) + oz * 0.12, yaw: e.yaw });
+  // beside the light: the 1 m wall piece of its own bay, or a plain bay next to it
+  const plainAt = s => {
+    const p = at(s), along = (p.x - e.x) * ux + (p.z - e.z) * uz;
+    if (Math.abs(along) < 1) return true; // over the bay's own 1 m wall piece
+    const n1 = edgeAt.get(`${e.x + ux * s * 2},${e.z + uz * s * 2}`);
+    if (!n1 || n1.yaw !== e.yaw) return false;
+    if (!isOpen.has(`${n1.x},${n1.z},${y0}`)) return true;
+    const l2 = (b.openings || []).find(q => q.e === n1 && q.y0 === y0);
+    return !!(l2 && l2.light && l2.light.w === 1 && Math.abs((l2.light.x - p.x) * ux + (l2.light.z - p.z) * uz) > 1.05);
+  };
+  const free = s => { const p = at(s); const bx = Ck.aabb({ ...p, q: quatD(p.yaw) }); return !b.pieces.some(q => { if (q.decor) return false; const r = PD.piece(q.name).role; if (!['pole', 'beam', 'window', 'light', 'misc'].includes(r) && !q.trim) return false; const a = Ck.aabb(q); return a.x0 < bx.x1 - 0.05 && a.x1 > bx.x0 + 0.05 && a.y0 < bx.y1 - 0.05 && a.y1 > bx.y0 + 0.05 && a.z0 < bx.z1 - 0.05 && a.z1 > bx.z0 + 0.05; }); };
+  if (plainAt(-1) && plainAt(1) && free(-1) && free(1)) {
+    for (const s of [-1, 1]) { const p = at(s); b.put(p.name, p.x, p.y, p.z, p.yaw, { trim: true }); }
+    added.shutters = (added.shutters || 0) + 1;
+  } else if (lw === 1) {
+    // closed: the leaf over the light (it runs 1 m to the -x side of its hinge)
+    const lx = Math.cos(e.yaw * Math.PI / 180), lz = -Math.sin(e.yaw * Math.PI / 180); // the piece's local +x
+    b.put('wood_window', cx + lx * 0.5, y0 + 1.5, cz + lz * 0.5, e.yaw, { trim: true });
+    added.shuttersClosed = (added.shuttersClosed || 0) + 1;
+  }
+}
+
 // a window bay: a 2 m opening, or a 1 m light beside a 1 x 1 wall piece; the motif for its size and facade
 function motifWindow(b, ctx, MT, o, used) {
   const { e, y0 } = o, { ux, uz, ox, oz } = axes(e), K = ctx.K;
   const quarter = K.wallQuarter && b.pieces.find(p => p.name === K.wallQuarter && Math.abs(p.y - (y0 + 1.5)) < 0.3 && Math.abs((p.x - e.x) * ox + (p.z - e.z) * oz) < 0.2 && Math.abs((p.x - e.x) * ux + (p.z - e.z) * uz) < 0.8);
   let f = { w: 2, h: 1 }, x = e.x, z = e.z;
   if (quarter) { const sd = (quarter.x - e.x) * ux + (quarter.z - e.z) * uz > 0 ? 1 : -1; f = { w: 1, h: 1 }; x -= ux * sd * 0.5; z -= uz * sd * 0.5; }
-  const glass = b.pieces.some(p => /crystal|glass/.test(p.name) && Math.hypot(p.x - e.x, p.z - e.z) < 1.1 && Math.abs(p.y - (y0 + 1.5)) < 0.6);
+  // the window kit's light (generate.js windowKit): its own size and place
+  const L = o.light;
+  if (L) { f = { w: L.w, h: L.h }; x = L.x; z = L.z; }
+  const glass = (L && !['open', 'arch'].includes(L.fill)) || b.pieces.some(p => /crystal|glass/.test(p.name) && Math.hypot(p.x - e.x, p.z - e.z) < 1.1 && Math.abs(p.y - (y0 + 1.5)) < 0.6);
   // a window under a lean-to or behind a stack stays plain
   const shed = b.pieces.some(p => { const d = (p.x - x) * ox + (p.z - z) * oz, s = Math.abs((p.x - x) * ux + (p.z - z) * uz); return d > 0.3 && d < 2.6 && s < 2 && p.y < y0 + 3 && (p.decor || /roof/.test(PD.piece(p.name).role)); });
   if (shed) return false;
   const front = ctx.door && e.out[0] === ctx.door.out[0] && e.out[1] === ctx.door.out[1];
-  const c = MT.get('window', f, front);
+  // an arched light: the window motifs corpus builders made with an arch piece (stone_arch, darkwood_arch), where the
+  // building's materials allow one; else a plain motif and an open light
+  const archy = c => c.m.p.some(t => /arch/.test(t[0]));
+  const c = (L && L.fill === 'arch' && MT.get('window', { ...f, arch: 1 }, front, archy)) || MT.get('window', f, front);
   if (!c) return false;
   const placed = MotifsD.place(b, c, { x, y: y0 + 1, z, nx: ox, nz: oz }, f, { mirror: MT.mirror, ground: 0, noInfill: glass, dry: true });
   hold(b, placed);

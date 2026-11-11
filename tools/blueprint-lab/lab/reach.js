@@ -10,7 +10,8 @@
 // - Climbs: stair and ladder pieces that touch make one climb; the free cells within 1.2 m of its lowest piece on the
 //   floor at its foot and of its highest piece on the floor at its top are joined.
 // - Counted: rooms (room rects) with no reached cell; main pieces on a floor (beds, tables, stations, chests and
-//   barrels that stand on the floor) with no reached cell within 0.9 m of their box (a person within 0.45 m of it).
+//   barrels that stand on the floor, station extensions left out) with no reached cell within 0.9 m of their box (a
+//   person within 0.45 m of it).
 // - Entry zones: just inside every door, a box as wide as the opening plus 0.3 m each side and 1.5 m deep (the 1.5 m
 //   turning circle of the accessibility guides; nine corpus builds in ten leave 1.6 m or more free inside a home's door
 //   and more in other rooms, docs/INTERIOR_DESIGN.md "A clear way in"). Counted: furniture and objects standing in it
@@ -124,7 +125,9 @@ module.exports = function reach(design, libDir) {
   const MAIN = new Set(['bed', 'table', 'craft', 'storage']);
   for (const s of solids) {
     const p = s.p, f = F[p.name];
-    if (!p.decor || !f || !MAIN.has(f.cat) || p.outside || p.yard || /cauldron|cookingstation/.test(p.name)) continue; // a pot on the fire is reached with the fire
+    // a pot on the fire is reached with the fire; a station's extension (a tanning rack, an anvil, a forge's bellows)
+    // works by standing near its station in the game and is never used itself
+    if (!p.decor || !f || !MAIN.has(f.cat) || p.outside || p.yard || /cauldron|cookingstation/.test(p.name) || /_ext(\d|_|$)/.test(p.name)) continue;
     const y = levels.find(l => p.y > l - 0.3 && p.y < l + 0.45);
     if (y == null) continue;
     out.pieces++;

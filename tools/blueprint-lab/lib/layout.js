@@ -725,7 +725,8 @@ function walkMap(b) {
   out.mains = [];
   for (const s of solids) {
     const p = s.p, f = F[p.name];
-    if (!p.decor || !f || !W_MAIN.has(f.cat) || p.outside || p.yard || /cauldron|cookingstation/.test(p.name)) continue;
+    // a station's extension works by standing near its station and is never used itself (lab/reach.js)
+    if (!p.decor || !f || !W_MAIN.has(f.cat) || p.outside || p.yard || /cauldron|cookingstation/.test(p.name) || /_ext(\d|_|$)/.test(p.name)) continue;
     const y = levels.find(l => p.y > l - 0.3 && p.y < l + 0.45);
     if (y == null) continue;
     out.mains.push(p);
@@ -739,7 +740,7 @@ function walkMap(b) {
 }
 
 // The pieces that go with a piece when it moves or goes: what stands on it, and for a table the seats at it.
-function groupOf(b, p) {
+function groupOf(b, p, part) {
   const Ck = checksL(), F = decorL().FURNITURE;
   const g = new Set([p]);
   const cat = (F[p.name] || {}).cat;
@@ -747,8 +748,8 @@ function groupOf(b, p) {
     const o = Ck.aabb(p);
     for (const q of b.pieces) if (q !== p && q.decor && !q.outside && (F[q.name] || {}).cat === 'seat' && Math.abs(q.y - p.y) < 0.5 && wDist(o, q.x, q.z) < 0.9) g.add(q);
   }
-  // a library assembly (lib/kitbash.js) moves whole
-  for (const m of [...g]) if (m.kb) for (const q of b.pieces) if (q.kb === m.kb) g.add(q);
+  // a library assembly (lib/kitbash.js) moves whole; to leave pieces out, the piece and what stands on it (part)
+  if (!part) for (const m of [...g]) if (m.kb) for (const q of b.pieces) if (q.kb === m.kb) g.add(q);
   for (const m of [...g]) {
     const o = Ck.aabb(m);
     for (const q of b.pieces) if (q.decor && !g.has(q) && !(q.rest && ['wall', 'hang'].includes(q.rest)) && !((F[q.name] || {}).at === 'mount' || (F[q.name] || {}).at === 'hang')
@@ -883,9 +884,23 @@ function placeGroup(grp, cx, cz, s) {
 // intoWall reads it the same way): a moved bed, table, chest, seat or station keeps within 5 cm of them.
 const meshL = () => (NODE_L ? require('./mesh.js') : window.VHMesh);
 const SHL = () => (NODE_L ? require('./shapes.js') : window.VHShapes);
+const W_STATION = /^(piece_workbench|forge|piece_stonecutter|piece_artisanstation|blackforge|piece_magetable|piece_cauldron)$/;
+const W_FURN = ['bed', 'table', 'seat', 'storage', 'craft', 'fire', 'clutter'];
 function meshClear(b, grp) {
   const M = meshL(), SH = SHL();
   if (!M || !M.world || !M.deepest) return true;
+  const set = new Set(grp);
+  // and a station against furniture round it, either way (lib/audit.js onStation)
+  for (const p of grp) {
+    const rp = PL.piece(p.name).role;
+    if (!W_STATION.test(p.name) && !W_FURN.includes(rp)) continue;
+    const vis = M.world(p) || [];
+    for (const q of b.pieces) {
+      if (set.has(q) || !q.decor || Math.abs(q.x - p.x) > 4 || Math.abs(q.z - p.z) > 4 || Math.abs(q.y - p.y) > 3) continue;
+      const st = W_STATION.test(p.name) ? W_FURN.includes(PL.piece(q.name).role) && !/_ext\d/.test(q.name) : W_STATION.test(q.name) && !/_ext\d/.test(p.name);
+      if (st && M.deepest(vis, M.world(q) || []) > 0.04) return false;
+    }
+  }
   for (const p of grp) {
     if (!['bed', 'table', 'storage', 'seat', 'craft'].includes(PL.piece(p.name).role)) continue;
     const vis = M.world(p) || [], sol = (SH && SH.world && SH.world(p)) || [];
@@ -1051,6 +1066,8 @@ function openWays(b, ctx) {
       }
       // 2) the piece itself to a spot a person reaches
       if (!ok && !closed && kind === 'piece') ok = tryMove(groupOf(b, x), null, W2 => ok0(W2) && !W2.piecesOut.includes(x));
+      // a set's piece alone, with what stands on it and the seats at a table, where the whole set finds no spot
+      if (!ok && !closed && kind === 'piece' && x.kb) ok = tryMove(groupOf(b, x, true), null, W2 => ok0(W2) && !W2.piecesOut.includes(x));
       if (!ok && !closed && kind === 'piece') ok = swapBed(x, W2 => ok0(W2) && !W2.piecesOut.includes(x));
       // 3) what blocks the lane is left out: loose things first, then chests, then the piece itself, then tables and
       // stations in the lane (D-148: "any furniture or decor that disrupts that expectation should not be placed")
@@ -1059,9 +1076,10 @@ function openWays(b, ctx) {
         const chests = [...blockers].filter(q => !keepAlways(q) && cat(q) === 'storage');
         const big = [...blockers].filter(q => !keepAlways(q) && ['table', 'craft'].includes(cat(q)));
         const set = new Set();
-        // one group at a time first, the smallest first; then the tier's groups together
+        // one group at a time first, loose pieces before library sets and the smallest first; then the tier's groups
+        // together
         for (const tier of [loose, chests]) {
-          const gs = [...new Map(tier.map(q => { const gp = groupOf(b, q); return [gp[0], gp]; })).values()].sort((g1, g2) => g1.length - g2.length);
+          const gs = [...new Map(tier.map(q => { const gp = groupOf(b, q, true); return [gp[0], gp]; })).values()].sort((g1, g2) => (g1.some(q => q.kb) ? 1 : 0) - (g2.some(q => q.kb) ? 1 : 0) || g1.length - g2.length);
           for (const gp of gs) if (!ok && !gp.some(keepAlways) && drop(new Set(gp), ok0)) ok = true;
           if (ok) break;
           for (const gp of gs) for (const r of gp) set.add(r);

@@ -471,11 +471,13 @@ Study notes for how rooms look lived in, gathered 2026-11-11. D-025 (Tyler): "Ye
 here is shipped, no image or design is copied, and quotes stay short. D-136 (Tyler): targets come only from what is
 observed and learned, so each note says what the source shows and where it differs from the corpus counts.
 
-Access: valheimians.com pages were read in a cloud browser (read only, no sign-in); WebFetch was blocked for its build
-pages (the permission prompt went unanswered). Tyler's Chrome was not used. Not reached in the time set: Baldur's
-Gate 3 (the one article found, 80.lv "A closer look at modular assets created for Baldur's Gate 3", has nothing on
-interiors), The Elder Scrolls Online housing (pages found, not read), and UESP's Skyrim house pages (permission prompt
-unanswered).
+Access, first pass: valheimians.com pages were read in a cloud browser (read only, no sign-in); WebFetch was blocked
+for its build pages (the permission prompt went unanswered).
+
+Access, second pass (2026-11-11, session 2): Baldur's Gate 3 renders were read on bg3.wiki in the cloud browser
+(ArtStation pages sit behind a bot check and were not read); write-ups and ESO pages through WebFetch; valheimians.com
+and UESP in Tyler's Chrome (Claude in Chrome, at Tyler's request through the lead), read only, one tab, no sign-in.
+Image lists came from each build page; the photos were viewed as image files.
 
 ### Valheim builds on valheimians.com
 
@@ -513,6 +515,38 @@ What the three show together: households are told by who sleeps where (couple, c
 (food by the cooking, gear by the armor stand, fuel by the fire). Dressing is dense in a few spots and the floor between
 them is clear. These are three builds; the corpus counts (`docs/CULTURE_STYLES.md` "Corpus by culture" and the table
 below) are the measure.
+
+### Valheim builds on valheimians.com, second pass
+
+Fourteen builds opened, picked from the best-liked builds of each culture group in `summary.json` (`best`) plus the
+most downloaded tavern, a shop with a home, and one Valheimberg village build, so that sizes run from a 6 x 8 m tiny
+home to a home for ten. All but the Sawmill are in the corpus. Thirteen have interior photos (Upper Class Medieval Townhouse, Apudma,
+shows only the outside); Skyrim Nordic Home for Light Start (Luxfen, the maker says it is unfinished) and Lin's Kuzuri
+(one bath photo) show little furniture. Builds, makers and URLs (all `https://www.valheimians.com/build/<slug>/`):
+
+| Build (maker) | Slug | Size, culture group | Seen in the interior photos |
+|---|---|---|---|
+| The Raspberry Cabin (HiccupTheHermit) | the-raspberry-cabin | small cabin, norse-forest | chests stacked two and three high along the walls; several small deer rugs laid at angles; standing torches in corners; bed under the eave; workbench by the window |
+| Tiny home challenge, part 2 (SorchaAzura) | tiny-home-challenge-part-2-before-the-elder | 6 x 8 m, norse-forest | every wall used: bed along one wall with a row of item stands above it, cauldron hung over the fire in an outside alcove, plates of food on a bench table, a barrel by the bed; firewood stacked in an outside lean-to with a chopping block |
+| Skyrim Nordic Home for Light Start (Luxfen) | skyrim-nordic-home-for-light-start | large, norse | bare rooms, one large rug, a portal; unfinished |
+| My First Home (Fluffy-n-Dana), for 4 | my-first-home-starter-base-with-above-ground-basement | round hall, norse | one open hall; hearth in a timber frame in the middle with a cauldron hung over it; beds along the outer wall under the windows, each with a hide rug beside it at an angle; armor stand and a high chair by the hearth; chests by the beds with signs; a storage floor below with barrels along the wall |
+| Mountain Lodge for 4 (Fluffy-n-Dana) | mountain-lodge-fob-for-4-vikings | two storeys, norse-highland | ground floor: a wall of chests stacked in a grid with barrels beside, cauldron in a stone fireplace, firewood piled on the mantel, hide rug before the fire, table with a bowl; roof storey: two beds on hide rugs at the gable end under a hung banner and a hanging lantern; two high chairs with a small table between at the other gable |
+| Plains triple round house (BuilderG) | plains-triple-round-house | three round huts, celtic | one use per hut: a workshop hut (work tables, chests, chairs by the work), a kitchen hut (round table with food on a rug by the oven, cauldron over the fire, barrel), a sleeping hut with a curtained bed; a wall of weapons on stands; round shields along an arch |
+| Starter Swamp Home (LooneyBandit) | starter-swamp-home | one room on stilts, fen-folk | chests stacked along one side wall; bed at the gable end with a small table and two candles under a hung banner; fire by the door |
+| Lin's Kuzuri (Lin) | lin-s-japanese-themed-base-called-kuzuri | large, east-asian | sunken stone bath with bowls on its rim |
+| Forest Lodge (rabbitramen) | forest-lodge | lodge, tavern folder | sunken fire pit with stepped benches round it; barrels stacked upright by a stone pillar; chests stacked; dining table with carved chairs; shields hung on posts; a gallery above |
+| INCREDIBLE Tavern (Olivanderr) | incredible-tavern-valheim-build | tavern | bar with bottles and banners behind; round tables each with a candle in the middle and mugs round it; a long feast table covered in plates with a high chair at its head; bookcase; hide rug on the floor; roof storey: beds in a row along the eaves, each on a long fur runner, chests at their feet, red curtains at the windows, wall candles |
+| Ashland's Materials Home for up to 10 (Fluffy-n-Dana) | ashland-s-materials-home-for-up-to-10-fully-decorated | large, ashlands | long dining table on layered carpets; beds in a ring round a central round platform, each with a barrel or small table beside; storage floor below: chests set in a wall grid, barrels on racks three high, a bench with lanterns in the middle on a runner rug |
+| Bakery with small store and living area (MutantArtCat) | bakery-with-small-store-and-living-area | shop and home, tavern folder | shop below: bread laid out on a display shelf, plates on the counter; two ovens side by side with a work table, cauldron on a tripod over a fire; chests in a row on a shelf along the sloped wall; home above: round table with chairs set at angles, hide rugs |
+| Valheimberg Sawmill (The_Compulsive_Builder) | halheimberg-sawmill-wip | village workplace | captions name each zone (main saw, secondary saw, materials yard, showroom, rest corner for workers); showroom: wall panels shown on plinths along the walls, each with a sign naming it; a desk in the middle with papers; hide rugs overlapping on the floor |
+
+Counts over the eleven with furnished interiors (the three thin ones left out): chests stacked or set in a wall grid 5;
+rugs laid at angles or overlapping 6; food or plates on a table 4; weapons or shields on walls 4; beds in a roof storey
+or under the eave 5 of the 7 that show beds; a rug beside or under a bed 4 of 7; a light at the bed head 2 of 7; beds
+along the outer wall round a central hearth or feature 2 (My First Home, Ashlands home); a storage floor below the
+living floor 2; uses split by building 1 (triple round house); shop below and home above 1 (bakery; 2 with Ubbe's
+butchery); signs on storage or goods 2; seats round a fire 2 (Forest Lodge pit, the Sawmill rest corner). These are
+counts of photos; the corpus measures for the same things are in "Observation against the corpus" below.
 
 ### Historical households (zones by who lives there)
 
@@ -560,6 +594,131 @@ use, and storage stands with the things of whoever owns that side.
   furniture category, and resting needs a roof, a fire and one point of comfort. The same rule shape as Valheim's
   comfort: variety of kinds counts, repeats do not.
 
+### Baldur's Gate 3
+
+No Larian talk or write-up on interior set dressing was found. Searched: GDC and other talks, the ArtStation Art Blast,
+80.lv, artist portfolio pages, PC Gamer, GamesRadar, Push Square. What the written sources give:
+
+- Jeroen Toma, "Insight into game-ready asset workflow for Baldur's Gate 3" (80.lv,
+  https://80.lv/articles/insight-into-game-ready-asset-workflow-for-baldur-s-gate-3): dust and rust placed where they
+  would form; most objects treated as aged and worn; modular curtains made to fit many wall sizes.
+- Anna Guxens in the city dev diary (PC Gamer, https://www.pcgamer.com/baldurs-gate-3-dev-diary-city-reveal-pcgs-2023):
+  the city was built "as a painting almost", a sketch first, then layers.
+- Farhang Namdar (GamesRadar, https://www.gamesradar.com/baldurs-gate-3-is-our-game-of-the-year-and-that-wouldnt-be-possible-without-the-developers-expert-worldbuilding-the-biggest-challenge-is-to-keep-the-player-interested):
+  variety keeps the player engaged; Act 2 people were drawn as reflections of what they did before.
+- Adam Smith (GamesRadar, https://www.gamesradar.com/baldurs-gate-3-was-inspired-by-hitman-and-arkanes-immersive-sims-they-said-a-level-is-a-block-of-swiss-cheese):
+  levels give many routes through.
+- Gert-Jan van de Put on Moonrise Towers (ArtStation, https://gjvandeput.artstation.com/projects/bldLqG, read through
+  WebFetch): the rooms were fitted into the tower with the level designers with the flow of movement in mind; set
+  dressing came after, by others.
+
+Close looks: nine Larian renders credited to the environment and lighting artists, from bg3.wiki's "Larian location
+images" category (https://bg3.wiki/wiki/Category:Larian_location_images), and the wiki's room-by-room text for the
+Last Light Inn, the Hollow at the Emerald Grove and Armbrust's Home (no render of those interiors is in the category).
+
+- **Elfsong Tavern** (Tim Coddens renders 02, 03, 05, 11; https://bg3.wiki/wiki/Elfsong_Tavern). Taproom: a bar with
+  stools, a rug under the stool line, a bottle lying under a stool, lanterns in pairs on the bar posts. Side alcoves
+  behind curtains, each with a table under a cloth, a candelabra on it, a round rug under the table and a bench along
+  the wall; a runner rug down the central aisle. By the fireplace: small tables and stools, a menu board, a mounted head
+  above the fire. Upper lounge: sofas and armchairs ring the room along the walls, in pairs with a small round table
+  between; the middle is open floor with hides overlapping each other and a round rug overlapping a cowhide, floor
+  cushions on the hides; a pair of wall sconces at each bay and one chandelier in the middle.
+- **Wyrm's Rock** (Martijn Petersen renders 2, 6): a runner rug leads from the door to a long table that stands on its
+  own rug; a chandelier over the table; candle stands in pairs; an animal head on the wall; a desk and bookcase on a
+  raised platform. In the court, benches round a pillar and candle stands at its corners.
+- **Bonecloak shop** (Jef Simons render): counter with jugs; potted plants along a table at the foot of the stair; a
+  sign board on a rug before the counter; bookshelves behind.
+- **Basement lodge** (Brodie Keall render): a fire basket with a stool and a bench by it; crates and barrels in the wall
+  arches; papers scattered on the floor by a chair; coils of rope by the barrels.
+- **Lower City lounge** (Stimona Milanova render, lowercity-5): rugs laid edge to edge over the whole floor; cushions in
+  clusters; candles in groups of two or three on the floor; a bed in a curtained alcove with a candle stand on each
+  side; a fruit bowl on a side table.
+- **Last Light Inn** (https://bg3.wiki/wiki/Last_Light_Inn, text): the main hall has the hearth in the middle, the bar at
+  the far end, traders' stalls along the sides, an alchemist's table and a game table; a common lodging room has
+  several beds with cupboards between them, packs on the beds and bookcases; the leader has a room of her own upstairs
+  with a desk, her diary and wardrobes; storage and cells are in the basement.
+- **The Hollow, Emerald Grove** (https://bg3.wiki/wiki/The_Hollow, text): each group holds its own spot: traders'
+  stands, a cook near the healer's stall, a smith, an adventurers' table with their shared chest, oxen at a stall with
+  a haystack, the leader in a side chamber.
+- **Armbrust's Home** (https://bg3.wiki/wiki/Armbrust%27s_Home, text): a tailor's family of three; workroom and kitchen
+  below, bedrooms and a living room above; ledgers and notes in the workroom tell of debts; a bathtub upstairs with a
+  dye on the shelf over it; a note under a loose plank.
+
+What BG3 shows across these: the place a person sits or works carries their things (a menu board by the bar, papers by
+the guard's chair, a diary on the leader's desk). Rooms are zoned by who uses them, with the shared room in the middle
+and private rooms off it or upstairs. Seats line the walls in pairs with a small table between them and the middle is
+left open. Runner rugs mark the walk from a door to a table. Lights come in pairs (bar posts, wall bays, both sides of
+a bed). Rugs overlap and are not square to the room. Small mess sits on the floor (a bottle, papers, rope).
+
+### The Elder Scrolls Online housing
+
+- ESO forum thread "Need more personal furnishings to make house look lived in"
+  (https://forums.elderscrollsonline.com/en/discussion/comment/7271523/): players name the small personal things that
+  make a home: books on shelves, wine glasses, combs on a vanity, jewelry boxes on a dresser, robes hung in the
+  bedroom and bath; and ask for clothing over a chair or the end of a bed, a cloak rack by the entrance, armor and
+  weapon racks, a laundry basket, potted plants, half-empty bottles.
+- ESO forum thread "Decorating hints, tips, ideas", page 12
+  (https://forums.elderscrollsonline.com/en/discussion/365467/decorating-hints-tips-ideas/p12): one item used as another
+  in 2 posts (a fan turned on its face as a plinth); one item set into the floor pattern in 1 post.
+- ESO-Hub and ArzyeLBuilds housing guides (https://eso-hub.com/en/guides/housing-guide-tips-tricks/housing-editor-and-decoration-basics,
+  https://arzyelbuilds.com/eso-housing/): editor controls only; nothing on dressing rooms.
+
+ESO adds the list of personal things by room (vanity things in the bedroom, cloaks by the door). Valheim has few such
+pieces; the vanilla stand items (item stands holding gear, food, trophies) are the nearest.
+
+### Skyrim homes and inns (UESP)
+
+- **Breezehome** (https://en.uesp.net/wiki/Skyrim:Breezehome): when bought it is dusty, with cobwebs, crates, two
+  unusable chairs and an unlit fire pit. Each upgrade furnishes one room with a small set: bedroom 2 chairs, a dresser,
+  3 end tables, a table, a shield plaque with two greatswords over the bed, 2 wall decorations, 2 rugs; kitchen 2
+  chairs, a cooking pot, a set of shelves, a table, 3 wall decorations, 1 rug, herbs and fish hung up; dining a better
+  table, a barrel, a chair, a cupboard, 2 wall shelves, 1 rug; living room a bookcase, 2 chairs, a cupboard, 3 wall
+  shelves, 2 tables, a weapon plaque, a weapon rack, 1 rug. The housecarl's room: a bed, a dresser, an end table, a
+  sack.
+- **Proudspire Manor** (https://en.uesp.net/wiki/Skyrim:Proudspire_Manor): the same pattern at a larger size: a
+  bedroom set (2 wardrobes, a weapon rack, an end table, a bed, a chest, a safe), a dining set (4 chairs, a cupboard, a
+  shelf), an alchemy corner (shelving, a small round table, an ingredient rack, 2 rugs), an enchanting corner (plaques,
+  mannequins, a soul gem stand).
+- **The Bannered Mare** (https://en.uesp.net/wiki/Skyrim:The_Bannered_Mare): ground floor common room, a small bedroom
+  (the keeper's) and the kitchen; upper floor three rented bedrooms.
+
+Skyrim's room sets are small and fixed: about one rug per room (two in the bedroom), one or two chairs, one table, two
+to four things on the walls, one storage piece. The bought-but-bare state (dust, crates, broken chairs, cold fire) is
+its own look.
+
+### Observation against the corpus (D-136)
+
+What the outside sources show, set against what the 1,093 furnished buildings do. A source can suggest what to measure;
+the share in the corpus is the number a generator aims for. Corpus shares are from `summary.json`: `relx` per culture
+group and `relxAll` (second pass, method in the file's `note`), `rel` and `kinds` (first pass). "pieces" is the share
+of that kind of piece; "builds" is the share of furnished buildings with one or more.
+
+| Observation | Seen in | Corpus measure | Corpus share |
+|---|---|---|---|
+| Chests stacked on chests, or set in a wall grid | 5 of 11 valheimians builds | `relx.chestsStacked` | 58 % of chests, 48 % of builds (norse 60 / 59, norse-forest 63 / 64, ashlands 73 / 34) |
+| A light at the bed head (candle, lantern, torch within 2 m) | 2 of 7 valheimians builds showing beds; BG3 lounge alcove; Ubbe's butchery | `relx.bedsLit` | 14 % of beds, 15 % of builds (medieval-timber 31 / 48, fen-folk 43 / 33, norse 11 / 14) |
+| Beds under the roof slope or in the roof storey | 5 of 7 | `relx.bedsUnderSlope`; `rel.bedsAboveMainFloor` | under a roof piece 14 % of beds (norse 21, norse-highland 15); above the main floor 50 to 85 % of builds with beds |
+| A rug beside or under a bed | 4 of 7 | `rel.bedsOnRug` | about 30 % of beds (45 fantasy, 64 east-asian) |
+| A rug laid over a bed as a cover | Ubbe's butchery; perhaps the tavern beds | `relx.bedsRugOver` | 1 % of beds (east-asian 18 %) |
+| Seats along the walls | BG3 Elfsong lounge, Wyrm's Rock court; valheimians benches | `relx.seatsByWall` | 42 % of seats, 62 % of builds |
+| Chairs, tables and rugs turned off the room axes | 6 of 11 (rugs); Ubbe's chairs; BG3 rugs and stools | `relx.seatsOffAxis`, `tablesOffAxis`, `rugsOffAxis` | seats 42 %, tables 29 %, rugs 31 % of pieces turned more than 10 degrees |
+| Two or more lights beside a window | Cozy Blacksmith Cabin; BG3 wall bays | `relx.windowsLitPair` | 3 % of windows, 11 % of builds |
+| Rugs layered on rugs | 6 of 11; BG3 Elfsong lounge, Lower City lounge | `rel.rugsLayered` | 18 to 27 % of rugs |
+| Seats round a fire | Forest Lodge, Sawmill rest corner; BG3 basement lodge, Elfsong fireplace | `rel.seatsByFire` | 3 to 9 % of seats |
+| Food or plates on tables | 4 of 11; BG3 Wyrm's Rock and Elfsong | `onTable` | tables dressed 23 to 59 %; the top dressing is the horizontal item stand |
+| Beds round the outer wall facing a central hearth or feature | 2 of 11; Last Light Inn hall has the hearth in the middle | none | measure needed: bed headboard toward the nearest wall with a fire in the middle third of the room |
+| A runner rug from a door to a table | BG3 Wyrm's Rock, Elfsong aisle | none | measure needed: long rug (or rugs in a line) between a door and a table, needs the room finder |
+| One rug per room, a small fixed set per room | Skyrim upgrade sets | none | measure needed: rugs, seats and tables per room, needs `lab/learn_interior.py`'s room finder |
+| Signs on storage or goods | 2 of 11 | none | measure needed: sign within 1 m of a chest or an item stand |
+| Storage floor below, living floor above | 2 of 11; Last Light Inn basement | none | measure needed: share of chests and barrels by storey |
+| Shop below, home above | bakery, Ubbe's butchery; Armbrust's Home (workroom below) | none | measure needed: crafting and trade pieces by storey against beds by storey |
+| Small mess on the floor (a bottle, papers, rope) | BG3 Elfsong and basement lodge | none | measure needed: loose small pieces on a floor away from any surface |
+
+Commands for `relx` (device, `$HOME/vhresearch`, scripts kept out of the repo): `mine_extra.js` is `mine_culture.js`
+with the extra relations added after `rugsLayered` and a short output line; `node mine_extra.js
+$HOME/mnt/Downloads/Villheim-blueprints featx.jsonl 170` (38 s for 2,153 builds), then `node agg_extra.js` (writes
+`out/extra.json`, merged into `summary.json` as `relx` and `relxAll`).
+
 ### How a generator could apply this under the drivers
 
 Options only; nothing here is built, and each needs a measure in the corpus before it becomes a target (D-136).
@@ -577,19 +736,32 @@ Options only; nothing here is built, and each needs a measure in the corpus befo
 - Few hot spots, clear floor: dense dressing at a table, a shelf or a bed head, open floor between. Corpus: most
   tables bare (dressed 23 to 59 %), and builds that use horizontal stands use many (median 18).
 - Imperfect placement: small turns and offsets on chairs and loose things (Witcher grid-free placement; Ubbe's
-  chairs). No measure of chair angles exists in the corpus data yet.
-- Light: a candle at each bed side, paired torches at a window, a hanging light over a table. Corpus: 0.2 to 0.6 lights
-  per 10 m2.
+  chairs). Corpus: 42 % of seats, 29 % of tables and 31 % of rugs are turned more than 10 degrees off the wall axes
+  (`relx`).
+- Light: a light by some beds, a hanging light over a table. Corpus: 0.2 to 0.6 lights per 10 m2; a light within 2 m
+  of 14 % of beds (31 % medieval-timber, 43 % fen-folk); two lights at a window for 3 % of windows. Paired lights at
+  every bed or window are rarer in the corpus than in BG3.
 - Avoid visible repeats: vary nightstand kinds, item mixes and rug kinds between homes (Skyrim); one rare piece per
   home.
 - Variety for comfort: one of each kind before a second of any (Enshrouded and Valheim comfort).
 - Wear and mess: wealth by village or family trait (Witcher districts). The corpus has no wear measure; vanilla has few
   wear pieces, so mess is shown by quantity and placement.
+- Storage that looks used: chests stacked two or three high along a wall, or in a grid, for about half of chests
+  (`relx.chestsStacked` 58 % of chests); barrels in rows or upright stacks; a storage floor below in large homes.
+- Seats: about four in ten seats stand along a wall (`relx.seatsByWall`), and a quarter at a table (`rel`); BG3 and the
+  valheimians lodges pair wall seats with a small table between and leave the middle of the room open.
+- Who sits or works here: the things of a person go at their seat or work place (papers at a desk, a menu by the bar,
+  a diary on the leader's desk, tools by the bench). Private room off or above the shared room (Last Light Inn,
+  Bannered Mare, Armbrust's Home).
+- Room sets by use (Skyrim): each room gets a small set by its use (sleeping, cooking, eating, living), about one rug,
+  one or two chairs, one table, a few things on the walls, one storage piece. A per-room count in the corpus is needed
+  before this sets any number.
 
 ### Tricks builders use on purpose (D-127)
 
 Counts from the 1,093 furnished buildings in the corpus (40+ building pieces, 5+ pieces of furniture inside, outside
-the statue, bridge, arena, mini-game, portal-hub, farming and artistic folders); photos from the three builds above.
+the statue, bridge, arena, mini-game, portal-hub, farming and artistic folders); photos from the builds viewed in both
+passes above.
 
 | Trick | How often | Source |
 |---|---|---|
@@ -610,6 +782,10 @@ the statue, bridge, arena, mini-game, portal-hub, farming and artistic folders);
 | Herbs hung from rafters | 2 of 3 (piece not identified; may be a mod piece in the cabin) | both furnished builds |
 | A bench or couch built from building pieces | 1 of 3 | Cozy Blacksmith Cabin |
 | A piece hidden for its effect (Frostner and wisp torches for a cold look) | 1 of 3 | Ubbe's butchery (description) |
+| Chests stacked on chests along a wall or in a grid | 58 % of chests, 48 % of furnished buildings; 5 of 11 builds viewed in the second pass | corpus (`relx.chestsStacked`), photos |
+| Barrels stacked upright or on racks | 3 of 11 (Forest Lodge, Ashlands home, My First Home) | photos; no corpus measure |
+| A sunken fire pit with stepped benches round it | 1 of 11 (Forest Lodge) | photos |
+| Signs labeling storage or goods | 2 of 11 (My First Home, Sawmill showroom) | photos |
 
 Counts here cover whole builds; where the piece sits (in a wall, clipped, on a surface) is measured only for the
 table, sill and rug relations. Clip depths are in "Creative sets" above.

@@ -82,6 +82,13 @@ const OVERHEAD = ['roof', 'roofTop', 'roofCorner', 'floor', 'beam'];
 const isLooseItem = n => M.source(n) === 'Items' && !/^(Pickable_|Placeable_|TreasureChest|loot_chest)/.test(n);
 // Furniture is measured with the decorator's own sizes (the game's, turned with the piece) where it has them: the
 // catalog's boxes are rough for props and called a chest beside a chopping block a clip.
+// a piece's catalog box as turned on its pivot (lib/checks.js catBox, before it is made square to the axes)
+const yawA = p => { if (p.yaw != null) return p.yaw; const [x, y, z, w] = p.q || [0, 0, 0, 1]; return Math.atan2(2 * (w * y + x * z), 1 - 2 * (y * y + x * x)) * 180 / Math.PI; };
+const offAxis = p => { const a = ((yawA(p) % 90) + 90) % 90; return Math.min(a, 90 - a) > 1; };
+function turnedBox(p) {
+  const info = PC.piece(p.name), s = p.s || [1, 1, 1];
+  return D._int.obox(p.x, p.z, info.size[0] * s[0], info.size[2] * s[2], yawA(p));
+}
 function obbGap(a, b) { // how far apart two turned boxes are on their best separating axis (below 0: they overlap that deep)
   let best = -Infinity;
   for (const [o, p] of [[a, b], [b, a]]) for (const [ax, az, h] of [[o.c, -o.s, o.hw], [o.s, o.c, o.hd]]) {
@@ -149,6 +156,11 @@ function audit(pieces, shell) {
     if (D.FURNITURE[pa.name] && D.FURNITURE[pb.name]) {
       const ia = D.itemOf(pa), ib = D.itemOf(pb), deep = -obbGap(ia.b, ib.b);
       oy = Math.min(ia.y1, ib.y1) - Math.max(ia.y0, ib.y0);
+      ox = oz = deep;
+    } else if (offAxis(pa) || offAxis(pb)) {
+      // a piece turned off the grid, one of them without a furniture entry (a runed bench turned with the table it is
+      // drawn up to): their boxes as turned, the box catBox makes square round each, so the turn alone is no overlap
+      const deep = -obbGap(turnedBox(pa), turnedBox(pb));
       ox = oz = deep;
     }
     const fireSet = [pieces[furn[a]].name, pieces[furn[b]].name].some(n => /^(fire_pit|hearth|piece_cookingstation|piece_cauldron|piece_cookingstation_iron)$/.test(n)) && [pieces[furn[a]].name, pieces[furn[b]].name].some(n => /^(fire_pit|hearth|bonfire)$/.test(n));

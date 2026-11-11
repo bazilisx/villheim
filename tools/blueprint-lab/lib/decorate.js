@@ -3288,7 +3288,9 @@ function auditOne(p, ctx, extra, allow) {
   if (it.f.at === 'mount' && !mountOk(it, wallish)) { ONE_WHY = 'mount'; return false; }
   if (p.rest && !kbRests(it, A.pieces.concat(more), wallish, A.struct.concat(built))) { ONE_WHY = 'rest ' + p.rest; return false; }
   let used = 0;
-  if (SHOWS_DEEP.has(it.f.cat)) {
+  // (a piece the furniture table does not size goes by its catalog role, as the pool audit's intoWall reads it: a
+  // runed chair into a trim beam)
+  if (SHOWS_DEEP.has(it.f.cat || P.piece(p.name).role)) {
     const d = showsInto(p, A.struct.map(sb => sb.p));
     // a chest may go into a wall as deep as corpus builders set them (lib/kitbash.js CHEST_WALL, D-127)
     if (d > Math.max(SHOWS_MAX, allow || 0, CHEST_WALL_D[p.name] || 0)) { ONE_WHY = 'shows'; return false; }

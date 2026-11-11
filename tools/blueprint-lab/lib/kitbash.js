@@ -981,7 +981,15 @@ function placeable(p, bx, mm, i, b, ctx, room, idx, zones, made, clipOf, anc, fi
   // under its table; marked so the pool audit lets that depth pass, D-098)
   const mine = [], ownP = !mm.n || mm.n === p.name;
   let fdeep = 0;
-  for (const [q, deep] of D.furnClash(p, nearP(0.3).map(r => r.p).filter(q => q.decor && !displace.has(q)).concat(made.filter(Boolean)))) {
+  // (the furniture boxes the audit compares can reach well past the solids, a spinning wheel's is 2.67 x 2.04 m, and so
+  // can a neighbor's: the search covers the piece's furniture box and 1 m round it)
+  let fr = bx;
+  if (D.FURNITURE[p.name]) {
+    const o = D.itemOf(p).b, ex = Math.abs(o.c) * o.hw + Math.abs(o.s) * o.hd, ez = Math.abs(o.s) * o.hw + Math.abs(o.c) * o.hd;
+    fr = { x0: Math.min(bx.x0, o.x - ex), x1: Math.max(bx.x1, o.x + ex), y0: bx.y0, y1: bx.y1, z0: Math.min(bx.z0, o.z - ez), z1: Math.max(bx.z1, o.z + ez) };
+  }
+  const furnNear = idx.near({ ...fr, x0: fr.x0 - 1, x1: fr.x1 + 1, z0: fr.z0 - 1, z1: fr.z1 + 1 }, 0).map(r => r.p);
+  for (const [q, deep] of D.furnClash(p, furnNear.filter(q => q.decor && !displace.has(q)).concat(made.filter(Boolean)))) {
     const j = made.indexOf(q);
     if (j >= 0 && ownP && (!a.pieces[j].n || a.pieces[j].n === q.name)) { fdeep = Math.max(fdeep, deep); continue; }
     // two chests of a kind pushed together as corpus builders push them (CHEST_PAIR, D-127): the solids test below
@@ -995,8 +1003,10 @@ function placeable(p, bx, mm, i, b, ctx, room, idx, zones, made, clipOf, anc, fi
   // by what shows when a crafting station is one of the pair (onStation): the same here, with nothing passed by a mark
   if (FURN_B.has(info.role)) {
     const pc = Ck.catBox(p);
-    for (const q of nearP(0.3).map(r => r.p).filter(q => q.decor && !displace.has(q)).concat(made.filter(Boolean))) {
-      if (q === p || (decorB().FURNITURE[p.name] && decorB().FURNITURE[q.name]) || !FURN_B.has(PB.piece(q.name).role) || /_ext\d/.test(q.name) || /_ext\d/.test(p.name)) continue;
+    // (as the audit, a station's extension counts too: an artisan table's extension in a spinning wheel's box)
+    const cr = { x0: Math.min(pc.x0, fr.x0) - 1, x1: Math.max(pc.x1, fr.x1) + 1, y0: bx.y0, y1: bx.y1, z0: Math.min(pc.z0, fr.z0) - 1, z1: Math.max(pc.z1, fr.z1) + 1 };
+    for (const q of idx.near(cr, 0).map(r => r.p).filter(q => q.decor && !displace.has(q)).concat(made.filter(Boolean))) {
+      if (q === p || (decorB().FURNITURE[p.name] && decorB().FURNITURE[q.name]) || !FURN_B.has(PB.piece(q.name).role)) continue;
       if ([p.name, q.name].some(n => /^(fire_pit|hearth|bonfire)$/.test(n))) continue;
       const qc = Ck.catBox(q), ov = k => Math.min(pc[k + '1'], qc[k + '1']) - Math.max(pc[k + '0'], qc[k + '0']);
       if (ov('x') > 0.12 && ov('y') > 0.12 && ov('z') > 0.12 && !movable(q)) return no(31);

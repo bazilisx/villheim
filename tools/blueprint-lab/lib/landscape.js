@@ -73,6 +73,16 @@ const GROUPS = {
 const SCALE = { tree: [0.79, 0.49, 1.46], bush: [0.28, 0.9, 1.29], mushroom: [0.16, 1.0, 1.55] };
 // Vines: height on the wall [p10, median, p90] m, and the share of vines at a corner (vines)
 const VINE_HEIGHT = [1.03, 5.6, 16.72], VINE_CORNER = 0.38;
+// The vine models (data/piece-models.json bounds): 'vines' hangs round its pivot (1.17 m under it, 1.26 m over), a
+// card 2.32 m wide along its local x, its leaves on the local -z side; the Ashlands vines stand on a pivot 0.4 m over
+// their foot, 2.54 m wide along local z. w, h: the card; y0: its foot under the pivot; turn: the yaw that lays the card
+// along the wall with its leaves out; along: the card's middle along the wall from the pivot; back: how far the card
+// reaches behind the pivot toward the wall.
+const VINE_BOX = {
+  vines: { w: 2.32, h: 2.43, y0: -1.17, turn: 0, along: 0.14, back: 0.12 },
+  VineGreen: { w: 2.54, h: 2.39, y0: -0.4, turn: -90, along: 0.03, back: 0.12 },
+  VineAsh: { w: 2.54, h: 2.39, y0: -0.4, turn: -90, along: 0.03, back: 0.12 },
+};
 // Culture leans: a class's share of the culture group's builds over its share of all 609 builds (by_culture), pulled
 // toward 1 by 20 builds so small groups count for less. Lab cultures with a corpus group of their own; Ashlands
 // buildings without one use the Ashlands group.
@@ -85,10 +95,29 @@ const LEAN = {
   'ashlands': { vine: 0.93, bush: 0.67, flower: 0.83, tree: 0.78, pot: 1.62, mushroom: 0.59 },
 };
 
+// The side of a house each class's groups stand on: front (the side most ground-floor doors face), back, or the two
+// ends together (data/landscape/corpus-sides.json groups_by_side, lab/mine_greenery_sides.js: 135 houses of the
+// compact corpus, 62 with greenery). Classes with fewer than 8 groups take the ground groups' split.
+const SIDES = {
+  tree: { front: 0.145, back: 0.327, end: 0.527 }, bush: { front: 0.288, back: 0.269, end: 0.442 }, flower: { front: 0.341, back: 0.146, end: 0.512 },
+  vine: { front: 0.318, back: 0.193, end: 0.489 }, pot: { front: 0.75, back: 0.25, end: 0 }, mushroom: { front: 0.867, back: 0, end: 0.133 },
+  all: { front: 0.316, back: 0.24, end: 0.444 },
+};
+// How lopsided one house is: each of its four sides gets a weight exp(SIDE_SPREAD * z) on top of the split above, so
+// the busiest side holds about as much of a house's ground groups as in the corpus (lopsided.top_share, 18 houses with
+// three or more ground groups: median 0.6, p75 0.68). With 1.3, lab/test_landscape.js (3 seeds, 52 homes) reads a
+// median 0.5 and a p75 0.67 (with three or four groups a house the share moves in steps of a quarter or a third).
+const SIDE_SPREAD = 1.3;
+// Planters: a group of two or more bushes or flowers with a low border round it, the share of such groups in the
+// corpus (corpus-greenery.json groups 'with a low border' over groups of two or more: bushes 74 of 805, flowers 29 of
+// 334); the border stands a median 0.41 m out from the plants' stems (corpus-sides.json planters.bush.margin_m).
+const BORDER = { bush: 74 / 805, flower: 29 / 334, margin: 0.41 };
+
 // Settings with no corpus number (the corpus has no stages and 9 village builds): how likely each class is by stage
-// (averaging 1 over the three, so the shares across stages match the corpus), and the range of a village's own
+// (averaging 1 over s1 to s3, so the shares across those stages match the corpus), and the range of a village's own
 // greenness roll. Values in use until the lead or Tyler sets them.
-const STAGE_W = { s1: 0.5, s2: 1.0, s3: 1.5 };
+// D-153: every building grows to s5; s4 and s5 go on with the same rise (0.5 a stage). D-158 asks Tyler.
+const STAGE_W = { s1: 0.5, s2: 1.0, s3: 1.5, s4: 2.0, s5: 2.5 };
 const VILLAGE_GREEN = [0.6, 1.4];
 // The most the pass may grow the plot (Blueprints.cs Center: the farthest pivot plus 2 m), m.
 const PLOT_GROW = 0.5;
@@ -407,13 +436,35 @@ function add(b, ctx) {
 
   // ---- spots by place: a point and a direction along which a group runs
   const groundFaces = S.faces.filter(f => f.ground.length);
-  const pickFace = () => groundFaces[Math.floor(R() * groundFaces.length)];
+  // the house's front: the way most ground-floor doors face, out from the middle (no door: -z, the lab's front)
+  const mid0 = (() => { const g = S.faces.flatMap(f => f.ground); return g.length ? [g.reduce((a, q) => a + q.cx, 0) / g.length, g.reduce((a, q) => a + q.cz, 0) / g.length] : [0, 0]; })();
+  const tally = {};
+  for (const o of S.doors) {
+    if (o.y > G0 + 1.2) continue;
+    const sg = (o.x - mid0[0]) * o.nx + (o.z - mid0[1]) * o.nz >= 0 ? 1 : -1;
+    const k = `${Math.round(o.nx * sg)},${Math.round(o.nz * sg)}`;
+    tally[k] = (tally[k] || 0) + 1;
+  }
+  const front = (Object.entries(tally).sort((a, c) => c[1] - a[1])[0] || ['0,-1'])[0].split(',').map(Number);
+  const sideOfFace = f => { const d = f.n[0] * front[0] + f.n[1] * front[1]; if (d > 0.7) return ['front', 'front']; if (d < -0.7) return ['back', 'back']; return ['end', f.n[0] * front[1] - f.n[1] * front[0] > 0 ? 'endA' : 'endB']; };
+  // this house's own lean to some sides (SIDE_SPREAD)
+  const lean4 = { front: Math.exp(SIDE_SPREAD * gauss(R)), back: Math.exp(SIDE_SPREAD * gauss(R)), endA: Math.exp(SIDE_SPREAD * gauss(R)), endB: Math.exp(SIDE_SPREAD * gauss(R)) };
+  // a face for a group of this class: the corpus split by side, this house's lean, and the face's length within its side
+  const pickBySide = (kind, list) => {
+    const sp = SIDES[kind] || SIDES.all, len = {};
+    for (const f of list) { const [lb] = sideOfFace(f); len[lb] = (len[lb] || 0) + (f.t1 - f.t0); }
+    const w = list.map(f => { const [lb, s4] = sideOfFace(f); return { f, w: (sp[lb] || 0) * lean4[s4] * (f.t1 - f.t0) / len[lb] }; });
+    if (!w.some(x => x.w > 0)) return list[Math.floor(R() * list.length)];
+    return pickW(R, w).f;
+  };
+  const pickFace = kind => pickBySide(kind, groundFaces);
   const onFace = (f, d) => { const t = f.t0 + R() * (f.t1 - f.t0); const [x, z] = f.base(t, d); return { x, z, dir: f.u, f, t }; };
+  b.front = front;
   const eaveAt = (x, z) => S.roofs.some(o => x > o.x0 && x < o.x1 && z > o.z0 && z < o.z1 && o.y0 < G0 + 4.5);
   const spotFor = (kind, at) => {
     if (at === 'foot' || at === 'eaves' || at === 'yard') {
       if (!groundFaces.length) return null;
-      const f = pickFace();
+      const f = pickFace(kind);
       const d = at === 'yard' ? Math.max(FOOT_MAX + 0.05, quant(R, FROM_WALL[kind] || FROM_WALL.bush)) : kind === 'bush' ? 0.8 + R() * 0.7 : kind === 'tree' ? 1.2 + R() * 0.3 : 0.3 + R() * 1.2;
       const s = onFace(f, d);
       s.d = d;
@@ -488,43 +539,76 @@ function add(b, ctx) {
         if (!line) { const a = R() * Math.PI * 2; dir = [Math.cos(a), Math.sin(a)]; }
         x += dir[0] * st; z += dir[1] * st;
       }
+      // a planter: a low border of the village's beams round the group, at the corpus share
+      if (k >= 2 && BORDER[kind] && ['foot', 'yard', 'court'].includes(at) && R() < BORDER[kind]) planter(placed.slice(-k), DS[kind]);
     }
+  };
+  const planter = (members, ds) => {
+    const K = ctx.K || {}, beam = K.beam || 'wood_beam', beam1 = K.beam1 || 'wood_beam_1', m = BORDER.margin;
+    let x0 = Math.min(...members.map(q => q.x)) - m, x1 = Math.max(...members.map(q => q.x)) + m;
+    let z0 = Math.min(...members.map(q => q.z)) - m, z1 = Math.max(...members.map(q => q.z)) + m;
+    if (x1 - x0 < 1) { const c = (x0 + x1) / 2; x0 = c - 0.5; x1 = c + 0.5; }
+    if (z1 - z0 < 1) { const c = (z0 + z1) / 2; z0 = c - 0.5; z1 = c + 0.5; }
+    const out = [];
+    // each side in 2 m beams lapping where the side is not a whole number of beams (a 1 m beam for a short side)
+    const run = (a0, a1, fixed, alongX) => {
+      const L = a1 - a0;
+      if (L <= 1.1) { out.push({ name: beam1, c: (a0 + a1) / 2, fixed, alongX, len: 1, clip: Math.max(0, (1 - L) / 2) }); return; }
+      const n = Math.ceil(L / 2 - 0.05), step = n > 1 ? (L - 2) / (n - 1) : 0;
+      for (let i = 0; i < n; i++) out.push({ name: beam, c: n > 1 ? a0 + 1 + i * step : (a0 + a1) / 2, fixed, alongX, len: 2, clip: n > 1 ? +Math.max(0, 2 - step).toFixed(2) : +Math.max(0, (2 - L) / 2).toFixed(2) });
+    };
+    run(x0, x1, z0, true); run(x0, x1, z1, true); run(z0, z1, x0, false); run(z0, z1, x1, false);
+    const ps = out.map(o => (o.alongX ? { ...o, x: o.c, z: o.fixed, yaw: 0 } : { ...o, x: o.fixed, z: o.c, yaw: 90 }));
+    const boxOf = o => (o.yaw === 0 ? { x0: o.x - o.len / 2, x1: o.x + o.len / 2, z0: o.z - 0.1, z1: o.z + 0.1 } : { x0: o.x - 0.1, x1: o.x + 0.1, z0: o.z - o.len / 2, z1: o.z + o.len / 2 });
+    for (const o of ps) {
+      const bx = { ...boxOf(o), y0: G0, y1: G0 + 0.2 };
+      if (S.solid.some(z => hit(bx, z, 0.02)) || inKeep(bx) || !inYard(o.x, o.z) || S.onFloor(o.x, o.z)) return false;
+      if (placed.some(q => !members.includes(q) && q.x > bx.x0 - 0.3 && q.x < bx.x1 + 0.3 && q.z > bx.z0 - 0.3 && q.z < bx.z1 + 0.3)) return false;
+      if (grows({ name: o.name, x: o.x, y: G0, z: o.z })) return false;
+    }
+    for (const o of ps) {
+      const more = { planter: true, ds, ...(o.clip > 0.02 ? { clip: o.clip } : {}) };
+      if (typeof b.put === 'function') b.put(o.name, o.x, G0 + 0.1, o.z, o.yaw, more);
+      else b.pieces.push({ name: o.name, x: +o.x.toFixed(3), y: +(G0 + 0.1).toFixed(3), z: +o.z.toFixed(3), yaw: o.yaw, q: quatL(o.yaw), ...more });
+    }
+    got.planter = (got.planter || 0) + 1;
+    return true;
   };
   for (const kind of ['tree', 'bush', 'pot', 'flower', 'mushroom']) if (want[kind]) ground(kind);
 
-  // ---- vines: patches on the walls, from a corner or along a face, climbing in steps of the corpus spacing
+  // ---- vines: patches on the walls, from a corner or along a face, at the corpus heights, in steps of its spacing
   if (want.vine) {
     const opts0 = choices('vine', ctx.biome);
     let left = want.vine, tries = 0;
     const faces = S.faces.filter(f => f.t1 - f.t0 > 1.6);
     const doorRects = S.doors.map(o => ({ o, hw: o.w / 2 + 0.3 }));
     while (left > 0 && faces.length && tries++ < 30) {
-      const f = faces[Math.floor(R() * faces.length)];
-      const pick = pickW(R, opts0), e = pick.e, w = Math.max(e[2][0], e[2][2]), h = e[2][1];
+      const f = pickBySide('vine', faces);
+      const pick = pickW(R, opts0), e = pick.e, V = VINE_BOX[e[0]];
+      const w = V.w, h = V.h;
       const n = Math.min(left, groupSize(R, 'vine'));
       const corner = R() < VINE_CORNER;
-      let t = corner ? (R() < 0.5 ? f.t0 + w * 0.3 : f.t1 - w * 0.3) : f.t0 + w / 2 + R() * Math.max(0, f.t1 - f.t0 - w);
-      let y = G0 + R() * 0.2;
-      const cap = quant(R, VINE_HEIGHT, 1.2816, 1.6) + (cared ? 0 : 0.8);
-      const yaw = normL(Math.atan2(-f.u[1], f.u[0]) * 180 / Math.PI + (e[2][0] >= e[2][2] ? 0 : 90));
+      let t = corner ? (R() < 0.5 ? f.t0 + w * 0.35 : f.t1 - w * 0.35) : f.t0 + w / 2 + R() * Math.max(0, f.t1 - f.t0 - w);
+      // the pivot's height over the ground from the corpus (vines.height_on_wall_m), the card held on the wall
+      const hp = quant(R, VINE_HEIGHT, 1.2816, 1.6) + (cared ? 0 : 0.5);
+      const clampY = (tt, y) => Math.max(G0 - 0.1, Math.min(y, f.top(tt) - h));
+      let y = clampY(t, G0 + hp + V.y0);
+      const yaw = normL(Math.atan2(-f.u[1], f.u[0]) * 180 / Math.PI + V.turn);
       let k = 0, miss = 0;
-      const sideways = R() < 0.5 ? 1 : -1;
-      const patch = [];
+      const line = R() < GROUPS.vine.line * (cared ? 1.6 : 0.8);
       while (k < n && miss < 8) {
-        // a vine grows from the ground up: its foot on the ground outside, or on a vine of the patch under it
-        const [ox, oz] = f.base(t, 0.5);
-        const rooted = !S.onFloor(ox, oz) && (y <= G0 + 0.35 || patch.some(([pt, py]) => Math.abs(pt - t) < w * 0.5 && py < y && y - py <= h * 0.9));
-        const ok = rooted && vineOk(f, t, y, w, h, cap, doorRects, G0);
-        const [x, z] = f.base(t, 0.08 + R() * 0.12, y, y + h);
-        if (ok && !placed.some(q => q.green.k === 'vine' && Math.hypot(q.x - x, q.z - z) < 0.08 && Math.abs(q.y - y) < 0.08)) {
-          if (put(e, 'vine', 'wall', pick.src, x, y, z, yaw, 1)) { k++; left--; got.vine = (got.vine || 0) + 1; patch.push([t, y]); }
+        const ok = Number.isFinite(y) && vineOk(f, t, y, w, h, doorRects);
+        // the card's back on the wall face, its pivot out from it by the model's depth behind the pivot
+        const [x, z] = f.base(t - V.along, V.back + R() * 0.06, y, y + h);
+        const py = y - V.y0;
+        if (ok && !placed.some(q => q.green.k === 'vine' && Math.hypot(q.x - x, q.z - z) < 0.08 && Math.abs(q.y - py) < 0.08)) {
+          if (put(e, 'vine', 'wall', pick.src, x, py, z, yaw, 1)) { k++; left--; got.vine = (got.vine || 0) + 1; }
           else miss++;
         } else miss++;
-        // the next one a corpus step on: up the wall, or along it in a line
-        const st = quant(R, SPACING.vine.all);
-        const up = GROUPS.vine.line && R() < (cared ? 0.55 : 0.3) ? 0.15 : 0.75;
-        y += st * up * 2.2; t += st * sideways * (1 - up) * 2.2 + (R() - 0.5) * 0.3;
-        if (y + h > Math.min(G0 + cap, f.top(t) + 0.1)) { y = G0 + R() * 0.3; t += sideways * w * 0.4; }
+        // the next one a corpus step on: along the wall in a line, or any way over it
+        const st = quant(R, SPACING.vine.all) * 2;
+        const a = line ? (R() - 0.5) * 0.4 : R() * Math.PI * 2;
+        t += Math.cos(a) * st; y = clampY(t, y + Math.sin(a) * st);
       }
     }
   }
@@ -535,11 +619,10 @@ function add(b, ctx) {
   return summary;
 }
 
-// A vine on face f at t (along the face), its foot at y: on the wall all the way (at most a quarter of it over a
-// window or other opening), clear of every door and its 0.3 m each side, under the wall top and the patch's height.
-function vineOk(f, t, y, w, h, cap, doorRects, G0) {
+// A vine's card on face f, its middle at t along the face and its foot at y: on the wall all the way (at most a
+// quarter of it over a window or other opening), under the wall top, clear of every door and its 0.3 m each side.
+function vineOk(f, t, y, w, h, doorRects) {
   if (t - w * 0.35 < f.t0 - 0.2 || t + w * 0.35 > f.t1 + 0.2) return false;
-  if (y + h > G0 + cap + 0.3) return false;
   let on = 0, off = 0;
   for (const a of [-0.35, -0.12, 0.12, 0.35]) for (const c of [0.15, 0.45, 0.75, 0.95]) {
     const tt = t + a * w, yy = y + c * h;
@@ -606,5 +689,5 @@ function kitPieces(set, biome, stage = 's3', seed = 1) {
 /** Does this request get landscaping? req.landscape false turns it off; bare builds (skipDecor) get none. */
 function wants(req) { return !(req && (req.landscape === false || req.skipDecor)); }
 
-const apiL = { add, wants, mark, kitPieces, survey, classOf, useOf, ownerOf, choices, HOUSE, PLACES, SPACING, FROM_WALL, GROUPS, SCALE, VINE_HEIGHT, VINE_CORNER, LEAN, STAGE_W, VILLAGE_GREEN, PLANTS, NEAR, PLOT_GROW };
+const apiL = { add, wants, mark, kitPieces, survey, classOf, useOf, ownerOf, choices, HOUSE, PLACES, SPACING, FROM_WALL, GROUPS, SCALE, VINE_HEIGHT, VINE_CORNER, LEAN, STAGE_W, VILLAGE_GREEN, PLANTS, NEAR, PLOT_GROW, VINE_BOX, SIDES, SIDE_SPREAD, BORDER };
 if (NODE_L) module.exports = apiL; else window.VHLandscape = apiL;

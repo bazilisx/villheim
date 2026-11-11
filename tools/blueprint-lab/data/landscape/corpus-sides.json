@@ -1,0 +1,339 @@
+{
+ "about": "Which side of a house its greenery stands on (lab/mine_greenery_sides.js, the compact corpus /home/claude/study/compact.json, vanilla builds). front: the side most ground-floor doors face; back: the far side; end: either of the other two (both together). Groups: one class within 2 m. planters: groups with two or more low building pieces (top under 1 m over the ground) off the house within 0.7 m of the box round the group; raised: most of its plants stand 0.15 m or more over the ground. lopsided: builds with three or more ground groups; top = the share of their ground groups on the busiest of the four sides.",
+ "version": "2026-11-11",
+ "houses": 135,
+ "with_greenery": 62,
+ "pieces_by_side": {
+  "flower": {
+   "n": 87,
+   "front": 0.54,
+   "back": 0.08,
+   "end": 0.379
+  },
+  "crop": {
+   "n": 5,
+   "front": 0,
+   "back": 0,
+   "end": 1
+  },
+  "vine": {
+   "n": 630,
+   "front": 0.281,
+   "back": 0.216,
+   "end": 0.503
+  },
+  "bush": {
+   "n": 221,
+   "front": 0.353,
+   "back": 0.222,
+   "end": 0.425
+  },
+  "pot": {
+   "n": 11,
+   "front": 0.727,
+   "back": 0.273,
+   "end": 0
+  },
+  "tree": {
+   "n": 67,
+   "front": 0.119,
+   "back": 0.358,
+   "end": 0.522
+  },
+  "mushroom": {
+   "n": 93,
+   "front": 0.978,
+   "back": 0,
+   "end": 0.022
+  }
+ },
+ "groups_by_side": {
+  "flower": {
+   "n": 41,
+   "front": 0.341,
+   "back": 0.146,
+   "end": 0.512
+  },
+  "crop": {
+   "n": 2,
+   "front": 0,
+   "back": 0,
+   "end": 1
+  },
+  "vine": {
+   "n": 88,
+   "front": 0.318,
+   "back": 0.193,
+   "end": 0.489
+  },
+  "bush": {
+   "n": 104,
+   "front": 0.288,
+   "back": 0.269,
+   "end": 0.442
+  },
+  "pot": {
+   "n": 8,
+   "front": 0.75,
+   "back": 0.25,
+   "end": 0
+  },
+  "tree": {
+   "n": 55,
+   "front": 0.145,
+   "back": 0.327,
+   "end": 0.527
+  },
+  "mushroom": {
+   "n": 15,
+   "front": 0.867,
+   "back": 0,
+   "end": 0.133
+  }
+ },
+ "ground_groups_by_side": {
+  "n": 225,
+  "front": 0.316,
+  "back": 0.24,
+  "end": 0.444
+ },
+ "planters": {
+  "flower": {
+   "groups": 41,
+   "bordered": 1,
+   "multi": 12,
+   "multi_bordered": 0,
+   "raised": 0,
+   "border_pieces": {
+    "ashwood_wall_arch": 2
+   },
+   "plants": {
+    "n": 1,
+    "p10": 1,
+    "p25": 1,
+    "median": 1,
+    "p75": 1,
+    "p90": 1
+   },
+   "margin_m": {
+    "n": 2,
+    "p10": 0.611,
+    "p25": 0.611,
+    "median": 0.869,
+    "p75": 0.869,
+    "p90": 0.869
+   },
+   "border_top_m": {
+    "n": 2,
+    "p10": -0.272,
+    "p25": -0.272,
+    "median": -0.271,
+    "p75": -0.271,
+    "p90": -0.271
+   }
+  },
+  "crop": {
+   "groups": 2,
+   "bordered": 0,
+   "multi": 2,
+   "multi_bordered": 0,
+   "raised": 0,
+   "border_pieces": {},
+   "plants": {
+    "n": 0,
+    "p10": null,
+    "p25": null,
+    "median": null,
+    "p75": null,
+    "p90": null
+   },
+   "margin_m": {
+    "n": 0,
+    "p10": null,
+    "p25": null,
+    "median": null,
+    "p75": null,
+    "p90": null
+   },
+   "border_top_m": {
+    "n": 0,
+    "p10": null,
+    "p25": null,
+    "median": null,
+    "p75": null,
+    "p90": null
+   }
+  },
+  "bush": {
+   "groups": 104,
+   "bordered": 5,
+   "multi": 36,
+   "multi_bordered": 4,
+   "raised": 0,
+   "border_pieces": {
+    "ashwood_wall_arch": 6,
+    "wood_wall_log_4x0.5": 3,
+    "Piece_grausten_pillarbase_medium": 3,
+    "Piece_grausten_pillarbase_tapered": 2,
+    "wood_floor_triangular2": 1,
+    "stone_wall_1x1": 1,
+    "stone_floor_1x1": 1,
+    "stone_floor_2x2": 1
+   },
+   "plants": {
+    "n": 5,
+    "p10": 1,
+    "p25": 2,
+    "median": 3,
+    "p75": 3,
+    "p90": 3
+   },
+   "margin_m": {
+    "n": 18,
+    "p10": 0,
+    "p25": 0.152,
+    "median": 0.414,
+    "p75": 0.516,
+    "p90": 0.72
+   },
+   "border_top_m": {
+    "n": 18,
+    "p10": -0.87,
+    "p25": -0.37,
+    "median": 0.67,
+    "p75": 0.876,
+    "p90": 0.876
+   }
+  },
+  "pot": {
+   "groups": 8,
+   "bordered": 4,
+   "multi": 2,
+   "multi_bordered": 0,
+   "raised": 1,
+   "border_pieces": {
+    "iron_wall_1x1": 4,
+    "stone_floor_2x2": 1,
+    "wood_beam": 1,
+    "Piece_grausten_floor_4x4": 1,
+    "Piece_grausten_pillarbeam_small": 1
+   },
+   "plants": {
+    "n": 4,
+    "p10": 1,
+    "p25": 1,
+    "median": 1,
+    "p75": 1,
+    "p90": 1
+   },
+   "margin_m": {
+    "n": 8,
+    "p10": 0.48,
+    "p25": 0.619,
+    "median": 0.725,
+    "p75": 0.761,
+    "p90": 0.773
+   },
+   "border_top_m": {
+    "n": 8,
+    "p10": 0.005,
+    "p25": 0.21,
+    "median": 0.673,
+    "p75": 0.673,
+    "p90": 0.673
+   }
+  },
+  "tree": {
+   "groups": 55,
+   "bordered": 1,
+   "multi": 11,
+   "multi_bordered": 0,
+   "raised": 0,
+   "border_pieces": {
+    "Piece_grausten_floor_4x4": 1,
+    "Piece_grausten_floor_1x1": 1
+   },
+   "plants": {
+    "n": 1,
+    "p10": 1,
+    "p25": 1,
+    "median": 1,
+    "p75": 1,
+    "p90": 1
+   },
+   "margin_m": {
+    "n": 2,
+    "p10": 0.643,
+    "p25": 0.643,
+    "median": 0.715,
+    "p75": 0.715,
+    "p90": 0.715
+   },
+   "border_top_m": {
+    "n": 2,
+    "p10": 0.005,
+    "p25": 0.005,
+    "median": 0.755,
+    "p75": 0.755,
+    "p90": 0.755
+   }
+  },
+  "mushroom": {
+   "groups": 15,
+   "bordered": 0,
+   "multi": 9,
+   "multi_bordered": 0,
+   "raised": 0,
+   "border_pieces": {},
+   "plants": {
+    "n": 0,
+    "p10": null,
+    "p25": null,
+    "median": null,
+    "p75": null,
+    "p90": null
+   },
+   "margin_m": {
+    "n": 0,
+    "p10": null,
+    "p25": null,
+    "median": null,
+    "p75": null,
+    "p90": null
+   },
+   "border_top_m": {
+    "n": 0,
+    "p10": null,
+    "p25": null,
+    "median": null,
+    "p75": null,
+    "p90": null
+   }
+  }
+ },
+ "lopsided": {
+  "builds": 18,
+  "top_share": {
+   "n": 18,
+   "p10": 0.333,
+   "p25": 0.5,
+   "median": 0.6,
+   "p75": 0.679,
+   "p90": 1
+  },
+  "sides_used": {
+   "n": 18,
+   "p10": 1,
+   "p25": 2,
+   "median": 3,
+   "p75": 4,
+   "p90": 4
+  },
+  "one_side_share": 0.167,
+  "busiest_side": {
+   "front": 0.389,
+   "back": 0.167,
+   "end": 0.444
+  }
+ }
+}

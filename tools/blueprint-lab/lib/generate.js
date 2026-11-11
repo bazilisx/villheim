@@ -1217,7 +1217,7 @@ function generate(req) {
 function outside(b, req, o) {
   const { K, C, type, stage, biome, cultureKey, decor, seed, household } = o;
   if (Yards.wants(req, type, stage)) Yards.add(b, { K, C, type, stage, biome, cultureKey, decor: req.skipDecor ? 'd1' : decor, seed, opts: req.yard, details: req.details, persona: household });
-  if (Landscape.wants(req)) Landscape.add(b, { C, type, stage, biome, cultureKey, decor, seed, persona: household, opts: req.landscape });
+  if (Landscape.wants(req)) Landscape.add(b, { K, C, type, stage, biome, cultureKey, decor, seed, persona: household, opts: req.landscape });
 }
 
 // The gable end a middle fire's chimney stands near (within 2.5 m of the gable), or null: the balcony keeps to the other

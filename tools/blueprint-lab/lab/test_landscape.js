@@ -3,7 +3,8 @@
 //             corpus house builds (data/landscape/corpus-greenery.json house_builds)
 //   clear     nothing in a door's entry zone (the opening plus 0.3 m each side, 1.5 m out, D-152), no plant on the yard
 //             path, no vine over a door
-//   ground    no floating plants: plants on the ground at the ground, vines on a wall and rooted, pots on the ground
+//   sides     ground groups by side of the house and how lopsided a house is, against data/landscape/corpus-sides.json
+//   ground    no floating plants: plants on the ground at the ground, vines on a wall, pots on the ground
 //             or a floor
 //   biome     a plant marked gathered grows near the village's biome; a stand-in only where the class has none near it
 //   marks     every plant carries its marks, and they come back from the written file
@@ -25,6 +26,8 @@ const stats = {}, n = { homes: 0 };
 for (const k of Object.keys(L.HOUSE)) stats[k] = { any: 0, counts: [] };
 const t0 = Date.now();
 const designs = [];
+const sides = { front: 0, back: 0, end: 0 }, tops = [], vineH = [];
+let planters = 0;
 for (const [biome, culture] of cases) for (const stage of ['s1', 's2', 's3']) for (let seed = 1; seed <= seeds; seed++) designs.push({ type: 'home', biome, culture, stage, decor: 'd3', seed });
 // shared buildings too, for the rules (not the shares)
 for (const [type, biome, culture] of [['tavern', 'Meadows', 'norse'], ['longhouse', 'Black Forest', 'celtic'], ['smithy', 'Plains', 'steppe'], ['farm', 'Swamp', 'fen-folk']])
@@ -89,13 +92,41 @@ for (const req of designs) {
   const floors = d.pieces.filter(q => !q.green && P.piece(q.name).role === 'floor').map(q => Ck.aabb(q));
   for (const p of mine) {
     if (p.green.k === 'vine') {
-      const o = Ck.aabb(p);
-      if (!walls.some(w => o.x0 < w.x1 + 0.16 && o.x1 > w.x0 - 0.16 && o.z0 < w.z1 + 0.16 && o.z1 > w.z0 - 0.16 && o.y0 < w.y1 && o.y1 > w.y0)) fail(`${name}: vine off the wall at ${p.x},${p.y},${p.z}`);
-      if (p.y > 0.45 && !mine.some(q => q !== p && q.green.k === 'vine' && q.y < p.y && p.y - q.y < 2.3 && Math.hypot(q.x - p.x, q.z - p.z) < 1.3)) fail(`${name}: vine floating at ${p.x},${p.y},${p.z}`);
+      // the card (the model's box, lib/landscape.js VINE_BOX) on a wall: a wall within 0.35 m of its pivot, over
+      // its height, and its foot no lower than the ground
+      const V = L.VINE_BOX[p.name], foot = p.y + V.y0;
+      if (!walls.some(w => p.x > w.x0 - 0.35 && p.x < w.x1 + 0.35 && p.z > w.z0 - 0.35 && p.z < w.z1 + 0.35 && foot < w.y1 && foot + V.h > w.y0)) fail(`${name}: vine off the wall at ${p.x},${p.y},${p.z}`);
+      if (foot < -0.8) fail(`${name}: vine under the ground at ${p.x},${p.y},${p.z}`);
+      vineH.push(+(p.y - 0).toFixed(2));
     } else if (p.green.k === 'pot' && floors.some(o => Math.abs(o.y1 - p.y) < 0.05 && p.x > o.x0 && p.x < o.x1 && p.z > o.z0 && p.z < o.z1)) {
       // a pot on a floor
     } else if (p.y > 0.02 || p.y < -0.8 || mine.some(q => q.green.k !== 'vine' && q.green.k !== 'pot' && q.y > p.y + 0.15)) fail(`${name}: ${p.name} at y ${p.y}, ground ${G0}`);
   }
+  // sides: as lab/mine_greenery_sides.js reads the corpus (front: the side of the house box most ground doors lie on)
+  if (!req.shared && doors.length) {
+    const body = d.pieces.filter(q => !q.green && !q.yard && !q.planter && P.piece(q.name).structural);
+    const bx0 = Math.min(...body.map(q => q.x)), bx1 = Math.max(...body.map(q => q.x)), bz0 = Math.min(...body.map(q => q.z)), bz1 = Math.max(...body.map(q => q.z));
+    const mx = (bx0 + bx1) / 2, mz = (bz0 + bz1) / 2, hx = (bx1 - bx0) / 2 || 1, hz = (bz1 - bz0) / 2 || 1;
+    const sideOf = (x, z) => { const dx = x - mx, dz = z - mz; return Math.abs(dx) / hx > Math.abs(dz) / hz ? (dx > 0 ? '+x' : '-x') : (dz > 0 ? '+z' : '-z'); };
+    const dc = {};
+    for (const o of doors) if (o.y < G0 + 1.2) { const k = sideOf(o.x, o.z); dc[k] = (dc[k] || 0) + 1; }
+    const fr = (Object.entries(dc).sort((a, b) => b[1] - a[1])[0] || ['-z'])[0], bk = { '+x': '-x', '-x': '+x', '+z': '-z', '-z': '+z' }[fr];
+    const lab = sd => (sd === fr ? 'front' : sd === bk ? 'back' : 'end');
+    const gs = [];
+    for (const k of ['tree', 'bush', 'flower', 'mushroom', 'pot']) {
+      const list = mine.filter(q => q.green.k === k), seen = new Set();
+      for (const o of list) {
+        if (seen.has(o)) continue;
+        const grp = [o]; seen.add(o);
+        for (let i = 0; i < grp.length; i++) for (const t of list) if (!seen.has(t) && Math.hypot(t.x - grp[i].x, t.z - grp[i].z) < 2) { seen.add(t); grp.push(t); }
+        const sc = {}; for (const t of grp) { const sd = sideOf(t.x, t.z); sc[sd] = (sc[sd] || 0) + 1; }
+        gs.push(Object.entries(sc).sort((a, b) => b[1] - a[1])[0][0]);
+      }
+    }
+    for (const sd of gs) sides[lab(sd)]++;
+    if (gs.length >= 3) { const sc = {}; for (const sd of gs) sc[sd] = (sc[sd] || 0) + 1; tops.push(Math.max(...Object.values(sc)) / gs.length); }
+  }
+  planters += d.pieces.filter(q => q.planter).length;
   // the checks: what passes bare passes with greenery
   const bare = G.generate({ ...req, landscape: false });
   const was = Object.fromEntries(Ck.check(bare, biome).map(c => [c.check, c.ok]));
@@ -112,6 +143,17 @@ for (const [k, [share, cmed]] of Object.entries(L.HOUSE)) {
   console.log(`${k.padEnd(9)} ${got.toFixed(2).padStart(5)}  ${share.toFixed(2).padStart(6)}  ${lo.toFixed(2)} to ${hi.toFixed(2)}  ${String(m).padStart(13)}  ${String(cmed).padStart(6)}${ok ? '' : '  OUT'}`);
   if (!ok) fail(`share or pieces of ${k} outside the band`);
 }
+
+// sides and lopsidedness against the corpus (data/landscape/corpus-sides.json)
+const CS = JSON.parse(fs.readFileSync(path.join(__dirname, '../data/landscape/corpus-sides.json'), 'utf8'));
+const tot = sides.front + sides.back + sides.end;
+console.log(`ground groups by side: front ${(sides.front / tot).toFixed(2)} back ${(sides.back / tot).toFixed(2)} ends ${(sides.end / tot).toFixed(2)} (corpus ${CS.ground_groups_by_side.front} ${CS.ground_groups_by_side.back} ${CS.ground_groups_by_side.end}; ${tot} groups)`);
+for (const k of ['front', 'back', 'end']) if (Math.abs(sides[k] / tot - CS.ground_groups_by_side[k]) > 0.12) fail(`groups on the ${k}: ${(sides[k] / tot).toFixed(2)} against ${CS.ground_groups_by_side[k]}`);
+const tq = t => { const v = tops.slice().sort((a, b) => a - b); return +v[Math.floor(v.length * t)].toFixed(2); };
+console.log(`busiest side's share of a home's ground groups: median ${tq(0.5)} p75 ${tq(0.75)}, one side only ${(tops.filter(t => t === 1).length / tops.length).toFixed(2)} (corpus ${CS.lopsided.top_share.median}, ${CS.lopsided.top_share.p75}, ${CS.lopsided.one_side_share}; ${tops.length} homes)`);
+if (Math.abs(tq(0.5) - CS.lopsided.top_share.median) > 0.15) fail('lopsidedness off the corpus');
+const vq = t => { const v = vineH.slice().sort((a, b) => a - b); return v.length ? v[Math.floor(v.length * t)] : null; };
+console.log(`vine pivots over the ground: p10 ${vq(0.1)} median ${vq(0.5)} p90 ${vq(0.9)} (corpus 1.03, 5.6, 16.72; held under each wall's top); planter beams ${planters}`);
 
 // the road kit
 const kit = JSON.parse(fs.readFileSync(path.join(__dirname, '../data/landscape/road-kit.json'), 'utf8'));

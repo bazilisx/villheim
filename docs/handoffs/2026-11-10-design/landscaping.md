@@ -15,7 +15,7 @@ trees and landscaping (including gardens, raised beds, etc) should be ignored by
 | Commit | What |
 |---|---|
 | b519df0 | `tools/blueprint-lab/data/landscape/vanilla-greenery.json`, `corpus-greenery.json` |
-| (second commit) | `placement-plan.json`, `docs/BLUEPRINT_LAB.md` "Landscaping and greenery (D-143)", this record |
+| 81f64b4 | `placement-plan.json`, `docs/BLUEPRINT_LAB.md` "Landscaping and greenery (D-143)", this record |
 
 The section went into `docs/BLUEPRINT_LAB.md` after "Yards": greenery is outdoor work beside `lib/yards.js`, and
 `docs/INTERIOR_DESIGN.md` is about rooms.

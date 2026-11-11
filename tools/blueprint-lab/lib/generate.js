@@ -856,6 +856,9 @@ function generate(req) {
   if (MS) Object.assign(dctx.profile, { outshut: !!MS.extras.outshut, balcony: !!MS.extras.balcony, dormers: !!MS.extras.dormers });
   if (req.details) Object.assign(dctx.profile, req.details);
   if (loggia) Object.assign(dctx.profile, { svalgang: false, gablePorch: false, doorHood: false });
+  // a knee-wall loft has no upper wall for the gallery's door (the door went up into the roof: support, stability and
+  // doors failed on Norse homes, integration round 4)
+  if (kneeLoft) dctx.profile.svalgang = false;
   dctx.wallSegment = wallSegment;
 
   // walls, frame and top plates per storey
@@ -2851,8 +2854,12 @@ function outshut(b, K, C, wings, edges, F, SH, R, decor) {
   // what is kept under it
   if (decor !== 'd1') {
     const goods = ['wood_stack', 'piece_chest_barrel', 'wood_stack', 'piece_bench01'];
+    // nothing within 0.6 m of a stair or ladder inside the wall, as the decorator's audit reads a climb (a straight stair
+    // up the back wall to an s3 upper floor, integration round 4)
+    const climbs = b.pieces.filter(q => !q.decor && P.piece(q.name).role === 'stair').map(q => checksLib().aabb(q));
+    const byClimb = x => climbs.some(c => x - 1 < c.x1 + 0.6 && x + 1 > c.x0 - 0.6 && zWall + 0.3 < c.z1 + 0.6 && zWall + 1.6 > c.z0 - 0.6 && c.y0 < 1.5);
     best.forEach((x, i) => {
-      if (i % 2) return;
+      if (i % 2 || byClimb(x)) return;
       const g = goods[Math.floor(R() * goods.length)];
       if (g === 'wood_stack') b.put('wood_stack', x, 0.57, zWall + 1.05, 0, { decor: true, trim: true, ds: 2 });
       else if (g === 'piece_chest_barrel' && reaches(C.biome || 'Meadows', 'Swamp')) b.put(g, x, 0, zWall + 0.9, 180, { decor: true, trim: true, ds: 2 });

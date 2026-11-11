@@ -535,8 +535,21 @@ function commitMotifs(b, ctx) {
     if (out) bad.push(p);
   }
   const dropped = p => bad.some(q => q.motif === p.motif && Math.abs(q.x - p.x) < 3 && Math.abs(q.y - p.y) < 4 && Math.abs(q.z - p.z) < 3);
+  // a motif's bench, chest or post that stands on the floor stays out of the keep-clear zones (doorways, climbs and
+  // their feet, chimneys: lib/generate.js keepClear, passed as ctx.zones); the zones were cleared before the trim went
+  // in, and a motif bench stood at a hall's stair foot (integration round 4)
+  // (and, as the decorator's audit reads a climb, 0.6 m round every stair and ladder piece, sides included)
+  const Fd = (decorDt() || {}).FURNITURE || {};
+  const climbs = b.pieces.filter(q => !q.decor && PD.piece(q.name).role === 'stair').map(q => Ck.aabb(q));
+  const inZone = p => {
+    const f = Fd[p.name];
+    if (!f || ['mount', 'hang', 'top', 'rug'].includes(f.at)) return false;
+    const o = Ck.aabb({ ...p, q: p.q || quatD(p.yaw) });
+    if (climbs.some(c => o.x0 < c.x1 + 0.6 && o.x1 > c.x0 - 0.6 && o.z0 < c.z1 + 0.6 && o.z1 > c.z0 - 0.6 && o.y0 < c.y1 + 0.3 && o.y1 > c.y0)) return true;
+    return !!(ctx && ctx.zones) && ctx.zones.some(z => o.x0 < z.x1 && o.x1 > z.x0 && o.y0 < z.y1 && o.y1 > z.y0 && o.z0 < z.z1 && o.z1 > z.z0);
+  };
   for (const p of pend) {
-    if (dropped(p)) continue;
+    if (dropped(p) || inZone(p)) continue;
     const pb = gb({ ...p, q: p.q || quatD(p.yaw) });
     if (furn.some(o => hit(pb, o))) continue; // what the furnishing put there first stays
     // lamps, banners, signs, stands and carvings are decor (D-065, D-126): any biome, and they go up with the
@@ -1076,6 +1089,10 @@ function benchByDoor(b, ctx) {
       const cand = { name, x: +(e.x + ux * s * 3 + ox * 0.45).toFixed(3), y: F + 0.1, z: +(e.z + uz * s * 3 + oz * 0.45).toFixed(3), yaw: faceOut, q: quatD(faceOut) };
       if (!edgeAt.has(`${e.x + ux * s * 2},${e.z + uz * s * 2}`) || !edgeAt.has(`${e.x + ux * s * 4},${e.z + uz * s * 4}`)) continue; // wall behind it
       if (!clear(b, cand)) continue;
+      // nor within 0.6 m of a stair or ladder, as the decorator's audit reads a climb through the wall (a straight
+      // stair up the inside of the front wall to an s3 upper floor, integration round 4)
+      const cb = checksD().aabb(cand);
+      if (b.pieces.some(q => !q.decor && PD.piece(q.name).role === 'stair' && (c => cb.x0 < c.x1 + 0.6 && cb.x1 > c.x0 - 0.6 && cb.z0 < c.z1 + 0.6 && cb.z1 > c.z0 - 0.6 && cb.y0 < c.y1 + 0.3 && cb.y1 > c.y0)(checksD().aabb(q)))) continue;
       b.pieces.push({ ...cand, decor: true, trim: true });
       break;
     }

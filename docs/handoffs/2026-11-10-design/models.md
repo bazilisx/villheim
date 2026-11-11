@@ -113,3 +113,121 @@ Proposed Decisions rows:
   transform in the repo, exact meshes only in the offline pack on the PC; (b) commit the meshes reduced to 2 mm.
   Recommendation (a), since the game's meshes are Iron Gate's and the repo is public.
 - Test: put a Tankard, a TrophyDeer and a Fish1 on a flat stand in the game and compare with the lab render.
+
+## Round 2 (2026-11-11)
+
+Branch `design/wip-models` from 29a1f2f. Lead's calls: stand items stay proxies with exact bounds and attach
+transforms in the repo, near-exact triangles only on Tyler's PC; the in-game stand test goes to the Tests tab at merge.
+The work folder on the PC is `$HOME/vhmodels` (device shell); nothing is written to Tyler's connected folders.
+
+### What was done
+
+- d6f6d3f: packed parts. `lab/build_models.js` groups each piece's parts by color, material and rotation and writes
+  the boxes as whole millimeters in the group's frame, six numbers a box in a short text code (`lib/mesh.js`
+  `encBoxes`, `decBoxes`, `unpack`). Boxes inside another or covered by the others are dropped and boxes that line up
+  on two axes and touch on the third are joined (to 1 mm); this removes 0.1 % of the boxes, since the fit's boxes are
+  grown as far as the solid allows. `data/piece-models.json` (version 4) keeps the coarse parts (`k`) and the
+  measurements; the fine parts go to the new `data/piece-fine.json`. `lib/mesh.js` reads the fine file the first time
+  two coarse lists meet. Both bundles carry the fine parts as one JSON text per piece kind (`lib/pieces.js` role,
+  `VH_MESH_FINE`, `lib/mesh_fine.js`), parsed the first time a piece of that kind needs them. `lib/render.js` reads
+  the parts through `lib/mesh.js` `parts`. `data/item-models.json` is packed the same way.
+- `lib/build_web.js` sets `window.VHItemModels`, so the page draws items on stands. The page's `VHModels` holds the
+  bounds only; its parts come from `VH_MESH` and `VH_MESH_FINE`.
+- `VH_SOLIDS_FROM` and `VH_MODELS_FROM` (build_models.js) keep the solids and collider boxes of an earlier build, so
+  `data/piece-solids.json` and every `solids` and `collider` field are unchanged.
+- 1b763c7, bd05f10: `extract_models.py tops`, exact tops. For the pieces flat stands rest on, each part that is the
+  proxy's top somewhere on the mesh's top area has its most upward face (a box face, a prism end or one edge of its
+  outline, tilted up to 45 degrees) moved to the median of the mesh's height there. `top_error` measures it on a
+  1 cm grid over the area within 15 cm of the highest point.
+- f905d19: sampling fix. `sample_tris` capped a triangle at 400 steps, so a triangle longer than about 2 m was sampled
+  more coarsely than the 1 cm voxel; the solid of a low-poly log or roof stayed a hollow shell and the fit covered only
+  the shell. The fit and the score now take as many steps as the longest edge needs (up to 1500). `VH_MAX_BOXES` and
+  `VH_CELL_CAP` raise the fit limits.
+- c9e43ec: the 66 pieces cut off last round are fitted (the 10 started and cut off with `VH_RETRY=1`); 14 hard pieces
+  are fitted again with the sampling fix and 1200 boxes a part, 3 million cells; the 17 anchor pieces get exact tops.
+
+### Sizes, before (29a1f2f) and after
+
+| File | Before | After |
+|---|---|---|
+| `data/piece-models.json` | 19.3 MB | 0.91 MB |
+| `data/piece-fine.json` | none | 2.38 MB |
+| `data/item-models.json` | 2.88 MB | 0.46 MB |
+| mesh lite in the game's bundle | 6.43 MB | 0.42 MB coarse + 1.54 MB fine (per kind, parsed when needed) |
+| `src/Villheim.Logic/Generator/lab.js` | 8.56 MB (main 2.64 MB) | 4.09 MB |
+| `web/index.html` (lab page) | 26.6 MB (main 4.42 MB) | 5.85 MB, items included |
+
+Parts: 168,158 before; 208,559 after the refit (packed as 208,386). Packing alone (d6f6d3f, same parts): models plus
+fine 2.84 MB, lab.js 3.74 MB, page 5.39 MB; every measured field the same as 29a1f2f, the parts' bounds within 2.3 mm.
+
+### Fit, before and after (99th percentile miss and over, mm; fit_score)
+
+The 14 pieces fitted again: fermenter 400 to 19 (over 19); hearth 146 to 21; bonfire 289 to 162; wood_roof 159 to 51
+(over 134 to 21); wood_roof_45 91 to 25; darkwood_roof_67 61 to 31; wood_beam_67 188 to 0 (one box); stave_deco_beam_67
+114 to 14; wood_wall_roof_67_a 140 to 0; wood_log_67 196 to 17; piece_bathtub 334 to 28; piece_table_oak 84 to 21;
+piece_dvergr_lantern 88 to 10; rug_Bjorn 39 to 28. Values of 20 to 31 on large pieces are the score's own voxel (the
+score grid is capped at 1.5 million cells), so they read as within the tolerance at that resolution.
+
+The 66 refitted pieces: in `data/piece-models.json` `err`. Not refitted, kept coarse (34, `old: 1`): rocks, cliffs,
+trees, roots, shrubs, vines, giant bones and the like (Beech1, FirTree*, cliff_*, rock*, root07/08/11/12, shrub_2*,
+vines, highstone, widestone, flint_pile, giant_*, lox_ribs, mudpile_old, portal_stone, stoneblock_fracture,
+tarlump1_frac). The generator places none of them inside a building.
+
+### Top error of the pieces flat stands rest on (mm, median and 95th percentile, before and after)
+
+beam: wood_beam 0/0 to 0/0; wood_beam_1 0/0 to 0/0. floor: wood_floor 9.2/9.2 to 0/0. ledge: wood_ledge 0/0.1 to
+0/0.1. seat: piece_chair 0.2/0.2 to 0/0; piece_bench01 8.1/20.3 to 2.2/19.5; piece_chair03 5.3/28.8 to 5.1/15.6;
+piece_logbench01 8.0/47.2 to 4.4/24.2. storage: piece_chest_wood 2.8/2.8 to 0/0; dvergrprops_crate_long 4.0/5.5 to
+0/1.6; dvergrprops_crate 5.8/51.7 to 0.7/57.7; piece_chest 5.3/18.3 to 3.6/15.6; piece_chest_barrel 1.0/99 to
+0.1/99. table: piece_table 12.2/18.2 to 3.9/10.7; piece_table_round 0/10.6 to 0/10.5; piece_workbench 7.2/26.1 to
+0.4/20.7. wall: wood_wall_half 0/0 to 0/0.
+
+Ten of the 17 are at 0 to 1 mm (median). The rest have tops that are not flat in the mesh (planks with bevels and
+gaps, round logs, a curved lid), so one level face per part stays 2 to 5 mm off the median; the 95th percentile there
+is the edges and the uneven boards. The anchors used are the pieces under flat stands in the Norse pool (10) and the
+seven from the stand sets (chest_barrel, workbench, chest, wood_beam, wood_beam_1, logbench01, chair03).
+
+### Checks (this tree, 2-core machine)
+
+- check_set 2: 224 of 225, 90 of 90, 147 of 147, overlap 1, as before; 233 s (round 1 212 s).
+- test_structure: 36 designs hold. test_sizes: 0 off by more than 10 cm.
+- check_interiors in full (3 seeds, 702 designs), 29a1f2f then this round: bareFloors 5 (5) to 4 (5); floating 7 (9)
+  to 6 (8); overlap 1 (1) to 4 (6); headroom 0 to 1 (1); the rest 0; 222 to 240 ms a design. The overlap and headroom
+  checks read the colliders (lib/shapes.js), which are unchanged; the designs differ because the generator's model
+  tests now see the refitted parts. New cases: piece_groundtorch_mist against wood_ledge (Plains tavern s3d3 seed 357,
+  Plains temple s3d3 seed 701), piece_chest against wood_ledge (Mountain octagon tower s3d3 seed 628), and one low
+  floor point by a wood_beam (Mountain square tower s3d3 seed 530). Packing alone already moved one-seed counts by one
+  either way (bareFloors 1 to 2, overlap 2 to 1).
+- Pools: Norse Meadows, norse-forest Black Forest, middle-eastern Plains: audit pass, 81 each.
+- test_stands 3 --gate: 29a1f2f and d6f6d3f (packing only) give the same table, 4 bands missed (flat bench, wall
+  station, wall chest, stands q3). After the refit and tops: flat stands at d3 581 to 645, wall stands 188 to 168; two
+  more bands missed: flat share 81 % (band 50 to 80) and wall hearth 22.0 % (band up to 21.0). The fuller models of
+  the hearth and the roofs and the level tops change which stands the checks let through.
+- compare_page: 5 of 5 the same. gen-test: 5 of 5 byte for byte. dotnet build: 0 errors, 43 warnings.
+- gen-test times (C# engine, s, requests 1 to 5; machine load average 3 to 4 on 2 cores, so a few seconds either
+  way are noise): 29a1f2f 16.6 / 72.2 / 14.2 / 1.6 / 12.1; packing only 23.3 / 99.1 / 21.2 / 2.3 / 18.5 (run under
+  heavier load); this round 18.7 / 87.3 / 39.6 / 1.5 / 9.7. Requests 3 and 5 now make other designs (267 and 407
+  pieces against 262 and 391). Request 2, the same 808-piece design, takes about 20 % longer: more fine parts to test
+  (208,559 against 168,158; hearth 704 to 1240, bonfire 760 to 1560).
+
+Renders: `/tmp/models2-renders/{home-Meadows,tavern-Swamp}-s3d3-{round1,round2,whole}.png` (seed 11, close up round
+the spot with the most flat stands; round1 is last round's).
+
+### Changes in other tracks' files
+
+None. `lib/build_web.js` and `lib/build_engine.js` changed in the lines that load the models.
+
+### Open
+
+- The sampling fix touches every piece with a triangle longer than 1.9 m: 270 in the cache (walls, floors, roofs,
+  beams, beds, stone pieces, trees). Only the 14 hard pieces are fitted again with it. A refit of the rest (about 45
+  minutes on the PC) and a rescore of all pieces with the fixed score is the next task.
+- Two more stand bands missed (above); the stands track may want to look at hearth wall stands and the flat share
+  with the new models.
+- check_interiors in full: overlap 1 to 4 designs and headroom 0 to 1 (cases above); the generator's placement around
+  ground torches, ledges and chests in those designs needs a look.
+- Tops not flat in the mesh (tables, benches, chests) stay 2 to 5 mm off at the median; a finer fit of those tops
+  would bring them closer.
+- Work files left in Tyler's game profile from round 1 (`BepInEx/config/Villheim-tools/models-run`, 18 files, 24 MB):
+  copies of all of them are in `$HOME/vhmodels` (`from-profile/` holds the four debug files and the longer
+  anchors.txt). The lead handles the folder.

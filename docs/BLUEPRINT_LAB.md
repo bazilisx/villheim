@@ -348,6 +348,14 @@ parts, with `solids`, `pass` and `snap` per piece) and `data/piece-solids.json` 
 `lib/shapes.js` and bundled for the game and the request page). The meshes and textures stay on Tyler's PC; the repo
 holds measurements, collider boxes and our own boxes and prisms.
 
+Since 2026-11-11 the proxies come in two levels and are stored packed (whole millimeters, grouped by color, material
+and rotation, boxes as short text; `lib/mesh.js` `unpack`): `data/piece-models.json` (0.9 MB) keeps the coarse parts
+(`k`, the first proxy) with the measurements, and `data/piece-fine.json` (2.4 MB) the parts fitted to 2 cm of the
+mesh. The checks test the coarse parts first and the fine parts where two coarse lists meet. The game's bundle and the
+lab page carry the fine parts as one JSON text per piece kind (`VH_MESH_FINE`), parsed when a piece of that kind first
+needs them. `data/item-models.json` holds the stand items the same way. Round notes:
+`docs/handoffs/2026-11-10-design/models.md`.
+
 API (old calls work as before):
 
 - `draw(ctx, pieces, opts)`: `az`, `el` (90 is straight down), `cut` (structural pieces are cut at that height and
@@ -1139,7 +1147,7 @@ node lib/gen_cultures.js out/cultures 6 ../../docs/cultures       # culture samp
 node lib/build_web.js web/index.html                               # the request page
 node lib/cli.js plan <in.blueprint> <out.png> [ppm] [cut] [x0 x1 z0 z1]   # top-down plan, optionally one room
 python3 lab/extract_models.py index|run|collect ...                # piece models, on Tyler's PC only (see the script)
-node lab/build_models.js <piece-models-raw.json>                    # to data/piece-models.json
+node lab/build_models.js <piece-models-raw.json>                    # to data/piece-models.json and data/piece-fine.json
 node lab/piece_sizes.js                                            # catalog sizes against the game
 node lib/build_engine.js                                           # the game's bundle, src/Villheim.Logic/Generator/lab.js
 python3 lab/learn_interior.py <corpus dir> data/interior.json      # interior rules; then node lab/interior_lite.js

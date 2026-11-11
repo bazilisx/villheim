@@ -1284,3 +1284,317 @@ node lab/floorplan_feedback.js floorplans.csv                      # Tyler's Flo
 node lab/process_requests.js <requests.jsonl> [result dir]         # make the designs asked for with 'vh ask'
 ../gen-test/run.sh [list] [tries]                                  # game engine and node, byte for byte
 ```
+
+## Corpus measures for trim, decks and storeys
+
+Measure only; no generator code or target changed (branch `design/wip-measures`). Scripts: `lab/measure_corpus.js`
+(one record per build, run in chunks `i/n` on the corpus through the device), `lab/measure_merge.js` (sums the chunks,
+writes the three data files and the tables below). Data: `data/measures-trim.json`, `data/measures-decks.json`,
+`data/measures-storeys.json` (counts and quartiles only, no blueprint content). Corpus `C:\Users\tyler\Downloads\Villheim-blueprints`,
+read only, 2,153 `.blueprint` files in 24 folders; no OverDrive BiomeBlueprints pack and no `hs_` files are in it.
+Numbers come from what the corpus shows (D-136). Quartiles are 25th / median / 75th.
+
+### Method and limits
+
+- Builds kept: no modded piece, 40 pieces or more, 4 roof pieces or more, folders statue, bridge, arena, mini-game,
+  portal-hub, farming and artistic skipped. 932 builds of 2,153 files (646 have modded pieces or fewer than 40 pieces,
+  365 have no roof, 210 in the skipped folders). Each build is turned to its main wall axis. Ground is the 5th
+  percentile of the bottoms of structural pieces, so builds on slopes carry some error in heights.
+- Culture: `data/culture-corpus/members.json` (high and medium confidence). Builds not in it are "unsorted", which is
+  the largest group (about half). Biome: the highest biome that at least 10 % of the wall, floor, roof, beam, pole and
+  gable pieces need (`P.needs`). Type: the folder where it names a type (starter-home home, longhouse hall, tavern,
+  blacksmith workshop, tower, storage storehouse, temple); in the general folders words in the title or slug. Builds
+  with no type word are "other". Groups under 10 builds are in the JSON files and left out of the tables.
+- Tilted trim: beams and poles. A pole is tilted when it leans more than 3 degrees from vertical. A box beam is tilted
+  when its pitch is over 3 degrees or its turn away from the nearest wall within 1.5 m (the main axis where no wall is
+  near) is over 3 degrees. `slopeBeam` is the vanilla beam_26, beam_45 and beam_67 family, sloped by its own model; every
+  one counts as tilted. Pitch is from horizontal for beams and from vertical for poles (lean). Places, in this order: a
+  crossing with another tilted piece within 0.5 m (gableCross if a roof or gable piece is near, else xBrace); roofSlope
+  (touches a roof piece and its pitch is within 12 degrees of that roof's slope); brace (both ends touch two different
+  wall, pole, beam, floor, gable, door or window pieces, length 3.6 m or less, pitch 15 to 75); roofOther (touches a
+  roof piece otherwise); loose (the rest). Beam pivots are taken at the middle and tilted pieces use the catalog
+  length (`lib/pieces.js`), so ends are accurate to about 0.3 m.
+- Decks: a room is the ground enclosed by walls 1.4 m tall or more (walls of any storey, doors, windows, posts,
+  grown by one 0.5 m cell to close hairline gaps). 920 of the 932 builds have 6 m2 or more of it. A floor outside is a
+  floor piece with at least 75 % of its cells outside the rooms, its top between 0.1 m under and 4 m over the ground,
+  within 8 m of a room. Bands by top over ground: ground (under 0.35 m, a terrace), low (0.35 to 1.2 m, a deck or
+  porch), high (1.2 to 4 m, a balcony or platform). A deck is a connected set of such cells in one band of 3 m2 or more.
+  "Touching walls" means a cell within 0.5 m of a room. A flat roof built of floor pieces outside the rooms counts as a
+  high deck, and walls of a roofed porch count as rooms, so porches under the main roof are in the room figure.
+- Low walls, fences and rails (outside the rooms, more than 0.5 m from them): fence (a `fence`-role piece except stake
+  walls and sharp stakes), lowWall (a wall piece 0.3 to 1.7 m tall standing on the ground), deckWall (the same on a
+  deck), deckRail and yardRail (a horizontal box beam 0.5 to 1.5 m over the foot of a post within 1 m, or a fence piece
+  on a deck). Runs join pieces within 1.3 m of each other. Heights are piece heights from the catalog (a fence is 1 m,
+  a half wall 1 m), so stacked walls and posts taller than the rail are not in them. Low walls on the ground also
+  catch short annex walls, so the lowWall share is an upper bound for yard walls.
+- "Where": front is the side with most ground-floor doors (builds with no door have none). For a build with doors the
+  sides are front, back, side. Without a door, long side and end side of the main building's roof footprint. Round is a
+  piece set that covers three or more sides.
+- Storeys: roofed clusters (roof, roof top and corner pieces on a 0.5 m grid, joined across gaps under 1 m, 10 m2 or
+  more). Storey count is the ground level plus each floor level that is 2.4 m or more above the one below, has 6 m2 or
+  more of floor and has at least 4 wall or post pieces standing on it. This leaves out landings, decks and flat roofs.
+  A tower with a stair and no floors counts as one storey. The main building is the largest cluster of a file and
+  takes the file's type. Roof area is the area of the whole cluster, so large starter-home designs that join several
+  wings under one roof show footprints of 300 m2 and more. Buildings closer than 1 m are one cluster, so the smallest
+  gap reported is 1 m. Gap is the distance from a roof edge to the nearest roof edge of another building, up to 15 m.
+- Not measured: the real wall-to-wall street width (roofs overhang), the number of storeys of a building made only of
+  walls and stairs without floor pieces, wall heights of upper storeys, and whether a deck is entered from a door.
+  Heights of fence, low wall and rail are catalog heights.
+
+### Tilted trim
+
+Builds read: 932 of 2153 files (skipped: mod_or_small 646, no_roof 365).
+
+| Share of builds with | % |
+|---|---|
+| any trim piece | 100 |
+| any tilted piece (all kinds) | 93 |
+| any slopeBeam (beam_26, 45, 67) | 87 |
+| any free tilt (a box beam or pole that is off axis) | 62 |
+| any free tilt with a pitch over 3 degrees (not only turned flat) | 20 |
+| any tilted box beam | 61 |
+| any leaning pole | 15 |
+| any brace | 72 |
+| any gable crossing | 25 |
+| any X brace | 23 |
+| any roofSlope piece | 78 |
+| any loose piece | 75 |
+
+| Count per build (builds that have any) | n builds | 25th / median / 75th | max |
+|---|---|---|---|
+| all tilted | 871 | 26 / 86 / 279 | 10446 |
+| free tilt | 576 | 14 / 54 / 182 | 9760 |
+| free tilt with pitch over 3 degrees | 190 | 8 / 48 / 221 | 9539 |
+| slopeBeam | 813 | 20 / 62 / 166 | 4704 |
+| all tilted, every build | 932 | 20 / 75 / 257 | 10446 |
+| free tilt as % of all trim pieces | 576 | 2.89 / 8.88 / 18.61 | 96.76 |
+
+| Piece kind | n pieces | pitch 0-3 | 3-10 | 10-20 | 20-35 | 35-55 | 55-75 | 75-90 | yaw 0-3 | 3-10 | 10-25 | 25-40 | 40-45 |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| beam | 97139 | 73% | 1% | 3% | 6% | 4% | 5% | 8% | 12% | 2% | 54% | 9% | 23% |
+| slopeBeam | 130891 | 6% | 1% | 1% | 44% | 41% | 4% | 3% | 65% | 1% | 21% | 4% | 9% |
+| pole | 20632 | 0% | 6% | 37% | 25% | 14% | 8% | 10% | 42% | 5% | 29% | 16% | 9% |
+
+Pitch is degrees from horizontal for beams and from vertical (lean) for poles. Yaw is the turn away from the nearest
+wall (folded to 0 to 45). 590,823 pieces took the wall as reference and 241,418 the main axis. Median length of a
+tilted piece 2.24 m (2 / 2.24 / 2.83).
+
+| Place | n pieces | % of pieces | % of builds having one | % of beam | % of slopeBeam | % of pole |
+|---|---|---|---|---|---|---|
+| roofSlope | 49169 | 20 | 78 | 2 | 36 | 0 |
+| roofOther | 36938 | 15 | 63 | 23 | 11 | 0 |
+| brace | 32744 | 13 | 72 | 3 | 21 | 10 |
+| gableCross | 8049 | 3 | 25 | 2 | 3 | 7 |
+| xBrace | 14318 | 6 | 23 | 5 | 3 | 26 |
+| loose | 107444 | 43 | 75 | 66 | 24 | 57 |
+
+By culture (groups of 10 builds or more; unsorted is the rest):
+
+| Culture | builds | % any tilted | % free tilt | % slope beam | free tilt / build | slope beam / build | % roofSlope | % roofOther | % brace | % gableCross | % xBrace | % loose |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| unsorted | 506 | 93 | 54 | 86 | 15 / 53 / 149 | 16 / 41 / 108 | 21 | 17 | 12 | 3 | 3 | 44 |
+| norse | 115 | 97 | 70 | 97 | 19 / 61 / 212 | 42 / 114 / 278 | 26 | 13 | 17 | 3 | 5 | 36 |
+| castle | 88 | 85 | 75 | 78 | 8 / 50 / 216 | 8 / 44 / 157 | 8 | 10 | 8 | 5 | 17 | 53 |
+| ashlands | 72 | 93 | 64 | 82 | 9 / 34 / 78 | 21 / 83 / 189 | 25 | 7 | 11 | 1 | 2 | 54 |
+| norse-forest | 40 | 95 | 53 | 93 | 6 / 24 / 69 | 36 / 74 / 189 | 45 | 13 | 18 | 2 | 1 | 22 |
+| fantasy | 23 | 100 | 91 | 83 | 30 / 99 / 257 | 84 / 128 / 292 | 17 | 21 | 12 | 3 | 6 | 41 |
+| medieval-timber | 22 | 100 | 77 | 95 | 19 / 32 / 69 | 59 / 94 / 359 | 29 | 10 | 29 | 1 | 4 | 27 |
+| norse-highland | 16 | 88 | 75 | 88 | 19 / 81 / 657 | 66 / 128 / 432 | 24 | 34 | 17 | 2 | 2 | 21 |
+| east-asian | 14 | 100 | 79 | 93 | 14 / 54 / 214 | 39 / 92 / 247 | 16 | 15 | 39 | 4 | 1 | 25 |
+
+By biome:
+
+| Biome | builds | % any tilted | % free tilt | % slope beam | free tilt / build | slope beam / build | % roofSlope | % roofOther | % brace | % gableCross | % xBrace | % loose |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| Meadows | 224 | 93 | 33 | 90 | 10 / 28 / 105 | 9 / 25 / 62 | 24 | 14 | 10 | 7 | 7 | 38 |
+| Black Forest | 213 | 90 | 61 | 86 | 14 / 33 / 100 | 29 / 77 / 169 | 25 | 9 | 18 | 2 | 4 | 41 |
+| Ashlands | 197 | 96 | 80 | 85 | 18 / 75 / 243 | 44 / 104 / 230 | 17 | 13 | 11 | 5 | 10 | 46 |
+| Plains | 195 | 96 | 70 | 90 | 9 / 54 / 175 | 24 / 70 / 254 | 20 | 21 | 13 | 2 | 3 | 40 |
+| Swamp | 51 | 94 | 78 | 90 | 88 / 234 / 416 | 26 / 177 / 282 | 17 | 15 | 12 | 1 | 3 | 52 |
+| Mistlands | 46 | 89 | 83 | 80 | 4 / 32 / 101 | 10 / 34 / 148 | 18 | 14 | 22 | 2 | 3 | 42 |
+
+Reading: nearly every build has some sloped trim, almost all of it vanilla slope beams on roof edges and braces.
+Pitched free tilt is in a fifth of builds; most free-tilt beams are turned flat (73 % under 3 degrees pitch), mostly
+10 to 25 degrees or 40 to 45 degrees off the wall. Leaning poles have pitch 10 to 35 degrees in 62 % of cases. Meadows
+builds use free tilt in a third of builds, the later biomes in 60 to 83 %.
+
+### Decks, low walls and railings
+
+Builds with a walled room (6 m2 or more): 920 of 932; 819 of them hold one main building.
+
+| Share of builds with | % |
+|---|---|
+| any floor outside the rooms | 52 |
+| ground terrace | 14 |
+| low deck (0.35 to 1.2 m) | 30 |
+| high deck or balcony (1.2 to 4 m) | 29 |
+| any raised deck (low or high) | 46 |
+| raised deck touching the walls | 44 |
+| freestanding raised platform | 12 |
+| fence | 8 |
+| low wall on the ground | 32 |
+| low wall on a deck | 18 |
+| rail on a deck | 16 |
+| rail on the ground | 18 |
+| any fence, low wall or rail | 50 |
+
+| Floor outside the walls | components | area m2 (25th / median / 75th) | top over ground m | per build having one | where %: front / back / side / round / long side / end side |
+|---|---|---|---|---|---|
+| ground terrace | 256 | 8.75 / 19.25 / 48.5 | 0.13 / 0.25 / 0.33 | 1 / 1 / 2 | 11 / 7 / 15 / 16 / 27 / 24 |
+| low deck | 680 | 11 / 24 / 66 | 0.98 / 1 / 1 | 1 / 2 / 3 | 14 / 7 / 16 / 16 / 26 / 21 |
+| high deck | 778 | 6.5 / 14.25 / 31.75 | 1.61 / 2.13 / 2.72 | 1 / 2 / 4 | 9 / 7 / 16 / 10 / 29 / 29 |
+
+For the 270 single-building designs that have a door: low decks sit front 27 %, back 18 %, side 40 %, round 14 %; high
+decks front 23 %, back 22 %, side 43 %, round 12 %.
+
+| Band | floor pieces (% of cells) |
+|---|---|
+| ground | wood_floor 75, stone_floor_2x2 14, wood_floor_1x1 5, blackmarble_floor 2, Piece_grausten_floor_2x2 1, Piece_grausten_floor_4x4 1, ashwood_floor_1x1 1 |
+| low | stone_floor_2x2 53, wood_floor 18, Piece_grausten_floor_4x4 7, blackmarble_floor_large 5, stone_floor 4, Piece_grausten_floor_2x2 3, wood_floor_1x1 3, dvergrprops_wood_floor 2 |
+| high | stone_floor_2x2 38, wood_floor 29, Piece_grausten_floor_4x4 12, blackmarble_floor_large 9, wood_floor_1x1 6, blackmarble_floor 2, ashwood_floor_2x2 1, piece_brazierfloor01 1 |
+
+| Run | runs | length m | height m | pieces per run | runs per build | total m per build | where % | top pieces % |
+|---|---|---|---|---|---|---|---|---|
+| fence | 223 | 2 / 6 / 12 | 1 / 1 / 1 | 1 / 3 / 6 | 1 / 2 / 5 | 6 / 16 / 48 | back 5, side 18, long side 37, end side 28, front 9, round 2 | wood_fence 81, stone_fence 18, wood_beam 1 |
+| low wall (ground) | 936 | 2 / 4 / 9.78 | 1 / 1 / 1 | 1 / 2 / 5 | 1 / 2 / 4 | 4 / 10 / 30.9 | long side 30, end side 26, side 21, front 13, back 9, round 1 | stone_wall_2x1 64, stone_wall_1x1 11, wood_wall_half 10, iron_wall_1x1 6, blackmarble_2x1x1 3, crystal_wall_1x1 2 |
+| low wall (deck) | 492 | 2 / 3 / 6 | 1 / 1 / 1 | 1 / 2 / 3 | 1 / 2 / 3 | 4.46 / 8.92 / 16 | back 5, side 17, long side 40, end side 28, front 10 | stone_wall_2x1 37, wood_wall_half 29, stone_wall_1x1 11, wood_wall_log 7, wood_wall_quarter 7, crystal_wall_1x1 4 |
+| rail (deck) | 461 | 2 / 4 / 6 | 1 / 1 / 1 | 1 / 2 / 4 | 1 / 2 / 3 | 4 / 7 / 21 | side 23, end side 25, long side 31, front 12, round 1, back 9 | wood_beam 52, wood_beam_1 28, wood_fence 5, stone_fence 4, ashwood_beam_2m 2 |
+| rail (ground) | 436 | 2 / 4 / 6 | 1 / 1 / 1 | 1 / 2 / 4 | 1 / 2 / 3 | 4 / 7 / 16 | long side 30, end side 35, back 7, side 17, front 11 | wood_beam 69, wood_beam_1 17, darkwood_beam 4, Piece_flametal_beam 3, ashwood_beam_2m 3, woodiron_beam 2 |
+
+By biome:
+
+| Biome | builds | % raised deck | % low deck | % high deck/balcony | % ground terrace | % fence | % low wall | % rail | raised deck area m2 |
+|---|---|---|---|---|---|---|---|---|---|
+| Meadows | 222 | 42 | 24 | 29 | 20 | 6 | 34 | 32 | 6.75 / 16 / 29.75 |
+| Black Forest | 212 | 58 | 38 | 41 | 17 | 14 | 50 | 36 | 8.5 / 17.75 / 43.75 |
+| Ashlands | 196 | 42 | 29 | 20 | 6 | 3 | 27 | 15 | 9.75 / 20.25 / 52.25 |
+| Plains | 193 | 38 | 27 | 24 | 13 | 9 | 39 | 24 | 8.5 / 17.25 / 43.25 |
+| Swamp | 51 | 53 | 33 | 35 | 14 | 4 | 37 | 37 | 6.75 / 23.5 / 109.25 |
+| Mistlands | 40 | 35 | 25 | 23 | 13 | 8 | 38 | 15 | 7.5 / 13 / 43.5 |
+
+By culture:
+
+| Culture | builds | % raised deck | % low deck | % high deck/balcony | % ground terrace | % fence | % low wall | % rail | raised deck area m2 |
+|---|---|---|---|---|---|---|---|---|---|
+| unsorted | 502 | 48 | 31 | 31 | 14 | 5 | 40 | 29 | 8 / 17.25 / 44.25 |
+| norse | 115 | 48 | 33 | 29 | 17 | 8 | 44 | 30 | 7.5 / 18.75 / 55 |
+| castle | 81 | 33 | 22 | 21 | 10 | 11 | 32 | 17 | 11.25 / 18.75 / 72.25 |
+| ashlands | 72 | 36 | 25 | 14 | 1 | 0 | 14 | 13 | 9.25 / 19 / 45.75 |
+| norse-forest | 40 | 43 | 25 | 35 | 23 | 33 | 33 | 40 | 10 / 22.75 / 40.25 |
+| fantasy | 23 | 43 | 35 | 30 | 9 | 0 | 35 | 13 | 6.25 / 13.5 / 34.75 |
+| medieval-timber | 22 | 36 | 23 | 23 | 18 | 23 | 45 | 9 | 11.25 / 13.5 / 31.25 |
+| norse-highland | 15 | 60 | 33 | 47 | 40 | 7 | 47 | 47 | 6.25 / 26 / 51.25 |
+| east-asian | 14 | 57 | 36 | 36 | 7 | 14 | 57 | 43 | 11.25 / 17.75 / 29.25 |
+
+By building type:
+
+| Type | builds | % raised deck | % low deck | % high deck/balcony | % ground terrace | % fence | % low wall | % rail | raised deck area m2 |
+|---|---|---|---|---|---|---|---|---|---|
+| home | 340 | 46 | 27 | 30 | 16 | 9 | 36 | 30 | 7.25 / 16.75 / 38.25 |
+| other | 291 | 49 | 32 | 31 | 13 | 7 | 42 | 27 | 7.75 / 16 / 52 |
+| tower | 88 | 23 | 17 | 14 | 9 | 7 | 16 | 15 | 11.5 / 20 / 48.25 |
+| hall | 64 | 44 | 33 | 30 | 8 | 6 | 53 | 25 | 13 / 20.5 / 63 |
+| tavern | 43 | 49 | 33 | 33 | 16 | 9 | 51 | 33 | 6.25 / 13 / 21.25 |
+| workshop | 39 | 69 | 54 | 46 | 13 | 10 | 46 | 54 | 11 / 22.25 / 45.5 |
+| storehouse | 29 | 41 | 28 | 24 | 21 | 7 | 24 | 17 | 16 / 26.25 / 40.25 |
+| temple | 26 | 42 | 35 | 15 | 19 | 4 | 31 | 8 | 7.75 / 29 / 46.75 |
+
+Reading: close to half of the builds have a raised floor outside the rooms, and most of those touch the walls (porch
+or deck); a fifth have a platform apart from the walls. A low deck is usually 11 to 66 m2 and 1 m up; a high deck 6.5 to 32 m2 and 1.6 to 2.7 m
+up. Half of the builds have some fence, low wall or rail outside the rooms; low walls are mostly stone 2x1 and
+1x1, half walls are the wood choice, and rails are wood beams on posts. Decks are on the side of the building more
+than at the front.
+
+### Storeys and density
+
+Builds with a roofed building (10 m2 of roof or more): 917.
+
+| Type (main building) | n | 1 storey % | 2 % | 3 % | 4+ % | mean | roof area m2 | eave height m |
+|---|---|---|---|---|---|---|---|---|
+| home | 336 | 23 | 38 | 21 | 17 | 2.51 | 195 / 348 / 521.25 | 7.69 / 10.61 / 14.5 |
+| hall | 64 | 5 | 22 | 34 | 39 | 3.52 | 570.5 / 719 / 1011 | 12 / 14 / 18.23 |
+| tavern | 43 | 0 | 30 | 33 | 37 | 3.51 | 287.5 / 448.5 / 650.5 | 10.16 / 14.93 / 18.07 |
+| workshop | 39 | 26 | 44 | 13 | 18 | 2.28 | 154.5 / 244.5 / 528.5 | 8 / 11 / 15 |
+| tower | 94 | 24 | 13 | 16 | 47 | 3.71 | 122.5 / 202.25 / 374 | 14.58 / 21 / 27.79 |
+| storehouse | 29 | 28 | 45 | 17 | 10 | 2.21 | 151 / 270 / 700.75 | 8 / 10 / 12 |
+| temple | 25 | 24 | 16 | 8 | 52 | 3.44 | 330 / 497 / 1270.75 | 16.22 / 25 / 30.27 |
+| other | 287 | 29 | 24 | 20 | 28 | 2.94 | 94.75 / 277.75 / 695 | 7.2 / 12 / 19 |
+| all main buildings | 917 | 23 | 29 | 21 | 27 | 2.89 | 157.5 / 347 / 619 | 8 / 12 / 18.4 |
+| other buildings in the same files | 502 | 53 | 27 | 10 | 10 | 1.85 | 24 / 43.5 / 106.5 | |
+
+Footprint by storey count (roof area m2, 25th / median / 75th, with n in parentheses; n under 3 shows only n):
+
+| Type | 1 storey | 2 storeys | 3 storeys | 4+ storeys |
+|---|---|---|---|---|
+| home | 128.25 / 234 / 305 (78) | 185.75 / 338.5 / 477.5 (128) | 307.5 / 453 / 642 (72) | 370.25 / 513.25 / 880.5 (58) |
+| hall | 308.25 / 360 / 570.5 (3) | 574.75 / 719 / 878.75 (14) | 602 / 730.5 / 929.5 (22) | 550.25 / 817.25 / 1696.5 (25) |
+| tavern | (0) | 229 / 309 / 565 (13) | 287.5 / 389.5 / 443 (14) | 509.5 / 631.25 / 782.25 (16) |
+| workshop | 170.25 / 199.75 / 243 (10) | 105 / 244.5 / 425.75 (17) | 198.75 / 433.25 / 499.75 (5) | 244.75 / 536 / 999.75 (7) |
+| tower | 84 / 122.5 / 225 (23) | 79 / 105 / 141.5 (12) | 135.75 / 161.5 / 217.5 (15) | 191.75 / 326.75 / 646.5 (44) |
+| storehouse | 97.75 / 133 / 287.5 (8) | 232 / 347 / 722.5 (13) | 191.75 / 224.75 / 241 (5) | 700.75 / 789.25 / 1106.25 (3) |
+| temple | 96 / 280.75 / 330 (6) | 421.5 / 2330.75 / 2330.75 (4) | (2) | 497 / 1116.75 / 1840.75 (13) |
+| other | 45.5 / 83.5 / 166 (83) | 101.5 / 252 / 490.5 (68) | 211.5 / 420.5 / 713.25 (57) | 478 / 755.5 / 1141.5 (79) |
+| all main buildings | 73.5 / 146.5 / 249.25 (211) | 152.25 / 313 / 496 (269) | 224.75 / 448.25 / 698.5 (192) | 370.25 / 617.5 / 999.75 (245) |
+
+The JSON file also holds width, length and eave height by storey count for each type.
+
+Homes by biome:
+
+| Biome | n | 1 % | 2 % | 3 % | 4+ % |
+|---|---|---|---|---|---|
+| Meadows | 130 | 32 | 55 | 12 | 2 |
+| Black Forest | 73 | 18 | 38 | 29 | 15 |
+| Plains | 70 | 26 | 17 | 24 | 33 |
+| Ashlands | 45 | 9 | 29 | 29 | 33 |
+| Swamp | 10 | 10 | 20 | 10 | 60 |
+
+Homes by culture:
+
+| Culture | n | 1 % | 2 % | 3 % | 4+ % |
+|---|---|---|---|---|---|
+| unsorted | 198 | 29 | 43 | 17 | 11 |
+| norse | 44 | 20 | 25 | 32 | 23 |
+| norse-forest | 30 | 17 | 53 | 23 | 7 |
+| ashlands | 15 | 0 | 27 | 40 | 33 |
+| medieval-timber | 12 | 8 | 17 | 42 | 33 |
+
+Gap to the nearest other building (roof edge to roof edge, files with two or more buildings; 173 files, 675 buildings):
+
+| Group | files | buildings | buildings per file | gap m | % 1-2 m | % 2-4 m | % 4-8 m | % 8+ m | mean storeys |
+|---|---|---|---|---|---|---|---|---|---|
+| all | 173 | 675 | 2 / 3 / 4 | 1.5 / 2.66 / 4.91 | 30 | 35 | 28 | 7 | 2.37 |
+| type folders | 50 | 156 | 2 / 2 / 3 | 1.74 / 2.5 / 4.5 | 26 | 40 | 26 | 7 | 2.23 |
+| other folders | 99 | 386 | 2 / 3 / 4 | 1.5 / 2.54 / 4.5 | 34 | 34 | 28 | 4 | 2.3 |
+| castle | 21 | 98 | 2 / 4 / 6 | 2.19 / 4.5 / 7.33 | 20 | 24 | 35 | 21 | 2.81 |
+| village | 3 | 35 | 3 / 4 / 28 | 1.5 / 2.42 / 4.11 | 27 | 47 | 17 | 10 | 2.57 |
+| 2-3 buildings | 116 | 271 | 2 / 2 / 3 | 1.5 / 3 / 5 | 34 | 27 | 33 | 6 | 2.62 |
+| 4-9 buildings | 46 | 248 | 4 / 5 / 6 | 2 / 3.31 / 5 | 23 | 39 | 30 | 8 | 2.32 |
+| 10+ buildings | 11 | 156 | 10 / 12 / 16 | 1.5 / 2.42 / 4 | 35 | 40 | 17 | 9 | 2.02 |
+
+| Biome | files | buildings | buildings per file | gap m | % 1-2 m | % 2-4 m | % 4-8 m | % 8+ m | mean storeys |
+|---|---|---|---|---|---|---|---|---|---|
+| Plains | 43 | 200 | 2 / 3 / 5 | 1.5 / 2.5 / 4.5 | 36 | 34 | 19 | 11 | 2.13 |
+| Black Forest | 41 | 160 | 2 / 3 / 4 | 2 / 3.74 / 6 | 24 | 29 | 41 | 6 | 2.57 |
+| Swamp | 15 | 74 | 2 / 3 / 5 | 1.5 / 2.42 / 3.5 | 37 | 44 | 19 | 0 | 2.41 |
+| Ashlands | 51 | 164 | 2 / 2 / 4 | 1.74 / 2.7 / 5.02 | 28 | 35 | 27 | 11 | 2.65 |
+| Meadows | 14 | 39 | 2 / 2 / 3 | 2.33 / 4 / 4.5 | 12 | 38 | 50 | 0 | 1.46 |
+
+| Storeys of the building | n gaps | gap m |
+|---|---|---|
+| 1 | 239 | 1.5 / 2.5 / 4.5 |
+| 2 | 147 | 2 / 3 / 5 |
+| 3 | 78 | 2 / 3.97 / 6.17 |
+| 4+ | 112 | 1.08 / 2.42 / 4.5 |
+
+| Files | n files | buildings | 1 % | 2 % | 3 % | 4+ % |
+|---|---|---|---|---|---|---|
+| dense (median gap under 4 m) | 119 | 457 | 43 | 27 | 11 | 19 |
+| sparse | 54 | 218 | 43 | 22 | 17 | 18 |
+
+Reading, for D-153: of the 336 homes, 23 % have one storey, 38 % two, 21 % three and 17 % four or more; in the
+Meadows 32 / 55 / 12 / 2 % and in the Black Forest 18 / 38 / 29 / 15 %. Halls, taverns, towers and temples are mostly
+three storeys or more (halls 73 %, taverns 70 %, towers 63 %, temples 60 %); workshops and storehouses sit near homes
+(2.3 and 2.2 mean). The other buildings in a multi-building file are single storey in 53 % of cases. Neighbors are
+close: the median nearest gap is 2.7 m, 65 % are under 4 m and 7 % are 8 m or more. Gap does not change with the
+number of storeys (median 2.4 to 4 m). The sample is designs that people share, which skew toward large and tall
+builds (median home roof area 348 m2), so shares of three storeys and more are likely above what a village needs.

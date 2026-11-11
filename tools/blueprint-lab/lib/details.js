@@ -55,6 +55,10 @@ function makeHash(ctx) {
 }
 
 // What a building gets, from its culture, type, size stage (s1 to s3) and decor stage (d1 to d3).
+// The top of the walls: the generator's own figure when it gives one (a knee-wall loft's walls stop under a full
+// storey), else the storeys times the storey height (storeys track, 2026-11-11).
+function wallTopOf(ctx) { return ctx.wallTop != null ? ctx.wallTop : ctx.F + ctx.storeys * ctx.SH; }
+
 function profile(ctx) {
   const { C, cultureKey, T, stage, decor, biome, R } = ctx;
   const sN = +stage[1], dN = +decor[1];
@@ -262,7 +266,7 @@ function exterior(b, ctx) {
     // iron-bound corner posts on two buildings in five from the Swamp on (44 % of the well-liked builds use iron-bound
     // timber, docs/COVERAGE.md); log walls keep their log poles
     const iron = X.ironPosts && C.wallStyle !== 'log' && K.pole !== 'darkwood_pole' ? 'woodiron_pole' : null;
-    const top = F + storeys * SH, p = C.wallStyle === 'log' ? (K.pole || pole) : (iron || pole), foot = F > 0.01 && F < 2.01 ? F - Math.ceil(F) : F; // from the ground under a raised floor
+    const top = wallTopOf(ctx), p = C.wallStyle === 'log' ? (K.pole || pole) : (iron || pole), foot = F > 0.01 && F < 2.01 ? F - Math.ceil(F) : F; // from the ground under a raised floor
     for (const [k, ys] of dirs) {
       if (ys.size < 2) continue;
       const [x, z] = k.split(',').map(Number);
@@ -274,7 +278,7 @@ function exterior(b, ctx) {
   // ---- bay posts: on plank walls, a post the full height of the wall every 4 m along the long sides of the main
   // wing, a little proud of the face, so the wall reads in bays (2026-11-09 review); not beside a door
   if (X.cornerPosts && (C.wallStyle || 'plank') === 'plank' && ctx.wings && ctx.wings[0].alpha === 0 && X.sN >= 2) {
-    const w0 = ctx.wings[0], top = F + storeys * SH, foot = F > 0.01 && F < 2.01 ? F - Math.ceil(F) : F;
+    const w0 = ctx.wings[0], top = wallTopOf(ctx), foot = F > 0.01 && F < 2.01 ? F - Math.ceil(F) : F;
     const doorAt = openings.filter(o => o.kind !== 'window').map(o => o.e);
     for (const sz of [-1, 1]) {
       const z = w0.cz + sz * w0.D;
@@ -304,7 +308,7 @@ function exterior(b, ctx) {
       const { ux, uz } = axes(e);
       for (const s of [-1, 1]) { const k = `${e.x + ux * s},${e.z + uz * s}`; if (!dirs.has(k)) dirs.set(k, { ys: new Set(), es: [] }); dirs.get(k).ys.add(e.yaw); dirs.get(k).es.push(e); }
     }
-    const top = F + storeys * SH;
+    const top = wallTopOf(ctx);
     for (const [k, v] of dirs) {
       if (v.ys.size < 2 || v.es.some(e => doorEdge.includes(e))) continue;
       const [x, z] = k.split(',').map(Number);

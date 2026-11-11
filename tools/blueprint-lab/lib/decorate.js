@@ -1410,13 +1410,13 @@ function density(kind, decor) {
 
 // The building's kit: one choice of bed, chest, table, seats, rug and lights per building, seeded, from what the biome
 // can make, weighted by how often each shows in that kind of room in the corpus.
-function chooseKit(R, biome, culture, kind) {
+function chooseKit(R, biome, culture, kind, P) {
   const L = learned().rooms || {};
   const shares = new Map(((L[kind] || L.home || {}).items || []).map(([n, s]) => [n, s]));
   const pick = (list, floor = 0.15) => {
     const ok2 = list.filter(n => ok(n, biome));
     if (!ok2.length) return null;
-    return pickW(R, ok2.map(n => [n, ((shares.get(n) || 0) + floor) * flavorD(n, biome)]));
+    return pickW(R, ok2.map(n => [n, ((shares.get(n) || 0) + floor) * flavorD(n, biome) * tasteD(n, P)]));
   };
   const taste = CULTURE_TASTE[culture] || {};
   const k = {
@@ -1434,8 +1434,29 @@ function chooseKit(R, biome, culture, kind) {
     side: R() < 0.5 ? 1 : -1,
     taste,
   };
-  k.seat = taste.seat === 'bench' ? (k.bench || k.chair) : (R() < 0.45 ? k.bench || k.chair : k.chair || k.bench);
+  // a bigger household sits on benches more often, one or two people on chairs
+  k.seat = taste.seat === 'bench' ? (k.bench || k.chair) : (R() < (P ? 0.15 + 0.09 * P.size : 0.45) ? k.bench || k.chair : k.chair || k.bench);
   return k;
+}
+
+// The household's taste on the kit's picks, weights only (D-126): comfort to pelts and furs over woven rugs and straw,
+// wealth to marble, blackwood, oak and Dvergr pieces over plain wood and logs, size to benches over chairs and stools.
+const PELTS_D = /^rug_(wolf|fur|deer|bogwitch_deer|moose|seal|Bjorn|asksvin|hare|bear)/;
+const WEAVES_D = /^(jute_carpet|jute_carpet_blue|rug_straw)$/;
+const FINE_D = /blackmarble|blackwood|_oak$|^dvergrprops_table$|^piece_chair0[23]$/;
+const PLAIN_D = /^(piece_table|piece_table_round|piece_chair|dvergrprops_stool|piece_bench01|piece_logbench01)$/;
+const hashD = str => { let h = 2166136261; for (let i = 0; i < str.length; i++) h = Math.imul(h ^ str.charCodeAt(i), 16777619); return h >>> 0; };
+function tasteD(n, P) {
+  if (!P) return 1;
+  let w = 1;
+  if (PELTS_D.test(n)) w *= 0.35 + 1.6 * P.comfort;
+  else if (WEAVES_D.test(n)) w *= 1.45 - 0.9 * P.comfort;
+  if (FINE_D.test(n)) w *= 0.3 + 1.8 * P.wealth;
+  else if (PLAIN_D.test(n)) w *= 1.4 - 0.8 * P.wealth;
+  const cat = (F[n] || {}).cat;
+  if (/bench/.test(n)) w *= 0.5 + 0.17 * P.size;
+  else if (cat === 'chair' || /chair|stool/.test(n)) w *= 1.3 - 0.1 * P.size;
+  return w;
 }
 
 // Each room draws its own rug, seats, table, lights, banner and carving (Tyler, 2026-11-10: "Always the same tables...
@@ -1444,14 +1465,17 @@ function chooseKit(R, biome, culture, kind) {
 // chests stay the building's. From a stream of its own, so the rest of the design keeps its own.
 // the village's own biome, earlier ones and the next weigh fully; one further on less (flavor only, D-065)
 const flavorD = (n, biome) => { const d = bi((F[n] || {}).b || 'Meadows') - bi(biome); return d <= 1 ? 1 : 1 / (1 + 0.8 * (d - 1)); };
-function varyKit(kit, R, kind, seen, biome) {
+function varyKit(kit, R, kind, seen, biome, P) {
   const L = learned().rooms || {};
   const shares = new Map(((L[kind] || L.home || {}).items || []).map(([n, s2]) => [n, s2]));
   const k = { ...kit };
+  // a tidy household keeps the building's matched choice more often; a cluttered one mixes and repeats what it has
+  // (what the house shows already weighs less the tidier it is)
+  const keep = P ? 0.15 + 0.4 * P.tidy : 0.35, again = P ? 0.5 + 2 * (1 - P.clutter) : 1.5;
   for (const slot of ['rug', 'chair', 'table', 'bench', 'floorLight', 'banner', 'carving']) {
-    if (!kit[slot] || !KIT[slot] || R() < 0.35) continue;
+    if (!kit[slot] || !KIT[slot] || R() < keep) continue;
     const list = KIT[slot].filter(n => F[n]);
-    const got = pickW(R, list.map(n => [n, ((shares.get(n) || 0) + 0.25) * (n === kit[slot] ? 2 : 1) * flavorD(n, biome) / (1 + 1.5 * (seen[n] || 0))]));
+    const got = pickW(R, list.map(n => [n, ((shares.get(n) || 0) + 0.25) * (n === kit[slot] ? 2 : 1) * flavorD(n, biome) * tasteD(n, P) / (1 + again * (seen[n] || 0))]));
     if (got) { k[slot] = got; seen[got] = (seen[got] || 0) + 1; }
   }
   k.seat = kit.seat === kit.bench ? (k.bench || k.chair) : (k.chair || k.bench);
@@ -1472,8 +1496,11 @@ function decorate(b, ctx) {
   const ys = [...byY.keys()].sort((a, c) => a - c);
   const counts = { bed: 0, table: 0 };
   const kitKind = { home: 'home', hall: type === 'tavern' ? 'tavern' : 'hall', smithy: 'smithy', workshop: 'workshop', storage: 'storage', temple: 'hall', guard: 'sleeping', farm: 'storage', market: 'living' }[use] || 'home';
-  const kit = chooseKit(R, biome, ctx.culture, kitKind);
-  const kitR = rngFrom((Math.floor(R() * 4294967296) ^ 0x6b17) >>> 0), kitSeen = {};
+  const HP = ctx.persona || null;
+  const kit = chooseKit(R, biome, ctx.culture, kitKind, HP);
+  // the rooms' own picks from a stream of the household's own (its traits), so two households in one house part
+  const hhSalt = HP ? hashD(JSON.stringify([HP.tidy, HP.busy, HP.comfort, HP.wealth, HP.size, HP.hobby, HP.likes])) : 0;
+  const kitR = rngFrom(((Math.floor(R() * 4294967296) ^ 0x6b17) ^ hhSalt) >>> 0), kitSeen = {};
   const report = [], furnished = [];
   const usedTemplates = ctx.usedTemplates || new Set();
   // the layout plans' own stream, drawn once from the design's, so the plans can change without moving the rest
@@ -1513,7 +1540,7 @@ function decorate(b, ctx) {
       // over the fire on an upper floor: the generator clears what stands over a fire it moves under the smoke hole
       if (room.upper && ctx.fireAt) room.zones.push({ b: obox(ctx.fireAt.x, ctx.fireAt.z, 4.0, 2.8, 0), why: 'flue' });
       for (const r of rects) for (const kp of r.keep || []) room.zones.push({ b: obox((kp.x0 + kp.x1) / 2, (kp.z0 + kp.z1) / 2, kp.x1 - kp.x0, kp.z1 - kp.z0, 0), why: 'keep' });
-      furnish(room, role, { ...ctx, use, type, decor, biome, kit: varyKit(kit, kitR, kitKind, kitSeen, biome), counts, mainRect: main, levels: ys.length, usedTemplates, layoutR });
+      furnish(room, role, { ...ctx, use, type, decor, biome, kit: varyKit(kit, kitR, kitKind, kitSeen, biome, HP), counts, mainRect: main, levels: ys.length, usedTemplates, layoutR });
       if (room.plan) (b.layoutPlans || (b.layoutPlans = [])).push({ plan: room.plan, stand: room.stand, inside: room.inside });
       report.push({ level: li, role, area: room.area, items: room.count, room, template: room.template || null, scheme: room.plan ? room.plan.scheme : null, story: room.plan ? room.plan.story : null });
       furnished.push({ room, role });
@@ -1816,7 +1843,8 @@ function fill(room, role, c) {
     if (pre >= target2) late(at);
     used[key] = (used[key] || 0) + 1;
     if (!got || full) live.splice(live.findIndex(([kk]) => kk === key), 1);
-    else { const e = live.find(([kk]) => kk === key); if (e) e[1] *= 0.5 * (MAX[key] || 2) / ((MAX[key] || 2) + (used[key] || 0)); }
+    // a cluttered household repeats an extra more readily than a tidy one (weights only)
+    else { const e = live.find(([kk]) => kk === key); if (e) e[1] *= (c.persona ? 0.3 + 0.45 * c.persona.clutter : 0.5) * (MAX[key] || 2) / ((MAX[key] || 2) + (used[key] || 0)); }
   }
 }
 
@@ -2264,8 +2292,8 @@ const tplExt = (name, yaw) => { const [w, , d] = size(name), a = yaw * PI / 180,
 function tplSwap(name, room, c, along) {
   const biome = c.biome;
   const f = F[name] || {};
-  // the biome as this table and the generator's own (pieces.js, which takes out what the biome cannot make) both read it
-  const ok = (n2, b) => ok0(n2, b) && P.BIOME_ORDER.indexOf(P.needs(n2)) <= Math.max(0, P.BIOME_ORDER.indexOf(b));
+  // the biome rule is pieces.js decorOk (decor in any biome, D-065, D-126)
+  const ok = (n2, b) => ok0(n2, b) && P.decorOk(n2, b);
   let n = name;
   if (n === 'piece_table_oak' && along != null && along < size(n)[0] + 2.4) n = 'piece_table';
   if (ok(n, biome)) return n;
@@ -2576,7 +2604,8 @@ function outside(b, c) {
   const ground = gfl.length ? Math.min(...gfl) : low;
   const walls = structs.filter(s => s.role === 'wall' && s.y0 < ground + 0.6 && s.y1 > ground + 1.2);
   const doors = structs.filter(s => s.role === 'door' || s.role === 'stair');
-  const placed = [];
+  // what the furnishing set out already (a woodpile the room put by the wall): a heap goes clear of it
+  const placed = b.pieces.filter(p => p.decor && F[p.name] && F[p.name].at !== 'rug').map(p => { const [w0, , d0] = size(p.name), yw = pyaw(p), [mx, mz] = middleOf(p.name, p.x, p.z, yw); return obox(mx, mz, w0, d0, yw); });
   // the middle of the floor plan, to tell outside from inside
   const floors = structs.filter(s => s.role === 'floor');
   if (!floors.length) return;

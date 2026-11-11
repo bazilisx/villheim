@@ -476,6 +476,54 @@ function clearLanes(b, ctx, rooms) {
   return gone;
 }
 
+// The entry zone just inside every door of a room: as wide as the opening and 0.3 m more each side, 1.5 m deep (the
+// 1.5 m turning circle of the accessibility guides; nine corpus builds in ten leave 1.6 m or more free inside a home's
+// door and more in other rooms, docs/INTERIOR_DESIGN.md "A clear way in"). D-152 (Tyler, 2026-11-11): "chests etc
+// (othe furniture and objects, not just chests) might not explicitly be in doorways themselves but they can be very
+// very close to those entrances in such a way that they halve the amount of space immediately inside for someone to
+// enter and explore". Loose furniture standing in a zone between the floor and 1.8 m goes, with what stands on it;
+// beds, fires, stations, tables and the house's first chest stay (as removable() reads them) and are counted by
+// lab/reach.js.
+function clearEntries(b, ctx, rooms) {
+  const Ck = checksL();
+  const firstChest = b.pieces.find(p => p.decor && !p.kb && !p.outside && PL.piece(p.name).role === 'storage' && /chest/.test(p.name)) || null;
+  let gone = 0;
+  for (const room of rooms || roomsOf(b, ctx)) {
+    const m = room.m;
+    for (const d of m.doors || []) {
+      const w = (d.w || 1) + 0.6, dep = 1.5, ux = -d.nz, uz = d.nx, cx = d.x + d.nx * ((d.ht || 0) + dep / 2), cz = d.z + d.nz * ((d.ht || 0) + dep / 2);
+      const inZone = o => {
+        // the box's corners and middle against the zone, in the zone's frame
+        const pts = [[o.x0, o.z0], [o.x1, o.z0], [o.x0, o.z1], [o.x1, o.z1], [(o.x0 + o.x1) / 2, (o.z0 + o.z1) / 2]];
+        const loc = pts.map(([x, z]) => [(x - cx) * ux + (z - cz) * uz, (x - cx) * d.nx + (z - cz) * d.nz]);
+        const a0 = Math.min(...loc.map(q => q[0])), a1 = Math.max(...loc.map(q => q[0])), n0 = Math.min(...loc.map(q => q[1])), n1 = Math.max(...loc.map(q => q[1]));
+        return a0 < w / 2 && a1 > -w / 2 && n0 < dep / 2 && n1 > -dep / 2;
+      };
+      const units = unitsOf(b), out = new Set();
+      for (const [, list] of units) {
+        if (!list.some(p => {
+          const role = PL.piece(p.name).role;
+          if (['rug', 'door', 'floor'].includes(role) || p.yard || p.trim) return false;
+          const o = Ck.aabbShapes(p);
+          return !o.pass && o.y0 < m.stand + 1.8 && o.y1 > m.stand + 0.05 && inZone(o);
+        })) continue;
+        if (!removable(list, firstChest)) continue;
+        for (const p of list) out.add(p);
+      }
+      if (!out.size) continue;
+      // what stands on these pieces goes too
+      for (const p of [...out]) {
+        const o = Ck.aabbShapes(p);
+        for (const q of b.pieces) if (q.decor && !out.has(q) && q.x > o.x0 && q.x < o.x1 && q.z > o.z0 && q.z < o.z1 && q.y > o.y0 + 0.2 && q.y < o.y1 + 0.6) out.add(q);
+      }
+      b.pieces = b.pieces.filter(p => !out.has(p));
+      gone += out.size;
+    }
+  }
+  if (gone && b.notes) b.notes.push(`${gone} pieces moved out of the way in at the doors.`);
+  return gone;
+}
+
 // ---------------------------------------------------------------- measures (stage 3 and the bench)
 // Per room: the share of floor a player can walk, the share of that joined to the first door, whether every target is
 // reached, and the widest lane (in steps of 0.1 m) from the first door to the fire and the stairs.
@@ -513,5 +561,5 @@ function measure(b, ctx, rooms) {
   return out;
 }
 
-const apiL = { plan, planFor, floorScore, noteSet, clearLanes, measure, rules, setRules, _int: { obstaclesOf, grid, targetsOf, reach } };
+const apiL = { plan, planFor, floorScore, noteSet, clearLanes, clearEntries, measure, rules, setRules, _int: { obstaclesOf, grid, targetsOf, reach } };
 if (NODE_L) module.exports = apiL; else window.VHLayout = apiL;

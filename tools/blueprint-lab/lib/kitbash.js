@@ -1802,11 +1802,11 @@ function apply(b, ctx, zones) {
     const m = liveIn(b, ctx, zones || []);
     if (m) b.notes.push(`${m} movable things set a little off square, as a household leaves them.`);
   }
-  // the lanes to every room's main pieces again, after the passes that set things late (stacked chests, stands, the
-  // lived-in moves) (D-152)
+  // the way in at every door and the lanes to every room's main pieces again, after the passes that set things late
+  // (stacked chests, stands, the lived-in moves) (D-152)
   if (ctx.decor !== 'd1') {
     const Lay = NODE_B ? require('./layout.js') : window.VHLayout;
-    if (Lay && X.lanes !== false) Lay.clearLanes(b, ctx);
+    if (Lay && Lay.clearEntries && X.lanes !== false) { Lay.clearEntries(b, ctx); Lay.clearLanes(b, ctx); }
   }
   dropFalling(b);
 }

@@ -203,6 +203,8 @@ const BENCHES = /^(piece_bench01|piece_logbench01|piece_blackwood_bench01|piece_
 const SEATS = /^(piece_chair|piece_chair02|piece_chair03|dvergrprops_stool|dvergrprops_chair|piece_chair_runed)$/;
 const CHESTS = /^(piece_chest_wood|piece_chest|piece_chest_barrel|piece_chest_blackmetal|dvergrprops_barrel|dvergrprops_crate)$/;
 const FIRES_S = /^(hearth|fire_pit|fire_pit_iron)$/;
+// what does not count as lying on a table (lab/essentials.js tablesDressed reads the same way)
+const NOT_TOP = /^(rug_|jute_carpet|piece_table|piece_table_round|piece_table_oak|piece_blackmarble_table|dvergrprops_table|piece_chair|piece_bench01|piece_logbench01|bed$|piece_bed02)/;
 const WORK_S = /^(piece_workbench|forge|piece_artisanstation|blackforge|piece_stonecutter|piece_cauldron|piece_spinningwheel)/;
 const FEAST_S = { Meadows: 'FeastMeadows', 'Black Forest': 'FeastBlackforest', Swamp: 'FeastSwamps', Mountain: 'FeastMountains', Plains: 'FeastPlains',
   Mistlands: 'FeastMistlands', Ashlands: 'FeastAshlands', 'Deep North': 'FeastMountains' };
@@ -381,6 +383,15 @@ function dressTops(b, ctx, zones, rooms) {
   // house's wall stands (WALL_SHARE times CAPPED, and 0.4 more for some households). In small rooms nearly every wall
   // spot is within the miner's reach of a table or a bed, so without it a room that wants many stands fills those once
   // its plain wall is taken.
+  // one budget for what lies on tables, the decorator's and the library's dressing included (lib/decorate.js
+  // dressTable, kitbash.js builtPick draw the same rate): the share of the house's tables with something on them is
+  // the culture's corpus rate (rel.tablesDressed, 41 % of norse tables) times the household's clutter. This pass sets
+  // a bare table only while the house is under it; a table that holds something already may take more.
+  const tableList = b.pieces.filter(p => p.decor && TABLES.test(p.name));
+  const bareTable = p => { const o = Ck.aabb(p); return !b.pieces.some(q => q !== p && q.decor && !NOT_TOP.test(q.name) && q.x > o.x0 && q.x < o.x1 && q.z > o.z0 && q.z < o.z1 && q.y > o.y1 - 0.25 && q.y < o.y1 + 0.5); };
+  const tdRate = Math.min(0.95, (D.corpusRate ? D.corpusRate(ctx.culture || ctx.cultureKey, 'td') : 0.41) * (P ? 0.6 + 0.8 * (P.clutter || 0) : 1));
+  const tdWant = tdRate * tableList.length;
+  let tdAllowed = Math.floor(tdWant) + (R() < tdWant % 1 ? 1 : 0), tdHave = tableList.filter(p => !bareTable(p)).length;
   const wallN = { all: 0 }, capK = 0.4 * R();
   for (const p of b.pieces) if (p.decor && p.name === 'itemstand') { wallN.all++; const at = wallAtS(b, p); wallN[at] = (wallN[at] || 0) + 1; }
   for (const room of roomList) {
@@ -403,7 +414,8 @@ function dressTops(b, ctx, zones, rooms) {
         // with a candle or one dish may
         const on = hasOn(p);
         const of = /round/.test(p.name) ? 'round' : /oak|blackmarble/.test(p.name) ? 'long' : 'table';
-        for (const s of sets) if (s.anchor === 'table' && (s.of === of || (s.of === 'table' && of === 'long')) && (on < 2 || (s.feast && on < 5))) add(s, { anchor: 'table', x: p.x, z: p.z, yaw, of: p, akind: of }, 1);
+        const bare = bareTable(p);
+        for (const s of sets) if (s.anchor === 'table' && (s.of === of || (s.of === 'table' && of === 'long')) && (on < 2 || (s.feast && on < 5))) add(s, { anchor: 'table', x: p.x, z: p.z, yaw, of: p, akind: of, bare }, 1);
       } else if (BENCHES.test(p.name)) {
         if (hasOn(p)) continue;
         for (const s of sets) if (s.anchor === 'bench') add(s, { anchor: 'bench', x: p.x, z: p.z, yaw, of: p }, 0.5);
@@ -460,9 +472,12 @@ function dressTops(b, ctx, zones, rooms) {
     const want3 = Math.round(budget * m.area / Math.max(1, area) - inRoom + (R() - 0.5) * 1.5);
     if (want3 < 1) continue;
     const want2 = Math.round(want3 * (0.4 + 0.25 * R()));
+    // (tries grow with what the room wants: with the essentials' wall seats and stacked chests in, more of a room's
+    // spots are taken, and a tavern room ran out of its 80 tries with most of its sets unplaced)
+    const maxTries = Math.max(80, Math.min(240, want3 * 6));
     let n = 0, tries = 0, got3 = 0;
     const usedAnc = [], usedSet = {};
-    while (got3 < want3 && tries < 80 && cands.length) {
+    while (got3 < want3 && tries < maxTries && cands.length) {
       tries++;
       const wt = c => c.w / (1 + 1.5 * (usedSet[c.s.id] || 0));
       let tot = 0;
@@ -473,6 +488,7 @@ function dressTops(b, ctx, zones, rooms) {
       const an = pick.anc;
       if (usedAnc.some(u => (an.of && u.of === an.of) || (an.anchor === u.anchor && Math.hypot(u.x - an.x, u.z - an.z) < (an.anchor === 'wall' ? 1.6 : 0.6)))) continue;
       if (an.anchor === 'wall' && wallBusy(an, idx, m, pick.s)) continue;
+      if (an.anchor === 'table' && an.bare && tdHave >= tdAllowed) continue;
       if (an.ctxW) {
         const at = an.ctxW === 'plain' ? 'wall' : `wall:${an.ctxW}`, k = pick.s.pieces.filter(q => q.n === 'itemstand').length;
         if (CAPPED[at] && (wallN[at] || 0) + k > (wallN.all + k) * WALL_SHARE[at] * (CAPPED[at] + capK) + 0.5) continue;
@@ -531,6 +547,7 @@ function dressTops(b, ctx, zones, rooms) {
         b.pieces.push(p); idx.add(p);
       }
       usedAnc.push(an);
+      if (an.anchor === 'table' && an.bare) { tdHave++; an.bare = false; }
       usedSet[s.id] = (usedSet[s.id] || 0) + 1;
       if (s.feast) for (let k = cands.length - 1; k >= 0; k--) if (cands[k].s.feast) cands.splice(k, 1);
       got3 += got.filter(isStand).length; placedStands += got.filter(isStand).length;

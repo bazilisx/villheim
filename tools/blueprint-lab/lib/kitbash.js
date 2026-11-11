@@ -1627,13 +1627,16 @@ function liveIn(b, ctx, zones) {
 // decorator's do (most tables and seats come from the library); hung pieces and pieces marked as clips stay as they are.
 const TURN = { table: ['to', 12, 30], seat: ['so', 12, 40], rug: ['ro', 12, 45] };
 function turnLikeCorpus(b, ctx, idx, problems, bears) {
-  const P = ctx.persona, D = decorB(), I = D._int, F = D.FURNITURE, culture = ctx.culture || ctx.cultureKey, corpusRate = D.corpusRate;
+  const Ck = checksB(), P = ctx.persona, D = decorB(), I = D._int, F = D.FURNITURE, culture = ctx.culture || ctx.cultureKey, corpusRate = D.corpusRate;
   const R = rngB(((P.salt || 0) ^ 0x7e11) >>> 0);
   // (a round table looks the same turned; turning its square box swung its corners into the chairs drawn up to it,
   // the Plains pool's furnClip of 2026-11-11)
   // (the catalog's role where the decorator's furniture list has no entry: the Dvergr chair a hand-made kit draws)
   const kindOf = p => { const c = (F[p.name] || {}).cat || PB.piece(p.name).role; return c === 'table' && p.name !== 'piece_table_round' ? 'table' : c === 'seat' ? 'seat' : c === 'rug' ? 'rug' : null; };
   const free = p => p.decor && !p.trim && !p.yard && !p.outside && !(p.rest && ['wall', 'hang'].includes(p.rest)) && !p.fclip && !p.wclip && !p.stacked;
+  // a flat stand the stand pass sank into a top or heaped (lib/stands.js, a clip into what it lies on) turns with what
+  // it lies on: with the stand pass in, dressed tables stayed square and tables turned fell from 23 to 14 %
+  const rides = p => p.decor && p.name === 'itemstandh' && !p.wclip && !p.trim && !(p.rest && ['wall', 'hang'].includes(p.rest));
   const axis = (() => { const h = new Map(); for (const q of b.pieces) if (!q.decor && PB.piece(q.name).role === 'wall') { const k = Math.round(normB(I.pyaw(q)) % 90); h.set(k, (h.get(k) || 0) + 1); } const t = [...h.entries()].sort((a, c) => c[1] - a[1])[0]; return t ? t[0] : 0; })();
   const off = p => { const m = normB(I.pyaw(p) - axis) % 90; return Math.min(m, 90 - m); };
   const lean = 0.5 + (P.clutter || 0);
@@ -1673,7 +1676,7 @@ function turnLikeCorpus(b, ctx, idx, problems, bears) {
     if (left <= 0) break;
     const ob = D.itemOf(t).b;
     const on = b.pieces.filter(q => q !== t && q.decor && I.ptDist(ob, q.x, q.z) < 0.05 && q.y > t.y + 0.3 && q.y < t.y + 1.6);
-    if (on.some(q => !free(q))) continue;
+    if (on.some(q => !free(q) && !rides(q))) continue;
     const seats = b.pieces.filter(q => free(q) && kindOf(q) === 'seat' && Math.abs(q.y - t.y) < 0.5 && I.ptDist(ob, q.x, q.z) < 0.9);
     if (tryTurn([t, ...on, ...seats], t.x, t.z)) { n++; left--; }
   }
@@ -1681,8 +1684,15 @@ function turnLikeCorpus(b, ctx, idx, problems, bears) {
     left = quota(kind);
     for (const p of order(kind)) {
       if (left <= 0) break;
-      if (turned.has(p) || (kind !== 'rug' && bears(p))) continue;
-      if (tryTurn([p], p.x, p.z)) { n++; left--; }
+      if (turned.has(p)) continue;
+      // a seat turns with the flat stands on it (a bench the stand pass set); anything else on it keeps it square
+      let with_ = [];
+      if (kind !== 'rug' && bears(p)) {
+        const o = Ck.aabb(p);
+        with_ = b.pieces.filter(q => q !== p && q.decor && q.x > o.x0 && q.x < o.x1 && q.z > o.z0 && q.z < o.z1 && q.y > p.y + 0.15 && q.y < o.y1 + 0.3);
+        if (!with_.length || !with_.every(rides)) continue;
+      }
+      if (tryTurn([p, ...with_], p.x, p.z)) { n++; left--; }
     }
   }
   return n;

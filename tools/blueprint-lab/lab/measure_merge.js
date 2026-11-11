@@ -64,10 +64,10 @@ T.lengths = Q(withTilt.flatMap(r => r.trim.len));
 const groupBy = (rs, f) => { const g = {}; for (const r of rs) (g[f(r)] = g[f(r)] || []).push(r); return g; };
 const trimGroup = rs => ({ builds: rs.length, anyTilted: pct(rs.filter(r => r.trim.tilted > 0).length, rs.length), anyFreeTilt: pct(rs.filter(r => freeOf(r) > 0).length, rs.length), anySlopeBeam: pct(rs.filter(r => slopeOf(r) > 0).length, rs.length),
   freePerBuild: Q(rs.filter(r => freeOf(r) > 0).map(freeOf)), slopePerBuild: Q(rs.filter(r => slopeOf(r) > 0).map(slopeOf)), places: placeBlock(rs).pct });
-T.byCulture = {}; T.byBiome = {}; T.byFolder = {};
+T.byCulture = {}; T.byBiome = {}; T.byType = {};
 for (const [k, rs] of Object.entries(groupBy(B, r => r.culture))) T.byCulture[k] = trimGroup(rs);
 for (const [k, rs] of Object.entries(groupBy(B, r => r.biome))) T.byBiome[k] = trimGroup(rs);
-for (const [k, rs] of Object.entries(groupBy(B, r => r.type))) T.byFolder[k] = trimGroup(rs);
+for (const [k, rs] of Object.entries(groupBy(B, r => r.type))) T.byType[k] = trimGroup(rs);
 
 md.push('### Tilted trim', '');
 md.push(`Builds read: ${B.length} of ${files} files (skipped: ${Object.entries(skips).map(([k, v]) => k + ' ' + v).join(', ')}).`, '');

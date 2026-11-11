@@ -16,7 +16,8 @@ ClearPlotsByHand, DecorPaidWithAnalogs, HuntTrips;
 LagSummarySeconds and StatusLineSeconds. Nothing from 2026-11-10 tried in the game. The building generator is worked
 on in its own session on branch `design/kitbash`: merged 2026-11-10 as 6bf75ae (room layout planner, from feat/layout),
 558604b (pool audit gate, round 6 defects fixed in the lab), 4496d51 (piece sizes from the game's models, hung pieces
-held by the wall's collider), d40b648 (decor reach for D-080). `vh testpool make` now audits the pool before it
+held by the wall's collider), d40b648 (decor reach for D-080), c8c63f0 (Interiors tab, households arrange homes their own way). The lab page is
+republished. Next in the design session: tighten the piece models on Tyler's PC (ROADMAP design item 2b). `vh testpool make` now audits the pool before it
 replaces the old one ('force' to skip). Old design branches feat/* are all in main and can be deleted. Next: Tyler's test (Tests tab T-631 on), rafts (D-078),
 walkable pads, preloading from the lag summaries.
 

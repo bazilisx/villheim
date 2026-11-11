@@ -259,13 +259,22 @@ well (Tyler, 2026-11-08). The Features tab of the review sheet (`docs/features/b
 - [ ] **Generator, design session (branch `design/kitbash`, 2026-11-10):**
   1. [x] Pool audit as a gate for `make_testpool.js` and `vh testpool make`; every round 6 screenshot defect is a
      measure (558604b).
-  2. [x] One table of piece sizes from the game's models, `lab/test_sizes.js` (4496d51). Later, lower priority: one
-     more round of refining the piece models' sizes, used by the generator, the checks and the lab page (no textures).
+  2. [x] One table of piece sizes from the game's models, `lab/test_sizes.js` (4496d51).
+  2b. [ ] **Next, asked for by Tyler (2026-11-10):** one more round of tightening the piece models: rerun
+     `lab/extract_models.py` on Tyler's PC (game files under Z:\SteamLibrary\steamapps\common\Valheim, UnityPy) with
+     a finer proxy (more parts than the 40 or so now), `lab/build_models.js`, then every check; and in `lib/mesh.js`
+     split a prism (a blanket, a hide) into several boxes along its outline instead of one box round it. Used by the
+     generator, the checks and the lab page; no textures.
+  2c. [ ] Intentional clips (Tyler, 2026-11-10): where the corpus clips or presses pieces together on purpose (the
+     kit library records each set's clip depths), the new visible-clip tests take that depth as the limit for that
+     set's own pieces; mark such clips in the file so the pool audit lets them pass.
   3. [ ] Growth that adds to the earlier stage for storehouse (46 %), home a (49 %), hall (54 %), barn (63 %); origins
      centered on the s3 footprint. Found: the storehouse's s2 back-room partition is planned again at s3 and moves;
      home a loses floors, roof ridges and its yard fence. Keep the partition and yard decisions across a line's stages.
-  4. [ ] Household variance as a measure (same line and stage, other traits under 0.6; no two home lines over 0.7);
-     at s1d1 home a and home b are 0.86 alike since the layout planner.
+  4. [x] Household variance as a measure (c8c63f0): likeness by furniture and arrangement, gate on home lines over
+     0.7, `lab/test_variance.js` (7 of 8 houses under 0.6; home a s2d2 0.61). Open: story-spot sets on the raised
+     floor sections that line Norse homes' walls.
+  4b. [x] Interiors tab on the lab page (c8c63f0); page republished 2026-11-10.
   5. [ ] Sort the corpus by culture and mine assemblies per culture (blueprints on Tyler's PC and branch `corpus`).
   6. [ ] Interior study (valheimians, BG3 and the rest) into assemblies and room templates.
   7. [ ] Store rooms at d3 (barrels, crates, sacks), window boxes. Slopes: walkable banks done mod side (fb96935).

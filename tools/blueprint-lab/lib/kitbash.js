@@ -411,8 +411,10 @@ function fillSlot(m, biome, ctx) {
 // the room kind's corpus shares and the culture's counts (lib/decorate.js corpusPick), one draw per kit so a set
 // matches; what lies on a table only as often as corpus tables are dressed (rel.tablesDressed) and drawn by the
 // corpus onTable counts. Only prefabs of about the same footprint stand in for each other. Undefined keeps the fill.
+// (dvergrprops_chair left out: its solids reach into the sets' tables at their chair spacing, the Plains pool's furnClip
+// of 2026-11-11)
 const BUILT_SWAP = {
-  chair: ['piece_chair', 'piece_chair03', 'dvergrprops_stool', 'dvergrprops_chair'],
+  chair: ['piece_chair', 'piece_chair03', 'dvergrprops_stool'],
   bench: ['piece_bench01', 'piece_logbench01', 'piece_blackmarble_bench'],
   piece_table: ['piece_table', 'piece_blackmarble_table'],
   chest: ['piece_chest_wood', 'piece_chest'],
@@ -598,6 +600,34 @@ function takes(anc, a) {
 }
 
 // Fit one assembly at one anchor (mirrored or not). Returns the pieces to add, or null.
+// How many seats a dining set keeps: the corpus has about 2.2 seats at each table that has any (norse furnished
+// buildings: 8 seats and 2 tables at the median, 28 % of seats at a table and 51 % of tables with seats, the research
+// branch's data/culture-corpus/summary.json), so a set keeps 1 to all of its seats by the weights below (2.2 for a set
+// of four), drawn from the household and the spot (the same at every decor stage). Benches count as two seats. A set
+// keeps none of them as often as the culture's tables stand without seats.
+const DINING_KEEP = [0.3, 0.3, 0.25, 0.15];
+function diningSeats(a, ctx, kb, fireNear, role) {
+  const seats = a.pieces.map((p, i) => [p, i]).filter(([p]) => p.k === 'seat' || p.k === 'chair' || p.k === 'bench' || /^(piece_chair|piece_bench|dvergrprops_stool|piece_logbench)/.test(p.n)).map(([, i]) => i);
+  if (seats.length < 2) return new Set();
+  let h = 2166136261;
+  for (const ch of `${kb}|${ctx.persona ? ctx.persona.salt : 0}`) h = Math.imul(h ^ ch.charCodeAt(0), 16777619);
+  const R = rngB((h ^ (h >>> 15)) >>> 0);
+  R();
+  const bench = /bench/.test(a.pieces[seats[0]].n);
+  // a table nobody sits at as often as the culture's corpus tables stand without seats (corpusRate ts: 51 % of norse
+  // tables have a seat): the set keeps its table, rug and what lies on it
+  // (a tavern's or a hall's tables keep at least one seat: corpus tavern rooms hold about 7.5 seats to 2.4 tables,
+  // data/interior.json)
+  const hallLike = ['tavern', 'hall', 'temple'].includes(role);
+  if (R() >= decorB().corpusRate(ctx.culture || ctx.cultureKey, 'ts') && !hallLike) return new Set(seats);
+  let r = R() * DINING_KEEP.reduce((x, y) => x + y, 0), want = DINING_KEEP.length;
+  for (let k = 0; k < DINING_KEEP.length; k++) { r -= DINING_KEEP[k]; if (r <= 0) { want = k + 1; break; } }
+  const keep = Math.max(1, Math.min(seats.length, bench ? Math.ceil(want / 2) : want));
+  // which ones go: drawn too, so a set is left with a seat on one side or two facing; the seats nearest a fire go
+  // first (corpus rel.seatsByFire: 4 % of seats within 3.5 m of a fire)
+  const order = seats.map(i => [i, R() - (fireNear ? Math.min(4, fireNear(i)) : 0)]).sort((x, y) => x[1] - y[1]).map(([i]) => i);
+  return new Set(order.slice(keep));
+}
 function fit(b, ctx, room, idx, zones, anc, a, mirror, fires) {
   // under a flight the generator's keep-clear rectangle over the stair does not apply (the climb's own zone does)
   if (anc.anchor === 'stair') {
@@ -646,9 +676,14 @@ function fit(b, ctx, room, idx, zones, anc, a, mirror, fires) {
     const out = (anc.anchor !== 'stair' && !m.nearWall(x, z, 0.5)) || (mm.k !== 'rug' && zones.some(zn => x > zn.x0 && x < zn.x1 && z > zn.z0 && z < zn.z1 && y + 0.3 > zn.y0 && y < zn.y1));
     if (out) { if (needed.has(i)) { WHY_B = 25; return null; } miss++; }
   }
-  if (a.pieces.length - miss < Math.max(a.min || 2, Math.ceil(a.pieces.length * 0.6))) { WHY_B = 20; return null; }
+  // a dining set keeps as many of its seats as the household draws (diningSeats), the rest left out
+  const fireNear = i => { const mm = a.pieces[i], lx = mirror ? -mm.x : mm.x, x = anc.x + lx * c + mm.z * s, z = anc.z - lx * s + mm.z * c; return Math.min(9, ...(fires || []).map(f => Math.hypot(f.p.x - x, f.p.z - z))); };
+  const skip = a.dining ? diningSeats(a, ctx, kb, fireNear, room.role) : new Set();
+  const nAll = a.pieces.length - skip.size;
+  if (nAll - miss < Math.max(Math.min(a.min || 2, nAll), Math.ceil(nAll * 0.6))) { WHY_B = 20; return null; }
   for (const i of order) {
     const mm = a.pieces[i];
+    if (skip.has(i)) continue;
     const fail = () => { if (needed.has(i)) return true; dropped++; return false; };
     // a random pick (banners) is made once per assembly, so a pair matches
     let name = mm.any ? (picks[mm.k] || (picks[mm.k] = fillSlot(mm, ctx.biome, ctx))) : fillSlot(mm, ctx.biome, ctx);
@@ -747,7 +782,7 @@ function fit(b, ctx, room, idx, zones, anc, a, mirror, fires) {
     made[i] = p;
   }
   const got = made.filter(Boolean);
-  if (got.length < (a.min || 2) || got.length < Math.ceil(a.pieces.length * 0.6) || got.every(p => p.trim)) { WHY_B = WHY_B || 21; return null; }
+  if (got.length < Math.min(a.min || 2, nAll) || got.length < Math.ceil(nAll * 0.6) || got.every(p => p.trim)) { WHY_B = WHY_B || 21; return null; }
   // a dining set keeps 0.7 m clear round it, the way round a table
   // two of one thing is a pair of chairs, not a corner; only a store room takes those
   if (!a.built && room.role !== 'storage' && new Set(got.map(p => slotOf(p.name))).size < 2) { WHY_B = 26; return null; }
@@ -1394,8 +1429,8 @@ function spaceBeds(b, ctx) {
   return out.size;
 }
 
-// Rooms where the furnishing set two tables or more (a house's tables bunched in one wing): the one nearest the
-// room's middle stays with its seats, the rest go with theirs and what stood on them, so each room has one dining
+// Rooms where the furnishing set two tables or more (a house's tables bunched in one wing): the first one placed stays
+// with its seats, the rest go with theirs and what stood on them, so each room has one dining
 // place and the library can lay one in a room without. Only in homes and their rooms; halls, taverns, temples and
 // towers keep theirs.
 function spreadTables(b, ctx, rooms) {
@@ -1410,11 +1445,18 @@ function spreadTables(b, ctx, rooms) {
     // a hall with free floor for two sets or more: its tables all go, and the library lays its sets in a grid
     const free = hall && m.area >= 40 ? m.cells.filter(c => c.i % 2 === 0 && c.j % 2 === 0 && [0, 1, 2, 3, 4, 5, 6, 7].every(k => m.inside(c.x + 2.2 * Math.sin(k * Math.PI / 4), c.z + 2.2 * Math.cos(k * Math.PI / 4)))).length : 0;
     void free;
+    // a side table nobody sits at stays too (lib/decorate.js placeTable seats tables at the corpus rate; a room holds
+    // its dining table and side tables, the corpus home room 1.2 tables)
+    const seatedT = t => { const o = Ck.aabbShapes(t); return b.pieces.some(q => q.decor && PB.piece(q.name).role === 'seat' && Math.abs(q.y - t.y) < 0.4 && q.x > o.x0 - 1.2 && q.x < o.x1 + 1.2 && q.z > o.z0 - 1.2 && q.z < o.z1 + 1.2); };
     const keep = hall ? tables.length : 1;
     if (tables.length <= keep) continue;
-    tables.sort((p, q) => Math.hypot(p.x - m.cx, p.z - m.cz) - Math.hypot(q.x - m.cx, q.z - m.cz));
+    // the room's first table stays (the decorator's own dining place, set where the household's corpus draw put it,
+    // lib/decorate.js tableFireAt and doorWant); keeping the one nearest the room's middle put it in one spot in every
+    // household
+    tables.sort((p, q) => b.pieces.indexOf(p) - b.pieces.indexOf(q));
     const out = new Set();
     for (const t of tables.slice(keep)) {
+      if (!hall && !seatedT(t)) continue;
       const o = Ck.aabbShapes(t);
       out.add(t);
       for (const q of b.pieces) {
@@ -1426,7 +1468,7 @@ function spreadTables(b, ctx, rooms) {
       }
     }
     b.pieces = b.pieces.filter(q => !out.has(q));
-    gone += tables.length - keep;
+    gone += [...out].filter(isTable).length;
   }
   return gone;
 }
@@ -1563,7 +1605,10 @@ const TURN = { table: ['to', 12, 30], seat: ['so', 12, 40], rug: ['ro', 12, 45] 
 function turnLikeCorpus(b, ctx, idx, problems, bears) {
   const P = ctx.persona, D = decorB(), I = D._int, F = D.FURNITURE, culture = ctx.culture || ctx.cultureKey, corpusRate = D.corpusRate;
   const R = rngB(((P.salt || 0) ^ 0x7e11) >>> 0);
-  const kindOf = p => { const c = (F[p.name] || {}).cat; return c === 'table' ? 'table' : c === 'seat' ? 'seat' : c === 'rug' ? 'rug' : null; };
+  // (a round table looks the same turned; turning its square box swung its corners into the chairs drawn up to it,
+  // the Plains pool's furnClip of 2026-11-11)
+  // (the catalog's role where the decorator's furniture list has no entry: the Dvergr chair a hand-made kit draws)
+  const kindOf = p => { const c = (F[p.name] || {}).cat || PB.piece(p.name).role; return c === 'table' && p.name !== 'piece_table_round' ? 'table' : c === 'seat' ? 'seat' : c === 'rug' ? 'rug' : null; };
   const free = p => p.decor && !p.trim && !p.yard && !p.outside && !(p.rest && ['wall', 'hang'].includes(p.rest)) && !p.fclip && !p.wclip && !p.stacked;
   const axis = (() => { const h = new Map(); for (const q of b.pieces) if (!q.decor && PB.piece(q.name).role === 'wall') { const k = Math.round(normB(I.pyaw(q)) % 90); h.set(k, (h.get(k) || 0) + 1); } const t = [...h.entries()].sort((a, c) => c[1] - a[1])[0]; return t ? t[0] : 0; })();
   const off = p => { const m = normB(I.pyaw(p) - axis) % 90; return Math.min(m, 90 - m); };

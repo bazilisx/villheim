@@ -193,7 +193,91 @@ Next steps (exact):
    an end hearth (`lab/hearths/renders.js <dir>`) and check the hood and shaft on the turned gable wing.
 3. Wall spots for the 9 "no free wall" plans: let the hearth stand against a wall of another wing (generalize the
    side shaft and `hearthBay` to a turned wing), or accept the middle for those big houses.
-4. Then the rest of "Next steps" below; D-130 and D-131 stay Open (no Meadows stone stack, nothing on the mod side).
+4. Then the rest of "Next steps" below. (Round 3: D-131 answered and built; D-130 answered, mod side.)
+
+## Round 3 (2026-11-11): interiors, D-131 stone hearths, renders
+
+Commits 4c41951, 7842089 and the round 3 handoff commit, all in `tools/blueprint-lab`.
+
+- `check_interiors` (1 seed, 234 designs) against 7f3ed3f showed three new problems from round 2, all fixed:
+  - a side hearth's cooking spit reached a ladder landing (home Plains byzantine s2 seed 24). `ladderPlan` takes
+    `ring` (the wall hearth's cell for 'side' and 'end') and scores a ladder down by 12 when its foot, hole or landing
+    is within 1.1 m of it.
+  - a court house's niche fire stood in the walk where the south wing opens into the east wing (home Plains
+    middle-eastern s3 seed 25). The flat-roof cell score adds 12 to a wall fire's cell next to another wing's cell.
+  - a bar counter's beams left in the air in a tavern with an end hearth (tavern Black Forest norse-forest s3 seed
+    52): the lane from the door to the end fire took the counter's half walls as riders of a rug and left the beams.
+    `lib/layout.js` `clearLanes` now walks the set it drops as it grows (`for (const p of drop)`), so what stands on a
+    rider goes too.
+  - After: same or fewer problems than 7f3ed3f in every column (door 0 against 1, floating 13/49 against 14/50, stairs
+    1 against 1, support 1 against 1); after the D-131 change one more floating (below).
+- Halls and longhouses with a wall fire: the decorator already lays out round the new spot (`fireAt` from `generate`
+  is the hearth's place for 'end', 'side', 'stack' and flat 'wall' fires; `placeFire` and the template choice use it).
+  Seats within 3.5 m of the fire, 54 wall-fire halls and taverns (2 seeds, s2 and s3): 61 of 484 seats; 20 of the 40
+  designs with seats have one by the fire. Corpus count (`lab/hearths/seat_mine.js`, pivots, roofed fires, 1,739
+  builds): a seat within 3.5 m of a fire with a wall within 1.8 m in 14 of 120 hall fires (12 %), 21 of 72 tavern fires
+  (29 %), 120 of 491 home fires (24 %). The generator is at or above the corpus, so no seats are added (D-136); a trial
+  function that added benches was taken out.
+- D-131 (Tyler: "Wood hearths (s1) and then stone hearths (s2 and s3) acceptable in meadows onward."):
+  `lib/pieces.js` `hearthStoneOk(name, stage)`: stone_wall_1x1, 2x1, 4x2 and stone_floor_2x2 pass from s2. `checks.js`
+  materials lets a piece marked `hearthStone` pass by it. `generate.js`: `KH` (the kit with Black Forest stone for a
+  biome without stone), `hearthStoneOK` (s2 and later, any biome) for the stack hearth plan, `hearthStack` and
+  `hearthstone` (flags under the fire); the stone they place is marked `hearthStone`. Black Forest homes at s2 (wood only
+  under D-012) also get the stack and the flags now. Plank hoods stay at every stage; the decorative `chimneyStack` on
+  middle-fire homes still follows `stoneOK` (not changed).
+- `STACK_SHARE` 0.5 scales the culture's stack odds. Corpus: a stone stack past the roof over 13 of 443 home wall fires
+  (3 %). Unscaled after D-131: about 9 % of s2 and s3 wall fires; at 0.5 about 3 % (`spotmix.js lib 14`).
+- `flueEnd`: a middle fire's chimney within 2.5 m of a gable keeps the balcony to the other end (home Meadows norse
+  cross+nave s3 seed 2: the plank chimney stood across the balcony door, `doors` check failed).
+- Wall dormers are off for gable rows (`plan 'gables'`): the rows' long walls meet in valleys and the dormer stood in
+  the valley at the back gable (render of norse-highland s2 seed 1; there in 7f3ed3f too). The condition comes after
+  the draw, so other designs keep their draws.
+- Renders (`lab/hearths/renders.js <dir> round2`): norse-highland gable row s1 to s3 seed 1 (fire at the back gable of
+  the middle row, a hood, raised ridge caps over it, flags and kerb, a table and benches beside it); Lamari Svan s2 (side
+  hearth at the back corner away from the tower, a plank shaft box with a lid beside the tower); Middle Eastern court s3
+  (niche fire in the south wing's corner, a 4 x 2 m plank chimney box on the flat roof); Norse longhouse T s3 seed 12
+  (end hearth under a plank hood with mantel beams, raised caps on the ridge, woodpile outside that gable, tables down
+  the middle); Frankish Meadows L s3 seed 8 (stone stack hearth from D-131, the stack past the ridge with a plank lid).
+  Nothing else read wrong in these.
+- The 9 "no free wall" plans keep the middle fire. Main rooms of 80 m2 or more: the corpus keeps 74 of 325 home fires
+  in the middle (23 %, `homePlaceByServedRoom`); the generator 10 of 39 (26 %, 6 seeds). Of those 10: drawn 6, no free
+  wall 2, stack blocked 2.
+- Candles by beds: corpus resin candles in homes, halls and taverns 503, within 1.5 m of a bed 4 (on a barrel, a wall
+  and a beam). The 15 % in "Where lights stand" counts all small lights (Lavalanterns, hooded and standing lanterns). No
+  candles by beds are added.
+
+Measures (round 3):
+
+| | 7f3ed3f | 4bc4dac | Now | Corpus |
+|---|---|---|---|---|
+| Home middle, not round (213) | 44 % | 14 % | 14 % | 16 % |
+| Against a wall, under 120 m2, not round | 64 % | 94 % | 94 % | 92 % |
+| Stack, s2 / s3 homes | | | 3 % / 1 % | 3 % of home wall fires |
+| Middle, main room 35 to 80 m2 | | | 11 % | 0 of 67 |
+| Halls and taverns over 80 m2, middle | 100 % | 37 % | 37 % | 32 % |
+
+Checks: `test_structure.js` all hold on 36. Norse Meadows pool (`make_testpool.js /tmp/h3-pool`): pass, 81 designs,
+nestBroken 0; lineage lines 68/63, 86/84, 66/52, 83/49, 91/98. `check_interiors` 1 seed: as above, plus one floating
+woodpile (home Meadows frankish-norman s2 seed 12): the stone flags under the fire are 1 m floors sunk 0.4 m, the yard
+(`yards.js`) takes the lowest pivot as its ground (-0.4) and sets the woodpile and fence on it, and the audit takes the
+design's `ground: 0`. The same happens in every biome that had the flags before (Black Forest and later).
+
+Next task:
+1. Middle fires in mid-size homes: 11 % of main rooms 35 to 80 m2 against 0 of 67 in the corpus. The middle odds scale
+   by floor area (`hearthDraw`); scale by the main room's size from the corpus table instead.
+2. The audit's ground for designs with sunk stone floors (the floating woodpile above): `finish` returns `ground: 0`;
+   it could return the yard's ground. Needs the lead (yards and audit are other tracks).
+3. A stone hood or surround from s2 (D-131 allows stone hearths); the hood is planks now.
+4. `chimneyStack` (the decorative stack on middle-fire homes) could follow D-131 too; ask before changing it.
+
+## Changes in other tracks' files (round 3)
+
+- `lib/layout.js` `clearLanes`: `for (const p of list)` became `for (const p of drop)` in the rider loop, with a comment.
+- `lib/pieces.js`: new `hearthStoneOk` and `HEARTH_STONE`, added to the exports.
+- `lib/checks.js` materials: one more condition, `!(p.hearthStone && PC.hearthStoneOk(p.name, design.request && design.request.stage))`.
+- `lib/generate.js` outside the hearth parts: the dormer condition `&& plan !== 'gables'`; `ladderPlan` takes `o.ring`.
+- The decor-limits branch has `buildReach` in `pieces.js`; this branch does not. The D-131 exception does not go
+  through it: the generator places the hearth stone itself and marks it, so `buildReach` needs no change.
 
 ## Open problems
 
@@ -202,9 +286,7 @@ Next steps (exact):
   tools/gen-test/run.sh`, `dotnet build Villheim.sln -c Release`. Then merge to main.
 - The lineage drops above come from yard fences; decide whether to accept them or make the yard's margins steadier
   (`lib/yards.js`, another helper's file).
-- Meadows never gets the stone stack (no stone pieces before the Black Forest, and `checks.js` materials would fail).
-  Under the new rule (neighbors' build pieces allowed, D-012 for stone) a Meadows s3 home could get one once the
-  build-piece rule in `lib/pieces.js` and `checks.js` allows Black Forest stone in the Meadows at late stages.
+- (Done in round 3, D-131: the Meadows gets the stone stack and flags from s2.)
 - Hip roofs only get side hearths a bay in from the corner; middle when doors block it.
 - The hood and shaft are planks; no stone surround or hood in stone (stone cannot hang on wood); a stone firebox inside
   the house would need a stone floor from the ground and timber over it.
@@ -221,6 +303,6 @@ Next steps (exact):
    plan.
 3. When the decor-any-biome change lands in `lib/pieces.js` `decorOk`, the lights and fire dressing follow it with no
    change here (`lightOk`, the kit's light picks, `settle`'s filter).
-4. Candles by beds (15 % in the corpus) need a surface; none is placed yet.
+4. Candles by beds: 4 of 503 corpus resin candles stand within 1.5 m of a bed (round 3); none are placed.
 5. Tyler's words for the goals: home fires along walls, in alcoves or in wall hearths with chimneys; middle fires for
    social rooms; vents follow the fire; lights from any biome, no fixed counts.

@@ -803,7 +803,7 @@ function generate(req) {
   // wall dormers: Frankish, English, Slavic and medieval cultures, from stage 2 (bench: req.details.dormers)
   dctx.profile.overhang = req.details && req.details.overhang != null ? req.details.overhang : true;
   dctx.profile.dormers = +stage[1] >= 2 && ['frankish-norman', 'anglo-saxon', 'castle-medieval', 'slavic', 'norse-highland', 'baltic'].includes(cultureKey) &&
-    ['home', 'tavern', 'longhouse', 'storage', 'workshop'].includes(type) && dctx.R() < 0.45;
+    ['home', 'tavern', 'longhouse', 'storage', 'workshop'].includes(type) && dctx.R() < 0.45 && plan !== 'gables'; // (a gable row's long walls meet in valleys)
   dctx.profile.dormerPair = dctx.R() < 0.5;
   // a gate as the front door of work and store buildings (coverage audit: gates on 65 % of the best-liked builds)
   dctx.profile.gateDoor = +stage[1] >= 2 && !T.bigDoor && ['longhouse', 'storage', 'workshop', 'smithy', 'sawmill', 'farm'].includes(type) && SH >= 3 && dctx.R() < 0.6;

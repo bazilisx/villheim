@@ -63,6 +63,32 @@ function boxAt(n, a, o, h, r, solid) {
   }
   return { a0, a1, o0, o1, h0: h + b.min[1], h1: h + b.max[1] };
 }
+// VH_SHAPES=collider|coarse|fine: whether pieces visibly touch (nothing floating) and how far one goes into another (hidden pieces,
+// clips between pieces, clips into the wall) are read from those shapes (lab/shape_mode.js), each part as a box in the feature's
+// frame; unset: the model bounds and collider boxes as the committed motifs.json was made. What counts as in the region, the
+// anchor lists and the doorway cover test keep the model bounds.
+const SM = require('./shape_mode.js');
+function fineBoxes(p, f) {
+  const W = SM.parts({ name: p.name, x: p.x, y: p.y, z: p.z, yaw: p.yaw });
+  if (!W || !W.length) return null;
+  const c = Math.cos(f.Y * deg), s = Math.sin(f.Y * deg);
+  return W.map(w => {
+    let a0 = Infinity, a1 = -Infinity, o0 = Infinity, o1 = -Infinity, h0 = Infinity, h1 = -Infinity;
+    for (const sx of [-1, 1]) for (const sy of [-1, 1]) for (const sz of [-1, 1]) {
+      const X = w.c[0] + sx * w.a[0][0] * w.h[0] + sy * w.a[1][0] * w.h[1] + sz * w.a[2][0] * w.h[2];
+      const Y = w.c[1] + sx * w.a[0][1] * w.h[0] + sy * w.a[1][1] * w.h[1] + sz * w.a[2][1] * w.h[2];
+      const Z = w.c[2] + sx * w.a[0][2] * w.h[0] + sy * w.a[1][2] * w.h[1] + sz * w.a[2][2] * w.h[2];
+      const dx = X - f.x, dz = Z - f.z, a = dx * c - dz * s, o = dx * s + dz * c, h = Y - f.y;
+      a0 = Math.min(a0, a); a1 = Math.max(a1, a); o0 = Math.min(o0, o); o1 = Math.max(o1, o); h0 = Math.min(h0, h); h1 = Math.max(h1, h);
+    }
+    return { a0, a1, o0, o1, h0, h1 };
+  });
+}
+const L = x => (Array.isArray(x) ? x : [x]);
+const V = x => L(x).reduce((t, b) => t + vol(b), 0);
+const I = (x, y) => L(x).reduce((t, a) => t + L(y).reduce((u, b) => u + inter(a, b), 0), 0);
+const D = (x, y) => L(x).reduce((m, a) => L(y).reduce((n, b) => Math.max(n, depthOf(a, b)), m), 0);
+const depthOf = (A, Bx) => Math.max(0, Math.min(Math.min(A.a1, Bx.a1) - Math.max(A.a0, Bx.a0), Math.min(A.o1, Bx.o1) - Math.max(A.o0, Bx.o0), Math.min(A.h1, Bx.h1) - Math.max(A.h0, Bx.h0)));
 const overlap3 = (p, q, pad = 0) => p.a0 < q.a1 - pad && p.a1 > q.a0 + pad && p.o0 < q.o1 - pad && p.o1 > q.o0 + pad && p.h0 < q.h1 - pad && p.h1 > q.h0 + pad;
 const touches = (p, q, gap) => p.a0 <= q.a1 + gap && p.a1 >= q.a0 - gap && p.o0 <= q.o1 + gap && p.o1 >= q.o0 - gap && p.h0 <= q.h1 + gap && p.h1 >= q.h0 - gap;
 const inter = (p, q) => Math.max(0, Math.min(p.a1, q.a1) - Math.max(p.a0, q.a0)) * Math.max(0, Math.min(p.o1, q.o1) - Math.max(p.o0, q.o0)) * Math.max(0, Math.min(p.h1, q.h1) - Math.max(p.h0, q.h0));
@@ -237,6 +263,9 @@ function collect(kind, B, ctx, f, box, isBase, fit, clear, keep, need) {
   const pts = [[box.a0, box.o0], [box.a0, box.o1], [box.a1, box.o0], [box.a1, box.o1]].map(([a, o]) => [f.x + a * c + o * s, f.z - a * s + o * c]);
   const xs = pts.map(p => p[0]), zs = pts.map(p => p[1]);
   const items = [], anchors = [], baseNames = {}, baseSolid = [];
+  // the boxes a piece's shapes make in this frame (VH_SHAPES), or its one box where it has none
+  const shownOf = (bx, sol) => { if (!SM.MODE) return sol || bx; if (!bx.pc) return [bx]; return bx.fp || (bx.fp = fineBoxes(bx.pc, f) || [sol || bx]); };
+  const touchesS = (A, Bx, gap) => (!SM.MODE ? touches(A, Bx, gap) : shownOf(A).some(a => shownOf(Bx).some(b => touches(a, b, gap))));
   for (const i of near(Math.min(...xs), Math.max(...xs), Math.min(...zs), Math.max(...zs))) {
     const p = ps[i];
     if (p === f.self || p === f.self2) continue;
@@ -247,25 +276,26 @@ function collect(kind, B, ctx, f, box, isBase, fit, clear, keep, need) {
     const inside = ma > box.a0 && ma < box.a1 && mo > box.o0 && mo < box.o1 && mh > box.h0 && mh < box.h1;
     if (isBase(p, q, fb)) {
       if (touches(fb, box, 0.3)) {
-        anchors.push(fb);
-        if (p.info.role === 'wall') { baseNames[p.name] = (baseNames[p.name] || 0) + 1; baseSolid.push(boxAt(p.name, q.a, q.o, q.h, q.r, true)); }
+        fb.pc = p; anchors.push(fb);
+        if (p.info.role === 'wall') { baseNames[p.name] = (baseNames[p.name] || 0) + 1; baseSolid.push(SM.MODE ? (fineBoxes(p, f) || boxAt(p.name, q.a, q.o, q.h, q.r, true)) : boxAt(p.name, q.a, q.o, q.h, q.r, true)); }
       }
       continue;
     }
     if (!inside) {
       // structure reaching into the region still holds things up
-      if (p.info.structural && touches(fb, box, 0)) anchors.push(fb);
+      if (p.info.structural && touches(fb, box, 0)) { fb.pc = p; anchors.push(fb); }
       continue;
     }
     const role = p.info.role;
-    if (keep && !keep(p, q, fb)) { if (p.info.structural) anchors.push(fb); continue; }
-    if (!allowed(kind, classOf(p.name), fb, fit)) { if (p.info.structural) anchors.push(fb); continue; }
+    if (keep && !keep(p, q, fb)) { if (p.info.structural) { fb.pc = p; anchors.push(fb); } continue; }
+    if (!allowed(kind, classOf(p.name), fb, fit)) { if (p.info.structural) { fb.pc = p; anchors.push(fb); } continue; }
     if (!TRIM_ROLES.has(role) && !/garland|banner|sign|itemstand|dragon|raven|wolf|hooknchain|WallChain|cloth_hanging_long|fenrirhide_hanging/.test(p.name)) {
       if (['nature', 'misc', 'clutter'].includes(role)) continue; // plants and odds and ends are not trim
-      if (p.info.structural) anchors.push(fb);
+      if (p.info.structural) { fb.pc = p; anchors.push(fb); }
       continue; // furniture, beds, chests: the yard and the rooms, not the motif
     }
-    if (fb.a1 - fb.a0 > (box.a1 - box.a0) + 0.6 || fb.h1 - fb.h0 > (box.h1 - box.h0) + 0.6) { anchors.push(fb); continue; }
+    if (fb.a1 - fb.a0 > (box.a1 - box.a0) + 0.6 || fb.h1 - fb.h0 > (box.h1 - box.h0) + 0.6) { fb.pc = p; anchors.push(fb); continue; }
+    fb.pc = p;
     items.push({ p, ...q, fb, sb: boxAt(p.name, q.a, q.o, q.h, q.r, true) });
   }
   if (!items.length) { tally(kind, 'bare'); return null; }
@@ -276,10 +306,10 @@ function collect(kind, B, ctx, f, box, isBase, fit, clear, keep, need) {
   // the ground holds things that stand on it
   if (ctx.ground != null) anchors.push({ a0: -99, a1: 99, o0: -99, o1: 99, h0: ctx.ground - f.y - 5, h1: ctx.ground - f.y + 0.05 });
   // nothing floating: every piece touches an anchor or a piece that does
-  const held = items.map(t => anchors.some(a => touches(t.fb, a, 0.08)));
+  const held = items.map(t => anchors.some(a => touchesS(t.fb, a, 0.08)));
   for (let k = 0, more = true; more && k < 20; k++) {
     more = false;
-    items.forEach((t, i) => { if (!held[i] && items.some((u, j) => held[j] && touches(t.fb, u.fb, 0.08))) { held[i] = true; more = true; } });
+    items.forEach((t, i) => { if (!held[i] && items.some((u, j) => held[j] && touchesS(t.fb, u.fb, 0.08))) { held[i] = true; more = true; } });
   }
   if (held.some(h => !h)) { tally(kind, 'floating'); return null; }
   // nothing through anything: two solid pieces sharing more than half of the smaller one
@@ -293,12 +323,12 @@ function collect(kind, B, ctx, f, box, isBase, fit, clear, keep, need) {
   const depth = (A, Bx) => Math.max(0, Math.min(Math.min(A.a1, Bx.a1) - Math.max(A.a0, Bx.a0), Math.min(A.o1, Bx.o1) - Math.max(A.o0, Bx.o0), Math.min(A.h1, Bx.h1) - Math.max(A.h0, Bx.h0)));
   for (let i = 0; i < items.length; i++) for (let j = i + 1; j < items.length; j++) {
     if (!boxy(items[i]) || !boxy(items[j]) || hidden.has(i) || hidden.has(j)) continue;
-    const A = items[i].sb, Bx = items[j].sb, m = Math.min(vol(A), vol(Bx)), v = inter(A, Bx);
+    const A = shownOf(items[i].fb, items[i].sb), Bx = shownOf(items[j].fb, items[j].sb), m = Math.min(V(A), V(Bx)), v = I(A, Bx);
     if (m <= 0.02 || v <= 0.5 * m) continue;
-    if (v > 0.8 * m) { hidden.add(vol(A) < vol(Bx) ? i : j); continue; }
-    const d = depth(A, Bx), timber = t => ['beam', 'pole'].includes(t.p.info.role);
+    if (v > 0.8 * m) { hidden.add(V(A) < V(Bx) ? i : j); continue; }
+    const d = D(A, Bx), timber = t => ['beam', 'pole'].includes(t.p.info.role);
     // timber through timber is a joint, which the generator allows anyway
-    const k = timber(items[i]) && !timber(items[j]) ? j : !timber(items[i]) && timber(items[j]) ? i : vol(A) < vol(Bx) ? i : j;
+    const k = timber(items[i]) && !timber(items[j]) ? j : !timber(items[i]) && timber(items[j]) ? i : V(A) < V(Bx) ? i : j;
     if (d > 0.4) {
       tally(kind, 'clipping');
       if (process.env.DEBUG === 'clip' && kind === 'window') console.log('clip', items[i].p.name, items[j].p.name);
@@ -311,7 +341,7 @@ function collect(kind, B, ctx, f, box, isBase, fit, clear, keep, need) {
   // sunk deeper than 0.15 m, count)
   items.forEach((t, i) => {
     const prop = !t.p.info.structural || ['deco', 'light', 'craft', 'storage', 'seat', 'table', 'misc', 'fire'].includes(t.p.info.role);
-    for (const w of baseSolid) { const d = depth(t.sb, w); if (d > (prop ? 0.06 : 0.15) && d < 0.6 && vol(t.sb) > 0.0005) clipOf.set(i, Math.max(clipOf.get(i) || 0, Math.min(d, 0.5))); }
+    for (const w of baseSolid) { const sbx = shownOf(t.fb, t.sb), d = D(sbx, w); if (d > (prop ? 0.06 : 0.15) && d < 0.6 && V(sbx) > 0.0005) clipOf.set(i, Math.max(clipOf.get(i) || 0, Math.min(d, 0.5))); }
   });
   items.forEach((t, i) => { if (clipOf.has(i) && clipOf.get(i) > 0.04) t.clip = Math.round(clipOf.get(i) * 100) / 100; });
   if ([...clipOf.values()].some(v => v > 0.04)) tally(kind, 'kept clip');

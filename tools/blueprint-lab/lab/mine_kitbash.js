@@ -18,6 +18,8 @@
 // build; a build counts once. Groups of three or more seen once in a well-liked build are kept too ('once').
 const fs = require('fs'), path = require('path');
 const P = require('../lib/pieces.js'), SHP = require('../lib/shapes.js'), Ck = require('../lib/checks.js'), KB = require('../lib/kitbash.js');
+// VH_SHAPES=coarse|fine: clip depths are read from what shows (lab/shape_mode.js); unset, from the colliders as before
+const SM = require('./shape_mode.js');
 
 const src = process.argv[2] || '/home/claude/study/compact.json';
 const out = process.argv[3] || path.join(__dirname, '../data/kitbash-interior.json');
@@ -72,6 +74,8 @@ const use = n => { if (!USE.has(n)) USE.set(n, { builds: new Set(), liked: 0, n:
 function mine(d) {
   const ps = d.p.map(([name, x, y, z, yaw]) => ({ name, x, y, z, yaw: norm(yaw || 0), q: quat(yaw || 0) }));
   const bx = ps.map(p => Ck.aabb(p));
+  // the shapes a clip depth is read from: the colliders (bx.sol) unless VH_SHAPES asks for what shows; a piece with no solids stays without
+  const shown = i => (SM.MODE && bx[i].sol ? SM.parts(ps[i]) : bx[i].sol);
   const near = Ck.index(bx);
   const role = i => bx[i].info.role;
   const around = (x, z, r, y0, y1) => [...near({ x0: x - r, x1: x + r, z0: z - r, z1: z + r }, 0)].filter(j => bx[j].y1 > y0 && bx[j].y0 < y1);
@@ -231,13 +235,13 @@ function mine(d) {
     // clips: how deep each piece reaches into the others, the anchor and the wall
     const clips = [];
     for (let u = 0; u < items.length; u++) {
-      for (let v = u + 1; v < items.length; v++) { const dd = SHP.clipDepth(bx[items[u]].sol, bx[items[v]].sol); if (dd > 0.01) clips.push([u, v, +dd.toFixed(3)]); }
-      if (g.at != null) { const dd = SHP.clipDepth(bx[items[u]].sol, bx[g.at].sol); if (dd > 0.01) clips.push([u, 'a', +dd.toFixed(3)]); }
+      for (let v = u + 1; v < items.length; v++) { const dd = SHP.clipDepth(shown(items[u]), shown(items[v])); if (dd > 0.01) clips.push([u, v, +dd.toFixed(3)]); }
+      if (g.at != null) { const dd = SHP.clipDepth(shown(items[u]), shown(g.at)); if (dd > 0.01) clips.push([u, 'a', +dd.toFixed(3)]); }
       let dw = 0;
       const ws = new Set();
       for (const f of g.faces || []) for (const w of f.walls) ws.add(w);
       for (const w of around(cx(items[u]), cz(items[u]), 1.5, bx[items[u]].y0, bx[items[u]].y1)) if (isWall(w)) ws.add(w);
-      for (const w of ws) dw = Math.max(dw, SHP.clipDepth(bx[items[u]].sol, bx[w].sol));
+      for (const w of ws) dw = Math.max(dw, SHP.clipDepth(shown(items[u]), shown(w)));
       if (dw > 0.01) clips.push([u, 'w', +dw.toFixed(3)]);
     }
     const r = { anchor: g.anchor, members, clips, ...extra };

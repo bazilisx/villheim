@@ -16,6 +16,7 @@ const fs = require('fs'), path = require('path');
 const lab = path.join(__dirname, '..');
 const P = require(lab + '/lib/pieces.js');
 const MODELS = require(lab + '/data/piece-models.json').pieces;
+const SM = require('./shape_mode.js'), SHP = require(lab + '/lib/shapes.js');
 
 const args = process.argv.slice(2);
 const opt = (k, d) => { const i = args.indexOf(k); return i >= 0 ? args[i + 1] : d; };
@@ -327,8 +328,12 @@ function measure(raw) {
   f.stoneFloorOut = has(/stone_floor|blackmarble_floor|grausten_floor/, offFoot);
   f.ladderOut = has(/ladder/, offFoot);
   // clipped and nested pieces: a decoration or a light whose middle lies inside a wall
-  const wallBoxes = walls.map(w => ({ ...w.b }));
-  const clipN = ps.filter(p => ['deco', 'light', 'misc', 'craft'].includes(p.r) && (() => { const [x, z] = mid(p), y = (p.b.y0 + p.b.y1) / 2; return wallBoxes.some(b => x > b.x0 + 0.02 && x < b.x1 - 0.02 && z > b.z0 + 0.02 && z < b.z1 - 0.02 && y > b.y0 && y < b.y1 && Math.min(b.x1 - b.x0, b.z1 - b.z0) < 0.6); })()).length;
+  const wallBoxes = walls.map(w => ({ ...w.b, w }));
+  // VH_SHAPES=collider|coarse|fine: the middle must lie inside what shows of the wall (its shapes, lab/shape_mode.js); unset: the wall's collider box
+  const wallParts = b => (b.sp || (b.sp = SM.parts({ name: b.w.name, x: b.w.x, y: b.w.y, z: b.w.z, yaw: b.w.yaw }) || []));
+  const inWall = (b, x, y, z) => (SM.MODE ? wallParts(b).some(o => SHP.inside(o, x, y, z, -0.02)) && Math.min(b.x1 - b.x0, b.z1 - b.z0) < 0.6
+    : x > b.x0 + 0.02 && x < b.x1 - 0.02 && z > b.z0 + 0.02 && z < b.z1 - 0.02 && y > b.y0 && y < b.y1 && Math.min(b.x1 - b.x0, b.z1 - b.z0) < 0.6);
+  const clipN = ps.filter(p => ['deco', 'light', 'misc', 'craft'].includes(p.r) && (() => { const [x, z] = mid(p), y = (p.b.y0 + p.b.y1) / 2; return wallBoxes.some(b => inWall(b, x, y, z)); })()).length;
   f.clipped = clipN >= 3;
   f.deepOverhang = overhang != null && overhang >= 0.5;
 

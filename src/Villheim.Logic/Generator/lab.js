@@ -1,5 +1,6 @@
 // Villheim blueprint lab, bundled for the game. Made by tools/blueprint-lab/lib/build_engine.js; do not edit.
 var window = this;
+window.VH_STANDS = {"heights":{"itemstandh|table":[0.74,0.77,0.77,0.82,0.87,1611],"itemstand|beam":[0.58,0.99,1.44,1.88,2.08,648],"itemstandh|floor":[-0.06,-0.03,-0.03,0,0,2078],"itemstandh|shelf":[0.97,0.98,1.1,1.45,1.69,1856],"itemstand|furnside":[0.28,0.38,0.72,1.31,2.66,54],"itemstand|rafter":[2.42,2.71,2.96,3.33,3.8,533],"itemstand|wall:workbench":[0.61,1.35,2.08,2.87,3.4,578],"itemstand|wall:bench":[1.12,1.52,1.66,2.66,3.33,141],"itemstand|wall:table":[1.19,1.83,2.47,3.07,3.49,327],"itemstand|wall:hearth":[0.33,0.58,1.61,2.37,3.25,558],"itemstand|wall:door":[1.11,1.59,2.11,2.88,3.62,175],"itemstandh|bench":[0.5,0.5,0.53,0.82,0.97,216],"itemstand|wall":[0.5,1.19,1.88,2.67,3.21,757],"itemstandh|mantel":[0.88,0.95,0.97,1.2,1.94,1015],"itemstandh|stand":[0,0.11,0.79,0.96,1.27,745],"itemstandh|ledge":[-0.03,0.2,0.5,0.68,0.82,1122],"itemstand|wall:bed":[1.57,2.12,2.85,3.34,3.74,208],"itemstand|wall:chest":[0.82,1.52,2.13,2.73,3.2,333],"itemstand|free":[0.25,0.28,1.15,1.73,3.46,448],"itemstandh|other":[0,0.46,0.77,0.89,1.79,476],"itemstandh|counter":[-0.03,0,0.51,0.79,1,360],"itemstandh|none":[0.18,0.39,0.8,1.43,2.47,594],"itemstandh|rafter":[2.67,3.07,3.3,3.46,3.9,191],"itemstand|chestside":[0.23,0.28,0.28,1.5,1.72,5],"itemstandh|chest":[0.38,0.77,1,2,2.65,99],"itemstandh|workbench":[0.17,0.65,0.93,1.13,1.69,32],"itemstandh|bed":[0.4,0.47,0.76,0.87,1.57,14],"itemstandh|sill":[0.57,0.7,0.97,1,1.13,187],"itemstandh|walltop":[1.83,2.56,3.17,3.93,3.95,84],"itemstand|laid":[0.14,0.23,0.84,0.87,1.04,6],"itemstandh|wallside":[1.32,1.4,1.43,2.26,3.68,201],"itemstand|ceiling":[-0.27,-0.25,-0.2,0.5,3.47,16],"itemstandh|stair":[0.59,1.13,1.29,1.56,3.04,41],"itemstandh|hung":[3.95,3.95,3.95,3.95,3.95,18]}};
 // ---- pieces.js
 (function () {
 // Piece catalog: size, shape, role and material for Valheim prefab names.
@@ -4116,10 +4117,19 @@ function topWeights(culture) {
   return TOP_OK.map(n => [n, (Gs ? l * Gs(n) + (1 - l) * A(n) : A(n)) + 0.01]);
 }
 function topPick(R, culture, biome) { return pickW(R, topWeights(culture).filter(([nm]) => ok(nm, biome) || nm === 'itemstandh')); }
+// One roll per table for whether anything lies on it, kept on the table's piece (td): the decorator, the library's
+// sets (lib/kitbash.js) and the stand pass (lib/stands.js) all ask it, so whoever comes to a table first decides for
+// all and the house's share stays at the household's rate.
+function tableRate(culture, P) { return Math.min(0.95, corpusRate(culture, 'td') * (P ? 0.6 + 0.8 * (P.clutter || 0) : 1)); }
+function tableDressed(p, R, culture, P) {
+  if (!p) return true;
+  if (p.td == null) p.td = R() < tableRate(culture, P);
+  return p.td;
+}
 function dressTable(room, t, c, n) {
   if (!t) return 0;
   const P = c.persona;
-  if (room.R() >= Math.min(0.95, corpusRate(c.culture, 'td') * (P ? 0.6 + 0.8 * (P.clutter || 0) : 1))) { t.topped = true; return 0; }
+  if (!tableDressed(t.p || t, room.R, c.culture, P)) { t.topped = true; return 0; }
   const W = topWeights(c.culture).filter(([nm]) => ok(nm, room.biome) || nm === 'itemstandh');
   const names = [];
   for (let i = 0; i < n; i++) names.push(pickW(room.R, W));
@@ -5728,7 +5738,9 @@ function auditOne(p, ctx, extra, allow) {
   if (it.f.at === 'mount' && !mountOk(it, wallish)) { ONE_WHY = 'mount'; return false; }
   if (p.rest && !kbRests(it, A.pieces.concat(more), wallish, A.struct.concat(built))) { ONE_WHY = 'rest ' + p.rest; return false; }
   let used = 0;
-  if (SHOWS_DEEP.has(it.f.cat)) {
+  // (a piece the furniture table does not size goes by its catalog role, as the pool audit's intoWall reads it: a
+  // runed chair into a trim beam)
+  if (SHOWS_DEEP.has(it.f.cat || P.piece(p.name).role)) {
     const d = showsInto(p, A.struct.map(sb => sb.p));
     // a chest may go into a wall as deep as corpus builders set them (lib/kitbash.js CHEST_WALL, D-127)
     if (d > Math.max(SHOWS_MAX, allow || 0, CHEST_WALL_D[p.name] || 0)) { ONE_WHY = 'shows'; return false; }
@@ -5895,7 +5907,7 @@ function decorateExisting(pieces, { use = 'home', decor = 'd2', biome = 'Meadows
   return b.pieces;
 }
 
-const api = { lateClash, corpusPick, corpusRate, corpusTilt, topPick, keepsBarrels, oneWhy: () => ONE_WHY, furnClash, asBuilt, decorate, strip, findRooms, decorateExisting, setRules, setInterior, setTemplates, templateById, audit, auditContext, auditOne, itemOf, ITEM_BIOME, FURNITURE: F, readLevel,
+const api = { lateClash, corpusPick, corpusRate, tableRate, tableDressed, corpusTilt, topPick, keepsBarrels, oneWhy: () => ONE_WHY, furnClash, asBuilt, decorate, strip, findRooms, decorateExisting, setRules, setInterior, setTemplates, templateById, audit, auditContext, auditOne, itemOf, ITEM_BIOME, FURNITURE: F, readLevel,
   _int: { floorLevels, standGuess, roleFor, stretch, size, ok, obox, overlap, ptDist, yawOfDir, pyaw, standOf, norm, WALLISH } };
 if (NODE_D) module.exports = api; else window.VHDecorate = api;
 
@@ -7830,17 +7842,15 @@ const BUILT_SWAP = {
   piece_table: ['piece_table', 'piece_blackmarble_table'],
   chest: ['piece_chest_wood', 'piece_chest'],
 };
+// the tables lab/essentials.js tablesDressed counts
+const TOP_TABLES = /^(piece_table|piece_table_round|piece_table_oak|dvergrprops_table|piece_blackmarble_table|cauldron_ext3_butchertable|piece_magetable|piece_table_runed)$/;
 const BUILT_LK = { home: 'home', longhouse: 'hall', tavern: 'tavern', smithy: 'smithy', workshop: 'workshop', storage: 'storage', temple: 'hall' };
 function builtPick(a, mm, ctx, picks, name) {
   if (!name) return undefined;
   const D = decorB(), culture = ctx.culture || ctx.cultureKey, LK = BUILT_LK[ctx.type] || 'home', R = ctx._R2;
   const onTable = (mm.rest === 'on' && a.pieces[mm.on] && /table/.test(a.pieces[mm.on].n)) || (mm.rest === 'anchor' && a.anchor === 'table');
-  if (onTable && !mm.key) {
-    if (picks._dressed == null) { const P = ctx.persona; picks._dressed = R() < Math.min(0.95, D.corpusRate(culture, 'td') * (P ? 0.6 + 0.8 * (P.clutter || 0) : 1)); }
-    if (!picks._dressed) return null;
-    if (/^Candle_resin/.test(name)) return D.topPick(R, culture, ctx.biome);
-    return undefined;
-  }
+  // whether the table holds anything is the table's one roll (apply, lib/decorate.js tableDressed)
+  if (onTable && !mm.key) return /^Candle_resin/.test(name) ? D.topPick(R, culture, ctx.biome) : undefined;
   // barrels only where the household keeps them (lib/decorate.js keepsBarrels)
   if (mm.k === 'barrel' && !mm.key && !D.keepsBarrels(ctx.persona, ctx.type)) return null;
   const grp = BUILT_SWAP[mm.k] ? mm.k : BUILT_SWAP[mm.n] ? mm.n : null;
@@ -8058,6 +8068,8 @@ function fit(b, ctx, room, idx, zones, anc, a, mirror, fires) {
   a.pieces.forEach((p, i) => { if (p.key) needed.add(i); });
   let dropped = 0, slide = 0;
   const picks = {};
+  // what would lie on a table the household leaves bare (and what stands on that): left out, the set goes on
+  const bareTop = new Set();
   const kb = `${a.id}@${Math.round(anc.x * 10)},${Math.round(anc.z * 10)}`;
   // a set against a wall stands clear of the wall's own relief (the 2x2 wood wall's cross bars stand 13 cm proud of
   // its collider on one face): the whole set moves out by that much, so what hangs and what stands keep together
@@ -8095,13 +8107,22 @@ function fit(b, ctx, room, idx, zones, anc, a, mirror, fires) {
   for (const i of order) {
     const mm = a.pieces[i];
     if (skip.has(i)) continue;
-    const fail = () => { if (needed.has(i)) return true; dropped++; return false; };
+    const fail = () => { if (needed.has(i) && !bareTop.has(i)) return true; dropped++; return false; };
     // a random pick (banners) is made once per assembly, so a pair matches
     let name = mm.any ? (picks[mm.k] || (picks[mm.k] = fillSlot(mm, ctx.biome, ctx))) : fillSlot(mm, ctx.biome, ctx);
     if (a.built && ctx._R2) { const bp = builtPick(a, mm, ctx, picks, name); if (bp !== undefined) name = bp; }
     // a creative set's piece the village does not make itself is left out: the last pass (generate.js biomeSafe) would
     // swap it for a stand-in of another size (a barrel of a stack turned into a chest)
     if (name && !can(ctx.biome, name)) name = null;
+    // what lies on a table goes only on a table the household dresses: one roll per table, shared with the decorator
+    // and the stand pass (lib/decorate.js tableDressed; rel.tablesDressed times the household's clutter). On a bare table the
+    // set goes on without them, even its key (a set that failed there would come back with a fresh table and a fresh
+    // roll until one came up dressed); a set that is all table top has nothing left and stays out.
+    if (name && ctx._R2) {
+      const tbl = mm.rest === 'on' ? made[mm.on] : mm.rest === 'anchor' && a.anchor === 'table' ? anc.of : null;
+      if (tbl && TOP_TABLES.test(tbl.name) && !decorB().tableDressed(tbl, ctx._R2, ctx.culture || ctx.cultureKey, ctx.persona)) { name = null; bareTop.add(i); }
+    }
+    if (mm.rest === 'on' && bareTop.has(mm.on)) bareTop.add(i);
     if (!name || (mm.rest === 'on' && !made[mm.on])) { if (!name) WHY_B = 30; if (fail()) return null; continue; }
     let lx = mirror ? -mm.x : mm.x;
     if (a.byWidth && anc.w) lx = Math.sign(lx) * (anc.w / 2 + Math.abs(lx));
@@ -8187,8 +8208,8 @@ function fit(b, ctx, room, idx, zones, anc, a, mirror, fires) {
     }
     if (!okP) { LAST_B = `${i} ${p.name}`; if (fail()) return null; continue; }
     // the pool audit's height for a sign or a wall stand (lib/audit.js MID, by the middle of what shows over the
-    // floor): a set's sign standing on the floor (KB-058, KC-142) or a stand hung too low stays out, as the audit
-    // would fail it; a sign on a chest's front is a label and passes, as the audit reads it
+    // floor): a stand hung too low stays out, as the audit would fail it; a sign on a chest's front is a label and a
+    // sign standing on the floor (KB-058, KC-142) is a corpus use, and both pass as the audit reads them
     if (hangOff(p, stand, idx, made)) { WHY_B = 33; LAST_B = `${i} ${p.name}`; if (fail()) return null; continue; }
     // two of the set's pieces filled with one name in one place (two slots of a creative set both drawn as a beam) are
     // one piece in the game: the second is left out
@@ -8197,7 +8218,10 @@ function fit(b, ctx, room, idx, zones, anc, a, mirror, fires) {
     made[i] = p;
   }
   const got = made.filter(Boolean);
-  if (got.length < Math.min(a.min || 2, nAll) || got.length < Math.ceil(nAll * 0.6) || got.every(p => p.trim)) { WHY_B = WHY_B || 21; return null; }
+  // what a bare table leaves out does not count against the set (or a set would fail there and its next try would
+  // roll a fresh table)
+  const nKept = nAll - bareTop.size;
+  if (got.length < Math.min(a.min || 2, nKept) || got.length < Math.ceil(nKept * 0.6) || got.every(p => p.trim)) { WHY_B = WHY_B || 21; return null; }
   // a dining set keeps 0.7 m clear round it, the way round a table
   // two of one thing is a pair of chairs, not a corner; only a store room takes those
   if (!a.built && room.role !== 'storage' && new Set(got.map(p => slotOf(p.name))).size < 2) { WHY_B = 26; return null; }
@@ -8258,6 +8282,8 @@ function hangOff(p, stand, idx, made) {
   if (!V) return false;
   const mid = (V.y0 + V.y1) / 2, h = mid - stand;
   if (h >= MID[0] && h <= MID[1]) return false;
+  // a sign standing on the floor, as corpus builders stand them (lib/audit.js floorSign, D-127)
+  if (A.floorSign && A.floorSign(p.name, V.y0, stand)) return false;
   if (/^sign/.test(p.name)) {
     const mx = (V.x0 + V.x1) / 2, mz = (V.z0 + V.z1) / 2;
     const store = idx.near({ x0: mx - 0.3, x1: mx + 0.3, z0: mz - 0.3, z1: mz + 0.3, y0: V.y0 - 1, y1: V.y1 + 1 }, 0).map(r => r.p).concat(made.filter(Boolean))
@@ -8377,7 +8403,15 @@ function placeable(p, bx, mm, i, b, ctx, room, idx, zones, made, clipOf, anc, fi
   // under its table; marked so the pool audit lets that depth pass, D-098)
   const mine = [], ownP = !mm.n || mm.n === p.name;
   let fdeep = 0;
-  for (const [q, deep] of D.furnClash(p, nearP(0.3).map(r => r.p).filter(q => q.decor && !displace.has(q)).concat(made.filter(Boolean)))) {
+  // (the furniture boxes the audit compares can reach well past the solids, a spinning wheel's is 2.67 x 2.04 m, and so
+  // can a neighbor's: the search covers the piece's furniture box and 1 m round it)
+  let fr = bx;
+  if (D.FURNITURE[p.name]) {
+    const o = D.itemOf(p).b, ex = Math.abs(o.c) * o.hw + Math.abs(o.s) * o.hd, ez = Math.abs(o.s) * o.hw + Math.abs(o.c) * o.hd;
+    fr = { x0: Math.min(bx.x0, o.x - ex), x1: Math.max(bx.x1, o.x + ex), y0: bx.y0, y1: bx.y1, z0: Math.min(bx.z0, o.z - ez), z1: Math.max(bx.z1, o.z + ez) };
+  }
+  const furnNear = idx.near({ ...fr, x0: fr.x0 - 1, x1: fr.x1 + 1, z0: fr.z0 - 1, z1: fr.z1 + 1 }, 0).map(r => r.p);
+  for (const [q, deep] of D.furnClash(p, furnNear.filter(q => q.decor && !displace.has(q)).concat(made.filter(Boolean)))) {
     const j = made.indexOf(q);
     if (j >= 0 && ownP && (!a.pieces[j].n || a.pieces[j].n === q.name)) { fdeep = Math.max(fdeep, deep); continue; }
     // two chests of a kind pushed together as corpus builders push them (CHEST_PAIR, D-127): the solids test below
@@ -8391,8 +8425,10 @@ function placeable(p, bx, mm, i, b, ctx, room, idx, zones, made, clipOf, anc, fi
   // by what shows when a crafting station is one of the pair (onStation): the same here, with nothing passed by a mark
   if (FURN_B.has(info.role)) {
     const pc = Ck.catBox(p);
-    for (const q of nearP(0.3).map(r => r.p).filter(q => q.decor && !displace.has(q)).concat(made.filter(Boolean))) {
-      if (q === p || (decorB().FURNITURE[p.name] && decorB().FURNITURE[q.name]) || !FURN_B.has(PB.piece(q.name).role) || /_ext\d/.test(q.name) || /_ext\d/.test(p.name)) continue;
+    // (as the audit, a station's extension counts too: an artisan table's extension in a spinning wheel's box)
+    const cr = { x0: Math.min(pc.x0, fr.x0) - 1, x1: Math.max(pc.x1, fr.x1) + 1, y0: bx.y0, y1: bx.y1, z0: Math.min(pc.z0, fr.z0) - 1, z1: Math.max(pc.z1, fr.z1) + 1 };
+    for (const q of idx.near(cr, 0).map(r => r.p).filter(q => q.decor && !displace.has(q)).concat(made.filter(Boolean))) {
+      if (q === p || (decorB().FURNITURE[p.name] && decorB().FURNITURE[q.name]) || !FURN_B.has(PB.piece(q.name).role)) continue;
       if ([p.name, q.name].some(n => /^(fire_pit|hearth|bonfire)$/.test(n))) continue;
       const qc = Ck.catBox(q), ov = k => Math.min(pc[k + '1'], qc[k + '1']) - Math.max(pc[k + '0'], qc[k + '0']);
       if (ov('x') > 0.12 && ov('y') > 0.12 && ov('z') > 0.12 && !movable(q)) return no(31);
@@ -9648,8 +9684,11 @@ const BENCHES = /^(piece_bench01|piece_logbench01|piece_blackwood_bench01|piece_
 const SEATS = /^(piece_chair|piece_chair02|piece_chair03|dvergrprops_stool|dvergrprops_chair|piece_chair_runed)$/;
 const CHESTS = /^(piece_chest_wood|piece_chest|piece_chest_barrel|piece_chest_blackmetal|dvergrprops_barrel|dvergrprops_crate)$/;
 const FIRES_S = /^(hearth|fire_pit|fire_pit_iron)$/;
-// what does not count as lying on a table (lab/essentials.js tablesDressed reads the same way)
-const NOT_TOP = /^(rug_|jute_carpet|piece_table|piece_table_round|piece_table_oak|piece_blackmarble_table|dvergrprops_table|piece_chair|piece_bench01|piece_logbench01|bed$|piece_bed02)/;
+// the tables and what is not table dressing, as lab/essentials.js reads them for tablesDressed
+const TD_TABLES = /^(piece_table|piece_table_round|piece_table_oak|dvergrprops_table|piece_blackmarble_table|cauldron_ext3_butchertable|piece_magetable)$/;
+const TD_NOT = /^(rug_|jute_carpet|piece_chair\d*$|piece_bench01$|piece_logbench01$|piece_blackwood_bench01$|piece_blackmarble_bench$|dvergrprops_stool$|dvergrprops_chair$|piece_throne0\d$|piece_blackmarble_throne$|piece_bone_throne$|bed$|piece_bed0\d$|ashwood_bed$)/;
+// workbenches and other stations as the corpus miner reads them for a wall stand over one (lab/mine_stands.js WORK)
+const WORK_M = /^(piece_workbench|forge|piece_artisanstation|blackforge|piece_magetable|piece_stonecutter|piece_cartographytable|piece_preptable|piece_MeadCauldron|piece_cauldron|piece_butcher|piece_spinningwheel|windmill|piece_cookingstation|piece_oven|fermenter|piece_workbench_ext|forge_ext|piece_alchemy)/i;
 const WORK_S = /^(piece_workbench|forge|piece_artisanstation|blackforge|piece_stonecutter|piece_cauldron|piece_spinningwheel)/;
 const FEAST_S = { Meadows: 'FeastMeadows', 'Black Forest': 'FeastBlackforest', Swamp: 'FeastSwamps', Mountain: 'FeastMountains', Plains: 'FeastPlains',
   Mistlands: 'FeastMistlands', Ashlands: 'FeastAshlands', 'Deep North': 'FeastMountains' };
@@ -9828,15 +9867,15 @@ function dressTops(b, ctx, zones, rooms) {
   // house's wall stands (WALL_SHARE times CAPPED, and 0.4 more for some households). In small rooms nearly every wall
   // spot is within the miner's reach of a table or a bed, so without it a room that wants many stands fills those once
   // its plain wall is taken.
-  // one budget for what lies on tables, the decorator's and the library's dressing included (lib/decorate.js
-  // dressTable, kitbash.js builtPick draw the same rate): the share of the house's tables with something on them is
-  // the culture's corpus rate (rel.tablesDressed, 41 % of norse tables) times the household's clutter. This pass sets
-  // a bare table only while the house is under it; a table that holds something already may take more.
-  const tableList = b.pieces.filter(p => p.decor && TABLES.test(p.name));
-  const bareTable = p => { const o = Ck.aabb(p); return !b.pieces.some(q => q !== p && q.decor && !NOT_TOP.test(q.name) && q.x > o.x0 && q.x < o.x1 && q.z > o.z0 && q.z < o.z1 && q.y > o.y1 - 0.25 && q.y < o.y1 + 0.5); };
-  const tdRate = Math.min(0.95, (D.corpusRate ? D.corpusRate(ctx.culture || ctx.cultureKey, 'td') : 0.41) * (P ? 0.6 + 0.8 * (P.clutter || 0) : 1));
-  const tdWant = tdRate * tableList.length;
-  let tdAllowed = Math.floor(tdWant) + (R() < tdWant % 1 ? 1 : 0), tdHave = tableList.filter(p => !bareTable(p)).length;
+  // what lies on tables follows one roll per table that the decorator and the library's sets share (lib/decorate.js
+  // tableDressed: the culture's corpus rate, rel.tablesDressed, 41 % of norse tables, times the household's clutter).
+  // This pass sets a bare table only where that roll says the household dresses it (a table no one has come to yet is
+  // rolled now); a table that holds something already may take more. Whether a table holds something is read as the
+  // corpus relation reads it (lab/essentials.js tablesDressed: a loose piece within 0.9 m of the table's pivot and 0.5
+  // to 1.6 m over it). (A budget per house would top up the houses under it and leave those over it, and the mean
+  // would run over the rate.)
+  const tdLoose = b.pieces.filter(q => q.decor && !q.outside && !q.yard && !TD_NOT.test(q.name) && !TD_TABLES.test(q.name));
+  const bareTable = p => !tdLoose.some(q => Math.hypot(q.x - p.x, q.z - p.z) < 0.9 && q.y - p.y >= 0.5 && q.y - p.y <= 1.6);
   const wallN = { all: 0 }, capK = 0.4 * R();
   for (const p of b.pieces) if (p.decor && p.name === 'itemstand') { wallN.all++; const at = wallAtS(b, p); wallN[at] = (wallN[at] || 0) + 1; }
   for (const room of roomList) {
@@ -9909,31 +9948,42 @@ function dressTops(b, ctx, zones, rooms) {
     const inClass = {};
     for (const c of cands) { c.cl = classOf(c.s, c.anc); inClass[c.cl] = (inClass[c.cl] || 0) + c.w; }
     for (const c of cands) c.w *= (CLASS_W[c.cl] || 0.5) * (fav[c.cl] == null ? 1 : fav[c.cl]) / inClass[c.cl] * leanWeight(P2, c.s) * (c.s.feast ? 0.12 : 1);
-    for (let k = cands.length - 1; k >= 0; k--) if (!(cands[k].w > 0)) cands.splice(k, 1);
+    // a bare table the household's roll says it dresses (a dining set whose top did not fit) is set first, one set
+    // each, whatever the room's count and the places the household favors, and shows from the table's own stage
+    const owed = cands.filter(c => c.anc.anchor === 'table' && c.anc.bare && c.anc.of.td === true && !c.s.feast);
+    for (let k = cands.length - 1; k >= 0; k--) if (!(cands[k].w > 0) && !owed.includes(cands[k])) cands.splice(k, 1);
     if (!cands.length) continue;
     // how many stands this room shows: its share of the house's, less what stands here already; a share at d2, the
     // rest at d3
     const inRoom = b.pieces.filter(p => p.decor && isStand(p) && m.inside(p.x, p.z) && p.y > m.stand - 0.3 && p.y < m.stand + 3.5).length;
     const want3 = Math.round(budget * m.area / Math.max(1, area) - inRoom + (R() - 0.5) * 1.5);
-    if (want3 < 1) continue;
+    if (want3 < 1 && !owed.length) continue;
     const want2 = Math.round(want3 * (0.4 + 0.25 * R()));
     // (tries grow with what the room wants: with the essentials' wall seats and stacked chests in, more of a room's
     // spots are taken, and a tavern room ran out of its 80 tries with most of its sets unplaced)
     const maxTries = Math.max(80, Math.min(240, want3 * 6));
     let n = 0, tries = 0, got3 = 0;
     const usedAnc = [], usedSet = {};
-    while (got3 < want3 && tries < maxTries && cands.length) {
+    while ((got3 < want3 || owed.length) && tries < maxTries && cands.length) {
       tries++;
-      const wt = c => c.w / (1 + 1.5 * (usedSet[c.s.id] || 0));
-      let tot = 0;
-      for (const c of cands) tot += wt(c);
-      let r = R() * tot, pick = cands[cands.length - 1];
-      for (const c of cands) { r -= wt(c); if (r <= 0) { pick = c; break; } }
+      let pick = null;
+      if (owed.length) {
+        pick = owed.splice(Math.floor(R() * owed.length), 1)[0];
+        if (!cands.includes(pick) || usedAnc.some(u => u.of === pick.anc.of)) continue;
+      } else {
+        const wt = c => c.w / (1 + 1.5 * (usedSet[c.s.id] || 0));
+        let tot = 0;
+        for (const c of cands) tot += wt(c);
+        let r = R() * tot;
+        pick = cands[cands.length - 1];
+        for (const c of cands) { r -= wt(c); if (r <= 0) { pick = c; break; } }
+      }
+      const owes = pick.anc.anchor === 'table' && pick.anc.bare && pick.anc.of.td === true;
       cands.splice(cands.indexOf(pick), 1);
       const an = pick.anc;
       if (usedAnc.some(u => (an.of && u.of === an.of) || (an.anchor === u.anchor && Math.hypot(u.x - an.x, u.z - an.z) < (an.anchor === 'wall' ? 1.6 : 0.6)))) continue;
       if (an.anchor === 'wall' && wallBusy(an, idx, m, pick.s)) continue;
-      if (an.anchor === 'table' && an.bare && tdHave >= tdAllowed) continue;
+      if (an.anchor === 'table' && an.bare && !D.tableDressed(an.of, R, ctx.culture || ctx.cultureKey, P)) continue;
       if (an.ctxW) {
         const at = an.ctxW === 'plain' ? 'wall' : `wall:${an.ctxW}`, k = pick.s.pieces.filter(q => q.n === 'itemstand').length;
         if (CAPPED[at] && (wallN[at] || 0) + k > (wallN.all + k) * WALL_SHARE[at] * (CAPPED[at] + capK) + 0.5) continue;
@@ -9951,7 +10001,7 @@ function dressTops(b, ctx, zones, rooms) {
       // a wall stand into the wall's relief stays against its collider, as the corpus's builders hang them (D-127)
       if (got.some(p => p.name === 'itemstand' && p.wclip && intoCollider(p, idx) > WALL_COLL + 0.005)) continue;
       // never before what it stands on (a bench of a set that comes at the third stage)
-      const ds = Math.max(s.stage === 3 || got3 >= want2 ? 3 : 2, (an.of && an.of.decor && an.of.ds) || 0);
+      const ds = owes ? Math.max(2, an.of.ds || 0) : Math.max(s.stage === 3 || got3 >= want2 ? 3 : 2, (an.of && an.of.decor && an.of.ds) || 0);
       // a flat stand on a wall's or a beam's top sits on what shows of it (the half wall's planks stand a few
       // centimeters over its collider), as the pool audit's mountClip measures it
       const Me = Mes();
@@ -9992,7 +10042,6 @@ function dressTops(b, ctx, zones, rooms) {
         b.pieces.push(p); idx.add(p);
       }
       usedAnc.push(an);
-      if (an.anchor === 'table' && an.bare) { tdHave++; an.bare = false; }
       usedSet[s.id] = (usedSet[s.id] || 0) + 1;
       if (s.feast) for (let k = cands.length - 1; k >= 0; k--) if (cands[k].s.feast) cands.splice(k, 1);
       got3 += got.filter(isStand).length; placedStands += got.filter(isStand).length;
@@ -10028,7 +10077,7 @@ function wallAtS(b, p) {
   const box = (q, x, z, r, y0, y1) => { const o = Ck.aabb(q); return C(o.x0) <= C(x + r) && C(o.x1) >= C(x - r) && C(o.z0) <= C(z + r) && C(o.z1) >= C(z - r) && o.y1 > y0 && o.y0 < y1 ? o : null; };
   const under = b.pieces.filter(q => q !== p && !/^itemstand/.test(q.name)).filter(q => { const o = box(q, ox, oz, 0.9, ft - 0.1, p.y - 0.1); return o && o.y0 < ft + 0.4; });
   const has = t => under.some(q => t(q.name, PBs.piece(q.name).role));
-  if (has(n => WORK_S.test(n))) return 'wall:workbench';
+  if (has(n => WORK_M.test(n))) return 'wall:workbench';
   if (has((n, r) => r === 'table')) return 'wall:table';
   if (has((n, r) => r === 'seat' && /bench|sofa/i.test(n))) return 'wall:bench';
   if (has((n, r) => r === 'bed')) return 'wall:bed';
@@ -10177,6 +10226,7 @@ function pileStands(b, idx, m, base, R, always) {
 let DEBUG_S = null;
 const apiS = { debug: d => { DEBUG_S = d; }, dressTops, SETS, SILL, RAFTER, leanWeight, wallAtS };
 if (NODE_S) module.exports = apiS; else window.VHStands = apiS;
+
 
 })();
 // ---- layout.js
@@ -14974,7 +15024,7 @@ const BANNER = /^piece_banner\d+$/;
 // Heights of the middle of a sign or a wall item stand over the floor under it (m): read at eye height, reached by hand.
 // A wall stand may go as high as corpus builders hang them on walls and rafters (D-127): the higher of the 90th
 // percentiles of 'itemstand|wall' and 'itemstand|rafter' in data/stands-corpus.json heights (stand height over the
-// room's floor; 3.8 m on the stands branch, 2026-11-11); 2.4 m where the file is not there (the web page).
+// room's floor; 3.8 m on the stands branch, 2026-11-11); 2.4 m where the heights are not there (the bundles carry them as window.VH_STANDS).
 const STAND_HI = (() => {
   let H = null;
   try { H = NODE_A ? require('../data/stands-corpus.json').heights : (typeof window !== 'undefined' && window.VH_STANDS ? window.VH_STANDS.heights : null); } catch (e) { H = null; }
@@ -14982,12 +15032,25 @@ const STAND_HI = (() => {
   return v.length ? Math.max(2.4, ...v) : 2.4;
 })();
 const MID = { sign: [1.0, 2.3], sign_notext: [1.0, 2.3], itemstand: [0.7, STAND_HI] };
+// A sign standing on the floor is a corpus use (D-127): in the interior library (data/kitbash-interior.json), 32 sign
+// members of 21 mined sets stand on the floor away from any chest, from 21 of its 472 source builds (KB-058, KC-142
+// among them), sunk into the floor 0 to 3.3 cm in 26 of them and 18 cm at the 90th percentile. A sign whose foot is on
+// the floor, or into it no deeper than that, passes the height test (lib/kitbash.js hangOff asks the same).
+const SIGN_FLOOR_SINK = 0.18;
+const floorSign = (name, y0, floor) => /^sign/.test(name) && y0 >= floor - SIGN_FLOOR_SINK - 0.005 && y0 <= floor + 0.05;
 const STRUCT_VIS = ['wall', 'halfwall', 'window', 'beam', 'pole', 'gable', 'door'];
 const FLAT = ['wall', 'halfwall', 'gable', 'pole'];
 const OVERHEAD = ['roof', 'roofTop', 'roofCorner', 'floor', 'beam'];
 const isLooseItem = n => M.source(n) === 'Items' && !/^(Pickable_|Placeable_|TreasureChest|loot_chest)/.test(n);
 // Furniture is measured with the decorator's own sizes (the game's, turned with the piece) where it has them: the
 // catalog's boxes are rough for props and called a chest beside a chopping block a clip.
+// a piece's catalog box as turned on its pivot (lib/checks.js catBox, before it is made square to the axes)
+const yawA = p => { if (p.yaw != null) return p.yaw; const [x, y, z, w] = p.q || [0, 0, 0, 1]; return Math.atan2(2 * (w * y + x * z), 1 - 2 * (y * y + x * x)) * 180 / Math.PI; };
+const offAxis = p => { const a = ((yawA(p) % 90) + 90) % 90; return Math.min(a, 90 - a) > 1; };
+function turnedBox(p) {
+  const info = PC.piece(p.name), s = p.s || [1, 1, 1];
+  return D._int.obox(p.x, p.z, info.size[0] * s[0], info.size[2] * s[2], yawA(p));
+}
 function obbGap(a, b) { // how far apart two turned boxes are on their best separating axis (below 0: they overlap that deep)
   let best = -Infinity;
   for (const [o, p] of [[a, b], [b, a]]) for (const [ax, az, h] of [[o.c, -o.s, o.hw], [o.s, o.c, o.hd]]) {
@@ -15055,6 +15118,11 @@ function audit(pieces, shell) {
     if (D.FURNITURE[pa.name] && D.FURNITURE[pb.name]) {
       const ia = D.itemOf(pa), ib = D.itemOf(pb), deep = -obbGap(ia.b, ib.b);
       oy = Math.min(ia.y1, ib.y1) - Math.max(ia.y0, ib.y0);
+      ox = oz = deep;
+    } else if (offAxis(pa) || offAxis(pb)) {
+      // a piece turned off the grid, one of them without a furniture entry (a runed bench turned with the table it is
+      // drawn up to): their boxes as turned, the box catBox makes square round each, so the turn alone is no overlap
+      const deep = -obbGap(turnedBox(pa), turnedBox(pb));
       ox = oz = deep;
     }
     const fireSet = [pieces[furn[a]].name, pieces[furn[b]].name].some(n => /^(fire_pit|hearth|piece_cookingstation|piece_cauldron|piece_cookingstation_iron)$/.test(n)) && [pieces[furn[a]].name, pieces[furn[b]].name].some(n => /^(fire_pit|hearth|bonfire)$/.test(n));
@@ -15139,7 +15207,7 @@ function audit(pieces, shell) {
       if (b.y0 < floor - 0.03) r.hang.push(`${p.name} ${Math.round((floor - b.y0) * 100)} cm into the floor`);
       else if (b.y0 > floor + 1.0) r.hang.push(`${p.name} foot ${(b.y0 - floor).toFixed(1)} m over the floor`);
       if (ceil != null && b.y1 > ceil + 0.03) r.hang.push(`${p.name} ${Math.round((b.y1 - ceil) * 100)} cm into the roof`);
-    } else if (MID[p.name] && role(p) !== 'floor' && !(/^sign/.test(p.name) && onChest(i))) {
+    } else if (MID[p.name] && role(p) !== 'floor' && !(/^sign/.test(p.name) && onChest(i)) && !floorSign(p.name, b.y0, floor)) {
       const h = mid - floor, [lo, hi] = MID[p.name];
       // a horizontal stand (itemstandh) is a table piece and has no entry here
       if (h < lo || h > hi) r.hang.push(`${p.name} middle ${h.toFixed(1)} m over the floor`);
@@ -15358,7 +15426,7 @@ function group(files, parse) {
   return out;
 }
 
-const apiA = { STAND_HI, MID, audit, pool, summary, group, likeness, signature, shapeOf, GATE, WATCH, REPORTED };
+const apiA = { STAND_HI, MID, floorSign, audit, pool, summary, group, likeness, signature, shapeOf, GATE, WATCH, REPORTED };
 if (NODE_A) module.exports = apiA; else window.VHAudit = apiA;
 
 })();

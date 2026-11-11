@@ -1,0 +1,1033 @@
+{
+ "about": "Vanilla greenery a village could place: plants, trees, bushes, vines, flowers, crops, roots, pots and planting modes. size_m from data/piece-models.json (bounds of the render model, metres; collider_w is the trunk or stem collider); null where the model was not measured. corpus: pieces and builds that use it in the 2,153 .blueprint files on Tyler's PC (hs_ and OverDrive files skipped), counted before duplicate removal. harvest_risk: what the mod's gatherers would do with it today if a village placed it (src/Villheim.Logic/Villagers/Chores.cs FindNearest and IsSource, Foraging.cs Nearest; none of them read the village mark Keys.BuiltBy): high = a gatherer or forager would take it; low = no gatherer looks for it; check = not read from the game files. Prefab names of cultivator saplings (sapling_carrot, Beech_Sapling and the like) are not in the corpus or the models and were not checked against the game files. Not covered: what Deep North added (not checked).",
+ "version": "2026-11-11",
+ "prefabs": [
+  {
+   "prefab": "vines",
+   "kind": "vine",
+   "placed_as": "world prefab (ruin vines), placed by blueprint",
+   "grows_wild_in": "Meadows/Black Forest ruins",
+   "size_m": {
+    "w": 2.32,
+    "h": 2.43,
+    "d": 0.46
+   },
+   "harvest_risk": "low",
+   "corpus": {
+    "pieces": 21868,
+    "builds": 147
+   },
+   "note": "static ruin vine; no Pickable, TreeBase or rock; clearing ignores it"
+  },
+  {
+   "prefab": "VineAsh",
+   "kind": "vine",
+   "placed_as": "cultivator (Vineberry seeds) or blueprint",
+   "grows_wild_in": "Ashlands",
+   "size_m": {
+    "w": 0.46,
+    "h": 2.39,
+    "d": 2.54
+   },
+   "harvest_risk": "high",
+   "corpus": {
+    "pieces": 1412,
+    "builds": 18
+   },
+   "note": "Ashvine: grows on a wall, spawns Vineberry clusters (Pickable food); needs open sky, a wall within about 0.75 to 2 m, no Mountain or Deep North (Valheim wiki, Ashvine)"
+  },
+  {
+   "prefab": "VineGreen",
+   "kind": "vine",
+   "placed_as": "world prefab, placed by blueprint",
+   "grows_wild_in": "Ashlands (green variant)",
+   "size_m": {
+    "w": 0.46,
+    "h": 2.39,
+    "d": 2.54
+   },
+   "harvest_risk": "check",
+   "corpus": {
+    "pieces": 885,
+    "builds": 15
+   },
+   "note": "Ashvine model in green; whether it spawns berries is not checked"
+  },
+  {
+   "prefab": "Pickable_Dandelion",
+   "kind": "flower",
+   "placed_as": "world prefab (Pickable), placed by blueprint",
+   "grows_wild_in": "Meadows",
+   "size_m": {
+    "w": 0.75,
+    "h": 0.52,
+    "d": 0.49
+   },
+   "harvest_risk": "high",
+   "corpus": {
+    "pieces": 1131,
+    "builds": 175
+   },
+   "note": "Foraging.cs Herbs list holds Dandelion"
+  },
+  {
+   "prefab": "Pickable_Thistle",
+   "kind": "flower",
+   "placed_as": "world prefab (Pickable), placed by blueprint",
+   "grows_wild_in": "Black Forest",
+   "size_m": {
+    "w": 0.54,
+    "h": 1.52,
+    "d": 0.47
+   },
+   "harvest_risk": "high",
+   "corpus": {
+    "pieces": 906,
+    "builds": 45
+   },
+   "note": "Foraging.cs Herbs list holds Thistle"
+  },
+  {
+   "prefab": "Pickable_Fiddlehead",
+   "kind": "flower",
+   "placed_as": "world prefab (Pickable)",
+   "grows_wild_in": "Ashlands",
+   "size_m": {
+    "w": 0.72,
+    "h": 1.39,
+    "d": 1.19
+   },
+   "harvest_risk": "high",
+   "corpus": {
+    "pieces": 159,
+    "builds": 15
+   },
+   "note": "food Pickable"
+  },
+  {
+   "prefab": "Fiddleheadfern",
+   "kind": "flower",
+   "placed_as": "world prefab",
+   "grows_wild_in": "Ashlands",
+   "size_m": {
+    "w": 0.34,
+    "h": 0.33,
+    "d": 0.4
+   },
+   "harvest_risk": "check",
+   "corpus": {
+    "pieces": 81,
+    "builds": 17
+   }
+  },
+  {
+   "prefab": "FernAshlands",
+   "kind": "flower",
+   "placed_as": "world prefab",
+   "grows_wild_in": "Ashlands",
+   "size_m": {
+    "w": 2.64,
+    "h": 0.81,
+    "d": 2.64
+   },
+   "harvest_risk": "low",
+   "corpus": {
+    "pieces": 189,
+    "builds": 21
+   },
+   "note": "fern, no pick"
+  },
+  {
+   "prefab": "Pickable_Mushroom",
+   "kind": "mushroom",
+   "placed_as": "world prefab (Pickable)",
+   "grows_wild_in": "Meadows, Black Forest",
+   "size_m": {
+    "w": 0.36,
+    "h": 0.37,
+    "d": 0.33
+   },
+   "harvest_risk": "high",
+   "corpus": {
+    "pieces": 524,
+    "builds": 42
+   },
+   "note": "food Pickable"
+  },
+  {
+   "prefab": "Pickable_Mushroom_yellow",
+   "kind": "mushroom",
+   "placed_as": "world prefab (Pickable)",
+   "grows_wild_in": "Black Forest, Swamp",
+   "size_m": {
+    "w": 0.3,
+    "h": 0.31,
+    "d": 0.28
+   },
+   "harvest_risk": "high",
+   "corpus": {
+    "pieces": 7861,
+    "builds": 50
+   },
+   "note": "food Pickable; the corpus uses it mostly as glowing cave and ruin dressing"
+  },
+  {
+   "prefab": "Pickable_Mushroom_blue",
+   "kind": "mushroom",
+   "placed_as": "world prefab (Pickable)",
+   "grows_wild_in": "caves",
+   "size_m": {
+    "w": 0.3,
+    "h": 0.31,
+    "d": 0.28
+   },
+   "harvest_risk": "high",
+   "corpus": {
+    "pieces": 133,
+    "builds": 11
+   },
+   "note": "food Pickable"
+  },
+  {
+   "prefab": "GlowingMushroom",
+   "kind": "mushroom",
+   "placed_as": "world prefab",
+   "grows_wild_in": "Mistlands",
+   "size_m": null,
+   "harvest_risk": "low",
+   "corpus": {
+    "pieces": 1265,
+    "builds": 18
+   },
+   "note": "light source, no pick"
+  },
+  {
+   "prefab": "shrub_2",
+   "kind": "bush",
+   "placed_as": "world prefab, placed by blueprint",
+   "grows_wild_in": "Meadows",
+   "size_m": {
+    "w": 3.59,
+    "h": 3.1,
+    "d": 3.47,
+    "collider_w": 1.14
+   },
+   "harvest_risk": "low",
+   "corpus": {
+    "pieces": 1047,
+    "builds": 80
+   },
+   "note": "spreads about 3.6 m (yards.js); Destructible, not TreeBase"
+  },
+  {
+   "prefab": "shrub_2_heath",
+   "kind": "bush",
+   "placed_as": "world prefab",
+   "grows_wild_in": "Plains, Mountain heath",
+   "size_m": {
+    "w": 3.59,
+    "h": 3.1,
+    "d": 3.47,
+    "collider_w": 1.14
+   },
+   "harvest_risk": "low",
+   "corpus": {
+    "pieces": 370,
+    "builds": 49
+   }
+  },
+  {
+   "prefab": "Bush01",
+   "kind": "bush",
+   "placed_as": "world prefab",
+   "grows_wild_in": "Meadows",
+   "size_m": {
+    "w": 2.91,
+    "h": 2.56,
+    "d": 2.85,
+    "collider_w": 0.4
+   },
+   "harvest_risk": "low",
+   "corpus": {
+    "pieces": 884,
+    "builds": 73
+   },
+   "note": "about 1.5 m across"
+  },
+  {
+   "prefab": "Bush01_heath",
+   "kind": "bush",
+   "placed_as": "world prefab",
+   "grows_wild_in": "Plains, Mountain heath",
+   "size_m": {
+    "w": 2.91,
+    "h": 2.56,
+    "d": 2.85,
+    "collider_w": 0.4
+   },
+   "harvest_risk": "low",
+   "corpus": {
+    "pieces": 428,
+    "builds": 35
+   }
+  },
+  {
+   "prefab": "Bush02_en",
+   "kind": "bush",
+   "placed_as": "world prefab",
+   "grows_wild_in": "Black Forest, Swamp, Mistlands",
+   "size_m": {
+    "w": 3.43,
+    "h": 5.11,
+    "d": 3.53,
+    "collider_w": 0.8
+   },
+   "harvest_risk": "low",
+   "corpus": {
+    "pieces": 496,
+    "builds": 49
+   }
+  },
+  {
+   "prefab": "RaspberryBush",
+   "kind": "bush",
+   "placed_as": "world prefab (Pickable), placed by blueprint",
+   "grows_wild_in": "Meadows",
+   "size_m": {
+    "w": 2.91,
+    "h": 2.56,
+    "d": 2.85,
+    "collider_w": 0.4
+   },
+   "harvest_risk": "high",
+   "corpus": {
+    "pieces": 887,
+    "builds": 80
+   },
+   "note": "berries are food: Foraging.Nearest picks them; yards.js BUSHES places it in Meadows yards"
+  },
+  {
+   "prefab": "BlueberryBush",
+   "kind": "bush",
+   "placed_as": "world prefab (Pickable)",
+   "grows_wild_in": "Black Forest",
+   "size_m": {
+    "w": 2.91,
+    "h": 2.56,
+    "d": 2.85,
+    "collider_w": 0.4
+   },
+   "harvest_risk": "high",
+   "corpus": {
+    "pieces": 711,
+    "builds": 62
+   },
+   "note": "food Pickable; yards.js BUSHES places it"
+  },
+  {
+   "prefab": "CloudberryBush",
+   "kind": "bush",
+   "placed_as": "world prefab (Pickable)",
+   "grows_wild_in": "Plains",
+   "size_m": {
+    "w": 0.99,
+    "h": 0.87,
+    "d": 0.69
+   },
+   "harvest_risk": "high",
+   "corpus": {
+    "pieces": 629,
+    "builds": 36
+   },
+   "note": "food Pickable; yards.js BUSHES places it"
+  },
+  {
+   "prefab": "AshlandsBush1",
+   "kind": "bush",
+   "placed_as": "world prefab",
+   "grows_wild_in": "Ashlands",
+   "size_m": {
+    "w": 3.39,
+    "h": 2.65,
+    "d": 2.29,
+    "collider_w": 3.39
+   },
+   "harvest_risk": "low",
+   "corpus": {
+    "pieces": 54,
+    "builds": 2
+   }
+  },
+  {
+   "prefab": "AshlandsBush2",
+   "kind": "bush",
+   "placed_as": "world prefab",
+   "grows_wild_in": "Ashlands",
+   "size_m": {
+    "w": 0.23,
+    "h": 0.26,
+    "d": 0.3
+   },
+   "harvest_risk": "low",
+   "corpus": {
+    "pieces": 54,
+    "builds": 1
+   }
+  },
+  {
+   "prefab": "Beech_small1",
+   "kind": "tree",
+   "placed_as": "world prefab",
+   "grows_wild_in": "Meadows",
+   "size_m": {
+    "w": 2.54,
+    "h": 3.78,
+    "d": 2.31,
+    "collider_w": 0.2
+   },
+   "harvest_risk": "high",
+   "corpus": {
+    "pieces": 559,
+    "builds": 51
+   },
+   "note": "small tree; if it is a TreeBase the Woodcutter profile fells it for wood"
+  },
+  {
+   "prefab": "Beech_small2",
+   "kind": "tree",
+   "placed_as": "world prefab",
+   "grows_wild_in": "Meadows",
+   "size_m": {
+    "w": 2.97,
+    "h": 3.88,
+    "d": 2.61,
+    "collider_w": 0.2
+   },
+   "harvest_risk": "high",
+   "corpus": {
+    "pieces": 90,
+    "builds": 11
+   },
+   "note": "as Beech_small1"
+  },
+  {
+   "prefab": "Beech1",
+   "kind": "tree",
+   "placed_as": "world prefab, or cultivator (Beech seeds) grows one",
+   "grows_wild_in": "Meadows",
+   "size_m": {
+    "w": 19.08,
+    "h": 30.46,
+    "d": 21.5,
+    "collider_w": 9.92
+   },
+   "harvest_risk": "high",
+   "corpus": {
+    "pieces": 65,
+    "builds": 16
+   },
+   "note": "TreeBase: felled for Wood; grown from a sapling it is a new object without the village mark"
+  },
+  {
+   "prefab": "Birch1",
+   "kind": "tree",
+   "placed_as": "world prefab, or cultivator (Birch seeds)",
+   "grows_wild_in": "Plains, Meadows edge",
+   "size_m": null,
+   "harvest_risk": "high",
+   "corpus": {
+    "pieces": 18,
+    "builds": 6
+   },
+   "note": "TreeBase: Fine wood"
+  },
+  {
+   "prefab": "Birch1_aut",
+   "kind": "tree",
+   "placed_as": "world prefab",
+   "grows_wild_in": "Plains",
+   "size_m": null,
+   "harvest_risk": "high",
+   "corpus": {
+    "pieces": 16,
+    "builds": 3
+   },
+   "note": "autumn color birch"
+  },
+  {
+   "prefab": "Birch2",
+   "kind": "tree",
+   "placed_as": "world prefab",
+   "grows_wild_in": "Plains",
+   "size_m": null,
+   "harvest_risk": "high",
+   "corpus": {
+    "pieces": 4,
+    "builds": 4
+   }
+  },
+  {
+   "prefab": "Oak1",
+   "kind": "tree",
+   "placed_as": "world prefab, or cultivator (Acorns)",
+   "grows_wild_in": "Meadows",
+   "size_m": null,
+   "harvest_risk": "high",
+   "corpus": {
+    "pieces": 8,
+    "builds": 6
+   },
+   "note": "TreeBase: Fine wood; needs 6 m free to grow from seed (Valheim wiki, Cultivator)"
+  },
+  {
+   "prefab": "FirTree_small",
+   "kind": "tree",
+   "placed_as": "world prefab",
+   "grows_wild_in": "Black Forest",
+   "size_m": {
+    "w": 6.25,
+    "h": 10.89,
+    "d": 7.18,
+    "collider_w": 0.8
+   },
+   "harvest_risk": "high",
+   "corpus": {
+    "pieces": 421,
+    "builds": 75
+   },
+   "note": "small fir; check TreeBase"
+  },
+  {
+   "prefab": "FirTree",
+   "kind": "tree",
+   "placed_as": "world prefab, or cultivator (Fir cone)",
+   "grows_wild_in": "Black Forest, Mountain",
+   "size_m": {
+    "w": 6.25,
+    "h": 10.89,
+    "d": 7.18,
+    "collider_w": 0.8
+   },
+   "harvest_risk": "high",
+   "corpus": {
+    "pieces": 42,
+    "builds": 8
+   },
+   "note": "TreeBase: Wood"
+  },
+  {
+   "prefab": "FirTree_small_dead",
+   "kind": "tree",
+   "placed_as": "world prefab",
+   "grows_wild_in": "Black Forest",
+   "size_m": {
+    "w": 6.25,
+    "h": 10.89,
+    "d": 7.18,
+    "collider_w": 0.8
+   },
+   "harvest_risk": "high",
+   "corpus": {
+    "pieces": 133,
+    "builds": 15
+   },
+   "note": "dead small fir"
+  },
+  {
+   "prefab": "Pinetree_01",
+   "kind": "tree",
+   "placed_as": "world prefab, or cultivator (Pine cone)",
+   "grows_wild_in": "Black Forest",
+   "size_m": null,
+   "harvest_risk": "high",
+   "corpus": {
+    "pieces": 6,
+    "builds": 2
+   },
+   "note": "TreeBase: Core wood"
+  },
+  {
+   "prefab": "SwampTree1",
+   "kind": "tree",
+   "placed_as": "world prefab",
+   "grows_wild_in": "Swamp",
+   "size_m": {
+    "w": 12.28,
+    "h": 21.73,
+    "d": 6.99,
+    "collider_w": 5.26
+   },
+   "harvest_risk": "high",
+   "corpus": {
+    "pieces": 90,
+    "builds": 6
+   },
+   "note": "TreeBase: Ancient bark"
+  },
+  {
+   "prefab": "SwampTree2",
+   "kind": "tree",
+   "placed_as": "world prefab",
+   "grows_wild_in": "Swamp",
+   "size_m": null,
+   "harvest_risk": "high",
+   "corpus": {
+    "pieces": 29,
+    "builds": 6
+   }
+  },
+  {
+   "prefab": "SwampTree2_darkland",
+   "kind": "tree",
+   "placed_as": "world prefab",
+   "grows_wild_in": "Swamp",
+   "size_m": null,
+   "harvest_risk": "high",
+   "corpus": {
+    "pieces": 10,
+    "builds": 4
+   }
+  },
+  {
+   "prefab": "YggaShoot_small1",
+   "kind": "tree",
+   "placed_as": "world prefab",
+   "grows_wild_in": "Mistlands",
+   "size_m": {
+    "w": 1.75,
+    "h": 3.84,
+    "d": 2.0,
+    "collider_w": 0.97
+   },
+   "harvest_risk": "high",
+   "corpus": {
+    "pieces": 111,
+    "builds": 19
+   },
+   "note": "TreeBase: Yggdrasil wood (needs a black metal axe)"
+  },
+  {
+   "prefab": "YggaShoot1",
+   "kind": "tree",
+   "placed_as": "world prefab",
+   "grows_wild_in": "Mistlands",
+   "size_m": null,
+   "harvest_risk": "high",
+   "corpus": {
+    "pieces": 13,
+    "builds": 6
+   }
+  },
+  {
+   "prefab": "YggaShoot2",
+   "kind": "tree",
+   "placed_as": "world prefab",
+   "grows_wild_in": "Mistlands",
+   "size_m": null,
+   "harvest_risk": "high",
+   "corpus": {
+    "pieces": 23,
+    "builds": 7
+   }
+  },
+  {
+   "prefab": "YggaShoot3",
+   "kind": "tree",
+   "placed_as": "world prefab",
+   "grows_wild_in": "Mistlands",
+   "size_m": null,
+   "harvest_risk": "high",
+   "corpus": {
+    "pieces": 19,
+    "builds": 8
+   }
+  },
+  {
+   "prefab": "root07",
+   "kind": "root",
+   "placed_as": "world prefab (Swamp roots)",
+   "grows_wild_in": "Swamp",
+   "size_m": {
+    "w": 1.22,
+    "h": 1.61,
+    "d": 0.44,
+    "collider_w": 1.22
+   },
+   "harvest_risk": "low",
+   "corpus": {
+    "pieces": 1970,
+    "builds": 25
+   },
+   "note": "corpus uses them as dressing, often scaled up to 4x"
+  },
+  {
+   "prefab": "root08",
+   "kind": "root",
+   "placed_as": "world prefab",
+   "grows_wild_in": "Swamp",
+   "size_m": {
+    "w": 2.33,
+    "h": 0.64,
+    "d": 2.17,
+    "collider_w": 2.33
+   },
+   "harvest_risk": "low",
+   "corpus": {
+    "pieces": 44,
+    "builds": 8
+   }
+  },
+  {
+   "prefab": "root11",
+   "kind": "root",
+   "placed_as": "world prefab",
+   "grows_wild_in": "Swamp",
+   "size_m": {
+    "w": 1.67,
+    "h": 0.38,
+    "d": 2.07,
+    "collider_w": 2.07
+   },
+   "harvest_risk": "low",
+   "corpus": {
+    "pieces": 85,
+    "builds": 13
+   }
+  },
+  {
+   "prefab": "root12",
+   "kind": "root",
+   "placed_as": "world prefab",
+   "grows_wild_in": "Swamp",
+   "size_m": {
+    "w": 1.35,
+    "h": 0.38,
+    "d": 2.76,
+    "collider_w": 2.76
+   },
+   "harvest_risk": "low",
+   "corpus": {
+    "pieces": 168,
+    "builds": 13
+   }
+  },
+  {
+   "prefab": "HugeRoot1",
+   "kind": "root",
+   "placed_as": "world prefab",
+   "grows_wild_in": "Mistlands",
+   "size_m": {
+    "w": 29.27,
+    "h": 10.07,
+    "d": 11.8,
+    "collider_w": 29.27
+   },
+   "harvest_risk": "low",
+   "corpus": {
+    "pieces": 395,
+    "builds": 11
+   }
+  },
+  {
+   "prefab": "Pickable_Carrot",
+   "kind": "crop",
+   "placed_as": "grown crop (Pickable); cultivator plants sapling_carrot",
+   "grows_wild_in": "Meadows on",
+   "size_m": {
+    "w": 0.42,
+    "h": 1.14,
+    "d": 0.42
+   },
+   "harvest_risk": "high",
+   "corpus": {
+    "pieces": 116,
+    "builds": 5
+   },
+   "note": "food Pickable"
+  },
+  {
+   "prefab": "Pickable_Turnip",
+   "kind": "crop",
+   "placed_as": "grown crop (Pickable)",
+   "grows_wild_in": "Swamp on",
+   "size_m": {
+    "w": 0.59,
+    "h": 0.93,
+    "d": 0.59
+   },
+   "harvest_risk": "high",
+   "corpus": {
+    "pieces": 93,
+    "builds": 2
+   },
+   "note": "food Pickable"
+  },
+  {
+   "prefab": "Pickable_Onion",
+   "kind": "crop",
+   "placed_as": "grown crop (Pickable)",
+   "grows_wild_in": "Mountain on",
+   "size_m": {
+    "w": 0.82,
+    "h": 1.64,
+    "d": 0.82
+   },
+   "harvest_risk": "high",
+   "corpus": {
+    "pieces": 56,
+    "builds": 2
+   },
+   "note": "food Pickable"
+  },
+  {
+   "prefab": "Pickable_Barley",
+   "kind": "crop",
+   "placed_as": "grown crop (Pickable)",
+   "grows_wild_in": "Plains",
+   "size_m": {
+    "w": 1.04,
+    "h": 1.46,
+    "d": 1.18
+   },
+   "harvest_risk": "high",
+   "corpus": {
+    "pieces": 6,
+    "builds": 1
+   },
+   "note": "food Pickable"
+  },
+  {
+   "prefab": "Pickable_Flax",
+   "kind": "crop",
+   "placed_as": "grown crop (Pickable)",
+   "grows_wild_in": "Plains",
+   "size_m": null,
+   "harvest_risk": "high",
+   "corpus": {
+    "pieces": 5,
+    "builds": 1
+   },
+   "note": "gives Flax (not food)"
+  },
+  {
+   "prefab": "Pickable_Barley_Wild",
+   "kind": "crop",
+   "placed_as": "world prefab (Pickable)",
+   "grows_wild_in": "Plains",
+   "size_m": null,
+   "harvest_risk": "high",
+   "corpus": {
+    "pieces": 8,
+    "builds": 1
+   }
+  },
+  {
+   "prefab": "Pickable_Flax_Wild",
+   "kind": "crop",
+   "placed_as": "world prefab (Pickable)",
+   "grows_wild_in": "Plains",
+   "size_m": null,
+   "harvest_risk": "high",
+   "corpus": {
+    "pieces": 12,
+    "builds": 1
+   }
+  },
+  {
+   "prefab": "Pickable_SeedOnion",
+   "kind": "crop",
+   "placed_as": "grown seed crop (Pickable)",
+   "grows_wild_in": "Mountain on",
+   "size_m": {
+    "w": 0.75,
+    "h": 1.92,
+    "d": 0.77
+   },
+   "harvest_risk": "high",
+   "corpus": {
+    "pieces": 160,
+    "builds": 13
+   },
+   "note": "gives seeds"
+  },
+  {
+   "prefab": "Pickable_SeedCarrot",
+   "kind": "crop",
+   "placed_as": "grown seed crop (Pickable)",
+   "grows_wild_in": "Meadows on",
+   "size_m": null,
+   "harvest_risk": "high",
+   "corpus": {
+    "pieces": 35,
+    "builds": 7
+   },
+   "note": "gives seeds"
+  },
+  {
+   "prefab": "Pickable_SeedTurnip",
+   "kind": "crop",
+   "placed_as": "grown seed crop (Pickable)",
+   "grows_wild_in": "Swamp on",
+   "size_m": null,
+   "harvest_risk": "high",
+   "corpus": {
+    "pieces": 39,
+    "builds": 7
+   },
+   "note": "gives seeds"
+  },
+  {
+   "prefab": "piece_pot1",
+   "kind": "pot",
+   "placed_as": "placed piece (pot)",
+   "grows_wild_in": "any",
+   "size_m": {
+    "w": 0.76,
+    "h": 0.95,
+    "d": 0.76,
+    "collider_w": 0.55
+   },
+   "harvest_risk": "none",
+   "corpus": {
+    "pieces": 601,
+    "builds": 112
+   },
+   "note": "a pot; how it is unlocked not checked"
+  },
+  {
+   "prefab": "piece_pot2",
+   "kind": "pot",
+   "placed_as": "placed piece (pot)",
+   "grows_wild_in": "any",
+   "size_m": {
+    "w": 0.69,
+    "h": 1.59,
+    "d": 0.69,
+    "collider_w": 0.55
+   },
+   "harvest_risk": "none",
+   "corpus": {
+    "pieces": 621,
+    "builds": 129
+   }
+  },
+  {
+   "prefab": "piece_pot3",
+   "kind": "pot",
+   "placed_as": "placed piece (pot)",
+   "grows_wild_in": "any",
+   "size_m": {
+    "w": 0.9,
+    "h": 0.72,
+    "d": 0.9,
+    "collider_w": 0.7
+   },
+   "harvest_risk": "none",
+   "corpus": {
+    "pieces": 513,
+    "builds": 116
+   }
+  },
+  {
+   "prefab": "piece_pot2_red",
+   "kind": "pot",
+   "placed_as": "placed piece (pot)",
+   "grows_wild_in": "any",
+   "size_m": {
+    "w": 0.69,
+    "h": 1.59,
+    "d": 0.69,
+    "collider_w": 0.55
+   },
+   "harvest_risk": "none",
+   "corpus": {
+    "pieces": 868,
+    "builds": 14
+   }
+  },
+  {
+   "prefab": "piece_pot2_cracked",
+   "kind": "pot",
+   "placed_as": "placed piece (pot)",
+   "grows_wild_in": "any",
+   "size_m": {
+    "w": 0.69,
+    "h": 1.59,
+    "d": 0.69,
+    "collider_w": 0.55
+   },
+   "harvest_risk": "none",
+   "corpus": {
+    "pieces": 121,
+    "builds": 18
+   }
+  },
+  {
+   "prefab": "ashland_pot2_red",
+   "kind": "pot",
+   "placed_as": "world prefab (Ashlands pot)",
+   "grows_wild_in": "Ashlands",
+   "size_m": {
+    "w": 0.69,
+    "h": 1.59,
+    "d": 0.69,
+    "collider_w": 0.55
+   },
+   "harvest_risk": "none",
+   "corpus": {
+    "pieces": 226,
+    "builds": 2
+   }
+  },
+  {
+   "prefab": "piece_xmastree",
+   "kind": "seasonal",
+   "placed_as": "hammer piece (Yule tree)",
+   "grows_wild_in": "any",
+   "size_m": {
+    "w": 1.56,
+    "h": 2.8,
+    "d": 1.8,
+    "collider_w": 0.2
+   },
+   "harvest_risk": "none",
+   "corpus": {
+    "pieces": 664,
+    "builds": 165
+   },
+   "note": "a Piece: never a gather target"
+  },
+  {
+   "prefab": "cultivate",
+   "kind": "ground",
+   "placed_as": "cultivator mode (tilled ground)",
+   "grows_wild_in": "Meadows on",
+   "size_m": null,
+   "harvest_risk": "none",
+   "corpus": {
+    "pieces": 25,
+    "builds": 1
+   },
+   "note": "terrain change, no object"
+  },
+  {
+   "prefab": "replant",
+   "kind": "ground",
+   "placed_as": "cultivator mode (grass back)",
+   "grows_wild_in": "any",
+   "size_m": null,
+   "harvest_risk": "none",
+   "corpus": {
+    "pieces": 91,
+    "builds": 3
+   },
+   "note": "terrain change, no object"
+  }
+ ],
+ "not_greenery": {
+  "ashwood_decowall_tree": "Ashlands wall panel with a tree carved on it (9,931 pieces in 241 builds): a wall decor piece, no plant",
+  "Pickable_Branch": "loose stick, gathered for wood when wood is wanted",
+  "FirTree_oldLog": "fallen log",
+  "stubbe": "stump"
+ }
+}

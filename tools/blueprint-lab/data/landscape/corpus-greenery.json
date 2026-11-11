@@ -1,0 +1,156 @@
+{
+ "about": "Where vanilla greenery stands in the corpus builds, measured 2026-11-11 on Tyler's PC (C:\\Users\\tyler\\Downloads\\Villheim-blueprints, read only): 2,153 .blueprint files read one at a time (hs_ files, OverDrive files, folders starting with _ and .vbuild files skipped), 610 with vanilla greenery, 609 after duplicates (same key, piece count and greenery count) were dropped. Mod pieces (mm_, OH_, BFP_, teq_, custompiece, Hayze, BSB_, rae_, GB_, _bal) are left out. Commands are in docs/handoffs/2026-11-10-design/landscaping.md. Builds with more than 800 greenery pieces are sampled every k-th piece and weighted back; piece counts are weighted, build counts are plain.",
+ "classes": {
+  "vine": "vines, VineAsh, VineGreen",
+  "tree": "Beech1, Beech_small1/2, Birch1/2, Birch1_aut, Oak1, FirTree, FirTree_small, FirTree_small_dead, Pinetree_01, SwampTree1/2, YggaShoot*",
+  "bush": "shrub_2, shrub_2_heath, Bush01, Bush01_heath, Bush02_en, RaspberryBush, BlueberryBush, CloudberryBush, AshlandsBush1/2",
+  "flower": "Pickable_Dandelion, Pickable_Thistle, Pickable_Fiddlehead, Fiddleheadfern, FernAshlands",
+  "mushroom": "Pickable_Mushroom, _yellow, _blue, _Magecap, GlowingMushroom",
+  "crop": "Pickable_Carrot, _Turnip, _Onion, _Barley, _Flax, _Seed*, wild barley and flax",
+  "root": "root07, root08, root11, root12, HugeRoot1",
+  "pot": "piece_pot1/2/3 and their red and cracked forms, ashland_pot*",
+  "xmas": "piece_xmastree"
+ },
+ "places": {
+  "indoors": "a roof or floor over it and walls or fences met by at least 6 of 8 rays within 12 m",
+  "on roof": "standing on a roof piece",
+  "on wall": "a vine within 0.8 m of a wall piece's box (wall, door, window, gate, stone block)",
+  "raised by a wall": "more than 0.4 m above the local ground (lowest piece within 4 m), within 1 m of a wall, open sky: window boxes, sills, ledges",
+  "under eaves or porch": "a roof or floor over it, open to at least 3 sides",
+  "raised, away from walls": "more than 0.4 m above the local ground, over 1 m from a wall: decks, terraces, planters, tables, and terrain that drops away",
+  "against a wall": "on the ground within 1.5 m of a wall",
+  "path edge": "on the ground within 1.6 m of a floor piece laid at ground level outside",
+  "courtyard": "on the ground, walls or fences met by 6 of 8 rays, a wall within 12 m",
+  "along a fence": "within 1.5 m of a fence piece",
+  "yard": "on the ground, within 10 m of a wall",
+  "grounds": "on the ground, more than 10 m from any wall",
+  "note": "First match wins in this order: indoors, on roof, on wall, raised by a wall, under eaves or porch, raised away from walls, against a wall, path edge, courtyard, along a fence, yard, grounds."
+ },
+ "builds_with_greenery": 609,
+ "builds_by_class": {"flower": 217, "bush": 212, "pot": 189, "vine": 168, "tree": 166, "xmas": 165, "mushroom": 91, "root": 38, "crop": 23},
+ "pieces_by_class": {"vine": 24033, "mushroom": 9784, "bush": 5560, "pot": 3084, "root": 2662, "flower": 2472, "tree": 1664, "xmas": 664, "crop": 536},
+ "pieces_per_build": {"p25": 3, "median": 12, "p75": 52, "p90": 207},
+ "builds_by_class_place": {
+  "vine": {"on wall": 140, "indoors": 109, "raised, away from walls": 85, "under eaves or porch": 60, "on roof": 43, "raised by a wall": 42, "yard": 12, "path edge": 12, "against a wall": 11, "grounds": 9, "courtyard": 8, "along a fence": 6},
+  "flower": {"grounds": 79, "yard": 78, "under eaves or porch": 77, "indoors": 74, "raised, away from walls": 66, "against a wall": 42, "raised by a wall": 24, "path edge": 15, "courtyard": 14, "along a fence": 4, "on roof": 2},
+  "bush": {"raised, away from walls": 113, "yard": 98, "under eaves or porch": 92, "grounds": 88, "indoors": 76, "against a wall": 54, "raised by a wall": 51, "path edge": 25, "courtyard": 22, "along a fence": 7, "on roof": 4},
+  "tree": {"raised, away from walls": 88, "grounds": 75, "yard": 63, "under eaves or porch": 39, "indoors": 26, "against a wall": 25, "raised by a wall": 23, "courtyard": 13, "path edge": 6, "along a fence": 4, "on roof": 2},
+  "mushroom": {"raised, away from walls": 53, "grounds": 27, "yard": 25, "indoors": 20, "under eaves or porch": 20, "against a wall": 17, "raised by a wall": 17, "courtyard": 11, "on roof": 4, "path edge": 3, "along a fence": 1},
+  "crop": {"raised, away from walls": 14, "grounds": 9, "yard": 6, "against a wall": 6, "raised by a wall": 6, "indoors": 4, "under eaves or porch": 3, "courtyard": 2, "path edge": 1, "along a fence": 1},
+  "pot": {"indoors": 142, "under eaves or porch": 63, "raised by a wall": 54, "raised, away from walls": 39, "on roof": 17, "against a wall": 8, "path edge": 3, "along a fence": 2, "courtyard": 1, "yard": 1, "grounds": 1},
+  "root": {"raised, away from walls": 27, "raised by a wall": 20, "under eaves or porch": 15, "indoors": 14, "grounds": 9, "on roof": 7, "against a wall": 4, "yard": 4, "courtyard": 3, "path edge": 2},
+  "xmas": {"indoors": 121, "under eaves or porch": 24, "raised by a wall": 17, "raised, away from walls": 17, "on roof": 4, "against a wall": 3, "grounds": 2, "path edge": 1}
+ },
+ "pieces_by_class_place": {
+  "vine": {"on wall": 13308, "indoors": 4002, "raised, away from walls": 3928, "under eaves or porch": 1240, "on roof": 703, "raised by a wall": 198, "against a wall": 189, "courtyard": 143, "yard": 126, "along a fence": 82, "grounds": 59, "path edge": 55},
+  "flower": {"grounds": 701, "yard": 435, "raised, away from walls": 399, "under eaves or porch": 288, "indoors": 226, "against a wall": 179, "courtyard": 80, "raised by a wall": 65, "along a fence": 52, "path edge": 43, "on roof": 4},
+  "bush": {"raised, away from walls": 1643, "grounds": 1181, "yard": 692, "under eaves or porch": 626, "against a wall": 399, "indoors": 365, "raised by a wall": 346, "courtyard": 119, "path edge": 107, "along a fence": 69, "on roof": 13},
+  "tree": {"grounds": 547, "raised, away from walls": 496, "yard": 240, "under eaves or porch": 106, "against a wall": 83, "indoors": 61, "raised by a wall": 58, "courtyard": 40, "path edge": 22, "along a fence": 8, "on roof": 3},
+  "crop": {"raised, away from walls": 144, "against a wall": 107, "yard": 89, "grounds": 78, "courtyard": 43, "raised by a wall": 23, "along a fence": 14, "under eaves or porch": 13, "path edge": 13, "indoors": 12}
+ },
+ "house_builds": {
+  "about": "296 builds with greenery in the folders starter-home, longhouse, building, advanced-base, farming, village, tavern, blacksmith, boat-house, storage; greenery outside (yard, grounds, against a wall, path edge, courtyard, along a fence, raised by a wall, on wall, on roof).",
+  "outdoor_per_build": {
+   "vine": {"share_with_any": 0.27, "median_when_any": 23, "p75_when_any": 64},
+   "bush": {"share_with_any": 0.36, "median_when_any": 6, "p75_when_any": 19},
+   "flower": {"share_with_any": 0.30, "median_when_any": 2, "p75_when_any": 8},
+   "tree": {"share_with_any": 0.28, "median_when_any": 3, "p75_when_any": 6},
+   "pot": {"share_with_any": 0.11, "median_when_any": 4, "p75_when_any": 8},
+   "mushroom": {"share_with_any": 0.16, "median_when_any": 8, "p75_when_any": 56},
+   "crop": {"share_with_any": 0.02, "median_when_any": 15, "p75_when_any": 23},
+   "root": {"share_with_any": 0.05, "median_when_any": 24, "p75_when_any": 91}
+  }
+ },
+ "vines": {
+  "builds": 168,
+  "prefab_builds": {"vines": 146, "VineAsh": 18, "VineGreen": 15},
+  "per_build": {"p25": 12, "median": 40, "p75": 136},
+  "share_within_0.8m_of_a_wall": 0.71,
+  "on_wall_per_wall_piece": {"median": 0.05, "p75": 0.15, "p90": 0.33},
+  "height_on_wall_m": {"p10": 1.03, "median": 5.6, "p90": 16.72},
+  "groups": {"single": 251, "pair": 147, "cluster 3-6": 351, "mass 7+": 596, "in a line": 275, "size_median": 5, "size_p90": 28},
+  "spacing_on_wall_m": {"p25": 0.11, "median": 0.28, "p75": 0.61},
+  "at_a_corner_share": 0.38,
+  "scaled_share": 0.02
+ },
+ "spacing_nearest_same_kind_m": {
+  "tree": {"all": [1.83, 2.99, 4.73], "grounds": [2.1, 3.65, 5.38], "yard": [1.92, 2.79, 4.62], "against a wall": [2.69, 3.67, 5.26], "courtyard": [1.94, 2.84, 3.98], "path edge": [3.55, 3.9, 5.18]},
+  "bush": {"all": [0.71, 1.24, 2.53], "yard": [0.77, 1.14, 2.23], "against a wall": [0.82, 1.33, 3.53], "path edge": [0.73, 1.72, 3.82], "courtyard": [0.41, 0.82, 1.73], "along a fence": [0.41, 2.69, 2.74], "grounds": [1.01, 1.97, 3.96], "raised by a wall": [0.85, 1.27, 1.9]},
+  "flower": {"all": [0.51, 1.01, 1.44], "yard": [0.41, 1.01, 1.06], "against a wall": [0.45, 0.87, 1.73], "path edge": [0.93, 1.35, 2.68], "courtyard": [0.45, 0.69, 1.0], "along a fence": [0.45, 2.74, 2.74], "raised by a wall": [0.73, 0.92, 1.39]},
+  "crop": {"all": [0.73, 0.81, 0.98], "against a wall": [0.73, 0.73, 0.77], "yard": [0.73, 0.75, 0.94]},
+  "pot": {"all": [0.22, 0.69, 2.09], "raised by a wall": [0.14, 0.31, 0.82], "under eaves or porch": [0.37, 0.77, 2.39], "indoors": [0.69, 1.01, 3.08]},
+  "note": "[p25, median, p75] of each piece's distance to the nearest piece of the same class."
+ },
+ "distance_from_walls_on_the_ground_m": {
+  "about": "Outdoor ground pieces (against a wall, yard, path edge, courtyard, along a fence): distance to the nearest wall box [p25, median, p75].",
+  "bush": [1.39, 3.25, 5.43], "flower": [1.64, 3.69, 5.54], "tree": [1.74, 3.74, 5.47], "crop": [1.2, 2.06, 3.4]
+ },
+ "groups": {
+  "about": "Same-class pieces linked within 2 m. 'in a line': three or more whose spread across is under 2 % of their spread along.",
+  "bush": {"single": 1899, "pair": 422, "cluster 3-6": 274, "mass 7+": 109, "in a line": 111, "mixed prefabs": 308, "with a low border": 74},
+  "flower": {"single": 660, "pair": 203, "cluster 3-6": 95, "mass 7+": 36, "in a line": 17, "mixed prefabs": 45, "with a low border": 29},
+  "tree": {"single": 1284, "pair": 116, "cluster 3-6": 38, "mass 7+": 2, "in a line": 5, "mixed prefabs": 49},
+  "crop": {"single": 32, "pair": 17, "cluster 3-6": 25, "mass 7+": 11, "in a line": 12, "mixed prefabs": 23, "with a low border": 11},
+  "pot": {"single": 850, "pair": 172, "cluster 3-6": 180, "mass 7+": 25, "in a line": 42, "mixed prefabs": 288},
+  "mushroom": {"single": 517, "pair": 192, "cluster 3-6": 227, "mass 7+": 104},
+  "root": {"single": 854, "pair": 145, "cluster 3-6": 266, "mass 7+": 39}
+ },
+ "at_a_corner_share": {"vine": 0.381, "crop": 0.065, "flower": 0.051, "bush": 0.051, "root": 0.038, "tree": 0.032, "mushroom": 0.011, "pot": 0.004},
+ "scale": {
+  "about": "Share of pieces placed at a scale other than 1 (more than 5 % off), and the 10th and 90th percentile scale.",
+  "tree": {"scaled_share": 0.79, "p10": 0.49, "p90": 1.46},
+  "root": {"scaled_share": 0.46, "p10": 1.0, "p90": 4.0},
+  "crop": {"scaled_share": 0.39, "p10": 0.93, "p90": 1.07},
+  "bush": {"scaled_share": 0.28, "p10": 0.9, "p90": 1.29},
+  "mushroom": {"scaled_share": 0.16, "p10": 1.0, "p90": 1.55},
+  "flower": {"scaled_share": 0.03}, "vine": {"scaled_share": 0.02}, "pot": {"scaled_share": 0.0}
+ },
+ "by_culture": {
+  "about": "Culture groups from members.json (origin/design/wip-research, tools/blueprint-lab/data/culture-corpus): builds with greenery and builds per class. Groups with fewer than 5 builds with greenery are left out (celtic 1, celtic-crannog 2, east-asian 3, tree-house 3, greco-roman 1, steppe 1, mistlands 4).",
+  "unsorted": {"builds": 384, "class": {"bush": 133, "flower": 129, "vine": 115, "tree": 107, "pot": 103, "xmas": 89, "mushroom": 63, "root": 34, "crop": 12}},
+  "norse": {"builds": 63, "class": {"flower": 29, "bush": 26, "pot": 22, "tree": 22, "xmas": 19, "vine": 12, "mushroom": 10, "crop": 5, "root": 1}, "top_places": {"pot | indoors": 19, "flower | under eaves or porch": 18, "bush | under eaves or porch": 16, "bush | raised, away from walls": 16, "bush | grounds": 15, "bush | yard": 13, "flower | yard": 12}},
+  "ashlands": {"builds": 48, "class": {"pot": 28, "xmas": 21, "flower": 13, "vine": 12, "bush": 9, "tree": 9, "mushroom": 3}, "top_places": {"pot | indoors": 19, "vine | on wall": 9, "vine | indoors": 8, "flower | grounds": 7, "pot | raised by a wall": 7}},
+  "castle": {"builds": 28, "class": {"pot": 11, "bush": 10, "flower": 10, "vine": 10, "xmas": 8, "tree": 8, "mushroom": 4}, "top_places": {"vine | on wall": 10, "vine | indoors": 9, "vine | raised, away from walls": 8, "bush | grounds": 7}},
+  "norse-forest": {"builds": 24, "class": {"bush": 9, "flower": 9, "xmas": 8, "vine": 7, "pot": 6, "tree": 4, "crop": 2}, "top_places": {"vine | on wall": 7, "flower | indoors": 6, "bush | under eaves or porch": 5, "vine | on roof": 5, "flower | under eaves or porch": 5}},
+  "fantasy": {"builds": 19, "class": {"pot": 8, "flower": 7, "xmas": 6, "bush": 4, "tree": 2, "vine": 2, "crop": 1}},
+  "medieval-timber": {"builds": 11, "class": {"bush": 6, "pot": 5, "flower": 5, "tree": 4, "mushroom": 4, "xmas": 3, "vine": 3, "crop": 1}, "top_places": {"bush | raised, away from walls": 4, "flower | against a wall": 3, "bush | under eaves or porch": 3, "bush | yard": 3}},
+  "norse-highland": {"builds": 7, "class": {"flower": 5, "bush": 3, "tree": 3, "mushroom": 2, "vine": 1}},
+  "fen-folk": {"builds": 5, "class": {"bush": 4, "flower": 2, "tree": 2, "vine": 2, "pot": 1, "root": 1}},
+  "modern": {"builds": 5, "class": {"flower": 3, "bush": 3, "xmas": 2}}
+ },
+ "liked": {
+  "about": "Top quarter by downloads (368 or more), 153 builds.",
+  "builds_by_class": {"flower": 57, "xmas": 51, "bush": 50, "pot": 48, "vine": 43, "tree": 38, "mushroom": 23, "root": 11, "crop": 3},
+  "top_places": {"xmas | indoors": 42, "vine | on wall": 42, "pot | indoors": 42, "vine | indoors": 33, "bush | yard": 26, "bush | under eaves or porch": 24, "flower | yard": 23, "bush | raised, away from walls": 23, "tree | yard": 21, "bush | grounds": 20, "flower | indoors": 20, "flower | grounds": 19, "bush | indoors": 19, "vine | raised, away from walls": 18, "bush | raised by a wall": 16, "pot | under eaves or porch": 16, "vine | under eaves or porch": 16, "bush | against a wall": 16, "flower | under eaves or porch": 15, "flower | raised, away from walls": 15}
+ },
+ "village_folder": {
+  "about": "The 9 village builds in the corpus with greenery (15 files): detailed-japanese-vilage, fehu-green-village, fehu-village-1, rawcliffe, realm-of-rhovanion-3497, realm-of-rhovanion-autumnwatch-3296, realm-of-rhovanion-jarnvidr-3580, the-misery, trader-village. Weighted pieces by class and place.",
+  "places": {"vine | on wall": 258, "tree | grounds": 145, "tree | raised, away from walls": 123, "vine | indoors": 93, "mushroom | raised, away from walls": 82, "bush | grounds": 63, "bush | raised, away from walls": 57, "pot | indoors": 37, "flower | grounds": 15, "vine | raised, away from walls": 15, "flower | raised, away from walls": 12, "tree | yard": 11, "bush | raised by a wall": 9, "bush | yard": 7, "vine | on roof": 5, "bush | under eaves or porch": 5, "vine | path edge": 3}
+ },
+ "most_varied_outdoor_builds": {
+  "about": "Builds with three or more of vine, bush, flower, tree, crop outside, highest downloads first (77 builds in all). Weighted counts outside.",
+  "list": [
+   ["farming/coop-d-up-farmhouse-and-bee-nery", 851, {"vine": 51, "mushroom": 46, "bush": 40, "flower": 22, "tree": 1}],
+   ["advanced-base/-2524 (Fenrir's Manor)", 615, {"mushroom": 82, "flower": 59, "bush": 47, "tree": 4, "crop": 2}],
+   ["other/the-hall-of-the-gods", 584, {"bush": 172, "tree": 47, "flower": 40, "vine": 16, "pot": 14}],
+   ["starter-home/skeggox-manor-bearded-axe-manor-for-3-vikings", 554, {"bush": 86, "flower": 57, "mushroom": 56, "vine": 28, "tree": 2}],
+   ["starter-home/the-canary-house-minor-decor-room-for-8", 392, {"bush": 19, "vine": 18, "tree": 8, "mushroom": 8, "flower": 5}],
+   ["other/henry-s-forge-kcd2-vanilla", 389, {"vine": 8, "bush": 3, "flower": 2, "tree": 2}],
+   ["advanced-base/viking-villa-for-10", 354, {"flower": 22, "crop": 12, "tree": 2, "bush": 2}],
+   ["advanced-base/kaer-moar-boar-advanced-base-for-10", 320, {"vine": 31, "pot": 22, "flower": 4, "bush": 4, "tree": 3}],
+   ["building/endgame-log-mansion", 314, {"vine": 26, "bush": 8, "flower": 4, "mushroom": 4, "tree": 2}],
+   ["village/fehu-green-village", 263, {"tree": 152, "bush": 66, "vine": 28, "flower": 10}],
+   ["building/watermill-cottage", 249, {"flower": 25, "vine": 16, "bush": 7, "tree": 2}],
+   ["castle/realm-of-rhovanion-virki-mjollhall", 238, {"bush": 32, "vine": 19, "tree": 11, "flower": 2}],
+   ["building/black-forest-outpost-18-terrain-markers-for-rivlet-early-game", 169, {"bush": 48, "vine": 32, "mushroom": 18, "flower": 15, "tree": 8}],
+   ["other/plains-triple-round-house", 857, {"bush": 20, "crop": 19, "vine": 4}],
+   ["longhouse/the-meadows-hall", 584, {"flower": 4, "tree": 4, "bush": 2}]
+  ]
+ },
+ "limits": [
+  "Heights for the raised places are not reliable: some builds carry stray pieces about 5,000 m below the rest, which sets the local ground wrong; the place names for ground pieces are not affected.",
+  "'raised, away from walls' mixes decks, terraces, planters and tables with plants on terrain that drops away; the corpus records no terrain.",
+  "Window boxes are not told apart from other ledges: 'raised by a wall' holds them all.",
+  "Few corpus builds have paths or roads laid in floor pieces, so 'path edge' is small; the corpus holds 9 village builds."
+ ]
+}

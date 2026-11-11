@@ -21,6 +21,12 @@
 // something on a stand on or over it is the corpus rate the generator is held to (lab/test_stands.js).
 const fs = require('fs'), path = require('path');
 const P = require('../lib/pieces.js'), SH = require('../lib/shapes.js'), Ck = require('../lib/checks.js'), BP = require('../lib/blueprint.js');
+// VH_SHAPES (corpus recount, docs/BLUEPRINT_LAB.md "Corpus recount with fine models"): which shapes a surface top and a
+// wall stand's clip depth are read from. Unset: the colliders (lib/shapes.js), as the committed counts were made.
+// 'coarse': what shows, the coarse parts of lib/mesh.js (VH_COARSE=1 turns its fine level off); 'fine': the fine parts.
+const SHAPES = process.env.VH_SHAPES || '';
+const MESH = SHAPES ? require('../lib/mesh.js') : null;
+const shapesOf = p => (SHAPES === 'fine' ? (MESH.worldFine(p) || MESH.world(p)) : SHAPES === 'coarse' ? MESH.world(p) : null) || SH.world(p);
 
 const ci = process.argv.indexOf('--counts'), countsOut = ci > 0 ? process.argv[ci + 1] : null;
 const argv = process.argv.filter((_, k) => ci < 0 || (k !== ci && k !== ci + 1));
@@ -101,7 +107,7 @@ function scan(ps, build, meta, S) {
     return lo;
   };
   // a chest or a barrel at its lid, the top of its box (its collider top sits far under the lid)
-  const top = (j, x, z) => { if (role(j) === 'storage' && covers(j, x, z)) return bx[j].y1; const t = bx[j].sol ? SH.topAt(bx[j].sol, x, z) : null; return t != null ? t : covers(j, x, z) ? bx[j].y1 : null; };
+  const top = (j, x, z) => { if (role(j) === 'storage' && covers(j, x, z)) return bx[j].y1; const t = SHAPES ? SH.topAt(shapesOf(ps[j]), x, z) : bx[j].sol ? SH.topAt(bx[j].sol, x, z) : null; return t != null ? t : covers(j, x, z) ? bx[j].y1 : null; };
   // what a flat stand at (x, y, z) stands on: the highest top from 14 cm under its foot to 30 cm over it
   const below = (x, y, z, self) => { let best = null, bt = -Infinity; for (const j of around(x, z, 0.02, y - 0.3, y + 0.1)) { if (j === self || bx[j].pass) continue; const t = top(j, x, z); if (t == null || t > y + 0.3 || t < y - 0.14) continue; if (t > bt) { bt = t; best = j; } } return [best, bt]; };
   const isStand = n => n === 'itemstand' || n === 'itemstandh';
@@ -178,7 +184,7 @@ function scan(ps, build, meta, S) {
         const r = role(behind), n = ps[behind].name;
         sub = n;
         S.clips[kind] = S.clips[kind] || [];
-        const dep = SH.clipDepth(SH.world(p), bx[behind].sol);
+        const dep = SHAPES ? SH.clipDepth(shapesOf(p), shapesOf(ps[behind])) : SH.clipDepth(SH.world(p), bx[behind].sol);
         S.clips[kind].push(+dep.toFixed(3));
         if (r === 'beam' || r === 'pole' || /beam|pole|log/.test(n)) anchor = h >= 2.3 ? 'rafter' : 'beam';
         else if (r === 'storage') anchor = 'chestside';

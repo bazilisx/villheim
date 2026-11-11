@@ -1,6 +1,6 @@
 // Read and write PlanBuild .blueprint files.
 function parse(text) {
-  const meta = {}, pieces = [], snaps = [], clips = [], sets = {};
+  const meta = {}, pieces = [], snaps = [], clips = [], sets = {}, greens = [];
   let mode = null;
   for (const raw of text.split(/\r?\n/)) {
     const line = raw.trim();
@@ -8,7 +8,7 @@ function parse(text) {
     if (line[0] === '#') {
       const i = line.indexOf(':');
       const key = i < 0 ? line.slice(1) : line.slice(1, i);
-      if (['Pieces', 'SnapPoints', 'Terrain', 'VillheimClips', 'VillheimPaths', 'VillheimSets'].includes(key)) mode = key;
+      if (['Pieces', 'SnapPoints', 'Terrain', 'VillheimClips', 'VillheimPaths', 'VillheimSets', 'VillheimGreen'].includes(key)) mode = key;
       else meta[key] = line.slice(i + 1).replace(/^"|"$/g, '');
       continue;
     }
@@ -22,12 +22,18 @@ function parse(text) {
     } else if (mode === 'SnapPoints' && p.length === 3) snaps.push(p.map(Number));
     else if (mode === 'VillheimSets' && p.length >= 2) sets[p[0]] = (sets[p[0]] || 0) + (+p[1] || 0);
     else if (mode === 'VillheimClips' && p.length >= 5) clips.push({ name: p[0], x: +p[1], y: +p[2], z: +p[3], d: +p[4], f: +(p[5] || 0) });
+    else if (mode === 'VillheimGreen' && p.length >= 9) greens.push({ name: p[0], x: +p[1], y: +p[2], z: +p[3], g: { k: p[4], at: p[5], src: p[6], use: p[7], own: p[8] } });
   }
   // clips made on purpose (D-098): the depth a piece may go into what shows of the walls, matched by prefab and place
   for (const c of clips) {
     const q = pieces.find(o => o.name === c.name && Math.abs(o.x - c.x) < 0.002 && Math.abs(o.y - c.y) < 0.002 && Math.abs(o.z - c.z) < 0.002);
     if (q && c.d > 0) q.wclip = c.d;
     if (q && c.f > 0) q.fclip = c.f;
+  }
+  // village greenery (D-143 to D-147), matched by prefab and place as the clips are
+  for (const c of greens) {
+    const q = pieces.find(o => !o.green && o.name === c.name && Math.abs(o.x - c.x) < 0.002 && Math.abs(o.y - c.y) < 0.002 && Math.abs(o.z - c.z) < 0.002);
+    if (q) q.green = c.g;
   }
   // the interior library's sets in the design and how many decor pieces each brought (the pool audit's richness)
   if (Object.keys(sets).length) Object.defineProperty(pieces, 'sets', { value: sets, enumerable: false });
@@ -57,6 +63,16 @@ function write(bp) {
   // Each line: prefab;x;y;z;depth into walls;depth into the set's own furniture (as the audit's furniture boxes).
   const marked = bp.pieces.filter(p => p.wclip > 0 || p.fclip > 0);
   if (marked.length) { out.push('#VillheimClips'); for (const p of marked) out.push([p.name, f(p.x), f(p.y), f(p.z), f(p.wclip || 0), f(p.fclip || 0)].join(';')); }
+  // Village greenery (lib/landscape.js; D-143 to D-147; format in docs/BLUEPRINT_LAB.md "Landscaping and greenery").
+  // A section of its own, skipped by PlanBuild and read by prefab and place as the clips above. Each line:
+  // prefab;x;y;z;class;place;source;use;owner
+  //   class   vine, bush, flower, mushroom, tree, pot, crop
+  //   place   wall, foot, eaves, yard, court, path, fence, sill (window box), or a road kit's place
+  //   source  gathered (from the wild near the village's biome), standin (paid from the chests, D-145, D-080), built
+  //   use     food: stays when picked, may be picked for food by its owner (D-144); keep: never taken by villagers
+  //   owner   home (the household of the home it serves) or shared (anyone; shared buildings and roads)
+  const green = bp.pieces.filter(p => p.green);
+  if (green.length) { out.push('#VillheimGreen'); for (const p of green) out.push([p.name, f(p.x), f(p.y), f(p.z), p.green.k, p.green.at, p.green.src, p.green.use, p.green.own].join(';')); }
   // The interior library's sets in the design (lib/kitbash.js: mined 'KB-', creative 'KC-', hand-made 'BK-') and how
   // many decor pieces each brought, for the pool audit's richness measures (lib/audit.js). Skipped by PlanBuild and
   // the mod as the section above.

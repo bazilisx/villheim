@@ -14,6 +14,9 @@
 const fs = require('fs'), path = require('path');
 const lab = path.join(__dirname, '..');
 const P = require(lab + '/lib/pieces.js');
+// VH_SHAPES=collider|coarse|fine: how deep a prop visibly sits in the ground, how high a fence, post or gate shows and how far props clip
+// into each other are read from those shapes (lab/shape_mode.js); unset: the collider boxes as the committed yards.json was made
+const SM = require('./shape_mode.js'), SHP = require(lab + '/lib/shapes.js');
 const MODELS = require(lab + '/data/piece-models.json').pieces;
 
 const compactPath = process.argv[2] || '/home/claude/study/compact.json';
@@ -74,6 +77,12 @@ function worldBox(p) {
     x0 = Math.min(x0, wx); x1 = Math.max(x1, wx); z0 = Math.min(z0, wz); z1 = Math.max(z1, wz);
   }
   return { x0, x1, z0, z1, y0: p.y + b.min[1], y1: p.y + b.max[1] };
+}
+// the piece's lowest and highest point in the shapes VH_SHAPES names (its collider box when unset or when it has no shapes)
+function vspan(o) {
+  if (!SM.MODE) return o.b;
+  if (!o.vs) { const W = SM.parts({ name: o.p.name, x: o.p.x, y: o.p.y, z: o.p.z, yaw: o.p.yaw }); o.vs = W && W.length ? { y0: Math.min(...W.map(w => w.y0)), y1: Math.max(...W.map(w => w.y1)) } : o.b; }
+  return o.vs;
 }
 // a fence-like piece's two ends along its local x (the snap points where the model has them)
 function ends(p) {
@@ -164,15 +173,15 @@ for (const d of top) {
   const lineish = out.filter(o => o.k === 'fence' || (o.k === 'wall' && o.b.y1 < g + 1.7 && o.d > 0.4) || (o.k === 'rail' && o.b.y0 > g + 0.2 && o.b.y1 < g + 1.8 && o.d > 0.4 && P.piece(o.p.name).shape === 'box'));
   for (const o of lineish) {
     if (o.k === 'fence') {
-      M.fenceKinds[o.p.name] = (M.fenceKinds[o.p.name] || 0) + 1; M.fenceTop.push(+(o.b.y1 - g).toFixed(2));
+      M.fenceKinds[o.p.name] = (M.fenceKinds[o.p.name] || 0) + 1; M.fenceTop.push(+(vspan(o).y1 - g).toFixed(2));
       const f = M.fenceByName[o.p.name] || (M.fenceByName[o.p.name] = { top: [], foot: [] });
-      f.top.push(+(o.b.y1 - g).toFixed(2)); f.foot.push(+(o.b.y0 - g).toFixed(2));
+      f.top.push(+(vspan(o).y1 - g).toFixed(2)); f.foot.push(+(vspan(o).y0 - g).toFixed(2));
     }
-    if (o.k === 'wall') { M.fenceKinds['low ' + o.p.name] = (M.fenceKinds['low ' + o.p.name] || 0) + 1; M.lowWallTop.push(+(o.b.y1 - g).toFixed(2)); }
+    if (o.k === 'wall') { M.fenceKinds['low ' + o.p.name] = (M.fenceKinds['low ' + o.p.name] || 0) + 1; M.lowWallTop.push(+(vspan(o).y1 - g).toFixed(2)); }
     if (o.k === 'rail') M.railHeight.push(+(o.p.y - g).toFixed(2));
     M.fenceOffAxis.push(Math.abs(Math.round(fold(o.p.yaw))));
   }
-  for (const o of out.filter(o => o.k === 'post' && o.d > 0.4 && o.b.y0 < g + 0.4)) M.postTop.push(+(o.b.y1 - g).toFixed(2));
+  for (const o of out.filter(o => o.k === 'post' && o.d > 0.4 && o.b.y0 < g + 0.4)) M.postTop.push(+(vspan(o).y1 - g).toFixed(2));
   // chains: pieces whose ends meet (0.45 m) at the same height band
   const segs = lineish.filter(o => o.k !== 'rail' || !lineish.some(f => f.k === 'fence' && Math.hypot(f.p.x - o.p.x, f.p.z - o.p.z) < 1)).map(o => ({ o, e: ends(o.p), used: false }));
   const near = (a, b2, r) => Math.hypot(a[0] - b2[0], a[1] - b2[1]) < r;
@@ -234,7 +243,7 @@ for (const d of top) {
   }
   // how deep pieces sit in the ground: fences, posts, path floors and props (their foot under the ground)
   for (const o of out) {
-    const sink = +(g - o.b.y0).toFixed(2);
+    const sink = +(g - vspan(o).y0).toFixed(2);
     const k = ['fence', 'post', 'gate'].includes(o.k) ? 'fence' : o.k === 'floor' ? 'floor' : ['green', 'crop', 'pile', 'seat', 'work', 'storage', 'lamp', 'sign', 'cart', 'pot', 'loose'].includes(o.k) ? 'prop' : null;
     if (k && sink > -0.3 && sink < 1.2) (M.sink[k] = M.sink[k] || []).push(sink);
   }
@@ -243,10 +252,18 @@ for (const d of top) {
   const solid = out.filter(o => !['green', 'crop', 'vine', 'floor', 'step', 'rail'].includes(o.k));
   for (let i = 0; i < solid.length; i++) for (let j = i + 1; j < solid.length; j++) {
     const A = solid[i].b, B = solid[j].b;
+    const slack = SM.MODE ? 0.5 : 0; // shown parts can stand past the collider box
     const dx = Math.min(A.x1, B.x1) - Math.max(A.x0, B.x0), dz = Math.min(A.z1, B.z1) - Math.max(A.z0, B.z0), dy = Math.min(A.y1, B.y1) - Math.max(A.y0, B.y0);
-    if (dx <= 0.02 || dz <= 0.02 || dy <= 0.02) continue;
+    if (dx <= 0.02 - slack || dz <= 0.02 - slack || dy <= 0.02 - slack) continue;
     const propA = !['fence', 'post', 'wall', 'gate'].includes(solid[i].k), propB = !['fence', 'post', 'wall', 'gate'].includes(solid[j].k);
     if (!propA && !propB) continue; // fence into post is how fences join, not a clip
+    if (SM.MODE) {
+      // VH_SHAPES: the depth the two pieces' shapes reach into each other (lib/shapes.js clipDepth, the least overlap over the separating axes)
+      const parts = o => o.sh || (o.sh = SM.parts({ name: o.p.name, x: o.p.x, y: o.p.y, z: o.p.z, yaw: o.p.yaw }));
+      const dd = SHP.clipDepth(parts(solid[i]), parts(solid[j]));
+      if (dd > 0.02) M.clipDepth.push(+dd.toFixed(2));
+      continue;
+    }
     M.clipDepth.push(+Math.min(dx, dz).toFixed(2));
   }
   // signposts (a sign within 0.4 m of a post) and scarecrows (an armor stand within 4 m of crops or greenery)
@@ -268,7 +285,7 @@ for (const d of top) {
   // gates: where they stand against the doors, what they sit in, and their posts
   for (const o of out.filter(o => o.k === 'gate')) {
     M.gates++;
-    M.gateTop.push(+(o.b.y1 - g).toFixed(2));
+    M.gateTop.push(+(vspan(o).y1 - g).toFixed(2));
     if (doorSides.has(o.side)) M.gateOnDoorSide++;
     if (doors.length) M.gateToDoor.push(+Math.min(...doors.map(p => Math.hypot(p.x - o.p.x, p.z - o.p.z))).toFixed(2));
     const e = ends(o.p);

@@ -6,6 +6,7 @@
 // A piece is {name, x, y, z, q: [qx, qy, qz, qw]} in Valheim world units (y up, left handed).
 
 const Pieces = (typeof module !== 'undefined') ? require('./pieces.js') : window.VHPieces;
+const MeshR = () => (typeof module !== 'undefined' ? require('./mesh.js') : window.VHMesh);
 
 let MODELS;
 function models() {
@@ -36,6 +37,76 @@ function meshPack() {
     MESHPACK = null;
   }
   return MESHPACK;
+}
+
+// ---------------------------------------------------------------- items on item stands
+
+// What an item stand holds, drawn where the game puts it (data/item-models.json, lab/build_models.js --items): the
+// item's proxy in its own frame, set at the stand's attach point with the item's own attach position, rotation and
+// scale (ItemStand.SetVisualItem). An item the data has no model for is a small labeled box (ITEM_MISSING lists them).
+let ITEMS;
+function itemModels() {
+  if (ITEMS !== undefined) return ITEMS;
+  ITEMS = null;
+  try {
+    if (typeof window !== 'undefined' && window.VHItemModels) ITEMS = window.VHItemModels;
+    else if (typeof require === 'function') ITEMS = require('../data/item-models.json');
+  } catch (e) {
+    ITEMS = null;
+  }
+  return ITEMS;
+}
+const ITEM_MISSING = new Set();
+function qmulR(a, b) {
+  const [ax, ay, az, aw] = a, [bx, by, bz, bw] = b;
+  return [aw * bx + ax * bw + ay * bz - az * by, aw * by - ax * bz + ay * bw + az * bx, aw * bz + ax * by - ay * bx + az * bw, aw * bw - ax * bx - ay * by - az * bz];
+}
+/** The item a stand holds: p.item ({name} or a name) as the generator sets it, or the info field read from a file. */
+function standItemName(p) {
+  if (!/^itemstand/.test(p.name)) return null;
+  const it = p.item ? (typeof p.item === 'string' ? p.item : p.item.name) : (p.info && /^[A-Za-z]/.test(p.info) ? p.info.split(':')[0] : null);
+  return it || null;
+}
+/** Each held item as a piece of its own, '@item:<name>', placed in the world as the game places it. */
+function standItems(pieces, opts = {}) {
+  const IM = itemModels();
+  if (opts.items === false) return [];
+  const out = [];
+  for (const p of pieces) {
+    const n = standItemName(p);
+    if (!n) continue;
+    const it = IM && IM.items[n];
+    const at = it && it.at && it.at[p.name];
+    const q = p.q || [0, 0, 0, 1], sc = p.s || [1, 1, 1];
+    if (!at) {
+      // no model: a small box over the stand's attach point, labeled with the item's name
+      ITEM_MISSING.add(n);
+      const st = IM && IM.stands && IM.stands[p.name];
+      const a = st ? st.attach.t : [0, 0.05, 0];
+      const r = rotate(q, [a[0] * sc[0], a[1] * sc[1], a[2] * sc[2] + (p.name === 'itemstand' ? 0.05 : 0)]);
+      out.push({ name: '@item:?', label: n, x: p.x + r[0], y: p.y + r[1] + (p.name === 'itemstandh' ? 0.05 : 0), z: p.z + r[2], q });
+      continue;
+    }
+    const r = rotate(q, [at.c[0] * sc[0], at.c[1] * sc[1], at.c[2] * sc[2]]);
+    out.push({ name: '@item:' + n, x: p.x + r[0], y: p.y + r[1], z: p.z + r[2], q: qmulR(q, at.q), s: at.s, stand: p });
+  }
+  return out;
+}
+const ITEM_INFO = { role: 'item', structural: false, color: '#8a7656', mat: 'wood', size: [0.1, 0.1, 0.1], shape: 'box' };
+function itemModel(name) {
+  const n = name.slice(6), IM = itemModels(), it = IM && IM.items[n];
+  const faces = [];
+  const ips = it ? it.parts || (it.k && MeshR() ? MeshR().unpack(it.k) : null) : null;
+  if (ips && ips.length) {
+    ips.forEach((part, pi) => {
+      const col = partColor(part, ITEM_INFO), pat = 0;
+      for (const f of partFaces(part)) faces.push({ ...f, ...faceFrame(f.pts, f.n), col, pat, part: pi, alpha: part.m === 'glass' ? 0.5 : 1, closed: true });
+    });
+  } else {
+    const col = hexRgb('#c8452c');
+    for (const f of partFaces({ t: 'box', c: [0, 0, 0], s: [0.1, 0.1, 0.1] })) faces.push({ ...f, ...faceFrame(f.pts, f.n), col, pat: 0, part: 0, alpha: 1, closed: true });
+  }
+  return { name, info: ITEM_INFO, faces, model: true, item: true };
 }
 
 /** Use other models (or {} for none, to draw the old box shapes). */
@@ -350,8 +421,12 @@ function pieceModel(name, useMesh) {
   const key = useMesh ? 'mesh:' + name : name;
   let m = MODEL_CACHE.get(key);
   if (m) return m;
+  if (name.startsWith('@item:')) { m = itemModel(name); MODEL_CACHE.set(key, m); return m; }
   const info = Pieces.piece(name);
-  const md = models()[name];
+  const md0 = models()[name];
+  // the parts are packed in data/piece-models.json and data/piece-fine.json (lib/mesh.js parts); a model set given
+  // to setModels may still carry its own
+  const md = md0 && !md0.parts && MeshR() ? { ...md0, parts: MeshR().parts(name) } : md0;
   const mesh = useMesh && meshPack() && meshPack()[name];
   const faces = [];
   if (mesh) {
@@ -443,7 +518,7 @@ function sceneFaces(pieces, opts = {}) {
   const out = [];
   let id = 0;
   const useMesh = opts.meshes !== false && !!meshPack();
-  for (const p of pieces) {
+  for (const p of pieces.concat(standItems(pieces, opts))) {
     const m = pieceModel(p.name, useMesh), info = m.info;
     if (opts.hide && opts.hide.includes(info.role)) continue;
     if (cut != null && (ROOF_ROLES.includes(info.role) || /^beam\d/.test(info.shape))) continue;
@@ -556,8 +631,31 @@ function frameOf(faces, opts, W, H) {
   }
   if (!isFinite(x0)) { x0 = -1; x1 = 1; y0 = -1; y1 = 1; }
   const pad = opts.pad ?? (opts.crop ? 0.03 : 0.06);
-  const s = opts.ppm || Math.min(W * (1 - 2 * pad) / (x1 - x0 || 1), H * (1 - 2 * pad) / (y1 - y0 || 1));
-  return { s, ox: W / 2 - s * (x0 + x1) / 2, oy: H / 2 + s * (y0 + y1) / 2, box: { x0, x1, y0, y1 } };
+  const fit = Math.min(W * (1 - 2 * pad) / (x1 - x0 || 1), H * (1 - 2 * pad) / (y1 - y0 || 1));
+  const s = opts.ppm || fit;
+  // a camera the viewer moved (lab page zoom and pan): the world point opts.target sits in the middle of the picture
+  if (opts.target) {
+    const [tx, ty] = project(opts.target, opts.az ?? 35, opts.el ?? 30);
+    return { s, fit, ox: W / 2 - s * tx, oy: H / 2 + s * ty, box: { x0, x1, y0, y1 } };
+  }
+  return { s, fit, ox: W / 2 - s * (x0 + x1) / 2, oy: H / 2 + s * (y0 + y1) / 2, box: { x0, x1, y0, y1 } };
+}
+
+// A world point [X, Y, Z] to camera space [x right, y up, depth toward the camera], metres, as sceneFaces turns it.
+function project(P, azDeg, elDeg) {
+  const az = azDeg * Math.PI / 180, el = elDeg * Math.PI / 180;
+  const ca = Math.cos(az), sa = Math.sin(az), ce = Math.cos(el), se = Math.sin(el);
+  const x = P[0], y = P[1], z = -P[2];
+  const x1 = x * ca - z * sa, z1 = x * sa + z * ca;
+  return [x1, y * ce - z1 * se, y * se + z1 * ce];
+}
+// Camera space back to a world point (the inverse of project).
+function unproject(C, azDeg, elDeg) {
+  const az = azDeg * Math.PI / 180, el = elDeg * Math.PI / 180;
+  const ca = Math.cos(az), sa = Math.sin(az), ce = Math.cos(el), se = Math.sin(el);
+  const [x1, yc, d] = C;
+  const y = yc * ce + d * se, z1 = -yc * se + d * ce;
+  return [x1 * ca + z1 * sa, y, -(-x1 * sa + z1 * ca)];
 }
 
 /**
@@ -566,7 +664,8 @@ function frameOf(faces, opts, W, H) {
  * filled dark, roofs left out), hide (roles), width, height, background, label, ss (supersampling, default 2),
  * crop {x0, x1, z0, z1} (world box to frame, for one room), ppm (pixels per metre; default fits the picture),
  * grid (1 m grid, top views), scale (scale bar), outline (default true), patterns (default true), models (false: old
- * box shapes). Returns {ppm, ms, faces} and the transform used.
+ * box shapes), target [X, Y, Z] (world point put in the middle of the picture; with ppm, the lab page's zoom and
+ * pan). Returns {ppm, fit (the pixels per metre that frame the whole design), ms, faces} and the transform used.
  */
 function draw(ctx, pieces, opts = {}) {
   const t0 = Date.now();
@@ -677,7 +776,7 @@ function draw(ctx, pieces, opts = {}) {
     ctx.font = `${Math.max(11, Math.round(Math.min(H, W) / 28))}px sans-serif`;
     ctx.fillText(opts.label, 10, H - 10);
   }
-  return { ppm: fr.s, ms: Date.now() - t0, faces: faces.length, ox: fr.ox, oy: fr.oy };
+  return { ppm: fr.s, fit: fr.fit, ms: Date.now() - t0, faces: faces.length, ox: fr.ox, oy: fr.oy };
 }
 
 // 1 m grid for top views: world x right, world z up the picture (az 0) or turned with az.
@@ -754,6 +853,6 @@ const VIEWS = [
   { key: 'inside', az: 35, el: 55, cut: 2.6, label: 'inside, roof off' },
 ];
 
-const api = { polygons, draw, plan, planSize, VIEWS, pieceModel, coverage, setModels, meshPack, PAT, pattern };
+const api = { polygons, draw, plan, planSize, VIEWS, pieceModel, coverage, setModels, meshPack, PAT, pattern, project, unproject, standItems, ITEM_MISSING };
 if (typeof module !== 'undefined') module.exports = api;
 else window.VHRender = api;

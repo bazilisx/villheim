@@ -215,8 +215,11 @@ function swap(m, mt) {
       name = n;
       if (cls === 'groundTorch') name = reachesM(mt.biome, 'Swamp') ? 'piece_groundtorch' : 'piece_groundtorch_wood';
     } else name = null; // dvergr, flametal and odd pieces
-    if (name && !reachesM(mt.biome, PM.needs(name))) name = cls === 'wallTorch' || cls === 'shutter' ? null : name === n ? null : name;
-    if (name && !reachesM(mt.biome, PM.needs(name))) name = null;
+    // lamps, banners, signs, stands and carvings are decor: any kind in any biome (D-065, D-126, pieces.js decorOk);
+    // building pieces come from the village's biome
+    const far = nm => PM.piece(nm).structural ? !reachesM(mt.biome, PM.needs(nm)) : !PM.decorOk(nm, mt.biome);
+    if (name && far(name)) name = cls === 'shutter' ? null : name === n ? null : name;
+    if (name && far(name)) name = null;
     out.push(name ? [name, a, o, h, r, cls, clip || 0] : null);
   }
   return out;
@@ -316,7 +319,7 @@ function plan(ctx) {
   const wallStone = /stone|marble|grausten/.test(ctx.C.wallStyle || '') && !/base/.test(ctx.C.wallStyle || '');
   // accept: an optional test of a candidate on this building (eaves: most of its pieces fit under this roof)
   const get = (kind, f, front, accept) => {
-    const key = `${kind}|${f.w || ''}x${f.h || ''}|${f.slope || ''}|${front ? 1 : 0}`;
+    const key = `${kind}|${f.w || ''}x${f.h || ''}|${f.slope || ''}${f.arch ? 'a' : ''}|${front ? 1 : 0}`; // (arch: an arched window, windows track)
     if (cache.has(key)) return cache.get(key);
     const bud = budget(ctx, front), cands = [];
     for (const m of data()) {

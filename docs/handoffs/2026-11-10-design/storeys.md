@@ -134,3 +134,96 @@ and steppe (forms).
 
 A loft over part of a hall and knee-wall lofts in homes (per-storey heights in `generate.js`), forms that take a
 storey where their corpus group shows one, then gap 2.
+
+## Round 2 (lofts)
+
+Lead's calls on the round 1 rows: the storey share follows the corpus (D-136), as built; the eave rule change stays;
+longhouses and halls get a loft or gallery over one end as corpus Norse halls have it (D-127), in place of a full
+floor over the whole hall. Files changed: `lib/styles.js`, `lib/generate.js`, `lib/checks.js` (headroom, new function),
+`lib/details.js` (wall top, new function).
+
+### What was done
+
+- Hall loft (`generate.js` `hallLoft`, `loftRail`; `styles.js` `LOFT.hall`). A two-storey longhouse at s3 gets its
+  upper floor over one end of the main wing only: a third of its length (at least 2 bays), at the end the stair or
+  ladder lands on, or the other end when the fire's place falls under it. When the climb lands in the open part, a
+  ladder is planned again under the loft. A fence rail (half walls in a kit with no fence) runs along every edge where
+  the loft meets a cell with no loft floor, with a gap where the climb comes up. The rest of the hall and its wings
+  are open to the roof; the ridge vent over a middle fire is a louver again (`from` the ridge). The loft is the only
+  upper room (`room.loft = 'hall'`). The share of the loft's length is a setting: the corpus files in the repo hold no
+  measure of it.
+- Knee-wall loft (`generate.js` `kneeLoft`, `SHs`; `styles.js` `LOFT.home`). A two-storey home at s3 with a 45 degree
+  gable roof takes its upper storey as a loft under the roof on 1 m knee walls, at a share by culture: the group's share
+  of beds under a roof slope (culture-corpus `relx` `bedsUnderSlope`) over its share of two storeys (norse 21 / 75 =
+  0.28, norse-forest 0.16, norse-highland 0.19, fen-folk 0.35, castle 0.09; stone-house, celtic, crannog and saami 0).
+  The draw comes from the household's own stream. The loft floor covers the main wing; side wings stay open to their
+  own roofs with a rail where the loft meets them. The climb lands in the cells along the ridge. Knee walls have no
+  windows, and only the gable ends take things hung on walls. Fen-folk homes (eaves 2) do not take it. The 1 m knee
+  is a setting: the corpus files in the repo hold no measure of it.
+- Per-storey wall height: the storey loop takes each storey's height from `SHs(s)`; `dctx.wallTop` carries the real
+  wall top to the details pass (`details.js` `wallTopOf`, used where corner posts and wall posts ran to
+  `F + storeys * SH`), the wall hearth's roof cut, the slope vent and the stack fallback.
+- Headroom (`checks.js` `underSlopeOK`): on an upper floor, a point under a roof slope may be lower than 2.4 m when the
+  roof over it is at least 1.0 m up (`LOFT_LOW`) and a point of the same floor with full headroom and walls lies within
+  3.0 m (`LOFT_REACH`). People walk where they can stand; the low edges hold beds and chests. Both values are settings.
+
+### Measures
+
+`/tmp/storeys2/measure.js` (in /tmp, kept out of the repo): s3d3, types home (seeds 11 and 47), longhouse, tavern,
+storage, workshop, smithy, barn (seed 11), every culture of `BIOME_CULTURE`, `request.best` with 1 try; 136 designs.
+Ridge lines are `lib/critic.js` `measure`; valleys are inner corner roof pieces per design; beds under a slope use the
+culture miner's rule (a roof or roof corner piece within 1.6 m across, pivot 0 to 2.6 m over the bed). Before is
+4990231.
+
+| Measure | Corpus | Before | After |
+|---|---|---|---|
+| beds under a roof slope, all | 14 % (relxAll), Norse 21 % | 8 % | 10 % |
+| beds under a slope, homes | | 16 % | 18 % |
+| beds under a slope, longhouses | | 7 % | 10 % |
+| longhouses with a hall loft | | 0 of 17 | 10 of 17 (the 10 two-storey ones) |
+| homes with a knee-wall loft | | 0 of 34 | 2 of 34 (over 60 seeds: norse 11 of 46 two-storey, anglo-saxon 9 of 47, norse-forest 4 of 41) |
+| ridge lines per design, median (mean) | top builds 4 | 2 (1.72) | 2 (1.72) |
+| valley pieces per design | 2.2 sites per build | 1.22 | 1.22 |
+| two storeys or more, s3 | Norse 75 % | 38 % | 38 % |
+
+Gap 2 (roofscape) was not started this round; the ridge and valley figures are the baseline for it. By plan, valleys
+come only from T, L, cross and U wings (4 on a T or cross with a narrow wing, 0 to 2 on an L, 0 on rect, long, nave
+and octagon plans), and wings share the main wing's eave height.
+
+### Checks
+
+| Check | Result |
+|---|---|
+| `node lab/test_structure.js` | all structure rules hold on 36 designs |
+| `node lab/test_sizes.js` | 0 off by more than 10 cm |
+| `node lab/make_testpool.js /tmp/storeys2/pool` (Norse Meadows) | pass, 81 designs; prefabsPerD3 14.4 (14.5 before), setShare 0.342 (0.358); nestBroken 0 |
+| `node lab/check_interiors.js lib <out> 1` | same totals as round 1: overlap 2, floating 8, stairs 1, bareFloors 1; d3 52.4 pieces of furniture per design |
+| `node lab/compare_page.js` (page rebuilt locally, then restored) | all same |
+| measure pool, 136 designs | after the last fix, the same two failures as before (castle-medieval tavern stability, castle-medieval barn headroom); the knee-loft home that failed headroom and ladders in the run (anglo-saxon nave, seed 47, climb planned in the annex) passes after the climb was kept to the main wing |
+
+### Renders
+
+`/tmp/storeys2-renders/` (`/tmp/storeys2/render2.js`: rows are roof on, cut 2.6 m over the upper floor, cut 2.6 m over
+the ground floor; before is 4990231):
+- `longhouse-blackforest-norse-forest-s3d3-13-{before,after}.png`: before, a full upper floor; after, a loft over one
+  end with a rail, the rest open to the roof.
+- `home-meadows-anglo-saxon-s3d3-7-{before,after}.png`: before, a full 3 m upper storey; after, a loft on knee walls.
+- `home-meadows-norse-cross-s3d3-12-{before,after}.png` (cross plan): after, a knee-wall loft over the main wing with
+  rails where it meets the wings, which are open to their roofs.
+
+### Open
+
+- Gap 2 (wings at their own ridge heights, valleys where wings meet): not started. A way in: per-wing storeys at s3
+  (a one-storey wing on a two-storey main runs its roof into the upper wall), which needs per-storey cells and edges in
+  the storey loop and ladders planned on the upper cells; wider wings meet the main roof in more valley pieces.
+- Lofts are furnished lightly by the decorator (few wall slots: gable ends only).
+- Loft length, knee height, `LOFT_LOW` and `LOFT_REACH` are settings with no corpus measure in the repo; the device
+  (Tyler's PC) was not connected for a corpus run.
+- Taverns keep full upper floors (guest rooms).
+
+### Changes in other tracks' files
+
+- `lib/details.js`: new `wallTopOf(ctx)`; three `F + storeys * SH` wall tops now call it (same value unless the
+  generator sets `ctx.wallTop`).
+- `lib/checks.js`: new `underSlopeOK` with `LOFT_LOW` and `LOFT_REACH`; the headroom loop collects low points and
+  passes them through it.

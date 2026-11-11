@@ -655,7 +655,16 @@ function generate(req) {
   // a loggia: the ground storey's front row of cells left open under the upper floor, on posts, the front wall and
   // door set back a row (2026-11-09 review: a second mass and depth on the front; an upper storey carried on posts)
   const w0L = wings[0];
-  const loggia = (req.details && req.details.loggia != null ? req.details.loggia
+  // a home's upper storey at s3 as a loft under the roof on low knee walls (styles.js LOFT.home: the corpus share of
+  // beds under a roof slope over its share of two storeys, by culture), drawn from the household's own stream
+  const LH = S.LOFT && S.LOFT.home;
+  const kneeLoft = !!LH && (req.details && req.details.kneeLoft != null ? req.details.kneeLoft
+    : rng((lineage * 7193 + strHash(cultureKey) * 17 + 0x10f7) >>> 0)() < (LH.share[cultureKey] || 0)) &&
+    type === 'home' && stage === 's3' && storeys === 2 && roofKind === 'gable' && r === 2 && !form && !['gables', 'court', 'octagon'].includes(plan) && w0L.alpha === 0 &&
+    !C.stoneWalls && !(C.eaves > 1) && !T.tower;
+  const SHs = s => kneeLoft && s === storeys - 1 ? LH.knee : SH; // each storey's wall height
+  if (kneeLoft) info.loft = 'knee';
+  const loggia = !kneeLoft && (req.details && req.details.loggia != null ? req.details.loggia
     : ['anglo-saxon', 'frankish-norman', 'castle-medieval', 'slavic', 'norse', 'norse-forest'].includes(cultureKey) && stage === 's3' &&
       ['home', 'tavern', 'storage', 'workshop'].includes(type) && rng(seed * 13 + 5)() < 0.6) &&
     ['rect', 'long'].includes(plan) && wings.length === 1 && w0L.alpha === 0 && w0L.D >= 5 && storeys >= 2 && F === 0 &&
@@ -810,7 +819,20 @@ function generate(req) {
     const st = stairPlan(cellsG, Math.round(SH), { door: doorCell, back: backCell, flue: stackKeep || flue });
     if (st) { ladders[0] = st; b.notes.push('A stair along the wall up to the floor above.'); }
   }
+  // under a knee-wall loft the climb comes up where people can stand: the cells along the ridge
+  if (kneeLoft) {
+    const strip = new Map([...cellsG].filter(([, [x, z]]) => inside(w0L, x, z) && Math.abs(z - w0L.cz) <= w0L.D - 2.5));
+    const lad = ladderPlan(strip, 1, { door: doorCell, back: backCell, flue: stackKeep || flue, ring: fireRing });
+    const st = stairWanted && Math.abs(SH - Math.round(SH)) < 0.01 ? stairPlan(strip, Math.round(SH), { door: doorCell, back: backCell, flue: stackKeep || flue }) : null;
+    ladders.length = 0; if (st || lad[0]) ladders.push(st || lad[0]);
+    if (!st) { const k = b.notes.indexOf('A stair along the wall up to the floor above.'); if (k >= 0) b.notes.splice(k, 1); }
+    b.notes.push('A loft under the roof on low knee walls, the climb up to it under the ridge.');
+  }
   if (climbsUp > 0 && ladders.length < climbsUp) b.notes.push('No room for a ladder with a clear foot and landing in this plan.');
+  // a hall's upper floor at s3 is a loft over one end, open to the hall and its fire, with a rail on its open side
+  // (lead's call on the storeys track, D-127: corpus Norse halls have a loft or gallery over part of the hall)
+  const loft = kneeLoft ? (wings.length > 1 ? { cells: new Map([...cells].filter(([, [x, z]]) => inside(w0L, x, z))), knee: true } : null) : hallLoft({ type, stage, storeys, flat, roofKind, plan, form, T, w0, cells, cellsG, ladders, flue, stackKeep, doorCell, backCell, side: MS ? M.fam.growSide : 1 });
+  if (loft && !loft.knee) { info.loft = 'hall'; b.notes.push('A loft over one end of the hall, open to the hall below, with a rail along its edge.'); }
 
   // details (lib/details.js): what trim this building gets, drawn from its own random stream so the rest of the
   // design comes out as before
@@ -839,9 +861,10 @@ function generate(req) {
   let top = F;
   for (let s = 0; s < storeys; s++) {
     const y0 = F + s * SH;
-    const up = ladders[s - 1], next = ladders[s];
+    const up = ladders[s - 1], next = ladders[s], SHw = SHs(s), knee = SHw < SH;
     if (s > 0) {
-      for (const [, [x, z]] of cells) if (!onLadder(up, x, z, SH) && !(flue && inRect(flue, x, z))) b.put(K.floor, x, y0, z);
+      for (const [k, [x, z]] of cells) if (!onLadder(up, x, z, SH) && !(flue && inRect(flue, x, z)) && (!loft || loft.cells.has(k))) b.put(K.floor, x, y0, z);
+      if (loft) loftRail(b, K, loft, up, y0, cells);
       if (up && up.run) putStairRun(b, K, up, y0 - SH);
       else if (up) putLadder(b, K, up, y0 - SH, SH);
       else b.notes.push('Upper floor without a ladder.');
@@ -856,7 +879,7 @@ function generate(req) {
       const isDoor = s === 0 && (e === door || e === backDoor);
       // a barn's gates: three bays on the ground, the door bay alone when the floor is raised (one stair up)
       const isGate = (dctx.profile.gateDoor && s === 0 && e === door) || T.bigDoor && s === 0 && e.out[1] < 0 && Math.abs(e.x - doorX) <= (F >= 0.9 ? 0.01 : 2.01) && Math.abs(e.z - doorZ) < 0.1;
-      let isWindow = !isDoor && !isGate && (!T.tower || (form === 'keep' && s > 0)) && (Math.round((e.x + e.z) / 2) % 2 === 0) && Math.abs(e.x - doorX) + Math.abs(e.z - doorZ) > 2.5;
+      let isWindow = !knee && !isDoor && !isGate && (!T.tower || (form === 'keep' && s > 0)) && (Math.round((e.x + e.z) / 2) % 2 === 0) && Math.abs(e.x - doorX) + Math.abs(e.z - doorZ) > 2.5;
       if (plan === 'gables' && e.out[1] >= 0) isWindow = false;
       // a gable end gets one window per floor, in its middle bay (2026-11-09 review: windows scattered over gable ends)
       const w0g = wings[0];
@@ -869,13 +892,13 @@ function generate(req) {
       // no window behind a wall hearth, on any storey (its hood and shaft stand against that bay)
       if (isWindow && hearthBay(e)) isWindow = false;
       const style = C.frontWood && plan === 'gables' ? (e.out[1] < 0 ? 'plank' : null) : null;
-      wallSegment(b, K, C, e.x, y0, e.z, e.yaw, SH, isGate ? 'gate' : isDoor ? 'door' : isWindow ? 'window' : 'wall', style);
-      if (isWindow || isDoor || isGate) (b.openings = b.openings || []).push({ e, y0, SH, storey: s, kind: isGate ? 'gate' : isDoor ? 'door' : 'window', back: e === backDoor });
+      wallSegment(b, K, C, e.x, y0, e.z, e.yaw, SHw, isGate ? 'gate' : isDoor ? 'door' : isWindow ? 'window' : 'wall', style);
+      if (isWindow || isDoor || isGate) (b.openings = b.openings || []).push({ e, y0, SH: SHw, storey: s, kind: isGate ? 'gate' : isDoor ? 'door' : 'window', back: e === backDoor });
     }
     if (C.frame || open || T.tower || form === 'stave') for (const [x, z] of verts) {
-      for (let y = y0; y < y0 + SH - 0.01;) { const h = (y0 + SH - y) >= 2 ? 2 : 1; b.put(h === 2 ? framePole(K, C) : K.pole1, x, y + h / 2, z); y += h; }
+      for (let y = y0; y < y0 + SHw - 0.01;) { const h = (y0 + SHw - y) >= 2 ? 2 : 1; b.put(h === 2 ? framePole(K, C) : K.pole1, x, y + h / 2, z); y += h; }
     }
-    for (const e of edges) b.put(K.beam, e.x, y0 + SH, e.z, e.yaw);
+    for (const e of edges) b.put(K.beam, e.x, y0 + SHw, e.z, e.yaw);
     if (s === 0 && loggia) {
       for (const e of gEdges) if (!edges.includes(e)) b.put(K.beam, e.x, y0 + SH, e.z, e.yaw); // over the set-back wall
       // posts along the open front and down its sides, carrying the upper storey
@@ -885,12 +908,16 @@ function generate(req) {
     for (const w of wings) {
       const a = w.alpha === 270;
       const room = { x0: w.cx - (a ? w.D : w.W), x1: w.cx + (a ? w.D : w.W), z0: w.cz - (a ? w.W : w.D) + (loggia && s === 0 && w === w0L ? 2 : 0), z1: w.cz + (a ? w.W : w.D),
-        y: y0, h: SH, use: T.use, upper: s > 0, door: s === 0 && w.main ? { x: doorX, z: doorZ } : null, main: !!w.main, slots: [] };
+        y: y0, h: SHw, use: T.use, upper: s > 0, door: s === 0 && w.main ? { x: doorX, z: doorZ } : null, main: !!w.main, slots: [] };
+      // over a hall with a loft the upper room is the loft alone; the rest is open to the roof
+      if (loft && s > 0) { if (!w.main) continue; if (!loft.knee) Object.assign(room, { x0: loft.x0, x1: loft.x1, loft: 'hall' }); }
+      if (knee) room.loft = 'knee';
       for (const e of (s === 0 ? gEdges : edges)) {
         if (!(e.cell[0] > room.x0 && e.cell[0] < room.x1 && e.cell[1] > room.z0 && e.cell[1] < room.z1)) continue;
         if (s === 0 && Math.abs(e.x - doorX) + Math.abs(e.z - doorZ) < 1.8) continue;
         if (backDoor && s === 0 && Math.abs(e.x - backDoor.x) + Math.abs(e.z - backDoor.z) < 1.8) continue;
         if (open === 'all' || (open === 'front' && e.out[1] < 0) || (open === 'sides' && !(e.out[1] > 0)) || arcade.has(e)) continue;
+        if (knee && e.yaw !== (w.alpha === 0 ? 90 : 0)) continue; // in a loft only the gable ends stand full height
         const ux = e.yaw === 0 ? 1 : 0, uz = e.yaw === 0 ? 0 : 1, nx = -e.out[0], nz = -e.out[1];
         for (const t of [-0.5, 0.5]) room.slots.push({ x: e.x + ux * t, z: e.z + uz * t, y: y0, yaw: e.inYaw, nx, nz });
       }
@@ -904,8 +931,9 @@ function generate(req) {
       if (form === 'open') delete room.slots; // no walls: things stand along the edges of the floor
       b.rooms.push(room);
     }
-    top = y0 + SH;
+    top = y0 + SHw;
   }
+  dctx.wallTop = top; // the top of the walls (a knee-wall loft's are lower than a full storey's)
   b.doorX = doorX;
 
   // courtyard: walls between the gallery and the rooms behind it, one door per wing, the arcade on the yard side
@@ -998,16 +1026,16 @@ function generate(req) {
     // (and the bargeboards along a rake that lose the roof they lay on)
     // (over an end hearth only the rake's ridge cap, raised with the others; over a side one the row, the eave, and the
     // bargeboards that lay on them)
-    const over = (p, m) => (o => o.x0 < col.x1 - 0.05 + m && o.x1 > col.x0 + 0.05 - m && o.z0 < col.z1 - 0.05 + m && o.z1 > col.z0 + 0.05 - m && o.y1 > F + storeys * SH - 0.3)(checksLib().catBox(p));
+    const over = (p, m) => (o => o.x0 < col.x1 - 0.05 + m && o.x1 > col.x0 + 0.05 - m && o.z0 < col.z1 - 0.05 + m && o.z1 > col.z0 + 0.05 - m && o.y1 > top - 0.3)(checksLib().catBox(p));
     const extra = !col ? [] : hearth.spot === 'end' ? takeOut(b, p => !p.decor && P.piece(p.name).role === 'roofTop' && over(p, 0))
       : takeOut(b, p => !p.decor && (['roof', 'roofTop', 'roofCorner'].includes(P.piece(p.name).role) ? over(p, 0)
         : P.piece(p.name).role === 'beam' && (p.trim || /_(26|45)$/.test(p.name)) && over(p, /_(26|45)$/.test(p.name) ? 1.2 : 0)));
     // the ridge caps over the fire's place stay out for smoke; the last pass puts them back if no fire is laid
     if (caps.length && hearth.spot === 'end') b.vents.push({ kind: 'ridge', caps: [...caps, ...extra], x: hearth.x, z: hearth.z, y: caps[0].y, rect: flue, from: F + HOOD, hood: true });
     else if (caps.length) b.vents.push({ kind: 'ridge', caps, x: avg(caps.map(c => c.x)), z: avg(caps.map(c => c.z)), y: caps[0].y,
-      rect: rectOf(caps), from: storeys > 1 ? F + SH : caps[0].y });
+      rect: rectOf(caps), from: storeys > 1 && !(loft && !loft.knee) ? F + SH : caps[0].y });
     if (hearth.spot === 'side') b.vents.push({ kind: 'slope', caps: extra, x: hearth.x, z: hearth.z, rect: flue, from: F + HOOD, hood: true,
-      y: (ys => ys.length ? Math.max(...ys) : F + storeys * SH + 1)(extra.filter(p => P.piece(p.name).role === 'roof').map(p => checksLib().catBox(p).y1)) });
+      y: (ys => ys.length ? Math.max(...ys) : top + 1)(extra.filter(p => P.piece(p.name).role === 'roof').map(p => checksLib().catBox(p).y1)) });
   }
 
   // porch at the front door: one or three bays wide, on the grid, never on top of a wing
@@ -1177,7 +1205,7 @@ function generate(req) {
   const stackFails = hearth.spot === 'stack' && !hearthStack(b, KH, C, w0, hearth, { F, SH, storeys, top: roofTop, notes: b.notes });
   // a stack that cannot stand there leaves an end hearth at the same gable before the middle: a hood over the fire and
   // its shaft up to raised ridge caps
-  const endFlue = stackFails ? endFallback(b, hearth, w0, { F, SH, storeys }) : null;
+  const endFlue = stackFails ? endFallback(b, hearth, w0, { F, SH, storeys, top }) : null;
   if (endFlue) {
     hearth.spot = 'end'; info.hearth = 'end'; info.hearthWhy = 'stack blocked';
     ventAt = { x: hearth.x, z: hearth.z }; flue = endFlue; dctx.flue = endFlue; dctx.fireKeep = endFlue;
@@ -1189,8 +1217,8 @@ function generate(req) {
     const at = { x: Math.max(w0.cx - w0.W + 1, Math.min(w0.cx + w0.W - 1, doorX)), z: w0.cz }, fr = flueRect(w0, at, w0.W - 1);
     const climbs = ladders.flatMap(l => [l.hole, l.land, l.stand, ...(l.run || [])].filter(Boolean));
     if (fr && !climbs.some(c => inRect(fr, c[0], c[1], -0.1))) {
-      const caps = takeOut(b, p => !p.decor && P.piece(p.name).role === 'roofTop' && inRect(fr, p.x, p.z) && p.y > F + storeys * SH - 0.3);
-      if (caps.length) b.vents.push({ kind: 'ridge', caps, x: avg(caps.map(c => c.x)), z: avg(caps.map(c => c.z)), y: caps[0].y, rect: rectOf(caps), from: storeys > 1 ? F + SH : caps[0].y });
+      const caps = takeOut(b, p => !p.decor && P.piece(p.name).role === 'roofTop' && inRect(fr, p.x, p.z) && p.y > top - 0.3);
+      if (caps.length) b.vents.push({ kind: 'ridge', caps, x: avg(caps.map(c => c.x)), z: avg(caps.map(c => c.z)), y: caps[0].y, rect: rectOf(caps), from: storeys > 1 && !(loft && !loft.knee) ? F + SH : caps[0].y });
     }
   }
   if (wantStack && type !== 'home' && hearth.spot === 'middle' && roofKind === 'gable' && plan !== 'gables' && !flat && !T.tower && F < 1.01 && !/stone|marble|grausten/.test(C.wallStyle || '')) chimneyStack(b, stoneOK ? K : KH, wings, edges, dctx.profile, dctx.R, { C, SH, F, storeys, hearthStone: !stoneOK, info });
@@ -2055,6 +2083,48 @@ function ladderPlan(cells, n, o = {}) {
   return out;
 }
 
+// A hall's loft (styles.js LOFT.hall): over one end of the main wing, open to the hall, its fire and the roof. The
+// end is the one the climb already reaches; when the climb lands in the open part, a ladder is planned again inside
+// the loft's footprint. Returns { cells, x0, x1, sg, xEdge } or null (the hall keeps its full upper floor).
+function hallLoft(o) {
+  const L = S.LOFT && S.LOFT.hall;
+  const { w0, cells, ladders, flue } = o;
+  if (!L || !L.types.includes(o.type) || !L.stages.includes(o.stage) || o.storeys !== 2 || o.flat || o.form || !['gable', 'hip'].includes(o.roofKind) ||
+    ['gables', 'court', 'octagon'].includes(o.plan) || w0.alpha !== 0 || w0.W < 5 || !ladders[0]) return null;
+  const cols = Math.max(2, Math.round(w0.W * L.part)); // 2 m columns along the hall
+  const make = sg => {
+    const xEdge = w0.cx + sg * (w0.W - 2 * cols); // the loft's open edge
+    const inL = x => sg * (x - xEdge) > 0;
+    const lc = new Map([...cells].filter(([, [x, z]]) => inside(w0, x, z) && inL(x)));
+    const keep = [flue, o.stackKeep].filter(Boolean);
+    if ([...lc.values()].some(([x, z]) => keep.some(r => inRect(r, x, z, 1)))) return null; // the fire stays open to the roof
+    return { cells: lc, sg, xEdge, x0: sg > 0 ? xEdge : w0.cx - w0.W, x1: sg > 0 ? w0.cx + w0.W : xEdge };
+  };
+  const land = ladders[0].land, sgLand = Math.sign(land[0] - w0.cx) || o.side || 1;
+  for (const sg of [sgLand, -sgLand]) {
+    const lo = make(sg);
+    if (!lo) continue;
+    if (lo.cells.has(`${land[0]},${land[1]}`)) return lo;
+    // a ladder inside the loft's footprint: foot, hole and landing under the loft
+    const g = new Map([...o.cellsG].filter(([k]) => lo.cells.has(k)));
+    const lad = ladderPlan(g, 1, { door: o.doorCell, back: o.backCell, flue: o.stackKeep || flue });
+    if (lad.length) { ladders[0] = lad[0]; return lo; }
+  }
+  return null;
+}
+// The rail along a loft's open edges (fence pieces, or half walls in a kit without a fence): wherever a loft cell
+// meets a cell of the building with no loft floor, with a gap where the climb comes up.
+function loftRail(b, K, lo, up, y0, cells) {
+  const climb = up ? (up.run || [up.hole]) : [];
+  for (const [, [x, z]] of lo.cells) for (const [dx, dz] of [[2, 0], [-2, 0], [0, 2], [0, -2]]) {
+    const nx = x + dx, nz = z + dz, k = `${nx},${nz}`;
+    if (lo.cells.has(k) || !cells.has(k)) continue;
+    if (climb.some(c => (c[0] === nx && c[1] === nz) || (c[0] === x && c[1] === z))) continue;
+    const ex = x + dx / 2, ez = z + dz / 2, yaw = dx ? 90 : 0;
+    if (K.fence) b.put(K.fence, ex, y0, ez, yaw); else b.put(K.wallHalf, ex, y0 + 0.5, ez, yaw);
+  }
+}
+
 // Ladder pieces for one plan entry, from the floor at yLow up 'rise' metres. A wood_stepladder climbs 2 m over 2 m
 // from its pivot at its foot. The foot stands at the near edge of the hole, so the cell before it is all clear floor;
 // for a 3 m storey the climb ends in the middle of the landing cell, whose near half stays open and whose far half
@@ -2858,7 +2928,7 @@ function endFallback(b, h, w0, o) {
   const fr = flueRect(w0, { x: h.x, z: h.z }, w0.W - 1);
   if (!fr) return null;
   const Ck = checksLib();
-  const caps = takeOut(b, p => !p.decor && P.piece(p.name).role === 'roofTop' && p.y > o.F + o.storeys * o.SH - 0.3 &&
+  const caps = takeOut(b, p => !p.decor && P.piece(p.name).role === 'roofTop' && p.y > (o.top != null ? o.top : o.F + o.storeys * o.SH) - 0.3 &&
     (a => a.x0 < fr.x1 - 0.05 && a.x1 > fr.x0 + 0.05 && a.z0 < fr.z1 - 0.05 && a.z1 > fr.z0 + 0.05)(Ck.catBox(p)));
   if (!caps.length) return null;
   b.vents.push({ kind: 'ridge', caps, x: h.x, z: h.z, y: Math.max(...caps.map(c => c.y)), rect: fr, from: o.F + HOOD, hood: true });

@@ -1666,9 +1666,56 @@ def top_error(meshes, parts, M=None):
     return {'median': round(float(np.median(d)), 1), 'p95': round(float(np.percentile(d, 95)), 1), 'max': round(float(d.max()), 1), 'cells': int(m.sum())}
 
 
+def lift_top(pt, t_up):
+    """Move the part's most upward face (a box face, a prism's end or one edge of its outline) so its height rises by
+    t_up where the face is; False when no face of the part points up by 45 degrees or more."""
+    R = quat_mat(pt.get('q', [0, 0, 0, 1]))
+    if pt['t'] == 'box':
+        k = int(np.argmax(np.abs(R[1])))
+        ny = abs(R[1, k])
+        if ny < 0.7:
+            return False
+        t = t_up * ny
+        sg = 1.0 if R[1, k] > 0 else -1.0
+        s = list(pt['s'])
+        if s[k] + t < 0.003:
+            return False
+        s[k] = round(s[k] + t, 4)
+        pt['c'] = [round(pt['c'][i] + R[i, k] * sg * t / 2, 4) for i in range(3)]
+        pt['s'] = s
+        return True
+    P = np.asarray(pt['p'], float)
+    sg = 1 if poly_signed(P) > 0 else -1
+    best, face = R[1, 2], ('z', 1.0)
+    if -R[1, 2] > best:
+        best, face = -R[1, 2], ('z', -1.0)
+    for i in range(len(P)):
+        e = P[(i + 1) % len(P)] - P[i]
+        nrm = np.array([e[1], -e[0]]) * sg
+        nrm /= max(np.linalg.norm(nrm), 1e-12)
+        ny = float(R[1, 0] * nrm[0] + R[1, 1] * nrm[1])
+        if ny > best:
+            best, face = ny, ('e', i, nrm)
+    if best < 0.7:
+        return False
+    t = t_up * best
+    if face[0] == 'z':
+        if pt['d'] + t < 0.003:
+            return False
+        pt['d'] = round(pt['d'] + t, 4)
+        pt['c'] = [round(pt['c'][i] + R[i, 2] * face[1] * t / 2, 4) for i in range(3)]
+    else:
+        i, nrm = face[1], face[2]
+        for j in (i, (i + 1) % len(P)):
+            P[j] = P[j] + nrm * t
+        pt['p'] = np.round(P, 4).tolist()
+    return True
+
+
 def snap_tops(work, names_file, reach=0.04):
-    """Each box whose top face is level is set, where it is the proxy's top, to the mesh's height there (the median of
-    the mesh's top over those cells, when it lies within 'reach'). Writes the parts back with 'tops' (before, after)."""
+    """Each part that is the proxy's top somewhere on the mesh's top area has its most upward face moved to the mesh's
+    height there (the median over those cells, when it lies within 'reach'). Writes the parts back with 'tops' (the
+    top error before and after, top_error)."""
     for n in [l.strip() for l in open(names_file) if l.strip()]:
         f = os.path.join(work, 'out', n + '.json')
         ms = load_meshes(work, n)
@@ -1683,33 +1730,24 @@ def snap_tops(work, names_file, reach=0.04):
         before = top_error(ms, parts, M)
         m = H > top - 0.15
         Xs, Zs, Hs = X[m], Z[m], H[m]
-        for _ in range(2):
+        for _ in range(3):
             tops = np.stack([ray_tops([pt], Xs, Zs) for pt in parts])  # parts x cells
             best = tops.argmax(0)
             hi = tops.max(0)
+            moved = 0
             for i, pt in enumerate(parts):
-                if pt['t'] != 'box':
-                    continue
-                R = quat_mat(pt.get('q', [0, 0, 0, 1]))
-                k = int(np.argmax(np.abs(R[1])))
-                if abs(R[1, k]) < 0.9995:
-                    continue
                 sel = (best == i) & np.isfinite(hi) & (np.abs(Hs - hi) <= reach)
                 if sel.sum() < 3:
                     continue
-                want = float(np.median(Hs[sel]))
-                cur = float(pt['c'][1] + pt['s'][k] / 2)
-                bottom = float(pt['c'][1] - pt['s'][k] / 2)
-                if abs(want - cur) < 0.0002 or want - bottom < 0.003:
-                    continue
-                s = list(pt['s']); s[k] = round(want - bottom, 4)
-                c = list(pt['c']); c[1] = round((want + bottom) / 2, 4)
-                pt['s'], pt['c'] = s, c
+                d = float(np.median(Hs[sel] - hi[sel]))
+                if abs(d) >= 0.0002 and lift_top(pt, d):
+                    moved += 1
+            if not moved:
+                break
         after = top_error(ms, parts, M)
         res['parts'], res['tops'] = parts, {'before': before, 'after': after}
         json.dump(res, open(f, 'w'))
         print(n, before, after, flush=True)
-
 
 if __name__ == '__main__':
     cmd = sys.argv[1]

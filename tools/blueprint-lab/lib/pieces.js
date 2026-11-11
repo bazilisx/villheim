@@ -346,10 +346,10 @@ function decorOk(name, biome) {
 }
 
 // D-131 (Tyler, 2026-11-11): "Wood hearths (s1) and then stone hearths (s2 and s3) acceptable in meadows onward."
-// The stone of a hearth (its stack, the alcove floor, the flags under the fire) is allowed from s2 in every biome. The
-// generator marks those pieces hearthStone where it places them (lib/generate.js hearthStack, hearthstone); the
-// materials check lets a marked piece pass here.
-const HEARTH_STONE = /^(stone_wall_(1x1|2x1|4x2)|stone_floor_2x2)$/;
+// The stone of a hearth (its stack, the alcove floor, the flags under the fire, a front of jambs and an arch or lintel)
+// is allowed from s2 in every biome. The generator marks those pieces hearthStone where it places them
+// (lib/generate.js hearthStack, hearthstone, hearthFront); the materials check lets a marked piece pass here.
+const HEARTH_STONE = /^(stone_wall_(1x1|2x1|4x2)|stone_floor_2x2|stone_arch)$/;
 function hearthStoneOk(name, stage) { return HEARTH_STONE.test(name) && +String(stage || 's1').replace(/\D/g, '') >= 2; }
 
 const apiP = { piece, minor, decorReach, decorOk, hearthStoneOk, support, supportClass, SUPPORT, needs, MAT, BIOME_ORDER, exportSize, NEEDS, DOORS, doorSpec, doorOpening, CLIMB, climbSpec };

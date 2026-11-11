@@ -862,6 +862,7 @@ function generate(req) {
   if (MS) Object.assign(dctx.profile, { outshut: !!MS.extras.outshut, balcony: !!MS.extras.balcony, dormers: !!MS.extras.dormers });
   if (req.details) Object.assign(dctx.profile, req.details);
   if (loggia) Object.assign(dctx.profile, { svalgang: false, gablePorch: false, doorHood: false });
+  if (door2) dctx.profile.gablePorch = false; // the porch's gable stood across the second leaf (Norse Meadows pool, hall s2)
   // a knee-wall loft has no upper wall for the gallery's door (the door went up into the roof: support, stability and
   // doors failed on Norse homes, integration round 4)
   if (kneeLoft) dctx.profile.svalgang = false;
@@ -2291,8 +2292,9 @@ function windowKit(cultureKey, biome, type, seed, SH) {
 // seed, so the walls come nearer the corpus count of windows per plain bay (ideas gap 3).
 const WINDOW_EXTRA = 0.45;
 function windowExtra(C, seed, e, s) {
-  // (2 m tall lights keep a plain bay between them: the headroom check wants wall 2.5 m up within 1.6 m)
-  if (!C.winKit || C.winKit.size === 'tall' || C.winKit.size === 'big') return false;
+  // (only 1 m lights, each with a 1 m wall piece in its bay: 2 m and tall lights side by side left no wall 2.5 m up
+  // within 1.6 m, which the headroom check refuses, Norse Meadows pool home s3 seed 101)
+  if (!C.winKit || C.winKit.size !== 'single') return false;
   let h = 2166136261;
   for (const ch of `${seed}|${e.x}|${e.z}|${s}|extra`) { h ^= ch.charCodeAt(0); h = Math.imul(h, 16777619); }
   return rng(h >>> 0)() < WINDOW_EXTRA;
@@ -2553,8 +2555,16 @@ function gablePieces(K, C, w, top, r, ends, vent, dctx) {
     const n0 = out.length;
     // the eave row only where its edge stays 2.3 m over the ground (r5 review: eaves at 1 to 1.5 m on 2 m walls under
     // a 45 degree roof made houses read as tents)
-    if (deep) { const i = wallRow + 1, v = 2 + 2 * i; for (const u of [...cols, ...rakeCols]) { add(roof, u, pivot(i), -v, 180, 'roof', low(i) + r / 2); add(roof, u, pivot(i), v, 0, 'roof', low(i) + r / 2); } }
-    else if (eaveOK) for (const u of [...cols, ...rakeCols]) { add(roof, u, yE, -vE, 180, 'roof', surfE); add(roof, u, yE, vE, 0, 'roof', surfE); }
+    // a side whose deep eave would reach toward another wing (an inside corner) keeps the 1 m eave: the deep row over
+    // the ground there read as a low room to the headroom check (Norse Meadows pool, home s3 seed 101)
+    const open = sv => !(dctx.wings || []).some(o => o !== w && [...cols, ...rakeCols].some(u => { const [x, z] = toWorld(w, u, sv * (w.D + 2.5), 0); return inside(o, x, z, 0.5); }));
+    for (const sv of [-1, 1]) {
+      const yaw = sv < 0 ? 180 : 0;
+      if (deep && open(sv)) { const i = wallRow + 1, v = 2 + 2 * i; for (const u of [...cols, ...rakeCols]) add(roof, u, pivot(i), sv * v, yaw, 'roof', low(i) + r / 2); }
+      else if (eaveOK) for (const u of [...cols, ...rakeCols]) add(roof, u, yE, sv * vE, yaw, 'roof', surfE);
+      else continue;
+      if (deep && !open(sv)) (dctx.eaveShort = dctx.eaveShort || new Set()).add(`${w.cx},${w.cz},${sv}`);
+    }
     for (let k = n0; k < out.length; k++) out[k].eave = true;
     for (const u of rakeCols) {
       for (let i = 0; i <= wallRow; i++) { const v = 2 + 2 * i; add(roof, u, pivot(i), -v, 180, 'roof', low(i) + r / 2); add(roof, u, pivot(i), v, 0, 'roof', low(i) + r / 2); }

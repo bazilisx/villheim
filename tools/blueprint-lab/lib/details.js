@@ -964,6 +964,8 @@ function bargeboards(K, C, w, ctx, rows, ends, add, low, pivot, r) {
   // to eaves 0.5 to 1.5 m past the wall's face (the generator's stand 0.9 m past it); a roof ending at the wall has
   // no room under it for them
   const eo0 = ctx.eaveOut || 0, top = low((w.D - 3) / 2), yE = low(rows) - (r / 2) * eo0;
+  // a side of a deep eave (D-150) kept at 1 m where it faced another wing (generate.js gablePieces)
+  const eoSide = sv => (eo0 === 2 && ctx.eaveShort && ctx.eaveShort.has(`${w.cx},${w.cz},${sv}`) ? 1 : eo0);
   const eaveSkip = p => {
     // between the wall's face and a little past the roof's edge, within the bay
     if (p.o < -eo0 + 0.15 || p.o > 0.35 || Math.abs(p.a) > 1.05) return true;
@@ -1013,7 +1015,7 @@ function bargeboards(K, C, w, ctx, rows, ends, add, low, pivot, r) {
     const edge = 3 + 2 * rows;
     let n = 0;
     for (let u = -w.W + 1; u <= w.W - 1 + 0.01; u += 2) for (const sv of [-1, 1])
-      if (!overDoor(u, sv * w.D)) n += MotifsD.roofParts(em, { x: u, y: yE, z: sv * (edge + eo0), nx: 0, nz: sv }, addM, { mirror: MT.mirror, skip: eaveSkip });
+      if (!overDoor(u, sv * w.D) && eoSide(sv) === eo0) n += MotifsD.roofParts(em, { x: u, y: yE, z: sv * (edge + eo0), nx: 0, nz: sv }, addM, { mirror: MT.mirror, skip: eaveSkip });
     if (n) { eaveDone = true; ctx.motifUsed = [...(ctx.motifUsed || []), em.m.id]; }
   }
   // rafter tails: a sloped beam at every seam of the lowest roof row, half a metre out past its edge and just under it
@@ -1076,8 +1078,11 @@ function bargeboards(K, C, w, ctx, rows, ends, add, low, pivot, r) {
     }
     // and along the overhanging eave row
     // (a deep eave, D-150: a whole row out)
-    if (eo === 2) { for (const sv of [-1, 1]) if (!overDoor(sg * w.W, sv * w.D) && !overDoor(sg * w.W, sv * (w.D - 2))) add(name, u, pivot(rows + 1), sv * (2 + 2 * (rows + 1)), (sv < 0 ? 180 : 0) + 90, 'trim', low(rows + 1) + r); }
-    else if (eo) for (const sv of [-1, 1]) if (!overDoor(sg * w.W, sv * w.D) && !overDoor(sg * w.W, sv * (w.D - 2))) add(name, u, pivot(rows) - r / 2, sv * (2 + 2 * rows + 1), (sv < 0 ? 180 : 0) + 90, 'trim', low(rows));
+    if (eo) for (const sv of [-1, 1]) {
+      if (overDoor(sg * w.W, sv * w.D) || overDoor(sg * w.W, sv * (w.D - 2))) continue;
+      if (eoSide(sv) === 2) add(name, u, pivot(rows + 1), sv * (2 + 2 * (rows + 1)), (sv < 0 ? 180 : 0) + 90, 'trim', low(rows + 1) + r);
+      else add(name, u, pivot(rows) - r / 2, sv * (2 + 2 * rows + 1), (sv < 0 ? 180 : 0) + 90, 'trim', low(rows));
+    }
     // crossed boards over the apex: the game's Wood Roof Cross (the piece is the pair of crossed boards that Norwegian
     // vindskier end in), on the ridge where it meets the gable, as a quarter of the corpus builds have it
     // the piece's boards cross 1 m (26 degrees: 0.5 m) over its pivot, so the crossing sits on the apex (it stood a

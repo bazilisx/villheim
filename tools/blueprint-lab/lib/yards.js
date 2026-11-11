@@ -643,7 +643,7 @@ function tryPlan(runs, kit, S, door, clear) {
     if (dedup.some(p => { const o = Ck.aabb(p); return hitBox(o, gzIn, 0) && Math.hypot(p.x - g.x, p.z - g.z) > 1.05 && Math.abs((p.x - g.x) * -u[1] + (p.z - g.z) * u[0]) > 0.3; })) { dbg('gate fence'); continue; }
     // every fence piece clear of what is there and of the doorways, stairs and woodpiles
     const bad = dedup.find(p => !clear(p, 0.08, S.zones));
-    if (bad) { const o = Ck.aabb(bad); const by = clear.by; clear.by = null; const zz = S.zones.find(z => hitBox(o, z, 0.08)); dbg('fence ' + (bad.attach ? 'attach ' : '') + (by ? by.info.name : zz ? 'zone' + (zz.door ? ' door' : zz.tag || '') : '?') + (global.YV && by ? ' ' + JSON.stringify([bad.x, bad.z, bad.yaw, [o.x0, o.x1, o.z0, o.z1].map(v => +v.toFixed(2)), [by.x0, by.x1, by.y0, by.y1, by.z0, by.z1].map(v => +v.toFixed(2))]) : '')); continue; }
+    if (bad) { const o = Ck.aabb(bad); const by = clear.by; clear.by = null; const zz = S.zones.find(z => hitBox(o, z, 0.08)); dbg('fence ' + (bad.attach ? 'attach ' : '') + (by ? by.info.name : zz ? 'zone' + (zz.door ? ' door' : zz.tag || '') : '?') + (typeof global !== 'undefined' && global.YV && by ? ' ' + JSON.stringify([bad.x, bad.z, bad.yaw, [o.x0, o.x1, o.z0, o.z1].map(v => +v.toFixed(2)), [by.x0, by.x1, by.y0, by.y1, by.z0, by.z1].map(v => +v.toFixed(2))]) : '')); continue; }
     void Ck;
     if (!clear(gate, 0.05, S.zones.filter(z => !z.door))) { dbg('gate'); continue; }
     if (S.zones.some(z => z.door && hitBox(Ck.aabb(gate), z, -0.1))) continue;

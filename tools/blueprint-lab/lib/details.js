@@ -338,11 +338,13 @@ function exterior(b, ctx) {
 
   // ---- bands: a beam at the foot of the walls and along the floor line of each upper storey; a rail at 1 m on
   // half-timbered walls. Laid a little proud of the outside face, never across a door.
+  const stackBay = e => e.yaw === 90 && (b.vents || []).some(v => v.kind === 'stack' && Math.abs(v.z - e.z) < 0.5 && Math.abs(v.x - e.x) < 1.2);
   if (X.bands || X.midRail) for (const e of edges) {
     const { ox, oz } = axes(e);
     for (let s = 0; s < storeys; s++) {
       const y0 = F + s * SH;
-      const opening = openings.find(o => o.e === e && o.y0 === y0);
+      // (the gable bay a stack hearth stands half in is open on the ground storey like a doorway)
+      const opening = openings.find(o => o.e === e && o.y0 === y0) || (s === 0 && stackBay(e) ? { kind: 'hearth' } : null);
       if (X.bands && !(opening && opening.kind !== 'window') && !(s === 0 && based.has(e))) put(beam, e.x + ox * 0.25, y0 + 0.1, e.z + oz * 0.25, e.yaw);
       if (X.midRail && !opening) put(beam, e.x + ox * 0.25, y0 + 1, e.z + oz * 0.25, e.yaw);
     }

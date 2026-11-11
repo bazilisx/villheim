@@ -700,8 +700,27 @@ function motifFaces(b, ctx, MT, used) {
 // Banners (bannerPlan), as one-piece motifs so they go through the same tests as the motifs' banners (motifs.js
 // place: nothing in a doorway, the cloth clear of walls, posts and roof; commitMotifs: the cloth's foot over the floor
 // or ground under it and no more than a metre above it). The rod 0.3 m out from the wall's middle and turned along the
-// wall, as in the corpus motifs (o 0.3, r 90 or 270).
-function bannerPieces(X, as, h, o) { return as.map(a => [X.banner.name, a, o, h, 270, 'banner', 0]); }
+// wall, as in the corpus motifs (o 0.3, r 90 or 270; the cloth looks the same either way).
+// (turned 90 degrees: the face the decorator reads as the banner's front, lib/decorate.js FURNITURE rel, looks out)
+// a plain wall behind the cloth across its width at its middle height, as the decorator's own test reads a hung piece
+// (lib/decorate.js mountOk): the first wall-like piece met going back toward the wall is a wall, not a window, door,
+// fence or glass
+function wallBehind(b, p, fr) {
+  const Ck = checksD(), ux = fr.nz, uz = -fr.nx, y = p.y - 1.5;
+  const near = b.pieces.filter(q => Math.abs(q.x - p.x) < 2.5 && Math.abs(q.z - p.z) < 2.5 && ['wall', 'door', 'window', 'fence'].includes(PD.piece(q.name).role));
+  const boxes = near.map(q => [q, Ck.aabb(q)]);
+  for (const t of [-0.65, 0, 0.65]) {
+    let hit = null;
+    for (let back = 0; back <= 1.0 && !hit; back += 0.05) {
+      const x = p.x + ux * t - fr.nx * back, z = p.z + uz * t - fr.nz * back;
+      const f = boxes.find(([q, o]) => x >= o.x0 - 0.01 && x <= o.x1 + 0.01 && z >= o.z0 - 0.01 && z <= o.z1 + 0.01 && y >= o.y0 - 0.01 && y <= o.y1 + 0.01);
+      if (f) hit = f[0];
+    }
+    if (!hit || PD.piece(hit.name).role !== 'wall' || /crystal|glass/.test(hit.name)) return false;
+  }
+  return true;
+}
+function bannerPieces(X, as, h, o) { return as.map(a => [X.banner.name, a, o, h, 90, 'banner', 0]); }
 // hang them on a frame at the plan's height, else a little lower or higher (the corpus rods 2.9 to 3.6 m over the
 // floor: the cloth's foot 0 to 0.7 m up), 0.3 m out from the wall's middle (0.1 m off a stone wall's face) or, past a
 // timber at the wall's head, 0.15 m further
@@ -717,7 +736,9 @@ function hangBanners(b, X, fr, as, id, wall) {
   for (const o of [o0, o0 + 0.15]) for (const h of hs) {
     const c = { m: { id, kind: 'wallface', fit: {} }, kept: bannerPieces(X, as, h, o) };
     const placed = MotifsD.place(b, c, fr, null, { ground: 0, dry: true, minShare: 1, keepOut });
-    if (placed.length) { hold(b, placed); return true; }
+    if (!placed.length) continue;
+    if (!placed.every(p => wallBehind(b, p, fr))) return false; // an open bay, a window: no other height helps
+    hold(b, placed); return true;
   }
   return false;
 }
@@ -976,7 +997,7 @@ function bargeboards(K, C, w, ctx, rows, ends, add, low, pivot, r) {
       if (!ends[k]) return;
       const x = w.cx + sg * w.W * Math.cos(al), z = w.cz - sg * w.W * Math.sin(al);
       if (low2 < top - 0.05 && (ctx.openings || []).some(o => Math.hypot(o.e.x - x, o.e.z - z) < 1.6 && o.y0 + (o.SH || 3) > low2)) return;
-      add(name, sg * (w.W + out), yTop, 0, 0, 'trim', yTop);
+      add(name, sg * (w.W + out), yTop, 0, sg > 0 ? 180 : 0, 'trim', yTop); // its front out from the gable
       // where it went, so exterior() can mark it decor once the roof is in (a crossing roof may have hidden it)
       (ctx.gableBannerAt = ctx.gableBannerAt || []).push({ name, x: w.cx + sg * (w.W + out) * Math.cos(al), y: yTop, z: w.cz - sg * (w.W + out) * Math.sin(al) });
     });

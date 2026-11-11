@@ -62,7 +62,7 @@ const BANNER = /^piece_banner\d+$/;
 // Heights of the middle of a sign or a wall item stand over the floor under it (m): read at eye height, reached by hand.
 // A wall stand may go as high as corpus builders hang them on walls and rafters (D-127): the higher of the 90th
 // percentiles of 'itemstand|wall' and 'itemstand|rafter' in data/stands-corpus.json heights (stand height over the
-// room's floor; 3.8 m on the stands branch, 2026-11-11); 2.4 m where the file is not there (the web page).
+// room's floor; 3.8 m on the stands branch, 2026-11-11); 2.4 m where the heights are not there (the bundles carry them as window.VH_STANDS).
 const STAND_HI = (() => {
   let H = null;
   try { H = NODE_A ? require('../data/stands-corpus.json').heights : (typeof window !== 'undefined' && window.VH_STANDS ? window.VH_STANDS.heights : null); } catch (e) { H = null; }

@@ -28,8 +28,12 @@ const kitbash = JSON.stringify(require('./kitbash.js').lite(JSON.parse(fs.readFi
 const meshLite = JSON.stringify(require('./mesh.js').lite(JSON.parse(fs.readFileSync(path.join(dir, '../data/piece-models.json'), 'utf8'))));
 // the room layout rules (lib/layout.js)
 const layouts = JSON.stringify(JSON.parse(fs.readFileSync(path.join(dir, '../data/room-layouts.json'), 'utf8')));
+// the corpus's stand heights (lib/audit.js STAND_HI reads them when it loads, so they go before the libraries)
+const standsPath = path.join(dir, '../data/stands-corpus.json');
+const stands = JSON.stringify({ heights: fs.existsSync(standsPath) ? JSON.parse(fs.readFileSync(standsPath, 'utf8')).heights : null });
 const text = `// Villheim blueprint lab, bundled for the game. Made by tools/blueprint-lab/lib/build_engine.js; do not edit.
 var window = this;
+window.VH_STANDS = ${stands};
 ${code}
 // ---- data
 window.VH_RULES = ${rules};

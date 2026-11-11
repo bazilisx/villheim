@@ -346,16 +346,14 @@ const AT_KINDS = {
   'wall:rafter': { trophy: 215, shield: 154, weapon: 61, fish: 26 },
 };
 // D-134 (Tyler): the larger mementos (rare treasures, bigger trophies, harder enemies) belong at the central hearth. A
-// trophy whose item model is longer than the corpus's 75th percentile of trophies on stands (1.90 m: data/item-models.json
-// bounds, each trophy weighted by the corpus builds that show it on a stand, data/stands-corpus.json itemBuilds; 833
-// sightings, 50th 1.07 m, 90th 2.92 m, 95th 3.08 m) goes only on the hub's stands. The corpus count covers every kind
-// of build, halls and castles too, and its 95th percentile (3.08 m) would let the Abomination's root arch (2.82 m) into
-// a home, so the 75th is the value in use (a setting, round 7b). Listed by name so the game's engine needs no item
-// models; lab/item_sizes.js is not needed to read them again: rerun the node one-liner in the round 7b record.
-const BIG_ITEM_M = 1.9;
-const BIG_ITEM = new Set(['TrophyWraith', 'TrophyAbomination', 'TrophyKvastur', 'TrophySerpent', 'TrophySGolem', 'TrophyLox', 'TrophyGoblinBrute',
-  'TrophySeeker', 'TrophySeekerBrute', 'TrophyGjall', 'TrophyBonemawSerpent', 'TrophyMoose', 'TrophyBarka', 'TrophyMole',
-  'TrophyEikthyr', 'TrophyBonemass', 'TrophyDragonQueen', 'TrophyGoblinKing', 'TrophySeekerQueen', 'TrophyFader']);
+// trophy whose item model is longer than the corpus houses' 90th percentile of trophies on stands goes only on the
+// hub's stands: 2.215 m (data/item-models.json bounds; 1,108 trophy stands in 86 house builds of the corpus,
+// categories starter home, building, advanced base, tree house and interior design, halls, taverns, villages, castles
+// and towers left out; 50th 0.74, 75th 1.34, 90th 2.215 (a wraith), 95th 2.92 m; read with lab/mine_stands.js scan,
+// round 7c). Listed by name (every trophy in ITEMS longer than BIG_ITEM_M), so the game's engine needs no item models.
+const BIG_ITEM_M = 2.215;
+const BIG_ITEM = new Set(['TrophyAbomination', 'TrophyKvastur', 'TrophySerpent', 'TrophySeeker', 'TrophySeekerBrute', 'TrophyGjall', 'TrophyBonemawSerpent',
+  'TrophyBarka', 'TrophyMole', 'TrophyEikthyr', 'TrophyBonemass', 'TrophyDragonQueen', 'TrophyGoblinKing', 'TrophySeekerQueen', 'TrophyFader']);
 function itemFrom(kind, biome, R, own = 2, seen, hub) {
   // any item from any biome may be on show in any village (Tyler, 2026-11-10: decor has no biome limit; D-080 is only
   // about how it is paid for); the village's own biome weighs a little more, for flavor

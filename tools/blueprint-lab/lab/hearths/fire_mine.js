@@ -152,8 +152,16 @@ function mine(bp, meta) {
       const wood = around(x, z, 3.5, ft - 0.3, ft + 2).filter(j => /wood_stack|_stack$|woodpile|log_stack/i.test(ps[j].name)).length;
       const seats = around(x, z, 4, ft - 0.3, ft + 1).filter(j => SEAT.test(ps[j].name)).length;
       const fireLights = around(x, z, 4, ft - 0.5, ft + 5).filter(j => lightKind(ps[j].name)).length;
+      // what hangs over the fire (a hood or a mantel): pieces within 1.2 m of it, 1.3 to 3.4 m over its floor, each
+      // as [name, role, back (toward the wall behind, m), side (m), bottom and top over the floor (m), the deepest overlap
+      // with a wall piece of another material or turn (m, a clip into the wall)]
+      const hoodAt = around(x, z, 1.2, ft + 1.3, ft + 3.4).filter(j => j !== i && ['wall', 'roof', 'roofCorner', 'gable', 'beam', 'floor', 'pole'].includes(role(j)) && bx[j].y0 > ft + 1.25);
+      const clipOf = j => { let d = 0; for (const k of around(cx(j), cz(j), 2.5, bx[j].y0, bx[j].y1)) { if (k === j || !isWall(k)) continue; const a = bx[j], c = bx[k];
+        const o = Math.min(a.x1, c.x1) - Math.max(a.x0, c.x0), oz = Math.min(a.z1, c.z1) - Math.max(a.z0, c.z0), oy = Math.min(a.y1, c.y1) - Math.max(a.y0, c.y0);
+        if (o > 0 && oz > 0 && oy > 0) d = Math.max(d, Math.min(o, oz)); } return +d.toFixed(2); };
+      const hood = hoodAt.slice(0, 14).map(j => { const ex = cx(j) - x, ez = cz(j) - z; return [ps[j].name, role(j), +(-(ex * dO[0] + ez * dO[1])).toFixed(2), +(ex * dO[1] - ez * dO[0]).toFixed(2), +(bx[j].y0 - ft).toFixed(2), +(bx[j].y1 - ft).toFixed(2), STONE.test(ps[j].name) ? clipOf(j) : 0]; });
       fires.push({ file: meta.file, kind: meta.kind, name: p.name, indoor, place, gaps, rel, room: +R.A.toFixed(1), roomF: +RF.A.toFixed(1), overhead, hit: R.hit, vent, raised: +(bx[i].y0 - ft).toFixed(2),
-        under, stone, mantel, cook, wood, seats, fireLights, door: +nearest(doors, x, z, ft).toFixed(1) });
+        under, stone, mantel, cook, wood, seats, fireLights, door: +nearest(doors, x, z, ft).toFixed(1), hood, backD: R.card[(kOpen + 2) % 4] == null ? null : +R.card[(kOpen + 2) % 4].toFixed(2) });
     }
     const lk = lightKind(p.name);
     if (lk) {

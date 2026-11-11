@@ -475,7 +475,7 @@ dotnet build 0 errors, 43 warnings. Pool audits report nestBroken 19 to 21 per p
 Renders in /tmp/int7-renders (not kept): norse-cross_s5.png and celtic-round_s5.png (lab/test_hub.js),
 home_Meadows_norse_L+T+nave-gable-half-timber_s3d3_1.png (with and without greenery, lab/render_landscape.js),
 home-plains-court-s3d3-7.png (court home, seed 7), longhouse-bf-s3d2-613-after.png and -round6.png (the slow
-request; after the merges it carries 4 more pieces of greenery outside, inside the same).
+request; 1,220 pieces after the merges against 1,216 at round 6, the greenery pass adding its pieces outside).
 
 Where round 7a stopped: every fix and the bundles rebuilt at 475c617 are pushed; gen-test passed on them. Request 2 in
 Jint varies 91 to 98 s between runs on this machine, under the 120 s limit with less room than round 1.

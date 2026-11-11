@@ -135,6 +135,18 @@ const SETS = [
   set('KS-hi-herbs', 'wall', [sp('wood_ledge', 0, 2.3, 0.3, 0, 'wall', { key: true }), sp('itemstandh', -0.32, 2.35, 0.3, 68, 'on', { on: 0, want: 'herbs', at: 'rafter' }),
     sp('itemstandh', 0, 2.35, 0.3, 68, 'on', { on: 0, want: 'herbs', at: 'rafter' }), sp('itemstandh', 0.32, 2.35, 0.3, 68, 'on', { on: 0, want: 'herbs', at: 'rafter' })],
   { ctx: ['table', 'hearth', 'chest', 'plain'], lean: { plants: 0.9, food: 0.4 }, high: 2.85, min: 2 }),
+  // on a low wall's top (a counter, a divider, the half wall behind a bench): the corpus's counter stands are mostly
+  // one alone (151 of 200 groups), now and then a pair, three or a row of four drinks; they hold drink, food, a hat, a
+  // trophy or a weapon (data/stands-corpus.json counter, anchorKinds itemstandh|counter)
+  set('KS-co-one', 'counter', [H(0, 0, 30, { at: 'counter' })], { lean: {} }),
+  set('KS-co-two', 'counter', [H(-0.22, 0, 0, { want: 'drink', at: 'counter' }), H(0.2, 0, 45, { at: 'counter' })], { lean: { messy: 0.4, food: 0.3 }, min: 2 }),
+  set('KS-co-three', 'counter', [H(-0.35, 0, 90, { want: 'food', at: 'counter' }), H(0, 0, 0, { want: 'drink', at: 'counter' }), H(0.33, 0, 45, { at: 'counter' })], { lean: { food: 0.6, messy: 0.3 }, min: 3, len: 1.0 }),
+  set('KS-co-row', 'counter', [H(-0.45, 0, 90, { want: 'drink', at: 'counter' }), H(-0.15, 0, 90, { want: 'drink', at: 'counter' }), H(0.15, 0, 90, { want: 'drink', at: 'counter' }),
+    H(0.45, 0, 90, { want: 'drink', at: 'counter' })], { lean: { games: 0.6, food: 0.4 }, min: 3, len: 1.2 }),
+  // a heap on the floor against a wall (a pantry corner): stands set into one another, food or drink (the corpus's heaps
+  // of stands stand on the floor more than anywhere, 168 of 376; data/stands-corpus.json stacks pileOn), made by the
+  // households that heap things (pileStands)
+  set('KS-f-heap', 'wall', [sp('itemstandh', 0, 0, 0.28, 30, 'floor', { want: 'food@stand' })], { ctx: ['plain', 'chest', 'table', 'hearth', 'door'], lean: { food: 0.8, messy: 0.5 }, heap: true, min: 1 }),
   // a mug or a dish left on the floor by a bed or a seat (a cluttered house)
   set('KS-f-mug', 'bed', [sp('itemstandh', 1.15, 0, 0.55, 30, 'floor', { want: 'drink', at: 'floor' })], { lean: { messy: 1.4 }, stage: 3 }),
 ];
@@ -233,12 +245,16 @@ function sinkDepth(R) {
 // hearth 12, over a chest 7, a table 7, a bed 4, by a door 4). The interior library and the decorator already put up
 // most of the shelf, mantel and wall stands, so this pass gives tables the largest share. Tyler, 2026-11-10: "I rarely
 // see stands on rafters. I sometimes see stands on sills. I constantly see stands on tables."
-const CLASS_W = { table: 1.6, wall: 1.1, shelf: 0.8, bench: 0.45, hearth: 0.3, rafter: 0.22, chest: 0.3, sill: 1.1, floor: 0.15 };
+// Read at the lid (the corpus rerun of 2026-11-11), chests carry 1.5 % of the corpus's flat stands at these places and
+// counters 6.6 %.
+const CLASS_W = { table: 1.6, wall: 1.4, shelf: 0.8, bench: 0.45, hearth: 0.3, rafter: 0.22, chest: 0.06, sill: 1.1, floor: 0.15, counter: 1.0,
+  wtable: 0.08, wbed: 0.05, wdoor: 0.2 };
 function classOf(s, an) {
   if (s.anchor === 'table') return 'table';
   if (s.anchor === 'bench' || s.anchor === 'seat') return 'bench';
   if (s.anchor === 'chest') return 'chest';
-  if (s.anchor === 'bed') return 'floor';
+  if (s.anchor === 'counter') return 'counter';
+  if (s.anchor === 'bed' || s.heap) return 'floor';
   if (s.anchor === 'window') return 'sill';
   if (s.anchor === 'beam' || s.high) return 'rafter';
   if (s.id === 'KS-mantel' || (an && an.ctxW === 'hearth')) return 'hearth';
@@ -246,24 +262,29 @@ function classOf(s, an) {
   if (an && (an.ctxW === 'bench' || an.ctxW === 'workbench')) return 'bench';
   if (an && an.ctxW === 'chest') return 'chest';
   if (/^KS-s-/.test(s.id)) return 'shelf';
+  // the wall over a table, over a bed and by a door each its own share: in small rooms most wall spots are within the
+  // miner's reach of a table or a bed, and a share split only among the room's wall spots would put most there
+  if (an && an.ctxW === 'table') return 'wtable';
+  if (an && an.ctxW === 'bed') return 'wbed';
+  if (an && an.ctxW === 'door') return 'wdoor';
   return 'wall';
 }
 const isStand = p => /^itemstandh?$/.test(p.name);
 // the chance a household puts things at each kind of place, before its traits (favLean)
-const FAV_P = { table: 0.7, wall: 0.65, shelf: 0.5, bench: 0.4, hearth: 0.25, rafter: 0.2, chest: 0.25, sill: 0.45, floor: 0.25 };
+const FAV_P = { table: 0.7, wall: 0.65, shelf: 0.5, bench: 0.4, hearth: 0.25, rafter: 0.2, chest: 0.12, sill: 0.45, floor: 0.25, counter: 0.55 };
 // how a household's traits lean those chances (lib/persona.js: likes are about 0.3 to 1.8, hobbies 0 to 1): pots and
 // things on the sill, things hung up, shelves, food and drink on the table, tools by the bench
 function favLean(P, cl) {
   if (!P) return 1;
   const L = P.likes || {}, Hb = P.hobby || {};
   const k = { sill: 0.4 + 0.6 * (L.sill || 0.8), rafter: 0.4 + 0.6 * (L.hung || 0.8), wall: 0.6 + 0.4 * (L.hung || 0.8) + 0.3 * (Hb.collect || 0),
-    shelf: 0.5 + 0.6 * (L.shelves || 0.8), table: 0.8 + 0.5 * (Hb.food || 0) + 0.3 * (Hb.games || 0), bench: 0.6 + 0.8 * (Hb.crafts || 0),
+    shelf: 0.5 + 0.6 * (L.shelves || 0.8), counter: 0.6 + 0.4 * (L.shelves || 0.8) + 0.3 * (Hb.food || 0), table: 0.8 + 0.5 * (Hb.food || 0) + 0.3 * (Hb.games || 0), bench: 0.6 + 0.8 * (Hb.crafts || 0),
     hearth: 0.6 + 0.6 * (P.comfort || 0.5), chest: 0.6 + 0.6 * (P.clutter || 0.45) }[cl];
   return k == null ? 1 : k;
 }
 // a stand's place (lib/persona.js standAt) as one of those kinds
 const AT_CLASS = at => /^(table|sidetable)$/.test(at) ? 'table' : /^(bench|workbench|wall:bench|wall:workbench)$/.test(at) ? 'bench' : /^(chest|wall:chest)$/.test(at) ? 'chest'
-  : at === 'wall:hearth' || at === 'mantel' ? 'hearth' : at === 'rafter' ? 'rafter' : at === 'sill' ? 'sill' : at === 'shelf' ? 'shelf' : 'wall';
+  : at === 'wall:hearth' || at === 'mantel' ? 'hearth' : at === 'rafter' ? 'rafter' : at === 'sill' ? 'sill' : at === 'shelf' ? 'shelf' : at === 'counter' ? 'counter' : 'wall';
 
 /**
  * Dresses the house with item stands. ctx: the furnishing's context (biome, decor, persona, type). Returns the number
@@ -279,7 +300,7 @@ function dressTops(b, ctx, zones, rooms) {
   const show = showOf(P, ctx, R);
   const roomList = (rooms || KB.roomsB(b, ctx)).filter(room => ROOMS_S.includes(room.role) && room.m.area >= 4);
   const area = roomList.reduce((s, room) => s + room.m.area, 0);
-  const budget = Math.round(show * (6 + area / 3.5));
+  const budget = Math.round(show * (8 + area / 2.8));
   // the kinds of place the household puts things (a builder who sets every table and one who keeps to a shelf and
   // the wall over the hearth): each kind by the corpus's share of houses with it, more of them in a house that shows
   // more; this pass leaves the others alone. So a few places get clusters, as in the corpus, where a spread of single stands
@@ -295,7 +316,10 @@ function dressTops(b, ctx, zones, rooms) {
   {
     const kits = new Map();
     for (const p of b.pieces) if (p.kb) { const k = kits.get(p.kb) || { stands: 0, other: 0 }; if (isStand(p)) k.stands++; else k.other++; kits.set(p.kb, k); }
-    const loose = others.filter(p => !p.kb && !p.trim), inSets = others.filter(p => p.kb && !/^KS-/.test(p.kb) && kits.get(p.kb).other > 0);
+    // (wall stands on plain wall stay: most wall spots in the generator's rooms read as over a table or a bed, and the
+    // corpus has a third of its wall stands on plain wall and beams)
+    const plainWall = p => p.name === 'itemstand' && wallAtS(b, p) === 'wall';
+    const loose = others.filter(p => !p.kb && !p.trim && !plainWall(p)), inSets = others.filter(p => p.kb && !/^KS-/.test(p.kb) && kits.get(p.kb).other > 0 && !plainWall(p));
     const near = p => b.pieces.filter(q => Math.abs(q.x - p.x) < 2.5 && Math.abs(q.z - p.z) < 2.5 && Math.abs(q.y - p.y) < 2.5);
     const key = (p, k) => { const favd = fav[AT_CLASS(PS.standAt(b, p, near(p)))] === 1; return { p, favd, r: R() + k + (favd ? 2 : 0) }; };
     let have = others.length;
@@ -344,10 +368,21 @@ function dressTops(b, ctx, zones, rooms) {
     p.fclip = +(d + 0.005).toFixed(3);
     p.sunk = true;
   }
+  // some households heap things: two or more stands set into one another (a pile of turnips, mugs crowded together).
+  // In the corpus 21 % of house-like builds with stands have one, and 6.8 % of flat stands stand on another
+  // (data/stands-corpus.json houses.stand, anchors itemstandh.stand).
+  const heaper = R() < HEAP.houses * (P ? 0.6 + 0.8 * P.clutter : 1), heapShare = HEAP.share[0] + (HEAP.share[1] - HEAP.share[0]) * R();
   const fires = b.pieces.filter(p => p.decor && FIRES_S.test(p.name)).map(p => ({ p, b: Ck.aabb(p) }));
   const clutter = P ? P.clutter : 0.45, size = P ? P.size : 3;
   const P2 = Object.assign({}, P || {}, { hobby: (P && P.hobby) || { crafts: 0.3, collect: 0.3, plants: 0.3, food: 0.3, games: 0.3, maps: 0.3 } });
   let placed = 0, placedStands = 0;
+  // the house's wall stands by what is under them (as the miner reads it), kept up as this pass hangs more: a wall set
+  // over a table or a bed waits while those already hold more than the corpus's share of the
+  // house's wall stands (WALL_SHARE times CAPPED, and 0.4 more for some households). In small rooms nearly every wall
+  // spot is within the miner's reach of a table or a bed, so without it a room that wants many stands fills those once
+  // its plain wall is taken.
+  const wallN = { all: 0 }, capK = 0.4 * R();
+  for (const p of b.pieces) if (p.decor && p.name === 'itemstand') { wallN.all++; const at = wallAtS(b, p); wallN[at] = (wallN[at] || 0) + 1; }
   for (const room of roomList) {
     const m = room.m;
     const inR = p => m.inside(p.x, p.z) && Math.abs(p.y - m.stand) < 0.9;
@@ -360,7 +395,7 @@ function dressTops(b, ctx, zones, rooms) {
     const wallAnchors = kitAnchors.filter(an => an.anchor === 'wall');
     // a feast at most once in a room, never where one is laid out already
     const feasted = b.pieces.some(p => /^Feast[A-Z]/.test(p.name) && inR(p));
-    const sets = SETS.filter(s => (!s.n || size >= s.n) && (!s.feast || (ctx.decor === 'd3' && !feasted)));
+    const sets = SETS.filter(s => (!s.n || size >= s.n) && (!s.feast || (ctx.decor === 'd3' && !feasted)) && (!s.heap || heaper));
     for (const p of furn) {
       const yaw = normS(p.yaw || 0);
       if (TABLES.test(p.name)) {
@@ -382,6 +417,8 @@ function dressTops(b, ctx, zones, rooms) {
         for (const s of sets) if (s.anchor === 'bed') add(s, { anchor: 'bed', x: p.x, z: p.z, yaw, of: p }, 0.6);
       }
     }
+    // low walls: their top as a counter
+    for (const c of countersIn(b, m, idx)) for (const s of sets) if (s.anchor === 'counter' && (!s.len || c.len >= s.len)) add(s, { anchor: 'counter', x: c.p.x, z: c.p.z, yaw: normS(c.p.yaw || 0), of: c.p }, 1);
     // wall spots by what stands in front of them (the corpus's wall stands over a workbench, a bed, the hearth...)
     for (const an of wallAnchors) {
       // what is under the spot as the corpus miner reads it (wallAtS), so this pass's shares compare with the corpus's
@@ -389,6 +426,7 @@ function dressTops(b, ctx, zones, rooms) {
       const ctxW = at === 'wall' ? 'plain' : at.slice(5);
       for (const s of sets) {
         if (s.anchor !== 'wall' || !s.ctx || !s.ctx.includes(ctxW)) continue;
+      if (s.heap && !/^(home|kitchen|storage|tavern)$/.test(room.role)) continue;
         // plain wall the whole width of the set and a little more (no window, door or opening, not past the wall's end)
         const half = Math.max(...s.pieces.map(q => Math.abs(q.x))) + 0.35;
         const st = D._int.stretch(an.face, an.t - half, an.t + half);
@@ -435,6 +473,10 @@ function dressTops(b, ctx, zones, rooms) {
       const an = pick.anc;
       if (usedAnc.some(u => (an.of && u.of === an.of) || (an.anchor === u.anchor && Math.hypot(u.x - an.x, u.z - an.z) < (an.anchor === 'wall' ? 1.6 : 0.6)))) continue;
       if (an.anchor === 'wall' && wallBusy(an, idx, m, pick.s)) continue;
+      if (an.ctxW) {
+        const at = an.ctxW === 'plain' ? 'wall' : `wall:${an.ctxW}`, k = pick.s.pieces.filter(q => q.n === 'itemstand').length;
+        if (CAPPED[at] && (wallN[at] || 0) + k > (wallN.all + k) * WALL_SHARE[at] * (CAPPED[at] + capK) + 0.5) continue;
+      }
       const s = pick.s;
       if (s.feast && !PBs.decorOk(FEAST_S[ctx.biome] || 'FeastMeadows', ctx.biome)) continue;
       let got = null;
@@ -474,6 +516,11 @@ function dressTops(b, ctx, zones, rooms) {
         p.fclip = +(d + 0.005).toFixed(3);
         p.sunk = true;
       }
+      // a household that heaps things sets more stands into some of these (a heap on the floor always)
+      if (heaper) for (const p of got.slice()) {
+        if (p.name !== 'itemstandh' || (!s.heap && R() > heapShare)) continue;
+        for (const q of pileStands(b, idx, m, p, R, s.heap)) { got.push(q); }
+      }
       for (const p of got) {
         p.ds = ds;
         // a wall stand's place, from the wall's context, where its set did not say
@@ -487,6 +534,7 @@ function dressTops(b, ctx, zones, rooms) {
       usedSet[s.id] = (usedSet[s.id] || 0) + 1;
       if (s.feast) for (let k = cands.length - 1; k >= 0; k--) if (cands[k].s.feast) cands.splice(k, 1);
       got3 += got.filter(isStand).length; placedStands += got.filter(isStand).length;
+      if (an.ctxW) { const at = an.ctxW === 'plain' ? 'wall' : `wall:${an.ctxW}`, k = got.filter(p => p.name === 'itemstand').length; wallN.all += k; wallN[at] = (wallN[at] || 0) + k; }
       n++; placed++;
     }
   }
@@ -497,6 +545,7 @@ function dressTops(b, ctx, zones, rooms) {
 // The corpus's wall stands by what is under them, as a share of those at a known place (anchors: plain wall and
 // beams 1,405 of 4,259, over a workbench or bench 719, by the hearth 558, a rafter 533, over a chest 333, a table 328,
 // a bed 208, by a door 175)
+const CAPPED = { 'wall:table': 1.3, 'wall:bed': 1.0 };
 const WALL_SHARE = { 'wall:bed': 208 / 4259, 'wall:table': 328 / 4259, 'wall:chest': 333 / 4259, 'wall:hearth': 558 / 4259, 'wall:door': 175 / 4259,
   'wall:workbench': 578 / 4259, 'wall:bench': 141 / 4259 };
 // What is under a wall stand, as the corpus miner reads it (lab/mine_stands.js), so the shares compare: furniture
@@ -530,7 +579,7 @@ function wallAtS(b, p) {
 // wall and beams 1,405, over a workbench or bench 719, by the hearth 558, over a chest 333, a table 328, a bed 208, by
 // a door 175. The library's and the decorator's wall stands already sit mostly over tables and beds, so this pass leans
 // to plain wall.
-const CTX_W = { plain: 0.9, workbench: 0.5, bench: 0.3, hearth: 0.4, chest: 0.35, table: 0.15, bed: 0.1, door: 0.3 };
+const CTX_W = { plain: 0.9, workbench: 0.18, bench: 0.12, hearth: 0.4, chest: 0.35, table: 0.05, bed: 0.03, door: 0.45 };
 // Is a wall spot taken: something hung within 0.9 m either side of the set at 1.0 to 2.5 m, or tall furniture in front
 function wallBusy(an, idx, m, s) {
   const half = Math.max(...s.pieces.map(q => Math.abs(q.x))) + 0.6;
@@ -588,6 +637,80 @@ function rafterSet(bm, R) {
   const opts = RAFTER.filter(l => Math.max(...l.map(q => Math.abs(q.x))) < len / 2 - 0.15);
   const pick = opts[Math.floor(R() * opts.length)] || RAFTER[0];
   return set('KS-rafter', 'beam', pick.map(q => sp('itemstandh', q.x, 2.5, 0, Math.floor(R() * 8) * 45, 'anchor', { want: q.want, at: 'rafter' })), { lean: { collect: 0.4, plants: 0.3 } });
+}
+// Low walls in a room, their top a counter: a wall piece standing on the room's floor whose top is 0.4 to 1.5 m over
+// it (the corpus's counter stands sit at a median 0.51 m, the 90th percentile 1.0 m; data/stands-corpus.json heights
+// itemstandh|counter), at least 0.5 m long, nothing standing on it yet.
+function countersIn(b, m, idx) {
+  const out = [];
+  for (const p of b.pieces) {
+    const r = PBs.piece(p.name).role;
+    if (r !== 'wall' && r !== 'halfwall') continue;
+    const q = p.q || [0, 0, 0, 1];
+    if (Math.abs(q[0]) > 0.01 || Math.abs(q[2]) > 0.01) continue;
+    const o = Cks().aabb(p);
+    if (o.y0 > m.stand + 0.15 || o.y0 < m.stand - 0.3 || o.y1 < m.stand + 0.4 || o.y1 > m.stand + 1.5) continue;
+    const a = (p.yaw || 0) * Math.PI / 180, nx = Math.sin(a), nz = Math.cos(a);
+    if (!m.inside(p.x, p.z) && !m.inside(p.x + nx * 0.4, p.z + nz * 0.4) && !m.inside(p.x - nx * 0.4, p.z - nz * 0.4)) continue;
+    const len = Math.abs(Math.cos(a)) > 0.7 ? o.x1 - o.x0 : o.z1 - o.z0;
+    if (len < 0.5) continue;
+    if (idx.near({ x0: o.x0, x1: o.x1, z0: o.z0, z1: o.z1 }, 0).some(r2 => r2.p !== p && r2.p.decor && r2.b.y0 > o.y1 - 0.08 && r2.b.y0 < o.y1 + 0.4 && r2.p.x > o.x0 && r2.p.x < o.x1 && r2.p.z > o.z0 && r2.p.z < o.z1)) continue;
+    out.push({ p, o, len });
+  }
+  return out;
+}
+// Heaps (data/stands-corpus.json stacks): a stand set on or into another, a few centimeters off it (the level offset's
+// 25th, 50th and 75th percentile 4, 11 and 16 cm; both read as on a stand once one covers the other), at about its
+// height (rise median 0). Heaps of two are most (274 of 376), then five (28), three (41), four (18), six or more (15).
+// They mostly hold one kind: food under food 209 of the pairs read, drink 94, herbs 65.
+const HEAP = { houses: 0.3, share: [0.15, 0.5], more: [[1, 274], [2, 41], [3, 18], [4, 28], [5, 15]],
+  kinds: { food: 306, drink: 138, herbs: 123, shield: 44, trophy: 30, weapon: 27, rare: 14 } };
+function pileStands(b, idx, m, base, R, always) {
+  const Ck = Cks(), SH = SHs(), out = [];
+  // what the base stands on: the highest top under its foot that is not a stand
+  const supportAt = (x, z, y) => {
+    let t = null;
+    for (const r of idx.near({ x0: x - 0.02, x1: x + 0.02, z0: z - 0.02, z1: z + 0.02 }, 0)) {
+      if (isStand(r.p) || r.b.pass || r.b.x0 > x || r.b.x1 < x || r.b.z0 > z || r.b.z1 < z) continue;
+      const top = SH.lidAt(r.p, x, z) ?? (r.b.sol ? SH.topAt(r.b.sol, x, z) : null) ?? r.b.y1;
+      if (top == null || top > y + 0.25 || top < y - 0.05) continue;
+      if (t == null || top > t) t = top;
+    }
+    if (t == null && Math.abs(y - m.stand) < 0.05 && m.inside(x, z)) t = m.stand;
+    return t;
+  };
+  const t0 = supportAt(base.x, base.z, base.y);
+  if (t0 == null) return out;
+  // the heap's kind: what the base was asked for, else a kind heaped in the corpus
+  const [k0, at0] = (base.want || '').split('@');
+  let kind = k0;
+  if (!kind) { let tot = 0; for (const v of Object.values(HEAP.kinds)) tot += v; let r = R() * tot; for (const [k, v] of Object.entries(HEAP.kinds)) { r -= v; if (r <= 0) { kind = k; break; } } }
+  base.want = `${kind}@${at0 || ''}`;
+  let tot = 0;
+  for (const [, v] of HEAP.more) tot += v;
+  let r = R() * tot, n = 1;
+  for (const [k, v] of HEAP.more) { r -= v; if (r <= 0) { n = k; break; } }
+  const pile = [base];
+  for (let i = 0; i < n * 3 && out.length < n; i++) {
+    const from = pile[Math.floor(R() * pile.length)], a = R() * Math.PI * 2, d = 0.04 + 0.09 * R();
+    const x = +(from.x + Math.cos(a) * d).toFixed(3), z = +(from.z + Math.sin(a) * d).toFixed(3);
+    const t = supportAt(x, z, base.y);
+    if (t == null || Math.abs(t - t0) > 0.02) continue;
+    const yaw = Math.floor(R() * 8) * 45 + Math.round((R() - 0.5) * 30);
+    const y = +(base.y + (R() - 0.3) * 0.03).toFixed(3);
+    const q = { name: 'itemstandh', x, y, z, yaw: normS(yaw), decor: true, kb: base.kb, rest: 'on', want: `${kind}@${at0 || ''}`, heap: true };
+    { const h = q.yaw * Math.PI / 360; q.q = [0, +Math.sin(h).toFixed(6), 0, +Math.cos(h).toFixed(6)]; }
+    const o = Ck.aabb(q);
+    // clear of everything but the heap and what it stands on
+    if (idx.near(o, 0).some(r2 => !pile.includes(r2.p) && !isStand(r2.p) ? (r2.b.y1 > y + 0.01 && r2.b.y0 < o.y1 && r2.b.x0 < o.x1 && r2.b.x1 > o.x0 && r2.b.z0 < o.z1 && r2.b.z1 > o.z0 && !r2.b.pass) : (!pile.includes(r2.p) && r2.b.x0 < o.x1 - 0.01 && r2.b.x1 > o.x0 + 0.01 && r2.b.z0 < o.z1 - 0.01 && r2.b.z1 > o.z0 + 0.01 && r2.b.y0 < o.y1 && r2.b.y1 > o.y0))) continue;
+    // a clip made on purpose (D-098): the stands go into one another by up to their own height
+    q.fclip = Math.max(base.sunk ? base.fclip || 0 : 0, 0.045);
+    if (base.sunk) { q.sunk = true; }
+    base.fclip = Math.max(base.fclip || 0, 0.045);
+    base.heap = true;
+    pile.push(q); out.push(q); idx.add(q);
+  }
+  return out;
 }
 let DEBUG_S = null;
 const apiS = { debug: d => { DEBUG_S = d; }, dressTops, SETS, SILL, RAFTER, leanWeight, wallAtS };

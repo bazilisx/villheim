@@ -326,7 +326,11 @@ const AT_KINDS = {
   mantel: { drink: 686, food: 91, trophy: 90, herbs: 53, weapon: 39, rare: 19 },
   sill: { drink: 55, food: 41, trophy: 41, weapon: 12, herbs: 8 },
   bench: { drink: 108, trophy: 34, food: 26, weapon: 13, shield: 11, herbs: 7 },
-  chest: { food: 30, trophy: 10, fish: 7, drink: 4, shield: 3 },
+  // (chest: read at the lid, the corpus rerun of 2026-11-11; counter: a low wall's top; stand: a stand set on or into
+  // another, a heap)
+  chest: { food: 31, fish: 25, drink: 20, trophy: 10, weapon: 4, shield: 3, herbs: 2 },
+  counter: { drink: 107, food: 76, hat: 68, trophy: 42, weapon: 29, tool: 13, shield: 6, herbs: 4, rare: 3, fish: 3 },
+  stand: { food: 306, drink: 138, herbs: 123, shield: 44, trophy: 30, weapon: 27, rare: 14, tool: 6, hat: 5, fish: 2 },
   workbench: { tool: 10, drink: 10, food: 6, rare: 4, weapon: 3 },
   rafter: { hat: 52, trophy: 38, weapon: 38, drink: 25, herbs: 15, fish: 11, rare: 8 },
   floor: { drink: 665, food: 432, herbs: 277, rare: 225, weapon: 116, trophy: 90, hat: 72, fish: 46 },
@@ -371,10 +375,10 @@ function kindLean(P) {
 // own. Drink, food and herbs come again most, trophies and tools seldom; rare things, boss trophies and the serving
 // tray never.
 const NO_REPEAT = new Set(['rare', 'boss', 'tray', 'valuable']);
-const REPEAT_K = { drink: 1, food: 0.9, herbs: 1, fish: 0.8, hat: 0.8, shield: 0.7, weapon: 0.5, farm: 0.45, tool: 0.45, trophy: 0.4 };
+const REPEAT_K = { drink: 1, food: 0.9, herbs: 1, fish: 0.8, hat: 0.8, shield: 0.85, weapon: 0.65, farm: 0.45, tool: 0.45, trophy: 0.6 };
 function repeatOf(P) {
   if (!P) return 0.7;
-  return Math.min(0.95, Math.max(0.25, 0.7 + 0.6 * P.tidy - 0.5 * (P.hobby.collect || 0) - 0.2 * P.wealth + 0.2 * (P.plain ? 1 : 0)));
+  return Math.min(0.95, Math.max(0.35, 0.75 + 0.6 * P.tidy - 0.5 * (P.hobby.collect || 0) - 0.2 * P.wealth + 0.2 * (P.plain ? 1 : 0)));
 }
 function fromStock(kind, biome, R, seen, P) {
   const st = seen && !NO_REPEAT.has(kind) ? (seen._stock || (seen._stock = {})) : null;

@@ -710,9 +710,12 @@ function generate(req) {
   // a home's fire against a wall (hearthPlan): at a gable end under the ridge, half in the gable wall with a stone
   // stack outside, or against the back wall with a shaft out through the roof
   const hearth = lit && ventAt ? hearthPlan({ T, C, cultureKey, lineage, roofKind, plan, wings, flat, form, M, stoneOK, F, stage, K, cells,
-    doors: [door, backDoor].filter(Boolean) }) : { spot: 'middle' };
+    doors: [door, backDoor].filter(Boolean), area: cells.size * 4 * storeys, type }) : { spot: 'middle' };
   if (req.hearth === 'middle') hearth.spot = 'middle';
   info.hearth = hearth.spot;
+  if (hearth.why) info.hearthWhy = hearth.why;
+  if (hearth.moved) info.hearthMoved = hearth.moved;
+  if (hearth.movedHere) b.notes.push('The household moved the fire when the house was reworked at this stage; the roof over its old place is closed.');
   if (hearth.spot === 'end') ventAt = { x: hearth.x, z: hearth.z };
   if (hearth.spot === 'side' || hearth.spot === 'stack') ventAt = null;
   let flue = lit && ventAt ? flueRect(w0, ventAt, hipMain ? w0.W - w0.D : w0.W - 1) : null;
@@ -735,10 +738,16 @@ function generate(req) {
     const walled = ([x, z]) => [[2, 0], [-2, 0], [0, 2], [0, -2]].some(([dx, dz]) => !roomCell(x + dx, z + dz));
     // a home keeps its fire against a wall most of the time (hearthPlan's odds for the culture, from the household's
     // own stream): a cell along an outer wall, the far corner first
-    const wtF = HEARTHS[cultureKey] || HEARTHS.default, homeWall = T.use === 'home' && !thick && rng((lineage * 92821 + strHash(cultureKey) * 7 + 5) >>> 0)() >= wtF.middle;
-    if (homeWall) info.hearth = 'wall';
-    const score = ([x, z]) => (doorEdges.some(e => Math.hypot(e.x - x, e.z - z) < 2.5) ? 100 : 0) + (thick && walled([x, z]) ? 50 : 0) +
-      (homeWall && !walled([x, z]) ? 8 : 0) + (plan === 'court' ? -1 : 1) * Math.hypot(x - doorX, z - w0.cz);
+    // (the stage's draw, hearthDraw: the fire may move between stages, D-132). A thick stone wall takes the fire in a
+    // niche: it stands half a cell out from the wall, under an opening over its cell and the next (the wall hearth of
+    // the stone houses of the Levant and Arabia, a fire niche with a flue in the wall)
+    const fd = hearthDraw(lineage, cultureKey, stage, M, cells.size * 4 * storeys, T.use === 'hall', T.use === 'hall' ? strHash(type) : 0), homeWall = fd.spot0 !== 'middle';
+    { info.hearth = homeWall ? 'wall' : 'middle'; if (!homeWall) info.hearthWhy = 'drawn'; if (fd.moved) info.hearthMoved = fd.moved; if (fd.moved === stage) b.notes.push('The household moved the fire when the house was reworked at this stage; the roof over its old place is closed.'); }
+    const score = ([x, z]) => (doorEdges.some(e => Math.hypot(e.x - x, e.z - z) < 2.5) ? 100 : 0) + (thick && !homeWall && walled([x, z]) ? 50 : 0) +
+      (homeWall && !walled([x, z]) ? 8 : 0) + (plan === 'court' ? -1 : 1) * Math.hypot(x - doorX, z - w0.cz) * (homeWall && fd.moved ? 0.25 : 1) +
+      (homeWall && fd.moved ? fd.sg * (x - w0.cx) * 0.5 : 0) +
+      // in a thick-walled corner a long iron spit fits along neither wall: a niche in one wall comes first
+      (thick && homeWall && [[2, 0], [-2, 0]].some(([dx]) => !roomCell(x + dx, z)) && [[0, 2], [0, -2]].some(([, dz]) => !roomCell(x, z + dz)) ? 6 : 0);
     flatCell = [...cells.values()].filter(([x, z]) => inside(w0, x, z) && !gallery.has(`${x},${z}`)).sort((a, c) => score(a) - score(c))[0] || null;
     if (flatCell) flue = cellRect(flatCell);
     // beside a thick wall the fire would reach into it: it goes between this cell and the next one away from the
@@ -752,8 +761,8 @@ function generate(req) {
       const over = [[x, z], [x + sx, z], [x, z + sz], [x + sx, z + sz]].filter(([cx, cz], i, a) => a.findIndex(([ax, az]) => ax === cx && az === cz) === i);
       if (near.length && over.every(([cx, cz]) => cells.has(`${cx},${cz}`) && !gallery.has(`${cx},${cz}`) && !doorEdges.some(d => Math.hypot(d.x - cx, d.z - cz) < 1.1))) {
         flue = { x0: Math.min(x, x + sx) - 1, x1: Math.max(x, x + sx) + 1, z0: Math.min(z, z + sz) - 1, z1: Math.max(z, z + sz) + 1 };
-        flatCell = [x + sx / 2, z + sz / 2];
-      }
+        flatCell = homeWall ? [x + sx / 4, z + sz / 4] : [x + sx / 2, z + sz / 2];
+      } else if (homeWall && !near.length) { info.hearth = 'middle'; info.hearthWhy = 'thick wall, no room'; }
     }
   }
   const doorCell = [door.cell[0], door.cell[1]];
@@ -1121,7 +1130,17 @@ function generate(req) {
   const wantStack = dctx.profile.stack != null ? dctx.profile.stack
     : stoneOK && stage !== 's1' && ['home', 'longhouse', 'tavern', 'smithy', 'temple'].includes(type) && dctx.R() < 0.6;
   // (a home with a wall hearth has its chimney already: the stack it was rebuilt with, or the hood's shaft)
-  if (hearth.spot === 'stack' && !hearthStack(b, K, C, w0, hearth, { F, SH, storeys, top: roofTop, notes: b.notes })) { hearth.spot = 'middle'; info.hearth = 'middle'; }
+  if (hearth.spot === 'stack' && !hearthStack(b, K, C, w0, hearth, { F, SH, storeys, top: roofTop, notes: b.notes })) {
+    // something stands outside that gable (a deck, a lean-to): the fire goes to the middle, under ridge caps taken out
+    // over it, clear of the climbs
+    hearth.spot = 'middle'; info.hearth = 'middle'; info.hearthWhy = 'stack blocked';
+    const at = { x: Math.max(w0.cx - w0.W + 1, Math.min(w0.cx + w0.W - 1, doorX)), z: w0.cz }, fr = flueRect(w0, at, w0.W - 1);
+    const climbs = ladders.flatMap(l => [l.hole, l.land, l.stand, ...(l.run || [])].filter(Boolean));
+    if (fr && !climbs.some(c => inRect(fr, c[0], c[1], -0.1))) {
+      const caps = takeOut(b, p => !p.decor && P.piece(p.name).role === 'roofTop' && inRect(fr, p.x, p.z) && p.y > F + storeys * SH - 0.3);
+      if (caps.length) b.vents.push({ kind: 'ridge', caps, x: avg(caps.map(c => c.x)), z: avg(caps.map(c => c.z)), y: caps[0].y, rect: rectOf(caps), from: storeys > 1 ? F + SH : caps[0].y });
+    }
+  }
   if (wantStack && hearth.spot === 'middle' && roofKind === 'gable' && plan !== 'gables' && !flat && !T.tower && F < 1.01 && !/stone|marble|grausten/.test(C.wallStyle || '')) chimneyStack(b, K, wings, edges, dctx.profile, dctx.R, { C, SH, F, storeys });
   // a balcony on a gable end, from the upper room (coverage audit: on 46 % of the best-liked builds; bench: req.details.balcony)
   const wantBalc = dctx.profile.balcony != null ? dctx.profile.balcony
@@ -1334,7 +1353,10 @@ function settle(b, ctx) {
     // 0.75 m toward the room's middle; a hearth (4 x 3 m in the game) that still does not fit becomes a fire pit
     const walls = b.pieces.filter(p => !p.decor && ['wall', 'pole', 'stair'].includes(P.piece(p.name).role)).map(p => Ck.aabb(p));
     const clear0 = keepClear(b).filter(z => !(fire.x > z.x0 && fire.x < z.x1 && fire.z > z.z0 && fire.z < z.z1)); // doorways and climbs, not the zone it is in already
-    const clips = () => { const o = Ck.aabb(fire); return walls.some(w => w.x0 < o.x1 - 0.05 && w.x1 > o.x0 + 0.05 && w.z0 < o.z1 - 0.05 && w.z1 > o.z0 + 0.05 && w.y0 < o.y1 && w.y1 > o.y0 + 0.05) ||
+    // (the pot or spit on the fire moves with it, and an iron spit is wider than the fire pit: it must clear the walls too)
+    const pots = b.pieces.filter(p => p.decor && p !== fire && /cookingstation|piece_cauldron/.test(p.name) && Math.hypot(p.x - fire.x, p.z - fire.z) < 0.4);
+    const inWall = o => walls.some(w => w.x0 < o.x1 - 0.05 && w.x1 > o.x0 + 0.05 && w.z0 < o.z1 - 0.05 && w.z1 > o.z0 + 0.05 && w.y0 < o.y1 && w.y1 > o.y0 + 0.05);
+    const clips = () => { const o = Ck.aabb(fire); return inWall(o) || pots.some(p => inWall(Ck.aabb({ ...p, x: fire.x, z: fire.z }))) ||
       clear0.some(z => hits({ ...o, x0: o.x0 + 0.15, x1: o.x1 - 0.15, z0: o.z0 + 0.15, z1: o.z1 - 0.15 }, z)); };
     if (clips()) {
       const rm = mainRoom || { x0: fire.x - 1, x1: fire.x + 1, z0: fire.z - 1, z1: fire.z + 1 };
@@ -1347,9 +1369,29 @@ function settle(b, ctx) {
         const tries = [[0, 0]];
         for (const t of [0.25, 0.5, 0.75, 1]) for (const [dx, dz] of [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [-1, 1], [1, -1], [-1, -1]]) tries.push([dx * t, dz * t]);
         tries.sort((p1, p2) => Math.hypot(...p1) - Math.hypot(...p2) || ((p2[0] * (cx - x0) + p2[1] * (cz - z0)) - (p1[0] * (cx - x0) + p1[1] * (cz - z0))));
-        for (const [dx, dz] of tries) {
-          fire.x = +(x0 + dx).toFixed(3); fire.z = +(z0 + dz).toFixed(3);
-          if (!clips()) { ok = true; break; }
+        const slide = () => {
+          for (const [dx, dz] of tries) {
+            fire.x = +(x0 + dx).toFixed(3); fire.z = +(z0 + dz).toFixed(3);
+            if (!clips()) return true;
+          }
+          return false;
+        };
+        ok = slide();
+        // a long iron spit by a wall turns along the other wall, or a short wooden spit takes its place, or the fire
+        // stays bare
+        if (!ok && pots.length) {
+          for (const p of pots) { p.yaw = ((p.yaw || 0) + 90) % 360; p.q = quat(p.yaw); }
+          ok = slide();
+          if (!ok && pots.some(p => p.name === 'piece_cookingstation_iron')) {
+            for (const p of pots) if (p.name === 'piece_cookingstation_iron') { p.name = 'piece_cookingstation'; p.yaw = ((p.yaw || 0) + 270) % 360; p.q = quat(p.yaw); }
+            ok = slide();
+          }
+          if (!ok) {
+            const gone = new Set(pots);
+            b.pieces = b.pieces.filter(p => !gone.has(p));
+            pots.length = 0;
+            ok = slide();
+          }
         }
         if (!ok) { fire.x = x0; fire.z = z0; }
         if (ok) break;
@@ -1743,21 +1785,85 @@ const HEARTHS = {
   slavic: { middle: 0, end: 0.15, side: 0.85, stack: 0.3, front: true, corner: 0.9 },
   'east-asian': { middle: 0.5, end: 0.2, side: 0.3, stack: 0.2 },
   byzantine: { middle: 0.2, end: 0.4, side: 0.4, stack: 0 },
+  // a Svan house keeps the middle hearth more often (the machub's hearth stood in the room); the stone houses of the
+  // Levant and Arabia put the fire in a niche in the thick wall (flat roofs: the wall cell, generate)
+  lamari: { middle: 0.35, end: 0.4, side: 0.25, stack: 0 },
+  'middle-eastern': { middle: 0.15, end: 0.45, side: 0.4, stack: 0 },
 };
-// The plan is drawn from the household's own stream (the lineage), so the fire keeps its place from stage to stage;
-// the end is the one the house does not grow toward. A blocked end falls back to the corner at that end, then to the
-// middle. Returns { spot, sg, u, sv, x, z, stack } in world metres for the main wing.
+// Where the household lays its fire at a stage (D-132, Tyler: "Fireplaces can move spots"). The first fire is drawn at
+// s1 from the household's own stream, at the end the house does not grow toward. At each later stage the household
+// may rework it and draw again from the culture's odds: 30 % at a stage that changes the house (a wing, more length,
+// a storey), 8 % at one that keeps the same shell. Moving a fire means a new hood or shaft and patching the roof over
+// the old one, so a household mostly does it while the builders are in anyway; a stage that only furnishes and
+// dresses the house seldom does. These rates are a choice (the corpus has no house seen at two stages). There is no
+// fixed interval: each stage draws on its own. Returns { spot0, sg, corner, stackDraw, moved, before } where moved names
+// the stage the fire last moved at (or null) and before is the draw it moved from.
+const HEARTH_MOVE = { grew: 0.3, kept: 0.08 };
+// A hall or tavern where people gather: in the corpus 32 % of the fires in halls and taverns over 80 m2 stand in the
+// middle, 29 % half in the wall, 16 % against it and 16 % in an alcove (docs/INTERIOR_DESIGN.md). The middle odds are
+// set under a third because halls whose wings leave no free wall keep the middle anyway (lab/hearths/hallmix.js: 37 %
+// of those over 80 m2 in all). The stone stack odds stay the culture's.
+const HALL_HEARTH = { middle: 0.22, end: 0.4, side: 0.25, front: false, corner: 0.3 };
+function hearthDraw(lineage, cultureKey, stage, M, area, hall, salt = 0) {
+  const wt = hall ? { ...(HEARTHS[cultureKey] || HEARTHS.default), ...HALL_HEARTH } : HEARTHS[cultureKey] || HEARTHS.default;
+  // the culture's middle odds by the floor the fire serves: in the corpus 8 % of homes under 120 m2 keep the fire in
+  // the middle, 16 % of all homes (docs/INTERIOR_DESIGN.md, "Hearths and lights in the corpus"); a big house's hall
+  // gathers round it more often
+  const mid = hall ? wt.middle : wt.middle * (area == null ? 1 : area < 120 ? 0.3 : area < 250 ? 0.6 : 0.9);
+  const draw = (R, sgFirst) => {
+    const spot0 = pick(R, { middle: mid, end: wt.end, side: wt.side });
+    const sgR = R() < 0.5 ? -1 : 1;
+    return { spot0, sg: sgFirst || sgR, corner: R() < (wt.corner != null ? wt.corner : 0.5), stackDraw: R(), moved: null };
+  };
+  let d = draw(rng((lineage * 92821 + strHash(cultureKey) * 7 + 5 + salt) >>> 0), M && M.fam.growSide ? -M.fam.growSide : 0);
+  const order = ['s1', 's2', 's3'], upTo = Math.max(0, order.indexOf(stage));
+  const sig = st => st ? `${st.W}x${st.D}|${st.specs.length}|${st.storeys}|${st.round ? 1 : 0}` : null;
+  for (let i = 1; i <= upTo; i++) {
+    const R = rng((lineage * 92821 + strHash(cultureKey) * 7 + 5 + salt + i * 7919) >>> 0);
+    const grew = !M || sig(M.states[order[i]]) !== sig(M.states[order[i - 1]]);
+    if (R() >= (grew ? HEARTH_MOVE.grew : HEARTH_MOVE.kept)) continue;
+    const n = draw(R, 0);
+    // a stone rebuild keeps its draw (the stack odds are the household's), and the new place must differ from the old
+    if (n.spot0 === d.spot0 && n.sg === d.sg) n.sg = -n.sg;
+    d = { ...n, stackDraw: d.stackDraw, moved: order[i], before: d };
+  }
+  return d;
+}
+
+// The plan for the stage comes from hearthDraw. A blocked end falls back to the corner at that end, then to the
+// middle. Returns { spot, sg, u, sv, x, z, stack } in world metres for the main wing, or { spot: 'middle', why }.
 function hearthPlan(o) {
   const { T, C, cultureKey, lineage, roofKind, plan, wings, flat, form, M, stoneOK, F, doors, stage, K, cells } = o;
   const w0 = wings[0];
-  const none = { spot: 'middle' };
-  if (T.use !== 'home' || T.tower || flat || !['gable', 'hip'].includes(roofKind) || plan === 'gables' || w0.alpha !== 0 || form || w0.W < 3 || w0.D < 3) return none;
-  const HR = rng((lineage * 92821 + strHash(cultureKey) * 7 + 5) >>> 0);
-  const wt = HEARTHS[cultureKey] || HEARTHS.default;
-  const spot0 = pick(HR, { middle: wt.middle, end: wt.end, side: wt.side });
-  const sg = M && M.fam.growSide ? -M.fam.growSide : (HR() < 0.5 ? -1 : 1);
-  const corner = HR() < (wt.corner != null ? wt.corner : 0.5), stackDraw = HR();
-  if (spot0 === 'middle') return none;
+  const why = w => ({ spot: 'middle', why: w });
+  const hall = T.use === 'hall';
+  if (T.use !== 'home' && !hall) return why('not a home');
+  if (T.tower) return why('tower');
+  if (flat) return why('flat');
+  if (!['gable', 'hip'].includes(roofKind)) return why(`roof ${roofKind}`);
+  if (form && !['svan', 'gables'].includes(form)) return why(`form ${form}`);
+  if (w0.W < 3 || w0.D < 3) return why('small');
+  const wt = hall ? { ...(HEARTHS[cultureKey] || HEARTHS.default), ...HALL_HEARTH } : HEARTHS[cultureKey] || HEARTHS.default;
+  const hd = hearthDraw(lineage, cultureKey, stage, M, o.area, hall, hall ? strHash(o.type || '') : 0);
+  const { spot0, corner, stackDraw, moved } = hd;
+  let sg = hd.sg;
+  // the stage the fire moved at, when the move changes where it stands (a row of gable houses has one wall place)
+  const movedHere = hd.moved === stage && hd.before && (plan === 'gables' ? (hd.before.spot0 === 'middle') !== (spot0 === 'middle') : form === 'svan' ? hd.before.spot0 !== spot0 : true);
+  if (spot0 === 'middle') return { ...why('drawn'), moved, movedHere };
+  // a row of gable houses (Icelandic): the fire against the back gable of the main row, under its ridge, the door in
+  // the front gable (the hearth in a turf house's own row by the back wall)
+  if (plan === 'gables') {
+    const ends = [-1, 1].map(s1 => {
+      const [x, z] = toWorld(w0, s1 * (w0.W - 1), 0, 0).map(c => Math.round(c) + 0);
+      return { s1, x, z };
+    }).filter(e => cells.has(`${e.x},${e.z}`) && !doors.some(d => Math.hypot(d.x - e.x, d.z - e.z) < 2.2) && !wings.some(w => w !== w0 && inside(w, e.x, e.z, -0.1)));
+    ends.sort((a, c) => c.z - a.z);
+    if (!ends.length) return { ...why('gables: no free back end'), moved };
+    return { spot: 'end', sg: ends[0].s1, x: ends[0].x, z: ends[0].z, xW: NaN, rot: true, moved, movedHere };
+  }
+  if (w0.alpha !== 0) return why('turned wing');
+  // a Svan house: the tower stands at the back corner of the +x end from s2, so the fire keeps to the other end
+  if (form === 'svan') sg = -1;
   const hip = roofKind === 'hip';
   const sv0 = wt.front ? -1 : 1;
   const nearDoor = (x, z, d = 2.4) => doors.some(e => Math.hypot(e.x - x, e.z - z) < d);
@@ -1790,8 +1896,8 @@ function hearthPlan(o) {
   for (let u = -w0.W + 1; u <= w0.W - 1; u += 2) bays.push(u);
   bays.sort((a, c) => Math.abs(a - sg * w0.W) - Math.abs(c - sg * w0.W));
   tries.push(...bays.map(u => () => sideAt(u, sv0)), ...bays.map(u => () => sideAt(u, -sv0)));
-  for (const t of tries) { const h = t(); if (h) return h; }
-  return none;
+  for (const t of tries) { const h = t(); if (h) return { ...h, moved, movedHere }; }
+  return { ...why('no free wall'), moved, movedHere };
 }
 
 // The chimney's footprint: the ridge caps within a metre of the vent (caps sit every 2 m from -maxU to maxU), the

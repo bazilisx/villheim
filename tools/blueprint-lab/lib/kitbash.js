@@ -5,19 +5,15 @@
 const NODE_B = typeof module !== 'undefined';
 const PB = NODE_B ? require('./pieces.js') : window.VHPieces;
 const checksB = () => (NODE_B ? require('./checks.js') : window.VHChecks);
+const auditB = () => (NODE_B ? require('./audit.js') : (typeof window !== 'undefined' ? window.VHAudit : null));
 const personaB = () => (NODE_B ? require('./persona.js') : window.VHPersona);
 const quatB = yaw => { const a = yaw * Math.PI / 360; return [0, +Math.sin(a).toFixed(6), 0, +Math.cos(a).toFixed(6)]; };
 const BIOMES_B = ['Meadows', 'Black Forest', 'Swamp', 'Mountain', 'Plains', 'Mistlands', 'Ashlands'];
-// in reach of the village (D-080): its own biome for stations, one further for furniture and decor (lib/pieces.js)
+// what a village may put up (lib/pieces.js decorOk): any decor in any biome, building pieces its biome and the next (D-065)
 const can = (biome, name) => PB.decorOk(name, biome);
-// minor decor goes in any biome (D-066): it costs nothing or is paid in the village's own materials
-// what a village makes: by the piece's materials and, for furniture, by the decorator's table too (the stricter)
-const canMake = (biome, name) => {
-  if (!can(biome, name)) return false;
-  const F = NODE_B ? require('./decorate.js').FURNITURE : (window.VHDecorate && window.VHDecorate.FURNITURE) || {};
-  // furniture one biome further than the village's, stations and fires none (D-080, as decorate.js)
-  return !F[name] || BIOMES_B.indexOf(F[name].b) <= BIOMES_B.indexOf(biome) + (['craft', 'fire', 'storage'].includes(F[name].cat) ? 0 : 1);
-};
+// any decor in any biome; building pieces of a set (a half wall, a beam) the village's biome and the next (D-065,
+// lib/pieces.js decorOk)
+const canMake = (biome, name) => can(biome, name);
 const canDecor = (biome, name) => canMake(biome, name) || PB.minor(name);
 
 // ---------------------------------------------------------------- the interior library (data/kitbash-interior.json)
@@ -25,6 +21,8 @@ const canDecor = (biome, name) => canMake(biome, name) || PB.minor(name);
 // and an iron chest in the same place count as one assembly; the placer fills each slot with what the village's biome
 // makes. Pieces with no class here are their own slot. Small building pieces count when they carry something (a beam
 // shelf, a half-wall counter).
+// the furniture roles the pool audit measures (lib/audit.js FURN)
+const FURN_B = new Set(['bed', 'table', 'seat', 'storage', 'craft', 'fire', 'clutter']);
 const CLASSES = {
   chest: ['piece_chest_wood', 'piece_chest', 'piece_chest_blackmetal', 'piece_chest_private'],
   barrel: ['piece_chest_barrel'],
@@ -190,8 +188,11 @@ function stalls(b, ctx, zones) {
     if (solid.some(({ p, o }) => inner(o) && !(onWall(p) && ['wall', 'window', 'pole'].includes(PB.piece(p.name).role)))) continue;
     if (doors.some(p => inner(Ck.aabb(p)) || (onWall(p) && (s.along === 'x' ? p.x > box.x0 - 1 && p.x < box.x1 + 1 : p.z > box.z0 - 1 && p.z < box.z1 + 1)))) continue;
     if (zones.some(z => z.x0 < box.x1 && z.x1 > box.x0 && z.z0 < box.z1 && z.z1 > box.z0 && z.y0 < y + 2 && z.y1 > y && !z.flue)) continue;
-    // clear the stalls' floor of furnishing
-    b.pieces = b.pieces.filter(p => !(p.decor && inner(Ck.aabb(p))));
+    // clear the stalls' floor of furnishing, and what stands against the end partitions' outer faces (a chest by the
+    // last half wall went into it)
+    const pad = s.along === 'x' ? { x0: box.x0 - 0.3, x1: box.x1 + 0.3, z0: box.z0, z1: box.z1 } : { x0: box.x0, x1: box.x1, z0: box.z0 - 0.3, z1: box.z1 + 0.3 };
+    const near = o => o.x0 < pad.x1 && o.x1 > pad.x0 && o.z0 < pad.z1 && o.z1 > pad.z0 && o.y1 > y + 0.2 && o.y0 < y + 2.4;
+    b.pieces = b.pieces.filter(p => !(p.decor && near(Ck.aabb(p))));
     const at = (a, d) => (s.along === 'x' ? [a, s.wall + s.n * d] : [s.wall + s.n * d, a]);
     const T = { decor: true, trim: true };
     const yawAcross = s.along === 'x' ? 90 : 0, yawAlong = s.along === 'x' ? 0 : 90;
@@ -295,7 +296,9 @@ function vignettes(b, ctx, zones) {
         z0: e.z + Math.min(0, nz * 1.6) - (uz ? 1.3 : 0.05) + nz * half, z1: e.z + Math.max(0, nz * 1.6) + (uz ? 1.3 : 0.05) + nz * half };
       const inPlane = p => !p.decor && Math.abs((p.x - e.x) * nx + (p.z - e.z) * nz) < half + 0.35; // the wall's own posts, trim and courses
       const busy = b.pieces.some(p => { if (p === wall || inPlane(p) || ['floor', 'rug'].includes(PB.piece(p.name).role)) return false; const o = Ck.aabb(p); return o.x0 < box.x1 && o.x1 > box.x0 && o.z0 < box.z1 && o.z1 > box.z0 && o.y0 < room.y + 2.2 && o.y1 > room.y + 0.15; })
-        || zones.some(z => z.x0 < box.x1 && z.x1 > box.x0 && z.z0 < box.z1 && z.z1 > box.z0 && z.y0 < room.y + 2 && z.y1 > room.y);
+        || zones.some(z => z.x0 < box.x1 && z.x1 > box.x0 && z.z0 < box.z1 && z.z1 > box.z0 && z.y0 < room.y + 2 && z.y1 > room.y)
+        // a stair along this wall counts though it stands in the wall's plane, with the audit's 0.6 m round its foot
+        || b.pieces.some(p => { if (p.decor || PB.piece(p.name).role !== 'stair') return false; const o = Ck.aabb(p); return o.x0 - 0.6 < box.x1 && o.x1 + 0.6 > box.x0 && o.z0 - 0.6 < box.z1 && o.z1 + 0.6 > box.z0 && o.y0 < room.y + 2.2 && o.y1 > room.y - 0.3; });
       if (busy) continue;
       const fl = b.pieces.find(p => !p.decor && PB.piece(p.name).role === 'floor' && (() => { const o = Ck.aabb(p); const cx = e.x + nx * (half + 0.5), cz = e.z + nz * (half + 0.5); return cx > o.x0 && cx < o.x1 && cz > o.z0 && cz < o.z1 && Math.abs(o.y1 - (room.y + 0.1)) < 0.6; })());
       if (!fl) continue;
@@ -369,6 +372,7 @@ const ROOM_KINDS = {
 const SKIP_N = /^(piece_xmas|piece_gift|piece_mistletoe|piece_jackoturnip|piece_(Celebration|Fairylight)Garland|goblin|Morkhalla|piece_asksvinskeleton|lox_ribs|piece_barber|piece_icecube|Skull|ancient_skull|wood_(fine_|core_)?stack|treasure_pile|treasure_stack|Pickable|TreasureChest|loot_chest|piece_chest_private|piece_chest_treasure)/;
 // a 1 x 1 floor counts as a floor to stand on in the checks; shelves use beams
 const NO_BUILT = ['floor1'];
+const VARY_SLOTS = new Set(['rug', 'pot']);
 
 // Which prefab fills a slot in this village: the source's own when the biome makes it (minor decor goes anywhere),
 // else the first of its class that it does. Null leaves the slot out.
@@ -385,11 +389,63 @@ function fillSlot(m, biome, ctx) {
   }
   if (m.k === 'feast') return okN(FEAST[biome]) ? FEAST[biome] : null;
   if (m.any && CLASSES[m.k] && ctx._R2) { const l = CLASSES[m.k].filter(okN); if (l.length) return l[Math.floor(ctx._R2() * l.length)]; }
+  // a rug or a pot of a set is any of its kind, the source's own twice as likely (Tyler, 2026-11-10: "Same exact lox
+  // rug"); flat or round, it takes the same place
+  // a rug by the room kind's corpus shares and the culture's counts (lib/decorate.js corpusPick; a uniform draw put
+  // hare and straw rugs as often as deer and fur), the source's own twice as likely
+  if (m.k === 'rug' && ctx._R2) {
+    const l = CLASSES.rug.filter(okN);
+    const LK = { home: 'home', longhouse: 'hall', tavern: 'tavern', smithy: 'smithy', workshop: 'workshop', storage: 'storage', temple: 'hall' }[ctx.type] || 'home';
+    if (l.length) return decorB().corpusPick(ctx._R2, l, LK, 'rug', ctx.culture || ctx.cultureKey, m.n);
+  }
+  if (VARY_SLOTS.has(m.k) && CLASSES[m.k] && ctx._R2) {
+    const l = CLASSES[m.k].filter(okN);
+    if (l.length) { let r = ctx._R2() * (l.length + (l.includes(m.n) ? 1 : 0)); for (const n of l) { r -= n === m.n ? 2 : 1; if (r <= 0) return n; } return l[l.length - 1]; }
+  }
   if (okN(m.n)) return m.n;
   const list = CLASSES[m.k];
   return list ? list.find(okN) || null : null;
 }
 
+// The hand-made kits (BK-) were written with one prefab per place (a pine table, plain benches, a candle on every
+// table), so in them the essentials are drawn like the decorator's own: chairs, benches, a long table and chests by
+// the room kind's corpus shares and the culture's counts (lib/decorate.js corpusPick), one draw per kit so a set
+// matches; what lies on a table only as often as corpus tables are dressed (rel.tablesDressed) and drawn by the
+// corpus onTable counts. Only prefabs of about the same footprint stand in for each other. Undefined keeps the fill.
+// (dvergrprops_chair left out: its solids reach into the sets' tables at their chair spacing, the Plains pool's furnClip
+// of 2026-11-11)
+const BUILT_SWAP = {
+  chair: ['piece_chair', 'piece_chair03', 'dvergrprops_stool'],
+  bench: ['piece_bench01', 'piece_logbench01', 'piece_blackmarble_bench'],
+  piece_table: ['piece_table', 'piece_blackmarble_table'],
+  chest: ['piece_chest_wood', 'piece_chest'],
+};
+// the tables lab/essentials.js tablesDressed counts
+const TOP_TABLES = /^(piece_table|piece_table_round|piece_table_oak|dvergrprops_table|piece_blackmarble_table|cauldron_ext3_butchertable|piece_magetable|piece_table_runed)$/;
+const BUILT_LK = { home: 'home', longhouse: 'hall', tavern: 'tavern', smithy: 'smithy', workshop: 'workshop', storage: 'storage', temple: 'hall' };
+function builtPick(a, mm, ctx, picks, name) {
+  if (!name) return undefined;
+  const D = decorB(), culture = ctx.culture || ctx.cultureKey, LK = BUILT_LK[ctx.type] || 'home', R = ctx._R2;
+  const onTable = (mm.rest === 'on' && a.pieces[mm.on] && /table/.test(a.pieces[mm.on].n)) || (mm.rest === 'anchor' && a.anchor === 'table');
+  // whether the table holds anything is the table's one roll (apply, lib/decorate.js tableDressed)
+  if (onTable && !mm.key) return /^Candle_resin/.test(name) ? D.topPick(R, culture, ctx.biome) : undefined;
+  // barrels only where the household keeps them (lib/decorate.js keepsBarrels)
+  if (mm.k === 'barrel' && !mm.key && !D.keepsBarrels(ctx.persona, ctx.type)) return null;
+  const grp = BUILT_SWAP[mm.k] ? mm.k : BUILT_SWAP[mm.n] ? mm.n : null;
+  if (!grp) return undefined;
+  const list = BUILT_SWAP[grp].filter(n => canDecor(ctx.biome, n) && (shapesB().has(n) || D.FURNITURE[n]));
+  if (!list.length) return undefined;
+  const kind = grp === 'chest' ? 'storage' : grp === 'piece_table' ? 'table' : 'seat';
+  return picks['_' + grp] || (picks['_' + grp] = D.corpusPick(R, list, LK, kind, culture, mm.n));
+}
+
+// How deep corpus builders push chests into each other and into walls (D-127; the mined sets' clip lists in
+// data/kitbash-interior.json, medians): piece_chest_wood into piece_chest_wood 11.4 cm over 17 sets (max 27.9 cm);
+// into a wall piece_chest_wood 12.1 cm over 53 sets, piece_chest 14.2 cm over 18, piece_chest_blackmetal 14.2 cm over
+// 14. A library chest may go that deep by the fitter's solids test; past the decorator's 12 cm it carries the depth
+// as a clip made on purpose (p.fclip, p.wclip, #VillheimClips, D-098).
+const CHEST_PAIR = { piece_chest_wood: 0.114 };
+const CHEST_WALL = { piece_chest_wood: 0.121, piece_chest: 0.142, piece_chest_blackmetal: 0.142 };
 // A small grid of boxes for the fitter: everything in the building, and what it adds as it goes. A piece is filed in
 // every 2 m cell its reach from its pivot can touch (its solids, or its catalog size, by prefab); its box is worked out
 // the first time a query comes near it (most of a building never is).
@@ -543,6 +599,34 @@ function takes(anc, a) {
 }
 
 // Fit one assembly at one anchor (mirrored or not). Returns the pieces to add, or null.
+// How many seats a dining set keeps: the corpus has about 2.2 seats at each table that has any (norse furnished
+// buildings: 8 seats and 2 tables at the median, 28 % of seats at a table and 51 % of tables with seats, the research
+// branch's data/culture-corpus/summary.json), so a set keeps 1 to all of its seats by the weights below (2.2 for a set
+// of four), drawn from the household and the spot (the same at every decor stage). Benches count as two seats. A set
+// keeps none of them as often as the culture's tables stand without seats.
+const DINING_KEEP = [0.3, 0.3, 0.25, 0.15];
+function diningSeats(a, ctx, kb, fireNear, role) {
+  const seats = a.pieces.map((p, i) => [p, i]).filter(([p]) => p.k === 'seat' || p.k === 'chair' || p.k === 'bench' || /^(piece_chair|piece_bench|dvergrprops_stool|piece_logbench)/.test(p.n)).map(([, i]) => i);
+  if (seats.length < 2) return new Set();
+  let h = 2166136261;
+  for (const ch of `${kb}|${ctx.persona ? ctx.persona.salt : 0}`) h = Math.imul(h ^ ch.charCodeAt(0), 16777619);
+  const R = rngB((h ^ (h >>> 15)) >>> 0);
+  R();
+  const bench = /bench/.test(a.pieces[seats[0]].n);
+  // a table nobody sits at as often as the culture's corpus tables stand without seats (corpusRate ts: 51 % of norse
+  // tables have a seat): the set keeps its table, rug and what lies on it
+  // (a tavern's or a hall's tables keep at least one seat: corpus tavern rooms hold about 7.5 seats to 2.4 tables,
+  // data/interior.json)
+  const hallLike = ['tavern', 'hall', 'temple'].includes(role);
+  if (R() >= decorB().corpusRate(ctx.culture || ctx.cultureKey, 'ts') && !hallLike) return new Set(seats);
+  let r = R() * DINING_KEEP.reduce((x, y) => x + y, 0), want = DINING_KEEP.length;
+  for (let k = 0; k < DINING_KEEP.length; k++) { r -= DINING_KEEP[k]; if (r <= 0) { want = k + 1; break; } }
+  const keep = Math.max(1, Math.min(seats.length, bench ? Math.ceil(want / 2) : want));
+  // which ones go: drawn too, so a set is left with a seat on one side or two facing; the seats nearest a fire go
+  // first (corpus rel.seatsByFire: 4 % of seats within 3.5 m of a fire)
+  const order = seats.map(i => [i, R() - (fireNear ? Math.min(4, fireNear(i)) : 0)]).sort((x, y) => x[1] - y[1]).map(([i]) => i);
+  return new Set(order.slice(keep));
+}
 function fit(b, ctx, room, idx, zones, anc, a, mirror, fires) {
   // under a flight the generator's keep-clear rectangle over the stair does not apply (the climb's own zone does)
   if (anc.anchor === 'stair') {
@@ -562,6 +646,8 @@ function fit(b, ctx, room, idx, zones, anc, a, mirror, fires) {
   a.pieces.forEach((p, i) => { if (p.key) needed.add(i); });
   let dropped = 0, slide = 0;
   const picks = {};
+  // what would lie on a table the household leaves bare (and what stands on that): left out, the set goes on
+  const bareTop = new Set();
   const kb = `${a.id}@${Math.round(anc.x * 10)},${Math.round(anc.z * 10)}`;
   // a set against a wall stands clear of the wall's own relief (the 2x2 wood wall's cross bars stand 13 cm proud of
   // its collider on one face): the whole set moves out by that much, so what hangs and what stands keep together
@@ -591,15 +677,30 @@ function fit(b, ctx, room, idx, zones, anc, a, mirror, fires) {
     const out = (anc.anchor !== 'stair' && !m.nearWall(x, z, 0.5)) || (mm.k !== 'rug' && zones.some(zn => x > zn.x0 && x < zn.x1 && z > zn.z0 && z < zn.z1 && y + 0.3 > zn.y0 && y < zn.y1));
     if (out) { if (needed.has(i)) { WHY_B = 25; return null; } miss++; }
   }
-  if (a.pieces.length - miss < Math.max(a.min || 2, Math.ceil(a.pieces.length * 0.6))) { WHY_B = 20; return null; }
+  // a dining set keeps as many of its seats as the household draws (diningSeats), the rest left out
+  const fireNear = i => { const mm = a.pieces[i], lx = mirror ? -mm.x : mm.x, x = anc.x + lx * c + mm.z * s, z = anc.z - lx * s + mm.z * c; return Math.min(9, ...(fires || []).map(f => Math.hypot(f.p.x - x, f.p.z - z))); };
+  const skip = a.dining ? diningSeats(a, ctx, kb, fireNear, room.role) : new Set();
+  const nAll = a.pieces.length - skip.size;
+  if (nAll - miss < Math.max(Math.min(a.min || 2, nAll), Math.ceil(nAll * 0.6))) { WHY_B = 20; return null; }
   for (const i of order) {
     const mm = a.pieces[i];
-    const fail = () => { if (needed.has(i)) return true; dropped++; return false; };
+    if (skip.has(i)) continue;
+    const fail = () => { if (needed.has(i) && !bareTop.has(i)) return true; dropped++; return false; };
     // a random pick (banners) is made once per assembly, so a pair matches
     let name = mm.any ? (picks[mm.k] || (picks[mm.k] = fillSlot(mm, ctx.biome, ctx))) : fillSlot(mm, ctx.biome, ctx);
-    // decor goes in any biome (Tyler, 2026-11-10); a creative set's building piece (a post kept in its own prefab)
-    // the village does not make is left out
-    if (name && a.creative && PB.piece(name).structural && PB.BIOME_ORDER.indexOf(PB.needs(name)) > PB.BIOME_ORDER.indexOf(ctx.biome)) name = null;
+    if (a.built && ctx._R2) { const bp = builtPick(a, mm, ctx, picks, name); if (bp !== undefined) name = bp; }
+    // a creative set's piece the village does not make itself is left out: the last pass (generate.js biomeSafe) would
+    // swap it for a stand-in of another size (a barrel of a stack turned into a chest)
+    if (name && !can(ctx.biome, name)) name = null;
+    // what lies on a table goes only on a table the household dresses: one roll per table, shared with the decorator
+    // and the stand pass (lib/decorate.js tableDressed; rel.tablesDressed times the household's clutter). On a bare table the
+    // set goes on without them, even its key (a set that failed there would come back with a fresh table and a fresh
+    // roll until one came up dressed); a set that is all table top has nothing left and stays out.
+    if (name && ctx._R2) {
+      const tbl = mm.rest === 'on' ? made[mm.on] : mm.rest === 'anchor' && a.anchor === 'table' ? anc.of : null;
+      if (tbl && TOP_TABLES.test(tbl.name) && !decorB().tableDressed(tbl, ctx._R2, ctx.culture || ctx.cultureKey, ctx.persona)) { name = null; bareTop.add(i); }
+    }
+    if (mm.rest === 'on' && bareTop.has(mm.on)) bareTop.add(i);
     if (!name || (mm.rest === 'on' && !made[mm.on])) { if (!name) WHY_B = 30; if (fail()) return null; continue; }
     let lx = mirror ? -mm.x : mm.x;
     if (a.byWidth && anc.w) lx = Math.sign(lx) * (anc.w / 2 + Math.abs(lx));
@@ -684,11 +785,21 @@ function fit(b, ctx, room, idx, zones, anc, a, mirror, fires) {
       if (!okP) { p.y = y0; bx = Ck.aabbShapes(p); WHY_B = why0; }
     }
     if (!okP) { LAST_B = `${i} ${p.name}`; if (fail()) return null; continue; }
+    // the pool audit's height for a sign or a wall stand (lib/audit.js MID, by the middle of what shows over the
+    // floor): a stand hung too low stays out, as the audit would fail it; a sign on a chest's front is a label and a
+    // sign standing on the floor (KB-058, KC-142) is a corpus use, and both pass as the audit reads them
+    if (hangOff(p, stand, idx, made)) { WHY_B = 33; LAST_B = `${i} ${p.name}`; if (fail()) return null; continue; }
+    // two of the set's pieces filled with one name in one place (two slots of a creative set both drawn as a beam) are
+    // one piece in the game: the second is left out
+    if (made.some(q => q && q.name === p.name && Math.abs(q.x - p.x) < 0.06 && Math.abs(q.y - p.y) < 0.06 && Math.abs(q.z - p.z) < 0.06 && Math.abs(((q.yaw - p.yaw) % 360 + 540) % 360 - 180) < 3)) { dropped++; continue; }
     if (p.rest === 'floor' && made.lvl != null && made.level == null) made.level = made.lvl;
     made[i] = p;
   }
   const got = made.filter(Boolean);
-  if (got.length < (a.min || 2) || got.length < Math.ceil(a.pieces.length * 0.6) || got.every(p => p.trim)) { WHY_B = WHY_B || 21; return null; }
+  // what a bare table leaves out does not count against the set (or a set would fail there and its next try would
+  // roll a fresh table)
+  const nKept = nAll - bareTop.size;
+  if (got.length < Math.min(a.min || 2, nKept) || got.length < Math.ceil(nKept * 0.6) || got.every(p => p.trim)) { WHY_B = WHY_B || 21; return null; }
   // a dining set keeps 0.7 m clear round it, the way round a table
   // two of one thing is a pair of chairs, not a corner; only a store room takes those
   if (!a.built && room.role !== 'storage' && new Set(got.map(p => slotOf(p.name))).size < 2) { WHY_B = 26; return null; }
@@ -741,10 +852,29 @@ function fit(b, ctx, room, idx, zones, anc, a, mirror, fires) {
   return got;
 }
 
+// Whether a sign or a wall stand would fail the pool audit's height test (lib/audit.js MID and its label rule)
+function hangOff(p, stand, idx, made) {
+  const A = auditB(), MID = A && A.MID && A.MID[p.name];
+  if (!MID || !meshB()) return false;
+  const V = meshB().aabbOf(meshB().world(p) || []) || checksB().aabbShapes(p);
+  if (!V) return false;
+  const mid = (V.y0 + V.y1) / 2, h = mid - stand;
+  if (h >= MID[0] && h <= MID[1]) return false;
+  // a sign standing on the floor, as corpus builders stand them (lib/audit.js floorSign, D-127)
+  if (A.floorSign && A.floorSign(p.name, V.y0, stand)) return false;
+  if (/^sign/.test(p.name)) {
+    const mx = (V.x0 + V.x1) / 2, mz = (V.z0 + V.z1) / 2;
+    const store = idx.near({ x0: mx - 0.3, x1: mx + 0.3, z0: mz - 0.3, z1: mz + 0.3, y0: V.y0 - 1, y1: V.y1 + 1 }, 0).map(r => r.p).concat(made.filter(Boolean))
+      .filter(q => q !== p && PB.piece(q.name).role === 'storage');
+    if (store.some(q => { const c = checksB().catBox(q); return mx > c.x0 - 0.25 && mx < c.x1 + 0.25 && mz > c.z0 - 0.25 && mz < c.z1 + 0.25 && mid > c.y0 && mid < c.y1 + 0.1; })) return false;
+  }
+  return true;
+}
+
 // The tests for one piece.
 // why the last piece was turned down (for lab/bench.js and tuning)
 let WHY_B = 0, LAST_B = '', LASTQ_B = '', STATS_B = null;
-const no = k => { WHY_B = k; return false; };
+const no = k => { WHY_B = k; if (globalThis.__kbNo) globalThis.__kbNo[k] = (globalThis.__kbNo[k] || 0) + 1; return false; };
 const MOVABLE = ['storage', 'seat', 'deco', 'clutter', 'light'];
 function placeable(p, bx, mm, i, b, ctx, room, idx, zones, made, clipOf, anc, fires, displace, a) {
   const Ck = checksB(), SH = shapesB(), D = decorB(), m = room.m;
@@ -813,6 +943,8 @@ function placeable(p, bx, mm, i, b, ctx, room, idx, zones, made, clipOf, anc, fi
     if (dist > 0.9 || dist < -0.6) continue;
     const t0 = Math.min(bx.x0 * f.ux + bx.z0 * f.uz, bx.x1 * f.ux + bx.z1 * f.uz, bx.x0 * f.ux + bx.z1 * f.uz, bx.x1 * f.ux + bx.z0 * f.uz);
     const t1 = Math.max(bx.x0 * f.ux + bx.z0 * f.uz, bx.x1 * f.ux + bx.z1 * f.uz, bx.x0 * f.ux + bx.z1 * f.uz, bx.x1 * f.ux + bx.z0 * f.uz);
+    // another stretch of the same wall line (the wall either side of a doorway or a gap) says nothing about this one
+    if (t1 < f.a0 + 0.05 || t0 > f.a1 - 0.05) continue;
     const st = D._int.stretch(f, t0 + 0.05, t1 - 0.05);
     if (st.ks.has('door')) return no(10);
     // under a window only what stays below the sill (as the decorator's wallSpots)
@@ -849,13 +981,37 @@ function placeable(p, bx, mm, i, b, ctx, room, idx, zones, made, clipOf, anc, fi
   // under its table; marked so the pool audit lets that depth pass, D-098)
   const mine = [], ownP = !mm.n || mm.n === p.name;
   let fdeep = 0;
-  for (const [q, deep] of D.furnClash(p, nearP(0.3).map(r => r.p).filter(q => q.decor && !displace.has(q)).concat(made.filter(Boolean)))) {
+  // (the furniture boxes the audit compares can reach well past the solids, a spinning wheel's is 2.67 x 2.04 m, and so
+  // can a neighbor's: the search covers the piece's furniture box and 1 m round it)
+  let fr = bx;
+  if (D.FURNITURE[p.name]) {
+    const o = D.itemOf(p).b, ex = Math.abs(o.c) * o.hw + Math.abs(o.s) * o.hd, ez = Math.abs(o.s) * o.hw + Math.abs(o.c) * o.hd;
+    fr = { x0: Math.min(bx.x0, o.x - ex), x1: Math.max(bx.x1, o.x + ex), y0: bx.y0, y1: bx.y1, z0: Math.min(bx.z0, o.z - ez), z1: Math.max(bx.z1, o.z + ez) };
+  }
+  const furnNear = idx.near({ ...fr, x0: fr.x0 - 1, x1: fr.x1 + 1, z0: fr.z0 - 1, z1: fr.z1 + 1 }, 0).map(r => r.p);
+  for (const [q, deep] of D.furnClash(p, furnNear.filter(q => q.decor && !displace.has(q)).concat(made.filter(Boolean)))) {
     const j = made.indexOf(q);
     if (j >= 0 && ownP && (!a.pieces[j].n || a.pieces[j].n === q.name)) { fdeep = Math.max(fdeep, deep); continue; }
+    // two chests of a kind pushed together as corpus builders push them (CHEST_PAIR, D-127): the solids test below
+    // holds them to the corpus depth; the mark lets the pool audit's box measure pass (D-098)
+    if (CHEST_PAIR[p.name] && q.name === p.name && !q.stacked) { fdeep = Math.max(fdeep, deep); continue; }
     if (movable(q)) { mine.push(q); continue; }
     return no(31);
   }
   if (fdeep) p.fclip = +(fdeep + 0.005).toFixed(3); else delete p.fclip;
+  // furniture the decorator has no size for (a mead ketill) the pool audit measures by its catalog box (furnClip) and
+  // by what shows when a crafting station is one of the pair (onStation): the same here, with nothing passed by a mark
+  if (FURN_B.has(info.role)) {
+    const pc = Ck.catBox(p);
+    // (as the audit, a station's extension counts too: an artisan table's extension in a spinning wheel's box)
+    const cr = { x0: Math.min(pc.x0, fr.x0) - 1, x1: Math.max(pc.x1, fr.x1) + 1, y0: bx.y0, y1: bx.y1, z0: Math.min(pc.z0, fr.z0) - 1, z1: Math.max(pc.z1, fr.z1) + 1 };
+    for (const q of idx.near(cr, 0).map(r => r.p).filter(q => q.decor && !displace.has(q)).concat(made.filter(Boolean))) {
+      if (q === p || (decorB().FURNITURE[p.name] && decorB().FURNITURE[q.name]) || !FURN_B.has(PB.piece(q.name).role)) continue;
+      if ([p.name, q.name].some(n => /^(fire_pit|hearth|bonfire)$/.test(n))) continue;
+      const qc = Ck.catBox(q), ov = k => Math.min(pc[k + '1'], qc[k + '1']) - Math.max(pc[k + '0'], qc[k + '0']);
+      if (ov('x') > 0.12 && ov('y') > 0.12 && ov('z') > 0.12 && !movable(q)) return no(31);
+    }
+  }
   // the audit's own tests (what it rests on is there, plain wall behind, out of what shows of the walls) come last,
   // as the dearest
   const audited = () => {
@@ -879,7 +1035,8 @@ function placeable(p, bx, mm, i, b, ctx, room, idx, zones, made, clipOf, anc, fi
     if (d <= 0.01) continue;
     if (movable(q)) { mine.push(q); continue; }
     let allow = 0;
-    if (!q.decor && ['wall', 'window', 'gable', 'beam', 'pole'].includes(role)) allow = clipOf(i, 'w');
+    if (!q.decor && ['wall', 'window', 'gable', 'beam', 'pole'].includes(role)) allow = Math.max(clipOf(i, 'w'), role === 'wall' ? CHEST_WALL[p.name] || 0 : 0);
+    if (q.decor && CHEST_PAIR[p.name] && q.name === p.name && !q.stacked) allow = Math.max(allow, CHEST_PAIR[p.name]);
     if (anc.of && q === anc.of) allow = Math.max(allow, clipOf(i, 'a'));
     if (d > allow + 0.01) { LASTQ_B = `${q.name}${q.decor ? '*' : ''} ${d.toFixed(2)}`; if (STATS_B) { const H = STATS_B.clip || (STATS_B.clip = {}); const k = `${q.decor ? (q.kb ? (/^KB-/.test(q.kb) ? 'mined' : 'kit') : 'decorator') : 'building'} ${PB.piece(q.name).role}`; H[k] = (H[k] || 0) + 1; } return no(17); }
     deepest = Math.max(deepest, d);
@@ -904,6 +1061,20 @@ function placeable(p, bx, mm, i, b, ctx, room, idx, zones, made, clipOf, anc, fi
   return true;
 }
 
+// Flavor, never a limit (D-065; Tyler 2026-11-10: the village's own biome may weigh a little more): a set of the
+// village's biome, an earlier one or the next weighs fully, one from further on less the further it is (a Dvergr
+// dining set in a Meadows house is possible, not common).
+function flavorB(a, biome) {
+  if (a._fl === undefined) {
+    const core = a.pieces.filter(m => m.key);
+    let hi = 0;
+    for (const m of core.length ? core : a.pieces) if (m.n && !PB.piece(m.n).structural) hi = Math.max(hi, PB.BIOME_ORDER.indexOf(PB.needs(m.n)));
+    a._fl = hi;
+  }
+  const d = a._fl - PB.BIOME_ORDER.indexOf(biome);
+  return d <= 1 ? 1 : 1 / (1 + 0.8 * (d - 1));
+}
+
 // What a set mostly is, for the room's layout plan (lib/layout.js zones): storage, a bench, a work station, a table.
 function setKind(a) {
   if (a._kind !== undefined) return a._kind;
@@ -923,8 +1094,9 @@ function setKind(a) {
 // 55 % of the room.
 function budget(decor, area) {
   if (decor === 'd1') return area >= 30 ? 1 : 0;
-  if (decor === 'd2') return Math.max(1, Math.min(3, Math.round(area / 22)));
-  return Math.max(2, Math.min(8, Math.round(area / 12)));
+  // by the room's size, with no ceiling: the floor kept free (half the room) and the room's spots are the limit
+  if (decor === 'd2') return Math.max(1, Math.round(area / 22));
+  return Math.max(2, Math.round(area / 12));
 }
 
 // What a household keeps under its stairs (lib/persona.js underStair): one choice per building, from the household's
@@ -949,10 +1121,10 @@ function furnishRooms(b, ctx, zones, R2, extra, rooms) {
     const need = new Set(a.pieces.filter(m => m.rest === 'on').map(m => m.on));
     a.pieces.forEach((m, i) => { if (m.key) need.add(i); });
     // (a set with a random pick, a pair of banners, draws from the stream inside the fitter: left to it)
-    const v = !a.pieces.some(m => m.any) && a.pieces.some((m, i) => {
-      if (!need.has(i) || m.any) return false;
+    const v = !a.pieces.some(m => m.any || VARY_SLOTS.has(m.k)) && a.pieces.some((m, i) => {
+      if (!need.has(i) || m.any || VARY_SLOTS.has(m.k)) return false;
       const name = fillSlot(m, ctx.biome, ctx);
-      return !name || (a.creative && PB.piece(name).structural && PB.BIOME_ORDER.indexOf(PB.needs(name)) > PB.BIOME_ORDER.indexOf(ctx.biome));
+      return !name || !can(ctx.biome, name);
     });
     hopeK.set(a, v);
     return v;
@@ -966,10 +1138,7 @@ function furnishRooms(b, ctx, zones, R2, extra, rooms) {
     const fires = b.pieces.filter(p => p.decor && /^(hearth|fire_pit|fire_pit_iron)$/.test(p.name)).map(p => ({ p, b: Ck.aabb(p) }));
     // candidates: assemblies for this room's kind that some anchor here takes, weighted by score and how well the
     // room kind fits; a building's own anchor first (the forge corner, the bed corner, the serving corner)
-    // each built kit once in a building (shelves, cabinets and drapes twice), each mined assembly twice
-    // each built kit once in a building (shelves, cabinets, drapes, bedsides, alcoves twice), each mined assembly
-    // twice; dining sets one to a room, a grid of them in a tavern's or a hall's main room (one per 25 m2)
-    const many = ['BK-shelf', 'BK-cabinet', 'BK-drapes', 'BK-bedside', 'BK-bedside2', 'BK-alcove', 'BK-alcove2', 'BK-understair', 'BK-understair2'];
+    // dining sets one to a room, a grid of them in a tavern's or a hall's main room
     let sets = ['tavern', 'hall', 'temple'].includes(room.role) ? Math.max(1, Math.min(6, Math.floor(room.m.area / 16)))
       : ['smithy', 'workshop'].includes(room.role) ? Math.max(1, Math.min(3, Math.floor(room.m.area / 24))) : 1;
     // the room's layout plan (lib/layout.js): how many sets its scheme takes, and where the floor spots rank
@@ -977,17 +1146,20 @@ function furnishRooms(b, ctx, zones, R2, extra, rooms) {
     const plan = Lay ? Lay.planFor(b, room.m) : null;
     if (plan && plan.sets != null) sets = Math.max(1, Math.min(sets, plan.sets));
     let setsHere = 0;
-    const cap = a => (a.dining ? (setsHere < sets ? 9 : 0) : a.built ? (many.includes(a.id) ? 2 : 1) : 2);
+    // no set is held to a count in a building (Tyler, 2026-11-10: no limits on any decor): repeats weigh less (below);
+    // dining sets follow the room's plan of how many tables it holds
+    const cap = a => (a.dining ? (setsHere < sets ? 9 : 0) : Infinity);
     const cands = lib.filter(a => (used[a.id] || 0) < cap(a) && (a.rooms || []).some(k => kinds.includes(k) || k === 'any') && anchors.some(an => takes(an, a)) &&
       (!a.types || a.types.includes(ctx.type)) && (!a.roles || a.roles.includes(room.role)) && (!a.decor || a.decor.includes(ctx.decor)) &&
-      // a creative set only where the village makes the building pieces it needs (decor goes in any biome)
-      (!a.creative || PB.BIOME_ORDER.indexOf(a.from) <= PB.BIOME_ORDER.indexOf(ctx.biome)))
+      // a creative set only where the village makes the building pieces it keeps in their own prefab (pieces.js buildReach,
+      // the rule decorOk reads); its decor goes in any biome
+      (!a.creative || PB.BIOME_ORDER.indexOf(a.from) <= PB.BIOME_ORDER.indexOf(PB.buildReach(ctx.biome))))
       .map(a => {
         // more kinds of piece weigh more; a pair of chests is common in the corpus and dull in every room
         const ks = new Set(a.pieces.map(p => p.k).filter(k => !BUILT_SLOTS.includes(k)));
         const store = [...ks].every(k => ['chest', 'barrel', 'crate', 'sign'].includes(k));
         const w = Math.log(1 + a.score) * (kinds.includes((a.rooms || [])[0]) ? 1.5 : 1) * (a.built ? 2.5 : 1) * (1 + 0.35 * (ks.size - 1)) * (store && room.role !== 'storage' ? 0.3 : 1)
-          * Math.pow(PS.kitWeight(P, a), 2); // the household's taste, squared so it shows (six households in one house
+          * flavorB(a, ctx.biome) * Math.pow(PS.kitWeight(P, a), 2); // the household's taste, squared so it shows (six households in one house
           // came out with the same rooms, lab/test_variance.js)
         return { a, w, sig: [...ks].sort().join(',') };
       });
@@ -1305,8 +1477,8 @@ function spaceBeds(b, ctx) {
   return out.size;
 }
 
-// Rooms where the furnishing set two tables or more (a house's tables bunched in one wing): the one nearest the
-// room's middle stays with its seats, the rest go with theirs and what stood on them, so each room has one dining
+// Rooms where the furnishing set two tables or more (a house's tables bunched in one wing): the first one placed stays
+// with its seats, the rest go with theirs and what stood on them, so each room has one dining
 // place and the library can lay one in a room without. Only in homes and their rooms; halls, taverns, temples and
 // towers keep theirs.
 function spreadTables(b, ctx, rooms) {
@@ -1321,11 +1493,18 @@ function spreadTables(b, ctx, rooms) {
     // a hall with free floor for two sets or more: its tables all go, and the library lays its sets in a grid
     const free = hall && m.area >= 40 ? m.cells.filter(c => c.i % 2 === 0 && c.j % 2 === 0 && [0, 1, 2, 3, 4, 5, 6, 7].every(k => m.inside(c.x + 2.2 * Math.sin(k * Math.PI / 4), c.z + 2.2 * Math.cos(k * Math.PI / 4)))).length : 0;
     void free;
+    // a side table nobody sits at stays too (lib/decorate.js placeTable seats tables at the corpus rate; a room holds
+    // its dining table and side tables, the corpus home room 1.2 tables)
+    const seatedT = t => { const o = Ck.aabbShapes(t); return b.pieces.some(q => q.decor && PB.piece(q.name).role === 'seat' && Math.abs(q.y - t.y) < 0.4 && q.x > o.x0 - 1.2 && q.x < o.x1 + 1.2 && q.z > o.z0 - 1.2 && q.z < o.z1 + 1.2); };
     const keep = hall ? tables.length : 1;
     if (tables.length <= keep) continue;
-    tables.sort((p, q) => Math.hypot(p.x - m.cx, p.z - m.cz) - Math.hypot(q.x - m.cx, q.z - m.cz));
+    // the room's first table stays (the decorator's own dining place, set where the household's corpus draw put it,
+    // lib/decorate.js tableFireAt and doorWant); keeping the one nearest the room's middle put it in one spot in every
+    // household
+    tables.sort((p, q) => b.pieces.indexOf(p) - b.pieces.indexOf(q));
     const out = new Set();
     for (const t of tables.slice(keep)) {
+      if (!hall && !seatedT(t)) continue;
       const o = Ck.aabbShapes(t);
       out.add(t);
       for (const q of b.pieces) {
@@ -1337,7 +1516,7 @@ function spreadTables(b, ctx, rooms) {
       }
     }
     b.pieces = b.pieces.filter(q => !out.has(q));
-    gone += tables.length - keep;
+    gone += [...out].filter(isTable).length;
   }
   return gone;
 }
@@ -1380,8 +1559,11 @@ function liveIn(b, ctx, zones) {
   const problems = p => {
     const out = new Set(), bx = Ck.aabbShapes(p), it = D.itemOf(p), sp = p._sp;
     const flat = !!sp.rug;
+    // what stands near: by the game's solids and by the audit's furniture box, whichever reaches further (a barrel's
+    // solids are smaller than its box, and a chair by it went unseen)
+    const reach = { ...bx, x0: Math.min(bx.x0, it.b.x - it.b.r), x1: Math.max(bx.x1, it.b.x + it.b.r), z0: Math.min(bx.z0, it.b.z - it.b.r), z1: Math.max(bx.z1, it.b.z + it.b.r) };
     if (!flat) for (const z of zones) if (z.x0 < bx.x1 && z.x1 > bx.x0 && z.z0 < bx.z1 && z.z1 > bx.z0 && z.y0 < bx.y1 && z.y1 > bx.y0) out.add('z' + zones.indexOf(z));
-    for (const r of idx.near(bx, 0.1)) {
+    for (const r of idx.near(reach, 0.1)) {
       const q = r.p;
       if (q === p) continue;
       const role = PB.piece(q.name).role;
@@ -1429,6 +1611,7 @@ function liveIn(b, ctx, zones) {
   const bears = p => { const o = Ck.aabb(p); return b.pieces.some(q => q !== p && q.decor && q.x > o.x0 && q.x < o.x1 && q.z > o.z0 && q.z < o.z1 && q.y > p.y + 0.15 && q.y < o.y1 + 0.3); };
   const amp = 0.12 + 0.88 * P.clutter;
   let moved = 0;
+  moved += turnLikeCorpus(b, ctx, idx, problems, bears);
   for (const p of b.pieces.slice()) {
     // a piece standing as its source build stood it, marked for the pool audit (D-098), stays put
     if (!p.decor || p.trim || p.yard || p.outside || (p.rest && ['wall', 'hang'].includes(p.rest)) || p.fclip || p.wclip) continue;
@@ -1461,6 +1644,84 @@ function liveIn(b, ctx, zones) {
   return moved;
 }
 
+// Tables, seats and rugs turned off the wall axes as often as corpus builders turn them (relx: 29 % of tables, 41 % of
+// seats and 30 % of rugs more than 10 degrees, per culture group, lib/decorate.js corpusRate), more in a cluttered
+// household and less in a tidy one. A table turns with what lies on it and the seats drawn up to it; a turn that
+// makes a problem the pieces did not have is taken back, and two more angles are tried. Library pieces count as the
+// decorator's do (most tables and seats come from the library); hung pieces and pieces marked as clips stay as they are.
+const TURN = { table: ['to', 12, 30], seat: ['so', 12, 40], rug: ['ro', 12, 45] };
+function turnLikeCorpus(b, ctx, idx, problems, bears) {
+  const Ck = checksB(), P = ctx.persona, D = decorB(), I = D._int, F = D.FURNITURE, culture = ctx.culture || ctx.cultureKey, corpusRate = D.corpusRate;
+  const R = rngB(((P.salt || 0) ^ 0x7e11) >>> 0);
+  // (a round table looks the same turned; turning its square box swung its corners into the chairs drawn up to it,
+  // the Plains pool's furnClip of 2026-11-11)
+  // (the catalog's role where the decorator's furniture list has no entry: the Dvergr chair a hand-made kit draws)
+  const kindOf = p => { const c = (F[p.name] || {}).cat || PB.piece(p.name).role; return c === 'table' && p.name !== 'piece_table_round' ? 'table' : c === 'seat' ? 'seat' : c === 'rug' ? 'rug' : null; };
+  const free = p => p.decor && !p.trim && !p.yard && !p.outside && !(p.rest && ['wall', 'hang'].includes(p.rest)) && !p.fclip && !p.wclip && !p.stacked;
+  // a flat stand the stand pass sank into a top or heaped (lib/stands.js, a clip into what it lies on) turns with what
+  // it lies on: with the stand pass in, dressed tables stayed square and tables turned fell from 23 to 14 %
+  const rides = p => p.decor && p.name === 'itemstandh' && !p.wclip && !p.trim && !(p.rest && ['wall', 'hang'].includes(p.rest));
+  const axis = (() => { const h = new Map(); for (const q of b.pieces) if (!q.decor && PB.piece(q.name).role === 'wall') { const k = Math.round(normB(I.pyaw(q)) % 90); h.set(k, (h.get(k) || 0) + 1); } const t = [...h.entries()].sort((a, c) => c[1] - a[1])[0]; return t ? t[0] : 0; })();
+  const off = p => { const m = normB(I.pyaw(p) - axis) % 90; return Math.min(m, 90 - m); };
+  const lean = 0.5 + (P.clutter || 0);
+  const turned = new Set();
+  let n = 0;
+  const tryTurn = (members, cx, cz) => {
+    const [, lo, hi] = TURN[kindOf(members[0])];
+    for (let t = 0; t < 3; t++) {
+      const dr = (R() < 0.5 ? -1 : 1) * (lo + R() * (hi - lo)), a = dr * Math.PI / 180, c = Math.cos(a), sn = Math.sin(a);
+      const olds = members.map(p => ({ p, x: p.x, z: p.z, yaw: p.yaw, q: p.q }));
+      const before = members.map(p => { p._sp = jitterSpec(p) || { rot: 0, off: 0 }; return problems(p); });
+      for (const p of members) {
+        idx.remove(p);
+        // world turn about (cx, cz): yaw grows clockwise seen from above (local +z is (sin, cos))
+        const dx = p.x - cx, dz = p.z - cz;
+        p.x = +(cx + dx * c + dz * sn).toFixed(3); p.z = +(cz - dx * sn + dz * c).toFixed(3);
+        p.yaw = +normB(I.pyaw(p) + dr).toFixed(2); p.q = quatB(p.yaw);
+        idx.add(p);
+      }
+      const ok = members.every((p, i) => [...problems(p)].every(k => before[i].has(k)));
+      for (const p of members) delete p._sp;
+      if (ok) { for (const p of members) turned.add(p); return true; }
+      for (const o of olds) { idx.remove(o.p); o.p.x = o.x; o.p.z = o.z; o.p.yaw = o.yaw; o.p.q = o.q; idx.add(o.p); }
+    }
+    return false;
+  };
+  // how many of a kind to turn: the corpus share of all of them (stochastic rounding), less those turned already; the
+  // candidates in a seeded order until that many have turned, so a turn taken back moves on to the next piece
+  const quota = kind => {
+    const all = b.pieces.filter(p => p.decor && !p.outside && !p.yard && kindOf(p) === kind);
+    const want = corpusRate(culture, TURN[kind][0]) * lean * all.length, q = Math.floor(want) + (R() < want % 1 ? 1 : 0);
+    return Math.max(0, q - all.filter(p => off(p) > 10).length);
+  };
+  const order = kind => b.pieces.filter(p => free(p) && kindOf(p) === kind && off(p) <= 10).map(p => [p, R()]).sort((x, y) => x[1] - y[1]).map(([p]) => p);
+  let left = quota('table');
+  for (const t of order('table')) {
+    if (left <= 0) break;
+    const ob = D.itemOf(t).b;
+    const on = b.pieces.filter(q => q !== t && q.decor && I.ptDist(ob, q.x, q.z) < 0.05 && q.y > t.y + 0.3 && q.y < t.y + 1.6);
+    if (on.some(q => !free(q) && !rides(q))) continue;
+    const seats = b.pieces.filter(q => free(q) && kindOf(q) === 'seat' && Math.abs(q.y - t.y) < 0.5 && I.ptDist(ob, q.x, q.z) < 0.9);
+    if (tryTurn([t, ...on, ...seats], t.x, t.z)) { n++; left--; }
+  }
+  for (const kind of ['seat', 'rug']) {
+    left = quota(kind);
+    for (const p of order(kind)) {
+      if (left <= 0) break;
+      if (turned.has(p)) continue;
+      // a seat turns with the flat stands on it (a bench the stand pass set); anything else on it keeps it square
+      let with_ = [];
+      if (kind !== 'rug' && bears(p)) {
+        const o = Ck.aabb(p);
+        with_ = b.pieces.filter(q => q !== p && q.decor && q.x > o.x0 && q.x < o.x1 && q.z > o.z0 && q.z < o.z1 && q.y > p.y + 0.15 && q.y < o.y1 + 0.3);
+        if (!with_.length || !with_.every(rides)) continue;
+      }
+      if (tryTurn([p, ...with_], p.x, p.z)) { n++; left--; }
+    }
+  }
+  return n;
+}
+
 function apply(b, ctx, zones) {
   if (ctx.decor === 'd3' && !['barn', 'storage', 'dock', 'farm'].includes(ctx.type)) vignettes(b, ctx, zones || []);
   if (ctx.decor !== 'd1' && ['longhouse', 'temple'].includes(ctx.type)) dais(b, ctx, zones || []);
@@ -1480,11 +1741,86 @@ function apply(b, ctx, zones) {
     const Lay = NODE_B ? require('./layout.js') : window.VHLayout;
     if (Lay) Lay.clearLanes(b, ctx, rooms);
   }
+  if (X.interiorKit !== false && ctx.decor !== 'd1') {
+    const st = stackChests(b, ctx);
+    if (st) b.notes.push(`${st} chests stacked on chests.`);
+  }
+  // things on item stands round the house, from a stream of their own (lib/stands.js)
+  const St = NODE_B ? require('./stands.js') : window.VHStands;
+  if (St && X.stands !== false) St.dressTops(b, ctx, zones || []);
   // lived in: movable things a little off square, by the household (lib/persona.js)
   if (X.lived !== false && ctx.decor !== 'd1') {
     const m = liveIn(b, ctx, zones || []);
     if (m) b.notes.push(`${m} movable things set a little off square, as a household leaves them.`);
   }
+  dropFalling(b);
+}
+
+// Chests stacked on chests as corpus builders stack them (relx.chestsStacked: 58 % of chests stand on or under another
+// chest, 0.3 to 1.5 m apart in height and within 0.6 m across, per culture group, lib/decorate.js corpusRate): a second
+// chest of the same kind on a chest within 1.2 m of a wall, where nothing stands over it and 0.3 m stays clear above
+// (never on a set's chest framed by beams or posts, or within 1.8 m of a door);
+// as many as bring the design's share to the culture's rate, more in a cluttered household. Store rooms stack their
+// own first (decorate.js storeStacks). From a stream of its own, so the rest of the design is unchanged.
+const STACKABLE = /^(piece_chest_wood|piece_chest|piece_chest_blackmetal|piece_chest_barrel)$/;
+function stackChests(b, ctx) {
+  const D = decorB(), Ck = checksB(), P = ctx.persona, culture = ctx.culture || ctx.cultureKey;
+  const R = rngB((((P && P.salt) || 7) ^ 0x57ac) >>> 0);
+  const chests = b.pieces.filter(p => p.decor && !p.outside && !p.yard && !p.trim && STACKABLE.test(p.name));
+  if (!chests.length) return 0;
+  const inStack = p => chests.some(q => q !== p && Math.hypot(q.x - p.x, q.z - p.z) < 0.6 && Math.abs(q.y - p.y) >= 0.3 && Math.abs(q.y - p.y) <= 1.5);
+  const share = Math.min(0.9, D.corpusRate(culture, 'cs') * (P ? 0.6 + 0.8 * (P.clutter || 0) : 1));
+  // a chest set on a lone one makes two in a stack: (k + 2m) / (N + m) = share
+  let m = Math.round((share * chests.length - chests.filter(inStack).length) / (2 - share));
+  if (m <= 0) return 0;
+  const idx = boxIndex(b.pieces);
+  const hit = (a, c) => a.x0 < c.x1 - 0.02 && c.x0 < a.x1 - 0.02 && a.z0 < c.z1 - 0.02 && c.z0 < a.z1 - 0.02 && a.y0 < c.y1 - 0.02 && c.y0 < a.y1 - 0.02;
+  // not a chest of a set built round it (framed by beams or posts), and not by a door, where the door lights go later
+  // (generate.js doorLights)
+  const framed = new Set(b.pieces.filter(q => q.kb && PB.piece(q.name).structural).map(q => q.kb));
+  const doors = b.pieces.filter(q => !q.decor && PB.piece(q.name).role === 'door');
+  const cand = chests.filter(p => !inStack(p) && !p.stacked && (!p.rest || p.rest === 'floor') && !p.fclip && !(p.kb && framed.has(p.kb)) &&
+    !doors.some(q => Math.hypot(q.x - p.x, q.z - p.z) < 1.8)).map(p => [p, R()]).sort((x, y) => x[1] - y[1]).map(([p]) => p);
+  let n = 0;
+  for (const p of cand) {
+    if (m <= 0) break;
+    const it = D.itemOf(p), h = it.y1 - it.y0;
+    if (!(h > 0.3)) continue;
+    const q = { name: p.name, x: p.x, y: +(p.y + h).toFixed(3), z: p.z, q: p.q, decor: true, stacked: true };
+    if (p.yaw != null) q.yaw = p.yaw;
+    if (p.ds != null) q.ds = p.ds;
+    if (p.extra) q.extra = true;
+    const bx = Ck.aabbShapes(q), reach = { ...bx, x0: bx.x0 - 1.2, x1: bx.x1 + 1.2, z0: bx.z0 - 1.2, z1: bx.z1 + 1.2 };
+    if (!idx.near(reach, 0).some(r => !r.p.decor && ['wall', 'window', 'door'].includes(PB.piece(r.p.name).role) && r.b.y1 > bx.y0 && r.b.y0 < bx.y1)) continue;
+    const clear = { ...bx, y1: bx.y1 + 0.3 };
+    // (decor by its catalog box as well: a ground torch's solids are thinner than the torch)
+    if (idx.near(clear, 0.1).some(r => r.p !== p && PB.piece(r.p.name).role !== 'rug' && (hit(r.b, clear) || (r.p.decor && hit(Ck.catBox(r.p), clear))))) continue;
+    // and nothing the furnishing audit would list (decorate.js lateClash: its overlap and doorway tests)
+    if (D.lateClash && D.lateClash(q, b.pieces)) continue;
+    b.pieces.push(q);
+    idx.add(q);
+    m--; n++;
+  }
+  return n;
+}
+
+// A set's building piece the game would let fall (a creative set's hanging pole whose source build held it by a piece
+// the set left out) goes, with what then has nothing under it; the structure check (lib/checks.js stability) is the
+// judge. Only the library's own pieces go.
+function dropFalling(b) {
+  const Ck = checksB();
+  if (!b.pieces.some(p => p.kb && PB.piece(p.name).structural)) return 0;
+  let n = 0;
+  for (let pass = 0; pass < 3; pass++) {
+    const boxes = b.pieces.map(Ck.gameBox), near = Ck.index(boxes);
+    const ys = boxes.filter(x => x.info.structural).map(x => x.y0).sort((a, c) => a - c);
+    const ground = b.ground != null ? b.ground : ys.length ? ys[Math.floor(ys.length * 0.02)] : 0;
+    const out = new Set(Ck.stability(b.pieces, boxes, near, ground).map(i => b.pieces[i]).filter(p => p.kb));
+    if (!out.size) break;
+    b.pieces = b.pieces.filter(p => !out.has(p));
+    n += out.size;
+  }
+  return n;
 }
 
 // ---------------------------------------------------------------- built-up furniture
@@ -1715,5 +2051,5 @@ function fitDebug(b, ctx, room, anc, a) {
   const got = fit(b, ctx, room, idx, ctx.zones || [], anc, a, false, fires);
   return { ok: !!got, why: WHY_B, piece: LAST_B, q: LASTQ_B };
 }
-const apiB = { setStats: s => { STATS_B = s; }, liveIn, jitterSpec, WALL_DRESS, WALL_KITS, UNDER, underChoice, residentSlots, slotKits, ROLE_DISPLAYS, groupStorage, spreadTables, spaceBeds, seatRugs, dressWalls, why: () => WHY_B, _fitDebug: fitDebug, BUILT: BUILT_KITS, apply, library, setLibrary, lite, furnishRooms, anchorsOf, roomsB, fit, barCounter, canopyBed, stalls, dais, vignettes, CLASSES, SLOT, FOOD, BUILT_SLOTS, slotOf, isDecor, canDecor };
+const apiB = { setStats: s => { STATS_B = s; }, boxIndex, stands: (b, ctx, zones) => { const St = NODE_B ? require('./stands.js') : window.VHStands; return St ? St.dressTops(b, ctx, zones || []) : 0; }, liveIn, jitterSpec, WALL_DRESS, WALL_KITS, UNDER, underChoice, residentSlots, slotKits, ROLE_DISPLAYS, groupStorage, spreadTables, spaceBeds, seatRugs, dressWalls, why: () => WHY_B, _fitDebug: fitDebug, BUILT: BUILT_KITS, apply, library, setLibrary, lite, furnishRooms, anchorsOf, roomsB, fit, barCounter, canopyBed, stalls, dais, vignettes, CLASSES, SLOT, FOOD, BUILT_SLOTS, slotOf, isDecor, canDecor };
 if (NODE_B) module.exports = apiB; else window.VHKitbash = apiB;

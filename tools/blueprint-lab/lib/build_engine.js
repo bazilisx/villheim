@@ -5,7 +5,7 @@
 const fs = require('fs'), path = require('path');
 const dir = __dirname;
 const out = process.argv[2] || path.join(dir, '../../../src/Villheim.Logic/Generator/lab.js');
-const libs = ['pieces.js', 'shapes.js', 'mesh.js', 'styles.js', 'persona.js', 'blueprint.js', 'checks.js', 'features.js', 'decorate.js', 'motifs.js', 'details.js', 'kitbash.js', 'layout.js', 'yards.js', 'generate.js', 'critic.js', 'request.js', 'floorplan.js', 'audit.js'];
+const libs = ['pieces.js', 'shapes.js', 'mesh.js', 'styles.js', 'persona.js', 'blueprint.js', 'checks.js', 'features.js', 'decorate.js', 'motifs.js', 'details.js', 'kitbash.js', 'stands.js', 'layout.js', 'yards.js', 'generate.js', 'critic.js', 'request.js', 'floorplan.js', 'audit.js'];
 const code = libs.map(f => `// ---- ${f}\n(function () {\n${fs.readFileSync(path.join(dir, f), 'utf8')}\n})();`).join('\n');
 const rules = fs.readFileSync(path.join(dir, '../data/rules-lite.json'), 'utf8').trim();
 const scorer = fs.readFileSync(path.join(dir, '../data/scorer.json'), 'utf8').trim();
@@ -28,8 +28,12 @@ const kitbash = JSON.stringify(require('./kitbash.js').lite(JSON.parse(fs.readFi
 const meshLite = JSON.stringify(require('./mesh.js').lite(JSON.parse(fs.readFileSync(path.join(dir, '../data/piece-models.json'), 'utf8'))));
 // the room layout rules (lib/layout.js)
 const layouts = JSON.stringify(JSON.parse(fs.readFileSync(path.join(dir, '../data/room-layouts.json'), 'utf8')));
+// the corpus's stand heights (lib/audit.js STAND_HI reads them when it loads, so they go before the libraries)
+const standsPath = path.join(dir, '../data/stands-corpus.json');
+const stands = JSON.stringify({ heights: fs.existsSync(standsPath) ? JSON.parse(fs.readFileSync(standsPath, 'utf8')).heights : null });
 const text = `// Villheim blueprint lab, bundled for the game. Made by tools/blueprint-lab/lib/build_engine.js; do not edit.
 var window = this;
+window.VH_STANDS = ${stands};
 ${code}
 // ---- data
 window.VH_RULES = ${rules};

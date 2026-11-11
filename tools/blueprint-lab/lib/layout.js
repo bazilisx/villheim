@@ -446,9 +446,10 @@ function clearLanes(b, ctx, rooms) {
           const list = units.get(u) || [];
           const drop = new Set(list);
           // what stands on these pieces goes too; when it may not go (the room's first chest), neither does what holds
-          // it up (a chest was left in the air over a bench taken out of a lane)
+          // it up (a chest was left in the air over a bench taken out of a lane); the set grows as it is walked, so what
+          // stands on a rider goes too (a bar counter's beam on its half wall)
           let keep = false;
-          for (const p of list) {
+          for (const p of drop) {
             const o = Ck.aabbShapes(p);
             for (const q of b.pieces) if (q.decor && !drop.has(q) && q.x > o.x0 && q.x < o.x1 && q.z > o.z0 && q.z < o.z1 && q.y > o.y0 + 0.2 && q.y < o.y1 + 0.6) {
               const qu = units.get(unitOf.get(q)) || [q];

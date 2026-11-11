@@ -62,7 +62,7 @@ through the floors. The generator now follows these rules, and `lib/checks.js` c
 | Rooms are tall enough | Walls of 3 m (sunken huts 2.5 m, under a steep roof); upper floors 3 m apart. | `headroom`: every covered floor point inside walls, away from the wall itself, has 2.4 m clear under every roof, ceiling and level beam, and the walls beside it are at least 2.5 m tall. Open floors (roof terraces, yards, decks) are left out. |
 | Doors can be walked through | The door piece fits the wall: `wood_door` for a 2 m opening, `piece_cloth_hanging_door` for a 2 m one too (it hangs about 2 m from its pivot; hung at 3 m it stopped a metre short of the floor, T-102), `wood_gate` for barns (3 m); never `darkwood_gate`. Roof, eave and beam pieces in a doorway, or lower than 2.3 m for a metre in front of it or behind it, are taken out (the eave is cut back over the door). A raised door gets a stair: from the ground at 2 m, set half in the ground at 1 m, stopping at the face of a stone course. | `doors`: nothing in the opening, nothing under 2.3 m for a metre either side, and a floor, stair or the ground to step on at both sides. |
 | Ladders can be climbed | Each ladder needs three cells in a row: a clear foot, the hole, and a landing. Cells along a wall come first, away from the door and the chimney. The foot stands at the near edge of the hole; in a 3 m storey the climb ends in the middle of the landing cell, whose near half stays open and whose far half gets two `wood_floor_1x1`. In towers each landing is the next ladder's foot, so they climb round the walls. Furniture is kept off the foot, the hole and the landing. Flat roofs get a ladder to a hatch. | `ladders`: a metre of clear floor in front of the foot, a floor to step onto at the top, and nothing lower than 1.9 m over the climb. |
-| Fires sit under the smoke | The fire goes to the middle of the smoke hole: the ridge caps left out over it, the open crown of a ring roof, or a cell of a flat roof. A chimney goes over a ridge or flat-roof hole, through any upper floor: a plank box with a raised cap on short posts (a smoke louver). A stone chimney would stand on the wooden roof or floor and fall, so there are none. Ring roofs keep their open crown. No fire laid: the ridge is closed again. A hearth in a room under 40 m2 becomes a fire pit. | (the fire's place is set by the generator) |
+| Fires sit under the smoke | Halls, taverns, temples, round houses and tents keep the fire in the middle under the smoke hole: the ridge caps left out over it, the open crown of a ring roof, or a cell of a flat roof. Homes put it against a wall most of the time (see "Hearths and light"), and the smoke outlet moves with it. Middle fires get a smoke louver (the ridge caps raised 0.6 m on short posts) or a plank shaft through an upper floor. No fire laid: the ridge or roof is closed again. A hearth in a room under 40 m2, or against a wall, becomes a fire pit. | (the fire's place is set by the generator) |
 | Ceiling braziers hang lit | `piece_brazierceiling01` hangs on its 2 m chain from the lowest roof or ceiling piece over the middle of its room (two in a hall are spread along it), at least 2.3 m up and away from the fire; where the room is too low it stands as a torch. The spawner lights every fire, brazier and torch a design brings and keeps it lit (`DesignSpawner.KeepLitPatch`). | |
 | Woodpiles outside | Woodpiles placed indoors move outside against an outside wall, away from the doors, or are left out. | `woodpiles`: none under a roof inside walls. |
 | Materials by biome | Dark wood takes tar (Plains): the Swamp kit is wood and iron; dark roofs, frames and porch roofs start in the Plains. Furnishing the biome cannot make comes out; the generator's own props (well and pen barrels, camp benches) are swapped for ones it can. | `materials`: every piece, structure and furnishing, by `pieces.js` `needs`. |
@@ -93,6 +93,49 @@ most over the 62 test requests.
 
 Culture ids that have changed or may change sit in `styles.js` `ID`; a renamed id goes in `RENAMED` so old requests
 still work (`caucasian-highland` is now `lamari`, D-046).
+
+## Hearths and light (Tyler, 2026-11-10)
+
+Tyler: firepits and chimneys in alcoves or partly in the wall are more common in homes than a fire in the middle of
+the floor; the middle fire belongs to rooms where people gather. The corpus agrees (docs/INTERIOR_DESIGN.md, "Hearths
+and lights in the corpus"): the main fire of 84 % of 291 homes with an indoor fire stands against a wall, in a corner,
+in an alcove or half in the wall.
+
+**Where a home's fire goes** (`lib/generate.js` `hearthPlan`, weights in `HEARTHS` per culture). Drawn from the
+household's own stream (the lineage), so the same household keeps its fire in the same place from stage to stage:
+
+| Spot | What is built | Smoke | Who |
+|---|---|---|---|
+| middle | the fire pit under the ridge, in line with the door (the old way) | ridge caps raised as a louver | Norse longhouse-style homes 35 %, fen folk 35 %, Celtic 40 %, East Asian 50 % (the irori), round houses and tents always |
+| end | against a gable end under the ridge, a hood of planks from 2.55 m with a mantel beam on its open sides, the shaft up through any upper floor | the ridge cap over it and the rake's cap raised on short posts | most cultures, 40 to 55 % |
+| side | against the back wall (the Slavic stove corner: the front wall by the door), in the corner or a bay in from it; same hood | a shaft out through the roof's lowest row and the eave, a plank lid on posts over it | 25 to 45 %, Slavic 85 % |
+| stack | rebuilt from an end hearth: the gable's middle bay opened 1.8 m high under a timber lintel, the fire in a stone alcove outside it, the alcove rising as a hollow stack with shoulders (a 2 m by 2 m firebox, a 1 m by 2 m flue above the opening) to a metre past the ridge, a plank lid on four posts | the stack | from s2 where the village may build in stone (D-012): never in Meadows, not in early Black Forest homes; 20 to 70 % of end hearths by culture |
+
+The end is the one the house does not grow toward (`massingPath` records `fam.growSide`), so later wings keep clear
+of it. A blocked spot falls back to the nearest other one: the other wall at the same end, the end itself, then the
+other end; only when all are taken (a small house with doors in both long walls, or wings at both ends) does the fire
+go to the middle. Over 96 culture and seed lines (288 homes), the fire changes kind between stages in 13.
+
+What moves with the fire: the window in the bay behind it is left out on every storey; ladders and stairs keep off its cell (`fireKeep`); the back room of a big house
+goes to the other end; the woodshed and the balcony keep to the other gable when the hearth has a stack or hood there;
+ridge carvings are left off a stack's end; a roof piece, rake cap, eave or bargeboard over the shaft comes out (and goes
+back if no fire is laid); dormers stay on the front slope, away from a back-wall shaft. The decorative stone stack
+(`chimneyStack`) goes only on homes whose fire is in the middle. A kerb of beams goes on a wall fire's open sides only.
+A request can ask for the old way with `hearth: 'middle'`.
+
+Valheim's smoke (valheim.weirdgloop.org, "Smoke"): fires, hearths and hanging braziers make it; each puff is 0.42 m
+across and needs about a metre to pass; it rises and drifts and collects under pieces; standing in it hurts. A fire
+needs a roof against rain (it stops in rain without one) and 70 % cover against strong wind. So every shaft here is at
+least 1 m clear and ends under a raised cap or lid that keeps the rain off and lets the smoke out at the sides.
+
+**Lights** (`lib/decorate.js` `placeLights`, `lightCount`). How many: the corpus's lights per 10 m2 of covered floor
+for the room's kind, drawn per room between the median and the upper quartile, more at d3, scaled by the household's
+liking for lights and the culture's taste, less half a light when the room has a fire. Where: one light at a time, at
+the spot with the best score: how dark it is (the distance to the nearest light; a fire counts as one 3 m across), what
+is done there (the way in, a bed, a table or bench, each weighed per room by the household), and a little noise. Never
+within 3 m of a fire. Wall lights hang at the household's height, 1.6 to 2.0 m, so the flame stays a metre under the
+3 m wall top as the game wants for a sconce. Halls (35 %) and d3 homes (20 %) may get a hanging brazier over the middle,
+which `settle` hangs from the ceiling. No fixed spacing anywhere.
 
 ## What the corpus says (2,134 designs, 2026-11-08)
 
@@ -560,9 +603,9 @@ game needs no change. The info field is no place for the mark: the mod reads a s
 the section (its pieces then fail the pool audit if audited again). Over 72 s2d3 and s3d3 designs three pieces carry a
 mark: the recorded wall clips of the mined sets are mostly chests set into walls, and few of those sets get placed.
 
-Materials (D-066). `pieces.js` `minor`: rugs, banners, food and feasts, pots, candles, garlands, cloth hangings, Dvergr
-props, treasure, signs. They pass the materials check in any biome, and the generator's last pass (`biomeSafe`) keeps
-them; stations, beds, chests, tables, seats, fires and building pieces still need their own.
+Materials (D-065, D-126, 2026-11-10): every decor and furniture piece goes in any biome (Rules, "Decor in any biome");
+building pieces keep to the village's biome, the earlier ones and the next. `pieces.js` `minor` lists the small pieces
+(rugs, banners, food, pots, candles) for other uses only.
 
 Cost: in Node the 154-design comparison (every type, seven biomes, s2d2 and s3d3) took 74 ms a design without the
 library and 113 ms with it (2026-11-09, third round; after filing pieces by their own reach, reading the rooms once
@@ -595,15 +638,57 @@ Placed food (meads, bread, cooked meat; the feasts) spawns as items lying where 
 up. Until the mod locks them as above, the kits use only a few, on tables, counters and shelves.
 
 What each stand holds (`lib/persona.js` `dressStands`, last thing before a design is written): every `itemstand` and
-`itemstandh` gets an item or comes out. A kit may ask for a kind (`want`: trophy, shield, weapon, tool); otherwise the
-room and the household decide. Wall stands: in a home, trophies for a household that collects, shields and weapons for
-one that collects and shows wealth, tools for one that makes things, a hoe or cultivator for one that grows things; in
-a smithy tools, weapons and shields; in a workshop or store tools; in a tavern trophies and shields. Horizontal stands:
-drinks and food, herbs where the household grows things, valuables (amber, ruby) where it is well off; a tavern's are
-mostly tankards and meads. Items come from the village's biome or an earlier one (the own biome counts double), a
-design shows the same item twice less often, and a well-off collector may keep one boss trophy. Each stand draws from
-a stream seeded by its place, so it holds the same item at every decor stage. Names are vanilla item prefabs checked
-against the corpus's stands (`ITEMS`).
+`itemstandh` gets an item or comes out. `ITEMS` lists every item that fits a stand by kind (trophy, boss, shield,
+weapon, tool, farm, fishing, fish, drink, food, herbs, hat, rare, tray), Deep North included, each with the biome that
+first has it and a weight from the number of corpus builds that show it on a stand (2026-11-10). Any item may turn up
+in any village (Tyler, 2026-11-10: decor has no biome limit; D-080 is about payment); the village's own biome weighs
+a little more. Meads and food go on flat stands only. Rubies, amber and other valuables cannot go on a stand (Item
+Stand page of the wiki), so `valuable` draws from the rare things (cores, keys, eggs, totems). A set may say what a
+stand holds and where it is in one word (`want: 'drink@table'`); otherwise `standAt` reads the place the way the
+corpus miner does (a flat stand by what it stands on, a wall stand by what stands under it). `standItem` weighs the
+kinds by the corpus's mix for that place (`AT_KINDS`: a table's stands hold drink 45 % and food 33 %, a mantel's
+drink, a wall over a bed trophies) times the household's lean (`kindLean`: collecting, crafts, plants, food, wealth,
+clutter; never a trade), plus the work of a smithy or workshop and the drink of a tavern. A well-off collector may
+keep one boss trophy. Each stand draws from a stream seeded by its place, so it holds the same item at every decor
+stage.
+
+### Stands round the house (lib/stands.js, 2026-11-10)
+
+Tyler asked for item stands in every house, the way the best builders use them: food on the table, tools hung by the
+bench, trophies, rare things, things on side tables, walls, sills, benches, workbenches and rafters, and now and then a
+feast laid out with the serving tray. `lib/stands.js` `dressTops` runs after the interior library and the walking
+lanes and before the lived-in pass (`lib/kitbash.js` apply; round houses call it from `lib/generate.js` through
+`Kitbash.stands`, since they have no library pass). It reads each room's tables, benches, chairs, chests, beds, wall
+spots, windows and beams overhead and draws stand sets (ids `KS-`) for them by weight, placed and tested by the
+library's own fitter (clips, rests, doorways, windows, the audit's own tests).
+
+| Where | Sets | From the corpus |
+|---|---|---|
+| Table | a meal for two (drink and dish at each seat), a meal for four (households of three or more), mugs, something left, tools laid out, arms (a shield and two weapons), herbs drying, a curio and a candle; a round table's ring; a long table's settings | stands 0.4 to 0.5 m apart along the length, 0.3 m in from the edge; drink with food is the commonest pair (60 groups) |
+| Bench, chair | a mug set down; a mug and a dish or a helmet | a tankard on a chair seat recurs in many builds |
+| Chest, barrel | food and a drink; one thing; a shield with a dish | chest lids hold food, trophies, fish |
+| Wall | tools (3), farm tools (2), arms, shields (3), trophies (2 or 3), one thing, a fishing rod and a fish; each also 0.4 m higher and lower | wall stands about a metre apart (median 0.97 m), at 1.3 to 2.3 m; over a workbench trophies, shields and weapons, over a bed trophies |
+| Shelf | a ledge with a pantry, meads, herbs and a candle, curios (a rare thing, a hat), weapons laid on it; two ledges for a cluttered house (third stage) | shelves hold drink, food, herbs and weapons |
+| Mantel | a ledge by the hearth with a drink, something and a candle | stands by the fire hold mead (686 of 1,019) |
+| Sill | one to three stands on the wall under an opening, 0.3 m in from its sides | herbs, food, drink and trophies |
+| Rafters | stands on a beam across the room where there is one; else a beam high on the wall at 2.6 m, or a ledge at 2.3 m, with helmets, trophies, fish or herbs | stands on beams over 2.3 m hold hats, trophies and weapons |
+| Floor | a mug left by the bed (cluttered households, third stage) | 2,080 flat stands lie on floors in the corpus |
+| Feast | the village's own feast (`FeastMeadows` and the rest, the pieces the serving tray lays down) in the middle or at one end of a dining table, two drinks and the serving tray (`Feaster`) on a stand beside it; two feasts on a long table; third stage only, at most one per room, never where a feast is laid already | 266 feasts in 65 builds, 150 on tables, several along a long table |
+
+How many: by the room's floor area (a set per 8 m2 in a home, 9 in a hall or tavern, 14 in a work room) times the
+household's clutter (0.55 to 1.45), less for a plain household, with a little noise; about half go up at d2 and the
+rest at d3 (`p.ds`), never before the furniture they stand on. A set's weight is its place's times the household's
+traits (`lean`, read as `kitWeight` reads `traits`), lower each time the same set is used. A table already set by
+the library takes no more, but for a feast. Wall sets need plain wall their whole width and 0.6 m clear of the wall's
+ends; high sets need 0.55 m under the roof. A flat stand on a wall's or a beam's top is lifted onto what shows of it
+(a half wall's planks stand 2 to 3 cm over its collider), as the pool audit's mountClip measures it.
+
+Shared code, a few lines: `lib/kitbash.js` apply calls the pass, exports `boxIndex` and `stands`; `placeable` passes
+over another stretch of the same wall line (a wall either side of a doorway or a gap counted as "past the wall's end"
+for any piece hung on the first: every wall set on such a wall failed); `lib/generate.js` calls it for round houses.
+
+Measured with `node lab/test_stands.js 2` (108 designs: homes, longhouses and taverns, six biomes, s1d1, s2d2, s3d3;
+stands read by the corpus miner's own code): see `docs/INTERIOR_DESIGN.md`, "Items on stands".
 
 ## Households (D-068)
 
@@ -753,7 +838,7 @@ game judge a pool the same way. A test pool's files are read as lines (`<culture
 
 | Measure | Gated | What it catches |
 |---|---|---|
-| nestBroken | yes | a piece of d1 missing from d2, or of d2 from d3 (D-071) |
+| shapeChange | yes | a line whose plan changes shape family between stages: square-cornered (rectangle, L, T, U, cross) against angled (octagon, round), read from the share of ground floor walls off the 90 degree grid (D-132) |
 | furnClip, stacked | yes | furniture inside furniture; furniture on furniture other than chest stacks and table settings |
 | overWin | yes | something hung over a window or door |
 | stairFoot, stations | yes | a stair with nothing under its foot; a base station with no roof (D-067) |
@@ -763,8 +848,9 @@ game judge a pool the same way. A test pool's files are read as lines (`<culture
 | doorway | yes | anything solid in the middle 0.9 m of a door's way from 0.35 to 1.95 m, 0.7 m either side (a beam at the foot of a door, T-606) |
 | onStation | yes | furniture on or in a crafting station (a table on a workbench, T-606) |
 | intoWall | yes | furniture more than 15 cm into a wall, post, brace, window or door; against walls and posts by the furniture's frame (a bed's fur tucks against a wall as in the game), against braces, windows and doors by what shows of both |
-| richness | yes, on pools of six lines or more | the corpus and the library slipping out of the designs: decor prefabs per d3 design (floor 11), the share of d2 and d3 decor pieces that came in a library set (0.36) and the corpus sets, mined and creative, per d3 design (0.9), from each file's `#VillheimSets` section |
+| richness | yes, on pools of six lines or more | the corpus and the library slipping out of the designs: decor prefabs per d3 design (floor 11), the share of d2 and d3 decor pieces that came in a library set (0.34 since 2026-11-11) and the corpus sets, mined and creative, per d3 design (0.9), from each file's `#VillheimSets` section |
 | outside, intoWallSoft | watched | furniture whose middle is outside the floor's outline; furniture 5 to 15 cm into a wall |
+| nestBroken, lineage | reported, never gated | a piece of d1 missing from d2, or of d2 from d3 (D-071); the share of a stage's shell kept at the next. D-132 (Tyler): decor, fires, tables, chairs, beds and walls may move and change as a house grows; only the shape family stays |
 
 Richness (2026-11-10). `lib/blueprint.js` writes a `#VillheimSets` section before `#Pieces` (`set id;decor pieces`, from
 each piece's `kb`), which PlanBuild and the mod skip; pools written before it carry none and are not measured. The
@@ -845,8 +931,8 @@ what the sets leave. Other changes in the same pass:
 - Hung pieces are kept out of what shows of every wall the pool audit counts, and the furnishing tests a piece set on
   its pivot (a quarter wall) where it will stand after `generate.js` `finish` (`decorate.js` `asBuilt`).
 - More tries per room (40 picks, 12 misses in a row).
-- `generate.js` `biomeSafe` keeps decor within the village's decor reach (D-080, `pieces.js` `decorOk`) and swaps only
-  what is past it; it had swapped a fitted log bench for a plank bench that went into the couch's half wall.
+- `generate.js` `biomeSafe` never swaps or removes decor for its biome (D-065); it had swapped a fitted log bench for a
+  plank bench that went into the couch's half wall.
 
 In the rooms people live in (home, sleeping, guest, kitchen, hall, tavern) the extras' barrels are one group in a
 corner by the fire or in the kitchen, two or three by the household, and its chests go by a bed or in a corner away
@@ -957,11 +1043,18 @@ running it again makes the same design. Then `vh place <id>` in the game.
 - Proposed wording for CLAUDE.md once Tyler agrees: "Generated designs from the blueprint lab may be built by villages
   once Tyler has marked them Yes in the Generated tab and they are copied to `blueprints/approved-generated`. They use
   only vanilla pieces and pass every check in `lib/checks.js`."
-- Decor reach (D-080, 2026-11-10): furniture and decor come from the village's biome and the next one (Meadows
-  draws on the Black Forest, the Black Forest on the Swamp), paid in local stand-ins by the mod
-  (DecorPaidWithAnalogs). Stations, fires, chests and anything built keep to the village's own biome; minor decor
-  (rugs, pots, crates) stays open to any biome (D-066). One rule for the lab: `lib/pieces.js` `decorReach`,
-  `decorOk`; the decorator, the interior library, the household's stand items and the checks read it.
+- Decor in any biome (D-065, D-126; Tyler, 2026-11-10: "there are no restrictions on any level of furniture, decoration, or
+  limits on whats shown for any decor... decor can be freely used across any biome, but build pieces (walls, roofs,
+  etc.) should (mostly) come from the relevant biome and surrounding biomes ... Please ensure there are not limitations
+  on the number of rugs, flowers, or truly any type or quantity of decor"). Every furniture, decor, light, rug, station
+  and stand item of vanilla Valheim goes in every biome, inside and out; building pieces (walls, floors, roofs, beams,
+  posts, doors, windows, stairs) keep to the village's biome, the earlier ones and the next (`lib/pieces.js`
+  `decorOk`, `buildReach`); D-012 (stone later in the Meadows and the Black Forest) is unchanged. D-080 is about payment
+  only (the mod pays decor in local stand-ins, DecorPaidWithAnalogs). The village's own biome weighs a little more for
+  flavor (`decorate.js` `flavorD`, `kitbash.js` `flavorB`: a piece or set two biomes or more ahead weighs less), never
+  excludes. No decor kind or amount is held to a count: the decorator's extras halve their weight with each use in a
+  room, the library's sets weigh less with each repeat in a building, and the room's free floor, the corpus rate for the
+  room kind and the household set the amount.
 - The BiomeBlueprints pack stays blacklisted. Only the 12 builds by other creators listed in `Keepers.cs` are read.
 - Other creators' builds are study material. They are not committed to the repo and not shipped.
 

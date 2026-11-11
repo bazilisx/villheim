@@ -2,7 +2,7 @@
 // Each library goes in its own function scope; they publish themselves on window.
 const fs = require('fs'), path = require('path');
 const dir = __dirname;
-const libs = ['pieces.js', 'shapes.js', 'mesh.js', 'styles.js', 'persona.js', 'render.js', 'blueprint.js', 'checks.js', 'features.js', 'decorate.js', 'motifs.js', 'details.js', 'kitbash.js', 'layout.js', 'yards.js', 'generate.js', 'critic.js', 'request.js', 'repair.js', 'floorplan.js'];
+const libs = ['pieces.js', 'shapes.js', 'mesh.js', 'styles.js', 'persona.js', 'render.js', 'blueprint.js', 'checks.js', 'features.js', 'decorate.js', 'motifs.js', 'details.js', 'kitbash.js', 'stands.js', 'layout.js', 'yards.js', 'generate.js', 'critic.js', 'request.js', 'repair.js', 'floorplan.js', 'audit.js'];
 const interior = fs.readFileSync(path.join(dir, '../data/interior-lite.json'), 'utf8').trim();
 // piece models for the renderer: the proxy parts and bounds only (the page has no use for colliders)
 const models = JSON.parse(fs.readFileSync(path.join(dir, '../data/piece-models.json'), 'utf8')).pieces;
@@ -19,7 +19,15 @@ const kitbash = JSON.stringify(require('./kitbash.js').lite(JSON.parse(fs.readFi
 // what shows of each piece, as the game's bundle has it (lib/mesh.js)
 const meshLite = JSON.stringify(require('./mesh.js').lite(JSON.parse(fs.readFileSync(path.join(dir, '../data/piece-models.json'), 'utf8'))));
 const layouts = JSON.stringify(JSON.parse(fs.readFileSync(path.join(dir, '../data/room-layouts.json'), 'utf8')));
-const code = `window.VH_INTERIOR = ${interior};\nwindow.VH_KITBASH = ${kitbash};\nwindow.VH_LAYOUTS = ${layouts};\nwindow.VH_MOTIFS = ${JSON.stringify({ motifs: motifLite.motifs })};\nwindow.VH_MOTIF_WEIGHTS = ${JSON.stringify(motifLite.weights)};\nwindow.VH_CRITIC = ${critic};\nwindow.VH_SOLIDS = ${solids};\nwindow.VH_MESH = ${meshLite};\nwindow.VHModels = ${JSON.stringify({ pieces: lite })};\n` + libs.map(f => `// ---- ${f}\n(function () {\n${fs.readFileSync(path.join(dir, f), 'utf8')}\n})();`).join('\n');
+// room templates and their weights, and the corpus's stand heights (audit.js STAND_HI), as lib/build_engine.js gives
+// the game, so the page builds what node builds
+const rooms = JSON.parse(fs.readFileSync(path.join(dir, '../data/room-templates.json'), 'utf8'));
+const roomsLite = JSON.stringify({ templates: rooms.templates.map(t => { const o = { ...t }; delete o.src; delete o.pop; delete o.area; delete o.key; delete o.ceil; delete o.doorW; return o; }) });
+const scoresPath = path.join(dir, '../data/room-scores.json');
+const roomWeights = fs.existsSync(scoresPath) ? JSON.stringify(JSON.parse(fs.readFileSync(scoresPath, 'utf8')).weights) : '{}';
+const standsPath = path.join(dir, '../data/stands-corpus.json');
+const stands = JSON.stringify({ heights: fs.existsSync(standsPath) ? JSON.parse(fs.readFileSync(standsPath, 'utf8')).heights : null });
+const code = `window.VH_INTERIOR = ${interior};\nwindow.VH_KITBASH = ${kitbash};\nwindow.VH_LAYOUTS = ${layouts};\nwindow.VH_ROOMS = ${roomsLite};\nwindow.VH_ROOM_WEIGHTS = ${roomWeights};\nwindow.VH_STANDS = ${stands};\nwindow.VH_MOTIFS = ${JSON.stringify({ motifs: motifLite.motifs })};\nwindow.VH_MOTIF_WEIGHTS = ${JSON.stringify(motifLite.weights)};\nwindow.VH_CRITIC = ${critic};\nwindow.VH_SOLIDS = ${solids};\nwindow.VH_MESH = ${meshLite};\nwindow.VHModels = ${JSON.stringify({ pieces: lite })};\n` + libs.map(f => `// ---- ${f}\n(function () {\n${fs.readFileSync(path.join(dir, f), 'utf8')}\n})();`).join('\n');
 const rules = fs.readFileSync(path.join(dir, '../data/rules-lite.json'), 'utf8');
 const scorer = fs.readFileSync(path.join(dir, '../data/scorer.json'), 'utf8');
 let html = fs.readFileSync(path.join(dir, '../web/app.html'), 'utf8');

@@ -460,7 +460,8 @@ if (require.main === module) {
   for (const o of minedPicks) {
     const a = minedSet(o);
     if (DROP.has(o.pick)) continue;
-    out.push({ id: `KC-${String(out.length + 1).padStart(3, '0')}`, ...a });
+    // with NODROP every pick goes in and carries its number, so a probe can name the picks left out (lab/creative_fit.js --drop)
+    out.push({ id: `KC-${String(out.length + 1).padStart(3, '0')}`, ...a, ...(process.env.NODROP ? { pick: o.pick } : {}) });
   }
   lib.assemblies = kept.concat(out);
   const after = new Set(); for (const a of lib.assemblies) for (const p of a.pieces) after.add(p.n);
@@ -471,4 +472,4 @@ if (require.main === module) {
   for (const a of out) console.log(a.id, a.name.padEnd(38), a.anchor.padEnd(8), a.biome.padEnd(12), `foot ${a.foot.join('x')} h ${a.h}`, `clip ${a.maxClip}`, a.clips.map(c => c.join(':')).join(' '));
   console.log(`${out.length} creative sets; prefabs in the library ${before.size} -> ${after.size}`);
 }
-module.exports = { SETS, build };
+module.exports = { SETS, build, DROP };

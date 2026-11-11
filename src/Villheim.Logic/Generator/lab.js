@@ -1,5 +1,6 @@
 // Villheim blueprint lab, bundled for the game. Made by tools/blueprint-lab/lib/build_engine.js; do not edit.
 var window = this;
+window.VH_STANDS = {"heights":{"itemstandh|table":[0.74,0.77,0.77,0.82,0.87,1611],"itemstand|beam":[0.58,0.99,1.44,1.88,2.08,648],"itemstandh|floor":[-0.06,-0.03,-0.03,0,0,2078],"itemstandh|shelf":[0.97,0.98,1.1,1.45,1.69,1856],"itemstand|furnside":[0.28,0.38,0.72,1.31,2.66,54],"itemstand|rafter":[2.42,2.71,2.96,3.33,3.8,533],"itemstand|wall:workbench":[0.61,1.35,2.08,2.87,3.4,578],"itemstand|wall:bench":[1.12,1.52,1.66,2.66,3.33,141],"itemstand|wall:table":[1.19,1.83,2.47,3.07,3.49,327],"itemstand|wall:hearth":[0.33,0.58,1.61,2.37,3.25,558],"itemstand|wall:door":[1.11,1.59,2.11,2.88,3.62,175],"itemstandh|bench":[0.5,0.5,0.53,0.82,0.97,216],"itemstand|wall":[0.5,1.19,1.88,2.67,3.21,757],"itemstandh|mantel":[0.88,0.95,0.97,1.2,1.94,1015],"itemstandh|stand":[0,0.11,0.79,0.96,1.27,745],"itemstandh|ledge":[-0.03,0.2,0.5,0.68,0.82,1122],"itemstand|wall:bed":[1.57,2.12,2.85,3.34,3.74,208],"itemstand|wall:chest":[0.82,1.52,2.13,2.73,3.2,333],"itemstand|free":[0.25,0.28,1.15,1.73,3.46,448],"itemstandh|other":[0,0.46,0.77,0.89,1.79,476],"itemstandh|counter":[-0.03,0,0.51,0.79,1,360],"itemstandh|none":[0.18,0.39,0.8,1.43,2.47,594],"itemstandh|rafter":[2.67,3.07,3.3,3.46,3.9,191],"itemstand|chestside":[0.23,0.28,0.28,1.5,1.72,5],"itemstandh|chest":[0.38,0.77,1,2,2.65,99],"itemstandh|workbench":[0.17,0.65,0.93,1.13,1.69,32],"itemstandh|bed":[0.4,0.47,0.76,0.87,1.57,14],"itemstandh|sill":[0.57,0.7,0.97,1,1.13,187],"itemstandh|walltop":[1.83,2.56,3.17,3.93,3.95,84],"itemstand|laid":[0.14,0.23,0.84,0.87,1.04,6],"itemstandh|wallside":[1.32,1.4,1.43,2.26,3.68,201],"itemstand|ceiling":[-0.27,-0.25,-0.2,0.5,3.47,16],"itemstandh|stair":[0.59,1.13,1.29,1.56,3.04,41],"itemstandh|hung":[3.95,3.95,3.95,3.95,3.95,18]}};
 // ---- pieces.js
 (function () {
 // Piece catalog: size, shape, role and material for Valheim prefab names.
@@ -249,6 +250,18 @@ const NEEDS = {
   // black marble for the mortar, flametal for the rolling pins
   cauldron_ext1_spice: 'Swamp', cauldron_ext3_butchertable: 'Mountain', cauldron_ext4_pots: 'Plains',
   cauldron_ext5_mortarandpestle: 'Mistlands', cauldron_ext6_rollingpins: 'Ashlands',
+  // stations and pieces of the later biomes (bamboogaming.net and metabot.gg recipe pages, 2026-11-11): the galdr table
+  // and its upgrades and the black forge with its cooler and vise take Mistlands materials; the metal cutter (black
+  // marble, flametal, ashwood, charred bone), the gem cutter, the lava lantern (flametal, proustite, sulfur) and the
+  // bone throne (charred bone, flametal, grausten, charred skulls) Ashlands ones. The mead ketill came with the
+  // Ashlands update; its recipe was not found, so Ashlands is a guess.
+  piece_magetable: 'Mistlands', piece_magetable_ext: 'Mistlands', piece_magetable_ext2: 'Mistlands',
+  blackforge: 'Mistlands', blackforge_ext1: 'Mistlands', blackforge_ext2_vise: 'Mistlands',
+  blackforge_ext3_metalcutter: 'Ashlands', blackforge_ext4_gemcutter: 'Ashlands', piece_Lavalantern: 'Ashlands',
+  piece_bone_throne: 'Ashlands', piece_MeadCauldron: 'Ashlands',
+  // feasts by the biome their food comes from (the sailor's bounty from the ocean, reached by ship after the Swamp)
+  FeastMeadows: 'Meadows', FeastBlackforest: 'Black Forest', FeastSwamps: 'Swamp', FeastOceans: 'Swamp',
+  FeastMountains: 'Mountain', FeastPlains: 'Plains', FeastMistlands: 'Mistlands', FeastAshlands: 'Ashlands',
 };
 function needs(name) {
   if (NEEDS[name]) return NEEDS[name];
@@ -333,23 +346,31 @@ function support(n) { return SUPPORT[supportClass(n)]; }
 const MINOR = /^(rug_|jute_carpet|piece_banner\d|piece_pot\d|ashland_pot|piece_gift\d|piece_mistletoe|piece_xmas|piece_jackoturnip|piece_(Celebration|Fairylight)Garland|Candle_resin|Skull\d|ancient_skull|cloth_hanging_long|fenrirhide_hanging|dvergrprops_(barrel|crate|crate_long|shelf|hooknchain|lantern|lantern_standing)$|treasure_stack$|sign$|sign_notext$|Feast[A-Z]|Mead[A-Z]|BarleyWine$|Bread$|CookedMeat$|Sausages$|Honey|MeatPlatter$|LoxPie$|PiquantPie$|RoastedCrustPie$|SerpentStew$|MashedMeat$|MarinatedGreens$|MisthareSupreme$|QueensJam$|Salad$|Eyescream$|ShocklateSmoothie$|SparklingShroomshake$|SizzlingBerryBroth$|ScorchingMedley$|SpicyMarmalade$|Blueberries$|Raspberry$|Cloudberry$|Carrot$|Onion$|Pukeberries$|Fish\d+$)/;
 function minor(name) { return MINOR.test(name); }
 
-// Decor reach (D-080, Tyler 2026-11-10): furniture and decor come from the village's biome and the next one (Meadows
-// draws on the Black Forest, the Black Forest on the Swamp, and so on), paid in local stand-ins from the chests (the
-// mod's DecorPaidWithAnalogs). Crafting stations, fires, chests and what is built (walls, floors, roofs) keep to the
-// village's own biome (D-066).
-function decorReach(biome) {
+// What a village may put up (D-065, D-126; Tyler, 2026-11-10: "there are no restrictions on any level of furniture,
+// decoration, or limits on whats shown for any decor... decor can be freely used across any biome, but build pieces
+// (walls, roofs, etc.) should (mostly) come from the relevant biome and surrounding biomes"). Furniture, decor, lights,
+// rugs, stations and what stands hold: any vanilla prefab in any biome, inside and out. Building pieces (walls, floors,
+// roofs, beams, posts, doors, windows, stairs): the village's biome and its neighbors (the earlier biomes and the next
+// one). D-080 is about payment only (the mod pays decor in local stand-ins, DecorPaidWithAnalogs), never placement.
+// D-012 (stone later in the Meadows and the Black Forest) is the styles' and the generator's.
+function buildReach(biome) {
   const i = Math.max(0, BIOME_ORDER.indexOf(biome));
   return BIOME_ORDER[Math.min(BIOME_ORDER.length - 1, i + 1)];
 }
+const decorReach = () => BIOME_ORDER[BIOME_ORDER.length - 1];
 function decorOk(name, biome) {
-  const info = piece(name), lim = BIOME_ORDER.indexOf(biome);
-  // storage keeps to the village's own biome too: the interior library's sets are laid out round the chest they were
-  // mined with, and a bigger iron chest from the next biome went into the workbench beside it
-  const station = info.structural || ['craft', 'fire', 'storage'].includes(info.role) || /^(piece_workbench|forge|piece_stonecutter|piece_artisanstation|blackforge|piece_magetable|piece_cauldron|piece_oven|smelter|charcoal_kiln|blastfurnace|eitrrefinery|windmill|piece_spinningwheel)/.test(name);
-  return BIOME_ORDER.indexOf(needs(name)) <= (station ? lim : BIOME_ORDER.indexOf(decorReach(biome)));
+  if (!piece(name).structural) return true;
+  return BIOME_ORDER.indexOf(needs(name)) <= BIOME_ORDER.indexOf(buildReach(biome));
 }
 
-const apiP = { piece, minor, decorReach, decorOk, support, supportClass, SUPPORT, needs, MAT, BIOME_ORDER, exportSize, NEEDS, DOORS, doorSpec, doorOpening, CLIMB, climbSpec };
+// D-131 (Tyler, 2026-11-11): "Wood hearths (s1) and then stone hearths (s2 and s3) acceptable in meadows onward."
+// The stone of a hearth (its stack, the alcove floor, the flags under the fire, a front of jambs and an arch or lintel)
+// is allowed from s2 in every biome. The generator marks those pieces hearthStone where it places them
+// (lib/generate.js hearthStack, hearthstone, hearthFront); the materials check lets a marked piece pass here.
+const HEARTH_STONE = /^(stone_wall_(1x1|2x1|4x2)|stone_floor_2x2|stone_arch)$/;
+function hearthStoneOk(name, stage) { return HEARTH_STONE.test(name) && +String(stage || 's1').replace(/\D/g, '') >= 2; }
+
+const apiP = { piece, minor, decorReach, buildReach, decorOk, hearthStoneOk, support, supportClass, SUPPORT, needs, MAT, BIOME_ORDER, exportSize, NEEDS, DOORS, doorSpec, doorOpening, CLIMB, climbSpec };
 if (typeof module !== 'undefined') module.exports = apiP;
 else window.VHPieces = apiP;
 
@@ -1379,76 +1400,188 @@ function kitWeight(P, a) {
 function kitBudget(P) { return P ? (0.75 + 0.5 * P.clutter + 0.15 * P.wealth) * (P.plain ? 0.75 : 1) : 1; }
 
 // ---------------------------------------------------------------- items on stands
-// Vanilla item prefabs by the biome a village first has them in. Wall stands (itemstand) take trophies, shields,
-// weapons and tools; horizontal stands (itemstandh) take drinks, food and small things (src/Villheim.Logic/Designs/
-// StandItems.cs leaves a stand empty when ItemStand.CanAttach refuses the item). Names checked against the corpus's
-// stands.
+// What builders put on item stands (lab/mine_stands.js over Tyler's corpus, 2026-11-10: 1,559 vanilla builds, 14,787
+// stands holding something inside a building). Vanilla item prefabs by the biome a village first has them in, with a
+// weight from the number of corpus builds that show each one on a stand. Both stands take trophies, weapons, shields,
+// tools, fish and rare things; only the flat stand (itemstandh) takes meads and food in the corpus (Item Stand page of
+// the Valheim wiki: meads on the horizontal stand only; honey, gems and valuables such as rubies and amber on neither).
+// src/Villheim.Logic/Designs/StandItems.cs leaves a stand empty when ItemStand.CanAttach refuses the item. Deep North
+// names are the wiki's (Trophies page).
+const BIOMES_I = ['Meadows', 'Black Forest', 'Swamp', 'Mountain', 'Plains', 'Mistlands', 'Ashlands', 'Deep North'];
+const tierI = b => Math.max(0, BIOMES_I.indexOf(b));
 const ITEMS = {
-  trophy: [['Meadows', 'TrophyDeer', 3], ['Meadows', 'TrophyBoar', 3], ['Meadows', 'TrophyNeck', 1], ['Black Forest', 'TrophyGreydwarf', 1],
-    ['Black Forest', 'TrophyGreydwarfBrute', 2], ['Black Forest', 'TrophyGreydwarfShaman', 1], ['Black Forest', 'TrophySkeleton', 1], ['Black Forest', 'TrophyFrostTroll', 2],
-    ['Swamp', 'TrophyDraugr', 2], ['Swamp', 'TrophyLeech', 1], ['Swamp', 'TrophyBlob', 1], ['Swamp', 'TrophyWraith', 1], ['Swamp', 'TrophyAbomination', 2], ['Swamp', 'TrophySurtling', 1],
-    ['Mountain', 'TrophyWolf', 3], ['Mountain', 'TrophyFenring', 2], ['Mountain', 'TrophyHatchling', 2], ['Mountain', 'TrophySGolem', 1],
-    ['Plains', 'TrophyLox', 3], ['Plains', 'TrophyDeathsquito', 2], ['Plains', 'TrophyGoblin', 2], ['Plains', 'TrophyGrowth', 1],
-    ['Mistlands', 'TrophySeeker', 2], ['Mistlands', 'TrophyTick', 1], ['Mistlands', 'TrophyHare', 2], ['Mistlands', 'TrophyGjall', 1],
-    ['Ashlands', 'TrophyAsksvin', 2], ['Ashlands', 'TrophyVolture', 2], ['Ashlands', 'TrophyCharredMelee', 1], ['Ashlands', 'TrophyMorgen', 1]],
-  boss: [['Meadows', 'TrophyEikthyr'], ['Black Forest', 'TrophyTheElder'], ['Swamp', 'TrophyBonemass'], ['Mountain', 'TrophyDragonQueen'],
-    ['Plains', 'TrophyGoblinKing'], ['Mistlands', 'TrophySeekerQueen'], ['Ashlands', 'TrophyFader']],
-  shield: [['Meadows', 'ShieldWood', 3], ['Meadows', 'ShieldWoodTower', 2], ['Black Forest', 'ShieldBronzeBuckler', 3], ['Black Forest', 'ShieldBoneTower', 1],
-    ['Swamp', 'ShieldBanded', 3], ['Swamp', 'ShieldIronBuckler', 2], ['Swamp', 'ShieldIronTower', 1], ['Mountain', 'ShieldSilver', 3], ['Mountain', 'ShieldSerpentscale', 1],
-    ['Plains', 'ShieldBlackmetal', 2], ['Plains', 'ShieldBlackmetalTower', 1], ['Mistlands', 'ShieldCarapace', 2], ['Mistlands', 'ShieldCarapaceBuckler', 1],
-    ['Ashlands', 'ShieldFlametal', 2], ['Ashlands', 'ShieldFlametalTower', 1]],
-  weapon: [['Meadows', 'AxeFlint', 2], ['Meadows', 'SpearFlint', 2], ['Meadows', 'Bow', 2], ['Meadows', 'Club', 1], ['Meadows', 'KnifeFlint', 1],
-    ['Black Forest', 'SwordBronze', 3], ['Black Forest', 'MaceBronze', 2], ['Black Forest', 'SpearBronze', 2], ['Black Forest', 'AtgeirBronze', 1], ['Black Forest', 'KnifeCopper', 1],
-    ['Swamp', 'SwordIron', 3], ['Swamp', 'MaceIron', 2], ['Swamp', 'Battleaxe', 1], ['Mountain', 'SwordSilver', 2], ['Mountain', 'BowHuntsman', 2], ['Mountain', 'SpearWolfFang', 1],
-    ['Plains', 'SwordBlackmetal', 2], ['Plains', 'AxeBlackMetal', 1], ['Plains', 'AtgeirBlackmetal', 1], ['Mistlands', 'SwordMistwalker', 1], ['Mistlands', 'KnifeChitin', 1]],
-  tool: [['Meadows', 'Hammer', 3], ['Meadows', 'AxeStone', 1], ['Meadows', 'PickaxeAntler', 2], ['Meadows', 'Hoe', 2], ['Black Forest', 'AxeBronze', 2], ['Black Forest', 'PickaxeBronze', 2],
-    ['Black Forest', 'Cultivator', 2], ['Swamp', 'AxeIron', 2], ['Swamp', 'PickaxeIron', 2], ['Plains', 'PickaxeBlackMetal', 1], ['Mistlands', 'AxeJotunBane', 1]],
-  farm: [['Meadows', 'Hoe', 3], ['Black Forest', 'Cultivator', 3], ['Meadows', 'AxeStone', 1]],
-  // for the game's role displays only (kitbash.js ROLE_DISPLAYS); no household draws these
+  trophy: [['Meadows', 'TrophyDeer', 5], ['Meadows', 'TrophyBoar', 4], ['Meadows', 'TrophyNeck', 2],
+    ['Black Forest', 'TrophyGreydwarf', 2], ['Black Forest', 'TrophyGreydwarfBrute', 4], ['Black Forest', 'TrophyGreydwarfShaman', 3], ['Black Forest', 'TrophySkeleton', 3],
+    ['Black Forest', 'TrophySkeletonPoison', 2], ['Black Forest', 'TrophyFrostTroll', 2], ['Black Forest', 'TrophyGhost', 1], ['Black Forest', 'TrophyBjorn', 1],
+    ['Swamp', 'TrophyDraugr', 1], ['Swamp', 'TrophyDraugrElite', 2], ['Swamp', 'TrophyLeech', 1], ['Swamp', 'TrophyBlob', 2], ['Swamp', 'TrophyWraith', 2],
+    ['Swamp', 'TrophyAbomination', 3], ['Swamp', 'TrophySurtling', 6], ['Swamp', 'TrophyKvastur', 1], ['Swamp', 'TrophyWrithan', 1], ['Swamp', 'TrophySerpent', 1],
+    ['Mountain', 'TrophyWolf', 3], ['Mountain', 'TrophyFenring', 1], ['Mountain', 'TrophyHatchling', 2], ['Mountain', 'TrophySGolem', 2], ['Mountain', 'TrophyCultist', 2],
+    ['Mountain', 'TrophyUlv', 1], ['Mountain', 'TrophyBlob_Frost', 1],
+    ['Plains', 'TrophyLox', 1], ['Plains', 'TrophyDeathsquito', 2], ['Plains', 'TrophyGoblin', 2], ['Plains', 'TrophyGoblinBrute', 1], ['Plains', 'TrophyGoblinShaman', 2],
+    ['Plains', 'TrophyGrowth', 1], ['Plains', 'TrophyBjornUndead', 1],
+    ['Mistlands', 'TrophySeeker', 1], ['Mistlands', 'TrophySeekerBrute', 1], ['Mistlands', 'TrophyTick', 1], ['Mistlands', 'TrophyGjall', 1], ['Mistlands', 'TrophyHare', 1],
+    ['Mistlands', 'TrophyDvergr', 1],
+    ['Ashlands', 'TrophyAsksvin', 1], ['Ashlands', 'TrophyVolture', 1], ['Ashlands', 'TrophyCharredMelee', 1], ['Ashlands', 'TrophyCharredArcher', 1], ['Ashlands', 'TrophyCharredMage', 1],
+    ['Ashlands', 'TrophyMorgen', 1], ['Ashlands', 'TrophyFallenValkyrie', 1], ['Ashlands', 'TrophyBonemawSerpent', 1], ['Ashlands', 'TrophyBlob_Lava', 1],
+    ['Deep North', 'TrophyMoose', 1], ['Deep North', 'TrophySeal', 1], ['Deep North', 'TrophyBarka', 1], ['Deep North', 'TrophyMole', 1], ['Deep North', 'TrophyJotunWarrior', 1],
+    ['Deep North', 'TrophyJotunWitch', 1], ['Deep North', 'TrophyBlob_Morkhalla', 1]],
+  // the great trophies: the bosses, and the Hildir quest's champions and the Elaking
+  boss: [['Meadows', 'TrophyEikthyr', 4], ['Black Forest', 'TrophyTheElder', 2], ['Black Forest', 'TrophySkeletonHildir', 1], ['Swamp', 'TrophyBonemass', 1],
+    ['Mountain', 'TrophyDragonQueen', 1], ['Mountain', 'TrophyCultist_Hildir', 1], ['Plains', 'TrophyGoblinKing', 1], ['Plains', 'TrophyGoblinBruteBrosShaman', 1],
+    ['Mistlands', 'TrophySeekerQueen', 1], ['Ashlands', 'TrophyFader', 1], ['Deep North', 'TrophyElaking', 1]],
+  shield: [['Meadows', 'ShieldWood', 5], ['Meadows', 'ShieldWoodTower', 3], ['Black Forest', 'ShieldBronzeBuckler', 4], ['Black Forest', 'ShieldBoneTower', 3],
+    ['Swamp', 'ShieldBanded', 5], ['Swamp', 'ShieldIronBuckler', 3], ['Swamp', 'ShieldIronTower', 3], ['Mountain', 'ShieldSilver', 4], ['Mountain', 'ShieldSerpentscale', 4],
+    ['Plains', 'ShieldBlackmetal', 2], ['Plains', 'ShieldBlackmetalTower', 2], ['Mistlands', 'ShieldCarapace', 1], ['Mistlands', 'ShieldCarapaceBuckler', 1],
+    ['Ashlands', 'ShieldFlametal', 1], ['Ashlands', 'ShieldFlametalTower', 1], ['Deep North', 'ShieldGoldBuckler', 1], ['Deep North', 'ShieldGold', 1], ['Deep North', 'ShieldGoldTower', 1]],
+  weapon: [['Meadows', 'AxeFlint', 1], ['Meadows', 'SpearFlint', 1], ['Meadows', 'Bow', 1], ['Meadows', 'Club', 1], ['Meadows', 'KnifeFlint', 1], ['Meadows', 'KnifeButcher', 3],
+    ['Black Forest', 'BowFineWood', 2], ['Black Forest', 'SwordBronze', 2], ['Black Forest', 'MaceBronze', 1], ['Black Forest', 'SpearBronze', 1], ['Black Forest', 'AtgeirBronze', 1],
+    ['Black Forest', 'KnifeCopper', 2], ['Black Forest', 'SledgeStagbreaker', 1],
+    ['Swamp', 'SwordIron', 2], ['Swamp', 'MaceIron', 2], ['Swamp', 'AtgeirIron', 1], ['Swamp', 'Battleaxe', 1], ['Swamp', 'SledgeIron', 2], ['Swamp', 'SpearElderbark', 1], ['Swamp', 'BowHuntsman', 1],
+    ['Mountain', 'SwordSilver', 2], ['Mountain', 'MaceSilver', 3], ['Mountain', 'SpearWolfFang', 1], ['Mountain', 'KnifeSilver', 1], ['Mountain', 'BowDraugrFang', 2],
+    ['Mountain', 'BattleaxeCrystal', 2], ['Mountain', 'FistFenrirClaw', 1],
+    ['Plains', 'SwordBlackmetal', 2], ['Plains', 'AtgeirBlackmetal', 1], ['Plains', 'KnifeBlackMetal', 2], ['Plains', 'MaceNeedle', 2], ['Plains', 'SpearChitin', 1], ['Plains', 'KnifeChitin', 2],
+    ['Mistlands', 'SwordMistwalker', 2], ['Mistlands', 'CrossbowArbalest', 2], ['Mistlands', 'THSwordKrom', 2], ['Mistlands', 'SledgeDemolisher', 2], ['Mistlands', 'AtgeirHimminAfl', 2],
+    ['Mistlands', 'KnifeSkollAndHati', 1], ['Mistlands', 'StaffFireball', 1], ['Mistlands', 'StaffIceShards', 2], ['Mistlands', 'StaffShield', 1], ['Mistlands', 'StaffSkeleton', 2],
+    ['Ashlands', 'SwordNiedhogg', 1], ['Ashlands', 'SwordDyrnwyn', 1], ['Ashlands', 'THSwordSlayer', 1], ['Ashlands', 'AxeBerzerkr', 1], ['Ashlands', 'BowAshlands', 1], ['Ashlands', 'CrossbowRipper', 1],
+    ['Deep North', 'SwordGold', 1], ['Deep North', 'AxeGold', 1], ['Deep North', 'MaceGold', 1], ['Deep North', 'SpearGold', 1], ['Deep North', 'KnifeGold', 1]],
+  tool: [['Meadows', 'Hammer', 3], ['Meadows', 'AxeStone', 1], ['Meadows', 'PickaxeAntler', 1], ['Meadows', 'Hoe', 1], ['Meadows', 'FishingRod', 1],
+    ['Black Forest', 'AxeBronze', 2], ['Black Forest', 'PickaxeBronze', 2], ['Black Forest', 'Cultivator', 1], ['Swamp', 'AxeIron', 1], ['Swamp', 'PickaxeIron', 1],
+    ['Plains', 'AxeBlackMetal', 2], ['Plains', 'PickaxeBlackMetal', 1], ['Plains', 'Scythe', 1], ['Mistlands', 'AxeJotunBane', 2], ['Deep North', 'Shovel', 1]],
+  farm: [['Meadows', 'Hoe', 3], ['Black Forest', 'Cultivator', 3], ['Meadows', 'AxeStone', 1], ['Plains', 'Scythe', 1]],
   fishing: [['Meadows', 'FishingRod', 1]],
-  fish: [['Meadows', 'Fish1', 2], ['Black Forest', 'Fish2', 2]],
-  drink: [['Meadows', 'Tankard', 4], ['Black Forest', 'MeadTasty', 2], ['Black Forest', 'MeadHealthMinor', 1], ['Black Forest', 'MeadStaminaMinor', 1], ['Swamp', 'MeadPoisonResist', 1],
-    ['Mountain', 'MeadFrostResist', 1], ['Plains', 'BarleyWine', 2], ['Plains', 'MeadHealthMedium', 1], ['Mistlands', 'Tankard_dvergr', 2]],
-  food: [['Meadows', 'Raspberry', 2], ['Meadows', 'CookedMeat', 2], ['Meadows', 'Honey', 1], ['Meadows', 'Mushroom', 1], ['Black Forest', 'Blueberries', 2], ['Black Forest', 'QueensJam', 2],
-    ['Black Forest', 'MushroomYellow', 1], ['Black Forest', 'Carrot', 1], ['Swamp', 'Turnip', 1], ['Swamp', 'Sausages', 1], ['Mountain', 'Onion', 1], ['Plains', 'Cloudberry', 1], ['Plains', 'Bread', 2],
-    ['Plains', 'LoxPie', 1], ['Mistlands', 'MushroomMagecap', 1]],
-  herbs: [['Meadows', 'Mushroom', 2], ['Meadows', 'Dandelion', 2], ['Black Forest', 'MushroomYellow', 2], ['Mountain', 'Onion', 1], ['Mistlands', 'MushroomJotunPuffs', 1]],
-  valuable: [['Black Forest', 'Ruby', 1], ['Black Forest', 'Amber', 1], ['Swamp', 'AmberPearl', 1], ['Mistlands', 'DragonEgg', 0]],
+  fish: [['Meadows', 'Fish1', 2], ['Black Forest', 'Fish2', 2], ['Swamp', 'Fish5', 1], ['Swamp', 'Fish3', 1], ['Mountain', 'Fish4_cave', 1], ['Plains', 'Fish6', 1], ['Plains', 'Fish7', 1],
+    ['Plains', 'Fish8', 1], ['Mistlands', 'Fish9', 1], ['Mistlands', 'Fish12', 1], ['Ashlands', 'Fish11', 1], ['Deep North', 'Fish10', 1]],
+  drink: [['Meadows', 'Tankard', 8], ['Meadows', 'TankardAnniversary', 3], ['Black Forest', 'MeadTasty', 3], ['Black Forest', 'MeadHealthMinor', 2], ['Black Forest', 'MeadStaminaMinor', 2],
+    ['Black Forest', 'MeadPoisonResist', 4], ['Black Forest', 'MeadLightfoot', 1], ['Swamp', 'MeadFrostResist', 4], ['Swamp', 'MeadHealthMedium', 2], ['Swamp', 'MeadHasty', 1],
+    ['Plains', 'MeadStaminaMedium', 3], ['Plains', 'BarleyWine', 2], ['Plains', 'MeadStrength', 1], ['Mistlands', 'MeadHealthMajor', 3], ['Mistlands', 'MeadStaminaLingering', 3],
+    ['Mistlands', 'MeadEitrMinor', 2], ['Mistlands', 'Tankard_dvergr', 3], ['Deep North', 'Lingondricka', 1], ['Deep North', 'OatMilk', 1]],
+  food: [['Meadows', 'Raspberry', 3], ['Meadows', 'CookedMeat', 2], ['Meadows', 'CookedDeerMeat', 1],
+    ['Black Forest', 'Blueberries', 3], ['Black Forest', 'QueensJam', 4], ['Black Forest', 'Carrot', 2], ['Black Forest', 'CarrotSoup', 3], ['Black Forest', 'DeerStew', 3], ['Black Forest', 'BoarJerky', 1],
+    ['Swamp', 'Turnip', 1], ['Swamp', 'TurnipStew', 2], ['Swamp', 'Sausages', 2], ['Swamp', 'MinceMeatSauce', 2], ['Swamp', 'ShocklateSmoothie', 2], ['Swamp', 'BlackSoup', 1],
+    ['Swamp', 'SerpentStew', 3], ['Swamp', 'SerpentMeatCooked', 1], ['Swamp', 'Pukeberries', 1],
+    ['Mountain', 'Onion', 1], ['Mountain', 'OnionSoup', 3], ['Mountain', 'Eyescream', 2], ['Mountain', 'CookedWolfMeat', 1], ['Mountain', 'WolfMeatSkewer', 1],
+    ['Plains', 'Cloudberry', 1], ['Plains', 'Bread', 3], ['Plains', 'LoxPie', 3], ['Plains', 'CookedLoxMeat', 2], ['Plains', 'BloodPudding', 2], ['Plains', 'FishWraps', 1], ['Plains', 'FishAndBread', 1], ['Plains', 'ChickenEgg', 1],
+    ['Mistlands', 'Salad', 2], ['Mistlands', 'HoneyGlazedChicken', 2], ['Mistlands', 'MushroomOmelette', 2], ['Mistlands', 'YggdrasilPorridge', 2], ['Mistlands', 'MisthareSupreme', 2],
+    ['Mistlands', 'SeekerAspic', 1], ['Mistlands', 'MeatPlatter', 2],
+    ['Ashlands', 'SparklingShroomshake', 1], ['Ashlands', 'ScorchingMedley', 1], ['Ashlands', 'SpicyMarmalade', 1], ['Ashlands', 'FierySvinstew', 1], ['Ashlands', 'MarinatedGreens', 1],
+    ['Ashlands', 'MashedMeat', 1], ['Ashlands', 'RoastedCrustPie', 1], ['Ashlands', 'PiquantPie', 1],
+    ['Deep North', 'Pancakes', 1], ['Deep North', 'SmokedFish', 1], ['Deep North', 'FishSoup', 1], ['Deep North', 'SealSoup', 1], ['Deep North', 'KaleChips', 1], ['Deep North', 'MooseKebab', 1],
+    ['Deep North', 'BakedPoteitr', 1], ['Deep North', 'Lingonberry', 1]],
+  herbs: [['Meadows', 'Dandelion', 4], ['Meadows', 'Mushroom', 3], ['Black Forest', 'MushroomYellow', 4], ['Black Forest', 'Thistle', 2], ['Mountain', 'MushroomBlue', 1],
+    ['Mistlands', 'MushroomMagecap', 1], ['Mistlands', 'MushroomJotunPuffs', 1], ['Deep North', 'Kale', 1]],
+  // curios a household keeps on show: the Dvergr circlet, crowns and caps, cores, keys, eggs, totems
+  hat: [['Meadows', 'HelmetMidsummerCrown', 1], ['Meadows', 'HelmetYule', 1], ['Mistlands', 'HelmetDverger', 3]],
+  rare: [['Black Forest', 'SurtlingCore', 2], ['Black Forest', 'AncientSeed', 1], ['Swamp', 'CryptKey', 3], ['Mountain', 'DragonEgg', 3], ['Mountain', 'DragonTear', 1],
+    ['Plains', 'GoblinTotem', 2], ['Plains', 'SaddleLox', 1], ['Plains', 'YagluthDrop', 1], ['Mistlands', 'BlackCore', 1], ['Mistlands', 'DvergrKey', 1],
+    ['Ashlands', 'MoltenCore', 1], ['Ashlands', 'CelestialFeather', 1], ['Ashlands', 'Bell', 1]],
+};
+// valuables (rubies, amber) cannot go on a stand: the rare things stand in for them
+ITEMS.valuable = ITEMS.rare;
+// the serving tray, left on a stand beside a feast it laid out (lib/stands.js)
+ITEMS.tray = [['Meadows', 'Feaster', 1]];
+// What each place holds in the corpus (flat stands by what they stand on, wall stands by what stands under them), as
+// shares; the household's hobbies then lean on these (standItem).
+const AT_KINDS = {
+  table: { drink: 732, food: 531, weapon: 88, shield: 45, trophy: 45, herbs: 33, tool: 25, fish: 25, rare: 17 },
+  sidetable: { drink: 60, food: 40, herbs: 15, rare: 10, trophy: 8, hat: 5 },
+  shelf: { drink: 544, food: 341, herbs: 284, weapon: 241, hat: 121, rare: 94, trophy: 54, tool: 50, shield: 41 },
+  ledge: { drink: 266, food: 242, herbs: 168, weapon: 103, trophy: 96, hat: 47, rare: 43, fish: 42 },
+  mantel: { drink: 686, food: 91, trophy: 90, herbs: 53, weapon: 39, rare: 19 },
+  sill: { drink: 55, food: 41, trophy: 41, weapon: 12, herbs: 8 },
+  bench: { drink: 108, trophy: 34, food: 26, weapon: 13, shield: 11, herbs: 7 },
+  // (chest: read at the lid, the corpus rerun of 2026-11-11; counter: a low wall's top; stand: a stand set on or into
+  // another, a heap)
+  chest: { food: 31, fish: 25, drink: 20, trophy: 10, weapon: 4, shield: 3, herbs: 2 },
+  counter: { drink: 107, food: 76, hat: 68, trophy: 42, weapon: 29, tool: 13, shield: 6, herbs: 4, rare: 3, fish: 3 },
+  stand: { food: 306, drink: 138, herbs: 123, shield: 44, trophy: 30, weapon: 27, rare: 14, tool: 6, hat: 5, fish: 2 },
+  workbench: { tool: 10, drink: 10, food: 6, rare: 4, weapon: 3 },
+  rafter: { hat: 52, trophy: 38, weapon: 38, drink: 25, herbs: 15, fish: 11, rare: 8 },
+  floor: { drink: 665, food: 432, herbs: 277, rare: 225, weapon: 116, trophy: 90, hat: 72, fish: 46 },
+  wall: { weapon: 215, trophy: 199, shield: 179, fish: 30, tool: 29, rare: 22, farm: 10 },
+  'wall:workbench': { trophy: 219, shield: 117, weapon: 116, tool: 26, fish: 8, farm: 9 },
+  'wall:hearth': { trophy: 182, shield: 172, weapon: 113, rare: 25, tool: 11 },
+  'wall:table': { shield: 112, trophy: 83, weapon: 82, fish: 10, rare: 8 },
+  'wall:bed': { trophy: 136, shield: 38, weapon: 16 },
+  'wall:chest': { trophy: 103, weapon: 88, shield: 71, tool: 14 },
+  'wall:door': { trophy: 61, shield: 59, weapon: 38, tool: 7, farm: 3 },
+  'wall:bench': { weapon: 55, trophy: 46, shield: 28, tool: 6 },
+  beam: { trophy: 214, weapon: 155, shield: 145, tool: 57, fish: 18, farm: 11 },
+  'wall:rafter': { trophy: 215, shield: 154, weapon: 61, fish: 26 },
 };
 function itemFrom(kind, biome, R, own = 2, seen) {
-  // what the village's biome and the next one give (D-080): a Meadows house may keep mead and jam from the Black Forest
-  const t = tierP(biome);
-  const list = (ITEMS[kind] || []).filter(([b]) => tierP(b) <= t + 1);
+  // any item from any biome may be on show in any village (Tyler, 2026-11-10: decor has no biome limit; D-080 is only
+  // about how it is paid for); the village's own biome weighs a little more, for flavor
+  const t = tierI(biome);
+  const list = ITEMS[kind] || [];
   if (!list.length) return null;
-  // the village's own biome counts more; older ones still turn up
+  own = 1 + (own - 1) * 0.6;
   // what the house already shows weighs less, so a wall of stands is not five of one thing
-  const got = pickWP(R, Object.fromEntries(list.map(([b, n, w]) => [n, (w == null ? 1 : w) * (tierP(b) === t ? own : 1) / (1 + 2 * ((seen && seen[n]) || 0))])));
+  const got = pickWP(R, Object.fromEntries(list.map(([b, n, w]) => [n, (w == null ? 1 : w) * (tierI(b) === t ? own : 1) / (1 + 2 * ((seen && seen[n]) || 0))])));
   if (seen && got) seen[got] = (seen[got] || 0) + 1;
   return got;
 }
-// What a stand holds, from the household's hobbies and the room: kind 'wall' or 'top'; want is what its kit asked for.
+// How much a household leans to each kind of thing on show (never a trade: the village cook may live in any house).
+function kindLean(P) {
+  const H = P ? P.hobby : { crafts: 0.3, collect: 0.3, plants: 0.3, food: 0.3, games: 0.3, maps: 0.3 };
+  const wealth = P ? P.wealth : 0.4, clutter = P ? P.clutter : 0.4, comfort = P ? P.comfort : 0.5;
+  return { trophy: 0.4 + 1.6 * H.collect, shield: 0.5 + 1.0 * H.collect + 0.5 * wealth, weapon: 0.5 + 0.9 * H.collect + 0.3 * wealth,
+    tool: 0.3 + 1.7 * H.crafts, farm: 0.2 + 1.5 * H.plants, drink: 0.6 + 0.6 * H.food + 0.4 * clutter + 0.3 * H.games, food: 0.5 + 1.2 * H.food + 0.2 * clutter,
+    herbs: 0.3 + 1.5 * H.plants, fish: 0.4 + 0.6 * H.food, hat: 0.2 + 0.5 * comfort + 0.6 * H.collect, rare: 0.15 + 0.9 * H.collect + 0.8 * wealth + 0.3 * H.maps };
+}
+// What a stand holds, from the household's hobbies, the room and the place: kind 'wall' or 'top'; o.want is what its
+// kit asked for (a kind such as 'drink' or 'trophy'), o.at where it stands ('table', 'shelf', 'sill', 'wall:hearth', ...).
 // Nothing here follows a trade: a work building's stands hold its own work (the smithy's tools and weapons), a home's
 // what its household collects, makes, grows and eats.
+// A household keeps a few things of each kind and puts them out again: the same mead in a row of mugs, the same
+// bread on two tables (the corpus's houses show a median of 7 distinct items on 19 stands). How often a stand takes
+// something already on show follows the household: a tidy one keeps to a few things, a collector shows more of its
+// own. Drink, food and herbs come again most, trophies and tools seldom; rare things, boss trophies and the serving
+// tray never.
+const NO_REPEAT = new Set(['rare', 'boss', 'tray', 'valuable']);
+const REPEAT_K = { drink: 1, food: 0.9, herbs: 1, fish: 0.8, hat: 0.8, shield: 0.85, weapon: 0.65, farm: 0.45, tool: 0.45, trophy: 0.6 };
+function repeatOf(P) {
+  if (!P) return 0.7;
+  return Math.min(0.95, Math.max(0.35, 0.75 + 0.6 * P.tidy - 0.5 * (P.hobby.collect || 0) - 0.2 * P.wealth + 0.2 * (P.plain ? 1 : 0)));
+}
+function fromStock(kind, biome, R, seen, P) {
+  const st = seen && !NO_REPEAT.has(kind) ? (seen._stock || (seen._stock = {})) : null;
+  const list = st && st[kind];
+  if (list && list.length && R() < repeatOf(P) * (REPEAT_K[kind] == null ? 0.5 : REPEAT_K[kind])) {
+    const w = {};
+    for (const n of list) w[n] = (w[n] || 0) + 1;
+    const got = pickWP(R, w);
+    list.push(got);
+    return got;
+  }
+  const got = itemFrom(kind, biome, R, 2, seen);
+  if (st && got) (st[kind] || (st[kind] = [])).push(got);
+  return got;
+}
 function standItem(P, kind, o, R) {
   const biome = o.biome || 'Meadows', role = o.role || 'home', want = o.want, seen = o.seen;
   const H = P ? P.hobby : { crafts: 0.3, collect: 0.3, plants: 0.3, food: 0.3 };
-  if (want === 'tool' && R() < H.plants / (H.plants + H.crafts + 0.2)) return itemFrom('farm', biome, R, 2, seen);
-  if (want && ITEMS[want]) return itemFrom(want, biome, R, 2, seen);
+  if (want === 'tool' && R() < H.plants / (H.plants + H.crafts + 0.2)) return fromStock('farm', biome, R, seen, P);
+  if (want && ITEMS[want]) return fromStock(want, biome, R, seen, P);
+  const lean = kindLean(P);
+  const at = o.at || (kind === 'wall' ? 'wall' : 'table');
+  const base = AT_KINDS[at] || AT_KINDS[kind === 'wall' ? 'wall' : 'table'];
+  const tot = Object.values(base).reduce((s, v) => s + v, 0);
+  const w = {};
+  for (const [k, v] of Object.entries(base)) {
+    // meads and food only on the flat stand
+    if (kind === 'wall' && ['drink', 'food', 'herbs', 'hat'].includes(k)) continue;
+    w[k] = (v / tot) * (lean[k] || 1);
+  }
+  // the work of a work building, the drink of a tavern
+  if (role === 'smithy') { w.tool = (w.tool || 0) + 0.5; w.weapon = (w.weapon || 0) + 0.6; w.shield = (w.shield || 0) + 0.3; }
+  if (role === 'workshop' || role === 'storage') { w.tool = (w.tool || 0) + 0.8; w.farm = (w.farm || 0) + 0.2 + 0.4 * H.plants; }
+  if (role === 'temple') { w.trophy = (w.trophy || 0) + 0.4; w.rare = (w.rare || 0) + 0.2; }
+  if ((role === 'tavern' || role === 'guest') && kind !== 'wall') { w.drink = (w.drink || 0) * 2.5 + 0.3; w.food = (w.food || 0) * 1.3; }
   if (kind === 'wall') {
-    const w = role === 'smithy' ? { tool: 2, weapon: 2.5, shield: 1.5 }
-      : role === 'workshop' || role === 'storage' ? { tool: 3, farm: 0.6 + H.plants }
-        : role === 'temple' ? { shield: 1, trophy: 1.5 }
-          : role === 'tavern' ? { trophy: 2, shield: 1 }
-            : { trophy: 0.4 + 2 * H.collect, shield: 0.3 + 0.8 * H.collect + (P ? P.wealth * 0.4 : 0), weapon: 0.2 + 0.6 * H.collect,
-              tool: 0.2 + 1.4 * H.crafts, farm: 0.2 + H.plants };
     // a well-off collector may keep one great trophy
     if (P && H.collect > 0.6 && P.wealth > 0.6 && seen && !seen.boss && R() < 0.3) { seen.boss = 1; return itemFrom('boss', biome, R, 3, seen); }
-    return itemFrom(pickWP(R, w), biome, R, 2, seen);
   }
-  const w = role === 'tavern' || role === 'guest' ? { drink: 4, food: 1.5 }
-    : { drink: 1 + H.food, food: 1 + H.food * 1.5 + (P ? P.clutter * 0.5 : 0.3), herbs: 0.2 + H.plants * 1.5,
-      valuable: P ? Math.max(0, P.wealth - 0.5) * 1.5 + H.collect * 0.3 : 0, trophy: H.collect * 0.6 };
-  return itemFrom(pickWP(R, w), biome, R, 2, seen);
+  return fromStock(pickWP(R, w), biome, R, seen, P);
 }
 // The room a point lies in (a design's room rectangles) and its role, roughly: the main floor by the building's use,
 // upper floors sleeping or storage, as the decorator reads them.
@@ -1458,6 +1591,44 @@ function roleAt(b, p, type, use) {
   const upper = r ? r.upper || r.y > 1.6 : p.y > 2.5;
   if (upper) return use === 'home' || use === 'hall' ? (type === 'tavern' ? 'guest' : 'sleeping') : 'storage';
   return { home: 'home', hall: type === 'tavern' ? 'tavern' : type === 'temple' ? 'temple' : 'hall', smithy: 'smithy', workshop: 'workshop', storage: 'storage', farm: 'storage', guard: 'home', temple: 'temple' }[use] || 'home';
+}
+// Where a stand is, as the corpus miner reads it (lab/mine_stands.js): a flat stand by what it stands on, a wall
+// stand by what stands under it. Sets that know say so themselves (p.at).
+const STAND_FIRE = /^(hearth|fire_pit|fire_pit_iron)$/;
+function standAt(b, p, near) {
+  const P_ = NODE_P ? require('./pieces.js') : window.VHPieces, Ck = NODE_P ? require('./checks.js') : window.VHChecks;
+  const role = q => P_.piece(q.name).role;
+  if (p.name === 'itemstandh') {
+    let best = null, bt = -Infinity;
+    for (const q of near) {
+      if (q === p || /^itemstand/.test(q.name)) continue;
+      const o = Ck.aabb(q);
+      if (o.pass || o.x0 > p.x || o.x1 < p.x || o.z0 > p.z || o.z1 < p.z || o.y1 > p.y + 0.3 || o.y1 < p.y - 0.15) continue;
+      if (o.y1 > bt) { bt = o.y1; best = { q, o }; }
+    }
+    if (!best) return 'table';
+    const n = best.q.name, r = role(best.q), o = best.o;
+    if (/^(piece_workbench|forge|piece_artisanstation|blackforge|piece_magetable|piece_stonecutter|piece_cauldron)/.test(n)) return 'workbench';
+    if (r === 'table') return (o.x1 - o.x0) * (o.z1 - o.z0) < 1 ? 'sidetable' : 'table';
+    if (r === 'seat') return 'bench';
+    if (r === 'storage') return 'chest';
+    if (r === 'beam' || r === 'pole' || /ledge|beam/.test(n)) {
+      const room = (b.rooms || []).find(q => p.x > q.x0 - 0.3 && p.x < q.x1 + 0.3 && p.z > q.z0 - 0.3 && p.z < q.z1 + 0.3 && p.y > q.y - 0.5 && p.y < q.y + 4);
+      return room && p.y - room.y > 2.2 ? 'rafter' : 'shelf';
+    }
+    return 'shelf';
+  }
+  // a wall stand: what stands under it, within reach
+  let at = 'wall', d = Infinity;
+  for (const q of near) {
+    if (!q.decor || q === p) continue;
+    const r = role(q), dist = Math.hypot(q.x - p.x, q.z - p.z);
+    if (dist > (STAND_FIRE.test(q.name) ? 2.4 : 1.4) || q.y > p.y || dist >= d) continue;
+    const k = /^(piece_workbench|forge|piece_artisanstation|blackforge|piece_stonecutter)/.test(q.name) ? 'wall:workbench' : STAND_FIRE.test(q.name) ? 'wall:hearth'
+      : r === 'bed' ? 'wall:bed' : r === 'table' ? 'wall:table' : r === 'seat' ? 'wall:bench' : r === 'storage' ? 'wall:chest' : null;
+    if (k) { at = k; d = dist; }
+  }
+  return at;
 }
 /**
  * Puts an item on every item stand of a design (p.item, written to the blueprint's info field) by the household and
@@ -1473,10 +1644,13 @@ function dressStands(b, ctx) {
   for (const p of stands) {
     const R = rngP(((P ? P.salt : 7) ^ Math.imul(Math.round(p.x * 20) + 4096, 73856093) ^ Math.imul(Math.round(p.y * 20) + 4096, 19349663) ^ Math.imul(Math.round(p.z * 20) + 4096, 83492791)) >>> 0);
     R(); R();
-    const name = standItem(P, p.name === 'itemstand' ? 'wall' : 'top', { biome: ctx.biome, role: roleAt(b, p, ctx.type, ctx.use), want: p.want, seen }, R);
+    // a set may say what a stand holds and where it is in one word ('drink@table', lib/stands.js)
+    const [want, at0] = String(p.want || '').split('@');
+    const at = at0 || p.at || (want ? null : standAt(b, p, b.pieces.filter(q => Math.abs(q.x - p.x) < 2.5 && Math.abs(q.z - p.z) < 2.5 && Math.abs(q.y - p.y) < 2.5)));
+    const name = standItem(P, p.name === 'itemstand' ? 'wall' : 'top', { biome: ctx.biome, role: roleAt(b, p, ctx.type, ctx.use), want: want || null, at, seen }, R);
     if (!name) { out.add(p); continue; }
     p.item = { name, variant: 0, quality: 1 };
-    delete p.want;
+    delete p.want; delete p.at;
     n++;
   }
   if (out.size) b.pieces = b.pieces.filter(p => !out.has(p));
@@ -1575,7 +1749,7 @@ function storyKits(P) {
 }
 
 const apiPer = { growth, storyKits, stageOf, persona, PRESETS, CULTURE_P, HOBBIES, ITEMS, extraWeights, fillShare, wallWeights, wallGap, wallSkip, torchGap, underStair, kitWeight, kitBudget,
-  standItem, itemFrom, dressStands, roleAt, rng: rngP, hash: hashP, pickW: pickWP };
+  standItem, standAt, kindLean, AT_KINDS, itemFrom, dressStands, roleAt, rng: rngP, hash: hashP, pickW: pickWP };
 if (NODE_P) module.exports = apiPer; else window.VHPersona = apiPer;
 
 })();
@@ -2187,11 +2361,10 @@ function check(design, biome, opts = {}) {
   results.push({ check: 'ladders', ok: problems.length === 0,
     detail: ls.length ? (problems.length ? `${problems.length} problems: ${[...new Set(problems)].slice(0, 3).join('; ')}` : `${ls.length} ladder and stair pieces, all climbable`) : 'no ladders or stairs' });
 
-  // beds: every house and longhouse sleeps someone, in a bed its biome can make (Tyler, T-102)
+  // beds: every house and longhouse sleeps someone (Tyler, T-102); any vanilla bed in any biome (D-065)
   const kind = design.request && design.request.type;
   if (['home', 'longhouse'].includes(kind)) {
-    const ord = PC.BIOME_ORDER, limit = biome ? ord.indexOf(biome) : 99;
-    const beds = pieces.filter(p => PC.piece(p.name).role === 'bed' && ord.indexOf(PC.needs(p.name)) <= limit).length;
+    const beds = pieces.filter(p => PC.piece(p.name).role === 'bed').length;
     results.push({ check: 'beds', ok: beds > 0, detail: beds ? `${beds} beds` : `no bed in this ${kind}` });
   }
 
@@ -2200,11 +2373,10 @@ function check(design, biome, opts = {}) {
     [...near(ptBox(p.x, p.y + 0.5, p.y + 30, p.z), 0)].some(j => j !== i && (undersideOf(pieces[j], p.x, p.z, boxes[j]) ?? -1) > p.y + 0.5));
   results.push({ check: 'woodpiles', ok: piles.length === 0, detail: piles.length ? `${piles.length} woodpiles indoors` : 'no woodpiles indoors' });
 
-  // materials for the biome, building pieces and furnishing alike
+  // materials for the biome: building pieces from the village's biome and its neighbors; furniture and decor from any
+  // biome (D-065, Tyler 2026-11-10; lib/pieces.js decorOk)
   if (biome) {
-    const ord = PC.BIOME_ORDER, limit = ord.indexOf(biome);
-    // minor decor goes in any biome (D-066); other decor reaches one biome further, paid in local stand-ins (D-080)
-    const over = [...new Set(pieces.filter(p => ord.indexOf(PC.needs(p.name)) > limit && !(p.decor && (PC.minor(p.name) || PC.decorOk(p.name, biome)))).map(p => p.name))];
+    const over = [...new Set(pieces.filter(p => !PC.decorOk(p.name, biome) && !(p.hearthStone && PC.hearthStoneOk(p.name, design.request && design.request.stage))).map(p => p.name))];
     results.push({ check: 'materials', ok: over.length === 0, detail: over.length ? `needs later biomes: ${over.slice(0, 5).join(', ')}` : `all pieces available in ${biome}` });
   }
 
@@ -2288,6 +2460,8 @@ if (NODE_F) module.exports = { features, score, NAMES }; else window.VHFeatures 
 
 const NODE_D = typeof module !== 'undefined';
 const P = NODE_D ? require('./pieces.js') : window.VHPieces;
+// The pieces module under a name that a function's own P (a persona) cannot shadow.
+const PIECES = P;
 const SHD = NODE_D ? require('./shapes.js') : window.VHShapes;
 const PERS = () => (NODE_D ? require('./persona.js') : window.VHPersona);
 // what a piece shows, as boxes (lib/mesh.js): where a model stands proud of its collider (the 2x2 wood wall's bars)
@@ -2400,13 +2574,27 @@ const F = {
   stone_pile: { s: [1.6, 0.81, 1.6], c: [0.08, 0.07], at: 'out', b: 'Meadows', cat: 'clutter' },
   coal_pile: { s: [1.6, 0.82, 1.6], c: [0.02, 0.1], at: 'out', b: 'Black Forest', cat: 'clutter' },
 };
+// More of each kind the game ships, sized from the game's models (modelSizes) like the rest: the decorator picked from
+// a short list per kind, so every house had the same few rugs, tables and benches (Tyler, 2026-11-10: "Same exact
+// lox rug"). Each takes the placing rules of the piece it is listed under.
+const CLONES_D = {
+  rug_deer: ['rug_bogwitch_deer', 'rug_moose', 'rug_seal', 'rug_Bjorn'],
+  piece_banner01: ['piece_banner06', 'piece_banner07', 'piece_banner08', 'piece_banner09', 'piece_banner10', 'piece_banner11'],
+  piece_groundtorch_mist: ['piece_groundtorch_blue'],
+  piece_table: ['dvergrprops_table'],
+  piece_table_oak: ['piece_blackmarble_table'],
+  piece_bench01: ['piece_blackwood_bench01', 'piece_blackmarble_bench'],
+  piece_chair: ['dvergrprops_stool'],
+};
+for (const [t, list] of Object.entries(CLONES_D)) for (const n of list) if (!F[n]) { const o = { ...F[t], clone: true }; delete o.c; F[n] = o; }
 // Older names kept for callers that read the table.
 const ITEM_BIOME = {};
 for (const [k, v] of Object.entries(F)) ITEM_BIOME[k] = v.b;
 
 const bi = b => { const i = ORDER.indexOf(b); return i < 0 ? 0 : i; };
-// furniture and decor reach one biome further than the village's own, stations and fires none (D-080, lib/pieces.js)
-const ok = (name, biome) => !!F[name] && bi(F[name].b) <= bi(biome) + (['craft', 'fire', 'storage'].includes(F[name].cat) ? 0 : 1);
+// any furniture or decor in any biome (D-065, Tyler 2026-11-10; lib/pieces.js decorOk); F[name].b stays as the biome a
+// piece belongs to, for flavor only
+const ok = (name, biome) => !!F[name];
 const ok0 = ok;
 const size = name => (F[name] ? F[name].fp || F[name].s : P.piece(name).size);
 // The sizes above were measured in the corpus; the game's models (lib/mesh.js, data/piece-models.json) win where they
@@ -2433,7 +2621,7 @@ function modelSizes() {
     const body = [0, 1, 2].map(i => (Math.abs(old[i] - m[i]) > 0.1 ? +m[i].toFixed(2) : old[i]));
     // a piece set against a wall keeps no pad behind it: its back goes to the wall (the forge's tool rack, 0.2 m deep,
     // stood 0.3 m off its wall when its 0.8 m corpus depth was taken for its body)
-    const pad = [Math.max(0, old[0] - body[0]), ['wall', 'mount'].includes(f.at) ? 0 : Math.max(0, old[2] - body[2])];
+    const pad = f.clone ? [0, 0] : [Math.max(0, old[0] - body[0]), ['wall', 'mount'].includes(f.at) ? 0 : Math.max(0, old[2] - body[2])];
     f.corpus = old;
     f.s = body;
     if (pad[0] > 0.1 || pad[1] > 0.1) { f.pad = pad.map(v => +v.toFixed(2)); f.fp = [body[0] + pad[0], body[1], body[2] + pad[1]]; }
@@ -2445,13 +2633,13 @@ function modelSizes() {
 const KIT = {
   bed: ['bed', 'piece_bed02', 'ashwood_bed'],
   chest: ['piece_chest_wood', 'piece_chest_barrel', 'piece_chest', 'piece_chest_blackmetal'],
-  table: ['piece_table', 'piece_table_round', 'piece_table_oak'],
-  chair: ['piece_chair', 'piece_chair02', 'piece_chair03'],
-  bench: ['piece_bench01', 'piece_logbench01'],
-  rug: ['rug_deer', 'rug_wolf', 'jute_carpet', 'rug_fur', 'rug_straw', 'rug_hare', 'jute_carpet_blue', 'rug_asksvin'],
-  floorLight: ['piece_groundtorch_wood', 'piece_groundtorch', 'piece_groundtorch_green', 'piece_groundtorch_mist'],
+  table: ['piece_table', 'piece_table_round', 'piece_table_oak', 'dvergrprops_table', 'piece_blackmarble_table'],
+  chair: ['piece_chair', 'piece_chair02', 'piece_chair03', 'dvergrprops_stool'],
+  bench: ['piece_bench01', 'piece_logbench01', 'piece_blackwood_bench01', 'piece_blackmarble_bench'],
+  rug: ['rug_deer', 'rug_wolf', 'jute_carpet', 'rug_fur', 'rug_straw', 'rug_hare', 'jute_carpet_blue', 'rug_asksvin', 'rug_bogwitch_deer', 'rug_moose', 'rug_seal', 'rug_Bjorn'],
+  floorLight: ['piece_groundtorch_wood', 'piece_groundtorch', 'piece_groundtorch_green', 'piece_groundtorch_mist', 'piece_groundtorch_blue'],
   wallLight: ['piece_walltorch', 'piece_dvergr_lantern'],
-  banner: ['piece_banner01', 'piece_banner02', 'piece_banner03', 'piece_banner04', 'piece_banner05'],
+  banner: ['piece_banner01', 'piece_banner02', 'piece_banner03', 'piece_banner04', 'piece_banner05', 'piece_banner06', 'piece_banner07', 'piece_banner08', 'piece_banner09', 'piece_banner10', 'piece_banner11'],
   carving: ['wood_dragon1', 'darkwood_raven', 'darkwood_wolf'],
   stack: ['wood_stack', 'wood_fine_stack', 'wood_core_stack'],
 };
@@ -2466,6 +2654,62 @@ const CULTURE_TASTE = {
   byzantine: { banners: 1.3 },
   dwarven: { lights: 1.4 },
 };
+
+// Corpus counts per culture group (lab/culture_kinds.js from the research branch's data/culture-corpus/summary.json,
+// 2,153 builds, 1,224 furnished; D-136: the weights and rates below are these counts). Per group: n furnished
+// buildings; k the top prefabs per kind with their uses; t what lies on tables; r relations in percent of pieces (sa
+// seats at tables, sf seats by a fire, rl rugs layered, td tables dressed, cs chests stacked, sw seats by a wall, so
+// seats turned, to tables turned, ro rugs turned more than 10 degrees off the wall axes, ts tables with seats, ba beds
+// above the main floor, bf beds on a storey with a fire, bb beds side by side, th buildings with a table). 'all' is every group.
+const CORPUS_CULT = {"unsorted":{"n":139,"k":{"bed":[["bed",112],["piece_bed02",92]],"table":[["piece_table",140],["piece_table_round",91],["piece_magetable_ext2",68]],"seat":[["piece_chair",549],["piece_chair03",547],["piece_bench01",196]],"rug":[["jute_carpet",673],["rug_fur",460],["rug_deer",430]],"storage":[["piece_chest",853],["piece_chest_blackmetal",851],["piece_chest_wood",605]],"light":[["piece_dvergr_lantern",1542],["piece_groundtorch_mist",954],["piece_walltorch",793]]},"t":[["itemstandh",324],["Candle_resin",30],["piece_Lavalantern",26],["treasure_stack",19],["itemstand",17],["sign",14]],"r":{"sa":23,"sf":3,"rl":28,"td":47,"cs":46,"sw":37,"so":48,"to":34,"ro":40,"ts":32,"ba":39,"bf":44,"bb":40,"th":55}},"norse":{"n":387,"k":{"bed":[["bed",389],["piece_bed02",375]],"table":[["piece_table",441],["piece_table_round",263],["cauldron_ext3_butchertable",181]],"seat":[["piece_chair",2232],["piece_chair03",1490],["piece_chair02",482]],"rug":[["rug_deer",2350],["rug_fur",1916],["jute_carpet",1506]],"storage":[["piece_chest_wood",6324],["piece_chest",2797],["piece_chest_blackmetal",1377]],"light":[["piece_walltorch",2540],["piece_dvergr_lantern",1721],["piece_groundtorch_wood",812]]},"t":[["itemstandh",1054],["itemstand",55],["treasure_stack",44],["piece_chest_private",44],["sign",38],["piece_jackoturnip",36]],"r":{"sa":28,"sf":4,"rl":23,"td":41,"cs":60,"sw":41,"so":41,"to":27,"ro":30,"ts":51,"ba":64,"bf":48,"bb":21,"th":68}},"castle":{"n":176,"k":{"bed":[["piece_bed02",166],["bed",97]],"table":[["piece_table",225],["piece_blackmarble_table",106],["piece_table_round",98]],"seat":[["piece_chair",2314],["piece_chair03",688],["piece_bench01",195]],"rug":[["jute_carpet",1083],["rug_fur",911],["rug_deer",419]],"storage":[["piece_chest_blackmetal",919],["piece_chest",910],["piece_chest_wood",796]],"light":[["piece_walltorch",1411],["piece_dvergr_lantern",1269],["piece_groundtorch",438]]},"t":[["itemstandh",452],["treasure_stack",107],["Candle_resin",59],["piece_table",16],["sign",13],["itemstand",12]],"r":{"sa":18,"sf":7,"rl":25,"td":41,"cs":55,"sw":45,"so":50,"to":28,"ro":37,"ts":42,"ba":66,"bf":53,"bb":12,"th":63}},"ashlands":{"n":119,"k":{"bed":[["piece_bed02",56],["bed",4]],"table":[["piece_table",86],["piece_table_round",81],["piece_table_oak",45]],"seat":[["piece_chair03",483],["piece_chair",329],["piece_chair02",97]],"rug":[["rug_fur",670],["jute_carpet",329],["rug_wolf",168]],"storage":[["piece_chest",1695],["piece_chest_blackmetal",359],["piece_chest_barrel",298]],"light":[["piece_groundtorch_mist",1605],["piece_dvergr_lantern",1327],["piece_walltorch",591]]},"t":[["itemstandh",126],["Candle_resin",33],["piece_Lavalantern",21],["sign",10],["treasure_stack",9],["piece_jackoturnip",8]],"r":{"sa":32,"sf":3,"rl":15,"td":41,"cs":73,"sw":31,"so":43,"to":27,"ro":19,"ts":44,"ba":60,"bf":40,"bb":11,"th":54}},"norse-named":{"n":131,"k":{"bed":[["piece_bed02",192],["bed",168]],"table":[["piece_table",213],["piece_table_round",137],["piece_table_oak",99]],"seat":[["piece_chair",1579],["piece_chair03",780],["piece_bench01",256]],"rug":[["rug_deer",1302],["rug_fur",1211],["jute_carpet",657]],"storage":[["piece_chest",1729],["piece_chest_wood",1624],["piece_chest_blackmetal",904]],"light":[["piece_walltorch",1540],["piece_dvergr_lantern",952],["piece_groundtorch_mist",502]]},"t":[["itemstandh",527],["itemstand",41],["treasure_stack",30],["piece_Lavalantern",25],["piece_chest_private",21],["piece_jackoturnip",17]],"r":{"sa":25,"sf":3,"rl":22,"td":43,"cs":57,"sw":40,"so":34,"to":25,"ro":24,"ts":52,"ba":65,"bf":56,"bb":26,"th":77}},"mistlands":{"n":44,"k":{"bed":[["piece_bed02",18]],"table":[["piece_table_round",28],["piece_magetable_ext2",19],["trader_wagon_destructable",19]],"seat":[["piece_chair03",129],["piece_throne02",87],["piece_chair",49]],"rug":[["jute_carpet",604],["rug_fur",94],["rug_asksvin",51]],"storage":[["piece_chest_blackmetal",558],["piece_chest",262],["dvergrprops_crate_long",91]],"light":[["piece_groundtorch_mist",666],["piece_dvergr_lantern",250],["piece_walltorch",134]]},"t":[["piece_dvergr_lantern",18],["piece_Lavalantern",13],["piece_throne02",9],["fermenter",3],["itemstand",3]],"r":{"sa":26,"sf":1,"rl":15,"td":35,"cs":45,"sw":31,"so":48,"to":49,"ro":25,"ts":31,"ba":46,"bf":24,"bb":0,"th":45}},"stone-house":{"n":37,"k":{"bed":[["piece_bed02",7],["bed",4]],"table":[["piece_table",20],["cauldron_ext3_butchertable",16],["piece_table_round",9]],"seat":[["piece_chair",362],["piece_chair02",45],["piece_chair03",34]],"rug":[["rug_fur",54],["rug_hare",42],["rug_deer",36]],"storage":[["piece_chest_wood",329],["piece_chest",281],["piece_chest_blackmetal",106]],"light":[["piece_walltorch",111],["piece_groundtorch_wood",67],["piece_dvergr_lantern",51]]},"t":[["itemstandh",26],["itemstand",4],["treasure_stack",3],["piece_chest_private",2],["Candle_resin",2],["ArmorStand",1]],"r":{"sa":16,"sf":1,"rl":10,"td":29,"cs":58,"sw":65,"so":17,"to":28,"ro":32,"ts":43,"ba":54,"bf":46,"bb":0,"th":76}},"norse-forest":{"n":44,"k":{"bed":[["bed",32],["piece_bed02",20]],"table":[["dvergrprops_table",580],["piece_table",59],["cauldron_ext3_butchertable",18]],"seat":[["piece_chair",952],["piece_chair03",112],["piece_chair02",59]],"rug":[["jute_carpet",149],["rug_deer",134],["rug_fur",68]],"storage":[["piece_chest_wood",622],["piece_chest",298],["piece_chest_barrel",133]],"light":[["piece_walltorch",265],["piece_groundtorch_wood",177],["piece_dvergr_lantern",142]]},"t":[["dvergrprops_table",418],["itemstandh",108],["Candle_resin",8],["treasure_stack",6],["piece_cookingstation",6],["itemstand",5]],"r":{"sa":11,"sf":5,"rl":7,"td":49,"cs":63,"sw":47,"so":17,"to":28,"ro":21,"ts":10,"ba":71,"bf":25,"bb":45,"th":77}},"fantasy":{"n":31,"k":{"bed":[["piece_bed02",47],["bed",3]],"table":[["piece_table",82],["piece_table_round",38],["piece_blackmarble_table",29]],"seat":[["piece_chair03",233],["piece_chair",170],["piece_blackmarble_bench",36]],"rug":[["jute_carpet",369],["rug_fur",326],["rug_deer",318]],"storage":[["piece_chest",306],["piece_chest_blackmetal",211],["piece_chest_wood",175]],"light":[["piece_groundtorch_mist",1571],["dvergrprops_lantern_standing",641],["piece_dvergr_lantern",355]]},"t":[["itemstandh",118],["Candle_resin",30],["itemstand",15],["sign",13],["piece_jackoturnip",11],["piece_chest_treasure",9]],"r":{"sa":35,"sf":3,"rl":18,"td":53,"cs":60,"sw":41,"so":50,"to":34,"ro":30,"ts":43,"ba":62,"bf":38,"bb":9,"th":77}},"medieval-timber":{"n":27,"k":{"bed":[["piece_bed02",28],["bed",18]],"table":[["piece_table_round",25],["piece_table",24],["piece_magetable_ext2",14]],"seat":[["piece_chair",502],["piece_chair03",114],["piece_bench01",35]],"rug":[["rug_fur",153],["jute_carpet",99],["rug_deer",53]],"storage":[["piece_chest",152],["piece_chest_blackmetal",140],["piece_chest_wood",133]],"light":[["piece_dvergr_lantern",301],["piece_walltorch",235],["piece_groundtorch_wood",77]]},"t":[["itemstandh",57],["Candle_resin",8],["itemstand",6],["sign",4],["treasure_stack",3],["piece_chest_barrel",2]],"r":{"sa":14,"sf":2,"rl":19,"td":37,"cs":48,"sw":56,"so":31,"to":11,"ro":12,"ts":30,"ba":84,"bf":24,"bb":13,"th":74}},"norse-highland":{"n":23,"k":{"bed":[["piece_bed02",53],["bed",14]],"table":[["piece_table",55],["piece_table_round",31],["dvergrprops_table",26]],"seat":[["piece_chair03",167],["dvergrprops_stool",49],["piece_workbench",43]],"rug":[["rug_fur",218],["rug_wolf",149],["jute_carpet",128]],"storage":[["piece_chest",522],["piece_chest_wood",109],["piece_chest_blackmetal",65]],"light":[["piece_dvergr_lantern",248],["piece_walltorch",114]]},"t":[["itemstandh",13],["piece_jackoturnip",6],["sign",6],["piece_chest_private",4],["Candle_resin",4]],"r":{"sa":50,"sf":8,"rl":18,"td":24,"cs":63,"sw":26,"so":45,"to":28,"ro":26,"ts":68,"ba":51,"bf":43,"bb":7,"th":83}},"east-asian":{"n":14,"k":{"bed":[["bed",6],["piece_bed02",4]],"table":[["piece_table",31],["piece_magetable_ext",2],["piece_magetable",2]],"seat":[["piece_chair",66],["piece_bench01",43],["piece_blackmarble_throne",20]],"rug":[["rug_asksvin",68],["rug_fur",41],["rug_wolf",37]],"storage":[["piece_chest_blackmetal",51],["piece_chest",35],["piece_chest_private",22]],"light":[["piece_groundtorch",160],["piece_dvergr_lantern",139],["piece_brazierceiling01",63]]},"t":[["itemstandh",40],["piece_chest_private",16],["piece_jackoturnip",2],["piece_chest_wood",1],["piece_groundtorch_mist",1]],"r":{"sa":27,"sf":1,"rl":11,"td":56,"cs":49,"sw":51,"so":11,"to":5,"ro":39,"ts":63,"ba":91,"bf":18,"bb":18,"th":43}},"fen-folk":{"n":12,"k":{"bed":[["bed",17],["piece_bed02",8]],"table":[["piece_table",17],["piece_table_round",5],["cauldron_ext3_butchertable",3]],"seat":[["piece_chair03",18],["piece_chair02",15],["piece_chair",15]],"rug":[["rug_deer",78],["rug_straw",34],["rug_asksvin",20]],"storage":[["piece_chest",129],["piece_chest_wood",124],["piece_chest_barrel",19]],"light":[["piece_walltorch",244],["piece_groundtorch_green",220],["piece_groundtorch",59]]},"t":[["itemstandh",13],["treasure_stack",2],["piece_groundtorch",1]],"r":{"sa":24,"sf":5,"rl":27,"td":23,"cs":69,"sw":40,"so":55,"to":58,"ro":46,"ts":43,"ba":67,"bf":40,"bb":20,"th":83}},"celtic":{"n":8,"k":{"bed":[["bed",2],["piece_bed02",2]],"table":[["piece_table",4],["piece_table_oak",3],["cauldron_ext3_butchertable",3]],"seat":[["piece_chair",11],["piece_chair03",8],["piece_workbench",4]],"rug":[["rug_hare",14],["rug_deer",11],["rug_fur",9]],"storage":[["piece_chest",27],["piece_chest_barrel",9],["piece_chest_wood",8]],"light":[["piece_groundtorch_wood",16],["piece_walltorch",12],["piece_groundtorch_green",4]]},"t":[["itemstandh",27],["sign",1],["piece_magetable_ext",1],["piece_chest_private",1]],"r":{"sa":34,"sf":9,"rl":12,"td":59,"cs":11,"sw":44,"so":59,"to":82,"ro":59,"ts":47,"ba":50,"bf":50,"bb":0,"th":50}},"modern":{"n":10,"k":{"bed":[["piece_bed02",12],["bed",1]],"table":[["piece_table",11],["cauldron_ext3_butchertable",4],["piece_table_round",4]],"seat":[["piece_chair",66],["piece_bench01",26],["piece_chair03",25]],"rug":[["rug_fur",230],["jute_carpet",64],["rug_wolf",29]],"storage":[["piece_chest_blackmetal",28],["piece_chest",14]],"light":[["piece_walltorch",129],["piece_dvergr_lantern",91],["piece_groundtorch",12]]},"t":[["itemstandh",239],["sign",18],["itemstand",5],["Candle_resin",3],["piece_jackoturnip",2]],"r":{"sa":14,"sf":3,"rl":13,"td":47,"cs":27,"sw":50,"so":18,"to":5,"ro":1,"ts":34,"ba":60,"bf":16,"bb":16,"th":80}},"greco-roman":{"n":5,"k":{"bed":[["bed",10]],"table":[],"seat":[["piece_chair02",5],["piece_bench01",3],["piece_blackwood_bench01",2]],"rug":[["jute_carpet_blue",175],["jute_carpet",67],["rug_deer",2]],"storage":[["piece_chest_wood",6]],"light":[["piece_groundtorch_mist",77],["piece_walltorch",68],["piece_dvergr_lantern",26]]},"t":[],"r":{"sa":0,"sf":0,"rl":10,"td":0,"cs":0,"sw":17,"so":33,"ro":2,"ts":0,"ba":0,"bf":100,"bb":60,"th":0}},"tree-house":{"n":6,"k":{"bed":[["bed",25],["piece_bed02",15]],"table":[["piece_table",14],["piece_table_round",9],["cauldron_ext3_butchertable",8]],"seat":[["piece_chair",170],["piece_chair03",59],["piece_workbench",25]],"rug":[["rug_deer",132],["rug_wolf",90],["rug_fur",70]],"storage":[["piece_chest",121],["piece_chest_wood",74],["piece_chest_blackmetal",17]],"light":[["piece_walltorch",89],["piece_groundtorch_mist",88],["piece_groundtorch",74]]},"t":[["itemstandh",17],["piece_jackoturnip",3],["piece_Lavalantern",2],["blackforge_ext4_gemcutter",1]],"r":{"sa":16,"sf":13,"rl":25,"td":26,"cs":32,"sw":32,"so":60,"to":37,"ro":66,"ts":43,"ba":50,"bf":56,"bb":8,"th":100}},"celtic-crannog":{"n":5,"k":{"bed":[["bed",5]],"table":[["cauldron_ext3_butchertable",3],["piece_table",2],["piece_preptable",1]],"seat":[["piece_chair",178],["piece_chair03",13],["piece_workbench",4]],"rug":[["rug_fur",84],["rug_deer",5],["jute_carpet",1]],"storage":[["piece_chest_wood",77],["piece_chest",12],["piece_chest_barrel",3]],"light":[["piece_groundtorch_mist",66],["piece_walltorch",32],["piece_dvergr_lantern",30]]},"t":[],"r":{"sa":7,"sf":1,"rl":2,"td":0,"cs":93,"sw":66,"so":60,"to":0,"ro":81,"ts":67,"ba":40,"bf":60,"bb":0,"th":60}},"saami":{"n":2,"k":{"bed":[["bed",3]],"table":[],"seat":[["piece_workbench",1],["piece_workbench_ext4",1],["piece_workbench_ext2",1]],"rug":[["rug_deer",29]],"storage":[["piece_chest_wood",12],["piece_chest_private",1]],"light":[["piece_groundtorch",3],["piece_walltorch",2]]},"t":[],"r":{"sa":0,"sf":0,"rl":0,"td":0,"ts":0,"ba":33,"bf":100,"bb":0,"th":0}},"slavic":{"n":1,"k":{"bed":[],"table":[],"seat":[["piece_chair02",2],["piece_workbench",1]],"rug":[],"storage":[["piece_chest_wood",2]],"light":[["piece_groundtorch_mist",17],["piece_groundtorch_green",4]]},"t":[],"r":{"sa":0,"sf":0,"rl":0,"td":0,"ts":0,"ba":0,"bf":0,"bb":0,"th":0}},"frankish-norman":{"n":1,"k":{"bed":[],"table":[["piece_table",1]],"seat":[],"rug":[],"storage":[],"light":[["piece_groundtorch_mist",7],["piece_dvergr_lantern",6]]},"t":[],"r":{"sa":0,"sf":0,"rl":0,"td":0,"ts":0,"ba":0,"bf":0,"bb":0,"th":100}},"middle-eastern":{"n":1,"k":{"bed":[],"table":[],"seat":[["piece_workbench",1],["piece_workbench_ext3",1],["piece_workbench_ext1",1]],"rug":[],"storage":[["piece_chest_wood",78]],"light":[]},"t":[],"r":{"sa":0,"sf":0,"rl":0,"td":0,"ts":0,"ba":0,"bf":0,"bb":0,"th":0}},"steppe":{"n":1,"k":{"bed":[["piece_bed02",1]],"table":[["piece_table_round",1],["piece_magetable",1],["piece_cartographytable",1]],"seat":[["piece_chair",2],["piece_workbench_ext2",1],["piece_workbench",1]],"rug":[["jute_carpet",18]],"storage":[["piece_chest_blackmetal",10],["piece_chest_wood",4],["piece_chest",4]],"light":[["piece_dvergr_lantern",10],["piece_Lavalantern",1]]},"t":[["piece_Lavalantern",1],["piece_magetable_ext2",1],["goblinking_totemholder",1]],"r":{"sa":0,"sf":0,"rl":0,"td":43,"ts":0,"ba":0,"bf":100,"bb":0,"th":100}},"all":{"n":1224,"k":{"bed":[["piece_bed02",1096],["bed",910]],"table":[["piece_table",1425],["piece_table_round",820],["dvergrprops_table",606],["cauldron_ext3_butchertable",236],["piece_table_oak",147],["piece_blackmarble_table",135],["piece_magetable_ext2",101],["trader_wagon_destructable",19]],"seat":[["piece_chair",9546],["piece_chair03",4900],["piece_bench01",754],["piece_chair02",705],["piece_throne02",87],["piece_workbench",80],["dvergrprops_stool",49],["piece_blackmarble_bench",36]],"rug":[["rug_fur",6515],["jute_carpet",5747],["rug_deer",5299],["rug_wolf",473],["jute_carpet_blue",175],["rug_asksvin",139],["rug_hare",56],["rug_straw",34]],"storage":[["piece_chest_wood",11102],["piece_chest",10147],["piece_chest_blackmetal",5596],["piece_chest_barrel",462],["dvergrprops_crate_long",91],["piece_chest_private",23]],"light":[["piece_dvergr_lantern",8460],["piece_walltorch",8310],["piece_groundtorch_mist",5553],["piece_groundtorch_wood",1149],["piece_groundtorch",746],["dvergrprops_lantern_standing",641],["piece_groundtorch_green",228],["piece_brazierceiling01",63]]},"t":[["itemstandh",3141],["dvergrprops_table",418],["treasure_stack",223],["Candle_resin",177],["itemstand",163],["sign",117],["piece_Lavalantern",88],["piece_chest_private",88]],"r":{"sa":25,"sf":4,"rl":21,"td":41,"cs":57,"sw":41,"so":41,"to":29,"ro":30,"ts":44,"ba":60,"bf":45,"bb":20,"th":65}}};
+// the generator's cultures to the corpus groups (null: no group of its own, the whole corpus)
+const CULT_GROUP = { norse: 'norse', 'anglo-saxon': 'medieval-timber', 'frankish-norman': 'medieval-timber', 'norse-forest': 'norse-forest',
+  celtic: 'celtic', slavic: 'slavic', 'celtic-crannog': 'celtic-crannog', baltic: null, 'fen-folk': 'fen-folk', 'norse-highland': 'norse-highland',
+  saami: 'saami', byzantine: 'greco-roman', steppe: 'steppe', lamari: 'mistlands', 'middle-eastern': 'middle-eastern', 'black-forest': 'norse-forest',
+  swamp: 'fen-folk', mountain: 'norse-highland', 'east-asian': 'east-asian', 'castle-medieval': 'castle', dwarven: 'mistlands' };
+// a small group counts for less: its counts are blended with the whole corpus by n / (n + 40) furnished buildings
+const cultG = culture => { const g = CORPUS_CULT[CULT_GROUP[culture]]; return g && g.n ? { g, l: g.n / (g.n + 40) } : { g: null, l: 0 }; };
+// A culture's rate for a relation, in 0..1, blended with the whole corpus.
+function corpusRate(culture, key) {
+  const A = CORPUS_CULT.all.r[key] || 0, { g, l } = cultG(culture);
+  const v = g && g.r[key] != null ? l * g.r[key] + (1 - l) * A : A;
+  return v / 100;
+}
+// How much more (or less) a culture uses a prefab of a kind than the corpus does: the group's share of the kind's
+// listed uses over the whole corpus share, blended; a prefab the corpus lists that the group leaves out of its list
+// weighs a little less; anything else stays at 1. Weights only (D-126).
+const SLOT_KIND = { bed: 'bed', table: 'table', chair: 'seat', bench: 'seat', seat: 'seat', rug: 'rug', chest: 'storage', floorLight: 'light', wallLight: 'light' };
+function corpusTilt(culture, kind, name) {
+  const { g, l } = cultG(culture);
+  if (!g || !l) return 1;
+  const gl = g.k[kind] || [], al = CORPUS_CULT.all.k[kind] || [];
+  const gs = gl.reduce((a, [, c]) => a + c, 0), as = al.reduce((a, [, c]) => a + c, 0);
+  const ge = gl.find(([n]) => n === name), ae = al.find(([n]) => n === name);
+  if (ge && ae && gs && as) return Math.min(3, Math.max(0.3, 1 + l * ((ge[1] / gs) / (ae[1] / as) - 1)));
+  if (ge && gs) return 1 + l;
+  if (ae && gl.length) return 1 - 0.5 * l;
+  return 1;
+}
+// A draw among prefabs of one kind for a room kind (data/interior.json shares plus the floor, times the culture's tilt),
+// the given one twice as likely: the interior library's rug slots use it (lib/kitbash.js fillSlot).
+function corpusPick(R, list, learnKind, kind, culture, own) {
+  const L = learned().rooms || {};
+  const shares = new Map(((L[learnKind] || L.home || {}).items || []).map(([n, s2]) => [n, s2]));
+  return pickW(R, list.map(n => [n, ((shares.get(n) || 0) + FLOOR_C) * corpusTilt(culture, kind, n) * (n === own ? 2 : 1)]));
+}
+// Whether a household keeps barrels in its living rooms: barrels are in 22 % of furnished corpus buildings (research
+// branch docs/INTERIOR_DESIGN.md, "Tricks builders use on purpose"), more often in a cluttered household; store and
+// work rooms keep theirs. Fixed by the household (its salt), so the decorator and the library agree.
+function keepsBarrels(P, type) {
+  // a tavern's barrel chests by the household as well: corpus tavern rooms hold barrel chests in 14 % of them (4.2 when
+  // they do), plank and iron chests in 24 % each (data/interior.json rooms.tavern); the bar counter keeps its own two
+  if (['storage', 'farm', 'barn', 'smithy', 'workshop', 'sawmill', 'dock', 'stall'].includes(type)) return true;
+  if (!P) return true;
+  return ((P.salt >>> 5) % 1000) / 1000 < 0.22 * (0.6 + 0.8 * (P.clutter || 0));
+}
+// what a rare prefab weighs beside the room kind's shares (data/interior.json: share of rooms of the kind that use it),
+// so anything can show (D-126) and the corpus favorites lead
+const FLOOR_C = 0.04;
 
 // ---------------------------------------------------------------- small helpers
 const PI = Math.PI;
@@ -2974,7 +3218,7 @@ class Room {
       if (rug !== q.rug) { if (q.fire || f.cat === 'fire') { if (overlap(q.b, b, 0.3)) return false; } continue; }
       // a table and a bed keep a meter apart (Tyler, FP-003: the table too close to the beds)
       const qc = (F[q.name] || {}).cat;
-      if (((f.cat === 'table' && qc === 'bed') || (f.cat === 'bed' && qc === 'table')) && overlap(q.b, b, 0.9)) return false;
+      if (((f.cat === 'table' && qc === 'bed') || (f.cat === 'bed' && qc === 'table')) && overlap(q.b, b, o.bedGap != null ? o.bedGap : 0.9)) return false;
       if (overlap(q.b, b, rug ? -0.05 : (o.tight ? 0.02 : 0.08))) return false;
     }
     if (!rug || f.cat === 'fire') {
@@ -3141,6 +3385,13 @@ function mountSpots(room, name, o = {}) {
 // How far a hung piece may touch what shows of a wall: a board (a sign, a stand) 1.5 cm, where a bar through it shows;
 // a banner's cloth 3 cm, as it hangs against the 2x2 wood wall's bars in any build (lib/audit.js uses the same).
 const HUNG_CLIP = name => (/^piece_banner\d+$/.test(name) ? 0.03 : 0.015);
+// D-127 (Tyler: "if the corpus builders do it, its allowed and you should mirror their work"): what corpus builders hang
+// into a wall's relief on purpose, up to the median depth they use (data/kitbash-interior.json, lab/mine_kitbash.js):
+// a wall item stand 5.3 cm (15 mined sets with the stand clipped into the wall, max 28 cm; 7.7 cm median over all
+// 4,212 stands), a wall torch 8.6 cm (808 torches in 238 builds, 90th percentile 23 cm). Past HUNG_CLIP the piece
+// carries its depth as p.wclip, a clip made on purpose in the file's #VillheimClips (D-098).
+const HUNG_CORPUS = { itemstand: 0.053, piece_walltorch: 0.086 };
+const hungLimit = name => Math.max(HUNG_CLIP(name), HUNG_CORPUS[name] || 0);
 // Clear of the wall's own relief (lib/mesh.js), by what shows of the piece against what shows of the walls round it:
 // a height between the bars within 0.4 m (T-606, T-612). A hung piece keeps its collider against the wall's, which is
 // what holds it up in the game, so it never moves out onto the bars; with no clear height the spot is not used. Gives
@@ -3149,11 +3400,14 @@ function clearOfRelief(room, name, spot) {
   const face = spot.face, f = F[name] || {};
   if (!face.wallClip || spot.x0 == null) return spot;
   const clipAt = yy => { const [px, pz] = pivotOf(name, spot.x0 + face.nx * spot.off, spot.z0 + face.nz * spot.off, spot.yaw); return face.wallClip({ name, x: px, y: yy, z: pz, q: quatY(spot.yaw) }); };
-  const lim = HUNG_CLIP(name);
-  if (clipAt(spot.y) <= lim) return spot;
+  const lim = HUNG_CLIP(name), deep = hungLimit(name);
+  const c0 = clipAt(spot.y);
+  if (c0 <= lim) return spot;
   if (f.under == null) for (let d = 0.1; d <= 0.401; d += 0.1) for (const yy of [spot.y + d, spot.y - d]) {
     if (yy >= spot.lowY && yy <= spot.topY && clipAt(yy) <= lim) return { ...spot, y: +yy.toFixed(2) };
   }
+  // no clear height: as deep as corpus builders hang it, marked (D-127, D-098)
+  if (c0 <= deep) return { ...spot, clip: c0 };
   return null;
 }
 function putMount(room, name, spot) {
@@ -3167,7 +3421,9 @@ function putMount(room, name, spot) {
   const probe = obox(spot.x + spot.face.nx * 0.3, spot.z + spot.face.nz * 0.3, w, 0.6, spot.yaw);
   for (const q of room.placed) if (!q.rug && !q.mount && q.y1 > y0 && overlap(q.b, probe, 0)) return null;
   room.mounts.push({ face: spot.face, t: spot.t, w, y0, y1 });
-  return room.add(name, spot.x, spot.y, spot.z, spot.yaw, { mount: true, face: spot.face, t: spot.t, y0, y1: y0 + h });
+  const rec = room.add(name, spot.x, spot.y, spot.z, spot.yaw, { mount: true, face: spot.face, t: spot.t, y0, y1: y0 + h });
+  if (rec && spot.clip) rec.p.wclip = +(spot.clip + 0.005).toFixed(3);
+  return rec;
 }
 
 // ---------------------------------------------------------------- clusters
@@ -3197,12 +3453,13 @@ function placeFire(room, ctx, kind) {
   void R;
   return rec;
 }
-function onFire(room, name) {
+function onFire(room, name, o = {}) {
   const fire = room.fire;
   if (!fire || fire.name !== 'fire_pit') return null;
   const f = F[name];
   const rec = room.add(name, fire.x, fire.y0 + (f.lift || 0.25), fire.z, fire.yaw, { onFire: true });
-  if (rec && name === 'piece_cauldron') kitchenExtras(room, rec);
+  // (a home sets its table first and the cauldron's upgrades after it: o.later)
+  if (rec && name === 'piece_cauldron') { if (o.later) room.potLater = rec; else kitchenExtras(room, rec); }
   return rec;
 }
 
@@ -3303,6 +3560,7 @@ function placeBeds(room, k, n, d, row = 1.5) {
   if (P && P.bedRow) row = P.bedRow;
   const gap = P && P.bedGap ? P.bedGap : 0.7, fireNear = P && P.bedFire ? P.bedFire : 2.6;
   const L = learned().items || {};
+  const apart = k.bedRow === false && row < 1;
   for (let i = 0; i < n; i++) {
     const name = k.bed;
     const doorMin = Math.min(3.0, fr.D * 0.55);
@@ -3315,19 +3573,24 @@ function placeBeds(room, k, n, d, row = 1.5) {
       if (room.doorDist(s.x, s.z) < doorMin) v -= 3;
       if (room.sideCells && room.sideCells(s.x, s.z)) v += 1.5;
       if (room.fire && Math.hypot(s.x - room.fire.x, s.z - room.fire.z) < fireNear) v -= 2;
-      if (prev) { const dd = Math.hypot(s.x - prev.x, s.z - prev.z); v += (s.face === prev.spot.face ? row : 0) - Math.abs(dd - (size(name)[0] + gap)) * 0.6 * (row > 1 ? 1 : 0.3); }
+      // a household that keeps its beds apart puts the next one on another wall or well along this one (homes and
+      // bedrooms only; bunk rows in halls and guest rooms stay rows)
+      if (prev && apart) for (const q of out) { const dd = Math.hypot(s.x - q.x, s.z - q.z); v += (s.face === q.spot.face ? -0.6 : 0.5) - Math.max(0, size(name)[0] + 1.6 - dd) * 0.8; }
+      else if (prev) { const dd = Math.hypot(s.x - prev.x, s.z - prev.z); v += (s.face === prev.spot.face ? row : 0) - Math.abs(dd - (size(name)[0] + gap)) * 0.6 * (row > 1 ? 1 : 0.3); }
       if (s.win) v -= 0.3;
       return v + pb(room, 'bed', s, name);
     }, { noise: 0.25 });
     if (!rec) break;
     out.push(rec);
     void L;
-    // a chest at the foot (learned: 1.75 m out from the bed's pivot, same facing)
-    if (d >= 2 || i === 0) {
+    // a chest at the foot (learned: 1.75 m out from the bed's pivot, same facing): the d1 essential by the first bed,
+    // past that as often as the household's clutter draws it (corpus: a chest within 2.6 m of 17 to 38 % of beds)
+    if ((d === 1 && i === 0) || (d >= 2 && (!k.hR || k.hR() < k.bedChest))) {
       const ch = k.chest;
       const off = size(name)[2] / 2 + size(ch)[2] / 2 + 0.3;
       const ax = Math.sin(rec.yaw * PI / 180), az = Math.cos(rec.yaw * PI / 180);
-      if (i < (d >= 3 ? 3 : d >= 2 ? 2 : 1)) room.put(ch, rec.x + ax * off, rec.z + az * off, rec.yaw);
+      // past the d1 essential it is an extra: a library set by the bed (a nightstand, a bedside barrel) moves it aside
+      if (i < (d >= 3 ? 3 : d >= 2 ? 2 : 1)) { const c2 = room.put(ch, rec.x + ax * off, rec.z + az * off, rec.yaw); if (c2 && d >= 2) c2.p.extra = true; }
     }
   }
   if (!out.length && n > 0) {
@@ -3343,12 +3606,96 @@ function placeBeds(room, k, n, d, row = 1.5) {
   return out;
 }
 
+// Corpus quartiles of where a prefab stands (data/interior.json items, kept in data/interior-lite.json as fireQ and
+// doorQ: the nearest fire's and the nearest door's distance at the 25th, 50th and 75th percentile), read at a draw u of the household's stream: a line through
+// 0.6 times the first quartile at 0, the quartiles at 0.25, 0.5 and 0.75, and 1.3 times the third at 1.
+function corpusAt(name, key, u, dflt) {
+  const I = learned().items || {};
+  const kq = key + 'Q';
+  const q = (I[name] && (I[name][kq] || (Array.isArray(I[name][key]) && I[name][key]))) || (dflt && I[dflt] && (I[dflt][kq] || (Array.isArray(I[dflt][key]) && I[dflt][key]))) || null;
+  if (!q) return null;
+  const pts = [[0, q[0] * 0.6], [0.25, q[0]], [0.5, q[1]], [0.75, q[2]], [1, q[2] * 1.3]];
+  for (let j = 1; j < pts.length; j++) if (u <= pts[j][0]) { const [u0, d0] = pts[j - 1], [u1, d1] = pts[j]; return d0 + (d1 - d0) * (u - u0) / (u1 - u0); }
+  return q[2] * 1.3;
+}
+// The household's i-th draw of one kind in a room (deterministic per room and household, so stages agree)
+const roomU = (room, kind, i) => {
+  let h = hashD(`${room.uSeed || 0}|${kind}|${i}`);
+  // the hash's last characters move its low bits only: mixed through (murmur3's finish) so i = 0, 1, 2 draw apart
+  h ^= h >>> 16; h = Math.imul(h, 0x85ebca6b); h ^= h >>> 13; h = Math.imul(h, 0xc2b2ae35); h ^= h >>> 16;
+  return (h >>> 0) / 4294967296;
+};
+// What the room reaches from a point: its farthest floor cell
+function reachFrom(room, x, z) { return Math.max(0, ...room.cells.map(c => Math.hypot(c.x - x, c.z - z))); }
+// How far from the fire a table stands, by the corpus (piece_table 3.73, 7.44 and 14.94 m at the quartiles,
+// piece_table_round 3.93, 6.54 and 12.61 m). The layout plans' 'fire' zone held every table 2.4 to 4 m from the fire,
+// short of the corpus's first quartile, so the dining set stood in one spot in every household. Each table of a room
+// draws its own distance, held to what the room reaches from its fire.
+function tableFireAt(room, name, i) {
+  let want = corpusAt(name, 'fire', roomU(room, 'tableFire', i), 'piece_table') || 7.44;
+  if (room.fireReachAt !== room.fire) { room.fireReachAt = room.fire; room.fireReach = room.fire ? reachFrom(room, room.fire.x, room.fire.z) : 0; }
+  // past what the room reaches: as far as it goes, a little short of the wall for the farther draws
+  const far = room.fireReach - 1.0;
+  if (want > far) want = far - Math.min(1.5, (want - far) * 0.25);
+  return Math.max(2.6, want);
+}
+// How far from the nearest door a table, chest or seat stands, by the corpus (door quartiles: piece_table 2.71, 3.75
+// and 6.63 m, piece_table_round 3.41, 4.82, 6.56, piece_chair 2.64, 4.37, 7.23, piece_chest_wood 2.02, 3.69, 6.46).
+// The placers held these far from the door (the depth targets and a 2.7 m keep-off for tables, chests drawn to the far
+// end), so tables, seats and chests stood 6.4 to 7.3 m from the nearest door at the median (lab/essentials.js) and the
+// half of a big room by its door stayed bare. The keep-clear box in front of each door (doorZones) still holds.
+function doorWant(room, name, kind, i, dflt) {
+  if (!room.doors.length) return null;
+  const want = corpusAt(name, 'door', roomU(room, 'door|' + kind, i), dflt);
+  if (want == null) return null;
+  if (room.doorReach == null) room.doorReach = Math.min(...room.doors.map(d => reachFrom(room, d.x, d.z)));
+  return Math.min(want, Math.max(2, room.doorReach - 1));
+}
+// The score for standing at door distance dd against the wanted distance: 1 within a meter, falling off past it
+const nearWant = (dd, want) => Math.max(0, 1 - (dd < want - 1 ? (want - 1 - dd) * 0.6 : dd > want + 1 ? (dd - want - 1) * 0.35 : 0));
+// The plan's 'fire' zone for tables (lib/layout.js, data/room-layouts.json) read as the corpus distance above, for the
+// decorator's tables and the interior library's dining sets alike (both ask the plan's bias for 'table'). The plan's
+// other zones and its orientation rules stay as they are.
+function tableZone(room, c) {
+  const P = room.plan;
+  if (!P || P._tableZone) return;
+  P._tableZone = true;
+  const fireZone = P.zoneOf('table') === 'fire';
+  const bias0 = P.bias, zoneOf0 = P.zoneOf;
+  const RU = (layoutD() && layoutD().rules && layoutD().rules()) || {};
+  const zw = ((RU.weight || {}).zone || 2) * (0.5 + 0.5 * (P.tidy != null ? P.tidy : 0.6));
+  P.bias = (kind, s, name) => {
+    if (kind !== 'table') return bias0(kind, s, name);
+    let v;
+    if (fireZone && room.fire) {
+      P.zoneOf = k2 => (k2 === 'table' ? null : zoneOf0(k2));
+      try { v = bias0(kind, s, name); } finally { P.zoneOf = zoneOf0; }
+    } else v = bias0(kind, s, name);
+    const nm = name || (c.kit && c.kit.table) || 'piece_table';
+    const i = room.placed.filter(q => (F[q.name] || {}).cat === 'table').length + P.placedSets.length;
+    // the corpus distance from the fire: in place of the 'fire' zone, and at a little over half its weight beside the
+    // plan's other zones (the tables of taverns and halls stood at 3 to 5 m from the fire, seats by a fire 11 %
+    // against the corpus 4 %)
+    if (room.fire) v += zw * (fireZone ? 1 : 0.6) * nearWant(Math.hypot(s.x - room.fire.x, s.z - room.fire.z), tableFireAt(room, nm, i));
+    const dw = doorWant(room, nm, 'table', i, 'piece_table');
+    if (dw != null) v += zw * nearWant(room.doorDist(s.x, s.z), dw);
+    return v;
+  };
+}
+
 // A table with its seats: in the middle, or with one long side to a wall and seats on the room side.
 function placeTable(room, k, o = {}) {
+  // seated as often as the culture's corpus tables are (corpusRate ts: 51 % of norse tables have a seat, 44 % of all);
+  // the others stand at a wall more often (corpus piece_table: 42 % against a wall) with nothing drawn up to them.
+  // Taverns and halls seat theirs (corpus tavern rooms: about 7.5 seats to 2.4 tables, data/interior.json).
+  if (o.seats > 0 && o.kind == null && !['tavern', 'hall', 'temple'].includes(room.role)) {
+    const i = room.placed.filter(q => (F[q.name] || {}).cat === 'table').length;
+    if (roomU(room, 'seated', i) >= corpusRate(room.culture, 'ts')) o = { ...o, seats: 0, wallBias: Math.max(o.wallBias || 0, 1.5) };
+  }
   const banned = [];
   for (let attempt = 0; attempt < 4; attempt++) {
     const t = placeTable1(room, k, { ...o, banned });
-    if (!t) return null;
+    if (!t) return o.sure ? tableSure(room, k, o) : null;
     if (t.seats > 0 || (o.seats != null && o.seats === 0)) return t;
     // nobody can sit at it: take it back and try somewhere else
     banned.push([t.x, t.z]);
@@ -3360,27 +3707,72 @@ function placeTable(room, k, o = {}) {
     }
     room.count--;
   }
-  return null;
+  return o.sure ? tableSure(room, k, o) : null;
+}
+// A table the household keeps (o.sure) where the first tries found no spot with a seat: every floor cell and the
+// walls tried, a seat or none, then the other tables the village makes (a long one against a wall, a round one, a
+// small Dvergr one). A one-room home left three households of six without a table (lead's review of
+// design/integration e74ccec, home Meadows s2 d3 seed 7); the corpus has a table in 68 % of norse furnished buildings.
+const TABLE_BED_TIGHT = 0.6;
+function tableSure(room, k, o) {
+  const first = o.table || k.table;
+  const names = [first, 'piece_table', 'piece_table_round', 'dvergrprops_table'].filter((n, i, a) => n && a.indexOf(n) === i && ok(n, room.biome));
+  for (const seats of [Math.min(1, o.seats || 0), 0]) for (const name of names) {
+    const t = placeTable1(room, k, { ...o, table: name, seats, dense: true, wallBias: Math.max(o.wallBias || 0, 1) });
+    if (t) return t;
+  }
+  // then a little closer to a bed: 0.6 m clear to walk between, in place of the 0.9 m kept since Tyler's FP-003
+  // ("table too close to the beds"); a value in use until the Decisions tab settles it (TABLE_BED_TIGHT)
+  for (const name of names) {
+    const t = placeTable1(room, k, { ...o, table: name, seats: 0, dense: true, wallBias: Math.max(o.wallBias || 0, 1), bedGap: TABLE_BED_TIGHT });
+    if (t) return t;
+  }
+  // then fewer extras: what the room holds as an extra (a chest at a bed's foot, a rug) gives way where the table goes
+  const ex = room.placed.filter(q => q.p && q.p.extra && !q.mount && !q.fire);
+  if (!ex.length) return null;
+  const drop = q => { for (const a of [room.placed, room.mates]) { const i = a.indexOf(q); if (i >= 0) a.splice(i, 1); } };
+  for (const q of ex) drop(q);
+  let t = null;
+  for (const seats of [Math.min(1, o.seats || 0), 0]) {
+    for (const name of names) { t = placeTable1(room, k, { ...o, table: name, seats, dense: true, wallBias: Math.max(o.wallBias || 0, 1), bedGap: TABLE_BED_TIGHT }); if (t) break; }
+    if (t) break;
+  }
+  const mine = t ? room.placed.slice(room.placed.indexOf(t)) : [];
+  for (const q of ex) {
+    if (t && mine.some(m => overlap(m.b, q.b, q.rug ? -0.3 : 0.08))) {
+      const j = room.out.indexOf(q.p);
+      if (j >= 0) room.out.splice(j, 1);
+      if (!q.rug) room.count--;
+    } else { room.placed.push(q); room.mates.push(q); }
+  }
+  return t;
 }
 function placeTable1(room, k, o = {}) {
   const fr = room.frame();
   const name = o.table || k.table;
   const [tw, , td] = size(name);
   const round = !!(F[name] || {}).round;
-  const doorMin = Math.min(2.7, fr.D * 0.5);
+  // the corpus's first tables stand 1.6 m from a door (0.6 of the first quartile, 2.71 m); doorWant draws the rest
+  const doorMin = Math.min(1.6, fr.D * 0.5);
   const spots = [];
   // middle spots on the grid, along the room's axes
-  for (const c of room.cells) if (c.i % 2 === 0 && c.j % 2 === 0) for (const yaw of round ? [0] : [0, 90]) spots.push({ x: c.x, z: c.z, yaw, mid: true });
-  if (!round && o.wall !== false) for (const s of wallSpots(room, name, { gap: 0.15 })) spots.push({ ...s, wallSide: true });
-  const seatsWanted = o.seats != null ? o.seats : 4;
+  for (const c of room.cells) if (o.dense || (c.i % 2 === 0 && c.j % 2 === 0)) for (const yaw of round ? [0] : [0, 90]) spots.push({ x: c.x, z: c.z, yaw, mid: true });
+  if ((!round || o.dense) && o.wall !== false) for (const s of wallSpots(room, name, { gap: 0.15 })) spots.push({ ...s, wallSide: true });
+  const seatsWanted0 = o.seats != null ? o.seats : 4, seatsWanted = seatsWanted0;
   const longX = (room.x1 - room.x0) >= (room.z1 - room.z0);
+  const seatName = o.seat || k.seat, seatBack = seatName && (F[seatName] || {}).back ? 180 : 0;
+  const seatD = seatName ? size(seatName)[2] : 0, seatR = seatName ? tw / 2 + seatD / 2 + 0.15 : 0;
+  // how far from the fire this table stands, by the corpus (tableFireAt; it was 3.2 m for every table)
+  const bedsHere = room.placed.some(q => (F[q.name] || {}).cat === 'bed');
+  const fireWant = room.fire ? tableFireAt(room, name, room.placed.filter(q => (F[q.name] || {}).cat === 'table').length) : 0;
   const rec = best(room, name, spots, s => {
     let v = 0;
     const dd = room.doorDist(s.x, s.z);
     if (dd < doorMin) v -= 4;
-    v -= Math.abs(fr.v(s.x, s.z) / fr.D - (o.depth != null ? o.depth : 0.55)) * 2;
-    v += (fr.u(s.x, s.z) * k.side < 0 ? 1 : 0) * (o.sideBias != null ? o.sideBias : 1);
-    if (room.fire) { const fd = Math.hypot(s.x - room.fire.x, s.z - room.fire.z); if (fd < 2.4) v -= 3; else v += Math.max(0, 1 - Math.abs(fd - 3.2) * 0.4) * (o.nearFire || 0.5); }
+    v -= Math.abs(fr.v(s.x, s.z) / fr.D - (o.depth != null ? o.depth : 0.55)) * (room.plan ? 1.2 : 2);
+    // the side away from the beds (k.side); a room with no bed in it has no side to keep away from
+    v += (fr.u(s.x, s.z) * k.side < 0 ? 1 : 0) * (o.sideBias != null ? o.sideBias : 1) * (bedsHere ? 1 : 0.3);
+    if (room.fire) { const fd = Math.hypot(s.x - room.fire.x, s.z - room.fire.z); if (fd < 2.4) v -= 3; else v += Math.max(0, 1 - Math.max(0, Math.abs(fd - fireWant) - 1) * 0.4) * (o.nearFire || 0.5); }
     if (s.mid && !round) v += ((longX ? s.yaw === 0 : s.yaw === 90) ? (o.axis || 0.4) : 0);
     if (s.wallSide) v += o.wallBias || 0.3;
     if (o.near) v -= Math.hypot(s.x - o.near.x, s.z - o.near.z) * 0.4;
@@ -3390,40 +3782,57 @@ function placeTable1(room, k, o = {}) {
     // room to sit: the spots for seats must be on the floor
     const ax = Math.sin(s.yaw * PI / 180), az = Math.cos(s.yaw * PI / 180);
     for (const sg of s.wallSide ? [1] : [1, -1]) if (!room.inside(s.x + ax * sg * (td / 2 + 0.7), s.z + az * sg * (td / 2 + 0.7))) v -= 2;
+    // and a seat fits there now, clear of the fire, the beds and what stands round (a table squeezed between the fire
+    // and a wall had no seat on either side, and the house went without a table)
+    if (seatsWanted > 0 && seatName) {
+      let room2 = 0;
+      if (round) { for (let i = 0; i < 4; i++) { const a = (s.yaw + i * 90) * PI / 180, sx = s.x + Math.sin(a) * seatR, sz = s.z + Math.cos(a) * seatR; if (room.fits(seatName, sx, sz, norm(yawOfDir(s.x - sx, s.z - sz) + seatBack), { tight: true })) room2++; } }
+      else for (const sg of s.wallSide ? [1] : [1, -1]) { const dist = td / 2 + seatD / 2 + 0.2; if (room.fits(seatName, s.x + ax * sg * dist, s.z + az * sg * dist, norm(yawOfDir(-ax * sg, -az * sg) + seatBack), { tight: true })) room2++; }
+      if (!room2) v -= 6;
+    }
     return v + pb(room, o.kind || 'table', s, name);
-  }, { noise: 0.4 });
+  }, { noise: 0.4, bedGap: o.bedGap });
   if (!rec) return null;
-  // seats: benches along long sides (learned 1.0 m out), chairs round round tables (1.25 to 1.5 m)
+  // seats: benches along long sides (learned 1.0 m out), chairs round round tables (1.25 to 1.5 m); a table asked for
+  // more than two seats gets 40 to 90 % of them (corpus: a quarter of seats stand at a table, rel.seatsAtTables; the
+  // rest along walls and by stations, wallSeat)
   const seat = o.seat || k.seat;
+  const seatsTake = o.seats != null && o.seats > 2 ? Math.max(2, Math.round(o.seats * (0.4 + 0.5 * room.R()))) : seatsWanted0;
   const ax = Math.sin(rec.yaw * PI / 180), az = Math.cos(rec.yaw * PI / 180), bx = Math.cos(rec.yaw * PI / 180), bz = -Math.sin(rec.yaw * PI / 180);
   const sides = rec.spot && rec.spot.wallSide ? [1] : [1, -1];
   let n = 0;
   const backs = (F[seat] || {}).back ? 180 : 0;
+  // the seats go to the sides away from the fire first (corpus rel.seatsByFire: 4 % of seats within 3.5 m of a fire,
+  // where a quarter of tables stand within 3.7 m of one)
+  const fireD = (x, z) => (room.fire ? Math.hypot(x - room.fire.x, z - room.fire.z) : 0);
   if (round) {
     const r = tw / 2 + size(seat)[2] / 2 + 0.15;
-    for (let i = 0; i < 4 && n < seatsWanted; i++) {
+    const order4 = [0, 1, 2, 3].map(i => { const a = (rec.yaw + i * 90) * PI / 180; return [i, -fireD(rec.x + Math.sin(a) * r, rec.z + Math.cos(a) * r)]; }).sort((p2, q2) => p2[1] - q2[1]).map(([i]) => i);
+    for (const i of order4) {
+      if (n >= seatsTake) break;
       const a = (rec.yaw + i * 90) * PI / 180, sx = rec.x + Math.sin(a) * r, sz = rec.z + Math.cos(a) * r;
       if (room.put(seat, sx, sz, norm(yawOfDir(rec.x - sx, rec.z - sz) + backs), { tight: true })) n++;
     }
   } else {
     const [sw, , sd] = size(seat);
     const long = (F[seat] || {}).long;
-    for (const sg of sides) {
+    const sides2 = sides.slice().sort((p2, q2) => fireD(rec.x + ax * q2, rec.z + az * q2) - fireD(rec.x + ax * p2, rec.z + az * p2));
+    for (const sg of sides2) {
       // learned 1.0 m from the table's middle line to a bench's (Tyler, FP-003: the log benches too close to the table)
       const dist = td / 2 + sd / 2 + 0.2;
       const sx0 = rec.x + ax * sg * dist, sz0 = rec.z + az * sg * dist;
       const faceYaw = norm(yawOfDir(-ax * sg, -az * sg) + backs);
-      const perSide = Math.ceil(seatsWanted / sides.length);
+      const perSide = Math.ceil(seatsTake / sides.length);
       let onSide = 0;
       if (long) {
         const cnt = Math.max(1, Math.floor(tw / sw + 0.2));
-        for (let i = 0; i < cnt && n < seatsWanted && onSide < perSide; i++, onSide++) {
+        for (let i = 0; i < cnt && n < seatsTake && onSide < perSide; i++, onSide++) {
           const off = (i - (cnt - 1) / 2) * sw;
           if (room.put(seat, sx0 + bx * off, sz0 + bz * off, faceYaw, { tight: true })) n++;
         }
       } else {
         const per = Math.min(perSide, Math.max(1, Math.floor(tw / 1.0)));
-        for (let i = 0; i < per && n < seatsWanted; i++) {
+        for (let i = 0; i < per && n < seatsTake; i++) {
           const off = (i - (per - 1) / 2) * 1.0;
           if (room.put(seat, sx0 + bx * off, sz0 + bz * off, faceYaw, { tight: true })) n++;
         }
@@ -3457,9 +3866,28 @@ function placeRug(room, k, near, o = {}) {
     for (const c of room.cells) tries.push({ x: c.x, z: c.z, yaw: (room.x1 - room.x0) >= (room.z1 - room.z0) ? 90 : 0, free: true });
   }
   if (!near) {
-    // a free rug: in the open floor, not by a door, not across a path
-    const fr = room.frame();
-    return best(room, rug, tries, s => -Math.abs(fr.v(s.x, s.z) / fr.D - 0.6) - (room.doorDist(s.x, s.z) < 2.2 ? 3 : 0), { noise: 0.6, tries: 120 });
+    // a rug under a seat, chest, station or bed that has none, out in front of it, where the floor round it is barest
+    // (the farther from what else stands there, up to 3 m) and at the corpus's distance from the door (doorWant:
+    // rug_deer 1.9, 3.45 and 5.83 m at the quartiles); over another rug only as often as the culture layers rugs
+    // (corpusRate rl). Something stands on it: generate.js tidyFurniture takes out a rug with nothing on it.
+    const nRugs = room.placed.filter(q => q.rug).length;
+    const dw = doorWant(room, rug, 'rug', nRugs, 'rug_deer');
+    const stand = room.placed.filter(q => !q.rug && !q.mount && !q.onTable);
+    const layer = room.R() < corpusRate(room.culture, 'rl');
+    const under = stand.filter(q => ['seat', 'storage', 'craft', 'bed'].includes((F[q.name] || {}).cat) && !q.stacked &&
+      !room.placed.some(r => r.rug && overlap(r.b, q.b, -0.1)));
+    const spots = [];
+    for (const q of under) {
+      const a = q.yaw * PI / 180, ax = Math.sin(a), az = Math.cos(a);
+      for (const out of [0.4, 0.8, 1.1]) for (const turn of [0, 90]) spots.push({ x: q.x + ax * out, z: q.z + az * out, yaw: norm(q.yaw + turn), q });
+    }
+    return best(room, rug, spots, s => {
+      if (room.doorDist(s.x, s.z) < 1.2) return -99;
+      const others = stand.filter(q => q !== s.q);
+      const bare = Math.min(3, others.length ? Math.min(...others.map(q => ptDist(q.b, s.x, s.z))) : 3);
+      const onRug = room.placed.some(q => q.rug && Math.hypot(q.x - s.x, q.z - s.z) < 1.6);
+      return bare * 0.8 + (dw != null ? 1.5 * nearWant(room.doorDist(s.x, s.z), dw) : 0) + (onRug ? (layer ? 0.5 : -2) : 0);
+    }, { noise: 0.6, tries: 120 });
   }
   const clearOf = o.mode === 'beside' ? ['bed', 'table', 'storage', 'craft'] : o.mode === 'front' || o.mode === 'fire' ? ['bed', 'table', 'storage', 'craft', 'seat'] : null;
   for (const s of tries) { const r = room.put(rug, s.x, s.z, norm(s.yaw), { clearOf, near }); if (r) return r; }
@@ -3473,10 +3901,13 @@ function placeStorageRow(room, k, n, o = {}) {
   const [w] = size(name);
   const spots = wallSpots(room, name);
   const placed = [];
+  const nChests = room.placed.filter(q => (F[q.name] || {}).cat === 'storage').length;
   for (let i = 0; i < n; i++) {
     const last = placed[placed.length - 1];
+    // the row's first chest at the corpus's distance from the door (doorWant), in place of a pull to the far end
+    const dw = !last && LIVING.has(room.role) ? doorWant(room, name, 'chest', nChests + i, 'piece_chest_wood') : null;
     const rec = best(room, name, spots, s => {
-      let v = (s.corner ? (o.corner || 1.2) : 0) + fr.v(s.x, s.z) / fr.D * (o.back != null ? o.back : 0.6);
+      let v = (s.corner ? (o.corner || 1.2) : 0) + (dw != null ? 1.2 * nearWant(room.doorDist(s.x, s.z), dw) : fr.v(s.x, s.z) / fr.D * (o.back != null ? o.back : 0.6));
       if (room.doorDist(s.x, s.z) < 1.6) v -= 3;
       if (last) v += (s.face === last.spot.face ? 2 : -1) - Math.abs(Math.hypot(s.x - last.x, s.z - last.z) - (w + 0.2)) * 1.5;
       if (o.near) v -= Math.hypot(s.x - o.near.x, s.z - o.near.z) * 0.3;
@@ -3540,46 +3971,80 @@ function placeStation(room, k, name, exts, o = {}) {
   return rec;
 }
 
-// Lights: torches on the walls in pairs either side of a face's middle; floor torches in corners and by beds and seats
-// of honor, clear of furniture (learned: 1.4 m to the nearest furniture at the tenth percentile).
+// Lights, by what they are for (corpus of 1,663 builds, 2026-11-11; docs/INTERIOR_DESIGN.md "Lights"). Wall lights are
+// the common kind (in half of the homes, two thirds of the halls, most taverns); a light goes where the room is
+// darkest and something is done there: by the way in (one wall light in six stands within 1.5 m of a door), at a bed,
+// by a table or a bench. Hardly any stand within 3 m of a fire, which lights its own part of the room. Spots are scored
+// one light at a time, never spaced: the corpus's wall lights stand 3.9 m apart at the median, with a spread of 0.28 of
+// that on one floor. A room may also get a hanging brazier from the rafters (o.hang: its odds), which settle() in
+// lib/generate.js hangs from the ceiling. Floor torches stand in corners and by beds and seats of honor (o.flank: the
+// pieces they stand either side of, 1.6 m out). The height of the wall lights is the household's own, under the
+// sconce's 1 m below the ceiling (Valheim puts one out above that).
 function placeLights(room, k, n, o = {}) {
+  // the lights draw from a stream of their own, so the rest of the room comes out as it would without them
+  const R0 = room.R;
+  room.R = lightStream(room);
+  try { return lightsIn(room, k, n, o); } finally { room.R = R0; }
+}
+// Lights are decor: they follow the shared decor rule (lib/pieces.js decorOk; Tyler, 2026-11-10: decor from any biome).
+const lightOk = (name, biome) => !!F[name] && PIECES.decorOk(name, biome);
+// One stream per room for its lights, from the room's place and the household.
+function lightStream(room) {
+  if (!room.lightR) room.lightR = rngFrom((Math.round(room.cx * 73 + room.cz * 131 + room.stand * 977) ^ ((room.persona && room.persona.salt) || 0x5eed)) >>> 0);
+  return room.lightR;
+}
+function lightsIn(room, k, n, o) {
   let done = 0;
-  if (k.wallLight && ok(k.wallLight, room.biome)) {
-    const faces = [...room.faces].sort((a, b) => b.len - a.len);
-    for (const face of faces) {
-      if (done >= n) break;
-      const spots = mountSpots(room, k.wallLight, { face, pairs: true }).filter(s => s.pair && Math.abs(s.pair) >= Math.min(1.5, face.len / 4));
-      // a pair at the same distance either side of the middle, as far apart as a third of the face
-      const byK = new Map();
-      for (const s of spots) { const kk = Math.abs(s.pair).toFixed(2); if (!byK.has(kk)) byK.set(kk, []); byK.get(kk).push(s); }
-      const want = face.len / 3.2;
-      const ks = [...byK.keys()].sort((a, b) => Math.abs(+a - want) - Math.abs(+b - want));
-      for (const kk of ks) {
-        const pr = byK.get(kk);
-        if (pr.length < 2) continue;
-        const a = putMount(room, k.wallLight, pr[0]);
-        if (!a) continue;
-        const b = putMount(room, k.wallLight, pr[1]);
-        if (!b) { room.out.pop(); room.mates.splice(room.mates.indexOf(room.placed.pop()), 1); room.mounts.pop(); room.count--; continue; }
-        done += 2;
-        break;
-      }
+  const R = room.R, P = room.persona || null;
+  const likes = P && P.likes ? Math.max(0.5, Math.min(1.6, P.likes.lights || 1)) : 1;
+  const lit = () => room.placed.filter(q => (F[q.name] || {}).cat === 'light' || q.fire);
+  // how dark a spot is: the distance to the nearest light, a fire counting as a light 2 m across
+  const dark = (x, z) => { let v = 6; for (const q of lit()) v = Math.min(v, Math.hypot(q.x - x, q.z - z) - (q.fire ? 1.5 : 0)); return v; };
+  const fireNear = (x, z) => room.fire && Math.hypot(room.fire.x - x, room.fire.z - z) < 3;
+  const near = (x, z, cats, r) => room.placed.some(q => cats.includes((F[q.name] || {}).cat) && ptDist(q.b, x, z) < r);
+  // what this household lights first: the way in, the beds, the work places (each a weight, drawn per room)
+  const want = { door: 0.6 + R() * 1.2, bed: 0.4 + R() * 1.0, work: 0.4 + R() * 0.8 };
+  const purpose = (x, z) => (room.doorDist(x, z) < 1.8 ? want.door : 0) + (near(x, z, ['bed'], 1.6) ? want.bed : 0) + (near(x, z, ['table', 'craft', 'seat'], 1.6) ? want.work : 0);
+  // a hanging brazier over a bigger room
+  if (o.hang && done < n && lightOk('piece_brazierceiling01', room.biome) && room.area >= 30 && R() < o.hang * likes) {
+    const cells = room.cells.filter(c => !fireNear(c.x, c.z) && room.doorDist(c.x, c.z) > 1.5);
+    cells.sort((a, b) => Math.hypot(a.x - room.cx, a.z - room.cz) - dark(a.x, a.z) * 0.5 - (Math.hypot(b.x - room.cx, b.z - room.cz) - dark(b.x, b.z) * 0.5));
+    const c = cells[0];
+    if (c) {
+      const top = room.ceilAt(c.x, c.z);
+      if (top - room.stand > 3.9 && room.add('piece_brazierceiling01', c.x, top - F.piece_brazierceiling01.under, c.z, 0, { mount: true, y0: top - 1.6 })) done++;
     }
   }
-  if (done < n && k.floorLight && ok(k.floorLight, room.biome)) {
+  if (k.wallLight && lightOk(k.wallLight, room.biome)) {
+    const f = F[k.wallLight] || {};
+    // the household's height for its sconces: 1.6 to 2.0 m, or as the piece hangs
+    const y = f.under != null ? undefined : 1.6 + R() * 0.4;
+    const spots = mountSpots(room, k.wallLight, { pairs: true, y });
+    while (done < n) {
+      const ranked = spots.map(s => {
+        const d0 = dark(s.x0, s.z0);
+        if (d0 < 1.2 || fireNear(s.x0, s.z0)) return [s, -99];
+        return [s, Math.min(d0, 5) * 0.6 + purpose(s.x0, s.z0) + R() * 0.6];
+      }).filter(([, v]) => v > -50).sort((a, b) => b[1] - a[1]);
+      let put = null;
+      for (const [s] of ranked.slice(0, 40)) if ((put = putMount(room, k.wallLight, s))) break;
+      if (!put) break;
+      done++;
+    }
+  }
+  if (done < n && k.floorLight && lightOk(k.floorLight, room.biome)) {
     const name = k.floorLight;
     const spots = wallSpots(room, name, { gap: 0.05, tallOk: o.tallOk });
     while (done < n) {
       const rec = best(room, name, spots, s => {
-        let v = s.corner ? 1.5 : 0;
-        let near = Infinity;
-        for (const q of room.placed) if (!q.rug && !q.mount) near = Math.min(near, ptDist(q.b, s.x, s.z));
-        if (near < 0.9) return -99;
-        v += Math.min(near, 3) * 0.3;
-        if (o.flank) v -= Math.min(...o.flank.map(f => Math.abs(Math.hypot(s.x - f.x, s.z - f.z) - 1.6))) * 0.8;
-        for (const q of room.placed) if (q.name === name && Math.hypot(q.x - s.x, q.z - s.z) < 3) v -= 2;
+        let v = s.corner ? 1.2 : 0;
+        let nearF = Infinity;
+        for (const q of room.placed) if (!q.rug && !q.mount) nearF = Math.min(nearF, ptDist(q.b, s.x, s.z));
+        if (nearF < 0.9 || fireNear(s.x, s.z)) return -99;
+        v += Math.min(nearF, 3) * 0.2 + Math.min(dark(s.x, s.z), 5) * 0.5 + purpose(s.x, s.z) * 0.6;
+        if (o.flank) v -= Math.min(...o.flank.map(fl => Math.abs(Math.hypot(s.x - fl.x, s.z - fl.z) - 1.6))) * 0.8;
         return v;
-      }, { noise: 0.3 });
+      }, { noise: 0.4 });
       if (!rec) break;
       done++;
     }
@@ -3640,6 +4105,37 @@ function placeOnTable(room, table, names) {
   return n;
 }
 
+// Whether a table is dressed at all, at the culture's corpus rate (rel.tablesDressed, 41 % of norse tables), more
+// often the more cluttered the household; and what lies on it, drawn by the corpus onTable counts (the culture's
+// blended with the whole corpus: horizontal item stands first, treasure and candles far behind), from what the
+// decorator sets on a top. Weights only (D-126, D-136).
+const TOP_OK = ['itemstandh', 'treasure_stack', 'Candle_resin'];
+function topWeights(culture) {
+  const { g, l } = cultG(culture);
+  const sh = list => { const m = new Map(list.filter(([n]) => TOP_OK.includes(n))); const t = [...m.values()].reduce((a, v) => a + v, 0) || 1; return n => (m.get(n) || 0) / t; };
+  const A = sh(CORPUS_CULT.all.t), Gs = g && g.t.length ? sh(g.t) : null;
+  return TOP_OK.map(n => [n, (Gs ? l * Gs(n) + (1 - l) * A(n) : A(n)) + 0.01]);
+}
+function topPick(R, culture, biome) { return pickW(R, topWeights(culture).filter(([nm]) => ok(nm, biome) || nm === 'itemstandh')); }
+// One roll per table for whether anything lies on it, kept on the table's piece (td): the decorator, the library's
+// sets (lib/kitbash.js) and the stand pass (lib/stands.js) all ask it, so whoever comes to a table first decides for
+// all and the house's share stays at the household's rate.
+function tableRate(culture, P) { return Math.min(0.95, corpusRate(culture, 'td') * (P ? 0.6 + 0.8 * (P.clutter || 0) : 1)); }
+function tableDressed(p, R, culture, P) {
+  if (!p) return true;
+  if (p.td == null) p.td = R() < tableRate(culture, P);
+  return p.td;
+}
+function dressTable(room, t, c, n) {
+  if (!t) return 0;
+  const P = c.persona;
+  if (!tableDressed(t.p || t, room.R, c.culture, P)) { t.topped = true; return 0; }
+  const W = topWeights(c.culture).filter(([nm]) => ok(nm, room.biome) || nm === 'itemstandh');
+  const names = [];
+  for (let i = 0; i < n; i++) names.push(pickW(room.R, W));
+  return placeOnTable(room, t, names);
+}
+
 // Seats facing the fire, a little way back from it.
 function placeFireSeats(room, k, n) {
   if (!room.fire) return 0;
@@ -3674,31 +4170,101 @@ function density(kind, decor) {
 
 // The building's kit: one choice of bed, chest, table, seats, rug and lights per building, seeded, from what the biome
 // can make, weighted by how often each shows in that kind of room in the corpus.
-function chooseKit(R, biome, culture, kind) {
+function chooseKit(R, biome, culture, kind, P) {
   const L = learned().rooms || {};
   const shares = new Map(((L[kind] || L.home || {}).items || []).map(([n, s]) => [n, s]));
-  const pick = (list, floor = 0.15) => {
+  // the essentials by the room kind's shares and the culture's corpus counts (corpusTilt), a small floor for the rest;
+  // banners, carvings and stacks keep their earlier floors
+  const pick = (list, floor = FLOOR_C, slot) => {
     const ok2 = list.filter(n => ok(n, biome));
     if (!ok2.length) return null;
-    return pickW(R, ok2.map(n => [n, (shares.get(n) || 0) + floor]));
+    const kind = SLOT_KIND[slot];
+    return pickW(R, ok2.map(n => [n, ((shares.get(n) || 0) + floor) * (kind ? corpusTilt(culture, kind, n) : 1) * flavorD(n, biome) * tasteD(n, P)]));
   };
   const taste = CULTURE_TASTE[culture] || {};
   const k = {
-    bed: pick(KIT.bed.filter(n => n !== 'piece_bed02' || R() < 0.5), 0.2),
-    chest: pick(KIT.chest, 0.2),
-    table: taste.noTable ? null : pick(KIT.table),
-    chair: pick(KIT.chair),
-    bench: pick(KIT.bench, 0.3),
-    rug: pick(KIT.rug, 0.2),
-    floorLight: pick(KIT.floorLight, 0.3),
-    wallLight: pick(KIT.wallLight, 0.3),
+    bed: pick(KIT.bed.filter(n => n !== 'piece_bed02' || R() < 0.5), FLOOR_C, 'bed'),
+    chest: pick(KIT.chest, FLOOR_C, 'chest'),
+    table: taste.noTable ? null : pick(KIT.table, FLOOR_C, 'table'),
+    chair: pick(KIT.chair, FLOOR_C, 'chair'),
+    bench: pick(KIT.bench, FLOOR_C, 'bench'),
+    rug: pick(KIT.rug, FLOOR_C, 'rug'),
+    floorLight: pick(KIT.floorLight, FLOOR_C, 'floorLight'),
+    wallLight: pick(KIT.wallLight, FLOOR_C, 'wallLight'),
     banner: pick(KIT.banner, 0.2),
     carving: pick(KIT.carving, 0.2),
     stack: pick(KIT.stack, 0.3),
+    culture,
     side: R() < 0.5 ? 1 : -1,
     taste,
   };
-  k.seat = taste.seat === 'bench' ? (k.bench || k.chair) : (R() < 0.45 ? k.bench || k.chair : k.chair || k.bench);
+  // a bigger household sits on benches more often, one or two people on chairs
+  k.seat = taste.seat === 'bench' ? (k.bench || k.chair) : (R() < (P ? 0.15 + 0.09 * P.size : 0.45) ? k.bench || k.chair : k.chair || k.bench);
+  return k;
+}
+
+// The household's taste on the kit's picks, weights only (D-126): comfort to pelts and furs over woven rugs and straw,
+// wealth to marble, blackwood, oak and Dvergr pieces over plain wood and logs, size to benches over chairs and stools.
+const PELTS_D = /^rug_(wolf|fur|deer|bogwitch_deer|moose|seal|Bjorn|asksvin|hare|bear)/;
+const WEAVES_D = /^(jute_carpet|jute_carpet_blue|rug_straw)$/;
+const FINE_D = /blackmarble|blackwood|_oak$|^dvergrprops_table$|^piece_chair0[23]$|^piece_bed02$/;
+const PLAIN_D = /^(piece_table|piece_table_round|piece_chair|dvergrprops_stool|piece_bench01|piece_logbench01|bed)$/;
+const hashD = str => { let h = 2166136261; for (let i = 0; i < str.length; i++) h = Math.imul(h ^ str.charCodeAt(i), 16777619); return h >>> 0; };
+function tasteD(n, P) {
+  if (!P) return 1;
+  let w = 1;
+  if (PELTS_D.test(n)) w *= 0.35 + 1.6 * P.comfort;
+  else if (WEAVES_D.test(n)) w *= 1.45 - 0.9 * P.comfort;
+  if (FINE_D.test(n)) w *= 0.3 + 1.8 * P.wealth;
+  else if (PLAIN_D.test(n)) w *= 1.4 - 0.8 * P.wealth;
+  const cat = (F[n] || {}).cat;
+  if (/bench/.test(n)) w *= 0.5 + 0.17 * P.size;
+  else if (cat === 'chair' || /chair|stool/.test(n)) w *= 1.3 - 0.1 * P.size;
+  return w;
+}
+
+// The household's own bed and how it lays its beds out, from the household's stream (D-126: any bed, any biome;
+// weights only). Culture corpus (2,153 builds, data/culture-corpus/summary.json on the research branch): bed 910 and
+// piece_bed02 1,096 uses, ashwood_bed none in the lists (a share of 0.05 as the kit's other floors, so it can show);
+// of the norse builds with a bed (71 % of furnished builds): beds side by side 21 % (3 in 10), a bed on a rug 30 %
+// (4 in 10), a chest by a bed 34 % (5 in 10); forest cabins side by side 45 against 70 (6 in 10). D-136: the rates are
+// these counts.
+const BED_W = { bed: 0.5, piece_bed02: 0.6, ashwood_bed: 0.05 };
+const BED_ROW = { 'norse-forest': 0.64 };
+function bedTaste(kit, R, biome, culture, P) {
+  const list = KIT.bed.filter(n => ok(n, biome));
+  if (list.length) kit.bed = pickW(R, list.map(n => [n, (BED_W[n] || 0.1) * corpusTilt(culture, 'bed', n) * flavorD(n, biome) * tasteD(n, P)]));
+  const tidy = P ? P.tidy : 0.5, comfort = P ? P.comfort : 0.5, clutter = P ? P.clutter : 0.5;
+  // a tidy household lines its beds up a little more often
+  kit.bedRow = R() < (BED_ROW[culture] != null ? BED_ROW[culture] : 0.3) * (0.7 + 0.6 * tidy);
+  kit.bedRug = 0.42 * (0.5 + comfort);
+  kit.bedChest = 0.3 + 0.36 * clutter;
+  kit.hR = R;
+}
+
+// Each room draws its own rug, seats, table, lights, banner and carving (Tyler, 2026-11-10: "Always the same tables...
+// Same exact lox rug"): the building's choice stays the likeliest, the rest of the kind come in weighted by how often
+// builders use them in that kind of room (data/interior.json), and what the house already shows weighs less. Beds and
+// chests stay the building's. From a stream of its own, so the rest of the design keeps its own.
+// the village's own biome, earlier ones and the next weigh fully; one further on less (flavor only, D-065)
+const flavorD = (n, biome) => { const d = bi((F[n] || {}).b || 'Meadows') - bi(biome); return d <= 1 ? 1 : 1 / (1 + 0.8 * (d - 1)); };
+function varyKit(kit, R, kind, seen, biome, P, culture) {
+  const L = learned().rooms || {};
+  const shares = new Map(((L[kind] || L.home || {}).items || []).map(([n, s2]) => [n, s2]));
+  const k = { ...kit };
+  // a tidy household keeps the building's matched choice more often; a cluttered one mixes and repeats what it has
+  // (what the house shows already weighs less the tidier it is)
+  const keep = P ? 0.15 + 0.4 * P.tidy : 0.35, again = P ? 0.5 + 2 * (1 - P.clutter) : 1.5;
+  // chests and wall lights per room too (Tyler on the lab page: "Always the same tables. Candles."), the essentials by
+  // the culture's corpus counts with the small floor; banners and carvings as before
+  for (const slot of ['rug', 'chair', 'table', 'bench', 'floorLight', 'chest', 'wallLight', 'banner', 'carving']) {
+    if (!kit[slot] || !KIT[slot] || R() < keep) continue;
+    const list = KIT[slot].filter(n => F[n]);
+    const kd = SLOT_KIND[slot], fl = kd ? FLOOR_C : 0.25;
+    const got = pickW(R, list.map(n => [n, ((shares.get(n) || 0) + fl) * (kd ? corpusTilt(culture, kd, n) : 1) * (n === kit[slot] ? 2 : 1) * flavorD(n, biome) * tasteD(n, P) / (1 + again * (seen[n] || 0))]));
+    if (got) { k[slot] = got; seen[got] = (seen[got] || 0) + 1; }
+  }
+  k.seat = kit.seat === kit.bench ? (k.bench || k.chair) : (k.chair || k.bench);
   return k;
 }
 
@@ -3716,7 +4282,15 @@ function decorate(b, ctx) {
   const ys = [...byY.keys()].sort((a, c) => a - c);
   const counts = { bed: 0, table: 0 };
   const kitKind = { home: 'home', hall: type === 'tavern' ? 'tavern' : 'hall', smithy: 'smithy', workshop: 'workshop', storage: 'storage', temple: 'hall', guard: 'sleeping', farm: 'storage', market: 'living' }[use] || 'home';
-  const kit = chooseKit(R, biome, ctx.culture, kitKind);
+  const HP = ctx.persona || null;
+  const kit = chooseKit(R, biome, ctx.culture, kitKind, HP);
+  // the rooms' own picks from a stream of the household's own (its traits), so two households in one house part
+  const hhSalt = HP ? hashD(JSON.stringify([HP.tidy, HP.busy, HP.comfort, HP.wealth, HP.size, HP.hobby, HP.likes])) : 0;
+  const kitSeed = ((Math.floor(R() * 4294967296) ^ 0x6b17) ^ hhSalt) >>> 0;
+  const kitR = rngFrom(kitSeed), kitSeen = {};
+  // where each room's tables stand from the fire (tableFireAt), from a stream of the household's own
+  const tabR = rngFrom((kitSeed ^ 0x7ab1e5) >>> 0);
+  bedTaste(kit, kitR, biome, ctx.culture, HP);
   const report = [], furnished = [];
   const usedTemplates = ctx.usedTemplates || new Set();
   // the layout plans' own stream, drawn once from the design's, so the plans can change without moving the rest
@@ -3734,6 +4308,8 @@ function decorate(b, ctx) {
       if (m.covered < 0.5) continue;
       const room = new Room(m, { out: b.pieces, R, mates: levelPlaced });
       room.biome = biome;
+      room.persona = ctx.persona || null;
+      room.uSeed = Math.floor(tabR() * 4294967296) >>> 0;
       room.level = li;
       room.upper = li > 0 || (rects.length && rects.every(r => r.upper));
       const inMain = main && m.cells.filter(c => c.x > main.x0 && c.x < main.x1 && c.z > main.z0 && c.z < main.z1).length;
@@ -3756,7 +4332,7 @@ function decorate(b, ctx) {
       // over the fire on an upper floor: the generator clears what stands over a fire it moves under the smoke hole
       if (room.upper && ctx.fireAt) room.zones.push({ b: obox(ctx.fireAt.x, ctx.fireAt.z, 4.0, 2.8, 0), why: 'flue' });
       for (const r of rects) for (const kp of r.keep || []) room.zones.push({ b: obox((kp.x0 + kp.x1) / 2, (kp.z0 + kp.z1) / 2, kp.x1 - kp.x0, kp.z1 - kp.z0, 0), why: 'keep' });
-      furnish(room, role, { ...ctx, use, type, decor, biome, kit, counts, mainRect: main, levels: ys.length, usedTemplates, layoutR });
+      furnish(room, role, { ...ctx, use, type, decor, biome, kit: varyKit(kit, kitR, kitKind, kitSeen, biome, HP, ctx.culture), counts, mainRect: main, levels: ys.length, usedTemplates, layoutR });
       if (room.plan) (b.layoutPlans || (b.layoutPlans = [])).push({ plan: room.plan, stand: room.stand, inside: room.inside });
       report.push({ level: li, role, area: room.area, items: room.count, room, template: room.template || null, scheme: room.plan ? room.plan.scheme : null, story: room.plan ? room.plan.story : null });
       furnished.push({ room, role });
@@ -3831,10 +4407,13 @@ function roleFor(use, type, room, mainShare, rects, nLevels, li) {
 
 // ---------------------------------------------------------------- room plans
 function furnish(room, role, c) {
+  room.role = role;
+  room.culture = c.culture;
   const store = role === 'storage' && c.decor !== 'd1' && c.storeFinish !== false;
   // the room's layout plan: its scheme, zones and the side its private end takes (lib/layout.js)
   const L = c.layout !== false && layoutD();
   room.plan = L ? L.plan(room, role, c) : null;
+  tableZone(room, c);
   if (room.plan) c = { ...c, kit: { ...c.kit, side: room.plan.side } };
   if ((!room.plan || room.plan.templateFirst) && tplFurnish(room, role, c)) {
     if (c.templateOnly) return; // 'vh floorplan template': the room as the template lays it out, nothing added
@@ -3927,17 +4506,17 @@ const LEARN_KIND = { lookout: 'sleeping', home: 'home', sleeping: 'sleeping', gu
 // and a light where the room is darkest (evenLights).
 const EXTRAS = {
   home: { trophies: 2, shelf: 2, barrels: 2, chest: 1, armor: 1, fermenter: 1, seating: 2, rug: 1, banners: 1, carving: 1, torches: 1, tabletop: 2,
-    footBench: 2, doorBench: 1, nook: 1, groupRug: 2, evenLights: 1, storeWall: 1 },
-  sleeping: { rug: 1, armor: 2, chest: 2, shelf: 1, trophies: 1, seating: 1, torches: 1, banners: 1, footBench: 3, nook: 1, groupRug: 1, evenLights: 1 },
+    footBench: 2, doorBench: 1, nook: 1, groupRug: 2, evenLights: 1, storeWall: 1, wallSeat: 2 },
+  sleeping: { rug: 1, armor: 2, chest: 2, shelf: 1, trophies: 1, seating: 1, torches: 1, banners: 1, footBench: 3, nook: 1, groupRug: 1, evenLights: 1, wallSeat: 1 },
   guest: { rug: 2, chest: 2, armor: 1, shelf: 1, torches: 1, seating: 1, footBench: 2, evenLights: 1 },
-  hall: { banners: 3, trophies: 2, shelf: 1, barrels: 2, armor: 2, rug: 1, tabletop: 2, torches: 2, carving: 1, chart: 1, bench: 2, ring: 2, doorBench: 1, groupRug: 2, evenLights: 2 },
-  tavern: { barrels: 3, fermenter: 2, shelf: 2, tabletop: 3, trophies: 1, rug: 1, seating: 3, torches: 1, banners: 1, doorBench: 1, groupRug: 2, evenLights: 2, nook: 1 },
-  smithy: { tools: 3, barrels: 2, chest: 1, armor: 2, shelf: 1, torches: 1, storeWall: 2, evenLights: 1 },
-  workshop: { tools: 3, barrels: 2, chest: 1, shelf: 2, torches: 1, bench: 1, storeWall: 2, evenLights: 1 },
+  hall: { banners: 3, trophies: 2, shelf: 1, barrels: 2, armor: 2, rug: 1, tabletop: 2, torches: 2, carving: 1, chart: 1, bench: 2, ring: 2, doorBench: 1, groupRug: 2, evenLights: 2, wallSeat: 2 },
+  tavern: { barrels: 3, fermenter: 2, shelf: 2, tabletop: 3, trophies: 1, rug: 1, seating: 3, torches: 1, banners: 1, doorBench: 1, groupRug: 2, evenLights: 2, nook: 1, wallSeat: 2 },
+  smithy: { tools: 3, barrels: 2, chest: 1, armor: 2, shelf: 1, torches: 1, storeWall: 2, evenLights: 1, wallSeat: 1 },
+  workshop: { tools: 3, barrels: 2, chest: 1, shelf: 2, torches: 1, bench: 1, storeWall: 2, evenLights: 1, wallSeat: 1 },
   storage: { chest: 2, barrels: 3, crates: 2, shelf: 2, torches: 1, storeWall: 3 },
   farm: { barrels: 2, chest: 2, fermenter: 1, shelf: 1 },
   temple: { banners: 3, carving: 2, torches: 2, rug: 1, bench: 2, evenLights: 1 },
-  kitchen: { barrels: 3, shelf: 3, tabletop: 2, chest: 2, fermenter: 1, crates: 1, storeWall: 1, evenLights: 1 },
+  kitchen: { barrels: 3, shelf: 3, tabletop: 2, chest: 2, fermenter: 1, crates: 1, storeWall: 1, evenLights: 1, wallSeat: 1 },
   guard: { armor: 2, trophies: 2, chest: 1, barrels: 1, torches: 1 },
   lookout: { chest: 1, barrels: 1, rug: 1 },
 };
@@ -3945,6 +4524,28 @@ const EXTRAS = {
 // Top the room up toward the corpus density for its kind (d2 the median, d3 the 75th percentile), with seeded choice
 // among the extras. Stops at the target, when every extra has failed, or when half the floor is taken.
 const LIVING = new Set(['home', 'sleeping', 'guest', 'kitchen', 'hall', 'tavern']);
+// How many rugs, seats, chests and tables a room of this kind holds in the corpus (data/interior.json rooms: share of
+// the kind's rooms with the prefab times its mean count where present, summed over the prefabs), for this room's
+// size against the kind's median room (0.5 to 2 times). The corpus home room of 97 m2 holds about 5.6 rugs, 4.3
+// seats, 3.9 chests and 1.2 tables; the extras below were drawn by fixed weights and stopped at the density target
+// with half that, the rest of the count going to lights and stands, so the floor of a big room stood bare.
+const NEED_KINDS = ['rug', 'seat', 'storage', 'table'];
+function kindNeed(room, role) {
+  const r = (learned().rooms || {})[LEARN_KIND[role] || 'home'];
+  if (!r || !r.items) return null;
+  const need = {};
+  for (const [n, share, cnt] of r.items) { const cat = (F[n] || {}).cat; if (NEED_KINDS.includes(cat)) need[cat] = (need[cat] || 0) + share * (cnt || 1); }
+  const med = r.area && r.area[1] ? r.area[1] : 60;
+  const f = Math.max(0.5, Math.min(2, room.area / med));
+  for (const k of Object.keys(need)) need[k] *= f;
+  return need;
+}
+// what each extra mostly adds, for kindNeed
+// (barrels left out: barrel chests have their own corpus count, 15 % of home rooms with 3.6 each, and a household that
+// keeps them already gets its group)
+const EXTRA_KIND = { rug: 'rug', groupRug: 'rug', seating: 'seat', wallSeat: 'seat', bench: 'seat', doorBench: 'seat', nook: 'seat', footBench: 'seat', ring: 'seat',
+  chest: 'storage', crates: 'storage', storeWall: 'storage' };
+
 function fill(room, role, c) {
   const extras = EXTRAS[role];
   if (!extras) return;
@@ -3958,7 +4559,7 @@ function fill(room, role, c) {
   const target = Math.round(room.area / 10 * dens * share);
   if (c.fillOnly && room.count >= target * c.fillOnly / (c.fillShare || 1)) return;
   const floorUsed = () => room.placed.reduce((a, q) => a + (q.rug || q.mount || q.onTable || q.onFire ? 0 : q.b.hw * q.b.hd * 4), 0);
-  const barrel = ok('dvergrprops_barrel', biome) && room.R() < 0.4 ? 'dvergrprops_barrel' : ok('piece_chest_barrel', biome) ? 'piece_chest_barrel' : null;
+  const barrel = LIVING.has(role) && !keepsBarrels(c.persona, c.type) ? null : ok('dvergrprops_barrel', biome) && room.R() < 0.4 ? 'dvergrprops_barrel' : ok('piece_chest_barrel', biome) ? 'piece_chest_barrel' : null;
   const pairOn = (name, y, gap, n) => {
     // n pieces in a row centered on the freest plain wall face
     const faces = room.faces.filter(f => !f.edge).sort((a, b2) => (b2.len - room.mounts.filter(m => m.face === b2).length * 2) - (a.len - room.mounts.filter(m => m.face === a).length * 2));
@@ -3984,7 +4585,6 @@ function fill(room, role, c) {
     barrels: () => {
       if (!barrel) return 0;
       if (!LIVING.has(role)) return placeStorageRow(room, k, d >= 3 ? 3 : 2, { chest: barrel, back: 1 }).length;
-      if ((used.barrels || 0) > 0 || (!room.fire && role !== 'kitchen')) return 0;
       const P = c.persona, n = d >= 3 && room.R() < (P ? 0.25 + 0.5 * Math.max(P.clutter || 0, (P.hobby || {}).food || 0) : 0.5) ? 3 : 2;
       return placeStorageRow(room, k, n, { chest: barrel, back: 0.3, near: room.fire ? { x: room.fire.x, z: room.fire.z } : null, corner: 2.5 }).length;
     },
@@ -3999,8 +4599,9 @@ function fill(room, role, c) {
     },
     armor: () => placeAgainst(room, 'ArmorStand', s => (s.corner ? 0.5 : 0)) ? 1 : 0,
     fermenter: () => placeAgainst(room, 'fermenter', s => (s.corner ? 1 : 0)) ? 1 : 0,
-    seating: () => { if (!ok('piece_table_round', biome) || (k.taste || {}).noTable) return 0; const n0 = before(); const t = placeTable(room, k, { table: 'piece_table_round', seats: 2, seat: k.chair || k.seat, depth: 0.7, spread: 3.5 }); if (t && d >= 3) placeOnTable(room, t, [ok('Candle_resin', biome) ? 'Candle_resin' : 'itemstandh']); return room.count - n0; },
-    rug: () => (k.rug && placeRug(room, k, null) ? 1 : 0),
+    seating: () => { if (!ok('piece_table_round', biome) || (k.taste || {}).noTable) return 0; const n0 = before(); const t = placeTable(room, k, { table: 'piece_table_round', seats: 2, seat: k.chair || k.seat, depth: 0.7, spread: 3.5 }); if (t && d >= 3) dressTable(room, t, c, 1); return room.count - n0; },
+    // a free rug, drawn among the rugs by the room kind's corpus shares (the room's own twice as likely)
+    rug: () => (k.rug && placeRug(room, { ...k, rug: corpusPick(room.R, KIT.rug.filter(n => F[n] && ok(n, biome)), LEARN_KIND[role] || 'home', 'rug', c.culture, k.rug) || k.rug }, null) ? 1 : 0),
     banners: () => (k.banner && room.ceiling - room.stand >= 3.4 ? pairOn(k.banner, 0, 2.0, 2) : 0),
     carving: () => (k.carving ? pairOn(k.carving, 1.7, 0, 1) : 0),
     torches: () => placeLights(room, k, 2),
@@ -4008,7 +4609,7 @@ function fill(room, role, c) {
       let n = 0;
       for (const t of room.placed.filter(q => (F[q.name] || {}).cat === 'table' && !q.topped)) {
         t.topped = true;
-        n += placeOnTable(room, t, [ok('treasure_stack', biome) && room.R() < 0.3 ? 'itemstandh' : 'itemstandh', ok('Candle_resin', biome) ? 'Candle_resin' : 'itemstandh']);
+        n += dressTable(room, t, c, 2);
         if (n) break;
       }
       return n;
@@ -4037,10 +4638,11 @@ function fill(room, role, c) {
     storeWall: () => placeStorageRow(room, k, d >= 3 ? 3 : 2, { sign: true, back: 1 }).length,
     groupRug: () => groupRug(room, k),
     evenLights: () => evenLights(room, k),
+    wallSeat: () => wallSeat(room, k, c.persona),
   };
   // how often one extra may repeat in a room, so a room is a mix and never twenty of one thing
   const MAX = { barrels: 2, crates: 1, chest: 2, armor: 2, fermenter: 1, seating: 2, rug: 2, banners: 1, carving: 2, torches: 1, tabletop: 4, tools: 2, chart: 1, bench: 2, trophies: 2, shelf: 2,
-    footBench: 2, doorBench: 1, nook: 1, ring: 1, storeWall: 1, groupRug: 2, evenLights: 2 };
+    footBench: 2, doorBench: 1, nook: 1, ring: 1, storeWall: 1, groupRug: 2, evenLights: 2, wallSeat: 3 };
   const used = {};
   // at d3 what goes up past the d2 rate waits for the third stage (D-071): those pieces carry ds 3
   const target2 = c.decor === 'd3' ? Math.round(room.area / 10 * density(LEARN_KIND[role] || 'home', 'd2') * tune * (c.persona && PERS() ? PERS().fillShare(c.persona) : 1) * 0.9) : Infinity;
@@ -4048,22 +4650,41 @@ function fill(room, role, c) {
   const rugs = () => room.placed.filter(q => q.rug).length;
   const pw = c.persona && PERS() ? PERS().extraWeights(c.persona) : null;
   const live = Object.entries(extras).filter(([kk]) => run[kk]).map(([kk, w]) => [kk, w * (pw && pw[kk] != null ? pw[kk] : 1)]);
-  for (let tries = 0; tries < 40 && live.length && room.count < target; tries++) {
-    const key = pickW(room.R, live);
+  // the corpus counts of the room's kind (kindNeed): an extra whose kind the room is short of weighs up to four times
+  // as much, one whose kind the room has its corpus count of a third
+  const need = LIVING.has(role) ? kindNeed(room, role) : null;
+  const haveK = kind => room.placed.filter(q => (F[q.name] || {}).cat === kind).length;
+  const needW = kk => {
+    const kind = EXTRA_KIND[kk];
+    if (!need || !kind || !need[kind]) return 1;
+    const short = (need[kind] - haveK(kind)) / need[kind];
+    return short > 0 ? 1 + 3 * short : 0.35;
+  };
+  // the corpus rate (data/interior.json perTenM2) counts every piece of a room but its rugs (lab/learn_interior.py
+  // 'furn'), so the rugs placed here do not count toward the target
+  const rugsIn = () => room.placed.filter(q => q.rug).length;
+  const furnCount = () => room.count - rugsIn();
+  for (let tries = 0; tries < 40 && live.length && furnCount() < target; tries++) {
+    const key = pickW(room.R, live.map(([kk, w]) => [kk, w * needW(kk)]));
     const floor = !['trophies', 'shelf', 'banners', 'carving', 'tabletop', 'rug', 'groupRug'].includes(key);
     let got = 0;
-    const full = (used[key] || 0) >= (MAX[key] || 2) || (key === 'rug' && rugs() >= Math.max(1, Math.floor(room.area / 15)));
+    // no extra is held to a count (Tyler, 2026-11-10): each use halves its weight in this room, so a room is a mix; the
+    // corpus rate for the room kind and the household (target) and the free floor are the limits
+    const full = false;
     const pre = room.count, at = room.out ? room.out.length : 0;
     if (!full && !(floor && floorUsed() > room.area * 0.5)) got = run[key]();
-    if (pre >= target2) late(at);
+    if (pre - rugsIn() >= target2) late(at);
     used[key] = (used[key] || 0) + 1;
     if (!got || full) live.splice(live.findIndex(([kk]) => kk === key), 1);
+    // a cluttered household repeats an extra more readily than a tidy one (weights only)
+    else { const e = live.find(([kk]) => kk === key); if (e) e[1] *= (c.persona ? 0.3 + 0.45 * c.persona.clutter : 0.5) * (MAX[key] || 2) / ((MAX[key] || 2) + (used[key] || 0)); }
   }
 }
 
 // A bench across the foot of a bed, facing the room, where no chest stands there already.
 function footBench(room, k) {
-  const b = ok('piece_bench01', room.biome) ? 'piece_bench01' : k.bench;
+  // the household's own bench (a long seat), the plain bench where its pick is a chair
+  const b = k.bench && (F[k.bench] || {}).long && ok(k.bench, room.biome) ? k.bench : ok('piece_bench01', room.biome) ? 'piece_bench01' : k.bench;
   if (!b || !ok(b, room.biome)) return 0;
   let n = 0;
   for (const bed of room.placed.filter(q => (F[q.name] || {}).cat === 'bed' && !q.footed)) {
@@ -4083,7 +4704,8 @@ function footBench(room, k) {
 
 // A reading corner: a chair in a corner turned to the room, a light beside it, a rug in front where it fits.
 function nook(room, k) {
-  const chair = ok('piece_chair02', room.biome) ? 'piece_chair02' : k.chair || 'piece_chair';
+  // the room's own chair pick (a fixed piece_chair02 in every nook read as one more repeat)
+  const chair = k.chair && !(F[k.chair] || {}).long && ok(k.chair, room.biome) ? k.chair : 'piece_chair';
   if (!ok(chair, room.biome)) return 0;
   const spots = wallSpots(room, chair, { gap: 0.15 }).filter(s => s.corner);
   const rec = best(room, chair, spots, s => (room.doorDist(s.x, s.z) < 2.5 ? -99 : 0) + Math.min(4, room.doorDist(s.x, s.z)) * 0.2, { noise: 0.5 });
@@ -4095,6 +4717,27 @@ function nook(room, k) {
   n += placeLights(room, k, 1, { flank: [rec] });
   if (k.rug && room.R() < 0.6 && placeRug(room, k, rec, { mode: 'front' })) n++;
   return n;
+}
+
+// A seat along a wall away from the tables, by a station, a chest, a window or the door (corpus relx.seatsByWall: 41 %
+// of seats within 1.1 m of a wall; rel.seatsAtTables about a quarter), at the corpus's distance from the door
+// (doorWant: piece_chair 2.64, 4.37 and 7.23 m at the quartiles, piece_bench01 2.94, 5.03, 8.24), kept off the fire
+// (rel.seatsByFire 4 %) and off the other wall seats. A bench: generate.js tidyFurniture takes out a chair with no
+// table or fire beside it, so a lone chair at a wall would not stay.
+function wallSeat(room, k, P) {
+  const seat = k.bench && ok(k.bench, room.biome) ? k.bench : ok('piece_bench01', room.biome) ? 'piece_bench01' : null;
+  if (!seat) return 0;
+  void P;
+  const tables = room.placed.filter(q => (F[q.name] || {}).cat === 'table');
+  const by = room.placed.filter(q => ['craft', 'storage'].includes((F[q.name] || {}).cat));
+  const lone = room.placed.filter(q => (F[q.name] || {}).cat === 'seat' && !tables.some(t => Math.hypot(t.x - q.x, t.z - q.z) < 2.2));
+  const dw = doorWant(room, seat, 'seat', lone.length, 'piece_bench01');
+  const rec = placeAgainst(room, seat, s => -tables.reduce((v, t) => v + Math.max(0, 2.4 - Math.hypot(s.x - t.x, s.z - t.z)), 0) * 1.5 +
+    Math.max(0, ...by.map(q => 1.2 - 0.4 * Math.hypot(s.x - q.x, s.z - q.z))) + (s.win ? 0.5 : 0) +
+    (dw != null ? 1.2 * nearWant(room.doorDist(s.x, s.z), dw) : 0) -
+    lone.reduce((v, q) => v + Math.max(0, 2.2 - Math.hypot(s.x - q.x, s.z - q.z)), 0) -
+    (room.fire ? Math.max(0, 3.6 - Math.hypot(s.x - room.fire.x, s.z - room.fire.z)) * 1.2 : 0), { rel: (F[seat] || {}).back ? 180 : 0 });
+  return rec ? 1 : 0;
 }
 
 // A rug under the table or before the fire that has none.
@@ -4127,6 +4770,16 @@ function evenLights(room, k) {
   return rec ? 1 : 0;
 }
 
+// Lights per 10 m2 of covered floor in the corpus (median and upper quartile over builds of the kind, 2026-11-11).
+const LIGHT_RATE = { home: [0.1, 0.22], sleeping: [0.1, 0.22], hall: [0.1, 0.22], tavern: [0.2, 0.33], workshop: [0.13, 0.3],
+  smithy: [0.13, 0.3], storage: [0.05, 0.15], living: [0.11, 0.29], other: [0.11, 0.29] };
+function lightCount(room, kind, d, taste) {
+  if (d < 2) return 0;
+  const R = lightStream(room), [lo, hi] = LIGHT_RATE[kind] || LIGHT_RATE.other;
+  const likes = room.persona && room.persona.likes ? room.persona.likes.lights || 1 : 1;
+  const v = Math.max(0, room.area / 10 * (lo + (hi - lo) * R()) * (d >= 3 ? 1.6 : 1) * likes * ((taste || {}).lights || 1) - (room.fire ? 0.5 : 0));
+  return Math.floor(v) + (R() < v - Math.floor(v) ? 1 : 0);
+}
 function furnishPlan(room, role, c) {
   const { decor, kit: k, counts } = c;
   const d = decor === 'd1' ? 1 : decor === 'd2' ? 2 : 3;
@@ -4137,7 +4790,10 @@ function furnishPlan(room, role, c) {
   const budget = Math.max(3, Math.round(room.area / 10 * density(learnKind, decor)));
   const room_ok = () => room.count < budget;
   const capBed = n => Math.max(0, Math.min(n, (BED_CAP[c.use] ? BED_CAP[c.use][d - 1] : CAPS[decor].bed) - counts.bed));
-  const lights = n => Math.round(n * (taste.lights || 1));
+  // how many lights: the corpus's lights per 10 m2 for this kind of room (between its median and upper quartile, drawn
+  // per room), more at d3, the household's liking for lights and the culture's taste; a fire in the room counts for
+  // half of one. No fixed number per room (Tyler, 2026-11-10). The number the old rule gave is ignored.
+  const lights = () => lightCount(room, learnKind, d, taste);
   const bed = (n, row) => { const r = placeBeds(room, k, capBed(n), d, row); counts.bed += r.length; return r; };
   const table = o => { if (!k.table || counts.table >= CAPS[decor].table) return null; const t = placeTable(room, k, o); if (t) counts.table++; return t; };
   const mountsFor = () => {
@@ -4150,24 +4806,31 @@ function furnishPlan(room, role, c) {
   const isFire = ['home', 'hall', 'tavern'].includes(role) && !room.upper;
 
   if (role === 'home') {
-    if (isFire) { placeFire(room, c, 'fire_pit'); onFire(room, d >= 2 && ok('piece_cauldron', biome) && room.R() < 0.4 ? 'piece_cauldron' : 'piece_cookingstation'); }
+    if (isFire) { placeFire(room, c, 'fire_pit'); onFire(room, d >= 2 && ok('piece_cauldron', biome) && room.R() < 0.4 ? 'piece_cauldron' : 'piece_cookingstation', { later: true }); }
     // beds first: a house always sleeps someone (Tyler, T-102)
     const nb = c.levels > 1 ? (d === 1 ? 1 : 0) : Math.max(1, Math.min(d + 1, Math.round(room.area / (d >= 3 ? 22 : 30))));
     const beds = bed(nb, 0.4);
     planPaths(room);
     placeStorageRow(room, k, d >= 2 ? 1 : 0, { side: k.side });
     if (d >= 2) {
-      const t = table({ seats: d >= 3 ? 4 : 2 });
+      // a table where the household keeps one, as often as the culture's corpus buildings have one (corpusRate th:
+      // 68 % of norse furnished buildings): made room for when the first tries find none (tableSure)
+      const t = table({ seats: d >= 3 ? 4 : 2, sure: roomU(room, 'hasTable', 0) < corpusRate(c.culture, 'th') });
+      // the cauldron's butcher table and racks after the household's own table, so the table has its pick of the floor
+      if (room.potLater) { kitchenExtras(room, room.potLater); room.potLater = null; }
       if (t && k.rug && d >= 3) placeRug(room, k, t, { mode: 'under' });
       if (k.rug) placeRug(room, k, room.fire, { mode: 'fire' });
-      placeLights(room, k, lights(d >= 3 ? 3 : 1));
+      // a rug beside or under a bed as often as the household's comfort draws it (corpus: about 30 % of beds)
+      // (an extra, so a set's own rug takes its place where one fits)
+      for (const bd of beds) if (k.rug && k.hR && k.hR() < k.bedRug) { const r = placeRug(room, k, bd, { mode: k.hR() < 0.5 ? 'beside' : 'under' }); if (r) r.p.extra = true; }
+      placeLights(room, k, lights(d >= 3 ? 3 : 1), { hang: d >= 3 ? 0.2 : 0 });
       placeMounts(room, mountsFor());
       if (d >= 3) {
-        if (t) placeOnTable(room, t, ['itemstandh', 'Candle_resin']);
+        if (t) dressTable(room, t, c, 2);
         // no bench by the fire in a home (Tyler, FP-002: bench not necessary)
         placeAgainst(room, 'ArmorStand', s => (beds[0] ? -Math.hypot(s.x - beds[0].x, s.z - beds[0].z) * 0.3 : 0));
         if (room_ok()) placeAgainst(room, 'fermenter', s => (s.corner ? 1 : 0) - fr().v(s.x, s.z) / fr().D);
-        if (room_ok()) placeStorageRow(room, k, 1, { chest: ok('piece_chest_barrel', biome) ? 'piece_chest_barrel' : k.chest });
+        if (room_ok()) placeStorageRow(room, k, 1, { chest: ok('piece_chest_barrel', biome) && keepsBarrels(c.persona, c.type) ? 'piece_chest_barrel' : k.chest });
         if (room_ok()) placeStation(room, k, 'piece_workbench', ['piece_workbench_ext1'], { side: -k.side, back: 0.2 });
       }
     } else {
@@ -4185,7 +4848,7 @@ function furnishPlan(room, role, c) {
       placeLights(room, k, lights(d >= 3 ? 2 : 1), { flank: beds });
       placeMounts(room, d >= 3 ? ['itemstand', k.banner, 'itemstand'] : ['itemstand']);
       if (d >= 3) placeAgainst(room, 'ArmorStand', s => (beds[0] ? -Math.hypot(s.x - beds[0].x, s.z - beds[0].z) * 0.3 : 0));
-      if (d >= 3 && room_ok() && room.area > 20) { const t = table({ seats: 2, depth: 0.5 }); if (t) placeOnTable(room, t, ['Candle_resin']); }
+      if (d >= 3 && room_ok() && room.area > 20) { const t = table({ seats: 2, depth: 0.5 }); if (t) dressTable(room, t, c, 1); }
     }
     return;
   }
@@ -4212,7 +4875,7 @@ function furnishPlan(room, role, c) {
       const t = table({ table: tn, seats: tn === 'piece_table_round' ? 4 : 6, seat: tavern && tn === 'piece_table_round' ? (k.chair || k.seat) : (k.bench || k.seat), head: !tavern && d >= 3, depth: 0.5, nearFire: tavern ? 0.5 : 0, sideBias: 0.3, wallBias: tavern ? 0.6 : -0.3, spread: tavern ? 4.5 : 6, axis: tavern ? 0.4 : 1.5 });
       if (!t) break;
       tables.push(t);
-      if (d >= 3 && i < 2) placeOnTable(room, t, ['itemstandh', 'Candle_resin', 'itemstandh']);
+      if (d >= 3 && i < 2) dressTable(room, t, c, 3);
     }
     placeStorageRow(room, k, d >= 2 ? 2 : 1, { sign: d >= 2 });
     // a hall sleeps its household where the plan's scheme puts the beds: along the long walls or at the far end (the
@@ -4229,10 +4892,10 @@ function furnishPlan(room, role, c) {
       // the bar: barrels and fermenters along one wall
       placeAgainst(room, 'fermenter', s => (s.corner ? 1 : 0) + fr().v(s.x, s.z) / fr().D, { kind: 'fermenter' });
       if (d >= 3) placeAgainst(room, 'fermenter', s => (s.corner ? 1 : 0) + fr().v(s.x, s.z) / fr().D, { kind: 'fermenter' });
-      placeStorageRow(room, k, d >= 3 ? 3 : 2, { chest: ok('piece_chest_barrel', biome) ? 'piece_chest_barrel' : k.chest });
+      placeStorageRow(room, k, d >= 3 ? 3 : 2, { chest: ok('piece_chest_barrel', biome) && keepsBarrels(c.persona, c.type) ? 'piece_chest_barrel' : k.chest });
     }
     if (d >= 2) {
-      placeLights(room, k, lights(d >= 3 ? 4 : 2));
+      placeLights(room, k, lights(d >= 3 ? 4 : 2), { hang: tavern ? 0 : 0.35 });
       if (ok('piece_brazierceiling01', biome) && tables[0] && room.ceilAt(tables[0].x, tables[0].z) - room.stand > 3.5) {
         const t = tables[0];
         room.add('piece_brazierceiling01', t.x, room.ceilAt(t.x, t.z) - F.piece_brazierceiling01.under, t.z, 0, { mount: true, y0: room.ceilAt(t.x, t.z) - 1.6 });
@@ -4345,7 +5008,7 @@ function furnishPlan(room, role, c) {
     const t = table({ seats: 0, wallBias: 0, depth: 0.3 });
     placeStorageRow(room, k, 1);
     if (d >= 2) {
-      placeOnTable(room, t, ['itemstandh', 'itemstandh']);
+      dressTable(room, t, c, 2);
       if (ok('piece_chest_barrel', biome)) placeStorageRow(room, k, 2, { chest: 'piece_chest_barrel' });
       placeLights(room, k, 1);
       placeMounts(room, ['sign']);
@@ -4358,8 +5021,8 @@ function furnishPlan(room, role, c) {
     onFire(room, ok('piece_cauldron', biome) && room.R() < 0.6 ? 'piece_cauldron' : 'piece_cookingstation');
     planPaths(room);
     const t = table({ seats: 1, wallBias: 2, depth: 0.6 });
-    placeStorageRow(room, k, 1, { chest: ok('piece_chest_barrel', biome) ? 'piece_chest_barrel' : k.chest });
-    if (d >= 2) { placeLights(room, k, lights(1)); if (t) placeOnTable(room, t, ['itemstandh', 'itemstandh']); }
+    placeStorageRow(room, k, 1, { chest: ok('piece_chest_barrel', biome) && keepsBarrels(c.persona, c.type) ? 'piece_chest_barrel' : k.chest });
+    if (d >= 2) { placeLights(room, k, lights(1)); if (t) dressTable(room, t, c, 2); }
     return;
   }
   // anything else: one chest and a light
@@ -4505,8 +5168,8 @@ const tplExt = (name, yaw) => { const [w, , d] = size(name), a = yaw * PI / 180,
 function tplSwap(name, room, c, along) {
   const biome = c.biome;
   const f = F[name] || {};
-  // the biome as this table and the generator's own (pieces.js, which takes out what the biome cannot make) both read it
-  const ok = (n2, b) => ok0(n2, b) && P.BIOME_ORDER.indexOf(P.needs(n2)) <= Math.max(0, P.BIOME_ORDER.indexOf(b));
+  // the biome rule is pieces.js decorOk (decor in any biome, D-065, D-126)
+  const ok = (n2, b) => ok0(n2, b) && P.decorOk(n2, b);
   let n = name;
   if (n === 'piece_table_oak' && along != null && along < size(n)[0] + 2.4) n = 'piece_table';
   if (ok(n, biome)) return n;
@@ -4817,7 +5480,8 @@ function outside(b, c) {
   const ground = gfl.length ? Math.min(...gfl) : low;
   const walls = structs.filter(s => s.role === 'wall' && s.y0 < ground + 0.6 && s.y1 > ground + 1.2);
   const doors = structs.filter(s => s.role === 'door' || s.role === 'stair');
-  const placed = [];
+  // what the furnishing set out already (a woodpile the room put by the wall): a heap goes clear of it
+  const placed = b.pieces.filter(p => p.decor && F[p.name] && F[p.name].at !== 'rug').map(p => { const [w0, , d0] = size(p.name), yw = pyaw(p), [mx, mz] = middleOf(p.name, p.x, p.z, yw); return obox(mx, mz, w0, d0, yw); });
   // the middle of the floor plan, to tell outside from inside
   const floors = structs.filter(s => s.role === 'floor');
   if (!floors.length) return;
@@ -4894,7 +5558,9 @@ function audit(design, decor) {
       // Chests, stations and their extensions, beds and tables never reach into one another, whatever their source
       // builds did: in the game a chest half inside a chopping block reads as a mistake (Tyler's test, 2026-11-09).
       const solid = SOLID_CATS.has(a.f.cat) && SOLID_CATS.has(c.f.cat);
-      if ((a.p.kb || c.p.kb) && SHD) { if (kbClip(a.p, c.p) > (solid && a.p.kb !== c.p.kb ? 0.03 : Math.max(a.p.clip || 0, c.p.clip || 0)) + 0.02) res.overlap.push(`${a.p.name} / ${c.p.name} at ${a.p.x.toFixed(1)},${a.p.z.toFixed(1)}`); continue; }
+      // two chests of a kind pushed together as corpus builders do pass up to the corpus depth (CHEST_PAIR_D, D-127)
+      const pairOk = a.p.name === c.p.name && CHEST_PAIR_D[a.p.name] ? CHEST_PAIR_D[a.p.name] : 0;
+      if ((a.p.kb || c.p.kb) && SHD) { if (kbClip(a.p, c.p) > Math.max(pairOk, solid && a.p.kb !== c.p.kb ? 0.03 : Math.max(a.p.clip || 0, c.p.clip || 0)) + 0.02) res.overlap.push(`${a.p.name} / ${c.p.name} at ${a.p.x.toFixed(1)},${a.p.z.toFixed(1)}`); continue; }
       if (a.y0 > c.y1 - 0.05 || c.y0 > a.y1 - 0.05) continue;
       if (overlap(a.b, c.b, -0.06)) res.overlap.push(`${a.p.name} / ${c.p.name} at ${a.p.x.toFixed(1)},${a.p.z.toFixed(1)}`);
     }
@@ -4933,6 +5599,8 @@ function audit(design, decor) {
     let under = -Infinity;
     for (const s of floorsAt) { const st = s.p.y + standOf(s.p.name); if (st <= it.p.y + 0.05 && st > under && ptDist(s.b, it.p.x, it.p.z) < 0.45) under = st; }
     if (it.f.base && isFinite(under) && under - yb > 0.3) { res.torchHeight.push(it.p.name); continue; }
+    // a chest stacked on a chest (lib/kitbash.js stackChests, storeStacks) rests on the one under it
+    if (it.f.cat === 'storage' && items.some(o => o !== it && o.f.cat === 'storage' && ptDist(o.b, it.p.x, it.p.z) < 0.3 && Math.abs(o.y1 - yb) < 0.12)) continue;
     const onFloor = Math.abs(yb - ground) < 0.15 || (isFinite(under) && Math.abs(under - yb) < 0.12);
     if (!onFloor) res.floating.push(`${it.p.name} at ${it.p.x.toFixed(1)},${it.p.y.toFixed(2)},${it.p.z.toFixed(1)}`);
   }
@@ -4941,10 +5609,11 @@ function audit(design, decor) {
     const zb = { ...s.b, hw: s.b.hw + 0.6, hd: s.b.hd + 0.6 };
     for (const it of items) if (it.f.at !== 'rug' && it.f.at !== 'mount' && it.f.at !== 'hang' && it.y0 < s.y1 + 0.3 && it.y1 > s.y0 && overlap(zb, it.b, -0.02)) res.stairs.push(`${it.p.name} at ${it.p.x.toFixed(1)},${it.p.y.toFixed(1)},${it.p.z.toFixed(1)}`);
   }
-  // woodpiles and heaps under a roof inside walls
+  // woodpiles and heaps under a roof inside walls (a pile of coins is table dressing: the corpus has 223 treasure_stack
+  // on tables, CORPUS_CULT.all.t)
   const over = struct.filter(s => OVERHEAD.has(s.role));
   for (const it of items) {
-    if (!/stack|pile/.test(it.p.name)) continue;
+    if (!/stack|pile/.test(it.p.name) || it.p.name === 'treasure_stack') continue;
     if (enclosed(it.p.x, it.p.z, it.p.y, over, wallish)) res.indoorPile.push(it.p.name);
   }
   // every floor furnished at d2 and d3: each roofed room of 8 m2 or more holds at least two pieces
@@ -5021,6 +5690,8 @@ function auditContext(pieces) {
 // in the game; against a brace, a window or a door what shows of both counts (a brace through the fur). The
 // furnishing keeps furniture within SHOWS_MAX; lib/audit.js fails a pool past 15 cm.
 const SHOWS_MAX = 0.12, SHOWS_DEEP = new Set(['bed', 'table', 'storage', 'seat', 'craft']);
+// corpus medians of chests into walls (lib/kitbash.js CHEST_WALL, D-127)
+const CHEST_WALL_D = { piece_chest_wood: 0.121, piece_chest: 0.142, piece_chest_blackmetal: 0.142 }, CHEST_PAIR_D = { piece_chest_wood: 0.114 };
 const SHOWS_FLAT = new Set(['wall', 'halfwall', 'gable', 'pole']), SHOWS_THIN = new Set(['window', 'beam', 'door']);
 // A piece as it will stand in the file: the generator keeps the middle of a piece set on its pivot (a quarter wall)
 // until generate.js finish turns it to its foot, so the furnishing would test that wall 0.25 m higher than it stands.
@@ -5067,20 +5738,30 @@ function auditOne(p, ctx, extra, allow) {
   if (it.f.at === 'mount' && !mountOk(it, wallish)) { ONE_WHY = 'mount'; return false; }
   if (p.rest && !kbRests(it, A.pieces.concat(more), wallish, A.struct.concat(built))) { ONE_WHY = 'rest ' + p.rest; return false; }
   let used = 0;
-  if (SHOWS_DEEP.has(it.f.cat)) {
+  // (a piece the furniture table does not size goes by its catalog role, as the pool audit's intoWall reads it: a
+  // runed chair into a trim beam)
+  if (SHOWS_DEEP.has(it.f.cat || P.piece(p.name).role)) {
     const d = showsInto(p, A.struct.map(sb => sb.p));
-    if (d > Math.max(SHOWS_MAX, allow || 0)) { ONE_WHY = 'shows'; return false; }
+    // a chest may go into a wall as deep as corpus builders set them (lib/kitbash.js CHEST_WALL, D-127)
+    if (d > Math.max(SHOWS_MAX, allow || 0, CHEST_WALL_D[p.name] || 0)) { ONE_WHY = 'shows'; return false; }
     if (d > SHOWS_MAX) used = Math.max(used, d);
   }
-  // what hangs on a wall stays out of what shows of the walls round it (the cross bars, T-606, T-612)
-  if (it.f.at === 'mount' || p.rest === 'wall') {
-    const d = hungInto(p, A.struct.map(sb => sb.p).concat(more));
-    if (d > Math.max(HUNG_CLIP(p.name), allow || 0)) { ONE_WHY = 'hung'; return false; }
+  // what hangs on a wall stays out of what shows of the walls round it (the cross bars, T-606, T-612); the pool
+  // audit's mountClip reads every stand, sign and banner that way wherever it rests (a flat stand on a shelf top went
+  // 9 cm into a stone wall's relief)
+  // (one that stands on something is judged against the building's own shell only, as the audit does at d2 and d3:
+  // the shelf or ledge under it is no wall)
+  const hung = it.f.at === 'mount' || p.rest === 'wall';
+  if (hung || MOUNT_LIKE.test(p.name)) {
+    const d = hungInto(p, hung ? A.struct.map(sb => sb.p).concat(more) : A.struct.map(sb => sb.p).filter(q => !q.decor));
+    if (d > Math.max(hungLimit(p.name), allow || 0)) { ONE_WHY = 'hung'; return false; }
     if (d > HUNG_CLIP(p.name)) used = Math.max(used, d);
   }
   if (used) p.wclip = +(used + 0.005).toFixed(3);
   return true;
 }
+// the names lib/audit.js MOUNT measures for mountClip
+const MOUNT_LIKE = /^(piece_banner\d+|sign|sign_notext|itemstand|piece_shieldgeneric|cloth_hanging_|fenrirhide_hanging|Trophy|wood_dragon)/;
 // which of auditOne's tests turned the last piece down (lab/richness.js)
 let ONE_WHY = '';
 // Furniture inside furniture as the pool audit measures it (lib/audit.js furnClip: the decorator's boxes, turned, more
@@ -5128,6 +5809,37 @@ function hungInto(p, others) {
   return m;
 }
 // How deep two pieces' solids reach into each other (0 for pieces with none, rugs and food).
+// The audit's overlap and doorway tests (audit above) for one piece added late, against the pieces round it: true when
+// the audit would list it. For lib/kitbash.js stackChests, whose second chest stood by an armor stand and in front of
+// a door where the chest under it did not (tavern Mistlands s3d3 seed 170, temple Mistlands s3d3 seed 808).
+const LATE_SKIP = ['mount', 'hang', 'top', 'fire', 'rug'];
+function lateClash(q, pieces) {
+  modelSizes();
+  const it = itemOf(q);
+  if (LATE_SKIP.includes(it.f.at)) return false;
+  for (const p of pieces) {
+    if (p === q || Math.abs(p.x - q.x) > 5 || Math.abs(p.z - q.z) > 5) continue;
+    if (!p.decor || (!F[p.name] && P.piece(p.name).structural)) {
+      if (P.piece(p.name).role !== 'door') continue;
+      const sb = structBox(p), yaw = pyaw(p), ar = yaw * PI / 180, nx = Math.sin(ar), nz = Math.cos(ar);
+      for (const sg of [1, -1]) {
+        const zb = obox(p.x + nx * sg * (sb.b.hd + 0.6), p.z + nz * sg * (sb.b.hd + 0.6), sb.b.hw * 2, 1.2, yaw);
+        if (it.y0 < sb.y0 + 1.8 && it.y1 > sb.y0 + 0.05 && overlap(zb, it.b, -0.02)) return true;
+      }
+      continue;
+    }
+    const c = itemOf(p);
+    if (LATE_SKIP.includes(c.f.at)) continue;
+    if ((q.kb || p.kb) && SHD) {
+      const solid = SOLID_CATS.has(it.f.cat) && SOLID_CATS.has(c.f.cat), pairOk = q.name === p.name && CHEST_PAIR_D[q.name] ? CHEST_PAIR_D[q.name] : 0;
+      if (kbClip(q, p) > Math.max(pairOk, solid && q.kb !== p.kb ? 0.03 : Math.max(q.clip || 0, p.clip || 0)) + 0.02) return true;
+      continue;
+    }
+    if (it.y0 > c.y1 - 0.05 || c.y0 > it.y1 - 0.05) continue;
+    if (overlap(it.b, c.b, -0.06)) return true;
+  }
+  return false;
+}
 function kbClip(a, b) {
   const A = SHD.world(a), B = SHD.world(b);
   return A && B && A.length && B.length ? SHD.clipDepth(A, B) : 0;
@@ -5195,7 +5907,7 @@ function decorateExisting(pieces, { use = 'home', decor = 'd2', biome = 'Meadows
   return b.pieces;
 }
 
-const api = { oneWhy: () => ONE_WHY, furnClash, asBuilt, decorate, strip, findRooms, decorateExisting, setRules, setInterior, setTemplates, templateById, audit, auditContext, auditOne, itemOf, ITEM_BIOME, FURNITURE: F, readLevel,
+const api = { lateClash, corpusPick, corpusRate, tableRate, tableDressed, corpusTilt, topPick, keepsBarrels, oneWhy: () => ONE_WHY, furnClash, asBuilt, decorate, strip, findRooms, decorateExisting, setRules, setInterior, setTemplates, templateById, audit, auditContext, auditOne, itemOf, ITEM_BIOME, FURNITURE: F, readLevel,
   _int: { floorLevels, standGuess, roleFor, stretch, size, ok, obox, overlap, ptDist, yawOfDir, pyaw, standOf, norm, WALLISH } };
 if (NODE_D) module.exports = api; else window.VHDecorate = api;
 
@@ -5745,6 +6457,7 @@ function relief(name) {
 }
 
 const normD = a => ((a % 360) + 360) % 360;
+const SILL_PLANTS = ['Pickable_Dandelion', 'Pickable_Thistle', 'Pickable_Mushroom', 'Pickable_Mushroom_yellow', 'Pickable_Fiddlehead', 'Pickable_Carrot', 'Pickable_Onion', 'Pickable_Turnip', 'Pickable_Dandelion', 'Pickable_Mushroom_blue'];
 const quatD = yaw => { const a = yaw * Math.PI / 360; return [0, +Math.sin(a).toFixed(6), 0, +Math.cos(a).toFixed(6)]; };
 const BIOMES_D = ['Meadows', 'Black Forest', 'Swamp', 'Mountain', 'Plains', 'Mistlands', 'Ashlands'];
 const reachesD = (biome, b) => BIOMES_D.indexOf(biome) >= BIOMES_D.indexOf(b);
@@ -6039,7 +6752,9 @@ function exterior(b, ctx) {
     const sd = quarter ? ((quarter.x - e.x) * ux + (quarter.z - e.z) * uz > 0 ? 1 : -1) : 0;
     const as = quarter ? [-sd * 0.5] : [-0.5, 0.5], lip = K.beam1 || 'wood_beam_1';
     const kept = [];
-    for (const a of as) kept.push(['wood_floor_1x1', a, 0.6, -0.3, 0, 'floor1', 0], [lip, a, 1.05, -0.2, 0, 'beam1', 0], ['Pickable_Dandelion', a, 0.6, -0.25, 0, 'flower', 0]);
+    // what grows in each box: any flower, herb or vegetable (Tyler, 2026-11-10: no one plant per sill), by the box's
+    // place so it is the same at every decor stage
+    for (const a of as) kept.push(['wood_floor_1x1', a, 0.6, -0.3, 0, 'floor1', 0], [lip, a, 1.05, -0.2, 0, 'beam1', 0], [SILL_PLANTS[(Math.abs(Math.round((e.x + ux * a) * 7 + (e.z + uz * a) * 13 + y0 * 3)) + (makeHash({ ...ctx, decor: '' }) >>> 0)) % SILL_PLANTS.length], a, 0.6, -0.25, 0, 'flower', 0]);
     const c = { m: { id: 'window-box', kind: 'box', fit: {} }, kept };
     const placed = MotifsD.place(b, c, { x: e.x, y: y0 + 1, z: e.z, nx: ox, nz: oz }, null, { ground: 0, dry: true, minShare: 1 });
     if (placed.length) { hold(b, placed); added.boxes = (added.boxes || 0) + 1; }
@@ -6047,11 +6762,13 @@ function exterior(b, ctx) {
 
   // ---- bands: a beam at the foot of the walls and along the floor line of each upper storey; a rail at 1 m on
   // half-timbered walls. Laid a little proud of the outside face, never across a door.
+  const stackBay = e => e.yaw === 90 && (b.vents || []).some(v => v.kind === 'stack' && Math.abs(v.z - e.z) < 0.5 && Math.abs(v.x - e.x) < 1.2);
   if (X.bands || X.midRail) for (const e of edges) {
     const { ox, oz } = axes(e);
     for (let s = 0; s < storeys; s++) {
       const y0 = F + s * SH;
-      const opening = openings.find(o => o.e === e && o.y0 === y0);
+      // (the gable bay a stack hearth stands half in is open on the ground storey like a doorway)
+      const opening = openings.find(o => o.e === e && o.y0 === y0) || (s === 0 && stackBay(e) ? { kind: 'hearth' } : null);
       if (X.bands && !(opening && opening.kind !== 'window') && !(s === 0 && based.has(e))) put(beam, e.x + ox * 0.25, y0 + 0.1, e.z + oz * 0.25, e.yaw);
       if (X.midRail && !opening) put(beam, e.x + ox * 0.25, y0 + 1, e.z + oz * 0.25, e.yaw);
     }
@@ -6501,7 +7218,8 @@ function bargeboards(K, C, w, ctx, rows, ends, add, low, pivot, r) {
   // gable motif apex piece or carving is in the way and the gable is tall enough that it clears the wall under it
   // (on a low gable it hangs on down the wall under it, where that wall has no opening in its middle bays)
   if (X.gableBanner && w === ctx.wings[0] && !gw && !apex && !ctx.dragonsHere && capY - top >= 1.9) {
-    const B = reachesD(ctx.biome, 'Plains') ? ['piece_banner01', 'piece_banner02', 'piece_banner05', 'piece_banner07'] : ['piece_banner03', 'piece_banner04', 'piece_banner06', 'piece_banner07', 'piece_banner08', 'piece_banner09'];
+    // any banner in any biome (D-065); the gable's colors by the culture's lean are a style's, the list is whole
+    const B = ['piece_banner01', 'piece_banner02', 'piece_banner03', 'piece_banner04', 'piece_banner05', 'piece_banner06', 'piece_banner07', 'piece_banner08', 'piece_banner09'];
     // the cloth hangs 2.95 m under its rod: its foot no more than 0.6 m over the ground floor, so it reads as hung on
     // the house and not in the air (T-606: the purple banner, piece_banner09, hung with its foot 1.3 m up). The rod
     // touches the wall (that holds it up in the game), so the cloth hangs 0.25 m out: it may lie against bars up to 3 cm
@@ -6546,6 +7264,9 @@ function partition(b, ctx, wallSegment) {
     const xp = w0.cx + sg * (w0.W - 4); // two 2 m cells deep
     if (Math.abs(xp - door.x) < 2.5) continue;
     if (flue && xp > flue.x0 - 1 && xp < flue.x1 + 1) continue;
+    // the back room never takes the hearth: a fire against the end wall keeps the main room's end
+    const keep = ctx.fireKeep || flue;
+    if (keep && sg * ((keep.x0 + keep.x1) / 2 - xp) > 0) continue;
     const zs = [...cells.values()].filter(([x, z]) => Math.abs(x - (xp - sg)) < 0.01 && Math.abs(z - w0.cz) < w0.D).map(([, z]) => z).sort((a, c) => a - c);
     if (zs.length < 3) continue;
     // ladders keep their foot, hole and landing
@@ -6570,7 +7291,7 @@ function benchByDoor(b, ctx) {
   for (const o of b.openings || []) {
     if (o.kind !== 'door' || o.back || o.storey > 0 || o.gallery) continue;
     const { e } = o, { ux, uz, ox, oz } = axes(e);
-    const name = reachesD(ctx.biome, 'Black Forest') && ctx.R() < 0.4 ? 'piece_logbench01' : 'piece_bench01';
+    const name = ctx.R() < 0.4 ? 'piece_logbench01' : 'piece_bench01';
     const faceOut = name === 'piece_logbench01' ? outYaw(-ox, -oz) : outYaw(ox, oz); // the log bench faces its local -z
     for (const s of ctx.R() < 0.5 ? [1, -1] : [-1, 1]) {
       const cand = { name, x: +(e.x + ux * s * 3 + ox * 0.45).toFixed(3), y: F + 0.1, z: +(e.z + uz * s * 3 + oz * 0.45).toFixed(3), yaw: faceOut, q: quatD(faceOut) };
@@ -6585,6 +7306,20 @@ function benchByDoor(b, ctx) {
 
 // ---------------------------------------------------------------- interior (after the furnishing)
 
+// Whether a box on the floor reaches into a door's way in: 0.45 m either side of the opening's middle and 0.15 m
+// more, the corridor's depth either side of the door's plane (as lib/checks.js doorBlockers walks it)
+function kerbInDoorway(b, cb, corridor) {
+  for (const d of b.pieces) {
+    if (d.decor || PD.piece(d.name).role !== 'door') continue;
+    const o = PD.doorOpening(d);
+    if (cb.y0 > o.y + 2.3 || cb.y1 < o.y) continue;
+    const cx = (cb.x0 + cb.x1) / 2 - o.x, cz = (cb.z0 + cb.z1) / 2 - o.z, hx = (cb.x1 - cb.x0) / 2, hz = (cb.z1 - cb.z0) / 2;
+    const along = Math.abs(cx * o.ux + cz * o.uz) - (hx * Math.abs(o.ux) + hz * Math.abs(o.uz));
+    const across = Math.abs(cx * o.nx + cz * o.nz) - (hx * Math.abs(o.nx) + hz * Math.abs(o.nz));
+    if (along < 0.6 && across < corridor + 0.1) return true;
+  }
+  return false;
+}
 function interior(b, ctx) {
   const X = ctx.profile;
   if (!X) return;
@@ -6593,11 +7328,17 @@ function interior(b, ctx) {
   benchByDoor(b, ctx);
   const furniture = () => b.pieces.filter(p => p.decor);
   // a kerb of beams round a fire pit on the floor, so it reads as a hearth set into the floor
-  if (X.fireKerb) {
+  // (a fire against a wall gets the kerb on its open sides; a fire in a stone alcove has the alcove's floor)
+  if (X.fireKerb && !(ctx.hearth && ctx.hearth.spot === 'stack')) {
     const fire = b.pieces.find(p => p.decor && p.name === 'fire_pit');
     if (fire) {
       const beam = K.beam || 'wood_beam', y = fire.y + 0.0;
-      const ring = [[0, -1.15, 0], [0, 1.15, 0], [-1.15, 0, 90], [1.15, 0, 90]].map(([dx, dz, yaw]) => ({ name: beam, x: fire.x + dx, y, z: fire.z + dz, yaw, q: quatD(yaw) }));
+      const walls = b.pieces.filter(p => !p.decor && ['wall', 'pole', 'window', 'door'].includes(PD.piece(p.name).role)).map(p => Ck.aabb(p));
+      const ring = [[0, -1.15, 0], [0, 1.15, 0], [-1.15, 0, 90], [1.15, 0, 90]].map(([dx, dz, yaw]) => ({ name: beam, x: fire.x + dx, y, z: fire.z + dz, yaw, q: quatD(yaw) }))
+        .filter(c => { const cb = Ck.aabb(c); return !walls.some(o => o.x0 < cb.x1 - 0.05 && o.x1 > cb.x0 + 0.05 && o.z0 < cb.z1 - 0.05 && o.z1 > cb.z0 + 0.05 && o.y0 < cb.y1 + 0.3 && o.y1 > cb.y0); })
+        // and a side that lies in a doorway's way in (checks.js doors: 1 m in and out from the opening) is
+        // left open (tavern Meadows s3d3 seed 321 had its fire 2 m inside a door)
+        .filter(c => !kerbInDoorway(b, Ck.aabb(c), Ck.CORRIDOR || 1));
       const ok = ring.every(c => { const cb = Ck.aabb(c); return !furniture().some(p => p !== fire && !/cookingstation|cauldron/.test(p.name) && PD.piece(p.name).role !== 'rug' && (o => o.x0 < cb.x1 && o.x1 > cb.x0 && o.z0 < cb.z1 && o.z1 > cb.z0 && o.y0 < cb.y1 + 0.3 && o.y1 > cb.y0)(Ck.aabb(p))); });
       if (ok) { for (const c of ring) b.put(c.name, c.x, c.y, c.z, c.yaw, { trim: true }); b.notes.push('A kerb of beams round the fire pit.'); }
     }
@@ -6686,19 +7427,15 @@ if (NODE_D) module.exports = apiD; else window.VHDetails = apiD;
 const NODE_B = typeof module !== 'undefined';
 const PB = NODE_B ? require('./pieces.js') : window.VHPieces;
 const checksB = () => (NODE_B ? require('./checks.js') : window.VHChecks);
+const auditB = () => (NODE_B ? require('./audit.js') : (typeof window !== 'undefined' ? window.VHAudit : null));
 const personaB = () => (NODE_B ? require('./persona.js') : window.VHPersona);
 const quatB = yaw => { const a = yaw * Math.PI / 360; return [0, +Math.sin(a).toFixed(6), 0, +Math.cos(a).toFixed(6)]; };
 const BIOMES_B = ['Meadows', 'Black Forest', 'Swamp', 'Mountain', 'Plains', 'Mistlands', 'Ashlands'];
-// in reach of the village (D-080): its own biome for stations, one further for furniture and decor (lib/pieces.js)
+// what a village may put up (lib/pieces.js decorOk): any decor in any biome, building pieces its biome and the next (D-065)
 const can = (biome, name) => PB.decorOk(name, biome);
-// minor decor goes in any biome (D-066): it costs nothing or is paid in the village's own materials
-// what a village makes: by the piece's materials and, for furniture, by the decorator's table too (the stricter)
-const canMake = (biome, name) => {
-  if (!can(biome, name)) return false;
-  const F = NODE_B ? require('./decorate.js').FURNITURE : (window.VHDecorate && window.VHDecorate.FURNITURE) || {};
-  // furniture one biome further than the village's, stations and fires none (D-080, as decorate.js)
-  return !F[name] || BIOMES_B.indexOf(F[name].b) <= BIOMES_B.indexOf(biome) + (['craft', 'fire', 'storage'].includes(F[name].cat) ? 0 : 1);
-};
+// any decor in any biome; building pieces of a set (a half wall, a beam) the village's biome and the next (D-065,
+// lib/pieces.js decorOk)
+const canMake = (biome, name) => can(biome, name);
 const canDecor = (biome, name) => canMake(biome, name) || PB.minor(name);
 
 // ---------------------------------------------------------------- the interior library (data/kitbash-interior.json)
@@ -6706,6 +7443,8 @@ const canDecor = (biome, name) => canMake(biome, name) || PB.minor(name);
 // and an iron chest in the same place count as one assembly; the placer fills each slot with what the village's biome
 // makes. Pieces with no class here are their own slot. Small building pieces count when they carry something (a beam
 // shelf, a half-wall counter).
+// the furniture roles the pool audit measures (lib/audit.js FURN)
+const FURN_B = new Set(['bed', 'table', 'seat', 'storage', 'craft', 'fire', 'clutter']);
 const CLASSES = {
   chest: ['piece_chest_wood', 'piece_chest', 'piece_chest_blackmetal', 'piece_chest_private'],
   barrel: ['piece_chest_barrel'],
@@ -6871,8 +7610,11 @@ function stalls(b, ctx, zones) {
     if (solid.some(({ p, o }) => inner(o) && !(onWall(p) && ['wall', 'window', 'pole'].includes(PB.piece(p.name).role)))) continue;
     if (doors.some(p => inner(Ck.aabb(p)) || (onWall(p) && (s.along === 'x' ? p.x > box.x0 - 1 && p.x < box.x1 + 1 : p.z > box.z0 - 1 && p.z < box.z1 + 1)))) continue;
     if (zones.some(z => z.x0 < box.x1 && z.x1 > box.x0 && z.z0 < box.z1 && z.z1 > box.z0 && z.y0 < y + 2 && z.y1 > y && !z.flue)) continue;
-    // clear the stalls' floor of furnishing
-    b.pieces = b.pieces.filter(p => !(p.decor && inner(Ck.aabb(p))));
+    // clear the stalls' floor of furnishing, and what stands against the end partitions' outer faces (a chest by the
+    // last half wall went into it)
+    const pad = s.along === 'x' ? { x0: box.x0 - 0.3, x1: box.x1 + 0.3, z0: box.z0, z1: box.z1 } : { x0: box.x0, x1: box.x1, z0: box.z0 - 0.3, z1: box.z1 + 0.3 };
+    const near = o => o.x0 < pad.x1 && o.x1 > pad.x0 && o.z0 < pad.z1 && o.z1 > pad.z0 && o.y1 > y + 0.2 && o.y0 < y + 2.4;
+    b.pieces = b.pieces.filter(p => !(p.decor && near(Ck.aabb(p))));
     const at = (a, d) => (s.along === 'x' ? [a, s.wall + s.n * d] : [s.wall + s.n * d, a]);
     const T = { decor: true, trim: true };
     const yawAcross = s.along === 'x' ? 90 : 0, yawAlong = s.along === 'x' ? 0 : 90;
@@ -6976,7 +7718,9 @@ function vignettes(b, ctx, zones) {
         z0: e.z + Math.min(0, nz * 1.6) - (uz ? 1.3 : 0.05) + nz * half, z1: e.z + Math.max(0, nz * 1.6) + (uz ? 1.3 : 0.05) + nz * half };
       const inPlane = p => !p.decor && Math.abs((p.x - e.x) * nx + (p.z - e.z) * nz) < half + 0.35; // the wall's own posts, trim and courses
       const busy = b.pieces.some(p => { if (p === wall || inPlane(p) || ['floor', 'rug'].includes(PB.piece(p.name).role)) return false; const o = Ck.aabb(p); return o.x0 < box.x1 && o.x1 > box.x0 && o.z0 < box.z1 && o.z1 > box.z0 && o.y0 < room.y + 2.2 && o.y1 > room.y + 0.15; })
-        || zones.some(z => z.x0 < box.x1 && z.x1 > box.x0 && z.z0 < box.z1 && z.z1 > box.z0 && z.y0 < room.y + 2 && z.y1 > room.y);
+        || zones.some(z => z.x0 < box.x1 && z.x1 > box.x0 && z.z0 < box.z1 && z.z1 > box.z0 && z.y0 < room.y + 2 && z.y1 > room.y)
+        // a stair along this wall counts though it stands in the wall's plane, with the audit's 0.6 m round its foot
+        || b.pieces.some(p => { if (p.decor || PB.piece(p.name).role !== 'stair') return false; const o = Ck.aabb(p); return o.x0 - 0.6 < box.x1 && o.x1 + 0.6 > box.x0 && o.z0 - 0.6 < box.z1 && o.z1 + 0.6 > box.z0 && o.y0 < room.y + 2.2 && o.y1 > room.y - 0.3; });
       if (busy) continue;
       const fl = b.pieces.find(p => !p.decor && PB.piece(p.name).role === 'floor' && (() => { const o = Ck.aabb(p); const cx = e.x + nx * (half + 0.5), cz = e.z + nz * (half + 0.5); return cx > o.x0 && cx < o.x1 && cz > o.z0 && cz < o.z1 && Math.abs(o.y1 - (room.y + 0.1)) < 0.6; })());
       if (!fl) continue;
@@ -7050,6 +7794,7 @@ const ROOM_KINDS = {
 const SKIP_N = /^(piece_xmas|piece_gift|piece_mistletoe|piece_jackoturnip|piece_(Celebration|Fairylight)Garland|goblin|Morkhalla|piece_asksvinskeleton|lox_ribs|piece_barber|piece_icecube|Skull|ancient_skull|wood_(fine_|core_)?stack|treasure_pile|treasure_stack|Pickable|TreasureChest|loot_chest|piece_chest_private|piece_chest_treasure)/;
 // a 1 x 1 floor counts as a floor to stand on in the checks; shelves use beams
 const NO_BUILT = ['floor1'];
+const VARY_SLOTS = new Set(['rug', 'pot']);
 
 // Which prefab fills a slot in this village: the source's own when the biome makes it (minor decor goes anywhere),
 // else the first of its class that it does. Null leaves the slot out.
@@ -7066,11 +7811,63 @@ function fillSlot(m, biome, ctx) {
   }
   if (m.k === 'feast') return okN(FEAST[biome]) ? FEAST[biome] : null;
   if (m.any && CLASSES[m.k] && ctx._R2) { const l = CLASSES[m.k].filter(okN); if (l.length) return l[Math.floor(ctx._R2() * l.length)]; }
+  // a rug or a pot of a set is any of its kind, the source's own twice as likely (Tyler, 2026-11-10: "Same exact lox
+  // rug"); flat or round, it takes the same place
+  // a rug by the room kind's corpus shares and the culture's counts (lib/decorate.js corpusPick; a uniform draw put
+  // hare and straw rugs as often as deer and fur), the source's own twice as likely
+  if (m.k === 'rug' && ctx._R2) {
+    const l = CLASSES.rug.filter(okN);
+    const LK = { home: 'home', longhouse: 'hall', tavern: 'tavern', smithy: 'smithy', workshop: 'workshop', storage: 'storage', temple: 'hall' }[ctx.type] || 'home';
+    if (l.length) return decorB().corpusPick(ctx._R2, l, LK, 'rug', ctx.culture || ctx.cultureKey, m.n);
+  }
+  if (VARY_SLOTS.has(m.k) && CLASSES[m.k] && ctx._R2) {
+    const l = CLASSES[m.k].filter(okN);
+    if (l.length) { let r = ctx._R2() * (l.length + (l.includes(m.n) ? 1 : 0)); for (const n of l) { r -= n === m.n ? 2 : 1; if (r <= 0) return n; } return l[l.length - 1]; }
+  }
   if (okN(m.n)) return m.n;
   const list = CLASSES[m.k];
   return list ? list.find(okN) || null : null;
 }
 
+// The hand-made kits (BK-) were written with one prefab per place (a pine table, plain benches, a candle on every
+// table), so in them the essentials are drawn like the decorator's own: chairs, benches, a long table and chests by
+// the room kind's corpus shares and the culture's counts (lib/decorate.js corpusPick), one draw per kit so a set
+// matches; what lies on a table only as often as corpus tables are dressed (rel.tablesDressed) and drawn by the
+// corpus onTable counts. Only prefabs of about the same footprint stand in for each other. Undefined keeps the fill.
+// (dvergrprops_chair left out: its solids reach into the sets' tables at their chair spacing, the Plains pool's furnClip
+// of 2026-11-11)
+const BUILT_SWAP = {
+  chair: ['piece_chair', 'piece_chair03', 'dvergrprops_stool'],
+  bench: ['piece_bench01', 'piece_logbench01', 'piece_blackmarble_bench'],
+  piece_table: ['piece_table', 'piece_blackmarble_table'],
+  chest: ['piece_chest_wood', 'piece_chest'],
+};
+// the tables lab/essentials.js tablesDressed counts
+const TOP_TABLES = /^(piece_table|piece_table_round|piece_table_oak|dvergrprops_table|piece_blackmarble_table|cauldron_ext3_butchertable|piece_magetable|piece_table_runed)$/;
+const BUILT_LK = { home: 'home', longhouse: 'hall', tavern: 'tavern', smithy: 'smithy', workshop: 'workshop', storage: 'storage', temple: 'hall' };
+function builtPick(a, mm, ctx, picks, name) {
+  if (!name) return undefined;
+  const D = decorB(), culture = ctx.culture || ctx.cultureKey, LK = BUILT_LK[ctx.type] || 'home', R = ctx._R2;
+  const onTable = (mm.rest === 'on' && a.pieces[mm.on] && /table/.test(a.pieces[mm.on].n)) || (mm.rest === 'anchor' && a.anchor === 'table');
+  // whether the table holds anything is the table's one roll (apply, lib/decorate.js tableDressed)
+  if (onTable && !mm.key) return /^Candle_resin/.test(name) ? D.topPick(R, culture, ctx.biome) : undefined;
+  // barrels only where the household keeps them (lib/decorate.js keepsBarrels)
+  if (mm.k === 'barrel' && !mm.key && !D.keepsBarrels(ctx.persona, ctx.type)) return null;
+  const grp = BUILT_SWAP[mm.k] ? mm.k : BUILT_SWAP[mm.n] ? mm.n : null;
+  if (!grp) return undefined;
+  const list = BUILT_SWAP[grp].filter(n => canDecor(ctx.biome, n) && (shapesB().has(n) || D.FURNITURE[n]));
+  if (!list.length) return undefined;
+  const kind = grp === 'chest' ? 'storage' : grp === 'piece_table' ? 'table' : 'seat';
+  return picks['_' + grp] || (picks['_' + grp] = D.corpusPick(R, list, LK, kind, culture, mm.n));
+}
+
+// How deep corpus builders push chests into each other and into walls (D-127; the mined sets' clip lists in
+// data/kitbash-interior.json, medians): piece_chest_wood into piece_chest_wood 11.4 cm over 17 sets (max 27.9 cm);
+// into a wall piece_chest_wood 12.1 cm over 53 sets, piece_chest 14.2 cm over 18, piece_chest_blackmetal 14.2 cm over
+// 14. A library chest may go that deep by the fitter's solids test; past the decorator's 12 cm it carries the depth
+// as a clip made on purpose (p.fclip, p.wclip, #VillheimClips, D-098).
+const CHEST_PAIR = { piece_chest_wood: 0.114 };
+const CHEST_WALL = { piece_chest_wood: 0.121, piece_chest: 0.142, piece_chest_blackmetal: 0.142 };
 // A small grid of boxes for the fitter: everything in the building, and what it adds as it goes. A piece is filed in
 // every 2 m cell its reach from its pivot can touch (its solids, or its catalog size, by prefab); its box is worked out
 // the first time a query comes near it (most of a building never is).
@@ -7224,6 +8021,34 @@ function takes(anc, a) {
 }
 
 // Fit one assembly at one anchor (mirrored or not). Returns the pieces to add, or null.
+// How many seats a dining set keeps: the corpus has about 2.2 seats at each table that has any (norse furnished
+// buildings: 8 seats and 2 tables at the median, 28 % of seats at a table and 51 % of tables with seats, the research
+// branch's data/culture-corpus/summary.json), so a set keeps 1 to all of its seats by the weights below (2.2 for a set
+// of four), drawn from the household and the spot (the same at every decor stage). Benches count as two seats. A set
+// keeps none of them as often as the culture's tables stand without seats.
+const DINING_KEEP = [0.3, 0.3, 0.25, 0.15];
+function diningSeats(a, ctx, kb, fireNear, role) {
+  const seats = a.pieces.map((p, i) => [p, i]).filter(([p]) => p.k === 'seat' || p.k === 'chair' || p.k === 'bench' || /^(piece_chair|piece_bench|dvergrprops_stool|piece_logbench)/.test(p.n)).map(([, i]) => i);
+  if (seats.length < 2) return new Set();
+  let h = 2166136261;
+  for (const ch of `${kb}|${ctx.persona ? ctx.persona.salt : 0}`) h = Math.imul(h ^ ch.charCodeAt(0), 16777619);
+  const R = rngB((h ^ (h >>> 15)) >>> 0);
+  R();
+  const bench = /bench/.test(a.pieces[seats[0]].n);
+  // a table nobody sits at as often as the culture's corpus tables stand without seats (corpusRate ts: 51 % of norse
+  // tables have a seat): the set keeps its table, rug and what lies on it
+  // (a tavern's or a hall's tables keep at least one seat: corpus tavern rooms hold about 7.5 seats to 2.4 tables,
+  // data/interior.json)
+  const hallLike = ['tavern', 'hall', 'temple'].includes(role);
+  if (R() >= decorB().corpusRate(ctx.culture || ctx.cultureKey, 'ts') && !hallLike) return new Set(seats);
+  let r = R() * DINING_KEEP.reduce((x, y) => x + y, 0), want = DINING_KEEP.length;
+  for (let k = 0; k < DINING_KEEP.length; k++) { r -= DINING_KEEP[k]; if (r <= 0) { want = k + 1; break; } }
+  const keep = Math.max(1, Math.min(seats.length, bench ? Math.ceil(want / 2) : want));
+  // which ones go: drawn too, so a set is left with a seat on one side or two facing; the seats nearest a fire go
+  // first (corpus rel.seatsByFire: 4 % of seats within 3.5 m of a fire)
+  const order = seats.map(i => [i, R() - (fireNear ? Math.min(4, fireNear(i)) : 0)]).sort((x, y) => x[1] - y[1]).map(([i]) => i);
+  return new Set(order.slice(keep));
+}
 function fit(b, ctx, room, idx, zones, anc, a, mirror, fires) {
   // under a flight the generator's keep-clear rectangle over the stair does not apply (the climb's own zone does)
   if (anc.anchor === 'stair') {
@@ -7243,6 +8068,8 @@ function fit(b, ctx, room, idx, zones, anc, a, mirror, fires) {
   a.pieces.forEach((p, i) => { if (p.key) needed.add(i); });
   let dropped = 0, slide = 0;
   const picks = {};
+  // what would lie on a table the household leaves bare (and what stands on that): left out, the set goes on
+  const bareTop = new Set();
   const kb = `${a.id}@${Math.round(anc.x * 10)},${Math.round(anc.z * 10)}`;
   // a set against a wall stands clear of the wall's own relief (the 2x2 wood wall's cross bars stand 13 cm proud of
   // its collider on one face): the whole set moves out by that much, so what hangs and what stands keep together
@@ -7272,15 +8099,30 @@ function fit(b, ctx, room, idx, zones, anc, a, mirror, fires) {
     const out = (anc.anchor !== 'stair' && !m.nearWall(x, z, 0.5)) || (mm.k !== 'rug' && zones.some(zn => x > zn.x0 && x < zn.x1 && z > zn.z0 && z < zn.z1 && y + 0.3 > zn.y0 && y < zn.y1));
     if (out) { if (needed.has(i)) { WHY_B = 25; return null; } miss++; }
   }
-  if (a.pieces.length - miss < Math.max(a.min || 2, Math.ceil(a.pieces.length * 0.6))) { WHY_B = 20; return null; }
+  // a dining set keeps as many of its seats as the household draws (diningSeats), the rest left out
+  const fireNear = i => { const mm = a.pieces[i], lx = mirror ? -mm.x : mm.x, x = anc.x + lx * c + mm.z * s, z = anc.z - lx * s + mm.z * c; return Math.min(9, ...(fires || []).map(f => Math.hypot(f.p.x - x, f.p.z - z))); };
+  const skip = a.dining ? diningSeats(a, ctx, kb, fireNear, room.role) : new Set();
+  const nAll = a.pieces.length - skip.size;
+  if (nAll - miss < Math.max(Math.min(a.min || 2, nAll), Math.ceil(nAll * 0.6))) { WHY_B = 20; return null; }
   for (const i of order) {
     const mm = a.pieces[i];
-    const fail = () => { if (needed.has(i)) return true; dropped++; return false; };
+    if (skip.has(i)) continue;
+    const fail = () => { if (needed.has(i) && !bareTop.has(i)) return true; dropped++; return false; };
     // a random pick (banners) is made once per assembly, so a pair matches
     let name = mm.any ? (picks[mm.k] || (picks[mm.k] = fillSlot(mm, ctx.biome, ctx))) : fillSlot(mm, ctx.biome, ctx);
-    // decor goes in any biome (Tyler, 2026-11-10); a creative set's building piece (a post kept in its own prefab)
-    // the village does not make is left out
-    if (name && a.creative && PB.piece(name).structural && PB.BIOME_ORDER.indexOf(PB.needs(name)) > PB.BIOME_ORDER.indexOf(ctx.biome)) name = null;
+    if (a.built && ctx._R2) { const bp = builtPick(a, mm, ctx, picks, name); if (bp !== undefined) name = bp; }
+    // a creative set's piece the village does not make itself is left out: the last pass (generate.js biomeSafe) would
+    // swap it for a stand-in of another size (a barrel of a stack turned into a chest)
+    if (name && !can(ctx.biome, name)) name = null;
+    // what lies on a table goes only on a table the household dresses: one roll per table, shared with the decorator
+    // and the stand pass (lib/decorate.js tableDressed; rel.tablesDressed times the household's clutter). On a bare table the
+    // set goes on without them, even its key (a set that failed there would come back with a fresh table and a fresh
+    // roll until one came up dressed); a set that is all table top has nothing left and stays out.
+    if (name && ctx._R2) {
+      const tbl = mm.rest === 'on' ? made[mm.on] : mm.rest === 'anchor' && a.anchor === 'table' ? anc.of : null;
+      if (tbl && TOP_TABLES.test(tbl.name) && !decorB().tableDressed(tbl, ctx._R2, ctx.culture || ctx.cultureKey, ctx.persona)) { name = null; bareTop.add(i); }
+    }
+    if (mm.rest === 'on' && bareTop.has(mm.on)) bareTop.add(i);
     if (!name || (mm.rest === 'on' && !made[mm.on])) { if (!name) WHY_B = 30; if (fail()) return null; continue; }
     let lx = mirror ? -mm.x : mm.x;
     if (a.byWidth && anc.w) lx = Math.sign(lx) * (anc.w / 2 + Math.abs(lx));
@@ -7365,11 +8207,21 @@ function fit(b, ctx, room, idx, zones, anc, a, mirror, fires) {
       if (!okP) { p.y = y0; bx = Ck.aabbShapes(p); WHY_B = why0; }
     }
     if (!okP) { LAST_B = `${i} ${p.name}`; if (fail()) return null; continue; }
+    // the pool audit's height for a sign or a wall stand (lib/audit.js MID, by the middle of what shows over the
+    // floor): a stand hung too low stays out, as the audit would fail it; a sign on a chest's front is a label and a
+    // sign standing on the floor (KB-058, KC-142) is a corpus use, and both pass as the audit reads them
+    if (hangOff(p, stand, idx, made)) { WHY_B = 33; LAST_B = `${i} ${p.name}`; if (fail()) return null; continue; }
+    // two of the set's pieces filled with one name in one place (two slots of a creative set both drawn as a beam) are
+    // one piece in the game: the second is left out
+    if (made.some(q => q && q.name === p.name && Math.abs(q.x - p.x) < 0.06 && Math.abs(q.y - p.y) < 0.06 && Math.abs(q.z - p.z) < 0.06 && Math.abs(((q.yaw - p.yaw) % 360 + 540) % 360 - 180) < 3)) { dropped++; continue; }
     if (p.rest === 'floor' && made.lvl != null && made.level == null) made.level = made.lvl;
     made[i] = p;
   }
   const got = made.filter(Boolean);
-  if (got.length < (a.min || 2) || got.length < Math.ceil(a.pieces.length * 0.6) || got.every(p => p.trim)) { WHY_B = WHY_B || 21; return null; }
+  // what a bare table leaves out does not count against the set (or a set would fail there and its next try would
+  // roll a fresh table)
+  const nKept = nAll - bareTop.size;
+  if (got.length < Math.min(a.min || 2, nKept) || got.length < Math.ceil(nKept * 0.6) || got.every(p => p.trim)) { WHY_B = WHY_B || 21; return null; }
   // a dining set keeps 0.7 m clear round it, the way round a table
   // two of one thing is a pair of chairs, not a corner; only a store room takes those
   if (!a.built && room.role !== 'storage' && new Set(got.map(p => slotOf(p.name))).size < 2) { WHY_B = 26; return null; }
@@ -7422,10 +8274,29 @@ function fit(b, ctx, room, idx, zones, anc, a, mirror, fires) {
   return got;
 }
 
+// Whether a sign or a wall stand would fail the pool audit's height test (lib/audit.js MID and its label rule)
+function hangOff(p, stand, idx, made) {
+  const A = auditB(), MID = A && A.MID && A.MID[p.name];
+  if (!MID || !meshB()) return false;
+  const V = meshB().aabbOf(meshB().world(p) || []) || checksB().aabbShapes(p);
+  if (!V) return false;
+  const mid = (V.y0 + V.y1) / 2, h = mid - stand;
+  if (h >= MID[0] && h <= MID[1]) return false;
+  // a sign standing on the floor, as corpus builders stand them (lib/audit.js floorSign, D-127)
+  if (A.floorSign && A.floorSign(p.name, V.y0, stand)) return false;
+  if (/^sign/.test(p.name)) {
+    const mx = (V.x0 + V.x1) / 2, mz = (V.z0 + V.z1) / 2;
+    const store = idx.near({ x0: mx - 0.3, x1: mx + 0.3, z0: mz - 0.3, z1: mz + 0.3, y0: V.y0 - 1, y1: V.y1 + 1 }, 0).map(r => r.p).concat(made.filter(Boolean))
+      .filter(q => q !== p && PB.piece(q.name).role === 'storage');
+    if (store.some(q => { const c = checksB().catBox(q); return mx > c.x0 - 0.25 && mx < c.x1 + 0.25 && mz > c.z0 - 0.25 && mz < c.z1 + 0.25 && mid > c.y0 && mid < c.y1 + 0.1; })) return false;
+  }
+  return true;
+}
+
 // The tests for one piece.
 // why the last piece was turned down (for lab/bench.js and tuning)
 let WHY_B = 0, LAST_B = '', LASTQ_B = '', STATS_B = null;
-const no = k => { WHY_B = k; return false; };
+const no = k => { WHY_B = k; if (globalThis.__kbNo) globalThis.__kbNo[k] = (globalThis.__kbNo[k] || 0) + 1; return false; };
 const MOVABLE = ['storage', 'seat', 'deco', 'clutter', 'light'];
 function placeable(p, bx, mm, i, b, ctx, room, idx, zones, made, clipOf, anc, fires, displace, a) {
   const Ck = checksB(), SH = shapesB(), D = decorB(), m = room.m;
@@ -7494,6 +8365,8 @@ function placeable(p, bx, mm, i, b, ctx, room, idx, zones, made, clipOf, anc, fi
     if (dist > 0.9 || dist < -0.6) continue;
     const t0 = Math.min(bx.x0 * f.ux + bx.z0 * f.uz, bx.x1 * f.ux + bx.z1 * f.uz, bx.x0 * f.ux + bx.z1 * f.uz, bx.x1 * f.ux + bx.z0 * f.uz);
     const t1 = Math.max(bx.x0 * f.ux + bx.z0 * f.uz, bx.x1 * f.ux + bx.z1 * f.uz, bx.x0 * f.ux + bx.z1 * f.uz, bx.x1 * f.ux + bx.z0 * f.uz);
+    // another stretch of the same wall line (the wall either side of a doorway or a gap) says nothing about this one
+    if (t1 < f.a0 + 0.05 || t0 > f.a1 - 0.05) continue;
     const st = D._int.stretch(f, t0 + 0.05, t1 - 0.05);
     if (st.ks.has('door')) return no(10);
     // under a window only what stays below the sill (as the decorator's wallSpots)
@@ -7530,13 +8403,37 @@ function placeable(p, bx, mm, i, b, ctx, room, idx, zones, made, clipOf, anc, fi
   // under its table; marked so the pool audit lets that depth pass, D-098)
   const mine = [], ownP = !mm.n || mm.n === p.name;
   let fdeep = 0;
-  for (const [q, deep] of D.furnClash(p, nearP(0.3).map(r => r.p).filter(q => q.decor && !displace.has(q)).concat(made.filter(Boolean)))) {
+  // (the furniture boxes the audit compares can reach well past the solids, a spinning wheel's is 2.67 x 2.04 m, and so
+  // can a neighbor's: the search covers the piece's furniture box and 1 m round it)
+  let fr = bx;
+  if (D.FURNITURE[p.name]) {
+    const o = D.itemOf(p).b, ex = Math.abs(o.c) * o.hw + Math.abs(o.s) * o.hd, ez = Math.abs(o.s) * o.hw + Math.abs(o.c) * o.hd;
+    fr = { x0: Math.min(bx.x0, o.x - ex), x1: Math.max(bx.x1, o.x + ex), y0: bx.y0, y1: bx.y1, z0: Math.min(bx.z0, o.z - ez), z1: Math.max(bx.z1, o.z + ez) };
+  }
+  const furnNear = idx.near({ ...fr, x0: fr.x0 - 1, x1: fr.x1 + 1, z0: fr.z0 - 1, z1: fr.z1 + 1 }, 0).map(r => r.p);
+  for (const [q, deep] of D.furnClash(p, furnNear.filter(q => q.decor && !displace.has(q)).concat(made.filter(Boolean)))) {
     const j = made.indexOf(q);
     if (j >= 0 && ownP && (!a.pieces[j].n || a.pieces[j].n === q.name)) { fdeep = Math.max(fdeep, deep); continue; }
+    // two chests of a kind pushed together as corpus builders push them (CHEST_PAIR, D-127): the solids test below
+    // holds them to the corpus depth; the mark lets the pool audit's box measure pass (D-098)
+    if (CHEST_PAIR[p.name] && q.name === p.name && !q.stacked) { fdeep = Math.max(fdeep, deep); continue; }
     if (movable(q)) { mine.push(q); continue; }
     return no(31);
   }
   if (fdeep) p.fclip = +(fdeep + 0.005).toFixed(3); else delete p.fclip;
+  // furniture the decorator has no size for (a mead ketill) the pool audit measures by its catalog box (furnClip) and
+  // by what shows when a crafting station is one of the pair (onStation): the same here, with nothing passed by a mark
+  if (FURN_B.has(info.role)) {
+    const pc = Ck.catBox(p);
+    // (as the audit, a station's extension counts too: an artisan table's extension in a spinning wheel's box)
+    const cr = { x0: Math.min(pc.x0, fr.x0) - 1, x1: Math.max(pc.x1, fr.x1) + 1, y0: bx.y0, y1: bx.y1, z0: Math.min(pc.z0, fr.z0) - 1, z1: Math.max(pc.z1, fr.z1) + 1 };
+    for (const q of idx.near(cr, 0).map(r => r.p).filter(q => q.decor && !displace.has(q)).concat(made.filter(Boolean))) {
+      if (q === p || (decorB().FURNITURE[p.name] && decorB().FURNITURE[q.name]) || !FURN_B.has(PB.piece(q.name).role)) continue;
+      if ([p.name, q.name].some(n => /^(fire_pit|hearth|bonfire)$/.test(n))) continue;
+      const qc = Ck.catBox(q), ov = k => Math.min(pc[k + '1'], qc[k + '1']) - Math.max(pc[k + '0'], qc[k + '0']);
+      if (ov('x') > 0.12 && ov('y') > 0.12 && ov('z') > 0.12 && !movable(q)) return no(31);
+    }
+  }
   // the audit's own tests (what it rests on is there, plain wall behind, out of what shows of the walls) come last,
   // as the dearest
   const audited = () => {
@@ -7560,7 +8457,8 @@ function placeable(p, bx, mm, i, b, ctx, room, idx, zones, made, clipOf, anc, fi
     if (d <= 0.01) continue;
     if (movable(q)) { mine.push(q); continue; }
     let allow = 0;
-    if (!q.decor && ['wall', 'window', 'gable', 'beam', 'pole'].includes(role)) allow = clipOf(i, 'w');
+    if (!q.decor && ['wall', 'window', 'gable', 'beam', 'pole'].includes(role)) allow = Math.max(clipOf(i, 'w'), role === 'wall' ? CHEST_WALL[p.name] || 0 : 0);
+    if (q.decor && CHEST_PAIR[p.name] && q.name === p.name && !q.stacked) allow = Math.max(allow, CHEST_PAIR[p.name]);
     if (anc.of && q === anc.of) allow = Math.max(allow, clipOf(i, 'a'));
     if (d > allow + 0.01) { LASTQ_B = `${q.name}${q.decor ? '*' : ''} ${d.toFixed(2)}`; if (STATS_B) { const H = STATS_B.clip || (STATS_B.clip = {}); const k = `${q.decor ? (q.kb ? (/^KB-/.test(q.kb) ? 'mined' : 'kit') : 'decorator') : 'building'} ${PB.piece(q.name).role}`; H[k] = (H[k] || 0) + 1; } return no(17); }
     deepest = Math.max(deepest, d);
@@ -7585,6 +8483,20 @@ function placeable(p, bx, mm, i, b, ctx, room, idx, zones, made, clipOf, anc, fi
   return true;
 }
 
+// Flavor, never a limit (D-065; Tyler 2026-11-10: the village's own biome may weigh a little more): a set of the
+// village's biome, an earlier one or the next weighs fully, one from further on less the further it is (a Dvergr
+// dining set in a Meadows house is possible, not common).
+function flavorB(a, biome) {
+  if (a._fl === undefined) {
+    const core = a.pieces.filter(m => m.key);
+    let hi = 0;
+    for (const m of core.length ? core : a.pieces) if (m.n && !PB.piece(m.n).structural) hi = Math.max(hi, PB.BIOME_ORDER.indexOf(PB.needs(m.n)));
+    a._fl = hi;
+  }
+  const d = a._fl - PB.BIOME_ORDER.indexOf(biome);
+  return d <= 1 ? 1 : 1 / (1 + 0.8 * (d - 1));
+}
+
 // What a set mostly is, for the room's layout plan (lib/layout.js zones): storage, a bench, a work station, a table.
 function setKind(a) {
   if (a._kind !== undefined) return a._kind;
@@ -7604,8 +8516,9 @@ function setKind(a) {
 // 55 % of the room.
 function budget(decor, area) {
   if (decor === 'd1') return area >= 30 ? 1 : 0;
-  if (decor === 'd2') return Math.max(1, Math.min(3, Math.round(area / 22)));
-  return Math.max(2, Math.min(8, Math.round(area / 12)));
+  // by the room's size, with no ceiling: the floor kept free (half the room) and the room's spots are the limit
+  if (decor === 'd2') return Math.max(1, Math.round(area / 22));
+  return Math.max(2, Math.round(area / 12));
 }
 
 // What a household keeps under its stairs (lib/persona.js underStair): one choice per building, from the household's
@@ -7630,10 +8543,10 @@ function furnishRooms(b, ctx, zones, R2, extra, rooms) {
     const need = new Set(a.pieces.filter(m => m.rest === 'on').map(m => m.on));
     a.pieces.forEach((m, i) => { if (m.key) need.add(i); });
     // (a set with a random pick, a pair of banners, draws from the stream inside the fitter: left to it)
-    const v = !a.pieces.some(m => m.any) && a.pieces.some((m, i) => {
-      if (!need.has(i) || m.any) return false;
+    const v = !a.pieces.some(m => m.any || VARY_SLOTS.has(m.k)) && a.pieces.some((m, i) => {
+      if (!need.has(i) || m.any || VARY_SLOTS.has(m.k)) return false;
       const name = fillSlot(m, ctx.biome, ctx);
-      return !name || (a.creative && PB.piece(name).structural && PB.BIOME_ORDER.indexOf(PB.needs(name)) > PB.BIOME_ORDER.indexOf(ctx.biome));
+      return !name || !can(ctx.biome, name);
     });
     hopeK.set(a, v);
     return v;
@@ -7647,10 +8560,7 @@ function furnishRooms(b, ctx, zones, R2, extra, rooms) {
     const fires = b.pieces.filter(p => p.decor && /^(hearth|fire_pit|fire_pit_iron)$/.test(p.name)).map(p => ({ p, b: Ck.aabb(p) }));
     // candidates: assemblies for this room's kind that some anchor here takes, weighted by score and how well the
     // room kind fits; a building's own anchor first (the forge corner, the bed corner, the serving corner)
-    // each built kit once in a building (shelves, cabinets and drapes twice), each mined assembly twice
-    // each built kit once in a building (shelves, cabinets, drapes, bedsides, alcoves twice), each mined assembly
-    // twice; dining sets one to a room, a grid of them in a tavern's or a hall's main room (one per 25 m2)
-    const many = ['BK-shelf', 'BK-cabinet', 'BK-drapes', 'BK-bedside', 'BK-bedside2', 'BK-alcove', 'BK-alcove2', 'BK-understair', 'BK-understair2'];
+    // dining sets one to a room, a grid of them in a tavern's or a hall's main room
     let sets = ['tavern', 'hall', 'temple'].includes(room.role) ? Math.max(1, Math.min(6, Math.floor(room.m.area / 16)))
       : ['smithy', 'workshop'].includes(room.role) ? Math.max(1, Math.min(3, Math.floor(room.m.area / 24))) : 1;
     // the room's layout plan (lib/layout.js): how many sets its scheme takes, and where the floor spots rank
@@ -7658,17 +8568,20 @@ function furnishRooms(b, ctx, zones, R2, extra, rooms) {
     const plan = Lay ? Lay.planFor(b, room.m) : null;
     if (plan && plan.sets != null) sets = Math.max(1, Math.min(sets, plan.sets));
     let setsHere = 0;
-    const cap = a => (a.dining ? (setsHere < sets ? 9 : 0) : a.built ? (many.includes(a.id) ? 2 : 1) : 2);
+    // no set is held to a count in a building (Tyler, 2026-11-10: no limits on any decor): repeats weigh less (below);
+    // dining sets follow the room's plan of how many tables it holds
+    const cap = a => (a.dining ? (setsHere < sets ? 9 : 0) : Infinity);
     const cands = lib.filter(a => (used[a.id] || 0) < cap(a) && (a.rooms || []).some(k => kinds.includes(k) || k === 'any') && anchors.some(an => takes(an, a)) &&
       (!a.types || a.types.includes(ctx.type)) && (!a.roles || a.roles.includes(room.role)) && (!a.decor || a.decor.includes(ctx.decor)) &&
-      // a creative set only where the village makes the building pieces it needs (decor goes in any biome)
-      (!a.creative || PB.BIOME_ORDER.indexOf(a.from) <= PB.BIOME_ORDER.indexOf(ctx.biome)))
+      // a creative set only where the village makes the building pieces it keeps in their own prefab (pieces.js buildReach,
+      // the rule decorOk reads); its decor goes in any biome
+      (!a.creative || PB.BIOME_ORDER.indexOf(a.from) <= PB.BIOME_ORDER.indexOf(PB.buildReach(ctx.biome))))
       .map(a => {
         // more kinds of piece weigh more; a pair of chests is common in the corpus and dull in every room
         const ks = new Set(a.pieces.map(p => p.k).filter(k => !BUILT_SLOTS.includes(k)));
         const store = [...ks].every(k => ['chest', 'barrel', 'crate', 'sign'].includes(k));
         const w = Math.log(1 + a.score) * (kinds.includes((a.rooms || [])[0]) ? 1.5 : 1) * (a.built ? 2.5 : 1) * (1 + 0.35 * (ks.size - 1)) * (store && room.role !== 'storage' ? 0.3 : 1)
-          * Math.pow(PS.kitWeight(P, a), 2); // the household's taste, squared so it shows (six households in one house
+          * flavorB(a, ctx.biome) * Math.pow(PS.kitWeight(P, a), 2); // the household's taste, squared so it shows (six households in one house
           // came out with the same rooms, lab/test_variance.js)
         return { a, w, sig: [...ks].sort().join(',') };
       });
@@ -7986,8 +8899,8 @@ function spaceBeds(b, ctx) {
   return out.size;
 }
 
-// Rooms where the furnishing set two tables or more (a house's tables bunched in one wing): the one nearest the
-// room's middle stays with its seats, the rest go with theirs and what stood on them, so each room has one dining
+// Rooms where the furnishing set two tables or more (a house's tables bunched in one wing): the first one placed stays
+// with its seats, the rest go with theirs and what stood on them, so each room has one dining
 // place and the library can lay one in a room without. Only in homes and their rooms; halls, taverns, temples and
 // towers keep theirs.
 function spreadTables(b, ctx, rooms) {
@@ -8002,11 +8915,18 @@ function spreadTables(b, ctx, rooms) {
     // a hall with free floor for two sets or more: its tables all go, and the library lays its sets in a grid
     const free = hall && m.area >= 40 ? m.cells.filter(c => c.i % 2 === 0 && c.j % 2 === 0 && [0, 1, 2, 3, 4, 5, 6, 7].every(k => m.inside(c.x + 2.2 * Math.sin(k * Math.PI / 4), c.z + 2.2 * Math.cos(k * Math.PI / 4)))).length : 0;
     void free;
+    // a side table nobody sits at stays too (lib/decorate.js placeTable seats tables at the corpus rate; a room holds
+    // its dining table and side tables, the corpus home room 1.2 tables)
+    const seatedT = t => { const o = Ck.aabbShapes(t); return b.pieces.some(q => q.decor && PB.piece(q.name).role === 'seat' && Math.abs(q.y - t.y) < 0.4 && q.x > o.x0 - 1.2 && q.x < o.x1 + 1.2 && q.z > o.z0 - 1.2 && q.z < o.z1 + 1.2); };
     const keep = hall ? tables.length : 1;
     if (tables.length <= keep) continue;
-    tables.sort((p, q) => Math.hypot(p.x - m.cx, p.z - m.cz) - Math.hypot(q.x - m.cx, q.z - m.cz));
+    // the room's first table stays (the decorator's own dining place, set where the household's corpus draw put it,
+    // lib/decorate.js tableFireAt and doorWant); keeping the one nearest the room's middle put it in one spot in every
+    // household
+    tables.sort((p, q) => b.pieces.indexOf(p) - b.pieces.indexOf(q));
     const out = new Set();
     for (const t of tables.slice(keep)) {
+      if (!hall && !seatedT(t)) continue;
       const o = Ck.aabbShapes(t);
       out.add(t);
       for (const q of b.pieces) {
@@ -8018,7 +8938,7 @@ function spreadTables(b, ctx, rooms) {
       }
     }
     b.pieces = b.pieces.filter(q => !out.has(q));
-    gone += tables.length - keep;
+    gone += [...out].filter(isTable).length;
   }
   return gone;
 }
@@ -8061,8 +8981,11 @@ function liveIn(b, ctx, zones) {
   const problems = p => {
     const out = new Set(), bx = Ck.aabbShapes(p), it = D.itemOf(p), sp = p._sp;
     const flat = !!sp.rug;
+    // what stands near: by the game's solids and by the audit's furniture box, whichever reaches further (a barrel's
+    // solids are smaller than its box, and a chair by it went unseen)
+    const reach = { ...bx, x0: Math.min(bx.x0, it.b.x - it.b.r), x1: Math.max(bx.x1, it.b.x + it.b.r), z0: Math.min(bx.z0, it.b.z - it.b.r), z1: Math.max(bx.z1, it.b.z + it.b.r) };
     if (!flat) for (const z of zones) if (z.x0 < bx.x1 && z.x1 > bx.x0 && z.z0 < bx.z1 && z.z1 > bx.z0 && z.y0 < bx.y1 && z.y1 > bx.y0) out.add('z' + zones.indexOf(z));
-    for (const r of idx.near(bx, 0.1)) {
+    for (const r of idx.near(reach, 0.1)) {
       const q = r.p;
       if (q === p) continue;
       const role = PB.piece(q.name).role;
@@ -8110,6 +9033,7 @@ function liveIn(b, ctx, zones) {
   const bears = p => { const o = Ck.aabb(p); return b.pieces.some(q => q !== p && q.decor && q.x > o.x0 && q.x < o.x1 && q.z > o.z0 && q.z < o.z1 && q.y > p.y + 0.15 && q.y < o.y1 + 0.3); };
   const amp = 0.12 + 0.88 * P.clutter;
   let moved = 0;
+  moved += turnLikeCorpus(b, ctx, idx, problems, bears);
   for (const p of b.pieces.slice()) {
     // a piece standing as its source build stood it, marked for the pool audit (D-098), stays put
     if (!p.decor || p.trim || p.yard || p.outside || (p.rest && ['wall', 'hang'].includes(p.rest)) || p.fclip || p.wclip) continue;
@@ -8142,6 +9066,84 @@ function liveIn(b, ctx, zones) {
   return moved;
 }
 
+// Tables, seats and rugs turned off the wall axes as often as corpus builders turn them (relx: 29 % of tables, 41 % of
+// seats and 30 % of rugs more than 10 degrees, per culture group, lib/decorate.js corpusRate), more in a cluttered
+// household and less in a tidy one. A table turns with what lies on it and the seats drawn up to it; a turn that
+// makes a problem the pieces did not have is taken back, and two more angles are tried. Library pieces count as the
+// decorator's do (most tables and seats come from the library); hung pieces and pieces marked as clips stay as they are.
+const TURN = { table: ['to', 12, 30], seat: ['so', 12, 40], rug: ['ro', 12, 45] };
+function turnLikeCorpus(b, ctx, idx, problems, bears) {
+  const Ck = checksB(), P = ctx.persona, D = decorB(), I = D._int, F = D.FURNITURE, culture = ctx.culture || ctx.cultureKey, corpusRate = D.corpusRate;
+  const R = rngB(((P.salt || 0) ^ 0x7e11) >>> 0);
+  // (a round table looks the same turned; turning its square box swung its corners into the chairs drawn up to it,
+  // the Plains pool's furnClip of 2026-11-11)
+  // (the catalog's role where the decorator's furniture list has no entry: the Dvergr chair a hand-made kit draws)
+  const kindOf = p => { const c = (F[p.name] || {}).cat || PB.piece(p.name).role; return c === 'table' && p.name !== 'piece_table_round' ? 'table' : c === 'seat' ? 'seat' : c === 'rug' ? 'rug' : null; };
+  const free = p => p.decor && !p.trim && !p.yard && !p.outside && !(p.rest && ['wall', 'hang'].includes(p.rest)) && !p.fclip && !p.wclip && !p.stacked;
+  // a flat stand the stand pass sank into a top or heaped (lib/stands.js, a clip into what it lies on) turns with what
+  // it lies on: with the stand pass in, dressed tables stayed square and tables turned fell from 23 to 14 %
+  const rides = p => p.decor && p.name === 'itemstandh' && !p.wclip && !p.trim && !(p.rest && ['wall', 'hang'].includes(p.rest));
+  const axis = (() => { const h = new Map(); for (const q of b.pieces) if (!q.decor && PB.piece(q.name).role === 'wall') { const k = Math.round(normB(I.pyaw(q)) % 90); h.set(k, (h.get(k) || 0) + 1); } const t = [...h.entries()].sort((a, c) => c[1] - a[1])[0]; return t ? t[0] : 0; })();
+  const off = p => { const m = normB(I.pyaw(p) - axis) % 90; return Math.min(m, 90 - m); };
+  const lean = 0.5 + (P.clutter || 0);
+  const turned = new Set();
+  let n = 0;
+  const tryTurn = (members, cx, cz) => {
+    const [, lo, hi] = TURN[kindOf(members[0])];
+    for (let t = 0; t < 3; t++) {
+      const dr = (R() < 0.5 ? -1 : 1) * (lo + R() * (hi - lo)), a = dr * Math.PI / 180, c = Math.cos(a), sn = Math.sin(a);
+      const olds = members.map(p => ({ p, x: p.x, z: p.z, yaw: p.yaw, q: p.q }));
+      const before = members.map(p => { p._sp = jitterSpec(p) || { rot: 0, off: 0 }; return problems(p); });
+      for (const p of members) {
+        idx.remove(p);
+        // world turn about (cx, cz): yaw grows clockwise seen from above (local +z is (sin, cos))
+        const dx = p.x - cx, dz = p.z - cz;
+        p.x = +(cx + dx * c + dz * sn).toFixed(3); p.z = +(cz - dx * sn + dz * c).toFixed(3);
+        p.yaw = +normB(I.pyaw(p) + dr).toFixed(2); p.q = quatB(p.yaw);
+        idx.add(p);
+      }
+      const ok = members.every((p, i) => [...problems(p)].every(k => before[i].has(k)));
+      for (const p of members) delete p._sp;
+      if (ok) { for (const p of members) turned.add(p); return true; }
+      for (const o of olds) { idx.remove(o.p); o.p.x = o.x; o.p.z = o.z; o.p.yaw = o.yaw; o.p.q = o.q; idx.add(o.p); }
+    }
+    return false;
+  };
+  // how many of a kind to turn: the corpus share of all of them (stochastic rounding), less those turned already; the
+  // candidates in a seeded order until that many have turned, so a turn taken back moves on to the next piece
+  const quota = kind => {
+    const all = b.pieces.filter(p => p.decor && !p.outside && !p.yard && kindOf(p) === kind);
+    const want = corpusRate(culture, TURN[kind][0]) * lean * all.length, q = Math.floor(want) + (R() < want % 1 ? 1 : 0);
+    return Math.max(0, q - all.filter(p => off(p) > 10).length);
+  };
+  const order = kind => b.pieces.filter(p => free(p) && kindOf(p) === kind && off(p) <= 10).map(p => [p, R()]).sort((x, y) => x[1] - y[1]).map(([p]) => p);
+  let left = quota('table');
+  for (const t of order('table')) {
+    if (left <= 0) break;
+    const ob = D.itemOf(t).b;
+    const on = b.pieces.filter(q => q !== t && q.decor && I.ptDist(ob, q.x, q.z) < 0.05 && q.y > t.y + 0.3 && q.y < t.y + 1.6);
+    if (on.some(q => !free(q) && !rides(q))) continue;
+    const seats = b.pieces.filter(q => free(q) && kindOf(q) === 'seat' && Math.abs(q.y - t.y) < 0.5 && I.ptDist(ob, q.x, q.z) < 0.9);
+    if (tryTurn([t, ...on, ...seats], t.x, t.z)) { n++; left--; }
+  }
+  for (const kind of ['seat', 'rug']) {
+    left = quota(kind);
+    for (const p of order(kind)) {
+      if (left <= 0) break;
+      if (turned.has(p)) continue;
+      // a seat turns with the flat stands on it (a bench the stand pass set); anything else on it keeps it square
+      let with_ = [];
+      if (kind !== 'rug' && bears(p)) {
+        const o = Ck.aabb(p);
+        with_ = b.pieces.filter(q => q !== p && q.decor && q.x > o.x0 && q.x < o.x1 && q.z > o.z0 && q.z < o.z1 && q.y > p.y + 0.15 && q.y < o.y1 + 0.3);
+        if (!with_.length || !with_.every(rides)) continue;
+      }
+      if (tryTurn([p, ...with_], p.x, p.z)) { n++; left--; }
+    }
+  }
+  return n;
+}
+
 function apply(b, ctx, zones) {
   if (ctx.decor === 'd3' && !['barn', 'storage', 'dock', 'farm'].includes(ctx.type)) vignettes(b, ctx, zones || []);
   if (ctx.decor !== 'd1' && ['longhouse', 'temple'].includes(ctx.type)) dais(b, ctx, zones || []);
@@ -8161,11 +9163,86 @@ function apply(b, ctx, zones) {
     const Lay = NODE_B ? require('./layout.js') : window.VHLayout;
     if (Lay) Lay.clearLanes(b, ctx, rooms);
   }
+  if (X.interiorKit !== false && ctx.decor !== 'd1') {
+    const st = stackChests(b, ctx);
+    if (st) b.notes.push(`${st} chests stacked on chests.`);
+  }
+  // things on item stands round the house, from a stream of their own (lib/stands.js)
+  const St = NODE_B ? require('./stands.js') : window.VHStands;
+  if (St && X.stands !== false) St.dressTops(b, ctx, zones || []);
   // lived in: movable things a little off square, by the household (lib/persona.js)
   if (X.lived !== false && ctx.decor !== 'd1') {
     const m = liveIn(b, ctx, zones || []);
     if (m) b.notes.push(`${m} movable things set a little off square, as a household leaves them.`);
   }
+  dropFalling(b);
+}
+
+// Chests stacked on chests as corpus builders stack them (relx.chestsStacked: 58 % of chests stand on or under another
+// chest, 0.3 to 1.5 m apart in height and within 0.6 m across, per culture group, lib/decorate.js corpusRate): a second
+// chest of the same kind on a chest within 1.2 m of a wall, where nothing stands over it and 0.3 m stays clear above
+// (never on a set's chest framed by beams or posts, or within 1.8 m of a door);
+// as many as bring the design's share to the culture's rate, more in a cluttered household. Store rooms stack their
+// own first (decorate.js storeStacks). From a stream of its own, so the rest of the design is unchanged.
+const STACKABLE = /^(piece_chest_wood|piece_chest|piece_chest_blackmetal|piece_chest_barrel)$/;
+function stackChests(b, ctx) {
+  const D = decorB(), Ck = checksB(), P = ctx.persona, culture = ctx.culture || ctx.cultureKey;
+  const R = rngB((((P && P.salt) || 7) ^ 0x57ac) >>> 0);
+  const chests = b.pieces.filter(p => p.decor && !p.outside && !p.yard && !p.trim && STACKABLE.test(p.name));
+  if (!chests.length) return 0;
+  const inStack = p => chests.some(q => q !== p && Math.hypot(q.x - p.x, q.z - p.z) < 0.6 && Math.abs(q.y - p.y) >= 0.3 && Math.abs(q.y - p.y) <= 1.5);
+  const share = Math.min(0.9, D.corpusRate(culture, 'cs') * (P ? 0.6 + 0.8 * (P.clutter || 0) : 1));
+  // a chest set on a lone one makes two in a stack: (k + 2m) / (N + m) = share
+  let m = Math.round((share * chests.length - chests.filter(inStack).length) / (2 - share));
+  if (m <= 0) return 0;
+  const idx = boxIndex(b.pieces);
+  const hit = (a, c) => a.x0 < c.x1 - 0.02 && c.x0 < a.x1 - 0.02 && a.z0 < c.z1 - 0.02 && c.z0 < a.z1 - 0.02 && a.y0 < c.y1 - 0.02 && c.y0 < a.y1 - 0.02;
+  // not a chest of a set built round it (framed by beams or posts), and not by a door, where the door lights go later
+  // (generate.js doorLights)
+  const framed = new Set(b.pieces.filter(q => q.kb && PB.piece(q.name).structural).map(q => q.kb));
+  const doors = b.pieces.filter(q => !q.decor && PB.piece(q.name).role === 'door');
+  const cand = chests.filter(p => !inStack(p) && !p.stacked && (!p.rest || p.rest === 'floor') && !p.fclip && !(p.kb && framed.has(p.kb)) &&
+    !doors.some(q => Math.hypot(q.x - p.x, q.z - p.z) < 1.8)).map(p => [p, R()]).sort((x, y) => x[1] - y[1]).map(([p]) => p);
+  let n = 0;
+  for (const p of cand) {
+    if (m <= 0) break;
+    const it = D.itemOf(p), h = it.y1 - it.y0;
+    if (!(h > 0.3)) continue;
+    const q = { name: p.name, x: p.x, y: +(p.y + h).toFixed(3), z: p.z, q: p.q, decor: true, stacked: true };
+    if (p.yaw != null) q.yaw = p.yaw;
+    if (p.ds != null) q.ds = p.ds;
+    if (p.extra) q.extra = true;
+    const bx = Ck.aabbShapes(q), reach = { ...bx, x0: bx.x0 - 1.2, x1: bx.x1 + 1.2, z0: bx.z0 - 1.2, z1: bx.z1 + 1.2 };
+    if (!idx.near(reach, 0).some(r => !r.p.decor && ['wall', 'window', 'door'].includes(PB.piece(r.p.name).role) && r.b.y1 > bx.y0 && r.b.y0 < bx.y1)) continue;
+    const clear = { ...bx, y1: bx.y1 + 0.3 };
+    // (decor by its catalog box as well: a ground torch's solids are thinner than the torch)
+    if (idx.near(clear, 0.1).some(r => r.p !== p && PB.piece(r.p.name).role !== 'rug' && (hit(r.b, clear) || (r.p.decor && hit(Ck.catBox(r.p), clear))))) continue;
+    // and nothing the furnishing audit would list (decorate.js lateClash: its overlap and doorway tests)
+    if (D.lateClash && D.lateClash(q, b.pieces)) continue;
+    b.pieces.push(q);
+    idx.add(q);
+    m--; n++;
+  }
+  return n;
+}
+
+// A set's building piece the game would let fall (a creative set's hanging pole whose source build held it by a piece
+// the set left out) goes, with what then has nothing under it; the structure check (lib/checks.js stability) is the
+// judge. Only the library's own pieces go.
+function dropFalling(b) {
+  const Ck = checksB();
+  if (!b.pieces.some(p => p.kb && PB.piece(p.name).structural)) return 0;
+  let n = 0;
+  for (let pass = 0; pass < 3; pass++) {
+    const boxes = b.pieces.map(Ck.gameBox), near = Ck.index(boxes);
+    const ys = boxes.filter(x => x.info.structural).map(x => x.y0).sort((a, c) => a - c);
+    const ground = b.ground != null ? b.ground : ys.length ? ys[Math.floor(ys.length * 0.02)] : 0;
+    const out = new Set(Ck.stability(b.pieces, boxes, near, ground).map(i => b.pieces[i]).filter(p => p.kb));
+    if (!out.size) break;
+    b.pieces = b.pieces.filter(p => !out.has(p));
+    n += out.size;
+  }
+  return n;
 }
 
 // ---------------------------------------------------------------- built-up furniture
@@ -8396,8 +9473,760 @@ function fitDebug(b, ctx, room, anc, a) {
   const got = fit(b, ctx, room, idx, ctx.zones || [], anc, a, false, fires);
   return { ok: !!got, why: WHY_B, piece: LAST_B, q: LASTQ_B };
 }
-const apiB = { setStats: s => { STATS_B = s; }, liveIn, jitterSpec, WALL_DRESS, WALL_KITS, UNDER, underChoice, residentSlots, slotKits, ROLE_DISPLAYS, groupStorage, spreadTables, spaceBeds, seatRugs, dressWalls, why: () => WHY_B, _fitDebug: fitDebug, BUILT: BUILT_KITS, apply, library, setLibrary, lite, furnishRooms, anchorsOf, roomsB, fit, barCounter, canopyBed, stalls, dais, vignettes, CLASSES, SLOT, FOOD, BUILT_SLOTS, slotOf, isDecor, canDecor };
+const apiB = { setStats: s => { STATS_B = s; }, boxIndex, stands: (b, ctx, zones) => { const St = NODE_B ? require('./stands.js') : window.VHStands; return St ? St.dressTops(b, ctx, zones || []) : 0; }, liveIn, jitterSpec, WALL_DRESS, WALL_KITS, UNDER, underChoice, residentSlots, slotKits, ROLE_DISPLAYS, groupStorage, spreadTables, spaceBeds, seatRugs, dressWalls, why: () => WHY_B, _fitDebug: fitDebug, BUILT: BUILT_KITS, apply, library, setLibrary, lite, furnishRooms, anchorsOf, roomsB, fit, barCounter, canopyBed, stalls, dais, vignettes, CLASSES, SLOT, FOOD, BUILT_SLOTS, slotOf, isDecor, canDecor };
 if (NODE_B) module.exports = apiB; else window.VHKitbash = apiB;
+
+})();
+// ---- stands.js
+(function () {
+// Things on item stands round the house (Tyler, 2026-11-10): the item stands, flat (itemstandh) and on the wall
+// (itemstand), that the best builders use more than any other piece to make a room look lived in. Food and drink on
+// the table, a mug left on a bench or a chair, tools hung over the workbench, trophies over the bed and the hearth,
+// shields over a bench, a pantry or a shelf of curios on the wall, herbs and a jar on the sill, a helmet or a fish on a
+// beam overhead, something on a chest lid, and at the third stage now and then a feast laid out on the dining table
+// with the serving tray (the feast pieces). Every set here is one or a few stands in the corpus's own arrangements
+// (lab/mine_stands.js: where builders put them, how high, how far apart, in what groups) and is placed by the interior
+// library's fitter (lib/kitbash.js fit), so it is tested for clips, rests, doorways and windows like any set. What each
+// stand holds is the household's pick for that place (lib/persona.js standItem: p.at says where it is, p.want what the
+// set asks for).
+//
+// Runs after the library and the walking lanes and before the lived-in pass (lib/kitbash.js apply), from a stream of
+// its own seeded by the household, so the rest of a design comes out as before. How much goes up follows the
+// household (cluttered or tidy, hobbies, wealth, size), the room and the decor stage: a share at d2, the rest at d3
+// (p.ds), so each stage holds the one before it.
+const NODE_S = typeof module !== 'undefined';
+const PBs = NODE_S ? require('./pieces.js') : window.VHPieces;
+const KBs = () => (NODE_S ? require('./kitbash.js') : window.VHKitbash);
+const PSs = () => (NODE_S ? require('./persona.js') : window.VHPersona);
+const Cks = () => (NODE_S ? require('./checks.js') : window.VHChecks);
+const Ds = () => (NODE_S ? require('./decorate.js') : window.VHDecorate);
+const Mes = () => (NODE_S ? require('./mesh.js') : window.VHMesh);
+const SHs = () => (NODE_S ? require('./shapes.js') : window.VHShapes);
+
+function rngS(seed) {
+  let s = (seed >>> 0) || 1;
+  return () => { s ^= s << 13; s >>>= 0; s ^= s >> 17; s ^= s << 5; s >>>= 0; return s / 4294967296; };
+}
+const normS = a => ((a % 360) + 360) % 360;
+// a piece of a set: as lib/kitbash.js kp, with where the stand is (at) and what it should hold (want)
+// (the two go to the stand as one word, 'drink@table', since the fitter carries only want; lib/persona.js dressStands
+// splits it)
+const sp = (n, x, y, z, yaw, rest, o) => {
+  const e = Object.assign({}, o || {});
+  if (e.want || e.at) e.want = `${e.want || ''}@${e.at || ''}`;
+  delete e.at;
+  return Object.assign({ n, k: KBs().slotOf(n), x, y, z, yaw, rest }, e);
+};
+const H = (x, z, yaw, o) => sp('itemstandh', x, 0.8, z, yaw, 'anchor', o); // a flat stand on what the set is anchored to
+const W = (x, y, o) => sp('itemstand', x, y, 0.045, 0, 'wall', o); // a wall stand
+const set = (id, anchor, pieces, o) => Object.assign({ id, anchor, rooms: [], pieces, clips: [], score: 6, built: true, min: 1 }, o || {});
+
+// ---------------------------------------------------------------- the sets
+// Frames as the library's (lib/kitbash.js BUILT_KITS): a table's, bench's, chest's or beam's pivot with its own turn
+// (x along it); a wall's surface with +z into the room; y over the floor's top (a flat stand on what it rests on is
+// set onto its top by the fitter). Turns of flat stands follow the corpus (every way, most often square or at 45).
+// lean: the household traits a set suits (lib/persona.js kitWeight reads the same form); n: the least number of
+// people at home it suits; stage: 3 for sets that only come at the third stage.
+const SETS = [
+  // on a table (the corpus's piece_table: settings along the length, 0.4 to 0.5 m apart, a seat's width from the edge)
+  set('KS-t-meal2', 'table', [H(-0.55, 0.3, 45, { want: 'drink', at: 'table' }), H(-0.15, 0.32, 0, { want: 'food', at: 'table' }),
+    H(0.5, -0.3, 225, { want: 'food', at: 'table' }), H(0.85, -0.28, 180, { want: 'drink', at: 'table' })], { of: 'table', lean: { food: 0.6 }, min: 3 }),
+  set('KS-t-meal4', 'table', [H(-0.8, 0.3, 30, { want: 'drink', at: 'table' }), H(-0.4, 0.33, 0, { want: 'food', at: 'table' }), H(0.4, 0.3, 90, { want: 'food', at: 'table' }),
+    H(0.82, 0.27, 45, { want: 'drink', at: 'table' }), H(-0.6, -0.3, 180, { want: 'food', at: 'table' }), H(-0.15, -0.28, 225, { want: 'drink', at: 'table' }),
+    H(0.55, -0.32, 135, { want: 'food', at: 'table' })], { of: 'table', lean: { food: 0.8, messy: 0.4 }, n: 3, min: 4 }),
+  set('KS-t-mugs', 'table', [H(-0.6, 0.18, 112, { want: 'drink', at: 'table' }), H(-0.2, -0.26, 180, { want: 'drink', at: 'table' }), H(0.7, 0.2, 247, { want: 'drink', at: 'table' })],
+    { of: 'table', lean: { games: 0.6, messy: 0.5 }, min: 2 }),
+  set('KS-t-left', 'table', [H(0.45, 0.22, 62, { at: 'table' }), H(-0.35, -0.2, 300, { at: 'table' })], { of: 'table', lean: { messy: 0.7 }, min: 1 }),
+  set('KS-t-row', 'table', [H(-0.52, -0.3, 90, { want: 'drink', at: 'table' }), H(-0.17, -0.3, 90, { want: 'drink', at: 'table' }), H(0.18, -0.3, 90, { want: 'drink', at: 'table' }),
+    H(0.53, -0.29, 90, { at: 'table' })], { of: 'table', lean: { food: 0.5, tidy: 0.4 }, min: 3 }),
+  set('KS-t-tools', 'table', [H(-0.7, -0.02, 180, { want: 'tool', at: 'table' }), H(-0.25, 0.02, 180, { want: 'tool', at: 'table' }), H(0.3, -0.04, 180, { want: 'tool', at: 'table' })],
+    { of: 'table', lean: { crafts: 1, busy: 0.4 }, min: 2 }),
+  set('KS-t-arms', 'table', [H(0.05, 0.2, 180, { want: 'shield', at: 'table' }), H(-0.45, -0.15, 45, { want: 'weapon', at: 'table' }), H(0.55, -0.12, 315, { want: 'weapon', at: 'table' })],
+    { of: 'table', lean: { collect: 0.9, wealth: 0.3 }, min: 2 }),
+  set('KS-t-herbs', 'table', [H(-0.3, 0.18, 68, { want: 'herbs', at: 'table' }), H(-0.05, 0.3, 68, { want: 'herbs', at: 'table' }), H(-0.12, 0.05, 68, { want: 'herbs', at: 'table' }),
+    H(0.6, -0.25, 135, { want: 'drink', at: 'table' })], { of: 'table', lean: { plants: 1 }, min: 3 }),
+  set('KS-t-curio', 'table', [H(0, 0, 0, { want: 'rare', at: 'table' }), sp('Candle_resin', 0.45, 0.8, 0.1, 0, 'anchor')], { of: 'table', lean: { collect: 0.6, wealth: 0.8, tidy: 0.3 }, min: 1 }),
+  // a round table: a ring at 0.5 to 0.8 m
+  set('KS-r-meal', 'table', [H(-0.6, -0.34, 225, { want: 'drink', at: 'table' }), H(0.12, -0.68, 157, { want: 'food', at: 'table' }), H(-0.59, 0.42, 180, { want: 'drink', at: 'table' }),
+    H(0.62, 0.3, 45, { want: 'food', at: 'table' })], { of: 'round', lean: { food: 0.6 }, min: 2 }),
+  set('KS-r-mugs', 'table', [H(-0.55, 0.17, 0, { want: 'drink', at: 'table' }), H(0.73, 0.14, 0, { want: 'drink', at: 'table' }), H(0.04, -0.6, 90, { want: 'drink', at: 'table' })],
+    { of: 'round', lean: { games: 0.8 }, min: 2 }),
+  // a long table: a setting for each seat along it, a drink and a dish 0.55 m apart
+  set('KS-l-meal', 'table', [H(-2.0, 0.62, 0, { want: 'drink', at: 'table' }), H(-1.45, 0.57, 45, { want: 'food', at: 'table' }), H(-0.95, -0.66, 180, { want: 'drink', at: 'table' }),
+    H(-1.5, -0.68, 0, { want: 'food', at: 'table' }), H(1.1, 0.64, 0, { want: 'drink', at: 'table' }), H(1.66, 0.6, 203, { want: 'food', at: 'table' }),
+    H(1.9, -0.67, 180, { want: 'drink', at: 'table' }), H(1.25, -0.69, 0, { want: 'food', at: 'table' })], { of: 'long', lean: { food: 0.5 }, min: 4 }),
+  // a feast laid out on the dining table with the serving tray, drinks round it, the tray left on a stand beside it
+  // (third stage; the feast pieces, 266 in 65 corpus builds, 150 on tables)
+  // (the feast where the table's top is free: in the middle or to one end, the drinks and the tray round it)
+  ...[[0, 0], [-0.45, 0.1], [0.45, -0.1], [-0.5, -0.12], [0.5, 0.12]].map(([fx, fz]) => set('KS-feast', 'table', [sp('FeastMeadows', fx, 0.8, fz, 0, 'anchor', { key: true, feast: true }),
+    H(fx > 0 ? -0.35 : 0.35, fz > 0 ? -0.3 : 0.3, 45, { want: 'drink', at: 'table' }), H(fx > 0 ? -0.8 : 0.85, fz > 0 ? 0.25 : -0.28, 225, { want: 'drink', at: 'table' }),
+    H(fx > 0 ? -0.75 : 0.9, fz > 0 ? -0.3 : 0.3, 0, { want: 'tray', at: 'table' })], { of: 'table', lean: { food: 1.4, wealth: 0.3 }, stage: 3, feast: true, min: 1 })),
+  set('KS-feast-long', 'table', [sp('FeastMeadows', -1.4, 0.8, 0, 0, 'anchor', { key: true, feast: true }), sp('FeastMeadows', 1.4, 0.8, 0.05, 0, 'anchor', { feast: true }),
+    H(-0.2, 0.55, 0, { want: 'drink', at: 'table' }), H(0.3, -0.6, 180, { want: 'drink', at: 'table' }), H(0.05, 0.1, 90, { want: 'tray', at: 'table' })],
+  { of: 'long', lean: { food: 1, wealth: 0.4 }, stage: 3, feast: true, min: 2 }),
+  // on a bench or a chair: a mug set down, now and then a dish or a helmet beside it
+  set('KS-b-mug', 'bench', [H(0.6, 0.03, 45, { want: 'drink', at: 'bench' })], { lean: { messy: 0.6, food: 0.3 } }),
+  set('KS-b-two', 'bench', [H(-0.6, 0.06, 0, { want: 'drink', at: 'bench' }), H(0.2, 0.08, 90, { at: 'bench' })], { lean: { messy: 0.6, collect: 0.3 } }),
+  set('KS-c-mug', 'seat', [H(0.08, -0.05, 45, { want: 'drink', at: 'bench' })], { lean: { messy: 0.8 } }),
+  // on a chest or a barrel's lid
+  set('KS-ch-food', 'chest', [H(-0.3, 0.02, 90, { want: 'food', at: 'chest' }), H(0.3, -0.04, 0, { at: 'chest' })], { lean: { food: 0.6, messy: 0.4 } }),
+  set('KS-ch-three', 'chest', [H(-0.35, 0.05, 45, { at: 'chest' }), H(0, -0.06, 90, { want: 'food', at: 'chest' }), H(0.33, 0.04, 0, { want: 'drink', at: 'chest' })], { lean: { messy: 0.7, food: 0.4 }, min: 2 }),
+  set('KS-ch-one', 'chest', [H(0.1, 0, 22, { at: 'chest' })], { lean: { messy: 0.3, collect: 0.3 } }),
+  set('KS-ch-shield', 'chest', [H(-0.2, 0, 11, { want: 'shield', at: 'chest' }), H(0.35, 0.05, 90, { want: 'food', at: 'chest' })], { lean: { collect: 0.6 } }),
+  // the wall over a workbench, a bench, a bed, a table, a chest, by the hearth or the door (the corpus's wall stands sit
+  // at 1.3 to 2.3 m here, about a metre apart; kept between the 2x2 wall's bars by the fitter)
+  set('KS-w-tools', 'wall', [W(-0.55, 1.55, { want: 'tool' }), W(0, 1.62, { want: 'tool' }), W(0.55, 1.55, { want: 'tool' })], { ctx: ['workbench', 'chest', 'door', 'plain'], lean: { crafts: 1.2 }, min: 2 }),
+  set('KS-w-farm', 'wall', [W(-0.35, 1.55, { want: 'farm' }), W(0.35, 1.6, { want: 'farm' })], { ctx: ['door', 'chest', 'plain'], lean: { plants: 1.2 }, min: 1 }),
+  set('KS-w-arms', 'wall', [W(0, 1.75, { want: 'shield', at: 'wall' }), W(-0.6, 1.65, { want: 'weapon' }), W(0.6, 1.65, { want: 'weapon' })], { ctx: ['table', 'chest', 'bench', 'hearth', 'plain'], lean: { collect: 1, wealth: 0.5 }, min: 2 }),
+  set('KS-w-shields', 'wall', [W(-0.9, 1.95, { want: 'shield' }), W(0, 2.0, { want: 'shield' }), W(0.9, 1.95, { want: 'shield' })], { ctx: ['bench', 'table', 'hearth'], lean: { collect: 0.8, wealth: 0.6 }, min: 2 }),
+  set('KS-w-trophy2', 'wall', [W(-0.5, 1.9, { want: 'trophy' }), W(0.5, 1.95, { want: 'trophy' })], { ctx: ['bed', 'hearth', 'bench', 'table', 'plain'], lean: { collect: 1.2 }, min: 1 }),
+  set('KS-w-trophy3', 'wall', [W(-0.95, 1.8, { want: 'trophy' }), W(0, 2.05, { want: 'trophy' }), W(0.95, 1.8, { want: 'trophy' })], { ctx: ['hearth', 'bench', 'plain'], lean: { collect: 1.4, wealth: 0.3 }, min: 2 }),
+  set('KS-w-one', 'wall', [W(0, 1.75, {})], { ctx: ['bed', 'door', 'chest', 'table', 'bench', 'hearth', 'workbench', 'plain'], lean: {} }),
+  set('KS-w-fish', 'wall', [W(-0.3, 1.75, { want: 'fishing' }), W(0.35, 1.6, { want: 'fish' })], { ctx: ['door', 'hearth', 'chest', 'plain'], lean: { food: 0.6 }, min: 2 }),
+  // shelves: a ledge on the wall with stands on it (pantry, meads, herbs, curios), two ledges for a cluttered house
+  set('KS-s-pantry', 'wall', [sp('wood_ledge', 0, 1.45, 0.3, 0, 'wall', { key: true }), sp('itemstandh', -0.32, 1.5, 0.3, 90, 'on', { on: 0, want: 'food', at: 'shelf' }),
+    sp('itemstandh', 0.02, 1.5, 0.33, 0, 'on', { on: 0, want: 'food', at: 'shelf' }), sp('itemstandh', 0.33, 1.5, 0.28, 45, 'on', { on: 0, want: 'drink', at: 'shelf' })],
+  { ctx: ['table', 'chest', 'hearth', 'plain'], lean: { food: 1, messy: 0.3 }, min: 3 }),
+  set('KS-s-meads', 'wall', [sp('wood_ledge', 0, 1.6, 0.3, 0, 'wall', { key: true }), sp('itemstandh', -0.35, 1.65, 0.3, 90, 'on', { on: 0, want: 'drink', at: 'shelf' }),
+    sp('itemstandh', 0, 1.65, 0.3, 90, 'on', { on: 0, want: 'drink', at: 'shelf' }), sp('itemstandh', 0.35, 1.65, 0.3, 90, 'on', { on: 0, want: 'drink', at: 'shelf' })],
+  { ctx: ['table', 'bench', 'hearth', 'plain'], lean: { food: 0.6, games: 0.4 }, min: 3 }),
+  set('KS-s-herbs', 'wall', [sp('wood_ledge', 0, 1.5, 0.3, 0, 'wall', { key: true }), sp('itemstandh', -0.3, 1.55, 0.25, 68, 'on', { on: 0, want: 'herbs', at: 'shelf' }),
+    sp('itemstandh', 0.0, 1.55, 0.35, 68, 'on', { on: 0, want: 'herbs', at: 'shelf' }), sp('Candle_resin', 0.32, 1.55, 0.3, 0, 'on', { on: 0 })], { ctx: ['table', 'chest', 'plain'], lean: { plants: 1.2 }, min: 2 }),
+  set('KS-s-curios', 'wall', [sp('wood_ledge', 0, 1.65, 0.3, 0, 'wall', { key: true }), sp('itemstandh', -0.3, 1.7, 0.3, 0, 'on', { on: 0, want: 'rare', at: 'shelf' }),
+    sp('itemstandh', 0.05, 1.7, 0.3, 315, 'on', { on: 0, want: 'hat', at: 'shelf' }), sp('itemstandh', 0.35, 1.7, 0.3, 180, 'on', { on: 0, at: 'shelf' })],
+  { ctx: ['bed', 'bench', 'table', 'plain'], lean: { collect: 1, wealth: 0.6 }, min: 2 }),
+  set('KS-s-two', 'wall', [sp('wood_ledge', 0, 1.15, 0.3, 0, 'wall', { key: true }), sp('wood_ledge', 0, 1.8, 0.3, 0, 'wall'),
+    sp('itemstandh', -0.3, 1.2, 0.3, 45, 'on', { on: 0, at: 'shelf' }), sp('itemstandh', 0.25, 1.2, 0.3, 0, 'on', { on: 0, at: 'shelf' }),
+    sp('itemstandh', -0.2, 1.85, 0.3, 90, 'on', { on: 1, at: 'shelf' }), sp('itemstandh', 0.3, 1.85, 0.3, 180, 'on', { on: 1, at: 'shelf' })],
+  { ctx: ['chest', 'table', 'plain'], lean: { messy: 0.8, busy: 0.4 }, stage: 3, min: 4 }),
+  set('KS-s-arms', 'wall', [sp('wood_ledge', 0, 1.4, 0.3, 0, 'wall', { key: true }), sp('itemstandh', -0.25, 1.45, 0.3, 90, 'on', { on: 0, want: 'weapon', at: 'shelf' }),
+    sp('itemstandh', 0.25, 1.45, 0.3, 270, 'on', { on: 0, want: 'weapon', at: 'shelf' })], { ctx: ['workbench', 'chest', 'plain'], lean: { collect: 0.7, crafts: 0.4 }, min: 2 }),
+  // a mantel by the hearth: a ledge with drinks, a trophy and a candle (the corpus's stands by the fire hold mead)
+  set('KS-mantel', 'wall', [sp('wood_ledge', 0, 1.4, 0.3, 0, 'wall', { key: true }), sp('itemstandh', -0.35, 1.45, 0.3, 90, 'on', { on: 0, want: 'drink', at: 'mantel' }),
+    sp('itemstandh', 0.0, 1.45, 0.3, 0, 'on', { on: 0, at: 'mantel' }), sp('Candle_resin', 0.35, 1.45, 0.3, 0, 'on', { on: 0 })], { ctx: ['hearth'], lean: { comfort: 0.5 }, min: 2 }),
+  // up in the rafters: a beam set high on the wall, at the roof's foot, with helmets, trophies, fish or herbs on it
+  // (the corpus's stands on beams over 2.3 m; most houses here have no tie beam across a room to put them on)
+  // (a beam where the wall's face is plain that high, else a plank shelf, which may slide up or down past the 2x2
+  // wall's bars)
+  set('KS-hi-beam', 'wall', [sp('wood_beam_1', 0, 2.6, 0.1, 0, 'wall', { key: true }), sp('itemstandh', -0.25, 2.7, 0.1, 90, 'on', { on: 0, at: 'rafter' }),
+    sp('itemstandh', 0.25, 2.7, 0.1, 0, 'on', { on: 0, at: 'rafter' })], { ctx: ['bed', 'bench', 'table', 'hearth', 'chest', 'plain', 'door'], lean: { collect: 0.5, plants: 0.3 }, high: 3.15, min: 2 }),
+  set('KS-hi-shelf', 'wall', [sp('wood_ledge', 0, 2.3, 0.3, 0, 'wall', { key: true }), sp('itemstandh', -0.3, 2.35, 0.3, 90, 'on', { on: 0, at: 'rafter' }),
+    sp('itemstandh', 0.05, 2.35, 0.32, 0, 'on', { on: 0, at: 'rafter' }), sp('itemstandh', 0.35, 2.35, 0.28, 45, 'on', { on: 0, at: 'rafter' })],
+  { ctx: ['bed', 'bench', 'table', 'hearth', 'chest', 'plain', 'door'], lean: { collect: 0.5, plants: 0.3 }, high: 2.85, min: 2 }),
+  set('KS-hi-herbs', 'wall', [sp('wood_ledge', 0, 2.3, 0.3, 0, 'wall', { key: true }), sp('itemstandh', -0.32, 2.35, 0.3, 68, 'on', { on: 0, want: 'herbs', at: 'rafter' }),
+    sp('itemstandh', 0, 2.35, 0.3, 68, 'on', { on: 0, want: 'herbs', at: 'rafter' }), sp('itemstandh', 0.32, 2.35, 0.3, 68, 'on', { on: 0, want: 'herbs', at: 'rafter' })],
+  { ctx: ['table', 'hearth', 'chest', 'plain'], lean: { plants: 0.9, food: 0.4 }, high: 2.85, min: 2 }),
+  // on a low wall's top (a counter, a divider, the half wall behind a bench): the corpus's counter stands are mostly
+  // one alone (151 of 200 groups), now and then a pair, three or a row of four drinks; they hold drink, food, a hat, a
+  // trophy or a weapon (data/stands-corpus.json counter, anchorKinds itemstandh|counter)
+  set('KS-co-one', 'counter', [H(0, 0, 30, { at: 'counter' })], { lean: {} }),
+  set('KS-co-two', 'counter', [H(-0.22, 0, 0, { want: 'drink', at: 'counter' }), H(0.2, 0, 45, { at: 'counter' })], { lean: { messy: 0.4, food: 0.3 }, min: 2 }),
+  set('KS-co-three', 'counter', [H(-0.35, 0, 90, { want: 'food', at: 'counter' }), H(0, 0, 0, { want: 'drink', at: 'counter' }), H(0.33, 0, 45, { at: 'counter' })], { lean: { food: 0.6, messy: 0.3 }, min: 3, len: 1.0 }),
+  set('KS-co-row', 'counter', [H(-0.45, 0, 90, { want: 'drink', at: 'counter' }), H(-0.15, 0, 90, { want: 'drink', at: 'counter' }), H(0.15, 0, 90, { want: 'drink', at: 'counter' }),
+    H(0.45, 0, 90, { want: 'drink', at: 'counter' })], { lean: { games: 0.6, food: 0.4 }, min: 3, len: 1.2 }),
+  // a heap on the floor against a wall (a pantry corner): stands set into one another, food or drink (the corpus's heaps
+  // of stands stand on the floor more than anywhere, 168 of 376; data/stands-corpus.json stacks pileOn), made by the
+  // households that heap things (pileStands)
+  set('KS-f-heap', 'wall', [sp('itemstandh', 0, 0, 0.28, 30, 'floor', { want: 'food@stand' })], { ctx: ['plain', 'chest', 'table', 'hearth', 'door'], lean: { food: 0.8, messy: 0.5 }, heap: true, min: 1 }),
+  // a mug or a dish left on the floor by a bed or a seat (a cluttered house)
+  set('KS-f-mug', 'bed', [sp('itemstandh', 1.15, 0, 0.55, 30, 'floor', { want: 'drink', at: 'floor' })], { lean: { messy: 1.4 }, stage: 3 }),
+];
+// Sets of wall stands also come a little higher and lower, so one of them finds the plain wall between a wall's bars
+// (the fitter slides each up to 0.4 m from where it is put; a set's stands keep together)
+for (const s0 of SETS.slice()) {
+  if (s0.anchor !== 'wall' || s0.high || !s0.pieces.every(q => q.n === 'itemstand')) continue;
+  for (const dy of [-0.4, 0.4]) {
+    const ys = s0.pieces.map(q => q.y + dy);
+    if (Math.min(...ys) < 1.0 || Math.max(...ys) > 2.3) continue;
+    SETS.push(Object.assign({}, s0, { pieces: s0.pieces.map(q => Object.assign({}, q, { y: +(q.y + dy).toFixed(2) })) }));
+  }
+}
+// D-127 (Tyler, 2026-11-11): "if the corpus builders do it, its allowed and you should mirror their work". Corpus
+// builders hang wall stands into what shows of the wall (the 2x2 wood wall's planks, a stone wall's bevels): of 4,318
+// wall stands measured, the depth into what is behind them is 0 up to the 75th percentile and 4 cm at the 90th
+// (data/stands-corpus.json clips, lab/mine_stands.js: the stand's shape into the collider of what is behind it). A stand
+// hung that way against the collider goes into what shows of the wall by the depth of its relief: 4 to 11 cm on the
+// generator's walls (measured over the d3 houses of lab/test_stands.js). So a wall stand of these sets may go up to
+// WALL_SHOW into what shows (the fitter keeps the depth used on the stand as p.wclip, which lib/blueprint.js writes in
+// '#VillheimClips', D-098), and dressTops refuses one that goes more than WALL_COLL into a collider.
+const WALL_SHOW = 0.12, WALL_COLL = 0.04;
+for (const s0 of SETS) if (s0.anchor === 'wall') s0.clips = s0.pieces.map((q, i) => (q.n === 'itemstand' ? [i, 'w', WALL_SHOW] : null)).filter(Boolean);
+// how deep a wall stand goes into the colliders of the building round it (as the corpus miner measures it)
+function intoCollider(p, idx) {
+  const SH = SHs(), Ck = Cks(), A = SH.world(p);
+  if (!A || !A.length) return 0;
+  let m = 0;
+  for (const r of idx.near(Ck.aabb(p), 0.05)) {
+    if (r.p === p || (r.p.decor && !r.p.trim)) continue;
+    const B = Ck.aabb(r.p).sol;
+    if (B && B.length) m = Math.max(m, SH.clipDepth(A, B));
+  }
+  return m;
+}
+// on the sill of a window: stands set on the wall below the opening (made for each window, see sillSet)
+const SILL = [[{ x: -0.25, want: 'herbs', yaw: 20 }, { x: 0.22, yaw: 300 }], [{ x: 0, yaw: 0 }], [{ x: -0.3, want: 'food', yaw: 90 }, { x: 0.05, want: 'drink', yaw: 0 }, { x: 0.33, want: 'herbs', yaw: 45 }]];
+// on a beam overhead: one to three stands along it, half a metre apart (helmets, trophies, fish, herbs hung to dry)
+const RAFTER = [[{ x: 0 }], [{ x: -0.3 }, { x: 0.3 }], [{ x: -0.55, want: 'herbs' }, { x: 0, want: 'herbs' }, { x: 0.55, want: 'herbs' }]];
+
+// how well a set suits a household: from 0.3 (none of what it leans on) to 1.7 and more (all of it), as kitWeight
+function leanWeight(P, s) {
+  if (!P) return 1;
+  let w = 1;
+  for (const [t, k] of Object.entries(s.lean || {})) {
+    const v = t === 'messy' ? P.clutter : t === 'austere' ? 1 - P.comfort : t in P.hobby ? P.hobby[t] : P[t];
+    if (typeof v === 'number') w *= 1 + k * (1.4 * v - 0.7);
+  }
+  return Math.max(0.05, w);
+}
+
+const TABLES = /^(piece_table|piece_table_round|piece_table_oak|piece_blackmarble_table|dvergrprops_table|piece_table_runed)$/;
+const BENCHES = /^(piece_bench01|piece_logbench01|piece_blackwood_bench01|piece_blackmarble_bench|piece_bench_runed)$/;
+const SEATS = /^(piece_chair|piece_chair02|piece_chair03|dvergrprops_stool|dvergrprops_chair|piece_chair_runed)$/;
+const CHESTS = /^(piece_chest_wood|piece_chest|piece_chest_barrel|piece_chest_blackmetal|dvergrprops_barrel|dvergrprops_crate)$/;
+const FIRES_S = /^(hearth|fire_pit|fire_pit_iron)$/;
+// the tables and what is not table dressing, as lab/essentials.js reads them for tablesDressed
+const TD_TABLES = /^(piece_table|piece_table_round|piece_table_oak|dvergrprops_table|piece_blackmarble_table|cauldron_ext3_butchertable|piece_magetable)$/;
+const TD_NOT = /^(rug_|jute_carpet|piece_chair\d*$|piece_bench01$|piece_logbench01$|piece_blackwood_bench01$|piece_blackmarble_bench$|dvergrprops_stool$|dvergrprops_chair$|piece_throne0\d$|piece_blackmarble_throne$|piece_bone_throne$|bed$|piece_bed0\d$|ashwood_bed$)/;
+// workbenches and other stations as the corpus miner reads them for a wall stand over one (lab/mine_stands.js WORK)
+const WORK_M = /^(piece_workbench|forge|piece_artisanstation|blackforge|piece_magetable|piece_stonecutter|piece_cartographytable|piece_preptable|piece_MeadCauldron|piece_cauldron|piece_butcher|piece_spinningwheel|windmill|piece_cookingstation|piece_oven|fermenter|piece_workbench_ext|forge_ext|piece_alchemy)/i;
+const WORK_S = /^(piece_workbench|forge|piece_artisanstation|blackforge|piece_stonecutter|piece_cauldron|piece_spinningwheel)/;
+const FEAST_S = { Meadows: 'FeastMeadows', 'Black Forest': 'FeastBlackforest', Swamp: 'FeastSwamps', Mountain: 'FeastMountains', Plains: 'FeastPlains',
+  Mistlands: 'FeastMistlands', Ashlands: 'FeastAshlands', 'Deep North': 'FeastMountains' };
+const ROOMS_S = ['home', 'sleeping', 'guest', 'hall', 'tavern', 'kitchen', 'temple', 'smithy', 'workshop', 'storage', 'guard', 'market'];
+
+// ---------------------------------------------------------------- how much a household shows
+// The corpus's house-like builds with stands hold a median of 19 stands (quartiles 5 and 49) and 7 distinct items (2
+// and 20): a few builds show a great deal, many show a handful (lab/mine_stands.js, data/stands-corpus.json perBuild).
+// Here that spread comes from the household and the village: a cluttered household, a collector, a well-off or cosy
+// one shows more, a tidy or plain one little; the village's culture leans it a little (a setting: the corpus is not
+// split by culture yet); and every household has its own share of chance on top. Never a fixed count per room.
+const CULTURE_SHOW = { dwarven: 1.3, 'castle-medieval': 1.25, byzantine: 1.2, lamari: 1.15, norse: 1.1, slavic: 1.1, 'middle-eastern': 1.1,
+  'norse-forest': 1.05, 'norse-highland': 0.95, mountain: 0.95, 'celtic-crannog': 0.85, 'fen-folk': 0.85, swamp: 0.9, steppe: 0.8,
+  'east-asian': 0.8, saami: 0.75 };
+const gaussS = R => { let s = 0; for (let i = 0; i < 4; i++) s += R(); return (s - 2) / 0.577; };
+function showOf(P, ctx, R) {
+  const H = (P && P.hobby) || {};
+  const clutter = P ? P.clutter : 0.45, tidy = P ? P.tidy : 0.5, wealth = P ? P.wealth : 0.4, comfort = P ? P.comfort : 0.5;
+  let s = 0.8 * (0.3 + 1.5 * clutter + 0.7 * (H.collect || 0) + 0.35 * (H.food || 0) + 0.25 * (H.plants || 0) + 0.3 * wealth + 0.2 * comfort - 0.4 * tidy);
+  s *= CULTURE_SHOW[ctx.cultureKey || ctx.culture] || 1;
+  if (P && P.plain) s *= 0.35;
+  if (ctx.type === 'tavern') s *= 1.15;
+  s *= Math.exp(0.7 * gaussS(R));
+  return Math.min(4, Math.max(0.08, s));
+}
+// A flat stand on a table may be sunk into its top so only the item shows (a third of the corpus's flat stands sit
+// over 6 cm into what they stand on). The depths are the corpus's (data/stands-corpus.json sinks: the 75th percentile
+// 9.7 cm, the 90th 21.6 cm); deeper than its 90th percentile is never used. Some households (some builders) do it,
+// most of the time; others never.
+const SINK_Q = [[0, 0.06], [0.23, 0.097], [0.69, 0.216], [1, 0.216]]; // depth over 6 cm by its share among sunk stands
+function sinkDepth(R) {
+  const u = R();
+  for (let i = 1; i < SINK_Q.length; i++) if (u <= SINK_Q[i][0]) { const [u0, d0] = SINK_Q[i - 1], [u1, d1] = SINK_Q[i]; return +(d0 + (d1 - d0) * (u - u0) / Math.max(1e-6, u1 - u0)).toFixed(3); }
+  return 0.216;
+}
+// What kind of place a set dresses: each kind gets its own share of the picks, so having more sets or more anchors of
+// one kind does not make it come up more often. The shares lean on where the corpus's stands are (data/stands-corpus.json
+// anchors, stands holding something: of flat stands table 14.9 %, shelf 17.0, ledge 10.3, mantel 9.3, counter 3.3,
+// bench 2.0, sill 1.7, rafter 1.7, chest 0.5; of wall stands wall and beam 29 %, over a workbench or bench 15, by the
+// hearth 12, over a chest 7, a table 7, a bed 4, by a door 4). The interior library and the decorator already put up
+// most of the shelf, mantel and wall stands, so this pass gives tables the largest share. Tyler, 2026-11-10: "I rarely
+// see stands on rafters. I sometimes see stands on sills. I constantly see stands on tables."
+// Read at the lid (the corpus rerun of 2026-11-11), chests carry 1.5 % of the corpus's flat stands at these places and
+// counters 6.6 %.
+const CLASS_W = { table: 1.6, wall: 1.4, shelf: 0.8, bench: 0.45, hearth: 0.3, rafter: 0.22, chest: 0.06, sill: 1.1, floor: 0.15, counter: 1.0,
+  wtable: 0.08, wbed: 0.05, wdoor: 0.2 };
+function classOf(s, an) {
+  if (s.anchor === 'table') return 'table';
+  if (s.anchor === 'bench' || s.anchor === 'seat') return 'bench';
+  if (s.anchor === 'chest') return 'chest';
+  if (s.anchor === 'counter') return 'counter';
+  if (s.anchor === 'bed' || s.heap) return 'floor';
+  if (s.anchor === 'window') return 'sill';
+  if (s.anchor === 'beam' || s.high) return 'rafter';
+  if (s.id === 'KS-mantel' || (an && an.ctxW === 'hearth')) return 'hearth';
+  // a wall set counts where the corpus miner counts it: by what stands under it
+  if (an && (an.ctxW === 'bench' || an.ctxW === 'workbench')) return 'bench';
+  if (an && an.ctxW === 'chest') return 'chest';
+  if (/^KS-s-/.test(s.id)) return 'shelf';
+  // the wall over a table, over a bed and by a door each its own share: in small rooms most wall spots are within the
+  // miner's reach of a table or a bed, and a share split only among the room's wall spots would put most there
+  if (an && an.ctxW === 'table') return 'wtable';
+  if (an && an.ctxW === 'bed') return 'wbed';
+  if (an && an.ctxW === 'door') return 'wdoor';
+  return 'wall';
+}
+const isStand = p => /^itemstandh?$/.test(p.name);
+// the chance a household puts things at each kind of place, before its traits (favLean)
+const FAV_P = { table: 0.7, wall: 0.65, shelf: 0.5, bench: 0.4, hearth: 0.25, rafter: 0.2, chest: 0.12, sill: 0.45, floor: 0.25, counter: 0.55 };
+// how a household's traits lean those chances (lib/persona.js: likes are about 0.3 to 1.8, hobbies 0 to 1): pots and
+// things on the sill, things hung up, shelves, food and drink on the table, tools by the bench
+function favLean(P, cl) {
+  if (!P) return 1;
+  const L = P.likes || {}, Hb = P.hobby || {};
+  const k = { sill: 0.4 + 0.6 * (L.sill || 0.8), rafter: 0.4 + 0.6 * (L.hung || 0.8), wall: 0.6 + 0.4 * (L.hung || 0.8) + 0.3 * (Hb.collect || 0),
+    shelf: 0.5 + 0.6 * (L.shelves || 0.8), counter: 0.6 + 0.4 * (L.shelves || 0.8) + 0.3 * (Hb.food || 0), table: 0.8 + 0.5 * (Hb.food || 0) + 0.3 * (Hb.games || 0), bench: 0.6 + 0.8 * (Hb.crafts || 0),
+    hearth: 0.6 + 0.6 * (P.comfort || 0.5), chest: 0.6 + 0.6 * (P.clutter || 0.45) }[cl];
+  return k == null ? 1 : k;
+}
+// a stand's place (lib/persona.js standAt) as one of those kinds
+const AT_CLASS = at => /^(table|sidetable)$/.test(at) ? 'table' : /^(bench|workbench|wall:bench|wall:workbench)$/.test(at) ? 'bench' : /^(chest|wall:chest)$/.test(at) ? 'chest'
+  : at === 'wall:hearth' || at === 'mantel' ? 'hearth' : at === 'rafter' ? 'rafter' : at === 'sill' ? 'sill' : at === 'shelf' ? 'shelf' : at === 'counter' ? 'counter' : 'wall';
+
+/**
+ * Dresses the house with item stands. ctx: the furnishing's context (biome, decor, persona, type). Returns the number
+ * of sets placed.
+ */
+function dressTops(b, ctx, zones, rooms) {
+  if (ctx.decor === 'd1') return 0;
+  const KB = KBs(), PS = PSs(), Ck = Cks(), D = Ds();
+  if (!PBs.decorOk('itemstandh', ctx.biome)) return 0;
+  const P = ctx.persona;
+  const R = rngS(((P ? P.salt : 7) ^ 0x57a4d5) >>> 0);
+  // how many stands the whole house shows: the household's share (showOf) of a number that grows with the floor
+  const show = showOf(P, ctx, R);
+  const roomList = (rooms || KB.roomsB(b, ctx)).filter(room => ROOMS_S.includes(room.role) && room.m.area >= 4);
+  const area = roomList.reduce((s, room) => s + room.m.area, 0);
+  const budget = Math.round(show * (8 + area / 2.8));
+  // the kinds of place the household puts things (a builder who sets every table and one who keeps to a shelf and
+  // the wall over the hearth): each kind by the corpus's share of houses with it, more of them in a house that shows
+  // more; this pass leaves the others alone. So a few places get clusters, as in the corpus, where a spread of single stands
+  // over every place would not.
+  const fav = {};
+  for (const [cl, p0] of Object.entries(FAV_P)) fav[cl] = R() < 1 - Math.pow(1 - Math.min(0.95, p0 * favLean(P, cl)), Math.sqrt(show)) ? 1 : 0;
+  // the stands already up (the decorator's and the interior library's) count toward it. Where they are more than
+  // about half of it, the household takes some away, so the rest goes to this pass's sets: those in places it does
+  // not favor first, the decorator's single stands before the stands of a library set that keeps something else (a
+  // ledge left bare, a table with its candle). A set made of stands alone stays whole.
+  const others = b.pieces.filter(p => p.decor && isStand(p));
+  const keep = Math.round(budget * 0.4);
+  {
+    const kits = new Map();
+    for (const p of b.pieces) if (p.kb) { const k = kits.get(p.kb) || { stands: 0, other: 0 }; if (isStand(p)) k.stands++; else k.other++; kits.set(p.kb, k); }
+    // (wall stands on plain wall stay: most wall spots in the generator's rooms read as over a table or a bed, and the
+    // corpus has a third of its wall stands on plain wall and beams)
+    const plainWall = p => p.name === 'itemstand' && wallAtS(b, p) === 'wall';
+    const loose = others.filter(p => !p.kb && !p.trim && !plainWall(p)), inSets = others.filter(p => p.kb && !/^KS-/.test(p.kb) && kits.get(p.kb).other > 0 && !plainWall(p));
+    const near = p => b.pieces.filter(q => Math.abs(q.x - p.x) < 2.5 && Math.abs(q.z - p.z) < 2.5 && Math.abs(q.y - p.y) < 2.5);
+    const key = (p, k) => { const favd = fav[AT_CLASS(PS.standAt(b, p, near(p)))] === 1; return { p, favd, r: R() + k + (favd ? 2 : 0) }; };
+    let have = others.length;
+    const drop = new Set();
+    const order = loose.map(p => key(p, 0)).concat(inSets.map(p => key(p, 1))).sort((a, c) => a.r - c.r);
+    // what stands where the household does not put things mostly goes, whatever the count; then more, down to the
+    // share kept
+    // (a household that shows little takes most of them away, one that shows a lot keeps most)
+    const dropP = Math.min(0.85, Math.max(0, 0.9 - 0.45 * show));
+    for (const o of order) if (!o.favd && R() < dropP) { drop.add(o.p); have--; }
+    for (const o of order) { if (have <= keep) break; if (drop.has(o.p)) continue; drop.add(o.p); have--; }
+    // and past that, for a household that shows little, whole sets of stands alone from the library (a pair of
+    // trophies, a row of shields), last
+    if (have > keep) {
+      const alone = [...new Set(others.filter(p => p.kb && !/^KS-/.test(p.kb) && kits.get(p.kb).other === 0).map(p => p.kb))].map(kb => ({ kb, r: R() })).sort((x, y) => x.r - y.r);
+      for (const g of alone) { if (have <= keep) break; for (const q of others) if (q.kb === g.kb && !drop.has(q)) { drop.add(q); have--; } }
+    }
+    // wall stands over a bed, a table, a chest, by the hearth or a door, past the corpus's share of a house's wall
+    // stands at that place (WALL_SHARE) times the household's draw (1.2 to 1.8): the extra go, a whole set at a time
+    // (the decorator's single stands one by one). The interior library and the decorator hang most of theirs over beds
+    // and tables; the corpus's builders hang most on plain wall and beams.
+    const walls = b.pieces.filter(p => p.decor && p.name === 'itemstand' && !drop.has(p) && !/^KS-/.test(p.kb || '') && !p.trim);
+    const byCtx = {};
+    for (const p of walls) { const at = wallAtS(b, p); if (WALL_SHARE[at] != null) (byCtx[at] = byCtx[at] || []).push(p); }
+    for (const [at, ps] of Object.entries(byCtx)) {
+      const allowed = Math.floor(walls.length * WALL_SHARE[at] * (1.2 + 0.6 * R()) + R());
+      const groups = [];
+      for (const p of ps) { const g = p.kb ? groups.find(x => x.kb === p.kb) : null; if (g) g.ps.push(p); else groups.push({ kb: p.kb, ps: [p], r: R() }); }
+      groups.sort((x, y) => x.r - y.r);
+      let n0 = ps.length;
+      for (const g of groups) { if (n0 <= allowed) break; for (const q of b.pieces) if (g.kb ? q.kb === g.kb : q === g.ps[0]) { if (!g.kb || isStand(q) || kits.get(g.kb).other === 0) drop.add(q); } n0 -= g.ps.length; }
+    }
+    if (drop.size) b.pieces = b.pieces.filter(p => !drop.has(p));
+  }
+  // some households sink the stands on their tables into the top, most of the time; the depth is their habit
+  const sinker = R() < 0.5, sinkShare = 0.55 + 0.4 * R(), sinkAt = sinkDepth(R);
+  const idx = KB.boxIndex(b.pieces);
+  // the same household sinks the stands already on its tables (the interior library's and the decorator's) the same way
+  if (sinker) for (const p of b.pieces) {
+    if (p.name !== 'itemstandh' || !p.decor || p.sunk || p.fclip || /^KS-/.test(p.kb || '')) continue;
+    // on a table: its top (the collider's, as the corpus miner reads it) at the stand's foot or a little over it
+    const t = idx.near(Ck.aabb(p), 0.02).find(r => { if (r.p === p || !TABLES.test(r.p.name)) return false; const o = Ck.aabb(r.p), top = o.sol ? SHs().topAt(o.sol, p.x, p.z) : null; return top != null && top - p.y > -0.03 && top - p.y < 0.03; });
+    if (!t || R() > sinkShare) continue;
+    const d = Math.min(0.216, Math.max(0.061, sinkAt + (R() - 0.5) * 0.03));
+    p.y = +(p.y - d).toFixed(3);
+    p.fclip = +(d + 0.005).toFixed(3);
+    p.sunk = true;
+  }
+  // some households heap things: two or more stands set into one another (a pile of turnips, mugs crowded together).
+  // In the corpus 21 % of house-like builds with stands have one, and 6.8 % of flat stands stand on another
+  // (data/stands-corpus.json houses.stand, anchors itemstandh.stand).
+  const heaper = R() < HEAP.houses * (P ? 0.6 + 0.8 * P.clutter : 1), heapShare = HEAP.share[0] + (HEAP.share[1] - HEAP.share[0]) * R();
+  const fires = b.pieces.filter(p => p.decor && FIRES_S.test(p.name)).map(p => ({ p, b: Ck.aabb(p) }));
+  const clutter = P ? P.clutter : 0.45, size = P ? P.size : 3;
+  const P2 = Object.assign({}, P || {}, { hobby: (P && P.hobby) || { crafts: 0.3, collect: 0.3, plants: 0.3, food: 0.3, games: 0.3, maps: 0.3 } });
+  let placed = 0, placedStands = 0;
+  // the house's wall stands by what is under them (as the miner reads it), kept up as this pass hangs more: a wall set
+  // over a table or a bed waits while those already hold more than the corpus's share of the
+  // house's wall stands (WALL_SHARE times CAPPED, and 0.4 more for some households). In small rooms nearly every wall
+  // spot is within the miner's reach of a table or a bed, so without it a room that wants many stands fills those once
+  // its plain wall is taken.
+  // what lies on tables follows one roll per table that the decorator and the library's sets share (lib/decorate.js
+  // tableDressed: the culture's corpus rate, rel.tablesDressed, 41 % of norse tables, times the household's clutter).
+  // This pass sets a bare table only where that roll says the household dresses it (a table no one has come to yet is
+  // rolled now); a table that holds something already may take more. Whether a table holds something is read as the
+  // corpus relation reads it (lab/essentials.js tablesDressed: a loose piece within 0.9 m of the table's pivot and 0.5
+  // to 1.6 m over it). (A budget per house would top up the houses under it and leave those over it, and the mean
+  // would run over the rate.)
+  const tdLoose = b.pieces.filter(q => q.decor && !q.outside && !q.yard && !TD_NOT.test(q.name) && !TD_TABLES.test(q.name));
+  const bareTable = p => !tdLoose.some(q => Math.hypot(q.x - p.x, q.z - p.z) < 0.9 && q.y - p.y >= 0.5 && q.y - p.y <= 1.6);
+  const wallN = { all: 0 }, capK = 0.4 * R();
+  for (const p of b.pieces) if (p.decor && p.name === 'itemstand') { wallN.all++; const at = wallAtS(b, p); wallN[at] = (wallN[at] || 0) + 1; }
+  for (const room of roomList) {
+    const m = room.m;
+    const inR = p => m.inside(p.x, p.z) && Math.abs(p.y - m.stand) < 0.9;
+    // the room's furniture and anchors
+    const furn = b.pieces.filter(p => p.decor && inR(p));
+    const hasOn = p => { const o = Ck.aabb(p); return furn.filter(q => q !== p && q.x > o.x0 && q.x < o.x1 && q.z > o.z0 && q.z < o.z1 && q.y > o.y1 - 0.15 && q.y < o.y1 + 0.5).length; };
+    const cands = [];
+    const add = (s, anc, w) => { if (w > 0) cands.push({ s, anc, w }); };
+    const kitAnchors = KB.anchorsOf(room, b);
+    const wallAnchors = kitAnchors.filter(an => an.anchor === 'wall');
+    // a feast at most once in a room, never where one is laid out already
+    const feasted = b.pieces.some(p => /^Feast[A-Z]/.test(p.name) && inR(p));
+    const sets = SETS.filter(s => (!s.n || size >= s.n) && (!s.feast || (ctx.decor === 'd3' && !feasted)) && (!s.heap || heaper));
+    for (const p of furn) {
+      const yaw = normS(p.yaw || 0);
+      if (TABLES.test(p.name)) {
+        // a table already set (the library's own table sets) takes nothing more, but for a feast in its middle; one
+        // with a candle or one dish may
+        const on = hasOn(p);
+        const of = /round/.test(p.name) ? 'round' : /oak|blackmarble/.test(p.name) ? 'long' : 'table';
+        const bare = bareTable(p);
+        for (const s of sets) if (s.anchor === 'table' && (s.of === of || (s.of === 'table' && of === 'long')) && (on < 2 || (s.feast && on < 5))) add(s, { anchor: 'table', x: p.x, z: p.z, yaw, of: p, akind: of, bare }, 1);
+      } else if (BENCHES.test(p.name)) {
+        if (hasOn(p)) continue;
+        for (const s of sets) if (s.anchor === 'bench') add(s, { anchor: 'bench', x: p.x, z: p.z, yaw, of: p }, 0.5);
+      } else if (SEATS.test(p.name)) {
+        if (hasOn(p)) continue;
+        for (const s of sets) if (s.anchor === 'seat') add(s, { anchor: 'seat', x: p.x, z: p.z, yaw, of: p }, 0.35);
+      } else if (CHESTS.test(p.name)) {
+        if (hasOn(p) || p.y > m.stand + 0.3) continue;
+        for (const s of sets) if (s.anchor === 'chest') add(s, { anchor: 'chest', x: p.x, z: p.z, yaw, of: p }, 0.45);
+      } else if (/^(bed|piece_bed02|ashwood_bed)$/.test(p.name)) {
+        for (const s of sets) if (s.anchor === 'bed') add(s, { anchor: 'bed', x: p.x, z: p.z, yaw, of: p }, 0.6);
+      }
+    }
+    // low walls: their top as a counter
+    for (const c of countersIn(b, m, idx)) for (const s of sets) if (s.anchor === 'counter' && (!s.len || c.len >= s.len)) add(s, { anchor: 'counter', x: c.p.x, z: c.p.z, yaw: normS(c.p.yaw || 0), of: c.p }, 1);
+    // wall spots by what stands in front of them (the corpus's wall stands over a workbench, a bed, the hearth...)
+    for (const an of wallAnchors) {
+      // what is under the spot as the corpus miner reads it (wallAtS), so this pass's shares compare with the corpus's
+      const at = wallAtS(b, { name: 'itemstand', x: an.x, y: m.stand + 1.75, z: an.z, yaw: an.yaw });
+      const ctxW = at === 'wall' ? 'plain' : at.slice(5);
+      for (const s of sets) {
+        if (s.anchor !== 'wall' || !s.ctx || !s.ctx.includes(ctxW)) continue;
+      if (s.heap && !/^(home|kitchen|storage|tavern)$/.test(room.role)) continue;
+        // plain wall the whole width of the set and a little more (no window, door or opening, not past the wall's end)
+        const half = Math.max(...s.pieces.map(q => Math.abs(q.x))) + 0.35;
+        const st = D._int.stretch(an.face, an.t - half, an.t + half);
+        if ([...st.ks].some(k => k !== 'wall')) continue;
+        // and clear of the wall's ends (the next wall round the corner, a partition's end)
+        if (an.t - half - 0.6 < an.face.a0 || an.t + half + 0.6 > an.face.a1) continue;
+        if (s.high && m.ceilAt(an.x + Math.sin(an.yaw * Math.PI / 180) * 0.15, an.z + Math.cos(an.yaw * Math.PI / 180) * 0.15) - m.stand < s.high) continue;
+        add(s, Object.assign({ ctxW }, an), (CTX_W[ctxW] || 0.4) * (s.high ? 0.6 * (P ? 0.4 + P.likes.hung * 0.6 : 1) : 1));
+      }
+    }
+    // windows: their sill
+    for (const an of kitAnchors.filter(a => a.anchor === 'window')) {
+      const s = sillSet(an, m, idx, R);
+      if (s) add(s, Object.assign({}, an, { of: s._of }), 1.2 * (P ? 0.4 + P.likes.sill * 0.8 : 1));
+    }
+    // beams overhead
+    for (const bm of beamsOver(b, m, idx)) {
+      const s = rafterSet(bm, R);
+      add(s, { anchor: 'beam', x: bm.p.x, z: bm.p.z, yaw: normS(bm.p.yaw || 0), of: bm.p }, 0.7 * (P ? 0.4 + P.likes.hung * 0.6 : 1));
+    }
+    if (!cands.length) continue;
+    // each kind of place its own share of the picks, shared among its candidates
+    const inClass = {};
+    for (const c of cands) { c.cl = classOf(c.s, c.anc); inClass[c.cl] = (inClass[c.cl] || 0) + c.w; }
+    for (const c of cands) c.w *= (CLASS_W[c.cl] || 0.5) * (fav[c.cl] == null ? 1 : fav[c.cl]) / inClass[c.cl] * leanWeight(P2, c.s) * (c.s.feast ? 0.12 : 1);
+    // a bare table the household's roll says it dresses (a dining set whose top did not fit) is set first, one set
+    // each, whatever the room's count and the places the household favors, and shows from the table's own stage
+    const owed = cands.filter(c => c.anc.anchor === 'table' && c.anc.bare && c.anc.of.td === true && !c.s.feast);
+    for (let k = cands.length - 1; k >= 0; k--) if (!(cands[k].w > 0) && !owed.includes(cands[k])) cands.splice(k, 1);
+    if (!cands.length) continue;
+    // how many stands this room shows: its share of the house's, less what stands here already; a share at d2, the
+    // rest at d3
+    const inRoom = b.pieces.filter(p => p.decor && isStand(p) && m.inside(p.x, p.z) && p.y > m.stand - 0.3 && p.y < m.stand + 3.5).length;
+    const want3 = Math.round(budget * m.area / Math.max(1, area) - inRoom + (R() - 0.5) * 1.5);
+    if (want3 < 1 && !owed.length) continue;
+    const want2 = Math.round(want3 * (0.4 + 0.25 * R()));
+    // (tries grow with what the room wants: with the essentials' wall seats and stacked chests in, more of a room's
+    // spots are taken, and a tavern room ran out of its 80 tries with most of its sets unplaced)
+    const maxTries = Math.max(80, Math.min(240, want3 * 6));
+    let n = 0, tries = 0, got3 = 0;
+    const usedAnc = [], usedSet = {};
+    while ((got3 < want3 || owed.length) && tries < maxTries && cands.length) {
+      tries++;
+      let pick = null;
+      if (owed.length) {
+        pick = owed.splice(Math.floor(R() * owed.length), 1)[0];
+        if (!cands.includes(pick) || usedAnc.some(u => u.of === pick.anc.of)) continue;
+      } else {
+        const wt = c => c.w / (1 + 1.5 * (usedSet[c.s.id] || 0));
+        let tot = 0;
+        for (const c of cands) tot += wt(c);
+        let r = R() * tot;
+        pick = cands[cands.length - 1];
+        for (const c of cands) { r -= wt(c); if (r <= 0) { pick = c; break; } }
+      }
+      const owes = pick.anc.anchor === 'table' && pick.anc.bare && pick.anc.of.td === true;
+      cands.splice(cands.indexOf(pick), 1);
+      const an = pick.anc;
+      if (usedAnc.some(u => (an.of && u.of === an.of) || (an.anchor === u.anchor && Math.hypot(u.x - an.x, u.z - an.z) < (an.anchor === 'wall' ? 1.6 : 0.6)))) continue;
+      if (an.anchor === 'wall' && wallBusy(an, idx, m, pick.s)) continue;
+      if (an.anchor === 'table' && an.bare && !D.tableDressed(an.of, R, ctx.culture || ctx.cultureKey, P)) continue;
+      if (an.ctxW) {
+        const at = an.ctxW === 'plain' ? 'wall' : `wall:${an.ctxW}`, k = pick.s.pieces.filter(q => q.n === 'itemstand').length;
+        if (CAPPED[at] && (wallN[at] || 0) + k > (wallN.all + k) * WALL_SHARE[at] * (CAPPED[at] + capK) + 0.5) continue;
+      }
+      const s = pick.s;
+      if (s.feast && !PBs.decorOk(FEAST_S[ctx.biome] || 'FeastMeadows', ctx.biome)) continue;
+      let got = null;
+      for (const mir of R() < 0.5 ? [false, true] : [true, false]) { got = KB.fit(b, ctx, room, idx, zones, an, s, mir, fires); if (got) break; }
+      if (DEBUG_S) {
+        let k = `${s.id} ${got ? 'ok' : 'why' + KB.why()}`;
+        if (!got && [13, 17].includes(KB.why())) { const r = KB._fitDebug(b, Object.assign({}, ctx, { zones }), room, an, s); k += ` ${r.piece} ${r.why === 17 ? r.q.replace(/[0-9. ]+$/, '') : D.oneWhy ? D.oneWhy() : ''}`; }
+        DEBUG_S[k] = (DEBUG_S[k] || 0) + 1;
+      }
+      if (!got) continue;
+      // a wall stand into the wall's relief stays against its collider, as the corpus's builders hang them (D-127)
+      if (got.some(p => p.name === 'itemstand' && p.wclip && intoCollider(p, idx) > WALL_COLL + 0.005)) continue;
+      // never before what it stands on (a bench of a set that comes at the third stage)
+      const ds = owes ? Math.max(2, an.of.ds || 0) : Math.max(s.stage === 3 || got3 >= want2 ? 3 : 2, (an.of && an.of.decor && an.of.ds) || 0);
+      // a flat stand on a wall's or a beam's top sits on what shows of it (the half wall's planks stand a few
+      // centimeters over its collider), as the pool audit's mountClip measures it
+      const Me = Mes();
+      if (Me) for (const p of got) {
+        if (p.name !== 'itemstandh') continue;
+        const A = Me.world(p);
+        if (!A || !A.length) continue;
+        let deep = 0;
+        for (const r of idx.near(Cks().aabb(p), 0.1)) {
+          if (r.p.decor && !r.p.trim) continue;
+          if (!['wall', 'halfwall', 'window', 'beam', 'pole', 'gable', 'door'].includes(PBs.piece(r.p.name).role)) continue;
+          const B = Me.world(r.p);
+          if (B) deep = Math.max(deep, Me.deepest(A, B));
+        }
+        if (deep > 0.01) p.y = +(p.y + deep + 0.005).toFixed(3);
+      }
+      // stands on a table sunk into its top, so only the item shows; each is a clip made on purpose, as deep as the
+      // corpus's builders sink them, marked in the file's '#VillheimClips' (furniture depth, lib/blueprint.js; D-098)
+      if (sinker && an.anchor === 'table') for (const p of got) {
+        if (p.name !== 'itemstandh' || R() > sinkShare) continue;
+        const d = Math.min(0.216, Math.max(0.061, sinkAt + (R() - 0.5) * 0.03));
+        p.y = +(p.y - d).toFixed(3);
+        p.fclip = +(d + 0.005).toFixed(3);
+        p.sunk = true;
+      }
+      // a household that heaps things sets more stands into some of these (a heap on the floor always)
+      if (heaper) for (const p of got.slice()) {
+        if (p.name !== 'itemstandh' || (!s.heap && R() > heapShare)) continue;
+        for (const q of pileStands(b, idx, m, p, R, s.heap)) { got.push(q); }
+      }
+      for (const p of got) {
+        p.ds = ds;
+        // a wall stand's place, from the wall's context, where its set did not say
+        if (/^itemstandh?$/.test(p.name) && !(p.want && /@./.test(p.want))) {
+          const at = an.ctxW ? (an.ctxW === 'plain' ? 'wall' : `wall:${an.ctxW}`) : an.anchor === 'beam' ? 'rafter' : an.anchor === 'window' ? 'sill' : '';
+          if (at) p.want = `${(p.want || '').split('@')[0]}@${at}`;
+        }
+        b.pieces.push(p); idx.add(p);
+      }
+      usedAnc.push(an);
+      usedSet[s.id] = (usedSet[s.id] || 0) + 1;
+      if (s.feast) for (let k = cands.length - 1; k >= 0; k--) if (cands[k].s.feast) cands.splice(k, 1);
+      got3 += got.filter(isStand).length; placedStands += got.filter(isStand).length;
+      if (an.ctxW) { const at = an.ctxW === 'plain' ? 'wall' : `wall:${an.ctxW}`, k = got.filter(p => p.name === 'itemstand').length; wallN.all += k; wallN[at] = (wallN[at] || 0) + k; }
+      n++; placed++;
+    }
+  }
+  if (placed) b.notes.push(`${placed} sets of things on stands: on tables, benches, chests, shelves, sills, beams and walls.`);
+  return placed;
+}
+
+// The corpus's wall stands by what is under them, as a share of those at a known place (anchors: plain wall and
+// beams 1,405 of 4,259, over a workbench or bench 719, by the hearth 558, a rafter 533, over a chest 333, a table 328,
+// a bed 208, by a door 175)
+const CAPPED = { 'wall:table': 1.3, 'wall:bed': 1.0 };
+const WALL_SHARE = { 'wall:bed': 208 / 4259, 'wall:table': 328 / 4259, 'wall:chest': 333 / 4259, 'wall:hearth': 558 / 4259, 'wall:door': 175 / 4259,
+  'wall:workbench': 578 / 4259, 'wall:bench': 141 / 4259 };
+// What is under a wall stand, as the corpus miner reads it (lab/mine_stands.js), so the shares compare: furniture
+// standing on the floor round the point half a metre out from the stand (0.9 m, in the miner's 2 m grid cells); then a
+// fire within 2.2 m; then a door within 1.3 m.
+function wallAtS(b, p) {
+  const Ck = Cks(), y = p.yaw * Math.PI / 180, fx = Math.sin(y), fz = Math.cos(y);
+  // which side the wall is on: the first of 5 to 30 cm behind the stand, then in front of it, with structure there
+  const solid = (x, z) => b.pieces.some(q => !q.decor && q !== p && (() => { const o = Ck.aabb(q); return o.x0 <= x && o.x1 >= x && o.z0 <= z && o.z1 >= z && o.y0 <= p.y && o.y1 >= p.y; })());
+  let side = 1;
+  for (const d of [0.05, 0.1, 0.18, 0.3, -0.05, -0.1, -0.18, -0.3]) if (solid(p.x - fx * d, p.z - fz * d)) { side = Math.sign(d); break; }
+  const ox = p.x + fx * 0.5 * side, oz = p.z + fz * 0.5 * side;
+  // the floor it is over: the highest room floor under it
+  const rooms = (b.rooms || []).filter(q => p.x > q.x0 - 0.3 && p.x < q.x1 + 0.3 && p.z > q.z0 - 0.3 && p.z < q.z1 + 0.3 && q.y <= p.y - 0.3);
+  const ft = rooms.length ? Math.max(...rooms.map(q => q.y)) : p.y - 1.8;
+  // the miner's own reach (lib/checks.js index): any piece in the 2 m grid cells the square touches, at those heights
+  const C = v => Math.floor(v / 2);
+  const box = (q, x, z, r, y0, y1) => { const o = Ck.aabb(q); return C(o.x0) <= C(x + r) && C(o.x1) >= C(x - r) && C(o.z0) <= C(z + r) && C(o.z1) >= C(z - r) && o.y1 > y0 && o.y0 < y1 ? o : null; };
+  const under = b.pieces.filter(q => q !== p && !/^itemstand/.test(q.name)).filter(q => { const o = box(q, ox, oz, 0.9, ft - 0.1, p.y - 0.1); return o && o.y0 < ft + 0.4; });
+  const has = t => under.some(q => t(q.name, PBs.piece(q.name).role));
+  if (has(n => WORK_M.test(n))) return 'wall:workbench';
+  if (has((n, r) => r === 'table')) return 'wall:table';
+  if (has((n, r) => r === 'seat' && /bench|sofa/i.test(n))) return 'wall:bench';
+  if (has((n, r) => r === 'bed')) return 'wall:bed';
+  if (b.pieces.some(q => (/^(hearth|fire_pit|bonfire|piece_brazier|piece_groundtorch)/.test(q.name) || PBs.piece(q.name).role === 'fire') && box(q, p.x, p.z, 2.2, ft - 0.2, ft + 0.6))) return 'wall:hearth';
+  if (has((n, r) => r === 'storage')) return 'wall:chest';
+  if (b.pieces.some(q => PBs.piece(q.name).role === 'door' && box(q, p.x, p.z, 1.3, ft, ft + 2))) return 'wall:door';
+  return 'wall';
+}
+// How often this pass dresses a wall spot by what stands in front of it. The corpus's wall stands (anchors): plain
+// wall and beams 1,405, over a workbench or bench 719, by the hearth 558, over a chest 333, a table 328, a bed 208, by
+// a door 175. The library's and the decorator's wall stands already sit mostly over tables and beds, so this pass leans
+// to plain wall.
+const CTX_W = { plain: 0.9, workbench: 0.18, bench: 0.12, hearth: 0.4, chest: 0.35, table: 0.05, bed: 0.03, door: 0.45 };
+// Is a wall spot taken: something hung within 0.9 m either side of the set at 1.0 to 2.5 m, or tall furniture in front
+function wallBusy(an, idx, m, s) {
+  const half = Math.max(...s.pieces.map(q => Math.abs(q.x))) + 0.6;
+  const ux = Math.cos(an.yaw * Math.PI / 180), uz = -Math.sin(an.yaw * Math.PI / 180), nx = Math.sin(an.yaw * Math.PI / 180), nz = Math.cos(an.yaw * Math.PI / 180);
+  const xs = [an.x - ux * half, an.x + ux * half, an.x + nx * 0.6], zs = [an.z - uz * half, an.z + uz * half, an.z + nz * 0.6];
+  const box = { x0: Math.min(...xs) - 0.05, x1: Math.max(...xs) + 0.05, z0: Math.min(...zs) - 0.05, z1: Math.max(...zs) + 0.05 };
+  return idx.near(box, 0).some(r => r.p.decor && PBs.piece(r.p.name).role !== 'rug' && r.b.y1 > m.stand + 1.1 && r.b.y0 < m.stand + 2.5 &&
+    r.b.x0 < box.x1 && r.b.x1 > box.x0 && r.b.z0 < box.z1 && r.b.z1 > box.z0);
+}
+// A window's sill: the wall piece under the opening, its top within reach (0.6 to 1.5 m), and stands on it.
+function sillSet(an, m, idx, R) {
+  const f = an.face;
+  if (!f || !an.w) return null;
+  const st = Ds()._int.stretch(f, an.t - 0.3, an.t + 0.3);
+  if (!isFinite(st.top) || st.top < 0.55 || st.top > 1.5) return null;
+  // the piece the sill is: structure under the opening at the wall's middle line
+  const x = an.x - f.nx * f.ht, z = an.z - f.nz * f.ht, top = m.stand + st.top;
+  // the highest top there under the opening
+  const under = idx.near({ x0: x - 0.05, x1: x + 0.05, z0: z - 0.05, z1: z + 0.05 }, 0)
+    .filter(r => !r.p.decor && ['wall', 'halfwall', 'beam', 'window'].includes(r.b.info.role) && Math.abs(r.b.y1 - top) < 0.15 && r.b.x0 < x && r.b.x1 > x && r.b.z0 < z && r.b.z1 > z)
+    .sort((p, q) => q.b.y1 - p.b.y1)[0];
+  if (!under) return null;
+  // spots across the opening, 0.3 m in from its sides; one to three of them, the household's pick
+  const spots = [];
+  for (let x = -an.w / 2 + 0.3; x <= an.w / 2 - 0.3 + 0.01; x += 0.25) spots.push(+x.toFixed(2));
+  if (!spots.length) return null;
+  const k = Math.min(spots.length, 1 + Math.floor(R() * 2.4)), first = Math.floor(R() * Math.max(1, spots.length - (k - 1) * 2));
+  const look = SILL[Math.floor(R() * SILL.length)];
+  const pick = [];
+  for (let i = 0; i < k; i++) { const x = spots[Math.min(spots.length - 1, first + i * 2)]; if (!pick.some(q => q.x === x)) pick.push(Object.assign({}, look[i % look.length], { x })); }
+  const s = set('KS-sill', 'window', pick.map(q => sp('itemstandh', q.x, st.top, -f.ht, q.yaw || 0, 'anchor', { want: q.want, at: 'sill' })), { lean: { plants: 0.4 } });
+  s._of = under.p;
+  return s;
+}
+// Beams overhead in a room: level, at least 0.9 m long, their top 2.1 to 3.3 m over the floor, room over them for a
+// helmet or a trophy (0.55 m).
+function beamsOver(b, m, idx) {
+  const out = [];
+  for (const p of b.pieces) {
+    if (p.decor || PBs.piece(p.name).role !== 'beam' || !m.inside(p.x, p.z)) continue;
+    const q = p.q || [0, 0, 0, 1];
+    if (Math.abs(q[0]) > 0.01 || Math.abs(q[2]) > 0.01) continue;
+    const o = Cks().aabb(p);
+    if (o.y1 < m.stand + 2.1 || o.y1 > m.stand + 3.3 || Math.max(o.x1 - o.x0, o.z1 - o.z0) < 0.9) continue;
+    if (m.ceilAt(p.x, p.z) - o.y1 < 0.55) continue;
+    // across the room: the room's floor on both sides of it (a wall plate along a wall carries the wall over it)
+    const a = (p.yaw || 0) * Math.PI / 180, nx = Math.sin(a), nz = Math.cos(a);
+    if (!m.inside(p.x + nx * 0.6, p.z + nz * 0.6) || !m.inside(p.x - nx * 0.6, p.z - nz * 0.6)) continue;
+    out.push({ p, o });
+  }
+  return out;
+}
+function rafterSet(bm, R) {
+  const len = Math.max(bm.o.x1 - bm.o.x0, bm.o.z1 - bm.o.z0);
+  const opts = RAFTER.filter(l => Math.max(...l.map(q => Math.abs(q.x))) < len / 2 - 0.15);
+  const pick = opts[Math.floor(R() * opts.length)] || RAFTER[0];
+  return set('KS-rafter', 'beam', pick.map(q => sp('itemstandh', q.x, 2.5, 0, Math.floor(R() * 8) * 45, 'anchor', { want: q.want, at: 'rafter' })), { lean: { collect: 0.4, plants: 0.3 } });
+}
+// Low walls in a room, their top a counter: a wall piece standing on the room's floor whose top is 0.4 to 1.5 m over
+// it (the corpus's counter stands sit at a median 0.51 m, the 90th percentile 1.0 m; data/stands-corpus.json heights
+// itemstandh|counter), at least 0.5 m long, nothing standing on it yet.
+function countersIn(b, m, idx) {
+  const out = [];
+  for (const p of b.pieces) {
+    const r = PBs.piece(p.name).role;
+    if (r !== 'wall' && r !== 'halfwall') continue;
+    const q = p.q || [0, 0, 0, 1];
+    if (Math.abs(q[0]) > 0.01 || Math.abs(q[2]) > 0.01) continue;
+    const o = Cks().aabb(p);
+    if (o.y0 > m.stand + 0.15 || o.y0 < m.stand - 0.3 || o.y1 < m.stand + 0.4 || o.y1 > m.stand + 1.5) continue;
+    const a = (p.yaw || 0) * Math.PI / 180, nx = Math.sin(a), nz = Math.cos(a);
+    if (!m.inside(p.x, p.z) && !m.inside(p.x + nx * 0.4, p.z + nz * 0.4) && !m.inside(p.x - nx * 0.4, p.z - nz * 0.4)) continue;
+    const len = Math.abs(Math.cos(a)) > 0.7 ? o.x1 - o.x0 : o.z1 - o.z0;
+    if (len < 0.5) continue;
+    if (idx.near({ x0: o.x0, x1: o.x1, z0: o.z0, z1: o.z1 }, 0).some(r2 => r2.p !== p && r2.p.decor && r2.b.y0 > o.y1 - 0.08 && r2.b.y0 < o.y1 + 0.4 && r2.p.x > o.x0 && r2.p.x < o.x1 && r2.p.z > o.z0 && r2.p.z < o.z1)) continue;
+    out.push({ p, o, len });
+  }
+  return out;
+}
+// Heaps (data/stands-corpus.json stacks): a stand set on or into another, a few centimeters off it (the level offset's
+// 25th, 50th and 75th percentile 4, 11 and 16 cm; both read as on a stand once one covers the other), at about its
+// height (rise median 0). Heaps of two are most (274 of 376), then five (28), three (41), four (18), six or more (15).
+// They mostly hold one kind: food under food 209 of the pairs read, drink 94, herbs 65.
+const HEAP = { houses: 0.3, share: [0.15, 0.5], more: [[1, 274], [2, 41], [3, 18], [4, 28], [5, 15]],
+  kinds: { food: 306, drink: 138, herbs: 123, shield: 44, trophy: 30, weapon: 27, rare: 14 } };
+function pileStands(b, idx, m, base, R, always) {
+  const Ck = Cks(), SH = SHs(), out = [];
+  // what the base stands on: the highest top under its foot that is not a stand
+  const supportAt = (x, z, y) => {
+    let t = null;
+    for (const r of idx.near({ x0: x - 0.02, x1: x + 0.02, z0: z - 0.02, z1: z + 0.02 }, 0)) {
+      if (isStand(r.p) || r.b.pass || r.b.x0 > x || r.b.x1 < x || r.b.z0 > z || r.b.z1 < z) continue;
+      const top = SH.lidAt(r.p, x, z) ?? (r.b.sol ? SH.topAt(r.b.sol, x, z) : null) ?? r.b.y1;
+      if (top == null || top > y + 0.25 || top < y - 0.05) continue;
+      if (t == null || top > t) t = top;
+    }
+    if (t == null && Math.abs(y - m.stand) < 0.05 && m.inside(x, z)) t = m.stand;
+    return t;
+  };
+  const t0 = supportAt(base.x, base.z, base.y);
+  if (t0 == null) return out;
+  // the heap's kind: what the base was asked for, else a kind heaped in the corpus
+  const [k0, at0] = (base.want || '').split('@');
+  let kind = k0;
+  if (!kind) { let tot = 0; for (const v of Object.values(HEAP.kinds)) tot += v; let r = R() * tot; for (const [k, v] of Object.entries(HEAP.kinds)) { r -= v; if (r <= 0) { kind = k; break; } } }
+  base.want = `${kind}@${at0 || ''}`;
+  let tot = 0;
+  for (const [, v] of HEAP.more) tot += v;
+  let r = R() * tot, n = 1;
+  for (const [k, v] of HEAP.more) { r -= v; if (r <= 0) { n = k; break; } }
+  const pile = [base];
+  for (let i = 0; i < n * 3 && out.length < n; i++) {
+    const from = pile[Math.floor(R() * pile.length)], a = R() * Math.PI * 2, d = 0.04 + 0.09 * R();
+    const x = +(from.x + Math.cos(a) * d).toFixed(3), z = +(from.z + Math.sin(a) * d).toFixed(3);
+    const t = supportAt(x, z, base.y);
+    if (t == null || Math.abs(t - t0) > 0.02) continue;
+    const yaw = Math.floor(R() * 8) * 45 + Math.round((R() - 0.5) * 30);
+    const y = +(base.y + (R() - 0.3) * 0.03).toFixed(3);
+    const q = { name: 'itemstandh', x, y, z, yaw: normS(yaw), decor: true, kb: base.kb, rest: 'on', want: `${kind}@${at0 || ''}`, heap: true };
+    { const h = q.yaw * Math.PI / 360; q.q = [0, +Math.sin(h).toFixed(6), 0, +Math.cos(h).toFixed(6)]; }
+    const o = Ck.aabb(q);
+    // clear of everything but the heap and what it stands on
+    if (idx.near(o, 0).some(r2 => !pile.includes(r2.p) && !isStand(r2.p) ? (r2.b.y1 > y + 0.01 && r2.b.y0 < o.y1 && r2.b.x0 < o.x1 && r2.b.x1 > o.x0 && r2.b.z0 < o.z1 && r2.b.z1 > o.z0 && !r2.b.pass) : (!pile.includes(r2.p) && r2.b.x0 < o.x1 - 0.01 && r2.b.x1 > o.x0 + 0.01 && r2.b.z0 < o.z1 - 0.01 && r2.b.z1 > o.z0 + 0.01 && r2.b.y0 < o.y1 && r2.b.y1 > o.y0))) continue;
+    // a clip made on purpose (D-098): the stands go into one another by up to their own height
+    q.fclip = Math.max(base.sunk ? base.fclip || 0 : 0, 0.045);
+    if (base.sunk) { q.sunk = true; }
+    base.fclip = Math.max(base.fclip || 0, 0.045);
+    base.heap = true;
+    pile.push(q); out.push(q); idx.add(q);
+  }
+  return out;
+}
+let DEBUG_S = null;
+const apiS = { debug: d => { DEBUG_S = d; }, dressTops, SETS, SILL, RAFTER, leanWeight, wallAtS };
+if (NODE_S) module.exports = apiS; else window.VHStands = apiS;
+
 
 })();
 // ---- layout.js
@@ -8850,9 +10679,10 @@ function clearLanes(b, ctx, rooms) {
           const list = units.get(u) || [];
           const drop = new Set(list);
           // what stands on these pieces goes too; when it may not go (the room's first chest), neither does what holds
-          // it up (a chest was left in the air over a bench taken out of a lane)
+          // it up (a chest was left in the air over a bench taken out of a lane); the set grows as it is walked, so what
+          // stands on a rider goes too (a bar counter's beam on its half wall)
           let keep = false;
-          for (const p of list) {
+          for (const p of drop) {
             const o = Ck.aabbShapes(p);
             for (const q of b.pieces) if (q.decor && !drop.has(q) && q.x > o.x0 && q.x < o.x1 && q.z > o.z0 && q.z < o.z1 && q.y > o.y0 + 0.2 && q.y < o.y1 + 0.6) {
               const qu = units.get(unitOf.get(q)) || [q];
@@ -8931,7 +10761,7 @@ if (NODE_L) module.exports = apiL; else window.VHLayout = apiL;
 //
 // Everything stands on the ground (y = 0, the design's lowest pivot, so the game sets it on the terrain). Nothing goes
 // in a doorway or the 2 m in front of a door, at the foot of a stair, or in front of the woodshed. Pieces made by the
-// generator's kit follow the biome's materials; the props (bushes, crops, flowers) are free in the game (D-066), and
+// generator's kit follow the biome's materials; props (bushes, crops, flowers, decor) go in any biome (D-065), and
 // every piece passes the materials check for the biome.
 const NODE_Y = typeof module !== 'undefined';
 const PY = NODE_Y ? require('./pieces.js') : window.VHPieces;
@@ -8977,7 +10807,7 @@ const CROP = [['Ashlands', 'Pickable_Barley'], ['Plains', 'Pickable_Barley'], ['
 // bushes that stay within about 1.5 m across (shrub_2 spreads 3.6 m and swallows a fence)
 const BUSHES = { 'Meadows': ['Bush01', 'RaspberryBush'], 'Black Forest': ['BlueberryBush', 'Bush02_en'], 'Swamp': ['Bush02_en'],
   'Mountain': ['Bush01_heath'], 'Plains': ['CloudberryBush', 'Bush01_heath'], 'Mistlands': ['Bush02_en'], 'Ashlands': ['AshlandsBush1', 'AshlandsBush2'] };
-const FLOWERS = ['Pickable_Dandelion', 'Pickable_Dandelion', 'Pickable_Mushroom', 'Pickable_Thistle'];
+const FLOWERS = ['Pickable_Dandelion', 'Pickable_Dandelion', 'Pickable_Mushroom', 'Pickable_Thistle', 'Pickable_Mushroom_yellow', 'Pickable_Fiddlehead', 'Pickable_Mushroom_blue'];
 
 function pickW(R, w) {
   const e = Object.entries(w).filter(([, v]) => v > 0), t = e.reduce((s, [, v]) => s + v, 0);
@@ -9297,7 +11127,10 @@ function add(b, ctx) {
   const solidNow = () => [...S.solid, ...placed.map(p => Ck.aabb(p))];
   // under the eaves (they reach 1 m past the walls, with braces under them) only low things: beds, benches, flowers
   const eave = o => o.y1 > G0 + 1.05 && o.x0 < S.W.x1 + 1.2 && o.x1 > S.W.x0 - 1.2 && o.z0 < S.W.z1 + 1.2 && o.z1 > S.W.z0 - 1.2;
-  const soft = p => { const o = Ck.aabb({ ...p, y: p.y + G0 }), c = { ...o, x0: o.x0 + 0.3, x1: o.x1 - 0.3, z0: o.z0 + 0.3, z1: o.z1 - 0.3 }; return !keep.some(z => hitBox(c, z, 0)) && inYard(c) && !placed.some(q => q.name === p.name && Math.hypot(q.x - p.x, q.z - p.z) < 0.35); };
+  // a plant's spread on the ground (half its widest side), so two of one kind keep out of one another
+  const sizeY = (NODE_Y ? require('./decorate.js') : window.VHDecorate)._int.size;
+  const spread = n => { const sz = sizeY(n); return Math.max(0.225, Math.max(sz[0], sz[2]) / 2); };
+  const soft = p => { const o = Ck.aabb({ ...p, y: p.y + G0 }), c = { ...o, x0: o.x0 + 0.3, x1: o.x1 - 0.3, z0: o.z0 + 0.3, z1: o.z1 - 0.3 }; return !keep.some(z => hitBox(c, z, 0)) && inYard(c) && !placed.some(q => q.name === p.name && Math.hypot(q.x - p.x, q.z - p.z) < Math.max(0.35, 2 * spread(p.name) - 0.1)); };
   const free = (p, pad = 0.1) => {
     const o = Ck.aabb({ ...p, y: p.y + G0 });
     const why = solidNow().some(z => hitBox(o, z, pad)) ? 'solid' : keep.some(z => hitBox(o, z, 0)) ? 'keep' : !inYard(o) ? 'out' : eave(o) ? 'eave' : null;
@@ -9438,7 +11271,10 @@ function add(b, ctx) {
     // a bush spreads about 3 m: 1.4 m in from the fence and 3 m from the next one
     const apart = s => !placed.some(q => bushes.includes(q.name) && Math.hypot(q.x - s.x, q.z - s.z) < 3);
     got.push(['bush', tryAt(fenceSpots(1.4).filter(apart), s => (apart(s) ? [{ name: bushes[Math.floor(R() * bushes.length)], x: s.x, y: 0, z: s.z, yaw: Math.floor(R() * 16) * 22.5, pad: 0.05 }] : null), big ? 3 : 2)]);
-    got.push(['flowers', tryAt(wallSpots(0.45), s => [0, 0.45, -0.45].map(a => ({ name: 'Pickable_Dandelion', x: s.x + (s.n[1] ? a : 0), y: 0, z: s.z + (s.n[0] ? a : 0), yaw: Math.floor(R() * 4) * 90, soft: true, pad: 0 })), big ? 2 : 1)]);
+    // three flowers in a row, spaced by their own spread so a fern and its neighbor do not grow into one another
+    const row = s => { const nm = a => FLOWERS[Math.abs(Math.round(s.x * 7 + s.z * 13 + a * 11)) % FLOWERS.length], m = nm(0), r = nm(0.45), l = nm(-0.45);
+      return [[m, 0], [r, spread(m) + spread(r)], [l, -(spread(m) + spread(l))]]; };
+    got.push(['flowers', tryAt(wallSpots(0.45), s => row(s).map(([name, a]) => ({ name, x: s.x + (s.n[1] ? a : 0), y: 0, z: s.z + (s.n[0] ? a : 0), yaw: Math.floor(R() * 4) * 90, soft: true, pad: 0 })), big ? 2 : 1)]);
   }
   // what the culture keeps in its yard (docs/CULTURE_STYLES.md): stone builders a pile of field stone, log builders a
   // second stack of logs, kitchen-garden cultures a second bed, the steppe a cart
@@ -9459,7 +11295,7 @@ function add(b, ctx) {
   dsNow = 2;
   if (decorOn('yardProps', 'd2') && kind === 'work') {
     const F = (NODE_Y ? require('./decorate.js') : window.VHDecorate).FURNITURE;
-    const okW = n => canY(ctx.biome, n) && (!F[n] || BIOMES_Y.indexOf(F[n].b) <= BIOMES_Y.indexOf(ctx.biome));
+    const okW = n => PY.decorOk(n, ctx.biome); // decor in any biome, building pieces the village's and the next (D-065)
     const along = (spots, list) => tryAt(spots, s => list.filter(([n]) => okW(n)).map(([n, a, d, turn, y]) => ({ name: n, x: s.x + Math.cos(s.yaw * Math.PI / 180) * a + s.n[0] * d,
       y: y || 0, z: s.z - Math.sin(s.yaw * Math.PI / 180) * a + s.n[1] * d, yaw: normY(s.yaw + (turn || 0)), pad: 0.05 })));
     const W = fenceSpots(0.8);
@@ -9554,7 +11390,7 @@ function tryPlan(runs, kit, S, door, clear) {
     if (dedup.some(p => { const o = Ck.aabb(p); return hitBox(o, gzIn, 0) && Math.hypot(p.x - g.x, p.z - g.z) > 1.05 && Math.abs((p.x - g.x) * -u[1] + (p.z - g.z) * u[0]) > 0.3; })) { dbg('gate fence'); continue; }
     // every fence piece clear of what is there and of the doorways, stairs and woodpiles
     const bad = dedup.find(p => !clear(p, 0.08, S.zones));
-    if (bad) { const o = Ck.aabb(bad); const by = clear.by; clear.by = null; const zz = S.zones.find(z => hitBox(o, z, 0.08)); dbg('fence ' + (bad.attach ? 'attach ' : '') + (by ? by.info.name : zz ? 'zone' + (zz.door ? ' door' : zz.tag || '') : '?') + (global.YV && by ? ' ' + JSON.stringify([bad.x, bad.z, bad.yaw, [o.x0, o.x1, o.z0, o.z1].map(v => +v.toFixed(2)), [by.x0, by.x1, by.y0, by.y1, by.z0, by.z1].map(v => +v.toFixed(2))]) : '')); continue; }
+    if (bad) { const o = Ck.aabb(bad); const by = clear.by; clear.by = null; const zz = S.zones.find(z => hitBox(o, z, 0.08)); dbg('fence ' + (bad.attach ? 'attach ' : '') + (by ? by.info.name : zz ? 'zone' + (zz.door ? ' door' : zz.tag || '') : '?') + (typeof global !== 'undefined' && global.YV && by ? ' ' + JSON.stringify([bad.x, bad.z, bad.yaw, [o.x0, o.x1, o.z0, o.z1].map(v => +v.toFixed(2)), [by.x0, by.x1, by.y0, by.y1, by.z0, by.z1].map(v => +v.toFixed(2))]) : '')); continue; }
     void Ck;
     if (!clear(gate, 0.05, S.zones.filter(z => !z.door))) { dbg('gate'); continue; }
     if (S.zones.some(z => z.door && hitBox(Ck.aabb(gate), z, -0.1))) continue;
@@ -9880,6 +11716,7 @@ function massingPath(o) {
   if (fam.roof === 'hip' && W <= D) W = D + 1;
   if (C.stoneWalls && W * D < 12) W += 1; // a metre-thick wall leaves a 6 m house no room for a bed beside the fire
   const side = FR() < 0.5 ? -1 : 1, full = FR() < 0.75;
+  fam.growSide = side; // the end the house grows toward (a wall hearth keeps to the other end)
   fam.porchWide = FR() < 0.5;
   fam.stilt2 = !!C.stiltChance && FR() < C.stiltChance;
   fam.podklet = fam.household === 'family' || (type !== 'home' && FR() < 0.5);
@@ -10059,6 +11896,10 @@ function generate(req) {
   const early = (biome === 'Meadows' || biome === 'Black Forest') && (stage === 's1' || (stage === 's2' && !['longhouse', 'tavern', 'temple', 'tower'].includes(type)));
   C.early = early;
   const stoneOK = !!K.stoneWall && biome !== 'Meadows' && !early;
+  // the hearth's own stone from s2 in every biome (D-131); the Meadows makes no stone, so its hearths take the Black
+  // Forest's blocks and floors (marked hearthStone for the materials check, lib/pieces.js hearthStoneOk)
+  const KH = +stage[1] >= 2 && !K.stoneWall ? { ...K, stoneWall: 'stone_wall_2x1', stoneBlock: 'stone_wall_1x1', stoneFloor: 'stone_floor_2x2', stoneArch: 'stone_arch' } : K;
+  const hearthStoneOK = +stage[1] >= 2 && !!KH.stoneWall;
   // a request may name the storeys (1 to 3) and ask for a porch or none; otherwise the culture and type decide
   const askedStoreys = req.storeys >= 1 && req.storeys <= 3 ? Math.round(req.storeys) : null;
   const storeysOf = () => askedStoreys || (C.storeys && C.storeys[type] && C.storeys[type][stage]) || T.storeys[stage];
@@ -10095,6 +11936,8 @@ function generate(req) {
     const ctx = { K: Kr, C, biome, use: T.use, stoneOK, F, SH, storeys, top: F + storeys * SH };
     clearDoorways(b);
     if (!req.skipDecor) Decor.decorate(b, { use: T.use, decor, biome, type, R, culture: cultureKey, doorX: b.doorX, fireAt: { x: 0, z: 0 }, persona: household, layout: layoutCtx });
+    // things on item stands (lib/stands.js; round houses have no interior library pass)
+    if (!req.skipDecor) Kitbash.stands(b, { K: Kr, C, T, type, use: T.use, biome, decor, persona: household }, keepClear(b));
     // corner and wall-face motifs on the eight-sided walls (details.js), after the furnishing
     if (kind === 'round' && !(req.details && req.details.motifs === false)) Details.roundTrim(b, { K: Kr, C, cultureKey, T, type, stage, decor, biome, plan: 'octagon', F, SH, storeys, edges: [], wings: [], seed });
     settle(b, { ...ctx, type, skipDecor: !!req.skipDecor });
@@ -10313,7 +12156,32 @@ function generate(req) {
   let ventAt = fireInside && !['dome', 'drum'].includes(form) && !flat && roofKind !== 'shed' && !lookout
     ? (w0.alpha === 0 && T.use === 'home' ? { x: doorX, z: w0.cz } : { x: w0.cx, z: w0.cz }) : null;
   if (ventAt && hipMain) ventAt = { x: Math.max(w0.cx - (w0.W - w0.D), Math.min(w0.cx + (w0.W - w0.D), ventAt.x)), z: w0.cz }; // over a hip ridge
+  // a home's fire against a wall (hearthPlan): at a gable end under the ridge, half in the gable wall with a stone
+  // stack outside, or against the back wall with a shaft out through the roof
+  // a middle-fire home that draws the gable stack (D-131, 0.6, the stack's own stream) gets its fire moved to that end,
+  // half in the gable wall with the stack over it (D-132: "Fireplaces can move spots"; lead's call, round 6: corpus
+  // builders make no stack without a fire under it, and the corpus's 86 middle home fires vent by a gap, a roof hole or
+  // nothing). The end is the one the stack would take (stackEndFor); a tower that may come at the +x end keeps it to -x.
+  const midStack = type === 'home' && hearthStoneOK && stage !== 's1' && roofKind === 'gable' && plan !== 'gables' && !flat && !T.tower && F < 1.01 &&
+    !C.stoneWalls && !/stone|marble|grausten/.test(C.wallStyle || '') && rng((lineage * 4099 + strHash(cultureKey) * 13 + 0x57ac) >>> 0)() < 0.6
+    ? stackEndFor(wings, form === 'svan' || stage === 's3' ? { cx: W - 3, n: 3 } : null, { may: true }) : 0;
+  const hearth = lit && ventAt ? hearthPlan({ T, C, cultureKey, lineage, roofKind, plan, wings, flat, form, M, stoneOK: hearthStoneOK, F, stage, K: KH, cells,
+    doors: [door, backDoor].filter(Boolean), area: cells.size * 4 * storeys, type, midStack: req.hearth === 'middle' ? 0 : midStack }) : { spot: 'middle' };
+  if (req.hearth === 'middle') hearth.spot = 'middle';
+  info.hearth = hearth.spot;
+  if (hearth.why) info.hearthWhy = hearth.why;
+  if (hearth.stackWhy) info.stackWhy = hearth.stackWhy;
+  if (hearth.moved) info.hearthMoved = hearth.moved;
+  if (hearth.movedHere) b.notes.push('The household moved the fire when the house was reworked at this stage; the roof over its old place is closed.');
+  if (hearth.spot === 'end') ventAt = { x: hearth.x, z: hearth.z };
+  if (hearth.spot === 'side' || hearth.spot === 'stack') ventAt = null;
   let flue = lit && ventAt ? flueRect(w0, ventAt, hipMain ? w0.W - w0.D : w0.W - 1) : null;
+  if (hearth.spot === 'side') flue = cellRect([hearth.x, hearth.z]);
+  // the cell in front of a stack hearth stays clear of ladders and stairs (the shaft is outside the house)
+  const stackKeep = hearth.spot === 'stack' ? cellRect([hearth.x, hearth.z]) : null;
+  // the wall bay behind the hearth: the gable's middle bay for an end or stack hearth, the bay behind a side one
+  const hearthBay = e => (hearth.spot === 'end' || hearth.spot === 'stack') ? e.yaw === 90 && Math.abs(e.x - hearth.xW) < 0.01 && Math.abs(e.z - hearth.z) < 0.01
+    : hearth.spot === 'side' ? e.yaw === 0 && Math.abs(e.x - hearth.x) < 0.01 && Math.abs(e.z - (hearth.z + hearth.sv)) < 0.01 : false;
   // under a flat roof the fire gets a cell of its own, away from the doors, before the ladders are placed; a chimney
   // goes up from it
   let flatCell = null;
@@ -10325,8 +12193,20 @@ function generate(req) {
     // a courtyard's gallery is walled off from the rooms behind it, so it counts as outside here
     const roomCell = (cx, cz) => cells.has(`${cx},${cz}`) && !gallery.has(`${cx},${cz}`);
     const walled = ([x, z]) => [[2, 0], [-2, 0], [0, 2], [0, -2]].some(([dx, dz]) => !roomCell(x + dx, z + dz));
-    const score = ([x, z]) => (doorEdges.some(e => Math.hypot(e.x - x, e.z - z) < 2.5) ? 100 : 0) + (thick && walled([x, z]) ? 50 : 0) +
-      (plan === 'court' ? -1 : 1) * Math.hypot(x - doorX, z - w0.cz);
+    // a home keeps its fire against a wall most of the time (hearthPlan's odds for the culture, from the household's
+    // own stream): a cell along an outer wall, the far corner first
+    // (the stage's draw, hearthDraw: the fire may move between stages, D-132). A thick stone wall takes the fire in a
+    // niche: it stands half a cell out from the wall, under an opening over its cell and the next (the wall hearth of
+    // the stone houses of the Levant and Arabia, a fire niche with a flue in the wall)
+    const fd = hearthDraw(lineage, cultureKey, stage, M, cells.size * 4 * storeys, T.use === 'hall', T.use === 'hall' ? strHash(type) : 0, 4 * w0.W * w0.D), homeWall = fd.spot0 !== 'middle';
+    { info.hearth = homeWall ? 'wall' : 'middle'; if (!homeWall) info.hearthWhy = 'drawn'; if (fd.moved) info.hearthMoved = fd.moved; if (fd.moved === stage) b.notes.push('The household moved the fire when the house was reworked at this stage; the roof over its old place is closed.'); }
+    const score = ([x, z]) => (doorEdges.some(e => Math.hypot(e.x - x, e.z - z) < 2.5) ? 100 : 0) + (thick && !homeWall && walled([x, z]) ? 50 : 0) +
+      (homeWall && !walled([x, z]) ? 8 : 0) + (plan === 'court' ? -1 : 1) * Math.hypot(x - doorX, z - w0.cz) * (homeWall && fd.moved ? 0.25 : 1) +
+      (homeWall && fd.moved ? fd.sg * (x - w0.cx) * 0.5 : 0) +
+      // where the wing opens into the next one people walk through: a wall fire keeps off that cell
+      (homeWall && [[2, 0], [-2, 0], [0, 2], [0, -2]].some(([dx, dz]) => roomCell(x + dx, z + dz) && !inside(w0, x + dx, z + dz)) ? 12 : 0) +
+      // in a thick-walled corner a long iron spit fits along neither wall: a niche in one wall comes first
+      (thick && homeWall && [[2, 0], [-2, 0]].some(([dx]) => !roomCell(x + dx, z)) && [[0, 2], [0, -2]].some(([, dz]) => !roomCell(x, z + dz)) ? 6 : 0);
     flatCell = [...cells.values()].filter(([x, z]) => inside(w0, x, z) && !gallery.has(`${x},${z}`)).sort((a, c) => score(a) - score(c))[0] || null;
     if (flatCell) flue = cellRect(flatCell);
     // beside a thick wall the fire would reach into it: it goes between this cell and the next one away from the
@@ -10340,8 +12220,8 @@ function generate(req) {
       const over = [[x, z], [x + sx, z], [x, z + sz], [x + sx, z + sz]].filter(([cx, cz], i, a) => a.findIndex(([ax, az]) => ax === cx && az === cz) === i);
       if (near.length && over.every(([cx, cz]) => cells.has(`${cx},${cz}`) && !gallery.has(`${cx},${cz}`) && !doorEdges.some(d => Math.hypot(d.x - cx, d.z - cz) < 1.1))) {
         flue = { x0: Math.min(x, x + sx) - 1, x1: Math.max(x, x + sx) + 1, z0: Math.min(z, z + sz) - 1, z1: Math.max(z, z + sz) + 1 };
-        flatCell = [x + sx / 2, z + sz / 2];
-      }
+        flatCell = homeWall ? [x + sx / 4, z + sz / 4] : [x + sx / 2, z + sz / 2];
+      } else if (homeWall && !near.length) { info.hearth = 'middle'; info.hearthWhy = 'thick wall, no room'; }
     }
   }
   const doorCell = [door.cell[0], door.cell[1]];
@@ -10351,13 +12231,15 @@ function generate(req) {
   // last one up to a hatch
   const climbsUp = storeys - 1 + (flat && !lookout ? 1 : 0);
   const cellsG = loggia ? new Map([...cells].filter(([, c]) => !inLoggia(c))) : cells; // the ground rooms' cells
-  const ladders = climbsUp > 0 ? ladderPlan(cellsG, climbsUp, { door: doorCell, back: backCell, flue }) : [];
+  // (a ladder keeps a cell off a wall hearth where it can: the spit on the fire reaches a metre either side)
+  const fireRing = ['side', 'end'].includes(hearth.spot) ? cellRect([hearth.x, hearth.z]) : null;
+  const ladders = climbsUp > 0 ? ladderPlan(cellsG, climbsUp, { door: doorCell, back: backCell, flue: stackKeep || flue, ring: fireRing }) : [];
   // a straight stair along a wall in place of the first ladder, where a long enough wall has room for it (most of the
   // best-liked builds climb by stairs; bench: req.details.stair true or false)
   const stairWanted = req.details && req.details.stair != null ? req.details.stair
     : climbsUp === 1 && !flat && +stage[1] >= 2 && ['home', 'tavern', 'longhouse', 'storage', 'workshop'].includes(type) && rng(seed * 7 + 3)() < 0.75;
   if (stairWanted && climbsUp === 1 && !flat && Math.abs(SH - Math.round(SH)) < 0.01) {
-    const st = stairPlan(cellsG, Math.round(SH), { door: doorCell, back: backCell, flue });
+    const st = stairPlan(cellsG, Math.round(SH), { door: doorCell, back: backCell, flue: stackKeep || flue });
     if (st) { ladders[0] = st; b.notes.push('A stair along the wall up to the floor above.'); }
   }
   if (climbsUp > 0 && ladders.length < climbsUp) b.notes.push('No room for a ladder with a clear foot and landing in this plan.');
@@ -10368,13 +12250,13 @@ function generate(req) {
   C.windowStyle = req.style && req.style.windowStyle ? req.style.windowStyle : (T.low || ['storage', 'barn'].includes(type) || form === 'sunken' || (stage === 's1' && !['longhouse', 'tavern', 'temple'].includes(type))) ? 'single' : 'twin';
   const dragonsHere = roofKind === 'gable' && plan !== 'gables' && ((C.dragons && ['longhouse', 'temple', 'tavern'].includes(type)) || (C.carved && stage !== 's1'));
   const dctx = { K, C, cultureKey, T, type, stage, decor, biome, plan, F, SH, storeys, edges, verts, cells, door, wings, flat,
-    ladders, flue, dragonsHere, R: rng(seed * 31337 + 7), persona: household };
+    ladders, flue, fireKeep: stackKeep || flue, hearth, dragonsHere, R: rng(seed * 31337 + 7), persona: household };
   dctx.profile = Details.profile(dctx);
   dctx.notes = b.notes;
   // wall dormers: Frankish, English, Slavic and medieval cultures, from stage 2 (bench: req.details.dormers)
   dctx.profile.overhang = req.details && req.details.overhang != null ? req.details.overhang : true;
   dctx.profile.dormers = +stage[1] >= 2 && ['frankish-norman', 'anglo-saxon', 'castle-medieval', 'slavic', 'norse-highland', 'baltic'].includes(cultureKey) &&
-    ['home', 'tavern', 'longhouse', 'storage', 'workshop'].includes(type) && dctx.R() < 0.45;
+    ['home', 'tavern', 'longhouse', 'storage', 'workshop'].includes(type) && dctx.R() < 0.45 && plan !== 'gables'; // (a gable row's long walls meet in valleys)
   dctx.profile.dormerPair = dctx.R() < 0.5;
   // a gate as the front door of work and store buildings (coverage audit: gates on 65 % of the best-liked builds)
   dctx.profile.gateDoor = +stage[1] >= 2 && !T.bigDoor && ['longhouse', 'storage', 'workshop', 'smithy', 'sawmill', 'farm'].includes(type) && SH >= 3 && dctx.R() < 0.6;
@@ -10416,6 +12298,8 @@ function generate(req) {
       // a stone wall needs a timber bay over every opening (stone cannot span): half as many windows there, so the
       // wall reads as stone with openings, not timber between stone piers (2026-11-09 review)
       if (isWindow && /^stone$|marble|grausten/.test(C.wallStyle || '') && Math.round((e.x + e.z) / 2) % 4 !== 0) isWindow = false;
+      // no window behind a wall hearth, on any storey (its hood and shaft stand against that bay)
+      if (isWindow && hearthBay(e)) isWindow = false;
       const style = C.frontWood && plan === 'gables' ? (e.out[1] < 0 ? 'plank' : null) : null;
       wallSegment(b, K, C, e.x, y0, e.z, e.yaw, SH, isGate ? 'gate' : isDoor ? 'door' : isWindow ? 'window' : 'wall', style);
       if (isWindow || isDoor || isGate) (b.openings = b.openings || []).push({ e, y0, SH, storey: s, kind: isGate ? 'gate' : isDoor ? 'door' : 'window', back: e === backDoor });
@@ -10515,6 +12399,13 @@ function generate(req) {
     }
     if (dctx.profile.valleys !== false) valleys(parts, b);
     const caps = [];
+    // an overhanging eave over a deck, gallery or walkway floor would hang into the heads of people on it
+    const overDeck = p => p.eave && b.pieces.some(q => P.piece(q.name).role === 'floor' && !inside(p.wing, q.x, q.z, 0.1) &&
+      Math.abs(q.x - p.x) < 1.6 && Math.abs(q.z - p.z) < 1.6 && q.y < p.y && q.y > p.y - 3.2);
+    // the trim under an eave that comes out goes with it (eave motifs, lib/details.js bargeboards; an Ashlands beam left
+    // under no roof over a gallery fell, home Ashlands Baltic s2 seed 4 and s3 seed 6)
+    const gone = parts.filter(overDeck);
+    const underGone = p => p.role === 'trim' && gone.some(e => Math.hypot(e.x - p.x, e.z - p.z) < 1.5 && p.y < e.y + 0.3 && p.y > e.y - 1.6);
     // where wings cross, keep the higher roof so the lower roof runs into the higher one
     const placed = new Set();
     for (const p of parts) {
@@ -10529,15 +12420,26 @@ function generate(req) {
         // where another wing's gable already fills the spot, nothing more is needed
         if (b.pieces.some(q => Math.abs(q.x - p.x) < 0.05 && Math.abs(q.z - p.z) < 0.05 && Math.abs(q.y - p.y) < 0.9 && P.piece(q.name).role === 'wall')) continue;
       }
-      // an overhanging eave over a deck, gallery or walkway floor would hang into the heads of people on it
-      if (p.eave && b.pieces.some(q => P.piece(q.name).role === 'floor' && !inside(p.wing, q.x, q.z, 0.1) &&
-        Math.abs(q.x - p.x) < 1.6 && Math.abs(q.z - p.z) < 1.6 && q.y < p.y && q.y > p.y - 3.2)) continue;
+      if (overDeck(p) || underGone(p)) continue;
       const hidden = wings.some(o => o !== p.wing && inside(o, p.x, p.z, -0.2) && p.surf < surfaceAt(o, p.x, p.z, roofTop, r) - 0.25);
       if (!hidden) b.put(p.name, p.x, p.y, p.z, p.yaw);
     }
+    // a wall hearth's shaft: whatever roof stands over its column above the walls comes out too (the rake's cap over
+    // an end hearth, the lowest row and the eave over a side one)
+    const col = (hearth.spot === 'end' || hearth.spot === 'side') && flue ? flue : null;
+    // (and the bargeboards along a rake that lose the roof they lay on)
+    // (over an end hearth only the rake's ridge cap, raised with the others; over a side one the row, the eave, and the
+    // bargeboards that lay on them)
+    const over = (p, m) => (o => o.x0 < col.x1 - 0.05 + m && o.x1 > col.x0 + 0.05 - m && o.z0 < col.z1 - 0.05 + m && o.z1 > col.z0 + 0.05 - m && o.y1 > F + storeys * SH - 0.3)(checksLib().catBox(p));
+    const extra = !col ? [] : hearth.spot === 'end' ? takeOut(b, p => !p.decor && P.piece(p.name).role === 'roofTop' && over(p, 0))
+      : takeOut(b, p => !p.decor && (['roof', 'roofTop', 'roofCorner'].includes(P.piece(p.name).role) ? over(p, 0)
+        : P.piece(p.name).role === 'beam' && (p.trim || /_(26|45)$/.test(p.name)) && over(p, /_(26|45)$/.test(p.name) ? 1.2 : 0)));
     // the ridge caps over the fire's place stay out for smoke; the last pass puts them back if no fire is laid
-    if (caps.length) b.vents.push({ kind: 'ridge', caps, x: avg(caps.map(c => c.x)), z: avg(caps.map(c => c.z)), y: caps[0].y,
+    if (caps.length && hearth.spot === 'end') b.vents.push({ kind: 'ridge', caps: [...caps, ...extra], x: hearth.x, z: hearth.z, y: caps[0].y, rect: flue, from: F + HOOD, hood: true });
+    else if (caps.length) b.vents.push({ kind: 'ridge', caps, x: avg(caps.map(c => c.x)), z: avg(caps.map(c => c.z)), y: caps[0].y,
       rect: rectOf(caps), from: storeys > 1 ? F + SH : caps[0].y });
+    if (hearth.spot === 'side') b.vents.push({ kind: 'slope', caps: extra, x: hearth.x, z: hearth.z, rect: flue, from: F + HOOD, hood: true,
+      y: (ys => ys.length ? Math.max(...ys) : F + storeys * SH + 1)(extra.filter(p => P.piece(p.name).role === 'roof').map(p => checksLib().catBox(p).y1)) });
   }
 
   // porch at the front door: one or three bays wide, on the grid, never on top of a wing
@@ -10675,6 +12577,7 @@ function generate(req) {
   if (T.pen) penDesign(b, K, Math.max(...[...cells.values()].map(c => c[0])) + 1, D, stage); // beside the last wing
   if (roofKind === 'gable' && plan !== 'gables' && ((C.dragons && ['longhouse', 'temple', 'tavern'].includes(type)) || (C.carved && stage !== 's1')))
     for (const sx of [-1, 1]) {
+      if (hearth.spot === 'stack' && sx === hearth.sg) continue; // the stack stands there
       // the carving rides on the ridge beam's end, run out a metre past the gable (it stood on nothing)
       const rk = (dctx.rake || 0) + (wings.some(w => w.spec && w.spec.ext && w.spec.side === sx) ? 4 : 0); // past the rake, and past an extension
       // a 2 m ridge beam from inside the gable to half a metre past the rake, so it rests on the gable wall
@@ -10683,34 +12586,79 @@ function generate(req) {
     }
 
   b.outer = edges;
+  // the gable end a stone stack may take (a stack hearth's, or the chimney stack on a hall or workshop with a middle fire,
+  // below): the woodshed keeps off it (round 4: the woodshed took the one free end first on every home of 128 forced
+  // to a middle fire)
+  const stackEnd = hearth.spot === 'stack' ? hearth.sg : hearth.spot === 'middle' ? stackEndFor(wings, svanTower, {
+    may: roofKind === 'gable' && plan !== 'gables' && !flat && !T.tower && F < 1.01 && !/stone|marble|grausten/.test(C.wallStyle || '') &&
+      stoneOK && stage !== 's1' && ['longhouse', 'tavern', 'smithy', 'temple'].includes(type) }) : 0; // (a home's stack has its fire: midStack)
+  if (stackEnd && hearth.spot === 'middle') info.stackEnd = stackEnd;
   if (['home', 'longhouse', 'smithy', 'workshop', 'sawmill', 'barn', 'farm'].includes(type) && stage !== 's1' && roofKind === 'gable' && !flat &&
-    F < 0.01 && !T.tower && dctx.R() < 0.5) woodshed(b, K, C, wings, edges, F, SH, svanTower);
+    F < 0.01 && !T.tower && dctx.R() < 0.5) woodshed(b, K, C, wings, edges, F, SH, svanTower, stackEnd);
   // a lean-to (outshut) along the back: a lower roof against the main mass (bench: req.details.outshut)
   const wantOut = dctx.profile.outshut != null ? dctx.profile.outshut
     : ['home', 'longhouse', 'barn', 'smithy', 'workshop', 'storage', 'farm', 'tavern'].includes(type) && stage !== 's1' && dctx.R() < 0.4;
   if (wantOut && ['gable', 'hip'].includes(roofKind) && !flat && F < 1.01 && !T.tower && !C.stoneWalls) outshut(b, K, C, wings, edges, F, SH, dctx.R, decor);
   // a stone chimney stack against a gable end, from the ground to past the ridge (bench: req.details.stack)
   const wantStack = dctx.profile.stack != null ? dctx.profile.stack
-    : stoneOK && stage !== 's1' && ['home', 'longhouse', 'tavern', 'smithy', 'temple'].includes(type) && dctx.R() < 0.6;
-  if (wantStack && roofKind === 'gable' && plan !== 'gables' && !flat && !T.tower && F < 1.01 && !/stone|marble|grausten/.test(C.wallStyle || '')) chimneyStack(b, K, wings, edges, dctx.profile, dctx.R, { C, SH, F, storeys });
+    : stoneOK && stage !== 's1' && ['home', 'longhouse', 'tavern', 'smithy', 'temple'].includes(type) && dctx.R() < 0.6
+    // the stack on a middle-fire home is part of its stone hearth (D-131: wood at s1, stone from s2 in the Meadows and
+    // later biomes); drawn from a stream of its own so the rest of the house comes out as before
+    || (!stoneOK && hearthStoneOK && type === 'home' && rng((lineage * 4099 + strHash(cultureKey) * 13 + 0x57ac) >>> 0)() < 0.6);
+  // (a home with a wall hearth has its chimney already: the stack it was rebuilt with, or the hood's shaft)
+  const stackFails = hearth.spot === 'stack' && !hearthStack(b, KH, C, w0, hearth, { F, SH, storeys, top: roofTop, notes: b.notes });
+  // a stack that cannot stand there leaves an end hearth at the same gable before the middle: a hood over the fire and
+  // its shaft up to raised ridge caps
+  const endFlue = stackFails ? endFallback(b, hearth, w0, { F, SH, storeys }) : null;
+  if (endFlue) {
+    hearth.spot = 'end'; info.hearth = 'end'; info.hearthWhy = 'stack blocked';
+    ventAt = { x: hearth.x, z: hearth.z }; flue = endFlue; dctx.flue = endFlue; dctx.fireKeep = endFlue;
+  }
+  if (stackFails && !endFlue) {
+    // something stands outside that gable (a deck, a lean-to) and the ridge has no cap over the fire's place for an end
+    // hearth: the fire goes to the middle, under ridge caps taken out over it, clear of the climbs
+    hearth.spot = 'middle'; info.hearth = 'middle'; info.hearthWhy = 'stack blocked';
+    const at = { x: Math.max(w0.cx - w0.W + 1, Math.min(w0.cx + w0.W - 1, doorX)), z: w0.cz }, fr = flueRect(w0, at, w0.W - 1);
+    const climbs = ladders.flatMap(l => [l.hole, l.land, l.stand, ...(l.run || [])].filter(Boolean));
+    if (fr && !climbs.some(c => inRect(fr, c[0], c[1], -0.1))) {
+      const caps = takeOut(b, p => !p.decor && P.piece(p.name).role === 'roofTop' && inRect(fr, p.x, p.z) && p.y > F + storeys * SH - 0.3);
+      if (caps.length) b.vents.push({ kind: 'ridge', caps, x: avg(caps.map(c => c.x)), z: avg(caps.map(c => c.z)), y: caps[0].y, rect: rectOf(caps), from: storeys > 1 ? F + SH : caps[0].y });
+    }
+  }
+  if (wantStack && type !== 'home' && hearth.spot === 'middle' && roofKind === 'gable' && plan !== 'gables' && !flat && !T.tower && F < 1.01 && !/stone|marble|grausten/.test(C.wallStyle || '')) chimneyStack(b, stoneOK ? K : KH, wings, edges, dctx.profile, dctx.R, { C, SH, F, storeys, hearthStone: !stoneOK, info });
   // a balcony on a gable end, from the upper room (coverage audit: on 46 % of the best-liked builds; bench: req.details.balcony)
   const wantBalc = dctx.profile.balcony != null ? dctx.profile.balcony
     : stage !== 's1' && storeys >= 2 && ['home', 'tavern', 'longhouse', 'workshop'].includes(type) && dctx.R() < 0.5;
-  if (wantBalc && !b.gallery && roofKind === 'gable' && plan !== 'gables' && !flat && !T.tower && !loggia) balcony(b, K, C, wings[0], edges, { F, SH, ladders, cells });
+  if (wantBalc && !b.gallery && roofKind === 'gable' && plan !== 'gables' && !flat && !T.tower && !loggia) balcony(b, K, C, wings[0], edges, { F, SH, ladders, cells, hearthSg: ['end', 'stack'].includes(hearth.spot) || (hearth.spot === 'side' && hearth.corner) ? hearth.sg : flueEnd(hearth, flue, w0) });
+  // a stone front on the wall hearth from s2 (D-131), drawn from a stream of its own (lineage and culture) so the rest of
+  // the house comes out as before
+  if (['end', 'side'].includes(hearth.spot) && type === 'home' && hearthStoneOK && plan !== 'gables' && !req.skipDecor) {
+    const FR = rng((lineage * 7919 + strHash(cultureKey) * 17 + strHash(biome) * 5 + 0x3f7) >>> 0);
+    const want = FR() < (/grausten/.test(KH.stoneBlock || '') ? FRONT_SHARE_GRAUSTEN : FRONT_SHARE); // (bench: req.details.hearthFront true or false)
+    if ((req.details && req.details.hearthFront != null ? req.details.hearthFront : want) && hearthFront(b, KH, hearth, { F, SH, storeys, R: FR, why: info })) info.hearthFront = true;
+  }
   Details.exterior(b, dctx);
   clearDoorways(b);
   // the fire's place for the decorator: under the ridge vent, or a cell of a flat roof (a chimney goes up from it),
   // clear of the ladders
   let fireAt = ventAt && lit && flue ? { x: avg(rectXs(flue)), z: avg(rectZs(flue)) } : null;
+  if (hearth.spot === 'side' || hearth.spot === 'stack') fireAt = { x: hearth.x, z: hearth.z }; // a stack's fire moves into its alcove after the furnishing
   if (flatCell) { fireAt = { x: flatCell[0], z: flatCell[1] }; b.vents.push({ kind: 'flat', x: flatCell[0], z: flatCell[1], rect: flue, from: storeys > 1 ? F + SH : top }); }
   if (!req.skipDecor) Decor.decorate(b, { use: T.use, decor, biome, type, R, culture: cultureKey, doorX: b.doorX, fireAt, persona: household, layout: layoutCtx });
   settle(b, { K, C, biome, use: T.use, type, stoneOK, F, SH, storeys, top, flat, cells, wing: w0, roofTop, skipDecor: !!req.skipDecor });
   if (!req.skipDecor) tidyFurniture(b);
-  if (!req.skipDecor && stoneOK && F < 0.01 && !C.stoneWalls) hearthstone(b, K);
+  if (!req.skipDecor && hearthStoneOK && F < 0.01 && !C.stoneWalls) hearthstone(b, KH);
   if (!req.skipDecor) { const zones = keepClear(b); Details.interior(b, { ...dctx, zones }); Kitbash.apply(b, { ...dctx, decor, layout: layoutCtx }, zones); doorLights(b, { biome, decor, F }); }
   else Details.commitMotifs(b, dctx); // bare builds (ranked before furnishing) carry the same wall trim
   if (Yards.wants(req, type, stage)) Yards.add(b, { K, C, type, stage, biome, cultureKey, decor: req.skipDecor ? 'd1' : decor, seed, opts: req.yard, details: req.details, persona: household }); // a yard round stage 2 and 3 homes and farms (lib/yards.js, D-060)
   return finish(b, info);
+}
+
+// The gable end a middle fire's chimney stands near (within 2.5 m of the gable), or null: the balcony keeps to the other
+// end (a fire in line with the door of a short wing put the plank chimney across the balcony's door).
+function flueEnd(hearth, flue, w0) {
+  if (hearth.spot !== 'middle' || !flue || !w0) return null;
+  return [-1, 1].find(sg => Math.abs(w0.cx + sg * w0.W - (sg > 0 ? flue.x1 : flue.x0)) < 2.5) || null;
 }
 
 // A balcony on a gable end: the upper storey's middle bay becomes a door onto a 2 m square floor with a hand rail on
@@ -10727,6 +12675,7 @@ function balcony(b, K, C, w, edges, o) {
   const brackets = SH >= 3;
   for (const e of ends) {
     const sg = e.out[0], x0 = e.x, z = e.z;
+    if (o.hearthSg === sg) continue; // the hearth's hood or stack is at that end
     if (busyCell(x0 - sg, z)) continue;
     // nothing out there already: a stack, a woodshed, a porch
     const y0 = brackets ? yU - 1.4 : 0.1;
@@ -10863,7 +12812,8 @@ const hits = (bx, z) => bx.x0 < z.x1 && bx.x1 > z.x0 && bx.y0 < z.y1 && bx.y1 > 
 // chimney.
 function settle(b, ctx) {
   const Ck = checksLib(), ord = P.BIOME_ORDER, limit = ord.indexOf(ctx.biome);
-  b.pieces = b.pieces.filter(p => !p.decor || ord.indexOf(P.needs(p.name)) <= limit);
+  // decor goes in any biome; building pieces the biome and the next (D-065, D-126: lib/pieces.js decorOk, the one rule)
+  b.pieces = b.pieces.filter(p => !p.decor || P.decorOk(p.name, ctx.biome));
 
   const isFire = p => p.decor && /^(fire_pit|hearth)$/.test(p.name);
   const ground = b.rooms.filter(r => !r.upper);
@@ -10872,18 +12822,20 @@ function settle(b, ctx) {
   const ridge = b.vents.find(v => v.kind === 'ridge'), crown = b.vents.find(v => v.kind === 'crown');
   const laysFire = ['home', 'hall'].includes(ctx.use);
   const flatVent = b.vents.find(v => v.kind === 'flat');
-  if (!fire && laysFire && !ctx.skipDecor && mainRoom && (ridge || crown || flatVent)) {
+  // a wall hearth's vents: a shaft out through the roof's lowest row, or the stone stack the hearth stands in
+  const slope = b.vents.find(v => v.kind === 'slope'), stack = b.vents.find(v => v.kind === 'stack');
+  if (!fire && laysFire && !ctx.skipDecor && mainRoom && (ridge || crown || flatVent || slope || stack)) {
     // the decorator found no room for the fire: lay it in the fire's place anyway
     const name = ctx.use === 'hall' && ord.indexOf('Black Forest') <= limit ? 'hearth' : 'fire_pit';
-    const v = ridge || crown || flatVent;
+    const v = ridge || crown || flatVent || slope || stack;
     b.pieces.push({ name, x: v.x, y: mainRoom.y + 0.1, z: v.z, q: quat(0), yaw: 0, decor: true });
     fire = b.pieces[b.pieces.length - 1];
   }
-  const target = ridge || crown || flatVent;
+  const target = ridge || crown || flatVent || slope || stack;
   if (flatVent && !fire) flatVent.rect = null; // no fire, no chimney
   if (fire && target) {
-    // a hearth is 3 m across: in a small room a fire pit takes its place
-    if (fire.name === 'hearth' && mainRoom && (mainRoom.x1 - mainRoom.x0) * (mainRoom.z1 - mainRoom.z0) < 40) fire.name = 'fire_pit';
+    // a hearth is 3 m across: in a small room, and against a wall, a fire pit takes its place
+    if (fire.name === 'hearth' && mainRoom && ((mainRoom.x1 - mainRoom.x0) * (mainRoom.z1 - mainRoom.z0) < 40 || target.hood || target === stack)) fire.name = 'fire_pit';
     const dx = target.x - fire.x, dz = target.z - fire.z, ox = fire.x, oz = fire.z;
     const moving = b.pieces.filter(p => p.decor && (p === fire || (/cookingstation|piece_cauldron/.test(p.name) && Math.hypot(p.x - ox, p.z - oz) < 0.4)));
     for (const p of moving) { p.x = +(p.x + dx).toFixed(3); p.z = +(p.z + dz).toFixed(3); }
@@ -10898,8 +12850,13 @@ function settle(b, ctx) {
     // 0.75 m toward the room's middle; a hearth (4 x 3 m in the game) that still does not fit becomes a fire pit
     const walls = b.pieces.filter(p => !p.decor && ['wall', 'pole', 'stair'].includes(P.piece(p.name).role)).map(p => Ck.aabb(p));
     const clear0 = keepClear(b).filter(z => !(fire.x > z.x0 && fire.x < z.x1 && fire.z > z.z0 && fire.z < z.z1)); // doorways and climbs, not the zone it is in already
-    const clips = () => { const o = Ck.aabb(fire); return walls.some(w => w.x0 < o.x1 - 0.05 && w.x1 > o.x0 + 0.05 && w.z0 < o.z1 - 0.05 && w.z1 > o.z0 + 0.05 && w.y0 < o.y1 && w.y1 > o.y0 + 0.05) ||
-      clear0.some(z => hits({ ...o, x0: o.x0 + 0.15, x1: o.x1 - 0.15, z0: o.z0 + 0.15, z1: o.z1 - 0.15 }, z)); };
+    // (the pot or spit on the fire moves with it, and an iron spit is wider than the fire pit: it must clear the walls too)
+    const pots = b.pieces.filter(p => p.decor && p !== fire && /cookingstation|piece_cauldron/.test(p.name) && Math.hypot(p.x - fire.x, p.z - fire.z) < 0.4);
+    const inWall = o => walls.some(w => w.x0 < o.x1 - 0.05 && w.x1 > o.x0 + 0.05 && w.z0 < o.z1 - 0.05 && w.z1 > o.z0 + 0.05 && w.y0 < o.y1 && w.y1 > o.y0 + 0.05);
+    // (the pot clears the doorways and climbs as the fire does: an iron spit 3.6 m long reached the foot of a ladder,
+    // tavern Plains s1d1 seed 155)
+    const inClear = o => clear0.some(z => hits({ ...o, x0: o.x0 + 0.15, x1: o.x1 - 0.15, z0: o.z0 + 0.15, z1: o.z1 - 0.15 }, z));
+    const clips = () => { const o = Ck.aabb(fire); return inWall(o) || pots.some(p => { const q = Ck.aabb({ ...p, x: fire.x, z: fire.z }); return inWall(q) || inClear(q); }) || inClear(o); };
     if (clips()) {
       const rm = mainRoom || { x0: fire.x - 1, x1: fire.x + 1, z0: fire.z - 1, z1: fire.z + 1 };
       const cx = (rm.x0 + rm.x1) / 2, cz = (rm.z0 + rm.z1) / 2, L = Math.hypot(cx - fire.x, cz - fire.z) || 1;
@@ -10911,9 +12868,29 @@ function settle(b, ctx) {
         const tries = [[0, 0]];
         for (const t of [0.25, 0.5, 0.75, 1]) for (const [dx, dz] of [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [-1, 1], [1, -1], [-1, -1]]) tries.push([dx * t, dz * t]);
         tries.sort((p1, p2) => Math.hypot(...p1) - Math.hypot(...p2) || ((p2[0] * (cx - x0) + p2[1] * (cz - z0)) - (p1[0] * (cx - x0) + p1[1] * (cz - z0))));
-        for (const [dx, dz] of tries) {
-          fire.x = +(x0 + dx).toFixed(3); fire.z = +(z0 + dz).toFixed(3);
-          if (!clips()) { ok = true; break; }
+        const slide = () => {
+          for (const [dx, dz] of tries) {
+            fire.x = +(x0 + dx).toFixed(3); fire.z = +(z0 + dz).toFixed(3);
+            if (!clips()) return true;
+          }
+          return false;
+        };
+        ok = slide();
+        // a long iron spit by a wall turns along the other wall, or a short wooden spit takes its place, or the fire
+        // stays bare
+        if (!ok && pots.length) {
+          for (const p of pots) { p.yaw = ((p.yaw || 0) + 90) % 360; p.q = quat(p.yaw); }
+          ok = slide();
+          if (!ok && pots.some(p => p.name === 'piece_cookingstation_iron')) {
+            for (const p of pots) if (p.name === 'piece_cookingstation_iron') { p.name = 'piece_cookingstation'; p.yaw = ((p.yaw || 0) + 270) % 360; p.q = quat(p.yaw); }
+            ok = slide();
+          }
+          if (!ok) {
+            const gone = new Set(pots);
+            b.pieces = b.pieces.filter(p => !gone.has(p));
+            pots.length = 0;
+            ok = slide();
+          }
         }
         if (!ok) { fire.x = x0; fire.z = z0; }
         if (ok) break;
@@ -10921,15 +12898,18 @@ function settle(b, ctx) {
       void L;
       for (const p of sit) { p.x = fire.x; p.z = fire.z; }
     }
+    // one pot or spit on the fire (a set laid round the fire may have brought a second)
+    const onIt = b.pieces.filter(p => p.decor && /cookingstation|piece_cauldron/.test(p.name) && Math.hypot(p.x - fire.x, p.z - fire.z) < 0.4);
+    if (onIt.length > 1) { const keep = onIt.find(p => p.name === 'piece_cauldron') || onIt[0]; b.pieces = b.pieces.filter(p => !onIt.includes(p) || p === keep); }
     // the cauldron's upgrades work within 5 m of it: those left farther away by the move come out
     const pot = b.pieces.find(p => p.decor && p.name === 'piece_cauldron');
     b.pieces = b.pieces.filter(p => !/^cauldron_ext/.test(p.name) || (pot && Math.hypot(p.x - pot.x, p.z - pot.z) < 5));
-    if (target.kind !== 'crown') chimney(b, ctx, target);
-    else b.notes.push('Fire under the open crown of the roof.');
+    if (target.kind === 'crown') b.notes.push('Fire under the open crown of the roof.');
+    else if (target !== stack) chimney(b, ctx, target);
   }
-  if (ridge && !(fire && target === ridge)) {
-    for (const c of ridge.caps) b.put(c.name, c.x, c.y, c.z, c.yaw); // no fire: the ridge is closed again
-    ridge.rect = null;
+  for (const v of [ridge, slope]) if (v && !(fire && target === v)) {
+    for (const c of v.caps) b.put(c.name, c.x, c.y, c.z, c.yaw); // no fire: the roof is closed again
+    v.rect = null;
   }
 
   hangBraziers(b, ctx, fire);
@@ -10971,7 +12951,7 @@ function chimney(b, ctx, v) {
   const stone = false;
   void stoneOK;
   const piece = stone ? K.stoneWall : K.wallHalf, course = stone && /2x2/.test(K.stoneWall) ? 2 : 1;
-  const yRoof = v.kind === 'ridge' ? v.y : ctx.top; // the ridge, or the flat roof
+  const yRoof = v.kind === 'ridge' || v.kind === 'slope' ? v.y : ctx.top; // the ridge, the top of the roof row taken out, or the flat roof
   // under a ridge with no floor to pass through, a smoke louver: the ridge caps raised 0.6 m on short posts over the
   // opening, open at the sides (the Norse ljore), in place of a plank box standing on the ridge
   const louver = v.kind === 'ridge' && v.from >= yRoof - 0.01;
@@ -10986,15 +12966,19 @@ function chimney(b, ctx, v) {
   const yBox = v.kind === 'ridge' ? yRoof - 0.9 : yTop; // the shaft's sides end under the ridge, inside the roof
   // (a side where a wall already stands, a tower's stone beside a flat-roof chimney, is that wall)
   const walled = (x, z, y) => b.pieces.some(p => !p.decor && P.piece(p.name).role === 'wall' && Math.abs(p.x - x) < 0.3 && Math.abs(p.z - z) < 0.3 && Math.abs(p.y - y) < 0.9);
+  const openSides = sides.filter(([x, z]) => !walled(x, z, v.from - 0.5));
   if (!louver) for (let y = v.from; y < yBox - 0.01; y += course) for (const [x, z, yaw] of sides) if (!walled(x, z, y + course / 2)) b.put(piece, x, y + course / 2, z, yaw);
+  // a wall hearth's hood: a beam along the hood's lower edge on each open side, the mantel
+  if (v.hood) for (const [x, z, yaw] of openSides) b.put(K.beam || 'wood_beam', x, v.from + 0.1, z, yaw, { trim: true });
   if (!stone) {
     // the cap: short posts at the corners, the ridge caps (or flat roof caps) half a metre over the box
-    const cap = v.caps ? v.caps : null;
+    const cap = v.caps && v.kind !== 'slope' ? v.caps : null;
     for (const [x, z] of [[r.x0, r.z0], [r.x0, r.z1], [r.x1, r.z0], [r.x1, r.z1]]) b.put(K.pole1, x, yTop, z);
     if (cap) for (const c of cap) b.put(c.name, c.x, yTop + 0.5, c.z, c.yaw);
     else for (let x = r.x0 + 1; x < r.x1; x += 2) for (let z = r.z0 + 1; z < r.z1; z += 2) b.put(K.floor, x, yTop + 0.55, z);
   }
-  b.notes.push(stone ? 'Stone chimney over the fire.' : louver ? 'A smoke louver on the ridge over the fire.' : 'Plank chimney over the fire with a raised cap for the smoke.');
+  b.notes.push(v.hood ? (v.kind === 'slope' ? 'The fire against the back wall under a hood, its shaft out through the roof with a raised lid.' : 'The fire against the gable wall under a hood, its shaft up to raised ridge caps.')
+    : stone ? 'Stone chimney over the fire.' : louver ? 'A smoke louver on the ridge over the fire.' : 'Plank chimney over the fire with a raised cap for the smoke.');
 }
 
 // Ceiling braziers hang on their chain (the pivot 1.6 m below what it hangs from) from the lowest roof or ceiling piece
@@ -11049,7 +13033,7 @@ function hangBraziers(b, ctx, fire) {
 function bedIfNone(b, ctx, fire, zones) {
   const Ck = checksLib(), ord = P.BIOME_ORDER, limit = ord.indexOf(ctx.biome);
   const fits = n => ord.indexOf(P.needs(n)) <= limit;
-  if (b.pieces.some(p => P.piece(p.name).role === 'bed' && fits(p.name))) return;
+  if (b.pieces.some(p => P.piece(p.name).role === 'bed' && P.decorOk(p.name, ctx.biome))) return; // any bed counts (D-126)
   // the best bed first, the narrow wooden one where the best does not fit (between a hall's aisle posts); head to the
   // wall, else along the wall (a hall's side benches)
   const names = ['ashwood_bed', 'piece_bed02', 'bed'].filter(n => fits(n) && (n !== 'ashwood_bed' || ctx.biome === 'Ashlands'));
@@ -11128,7 +13112,7 @@ function hearthstone(b, K) {
     const o = Ck.aabb(fire);
     for (const p of b.pieces) {
       if (p.decor || p.name !== K.floor || Math.abs(p.y - fire.y) > 0.4 || p.y > 0.3) continue;
-      if (p.x - 1 < o.x1 - 0.1 && p.x + 1 > o.x0 + 0.1 && p.z - 1 < o.z1 - 0.1 && p.z + 1 > o.z0 + 0.1) { p.name = stone; p.y = +(p.y - 0.4).toFixed(3); p.hearth = true; }
+      if (p.x - 1 < o.x1 - 0.1 && p.x + 1 > o.x0 + 0.1 && p.z - 1 < o.z1 - 0.1 && p.z + 1 > o.z0 + 0.1) { p.name = stone; p.y = +(p.y - 0.4).toFixed(3); p.hearth = true; p.hearthStone = true; }
     }
   }
   if (b.pieces.some(p => p.hearth)) b.notes.push('Stone flags under the fire.');
@@ -11196,13 +13180,12 @@ function dropOrphans(b) {
 const STAND_IN = { piece_chest_barrel: 'piece_chest_wood', piece_logbench01: 'piece_bench01', piece_groundtorch: 'piece_groundtorch_wood',
   piece_chest: 'piece_chest_wood', piece_cookingstation_iron: 'piece_cookingstation', hearth: 'fire_pit' };
 function biomeSafe(b, biome) {
-  const ord = P.BIOME_ORDER, limit = ord.indexOf(biome), fits = n => ord.indexOf(P.needs(n)) <= limit;
+  const ord = P.BIOME_ORDER, limit = ord.indexOf(biome) + 1, fits = n => ord.indexOf(P.needs(n)) <= limit;
   const Ck = checksLib(), gone = [];
   b.pieces = b.pieces.filter(p => {
-    // minor decor goes anywhere (D-066); other decor one biome further, as the furnishing chose it (D-080,
-    // lib/pieces.js decorOk: a log bench of a Meadows couch was swapped here for a plank bench that went into the
-    // couch's half wall)
-    if (fits(p.name) || P.piece(p.name).structural || (p.decor && (P.minor(p.name) || P.decorOk(p.name, biome)))) return true;
+    // decor goes in any biome (D-065, Tyler 2026-11-10), as the furnishing chose it (a log bench of a couch swapped
+    // here for a plank bench went into the couch's half wall); building pieces the village's biome and the next
+    if (fits(p.name) || P.piece(p.name).structural || (p.decor && P.decorOk(p.name, biome))) return true;
     const alt = STAND_IN[p.name];
     if (alt && fits(alt)) { p.name = alt; return true; }
     if (p.decor) gone.push(Ck.aabb(p));
@@ -11256,6 +13239,18 @@ const thickFloor = n => !!n && P.piece(n).size[1] >= 0.9;
 const rectXs = r => [r.x0, r.x1], rectZs = r => [r.z0, r.z1];
 const cellRect = c => ({ x0: c[0] - 1, x1: c[0] + 1, z0: c[1] - 1, z1: c[1] + 1 });
 const inRect = (r, x, z, pad = 0) => x > r.x0 - pad && x < r.x1 + pad && z > r.z0 - pad && z < r.z1 + pad;
+// The hood of a wall hearth starts 2.55 m over the floor: clear of a player's head (the headroom check's 2.4 m) and
+// low enough to catch the smoke.
+const HOOD = 2.55;
+// Take pieces out of a build (and out of its key set, so they can be put back in the same place later).
+function takeOut(b, test) {
+  const out = b.pieces.filter(test);
+  if (!out.length) return out;
+  const gone = new Set(out);
+  b.pieces = b.pieces.filter(p => !gone.has(p));
+  for (const p of out) b.keys.delete(`${p.name}|${Math.round(p.x * 100)}|${Math.round(p.y * 100)}|${Math.round(p.z * 100)}|${Math.round(p.yaw || 0) % 360}`);
+  return out;
+}
 function rectOf(caps) {
   return { x0: Math.min(...caps.map(c => c.x)) - 1, x1: Math.max(...caps.map(c => c.x)) + 1, z0: Math.min(...caps.map(c => c.z)) - 1, z1: Math.max(...caps.map(c => c.z)) + 1 };
 }
@@ -11267,6 +13262,169 @@ function stoneUnder(b, p, h) {
 }
 // a world point's place along a wing's ridge
 function ridgeU(w, pt) { const a = w.alpha * Math.PI / 180; return (pt.x - w.cx) * Math.cos(a) - (pt.z - w.cz) * Math.sin(a); }
+// Where a home keeps its fire (Tyler, 2026-11-10). In the corpus the main fire of 84 % of 291 homes stands against a
+// wall, in a corner, in an alcove or half in the wall, and 16 % in the middle of the floor; halls and taverns keep a
+// middle fire where people gather (docs/INTERIOR_DESIGN.md, "Hearths"). Weights per culture for a home under a gable
+// roof: 'middle' (under the ridge, the old way), 'end' (against a gable end under the ridge: a hood over it and a
+// shaft up to raised ridge caps), 'side' (against the back wall, or the front wall by the door for the Slavic stove
+// corner: a shaft out through the roof's lowest row). An end hearth is rebuilt in stone, half in the wall with a stack
+// outside, once the household's stage may build in stone (D-012), with the 'stack' odds.
+const HEARTHS = {
+  default: { middle: 0.15, end: 0.5, side: 0.35, stack: 0.5 },
+  norse: { middle: 0.35, end: 0.4, side: 0.25, stack: 0.3 },
+  'norse-forest': { middle: 0.25, end: 0.45, side: 0.3, stack: 0.35 },
+  'norse-highland': { middle: 0.2, end: 0.45, side: 0.35, stack: 0.5 },
+  baltic: { middle: 0.3, end: 0.4, side: 0.3, stack: 0.3 },
+  'fen-folk': { middle: 0.35, end: 0.4, side: 0.25, stack: 0.2 },
+  celtic: { middle: 0.4, end: 0.4, side: 0.2, stack: 0.3 },
+  'anglo-saxon': { middle: 0.15, end: 0.5, side: 0.35, stack: 0.5 },
+  'frankish-norman': { middle: 0.05, end: 0.55, side: 0.4, stack: 0.7 },
+  'castle-medieval': { middle: 0.05, end: 0.5, side: 0.45, stack: 0.7 },
+  slavic: { middle: 0, end: 0.15, side: 0.85, stack: 0.3, front: true, corner: 0.9 },
+  'east-asian': { middle: 0.5, end: 0.2, side: 0.3, stack: 0.2 },
+  byzantine: { middle: 0.2, end: 0.4, side: 0.4, stack: 0 },
+  // a Svan house keeps the middle hearth more often (the machub's hearth stood in the room); the stone houses of the
+  // Levant and Arabia put the fire in a niche in the thick wall (flat roofs: the wall cell, generate)
+  lamari: { middle: 0.35, end: 0.4, side: 0.25, stack: 0 },
+  'middle-eastern': { middle: 0.15, end: 0.45, side: 0.4, stack: 0 },
+};
+// Where the household lays its fire at a stage (D-132, Tyler: "Fireplaces can move spots"). The first fire is drawn at
+// s1 from the household's own stream, at the end the house does not grow toward. At each later stage the household
+// may rework it and draw again from the culture's odds: 30 % at a stage that changes the house (a wing, more length,
+// a storey), 8 % at one that keeps the same shell. Moving a fire means a new hood or shaft and patching the roof over
+// the old one, so a household mostly does it while the builders are in anyway; a stage that only furnishes and
+// dresses the house seldom does. These rates are a choice (the corpus has no house seen at two stages). There is no
+// fixed interval: each stage draws on its own. Returns { spot0, sg, corner, stackDraw, moved, before } where moved names
+// the stage the fire last moved at (or null) and before is the draw it moved from.
+const HEARTH_MOVE = { grew: 0.3, kept: 0.08 };
+// The culture's stack odds scaled to the corpus: a stone stack past the roof over 13 of 443 home wall fires (3 %,
+// corpus-hearths-lights.json ventByKind). With stone hearths open to every biome from s2 (D-131) the unscaled odds gave
+// 9 % of s2 and s3 wall fires, half of them 3 % (lab/hearths/spotmix.js, 14 seeds).
+const STACK_SHARE = 0.5;
+// A hall or tavern where people gather: in the corpus 32 % of the fires in halls and taverns over 80 m2 stand in the
+// middle, 29 % half in the wall, 16 % against it and 16 % in an alcove (docs/INTERIOR_DESIGN.md). The middle odds are
+// set under a third because halls whose wings leave no free wall keep the middle anyway (lab/hearths/hallmix.js: 37 %
+// of those over 80 m2 in all). The stone stack odds stay the culture's.
+// The middle odds in a home whose main room is under 80 m2: about 2 % of those homes draw the middle (lab/hearths/
+// roommix.js), against 3 of 204 in the corpus.
+const MID_SMALL_ROOM = 0.05;
+// The middle odds in a home whose main wing is 80 m2 or more: the culture's odds times 0.55, in place of the floor-area
+// scale, which gave 5 of 39 such homes a middle fire (13 %) against 74 of 325 (23 %) in the corpus. With 0.55:
+// 14 of 65 (22 %) over 12 seeds, 11 of 39 (28 %) over 6 (lab/hearths/roommix.js, round 6).
+const MID_BIG_ROOM = 0.55;
+const HALL_HEARTH = { middle: 0.22, end: 0.4, side: 0.25, front: false, corner: 0.3 };
+function hearthDraw(lineage, cultureKey, stage, M, area, hall, salt = 0, room = null) {
+  const wt = hall ? { ...(HEARTHS[cultureKey] || HEARTHS.default), ...HALL_HEARTH } : HEARTHS[cultureKey] || HEARTHS.default;
+  // the culture's middle odds by the room the fire serves: in the corpus 3 of 204 home fires in rooms under 80 m2 stand
+  // in the middle (none of 67 at 35 to 80 m2), 74 of 325 in rooms of 80 m2 or more (corpus-hearths-lights.json
+  // homePlaceByServedRoom); over that, a big house's hall gathers round it more often (floor area)
+  const mid = hall ? wt.middle : wt.middle * (room != null && room < 80 ? MID_SMALL_ROOM : room != null ? MID_BIG_ROOM : area == null ? 1 : area < 120 ? 0.3 : area < 250 ? 0.6 : 0.9);
+  const draw = (R, sgFirst) => {
+    const spot0 = pick(R, { middle: mid, end: wt.end, side: wt.side });
+    const sgR = R() < 0.5 ? -1 : 1;
+    return { spot0, sg: sgFirst || sgR, corner: R() < (wt.corner != null ? wt.corner : 0.5), stackDraw: R(), moved: null };
+  };
+  let d = draw(rng((lineage * 92821 + strHash(cultureKey) * 7 + 5 + salt) >>> 0), M && M.fam.growSide ? -M.fam.growSide : 0);
+  const order = ['s1', 's2', 's3'], upTo = Math.max(0, order.indexOf(stage));
+  const sig = st => st ? `${st.W}x${st.D}|${st.specs.length}|${st.storeys}|${st.round ? 1 : 0}` : null;
+  for (let i = 1; i <= upTo; i++) {
+    const R = rng((lineage * 92821 + strHash(cultureKey) * 7 + 5 + salt + i * 7919) >>> 0);
+    const grew = !M || sig(M.states[order[i]]) !== sig(M.states[order[i - 1]]);
+    if (R() >= (grew ? HEARTH_MOVE.grew : HEARTH_MOVE.kept)) continue;
+    const n = draw(R, 0);
+    // a stone rebuild keeps its draw (the stack odds are the household's), and the new place must differ from the old
+    if (n.spot0 === d.spot0 && n.sg === d.sg) n.sg = -n.sg;
+    d = { ...n, stackDraw: d.stackDraw, moved: order[i], before: d };
+  }
+  return d;
+}
+
+// The plan for the stage comes from hearthDraw. A blocked end falls back to the corner at that end, then to the
+// middle. Returns { spot, sg, u, sv, x, z, stack } in world metres for the main wing, or { spot: 'middle', why }.
+function hearthPlan(o) {
+  const { T, C, cultureKey, lineage, roofKind, plan, wings, flat, form, M, stoneOK, F, doors, stage, K, cells } = o;
+  const w0 = wings[0];
+  const why = w => ({ spot: 'middle', why: w });
+  const hall = T.use === 'hall';
+  if (T.use !== 'home' && !hall) return why('not a home');
+  if (T.tower) return why('tower');
+  if (flat) return why('flat');
+  if (!['gable', 'hip'].includes(roofKind)) return why(`roof ${roofKind}`);
+  if (form && !['svan', 'gables'].includes(form)) return why(`form ${form}`);
+  if (w0.W < 3 || w0.D < 3) return why('small');
+  const wt = hall ? { ...(HEARTHS[cultureKey] || HEARTHS.default), ...HALL_HEARTH } : HEARTHS[cultureKey] || HEARTHS.default;
+  const hd = hearthDraw(lineage, cultureKey, stage, M, o.area, hall, hall ? strHash(o.type || '') : 0, 4 * w0.W * w0.D);
+  const { spot0, corner, stackDraw, moved } = hd;
+  let sg = hd.sg;
+  // the stage the fire moved at, when the move changes where it stands (a row of gable houses has one wall place)
+  const movedHere = hd.moved === stage && hd.before && (plan === 'gables' ? (hd.before.spot0 === 'middle') !== (spot0 === 'middle') : form === 'svan' ? hd.before.spot0 !== spot0 : true);
+  if (spot0 === 'middle' && !o.midStack) return { ...why('drawn'), moved, movedHere };
+  // a row of gable houses (Icelandic): the fire against the back gable of the main row, under its ridge, the door in
+  // the front gable (the hearth in a turf house's own row by the back wall)
+  if (plan === 'gables') {
+    const ends = [-1, 1].map(s1 => {
+      const [x, z] = toWorld(w0, s1 * (w0.W - 1), 0, 0).map(c => Math.round(c) + 0);
+      return { s1, x, z };
+    }).filter(e => cells.has(`${e.x},${e.z}`) && !doors.some(d => Math.hypot(d.x - e.x, d.z - e.z) < 2.2) && !wings.some(w => w !== w0 && inside(w, e.x, e.z, -0.1)));
+    ends.sort((a, c) => c.z - a.z);
+    if (!ends.length) return { ...why('gables: no free back end'), moved };
+    return { spot: 'end', sg: ends[0].s1, x: ends[0].x, z: ends[0].z, xW: NaN, rot: true, moved, movedHere };
+  }
+  if (w0.alpha !== 0) return why('turned wing');
+  // a Svan house: the tower stands at the back corner of the +x end from s2, so the fire keeps to the other end
+  if (form === 'svan') sg = -1;
+  const hip = roofKind === 'hip';
+  const sv0 = wt.front ? -1 : 1;
+  const nearDoor = (x, z, d = 2.4) => doors.some(e => Math.hypot(e.x - x, e.z - z) < d);
+  const cell = (x, z) => cells.has(`${x},${z}`) && !wings.some(w => w !== w0 && inside(w, x, z, -0.1));
+  // an end is free when nothing joins the gable: no wing past it, and the end cell is the main wing's own
+  const endAt = (s1, force) => {
+    const xW = w0.cx + s1 * w0.W, x = xW - s1, z = w0.cz;
+    if (hip || wings.some(w => w !== w0 && (inside(w, xW + s1 * 1.5, z, 0.3) || inside(w, x, z, 0.3)))) return null;
+    if (!cell(x, z) || nearDoor(x, z, 2.2)) return null;
+    const stack = stoneOK && !C.stoneWalls && F < 1.01 && stage !== 's1' && K.stoneWall && /2x1/.test(K.stoneWall) && (force || stackDraw < (wt.stack || 0) * STACK_SHARE);
+    if (force && !stack) return null;
+    return { spot: stack ? 'stack' : 'end', sg: s1, x, z, xW };
+  };
+  // a middle fire under a gable stack moves to the stack's end (o.midStack, from generate); where that end cell is not
+  // free (a door by it, another wing's floor) the fire stays in the middle and no stack is built
+  if (spot0 === 'middle') {
+    const e = endAt(o.midStack, true);
+    return e ? { ...e, moved, movedHere, why: 'middle moved under the stack' } : { ...why('drawn'), moved, movedHere, stackWhy: 'end not free' };
+  }
+  // a wing that runs the main wing on at the same depth and turn carries its walls and roof on (a nave, an annex)
+  const runsOn = w => w.alpha === w0.alpha && Math.abs(w.cz - w0.cz) < 0.01 && Math.abs(w.D - w0.D) < 0.01;
+  const sideAt = (u, sv, loose) => {
+    if (Math.abs(u) > w0.W - 1) return null;
+    const x = w0.cx + u, z = w0.cz + sv * (w0.D - 1);
+    if (!cell(x, z) || nearDoor(x, z, loose ? 2.2 : 2.4)) return null;
+    // nothing joins the wall behind it (a back wing, a cross wing), and the cells beside it are this wing's
+    if (wings.some(w => w !== w0 && inside(w, x, z + sv * 2, 0.5))) return null;
+    const by = dx => wings.some(w => w !== w0 && !(loose && runsOn(w)) && inside(w, x + dx, z, 0.2));
+    // the last pass (loose) takes a wall cell with another wing's floor on one side: the hearth stands at the wall
+    // beside the opening into that wing, its shaft out through whatever roof is over its cell; the wall bay next to a
+    // door will do (2.2 m, as for an end hearth)
+    if (loose ? by(2) && by(-2) : by(2) || by(-2)) return null;
+    return { spot: 'side', sg: Math.sign(u) || sg, sv, u, x, z, corner: Math.abs(Math.abs(u) - (w0.W - 1)) < 0.01, loose: !!loose };
+  };
+  // the household's first choice, then the nearest others: the other wall at the same end, the end itself, and only
+  // then the other end (a wing built on later can take the gable a hearth stood against)
+  const us = hip ? [sg * (w0.W - 3), sg * (w0.W - 5)] : corner || spot0 === 'end' ? [sg * (w0.W - 1), sg * (w0.W - 3)] : [sg * (w0.W - 3), sg * (w0.W - 1)];
+  const tries = spot0 === 'end'
+    ? [() => endAt(sg), ...us.map(u => () => sideAt(u, sv0)), ...us.map(u => () => sideAt(u, -sv0)), () => endAt(-sg)]
+    : [...us.map(u => () => sideAt(u, sv0)), ...us.map(u => () => sideAt(u, -sv0)), () => endAt(sg), ...us.map(u => () => sideAt(-u, sv0)), () => endAt(-sg)];
+  // and last, any bay of the back wall (then the front), nearest the household's end first: wings at both ends (a U)
+  // leave the middle of the back wall
+  const bays = [];
+  for (let u = -w0.W + 1; u <= w0.W - 1; u += 2) bays.push(u);
+  bays.sort((a, c) => Math.abs(a - sg * w0.W) - Math.abs(c - sg * w0.W));
+  tries.push(...bays.map(u => () => sideAt(u, sv0)), ...bays.map(u => () => sideAt(u, -sv0)));
+  // then the same bays beside another wing's floor (s3 cross, T and U plans whose wings take every other wall cell)
+  tries.push(...bays.map(u => () => sideAt(u, sv0, true)), ...bays.map(u => () => sideAt(u, -sv0, true)));
+  for (const t of tries) { const h = t(); if (h) return { ...h, moved, movedHere }; }
+  return { ...why('no free wall'), moved, movedHere };
+}
+
 // The chimney's footprint: the ridge caps within a metre of the vent (caps sit every 2 m from -maxU to maxU), the
 // width of one cap across the ridge.
 function flueRect(w, vent, maxU) {
@@ -11317,6 +13475,7 @@ function ladderPlan(cells, n, o = {}) {
       if (prev && (same(L.hole, prev.hole) || same(L.stand, prev.hole) || same(L.land, prev.hole))) continue;
       if (k === 0 && [o.door, o.back].some(d => d && (near(L.stand, d, 0) || near(L.hole, d, 0)))) continue;
       let score = (L.wallSide ? 10 : 0);
+      if (o.ring && [L.stand, L.hole, L.land].some(c => inRect(o.ring, c[0], c[1], 1.1))) score -= 12;
       if (prev && same(L.stand, prev.land)) score += 30;
       if (k === 0 && o.door) score += Math.min(8, Math.hypot(L.hole[0] - o.door[0], L.hole[1] - o.door[1]));
       if (score > bestScore + 1e-9) { best = L; bestScore = score; }
@@ -11628,6 +13787,8 @@ function dormers(K, w, top, add, dctx) {
     // nothing else joins the wall here (another wing, a tower)
     const [fx, fz] = toWorld(w, u0, sv * (w.D + 1), 0);
     if (other.some(o => inside(o, fx, fz, 0.5))) continue;
+    // nor a wall hearth's shaft on this slope
+    if (dctx.hearth && dctx.hearth.spot === 'side' && Math.sign(dctx.hearth.z - w.cz) === Math.sign(fz - w.cz) && Math.abs(fx - dctx.hearth.x) < 3.1) continue;
     // nor does another wing's roof cover the patch of this roof it would stand on (a cross wing flush with the front)
     if (other.some(o => [[-2.5, 0.5], [2.5, 0.5], [0, 0.5], [-2.5, 2.5], [2.5, 2.5]].some(([du, dv]) => { const [x, z] = toWorld(w, u0 + du, sv * (w.D - dv), 0); return inside(o, x, z, 0.3); }))) continue;
     // a dormer over the door takes the place of a gable porch there
@@ -11989,7 +14150,7 @@ function skirtRoof(b, K, edges, yS) {
 
 // An open woodshed against a gable end: a 26 degree lean-to roof from the gable wall out over posts 2 m out, with wood
 // stacked under it. Only on a free gable end (no wing, tower or annex there) of the main wing.
-function woodshed(b, K, C, wings, edges, F, SH, tower) {
+function woodshed(b, K, C, wings, edges, F, SH, tower, avoid) {
   const w0 = wings[0];
   if (w0.alpha !== 0) return false;
   for (const sg of [1, -1]) {
@@ -11998,6 +14159,7 @@ function woodshed(b, K, C, wings, edges, F, SH, tower) {
     if (end.length < 3) continue;
     if (wings.some(o => o !== w0 && inside(o, xWall + sg * 1.5, w0.cz, 0.01))) continue;
     if (tower && Math.abs(tower.cx - xWall) < tower.n + 1) continue;
+    if (sg === avoid) continue; // a hearth's stack stands at that end
     const zs = end.length >= 4 ? [end[1], end[2]] : [end[0], end[1]];
     const xr = xWall + sg * 1, xp = xWall + sg * 2, yaw = sg > 0 ? 90 : 270, T2 = { trim: true };
     for (const z of zs) b.put(K.roof26, xr, F + SH - 0.6, z, yaw, T2); // 2.4 m at its outer edge, up against the gable
@@ -12056,6 +14218,170 @@ function outshut(b, K, C, wings, edges, F, SH, R, decor) {
   return true;
 }
 
+// A hearth half in the gable wall (hearthPlan 'stack'): the middle bay of the ground storey opened 2 m high under a
+// timber lintel, and outside it a stone alcove (two cheeks, a back and a stone floor) that rises as a hollow stack to a
+// metre past the ridge. A plank lid on four short posts keeps the rain off the fire and lets the smoke out at the
+// sides (Valheim's smoke needs about a metre to pass). Stone stands on the ground the whole way up (stone takes no
+// support from wood); over the gable the shaft's house side is planks. Returns false when the end is not free.
+function hearthStack(b, K, C, w0, h, o) {
+  const Ck = checksLib(), sg = h.sg, xW = h.xW, z = h.z, F = o.F, SH = o.SH;
+  const block = K.stoneWall, cube = K.stoneBlock || 'stone_wall_1x1';
+  if (!block || !/2x1/.test(block)) return false;
+  const role = p => P.piece(p.name).role;
+  const inWall = p => Math.abs(p.x - xW) < 0.15 && role(p) === 'wall';
+  const face = Math.max(0.1, ...b.pieces.filter(inWall).map(p => { const a = Ck.aabb(p); return sg > 0 ? a.x1 - xW : xW - a.x0; }).filter(v => v < 0.8));
+  const xi0 = xW + sg * face, xi1 = xi0 + sg * 2; // the shaft's inside, from the wall's face 2 m out
+  const box = { x0: Math.min(xi0, xi1 + sg * 1.05), x1: Math.max(xi0, xi1 + sg * 1.05), z0: z - 2.05, z1: z + 2.05 };
+  const hit = (a, y0) => a.x0 < box.x1 - 0.05 && a.x1 > box.x0 + 0.05 && a.z0 < box.z1 - 0.05 && a.z1 > box.z0 + 0.05 && a.y1 > y0;
+  // nothing standing out there below the eaves (a deck, a post, a lean-to); roofs and trim over it come out below
+  const rakeTrim = p => role(p) === 'beam' && (p.trim || /_(26|45)$/.test(p.name));
+  const blocker = b.pieces.find(p => !/roof/.test(role(p)) && role(p) !== 'gable' && Math.abs(p.x - xW) > 0.35 && !rakeTrim(p) && hit(Ck.aabb(p), 0.05) && Ck.aabb(p).y0 < F + SH);
+  if (blocker) return false;
+  const tops = b.pieces.filter(p => /roof/.test(role(p)) && Math.abs(p.x - xW) < 3);
+  if (!tops.length) return false;
+  const yTop = Math.ceil(Math.max(...tops.map(p => Ck.aabb(p).y1)) + 0.8);
+  // the rake's overhang, its cap and the bargeboards over the stack come out (the roof ends at the gable there)
+  takeOut(b, p => !p.decor && (/roof/.test(role(p)) || rakeTrim(p)) && hit(Ck.aabb(p), F + 2));
+  // the opening: the ground storey's middle bay out, then a lintel beam at 2 m and planks over it to the wall top
+  takeOut(b, p => !p.decor && Math.abs(p.x - xW) < 0.6 && Math.abs(p.z - z) < 0.95 && ['wall', 'window', 'door', 'beam'].includes(role(p)) && (a => a.y1 <= F + SH + 0.02 && a.y1 > F + 0.05)(Ck.aabb(p)));
+  const T2 = { trim: true }, TS = { trim: true, hearthStone: true }; // (stone pieces marked for D-131)
+  b.put(K.beam || 'wood_beam', xW, F + 1.9, z, 90);
+  for (let y = F + 2.2; y < F + SH - 0.01; y += 1) b.put(K.wallHalf, xW, Math.min(y + 0.5, F + SH - 0.5), z, 90);
+  // the alcove's floor: 1 m stone floors down to the ground, the top one flush with the house floor
+  for (let y = F - 0.4; y + 0.5 > 0.05; y -= 1) b.put(K.stoneFloor || 'stone_floor_2x2', xi0 + sg, y, z, 0, { hearthStone: true });
+  // cheeks, back and corners, course by course from the ground; over the opening the cheeks step in a metre a side
+  // (the shoulders), so the stack narrows to a flue 1 m wide and 2 m deep
+  const shoulder = Math.round(F + 2);
+  for (let y = 0; y < yTop - 0.01; y += 1) {
+    const zc = y < shoulder ? 1.5 : 1;
+    for (const s2 of [-1, 1]) { b.put(block, xi0 + sg, y + 0.5, z + s2 * zc, 0, TS); if (y < shoulder) b.put(cube, xi1 + sg * 0.5, y + 0.5, z + s2 * 1.5, 0, TS); }
+    b.put(block, xi1 + sg * 0.5, y + 0.5, z, 90, TS);
+  }
+  // the house side of the shaft over the gable: planks on the gable's top
+  const gableTop = Math.max(F + SH, ...b.pieces.filter(p => Math.abs(p.x - xW) < 0.3 && Math.abs(p.z - z) < 0.9 && ['wall', 'gable'].includes(role(p))).map(p => Ck.aabb(p).y1));
+  for (let y = gableTop; y < yTop - 0.01; y += 1) b.put(K.wallHalf, xW, Math.min(y + 0.5, yTop - 0.5), z, 90, T2);
+  // the lid on four short posts
+  for (const x of [xi0, xi1]) for (const s2 of [-1, 1]) b.put(K.pole1 || 'wood_pole', x, yTop + 0.5, z + s2 * 0.5, 0, T2);
+  b.put(K.floor, xi0 + sg, yTop + 1.1, z, 0, T2);
+  b.vents.push({ kind: 'stack', x: +(xW + sg * 0.7).toFixed(3), z, rect: null });
+  if (o.notes) o.notes.push('The hearth stands half in the gable wall, in a stone alcove that rises as a chimney stack past the ridge.');
+  return true;
+}
+
+// The gable end chimneyStack tries first on a middle-fire home that may get one (o.may): the first end of the main wing
+// with no wing past it and no tower at it, as chimneyStack walks them. 0 when none. The woodshed keeps off it.
+function stackEndFor(wings, tower, o) {
+  const w0 = wings[0];
+  if (!o.may || !w0 || w0.alpha !== 0) return 0;
+  for (const sg of [1, -1]) {
+    const xWall = w0.cx + sg * w0.W;
+    if (wings.some(w => w !== w0 && inside(w, xWall + sg * 1.5, w0.cz, 0.01))) continue;
+    if (tower && Math.abs(tower.cx - xWall) < tower.n + 1) continue;
+    return sg;
+  }
+  return 0;
+}
+
+// A stack hearth whose stack cannot stand outside the gable (hearthStack false) becomes an end hearth at the same
+// gable: the ridge caps over the fire's cell and the rake's cap over it come out for the hood's shaft (as the roof does
+// for an end hearth). Returns the flue's rectangle, or null when no ridge cap is over the cell.
+function endFallback(b, h, w0, o) {
+  const fr = flueRect(w0, { x: h.x, z: h.z }, w0.W - 1);
+  if (!fr) return null;
+  const Ck = checksLib();
+  const caps = takeOut(b, p => !p.decor && P.piece(p.name).role === 'roofTop' && p.y > o.F + o.storeys * o.SH - 0.3 &&
+    (a => a.x0 < fr.x1 - 0.05 && a.x1 > fr.x0 + 0.05 && a.z0 < fr.z1 - 0.05 && a.z1 > fr.z0 + 0.05)(Ck.catBox(p)));
+  if (!caps.length) return null;
+  b.vents.push({ kind: 'ridge', caps, x: h.x, z: h.z, y: Math.max(...caps.map(c => c.y)), rect: fr, from: o.F + HOOD, hood: true });
+  return fr;
+}
+
+// A stone front on a home's wall hearth from s2 (D-131: "Wood hearths (s1) and then stone hearths (s2 and s3)
+// acceptable in meadows onward"), as corpus builders make one. Corpus (lab/hearths/hood_stats.js, round 4): of 556
+// indoor home wall fires, 79 (14 %) have stone 1.3 to 2.9 m over them (basic stone 39, grausten 32, black marble 10);
+// over the basic-stone ones a stone_arch across the fire's mouth (19) or a stone lintel (17), a metre in front of the
+// fire, with 36 of their stone pieces set into a wall piece (median 1 m). Here: two jambs of 1 m blocks from the ground
+// at the sides of the hood's mouth, 1.75 to 2.75 m out from the wall line, and across the mouth from 2 to 3 m either a
+// mirrored pair of arches resting on 2 m jambs, or a 2 m block as a lintel between 3 m jambs, its ends set 0.2 m into
+// the jambs' top blocks (a clip made on purpose, D-098, marked) and resting on the blocks under them (stone takes no
+// support from wood, T-102). The plank hood starts on it at 3 m. Black marble takes the lintel (its arch is 2 m tall). Only where the kit's block is a 1 m cube (not the
+// Ashlands grausten, whose blocks are 2 m tall) and the floor is at most 1 m up (the jambs go down to the ground).
+const FRONT_SHARE = 0.14, FRONT_ARCH = 19 / 36, FRONT_TOP = 3;
+// The Ashlands front in grausten (its blocks are 1 x 2 m and 2 x 2 m slabs, its long wall 4 x 2 m): two 1 x 2 m slabs
+// standing as jambs 1.5 m either side of the fire and a 4 x 2 m slab across them as the lintel from 2 to 4 m, its ends
+// resting on the jambs. Corpus (lab/hearths/hood_stats.js, round 6 count on the device): in the 56 builds with grausten
+// that have indoor home wall fires, 32 of 177 such fires (18 %) have grausten 1.3 to 2.9 m over them, most often a
+// 2 x 2 or 4 x 2 m slab whose foot is 2 m over the fire's floor. About half the homes that draw one have no room for
+// it (an upper storey under 4 m, a door or climb, a wall in its place: 25 of 48 forced Ashlands wall hearths took one,
+// round 6), so it is drawn at 0.35 for about 18 % of wall hearths.
+const FRONT_SHARE_GRAUSTEN = 0.35, FRONT_TOP_GRAUSTEN = 4;
+function hearthFront(b, K, h, o) {
+  const cube = K.stoneBlock, span = K.stoneWall;
+  const no = w => { if (o.why) o.why.frontWhy = w; return false; };
+  if (!cube || !span || o.F > 1.01) return no('no stone kit or a floor over 1 m');
+  const sz = n => P.piece(n).size;
+  const gr = /grausten/.test(cube) && !!K.stoneWall4 && sz(cube)[0] === 1 && sz(cube)[1] === 2 && sz(K.stoneWall4)[0] === 4 && sz(K.stoneWall4)[1] === 2;
+  const TOP = gr ? FRONT_TOP_GRAUSTEN : FRONT_TOP;
+  if (o.storeys > 1 && o.SH < TOP - 0.01) return no(`storey under ${TOP} m`);
+  if (!gr && (sz(cube)[0] !== 1 || sz(cube)[1] !== 1 || sz(span)[0] !== 2 || sz(span)[1] !== 1)) return no('blocks not 1 m');
+  const arch = !gr && K.stoneArch === 'stone_arch' && o.R() < FRONT_ARCH;
+  // the wall line behind the fire, the way out into the room and the way along the wall
+  const end = h.spot === 'end';
+  const wx = end ? h.xW : h.x, wz = end ? h.z : h.z + h.sv;
+  const n = end ? [-h.sg, 0] : [0, -h.sv], t = end ? [0, 1] : [1, 0];
+  const at = (out, along) => [+(wx + n[0] * out + t[0] * along).toFixed(3), +(wz + n[1] * out + t[1] * along).toFixed(3)];
+  if (!isFinite(wx)) return no('no wall line');
+  const Ck = checksLib();
+  // the wall's face toward the room (a stone wall is a metre thick: the fire slides off it, and the front moves out
+  // with it)
+  const wallHere = p => P.piece(p.name).role === 'wall' && Math.abs((p.x - wx) * n[0] + (p.z - wz) * n[1]) < 0.15 && Math.abs((p.x - wx) * t[0] + (p.z - wz) * t[1]) < 1.5;
+  const face = Math.max(0.1, ...b.pieces.filter(p => !p.decor && wallHere(p)).map(p => { const a = Ck.aabb(p); return Math.max(...[[a.x0, a.z0], [a.x1, a.z1]].map(([x, z]) => (x - wx) * n[0] + (z - wz) * n[1])); }).filter(v => v < 0.8));
+  // (the arch form: two stone_arch pieces side by side, mirrored, their shoulders out over the jambs and their curves
+  // meeting over the middle of the mouth, as corpus builders pair them: of 3,828 stone_arch pieces with a parallel
+  // neighbor 2 m along at the same height, 2,954 are mirrored with the shoulders out (198 builds), 537 mirrored with
+  // the shoulders in, 337 turned the same way; over indoor home wall fires 10 of 25 with arches have two at 1 m either
+  // side of the fire. The jambs stand 1.5 m either side, 2 m tall, and the arches rest on them, so the mouth is 2 m.)
+  const OUT = gr ? 2.2 + Math.max(0, face - 0.25) : 2.25 + Math.max(0, face - 0.25), JAMB = arch || gr ? 1.5 : 1.3, IN = 0.2;
+  const jTop = o.F + FRONT_TOP - (arch ? 1 : 0);
+  const yawT = end ? 270 : 0; // a piece's local +x along t (yaw 0 on x runs, 270 on z runs); stone_arch's shoulder is its +x end
+  const pieces = [];
+  // (on a raised floor the jambs go down through it to the ground, the lowest block set into the ground; pieces are
+  // written by their middle, as the generator writes walls)
+  if (gr) {
+    for (const s of [-1, 1]) for (let y = o.F; y > -1.99; y -= 2) pieces.push({ name: cube, at: at(OUT, s * JAMB), y: y + 1, yaw: yawT });
+    pieces.push({ name: K.stoneWall4, at: at(OUT, 0), y: o.F + 3, yaw: yawT });
+  } else {
+    for (const s of [-1, 1]) for (let y = jTop - 1; y > -0.99; y -= 1) pieces.push({ name: cube, at: at(OUT, s * JAMB), y: y + 0.5, yaw: 0 });
+    if (arch) for (const s of [-1, 1]) pieces.push({ name: K.stoneArch, at: at(OUT, s), y: o.F + FRONT_TOP - 0.5, yaw: (yawT + (s < 0 ? 180 : 0)) % 360 });
+    else pieces.push({ name: span, at: at(OUT, 0), y: o.F + FRONT_TOP - 0.5, yaw: yawT, clip: IN });
+  }
+  // the place must be clear: no wall, post, door, window, stair or ladder in it, no doorway or climb over it
+  // (a wall that stands on its pivot in the game is still written by its middle here; finish() moves it down)
+  const box = p => { const pi = P.piece(p.name); return Ck.aabb(pi.onPivot && !p.footed ? { ...p, y: p.y - pi.size[1] / 2 } : p); };
+  const boxes = pieces.map(p => box({ name: p.name, x: p.at[0], y: p.y, z: p.at[1], yaw: p.yaw, q: quat(p.yaw) }));
+  const meet = (a, c, m = 0.05) => a.x0 < c.x1 - m && a.x1 > c.x0 + m && a.z0 < c.z1 - m && a.z1 > c.z0 + m && a.y0 < c.y1 - m && a.y1 > c.y0 + m;
+  // (a post under a raised floor where a jamb goes down is taken out: the jamb carries the floor there)
+  const under = p => P.piece(p.name).role === 'pole' && Ck.aabb(p).y1 <= o.F + 0.15;
+  const inWay = b.pieces.find(p => !p.decor && !under(p) && !['floor', 'roof', 'roofTop', 'roofCorner'].includes(P.piece(p.name).role) && (a => boxes.some(c => meet(a, c)))(box(p)));
+  if (inWay) return no(`in the way: ${inWay.name}`);
+  // (an upper room's floor zone starts 0.1 m under its floor, which rests on the jambs' tops)
+  const zones = keepClear(b).filter(z => !z.flue);
+  if (zones.some(z => boxes.some(c => hits({ ...c, y1: c.y1 - 0.15 }, z)))) return no('doorway or climb');
+  takeOut(b, p => !p.decor && under(p) && (a => boxes.some(c => meet(a, c)))(Ck.aabb(p)));
+  for (const p of pieces) {
+    const mark = { trim: true, hearthStone: true };
+    if (p.clip) Object.assign(mark, { clip: p.clip, wclip: p.clip });
+    b.put(p.name, p.at[0], p.y, p.at[1], p.yaw, mark);
+  }
+  // the hood starts on the front's top
+  const v = b.vents.find(x => x.hood);
+  if (v) v.from = o.F + TOP;
+  if (gr) b.notes.push('A grausten front on the hearth: two slabs as jambs and a long slab across the fire\'s mouth, the plank hood over it.');
+  else b.notes.push(arch ? 'A stone front on the hearth: jambs and a pair of arches across the fire\'s mouth, the plank hood over it.'
+    : 'A stone front on the hearth: jambs and a stone lintel across the fire\'s mouth, the plank hood over it.');
+  return true;
+}
+
 // A stone stack built against the outside of a gable wall: two blocks deep for the first 2 m (the shoulder), one block
 // deep above it, up to a metre past the ridge, a crown course on top. It stands on the ground, so stone carries it
 // (stone takes no support from wood). It goes on a stretch of gable wall with no door or window in it, at the end
@@ -12065,14 +14391,17 @@ function chimneyStack(b, K, wings, edges, X, R, o = {}) {
   if (w0.alpha !== 0 || !K.stoneWall || !/2x1/.test(K.stoneWall)) return false;
   const block = K.stoneWall, cube = K.stoneBlock || 'stone_wall_1x1';
   const opened = new Set((b.openings || []).map(o => `${o.e.x},${o.e.z}`));
+  const why = [];
   for (const sg of [1, -1]) {
     const xWall = w0.cx + sg * w0.W;
-    if (wings.some(o => o !== w0 && inside(o, xWall + sg * 1.5, w0.cz, 0.01))) continue;
-    if (b.pieces.some(p => p.name === 'wood_stack' && Math.abs(p.x - xWall) < 2)) continue; // the woodshed's end
+    if (wings.some(o => o !== w0 && inside(o, xWall + sg * 1.5, w0.cz, 0.01))) { why.push('wing'); continue; }
+    if (b.pieces.some(p => p.name === 'wood_stack' && Math.abs(p.x - xWall) < 2)) { why.push('woodshed'); continue; } // the woodshed's end
     const end = edges.filter(e => e.yaw === 90 && Math.abs(e.x - xWall) < 0.01).sort((a, c) => Math.abs(a.z - w0.cz) - Math.abs(c.z - w0.cz));
     // the stack's column must be clear: outside every other wing, no deck, wall, post or stair in it (roof eaves of
     // this gable may run over it; the stack goes up through them)
     const Ck = checksLib();
+    // the rake's bargeboards run over the stack's column like the eaves; those in the stack's way come out below
+    const rakeTrim = p => P.piece(p.name).role === 'beam' && (p.trim || /_(26|45)$/.test(p.name));
     // the wall's outer face (a stone wall is a metre thick, a log wall less)
     const inWall = p => Math.abs(p.x - xWall) < 0.15 && P.piece(p.name).role === 'wall';
     const face = Math.max(0.1, ...b.pieces.filter(inWall).map(p => { const o = Ck.aabb(p); return sg > 0 ? o.x1 - xWall : xWall - o.x0; }).filter(v => v < 0.8));
@@ -12082,16 +14411,18 @@ function chimneyStack(b, K, wings, edges, X, R, o = {}) {
       if (wings.some(o => o !== w0 && (inside(o, xs, z, 0.6) || inside(o, xs + sg, z, 0.6)))) return false;
       // no window anywhere up the wall behind it (a loft window in the gable included)
       if (b.pieces.some(p => (P.piece(p.name).role === 'window' || /window/.test(p.name)) && Math.abs(p.x - xWall) < 0.6 && Math.abs(p.z - z) < 1.6)) return false;
-      return !b.pieces.some(p => {
+      const hit = b.pieces.find(p => {
         const r = P.piece(p.name).role;
-        if ((/roof/.test(r) && Math.abs(p.x - xWall) < 1.6) || inWall(p)) return false;
+        if (((/roof/.test(r) || rakeTrim(p)) && Math.abs(p.x - xWall) < 1.6) || inWall(p)) return false;
         const o = Ck.aabb(p);
         return o.x0 < x1 - 0.05 && o.x1 > x0 + 0.05 && o.z0 < z + 0.95 && o.z1 > z - 0.95 && o.y1 > 0.05;
       });
+      if (hit) o.blockedBy = `${hit.name}${hit.trim ? ' (trim)' : ''} at ${hit.x},${hit.y},${hit.z}`;
+      return !hit;
     };
     // the middle bay of the gable only (a stack at a corner cut into the eave, round 4 review); a window there is walled up
     const e = end.find(x => Math.abs(x.z - w0.cz) < 1.1 && clearAt(x.z));
-    if (!e) continue;
+    if (!e) { why.push(`column: ${o.blockedBy || 'no middle bay'}`); continue; }
     if (opened.has(`${e.x},${e.z}`) && o.C) {
       const inBay = p => !p.decor && Math.abs(p.x - e.x) < 0.6 && Math.abs(p.z - e.z) < 1.01 && ['wall', 'window', 'pole', 'beam'].includes(P.piece(p.name).role) && p.y > (o.F || 0) && p.y < (o.F || 0) + o.storeys * o.SH - 0.05;
       b.pieces = b.pieces.filter(p => !inBay(p));
@@ -12100,10 +14431,12 @@ function chimneyStack(b, K, wings, edges, X, R, o = {}) {
     }
     // the ridge over this end: the highest roof piece within 3 m of the wall
     const tops = b.pieces.filter(p => /roof/.test(P.piece(p.name).role) && Math.abs(p.x - xWall) < 3);
-    if (!tops.length) continue;
+    if (!tops.length) { why.push('no roof'); continue; }
     const ridge = Math.max(...tops.map(p => Ck.aabb(p).y1)); // the top of the ridge pieces, not their pivots
     const yTop = Math.ceil(ridge + 0.8);
-    const T2 = { trim: true };
+    const T2 = o.hearthStone ? { trim: true, hearthStone: true } : { trim: true }; // (marked for D-131 where the biome builds no stone yet)
+    const sx0 = Math.min(xs - sg * 0.5, xs + sg * 1.5), sx1 = Math.max(xs - sg * 0.5, xs + sg * 1.5);
+    takeOut(b, p => !p.decor && rakeTrim(p) && Math.abs(p.x - xWall) < 1.6 && (a => a.x0 < sx1 - 0.05 && a.x1 > sx0 + 0.05 && a.z0 < e.z + 0.95 && a.z1 > e.z - 0.95)(Ck.aabb(p)));
     const shoulder = X.stackShoulder ? 2 : 0; // a wider foot only when asked (it read as a stray block, round 4 review)
     for (let y = 0; y < yTop; y++) {
       b.put(block, xs, y + 0.5, e.z, 90, T2);
@@ -12117,6 +14450,7 @@ function chimneyStack(b, K, wings, edges, X, R, o = {}) {
     b.notes.push('A stone chimney stack against the gable end.');
     return true;
   }
+  if (o.info) o.info.stackWhy = why.join('; ');
   return false;
 }
 
@@ -12631,8 +14965,12 @@ if (NODE_FP) module.exports = apiFP; else window.VHFloorplan = apiFP;
 // Node and in the game's bundle (Jint), so the lab and the game judge a pool the same way.
 //
 // What it measures, per design and per line:
-//   nest      decor stages nest: every piece of d1 is in d2, every piece of d2 in d3 (D-070)
-//   lineage   share of a stage's shell (structural pieces) still standing in the next stage (D-069)
+//   nest      decor stages nest: every piece of d1 is in d2, every piece of d2 in d3 (D-070); reported, never gated
+//             (D-132, Tyler: "Its not mandatory that everything there in s1 and different d1 to d3 phases carry over")
+//   lineage   share of a stage's shell (structural pieces) still standing in the next stage (D-069); reported only
+//   shape     the plan's shape family at each stage: square-cornered (rectangle, L, T, U, cross) or angled (octagon,
+//             round), by the share of the ground floor's walls off the 90 degree grid; a line whose family changes
+//             between stages fails (D-132: "A rectangular house cant likely turn into an octagonal house")
 //   furnClip  pairs of furniture pieces whose boxes overlap by more than 12 cm on every axis (chests in chests,
 //             benches in tables: T-6xx "chests clipping each other")
 //   stacked   furniture standing on furniture that is not a chest stack or a table setting
@@ -12673,20 +15011,46 @@ const SH = NODE_A ? require('./shapes.js') : window.VHShapes;
 // and the second sample (lab/make_testpool.js --sample: Norse Meadows 12.2, 0.443, 1.07; norse-forest Black Forest 14,
 // 0.455, 1.78; middle-eastern Plains 13.4, 0.397, 1.08 on 2026-11-10), so they guard against slipping back. Gated on
 // pools of six lines or more: a single line ranges widely (a barn holds no corpus set, a smithy six prefabs).
-const RICH_FLOOR = { prefabsPerD3: 11, setShare: 0.36, corpusSetsPerD3: 0.9 }, RICH_LINES = 6;
-const GATE = ['richness', 'homeAlike', 'nestBroken', 'furnClip', 'stacked', 'overWin', 'stairFoot', 'stations', 'mountClip', 'hang', 'loose', 'doorway', 'onStation', 'intoWall'];
+// 2026-11-11: beds, bed rugs and foot chests at the corpus rates (decorate.js bedTaste) put Norse Meadows at 14.6,
+// 0.355, 1.62 (0.371 and 1.81 with the earlier rates, the same pool); setShare's floor moved to 0.34 to stay under it.
+const RICH_FLOOR = { prefabsPerD3: 11, setShare: 0.34, corpusSetsPerD3: 0.9 }, RICH_LINES = 6;
+const GATE = ['richness', 'homeAlike', 'shapeChange', 'furnClip', 'stacked', 'overWin', 'stairFoot', 'stations', 'mountClip', 'hang', 'loose', 'doorway', 'onStation', 'intoWall'];
 // Watched only: printed with the totals; to be gated once the generator clears them.
 const WATCH = ['outside', 'intoWallSoft'];
+// Reported only, never gated (D-132): decor stages that do not nest.
+const REPORTED = ['nestBroken'];
 const MOUNT = /^(piece_banner\d+|sign|sign_notext|itemstand|piece_shieldgeneric|cloth_hanging_|fenrirhide_hanging|Trophy|wood_dragon)/;
 const BANNER = /^piece_banner\d+$/;
 // Heights of the middle of a sign or a wall item stand over the floor under it (m): read at eye height, reached by hand.
-const MID = { sign: [1.0, 2.3], sign_notext: [1.0, 2.3], itemstand: [0.7, 2.4] };
+// A wall stand may go as high as corpus builders hang them on walls and rafters (D-127): the higher of the 90th
+// percentiles of 'itemstand|wall' and 'itemstand|rafter' in data/stands-corpus.json heights (stand height over the
+// room's floor; 3.8 m on the stands branch, 2026-11-11); 2.4 m where the heights are not there (the bundles carry them as window.VH_STANDS).
+const STAND_HI = (() => {
+  let H = null;
+  try { H = NODE_A ? require('../data/stands-corpus.json').heights : (typeof window !== 'undefined' && window.VH_STANDS ? window.VH_STANDS.heights : null); } catch (e) { H = null; }
+  const v = H ? ['itemstand|wall', 'itemstand|rafter'].map(k => H[k] && H[k][4]).filter(Number.isFinite) : [];
+  return v.length ? Math.max(2.4, ...v) : 2.4;
+})();
+const MID = { sign: [1.0, 2.3], sign_notext: [1.0, 2.3], itemstand: [0.7, STAND_HI] };
+// A sign standing on the floor is a corpus use (D-127): in the interior library (data/kitbash-interior.json), 32 sign
+// members of 21 mined sets stand on the floor away from any chest, from 21 of its 472 source builds (KB-058, KC-142
+// among them), sunk into the floor 0 to 3.3 cm in 26 of them and 18 cm at the 90th percentile. A sign whose foot is on
+// the floor, or into it no deeper than that, passes the height test (lib/kitbash.js hangOff asks the same).
+const SIGN_FLOOR_SINK = 0.18;
+const floorSign = (name, y0, floor) => /^sign/.test(name) && y0 >= floor - SIGN_FLOOR_SINK - 0.005 && y0 <= floor + 0.05;
 const STRUCT_VIS = ['wall', 'halfwall', 'window', 'beam', 'pole', 'gable', 'door'];
 const FLAT = ['wall', 'halfwall', 'gable', 'pole'];
 const OVERHEAD = ['roof', 'roofTop', 'roofCorner', 'floor', 'beam'];
 const isLooseItem = n => M.source(n) === 'Items' && !/^(Pickable_|Placeable_|TreasureChest|loot_chest)/.test(n);
 // Furniture is measured with the decorator's own sizes (the game's, turned with the piece) where it has them: the
 // catalog's boxes are rough for props and called a chest beside a chopping block a clip.
+// a piece's catalog box as turned on its pivot (lib/checks.js catBox, before it is made square to the axes)
+const yawA = p => { if (p.yaw != null) return p.yaw; const [x, y, z, w] = p.q || [0, 0, 0, 1]; return Math.atan2(2 * (w * y + x * z), 1 - 2 * (y * y + x * x)) * 180 / Math.PI; };
+const offAxis = p => { const a = ((yawA(p) % 90) + 90) % 90; return Math.min(a, 90 - a) > 1; };
+function turnedBox(p) {
+  const info = PC.piece(p.name), s = p.s || [1, 1, 1];
+  return D._int.obox(p.x, p.z, info.size[0] * s[0], info.size[2] * s[2], yawA(p));
+}
 function obbGap(a, b) { // how far apart two turned boxes are on their best separating axis (below 0: they overlap that deep)
   let best = -Infinity;
   for (const [o, p] of [[a, b], [b, a]]) for (const [ax, az, h] of [[o.c, -o.s, o.hw], [o.s, o.c, o.hd]]) {
@@ -12703,6 +15067,20 @@ const HANG = /^(piece_banner\d+|sign|sign_notext|itemstand|cloth_hanging_|fenrir
 const key = p => `${p.name}@${p.x.toFixed(2)},${p.y.toFixed(2)},${p.z.toFixed(2)}@${p.q.map(v => v.toFixed(2)).join(',')}`;
 const role = p => PC.piece(p.name).role;
 const structural = p => PC.piece(p.name).structural;
+// The plan's shape family from its ground floor walls: 'angled' when more than a quarter of them stand off the 90
+// degree grid (an octagon's or a round house's facets), else 'square' (rectangle, L, T, U and cross grow into one
+// another). The plan's name from the design's own name (type_biome_culture_plan-roof-walls_stage_seed) is reported.
+function shapeOf(pieces) {
+  const walls = pieces.filter(p => !p.decor && ['wall', 'halfwall', 'window', 'door'].includes(role(p)) && PC.piece(p.name).structural !== false);
+  if (!walls.length) return { family: null, plan: null };
+  const y0 = Math.min(...walls.map(p => p.y));
+  const low = walls.filter(p => p.y < y0 + 2.2);
+  const off = low.filter(p => { const q = p.q || [0, 0, 0, 1], yaw = Math.atan2(2 * q[1] * q[3], 1 - 2 * q[1] * q[1]) * 180 / Math.PI; const r = ((yaw % 90) + 90) % 90; return r > 10 && r < 80; }).length;
+  const meta = pieces.meta || {};
+  const m = /villheim:.*design (\S+)/.exec(meta.Description || '') || [null, meta.Name || ''];
+  const f = String(m[1] || '').split('_');
+  return { family: off > 0.25 * low.length ? 'angled' : 'square', plan: f.length >= 6 ? f[3].split('-')[0] : null };
+}
 const ov = (a, b, ax) => Math.min(a[ax + '1'], b[ax + '1']) - Math.max(a[ax + '0'], b[ax + '0']);
 
 function hull(points) { // convex hull, monotone chain
@@ -12741,6 +15119,11 @@ function audit(pieces, shell) {
       const ia = D.itemOf(pa), ib = D.itemOf(pb), deep = -obbGap(ia.b, ib.b);
       oy = Math.min(ia.y1, ib.y1) - Math.max(ia.y0, ib.y0);
       ox = oz = deep;
+    } else if (offAxis(pa) || offAxis(pb)) {
+      // a piece turned off the grid, one of them without a furniture entry (a runed bench turned with the table it is
+      // drawn up to): their boxes as turned, the box catBox makes square round each, so the turn alone is no overlap
+      const deep = -obbGap(turnedBox(pa), turnedBox(pb));
+      ox = oz = deep;
     }
     const fireSet = [pieces[furn[a]].name, pieces[furn[b]].name].some(n => /^(fire_pit|hearth|piece_cookingstation|piece_cauldron|piece_cookingstation_iron)$/.test(n)) && [pieces[furn[a]].name, pieces[furn[b]].name].some(n => /^(fire_pit|hearth|bonfire)$/.test(n));
     if (fireSet) continue; // a spit or a pot over its fire
@@ -12754,6 +15137,11 @@ function audit(pieces, shell) {
       if (!fine) r.stacked.push(`${upper.name} on ${lower.name}`);
     }
   }
+  // a sign set on a chest's front as a label (corpus: 371 of 4,450 signs rest on another piece, D-127) is read where the
+  // chest is: its middle within 0.25 m of a storage piece's box and no higher than the chest's top
+  const store = pieces.map((q, j) => j).filter(j => role(pieces[j]) === 'storage');
+  const onChest = i => { const b = visBox[i] || boxes[i], mx = (b.x0 + b.x1) / 2, mz = (b.z0 + b.z1) / 2, my = (b.y0 + b.y1) / 2;
+    return store.some(j => { const c = boxes[j]; return mx > c.x0 - 0.25 && mx < c.x1 + 0.25 && mz > c.z0 - 0.25 && mz < c.z1 + 0.25 && my > c.y0 && my < c.y1 + 0.1; }); };
   // hangings over openings
   const open = pieces.map((p, i) => i).filter(i => ['window', 'door'].includes(role(pieces[i])));
   pieces.forEach((p, i) => {
@@ -12819,7 +15207,7 @@ function audit(pieces, shell) {
       if (b.y0 < floor - 0.03) r.hang.push(`${p.name} ${Math.round((floor - b.y0) * 100)} cm into the floor`);
       else if (b.y0 > floor + 1.0) r.hang.push(`${p.name} foot ${(b.y0 - floor).toFixed(1)} m over the floor`);
       if (ceil != null && b.y1 > ceil + 0.03) r.hang.push(`${p.name} ${Math.round((b.y1 - ceil) * 100)} cm into the roof`);
-    } else if (MID[p.name] && role(p) !== 'floor') {
+    } else if (MID[p.name] && role(p) !== 'floor' && !(/^sign/.test(p.name) && onChest(i)) && !floorSign(p.name, b.y0, floor)) {
       const h = mid - floor, [lo, hi] = MID[p.name];
       // a horizontal stand (itemstandh) is a table piece and has no entry here
       if (h < lo || h > hi) r.hang.push(`${p.name} middle ${h.toFixed(1)} m over the floor`);
@@ -12899,9 +15287,19 @@ function pool(input, name) {
   const dir = name || '';
   const report = { pool: dir, designs: Object.values(designs).reduce((s, d) => s + Object.keys(d).length, 0), lines: {}, totals: {} };
   const MEASURES = ['furnClip', 'stacked', 'overWin', 'outside', 'stairFoot', 'stations', 'mountClip', 'hang', 'loose', 'doorway', 'onStation', 'intoWall', 'intoWallSoft'];
-  const tot = Object.fromEntries([...MEASURES, 'nestBroken'].map(k => [k, 0]));
+  const tot = Object.fromEntries([...MEASURES, 'nestBroken', 'shapeChange'].map(k => [k, 0]));
   for (const [line, d] of Object.entries(designs)) {
-    const L = report.lines[line] = { nest: {}, lineage: {}, issues: {} };
+    const L = report.lines[line] = { nest: {}, lineage: {}, shape: {}, issues: {} };
+    // the shape family at each stage (from its first decor stage written), and the gate on a change between stages
+    let prev = null;
+    for (let s = 1; s <= 3; s++) {
+      const st = ['d1', 'd2', 'd3'].map(x => d[`s${s}${x}`]).find(Boolean);
+      if (!st) continue;
+      const sh = st.shape || (st.shape = shapeOf(st.pieces));
+      L.shape[`s${s}`] = sh.family + (sh.plan ? ` (${sh.plan})` : '');
+      if (prev && sh.family && prev.family && sh.family !== prev.family) { tot.shapeChange++; (L.issues[`s${s}`] = L.issues[`s${s}`] || []).push(`shapeChange: ${prev.family} at s${s - 1}, ${sh.family} at s${s}`); }
+      if (sh.family) prev = sh;
+    }
     for (let s = 1; s <= 3; s++) {
       for (const [a, b] of [[1, 2], [2, 3]]) {
         const A = d[`s${s}d${a}`], Bd = d[`s${s}d${b}`];
@@ -12964,6 +15362,7 @@ function pool(input, name) {
   report.failed = GATE.filter(k => tot[k] > 0);
   report.gate = report.failed.length ? 'fail' : 'pass';
   report.watch = Object.fromEntries(WATCH.map(k => [k, tot[k]]));
+  report.reported = Object.fromEntries(REPORTED.map(k => [k, tot[k]]));
   return report;
 }
 
@@ -13009,6 +15408,7 @@ function summary(report, n = 3) {
   if (report.richLow && report.richLow.length) out.push(`  richness: ${report.richLow.join('; ')}`);
   if (report.rich) out.push(`richness: ${Object.entries(report.rich).map(([k, v]) => `${k} ${v}`).join(', ')}`);
   out.push(`watched: ${Object.entries(report.watch).map(([k, v]) => `${k} ${v}`).join(', ')}`);
+  if (report.reported) out.push(`reported (never gated, D-132): ${Object.entries(report.reported).map(([k, v]) => `${k} ${v}`).join(', ')}`);
   return out.join('\n');
 }
 
@@ -13018,12 +15418,15 @@ function group(files, parse) {
   for (const [f, text] of Object.entries(files)) {
     const m = f.match(/^(.*)_s(\d)d(\d)(\.blueprint)?$/);
     const [line, stage] = m ? [m[1], `s${m[2]}d${m[3]}`] : [f.replace(/\.blueprint$/, ''), 'one'];
-    (out[line] = out[line] || {})[stage] = parse(text).pieces;
+    const bp = parse(text);
+    // the file's name and description go with its pieces (the plan's name for the shape report)
+    if (bp.meta) Object.defineProperty(bp.pieces, 'meta', { value: bp.meta, enumerable: false });
+    (out[line] = out[line] || {})[stage] = bp.pieces;
   }
   return out;
 }
 
-const apiA = { audit, pool, summary, group, likeness, signature, GATE, WATCH };
+const apiA = { STAND_HI, MID, floorSign, audit, pool, summary, group, likeness, signature, shapeOf, GATE, WATCH, REPORTED };
 if (NODE_A) module.exports = apiA; else window.VHAudit = apiA;
 
 })();
@@ -13127,7 +15530,7 @@ window.VH_SCORER = {
  "n_kept": 206,
  "n_dropped": 455
 };
-window.VH_INTERIOR = {"meta":{"designs":497,"rooms":2686},"stand":{"wood_floor":0.1,"stone_floor_2x2":0.5,"wood_floor_1x1":0.1,"ashwood_floor_2x2":0.1,"ashwood_floor_1x1":0.1,"stone_floor":0.5,"blackmarble_floor":0.5,"Piece_grausten_floor_2x2":0.25,"Piece_grausten_floor_4x4":0.25,"Piece_grausten_floor_1x1":0.25,"iron_floor_2x2":0.05,"ashwood_deco_floor":0.09,"blackmarble_tile_floor_2x2":0.2,"blackmarble_floor_triangle":0.46,"mm_castle_floor":0.08,"mm_castle_floor_2x2":0.11,"blackmarble_tile_floor_1x1":0.1,"iron_floor_1x1_v2":0.5,"dvergrprops_wood_floor":0.1},"doors":{"freeDepth":[2.96,4,4,4,4],"byRoom":{"smithy":[2.16,4,4],"workshop":[2.44,4,4],"storage":[0.95,4,4],"other":[4,4,4],"hall":[3.99,4,4],"home":[1.62,4,4],"sleeping":[2.37,4,4],"kitchen":[3.49,4,4],"living":[3,4,4],"tavern":[2.58,4,4]}},"rooms":{"other":{"n":831,"area":[6.75,12.25,42.5],"perTenM2":[0.82,2.22,5],"items":[["itemstand",0.21,5.7],["piece_dvergr_lantern",0.19,2],["piece_walltorch",0.16,2.3],["sign",0.15,6.2],["rug_fur",0.13,2.6],["itemstandh",0.12,15.2],["goblinking_totemholder",0.11,2.7],["ArmorStand",0.09,3],["jute_carpet",0.09,3.8],["rug_deer",0.08,2.6],["piece_chest",0.07,2.5],["piece_chest_blackmetal",0.06,2.7],["piece_banner04",0.06,1.8],["piece_chest_wood",0.06,2],["piece_groundtorch_wood",0.05,1.8],["rug_wolf",0.05,1.9],["piece_groundtorch_mist",0.05,2.9],["fermenter",0.04,2.5],["portal_wood",0.04,2.6],["piece_banner11",0.03,2.8],["piece_groundtorch",0.03,2],["piece_chest_barrel",0.03,1.8],["piece_Lavalantern",0.03,1.8],["piece_bathtub",0.03,1],["piece_banner01",0.02,1.6],["wood_dragon1",0.02,2.6],["piece_chair",0.02,1],["piece_banner05",0.02,1.4],["rug_straw",0.02,6.7],["piece_chair03",0.02,1],["piece_banner02",0.02,1.7],["piece_table",0.02,1],["piece_xmastree",0.02,1.1],["Candle_resin",0.02,2.3],["piece_brazierceiling01",0.01,1.1],["piece_banner08",0.01,1.3],["rug_Bjorn",0.01,1],["piece_bench01",0.01,1],["guard_stone",0.01,1.2],["piece_banner03",0.01,1]]},"smithy":{"n":234,"area":[30.5,76.5,189.5],"perTenM2":[1.33,2.34,4.15],"items":[["forge",0.62,1],["forge_ext5",0.57,1.1],["piece_workbench",0.51,1],["forge_ext1",0.44,1],["forge_ext4",0.42,1],["piece_walltorch",0.38,4.3],["forge_ext2",0.37,1],["piece_workbench_ext1",0.37,1],["forge_ext3",0.36,1],["itemstand",0.34,8.7],["piece_chest_wood",0.29,5.9],["piece_chest",0.29,4.3],["rug_deer",0.29,4.8],["piece_workbench_ext2",0.28,1],["piece_workbench_ext3",0.27,1],["sign",0.23,9.2],["blackforge",0.22,1.1],["rug_wolf",0.21,2.9],["itemstandh",0.2,11],["rug_fur",0.19,2.9],["piece_dvergr_lantern",0.19,3.9],["piece_chest_blackmetal",0.18,2.5],["piece_table",0.18,1.5],["cauldron_ext3_butchertable",0.17,1],["piece_chair",0.16,3.3],["blackforge_ext2_vise",0.16,1],["ArmorStand",0.15,2.5],["hearth",0.15,1.2],["piece_chair02",0.15,2.4],["jute_carpet",0.14,4.2],["piece_chest_barrel",0.14,2.9],["piece_magetable_ext",0.13,1.1],["piece_chair03",0.12,5],["piece_magetable",0.12,1],["piece_artisanstation",0.11,1],["piece_spinningwheel",0.1,1.1],["piece_groundtorch",0.1,3.2],["piece_groundtorch_wood",0.09,2.9],["piece_bench01",0.09,1.9],["piece_banner01",0.09,3.7]]},"workshop":{"n":122,"area":[9,29,70.5],"perTenM2":[1.13,2.16,5.71],"items":[["piece_workbench",0.57,1],["rug_deer",0.31,2.3],["itemstand",0.25,3.8],["piece_chest_wood",0.25,4.6],["piece_workbench_ext1",0.21,1.1],["piece_workbench_ext2",0.2,1],["piece_walltorch",0.17,2.5],["piece_dvergr_lantern",0.17,2.1],["piece_groundtorch_wood",0.16,2.8],["piece_artisanstation",0.16,1],["sign",0.15,5.8],["rug_fur",0.13,1.9],["piece_workbench_ext3",0.11,1],["piece_chest_barrel",0.11,3.2],["piece_spinningwheel",0.1,1.6],["itemstandh",0.1,4.2],["rug_wolf",0.09,1.3],["piece_table",0.08,1.1],["piece_stonecutter",0.08,1],["piece_chair03",0.07,1.1],["piece_chair",0.07,1],["jute_carpet_blue",0.07,2.1],["piece_chest_blackmetal",0.07,4.1],["ArmorStand",0.06,5.1],["piece_groundtorch",0.06,1.7],["jute_carpet",0.06,2.7],["hearth",0.05,1],["goblinking_totemholder",0.05,5],["artisan_ext1",0.05,1],["piece_magetable",0.05,1],["piece_chest",0.04,4],["piece_throne01",0.04,1],["piece_logbench01",0.04,1.2],["piece_bench01",0.04,1],["stone_pile",0.04,5.4],["piece_banner08",0.04,1.2],["fermenter",0.04,1.8],["piece_magetable_ext",0.04,1],["piece_Lavalantern",0.04,2],["portal_wood",0.03,1.8]]},"storage":{"n":428,"area":[4.5,7.5,20.5],"perTenM2":[4,7.62,10],"items":[["piece_chest_wood",0.59,6.7],["piece_chest_blackmetal",0.21,4.8],["piece_chest",0.19,5.2],["piece_walltorch",0.07,3.4],["piece_chest_barrel",0.05,4.6],["sign",0.05,4.4],["piece_dvergr_lantern",0.04,2.2],["piece_chest_private",0.04,2.8],["rug_deer",0.03,3.4],["piece_groundtorch_wood",0.03,3.1],["hearth",0.03,1.1],["rug_fur",0.03,1.8],["jute_carpet",0.03,1.4],["itemstand",0.02,2.2],["cauldron_ext3_butchertable",0.02,1],["itemstandh",0.02,2.1],["piece_groundtorch",0.02,2],["piece_banner01",0.02,2],["piece_groundtorch_mist",0.01,2.3],["piece_table",0.01,1.6],["rug_wolf",0.01,1.4],["piece_oven",0.01,2.4],["piece_chair02",0.01,1.6],["piece_chest_warderobe",0.01,6],["fermenter",0.01,1.8],["piece_Lavalantern",0.01,1.2],["piece_chair",0.01,2],["piece_bench01",0.01,2],["piece_banner04",0.01,1.3],["piece_cartographytable",0.01,1],["portal_wood",0.01,1.3],["ArmorStand",0.01,2.3],["rug_asksvin",0.01,1],["piece_logbench01",0.01,1.7]]},"living":{"n":234,"area":[14.5,36,70.5],"perTenM2":[1.23,2.34,4.53],"items":[["piece_chair03",0.41,2.9],["itemstandh",0.27,12.3],["itemstand",0.27,7.8],["piece_chair",0.25,2.4],["piece_table",0.24,1.3],["rug_fur",0.2,4.4],["piece_walltorch",0.2,2.3],["piece_table_round",0.19,1.1],["piece_chair02",0.18,2.2],["piece_bench01",0.18,2.2],["rug_deer",0.17,2.4],["piece_dvergr_lantern",0.14,2.1],["rug_wolf",0.12,2],["jute_carpet",0.11,4],["sign",0.11,4.2],["piece_groundtorch_wood",0.08,2.2],["piece_table_oak",0.08,1],["ArmorStand",0.07,2.2],["piece_chest",0.07,1.6],["piece_chest_wood",0.06,2.2],["piece_jackoturnip",0.06,1.2],["piece_blackwood_bench01",0.06,2.6],["piece_banner01",0.06,2],["piece_Lavalantern",0.06,1.6],["piece_chest_barrel",0.05,2.4],["piece_logbench01",0.05,2.1],["jute_carpet_blue",0.05,1.6],["piece_brazierceiling01",0.05,1.3],["piece_banner05",0.04,1.9],["piece_blackmarble_bench",0.04,2.6],["piece_groundtorch_mist",0.03,3.4],["piece_banner02",0.03,1.9],["goblinking_totemholder",0.03,2.5],["rug_asksvin",0.03,1.5],["piece_banner04",0.03,2.4],["piece_bathtub",0.03,1],["portal_wood",0.03,3],["piece_xmastree",0.03,1.3],["dvergrprops_lantern_standing",0.03,1.2],["piece_groundtorch",0.03,3.3]]},"sleeping":{"n":333,"area":[20,39.25,83],"perTenM2":[1.09,1.85,3.27],"items":[["piece_bed02",0.57,1.3],["rug_fur",0.39,3.8],["rug_wolf",0.31,2.7],["bed",0.27,2.4],["ArmorStand",0.23,2],["rug_deer",0.23,2.8],["itemstand",0.23,5.9],["piece_walltorch",0.22,2],["piece_chair",0.22,1.8],["piece_chest_wood",0.21,3.1],["piece_chair03",0.21,1.7],["piece_dvergr_lantern",0.21,2.8],["sign",0.18,3.7],["piece_chest",0.17,1.7],["ashwood_bed",0.17,2.1],["jute_carpet",0.17,3.6],["piece_table",0.14,1.2],["itemstandh",0.11,5.9],["piece_chest_blackmetal",0.11,1.8],["piece_chair02",0.1,1.6],["piece_chest_private",0.1,2.5],["piece_groundtorch_wood",0.1,2.8],["piece_banner01",0.1,1.7],["piece_table_round",0.09,1],["piece_banner02",0.08,1.8],["piece_workbench",0.07,1],["piece_banner04",0.07,1.6],["piece_throne01",0.07,1.2],["goblinking_totemholder",0.07,2.1],["piece_xmastree",0.07,1.1],["piece_banner05",0.06,1.2],["piece_chest_barrel",0.06,1.9],["piece_Lavalantern",0.06,1.5],["rug_asksvin",0.06,5.1],["Candle_resin",0.05,3.8],["jute_carpet_blue",0.05,3.5],["piece_bathtub",0.05,1],["piece_brazierceiling01",0.04,1.6],["piece_bench01",0.04,1.3],["piece_jackoturnip",0.04,1]]},"kitchen":{"n":78,"area":[15.25,41.25,100.25],"perTenM2":[1.35,2.42,4.44],"items":[["cauldron_ext3_butchertable",0.54,1],["itemstand",0.38,8.7],["itemstandh",0.33,12.5],["piece_oven",0.32,2.1],["piece_chest",0.28,2.3],["rug_fur",0.28,2.3],["piece_preptable",0.26,1.1],["hearth",0.23,1.3],["sign",0.23,8.3],["piece_walltorch",0.23,3.1],["cauldron_ext5_mortarandpestle",0.22,1.1],["piece_chair03",0.21,2.6],["piece_cauldron",0.19,1.1],["piece_chest_wood",0.19,2.5],["rug_deer",0.19,1.9],["rug_wolf",0.18,1.9],["piece_chest_barrel",0.18,2.4],["fire_pit",0.15,1.5],["piece_dvergr_lantern",0.13,1.9],["piece_chest_blackmetal",0.12,4.3],["piece_table",0.12,1],["ArmorStand",0.12,2],["piece_table_round",0.1,1],["piece_chair02",0.1,1.8],["fermenter",0.09,2.3],["piece_cookingstation_iron",0.09,1],["jute_carpet",0.09,1.3],["piece_chair",0.08,1.3],["piece_cookingstation",0.06,2.4],["piece_groundtorch",0.06,4.2],["rug_hare",0.06,2],["piece_groundtorch_wood",0.05,1],["piece_groundtorch_mist",0.05,3.2],["piece_banner01",0.05,1.5],["piece_brazierceiling01",0.04,1],["piece_banner02",0.04,1.7],["piece_banner04",0.04,1],["piece_xmastree",0.04,6.3],["portal_wood",0.04,1.7],["wood_dragon1",0.04,4]]},"tavern":{"n":148,"area":[68.25,135.25,230.25],"perTenM2":[1.31,2.22,3.43],"items":[["piece_chair03",0.51,7.9],["itemstandh",0.45,14.2],["itemstand",0.45,6.3],["piece_walltorch",0.4,3.8],["piece_table",0.39,2.5],["rug_fur",0.34,4.5],["piece_table_round",0.33,1.7],["piece_chair",0.32,5.7],["rug_wolf",0.32,3.3],["rug_deer",0.3,4.3],["piece_dvergr_lantern",0.3,3.4],["cauldron_ext3_butchertable",0.27,1.1],["jute_carpet",0.26,4.1],["piece_table_oak",0.26,1.4],["piece_throne01",0.26,1.8],["piece_chest_wood",0.24,2.8],["piece_chair02",0.24,3.7],["sign",0.24,9],["piece_chest",0.24,2.5],["hearth",0.23,1.3],["piece_oven",0.18,1.5],["ArmorStand",0.18,2.1],["piece_bench01",0.16,3.5],["cauldron_ext5_mortarandpestle",0.16,1],["piece_workbench",0.14,1.2],["fermenter",0.14,1.9],["piece_preptable",0.14,1.1],["piece_chest_barrel",0.14,4.2],["piece_banner01",0.13,1.9],["piece_Lavalantern",0.12,2.3],["piece_chest_blackmetal",0.11,3.9],["rug_asksvin",0.1,1.9],["piece_cartographytable",0.09,1],["jute_carpet_blue",0.09,1.7],["piece_groundtorch",0.09,2.5],["piece_blackmarble_bench",0.08,2.9],["piece_magetable",0.08,1],["rug_hare",0.07,3.1],["piece_blackwood_bench01",0.07,2],["Candle_resin",0.07,3.6]]},"hall":{"n":153,"area":[18.75,55.25,107],"perTenM2":[0.86,1.76,3.33],"items":[["piece_throne01",0.47,1.5],["hearth",0.38,1.2],["rug_fur",0.3,3.4],["itemstand",0.29,5.4],["rug_wolf",0.28,2.3],["itemstandh",0.22,8.9],["piece_chair03",0.22,2.6],["rug_deer",0.22,2.3],["piece_walltorch",0.21,3.2],["piece_table_round",0.18,1],["jute_carpet",0.18,5.1],["ArmorStand",0.15,2.5],["piece_chest",0.14,1.5],["goblinking_totemholder",0.14,3.2],["sign",0.13,12.4],["piece_dvergr_lantern",0.13,2.7],["piece_chair",0.11,1.6],["piece_chest_wood",0.1,2.7],["jute_carpet_blue",0.09,1.9],["piece_table",0.08,1],["piece_chest_blackmetal",0.08,1.6],["piece_blackmarble_throne",0.08,1.7],["piece_bench01",0.08,1.9],["piece_banner01",0.07,2.2],["piece_chair02",0.07,1.2],["piece_blackmarble_table",0.07,1.4],["piece_groundtorch",0.07,1.7],["piece_table_oak",0.07,1.3],["piece_throne02",0.07,1.3],["portal_wood",0.06,3.6],["piece_bone_throne",0.06,1.2],["piece_bathtub",0.05,1],["fire_pit_iron",0.05,1.6],["piece_chest_private",0.05,1.4],["piece_banner05",0.05,1.8],["rug_hare",0.05,2.6],["piece_groundtorch_blue",0.05,4.6],["piece_cartographytable",0.05,1],["piece_groundtorch_green",0.05,2.7],["piece_banner07",0.04,3.2]]},"home":{"n":125,"area":[67.25,96.75,186],"perTenM2":[1.48,2.27,3.08],"items":[["piece_bed02",0.62,1.4],["piece_chair03",0.6,3.1],["piece_chair",0.5,2.8],["rug_fur",0.5,5.6],["rug_deer",0.48,3.6],["itemstand",0.42,6.5],["rug_wolf",0.41,2.6],["piece_table",0.4,1.5],["ArmorStand",0.38,2.7],["piece_table_round",0.38,1.1],["piece_walltorch",0.36,4.2],["piece_chest_wood",0.33,4.9],["piece_throne01",0.33,1.6],["piece_chest",0.31,2.8],["itemstandh",0.3,12.1],["piece_chair02",0.29,2],["jute_carpet",0.25,4],["piece_chest_blackmetal",0.24,2],["bed",0.24,1.7],["sign",0.22,20.1],["piece_workbench",0.22,1.1],["piece_chest_private",0.2,2],["piece_bench01",0.16,1.9],["hearth",0.16,1.1],["piece_chest_barrel",0.15,3.6],["piece_brazierceiling01",0.15,1.2],["piece_xmastree",0.14,1.4],["piece_banner01",0.14,2.1],["piece_cartographytable",0.14,1],["piece_dvergr_lantern",0.14,2.7],["ashwood_bed",0.14,1.6],["piece_bathtub",0.14,1.1],["forge",0.13,1.1],["piece_Lavalantern",0.13,1.6],["piece_groundtorch_wood",0.11,3.4],["piece_logbench01",0.1,1.5],["piece_banner04",0.1,2.6],["piece_workbench_ext2",0.1,1.2],["piece_banner02",0.1,1.5],["goblinking_totemholder",0.1,7]]}},"items":{"piece_chest":{"n":1279,"rel":0,"wall":0.64,"lift":0.04,"under":null,"door":2.19,"corner":0.53,"back":0.55},"piece_groundtorch":{"n":274,"rel":-1,"wall":0.39,"lift":0.75,"under":0.42,"door":2.52,"corner":0.36,"back":0.22},"forge_ext4":{"n":107,"rel":-1,"wall":0.6,"lift":0,"under":null,"door":2.96,"corner":0.54,"back":0.28},"piece_workbench":{"n":276,"rel":0,"wall":0.7,"lift":0.05,"under":null,"door":2.72,"corner":0.11,"back":0.62},"piece_workbench_ext1":{"n":148,"rel":-1,"wall":0.58,"lift":0.05,"under":null,"door":1.61,"corner":0.39,"back":0.5},"portal_wood":{"n":214,"rel":0,"wall":0.54,"lift":0.05,"under":null,"door":2.97,"corner":0.12,"back":0.28},"piece_groundtorch_blue":{"n":125,"rel":270,"wall":0.41,"lift":0.7,"under":0.35,"door":1.55,"corner":0.55,"back":0.36},"itemstand":{"n":4034,"rel":0,"wall":0.24,"lift":2.4,"under":0.9,"door":1.43,"corner":0.33,"back":0.19},"piece_walltorch":{"n":1660,"rel":270,"wall":0.38,"lift":2.29,"under":1.47,"door":1.18,"corner":0.28,"back":0.03},"forge_ext3":{"n":96,"rel":90,"wall":0.54,"lift":0.05,"under":null,"door":2.61,"corner":0.39,"back":0.74},"forge_ext5":{"n":168,"rel":-1,"wall":0.64,"lift":0.06,"under":null,"door":3.32,"corner":0.39,"back":0.61},"forge_ext1":{"n":110,"rel":180,"wall":0.79,"lift":0.05,"under":null,"door":3.97,"corner":0.27,"back":0.86},"forge":{"n":170,"rel":0,"wall":0.68,"lift":0.02,"under":null,"door":2.97,"corner":0.16,"back":0.57},"piece_stonecutter":{"n":32,"rel":0,"wall":0.76,"lift":0.02,"under":null,"door":1.96,"corner":0.2,"back":0.72},"forge_ext2":{"n":99,"rel":-1,"wall":0.55,"lift":0.06,"under":null,"door":1.89,"corner":0.41,"back":0.58},"hearth":{"n":218,"rel":90,"wall":0.44,"lift":0,"under":null,"door":4.36,"corner":0.22,"back":1},"piece_table":{"n":464,"rel":0,"wall":0.7,"lift":0.03,"under":null,"door":2.71,"corner":0.23,"back":0.56},"piece_chair02":{"n":470,"rel":-1,"wall":0.68,"lift":0.07,"under":null,"door":2.54,"corner":0.37,"back":0.85},"piece_chest_wood":{"n":2935,"rel":0,"wall":0.6,"lift":0.08,"under":null,"door":2.02,"corner":0.58,"back":0.53},"fermenter":{"n":239,"rel":0,"wall":0.77,"lift":0.06,"under":null,"door":2.31,"corner":0.62,"back":0.85},"rug_wolf":{"n":982,"rel":270,"wall":0.53,"lift":0.05,"under":null,"door":1.97,"corner":0.33,"back":1.15},"piece_brazierceiling01":{"n":128,"rel":90,"wall":0.83,"lift":3.63,"under":1.63,"door":1.59,"corner":0.38,"back":null},"piece_chair":{"n":912,"rel":-1,"wall":0.56,"lift":0.03,"under":null,"door":2.64,"corner":0.37,"back":0.5},"rug_deer":{"n":1465,"rel":-1,"wall":0.55,"lift":0.05,"under":null,"door":1.9,"corner":0.27,"back":1.26},"piece_banner04":{"n":246,"rel":270,"wall":0.3,"lift":3.73,"under":0.51,"door":1.77,"corner":0.25,"back":0.78},"piece_workbench_ext3":{"n":90,"rel":0,"wall":0.61,"lift":0.07,"under":null,"door":2.89,"corner":0.36,"back":0.54},"wood_fine_stack":{"n":40,"rel":270,"wall":0.74,"lift":0.08,"under":null,"door":2.54,"corner":0.71,"back":0.92},"stone_pile":{"n":86,"rel":-1,"wall":0.74,"lift":0.14,"under":null,"door":3.43,"corner":0.58,"back":0.65},"piece_chest_blackmetal":{"n":951,"rel":0,"wall":0.66,"lift":0.05,"under":null,"door":2.74,"corner":0.51,"back":0.59},"piece_chest_private":{"n":302,"rel":0,"wall":0.55,"lift":0.05,"under":null,"door":3.03,"corner":0.49,"back":0.49},"bed":{"n":265,"rel":270,"wall":0.75,"lift":0.09,"under":null,"door":3.68,"corner":0.06,"back":1.6},"rug_straw":{"n":205,"rel":-1,"wall":0.67,"lift":0.1,"under":null,"door":1.35,"corner":0.39,"back":0.67},"piece_workbench_ext2":{"n":123,"rel":0,"wall":0.61,"lift":0.09,"under":null,"door":2.2,"corner":0.23,"back":0.37},"piece_groundtorch_wood":{"n":456,"rel":-1,"wall":0.37,"lift":0.75,"under":0.44,"door":1.27,"corner":0.42,"back":0.33},"piece_chair03":{"n":1536,"rel":-1,"wall":0.64,"lift":0.08,"under":null,"door":3.31,"corner":0.37,"back":0.65},"cauldron_ext5_mortarandpestle":{"n":68,"rel":90,"wall":0.59,"lift":0.02,"under":null,"door":3.08,"corner":0.36,"back":0.6},"itemstandh":{"n":5182,"rel":90,"wall":0.26,"lift":0.89,"under":0.81,"door":3.15,"corner":0.26,"back":0.37},"piece_table_round":{"n":285,"rel":-1,"wall":0.43,"lift":0.08,"under":null,"door":3.41,"corner":0.18,"back":1.26},"piece_throne01":{"n":304,"rel":-1,"wall":0.64,"lift":0.05,"under":null,"door":3.03,"corner":0.39,"back":0.6},"jute_carpet_blue":{"n":209,"rel":0,"wall":0.43,"lift":0.07,"under":null,"door":2.5,"corner":0.23,"back":0.86},"piece_chest_treasure":{"n":42,"rel":-1,"wall":0.68,"lift":0.08,"under":null,"door":2.14,"corner":0.46,"back":0.51},"rug_fur":{"n":1959,"rel":180,"wall":0.5,"lift":0.05,"under":null,"door":2.27,"corner":0.39,"back":0.7},"ArmorStand":{"n":814,"rel":0,"wall":0.58,"lift":0.06,"under":1.99,"door":1.61,"corner":0.36,"back":0.4},"piece_bed02":{"n":355,"rel":90,"wall":0.49,"lift":0.14,"under":null,"door":2.54,"corner":0.19,"back":1.7},"piece_bench01":{"n":314,"rel":0,"wall":0.61,"lift":0.03,"under":null,"door":2.94,"corner":0.15,"back":0.53},"blackforge_ext2_vise":{"n":42,"rel":-1,"wall":0.65,"lift":0.06,"under":null,"door":4.31,"corner":0.44,"back":0.6},"sign":{"n":3040,"rel":0,"wall":0.29,"lift":2.18,"under":0.75,"door":1.18,"corner":0.3,"back":0.25},"rug_Bjorn":{"n":37,"rel":270,"wall":0.55,"lift":0,"under":null,"door":1.66,"corner":0.17,"back":0.82},"piece_banner01":{"n":306,"rel":270,"wall":0.3,"lift":3.55,"under":0.33,"door":1.9,"corner":0.4,"back":2.47},"piece_logbench01":{"n":118,"rel":180,"wall":0.5,"lift":0.12,"under":null,"door":3.06,"corner":0.16,"back":1.44},"wood_dragon1":{"n":232,"rel":90,"wall":0,"lift":2.55,"under":1,"door":1,"corner":0.41,"back":0},"fire_pit":{"n":56,"rel":-1,"wall":0.76,"lift":0,"under":null,"door":2.32,"corner":0.56,"back":0.44},"piece_cookingstation":{"n":35,"rel":180,"wall":0.73,"lift":0.2,"under":null,"door":5.39,"corner":0.58,"back":0.85},"piece_chest_barrel":{"n":532,"rel":-1,"wall":0.57,"lift":0.05,"under":null,"door":2.36,"corner":0.46,"back":0.51},"cauldron_ext3_butchertable":{"n":155,"rel":180,"wall":0.7,"lift":0.03,"under":null,"door":3.11,"corner":0.51,"back":0.57},"rug_hare":{"n":187,"rel":-1,"wall":0.59,"lift":0.05,"under":null,"door":1.23,"corner":0.59,"back":0.5},"jute_carpet":{"n":1181,"rel":0,"wall":0.39,"lift":0.06,"under":null,"door":1.85,"corner":0.37,"back":0.8},"dvergrprops_lantern_standing":{"n":99,"rel":180,"wall":0.05,"lift":3.18,"under":1.77,"door":2.66,"corner":0.22,"back":3.75},"piece_oven":{"n":151,"rel":270,"wall":0.5,"lift":0,"under":null,"door":4.27,"corner":0.36,"back":0.98},"piece_cauldron":{"n":32,"rel":-1,"wall":0.8,"lift":0.2,"under":null,"door":3.64,"corner":0.17,"back":0.87},"piece_banner07":{"n":67,"rel":90,"wall":0.3,"lift":3.13,"under":0.44,"door":1.81,"corner":0.38,"back":1.38},"piece_cartographytable":{"n":78,"rel":180,"wall":0.8,"lift":0.03,"under":null,"door":2.68,"corner":0.29,"back":0.91},"piece_xmastree":{"n":135,"rel":-1,"wall":0.63,"lift":0.2,"under":2.59,"door":2.68,"corner":0.57,"back":0.63},"rug_asksvin":{"n":189,"rel":-1,"wall":0.68,"lift":0.1,"under":null,"door":3.11,"corner":0.47,"back":1.27},"piece_Lavalantern":{"n":205,"rel":-1,"wall":0.39,"lift":0.99,"under":1,"door":3.33,"corner":0.56,"back":0.28},"piece_dvergr_lantern":{"n":1109,"rel":90,"wall":0.01,"lift":3.63,"under":0.35,"door":1,"corner":0.28,"back":0},"piece_preptable":{"n":75,"rel":0,"wall":0.59,"lift":0.05,"under":null,"door":2.82,"corner":0.4,"back":0.42},"piece_table_oak":{"n":125,"rel":0,"wall":0.63,"lift":0.04,"under":null,"door":4.65,"corner":0.19,"back":0.83},"piece_banner08":{"n":77,"rel":90,"wall":0.36,"lift":3.66,"under":0.29,"door":1.65,"corner":0.34,"back":1.24},"darkwood_wolf":{"n":31,"rel":270,"wall":0,"lift":3.05,"under":2.75,"door":0.74,"corner":0.24,"back":3.33},"piece_banner02":{"n":184,"rel":90,"wall":0.3,"lift":3.57,"under":0.65,"door":1.42,"corner":0.34,"back":2.47},"piece_banner10":{"n":42,"rel":90,"wall":0.3,"lift":3.7,"under":0.45,"door":1.96,"corner":0.48,"back":null},"piece_banner09":{"n":66,"rel":270,"wall":0.3,"lift":3.6,"under":0.49,"door":2.83,"corner":0.41,"back":1.03},"Candle_resin":{"n":241,"rel":-1,"wall":0.38,"lift":0.92,"under":0.87,"door":3.36,"corner":0.48,"back":0.37},"ashwood_bed":{"n":148,"rel":270,"wall":0.76,"lift":0.1,"under":null,"door":1.62,"corner":0.21,"back":1.52},"piece_jackoturnip":{"n":72,"rel":-1,"wall":0.58,"lift":0.94,"under":1.13,"door":2.28,"corner":0.3,"back":0.31},"piece_bathtub":{"n":88,"rel":-1,"wall":0.5,"lift":0,"under":null,"door":3.24,"corner":0.29,"back":0.83},"piece_banner06":{"n":30,"rel":270,"wall":0.3,"lift":3.61,"under":0.73,"door":1.12,"corner":0.61,"back":null},"piece_banner05":{"n":124,"rel":270,"wall":0.3,"lift":3.64,"under":0.45,"door":2.13,"corner":0.29,"back":0.23},"guard_stone":{"n":61,"rel":-1,"wall":0.46,"lift":0.1,"under":1,"door":2.67,"corner":0.42,"back":0.3},"piece_blackwood_bench01":{"n":91,"rel":-1,"wall":0.68,"lift":0.04,"under":null,"door":2.2,"corner":0.5,"back":0.9},"blackforge":{"n":62,"rel":0,"wall":0.74,"lift":0.03,"under":null,"door":3.12,"corner":0.24,"back":0.59},"piece_magetable":{"n":53,"rel":-1,"wall":0.7,"lift":0.03,"under":null,"door":5.38,"corner":0.4,"back":1.29},"piece_magetable_ext":{"n":57,"rel":-1,"wall":0.63,"lift":0.04,"under":null,"door":3.28,"corner":0.47,"back":0.57},"piece_magetable_ext2":{"n":42,"rel":-1,"wall":0.49,"lift":0.08,"under":null,"door":3.4,"corner":0.58,"back":0.44},"piece_blackmarble_bench":{"n":81,"rel":0,"wall":0.48,"lift":0.01,"under":null,"door":2.85,"corner":0.07,"back":0.34},"piece_groundtorch_mist":{"n":272,"rel":-1,"wall":0.24,"lift":0.83,"under":0.72,"door":3.27,"corner":0.4,"back":0.54},"piece_blackmarble_table":{"n":73,"rel":0,"wall":0.38,"lift":0.05,"under":null,"door":2.68,"corner":0.32,"back":0.25},"piece_spinningwheel":{"n":63,"rel":270,"wall":0.7,"lift":0.06,"under":null,"door":3.68,"corner":0.54,"back":1.43},"piece_artisanstation":{"n":62,"rel":0,"wall":0.72,"lift":0.05,"under":null,"door":3.33,"corner":0.19,"back":0.68},"piece_throne02":{"n":59,"rel":0,"wall":0.71,"lift":0.03,"under":null,"door":4.34,"corner":0.46,"back":0.54},"artisan_ext1":{"n":32,"rel":0,"wall":0.56,"lift":0.09,"under":null,"door":2.55,"corner":0.21,"back":0.4},"piece_banner11":{"n":214,"rel":270,"wall":0.3,"lift":3.71,"under":1.29,"door":1.39,"corner":0.24,"back":1.64},"piece_groundtorch_green":{"n":90,"rel":-1,"wall":0.27,"lift":0.73,"under":1,"door":3.01,"corner":0.52,"back":0.96},"darkwood_raven":{"n":63,"rel":-1,"wall":0,"lift":3.86,"under":1,"door":1,"corner":0.39,"back":0.04},"Fiddleheadfern":{"n":31,"rel":-1,"wall":0.43,"lift":0.94,"under":0.92,"door":5.83,"corner":0.31,"back":null},"goblinking_totemholder":{"n":543,"rel":-1,"wall":0.08,"lift":3.17,"under":0.37,"door":1.6,"corner":0.37,"back":0.16},"treasure_stack":{"n":121,"rel":-1,"wall":0.69,"lift":-0.1,"under":null,"door":3.22,"corner":0.11,"back":0.69},"piece_banner03":{"n":63,"rel":270,"wall":0.26,"lift":3.83,"under":0.48,"door":1.79,"corner":0.33,"back":null},"coal_pile":{"n":36,"rel":-1,"wall":0.63,"lift":0.11,"under":null,"door":3.97,"corner":0.29,"back":0.48},"piece_chest_warderobe":{"n":72,"rel":180,"wall":0.63,"lift":0.05,"under":null,"door":2.82,"corner":0.37,"back":0.65},"treasure_pile":{"n":98,"rel":-1,"wall":0.61,"lift":-0.02,"under":null,"door":5.09,"corner":0.47,"back":0.41},"piece_blackmarble_throne":{"n":44,"rel":-1,"wall":0.78,"lift":0.05,"under":null,"door":3.66,"corner":0.12,"back":0.84},"piece_chair_runed":{"n":30,"rel":null,"wall":null,"lift":0.13,"under":null,"door":3.02,"corner":null,"back":1.56},"bone_stack":{"n":30,"rel":90,"wall":0.43,"lift":0.1,"under":null,"door":1.34,"corner":0.64,"back":0.29},"piece_chest_grausten":{"n":30,"rel":0,"wall":0.66,"lift":-0.03,"under":null,"door":10.66,"corner":0.23,"back":0.65},"piece_drawer":{"n":50,"rel":180,"wall":0.26,"lift":-0.09,"under":null,"door":2.7,"corner":0.24,"back":null}},"tuning":{"density":{"home":1,"hall":0.894,"tavern":1.118,"kitchen":1.118}}};
+window.VH_INTERIOR = {"meta":{"designs":497,"rooms":2686},"stand":{"wood_floor":0.1,"stone_floor_2x2":0.5,"wood_floor_1x1":0.1,"ashwood_floor_2x2":0.1,"ashwood_floor_1x1":0.1,"stone_floor":0.5,"blackmarble_floor":0.5,"Piece_grausten_floor_2x2":0.25,"Piece_grausten_floor_4x4":0.25,"Piece_grausten_floor_1x1":0.25,"iron_floor_2x2":0.05,"ashwood_deco_floor":0.09,"blackmarble_tile_floor_2x2":0.2,"blackmarble_floor_triangle":0.46,"mm_castle_floor":0.08,"mm_castle_floor_2x2":0.11,"blackmarble_tile_floor_1x1":0.1,"iron_floor_1x1_v2":0.5,"dvergrprops_wood_floor":0.1},"doors":{"freeDepth":[2.96,4,4,4,4],"byRoom":{"smithy":[2.16,4,4],"workshop":[2.44,4,4],"storage":[0.95,4,4],"other":[4,4,4],"hall":[3.99,4,4],"home":[1.62,4,4],"sleeping":[2.37,4,4],"kitchen":[3.49,4,4],"living":[3,4,4],"tavern":[2.58,4,4]}},"rooms":{"other":{"n":831,"area":[6.75,12.25,42.5],"perTenM2":[0.82,2.22,5],"items":[["itemstand",0.21,5.7],["piece_dvergr_lantern",0.19,2],["piece_walltorch",0.16,2.3],["sign",0.15,6.2],["rug_fur",0.13,2.6],["itemstandh",0.12,15.2],["goblinking_totemholder",0.11,2.7],["ArmorStand",0.09,3],["jute_carpet",0.09,3.8],["rug_deer",0.08,2.6],["piece_chest",0.07,2.5],["piece_chest_blackmetal",0.06,2.7],["piece_banner04",0.06,1.8],["piece_chest_wood",0.06,2],["piece_groundtorch_wood",0.05,1.8],["rug_wolf",0.05,1.9],["piece_groundtorch_mist",0.05,2.9],["fermenter",0.04,2.5],["portal_wood",0.04,2.6],["piece_banner11",0.03,2.8],["piece_groundtorch",0.03,2],["piece_chest_barrel",0.03,1.8],["piece_Lavalantern",0.03,1.8],["piece_bathtub",0.03,1],["piece_banner01",0.02,1.6],["wood_dragon1",0.02,2.6],["piece_chair",0.02,1],["piece_banner05",0.02,1.4],["rug_straw",0.02,6.7],["piece_chair03",0.02,1],["piece_banner02",0.02,1.7],["piece_table",0.02,1],["piece_xmastree",0.02,1.1],["Candle_resin",0.02,2.3],["piece_brazierceiling01",0.01,1.1],["piece_banner08",0.01,1.3],["rug_Bjorn",0.01,1],["piece_bench01",0.01,1],["guard_stone",0.01,1.2],["piece_banner03",0.01,1]]},"smithy":{"n":234,"area":[30.5,76.5,189.5],"perTenM2":[1.33,2.34,4.15],"items":[["forge",0.62,1],["forge_ext5",0.57,1.1],["piece_workbench",0.51,1],["forge_ext1",0.44,1],["forge_ext4",0.42,1],["piece_walltorch",0.38,4.3],["forge_ext2",0.37,1],["piece_workbench_ext1",0.37,1],["forge_ext3",0.36,1],["itemstand",0.34,8.7],["piece_chest_wood",0.29,5.9],["piece_chest",0.29,4.3],["rug_deer",0.29,4.8],["piece_workbench_ext2",0.28,1],["piece_workbench_ext3",0.27,1],["sign",0.23,9.2],["blackforge",0.22,1.1],["rug_wolf",0.21,2.9],["itemstandh",0.2,11],["rug_fur",0.19,2.9],["piece_dvergr_lantern",0.19,3.9],["piece_chest_blackmetal",0.18,2.5],["piece_table",0.18,1.5],["cauldron_ext3_butchertable",0.17,1],["piece_chair",0.16,3.3],["blackforge_ext2_vise",0.16,1],["ArmorStand",0.15,2.5],["hearth",0.15,1.2],["piece_chair02",0.15,2.4],["jute_carpet",0.14,4.2],["piece_chest_barrel",0.14,2.9],["piece_magetable_ext",0.13,1.1],["piece_chair03",0.12,5],["piece_magetable",0.12,1],["piece_artisanstation",0.11,1],["piece_spinningwheel",0.1,1.1],["piece_groundtorch",0.1,3.2],["piece_groundtorch_wood",0.09,2.9],["piece_bench01",0.09,1.9],["piece_banner01",0.09,3.7]]},"workshop":{"n":122,"area":[9,29,70.5],"perTenM2":[1.13,2.16,5.71],"items":[["piece_workbench",0.57,1],["rug_deer",0.31,2.3],["itemstand",0.25,3.8],["piece_chest_wood",0.25,4.6],["piece_workbench_ext1",0.21,1.1],["piece_workbench_ext2",0.2,1],["piece_walltorch",0.17,2.5],["piece_dvergr_lantern",0.17,2.1],["piece_groundtorch_wood",0.16,2.8],["piece_artisanstation",0.16,1],["sign",0.15,5.8],["rug_fur",0.13,1.9],["piece_workbench_ext3",0.11,1],["piece_chest_barrel",0.11,3.2],["piece_spinningwheel",0.1,1.6],["itemstandh",0.1,4.2],["rug_wolf",0.09,1.3],["piece_table",0.08,1.1],["piece_stonecutter",0.08,1],["piece_chair03",0.07,1.1],["piece_chair",0.07,1],["jute_carpet_blue",0.07,2.1],["piece_chest_blackmetal",0.07,4.1],["ArmorStand",0.06,5.1],["piece_groundtorch",0.06,1.7],["jute_carpet",0.06,2.7],["hearth",0.05,1],["goblinking_totemholder",0.05,5],["artisan_ext1",0.05,1],["piece_magetable",0.05,1],["piece_chest",0.04,4],["piece_throne01",0.04,1],["piece_logbench01",0.04,1.2],["piece_bench01",0.04,1],["stone_pile",0.04,5.4],["piece_banner08",0.04,1.2],["fermenter",0.04,1.8],["piece_magetable_ext",0.04,1],["piece_Lavalantern",0.04,2],["portal_wood",0.03,1.8]]},"storage":{"n":428,"area":[4.5,7.5,20.5],"perTenM2":[4,7.62,10],"items":[["piece_chest_wood",0.59,6.7],["piece_chest_blackmetal",0.21,4.8],["piece_chest",0.19,5.2],["piece_walltorch",0.07,3.4],["piece_chest_barrel",0.05,4.6],["sign",0.05,4.4],["piece_dvergr_lantern",0.04,2.2],["piece_chest_private",0.04,2.8],["rug_deer",0.03,3.4],["piece_groundtorch_wood",0.03,3.1],["hearth",0.03,1.1],["rug_fur",0.03,1.8],["jute_carpet",0.03,1.4],["itemstand",0.02,2.2],["cauldron_ext3_butchertable",0.02,1],["itemstandh",0.02,2.1],["piece_groundtorch",0.02,2],["piece_banner01",0.02,2],["piece_groundtorch_mist",0.01,2.3],["piece_table",0.01,1.6],["rug_wolf",0.01,1.4],["piece_oven",0.01,2.4],["piece_chair02",0.01,1.6],["piece_chest_warderobe",0.01,6],["fermenter",0.01,1.8],["piece_Lavalantern",0.01,1.2],["piece_chair",0.01,2],["piece_bench01",0.01,2],["piece_banner04",0.01,1.3],["piece_cartographytable",0.01,1],["portal_wood",0.01,1.3],["ArmorStand",0.01,2.3],["rug_asksvin",0.01,1],["piece_logbench01",0.01,1.7]]},"living":{"n":234,"area":[14.5,36,70.5],"perTenM2":[1.23,2.34,4.53],"items":[["piece_chair03",0.41,2.9],["itemstandh",0.27,12.3],["itemstand",0.27,7.8],["piece_chair",0.25,2.4],["piece_table",0.24,1.3],["rug_fur",0.2,4.4],["piece_walltorch",0.2,2.3],["piece_table_round",0.19,1.1],["piece_chair02",0.18,2.2],["piece_bench01",0.18,2.2],["rug_deer",0.17,2.4],["piece_dvergr_lantern",0.14,2.1],["rug_wolf",0.12,2],["jute_carpet",0.11,4],["sign",0.11,4.2],["piece_groundtorch_wood",0.08,2.2],["piece_table_oak",0.08,1],["ArmorStand",0.07,2.2],["piece_chest",0.07,1.6],["piece_chest_wood",0.06,2.2],["piece_jackoturnip",0.06,1.2],["piece_blackwood_bench01",0.06,2.6],["piece_banner01",0.06,2],["piece_Lavalantern",0.06,1.6],["piece_chest_barrel",0.05,2.4],["piece_logbench01",0.05,2.1],["jute_carpet_blue",0.05,1.6],["piece_brazierceiling01",0.05,1.3],["piece_banner05",0.04,1.9],["piece_blackmarble_bench",0.04,2.6],["piece_groundtorch_mist",0.03,3.4],["piece_banner02",0.03,1.9],["goblinking_totemholder",0.03,2.5],["rug_asksvin",0.03,1.5],["piece_banner04",0.03,2.4],["piece_bathtub",0.03,1],["portal_wood",0.03,3],["piece_xmastree",0.03,1.3],["dvergrprops_lantern_standing",0.03,1.2],["piece_groundtorch",0.03,3.3]]},"sleeping":{"n":333,"area":[20,39.25,83],"perTenM2":[1.09,1.85,3.27],"items":[["piece_bed02",0.57,1.3],["rug_fur",0.39,3.8],["rug_wolf",0.31,2.7],["bed",0.27,2.4],["ArmorStand",0.23,2],["rug_deer",0.23,2.8],["itemstand",0.23,5.9],["piece_walltorch",0.22,2],["piece_chair",0.22,1.8],["piece_chest_wood",0.21,3.1],["piece_chair03",0.21,1.7],["piece_dvergr_lantern",0.21,2.8],["sign",0.18,3.7],["piece_chest",0.17,1.7],["ashwood_bed",0.17,2.1],["jute_carpet",0.17,3.6],["piece_table",0.14,1.2],["itemstandh",0.11,5.9],["piece_chest_blackmetal",0.11,1.8],["piece_chair02",0.1,1.6],["piece_chest_private",0.1,2.5],["piece_groundtorch_wood",0.1,2.8],["piece_banner01",0.1,1.7],["piece_table_round",0.09,1],["piece_banner02",0.08,1.8],["piece_workbench",0.07,1],["piece_banner04",0.07,1.6],["piece_throne01",0.07,1.2],["goblinking_totemholder",0.07,2.1],["piece_xmastree",0.07,1.1],["piece_banner05",0.06,1.2],["piece_chest_barrel",0.06,1.9],["piece_Lavalantern",0.06,1.5],["rug_asksvin",0.06,5.1],["Candle_resin",0.05,3.8],["jute_carpet_blue",0.05,3.5],["piece_bathtub",0.05,1],["piece_brazierceiling01",0.04,1.6],["piece_bench01",0.04,1.3],["piece_jackoturnip",0.04,1]]},"kitchen":{"n":78,"area":[15.25,41.25,100.25],"perTenM2":[1.35,2.42,4.44],"items":[["cauldron_ext3_butchertable",0.54,1],["itemstand",0.38,8.7],["itemstandh",0.33,12.5],["piece_oven",0.32,2.1],["piece_chest",0.28,2.3],["rug_fur",0.28,2.3],["piece_preptable",0.26,1.1],["hearth",0.23,1.3],["sign",0.23,8.3],["piece_walltorch",0.23,3.1],["cauldron_ext5_mortarandpestle",0.22,1.1],["piece_chair03",0.21,2.6],["piece_cauldron",0.19,1.1],["piece_chest_wood",0.19,2.5],["rug_deer",0.19,1.9],["rug_wolf",0.18,1.9],["piece_chest_barrel",0.18,2.4],["fire_pit",0.15,1.5],["piece_dvergr_lantern",0.13,1.9],["piece_chest_blackmetal",0.12,4.3],["piece_table",0.12,1],["ArmorStand",0.12,2],["piece_table_round",0.1,1],["piece_chair02",0.1,1.8],["fermenter",0.09,2.3],["piece_cookingstation_iron",0.09,1],["jute_carpet",0.09,1.3],["piece_chair",0.08,1.3],["piece_cookingstation",0.06,2.4],["piece_groundtorch",0.06,4.2],["rug_hare",0.06,2],["piece_groundtorch_wood",0.05,1],["piece_groundtorch_mist",0.05,3.2],["piece_banner01",0.05,1.5],["piece_brazierceiling01",0.04,1],["piece_banner02",0.04,1.7],["piece_banner04",0.04,1],["piece_xmastree",0.04,6.3],["portal_wood",0.04,1.7],["wood_dragon1",0.04,4]]},"tavern":{"n":148,"area":[68.25,135.25,230.25],"perTenM2":[1.31,2.22,3.43],"items":[["piece_chair03",0.51,7.9],["itemstandh",0.45,14.2],["itemstand",0.45,6.3],["piece_walltorch",0.4,3.8],["piece_table",0.39,2.5],["rug_fur",0.34,4.5],["piece_table_round",0.33,1.7],["piece_chair",0.32,5.7],["rug_wolf",0.32,3.3],["rug_deer",0.3,4.3],["piece_dvergr_lantern",0.3,3.4],["cauldron_ext3_butchertable",0.27,1.1],["jute_carpet",0.26,4.1],["piece_table_oak",0.26,1.4],["piece_throne01",0.26,1.8],["piece_chest_wood",0.24,2.8],["piece_chair02",0.24,3.7],["sign",0.24,9],["piece_chest",0.24,2.5],["hearth",0.23,1.3],["piece_oven",0.18,1.5],["ArmorStand",0.18,2.1],["piece_bench01",0.16,3.5],["cauldron_ext5_mortarandpestle",0.16,1],["piece_workbench",0.14,1.2],["fermenter",0.14,1.9],["piece_preptable",0.14,1.1],["piece_chest_barrel",0.14,4.2],["piece_banner01",0.13,1.9],["piece_Lavalantern",0.12,2.3],["piece_chest_blackmetal",0.11,3.9],["rug_asksvin",0.1,1.9],["piece_cartographytable",0.09,1],["jute_carpet_blue",0.09,1.7],["piece_groundtorch",0.09,2.5],["piece_blackmarble_bench",0.08,2.9],["piece_magetable",0.08,1],["rug_hare",0.07,3.1],["piece_blackwood_bench01",0.07,2],["Candle_resin",0.07,3.6]]},"hall":{"n":153,"area":[18.75,55.25,107],"perTenM2":[0.86,1.76,3.33],"items":[["piece_throne01",0.47,1.5],["hearth",0.38,1.2],["rug_fur",0.3,3.4],["itemstand",0.29,5.4],["rug_wolf",0.28,2.3],["itemstandh",0.22,8.9],["piece_chair03",0.22,2.6],["rug_deer",0.22,2.3],["piece_walltorch",0.21,3.2],["piece_table_round",0.18,1],["jute_carpet",0.18,5.1],["ArmorStand",0.15,2.5],["piece_chest",0.14,1.5],["goblinking_totemholder",0.14,3.2],["sign",0.13,12.4],["piece_dvergr_lantern",0.13,2.7],["piece_chair",0.11,1.6],["piece_chest_wood",0.1,2.7],["jute_carpet_blue",0.09,1.9],["piece_table",0.08,1],["piece_chest_blackmetal",0.08,1.6],["piece_blackmarble_throne",0.08,1.7],["piece_bench01",0.08,1.9],["piece_banner01",0.07,2.2],["piece_chair02",0.07,1.2],["piece_blackmarble_table",0.07,1.4],["piece_groundtorch",0.07,1.7],["piece_table_oak",0.07,1.3],["piece_throne02",0.07,1.3],["portal_wood",0.06,3.6],["piece_bone_throne",0.06,1.2],["piece_bathtub",0.05,1],["fire_pit_iron",0.05,1.6],["piece_chest_private",0.05,1.4],["piece_banner05",0.05,1.8],["rug_hare",0.05,2.6],["piece_groundtorch_blue",0.05,4.6],["piece_cartographytable",0.05,1],["piece_groundtorch_green",0.05,2.7],["piece_banner07",0.04,3.2]]},"home":{"n":125,"area":[67.25,96.75,186],"perTenM2":[1.48,2.27,3.08],"items":[["piece_bed02",0.62,1.4],["piece_chair03",0.6,3.1],["piece_chair",0.5,2.8],["rug_fur",0.5,5.6],["rug_deer",0.48,3.6],["itemstand",0.42,6.5],["rug_wolf",0.41,2.6],["piece_table",0.4,1.5],["ArmorStand",0.38,2.7],["piece_table_round",0.38,1.1],["piece_walltorch",0.36,4.2],["piece_chest_wood",0.33,4.9],["piece_throne01",0.33,1.6],["piece_chest",0.31,2.8],["itemstandh",0.3,12.1],["piece_chair02",0.29,2],["jute_carpet",0.25,4],["piece_chest_blackmetal",0.24,2],["bed",0.24,1.7],["sign",0.22,20.1],["piece_workbench",0.22,1.1],["piece_chest_private",0.2,2],["piece_bench01",0.16,1.9],["hearth",0.16,1.1],["piece_chest_barrel",0.15,3.6],["piece_brazierceiling01",0.15,1.2],["piece_xmastree",0.14,1.4],["piece_banner01",0.14,2.1],["piece_cartographytable",0.14,1],["piece_dvergr_lantern",0.14,2.7],["ashwood_bed",0.14,1.6],["piece_bathtub",0.14,1.1],["forge",0.13,1.1],["piece_Lavalantern",0.13,1.6],["piece_groundtorch_wood",0.11,3.4],["piece_logbench01",0.1,1.5],["piece_banner04",0.1,2.6],["piece_workbench_ext2",0.1,1.2],["piece_banner02",0.1,1.5],["goblinking_totemholder",0.1,7]]}},"items":{"piece_chest":{"n":1279,"rel":0,"wall":0.64,"lift":0.04,"under":null,"door":2.19,"corner":0.53,"back":0.55,"doorQ":[2.19,3.64,5.97],"fireQ":[3.99,9.46,20.31]},"piece_groundtorch":{"n":274,"rel":-1,"wall":0.39,"lift":0.75,"under":0.42,"door":2.52,"corner":0.36,"back":0.22,"doorQ":[2.52,4.22,7.4],"fireQ":[5.54,11.22,18.49]},"forge_ext4":{"n":107,"rel":-1,"wall":0.6,"lift":0,"under":null,"door":2.96,"corner":0.54,"back":0.28,"doorQ":[2.96,4.33,7.42],"fireQ":[1.31,9.6,16.01]},"piece_workbench":{"n":276,"rel":0,"wall":0.7,"lift":0.05,"under":null,"door":2.72,"corner":0.11,"back":0.62,"doorQ":[2.72,3.34,5.28],"fireQ":[5.53,10.46,20.78]},"piece_workbench_ext1":{"n":148,"rel":-1,"wall":0.58,"lift":0.05,"under":null,"door":1.61,"corner":0.39,"back":0.5,"doorQ":[1.61,4.27,6.57],"fireQ":[3.9,12.81,25.5]},"portal_wood":{"n":214,"rel":0,"wall":0.54,"lift":0.05,"under":null,"door":2.97,"corner":0.12,"back":0.28,"doorQ":[2.97,4.03,7.18],"fireQ":[6.84,9.84,15.13]},"piece_groundtorch_blue":{"n":125,"rel":270,"wall":0.41,"lift":0.7,"under":0.35,"door":1.55,"corner":0.55,"back":0.36,"doorQ":[1.55,2.84,8.25],"fireQ":[3.8,8.14,17.92]},"itemstand":{"n":4034,"rel":0,"wall":0.24,"lift":2.4,"under":0.9,"door":1.43,"corner":0.33,"back":0.19,"doorQ":[1.43,2.57,5.72],"fireQ":[4.07,10.81,17.31]},"piece_walltorch":{"n":1660,"rel":270,"wall":0.38,"lift":2.29,"under":1.47,"door":1.18,"corner":0.28,"back":0.03,"doorQ":[1.18,2.12,5.27],"fireQ":[3.04,9.42,16.64]},"forge_ext3":{"n":96,"rel":90,"wall":0.54,"lift":0.05,"under":null,"door":2.61,"corner":0.39,"back":0.74,"doorQ":[2.61,4.02,7.44],"fireQ":[1.94,9.61,15.17]},"forge_ext5":{"n":168,"rel":-1,"wall":0.64,"lift":0.06,"under":null,"door":3.32,"corner":0.39,"back":0.61,"doorQ":[3.32,4.77,7.19],"fireQ":[4.76,8.6,13.9]},"forge_ext1":{"n":110,"rel":180,"wall":0.79,"lift":0.05,"under":null,"door":3.97,"corner":0.27,"back":0.86,"doorQ":[3.97,5.35,7.55],"fireQ":[4.31,8.48,13.7]},"forge":{"n":170,"rel":0,"wall":0.68,"lift":0.02,"under":null,"door":2.97,"corner":0.16,"back":0.57,"doorQ":[2.97,4.89,6.7],"fireQ":[3.55,8.97,14.3]},"piece_stonecutter":{"n":32,"rel":0,"wall":0.76,"lift":0.02,"under":null,"door":1.96,"corner":0.2,"back":0.72,"doorQ":[1.96,2.41,4.16],"fireQ":[11.08,12.05,13.04]},"forge_ext2":{"n":99,"rel":-1,"wall":0.55,"lift":0.06,"under":null,"door":1.89,"corner":0.41,"back":0.58,"doorQ":[1.89,4.21,6.6],"fireQ":[4.24,9.24,13.85]},"hearth":{"n":218,"rel":90,"wall":0.44,"lift":0,"under":null,"door":4.36,"corner":0.22,"back":1,"doorQ":[4.36,6.44,9.08],"fireQ":[1.94,4.01,17.12]},"piece_table":{"n":464,"rel":0,"wall":0.7,"lift":0.03,"under":null,"door":2.71,"corner":0.23,"back":0.56,"doorQ":[2.71,3.75,6.63],"fireQ":[3.73,7.44,14.94]},"piece_chair02":{"n":470,"rel":-1,"wall":0.68,"lift":0.07,"under":null,"door":2.54,"corner":0.37,"back":0.85,"doorQ":[2.54,3.8,6.03],"fireQ":[3.35,7.3,14.08]},"piece_chest_wood":{"n":2935,"rel":0,"wall":0.6,"lift":0.08,"under":null,"door":2.02,"corner":0.58,"back":0.53,"doorQ":[2.02,3.69,6.46],"fireQ":[4,8.89,15.25]},"fermenter":{"n":239,"rel":0,"wall":0.77,"lift":0.06,"under":null,"door":2.31,"corner":0.62,"back":0.85,"doorQ":[2.31,4.1,6.62],"fireQ":[4.61,10.74,15.46]},"rug_wolf":{"n":982,"rel":270,"wall":0.53,"lift":0.05,"under":null,"door":1.97,"corner":0.33,"back":1.15,"doorQ":[1.97,3.62,5.83],"fireQ":[2.75,7.38,20.76]},"piece_brazierceiling01":{"n":128,"rel":90,"wall":0.83,"lift":3.63,"under":1.63,"door":1.59,"corner":0.38,"back":null,"doorQ":[1.59,3.9,6.13],"fireQ":[4.88,11.59,28.19]},"piece_chair":{"n":912,"rel":-1,"wall":0.56,"lift":0.03,"under":null,"door":2.64,"corner":0.37,"back":0.5,"doorQ":[2.64,4.37,7.23],"fireQ":[4.14,8.9,15.85]},"rug_deer":{"n":1465,"rel":-1,"wall":0.55,"lift":0.05,"under":null,"door":1.9,"corner":0.27,"back":1.26,"doorQ":[1.9,3.45,5.83],"fireQ":[3.63,7.04,13.97]},"piece_banner04":{"n":246,"rel":270,"wall":0.3,"lift":3.73,"under":0.51,"door":1.77,"corner":0.25,"back":0.78,"doorQ":[1.77,2.14,5.02],"fireQ":[3.68,8.65,17.58]},"piece_workbench_ext3":{"n":90,"rel":0,"wall":0.61,"lift":0.07,"under":null,"door":2.89,"corner":0.36,"back":0.54,"doorQ":[2.89,3.61,5.85],"fireQ":[6.55,14.08,25.47]},"wood_fine_stack":{"n":40,"rel":270,"wall":0.74,"lift":0.08,"under":null,"door":2.54,"corner":0.71,"back":0.92,"doorQ":[2.54,6.14,7.82]},"stone_pile":{"n":86,"rel":-1,"wall":0.74,"lift":0.14,"under":null,"door":3.43,"corner":0.58,"back":0.65,"doorQ":[3.43,6.07,11.05],"fireQ":[21.31,21.78,21.78]},"piece_chest_blackmetal":{"n":951,"rel":0,"wall":0.66,"lift":0.05,"under":null,"door":2.74,"corner":0.51,"back":0.59,"doorQ":[2.74,4.07,7.19],"fireQ":[3.3,9.68,20.47]},"piece_chest_private":{"n":302,"rel":0,"wall":0.55,"lift":0.05,"under":null,"door":3.03,"corner":0.49,"back":0.49,"doorQ":[3.03,5.71,9.15],"fireQ":[4.02,8.74,13.24]},"bed":{"n":265,"rel":270,"wall":0.75,"lift":0.09,"under":null,"door":3.68,"corner":0.06,"back":1.6,"doorQ":[3.68,5.38,7.87],"fireQ":[4.09,6.9,8.36]},"rug_straw":{"n":205,"rel":-1,"wall":0.67,"lift":0.1,"under":null,"door":1.35,"corner":0.39,"back":0.67,"doorQ":[1.35,2.32,3.57],"fireQ":[1.65,1.99,8.85]},"piece_workbench_ext2":{"n":123,"rel":0,"wall":0.61,"lift":0.09,"under":null,"door":2.2,"corner":0.23,"back":0.37,"doorQ":[2.2,3.72,8.03],"fireQ":[6.58,10.98,21.74]},"piece_groundtorch_wood":{"n":456,"rel":-1,"wall":0.37,"lift":0.75,"under":0.44,"door":1.27,"corner":0.42,"back":0.33,"doorQ":[1.27,2.77,5.58],"fireQ":[3.34,6.47,13.33]},"piece_chair03":{"n":1536,"rel":-1,"wall":0.64,"lift":0.08,"under":null,"door":3.31,"corner":0.37,"back":0.65,"doorQ":[3.31,4.82,6.78],"fireQ":[4.29,7.35,16.09]},"cauldron_ext5_mortarandpestle":{"n":68,"rel":90,"wall":0.59,"lift":0.02,"under":null,"door":3.08,"corner":0.36,"back":0.6,"doorQ":[3.08,5.66,7.85],"fireQ":[2.33,3.07,9.54]},"itemstandh":{"n":5182,"rel":90,"wall":0.26,"lift":0.89,"under":0.81,"door":3.15,"corner":0.26,"back":0.37,"doorQ":[3.15,4.51,6.4],"fireQ":[3.61,9.38,17.71]},"piece_table_round":{"n":285,"rel":-1,"wall":0.43,"lift":0.08,"under":null,"door":3.41,"corner":0.18,"back":1.26,"doorQ":[3.41,4.82,6.56],"fireQ":[3.93,6.54,12.61]},"piece_throne01":{"n":304,"rel":-1,"wall":0.64,"lift":0.05,"under":null,"door":3.03,"corner":0.39,"back":0.6,"doorQ":[3.03,4.24,6.83],"fireQ":[3.65,6.47,14.42]},"jute_carpet_blue":{"n":209,"rel":0,"wall":0.43,"lift":0.07,"under":null,"door":2.5,"corner":0.23,"back":0.86,"doorQ":[2.5,5.36,7.81],"fireQ":[3.38,12.72,15.51]},"piece_chest_treasure":{"n":42,"rel":-1,"wall":0.68,"lift":0.08,"under":null,"door":2.14,"corner":0.46,"back":0.51,"doorQ":[2.14,6.98,7.64],"fireQ":[3.48,3.94,11.7]},"rug_fur":{"n":1959,"rel":180,"wall":0.5,"lift":0.05,"under":null,"door":2.27,"corner":0.39,"back":0.7,"doorQ":[2.27,3.67,5.88],"fireQ":[3.44,7.83,16.55]},"ArmorStand":{"n":814,"rel":0,"wall":0.58,"lift":0.06,"under":1.99,"door":1.61,"corner":0.36,"back":0.4,"doorQ":[1.61,2.83,5.67],"fireQ":[5.35,12.55,19.01]},"piece_bed02":{"n":355,"rel":90,"wall":0.49,"lift":0.14,"under":null,"door":2.54,"corner":0.19,"back":1.7,"doorQ":[2.54,4.14,5.59],"fireQ":[4.89,8.28,12.73]},"piece_bench01":{"n":314,"rel":0,"wall":0.61,"lift":0.03,"under":null,"door":2.94,"corner":0.15,"back":0.53,"doorQ":[2.94,5.03,8.24],"fireQ":[4.07,9.02,13.49]},"blackforge_ext2_vise":{"n":42,"rel":-1,"wall":0.65,"lift":0.06,"under":null,"door":4.31,"corner":0.44,"back":0.6,"doorQ":[4.31,5.79,7.78],"fireQ":[6.75,9.47,21.41]},"sign":{"n":3040,"rel":0,"wall":0.29,"lift":2.18,"under":0.75,"door":1.18,"corner":0.3,"back":0.25,"doorQ":[1.18,3.16,5.58],"fireQ":[4.6,9.76,20.9]},"rug_Bjorn":{"n":37,"rel":270,"wall":0.55,"lift":0,"under":null,"door":1.66,"corner":0.17,"back":0.82,"doorQ":[1.66,2.58,4.31],"fireQ":[0.44,9.27,22.9]},"piece_banner01":{"n":306,"rel":270,"wall":0.3,"lift":3.55,"under":0.33,"door":1.9,"corner":0.4,"back":2.47,"doorQ":[1.9,3.1,6.78],"fireQ":[3.09,5.88,10.12]},"piece_logbench01":{"n":118,"rel":180,"wall":0.5,"lift":0.12,"under":null,"door":3.06,"corner":0.16,"back":1.44,"doorQ":[3.06,4.87,7],"fireQ":[2.1,4.84,9.07]},"wood_dragon1":{"n":232,"rel":90,"wall":0,"lift":2.55,"under":1,"door":1,"corner":0.41,"back":0,"doorQ":[1,1.38,4.12],"fireQ":[2.6,17.37,27.17]},"fire_pit":{"n":56,"rel":-1,"wall":0.76,"lift":0,"under":null,"door":2.32,"corner":0.56,"back":0.44,"doorQ":[2.32,5.6,6.4],"fireQ":[0.95,1.79,10.4]},"piece_cookingstation":{"n":35,"rel":180,"wall":0.73,"lift":0.2,"under":null,"door":5.39,"corner":0.58,"back":0.85,"doorQ":[5.39,5.62,6.66],"fireQ":[0.08,0.24,0.58]},"piece_chest_barrel":{"n":532,"rel":-1,"wall":0.57,"lift":0.05,"under":null,"door":2.36,"corner":0.46,"back":0.51,"doorQ":[2.36,3.74,5.84],"fireQ":[3.55,6.9,13.02]},"cauldron_ext3_butchertable":{"n":155,"rel":180,"wall":0.7,"lift":0.03,"under":null,"door":3.11,"corner":0.51,"back":0.57,"doorQ":[3.11,5.58,8.08],"fireQ":[2.19,2.89,7.04]},"rug_hare":{"n":187,"rel":-1,"wall":0.59,"lift":0.05,"under":null,"door":1.23,"corner":0.59,"back":0.5,"doorQ":[1.23,3,4.6],"fireQ":[7.2,9.55,23.17]},"jute_carpet":{"n":1181,"rel":0,"wall":0.39,"lift":0.06,"under":null,"door":1.85,"corner":0.37,"back":0.8,"doorQ":[1.85,2.74,4.72],"fireQ":[4.01,9.25,22.7]},"dvergrprops_lantern_standing":{"n":99,"rel":180,"wall":0.05,"lift":3.18,"under":1.77,"door":2.66,"corner":0.22,"back":3.75,"doorQ":[2.66,4.97,8.91],"fireQ":[6.13,6.13,6.13]},"piece_oven":{"n":151,"rel":270,"wall":0.5,"lift":0,"under":null,"door":4.27,"corner":0.36,"back":0.98,"doorQ":[4.27,7.02,9.39],"fireQ":[3,6.02,12.79]},"piece_cauldron":{"n":32,"rel":-1,"wall":0.8,"lift":0.2,"under":null,"door":3.64,"corner":0.17,"back":0.87,"doorQ":[3.64,6.32,7.08],"fireQ":[0.06,0.15,18.77]},"piece_banner07":{"n":67,"rel":90,"wall":0.3,"lift":3.13,"under":0.44,"door":1.81,"corner":0.38,"back":1.38,"doorQ":[1.81,2.03,4.7],"fireQ":[4.36,8.77,13.2]},"piece_cartographytable":{"n":78,"rel":180,"wall":0.8,"lift":0.03,"under":null,"door":2.68,"corner":0.29,"back":0.91,"doorQ":[2.68,3.6,6.5],"fireQ":[3.09,13.43,20.87]},"piece_xmastree":{"n":135,"rel":-1,"wall":0.63,"lift":0.2,"under":2.59,"door":2.68,"corner":0.57,"back":0.63,"doorQ":[2.68,3.18,3.88],"fireQ":[5.52,10.35,11.7]},"rug_asksvin":{"n":189,"rel":-1,"wall":0.68,"lift":0.1,"under":null,"door":3.11,"corner":0.47,"back":1.27,"doorQ":[3.11,5.24,8.57],"fireQ":[7.4,11,26.99]},"piece_Lavalantern":{"n":205,"rel":-1,"wall":0.39,"lift":0.99,"under":1,"door":3.33,"corner":0.56,"back":0.28,"doorQ":[3.33,5.83,10.69],"fireQ":[5.71,9.02,14.99]},"piece_dvergr_lantern":{"n":1109,"rel":90,"wall":0.01,"lift":3.63,"under":0.35,"door":1,"corner":0.28,"back":0,"doorQ":[1,1.14,4.24],"fireQ":[4.04,11.45,20.83]},"piece_preptable":{"n":75,"rel":0,"wall":0.59,"lift":0.05,"under":null,"door":2.82,"corner":0.4,"back":0.42,"doorQ":[2.82,5.89,8.43],"fireQ":[2.83,5.62,8.7]},"piece_table_oak":{"n":125,"rel":0,"wall":0.63,"lift":0.04,"under":null,"door":4.65,"corner":0.19,"back":0.83,"doorQ":[4.65,6.84,8.08],"fireQ":[5.74,8.1,14.61]},"piece_banner08":{"n":77,"rel":90,"wall":0.36,"lift":3.66,"under":0.29,"door":1.65,"corner":0.34,"back":1.24,"doorQ":[1.65,2.15,4.82],"fireQ":[20.95,28.34,28.34]},"darkwood_wolf":{"n":31,"rel":270,"wall":0,"lift":3.05,"under":2.75,"door":0.74,"corner":0.24,"back":3.33,"doorQ":[0.74,0.81,2.73],"fireQ":[9.71,9.9,9.9]},"piece_banner02":{"n":184,"rel":90,"wall":0.3,"lift":3.57,"under":0.65,"door":1.42,"corner":0.34,"back":2.47,"doorQ":[1.42,3.68,7.68],"fireQ":[4.69,9.97,13.19]},"piece_banner10":{"n":42,"rel":90,"wall":0.3,"lift":3.7,"under":0.45,"door":1.96,"corner":0.48,"back":null,"doorQ":[1.96,4.02,6.91],"fireQ":[6.22,6.76,12.39]},"piece_banner09":{"n":66,"rel":270,"wall":0.3,"lift":3.6,"under":0.49,"door":2.83,"corner":0.41,"back":1.03,"doorQ":[2.83,5.46,8.03]},"Candle_resin":{"n":241,"rel":-1,"wall":0.38,"lift":0.92,"under":0.87,"door":3.36,"corner":0.48,"back":0.37,"doorQ":[3.36,4.96,7.53],"fireQ":[2.64,7.25,26.5]},"ashwood_bed":{"n":148,"rel":270,"wall":0.76,"lift":0.1,"under":null,"door":1.62,"corner":0.21,"back":1.52,"doorQ":[1.62,3.21,6.08],"fireQ":[2.25,8.59,9.76]},"piece_jackoturnip":{"n":72,"rel":-1,"wall":0.58,"lift":0.94,"under":1.13,"door":2.28,"corner":0.3,"back":0.31,"doorQ":[2.28,2.78,5.09],"fireQ":[2.74,8.03,10.3]},"piece_bathtub":{"n":88,"rel":-1,"wall":0.5,"lift":0,"under":null,"door":3.24,"corner":0.29,"back":0.83,"doorQ":[3.24,3.71,7.44],"fireQ":[3.6,7.85,15.89]},"piece_banner06":{"n":30,"rel":270,"wall":0.3,"lift":3.61,"under":0.73,"door":1.12,"corner":0.61,"back":null,"doorQ":[1.12,1.61,1.94],"fireQ":[8.75,11.03,15.2]},"piece_banner05":{"n":124,"rel":270,"wall":0.3,"lift":3.64,"under":0.45,"door":2.13,"corner":0.29,"back":0.23,"doorQ":[2.13,3.01,6.1],"fireQ":[4.33,7.93,13.41]},"guard_stone":{"n":61,"rel":-1,"wall":0.46,"lift":0.1,"under":1,"door":2.67,"corner":0.42,"back":0.3,"doorQ":[2.67,3.75,6.49],"fireQ":[2.49,7.85,19.91]},"piece_blackwood_bench01":{"n":91,"rel":-1,"wall":0.68,"lift":0.04,"under":null,"door":2.2,"corner":0.5,"back":0.9,"doorQ":[2.2,3.13,5.19],"fireQ":[3.78,9.17,19.09]},"blackforge":{"n":62,"rel":0,"wall":0.74,"lift":0.03,"under":null,"door":3.12,"corner":0.24,"back":0.59,"doorQ":[3.12,3.55,6.84],"fireQ":[5.27,10.26,21.15]},"piece_magetable":{"n":53,"rel":-1,"wall":0.7,"lift":0.03,"under":null,"door":5.38,"corner":0.4,"back":1.29,"doorQ":[5.38,7.11,9.17],"fireQ":[3.88,12.47,15.99]},"piece_magetable_ext":{"n":57,"rel":-1,"wall":0.63,"lift":0.04,"under":null,"door":3.28,"corner":0.47,"back":0.57,"doorQ":[3.28,4.56,6.14],"fireQ":[3.52,9.32,15.37]},"piece_magetable_ext2":{"n":42,"rel":-1,"wall":0.49,"lift":0.08,"under":null,"door":3.4,"corner":0.58,"back":0.44,"doorQ":[3.4,4.46,6.85],"fireQ":[4.48,13.7,17.73]},"piece_blackmarble_bench":{"n":81,"rel":0,"wall":0.48,"lift":0.01,"under":null,"door":2.85,"corner":0.07,"back":0.34,"doorQ":[2.85,4.6,6.46],"fireQ":[4.55,10.07,14.53]},"piece_groundtorch_mist":{"n":272,"rel":-1,"wall":0.24,"lift":0.83,"under":0.72,"door":3.27,"corner":0.4,"back":0.54,"doorQ":[3.27,5.01,8.92],"fireQ":[3.5,11.33,18.35]},"piece_blackmarble_table":{"n":73,"rel":0,"wall":0.38,"lift":0.05,"under":null,"door":2.68,"corner":0.32,"back":0.25,"doorQ":[2.68,3.93,6.2],"fireQ":[3.49,10.21,15.25]},"piece_spinningwheel":{"n":63,"rel":270,"wall":0.7,"lift":0.06,"under":null,"door":3.68,"corner":0.54,"back":1.43,"doorQ":[3.68,4.22,8.46],"fireQ":[6.74,13.96,22.6]},"piece_artisanstation":{"n":62,"rel":0,"wall":0.72,"lift":0.05,"under":null,"door":3.33,"corner":0.19,"back":0.68,"doorQ":[3.33,4.44,6.3],"fireQ":[8.44,14.57,28.21]},"piece_throne02":{"n":59,"rel":0,"wall":0.71,"lift":0.03,"under":null,"door":4.34,"corner":0.46,"back":0.54,"doorQ":[4.34,5.41,7.88],"fireQ":[4.42,9.27,17.16]},"artisan_ext1":{"n":32,"rel":0,"wall":0.56,"lift":0.09,"under":null,"door":2.55,"corner":0.21,"back":0.4,"doorQ":[2.55,5.36,11.41],"fireQ":[9.19,10.14,21.4]},"piece_banner11":{"n":214,"rel":270,"wall":0.3,"lift":3.71,"under":1.29,"door":1.39,"corner":0.24,"back":1.64,"doorQ":[1.39,2.05,4.81],"fireQ":[6.43,12.83,27.24]},"piece_groundtorch_green":{"n":90,"rel":-1,"wall":0.27,"lift":0.73,"under":1,"door":3.01,"corner":0.52,"back":0.96,"doorQ":[3.01,3.75,5.1],"fireQ":[3.89,7.78,20.19]},"darkwood_raven":{"n":63,"rel":-1,"wall":0,"lift":3.86,"under":1,"door":1,"corner":0.39,"back":0.04,"doorQ":[1,4.19,6.4],"fireQ":[3.08,9.6,12.98]},"Fiddleheadfern":{"n":31,"rel":-1,"wall":0.43,"lift":0.94,"under":0.92,"door":5.83,"corner":0.31,"back":null,"doorQ":[5.83,6.98,10.36]},"goblinking_totemholder":{"n":543,"rel":-1,"wall":0.08,"lift":3.17,"under":0.37,"door":1.6,"corner":0.37,"back":0.16,"doorQ":[1.6,3.2,5.84],"fireQ":[0.99,7.17,30.27]},"treasure_stack":{"n":121,"rel":-1,"wall":0.69,"lift":-0.1,"under":null,"door":3.22,"corner":0.11,"back":0.69,"doorQ":[3.22,4.79,5.85],"fireQ":[3.71,6.56,11.5]},"piece_banner03":{"n":63,"rel":270,"wall":0.26,"lift":3.83,"under":0.48,"door":1.79,"corner":0.33,"back":null,"doorQ":[1.79,2.06,7.52],"fireQ":[3.35,6.73,9.69]},"coal_pile":{"n":36,"rel":-1,"wall":0.63,"lift":0.11,"under":null,"door":3.97,"corner":0.29,"back":0.48,"doorQ":[3.97,5.63,9.56],"fireQ":[7.15,13.21,14.27]},"piece_chest_warderobe":{"n":72,"rel":180,"wall":0.63,"lift":0.05,"under":null,"door":2.82,"corner":0.37,"back":0.65,"doorQ":[2.82,4.29,6.31],"fireQ":[15.82,20.19,21.92]},"treasure_pile":{"n":98,"rel":-1,"wall":0.61,"lift":-0.02,"under":null,"door":5.09,"corner":0.47,"back":0.41,"doorQ":[5.09,9.56,13.59],"fireQ":[7.02,11.13,16.27]},"piece_blackmarble_throne":{"n":44,"rel":-1,"wall":0.78,"lift":0.05,"under":null,"door":3.66,"corner":0.12,"back":0.84,"doorQ":[3.66,4.89,7.91],"fireQ":[5.15,6.14,16.41]},"piece_chair_runed":{"n":30,"rel":null,"wall":null,"lift":0.13,"under":null,"door":3.02,"corner":null,"back":1.56,"doorQ":[3.02,4.02,5.44]},"bone_stack":{"n":30,"rel":90,"wall":0.43,"lift":0.1,"under":null,"door":1.34,"corner":0.64,"back":0.29,"doorQ":[1.34,4.03,13.79]},"piece_chest_grausten":{"n":30,"rel":0,"wall":0.66,"lift":-0.03,"under":null,"door":10.66,"corner":0.23,"back":0.65,"doorQ":[10.66,10.66,12.2],"fireQ":[10.45,11.19,11.19]},"piece_drawer":{"n":50,"rel":180,"wall":0.26,"lift":-0.09,"under":null,"door":2.7,"corner":0.24,"back":null,"doorQ":[2.7,5.22,6.1]}},"tuning":{"density":{"home":1,"hall":0.894,"tavern":1.118,"kitchen":1.118}}};
 window.VH_KITBASH = {"assemblies":[{"id":"KB-001","anchor":"corner","angle":90,"rooms":["home","hall","storage","tavern","smithy","barn","kitchen","workshop"],"score":42.75,"clips":[],"pieces":[{"n":"piece_chest_wood","k":"chest","x":0.286,"y":-0.028,"z":1.611,"yaw":225,"rest":"floor","sink":0.028},{"n":"piece_chest_wood","k":"chest","x":-0.326,"y":-0.028,"z":1.049,"yaw":225,"rest":"floor","sink":0.028}]},{"id":"KB-002","anchor":"corner","angle":90,"rooms":["home","hall","storage","tavern","workshop","barn","kitchen"],"score":42.25,"clips":[],"pieces":[{"n":"piece_chest_wood","k":"chest","x":0.245,"y":-0.028,"z":0.984,"yaw":315,"rest":"floor","sink":0.028},{"n":"piece_chest_wood","k":"chest","x":-0.339,"y":-0.028,"z":1.555,"yaw":315,"rest":"floor","sink":0.028}]},{"id":"KB-003","anchor":"wall","rooms":["home","hall","storage","tavern","barn","kitchen"],"score":34.75,"clips":[],"pieces":[{"n":"piece_chest_wood","k":"chest","x":0.429,"y":-0.028,"z":0.861,"yaw":90,"rest":"floor","sink":0.028},{"n":"piece_chest_wood","k":"chest","x":-0.445,"y":-0.028,"z":0.893,"yaw":90,"rest":"floor","sink":0.028}]},{"id":"KB-004","anchor":"wall","rooms":["home","hall","storage","tavern","kitchen","barn","workshop"],"score":11,"clips":[[0,1,0.069],[1,2,0.124]],"pieces":[{"n":"piece_chest","k":"chest","x":0.918,"y":-0.126,"z":1.018,"yaw":270,"rest":"floor","sink":0.126},{"n":"piece_chest","k":"chest","x":-0.008,"y":-0.126,"z":1.019,"yaw":270,"rest":"floor","sink":0.126},{"n":"piece_chest","k":"chest","x":-0.879,"y":-0.126,"z":1.017,"yaw":270,"rest":"floor","sink":0.126}]},{"id":"KB-005","anchor":"wall","rooms":["home","smithy","tavern","hall"],"score":11,"clips":[[1,"w",0.059]],"pieces":[{"n":"forge_ext6","k":"forge_ext6","x":-0.049,"y":2.115,"z":0.1,"yaw":0,"rest":"wall"},{"n":"forge","k":"forge","x":0.049,"y":-0.063,"z":0.442,"yaw":0,"rest":"floor","sink":0.063}]},{"id":"KB-006","anchor":"wall","rooms":["home","storage","hall"],"score":9.25,"clips":[],"pieces":[{"n":"piece_chest_wood","k":"chest","x":0.045,"y":-0.028,"z":1.231,"yaw":0,"rest":"floor","sink":0.028},{"n":"piece_chest_wood","k":"chest","x":-0.045,"y":-0.028,"z":0.421,"yaw":0,"rest":"floor","sink":0.028}]},{"id":"KB-007","anchor":"wall","rooms":["home","hall","tavern","barn","workshop","smithy"],"score":6.75,"clips":[],"pieces":[{"n":"piece_workbench","k":"piece_workbench","x":-0.009,"y":-0.053,"z":0.679,"yaw":0,"rest":"floor","sink":0.053},{"n":"piece_workbench_ext4","k":"piece_workbench_ext4","x":0.009,"y":1.599,"z":0.15,"yaw":0,"rest":"wall"}]},{"id":"KB-008","anchor":"wall","rooms":["home","storage","hall"],"score":6.25,"clips":[[0,1,0.011]],"pieces":[{"n":"piece_chest_wood","k":"chest","x":0.015,"y":-0.028,"z":1.239,"yaw":180,"rest":"floor","sink":0.028},{"n":"piece_chest_wood","k":"chest","x":-0.015,"y":-0.028,"z":0.495,"yaw":180,"rest":"floor","sink":0.028}]},{"id":"KB-009","anchor":"wall","rooms":["home","hall","tavern","smithy"],"score":5.5,"clips":[],"pieces":[{"n":"itemstandh","k":"itemstandh","x":0.014,"y":-0.028,"z":0.246,"yaw":225,"rest":"floor","sink":0.028},{"n":"itemstandh","k":"itemstandh","x":-0.013,"y":-0.028,"z":0.687,"yaw":225,"rest":"floor","sink":0.028}]},{"id":"KB-010","anchor":"wall","rooms":["hall","home","barn"],"score":5.25,"clips":[],"pieces":[{"n":"itemstand","k":"itemstand","x":0.491,"y":1.662,"z":0.045,"yaw":0,"rest":"wall"},{"n":"itemstand","k":"itemstand","x":-0.49,"y":1.666,"z":0.045,"yaw":0,"rest":"wall"}]},{"id":"KB-011","anchor":"wall","rooms":["home","storage","barn"],"score":5.25,"clips":[],"pieces":[{"n":"sign","k":"sign","x":0,"y":1.018,"z":0.688,"yaw":90,"rest":"wall"},{"n":"sign","k":"sign","x":0,"y":2.018,"z":0.688,"yaw":90,"rest":"wall"},{"n":"sign","k":"sign","x":0,"y":3.018,"z":0.688,"yaw":90,"rest":"wall"}]},{"id":"KB-012","anchor":"wall","rooms":["home","smithy","storage"],"score":5,"clips":[[0,"w",0.02]],"pieces":[{"n":"piece_chest_blackmetal","k":"chest","x":0.007,"y":-0.031,"z":0.633,"yaw":0,"rest":"floor","sink":0.031},{"n":"sign","k":"sign","x":-0.039,"y":1.424,"z":1.058,"yaw":0,"rest":"wall"}]},{"id":"KB-013","anchor":"corner","angle":90,"rooms":["home","tavern","storage","hall"],"score":4.5,"clips":[[0,"w",0.24],[1,"w",0.192]],"pieces":[{"n":"piece_chest_wood","k":"chest","x":-0.412,"y":-0.028,"z":1.236,"yaw":135,"rest":"floor","sink":0.028},{"n":"piece_chest_wood","k":"chest","x":0.19,"y":-0.028,"z":0.702,"yaw":135,"rest":"floor","sink":0.028}]},{"id":"KB-014","anchor":"corner","angle":90,"rooms":["home","tavern","hall"],"score":4.25,"clips":[],"pieces":[{"n":"itemstandh","k":"itemstandh","x":0.343,"y":-0.028,"z":1.195,"yaw":304,"rest":"floor","sink":0.028},{"n":"itemstandh","k":"itemstandh","x":0.11,"y":-0.028,"z":0.598,"yaw":79,"rest":"floor","sink":0.028}]},{"id":"KB-015","anchor":"corner","angle":90,"rooms":["home","tavern"],"score":4.25,"clips":[],"pieces":[{"n":"itemstandh","k":"itemstandh","x":-0.286,"y":-0.028,"z":0.798,"yaw":203,"rest":"floor","sink":0.028},{"n":"itemstandh","k":"itemstandh","x":0.005,"y":-0.028,"z":0.545,"yaw":180,"rest":"floor","sink":0.028}]},{"id":"KB-016","anchor":"wall","rooms":["home","smithy"],"score":4.25,"clips":[],"pieces":[{"n":"itemstand","k":"itemstand","x":0.627,"y":2.237,"z":0.044,"yaw":0,"rest":"wall"},{"n":"itemstand","k":"itemstand","x":-0.627,"y":2.247,"z":0.044,"yaw":0,"rest":"wall"}]},{"id":"KB-017","anchor":"wall","rooms":["home","smithy","hall","kitchen"],"score":4,"clips":[],"pieces":[{"n":"piece_chest_wood","k":"chest","x":-0.043,"y":-0.028,"z":0.373,"yaw":0,"rest":"floor","sink":0.028},{"n":"sign","k":"sign","x":0.043,"y":1.602,"z":0.045,"yaw":0,"rest":"wall"}]},{"id":"KB-018","anchor":"corner","angle":90,"rooms":["home","tavern"],"score":3.75,"clips":[[1,"w",0.023]],"pieces":[{"n":"itemstandh","k":"itemstandh","x":-0.45,"y":-0.028,"z":0.508,"yaw":45,"rest":"floor","sink":0.028},{"n":"itemstandh","k":"itemstandh","x":-0.025,"y":-0.028,"z":0.084,"yaw":45,"rest":"floor","sink":0.028}]},{"id":"KB-019","anchor":"wall","rooms":["home","smithy"],"score":3.75,"clips":[],"pieces":[{"n":"piece_chest","k":"chest","x":-0.011,"y":-0.026,"z":0.701,"yaw":0,"rest":"floor","sink":0.026},{"n":"itemstand","k":"itemstand","x":0.011,"y":2.193,"z":0.044,"yaw":0,"rest":"wall"}]},{"id":"KB-020","anchor":"wall","rooms":["home","barn","temple","hall","workshop","smithy"],"score":3.5,"clips":[],"pieces":[{"n":"ArmorStand","k":"ArmorStand","x":0.611,"y":0.008,"z":0.821,"yaw":17,"rest":"floor"},{"n":"ArmorStand","k":"ArmorStand","x":-0.611,"y":0.008,"z":0.944,"yaw":0,"rest":"floor"}]},{"id":"KB-021","anchor":"corner","angle":90,"rooms":["home","tavern"],"score":3.5,"clips":[],"pieces":[{"n":"itemstandh","k":"itemstandh","x":0.387,"y":-0.028,"z":0.047,"yaw":135,"rest":"floor","sink":0.028},{"n":"itemstandh","k":"itemstandh","x":0.103,"y":-0.028,"z":0.366,"yaw":135,"rest":"floor","sink":0.028}]},{"id":"KB-022","anchor":"corner","angle":90,"rooms":["home","storage","tavern","kitchen"],"score":3.5,"clips":[[0,"w",0.519],[1,"w",0.534]],"pieces":[{"n":"fermenter","k":"fermenter","x":-0.295,"y":-0.027,"z":1.179,"yaw":0,"rest":"floor","sink":0.028},{"n":"fermenter","k":"fermenter","x":-0.305,"y":2.173,"z":1.167,"yaw":0,"rest":"on","on":0}]},{"id":"KB-023","anchor":"wall","rooms":["home","hall"],"score":3.5,"clips":[[0,"w",0.117]],"pieces":[{"n":"piece_chest_wood","k":"chest","x":-0.025,"y":-0.028,"z":0.33,"yaw":6,"rest":"floor","sink":0.028},{"n":"sign","k":"sign","x":0.025,"y":0.247,"z":0.751,"yaw":6,"rest":"floor","sink":0.028}]},{"id":"KB-024","anchor":"bed","of":"bed","rooms":["home","sleeping"],"score":3.5,"clips":[],"pieces":[{"n":"rug_wolf","k":"rug","x":-1.404,"y":-0.003,"z":0.528,"yaw":180,"rest":"floor"},{"n":"rug_wolf","k":"rug","x":1.271,"y":-0.003,"z":0.462,"yaw":180,"rest":"floor"}]},{"id":"KB-025","anchor":"wall","rooms":["home","kitchen","tavern"],"score":3.25,"clips":[],"pieces":[{"n":"itemstandh","k":"itemstandh","x":0.301,"y":-0.028,"z":0.547,"yaw":0,"rest":"floor","sink":0.028},{"n":"itemstandh","k":"itemstandh","x":-0.301,"y":-0.028,"z":0.5,"yaw":225,"rest":"floor","sink":0.028}]},{"id":"KB-026","anchor":"wall","rooms":["home","smithy"],"score":3.25,"clips":[],"pieces":[{"n":"itemstand","k":"itemstand","x":0.029,"y":2.407,"z":0.033,"yaw":0,"rest":"on","on":1},{"n":"itemstand","k":"itemstand","x":-0.03,"y":1.14,"z":0.045,"yaw":0,"rest":"wall"}]},{"id":"KB-027","anchor":"corner","angle":90,"rooms":["home","tavern"],"score":3.25,"clips":[],"pieces":[{"n":"itemstandh","k":"itemstandh","x":0.107,"y":-0.028,"z":0.775,"yaw":225,"rest":"floor","sink":0.028},{"n":"itemstandh","k":"itemstandh","x":-0.211,"y":-0.028,"z":1.095,"yaw":225,"rest":"floor","sink":0.028},{"n":"itemstandh","k":"itemstandh","x":-0.57,"y":-0.028,"z":1.484,"yaw":225,"rest":"floor","sink":0.028}]},{"id":"KB-028","anchor":"wall","rooms":["home","hall","smithy"],"score":3.25,"clips":[[0,1,0.038]],"pieces":[{"n":"piece_chest","k":"chest","x":0.014,"y":-0.026,"z":0.696,"yaw":0,"rest":"floor","sink":0.026},{"n":"sign","k":"sign","x":-0.014,"y":0.247,"z":1.219,"yaw":0,"rest":"floor","sink":0.028}]},{"id":"KB-029","anchor":"corner","angle":135,"rooms":["home"],"score":3.25,"clips":[[0,1,0.142]],"pieces":[{"n":"piece_chest_wood","k":"chest","x":-0.806,"y":-0.029,"z":0.789,"yaw":23,"rest":"floor","sink":0.029},{"n":"piece_chest_wood","k":"chest","x":0.851,"y":-0.029,"z":0.781,"yaw":338,"rest":"floor","sink":0.029}]},{"id":"KB-030","anchor":"stair","of":"stair","rooms":["home"],"score":3,"clips":[],"pieces":[{"n":"piece_chest","k":"chest","x":-0.102,"y":-0.026,"z":-0.52,"yaw":180,"rest":"floor","sink":0.026},{"n":"piece_chest","k":"chest","x":-0.03,"y":1.127,"z":-0.53,"yaw":180,"rest":"on","on":0}]},{"id":"KB-031","anchor":"table","of":"round","rooms":["home"],"score":3,"clips":[[1,"w",0.128]],"pieces":[{"n":"piece_chair03","k":"chair","x":0.16,"y":-0.035,"z":-2.018,"yaw":0,"rest":"floor","sink":0.035},{"n":"piece_chair03","k":"chair","x":0.52,"y":-0.035,"z":2.01,"yaw":169,"rest":"floor","sink":0.035}]},{"id":"KB-032","anchor":"wall","rooms":["hall","workshop","home","smithy"],"score":3,"clips":[],"pieces":[{"n":"piece_workbench","k":"piece_workbench","x":-0.065,"y":-0.053,"z":0.984,"yaw":0,"rest":"floor","sink":0.053},{"n":"piece_workbench_ext4","k":"piece_workbench_ext4","x":0.065,"y":2.087,"z":0.401,"yaw":0,"rest":"wall"}]},{"id":"KB-033","anchor":"wall","rooms":["workshop","home","hall","smithy"],"score":3,"clips":[],"pieces":[{"n":"forge_ext6","k":"forge_ext6","x":-0.026,"y":1.851,"z":0.1,"yaw":0,"rest":"wall"},{"n":"forge","k":"forge","x":0.026,"y":-0.035,"z":0.95,"yaw":0,"rest":"floor","sink":0.035}]},{"id":"KB-034","anchor":"wall","rooms":["storage","home"],"score":3,"clips":[[1,"w",0.037]],"pieces":[{"n":"piece_walltorch","k":"walllight","x":0.675,"y":2.25,"z":0.205,"yaw":270,"rest":"wall"},{"n":"piece_chest_blackmetal","k":"chest","x":-0.673,"y":-0.003,"z":0.961,"yaw":23,"rest":"floor"}]},{"id":"KB-035","anchor":"wall","rooms":["home","tavern","storage","kitchen","smithy","workshop"],"score":3,"clips":[],"pieces":[{"n":"piece_chest_barrel","k":"barrel","x":0.416,"y":-0.025,"z":0.892,"yaw":90,"rest":"floor","sink":0.029},{"n":"piece_chest_barrel","k":"barrel","x":-0.403,"y":-0.025,"z":0.525,"yaw":90,"rest":"floor","sink":0.029}]},{"id":"KB-036","anchor":"corner","angle":90,"rooms":["home","barn","storage"],"score":2.75,"clips":[],"pieces":[{"n":"piece_chest_wood","k":"chest","x":-0.092,"y":-0.028,"z":1.762,"yaw":315,"rest":"floor","sink":0.028},{"n":"piece_chest_wood","k":"chest","x":0.589,"y":-0.028,"z":1.16,"yaw":315,"rest":"floor","sink":0.028}]},{"id":"KB-037","anchor":"corner","angle":90,"rooms":["home","storage"],"score":2.75,"clips":[[0,1,0.083],[0,"w",0.219],[1,"w",0.123]],"pieces":[{"n":"piece_chest_wood","k":"chest","x":-0.394,"y":-0.028,"z":0.605,"yaw":45,"rest":"floor","sink":0.028},{"n":"piece_chest_wood","k":"chest","x":0.086,"y":-0.028,"z":1.075,"yaw":45,"rest":"floor","sink":0.028}]},{"id":"KB-038","anchor":"corner","angle":90,"rooms":["any"],"score":2.75,"clips":[],"pieces":[{"n":"itemstand","k":"itemstand","x":-0.402,"y":0.727,"z":0.464,"yaw":45,"rest":"wall"},{"n":"itemstand","k":"itemstand","x":-0.42,"y":1.475,"z":0.482,"yaw":45,"rest":"wall"}]},{"id":"KB-039","anchor":"corner","angle":90,"rooms":["home","hall"],"score":2.75,"clips":[],"pieces":[{"n":"itemstand","k":"itemstand","x":0.107,"y":1.646,"z":0.171,"yaw":315,"rest":"wall"},{"n":"itemstand","k":"itemstand","x":0.29,"y":2.391,"z":0.353,"yaw":315,"rest":"wall"}]},{"id":"KB-040","anchor":"wall","rooms":["home","barn"],"score":2.75,"clips":[],"pieces":[{"n":"sign","k":"sign","x":0,"y":2.331,"z":0.495,"yaw":90,"rest":"hang"},{"n":"sign","k":"sign","x":0,"y":1.27,"z":0.478,"yaw":90,"rest":"wall"}]},{"id":"KB-041","anchor":"wall","rooms":["home","hall","workshop","smithy"],"score":2.75,"clips":[[0,1,0.076],[1,"w",0.014]],"pieces":[{"n":"piece_workbench","k":"piece_workbench","x":-0.002,"y":-0.025,"z":1.06,"yaw":0,"rest":"floor","sink":0.025},{"n":"piece_workbench_ext2","k":"piece_workbench_ext2","x":0.002,"y":0.022,"z":0.286,"yaw":0,"rest":"floor"}]},{"id":"KB-042","anchor":"table","of":"table","rooms":["home","tavern"],"score":2.75,"clips":[],"pieces":[{"n":"piece_chair02","k":"chair","x":1.803,"y":-0.015,"z":-0.263,"yaw":270,"rest":"floor","sink":0.028},{"n":"piece_chair02","k":"chair","x":-1.818,"y":-0.015,"z":-0.165,"yaw":90,"rest":"floor","sink":0.028}]},{"id":"KB-043","anchor":"wall","rooms":["smithy","tavern","hall","home"],"score":2.75,"clips":[],"pieces":[{"n":"piece_chest_private","k":"chest","x":0.342,"y":-0.027,"z":0.72,"yaw":338,"rest":"floor","sink":0.028},{"n":"piece_walltorch","k":"walllight","x":-0.342,"y":1.848,"z":0.205,"yaw":270,"rest":"wall"}]},{"id":"KB-044","anchor":"wall","rooms":["home"],"score":2.75,"clips":[],"pieces":[{"n":"piece_chest","k":"chest","x":0.224,"y":0.002,"z":0.617,"yaw":0,"rest":"floor"},{"n":"piece_walltorch","k":"walllight","x":-0.224,"y":2.934,"z":0.202,"yaw":270,"rest":"wall"}]},{"id":"KB-045","anchor":"corner","angle":90,"rooms":["home","smithy"],"score":2.75,"clips":[],"pieces":[{"n":"forge","k":"forge","x":0.37,"y":-0.063,"z":1.271,"yaw":315,"rest":"floor","sink":0.063},{"n":"forge_ext6","k":"forge_ext6","x":1.016,"y":1.596,"z":1.158,"yaw":315,"rest":"on","on":0}]},{"id":"KB-046","anchor":"wall","rooms":["storage","home","hall"],"score":2.5,"clips":[[0,1,0.279]],"pieces":[{"n":"piece_chest_wood","k":"chest","x":0.486,"y":0.142,"z":1.098,"yaw":56,"rest":"wall"},{"n":"piece_chest_wood","k":"chest","x":-0.5,"y":0,"z":1.27,"yaw":113,"rest":"floor"}]},{"id":"KB-047","anchor":"corner","angle":90,"rooms":["home","storage"],"score":2.5,"clips":[[0,1,0.168],[0,"w",0.029],[1,"w",0.189]],"pieces":[{"n":"piece_chest_wood","k":"chest","x":0.03,"y":-0.03,"z":1.093,"yaw":135,"rest":"floor","sink":0.03},{"n":"piece_chest_wood","k":"chest","x":0.401,"y":-0.028,"z":0.678,"yaw":135,"rest":"floor","sink":0.028}]},{"id":"KB-048","anchor":"corner","angle":90,"rooms":["home","tavern"],"score":2.5,"clips":[],"pieces":[{"n":"itemstandh","k":"itemstandh","x":-0.641,"y":-0.028,"z":1.447,"yaw":90,"rest":"floor","sink":0.028},{"n":"itemstandh","k":"itemstandh","x":-0.065,"y":-0.027,"z":1.105,"yaw":315,"rest":"floor","sink":0.027}]},{"id":"KB-049","anchor":"corner","angle":90,"rooms":["home","temple","tavern"],"score":2.5,"clips":[[0,"w",0.033]],"pieces":[{"n":"itemstand","k":"itemstand","x":0.222,"y":0.445,"z":0.09,"yaw":315,"rest":"wall"},{"n":"itemstand","k":"itemstand","x":-0.194,"y":0.514,"z":0.214,"yaw":45,"rest":"wall"}]},{"id":"KB-050","anchor":"wall","rooms":["hall","home"],"score":2.5,"clips":[],"pieces":[{"n":"itemstand","k":"itemstand","x":0.752,"y":2.051,"z":-0.106,"yaw":0,"rest":"wall"},{"n":"itemstand","k":"itemstand","x":0.026,"y":2.046,"z":-0.106,"yaw":0,"rest":"wall"},{"n":"itemstand","k":"itemstand","x":-0.752,"y":2.054,"z":0.021,"yaw":23,"rest":"wall"}]},{"id":"KB-051","anchor":"wall","rooms":["hall","home","tavern"],"score":2.5,"clips":[],"pieces":[{"n":"itemstand","k":"itemstand","x":0.098,"y":0.751,"z":0.045,"yaw":0,"rest":"wall"},{"n":"itemstand","k":"itemstand","x":-0.098,"y":1.929,"z":0.045,"yaw":0,"rest":"on","on":0}]},{"id":"KB-052","anchor":"wall","rooms":["home","hall"],"score":2.5,"clips":[],"pieces":[{"n":"sign","k":"sign","x":0.009,"y":0.275,"z":0.519,"yaw":90,"rest":"floor"},{"n":"sign","k":"sign","x":-0.008,"y":0.825,"z":0.506,"yaw":90,"rest":"wall"}]},{"id":"KB-053","anchor":"wall","rooms":["smithy"],"score":2.5,"clips":[],"pieces":[{"n":"sign","k":"sign","x":0.006,"y":1.338,"z":0.044,"yaw":0,"rest":"wall"},{"n":"sign","k":"sign","x":-0.006,"y":1.344,"z":0.133,"yaw":0,"rest":"wall"}]},{"id":"KB-054","anchor":"corner","angle":90,"rooms":["tavern","home","smithy","barn","storage","kitchen","workshop"],"score":2.5,"clips":[],"pieces":[{"n":"piece_chest_barrel","k":"barrel","x":0.595,"y":0.004,"z":1.297,"yaw":45,"rest":"floor"},{"n":"piece_chest_barrel","k":"barrel","x":-0.086,"y":0.004,"z":0.696,"yaw":45,"rest":"floor"}]},{"id":"KB-055","anchor":"corner","angle":90,"rooms":["home","storage"],"score":2.25,"clips":[[0,"w",0.085],[1,"w",0.093]],"pieces":[{"n":"piece_chest","k":"chest","x":-0.484,"y":0.003,"z":1.041,"yaw":45,"rest":"floor"},{"n":"piece_chest","k":"chest","x":-0.404,"y":1.099,"z":0.95,"yaw":45,"rest":"on","on":0}]},{"id":"KB-056","anchor":"post","of":"post","rooms":["home","tavern","workshop"],"score":2.25,"clips":[[0,"a",0.179],[1,"a",0.151]],"pieces":[{"n":"piece_chest","k":"chest","x":-0.006,"y":-0.126,"z":0.957,"yaw":235,"rest":"floor","sink":0.126},{"n":"piece_chest","k":"chest","x":0.038,"y":0.874,"z":0.942,"yaw":235,"rest":"on","on":0}]},{"id":"KB-057","anchor":"corner","angle":90,"rooms":["storage","home"],"score":2.25,"clips":[],"pieces":[{"n":"sign","k":"sign","x":0.594,"y":0.92,"z":1.307,"yaw":45,"rest":"wall"},{"n":"sign","k":"sign","x":0.614,"y":2.235,"z":1.31,"yaw":45,"rest":"on","on":0}]},{"id":"KB-058","anchor":"corner","angle":90,"rooms":["home","storage"],"score":2.25,"clips":[[0,1,0.045]],"pieces":[{"n":"sign","k":"sign","x":-0.257,"y":0.095,"z":0.457,"yaw":45,"rest":"floor","sink":0.18},{"n":"sign","k":"sign","x":-0.267,"y":0.6,"z":0.466,"yaw":45,"rest":"wall"}]},{"id":"KB-059","anchor":"wall","rooms":["smithy"],"score":2.25,"clips":[[0,"w",0.194],[1,"w",0.194]],"pieces":[{"n":"itemstand","k":"itemstand","x":0.5,"y":-0.125,"z":-0.15,"yaw":0,"rest":"floor","sink":0.4},{"n":"itemstand","k":"itemstand","x":-0.5,"y":-0.125,"z":-0.149,"yaw":0,"rest":"floor","sink":0.4}]},{"id":"KB-060","anchor":"corner","angle":90,"rooms":["home","tavern","storage"],"score":2.25,"clips":[],"pieces":[{"n":"itemstandh","k":"itemstandh","x":0.028,"y":-0.028,"z":0.839,"yaw":180,"rest":"floor","sink":0.028},{"n":"itemstandh","k":"itemstandh","x":0.278,"y":-0.028,"z":0.674,"yaw":203,"rest":"floor","sink":0.028},{"n":"itemstandh","k":"itemstandh","x":0.001,"y":-0.028,"z":0.439,"yaw":248,"rest":"floor","sink":0.028}]},{"id":"KB-061","anchor":"stair","of":"stair","rooms":["home"],"score":2.25,"clips":[[0,1,0.074],[0,"w",0.071],[1,"w",0.034]],"pieces":[{"n":"piece_chest_private","k":"chest","x":-0.438,"y":-0.027,"z":-0.109,"yaw":180,"rest":"floor","sink":0.029},{"n":"piece_chest_private","k":"chest","x":0.407,"y":-0.027,"z":-0.079,"yaw":180,"rest":"floor","sink":0.029}]},{"id":"KB-062","anchor":"wall","rooms":["home"],"score":2.25,"clips":[],"pieces":[{"n":"itemstandh","k":"itemstandh","x":0.399,"y":-0.028,"z":0.738,"yaw":90,"rest":"floor","sink":0.028},{"n":"itemstandh","k":"itemstandh","x":0.009,"y":-0.028,"z":0.744,"yaw":90,"rest":"floor","sink":0.028},{"n":"itemstandh","k":"itemstandh","x":-0.399,"y":-0.028,"z":0.77,"yaw":90,"rest":"floor","sink":0.028}]},{"id":"KB-063","anchor":"wall","rooms":["home"],"score":2.25,"clips":[],"pieces":[{"n":"itemstandh","k":"itemstandh","x":0.258,"y":-0.028,"z":0.736,"yaw":293,"rest":"floor","sink":0.028},{"n":"itemstandh","k":"itemstandh","x":0.285,"y":-0.028,"z":0.396,"yaw":270,"rest":"floor","sink":0.028},{"n":"itemstandh","k":"itemstandh","x":-0.286,"y":-0.028,"z":0.825,"yaw":45,"rest":"floor","sink":0.028}]},{"id":"KB-064","anchor":"corner","angle":90,"rooms":["home"],"score":2.25,"clips":[[0,4,0.023]],"pieces":[{"n":"itemstandh","k":"itemstandh","x":-0.276,"y":-0.028,"z":0.327,"yaw":270,"rest":"floor","sink":0.028},{"n":"itemstandh","k":"itemstandh","x":-0.095,"y":-0.028,"z":0.145,"yaw":225,"rest":"floor","sink":0.028},{"n":"itemstandh","k":"itemstandh","x":0.028,"y":-0.028,"z":0.425,"yaw":315,"rest":"floor","sink":0.028},{"n":"itemstandh","k":"itemstandh","x":0.161,"y":-0.028,"z":0.218,"yaw":315,"rest":"floor","sink":0.028},{"n":"itemstandh","k":"itemstandh","x":-0.19,"y":-0.028,"z":0.517,"yaw":293,"rest":"floor","sink":0.028}]},{"id":"KB-065","anchor":"wall","rooms":["home","smithy","barn","hall"],"score":2.25,"clips":[],"pieces":[{"n":"piece_chest","k":"chest","x":0.669,"y":-0.001,"z":0.763,"yaw":0,"rest":"floor"},{"n":"ArmorStand","k":"ArmorStand","x":-0.669,"y":-0.021,"z":0.607,"yaw":0,"rest":"floor","sink":0.028}]},{"id":"KB-066","anchor":"wall","rooms":["home"],"score":2.25,"clips":[[0,1,0.011],[0,"w",0.067]],"pieces":[{"n":"piece_chest_wood","k":"chest","x":-0.003,"y":-0.029,"z":0.304,"yaw":360,"rest":"floor","sink":0.029},{"n":"sign","k":"sign","x":0.003,"y":0.935,"z":0.723,"yaw":360,"rest":"on","on":0}]},{"id":"KB-067","anchor":"corner","angle":90,"rooms":["any"],"score":2.25,"clips":[],"pieces":[{"n":"piece_chest_wood","k":"chest","x":0.277,"y":-0.028,"z":0.999,"yaw":315,"rest":"floor","sink":0.028},{"n":"itemstand","k":"itemstand","x":-0.942,"y":1.735,"z":1.005,"yaw":45,"rest":"wall"},{"n":"itemstand","k":"itemstand","x":-0.947,"y":2.461,"z":1.01,"yaw":45,"rest":"wall"}]},{"id":"KB-068","anchor":"corner","angle":90,"rooms":["any"],"score":2.25,"clips":[],"pieces":[{"n":"piece_chest_private","k":"chest","x":-0.407,"y":-0.027,"z":0.951,"yaw":45,"rest":"floor","sink":0.029},{"n":"itemstand","k":"itemstand","x":0.263,"y":0.807,"z":0.326,"yaw":315,"rest":"wall"},{"n":"itemstand","k":"itemstand","x":0.272,"y":1.531,"z":0.335,"yaw":315,"rest":"wall"}]},{"id":"KB-069","anchor":"corner","angle":90,"rooms":["smithy","kitchen","home","tavern"],"score":2.25,"clips":[[0,1,0.085],[1,2,0.058]],"pieces":[{"n":"piece_pot2","k":"pot","x":-0.046,"y":0.003,"z":0.8,"yaw":225,"rest":"floor"},{"n":"piece_pot3","k":"pot","x":0.293,"y":0.001,"z":1.224,"yaw":225,"rest":"floor"},{"n":"piece_pot1","k":"pot","x":-0.454,"y":0.058,"z":1.168,"yaw":225,"rest":"floor"}]},{"id":"KB-070","anchor":"wall","rooms":["home"],"score":2.25,"clips":[],"pieces":[{"n":"piece_banner10","k":"banner","x":-0.116,"y":3.594,"z":0.297,"yaw":270,"rest":"wall"},{"n":"piece_chair03","k":"chair","x":0.116,"y":0.015,"z":0.624,"yaw":0,"rest":"floor"}]},{"id":"KB-071","anchor":"bed","of":"bed","rooms":["home","sleeping"],"score":2.25,"clips":[],"pieces":[{"n":"rug_wolf","k":"rug","x":0.19,"y":-0.028,"z":2.052,"yaw":270,"rest":"floor","sink":0.028},{"n":"rug_wolf","k":"rug","x":-1.173,"y":-0.003,"z":0.381,"yaw":180,"rest":"floor"}]},{"id":"KB-072","anchor":"wall","rooms":["hall","home","workshop","smithy"],"score":2.25,"clips":[],"pieces":[{"n":"piece_workbench","k":"piece_workbench","x":-0.042,"y":-0.025,"z":0.691,"yaw":0,"rest":"floor","sink":0.025},{"n":"piece_walltorch","k":"walllight","x":0.042,"y":2.092,"z":0.205,"yaw":270,"rest":"wall"}]},{"id":"KB-073","anchor":"wall","rooms":["temple"],"score":2,"clips":[],"pieces":[{"n":"piece_chair","k":"chair","x":0.019,"y":0.931,"z":0.69,"yaw":180,"rest":"wall"},{"n":"piece_chair","k":"chair","x":-0.001,"y":2.526,"z":0.672,"yaw":180,"rest":"on","on":2},{"n":"piece_chair","k":"chair","x":-0.006,"y":1.462,"z":0.69,"yaw":180,"rest":"wall"},{"n":"piece_chair","k":"chair","x":-0.019,"y":1.994,"z":0.684,"yaw":180,"rest":"on","on":0}]},{"id":"KB-074","anchor":"wall","rooms":["home","hall","tavern"],"score":2,"clips":[],"pieces":[{"n":"piece_chair03","k":"chair","x":0.65,"y":-0.035,"z":0.944,"yaw":214,"rest":"floor","sink":0.035},{"n":"piece_chair03","k":"chair","x":-0.65,"y":-0.035,"z":1.008,"yaw":135,"rest":"floor","sink":0.035}]},{"id":"KB-075","anchor":"wall","rooms":["home","tavern","workshop"],"score":2,"clips":[],"pieces":[{"n":"piece_chair02","k":"chair","x":0.556,"y":-0.015,"z":0.676,"yaw":338,"rest":"floor","sink":0.028},{"n":"piece_chair","k":"chair","x":-0.592,"y":-0.073,"z":0.606,"yaw":0,"rest":"floor","sink":0.073}]},{"id":"KB-076","anchor":"wall","rooms":["temple","home"],"score":2,"clips":[[0,1,0.18]],"pieces":[{"n":"piece_banner05","k":"banner","x":0.603,"y":1.842,"z":0.15,"yaw":270,"rest":"floor","sink":0.158},{"n":"piece_banner05","k":"banner","x":-0.603,"y":1.822,"z":0.15,"yaw":270,"rest":"floor","sink":0.178}]},{"id":"KB-077","anchor":"wall","rooms":["home"],"score":2,"clips":[[0,"w",0.328]],"pieces":[{"n":"piece_chest_wood","k":"chest","x":0.138,"y":0,"z":-0.101,"yaw":158,"rest":"floor"},{"n":"piece_chest_wood","k":"chest","x":-0.144,"y":0,"z":0.606,"yaw":158,"rest":"floor"}]},{"id":"KB-078","anchor":"wall","rooms":["any"],"score":2,"clips":[],"pieces":[{"n":"piece_chest","k":"chest","x":-0.013,"y":1.068,"z":1.368,"yaw":84,"rest":"on","on":1},{"n":"piece_chest","k":"chest","x":-0.025,"y":-0.001,"z":1.285,"yaw":84,"rest":"floor"}]},{"id":"KB-079","anchor":"corner","angle":90,"rooms":["any"],"score":2,"clips":[],"pieces":[{"n":"piece_chest_private","k":"chest","x":0.724,"y":-0.027,"z":1.177,"yaw":315,"rest":"floor","sink":0.029},{"n":"piece_chest_private","k":"chest","x":-0.682,"y":-0.027,"z":1.28,"yaw":45,"rest":"floor","sink":0.028}]},{"id":"KB-080","anchor":"corner","angle":90,"rooms":["home"],"score":2,"clips":[],"pieces":[{"n":"itemstandh","k":"itemstandh","x":-0.061,"y":-0.028,"z":0.376,"yaw":45,"rest":"floor","sink":0.028},{"n":"itemstandh","k":"itemstandh","x":-0.336,"y":-0.028,"z":0.091,"yaw":45,"rest":"floor","sink":0.028}]},{"id":"KB-081","anchor":"corner","angle":90,"rooms":["home","smithy"],"score":2,"clips":[],"pieces":[{"n":"forge","k":"forge","x":-0.229,"y":-0.063,"z":1.56,"yaw":11,"rest":"floor","sink":0.063},{"n":"piece_workbench_ext4","k":"piece_workbench_ext4","x":0.531,"y":1.166,"z":0.744,"yaw":315,"rest":"wall"}]},{"id":"KB-082","anchor":"table","of":"table","rooms":["home"],"score":2,"clips":[],"pieces":[{"n":"piece_magetable_ext","k":"piece_magetable_ext","x":1.863,"y":-0.05,"z":-0.101,"yaw":0,"rest":"floor","sink":0.05},{"n":"piece_throne01","k":"piece_throne01","x":0.167,"y":-0.035,"z":1.405,"yaw":191,"rest":"floor","sink":0.035}]},{"id":"KB-083","anchor":"window","rooms":["home"],"score":2,"clips":[[2,"w",0.2],[3,"w",0.2]],"pieces":[{"n":"itemstand","k":"itemstand","x":0.002,"y":1.378,"z":0.03,"yaw":180,"rest":"on","on":2},{"n":"itemstand","k":"itemstand","x":-0.002,"y":2.371,"z":0.03,"yaw":180,"rest":"on","on":3},{"n":"wood_beam","k":"beam2","x":-0.495,"y":0.875,"z":-0.15,"yaw":180,"rest":"wall"},{"n":"wood_beam","k":"beam2","x":-0.495,"y":1.875,"z":-0.15,"yaw":180,"rest":"wall"}]},{"id":"KB-084","anchor":"hearth","of":"hearth","rooms":["home"],"score":2,"clips":[[2,"a",0.081]],"pieces":[{"n":"rug_wolf","k":"rug","x":2.935,"y":-0.028,"z":-0.063,"yaw":3,"rest":"floor","sink":0.028},{"n":"rug_fur","k":"rug","x":-3.169,"y":-0.028,"z":0.302,"yaw":3,"rest":"floor","sink":0.028},{"n":"jute_carpet","k":"rug","x":0.234,"y":0.075,"z":3.906,"yaw":93,"rest":"floor"}]},{"id":"KB-085","anchor":"table","of":"table","rooms":["home"],"score":2,"clips":[[0,1,0.061],[0,"a",0.061]],"pieces":[{"n":"jute_carpet_blue","k":"rug","x":-0.043,"y":-0.059,"z":-1.464,"yaw":45,"rest":"floor","sink":0.059},{"n":"piece_chair02","k":"chair","x":0.186,"y":-0.015,"z":-0.876,"yaw":338,"rest":"floor","sink":0.028}]},{"id":"KB-086","anchor":"hearth","of":"pit","rooms":["home","kitchen","tavern"],"score":2,"clips":[[1,2,0.02],[1,"a",0.2],[1,"w",0.15]],"pieces":[{"n":"cauldron_ext5_mortarandpestle","k":"cauldron_ext5_mortarandpestle","x":-0.816,"y":-0.041,"z":1.906,"yaw":71,"rest":"floor","sink":0.041},{"n":"piece_oven","k":"piece_oven","x":0.723,"y":0.02,"z":2.095,"yaw":251,"rest":"floor"},{"n":"piece_cauldron","k":"piece_cauldron","x":-0.233,"y":0.22,"z":0.02,"yaw":93,"rest":"wall"},{"n":"cauldron_ext4_pots","k":"cauldron_ext4_pots","x":0.407,"y":3.076,"z":1.585,"yaw":341,"rest":"wall"}]},{"id":"KB-087","anchor":"corner","angle":90,"rooms":["storage"],"score":2,"clips":[],"pieces":[{"n":"sign","k":"sign","x":-0.373,"y":0.92,"z":0.832,"yaw":225,"rest":"wall"},{"n":"sign","k":"sign","x":-0.356,"y":2.253,"z":0.833,"yaw":225,"rest":"on","on":0}]},{"id":"KB-088","anchor":"corner","angle":90,"rooms":["storage"],"score":2,"clips":[],"pieces":[{"n":"sign","k":"sign","x":0.733,"y":0.953,"z":1.193,"yaw":135,"rest":"wall"},{"n":"sign","k":"sign","x":0.711,"y":2.276,"z":1.168,"yaw":135,"rest":"on","on":0}]},{"id":"KB-089","anchor":"wall","rooms":["home"],"score":2,"clips":[],"pieces":[{"n":"itemstand","k":"itemstand","x":0.687,"y":1.147,"z":0.044,"yaw":0,"rest":"wall"},{"n":"itemstand","k":"itemstand","x":-0.027,"y":1.158,"z":0.044,"yaw":0,"rest":"wall"},{"n":"itemstand","k":"itemstand","x":-0.687,"y":1.158,"z":0.044,"yaw":0,"rest":"wall"}]},{"id":"KB-090","anchor":"wall","rooms":["smithy","tavern","hall"],"score":2,"clips":[[1,"w",0.028]],"pieces":[{"n":"itemstand","k":"itemstand","x":0.254,"y":2.211,"z":0.045,"yaw":0,"rest":"wall"},{"n":"itemstand","k":"itemstand","x":-0.253,"y":2.221,"z":0.017,"yaw":0,"rest":"wall"}]},{"id":"KB-091","anchor":"wall","rooms":["storage"],"score":2,"clips":[],"pieces":[{"n":"sign","k":"sign","x":0,"y":0.942,"z":1.284,"yaw":180,"rest":"hang"},{"n":"sign","k":"sign","x":0,"y":2.281,"z":1.298,"yaw":180,"rest":"on","on":0}]},{"id":"KB-092","anchor":"wall","rooms":["home"],"score":2,"clips":[],"pieces":[{"n":"sign","k":"sign","x":0,"y":1.021,"z":0.767,"yaw":270,"rest":"wall"},{"n":"sign","k":"sign","x":0,"y":2.021,"z":0.767,"yaw":270,"rest":"hang"}]},{"id":"KB-093","anchor":"stair","of":"stair","rooms":["home"],"score":2,"clips":[[0,1,0.026]],"pieces":[{"n":"piece_chest","k":"chest","x":0.507,"y":-0.026,"z":-0.784,"yaw":90,"rest":"floor","sink":0.026},{"n":"piece_chest","k":"chest","x":-0.424,"y":-0.026,"z":-0.802,"yaw":270,"rest":"floor","sink":0.026}]},{"id":"KB-094","anchor":"corner","angle":90,"rooms":["home","hall","smithy"],"score":2,"clips":[[0,1,0.021]],"pieces":[{"n":"ArmorStand","k":"ArmorStand","x":-0.575,"y":-0.021,"z":1.142,"yaw":45,"rest":"floor","sink":0.028},{"n":"ArmorStand","k":"ArmorStand","x":-0.112,"y":-0.021,"z":0.799,"yaw":23,"rest":"floor","sink":0.028}]},{"id":"KB-095","anchor":"wall","rooms":["storage"],"score":2,"clips":[],"pieces":[{"n":"sign","k":"sign","x":0.87,"y":0.954,"z":1.284,"yaw":180,"rest":"hang"},{"n":"sign","k":"sign","x":0.84,"y":2.264,"z":1.298,"yaw":180,"rest":"on","on":0},{"n":"sign","k":"sign","x":-0.844,"y":0.961,"z":1.284,"yaw":180,"rest":"hang"},{"n":"sign","k":"sign","x":-0.87,"y":2.274,"z":1.298,"yaw":180,"rest":"on","on":2}]},{"id":"KB-096","anchor":"bed","of":"bed2","rooms":["home","sleeping"],"score":2,"clips":[],"pieces":[{"n":"rug_fur","k":"rug","x":0.05,"y":-0.028,"z":2.234,"yaw":270,"rest":"floor","sink":0.028},{"n":"rug_wolf","k":"rug","x":-0.111,"y":-0.003,"z":2.033,"yaw":270,"rest":"floor"},{"n":"rug_wolf","k":"rug","x":1.796,"y":-0.003,"z":2.087,"yaw":135,"rest":"floor"},{"n":"rug_wolf","k":"rug","x":-1.849,"y":-0.002,"z":-0.031,"yaw":180,"rest":"floor"},{"n":"rug_wolf","k":"rug","x":-1.875,"y":-0.002,"z":1.499,"yaw":225,"rest":"floor"}]},{"id":"KB-097","anchor":"wall","rooms":["any"],"score":2,"clips":[],"pieces":[{"n":"itemstand","k":"itemstand","x":0.604,"y":2.268,"z":0.049,"yaw":360,"rest":"wall"},{"n":"itemstand","k":"itemstand","x":0.594,"y":1.642,"z":0.049,"yaw":360,"rest":"wall"},{"n":"itemstand","k":"itemstand","x":-0.588,"y":2.241,"z":0.048,"yaw":360,"rest":"wall"},{"n":"itemstand","k":"itemstand","x":-0.604,"y":1.674,"z":0.048,"yaw":360,"rest":"wall"}]},{"id":"KB-098","anchor":"corner","angle":90,"rooms":["storage"],"score":2,"clips":[[0,"w",0.177],[1,"w",0.027]],"pieces":[{"n":"piece_chest_blackmetal","k":"chest","x":-0.79,"y":-0.032,"z":1.463,"yaw":45,"rest":"floor","sink":0.032},{"n":"piece_groundtorch","k":"floorlight","x":-0.018,"y":0.623,"z":0.194,"yaw":203,"rest":"floor","sink":0.127}]},{"id":"KB-099","anchor":"wall","rooms":["smithy","home","hall","kitchen","tavern"],"score":2,"clips":[[0,1,0.032]],"pieces":[{"n":"piece_pot1","k":"pot","x":0.259,"y":-0.027,"z":0.31,"yaw":90,"rest":"floor","sink":0.028},{"n":"piece_pot2","k":"pot","x":-0.259,"y":-0.025,"z":0.492,"yaw":90,"rest":"floor","sink":0.028}]},{"id":"KB-100","anchor":"wall","rooms":["any"],"score":2,"clips":[[1,"w",0.133]],"pieces":[{"n":"piece_dvergr_lantern","k":"walllight","x":0.583,"y":3.688,"z":0.351,"yaw":90,"rest":"wall"},{"n":"piece_chest_blackmetal","k":"chest","x":-0.585,"y":-0.003,"z":0.52,"yaw":0,"rest":"floor"}]},{"id":"KB-101","anchor":"wall","rooms":["home"],"score":2,"clips":[[0,"w",0.08]],"pieces":[{"n":"piece_chest_blackmetal","k":"chest","x":0.539,"y":-0.003,"z":0.723,"yaw":0,"rest":"floor"},{"n":"piece_groundtorch_mist","k":"floorlight","x":-0.542,"y":0.648,"z":0.614,"yaw":338,"rest":"floor","sink":0.102}]},{"id":"KB-102","anchor":"corner","angle":90,"rooms":["storage","home","hall","smithy"],"score":2,"clips":[[0,"w",0.013],[1,"w",0.038]],"pieces":[{"n":"ArmorStand","k":"ArmorStand","x":0.071,"y":0.008,"z":0.256,"yaw":248,"rest":"floor"},{"n":"piece_groundtorch_mist","k":"floorlight","x":0.54,"y":0.648,"z":0.66,"yaw":225,"rest":"floor","sink":0.102}]},{"id":"KB-103","anchor":"wall","rooms":["home","smithy","hall"],"score":2,"clips":[],"pieces":[{"n":"itemstand","k":"itemstand","x":-0.011,"y":3.132,"z":0.094,"yaw":0,"rest":"wall"},{"n":"ArmorStand","k":"ArmorStand","x":0.011,"y":-0.021,"z":0.473,"yaw":0,"rest":"floor","sink":0.028}]},{"id":"KB-104","anchor":"wall","rooms":["home","hall","smithy"],"score":2,"clips":[],"pieces":[{"n":"ArmorStand","k":"ArmorStand","x":0.505,"y":-0.021,"z":0.271,"yaw":0,"rest":"floor","sink":0.028},{"n":"itemstand","k":"itemstand","x":-0.505,"y":2.27,"z":0.044,"yaw":0,"rest":"wall"}]},{"id":"KB-105","anchor":"wall","rooms":["home","storage","hall","smithy"],"score":2,"clips":[],"pieces":[{"n":"ArmorStand","k":"ArmorStand","x":-0.095,"y":-0.021,"z":0.613,"yaw":0,"rest":"floor","sink":0.028},{"n":"piece_walltorch","k":"walllight","x":0.096,"y":2.975,"z":0.205,"yaw":270,"rest":"wall"}]},{"id":"KB-106","anchor":"corner","angle":90,"rooms":["home","hall"],"score":2,"clips":[[0,1,0.083]],"pieces":[{"n":"piece_chest","k":"chest","x":0.145,"y":-0.026,"z":1.169,"yaw":315,"rest":"floor","sink":0.026},{"n":"sign","k":"sign","x":-0.195,"y":0.247,"z":1.505,"yaw":315,"rest":"floor","sink":0.028}]},{"id":"KB-107","anchor":"wall","rooms":["barn","home","hall"],"score":2,"clips":[],"pieces":[{"n":"rug_hare","k":"rug","x":-0.021,"y":0,"z":1.261,"yaw":248,"rest":"floor"},{"n":"piece_blackmarble_bench","k":"bench","x":0.075,"y":-0.042,"z":0.36,"yaw":0,"rest":"floor","sink":0.042}]},{"id":"KB-108","anchor":"table","of":"round","rooms":["home"],"score":2,"clips":[[5,"a",0.068]],"pieces":[{"n":"goblinking_totemholder","k":"goblinking_totemholder","x":-1.638,"y":-0.319,"z":0.478,"yaw":270,"rest":"floor","sink":0.32},{"n":"piece_chair03","k":"chair","x":-1.829,"y":-0.036,"z":-0.44,"yaw":56,"rest":"floor","sink":0.036},{"n":"piece_chair03","k":"chair","x":-1.472,"y":-0.036,"z":1.38,"yaw":158,"rest":"floor","sink":0.036},{"n":"piece_chair03","k":"chair","x":1.276,"y":-0.036,"z":1.303,"yaw":236,"rest":"floor","sink":0.036},{"n":"piece_chair03","k":"chair","x":1.874,"y":-0.036,"z":-0.542,"yaw":304,"rest":"floor","sink":0.036},{"n":"piece_jackoturnip","k":"piece_jackoturnip","x":0.028,"y":0.787,"z":-0.548,"yaw":349,"rest":"anchor"}]},{"id":"KB-109","anchor":"hearth","of":"pit","rooms":["home"],"score":2,"clips":[[0,"w",0.037],[2,"w",0.512]],"pieces":[{"n":"piece_cookingstation","k":"piece_cookingstation","x":-0.221,"y":0.2,"z":0.099,"yaw":313,"rest":"wall"},{"n":"sign","k":"sign","x":-0.455,"y":0.216,"z":1.784,"yaw":268,"rest":"floor","sink":0.059},{"n":"piece_chest","k":"chest","x":0.677,"y":0.421,"z":1.831,"yaw":358,"rest":"wall"}]},{"id":"KB-110","anchor":"hearth","of":"pit","rooms":["home","kitchen","tavern"],"score":2,"clips":[],"pieces":[{"n":"piece_cauldron","k":"piece_cauldron","x":0.072,"y":0.2,"z":0.036,"yaw":166,"rest":"wall"},{"n":"cauldron_ext6_rollingpins","k":"cauldron_ext6_rollingpins","x":-0.072,"y":1.962,"z":1.983,"yaw":76,"rest":"wall"}]},{"id":"KB-111","anchor":"table","of":"round","rooms":["home"],"score":2,"clips":[[2,"a",0.07]],"pieces":[{"n":"piece_chair03","k":"chair","x":-0.925,"y":-0.035,"z":1.536,"yaw":113,"rest":"floor","sink":0.035},{"n":"piece_chair03","k":"chair","x":1.325,"y":-0.035,"z":-0.808,"yaw":315,"rest":"floor","sink":0.035},{"n":"piece_Lavalantern","k":"piece_Lavalantern","x":-0.367,"y":0.764,"z":-0.484,"yaw":315,"rest":"anchor"},{"n":"rug_hare","k":"rug","x":0.127,"y":0.767,"z":0.085,"yaw":315,"rest":"anchor"}]},{"id":"KB-112","anchor":"window","rooms":["home","hall","smithy"],"score":2,"clips":[],"pieces":[{"n":"ArmorStand","k":"ArmorStand","x":0.453,"y":-0.021,"z":0.887,"yaw":0,"rest":"floor","sink":0.028},{"n":"piece_banner03","k":"banner","x":-0.453,"y":4.389,"z":-0.102,"yaw":90,"rest":"wall"}]},{"id":"KB-113","anchor":"window","rooms":["home","hall","smithy"],"score":2,"clips":[],"pieces":[{"n":"ArmorStand","k":"ArmorStand","x":0.122,"y":-0.021,"z":1.032,"yaw":315,"rest":"floor","sink":0.028},{"n":"piece_banner11","k":"banner","x":-0.122,"y":4.334,"z":-0.005,"yaw":90,"rest":"wall"}]},{"id":"KB-114","anchor":"window","rooms":["home","kitchen","tavern"],"score":2,"clips":[[1,"w",0.066]],"pieces":[{"n":"piece_banner11","k":"banner","x":0.027,"y":4.336,"z":-0.005,"yaw":270,"rest":"wall"},{"n":"piece_pot3","k":"pot","x":-0.026,"y":-0.027,"z":0.284,"yaw":90,"rest":"floor","sink":0.029}]},{"id":"KB-115","anchor":"table","of":"long","rooms":["home"],"score":2,"clips":[],"pieces":[{"n":"piece_chair03","k":"chair","x":-1.531,"y":-0.036,"z":-1.341,"yaw":0,"rest":"floor","sink":0.036},{"n":"piece_chair03","k":"chair","x":-2.754,"y":-0.036,"z":-1.331,"yaw":0,"rest":"floor","sink":0.036},{"n":"piece_chair03","k":"chair","x":-0.201,"y":-0.035,"z":-1.427,"yaw":0,"rest":"floor","sink":0.035},{"n":"piece_chair03","k":"chair","x":1.163,"y":-0.035,"z":-1.377,"yaw":0,"rest":"floor","sink":0.035},{"n":"piece_chair03","k":"chair","x":2.504,"y":-0.035,"z":-1.346,"yaw":0,"rest":"floor","sink":0.035},{"n":"piece_chair03","k":"chair","x":2.548,"y":-0.035,"z":1.397,"yaw":180,"rest":"floor","sink":0.035},{"n":"piece_chair03","k":"chair","x":-0.102,"y":-0.035,"z":1.408,"yaw":180,"rest":"floor","sink":0.035},{"n":"piece_chair03","k":"chair","x":1.211,"y":-0.035,"z":1.434,"yaw":180,"rest":"floor","sink":0.035},{"n":"piece_chair03","k":"chair","x":-2.67,"y":-0.035,"z":1.48,"yaw":180,"rest":"floor","sink":0.035},{"n":"piece_chair03","k":"chair","x":-1.423,"y":-0.035,"z":1.503,"yaw":180,"rest":"floor","sink":0.035}]},{"id":"KB-116","anchor":"hearth","of":"hearth","rooms":["home"],"score":2,"clips":[[2,"a",0.323],[5,"w",0.068]],"pieces":[{"n":"piece_throne01","k":"piece_throne01","x":-1.876,"y":-0.035,"z":3.222,"yaw":164,"rest":"floor","sink":0.035},{"n":"rug_wolf","k":"rug","x":2.372,"y":-0.029,"z":2.373,"yaw":299,"rest":"floor","sink":0.029},{"n":"goblinking_totemholder","k":"goblinking_totemholder","x":0.908,"y":-0.029,"z":-0.575,"yaw":29,"rest":"floor","sink":0.03},{"n":"rug_wolf","k":"rug","x":-1.06,"y":-0.029,"z":-3.55,"yaw":299,"rest":"floor","sink":0.029},{"n":"rug_wolf","k":"rug","x":-2.484,"y":-0.028,"z":1.193,"yaw":29,"rest":"floor","sink":0.028},{"n":"piece_chest","k":"chest","x":2.406,"y":-0.026,"z":1.576,"yaw":29,"rest":"floor","sink":0.026},{"n":"piece_cookingstation_iron","k":"piece_cookingstation_iron","x":-0.274,"y":0.457,"z":0.127,"yaw":119,"rest":"wall"}]},{"id":"KB-117","anchor":"hearth","of":"hearth","rooms":["home"],"score":2,"clips":[[4,"a",0.323],[4,"w",0.017],[7,"w",0.041],[8,"w",0.213]],"pieces":[{"n":"piece_throne01","k":"piece_throne01","x":1.925,"y":-0.035,"z":3.062,"yaw":224,"rest":"floor","sink":0.035},{"n":"piece_throne01","k":"piece_throne01","x":-2.225,"y":-0.035,"z":3.044,"yaw":134,"rest":"floor","sink":0.035},{"n":"rug_wolf","k":"rug","x":3.427,"y":-0.029,"z":-0.799,"yaw":359,"rest":"floor","sink":0.029},{"n":"rug_wolf","k":"rug","x":-0.003,"y":-0.028,"z":2.729,"yaw":89,"rest":"floor","sink":0.028},{"n":"goblinking_totemholder","k":"goblinking_totemholder","x":-0.022,"y":-0.028,"z":-1.217,"yaw":89,"rest":"floor","sink":0.029},{"n":"rug_wolf","k":"rug","x":-3.334,"y":-0.028,"z":-0.959,"yaw":359,"rest":"floor","sink":0.028},{"n":"piece_chest","k":"chest","x":2.749,"y":-0.027,"z":-1.471,"yaw":89,"rest":"floor","sink":0.027},{"n":"piece_chest","k":"chest","x":-2.585,"y":-0.026,"z":-1.608,"yaw":269,"rest":"floor","sink":0.026},{"n":"piece_cookingstation_iron","k":"piece_cookingstation_iron","x":0.07,"y":0.458,"z":0.226,"yaw":179,"rest":"wall"}]},{"id":"KB-118","anchor":"corner","angle":90,"rooms":["home"],"score":2,"clips":[],"pieces":[{"n":"rug_fur","k":"rug","x":-0.569,"y":0,"z":1.365,"yaw":135,"rest":"floor"},{"n":"piece_chest_wood","k":"chest","x":-0.675,"y":0.025,"z":1.395,"yaw":45,"rest":"floor"},{"n":"piece_banner01","k":"banner","x":-0.956,"y":4.258,"z":1.168,"yaw":315,"rest":"wall"}]},{"id":"KB-119","anchor":"wall","rooms":["home","hall","smithy"],"score":2,"clips":[],"pieces":[{"n":"piece_banner03","k":"banner","x":0.808,"y":3.783,"z":0.184,"yaw":90,"rest":"wall"},{"n":"ArmorStand","k":"ArmorStand","x":-0.808,"y":-0.02,"z":0.715,"yaw":0,"rest":"floor","sink":0.027}]},{"id":"KB-120","anchor":"wall","rooms":["tavern","home"],"score":2,"clips":[[1,"w",0.056]],"pieces":[{"n":"piece_blackmarble_bench","k":"bench","x":-0.259,"y":-0.045,"z":0.312,"yaw":0,"rest":"floor","sink":0.045},{"n":"piece_dvergr_lantern","k":"walllight","x":0.263,"y":3.565,"z":-0.315,"yaw":90,"rest":"wall"}]},{"id":"KB-121","anchor":"table","of":"table","rooms":["home","tavern"],"score":2,"clips":[],"pieces":[{"n":"piece_bench01","k":"bench","x":0.024,"y":-0.036,"z":-1.199,"yaw":0,"rest":"floor","sink":0.036},{"n":"piece_bench01","k":"bench","x":-0.12,"y":-0.036,"z":1.046,"yaw":180,"rest":"floor","sink":0.036}]},{"id":"KB-122","anchor":"wall","rooms":["hall","tavern"],"score":1.75,"clips":[],"pieces":[{"n":"piece_chair03","k":"chair","x":0.966,"y":-0.035,"z":0.987,"yaw":304,"rest":"floor","sink":0.035},{"n":"piece_chair","k":"chair","x":0.05,"y":-0.098,"z":1.017,"yaw":180,"rest":"floor","sink":0.098},{"n":"piece_chair03","k":"chair","x":-0.965,"y":-0.01,"z":1.083,"yaw":56,"rest":"floor"}]},{"id":"KB-123","anchor":"wall","rooms":["home","hall","storage"],"score":1.75,"clips":[[0,"w",0.165],[1,2,0.012],[1,"w",0.138],[2,"w",0.117]],"pieces":[{"n":"piece_chest_wood","k":"chest","x":0.752,"y":-0.028,"z":0.654,"yaw":270,"rest":"floor","sink":0.028},{"n":"piece_chest_wood","k":"chest","x":0.007,"y":-0.028,"z":0.683,"yaw":270,"rest":"floor","sink":0.028},{"n":"piece_chest_wood","k":"chest","x":-0.736,"y":-0.028,"z":0.704,"yaw":270,"rest":"floor","sink":0.028}]},{"id":"KB-124","anchor":"corner","angle":90,"rooms":["home","tavern"],"score":1.75,"clips":[],"pieces":[{"n":"itemstand","k":"itemstand","x":-0.048,"y":1.91,"z":0.148,"yaw":338,"rest":"wall"},{"n":"itemstand","k":"itemstand","x":0.305,"y":1.91,"z":0.501,"yaw":338,"rest":"wall"}]},{"id":"KB-125","anchor":"wall","rooms":["home","storage"],"score":1.75,"clips":[[0,1,0.088]],"pieces":[{"n":"itemstand","k":"itemstand","x":0.01,"y":1.744,"z":-0.055,"yaw":0,"rest":"wall"},{"n":"itemstand","k":"itemstand","x":-0.01,"y":1.352,"z":-0.056,"yaw":0,"rest":"wall"}]},{"id":"KB-126","anchor":"wall","rooms":["barn","home","hall"],"score":1.75,"clips":[],"pieces":[{"n":"sign","k":"sign","x":0.508,"y":1.539,"z":0.09,"yaw":0,"rest":"hang"},{"n":"sign","k":"sign","x":-0.505,"y":1.543,"z":0.095,"yaw":0,"rest":"hang"}]},{"id":"KB-127","anchor":"wall","rooms":["home"],"score":1.75,"clips":[[0,1,0.074],[0,2,0.074],[1,3,0.088],[2,3,0.091]],"pieces":[{"n":"itemstand","k":"itemstand","x":0.15,"y":0.247,"z":0.505,"yaw":315,"rest":"floor","sink":0.028},{"n":"itemstand","k":"itemstand","x":0.139,"y":0.247,"z":0.806,"yaw":225,"rest":"floor","sink":0.028},{"n":"itemstand","k":"itemstand","x":-0.145,"y":0.247,"z":0.522,"yaw":45,"rest":"floor","sink":0.028},{"n":"itemstand","k":"itemstand","x":-0.151,"y":0.247,"z":0.804,"yaw":135,"rest":"floor","sink":0.028}]},{"id":"KB-128","anchor":"wall","rooms":["barn","home","smithy"],"score":1.75,"clips":[],"pieces":[{"n":"forge_ext6","k":"forge_ext6","x":0.045,"y":3.089,"z":0.099,"yaw":0,"rest":"wall"},{"n":"forge","k":"forge","x":-0.045,"y":-0.035,"z":0.578,"yaw":0,"rest":"floor","sink":0.035}]},{"id":"KB-129","anchor":"wall","rooms":["hall","home"],"score":1.75,"clips":[],"pieces":[{"n":"piece_chest","k":"chest","x":-0.271,"y":-0.026,"z":0.726,"yaw":0,"rest":"floor","sink":0.026},{"n":"piece_walltorch","k":"walllight","x":0.271,"y":1.486,"z":0.205,"yaw":270,"rest":"wall"}]},{"id":"KB-130","anchor":"wall","rooms":["home"],"score":1.75,"clips":[],"pieces":[{"n":"piece_chest_blackmetal","k":"chest","x":-0.213,"y":-0.003,"z":0.725,"yaw":0,"rest":"floor"},{"n":"itemstand","k":"itemstand","x":0.194,"y":2.7,"z":0.043,"yaw":0,"rest":"wall"}]},{"id":"KB-131","anchor":"wall","rooms":["home"],"score":1.75,"clips":[],"pieces":[{"n":"piece_chair","k":"chair","x":0.302,"y":-0.048,"z":0.652,"yaw":0,"rest":"floor","sink":0.048},{"n":"piece_banner02","k":"banner","x":-0.302,"y":2.734,"z":0.15,"yaw":90,"rest":"wall"}]},{"id":"KB-132","anchor":"corner","angle":90,"rooms":["tavern","home","hall","storage","kitchen","smithy","workshop"],"score":1.75,"clips":[],"pieces":[{"n":"piece_chest_barrel","k":"barrel","x":-0.027,"y":-0.121,"z":0.59,"yaw":135,"rest":"floor","sink":0.124},{"n":"piece_chest_barrel","k":"barrel","x":0.692,"y":-0.121,"z":1.186,"yaw":135,"rest":"floor","sink":0.124}]},{"id":"KB-133","anchor":"corner","angle":90,"rooms":["home","tavern","kitchen","hall"],"score":1.75,"clips":[],"pieces":[{"n":"MeatPlatter","k":"food","x":-0.314,"y":-0.036,"z":0.643,"yaw":338,"rest":"floor","sink":0.036},{"n":"MeadLightfoot","k":"food","x":-0.197,"y":-0.01,"z":0.214,"yaw":225,"rest":"floor"}]},{"id":"KB-134","anchor":"wall","rooms":["home","barn","kitchen","storage","tavern","smithy","workshop"],"score":1.75,"clips":[],"pieces":[{"n":"piece_chest_barrel","k":"barrel","x":0.024,"y":-0.024,"z":0.084,"yaw":180,"rest":"floor","sink":0.028},{"n":"piece_chest_barrel","k":"barrel","x":-0.024,"y":-0.024,"z":0.923,"yaw":180,"rest":"floor","sink":0.028}]},{"id":"KB-135","anchor":"wall","rooms":["home","tavern","kitchen","storage"],"score":1.75,"clips":[[0,"w",0.146]],"pieces":[{"n":"fermenter","k":"fermenter","x":0.08,"y":0.001,"z":0.654,"yaw":90,"rest":"floor"},{"n":"fermenter","k":"fermenter","x":0.007,"y":2.202,"z":0.674,"yaw":90,"rest":"on","on":0}]},{"id":"KB-136","anchor":"wall","rooms":["home","storage"],"score":1.5,"clips":[[0,"w",0.152],[1,"w",0.19]],"pieces":[{"n":"piece_chest_blackmetal","k":"chest","x":0.078,"y":-0.031,"z":0.501,"yaw":0,"rest":"floor","sink":0.031},{"n":"piece_chest_blackmetal","k":"chest","x":-0.083,"y":0.992,"z":0.463,"yaw":0,"rest":"wall"}]},{"id":"KB-137","anchor":"corner","angle":90,"rooms":["home","kitchen"],"score":1.5,"clips":[[0,1,0.091],[0,"w",0.049]],"pieces":[{"n":"piece_chest_wood","k":"chest","x":0.264,"y":-0.028,"z":0.83,"yaw":315,"rest":"floor","sink":0.028},{"n":"piece_chest_wood","k":"chest","x":-0.799,"y":-0.028,"z":1.347,"yaw":45,"rest":"floor","sink":0.028}]},{"id":"KB-138","anchor":"corner","angle":90,"rooms":["home"],"score":1.5,"clips":[[1,"w",0.2]],"pieces":[{"n":"piece_chest_blackmetal","k":"chest","x":0.882,"y":-0.078,"z":0.937,"yaw":45,"rest":"floor","sink":0.078},{"n":"piece_chest_blackmetal","k":"chest","x":1.001,"y":0.985,"z":1.013,"yaw":45,"rest":"wall"}]},{"id":"KB-139","anchor":"wall","rooms":["home","hall","smithy"],"score":1.5,"clips":[],"pieces":[{"n":"ArmorStand","k":"ArmorStand","x":0.722,"y":-0.021,"z":0.335,"yaw":338,"rest":"floor","sink":0.028},{"n":"ArmorStand","k":"ArmorStand","x":-0.722,"y":-0.021,"z":0.305,"yaw":11,"rest":"floor","sink":0.028}]},{"id":"KB-140","anchor":"corner","angle":90,"rooms":["home","tavern"],"score":1.5,"clips":[],"pieces":[{"n":"itemstandh","k":"itemstandh","x":0.389,"y":-0.027,"z":1.048,"yaw":293,"rest":"floor","sink":0.027},{"n":"itemstandh","k":"itemstandh","x":0.386,"y":-0.027,"z":0.733,"yaw":293,"rest":"floor","sink":0.027}]},{"id":"KB-141","anchor":"corner","angle":90,"rooms":["home","tavern","smithy"],"score":1.5,"clips":[],"pieces":[{"n":"itemstandh","k":"itemstandh","x":0.285,"y":-0.028,"z":0.668,"yaw":23,"rest":"floor","sink":0.028},{"n":"itemstandh","k":"itemstandh","x":0.055,"y":-0.028,"z":0.479,"yaw":23,"rest":"floor","sink":0.028}]},{"id":"KB-142","anchor":"corner","angle":90,"rooms":["hall","home"],"score":1.5,"clips":[],"pieces":[{"n":"itemstand","k":"itemstand","x":0.82,"y":2.737,"z":0.884,"yaw":315,"rest":"wall"},{"n":"itemstand","k":"itemstand","x":0.351,"y":2.175,"z":0.415,"yaw":315,"rest":"wall"}]},{"id":"KB-143","anchor":"corner","angle":90,"rooms":["smithy"],"score":1.5,"clips":[],"pieces":[{"n":"itemstand","k":"itemstand","x":0.328,"y":2.118,"z":0.391,"yaw":315,"rest":"wall"},{"n":"itemstand","k":"itemstand","x":1.012,"y":2.129,"z":1.075,"yaw":315,"rest":"wall"}]},{"id":"KB-144","anchor":"wall","rooms":["temple","tavern"],"score":1.5,"clips":[],"pieces":[{"n":"itemstandh","k":"itemstandh","x":0.042,"y":-0.028,"z":0.515,"yaw":272,"rest":"floor","sink":0.028},{"n":"itemstandh","k":"itemstandh","x":-0.042,"y":0.16,"z":0.478,"yaw":272,"rest":"wall"}]},{"id":"KB-145","anchor":"wall","rooms":["home","temple"],"score":1.5,"clips":[[0,"w",0.042]],"pieces":[{"n":"itemstandh","k":"itemstandh","x":0.041,"y":-0.028,"z":1.079,"yaw":0,"rest":"floor","sink":0.028},{"n":"itemstandh","k":"itemstandh","x":-0.041,"y":0.01,"z":1.173,"yaw":0,"rest":"floor"}]},{"id":"KB-146","anchor":"corner","angle":90,"rooms":["home","storage"],"score":1.5,"clips":[],"pieces":[{"n":"itemstandh","k":"itemstandh","x":0.202,"y":-0.028,"z":0.781,"yaw":45,"rest":"floor","sink":0.028},{"n":"itemstandh","k":"itemstandh","x":0.01,"y":-0.028,"z":0.612,"yaw":45,"rest":"floor","sink":0.028},{"n":"itemstandh","k":"itemstandh","x":-0.242,"y":-0.028,"z":0.434,"yaw":45,"rest":"floor","sink":0.028},{"n":"itemstandh","k":"itemstandh","x":-0.477,"y":-0.028,"z":0.155,"yaw":45,"rest":"floor","sink":0.028}]},{"id":"KB-147","anchor":"wall","rooms":["kitchen","home"],"score":1.5,"clips":[],"pieces":[{"n":"itemstandh","k":"itemstandh","x":0.275,"y":-0.028,"z":0.488,"yaw":90,"rest":"floor","sink":0.028},{"n":"itemstandh","k":"itemstandh","x":0.137,"y":-0.028,"z":0.754,"yaw":90,"rest":"floor","sink":0.028},{"n":"itemstandh","k":"itemstandh","x":0,"y":-0.028,"z":0.474,"yaw":90,"rest":"floor","sink":0.028},{"n":"itemstandh","k":"itemstandh","x":-0.156,"y":-0.028,"z":0.75,"yaw":90,"rest":"floor","sink":0.028},{"n":"itemstandh","k":"itemstandh","x":-0.276,"y":-0.028,"z":0.471,"yaw":90,"rest":"floor","sink":0.028}]},{"id":"KB-148","anchor":"wall","rooms":["home"],"score":1.5,"clips":[[0,1,0.089]],"pieces":[{"n":"itemstand","k":"itemstand","x":0.44,"y":1.614,"z":0.045,"yaw":0,"rest":"wall"},{"n":"itemstand","k":"itemstand","x":0.434,"y":1.273,"z":0.045,"yaw":0,"rest":"wall"},{"n":"itemstand","k":"itemstand","x":-0.44,"y":1.58,"z":0.044,"yaw":0,"rest":"wall"}]},{"id":"KB-149","anchor":"wall","rooms":["temple","home"],"score":1.5,"clips":[[0,1,0.039]],"pieces":[{"n":"itemstand","k":"itemstand","x":0.155,"y":0.247,"z":0.535,"yaw":225,"rest":"floor","sink":0.028},{"n":"itemstand","k":"itemstand","x":-0.155,"y":0.247,"z":0.588,"yaw":135,"rest":"floor","sink":0.028}]},{"id":"KB-150","anchor":"wall","rooms":["hall","smithy"],"score":1.5,"clips":[],"pieces":[{"n":"itemstand","k":"itemstand","x":0.009,"y":1.951,"z":0.044,"yaw":0,"rest":"wall"},{"n":"itemstand","k":"itemstand","x":-0.009,"y":3.177,"z":0.044,"yaw":0,"rest":"on","on":0}]},{"id":"KB-151","anchor":"wall","rooms":["home"],"score":1.5,"clips":[],"pieces":[{"n":"sign","k":"sign","x":-0.021,"y":0.893,"z":0.782,"yaw":270,"rest":"wall"},{"n":"sign","k":"sign","x":-0.021,"y":3.113,"z":0.822,"yaw":270,"rest":"hang"}]},{"id":"KB-152","anchor":"post","of":"post","rooms":["barn","storage","smithy"],"score":1.5,"clips":[[0,"a",0.04],[1,"a",0.076],[2,"a",0.035]],"pieces":[{"n":"piece_chest_wood","k":"chest","x":0.6,"y":-0.028,"z":0.683,"yaw":354,"rest":"floor","sink":0.028},{"n":"sign","k":"sign","x":-0.296,"y":0.93,"z":0.445,"yaw":264,"rest":"on","on":0},{"n":"sign","k":"sign","x":-0.303,"y":-0.128,"z":0.502,"yaw":264,"rest":"floor","sink":0.403}]},{"id":"KB-153","anchor":"corner","angle":90,"rooms":["home"],"score":1.5,"clips":[],"pieces":[{"n":"itemstandh","k":"itemstandh","x":0.185,"y":-0.028,"z":0.52,"yaw":45,"rest":"floor","sink":0.028},{"n":"itemstandh","k":"itemstandh","x":-0.108,"y":-0.028,"z":0.524,"yaw":135,"rest":"floor","sink":0.028},{"n":"itemstandh","k":"itemstandh","x":0.184,"y":-0.028,"z":0.202,"yaw":135,"rest":"floor","sink":0.028}]},{"id":"KB-154","anchor":"wall","rooms":["home"],"score":1.5,"clips":[[2,"w",0.036]],"pieces":[{"n":"itemstandh","k":"itemstandh","x":0.17,"y":-0.028,"z":0.377,"yaw":45,"rest":"floor","sink":0.028},{"n":"itemstandh","k":"itemstandh","x":-0.135,"y":-0.028,"z":0.527,"yaw":338,"rest":"floor","sink":0.028},{"n":"itemstandh","k":"itemstandh","x":-0.17,"y":-0.028,"z":0.105,"yaw":315,"rest":"floor","sink":0.028}]},{"id":"KB-155","anchor":"wall","rooms":["hall","home"],"score":1.5,"clips":[],"pieces":[{"n":"piece_chest_blackmetal","k":"chest","x":-0.007,"y":-0.032,"z":0.897,"yaw":0,"rest":"floor","sink":0.032},{"n":"piece_banner06","k":"banner","x":0.006,"y":3.41,"z":0.15,"yaw":270,"rest":"wall"}]},{"id":"KB-156","anchor":"wall","rooms":["home"],"score":1.5,"clips":[],"pieces":[{"n":"itemstandh","k":"itemstandh","x":0.463,"y":-0.028,"z":1.013,"yaw":203,"rest":"floor","sink":0.028},{"n":"itemstandh","k":"itemstandh","x":0.122,"y":-0.028,"z":0.739,"yaw":180,"rest":"floor","sink":0.028},{"n":"itemstandh","k":"itemstandh","x":-0.15,"y":-0.028,"z":1.279,"yaw":203,"rest":"floor","sink":0.028},{"n":"itemstandh","k":"itemstandh","x":-0.463,"y":-0.028,"z":0.912,"yaw":203,"rest":"floor","sink":0.028}]},{"id":"KB-157","anchor":"wall","rooms":["home","tavern"],"score":1.5,"clips":[],"pieces":[{"n":"itemstandh","k":"itemstandh","x":0.646,"y":-0.028,"z":0.697,"yaw":0,"rest":"floor","sink":0.028},{"n":"itemstandh","k":"itemstandh","x":0.36,"y":-0.028,"z":0.384,"yaw":0,"rest":"floor","sink":0.028},{"n":"itemstandh","k":"itemstandh","x":-0.312,"y":-0.028,"z":0.383,"yaw":0,"rest":"floor","sink":0.028},{"n":"itemstandh","k":"itemstandh","x":-0.645,"y":-0.028,"z":0.587,"yaw":0,"rest":"floor","sink":0.028}]},{"id":"KB-158","anchor":"post","of":"post","rooms":["home"],"score":1.5,"clips":[],"pieces":[{"n":"sign","k":"sign","x":-0.218,"y":0.654,"z":0.972,"yaw":66,"rest":"hang"},{"n":"sign","k":"sign","x":-0.163,"y":2.007,"z":0.951,"yaw":66,"rest":"on","on":0}]},{"id":"KB-159","anchor":"corner","angle":90,"rooms":["home","temple"],"score":1.5,"clips":[[0,"w",0.15],[1,"w",0.144]],"pieces":[{"n":"piece_chair","k":"chair","x":0.028,"y":-0.098,"z":0.198,"yaw":225,"rest":"floor","sink":0.098},{"n":"piece_chair","k":"chair","x":0.025,"y":0.434,"z":0.203,"yaw":225,"rest":"wall"}]},{"id":"KB-160","anchor":"wall","rooms":["home","tavern"],"score":1.5,"clips":[[0,1,0.089],[1,2,0.089],[2,3,0.059]],"pieces":[{"n":"itemstand","k":"itemstand","x":0.467,"y":2.85,"z":0.044,"yaw":0,"rest":"wall"},{"n":"itemstand","k":"itemstand","x":0.229,"y":2.545,"z":0.044,"yaw":0,"rest":"wall"},{"n":"itemstand","k":"itemstand","x":-0.026,"y":2.567,"z":0.044,"yaw":0,"rest":"wall"},{"n":"itemstand","k":"itemstand","x":-0.467,"y":2.971,"z":0.044,"yaw":0,"rest":"wall"}]},{"id":"KB-161","anchor":"wall","rooms":["home"],"score":1.5,"clips":[],"pieces":[{"n":"piece_walltorch","k":"walllight","x":0.164,"y":1.389,"z":0.206,"yaw":270,"rest":"wall"},{"n":"piece_chair","k":"chair","x":-0.164,"y":-0.098,"z":1.015,"yaw":281,"rest":"floor","sink":0.098}]},{"id":"KB-162","anchor":"wall","rooms":["home"],"score":1.5,"clips":[],"pieces":[{"n":"piece_chest","k":"chest","x":-0.11,"y":-0.026,"z":0.568,"yaw":0,"rest":"floor","sink":0.026},{"n":"piece_walltorch","k":"walllight","x":0.11,"y":1.999,"z":0.254,"yaw":270,"rest":"wall"}]},{"id":"KB-163","anchor":"corner","angle":90,"rooms":["tavern"],"score":1.5,"clips":[[0,1,0.062],[0,2,0.062],[1,3,0.055],[2,3,0.048]],"pieces":[{"n":"itemstand","k":"itemstand","x":0.155,"y":0.247,"z":0.368,"yaw":315,"rest":"floor","sink":0.028},{"n":"itemstand","k":"itemstand","x":0.141,"y":0.247,"z":0.683,"yaw":225,"rest":"floor","sink":0.028},{"n":"itemstand","k":"itemstand","x":-0.165,"y":0.247,"z":0.358,"yaw":225,"rest":"floor","sink":0.028},{"n":"itemstand","k":"itemstand","x":-0.189,"y":0.247,"z":0.672,"yaw":138,"rest":"floor","sink":0.028}]},{"id":"KB-164","anchor":"wall","rooms":["barn"],"score":1.5,"clips":[[0,"w",0.123]],"pieces":[{"n":"piece_chest_wood","k":"chest","x":0.363,"y":-0.028,"z":0.7,"yaw":270,"rest":"floor","sink":0.028},{"n":"piece_groundtorch_wood","k":"floorlight","x":-0.355,"y":0.624,"z":0.419,"yaw":90,"rest":"floor","sink":0.126}]},{"id":"KB-165","anchor":"wall","rooms":["smithy","hall"],"score":1.5,"clips":[],"pieces":[{"n":"forge_ext6","k":"forge_ext6","x":-0.034,"y":1.916,"z":0.1,"yaw":0,"rest":"wall"},{"n":"piece_chest","k":"chest","x":0.034,"y":0.002,"z":0.573,"yaw":0,"rest":"floor"}]},{"id":"KB-166","anchor":"wall","rooms":["smithy","storage"],"score":1.5,"clips":[[0,"w",0.105],[1,"w",0.056]],"pieces":[{"n":"piece_cartographytable","k":"piece_cartographytable","x":-0.04,"y":-0.052,"z":0.84,"yaw":0,"rest":"floor","sink":0.052},{"n":"piece_dvergr_lantern","k":"walllight","x":-0.027,"y":2.565,"z":-0.15,"yaw":90,"rest":"wall"}]},{"id":"KB-167","anchor":"corner","angle":90,"rooms":["temple"],"score":1.5,"clips":[],"pieces":[{"n":"piece_chair","k":"chair","x":-0.204,"y":0.03,"z":0.185,"yaw":135,"rest":"floor"},{"n":"piece_chair","k":"chair","x":-0.162,"y":2.157,"z":0.192,"yaw":315,"rest":"on","on":3},{"n":"piece_chair","k":"chair","x":-0.156,"y":2.689,"z":0.185,"yaw":315,"rest":"on","on":4},{"n":"piece_chair","k":"chair","x":-0.182,"y":1.094,"z":0.19,"yaw":315,"rest":"on","on":0},{"n":"piece_chair","k":"chair","x":-0.165,"y":1.626,"z":0.183,"yaw":315,"rest":"on","on":5},{"n":"piece_chair","k":"chair","x":-0.175,"y":0.562,"z":0.175,"yaw":315,"rest":"wall"}]},{"id":"KB-168","anchor":"corner","angle":90,"rooms":["temple"],"score":1.5,"clips":[],"pieces":[{"n":"piece_chair","k":"chair","x":-0.172,"y":-0.02,"z":0.19,"yaw":315,"rest":"floor","sink":0.02},{"n":"piece_chair","k":"chair","x":-0.161,"y":2.107,"z":0.211,"yaw":135,"rest":"on","on":4},{"n":"piece_chair","k":"chair","x":-0.182,"y":2.639,"z":0.223,"yaw":135,"rest":"on","on":3},{"n":"piece_chair","k":"chair","x":-0.153,"y":1.576,"z":0.199,"yaw":135,"rest":"on","on":5},{"n":"piece_chair","k":"chair","x":-0.158,"y":1.044,"z":0.204,"yaw":135,"rest":"on","on":0},{"n":"piece_chair","k":"chair","x":-0.149,"y":0.512,"z":0.199,"yaw":135,"rest":"wall"}]},{"id":"KB-169","anchor":"wall","rooms":["tavern","smithy"],"score":1.5,"clips":[],"pieces":[{"n":"piece_chair03","k":"chair","x":0.555,"y":-0.035,"z":0.802,"yaw":315,"rest":"floor","sink":0.035},{"n":"piece_chair","k":"chair","x":-0.555,"y":-0.098,"z":0.998,"yaw":0,"rest":"floor","sink":0.098},{"n":"piece_walltorch","k":"walllight","x":-0.442,"y":0.878,"z":0.204,"yaw":270,"rest":"wall"}]},{"id":"KB-170","anchor":"corner","angle":90,"rooms":["kitchen","home","tavern"],"score":1.5,"clips":[],"pieces":[{"n":"piece_pot1","k":"pot","x":0.197,"y":-0.027,"z":2.043,"yaw":293,"rest":"floor","sink":0.028},{"n":"piece_pot2","k":"pot","x":-0.217,"y":-0.025,"z":1.356,"yaw":293,"rest":"floor","sink":0.028}]},{"id":"KB-171","anchor":"corner","angle":90,"rooms":["home","storage"],"score":1.5,"clips":[[0,1,0.106],[0,"w",0.101],[1,2,0.15],[2,"w",0.14]],"pieces":[{"n":"piece_chest_wood","k":"chest","x":0.325,"y":-0.029,"z":1.7,"yaw":45,"rest":"floor","sink":0.029},{"n":"piece_chest_wood","k":"chest","x":-0.136,"y":-0.029,"z":1.244,"yaw":45,"rest":"floor","sink":0.029},{"n":"piece_chest_wood","k":"chest","x":-0.538,"y":-0.029,"z":0.862,"yaw":45,"rest":"floor","sink":0.029}]},{"id":"KB-172","anchor":"corner","angle":90,"rooms":["home","workshop"],"score":1.5,"clips":[[0,1,0.114],[0,"w",0.195],[1,2,0.106],[2,"w",0.101]],"pieces":[{"n":"piece_chest_wood","k":"chest","x":0.58,"y":-0.029,"z":0.849,"yaw":135,"rest":"floor","sink":0.029},{"n":"piece_chest_wood","k":"chest","x":0.119,"y":-0.029,"z":1.294,"yaw":135,"rest":"floor","sink":0.029},{"n":"piece_chest_wood","k":"chest","x":-0.336,"y":-0.029,"z":1.756,"yaw":135,"rest":"floor","sink":0.029}]},{"id":"KB-173","anchor":"corner","angle":90,"rooms":["home","temple"],"score":1.5,"clips":[[0,1,0.149]],"pieces":[{"n":"piece_walltorch","k":"walllight","x":0.473,"y":1.228,"z":0.761,"yaw":225,"rest":"wall"},{"n":"piece_chest","k":"chest","x":-0.102,"y":-0.026,"z":1.404,"yaw":11,"rest":"floor","sink":0.026}]},{"id":"KB-174","anchor":"table","of":"round","rooms":["home","tavern"],"score":1.5,"clips":[[0,1,0.088],[0,2,0.091],[0,3,0.089],[0,4,0.091],[0,"a",0.08]],"pieces":[{"n":"jute_carpet","k":"rug","x":0.418,"y":0,"z":0.059,"yaw":0,"rest":"floor"},{"n":"piece_chair03","k":"chair","x":-1.21,"y":0.018,"z":-0.987,"yaw":45,"rest":"floor"},{"n":"piece_chair03","k":"chair","x":1.463,"y":0.018,"z":-0.745,"yaw":293,"rest":"floor"},{"n":"piece_chair03","k":"chair","x":-1.179,"y":0.018,"z":1.151,"yaw":113,"rest":"floor"},{"n":"piece_chair03","k":"chair","x":1.462,"y":0.018,"z":0.892,"yaw":248,"rest":"floor"}]},{"id":"KB-175","anchor":"table","of":"table","rooms":["hall","home"],"score":1.5,"clips":[],"pieces":[{"n":"rug_wolf","k":"rug","x":-0.218,"y":-0.028,"z":0.949,"yaw":248,"rest":"floor","sink":0.028},{"n":"piece_bench01","k":"bench","x":0.316,"y":-0.011,"z":1.248,"yaw":180,"rest":"floor"}]},{"id":"KB-176","anchor":"wall","rooms":["home","tavern"],"score":1.5,"clips":[[1,"w",0.184]],"pieces":[{"n":"piece_preptable","k":"piece_preptable","x":0.049,"y":-0.028,"z":0.306,"yaw":0,"rest":"floor","sink":0.103},{"n":"cauldron_ext4_pots","k":"cauldron_ext4_pots","x":-0.026,"y":2.453,"z":-0.184,"yaw":0,"rest":"wall"}]},{"id":"KB-177","anchor":"wall","rooms":["tavern","workshop","smithy"],"score":1.5,"clips":[],"pieces":[{"n":"piece_workbench","k":"piece_workbench","x":0.472,"y":-0.053,"z":0.652,"yaw":0,"rest":"floor","sink":0.053},{"n":"piece_workbench_ext4","k":"piece_workbench_ext4","x":0.583,"y":1.722,"z":0.149,"yaw":0,"rest":"wall"},{"n":"piece_walltorch","k":"walllight","x":-0.583,"y":2.899,"z":0.205,"yaw":270,"rest":"wall"}]},{"id":"KB-178","anchor":"corner","angle":90,"rooms":["tavern","temple"],"score":1.5,"clips":[],"pieces":[{"n":"piece_groundtorch_blue","k":"floorlight","x":-0.29,"y":0.654,"z":0.844,"yaw":225,"rest":"floor","sink":0.096},{"n":"piece_groundtorch_blue","k":"floorlight","x":-0.013,"y":0.654,"z":0.602,"yaw":225,"rest":"floor","sink":0.096}]},{"id":"KB-179","anchor":"wall","rooms":["home","hall","storage","tavern","kitchen","smithy","workshop"],"score":1.5,"clips":[[0,1,0.047],[1,"w",0.099]],"pieces":[{"n":"piece_chest_barrel","k":"barrel","x":0.126,"y":0.004,"z":0.394,"yaw":180,"rest":"floor"},{"n":"piece_chest_barrel","k":"barrel","x":-0.132,"y":0.856,"z":0.292,"yaw":206,"rest":"wall"}]},{"id":"KB-180","anchor":"wall","rooms":["kitchen","barn","storage","tavern","smithy","workshop"],"score":1.5,"clips":[],"pieces":[{"n":"piece_chest_barrel","k":"barrel","x":0.053,"y":0.004,"z":0.483,"yaw":90,"rest":"floor"},{"n":"piece_chest_barrel","k":"barrel","x":-0.04,"y":0.903,"z":0.485,"yaw":90,"rest":"on","on":0}]},{"id":"KB-181","anchor":"corner","angle":90,"rooms":["home","storage"],"score":1.5,"clips":[[0,"w",0.111]],"pieces":[{"n":"piece_chest_wood","k":"chest","x":-0.119,"y":-0.028,"z":0.888,"yaw":45,"rest":"floor","sink":0.028},{"n":"sign","k":"sign","x":0.331,"y":0.834,"z":1.216,"yaw":45,"rest":"wall"},{"n":"sign","k":"sign","x":0.366,"y":1.928,"z":1.284,"yaw":45,"rest":"wall"}]},{"id":"KB-182","anchor":"corner","angle":90,"rooms":["home"],"score":1.5,"clips":[],"pieces":[{"n":"piece_chest_wood","k":"chest","x":0.357,"y":-0.028,"z":1.09,"yaw":315,"rest":"floor","sink":0.028},{"n":"piece_workbench_ext4","k":"piece_workbench_ext4","x":0.779,"y":1.179,"z":0.99,"yaw":315,"rest":"wall"}]},{"id":"KB-183","anchor":"post","of":"post","rooms":["tavern","kitchen","hall","home"],"score":1.5,"clips":[],"pieces":[{"n":"ShocklateSmoothie","k":"food","x":0.027,"y":-0.028,"z":0.499,"yaw":243,"rest":"floor","sink":0.028},{"n":"ShocklateSmoothie","k":"food","x":-0.027,"y":-0.028,"z":0.755,"yaw":220,"rest":"floor","sink":0.028}]},{"id":"KB-184","anchor":"wall","rooms":["home","hall"],"score":1.5,"clips":[],"pieces":[{"n":"Candle_resin","k":"candle","x":0.047,"y":-0.008,"z":0.016,"yaw":203,"rest":"floor"},{"n":"Candle_resin","k":"candle","x":-0.047,"y":-0.008,"z":0.353,"yaw":158,"rest":"floor"}]},{"id":"KB-185","anchor":"wall","rooms":["hall"],"score":1.25,"clips":[[0,"w",0.231],[1,"w",0.209],[2,"w",0.169],[3,"w",0.173],[4,"w",0.209]],"pieces":[{"n":"piece_chair","k":"chair","x":0.031,"y":-0.194,"z":0.04,"yaw":90,"rest":"floor","sink":0.194},{"n":"piece_chair","k":"chair","x":0.019,"y":0.337,"z":0.062,"yaw":90,"rest":"wall"},{"n":"piece_chair","k":"chair","x":0.001,"y":1.401,"z":0.102,"yaw":90,"rest":"on","on":1},{"n":"piece_chair","k":"chair","x":-0.021,"y":1.933,"z":0.098,"yaw":90,"rest":"on","on":4},{"n":"piece_chair","k":"chair","x":-0.031,"y":0.869,"z":0.063,"yaw":90,"rest":"on","on":0}]},{"id":"KB-186","anchor":"wall","rooms":["home"],"score":1.25,"clips":[[1,"w",0.011]],"pieces":[{"n":"piece_chair","k":"chair","x":-0.003,"y":0.966,"z":0.298,"yaw":225,"rest":"on","on":1},{"n":"piece_chair","k":"chair","x":-0.031,"y":-0.098,"z":0.326,"yaw":338,"rest":"floor","sink":0.098},{"n":"piece_chair","k":"chair","x":0.032,"y":0.434,"z":0.334,"yaw":270,"rest":"wall"}]},{"id":"KB-187","anchor":"table","of":"table","rooms":["home"],"score":1.25,"clips":[[0,"w",0.258]],"pieces":[{"n":"piece_chest_wood","k":"chest","x":-1.743,"y":-0.028,"z":0.242,"yaw":90,"rest":"floor","sink":0.028},{"n":"piece_chair02","k":"chair","x":0.401,"y":-0.015,"z":0.806,"yaw":203,"rest":"floor","sink":0.028},{"n":"itemstandh","k":"itemstandh","x":0.85,"y":0.766,"z":0.076,"yaw":135,"rest":"anchor"},{"n":"itemstandh","k":"itemstandh","x":0.351,"y":0.766,"z":0.058,"yaw":225,"rest":"anchor"},{"n":"itemstandh","k":"itemstandh","x":-0.919,"y":0.766,"z":-0.108,"yaw":180,"rest":"anchor"}]},{"id":"KB-188","anchor":"corner","angle":135,"rooms":["home"],"score":1.25,"clips":[[0,1,0.048]],"pieces":[{"n":"itemstand","k":"itemstand","x":1.839,"y":2.345,"z":0.809,"yaw":338,"rest":"wall"},{"n":"itemstand","k":"itemstand","x":1.834,"y":1.843,"z":0.807,"yaw":338,"rest":"wall"}]},{"id":"KB-189","anchor":"wall","rooms":["home","storage"],"score":1.25,"clips":[],"pieces":[{"n":"piece_chest","k":"chest","x":0.595,"y":-0.026,"z":0.969,"yaw":90,"rest":"floor","sink":0.026},{"n":"piece_chest","k":"chest","x":-0.595,"y":-0.026,"z":0.958,"yaw":270,"rest":"floor","sink":0.026}]},{"id":"KB-190","anchor":"wall","rooms":["home","storage","smithy"],"score":1.25,"clips":[[0,1,0.08],[0,"w",0.408],[1,"w",0.408]],"pieces":[{"n":"piece_chest_blackmetal","k":"chest","x":0.612,"y":-0.032,"z":0.171,"yaw":90,"rest":"floor","sink":0.032},{"n":"piece_chest_blackmetal","k":"chest","x":-0.593,"y":-0.032,"z":0.173,"yaw":90,"rest":"floor","sink":0.032}]},{"id":"KB-191","anchor":"window","rooms":["any"],"score":1.25,"clips":[],"pieces":[{"n":"piece_chair","k":"chair","x":0.005,"y":-0.098,"z":0.484,"yaw":90,"rest":"floor","sink":0.098},{"n":"itemstandh","k":"itemstandh","x":-0.005,"y":0.504,"z":0.472,"yaw":90,"rest":"wall"}]},{"id":"KB-192","anchor":"window","rooms":["home"],"score":1.25,"clips":[[0,"w",0.079],[1,"w",0.076]],"pieces":[{"n":"sign","k":"sign","x":0.72,"y":0.275,"z":-0.034,"yaw":0,"rest":"floor"},{"n":"sign","k":"sign","x":-0.721,"y":0.275,"z":-0.031,"yaw":0,"rest":"floor"}]},{"id":"KB-193","anchor":"window","rooms":["home"],"score":1.25,"clips":[],"pieces":[{"n":"piece_chest","k":"chest","x":0.077,"y":-0.194,"z":0.527,"yaw":0,"rest":"floor","sink":0.194},{"n":"sign","k":"sign","x":-0.077,"y":1.955,"z":0.093,"yaw":0,"rest":"wall"}]},{"id":"KB-194","anchor":"window","rooms":["storage"],"score":1.25,"clips":[[0,"w",0.142]],"pieces":[{"n":"piece_chest_blackmetal","k":"chest","x":0.005,"y":-0.003,"z":0.511,"yaw":0,"rest":"floor"},{"n":"sign","k":"sign","x":-0.008,"y":1.465,"z":0.145,"yaw":0,"rest":"hang"}]},{"id":"KB-195","anchor":"corner","angle":90,"rooms":["home","barn","hall","smithy"],"score":1.25,"clips":[[1,"w",0.227]],"pieces":[{"n":"ArmorStand","k":"ArmorStand","x":-0.19,"y":-0.02,"z":1.306,"yaw":23,"rest":"floor","sink":0.027},{"n":"piece_dvergr_lantern","k":"walllight","x":-0.907,"y":3.565,"z":0.695,"yaw":135,"rest":"wall"}]},{"id":"KB-196","anchor":"post","of":"post","rooms":["home","smithy"],"score":1.25,"clips":[[0,1,0.032],[0,"a",0.148]],"pieces":[{"n":"piece_chest","k":"chest","x":-0.356,"y":-0.026,"z":0.739,"yaw":200,"rest":"floor","sink":0.026},{"n":"sign","k":"sign","x":0.362,"y":1.207,"z":0.436,"yaw":110,"rest":"on","on":0}]},{"id":"KB-197","anchor":"corner","angle":90,"rooms":["smithy","tavern"],"score":1.25,"clips":[[0,1,0.038]],"pieces":[{"n":"itemstandh","k":"itemstandh","x":-0.08,"y":0.57,"z":0.325,"yaw":158,"rest":"wall"},{"n":"itemstandh","k":"itemstandh","x":0.077,"y":0.57,"z":0.226,"yaw":135,"rest":"wall"}]},{"id":"KB-198","anchor":"corner","angle":90,"rooms":["home"],"score":1.25,"clips":[],"pieces":[{"n":"itemstandh","k":"itemstandh","x":-0.252,"y":-0.028,"z":1.608,"yaw":270,"rest":"floor","sink":0.028},{"n":"itemstandh","k":"itemstandh","x":-0.045,"y":-0.028,"z":0.688,"yaw":315,"rest":"floor","sink":0.028}]},{"id":"KB-199","anchor":"corner","angle":90,"rooms":["home","tavern"],"score":1.25,"clips":[],"pieces":[{"n":"itemstandh","k":"itemstandh","x":0.536,"y":-0.028,"z":1.254,"yaw":338,"rest":"floor","sink":0.028},{"n":"itemstandh","k":"itemstandh","x":-0.076,"y":-0.028,"z":1.606,"yaw":23,"rest":"floor","sink":0.028}]},{"id":"KB-200","anchor":"corner","angle":90,"rooms":["smithy","home"],"score":1.25,"clips":[],"pieces":[{"n":"itemstandh","k":"itemstandh","x":-0.168,"y":-0.028,"z":0.365,"yaw":270,"rest":"floor","sink":0.028},{"n":"itemstandh","k":"itemstandh","x":0.288,"y":-0.028,"z":0.859,"yaw":270,"rest":"floor","sink":0.028}]},{"id":"KB-201","anchor":"corner","angle":90,"rooms":["home"],"score":1.25,"clips":[],"pieces":[{"n":"itemstand","k":"itemstand","x":-0.957,"y":2.444,"z":1.02,"yaw":45,"rest":"wall"},{"n":"itemstand","k":"itemstand","x":-0.962,"y":3.161,"z":1.025,"yaw":45,"rest":"wall"}]},{"id":"KB-202","anchor":"corner","angle":90,"rooms":["home"],"score":1.25,"clips":[],"pieces":[{"n":"itemstand","k":"itemstand","x":0.319,"y":1.224,"z":0.381,"yaw":315,"rest":"wall"},{"n":"itemstand","k":"itemstand","x":0.346,"y":2.207,"z":0.408,"yaw":315,"rest":"wall"}]},{"id":"KB-203","anchor":"corner","angle":90,"rooms":["home","storage"],"score":1.25,"clips":[[0,3,0.019]],"pieces":[{"n":"itemstandh","k":"itemstandh","x":-0.669,"y":-0.028,"z":1.167,"yaw":113,"rest":"floor","sink":0.028},{"n":"itemstandh","k":"itemstandh","x":-0.064,"y":-0.028,"z":0.507,"yaw":338,"rest":"floor","sink":0.028},{"n":"itemstandh","k":"itemstandh","x":-0.382,"y":-0.028,"z":0.592,"yaw":45,"rest":"floor","sink":0.028},{"n":"itemstandh","k":"itemstandh","x":-0.542,"y":-0.028,"z":0.955,"yaw":90,"rest":"floor","sink":0.028}]},{"id":"KB-204","anchor":"wall","rooms":["any"],"score":1.25,"clips":[],"pieces":[{"n":"itemstand","k":"itemstand","x":0.493,"y":2.818,"z":0.045,"yaw":0,"rest":"wall"},{"n":"itemstand","k":"itemstand","x":-0.232,"y":2.171,"z":0.045,"yaw":0,"rest":"wall"},{"n":"itemstand","k":"itemstand","x":-0.493,"y":3.242,"z":0.045,"yaw":0,"rest":"wall"}]},{"id":"KB-205","anchor":"corner","angle":90,"rooms":["home"],"score":1.25,"clips":[],"pieces":[{"n":"itemstandh","k":"itemstandh","x":0.329,"y":-0.028,"z":1.429,"yaw":45,"rest":"floor","sink":0.028},{"n":"itemstandh","k":"itemstandh","x":-0.197,"y":-0.028,"z":0.858,"yaw":45,"rest":"floor","sink":0.028},{"n":"itemstandh","k":"itemstandh","x":0.05,"y":-0.028,"z":0.521,"yaw":45,"rest":"floor","sink":0.028},{"n":"itemstandh","k":"itemstandh","x":0.334,"y":-0.028,"z":1.072,"yaw":45,"rest":"floor","sink":0.028},{"n":"itemstandh","k":"itemstandh","x":0.053,"y":-0.028,"z":1.105,"yaw":45,"rest":"floor","sink":0.028},{"n":"itemstandh","k":"itemstandh","x":0.065,"y":-0.028,"z":0.803,"yaw":45,"rest":"floor","sink":0.028}]},{"id":"KB-206","anchor":"corner","angle":90,"rooms":["tavern","hall"],"score":1.25,"clips":[],"pieces":[{"n":"itemstandh","k":"itemstandh","x":0.201,"y":-0.028,"z":0.769,"yaw":225,"rest":"floor","sink":0.028},{"n":"itemstandh","k":"itemstandh","x":-0.143,"y":-0.028,"z":0.765,"yaw":225,"rest":"floor","sink":0.028},{"n":"itemstandh","k":"itemstandh","x":-0.154,"y":-0.028,"z":1.13,"yaw":225,"rest":"floor","sink":0.028},{"n":"itemstandh","k":"itemstandh","x":-0.49,"y":-0.028,"z":1.183,"yaw":225,"rest":"floor","sink":0.028},{"n":"itemstandh","k":"itemstandh","x":-0.517,"y":-0.028,"z":1.508,"yaw":225,"rest":"floor","sink":0.028},{"n":"itemstandh","k":"itemstandh","x":-0.844,"y":-0.028,"z":1.488,"yaw":225,"rest":"floor","sink":0.028}]},{"id":"KB-207","anchor":"corner","angle":90,"rooms":["home"],"score":1.25,"clips":[],"pieces":[{"n":"itemstandh","k":"itemstandh","x":-0.05,"y":-0.027,"z":0.5,"yaw":248,"rest":"floor","sink":0.027},{"n":"itemstandh","k":"itemstandh","x":0.099,"y":-0.027,"z":0.241,"yaw":248,"rest":"floor","sink":0.027},{"n":"itemstandh","k":"itemstandh","x":0.365,"y":-0.027,"z":0.324,"yaw":248,"rest":"floor","sink":0.027}]},{"id":"KB-208","anchor":"corner","angle":90,"rooms":["home"],"score":1.25,"clips":[],"pieces":[{"n":"itemstandh","k":"itemstandh","x":-0.55,"y":-0.028,"z":0.708,"yaw":135,"rest":"floor","sink":0.028},{"n":"itemstandh","k":"itemstandh","x":-0.918,"y":-0.028,"z":0.963,"yaw":90,"rest":"floor","sink":0.028},{"n":"itemstandh","k":"itemstandh","x":-0.226,"y":-0.028,"z":0.408,"yaw":158,"rest":"floor","sink":0.028}]},{"id":"KB-209","anchor":"post","of":"post","rooms":["home"],"score":1.25,"clips":[],"pieces":[{"n":"sign","k":"sign","x":-0.17,"y":2.024,"z":0.96,"yaw":66,"rest":"hang"},{"n":"sign","k":"sign","x":-0.214,"y":3.273,"z":0.955,"yaw":66,"rest":"on","on":0}]},{"id":"KB-210","anchor":"table","of":"table","rooms":["home"],"score":1.25,"clips":[],"pieces":[{"n":"piece_chair02","k":"chair","x":0.085,"y":-0.015,"z":0.988,"yaw":113,"rest":"floor","sink":0.028},{"n":"piece_chair02","k":"chair","x":0.091,"y":-0.015,"z":-1.049,"yaw":68,"rest":"floor","sink":0.028}]},{"id":"KB-211","anchor":"table","of":"table","rooms":["home","tavern","barn"],"score":1.25,"clips":[],"pieces":[{"n":"piece_chair02","k":"chair","x":-0.654,"y":-0.016,"z":0.75,"yaw":158,"rest":"floor","sink":0.029},{"n":"piece_chair02","k":"chair","x":0.587,"y":-0.016,"z":0.778,"yaw":203,"rest":"floor","sink":0.029}]},{"id":"KB-212","anchor":"table","of":"table","rooms":["home","tavern","storage"],"score":1.25,"clips":[],"pieces":[{"n":"piece_chair02","k":"chair","x":1.101,"y":-0.015,"z":1.072,"yaw":225,"rest":"floor","sink":0.028},{"n":"piece_chair02","k":"chair","x":-0.786,"y":-0.015,"z":1.139,"yaw":135,"rest":"floor","sink":0.028}]},{"id":"KB-213","anchor":"table","of":"round","rooms":["home"],"score":1.25,"clips":[],"pieces":[{"n":"piece_chair03","k":"chair","x":-1.573,"y":-0.007,"z":-0.542,"yaw":56,"rest":"floor"},{"n":"piece_chair03","k":"chair","x":0.943,"y":-0.007,"z":1.365,"yaw":225,"rest":"floor"}]},{"id":"KB-214","anchor":"corner","angle":90,"rooms":["temple"],"score":1.25,"clips":[[0,1,0.05],[1,2,0.099],[1,"w",0.015],[2,"w",0.018]],"pieces":[{"n":"itemstand","k":"itemstand","x":-0.314,"y":0.247,"z":0.168,"yaw":90,"rest":"floor","sink":0.028},{"n":"itemstand","k":"itemstand","x":-0.119,"y":0.247,"z":-0.076,"yaw":0,"rest":"floor","sink":0.028},{"n":"itemstand","k":"itemstand","x":0.211,"y":0.247,"z":0.037,"yaw":315,"rest":"floor","sink":0.028}]},{"id":"KB-215","anchor":"corner","angle":90,"rooms":["home"],"score":1.25,"clips":[],"pieces":[{"n":"itemstand","k":"itemstand","x":0.414,"y":0.582,"z":0.478,"yaw":315,"rest":"wall"},{"n":"itemstand","k":"itemstand","x":0.932,"y":1.064,"z":0.996,"yaw":315,"rest":"wall"},{"n":"itemstand","k":"itemstand","x":0.4,"y":1.232,"z":0.464,"yaw":315,"rest":"wall"}]},{"id":"KB-216","anchor":"corner","angle":90,"rooms":["any"],"score":1.25,"clips":[[1,"w",0.15]],"pieces":[{"n":"itemstand","k":"itemstand","x":-0.259,"y":2.514,"z":0.393,"yaw":45,"rest":"on","on":1},{"n":"wood_beam_1","k":"beam1","x":-0.206,"y":1.927,"z":0.277,"yaw":225,"rest":"wall"}]},{"id":"KB-217","anchor":"corner","angle":90,"rooms":["home"],"score":1.25,"clips":[[2,"w",0.106]],"pieces":[{"n":"itemstandh","k":"itemstandh","x":0.06,"y":-0.028,"z":0.398,"yaw":0,"rest":"floor","sink":0.028},{"n":"itemstandh","k":"itemstandh","x":0.429,"y":-0.028,"z":0.5,"yaw":68,"rest":"floor","sink":0.028},{"n":"itemstand","k":"itemstand","x":-0.001,"y":1.088,"z":-0.009,"yaw":45,"rest":"wall"}]},{"id":"KB-218","anchor":"corner","angle":90,"rooms":["home","kitchen"],"score":1.25,"clips":[[0,1,0.028],[1,3,0.038]],"pieces":[{"n":"itemstandh","k":"itemstandh","x":0.054,"y":-0.028,"z":0.327,"yaw":180,"rest":"floor","sink":0.028},{"n":"itemstandh","k":"itemstandh","x":0.013,"y":-0.028,"z":0.53,"yaw":23,"rest":"floor","sink":0.028},{"n":"itemstandh","k":"itemstandh","x":-0.197,"y":-0.028,"z":0.788,"yaw":180,"rest":"floor","sink":0.028},{"n":"itemstandh","k":"itemstandh","x":-0.2,"y":-0.028,"z":0.472,"yaw":135,"rest":"floor","sink":0.028},{"n":"itemstandh","k":"itemstandh","x":-0.475,"y":-0.028,"z":0.793,"yaw":90,"rest":"floor","sink":0.028},{"n":"itemstandh","k":"itemstandh","x":-0.812,"y":-0.028,"z":1.403,"yaw":90,"rest":"floor","sink":0.028},{"n":"itemstandh","k":"itemstandh","x":-0.532,"y":-0.028,"z":1.093,"yaw":180,"rest":"floor","sink":0.028},{"n":"itemstandh","k":"itemstandh","x":-0.821,"y":-0.028,"z":1.139,"yaw":68,"rest":"floor","sink":0.028}]},{"id":"KB-219","anchor":"bed","of":"bed2","rooms":["home","sleeping"],"score":1.25,"clips":[[0,1,0.069],[0,"a",0.124],[1,"a",0.015],[1,"w",0.218]],"pieces":[{"n":"piece_chest_wood","k":"chest","x":0.005,"y":-0.028,"z":2.08,"yaw":0,"rest":"floor","sink":0.028},{"n":"rug_deer","k":"rug","x":-1.232,"y":-0.028,"z":3.597,"yaw":45,"rest":"floor","sink":0.028}]},{"id":"KB-220","anchor":"table","of":"round","rooms":["home"],"score":1.25,"clips":[],"pieces":[{"n":"piece_chair03","k":"chair","x":1.373,"y":-0.035,"z":1.242,"yaw":225,"rest":"floor","sink":0.035},{"n":"piece_chair03","k":"chair","x":0.708,"y":-0.01,"z":-1.723,"yaw":326,"rest":"floor"},{"n":"piece_chair03","k":"chair","x":1.595,"y":-0.01,"z":-0.238,"yaw":259,"rest":"floor"},{"n":"rug_wolf","k":"rug","x":0.623,"y":-0.028,"z":-0.174,"yaw":270,"rest":"floor","sink":0.028}]},{"id":"KB-221","anchor":"corner","angle":90,"rooms":["tavern","hall"],"score":1.25,"clips":[],"pieces":[{"n":"piece_chair","k":"chair","x":0.361,"y":0.005,"z":0.172,"yaw":45,"rest":"floor"},{"n":"piece_chair","k":"chair","x":0.351,"y":0.537,"z":0.171,"yaw":45,"rest":"wall"},{"n":"piece_chair","k":"chair","x":0.379,"y":1.069,"z":0.16,"yaw":45,"rest":"on","on":0},{"n":"piece_chair","k":"chair","x":0.446,"y":1.601,"z":0.101,"yaw":45,"rest":"on","on":1},{"n":"piece_chair","k":"chair","x":0.393,"y":2.133,"z":0.134,"yaw":45,"rest":"on","on":2}]},{"id":"KB-222","anchor":"corner","angle":90,"rooms":["barn"],"score":1.25,"clips":[[0,1,0.154],[0,"w",0.241],[1,"w",0.276]],"pieces":[{"n":"piece_spinningwheel","k":"piece_spinningwheel","x":0.271,"y":-0.033,"z":1.804,"yaw":68,"rest":"floor","sink":0.033},{"n":"piece_dvergr_lantern","k":"walllight","x":0,"y":2.69,"z":0,"yaw":90,"rest":"wall"}]},{"id":"KB-223","anchor":"corner","angle":90,"rooms":["home"],"score":1.25,"clips":[],"pieces":[{"n":"piece_walltorch","k":"walllight","x":0.493,"y":2.056,"z":0.821,"yaw":214,"rest":"wall"},{"n":"piece_chest","k":"chest","x":0.103,"y":0.002,"z":1.695,"yaw":349,"rest":"floor"}]},{"id":"KB-224","anchor":"corner","angle":90,"rooms":["home","hall"],"score":1.25,"clips":[[1,"w",0.152]],"pieces":[{"n":"sign","k":"sign","x":0.186,"y":0.247,"z":1.143,"yaw":315,"rest":"floor","sink":0.028},{"n":"piece_chest_wood","k":"chest","x":0.513,"y":-0.029,"z":0.82,"yaw":315,"rest":"floor","sink":0.029}]},{"id":"KB-225","anchor":"corner","angle":90,"rooms":["any"],"score":1.25,"clips":[[0,"w",0.138]],"pieces":[{"n":"piece_chest_wood","k":"chest","x":-0.231,"y":-0.081,"z":0.737,"yaw":45,"rest":"floor","sink":0.081},{"n":"rug_hare","k":"rug","x":0.373,"y":-0.081,"z":1.306,"yaw":158,"rest":"floor","sink":0.081}]},{"id":"KB-226","anchor":"table","of":"table","rooms":["home"],"score":1.25,"clips":[[0,1,0.069],[0,2,0.021],[0,"a",0.021],[0,"w",0.167]],"pieces":[{"n":"rug_deer","k":"rug","x":0.083,"y":-0.028,"z":0.485,"yaw":68,"rest":"floor","sink":0.028},{"n":"piece_chair02","k":"chair","x":-1.241,"y":-0.015,"z":1.356,"yaw":158,"rest":"floor","sink":0.028},{"n":"piece_chair02","k":"chair","x":1.162,"y":0.035,"z":1.007,"yaw":248,"rest":"floor"}]},{"id":"KB-227","anchor":"table","of":"round","rooms":["home"],"score":1.25,"clips":[],"pieces":[{"n":"rug_wolf","k":"rug","x":-0.239,"y":-0.028,"z":0.507,"yaw":34,"rest":"floor","sink":0.028},{"n":"piece_chair03","k":"chair","x":1.809,"y":-0.035,"z":0.301,"yaw":259,"rest":"floor","sink":0.035},{"n":"piece_chair03","k":"chair","x":-0.921,"y":-0.035,"z":1.965,"yaw":157,"rest":"floor","sink":0.035}]},{"id":"KB-228","anchor":"corner","angle":90,"rooms":["hall"],"score":1.25,"clips":[],"pieces":[{"n":"Candle_resin","k":"candle","x":-0.078,"y":0.001,"z":0.479,"yaw":135,"rest":"floor"},{"n":"Candle_resin","k":"candle","x":-0.3,"y":0.001,"z":0.616,"yaw":158,"rest":"floor"}]},{"id":"KB-229","anchor":"corner","angle":90,"rooms":["home","tavern"],"score":1.25,"clips":[[0,1,0.09],[0,"w",0.213],[1,"w",0.041]],"pieces":[{"n":"jute_carpet","k":"rug","x":0.845,"y":-0.028,"z":0.895,"yaw":225,"rest":"floor","sink":0.028},{"n":"piece_chair03","k":"chair","x":0.014,"y":-0.01,"z":0.481,"yaw":23,"rest":"floor"}]},{"id":"KB-230","anchor":"hearth","of":"hearth","rooms":["home"],"score":1.25,"clips":[[0,"w",0.018]],"pieces":[{"n":"piece_chest_wood","k":"chest","x":-0.301,"y":-0.028,"z":4.202,"yaw":130,"rest":"floor","sink":0.028},{"n":"piece_chest_wood","k":"chest","x":0.289,"y":-0.028,"z":3.671,"yaw":130,"rest":"floor","sink":0.028}]},{"id":"KB-231","anchor":"table","of":"table","rooms":["hall","home"],"score":1.25,"clips":[[1,"a",0.09]],"pieces":[{"n":"piece_chest_private","k":"chest","x":0.63,"y":0.792,"z":0.18,"yaw":337,"rest":"anchor"},{"n":"jute_carpet","k":"rug","x":-1.003,"y":-0.028,"z":0.899,"yaw":11,"rest":"floor","sink":0.028}]},{"id":"KB-232","anchor":"hearth","of":"hearth","rooms":["hall","home","smithy"],"score":1.25,"clips":[[3,4,0.059]],"pieces":[{"n":"forge_ext2","k":"forge_ext2","x":1.027,"y":-0.024,"z":3.455,"yaw":247,"rest":"floor","sink":0.029},{"n":"cauldron_ext4_pots","k":"cauldron_ext4_pots","x":2.134,"y":2.886,"z":2.821,"yaw":157,"rest":"wall"},{"n":"cauldron_ext3_butchertable","k":"cauldron_ext3_butchertable","x":2.047,"y":-0.041,"z":2.042,"yaw":337,"rest":"floor","sink":0.041},{"n":"forge_ext3","k":"forge_ext3","x":0.056,"y":-0.028,"z":3.318,"yaw":157,"rest":"floor","sink":0.029},{"n":"forge_ext4","k":"forge_ext4","x":-0.625,"y":-0.071,"z":3.08,"yaw":157,"rest":"floor","sink":0.071},{"n":"forge_ext1","k":"forge_ext1","x":-1.467,"y":-0.026,"z":2.543,"yaw":157,"rest":"floor","sink":0.026},{"n":"forge","k":"forge","x":-2.813,"y":-0.063,"z":2.165,"yaw":247,"rest":"floor","sink":0.063},{"n":"piece_cookingstation_iron","k":"piece_cookingstation_iron","x":-0.161,"y":0.475,"z":0.811,"yaw":337,"rest":"wall"}]},{"id":"KB-233","anchor":"bed","of":"bed2","rooms":["hall","home","sleeping"],"score":1.25,"clips":[[0,4,0.116],[1,3,0.012],[4,"a",0.039]],"pieces":[{"n":"piece_chest_blackmetal","k":"chest","x":-0.052,"y":-0.031,"z":2.637,"yaw":0,"rest":"floor","sink":0.031},{"n":"piece_chair","k":"chair","x":1.886,"y":-0.098,"z":-0.882,"yaw":326,"rest":"floor","sink":0.098},{"n":"piece_walltorch","k":"walllight","x":-2.126,"y":0.703,"z":-1.466,"yaw":270,"rest":"wall"},{"n":"piece_walltorch","k":"walllight","x":1.963,"y":0.783,"z":-1.463,"yaw":270,"rest":"wall"},{"n":"jute_carpet","k":"rug","x":2.451,"y":-0.028,"z":2.176,"yaw":67,"rest":"floor","sink":0.028}]},{"id":"KB-234","anchor":"table","of":"round","rooms":["hall","home"],"score":1.25,"clips":[],"pieces":[{"n":"piece_chair03","k":"chair","x":1.413,"y":-0.035,"z":-1.287,"yaw":304,"rest":"floor","sink":0.035},{"n":"piece_chair03","k":"chair","x":0.201,"y":-0.01,"z":-1.863,"yaw":338,"rest":"floor"},{"n":"piece_chair03","k":"chair","x":-1.185,"y":-0.01,"z":-1.048,"yaw":45,"rest":"floor"},{"n":"piece_chair03","k":"chair","x":-1.525,"y":-0.01,"z":0.651,"yaw":101,"rest":"floor"},{"n":"rug_fur","k":"rug","x":-0.407,"y":-0.028,"z":-2.342,"yaw":191,"rest":"floor","sink":0.028}]},{"id":"KB-235","anchor":"table","of":"round","rooms":["home"],"score":1.25,"clips":[],"pieces":[{"n":"piece_chair03","k":"chair","x":-0.079,"y":-0.035,"z":1.81,"yaw":180,"rest":"floor","sink":0.035},{"n":"rug_wolf","k":"rug","x":-1.915,"y":-0.028,"z":-0.826,"yaw":349,"rest":"floor","sink":0.028},{"n":"piece_chair03","k":"chair","x":-1.336,"y":-0.01,"z":-1.363,"yaw":56,"rest":"floor"},{"n":"piece_chair03","k":"chair","x":-1.602,"y":-0.01,"z":0.704,"yaw":113,"rest":"floor"},{"n":"piece_chair03","k":"chair","x":1.65,"y":0.015,"z":0.969,"yaw":248,"rest":"floor"}]},{"id":"KB-236","anchor":"corner","angle":90,"rooms":["home","storage","tavern","kitchen","smithy","workshop"],"score":1.25,"clips":[],"pieces":[{"n":"piece_chest_barrel","k":"barrel","x":0.587,"y":-0.024,"z":1.337,"yaw":135,"rest":"floor","sink":0.028},{"n":"piece_chest_barrel","k":"barrel","x":0.051,"y":-0.024,"z":1.837,"yaw":135,"rest":"floor","sink":0.028}]},{"id":"KB-237","anchor":"corner","angle":135,"rooms":["home"],"score":1.25,"clips":[[1,"w",0.3]],"pieces":[{"n":"piece_groundtorch_wood","k":"floorlight","x":0.022,"y":1.527,"z":-0.089,"yaw":68,"rest":"on","on":1},{"n":"wood_wall_quarter","k":"quarter","x":0.463,"y":-0.125,"z":-0.354,"yaw":23,"rest":"floor","sink":0.125}]},{"id":"KB-238","anchor":"hearth","of":"hearth","rooms":["home","kitchen","tavern"],"score":1.25,"clips":[[0,"a",0.36],[0,"w",0.074],[1,3,0.106],[2,3,0.121],[4,"w",0.15],[5,6,0.014]],"pieces":[{"n":"cauldron_ext3_butchertable","k":"cauldron_ext3_butchertable","x":1.158,"y":0.084,"z":1.855,"yaw":339,"rest":"floor"},{"n":"piece_chest_wood","k":"chest","x":-1.587,"y":0.097,"z":2.181,"yaw":159,"rest":"floor"},{"n":"piece_chest_wood","k":"chest","x":-1.843,"y":0.097,"z":2.896,"yaw":159,"rest":"floor"},{"n":"piece_chest_wood","k":"chest","x":-0.775,"y":0.097,"z":3.1,"yaw":69,"rest":"floor"},{"n":"cauldron_ext4_pots","k":"cauldron_ext4_pots","x":2.618,"y":1.114,"z":2.97,"yaw":159,"rest":"wall"},{"n":"piece_cauldron","k":"piece_cauldron","x":0.119,"y":0.583,"z":0.781,"yaw":148,"rest":"wall"},{"n":"piece_cookingstation_iron","k":"piece_cookingstation_iron","x":-0.448,"y":0.583,"z":-0.268,"yaw":69,"rest":"wall"}]},{"id":"KB-239","anchor":"bed","of":"bed2","rooms":["home","sleeping"],"score":1.25,"clips":[],"pieces":[{"n":"piece_walltorch","k":"walllight","x":0.047,"y":2.28,"z":-1.442,"yaw":270,"rest":"wall"},{"n":"piece_banner05","k":"banner","x":1.64,"y":2.904,"z":-0.425,"yaw":180,"rest":"wall"}]},{"id":"KB-240","anchor":"hearth","of":"hearth","rooms":["storage","kitchen","home","tavern"],"score":1.25,"clips":[[1,4,0.183],[2,4,0.305],[3,4,0.206],[4,5,0.029],[4,"w",0.086],[5,"a",0.092],[5,"w",0.257],[6,"w",0.124]],"pieces":[{"n":"piece_cauldron","k":"piece_cauldron","x":1.006,"y":0.458,"z":-0.027,"yaw":245,"rest":"wall"},{"n":"piece_cookingstation","k":"piece_cookingstation","x":-0.486,"y":0.458,"z":-0.328,"yaw":245,"rest":"wall"},{"n":"piece_cookingstation","k":"piece_cookingstation","x":-1.061,"y":0.458,"z":-0.464,"yaw":245,"rest":"wall"},{"n":"piece_cookingstation","k":"piece_cookingstation","x":0.037,"y":0.458,"z":-0.058,"yaw":245,"rest":"wall"},{"n":"piece_cookingstation_iron","k":"piece_cookingstation_iron","x":-0.234,"y":0.458,"z":0.82,"yaw":335,"rest":"wall"},{"n":"cauldron_ext3_butchertable","k":"cauldron_ext3_butchertable","x":2.262,"y":-0.042,"z":1.082,"yaw":65,"rest":"floor","sink":0.042},{"n":"piece_chest_wood","k":"chest","x":1.982,"y":-0.029,"z":3.775,"yaw":65,"rest":"floor","sink":0.029},{"n":"piece_workbench_ext1","k":"piece_workbench_ext1","x":-3.106,"y":-0.048,"z":1.426,"yaw":177,"rest":"floor","sink":0.048},{"n":"forge_ext4","k":"forge_ext4","x":0.65,"y":-0.072,"z":3.157,"yaw":155,"rest":"floor","sink":0.072},{"n":"piece_workbench_ext3","k":"piece_workbench_ext3","x":-1.057,"y":-0.049,"z":2.098,"yaw":155,"rest":"floor","sink":0.097}]},{"id":"KB-241","anchor":"corner","angle":90,"rooms":["home"],"score":1.25,"clips":[],"pieces":[{"n":"piece_chair03","k":"chair","x":0.133,"y":-0.035,"z":1.258,"yaw":349,"rest":"floor","sink":0.035},{"n":"piece_walltorch","k":"walllight","x":-0.668,"y":1.895,"z":1.024,"yaw":315,"rest":"wall"}]},{"id":"KB-242","anchor":"table","of":"round","rooms":["home"],"score":1.25,"clips":[[0,4,0.071],[3,4,0.02],[4,5,0.019],[4,"a",0.021]],"pieces":[{"n":"piece_chair03","k":"chair","x":1.959,"y":-0.035,"z":-0.031,"yaw":270,"rest":"floor","sink":0.035},{"n":"piece_chair03","k":"chair","x":-1.89,"y":-0.035,"z":-0.182,"yaw":90,"rest":"floor","sink":0.035},{"n":"piece_chair03","k":"chair","x":1.151,"y":-0.035,"z":1.514,"yaw":225,"rest":"floor","sink":0.035},{"n":"piece_chair03","k":"chair","x":0.857,"y":0.015,"z":-1.699,"yaw":338,"rest":"floor"},{"n":"rug_deer","k":"rug","x":0.317,"y":-0.028,"z":-0.731,"yaw":11,"rest":"floor","sink":0.028},{"n":"piece_chair03","k":"chair","x":-0.829,"y":0.015,"z":-1.735,"yaw":23,"rest":"floor"}]},{"id":"KB-243","anchor":"window","rooms":["smithy","home"],"score":1.25,"clips":[],"pieces":[{"n":"itemstand","k":"itemstand","x":0.419,"y":2.078,"z":0.045,"yaw":360,"rest":"wall"},{"n":"itemstand","k":"itemstand","x":-0.419,"y":2.104,"z":0.044,"yaw":360,"rest":"wall"}]},{"id":"KB-244","anchor":"corner","angle":90,"rooms":["home"],"score":1.25,"clips":[],"pieces":[{"n":"piece_bench01","k":"bench","x":0.283,"y":-0.036,"z":1.849,"yaw":338,"rest":"floor","sink":0.036},{"n":"piece_banner07","k":"banner","x":-0.645,"y":2.857,"z":0.856,"yaw":315,"rest":"wall"}]},{"id":"KB-245","anchor":"corner","angle":90,"rooms":["home"],"score":1.25,"clips":[],"pieces":[{"n":"piece_chair03","k":"chair","x":0.096,"y":-0.035,"z":1.199,"yaw":0,"rest":"floor","sink":0.035},{"n":"piece_banner01","k":"banner","x":-0.619,"y":2.961,"z":0.832,"yaw":135,"rest":"wall"}]},{"id":"KB-246","anchor":"table","of":"round","rooms":["home"],"score":1.25,"clips":[],"pieces":[{"n":"piece_chair03","k":"chair","x":-1.84,"y":-0.035,"z":-0.34,"yaw":90,"rest":"floor","sink":0.035},{"n":"piece_chair03","k":"chair","x":1.755,"y":-0.035,"z":-0.51,"yaw":281,"rest":"floor","sink":0.035},{"n":"piece_throne01","k":"piece_throne01","x":0.025,"y":-0.035,"z":-2.211,"yaw":0,"rest":"floor","sink":0.035},{"n":"piece_chair03","k":"chair","x":-0.627,"y":-0.01,"z":1.911,"yaw":158,"rest":"floor"},{"n":"piece_chair03","k":"chair","x":1.219,"y":-0.01,"z":1.603,"yaw":225,"rest":"floor"},{"n":"rug_wolf","k":"rug","x":-1.069,"y":-0.028,"z":1.416,"yaw":191,"rest":"floor","sink":0.028}]},{"id":"KB-247","anchor":"table","of":"round","rooms":["home"],"score":1.25,"clips":[[0,2,0.021]],"pieces":[{"n":"piece_chair03","k":"chair","x":1.013,"y":0.015,"z":1.284,"yaw":225,"rest":"floor"},{"n":"piece_chair03","k":"chair","x":-2.029,"y":-0.035,"z":-0.009,"yaw":101,"rest":"floor","sink":0.035},{"n":"rug_deer","k":"rug","x":1.354,"y":-0.028,"z":2.393,"yaw":236,"rest":"floor","sink":0.028},{"n":"piece_chair03","k":"chair","x":1.812,"y":-0.035,"z":-0.214,"yaw":270,"rest":"floor","sink":0.035},{"n":"piece_throne01","k":"piece_throne01","x":0.023,"y":-0.035,"z":-1.844,"yaw":0,"rest":"floor","sink":0.035},{"n":"piece_chair03","k":"chair","x":-0.998,"y":-0.01,"z":1.547,"yaw":158,"rest":"floor"}]},{"id":"KB-248","anchor":"hearth","of":"hearth","rooms":["home","kitchen","tavern"],"score":1.25,"clips":[],"pieces":[{"n":"cauldron_ext1_spice","k":"cauldron_ext1_spice","x":1.945,"y":2.661,"z":-1.359,"yaw":85,"rest":"wall"},{"n":"cauldron_ext4_pots","k":"cauldron_ext4_pots","x":-1.071,"y":2.318,"z":3.679,"yaw":97,"rest":"wall"},{"n":"piece_chest","k":"chest","x":-0.397,"y":0.002,"z":3.576,"yaw":97,"rest":"floor"},{"n":"piece_chest","k":"chest","x":-0.692,"y":0.002,"z":-3.9,"yaw":97,"rest":"floor"},{"n":"piece_cauldron","k":"piece_cauldron","x":0.027,"y":0.6,"z":0.888,"yaw":97,"rest":"wall"}]},{"id":"KB-249","anchor":"table","of":"table","rooms":["home"],"score":1.25,"clips":[[0,2,0.021],[1,2,0.069],[2,"a",0.021]],"pieces":[{"n":"piece_bench01","k":"bench","x":0.016,"y":0.042,"z":-1.323,"yaw":0,"rest":"floor"},{"n":"piece_chair02","k":"chair","x":-0.01,"y":0.013,"z":1.307,"yaw":180,"rest":"floor"},{"n":"rug_deer","k":"rug","x":-0.125,"y":0,"z":-0.465,"yaw":90,"rest":"floor"},{"n":"piece_bench01","k":"bench","x":1.907,"y":-0.008,"z":1.645,"yaw":56,"rest":"floor"}]},{"id":"KB-250","anchor":"bed","of":"bed2","rooms":["home","sleeping"],"score":1.25,"clips":[],"pieces":[{"n":"piece_chair","k":"chair","x":1.642,"y":-0.098,"z":-0.9,"yaw":315,"rest":"floor","sink":0.098},{"n":"rug_fur","k":"rug","x":-0.727,"y":-0.028,"z":0.967,"yaw":293,"rest":"floor","sink":0.028},{"n":"piece_chest","k":"chest","x":0.01,"y":-0.026,"z":2.372,"yaw":0,"rest":"floor","sink":0.026}]},{"id":"KB-251","anchor":"hearth","of":"hearth","rooms":["home","kitchen","tavern"],"score":1.25,"clips":[[2,"w",0.063]],"pieces":[{"n":"cauldron_ext1_spice","k":"cauldron_ext1_spice","x":-1.588,"y":2.121,"z":1.269,"yaw":313,"rest":"wall"},{"n":"cauldron_ext4_pots","k":"cauldron_ext4_pots","x":2.428,"y":1.782,"z":-1.437,"yaw":302,"rest":"wall"},{"n":"piece_chest_blackmetal","k":"chest","x":-0.201,"y":0.094,"z":3.997,"yaw":122,"rest":"floor"},{"n":"piece_cauldron","k":"piece_cauldron","x":-0.811,"y":0.6,"z":0.398,"yaw":10,"rest":"wall"},{"n":"piece_cookingstation","k":"piece_cookingstation","x":0.397,"y":0.6,"z":-0.528,"yaw":302,"rest":"wall"}]},{"id":"KB-252","anchor":"table","of":"table","rooms":["home"],"score":1.25,"clips":[[0,3,0.021],[0,"a",0.07]],"pieces":[{"n":"rug_deer","k":"rug","x":1.321,"y":-0.028,"z":-1.634,"yaw":248,"rest":"floor","sink":0.028},{"n":"piece_walltorch","k":"walllight","x":0.173,"y":1.453,"z":0.562,"yaw":90,"rest":"wall"},{"n":"piece_chest","k":"chest","x":2.228,"y":-0.026,"z":0.066,"yaw":180,"rest":"floor","sink":0.026},{"n":"piece_chair02","k":"chair","x":0.265,"y":0.035,"z":-1.105,"yaw":349,"rest":"floor"},{"n":"piece_chest_private","k":"chest","x":-0.486,"y":0.767,"z":-0.086,"yaw":146,"rest":"anchor"},{"n":"piece_banner07","k":"banner","x":-2.129,"y":2.777,"z":-0.243,"yaw":0,"rest":"wall"}]},{"id":"KB-253","anchor":"bed","of":"bed2","rooms":["home","sleeping"],"score":1.25,"clips":[],"pieces":[{"n":"piece_walltorch","k":"walllight","x":2.872,"y":1.407,"z":1.067,"yaw":180,"rest":"wall"},{"n":"piece_chair","k":"chair","x":2.062,"y":-0.098,"z":-1.121,"yaw":326,"rest":"floor","sink":0.098}]},{"id":"KB-254","anchor":"hearth","of":"hearth","rooms":["home","kitchen","tavern"],"score":1.25,"clips":[],"pieces":[{"n":"cauldron_ext3_butchertable","k":"cauldron_ext3_butchertable","x":2.829,"y":-0.041,"z":0.437,"yaw":164,"rest":"floor","sink":0.041},{"n":"piece_chest_wood","k":"chest","x":-2.358,"y":-0.028,"z":-1.181,"yaw":254,"rest":"floor","sink":0.028},{"n":"piece_chest_wood","k":"chest","x":-3.127,"y":-0.028,"z":-1.367,"yaw":254,"rest":"floor","sink":0.028},{"n":"piece_cauldron","k":"piece_cauldron","x":0.911,"y":0.458,"z":0.189,"yaw":277,"rest":"wall"},{"n":"piece_cookingstation","k":"piece_cookingstation","x":-0.839,"y":0.458,"z":-0.169,"yaw":254,"rest":"wall"},{"n":"cauldron_ext4_pots","k":"cauldron_ext4_pots","x":3.349,"y":2.141,"z":2.323,"yaw":254,"rest":"wall"},{"n":"cauldron_ext1_spice","k":"cauldron_ext1_spice","x":-0.668,"y":2.369,"z":2.289,"yaw":164,"rest":"wall"}]},{"id":"KB-255","anchor":"bed","of":"bed2","rooms":["home","sleeping"],"score":1.25,"clips":[],"pieces":[{"n":"piece_chair","k":"chair","x":1.838,"y":-0.098,"z":-1.437,"yaw":158,"rest":"floor","sink":0.098},{"n":"rug_fur","k":"rug","x":1.324,"y":-0.028,"z":-0.036,"yaw":180,"rest":"floor","sink":0.028},{"n":"piece_chest","k":"chest","x":0.267,"y":-0.026,"z":-2.285,"yaw":0,"rest":"floor","sink":0.026},{"n":"itemstandh","k":"itemstandh","x":1.852,"y":0.504,"z":-1.43,"yaw":180,"rest":"hang"}]},{"id":"KB-256","anchor":"hearth","of":"pit","rooms":["home"],"score":1.25,"clips":[],"pieces":[{"n":"cauldron_ext4_pots","k":"cauldron_ext4_pots","x":-0.494,"y":1.828,"z":2.456,"yaw":242,"rest":"wall"},{"n":"piece_chest_wood","k":"chest","x":0.57,"y":-0.028,"z":-1.561,"yaw":152,"rest":"floor","sink":0.028}]},{"id":"KB-257","anchor":"table","of":"table","rooms":["home"],"score":1.25,"clips":[[0,1,0.07],[0,2,0.045],[0,3,0.019],[0,"a",0.071],[0,"w",0.166]],"pieces":[{"n":"rug_deer","k":"rug","x":0.659,"y":-0.028,"z":-0.323,"yaw":0,"rest":"floor","sink":0.028},{"n":"piece_chair02","k":"chair","x":0.344,"y":-0.015,"z":1.422,"yaw":191,"rest":"floor","sink":0.028},{"n":"piece_chair02","k":"chair","x":-1.012,"y":0.01,"z":1.344,"yaw":146,"rest":"floor"},{"n":"piece_chair02","k":"chair","x":0.528,"y":0.035,"z":-1.378,"yaw":0,"rest":"floor"}]},{"id":"KB-258","anchor":"table","of":"round","rooms":["home"],"score":1.25,"clips":[[0,6,0.021],[0,7,0.019],[0,"a",0.045]],"pieces":[{"n":"rug_deer","k":"rug","x":0.829,"y":-0.028,"z":-1.469,"yaw":203,"rest":"floor","sink":0.028},{"n":"rug_wolf","k":"rug","x":-0.782,"y":-0.028,"z":0.758,"yaw":281,"rest":"floor","sink":0.028},{"n":"piece_chair03","k":"chair","x":-1.749,"y":-0.035,"z":-0.954,"yaw":68,"rest":"floor","sink":0.035},{"n":"piece_chair03","k":"chair","x":1.111,"y":-0.035,"z":1.549,"yaw":225,"rest":"floor","sink":0.035},{"n":"piece_chair03","k":"chair","x":-0.934,"y":-0.035,"z":1.931,"yaw":158,"rest":"floor","sink":0.035},{"n":"piece_chair03","k":"chair","x":-1.936,"y":-0.01,"z":0.834,"yaw":113,"rest":"floor"},{"n":"piece_chair03","k":"chair","x":0.16,"y":0.015,"z":-1.902,"yaw":349,"rest":"floor"},{"n":"piece_chair03","k":"chair","x":1.873,"y":0.015,"z":-0.829,"yaw":293,"rest":"floor"}]},{"id":"KB-259","anchor":"corner","angle":90,"rooms":["home"],"score":1.25,"clips":[[1,"w",0.193]],"pieces":[{"n":"itemstand","k":"itemstand","x":0.575,"y":1.587,"z":0.637,"yaw":315,"rest":"wall"},{"n":"rug_deer","k":"rug","x":-0.301,"y":-0.028,"z":1.925,"yaw":248,"rest":"floor","sink":0.028}]},{"id":"KB-260","anchor":"hearth","of":"hearth","rooms":["home"],"score":1.25,"clips":[[0,"w",0.053],[2,"w",0.111]],"pieces":[{"n":"cauldron_ext1_spice","k":"cauldron_ext1_spice","x":0.536,"y":2.61,"z":2.823,"yaw":18,"rest":"wall"},{"n":"cauldron_ext1_spice","k":"cauldron_ext1_spice","x":-0.085,"y":2.736,"z":2.906,"yaw":198,"rest":"wall"},{"n":"cauldron_ext4_pots","k":"cauldron_ext4_pots","x":1.962,"y":2.697,"z":1.423,"yaw":288,"rest":"wall"},{"n":"cauldron_ext5_mortarandpestle","k":"cauldron_ext5_mortarandpestle","x":-1.774,"y":-0.041,"z":0.733,"yaw":288,"rest":"floor","sink":0.041}]},{"id":"KB-261","anchor":"hearth","of":"hearth","rooms":["home","kitchen","tavern"],"score":1.25,"clips":[[2,3,0.386],[2,4,0.512]],"pieces":[{"n":"piece_cauldron","k":"piece_cauldron","x":0.486,"y":0.583,"z":0.642,"yaw":326,"rest":"wall"},{"n":"cauldron_ext3_butchertable","k":"cauldron_ext3_butchertable","x":0.37,"y":0.084,"z":3.623,"yaw":314,"rest":"floor"},{"n":"piece_cookingstation_iron","k":"piece_cookingstation_iron","x":0.609,"y":0.583,"z":-0.563,"yaw":314,"rest":"wall"},{"n":"piece_cookingstation","k":"piece_cookingstation","x":-0.762,"y":0.583,"z":-0.923,"yaw":44,"rest":"wall"},{"n":"piece_cookingstation","k":"piece_cookingstation","x":-0.175,"y":0.583,"z":-0.501,"yaw":44,"rest":"wall"},{"n":"cauldron_ext1_spice","k":"cauldron_ext1_spice","x":-1.333,"y":2.661,"z":1.118,"yaw":134,"rest":"wall"},{"n":"cauldron_ext4_pots","k":"cauldron_ext4_pots","x":0.931,"y":2.802,"z":3.316,"yaw":314,"rest":"wall"}]},{"id":"KB-262","anchor":"bed","of":"bed2","rooms":["home","sleeping"],"score":1.25,"clips":[],"pieces":[{"n":"rug_wolf","k":"rug","x":0.885,"y":-0.028,"z":1.522,"yaw":135,"rest":"floor","sink":0.028},{"n":"piece_chair","k":"chair","x":2.173,"y":-0.098,"z":-0.51,"yaw":326,"rest":"floor","sink":0.098},{"n":"piece_banner02","k":"banner","x":0.976,"y":3.542,"z":-1.483,"yaw":270,"rest":"anchor"}]},{"id":"KB-263","anchor":"hearth","of":"pit","rooms":["home","kitchen","tavern"],"score":1.25,"clips":[],"pieces":[{"n":"piece_workbench_ext1","k":"piece_workbench_ext1","x":0.281,"y":-0.048,"z":1.905,"yaw":29,"rest":"floor","sink":0.048},{"n":"cauldron_ext1_spice","k":"cauldron_ext1_spice","x":-0.23,"y":1.536,"z":-0.982,"yaw":186,"rest":"wall"},{"n":"piece_cauldron","k":"piece_cauldron","x":-0.072,"y":0.075,"z":0.4,"yaw":186,"rest":"floor"}]},{"id":"KB-264","anchor":"hearth","of":"hearth","rooms":["home","kitchen","tavern"],"score":1.25,"clips":[[0,"w",0.127],[4,"w",0.125]],"pieces":[{"n":"cauldron_ext3_butchertable","k":"cauldron_ext3_butchertable","x":2.778,"y":-0.041,"z":-0.063,"yaw":20,"rest":"floor","sink":0.041},{"n":"piece_cauldron","k":"piece_cauldron","x":0.894,"y":0.458,"z":-0.418,"yaw":290,"rest":"wall"},{"n":"piece_cookingstation","k":"piece_cookingstation","x":-0.322,"y":0.458,"z":0.09,"yaw":290,"rest":"wall"},{"n":"piece_cookingstation","k":"piece_cookingstation","x":-1.023,"y":0.458,"z":0.506,"yaw":290,"rest":"wall"},{"n":"cauldron_ext4_pots","k":"cauldron_ext4_pots","x":-2.355,"y":1.741,"z":2.277,"yaw":200,"rest":"wall"}]},{"id":"KB-265","anchor":"window","rooms":["home"],"score":1.25,"clips":[],"pieces":[{"n":"piece_banner01","k":"banner","x":0.835,"y":2.692,"z":0.967,"yaw":180,"rest":"wall"},{"n":"piece_walltorch","k":"walllight","x":-0.835,"y":1.153,"z":0.206,"yaw":270,"rest":"wall"}]},{"id":"KB-266","anchor":"table","of":"round","rooms":["home","kitchen","tavern"],"score":1.25,"clips":[],"pieces":[{"n":"piece_chair03","k":"chair","x":-0.293,"y":-0.035,"z":1.89,"yaw":180,"rest":"floor","sink":0.035},{"n":"piece_chair03","k":"chair","x":-0.455,"y":-0.035,"z":-1.945,"yaw":0,"rest":"floor","sink":0.035},{"n":"piece_chair03","k":"chair","x":1.466,"y":-0.01,"z":-1,"yaw":293,"rest":"floor"},{"n":"piece_cauldron","k":"piece_cauldron","x":-2.139,"y":0.458,"z":-1.025,"yaw":281,"rest":"wall"},{"n":"piece_chair03","k":"chair","x":1.344,"y":-0.035,"z":0.882,"yaw":225,"rest":"floor","sink":0.035}]},{"id":"KB-267","anchor":"bed","of":"bed2","rooms":["home","sleeping"],"score":1.25,"clips":[[2,3,0.484]],"pieces":[{"n":"rug_wolf","k":"rug","x":1.958,"y":-0.028,"z":0.293,"yaw":338,"rest":"floor","sink":0.028},{"n":"rug_fur","k":"rug","x":-0.146,"y":-0.028,"z":2.096,"yaw":23,"rest":"floor","sink":0.028},{"n":"piece_cookingstation","k":"piece_cookingstation","x":0.897,"y":0.458,"z":-3.288,"yaw":90,"rest":"wall"},{"n":"piece_cookingstation_iron","k":"piece_cookingstation_iron","x":0.244,"y":0.458,"z":-2.657,"yaw":0,"rest":"wall"},{"n":"piece_banner01","k":"banner","x":-2.97,"y":2.925,"z":-0.767,"yaw":180,"rest":"wall"},{"n":"piece_banner04","k":"banner","x":-2.094,"y":2.935,"z":-1.503,"yaw":270,"rest":"wall"},{"n":"piece_chair","k":"chair","x":1.712,"y":-0.098,"z":-0.959,"yaw":158,"rest":"floor","sink":0.098}]},{"id":"KB-268","anchor":"hearth","of":"hearth","rooms":["home"],"score":1.25,"clips":[[1,"w",0.094]],"pieces":[{"n":"piece_cookingstation","k":"piece_cookingstation","x":1.193,"y":0.458,"z":0.106,"yaw":77,"rest":"wall"},{"n":"cauldron_ext1_spice","k":"cauldron_ext1_spice","x":-3.479,"y":2.569,"z":-0.217,"yaw":257,"rest":"wall"},{"n":"piece_banner01","k":"banner","x":3.597,"y":2.773,"z":1.974,"yaw":257,"rest":"wall"},{"n":"piece_banner04","k":"banner","x":1.564,"y":2.919,"z":2.172,"yaw":257,"rest":"wall"},{"n":"cauldron_ext3_butchertable","k":"cauldron_ext3_butchertable","x":-2.87,"y":-0.041,"z":-0.015,"yaw":77,"rest":"floor","sink":0.041}]},{"id":"KB-269","anchor":"window","rooms":["home"],"score":1.25,"clips":[[1,2,0.07],[1,"w",0.019],[3,"w",0.018]],"pieces":[{"n":"piece_walltorch","k":"walllight","x":0.785,"y":2.086,"z":0.206,"yaw":270,"rest":"wall"},{"n":"itemstand","k":"itemstand","x":0.073,"y":2.224,"z":0.026,"yaw":0,"rest":"wall"},{"n":"itemstand","k":"itemstand","x":0.071,"y":1.821,"z":0.045,"yaw":0,"rest":"wall"},{"n":"piece_walltorch","k":"walllight","x":-0.785,"y":2.107,"z":0.186,"yaw":270,"rest":"wall"}]},{"id":"KB-270","anchor":"hearth","of":"hearth","rooms":["home"],"score":1.25,"clips":[[1,4,0.414],[1,5,0.362],[1,6,0.332],[2,"a",0.106],[2,"w",0.243]],"pieces":[{"n":"cauldron_ext1_spice","k":"cauldron_ext1_spice","x":-1.35,"y":1.369,"z":3.021,"yaw":6,"rest":"hang"},{"n":"piece_cookingstation_iron","k":"piece_cookingstation_iron","x":0.71,"y":0.458,"z":-0.149,"yaw":276,"rest":"wall"},{"n":"cauldron_ext3_butchertable","k":"cauldron_ext3_butchertable","x":0.899,"y":-0.138,"z":2.418,"yaw":96,"rest":"floor","sink":0.138},{"n":"piece_chest_wood","k":"chest","x":0.662,"y":-0.028,"z":3.58,"yaw":186,"rest":"floor","sink":0.028},{"n":"piece_cookingstation","k":"piece_cookingstation","x":-0.105,"y":0.458,"z":-1.282,"yaw":186,"rest":"wall"},{"n":"piece_cookingstation","k":"piece_cookingstation","x":-0.09,"y":0.458,"z":-0.593,"yaw":186,"rest":"wall"},{"n":"piece_cookingstation","k":"piece_cookingstation","x":-0.057,"y":0.458,"z":0.043,"yaw":186,"rest":"wall"}]},{"id":"KB-271","anchor":"hearth","of":"hearth","rooms":["home"],"score":1.25,"clips":[[1,"a",0.12]],"pieces":[{"n":"cauldron_ext1_spice","k":"cauldron_ext1_spice","x":0.37,"y":2.511,"z":2.035,"yaw":12,"rest":"hang"},{"n":"cauldron_ext3_butchertable","k":"cauldron_ext3_butchertable","x":0.455,"y":-0.013,"z":2.439,"yaw":192,"rest":"floor"}]},{"id":"KB-272","anchor":"table","of":"round","rooms":["home"],"score":1.25,"clips":[],"pieces":[{"n":"piece_chair03","k":"chair","x":-1.338,"y":-0.035,"z":-1.121,"yaw":45,"rest":"floor","sink":0.035},{"n":"piece_chair03","k":"chair","x":-1.346,"y":-0.035,"z":1.253,"yaw":124,"rest":"floor","sink":0.035},{"n":"piece_chair03","k":"chair","x":0.381,"y":-0.035,"z":1.78,"yaw":180,"rest":"floor","sink":0.035},{"n":"piece_walltorch","k":"walllight","x":1.876,"y":1.427,"z":1.04,"yaw":169,"rest":"wall"},{"n":"piece_banner07","k":"banner","x":-0.006,"y":3.429,"z":-1.956,"yaw":79,"rest":"wall"}]},{"id":"KB-273","anchor":"bed","of":"bed2","rooms":["home","sleeping"],"score":1.25,"clips":[],"pieces":[{"n":"piece_walltorch","k":"walllight","x":2.092,"y":1.788,"z":-0.617,"yaw":180,"rest":"wall"},{"n":"piece_chair","k":"chair","x":1.72,"y":-0.098,"z":-0.849,"yaw":338,"rest":"floor","sink":0.098},{"n":"rug_fur","k":"rug","x":-1.407,"y":-0.028,"z":0.544,"yaw":0,"rest":"floor","sink":0.028},{"n":"piece_banner07","k":"banner","x":-1.831,"y":2.802,"z":-1.518,"yaw":90,"rest":"wall"}]},{"id":"KB-274","anchor":"table","of":"round","rooms":["home"],"score":1.25,"clips":[],"pieces":[{"n":"piece_chair03","k":"chair","x":0.094,"y":-0.035,"z":1.884,"yaw":180,"rest":"floor","sink":0.035},{"n":"piece_throne01","k":"piece_throne01","x":2.198,"y":-0.035,"z":0.74,"yaw":248,"rest":"floor","sink":0.035},{"n":"piece_throne01","k":"piece_throne01","x":-1.618,"y":-0.035,"z":1.161,"yaw":124,"rest":"floor","sink":0.035},{"n":"piece_chair03","k":"chair","x":-1.534,"y":-0.035,"z":-1.164,"yaw":34,"rest":"floor","sink":0.035},{"n":"piece_chair03","k":"chair","x":-0.051,"y":-0.035,"z":-1.96,"yaw":0,"rest":"floor","sink":0.035},{"n":"piece_chair03","k":"chair","x":1.499,"y":-0.035,"z":-1.424,"yaw":338,"rest":"floor","sink":0.035}]},{"id":"KB-275","anchor":"table","of":"table","rooms":["home"],"score":1.25,"clips":[[0,3,0.02],[0,"a",0.07]],"pieces":[{"n":"rug_deer","k":"rug","x":0.104,"y":-0.028,"z":1.063,"yaw":326,"rest":"floor","sink":0.028},{"n":"rug_wolf","k":"rug","x":1.27,"y":-0.028,"z":-2.55,"yaw":315,"rest":"floor","sink":0.028},{"n":"piece_chest_private","k":"chest","x":0.574,"y":0.767,"z":-0.032,"yaw":338,"rest":"anchor"},{"n":"piece_chair02","k":"chair","x":0.285,"y":0.035,"z":1.08,"yaw":203,"rest":"floor"}]},{"id":"KB-276","anchor":"bed","of":"bed2","rooms":["home","sleeping"],"score":1.25,"clips":[[0,"a",0.078]],"pieces":[{"n":"piece_chest","k":"chest","x":0.009,"y":-0.026,"z":2.236,"yaw":0,"rest":"floor","sink":0.026},{"n":"piece_chest_private","k":"chest","x":-3.087,"y":-0.027,"z":-0.943,"yaw":45,"rest":"floor","sink":0.029},{"n":"piece_walltorch","k":"walllight","x":1.867,"y":1.88,"z":-1.377,"yaw":259,"rest":"wall"},{"n":"piece_walltorch","k":"walllight","x":-1.753,"y":1.819,"z":-1.387,"yaw":259,"rest":"wall"},{"n":"piece_chair","k":"chair","x":1.775,"y":-0.098,"z":-0.816,"yaw":180,"rest":"floor","sink":0.098},{"n":"piece_chair","k":"chair","x":-1.728,"y":-0.098,"z":-0.995,"yaw":225,"rest":"floor","sink":0.098},{"n":"piece_banner01","k":"banner","x":-2.782,"y":2.819,"z":-1.517,"yaw":90,"rest":"on","on":1}]},{"id":"KB-277","anchor":"table","of":"table","rooms":["home"],"score":1.25,"clips":[[0,"a",0.071],[0,"w",0.016]],"pieces":[{"n":"rug_deer","k":"rug","x":1.754,"y":-0.028,"z":-0.989,"yaw":270,"rest":"floor","sink":0.028},{"n":"piece_chair03","k":"chair","x":-0.176,"y":-0.035,"z":-0.958,"yaw":11,"rest":"floor","sink":0.035},{"n":"piece_workbench_ext4","k":"piece_workbench_ext4","x":1.498,"y":1.339,"z":1.002,"yaw":0,"rest":"wall"}]},{"id":"KB-278","anchor":"table","of":"table","rooms":["home","workshop","smithy"],"score":1.25,"clips":[],"pieces":[{"n":"piece_workbench","k":"piece_workbench","x":0.024,"y":-0.053,"z":-1.606,"yaw":180,"rest":"floor","sink":0.053},{"n":"piece_chair02","k":"chair","x":-0.19,"y":-0.015,"z":1.211,"yaw":158,"rest":"floor","sink":0.028}]},{"id":"KB-279","anchor":"bed","of":"bed2","rooms":["home","sleeping"],"score":1.25,"clips":[[6,"w",0.3]],"pieces":[{"n":"piece_banner06","k":"banner","x":1.82,"y":2.784,"z":-1.418,"yaw":270,"rest":"on","on":6},{"n":"piece_banner06","k":"banner","x":-1.396,"y":2.748,"z":-1.419,"yaw":270,"rest":"wall"},{"n":"piece_chest_blackmetal","k":"chest","x":-2.767,"y":-0.006,"z":-0.814,"yaw":0,"rest":"floor"},{"n":"rug_fur","k":"rug","x":2.742,"y":-0.028,"z":0.518,"yaw":0,"rest":"floor","sink":0.028},{"n":"piece_chest_wood","k":"chest","x":-0.012,"y":-0.028,"z":2.297,"yaw":0,"rest":"floor","sink":0.028},{"n":"piece_chair","k":"chair","x":2.027,"y":-0.073,"z":-0.456,"yaw":0,"rest":"floor","sink":0.073},{"n":"wood_wall_half","k":"half","x":2.168,"y":0.375,"z":-1.719,"yaw":180,"rest":"floor","sink":0.125}]},{"id":"KB-280","anchor":"corner","angle":90,"rooms":["home"],"score":1.25,"clips":[[0,"w",0.917],[1,"w",0.3]],"pieces":[{"n":"piece_chest","k":"chest","x":-0.216,"y":0.819,"z":0.219,"yaw":315,"rest":"on","on":1},{"n":"wood_wall_quarter","k":"quarter","x":0.353,"y":-0.125,"z":0.141,"yaw":135,"rest":"floor","sink":0.125}]},{"id":"KB-281","anchor":"bed","of":"bed2","rooms":["home","sleeping"],"score":1.25,"clips":[],"pieces":[{"n":"rug_fur","k":"rug","x":1.874,"y":-0.028,"z":0.68,"yaw":0,"rest":"floor","sink":0.028},{"n":"rug_wolf","k":"rug","x":-2.324,"y":-0.028,"z":1.039,"yaw":0,"rest":"floor","sink":0.028},{"n":"piece_banner07","k":"banner","x":1.271,"y":3.578,"z":-1.455,"yaw":270,"rest":"wall"}]},{"id":"KB-282","anchor":"table","of":"round","rooms":["home"],"score":1.25,"clips":[],"pieces":[{"n":"rug_wolf","k":"rug","x":0.758,"y":-0.028,"z":-0.538,"yaw":45,"rest":"floor","sink":0.028},{"n":"piece_chair03","k":"chair","x":1.759,"y":-0.01,"z":-0.142,"yaw":270,"rest":"floor"},{"n":"piece_chair03","k":"chair","x":0.901,"y":-0.01,"z":-1.309,"yaw":326,"rest":"floor"},{"n":"piece_walltorch","k":"walllight","x":-1.118,"y":1.416,"z":0.248,"yaw":0,"rest":"wall"},{"n":"piece_banner02","k":"banner","x":1.631,"y":2.733,"z":1.11,"yaw":90,"rest":"wall"}]},{"id":"KB-283","anchor":"hearth","of":"pit","rooms":["home","kitchen","tavern"],"score":1.25,"clips":[],"pieces":[{"n":"piece_chest","k":"chest","x":-0.238,"y":-0.026,"z":2.545,"yaw":309,"rest":"floor","sink":0.026},{"n":"piece_cauldron","k":"piece_cauldron","x":0.048,"y":0.075,"z":-0.122,"yaw":309,"rest":"floor"},{"n":"piece_walltorch","k":"walllight","x":0.219,"y":1.459,"z":2.304,"yaw":219,"rest":"on","on":0}]},{"id":"KB-284","anchor":"table","of":"table","rooms":["home"],"score":1.25,"clips":[[0,"w",0.09],[1,"w",0.137]],"pieces":[{"n":"forge_ext4","k":"forge_ext4","x":1.909,"y":-0.046,"z":0.185,"yaw":158,"rest":"floor","sink":0.046},{"n":"piece_chest_wood","k":"chest","x":-1.726,"y":-0.028,"z":-0.002,"yaw":90,"rest":"floor","sink":0.028},{"n":"piece_chest_private","k":"chest","x":0.601,"y":-0.027,"z":0.052,"yaw":90,"rest":"floor","sink":0.029},{"n":"piece_chest_private","k":"chest","x":0.077,"y":-0.027,"z":0.036,"yaw":90,"rest":"floor","sink":0.029},{"n":"piece_chest_private","k":"chest","x":-0.486,"y":-0.027,"z":0.043,"yaw":90,"rest":"floor","sink":0.029},{"n":"cauldron_ext4_pots","k":"cauldron_ext4_pots","x":-0.149,"y":1.834,"z":0.489,"yaw":191,"rest":"anchor"}]},{"id":"KB-285","anchor":"bed","of":"bed2","rooms":["home","hall","smithy","sleeping"],"score":1.25,"clips":[],"pieces":[{"n":"piece_chair03","k":"chair","x":1.714,"y":-0.035,"z":-1.066,"yaw":0,"rest":"floor","sink":0.035},{"n":"piece_chest_wood","k":"chest","x":-1.176,"y":-0.028,"z":3.246,"yaw":90,"rest":"floor","sink":0.028},{"n":"ArmorStand","k":"ArmorStand","x":-0.379,"y":-0.021,"z":2.495,"yaw":34,"rest":"floor","sink":0.028},{"n":"cauldron_ext1_spice","k":"cauldron_ext1_spice","x":0.395,"y":0.825,"z":-2.06,"yaw":0,"rest":"wall"}]},{"id":"KB-286","anchor":"table","of":"table","rooms":["home"],"score":1.25,"clips":[[0,1,0.119],[0,"a",0.27],[0,"w",0.05],[1,2,0.021],[1,"a",0.119],[3,"w",0.1]],"pieces":[{"n":"cauldron_ext3_butchertable","k":"cauldron_ext3_butchertable","x":0.543,"y":-0.089,"z":-0.012,"yaw":0,"rest":"floor","sink":0.089},{"n":"rug_deer","k":"rug","x":0.504,"y":-0.028,"z":-1.983,"yaw":326,"rest":"floor","sink":0.028},{"n":"piece_chair03","k":"chair","x":-0.413,"y":0.015,"z":-0.838,"yaw":326,"rest":"floor"},{"n":"piece_workbench_ext4","k":"piece_workbench_ext4","x":1.974,"y":0.487,"z":0.388,"yaw":180,"rest":"wall"}]},{"id":"KB-287","anchor":"hearth","of":"hearth","rooms":["home","kitchen","tavern"],"score":1.25,"clips":[[1,"w",0.03]],"pieces":[{"n":"piece_chest_wood","k":"chest","x":-0.8,"y":-0.028,"z":3.399,"yaw":133,"rest":"floor","sink":0.028},{"n":"piece_chest_wood","k":"chest","x":-0.162,"y":-0.028,"z":2.756,"yaw":133,"rest":"floor","sink":0.028},{"n":"piece_cookingstation_iron","k":"piece_cookingstation_iron","x":0.578,"y":0.458,"z":-0.498,"yaw":133,"rest":"wall"},{"n":"piece_cauldron","k":"piece_cauldron","x":0.373,"y":0.458,"z":1.016,"yaw":145,"rest":"wall"}]},{"id":"KB-288","anchor":"corner","angle":135,"rooms":["home"],"score":1.25,"clips":[[0,"w",0.383],[1,"w",0.403]],"pieces":[{"n":"piece_chest","k":"chest","x":0.293,"y":0.003,"z":0.503,"yaw":158,"rest":"floor"},{"n":"piece_chest","k":"chest","x":0.183,"y":1.099,"z":0.481,"yaw":158,"rest":"on","on":0}]},{"id":"KB-289","anchor":"hearth","of":"hearth","rooms":["home","kitchen","tavern"],"score":1.25,"clips":[[0,"w",0.146],[1,"w",0.117]],"pieces":[{"n":"piece_chest","k":"chest","x":-1.732,"y":2.002,"z":3.82,"yaw":64,"rest":"wall"},{"n":"cauldron_ext3_butchertable","k":"cauldron_ext3_butchertable","x":-0.416,"y":-0.013,"z":3.407,"yaw":244,"rest":"floor"},{"n":"cauldron_ext1_spice","k":"cauldron_ext1_spice","x":-0.418,"y":2.661,"z":2.316,"yaw":199,"rest":"wall"},{"n":"piece_cauldron","k":"piece_cauldron","x":1.188,"y":0.583,"z":0.002,"yaw":210,"rest":"wall"},{"n":"cauldron_ext4_pots","k":"cauldron_ext4_pots","x":3.466,"y":3.605,"z":1.476,"yaw":334,"rest":"wall"},{"n":"piece_cookingstation","k":"piece_cookingstation","x":-1.13,"y":0.583,"z":0.386,"yaw":109,"rest":"wall"},{"n":"piece_cookingstation","k":"piece_cookingstation","x":-0.684,"y":0.583,"z":0.203,"yaw":109,"rest":"wall"},{"n":"piece_cookingstation","k":"piece_cookingstation","x":-0.237,"y":0.583,"z":-0.035,"yaw":109,"rest":"wall"}]},{"id":"KB-290","anchor":"bed","of":"bed2","rooms":["home","sleeping"],"score":1.25,"clips":[],"pieces":[{"n":"piece_chair","k":"chair","x":-1.599,"y":-0.098,"z":-1.082,"yaw":45,"rest":"floor","sink":0.098},{"n":"itemstandh","k":"itemstandh","x":-1.626,"y":0.504,"z":-1.091,"yaw":11,"rest":"wall"}]},{"id":"KB-291","anchor":"corner","angle":90,"rooms":["kitchen","tavern","hall","home"],"score":1.25,"clips":[],"pieces":[{"n":"MeadBugRepellent","k":"food","x":0.146,"y":-0.004,"z":0.643,"yaw":225,"rest":"floor"},{"n":"MeadLightfoot","k":"food","x":0.083,"y":0.018,"z":0.964,"yaw":225,"rest":"floor"},{"n":"MeadHasty","k":"food","x":-0.414,"y":0.018,"z":0.343,"yaw":225,"rest":"floor"}]},{"id":"KB-292","anchor":"corner","angle":90,"rooms":["kitchen","tavern","hall","home"],"score":1.25,"clips":[],"pieces":[{"n":"MeadHealthLingering","k":"food","x":-0.028,"y":0.007,"z":0.881,"yaw":315,"rest":"floor"},{"n":"MeadEitrLingering","k":"food","x":0.124,"y":0.011,"z":0.68,"yaw":315,"rest":"floor"},{"n":"MeadBzerker","k":"food","x":0.477,"y":0.018,"z":0.27,"yaw":315,"rest":"floor"}]},{"id":"KB-293","anchor":"table","of":"long","rooms":["hall"],"score":1.25,"clips":[],"pieces":[{"n":"piece_chair03","k":"chair","x":-2.049,"y":-0.035,"z":1.704,"yaw":180,"rest":"floor","sink":0.035},{"n":"piece_chair03","k":"chair","x":-1.939,"y":-0.035,"z":-1.706,"yaw":0,"rest":"floor","sink":0.035},{"n":"piece_chair03","k":"chair","x":-0.501,"y":-0.035,"z":1.723,"yaw":180,"rest":"floor","sink":0.035},{"n":"piece_chair03","k":"chair","x":-0.406,"y":-0.035,"z":-1.699,"yaw":0,"rest":"floor","sink":0.035},{"n":"piece_chair03","k":"chair","x":0.908,"y":-0.035,"z":-1.702,"yaw":0,"rest":"floor","sink":0.035},{"n":"piece_chair03","k":"chair","x":0.938,"y":-0.035,"z":1.711,"yaw":180,"rest":"floor","sink":0.035},{"n":"piece_chair03","k":"chair","x":2.178,"y":-0.035,"z":-1.685,"yaw":0,"rest":"floor","sink":0.035},{"n":"piece_chair03","k":"chair","x":2.311,"y":-0.035,"z":1.699,"yaw":180,"rest":"floor","sink":0.035}]},{"id":"KB-294","anchor":"hearth","of":"hearth","rooms":["home","kitchen","tavern"],"score":1.25,"clips":[[1,2,0.097],[5,"w",0.132]],"pieces":[{"n":"piece_cookingstation","k":"piece_cookingstation","x":-0.782,"y":0.583,"z":0.386,"yaw":285,"rest":"wall"},{"n":"cauldron_ext4_pots","k":"cauldron_ext4_pots","x":1.754,"y":3,"z":2.539,"yaw":15,"rest":"wall"},{"n":"piece_dvergr_lantern","k":"walllight","x":0.777,"y":3.69,"z":2.808,"yaw":105,"rest":"wall"},{"n":"piece_cauldron","k":"piece_cauldron","x":1.341,"y":0.583,"z":0.511,"yaw":330,"rest":"wall"},{"n":"cauldron_ext1_spice","k":"cauldron_ext1_spice","x":-0.842,"y":1.694,"z":2.938,"yaw":60,"rest":"wall"},{"n":"cauldron_ext5_mortarandpestle","k":"cauldron_ext5_mortarandpestle","x":-0.871,"y":-0.013,"z":3.357,"yaw":240,"rest":"floor"},{"n":"piece_cookingstation","k":"piece_cookingstation","x":-0.209,"y":0.583,"z":0.212,"yaw":285,"rest":"wall"},{"n":"piece_cookingstation","k":"piece_cookingstation","x":-1.351,"y":0.583,"z":0.516,"yaw":285,"rest":"wall"}]},{"id":"KB-295","anchor":"bed","of":"bed2","rooms":["home","sleeping"],"score":1.25,"clips":[[0,"a",0.115]],"pieces":[{"n":"jute_carpet","k":"rug","x":-1.568,"y":-0.028,"z":1.702,"yaw":315,"rest":"floor","sink":0.028},{"n":"piece_banner01","k":"banner","x":-0.943,"y":3.847,"z":-1.494,"yaw":90,"rest":"wall"},{"n":"piece_banner01","k":"banner","x":1.11,"y":3.829,"z":-1.494,"yaw":90,"rest":"wall"}]},{"id":"KB-296","anchor":"corner","angle":135,"rooms":["home","workshop","smithy"],"score":1.25,"clips":[[0,1,0.054],[1,2,0.046],[1,"w",0.017]],"pieces":[{"n":"piece_workbench","k":"piece_workbench","x":1.211,"y":-0.025,"z":1.1,"yaw":338,"rest":"floor","sink":0.025},{"n":"piece_workbench_ext2","k":"piece_workbench_ext2","x":-1.244,"y":0.022,"z":0.822,"yaw":23,"rest":"floor"},{"n":"piece_workbench_ext1","k":"piece_workbench_ext1","x":-0.641,"y":-0.02,"z":1.302,"yaw":34,"rest":"floor","sink":0.02},{"n":"piece_chest_wood","k":"chest","x":0.101,"y":1.999,"z":-0.14,"yaw":0,"rest":"wall"}]},{"id":"KB-297","anchor":"corner","angle":135,"rooms":["home","smithy"],"score":1.25,"clips":[[2,"w",0.166],[3,"w",0.15]],"pieces":[{"n":"forge_ext1","k":"forge_ext1","x":0.897,"y":0.002,"z":1.233,"yaw":158,"rest":"floor"},{"n":"piece_chest_wood","k":"chest","x":-0.101,"y":1.999,"z":-0.081,"yaw":0,"rest":"wall"},{"n":"forge","k":"forge","x":-0.964,"y":-0.035,"z":0.761,"yaw":23,"rest":"floor","sink":0.035},{"n":"forge_ext6","k":"forge_ext6","x":-0.923,"y":1.825,"z":0.49,"yaw":23,"rest":"wall"}]},{"id":"KB-298","anchor":"post","of":"post","rooms":["home"],"score":1.25,"clips":[[2,"w",0.152]],"pieces":[{"n":"sign","k":"sign","x":0.119,"y":1.384,"z":0.155,"yaw":40,"rest":"wall"},{"n":"itemstand","k":"itemstand","x":-0.339,"y":1.771,"z":0.933,"yaw":63,"rest":"wall"},{"n":"piece_dvergr_lantern","k":"walllight","x":0,"y":2.565,"z":0,"yaw":130,"rest":"wall"}]},{"id":"KB-299","anchor":"bed","of":"bed","rooms":["home","sleeping"],"score":1.25,"clips":[],"pieces":[{"n":"piece_chair","k":"chair","x":-0.281,"y":-0.097,"z":2.239,"yaw":293,"rest":"floor","sink":0.097},{"n":"rug_hare","k":"rug","x":-1.566,"y":-0.028,"z":0.34,"yaw":0,"rest":"floor","sink":0.028}]},{"id":"KB-300","anchor":"table","of":"table","rooms":["home"],"score":1.25,"clips":[[0,"w",0.162],[1,"w",0.141],[2,3,0.032]],"pieces":[{"n":"piece_throne01","k":"piece_throne01","x":-2.048,"y":-0.034,"z":-0.989,"yaw":23,"rest":"floor","sink":0.034},{"n":"piece_throne01","k":"piece_throne01","x":2.034,"y":-0.034,"z":-0.969,"yaw":338,"rest":"floor","sink":0.034},{"n":"itemstandh","k":"itemstandh","x":0.078,"y":0.767,"z":-0.226,"yaw":45,"rest":"anchor"},{"n":"itemstandh","k":"itemstandh","x":-0.147,"y":0.767,"z":-0.214,"yaw":315,"rest":"anchor"},{"n":"itemstandh","k":"itemstandh","x":-0.021,"y":0.767,"z":0.298,"yaw":180,"rest":"anchor"},{"n":"itemstandh","k":"itemstandh","x":-0.044,"y":0.767,"z":-0.45,"yaw":180,"rest":"anchor"}]},{"id":"KB-301","anchor":"table","of":"round","rooms":["home"],"score":1.25,"clips":[[0,"a",0.119],[2,"a",0.134],[3,4,0.038],[3,"a",0.068],[4,"a",0.068],[8,"w",0.093]],"pieces":[{"n":"piece_throne02","k":"piece_throne02","x":-0.429,"y":-0.045,"z":1.869,"yaw":248,"rest":"floor","sink":0.045},{"n":"rug_wolf","k":"rug","x":-1.176,"y":-0.028,"z":1.573,"yaw":248,"rest":"floor","sink":0.028},{"n":"piece_throne02","k":"piece_throne02","x":-0.554,"y":0.008,"z":-1.877,"yaw":315,"rest":"floor"},{"n":"itemstandh","k":"itemstandh","x":-0.482,"y":0.768,"z":0.138,"yaw":225,"rest":"anchor"},{"n":"itemstandh","k":"itemstandh","x":-0.543,"y":0.768,"z":0.027,"yaw":135,"rest":"anchor"},{"n":"piece_groundtorch_blue","k":"floorlight","x":0.224,"y":1.626,"z":-2.158,"yaw":225,"rest":"on","on":7},{"n":"piece_groundtorch_blue","k":"floorlight","x":0.26,"y":1.641,"z":1.865,"yaw":158,"rest":"on","on":8},{"n":"wood_pole","k":"pole1","x":0.153,"y":0.472,"z":-2.093,"yaw":225,"rest":"floor","sink":0.028},{"n":"wood_pole","k":"pole1","x":0.258,"y":0.487,"z":1.999,"yaw":158,"rest":"floor"}]},{"id":"KB-302","anchor":"table","of":"table","rooms":["home"],"score":1.25,"clips":[],"pieces":[{"n":"piece_chair03","k":"chair","x":0.204,"y":-0.035,"z":0.745,"yaw":203,"rest":"floor","sink":0.035},{"n":"piece_chest","k":"chest","x":-2.715,"y":-0.026,"z":0.119,"yaw":0,"rest":"floor","sink":0.026}]},{"id":"KB-303","anchor":"hearth","of":"hearth","rooms":["home"],"score":1.25,"clips":[[0,"w",0.163]],"pieces":[{"n":"piece_chest_wood","k":"chest","x":-1.971,"y":-0.028,"z":2.402,"yaw":73,"rest":"floor","sink":0.028},{"n":"itemstand","k":"itemstand","x":1.054,"y":2.956,"z":1.089,"yaw":28,"rest":"wall"},{"n":"itemstand","k":"itemstand","x":1.738,"y":2.971,"z":0.526,"yaw":51,"rest":"wall"},{"n":"itemstand","k":"itemstand","x":-0.907,"y":2.991,"z":1.325,"yaw":343,"rest":"wall"},{"n":"itemstand","k":"itemstand","x":0.078,"y":3.009,"z":1.406,"yaw":6,"rest":"wall"}]},{"id":"KB-304","anchor":"bed","of":"bed2","rooms":["home","sleeping"],"score":1.25,"clips":[[2,"w",0.364]],"pieces":[{"n":"piece_chest_private","k":"chest","x":-0.023,"y":-0.027,"z":2.262,"yaw":0,"rest":"floor","sink":0.029},{"n":"piece_groundtorch","k":"floorlight","x":-0.007,"y":1.165,"z":-2.152,"yaw":90,"rest":"on","on":2},{"n":"wood_pole","k":"pole1","x":-0.045,"y":0.011,"z":-2.176,"yaw":0,"rest":"floor","sink":0.489}]},{"id":"KB-305","anchor":"corner","angle":90,"rooms":["home"],"score":1.25,"clips":[[0,1,0.06],[0,"w",0.375],[1,2,0.028],[1,"w",0.35],[2,"w",0.706]],"pieces":[{"n":"jute_carpet","k":"rug","x":-0.031,"y":-0.028,"z":1.842,"yaw":225,"rest":"floor","sink":0.028},{"n":"jute_carpet","k":"rug","x":-0.038,"y":-0.003,"z":1.867,"yaw":225,"rest":"floor"},{"n":"rug_deer","k":"rug","x":0.049,"y":0.025,"z":0.832,"yaw":225,"rest":"floor"}]},{"id":"KB-306","anchor":"corner","angle":113,"rooms":["home"],"score":1.25,"clips":[[1,"w",0.203]],"pieces":[{"n":"piece_chest_blackmetal","k":"chest","x":-0.046,"y":-0.006,"z":0.872,"yaw":326,"rest":"floor"},{"n":"piece_banner04","k":"banner","x":-0.842,"y":3.992,"z":0.383,"yaw":124,"rest":"wall"}]},{"id":"KB-307","anchor":"corner","angle":90,"rooms":["home"],"score":1.25,"clips":[[3,4,0.089],[3,5,0.089],[4,5,0.089],[4,6,0.089],[5,6,0.089],[5,7,0.089],[6,7,0.089],[8,9,0.089],[8,"w",0.088],[9,"w",0.053]],"pieces":[{"n":"treasure_stack","k":"treasure_stack","x":-0.205,"y":-0.02,"z":0.494,"yaw":45,"rest":"floor"},{"n":"treasure_stack","k":"treasure_stack","x":-0.366,"y":-0.02,"z":0.84,"yaw":293,"rest":"floor"},{"n":"treasure_stack","k":"treasure_stack","x":-0.013,"y":-0.02,"z":0.972,"yaw":203,"rest":"floor"},{"n":"itemstand","k":"itemstand","x":-0.934,"y":1.337,"z":0.997,"yaw":45,"rest":"wall"},{"n":"itemstand","k":"itemstand","x":-0.651,"y":1.546,"z":0.713,"yaw":45,"rest":"wall"},{"n":"itemstand","k":"itemstand","x":-0.935,"y":1.734,"z":0.997,"yaw":45,"rest":"wall"},{"n":"itemstand","k":"itemstand","x":-0.657,"y":1.915,"z":0.719,"yaw":45,"rest":"wall"},{"n":"itemstand","k":"itemstand","x":-0.927,"y":2.14,"z":0.989,"yaw":45,"rest":"wall"},{"n":"itemstand","k":"itemstand","x":0.136,"y":2.71,"z":-0.074,"yaw":45,"rest":"wall"},{"n":"itemstand","k":"itemstand","x":-0.108,"y":2.92,"z":0.17,"yaw":45,"rest":"wall"}]},{"id":"KB-308","anchor":"corner","angle":90,"rooms":["home"],"score":1.25,"clips":[[0,"w",0.038],[2,3,0.089],[3,4,0.089],[4,5,0.064],[4,"w",0.037],[5,"w",0.088]],"pieces":[{"n":"itemstandh","k":"itemstandh","x":0.175,"y":0.001,"z":0.25,"yaw":158,"rest":"floor"},{"n":"itemstand","k":"itemstand","x":0.004,"y":1.063,"z":0.066,"yaw":315,"rest":"wall"},{"n":"itemstand","k":"itemstand","x":0.116,"y":1.787,"z":0.178,"yaw":315,"rest":"wall"},{"n":"itemstand","k":"itemstand","x":0.123,"y":2.11,"z":0.186,"yaw":315,"rest":"wall"},{"n":"itemstand","k":"itemstand","x":0.177,"y":2.57,"z":0.239,"yaw":315,"rest":"wall"},{"n":"itemstand","k":"itemstand","x":0.157,"y":3.056,"z":0.22,"yaw":315,"rest":"on","on":2}]},{"id":"KB-309","anchor":"corner","angle":113,"rooms":["home"],"score":1.25,"clips":[[1,"w",0.3],[2,"w",0.3]],"pieces":[{"n":"itemstand","k":"itemstand","x":-1.552,"y":2.645,"z":0.694,"yaw":236,"rest":"on","on":1},{"n":"wood_wall_quarter","k":"quarter","x":-1.424,"y":1.375,"z":0.853,"yaw":236,"rest":"on","on":2},{"n":"wood_wall_quarter","k":"quarter","x":-1.515,"y":0.375,"z":0.717,"yaw":236,"rest":"wall"}]},{"id":"KB-310","anchor":"corner","angle":113,"rooms":["hall","storage","tavern","kitchen","smithy","workshop"],"score":1.25,"clips":[],"pieces":[{"n":"piece_chest_barrel","k":"barrel","x":-0.052,"y":-0.025,"z":0.695,"yaw":34,"rest":"floor","sink":0.029},{"n":"piece_chest_barrel","k":"barrel","x":-0.73,"y":-0.025,"z":1.127,"yaw":34,"rest":"floor","sink":0.029}]},{"id":"KB-311","anchor":"corner","angle":90,"rooms":["home","hall","smithy"],"score":1.25,"clips":[],"pieces":[{"n":"ArmorStand","k":"ArmorStand","x":0.385,"y":0.008,"z":1.202,"yaw":315,"rest":"floor"},{"n":"ArmorStand","k":"ArmorStand","x":-0.149,"y":0.008,"z":0.67,"yaw":315,"rest":"floor"},{"n":"itemstand","k":"itemstand","x":0.945,"y":3.091,"z":1.007,"yaw":315,"rest":"wall"}]},{"id":"KB-312","anchor":"corner","angle":90,"rooms":["home"],"score":1,"clips":[[0,"w",0.278],[1,"w",0.28]],"pieces":[{"n":"itemstand","k":"itemstand","x":-0.628,"y":0.378,"z":0.692,"yaw":45,"rest":"floor"},{"n":"itemstand","k":"itemstand","x":-0.277,"y":0.38,"z":0.341,"yaw":45,"rest":"floor"}]},{"id":"KB-313","anchor":"corner","angle":90,"rooms":["tavern","home"],"score":1,"clips":[[0,"w",0.02]],"pieces":[{"n":"itemstand","k":"itemstand","x":-0.298,"y":0.247,"z":0.333,"yaw":45,"rest":"floor","sink":0.028},{"n":"itemstand","k":"itemstand","x":-0.181,"y":0.247,"z":0.434,"yaw":45,"rest":"floor","sink":0.028},{"n":"itemstand","k":"itemstand","x":-0.1,"y":0.247,"z":0.541,"yaw":45,"rest":"floor","sink":0.028}]},{"id":"KB-314","anchor":"corner","angle":90,"rooms":["tavern"],"score":1,"clips":[],"pieces":[{"n":"itemstand","k":"itemstand","x":-0.226,"y":0.247,"z":0.296,"yaw":45,"rest":"floor","sink":0.028},{"n":"itemstand","k":"itemstand","x":-0.169,"y":0.32,"z":0.429,"yaw":45,"rest":"floor"},{"n":"itemstand","k":"itemstand","x":-0.077,"y":0.32,"z":0.52,"yaw":45,"rest":"floor"},{"n":"itemstand","k":"itemstand","x":0.03,"y":0.32,"z":0.626,"yaw":45,"rest":"floor"}]},{"id":"KB-315","anchor":"corner","angle":90,"rooms":["tavern","home","kitchen"],"score":1,"clips":[],"pieces":[{"n":"piece_pot1","k":"pot","x":0.561,"y":-0.027,"z":1.635,"yaw":135,"rest":"floor","sink":0.029},{"n":"piece_pot2","k":"pot","x":-0.199,"y":-0.025,"z":1.02,"yaw":135,"rest":"floor","sink":0.029}]},{"id":"KB-316","anchor":"corner","angle":90,"rooms":["home","kitchen"],"score":1,"clips":[[0,"w",0.423],[1,"w",0.469],[2,"w",0.326],[3,"w",0.349]],"pieces":[{"n":"piece_chest_wood","k":"chest","x":0.824,"y":0,"z":1.293,"yaw":45,"rest":"floor"},{"n":"piece_chest_wood","k":"chest","x":0.151,"y":0,"z":0.554,"yaw":45,"rest":"floor"},{"n":"piece_chest_wood","k":"chest","x":0.674,"y":1.097,"z":1.377,"yaw":45,"rest":"wall"},{"n":"piece_chest_wood","k":"chest","x":-0.017,"y":1.097,"z":0.652,"yaw":45,"rest":"wall"}]},{"id":"KB-317","anchor":"corner","angle":90,"rooms":["barn","home","tavern","storage","kitchen","smithy","workshop"],"score":1,"clips":[],"pieces":[{"n":"piece_chest_barrel","k":"barrel","x":0.096,"y":0.004,"z":0.762,"yaw":135,"rest":"floor"},{"n":"piece_chest_barrel","k":"barrel","x":-0.572,"y":0.004,"z":1.31,"yaw":135,"rest":"floor"}]},{"id":"KB-318","anchor":"table","of":"round","rooms":["hall"],"score":0.75,"clips":[],"pieces":[{"n":"piece_chair03","k":"chair","x":-0.993,"y":-0.01,"z":1.458,"yaw":146,"rest":"floor"},{"n":"piece_chair03","k":"chair","x":-1.695,"y":-0.035,"z":0.088,"yaw":90,"rest":"floor","sink":0.035},{"n":"piece_chair03","k":"chair","x":1.866,"y":-0.035,"z":0.408,"yaw":259,"rest":"floor","sink":0.035},{"n":"piece_chair03","k":"chair","x":0.68,"y":-0.035,"z":-1.453,"yaw":326,"rest":"floor","sink":0.035},{"n":"rug_fur","k":"rug","x":0.214,"y":-0.028,"z":0.696,"yaw":0,"rest":"floor","sink":0.028}]},{"id":"KB-319","anchor":"window","rooms":["any"],"score":0.75,"clips":[],"pieces":[{"n":"itemstand","k":"itemstand","x":0.001,"y":2.204,"z":0.045,"yaw":0,"rest":"wall"},{"n":"itemstand","k":"itemstand","x":-0.001,"y":2.069,"z":0.134,"yaw":0,"rest":"wall"}]},{"id":"KB-320","anchor":"window","rooms":["home","storage"],"score":0.75,"clips":[[1,"w",0.199]],"pieces":[{"n":"piece_banner05","k":"banner","x":0.649,"y":3.431,"z":0.055,"yaw":270,"rest":"wall"},{"n":"piece_dvergr_lantern","k":"walllight","x":-0.582,"y":3.565,"z":-0.199,"yaw":90,"rest":"wall"}]},{"id":"KB-321","anchor":"table","of":"table","rooms":["tavern"],"score":0.75,"clips":[],"pieces":[{"n":"piece_bench01","k":"bench","x":0.033,"y":-0.036,"z":1.281,"yaw":180,"rest":"floor","sink":0.036},{"n":"piece_bench01","k":"bench","x":0.163,"y":-0.036,"z":-1.087,"yaw":0,"rest":"floor","sink":0.036},{"n":"rug_fur","k":"rug","x":1.336,"y":-0.028,"z":1.281,"yaw":191,"rest":"floor","sink":0.028}]},{"id":"KB-322","anchor":"hearth","of":"pit","rooms":["home"],"score":0.75,"clips":[[0,1,0.01]],"pieces":[{"n":"rug_deer","k":"rug","x":-1.883,"y":-0.028,"z":1.843,"yaw":313,"rest":"floor","sink":0.028},{"n":"rug_deer","k":"rug","x":1.883,"y":-0.028,"z":1.893,"yaw":43,"rest":"floor","sink":0.028}]},{"id":"KB-323","anchor":"corner","angle":135,"rooms":["home"],"score":0.75,"clips":[],"pieces":[{"n":"piece_banner04","k":"banner","x":0.688,"y":2.586,"z":0.447,"yaw":248,"rest":"wall"},{"n":"piece_banner01","k":"banner","x":-0.749,"y":2.595,"z":0.472,"yaw":293,"rest":"wall"}]},{"id":"KB-324","anchor":"window","rooms":["tavern","home"],"score":0.75,"clips":[],"pieces":[{"n":"itemstandh","k":"itemstandh","x":0.367,"y":-0.028,"z":0.576,"yaw":0,"rest":"floor","sink":0.028},{"n":"itemstandh","k":"itemstandh","x":-0.367,"y":-0.028,"z":0.589,"yaw":90,"rest":"floor","sink":0.028}]},{"id":"KB-325","anchor":"window","rooms":["home"],"score":0.75,"clips":[],"pieces":[{"n":"itemstandh","k":"itemstandh","x":0.079,"y":-0.21,"z":0.375,"yaw":180,"rest":"floor","sink":0.21},{"n":"itemstandh","k":"itemstandh","x":-0.079,"y":-0.21,"z":0.672,"yaw":180,"rest":"floor","sink":0.21}]},{"id":"KB-326","anchor":"window","rooms":["storage"],"score":0.75,"clips":[],"pieces":[{"n":"itemstandh","k":"itemstandh","x":0.011,"y":0.022,"z":0.778,"yaw":56,"rest":"floor"},{"n":"itemstandh","k":"itemstandh","x":-0.011,"y":-0.167,"z":1.19,"yaw":253,"rest":"floor","sink":0.167}]},{"id":"KB-327","anchor":"window","rooms":["home","storage"],"score":0.75,"clips":[],"pieces":[{"n":"piece_chest_private","k":"chest","x":0.51,"y":0.001,"z":1.17,"yaw":259,"rest":"floor"},{"n":"piece_chest_private","k":"chest","x":0.009,"y":0.001,"z":1.106,"yaw":259,"rest":"floor"},{"n":"piece_chest_private","k":"chest","x":-0.51,"y":0.001,"z":0.984,"yaw":259,"rest":"floor"}]},{"id":"KB-328","anchor":"post","of":"post","rooms":["home"],"score":0.75,"clips":[[1,"a",0.195]],"pieces":[{"n":"piece_groundtorch_wood","k":"floorlight","x":0,"y":1.624,"z":0.318,"yaw":238,"rest":"on","on":1},{"n":"wood_pole","k":"pole1","x":-0.155,"y":0.471,"z":0.241,"yaw":216,"rest":"floor","sink":0.029}]},{"id":"KB-329","anchor":"post","of":"post","rooms":["home"],"score":0.6,"once":true,"clips":[[5,6,0.079],[6,7,0.086],[7,8,0.077],[9,"a",0.193]],"pieces":[{"n":"itemstandh","k":"itemstandh","x":-0.077,"y":1.516,"z":0.86,"yaw":83,"rest":"on","on":9},{"n":"itemstandh","k":"itemstandh","x":-0.06,"y":1.516,"z":0.657,"yaw":83,"rest":"on","on":9},{"n":"itemstandh","k":"itemstandh","x":-0.045,"y":1.516,"z":0.457,"yaw":83,"rest":"on","on":9},{"n":"itemstandh","k":"itemstandh","x":-0.228,"y":-0.475,"z":0.847,"yaw":83,"rest":"floor","sink":0.475},{"n":"itemstandh","k":"itemstandh","x":-0.205,"y":-0.475,"z":0.564,"yaw":83,"rest":"floor","sink":0.475},{"n":"sign","k":"sign","x":0.174,"y":-0.132,"z":0.672,"yaw":83,"rest":"floor","sink":0.407},{"n":"sign","k":"sign","x":0.175,"y":0.339,"z":0.662,"yaw":83,"rest":"floor"},{"n":"sign","k":"sign","x":0.193,"y":0.803,"z":0.509,"yaw":83,"rest":"hang"},{"n":"sign","k":"sign","x":0.181,"y":1.276,"z":0.612,"yaw":83,"rest":"hang"},{"n":"wood_beam","k":"beam2","x":-0.112,"y":1.315,"z":1.016,"yaw":83,"rest":"wall"}]},{"id":"KB-330","anchor":"table","of":"table","rooms":["home","kitchen","tavern"],"score":0.6,"once":true,"clips":[[1,7,0.251],[1,"a",0.077],[2,"w",0.051],[3,7,0.413],[3,"a",0.119]],"pieces":[{"n":"piece_pot1","k":"pot","x":-1.534,"y":0.023,"z":-0.589,"yaw":0,"rest":"floor"},{"n":"piece_chest_private","k":"chest","x":-0.511,"y":-0.027,"z":0.313,"yaw":0,"rest":"floor","sink":0.029},{"n":"blackforge_ext2_vise","k":"blackforge_ext2_vise","x":1.606,"y":-0.025,"z":-0.62,"yaw":113,"rest":"floor","sink":0.028},{"n":"piece_chest_private","k":"chest","x":0.663,"y":-0.027,"z":0.311,"yaw":0,"rest":"floor","sink":0.029},{"n":"itemstandh","k":"itemstandh","x":0.867,"y":0.766,"z":-0.146,"yaw":180,"rest":"anchor"},{"n":"itemstandh","k":"itemstandh","x":0.367,"y":0.766,"z":-0.102,"yaw":225,"rest":"anchor"},{"n":"itemstandh","k":"itemstandh","x":-0.02,"y":0.766,"z":0.213,"yaw":113,"rest":"anchor"},{"n":"piece_chest_private","k":"chest","x":0.157,"y":-0.027,"z":0.313,"yaw":0,"rest":"floor","sink":0.029},{"n":"itemstandh","k":"itemstandh","x":-0.551,"y":0.766,"z":-0.108,"yaw":45,"rest":"anchor"},{"n":"itemstandh","k":"itemstandh","x":-0.861,"y":0.766,"z":0.339,"yaw":0,"rest":"anchor"}]},{"id":"KB-331","anchor":"bed","of":"bed2","rooms":["home","sleeping"],"score":0.6,"once":true,"clips":[[1,2,0.084],[8,"w",0.103]],"pieces":[{"n":"goblinking_totemholder","k":"goblinking_totemholder","x":-0.301,"y":-0.514,"z":0.683,"yaw":84,"rest":"floor","sink":0.514},{"n":"piece_chair","k":"chair","x":-0.975,"y":-0.084,"z":-2.839,"yaw":354,"rest":"floor","sink":0.084},{"n":"piece_gift1","k":"gift","x":-1.067,"y":-0.034,"z":-3.312,"yaw":321,"rest":"floor","sink":0.034},{"n":"rug_fur","k":"rug","x":-0.109,"y":-0.028,"z":2.187,"yaw":186,"rest":"floor","sink":0.028},{"n":"rug_fur","k":"rug","x":-0.355,"y":-0.028,"z":-0.154,"yaw":186,"rest":"floor","sink":0.028},{"n":"rug_fur","k":"rug","x":1.595,"y":-0.028,"z":-0.03,"yaw":186,"rest":"floor","sink":0.028},{"n":"rug_wolf","k":"rug","x":0.236,"y":-0.003,"z":2.322,"yaw":96,"rest":"floor"},{"n":"rug_wolf","k":"rug","x":1.611,"y":-0.003,"z":0.27,"yaw":174,"rest":"floor"},{"n":"piece_chest_blackmetal","k":"chest","x":-2.679,"y":0.019,"z":-0.464,"yaw":270,"rest":"floor"},{"n":"piece_xmastree","k":"piece_xmastree","x":-0.916,"y":0.685,"z":-2.915,"yaw":332,"rest":"hang"}]},{"id":"KB-332","anchor":"hearth","of":"hearth","rooms":["home","hall","smithy"],"score":0.6,"once":true,"clips":[[0,1,0.062],[0,7,0.114],[0,9,0.116],[0,"a",0.116],[0,"w",0.213],[1,8,0.115],[1,9,0.114],[1,"a",0.113],[1,"w",0.21],[6,"w",0.24],[7,"a",0.059],[7,"w",0.095],[9,"a",0.132]],"pieces":[{"n":"jute_carpet","k":"rug","x":0.129,"y":-0.028,"z":2.404,"yaw":176,"rest":"floor","sink":0.028},{"n":"jute_carpet","k":"rug","x":-3.082,"y":-0.028,"z":2.07,"yaw":176,"rest":"floor","sink":0.028},{"n":"piece_chair02","k":"chair","x":3.617,"y":0.035,"z":1.899,"yaw":63,"rest":"floor"},{"n":"ArmorStand","k":"ArmorStand","x":1.849,"y":0.332,"z":1.705,"yaw":333,"rest":"on","on":7},{"n":"ArmorStand","k":"ArmorStand","x":-3.034,"y":0.384,"z":1.203,"yaw":356,"rest":"on","on":8},{"n":"ArmorStand","k":"ArmorStand","x":-1.955,"y":0.384,"z":1.286,"yaw":333,"rest":"on","on":9},{"n":"wood_dragon1","k":"carving","x":2.633,"y":2.061,"z":1.983,"yaw":356,"rest":"wall"},{"n":"wood_beam","k":"beam2","x":1.796,"y":0.172,"z":2.278,"yaw":176,"rest":"floor","sink":0.028},{"n":"wood_beam","k":"beam2","x":-2.925,"y":0.172,"z":1.961,"yaw":176,"rest":"floor","sink":0.028},{"n":"wood_beam_1","k":"beam1","x":-1.672,"y":0.172,"z":1.365,"yaw":86,"rest":"floor","sink":0.028}]},{"id":"KB-333","anchor":"hearth","of":"hearth","rooms":["home","tavern","kitchen","storage"],"score":0.6,"once":true,"clips":[[0,6,0.038],[0,"a",0.583],[2,"w",0.15],[3,"w",0.192],[5,6,0.55]],"pieces":[{"n":"cauldron_ext3_butchertable","k":"cauldron_ext3_butchertable","x":-1.102,"y":-0.013,"z":1.098,"yaw":183,"rest":"floor"},{"n":"rug_fur","k":"rug","x":-0.401,"y":0,"z":2.775,"yaw":273,"rest":"floor"},{"n":"piece_oven","k":"piece_oven","x":2.623,"y":0,"z":2.371,"yaw":183,"rest":"floor"},{"n":"fermenter","k":"fermenter","x":-3.024,"y":0.001,"z":2.281,"yaw":3,"rest":"floor"},{"n":"piece_chair03","k":"chair","x":-0.55,"y":0.018,"z":2.145,"yaw":115,"rest":"floor"},{"n":"piece_cauldron","k":"piece_cauldron","x":0.897,"y":0.583,"z":0.496,"yaw":205,"rest":"wall"},{"n":"piece_cookingstation_iron","k":"piece_cookingstation_iron","x":-0.113,"y":0.583,"z":0.119,"yaw":183,"rest":"wall"},{"n":"cauldron_ext1_spice","k":"cauldron_ext1_spice","x":0.82,"y":1.669,"z":3.494,"yaw":3,"rest":"wall"},{"n":"piece_chest_wood","k":"chest","x":2.458,"y":1.978,"z":2.36,"yaw":273,"rest":"wall"},{"n":"cauldron_ext4_pots","k":"cauldron_ext4_pots","x":-1.718,"y":2.113,"z":2.676,"yaw":93,"rest":"wall"}]},{"id":"KB-334","anchor":"post","of":"post","rooms":["any"],"score":0.6,"once":true,"clips":[[0,"a",0.097],[1,2,0.02],[9,"a",0.21]],"pieces":[{"n":"piece_chest_wood","k":"chest","x":-0.003,"y":0,"z":0.986,"yaw":61,"rest":"floor"},{"n":"itemstandh","k":"itemstandh","x":0.034,"y":1.097,"z":0.933,"yaw":129,"rest":"on","on":8},{"n":"itemstandh","k":"itemstandh","x":0.05,"y":1.097,"z":0.689,"yaw":129,"rest":"on","on":9},{"n":"itemstandh","k":"itemstandh","x":0.24,"y":1.097,"z":0.818,"yaw":129,"rest":"on","on":9},{"n":"itemstandh","k":"itemstandh","x":0.457,"y":1.097,"z":0.782,"yaw":129,"rest":"on","on":9},{"n":"itemstandh","k":"itemstandh","x":0.317,"y":1.097,"z":0.529,"yaw":129,"rest":"on","on":9},{"n":"itemstand","k":"itemstand","x":-0.669,"y":1.555,"z":0.606,"yaw":241,"rest":"hang"},{"n":"itemstand","k":"itemstand","x":-0.433,"y":1.558,"z":0.175,"yaw":241,"rest":"hang"},{"n":"wood_floor_1x1","k":"floor1","x":-0.285,"y":1,"z":1.556,"yaw":331,"rest":"on","on":0},{"n":"wood_floor_1x1","k":"floor1","x":0.197,"y":1,"z":0.679,"yaw":331,"rest":"on","on":0}]},{"id":"KB-335","anchor":"bed","of":"bed2","rooms":["tavern","home","sleeping"],"score":0.58,"once":true,"clips":[[2,"a",0.042]],"pieces":[{"n":"piece_chair","k":"chair","x":1.657,"y":-0.073,"z":-0.988,"yaw":0,"rest":"floor","sink":0.073},{"n":"piece_chair","k":"chair","x":-1.808,"y":-0.073,"z":-1.064,"yaw":0,"rest":"floor","sink":0.073},{"n":"piece_chest_private","k":"chest","x":-0.058,"y":-0.002,"z":2.034,"yaw":0,"rest":"floor"},{"n":"rug_fur","k":"rug","x":-1.966,"y":-0.028,"z":0.115,"yaw":0,"rest":"floor","sink":0.028},{"n":"rug_fur","k":"rug","x":-0.117,"y":-0.028,"z":2.48,"yaw":0,"rest":"floor","sink":0.028},{"n":"itemstandh","k":"itemstandh","x":-1.814,"y":0.529,"z":-1.057,"yaw":0,"rest":"wall"},{"n":"rug_fur","k":"rug","x":1.732,"y":-0.028,"z":-0.187,"yaw":338,"rest":"floor","sink":0.028},{"n":"itemstandh","k":"itemstandh","x":1.649,"y":0.529,"z":-0.984,"yaw":0,"rest":"wall"},{"n":"piece_banner02","k":"banner","x":2.196,"y":3.558,"z":0.301,"yaw":180,"rest":"anchor"}]},{"id":"KB-336","anchor":"hearth","of":"hearth","rooms":["smithy","kitchen","home","tavern"],"score":0.58,"once":true,"clips":[],"pieces":[{"n":"blackforge_ext3_metalcutter","k":"blackforge_ext3_metalcutter","x":-2.245,"y":0.049,"z":3.141,"yaw":59,"rest":"floor"},{"n":"blackforge_ext1","k":"blackforge_ext1","x":-0.119,"y":0.055,"z":3.904,"yaw":351,"rest":"floor"},{"n":"piece_pot2","k":"pot","x":2.029,"y":0.003,"z":3.465,"yaw":194,"rest":"floor"},{"n":"itemstand","k":"itemstand","x":2.212,"y":2.243,"z":3.151,"yaw":351,"rest":"wall"},{"n":"itemstand","k":"itemstand","x":-2.254,"y":2.272,"z":2.445,"yaw":351,"rest":"wall"},{"n":"itemstand","k":"itemstand","x":2.43,"y":3.027,"z":2.925,"yaw":351,"rest":"wall"},{"n":"itemstand","k":"itemstand","x":-2.658,"y":2.943,"z":2.006,"yaw":351,"rest":"wall"},{"n":"piece_banner01","k":"banner","x":-2.889,"y":3.65,"z":0.289,"yaw":171,"rest":"wall"},{"n":"piece_banner01","k":"banner","x":3.494,"y":4.65,"z":1.296,"yaw":171,"rest":"wall"}]},{"id":"KB-337","anchor":"bed","of":"bed2","rooms":["home","sleeping"],"score":0.58,"once":true,"clips":[[0,6,0.038],[1,5,0.023],[1,6,0.038],[2,7,0.024],[2,8,0.038],[3,7,0.038]],"pieces":[{"n":"sign","k":"sign","x":1.562,"y":0.247,"z":-1.022,"yaw":270,"rest":"floor","sink":0.028},{"n":"sign","k":"sign","x":1.75,"y":0.247,"z":-1.031,"yaw":270,"rest":"floor","sink":0.028},{"n":"sign","k":"sign","x":-1.806,"y":0.247,"z":-0.96,"yaw":90,"rest":"floor","sink":0.028},{"n":"sign","k":"sign","x":-1.607,"y":0.247,"z":-0.983,"yaw":90,"rest":"floor","sink":0.028},{"n":"rug_fur","k":"rug","x":0.171,"y":-0.028,"z":2.261,"yaw":270,"rest":"floor","sink":0.028},{"n":"itemstandh","k":"itemstandh","x":1.871,"y":-0.028,"z":-1.459,"yaw":0,"rest":"floor","sink":0.028},{"n":"itemstandh","k":"itemstandh","x":1.645,"y":-0.028,"z":-1.458,"yaw":0,"rest":"floor","sink":0.028},{"n":"itemstandh","k":"itemstandh","x":-1.686,"y":-0.028,"z":-1.363,"yaw":0,"rest":"floor","sink":0.028},{"n":"itemstandh","k":"itemstandh","x":-1.879,"y":-0.028,"z":-1.359,"yaw":0,"rest":"floor","sink":0.028}]},{"id":"KB-338","anchor":"hearth","of":"hearth","rooms":["workshop","smithy"],"score":0.58,"once":true,"clips":[[0,"a",0.287],[1,"a",0.083],[1,"w",0.101],[2,3,0.381],[2,4,0.055],[2,"w",0.544],[3,4,0.069],[4,"a",0.024],[4,"w",0.069],[5,"w",0.119]],"pieces":[{"n":"goblinking_totemholder","k":"goblinking_totemholder","x":1.277,"y":-0.362,"z":-0.796,"yaw":276,"rest":"floor","sink":0.362},{"n":"piece_workbench","k":"piece_workbench","x":2.051,"y":-0.025,"z":2.702,"yaw":118,"rest":"floor","sink":0.025},{"n":"piece_workbench","k":"piece_workbench","x":1.205,"y":-0.025,"z":3.895,"yaw":298,"rest":"floor","sink":0.025},{"n":"cauldron_ext5_mortarandpestle","k":"cauldron_ext5_mortarandpestle","x":-0.041,"y":-0.013,"z":3.277,"yaw":34,"rest":"floor"},{"n":"rug_deer","k":"rug","x":-1.262,"y":0,"z":1.932,"yaw":220,"rest":"floor"},{"n":"rug_deer","k":"rug","x":-2.286,"y":0.05,"z":0.975,"yaw":40,"rest":"floor"},{"n":"piece_cookingstation_iron","k":"piece_cookingstation_iron","x":-0.395,"y":0.083,"z":0.251,"yaw":130,"rest":"floor"},{"n":"rug_wolf","k":"rug","x":-1.85,"y":0.1,"z":1.471,"yaw":40,"rest":"floor"},{"n":"piece_banner10","k":"banner","x":1.427,"y":3.892,"z":3.743,"yaw":28,"rest":"wall"}]},{"id":"KB-339","anchor":"bed","of":"bed2","rooms":["home","sleeping"],"score":0.58,"once":true,"clips":[[1,"w",0.047],[8,"w",0.121]],"pieces":[{"n":"dvergrprops_lantern_standing","k":"dvergrprops_lantern_standing","x":-1.413,"y":-0.498,"z":2.444,"yaw":292,"rest":"floor","sink":0.498},{"n":"goblinking_totemholder","k":"goblinking_totemholder","x":1.052,"y":-0.432,"z":-1.368,"yaw":270,"rest":"floor","sink":0.432},{"n":"piece_chair03","k":"chair","x":2.121,"y":-0.035,"z":-0.736,"yaw":349,"rest":"floor","sink":0.035},{"n":"rug_fur","k":"rug","x":0.379,"y":-0.028,"z":2.8,"yaw":264,"rest":"floor","sink":0.028},{"n":"rug_fur","k":"rug","x":-1.342,"y":-0.028,"z":0.481,"yaw":191,"rest":"floor","sink":0.028},{"n":"rug_wolf","k":"rug","x":0.349,"y":-0.003,"z":2.814,"yaw":259,"rest":"floor"},{"n":"rug_wolf","k":"rug","x":-1.464,"y":-0.003,"z":0.454,"yaw":191,"rest":"floor"},{"n":"sign","k":"sign","x":-0.004,"y":0.363,"z":1.879,"yaw":0,"rest":"floor"},{"n":"piece_chest_wood","k":"chest","x":-3.267,"y":0.41,"z":0.722,"yaw":22,"rest":"wall"}]},{"id":"KB-340","anchor":"hearth","of":"hearth","rooms":["any"],"score":0.58,"once":true,"clips":[[3,"w",0.037],[6,"w",0.152]],"pieces":[{"n":"rug_fur","k":"rug","x":2.031,"y":0,"z":1.519,"yaw":338,"rest":"floor"},{"n":"rug_fur","k":"rug","x":-0.472,"y":0,"z":1.43,"yaw":248,"rest":"floor"},{"n":"rug_fur","k":"rug","x":-2.63,"y":0,"z":-0.421,"yaw":338,"rest":"floor"},{"n":"piece_chest","k":"chest","x":-4.007,"y":0.002,"z":1.184,"yaw":68,"rest":"floor"},{"n":"piece_chair03","k":"chair","x":2.526,"y":0.018,"z":1.292,"yaw":270,"rest":"floor"},{"n":"piece_chair03","k":"chair","x":1.337,"y":0.018,"z":2.965,"yaw":180,"rest":"floor"},{"n":"piece_dvergr_lantern","k":"walllight","x":0.57,"y":3.69,"z":-1.388,"yaw":68,"rest":"wall"},{"n":"piece_banner01","k":"banner","x":3.089,"y":3.967,"z":0.025,"yaw":248,"rest":"wall"},{"n":"piece_banner01","k":"banner","x":-2.24,"y":3.981,"z":-2.165,"yaw":248,"rest":"wall"}]},{"id":"KB-341","anchor":"hearth","of":"hearth","rooms":["any"],"score":0.58,"once":true,"clips":[[0,2,0.408],[0,"w",0.307],[2,"w",0.303],[3,"a",0.048],[3,"w",0.279],[4,"a",0.048],[4,"w",0.276],[5,8,0.061],[6,"w",0.398],[7,"w",0.412]],"pieces":[{"n":"darkwood_raven","k":"carving","x":1.966,"y":0.258,"z":1.715,"yaw":329,"rest":"floor"},{"n":"rug_wolf","k":"rug","x":-2.621,"y":0.354,"z":-1.629,"yaw":59,"rest":"wall"},{"n":"darkwood_raven","k":"carving","x":2.008,"y":0.46,"z":1.653,"yaw":329,"rest":"wall"},{"n":"piece_chest","k":"chest","x":-2.255,"y":0.832,"z":1.625,"yaw":59,"rest":"on","on":6},{"n":"piece_chest","k":"chest","x":0.439,"y":0.832,"z":-2.865,"yaw":59,"rest":"on","on":7},{"n":"darkwood_raven","k":"carving","x":-0.164,"y":3.472,"z":3.31,"yaw":149,"rest":"on","on":8},{"n":"wood_floor_1x1","k":"floor1","x":-2.388,"y":0.678,"z":2.039,"yaw":284,"rest":"wall"},{"n":"wood_floor_1x1","k":"floor1","x":0.735,"y":0.672,"z":-3.14,"yaw":14,"rest":"wall"},{"n":"wood_beam_1","k":"beam1","x":0.856,"y":3.133,"z":1.619,"yaw":239,"rest":"hang"}]},{"id":"KB-342","anchor":"bed","of":"bed2","rooms":["home","sleeping"],"score":0.58,"once":true,"clips":[[2,3,0.321],[2,"a",0.058],[2,"w",0.262],[3,"a",0.058],[3,"w",0.262]],"pieces":[{"n":"goblinking_totemholder","k":"goblinking_totemholder","x":3.032,"y":-0.503,"z":-0.059,"yaw":45,"rest":"floor","sink":0.504},{"n":"goblinking_totemholder","k":"goblinking_totemholder","x":0.186,"y":-0.48,"z":2.751,"yaw":45,"rest":"floor","sink":0.481},{"n":"darkwood_raven","k":"carving","x":2.688,"y":-0.258,"z":-1.754,"yaw":270,"rest":"floor","sink":0.458},{"n":"darkwood_raven","k":"carving","x":-2.521,"y":-0.252,"z":-1.754,"yaw":90,"rest":"floor","sink":0.452},{"n":"rug_fur","k":"rug","x":2.34,"y":-0.028,"z":0.112,"yaw":0,"rest":"floor","sink":0.028},{"n":"rug_wolf","k":"rug","x":0.021,"y":-0.028,"z":2.447,"yaw":281,"rest":"floor","sink":0.028},{"n":"rug_fur","k":"rug","x":-2.296,"y":-0.028,"z":0.368,"yaw":0,"rest":"floor","sink":0.028},{"n":"piece_chest","k":"chest","x":3.306,"y":-0.001,"z":-0.141,"yaw":270,"rest":"floor"},{"n":"piece_chest","k":"chest","x":-3.262,"y":-0.001,"z":-0.408,"yaw":90,"rest":"floor"}]},{"id":"KB-343","anchor":"table","of":"round","rooms":["home"],"score":0.56,"once":true,"clips":[[1,2,0.116],[1,3,0.044],[1,4,0.114],[1,"w",0.347],[2,3,0.092],[3,4,0.092],[3,5,0.092],[3,6,0.092],[3,"a",0.055],[7,"a",0.069]],"pieces":[{"n":"goblinking_totemholder","k":"goblinking_totemholder","x":-1.288,"y":-0.321,"z":0.815,"yaw":23,"rest":"floor","sink":0.322},{"n":"jute_carpet","k":"rug","x":2.68,"y":0,"z":0.386,"yaw":270,"rest":"floor"},{"n":"piece_blackwood_bench01","k":"bench","x":1.253,"y":0,"z":1.492,"yaw":259,"rest":"floor"},{"n":"jute_carpet_blue","k":"rug","x":0.228,"y":0,"z":0.129,"yaw":0,"rest":"floor"},{"n":"piece_blackwood_bench01","k":"bench","x":1.397,"y":0,"z":-1.172,"yaw":0,"rest":"floor"},{"n":"piece_blackwood_bench01","k":"bench","x":-1.241,"y":0,"z":1.279,"yaw":180,"rest":"floor"},{"n":"piece_blackwood_bench01","k":"bench","x":-1.157,"y":0,"z":-1.17,"yaw":90,"rest":"floor"},{"n":"piece_jackoturnip","k":"piece_jackoturnip","x":-0.238,"y":0.841,"z":-0.163,"yaw":270,"rest":"anchor"}]},{"id":"KB-344","anchor":"table","of":"table","rooms":["any"],"score":0.56,"once":true,"clips":[[1,2,0.095],[1,3,0.094],[1,"a",0.275],[2,4,0.094],[2,"a",0.275],[3,4,0.093],[3,"a",0.275],[4,"a",0.275]],"pieces":[{"n":"rug_fur","k":"rug","x":0.925,"y":-0.028,"z":2.184,"yaw":180,"rest":"floor","sink":0.028},{"n":"itemstand","k":"itemstand","x":-0.939,"y":0.766,"z":0.081,"yaw":135,"rest":"wall"},{"n":"itemstand","k":"itemstand","x":-0.658,"y":0.766,"z":0.081,"yaw":225,"rest":"wall"},{"n":"itemstand","k":"itemstand","x":-0.944,"y":0.766,"z":-0.197,"yaw":45,"rest":"wall"},{"n":"itemstand","k":"itemstand","x":-0.661,"y":0.766,"z":-0.199,"yaw":315,"rest":"wall"},{"n":"itemstandh","k":"itemstandh","x":-0.198,"y":0.766,"z":-0.049,"yaw":180,"rest":"anchor"},{"n":"itemstandh","k":"itemstandh","x":0.349,"y":0.766,"z":-0.057,"yaw":180,"rest":"anchor"},{"n":"itemstandh","k":"itemstandh","x":0.904,"y":0.766,"z":-0.06,"yaw":180,"rest":"anchor"}]},{"id":"KB-345","anchor":"table","of":"table","rooms":["smithy"],"score":0.56,"once":true,"clips":[],"pieces":[{"n":"itemstandh","k":"itemstandh","x":-0.282,"y":0.837,"z":0.044,"yaw":45,"rest":"anchor"},{"n":"rug_wolf","k":"rug","x":-0.096,"y":-0.028,"z":0.013,"yaw":270,"rest":"floor","sink":0.028},{"n":"itemstandh","k":"itemstandh","x":0.865,"y":0.837,"z":-0.287,"yaw":270,"rest":"anchor"},{"n":"piece_chair02","k":"chair","x":0.432,"y":-0.015,"z":1.018,"yaw":203,"rest":"floor","sink":0.028},{"n":"piece_chair02","k":"chair","x":-0.476,"y":0.01,"z":-0.827,"yaw":0,"rest":"floor"},{"n":"piece_chair02","k":"chair","x":0.436,"y":0.01,"z":-0.835,"yaw":0,"rest":"floor"},{"n":"itemstandh","k":"itemstandh","x":0.126,"y":0.837,"z":0.338,"yaw":270,"rest":"anchor"},{"n":"itemstandh","k":"itemstandh","x":0.877,"y":0.837,"z":0.223,"yaw":225,"rest":"anchor"}]},{"id":"KB-346","anchor":"bed","of":"bed2","rooms":["home","sleeping"],"score":0.56,"once":true,"clips":[[0,5,0.038],[1,5,0.038],[2,6,0.038],[3,7,0.038]],"pieces":[{"n":"sign","k":"sign","x":-1.849,"y":0.247,"z":-0.754,"yaw":270,"rest":"floor","sink":0.028},{"n":"sign","k":"sign","x":-1.647,"y":0.247,"z":-0.764,"yaw":270,"rest":"floor","sink":0.028},{"n":"sign","k":"sign","x":1.563,"y":0.247,"z":-0.731,"yaw":90,"rest":"floor","sink":0.028},{"n":"sign","k":"sign","x":1.77,"y":0.247,"z":-0.734,"yaw":90,"rest":"floor","sink":0.028},{"n":"rug_fur","k":"rug","x":-0.02,"y":-0.028,"z":2.449,"yaw":270,"rest":"floor","sink":0.028},{"n":"itemstandh","k":"itemstandh","x":-1.748,"y":-0.028,"z":-1.192,"yaw":180,"rest":"floor","sink":0.028},{"n":"itemstandh","k":"itemstandh","x":1.633,"y":-0.028,"z":-1.158,"yaw":180,"rest":"floor","sink":0.028},{"n":"itemstandh","k":"itemstandh","x":1.85,"y":-0.028,"z":-1.158,"yaw":180,"rest":"floor","sink":0.028}]},{"id":"KB-347","anchor":"hearth","of":"hearth","rooms":["any"],"score":0.56,"once":true,"clips":[[0,2,0.091],[1,3,0.091],[2,"a",0.109],[2,"w",0.092],[3,"a",0.109],[3,"w",0.092],[4,6,0.12],[5,7,0.087]],"pieces":[{"n":"piece_throne02","k":"piece_throne02","x":2.519,"y":-0.017,"z":2.332,"yaw":360,"rest":"floor"},{"n":"piece_throne02","k":"piece_throne02","x":-2.481,"y":-0.017,"z":2.307,"yaw":360,"rest":"floor"},{"n":"jute_carpet_blue","k":"rug","x":2.412,"y":0,"z":2.795,"yaw":90,"rest":"floor"},{"n":"jute_carpet_blue","k":"rug","x":-2.514,"y":0,"z":2.75,"yaw":90,"rest":"floor"},{"n":"piece_dvergr_lantern","k":"walllight","x":1.995,"y":3.69,"z":1.506,"yaw":90,"rest":"on","on":0},{"n":"piece_dvergr_lantern","k":"walllight","x":-2.005,"y":3.69,"z":1.494,"yaw":90,"rest":"on","on":1},{"n":"piece_banner09","k":"banner","x":2.528,"y":4.024,"z":1.808,"yaw":90,"rest":"wall"},{"n":"piece_banner09","k":"banner","x":-2.452,"y":4.057,"z":1.793,"yaw":90,"rest":"wall"}]},{"id":"KB-348","anchor":"table","of":"table","rooms":["home"],"score":0.56,"once":true,"clips":[[0,1,0.107],[1,"a",0.017],[1,"w",0.189],[2,5,0.116],[3,4,0.017],[3,"a",0.067],[3,"w",0.041],[4,"w",0.264],[5,6,0.067]],"pieces":[{"n":"dvergrprops_lantern_standing","k":"dvergrprops_lantern_standing","x":1.014,"y":-0.436,"z":0.651,"yaw":276,"rest":"floor","sink":0.436},{"n":"jute_carpet_blue","k":"rug","x":1.201,"y":-0.028,"z":-0.304,"yaw":90,"rest":"floor","sink":0.028},{"n":"piece_chest","k":"chest","x":1.877,"y":-0.001,"z":-0.567,"yaw":270,"rest":"floor"},{"n":"jute_carpet_blue","k":"rug","x":-1.073,"y":0.022,"z":-0.461,"yaw":90,"rest":"floor"},{"n":"jute_carpet_blue","k":"rug","x":-2.651,"y":0.047,"z":0.016,"yaw":90,"rest":"floor"},{"n":"jute_carpet_blue","k":"rug","x":0.548,"y":0.097,"z":-2.417,"yaw":90,"rest":"floor"},{"n":"piece_chair02","k":"chair","x":-0.48,"y":0.135,"z":-1.111,"yaw":101,"rest":"on","on":1},{"n":"piece_jackoturnip","k":"piece_jackoturnip","x":0.782,"y":0.861,"z":-0.1,"yaw":214,"rest":"anchor"}]},{"id":"KB-349","anchor":"hearth","of":"hearth","rooms":["home"],"score":0.56,"once":true,"clips":[[0,"w",0.121],[2,6,0.019],[2,"a",0.127],[2,"w",0.167],[3,6,0.021],[3,"a",0.022],[3,"w",0.168],[6,"w",0.182]],"pieces":[{"n":"piece_chest_wood","k":"chest","x":-1.883,"y":-0.028,"z":2.674,"yaw":287,"rest":"floor","sink":0.028},{"n":"rug_deer","k":"rug","x":3.314,"y":-0.028,"z":-1.131,"yaw":197,"rest":"floor","sink":0.028},{"n":"rug_deer","k":"rug","x":3.433,"y":-0.028,"z":1.665,"yaw":152,"rest":"floor","sink":0.028},{"n":"rug_deer","k":"rug","x":1.177,"y":-0.028,"z":3.336,"yaw":107,"rest":"floor","sink":0.028},{"n":"rug_wolf","k":"rug","x":-3.534,"y":-0.028,"z":1.22,"yaw":197,"rest":"floor","sink":0.028},{"n":"piece_preptable","k":"piece_preptable","x":-2.944,"y":-0.003,"z":0.356,"yaw":287,"rest":"floor","sink":0.078},{"n":"cauldron_ext3_butchertable","k":"cauldron_ext3_butchertable","x":1.006,"y":0.009,"z":2.601,"yaw":197,"rest":"floor"},{"n":"cauldron_ext1_spice","k":"cauldron_ext1_spice","x":-0.553,"y":1.537,"z":-2.248,"yaw":17,"rest":"wall"}]},{"id":"KB-350","anchor":"table","of":"table","rooms":["any"],"score":0.56,"once":true,"clips":[[0,"w",0.069]],"pieces":[{"n":"cauldron_ext3_butchertable","k":"cauldron_ext3_butchertable","x":1.82,"y":-0.013,"z":-0.003,"yaw":0,"rest":"floor"},{"n":"piece_chair03","k":"chair","x":0.389,"y":-0.007,"z":-0.657,"yaw":0,"rest":"floor"},{"n":"piece_chair03","k":"chair","x":-0.484,"y":-0.007,"z":-0.675,"yaw":0,"rest":"floor"},{"n":"piece_chair03","k":"chair","x":-1.7,"y":-0.007,"z":-0.186,"yaw":107,"rest":"floor"},{"n":"itemstandh","k":"itemstandh","x":0.365,"y":0.794,"z":-0.411,"yaw":174,"rest":"anchor"},{"n":"itemstandh","k":"itemstandh","x":0.028,"y":0.794,"z":0.033,"yaw":107,"rest":"anchor"},{"n":"itemstandh","k":"itemstandh","x":-0.496,"y":0.794,"z":-0.351,"yaw":174,"rest":"anchor"},{"n":"itemstandh","k":"itemstandh","x":-0.933,"y":0.794,"z":0.084,"yaw":174,"rest":"anchor"}]},{"id":"KB-351","anchor":"table","of":"table","rooms":["any"],"score":0.56,"once":true,"clips":[[0,1,0.011],[0,2,0.011],[0,"w",0.071],[1,2,0.01],[1,"w",0.07],[5,6,0.087],[5,7,0.231],[5,"a",0.104],[6,7,0.122],[6,"a",0.104],[7,"a",0.104]],"pieces":[{"n":"rug_deer","k":"rug","x":0.837,"y":0,"z":1.003,"yaw":186,"rest":"floor"},{"n":"rug_deer","k":"rug","x":-1.116,"y":0,"z":-0.842,"yaw":28,"rest":"floor"},{"n":"rug_deer","k":"rug","x":-0.839,"y":0,"z":1.04,"yaw":84,"rest":"floor"},{"n":"mountainkit_chair","k":"mountainkit_chair","x":2.059,"y":0.078,"z":1.377,"yaw":278,"rest":"floor"},{"n":"mountainkit_chair","k":"mountainkit_chair","x":-1.658,"y":0.199,"z":-0.405,"yaw":101,"rest":"wall"},{"n":"Skull1","k":"Skull1","x":-0.005,"y":0.797,"z":-0.105,"yaw":158,"rest":"anchor"},{"n":"Skull1","k":"Skull1","x":0.11,"y":0.797,"z":0.167,"yaw":197,"rest":"anchor"},{"n":"Skull1","k":"Skull1","x":-0.094,"y":0.797,"z":-0.03,"yaw":83,"rest":"anchor"}]},{"id":"KB-352","anchor":"table","of":"table","rooms":["home"],"score":0.54,"once":true,"clips":[],"pieces":[{"n":"piece_chair","k":"chair","x":0.95,"y":-0.073,"z":0.891,"yaw":203,"rest":"floor","sink":0.073},{"n":"piece_chair","k":"chair","x":-0.532,"y":-0.048,"z":0.907,"yaw":180,"rest":"floor","sink":0.048},{"n":"rug_fur","k":"rug","x":0.776,"y":-0.028,"z":0.203,"yaw":90,"rest":"floor","sink":0.028},{"n":"rug_fur","k":"rug","x":-0.813,"y":-0.003,"z":-0.211,"yaw":0,"rest":"floor"},{"n":"itemstandh","k":"itemstandh","x":-0.791,"y":0.816,"z":0.303,"yaw":0,"rest":"anchor"},{"n":"itemstandh","k":"itemstandh","x":-0.1,"y":0.816,"z":-0.069,"yaw":0,"rest":"anchor"},{"n":"itemstandh","k":"itemstandh","x":0.496,"y":0.816,"z":0.351,"yaw":338,"rest":"anchor"}]},{"id":"KB-353","anchor":"table","of":"table","rooms":["smithy"],"score":0.54,"once":true,"clips":[[0,3,0.097],[0,5,0.193],[0,"a",0.321],[0,"w",0.214],[1,"a",0.472],[1,"w",0.227],[2,"w",0.14],[3,"a",0.216],[5,"a",0.085],[6,"w",0.146]],"pieces":[{"n":"forge_ext4","k":"forge_ext4","x":-0.578,"y":-0.491,"z":-0.06,"yaw":315,"rest":"floor","sink":0.491},{"n":"forge","k":"forge","x":1.561,"y":-0.16,"z":-0.028,"yaw":0,"rest":"floor","sink":0.16},{"n":"piece_artisanstation","k":"piece_artisanstation","x":-0.876,"y":-0.15,"z":-1.245,"yaw":180,"rest":"floor","sink":0.15},{"n":"forge_ext3","k":"forge_ext3","x":-1.339,"y":-0.125,"z":0.161,"yaw":0,"rest":"floor","sink":0.126},{"n":"piece_chair02","k":"chair","x":-1.426,"y":-0.112,"z":1.335,"yaw":180,"rest":"floor","sink":0.125},{"n":"forge_ext2","k":"forge_ext2","x":0.054,"y":-0.024,"z":0.066,"yaw":338,"rest":"floor","sink":0.029},{"n":"artisan_ext1","k":"artisan_ext1","x":0.933,"y":-0.018,"z":-1.078,"yaw":180,"rest":"floor","sink":0.022}]},{"id":"KB-354","anchor":"hearth","of":"hearth","rooms":["home","kitchen","tavern"],"score":0.54,"once":true,"clips":[[3,4,0.183],[5,6,0.081]],"pieces":[{"n":"cauldron_ext5_mortarandpestle","k":"cauldron_ext5_mortarandpestle","x":2.218,"y":-0.013,"z":2.631,"yaw":82,"rest":"floor"},{"n":"cauldron_ext3_butchertable","k":"cauldron_ext3_butchertable","x":-2.485,"y":-0.013,"z":1.873,"yaw":262,"rest":"floor"},{"n":"rug_fur","k":"rug","x":-0.19,"y":0,"z":3.123,"yaw":262,"rest":"floor"},{"n":"piece_cookingstation_iron","k":"piece_cookingstation_iron","x":0.001,"y":0.583,"z":0.04,"yaw":172,"rest":"wall"},{"n":"piece_cauldron","k":"piece_cauldron","x":-1.026,"y":0.583,"z":0.706,"yaw":195,"rest":"wall"},{"n":"cauldron_ext4_pots","k":"cauldron_ext4_pots","x":1.716,"y":3.874,"z":1.941,"yaw":352,"rest":"wall"},{"n":"cauldron_ext4_pots","k":"cauldron_ext4_pots","x":-0.186,"y":3.895,"z":1.69,"yaw":352,"rest":"wall"}]},{"id":"KB-355","anchor":"bed","of":"bed","rooms":["home","sleeping"],"score":0.54,"once":true,"clips":[[0,"a",0.093]],"pieces":[{"n":"piece_chest_wood","k":"chest","x":-0.03,"y":-0.029,"z":1.693,"yaw":180,"rest":"floor","sink":0.029},{"n":"itemstand","k":"itemstand","x":-1.85,"y":0.977,"z":-0.627,"yaw":270,"rest":"wall"},{"n":"itemstand","k":"itemstand","x":-0.762,"y":1.063,"z":-0.735,"yaw":90,"rest":"anchor"},{"n":"itemstandh","k":"itemstandh","x":-1.995,"y":1.092,"z":-0.584,"yaw":270,"rest":"wall"},{"n":"itemstandh","k":"itemstandh","x":-0.617,"y":1.189,"z":-0.696,"yaw":270,"rest":"wall"},{"n":"sign","k":"sign","x":-0.161,"y":1.626,"z":-1.331,"yaw":0,"rest":"wall"},{"n":"piece_banner11","k":"banner","x":1.657,"y":3.126,"z":-1.226,"yaw":90,"rest":"wall"}]},{"id":"KB-356","anchor":"hearth","of":"hearth","rooms":["workshop","smithy","kitchen","home","tavern"],"score":0.54,"once":true,"clips":[[0,"a",0.202],[1,"w",0.013],[2,3,0.011],[2,"a",0.024],[2,"w",0.069],[3,"a",0.024],[3,"w",0.069]],"pieces":[{"n":"goblinking_totemholder","k":"goblinking_totemholder","x":0.918,"y":-0.409,"z":-1.2,"yaw":330,"rest":"floor","sink":0.41},{"n":"piece_workbench","k":"piece_workbench","x":3.141,"y":-0.025,"z":1.897,"yaw":139,"rest":"floor","sink":0.025},{"n":"rug_deer","k":"rug","x":-0.615,"y":0,"z":2.31,"yaw":240,"rest":"floor"},{"n":"rug_deer","k":"rug","x":-1.959,"y":0,"z":1.415,"yaw":60,"rest":"floor"},{"n":"rug_wolf","k":"rug","x":-1.18,"y":0.05,"z":1.681,"yaw":240,"rest":"floor"},{"n":"piece_cauldron","k":"piece_cauldron","x":0.448,"y":0.083,"z":0.891,"yaw":173,"rest":"floor"},{"n":"piece_cauldron","k":"piece_cauldron","x":-0.753,"y":0.083,"z":0.134,"yaw":173,"rest":"floor"}]},{"id":"KB-357","anchor":"table","of":"long","rooms":["any"],"score":0.54,"once":true,"clips":[],"pieces":[{"n":"rug_fur","k":"rug","x":1.845,"y":0,"z":-1.403,"yaw":270,"rest":"floor"},{"n":"piece_blackmarble_throne","k":"piece_blackmarble_throne","x":-0.022,"y":0,"z":-1.548,"yaw":0,"rest":"floor"},{"n":"rug_hare","k":"rug","x":0.078,"y":0.821,"z":0.552,"yaw":270,"rest":"anchor"},{"n":"rug_hare","k":"rug","x":1.05,"y":0.821,"z":0.568,"yaw":270,"rest":"anchor"},{"n":"itemstandh","k":"itemstandh","x":-0.169,"y":0.822,"z":-0.447,"yaw":0,"rest":"anchor"},{"n":"itemstandh","k":"itemstandh","x":-0.045,"y":0.822,"z":1.441,"yaw":180,"rest":"on","on":2},{"n":"piece_jackoturnip","k":"piece_jackoturnip","x":1.244,"y":0.898,"z":0.714,"yaw":79,"rest":"on","on":2}]},{"id":"KB-358","anchor":"table","of":"long","rooms":["any"],"score":0.54,"once":true,"clips":[],"pieces":[{"n":"rug_fur","k":"rug","x":1.803,"y":0,"z":-0.93,"yaw":180,"rest":"floor"},{"n":"piece_blackmarble_throne","k":"piece_blackmarble_throne","x":0.02,"y":0,"z":-1.494,"yaw":0,"rest":"floor"},{"n":"rug_wolf","k":"rug","x":1.573,"y":0.025,"z":0.131,"yaw":0,"rest":"floor"},{"n":"itemstandh","k":"itemstandh","x":-0.014,"y":0.822,"z":1.477,"yaw":180,"rest":"on","on":6},{"n":"itemstandh","k":"itemstandh","x":0.013,"y":0.822,"z":-0.467,"yaw":0,"rest":"anchor"},{"n":"itemstandh","k":"itemstandh","x":0.973,"y":0.822,"z":0.381,"yaw":0,"rest":"anchor"},{"n":"rug_hare","k":"rug","x":0.273,"y":0.878,"z":0.525,"yaw":90,"rest":"anchor"}]},{"id":"KB-359","anchor":"bed","of":"bed2","rooms":["home","sleeping"],"score":0.54,"once":true,"clips":[[0,"w",0.051],[3,"a",0.077]],"pieces":[{"n":"goblinking_totemholder","k":"goblinking_totemholder","x":-0.5,"y":-0.429,"z":-1.705,"yaw":338,"rest":"floor","sink":0.429},{"n":"rug_fur","k":"rug","x":3.331,"y":-0.028,"z":0.788,"yaw":163,"rest":"floor","sink":0.028},{"n":"rug_fur","k":"rug","x":-0.115,"y":-0.028,"z":2.866,"yaw":270,"rest":"floor","sink":0.028},{"n":"piece_chest","k":"chest","x":2.074,"y":-0.026,"z":-0.504,"yaw":349,"rest":"floor","sink":0.026},{"n":"piece_chair03","k":"chair","x":-0.863,"y":-0.01,"z":2.351,"yaw":90,"rest":"floor"},{"n":"sign","k":"sign","x":0.052,"y":0.392,"z":1.88,"yaw":0,"rest":"floor"},{"n":"piece_banner06","k":"banner","x":0.015,"y":3.549,"z":1.873,"yaw":101,"rest":"anchor"}]},{"id":"KB-360","anchor":"hearth","of":"hearth","rooms":["kitchen","home","tavern"],"score":0.54,"once":true,"clips":[[0,"a",0.221],[4,5,0.257]],"pieces":[{"n":"cauldron_ext3_butchertable","k":"cauldron_ext3_butchertable","x":1.757,"y":-0.013,"z":-1.344,"yaw":339,"rest":"floor"},{"n":"piece_chest_wood","k":"chest","x":-0.041,"y":0.097,"z":3.155,"yaw":159,"rest":"floor"},{"n":"piece_chest_wood","k":"chest","x":0.207,"y":0.097,"z":2.397,"yaw":159,"rest":"floor"},{"n":"piece_chest","k":"chest","x":-2.109,"y":0.099,"z":2.05,"yaw":249,"rest":"floor"},{"n":"piece_cookingstation_iron","k":"piece_cookingstation_iron","x":-0.128,"y":0.583,"z":0.761,"yaw":339,"rest":"wall"},{"n":"piece_cauldron","k":"piece_cauldron","x":0.918,"y":0.583,"z":0.334,"yaw":24,"rest":"wall"},{"n":"cauldron_ext4_pots","k":"cauldron_ext4_pots","x":1.14,"y":2.041,"z":3.063,"yaw":69,"rest":"wall"}]},{"id":"KB-361","anchor":"hearth","of":"hearth","rooms":["hall","kitchen","home","tavern"],"score":0.54,"once":true,"clips":[[2,"w",0.06],[4,"a",0.039],[6,"w",0.142]],"pieces":[{"n":"piece_cauldron","k":"piece_cauldron","x":-0.998,"y":0.583,"z":0.499,"yaw":112,"rest":"wall"},{"n":"piece_oven","k":"piece_oven","x":2.493,"y":0,"z":1.669,"yaw":326,"rest":"floor"},{"n":"piece_cookingstation_iron","k":"piece_cookingstation_iron","x":0.504,"y":0.583,"z":0.47,"yaw":56,"rest":"wall"},{"n":"cauldron_ext1_spice","k":"cauldron_ext1_spice","x":-1.785,"y":2.661,"z":1.729,"yaw":326,"rest":"wall"},{"n":"cauldron_ext3_butchertable","k":"cauldron_ext3_butchertable","x":1.467,"y":0.084,"z":-2.1,"yaw":326,"rest":"floor"},{"n":"cauldron_ext4_pots","k":"cauldron_ext4_pots","x":0.059,"y":1.159,"z":2.627,"yaw":326,"rest":"wall"},{"n":"piece_chest","k":"chest","x":-1.746,"y":0.099,"z":1.824,"yaw":326,"rest":"floor"}]},{"id":"KB-362","anchor":"bed","of":"bed2","rooms":["home","sleeping"],"score":0.54,"once":true,"clips":[[0,4,0.307],[0,"a",0.354],[0,"w",0.192],[4,"a",0.021],[5,"a",0.023]],"pieces":[{"n":"piece_throne02","k":"piece_throne02","x":0,"y":-0.446,"z":-1.326,"yaw":0,"rest":"floor","sink":0.446},{"n":"rug_wolf","k":"rug","x":1.471,"y":-0.428,"z":1.601,"yaw":90,"rest":"wall"},{"n":"rug_wolf","k":"rug","x":-1.494,"y":-0.428,"z":1.379,"yaw":270,"rest":"wall"},{"n":"piece_chest","k":"chest","x":-2.447,"y":-0.426,"z":-0.64,"yaw":90,"rest":"floor","sink":0.426},{"n":"rug_deer","k":"rug","x":0.071,"y":-0.028,"z":0.361,"yaw":0,"rest":"floor","sink":0.028},{"n":"piece_walltorch","k":"walllight","x":-1.011,"y":1.833,"z":-1.315,"yaw":270,"rest":"anchor"},{"n":"piece_walltorch","k":"walllight","x":1.005,"y":1.847,"z":-1.316,"yaw":270,"rest":"anchor"}]},{"id":"KB-363","anchor":"bed","of":"bed","rooms":["home","sleeping"],"score":0.52,"once":true,"clips":[[2,"a",0.071]],"pieces":[{"n":"piece_chair","k":"chair","x":1.308,"y":-0.098,"z":-0.719,"yaw":326,"rest":"floor","sink":0.098},{"n":"piece_chest_wood","k":"chest","x":0.024,"y":-0.028,"z":-2.032,"yaw":0,"rest":"floor","sink":0.028},{"n":"rug_deer","k":"rug","x":-1.59,"y":-0.028,"z":0.473,"yaw":0,"rest":"floor","sink":0.028},{"n":"itemstandh","k":"itemstandh","x":1.187,"y":0.504,"z":-0.748,"yaw":349,"rest":"hang"},{"n":"piece_chest_private","k":"chest","x":0.027,"y":1.173,"z":-1.692,"yaw":0,"rest":"on","on":5},{"n":"wood_beam","k":"beam2","x":-0.05,"y":0.957,"z":-2.047,"yaw":180,"rest":"on","on":1}]},{"id":"KB-364","anchor":"bed","of":"bed","rooms":["home","sleeping"],"score":0.52,"once":true,"clips":[[3,"a",0.071]],"pieces":[{"n":"piece_chair","k":"chair","x":1.309,"y":-0.098,"z":-0.72,"yaw":326,"rest":"floor","sink":0.098},{"n":"piece_chest_wood","k":"chest","x":0.025,"y":-0.029,"z":-2.032,"yaw":0,"rest":"floor","sink":0.029},{"n":"piece_chest_private","k":"chest","x":0.027,"y":1.173,"z":-1.692,"yaw":0,"rest":"on","on":5},{"n":"rug_deer","k":"rug","x":-1.59,"y":-0.028,"z":0.473,"yaw":0,"rest":"floor","sink":0.028},{"n":"itemstandh","k":"itemstandh","x":1.188,"y":0.504,"z":-0.749,"yaw":349,"rest":"hang"},{"n":"wood_beam","k":"beam2","x":-0.1,"y":0.972,"z":-1.581,"yaw":0,"rest":"anchor"}]},{"id":"KB-365","anchor":"hearth","of":"hearth","rooms":["kitchen","home","tavern"],"score":0.52,"once":true,"clips":[[0,"w",0.978],[1,"w",0.068],[3,4,0.415]],"pieces":[{"n":"piece_oven","k":"piece_oven","x":3.332,"y":-0.125,"z":1.506,"yaw":267,"rest":"floor","sink":0.125},{"n":"cauldron_ext3_butchertable","k":"cauldron_ext3_butchertable","x":-2.469,"y":-0.041,"z":2.246,"yaw":357,"rest":"floor","sink":0.041},{"n":"rug_fur","k":"rug","x":-0.013,"y":-0.028,"z":3.009,"yaw":267,"rest":"floor","sink":0.028},{"n":"piece_cookingstation_iron","k":"piece_cookingstation_iron","x":0.019,"y":0.572,"z":0.111,"yaw":177,"rest":"wall"},{"n":"piece_cauldron","k":"piece_cauldron","x":-1.05,"y":0.572,"z":0.62,"yaw":200,"rest":"wall"},{"n":"cauldron_ext4_pots","k":"cauldron_ext4_pots","x":0.181,"y":3.148,"z":1.847,"yaw":357,"rest":"wall"}]},{"id":"KB-366","anchor":"hearth","of":"hearth","rooms":["home","kitchen","tavern"],"score":0.52,"once":true,"clips":[],"pieces":[{"n":"goblinking_totemholder","k":"goblinking_totemholder","x":-2.8,"y":-0.458,"z":0.283,"yaw":23,"rest":"floor","sink":0.458},{"n":"goblinking_totemholder","k":"goblinking_totemholder","x":2.854,"y":-0.438,"z":0.131,"yaw":23,"rest":"floor","sink":0.438},{"n":"piece_cauldron","k":"piece_cauldron","x":-0.796,"y":1.083,"z":1.021,"yaw":327,"rest":"wall"},{"n":"piece_cookingstation","k":"piece_cookingstation","x":0.959,"y":1.083,"z":0.578,"yaw":192,"rest":"wall"},{"n":"sign","k":"sign","x":2.403,"y":2.475,"z":2.445,"yaw":282,"rest":"wall"},{"n":"cauldron_ext6_rollingpins","k":"cauldron_ext6_rollingpins","x":-2.62,"y":3.255,"z":2.464,"yaw":12,"rest":"wall"}]},{"id":"KB-367","anchor":"hearth","of":"pit","rooms":["tavern"],"score":0.52,"once":true,"clips":[],"pieces":[{"n":"cauldron_ext3_butchertable","k":"cauldron_ext3_butchertable","x":1.949,"y":-0.013,"z":-0.567,"yaw":341,"rest":"floor"},{"n":"cauldron_ext5_mortarandpestle","k":"cauldron_ext5_mortarandpestle","x":-0.91,"y":-0.013,"z":-2.245,"yaw":71,"rest":"floor"},{"n":"rug_fur","k":"rug","x":1.859,"y":0,"z":1.499,"yaw":161,"rest":"floor"},{"n":"rug_fur","k":"rug","x":-2.148,"y":0,"z":0.057,"yaw":161,"rest":"floor"},{"n":"piece_chest","k":"chest","x":0.521,"y":0.002,"z":-1.714,"yaw":161,"rest":"floor"},{"n":"cauldron_ext3_butchertable","k":"cauldron_ext3_butchertable","x":0.625,"y":0.012,"z":2.837,"yaw":251,"rest":"floor"}]},{"id":"KB-368","anchor":"table","of":"long","rooms":["any"],"score":0.52,"once":true,"clips":[],"pieces":[{"n":"rug_fur","k":"rug","x":1.566,"y":0,"z":-1.422,"yaw":270,"rest":"floor"},{"n":"piece_blackmarble_throne","k":"piece_blackmarble_throne","x":0.01,"y":0,"z":-1.576,"yaw":0,"rest":"floor"},{"n":"rug_hare","k":"rug","x":0.128,"y":0.821,"z":0.498,"yaw":90,"rest":"anchor"},{"n":"rug_hare","k":"rug","x":1.394,"y":0.821,"z":0.555,"yaw":90,"rest":"on","on":2},{"n":"itemstandh","k":"itemstandh","x":-0.085,"y":0.822,"z":1.37,"yaw":180,"rest":"on","on":2},{"n":"itemstandh","k":"itemstandh","x":-0.032,"y":0.822,"z":-0.468,"yaw":0,"rest":"anchor"}]},{"id":"KB-369","anchor":"table","of":"round","rooms":["any"],"score":0.52,"once":true,"clips":[[1,2,0.114],[1,3,0.138],[2,3,0.06],[2,"a",0.07],[2,"w",0.079],[3,"a",0.045],[3,"w",0.104],[5,"a",0.013]],"pieces":[{"n":"piece_throne01","k":"piece_throne01","x":0.605,"y":-0.035,"z":1.59,"yaw":203,"rest":"floor","sink":0.035},{"n":"piece_throne01","k":"piece_throne01","x":-1.75,"y":-0.035,"z":-0.429,"yaw":90,"rest":"floor","sink":0.035},{"n":"jute_carpet","k":"rug","x":-1.042,"y":-0.029,"z":-2.059,"yaw":0,"rest":"floor","sink":0.029},{"n":"jute_carpet","k":"rug","x":-0.724,"y":-0.004,"z":-2.05,"yaw":0,"rest":"floor"},{"n":"rug_hare","k":"rug","x":-0.211,"y":0.767,"z":0.031,"yaw":236,"rest":"anchor"},{"n":"piece_jackoturnip","k":"piece_jackoturnip","x":-0.303,"y":0.843,"z":0.087,"yaw":326,"rest":"anchor"}]},{"id":"KB-370","anchor":"bed","of":"bed2","rooms":["home","sleeping"],"score":0.52,"once":true,"clips":[[0,"w",0.073],[1,"w",0.149]],"pieces":[{"n":"goblinking_totemholder","k":"goblinking_totemholder","x":1.94,"y":-0.443,"z":-1.488,"yaw":343,"rest":"floor","sink":0.444},{"n":"goblinking_totemholder","k":"goblinking_totemholder","x":-0.112,"y":-0.323,"z":-1.805,"yaw":264,"rest":"floor","sink":0.324},{"n":"rug_fur","k":"rug","x":0.091,"y":-0.028,"z":2.909,"yaw":270,"rest":"floor","sink":0.028},{"n":"piece_chest","k":"chest","x":2.273,"y":-0.026,"z":-0.606,"yaw":354,"rest":"floor","sink":0.026},{"n":"piece_chair03","k":"chair","x":-0.641,"y":-0.01,"z":2.388,"yaw":96,"rest":"floor"},{"n":"piece_banner03","k":"banner","x":0.133,"y":3.549,"z":2.096,"yaw":96,"rest":"anchor"}]},{"id":"KB-371","anchor":"bed","of":"bed2","rooms":["home","sleeping"],"score":0.52,"once":true,"clips":[[0,"w",0.109],[2,"a",0.046]],"pieces":[{"n":"goblinking_totemholder","k":"goblinking_totemholder","x":1.148,"y":-0.438,"z":-1.71,"yaw":354,"rest":"floor","sink":0.439},{"n":"rug_fur","k":"rug","x":0.155,"y":-0.028,"z":2.835,"yaw":264,"rest":"floor","sink":0.028},{"n":"piece_chest","k":"chest","x":2.105,"y":-0.026,"z":-0.805,"yaw":349,"rest":"floor","sink":0.026},{"n":"rug_fur","k":"rug","x":-2.947,"y":-0.014,"z":0.457,"yaw":17,"rest":"floor"},{"n":"piece_chair03","k":"chair","x":-1,"y":-0.01,"z":2.343,"yaw":90,"rest":"floor"},{"n":"piece_banner08","k":"banner","x":0.131,"y":3.55,"z":2.106,"yaw":270,"rest":"anchor"}]},{"id":"KB-372","anchor":"table","of":"long","rooms":["home"],"score":0.52,"once":true,"clips":[],"pieces":[{"n":"piece_throne01","k":"piece_throne01","x":2.292,"y":-0.034,"z":-2.33,"yaw":0,"rest":"floor","sink":0.034},{"n":"piece_throne01","k":"piece_throne01","x":-0.017,"y":-0.034,"z":-2.336,"yaw":0,"rest":"floor","sink":0.034},{"n":"rug_wolf","k":"rug","x":0.902,"y":-0.028,"z":-1.775,"yaw":90,"rest":"floor","sink":0.028},{"n":"rug_wolf","k":"rug","x":-1.36,"y":-0.028,"z":-1.836,"yaw":90,"rest":"floor","sink":0.028},{"n":"rug_wolf","k":"rug","x":-3.545,"y":-0.028,"z":-1.044,"yaw":135,"rest":"floor","sink":0.028},{"n":"piece_cookingstation","k":"piece_cookingstation","x":-1.419,"y":0.755,"z":2.187,"yaw":90,"rest":"anchor"}]},{"id":"KB-373","anchor":"hearth","of":"hearth","rooms":["any"],"score":0.52,"once":true,"clips":[[4,"w",0.132],[5,"w",0.146]],"pieces":[{"n":"cauldron_ext5_mortarandpestle","k":"cauldron_ext5_mortarandpestle","x":-2.401,"y":-0.041,"z":2.594,"yaw":346,"rest":"floor","sink":0.041},{"n":"itemstandh","k":"itemstandh","x":0.588,"y":0.409,"z":3.075,"yaw":54,"rest":"on","on":4},{"n":"itemstandh","k":"itemstandh","x":0.629,"y":0.409,"z":3.528,"yaw":99,"rest":"on","on":5},{"n":"cauldron_ext4_pots","k":"cauldron_ext4_pots","x":1.338,"y":1.904,"z":2.936,"yaw":346,"rest":"wall"},{"n":"wood_pole","k":"pole1","x":0.641,"y":-0.117,"z":2.971,"yaw":346,"rest":"floor","sink":0.617},{"n":"wood_pole","k":"pole1","x":0.512,"y":-0.131,"z":3.577,"yaw":346,"rest":"floor","sink":0.631}]},{"id":"KB-374","anchor":"bed","of":"bed2","rooms":["home","sleeping"],"score":0.52,"once":true,"clips":[[0,1,0.046],[1,"a",0.095],[1,"w",0.115]],"pieces":[{"n":"piece_chair03","k":"chair","x":-1.39,"y":0.015,"z":2.468,"yaw":45,"rest":"floor"},{"n":"rug_deer","k":"rug","x":0.624,"y":-0.003,"z":2.098,"yaw":338,"rest":"floor"},{"n":"rug_fur","k":"rug","x":-1.253,"y":-0.003,"z":2.737,"yaw":0,"rest":"floor"},{"n":"piece_chair","k":"chair","x":1.829,"y":-0.098,"z":-0.697,"yaw":338,"rest":"floor","sink":0.098},{"n":"rug_wolf","k":"rug","x":-0.268,"y":-0.028,"z":2.585,"yaw":293,"rest":"floor","sink":0.028},{"n":"piece_banner06","k":"banner","x":2.393,"y":3.612,"z":1.225,"yaw":0,"rest":"wall"}]},{"id":"KB-375","anchor":"hearth","of":"pit","rooms":["home"],"score":0.52,"once":true,"clips":[],"pieces":[{"n":"rug_deer","k":"rug","x":2.665,"y":-0.028,"z":1.126,"yaw":230,"rest":"floor","sink":0.028},{"n":"itemstandh","k":"itemstandh","x":-1.692,"y":0.076,"z":1.788,"yaw":185,"rest":"floor"},{"n":"itemstand","k":"itemstand","x":-0.727,"y":1.363,"z":2.221,"yaw":230,"rest":"wall"},{"n":"cauldron_ext1_spice","k":"cauldron_ext1_spice","x":0.689,"y":1.445,"z":2.19,"yaw":73,"rest":"wall"},{"n":"piece_banner01","k":"banner","x":-0.778,"y":2.8,"z":2.196,"yaw":140,"rest":"wall"},{"n":"piece_banner02","k":"banner","x":-0.14,"y":2.855,"z":2.524,"yaw":140,"rest":"wall"}]},{"id":"KB-376","anchor":"bed","of":"bed2","rooms":["home","sleeping"],"score":0.52,"once":true,"clips":[[4,"w",0.3],[5,"w",0.3]],"pieces":[{"n":"jute_carpet_blue","k":"rug","x":0.022,"y":-0.034,"z":3.77,"yaw":45,"rest":"floor","sink":0.034},{"n":"rug_wolf","k":"rug","x":2.194,"y":-0.034,"z":0.838,"yaw":180,"rest":"floor","sink":0.034},{"n":"rug_wolf","k":"rug","x":-1.966,"y":-0.028,"z":0.704,"yaw":180,"rest":"floor","sink":0.028},{"n":"piece_banner03","k":"banner","x":0.012,"y":3.776,"z":-1.446,"yaw":270,"rest":"on","on":4},{"n":"wood_wall_quarter","k":"quarter","x":0.051,"y":0.864,"z":-1.796,"yaw":180,"rest":"on","on":5},{"n":"wood_wall_quarter","k":"quarter","x":0.051,"y":-0.136,"z":-1.796,"yaw":180,"rest":"floor","sink":0.136}]},{"id":"KB-377","anchor":"table","of":"round","rooms":["any"],"score":0.52,"once":true,"clips":[[0,"w",0.118],[1,"w",0.13],[5,"a",0.013]],"pieces":[{"n":"goblinking_totemholder","k":"goblinking_totemholder","x":-1.454,"y":-0.457,"z":-0.557,"yaw":293,"rest":"floor","sink":0.457},{"n":"goblinking_totemholder","k":"goblinking_totemholder","x":0.179,"y":-0.445,"z":-1.649,"yaw":214,"rest":"floor","sink":0.446},{"n":"piece_chair03","k":"chair","x":1.708,"y":-0.035,"z":-0.202,"yaw":281,"rest":"floor","sink":0.035},{"n":"piece_chair03","k":"chair","x":-0.653,"y":-0.035,"z":1.483,"yaw":158,"rest":"floor","sink":0.035},{"n":"rug_hare","k":"rug","x":-0.018,"y":0.767,"z":0.086,"yaw":124,"rest":"anchor"},{"n":"piece_jackoturnip","k":"piece_jackoturnip","x":-0.158,"y":0.844,"z":-0.103,"yaw":23,"rest":"anchor"}]},{"id":"KB-378","anchor":"table","of":"table","rooms":["home"],"score":0.52,"once":true,"clips":[[0,1,0.011],[0,4,0.021],[0,5,0.021],[0,"a",0.014],[1,2,0.018],[1,4,0.019],[1,5,0.021],[1,"a",0.021]],"pieces":[{"n":"rug_deer","k":"rug","x":0.103,"y":-0.028,"z":2.244,"yaw":203,"rest":"floor","sink":0.028},{"n":"rug_deer","k":"rug","x":-0.149,"y":-0.028,"z":0.026,"yaw":90,"rest":"floor","sink":0.028},{"n":"piece_throne01","k":"piece_throne01","x":-1.949,"y":0.016,"z":-0.781,"yaw":68,"rest":"floor"},{"n":"piece_throne01","k":"piece_throne01","x":2.07,"y":0.016,"z":-0.913,"yaw":315,"rest":"floor"},{"n":"piece_chair02","k":"chair","x":-0.851,"y":0.035,"z":0.975,"yaw":135,"rest":"floor"},{"n":"piece_chair02","k":"chair","x":0.773,"y":0.035,"z":0.845,"yaw":203,"rest":"floor"}]},{"id":"KB-379","anchor":"hearth","of":"hearth","rooms":["home"],"score":0.52,"once":true,"clips":[[0,"a",0.038],[2,3,0.052],[2,"w",0.106],[3,"w",0.124]],"pieces":[{"n":"cauldron_ext3_butchertable","k":"cauldron_ext3_butchertable","x":-1.244,"y":-0.041,"z":2.462,"yaw":175,"rest":"floor","sink":0.041},{"n":"rug_fur","k":"rug","x":0.816,"y":-0.028,"z":3.486,"yaw":265,"rest":"floor","sink":0.028},{"n":"piece_chest_private","k":"chest","x":1.313,"y":-0.027,"z":2.941,"yaw":355,"rest":"floor","sink":0.029},{"n":"piece_chest_private","k":"chest","x":0.449,"y":-0.027,"z":2.862,"yaw":355,"rest":"floor","sink":0.029},{"n":"piece_cookingstation_iron","k":"piece_cookingstation_iron","x":0.247,"y":0.475,"z":-0.001,"yaw":265,"rest":"wall"},{"n":"cauldron_ext1_spice","k":"cauldron_ext1_spice","x":-0.99,"y":2.369,"z":1.779,"yaw":40,"rest":"wall"}]},{"id":"KB-380","anchor":"bed","of":"bed","rooms":["barn","home","sleeping"],"score":0.5,"once":true,"clips":[],"pieces":[{"n":"piece_banner01","k":"banner","x":0.017,"y":1.843,"z":-1.861,"yaw":90,"rest":"floor","sink":0.157},{"n":"itemstandh","k":"itemstandh","x":-1.121,"y":0.504,"z":-1.09,"yaw":23,"rest":"wall"},{"n":"piece_throne01","k":"piece_throne01","x":-2.17,"y":-0.035,"z":0.066,"yaw":23,"rest":"floor","sink":0.035},{"n":"piece_chair","k":"chair","x":-1.079,"y":-0.098,"z":-1.008,"yaw":23,"rest":"floor","sink":0.098},{"n":"piece_chest_wood","k":"chest","x":0.164,"y":-0.028,"z":1.894,"yaw":0,"rest":"floor","sink":0.028}]},{"id":"KB-381","anchor":"post","of":"post","rooms":["home"],"score":0.5,"once":true,"clips":[[0,4,0.134],[1,4,0.128]],"pieces":[{"n":"itemstand","k":"itemstand","x":-0.059,"y":0.247,"z":0.89,"yaw":351,"rest":"floor","sink":0.028},{"n":"itemstand","k":"itemstand","x":-0.045,"y":0.247,"z":0.763,"yaw":351,"rest":"floor","sink":0.028},{"n":"itemstandh","k":"itemstandh","x":-0.118,"y":-0.686,"z":0.935,"yaw":306,"rest":"floor","sink":0.686},{"n":"sign","k":"sign","x":0.112,"y":-0.446,"z":0.839,"yaw":81,"rest":"floor","sink":0.721},{"n":"sign","k":"sign","x":0.11,"y":0.242,"z":0.852,"yaw":81,"rest":"floor","sink":0.033}]},{"id":"KB-382","anchor":"hearth","of":"hearth","rooms":["home","kitchen","tavern"],"score":0.5,"once":true,"clips":[[1,"w",0.053],[3,4,0.078]],"pieces":[{"n":"piece_oven","k":"piece_oven","x":-3.927,"y":0,"z":1.395,"yaw":278,"rest":"floor"},{"n":"piece_oven","k":"piece_oven","x":3.994,"y":0,"z":0.273,"yaw":278,"rest":"floor"},{"n":"piece_cookingstation","k":"piece_cookingstation","x":-1.174,"y":0.6,"z":0.57,"yaw":233,"rest":"wall"},{"n":"piece_cauldron","k":"piece_cauldron","x":0.011,"y":0.6,"z":0.252,"yaw":199,"rest":"wall"},{"n":"piece_cookingstation","k":"piece_cookingstation","x":1.103,"y":0.6,"z":0.111,"yaw":154,"rest":"wall"}]},{"id":"KB-383","anchor":"table","of":"round","rooms":["home"],"score":0.5,"once":true,"clips":[[4,"a",0.069]],"pieces":[{"n":"piece_chair03","k":"chair","x":1.493,"y":-0.003,"z":1.006,"yaw":236,"rest":"floor"},{"n":"rug_fur","k":"rug","x":-1.124,"y":0,"z":-0.96,"yaw":180,"rest":"floor"},{"n":"rug_fur","k":"rug","x":1.146,"y":0,"z":-1.006,"yaw":180,"rest":"floor"},{"n":"piece_chair03","k":"chair","x":0.564,"y":0.018,"z":-2.324,"yaw":338,"rest":"floor"},{"n":"piece_jackoturnip","k":"piece_jackoturnip","x":-0.28,"y":0.841,"z":0.247,"yaw":304,"rest":"anchor"}]},{"id":"KB-384","anchor":"bed","of":"bed2","rooms":["home","sleeping"],"score":0.5,"once":true,"clips":[[3,"w",0.033]],"pieces":[{"n":"rug_fur","k":"rug","x":-1.933,"y":-0.028,"z":-0.013,"yaw":180,"rest":"floor","sink":0.028},{"n":"rug_wolf","k":"rug","x":-2.003,"y":-0.003,"z":-0.017,"yaw":180,"rest":"floor"},{"n":"piece_chest","k":"chest","x":2.681,"y":0.024,"z":-1.214,"yaw":0,"rest":"floor"},{"n":"piece_chest","k":"chest","x":-2.169,"y":0.024,"z":-1.339,"yaw":0,"rest":"floor"},{"n":"sign","k":"sign","x":0.013,"y":0.347,"z":1.879,"yaw":0,"rest":"floor"}]},{"id":"KB-385","anchor":"bed","of":"bed2","rooms":["home","sleeping"],"score":0.5,"once":true,"clips":[[4,"a",0.103]],"pieces":[{"n":"piece_chair","k":"chair","x":1.635,"y":-0.098,"z":-1.156,"yaw":180,"rest":"floor","sink":0.098},{"n":"piece_chair","k":"chair","x":-1.683,"y":-0.098,"z":-1.16,"yaw":180,"rest":"floor","sink":0.098},{"n":"rug_fur","k":"rug","x":-2.313,"y":-0.028,"z":0.742,"yaw":0,"rest":"floor","sink":0.028},{"n":"rug_fur","k":"rug","x":1.996,"y":-0.028,"z":0.693,"yaw":0,"rest":"floor","sink":0.028},{"n":"piece_chest","k":"chest","x":0.029,"y":-0.026,"z":2.21,"yaw":0,"rest":"floor","sink":0.026}]},{"id":"KB-386","anchor":"hearth","of":"hearth","rooms":["hall"],"score":0.5,"once":true,"clips":[[2,"w",0.159],[3,"w",0.15],[4,"w",0.15]],"pieces":[{"n":"cauldron_ext1_spice","k":"cauldron_ext1_spice","x":-1.59,"y":1.494,"z":1.224,"yaw":135,"rest":"hang"},{"n":"piece_chest","k":"chest","x":-2.01,"y":0.099,"z":1.78,"yaw":315,"rest":"floor"},{"n":"cauldron_ext3_butchertable","k":"cauldron_ext3_butchertable","x":-0.55,"y":0.084,"z":3.237,"yaw":135,"rest":"floor"},{"n":"piece_oven","k":"piece_oven","x":1.404,"y":0,"z":2.833,"yaw":315,"rest":"floor"},{"n":"piece_oven","k":"piece_oven","x":2.823,"y":0,"z":1.424,"yaw":315,"rest":"floor"}]},{"id":"KB-387","anchor":"bed","of":"bed","rooms":["home","sleeping"],"score":0.5,"once":true,"clips":[[0,"a",0.179]],"pieces":[{"n":"piece_chest_wood","k":"chest","x":-0.028,"y":-0.029,"z":1.607,"yaw":180,"rest":"floor","sink":0.029},{"n":"itemstand","k":"itemstand","x":1.028,"y":1.073,"z":-1.089,"yaw":315,"rest":"wall"},{"n":"itemstandh","k":"itemstandh","x":0.882,"y":1.143,"z":-0.972,"yaw":270,"rest":"wall"},{"n":"sign","k":"sign","x":-0.113,"y":1.542,"z":-1.44,"yaw":0,"rest":"wall"},{"n":"piece_banner11","k":"banner","x":1.698,"y":3.131,"z":-0.27,"yaw":45,"rest":"wall"}]},{"id":"KB-388","anchor":"bed","of":"bed","rooms":["home","sleeping"],"score":0.5,"once":true,"clips":[],"pieces":[{"n":"piece_chest_wood","k":"chest","x":0.11,"y":-0.029,"z":1.851,"yaw":0,"rest":"floor","sink":0.029},{"n":"itemstand","k":"itemstand","x":1.869,"y":1.203,"z":-0.746,"yaw":90,"rest":"wall"},{"n":"itemstandh","k":"itemstandh","x":2.013,"y":1.314,"z":-0.561,"yaw":90,"rest":"wall"},{"n":"itemstand","k":"itemstand","x":0.691,"y":1.436,"z":-1.037,"yaw":90,"rest":"wall"},{"n":"sign","k":"sign","x":0.023,"y":1.621,"z":-1.578,"yaw":0,"rest":"wall"}]},{"id":"KB-389","anchor":"hearth","of":"hearth","rooms":["home"],"score":0.5,"once":true,"clips":[],"pieces":[{"n":"cauldron_ext3_butchertable","k":"cauldron_ext3_butchertable","x":-2.059,"y":-0.013,"z":1.859,"yaw":235,"rest":"floor"},{"n":"cauldron_ext5_mortarandpestle","k":"cauldron_ext5_mortarandpestle","x":1.477,"y":-0.013,"z":-2.146,"yaw":325,"rest":"floor"},{"n":"rug_fur","k":"rug","x":2.466,"y":0,"z":1.668,"yaw":145,"rest":"floor"},{"n":"piece_cookingstation_iron","k":"piece_cookingstation_iron","x":-0.365,"y":0.583,"z":-0.341,"yaw":235,"rest":"wall"},{"n":"cauldron_ext1_spice","k":"cauldron_ext1_spice","x":-1.361,"y":2.494,"z":2.809,"yaw":145,"rest":"wall"}]},{"id":"KB-390","anchor":"hearth","of":"hearth","rooms":["any"],"score":0.5,"once":true,"clips":[[0,"w",0.15]],"pieces":[{"n":"piece_oven","k":"piece_oven","x":-1.953,"y":0,"z":2.277,"yaw":319,"rest":"floor"},{"n":"rug_fur","k":"rug","x":0.899,"y":0.097,"z":3.348,"yaw":139,"rest":"floor"},{"n":"piece_cookingstation_iron","k":"piece_cookingstation_iron","x":-0.026,"y":0.583,"z":-0.02,"yaw":229,"rest":"wall"},{"n":"cauldron_ext1_spice","k":"cauldron_ext1_spice","x":1.673,"y":2.661,"z":0.967,"yaw":229,"rest":"wall"},{"n":"cauldron_ext4_pots","k":"cauldron_ext4_pots","x":-0.489,"y":3.043,"z":3.181,"yaw":49,"rest":"wall"}]},{"id":"KB-391","anchor":"table","of":"table","rooms":["any"],"score":0.5,"once":true,"clips":[[0,"a",0.015],[3,"w",0.011]],"pieces":[{"n":"treasure_pile","k":"treasure_pile","x":0.022,"y":-0.091,"z":0.42,"yaw":338,"rest":"floor","sink":0.091},{"n":"treasure_stack","k":"treasure_stack","x":-0.912,"y":0.746,"z":-0.158,"yaw":338,"rest":"anchor"},{"n":"treasure_stack","k":"treasure_stack","x":-0.053,"y":0.746,"z":-0.361,"yaw":225,"rest":"anchor"},{"n":"piece_chest_treasure","k":"piece_chest_treasure","x":0.612,"y":0.75,"z":-0.064,"yaw":338,"rest":"anchor"},{"n":"piece_chest_private","k":"chest","x":-0.53,"y":0.767,"z":0.115,"yaw":23,"rest":"anchor"}]},{"id":"KB-392","anchor":"hearth","of":"hearth","rooms":["home","kitchen","tavern"],"score":0.5,"once":true,"clips":[[1,"w",0.038]],"pieces":[{"n":"forge_ext5","k":"forge_ext5","x":-2.5,"y":0,"z":2.937,"yaw":194,"rest":"floor"},{"n":"piece_cookingstation_iron","k":"piece_cookingstation_iron","x":-0.031,"y":0.583,"z":-0.169,"yaw":194,"rest":"wall"},{"n":"piece_cauldron","k":"piece_cauldron","x":1.181,"y":0.583,"z":0.609,"yaw":329,"rest":"wall"},{"n":"cauldron_ext1_spice","k":"cauldron_ext1_spice","x":1.938,"y":1.5,"z":0.903,"yaw":126,"rest":"wall"},{"n":"cauldron_ext4_pots","k":"cauldron_ext4_pots","x":-0.559,"y":3.3,"z":1.888,"yaw":14,"rest":"wall"}]},{"id":"KB-393","anchor":"table","of":"round","rooms":["any"],"score":0.5,"once":true,"clips":[[0,2,0.037],[1,2,0.037],[2,"a",0.055],[4,"a",0.013]],"pieces":[{"n":"piece_throne01","k":"piece_throne01","x":-2.014,"y":-0.035,"z":0.157,"yaw":101,"rest":"floor","sink":0.035},{"n":"piece_throne01","k":"piece_throne01","x":2.089,"y":-0.035,"z":0.616,"yaw":236,"rest":"floor","sink":0.035},{"n":"jute_carpet_blue","k":"rug","x":-0.035,"y":-0.028,"z":0.132,"yaw":0,"rest":"floor","sink":0.028},{"n":"rug_hare","k":"rug","x":0.009,"y":0.792,"z":-0.065,"yaw":0,"rest":"anchor"},{"n":"piece_jackoturnip","k":"piece_jackoturnip","x":0.119,"y":0.869,"z":-0.223,"yaw":180,"rest":"anchor"}]},{"id":"KB-394","anchor":"stair","of":"stair","rooms":["home"],"score":0.5,"once":true,"clips":[[0,1,0.046],[3,4,0.047],[4,"w",0.095]],"pieces":[{"n":"piece_chest_wood","k":"chest","x":-0.331,"y":-0.029,"z":-0.419,"yaw":101,"rest":"floor","sink":0.029},{"n":"sign","k":"sign","x":0.054,"y":0.028,"z":-0.454,"yaw":101,"rest":"floor","sink":0.247},{"n":"piece_chest_wood","k":"chest","x":-0.626,"y":0.952,"z":-0.477,"yaw":101,"rest":"on","on":4},{"n":"sign","k":"sign","x":-0.189,"y":0.985,"z":-0.474,"yaw":101,"rest":"on","on":0},{"n":"wood_floor_1x1","k":"floor1","x":-0.583,"y":0.856,"z":0.042,"yaw":11,"rest":"on","on":0}]},{"id":"KB-395","anchor":"hearth","of":"hearth","rooms":["kitchen","home","tavern","storage","smithy","workshop"],"score":0.5,"once":true,"clips":[],"pieces":[{"n":"piece_pot1","k":"pot","x":-1.507,"y":0.002,"z":2.555,"yaw":41,"rest":"floor"},{"n":"piece_chest_barrel","k":"barrel","x":2.998,"y":0.004,"z":0.669,"yaw":41,"rest":"floor"},{"n":"piece_chest_barrel","k":"barrel","x":-2.352,"y":0.004,"z":2.358,"yaw":41,"rest":"floor"},{"n":"goblinking_totemholder","k":"goblinking_totemholder","x":-1.657,"y":0.8,"z":1.688,"yaw":109,"rest":"hang"},{"n":"goblinking_totemholder","k":"goblinking_totemholder","x":0.292,"y":2.407,"z":1.162,"yaw":109,"rest":"hang"}]},{"id":"KB-396","anchor":"bed","of":"bed2","rooms":["home","sleeping"],"score":0.5,"once":true,"clips":[[1,"w",0.152],[2,"w",0.02]],"pieces":[{"n":"piece_chair03","k":"chair","x":-0.903,"y":-0.035,"z":2.365,"yaw":90,"rest":"floor","sink":0.035},{"n":"piece_chest_wood","k":"chest","x":2.96,"y":-0.028,"z":-0.752,"yaw":270,"rest":"floor","sink":0.028},{"n":"piece_chest_wood","k":"chest","x":2.061,"y":-0.028,"z":-0.673,"yaw":90,"rest":"floor","sink":0.028},{"n":"rug_wolf","k":"rug","x":2.229,"y":-0.028,"z":1.01,"yaw":270,"rest":"floor","sink":0.028},{"n":"itemstand","k":"itemstand","x":-1.229,"y":1.485,"z":-0.215,"yaw":90,"rest":"wall"}]},{"id":"KB-397","anchor":"table","of":"table","rooms":["home"],"score":0.5,"once":true,"clips":[[2,3,0.019],[2,4,0.019],[2,"w",0.634]],"pieces":[{"n":"piece_chair02","k":"chair","x":0.64,"y":-0.015,"z":1.365,"yaw":203,"rest":"floor","sink":0.028},{"n":"piece_chair02","k":"chair","x":-0.408,"y":-0.015,"z":1.226,"yaw":180,"rest":"floor","sink":0.028},{"n":"rug_deer","k":"rug","x":0.356,"y":0.766,"z":-0.664,"yaw":90,"rest":"anchor"},{"n":"itemstandh","k":"itemstandh","x":-0.364,"y":0.816,"z":0.064,"yaw":338,"rest":"anchor"},{"n":"itemstandh","k":"itemstandh","x":-0.947,"y":0.816,"z":-0.286,"yaw":45,"rest":"anchor"}]},{"id":"KB-398","anchor":"bed","of":"bed2","rooms":["smithy","home","sleeping"],"score":0.5,"once":true,"clips":[],"pieces":[{"n":"itemstand","k":"itemstand","x":0.391,"y":-0.145,"z":-1.907,"yaw":180,"rest":"floor","sink":0.42},{"n":"itemstand","k":"itemstand","x":-0.289,"y":-0.152,"z":-1.906,"yaw":180,"rest":"floor","sink":0.427},{"n":"rug_wolf","k":"rug","x":-1.291,"y":-0.028,"z":1.092,"yaw":225,"rest":"floor","sink":0.028},{"n":"piece_chair","k":"chair","x":1.699,"y":-0.098,"z":-0.704,"yaw":349,"rest":"floor","sink":0.098},{"n":"piece_chest_wood","k":"chest","x":-0.004,"y":-0.028,"z":2.236,"yaw":0,"rest":"floor","sink":0.028}]},{"id":"KB-399","anchor":"hearth","of":"hearth","rooms":["any"],"score":0.5,"once":true,"clips":[[0,"a",0.032],[1,"w",0.014]],"pieces":[{"n":"piece_chest_wood","k":"chest","x":-2.061,"y":-0.028,"z":1.108,"yaw":301,"rest":"floor","sink":0.028},{"n":"piece_chest_wood","k":"chest","x":-1.195,"y":-0.028,"z":2.666,"yaw":301,"rest":"floor","sink":0.028},{"n":"rug_fur","k":"rug","x":1.023,"y":-0.028,"z":1.804,"yaw":301,"rest":"floor","sink":0.028},{"n":"piece_chair02","k":"chair","x":2.185,"y":0.01,"z":1.093,"yaw":346,"rest":"floor"},{"n":"piece_chair02","k":"chair","x":0.103,"y":0.01,"z":2.459,"yaw":121,"rest":"floor"}]},{"id":"KB-400","anchor":"bed","of":"bed2","rooms":["home","sleeping"],"score":0.5,"once":true,"clips":[],"pieces":[{"n":"rug_fur","k":"rug","x":-0.156,"y":-0.028,"z":2.42,"yaw":90,"rest":"floor","sink":0.028},{"n":"rug_fur","k":"rug","x":-0.187,"y":-0.028,"z":0.976,"yaw":90,"rest":"floor","sink":0.028},{"n":"piece_walltorch","k":"walllight","x":1.516,"y":2.396,"z":1.048,"yaw":180,"rest":"wall"},{"n":"piece_banner01","k":"banner","x":-1.513,"y":3.388,"z":1.262,"yaw":180,"rest":"anchor"},{"n":"piece_banner01","k":"banner","x":-1.514,"y":3.414,"z":-0.652,"yaw":180,"rest":"anchor"}]},{"id":"KB-401","anchor":"bed","of":"bed","rooms":["home","hall","smithy","sleeping"],"score":0.5,"once":true,"clips":[[1,3,0.02],[2,3,0.068],[2,"a",0.022],[3,"a",0.071]],"pieces":[{"n":"forge_ext6","k":"forge_ext6","x":0.788,"y":-0.382,"z":0.151,"yaw":270,"rest":"floor","sink":0.532},{"n":"piece_chair","k":"chair","x":-1.074,"y":-0.047,"z":-1.167,"yaw":0,"rest":"floor","sink":0.047},{"n":"piece_chest_wood","k":"chest","x":0.082,"y":-0.028,"z":1.747,"yaw":0,"rest":"floor","sink":0.028},{"n":"rug_deer","k":"rug","x":-1.587,"y":-0.028,"z":0.074,"yaw":180,"rest":"floor","sink":0.028},{"n":"ArmorStand","k":"ArmorStand","x":-0.491,"y":-0.02,"z":-2.089,"yaw":315,"rest":"floor","sink":0.027}]},{"id":"KB-402","anchor":"hearth","of":"hearth","rooms":["home","smithy"],"score":0.5,"once":true,"clips":[[0,"a",0.085],[3,"a",0.032],[3,"w",0.021]],"pieces":[{"n":"forge_ext3","k":"forge_ext3","x":-2.509,"y":0,"z":-0.63,"yaw":214,"rest":"floor"},{"n":"forge_ext5","k":"forge_ext5","x":-1.103,"y":0,"z":2.293,"yaw":214,"rest":"floor"},{"n":"forge_ext1","k":"forge_ext1","x":2.143,"y":0.002,"z":1.821,"yaw":169,"rest":"floor"},{"n":"forge","k":"forge","x":0.624,"y":-0.035,"z":3.033,"yaw":304,"rest":"floor","sink":0.035},{"n":"forge_ext6","k":"forge_ext6","x":0.844,"y":2.804,"z":3.393,"yaw":304,"rest":"wall"}]},{"id":"KB-403","anchor":"bed","of":"bed","rooms":["storage","tavern","kitchen","smithy","workshop","home","hall","sleeping"],"score":0.5,"once":true,"clips":[[1,2,0.083],[4,"a",0.027]],"pieces":[{"n":"rug_fur","k":"rug","x":-0.444,"y":0,"z":-0.134,"yaw":0,"rest":"floor"},{"n":"piece_chest_barrel","k":"barrel","x":-1.39,"y":0.004,"z":0.531,"yaw":270,"rest":"floor"},{"n":"piece_chest_barrel","k":"barrel","x":-1.4,"y":0.004,"z":1.234,"yaw":270,"rest":"floor"},{"n":"ArmorStand","k":"ArmorStand","x":-0.092,"y":0.007,"z":2.298,"yaw":0,"rest":"floor"},{"n":"piece_logbench01","k":"bench","x":1.763,"y":0.025,"z":-1.569,"yaw":180,"rest":"floor"}]},{"id":"KB-404","anchor":"post","of":"post","rooms":["any"],"score":0.5,"once":true,"clips":[[3,4,0.399]],"pieces":[{"n":"piece_workbench_ext2","k":"piece_workbench_ext2","x":0.027,"y":0.022,"z":0.933,"yaw":5,"rest":"floor"},{"n":"Candle_resin","k":"candle","x":-0.543,"y":1.22,"z":0.604,"yaw":118,"rest":"on","on":3},{"n":"Candle_resin","k":"candle","x":0.516,"y":1.22,"z":0.422,"yaw":185,"rest":"on","on":4},{"n":"wood_beam_1","k":"beam1","x":-0.563,"y":1,"z":0.452,"yaw":5,"rest":"hang"},{"n":"wood_beam","k":"beam2","x":-0.065,"y":1,"z":0.407,"yaw":185,"rest":"hang"}]},{"id":"KB-405","anchor":"post","of":"post","rooms":["any"],"score":0.5,"once":true,"clips":[[3,"a",0.185]],"pieces":[{"n":"piece_walltorch","k":"walllight","x":-0.055,"y":0.799,"z":0.904,"yaw":270,"rest":"hang"},{"n":"Candle_resin","k":"candle","x":-0.462,"y":1.22,"z":0.555,"yaw":180,"rest":"on","on":3},{"n":"Candle_resin","k":"candle","x":0.517,"y":1.22,"z":0.536,"yaw":180,"rest":"on","on":4},{"n":"wood_beam","k":"beam2","x":-1,"y":0.977,"z":-0.002,"yaw":180,"rest":"hang"},{"n":"wood_beam_1","k":"beam1","x":0.446,"y":1,"z":0.449,"yaw":360,"rest":"hang"}]},{"id":"KB-406","anchor":"bed","of":"bed2","rooms":["home","sleeping"],"score":0.5,"once":true,"clips":[[0,3,0.113],[0,"w",0.594],[1,3,0.115],[1,"w",0.609],[2,3,0.065],[2,"a",0.09],[2,"w",0.089],[3,"a",0.09],[3,"w",0.054]],"pieces":[{"n":"piece_chest_wood","k":"chest","x":1.575,"y":0,"z":-1.566,"yaw":90,"rest":"floor"},{"n":"piece_chest_wood","k":"chest","x":-1.586,"y":0,"z":-1.581,"yaw":90,"rest":"floor"},{"n":"jute_carpet","k":"rug","x":-0.098,"y":0,"z":2.709,"yaw":180,"rest":"floor"},{"n":"jute_carpet","k":"rug","x":-0.089,"y":0,"z":0.002,"yaw":180,"rest":"floor"},{"n":"piece_banner11","k":"banner","x":-0.014,"y":3.808,"z":-1.509,"yaw":90,"rest":"wall"}]},{"id":"KB-407","anchor":"post","of":"post","rooms":["any"],"score":0.48,"once":true,"clips":[[3,"a",0.282]],"pieces":[{"n":"rug_fur","k":"rug","x":0.608,"y":-0.028,"z":0.222,"yaw":110,"rest":"floor","sink":0.028},{"n":"itemstand","k":"itemstand","x":-0.291,"y":0.35,"z":0.438,"yaw":65,"rest":"floor"},{"n":"itemstand","k":"itemstand","x":-0.317,"y":1.35,"z":0.449,"yaw":65,"rest":"on","on":3},{"n":"wood_beam_1","k":"beam1","x":-0.21,"y":0.875,"z":0.454,"yaw":245,"rest":"wall"}]},{"id":"KB-408","anchor":"stair","of":"stair","rooms":["any"],"score":0.48,"once":true,"clips":[[2,3,0.079]],"pieces":[{"n":"piece_workbench_ext1","k":"piece_workbench_ext1","x":0.461,"y":-0.019,"z":0.307,"yaw":0,"rest":"floor"},{"n":"piece_workbench_ext4","k":"piece_workbench_ext4","x":0.582,"y":0.05,"z":-0.862,"yaw":270,"rest":"floor"},{"n":"sign","k":"sign","x":-0.405,"y":0.312,"z":0.545,"yaw":0,"rest":"floor"},{"n":"sign","k":"sign","x":-0.413,"y":0.757,"z":0.535,"yaw":0,"rest":"hang"}]},{"id":"KB-409","anchor":"table","of":"long","rooms":["home"],"score":0.48,"once":true,"clips":[],"pieces":[{"n":"piece_chair03","k":"chair","x":0.078,"y":-0.035,"z":1.262,"yaw":135,"rest":"floor","sink":0.035},{"n":"rug_fur","k":"rug","x":2.058,"y":-0.028,"z":0.887,"yaw":0,"rest":"floor","sink":0.028},{"n":"rug_wolf","k":"rug","x":2.092,"y":-0.003,"z":0.936,"yaw":0,"rest":"floor"},{"n":"piece_chest","k":"chest","x":2.213,"y":0.024,"z":-0.25,"yaw":0,"rest":"floor"}]},{"id":"KB-410","anchor":"bed","of":"bed2","rooms":["home","sleeping"],"score":0.48,"once":true,"clips":[],"pieces":[{"n":"rug_fur","k":"rug","x":2.329,"y":-0.028,"z":-0.114,"yaw":0,"rest":"floor","sink":0.028},{"n":"rug_wolf","k":"rug","x":2.307,"y":-0.003,"z":-0.151,"yaw":0,"rest":"floor"},{"n":"piece_chest","k":"chest","x":2.439,"y":0.024,"z":-1.201,"yaw":0,"rest":"floor"},{"n":"sign","k":"sign","x":-0.058,"y":0.371,"z":1.879,"yaw":0,"rest":"floor"}]},{"id":"KB-411","anchor":"hearth","of":"hearth","rooms":["any"],"score":0.48,"once":true,"clips":[[0,"a",0.231]],"pieces":[{"n":"cauldron_ext3_butchertable","k":"cauldron_ext3_butchertable","x":0.944,"y":-0.041,"z":2.695,"yaw":75,"rest":"floor","sink":0.041},{"n":"cauldron_ext5_mortarandpestle","k":"cauldron_ext5_mortarandpestle","x":-0.376,"y":-0.041,"z":2.409,"yaw":345,"rest":"floor","sink":0.041},{"n":"cauldron_ext1_spice","k":"cauldron_ext1_spice","x":-0.417,"y":2.369,"z":2.043,"yaw":345,"rest":"hang"},{"n":"cauldron_ext4_pots","k":"cauldron_ext4_pots","x":-0.451,"y":2.977,"z":2.086,"yaw":345,"rest":"hang"}]},{"id":"KB-412","anchor":"hearth","of":"hearth","rooms":["hall"],"score":0.48,"once":true,"clips":[],"pieces":[{"n":"piece_chest_wood","k":"chest","x":0.253,"y":-0.029,"z":3.023,"yaw":204,"rest":"floor","sink":0.029},{"n":"piece_chest_wood","k":"chest","x":-0.119,"y":-0.029,"z":2.353,"yaw":204,"rest":"floor","sink":0.029},{"n":"piece_walltorch","k":"walllight","x":1.704,"y":1.769,"z":1.266,"yaw":294,"rest":"wall"},{"n":"piece_banner07","k":"banner","x":-1.839,"y":3.362,"z":1.517,"yaw":24,"rest":"wall"}]},{"id":"KB-413","anchor":"table","of":"round","rooms":["hall"],"score":0.48,"once":true,"clips":[[2,"a",0.07]],"pieces":[{"n":"piece_chair03","k":"chair","x":-1.447,"y":-0.035,"z":-0.893,"yaw":56,"rest":"floor","sink":0.035},{"n":"piece_chair03","k":"chair","x":1.687,"y":-0.035,"z":-0.765,"yaw":293,"rest":"floor","sink":0.035},{"n":"piece_chest_private","k":"chest","x":-0.105,"y":0.768,"z":0.483,"yaw":169,"rest":"anchor"},{"n":"piece_walltorch","k":"walllight","x":2.029,"y":1.653,"z":0.166,"yaw":146,"rest":"wall"}]},{"id":"KB-414","anchor":"bed","of":"bed2","rooms":["home","sleeping"],"score":0.48,"once":true,"clips":[[1,2,0.125],[2,"a",0.032],[3,"w",0.348]],"pieces":[{"n":"piece_throne01","k":"piece_throne01","x":1.344,"y":-0.035,"z":2.661,"yaw":270,"rest":"floor","sink":0.035},{"n":"itemstand","k":"itemstand","x":1.187,"y":0.619,"z":-1.694,"yaw":90,"rest":"wall"},{"n":"piece_groundtorch","k":"floorlight","x":1.259,"y":0.625,"z":-1.563,"yaw":113,"rest":"floor","sink":0.125},{"n":"piece_dvergr_lantern","k":"walllight","x":0.006,"y":3.032,"z":-2.16,"yaw":90,"rest":"wall"}]},{"id":"KB-415","anchor":"bed","of":"bed2","rooms":["home","sleeping"],"score":0.48,"once":true,"clips":[],"pieces":[{"n":"piece_chest","k":"chest","x":-2.99,"y":1.092,"z":1.399,"yaw":90,"rest":"on","on":1},{"n":"piece_chest","k":"chest","x":-2.797,"y":0.002,"z":0.662,"yaw":90,"rest":"floor"},{"n":"piece_Lavalantern","k":"piece_Lavalantern","x":-1.815,"y":0.528,"z":-1.421,"yaw":68,"rest":"wall"},{"n":"piece_chair","k":"chair","x":-1.802,"y":-0.07,"z":-1.367,"yaw":68,"rest":"floor","sink":0.07}]},{"id":"KB-416","anchor":"hearth","of":"hearth","rooms":["smithy"],"score":0.48,"once":true,"clips":[[0,3,0.07],[1,2,0.028],[1,3,0.071],[2,3,0.072],[2,"w",0.026]],"pieces":[{"n":"forge_ext4","k":"forge_ext4","x":-0.798,"y":-0.071,"z":1.842,"yaw":69,"rest":"floor","sink":0.071},{"n":"forge","k":"forge","x":0.818,"y":-0.063,"z":3.703,"yaw":69,"rest":"floor","sink":0.063},{"n":"forge_ext3","k":"forge_ext3","x":1.111,"y":-0.028,"z":2.537,"yaw":69,"rest":"floor","sink":0.029},{"n":"rug_deer","k":"rug","x":-1.13,"y":-0.028,"z":3.574,"yaw":69,"rest":"floor","sink":0.028}]},{"id":"KB-417","anchor":"bed","of":"bed2","rooms":["home","hall","smithy","sleeping"],"score":0.48,"once":true,"clips":[[1,2,0.019]],"pieces":[{"n":"ArmorStand","k":"ArmorStand","x":-0.079,"y":-0.021,"z":2.632,"yaw":0,"rest":"floor","sink":0.028},{"n":"sign","k":"sign","x":1.131,"y":1.188,"z":-0.285,"yaw":270,"rest":"wall"},{"n":"sign","k":"sign","x":1.131,"y":1.188,"z":0.696,"yaw":270,"rest":"wall"},{"n":"piece_walltorch","k":"walllight","x":-1.682,"y":2.209,"z":-2.242,"yaw":90,"rest":"wall"}]},{"id":"KB-418","anchor":"table","of":"round","rooms":["home"],"score":0.48,"once":true,"clips":[[1,"a",0.069],[2,"a",0.069]],"pieces":[{"n":"piece_chair","k":"chair","x":-1.119,"y":-0.07,"z":0.756,"yaw":68,"rest":"floor","sink":0.07},{"n":"itemstandh","k":"itemstandh","x":-0.234,"y":0.795,"z":0.492,"yaw":248,"rest":"anchor"},{"n":"itemstandh","k":"itemstandh","x":-0.627,"y":0.795,"z":0.706,"yaw":225,"rest":"anchor"},{"n":"itemstand","k":"itemstand","x":-1.463,"y":1.624,"z":1.132,"yaw":180,"rest":"hang"}]},{"id":"KB-419","anchor":"hearth","of":"hearth","rooms":["kitchen","home","tavern"],"score":0.48,"once":true,"clips":[[1,"w",0.116],[3,"w",0.059]],"pieces":[{"n":"cauldron_ext3_butchertable","k":"cauldron_ext3_butchertable","x":-1.624,"y":-0.013,"z":2.928,"yaw":291,"rest":"floor"},{"n":"cauldron_ext5_mortarandpestle","k":"cauldron_ext5_mortarandpestle","x":1.927,"y":0.57,"z":0.073,"yaw":291,"rest":"wall"},{"n":"piece_cauldron","k":"piece_cauldron","x":1.01,"y":0.583,"z":0.207,"yaw":291,"rest":"wall"},{"n":"piece_MeadCauldron","k":"piece_MeadCauldron","x":-0.981,"y":0.583,"z":0.654,"yaw":291,"rest":"wall"}]},{"id":"KB-420","anchor":"table","of":"round","rooms":["any"],"score":0.48,"once":true,"clips":[],"pieces":[{"n":"goblinking_totemholder","k":"goblinking_totemholder","x":-0.708,"y":-0.477,"z":1.476,"yaw":0,"rest":"floor","sink":0.478},{"n":"rug_fur","k":"rug","x":-0.017,"y":-0.028,"z":-0.269,"yaw":56,"rest":"floor","sink":0.028},{"n":"rug_fur","k":"rug","x":-0.961,"y":-0.028,"z":1.77,"yaw":68,"rest":"floor","sink":0.028},{"n":"piece_throne01","k":"piece_throne01","x":-0.94,"y":0.038,"z":-1.922,"yaw":326,"rest":"floor"}]},{"id":"KB-421","anchor":"hearth","of":"pit","rooms":["home","kitchen","tavern"],"score":0.48,"once":true,"clips":[[0,3,0.627],[0,"w",0.054],[2,3,0.106],[3,"w",0.141]],"pieces":[{"n":"cauldron_ext3_butchertable","k":"cauldron_ext3_butchertable","x":-0.36,"y":0.11,"z":2.583,"yaw":349,"rest":"floor"},{"n":"piece_cauldron","k":"piece_cauldron","x":0.254,"y":0.172,"z":0.095,"yaw":11,"rest":"wall"},{"n":"sign","k":"sign","x":0.429,"y":0.247,"z":2.694,"yaw":73,"rest":"floor","sink":0.028},{"n":"piece_chest_wood","k":"chest","x":-0.316,"y":0.359,"z":2.457,"yaw":298,"rest":"wall"}]},{"id":"KB-422","anchor":"bed","of":"bed2","rooms":["home","sleeping"],"score":0.48,"once":true,"clips":[[0,"w",0.163]],"pieces":[{"n":"goblinking_totemholder","k":"goblinking_totemholder","x":-1.22,"y":-0.476,"z":-1.762,"yaw":6,"rest":"floor","sink":0.477},{"n":"piece_chair03","k":"chair","x":-0.995,"y":-0.01,"z":2.233,"yaw":90,"rest":"floor"},{"n":"sign","k":"sign","x":-0.028,"y":0.392,"z":1.88,"yaw":0,"rest":"floor"},{"n":"piece_banner10","k":"banner","x":-0.069,"y":3.548,"z":2.026,"yaw":270,"rest":"hang"}]},{"id":"KB-423","anchor":"post","of":"post","rooms":["home"],"score":0.48,"once":true,"clips":[[0,"a",0.126],[1,"a",0.046],[2,3,0.089]],"pieces":[{"n":"blackforge","k":"blackforge","x":-0.02,"y":-0.36,"z":-0.586,"yaw":183,"rest":"floor","sink":0.36},{"n":"blackforge_ext1","k":"blackforge_ext1","x":-0.01,"y":-0.023,"z":0.431,"yaw":3,"rest":"floor","sink":0.026},{"n":"sign","k":"sign","x":0.478,"y":1.685,"z":0.747,"yaw":183,"rest":"on","on":1},{"n":"sign","k":"sign","x":-0.397,"y":1.69,"z":0.799,"yaw":183,"rest":"on","on":1}]},{"id":"KB-424","anchor":"bed","of":"bed2","rooms":["home","hall","smithy","sleeping"],"score":0.48,"once":true,"clips":[],"pieces":[{"n":"ArmorStand","k":"ArmorStand","x":-2.415,"y":-0.021,"z":-0.94,"yaw":45,"rest":"floor","sink":0.028},{"n":"itemstand","k":"itemstand","x":1.153,"y":1.952,"z":-1.778,"yaw":0,"rest":"wall"},{"n":"piece_walltorch","k":"walllight","x":-1.763,"y":2.232,"z":-1.619,"yaw":270,"rest":"wall"},{"n":"piece_banner01","k":"banner","x":-0.738,"y":3.706,"z":-1.674,"yaw":90,"rest":"wall"}]},{"id":"KB-425","anchor":"bed","of":"bed","rooms":["hall","home","sleeping"],"score":0.48,"once":true,"clips":[[1,"w",0.263]],"pieces":[{"n":"piece_chair","k":"chair","x":0.906,"y":-0.073,"z":-1.114,"yaw":0,"rest":"floor","sink":0.073},{"n":"piece_bench01","k":"bench","x":-0.568,"y":0.364,"z":0.079,"yaw":90,"rest":"wall"},{"n":"sign","k":"sign","x":-0.371,"y":1.191,"z":0.712,"yaw":90,"rest":"anchor"},{"n":"rug_wolf","k":"rug","x":1.155,"y":-0.028,"z":-0.394,"yaw":0,"rest":"floor","sink":0.028}]},{"id":"KB-426","anchor":"bed","of":"bed2","rooms":["home","sleeping"],"score":0.48,"once":true,"clips":[],"pieces":[{"n":"rug_wolf","k":"rug","x":-0.365,"y":0,"z":2.931,"yaw":270,"rest":"floor"},{"n":"rug_fur","k":"rug","x":-2.216,"y":0,"z":0.317,"yaw":0,"rest":"floor"},{"n":"piece_throne01","k":"piece_throne01","x":-2.547,"y":0.019,"z":-1.128,"yaw":0,"rest":"floor"},{"n":"piece_banner01","k":"banner","x":0.15,"y":3.94,"z":-1.446,"yaw":270,"rest":"wall"}]},{"id":"KB-427","anchor":"bed","of":"bed","rooms":["home","hall","smithy","sleeping"],"score":0.48,"once":true,"clips":[[0,2,0.02],[2,"a",0.071]],"pieces":[{"n":"piece_chair","k":"chair","x":0.966,"y":-0.047,"z":-1.266,"yaw":0,"rest":"floor","sink":0.047},{"n":"piece_chest_wood","k":"chest","x":-0.012,"y":-0.028,"z":2.029,"yaw":0,"rest":"floor","sink":0.028},{"n":"rug_deer","k":"rug","x":1.262,"y":-0.028,"z":-0.046,"yaw":180,"rest":"floor","sink":0.028},{"n":"ArmorStand","k":"ArmorStand","x":0.618,"y":-0.02,"z":-2.21,"yaw":45,"rest":"floor","sink":0.027}]},{"id":"KB-428","anchor":"table","of":"round","rooms":["hall"],"score":0.48,"once":true,"clips":[[2,"a",0.07]],"pieces":[{"n":"rug_fur","k":"rug","x":0.112,"y":-0.028,"z":-2.029,"yaw":180,"rest":"floor","sink":0.028},{"n":"piece_chair03","k":"chair","x":1.762,"y":-0.035,"z":0.577,"yaw":225,"rest":"floor","sink":0.035},{"n":"piece_chest_private","k":"chest","x":-0.562,"y":0.768,"z":-0.108,"yaw":101,"rest":"anchor"},{"n":"piece_chair03","k":"chair","x":0.86,"y":-0.01,"z":-1.397,"yaw":326,"rest":"floor"}]},{"id":"KB-429","anchor":"hearth","of":"hearth","rooms":["storage","tavern","kitchen","smithy","workshop"],"score":0.48,"once":true,"clips":[[0,"w",0.046],[1,"w",0.018]],"pieces":[{"n":"cauldron_ext5_mortarandpestle","k":"cauldron_ext5_mortarandpestle","x":-1.059,"y":-0.041,"z":3.672,"yaw":317,"rest":"floor","sink":0.041},{"n":"piece_chest_barrel","k":"barrel","x":2.076,"y":-0.025,"z":2.821,"yaw":205,"rest":"floor","sink":0.028},{"n":"piece_groundtorch","k":"floorlight","x":0.413,"y":0.625,"z":3.637,"yaw":92,"rest":"floor","sink":0.125},{"n":"cauldron_ext6_rollingpins","k":"cauldron_ext6_rollingpins","x":-1.552,"y":2.795,"z":3.397,"yaw":137,"rest":"wall"}]},{"id":"KB-430","anchor":"table","of":"round","rooms":["home","hall","smithy"],"score":0.48,"once":true,"clips":[[0,1,0.07],[0,3,0.07],[0,"w",0.141],[1,2,0.069],[1,3,0.02],[1,"a",0.021],[2,"w",0.038]],"pieces":[{"n":"piece_throne01","k":"piece_throne01","x":-2.112,"y":-0.035,"z":0.418,"yaw":90,"rest":"floor","sink":0.035},{"n":"rug_deer","k":"rug","x":-0.62,"y":-0.028,"z":0.461,"yaw":90,"rest":"floor","sink":0.028},{"n":"ArmorStand","k":"ArmorStand","x":-2.139,"y":-0.021,"z":-0.738,"yaw":270,"rest":"floor","sink":0.028},{"n":"piece_Lavalantern","k":"piece_Lavalantern","x":-1.773,"y":0.018,"z":-0.444,"yaw":270,"rest":"floor"}]},{"id":"KB-431","anchor":"hearth","of":"hearth","rooms":["kitchen","home","tavern"],"score":0.48,"once":true,"clips":[[1,2,0.108]],"pieces":[{"n":"cauldron_ext5_mortarandpestle","k":"cauldron_ext5_mortarandpestle","x":0.288,"y":-0.013,"z":2.796,"yaw":3,"rest":"floor"},{"n":"piece_cookingstation_iron","k":"piece_cookingstation_iron","x":0.032,"y":0.583,"z":-1.641,"yaw":273,"rest":"wall"},{"n":"piece_cauldron","k":"piece_cauldron","x":-0.404,"y":0.583,"z":0.637,"yaw":116,"rest":"hang"},{"n":"cauldron_ext4_pots","k":"cauldron_ext4_pots","x":0.407,"y":3.337,"z":2.13,"yaw":3,"rest":"wall"}]},{"id":"KB-432","anchor":"bed","of":"bed","rooms":["home","sleeping"],"score":0.46,"once":true,"clips":[[1,"w",0.122],[2,"w",0.168]],"pieces":[{"n":"rug_fur","k":"rug","x":-1.217,"y":-0.028,"z":0.28,"yaw":0,"rest":"floor","sink":0.028},{"n":"piece_chest_private","k":"chest","x":-0.08,"y":-0.027,"z":2.074,"yaw":0,"rest":"floor","sink":0.029},{"n":"piece_banner02","k":"banner","x":0.094,"y":1.807,"z":1.807,"yaw":270,"rest":"floor","sink":0.193}]},{"id":"KB-433","anchor":"bed","of":"bed2","rooms":["home","sleeping"],"score":0.46,"once":true,"clips":[[0,"w",0.196]],"pieces":[{"n":"piece_chest","k":"chest","x":2.191,"y":-0.026,"z":-1.092,"yaw":270,"rest":"floor","sink":0.026},{"n":"jute_carpet_blue","k":"rug","x":-0.266,"y":-0.001,"z":3.82,"yaw":0,"rest":"floor"},{"n":"sign","k":"sign","x":0.016,"y":0.376,"z":1.88,"yaw":0,"rest":"floor"}]},{"id":"KB-434","anchor":"table","of":"table","rooms":["hall"],"score":0.46,"once":true,"clips":[],"pieces":[{"n":"piece_chest_private","k":"chest","x":0.703,"y":0.792,"z":-0.045,"yaw":214,"rest":"anchor"},{"n":"piece_chair03","k":"chair","x":-0.4,"y":-0.035,"z":-1.21,"yaw":22,"rest":"floor","sink":0.035},{"n":"rug_wolf","k":"rug","x":-1.686,"y":-0.028,"z":-0.545,"yaw":45,"rest":"floor","sink":0.028}]},{"id":"KB-435","anchor":"stair","of":"stair","rooms":["hall"],"score":0.46,"once":true,"clips":[[2,"w",0.097]],"pieces":[{"n":"cauldron_ext4_pots","k":"cauldron_ext4_pots","x":-0.078,"y":0.993,"z":0.15,"yaw":0,"rest":"floor"},{"n":"piece_chest_wood","k":"chest","x":-0.196,"y":1.971,"z":-0.607,"yaw":0,"rest":"on","on":2},{"n":"wood_floor_1x1","k":"floor1","x":-0.5,"y":1.875,"z":-0.5,"yaw":270,"rest":"wall"}]},{"id":"KB-436","anchor":"table","of":"table","rooms":["any"],"score":0.46,"once":true,"clips":[[0,"a",0.174],[1,2,0.394],[1,"w",0.078]],"pieces":[{"n":"forge_ext5","k":"forge_ext5","x":1.057,"y":-0.028,"z":0.861,"yaw":68,"rest":"floor","sink":0.028},{"n":"forge_ext1","k":"forge_ext1","x":1.708,"y":-0.026,"z":0.212,"yaw":225,"rest":"floor","sink":0.026},{"n":"piece_groundtorch","k":"floorlight","x":1.915,"y":0.625,"z":0.034,"yaw":293,"rest":"floor","sink":0.125}]},{"id":"KB-437","anchor":"hearth","of":"hearth","rooms":["home","kitchen","tavern"],"score":0.46,"once":true,"clips":[[0,"a",0.102],[0,"w",0.192]],"pieces":[{"n":"cauldron_ext5_mortarandpestle","k":"cauldron_ext5_mortarandpestle","x":-0.342,"y":-0.041,"z":1.938,"yaw":69,"rest":"floor","sink":0.041},{"n":"piece_cauldron","k":"piece_cauldron","x":1.103,"y":0.074,"z":0.036,"yaw":24,"rest":"floor"},{"n":"cauldron_ext4_pots","k":"cauldron_ext4_pots","x":-0.841,"y":3.226,"z":3.064,"yaw":114,"rest":"wall"}]},{"id":"KB-438","anchor":"bed","of":"bed","rooms":["home","sleeping"],"score":0.46,"once":true,"clips":[[0,"w",0.027]],"pieces":[{"n":"piece_chest_wood","k":"chest","x":-0.025,"y":-0.029,"z":1.837,"yaw":0,"rest":"floor","sink":0.029},{"n":"itemstand","k":"itemstand","x":-0.776,"y":1.214,"z":-0.785,"yaw":90,"rest":"anchor"},{"n":"itemstandh","k":"itemstandh","x":-0.632,"y":1.237,"z":-0.813,"yaw":90,"rest":"wall"}]},{"id":"KB-439","anchor":"bed","of":"bed2","rooms":["home","sleeping"],"score":0.46,"once":true,"clips":[[0,"a",0.112]],"pieces":[{"n":"piece_chest_wood","k":"chest","x":0.179,"y":-0.029,"z":2.092,"yaw":0,"rest":"floor","sink":0.029},{"n":"itemstandh","k":"itemstandh","x":-1.783,"y":1.323,"z":-1.383,"yaw":0,"rest":"wall"},{"n":"sign","k":"sign","x":-0.387,"y":2.151,"z":-1.439,"yaw":0,"rest":"wall"}]},{"id":"KB-440","anchor":"bed","of":"bed2","rooms":["home","sleeping"],"score":0.46,"once":true,"clips":[[0,"w",0.096],[1,"a",0.014]],"pieces":[{"n":"piece_barber","k":"piece_barber","x":2.439,"y":0.002,"z":-1.038,"yaw":158,"rest":"floor"},{"n":"piece_chair","k":"chair","x":1.501,"y":-0.045,"z":0.349,"yaw":315,"rest":"floor","sink":0.045},{"n":"piece_Lavalantern","k":"piece_Lavalantern","x":1.498,"y":0.553,"z":0.33,"yaw":315,"rest":"wall"}]},{"id":"KB-441","anchor":"window","rooms":["home"],"score":0.46,"once":true,"clips":[[1,"w",0.047]],"pieces":[{"n":"forge_ext5","k":"forge_ext5","x":0.585,"y":0,"z":0.461,"yaw":180,"rest":"floor"},{"n":"forge_ext3","k":"forge_ext3","x":-0.58,"y":0,"z":0.183,"yaw":270,"rest":"floor"},{"n":"forge_ext2","k":"forge_ext2","x":-0.584,"y":0.121,"z":0.937,"yaw":270,"rest":"floor"}]},{"id":"KB-442","anchor":"window","rooms":["home","smithy"],"score":0.46,"once":true,"clips":[],"pieces":[{"n":"forge_ext1","k":"forge_ext1","x":0.403,"y":0.003,"z":0.559,"yaw":180,"rest":"floor"},{"n":"piece_walltorch","k":"walllight","x":0.935,"y":3.051,"z":0.265,"yaw":270,"rest":"wall"},{"n":"forge","k":"forge","x":-0.935,"y":-0.035,"z":0.609,"yaw":0,"rest":"floor","sink":0.035}]},{"id":"KB-443","anchor":"table","of":"table","rooms":["any"],"score":0.46,"once":true,"clips":[[2,"w",0.047]],"pieces":[{"n":"cauldron_ext3_butchertable","k":"cauldron_ext3_butchertable","x":1.866,"y":-0.041,"z":-0.07,"yaw":0,"rest":"floor","sink":0.041},{"n":"piece_xmastree","k":"piece_xmastree","x":0.426,"y":0.933,"z":-0.216,"yaw":180,"rest":"anchor"},{"n":"piece_banner02","k":"banner","x":-1.679,"y":2.928,"z":-1.334,"yaw":180,"rest":"wall"}]},{"id":"KB-444","anchor":"hearth","of":"hearth","rooms":["any"],"score":0.46,"once":true,"clips":[[0,"a",0.062]],"pieces":[{"n":"forge_ext4","k":"forge_ext4","x":-1.752,"y":-0.043,"z":1.987,"yaw":312,"rest":"floor","sink":0.043},{"n":"piece_workbench_ext2","k":"piece_workbench_ext2","x":1.713,"y":0.023,"z":2.844,"yaw":245,"rest":"floor"},{"n":"forge_ext6","k":"forge_ext6","x":0.039,"y":3.084,"z":1.604,"yaw":357,"rest":"wall"}]},{"id":"KB-445","anchor":"hearth","of":"hearth","rooms":["workshop","smithy"],"score":0.46,"once":true,"clips":[[1,"a",0.438],[1,"w",0.145]],"pieces":[{"n":"piece_workbench","k":"piece_workbench","x":-1.758,"y":-0.025,"z":3.028,"yaw":243,"rest":"floor","sink":0.025},{"n":"piece_cookingstation_iron","k":"piece_cookingstation_iron","x":0.409,"y":0,"z":0.227,"yaw":243,"rest":"floor"},{"n":"itemstand","k":"itemstand","x":1.349,"y":2.714,"z":0.753,"yaw":63,"rest":"wall"}]},{"id":"KB-446","anchor":"hearth","of":"hearth","rooms":["workshop","smithy"],"score":0.46,"once":true,"clips":[[1,"a",0.208],[2,"a",0.306]],"pieces":[{"n":"piece_workbench","k":"piece_workbench","x":-0.7,"y":-0.053,"z":3.014,"yaw":335,"rest":"floor","sink":0.053},{"n":"goblinking_totemholder","k":"goblinking_totemholder","x":-0.347,"y":-0.028,"z":-0.128,"yaw":245,"rest":"floor","sink":0.029},{"n":"piece_chest","k":"chest","x":1.039,"y":-0.026,"z":2.449,"yaw":155,"rest":"floor","sink":0.026}]},{"id":"KB-447","anchor":"bed","of":"bed2","rooms":["home","sleeping"],"score":0.46,"once":true,"clips":[[0,"a",0.05]],"pieces":[{"n":"dvergrprops_lantern_standing","k":"dvergrprops_lantern_standing","x":0.977,"y":-0.402,"z":1.962,"yaw":259,"rest":"floor","sink":0.402},{"n":"piece_chair03","k":"chair","x":-2.228,"y":-0.01,"z":-0.869,"yaw":6,"rest":"floor"},{"n":"sign","k":"sign","x":0.035,"y":0.343,"z":1.88,"yaw":0,"rest":"floor"}]},{"id":"KB-448","anchor":"corner","angle":135,"rooms":["any"],"score":0.46,"once":true,"clips":[[0,1,0.021],[0,"w",0.071],[1,"w",0.051]],"pieces":[{"n":"rug_deer","k":"rug","x":-0.322,"y":0,"z":0.829,"yaw":113,"rest":"floor"},{"n":"piece_chair03","k":"chair","x":0.133,"y":0.043,"z":0.423,"yaw":315,"rest":"floor"},{"n":"itemstandh","k":"itemstandh","x":-0.501,"y":1,"z":-0.008,"yaw":338,"rest":"wall"}]},{"id":"KB-449","anchor":"hearth","of":"pit","rooms":["kitchen","home","tavern"],"score":0.46,"once":true,"clips":[],"pieces":[{"n":"cauldron_ext3_butchertable","k":"cauldron_ext3_butchertable","x":0.169,"y":-0.013,"z":-1.569,"yaw":90,"rest":"floor"},{"n":"piece_oven","k":"piece_oven","x":-0.481,"y":0,"z":2.027,"yaw":180,"rest":"floor"},{"n":"piece_cauldron","k":"piece_cauldron","x":-0.062,"y":0.2,"z":-0.013,"yaw":0,"rest":"wall"}]},{"id":"KB-450","anchor":"hearth","of":"hearth","rooms":["kitchen","home","tavern"],"score":0.46,"once":true,"clips":[],"pieces":[{"n":"cauldron_ext5_mortarandpestle","k":"cauldron_ext5_mortarandpestle","x":-2.631,"y":-0.013,"z":1.9,"yaw":247,"rest":"floor"},{"n":"piece_oven","k":"piece_oven","x":2.355,"y":0,"z":2.111,"yaw":247,"rest":"floor"},{"n":"piece_cauldron","k":"piece_cauldron","x":0.765,"y":0.583,"z":0.946,"yaw":303,"rest":"hang"}]},{"id":"KB-451","anchor":"window","rooms":["home","storage","tavern","kitchen","smithy","workshop"],"score":0.46,"once":true,"clips":[[0,1,0.14],[0,2,0.202],[0,"w",0.21]],"pieces":[{"n":"treasure_pile","k":"treasure_pile","x":-0.156,"y":-0.041,"z":0.441,"yaw":158,"rest":"floor","sink":0.041},{"n":"piece_chest_barrel","k":"barrel","x":0.419,"y":0.115,"z":0.464,"yaw":23,"rest":"floor"},{"n":"piece_chest_treasure","k":"piece_chest_treasure","x":-0.42,"y":0.007,"z":0.996,"yaw":23,"rest":"floor"}]},{"id":"KB-452","anchor":"bed","of":"bed","rooms":["home","hall","smithy","sleeping"],"score":0.46,"once":true,"clips":[[0,1,0.068],[0,"w",0.041],[1,"a",0.071]],"pieces":[{"n":"piece_chest_wood","k":"chest","x":0.018,"y":-0.028,"z":1.79,"yaw":0,"rest":"floor","sink":0.028},{"n":"rug_deer","k":"rug","x":-1.045,"y":-0.028,"z":-0.033,"yaw":180,"rest":"floor","sink":0.028},{"n":"ArmorStand","k":"ArmorStand","x":0.375,"y":-0.02,"z":-2.239,"yaw":135,"rest":"floor","sink":0.027}]},{"id":"KB-453","anchor":"bed","of":"bed2","rooms":["home","sleeping"],"score":0.46,"once":true,"clips":[],"pieces":[{"n":"rug_fur","k":"rug","x":1.481,"y":-0.028,"z":2.125,"yaw":90,"rest":"floor","sink":0.028},{"n":"piece_chair","k":"chair","x":1.843,"y":-0.003,"z":-0.99,"yaw":135,"rest":"floor"},{"n":"itemstandh","k":"itemstandh","x":1.837,"y":0.599,"z":-0.985,"yaw":135,"rest":"wall"}]},{"id":"KB-454","anchor":"hearth","of":"hearth","rooms":["home"],"score":0.46,"once":true,"clips":[],"pieces":[{"n":"rug_fur","k":"rug","x":-1.727,"y":0,"z":2.14,"yaw":233,"rest":"floor"},{"n":"piece_cookingstation_iron","k":"piece_cookingstation_iron","x":0.021,"y":0.583,"z":0.139,"yaw":143,"rest":"wall"},{"n":"cauldron_ext4_pots","k":"cauldron_ext4_pots","x":1.717,"y":2.048,"z":3.346,"yaw":323,"rest":"wall"}]},{"id":"KB-455","anchor":"window","rooms":["home"],"score":0.46,"once":true,"clips":[],"pieces":[{"n":"rug_fur","k":"rug","x":-0.562,"y":0,"z":1.146,"yaw":90,"rest":"floor"},{"n":"itemstand","k":"itemstand","x":0.663,"y":2.16,"z":0.024,"yaw":0,"rest":"wall"},{"n":"piece_chair03","k":"chair","x":-0.663,"y":0.018,"z":0.755,"yaw":45,"rest":"floor"}]},{"id":"KB-456","anchor":"stair","of":"stair","rooms":["hall"],"score":0.46,"once":true,"clips":[],"pieces":[{"n":"sign","k":"sign","x":-0.805,"y":1.216,"z":-0.02,"yaw":90,"rest":"wall"},{"n":"piece_chest","k":"chest","x":0.122,"y":-0.026,"z":0.01,"yaw":90,"rest":"floor","sink":0.026},{"n":"piece_walltorch","k":"walllight","x":-0.619,"y":1.892,"z":-0.798,"yaw":349,"rest":"wall"}]},{"id":"KB-457","anchor":"table","of":"round","rooms":["any"],"score":0.46,"once":true,"clips":[[2,"a",0.07]],"pieces":[{"n":"rug_wolf","k":"rug","x":0.596,"y":-0.028,"z":1.352,"yaw":45,"rest":"floor","sink":0.028},{"n":"treasure_stack","k":"treasure_stack","x":-0.492,"y":0.772,"z":0.115,"yaw":23,"rest":"anchor"},{"n":"piece_chest_private","k":"chest","x":0.047,"y":0.793,"z":-0.15,"yaw":23,"rest":"anchor"}]},{"id":"KB-458","anchor":"table","of":"long","rooms":["any"],"score":0.46,"once":true,"clips":[[0,"w",0.116]],"pieces":[{"n":"jute_carpet","k":"rug","x":0.112,"y":0,"z":0.325,"yaw":180,"rest":"floor"},{"n":"piece_gift3","k":"gift","x":0.432,"y":0.915,"z":0.028,"yaw":135,"rest":"anchor"},{"n":"piece_jackoturnip","k":"piece_jackoturnip","x":-0.375,"y":0.964,"z":0.135,"yaw":0,"rest":"anchor"}]},{"id":"KB-459","anchor":"window","rooms":["any"],"score":0.46,"once":true,"clips":[[0,"w",0.037]],"pieces":[{"n":"piece_barber","k":"piece_barber","x":0.126,"y":0.002,"z":0.72,"yaw":180,"rest":"floor"},{"n":"piece_dvergr_lantern","k":"walllight","x":-0.123,"y":3.612,"z":0.116,"yaw":90,"rest":"on","on":2},{"n":"piece_xmasgarland","k":"piece_xmasgarland","x":-0.126,"y":1.688,"z":0.284,"yaw":270,"rest":"wall"}]},{"id":"KC-001","anchor":"wall","rooms":["storage","workshop","home","smithy","kitchen"],"score":2.55,"decor":["d1","d2","d3"],"traits":{"tidy":1},"min":2,"creative":true,"from":"Meadows","clips":[[0,"w",0.08],[2,"w",0.063]],"pieces":[{"n":"piece_chest_wood","k":"piece_chest_wood","x":0,"y":0,"z":0.389,"yaw":0,"rest":"floor","key":true},{"n":"sign","k":"sign","x":0,"y":1.15,"z":0.044,"yaw":0,"rest":"wall"},{"n":"piece_chest_barrel","k":"piece_chest_barrel","x":1.25,"y":0.004,"z":0.383,"yaw":0,"rest":"floor"}]},{"id":"KC-002","anchor":"wall","rooms":["storage","smithy","workshop","hall"],"score":2.05,"decor":["d1","d2","d3"],"traits":{"tidy":1,"wealth":0.5},"min":3,"creative":true,"from":"Meadows","clips":[[0,"w",0.08],[1,"w",0.08]],"pieces":[{"n":"piece_chest","k":"piece_chest","x":-1,"y":-0.074,"z":0.499,"yaw":0,"rest":"floor","key":true},{"n":"piece_chest","k":"piece_chest","x":1,"y":-0.074,"z":0.499,"yaw":0,"rest":"floor"},{"n":"sign","k":"sign","x":-1,"y":1.4,"z":0.044,"yaw":0,"rest":"wall"},{"n":"sign_notext","k":"sign_notext","x":1,"y":1.4,"z":0.044,"yaw":0,"rest":"wall"}]},{"id":"KC-003","anchor":"wall","rooms":["home","hall","storage","sleeping"],"score":2.05,"decor":["d2","d3"],"traits":{"wealth":1,"tidy":0.5},"min":3,"creative":true,"from":"Meadows","clips":[[0,"w",0.08],[1,3,0.088],[1,"w",0.08]],"pieces":[{"n":"piece_chest_blackmetal","k":"piece_chest_blackmetal","x":0,"y":-0.002,"z":0.672,"yaw":0,"rest":"floor","key":true},{"n":"piece_chest_wood","k":"piece_chest_wood","x":0,"y":1.028,"z":0.389,"yaw":0,"rest":"on","on":0},{"n":"Candle_resin","k":"Candle_resin","x":0.55,"y":1.818,"z":0.4,"yaw":0,"rest":"on","on":1},{"n":"sign","k":"sign","x":0,"y":1.95,"z":0.044,"yaw":0,"rest":"wall"}]},{"id":"KC-004","anchor":"wall","rooms":["storage","kitchen","tavern","workshop","barn"],"score":2.55,"decor":["d2","d3"],"traits":{"busy":0.6},"min":3,"creative":true,"from":"Meadows","clips":[[0,"w",0.063],[1,"w",0.063],[2,"w",0.063]],"pieces":[{"n":"piece_chest_barrel","k":"piece_chest_barrel","x":0,"y":0.004,"z":0.383,"yaw":0,"rest":"floor","key":true},{"n":"piece_chest_barrel","k":"piece_chest_barrel","x":0,"y":0.907,"z":0.429,"yaw":20,"rest":"on","on":0},{"n":"piece_chest_barrel","k":"piece_chest_barrel","x":0.85,"y":0.004,"z":0.383,"yaw":0,"rest":"floor"},{"n":"piece_pot1","k":"piece_pot1","x":1.7,"y":0.002,"z":0.4,"yaw":30,"rest":"floor"},{"n":"sign_notext","k":"sign_notext","x":0.45,"y":2.1,"z":0.044,"yaw":0,"rest":"wall"}]},{"id":"KC-005","anchor":"corner","angle":90,"rooms":["storage","workshop","barn","tavern"],"score":1.9,"decor":["d2","d3"],"traits":{"messy":1,"busy":0.6},"min":3,"creative":true,"from":"Meadows","clips":[[1,"w",0.057]],"pieces":[{"n":"dvergrprops_crate","k":"dvergrprops_crate","x":0,"y":-0.001,"z":0.849,"yaw":315,"rest":"floor","key":true},{"n":"dvergrprops_crate","k":"dvergrprops_crate","x":0.028,"y":1.014,"z":0.849,"yaw":329,"rest":"on","on":0},{"n":"dvergrprops_crate_long","k":"dvergrprops_crate_long","x":1.202,"y":0.087,"z":1.909,"yaw":315,"rest":"floor"},{"n":"piece_chest_barrel","k":"piece_chest_barrel","x":-0.778,"y":0.004,"z":1.556,"yaw":315,"rest":"floor"}]},{"id":"KC-006","anchor":"wall","rooms":["storage","workshop","home","tavern"],"score":2.05,"decor":["d2","d3"],"traits":{"busy":0.5},"min":3,"creative":true,"from":"Meadows","clips":[[0,"w",0.08],[2,"w",0.08]],"pieces":[{"n":"dvergrprops_crate","k":"dvergrprops_crate","x":0,"y":-0.001,"z":0.579,"yaw":6,"rest":"floor","key":true},{"n":"dvergrprops_lantern_standing","k":"dvergrprops_lantern_standing","x":0.2,"y":1,"z":0.45,"yaw":0,"rest":"on","on":0},{"n":"dvergrprops_crate_long","k":"dvergrprops_crate_long","x":1.65,"y":0.087,"z":0.439,"yaw":0,"rest":"floor"},{"n":"MeadTasty","k":"MeadTasty","x":1.4,"y":0.636,"z":0.35,"yaw":30,"rest":"on","on":2}]},{"id":"KC-007","anchor":"wall","rooms":["storage","hall","home","smithy"],"score":2.05,"decor":["d2","d3"],"traits":{"tidy":0.8,"wealth":0.4},"min":3,"creative":true,"from":"Meadows","clips":[[0,"w",0.08],[1,"w",0.08],[2,"w",0.063]],"pieces":[{"n":"piece_chest_grausten","k":"piece_chest_grausten","x":0,"y":0,"z":0.555,"yaw":0,"rest":"floor","key":true},{"n":"piece_chest_grausten","k":"piece_chest_grausten","x":0,"y":0.722,"z":0.555,"yaw":0,"rest":"on","on":0},{"n":"piece_chest_barrel","k":"piece_chest_barrel","x":1.2,"y":0.004,"z":0.383,"yaw":0,"rest":"floor"},{"n":"Candle_resin","k":"Candle_resin","x":1.2,"y":0.904,"z":0.4,"yaw":0,"rest":"on","on":2}]},{"id":"KC-008","anchor":"wall","rooms":["sleeping","home"],"score":2.2,"decor":["d2","d3"],"traits":{"comfort":0.6,"messy":0.6},"min":3,"creative":true,"from":"Meadows","clips":[[0,"w",0.052]],"pieces":[{"n":"piece_chest_warderobe","k":"piece_chest_warderobe","x":0,"y":-0.008,"z":0.437,"yaw":0,"rest":"floor","key":true},{"n":"piece_chair03","k":"piece_chair03","x":1.2,"y":-0.007,"z":0.55,"yaw":340,"rest":"floor"},{"n":"itemstandh","k":"itemstandh","x":1.2,"y":0.51,"z":0.6,"yaw":0,"rest":"on","on":1,"want":"small"},{"n":"rug_hare","k":"rug_hare","x":0.3,"y":0.02,"z":1.35,"yaw":90,"rest":"floor"}]},{"id":"KC-009","anchor":"wall","rooms":["sleeping","home"],"score":2.05,"decor":["d1","d2","d3"],"traits":{"tidy":1},"min":2,"creative":true,"from":"Meadows","clips":[[0,"w",0.052],[1,"w",0.08]],"pieces":[{"n":"piece_chest_warderobe","k":"piece_chest_warderobe","x":0,"y":-0.008,"z":0.437,"yaw":0,"rest":"floor","key":true},{"n":"piece_chest_wood","k":"piece_chest_wood","x":1.55,"y":0,"z":0.389,"yaw":0,"rest":"floor"},{"n":"sign_notext","k":"sign_notext","x":1.55,"y":1.2,"z":0.044,"yaw":0,"rest":"wall"}]},{"id":"KC-010","anchor":"corner","angle":90,"rooms":["storage","kitchen"],"score":2.05,"decor":["d2","d3"],"traits":{"food":1,"busy":0.4},"min":3,"creative":true,"from":"Meadows","clips":[],"pieces":[{"n":"piece_chest_barrel","k":"piece_chest_barrel","x":0,"y":0.004,"z":0.707,"yaw":315,"rest":"floor","key":true},{"n":"piece_pot2_red","k":"piece_pot2_red","x":0.636,"y":0.003,"z":1.202,"yaw":335,"rest":"floor"},{"n":"piece_pot2_cracked","k":"piece_pot2_cracked","x":-0.622,"y":0.003,"z":1.216,"yaw":25,"rest":"floor"},{"n":"piece_pot3","k":"piece_pot3","x":0,"y":0.002,"z":1.626,"yaw":315,"rest":"floor"},{"n":"Honey","k":"Honey","x":0,"y":0.904,"z":0.707,"yaw":315,"rest":"on","on":0}]},{"id":"KC-011","anchor":"wall","rooms":["kitchen","home","storage","tavern"],"score":2.2,"decor":["d2","d3"],"traits":{"food":0.8,"tidy":0.6},"min":4,"creative":true,"from":"Meadows","clips":[[5,"w",0.063]],"pieces":[{"n":"wood_beam","k":"wood_beam","x":0,"y":1.25,"z":0.2,"yaw":0,"rest":"wall","key":true},{"n":"QueensJam","k":"QueensJam","x":-0.6,"y":1.45,"z":0.2,"yaw":10,"rest":"on","on":0},{"n":"Honey","k":"Honey","x":-0.1,"y":1.45,"z":0.2,"yaw":80,"rest":"on","on":0},{"n":"Candle_resin","k":"Candle_resin","x":0.35,"y":1.45,"z":0.2,"yaw":0,"rest":"on","on":0},{"n":"Blueberries","k":"Blueberries","x":0.7,"y":1.45,"z":0.2,"yaw":0,"rest":"on","on":0},{"n":"piece_chest_barrel","k":"piece_chest_barrel","x":-0.45,"y":0.004,"z":0.383,"yaw":0,"rest":"floor"}]},{"id":"KC-012","anchor":"wall","rooms":["home","kitchen","sleeping"],"score":2.35,"decor":["d3"],"traits":{"plants":0.7,"tidy":0.7},"min":5,"creative":true,"from":"Meadows","clips":[[0,6,0.071],[6,"w",0.048]],"pieces":[{"n":"wood_beam","k":"wood_beam","x":0,"y":1.1,"z":0.2,"yaw":0,"rest":"wall","key":true},{"n":"wood_beam","k":"wood_beam","x":0,"y":1.9,"z":0.2,"yaw":0,"rest":"wall"},{"n":"Pukeberries","k":"Pukeberries","x":-0.55,"y":1.3,"z":0.2,"yaw":30,"rest":"on","on":0},{"n":"Fiddleheadfern","k":"Fiddleheadfern","x":0.5,"y":1.3,"z":0.2,"yaw":0,"rest":"on","on":0},{"n":"MeadTasty","k":"MeadTasty","x":-0.5,"y":2.1,"z":0.2,"yaw":0,"rest":"on","on":1},{"n":"Candle_resin","k":"Candle_resin","x":0.45,"y":2.1,"z":0.2,"yaw":0,"rest":"on","on":1},{"n":"piece_pot1","k":"piece_pot1","x":-0.5,"y":0.002,"z":0.295,"yaw":0,"rest":"floor"}]},{"id":"KC-013","anchor":"wall","rooms":["home","hall","tavern"],"score":2.55,"decor":["d2","d3"],"traits":{"collect":1},"min":2,"creative":true,"from":"Meadows","clips":[[0,"w",0.08]],"pieces":[{"n":"wood_wall_quarter","k":"quarter","x":0,"y":0,"z":0.17,"yaw":0,"rest":"floor","key":true},{"n":"itemstandh","k":"itemstandh","x":0,"y":1,"z":0.17,"yaw":0,"rest":"on","on":0,"want":"small"},{"n":"itemstand","k":"itemstand","x":0,"y":1.55,"z":0.044,"yaw":0,"rest":"wall","want":"trophy"}]},{"id":"KC-014","anchor":"wall","rooms":["hall","temple","home"],"score":2.2,"decor":["d3"],"traits":{"collect":0.8,"wealth":0.6},"min":3,"creative":true,"from":"Meadows","clips":[[1,2,0.036],[2,"w",0.071]],"pieces":[{"n":"wood_wall_quarter","k":"quarter","x":-1.75,"y":0,"z":0.2,"yaw":0,"rest":"floor","key":true},{"n":"wood_wall_quarter","k":"quarter","x":1.75,"y":0,"z":0.2,"yaw":0,"rest":"floor"},{"n":"piece_bench01","k":"piece_bench01","x":0,"y":-0.008,"z":0.389,"yaw":0,"rest":"floor"},{"n":"Candle_resin","k":"Candle_resin","x":-1.75,"y":1,"z":0.2,"yaw":0,"rest":"on","on":0},{"n":"itemstandh","k":"itemstandh","x":1.75,"y":1,"z":0.2,"yaw":0,"rest":"on","on":1,"want":"small"}]},{"id":"KC-015","anchor":"wall","rooms":["home","sleeping","hall"],"score":2.7,"decor":["d2","d3"],"traits":{"tidy":0.5,"comfort":0.4},"min":3,"creative":true,"from":"Meadows","clips":[[0,1,0.042],[0,2,0.043],[0,"w",0.08]],"pieces":[{"n":"piece_chest_wood","k":"piece_chest_wood","x":0,"y":0,"z":0.389,"yaw":0,"rest":"floor","key":true},{"n":"wood_pole","k":"wood_pole","x":-1,"y":0.5,"z":0.3,"yaw":0,"rest":"floor"},{"n":"wood_pole","k":"wood_pole","x":1,"y":0.5,"z":0.3,"yaw":0,"rest":"floor"},{"n":"Candle_resin","k":"Candle_resin","x":-1,"y":1,"z":0.3,"yaw":0,"rest":"on","on":1},{"n":"rug_hare","k":"rug_hare","x":0,"y":0.79,"z":0.35,"yaw":0,"rest":"on","on":0}]},{"id":"KC-016","anchor":"corner","angle":90,"rooms":["home","sleeping","hall","tavern"],"score":2.05,"decor":["d2","d3"],"traits":{"plants":0.8},"min":2,"creative":true,"from":"Meadows","clips":[[2,"w",0.063]],"pieces":[{"n":"wood_wall_quarter","k":"quarter","x":0.106,"y":0,"z":0.601,"yaw":315,"rest":"floor","key":true},{"n":"wood_ledge","k":"ledge","x":0.035,"y":1.025,"z":0.672,"yaw":315,"rest":"on","on":0},{"n":"piece_pot3","k":"piece_pot3","x":0.035,"y":1.051,"z":0.672,"yaw":355,"rest":"on","on":1}]},{"id":"KC-017","anchor":"wall","rooms":["tavern","hall","home"],"score":2.35,"decor":["d2","d3"],"traits":{"comfort":0.6},"min":4,"creative":true,"from":"Meadows","clips":[[0,1,0.089]],"pieces":[{"n":"wood_wall_half","k":"half","x":0,"y":0.5,"z":0.6,"yaw":0,"rest":"floor","key":true},{"n":"piece_bench01","k":"piece_bench01","x":0,"y":-0.008,"z":1.05,"yaw":0,"rest":"floor","key":true},{"n":"wood_ledge","k":"ledge","x":-0.5,"y":1.025,"z":0.6,"yaw":0,"rest":"on","on":0},{"n":"wood_ledge","k":"ledge","x":0.5,"y":1.025,"z":0.6,"yaw":0,"rest":"on","on":0},{"n":"MeadTasty","k":"MeadTasty","x":-0.4,"y":1.05,"z":0.6,"yaw":0,"rest":"on","on":2},{"n":"Candle_resin","k":"Candle_resin","x":0.55,"y":1.05,"z":0.6,"yaw":0,"rest":"on","on":3}]},{"id":"KC-018","anchor":"wall","rooms":["home","sleeping","temple","hall"],"score":2.05,"decor":["d2","d3"],"traits":{"comfort":0.8},"min":4,"creative":true,"from":"Meadows","clips":[[5,"w",0.08]],"pieces":[{"n":"wood_ledge","k":"wood_ledge","x":-0.5,"y":1.45,"z":0.3,"yaw":0,"rest":"wall","key":true},{"n":"wood_ledge","k":"wood_ledge","x":0.5,"y":1.45,"z":0.3,"yaw":0,"rest":"wall"},{"n":"Candle_resin","k":"Candle_resin","x":-0.7,"y":1.475,"z":0.3,"yaw":0,"rest":"on","on":0},{"n":"Candle_resin","k":"Candle_resin","x":-0.2,"y":1.475,"z":0.3,"yaw":0,"rest":"on","on":0},{"n":"Candle_resin","k":"Candle_resin","x":0.45,"y":1.475,"z":0.3,"yaw":0,"rest":"on","on":1},{"n":"piece_chest_wood","k":"piece_chest_wood","x":0,"y":0,"z":0.389,"yaw":0,"rest":"floor"}]},{"id":"KC-019","anchor":"wall","rooms":["workshop","home","smithy"],"score":2.35,"decor":["d2","d3"],"traits":{"crafts":1,"wealth":0.5},"min":3,"creative":true,"from":"Meadows","clips":[[0,"w",0.08],[1,"w",0.046]],"pieces":[{"n":"wood_wall_half","k":"half","x":0,"y":0.5,"z":0.17,"yaw":0,"rest":"floor","key":true},{"n":"blackforge_ext4_gemcutter","k":"blackforge_ext4_gemcutter","x":-0.4,"y":1.001,"z":0.2,"yaw":0,"rest":"on","on":0,"key":true},{"n":"Candle_resin","k":"Candle_resin","x":0.6,"y":1,"z":0.18,"yaw":0,"rest":"on","on":0},{"n":"itemstandh","k":"itemstandh","x":0.3,"y":1,"z":0.18,"yaw":0,"rest":"on","on":0,"want":"small"},{"n":"dvergrprops_stool","k":"dvergrprops_stool","x":-0.35,"y":-0.02,"z":0.85,"yaw":0,"rest":"floor"}]},{"id":"KC-020","anchor":"wall","rooms":["workshop","smithy"],"score":2.2,"decor":["d2","d3"],"traits":{"crafts":1,"busy":0.7},"min":3,"creative":true,"from":"Meadows","clips":[[0,"w",0.08],[1,"w",0.08],[3,"w",0.063]],"pieces":[{"n":"blackforge_ext2_vise","k":"blackforge_ext2_vise","x":-0.7,"y":0.003,"z":0.284,"yaw":0,"rest":"floor","key":true},{"n":"blackforge_ext3_metalcutter","k":"blackforge_ext3_metalcutter","x":0.15,"y":0,"z":0.352,"yaw":0,"rest":"floor"},{"n":"blackforge_ext5_apron","k":"blackforge_ext5_apron","x":1.05,"y":1.15,"z":0.049,"yaw":0,"rest":"wall"},{"n":"piece_chest_barrel","k":"piece_chest_barrel","x":2.15,"y":0.004,"z":0.383,"yaw":0,"rest":"floor"}]},{"id":"KC-021","anchor":"wall","rooms":["workshop","smithy","home"],"score":2.05,"decor":["d2","d3"],"traits":{"crafts":0.8,"messy":0.5},"min":2,"creative":true,"from":"Meadows","clips":[],"pieces":[{"n":"blackforge_ext5_apron","k":"blackforge_ext5_apron","x":0,"y":1.15,"z":0.049,"yaw":0,"rest":"wall","key":true},{"n":"dvergrprops_stool","k":"dvergrprops_stool","x":0.1,"y":-0.02,"z":0.6,"yaw":15,"rest":"floor"},{"n":"itemstand","k":"itemstand","x":1.05,"y":1.55,"z":0.044,"yaw":0,"rest":"wall","want":"tool"}]},{"id":"KC-022","anchor":"wall","rooms":["kitchen","home","workshop"],"score":2.2,"decor":["d2","d3"],"traits":{"plants":0.8,"crafts":0.6},"min":3,"creative":true,"from":"Meadows","clips":[[0,"w",0.08],[1,"w",0.08]],"pieces":[{"n":"cauldron_ext5_mortarandpestle","k":"cauldron_ext5_mortarandpestle","x":-0.4,"y":-0.013,"z":0.362,"yaw":0,"rest":"floor","key":true},{"n":"piece_magetable_ext2","k":"piece_magetable_ext2","x":0.75,"y":-0.021,"z":0.275,"yaw":0,"rest":"floor"},{"n":"Fiddleheadfern","k":"Fiddleheadfern","x":0.75,"y":1.119,"z":0,"yaw":0,"rest":"on","on":1},{"n":"piece_pot1","k":"piece_pot1","x":1.4,"y":0.002,"z":0.35,"yaw":0,"rest":"floor"}]},{"id":"KC-023","anchor":"wall","rooms":["home","hall","temple"],"score":2.35,"decor":["d3"],"traits":{"maps":1,"tidy":0.5},"min":3,"creative":true,"from":"Meadows","clips":[[0,"w",0.08],[4,"w",0.08]],"pieces":[{"n":"piece_magetable_ext","k":"piece_magetable_ext","x":0,"y":-0.021,"z":0.52,"yaw":0,"rest":"floor","key":true},{"n":"piece_magetable_ext3","k":"piece_magetable_ext3","x":0,"y":1.75,"z":0.093,"yaw":0,"rest":"wall"},{"n":"Candle_resin","k":"Candle_resin","x":0.3,"y":1.08,"z":0.3,"yaw":0,"rest":"on","on":0},{"n":"dvergrprops_stool","k":"dvergrprops_stool","x":0,"y":-0.02,"z":1.4,"yaw":0,"rest":"floor"},{"n":"piece_magetable_ext2","k":"piece_magetable_ext2","x":0.9,"y":-0.021,"z":0.275,"yaw":0,"rest":"floor"}]},{"id":"KC-024","anchor":"corner","angle":90,"rooms":["home","hall","temple","workshop"],"score":2.05,"decor":["d3"],"traits":{"maps":1,"collect":0.6,"wealth":0.5},"min":2,"creative":true,"from":"Meadows","clips":[],"pieces":[{"n":"piece_magetable","k":"piece_magetable","x":0,"y":-0.024,"z":2.263,"yaw":180,"rest":"floor","key":true},{"n":"piece_magetable_ext","k":"piece_magetable_ext","x":2.227,"y":-0.021,"z":3.076,"yaw":315,"rest":"floor"},{"n":"Candle_resin","k":"Candle_resin","x":2.227,"y":1.08,"z":3.076,"yaw":315,"rest":"on","on":1}]},{"id":"KC-025","anchor":"corner","angle":90,"rooms":["home","sleeping","workshop"],"score":2.7,"decor":["d2","d3"],"traits":{"crafts":1,"comfort":0.5},"min":3,"creative":true,"from":"Meadows","clips":[[0,3,0.053],[0,"w",0.039]],"pieces":[{"n":"piece_spinningwheel","k":"piece_spinningwheel","x":0.035,"y":-0.476,"z":1.662,"yaw":180,"rest":"floor","key":true},{"n":"piece_groundtorch_wood","k":"piece_groundtorch_wood","x":0,"y":0.652,"z":0.566,"yaw":315,"rest":"floor"},{"n":"rug_straw","k":"rug_straw","x":0,"y":0.02,"z":2.263,"yaw":0,"rest":"floor"},{"n":"piece_chair","k":"piece_chair","x":0.141,"y":-0.07,"z":2.899,"yaw":180,"rest":"floor"}]},{"id":"KC-026","anchor":"wall","rooms":["workshop"],"score":2.05,"decor":["d2","d3"],"traits":{"crafts":0.9,"busy":0.8,"messy":0.5},"min":2,"creative":true,"from":"Meadows","clips":[[0,"w",0.08]],"pieces":[{"n":"piece_stonecutter","k":"piece_stonecutter","x":0,"y":-0.03,"z":0.77,"yaw":0,"rest":"floor","key":true},{"n":"piece_pot2_cracked","k":"piece_pot2_cracked","x":2.1,"y":0.003,"z":0.4,"yaw":40,"rest":"floor"},{"n":"piece_chest_barrel","k":"piece_chest_barrel","x":2.1,"y":0.004,"z":1.2,"yaw":0,"rest":"floor"}]},{"id":"KC-027","anchor":"wall","rooms":["workshop","home","barn"],"score":2.05,"decor":["d2","d3"],"traits":{"crafts":0.9,"tidy":0.6},"min":2,"creative":true,"from":"Meadows","clips":[[1,"w",0.08]],"pieces":[{"n":"piece_workbench_ext4","k":"piece_workbench_ext4","x":0,"y":1.15,"z":0.15,"yaw":0,"rest":"wall","key":true},{"n":"piece_workbench_ext1","k":"piece_workbench_ext1","x":-1.2,"y":-0.019,"z":0.38,"yaw":0,"rest":"floor"},{"n":"itemstand","k":"itemstand","x":1.15,"y":1.6,"z":0.044,"yaw":0,"rest":"wall","want":"tool"}]},{"id":"KC-028","anchor":"wall","rooms":["smithy","workshop"],"score":2.2,"decor":["d2","d3"],"traits":{"crafts":0.7,"busy":0.6},"min":3,"creative":true,"from":"Meadows","clips":[[1,"w",0.08],[2,"w",0.063]],"pieces":[{"n":"forge_ext6","k":"forge_ext6","x":0,"y":1.65,"z":0.1,"yaw":0,"rest":"wall","key":true},{"n":"forge_ext5","k":"forge_ext5","x":-0.8,"y":0,"z":0.434,"yaw":0,"rest":"floor"},{"n":"piece_chest_barrel","k":"piece_chest_barrel","x":0.6,"y":0.004,"z":0.383,"yaw":0,"rest":"floor"},{"n":"itemstandh","k":"itemstandh","x":0.6,"y":0.904,"z":0.4,"yaw":0,"rest":"on","on":2,"want":"small"}]},{"id":"KC-029","anchor":"wall","rooms":["workshop"],"score":2.05,"decor":["d3"],"traits":{"crafts":1,"wealth":0.4},"min":2,"creative":true,"from":"Meadows","clips":[[0,"w",0.08],[1,"w",0.08]],"pieces":[{"n":"artisan_ext1","k":"artisan_ext1","x":0,"y":0.004,"z":0.343,"yaw":0,"rest":"floor","key":true},{"n":"piece_chest_wood","k":"piece_chest_wood","x":1.45,"y":0,"z":0.389,"yaw":0,"rest":"floor"},{"n":"sign","k":"sign","x":1.45,"y":1.25,"z":0.044,"yaw":0,"rest":"wall"}]},{"id":"KC-030","anchor":"workbench","rooms":["workshop"],"score":2.05,"decor":["d2","d3"],"traits":{"crafts":0.8,"comfort":0.4},"min":2,"creative":true,"from":"Meadows","clips":[],"pieces":[{"n":"piece_chest_wood","k":"piece_chest_wood","x":3.4,"y":0,"z":0,"yaw":0,"rest":"floor","key":true},{"n":"rug_hare","k":"rug_hare","x":3.4,"y":0.79,"z":0,"yaw":90,"rest":"on","on":0},{"n":"piece_workbench_ext2","k":"piece_workbench_ext2","x":-2.65,"y":0.022,"z":0.05,"yaw":0,"rest":"floor"}]},{"id":"KC-031","anchor":"wall","rooms":["hall","temple","home"],"score":1.9,"decor":["d3"],"traits":{"collect":1,"wealth":0.7},"min":2,"creative":true,"from":"Meadows","clips":[[0,"w",0.08],[1,"w",0.08]],"pieces":[{"n":"wood_wall_quarter","k":"quarter","x":0,"y":0,"z":0.17,"yaw":0,"rest":"floor","key":true},{"n":"blackmarble_head01","k":"blackmarble_head01","x":0,"y":1.5,"z":0.52,"yaw":0,"rest":"on","on":0}]},{"id":"KC-032","anchor":"wall","rooms":["hall","temple"],"score":2.05,"decor":["d3"],"traits":{"collect":1,"wealth":0.8},"min":2,"creative":true,"from":"Meadows","clips":[[0,"w",0.08],[1,"w",0.08],[2,"w",0.08]],"pieces":[{"n":"blackmarble_head02","k":"blackmarble_head02","x":-1.85,"y":0.5,"z":0.52,"yaw":0,"rest":"floor","key":true},{"n":"blackmarble_head01","k":"blackmarble_head01","x":1.85,"y":0.5,"z":0.52,"yaw":0,"rest":"floor"},{"n":"piece_blackmarble_bench","k":"piece_blackmarble_bench","x":0,"y":-0.042,"z":0.318,"yaw":0,"rest":"floor"}]},{"id":"KC-033","anchor":"wall","rooms":["hall","home","tavern"],"score":1.9,"decor":["d3"],"traits":{"collect":1,"wealth":0.5},"min":2,"creative":true,"from":"Meadows","clips":[[1,"w",0.08]],"pieces":[{"n":"darkwood_wolf","k":"darkwood_wolf","x":-1.09,"y":1.45,"z":0.415,"yaw":90,"rest":"wall","key":true},{"n":"piece_chest_wood","k":"piece_chest_wood","x":0,"y":0,"z":0.389,"yaw":0,"rest":"floor"}]},{"id":"KC-034","anchor":"wall","rooms":["hall","tavern","home"],"score":1.9,"decor":["d3"],"traits":{"collect":0.9,"wealth":0.4},"min":2,"creative":true,"from":"Meadows","clips":[[1,"w",0.071]],"pieces":[{"n":"wood_dragon1","k":"wood_dragon1","x":-1.68,"y":1.55,"z":0.29,"yaw":90,"rest":"wall","key":true},{"n":"piece_bench01","k":"piece_bench01","x":0,"y":-0.008,"z":0.389,"yaw":0,"rest":"floor"}]},{"id":"KC-035","anchor":"wall","rooms":["hall","home"],"score":2.05,"decor":["d3"],"traits":{"collect":0.8,"wealth":0.6},"min":2,"creative":true,"from":"Meadows","clips":[[0,"w",0.08]],"pieces":[{"n":"piece_chair03","k":"piece_chair03","x":0,"y":-0.007,"z":0.325,"yaw":0,"rest":"floor","key":true},{"n":"darkwood_raven","k":"darkwood_raven","x":-1.55,"y":1.5,"z":0.212,"yaw":90,"rest":"wall"},{"n":"rug_wolf","k":"rug_wolf","x":0,"y":0.02,"z":1.6,"yaw":90,"rest":"floor"}]},{"id":"KC-036","anchor":"wall","rooms":["hall"],"score":2.05,"decor":["d3"],"traits":{"collect":0.8,"wealth":0.8},"min":3,"creative":true,"from":"Meadows","clips":[[0,"w",0.08]],"pieces":[{"n":"piece_bone_throne","k":"piece_bone_throne","x":0,"y":0,"z":0.48,"yaw":0,"rest":"floor","key":true},{"n":"rug_Bjorn","k":"rug_Bjorn","x":0,"y":-0.019,"z":1,"yaw":0,"rest":"floor"},{"n":"piece_walltorch","k":"piece_walltorch","x":-1.1,"y":1.6,"z":0.205,"yaw":270,"rest":"wall"},{"n":"piece_walltorch","k":"piece_walltorch","x":1.1,"y":1.6,"z":0.205,"yaw":270,"rest":"wall"}]},{"id":"KC-037","anchor":"hearth","of":"hearth","rooms":["hall","home"],"score":2.05,"decor":["d3"],"traits":{"comfort":0.8,"wealth":0.7},"min":3,"creative":true,"from":"Meadows","clips":[],"pieces":[{"n":"rug_moose","k":"rug_moose","x":0,"y":0.02,"z":3.2,"yaw":90,"rest":"floor","key":true},{"n":"piece_chair03","k":"piece_chair03","x":-1.2,"y":-0.007,"z":3.4,"yaw":160,"rest":"floor"},{"n":"piece_chair03","k":"piece_chair03","x":1.2,"y":-0.007,"z":3.4,"yaw":200,"rest":"floor"},{"n":"itemstandh","k":"itemstandh","x":0,"y":0,"z":3.6,"yaw":0,"rest":"floor","want":"drink"}]},{"id":"KC-038","anchor":"corner","angle":90,"rooms":["home","hall","sleeping"],"score":2.05,"decor":["d2","d3"],"traits":{"collect":0.9,"tidy":0.5},"min":3,"creative":true,"from":"Meadows","clips":[[2,"w",0.08]],"pieces":[{"n":"ArmorStand","k":"ArmorStand","x":0,"y":0.007,"z":1.061,"yaw":0,"rest":"floor","key":true},{"n":"itemstand","k":"itemstand","x":1.171,"y":1.55,"z":1.233,"yaw":315,"rest":"wall","want":"shield"},{"n":"piece_chest_wood","k":"piece_chest_wood","x":-1.422,"y":0,"z":1.972,"yaw":45,"rest":"floor"},{"n":"itemstand","k":"itemstand","x":-1.206,"y":1.6,"z":1.269,"yaw":45,"rest":"wall","want":"weapon"}]},{"id":"KC-039","anchor":"wall","rooms":["hall","temple","tavern"],"score":1.9,"decor":["d3"],"traits":{"collect":0.6,"wealth":0.8},"min":2,"creative":true,"from":"Meadows","clips":[],"pieces":[{"n":"piece_banner08","k":"piece_banner08","x":-0.95,"y":2.35,"z":0.1,"yaw":90,"rest":"wall","key":true},{"n":"piece_banner08","k":"piece_banner08","x":0.95,"y":2.35,"z":0.1,"yaw":90,"rest":"wall"},{"n":"itemstand","k":"itemstand","x":0,"y":1.7,"z":0.044,"yaw":0,"rest":"wall","want":"shield"}]},{"id":"KC-040","anchor":"wall","rooms":["hall","home","temple"],"score":1.9,"decor":["d2","d3"],"traits":{"wealth":0.7,"tidy":0.5},"min":2,"creative":true,"from":"Meadows","clips":[[1,"w",0.08]],"pieces":[{"n":"piece_banner07","k":"piece_banner07","x":0,"y":2.35,"z":0.1,"yaw":90,"rest":"wall","key":true},{"n":"piece_chest_wood","k":"piece_chest_wood","x":0,"y":0,"z":0.389,"yaw":0,"rest":"floor"}]},{"id":"KC-041","anchor":"wall","rooms":["hall","tavern","temple"],"score":1.9,"decor":["d3"],"traits":{"wealth":0.6},"min":2,"creative":true,"from":"Meadows","clips":[[2,"w",0.08]],"pieces":[{"n":"piece_banner09","k":"piece_banner09","x":-1.3,"y":2.35,"z":0.1,"yaw":90,"rest":"wall","key":true},{"n":"piece_banner11","k":"piece_banner11","x":1.3,"y":2.35,"z":0.1,"yaw":90,"rest":"wall"},{"n":"piece_bench_runed","k":"piece_bench_runed","x":0,"y":-0.008,"z":0.389,"yaw":0,"rest":"floor"}]},{"id":"KC-042","anchor":"corner","angle":90,"rooms":["hall","temple","home"],"score":2.05,"decor":["d3"],"traits":{"wealth":0.7,"comfort":0.5},"min":2,"creative":true,"from":"Meadows","clips":[[1,"w",0.03]],"pieces":[{"n":"piece_bench_runed","k":"piece_bench_runed","x":0.849,"y":-0.008,"z":1.414,"yaw":315,"rest":"floor","key":true},{"n":"piece_chair_runed","k":"piece_chair_runed","x":-0.641,"y":0.009,"z":1.481,"yaw":45,"rest":"floor"},{"n":"piece_banner06","k":"piece_banner06","x":-1.697,"y":2.35,"z":1.838,"yaw":135,"rest":"wall"}]},{"id":"KC-043","anchor":"corner","angle":90,"rooms":["kitchen","tavern","storage","home"],"score":2.55,"decor":["d2","d3"],"traits":{"food":1,"busy":0.5},"min":3,"creative":true,"from":"Meadows","clips":[],"pieces":[{"n":"piece_MeadCauldron","k":"piece_MeadCauldron","x":0,"y":-0.295,"z":0.99,"yaw":0,"rest":"floor","key":true},{"n":"piece_chest_barrel","k":"piece_chest_barrel","x":0.919,"y":0.004,"z":1.556,"yaw":315,"rest":"floor"},{"n":"BarleyWine","k":"BarleyWine","x":0.919,"y":0.904,"z":1.556,"yaw":315,"rest":"on","on":1},{"n":"piece_chest_barrel","k":"piece_chest_barrel","x":-0.919,"y":0.004,"z":1.556,"yaw":315,"rest":"floor"},{"n":"MeadTasty","k":"MeadTasty","x":-0.919,"y":0.904,"z":1.556,"yaw":315,"rest":"on","on":3}]},{"id":"KC-044","anchor":"wall","rooms":["tavern","kitchen","storage"],"score":2.05,"decor":["d2","d3"],"traits":{"food":0.9},"min":3,"creative":true,"from":"Meadows","clips":[[0,"w",0.08],[1,"w",0.063],[2,"w",0.063]],"pieces":[{"n":"fermenter","k":"fermenter","x":0,"y":0.001,"z":0.838,"yaw":0,"rest":"floor","key":true},{"n":"piece_chest_barrel","k":"piece_chest_barrel","x":1.3,"y":0.004,"z":0.383,"yaw":0,"rest":"floor"},{"n":"piece_chest_barrel","k":"piece_chest_barrel","x":1.3,"y":0.907,"z":0.383,"yaw":0,"rest":"on","on":1},{"n":"MeadStaminaMedium","k":"MeadStaminaMedium","x":-1.15,"y":0.02,"z":0.35,"yaw":0,"rest":"floor"}]},{"id":"KC-045","anchor":"wall","rooms":["kitchen","storage","tavern"],"score":2.05,"decor":["d2","d3"],"traits":{"food":1,"tidy":0.6},"min":3,"creative":true,"from":"Meadows","clips":[[0,"w",0.038]],"pieces":[{"n":"dvergrprops_shelf","k":"dvergrprops_shelf","x":0,"y":-0.019,"z":0.105,"yaw":180,"rest":"floor","key":true},{"n":"QueensJam","k":"QueensJam","x":-0.5,"y":1.466,"z":0.25,"yaw":0,"rest":"on","on":0},{"n":"RoyalJelly","k":"RoyalJelly","x":0.4,"y":1.466,"z":0.25,"yaw":0,"rest":"on","on":0},{"n":"piece_pot2_red","k":"piece_pot2_red","x":1.3,"y":0.003,"z":0.35,"yaw":0,"rest":"floor"}]},{"id":"KC-046","anchor":"table","of":"table","rooms":["home","kitchen","tavern","hall"],"score":2.05,"decor":["d2","d3"],"traits":{"food":1,"comfort":0.5},"min":3,"creative":true,"from":"Meadows","clips":[],"pieces":[{"n":"FeastMeadows","k":"feast","x":0,"y":0.783,"z":0,"yaw":0,"rest":"anchor","key":true},{"n":"Bread","k":"Bread","x":-0.85,"y":0.794,"z":0.15,"yaw":30,"rest":"anchor"},{"n":"RoastedCrustPie","k":"RoastedCrustPie","x":0.85,"y":0.794,"z":-0.2,"yaw":0,"rest":"anchor"},{"n":"MeadHealthMajor","k":"MeadHealthMajor","x":0.6,"y":0.794,"z":0.35,"yaw":0,"rest":"anchor"},{"n":"Candle_resin","k":"Candle_resin","x":-0.95,"y":0.794,"z":-0.35,"yaw":0,"rest":"anchor"}]},{"id":"KC-047","anchor":"table","of":"table","rooms":["home","kitchen"],"score":2.2,"decor":["d2","d3"],"traits":{"food":0.7,"messy":1},"min":3,"creative":true,"from":"Meadows","clips":[],"pieces":[{"n":"SerpentStew","k":"SerpentStew","x":-0.5,"y":0.794,"z":0.25,"yaw":0,"rest":"anchor","key":true},{"n":"WolfMeatSkewer","k":"WolfMeatSkewer","x":0.2,"y":0.794,"z":0.3,"yaw":70,"rest":"anchor"},{"n":"MeadTasty","k":"MeadTasty","x":0.7,"y":0.794,"z":0.15,"yaw":0,"rest":"anchor"},{"n":"itemstandh","k":"itemstandh","x":-0.1,"y":0.794,"z":-0.3,"yaw":0,"rest":"anchor","want":"food"},{"n":"piece_chair","k":"piece_chair","x":0.3,"y":-0.07,"z":0.95,"yaw":195,"rest":"floor"}]},{"id":"KC-048","anchor":"table","of":"round","rooms":["home","tavern","sleeping"],"score":1.9,"decor":["d2","d3"],"traits":{"comfort":0.8,"food":0.6},"min":3,"creative":true,"from":"Meadows","clips":[],"pieces":[{"n":"Eyescream","k":"Eyescream","x":-0.35,"y":0.865,"z":0.2,"yaw":0,"rest":"anchor","key":true},{"n":"SpicyMarmalade","k":"SpicyMarmalade","x":0.3,"y":0.865,"z":0.3,"yaw":0,"rest":"anchor"},{"n":"Candle_resin","k":"Candle_resin","x":0,"y":0.865,"z":-0.35,"yaw":0,"rest":"anchor"},{"n":"ShocklateSmoothie","k":"ShocklateSmoothie","x":0.45,"y":0.865,"z":-0.2,"yaw":0,"rest":"anchor"}]},{"id":"KC-049","anchor":"wall","rooms":["kitchen","tavern"],"score":2.05,"decor":["d2","d3"],"traits":{"food":0.9,"busy":0.6},"min":3,"creative":true,"from":"Meadows","clips":[[0,"w",0.08]],"pieces":[{"n":"cauldron_ext3_butchertable","k":"cauldron_ext3_butchertable","x":0,"y":-0.013,"z":0.62,"yaw":0,"rest":"floor","key":true},{"n":"cauldron_ext6_rollingpins","k":"cauldron_ext6_rollingpins","x":1,"y":1,"z":0.2,"yaw":0,"rest":"wall"},{"n":"CookedMeat","k":"CookedMeat","x":-0.2,"y":0.95,"z":0.05,"yaw":80,"rest":"on","on":0},{"n":"Sausages","k":"Sausages","x":0.25,"y":0.95,"z":0.05,"yaw":0,"rest":"on","on":0}]},{"id":"KC-050","anchor":"corner","angle":90,"rooms":["kitchen","tavern"],"score":2.2,"decor":["d3"],"traits":{"food":1},"min":3,"creative":true,"from":"Meadows","clips":[[1,"w",0.08]],"pieces":[{"n":"piece_oven","k":"piece_oven","x":0.318,"y":0,"z":1.945,"yaw":315,"rest":"floor","key":true},{"n":"piece_preptable","k":"piece_preptable","x":2.958,"y":0.075,"z":3.406,"yaw":315,"rest":"floor"},{"n":"Bread","k":"Bread","x":2.828,"y":1.122,"z":3.253,"yaw":45,"rest":"on","on":1},{"n":"cauldron_ext1_spice","k":"cauldron_ext1_spice","x":3.147,"y":0.85,"z":3.217,"yaw":315,"rest":"wall"}]},{"id":"KC-051","anchor":"window","rooms":["home","kitchen"],"score":2.05,"decor":["d2","d3"],"traits":{"food":0.8,"plants":0.6},"min":3,"creative":true,"from":"Meadows","clips":[[0,"w",0.063],[3,"w",0.08]],"pieces":[{"n":"piece_chest_barrel","k":"piece_chest_barrel","x":-0.45,"y":0.004,"z":0.383,"yaw":0,"rest":"floor","key":true},{"n":"Honey","k":"Honey","x":-0.45,"y":0.899,"z":0,"yaw":20,"rest":"on","on":0},{"n":"Raspberry","k":"Raspberry","x":0.15,"y":0.02,"z":0.35,"yaw":0,"rest":"floor"},{"n":"piece_pot3","k":"piece_pot3","x":0.5,"y":0.002,"z":0.37,"yaw":0,"rest":"floor"}]},{"id":"KC-052","anchor":"bed","of":"bed","rooms":["sleeping","home"],"score":1.9,"decor":["d2","d3"],"traits":{"comfort":0.7},"min":2,"creative":true,"from":"Meadows","clips":[],"pieces":[{"n":"dvergrprops_stool","k":"dvergrprops_stool","x":1.15,"y":-0.02,"z":-1,"yaw":0,"rest":"floor","key":true},{"n":"dvergrprops_lantern_standing","k":"dvergrprops_lantern_standing","x":1.15,"y":0.385,"z":-1,"yaw":0,"rest":"on","on":0}]},{"id":"KC-053","anchor":"table","of":"table","rooms":["home","tavern","hall"],"score":1.9,"decor":["d2","d3"],"traits":{"comfort":0.6,"wealth":0.4},"min":2,"creative":true,"from":"Meadows","clips":[],"pieces":[{"n":"piece_Lavalantern","k":"piece_Lavalantern","x":0.6,"y":0.791,"z":0,"yaw":0,"rest":"anchor","key":true},{"n":"itemstandh","k":"itemstandh","x":-0.4,"y":0.794,"z":0.2,"yaw":0,"rest":"anchor","want":"drink"},{"n":"itemstandh","k":"itemstandh","x":-0.1,"y":0.794,"z":-0.25,"yaw":0,"rest":"anchor","want":"drink"}]},{"id":"KC-054","anchor":"wall","rooms":["home","sleeping","hall","tavern"],"score":2.05,"decor":["d2","d3"],"traits":{"comfort":0.5,"tidy":0.5},"min":2,"creative":true,"from":"Meadows","clips":[],"pieces":[{"n":"wood_ledge","k":"wood_ledge","x":0,"y":1.5,"z":0.3,"yaw":0,"rest":"wall","key":true},{"n":"piece_hoodedlantern","k":"piece_hoodedlantern","x":0.2,"y":1.575,"z":0.3,"yaw":0,"rest":"on","on":0},{"n":"MeadTasty","k":"MeadTasty","x":-0.25,"y":1.525,"z":0.3,"yaw":0,"rest":"on","on":0}]},{"id":"KC-055","anchor":"wall","rooms":["hall","temple"],"score":1.9,"decor":["d3"],"traits":{"wealth":0.6,"collect":0.4},"min":2,"creative":true,"from":"Meadows","clips":[[2,"w",0.08]],"pieces":[{"n":"piece_groundtorch_green","k":"piece_groundtorch_green","x":-1.45,"y":0.653,"z":0.3,"yaw":0,"rest":"floor","key":true},{"n":"piece_groundtorch_green","k":"piece_groundtorch_green","x":1.45,"y":0.653,"z":0.3,"yaw":0,"rest":"floor"},{"n":"piece_blackwood_bench01","k":"piece_blackwood_bench01","x":0,"y":0,"z":1.034,"yaw":0,"rest":"floor"}]},{"id":"KC-056","anchor":"corner","angle":90,"rooms":["storage","workshop","hall"],"score":1.9,"decor":["d3"],"traits":{"busy":0.4},"min":2,"creative":true,"from":"Meadows","clips":[],"pieces":[{"n":"dvergrprops_crate","k":"dvergrprops_crate","x":0,"y":-0.001,"z":0.849,"yaw":315,"rest":"floor","key":true},{"n":"piece_groundtorch_mist","k":"piece_groundtorch_mist","x":0,"y":1.662,"z":0.849,"yaw":315,"rest":"on","on":0},{"n":"dvergrprops_crate_long","k":"dvergrprops_crate_long","x":1.237,"y":0.087,"z":1.874,"yaw":315,"rest":"floor"}]},{"id":"KC-057","anchor":"bed","of":"bed","rooms":["sleeping","home"],"score":2.05,"decor":["d2","d3"],"traits":{"comfort":1},"min":3,"creative":true,"from":"Meadows","clips":[],"pieces":[{"n":"piece_chest_wood","k":"piece_chest_wood","x":0,"y":0,"z":2,"yaw":180,"rest":"floor","key":true},{"n":"Candle_resin","k":"Candle_resin","x":-0.5,"y":0.79,"z":2,"yaw":0,"rest":"on","on":0},{"n":"Candle_resin","k":"Candle_resin","x":-0.2,"y":0.79,"z":2.1,"yaw":0,"rest":"on","on":0},{"n":"rug_hare","k":"rug_hare","x":0.35,"y":0.79,"z":2,"yaw":0,"rest":"on","on":0}]},{"id":"KC-058","anchor":"bed","of":"bed","rooms":["sleeping","home"],"score":1.9,"decor":["d1","d2","d3"],"traits":{"comfort":0.8,"tidy":0.5},"min":2,"creative":true,"from":"Meadows","clips":[],"pieces":[{"n":"piece_chest_wood","k":"piece_chest_wood","x":0,"y":0,"z":2.05,"yaw":180,"rest":"floor","key":true},{"n":"rug_hare","k":"rug_hare","x":0,"y":0.79,"z":2.05,"yaw":90,"rest":"on","on":0}]},{"id":"KC-059","anchor":"bed","of":"bed","rooms":["sleeping","home"],"score":2.05,"decor":["d2","d3"],"traits":{"messy":1},"min":2,"creative":true,"from":"Meadows","clips":[],"pieces":[{"n":"piece_chair03","k":"piece_chair03","x":1.2,"y":-0.007,"z":-0.75,"yaw":250,"rest":"floor","key":true},{"n":"itemstandh","k":"itemstandh","x":1.2,"y":0.51,"z":-0.75,"yaw":0,"rest":"on","on":0,"want":"small"},{"n":"rug_hare","k":"rug_hare","x":1.3,"y":0.02,"z":0.6,"yaw":0,"rest":"floor"}]},{"id":"KC-060","anchor":"bed","of":"bed","rooms":["sleeping","home"],"score":1.9,"decor":["d2","d3"],"traits":{"collect":0.6,"tidy":0.6},"min":2,"creative":true,"from":"Meadows","clips":[],"pieces":[{"n":"ArmorStand","k":"ArmorStand","x":1.15,"y":0.007,"z":-0.85,"yaw":270,"rest":"floor","key":true},{"n":"piece_chest","k":"piece_chest","x":0,"y":-0.074,"z":2.1,"yaw":180,"rest":"floor"}]},{"id":"KC-061","anchor":"bed","of":"bed","rooms":["sleeping","home"],"score":2.05,"decor":["d1","d2","d3"],"traits":{"modest":0.8,"messy":0.4},"min":2,"creative":true,"from":"Meadows","clips":[],"pieces":[{"n":"dvergrprops_crate","k":"dvergrprops_crate","x":1.3,"y":-0.001,"z":-0.95,"yaw":8,"rest":"floor","key":true},{"n":"Candle_resin","k":"Candle_resin","x":1.15,"y":1.015,"z":-1.05,"yaw":0,"rest":"on","on":0},{"n":"itemstandh","k":"itemstandh","x":1.45,"y":1.015,"z":-0.85,"yaw":0,"rest":"on","on":0,"want":"drink"}]},{"id":"KC-062","anchor":"bed","of":"bed","rooms":["sleeping","home"],"score":1.9,"decor":["d2","d3"],"traits":{"tidy":0.8,"wealth":0.4},"min":2,"creative":true,"from":"Meadows","clips":[],"pieces":[{"n":"piece_chest_warderobe","k":"piece_chest_warderobe","x":1.5,"y":-0.008,"z":-1,"yaw":0,"rest":"floor","key":true},{"n":"rug_hare","k":"rug_hare","x":-1.25,"y":0.02,"z":0.4,"yaw":0,"rest":"floor"}]},{"id":"KC-063","anchor":"bed","of":"bed2","rooms":["sleeping","home"],"score":2.05,"decor":["d2","d3"],"traits":{"comfort":1,"wealth":0.5},"min":2,"creative":true,"from":"Meadows","clips":[],"pieces":[{"n":"piece_chest_blackmetal","k":"piece_chest_blackmetal","x":0,"y":-0.002,"z":2.55,"yaw":180,"rest":"floor","key":true},{"n":"rug_wolf","k":"rug_wolf","x":-2.3,"y":0.02,"z":0.3,"yaw":0,"rest":"floor"},{"n":"Candle_resin","k":"Candle_resin","x":0.6,"y":1.028,"z":2.55,"yaw":0,"rest":"on","on":0}]},{"id":"KC-064","anchor":"hearth","rooms":["home","hall","tavern"],"score":2.05,"decor":["d2","d3"],"traits":{"comfort":1},"min":3,"creative":true,"from":"Meadows","clips":[],"pieces":[{"n":"rug_fur","k":"rug_fur","x":0,"y":0.02,"z":2.7,"yaw":0,"rest":"floor","key":true},{"n":"rug_hare","k":"rug_hare","x":0.5,"y":0.02,"z":2.6,"yaw":70,"rest":"floor"},{"n":"piece_chair02","k":"piece_chair02","x":-0.9,"y":0.013,"z":3,"yaw":180,"rest":"floor"},{"n":"itemstandh","k":"itemstandh","x":-0.25,"y":0,"z":3.2,"yaw":0,"rest":"floor","want":"drink"}]},{"id":"KC-065","anchor":"hearth","of":"pit","rooms":["home","sleeping"],"score":1.9,"decor":["d2","d3"],"traits":{"comfort":0.8,"modest":0.5},"min":2,"creative":true,"from":"Meadows","clips":[[1,2,0.03],[1,"a",0.03]],"pieces":[{"n":"rug_straw","k":"rug_straw","x":0,"y":0.02,"z":1.9,"yaw":0,"rest":"floor","key":true},{"n":"rug_deer","k":"rug_deer","x":1.1,"y":-0.059,"z":2.3,"yaw":35,"rest":"floor"},{"n":"dvergrprops_stool","k":"dvergrprops_stool","x":-0.6,"y":-0.02,"z":2,"yaw":180,"rest":"floor"}]},{"id":"KC-066","anchor":"wall","rooms":["home","hall","sleeping"],"score":2.05,"decor":["d3"],"traits":{"comfort":0.8,"collect":0.5},"min":2,"creative":true,"from":"Meadows","clips":[[1,"w",0.066]],"pieces":[{"n":"rug_asksvin","k":"rug_asksvin","x":0,"y":0.02,"z":1.7,"yaw":0,"rest":"floor","key":true},{"n":"piece_logbench01","k":"piece_logbench01","x":0,"y":0.025,"z":0.245,"yaw":0,"rest":"floor"},{"n":"Candle_resin","k":"Candle_resin","x":1.45,"y":0.02,"z":0.3,"yaw":0,"rest":"floor"}]},{"id":"KC-067","anchor":"wall","rooms":["home","tavern","hall","sleeping"],"score":2.05,"decor":["d2","d3"],"traits":{"comfort":1},"min":2,"creative":true,"from":"Meadows","clips":[[0,"w",0.066],[2,"w",0.063]],"pieces":[{"n":"piece_logbench01","k":"piece_logbench01","x":0,"y":0.025,"z":0.245,"yaw":0,"rest":"floor","key":true},{"n":"rug_hare","k":"rug_hare","x":0.3,"y":0.45,"z":0,"yaw":90,"rest":"on","on":0},{"n":"piece_chest_barrel","k":"piece_chest_barrel","x":1.6,"y":0.004,"z":0.383,"yaw":0,"rest":"floor"}]},{"id":"KC-068","anchor":"window","rooms":["home","sleeping","kitchen"],"score":1.9,"decor":["d2","d3"],"traits":{"plants":1},"min":3,"creative":true,"from":"Meadows","clips":[[0,"w",0.048],[1,"w",0.08]],"pieces":[{"n":"piece_pot1","k":"piece_pot1","x":-0.55,"y":0.002,"z":0.357,"yaw":15,"rest":"floor","key":true},{"n":"piece_pot3","k":"piece_pot3","x":0.35,"y":0.002,"z":0.498,"yaw":60,"rest":"floor"},{"n":"Fiddleheadfern","k":"Fiddleheadfern","x":0.35,"y":0.726,"z":0,"yaw":0,"rest":"on","on":1},{"n":"piece_pot1","k":"piece_pot1","x":1.15,"y":0.002,"z":0.55,"yaw":0,"rest":"floor"}]},{"id":"KC-069","anchor":"window","rooms":["home","sleeping","hall"],"score":2.05,"decor":["d2","d3"],"traits":{"comfort":0.9},"min":2,"creative":true,"from":"Meadows","clips":[[0,"w",0.08]],"pieces":[{"n":"piece_bench_runed","k":"piece_bench_runed","x":0,"y":-0.008,"z":0.389,"yaw":0,"rest":"floor","key":true},{"n":"rug_hare","k":"rug_hare","x":-0.4,"y":0.45,"z":0,"yaw":90,"rest":"on","on":0},{"n":"Candle_resin","k":"Candle_resin","x":0.6,"y":0.45,"z":0,"yaw":0,"rest":"on","on":0}]},{"id":"KC-070","anchor":"window","rooms":["home","sleeping","hall"],"score":2.05,"decor":["d2","d3"],"traits":{"maps":0.9,"tidy":0.6},"min":2,"creative":true,"from":"Meadows","clips":[[0,"w",0.08]],"pieces":[{"n":"piece_magetable_ext2","k":"piece_magetable_ext2","x":0,"y":-0.021,"z":0.275,"yaw":0,"rest":"floor","key":true},{"n":"dvergrprops_stool","k":"dvergrprops_stool","x":0,"y":-0.02,"z":0.95,"yaw":0,"rest":"floor"},{"n":"Candle_resin","k":"Candle_resin","x":0,"y":1.119,"z":0.3,"yaw":0,"rest":"on","on":0}]},{"id":"KC-071","anchor":"window","rooms":["storage","workshop","home"],"score":1.9,"decor":["d2","d3"],"traits":{"messy":0.7,"busy":0.6},"min":2,"creative":true,"from":"Meadows","clips":[[0,"w",0.08],[1,"w",0.048],[2,"w",0.08]],"pieces":[{"n":"dvergrprops_crate_long","k":"dvergrprops_crate_long","x":0,"y":0.087,"z":0.439,"yaw":0,"rest":"floor","key":true},{"n":"piece_pot1","k":"piece_pot1","x":0.6,"y":0.637,"z":0.295,"yaw":0,"rest":"on","on":0},{"n":"dvergrprops_crate","k":"dvergrprops_crate","x":-1.7,"y":-0.001,"z":0.61,"yaw":350,"rest":"floor"}]},{"id":"KC-072","anchor":"wall","rooms":["hall","tavern","storage"],"score":2.05,"decor":["d2","d3"],"traits":{"tidy":0.8,"maps":0.4},"min":3,"creative":true,"from":"Meadows","clips":[[3,"w",0.071]],"pieces":[{"n":"sign","k":"sign","x":-0.55,"y":1.65,"z":0.044,"yaw":0,"rest":"wall","key":true},{"n":"sign_notext","k":"sign_notext","x":0.55,"y":1.65,"z":0.044,"yaw":0,"rest":"wall"},{"n":"sign","k":"sign","x":0,"y":1.05,"z":0.044,"yaw":0,"rest":"wall"},{"n":"piece_bench01","k":"piece_bench01","x":0,"y":-0.008,"z":0.389,"yaw":0,"rest":"floor"}]},{"id":"KC-073","anchor":"wall","rooms":["kitchen","tavern"],"score":2.05,"decor":["d2","d3"],"traits":{"food":1,"tidy":0.5},"min":2,"creative":true,"from":"Meadows","clips":[[0,"w",0.08]],"pieces":[{"n":"piece_preptable","k":"piece_preptable","x":0,"y":0.075,"z":0.317,"yaw":0,"rest":"floor","key":true},{"n":"cauldron_ext1_spice","k":"cauldron_ext1_spice","x":-0.45,"y":1.05,"z":0.05,"yaw":0,"rest":"wall"},{"n":"cauldron_ext6_rollingpins","k":"cauldron_ext6_rollingpins","x":1.75,"y":1.05,"z":0.2,"yaw":0,"rest":"wall"}]},{"id":"KC-074","anchor":"wall","rooms":["hall","home","storage"],"score":1.9,"decor":["d3"],"traits":{"wealth":0.5},"min":2,"creative":true,"from":"Meadows","clips":[[1,"w",0.08]],"pieces":[{"n":"piece_dvergr_lantern","k":"piece_dvergr_lantern","x":0,"y":2.2,"z":0.002,"yaw":90,"rest":"wall","key":true},{"n":"piece_chest","k":"piece_chest","x":0,"y":-0.074,"z":0.499,"yaw":0,"rest":"floor"}]},{"id":"KC-075","anchor":"wall","rooms":["hall"],"score":2.05,"decor":["d3"],"traits":{"wealth":0.6,"comfort":0.4},"min":3,"creative":true,"from":"Meadows","clips":[[0,"w",0.08]],"pieces":[{"n":"piece_throne01","k":"piece_throne01","x":0,"y":-0.007,"z":0.44,"yaw":0,"rest":"floor","key":true},{"n":"rug_wolf","k":"rug_wolf","x":0,"y":0.02,"z":1.5,"yaw":90,"rest":"floor"},{"n":"piece_groundtorch","k":"piece_groundtorch","x":-1.2,"y":0.653,"z":0.3,"yaw":0,"rest":"floor"},{"n":"piece_groundtorch","k":"piece_groundtorch","x":1.2,"y":0.653,"z":0.3,"yaw":0,"rest":"floor"}]},{"id":"KC-076","anchor":"floor","rooms":["tavern","hall","home"],"score":2.05,"decor":["d2","d3"],"traits":{"games":1,"messy":0.5},"min":3,"creative":true,"from":"Meadows","clips":[],"pieces":[{"n":"dvergrprops_crate","k":"dvergrprops_crate","x":0,"y":-0.001,"z":0,"yaw":10,"rest":"floor","key":true},{"n":"itemstandh","k":"itemstandh","x":-0.15,"y":1.015,"z":0.1,"yaw":0,"rest":"on","on":0,"want":"small"},{"n":"itemstandh","k":"itemstandh","x":0.2,"y":1.015,"z":-0.15,"yaw":0,"rest":"on","on":0,"want":"drink"},{"n":"dvergrprops_stool","k":"dvergrprops_stool","x":-0.95,"y":-0.02,"z":0.1,"yaw":90,"rest":"floor"},{"n":"dvergrprops_stool","k":"dvergrprops_stool","x":0.95,"y":-0.02,"z":-0.15,"yaw":270,"rest":"floor"}]},{"id":"KC-077","anchor":"floor","rooms":["home","workshop","sleeping"],"score":2.2,"decor":["d3"],"traits":{"crafts":0.8,"messy":0.7},"min":3,"creative":true,"from":"Meadows","clips":[],"pieces":[{"n":"dvergrprops_stool","k":"dvergrprops_stool","x":0,"y":-0.02,"z":0,"yaw":0,"rest":"floor","key":true},{"n":"piece_chest_barrel","k":"piece_chest_barrel","x":0.7,"y":0.004,"z":0.3,"yaw":15,"rest":"floor"},{"n":"rug_hare","k":"rug_hare","x":0.75,"y":0.904,"z":0.3,"yaw":80,"rest":"on","on":1},{"n":"piece_pot3","k":"piece_pot3","x":-0.7,"y":0.002,"z":0.2,"yaw":0,"rest":"floor"}]},{"id":"KC-078","anchor":"corner","angle":90,"rooms":["home","sleeping"],"score":2.05,"decor":["d3"],"traits":{"comfort":1,"wealth":0.6},"min":2,"creative":true,"from":"Meadows","clips":[],"pieces":[{"n":"piece_bathtub","k":"piece_bathtub","x":-0.354,"y":-0.023,"z":2.899,"yaw":315,"rest":"floor","key":true},{"n":"dvergrprops_stool","k":"dvergrprops_stool","x":2.298,"y":-0.02,"z":3.005,"yaw":315,"rest":"floor"},{"n":"dvergrprops_lantern_standing","k":"dvergrprops_lantern_standing","x":2.298,"y":2.223,"z":3.005,"yaw":315,"rest":"on","on":0}]},{"id":"KC-079","anchor":"corner","angle":90,"rooms":["home","sleeping","temple","hall"],"score":2.05,"decor":["d2","d3"],"traits":{"comfort":0.7,"modest":0.4},"min":2,"creative":true,"from":"Meadows","clips":[],"pieces":[{"n":"wood_pole","k":"wood_pole","x":0,"y":0.5,"z":0.636,"yaw":315,"rest":"floor","key":true},{"n":"Candle_resin","k":"Candle_resin","x":0,"y":1,"z":0.636,"yaw":315,"rest":"on","on":0},{"n":"piece_pot3","k":"piece_pot3","x":0.636,"y":0.002,"z":1.273,"yaw":335,"rest":"floor"}]},{"id":"KC-080","anchor":"corner","angle":90,"rooms":["hall","tavern","home","workshop"],"score":2.05,"decor":["d3"],"traits":{"comfort":0.5,"wealth":0.4},"min":2,"creative":true,"from":"Plains","clips":[],"pieces":[{"n":"darkwood_pole","k":"darkwood_pole","x":0,"y":1,"z":0.636,"yaw":315,"rest":"floor","key":true},{"n":"dvergrprops_lantern_standing","k":"dvergrprops_lantern_standing","x":0,"y":1.985,"z":0.636,"yaw":315,"rest":"on","on":0},{"n":"piece_chest_barrel","k":"piece_chest_barrel","x":0.636,"y":0.004,"z":1.273,"yaw":315,"rest":"floor"}]},{"id":"KC-081","anchor":"wall","rooms":["hall","tavern","temple"],"score":2.05,"decor":["d3"],"traits":{"comfort":0.6},"min":2,"creative":true,"from":"Ashlands","clips":[[2,"w",0.071]],"pieces":[{"n":"ashwood_pole_2m","k":"ashwood_pole_2m","x":-1.5,"y":1,"z":0.3,"yaw":0,"rest":"floor","key":true},{"n":"dvergrprops_lantern_standing","k":"dvergrprops_lantern_standing","x":-1.5,"y":1.985,"z":0.3,"yaw":0,"rest":"on","on":0},{"n":"piece_bench01","k":"piece_bench01","x":0.15,"y":-0.008,"z":0.389,"yaw":0,"rest":"floor"}]},{"id":"KC-082","anchor":"wall","rooms":["storage","tavern","smithy"],"score":2.2,"decor":["d3"],"traits":{"tidy":0.6,"busy":0.4},"min":4,"creative":true,"from":"Meadows","clips":[[1,4,0.057],[3,"w",0.063],[4,"w",0.063]],"pieces":[{"n":"wood_pole2","k":"wood_pole2","x":-1,"y":1,"z":0.3,"yaw":0,"rest":"floor","key":true},{"n":"wood_pole2","k":"wood_pole2","x":1,"y":1,"z":0.3,"yaw":0,"rest":"floor"},{"n":"woodiron_beam","k":"beam2","x":0,"y":2.15,"z":0.3,"yaw":0,"rest":"on","on":0},{"n":"piece_chest_barrel","k":"piece_chest_barrel","x":-0.4,"y":0.004,"z":0.383,"yaw":0,"rest":"floor"},{"n":"piece_chest_barrel","k":"piece_chest_barrel","x":0.45,"y":0.004,"z":0.383,"yaw":0,"rest":"floor"},{"n":"itemstand","k":"itemstand","x":0,"y":1.5,"z":0.044,"yaw":0,"rest":"wall","want":"tool"}]},{"id":"KC-083","anchor":"wall","rooms":["home","kitchen","storage","hall"],"score":2.05,"decor":["d3"],"traits":{"food":0.6,"collect":0.6,"tidy":0.5},"min":6,"creative":true,"from":"Meadows","clips":[[8,"w",0.063]],"pieces":[{"n":"wood_ledge","k":"wood_ledge","x":-0.5,"y":1.45,"z":0.3,"yaw":0,"rest":"wall","key":true},{"n":"wood_ledge","k":"wood_ledge","x":0.5,"y":1.45,"z":0.3,"yaw":0,"rest":"wall"},{"n":"MeadFrostResist","k":"MeadFrostResist","x":-0.8,"y":1.475,"z":0.3,"yaw":0,"rest":"on","on":0},{"n":"MeadPoisonResist","k":"MeadPoisonResist","x":-0.5,"y":1.475,"z":0.3,"yaw":0,"rest":"on","on":0},{"n":"MeadEitrMinor","k":"MeadEitrMinor","x":-0.2,"y":1.475,"z":0.3,"yaw":0,"rest":"on","on":0},{"n":"MeadStrength","k":"MeadStrength","x":0.25,"y":1.475,"z":0.3,"yaw":0,"rest":"on","on":1},{"n":"MeadHealthMedium","k":"MeadHealthMedium","x":0.55,"y":1.475,"z":0.3,"yaw":0,"rest":"on","on":1},{"n":"MeadStaminaMinor","k":"MeadStaminaMinor","x":0.85,"y":1.475,"z":0.3,"yaw":0,"rest":"on","on":1},{"n":"piece_chest_barrel","k":"piece_chest_barrel","x":0,"y":0.004,"z":0.383,"yaw":0,"rest":"floor"}]},{"id":"KC-084","anchor":"wall","rooms":["kitchen","storage","home","barn"],"score":2.05,"decor":["d2","d3"],"traits":{"food":0.8,"plants":0.6,"busy":0.5},"min":3,"creative":true,"from":"Meadows","clips":[[0,"w",0.08]],"pieces":[{"n":"dvergrprops_crate_long","k":"dvergrprops_crate_long","x":0,"y":0.087,"z":0.439,"yaw":0,"rest":"floor","key":true},{"n":"Onion","k":"Onion","x":-0.55,"y":0.636,"z":0.3,"yaw":30,"rest":"on","on":0},{"n":"Carrot","k":"Carrot","x":-0.05,"y":0.636,"z":0.3,"yaw":80,"rest":"on","on":0},{"n":"Cloudberry","k":"Cloudberry","x":0.5,"y":0.636,"z":0.3,"yaw":0,"rest":"on","on":0},{"n":"piece_pot3","k":"piece_pot3","x":1.45,"y":0.002,"z":0.4,"yaw":0,"rest":"floor"}]},{"id":"KC-085","anchor":"table","of":"round","rooms":["home","tavern","hall"],"score":2.05,"decor":["d3"],"traits":{"food":0.9,"comfort":0.6},"min":3,"creative":true,"from":"Meadows","clips":[],"pieces":[{"n":"FeastBlackforest","k":"feast","x":0,"y":0.854,"z":0,"yaw":0,"rest":"anchor","key":true},{"n":"MeadSwimmer","k":"MeadSwimmer","x":-0.55,"y":0.865,"z":0.45,"yaw":0,"rest":"anchor"},{"n":"MeadTamer","k":"MeadTamer","x":0.6,"y":0.865,"z":-0.4,"yaw":0,"rest":"anchor"},{"n":"Candle_resin","k":"Candle_resin","x":0.6,"y":0.865,"z":0.45,"yaw":0,"rest":"anchor"}]},{"id":"KC-086","anchor":"table","of":"long","rooms":["hall","tavern"],"score":2.05,"decor":["d3"],"traits":{"food":1,"wealth":0.6},"min":5,"creative":true,"from":"Meadows","clips":[],"pieces":[{"n":"FeastPlains","k":"feast","x":-1.4,"y":0.778,"z":0,"yaw":0,"rest":"anchor","key":true},{"n":"FeastOceans","k":"feast","x":1.4,"y":0.778,"z":0,"yaw":0,"rest":"anchor"},{"n":"HoneyGlazedChicken","k":"HoneyGlazedChicken","x":0,"y":0.789,"z":0.1,"yaw":0,"rest":"anchor"},{"n":"PiquantPie","k":"PiquantPie","x":-2.6,"y":0.789,"z":-0.2,"yaw":0,"rest":"anchor"},{"n":"MashedMeat","k":"MashedMeat","x":2.6,"y":0.789,"z":0.2,"yaw":0,"rest":"anchor"},{"n":"Candle_resin","k":"Candle_resin","x":0,"y":0.789,"z":-0.45,"yaw":0,"rest":"anchor"},{"n":"MisthareSupreme","k":"MisthareSupreme","x":0,"y":0.789,"z":0.5,"yaw":0,"rest":"anchor"}]},{"id":"KC-087","anchor":"table","of":"table","rooms":["home","kitchen","tavern","hall"],"score":1.9,"decor":["d3"],"traits":{"food":0.9},"min":3,"creative":true,"from":"Meadows","clips":[],"pieces":[{"n":"FeastSwamps","k":"feast","x":0,"y":0.783,"z":0,"yaw":0,"rest":"anchor","key":true},{"n":"MarinatedGreens","k":"MarinatedGreens","x":-0.9,"y":0.794,"z":0.25,"yaw":0,"rest":"anchor"},{"n":"ScorchingMedley","k":"ScorchingMedley","x":0.9,"y":0.794,"z":-0.25,"yaw":0,"rest":"anchor"},{"n":"SparklingShroomshake","k":"SparklingShroomshake","x":0.95,"y":0.794,"z":0.35,"yaw":0,"rest":"anchor"},{"n":"SizzlingBerryBroth","k":"SizzlingBerryBroth","x":-0.9,"y":0.794,"z":-0.3,"yaw":0,"rest":"anchor"}]},{"id":"KC-088","anchor":"table","of":"table","rooms":["home","tavern","hall"],"score":2.05,"decor":["d3"],"traits":{"food":0.7,"messy":0.8},"min":3,"creative":true,"from":"Meadows","clips":[],"pieces":[{"n":"FeastMountains","k":"feast","x":-0.4,"y":0.782,"z":0.05,"yaw":20,"rest":"anchor","key":true},{"n":"FeastAshlands","k":"feast","x":0.75,"y":0.783,"z":-0.1,"yaw":0,"rest":"anchor"},{"n":"MeadTrollPheromones","k":"MeadTrollPheromones","x":-1,"y":0.794,"z":0.35,"yaw":0,"rest":"anchor"},{"n":"MeadHealthMinor","k":"MeadHealthMinor","x":0.2,"y":0.794,"z":0.42,"yaw":0,"rest":"anchor"},{"n":"piece_chair","k":"piece_chair","x":0.9,"y":-0.07,"z":0.95,"yaw":160,"rest":"floor"}]},{"id":"KC-089","anchor":"table","of":"round","rooms":["hall","tavern","home"],"score":2.05,"decor":["d3"],"traits":{"food":0.8,"wealth":0.5},"min":3,"creative":true,"from":"Meadows","clips":[],"pieces":[{"n":"FeastMistlands","k":"feast","x":0,"y":0.854,"z":0,"yaw":0,"rest":"anchor","key":true},{"n":"Candle_resin","k":"Candle_resin","x":-0.55,"y":0.865,"z":-0.45,"yaw":0,"rest":"anchor"},{"n":"Candle_resin","k":"Candle_resin","x":0.55,"y":0.865,"z":0.45,"yaw":0,"rest":"anchor"},{"n":"MeadHealthMedium","k":"MeadHealthMedium","x":0.6,"y":0.865,"z":-0.4,"yaw":0,"rest":"anchor"}]},{"id":"KC-090","anchor":"corner","angle":90,"rooms":["storage","barn","workshop"],"score":1.9,"decor":["d2","d3"],"traits":{"messy":0.8,"modest":0.6},"min":2,"creative":true,"from":"Meadows","clips":[],"pieces":[{"n":"barrell","k":"barrell","x":0,"y":0.577,"z":0.707,"yaw":345,"rest":"floor","key":true},{"n":"barrell","k":"barrell","x":0.813,"y":0.577,"z":1.45,"yaw":30,"rest":"floor"},{"n":"piece_pot2_cracked","k":"piece_pot2_cracked","x":-0.636,"y":0.003,"z":1.273,"yaw":315,"rest":"floor"}]},{"id":"KC-091","anchor":"corner","angle":90,"rooms":["storage","tavern","kitchen"],"score":2.05,"decor":["d3"],"traits":{"food":0.5,"busy":0.4},"min":2,"creative":true,"from":"Meadows","clips":[[1,"w",0.074]],"pieces":[{"n":"dvergrprops_barrel","k":"dvergrprops_barrel","x":-0.177,"y":0,"z":1.308,"yaw":315,"rest":"floor","key":true},{"n":"dvergrprops_crate","k":"dvergrprops_crate","x":1.167,"y":-0.001,"z":1.945,"yaw":327,"rest":"floor"},{"n":"itemstandh","k":"itemstandh","x":1.167,"y":1.015,"z":1.945,"yaw":315,"rest":"on","on":1,"want":"drink"}]},{"id":"KC-092","anchor":"wall","rooms":["home","sleeping","kitchen"],"score":2.2,"decor":["d2","d3"],"traits":{"tidy":0.5,"comfort":0.5},"min":3,"creative":true,"from":"Ashlands","clips":[],"pieces":[{"n":"ashwood_beam_1m","k":"ashwood_beam_1m","x":-0.6,"y":1.35,"z":0.2,"yaw":0,"rest":"wall"},{"n":"wood_beam_1","k":"wood_beam_1","x":0.6,"y":1.7,"z":0.2,"yaw":0,"rest":"wall","key":true},{"n":"Candle_resin","k":"Candle_resin","x":-0.6,"y":1.55,"z":0.2,"yaw":0,"rest":"on","on":0},{"n":"itemstandh","k":"itemstandh","x":0.6,"y":1.9,"z":0.2,"yaw":0,"rest":"on","on":1,"want":"drink"},{"n":"piece_chair","k":"piece_chair","x":0,"y":-0.07,"z":0.45,"yaw":0,"rest":"floor"}]},{"id":"KC-093","anchor":"corner","angle":90,"rooms":["storage","home","workshop"],"score":5.4,"decor":["d2","d3"],"traits":{"tidy":0.7},"min":2,"creative":true,"from":"Meadows","clips":[[0,1,0.055],[0,2,0.068],[0,"w",0.155]],"pieces":[{"n":"wood_beam","k":"wood_beam","x":-0.707,"y":-0.125,"z":1.909,"yaw":315,"rest":"floor","sink":0.325},{"n":"piece_chest_wood","k":"piece_chest_wood","x":-0.385,"y":-0.028,"z":0.93,"yaw":45,"rest":"floor","sink":0.028,"key":true},{"n":"piece_chest_wood","k":"piece_chest_wood","x":0.183,"y":-0.028,"z":1.517,"yaw":45,"rest":"floor","sink":0.028}]},{"id":"KC-094","anchor":"wall","rooms":["storage","home","workshop"],"score":4.9,"decor":["d2","d3"],"traits":{"tidy":0.7},"min":2,"creative":true,"from":"Meadows","clips":[[0,1,0.197],[0,2,0.201]],"pieces":[{"n":"piece_chest_wood","k":"piece_chest_wood","x":0.003,"y":-0.028,"z":0.389,"yaw":0,"rest":"floor","sink":0.028,"key":true},{"n":"wood_pole","k":"wood_pole","x":0.658,"y":0.413,"z":0.798,"yaw":90,"rest":"floor","sink":0.087},{"n":"wood_pole","k":"wood_pole","x":-0.659,"y":0.449,"z":0.793,"yaw":90,"rest":"floor","sink":0.051}]},{"id":"KC-095","anchor":"wall","rooms":["storage","home","workshop"],"score":4.4,"decor":["d3"],"traits":{"tidy":0.7},"min":5,"creative":true,"from":"Meadows","clips":[[0,2,0.123],[0,4,0.123],[0,6,0.205],[1,3,0.123],[1,5,0.123],[1,6,0.22],[1,"w",0.155],[3,6,0.079],[4,6,0.164]],"pieces":[{"n":"wood_beam","k":"wood_beam","x":0.466,"y":-0.125,"z":3.005,"yaw":270,"rest":"floor","sink":0.325},{"n":"wood_beam","k":"wood_beam","x":0.466,"y":-0.125,"z":1.005,"yaw":270,"rest":"floor","sink":0.325},{"n":"piece_chest_wood","k":"piece_chest_wood","x":-0.331,"y":-0.028,"z":3.204,"yaw":0,"rest":"floor","sink":0.028,"key":true},{"n":"piece_chest_wood","k":"piece_chest_wood","x":-0.394,"y":-0.028,"z":1.479,"yaw":0,"rest":"floor","sink":0.028},{"n":"piece_chest_wood","k":"piece_chest_wood","x":-0.337,"y":-0.028,"z":2.43,"yaw":0,"rest":"floor","sink":0.028},{"n":"piece_chest_wood","k":"piece_chest_wood","x":-0.338,"y":-0.028,"z":0.658,"yaw":0,"rest":"floor","sink":0.028},{"n":"wood_pole","k":"wood_pole","x":0.466,"y":0.375,"z":2.005,"yaw":270,"rest":"floor","sink":0.125}]},{"id":"KC-096","anchor":"wall","rooms":["storage","home","workshop"],"score":3.3,"decor":["d2","d3"],"traits":{"tidy":0.7},"min":2,"creative":true,"from":"Meadows","clips":[[0,"w",0.065],[1,"w",0.22]],"pieces":[{"n":"piece_chest_wood","k":"piece_chest_wood","x":-0.292,"y":-0.028,"z":0.778,"yaw":90,"rest":"floor","sink":0.028,"key":true},{"n":"wood_pole2","k":"wood_pole2","x":0.29,"y":0.875,"z":-0.15,"yaw":180,"rest":"floor","sink":0.125}]},{"id":"KC-097","anchor":"wall","rooms":["storage","home","workshop"],"score":2.7,"decor":["d2","d3"],"traits":{"tidy":0.7},"min":3,"creative":true,"from":"Meadows","clips":[[0,2,0.057],[0,3,0.22],[0,"w",0.22],[1,3,0.123],[2,3,0.123],[3,"w",0.22]],"pieces":[{"n":"wood_pole2","k":"wood_pole2","x":-0.437,"y":0.875,"z":-0.15,"yaw":90,"rest":"floor","sink":0.125},{"n":"piece_chest_wood","k":"piece_chest_wood","x":0.447,"y":-0.028,"z":1.161,"yaw":180,"rest":"floor","sink":0.028,"key":true},{"n":"piece_chest_wood","k":"piece_chest_wood","x":0.423,"y":-0.028,"z":0.399,"yaw":180,"rest":"floor","sink":0.028},{"n":"wood_beam","k":"wood_beam","x":-0.436,"y":-0.125,"z":0.85,"yaw":90,"rest":"floor","sink":0.325}]},{"id":"KC-098","anchor":"wall","rooms":["storage","home","workshop"],"score":2.7,"decor":["d2","d3"],"traits":{"tidy":0.7},"min":2,"creative":true,"from":"Meadows","clips":[[0,1,0.055],[0,2,0.03]],"pieces":[{"n":"piece_chest_wood","k":"piece_chest_wood","x":0.008,"y":0,"z":0.654,"yaw":0,"rest":"floor","key":true},{"n":"wood_beam_1","k":"wood_beam_1","x":0.996,"y":0,"z":0.5,"yaw":90,"rest":"floor","sink":0.2},{"n":"wood_beam_1","k":"wood_beam_1","x":-1.004,"y":0,"z":0.5,"yaw":90,"rest":"floor","sink":0.2}]},{"id":"KC-099","anchor":"wall","rooms":["storage","home","workshop"],"score":2.6,"decor":["d3"],"traits":{"tidy":0.7},"min":3,"creative":true,"from":"Meadows","clips":[[0,1,0.18],[0,2,0.215],[0,3,0.13],[0,4,0.21],[1,3,0.22],[2,4,0.22]],"pieces":[{"n":"piece_chest_wood","k":"piece_chest_wood","x":-0.032,"y":0,"z":0.695,"yaw":0,"rest":"floor","key":true},{"n":"wood_pole","k":"wood_pole","x":0.831,"y":0.499,"z":1.02,"yaw":270,"rest":"floor"},{"n":"wood_pole","k":"wood_pole","x":-0.815,"y":0.508,"z":1.085,"yaw":270,"rest":"floor"},{"n":"wood_wall_quarter","k":"wood_wall_quarter","x":0.831,"y":-0.001,"z":0.52,"yaw":90,"rest":"floor"},{"n":"wood_wall_quarter","k":"wood_wall_quarter","x":-0.815,"y":0.008,"z":0.585,"yaw":270,"rest":"floor"}]},{"id":"KC-100","anchor":"wall","rooms":["storage","home","workshop"],"score":2.5,"decor":["d2","d3"],"traits":{"tidy":0.7},"min":2,"creative":true,"from":"Meadows","clips":[[0,1,0.186],[0,2,0.07],[1,2,0.22]],"pieces":[{"n":"piece_chest_wood","k":"piece_chest_wood","x":-0.038,"y":-0.028,"z":0.573,"yaw":0,"rest":"floor","sink":0.028,"key":true},{"n":"wood_wall_half","k":"wood_wall_half","x":0.011,"y":0.375,"z":0.22,"yaw":360,"rest":"floor","sink":0.125},{"n":"wood_beam","k":"wood_beam","x":0.011,"y":0.875,"z":0.22,"yaw":360,"rest":"on","on":0}]},{"id":"KC-101","anchor":"wall","rooms":["storage","home","workshop"],"score":2.4,"decor":["d2","d3"],"traits":{"tidy":0.7},"min":2,"creative":true,"from":"Meadows","clips":[[0,1,0.123],[1,2,0.07]],"pieces":[{"n":"wood_beam","k":"wood_beam","x":-0.003,"y":-0.125,"z":0.76,"yaw":0,"rest":"floor","sink":0.325},{"n":"piece_chest_wood","k":"piece_chest_wood","x":0.005,"y":-0.028,"z":0.389,"yaw":0,"rest":"floor","sink":0.028,"key":true},{"n":"wood_beam","k":"wood_beam","x":-0.003,"y":0.875,"z":0.76,"yaw":180,"rest":"on","on":1}]},{"id":"KC-102","anchor":"corner","angle":90,"rooms":["storage","home","workshop"],"score":1.9,"decor":["d3"],"traits":{"tidy":0.7},"min":6,"creative":true,"from":"Meadows","clips":[[0,1,0.235],[0,2,0.07],[0,3,0.061],[0,4,0.062],[0,5,0.155],[0,6,0.22],[0,7,0.185],[1,3,0.071],[1,6,0.185],[1,7,0.22],[1,"w",0.22],[2,4,0.165],[2,5,0.08],[3,4,0.157],[3,"w",0.074],[5,6,0.17],[5,8,0.22],[5,"w",0.17],[6,7,0.17],[7,"w",0.17],[8,"w",0.22]],"pieces":[{"n":"wood_beam","k":"wood_beam","x":0.707,"y":-0.125,"z":0.495,"yaw":315,"rest":"floor","sink":0.325},{"n":"wood_beam","k":"wood_beam","x":0.707,"y":-0.125,"z":1.909,"yaw":45,"rest":"floor","sink":0.325},{"n":"piece_chest_wood","k":"piece_chest_wood","x":-0.363,"y":-0.028,"z":0.801,"yaw":45,"rest":"floor","sink":0.028,"key":true},{"n":"piece_chest_wood","k":"piece_chest_wood","x":0.343,"y":-0.028,"z":1.519,"yaw":45,"rest":"floor","sink":0.028},{"n":"piece_chest_wood","k":"piece_chest_wood","x":-0.045,"y":-0.028,"z":1.13,"yaw":45,"rest":"floor","sink":0.028},{"n":"wood_wall_half","k":"wood_wall_half","x":-0.707,"y":0.375,"z":0.495,"yaw":225,"rest":"floor","sink":0.125},{"n":"wood_wall_half","k":"wood_wall_half","x":0.707,"y":0.375,"z":0.495,"yaw":135,"rest":"floor","sink":0.125},{"n":"wood_wall_half","k":"wood_wall_half","x":0.707,"y":0.375,"z":1.909,"yaw":45,"rest":"floor","sink":0.125},{"n":"wood_pole2","k":"wood_pole2","x":-1.414,"y":0.875,"z":1.202,"yaw":135,"rest":"floor","sink":0.125}]},{"id":"KC-103","anchor":"wall","rooms":["smithy","workshop"],"score":1.9,"decor":["d3"],"traits":{"crafts":1,"busy":0.4},"min":5,"creative":true,"from":"Meadows","clips":[[0,1,0.112],[0,4,0.22],[0,7,0.251],[1,4,0.162],[1,6,0.187],[1,7,0.043],[1,"w",0.201],[2,3,0.395],[2,5,0.123],[3,5,0.123],[4,7,0.301],[4,"w",0.109],[5,7,0.088],[7,"w",0.17]],"pieces":[{"n":"wood_wall_quarter","k":"wood_wall_quarter","x":-0.119,"y":-0.325,"z":0.611,"yaw":90,"rest":"floor","sink":0.325},{"n":"piece_chest_wood","k":"piece_chest_wood","x":-0.546,"y":-0.028,"z":0.641,"yaw":270,"rest":"floor","sink":0.028,"key":true},{"n":"wood_beam_1","k":"wood_beam_1","x":0.619,"y":0.078,"z":0.93,"yaw":203,"rest":"floor","sink":0.122},{"n":"wood_beam","k":"wood_beam","x":1.121,"y":0.078,"z":0.729,"yaw":0,"rest":"floor","sink":0.122},{"n":"wood_pole","k":"wood_pole","x":-0.119,"y":0.175,"z":0.111,"yaw":90,"rest":"floor","sink":0.325},{"n":"forge_ext5","k":"forge_ext5","x":0.564,"y":0.175,"z":0.613,"yaw":68,"rest":"on","on":3},{"n":"wood_pole","k":"wood_pole","x":-1.016,"y":0.375,"z":1.425,"yaw":135,"rest":"floor","sink":0.125},{"n":"wood_beam_1","k":"wood_beam_1","x":0,"y":0.578,"z":0.35,"yaw":270,"rest":"wall"}]},{"id":"KC-104","anchor":"wall","rooms":["storage","home","workshop"],"score":1.9,"decor":["d3"],"traits":{"tidy":0.7},"min":5,"creative":true,"from":"Meadows","clips":[[0,1,0.205],[0,7,0.123],[1,2,0.22],[1,5,0.079],[1,6,0.055],[1,7,0.055],[1,"w",0.155],[2,3,0.22],[2,4,0.17],[2,7,0.123],[3,4,0.22],[3,7,0.051],[5,6,0.052],[6,7,0.205]],"pieces":[{"n":"wood_beam","k":"wood_beam","x":-1.176,"y":-0.125,"z":1.02,"yaw":180,"rest":"floor","sink":0.325},{"n":"wood_beam","k":"wood_beam","x":-0.176,"y":-0.125,"z":2.02,"yaw":90,"rest":"floor","sink":0.325},{"n":"wood_beam_1","k":"wood_beam_1","x":0.324,"y":-0.125,"z":1.02,"yaw":180,"rest":"floor","sink":0.325},{"n":"wood_beam","k":"wood_beam","x":0.824,"y":-0.125,"z":1.02,"yaw":270,"rest":"floor","sink":0.325},{"n":"wood_wall_quarter","k":"wood_wall_quarter","x":0.824,"y":-0.125,"z":0.52,"yaw":90,"rest":"floor","sink":0.125},{"n":"piece_chest_wood","k":"piece_chest_wood","x":-0.221,"y":-0.053,"z":2.437,"yaw":0,"rest":"floor","sink":0.053,"key":true},{"n":"piece_chest_wood","k":"piece_chest_wood","x":-0.216,"y":-0.028,"z":1.715,"yaw":0,"rest":"floor","sink":0.028},{"n":"piece_chest_wood","k":"piece_chest_wood","x":-0.168,"y":-0.028,"z":1.156,"yaw":0,"rest":"floor","sink":0.028}]},{"id":"KC-105","anchor":"wall","rooms":["storage","workshop","home","hall"],"score":2,"decor":["d2","d3"],"traits":{"tidy":1},"min":2,"creative":true,"from":"Meadows","clips":[[0,1,0.061]],"pieces":[{"n":"piece_chest_wood","k":"piece_chest_wood","x":0.009,"y":0,"z":0.389,"yaw":0,"rest":"floor","key":true},{"n":"sign","k":"sign","x":-0.009,"y":0.275,"z":0.778,"yaw":0,"rest":"floor"}]},{"id":"KC-106","anchor":"wall","rooms":["storage","home","workshop"],"score":1.6,"decor":["d1","d2","d3"],"traits":{"messy":0.7,"busy":0.5},"min":2,"creative":true,"from":"Meadows","clips":[],"pieces":[{"n":"dvergrprops_crate","k":"dvergrprops_crate","x":-0.008,"y":-0.001,"z":0.687,"yaw":23,"rest":"floor","key":true},{"n":"dvergrprops_crate","k":"dvergrprops_crate","x":0.008,"y":1.014,"z":0.619,"yaw":0,"rest":"on","on":0}]},{"id":"KC-107","anchor":"floor","rooms":["home","hall","tavern","storage","workshop"],"score":3,"decor":["d2","d3"],"traits":{"comfort":0.6},"min":2,"creative":true,"from":"Meadows","clips":[],"pieces":[{"n":"piece_chair","k":"piece_chair","x":-0.007,"y":-0.098,"z":-0.001,"yaw":0,"rest":"floor","sink":0.098,"key":true},{"n":"piece_Lavalantern","k":"piece_Lavalantern","x":-0.013,"y":0.5,"z":0.002,"yaw":0,"rest":"on","on":0}]},{"id":"KC-108","anchor":"floor","rooms":["home","hall","tavern","storage","workshop"],"score":3.9,"decor":["d2","d3"],"traits":{"comfort":0.6},"min":2,"creative":true,"from":"Meadows","clips":[[0,1,0.259]],"pieces":[{"n":"wood_pole","k":"wood_pole","x":0.022,"y":0.361,"z":-0.017,"yaw":0,"rest":"floor","sink":0.139,"key":true},{"n":"piece_groundtorch_wood","k":"piece_groundtorch_wood","x":-0.022,"y":0.624,"z":0.018,"yaw":315,"rest":"floor","sink":0.081}]},{"id":"KC-109","anchor":"floor","rooms":["home","hall","tavern","storage","workshop"],"score":3.2,"decor":["d2","d3"],"traits":{"comfort":0.6},"min":2,"creative":true,"from":"Meadows","clips":[[0,1,0.303]],"pieces":[{"n":"wood_pole","k":"wood_pole","x":-0.018,"y":0.375,"z":0.015,"yaw":0,"rest":"floor","sink":0.125,"key":true},{"n":"piece_groundtorch","k":"piece_groundtorch","x":0.021,"y":0.704,"z":-0.015,"yaw":0,"rest":"floor","sink":0.036}]},{"id":"KC-110","anchor":"wall","rooms":["storage","home","workshop"],"score":3.1,"decor":["d2","d3"],"traits":{"tidy":0.7},"min":2,"creative":true,"from":"Meadows","clips":[],"pieces":[{"n":"piece_chest_wood","k":"piece_chest_wood","x":-0.043,"y":-0.028,"z":0.693,"yaw":0,"rest":"floor","sink":0.028,"key":true},{"n":"wood_wall_half","k":"wood_wall_half","x":0.044,"y":0.375,"z":0.17,"yaw":180,"rest":"floor","sink":0.125}]},{"id":"KC-111","anchor":"wall","rooms":["workshop","home"],"score":2.4,"decor":["d2","d3"],"traits":{"crafts":1,"busy":0.4},"min":2,"creative":true,"from":"Meadows","clips":[[0,1,0.05],[0,2,0.05]],"pieces":[{"n":"piece_workbench","k":"piece_workbench","x":-0.045,"y":-0.053,"z":0.839,"yaw":0,"rest":"floor","sink":0.053,"key":true},{"n":"wood_wall_half","k":"wood_wall_half","x":-0.977,"y":0.375,"z":0.17,"yaw":180,"rest":"floor","sink":0.125},{"n":"wood_wall_half","k":"wood_wall_half","x":1.023,"y":0.375,"z":0.17,"yaw":180,"rest":"floor","sink":0.125}]},{"id":"KC-112","anchor":"wall","rooms":["workshop","home"],"score":1.9,"decor":["d3"],"traits":{"crafts":1,"busy":0.4},"min":5,"creative":true,"from":"Meadows","clips":[[0,2,0.096],[0,4,0.22],[0,5,0.035],[1,2,0.096],[1,5,0.22],[1,"w",0.035],[2,4,0.046],[2,5,0.046],[2,6,0.165],[2,7,0.091],[3,6,0.092]],"pieces":[{"n":"wood_beam","k":"wood_beam","x":1.207,"y":-0.125,"z":0.22,"yaw":180,"rest":"floor","sink":0.325},{"n":"wood_beam","k":"wood_beam","x":-0.793,"y":-0.125,"z":0.22,"yaw":180,"rest":"floor","sink":0.325},{"n":"piece_workbench","k":"piece_workbench","x":0.228,"y":-0.053,"z":0.894,"yaw":0,"rest":"floor","sink":0.053,"key":true},{"n":"piece_workbench_ext1","k":"piece_workbench_ext1","x":-1.555,"y":-0.048,"z":1.689,"yaw":135,"rest":"floor","sink":0.048},{"n":"wood_wall_half","k":"wood_wall_half","x":1.207,"y":0.375,"z":0.22,"yaw":180,"rest":"floor","sink":0.125},{"n":"wood_wall_half","k":"wood_wall_half","x":-0.793,"y":0.375,"z":0.22,"yaw":180,"rest":"floor","sink":0.125},{"n":"wood_pole","k":"wood_pole","x":-1.331,"y":0.402,"z":1.106,"yaw":360,"rest":"floor","sink":0.098},{"n":"wood_pole","k":"wood_pole","x":1.862,"y":0.438,"z":1.12,"yaw":360,"rest":"floor","sink":0.062}]},{"id":"KC-113","anchor":"corner","angle":90,"rooms":["workshop","home"],"score":2,"decor":["d3"],"traits":{"crafts":1,"busy":0.4},"min":3,"creative":true,"from":"Plains","clips":[[0,1,0.053],[0,2,0.057],[0,4,0.057],[1,3,0.37],[1,"w",0.166],[2,4,0.36],[2,"w",0.37],[4,"w",0.22]],"pieces":[{"n":"piece_workbench","k":"piece_workbench","x":-0.678,"y":-0.053,"z":1.474,"yaw":45,"rest":"floor","sink":0.053,"key":true},{"n":"darkwood_beam_26","k":"darkwood_beam_26","x":0.571,"y":0.125,"z":0.358,"yaw":315,"rest":"floor","sink":0.375},{"n":"darkwood_beam_26","k":"darkwood_beam_26","x":-1.851,"y":0.361,"z":1.639,"yaw":225,"rest":"floor","sink":0.139},{"n":"wood_wall_half","k":"wood_wall_half","x":0.571,"y":0.375,"z":0.359,"yaw":135,"rest":"floor","sink":0.125},{"n":"darkwood_beam","k":"darkwood_beam","x":-1.851,"y":0.861,"z":1.639,"yaw":45,"rest":"wall"}]},{"id":"KC-114","anchor":"wall","rooms":["smithy","workshop"],"score":2,"decor":["d3"],"traits":{"crafts":1,"busy":0.4},"min":5,"creative":true,"from":"Swamp","clips":[[0,1,0.037],[1,3,0.1],[3,4,0.474],[3,6,0.397],[4,5,0.369]],"pieces":[{"n":"blackforge_ext4_gemcutter","k":"blackforge_ext4_gemcutter","x":1.652,"y":0.001,"z":1.49,"yaw":90,"rest":"floor","key":true},{"n":"blackforge_ext2_vise","k":"blackforge_ext2_vise","x":1.12,"y":0.003,"z":0.656,"yaw":0,"rest":"floor"},{"n":"blackforge_ext1","k":"blackforge_ext1","x":0.142,"y":0.005,"z":1.475,"yaw":0,"rest":"floor"},{"n":"piece_workbench_ext3","k":"piece_workbench_ext3","x":-0.253,"y":0.089,"z":0.568,"yaw":0,"rest":"floor"},{"n":"piece_workbench_ext2","k":"piece_workbench_ext2","x":-1.659,"y":0.132,"z":0.937,"yaw":0,"rest":"floor"},{"n":"woodiron_pole","k":"woodiron_pole","x":-1.477,"y":1.112,"z":1.038,"yaw":0,"rest":"floor"},{"n":"woodiron_pole","k":"woodiron_pole","x":0.497,"y":1.133,"z":0.888,"yaw":0,"rest":"hang"}]},{"id":"KC-115","anchor":"wall","rooms":["workshop","home"],"score":2,"decor":["d2","d3"],"traits":{"crafts":1,"busy":0.4},"min":2,"creative":true,"from":"Meadows","clips":[[0,1,0.077]],"pieces":[{"n":"piece_artisanstation","k":"piece_artisanstation","x":-0.815,"y":-0.025,"z":0.624,"yaw":0,"rest":"floor","sink":0.025,"key":true},{"n":"artisan_ext1","k":"artisan_ext1","x":0.799,"y":0.004,"z":0.6,"yaw":90,"rest":"floor"}]},{"id":"KC-116","anchor":"wall","rooms":["workshop","home"],"score":2,"decor":["d2","d3"],"traits":{"crafts":1,"busy":0.4},"min":2,"creative":true,"from":"Meadows","clips":[[0,1,0.147]],"pieces":[{"n":"piece_spinningwheel","k":"piece_spinningwheel","x":-0.219,"y":-0.062,"z":1.043,"yaw":0,"rest":"floor","sink":0.062,"key":true},{"n":"wood_wall_half","k":"wood_wall_half","x":0.114,"y":0.375,"z":1.574,"yaw":180,"rest":"floor","sink":0.125}]},{"id":"KC-117","anchor":"corner","angle":90,"rooms":["smithy","workshop"],"score":1.9,"decor":["d2","d3"],"traits":{"crafts":1,"busy":0.4},"min":2,"creative":true,"from":"Meadows","clips":[[0,1,0.125],[0,2,0.056]],"pieces":[{"n":"blackforge","k":"blackforge","x":0.606,"y":-0.035,"z":1.964,"yaw":315,"rest":"floor","sink":0.035,"key":true},{"n":"blackforge_ext3_metalcutter","k":"blackforge_ext3_metalcutter","x":-1.137,"y":-0.001,"z":0.911,"yaw":225,"rest":"floor"},{"n":"blackforge_ext1","k":"blackforge_ext1","x":0.113,"y":0.005,"z":2.5,"yaw":315,"rest":"floor"}]},{"id":"KC-118","anchor":"table","of":"table","rooms":["smithy","workshop"],"score":1.9,"decor":["d2","d3"],"traits":{"crafts":1,"busy":0.4},"min":2,"creative":true,"from":"Meadows","clips":[],"pieces":[{"n":"blackforge_ext3_metalcutter","k":"blackforge_ext3_metalcutter","x":0.595,"y":0.794,"z":0.039,"yaw":34,"rest":"anchor","key":true},{"n":"blackforge_ext4_gemcutter","k":"blackforge_ext4_gemcutter","x":-0.658,"y":0.795,"z":-0.034,"yaw":0,"rest":"anchor"}]},{"id":"KC-119","anchor":"wall","rooms":["kitchen","tavern","home","hall"],"score":1.9,"decor":["d3"],"traits":{"food":1},"min":3,"creative":true,"from":"Meadows","clips":[[0,1,0.105],[0,2,0.105],[0,3,0.247],[0,4,0.127],[1,2,0.22],[1,3,0.22],[2,3,0.22]],"pieces":[{"n":"cauldron_ext5_mortarandpestle","k":"cauldron_ext5_mortarandpestle","x":-0.048,"y":-0.013,"z":0.618,"yaw":0,"rest":"floor","key":true},{"n":"wood_beam_1","k":"wood_beam_1","x":0.525,"y":0,"z":1.411,"yaw":90,"rest":"floor","sink":0.2},{"n":"wood_wall_quarter","k":"wood_wall_quarter","x":0.525,"y":0,"z":1.411,"yaw":90,"rest":"floor"},{"n":"wood_pole2","k":"wood_pole2","x":0.525,"y":1,"z":0.911,"yaw":0,"rest":"floor"},{"n":"wood_pole2","k":"wood_pole2","x":-1.385,"y":1,"z":0.28,"yaw":338,"rest":"floor"}]},{"id":"KC-120","anchor":"wall","rooms":["workshop","home"],"score":1.9,"decor":["d2","d3"],"traits":{"crafts":1,"busy":0.4},"min":2,"creative":true,"from":"Meadows","clips":[[0,1,0.244],[0,2,0.322],[1,2,0.22],[1,"w",0.17],[2,"w",0.155]],"pieces":[{"n":"piece_spinningwheel","k":"piece_spinningwheel","x":0.287,"y":-0.034,"z":0.801,"yaw":270,"rest":"floor","sink":0.034,"key":true},{"n":"wood_wall_half","k":"wood_wall_half","x":-0.143,"y":0.5,"z":0.85,"yaw":90,"rest":"floor"},{"n":"wood_beam","k":"wood_beam","x":-0.143,"y":1,"z":0.85,"yaw":270,"rest":"wall"}]},{"id":"KC-121","anchor":"table","of":"round","rooms":["kitchen","tavern","home","hall"],"score":1.9,"decor":["d3"],"traits":{"food":1},"min":3,"creative":true,"from":"Meadows","clips":[[0,"a",0.089],[1,"a",0.09],[2,"a",0.089],[3,"a",0.089],[4,"a",0.089]],"pieces":[{"n":"FeastOceans","k":"FeastOceans","x":-0.136,"y":0.781,"z":-0.008,"yaw":90,"rest":"anchor","key":true},{"n":"piece_Lavalantern","k":"piece_Lavalantern","x":-0.996,"y":0.789,"z":-0.018,"yaw":112,"rest":"anchor"},{"n":"itemstandh","k":"itemstandh","x":0.851,"y":0.793,"z":-0.505,"yaw":225,"rest":"anchor"},{"n":"itemstandh","k":"itemstandh","x":0.777,"y":0.793,"z":0.075,"yaw":157,"rest":"anchor"},{"n":"itemstandh","k":"itemstandh","x":0.705,"y":0.793,"z":0.802,"yaw":112,"rest":"anchor"}]},{"id":"KC-122","anchor":"table","of":"long","rooms":["kitchen","tavern","home","hall"],"score":1.9,"decor":["d2","d3"],"traits":{"food":1},"min":2,"creative":true,"from":"Meadows","clips":[],"pieces":[{"n":"FeastMistlands","k":"FeastMistlands","x":-0.33,"y":0.81,"z":0.031,"yaw":0,"rest":"anchor","key":true},{"n":"itemstandh","k":"itemstandh","x":0.734,"y":0.822,"z":-0.359,"yaw":158,"rest":"anchor"},{"n":"itemstandh","k":"itemstandh","x":0.816,"y":0.822,"z":0.351,"yaw":315,"rest":"anchor"}]},{"id":"KC-123","anchor":"table","of":"round","rooms":["kitchen","tavern","home","hall"],"score":1.9,"decor":["d2","d3"],"traits":{"food":1},"min":2,"creative":true,"from":"Meadows","clips":[[0,"a",0.089]],"pieces":[{"n":"FeastMistlands","k":"FeastMistlands","x":-0.02,"y":0.756,"z":-0.017,"yaw":225,"rest":"anchor","key":true},{"n":"Candle_resin","k":"Candle_resin","x":0.162,"y":0.768,"z":1.012,"yaw":202,"rest":"anchor"},{"n":"Candle_resin","k":"Candle_resin","x":-0.713,"y":0.768,"z":-0.831,"yaw":112,"rest":"anchor"}]},{"id":"KC-124","anchor":"table","of":"table","rooms":["kitchen","tavern","home","hall"],"score":1.9,"decor":["d2","d3"],"traits":{"food":1},"min":2,"creative":true,"from":"Meadows","clips":[[1,"a",0.093],[1,"w",0.22]],"pieces":[{"n":"FeastMeadows","k":"FeastMeadows","x":0.022,"y":0.755,"z":0.025,"yaw":0,"rest":"anchor","key":true},{"n":"wood_pole2","k":"wood_pole2","x":1.241,"y":0.875,"z":-0.737,"yaw":360,"rest":"floor","sink":0.125}]},{"id":"KC-125","anchor":"table","of":"round","rooms":["kitchen","tavern","home","hall"],"score":1.6,"decor":["d3"],"traits":{"food":1},"min":5,"creative":true,"from":"Meadows","clips":[],"pieces":[{"n":"MarinatedGreens","k":"MarinatedGreens","x":0.159,"y":0.773,"z":-0.786,"yaw":349,"rest":"anchor"},{"n":"MashedMeat","k":"MashedMeat","x":-0.545,"y":0.768,"z":0.372,"yaw":349,"rest":"anchor","key":true},{"n":"MeadStrength","k":"MeadStrength","x":0.65,"y":0.785,"z":-0.464,"yaw":34,"rest":"anchor"},{"n":"MeadStrength","k":"MeadStrength","x":0.006,"y":0.785,"z":0.552,"yaw":292,"rest":"anchor"},{"n":"MeadStrength","k":"MeadStrength","x":-0.104,"y":0.785,"z":-0.362,"yaw":101,"rest":"anchor"},{"n":"MeadTrollPheromones","k":"MeadTrollPheromones","x":0.097,"y":0.785,"z":-0.045,"yaw":326,"rest":"anchor"},{"n":"piece_chair03","k":"piece_chair03","x":1.668,"y":-0.035,"z":-0.017,"yaw":270,"rest":"floor","sink":0.035},{"n":"PiquantPie","k":"PiquantPie","x":0.795,"y":0.76,"z":0.182,"yaw":292,"rest":"anchor"}]},{"id":"KC-126","anchor":"wall","rooms":["kitchen","tavern","home","hall"],"score":1.9,"decor":["d2","d3"],"traits":{"food":1},"min":3,"creative":true,"from":"Meadows","clips":[[0,1,0.42],[0,2,0.05],[0,"w",0.22],[1,2,0.05],[1,"w",0.22],[2,"w",0.22]],"pieces":[{"n":"wood_beam","k":"wood_beam","x":0.894,"y":-0.125,"z":-0.15,"yaw":180,"rest":"floor","sink":0.325},{"n":"wood_beam","k":"wood_beam","x":0.895,"y":-0.125,"z":-0.15,"yaw":180,"rest":"floor","sink":0.325},{"n":"wood_beam","k":"wood_beam","x":-1.106,"y":-0.125,"z":-0.15,"yaw":360,"rest":"floor","sink":0.325},{"n":"piece_preptable","k":"piece_preptable","x":-0.678,"y":-0.028,"z":0.361,"yaw":180,"rest":"floor","sink":0.103,"key":true}]},{"id":"KC-127","anchor":"wall","rooms":["kitchen","tavern","home","hall"],"score":1.9,"decor":["d3"],"traits":{"food":1},"min":4,"creative":true,"from":"Swamp","clips":[[0,3,0.17],[0,4,0.171],[3,5,0.17]],"pieces":[{"n":"piece_oven","k":"piece_oven","x":-0.055,"y":-0.125,"z":2.02,"yaw":0,"rest":"floor","sink":0.125,"key":true},{"n":"stone_wall_1x1","k":"stone_wall_1x1","x":0.945,"y":0.375,"z":0.52,"yaw":180,"rest":"floor","sink":0.125},{"n":"stone_wall_1x1","k":"stone_wall_1x1","x":0.944,"y":0.375,"z":3.519,"yaw":180,"rest":"floor","sink":0.125},{"n":"woodiron_pole","k":"woodiron_pole","x":-0.555,"y":0.875,"z":1.02,"yaw":0,"rest":"floor","sink":0.125},{"n":"woodiron_pole","k":"woodiron_pole","x":-0.556,"y":0.875,"z":3.019,"yaw":90,"rest":"floor","sink":0.125},{"n":"stone_wall_1x1","k":"stone_wall_1x1","x":-0.055,"y":1.375,"z":0.52,"yaw":180,"rest":"hang"}]},{"id":"KC-128","anchor":"wall","rooms":["hall","home"],"score":1.9,"decor":["d3"],"traits":{"collect":0.8,"wealth":0.6},"min":6,"creative":true,"from":"Meadows","clips":[[4,5,0.198],[4,6,0.189],[4,7,0.192],[4,8,0.093],[5,6,0.064],[5,7,0.063],[6,7,0.059]],"pieces":[{"n":"wood_wall_quarter","k":"wood_wall_quarter","x":0.019,"y":-0.125,"z":0.114,"yaw":360,"rest":"floor","sink":0.125},{"n":"wood_wall_quarter","k":"wood_wall_quarter","x":-0.981,"y":-0.125,"z":0.114,"yaw":360,"rest":"floor","sink":0.125},{"n":"wood_wall_quarter","k":"wood_wall_quarter","x":-1.981,"y":-0.125,"z":0.114,"yaw":360,"rest":"floor","sink":0.125},{"n":"piece_blackmarble_bench","k":"piece_blackmarble_bench","x":-1.003,"y":-0.045,"z":0.576,"yaw":360,"rest":"floor","sink":0.045,"key":true},{"n":"ArmorStand","k":"ArmorStand","x":0.763,"y":-0.021,"z":1.123,"yaw":315,"rest":"floor","sink":0.028},{"n":"wood_pole","k":"wood_pole","x":0.516,"y":0.472,"z":1.122,"yaw":315,"rest":"floor","sink":0.028},{"n":"wood_pole","k":"wood_pole","x":0.893,"y":0.472,"z":0.995,"yaw":315,"rest":"floor","sink":0.028},{"n":"wood_pole","k":"wood_pole","x":0.765,"y":0.472,"z":1.378,"yaw":315,"rest":"floor","sink":0.028},{"n":"itemstandh","k":"itemstandh","x":0.602,"y":0.972,"z":1.272,"yaw":180,"rest":"on","on":6}]},{"id":"KC-129","anchor":"corner","angle":90,"rooms":["hall","home"],"score":1.9,"decor":["d3"],"traits":{"collect":0.8,"wealth":0.6},"min":2,"creative":true,"from":"Meadows","clips":[[0,1,0.093]],"pieces":[{"n":"piece_throne01","k":"piece_throne01","x":-0.038,"y":-0.037,"z":1.88,"yaw":0,"rest":"floor","sink":0.037,"key":true},{"n":"ArmorStand","k":"ArmorStand","x":-0.059,"y":-0.024,"z":1.398,"yaw":0,"rest":"floor","sink":0.031}]},{"id":"KC-130","anchor":"wall","rooms":["home","hall","tavern","storage","workshop"],"score":1.9,"decor":["d3"],"traits":{"comfort":0.6},"min":5,"creative":true,"from":"Ashlands","clips":[[3,7,0.076],[4,5,0.285],[7,"w",0.214]],"pieces":[{"n":"Candle_resin","k":"Candle_resin","x":-0.258,"y":-0.002,"z":1.076,"yaw":90,"rest":"floor"},{"n":"Candle_resin","k":"Candle_resin","x":-0.426,"y":-0.002,"z":0.805,"yaw":90,"rest":"floor"},{"n":"Candle_resin","k":"Candle_resin","x":-0.558,"y":-0.002,"z":1.042,"yaw":90,"rest":"floor"},{"n":"piece_pot3","k":"piece_pot3","x":0.692,"y":-0.002,"z":0.494,"yaw":45,"rest":"floor"},{"n":"piece_pot2","k":"piece_pot2","x":-0.023,"y":0,"z":0.651,"yaw":45,"rest":"floor"},{"n":"piece_groundtorch_wood","k":"piece_groundtorch_wood","x":-0.077,"y":0.649,"z":0.603,"yaw":45,"rest":"floor","sink":0.056},{"n":"ashwood_pole_2m","k":"ashwood_pole_2m","x":-0.822,"y":0.997,"z":0.655,"yaw":225,"rest":"floor"},{"n":"ashwood_beam_2m","k":"ashwood_beam_2m","x":1.475,"y":1.859,"z":-0.095,"yaw":360,"rest":"wall","key":true}]},{"id":"KC-131","anchor":"wall","rooms":["home","kitchen","sleeping"],"score":2,"decor":["d2","d3"],"traits":{"plants":1},"min":2,"creative":true,"from":"Ashlands","clips":[[1,"w",0.225]],"pieces":[{"n":"piece_pot2","k":"piece_pot2","x":0.221,"y":-0.025,"z":0.383,"yaw":180,"rest":"floor","sink":0.029,"key":true},{"n":"ashwood_pole_2m","k":"ashwood_pole_2m","x":-0.219,"y":0.842,"z":-0.105,"yaw":270,"rest":"floor","sink":0.158}]},{"id":"KC-132","anchor":"corner","angle":90,"rooms":["kitchen","tavern","home","hall"],"score":2.5,"decor":["d2","d3"],"traits":{"food":1},"min":2,"creative":true,"from":"Meadows","clips":[[0,1,0.205],[0,2,0.123],[0,"w",0.155],[1,2,0.123],[1,"w",0.185]],"pieces":[{"n":"wood_beam","k":"wood_beam","x":-0.707,"y":-0.125,"z":1.909,"yaw":315,"rest":"floor","sink":0.325},{"n":"wood_beam","k":"wood_beam","x":0.707,"y":-0.125,"z":1.909,"yaw":45,"rest":"floor","sink":0.325},{"n":"fermenter","k":"fermenter","x":-0.02,"y":-0.027,"z":1.493,"yaw":326,"rest":"floor","sink":0.028,"key":true}]},{"id":"KC-133","anchor":"wall","rooms":["kitchen","tavern","home","hall"],"score":1.9,"decor":["d3"],"traits":{"food":1},"min":5,"creative":true,"from":"Meadows","clips":[[0,3,0.235],[0,7,0.22],[0,"w",0.22],[1,2,0.185],[1,3,0.205],[1,4,0.038],[1,6,0.22],[1,"w",0.22],[2,4,0.338],[2,5,0.22],[2,6,0.22],[3,4,0.123],[3,7,0.22],[3,"w",0.22],[4,5,0.388],[4,6,0.038]],"pieces":[{"n":"wood_beam","k":"wood_beam","x":1.111,"y":-0.125,"z":1.22,"yaw":90,"rest":"floor","sink":0.325},{"n":"wood_beam","k":"wood_beam","x":-0.889,"y":-0.125,"z":1.22,"yaw":90,"rest":"floor","sink":0.325},{"n":"wood_wall_quarter","k":"wood_wall_quarter","x":-0.389,"y":-0.125,"z":0.22,"yaw":180,"rest":"floor","sink":0.125},{"n":"wood_beam","k":"wood_beam","x":0.111,"y":-0.125,"z":1.22,"yaw":0,"rest":"floor","sink":0.325},{"n":"fermenter","k":"fermenter","x":0.094,"y":-0.027,"z":0.87,"yaw":0,"rest":"floor","sink":0.028,"key":true},{"n":"wood_pole","k":"wood_pole","x":0.112,"y":0.375,"z":0.22,"yaw":0,"rest":"floor","sink":0.125},{"n":"wood_pole","k":"wood_pole","x":-0.889,"y":0.375,"z":0.22,"yaw":180,"rest":"floor","sink":0.125},{"n":"wood_pole2","k":"wood_pole2","x":1.112,"y":0.875,"z":1.22,"yaw":180,"rest":"floor","sink":0.125}]},{"id":"KC-134","anchor":"wall","rooms":["home","tavern","hall"],"score":2.1,"decor":["d2","d3"],"traits":{"comfort":0.7},"min":2,"creative":true,"from":"Meadows","clips":[],"pieces":[{"n":"piece_bench01","k":"piece_bench01","x":-0.067,"y":-0.008,"z":0.804,"yaw":0,"rest":"floor","key":true},{"n":"wood_beam","k":"wood_beam","x":-0.997,"y":0,"z":0.22,"yaw":0,"rest":"floor","sink":0.2},{"n":"wood_beam","k":"wood_beam","x":1.003,"y":0,"z":0.22,"yaw":0,"rest":"floor","sink":0.2}]},{"id":"KC-135","anchor":"wall","rooms":["home","tavern","hall"],"score":1.9,"decor":["d3"],"traits":{"comfort":0.7},"min":3,"creative":true,"from":"Meadows","clips":[[0,3,0.123],[0,4,0.22],[1,2,0.22],[1,3,0.123],[1,4,0.22],[2,3,0.131],[3,4,0.132]],"pieces":[{"n":"wood_beam","k":"wood_beam","x":1.407,"y":-0.125,"z":0.508,"yaw":180,"rest":"floor","sink":0.325},{"n":"wood_beam","k":"wood_beam","x":-0.593,"y":-0.125,"z":0.509,"yaw":180,"rest":"floor","sink":0.325},{"n":"wood_wall_quarter","k":"wood_wall_quarter","x":-1.093,"y":-0.125,"z":0.509,"yaw":0,"rest":"floor","sink":0.125},{"n":"piece_logbench01","k":"piece_logbench01","x":-0.095,"y":-0.003,"z":0.245,"yaw":0,"rest":"floor","sink":0.028,"key":true},{"n":"wood_wall_half","k":"wood_wall_half","x":0.407,"y":0.375,"z":0.509,"yaw":0,"rest":"floor","sink":0.125}]},{"id":"KC-136","anchor":"wall","rooms":["home","tavern","hall"],"score":1.9,"decor":["d2","d3"],"traits":{"comfort":0.7},"min":3,"creative":true,"from":"Meadows","clips":[[0,3,0.22]],"pieces":[{"n":"wood_beam","k":"wood_beam","x":-0.851,"y":-0.125,"z":0.674,"yaw":360,"rest":"floor","sink":0.325},{"n":"wood_beam","k":"wood_beam","x":1.149,"y":-0.125,"z":0.674,"yaw":360,"rest":"floor","sink":0.325},{"n":"piece_logbench01","k":"piece_logbench01","x":0.526,"y":-0.003,"z":0.245,"yaw":0,"rest":"floor","sink":0.028,"key":true},{"n":"wood_pole","k":"wood_pole","x":-0.851,"y":0.375,"z":0.674,"yaw":180,"rest":"floor","sink":0.125}]},{"id":"KC-137","anchor":"corner","angle":90,"rooms":["home","tavern","hall"],"score":1.9,"decor":["d2","d3"],"traits":{"comfort":0.7},"min":2,"creative":true,"from":"Meadows","clips":[[0,1,0.097],[0,"w",0.22],[1,2,0.144],[1,"w",0.047]],"pieces":[{"n":"wood_beam","k":"wood_beam","x":-0.707,"y":-0.125,"z":0.495,"yaw":225,"rest":"floor","sink":0.325},{"n":"piece_blackwood_bench01","k":"piece_blackwood_bench01","x":-0.682,"y":-0.028,"z":1.469,"yaw":90,"rest":"floor","sink":0.028,"key":true},{"n":"wood_pole","k":"wood_pole","x":0.436,"y":0.299,"z":0.766,"yaw":135,"rest":"floor","sink":0.201}]},{"id":"KC-138","anchor":"corner","angle":90,"rooms":["home","tavern","hall"],"score":1.9,"decor":["d3"],"traits":{"comfort":0.7},"min":3,"creative":true,"from":"Ashlands","clips":[[1,3,0.309],[1,0,0.147],[2,4,0.31],[2,0,0.142],[3,0,0.217],[4,0,0.291]],"pieces":[{"n":"piece_blackwood_bench01","k":"piece_blackwood_bench01","x":0.012,"y":0.025,"z":1.134,"yaw":225,"rest":"floor","key":true},{"n":"ashwood_beam_1m","k":"ashwood_beam_1m","x":1.165,"y":0.598,"z":0.893,"yaw":124,"rest":"on","on":0},{"n":"ashwood_beam_1m","k":"ashwood_beam_1m","x":-1.057,"y":0.603,"z":0.877,"yaw":56,"rest":"on","on":0},{"n":"ashwood_pole_1m","k":"ashwood_pole_1m","x":1.395,"y":0.99,"z":1.23,"yaw":214,"rest":"floor"},{"n":"ashwood_pole_1m","k":"ashwood_pole_1m","x":-1.268,"y":0.99,"z":1.229,"yaw":236,"rest":"floor"}]},{"id":"KC-139","anchor":"wall","rooms":["home","tavern","hall"],"score":2,"decor":["d2","d3"],"traits":{"comfort":0.7},"min":2,"creative":true,"from":"Meadows","clips":[[0,"w",0.22]],"pieces":[{"n":"wood_beam","k":"wood_beam","x":0.548,"y":-0.125,"z":-0.15,"yaw":360,"rest":"floor","sink":0.325,"key":true},{"n":"piece_chair03","k":"piece_chair03","x":-0.557,"y":-0.035,"z":0.371,"yaw":360,"rest":"floor","sink":0.035}]},{"id":"KC-140","anchor":"wall","rooms":["storage","home","workshop"],"score":1.9,"decor":["d3"],"traits":{"tidy":0.7},"min":4,"creative":true,"from":"Black Forest","clips":[[0,2,0.077],[0,4,0.126],[0,5,0.172],[1,3,0.084],[1,4,0.147],[1,5,0.172],[2,5,0.288],[2,"w",0.179]],"pieces":[{"n":"piece_chest_blackmetal","k":"piece_chest_blackmetal","x":0.102,"y":-0.031,"z":2.423,"yaw":0,"rest":"floor","sink":0.031,"key":true},{"n":"piece_chest_blackmetal","k":"piece_chest_blackmetal","x":0.123,"y":-0.031,"z":1.131,"yaw":0,"rest":"floor","sink":0.031},{"n":"wood_pole_log","k":"wood_pole_log","x":-0.398,"y":0.375,"z":3.282,"yaw":225,"rest":"floor","sink":0.625},{"n":"wood_pole_log","k":"wood_pole_log","x":-0.398,"y":0.375,"z":0.282,"yaw":247,"rest":"floor","sink":0.625},{"n":"wood_beam","k":"wood_beam","x":0.969,"y":0.846,"z":2.09,"yaw":90,"rest":"wall"},{"n":"wood_beam","k":"wood_beam","x":-0.398,"y":0.875,"z":2.282,"yaw":90,"rest":"wall"}]},{"id":"KC-141","anchor":"wall","rooms":["home","tavern","hall"],"score":1.9,"decor":["d3"],"traits":{"comfort":0.7},"min":6,"creative":true,"from":"Ashlands","clips":[[0,1,0.115],[0,4,0.036],[0,5,0.039],[0,6,0.038],[1,4,0.218],[1,5,0.199],[2,3,0.123],[2,5,0.043],[2,7,0.044],[2,8,0.041],[3,5,0.206],[3,8,0.218],[4,5,0.189],[4,6,0.221],[5,8,0.189],[6,"w",0.189],[7,8,0.221],[7,"w",0.189]],"pieces":[{"n":"piece_chair03","k":"piece_chair03","x":0.621,"y":-0.035,"z":0.417,"yaw":270,"rest":"floor","sink":0.035},{"n":"ashwood_beam_1m","k":"ashwood_beam_1m","x":1.003,"y":-0.125,"z":0.448,"yaw":270,"rest":"floor","sink":0.325},{"n":"piece_chair03","k":"piece_chair03","x":-0.648,"y":-0.035,"z":0.389,"yaw":90,"rest":"floor","sink":0.035},{"n":"ashwood_beam_1m","k":"ashwood_beam_1m","x":-0.997,"y":-0.125,"z":0.45,"yaw":270,"rest":"floor","sink":0.325},{"n":"ashwood_pole_1m","k":"ashwood_pole_1m","x":1.003,"y":0.875,"z":-0.052,"yaw":0,"rest":"floor","sink":0.125},{"n":"ashwood_beam_2m","k":"ashwood_beam_2m","x":0.003,"y":0.875,"z":-0.051,"yaw":0,"rest":"floor","sink":0.318,"key":true},{"n":"ashwood_beam_2m","k":"ashwood_beam_2m","x":1.003,"y":1.875,"z":-0.052,"yaw":180,"rest":"wall"},{"n":"ashwood_beam_2m","k":"ashwood_beam_2m","x":-0.997,"y":1.875,"z":-0.05,"yaw":180,"rest":"wall"},{"n":"ashwood_pole_1m","k":"ashwood_pole_1m","x":-0.997,"y":0.875,"z":-0.05,"yaw":0,"rest":"floor","sink":0.125}]},{"id":"KC-142","anchor":"wall","rooms":["home","kitchen","sleeping"],"score":1.9,"decor":["d3"],"traits":{"plants":1},"min":6,"creative":true,"from":"Meadows","clips":[[0,4,0.051],[0,6,0.034],[0,8,0.041],[0,"w",0.117],[1,2,0.039],[1,3,0.036],[1,5,0.034],[1,6,0.034],[1,7,0.032],[1,"w",0.117]],"pieces":[{"n":"wood_wall_quarter","k":"wood_wall_quarter","x":0.585,"y":-0.028,"z":0.002,"yaw":0,"rest":"floor","sink":0.028},{"n":"wood_wall_quarter","k":"wood_wall_quarter","x":-0.415,"y":-0.028,"z":0.002,"yaw":0,"rest":"floor","sink":0.028},{"n":"sign","k":"sign","x":-0.515,"y":0.247,"z":0.633,"yaw":90,"rest":"floor","sink":0.028},{"n":"sign","k":"sign","x":-0.236,"y":0.247,"z":0.636,"yaw":90,"rest":"floor","sink":0.028},{"n":"sign","k":"sign","x":0.214,"y":0.247,"z":0.622,"yaw":90,"rest":"floor","sink":0.028},{"n":"sign","k":"sign","x":-0.097,"y":0.247,"z":0.638,"yaw":90,"rest":"floor","sink":0.028},{"n":"sign","k":"sign","x":0.065,"y":0.247,"z":0.638,"yaw":90,"rest":"floor","sink":0.028},{"n":"sign","k":"sign","x":-0.386,"y":0.247,"z":0.641,"yaw":90,"rest":"floor","sink":0.028},{"n":"piece_pot3","k":"piece_pot3","x":0.787,"y":-0.027,"z":0.589,"yaw":247,"rest":"floor","sink":0.029,"key":true}]},{"id":"KC-143","anchor":"wall","rooms":["storage","home","workshop"],"score":1.9,"decor":["d3"],"traits":{"tidy":0.7},"min":4,"creative":true,"from":"Mountain","clips":[[0,4,0.229],[2,5,0.179],[3,4,0.162]],"pieces":[{"n":"crystal_wall_1x1","k":"crystal_wall_1x1","x":-1.57,"y":-0.125,"z":0.22,"yaw":360,"rest":"floor","sink":0.125},{"n":"crystal_wall_1x1","k":"crystal_wall_1x1","x":0.93,"y":-0.125,"z":1.72,"yaw":90,"rest":"floor","sink":0.125},{"n":"crystal_wall_1x1","k":"crystal_wall_1x1","x":0.93,"y":-0.125,"z":0.72,"yaw":90,"rest":"floor","sink":0.125},{"n":"piece_chest","k":"piece_chest","x":-0.15,"y":-0.026,"z":0.757,"yaw":0,"rest":"floor","sink":0.026,"key":true},{"n":"wood_pole2","k":"wood_pole2","x":-1.07,"y":0.875,"z":0.22,"yaw":90,"rest":"floor","sink":0.125},{"n":"woodiron_pole","k":"woodiron_pole","x":0.93,"y":0.875,"z":0.22,"yaw":270,"rest":"floor","sink":0.125}]},{"id":"KC-144","anchor":"wall","rooms":["storage","home","workshop"],"score":1.9,"decor":["d3"],"traits":{"messy":0.7,"busy":0.5},"min":3,"creative":true,"from":"Meadows","clips":[[0,2,0.076],[0,3,0.22],[0,4,0.044],[1,2,0.076],[1,4,0.22],[1,"w",0.035],[2,3,0.043],[2,4,0.043]],"pieces":[{"n":"wood_beam","k":"wood_beam","x":1.013,"y":-0.025,"z":0.852,"yaw":180,"rest":"floor","sink":0.225},{"n":"wood_beam","k":"wood_beam","x":-0.987,"y":-0.025,"z":0.852,"yaw":180,"rest":"floor","sink":0.225},{"n":"dvergrprops_crate_long","k":"dvergrprops_crate_long","x":-0.041,"y":0.059,"z":0.439,"yaw":0,"rest":"floor","sink":0.028,"key":true},{"n":"wood_wall_half","k":"wood_wall_half","x":1.022,"y":0.475,"z":0.835,"yaw":360,"rest":"floor","sink":0.025},{"n":"wood_wall_half","k":"wood_wall_half","x":-0.978,"y":0.475,"z":0.835,"yaw":360,"rest":"floor","sink":0.025}]},{"id":"KC-145","anchor":"corner","angle":90,"rooms":["workshop","home"],"score":1.9,"decor":["d2","d3"],"traits":{"crafts":1,"busy":0.4},"min":3,"creative":true,"from":"Ashlands","clips":[[0,1,0.178],[0,2,0.11],[0,3,0.143],[0,"w",0.424],[1,"w",0.213],[2,"w",0.22],[3,"w",0.222]],"pieces":[{"n":"piece_workbench_ext3","k":"piece_workbench_ext3","x":0.108,"y":-0.049,"z":0.822,"yaw":135,"rest":"floor","sink":0.097,"key":true},{"n":"piece_groundtorch","k":"piece_groundtorch","x":0.804,"y":0.625,"z":0.745,"yaw":113,"rest":"floor","sink":0.115},{"n":"ashwood_pole_2m","k":"ashwood_pole_2m","x":1.357,"y":0.875,"z":1.188,"yaw":135,"rest":"floor","sink":0.125},{"n":"ashwood_pole_2m","k":"ashwood_pole_2m","x":-0.057,"y":0.875,"z":-0.226,"yaw":45,"rest":"floor","sink":0.125}]},{"id":"KC-146","anchor":"wall","rooms":["storage","home","workshop"],"score":1.9,"decor":["d2","d3"],"traits":{"tidy":0.7},"min":2,"creative":true,"from":"Meadows","clips":[[0,2,0.12],[0,"w",0.067],[1,2,0.035],[1,"w",0.067]],"pieces":[{"n":"wood_beam","k":"wood_beam","x":-0.74,"y":-0.125,"z":0.153,"yaw":180,"rest":"floor","sink":0.325},{"n":"wood_beam","k":"wood_beam","x":1.26,"y":-0.125,"z":0.153,"yaw":180,"rest":"floor","sink":0.325},{"n":"dvergrprops_barrel","k":"dvergrprops_barrel","x":-0.49,"y":-0.125,"z":1.153,"yaw":0,"rest":"floor","sink":0.125,"key":true}]},{"id":"KC-147","anchor":"wall","rooms":["workshop","home"],"score":1.9,"decor":["d2","d3"],"traits":{"crafts":1,"busy":0.4},"min":2,"creative":true,"from":"Meadows","clips":[[0,1,0.037],[1,2,0.031]],"pieces":[{"n":"piece_chest","k":"piece_chest","x":0.429,"y":-0.026,"z":1.376,"yaw":0,"rest":"floor","sink":0.026,"key":true},{"n":"piece_workbench_ext4","k":"piece_workbench_ext4","x":-0.014,"y":1.076,"z":0.77,"yaw":90,"rest":"on","on":0},{"n":"wood_pole","k":"wood_pole","x":-0.415,"y":1.761,"z":1.617,"yaw":338,"rest":"hang"}]},{"id":"KC-148","anchor":"floor","rooms":["kitchen","tavern","home","hall"],"score":1.9,"decor":["d2","d3"],"traits":{"food":1},"min":2,"creative":true,"from":"Meadows","clips":[[0,1,0.302]],"pieces":[{"n":"piece_MeadCauldron","k":"piece_MeadCauldron","x":-0.112,"y":-0.123,"z":-0.045,"yaw":0,"rest":"floor","sink":0.123},{"n":"piece_cauldron","k":"piece_cauldron","x":0.256,"y":-0.123,"z":0.752,"yaw":337,"rest":"floor","sink":0.123,"key":true},{"n":"wood_pole2","k":"wood_pole2","x":-0.144,"y":0.875,"z":-0.707,"yaw":90,"rest":"floor","sink":0.125}]}]};
 window.VH_LAYOUTS = {"about":"Room layout rules for the blueprint lab (docs/ROOM_LAYOUT.md, D-070). Read by lib/layout.js. Distances in meters at Valheim scale (2 m grid, 0.5 m floor cells, a player about 1 m wide). Ranges are [low, high]; a value inside is drawn per room from the design's layout stream. Weights are relative. Nothing here is placed every time: each rule is a score the decorator's placers add to their own, so the usual tests still decide. Source ids [S#] refer to the list in docs/ROOM_LAYOUT.md.","version":1,"scale":{"grid":2,"cell":0.5,"player":1,"wall":0.3,"realToValheim":1.4},"clearance":{"mainLane":{"min":1.2,"want":[1.4,1.8],"src":"S15 36 in walkway x1.4; S1 two characters pass"},"hallLane":{"min":1.6,"want":[1.8,2.2],"roles":["hall","tavern","temple"],"src":"S1, S8 wider reads as the main way"},"sideLane":{"min":1,"want":[1,1.3],"src":"S15 24 to 30 in x1.4, never below one player"},"doorFront":{"depth":[1.5,2.5],"widthPad":0.8,"src":"audit 1.2 m box; corpus door depths"},"stairFoot":{"depth":[1.2,1.8],"src":"audit 0.6 m round the flight"},"bedSide":{"min":0.7,"want":[0.8,1.2],"src":"S15"},"seatPullout":{"min":0.7,"want":[0.9,1.1],"src":"S16 24 to 30 in"},"workStand":{"min":1,"want":[1.2,1.6],"src":"S17 one pace"},"stationGap":{"want":[1.5,2.5],"src":"S17 triangle one to two paces"},"hearthRing":{"min":0.7,"want":[0.9,1.4],"src":"decorator fire ring 0.7 m"},"forgeAnvil":{"want":[1,1.8],"src":"PIC anvil 1 to 1.5 m in front of the forge, 3 of 3"},"bedGap":{"want":[1,2],"src":"PIC beds side by side 1 to 2 m apart with a nightstand between, 2 of 2"}},"lanes":{"radius":0.45,"targets":["door","fire","stair","focal"],"walkableShare":[0.45,0.65],"neverRemove":["bed","fire","craft","table"],"keepFirstChest":true,"src":"S8 circulation; corpus: half the floor furnished at most"},"weight":{"zone":2,"orient":1},"zones":{"far":{"v":[0.62,1]},"mid":{"v":[0.3,0.75]},"near":{"v":[0,0.42]},"side":{"u":[0.3,1]},"other":{"u":[-1,-0.3]},"far-side":{"v":[0.5,1],"u":[0.25,1]},"far-other":{"v":[0.5,1],"u":[-1,-0.25]},"near-side":{"v":[0,0.5],"u":[0.25,1]},"near-other":{"v":[0,0.5],"u":[-1,-0.25]},"center":{"v":[0.3,0.75],"u":[-0.45,0.45]},"far-center":{"v":[0.7,1],"u":[-0.4,0.4]},"fire":{"fire":[2.4,4]},"fire-far":{"fire":[2.4,4.5],"v":[0.45,1]},"window":{"window":1.5},"long-walls":{"longWall":true},"corners":{"corner":true},"door-side":{"v":[0,0.45],"corner":true},"anywhere":{},"fire-flank":{"fireFlank":[0.5,1.5],"src":"PIC long tables flank a long fire 0.5 to 1.5 m off it, 4 of 6 long halls"},"one-wall":{"v":[0.62,1],"row":true}},"orient":{"bed":{"longWall":0.6,"underWindow":-0.8,"doorWall":-0.7,"inDoorLine":-1.4,"sideAccess":1,"nearFire":-1.2,"sideToWall":[0.1,0.3],"src":"S15 head to the longest unbroken wall, see the door without lining up with it, not under a window; S10 box beds; PIC every bed touches a wall 22 of 22, single beds in small rooms long side to a wall 8 of 12, no bed head under a window, beds share one-room homes with the fire at 2 to 5 m (4 of 4)","sideToWallSmall":[0.6,0.8],"smallRoom":5.5,"fireRing":{"home":1.8,"hall":1.8,"default":2.6}},"table":{"alongLong":0.6,"window":0,"src":"S13, S16 long tables on the long axis"},"station":{"light":0,"doorDist":[2.2,6],"src":"S17; light from door or window (inference)"},"storage":{"corner":0.6,"group":2,"src":"S10, S12 storage at the ends, under benches; D-016 sorted groups"},"bench":{"longWall":2,"src":"S10, S11 benches along both long walls facing the fire"},"highSeat":{"src":"S11 middle of the higher bench; S13 dais at the upper end; PIC far end 2 of 3, mid long wall 0 of 3"}},"roles":{"home":{"focal":"fire","templateShare":[0.35,0.6],"schemes":[{"id":"far-sleep","w":3,"zones":{"bed":"far","table":"fire","storage":"door-side","station":"near-side"},"src":"S12, S13 private at the upper end"},{"id":"side-sleep","w":2,"zones":{"bed":"far-side","table":"other","storage":"near-other","station":"near-side"}},{"id":"corner-sleep","w":1.5,"zones":{"bed":"far-other","table":"window","storage":"door-side","station":"far-side"},"orient":{"table":{"window":1.2}}},{"id":"hearth-ring","w":1,"zones":{"bed":"long-walls","table":"fire","storage":"corners","station":"near"},"src":"S10 benches and beds round the fire"},{"id":"box-bed","w":0.6,"zones":{"bed":"far","table":"fire","storage":"door-side","station":"near-other"},"orient":{"bed":{"sideToWall":[0.7,0.9]}},"src":"S10 box bed for the master and mistress"}]},"sleeping":{"focal":"bed","schemes":[{"id":"far-wall","w":3,"zones":{"bed":"far","storage":"near","table":"near-side"}},{"id":"facing-walls","w":1.5,"zones":{"bed":"long-walls","storage":"far-center","table":"near"}},{"id":"eaves","w":1,"zones":{"bed":"long-walls","storage":"corners","table":"far-center"},"orient":{"bed":{"sideToWall":[0.5,0.8]}}},{"id":"corner","w":1.2,"zones":{"bed":"far-side","storage":"door-side","table":"window"}},{"id":"one-wall","w":1.5,"zones":{"bed":"one-wall","storage":"near","table":"near-side"},"row":3,"bedGap":[1,2],"src":"PIC Last Light Inn infirmary, Hearthfire children's room"}]},"guest":{"focal":"bed","schemes":[{"id":"rows","w":2,"zones":{"bed":"long-walls","storage":"near","table":"far-center"},"src":"S14 two or three beds to a chamber"},{"id":"far-wall","w":2,"zones":{"bed":"far","storage":"near","table":"near-side"}},{"id":"one-wall","w":2.5,"zones":{"bed":"one-wall","storage":"near","table":"near-side"},"row":3,"bedGap":[1,2],"src":"PIC beds side by side on one wall, 2 of 2"}]},"hall":{"focal":"highSeat","templateShare":[0.3,0.5],"schemes":[{"id":"fire-flank","w":3,"sets":[2,4],"zones":{"table":"fire-flank","storage":"door-side","highSeat":"far-mid","bench":"long-walls","bed":"long-walls"},"orient":{"table":{"alongLong":1.4}},"src":"PIC Jorrvaskr, Dragonsreach, Bannered Mare, Skellige longhouse"},{"id":"benches","w":1.5,"sets":[1,3],"zones":{"table":"center","storage":"door-side","highSeat":"long-mid","bench":"long-walls","bed":"far"},"src":"S10, S11"},{"id":"dais","w":2,"sets":[2,4],"zones":{"table":"mid","storage":"door-side","highSeat":"far-mid","bench":"long-walls","bed":"far-side"},"orient":{"table":{"alongLong":1.2}},"src":"S13"},{"id":"open","w":1,"sets":[3,6],"zones":{"table":"fire","storage":"corners","highSeat":"far-mid","bench":"anywhere","bed":"far-other"}}]},"tavern":{"focal":"bar","templateShare":[0.3,0.55],"schemes":[{"id":"bar-back","w":2,"sets":[3,6],"zones":{"table":"mid","storage":"far","fermenter":"far","station":"far"},"src":"S14 tap and casks at the back"},{"id":"bar-side","w":2,"sets":[3,5],"zones":{"table":"other","storage":"far-side","fermenter":"side","station":"side"}},{"id":"fireside","w":1.2,"sets":[2,5],"zones":{"table":"fire","storage":"corners","fermenter":"far-side","station":"far"}},{"id":"fire-flank","w":1.5,"sets":[2,4],"zones":{"table":"fire-flank","storage":"far","fermenter":"far","station":"far"},"src":"PIC Bannered Mare benches at the pit"},{"id":"wall-seats","w":1.2,"sets":[2,4],"zones":{"table":"long-walls","storage":"far-side","fermenter":"far-side","station":"far"},"src":"PIC Sleeping Giant chairs on the walls round the pit, Elfsong booths"}]},"kitchen":{"focal":"fire","schemes":[{"id":"triangle","w":2,"zones":{"table":"fire","storage":"door-side","station":"fire"},"src":"S17 work triangle, applied to cooking (inference)"},{"id":"back-store","w":1,"zones":{"table":"fire","storage":"far","station":"side"},"src":"S12 cold stores away from the fire"},{"id":"island","w":1.2,"zones":{"table":"center","storage":"corners","station":"side"},"src":"PIC Dragonsreach kitchen, Valheim kitchen counter"}]},"storage":{"focal":"none","schemes":[{"id":"long-walls","w":2,"zones":{"storage":"long-walls"}},{"id":"u","w":1.5,"zones":{"storage":"far"}},{"id":"corners","w":1,"zones":{"storage":"corners"}}]},"farm":{"focal":"none","schemes":[{"id":"long-walls","w":2,"zones":{"storage":"long-walls"}},{"id":"far","w":1,"zones":{"storage":"far"}}]},"smithy":{"focal":"forge","schemes":[{"id":"forge-far","w":3,"zones":{"forge":"far","station":"near-side","storage":"near-other","table":"near"}},{"id":"forge-side","w":2,"zones":{"forge":"far-side","station":"far-other","storage":"door-side","table":"near"}},{"id":"forge-door","w":1,"zones":{"forge":"near-side","station":"far","storage":"far-other","table":"far-center"},"src":"forge near the big door for air and light (inference)"}],"sets":[1,1],"setsSrc":"PIC one anvil in front of the forge, 3 of 3"},"workshop":{"focal":"station","schemes":[{"id":"bench-window","w":2,"zones":{"station":"window","storage":"door-side","table":"center"},"orient":{"station":{"light":1}}},{"id":"bench-far","w":2,"zones":{"station":"far","storage":"near-side","table":"mid"}},{"id":"bench-side","w":1.5,"zones":{"station":"side","storage":"far-other","table":"near-other"}}],"sets":[1,2]},"temple":{"focal":"altar","schemes":[{"id":"axis","w":1,"zones":{"storage":"door-side"}}]},"guard":{"focal":"none","schemes":[{"id":"bunk-far","w":2,"zones":{"bed":"far","storage":"near","table":"center"}},{"id":"bunk-side","w":1,"zones":{"bed":"side","storage":"other","table":"near"}}]},"market":{"focal":"table","schemes":[{"id":"counter","w":1,"zones":{"table":"near","storage":"far"}}]}},"special":{"long-mid":{"longWall":true,"midWall":true,"src":"S11 the öndvegi in the middle of the long bench"},"far-mid":{"v":[0.75,1],"u":[-0.3,0.3],"midWall":true,"src":"S13 high table at the upper end"}},"cultures":{"norse":{"home.box-bed":2,"home.hearth-ring":1.5,"hall.benches":2.5,"hall.dais":0.5},"norse-forest":{"home.box-bed":1.6,"home.hearth-ring":1.4,"hall.benches":2.2,"hall.dais":0.6},"norse-highland":{"home.box-bed":1.8,"home.hearth-ring":1.6,"hall.benches":2.2},"anglo-saxon":{"home.far-sleep":1.4,"hall.dais":1.8,"hall.benches":1.2},"frankish-norman":{"home.far-sleep":1.5,"home.corner-sleep":1.3,"hall.dais":2.5,"hall.benches":0.6},"castle-medieval":{"home.far-sleep":1.4,"hall.dais":3,"hall.benches":0.4,"tavern.bar-side":1.4},"celtic":{"home.hearth-ring":2.5,"sleeping.facing-walls":1.5,"hall.open":2},"celtic-crannog":{"home.hearth-ring":2.5,"hall.open":2},"baltic":{"home.hearth-ring":1.6,"home.side-sleep":1.3},"fen-folk":{"home.hearth-ring":1.8,"home.side-sleep":1.4},"slavic":{"home.corner-sleep":2,"home.side-sleep":1.3,"kitchen.triangle":1.5},"saami":{"home.hearth-ring":3,"guard.bunk-side":1.5},"steppe":{"home.hearth-ring":3,"hall.open":2},"byzantine":{"home.corner-sleep":1.4,"hall.dais":1.6,"workshop.bench-window":1.5},"middle-eastern":{"home.side-sleep":1.6,"hall.open":1.5,"workshop.bench-window":1.6},"lamari":{"home.hearth-ring":1.5,"home.side-sleep":1.3},"dwarven":{"workshop.bench-far":1.6,"smithy.forge-far":1.6},"east-asian":{"home.side-sleep":1.5,"hall.dais":1.3}},"variance":{"schemeSpread":1,"villageLean":[1,2.2],"zoneJitter":[0,0.12],"sideFlip":0.5,"src":"S1 repeated detail is noticed first; S3 every interior decorated on its own; PIC each inn, bedroom and forge seen has its own plan from a shared kit"},"persona":{"about":"ctx.layout = { tidy: 0..1, traits: { tidiness, comfort, display, size, hobbies, taste }, prefs: { '<role>.<scheme>': mult, '<kind>.<zone>': mult }, village: number, scheme: { role: id }, lanes: false }. Traits are broad household traits, never professions (Tyler). tidy near 1 keeps anchors on the zone and the grid; near 0 widens the zones and lowers the zone weight so the layout wanders. village seeds a lean shared by every house of one village.","tidyDefault":0.6},"traits":{"about":"Broad household traits from the persona pass (never professions): ctx.layout.traits = { tidiness: 0..1, comfort: 0..1, display: 0..1, size: people, hobbies: [crafts, collect, plants, games, maps, food], taste: '..' }. Each trait over 0.5 (or each hobby named) multiplies these prefs; under 0.5 the inverse. tidiness also sets tidy when tidy is not given.","comfort":{"home.hearth-ring":1.5,"table.fire":1.4,"sleeping.facing-walls":0.8,"hall.fire-flank":1.3},"display":{"hall.dais":1.6,"home.corner-sleep":1.2,"storage.long-walls":1.3},"sizeLarge":{"home.hearth-ring":1.6,"home.box-bed":0.6,"sleeping.facing-walls":1.6,"sleeping.eaves":1.4,"guest.rows":1.5},"sizeSmall":{"home.far-sleep":1.3,"home.corner-sleep":1.4,"home.box-bed":1.3},"hobbies":{"crafts":{"station.window":1.6,"workshop.bench-window":1.5},"food":{"kitchen.triangle":1.5,"table.fire":1.3},"maps":{"table.window":1.6,"home.corner-sleep":1.2},"games":{"table.fire":1.3,"home.hearth-ring":1.3},"collect":{"storage.door-side":1.4},"plants":{"table.window":1.3,"storage.door-side":1.3}}},"picture":{"about":"Layers the picture study saw that the planner leaves to the library and the persona pass (docs/ROOM_LAYOUT.md, From pictures).","wallAbove":"shields, banners, pelts or a shelf on the wall over a bed head, a fireplace or a counter (10 of 22 beds)","overhead":"herbs, meat, fish, pots on a rail over or by the fire; baskets and rope in the rafters (5 rooms)","underStair":"barrels and chests under a stair","runners":"runner rugs along the main lanes in halls and taverns, round rugs under seating groups","stage":"a performer spot by the fire or in a corner of a tavern (2 of 5 inns)","loose":"stools and chairs a little off line in about half the rooms; beds, tables, counters and stations square to the walls"}};
 window.VH_CRITIC = {

@@ -33,6 +33,7 @@ function relief(name) {
 }
 
 const normD = a => ((a % 360) + 360) % 360;
+const SILL_PLANTS = ['Pickable_Dandelion', 'Pickable_Thistle', 'Pickable_Mushroom', 'Pickable_Mushroom_yellow', 'Pickable_Fiddlehead', 'Pickable_Carrot', 'Pickable_Onion', 'Pickable_Turnip', 'Pickable_Dandelion', 'Pickable_Mushroom_blue'];
 const quatD = yaw => { const a = yaw * Math.PI / 360; return [0, +Math.sin(a).toFixed(6), 0, +Math.cos(a).toFixed(6)]; };
 const BIOMES_D = ['Meadows', 'Black Forest', 'Swamp', 'Mountain', 'Plains', 'Mistlands', 'Ashlands'];
 const reachesD = (biome, b) => BIOMES_D.indexOf(biome) >= BIOMES_D.indexOf(b);
@@ -327,7 +328,9 @@ function exterior(b, ctx) {
     const sd = quarter ? ((quarter.x - e.x) * ux + (quarter.z - e.z) * uz > 0 ? 1 : -1) : 0;
     const as = quarter ? [-sd * 0.5] : [-0.5, 0.5], lip = K.beam1 || 'wood_beam_1';
     const kept = [];
-    for (const a of as) kept.push(['wood_floor_1x1', a, 0.6, -0.3, 0, 'floor1', 0], [lip, a, 1.05, -0.2, 0, 'beam1', 0], ['Pickable_Dandelion', a, 0.6, -0.25, 0, 'flower', 0]);
+    // what grows in each box: any flower, herb or vegetable (Tyler, 2026-11-10: no one plant per sill), by the box's
+    // place so it is the same at every decor stage
+    for (const a of as) kept.push(['wood_floor_1x1', a, 0.6, -0.3, 0, 'floor1', 0], [lip, a, 1.05, -0.2, 0, 'beam1', 0], [SILL_PLANTS[(Math.abs(Math.round((e.x + ux * a) * 7 + (e.z + uz * a) * 13 + y0 * 3)) + (makeHash({ ...ctx, decor: '' }) >>> 0)) % SILL_PLANTS.length], a, 0.6, -0.25, 0, 'flower', 0]);
     const c = { m: { id: 'window-box', kind: 'box', fit: {} }, kept };
     const placed = MotifsD.place(b, c, { x: e.x, y: y0 + 1, z: e.z, nx: ox, nz: oz }, null, { ground: 0, dry: true, minShare: 1 });
     if (placed.length) { hold(b, placed); added.boxes = (added.boxes || 0) + 1; }
@@ -335,11 +338,13 @@ function exterior(b, ctx) {
 
   // ---- bands: a beam at the foot of the walls and along the floor line of each upper storey; a rail at 1 m on
   // half-timbered walls. Laid a little proud of the outside face, never across a door.
+  const stackBay = e => e.yaw === 90 && (b.vents || []).some(v => v.kind === 'stack' && Math.abs(v.z - e.z) < 0.5 && Math.abs(v.x - e.x) < 1.2);
   if (X.bands || X.midRail) for (const e of edges) {
     const { ox, oz } = axes(e);
     for (let s = 0; s < storeys; s++) {
       const y0 = F + s * SH;
-      const opening = openings.find(o => o.e === e && o.y0 === y0);
+      // (the gable bay a stack hearth stands half in is open on the ground storey like a doorway)
+      const opening = openings.find(o => o.e === e && o.y0 === y0) || (s === 0 && stackBay(e) ? { kind: 'hearth' } : null);
       if (X.bands && !(opening && opening.kind !== 'window') && !(s === 0 && based.has(e))) put(beam, e.x + ox * 0.25, y0 + 0.1, e.z + oz * 0.25, e.yaw);
       if (X.midRail && !opening) put(beam, e.x + ox * 0.25, y0 + 1, e.z + oz * 0.25, e.yaw);
     }
@@ -789,7 +794,8 @@ function bargeboards(K, C, w, ctx, rows, ends, add, low, pivot, r) {
   // gable motif apex piece or carving is in the way and the gable is tall enough that it clears the wall under it
   // (on a low gable it hangs on down the wall under it, where that wall has no opening in its middle bays)
   if (X.gableBanner && w === ctx.wings[0] && !gw && !apex && !ctx.dragonsHere && capY - top >= 1.9) {
-    const B = reachesD(ctx.biome, 'Plains') ? ['piece_banner01', 'piece_banner02', 'piece_banner05', 'piece_banner07'] : ['piece_banner03', 'piece_banner04', 'piece_banner06', 'piece_banner07', 'piece_banner08', 'piece_banner09'];
+    // any banner in any biome (D-065); the gable's colors by the culture's lean are a style's, the list is whole
+    const B = ['piece_banner01', 'piece_banner02', 'piece_banner03', 'piece_banner04', 'piece_banner05', 'piece_banner06', 'piece_banner07', 'piece_banner08', 'piece_banner09'];
     // the cloth hangs 2.95 m under its rod: its foot no more than 0.6 m over the ground floor, so it reads as hung on
     // the house and not in the air (T-606: the purple banner, piece_banner09, hung with its foot 1.3 m up). The rod
     // touches the wall (that holds it up in the game), so the cloth hangs 0.25 m out: it may lie against bars up to 3 cm
@@ -834,6 +840,9 @@ function partition(b, ctx, wallSegment) {
     const xp = w0.cx + sg * (w0.W - 4); // two 2 m cells deep
     if (Math.abs(xp - door.x) < 2.5) continue;
     if (flue && xp > flue.x0 - 1 && xp < flue.x1 + 1) continue;
+    // the back room never takes the hearth: a fire against the end wall keeps the main room's end
+    const keep = ctx.fireKeep || flue;
+    if (keep && sg * ((keep.x0 + keep.x1) / 2 - xp) > 0) continue;
     const zs = [...cells.values()].filter(([x, z]) => Math.abs(x - (xp - sg)) < 0.01 && Math.abs(z - w0.cz) < w0.D).map(([, z]) => z).sort((a, c) => a - c);
     if (zs.length < 3) continue;
     // ladders keep their foot, hole and landing
@@ -858,7 +867,7 @@ function benchByDoor(b, ctx) {
   for (const o of b.openings || []) {
     if (o.kind !== 'door' || o.back || o.storey > 0 || o.gallery) continue;
     const { e } = o, { ux, uz, ox, oz } = axes(e);
-    const name = reachesD(ctx.biome, 'Black Forest') && ctx.R() < 0.4 ? 'piece_logbench01' : 'piece_bench01';
+    const name = ctx.R() < 0.4 ? 'piece_logbench01' : 'piece_bench01';
     const faceOut = name === 'piece_logbench01' ? outYaw(-ox, -oz) : outYaw(ox, oz); // the log bench faces its local -z
     for (const s of ctx.R() < 0.5 ? [1, -1] : [-1, 1]) {
       const cand = { name, x: +(e.x + ux * s * 3 + ox * 0.45).toFixed(3), y: F + 0.1, z: +(e.z + uz * s * 3 + oz * 0.45).toFixed(3), yaw: faceOut, q: quatD(faceOut) };
@@ -873,6 +882,20 @@ function benchByDoor(b, ctx) {
 
 // ---------------------------------------------------------------- interior (after the furnishing)
 
+// Whether a box on the floor reaches into a door's way in: 0.45 m either side of the opening's middle and 0.15 m
+// more, the corridor's depth either side of the door's plane (as lib/checks.js doorBlockers walks it)
+function kerbInDoorway(b, cb, corridor) {
+  for (const d of b.pieces) {
+    if (d.decor || PD.piece(d.name).role !== 'door') continue;
+    const o = PD.doorOpening(d);
+    if (cb.y0 > o.y + 2.3 || cb.y1 < o.y) continue;
+    const cx = (cb.x0 + cb.x1) / 2 - o.x, cz = (cb.z0 + cb.z1) / 2 - o.z, hx = (cb.x1 - cb.x0) / 2, hz = (cb.z1 - cb.z0) / 2;
+    const along = Math.abs(cx * o.ux + cz * o.uz) - (hx * Math.abs(o.ux) + hz * Math.abs(o.uz));
+    const across = Math.abs(cx * o.nx + cz * o.nz) - (hx * Math.abs(o.nx) + hz * Math.abs(o.nz));
+    if (along < 0.6 && across < corridor + 0.1) return true;
+  }
+  return false;
+}
 function interior(b, ctx) {
   const X = ctx.profile;
   if (!X) return;
@@ -881,11 +904,17 @@ function interior(b, ctx) {
   benchByDoor(b, ctx);
   const furniture = () => b.pieces.filter(p => p.decor);
   // a kerb of beams round a fire pit on the floor, so it reads as a hearth set into the floor
-  if (X.fireKerb) {
+  // (a fire against a wall gets the kerb on its open sides; a fire in a stone alcove has the alcove's floor)
+  if (X.fireKerb && !(ctx.hearth && ctx.hearth.spot === 'stack')) {
     const fire = b.pieces.find(p => p.decor && p.name === 'fire_pit');
     if (fire) {
       const beam = K.beam || 'wood_beam', y = fire.y + 0.0;
-      const ring = [[0, -1.15, 0], [0, 1.15, 0], [-1.15, 0, 90], [1.15, 0, 90]].map(([dx, dz, yaw]) => ({ name: beam, x: fire.x + dx, y, z: fire.z + dz, yaw, q: quatD(yaw) }));
+      const walls = b.pieces.filter(p => !p.decor && ['wall', 'pole', 'window', 'door'].includes(PD.piece(p.name).role)).map(p => Ck.aabb(p));
+      const ring = [[0, -1.15, 0], [0, 1.15, 0], [-1.15, 0, 90], [1.15, 0, 90]].map(([dx, dz, yaw]) => ({ name: beam, x: fire.x + dx, y, z: fire.z + dz, yaw, q: quatD(yaw) }))
+        .filter(c => { const cb = Ck.aabb(c); return !walls.some(o => o.x0 < cb.x1 - 0.05 && o.x1 > cb.x0 + 0.05 && o.z0 < cb.z1 - 0.05 && o.z1 > cb.z0 + 0.05 && o.y0 < cb.y1 + 0.3 && o.y1 > cb.y0); })
+        // and a side that lies in a doorway's way in (checks.js doors: 1 m in and out from the opening) is
+        // left open (tavern Meadows s3d3 seed 321 had its fire 2 m inside a door)
+        .filter(c => !kerbInDoorway(b, Ck.aabb(c), Ck.CORRIDOR || 1));
       const ok = ring.every(c => { const cb = Ck.aabb(c); return !furniture().some(p => p !== fire && !/cookingstation|cauldron/.test(p.name) && PD.piece(p.name).role !== 'rug' && (o => o.x0 < cb.x1 && o.x1 > cb.x0 && o.z0 < cb.z1 && o.z1 > cb.z0 && o.y0 < cb.y1 + 0.3 && o.y1 > cb.y0)(Ck.aabb(p))); });
       if (ok) { for (const c of ring) b.put(c.name, c.x, c.y, c.z, c.yaw, { trim: true }); b.notes.push('A kerb of beams round the fire pit.'); }
     }

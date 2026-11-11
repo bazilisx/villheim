@@ -14,7 +14,7 @@
 //
 // Everything stands on the ground (y = 0, the design's lowest pivot, so the game sets it on the terrain). Nothing goes
 // in a doorway or the 2 m in front of a door, at the foot of a stair, or in front of the woodshed. Pieces made by the
-// generator's kit follow the biome's materials; the props (bushes, crops, flowers) are free in the game (D-066), and
+// generator's kit follow the biome's materials; props (bushes, crops, flowers, decor) go in any biome (D-065), and
 // every piece passes the materials check for the biome.
 const NODE_Y = typeof module !== 'undefined';
 const PY = NODE_Y ? require('./pieces.js') : window.VHPieces;
@@ -60,7 +60,7 @@ const CROP = [['Ashlands', 'Pickable_Barley'], ['Plains', 'Pickable_Barley'], ['
 // bushes that stay within about 1.5 m across (shrub_2 spreads 3.6 m and swallows a fence)
 const BUSHES = { 'Meadows': ['Bush01', 'RaspberryBush'], 'Black Forest': ['BlueberryBush', 'Bush02_en'], 'Swamp': ['Bush02_en'],
   'Mountain': ['Bush01_heath'], 'Plains': ['CloudberryBush', 'Bush01_heath'], 'Mistlands': ['Bush02_en'], 'Ashlands': ['AshlandsBush1', 'AshlandsBush2'] };
-const FLOWERS = ['Pickable_Dandelion', 'Pickable_Dandelion', 'Pickable_Mushroom', 'Pickable_Thistle'];
+const FLOWERS = ['Pickable_Dandelion', 'Pickable_Dandelion', 'Pickable_Mushroom', 'Pickable_Thistle', 'Pickable_Mushroom_yellow', 'Pickable_Fiddlehead', 'Pickable_Mushroom_blue'];
 
 function pickW(R, w) {
   const e = Object.entries(w).filter(([, v]) => v > 0), t = e.reduce((s, [, v]) => s + v, 0);
@@ -380,7 +380,10 @@ function add(b, ctx) {
   const solidNow = () => [...S.solid, ...placed.map(p => Ck.aabb(p))];
   // under the eaves (they reach 1 m past the walls, with braces under them) only low things: beds, benches, flowers
   const eave = o => o.y1 > G0 + 1.05 && o.x0 < S.W.x1 + 1.2 && o.x1 > S.W.x0 - 1.2 && o.z0 < S.W.z1 + 1.2 && o.z1 > S.W.z0 - 1.2;
-  const soft = p => { const o = Ck.aabb({ ...p, y: p.y + G0 }), c = { ...o, x0: o.x0 + 0.3, x1: o.x1 - 0.3, z0: o.z0 + 0.3, z1: o.z1 - 0.3 }; return !keep.some(z => hitBox(c, z, 0)) && inYard(c) && !placed.some(q => q.name === p.name && Math.hypot(q.x - p.x, q.z - p.z) < 0.35); };
+  // a plant's spread on the ground (half its widest side), so two of one kind keep out of one another
+  const sizeY = (NODE_Y ? require('./decorate.js') : window.VHDecorate)._int.size;
+  const spread = n => { const sz = sizeY(n); return Math.max(0.225, Math.max(sz[0], sz[2]) / 2); };
+  const soft = p => { const o = Ck.aabb({ ...p, y: p.y + G0 }), c = { ...o, x0: o.x0 + 0.3, x1: o.x1 - 0.3, z0: o.z0 + 0.3, z1: o.z1 - 0.3 }; return !keep.some(z => hitBox(c, z, 0)) && inYard(c) && !placed.some(q => q.name === p.name && Math.hypot(q.x - p.x, q.z - p.z) < Math.max(0.35, 2 * spread(p.name) - 0.1)); };
   const free = (p, pad = 0.1) => {
     const o = Ck.aabb({ ...p, y: p.y + G0 });
     const why = solidNow().some(z => hitBox(o, z, pad)) ? 'solid' : keep.some(z => hitBox(o, z, 0)) ? 'keep' : !inYard(o) ? 'out' : eave(o) ? 'eave' : null;
@@ -521,7 +524,10 @@ function add(b, ctx) {
     // a bush spreads about 3 m: 1.4 m in from the fence and 3 m from the next one
     const apart = s => !placed.some(q => bushes.includes(q.name) && Math.hypot(q.x - s.x, q.z - s.z) < 3);
     got.push(['bush', tryAt(fenceSpots(1.4).filter(apart), s => (apart(s) ? [{ name: bushes[Math.floor(R() * bushes.length)], x: s.x, y: 0, z: s.z, yaw: Math.floor(R() * 16) * 22.5, pad: 0.05 }] : null), big ? 3 : 2)]);
-    got.push(['flowers', tryAt(wallSpots(0.45), s => [0, 0.45, -0.45].map(a => ({ name: 'Pickable_Dandelion', x: s.x + (s.n[1] ? a : 0), y: 0, z: s.z + (s.n[0] ? a : 0), yaw: Math.floor(R() * 4) * 90, soft: true, pad: 0 })), big ? 2 : 1)]);
+    // three flowers in a row, spaced by their own spread so a fern and its neighbor do not grow into one another
+    const row = s => { const nm = a => FLOWERS[Math.abs(Math.round(s.x * 7 + s.z * 13 + a * 11)) % FLOWERS.length], m = nm(0), r = nm(0.45), l = nm(-0.45);
+      return [[m, 0], [r, spread(m) + spread(r)], [l, -(spread(m) + spread(l))]]; };
+    got.push(['flowers', tryAt(wallSpots(0.45), s => row(s).map(([name, a]) => ({ name, x: s.x + (s.n[1] ? a : 0), y: 0, z: s.z + (s.n[0] ? a : 0), yaw: Math.floor(R() * 4) * 90, soft: true, pad: 0 })), big ? 2 : 1)]);
   }
   // what the culture keeps in its yard (docs/CULTURE_STYLES.md): stone builders a pile of field stone, log builders a
   // second stack of logs, kitchen-garden cultures a second bed, the steppe a cart
@@ -542,7 +548,7 @@ function add(b, ctx) {
   dsNow = 2;
   if (decorOn('yardProps', 'd2') && kind === 'work') {
     const F = (NODE_Y ? require('./decorate.js') : window.VHDecorate).FURNITURE;
-    const okW = n => canY(ctx.biome, n) && (!F[n] || BIOMES_Y.indexOf(F[n].b) <= BIOMES_Y.indexOf(ctx.biome));
+    const okW = n => PY.decorOk(n, ctx.biome); // decor in any biome, building pieces the village's and the next (D-065)
     const along = (spots, list) => tryAt(spots, s => list.filter(([n]) => okW(n)).map(([n, a, d, turn, y]) => ({ name: n, x: s.x + Math.cos(s.yaw * Math.PI / 180) * a + s.n[0] * d,
       y: y || 0, z: s.z - Math.sin(s.yaw * Math.PI / 180) * a + s.n[1] * d, yaw: normY(s.yaw + (turn || 0)), pad: 0.05 })));
     const W = fenceSpots(0.8);
@@ -637,7 +643,7 @@ function tryPlan(runs, kit, S, door, clear) {
     if (dedup.some(p => { const o = Ck.aabb(p); return hitBox(o, gzIn, 0) && Math.hypot(p.x - g.x, p.z - g.z) > 1.05 && Math.abs((p.x - g.x) * -u[1] + (p.z - g.z) * u[0]) > 0.3; })) { dbg('gate fence'); continue; }
     // every fence piece clear of what is there and of the doorways, stairs and woodpiles
     const bad = dedup.find(p => !clear(p, 0.08, S.zones));
-    if (bad) { const o = Ck.aabb(bad); const by = clear.by; clear.by = null; const zz = S.zones.find(z => hitBox(o, z, 0.08)); dbg('fence ' + (bad.attach ? 'attach ' : '') + (by ? by.info.name : zz ? 'zone' + (zz.door ? ' door' : zz.tag || '') : '?') + (global.YV && by ? ' ' + JSON.stringify([bad.x, bad.z, bad.yaw, [o.x0, o.x1, o.z0, o.z1].map(v => +v.toFixed(2)), [by.x0, by.x1, by.y0, by.y1, by.z0, by.z1].map(v => +v.toFixed(2))]) : '')); continue; }
+    if (bad) { const o = Ck.aabb(bad); const by = clear.by; clear.by = null; const zz = S.zones.find(z => hitBox(o, z, 0.08)); dbg('fence ' + (bad.attach ? 'attach ' : '') + (by ? by.info.name : zz ? 'zone' + (zz.door ? ' door' : zz.tag || '') : '?') + (typeof global !== 'undefined' && global.YV && by ? ' ' + JSON.stringify([bad.x, bad.z, bad.yaw, [o.x0, o.x1, o.z0, o.z1].map(v => +v.toFixed(2)), [by.x0, by.x1, by.y0, by.y1, by.z0, by.z1].map(v => +v.toFixed(2))]) : '')); continue; }
     void Ck;
     if (!clear(gate, 0.05, S.zones.filter(z => !z.door))) { dbg('gate'); continue; }
     if (S.zones.some(z => z.door && hitBox(Ck.aabb(gate), z, -0.1))) continue;

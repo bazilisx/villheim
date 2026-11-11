@@ -31,9 +31,9 @@ for (const type of types) for (const biome of biomes) for (const [stage, decor] 
   const a = D.audit(d, decor);
   const marked = d.pieces.some(p => p.decor);
   const deco = d.pieces.filter(p => (marked ? p.decor : D.FURNITURE[p.name] && !require('../lib/pieces.js').piece(p.name).structural));
-  // out of the village's reach (D-080: decor one biome further, stations none)
   const PCi = require('../lib/pieces.js');
-  const biomeBad = deco.filter(p => D.FURNITURE[p.name] && !PCi.minor(p.name) && ORDER.indexOf(D.FURNITURE[p.name].b) > ORDER.indexOf(biome) + (['craft', 'fire', 'storage'].includes(D.FURNITURE[p.name].cat) ? 0 : 1)).map(p => p.name);
+  // decor goes in any biome (D-065, Tyler 2026-11-10); only building pieces past the village's biome and the next count
+  const biomeBad = deco.filter(p => !PCi.decorOk(p.name, biome)).map(p => p.name);
   const checks = Ck.check(d, biome, copt);
   const row = { type, biome, stage, decor, seed, name: d.meta.Name, items: deco.length, kinds: new Set(deco.map(p => p.name)).size };
   for (const [k, v] of Object.entries(a)) { add(k, v.length); if (v.length) row[k] = v.slice(0, 6); }

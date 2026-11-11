@@ -406,6 +406,45 @@ function fillSlot(m, biome, ctx) {
   return list ? list.find(okN) || null : null;
 }
 
+// The hand-made kits (BK-) were written with one prefab per place (a pine table, plain benches, a candle on every
+// table), so in them the essentials are drawn like the decorator's own: chairs, benches, a long table and chests by
+// the room kind's corpus shares and the culture's counts (lib/decorate.js corpusPick), one draw per kit so a set
+// matches; what lies on a table only as often as corpus tables are dressed (rel.tablesDressed) and drawn by the
+// corpus onTable counts. Only prefabs of about the same footprint stand in for each other. Undefined keeps the fill.
+const BUILT_SWAP = {
+  chair: ['piece_chair', 'piece_chair03', 'dvergrprops_stool', 'dvergrprops_chair'],
+  bench: ['piece_bench01', 'piece_logbench01', 'piece_blackmarble_bench'],
+  piece_table: ['piece_table', 'piece_blackmarble_table'],
+  chest: ['piece_chest_wood', 'piece_chest'],
+};
+const BUILT_LK = { home: 'home', longhouse: 'hall', tavern: 'tavern', smithy: 'smithy', workshop: 'workshop', storage: 'storage', temple: 'hall' };
+function builtPick(a, mm, ctx, picks, name) {
+  if (!name) return undefined;
+  const D = decorB(), culture = ctx.culture || ctx.cultureKey, LK = BUILT_LK[ctx.type] || 'home', R = ctx._R2;
+  const onTable = (mm.rest === 'on' && a.pieces[mm.on] && /table/.test(a.pieces[mm.on].n)) || (mm.rest === 'anchor' && a.anchor === 'table');
+  if (onTable && !mm.key) {
+    if (picks._dressed == null) { const P = ctx.persona; picks._dressed = R() < Math.min(0.95, D.corpusRate(culture, 'td') * (P ? 0.6 + 0.8 * (P.clutter || 0) : 1)); }
+    if (!picks._dressed) return null;
+    if (/^Candle_resin/.test(name)) return D.topPick(R, culture, ctx.biome);
+    return undefined;
+  }
+  // barrels only where the household keeps them (lib/decorate.js keepsBarrels)
+  if (mm.k === 'barrel' && !mm.key && !D.keepsBarrels(ctx.persona, ctx.type)) return null;
+  const grp = BUILT_SWAP[mm.k] ? mm.k : BUILT_SWAP[mm.n] ? mm.n : null;
+  if (!grp) return undefined;
+  const list = BUILT_SWAP[grp].filter(n => canDecor(ctx.biome, n) && (shapesB().has(n) || D.FURNITURE[n]));
+  if (!list.length) return undefined;
+  const kind = grp === 'chest' ? 'storage' : grp === 'piece_table' ? 'table' : 'seat';
+  return picks['_' + grp] || (picks['_' + grp] = D.corpusPick(R, list, LK, kind, culture, mm.n));
+}
+
+// How deep corpus builders push chests into each other and into walls (D-127; the mined sets' clip lists in
+// data/kitbash-interior.json, medians): piece_chest_wood into piece_chest_wood 11.4 cm over 17 sets (max 27.9 cm);
+// into a wall piece_chest_wood 12.1 cm over 53 sets, piece_chest 14.2 cm over 18, piece_chest_blackmetal 14.2 cm over
+// 14. A library chest may go that deep by the fitter's solids test; past the decorator's 12 cm it carries the depth
+// as a clip made on purpose (p.fclip, p.wclip, #VillheimClips, D-098).
+const CHEST_PAIR = { piece_chest_wood: 0.114 };
+const CHEST_WALL = { piece_chest_wood: 0.121, piece_chest: 0.142, piece_chest_blackmetal: 0.142 };
 // A small grid of boxes for the fitter: everything in the building, and what it adds as it goes. A piece is filed in
 // every 2 m cell its reach from its pivot can touch (its solids, or its catalog size, by prefab); its box is worked out
 // the first time a query comes near it (most of a building never is).
@@ -613,6 +652,7 @@ function fit(b, ctx, room, idx, zones, anc, a, mirror, fires) {
     const fail = () => { if (needed.has(i)) return true; dropped++; return false; };
     // a random pick (banners) is made once per assembly, so a pair matches
     let name = mm.any ? (picks[mm.k] || (picks[mm.k] = fillSlot(mm, ctx.biome, ctx))) : fillSlot(mm, ctx.biome, ctx);
+    if (a.built && ctx._R2) { const bp = builtPick(a, mm, ctx, picks, name); if (bp !== undefined) name = bp; }
     // a creative set's piece the village does not make itself is left out: the last pass (generate.js biomeSafe) would
     // swap it for a stand-in of another size (a barrel of a stack turned into a chest)
     if (name && !can(ctx.biome, name)) name = null;
@@ -763,7 +803,7 @@ function fit(b, ctx, room, idx, zones, anc, a, mirror, fires) {
 // The tests for one piece.
 // why the last piece was turned down (for lab/bench.js and tuning)
 let WHY_B = 0, LAST_B = '', LASTQ_B = '', STATS_B = null;
-const no = k => { WHY_B = k; return false; };
+const no = k => { WHY_B = k; if (globalThis.__kbNo) globalThis.__kbNo[k] = (globalThis.__kbNo[k] || 0) + 1; return false; };
 const MOVABLE = ['storage', 'seat', 'deco', 'clutter', 'light'];
 function placeable(p, bx, mm, i, b, ctx, room, idx, zones, made, clipOf, anc, fires, displace, a) {
   const Ck = checksB(), SH = shapesB(), D = decorB(), m = room.m;
@@ -871,6 +911,9 @@ function placeable(p, bx, mm, i, b, ctx, room, idx, zones, made, clipOf, anc, fi
   for (const [q, deep] of D.furnClash(p, nearP(0.3).map(r => r.p).filter(q => q.decor && !displace.has(q)).concat(made.filter(Boolean)))) {
     const j = made.indexOf(q);
     if (j >= 0 && ownP && (!a.pieces[j].n || a.pieces[j].n === q.name)) { fdeep = Math.max(fdeep, deep); continue; }
+    // two chests of a kind pushed together as corpus builders push them (CHEST_PAIR, D-127): the solids test below
+    // holds them to the corpus depth; the mark lets the pool audit's box measure pass (D-098)
+    if (CHEST_PAIR[p.name] && q.name === p.name && !q.stacked) { fdeep = Math.max(fdeep, deep); continue; }
     if (movable(q)) { mine.push(q); continue; }
     return no(31);
   }
@@ -909,7 +952,8 @@ function placeable(p, bx, mm, i, b, ctx, room, idx, zones, made, clipOf, anc, fi
     if (d <= 0.01) continue;
     if (movable(q)) { mine.push(q); continue; }
     let allow = 0;
-    if (!q.decor && ['wall', 'window', 'gable', 'beam', 'pole'].includes(role)) allow = clipOf(i, 'w');
+    if (!q.decor && ['wall', 'window', 'gable', 'beam', 'pole'].includes(role)) allow = Math.max(clipOf(i, 'w'), role === 'wall' ? CHEST_WALL[p.name] || 0 : 0);
+    if (q.decor && CHEST_PAIR[p.name] && q.name === p.name && !q.stacked) allow = Math.max(allow, CHEST_PAIR[p.name]);
     if (anc.of && q === anc.of) allow = Math.max(allow, clipOf(i, 'a'));
     if (d > allow + 0.01) { LASTQ_B = `${q.name}${q.decor ? '*' : ''} ${d.toFixed(2)}`; if (STATS_B) { const H = STATS_B.clip || (STATS_B.clip = {}); const k = `${q.decor ? (q.kb ? (/^KB-/.test(q.kb) ? 'mined' : 'kit') : 'decorator') : 'building'} ${PB.piece(q.name).role}`; H[k] = (H[k] || 0) + 1; } return no(17); }
     deepest = Math.max(deepest, d);
@@ -1594,12 +1638,55 @@ function apply(b, ctx, zones) {
     const Lay = NODE_B ? require('./layout.js') : window.VHLayout;
     if (Lay) Lay.clearLanes(b, ctx, rooms);
   }
+  if (X.interiorKit !== false && ctx.decor !== 'd1') {
+    const st = stackChests(b, ctx);
+    if (st) b.notes.push(`${st} chests stacked on chests.`);
+  }
   // lived in: movable things a little off square, by the household (lib/persona.js)
   if (X.lived !== false && ctx.decor !== 'd1') {
     const m = liveIn(b, ctx, zones || []);
     if (m) b.notes.push(`${m} movable things set a little off square, as a household leaves them.`);
   }
   dropFalling(b);
+}
+
+// Chests stacked on chests as corpus builders stack them (relx.chestsStacked: 58 % of chests stand on or under another
+// chest, 0.3 to 1.5 m apart in height and within 0.6 m across, per culture group, lib/decorate.js corpusRate): a second
+// chest of the same kind on a chest within 1.2 m of a wall, where nothing stands over it and 0.3 m stays clear above;
+// as many as bring the design's share to the culture's rate, more in a cluttered household. Store rooms stack their
+// own first (decorate.js storeStacks). From a stream of its own, so the rest of the design is unchanged.
+const STACKABLE = /^(piece_chest_wood|piece_chest|piece_chest_blackmetal|piece_chest_barrel)$/;
+function stackChests(b, ctx) {
+  const D = decorB(), Ck = checksB(), P = ctx.persona, culture = ctx.culture || ctx.cultureKey;
+  const R = rngB((((P && P.salt) || 7) ^ 0x57ac) >>> 0);
+  const chests = b.pieces.filter(p => p.decor && !p.outside && !p.yard && !p.trim && STACKABLE.test(p.name));
+  if (!chests.length) return 0;
+  const inStack = p => chests.some(q => q !== p && Math.hypot(q.x - p.x, q.z - p.z) < 0.6 && Math.abs(q.y - p.y) >= 0.3 && Math.abs(q.y - p.y) <= 1.5);
+  const share = Math.min(0.9, D.corpusRate(culture, 'cs') * (P ? 0.6 + 0.8 * (P.clutter || 0) : 1));
+  // a chest set on a lone one makes two in a stack: (k + 2m) / (N + m) = share
+  let m = Math.round((share * chests.length - chests.filter(inStack).length) / (2 - share));
+  if (m <= 0) return 0;
+  const idx = boxIndex(b.pieces);
+  const hit = (a, c) => a.x0 < c.x1 - 0.02 && c.x0 < a.x1 - 0.02 && a.z0 < c.z1 - 0.02 && c.z0 < a.z1 - 0.02 && a.y0 < c.y1 - 0.02 && c.y0 < a.y1 - 0.02;
+  const cand = chests.filter(p => !inStack(p) && !p.stacked && (!p.rest || p.rest === 'floor') && !p.fclip).map(p => [p, R()]).sort((x, y) => x[1] - y[1]).map(([p]) => p);
+  let n = 0;
+  for (const p of cand) {
+    if (m <= 0) break;
+    const it = D.itemOf(p), h = it.y1 - it.y0;
+    if (!(h > 0.3)) continue;
+    const q = { name: p.name, x: p.x, y: +(p.y + h).toFixed(3), z: p.z, q: p.q, decor: true, stacked: true };
+    if (p.yaw != null) q.yaw = p.yaw;
+    if (p.ds != null) q.ds = p.ds;
+    if (p.extra) q.extra = true;
+    const bx = Ck.aabbShapes(q), reach = { ...bx, x0: bx.x0 - 1.2, x1: bx.x1 + 1.2, z0: bx.z0 - 1.2, z1: bx.z1 + 1.2 };
+    if (!idx.near(reach, 0).some(r => !r.p.decor && ['wall', 'window', 'door'].includes(PB.piece(r.p.name).role) && r.b.y1 > bx.y0 && r.b.y0 < bx.y1)) continue;
+    const clear = { ...bx, y1: bx.y1 + 0.3 };
+    if (idx.near(clear, 0.1).some(r => r.p !== p && PB.piece(r.p.name).role !== 'rug' && hit(r.b, clear))) continue;
+    b.pieces.push(q);
+    idx.add(q);
+    m--; n++;
+  }
+  return n;
 }
 
 // A set's building piece the game would let fall (a creative set's hanging pole whose source build held it by a piece

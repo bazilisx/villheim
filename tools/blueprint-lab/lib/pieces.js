@@ -245,6 +245,18 @@ const NEEDS = {
   // black marble for the mortar, flametal for the rolling pins
   cauldron_ext1_spice: 'Swamp', cauldron_ext3_butchertable: 'Mountain', cauldron_ext4_pots: 'Plains',
   cauldron_ext5_mortarandpestle: 'Mistlands', cauldron_ext6_rollingpins: 'Ashlands',
+  // stations and pieces of the later biomes (bamboogaming.net and metabot.gg recipe pages, 2026-11-11): the galdr table
+  // and its upgrades and the black forge with its cooler and vise take Mistlands materials; the metal cutter (black
+  // marble, flametal, ashwood, charred bone), the gem cutter, the lava lantern (flametal, proustite, sulfur) and the
+  // bone throne (charred bone, flametal, grausten, charred skulls) Ashlands ones. The mead ketill came with the
+  // Ashlands update; its recipe was not found, so Ashlands is a guess.
+  piece_magetable: 'Mistlands', piece_magetable_ext: 'Mistlands', piece_magetable_ext2: 'Mistlands',
+  blackforge: 'Mistlands', blackforge_ext1: 'Mistlands', blackforge_ext2_vise: 'Mistlands',
+  blackforge_ext3_metalcutter: 'Ashlands', blackforge_ext4_gemcutter: 'Ashlands', piece_Lavalantern: 'Ashlands',
+  piece_bone_throne: 'Ashlands', piece_MeadCauldron: 'Ashlands',
+  // feasts by the biome their food comes from (the sailor's bounty from the ocean, reached by ship after the Swamp)
+  FeastMeadows: 'Meadows', FeastBlackforest: 'Black Forest', FeastSwamps: 'Swamp', FeastOceans: 'Swamp',
+  FeastMountains: 'Mountain', FeastPlains: 'Plains', FeastMistlands: 'Mistlands', FeastAshlands: 'Ashlands',
 };
 function needs(name) {
   if (NEEDS[name]) return NEEDS[name];

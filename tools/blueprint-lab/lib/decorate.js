@@ -244,6 +244,14 @@ function corpusPick(R, list, learnKind, kind, culture, own) {
   const shares = new Map(((L[learnKind] || L.home || {}).items || []).map(([n, s2]) => [n, s2]));
   return pickW(R, list.map(n => [n, ((shares.get(n) || 0) + FLOOR_C) * corpusTilt(culture, kind, n) * (n === own ? 2 : 1)]));
 }
+// Whether a household keeps barrels in its living rooms: barrels are in 22 % of furnished corpus buildings (research
+// branch docs/INTERIOR_DESIGN.md, "Tricks builders use on purpose"), more often in a cluttered household; a tavern's bar
+// and store and work rooms keep theirs. Fixed by the household (its salt), so the decorator and the library agree.
+function keepsBarrels(P, type) {
+  if (['tavern', 'storage', 'farm', 'barn', 'smithy', 'workshop', 'sawmill', 'dock', 'stall'].includes(type)) return true;
+  if (!P) return true;
+  return ((P.salt >>> 5) % 1000) / 1000 < 0.22 * (0.6 + 0.8 * (P.clutter || 0));
+}
 // what a rare prefab weighs beside the room kind's shares (data/interior.json: share of rooms of the kind that use it),
 // so anything can show (D-126) and the corpus favorites lead
 const FLOOR_C = 0.04;
@@ -1463,6 +1471,7 @@ function topWeights(culture) {
   const A = sh(CORPUS_CULT.all.t), Gs = g && g.t.length ? sh(g.t) : null;
   return TOP_OK.map(n => [n, (Gs ? l * Gs(n) + (1 - l) * A(n) : A(n)) + 0.01]);
 }
+function topPick(R, culture, biome) { return pickW(R, topWeights(culture).filter(([nm]) => ok(nm, biome) || nm === 'itemstandh')); }
 function dressTable(room, t, c, n) {
   if (!t) return 0;
   const P = c.persona;
@@ -1866,7 +1875,7 @@ function fill(room, role, c) {
   const target = Math.round(room.area / 10 * dens * share);
   if (c.fillOnly && room.count >= target * c.fillOnly / (c.fillShare || 1)) return;
   const floorUsed = () => room.placed.reduce((a, q) => a + (q.rug || q.mount || q.onTable || q.onFire ? 0 : q.b.hw * q.b.hd * 4), 0);
-  const barrel = ok('dvergrprops_barrel', biome) && room.R() < 0.4 ? 'dvergrprops_barrel' : ok('piece_chest_barrel', biome) ? 'piece_chest_barrel' : null;
+  const barrel = LIVING.has(role) && role !== 'tavern' && !keepsBarrels(c.persona, c.type) ? null : ok('dvergrprops_barrel', biome) && room.R() < 0.4 ? 'dvergrprops_barrel' : ok('piece_chest_barrel', biome) ? 'piece_chest_barrel' : null;
   const pairOn = (name, y, gap, n) => {
     // n pieces in a row centered on the freest plain wall face
     const faces = room.faces.filter(f => !f.edge).sort((a, b2) => (b2.len - room.mounts.filter(m => m.face === b2).length * 2) - (a.len - room.mounts.filter(m => m.face === a).length * 2));
@@ -2099,7 +2108,7 @@ function furnishPlan(room, role, c) {
         // no bench by the fire in a home (Tyler, FP-002: bench not necessary)
         placeAgainst(room, 'ArmorStand', s => (beds[0] ? -Math.hypot(s.x - beds[0].x, s.z - beds[0].z) * 0.3 : 0));
         if (room_ok()) placeAgainst(room, 'fermenter', s => (s.corner ? 1 : 0) - fr().v(s.x, s.z) / fr().D);
-        if (room_ok()) placeStorageRow(room, k, 1, { chest: ok('piece_chest_barrel', biome) ? 'piece_chest_barrel' : k.chest });
+        if (room_ok()) placeStorageRow(room, k, 1, { chest: ok('piece_chest_barrel', biome) && keepsBarrels(c.persona, c.type) ? 'piece_chest_barrel' : k.chest });
         if (room_ok()) placeStation(room, k, 'piece_workbench', ['piece_workbench_ext1'], { side: -k.side, back: 0.2 });
       }
     } else {
@@ -2290,7 +2299,7 @@ function furnishPlan(room, role, c) {
     onFire(room, ok('piece_cauldron', biome) && room.R() < 0.6 ? 'piece_cauldron' : 'piece_cookingstation');
     planPaths(room);
     const t = table({ seats: 1, wallBias: 2, depth: 0.6 });
-    placeStorageRow(room, k, 1, { chest: ok('piece_chest_barrel', biome) ? 'piece_chest_barrel' : k.chest });
+    placeStorageRow(room, k, 1, { chest: ok('piece_chest_barrel', biome) && keepsBarrels(c.persona, c.type) ? 'piece_chest_barrel' : k.chest });
     if (d >= 2) { placeLights(room, k, lights(1)); if (t) dressTable(room, t, c, 2); }
     return;
   }
@@ -2954,6 +2963,8 @@ function auditContext(pieces) {
 // in the game; against a brace, a window or a door what shows of both counts (a brace through the fur). The
 // furnishing keeps furniture within SHOWS_MAX; lib/audit.js fails a pool past 15 cm.
 const SHOWS_MAX = 0.12, SHOWS_DEEP = new Set(['bed', 'table', 'storage', 'seat', 'craft']);
+// corpus medians of chests into walls (lib/kitbash.js CHEST_WALL, D-127)
+const CHEST_WALL_D = { piece_chest_wood: 0.121, piece_chest: 0.142, piece_chest_blackmetal: 0.142 };
 const SHOWS_FLAT = new Set(['wall', 'halfwall', 'gable', 'pole']), SHOWS_THIN = new Set(['window', 'beam', 'door']);
 // A piece as it will stand in the file: the generator keeps the middle of a piece set on its pivot (a quarter wall)
 // until generate.js finish turns it to its foot, so the furnishing would test that wall 0.25 m higher than it stands.
@@ -3002,7 +3013,8 @@ function auditOne(p, ctx, extra, allow) {
   let used = 0;
   if (SHOWS_DEEP.has(it.f.cat)) {
     const d = showsInto(p, A.struct.map(sb => sb.p));
-    if (d > Math.max(SHOWS_MAX, allow || 0)) { ONE_WHY = 'shows'; return false; }
+    // a chest may go into a wall as deep as corpus builders set them (lib/kitbash.js CHEST_WALL, D-127)
+    if (d > Math.max(SHOWS_MAX, allow || 0, CHEST_WALL_D[p.name] || 0)) { ONE_WHY = 'shows'; return false; }
     if (d > SHOWS_MAX) used = Math.max(used, d);
   }
   // what hangs on a wall stays out of what shows of the walls round it (the cross bars, T-606, T-612); the pool
@@ -3135,6 +3147,6 @@ function decorateExisting(pieces, { use = 'home', decor = 'd2', biome = 'Meadows
   return b.pieces;
 }
 
-const api = { corpusPick, corpusRate, corpusTilt, oneWhy: () => ONE_WHY, furnClash, asBuilt, decorate, strip, findRooms, decorateExisting, setRules, setInterior, setTemplates, templateById, audit, auditContext, auditOne, itemOf, ITEM_BIOME, FURNITURE: F, readLevel,
+const api = { corpusPick, corpusRate, corpusTilt, topPick, keepsBarrels, oneWhy: () => ONE_WHY, furnClash, asBuilt, decorate, strip, findRooms, decorateExisting, setRules, setInterior, setTemplates, templateById, audit, auditContext, auditOne, itemOf, ITEM_BIOME, FURNITURE: F, readLevel,
   _int: { floorLevels, standGuess, roleFor, stretch, size, ok, obox, overlap, ptDist, yawOfDir, pyaw, standOf, norm, WALLISH } };
 if (NODE_D) module.exports = api; else window.VHDecorate = api;

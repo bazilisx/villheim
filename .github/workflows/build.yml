@@ -12,6 +12,9 @@ jobs:
       contents: write
     steps:
       - uses: actions/checkout@v4
+        with:
+          # full history, so the build number (commits on main) is right
+          fetch-depth: 0
 
       - uses: actions/setup-dotnet@v4
         with:
@@ -52,8 +55,9 @@ jobs:
           cp src/Villheim/bin/Release/Villheim.dll src/Villheim/bin/Release/Villheim.pdb dev/
           cp src/Villheim.Logic/bin/Release/Villheim.Logic.dll src/Villheim.Logic/bin/Release/Villheim.Logic.pdb dev/
           cp src/Villheim.Logic/bin/Release/{Jint,Acornima,System.Runtime.CompilerServices.Unsafe}.dll dev/
-          echo "${GITHUB_SHA::7}" > dev/version.txt
+          # the build label: build number (commits on main), then the commit; a higher number is a later build
+          echo "$(git rev-list --count HEAD)-${GITHUB_SHA::7}" > dev/version.txt
           gh release delete dev-latest --yes --cleanup-tag || true
           gh release create dev-latest dev/* --prerelease --target "$GITHUB_SHA" \
             --title "Latest test build" \
-            --notes "Built from ${GITHUB_SHA::7}. Installed by scripts/Villheim-Updater.ps1; not a release."
+            --notes "Build $(git rev-list --count HEAD)-${GITHUB_SHA::7}. Installed by scripts/Villheim-Updater.ps1; not a release."

@@ -111,8 +111,9 @@ https://en.wikipedia.org/wiki/Wikipedia:Signs_of_AI_writing
 - Be concise in chat: short bullets on what changed and what he needs to do.
 - When Tyler has something to do (restart the game, test, install a mod), end the reply with a horizontal rule, then
   `## 🟧 Your steps 🟧`, then numbered steps, then a closing horizontal rule. Nothing else goes in that block.
-- Whenever a push changes the mod, the first step in that block names the build to wait for: the short commit hash
-  the updater installs (`dev/version.txt`, shown by `vh version`).
+- Whenever a push changes the mod, the first step in that block names the build to wait for: the build label the
+  updater installs, build number then short commit (`dev/version.txt`, shown by `vh version`, for example `272-abc1234`;
+  a higher number is a later build). A test branch build is labeled `<main build>+<branch>.<commits past main>-<commit>`.
 - Every question or decision for Tyler goes in the **Decisions** tab of the review sheet
   (https://docs.google.com/spreadsheets/d/1rHaZArWhEa8V43UTZePM9EQSBwS6bvjsmAFPhnlQs6o/edit): one row with an ID
   (D-###), the date asked, Status Open, the question, the options and a recommendation. Read the tab at the start of a

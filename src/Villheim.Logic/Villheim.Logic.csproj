@@ -13,14 +13,23 @@
     <SourceRevisionId>build$(BuildTime)</SourceRevisionId>
   </PropertyGroup>
 
-  <!-- Adds the git commit to the stamp, so it can be matched with the commit on GitHub. -->
+  <!-- Adds the build label to the stamp: the build number (commits on the branch) and the git commit, for example
+       build-272-abc1234. A higher number on main is a later build. A test branch build passes its own label with
+       -p:VillheimLabel=272+look.2-abc1234 (main build it starts from, branch name, commits past main, commit). -->
   <Target Name="StampCommit" BeforeTargets="AddSourceRevisionToInformationalVersion">
     <Exec Command="git rev-parse --short=7 HEAD" ConsoleToMSBuild="true" IgnoreExitCode="true" StandardOutputImportance="low" StandardErrorImportance="low">
       <Output TaskParameter="ConsoleOutput" PropertyName="VillheimCommit" />
       <Output TaskParameter="ExitCode" PropertyName="VillheimCommitExit" />
     </Exec>
-    <PropertyGroup Condition="'$(VillheimCommitExit)' == '0'">
-      <SourceRevisionId>commit-$(VillheimCommit)-$(BuildTime)</SourceRevisionId>
+    <Exec Command="git rev-list --count HEAD" ConsoleToMSBuild="true" IgnoreExitCode="true" StandardOutputImportance="low" StandardErrorImportance="low">
+      <Output TaskParameter="ConsoleOutput" PropertyName="VillheimCount" />
+      <Output TaskParameter="ExitCode" PropertyName="VillheimCountExit" />
+    </Exec>
+    <PropertyGroup Condition="'$(VillheimCommitExit)' == '0' And '$(VillheimCountExit)' == '0' And '$(VillheimLabel)' == ''">
+      <VillheimLabel>$(VillheimCount)-$(VillheimCommit)</VillheimLabel>
+    </PropertyGroup>
+    <PropertyGroup Condition="'$(VillheimLabel)' != ''">
+      <SourceRevisionId>build-$(VillheimLabel)-$(BuildTime)</SourceRevisionId>
     </PropertyGroup>
   </Target>
 

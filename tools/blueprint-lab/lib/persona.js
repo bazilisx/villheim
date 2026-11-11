@@ -371,10 +371,10 @@ function kindLean(P) {
 // own. Drink, food and herbs come again most, trophies and tools seldom; rare things, boss trophies and the serving
 // tray never.
 const NO_REPEAT = new Set(['rare', 'boss', 'tray', 'valuable']);
-const REPEAT_K = { drink: 1, food: 0.9, herbs: 1, fish: 0.8, hat: 0.8, shield: 0.7, weapon: 0.4, farm: 0.4, tool: 0.3, trophy: 0.25 };
+const REPEAT_K = { drink: 1, food: 0.9, herbs: 1, fish: 0.8, hat: 0.8, shield: 0.7, weapon: 0.5, farm: 0.45, tool: 0.45, trophy: 0.4 };
 function repeatOf(P) {
   if (!P) return 0.7;
-  return Math.min(0.95, Math.max(0.15, 0.45 + 0.6 * P.tidy - 0.5 * (P.hobby.collect || 0) - 0.2 * P.wealth + 0.2 * (P.plain ? 1 : 0)));
+  return Math.min(0.95, Math.max(0.25, 0.7 + 0.6 * P.tidy - 0.5 * (P.hobby.collect || 0) - 0.2 * P.wealth + 0.2 * (P.plain ? 1 : 0)));
 }
 function fromStock(kind, biome, R, seen, P) {
   const st = seen && !NO_REPEAT.has(kind) ? (seen._stock || (seen._stock = {})) : null;

@@ -20,6 +20,7 @@ const PSs = () => (NODE_S ? require('./persona.js') : window.VHPersona);
 const Cks = () => (NODE_S ? require('./checks.js') : window.VHChecks);
 const Ds = () => (NODE_S ? require('./decorate.js') : window.VHDecorate);
 const Mes = () => (NODE_S ? require('./mesh.js') : window.VHMesh);
+const SHs = () => (NODE_S ? require('./shapes.js') : window.VHShapes);
 
 function rngS(seed) {
   let s = (seed >>> 0) || 1;
@@ -147,6 +148,28 @@ for (const s0 of SETS.slice()) {
     SETS.push(Object.assign({}, s0, { pieces: s0.pieces.map(q => Object.assign({}, q, { y: +(q.y + dy).toFixed(2) })) }));
   }
 }
+// D-127 (Tyler, 2026-11-11): "if the corpus builders do it, its allowed and you should mirror their work". Corpus
+// builders hang wall stands into what shows of the wall (the 2x2 wood wall's planks, a stone wall's bevels): of 4,318
+// wall stands measured, the depth into what is behind them is 0 up to the 75th percentile and 4 cm at the 90th
+// (data/stands-corpus.json clips, lab/mine_stands.js: the stand's shape into the collider of what is behind it). A stand
+// hung that way against the collider goes into what shows of the wall by the depth of its relief: 4 to 11 cm on the
+// generator's walls (measured over the d3 houses of lab/test_stands.js). So a wall stand of these sets may go up to
+// WALL_SHOW into what shows (the fitter keeps the depth used on the stand as p.wclip, which lib/blueprint.js writes in
+// '#VillheimClips', D-098), and dressTops refuses one that goes more than WALL_COLL into a collider.
+const WALL_SHOW = 0.12, WALL_COLL = 0.04;
+for (const s0 of SETS) if (s0.anchor === 'wall') s0.clips = s0.pieces.map((q, i) => (q.n === 'itemstand' ? [i, 'w', WALL_SHOW] : null)).filter(Boolean);
+// how deep a wall stand goes into the colliders of the building round it (as the corpus miner measures it)
+function intoCollider(p, idx) {
+  const SH = SHs(), Ck = Cks(), A = SH.world(p);
+  if (!A || !A.length) return 0;
+  let m = 0;
+  for (const r of idx.near(Ck.aabb(p), 0.05)) {
+    if (r.p === p || (r.p.decor && !r.p.trim)) continue;
+    const B = Ck.aabb(r.p).sol;
+    if (B && B.length) m = Math.max(m, SH.clipDepth(A, B));
+  }
+  return m;
+}
 // on the sill of a window: stands set on the wall below the opening (made for each window, see sillSet)
 const SILL = [[{ x: -0.25, want: 'herbs', yaw: 20 }, { x: 0.22, yaw: 300 }], [{ x: 0, yaw: 0 }], [{ x: -0.3, want: 'food', yaw: 90 }, { x: 0.05, want: 'drink', yaw: 0 }, { x: 0.33, want: 'herbs', yaw: 45 }]];
 // on a beam overhead: one to three stands along it, half a metre apart (helmets, trophies, fish, herbs hung to dry)
@@ -186,11 +209,11 @@ const gaussS = R => { let s = 0; for (let i = 0; i < 4; i++) s += R(); return (s
 function showOf(P, ctx, R) {
   const H = (P && P.hobby) || {};
   const clutter = P ? P.clutter : 0.45, tidy = P ? P.tidy : 0.5, wealth = P ? P.wealth : 0.4, comfort = P ? P.comfort : 0.5;
-  let s = 0.7 * (0.3 + 1.5 * clutter + 0.7 * (H.collect || 0) + 0.35 * (H.food || 0) + 0.25 * (H.plants || 0) + 0.3 * wealth + 0.2 * comfort - 0.4 * tidy);
+  let s = 0.8 * (0.3 + 1.5 * clutter + 0.7 * (H.collect || 0) + 0.35 * (H.food || 0) + 0.25 * (H.plants || 0) + 0.3 * wealth + 0.2 * comfort - 0.4 * tidy);
   s *= CULTURE_SHOW[ctx.cultureKey || ctx.culture] || 1;
   if (P && P.plain) s *= 0.35;
   if (ctx.type === 'tavern') s *= 1.15;
-  s *= Math.exp(0.6 * gaussS(R));
+  s *= Math.exp(0.7 * gaussS(R));
   return Math.min(4, Math.max(0.08, s));
 }
 // A flat stand on a table may be sunk into its top so only the item shows (a third of the corpus's flat stands sit
@@ -203,10 +226,14 @@ function sinkDepth(R) {
   for (let i = 1; i < SINK_Q.length; i++) if (u <= SINK_Q[i][0]) { const [u0, d0] = SINK_Q[i - 1], [u1, d1] = SINK_Q[i]; return +(d0 + (d1 - d0) * (u - u0) / Math.max(1e-6, u1 - u0)).toFixed(3); }
   return 0.216;
 }
-// What kind of place a set dresses: each kind gets its own share of the picks (the corpus's house shares: table 52 %,
-// wall 79, shelf 51, bench 51, rafter 38, hearth 38, chest 33, floor 41, sill 14), so having more sets or more anchors
-// of one kind does not make it come up more often.
-const CLASS_W = { table: 1.0, wall: 1.15, shelf: 0.75, bench: 0.55, hearth: 0.5, rafter: 0.6, chest: 0.32, sill: 0.22, floor: 0.2 };
+// What kind of place a set dresses: each kind gets its own share of the picks, so having more sets or more anchors of
+// one kind does not make it come up more often. The shares lean on where the corpus's stands are (data/stands-corpus.json
+// anchors, stands holding something: of flat stands table 14.9 %, shelf 17.0, ledge 10.3, mantel 9.3, counter 3.3,
+// bench 2.0, sill 1.7, rafter 1.7, chest 0.5; of wall stands wall and beam 29 %, over a workbench or bench 15, by the
+// hearth 12, over a chest 7, a table 7, a bed 4, by a door 4). The interior library and the decorator already put up
+// most of the shelf, mantel and wall stands, so this pass gives tables the largest share. Tyler, 2026-11-10: "I rarely
+// see stands on rafters. I sometimes see stands on sills. I constantly see stands on tables."
+const CLASS_W = { table: 1.6, wall: 1.1, shelf: 0.8, bench: 0.45, hearth: 0.3, rafter: 0.22, chest: 0.3, sill: 1.1, floor: 0.15 };
 function classOf(s, an) {
   if (s.anchor === 'table') return 'table';
   if (s.anchor === 'bench' || s.anchor === 'seat') return 'bench';
@@ -222,8 +249,18 @@ function classOf(s, an) {
   return 'wall';
 }
 const isStand = p => /^itemstandh?$/.test(p.name);
-// the chance a household puts things at each kind of place (near the corpus's house shares)
-const FAV_P = { table: 0.45, wall: 0.7, shelf: 0.45, bench: 0.4, hearth: 0.3, rafter: 0.35, chest: 0.25, sill: 0.12, floor: 0.3 };
+// the chance a household puts things at each kind of place, before its traits (favLean)
+const FAV_P = { table: 0.7, wall: 0.65, shelf: 0.5, bench: 0.4, hearth: 0.25, rafter: 0.2, chest: 0.25, sill: 0.45, floor: 0.25 };
+// how a household's traits lean those chances (lib/persona.js: likes are about 0.3 to 1.8, hobbies 0 to 1): pots and
+// things on the sill, things hung up, shelves, food and drink on the table, tools by the bench
+function favLean(P, cl) {
+  if (!P) return 1;
+  const L = P.likes || {}, Hb = P.hobby || {};
+  const k = { sill: 0.4 + 0.6 * (L.sill || 0.8), rafter: 0.4 + 0.6 * (L.hung || 0.8), wall: 0.6 + 0.4 * (L.hung || 0.8) + 0.3 * (Hb.collect || 0),
+    shelf: 0.5 + 0.6 * (L.shelves || 0.8), table: 0.8 + 0.5 * (Hb.food || 0) + 0.3 * (Hb.games || 0), bench: 0.6 + 0.8 * (Hb.crafts || 0),
+    hearth: 0.6 + 0.6 * (P.comfort || 0.5), chest: 0.6 + 0.6 * (P.clutter || 0.45) }[cl];
+  return k == null ? 1 : k;
+}
 // a stand's place (lib/persona.js standAt) as one of those kinds
 const AT_CLASS = at => /^(table|sidetable)$/.test(at) ? 'table' : /^(bench|workbench|wall:bench|wall:workbench)$/.test(at) ? 'bench' : /^(chest|wall:chest)$/.test(at) ? 'chest'
   : at === 'wall:hearth' || at === 'mantel' ? 'hearth' : at === 'rafter' ? 'rafter' : at === 'sill' ? 'sill' : at === 'shelf' ? 'shelf' : 'wall';
@@ -242,19 +279,19 @@ function dressTops(b, ctx, zones, rooms) {
   const show = showOf(P, ctx, R);
   const roomList = (rooms || KB.roomsB(b, ctx)).filter(room => ROOMS_S.includes(room.role) && room.m.area >= 4);
   const area = roomList.reduce((s, room) => s + room.m.area, 0);
-  const budget = Math.round(show * (4 + area / 6));
+  const budget = Math.round(show * (6 + area / 3.5));
   // the kinds of place the household puts things (a builder who sets every table and one who keeps to a shelf and
   // the wall over the hearth): each kind by the corpus's share of houses with it, more of them in a house that shows
   // more; this pass leaves the others alone. So a few places get clusters, as in the corpus, where a spread of single stands
   // over every place would not.
   const fav = {};
-  for (const [cl, p0] of Object.entries(FAV_P)) fav[cl] = R() < 1 - Math.pow(1 - p0, Math.sqrt(show)) ? 1 : 0;
+  for (const [cl, p0] of Object.entries(FAV_P)) fav[cl] = R() < 1 - Math.pow(1 - Math.min(0.95, p0 * favLean(P, cl)), Math.sqrt(show)) ? 1 : 0;
   // the stands already up (the decorator's and the interior library's) count toward it. Where they are more than
   // about half of it, the household takes some away, so the rest goes to this pass's sets: those in places it does
   // not favor first, the decorator's single stands before the stands of a library set that keeps something else (a
   // ledge left bare, a table with its candle). A set made of stands alone stays whole.
   const others = b.pieces.filter(p => p.decor && isStand(p));
-  const keep = Math.round(budget * 0.55);
+  const keep = Math.round(budget * 0.4);
   {
     const kits = new Map();
     for (const p of b.pieces) if (p.kb) { const k = kits.get(p.kb) || { stands: 0, other: 0 }; if (isStand(p)) k.stands++; else k.other++; kits.set(p.kb, k); }
@@ -266,17 +303,51 @@ function dressTops(b, ctx, zones, rooms) {
     const order = loose.map(p => key(p, 0)).concat(inSets.map(p => key(p, 1))).sort((a, c) => a.r - c.r);
     // what stands where the household does not put things mostly goes, whatever the count; then more, down to the
     // share kept
-    for (const o of order) if (!o.favd && R() < 0.8) { drop.add(o.p); have--; }
+    // (a household that shows little takes most of them away, one that shows a lot keeps most)
+    const dropP = Math.min(0.85, Math.max(0, 0.9 - 0.45 * show));
+    for (const o of order) if (!o.favd && R() < dropP) { drop.add(o.p); have--; }
     for (const o of order) { if (have <= keep) break; if (drop.has(o.p)) continue; drop.add(o.p); have--; }
+    // and past that, for a household that shows little, whole sets of stands alone from the library (a pair of
+    // trophies, a row of shields), last
+    if (have > keep) {
+      const alone = [...new Set(others.filter(p => p.kb && !/^KS-/.test(p.kb) && kits.get(p.kb).other === 0).map(p => p.kb))].map(kb => ({ kb, r: R() })).sort((x, y) => x.r - y.r);
+      for (const g of alone) { if (have <= keep) break; for (const q of others) if (q.kb === g.kb && !drop.has(q)) { drop.add(q); have--; } }
+    }
+    // wall stands over a bed, a table, a chest, by the hearth or a door, past the corpus's share of a house's wall
+    // stands at that place (WALL_SHARE) times the household's draw (1.2 to 1.8): the extra go, a whole set at a time
+    // (the decorator's single stands one by one). The interior library and the decorator hang most of theirs over beds
+    // and tables; the corpus's builders hang most on plain wall and beams.
+    const walls = b.pieces.filter(p => p.decor && p.name === 'itemstand' && !drop.has(p) && !/^KS-/.test(p.kb || '') && !p.trim);
+    const byCtx = {};
+    for (const p of walls) { const at = wallAtS(b, p); if (WALL_SHARE[at] != null) (byCtx[at] = byCtx[at] || []).push(p); }
+    for (const [at, ps] of Object.entries(byCtx)) {
+      const allowed = Math.floor(walls.length * WALL_SHARE[at] * (1.2 + 0.6 * R()) + R());
+      const groups = [];
+      for (const p of ps) { const g = p.kb ? groups.find(x => x.kb === p.kb) : null; if (g) g.ps.push(p); else groups.push({ kb: p.kb, ps: [p], r: R() }); }
+      groups.sort((x, y) => x.r - y.r);
+      let n0 = ps.length;
+      for (const g of groups) { if (n0 <= allowed) break; for (const q of b.pieces) if (g.kb ? q.kb === g.kb : q === g.ps[0]) { if (!g.kb || isStand(q) || kits.get(g.kb).other === 0) drop.add(q); } n0 -= g.ps.length; }
+    }
     if (drop.size) b.pieces = b.pieces.filter(p => !drop.has(p));
   }
   // some households sink the stands on their tables into the top, most of the time; the depth is their habit
   const sinker = R() < 0.5, sinkShare = 0.55 + 0.4 * R(), sinkAt = sinkDepth(R);
   const idx = KB.boxIndex(b.pieces);
+  // the same household sinks the stands already on its tables (the interior library's and the decorator's) the same way
+  if (sinker) for (const p of b.pieces) {
+    if (p.name !== 'itemstandh' || !p.decor || p.sunk || p.fclip || /^KS-/.test(p.kb || '')) continue;
+    // on a table: its top (the collider's, as the corpus miner reads it) at the stand's foot or a little over it
+    const t = idx.near(Ck.aabb(p), 0.02).find(r => { if (r.p === p || !TABLES.test(r.p.name)) return false; const o = Ck.aabb(r.p), top = o.sol ? SHs().topAt(o.sol, p.x, p.z) : null; return top != null && top - p.y > -0.03 && top - p.y < 0.03; });
+    if (!t || R() > sinkShare) continue;
+    const d = Math.min(0.216, Math.max(0.061, sinkAt + (R() - 0.5) * 0.03));
+    p.y = +(p.y - d).toFixed(3);
+    p.fclip = +(d + 0.005).toFixed(3);
+    p.sunk = true;
+  }
   const fires = b.pieces.filter(p => p.decor && FIRES_S.test(p.name)).map(p => ({ p, b: Ck.aabb(p) }));
   const clutter = P ? P.clutter : 0.45, size = P ? P.size : 3;
   const P2 = Object.assign({}, P || {}, { hobby: (P && P.hobby) || { crafts: 0.3, collect: 0.3, plants: 0.3, food: 0.3, games: 0.3, maps: 0.3 } });
-  let placed = 0;
+  let placed = 0, placedStands = 0;
   for (const room of roomList) {
     const m = room.m;
     const inR = p => m.inside(p.x, p.z) && Math.abs(p.y - m.stand) < 0.9;
@@ -287,7 +358,6 @@ function dressTops(b, ctx, zones, rooms) {
     const add = (s, anc, w) => { if (w > 0) cands.push({ s, anc, w }); };
     const kitAnchors = KB.anchorsOf(room, b);
     const wallAnchors = kitAnchors.filter(an => an.anchor === 'wall');
-    const doors = b.pieces.filter(p => !p.decor && PBs.piece(p.name).role === 'door' && Math.abs(p.y - m.stand - 1) < 1.2);
     // a feast at most once in a room, never where one is laid out already
     const feasted = b.pieces.some(p => /^Feast[A-Z]/.test(p.name) && inR(p));
     const sets = SETS.filter(s => (!s.n || size >= s.n) && (!s.feast || (ctx.decor === 'd3' && !feasted)));
@@ -314,7 +384,9 @@ function dressTops(b, ctx, zones, rooms) {
     }
     // wall spots by what stands in front of them (the corpus's wall stands over a workbench, a bed, the hearth...)
     for (const an of wallAnchors) {
-      const ctxW = wallContext(an, furn, fires, doors);
+      // what is under the spot as the corpus miner reads it (wallAtS), so this pass's shares compare with the corpus's
+      const at = wallAtS(b, { name: 'itemstand', x: an.x, y: m.stand + 1.75, z: an.z, yaw: an.yaw });
+      const ctxW = at === 'wall' ? 'plain' : at.slice(5);
       for (const s of sets) {
         if (s.anchor !== 'wall' || !s.ctx || !s.ctx.includes(ctxW)) continue;
         // plain wall the whole width of the set and a little more (no window, door or opening, not past the wall's end)
@@ -324,7 +396,7 @@ function dressTops(b, ctx, zones, rooms) {
         // and clear of the wall's ends (the next wall round the corner, a partition's end)
         if (an.t - half - 0.6 < an.face.a0 || an.t + half + 0.6 > an.face.a1) continue;
         if (s.high && m.ceilAt(an.x + Math.sin(an.yaw * Math.PI / 180) * 0.15, an.z + Math.cos(an.yaw * Math.PI / 180) * 0.15) - m.stand < s.high) continue;
-        add(s, Object.assign({ ctxW }, an), (ctxW === 'plain' ? 0.25 : 0.6) * (s.high ? 0.6 * (P ? 0.4 + P.likes.hung * 0.6 : 1) : 1));
+        add(s, Object.assign({ ctxW }, an), (CTX_W[ctxW] || 0.4) * (s.high ? 0.6 * (P ? 0.4 + P.likes.hung * 0.6 : 1) : 1));
       }
     }
     // windows: their sill
@@ -373,6 +445,8 @@ function dressTops(b, ctx, zones, rooms) {
         DEBUG_S[k] = (DEBUG_S[k] || 0) + 1;
       }
       if (!got) continue;
+      // a wall stand into the wall's relief stays against its collider, as the corpus's builders hang them (D-127)
+      if (got.some(p => p.name === 'itemstand' && p.wclip && intoCollider(p, idx) > WALL_COLL + 0.005)) continue;
       // never before what it stands on (a bench of a set that comes at the third stage)
       const ds = Math.max(s.stage === 3 || got3 >= want2 ? 3 : 2, (an.of && an.of.decor && an.of.ds) || 0);
       // a flat stand on a wall's or a beam's top sits on what shows of it (the half wall's planks stand a few
@@ -412,7 +486,7 @@ function dressTops(b, ctx, zones, rooms) {
       usedAnc.push(an);
       usedSet[s.id] = (usedSet[s.id] || 0) + 1;
       if (s.feast) for (let k = cands.length - 1; k >= 0; k--) if (cands[k].s.feast) cands.splice(k, 1);
-      got3 += got.filter(isStand).length;
+      got3 += got.filter(isStand).length; placedStands += got.filter(isStand).length;
       n++; placed++;
     }
   }
@@ -420,22 +494,43 @@ function dressTops(b, ctx, zones, rooms) {
   return placed;
 }
 
-// What stands in front of a wall spot: the corpus's wall stands by what is under them.
-function wallContext(an, furn, fires, doors) {
-  const nx = Math.sin(an.yaw * Math.PI / 180), nz = Math.cos(an.yaw * Math.PI / 180), ux = Math.cos(an.yaw * Math.PI / 180), uz = -Math.sin(an.yaw * Math.PI / 180);
-  let best = null, bd = Infinity;
-  for (const p of furn) {
-    const dx = p.x - an.x, dz = p.z - an.z, out = dx * nx + dz * nz, along = dx * ux + dz * uz;
-    if (out < -0.1 || out > 1.6 || Math.abs(along) > 1.0) continue;
-    const r = PBs.piece(p.name).role;
-    const k = WORK_S.test(p.name) ? 'workbench' : r === 'bed' ? 'bed' : r === 'table' ? 'table' : r === 'seat' ? 'bench' : r === 'storage' ? 'chest' : null;
-    if (k && out + Math.abs(along) < bd) { bd = out + Math.abs(along); best = k; }
-  }
-  if (best) return best;
-  if (fires.some(f => Math.hypot((f.b.x0 + f.b.x1) / 2 - an.x, (f.b.z0 + f.b.z1) / 2 - an.z) < 2.6)) return 'hearth';
-  if ((doors || []).some(d => Math.hypot(d.x - an.x, d.z - an.z) < 1.6)) return 'door';
-  return 'plain';
+// The corpus's wall stands by what is under them, as a share of those at a known place (anchors: plain wall and
+// beams 1,405 of 4,259, over a workbench or bench 719, by the hearth 558, a rafter 533, over a chest 333, a table 328,
+// a bed 208, by a door 175)
+const WALL_SHARE = { 'wall:bed': 208 / 4259, 'wall:table': 328 / 4259, 'wall:chest': 333 / 4259, 'wall:hearth': 558 / 4259, 'wall:door': 175 / 4259,
+  'wall:workbench': 578 / 4259, 'wall:bench': 141 / 4259 };
+// What is under a wall stand, as the corpus miner reads it (lab/mine_stands.js), so the shares compare: furniture
+// standing on the floor round the point half a metre out from the stand (0.9 m, in the miner's 2 m grid cells); then a
+// fire within 2.2 m; then a door within 1.3 m.
+function wallAtS(b, p) {
+  const Ck = Cks(), y = p.yaw * Math.PI / 180, fx = Math.sin(y), fz = Math.cos(y);
+  // which side the wall is on: the first of 5 to 30 cm behind the stand, then in front of it, with structure there
+  const solid = (x, z) => b.pieces.some(q => !q.decor && q !== p && (() => { const o = Ck.aabb(q); return o.x0 <= x && o.x1 >= x && o.z0 <= z && o.z1 >= z && o.y0 <= p.y && o.y1 >= p.y; })());
+  let side = 1;
+  for (const d of [0.05, 0.1, 0.18, 0.3, -0.05, -0.1, -0.18, -0.3]) if (solid(p.x - fx * d, p.z - fz * d)) { side = Math.sign(d); break; }
+  const ox = p.x + fx * 0.5 * side, oz = p.z + fz * 0.5 * side;
+  // the floor it is over: the highest room floor under it
+  const rooms = (b.rooms || []).filter(q => p.x > q.x0 - 0.3 && p.x < q.x1 + 0.3 && p.z > q.z0 - 0.3 && p.z < q.z1 + 0.3 && q.y <= p.y - 0.3);
+  const ft = rooms.length ? Math.max(...rooms.map(q => q.y)) : p.y - 1.8;
+  // the miner's own reach (lib/checks.js index): any piece in the 2 m grid cells the square touches, at those heights
+  const C = v => Math.floor(v / 2);
+  const box = (q, x, z, r, y0, y1) => { const o = Ck.aabb(q); return C(o.x0) <= C(x + r) && C(o.x1) >= C(x - r) && C(o.z0) <= C(z + r) && C(o.z1) >= C(z - r) && o.y1 > y0 && o.y0 < y1 ? o : null; };
+  const under = b.pieces.filter(q => q !== p && !/^itemstand/.test(q.name)).filter(q => { const o = box(q, ox, oz, 0.9, ft - 0.1, p.y - 0.1); return o && o.y0 < ft + 0.4; });
+  const has = t => under.some(q => t(q.name, PBs.piece(q.name).role));
+  if (has(n => WORK_S.test(n))) return 'wall:workbench';
+  if (has((n, r) => r === 'table')) return 'wall:table';
+  if (has((n, r) => r === 'seat' && /bench|sofa/i.test(n))) return 'wall:bench';
+  if (has((n, r) => r === 'bed')) return 'wall:bed';
+  if (b.pieces.some(q => (/^(hearth|fire_pit|bonfire|piece_brazier|piece_groundtorch)/.test(q.name) || PBs.piece(q.name).role === 'fire') && box(q, p.x, p.z, 2.2, ft - 0.2, ft + 0.6))) return 'wall:hearth';
+  if (has((n, r) => r === 'storage')) return 'wall:chest';
+  if (b.pieces.some(q => PBs.piece(q.name).role === 'door' && box(q, p.x, p.z, 1.3, ft, ft + 2))) return 'wall:door';
+  return 'wall';
 }
+// How often this pass dresses a wall spot by what stands in front of it. The corpus's wall stands (anchors): plain
+// wall and beams 1,405, over a workbench or bench 719, by the hearth 558, over a chest 333, a table 328, a bed 208, by
+// a door 175. The library's and the decorator's wall stands already sit mostly over tables and beds, so this pass leans
+// to plain wall.
+const CTX_W = { plain: 0.9, workbench: 0.5, bench: 0.3, hearth: 0.4, chest: 0.35, table: 0.15, bed: 0.1, door: 0.3 };
 // Is a wall spot taken: something hung within 0.9 m either side of the set at 1.0 to 2.5 m, or tall furniture in front
 function wallBusy(an, idx, m, s) {
   const half = Math.max(...s.pieces.map(q => Math.abs(q.x))) + 0.6;
@@ -495,5 +590,5 @@ function rafterSet(bm, R) {
   return set('KS-rafter', 'beam', pick.map(q => sp('itemstandh', q.x, 2.5, 0, Math.floor(R() * 8) * 45, 'anchor', { want: q.want, at: 'rafter' })), { lean: { collect: 0.4, plants: 0.3 } });
 }
 let DEBUG_S = null;
-const apiS = { debug: d => { DEBUG_S = d; }, dressTops, SETS, SILL, RAFTER, leanWeight, wallContext };
+const apiS = { debug: d => { DEBUG_S = d; }, dressTops, SETS, SILL, RAFTER, leanWeight, wallAtS };
 if (NODE_S) module.exports = apiS; else window.VHStands = apiS;

@@ -167,8 +167,10 @@ for (const s0 of SETS.slice()) {
 // hung that way against the collider goes into what shows of the wall by the depth of its relief: 4 to 11 cm on the
 // generator's walls (measured over the d3 houses of lab/test_stands.js). So a wall stand of these sets may go up to
 // WALL_SHOW into what shows (the fitter keeps the depth used on the stand as p.wclip, which lib/blueprint.js writes in
-// '#VillheimClips', D-098), and dressTops refuses one that goes more than WALL_COLL into a collider.
-const WALL_SHOW = 0.12, WALL_COLL = 0.04;
+// '#VillheimClips', D-098), and dressTops refuses one that goes more than WALL_COLL into a collider. WALL_SHOW is the
+// corpus's 90th percentile of wall stands into what shows of the wall behind, read from the fine parts (9.7 cm,
+// data/recount-stands.json, lab/mine_stands.js VH_SHAPES=fine; round 7b, was 12 cm).
+const WALL_SHOW = 0.097, WALL_COLL = 0.04;
 for (const s0 of SETS) if (s0.anchor === 'wall') s0.clips = s0.pieces.map((q, i) => (q.n === 'itemstand' ? [i, 'w', WALL_SHOW] : null)).filter(Boolean);
 // how deep a wall stand goes into the colliders of the building round it (as the corpus miner measures it)
 function intoCollider(p, idx) {

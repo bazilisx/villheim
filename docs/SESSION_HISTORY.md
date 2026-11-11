@@ -24,7 +24,7 @@ walkable pads, preloading from the lag summaries.
 ### As of 2026-11-09
 
 Latest build fb15f86 (evening test fixes, see the 2026-11-09 note, Session 3): test pool only with TestPool on,
-hearth kept clear (11 m), rings widen per stage and overflow outward, zone collider no longer blocks plots, generated
+hearth kept clear (11 m then; since 2026-11-10 walls stay 14.5 m from the hearth, `HearthKeep`, D-084), rings widen per stage and overflow outward, zone collider no longer blocks plots, generated
 designs keep their saved origin, repairs put back every piece, storehouse takes the storage chests, four starting
 villagers, builder never hunts while settling, mining fixed for broken-up rocks. Next: let helpers build amenities,
 walkable building pads, underwater rocks, smaller lag spikes, D-080.
@@ -77,7 +77,8 @@ walkable building pads, underwater rocks, smaller lag spikes, D-080.
   homes and farms inside the plot; game hit boxes stay on in the checks; no screenshots folder; community renders
   in `docs/renderer/corpus` with credit; stairs where they fit; interiors and accents may use any prefab that ships
   with Valheim (walls and roofs follow the biome's materials); minor decor is free or paid in the village biome's
-  own materials.
+  own materials. D-080 (2026-11-10) says decor is never free; home decor pays local stand-ins
+  (`Village/DecorAnalogs.cs`), with the free cases listed in `docs/ROADMAP.md`.
 - **Decisions D-067 to D-071 (2026-11-09):** working yards for work and community buildings, with no base crafting
   station outside without a roof (extensions as decor are fine), market area later and no village square; three
   drivers for the whole generator: messy realism, environmental storytelling, variance by culture, village, family
@@ -87,6 +88,8 @@ walkable building pads, underwater rocks, smaller lag spikes, D-080.
   D-072: household traits are broad (tidiness and use, decor taste, hobbies, comfort, wealth display, size), never
   professions. D-073: home life (assigned homes, house signs with name and role or family and members, residents
   decorate their own homes in stages in idle time, evenings at home or the hearth, bed by about 22:00, doors closed).
+  The code lets villagers take free beds (`Villagers/Sleep.cs`, `Villagers/Households.cs`); D-077 sets beds and
+  houses by arrival order and is not built.
 - **Feature checklist (2026-11-08):** every built, planned and proposed feature plus ideas from other mods, 730 rows,
   in the review sheet's Features tab (Yes, No or Later). Source files in `docs/features/`. ValheimCityBuilder is CC0
   per its authors; study in `docs/CITYBUILDER_STUDY.md`.
@@ -101,7 +104,8 @@ walkable building pads, underwater rocks, smaller lag spikes, D-080.
   an uploaded blueprint; checks and draws designs without the game. Page "Villheim Blueprint Lab"
   (https://claude.ai/artifact/W83rbAvBBLXWeXdLmap3Gf; offline copy in `BepInEx/config/Villheim-tools`). 273 generated
   designs in `Downloads\Villheim-generated` and the sheet's Generated tab (click "Allow access" for pictures).
-  Villages never build generated designs until the CLAUDE.md wording is agreed.
+  Villages build generated designs that Tyler marked Yes and copied to `blueprints/approved-generated` (CLAUDE.md;
+  `Designs/Blueprints.cs` reads that folder), and with `TestPool` on, the test pool.
 - **Villager minds and world growth (2026-11-08 night, compiles, not tested in game):** memory, gossip, skills, wants,
   gatherings, noticing, 1,211 new lines; outpost gear gate and materials, caravans, daughter villages, events,
   contracts, groves, signposts. Tables in `docs/WORLD_LIFE.md`. Four new Harmony patches: if logic fails to load, read
@@ -114,7 +118,8 @@ walkable building pads, underwater rocks, smaller lag spikes, D-080.
   `vh trails` work for testing. Design and plan: `docs/WORLD_LIFE.md`; survey: `docs/RELATED_MODS.md` section 5.
 - **Smith (2026-11-07 overnight, on by default, `SmithMakesGear`):** gear only rises a tier once the village has made
   that tier's set at the recipe's station from the chest (or bought it from a pedlar). Existing villages keep their tier.
-- **Open decision:** whether wood hauled from an outpost lets a village build designs its biome rule now leaves out.
+- **Outpost materials (D-024):** what an outpost sends home counts toward what the village can build
+  (`OutpostMaterials` on, `Village/Materials.cs`).
 - **Profile mods now also:** More Vanilla Build Prefabs and Infinity Hammer (2026-11-07, for placing hidden objects while
   making variants), PlanBuild (blueprint folder `BepInEx/config/PlanBuild/blueprints`, community builds in
   its `inspiration` subfolder), BiomeBlueprints (fails to load its commands on this game version; its files are read
@@ -131,11 +136,11 @@ walkable building pads, underwater rocks, smaller lag spikes, D-080.
 - **Network:** the cloud environment allows Thunderstore, Nexus, the Valheim wiki, CurseForge, Modrinth, the
   MineColonies wiki and millenaire.org. Nexus still answers 403 from the cloud.
 - **Blacklisted source (Tyler, 2026-11-08):** the OverDrive BiomeBlueprints pack. Never used as a design source, a
-  study source or a reference. Open: whether the 12 builds by other creators that shipped in that pack and sit in
-  `Keepers.cs` (`bp:hs_...`) stay.
-- **Approved, not yet written into CLAUDE.md (Tyler, 2026-11-08):** villages may use generated designs, learned from
-  Tyler's approved designs and other creators' builds, with controls still to be worked out. The "existing designs
-  only" rule in CLAUDE.md stands until that wording is agreed.
+  study source or a reference (D-022). The 12 builds by other creators that shipped in that pack stay in `Keepers.cs`
+  (`bp:hs_...`) by D-011 ("Keep"); D-011 and D-022 conflict (Open: D-108).
+- **Generated designs (Tyler, 2026-11-08; D-013, D-023):** villages may use generated designs that Tyler marked Yes in
+  the Generated tab and that were copied to `blueprints/approved-generated`; they must pass every check in
+  `lib/checks.js` (CLAUDE.md). `Designs/Blueprints.cs` reads that folder.
 - **Decided (Tyler, 2026-11-08):** outpost wood counts toward what a village can build, and villagers only go out to
   another biome once they are equipped and able to defend themselves. Built 2026-11-08 night, not tested.
 - **Access as of 2026-11-08 night:** the desktop app's folder bridge reaches the Valheim, r2modman and Downloads
@@ -148,9 +153,12 @@ walkable building pads, underwater rocks, smaller lag spikes, D-080.
   healing). Healing was replaced by the cooking rework.
 - **Updater:** `scripts/Villheim-Updater.ps1` keeps the profile on main. The hearth's hover text shows the commit.
 - **Cloud builds:** `scripts/build-cloud.sh` (nuget.bepinex.dev is blocked from cloud containers).
-- **Profile mods:** BepInEx, Jötunn 2.30.2, More World Locations, PlanBuild (not used by Villheim yet).
+- **Profile mods:** BepInEx, Jötunn 2.30.2, More World Locations, PlanBuild (Villheim reads its blueprint folders,
+  `Designs/Blueprints.cs`).
 - **Known issue to check:** the biome rule drops Meadows MWL designs that use core wood (likely including the
-  Meadows hub `MWL_MeadowsTavern1`). The design report's materials column will show which designs remain.
+  Meadows hub `MWL_MeadowsTavern1`). The design report's materials column will show which designs remain. Since D-007
+  such a design can go up once the village's chests hold the core wood (`BroughtMaterials`,
+  `Designs/DesignLibrary.cs`); not checked in the game.
 - **Study material:** Millénaire findings (buildings, levels, tiers, placement, paths) are in `docs/MILLENAIRE.md`; decompile steps in `docs/DEVELOPMENT.md`.
 
 ## Outstanding work

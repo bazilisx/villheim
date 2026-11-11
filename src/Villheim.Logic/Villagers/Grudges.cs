@@ -69,7 +69,8 @@ namespace Villheim.Logic.Villagers
         /// <summary>
         /// Who stands up to a player who harms the village: its protectors; when none is about (a village of elders,
         /// Tyler: "I punched the leader 3x and nothing happened"), any grown villager who is not an elder; and when
-        /// there is nobody else, the elders. Children never.
+        /// there is nobody else, the elders. Children never. D-051 has carers and elders flee to the hearth; the
+        /// fallback to them here differs from D-051.
         /// </summary>
         public static bool Defends(Villager villager)
         {

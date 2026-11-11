@@ -6,11 +6,13 @@ using Villheim.Logic.Village;
 namespace Villheim.Logic.Villagers
 {
     /// <summary>
-    /// Who lives in which home (Tyler, D-073). A villager's home is the building his claimed bed stands in (Beds). The
-    /// villagers whose beds stand in the same home are its household: one villager lives alone, two or more are a
-    /// family, each in his own bed. Worked out from the bed claims kept on each villager, so it is the same after a
-    /// reload. Only homes count (House plots, and plots from before roles); a bed in the longhouse is no home of one's
-    /// own.
+    /// Who lives in which home. D-073: one NPC is assigned a bed; each family member gets their own bed; the house is
+    /// then that individual's or family's. This code works the other way round: villagers take free beds (Beds), and a
+    /// villager's home is the building his bed stands in. The villagers whose beds stand in the same home are its
+    /// household: one villager lives alone, two or more are a family, each in his own bed. Worked out from the beds kept
+    /// on each villager, so it is the same after a reload. Only homes count (House plots, and plots from before roles);
+    /// a bed in the longhouse is no home of one's own. D-077 sets beds and houses by arrival order from a roster rolled
+    /// ahead of time; that is not built.
     ///
     /// The household's head is its first member in the village's arrival order. The family's name is the head's
     /// surname, where his people use one, else "Bjorn's house".

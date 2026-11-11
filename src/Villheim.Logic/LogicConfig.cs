@@ -815,8 +815,8 @@ namespace Villheim.Logic
                 "Autumn: villages keep half again as much wood and twice the food. Winter: no farming or foraging, more " +
                 "time by the fire, and a village with no wood in its chest is cold and glum.");
             PlayerStanding = Admin(config, living, "PlayerStanding", true,
-                "A player's standing with a village moves store prices (cheaper for friends, dearer for the disliked), " +
-                "brings a fine to pay when it falls low, and guards on watch when it falls very low.");
+                "A player's standing with a village moves store prices (cheaper for friends, dearer for the disliked). " +
+                "With Hostility on, it also brings a fine to pay when it falls low, and guards on watch when it falls very low.");
             Hostility = Admin(config, living, "Hostility", false,
                 "Villages are echoes of the old world and a place of rest. Off (default): a village never fines, turns away or " +
                 "guards against a player, however low his standing. On: fines below FineBelow and armed guards below GuardBelow.");

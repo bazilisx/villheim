@@ -7,9 +7,9 @@ using Villheim.Logic.Village;
 namespace Villheim.Logic.Villagers
 {
     /// <summary>
-    /// D-078 (2026-11-09): with no game near the village and its stores low, the hunter leaves for the night and comes
-    /// back in the morning. Nothing is sure: a roll decides whether he brings anything, what kind of game (from his
-    /// biome and the ones beside it), how much, and how hurt he is when he walks back in.
+    /// D-078 (2026-11-09): hunters hunt real nearby game; with none near and stores low they leave for a while
+    /// (overnight) and come back, and a roll decides success, kind of game and its drops, amount, and their health on
+    /// return. In this code the kind of game comes from his biome and the ones beside it.
     ///
     /// He walks out past the edge of the village toward open land, is away (out of sight, held still) until about 07:00,
     /// then walks home and puts what he got in the chest. The trip is kept on his ZDO, so a reload or a logout does not

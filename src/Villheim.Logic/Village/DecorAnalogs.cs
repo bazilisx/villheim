@@ -10,8 +10,11 @@ namespace Villheim.Logic.Village
     /// Black Forest reaches the Meadows and the Swamp; and so on), otherwise the nearest material of the same kind that
     /// does. A Meadows home's lox rug costs troll hide; its silver candle holder, bronze.
     ///
-    /// Materials the table does not know are left out, so an unknown modded item never stalls a home. The answer for each
-    /// piece and biome is kept.
+    /// Exceptions in this code, which differ from D-080: materials the table does not know are left out (an unknown
+    /// modded item never stalls a home); beds pay nothing extra; cloth has no stand-in for the Meadows, Black Forest or
+    /// Swamp, so linen and jute are left out there; and only home decor stages (HomeDecor) pay this way, while the
+    /// interior a design brings pays only its wood, fine wood, core wood and stone. The answer for each piece and biome
+    /// is kept.
     /// </summary>
     internal static class DecorAnalogs
     {

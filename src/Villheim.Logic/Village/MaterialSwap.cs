@@ -309,8 +309,9 @@ namespace Villheim.Logic.Village
 
         /// <summary>
         /// The stage a piece belongs to for swapping: <see cref="Never"/> when no player can build it. A piece made with
-        /// stone counts as Swamp at the earliest (D-012: Meadows and Black Forest build in wood), so a design shown as a
-        /// Meadows or Black Forest one has its stone swapped for wood.
+        /// stone counts as Swamp at the earliest, so a design shown as a Meadows or Black Forest one has its stone swapped
+        /// for wood at every stage. D-012 allows stone in those biomes for advanced buildings and later stages; this swap
+        /// does not follow that yet.
         /// </summary>
         private static int StageOf(string prefab)
         {

@@ -18,7 +18,7 @@ namespace Villheim.Logic.Villagers
     ///
     /// Skill scales work: felling and mining blows and the time per building piece, from 0.8 at nothing to 1.3 at a
     /// hundred. A happy villager now and then has a good day: a cheerful mood for the day and the goodday lines. His
-    /// work speed stays the same (D-014: mood changes free time only). Every tenth point is a small lift in mood;
+    /// work speed stays the same (D-014: mood no longer changes work speed). Every tenth point is a small lift in mood;
     /// reaching 50 and 75 goes in the chronicle. Dialogue tags: skill:x:novice/good/master, doingskill:novice/good/master for the work at hand,
     /// best:x, goodday; fill-ins {bestskill} {bestskillman} {skillword}.
     /// </summary>

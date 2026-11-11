@@ -15,7 +15,7 @@ namespace Villheim.Logic.Village
     ///
     /// While the chest is not loaded (nobody nearby) the village pays from its saved-up stock instead.
     ///
-    /// The storage chests (D-016, see StorageChests) count as part of it: Count on the main chest includes what they
+    /// The storage chests (StorageChests) count as part of it: Count on the main chest includes what they
     /// hold, and Take pays from the main chest first and then from them, so the builder takes from any of them.
     /// </summary>
     internal static class VillageChest
@@ -316,7 +316,7 @@ namespace Villheim.Logic.Village
             return !chest.IsInUse() || chest.m_nview.IsOwner();
         }
 
-        /// <summary>What a chest holds of a material. For a village's main chest, its storage chests count too (D-016).</summary>
+        /// <summary>What a chest holds of a material. For a village's main chest, its storage chests count too.</summary>
         public static int Count(Container chest, string material)
         {
             int village = VillageOf(chest);
@@ -392,7 +392,7 @@ namespace Villheim.Logic.Village
 
         /// <summary>
         /// Takes all of the given amounts, or nothing if the chest is short of any of them. From a main chest, what it
-        /// lacks comes out of the village's storage chests (D-016).
+        /// lacks comes out of the village's storage chests.
         /// </summary>
         public static bool Take(Container chest, Dictionary<string, int> amounts)
         {

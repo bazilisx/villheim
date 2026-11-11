@@ -24,11 +24,12 @@ namespace Villheim.Logic.Village
     /// </summary>
     internal static class PlotFinder
     {
-        // Buildings stay off the hearth's leveled ground (10 m) with a meter to spare (Tyler, 2026-11-09).
+        // Not used: walls keep HearthKeep from the hearth (D-084). Kept from 2026-11-09, when buildings stayed 1 m off the
+        // hearth's leveled ground (10 m).
         public const float HearthClearance = HearthGround.LevelRadius + 1f;
 
         /// <summary>
-        /// How near a building's wall may come to the hearth: its dirt circle plus about 15 feet (Tyler, 2026-11-09).
+        /// How near a building's wall may come to the hearth: its dirt circle plus HearthMargin, 4.5 m (D-084).
         /// Past that the ground is open.
         /// </summary>
         public static float HearthKeep => HearthGround.LevelRadius + (LogicConfig.HearthMargin?.Value ?? 4.5f);
@@ -39,7 +40,7 @@ namespace Villheim.Logic.Village
         /// <summary>How far above or below the hearth a building's ground may be and still be built on the hearth's level.</summary>
         public const float LevelTolerance = 2.5f;
         private const float GridStep = 4f;
-        // Room for a path between neighbours (Millénaire keeps a clear margin round every building).
+        // Not used: the strip between buildings is BuildingGap (D-082, 2.5 m by default).
         private const float Gap = 4f;
 
         private static readonly List<Piece> PieceBuffer = new List<Piece>();
@@ -53,7 +54,7 @@ namespace Villheim.Logic.Village
                 case Role.House: min = 0.1f; max = 0.65f; break;
                 // Workshops and farms began at 0.45 of the radius (27 to 34 m out), which is what kept a young village
                 // spread out on open ground more than any spacing rule did (packing test, 2026-11-10). The order by
-                // distance stays (hall, homes, workshops, farms; D-079), the rings start nearer.
+                // distance stays (hall, homes, workshops, farms), the rings start nearer (D-085).
                 case Role.Workshop: min = 0.3f; max = 0.95f; break;
                 case Role.Storage: min = 0.1f; max = 0.5f; break;
                 default: min = 0.4f; max = 1f; break;
@@ -62,7 +63,8 @@ namespace Villheim.Logic.Village
 
         /// <summary>
         /// A spot in the building's own ring first. With no room there, the ring after it, and so on out to twice the
-        /// village radius: a village grows outward and never stops for want of room (Tyler, 2026-11-09, D-079).
+        /// village radius. D-079 (Tyler, chat 2026-11-09): a village is not constrained by size; with no room, it tries
+        /// to build in the next ring outward. The limit of twice the radius is this code's own.
         /// </summary>
         public static bool TryFind(Vector3 hearth, float axisYaw, Role role, bool strictHub, float radius, float maxTerrainDelta,
             IReadOnlyList<Plot> plots, System.Random rng, out Vector3 position, out float yaw, HashSet<Vector2Int> network = null,

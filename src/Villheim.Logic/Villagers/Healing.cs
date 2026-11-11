@@ -296,7 +296,7 @@ namespace Villheim.Logic.Villagers
             }
         }
 
-        /// <summary>The village chest first, then its storage chests (D-016): food and potions may be in any of them.</summary>
+        /// <summary>The village chest first, then its storage chests: food and potions may be in any of them.</summary>
         public static List<Container> Chests(VillageHearth hearth)
         {
             var list = new List<Container>();

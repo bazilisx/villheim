@@ -87,7 +87,8 @@ namespace Villheim.Logic.Villagers
         /// The one villager who hunts for the village (Tyler: nobody hunted in a village of mostly elders): the hunter by
         /// trade (D-075), else a protector who is not an elder, else any grown villager who is not an elder (the
         /// builder, cooks, farmers and healers last), else an elder, who hunts at a walk with the bow. The healthiest of
-        /// them, so a hurt village sends its fittest.
+        /// them, so a hurt village sends its fittest. The fallbacks after the hunter are this code's own; D-075 does not
+        /// set them.
         /// </summary>
         public static bool IsVillageHunter(Villager villager)
         {

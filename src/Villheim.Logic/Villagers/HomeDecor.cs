@@ -22,10 +22,11 @@ namespace Villheim.Logic.Villagers
     ///   alone, logged once with DebugLog on.
     /// - When every piece of the next stage stands, the home's plot takes that design's name, and the stage after it is
     ///   next.
-    /// - Cost (D-066): each piece's tracked materials, scaled as the building's were. A material the village's biome
-    ///   lacks is paid in its own wood instead (fine or core wood) or let off (anything else); untracked ingredients
-    ///   (resin, leather, metal, coal) are let off. Paid from the village chest, never from what the building going up
-    ///   or the next amenity still needs.
+    /// - Cost: each piece's wood, fine wood, core wood and stone, scaled as the building's were. Fine or core wood the
+    ///   village's biome lacks is paid in its own wood. Every other material in the recipe (hides, metals, cloth, resin,
+    ///   coal and the like) is paid from the chests in a local stand-in (DecorAnalogs, D-080: decor is never free).
+    ///   Beds and materials the stand-in table does not know are let off (DecorAnalogs). Paid from the village chest,
+    ///   never from what the building going up or the next amenity still needs.
     /// </summary>
     internal static class HomeDecor
     {
@@ -149,7 +150,7 @@ namespace Villheim.Logic.Villagers
             return true;
         }
 
-        /// <summary>What the piece costs the village (D-066), scaled as the building's pieces are.</summary>
+        /// <summary>What the piece costs the village (D-080, DecorAnalogs), scaled as the building's pieces are.</summary>
         private static Dictionary<string, int> Cost(DesignSpawner.PlanEntry entry, HomePlan plan, Heightmap.Biome biome)
         {
             var cost = new Dictionary<string, int>();

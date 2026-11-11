@@ -14,7 +14,7 @@ namespace Villheim.Logic.Villagers
     ///
     /// - tending the fire, cooking at the cooking station, seeing to the chests,
     /// - sweeping and tidying by the homes, feeding the animals (acted: no feed is used, D-015),
-    /// - helping with the crops now and then (acted, never as the farmer: D-075, D-078),
+    /// - helping with the crops now and then, acted (D-078: help harvest crops passively, never as the farmer),
     /// - mending worn pieces inside the village, never the outer fence (D-078),
     /// - making arrows at the workbench (acted),
     /// - carrying things lying about in the village to the chest (real: what he carries goes in).

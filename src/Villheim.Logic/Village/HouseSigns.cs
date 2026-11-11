@@ -21,7 +21,7 @@ namespace Villheim.Logic.Village
     /// - Each sign is marked with its home (by the plot's position) and its place: the front sign, or the member's
     ///   number for a sign inside. The text is written again every 20 seconds, so a new member, a new role or a grown
     ///   child shows. A sign nobody needs any more (the family is smaller, the home is empty) comes down after a minute,
-    ///   its wood back in the village's stock.
+    ///   and every material in its recipe goes to the village (Refund, D-088), the coal included.
     /// </summary>
     internal static class HouseSigns
     {

@@ -59,7 +59,7 @@ namespace Villheim.Logic.Village
                 reach = Mathf.Max(reach, Utils.DistanceXZ(plot.Position, hearth.transform.position) + plot.Radius * 0.75f + Margin);
             }
 
-            // Buildings may stand out to twice the village radius (D-079), and the ring goes round them all.
+            // Buildings may stand out to twice the village radius (PlotFinder.TryFind), and the ring goes round them all.
             return Mathf.Min(Mathf.Ceil(reach / 4f) * 4f, VillheimConfig.VillageRadius.Value * 2f + 6f);
         }
 

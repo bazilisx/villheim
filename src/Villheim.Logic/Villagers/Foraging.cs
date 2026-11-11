@@ -9,8 +9,8 @@ namespace Villheim.Logic.Villagers
     /// <summary>
     /// Foraging, the Meadows stand-in for Millenaire's farms (Meadows villages have no seeds to plant): by day, when the
     /// village chest holds little food, one carer at a time picks berries and mushrooms near the village (anything a
-    /// bush or patch gives that can be eaten) and brings them to the chest. The healer (D-075) also goes for herbs
-    /// (dandelions and thistles) while the chests hold fewer than HerbTarget of them.
+    /// bush or patch gives that can be eaten) and brings them to the chest. The healer also goes for herbs (dandelions
+    /// and thistles) while the chests hold fewer than HerbTarget of them (D-078: healers use fitting foods and herbs).
     /// </summary>
     internal static class Foraging
     {

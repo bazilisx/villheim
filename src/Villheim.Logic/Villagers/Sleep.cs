@@ -8,9 +8,11 @@ using Villheim.Logic.Village;
 namespace Villheim.Logic.Villagers
 {
     /// <summary>
-    /// The village's beds. Every bed the village built (or copied with a design) counts. Each villager claims one bed
-    /// and keeps it; the bed is stored on the villager by its position, so the claim survives logouts. A villager's
-    /// home is the building his bed stands in. The village only takes in a newcomer when a bed is free.
+    /// The village's beds. Every bed the village built (or copied with a design) counts. This code lets each villager
+    /// take a free bed and keep it; the bed is stored on the villager by its position, so it survives logouts. A
+    /// villager's home is the building his bed stands in. The village only takes in a newcomer when a bed is free.
+    /// D-077 sets beds and houses by arrival order instead, with beds never changing hands and a dead villager's bed
+    /// kept; that is not built.
     /// </summary>
     internal static class Beds
     {
@@ -229,7 +231,7 @@ namespace Villheim.Logic.Villagers
                 }
 
                 // Near his friend and away from his rival where he can (Neighbors), and in the same home as his
-                // sweetheart (D-073: a family shares a home, each in his own bed).
+                // sweetheart. (D-073: each family member gets their own bed. D-077, not built, sets beds by arrival order.)
                 float distance = Utils.DistanceXZ(bed.transform.position, home) + Neighbors.BedPenalty(villager, bed.transform.position);
                 Plot bedHome = partnerHome != null ? PlotAt(hearth, bed.transform.position) : null;
                 if (bedHome != null && Utils.DistanceXZ(bedHome.Position, partnerHome.Position) < 0.5f)

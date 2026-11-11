@@ -16,9 +16,10 @@ namespace Villheim.Logic.Villagers
     /// is short, gathers what the village still needs, easiest first:
     ///
     /// 1. material already lying on the ground,
-    /// 2. loose sticks and stones to pick up,
-    /// 3. half-finished work (felled logs, cracked rocks),
-    /// 4. and only then something new (a standing tree or a whole rock).
+    /// 2. half-finished work (felled logs, cracked rocks),
+    /// 3. then something new (a standing tree or a whole rock),
+    /// 4. and loose sticks and stones (one material each) only when there is nothing bigger to work, and only close by
+    ///    (CLAUDE.md gathering order).
     ///
     /// What they gather goes into the village chest by the hearth (to the hearth itself while there is no chest). When nothing is
     /// needed, nobody harvests.
@@ -384,7 +385,7 @@ namespace Villheim.Logic.Villagers
                 }
 
                 int seed = other.Zdo.GetInt(Keys.VillagerSeed);
-                // The carpenter builds; with none, a generalist with a builder's looks (D-075).
+                // The carpenter builds (D-075); with none, a generalist with a builder's looks.
                 Roles.Trade trade = Roles.TradeOf(other);
                 bool isBuilder = Roles.HasTrade(id, Roles.Trade.Carpenter) ? trade == Roles.Trade.Carpenter
                     : trade == Roles.Trade.None && VillagerLooks.IsBuilder(seed);
@@ -1400,7 +1401,7 @@ namespace Villheim.Logic.Villagers
                 ToolAnimation(villager, tool.Value);
             }
 
-            // Mood never changes how fast anyone works (D-014); only skill does. Mood changes free time.
+            // Mood never changes how fast anyone works (D-014); only skill does.
             float perPiece = (LogicConfig.SecondsPerPiece != null ? LogicConfig.SecondsPerPiece.Value : 2.5f) *
                              ConstructionSite.WorkTimeFactor(hearth) /
                              VillagerSkills.WorkFactor(villager, "building") + slot * 0.45f;

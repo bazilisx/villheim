@@ -877,6 +877,13 @@ function mountSpots(room, name, o = {}) {
 // How far a hung piece may touch what shows of a wall: a board (a sign, a stand) 1.5 cm, where a bar through it shows;
 // a banner's cloth 3 cm, as it hangs against the 2x2 wood wall's bars in any build (lib/audit.js uses the same).
 const HUNG_CLIP = name => (/^piece_banner\d+$/.test(name) ? 0.03 : 0.015);
+// D-127 (Tyler: "if the corpus builders do it, its allowed and you should mirror their work"): what corpus builders hang
+// into a wall's relief on purpose, up to the median depth they use (data/kitbash-interior.json, lab/mine_kitbash.js):
+// a wall item stand 5.3 cm (15 mined sets with the stand clipped into the wall, max 28 cm; 7.7 cm median over all
+// 4,212 stands), a wall torch 8.6 cm (808 torches in 238 builds, 90th percentile 23 cm). Past HUNG_CLIP the piece
+// carries its depth as p.wclip, a clip made on purpose in the file's #VillheimClips (D-098).
+const HUNG_CORPUS = { itemstand: 0.053, piece_walltorch: 0.086 };
+const hungLimit = name => Math.max(HUNG_CLIP(name), HUNG_CORPUS[name] || 0);
 // Clear of the wall's own relief (lib/mesh.js), by what shows of the piece against what shows of the walls round it:
 // a height between the bars within 0.4 m (T-606, T-612). A hung piece keeps its collider against the wall's, which is
 // what holds it up in the game, so it never moves out onto the bars; with no clear height the spot is not used. Gives
@@ -885,11 +892,14 @@ function clearOfRelief(room, name, spot) {
   const face = spot.face, f = F[name] || {};
   if (!face.wallClip || spot.x0 == null) return spot;
   const clipAt = yy => { const [px, pz] = pivotOf(name, spot.x0 + face.nx * spot.off, spot.z0 + face.nz * spot.off, spot.yaw); return face.wallClip({ name, x: px, y: yy, z: pz, q: quatY(spot.yaw) }); };
-  const lim = HUNG_CLIP(name);
-  if (clipAt(spot.y) <= lim) return spot;
+  const lim = HUNG_CLIP(name), deep = hungLimit(name);
+  const c0 = clipAt(spot.y);
+  if (c0 <= lim) return spot;
   if (f.under == null) for (let d = 0.1; d <= 0.401; d += 0.1) for (const yy of [spot.y + d, spot.y - d]) {
     if (yy >= spot.lowY && yy <= spot.topY && clipAt(yy) <= lim) return { ...spot, y: +yy.toFixed(2) };
   }
+  // no clear height: as deep as corpus builders hang it, marked (D-127, D-098)
+  if (c0 <= deep) return { ...spot, clip: c0 };
   return null;
 }
 function putMount(room, name, spot) {
@@ -903,7 +913,9 @@ function putMount(room, name, spot) {
   const probe = obox(spot.x + spot.face.nx * 0.3, spot.z + spot.face.nz * 0.3, w, 0.6, spot.yaw);
   for (const q of room.placed) if (!q.rug && !q.mount && q.y1 > y0 && overlap(q.b, probe, 0)) return null;
   room.mounts.push({ face: spot.face, t: spot.t, w, y0, y1 });
-  return room.add(name, spot.x, spot.y, spot.z, spot.yaw, { mount: true, face: spot.face, t: spot.t, y0, y1: y0 + h });
+  const rec = room.add(name, spot.x, spot.y, spot.z, spot.yaw, { mount: true, face: spot.face, t: spot.t, y0, y1: y0 + h });
+  if (rec && spot.clip) rec.p.wclip = +(spot.clip + 0.005).toFixed(3);
+  return rec;
 }
 
 // ---------------------------------------------------------------- clusters
@@ -2907,7 +2919,7 @@ function auditOne(p, ctx, extra, allow) {
   const hung = it.f.at === 'mount' || p.rest === 'wall';
   if (hung || MOUNT_LIKE.test(p.name)) {
     const d = hungInto(p, hung ? A.struct.map(sb => sb.p).concat(more) : A.struct.map(sb => sb.p).filter(q => !q.decor));
-    if (d > Math.max(HUNG_CLIP(p.name), allow || 0)) { ONE_WHY = 'hung'; return false; }
+    if (d > Math.max(hungLimit(p.name), allow || 0)) { ONE_WHY = 'hung'; return false; }
     if (d > HUNG_CLIP(p.name)) used = Math.max(used, d);
   }
   if (used) p.wclip = +(used + 0.005).toFixed(3);

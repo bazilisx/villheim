@@ -6,6 +6,7 @@
 // A piece is {name, x, y, z, q: [qx, qy, qz, qw]} in Valheim world units (y up, left handed).
 
 const Pieces = (typeof module !== 'undefined') ? require('./pieces.js') : window.VHPieces;
+const MeshR = () => (typeof module !== 'undefined' ? require('./mesh.js') : window.VHMesh);
 
 let MODELS;
 function models() {
@@ -95,8 +96,9 @@ const ITEM_INFO = { role: 'item', structural: false, color: '#8a7656', mat: 'woo
 function itemModel(name) {
   const n = name.slice(6), IM = itemModels(), it = IM && IM.items[n];
   const faces = [];
-  if (it && it.parts && it.parts.length) {
-    it.parts.forEach((part, pi) => {
+  const ips = it ? it.parts || (it.k && MeshR() ? MeshR().unpack(it.k) : null) : null;
+  if (ips && ips.length) {
+    ips.forEach((part, pi) => {
       const col = partColor(part, ITEM_INFO), pat = 0;
       for (const f of partFaces(part)) faces.push({ ...f, ...faceFrame(f.pts, f.n), col, pat, part: pi, alpha: part.m === 'glass' ? 0.5 : 1, closed: true });
     });
@@ -421,7 +423,10 @@ function pieceModel(name, useMesh) {
   if (m) return m;
   if (name.startsWith('@item:')) { m = itemModel(name); MODEL_CACHE.set(key, m); return m; }
   const info = Pieces.piece(name);
-  const md = models()[name];
+  const md0 = models()[name];
+  // the parts are packed in data/piece-models.json and data/piece-fine.json (lib/mesh.js parts); a model set given
+  // to setModels may still carry its own
+  const md = md0 && !md0.parts && MeshR() ? { ...md0, parts: MeshR().parts(name) } : md0;
   const mesh = useMesh && meshPack() && meshPack()[name];
   const faces = [];
   if (mesh) {

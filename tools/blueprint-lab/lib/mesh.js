@@ -3,39 +3,120 @@
 // The two differ where a model stands proud of its collider (the 2x2 wood wall's cross bars stand 13 cm out on one
 // face; a bed's blanket hangs past its frame), and that is where things hung or pushed against a piece clip visibly.
 // Same box form as lib/shapes.js ({c, a, h} plus x0..z1), so shapes.hit and shapes' penetration math apply.
-// Works in Node (reads data/piece-models.json) and in the game's bundle (window.VH_MESH, made by lite() below: the
-// parts only for pieces whose model stands proud of its collider by 1.5 cm or more, and the prefab folder of each).
+// Two levels: k, the coarse parts (the first round's proxy, 40 to 150 parts a piece) in data/piece-models.json, for
+// the quick pre-test; the fine parts (to 2 cm of the game's mesh) in data/piece-fine.json, read the first time two
+// coarse lists meet. Both are packed (unpack below).
+// Works in Node (reads the two files) and in the game's bundle and the lab page: window.VH_MESH (made by lite()
+// below; the parts only for pieces whose model stands proud of its collider by 1.5 cm or more, and the prefab folder
+// of each) and window.VH_MESH_FINE (the fine parts per piece kind, as JSON text, read the first time a piece of that
+// kind needs them).
 const NODE_M = typeof module !== 'undefined';
 const shapesM = () => (NODE_M ? require('./shapes.js') : window.VHShapes);
-let LITE = null;
+let LITE = null, FINE = null;
 function data() {
   if (LITE) return LITE;
   if (!NODE_M && window.VH_MESH) LITE = window.VH_MESH;
-  else LITE = lite(require('../data/piece-models.json'));
+  else LITE = lite(require('../data/piece-models.json'), { draw: true });
   return LITE;
 }
+/** The packed fine parts of one piece, or null. */
+function fineOf(name) {
+  const m = data()[name];
+  if (!m || !m.f) return null;
+  if (!FINE) FINE = {};
+  if (NODE_M && !(typeof window !== 'undefined' && window.VH_MESH_FINE)) {
+    if (!FINE._all) FINE._all = require('../data/piece-fine.json').pieces;
+    return FINE._all[name] || null;
+  }
+  const kd = m.kd || 'misc';
+  if (!FINE[kd]) { const t = window.VH_MESH_FINE && window.VH_MESH_FINE[kd]; FINE[kd] = t ? JSON.parse(t) : {}; }
+  return FINE[kd][name] || null;
+}
 const r3 = v => Math.round(v * 1000) / 1000;
-/** The compact form: { name: { src, p: [[c, size, q, polygon middle], ...] } }. all: keep the parts of every piece. */
-function lite(models, all) {
+/** The compact form: { name: { src, kd, b, c, k, p, f } }: kd the piece's kind (lib/pieces.js role); b and c its
+ * sizes; k its packed coarse parts; p 1 when what shows is tested (its model stands proud of its collider); f 1 when it
+ * has fine parts. opts.draw keeps k for every piece (the lab page draws them all). */
+function lite(models, opts = {}) {
   const out = {};
   for (const [n, v] of Object.entries(models.pieces || models)) {
     const src = v.prefab ? v.prefab.split('/')[2] : null;
     const e = { src };
+    if (v.kind) e.kd = v.kind;
     // its sizes in its own frame: what shows (bounds) and what is solid (collider), as [sx, sy, sz, cx, cy, cz]
     const box = q => q && q.min && q.max ? [0, 1, 2].map(i => r3(q.max[i] - q.min[i])).concat([0, 1, 2].map(i => r3((q.max[i] + q.min[i]) / 2))) : null;
     if (v.bounds) e.b = box(v.bounds);
     if (v.collider) e.c = box(v.collider);
     const b = v.bounds, c = v.collider;
     const proud = !c || !b ? 1 : Math.max(...[0, 1, 2].map(i => Math.max(c.min[i] - b.min[i], b.max[i] - c.max[i])));
-    if (v.parts && (all || proud >= 0.015) && /Pieces|Items/.test(v.prefab || '')) {
-      // two levels: p, the coarse parts (the first round's proxy) for the quick pre-test; f, the parts fitted to 2 cm
-      // of the game's mesh, the last word where the coarse parts meet (deepest below)
-      e.p = [].concat(...(v.coarse || v.parts).map(liteParts));
-      if (v.coarse) e.f = [].concat(...v.parts.map(liteParts));
-    }
+    const test = v.k && proud >= 0.015 && /Pieces|Items/.test(v.prefab || '');
+    if (v.k && (test || opts.draw)) e.k = v.k;
+    if (test) e.p = 1;
+    if (v.fine && (test || opts.draw)) e.f = 1;
     out[n] = e;
   }
   return out;
+}
+
+// ---------------------------------------------------------------- packed parts (lab/build_models.js pack)
+// [[col, m, q, boxes, prisms], ...]: one group per color, material and rotation q ([x, y, z, w], or 0); boxes as text,
+// six whole millimeters a box (the low corner in the group's frame, as the change from the last box's, then the size),
+// each number in base 45 written with 90 characters (the upper 45 for the leading digits); prisms
+// [[cx, cy, cz, d, u, v, u, v, ...], ...] in millimeters, c in the piece's frame.
+const ALPHA = []; for (let ch = 35; ch < 127 && ALPHA.length < 90; ch++) if (ch !== 92) ALPHA.push(String.fromCharCode(ch));
+const DIG = {}; ALPHA.forEach((ch, i) => { DIG[ch] = i; });
+function encBoxes(flat) {
+  const out = [], p = [0, 0, 0];
+  const put = v => { const d = []; do { d.push(v % 45); v = Math.floor(v / 45); } while (v > 0); for (let i = d.length - 1; i > 0; i--) out.push(ALPHA[45 + d[i]]); out.push(ALPHA[d[0]]); };
+  for (let i = 0; i < flat.length; i += 6) {
+    for (let k = 0; k < 3; k++) { const dv = flat[i + k] - p[k]; put(dv >= 0 ? 2 * dv : -2 * dv - 1); p[k] = flat[i + k]; }
+    for (let k = 3; k < 6; k++) put(flat[i + k]);
+  }
+  return out.join('');
+}
+function decBoxes(s) {
+  const v = [];
+  let x = 0;
+  for (let i = 0; i < s.length; i++) { const d = DIG[s[i]]; if (d >= 45) x = x * 45 + d - 45; else { v.push(x * 45 + d); x = 0; } }
+  const out = [], p = [0, 0, 0];
+  for (let i = 0; i + 5 < v.length; i += 6) {
+    for (let k = 0; k < 3; k++) { const z = v[i + k]; p[k] += z & 1 ? -(z + 1) / 2 : z / 2; out.push(p[k]); }
+    out.push(v[i + 3], v[i + 4], v[i + 5]);
+  }
+  return out;
+}
+/** Packed parts as part objects {t, c, s | p, d, q, col, m}, metres. */
+function unpack(pk) {
+  const out = [];
+  for (const [col, m, q0, boxes, prisms] of pk || []) {
+    const q = q0 || null, qq = q || [0, 0, 0, 1];
+    const fl = typeof boxes === 'string' ? decBoxes(boxes) : boxes || [];
+    for (let i = 0; i + 5 < fl.length; i += 6) {
+      const s = [fl[i + 3] / 1000, fl[i + 4] / 1000, fl[i + 5] / 1000];
+      const l = [fl[i] / 1000 + s[0] / 2, fl[i + 1] / 1000 + s[1] / 2, fl[i + 2] / 1000 + s[2] / 2];
+      const c = q ? rot(qq, l) : l;
+      const o = { col, m, t: 'box', c: c.map(v => Math.round(v * 10000) / 10000), s };
+      if (q) o.q = q;
+      out.push(o);
+    }
+    for (const pr of prisms || []) {
+      const p = [];
+      for (let i = 4; i + 1 < pr.length; i += 2) p.push([pr[i] / 1000, pr[i + 1] / 1000]);
+      const o = { col, m, t: 'prism', c: [pr[0] / 1000, pr[1] / 1000, pr[2] / 1000], p, d: pr[3] / 1000 };
+      if (q) o.q = q;
+      out.push(o);
+    }
+  }
+  return out;
+}
+const PARTS = new Map();
+/** The parts to draw a piece with: its fine parts, or its coarse ones when it has no fine level; null when none. */
+function parts(name) {
+  if (PARTS.has(name)) return PARTS.get(name);
+  const m = data()[name];
+  const pk = fineOf(name) || (m && m.k);
+  const v = pk ? unpack(pk) : null;
+  PARTS.set(name, v);
+  return v;
 }
 
 // One part as boxes [center, size, rotation, polygon middle]: a box as it is; a prism as one box round its outline,
@@ -101,8 +182,9 @@ function local(name, fine) {
   if (cache.has(name)) return cache.get(name);
   const m = data()[name];
   let out = null;
-  const list = m && (fine ? m.f : m.p);
-  if (list) {
+  const pk = m && m.p ? (fine ? fineOf(name) : m.k) : null;
+  if (pk) {
+    const list = [].concat(...unpack(pk).map(liteParts));
     out = list.map(([c, sz, q0, mid]) => {
       const q = q0 || [0, 0, 0, 1];
       const a = [rot(q, [1, 0, 0]), rot(q, [0, 1, 0]), rot(q, [0, 0, 1])];
@@ -223,6 +305,6 @@ function dims(name) {
 /** Does the piece show past its collider (its parts are kept)? Where it does not, its solids are what shows. */
 function proud(name) { const m = data()[name]; return !!(m && m.p); }
 
-const apiM = { world, worldFine, aabbOf, depth, deepest, source, lite, proud, dims, prismStrips, fine: on => { FINE_ON = on; },
-  setData: d => { LITE = d; LOCAL.clear(); LOCALF.clear(); } };
+const apiM = { world, worldFine, aabbOf, depth, deepest, source, lite, proud, dims, prismStrips, parts, unpack, encBoxes, decBoxes, fine: on => { FINE_ON = on; },
+  setData: d => { LITE = d; FINE = null; LOCAL.clear(); LOCALF.clear(); PARTS.clear(); } };
 if (NODE_M) module.exports = apiM; else window.VHMesh = apiM;

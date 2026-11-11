@@ -93,11 +93,36 @@ https://en.wikipedia.org/wiki/Wikipedia:Signs_of_AI_writing
   the updater installs (`dev/version.txt`, shown by `vh version`).
 - Every question or decision for Tyler goes in the **Decisions** tab of the review sheet
   (https://docs.google.com/spreadsheets/d/1rHaZArWhEa8V43UTZePM9EQSBwS6bvjsmAFPhnlQs6o/edit): one row with an ID
-  (D-###), the date, Status Open, the question, the options and a recommendation. Read the tab at the start of a
-  session; act on rows Tyler has answered, set them to Done, and copy the decision into the docs. Answers given in chat
-  are added there too, so the tab is the record.
-- Docs and session notes are objective records: what was done, what broke, what was tried, what is still open. No
-  descriptions of anyone's mood or tone.
+  (D-###), the date asked, Status Open, the question, the options and a recommendation. Read the tab at the start of a
+  session and build what Tyler has answered. Answers given in chat are added there too, so the tab is the record.
+
+## Records and evidence
+
+- **Sources, in order.** (1) Tyler's own words: his messages in chat and the "Your answer" column. (2) The code as it
+  is. Everything else (the "Decision on record" column, docs, handoffs, daily notes, code comments, summaries of
+  earlier sessions) is a claim to check against those two before it is used or repeated.
+- **Decisions tab columns.** "Your answer" holds Tyler's words as he gave them; a session copies chat answers in word
+  for word and does not reword them. "Decision on record" restates only what the answer says, then where it is built
+  (file) once it is built. A detail the answer leaves open becomes a new Open row.
+- **Status.** Open: asked. Answered: Tyler has answered. Done: built in the code, with the file named in "Decision on
+  record". Whether it works in the game is recorded in the Tests tab.
+- **Open rows.** Code does not treat an Open row as decided. When work needs a value before Tyler answers, the value is
+  a setting and the row says which value is in use until he answers.
+- **Code that differs from a decision** gets an Open row ("Code differs from D-###") stating the decision, what the
+  code does (file) and the options. The code stays as it is until Tyler answers.
+- **Tests and Features tabs.** "Result" and "What you saw" are Tyler's reports. "Built and tested" in the Features tab
+  needs a Tests row he marked Pass, or his word in chat.
+- **Roadmap.** `[x]` means built, with the file or commit named. Built items not yet tried in the game say "not tried
+  in the game". An item that conflicts with a decision or a project rule is removed, with the decision named.
+- **Code comments** that cite a decision state only what that decision says.
+- **Checking before reporting.** Before stating that something is built, fixed, decided or tested, check it at its
+  source (the code, the tab, Tyler's words) and name that source. A conclusion from a command's output is checked
+  against the raw output first.
+- **Dates** are US Mountain Time. "Asked" is the day the question was put to Tyler.
+- **Wording.** Docs, notes, handoffs, comments and sheet rows state facts: what was done, what the code does, what
+  was tried, what is open, with sources. They contain no descriptions of anyone's mood, tone or reactions, no
+  narration of how a correction came about, and no judgments of earlier work. A correction is written as the
+  corrected fact with its source, for example "D-077 record set to match the answer of 2026-11-09 (chat)."
 
 ## Logging every session
 
@@ -107,7 +132,7 @@ Before ending any session that changed something:
    `docs/daily-notes/DAILY_NOTE_TEMPLATE.md`. If the file exists, add a new `## Session N` and a line in `## Index`.
 2. Update `docs/SESSION_HISTORY.md`: the Current State section, and one line in Recent milestones in exactly this
    form: `- **DATE (short title)** - see docs/daily-notes/YYYY-MM/YYYY-MM-DD.md`.
-3. Tick off or add items in `docs/ROADMAP.md`.
+3. Tick off or add items in `docs/ROADMAP.md` by the Roadmap rule in Records and evidence.
 4. Commit and push as Baz.
 
 Keep `SESSION_HISTORY.md` short. Narrative goes in daily notes. One doc per purpose: update an existing doc before
@@ -115,7 +140,9 @@ creating a new one.
 
 ## Usage and context
 
-- Do not re-read large docs or decompiled sources after every resume. Trust what is already in context unless live
-  evidence contradicts it.
+- Do not re-read large docs or decompiled sources after every resume. Read only the section needed, and check any
+  fact about the code, a decision or a test at its source before reporting it (see Records and evidence).
+- Search past chats with several sets of terms (the decision ID, the topic's nouns, Tyler's likely words) and open the
+  chat at the hit when the answer matters or the results disagree.
 - Study material (decompiled game types, other mods) lives in `/tmp` and is not committed. Re-create it with the
   commands in `docs/DEVELOPMENT.md` when needed.

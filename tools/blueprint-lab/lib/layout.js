@@ -642,9 +642,12 @@ function walkMap(b) {
     for (const s of here) for (let i = Math.floor(s.o.x0 - WR); i <= Math.floor(s.o.x1 + WR); i++) for (let j = Math.floor(s.o.z0 - WR); j <= Math.floor(s.o.z1 + WR); j++) {
       const k = i * 4096 + j; if (!bk.has(k)) bk.set(k, []); bk.get(k).push(s);
     }
-    const cells = new Map();
+    // cells by a number key (cellAt)
+    const cn = new Map();
     for (let x = x0 + WS / 2; x < x1; x += WS) for (let z = z0 + WS / 2; z < z1; z += WS) {
-      if (!all.some(r => x > r.x0 && x < r.x1 && z > r.z0 && z < r.z1)) continue;
+      let inAll = false;
+      for (let n = 0; n < all.length; n++) { const r = all[n]; if (x > r.x0 && x < r.x1 && z > r.z0 && z < r.z1) { inAll = true; break; } }
+      if (!inAll) continue;
       const c = { x, z, i: Math.round(x / WS), j: Math.round(z / WS), hard: false, block: null, seen: false };
       for (const s of bk.get(Math.floor(x) * 4096 + Math.floor(z)) || []) {
         if (wDist(s.o, x, z) >= WR) continue;
@@ -652,12 +655,9 @@ function walkMap(b) {
         (c.block || (c.block = [])).push(s.p);
       }
       c.free = !c.hard && !c.block;
-      cells.set(`${c.i},${c.j}`, c);
+      cn.set(c.i * 4096 + c.j, c);
     }
-    // cn: the same cells by a number key (cellAt), quicker to read than the text key
-    const cn = new Map();
-    for (const c of cells.values()) cn.set(c.i * 4096 + c.j, c);
-    out.grids.set(y, { y, rs, all, cells, cn, list: [...cells.values()] });
+    out.grids.set(y, { y, rs, all, cn, list: [...cn.values()] });
   }
   const queue = [];
   const seed = (y, c) => { if (c.free && !c.seen) { c.seen = true; queue.push([y, c]); } };
@@ -829,6 +829,9 @@ function spotsFor(b, W, grp, keep, seedN) {
     if (q.y + h < y || q.y - h > y + 2) continue;
     for (const sg of [1, -1]) doorBoxes.push(DI.obox(q.x + nx0 * sg * (d0 / 2 + 0.6), q.z + nz0 * sg * (d0 / 2 + 0.6), w, 1.2, yaw));
   }
+  // (in buckets as the items are, by their reach grown by the 0.02 m the test allows)
+  const doorList = doorBoxes.map(b2 => ({ b: b2 }));
+  const dIdx = bucketsOf(doorList, it => ({ x0: it.b.x - rOf(it.b), x1: it.b.x + rOf(it.b), z0: it.b.z - rOf(it.b), z1: it.b.z + rOf(it.b) }), 0.07);
   const others = [];
   for (const q of b.pieces) {
     if (set.has(q)) continue;
@@ -875,6 +878,19 @@ function spotsFor(b, W, grp, keep, seedN) {
     for (let n = 0; n < rs.length; n++) { const r = rs[n]; if (x > r.x0 + 0.02 && x < r.x1 - 0.02 && z > r.z0 + 0.02 && z < r.z1 - 0.02) { any = true; break; } }
     return any && onFloor(x, z);
   };
+  // the four corners of a box in the rects (inRects each, read the same way in one go)
+  const inRects4 = B => {
+    const xs4 = [B.x0, B.x1, B.x0, B.x1], zs4 = [B.z0, B.z0, B.z1, B.z1];
+    for (let c = 0; c < 4; c++) {
+      const x = xs4[c], z = zs4[c];
+      let any = false;
+      for (let n = 0; n < rs.length; n++) { const r = rs[n]; if (x > r.x0 + 0.02 && x < r.x1 - 0.02 && z > r.z0 + 0.02 && z < r.z1 - 0.02) { any = true; break; } }
+      if (!any) return false;
+    }
+    if (!floors.length) return true;
+    for (let c = 0; c < 4; c++) if (!onFloor(xs4[c], zs4[c])) return false;
+    return true;
+  };
   // the level's cells in a dense grid (seen flags and places), read by the reach and cover counts below
   const D = denseOf(g);
   let h = (seedN >>> 0) || 7;
@@ -896,11 +912,26 @@ function spotsFor(b, W, grp, keep, seedN) {
       const d = Math.hypot(nx - cx, nz - cz);
       if (d < 0.2 && k === 0) continue;
       let ok = true, wall = 0;
+      // furniture against furniture first (it turns most spots down)
+      for (const m of mk) {
+        // itemBox (above) at this spot: the same numbers, worked the same way
+        const px = nx + m.dx, pz = nz + m.dz;
+        const mx = m.cc ? px + m.cc[0] * m.ca + m.cc[1] * m.sa : px, mz = m.cc ? pz - m.cc[0] * m.sa + m.cc[1] * m.ca : pz;
+        const Ab = { x: mx, z: mz, hw: m.hw, hd: m.hd, c: m.c, s: m.s, r: m.r }, ra = m.r;
+        const qb = { x0: mx - ra, x1: mx + ra, z0: mz - ra, z1: mz + ra };
+        const cand = near(qb, iIdx, items);
+        for (let n = 0; n < cand.length; n++) { const c2 = cand[n]; if (!(m.y0 > c2.y1 - 0.05 || c2.y0 > m.y1 - 0.05) && DI.overlap(Ab, c2.b, -0.02)) { ok = false; break; } }
+        if (!ok) break;
+        const dcand = near(qb, dIdx, doorList);
+        for (let n = 0; n < dcand.length; n++) if (DI.overlap(dcand[n].b, Ab, 0.02)) { ok = false; break; }
+        if (!ok) break;
+      }
+      if (!ok) continue;
       // the solid test (lib/checks.js blocks, the dearest) waits until every other test has passed
       const solid = [];
       for (const bx of boxes) {
         const B = { x0: bx.x0 + nx, x1: bx.x1 + nx, z0: bx.z0 + nz, z1: bx.z1 + nz, y0: bx.y0, y1: bx.y1 };
-        if (bx.floor && !(inRects(B.x0, B.z0) && inRects(B.x1, B.z0) && inRects(B.x0, B.z1) && inRects(B.x1, B.z1))) { ok = false; break; }
+        if (bx.floor && !inRects4(B)) { ok = false; break; }
         const cand = near(B, oIdx, others);
         let Bc = null;
         for (let n = 0; n < cand.length; n++) {
@@ -918,23 +949,11 @@ function spotsFor(b, W, grp, keep, seedN) {
         if (!ok) break;
       }
       if (!ok) continue;
-      for (const m of mk) {
-        // itemBox (above) at this spot: the same numbers, worked the same way
-        const px = nx + m.dx, pz = nz + m.dz;
-        const mx = m.cc ? px + m.cc[0] * m.ca + m.cc[1] * m.sa : px, mz = m.cc ? pz - m.cc[0] * m.sa + m.cc[1] * m.ca : pz;
-        const Ab = { x: mx, z: mz, hw: m.hw, hd: m.hd, c: m.c, s: m.s, r: m.r }, ra = m.r;
-        const cand = near({ x0: mx - ra, x1: mx + ra, z0: mz - ra, z1: mz + ra }, iIdx, items);
-        for (let n = 0; n < cand.length; n++) { const c2 = cand[n]; if (!(m.y0 > c2.y1 - 0.05 || c2.y0 > m.y1 - 0.05) && DI.overlap(Ab, c2.b, -0.02)) { ok = false; break; } }
-        if (!ok) break;
-        for (let n = 0; n < doorBoxes.length; n++) if (DI.overlap(doorBoxes[n], Ab, 0.02)) { ok = false; break; }
-        if (!ok) break;
-      }
-      if (!ok) continue;
       // a person reaches it there (a reached cell within 0.9 m of its first box that it does not cover itself)
       const B0 = { x0: boxes[0].x0 + nx, x1: boxes[0].x1 + nx, z0: boxes[0].z0 + nz, z1: boxes[0].z1 + nz };
       {
         const ia = Math.round((B0.x0 - 0.9) / WS) - 1, ib = Math.round((B0.x1 + 0.9) / WS) + 1, ja = Math.round((B0.z0 - 0.9) / WS) - 1, jb = Math.round((B0.z1 + 0.9) / WS) + 1;
-        if (seenNear(D, B0, 0.9, ia, ib, ja, jb, nx, nz) - seenNear(D, B0, WR, ia, ib, ja, jb, nx, nz) <= 0) continue;
+        if (!seenRing(D, B0, WR, 0.9, ia, ib, ja, jb, nx, nz)) continue;
       }
       for (let n = 0; n < solid.length; n += 3) {
         const q = solid[n + 1];
@@ -955,8 +974,20 @@ function spotsFor(b, W, grp, keep, seedN) {
   }
   out.sort((p, q) => q.v - p.v);
   // spread out: each spot kept is 0.75 m or more from those kept before it, or turned another way
-  const kept = [];
-  for (const s of out) if (!kept.some(t => t.k % 2 === s.k % 2 && Math.hypot(t.x - s.x, t.z - s.z) < 0.75)) kept.push(s);
+  // (those kept so far in 1 m buckets by turn parity; a spot within 0.75 m lies in the 3 by 3 buckets round it)
+  const kept = [], kb = new Map();
+  for (const s of out) {
+    const par = s.k % 2, bi = Math.floor(s.x), bj = Math.floor(s.z);
+    let close = false;
+    for (let i = bi - 1; i <= bi + 1 && !close; i++) for (let j = bj - 1; j <= bj + 1; j++) {
+      const l = kb.get((i * 4096 + j) * 2 + par);
+      if (l && l.some(t => Math.hypot(t.x - s.x, t.z - s.z) < 0.75)) { close = true; break; }
+    }
+    if (close) continue;
+    kept.push(s);
+    const key = (bi * 4096 + bj) * 2 + par;
+    let l = kb.get(key); if (!l) kb.set(key, l = []); l.push(s);
+  }
   kept.cx = cx; kept.cz = cz;
   return kept;
 }
@@ -1015,6 +1046,51 @@ function seenNear(D, B, r, ia, ib, ja, jb, fx, fz) {
     for (let k = 0; k < side.length; k += 2) if (D.seen[(i - D.i0) * D.nj + side[k] - D.j0] && Math.hypot(ex, side[k + 1]) < r) n++;
   }
   return n;
+}
+// Whether a seen cell in columns ia to ib and rows ja to jb, within 3 m of (fx, fz), comes within r1 to r2 of box B
+// (r1 <= wDist < r2): seenNear(r2) - seenNear(r1) > 0, both counts in one pass.
+function seenRing(D, B, r1, r2, ia, ib, ja, jb, fx, fz) {
+  if (ia < D.i0) ia = D.i0;
+  if (ib > D.i0 + D.ni - 1) ib = D.i0 + D.ni - 1;
+  if (ja < D.j0) ja = D.j0;
+  if (jb > D.j0 + D.nj - 1) jb = D.j0 + D.nj - 1;
+  if (ia > ib || ja > jb) return false;
+  const nj1 = D.nj + 1;
+  // rows: counted at r2 (v), at r1 (u), and those with ez 0 (c); side rows with their ez
+  let v0 = null, v1 = null, u0 = null, u1 = null, c0 = null, c1 = null;
+  const side = [];
+  for (let j = ja; j <= jb; j++) {
+    const z = D.Z[j - D.j0];
+    if (z !== z || !(Math.abs(z - fz) < 3)) continue;
+    const ez = Math.max(B.z0 - z, 0, z - B.z1);
+    if (ez >= r2) continue;
+    if (v0 == null) v0 = j;
+    v1 = j;
+    if (ez < r1) { if (u0 == null) u0 = j; u1 = j; }
+    if (ez === 0) { if (c0 == null) c0 = j; c1 = j; } else side.push(j, ez);
+  }
+  if (v0 == null) return false;
+  let n = 0;
+  for (let i = ia; i <= ib; i++) {
+    const x = D.X[i - D.i0];
+    if (x !== x || !(Math.abs(x - fx) < 3)) continue;
+    const ex = Math.max(B.x0 - x, 0, x - B.x1);
+    if (ex >= r2) continue;
+    const base = (i - D.i0) * nj1 - D.j0;
+    if (ex === 0) {
+      n += D.cp[base + v1 + 1] - D.cp[base + v0];
+      if (u0 != null) n -= D.cp[base + u1 + 1] - D.cp[base + u0];
+    } else {
+      if (c0 != null && ex >= r1) n += D.cp[base + c1 + 1] - D.cp[base + c0];
+      for (let k = 0; k < side.length; k += 2) {
+        if (!D.seen[(i - D.i0) * D.nj + side[k] - D.j0]) continue;
+        const h = Math.hypot(ex, side[k + 1]);
+        if (h < r2 && !(ex < r1 && side[k + 1] < r1 && h < r1)) n++;
+      }
+    }
+    if (n > 0) return true;
+  }
+  return n > 0;
 }
 // The same with a margin of each one's own
 function bucketsOfBy(list, boxOf, marginOf) {

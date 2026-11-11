@@ -300,14 +300,15 @@ function obox(x, z, w, d, yaw) { const a = yaw * PI / 180; return { x, z, hw: w 
 function overlap(a, b, m) {
   const rr = (a.r != null ? a.r : Math.hypot(a.hw, a.hd)) + (b.r != null ? b.r : Math.hypot(b.hw, b.hd)) + m;
   if (Math.abs(b.x - a.x) > rr || Math.abs(b.z - a.z) > rr) return false;
-  const axes = [[a.c, -a.s], [a.s, a.c], [b.c, -b.s], [b.s, b.c]];
   const dx = b.x - a.x, dz = b.z - a.z;
-  for (const [ax, az] of axes) {
-    const ra = a.hw * Math.abs(a.c * ax - a.s * az) + a.hd * Math.abs(a.s * ax + a.c * az);
-    const rb = b.hw * Math.abs(b.c * ax - b.s * az) + b.hd * Math.abs(b.s * ax + b.c * az);
-    if (Math.abs(dx * ax + dz * az) >= ra + rb + m) return false;
-  }
-  return true;
+  // the four axes (each box's two), tested one by one with no lists made (the game's engine runs this often)
+  return meetOn(a, b, dx, dz, m, a.c, -a.s) && meetOn(a, b, dx, dz, m, a.s, a.c) && meetOn(a, b, dx, dz, m, b.c, -b.s) && meetOn(a, b, dx, dz, m, b.s, b.c);
+}
+// true when the boxes' shadows on axis (ax, az) meet
+function meetOn(a, b, dx, dz, m, ax, az) {
+  const ra = a.hw * Math.abs(a.c * ax - a.s * az) + a.hd * Math.abs(a.s * ax + a.c * az);
+  const rb = b.hw * Math.abs(b.c * ax - b.s * az) + b.hd * Math.abs(b.s * ax + b.c * az);
+  return !(Math.abs(dx * ax + dz * az) >= ra + rb + m);
 }
 function ptDist(b, x, z) {
   const dx = x - b.x, dz = z - b.z;

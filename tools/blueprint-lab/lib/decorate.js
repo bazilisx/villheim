@@ -1265,18 +1265,15 @@ function placeTable(room, k, o = {}) {
 // walls tried, a seat or none, then the other tables the village makes (a long one against a wall, a round one, a
 // small Dvergr one). A one-room home left three households of six without a table (lead's review of
 // design/integration e74ccec, home Meadows s2 d3 seed 7); the corpus has a table in 68 % of norse furnished buildings.
-const TABLE_BED_TIGHT = 0.6;
+// D-148 (Tyler, 2026-11-11): "a player or npc must be able to navigate around the table to the bed or vice versa. So
+// if .6m is too tight to do so, any furniture or decor that disrupts that expectation should not be placed." The table
+// keeps 0.9 m from a bed on every try; a table, or anything else, that still closes a lane to a bed, table, station or
+// chest is moved or left out at the end (lib/layout.js openWays).
 function tableSure(room, k, o) {
   const first = o.table || k.table;
   const names = [first, 'piece_table', 'piece_table_round', 'dvergrprops_table'].filter((n, i, a) => n && a.indexOf(n) === i && ok(n, room.biome));
   for (const seats of [Math.min(1, o.seats || 0), 0]) for (const name of names) {
     const t = placeTable1(room, k, { ...o, table: name, seats, dense: true, wallBias: Math.max(o.wallBias || 0, 1) });
-    if (t) return t;
-  }
-  // then a little closer to a bed: 0.6 m clear to walk between, in place of the 0.9 m kept since Tyler's FP-003
-  // ("table too close to the beds"); a value in use until the Decisions tab settles it (TABLE_BED_TIGHT)
-  for (const name of names) {
-    const t = placeTable1(room, k, { ...o, table: name, seats: 0, dense: true, wallBias: Math.max(o.wallBias || 0, 1), bedGap: TABLE_BED_TIGHT });
     if (t) return t;
   }
   // then fewer extras: what the room holds as an extra (a chest at a bed's foot, a rug) gives way where the table goes
@@ -1286,7 +1283,7 @@ function tableSure(room, k, o) {
   for (const q of ex) drop(q);
   let t = null;
   for (const seats of [Math.min(1, o.seats || 0), 0]) {
-    for (const name of names) { t = placeTable1(room, k, { ...o, table: name, seats, dense: true, wallBias: Math.max(o.wallBias || 0, 1), bedGap: TABLE_BED_TIGHT }); if (t) break; }
+    for (const name of names) { t = placeTable1(room, k, { ...o, table: name, seats, dense: true, wallBias: Math.max(o.wallBias || 0, 1) }); if (t) break; }
     if (t) break;
   }
   const mine = t ? room.placed.slice(room.placed.indexOf(t)) : [];

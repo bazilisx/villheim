@@ -326,15 +326,22 @@ well (Tyler, 2026-11-08). The Features tab of the review sheet (`docs/features/b
      193 of the 220 decor prefabs the corpus uses (was 109). `docs/INTERIOR_DESIGN.md`, "Creative sets".
   2e. [ ] Run `lab/mine_creative.js` on the full corpus (Tyler's Downloads folder, not connected this time) and add the
      objects that repeat or come from liked builds; measure `piece_drawer` and the other 12 decor prefabs with no model.
-  2c. [ ] Intentional clips (Tyler, 2026-11-10): where the corpus clips or presses pieces together on purpose (the
-     kit library records each set's clip depths), the new visible-clip tests take that depth as the limit for that
-     set's own pieces; mark such clips in the file so the pool audit lets them pass.
+  2c. [x] Intentional clips (D-098): a set's own pieces go into what shows of the walls and into each other as deep as
+     their source builds; marked in a `#VillheimClips` section that `lib/audit.js` honors (e44db1e). Not tried in the
+     game.
+  2f. [x] Richness measure `lab/richness.js` (7850007); room ceilings read from the game's solids (77452c3); the
+     interior library's sets come before the decorator's extras, hung pieces slide, floor sets on raised sections,
+     biomeSafe keeps decor reach (1545946); richness floors in the pool gate, `make_testpool.js --sample` for a Black
+     Forest and a Plains pool (d9103bf). Not tried in the game.
+  2g. [ ] From the richness work: engine time per design is up about a third (gen-test); test_variance at s2d2 a
+     little closer (home-a 0.61, home-c 0.66, hall 0.60); the Black Forest and Plains sample pools fail the gate on
+     defects main had before (mountClip, hang, intoWall, doorway); the 16 most used prefabs still make 80 % of decor.
   3. [ ] Growth that adds to the earlier stage for storehouse (46 %), home a (49 %), hall (54 %), barn (63 %); origins
      centered on the s3 footprint. Found: the storehouse's s2 back-room partition is planned again at s3 and moves;
      home a loses floors, roof ridges and its yard fence. Keep the partition and yard decisions across a line's stages.
   4. [x] Household variance as a measure (c8c63f0): likeness by furniture and arrangement, gate on home lines over
-     0.7, `lab/test_variance.js` (7 of 8 houses under 0.6; home a s2d2 0.61). Open: story-spot sets on the raised
-     floor sections that line Norse homes' walls.
+     0.7, `lab/test_variance.js` (7 of 8 houses under 0.6; home a s2d2 0.61). Floor sets may stand on the raised
+     sections that line Norse homes' walls (1545946).
   4b. [x] Interiors tab on the lab page (c8c63f0); page republished 2026-11-10.
   5. [ ] Sort the corpus by culture and mine assemblies per culture (blueprints on Tyler's PC and branch `corpus`).
   6. [ ] Interior study (valheimians, BG3 and the rest) into assemblies and room templates.

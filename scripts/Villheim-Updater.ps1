@@ -14,8 +14,11 @@
 # replaced while Valheim runs; the window then says to close Valheim and finishes the copy by itself.
 #
 # Another profile: set $env:VILLHEIM_PROFILE = "Profile Name" in the window before pasting the line.
+#
+# Test channel: when the plugin folder holds villheim-channel.txt with a branch name in it (for example look-memory),
+# the updater installs that test branch's latest build instead of main. Empty, "main" or no file means main.
 
-$updaterVersion = 5
+$updaterVersion = 6
 $updaterUrl = "https://raw.githubusercontent.com/bazilisx/villheim/main/scripts/Villheim-Updater.ps1"
 
 $ErrorActionPreference = "Stop"
@@ -23,12 +26,15 @@ $ErrorActionPreference = "Stop"
 
 $profileName = if ($env:VILLHEIM_PROFILE) { $env:VILLHEIM_PROFILE } else { "Villheim Test" }
 $checkEvery = 20
-$release = "https://github.com/bazilisx/villheim/releases/download/dev-latest"
+$releases = "https://github.com/bazilisx/villheim/releases/download"
+$release = "$releases/dev-latest"
+$channel = "main"
 $profiles = Join-Path $env:APPDATA "r2modmanPlus-local\Valheim\profiles"
 $profileFolder = Join-Path $profiles $profileName
 $plugin = Join-Path $profileFolder "BepInEx\plugins\bazilisx-Villheim"
 $download = Join-Path $env:TEMP "villheim-update"
 $marker = Join-Path $plugin "villheim-build.txt"
+$channelFile = Join-Path $plugin "villheim-channel.txt"
 $engineFiles = @("Jint.dll", "Acornima.dll", "System.Runtime.CompilerServices.Unsafe.dll")
 
 function Say([string]$text, [string]$color = "Gray") {
@@ -62,7 +68,7 @@ $coreWaiting = $false
 $coreWarned = $false
 
 Say "Watching for new Villheim builds for profile '$profileName'. Leave this window open; close it to stop." Cyan
-if ($installed) { Say "Installed now: commit $installed" }
+if ($installed) { Say "Installed now: build $installed" }
 
 while ($true) {
     # A newer copy of this script on main replaces this one in the same window.
@@ -74,6 +80,15 @@ while ($true) {
             return
         }
     } catch { }
+
+    # Which build line to follow: main, or a test branch named in villheim-channel.txt.
+    $wanted = if (Test-Path $channelFile) { (Get-Content $channelFile -Raw).Trim() } else { "" }
+    if (-not $wanted) { $wanted = "main" }
+    if ($wanted -ne $channel) {
+        $channel = $wanted
+        $release = if ($channel -eq "main") { "$releases/dev-latest" } else { "$releases/test-$channel" }
+        if ($channel -eq "main") { Say "Following main." Cyan } else { Say "Following the test channel '$channel'. Remove villheim-channel.txt (or write main in it) to go back to main." Cyan }
+    }
 
     try {
         $latest = (Get-Content (Fetch "version.txt") -Raw).Trim()

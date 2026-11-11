@@ -26,8 +26,31 @@ jobs:
           node tools/blueprint-lab/lib/build_engine.js
           git diff --quiet -- src/Villheim.Logic/Generator/lab.js || echo "::warning::src/Villheim.Logic/Generator/lab.js was out of date; run node tools/blueprint-lab/lib/build_engine.js and commit it"
 
+      # The build label: on main, the build number (commits on main) and the commit, for example 977-96927ef. On a test
+      # branch (look/... or test/...), the main build it starts from, the branch and its commits past main, for example
+      # 977+look-memory.4-abc1234. Test branches post their build as the "test-<branch>" release for the updater's test
+      # channel (villheim-channel.txt in the profile's plugin folder).
+      - name: Build label
+        run: |
+          SHA=$(git rev-parse --short=7 HEAD)
+          if [ "$GITHUB_REF" = "refs/heads/main" ]; then
+            echo "LABEL=$(git rev-list --count HEAD)-$SHA" >> "$GITHUB_ENV"
+          else
+            case "$GITHUB_REF" in
+              refs/heads/look/*|refs/heads/test/*)
+                BRANCH=${GITHUB_REF#refs/heads/}
+                SLUG=${BRANCH//\//-}
+                MAIN=$(git rev-list --count origin/main)
+                AHEAD=$(git rev-list --count origin/main..HEAD)
+                echo "LABEL=$MAIN+$SLUG.$AHEAD-$SHA" >> "$GITHUB_ENV"
+                echo "CHANNEL=$SLUG" >> "$GITHUB_ENV"
+                ;;
+            esac
+          fi
+
       - name: Build
-        run: dotnet build Villheim.sln -c Release -nologo
+        run: |
+          if [ -n "$LABEL" ]; then dotnet build Villheim.sln -c Release -nologo -p:VillheimLabel="$LABEL"; else dotnet build Villheim.sln -c Release -nologo; fi
 
       - name: Package for Thunderstore / manual install
         run: |
@@ -55,9 +78,25 @@ jobs:
           cp src/Villheim/bin/Release/Villheim.dll src/Villheim/bin/Release/Villheim.pdb dev/
           cp src/Villheim.Logic/bin/Release/Villheim.Logic.dll src/Villheim.Logic/bin/Release/Villheim.Logic.pdb dev/
           cp src/Villheim.Logic/bin/Release/{Jint,Acornima,System.Runtime.CompilerServices.Unsafe}.dll dev/
-          # the build label: build number (commits on main), then the commit; a higher number is a later build
-          echo "$(git rev-list --count HEAD)-${GITHUB_SHA::7}" > dev/version.txt
+          echo "$LABEL" > dev/version.txt
           gh release delete dev-latest --yes --cleanup-tag || true
           gh release create dev-latest dev/* --prerelease --target "$GITHUB_SHA" \
             --title "Latest test build" \
-            --notes "Build $(git rev-list --count HEAD)-${GITHUB_SHA::7}. Installed by scripts/Villheim-Updater.ps1; not a release."
+            --notes "Build $LABEL. Installed by scripts/Villheim-Updater.ps1; not a release."
+
+      # A test branch replaces its own "test-<branch>" release. The updater installs it only when the profile's
+      # villheim-channel.txt names that branch.
+      - name: Publish the test channel build
+        if: github.event_name == 'push' && env.CHANNEL != ''
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          mkdir -p dev
+          cp src/Villheim/bin/Release/Villheim.dll src/Villheim/bin/Release/Villheim.pdb dev/
+          cp src/Villheim.Logic/bin/Release/Villheim.Logic.dll src/Villheim.Logic/bin/Release/Villheim.Logic.pdb dev/
+          cp src/Villheim.Logic/bin/Release/{Jint,Acornima,System.Runtime.CompilerServices.Unsafe}.dll dev/
+          echo "$LABEL" > dev/version.txt
+          gh release delete "test-$CHANNEL" --yes --cleanup-tag || true
+          gh release create "test-$CHANNEL" dev/* --prerelease --target "$GITHUB_SHA" \
+            --title "Test channel: $CHANNEL" \
+            --notes "Build $LABEL from the $CHANNEL test branch. Installed by scripts/Villheim-Updater.ps1 when the profile's villheim-channel.txt says $CHANNEL; not a release."

@@ -746,6 +746,8 @@ function generate(req) {
     const score = ([x, z]) => (doorEdges.some(e => Math.hypot(e.x - x, e.z - z) < 2.5) ? 100 : 0) + (thick && !homeWall && walled([x, z]) ? 50 : 0) +
       (homeWall && !walled([x, z]) ? 8 : 0) + (plan === 'court' ? -1 : 1) * Math.hypot(x - doorX, z - w0.cz) * (homeWall && fd.moved ? 0.25 : 1) +
       (homeWall && fd.moved ? fd.sg * (x - w0.cx) * 0.5 : 0) +
+      // where the wing opens into the next one people walk through: a wall fire keeps off that cell
+      (homeWall && [[2, 0], [-2, 0], [0, 2], [0, -2]].some(([dx, dz]) => roomCell(x + dx, z + dz) && !inside(w0, x + dx, z + dz)) ? 12 : 0) +
       // in a thick-walled corner a long iron spit fits along neither wall: a niche in one wall comes first
       (thick && homeWall && [[2, 0], [-2, 0]].some(([dx]) => !roomCell(x + dx, z)) && [[0, 2], [0, -2]].some(([, dz]) => !roomCell(x, z + dz)) ? 6 : 0);
     flatCell = [...cells.values()].filter(([x, z]) => inside(w0, x, z) && !gallery.has(`${x},${z}`)).sort((a, c) => score(a) - score(c))[0] || null;
@@ -772,7 +774,9 @@ function generate(req) {
   // last one up to a hatch
   const climbsUp = storeys - 1 + (flat && !lookout ? 1 : 0);
   const cellsG = loggia ? new Map([...cells].filter(([, c]) => !inLoggia(c))) : cells; // the ground rooms' cells
-  const ladders = climbsUp > 0 ? ladderPlan(cellsG, climbsUp, { door: doorCell, back: backCell, flue: stackKeep || flue }) : [];
+  // (a ladder keeps a cell off a wall hearth where it can: the spit on the fire reaches a metre either side)
+  const fireRing = ['side', 'end'].includes(hearth.spot) ? cellRect([hearth.x, hearth.z]) : null;
+  const ladders = climbsUp > 0 ? ladderPlan(cellsG, climbsUp, { door: doorCell, back: backCell, flue: stackKeep || flue, ring: fireRing }) : [];
   // a straight stair along a wall in place of the first ladder, where a long enough wall has room for it (most of the
   // best-liked builds climb by stairs; bench: req.details.stair true or false)
   const stairWanted = req.details && req.details.stair != null ? req.details.stair
@@ -1950,6 +1954,7 @@ function ladderPlan(cells, n, o = {}) {
       if (prev && (same(L.hole, prev.hole) || same(L.stand, prev.hole) || same(L.land, prev.hole))) continue;
       if (k === 0 && [o.door, o.back].some(d => d && (near(L.stand, d, 0) || near(L.hole, d, 0)))) continue;
       let score = (L.wallSide ? 10 : 0);
+      if (o.ring && [L.stand, L.hole, L.land].some(c => inRect(o.ring, c[0], c[1], 1.1))) score -= 12;
       if (prev && same(L.stand, prev.land)) score += 30;
       if (k === 0 && o.door) score += Math.min(8, Math.hypot(L.hole[0] - o.door[0], L.hole[1] - o.door[1]));
       if (score > bestScore + 1e-9) { best = L; bestScore = score; }

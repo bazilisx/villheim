@@ -872,6 +872,8 @@ function placeable(p, bx, mm, i, b, ctx, room, idx, zones, made, clipOf, anc, fi
     if (dist > 0.9 || dist < -0.6) continue;
     const t0 = Math.min(bx.x0 * f.ux + bx.z0 * f.uz, bx.x1 * f.ux + bx.z1 * f.uz, bx.x0 * f.ux + bx.z1 * f.uz, bx.x1 * f.ux + bx.z0 * f.uz);
     const t1 = Math.max(bx.x0 * f.ux + bx.z0 * f.uz, bx.x1 * f.ux + bx.z1 * f.uz, bx.x0 * f.ux + bx.z1 * f.uz, bx.x1 * f.ux + bx.z0 * f.uz);
+    // another stretch of the same wall line (the wall either side of a doorway or a gap) says nothing about this one
+    if (t1 < f.a0 + 0.05 || t0 > f.a1 - 0.05) continue;
     const st = D._int.stretch(f, t0 + 0.05, t1 - 0.05);
     if (st.ks.has('door')) return no(10);
     // under a window only what stays below the sill (as the decorator's wallSpots)
@@ -1642,6 +1644,9 @@ function apply(b, ctx, zones) {
     const st = stackChests(b, ctx);
     if (st) b.notes.push(`${st} chests stacked on chests.`);
   }
+  // things on item stands round the house, from a stream of their own (lib/stands.js)
+  const St = NODE_B ? require('./stands.js') : window.VHStands;
+  if (St && X.stands !== false) St.dressTops(b, ctx, zones || []);
   // lived in: movable things a little off square, by the household (lib/persona.js)
   if (X.lived !== false && ctx.decor !== 'd1') {
     const m = liveIn(b, ctx, zones || []);
@@ -1943,5 +1948,5 @@ function fitDebug(b, ctx, room, anc, a) {
   const got = fit(b, ctx, room, idx, ctx.zones || [], anc, a, false, fires);
   return { ok: !!got, why: WHY_B, piece: LAST_B, q: LASTQ_B };
 }
-const apiB = { setStats: s => { STATS_B = s; }, liveIn, jitterSpec, WALL_DRESS, WALL_KITS, UNDER, underChoice, residentSlots, slotKits, ROLE_DISPLAYS, groupStorage, spreadTables, spaceBeds, seatRugs, dressWalls, why: () => WHY_B, _fitDebug: fitDebug, BUILT: BUILT_KITS, apply, library, setLibrary, lite, furnishRooms, anchorsOf, roomsB, fit, barCounter, canopyBed, stalls, dais, vignettes, CLASSES, SLOT, FOOD, BUILT_SLOTS, slotOf, isDecor, canDecor };
+const apiB = { setStats: s => { STATS_B = s; }, boxIndex, stands: (b, ctx, zones) => { const St = NODE_B ? require('./stands.js') : window.VHStands; return St ? St.dressTops(b, ctx, zones || []) : 0; }, liveIn, jitterSpec, WALL_DRESS, WALL_KITS, UNDER, underChoice, residentSlots, slotKits, ROLE_DISPLAYS, groupStorage, spreadTables, spaceBeds, seatRugs, dressWalls, why: () => WHY_B, _fitDebug: fitDebug, BUILT: BUILT_KITS, apply, library, setLibrary, lite, furnishRooms, anchorsOf, roomsB, fit, barCounter, canopyBed, stalls, dais, vignettes, CLASSES, SLOT, FOOD, BUILT_SLOTS, slotOf, isDecor, canDecor };
 if (NODE_B) module.exports = apiB; else window.VHKitbash = apiB;

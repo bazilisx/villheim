@@ -523,3 +523,33 @@ node lab/rooms_sheet.js <corpus dir> rows.json [batch]                          
 - With the fill a large building takes 6 to 7 s at best of 8 in the game's engine (the generator decorates its four
   best bare seeds).
 - Plants and food on tables have no vanilla buildable piece; empty horizontal item stands stand in for dishes.
+
+## Items on stands
+
+The stand pass (`tools/blueprint-lab/lib/stands.js` `dressTops`) puts things on flat item stands (`itemstandh`) and wall
+item stands (`itemstand`) at the share of each place that the corpus shows (`lab/mine_stands.js --counts`, the counts in
+`data/stands-corpus.json`; the measure and its band in `lab/test_stands.js`). Corpus counts of 2026-11-11, stands
+holding something inside a building:
+
+- Flat stands (10,940): floor 2,078 (in 140 builds; half of them in 15 builds; 1,893 within 0.5 m of a wall), shelf
+  1,856, table 1,611, ledge 1,122, mantel 1,015, on another stand 745, counter 360 (low stone, grausten, black marble
+  and quarter walls; 151 of 200 groups a single stand), sill 187, rafter 191, chest 99 (read at the lid; 89 on chests,
+  8 on barrels, 2 by a bed), no table under 1 m2.
+- Wall stands (4,787): plain wall 757, beams and posts 648, over a workbench 578, by the hearth 558, on beams over
+  2.3 m 533, over a chest 333, a table 327, a bed 208, by a door 175, a bench 141.
+- Stands on stands: 745 in 71 builds (21 % of the house-like builds with stands), 376 heaps (274 of two), the upper
+  stand 4 to 16 cm off the lower (quartiles) at about its height; heaps stand on the floor (168), tables (39), beams,
+  walls and posts; most hold one kind (food under food 209 of the pairs, drink 94, herbs 65).
+
+What the pass makes from that: settings, rows and single things on tables, benches, chests and low wall tops
+(counters), shelves and mantels, things on sills, hung things on the wall by what stands under it, and heaps (two or
+more stands set into one another, on what a set put down or on the floor against a wall) for the households that heap
+things. Wall stands over a table or a bed wait while those already hold more than the corpus's share of the house's
+wall stands.
+
+Builds whose arrangements were read (title, maker): The Lost Hall of Aegir (doublea1ron); Simple Corewood Lighthouse,
+The Greydwarf Wharf, Quirky Log Cabin, Fogbreaker Fortress (HiccupTheHermit); INCREDIBLE Tavern (Olivanderr); Big Spiral
+House v2.5 (Haakonzen); The Hall of the Gods (halfnate); Badger Forge & Smelting Pit, Wizard Tower, The Serpent's Tail,
+The Burning Tree Hideout (Fluffy-n-Dana); Fantasy Mage House (Apudma); Guest House, Mistlands Era, Tiny Home Challenge
+2 (Viking_Anarchist); Stone Chateau (wolvendrake); Daluffo Home (Deardly); The Iron Villa (Boomboy); medieval tavern
+(thepower3412); Circular Temple for Trader (Mamlaka).

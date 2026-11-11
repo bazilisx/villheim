@@ -493,6 +493,8 @@ function generate(req) {
     const ctx = { K: Kr, C, biome, use: T.use, stoneOK, F, SH, storeys, top: F + storeys * SH };
     clearDoorways(b);
     if (!req.skipDecor) Decor.decorate(b, { use: T.use, decor, biome, type, R, culture: cultureKey, doorX: b.doorX, fireAt: { x: 0, z: 0 }, persona: household, layout: layoutCtx });
+    // things on item stands (lib/stands.js; round houses have no interior library pass)
+    if (!req.skipDecor) Kitbash.stands(b, { K: Kr, C, T, type, use: T.use, biome, decor, persona: household }, keepClear(b));
     // corner and wall-face motifs on the eight-sided walls (details.js), after the furnishing
     if (kind === 'round' && !(req.details && req.details.motifs === false)) Details.roundTrim(b, { K: Kr, C, cultureKey, T, type, stage, decor, biome, plan: 'octagon', F, SH, storeys, edges: [], wings: [], seed });
     settle(b, { ...ctx, type, skipDecor: !!req.skipDecor });

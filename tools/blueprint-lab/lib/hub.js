@@ -35,7 +35,29 @@ const STAGES = ['s1', 's2', 's3', 's4', 's5'];
 const GRAND = {
   fires3: [0.17, 0.63], aisle8: [0.36, 0.89], porch6: [0.17, 0.47], dais: [0.07, 0.32],
   highWindows: [0.04, 0.21], towers2: [0.04, 0.16], anyTower: [0.36, 0.37], gallery: [0.09, 0.11],
+  tiers3: [0.62, 0.68], dragons: [0.19, 0.26],
 };
+
+// The outside of a big hub (s4, s5): features by the village's draw, in the order of their share in the top tenth.
+// So the hub reads as the grandest building from outside, s5 has at least three of them and s4 at least one; s5 keeps
+// all that s4 had. tiers3: roofs in tiers (aisle roofs under the nave, a lantern over the fire; the Celtic hall a
+// raised roof over its smoke hole); porch6: a porch of six or more columns; dragons: carved heads at the gables and the
+// ridge; highWindows: a row of windows in the wall between the aisle roofs and the nave roof (needs tiers3).
+const EXT = { long: ['tiers3', 'porch6', 'dragons', 'highWindows'], round: ['tiers3', 'porch6', 'dragons'], court: ['porch6', 'towers2'] };
+function exteriorOf(has, stage, line, C) {
+  const k = +stage[1];
+  if (k < 4) return {};
+  const list = (EXT[line] || []).filter(f => f !== 'dragons' || C.dragons);
+  const pick = (st, min, base) => {
+    const out = { ...base };
+    for (const f of list) if (has(f, st)) out[f] = true;
+    for (const f of list) { if (Object.keys(out).length >= min) break; out[f] = true; }
+    if (out.highWindows) out.tiers3 = true;
+    return out;
+  };
+  const s4 = pick('s4', 1, {});
+  return k === 4 ? s4 : pick('s5', 3, s4);
+}
 
 function rngH(seed) {
   let s = (seed >>> 0) || 1;
@@ -347,6 +369,19 @@ function campDesign(b, K, T, o) {
 
 // ---------------------------------------------------------------- long hall
 
+// A covered entrance over a door in a wall facing -z at (x0, z0): posts 'len' metres out at the front corners and every
+// 2 m along the sides, beams, a small gable roof running out from the wall with its gable to the front. 'wy': the
+// beams' height. Six posts or more make it the column porch (corpus: 6 or more columns, hubs.md).
+function coveredEntrance(b, K, C, T, x0, z0, wy, len) {
+  const zs = []; for (let d = 2; d <= len + 0.01; d += 2) zs.push(z0 - d);
+  for (const z of zs) for (const sx of [-1.9, 1.9]) T.posts(b, K, x0 + sx, z + 0.1, wy);
+  for (const sx of [-1.9, 1.9]) for (let d = 1; d < len; d += 2) b.put(K.beam, x0 + sx, wy + 0.1, z0 - d, 90);
+  for (const x of [x0 - 1, x0 + 1]) b.put(K.beam, x, wy + 0.1, z0 - len + 0.1, 0);
+  const parts = T.gablePieces(K, C, { cx: x0, cz: z0 - len / 2, W: len / 2, D: 3, alpha: 90 }, wy + 0.2, 1, [false, true], null, null);
+  for (const p of parts) b.put(p.name, p.x, p.y, p.z, p.yaw);
+  b.notes.push(`A covered entrance on ${zs.length * 2} posts at the main door.`);
+}
+
 // A straight flight of wood_stair pieces (each climbs 1 m over a 2 m cell) up the cells in St.run from the floor at
 // yLow toward St.dir, as lib/generate.js putStairRun.
 function putStair(b, K, St, yLow) {
@@ -377,7 +412,8 @@ function longHall(b, K, C, T, o) {
   const doors = [{ x: 0, z: -D, yaw: 0, main: true }];
   if (+stage[1] >= 3 || C.opposedDoors) doors.push({ x: C.opposedDoors ? 0 : -W + 5, z: D, yaw: 0 });
   const isDoor = (x, z) => doors.find(d => Math.abs(d.x - x) < 0.01 && Math.abs(d.z - z) < 0.01);
-  const porch = has('porch6', stage);
+  const ext = o.ext || {};
+  const porch = !!ext.porch6;
   // walls
   const edges = [];
   for (let x = -W + 1; x < W; x += 2) for (const z of [-D, D]) edges.push({ x, z, yaw: 0, nx: 0, nz: z < 0 ? 1 : -1 });
@@ -402,6 +438,7 @@ function longHall(b, K, C, T, o) {
   for (let x = -W; x <= W; x += 2) for (const z of [-D, D]) if (C.frame && (x + W) % 4 === 0) T.posts(b, K, x, z + Math.sign(z) * 0.2, top);
   // aisle posts, a beam along each row at the gallery height or the wall top
   const postTop = gallery ? SHt * 2 : top;
+  const postTopOf = () => postTop;
   for (const x of postXs) for (const v of [-aisle, aisle]) { T.posts(b, K, x, v, postTop, K.poleLong && /log/.test(K.poleLong) ? null : null); }
   if (aisle) for (const v of [-aisle, aisle]) for (let x = postXs[0] + 1; x < postXs[postXs.length - 1]; x += 2) b.put(K.beam, x, (gallery ? SHt : postTop) + 0.1, v, 0);
   // gallery floors over the aisles (s5), with a rail on the open side. A stair to each gallery in the outer aisle row at
@@ -438,14 +475,55 @@ function longHall(b, K, C, T, o) {
     for (const v of loft.v) if (!(v === L.hole[1] && Math.abs(xe - L.hole[0]) < 1.1)) b.put(K.fence, xe, yL + 0.6, v, 90);
     if (!gallery) for (const x of loft.x) for (const sg of [-1, 1]) if (!(x === L.hole[0] && Math.abs(sg * vm - L.hole[1]) < 1.1)) b.put(K.fence, x, yL + 0.6, sg * vm, 0);
   }
-  // roof: a gable over the whole hall (lib/generate.js gablePieces)
+  // roof. A gable over the whole hall; or in tiers (s4, s5 by the draw): lean-to roofs over the aisles from the wall
+  // top up to the aisle posts, a wall band on the posts (windows in it when the village has the high windows), the
+  // nave's gable over that, and a lantern over the main fire
   const r = (C.pitch || 45) === 45 ? 2 : 1;
-  const w = { cx: 0, cz: 0, W, D, alpha: 0, main: true };
-  const parts = T.gablePieces(K, C, w, top, r, [true, true], null, null);
-  for (const p of parts) b.put(p.name, p.x, p.y, p.z, p.yaw);
-  const capY = top + r * (D - 1) / 2;
-  if (C.dragons && +stage[1] >= 4) for (const sg of [-1, 1]) b.put('wood_dragon1', sg * (W + 0.6), capY - 0.7, 0, sg > 0 ? 90 : 270, { decor: true });
-  // porch: a row of posts 4 m out from the front, a lean-to roof against the wall (corpus: 6 or more columns)
+  const tiers = big && aisle && ext.tiers3;
+  let capY, roofTop = top;
+  if (tiers) {
+    const aTop = top + (D - aisle) / 2, cTop = aTop + (stage === 's5' ? 3 : 2);
+    for (const sg of [-1, 1]) for (let x = -W + 1; x < W; x += 2) {
+      for (let v = aisle + 1; v < D; v += 2) b.put(K.roof26, x, top + (D - 1 - v) / 2, sg * v, sg > 0 ? 0 : 180);
+      b.put(K.roof26, x, top - 0.5, sg * D, sg > 0 ? 0 : 180);
+    }
+    // the ends of the aisle roofs and the nave's end wall up to the band's top
+    for (const ex of [-W, W]) {
+      for (const sg of [-1, 1]) for (let v = aisle + 1; v < D; v += 2) {
+        const low = top + (D - 1 - v) / 2;
+        if (low > top + 0.01) T.wallSegment(b, K, C, ex, top, sg * v, 90, low - top, 'wall', 'plank');
+        b.put(K.gable26, ex, low, sg * v, sg < 0 ? 270 : 90);
+      }
+      for (let z = -aisle + 1; z < aisle; z += 2) T.wallSegment(b, K, C, ex, top, z, 90, cTop - top, Math.abs(z) < 0.01 ? 'window' : 'wall', 'plank');
+    }
+    // the posts carry on up to the aisle roofs' top; a beam along them, the band, a beam on top
+    for (const x of postXs) for (const v of [-aisle, aisle]) for (let y = postTopOf(); y < aTop - 0.01;) { const h = aTop - y >= 2 ? 2 : 1; b.put(h === 2 ? K.pole : K.pole1, x, y + h / 2, v); y += h; }
+    for (const v of [-aisle, aisle]) for (let x = -W + 1; x < W; x += 2) {
+      b.put(K.beam, x, aTop, v, 0);
+      T.wallSegment(b, K, C, x, aTop, v, 0, cTop - aTop, ext.highWindows && Math.abs(x) % 4 === 2 && Math.abs(x) < W - 2 ? 'window' : 'wall', 'plank');
+      b.put(K.beam, x, cTop, v, 0);
+    }
+    const parts = T.gablePieces(K, C, { cx: 0, cz: 0, W, D: aisle, alpha: 0, main: true }, cTop, r, [true, true], null, null);
+    for (const p of parts) b.put(p.name, p.x, p.y, p.z, p.yaw);
+    capY = cTop + r * (aisle - 1) / 2;
+    // the lantern over the main fire: posts on the ridge, a small gable roof over them, open at the sides for the smoke
+    const ly = capY + 0.4;
+    for (const lx of [-2.9, 2.9]) for (const lz of [-0.9, 0.9]) b.put(K.pole1, lx, ly + 0.5, lz);
+    for (const lz of [-0.9, 0.9]) for (const lx of [-2, 0, 2]) b.put(K.beam, lx, ly + 1, lz, 0);
+    for (const lx of [-2, 0, 2]) { for (const sg of [-1, 1]) b.put(K.roof26, lx, ly + 1, sg * 1, sg > 0 ? 0 : 180); b.put(K.roofTop26, lx, ly + 2, 0, 0); }
+    roofTop = ly + 2.3;
+    b.notes.push(`Roofs in tiers: aisle roofs, a ${ext.highWindows ? 'band of high windows' : 'wall band'} under the nave roof, a lantern over the fire.`);
+  } else {
+    const parts = T.gablePieces(K, C, { cx: 0, cz: 0, W, D, alpha: 0, main: true }, top, r, [true, true], null, null);
+    for (const p of parts) b.put(p.name, p.x, p.y, p.z, p.yaw);
+    capY = top + r * (D - 1) / 2;
+    roofTop = capY;
+  }
+  // carved heads at both gables, and with the dragons drawn one on each end of the lantern's ridge too
+  if ((C.dragons && big) || ext.dragons) for (const sg of [-1, 1]) b.put('wood_dragon1', sg * (W + 0.6), capY - 0.7, 0, sg > 0 ? 90 : 270, { decor: true });
+  if (ext.dragons && tiers) for (const sg of [-1, 1]) b.put('wood_dragon1', sg * 3.6, roofTop - 0.6, 0, sg > 0 ? 90 : 270, { decor: true });
+  // porch: a row of posts 4 m out from the front, a lean-to roof against the wall (corpus: 6 or more columns); else
+  // from s4 a covered entrance over the main door
   if (porch) {
     const zp = -D - 4, yb = Math.min(3, top - 2);
     const xs = []; for (let x = -9; x <= 9; x += 2) xs.push(x);
@@ -453,13 +531,13 @@ function longHall(b, K, C, T, o) {
     for (let x = -8; x <= 8; x += 2) b.put(K.beam, x, yb + 0.1, zp + 0.15, 0);
     for (let x = -8; x <= 8; x += 2) { b.put(K.roof26, x, yb + 1, zp + 3, 180); b.put(K.roof26, x, yb, zp + 1, 180); }
     b.notes.push(`Porch of ${xs.length} posts along the front.`);
-  }
+  } else if (big) coveredEntrance(b, K, C, T, 0, -D, 3, 4);
   // stair or step at a door that is off the ground: none (the hall stands on the ground)
   b.rooms.push({ x0: -W, x1: W, z0: -D, z1: D, y: 0, h: SHt * storeys, use: 'hall', main: true, door: { x: 0, z: -D } });
   if (gallery) for (const sg of [-1, 1]) b.rooms.push({ x0: -W, x1: W, z0: sg > 0 ? aisle : -D, z1: sg > 0 ? D : -aisle, y: SHt, h: top - SHt, use: 'gallery' });
   if (loft) { const vm = loft.v[loft.v.length - 1] + 1; b.rooms.push({ x0: -W, x1: loft.x[loft.x.length - 1] + 1, z0: -vm, z1: vm, y: loftY, h: 2.4, use: 'loft' }); }
   b.doorX = 0;
-  return { W, D, top, capY, aisle, postXs, doors, loft, gallery, ladders, stairs, loftY, porch };
+  return { W, D, top, capY, roofTop, aisle, postXs, doors, loft, gallery, ladders, stairs, loftY, porch };
 }
 
 // ---------------------------------------------------------------- round hall
@@ -533,7 +611,13 @@ function roundHall(b, K, C, T, o) {
   // sizes: 10, 15, 20 and 30 m across (Celtic table in hubs.md: 9.7, 14.5, about 20, about 30; hub1 s4 20 m)
   const spec = { s2: { N: 16, L: 2 }, s3: { N: 24, L: 2 }, s4: { N: 16, L: 4 }, s5: { N: 24, L: 4 } }[stage];
   const { N, L } = spec, ap = ringPoly(N, L);
-  const SHt = k === 4 ? 4 : 3, storeys = k === 5 ? 2 : 1, top = SHt * storeys;
+  // the two round forms part from s2 (D-137 B): the Norse round hall stands on 4 m walls (two storeys of 3 m at s5) under a low
+  // outer roof that steepens toward the crown, clear inside to s4, with a smoke cap over the crown at s2 and s3 and
+  // the drum from s4; the Celtic round house stands on 3 m walls of logs under one steep cone (a 26 degree eave ring first, two at s5); the Norse outer roof keeps two low rings, a ring of posts inside
+  // from s2 (two at s5, Navan Fort), the crown left open over the fire and from s4 a raised roof over it
+  const celt = o.cultureKey !== 'norse';
+  const ext = o.ext || {};
+  const SHt = k === 5 ? 3 : celt ? 3 : 4, storeys = k === 5 ? 2 : 1, top = SHt * storeys;
   const doorSide = N / 2, doorK = L === 4 ? 1 : 0;
   // the floor, the hearth's stone flags under the fire from s2 (D-131)
   polyFloor(b, K, N, ap, 0, { center: () => b.put('stone_floor_2x2', 0, -0.375, 0, 0, { hearthStone: true }) });
@@ -555,13 +639,14 @@ function roundHall(b, K, C, T, o) {
   const rings = [];
   if (k === 5) rings.push(ap - 4.5);
   if (k >= 4 && !drum) rings.push(k === 5 ? 6.5 : 6.3);
+  if (k <= 3 && celt) rings.push(ap - 2.2);
   const gallery = k === 5;
   // drum: an inner ring of walls with high windows on posts, an outer ring roof up to it and an inner cone over it
   let roofTop, peak, drumR = 0;
   const Nd = k === 5 ? 18 : 16, apD = ringPoly(Nd, 2);
   if (drum) drumR = apD;
   // outer roof
-  const rsOut = drum ? [1] : k === 5 ? [1, 1, 1, 2] : k === 4 ? [1, 2] : [1, 2];
+  const rsOut = drum ? [1] : celt ? (k === 5 ? [1, 1, 2] : [1, 2]) : k === 5 ? [1, 1, 1, 2] : [1, 1, 2];
   // the crown left open over the fire: the smoke hole (a ring of five pieces there reads as spikes)
   const outer = ringRoofH(b, K, ap, top, rsOut, { stop: drum ? apD : 0, gap: 0, crown: 2.4 });
   roofTop = outer.top; peak = outer.top;
@@ -620,6 +705,34 @@ function roundHall(b, K, C, T, o) {
   // the gallery ring as one rect: its rail closes it off from the open middle
   if (gallery) b.rooms.push({ x0: -ap, x1: ap, z0: -ap, z1: ap, y: SHt, h: SHt, use: 'gallery' });
   b.doorX = door.x;
+  // the crown: a smoke cap on four short posts over the Norse hall's crown (s2, s3); over the Celtic crown from s4 a
+  // raised roof on a ring of posts, open at the sides for the smoke, with a finial post on top
+  const crownY = outer.top;
+  if (!drum && (!celt || k >= 4)) {
+    const big = celt && k >= 4, rp = big ? 2.6 : 1.4, hp = big ? 2 : 1;
+    const np = big ? 8 : 4;
+    for (let i = 0; i < np; i++) { const a = (i + 0.5) * 360 / np; for (let y = crownY - 0.6; y < crownY - 0.6 + hp - 0.01; y += 1) b.put(K.pole1, Math.sin(rad(a)) * rp, y + 0.5, Math.cos(rad(a)) * rp); }
+    const cap = ringRoofH(b, K, big ? 3.4 : 1.9, crownY - 0.6 + hp, big ? [2] : [1], { eave: true, crown: 0.4 });
+    peak = Math.max(peak, cap.top + (big ? 0 : 0.5));
+    if (big) { for (let y = cap.top - 0.5; y < cap.top + 1.5; y += 1) b.put(K.pole1, 0, y + 0.5, 0); peak = cap.top + 1.5; }
+    else b.put(K.roofTop26 || 'wood_roof_top', 0, cap.top, 0, 0);
+    b.notes.push(big ? 'A raised roof on a ring of posts over the open crown, a finial post on top.' : 'A smoke cap on four posts over the crown.');
+  }
+  // s2 stands inside the camp's ring of lean-tos, which come down as the hall rises (D-132: things may move or go;
+  // the mod tears an old stage down before the new one goes up, ConstructionSite.cs). One lean-to stands on behind the
+  // hall as a woodshed, moved out clear of the eaves, open toward the hall
+  if (k === 2) {
+    const sh = leanTo(b, K, 0, ap + 1.8);
+    const [wx, wz] = sh.at(ap + 3.4, 0);
+    b.put('wood_stack', wx, 0.57, wz, 90, { decor: true, ds: 2 });
+    b.notes.push('The camp\'s lean-tos give way to the hall; one stands on behind it as a woodshed.');
+  }
+  // the covered entrance at the main door from s4, six posts with the porch draw (at s5 always)
+  if (k >= 4) {
+    const wy = Math.min(3, top - 1.6);
+    coveredEntrance(b, K, C, T, door.x, -ap, wy, ext.porch6 ? 6 : 4);
+    if (ext.dragons) b.put('wood_dragon1', door.x, wy + 1.3, -ap - (ext.porch6 ? 6 : 4) - 0.6, 180, { decor: true });
+  }
   void roofTop; void has;
   return { ap, N, L, top, peak, door, doors, rings, postsOf, gallery, ladders, drum, drumR, SHt };
 }
@@ -793,6 +906,16 @@ function courtDesign(b, K, C, T, o) {
     }
   }
   for (const [, [x, z]] of colPts) { if (K.stonePillar) T.column(b, K, x, z, 0, SHt); else T.posts(b, K, x, z, SHt); }
+  // a portico before the gate (the porch draw, hubs.md: 6 or more columns): six columns 4 m out, a flat roof with a
+  // parapet on them
+  if (gate && (o.ext || {}).porch6) {
+    const zc = -O - 3.9;
+    for (const x of [-5, -3, -1, 1, 3, 5]) { if (K.stonePillar) T.column(b, K, x, zc, 0, SHt); else T.posts(b, K, x, zc, SHt); }
+    for (let x = -4; x <= 4; x += 2) { b.put(K.beam, x, SHt, zc, 0); for (const z of [-O - 1, -O - 3]) b.put(K.floor, x, SHt, z); }
+    for (let x = -4; x <= 4; x += 2) b.put(K.wallHalf, x, SHt + 0.5, -O - 4, 0);
+    for (const x of [-5, 5]) for (const z of [-O - 1, -O - 3]) b.put(K.wallHalf, x, SHt + 0.5, z, 90);
+    b.notes.push('A portico of six columns before the gate.');
+  }
   const wellOn = k >= 3;
   // rooms: each wing on each floor, the towers' floors, the roofs as terraces; the yard is open air
   const wingRects = [];
@@ -993,7 +1116,7 @@ function generate(req, T) {
   const early = biome === 'Meadows' || biome === 'Black Forest';
   let wallStyle;
   if (line === 'court') wallStyle = K.stoneWall && !early ? 'stone' : 'plank';
-  else if (early) wallStyle = k >= +String((SH.HUB || {}).stoneFrom || 's4').slice(1) ? 'stone-base' : (C.logWalls && biome !== 'Meadows' ? 'log' : 'plank');
+  else if (early) wallStyle = k >= +String((SH.HUB || {}).stoneFrom || 's4').slice(1) ? 'stone-base' : ((C.logWalls || (line === 'round' && cultureKey !== 'norse' && K.wallLog)) && biome !== 'Meadows' ? 'log' : 'plank');
   else wallStyle = C.stoneWalls ? 'stone' : k >= 4 ? 'stone-base' : (C.logWalls ? 'log' : 'plank');
   // the Meadows kit has no stone pieces: the stone course takes the Black Forest's (the next biome, lib/pieces.js
   // buildReach)
@@ -1001,21 +1124,22 @@ function generate(req, T) {
   C.wallStyle = wallStyle;
   C.baseTop = 0.6;
   const info = { type: 'hub', biome, cultureKey, stage, decor, seed, line, family: k === 1 ? 'camp' : line, walls: k === 1 ? 'none' : wallStyle };
+  const ext = exteriorOf(has, stage, line, C);
   let F = {};
   if (k === 1) campDesign(b, K, T, { R, cultureKey, decor, place, biome });
   else {
     if (line === 'long') {
       const sz = { s2: [9, 5, 3, 1], s3: [11, 7, 4, 1], s4: [15, 7, 4, 1], s5: [17, 9, 3, 2] }[stage];
-      F = longHall(b, Kw, C, T, { W: sz[0], D: sz[1], SHt: sz[2], storeys: sz[3], stage, has, R, wallStyle });
+      F = longHall(b, Kw, C, T, { W: sz[0], D: sz[1], SHt: sz[2], storeys: sz[3], stage, has, R, wallStyle, ext });
       F.door = { x: 0, z: -F.D };
       info.plan = 'long'; info.roof = 'gable';
       b.notes.push(`Long hall ${2 * F.W} x ${2 * F.D} m round the fire${F.aisle ? `, ${F.postXs.length * 2} aisle posts` : ''}${F.loft ? ', a loft at one end' : ''}${F.gallery ? ', a gallery over both aisles' : ''}.`);
     } else if (line === 'round') {
-      F = roundHall(b, Kw, C, T, { stage, line, has, cultureKey, wallStyle });
+      F = roundHall(b, Kw, C, T, { stage, line, has, cultureKey, wallStyle, ext });
       info.plan = 'round'; info.roof = F.drum ? 'drum' : 'conical';
       b.notes.push(`Round hall of ${F.N} sides, ${(2 * F.ap).toFixed(1)} m across round the fire${F.rings.length ? `, ${F.rings.length} ring${F.rings.length > 1 ? 's' : ''} of posts` : ''}.`);
     } else {
-      F = courtDesign(b, Kw, C, T, { stage, has, biome, wallStyle });
+      F = courtDesign(b, Kw, C, T, { stage, has, biome, wallStyle, ext });
       F.door = F.gate ? { x: 0, z: -F.O } : { x: 0, z: -F.Q };
       info.plan = 'court'; info.roof = 'flat';
       b.notes.push(`Court: ${Object.values(F.wing).filter(Boolean).length} wings round a ${2 * F.Q} m yard with the fire in the middle${F.iwan ? ', an iwan facing the yard' : ''}${F.corners.length ? `, ${F.corners.length} tower${F.corners.length > 1 ? 's' : ''}` : ''}.`);
@@ -1050,8 +1174,8 @@ function generate(req, T) {
   const L = b.leader || { x: 0, y: 0, z: 3, yaw: 180 };
   const markers = [...b.markers, { kind: 'seat', x: +L.x.toFixed(3), y: +L.y.toFixed(3), z: +L.z.toFixed(3), yaw: Math.round(L.yaw || 0), leader: true }];
   // the drawn features this line builds (the rest of GRAND has no form in it yet)
-  const USED = { long: ['fires3', 'porch6', 'dais'], round: ['fires3', 'dais'], court: ['towers2', 'dais'] };
-  info.features = k === 1 ? [] : (USED[line] || []).filter(f => has(f, stage));
+  const USED = { long: k === 5 ? ['fires3', 'dais'] : ['dais'], round: k === 5 ? ['fires3', 'dais'] : ['dais'], court: ['dais'] };
+  info.features = k === 1 ? [] : [...new Set([...(USED[line] || []).filter(f => has(f, stage)), ...Object.keys(ext)])];
   const name = `hub_${biome.replace(' ', '')}_${cultureKey}_${line}_${stage}${decor}_${seed}`;
   return {
     ground: 0,

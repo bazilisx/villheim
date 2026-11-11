@@ -3,7 +3,20 @@
 Current facts only. Read this at the start of a session. Narrative is in `docs/daily-notes/`, goals in
 `docs/ROADMAP.md`, how-to in `docs/DEVELOPMENT.md`.
 
-## Current State (as of 2026-11-10)
+## Current State (as of 2026-11-11)
+
+Design, 2026-11-11 (note, Session 1): the generator's design tracks are merged to main (1068c6d through
+`design/integration`; docs and data 43bcd8e, b2c31a2, 8e1860f; CI built 8e1860f). In the lab now: decor from any
+biome with no caps (D-065, D-126); the pool gate checks the plan's shape family between stages and only reports
+nesting and lineage (D-132); beds, tables, seats, rugs and chests drawn, turned, stacked and placed by corpus counts
+per room kind and culture group; clips at corpus depths for wall stands, torches, chest pairs and signs (D-127);
+item stands by household and place share, counters, heaps and sunk stands; home fires mostly against a wall, moving
+between stages, stone fronts from s2 and grausten in the Ashlands (D-131); the lab page with Building and Culture up
+front and stage sliders. Bundles rebuilt at 5a07fae. None of it tried in the game. The published lab page predates
+round 3 (republish). Plans only: hubs (D-137 to D-142), landscaping (D-143 to D-147), ideas study (D-150, D-151).
+Open misses, track states and resume prompts: `docs/handoffs/2026-11-10-design/README.md`.
+
+### As of 2026-11-10
 
 Latest build: the newest commit on main (CI publishes every push; `vh version` shows the hash). Work of 2026-11-10 (note, Sessions 1 to 5), in clusters that can be reverted one at a time: A the
 overnight branch (plots by real footprints, set-aside projects, tool churn, `vh plot`), B lag (PieceIndex,
@@ -17,7 +30,7 @@ LagSummarySeconds and StatusLineSeconds. Nothing from 2026-11-10 tried in the ga
 on in its own session on branch `design/kitbash`: merged 2026-11-10 as 6bf75ae (room layout planner, from feat/layout),
 558604b (pool audit gate, round 6 defects fixed in the lab), 4496d51 (piece sizes from the game's models, hung pieces
 held by the wall's collider), d40b648 (decor reach for D-080), c8c63f0 (Interiors tab, households arrange homes their own way). The lab page is
-republished. Design work paused 2026-11-10: creative sets merged (8f3cb45); decor-any-biome, item stands and hearths on branches design/wip-decor-limits, design/wip-stands, design/wip-hearths; index and resume prompts in docs/handoffs/2026-11-10-design/README.md. `vh testpool make` now audits the pool before it
+republished. Creative sets merged 2026-11-10 (8f3cb45). `vh testpool make` now audits the pool before it
 replaces the old one ('force' to skip). Design helper (note, Session 9): 148 creative interior sets (KC-, combined and clipped objects by
 role and household trait), 56 of them mined from the full corpus (1,536 builds); the interior library holds 201
 distinct prefabs (was 109). Design helper (note, Session 10): `lab/richness.js` measures how much of the corpus and the library reaches designs; room ceilings read from the game's solids (77452c3); the library's sets come before the decorator's extras (1545946); clips made on purpose marked in the file for the pool audit (e44db1e, D-098); richness floors in the pool gate and `make_testpool.js --sample` for Black Forest and Plains pools (d9103bf). Prefabs per sample 95 to 105, mined sets placed 43 to 78, decorator's own share 55.9 to 47 %; engine time per design up about a third. Old design branches feat/* are all in main and can be deleted. Next: Tyler's test (Tests tab T-631 on), rafts (D-078),
@@ -166,7 +179,7 @@ walkable building pads, underwater rocks, smaller lag spikes, D-080.
 
 ## Outstanding work
 
-- Test the latest build in game (nothing from 2026-11-10 tried yet). Watch: hammer animation, villagers in beds, cooking on the hearth station
+- Test the latest build in game (nothing from 2026-11-10 or 2026-11-11 tried yet). Watch: hammer animation, villagers in beds, cooking on the hearth station
   (`IsFireLit`), bed and workbench spots ("No covered room for" in the log), `interact` and `eat` triggers, jitter.
 - Put blueprints in the blueprints folder (house-cabin-1, house-cabin-2...) to give villages curated buildings and
   upgrade chains; `vh savebp` can capture any build.
@@ -178,6 +191,7 @@ walkable building pads, underwater rocks, smaller lag spikes, D-080.
 
 ## Recent milestones
 
+- **2026-11-11 (design tracks merged: library first, essentials, hearths, stands, lab page)** - see docs/daily-notes/2026-11/2026-11-11.md
 - **2026-11-10 (design pause: four helper tracks, handoff)** - see docs/daily-notes/2026-11/2026-11-10.md
 - **2026-11-10 (design helper: library first, richness gate)** - see docs/daily-notes/2026-11/2026-11-10.md
 - **2026-11-10 (design helper: creative interior sets)** - see docs/daily-notes/2026-11/2026-11-10.md

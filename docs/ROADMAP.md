@@ -316,9 +316,28 @@ well (Tyler, 2026-11-08). The Features tab of the review sheet (`docs/features/b
   1. [x] Pool audit as a gate for `make_testpool.js` and `vh testpool make`; every round 6 screenshot defect is a
      measure (558604b).
   2. [x] One table of piece sizes from the game's models, `lab/test_sizes.js` (4496d51).
-  2h. [ ] Paused 2026-11-10, resume from docs/handoffs/2026-11-10-design/README.md: decor any biome and no caps (D-065,
-     D-126; design/wip-decor-limits), item stands (design/wip-stands), hearths and lighting (design/wip-hearths), and
-     D-132 (stages and decor phases need not carry everything over; nesting and shell kept become reported measures).
+  2h. [x] Design tracks of 2026-11-10 and 2026-11-11 merged to main through design/integration (1068c6d; records in
+     docs/handoffs/2026-11-10-design/): decor any biome and no caps (D-065, D-126; `lib/pieces.js` decorOk); D-132 in
+     the pool gate (`lib/audit.js` shapeChange; nesting and lineage reported only); beds per household and essentials
+     from corpus counts (`lib/decorate.js`, `lib/kitbash.js`); D-127 clips at corpus depths (`lib/stands.js`,
+     `lib/kitbash.js` CHEST_PAIR and CHEST_WALL, `lib/audit.js` floorSign); item stands and feasts (`lib/stands.js`,
+     `lib/persona.js`); home fires against walls, fires that move between stages, stone fronts from s2 and grausten
+     fronts (D-131, `lib/generate.js` hearthDraw, hearthPlan, hearthFront); the lab page with Building and Culture up
+     front and stage sliders (`web/app.html`). Not tried in the game.
+  2k. [ ] Open from the 2026-11-11 merge (README "Integration, round 3"): item stands round 4: wall stands over
+     stations 38.3 % of wall stands against the corpus 16.9 (tavern d3 rooms have few plain wall spots; `lib/stands.js`
+     wallBusy keeps a 0.6 m margin against a corpus gap between wall stands of 0.31, 0.49 and 0.97 m at the 10th, 25th
+     and 50th percentiles), stands per house q3 21 against the band, single floor stands by a wall; rugs layered 14.4 %
+     against 21; seats by a fire 11 % against 4; home Mountain s2d2 139 overlap (a ground torch by a log bench); Baltic
+     Ashlands homes fail support and stability on ashwood beams; republish the lab page from 5a07fae.
+  2l. [ ] The ideas study's top gaps (docs/handoffs/2026-11-10-design/ideas.md, generated pool against the corpus):
+     upper storeys at s3 (27 % against 75 % of Norse buildings; a question against D-069 goes to Tyler first);
+     roofscape (ridge lines, valleys, cross gables); windows by kind, size and count (D-151); varied and worn trim;
+     banners (6 % against 53 %); yard decks, rails and low walls in place of closed fences; deep eaves (D-150); fewer
+     lights (0.7 per 10 m2 against 0.2); kitchen stations (butcher table, oven, prep table, mortar); wide doors on halls,
+     taverns and barns (8 % against 42 % of door motifs).
+  2m. [ ] Tie beams in halls and taverns, and in houses large enough, never small houses (D-128); the size from the
+     corpus is open. Gives rafter stands and hung things a place.
   2i. [ ] **Central hearth (hub) per culture, growing with the village (Tyler, 2026-11-11):** the village's
      gathering place and the leader's usual spot, the same idea as Millénaire's town halls (D-067: the hearth is the
      hub). Early stages are spare: a campfire with lean-tos round it. Each stage grows larger and grander, with more
@@ -327,17 +346,21 @@ well (Tyler, 2026-11-08). The Features tab of the review sheet (`docs/features/b
      Meadows hearth (`BepInEx/config/Villheim/blueprints/inspiration/board/`: hub1_s1d2, hub1_s1d3; drafts
      hub1_s2d3, hub1_s3d3, hub1_s4d3, the last two the same 1,006 pieces). No s5 save or draft was found; work on
      s2 to s5 made after the drafts were written (2026-11-07, 6:54 PM MT) may still stand on the board in the flat
-     test world. Plan: docs/handoffs/2026-11-10-design/hubs.md (design/wip-hubs); questions D-137 to D-142. Plan first (docs and
-     data), generator work after the interior tracks merge.
+     test world. Plan and data done and merged (docs/handoffs/2026-11-10-design/hubs.md, `data/hubs/`, 43bcd8e). The
+     interior tracks are merged. Next: the `hub` type, the s1 camp generator and the round line from hub1, once D-137 to
+     D-142 are answered.
   2j. [ ] **Landscaping and greenery across the village (Tyler, 2026-11-11, D-143):** trees, bushes, plants, vines
      on houses, gardens and raised beds as beautification, placed along roads, around and on houses, in courtyards and
      yards, and at road junctions. Research first from the corpus and outside sources (player builds and professionally
      made games), then placement in the lab. Villagers never harvest village landscaping for materials (mod side).
+     Research and placement plan done and merged (docs/handoffs/2026-11-10-design/landscaping.md, `data/landscape/`,
+     b2c31a2). Not built: the lab pass (`lib/landscape.js` after the yard, a `landscape` mark and `#VillheimLandscape`
+     list); mod side, gatherers and foragers skipping village greenery. D-144 to D-147 open.
   2b. [ ] **Next, asked for by Tyler (2026-11-10):** one more round of tightening the piece models: rerun
      `lab/extract_models.py` on Tyler's PC (game files under Z:\SteamLibrary\steamapps\common\Valheim, UnityPy) with
      a finer proxy (more parts than the 40 or so now), `lab/build_models.js`, then every check; and in `lib/mesh.js`
      split a prism (a blanket, a hide) into several boxes along its outline instead of one box round it. Used by the
-     generator, the checks and the lab page; no textures.
+     generator, the checks and the lab page; no textures. Not started as of 2026-11-11.
   2d. [x] Creative interior sets (D-065, D-098, design helper 2026-11-10): 92 combined and clipped sets, KC-001 on,
      each with role, household traits, rooms, decor stages, biome, footprint and height; the interior library holds
      193 of the 220 decor prefabs the corpus uses (was 109). `docs/INTERIOR_DESIGN.md`, "Creative sets".
@@ -351,21 +374,31 @@ well (Tyler, 2026-11-08). The Features tab of the review sheet (`docs/features/b
      interior library's sets come before the decorator's extras, hung pieces slide, floor sets on raised sections,
      biomeSafe keeps decor reach (1545946); richness floors in the pool gate, `make_testpool.js --sample` for a Black
      Forest and a Plains pool (d9103bf). Not tried in the game.
-  2g. [ ] From the richness work: engine time per design is up about a third (gen-test); test_variance at s2d2 a
-     little closer (home-a 0.61, home-c 0.66, hall 0.60); the Black Forest and Plains sample pools fail the gate on
-     defects main had before (mountClip, hang, intoWall, doorway); the 16 most used prefabs still make 80 % of decor.
+  2g. [ ] From the richness work: engine time per design is up about a third (gen-test); the 16 most used prefabs
+     still make 80 % of decor. Since the 2026-11-11 merge every test_variance mean is under 0.6 and the Norse Meadows,
+     Black Forest and Plains sample pools pass the gate (README "Integration, round 3").
   3. [ ] Growth that adds to the earlier stage for storehouse (46 %), home a (49 %), hall (54 %), barn (63 %); origins
      centered on the s3 footprint. Found: the storehouse's s2 back-room partition is planned again at s3 and moves;
      home a loses floors, roof ridges and its yard fence. Keep the partition and yard decisions across a line's stages.
+     Under D-132 only the plan's shape family must stay (gated by `lib/audit.js` shapeChange); temples and Middle
+     Eastern homes still change shape family between stages (lab-page.md).
   4. [x] Household variance as a measure (c8c63f0): likeness by furniture and arrangement, gate on home lines over
      0.7, `lab/test_variance.js` (7 of 8 houses under 0.6; home a s2d2 0.61). Floor sets may stand on the raised
      sections that line Norse homes' walls (1545946).
   4b. [x] Interiors tab on the lab page (c8c63f0); page republished 2026-11-10.
   5. [ ] Sort the corpus by culture and mine assemblies per culture (blueprints on Tyler's PC and branch `corpus`).
-  6. [ ] Interior study (valheimians, BG3 and the rest) into assemblies and room templates.
+     Sorted: counts per culture group in `data/culture-corpus/` and `docs/CULTURE_STYLES.md` "Corpus by culture"
+     (46ecbae), read by `lib/decorate.js` CORPUS_CULT. Left: assemblies and room layouts per culture, and committing
+     the miner scripts (research.md).
+  6. [ ] Interior study (valheimians, BG3 and the rest) into assemblies and room templates. The study is written
+     (`docs/INTERIOR_DESIGN.md` "Lived-in rooms", c630579, f926ee7); turning it into assemblies and room templates is
+     left.
   7. [ ] Store rooms at d3 (barrels, crates, sacks), window boxes. Slopes: walkable banks done mod side (fb96935).
-  8. [ ] Open from the checks: 7 decorator overlaps (a torch into an oak feast table, chests, a table against a forge
-     part), a bench in a tower's half wall, 11 barn chests outside the floor outline (watched).
+     Generated storage rooms run 44 m2 with 6 kinds of piece against the corpus 7.5 m2 and 1 kind, and 3 % of windows
+     are dressed against 17 % (ideas.md gaps 11 and 15).
+  8. [ ] Open from the checks: at 5a07fae check_interiors (702 designs) shows overlap 1, floating 9 in 7 designs,
+     bareFloors 7; a bench in a tower's half wall and 11 barn chests outside the floor outline (watched; not
+     rechecked 2026-11-11).
   9. [ ] Hung pieces keep their collider against the wall's: confirm in the game that stands, signs and banners hold.
   10. [ ] Lab comments to match the decisions (code audit 2026-11-10; the bundled `Generator/lab.js` carries the same):
      `lib/audit.js:6` cites D-070 for nested decor stages (that is D-071); "minor decor goes in any biome (D-066)" in

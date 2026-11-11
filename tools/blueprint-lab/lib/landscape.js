@@ -262,8 +262,10 @@ function survey(b, G0) {
   const solid = boxes.filter(x => !['rug'].includes(x.info.role) && !classOf(x.p.name) && !(x.info.role === 'floor' && x.o.y1 < G0 + 0.12)).map(x => x.o);
   const roofs = boxes.filter(x => ['roof', 'roofTop', 'roofCorner', 'gable', 'beam', 'floor'].includes(x.info.role) && x.o.y0 > G0 + 1.2).map(x => x.o);
   const fences = boxes.filter(x => x.p.yard && x.info.role === 'fence').map(x => x.o);
+  // the gate closes the fence line for 'inside the yard'
+  const gates = boxes.filter(x => x.p.yard && /gate/.test(x.p.name)).map(x => x.o);
   const paths = keep.filter(z => z.path);
-  return { boxes, faces, doors, keep, solid, roofs, fences, paths, onFloor };
+  return { boxes, faces, doors, keep, solid, roofs, fences, gates, paths, onFloor };
 }
 function rectAlong(x, z, ux, uz, nx, nz, a0, a1, b0, b1) {
   const xs = [], zs = [];
@@ -362,7 +364,7 @@ function add(b, ctx) {
     }
     return true;
   };
-  const inYard = (x, z) => !S.fences.length || !S.fences.some(o => crosses(x, z, o));
+  const inYard = (x, z) => !S.fences.length || ![...S.fences, ...S.gates].some(o => crosses(x, z, o));
   const groundOk = (e, x, z, sc, kind) => {
     if (S.onFloor(x, z) || !inYard(x, z)) return false;
     const r = spread(e) * sc * 0.7, top = e[2][1] * sc;
@@ -414,6 +416,7 @@ function add(b, ctx) {
       const f = pickFace();
       const d = at === 'yard' ? Math.max(FOOT_MAX + 0.05, quant(R, FROM_WALL[kind] || FROM_WALL.bush)) : kind === 'bush' ? 0.8 + R() * 0.7 : kind === 'tree' ? 1.2 + R() * 0.3 : 0.3 + R() * 1.2;
       const s = onFace(f, d);
+      s.d = d;
       const under = eaveAt(s.x, s.z);
       if (at === 'eaves' ? !under : at === 'foot' ? under : false) return null;
       return s;
@@ -467,13 +470,21 @@ function add(b, ctx) {
       while (k < n && miss < 6) {
         const e = pick.e, sc = scaleFor(kind);
         const minGap = Math.max(sp[0] * 0.8, kind === 'tree' ? spread(e) * sc * 0.45 : 0.25);
-        if (groundOk(e, x, z, sc, kind) && !sameNear(kind, x, z, minGap) && !placed.some(q => q.green.k !== kind && Math.hypot(q.x - x, q.z - z) < 0.35)) {
+        const placeOk = !(s.f && at === 'eaves' && !eaveAt(x, z)) && !(s.f && at === 'foot' && eaveAt(x, z));
+        if (placeOk && groundOk(e, x, z, sc, kind) && !sameNear(kind, x, z, minGap) && !placed.some(q => q.green.k !== kind && Math.hypot(q.x - x, q.z - z) < 0.35)) {
           const sink = kind === 'tree' || kind === 'bush' ? -R() * 0.12 : 0;
           if (put(e, kind, at, pick.src, x, G0 + sink, z, Math.floor(R() * 16) * 22.5, sc)) { k++; left--; first = false; got[kind] = (got[kind] || 0) + 1; }
           else miss++;
         } else miss++;
         if (mixed) pick = pickW(R, opts0);
         const st = cared && line ? step0 * (0.9 + R() * 0.2) : quant(R, sp);
+        if (s.f && (at === 'foot' || at === 'eaves')) {
+          // along the wall, staying as far out as the first one (give or take a little)
+          const sg = line ? 1 : (R() < 0.5 ? -1 : 1);
+          s.t += sg * st; const d0 = s.d + (line ? 0 : (R() - 0.5) * 0.4);
+          [x, z] = s.f.base(s.t, Math.max(0.3, Math.min(FOOT_MAX, d0)));
+          continue;
+        }
         if (!line) { const a = R() * Math.PI * 2; dir = [Math.cos(a), Math.sin(a)]; }
         x += dir[0] * st; z += dir[1] * st;
       }

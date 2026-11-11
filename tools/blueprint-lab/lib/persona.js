@@ -365,11 +365,36 @@ function kindLean(P) {
 // kit asked for (a kind such as 'drink' or 'trophy'), o.at where it stands ('table', 'shelf', 'sill', 'wall:hearth', ...).
 // Nothing here follows a trade: a work building's stands hold its own work (the smithy's tools and weapons), a home's
 // what its household collects, makes, grows and eats.
+// A household keeps a few things of each kind and puts them out again: the same mead in a row of mugs, the same
+// bread on two tables (the corpus's houses show a median of 7 distinct items on 19 stands). How often a stand takes
+// something already on show follows the household: a tidy one keeps to a few things, a collector shows more of its
+// own. Drink, food and herbs come again most, trophies and tools seldom; rare things, boss trophies and the serving
+// tray never.
+const NO_REPEAT = new Set(['rare', 'boss', 'tray', 'valuable']);
+const REPEAT_K = { drink: 1, food: 0.9, herbs: 1, fish: 0.8, hat: 0.8, shield: 0.7, weapon: 0.4, farm: 0.4, tool: 0.3, trophy: 0.25 };
+function repeatOf(P) {
+  if (!P) return 0.7;
+  return Math.min(0.95, Math.max(0.15, 0.45 + 0.6 * P.tidy - 0.5 * (P.hobby.collect || 0) - 0.2 * P.wealth + 0.2 * (P.plain ? 1 : 0)));
+}
+function fromStock(kind, biome, R, seen, P) {
+  const st = seen && !NO_REPEAT.has(kind) ? (seen._stock || (seen._stock = {})) : null;
+  const list = st && st[kind];
+  if (list && list.length && R() < repeatOf(P) * (REPEAT_K[kind] == null ? 0.5 : REPEAT_K[kind])) {
+    const w = {};
+    for (const n of list) w[n] = (w[n] || 0) + 1;
+    const got = pickWP(R, w);
+    list.push(got);
+    return got;
+  }
+  const got = itemFrom(kind, biome, R, 2, seen);
+  if (st && got) (st[kind] || (st[kind] = [])).push(got);
+  return got;
+}
 function standItem(P, kind, o, R) {
   const biome = o.biome || 'Meadows', role = o.role || 'home', want = o.want, seen = o.seen;
   const H = P ? P.hobby : { crafts: 0.3, collect: 0.3, plants: 0.3, food: 0.3 };
-  if (want === 'tool' && R() < H.plants / (H.plants + H.crafts + 0.2)) return itemFrom('farm', biome, R, 2, seen);
-  if (want && ITEMS[want]) return itemFrom(want, biome, R, 2, seen);
+  if (want === 'tool' && R() < H.plants / (H.plants + H.crafts + 0.2)) return fromStock('farm', biome, R, seen, P);
+  if (want && ITEMS[want]) return fromStock(want, biome, R, seen, P);
   const lean = kindLean(P);
   const at = o.at || (kind === 'wall' ? 'wall' : 'table');
   const base = AT_KINDS[at] || AT_KINDS[kind === 'wall' ? 'wall' : 'table'];
@@ -389,7 +414,7 @@ function standItem(P, kind, o, R) {
     // a well-off collector may keep one great trophy
     if (P && H.collect > 0.6 && P.wealth > 0.6 && seen && !seen.boss && R() < 0.3) { seen.boss = 1; return itemFrom('boss', biome, R, 3, seen); }
   }
-  return itemFrom(pickWP(R, w), biome, R, 2, seen);
+  return fromStock(pickWP(R, w), biome, R, seen, P);
 }
 // The room a point lies in (a design's room rectangles) and its role, roughly: the main floor by the building's use,
 // upper floors sleeping or storage, as the decorator reads them.

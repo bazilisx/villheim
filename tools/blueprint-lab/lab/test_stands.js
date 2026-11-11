@@ -59,17 +59,20 @@ for (const type of types) for (const biome of biomes) for (const [stage, decor] 
     }
   }
 }
-const med = a => { const s = a.slice().sort((x, y) => x - y); return s.length ? s[Math.floor(s.length / 2)] : 0; };
+const qt = (a, f) => { const s = a.slice().sort((x, y) => x - y); return s.length ? s[Math.min(s.length - 1, Math.floor(s.length * f))] : 0; };
+const med = a => qt(a, 0.5);
+// a median with its quartiles, as '7 (2-20)'
+const mq = a => `${qt(a, 0.25)}-${med(a)}-${qt(a, 0.75)}`;
 const pct = (a, b) => (b ? Math.round(100 * a / b) : 0);
 const cols = Object.keys(PLACES);
 console.log(`Items on stands, ${seeds} seed(s) per request; house share (room share in brackets); table of houses or rooms with a table, sill of houses with a window`);
-console.log('set'.padEnd(18) + cols.map(c => c.padStart(10)).join('') + '   feast  distinct stands');
+console.log('set'.padEnd(18) + cols.map(c => c.padStart(10)).join('') + '   feast    distinct      stands');
 const line = (k, A) => k.padEnd(18) + cols.map(c => {
   const h = pct(A.has[c] || 0, c === 'table' ? A.withTable : c === 'sill' ? A.withWindow : A.houses), rm = pct(A.roomHas[c] || 0, c === 'table' ? A.roomsTable : A.rooms);
   return `${h}(${rm})`.padStart(10);
-}).join('') + `${String(pct(A.feast, A.houses)).padStart(8)}${String(med(A.distinct)).padStart(10)}${String(med(A.stands)).padStart(7)}`;
+}).join('') + `${String(pct(A.feast, A.houses)).padStart(8)}${mq(A.distinct).padStart(12)}${mq(A.stands).padStart(12)}`;
 for (const k of Object.keys(acc).sort()) console.log(line(k, acc[k]));
-console.log('corpus'.padEnd(18) + cols.map(c => String(Math.round(CORPUS[c] * 100)).padStart(10)).join('') + `${String(Math.round(CORPUS.feast * 100)).padStart(8)}${String(CORPUS.distinct).padStart(10)}`);
+console.log('corpus'.padEnd(18) + cols.map(c => String(Math.round(CORPUS[c] * 100)).padStart(10)).join('') + `${String(Math.round(CORPUS.feast * 100)).padStart(8)}${'2-7-20'.padStart(12)}${'5-19-49'.padStart(12)}`);
 console.log('target d3'.padEnd(18) + cols.map(c => String(Math.round(TARGET[c] * 100)).padStart(10)).join('') + `${String(Math.round(TARGET.feast * 100)).padStart(8)}${String(TARGET.distinct).padStart(10)}`);
 const D3 = acc.d3;
 console.log('kinds held at d3:', Object.entries(D3.kinds).sort((a, b) => b[1] - a[1]).map(([k, v]) => `${k} ${v}`).join(', '));

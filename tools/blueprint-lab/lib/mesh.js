@@ -272,15 +272,20 @@ function depth(A, B) {
 }
 /** The deepest reach of any part of list A into any part of list B. Lists from world() are tested with the coarse
  * parts first; where those meet, the fine parts (worldFine) of whichever side has them give the answer. */
-function deepest(A, B) {
-  const m = deepest0(A, B);
-  if (!(m > 0) || !FINE_ON) return m;
-  const fa = A._p ? worldFine(A._p) : null, fb = B._p ? worldFine(B._p) : null;
-  if (!fa && !fb) return m;
-  return deepest0(fa || A, fb || B);
+// cap (optional): a caller that only asks whether the depth passes cap gets the depth itself up to cap and some depth
+// over cap otherwise (the search stops at the first part pair past it).
+function deepest(A, B, cap) {
+  if (!FINE_ON) return deepest0(A, B, cap);
+  const pa = A && A._p, pb = B && B._p;
+  // with no fine parts on either side the coarse parts give the answer
+  if (!(pa && local(pa.name, true)) && !(pb && local(pb.name, true))) return deepest0(A, B, cap);
+  // else the coarse parts only tell whether to look again: the first pair that meets is enough
+  if (!(deepest0(A, B, 0) > 0)) return 0;
+  const fa = pa ? worldFine(pa) : null, fb = pb ? worldFine(pb) : null;
+  return deepest0(fa || A, fb || B, cap);
 }
 let FINE_ON = !(typeof process !== 'undefined' && process.env && process.env.VH_COARSE);
-function deepest0(A, B) {
+function deepest0(A, B, cap) {
   if (!A || !B || !A.length || !B.length) return 0;
   const a = A._bb || (A._bb = aabbOf(A)), b = B._bb || (B._bb = aabbOf(B));
   if (a.x0 > b.x1 || b.x0 > a.x1 || a.y0 > b.y1 || b.y0 > a.y1 || a.z0 > b.z1 || b.z0 > a.z1) return 0;
@@ -293,7 +298,7 @@ function deepest0(A, B) {
   for (const pa of As) for (const pb of Bs) {
     if (pa.x0 > pb.x1 || pb.x0 > pa.x1 || pa.y0 > pb.y1 || pb.y0 > pa.y1 || pa.z0 > pb.z1 || pb.z0 > pa.z1) continue;
     const d = depth(pa, pb);
-    if (d > m) m = d;
+    if (d > m) { m = d; if (cap != null && m > cap) return m; }
   }
   return m;
 }

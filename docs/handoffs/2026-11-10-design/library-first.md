@@ -357,8 +357,8 @@ tables set against a wall; hearth seating); signs on chest fronts and other piec
 4,450 signs); ledges, banners and Dvergr lanterns in relief (item 6).
 
 ## Essentials, round 2 (2026-11-11, branch design/wip-essentials from 45d4e62)
-Commits: cb9bb0c (tables, seats, rugs, chests and barrels by corpus counts), and the commit with this section (pool
-fixes, docs).
+Commits: cb9bb0c (tables, seats, rugs, chests and barrels by corpus counts, and the pool fixes below), 1508ab2 (this
+section).
 
 What the renders showed, checked against the pieces (lab script output, home Meadows s3d3 seed 11 and tavern Swamp
 s3d3 seed 11):

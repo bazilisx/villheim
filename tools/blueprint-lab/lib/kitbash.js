@@ -1549,6 +1549,22 @@ const JITTER = [
   [/^dvergrprops_crate/, { rot: 10, off: 0.06 }],
   [/^(itemstandh|Candle_resin)$/, { rot: 40, off: 0.06, top: true }],
 ];
+// The table a seat belongs to: a dining table on its floor whose box is within 0.9 m of the seat's pivot (the reach
+// turnLikeCorpus uses for the seats drawn up to a table). D-152 (Tyler): seats of a table set keep their spot at a head
+// or along a side; they may turn slightly as if facing another seat, or sit pushed back and turned a little as if
+// someone got up.
+const SET_TABLE = /^(piece_table|piece_table_round|piece_table_oak|dvergrprops_table|piece_blackmarble_table)$/;
+function setTableOf(b, p) {
+  const D = decorB(), I = D._int, F = D.FURNITURE;
+  if ((F[p.name] || {}).cat !== 'seat' && PB.piece(p.name).role !== 'seat') return null;
+  let best = null, bd = 0.9;
+  for (const t of b.pieces) {
+    if (!t.decor || !SET_TABLE.test(t.name) || Math.abs(t.y - p.y) > 0.5) continue;
+    const d = I.ptDist(D.itemOf(t).b, p.x, p.z);
+    if (d < bd) { bd = d; best = t; }
+  }
+  return best;
+}
 function jitterSpec(p) {
   if (FOOD.test(p.name)) return { rot: 45, off: 0.07, top: true };
   for (const [re, sp] of JITTER) if (re.test(p.name)) return sp;
@@ -1636,7 +1652,24 @@ function liveIn(b, ctx, zones) {
     p._sp = sp;
     const before = problems(p);
     const old = { x: p.x, z: p.z, yaw: p.yaw, q: p.q };
-    const dr = (R() * 2 - 1) * sp.rot * amp, dx = (R() * 2 - 1) * sp.off * amp, dz = (R() * 2 - 1) * sp.off * amp;
+    let dr = (R() * 2 - 1) * sp.rot * amp, dx = (R() * 2 - 1) * sp.off * amp, dz = (R() * 2 - 1) * sp.off * amp;
+    // a seat of a table set keeps its spot (D-152): turned 3 to 8 degrees toward another seat at the table, as if facing
+    // that person, or pushed back 0.1 to 0.3 m from the table and turned 4 to 10 degrees, as if someone got up. The
+    // corpus pairs (data/interior.json, offsets in 0.25 m steps) show turned seats at tables without the size of the
+    // turn, so these are small settings.
+    const tb = setTableOf(b, p);
+    if (tb) {
+      const ft = Math.atan2(tb.x - p.x, tb.z - p.z) * 180 / Math.PI;
+      const mates = b.pieces.filter(q => q !== p && q.decor && setTableOf(b, q) === tb);
+      if (mates.length && R() < 0.6) {
+        const o = mates.slice().sort((a, c) => Math.hypot(a.x - p.x, a.z - p.z) - Math.hypot(c.x - p.x, c.z - p.z))[0];
+        const fo = Math.atan2(o.x - p.x, o.z - p.z) * 180 / Math.PI, d = ((fo - ft) % 360 + 540) % 360 - 180;
+        dr = (d < 0 ? -1 : 1) * (3 + 5 * R()); dx = 0; dz = 0;
+      } else {
+        const l = Math.hypot(tb.x - p.x, tb.z - p.z) || 1, push = 0.1 + 0.2 * R();
+        dr = (R() < 0.5 ? -1 : 1) * (4 + 6 * R()); dx = -(tb.x - p.x) / l * push; dz = -(tb.z - p.z) / l * push;
+      }
+    }
     let ok = false;
     for (const f of [1, 0.5]) {
       const yaw = normB((old.yaw != null ? old.yaw : I.pyaw(p)) + dr * f);
@@ -1720,6 +1753,8 @@ function turnLikeCorpus(b, ctx, idx, problems, bears) {
     for (const p of order(kind)) {
       if (left <= 0) break;
       if (turned.has(p)) continue;
+      // a seat of a table set turns only with its table (D-152); liveIn gives it its small turn
+      if (kind === 'seat' && setTableOf(b, p)) continue;
       // a seat turns with the flat stands on it (a bench the stand pass set); anything else on it keeps it square
       let with_ = [];
       if (kind !== 'rug' && bears(p)) {

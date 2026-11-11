@@ -9,9 +9,9 @@ namespace Villheim.Logic.Village
     /// Storage chests (Tyler, 2026-11-08, D-016). The main chest stays by the hearth; extra vanilla wood chests come
     /// with growth, each with a vanilla sign on its front saying what it holds.
     ///
-    /// - How many: StorageChestSteps gives chests by buildings ("1:1, 2:2, 3:4": one with the first building, two
-    ///   with the second, four with the third; the village has no decor stages yet, so its first three buildings
-    ///   stand for s1d1 to s1d3). Then one more for every StorageChestPeople villagers past six, and one more each
+    /// - How many: D-016 says one at s1d1, two at s1d2 and four at s1d3, more with population, growth and need. This
+    ///   code counts buildings standing instead: StorageChestSteps "1:1, 2:2, 3:4" gives one with the first building,
+    ///   two with the second, four with the third (D-104 asks what s1d1 to s1d3 refer to). Then one more for every StorageChestPeople villagers past six, and one more each
     ///   time the main chest is full with nowhere to sort to (at most one a day). Never more than StorageChestMax.
     /// - What each holds, in the order they come: wood, stone, fine wood and core wood (where the village has them),
     ///   food, ore and metal, other; past seven, wood and stone again. The kind is kept on the chest.

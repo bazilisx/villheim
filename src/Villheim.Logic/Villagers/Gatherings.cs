@@ -11,8 +11,9 @@ namespace Villheim.Logic.Villagers
     /// - A finished building, a newcomer, a pedlar: up to eight idle villagers within 70 m walk over and stand round
     ///   it; one speaker (the Jarl, else an elder, else whoever is closest) says a few words, the rest cheer, and a
     ///   moment later one or two of them say something of their own. At most one turnout every two minutes.
-    /// - A feast: a hunt brought home, a birth, a big finished building (a hall, a new home, or FeastPieces pieces and
-    ///   more, D-005) or a boss felled anywhere in the world makes the evening a feast. A small building gets a short
+    /// - A feast: a big finished building (D-005: feasts only for big ones; this code counts a hall, a new home, or
+    ///   FeastPieces pieces and more), a hunt brought home, a birth or a boss felled anywhere in the world makes the
+    ///   evening a feast. The causes past big buildings go beyond D-005 (D-110). A small building gets a short
     ///   look from a few villagers. At the hearth that evening fewer sit, more toast and dance, and everyone gets the feast
     ///   thought (+6). Tags "feastday" all that day and "feast" in the evening.
     /// - Evening words (Millenaire's speeches): once a day between 18:00 and 19:30, with a player by the hearth, the

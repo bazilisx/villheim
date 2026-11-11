@@ -613,8 +613,9 @@ namespace Villheim.Logic.Village
         }
 
         /// <summary>
-        /// A big building, worth a feast (D-005): a hall (the hub), a new home, or any design of FeastPieces pieces or
-        /// more. When the piece count is not known, a footprint of 8 m radius or more counts as big.
+        /// A big building, worth a feast (D-005: feasts only for big ones). This code counts a hall (the hub), a new home,
+        /// or any design of FeastPieces pieces or more as big; when the piece count is not known, a footprint of 8 m
+        /// radius or more. The new home and the other feast causes go beyond D-005 (D-110).
         /// </summary>
         public static bool IsBig(Site site, int pieces)
         {

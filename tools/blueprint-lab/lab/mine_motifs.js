@@ -84,10 +84,14 @@ function fineBoxes(p, f) {
     return { a0, a1, o0, o1, h0, h1 };
   });
 }
-const L = x => (Array.isArray(x) ? x : [x]);
-const V = x => L(x).reduce((t, b) => t + vol(b), 0);
-const I = (x, y) => L(x).reduce((t, a) => t + L(y).reduce((u, b) => u + inter(a, b), 0), 0);
-const D = (x, y) => L(x).reduce((m, a) => L(y).reduce((n, b) => Math.max(n, depthOf(a, b)), m), 0);
+// With VH_SHAPES a piece's shapes are lists of oriented boxes in world space (lib/shapes.js form), so volume, shared volume and
+// depth are the lib/shapes.js ones (volume of the boxes, sampled shared volume, least overlap over the separating axes); without it
+// they are the frame boxes (model bounds, collider boxes) as before.
+const SHP = require(lab + '/lib/shapes.js');
+const isList = x => Array.isArray(x);
+const V = x => (isList(x) ? SHP.volume(x) : vol(x));
+const I = (x, y) => (isList(x) !== isList(y) ? 0 : isList(x) ? SHP.overlapVolume(x, y) : inter(x, y));
+const D = (x, y) => (isList(x) !== isList(y) ? 0 : isList(x) ? SHP.clipDepth(x, y) : depthOf(x, y));
 const depthOf = (A, Bx) => Math.max(0, Math.min(Math.min(A.a1, Bx.a1) - Math.max(A.a0, Bx.a0), Math.min(A.o1, Bx.o1) - Math.max(A.o0, Bx.o0), Math.min(A.h1, Bx.h1) - Math.max(A.h0, Bx.h0)));
 const overlap3 = (p, q, pad = 0) => p.a0 < q.a1 - pad && p.a1 > q.a0 + pad && p.o0 < q.o1 - pad && p.o1 > q.o0 + pad && p.h0 < q.h1 - pad && p.h1 > q.h0 + pad;
 const touches = (p, q, gap) => p.a0 <= q.a1 + gap && p.a1 >= q.a0 - gap && p.o0 <= q.o1 + gap && p.o1 >= q.o0 - gap && p.h0 <= q.h1 + gap && p.h1 >= q.h0 - gap;
@@ -264,8 +268,15 @@ function collect(kind, B, ctx, f, box, isBase, fit, clear, keep, need) {
   const xs = pts.map(p => p[0]), zs = pts.map(p => p[1]);
   const items = [], anchors = [], baseNames = {}, baseSolid = [];
   // the boxes a piece's shapes make in this frame (VH_SHAPES), or its one box where it has none
-  const shownOf = (bx, sol) => { if (!SM.MODE) return sol || bx; if (!bx.pc) return [bx]; return bx.fp || (bx.fp = fineBoxes(bx.pc, f) || [sol || bx]); };
-  const touchesS = (A, Bx, gap) => (!SM.MODE ? touches(A, Bx, gap) : shownOf(A).some(a => shownOf(Bx).some(b => touches(a, b, gap))));
+  const worldOf = bx => bx.wp || (bx.wp = SM.parts({ name: bx.pc.name, x: bx.pc.x, y: bx.pc.y, z: bx.pc.z, yaw: bx.pc.yaw }));
+  const shownOf = (bx, sol) => { if (!SM.MODE) return sol || bx; return (bx.pc && worldOf(bx)) || sol || bx; };
+  // two pieces visibly touch (within gap): their shapes' boxes meet; the ground slab and pieces with no shapes keep the frame boxes
+  const touchesS = (A, Bx, gap) => {
+    if (!SM.MODE) return touches(A, Bx, gap);
+    if (A.pc && Bx.pc) { const WA = worldOf(A), WB = worldOf(Bx); if (WA && WB) return WA.some(a => WB.some(b => SHP.hit(a, b, gap))); }
+    const FA = A.pc ? (A.fp || (A.fp = fineBoxes(A.pc, f) || [A])) : [A], FB = Bx.pc ? (Bx.fp || (Bx.fp = fineBoxes(Bx.pc, f) || [Bx])) : [Bx];
+    return FA.some(a => FB.some(b => touches(a, b, gap)));
+  };
   for (const i of near(Math.min(...xs), Math.max(...xs), Math.min(...zs), Math.max(...zs))) {
     const p = ps[i];
     if (p === f.self || p === f.self2) continue;
@@ -277,7 +288,7 @@ function collect(kind, B, ctx, f, box, isBase, fit, clear, keep, need) {
     if (isBase(p, q, fb)) {
       if (touches(fb, box, 0.3)) {
         fb.pc = p; anchors.push(fb);
-        if (p.info.role === 'wall') { baseNames[p.name] = (baseNames[p.name] || 0) + 1; baseSolid.push(SM.MODE ? (fineBoxes(p, f) || boxAt(p.name, q.a, q.o, q.h, q.r, true)) : boxAt(p.name, q.a, q.o, q.h, q.r, true)); }
+        if (p.info.role === 'wall') { baseNames[p.name] = (baseNames[p.name] || 0) + 1; baseSolid.push(SM.MODE ? (SM.parts({ name: p.name, x: p.x, y: p.y, z: p.z, yaw: p.yaw }) || boxAt(p.name, q.a, q.o, q.h, q.r, true)) : boxAt(p.name, q.a, q.o, q.h, q.r, true)); }
       }
       continue;
     }
@@ -763,7 +774,10 @@ function mine(B) {
 
 const builds = [];
 let n = 0;
-for (const d of chosen) {
+// Long runs (VH_SHAPES=fine takes several minutes) go in slices: SLICE=i/k mines every k-th chosen build starting at i and DUMP=file
+// writes the sites and tallies and stops; MERGE=file1,file2,... then reads the dumps in place of mining (same clustering after).
+const SLICE = (process.env.SLICE || '0/1').split('/').map(Number);
+for (const d of process.env.MERGE ? [] : chosen.filter((_, i) => i % SLICE[1] === SLICE[0])) {
   if (LIMIT && n >= LIMIT) break;
   let B;
   try { B = loadBuild(d.file); } catch (e) { continue; }
@@ -772,6 +786,14 @@ for (const d of chosen) {
   mine(B);
   n++;
   if (n % 50 === 0) console.log(n, 'builds,', instances.length, 'assemblies');
+}
+if (process.env.DUMP) { fs.writeFileSync(process.env.DUMP, JSON.stringify({ instances, builds, stats })); console.log('dumped', instances.length, 'sites from', builds.length, 'builds'); process.exit(0); }
+if (process.env.MERGE) for (const f of process.env.MERGE.split(',')) {
+  const D = JSON.parse(fs.readFileSync(f, 'utf8')), off = builds.length;
+  for (const ins of D.instances) { ins.b += off; instances.push(ins); }
+  builds.push(...D.builds);
+  for (const [k, v] of Object.entries(D.stats.features)) stats.features[k] = (stats.features[k] || 0) + v;
+  for (const [k, v] of Object.entries(D.stats.why)) stats.why[k] = (stats.why[k] || 0) + v;
 }
 console.log('features', stats.features);
 

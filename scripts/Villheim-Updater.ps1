@@ -18,7 +18,7 @@
 # Test channel: when the plugin folder holds villheim-channel.txt with a branch name in it (for example look-memory),
 # the updater installs that test branch's latest build instead of main. Empty, "main" or no file means main.
 
-$updaterVersion = 6
+$updaterVersion = 7
 $updaterUrl = "https://raw.githubusercontent.com/bazilisx/villheim/main/scripts/Villheim-Updater.ps1"
 
 $ErrorActionPreference = "Stop"
@@ -35,6 +35,9 @@ $plugin = Join-Path $profileFolder "BepInEx\plugins\bazilisx-Villheim"
 $download = Join-Path $env:TEMP "villheim-update"
 $marker = Join-Path $plugin "villheim-build.txt"
 $channelFile = Join-Path $plugin "villheim-channel.txt"
+# The core DLL is rebuilt with every build, so its bytes always differ. core.txt names the last commit that changed the
+# core's source; the core is replaced (and Valheim needs a restart) only when that changes.
+$coreMarker = Join-Path $plugin "villheim-core.txt"
 $engineFiles = @("Jint.dll", "Acornima.dll", "System.Runtime.CompilerServices.Unsafe.dll")
 
 function Say([string]$text, [string]$color = "Gray") {
@@ -108,7 +111,15 @@ while ($true) {
             Copy-Item $logicDll $plugin -Force
             $installed = $latest
             Set-Content -Path $marker -Value $latest
-            $coreWaiting = -not (Same-File $coreDll (Join-Path $plugin "Villheim.dll"))
+            $coreId = ""
+            try { $coreId = (Get-Content (Fetch "core.txt") -Raw).Trim() } catch { }
+            $haveCore = if (Test-Path $coreMarker) { (Get-Content $coreMarker -Raw).Trim() } else { "" }
+            if ($coreId -and $coreId -eq $haveCore -and (Test-Path (Join-Path $plugin "Villheim.dll"))) {
+                $coreWaiting = $false
+            } else {
+                $coreWaiting = -not (Same-File $coreDll (Join-Path $plugin "Villheim.dll"))
+                if (-not $coreWaiting -and $coreId) { Set-Content -Path $coreMarker -Value $coreId }
+            }
             foreach ($name in $engineFiles) {
                 $new = Join-Path $download $name
                 if ((Test-Path $new) -and -not (Same-File $new (Join-Path $plugin $name))) {
@@ -128,6 +139,7 @@ while ($true) {
                     if (Test-Path $new) { Copy-Item $new $plugin -Force }
                 }
                 $coreWaiting = $false
+                if ($coreId) { Set-Content -Path $coreMarker -Value $coreId }
                 Say "Core updated too. Start (or restart) Valheim to load it." Green
             } catch {
                 if (-not $coreWarned) {

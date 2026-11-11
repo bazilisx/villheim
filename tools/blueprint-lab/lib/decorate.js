@@ -2777,7 +2777,7 @@ function kbRests(it, pieces, wallish, struct) {
     for (const q of pieces) {
       if (q === p || Math.abs(q.x - mx) > 3 || Math.abs(q.z - mz) > 3) continue;
       const W = SHD && SHD.world(q);
-      let top = W && W.length ? SHD.topAt(W, mx, mz) : null;
+      let top = SHD.lidAt(q, mx, mz) ?? (W && W.length ? SHD.topAt(W, mx, mz) : null);
       if (top == null) { const sb = structBox(q); if (ptDist(sb.b, mx, mz) < 0.01) top = sb.y1; }
       if (top != null && top > y0 - 0.15 && top < y0 + 0.12) return true;
     }

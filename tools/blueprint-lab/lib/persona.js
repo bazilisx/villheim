@@ -225,6 +225,12 @@ function kitWeight(P, a) {
   if (id === 'BK-tablemess') w *= (0.1 + P.clutter * 1.5) * (0.6 + H.food * 0.6);
   if (id === 'BK-tableneat') w *= 0.15 + P.tidy * 1.3;
   if (id === 'BK-clutter') w *= 0.1 + P.busy * P.clutter * 2.2;
+  // creative sets name the traits they suit (lab/creative_sets.js): each weighs from 0.3 (the household has none of it)
+  // to 1.7 (all of it), by how much the set leans on it
+  if (a.traits) for (const [t, k] of Object.entries(a.traits)) {
+    const v = t === 'messy' ? P.clutter : t === 'austere' ? 1 - P.comfort : t === 'modest' ? 1 - P.wealth : t in H ? H[t] : P[t];
+    if (typeof v === 'number') w *= 1 + k * (1.4 * v - 0.7);
+  }
   return w;
 }
 // How many assemblies a room takes, as a factor on the library's budget.

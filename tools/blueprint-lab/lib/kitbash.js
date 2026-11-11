@@ -346,8 +346,11 @@ function library() {
 function setLibrary(d) { LIB_B = d; }
 // the library as the game and the request page carry it: no sources, no decor table
 function lite(d) {
+  // creative sets (lab/creative_sets.js) also carry their decor stages, household traits, least pieces, core pieces
+  // and what their stands hold
   return { assemblies: d.assemblies.map(a => ({ id: a.id, anchor: a.anchor, angle: a.angle, of: a.of, rooms: a.rooms, score: a.score, once: a.once,
-    clips: a.clips, pieces: a.pieces.map(m => { const o = { n: m.n, k: m.k, x: m.x, y: m.y, z: m.z, yaw: m.yaw, rest: m.rest }; if (m.on != null) o.on = m.on; if (m.sink) o.sink = m.sink; return o; }) })) };
+    decor: a.decor, traits: a.traits, min: a.min, creative: a.creative, from: a.from,
+    clips: a.clips, pieces: a.pieces.map(m => { const o = { n: m.n, k: m.k, x: m.x, y: m.y, z: m.z, yaw: m.yaw, rest: m.rest }; if (m.on != null) o.on = m.on; if (m.sink) o.sink = m.sink; if (m.key) o.key = true; if (m.want) o.want = m.want; return o; }) })) };
 }
 
 function rngB(seed) {
@@ -591,7 +594,10 @@ function fit(b, ctx, room, idx, zones, anc, a, mirror, fires) {
     const mm = a.pieces[i];
     const fail = () => { if (needed.has(i)) return true; dropped++; return false; };
     // a random pick (banners) is made once per assembly, so a pair matches
-    const name = mm.any ? (picks[mm.k] || (picks[mm.k] = fillSlot(mm, ctx.biome, ctx))) : fillSlot(mm, ctx.biome, ctx);
+    let name = mm.any ? (picks[mm.k] || (picks[mm.k] = fillSlot(mm, ctx.biome, ctx))) : fillSlot(mm, ctx.biome, ctx);
+    // a creative set's piece the village does not make itself is left out: the last pass (generate.js biomeSafe) would
+    // swap it for a stand-in of another size (a barrel of a stack turned into a chest)
+    if (name && a.creative && !PB.minor(name) && PB.BIOME_ORDER.indexOf(PB.needs(name)) > PB.BIOME_ORDER.indexOf(ctx.biome)) name = null;
     if (!name || (mm.rest === 'on' && !made[mm.on])) { if (!name) WHY_B = 30; if (fail()) return null; continue; }
     let lx = mirror ? -mm.x : mm.x;
     if (a.byWidth && anc.w) lx = Math.sign(lx) * (anc.w / 2 + Math.abs(lx));
@@ -650,7 +656,7 @@ function fit(b, ctx, room, idx, zones, anc, a, mirror, fires) {
     // set the piece on what it rests on, so a substitute of another height sits right
     const under = mm.rest === 'on' ? made[mm.on] : mm.rest === 'anchor' ? anc.of : null;
     if (under) {
-      const top = (SH.world(under) && SH.topAt(SH.world(under), (bx.x0 + bx.x1) / 2, (bx.z0 + bx.z1) / 2)) ?? Ck.aabbShapes(under).y1;
+      const top = SH.lidAt(under, (bx.x0 + bx.x1) / 2, (bx.z0 + bx.z1) / 2) ?? (SH.world(under) && SH.topAt(SH.world(under), (bx.x0 + bx.x1) / 2, (bx.z0 + bx.z1) / 2)) ?? Ck.aabbShapes(under).y1;
       p.y = +(p.y + top - bx.y0).toFixed(3); bx = Ck.aabbShapes(p);
       p.rest = 'on';
     } else if (mm.rest === 'floor') {
@@ -717,6 +723,8 @@ function fit(b, ctx, room, idx, zones, anc, a, mirror, fires) {
 let WHY_B = 0, LAST_B = '', LASTQ_B = '', STATS_B = null;
 const no = k => { WHY_B = k; return false; };
 const MOVABLE = ['storage', 'seat', 'deco', 'clutter', 'light'];
+const FURN_B = ['bed', 'table', 'seat', 'storage', 'craft', 'fire', 'clutter'];
+const FIRESET_B = /^(fire_pit|hearth|bonfire|piece_cookingstation|piece_cauldron|piece_cookingstation_iron)$/;
 function placeable(p, bx, mm, i, b, ctx, room, idx, zones, made, clipOf, anc, fires, displace, a) {
   const Ck = checksB(), SH = shapesB(), D = decorB(), m = room.m;
   const cx = (bx.x0 + bx.x1) / 2, cz = (bx.z0 + bx.z1) / 2;
@@ -780,6 +788,18 @@ function placeable(p, bx, mm, i, b, ctx, room, idx, zones, made, clipOf, anc, fi
   }
   // the audit's own tests: what it rests on is there, and plain wall behind a wall piece
   if (!decorB().auditOne(p, idx.audit, made.filter(Boolean))) { if (STATS_B) { const H = STATS_B.audit || (STATS_B.audit = {}); const k = decorB().oneWhy() + ' ' + p.name; H[k] = (H[k] || 0) + 1; } return no(13); }
+  // the pool audit's furnClip (lib/audit.js): furniture it sizes no more than 12 cm into other such furniture on every
+  // axis, whatever the source build clipped (a set's chair pushed under the decorator's table showed as a clip)
+  if (D.FURNITURE[p.name] && FURN_B.includes(PB.piece(p.name).role) && !FIRESET_B.test(p.name)) {
+    for (const q of idx.near(bx, 0.3).map(r => r.p).concat(made.filter(Boolean))) {
+      if (q === p || !q.decor || !D.FURNITURE[q.name] || !FURN_B.includes(PB.piece(q.name).role) || FIRESET_B.test(q.name)) continue;
+      // what a built kit moves out of its way (below) does not count
+      const qr = PB.piece(q.name).role;
+      if (displace && !q.kb && !q.trim && (MOVABLE.includes(qr) || (a.dining && qr === 'table' && !/cartography|workbench|butcher|preptable/.test(q.name)))) continue;
+      const iq = D.itemOf(q);
+      if (Math.min(it.y1, iq.y1) - Math.max(it.y0, iq.y0) > 0.12 && D._int.overlap(it.b, iq.b, -0.12)) return no(31);
+    }
+  }
   if (p.rest === 'wall' && !m.faces.some(f => !f.edge && Math.abs((cx - f.px(0)) * f.nx + (cz - f.pz(0)) * f.nz - f.ht) < 0.6 &&
     (cx * f.ux + cz * f.uz) > f.a0 && (cx * f.ux + cz * f.uz) < f.a1)) return no(14);
   if (p.rest === 'hang' && !idx.near(bx).some(r => !r.p.decor && r.b.info.structural && r.b.x0 < cx && r.b.x1 > cx && r.b.z0 < cz && r.b.z1 > cz && r.b.y0 > bx.y1 - 0.3 && r.b.y0 < bx.y1 + 0.5)) return no(15);
@@ -873,7 +893,10 @@ function furnishRooms(b, ctx, zones, R2, extra, rooms) {
     let setsHere = 0;
     const cap = a => (a.dining ? (setsHere < sets ? 9 : 0) : a.built ? (many.includes(a.id) ? 2 : 1) : 2);
     const cands = lib.filter(a => (used[a.id] || 0) < cap(a) && (a.rooms || []).some(k => kinds.includes(k) || k === 'any') && anchors.some(an => takes(an, a)) &&
-      (!a.types || a.types.includes(ctx.type)) && (!a.roles || a.roles.includes(room.role)) && (!a.decor || a.decor.includes(ctx.decor)))
+      (!a.types || a.types.includes(ctx.type)) && (!a.roles || a.roles.includes(room.role)) && (!a.decor || a.decor.includes(ctx.decor)) &&
+      // a creative set only where the village makes its core pieces itself (the rest are left out where it does not,
+      // in fit: the last pass, generate.js biomeSafe, would swap them for stand-ins of another size)
+      (!a.creative || PB.BIOME_ORDER.indexOf(a.from) <= PB.BIOME_ORDER.indexOf(ctx.biome)))
       .map(a => {
         // more kinds of piece weigh more; a pair of chests is common in the corpus and dull in every room
         const ks = new Set(a.pieces.map(p => p.k).filter(k => !BUILT_SLOTS.includes(k)));
@@ -954,7 +977,7 @@ function furnishRooms(b, ctx, zones, R2, extra, rooms) {
             b.pieces = b.pieces.filter(q => !out.has(q));
             for (const q of out) idx.remove(q);
           }
-          const ds = a.dining || (a.first && a.first.includes(ctx.type)) || a.id === UNDER[under] || plain++ < want2 ? 2 : 3;
+          const ds = a.decor && !a.decor.includes('d2') ? 3 : a.dining || (a.first && a.first.includes(ctx.type)) || a.id === UNDER[under] || plain++ < want2 ? 2 : 3;
           for (const p of got) { p.ds = ds; b.pieces.push(p); idx.add(p); }
           takenAnchors.push(an);
           used[a.id] = (used[a.id] || 0) + 1;

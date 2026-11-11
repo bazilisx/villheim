@@ -274,6 +274,108 @@ two rows of posts). Rooms: home, sleeping, hall, tavern, kitchen, smithy, worksh
   `decorate.js` by hand and the same plan IDs are laid out again to compare.
 - The node and game bundles give the same plan byte for byte, so the sheet's rows match what is built in the game.
 
+## Creative sets (D-065, D-096)
+
+Measured 2026-11-10: the 1,561 corpus builds use 220 decor prefabs in 12,762 placements, but the 459 mined assemblies
+of the interior library held 109 of them. The miner grouped pieces by slot (any chest, any bench) and kept what
+repeats, so the long tail of clever objects never became sets. Tyler asked for the objects builders make by clipping
+or combining pieces for a purpose: furniture, decor, clutter, lived-in variance, wall, floor and window objects (D-096:
+clip only where it is meant for something).
+
+Sources this round. The full corpus was not reachable: it sits in Tyler's Downloads folder, which is not connected
+to the session, and valheimians.com is blocked from the cloud. The sets were written from what the repo holds of the
+corpus, and each set names it in its `basis` field:
+- the decor table in `data/kitbash-interior.json` (for each of the 220 prefabs: builds, well-liked builds, how its
+  pieces rest, on the floor, on another piece, on a table, against a wall, hung, and the median and 90th percentile
+  clip and sink depths);
+- the pairs in `data/interior.json` (what stands where next to what, in 2,686 rooms of 497 builds; a sign 0.25 m over
+  a chest in 33 rooms, a flat stand on a chair seat in 28, the dragon carving 1 m over the wolf in 19);
+- the 21 builds on Tyler's board (`PlanBuild/blueprints/villheim-board`), read by `lab/mine_creative.js`: 57
+  combined objects in 17 builds, 44 distinct. Sets taken from them name the build in `src`.
+
+`lab/mine_creative.js` is the miner for the next round, when the corpus can be read again. It keeps each piece's
+own prefab and joins decor and small building pieces inside a room when their colliders touch or clip; a group counts
+when something in it stands on another member, two members clip 3 cm or more, or a building piece carries or frames
+the rest. Rugs join only rugs. Each object is put in its anchor's frame with its rests, clips and sink, matched across
+builds by the same prefabs within 0.35 m, and keeps its source builds.
+
+`lab/creative_sets.js` writes the sets in their anchor's frame and settles them the way the fitter places them (on
+the floor, on what they rest on, hung pieces with their back on the wall's face), measures every clip with the game's
+colliders (piece into piece, into the wall, into the anchor) and writes them into `data/kitbash-interior.json` as
+assemblies `KC-001` on, with `creative: true`. 92 sets; the library now holds 193 distinct prefabs (was 109), 193 of
+the 220 the corpus uses. Each set carries:
+- `family` and `role`: furniture 21, decor 19, lived-in 18, wall 17, floor 7, clutter 5, window 5;
+- `traits`: the household traits it suits, from 0 to 1 (tidy, messy, comfort, austere, wealth, modest, busy, and the
+  hobbies crafts, collect, plants, games, maps, food), never a trade. `lib/persona.js` `kitWeight` weighs each from
+  0.3 (the household has none of it) to 1.7 (all of it);
+- `rooms` and `decor`: the decor stages it may go in. d1 only for beds and storage a room needs (a chest with its
+  label, a wardrobe, the pelt on the bedfoot chest, a crate for a nightstand). A d3-only set is always marked for the
+  third stage;
+- `biome` (the hardest piece by `lib/pieces.js` needs, minor decor anywhere) and `from` (the earliest biome that makes
+  its core pieces). A village below `from` never gets the set; in a village that makes the core but not every piece,
+  the others are left out, so the last pass never swaps a barrel of a stack for a chest of another size;
+- `foot` and `h`: footprint and height in metres, so a room's ceiling can be checked; `src` and `basis` for credit.
+
+Each piece keeps its own prefab (`k` is the prefab), so the fitter places the source piece when the village is in
+reach of it. Beams, half and quarter walls and ledges take the village's own wood (`k` is their slot), so a shelf
+matches the house; posts keep their own prefab, since a village post may be a 4 m log.
+
+The families, with examples:
+
+| Family | Sets | What they are | Examples (source) |
+|---|---|---|---|
+| Storage | 12 | Chests and barrels on each other, labelled, crates askew, old barrels and jars | barrels two high (No. 549 house-ute-cozy-house); labelled chest, a sign over it (No. 647 workshop-round-workshop; sign over a chest in 33 rooms); strongbox under a chest; grausten chests stacked; wardrobe with clothes on a chair |
+| Built | 10 | Furniture made of building pieces | chest between two posts with a pelt on it (No. 549); quarter wall plinth with a stand (No. 207 house-octagon-starter-base); beam shelves of jars and herbs; a half wall as a bench back; ledges of candles; an iron-bound rail on posts |
+| Stations | 12 | Crafting stations and their upgrades as a household's hobby corner | spinning corner, a torch by the wheel (No. 647); gem cutter on a half-wall bench; vise and cutter; apron on the wall over a stool; mortar and herbs; reading table and scrolls; galdr table corner |
+| Display | 12 | Things on show | marble heads on plinths and by a bench; wolf carving over a chest; dragon carving over a bench; raven over a high chair; bone throne and bear pelt; armor stand by a rack; shield between banners |
+| Food | 16 | Food and drink set out | brewing corner (No. 207); fermenter with its barrels; pantry shelf; a laid table; supper left out; feasts on round, long and plain tables; potion shelf; the harvest brought in; spice rack and rolling pins over the prep table |
+| Light | 9 | Lights on things | lantern on a crate; lamp on a stool by the bed; lava lantern on the table; hooded lantern on a ledge; a candle on a short post; lanterns on tall posts; candles on the bedfoot chest |
+| Bed | 6 | What ends up by a bed | folded pelt on the bedfoot chest; clothes on a chair; armor by the bed; crate as nightstand; wardrobe at the bed head |
+| Rugs | 4 | Rugs layered and pelts laid on things | rugs layered by the fire; pelts round the fire pit; a pelt on a bench |
+| Window | 4 | Under the sill | pots and ferns; a window seat with a pelt; a writing place; crates |
+| Wall | 4 | Wall objects | notice board; spice rack; Dvergr lantern over a chest; a jarl seat between torches |
+| Floor | 3 | Things in use on the floor | dice on a crate between two stools; mending by a stool; a tub with a stool and a lamp |
+
+Rules the sets follow, from the checks and the pool audit:
+- Clips are measured, never guessed. Floor pieces against a wall may go into it as deep as builders set that prefab
+  into walls (the decor table's median, 3 to 8 cm, under the audit's 15 cm); hung pieces get no allowance (the audit
+  allows 1.5 cm).
+- A chest or barrel stays up only on another chest, barrel or crate (`generate.js` finish), and furniture on furniture
+  is only storage on storage (the audit's `stacked`): a gem cutter stands on a half wall, never on a table; barrels on
+  sleeper beams were left out.
+- Nothing taller than 1 m under a window; nothing hung over a window or door.
+- Piles stay out of interiors (the audit's `indoorPile`): the skull pile set was left out.
+
+Changes outside the library, each a few lines: `lib/shapes.js` `lidAt` (chests and barrels have colliders open at the
+top, so a candle set on a barrel sat inside it; what is set on one now stands on its lid, in the fitter and in the
+decorator's `kbRests`); `lib/kitbash.js` `lite()` carries the new fields, `fit` leaves out a creative set's pieces the
+village does not make, `placeable` refuses furniture more than 12 cm into other furniture the way the pool audit's
+`furnClip` measures it (a mined table set's chair pushed into the decorator's table failed the pool gate), and a
+d3-only set's pieces are marked for the third stage; `lib/persona.js` `kitWeight` reads `traits`.
+
+How often they go in (`node lab/creative_fit.js 2`, 216 designs: nine types, six biomes, s2d2 and s3d3, two seeds):
+35 sets placed 109 times, against 36 mined sets placed 61 times; 72 prefabs reach a design through the library (43 by
+the creative sets). Every set fits somewhere when tried alone (`node lab/creative_fit.js --probe`) except a few that
+need a hall or a corner the sample rarely has (the stonecutter, the tub, the oven, the marble head on a plinth, pots
+under a window); bed sets wait for a bed whose anchor the home's own bedside kit has not taken.
+
+Left out, and why:
+Of the 220 prefabs, 27 are not in any set:
+- Seasonal pieces, Dvergr treasure chests and the asksvin skeleton (8 prefabs): the fitter leaves them out
+  (`SKIP_N`).
+- 13 prefabs with no collider or model in the lab's data (the drawer, the smoker, bar stacks, the old stone chest,
+  the cargo chest, some foods): the fitter cannot test them. `piece_drawer` is the one worth measuring (224 times on a
+  wall in the corpus).
+- The ceiling brazier and the Mountain brazier: an open fire indoors goes under a smoke hole, which the generator
+  places itself. `cloth_hanging_long` hangs 8 m. The 2 m ashwood beam pivots a metre above its solid, so a hung copy
+  in the village's wood would land wrong.
+- The skull pile (a pile, kept out of interiors by the audit) and the dark wood beam (its one set put a chest on two
+  beams as sleepers, and a chest off the floor stays only on another chest).
+- Roof pieces as awnings and fences as rails inside: a roof piece indoors reads as ceiling to the headroom check.
+
+Food and drink in a set become flat item stands holding what the household keeps (T-626), and a feast is the
+village's own; so the many mead and feast prefabs in the sets differ in the data and by what goes round them.
+
 ## Commands
 
 ```
@@ -283,6 +385,10 @@ node lab/check_interiors.js lib out.json 3         # the checks; give an older l
 node lab/interior_density.js 3                     # pieces per 10 m2 by room against the corpus
 node lab/floorplan_feedback.js floorplans.csv      # the sheet's Floorplans tab into data/interior-tuning.json
 GEO=/tmp/room-geo.json node lab/mine_room_templates.js <corpus dir> chosen.csv   # room templates, and the rooms as built
+node lab/mine_creative.js <compact.json | folder of .blueprint> [out.json]       # combined and clipped objects by contact
+node lab/creative_sets.js [mined.json]             # the creative sets into data/kitbash-interior.json
+node lab/creative_fit.js 2 [out.json]              # how often each set goes in; --probe [KC-001 ...] tries each alone
+node lab/render_creative.js <out dir> [KC-001 ...] # each set drawn in its room
 node lab/render_rooms.js /tmp/room-geo.json docs/rooms [RT-0001 ...]           # plan pictures for the Rooms tab
 node lab/room_feedback.js rooms.csv                # the Rooms tab into data/room-scores.json (--first 70 with no scores)
 node lab/rooms_sheet.js <corpus dir> rows.json [batch]                          # the Rooms tab's rows for the next batch

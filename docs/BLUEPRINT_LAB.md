@@ -467,6 +467,15 @@ torches, deer rugs, iron chests, fur rugs, armor stands. Builders clip often and
 90th percentile of 10 to 40 cm (forges and black metal chests 0.52 and 0.57 m); a tenth of the banners reach 0.55 m
 into the floor.
 
+Creative sets (2026-11-10, D-096): 92 sets `KC-001` on (`creative: true`) of combined, stacked and clipped objects,
+written by `lab/creative_sets.js` from the decor table, the pairs in `data/interior.json` and the builds on Tyler's
+board (`lab/mine_creative.js`, which mines such objects by contact and is ready for the full corpus). Each keeps its
+pieces' own prefabs and carries its family, role, household traits (`lib/persona.js` `kitWeight`), rooms, decor
+stages, biome (`from`: the earliest that makes its core pieces), footprint, height, source builds and the counts it
+rests on. The library holds 193 distinct prefabs (was 109). What they are, where they came from and what was left
+out: `docs/INTERIOR_DESIGN.md`, "Creative sets". Pieces set on a chest or barrel stand on its lid (`lib/shapes.js`
+`lidAt`), and the fitter refuses furniture more than 12 cm into other furniture as the pool audit measures it.
+
 Built-up furniture (`lib/kitbash.js` `BUILT_KITS`), hand-made in the library's format (second round after the
 2026-11-09 review of the inside cuts):
 - Against walls: a cabinet (a chest set into a half wall so its front shows as drawers, a plank top of two ledges, a
@@ -919,6 +928,7 @@ node lab/piece_sizes.js                                            # catalog siz
 node lib/build_engine.js                                           # the game's bundle, src/Villheim.Logic/Generator/lab.js
 python3 lab/learn_interior.py <corpus dir> data/interior.json      # interior rules; then node lab/interior_lite.js
 node lab/check_interiors.js lib out.json 3                         # furniture checks over a sample
+node lab/creative_sets.js && node lab/creative_fit.js 2            # the creative sets into the library; how often each goes in
 node lab/make_testpool.js <out> [--no-gate]                        # the Norse Meadows test pool, audited (exit 1 on a defect)
 node lab/audit_pool.js <folder> [--list] [--gate]                  # the pool audit on any folder of blueprints
 node lab/test_sizes.js [--list]                                    # decorator and catalog sizes against the models

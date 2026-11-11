@@ -160,6 +160,21 @@ function topAt(list, x, z) {
   for (const o of list || []) { const s = spanY(o, x, z); if (s && (best == null || s[1] > best)) best = s[1]; }
   return best;
 }
+// Containers whose colliders are open at the top (sides and a floor): what is set on one stands on its closed lid as
+// the model shows it, not on the floor inside (a candle went into a barrel). Lid heights over the pivot, from the models.
+const LIDS = { piece_chest_wood: 0.79, piece_chest: 1.22, piece_chest_barrel: 0.9, piece_chest_blackmetal: 1.03 };
+/** The top of a lidded container at (x, z) when the point is over it, or null (upright pieces only). */
+function lidAt(p, x, z) {
+  const h = LIDS[p.name];
+  if (h == null) return null;
+  const q = pieceQ(p);
+  if (Math.abs(q[0]) > 0.02 || Math.abs(q[2]) > 0.02) return null;
+  const W = world(p);
+  if (!W || !W.length) return null;
+  let x0 = Infinity, x1 = -Infinity, z0 = Infinity, z1 = -Infinity;
+  for (const o of W) { x0 = Math.min(x0, o.x0); x1 = Math.max(x1, o.x1); z0 = Math.min(z0, o.z0); z1 = Math.max(z1, o.z1); }
+  return x >= x0 && x <= x1 && z >= z0 && z <= z1 ? p.y + h * ((p.s && p.s[1]) || 1) : null;
+}
 /** Volume of a list of solids that lies inside another list (sampled on a 5 x 5 x 5 grid per box). */
 function overlapVolume(A, B) {
   let v = 0;
@@ -210,5 +225,5 @@ function clipDepth(A, B) {
   return best;
 }
 
-const apiSh = { has, pass, local, world, aabb, hit, hitsBox, boxOf, inside, spanY, undersideAt, topAt, overlapVolume, volume, clipDepth, setData };
+const apiSh = { has, pass, local, world, aabb, hit, hitsBox, boxOf, inside, spanY, undersideAt, topAt, lidAt, overlapVolume, volume, clipDepth, setData };
 if (NODE_SH) module.exports = apiSh; else window.VHShapes = apiSh;

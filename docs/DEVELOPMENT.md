@@ -65,6 +65,38 @@ and shows up as `~/mnt/profiles` in `device_bash`.
 If `~/mnt/profiles` is missing, ask Tyler to open this chat in the desktop app, or request access to the profiles
 folder again.
 
+## Testing the memory look (branch `look/memory`, D-160)
+
+The memory look is on the `look/memory` branch only. CI and the updater only publish builds from `main`, so this
+branch is copied into the profile by hand.
+
+- Install: build the branch (`dotnet build Villheim.sln -c Release`) and copy `Villheim.dll`, `Villheim.pdb`,
+  `Villheim.Logic.dll` and `Villheim.Logic.pdb` into `BepInEx\plugins\bazilisx-Villheim\` with the game closed. The
+  core goes too because the installed core can be older than the one the branch logic is built against.
+- The files they replace are kept in the same folder with `.main-backup` added to their names, with
+  `villheim-build.txt.main-backup`. `villheim-build.txt` is set to `look-memory-<commit>`.
+- Keep the updater window closed while testing: on its next check it would copy the latest `main` build over the
+  branch.
+- Going back: start the updater again (the line under "Keeping the game on the latest build"). The marker no longer
+  matches `main`, so it installs the latest `main` build (the core once Valheim is closed). Or copy the
+  `.main-backup` files back over the four files and the marker.
+
+In game:
+
+- `vh memory` puts a still villager in a T-pose (the model's rest pose, animator off) 3 m in front of you, facing
+  you, with the look. `vh memory woman` for a woman, `vh memory clear` takes it away, `vh memory shaders` lists which
+  game materials each part copies and the values in use now. GhostLook ('3c - Villager looks') must be on.
+- F1, section `3e - Look: memory`. Every dial shows on villagers and the model as you drag it.
+  - `LookMode`: Memory (default on this branch) or Ghost (the first look, with its `Ghost*` dials in '3c').
+  - Body: `MemoryAlpha` (night, 0.6), `MemoryAlphaDay` (0.75), `MemoryTint` (night, 0.35), `MemoryTintDay` (0.45),
+    `MemoryTintColor` (teal), `MemoryBrightness` (1.1).
+  - Glow around them: `MemoryGlow` (night, 0.35), `MemoryGlowDay` (0.18), `MemoryGlowColor` (teal),
+    `MemoryGlowSpread` (0.02, in the game shader's push units), `MemoryGlowSoftness` (0.6), `MemoryGlowLayers` (3, 0
+    for no glow), `MemoryGlowEdge` (the game glow shader's edge fading numbers; leave as is unless the edges look wrong).
+  - Feet: `MemoryFeetGlow` (on), `MemoryFeetStrength` (0.6), `MemoryFeetSize` (0.35 m), `MemoryFeetColor` (teal),
+    `MemoryFeetLight` (0.5, 0 for no light).
+- What each part is made from: `src/Villheim.Logic/Villagers/MemoryLook.cs` (summary at the top).
+
 ## Useful commands in game (F5 console, `devcommands` first)
 
 - `villheim_found`: light a hearth in front of you.

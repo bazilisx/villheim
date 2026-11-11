@@ -95,6 +95,7 @@ namespace Villheim.Logic
             "defenders: the nearest village's biome defender profile (Plains, Mistlands), the creatures it covers, who would shoot, and arrows loosed so far",
             "villager add [adult|child|elder] [n]: add villagers to the nearest village (adults by default; children are born in a home)",
             "gift: the nearest free villager brings you the best cooked food in the chest",
+            "memory [woman|clear|shaders]: a still villager in a T-pose in front of you with the memory look, to tune the '3e - Look: memory' dials against (F1, live); clear takes it away, shaders shows which game materials the look copies",
             "kids rig [clear]: a grown man, a boy, a girl and a grown woman, standing still in front of you, to tune the ChildBoy and ChildGirl settings ('3c - Villager looks') against; clear takes them away",
             "grudges [clear]: what the nearest village holds against players who harmed its people, and clear it",
             "keepapart: the creatures villagers and villages leave alone (KeepApartCreatures), and the camps the nearest village keeps away from",
@@ -368,6 +369,7 @@ namespace Villheim.Logic
                         ? Villagers.ChildBody.Command(args.Skip(1).ToArray())
                         : "Villheim: 'vh kids rig' puts up a grown man, a boy, a girl and a grown woman to tune the child settings against; 'vh kids rig clear' takes them away.");
                     return true;
+                case "villheim_memory": Say(context, Villagers.MemoryLook.Command(args)); return true;
                 case "villheim_demist": Say(context, Demisting.Command()); return true;
                 case "villheim_lag": Say(context, LagProbe.Command(args)); return true;
                 case "villheim_status":

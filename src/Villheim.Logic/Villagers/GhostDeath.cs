@@ -132,7 +132,7 @@ namespace Villheim.Logic.Villagers
                 part.transform.SetParent(fade.Root.transform, true);
                 part.AddComponent<MeshFilter>().sharedMesh = mesh;
                 MeshRenderer copy = part.AddComponent<MeshRenderer>();
-                Material[] materials = renderer.sharedMaterials.Where(m => m != null).Select(m => new Material(m)).ToArray();
+                Material[] materials = renderer.sharedMaterials.Where(m => m != null && !MemoryLook.IsOwn(m)).Select(m => new Material(m)).ToArray();
                 foreach (Material m in materials)
                 {
                     // His own ghostly tint when his material already had one, else a pale ghost blue. The tint was read

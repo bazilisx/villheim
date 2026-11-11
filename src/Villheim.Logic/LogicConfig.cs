@@ -274,6 +274,26 @@ namespace Villheim.Logic
         public static ConfigEntry<float> VillagerRegen;
         public static ConfigEntry<float> RestRegenFactor;
         public static ConfigEntry<float> GhostDeathSeconds;
+        // The memory look (Villagers/MemoryLook.cs), section "3e - Look: memory".
+        public static ConfigEntry<string> LookMode;
+        public static ConfigEntry<float> MemoryAlpha;
+        public static ConfigEntry<float> MemoryAlphaDay;
+        public static ConfigEntry<float> MemoryTint;
+        public static ConfigEntry<float> MemoryTintDay;
+        public static ConfigEntry<UnityEngine.Color> MemoryTintColor;
+        public static ConfigEntry<float> MemoryBrightness;
+        public static ConfigEntry<float> MemoryGlow;
+        public static ConfigEntry<float> MemoryGlowDay;
+        public static ConfigEntry<UnityEngine.Color> MemoryGlowColor;
+        public static ConfigEntry<float> MemoryGlowSpread;
+        public static ConfigEntry<float> MemoryGlowSoftness;
+        public static ConfigEntry<int> MemoryGlowLayers;
+        public static ConfigEntry<UnityEngine.Vector4> MemoryGlowEdge;
+        public static ConfigEntry<bool> MemoryFeetGlow;
+        public static ConfigEntry<float> MemoryFeetStrength;
+        public static ConfigEntry<float> MemoryFeetSize;
+        public static ConfigEntry<UnityEngine.Color> MemoryFeetColor;
+        public static ConfigEntry<float> MemoryFeetLight;
         // Hair review and the kids rig (Villagers/HairReview.cs), section "3d - Hair review".
         public static ConfigEntry<string> RigCulture;
         public static ConfigEntry<string> RigHairMan;
@@ -654,6 +674,7 @@ namespace Villheim.Logic
             ElderLongBeard = Admin(config, looks, "ElderLongBeard", 0.8f,
                 "Chance that an elder man wears a long beard (long, thick, royal, braided or Stonedweller), and has a beard at all.");
             BindChildShape(config, looks);
+            BindMemoryLook(config);
             GhostDeathSeconds = Admin(config, looks, "GhostDeathSeconds", 3.5f,
                 "Seconds a dying villager takes to fade out as he rises, after the ghost's vanishing effect.");
             GhostDeath = Admin(config, looks, "GhostDeath", true,
@@ -1196,11 +1217,17 @@ namespace Villheim.Logic
             foreach (ConfigEntryBase entry in new ConfigEntryBase[]
                      {
                          GhostLook, GhostAlpha, GhostTint, GhostGlow, GhostAlphaDay, GhostTintDay, GhostGlowDay, GhostColor, GhostGlowColor,
+                         LookMode, MemoryAlpha, MemoryAlphaDay, MemoryTint, MemoryTintDay, MemoryTintColor, MemoryBrightness, MemoryGlow,
+                         MemoryGlowDay, MemoryGlowColor, MemoryGlowSpread, MemoryGlowSoftness, MemoryGlowLayers, MemoryGlowEdge, MemoryFeetGlow,
+                         MemoryFeetStrength, MemoryFeetSize, MemoryFeetColor, MemoryFeetLight,
                      })
             {
                 if (entry is ConfigEntry<float> f) Hook(f, apply);
                 else if (entry is ConfigEntry<bool> b) Hook(b, apply);
                 else if (entry is ConfigEntry<UnityEngine.Color> c) Hook(c, apply);
+                else if (entry is ConfigEntry<int> i) Hook(i, apply);
+                else if (entry is ConfigEntry<string> t) Hook(t, apply);
+                else if (entry is ConfigEntry<UnityEngine.Vector4> v) Hook(v, apply);
             }
 
             Hook(GhostApplyNow, (_, __) =>
@@ -1211,6 +1238,64 @@ namespace Villheim.Logic
                     GhostApplyNow.Value = false;
                 }
             });
+        }
+
+        /// <summary>
+        /// Section "3e - Look: memory" (D-160): the memory look, a second look next to the ghost look, picked with
+        /// LookMode. Sliders in the config manager (F1); each change shows on villagers and the 'vh memory' model at
+        /// once. Night values blend into the Day values through dusk and dawn, as the ghost look's do.
+        /// </summary>
+        private static void BindMemoryLook(ConfigFile config)
+        {
+            const string memory = "3e - Look: memory";
+            int order = 100;
+
+            ConfigEntry<T> Dial<T>(string key, T value, string description, AcceptableValueBase range = null) =>
+                config.Bind(memory, key, value, new ConfigDescription(description, range,
+                    new ConfigurationManagerAttributes { IsAdminOnly = true, Order = order-- }));
+
+            AcceptableValueRange<float> Range(float min, float max) => new AcceptableValueRange<float>(min, max);
+
+            LookMode = Dial("LookMode", "Memory",
+                "Which look villagers and village animals have while GhostLook ('3c - Villager looks') is on. Ghost: the " +
+                "first look. Memory: see-through in their own colors with a teal tint, a soft teal glow around them and a " +
+                "glow at their feet. 'vh memory' puts up a still model in front of you to tune these against.",
+                new AcceptableValueList<string>("Memory", "Ghost"));
+            MemoryAlpha = Dial("MemoryAlpha", 0.6f,
+                "Body: how solid villagers are at night, from barely there near 0 to fully solid at 1 (at 1 they have " +
+                "their normal look and no glow around them).", Range(0.05f, 1f));
+            MemoryAlphaDay = Dial("MemoryAlphaDay", 0.75f, "Body: how solid villagers are by day.", Range(0.05f, 1f));
+            MemoryTint = Dial("MemoryTint", 0.35f, "Body: how strongly their own colors are tinted toward MemoryTintColor at night, 0 for none.",
+                Range(0f, 1f));
+            MemoryTintDay = Dial("MemoryTintDay", 0.45f, "Body: the same by day.", Range(0f, 1f));
+            MemoryTintColor = Dial("MemoryTintColor", new UnityEngine.Color(0.45f, 0.95f, 0.85f), "Body: the tint color.");
+            MemoryBrightness = Dial("MemoryBrightness", 1.1f,
+                "Body: how bright their own colors are drawn, 1 as they are. Raise it if they look dark at night.", Range(0.2f, 3f));
+            MemoryGlow = Dial("MemoryGlow", 0.35f, "Glow around them: how strong it is at night, 0 for none.", Range(0f, 1f));
+            MemoryGlowDay = Dial("MemoryGlowDay", 0.18f, "Glow around them: how strong it is by day.", Range(0f, 1f));
+            MemoryGlowColor = Dial("MemoryGlowColor", new UnityEngine.Color(0.35f, 1f, 0.85f), "Glow around them: its color.");
+            MemoryGlowSpread = Dial("MemoryGlowSpread", 0.02f,
+                "Glow around them: how far it reaches out from the body. In the game shader's own push units (its weapon " +
+                "glows use 0.004 to 0.008); drag it with 'vh memory' up to see the size.", Range(0f, 0.2f));
+            MemoryGlowSoftness = Dial("MemoryGlowSoftness", 0.6f,
+                "Glow around them: how gently it fades toward its outer edge. 0 is an even band, 1 fades fast from the body out.",
+                Range(0f, 1f));
+            MemoryGlowLayers = Dial("MemoryGlowLayers", 3,
+                "Glow around them: how many shells it is drawn in. More is smoother and costs a little more; 0 turns the glow off.",
+                new AcceptableValueRange<int>(0, 4));
+            MemoryGlowEdge = Dial("MemoryGlowEdge", new UnityEngine.Vector4(-1.37f, 0.27f, 0.24f, 1.25f),
+                "Glow around them: the game glow shader's own edge fading numbers (_EdgeFading). The default is what the " +
+                "game's still lightning glow uses. Try other numbers only if the glow looks wrong at its edges.");
+            MemoryFeetGlow = Dial("MemoryFeetGlow", true,
+                "Feet: a soft teal glow on the ground under each foot and a faint light at the feet. Off: none.");
+            MemoryFeetStrength = Dial("MemoryFeetStrength", 0.6f, "Feet: how strong the glow on the ground is.", Range(0f, 1f));
+            MemoryFeetSize = Dial("MemoryFeetSize", 0.35f,
+                "Feet: how wide the glow under each foot is, in meters (the softer pool under the whole villager is about twice this).",
+                Range(0.05f, 1.5f));
+            MemoryFeetColor = Dial("MemoryFeetColor", new UnityEngine.Color(0.35f, 1f, 0.85f), "Feet: the glow's color.");
+            MemoryFeetLight = Dial("MemoryFeetLight", 0.5f,
+                "Feet: how bright the faint light at the feet is (it lights the ground and things close by), 0 for no light.",
+                Range(0f, 3f));
         }
 
         /// <summary>

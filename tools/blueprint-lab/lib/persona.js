@@ -399,10 +399,13 @@ function stageOf(b, hall) {
     if (!changed) break;
   }
   // a building with nothing at d1 opens with its first two pieces of furniture
+  // (never a built kit: a cabinet's chest set into its half wall at d1 has no d1 shell to belong to, and the pool audit
+  // reads its half wall as the building's, 2026-11-10)
   if (!b.pieces.some(p => p.ds === 1)) {
     let n = 0;
+    const built = new Set(b.pieces.filter(q => q.trim && q.kb).map(q => q.kb));
     for (const p of b.pieces) {
-      if (!p.decor || p.ds !== 2 || p.y > 3 || !['table', 'storage', 'seat', 'bed', 'craft', 'fire'].includes(P_.piece(p.name).role) || n++ >= 2) continue;
+      if (!p.decor || p.ds !== 2 || p.y > 3 || (p.kb && built.has(p.kb)) || !['table', 'storage', 'seat', 'bed', 'craft', 'fire'].includes(P_.piece(p.name).role) || n++ >= 2) continue;
       if (p.kb) { for (const q of b.pieces) if (q.kb === p.kb && q.ds === 2) q.ds = 1; } else p.ds = 1;
     }
   }

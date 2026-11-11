@@ -1528,10 +1528,13 @@ function stageOf(b, hall) {
     if (!changed) break;
   }
   // a building with nothing at d1 opens with its first two pieces of furniture
+  // (never a built kit: a cabinet's chest set into its half wall at d1 has no d1 shell to belong to, and the pool audit
+  // reads its half wall as the building's, 2026-11-10)
   if (!b.pieces.some(p => p.ds === 1)) {
     let n = 0;
+    const built = new Set(b.pieces.filter(q => q.trim && q.kb).map(q => q.kb));
     for (const p of b.pieces) {
-      if (!p.decor || p.ds !== 2 || p.y > 3 || !['table', 'storage', 'seat', 'bed', 'craft', 'fire'].includes(P_.piece(p.name).role) || n++ >= 2) continue;
+      if (!p.decor || p.ds !== 2 || p.y > 3 || (p.kb && built.has(p.kb)) || !['table', 'storage', 'seat', 'bed', 'craft', 'fire'].includes(P_.piece(p.name).role) || n++ >= 2) continue;
       if (p.kb) { for (const q of b.pieces) if (q.kb === p.kb && q.ds === 2) q.ds = 1; } else p.ds = 1;
     }
   }
@@ -6047,7 +6050,31 @@ function commitMotifs(b, ctx) {
     if (a.pass || o.pass) return false;
     return !(a.sol && o.sol && SH) || SH.overlapVolume(a.sol, o.sol) > 0.01;
   };
+  // a lamp, banner, sign or carving tested again against the structure as it stands now: the bands and rails laid
+  // after the motifs were chosen ran through a banner on a Black Forest farm and storehouse (2026-11-10); a banner's
+  // cloth also ends over the floor or ground under it and no more than a metre above it, out of the roof (the pool
+  // audit's hang test). Such a piece comes out with the rest of its motif round it.
+  const Me = meshDt(), PROP = /^(piece_banner\d+|sign|sign_notext|itemstand|piece_walltorch|piece_dvergr_lantern|piece_brazierceiling01|wood_dragon1|darkwood_raven|darkwood_wolf|Trophy|piece_shieldgeneric|cloth_hanging_)/;
+  const struct = b.pieces.filter(q => (!q.decor || q.trim) && ['wall', 'window', 'pole', 'beam', 'roof', 'roofCorner', 'roofTop', 'gable', 'halfwall'].includes(PD.piece(q.name).role));
+  const floors = b.pieces.filter(q => !q.decor && PD.piece(q.name).role === 'floor');
+  const bad = [];
+  if (Me) for (const p of pend) {
+    if (!PROP.test(p.name)) continue;
+    const pq = { ...p, q: p.q || quatD(p.yaw) }, A = Me.world(pq);
+    if (!A || !A.length) continue;
+    const lim = /^piece_banner\d+$/.test(p.name) ? 0.03 : 0.015;
+    let out = struct.some(q => Math.abs(q.x - p.x) < 3.5 && Math.abs(q.z - p.z) < 3.5 && Math.abs(q.y - p.y) < 4.5 && Me.deepest(A, Me.world(q)) > lim);
+    if (!out && /^piece_banner\d+$/.test(p.name) && SH) {
+      const V = Me.aabbOf(A);
+      let fl = 0;
+      for (const q of floors) { if (Math.abs(q.x - p.x) > 2.5 || Math.abs(q.z - p.z) > 2.5) continue; const t = SH.topAt(SH.world(q) || [], p.x, p.z); if (t != null && t <= V.y0 + 0.05 && t > fl) fl = t; }
+      out = V.y0 < fl - 0.03 || V.y0 > fl + 1.0;
+    }
+    if (out) bad.push(p);
+  }
+  const dropped = p => bad.some(q => q.motif === p.motif && Math.abs(q.x - p.x) < 3 && Math.abs(q.y - p.y) < 4 && Math.abs(q.z - p.z) < 3);
   for (const p of pend) {
+    if (dropped(p)) continue;
     const pb = gb({ ...p, q: p.q || quatD(p.yaw) });
     if (furn.some(o => hit(pb, o))) continue; // what the furnishing put there first stays
     b.put(p.name, p.x, p.y, p.z, p.yaw, { trim: true, motif: p.motif, footed: true });
@@ -9204,6 +9231,7 @@ function add(b, ctx) {
   // paving: where the house stands on 1 m stone floors (half in the ground), the ground in front of the door is laid
   // in the same stone, level with the floor inside (outside stone floors are on 39 % of the corpus builds)
   let paved = 0;
+  const gateWay = (() => { const g = Ck.aabb(plan.gate); return g ? { x0: g.x0 - 0.75, x1: g.x1 + 0.75, z0: g.z0 - 0.75, z1: g.z1 + 0.75, y0: g.y0, y1: g.y0 + 2 } : null; })();
   const stoneIn = b.pieces.find(p => !p.yard && /^(stone_floor_2x2|blackmarble_floor|Piece_grausten_floor_2x2)$/.test(p.name) && Math.abs(p.x - front.x) < 2.1 && Math.abs(p.z - front.z) < 2.1);
   if (stoneIn && X.yardPave !== false) {
     const nOut = front.z <= (S.W.z0 + S.W.z1) / 2 ? -1 : 1;
@@ -9213,6 +9241,9 @@ function add(b, ctx) {
       const o = Ck.aabb({ ...p, y: p.y + G0 });
       const c = { ...o, x0: o.x0 + 0.05, x1: o.x1 - 0.05, z0: o.z0 + 0.05, z1: o.z1 - 0.05 };
       if (S.solid.some(z => hitBox(c, z, 0)) || placed.some(q => hitBox(c, Ck.aabb(q), 0)) || !inYard(c)) continue;
+      // and out of the gate's way: a stone floor laid level with the floor inside stands half a metre proud of the
+      // ground the gate swings over (the pool audit's doorway test, middle-eastern homes, 2026-11-10)
+      if (gateWay && hitBox(c, gateWay, 0) && c.y1 > gateWay.y0 + 0.3) continue;
       put(p); paved++;
     }
   }
@@ -10494,7 +10525,12 @@ function generate(req) {
       if (-D - zmin >= 5.9) { // a well only where the yard leaves room in front of the door
         const well = new Build(); wellDesign(well, K, biome, 's1');
         const lift = thickFloor(pave) ? 0.5 : 0; // on top of the paving
-        for (const p of well.pieces) b.put(p.name, p.x, p.y + lift, p.z + yz, p.yaw);
+        // out of the wings' walls: the barrel by the well goes where it would stand in a wall (a narrow yard put it
+        // 0.57 m into the wing, 2026-11-10), the well where any of its own pieces would
+        const Ck = checksLib(), walls = b.pieces.filter(q => ['wall', 'window', 'door', 'pole'].includes(P.piece(q.name).role)).map(q => Ck.aabb(q));
+        const inWall = p => { const o = Ck.aabb({ ...p, y: p.y + lift, z: p.z + yz }); return walls.some(w => o.x0 < w.x1 - 0.02 && o.x1 > w.x0 + 0.02 && o.z0 < w.z1 - 0.02 && o.z1 > w.z0 + 0.02 && o.y0 < w.y1 && o.y1 > w.y0); };
+        const keep = well.pieces.filter(p => !(p.name === 'piece_chest_barrel' && inWall(p)));
+        if (!keep.some(inWall)) for (const p of keep) b.put(p.name, p.x, p.y + lift, p.z + yz, p.yaw);
       }
     }
     if ((stage === 's3' && type === 'home') || type === 'temple') {

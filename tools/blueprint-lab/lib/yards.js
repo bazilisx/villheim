@@ -395,6 +395,7 @@ function add(b, ctx) {
   // paving: where the house stands on 1 m stone floors (half in the ground), the ground in front of the door is laid
   // in the same stone, level with the floor inside (outside stone floors are on 39 % of the corpus builds)
   let paved = 0;
+  const gateWay = (() => { const g = Ck.aabb(plan.gate); return g ? { x0: g.x0 - 0.75, x1: g.x1 + 0.75, z0: g.z0 - 0.75, z1: g.z1 + 0.75, y0: g.y0, y1: g.y0 + 2 } : null; })();
   const stoneIn = b.pieces.find(p => !p.yard && /^(stone_floor_2x2|blackmarble_floor|Piece_grausten_floor_2x2)$/.test(p.name) && Math.abs(p.x - front.x) < 2.1 && Math.abs(p.z - front.z) < 2.1);
   if (stoneIn && X.yardPave !== false) {
     const nOut = front.z <= (S.W.z0 + S.W.z1) / 2 ? -1 : 1;
@@ -404,6 +405,9 @@ function add(b, ctx) {
       const o = Ck.aabb({ ...p, y: p.y + G0 });
       const c = { ...o, x0: o.x0 + 0.05, x1: o.x1 - 0.05, z0: o.z0 + 0.05, z1: o.z1 - 0.05 };
       if (S.solid.some(z => hitBox(c, z, 0)) || placed.some(q => hitBox(c, Ck.aabb(q), 0)) || !inYard(c)) continue;
+      // and out of the gate's way: a stone floor laid level with the floor inside stands half a metre proud of the
+      // ground the gate swings over (the pool audit's doorway test, middle-eastern homes, 2026-11-10)
+      if (gateWay && hitBox(c, gateWay, 0) && c.y1 > gateWay.y0 + 0.3) continue;
       put(p); paved++;
     }
   }

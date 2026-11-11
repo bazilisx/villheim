@@ -393,7 +393,31 @@ function commitMotifs(b, ctx) {
     if (a.pass || o.pass) return false;
     return !(a.sol && o.sol && SH) || SH.overlapVolume(a.sol, o.sol) > 0.01;
   };
+  // a lamp, banner, sign or carving tested again against the structure as it stands now: the bands and rails laid
+  // after the motifs were chosen ran through a banner on a Black Forest farm and storehouse (2026-11-10); a banner's
+  // cloth also ends over the floor or ground under it and no more than a metre above it, out of the roof (the pool
+  // audit's hang test). Such a piece comes out with the rest of its motif round it.
+  const Me = meshDt(), PROP = /^(piece_banner\d+|sign|sign_notext|itemstand|piece_walltorch|piece_dvergr_lantern|piece_brazierceiling01|wood_dragon1|darkwood_raven|darkwood_wolf|Trophy|piece_shieldgeneric|cloth_hanging_)/;
+  const struct = b.pieces.filter(q => (!q.decor || q.trim) && ['wall', 'window', 'pole', 'beam', 'roof', 'roofCorner', 'roofTop', 'gable', 'halfwall'].includes(PD.piece(q.name).role));
+  const floors = b.pieces.filter(q => !q.decor && PD.piece(q.name).role === 'floor');
+  const bad = [];
+  if (Me) for (const p of pend) {
+    if (!PROP.test(p.name)) continue;
+    const pq = { ...p, q: p.q || quatD(p.yaw) }, A = Me.world(pq);
+    if (!A || !A.length) continue;
+    const lim = /^piece_banner\d+$/.test(p.name) ? 0.03 : 0.015;
+    let out = struct.some(q => Math.abs(q.x - p.x) < 3.5 && Math.abs(q.z - p.z) < 3.5 && Math.abs(q.y - p.y) < 4.5 && Me.deepest(A, Me.world(q)) > lim);
+    if (!out && /^piece_banner\d+$/.test(p.name) && SH) {
+      const V = Me.aabbOf(A);
+      let fl = 0;
+      for (const q of floors) { if (Math.abs(q.x - p.x) > 2.5 || Math.abs(q.z - p.z) > 2.5) continue; const t = SH.topAt(SH.world(q) || [], p.x, p.z); if (t != null && t <= V.y0 + 0.05 && t > fl) fl = t; }
+      out = V.y0 < fl - 0.03 || V.y0 > fl + 1.0;
+    }
+    if (out) bad.push(p);
+  }
+  const dropped = p => bad.some(q => q.motif === p.motif && Math.abs(q.x - p.x) < 3 && Math.abs(q.y - p.y) < 4 && Math.abs(q.z - p.z) < 3);
   for (const p of pend) {
+    if (dropped(p)) continue;
     const pb = gb({ ...p, q: p.q || quatD(p.yaw) });
     if (furn.some(o => hit(pb, o))) continue; // what the furnishing put there first stays
     b.put(p.name, p.x, p.y, p.z, p.yaw, { trim: true, motif: p.motif, footed: true });

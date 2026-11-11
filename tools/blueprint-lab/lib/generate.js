@@ -999,7 +999,12 @@ function generate(req) {
       if (-D - zmin >= 5.9) { // a well only where the yard leaves room in front of the door
         const well = new Build(); wellDesign(well, K, biome, 's1');
         const lift = thickFloor(pave) ? 0.5 : 0; // on top of the paving
-        for (const p of well.pieces) b.put(p.name, p.x, p.y + lift, p.z + yz, p.yaw);
+        // out of the wings' walls: the barrel by the well goes where it would stand in a wall (a narrow yard put it
+        // 0.57 m into the wing, 2026-11-10), the well where any of its own pieces would
+        const Ck = checksLib(), walls = b.pieces.filter(q => ['wall', 'window', 'door', 'pole'].includes(P.piece(q.name).role)).map(q => Ck.aabb(q));
+        const inWall = p => { const o = Ck.aabb({ ...p, y: p.y + lift, z: p.z + yz }); return walls.some(w => o.x0 < w.x1 - 0.02 && o.x1 > w.x0 + 0.02 && o.z0 < w.z1 - 0.02 && o.z1 > w.z0 + 0.02 && o.y0 < w.y1 && o.y1 > w.y0); };
+        const keep = well.pieces.filter(p => !(p.name === 'piece_chest_barrel' && inWall(p)));
+        if (!keep.some(inWall)) for (const p of keep) b.put(p.name, p.x, p.y + lift, p.z + yz, p.yaw);
       }
     }
     if ((stage === 's3' && type === 'home') || type === 'temple') {

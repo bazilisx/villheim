@@ -770,8 +770,14 @@ Norse Meadows 12.2 prefabs per d3 design, 0.443 of decor from sets, 1.07 corpus 
 Forest 14, 0.455, 1.78; middle-eastern Plains 13.4, 0.397, 1.08. A single line ranges too widely to gate (a barn holds
 no corpus set, a smithy six prefabs). `node lab/make_testpool.js <out> --sample` writes the Norse Meadows pool and the
 two others in `<out>/norse-forest` and `<out>/middle-eastern`, and gates each; `--culture` and `--biome` write one
-other pool. The other two pools fail today on defects that main showed before this work (Black Forest: mountClip 6,
-hang 9, intoWall 3; Plains: mountClip 3, hang 3, doorway 6, intoWall 6), so the gate passes for Norse Meadows only.
+other pool. All three pass since 2026-11-10 (they failed on Black Forest mountClip 6, hang 9, intoWall 3 and Plains
+mountClip 3, hang 3, doorway 6, intoWall 6). The causes, fixed in the generator: an outside wall banner chosen before
+the wall bands were laid ran into a band and hung with its foot 1.1 m up (`details.js` `commitMotifs` now tests lamps,
+banners, signs and carvings again against the structure as it stands, and a banner's foot against the ground or floor
+under it, and drops the motif round one that fails); a farm or barn with nothing at d1 opened with a built kit, whose
+chest is set into its half wall (`persona.js` `stageOf` now takes no built kit for that); the well of a narrow U-plan
+yard put its barrel 0.57 m into a wing wall (`generate.js`); the yard's stone paving, laid level with the floor inside,
+stood half a metre into a fence gate's way (`yards.js`).
 
 Built furniture (a cabinet whose back is a half wall) is left out of the wall measures: only pieces already in the
 stage's d1 file count as the building. In the game the pool is made in `BepInEx/config/Villheim/testpool-staging-<culture>`

@@ -326,7 +326,8 @@ well (Tyler, 2026-11-08). The Features tab of the review sheet (`docs/features/b
      culture it may be a longhouse, a round structure, or another form. Reference: Tyler's board saves for the
      Meadows hearth (`BepInEx/config/Villheim/blueprints/inspiration/board/`: hub1_s1d2, hub1_s1d3; drafts
      hub1_s2d3, hub1_s3d3, hub1_s4d3, the last two the same 1,006 pieces). No s5 save or draft was found; work on
-     s3 to s5 made after 2026-11-08 01:54 may still stand on the board in the flat test world. Plan first (docs and
+     s2 to s5 made after the drafts were written (2026-11-07, 6:54 PM MT) may still stand on the board in the flat
+     test world. Plan: docs/handoffs/2026-11-10-design/hubs.md (design/wip-hubs); questions D-137 to D-142. Plan first (docs and
      data), generator work after the interior tracks merge.
   2b. [ ] **Next, asked for by Tyler (2026-11-10):** one more round of tightening the piece models: rerun
      `lab/extract_models.py` on Tyler's PC (game files under Z:\SteamLibrary\steamapps\common\Valheim, UnityPy) with

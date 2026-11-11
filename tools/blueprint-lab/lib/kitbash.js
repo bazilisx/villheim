@@ -1770,6 +1770,16 @@ function apply(b, ctx, zones) {
   dropFalling(b);
 }
 
+// Both budgets for a building with no interior library pass (round houses, the Svan tower: lib/generate.js), so their
+// rooms keep to the same light and rug budgets as the rest (integration round 4: a yurt held 7 lights, as many as the
+// decorator and the stands put up)
+function budgets(b) {
+  const t = trimLights(b), r = trimRugs(b);
+  if (t) b.notes.push(`${t} lights over the rooms' budgets left out.`);
+  if (r) b.notes.push(`${r} rugs over the rooms' budgets left out.`);
+  return t + r;
+}
+
 // The rooms' light budgets (lib/decorate.js lightBudget) over everything lit by now: the decorator's lights, the
 // library's sets and wall torches, the stand pass's candles. Per room and class, the lights are taken best first and
 // kept while the class has room at d3, and at d2 for those that stand at d2 (one with no room at d2 goes up at d3 when
@@ -1817,10 +1827,14 @@ function trimLights(b) {
     for (const pool of [false, true]) {
       const left = [];
       while (rest.length) {
-        // the best of what is left, less for a kept light of its class within 3.9 m
+        // the best of what is left, less for a kept light of its class within 3.9 m; while its class has room at d2, a
+        // light that can stand at d2 comes first (a set's light that goes up only at d3 would take the place a d2 room
+        // has and leave it dark at d2)
         let bi = 0, bv = -Infinity;
         rest.forEach((e, i) => {
-          const v = e.v - kept.filter(k => k.c === e.c && Math.hypot(k.p.x - e.p.x, k.p.z - e.p.z) < 3.9).length * 0.8;
+          const eks = pool && e.c !== 'small' ? BIG : [e.c];
+          const first = !(e.p.ds === 3 && e.p.kb) && sum(used2, eks) < sum(r.B[2], eks) ? 10 : 0;
+          const v = first + e.v - kept.filter(k => k.c === e.c && Math.hypot(k.p.x - e.p.x, k.p.z - e.p.z) < 3.9).length * 0.8;
           if (v > bv) { bv = v; bi = i; }
         });
         const [e] = rest.splice(bi, 1), c = e.c, p = e.p;
@@ -2243,5 +2257,5 @@ function fitDebug(b, ctx, room, anc, a) {
   const got = fit(b, ctx, room, idx, ctx.zones || [], anc, a, false, fires);
   return { ok: !!got, why: WHY_B, piece: LAST_B, q: LASTQ_B };
 }
-const apiB = { setStats: s => { STATS_B = s; }, boxIndex, stands: (b, ctx, zones) => { const St = NODE_B ? require('./stands.js') : window.VHStands; return St ? St.dressTops(b, ctx, zones || []) : 0; }, liveIn, jitterSpec, WALL_DRESS, WALL_KITS, UNDER, underChoice, residentSlots, slotKits, ROLE_DISPLAYS, groupStorage, spreadTables, spaceBeds, seatRugs, dressWalls, why: () => WHY_B, _fitDebug: fitDebug, BUILT: BUILT_KITS, apply, library, setLibrary, lite, furnishRooms, anchorsOf, roomsB, fit, barCounter, canopyBed, stalls, dais, vignettes, CLASSES, SLOT, FOOD, BUILT_SLOTS, slotOf, isDecor, canDecor };
+const apiB = { setStats: s => { STATS_B = s; }, boxIndex, budgets, stands: (b, ctx, zones) => { const St = NODE_B ? require('./stands.js') : window.VHStands; return St ? St.dressTops(b, ctx, zones || []) : 0; }, liveIn, jitterSpec, WALL_DRESS, WALL_KITS, UNDER, underChoice, residentSlots, slotKits, ROLE_DISPLAYS, groupStorage, spreadTables, spaceBeds, seatRugs, dressWalls, why: () => WHY_B, _fitDebug: fitDebug, BUILT: BUILT_KITS, apply, library, setLibrary, lite, furnishRooms, anchorsOf, roomsB, fit, barCounter, canopyBed, stalls, dais, vignettes, CLASSES, SLOT, FOOD, BUILT_SLOTS, slotOf, isDecor, canDecor };
 if (NODE_B) module.exports = apiB; else window.VHKitbash = apiB;

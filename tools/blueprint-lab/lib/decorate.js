@@ -1853,6 +1853,8 @@ function decorate(b, ctx) {
   // the layout plans' own stream, drawn once from the design's, so the plans can change without moving the rest
   // (ctx.layout.seed, a household's own number, draws another layout for the same building)
   const layoutR = rngFrom((Math.floor(R() * 4294967296) ^ 0x1a70) + ((ctx.layout && +ctx.layout.seed) || 0) * 7919);
+  let mainDone = false;
+  const bigOf = ms => ms.filter(q => q.area >= 4 && q.covered >= 0.5).sort((a, c) => c.area - a.area)[0];
   ys.forEach((y, li) => {
     const rects = byY.get(y);
     const hintY = rects.length ? standGuess(b.pieces, rects, y) : y;
@@ -1872,8 +1874,11 @@ function decorate(b, ctx) {
       room.upper = li > 0 || (rects.length && rects.every(r => r.upper));
       const inMain = main && m.cells.filter(c => c.x > main.x0 && c.x < main.x1 && c.z > main.z0 && c.z < main.z1).length;
       const role = ctx.role || roleFor(use, type, room, inMain / m.cells.length, rects, ys.length, li);
-      room.mainRoom = li === 0 && (!main || inMain / m.cells.length > 0.5);
+      // the building's main room (lightBudget): on the lowest level that has a room, the room in the main rect, else
+      // that level's largest room (a raised floor's first level, a court plan's rooms, integration round 4)
+      room.mainRoom = !mainDone && (!main || inMain / m.cells.length > 0.5 || m === bigOf(models));
       if (!role) continue;
+      if (room.mainRoom) mainDone = true;
       // the main way in: a door, else the top of the stairs, else the room's longest open side
       room.entry = room.doors.slice().sort((a, c) => (a.open ? 1 : 0) - (c.open ? 1 : 0) || Math.abs(a.x - (ctx.doorX ?? a.x)) - Math.abs(c.x - (ctx.doorX ?? c.x)))[0] || null;
       if (!room.entry && room.stairs.length) {
@@ -2451,19 +2456,21 @@ const LIGHT_ROOM = { home: [1.89, 0.37, 0.21, 0.18, 0.36, 96.75], sleeping: [1.0
 const LIGHT_MAIN_NONE = { home: 0.33, hall: 0.23, tavern: 0.06, smithy: 0.21, workshop: 0.21, storage: 0.29, kitchen: 0.33, living: 0.29 };
 // The share of lights that already stand at d2 (the rest go up at d3, D-071)
 const LIGHT_D2 = 0.7;
-// The budget: none at all as often as the kind's corpus rooms have none (less often for a household that likes its
-// lights), else the corpus count of a lit room of the kind, scaled by the room's size against the kind's median room
-// (square root, 0.35 to 2 times), by the household's liking for lights, the culture's taste and the village's own
-// (a number per village, from c.village where the caller gives one, else per culture and biome), and a draw of 0.7 to
-// 1.3. Each light then draws its class by the kind's corpus mix (candles more for a comfortable household; a hanging
-// brazier only in a room of 30 m2 with 3.9 m under its ceiling). From a stream of its own, so the room's other draws
-// are as before.
+// The budget: none at all as often as the kind's corpus rooms have none, else the corpus count of a lit room of the
+// kind, scaled by the room's size against the kind's median room (square root, 0.35 to 2 times), by the household's
+// liking for lights, the culture's taste and the village's own (a number per village, from c.village where the caller
+// gives one, else per culture and biome), and a draw of 0.7 to 1.3. Each light then draws its class by the kind's
+// corpus mix (candles more for a comfortable household; a hanging brazier only in a room of 30 m2 with 3.9 m under its
+// ceiling). From a stream of its own, so the room's other draws are as before.
 function lightBudget(room) {
   if (room.lightB) return room.lightB;
   const kind = LEARN_KIND[room.role] || 'other';
   const [w, f, s, h, p0, med] = LIGHT_ROOM[kind] || LIGHT_ROOM.other;
   const P = room.persona || null;
   const R = rngFrom((hashD(`lb|${room.cx.toFixed(1)}|${room.cz.toFixed(1)}|${room.stand.toFixed(1)}`) ^ ((P && P.salt) || 0x5eed)) >>> 0);
+  // the stream's first values follow its seed closely (44 % of main rooms drew under 0.33, integration round 4): the
+  // first four are passed over
+  for (let i = 0; i < 4; i++) R();
   const likes = P && P.likes ? Math.max(0.5, Math.min(1.6, P.likes.lights || 1)) : 1;
   const taste = (CULTURE_TASTE[room.culture] || {}).lights || 1;
   const village = 0.8 + 0.45 * hashD(`vl|${room.village != null ? room.village : `${room.culture}|${room.biome}`}`) / 4294967296;
@@ -2472,7 +2479,9 @@ function lightBudget(room) {
   const B = { kind, 2: { ...zero }, 3: { ...zero }, n: 0 };
   room.lightB = B;
   const none = room.mainRoom && LIGHT_MAIN_NONE[kind] != null ? LIGHT_MAIN_NONE[kind] : p0;
-  if (R() < Math.min(0.9, none / mult)) return B;
+  // dark as often as the corpus's rooms (the household and village move how many lights a lit room has; moving the
+  // share of none by them too put homes' main rooms at 0.46 against the corpus 0.33, integration round 4)
+  if (R() < none) return B;
   const scale = Math.max(0.35, Math.min(2, Math.sqrt(room.area / med)));
   const mean = Math.max(1, (w + f + s + h) / (1 - none) * scale * mult * (0.7 + 0.6 * R()));
   const n = Math.floor(mean) + (R() < mean - Math.floor(mean) ? 1 : 0);

@@ -541,7 +541,7 @@ function check(design, biome, opts = {}) {
   if (biome) {
     const ord = PC.BIOME_ORDER, limit = ord.indexOf(biome);
     // minor decor goes in any biome (D-066); other decor reaches one biome further, paid in local stand-ins (D-080)
-    const over = [...new Set(pieces.filter(p => ord.indexOf(PC.needs(p.name)) > limit && !(p.decor && (PC.minor(p.name) || PC.decorOk(p.name, biome)))).map(p => p.name))];
+    const over = [...new Set(pieces.filter(p => ord.indexOf(PC.needs(p.name)) > limit && !(p.decor && (PC.minor(p.name) || PC.decorOk(p.name, biome))) && !(p.hearthStone && PC.hearthStoneOk(p.name, design.request && design.request.stage))).map(p => p.name))];
     results.push({ check: 'materials', ok: over.length === 0, detail: over.length ? `needs later biomes: ${over.slice(0, 5).join(', ')}` : `all pieces available in ${biome}` });
   }
 

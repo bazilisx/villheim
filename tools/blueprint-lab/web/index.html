@@ -3634,7 +3634,7 @@ const F = {
   piece_groundtorch_green: { s: [0.4, 1.6, 0.4], at: 'floor', b: 'Swamp', cat: 'light', base: 0.75 },
   piece_groundtorch_mist: { s: [0.4, 1.6, 0.4], at: 'floor', b: 'Mistlands', cat: 'light', base: 0.75 },
   piece_walltorch: { s: [0.31, 0.95, 0.45], at: 'mount', b: 'Black Forest', cat: 'light', wall: 0.28, y: 1.55, rel: 270 },
-  piece_dvergr_lantern: { s: [0.78, 1.21, 1.11], c: [-0.55, 0.0], at: 'mount', b: 'Mistlands', cat: 'light', wall: -0.1, under: 0.35, rel: 90 },
+  piece_dvergr_lantern: { s: [0.78, 1.21, 1.11], c: [-0.55, 0.0], at: 'mount', b: 'Mistlands', cat: 'light', wall: 0.42, under: 0.35, rel: 90 },
   piece_brazierceiling01: { s: [0.97, 1.6, 0.91], at: 'hang', b: 'Swamp', cat: 'light', under: 1.6 },
   Candle_resin: { s: [0.25, 0.32, 0.25], c: [0.06, 0.01], at: 'top', b: 'Mountain', cat: 'light' },
   rug_deer: { s: [3.11, 0.05, 3.11], at: 'rug', b: 'Meadows', cat: 'rug' },
@@ -4452,7 +4452,11 @@ function mountSpots(room, name, o = {}) {
       if (f.under != null && /^piece_banner/.test(name) && (y - h < room.stand + 0.05 || y - h > room.stand + 1.0)) continue;
       const span = stretch(face, t - w / 2 - 0.35, t + w / 2 + 0.35);
       if (span.ks.size !== 1 || !span.ks.has('wall')) continue;  // keeps clear of doors and windows on either side
-      if (span.top + room.stand < y + Math.min(h, 1.2) - 0.05) continue;
+      // the wall reaches the top of what is hung on it: a lantern hangs from its hook down (the corpus hangs Dvergr wall
+      // lanterns by the hook 0.31 to 0.97 m under the ceiling, 3.2 to 3.8 m over the floor, data/interior.json), so the
+      // wall reaches the hook; a piece that stands on its foot needs the wall to its height
+      const hook = f.under != null && !/^piece_banner/.test(name);
+      if (hook ? span.top + room.stand < y - 0.05 : span.top + room.stand < y + Math.min(h, 1.2) - 0.05) continue;
       const off = face.ht + (f.wall != null ? f.wall : 0.12);
       const yawM = norm(yawOfDir(face.nx, face.nz) + (f.rel || 0));
       // what putMount needs to keep it clear of the wall's own relief
@@ -4469,8 +4473,10 @@ const HUNG_CLIP = name => (/^piece_banner\d+$/.test(name) ? 0.03 : 0.015);
 // into a wall's relief on purpose, up to the median depth they use (data/kitbash-interior.json, lab/mine_kitbash.js):
 // a wall item stand 5.3 cm (15 mined sets with the stand clipped into the wall, max 28 cm; 7.7 cm median over all
 // 4,212 stands), a wall torch 8.6 cm (808 torches in 238 builds, 90th percentile 23 cm). Past HUNG_CLIP the piece
-// carries its depth as p.wclip, a clip made on purpose in the file's #VillheimClips (D-098).
-const HUNG_CORPUS = { itemstand: 0.053, piece_walltorch: 0.086 };
+// carries its depth as p.wclip, a clip made on purpose in the file's #VillheimClips (D-098). A Dvergr wall lantern
+// 18.8 cm (462 lanterns in 107 builds, 395 of them resting on the wall, 90th percentile 37.6 cm, the same file): its
+// bracket goes into the wall, and with no depth allowed none was ever put up.
+const HUNG_CORPUS = { itemstand: 0.053, piece_walltorch: 0.086, piece_dvergr_lantern: 0.188 };
 const hungLimit = name => Math.max(HUNG_CLIP(name), HUNG_CORPUS[name] || 0);
 // Clear of the wall's own relief (lib/mesh.js), by what shows of the piece against what shows of the walls round it:
 // a height between the bars within 0.4 m (T-606, T-612). A hung piece keeps its collider against the wall's, which is
@@ -4794,18 +4800,15 @@ function placeTable(room, k, o = {}) {
 // walls tried, a seat or none, then the other tables the village makes (a long one against a wall, a round one, a
 // small Dvergr one). A one-room home left three households of six without a table (lead's review of
 // design/integration e74ccec, home Meadows s2 d3 seed 7); the corpus has a table in 68 % of norse furnished buildings.
-const TABLE_BED_TIGHT = 0.6;
+// D-148 (Tyler, 2026-11-11): "a player or npc must be able to navigate around the table to the bed or vice versa. So
+// if .6m is too tight to do so, any furniture or decor that disrupts that expectation should not be placed." The table
+// keeps 0.9 m from a bed on every try; a table, or anything else, that still closes a lane to a bed, table, station or
+// chest is moved or left out at the end (lib/layout.js openWays).
 function tableSure(room, k, o) {
   const first = o.table || k.table;
   const names = [first, 'piece_table', 'piece_table_round', 'dvergrprops_table'].filter((n, i, a) => n && a.indexOf(n) === i && ok(n, room.biome));
   for (const seats of [Math.min(1, o.seats || 0), 0]) for (const name of names) {
     const t = placeTable1(room, k, { ...o, table: name, seats, dense: true, wallBias: Math.max(o.wallBias || 0, 1) });
-    if (t) return t;
-  }
-  // then a little closer to a bed: 0.6 m clear to walk between, in place of the 0.9 m kept since Tyler's FP-003
-  // ("table too close to the beds"); a value in use until the Decisions tab settles it (TABLE_BED_TIGHT)
-  for (const name of names) {
-    const t = placeTable1(room, k, { ...o, table: name, seats: 0, dense: true, wallBias: Math.max(o.wallBias || 0, 1), bedGap: TABLE_BED_TIGHT });
     if (t) return t;
   }
   // then fewer extras: what the room holds as an extra (a chest at a bed's foot, a rug) gives way where the table goes
@@ -4815,7 +4818,7 @@ function tableSure(room, k, o) {
   for (const q of ex) drop(q);
   let t = null;
   for (const seats of [Math.min(1, o.seats || 0), 0]) {
-    for (const name of names) { t = placeTable1(room, k, { ...o, table: name, seats, dense: true, wallBias: Math.max(o.wallBias || 0, 1), bedGap: TABLE_BED_TIGHT }); if (t) break; }
+    for (const name of names) { t = placeTable1(room, k, { ...o, table: name, seats, dense: true, wallBias: Math.max(o.wallBias || 0, 1) }); if (t) break; }
     if (t) break;
   }
   const mine = t ? room.placed.slice(room.placed.indexOf(t)) : [];
@@ -7286,7 +7289,7 @@ function decorateExisting(pieces, { use = 'home', decor = 'd2', biome = 'Meadows
 
 const api = { lateClash, corpusPick, corpusRate, tableRate, tableDressed, corpusTilt, topPick, keepsBarrels, oneWhy: () => ONE_WHY, furnClash, asBuilt, decorate, strip, findRooms, decorateExisting, setRules, setInterior, setTemplates, templateById, audit, auditContext, auditOne, itemOf, ITEM_BIOME, FURNITURE: F, readLevel,
   lightCls, lightBudget, rugBudget, lightRoomOf, LIGHT_D2, topWeights, mountClear,
-  _int: { floorLevels, standGuess, roleFor, stretch, size, ok, obox, overlap, ptDist, yawOfDir, pyaw, standOf, norm, WALLISH } };
+  _int: { floorLevels, standGuess, roleFor, stretch, size, ok, obox, overlap, ptDist, yawOfDir, pyaw, standOf, norm, WALLISH, middleOf } };
 if (NODE_D) module.exports = api; else window.VHDecorate = api;
 
 })();
@@ -10825,12 +10828,8 @@ function apply(b, ctx, zones) {
     const m = liveIn(b, ctx, zones || []);
     if (m) b.notes.push(`${m} movable things set a little off square, as a household leaves them.`);
   }
-  // the way in at every door and the lanes to every room's main pieces again, after the passes that set things late
-  // (stacked chests, stands, the lived-in moves) (D-152)
-  if (ctx.decor !== 'd1') {
-    const Lay = NODE_B ? require('./layout.js') : window.VHLayout;
-    if (Lay && Lay.clearEntries && X.lanes !== false) { Lay.clearEntries(b, ctx); Lay.clearLanes(b, ctx); }
-  }
+  // the way in at every door and the lanes to every room's main pieces are put right last, after every pass that sets
+  // or moves furniture, by moving pieces before leaving any out (lib/layout.js openWays, from lib/generate.js finish)
   dropFalling(b);
 }
 
@@ -12525,6 +12524,27 @@ function roomsOf(b, ctx) {
   return K.roomsB(b, ctx);
 }
 
+// A group of loose furniture to another spot of its floor, clear of the lane cells given and reached by a person
+// (walkMap, spotsFor below); false when it fits nowhere or holds a piece that never moves.
+function moveAside(b, list, path) {
+  if (!b.rooms || !b.rooms.length) return false;
+  const F = decorL().FURNITURE, Ck = checksL();
+  if (list.some(p => !p.decor || p.wclip || p.fclip || p.trim || p.outside || p.yard || PL.piece(p.name).role === 'door' || PL.piece(p.name).role === 'fire' || (p.rest && ['wall', 'hang'].includes(p.rest)) || ['mount', 'hang'].includes((F[p.name] || {}).at))) return false;
+  // the biggest piece on the floor leads
+  const area = p => { const o = Ck.aabb(p); return (o.x1 - o.x0) * (o.z1 - o.z0) - (p.rest === 'on' ? 99 : 0) - p.y; };
+  const grp = [...list].sort((a, c) => area(c) - area(a));
+  const W = walkMap(b);
+  let h = 0;
+  for (const p of grp) h = (Math.imul(h ^ Math.round(p.x * 100 + p.z * 7), 16777619) + 1) >>> 0;
+  const S = spotsFor(b, W, grp, (path || []).map(c => ({ x: c.x, z: c.z })), h);
+  for (const s of S.slice(0, 10)) {
+    const u = placeGroup(grp, S.cx, S.cz, s);
+    if (meshClear(b, grp)) return true;
+    u();
+  }
+  return false;
+}
+
 // Open every room's lanes: from the first door, every door, the fire, each stair and each bed's open side reached by a
 // player's width; then the main lanes (door to fire, door to stairs) at the width the rules want, where only loose
 // furniture is in the way. Returns how many units went.
@@ -12533,7 +12553,7 @@ function clearLanes(b, ctx, rooms) {
   if (!RU || (ctx.layout && ctx.layout.lanes === false) || ctx.layout === false) return 0;
   const Ck = checksL();
   const firstChest = b.pieces.find(p => p.decor && !p.kb && !p.outside && PL.piece(p.name).role === 'storage' && /chest/.test(p.name)) || null;
-  let gone = 0;
+  let gone = 0, moved = 0;
   const cache = new Map();
   for (const room of rooms || roomsOf(b, ctx)) {
     const m = room.m;
@@ -12580,7 +12600,11 @@ function clearLanes(b, ctx, rooms) {
               for (const r of qu) drop.add(r);
             }
           }
-          if (keep || leavesBare(b, m, drop)) continue;
+          if (keep) continue;
+          // moved off the lane to a spot of its floor a person reaches, before it is left out (D-148: what does not
+          // fit is left out)
+          if (moveAside(b, [...drop], path)) { budget--; moved++; any = true; continue; }
+          if (leavesBare(b, m, drop)) continue;
           b.pieces = b.pieces.filter(p => !drop.has(p));
           budget--; gone++; any = true;
         }
@@ -12588,7 +12612,8 @@ function clearLanes(b, ctx, rooms) {
       }
     }
   }
-  if (gone && b.notes) b.notes.push(`${gone} pieces of loose furniture moved out of the walking lanes.`);
+  if (gone && b.notes) b.notes.push(`${gone} pieces of loose furniture taken out of the walking lanes.`);
+  if (moved && b.notes) b.notes.push(`${moved} pieces of loose furniture moved aside from the walking lanes.`);
   return gone;
 }
 
@@ -12677,7 +12702,532 @@ function measure(b, ctx, rooms) {
   return out;
 }
 
-const apiL = { plan, planFor, floorScore, noteSet, clearLanes, clearEntries, measure, rules, setRules, _int: { obstaclesOf, grid, targetsOf, reach } };
+// ---------------------------------------------------------------- ways in and round the whole building (D-152, D-148)
+// D-152 (Tyler, 2026-11-11): "egress and room movement should always allow someone to move into rooms and explore".
+// D-148 (Tyler, 2026-11-11): "a player or npc must be able to navigate around the table to the bed or vice versa. So if
+// .6m is too tight to do so, any furniture or decor that disrupts that expectation should not be placed. Any furniture
+// or decor."
+// walkMap reads the finished design as lab/reach.js does: a 0.25 m grid over the design's room rects, a cell free when
+// no solid between 0.25 and 1.8 m over its floor comes within 0.45 m (a 0.9 m lane), walked from inside every door to
+// the outside and over the climbs. What it finds: room rects with no reached cell, beds, tables, stations, chests and
+// barrels on a floor with no reached cell within 0.9 m of their box, and furniture in the entry zone just inside a door
+// (the opening plus 0.3 m each side, 1.5 m deep). openWays then moves, turns, swaps or leaves out pieces until none is
+// left or nothing more helps.
+const WS = 0.25, WR = 0.45;
+const W_PASS = new Set(['floor', 'rug', 'roof', 'roofTop', 'roofCorner', 'door', 'nature', 'misc']);
+const W_MAIN = new Set(['bed', 'table', 'craft', 'storage']);
+function wHung(p) { const f = decorL().FURNITURE[p.name]; return !!(p.decor && f && ['mount', 'hang', 'top', 'rug'].includes(f.at)); }
+function wSolid(p) {
+  const role = PL.piece(p.name).role;
+  if (W_PASS.has(role) || role === 'stair' || wHung(p) || p.onTable) return null;
+  const o = checksL().aabbShapes(p);
+  return o.pass ? null : o;
+}
+const wDist = (o, x, z) => Math.hypot(Math.max(o.x0 - x, 0, x - o.x1), Math.max(o.z0 - z, 0, z - o.z1));
+function walkMap(b) {
+  const P = PL, Ck = checksL(), F = decorL().FURNITURE;
+  const rooms = (b.rooms || []).filter(r => r.x1 > r.x0 && r.z1 > r.z0);
+  const out = { rooms, roomsOut: [], piecesOut: [], entry: [], zones: [], levels: [], grids: new Map(), bad: 0 };
+  if (!rooms.length) return out;
+  const solids = [];
+  for (const p of b.pieces) { const o = wSolid(p); if (o) solids.push({ p, o, decor: !!p.decor }); }
+  const levels = [...new Set(rooms.map(r => Math.round(r.y * 4) / 4))].sort((a, c) => a - c);
+  out.levels = levels;
+  for (const y of levels) {
+    const rs = rooms.filter(r => Math.abs(r.y - y) < 0.2);
+    const x0 = Math.min(...rs.map(r => r.x0)), x1 = Math.max(...rs.map(r => r.x1)), z0 = Math.min(...rs.map(r => r.z0)), z1 = Math.max(...rs.map(r => r.z1));
+    const here = solids.filter(s => s.o.y0 < y + 1.8 && s.o.y1 > y + 0.25);
+    // buckets of 1 m over the boxes grown by the lane's radius
+    const bk = new Map();
+    for (const s of here) for (let i = Math.floor(s.o.x0 - WR); i <= Math.floor(s.o.x1 + WR); i++) for (let j = Math.floor(s.o.z0 - WR); j <= Math.floor(s.o.z1 + WR); j++) {
+      const k = i * 4096 + j; if (!bk.has(k)) bk.set(k, []); bk.get(k).push(s);
+    }
+    const cells = new Map();
+    for (let x = x0 + WS / 2; x < x1; x += WS) for (let z = z0 + WS / 2; z < z1; z += WS) {
+      if (!rs.some(r => x > r.x0 && x < r.x1 && z > r.z0 && z < r.z1)) continue;
+      const c = { x, z, i: Math.round(x / WS), j: Math.round(z / WS), hard: false, block: null, seen: false };
+      for (const s of bk.get(Math.floor(x) * 4096 + Math.floor(z)) || []) {
+        if (wDist(s.o, x, z) >= WR) continue;
+        if (!s.decor) { c.hard = true; continue; }
+        (c.block || (c.block = [])).push(s.p);
+      }
+      c.free = !c.hard && !c.block;
+      cells.set(`${c.i},${c.j}`, c);
+    }
+    out.grids.set(y, { y, rs, cells, list: [...cells.values()] });
+  }
+  const queue = [];
+  const seed = (y, c) => { if (c.free && !c.seen) { c.seen = true; queue.push([y, c]); } };
+  const near = (g, x, z, rad) => g.list.filter(c => Math.hypot(c.x - x, c.z - z) <= rad);
+  for (const p of b.pieces) {
+    if (p.decor || P.piece(p.name).role !== 'door') continue;
+    const o = P.doorOpening(p);
+    const y = levels.find(l => Math.abs(l - o.y) < 0.6);
+    if (y == null) continue;
+    const g = out.grids.get(y);
+    const inRoom = (x, z) => g.rs.some(r => x > r.x0 && x < r.x1 && z > r.z0 && z < r.z1);
+    for (const sg of [1, -1]) {
+      const ix = o.x + o.nx * sg * 0.8, iz = o.z + o.nz * sg * 0.8, ox = o.x - o.nx * sg * 0.8, oz = o.z - o.nz * sg * 0.8;
+      if (!inRoom(ix, iz)) continue;
+      if (!inRoom(ox, oz)) for (const c of near(g, o.x + o.nx * sg * 0.6, o.z + o.nz * sg * 0.6, 1.2)) seed(y, c);
+      out.zones.push({ y, x: o.x, z: o.z, ux: o.ux, uz: o.uz, nx: o.nx * sg, nz: o.nz * sg, hw: o.w / 2 + 0.3, dep: 1.5 });
+    }
+  }
+  // the entry zones: a box is in one when a point of the zone (0.25 m steps) lies in it
+  out.inZone = (o, y) => out.zones.some(zn => {
+    if (Math.abs(zn.y - y) > 0.3) return false;
+    for (let a = -zn.hw; a <= zn.hw + 1e-6; a += 0.25) for (let dd = 0.15; dd <= zn.dep + 1e-6; dd += 0.25) if (wDist(o, zn.x + zn.ux * a + zn.nx * dd, zn.z + zn.uz * a + zn.nz * dd) < 0.01) return true;
+    return false;
+  });
+  for (const s of solids) {
+    if (!s.decor || W_PASS.has(PL.piece(s.p.name).role)) continue;
+    const y = levels.find(l => s.o.y0 < l + 1.8 && s.o.y1 > l + 0.05 && s.p.y > l - 0.5 && s.p.y < l + 1.8);
+    if (y != null && out.inZone(s.o, y)) out.entry.push(s.p);
+  }
+  // climbs
+  const climbs = [];
+  for (const p of b.pieces.filter(q => !q.decor && P.piece(q.name).role === 'stair')) {
+    const o = Ck.aabb(p);
+    const touch = climbs.filter(c => c.some(q => q.o.x0 < o.x1 + 0.3 && q.o.x1 > o.x0 - 0.3 && q.o.z0 < o.z1 + 0.3 && q.o.z1 > o.z0 - 0.3 && q.o.y0 < o.y1 + 0.3 && q.o.y1 > o.y0 - 0.3));
+    const merged = [{ p, o }, ...touch.flat()];
+    for (const t of touch) climbs.splice(climbs.indexOf(t), 1);
+    climbs.push(merged);
+  }
+  out.climbs = [];
+  const links = [];
+  for (const c of climbs) {
+    const lo = c.reduce((a, q) => (q.o.y0 < a.o.y0 ? q : a)), hi = c.reduce((a, q) => (q.o.y1 > a.o.y1 ? q : a));
+    out.climbs.push(lo.o, hi.o);
+    const yl = levels.filter(l => Math.abs(l - lo.o.y0) < 0.7).sort((a, d) => Math.abs(a - lo.o.y0) - Math.abs(d - lo.o.y0))[0];
+    const yh = levels.filter(l => Math.abs(l - hi.o.y1) < 0.9 && l !== yl).sort((a, d) => Math.abs(a - hi.o.y1) - Math.abs(d - hi.o.y1))[0];
+    if (yl == null || yh == null) continue;
+    const A = out.grids.get(yl).list.filter(cc => wDist(lo.o, cc.x, cc.z) <= 1.2), B = out.grids.get(yh).list.filter(cc => wDist(hi.o, cc.x, cc.z) <= 1.2);
+    if (A.length && B.length) links.push([yl, A, yh, B]);
+  }
+  out.links = links;
+  if (!queue.length) { const g = out.grids.get(levels[0]); const m = g.rs.find(r => r.main) || g.rs[0]; for (const c of g.list) if (c.free && c.x > m.x0 && c.x < m.x1 && c.z > m.z0 && c.z < m.z1) { seed(levels[0], c); break; } }
+  const walk = () => {
+    while (queue.length) {
+      const [y, c] = queue.pop(), g = out.grids.get(y);
+      for (const [di, dj] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const n = g.cells.get(`${c.i + di},${c.j + dj}`); if (n) seed(y, n); }
+    }
+  };
+  walk();
+  for (let k = 0; k < links.length + 1; k++) {
+    let more = false;
+    for (const [yl, A, yh, B] of links) {
+      if (A.some(c => c.seen && c.free) && !B.some(c => c.seen)) { for (const c of B) seed(yh, c); more = true; }
+      if (B.some(c => c.seen && c.free) && !A.some(c => c.seen)) { for (const c of A) seed(yl, c); more = true; }
+    }
+    walk();
+    if (!more) break;
+  }
+  for (const r of rooms) {
+    const g = out.grids.get(levels.find(l => Math.abs(l - r.y) < 0.2));
+    if (!g.list.some(c => c.seen && c.x > r.x0 && c.x < r.x1 && c.z > r.z0 && c.z < r.z1)) out.roomsOut.push(r);
+  }
+  out.mains = [];
+  for (const s of solids) {
+    const p = s.p, f = F[p.name];
+    // a station's extension works by standing near its station and is never used itself (lab/reach.js)
+    if (!p.decor || !f || !W_MAIN.has(f.cat) || p.outside || p.yard || /cauldron|cookingstation/.test(p.name) || /_ext(\d|_|$)/.test(p.name)) continue;
+    const y = levels.find(l => p.y > l - 0.3 && p.y < l + 0.45);
+    if (y == null) continue;
+    out.mains.push(p);
+    const g = out.grids.get(y);
+    if (!g.list.some(c => c.seen && wDist(s.o, c.x, c.z) < 0.9)) out.piecesOut.push(p);
+  }
+  out.problems = new Set([...out.entry, ...out.piecesOut, ...out.roomsOut]);
+  out.bad = out.entry.length + out.piecesOut.length + 3 * out.roomsOut.length;
+  out.levelOf = p => levels.find(l => p.y > l - 0.3 && p.y < l + 0.45);
+  return out;
+}
+
+// The pieces that go with a piece when it moves or goes: what stands on it, and for a table the seats at it.
+function groupOf(b, p, part) {
+  const Ck = checksL(), F = decorL().FURNITURE;
+  const g = new Set([p]);
+  const cat = (F[p.name] || {}).cat;
+  if (cat === 'table') {
+    const o = Ck.aabb(p);
+    for (const q of b.pieces) if (q !== p && q.decor && !q.outside && (F[q.name] || {}).cat === 'seat' && Math.abs(q.y - p.y) < 0.5 && wDist(o, q.x, q.z) < 0.9) g.add(q);
+  }
+  // a library assembly (lib/kitbash.js) moves whole; to leave pieces out, the piece and what stands on it (part)
+  if (!part) for (const m of [...g]) if (m.kb) for (const q of b.pieces) if (q.kb === m.kb) g.add(q);
+  for (const m of [...g]) {
+    const o = Ck.aabb(m);
+    for (const q of b.pieces) if (q.decor && !g.has(q) && !(q.rest && ['wall', 'hang'].includes(q.rest)) && !((F[q.name] || {}).at === 'mount' || (F[q.name] || {}).at === 'hang')
+      && q.x > o.x0 && q.x < o.x1 && q.z > o.z0 && q.z < o.z1 && q.y > o.y0 + 0.2 && q.y < o.y1 + 0.6) g.add(q);
+  }
+  return [...g];
+}
+const W_QUAT = yaw => { const a = yaw * Math.PI / 360; return [0, +Math.sin(a).toFixed(6), 0, +Math.cos(a).toFixed(6)]; };
+const wYaw = p => (p.yaw != null ? p.yaw : (() => { const [x, y, z, w] = p.q || [0, 0, 0, 1]; return Math.atan2(2 * (w * y + x * z), 1 - 2 * (y * y + x * x)) * 180 / Math.PI; })());
+// Where a group could stand on its floor: every spot on a 0.25 m grid of the level's room rects and four turns, each
+// member's box inside the rects, clear of every other solid, of the entry zones, the climbs and their feet, the fire's
+// ring and the cells a lane is to keep ('keep'), best first: near where it stood, backed to a wall, turned least.
+function spotsFor(b, W, grp, keep, seedN) {
+  const Ck = checksL();
+  const a = grp[0], y = W.levelOf(a);
+  if (y == null) return [];
+  const g = W.grids.get(y);
+  const set = new Set(grp);
+  const ob = Ck.aabbShapes(a), cx = (ob.x0 + ob.x1) / 2, cz = (ob.z0 + ob.z1) / 2;
+  const rel = grp.map(p => { const o = Ck.aabbShapes(p); return { p, x0: o.x0 - cx, x1: o.x1 - cx, z0: o.z0 - cz, z1: o.z1 - cz, y0: o.y0, y1: o.y1, dx: p.x - cx, dz: p.z - cz, floor: p.y < y + 0.45 }; });
+  if (!rel[0].floor) return [];
+  // a set built of building pieces (a beam shelf over a chest, a half-wall counter) keeps the wall it was built against:
+  // a beam moved out into the room is a low beam over the walking floor (lib/checks.js headroom)
+  if (grp.some(p => PL.piece(p.name).structural)) return [];
+  // the decorator's own reading of furniture against furniture (lib/decorate.js audit overlap), a little stricter
+  const DI = decorL()._int, FD = decorL().FURNITURE;
+  const skipAt = n => { const f = FD[n] || {}; return ['mount', 'hang', 'top', 'fire', 'rug'].includes(f.at); };
+  const itemBox = (n, x, z, yaw, py) => { const [w, h, d] = DI.size(n); const f = FD[n] || {}; const [mx, mz] = DI.middleOf(n, x, z, yaw); const y0 = py - (f.base || 0); return { b: DI.obox(mx, mz, w, d, yaw), y0, y1: y0 + h }; };
+  const items = b.pieces.filter(q => q.decor && !set.has(q) && !skipAt(q.name) && !(!FD[q.name] && PL.piece(q.name).structural)).map(q => itemBox(q.name, q.x, q.z, DI.pyaw(q), q.y));
+  const mine = rel.filter(r => r.p.decor && !skipAt(r.p.name) && !(!FD[r.p.name] && PL.piece(r.p.name).structural));
+  // the decorator's door boxes: 1.2 m deep in front of each side of a door, the door's width (lib/decorate.js audit)
+  const doorBoxes = [];
+  for (const q of b.pieces) {
+    if (set.has(q) || PL.piece(q.name).role !== 'door') continue;
+    const [w, h] = PL.piece(q.name).size, d0 = PL.piece(q.name).size[2], yaw = DI.pyaw(q), ar = yaw * Math.PI / 180, nx0 = Math.sin(ar), nz0 = Math.cos(ar);
+    if (q.y + h < y || q.y - h > y + 2) continue;
+    for (const sg of [1, -1]) doorBoxes.push(DI.obox(q.x + nx0 * sg * (d0 / 2 + 0.6), q.z + nz0 * sg * (d0 / 2 + 0.6), w, 1.2, yaw));
+  }
+  const others = [];
+  for (const q of b.pieces) {
+    if (set.has(q)) continue;
+    const role = PL.piece(q.name).role;
+    if (['floor', 'rug'].includes(role)) continue;
+    const o = Ck.aabbShapes(q);
+    if (o.pass || o.y1 < y + 0.05 || o.y0 > y + 2.4) continue;
+    others.push({ o, struct: !q.decor, fire: role === 'fire' || /fire_pit|hearth|bonfire|brazier/.test(q.name), stair: role === 'stair', door: role === 'door' });
+  }
+  const turn = (r, k) => {
+    // a quarter turn clockwise seen from above, k times: (x, z) to (z, -x)
+    let { x0, x1, z0, z1 } = r;
+    for (let i = 0; i < k; i++) [x0, x1, z0, z1] = [z0, z1, -x1, -x0];
+    return { x0, x1, z0, z1 };
+  };
+  // floor pieces whose top is this floor: where there are any, a spot stands on them (an upper floor's rect can hold a
+  // stair hole or an open side)
+  const floors = b.pieces.filter(q => !q.decor && PL.piece(q.name).role === 'floor').map(q => Ck.aabb(q)).filter(o => Math.abs(o.y1 - y) < 0.2);
+  const onFloor = (x, z) => !floors.length || floors.some(o => x > o.x0 - 0.05 && x < o.x1 + 0.05 && z > o.z0 - 0.05 && z < o.z1 + 0.05);
+  const inRects = (x, z) => g.rs.some(r => x > r.x0 + 0.02 && x < r.x1 - 0.02 && z > r.z0 + 0.02 && z < r.z1 - 0.02) && onFloor(x, z);
+  let h = (seedN >>> 0) || 7;
+  const R = () => { h ^= h << 13; h >>>= 0; h ^= h >> 17; h ^= h << 5; h >>>= 0; return h / 4294967296; };
+  const out = [];
+  for (let k = 0; k < 4; k++) {
+    const boxes = rel.map(r => ({ ...turn(r, k), y0: r.y0, y1: r.y1, floor: r.floor }));
+    for (const c of g.list) {
+      if (c.hard) continue;
+      const nx = c.x, nz = c.z;
+      let ok = true, wall = 0;
+      for (const bx of boxes) {
+        const B = { x0: bx.x0 + nx, x1: bx.x1 + nx, z0: bx.z0 + nz, z1: bx.z1 + nz, y0: bx.y0, y1: bx.y1 };
+        if (bx.floor && !(inRects(B.x0, B.z0) && inRects(B.x1, B.z0) && inRects(B.x0, B.z1) && inRects(B.x1, B.z1))) { ok = false; break; }
+        for (const q of others) {
+          const o = q.o;
+          const pad = q.fire ? 0.8 : q.stair ? 1.0 : q.door ? 0.3 : 0;
+          if (o.x0 > B.x1 + pad || B.x0 > o.x1 + pad || o.z0 > B.z1 + pad || B.z0 > o.z1 + pad) { if (q.struct && bx.floor && o.x0 < B.x1 + 0.15 && B.x0 < o.x1 + 0.15 && o.z0 < B.z1 + 0.15 && B.z0 < o.z1 + 0.15) wall = 1; continue; }
+          if (pad) { ok = false; break; }
+          if (o.y0 > B.y1 - 0.03 || B.y0 > o.y1 - 0.03) continue;
+          if (Ck.blocks({ ...B, y0: B.y0 + 0.05 }, o, -0.03)) { ok = false; break; }
+          if (q.struct && bx.floor) wall = 1;
+        }
+        if (!ok) break;
+        if (bx.floor && W.inZone(B, y)) { ok = false; break; }
+        if (keep && bx.floor && keep.some(kc => wDist(B, kc.x, kc.z) < WR)) { ok = false; break; }
+        for (const cl of W.climbs) if (wDist(cl, (B.x0 + B.x1) / 2, (B.z0 + B.z1) / 2) < 1.2 + Math.max(B.x1 - B.x0, B.z1 - B.z0) / 2 && Math.abs(cl.y0 - y) < 3) { ok = false; break; }
+        if (!ok) break;
+      }
+      if (!ok) continue;
+      for (const r of mine) {
+        let dx = r.dx, dz = r.dz;
+        for (let i = 0; i < k; i++) [dx, dz] = [dz, -dx];
+        const A = itemBox(r.p.name, nx + dx, nz + dz, (((DI.pyaw(r.p) + 90 * k) % 360) + 360) % 360, r.p.y);
+        if (items.some(c2 => !(A.y0 > c2.y1 - 0.05 || c2.y0 > A.y1 - 0.05) && DI.overlap(A.b, c2.b, -0.02))) { ok = false; break; }
+        if (doorBoxes.some(z2 => DI.overlap(z2, A.b, 0.02))) { ok = false; break; }
+      }
+      if (!ok) continue;
+      // a person reaches it there (a reached cell within 0.9 m of its first box that it does not cover itself)
+      const B0 = { x0: boxes[0].x0 + nx, x1: boxes[0].x1 + nx, z0: boxes[0].z0 + nz, z1: boxes[0].z1 + nz };
+      if (!g.list.some(c2 => c2.seen && Math.abs(c2.x - nx) < 3 && Math.abs(c2.z - nz) < 3 && wDist(B0, c2.x, c2.z) < 0.9 && wDist(B0, c2.x, c2.z) >= WR)) continue;
+      const d = Math.hypot(nx - cx, nz - cz);
+      if (d < 0.2 && k === 0) continue;
+      // the walking floor it would take: reached cells its boxes come within a lane's half width of (a spot backed
+      // into a corner or a wall takes least)
+      let cover = 0;
+      for (const bx of boxes) {
+        if (!bx.floor) continue;
+        const B = { x0: bx.x0 + nx, x1: bx.x1 + nx, z0: bx.z0 + nz, z1: bx.z1 + nz };
+        for (let i = Math.round((B.x0 - WR) / WS); i <= Math.round((B.x1 + WR) / WS); i++) for (let j = Math.round((B.z0 - WR) / WS); j <= Math.round((B.z1 + WR) / WS); j++) {
+          const c2 = g.cells.get(`${i},${j}`);
+          if (c2 && c2.seen && wDist(B, c2.x, c2.z) < WR) cover++;
+        }
+      }
+      out.push({ x: nx, z: nz, k, v: -0.35 * d + 1.5 * wall - 0.05 * cover - (k % 2 ? 0.3 : k ? 0.2 : 0) + R() * 0.2 });
+    }
+  }
+  out.sort((p, q) => q.v - p.v);
+  // spread out: each spot kept is 0.75 m or more from those kept before it, or turned another way
+  const kept = [];
+  for (const s of out) if (!kept.some(t => t.k % 2 === s.k % 2 && Math.hypot(t.x - s.x, t.z - s.z) < 0.75)) kept.push(s);
+  kept.cx = cx; kept.cz = cz;
+  return kept;
+}
+function placeGroup(grp, cx, cz, s) {
+  const old = grp.map(p => ({ p, x: p.x, z: p.z, yaw: p.yaw, q: p.q }));
+  const dr = 90 * s.k, a = dr * Math.PI / 180, c = Math.cos(a), sn = Math.sin(a);
+  for (const p of grp) {
+    const dx = p.x - cx, dz = p.z - cz;
+    p.x = +(s.x + dx * c + dz * sn).toFixed(3); p.z = +(s.z - dx * sn + dz * c).toFixed(3);
+    if (dr) { const yw = (((wYaw(p) + dr) % 360) + 360) % 360; p.yaw = +yw.toFixed(2); p.q = W_QUAT(p.yaw); }
+  }
+  return () => { for (const o of old) { o.p.x = o.x; o.p.z = o.z; o.p.yaw = o.yaw; o.p.q = o.q; } };
+}
+// What shows of a moved piece against what shows of the walls, windows, beams and posts round it (lib/audit.js
+// intoWall reads it the same way): a moved bed, table, chest, seat or station keeps within 5 cm of them.
+const meshL = () => (NODE_L ? require('./mesh.js') : window.VHMesh);
+const SHL = () => (NODE_L ? require('./shapes.js') : window.VHShapes);
+const W_STATION = /^(piece_workbench|forge|piece_stonecutter|piece_artisanstation|blackforge|piece_magetable|piece_cauldron)$/;
+const W_FURN = ['bed', 'table', 'seat', 'storage', 'craft', 'fire', 'clutter'];
+function meshClear(b, grp) {
+  const M = meshL(), SH = SHL();
+  if (!M || !M.world || !M.deepest) return true;
+  const set = new Set(grp);
+  // and a station against furniture round it, either way (lib/audit.js onStation)
+  for (const p of grp) {
+    const rp = PL.piece(p.name).role;
+    if (!W_STATION.test(p.name) && !W_FURN.includes(rp)) continue;
+    const vis = M.world(p) || [];
+    for (const q of b.pieces) {
+      if (set.has(q) || !q.decor || Math.abs(q.x - p.x) > 4 || Math.abs(q.z - p.z) > 4 || Math.abs(q.y - p.y) > 3) continue;
+      const st = W_STATION.test(p.name) ? W_FURN.includes(PL.piece(q.name).role) && !/_ext\d/.test(q.name) : W_STATION.test(q.name) && !/_ext\d/.test(p.name);
+      if (st && M.deepest(vis, M.world(q) || []) > 0.04) return false;
+    }
+  }
+  for (const p of grp) {
+    if (!['bed', 'table', 'storage', 'seat', 'craft'].includes(PL.piece(p.name).role)) continue;
+    const vis = M.world(p) || [], sol = (SH && SH.world && SH.world(p)) || [];
+    for (const q of b.pieces) {
+      if (q.decor && !(q.trim && !q.kb)) continue;
+      const rq = PL.piece(q.name).role;
+      if (!['wall', 'halfwall', 'window', 'beam', 'pole', 'gable', 'door'].includes(rq)) continue;
+      if (Math.abs(q.x - p.x) > 4 || Math.abs(q.z - p.z) > 4 || Math.abs(q.y - p.y) > 4) continue;
+      const mine = ['wall', 'halfwall', 'gable', 'pole'].includes(rq) ? (sol.length ? sol : vis) : vis;
+      if (M.deepest(mine, M.world(q) || []) > 0.05) return false;
+    }
+  }
+  return true;
+}
+
+// a change is kept when it leaves fewer problems in all and opens no room or entry zone problem that was not there
+// before (a piece it leaves out of reach is put right in its turn, and every change kept lowers the count)
+const better = (W, W2) => W2.bad < W.bad && W2.roomsOut.every(x => W.problems.has(x)) && W2.entry.every(x => W.problems.has(x));
+
+// Walk the design and put right what keeps a person out: a piece in an entry zone moves (or turns) to another spot,
+// a double bed that fits nowhere becomes a single bed, and what still finds no place is left out; a piece or a room out
+// of reach gets its way opened by moving what stands in the cheapest lane to it, then by moving the piece itself,
+// then by leaving out what blocks it. Fires, the building's first chest and pieces clipped into walls (D-098) are
+// never moved; the first chest and fires are never left out. Returns { moved, swapped, gone, left }.
+function openWays(b, ctx) {
+  const res = { moved: 0, swapped: 0, gone: 0, left: [] };
+  if (!b.rooms || !b.rooms.length || !b.pieces.some(p => p.decor)) return res;
+  const F = decorL().FURNITURE;
+  const firstChest = b.pieces.find(p => p.decor && !p.kb && !p.outside && PL.piece(p.name).role === 'storage' && /chest/.test(p.name) && !/barrel|crate/.test(p.name)) || null;
+  const isFire = p => PL.piece(p.name).role === 'fire' || /fire_pit|hearth|bonfire/.test(p.name);
+  const fixed = p => !p.decor || isFire(p) || PL.piece(p.name).role === 'door' || p.wclip || p.fclip || p.trim || p.outside || p.yard || (p.rest && ['wall', 'hang'].includes(p.rest)) || ['mount', 'hang'].includes((F[p.name] || {}).at);
+  // the building's trim stays, save a trim chest, table or station that closes a way (it counts as furniture to
+  // reach); the building pieces of a library set (a kitchen counter of half walls) are furniture here
+  const keepAlways = p => !p.decor || isFire(p) || p === firstChest || (p.trim && !p.kb && !W_MAIN.has((F[p.name] || {}).cat)) || p.outside || p.yard;
+  let seedN = 0;
+  for (const p of b.pieces) seedN = (Math.imul(seedN ^ Math.round(p.x * 100 + p.z * 7), 16777619) + 1) >>> 0;
+  const given = new Set();
+  let W = walkMap(b);
+  const tryMove = (grp, keep, accept) => {
+    if (grp.some(fixed)) return false;
+    const S = spotsFor(b, W, grp, keep, seedN++);
+    for (const s of S.slice(0, 10)) {
+      const undo = placeGroup(grp, S.cx, S.cz, s);
+      if (!meshClear(b, grp)) { undo(); continue; }
+      const W2 = walkMap(b);
+      if (accept(W2)) { W = W2; res.moved++; return true; }
+      undo();
+    }
+    return false;
+  };
+  const drop = (set, accept) => {
+    const keepB = b.pieces;
+    b.pieces = b.pieces.filter(p => !set.has(p));
+    const W2 = walkMap(b);
+    if (accept(W2)) { W = W2; res.gone += set.size; return true; }
+    b.pieces = keepB;
+    return false;
+  };
+  const swapBed = (p, accept) => {
+    if (p.name !== 'piece_bed02') return false;
+    const old = p.name;
+    p.name = 'bed';
+    const grp = groupOf(b, p);
+    if (tryMove(grp, null, accept)) { res.swapped++; return true; }
+    const W2 = walkMap(b);
+    if (accept(W2)) { W = W2; res.swapped++; return true; }
+    p.name = old;
+    return false;
+  };
+  for (let it = 0; it < 80; it++) {
+    // rooms first (a way into a room reaches what stands in it), then pieces, then the ways in
+    const probs = [...W.roomsOut.map(r => ['room', r]), ...W.piecesOut.map(p => ['piece', p]), ...W.entry.map(p => ['entry', p])].filter(([, x]) => !given.has(x));
+    if (!probs.length) break;
+    const [kind, x] = probs[0];
+    const W0 = W, ok0 = W2 => better(W0, W2);
+    let ok = false;
+    if (kind === 'entry') {
+      const grp = groupOf(b, x);
+      ok = tryMove(grp, null, W2 => ok0(W2) && !W2.entry.includes(x)) || swapBed(x, W2 => ok0(W2) && !W2.entry.includes(x));
+      if (!ok && !keepAlways(x) && (F[x.name] || {}).cat !== 'bed') ok = drop(new Set(grp), ok0);
+    } else {
+      // the cells next to the piece (or in the room) a person would stand on, and the cheapest lane to them
+      const y = kind === 'piece' ? W.levelOf(x) : W.levels.find(l => Math.abs(l - x.y) < 0.2);
+      let g = W.grids.get(y);
+      const o = kind === 'piece' ? checksL().aabbShapes(x) : null;
+      let goal = new Set(g.list.filter(c => !c.hard && (o ? wDist(o, c.x, c.z) < 0.9 && wDist(o, c.x, c.z) >= WR - 0.01 : c.x > x.x0 && c.x < x.x1 && c.z > x.z0 && c.z < x.z1)));
+      let from = g.list.filter(c => c.seen);
+      let path = null, closed = false;
+      const blockers = new Set();
+      if (!from.length) {
+        // a floor nobody reaches yet: the foot of its climb on a floor that is reached, or the cells at its top
+        const seenAt = l => W.grids.get(l).list.some(c => c.seen);
+        const lk = W.links.find(([yl, , yh]) => (yh === y && seenAt(yl)) || (yl === y && seenAt(yh)));
+        if (!lk) closed = true;
+        else {
+          const [yl, A, yh, B] = lk, [ys, Sd, Td] = yh === y ? [yl, A, B] : [yh, B, A];
+          if (!Sd.some(c => c.seen)) {
+            g = W.grids.get(ys); from = g.list.filter(c => c.seen); goal = new Set(Sd.filter(c => !c.hard));
+            path = goal.size ? wCheapest(g, from, goal, null) : null;
+            closed = !wCheapest(g, from, goal, null, true);
+          } else {
+            path = Td.filter(c => !c.hard && c.block);
+            if (!path.length) closed = true;
+          }
+        }
+      } else {
+        path = goal.size ? wCheapest(g, from, goal, kind === 'piece' ? x : null) : null;
+        // a room the structure itself closes off (a plan with no way in to it) keeps its furniture and is reported
+        // (lab/check_interiors.js reachRoom); a piece in a nook the structure closes moves to a reached floor
+        const rect = kind === 'room' ? x : g.rs.find(r => x.x > r.x0 && x.x < r.x1 && x.z > r.z0 && x.z < r.z1);
+        if (rect) closed = !wCheapest(g, from, new Set(g.list.filter(c => !c.hard && c.x > rect.x0 && c.x < rect.x1 && c.z > rect.z0 && c.z < rect.z1)), null, true);
+      }
+      if (path) for (const c of path) for (const q of c.block || []) if (q !== x) blockers.add(q);
+      // a long hearth that leaves no lane past it where the structure leaves one becomes a fire pit on the same spot
+      // (D-132: "Fires can be swapped"); the lane is then looked for again on the next round
+      if (!path && !closed && from.length && goal.size) {
+        for (const f of b.pieces.filter(q => q.decor && q.name === 'hearth' && Math.abs(q.y - g.y) < 0.6)) {
+          f.name = 'fire_pit';
+          const W2 = walkMap(b);
+          if (ok0(W2)) { W = W2; res.swapped++; ok = true; break; }
+          f.name = 'hearth';
+        }
+      }
+      const cat = q => (F[q.name] || {}).cat;
+      // 1) what stands in the lane moves off it, each group to the best spot clear of the lane; what finds no spot
+      // stays, then goes as well when that is what opens the way: loose things first, then chests (never the
+      // building's first chest, a fire or a bed)
+      if (!ok && path && blockers.size) {
+        const keep = path.map(c => ({ x: c.x, z: c.z }));
+        const groups = [], stuck = [];
+        const seenG = new Set();
+        for (const q of [...blockers]) {
+          if (!b.pieces.includes(q) || seenG.has(q)) continue;
+          const grp = groupOf(b, q);
+          for (const r of grp) seenG.add(r);
+          const S = grp.some(fixed) ? [] : spotsFor(b, W, grp, keep, seedN++);
+          if (!S.length) stuck.push(grp); else groups.push([grp, S]);
+        }
+        const tiers = [[], stuck.filter(gp => !gp.some(keepAlways) && !gp.some(q => W_MAIN.has(cat(q)))), stuck.filter(gp => !gp.some(keepAlways) && !gp.some(q => ['bed', 'table', 'craft'].includes(cat(q))))];
+        // the groups to their first spots, then their second and third
+        for (let r = 0; r < (groups.length === 1 ? 10 : 4) && !ok; r++) {
+          if (!groups.length && r) break;
+          // one after another, each against where the ones before it went
+          const undoAll = [];
+          for (const [grp, S0] of groups) {
+            const S = undoAll.length ? spotsFor(b, W, grp, keep, seedN++) : S0;
+            for (let i = Math.max(0, Math.min(r, S.length - 1)); i < S.length && i < r + 6; i++) {
+              const u = placeGroup(grp, S.cx, S.cz, S[i]);
+              if (meshClear(b, grp)) { undoAll.push(u); break; }
+              u();
+            }
+          }
+          for (const t of tiers) {
+            if (t !== tiers[0] && !t.length) continue;
+            if (!t.length && !groups.length) continue;
+            const set = new Set(t.flat());
+            if (!set.size) { const W2 = walkMap(b); if (ok0(W2)) { W = W2; ok = true; } }
+            else if (drop(set, ok0)) ok = true;
+            if (ok) { res.moved += groups.length; break; }
+          }
+          if (!ok) for (const u of undoAll.reverse()) u();
+        }
+      }
+      // 2) the piece itself to a spot a person reaches
+      if (!ok && !closed && kind === 'piece') ok = tryMove(groupOf(b, x), null, W2 => ok0(W2) && !W2.piecesOut.includes(x));
+      // a set's piece alone, with what stands on it and the seats at a table, where the whole set finds no spot
+      if (!ok && !closed && kind === 'piece' && x.kb) ok = tryMove(groupOf(b, x, true), null, W2 => ok0(W2) && !W2.piecesOut.includes(x));
+      if (!ok && !closed && kind === 'piece') ok = swapBed(x, W2 => ok0(W2) && !W2.piecesOut.includes(x));
+      // 3) what blocks the lane is left out: loose things first, then chests, then the piece itself, then tables and
+      // stations in the lane (D-148: "any furniture or decor that disrupts that expectation should not be placed")
+      if (!ok && !closed && path && blockers.size) {
+        const loose = [...blockers].filter(q => !keepAlways(q) && !W_MAIN.has(cat(q)));
+        const chests = [...blockers].filter(q => !keepAlways(q) && cat(q) === 'storage');
+        const big = [...blockers].filter(q => !keepAlways(q) && ['table', 'craft'].includes(cat(q)));
+        const set = new Set();
+        // one group at a time first, loose pieces before library sets and the smallest first; then the tier's groups
+        // together
+        for (const tier of [loose, chests]) {
+          const gs = [...new Map(tier.map(q => { const gp = groupOf(b, q, true); return [gp[0], gp]; })).values()].sort((g1, g2) => (g1.some(q => q.kb) ? 1 : 0) - (g2.some(q => q.kb) ? 1 : 0) || g1.length - g2.length);
+          for (const gp of gs) if (!ok && !gp.some(keepAlways) && drop(new Set(gp), ok0)) ok = true;
+          if (ok) break;
+          for (const gp of gs) for (const r of gp) set.add(r);
+          if (set.size && drop(new Set(set), ok0)) { ok = true; break; }
+        }
+        if (!ok && kind === 'piece' && !keepAlways(x) && cat(x) !== 'bed') ok = drop(new Set(groupOf(b, x)), ok0);
+        if (!ok && big.length) { for (const q of big) for (const r of groupOf(b, q)) set.add(r); ok = drop(new Set(set), ok0); }
+      }
+      // a chest, table or station that fits nowhere a person reaches is left out (D-148); beds stay and are reported
+      if (!ok && !closed && kind === 'piece' && !keepAlways(x) && cat(x) !== 'bed') ok = drop(new Set(groupOf(b, x)), ok0);
+    }
+    if (!ok) given.add(x); else given.clear();
+  }
+  res.left = [...W.entry.map(p => `entry ${p.name}`), ...W.piecesOut.map(p => `out ${p.name}`), ...W.roomsOut.map(r => `room ${r.x0},${r.z0} to ${r.x1},${r.z1} at ${r.y}`)];
+  if (b.notes && res.moved + res.swapped + res.gone) b.notes.push(`Ways in kept open: ${res.moved} pieces moved, ${res.swapped} swapped for smaller ones, ${res.gone} left out.`);
+  return res;
+}
+// the cheapest way over cells free of the structure from the reached cells to a goal; a cell furniture blocks costs
+// more for each piece in it, more again for beds, tables, stations and chests
+function wCheapest(g, from, goal, target, structOnly) {
+  const F = decorL().FURNITURE;
+  const cost = c => (c.block ? c.block.reduce((t, q) => t + (q === target ? 0 : PL.piece(q.name).role === 'fire' || q.wclip ? 40 : ['bed', 'table', 'craft'].includes((F[q.name] || {}).cat) ? 12 : W_MAIN.has((F[q.name] || {}).cat) ? 8 : 4), 0) : 0);
+  const dist = new Map(), prev = new Map(), heap = [];
+  const push = (d, n) => { heap.push([d, n]); let i = heap.length - 1; while (i > 0) { const pa = (i - 1) >> 1; if (heap[pa][0] <= heap[i][0]) break; [heap[pa], heap[i]] = [heap[i], heap[pa]]; i = pa; } };
+  const pop = () => { const top = heap[0], last = heap.pop(); if (heap.length) { heap[0] = last; let i = 0; for (;;) { const l = 2 * i + 1, r = l + 1; let m = i; if (l < heap.length && heap[l][0] < heap[m][0]) m = l; if (r < heap.length && heap[r][0] < heap[m][0]) m = r; if (m === i) break; [heap[m], heap[i]] = [heap[i], heap[m]]; i = m; } } return top; };
+  for (const s of from) { dist.set(s, 0); push(0, s); }
+  if (structOnly) { const seen = new Set(from), st = [...from]; while (st.length) { const a = st.pop(); if (goal.has(a)) return [a]; for (const [di, dj] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const q = g.cells.get(`${a.i + di},${a.j + dj}`); if (q && !q.hard && !seen.has(q)) { seen.add(q); st.push(q); } } } return null; }
+  const done = new Set();
+  while (heap.length) {
+    const [d, a] = pop();
+    if (done.has(a)) continue;
+    done.add(a);
+    if (goal.has(a)) { const path = []; let c = a; while (c) { path.push(c); c = prev.get(c); } return path; }
+    for (const [di, dj] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+      const q = g.cells.get(`${a.i + di},${a.j + dj}`);
+      if (!q || q.hard || done.has(q) || (q.block && q.block.some(r => r !== target && (PL.piece(r.name).role === 'fire' || /fire_pit|hearth|bonfire/.test(r.name) || r.wclip)))) continue;
+      const nd = d + 1 + cost(q);
+      if (!dist.has(q) || nd < dist.get(q)) { dist.set(q, nd); prev.set(q, a); push(nd, q); }
+    }
+  }
+  return null;
+}
+
+const apiL = { plan, planFor, floorScore, noteSet, clearLanes, clearEntries, openWays, walkMap, measure, rules, setRules, _int: { obstaclesOf, grid, targetsOf, reach }, _ways: { groupOf, spotsFor, placeGroup } };
 if (NODE_L) module.exports = apiL; else window.VHLayout = apiL;
 
 })();
@@ -13417,6 +13967,7 @@ const Kitbash = NODE ? require('./kitbash.js') : window.VHKitbash;
 const Yards = NODE ? require('./yards.js') : window.VHYards;
 const Persona = NODE ? require('./persona.js') : window.VHPersona;
 const checksLib = () => (NODE ? require('./checks.js') : window.VHChecks);
+const layoutLib = () => (NODE ? require('./layout.js') : window.VHLayout);
 
 // Heights (Tyler's in-game review, 2026-11-09). A player is about 1.8 m tall: rooms get walls of 3 m, so doors, beams
 // and roofs clear the head; sunken huts, low by nature, get 2.5 m under a steep roof.
@@ -15113,15 +15664,26 @@ function tidyFurniture(b) {
   const anchors = deco.filter(p => ['table', 'bed', 'seat', 'craft', 'storage', 'fire'].includes(P.piece(p.name).role) && P.piece(p.name).role !== 'rug');
   const near = (o, q, m) => { const r = boxes.get(q); return r.x0 < o.x1 + m && r.x1 > o.x0 - m && r.z0 < o.z1 + m && r.z1 > o.z0 - m && Math.abs(r.y0 - o.y0) < 0.6; };
   const gone = new Set();
+  // D-149 (Tyler, 2026-11-11): "B. Always mirror what corpus builders do." Corpus (1,739 vanilla builds, pivots only,
+  // device script vhrug/rugmine.js, 2026-11-11): 69 % of roofed chairs stand 2.3 m or more from any table and 3 m from
+  // any fire, and 99 % of those have a wall, a seat, a stand, a light, a rug, a chest, a window or a station within
+  // 1.6 m; 67 % of rugs laid flat have no furniture standing on them. A lone chair stays where something of those kinds
+  // is within reach of it (box gap 1.2 m); a bare rug stays while the design's bare rugs are within that share. Neither
+  // closes a lane or a way in: lib/layout.js openWays moves or leaves out what does.
+  const facing = /itemstand|ArmorStand|chest|barrel|crate|window|crystal|ledge|shelf|bed|sign|banner|workbench|forge|stonecutter|artisan|spinning|magetable|cartography|cauldron|oven|fermenter|chair|bench|stool|throne|torch|lantern|candle|brazier|sconce|rug_|carpet|wall|pole|beam|log/i;
+  const near1 = (o, q, m) => { const r = Ck.aabb(q); return r.x0 < o.x1 + m && r.x1 > o.x0 - m && r.z0 < o.z1 + m && r.z1 > o.z0 - m && r.y1 > o.y0 - 0.3 && r.y0 < o.y0 + 2.2; };
   for (const p of deco) {
-    if (/^piece_chair/.test(p.name)) { const o = boxes.get(p); if (!tables.some(t => near(o, t, 0.9)) && !deco.some(f => /fire_pit|hearth/.test(f.name) && near(o, f, 1.6))) gone.add(p); }
-  }
-  for (const p of deco) {
-    if (P.piece(p.name).role !== 'rug') continue;
+    if (!/^piece_chair/.test(p.name)) continue;
     const o = boxes.get(p);
-    // something standing on it (inside its footprint, not just touching an edge)
-    if (!anchors.some(q => !gone.has(q) && q !== p && near(o, q, -0.3))) gone.add(p);
+    if (tables.some(t => near(o, t, 0.9)) || deco.some(f => /fire_pit|hearth/.test(f.name) && near(o, f, 1.6))) continue;
+    if (!b.pieces.some(q => q !== p && facing.test(q.name) && near1(o, q, 1.2))) gone.add(p);
   }
+  const RUG_BARE = 0.67;
+  const rugs = deco.filter(p => P.piece(p.name).role === 'rug');
+  const bare = rugs.filter(p => { const o = boxes.get(p); return !anchors.some(q => !gone.has(q) && q !== p && near(o, q, -0.3)); });
+  // the bare rugs over the share go, the last laid first
+  const over = Math.max(0, bare.length - Math.floor(RUG_BARE * rugs.length + 1e-9));
+  for (const p of bare.slice(bare.length - over)) gone.add(p);
   if (gone.size) b.pieces = b.pieces.filter(p => !gone.has(p));
   // a long table with nobody's seat at it gets a bench along each long side where there is room
   const zones = keepClear(b);
@@ -15203,6 +15765,9 @@ function finish(b, info) {
   // the decor stage asked for: what the household has put up by then (D-071)
   if (info.grow) Persona.growth(b, info.decor, info.type === 'temple' ? 'temple' : ['tavern', 'longhouse'].includes(info.type));
   biomeSafe(b, info.biome);
+  // a person can walk in through every door, into every room and up to every bed, table, station and chest (D-152,
+  // D-148; lib/layout.js openWays), after every pass that sets or moves furniture
+  { const Lw = layoutLib(); if (Lw && Lw.openWays) Lw.openWays(b, info); }
   dropOrphans(b);
   // the generator places walls by their middle; the pieces that stand on their pivot go down to their foot
   for (const p of b.pieces) { const pi = P.piece(p.name); if (pi.onPivot && !p.decor && !p.footed) { p.y = +(p.y - pi.size[1] / 2).toFixed(3); p.footed = true; } }

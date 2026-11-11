@@ -38,17 +38,19 @@ module.exports = function reach(design, libDir) {
   // floors by height
   const levels = [...new Set(rooms.map(r => Math.round(r.y * 4) / 4))].sort((a, b) => a - b);
   const grids = new Map();
+  // walks (design.walks): ground between rooms that is no room, as a court's paved yard; walked on, never counted
+  const walks = (design.walks || []).filter(w => w.y != null && w.x1 > w.x0 && w.z1 > w.z0);
   for (const y of levels) {
-    const rs = rooms.filter(r => Math.abs(r.y - y) < 0.2);
-    const x0 = Math.min(...rs.map(r => r.x0)), x1 = Math.max(...rs.map(r => r.x1)), z0 = Math.min(...rs.map(r => r.z0)), z1 = Math.max(...rs.map(r => r.z1));
+    const rs = rooms.filter(r => Math.abs(r.y - y) < 0.2), all = rs.concat(walks.filter(w => Math.abs(w.y - y) < 0.2));
+    const x0 = Math.min(...all.map(r => r.x0)), x1 = Math.max(...all.map(r => r.x1)), z0 = Math.min(...all.map(r => r.z0)), z1 = Math.max(...all.map(r => r.z1));
     const here = solids.filter(s => s.y0 < y + 1.8 && s.y1 > y + 0.25);
     const cells = new Map();
     for (let x = x0 + S / 2; x < x1; x += S) for (let z = z0 + S / 2; z < z1; z += S) {
-      if (!rs.some(r => x > r.x0 && x < r.x1 && z > r.z0 && z < r.z1)) continue;
+      if (!all.some(r => x > r.x0 && x < r.x1 && z > r.z0 && z < r.z1)) continue;
       const free = !here.some(s => Math.abs(s.bx - x) < s.r + R + 0.01 && Math.abs(s.bz - z) < s.r + R + 0.01 && s.d(x, z) < R);
       cells.set(`${Math.round(x / S)},${Math.round(z / S)}`, { x, z, free, seen: false });
     }
-    grids.set(y, { rs, cells });
+    grids.set(y, { rs, all, cells });
   }
   const near = (g, x, z, rad) => [...g.cells.values()].filter(c => c.free && Math.hypot(c.x - x, c.z - z) <= rad);
   const queue = [];
@@ -61,9 +63,10 @@ module.exports = function reach(design, libDir) {
     if (y == null) continue;
     const g = grids.get(y);
     const inRoom = (x, z) => g.rs.some(r => x > r.x0 && x < r.x1 && z > r.z0 && z < r.z1);
+    const inside = (x, z) => g.all.some(r => x > r.x0 && x < r.x1 && z > r.z0 && z < r.z1);
     for (const sg of [1, -1]) {
       const ix = o.x + o.nx * sg * 0.8, iz = o.z + o.nz * sg * 0.8, ox = o.x - o.nx * sg * 0.8, oz = o.z - o.nz * sg * 0.8;
-      if (inRoom(ix, iz) && !inRoom(ox, oz)) for (const c of near(g, o.x + o.nx * sg * 0.6, o.z + o.nz * sg * 0.6, 1.2)) seed(y, c);
+      if (inRoom(ix, iz) && !inside(ox, oz)) for (const c of near(g, o.x + o.nx * sg * 0.6, o.z + o.nz * sg * 0.6, 1.2)) seed(y, c);
       // the entry zone on each inside side
       if (inRoom(ix, iz)) {
         const hw = o.w / 2 + 0.3, ux = o.ux, uz = o.uz, nx = o.nx * sg, nz = o.nz * sg;

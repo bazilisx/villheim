@@ -629,9 +629,12 @@ function walkMap(b) {
   for (const p of b.pieces) { const o = wSolid(p); if (o) solids.push({ p, o, decor: !!p.decor }); }
   const levels = [...new Set(rooms.map(r => Math.round(r.y * 4) / 4))].sort((a, c) => a - c);
   out.levels = levels;
+  // walks: ground a person crosses between rooms that is no room (a court's paved yard, lib/generate.js), walked on and
+  // never counted
+  const walks = (b.walks || []).filter(w => w.y != null && w.x1 > w.x0 && w.z1 > w.z0);
   for (const y of levels) {
-    const rs = rooms.filter(r => Math.abs(r.y - y) < 0.2);
-    const x0 = Math.min(...rs.map(r => r.x0)), x1 = Math.max(...rs.map(r => r.x1)), z0 = Math.min(...rs.map(r => r.z0)), z1 = Math.max(...rs.map(r => r.z1));
+    const rs = rooms.filter(r => Math.abs(r.y - y) < 0.2), all = rs.concat(walks.filter(w => Math.abs(w.y - y) < 0.2));
+    const x0 = Math.min(...all.map(r => r.x0)), x1 = Math.max(...all.map(r => r.x1)), z0 = Math.min(...all.map(r => r.z0)), z1 = Math.max(...all.map(r => r.z1));
     const here = solids.filter(s => s.o.y0 < y + 1.8 && s.o.y1 > y + 0.25);
     // buckets of 1 m over the boxes grown by the lane's radius
     const bk = new Map();
@@ -640,7 +643,7 @@ function walkMap(b) {
     }
     const cells = new Map();
     for (let x = x0 + WS / 2; x < x1; x += WS) for (let z = z0 + WS / 2; z < z1; z += WS) {
-      if (!rs.some(r => x > r.x0 && x < r.x1 && z > r.z0 && z < r.z1)) continue;
+      if (!all.some(r => x > r.x0 && x < r.x1 && z > r.z0 && z < r.z1)) continue;
       const c = { x, z, i: Math.round(x / WS), j: Math.round(z / WS), hard: false, block: null, seen: false };
       for (const s of bk.get(Math.floor(x) * 4096 + Math.floor(z)) || []) {
         if (wDist(s.o, x, z) >= WR) continue;
@@ -650,7 +653,7 @@ function walkMap(b) {
       c.free = !c.hard && !c.block;
       cells.set(`${c.i},${c.j}`, c);
     }
-    out.grids.set(y, { y, rs, cells, list: [...cells.values()] });
+    out.grids.set(y, { y, rs, all, cells, list: [...cells.values()] });
   }
   const queue = [];
   const seed = (y, c) => { if (c.free && !c.seen) { c.seen = true; queue.push([y, c]); } };
@@ -662,10 +665,11 @@ function walkMap(b) {
     if (y == null) continue;
     const g = out.grids.get(y);
     const inRoom = (x, z) => g.rs.some(r => x > r.x0 && x < r.x1 && z > r.z0 && z < r.z1);
+    const inside = (x, z) => g.all.some(r => x > r.x0 && x < r.x1 && z > r.z0 && z < r.z1);
     for (const sg of [1, -1]) {
       const ix = o.x + o.nx * sg * 0.8, iz = o.z + o.nz * sg * 0.8, ox = o.x - o.nx * sg * 0.8, oz = o.z - o.nz * sg * 0.8;
       if (!inRoom(ix, iz)) continue;
-      if (!inRoom(ox, oz)) for (const c of near(g, o.x + o.nx * sg * 0.6, o.z + o.nz * sg * 0.6, 1.2)) seed(y, c);
+      if (!inside(ox, oz)) for (const c of near(g, o.x + o.nx * sg * 0.6, o.z + o.nz * sg * 0.6, 1.2)) seed(y, c);
       out.zones.push({ y, x: o.x, z: o.z, ux: o.ux, uz: o.uz, nx: o.nx * sg, nz: o.nz * sg, hw: o.w / 2 + 0.3, dep: 1.5 });
     }
   }

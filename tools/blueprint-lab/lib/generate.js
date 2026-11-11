@@ -977,8 +977,14 @@ function generate(req) {
       own.sort((a, c) => Math.hypot(a.x - target[0], a.z - target[1]) - Math.hypot(c.x - target[0], c.z - target[1]));
       if (own[0]) doors.add(own[0]);
     });
-    for (const e of inner) wallSegment(b, K, C, e.x, F, e.z, e.yaw, SH, doors.has(e) ? 'door' : 'wall');
+    // the walls between the gallery and the rooms are of planks: the rooms behind a 2 m gallery are 2 m deep, and a
+    // 1 m stone wall on each side left them 1 m clear, with no 0.9 m way in or through (D-152; integration round 6)
+    for (const e of inner) wallSegment(b, K, C, e.x, F, e.z, e.yaw, SH, doors.has(e) ? 'door' : 'wall', 'plank');
     arcadeAlong(b, K, [...arcade], F, SH);
+    // the paved yard is walked through from one gallery to the next: a walk for the lanes (lib/layout.js walkMap,
+    // lab/reach.js), never a room to furnish or count; its height is the ground storey's rooms' (set in finish)
+    const yq = Q - 2 * wingOpts.dW;
+    if (yq > 0) b.walks = [{ x0: -yq, x1: yq, z0: -yq, z1: yq, y: null, yard: true }];
     b.notes.push('Rooms on four sides of a yard, an arcade on the yard side.');
   }
 
@@ -1146,8 +1152,11 @@ function generate(req) {
     for (let x = -yard + 1; x < yard; x += 2) for (let z = -yard + 1; z < yard; z += 2) b.put(pave, x, 0, z);
     const well = new Build(); wellDesign(well, K, biome, 's1');
     const lift = thickFloor(pave) ? 0.5 : 0; // on top of the paving
+    // the well only where it leaves a 0.9 m lane round it to the arcade (D-152: the yard is the way from one gallery
+    // to the next; the 3 m well filled a home's 4 m yard to within 0.5 m of its edge, integration round 6)
+    const wellHalf = Math.max(...well.pieces.filter(p => p.name !== 'piece_chest_barrel').map(p => Math.max(Math.abs(p.x), Math.abs(p.z)) + 0.5));
     // the barrel by the well only where the yard has room for it (a small yard's walls are a metre thick)
-    for (const p of well.pieces) if (!(p.name === 'piece_chest_barrel' && yard < 3.1)) b.put(p.name, p.x, p.y + lift, p.z, p.yaw);
+    if (yard - wellHalf >= 0.9) for (const p of well.pieces) if (!(p.name === 'piece_chest_barrel' && yard < 3.1)) b.put(p.name, p.x, p.y + lift, p.z, p.yaw);
     if (stage === 's3' && type !== 'home') {
       for (const sx of [-1, 1]) for (const sz of [-1, 1]) stoneTowerAt(b, K, sx * (Q + 1), sz * (Q + 1), top + 2, 0, true);
       b.notes.push('Corner towers, after the caravanserais.');
@@ -1869,6 +1878,7 @@ function finish(b, info) {
   biomeSafe(b, info.biome);
   // a person can walk in through every door, into every room and up to every bed, table, station and chest (D-152,
   // D-148; lib/layout.js openWays), after every pass that sets or moves furniture
+  if (b.walks && b.rooms && b.rooms.length) { const yl = Math.min(...b.rooms.map(r => r.y)); for (const w of b.walks) if (w.y == null) w.y = yl; }
   { const Lw = layoutLib(); if (Lw && Lw.openWays) Lw.openWays(b, info); }
   dropOrphans(b);
   // the generator places walls by their middle; the pieces that stand on their pivot go down to their foot
@@ -1878,7 +1888,7 @@ function finish(b, info) {
     ground: 0,
     meta: { Name: name, Creator: 'Villheim generator', Category: 'Villheim generated',
       Description: `${S.TYPES[info.type].label}, ${info.biome}, ${S.CULTURES[info.cultureKey].label}, ${info.plan || ''} plan, ${info.roof || ''} roof, ${info.walls || ''} walls, ${info.stage}${info.decor}, seed ${info.seed}` },
-    pieces: b.pieces, rooms: b.rooms, notes: [...new Set(b.notes)], request: info,
+    pieces: b.pieces, rooms: b.rooms, walks: b.walks, notes: [...new Set(b.notes)], request: info,
     // places a resident's own role props could go, left empty for the game (lib/kitbash.js residentSlots)
     slots: b.slots || [],
   };

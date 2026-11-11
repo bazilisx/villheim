@@ -324,8 +324,9 @@ well (Tyler, 2026-11-08). The Features tab of the review sheet (`docs/features/b
   2d. [x] Creative interior sets (D-065, D-098, design helper 2026-11-10): 92 combined and clipped sets, KC-001 on,
      each with role, household traits, rooms, decor stages, biome, footprint and height; the interior library holds
      193 of the 220 decor prefabs the corpus uses (was 109). `docs/INTERIOR_DESIGN.md`, "Creative sets".
-  2e. [ ] Run `lab/mine_creative.js` on the full corpus (Tyler's Downloads folder, not connected this time) and add the
-     objects that repeat or come from liked builds; measure `piece_drawer` and the other 12 decor prefabs with no model.
+  2e. [x] Run `lab/mine_creative.js` on the full corpus and add the objects that repeat or come from liked builds
+     (2026-11-10: 56 sets KC-093 to KC-148 from 1,536 builds, library at 201 prefabs); 8 of the 13 prefabs with no
+     model measured, `piece_drawer` and two others are mod pieces.
   2c. [x] Intentional clips (D-098): a set's own pieces go into what shows of the walls and into each other as deep as
      their source builds; marked in a `#VillheimClips` section that `lib/audit.js` honors (e44db1e). Not tried in the
      game.

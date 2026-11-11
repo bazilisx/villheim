@@ -24,7 +24,21 @@ const fs = require('fs'), path = require('path');
 const P = require('../lib/pieces.js'), SH = require('../lib/shapes.js'), Ck = require('../lib/checks.js'), KB = require('../lib/kitbash.js');
 
 const LIB = path.join(__dirname, '../data/kitbash-interior.json');
-const minedPath = process.argv[2] || '/tmp/creative-mined.json';
+// picks left out after the probe and the pictures (lab/creative_fit.js --probe, lab/render_creative.js)
+const DROP = process.env.NODROP ? new Set() : new Set([
+  // these went into no room tried (lab/creative_fit.js --probe, 2026-11-10)
+  42, 116, 197, 4, 11, 30, 73, 125, 211, 223, 50, 54, 152, 156, 278, 52, 92, 123, 149, 151, 48, 257, 269, 247, 192, 201,
+  202, 222, 246, 170, 232, 241, 252, 275, 285, 249, 256, 286, 178, 279, 280, 271, 290, 230, 242, 195, 213, 220, 224,
+  // and these read badly in the pictures (lab/render_creative.js, 2026-11-10): a chair alone where the cups on it did
+  // not fit (3, 27, 294, 265), beams lying on the floor by a torch or chair with nothing to make them a bench (62,
+  // 240, 87, 168), an armor stand or marble head leaning on a floor beam (72, 255), pots strewn over floor beams (226),
+  // Dvergr shelves turned off the wall (277, 284), three bone thrones in a row (253), and two that never showed up in
+  // a picture (243, 264)
+  3, 27, 294, 265, 62, 240, 87, 168, 72, 255, 226, 277, 284, 253, 243, 264,
+  // and these failed the test pool audit (2026-11-10): the galdr table and its upgrades clip into each other and the
+  // ledger stands on a chair (175, 153, 251); item stands hung on a half wall 0.5 m up (163)
+  175, 153, 251, 163,
+]);
 const DECOR_CLIP = new Map(JSON.parse(fs.readFileSync(LIB, 'utf8')).decor.map(d => [d.n, d.clip]));
 const outPath = process.argv[3] || LIB;
 
@@ -348,11 +362,80 @@ function build(s) {
   }
   const fb = n => ((BUILT_K[n] && P.needs(n) === 'Meadows') || n === 'wood_pole' || P.minor(n) ? 0 : Math.max(0, P.BIOME_ORDER.indexOf(P.needs(n))));
   const biome = P.BIOME_ORDER[Math.max(...pieces.map(q => fb(q.n)))];
-  // the earliest biome whose village makes the core pieces (the fitter leaves the others out where it cannot make them)
-  const core = pieces.filter(q => q.key);
-  const from = P.BIOME_ORDER[Math.max(...(core.length ? core : pieces).map(q => fb(q.n)))];
+  // the earliest biome whose village makes the building pieces that keep their own prefab (decor goes in any biome,
+  // Tyler 2026-11-10; the fitter leaves out a building piece the village does not make)
+  const from = P.BIOME_ORDER[Math.max(0, ...pieces.filter(q => P.piece(q.n).structural && q.k === q.n).map(q => fb(q.n)))];
   const deepest = clips.reduce((m, cl) => Math.max(m, cl[2]), 0);
   return { pieces, clips, foot: [r3(x1 - x0), r3(z1 - z0)], h: r3(top), biome, from, maxClip: r3(deepest) };
+}
+
+// ---------------------------------------------------------------- mined objects (data/creative-mined.json)
+// The objects lab/mine_creative.js found in the corpus and picked by hand, each kept as built: exact prefabs, offsets,
+// turns, rests and the clips the source build has. A group the miner put on the free floor whose biggest piece is
+// storage, a table or a station stood against something in its build: it goes against a wall, its back 2 cm off it.
+const WORD = [[/chest_blackmetal/, 'black metal chest'], [/chest_wood$/, 'chest'], [/piece_chest$/, 'iron chest'], [/chest_barrel|barrell/, 'barrel'], [/warderobe/, 'wardrobe'],
+  [/crate/, 'crate'], [/workbench_ext4/, 'tool rack'], [/workbench/, 'workbench'], [/chair|stool/, 'chair'], [/bench/, 'bench'], [/throne/, 'throne'], [/groundtorch|walltorch/, 'torch'], [/lantern|Lavalantern/, 'lantern'], [/Candle/, 'candles'],
+  [/blackforge|forge/, 'smithing tools'], [/magetable/, 'galdr table'], [/artisan/, 'artisan press'], [/spinning/, 'spinning wheel'],
+  [/cartography/, 'map table'], [/stonecutter/, 'stonecutter'], [/mortar/, 'mortar and pestle'], [/cauldron_ext3/, 'butcher table'], [/cauldron_ext4/, 'hanging pots'],
+  [/cauldron_ext1/, 'spice rack'], [/rollingpins/, 'rolling pins'], [/MeadCauldron|fermenter/, 'brewing'], [/cauldron|cookingstation/, 'cooking'], [/oven/, 'oven'], [/preptable/, 'prep table'],
+  [/^Feast/, 'feast'], [/^(Mead|BarleyWine)/, 'drinks'], [/itemstandh/, 'cups'], [/itemstand/, 'item stands'], [/sign/, 'signs'], [/ArmorStand/, 'armor'], [/blackmarble_head/, 'marble head'],
+  [/pot\d/, 'pots'], [/bathtub/, 'bathtub'], [/dvergrprops_shelf/, 'Dvergr shelf'], [/dvergrprops_barrel/, 'Dvergr barrel'], [/bed/, 'bed'], [/table/, 'table'],
+  [/wall_half/, 'half walls'], [/wall_quarter/, 'quarter walls'], [/stone_wall|crystal_wall|stone_arch|stone_fence/, 'stone'], [/roof/, 'roof pieces'],
+  [/beam/, 'beams'], [/pole|log/, 'posts']];
+const wordOf = n => (WORD.find(([re]) => re.test(n)) || [null, null])[1];
+const STORE = /chest|barrel|crate|warderobe/, STATION = /workbench|forge|magetable|artisan|spinning|stonecutter|cartography|mortar|blackforge|cauldron|oven|preptable|fermenter/;
+function minedSet(o) {
+  const ms = o.m.map(([n, x, y, z, yaw, rest, on, sink], i) => ({ i, n, x, y, z, yaw, rest, on, sink }));
+  // what a piece rests on comes before it
+  const order = [], done = new Set();
+  const visit = m => { if (done.has(m.i)) return; if (m.rest === 'on' && m.on != null) visit(ms[m.on]); done.add(m.i); order.push(m); };
+  ms.forEach(visit);
+  const at = new Map(order.map((m, j) => [m.i, j]));
+  let anchor = o.a;
+  const big = order.slice().sort((p, q) => { const bp = boxOf({ name: p.n, x: 0, y: 0, z: 0, yaw: 0 }), bq = boxOf({ name: q.n, x: 0, y: 0, z: 0, yaw: 0 }); return (bq.x1 - bq.x0) * (bq.z1 - bq.z0) - (bp.x1 - bp.x0) * (bp.z1 - bp.z0); })[0];
+  let dz = 0;
+  if (anchor === 'floor' && (STORE.test(big.n) || STATION.test(big.n) || /bench|table/.test(big.n))) {
+    let z0 = Infinity;
+    for (const m of order) { const b = boxOf({ name: m.n, x: m.x, y: m.y, z: m.z, yaw: m.yaw }); if (!b.pass) z0 = Math.min(z0, b.z0); }
+    if (isFinite(z0)) { anchor = 'wall'; dz = 0.02 - z0; }
+  }
+  const pieces = order.map(m => {
+    const p = { n: m.n, k: m.n, x: m.x, y: m.y, z: +(m.z + dz).toFixed(3), yaw: m.yaw, rest: m.rest };
+    if (m.rest === 'on') p.on = at.get(m.on);
+    if (m.sink) p.sink = m.sink;
+    return p;
+  });
+  // the core: the biggest storage, station, table or seat piece, else the biggest piece
+  const core = order.find(m => STORE.test(m.n) || STATION.test(m.n)) || big;
+  pieces[at.get(core.i)].key = true;
+  const clips = (o.c || []).map(([u, v, d]) => [at.get(u), typeof v === 'number' ? at.get(v) : v, +(d + 0.02).toFixed(3)]);
+  const words = [...new Set(order.map(m => wordOf(m.n)).filter(Boolean))];
+  const name = words.slice(0, 4).join(', ').replace(/, ([^,]+)$/, ' and $1');
+  const has = re => order.some(m => re.test(m.n));
+  let family = 'storage', role = 'furniture', traits = { tidy: 0.6 }, rooms = ['storage', 'home', 'workshop'];
+  if (has(/^Feast|^(Mead|BarleyWine|Bread|Honey|Sausages|Marinated|Mashed|Piquant|Sparkling)|cauldron|cookingstation|oven|preptable|fermenter|MeadCauldron/)) { family = 'food'; role = anchor === 'table' ? 'lived-in' : 'furniture'; traits = { food: 1 }; rooms = ['kitchen', 'tavern', 'home', 'hall']; }
+  else if (has(/workbench|forge|magetable|artisan|spinning|stonecutter|cartography|mortar|blackforge/)) { family = 'stations'; role = 'decor'; traits = has(/magetable|cartography/) ? { maps: 1 } : { crafts: 1, busy: 0.4 }; rooms = has(/forge/) ? ['smithy', 'workshop'] : ['workshop', 'home']; }
+  else if (has(/ArmorStand|throne|blackmarble_head|blackmarble_bench|bone/)) { family = 'display'; role = 'decor'; traits = { collect: 0.8, wealth: 0.6 }; rooms = ['hall', 'home']; }
+  else if (has(/bathtub/)) { family = 'floor'; traits = { comfort: 1, wealth: 0.5 }; rooms = ['home', 'sleeping']; }
+  else if (has(/bed/)) { family = 'bed'; traits = { comfort: 0.8, wealth: 0.6 }; rooms = ['home', 'sleeping']; }
+  else if (has(/groundtorch|walltorch|lantern|Lavalantern|Candle/) && !has(STORE)) { family = 'light'; role = anchor === 'floor' ? 'floor' : 'decor'; traits = { comfort: 0.6 }; rooms = ['home', 'hall', 'tavern', 'storage', 'workshop']; }
+  else if (has(/pot\d/)) { family = 'window'; role = 'decor'; traits = { plants: 1 }; rooms = ['home', 'kitchen', 'sleeping']; }
+  else if (has(/chair|bench|stool/) && !has(STORE)) { family = 'built'; role = has(/itemstandh|Lavalantern|Mead|Sparkling|magetable/) ? 'lived-in' : 'furniture'; traits = has(/itemstandh|Sparkling/) ? { messy: 0.6, comfort: 0.4 } : { comfort: 0.7 }; rooms = ['home', 'tavern', 'hall']; }
+  else if (has(/sign/)) { family = 'storage'; traits = { tidy: 1 }; rooms = ['storage', 'workshop', 'home', 'hall']; }
+  else if (has(/itemstand/) && !has(STORE)) { family = 'display'; role = 'wall'; traits = { collect: 1 }; rooms = ['home', 'hall', 'tavern']; }
+  else if (has(/crate/) && !has(/chest/)) traits = { messy: 0.7, busy: 0.5 };
+  else if (has(/beam|pole|wall_half|wall_quarter|log/)) { family = 'built'; traits = { tidy: 0.7 }; }
+  if (o.a === 'window') role = 'window';
+  const fb = n => (P.minor(n) ? 0 : Math.max(0, P.BIOME_ORDER.indexOf(P.needs(n))));
+  const biome = P.BIOME_ORDER[Math.max(...pieces.map(q => fb(q.n)))];
+  // the building pieces that keep their own prefab decide where it goes (decor goes in any biome, Tyler 2026-11-10)
+  const from = P.BIOME_ORDER[Math.max(0, ...pieces.filter(q => P.piece(q.n).structural && q.k === q.n).map(q => fb(q.n)))];
+  const essential = family === 'storage' && pieces.length <= 3 && !has(/sign/);
+  const decor = essential ? ['d1', 'd2', 'd3'] : pieces.length >= 5 || family === 'display' ? ['d3'] : ['d2', 'd3'];
+  const score = +Math.min(6, 1.4 + 0.4 * o.l + 0.1 * o.b).toFixed(2);
+  return { anchor, ...(o.ang ? { angle: o.ang } : {}), ...(o.of ? { of: o.of } : {}), creative: true, mined: true, name, family, role, traits, rooms, decor,
+    slots: pieces.map(q => q.k), pieces, clips, maxClip: clips.reduce((m, c) => Math.max(m, c[2]), 0), biome, from, foot: o.f, h: o.h, score,
+    min: Math.max(2, Math.ceil(pieces.length * 0.6)), basis: `combined in ${o.b} corpus builds, ${o.l} of them well-liked (lab/mine_creative.js)`, src: o.s };
 }
 
 // ---------------------------------------------------------------- into the library
@@ -372,11 +455,17 @@ if (require.main === module) {
       basis: s.basis, src: s.src || [] };
     out.push(a);
   });
+  const minedFile = path.join(__dirname, '../data/creative-mined.json');
+  const minedPicks = fs.existsSync(minedFile) ? JSON.parse(fs.readFileSync(minedFile, 'utf8')).objects : [];
+  for (const o of minedPicks) {
+    const a = minedSet(o);
+    if (DROP.has(o.pick)) continue;
+    out.push({ id: `KC-${String(out.length + 1).padStart(3, '0')}`, ...a });
+  }
   lib.assemblies = kept.concat(out);
   const after = new Set(); for (const a of lib.assemblies) for (const p of a.pieces) after.add(p.n);
-  const mined = fs.existsSync(minedPath) ? JSON.parse(fs.readFileSync(minedPath, 'utf8')) : null;
   lib.creative = { about: 'Creative sets (KC-): combined, stacked and clipped objects written by lab/creative_sets.js and measured with the game\'s colliders; each names its family, role, household traits, rooms, decor stages, biome, footprint and height, and the corpus counts or builds it rests on. lab/mine_creative.js finds such objects by contact in any corpus.',
-    sets: out.length, prefabsBefore: before.size, prefabsAfter: after.size, mined: mined ? { builds: mined.builds, found: mined.found, distinct: mined.objects.length } : null };
+    sets: out.length, prefabsBefore: before.size, prefabsAfter: after.size, mined: JSON.parse(fs.readFileSync(path.join(__dirname, '../data/creative-mined.json'), 'utf8')).mined };
   fs.writeFileSync(outPath, JSON.stringify(lib, null, 0).replace(/\{"id"/g, '\n{"id"').replace(/\{"n":"([^"]+)","role"/g, '\n{"n":"$1","role"'));
   for (const w of why) console.log('left out', w);
   for (const a of out) console.log(a.id, a.name.padEnd(38), a.anchor.padEnd(8), a.biome.padEnd(12), `foot ${a.foot.join('x')} h ${a.h}`, `clip ${a.maxClip}`, a.clips.map(c => c.join(':')).join(' '));

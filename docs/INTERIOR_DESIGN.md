@@ -311,9 +311,10 @@ the 220 the corpus uses. Each set carries:
 - `rooms` and `decor`: the decor stages it may go in. d1 only for beds and storage a room needs (a chest with its
   label, a wardrobe, the pelt on the bedfoot chest, a crate for a nightstand). A d3-only set is always marked for the
   third stage;
-- `biome` (the hardest piece by `lib/pieces.js` needs, minor decor anywhere) and `from` (the earliest biome that makes
-  its core pieces). A village below `from` never gets the set; in a village that makes the core but not every piece,
-  the others are left out, so the last pass never swaps a barrel of a stack for a chest of another size;
+- `biome` (the hardest piece by `lib/pieces.js` needs, minor decor anywhere) and `from`. Decor, furniture, stations
+  and lights go in any biome (Tyler, 2026-11-10), so `from` counts only the building pieces that keep their own
+  prefab (a 2 m ashwood post, a black marble bench's posts): a village below `from` never gets the set, and a building
+  piece the village does not make is left out of it;
 - `foot` and `h`: footprint and height in metres, so a room's ceiling can be checked; `src` and `basis` for credit.
 
 Each piece keeps its own prefab (`k` is the prefab), so the fitter places the source piece when the village is in
@@ -371,9 +372,12 @@ Left out, and why:
 Of the 220 prefabs, 27 are not in any set:
 - Seasonal pieces, Dvergr treasure chests and the asksvin skeleton (8 prefabs): the fitter leaves them out
   (`SKIP_N`).
-- 13 prefabs with no collider or model in the lab's data (the drawer, the smoker, bar stacks, the old stone chest,
-  the cargo chest, some foods): the fitter cannot test them. `piece_drawer` is the one worth measuring (224 times on a
-  wall in the corpus).
+- 13 prefabs with no collider or model in the lab's data. Measured on Tyler's PC on 2026-11-10 (`lab/extract_models.py`,
+  `lab/build_models.js`): the bar stacks of iron and flametal, the old stone chest, the Ashlands Dvergr crate, cooked
+  wolf meat, lox pie, oven pancakes and salad, now in `data/piece-models.json` and `data/piece-solids.json`.
+  `piece_drawer`, `piece_chest_cargo` and `MS_PressurePlate_BlackMarble` are mod pieces (not in the game's piece
+  list), so the builds that use them are not vanilla; `cauldron_ext7_smoker` and `MeadStaminaLingering` gave no
+  usable mesh.
 - The ceiling brazier and the Mountain brazier: an open fire indoors goes under a smoke hole, which the generator
   places itself. `cloth_hanging_long` hangs 8 m. The 2 m ashwood beam pivots a metre above its solid, so a hung copy
   in the village's wood would land wrong.
@@ -384,6 +388,46 @@ Of the 220 prefabs, 27 are not in any set:
 Food and drink in a set become flat item stands holding what the household keeps (T-626), and a feast is the
 village's own; so the many mead and feast prefabs in the sets differ in the data and by what goes round them.
 
+### Full corpus round (2026-11-10)
+
+`lab/mine_creative.js` ran over the whole corpus on Tyler's PC (the files read in place, nothing written there; the
+OverDrive BiomeBlueprints pack left out): 1,536 vanilla builds of 20 to 15,000 pieces, 353 of them well-liked (the top
+quarter by downloads, joined from the corpus index), 15,175 combined objects, 9,187 distinct; 2,740 are in two or
+more builds or in a liked build. `lab/select_creative.js` passed 1,308 of them (2 to 10 pieces, no seasonal pieces,
+treasure, piles, fires, beds or tables, within 4.6 m and 2.75 m high) and kept 295 (one per set of prefabs and anchor,
+liked builds first, and the best two for every prefab); 125 of those were picked by hand to try
+(`data/creative-mined.json`). `lab/creative_sets.js` writes them after the hand-written sets: 56 sets, `KC-093`
+to `KC-148`, `mined: true`, each with the exact prefabs, the clips and sinks measured from the source, family, role,
+household traits, rooms, decor stages, biome, footprint, height, the number of builds and liked builds it was combined
+in, and its source builds (liked ones first) in `src`. The library now holds 201 distinct prefabs (193 after the first
+round, 109 before).
+
+| Family | Sets | Examples (source builds) |
+|---|---|---|
+| Built | 22 | a chest framed by beams and posts, a storage bay (16 builds, 6 liked: Kjúklingur and Houses, homes and tinies by MutantArtCat; Leech Landing and The Greydwarf Wharf by HiccupTheHermit); a chest behind a half wall (9 builds); a log bench with a quarter-wall back (Leech Landing); black metal chests between log posts (Fluffybunny's Home, Fluffy-n-Dana); two chairs under a beam shelf (Fantasy Mage House, Apudma) |
+| Stations | 12 | a workbench boxed in half walls (The Greydwarf Wharf; Simple Corewood Lighthouse); the artisan press (The Refinery, Fluffy-n-Dana); smithing tools round a workbench (Storage/Workshop, Jacob_Lad); a spinning wheel by a half wall (Kjúklingur) |
+| Food | 11 | the fermenter under beams (3 builds: Houses, homes and tinies; My First Home, Fluffy-n-Dana); feasts with cups, candles and a lantern (Daluffo Home, Deardly; Mistvale Keep, Jaikanatar); drinks round a chair (Workmans Pub, Bri Games); the oven built into stone (Skyrim Nordic Home, Luxfen); mead ketill and cauldron (Octagon Starter Base, aSoftPea) |
+| Light | 4 | a torch set into a post (9 builds, 4 liked: Quirky Log Cabin, HiccupTheHermit); a lantern on a chair (8 builds: Ultimate Outpost, Volfas; INCREDIBLE Tavern, Olivanderr); candles, pots and a torch on ashwood posts (Japanese Style Base, Dremka) |
+| Storage | 3 | a chest with its signs (Cozy tree house, PUP; The Refinery); Dvergr crates stacked; a long crate on beams |
+| Display | 2 | a throne and an armor stand (Chickensthorpe Longhouse, Kingchickenx); a black marble bench between armor and posts (Big Spiral House) |
+| Window | 2 | pots by a post (My country house, PUP; Ashen Spire, Mint); signs and a pot on quarter walls (INCREDIBLE Tavern) |
+
+How they were checked: each set tried alone in 3 to 24 designs (`lab/creative_fit.js --probe`); 49 of the 125 went into
+no room (chest pairs clipping deeper than the 12 cm furniture limit, signs hung on chest fronts, objects that only fit
+the room they came from). Each of the other 76 was drawn in a room (`lab/render_creative.js`, three views) and looked
+at; 16 were left out: a chair whose cups did not fit, so only the chair went in (4); beams lying on the floor by a
+torch or chair with nothing to make them a bench (4); an armor stand or marble head leaning on a floor beam (2); pots
+strewn over floor beams; Dvergr shelves turned off the wall (2); three bone thrones in a row; two that never showed in
+a picture. 4 more failed the test pool audit (`lab/make_testpool.js`): the galdr table sets (the table and its
+upgrades clip into each other, the ledger stood on a chair) and item stands hung on a half wall 0.5 m up. The picks
+left out are listed in `lab/creative_sets.js` `DROP`. The per-object counts are in
+`data/creative-corpus/kept.csv` (the 2,740 objects in two or more builds or a liked build) and
+`data/creative-corpus/prefabs.csv` (each of the 281 prefabs: objects, builds, liked builds).
+
+Found on the way: `lib/pieces.js` has no recipe biome for the galdr table and its upgrades, the black forge and its
+upgrades, the lava lantern, the bone throne, the mead ketill or the feasts, and reads them all as Meadows. With decor in
+any biome this only shows in the `biome` field.
+
 ## Commands
 
 ```
@@ -393,7 +437,8 @@ node lab/check_interiors.js lib out.json 3         # the checks; give an older l
 node lab/interior_density.js 3                     # pieces per 10 m2 by room against the corpus
 node lab/floorplan_feedback.js floorplans.csv      # the sheet's Floorplans tab into data/interior-tuning.json
 GEO=/tmp/room-geo.json node lab/mine_room_templates.js <corpus dir> chosen.csv   # room templates, and the rooms as built
-node lab/mine_creative.js <compact.json | folder of .blueprint> [out.json]       # combined and clipped objects by contact
+node lab/mine_creative.js <compact.json | folder of .blueprint> [out.json]       # combined and clipped objects by contact (a folder is read one build at a time; index.json beside it gives titles, makers, downloads)
+node lab/select_creative.js mined-full.json > sel.b64   # the objects worth trying as sets, from a full-corpus run
 node lab/creative_sets.js [mined.json]             # the creative sets into data/kitbash-interior.json
 node lab/creative_fit.js 2 [out.json]              # how often each set goes in; --probe [KC-001 ...] tries each alone
 node lab/render_creative.js <out dir> [KC-001 ...] # each set drawn in its room

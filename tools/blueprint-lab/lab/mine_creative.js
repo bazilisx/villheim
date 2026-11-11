@@ -29,13 +29,29 @@ const tilted = q => Math.hypot(q[0], q[2]) > 0.02;
 const norm = a => ((a % 360) + 360) % 360;
 const quat = yaw => { const a = yaw * Math.PI / 360; return [0, +Math.sin(a).toFixed(6), 0, +Math.cos(a).toFixed(6)]; };
 
+// A folder is read with its subfolders (folders starting with _ left out). An index.json beside the builds (the
+// valheimians download index: slug, title, by, dls) gives each build its title, maker and downloads by the file name's
+// slug (the part before '__'); without one every build counts as liked (Tyler's board). The same build saved twice
+// counts once.
 function load(src) {
   if (fs.statSync(src).isDirectory()) {
-    return fs.readdirSync(src).filter(f => f.endsWith('.blueprint')).map(f => {
-      const d = BP.parse(fs.readFileSync(path.join(src, f), 'utf8'));
-      return { file: f, title: d.meta.Name || f, cat: d.meta.Category || '', dls: 0, board: true,
-        p: d.pieces.map(p => [p.name, p.x, p.y, p.z, yawOf(p.q), tilted(p.q) ? 1 : 0]) };
-    });
+    const files = [];
+    const walk = d => { for (const e of fs.readdirSync(d, { withFileTypes: true })) {
+      if (e.isDirectory()) { if (!e.name.startsWith('_')) walk(path.join(d, e.name)); } else if (e.name.endsWith('.blueprint')) files.push(path.join(d, e.name));
+    } };
+    walk(src);
+    const idxFile = path.join(src, 'index.json');
+    const index = fs.existsSync(idxFile) ? new Map(JSON.parse(fs.readFileSync(idxFile, 'utf8')).map(r => [r.slug, r])) : null;
+    // read one build at a time (the corpus is about 440 MB of text)
+    const one = f => {
+      let d;
+      try { d = BP.parse(fs.readFileSync(f, 'utf8')); } catch (e) { return null; }
+      if (!d.pieces.length) return null;
+      const base = path.basename(f, '.blueprint'), slug = base.split('__')[0], r = index && index.get(slug);
+      return { file: path.relative(src, f), title: (r && r.title) || d.meta.Name || base, by: r ? r.by : d.meta.Creator || '', slug, cat: (r && r.cat) || d.meta.Category || '',
+        dls: r ? +r.dls || 0 : 0, board: !index, n: d.pieces.length, p: d.pieces.map(p => [p.name, p.x, p.y, p.z, yawOf(p.q), tilted(p.q) ? 1 : 0]) };
+    };
+    return { lazy: true, files: files.sort(), one };
   }
   return JSON.parse(fs.readFileSync(src, 'utf8'));
 }
@@ -245,14 +261,38 @@ function distance(A, B) {
 
 function run(src, likedSet) {
   const all = load(src);
-  const builds = all.filter(d => d.p && d.p.length >= 20 && !d.p.some(p => MOD.test(p[0])));
-  const ranked = builds.filter(d => d.dls > 0).sort((a, b) => b.dls - a.dls);
-  const liked = likedSet || new Set(ranked.slice(0, Math.ceil(ranked.length / 4)).map(d => d.file));
+  // the builds in order, read lazily from a folder; the same build saved twice counts once
+  const seen = new Set();
+  const builds = [];
+  const each = function* () {
+    if (!all.lazy) { for (const d of all) yield d; return; }
+    for (const f of all.files) {
+      const d = all.one(f);
+      if (!d) continue;
+      const p0 = d.p[0];
+      const sig = d.p.length + '|' + d.p.slice(0, 200).map(p => `${p[0]}${Math.round(p[1] - p0[1])},${Math.round(p[2] - p0[2])},${Math.round(p[3] - p0[3])}`).sort().join(';');
+      if (seen.has(sig)) continue;
+      seen.add(sig);
+      yield d;
+    }
+  };
+  // well-liked: the top quarter by downloads among the vanilla builds (as lab/mine_kitbash.js), or every board build
   const bySig = new Map();
-  let n = 0;
-  for (const d of builds) {
+  let n = 0, nb = 0, nv = 0;
+  const pending = [];
+  for (const d of each()) {
+    if (++nb % 100 === 0) console.error(`${nb} builds read, ${nv} vanilla, ${n} objects`);
+    if (!d.p || d.p.length < 20 || d.p.some(p => MOD.test(p[0])) || d.p.length > 15000) continue;
+    nv++;
     let res;
     try { res = mine(d); } catch (e) { console.error(d.file, e.message); continue; }
+    const meta = { file: d.file, title: d.title, by: d.by, dls: d.dls, board: d.board };
+    builds.push(meta);
+    pending.push([meta, res]);
+  }
+  const ranked = builds.filter(d => d.dls > 0).sort((a, b) => b.dls - a.dls);
+  const liked = likedSet || new Set(ranked.slice(0, Math.ceil(ranked.length / 4)).map(d => d.file));
+  for (const [d, res] of pending) {
     for (const r of res) {
       n++;
       const k = sig(r);
@@ -260,14 +300,15 @@ function run(src, likedSet) {
       const cl = bySig.get(k);
       let home = cl.find(c => distance(c.lead.members, r.members) <= 0.35 || distance(c.lead.members, mir(r.members)) <= 0.35);
       if (!home) { home = { lead: r, src: d, builds: new Set(), liked: new Set() }; cl.push(home); }
-      home.builds.add(d.title || d.file);
-      if (liked.has(d.file) || d.board) home.liked.add(d.title || d.file);
+      const who = `${d.title || d.file}${d.by ? ' (' + d.by + ')' : ''}`;
+      home.builds.add(who);
+      if (liked.has(d.file) || d.board) home.liked.add(who);
     }
   }
   const objs = [];
-  for (const cl of bySig.values()) for (const c of cl) objs.push({ ...c.lead, builds: c.builds.size, liked: c.liked.size, src: [...c.builds].slice(0, 5) });
+  for (const cl of bySig.values()) for (const c of cl) objs.push({ ...c.lead, builds: c.builds.size, liked: c.liked.size, src: [...c.liked, ...[...c.builds].filter(b => !c.liked.has(b))].slice(0, 5) });
   objs.sort((a, b) => b.liked - a.liked || b.builds - a.builds || b.members.length - a.members.length);
-  return { builds: builds.length, found: n, objects: objs };
+  return { builds: builds.length, liked: liked.size, found: n, objects: objs };
 }
 
 if (require.main === module) {

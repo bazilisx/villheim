@@ -515,8 +515,11 @@ written by `lab/creative_sets.js` from the decor table, the pairs in `data/inter
 board (`lab/mine_creative.js`, which mines such objects by contact and is ready for the full corpus). Each keeps its
 pieces' own prefabs and carries its family, role, household traits (`lib/persona.js` `kitWeight`), rooms, decor
 stages, biome (`from`: the earliest that makes its core pieces), footprint, height, source builds and the counts it
-rests on. The library holds 193 distinct prefabs (was 109). What they are, where they came from and what was left
-out: `docs/INTERIOR_DESIGN.md`, "Creative sets". Pieces set on a chest or barrel stand on its lid (`lib/shapes.js`
+rests on. The library holds 193 distinct prefabs (was 109). A second round over the full corpus (1,536 vanilla builds,
+353 well-liked) added 56 sets `KC-093` to `KC-148` (`mined: true`) mined by contact with their exact prefabs and
+source builds; the library holds 201 distinct prefabs. Decor in a set goes in any biome; only its building pieces that
+keep their own prefab decide `from` (Tyler, 2026-11-10). What they are, where they came from and what was left out:
+`docs/INTERIOR_DESIGN.md`, "Creative sets". Pieces set on a chest or barrel stand on its lid (`lib/shapes.js`
 `lidAt`), and the fitter refuses furniture more than 12 cm into other furniture as the pool audit measures it.
 
 Built-up furniture (`lib/kitbash.js` `BUILT_KITS`), hand-made in the library's format (second round after the

@@ -597,9 +597,9 @@ function fit(b, ctx, room, idx, zones, anc, a, mirror, fires) {
     const fail = () => { if (needed.has(i)) return true; dropped++; return false; };
     // a random pick (banners) is made once per assembly, so a pair matches
     let name = mm.any ? (picks[mm.k] || (picks[mm.k] = fillSlot(mm, ctx.biome, ctx))) : fillSlot(mm, ctx.biome, ctx);
-    // a creative set's piece the village does not make itself is left out: the last pass (generate.js biomeSafe) would
-    // swap it for a stand-in of another size (a barrel of a stack turned into a chest)
-    if (name && a.creative && !PB.minor(name) && PB.BIOME_ORDER.indexOf(PB.needs(name)) > PB.BIOME_ORDER.indexOf(ctx.biome)) name = null;
+    // decor goes in any biome (Tyler, 2026-11-10); a creative set's building piece (a post kept in its own prefab)
+    // the village does not make is left out
+    if (name && a.creative && PB.piece(name).structural && PB.BIOME_ORDER.indexOf(PB.needs(name)) > PB.BIOME_ORDER.indexOf(ctx.biome)) name = null;
     if (!name || (mm.rest === 'on' && !made[mm.on])) { if (!name) WHY_B = 30; if (fail()) return null; continue; }
     let lx = mirror ? -mm.x : mm.x;
     if (a.byWidth && anc.w) lx = Math.sign(lx) * (anc.w / 2 + Math.abs(lx));
@@ -664,6 +664,8 @@ function fit(b, ctx, room, idx, zones, anc, a, mirror, fires) {
     } else if (mm.rest === 'floor') {
       if (!bx.pass) { p.y = +(p.y + (stand - (mm.sink || 0)) - bx.y0).toFixed(3); bx = Ck.aabbShapes(p); }
       else p.y = +(stand + 0.02).toFixed(3);
+      // the depth its source set it into the floor goes with it, so the audit's rest test allows it (a post sunk 14 cm)
+      if (mm.sink) p.sink = mm.sink;
     }
     let okP = placeable(p, bx, mm, i, b, ctx, room, idx, zones, made, clipOf, anc, fires, displace, a);
     // a hung piece that meets the ceiling or the wall's own relief (the bars of a 2x2 wall) slides up or down the
@@ -950,7 +952,7 @@ function furnishRooms(b, ctx, zones, R2, extra, rooms) {
     const v = !a.pieces.some(m => m.any) && a.pieces.some((m, i) => {
       if (!need.has(i) || m.any) return false;
       const name = fillSlot(m, ctx.biome, ctx);
-      return !name || (a.creative && !PB.minor(name) && PB.BIOME_ORDER.indexOf(PB.needs(name)) > PB.BIOME_ORDER.indexOf(ctx.biome));
+      return !name || (a.creative && PB.piece(name).structural && PB.BIOME_ORDER.indexOf(PB.needs(name)) > PB.BIOME_ORDER.indexOf(ctx.biome));
     });
     hopeK.set(a, v);
     return v;
@@ -978,8 +980,7 @@ function furnishRooms(b, ctx, zones, R2, extra, rooms) {
     const cap = a => (a.dining ? (setsHere < sets ? 9 : 0) : a.built ? (many.includes(a.id) ? 2 : 1) : 2);
     const cands = lib.filter(a => (used[a.id] || 0) < cap(a) && (a.rooms || []).some(k => kinds.includes(k) || k === 'any') && anchors.some(an => takes(an, a)) &&
       (!a.types || a.types.includes(ctx.type)) && (!a.roles || a.roles.includes(room.role)) && (!a.decor || a.decor.includes(ctx.decor)) &&
-      // a creative set only where the village makes its core pieces itself (the rest are left out where it does not,
-      // in fit: the last pass, generate.js biomeSafe, would swap them for stand-ins of another size)
+      // a creative set only where the village makes the building pieces it needs (decor goes in any biome)
       (!a.creative || PB.BIOME_ORDER.indexOf(a.from) <= PB.BIOME_ORDER.indexOf(ctx.biome)))
       .map(a => {
         // more kinds of piece weigh more; a pair of chests is common in the corpus and dull in every room

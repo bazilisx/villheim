@@ -411,12 +411,16 @@ gen-test, s, requests 1 to 5 (C# engine; all 5 of 5 byte for byte):
 | 4e3cbc6 (round 6 tip) | 18.7 | 112.1 | 20.1 | 6.6 | 13.4 |
 | 510a95f (speed fixes, before the merges) | 15.7 | 76.3 | 16.7 | 4.1 | 12.5 |
 | 39339f0 (after the merges) | 17.5 | 91.2 | 39.3 | 1.6 | 11.3 |
-| 475c617 (final, bundles committed) | 18.1 | 98.1 | 40.4 | 1.7 | 11.2 |
+| 475c617 (bundles at b08a7ea) | 18.1 | 98.1 | 40.4 | 1.7 | 11.2 |
+| 9ddcaa1 (two runs; bundles committed) | 16.0, 16.5 | 73.3, 77.2 | 18.2, 20.7 | 1.4, 1.7 | 10.4, 10.7 |
 
 In node request 2 takes 3.7 to 4.1 s (round 5 tip 5.4 s, 4e3cbc6 5.8 to 6.9 s, same machine at load 1 to 2). The
 merges add 15 s to request 2 and 23 s to request 3 in Jint: request 3 spends 42 s of 61 s (instrumented) in mesh.js
 deepest from decorate.js clearOfRelief (wall pieces against the fine stone wall parts of the models track, 4.2 million
-part pairs); 39339f0 takes 3 s of it. Not fixed further this round.
+part pairs); 39339f0 takes 3 s of it. 9ddcaa1 (lead's follow-up pass): mesh.js deepest reads the coarse parts only
+until the first pair that meets where fine parts exist, and stops once a depth passes an optional cap; clearOfRelief
+asks wallClip only up to the limit each test compares with (HUNG_CLIP, and the larger of it and hungLimit for the first
+test, whose clip is kept on the piece in full). Same md5 for the 62 requests of requests-all.txt as 2dbe961.
 
 Merges (--no-ff, one commit each; bundles rebuilt and compare_page all same after each):
 - ba21f03 design/wip-models ee15184: render.js api conflict (both sides' names kept).
@@ -477,12 +481,12 @@ home_Meadows_norse_L+T+nave-gable-half-timber_s3d3_1.png (with and without green
 home-plains-court-s3d3-7.png (court home, seed 7), longhouse-bf-s3d2-613-after.png and -round6.png (the slow
 request; 1,220 pieces after the merges against 1,216 at round 6, the greenery pass adding its pieces outside).
 
-Where round 7a stopped: every fix and the bundles rebuilt at 475c617 are pushed; gen-test passed on them. Request 2 in
-Jint varies 91 to 98 s between runs on this machine, under the 120 s limit with less room than round 1.
+Where round 7a stopped: every fix and the bundles rebuilt at 9ddcaa1 are pushed; gen-test passed on them (request 2
+73 and 77 s in two runs, request 3 18 and 21 s).
 
 Open:
-- gen-test request 2 at 91 s and request 3 at 39 s in Jint: the fine model parts in clearOfRelief (decorate.js) are the
-  next cost; a per-wall cache or a coarse-first test would cut it.
+- gen-test request 2 at 73 to 77 s in Jint: spotsFor (21 s of 97 s instrumented, its furniture test most), details.js
+  exterior (19 s) and pruneMotifs (13 s, a full stability pass per round) are the next costs.
 - check_interiors overlap 3: a Mistlands home's log bench on a fiddlehead (landscape), a Black Forest tavern's bed
   over a chest, a smithy yard's ground torch by an anvil (forge_ext5; the boxes miss by 0.26 m in the colliders, the
   audit reads catalog boxes); door 3 (two wall item stands, a chair); stairs 2 (a wood stack, a pot at a storehouse

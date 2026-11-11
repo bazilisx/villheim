@@ -1185,15 +1185,20 @@ function depth(A, B) {
 }
 /** The deepest reach of any part of list A into any part of list B. Lists from world() are tested with the coarse
  * parts first; where those meet, the fine parts (worldFine) of whichever side has them give the answer. */
-function deepest(A, B) {
-  const m = deepest0(A, B);
-  if (!(m > 0) || !FINE_ON) return m;
-  const fa = A._p ? worldFine(A._p) : null, fb = B._p ? worldFine(B._p) : null;
-  if (!fa && !fb) return m;
-  return deepest0(fa || A, fb || B);
+// cap (optional): a caller that only asks whether the depth passes cap gets the depth itself up to cap and some depth
+// over cap otherwise (the search stops at the first part pair past it).
+function deepest(A, B, cap) {
+  if (!FINE_ON) return deepest0(A, B, cap);
+  const pa = A && A._p, pb = B && B._p;
+  // with no fine parts on either side the coarse parts give the answer
+  if (!(pa && local(pa.name, true)) && !(pb && local(pb.name, true))) return deepest0(A, B, cap);
+  // else the coarse parts only tell whether to look again: the first pair that meets is enough
+  if (!(deepest0(A, B, 0) > 0)) return 0;
+  const fa = pa ? worldFine(pa) : null, fb = pb ? worldFine(pb) : null;
+  return deepest0(fa || A, fb || B, cap);
 }
 let FINE_ON = !(typeof process !== 'undefined' && process.env && process.env.VH_COARSE);
-function deepest0(A, B) {
+function deepest0(A, B, cap) {
   if (!A || !B || !A.length || !B.length) return 0;
   const a = A._bb || (A._bb = aabbOf(A)), b = B._bb || (B._bb = aabbOf(B));
   if (a.x0 > b.x1 || b.x0 > a.x1 || a.y0 > b.y1 || b.y0 > a.y1 || a.z0 > b.z1 || b.z0 > a.z1) return 0;
@@ -1206,7 +1211,7 @@ function deepest0(A, B) {
   for (const pa of As) for (const pb of Bs) {
     if (pa.x0 > pb.x1 || pb.x0 > pa.x1 || pa.y0 > pb.y1 || pb.y0 > pa.y1 || pa.z0 > pb.z1 || pb.z0 > pa.z1) continue;
     const d = depth(pa, pb);
-    if (d > m) m = d;
+    if (d > m) { m = d; if (cap != null && m > cap) return m; }
   }
   return m;
 }
@@ -4501,7 +4506,8 @@ function faceModel(f, room) {
   // How deep what shows of a piece hung on this face goes into what shows of the face's walls (lib/mesh.js): the 2x2
   // wood wall's cross bars stand 13 cm proud of its collider, and a sign or a stand hung flat on the collider face
   // goes into them (T-606, T-612).
-  face.wallClip = p => {
+  // cap (optional): only whether the clip passes cap is asked; the clip itself comes back up to cap (mesh.js deepest)
+  face.wallClip = (p, cap) => {
     const Me = MESH_D();
     if (!Me) return 0;
     // this face's walls, and the walls, posts and beams round it (a wall coming in at a corner), where they show more
@@ -4514,8 +4520,9 @@ function faceModel(f, room) {
     if (!A || !A.length) return 0;
     let m = 0;
     for (const q of look) {
-      const d = Me.deepest(A, Me.world(q));
+      const d = Me.deepest(A, Me.world(q), cap);
       if (d > m) m = d;
+      if (cap != null && m > cap) return m;
     }
     return m;
   };
@@ -4805,12 +4812,13 @@ const hungLimit = name => Math.max(HUNG_CLIP(name), HUNG_CORPUS[name] || 0);
 function clearOfRelief(room, name, spot) {
   const face = spot.face, f = F[name] || {};
   if (!face.wallClip || spot.x0 == null) return spot;
-  const clipAt = yy => { const [px, pz] = pivotOf(name, spot.x0 + face.nx * spot.off, spot.z0 + face.nz * spot.off, spot.yaw); return face.wallClip({ name, x: px, y: yy, z: pz, q: quatY(spot.yaw) }); };
+  // (each test asks only up to the limit it compares with; the clip kept on the piece is read in full)
+  const clipAt = (yy, cap) => { const [px, pz] = pivotOf(name, spot.x0 + face.nx * spot.off, spot.z0 + face.nz * spot.off, spot.yaw); return face.wallClip({ name, x: px, y: yy, z: pz, q: quatY(spot.yaw) }, cap); };
   const lim = HUNG_CLIP(name), deep = hungLimit(name);
-  const c0 = clipAt(spot.y);
+  const c0 = clipAt(spot.y, Math.max(lim, deep));
   if (c0 <= lim) return spot;
   if (f.under == null) for (let d = 0.1; d <= 0.401; d += 0.1) for (const yy of [spot.y + d, spot.y - d]) {
-    if (yy >= spot.lowY && yy <= spot.topY && clipAt(yy) <= lim) return { ...spot, y: +yy.toFixed(2) };
+    if (yy >= spot.lowY && yy <= spot.topY && clipAt(yy, lim) <= lim) return { ...spot, y: +yy.toFixed(2) };
   }
   // no clear height: as deep as corpus builders hang it, marked (D-127, D-098)
   if (c0 <= deep) return { ...spot, clip: c0 };

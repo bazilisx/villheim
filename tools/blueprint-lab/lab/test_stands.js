@@ -16,40 +16,47 @@ const seeds = +(process.argv[2] || 2), gate = process.argv.includes('--gate'), o
 const types = ['home', 'longhouse', 'tavern'];
 const biomes = ['Meadows', 'Black Forest', 'Swamp', 'Mountain', 'Plains', 'Mistlands'];
 
-// The corpus (lab/mine_stands.js over Tyler's 1,559 vanilla builds, 2026-11-10; data/stands-corpus.json anchors), stands
-// holding something inside. Flat stands: of 10,940, floor 2,080, shelf 1,858, table 1,629, ledge 1,123, mantel 1,019,
-// on another stand 745, none 606, other 476, counter 360, bench 218, wallside 201, rafter 191, sill 187, walltop 84,
-// chest 58, stair 41, workbench 32, hung 18, bed 14. Wall stands: of 4,787, wall 757, beam 648, over a workbench 578, by
-// the hearth 558, rafter (beams over 2.3 m) 533, free 447, over a chest 333, over a table 328, over a bed 208, by a
-// door 175, over a bench 141, furnside 54, ceiling 16, laid 6, chestside 5.
+// The corpus (lab/mine_stands.js --counts over Tyler's 1,559 vanilla builds; data/stands-corpus.json), stands holding
+// something inside. Every target here is read from that file, so a rerun of the miner moves them (D-136: targets come
+// from what the corpus shows). Flat stands at the time of writing: of 10,940, floor 2,078, shelf 1,856, table 1,611,
+// ledge 1,122, mantel 1,015, on another stand 745, none 594, other 476, counter 360, bench 216, wallside 201, rafter
+// 191, sill 187, chest 99 (read at the lid), walltop 84, stair 41, workbench 32, hung 18, bed 14. Wall stands: of
+// 4,787, wall 757, beam 648, over a workbench 578, by the hearth 558, rafter 533, free 448, over a chest 333, a table
+// 327, a bed 208, by a door 175, a bench 141, furnside 54, ceiling 16, laid 6, chestside 5.
 // The shares below are of the stands at the places this generator makes (the groups here). Floor (19 % of flat
-// stands), on another stand (6.8 %) and the miner's none, other, wallside, stair, hung and bed places are left out of
-// the base and reported apart, since this pass does not make them yet; for wall stands free, furnside, ceiling, laid and
-// chestside are left out the same way.
+// stands, in 140 builds) and the miner's none, other, wallside, stair, hung and bed places are left out of the base and
+// reported apart; for wall stands free, furnside, ceiling, laid and chestside are left out the same way. Stands on
+// another stand (6.8 % of flat stands, in 71 builds) are reported and gated apart (STACK below).
+const CORPUS = require('../data/stands-corpus.json');
+const AH = CORPUS.anchors.itemstandh, AW = CORPUS.anchors.itemstand, cnt = (A, ks) => ks.reduce((t, k) => t + (A[k] || 0), 0);
 const FLAT = {
-  table: { re: /^(table|sidetable)$/, n: 1629 }, shelf: { re: /^(shelf|ledge)$/, n: 1858 + 1123 }, mantel: { re: /^mantel$/, n: 1019 },
-  counter: { re: /^(counter|walltop)$/, n: 360 + 84 }, bench: { re: /^(bench|workbench)$/, n: 218 + 32 }, sill: { re: /^sill$/, n: 187 },
-  rafter: { re: /^rafter$/, n: 191 }, chest: { re: /^chest$/, n: 58 },
+  table: { re: /^(table|sidetable)$/, n: cnt(AH, ['table', 'sidetable']) }, shelf: { re: /^(shelf|ledge)$/, n: cnt(AH, ['shelf', 'ledge']) }, mantel: { re: /^mantel$/, n: cnt(AH, ['mantel']) },
+  counter: { re: /^(counter|walltop)$/, n: cnt(AH, ['counter', 'walltop']) }, bench: { re: /^(bench|workbench)$/, n: cnt(AH, ['bench', 'workbench']) }, sill: { re: /^sill$/, n: cnt(AH, ['sill']) },
+  rafter: { re: /^rafter$/, n: cnt(AH, ['rafter']) }, chest: { re: /^chest$/, n: cnt(AH, ['chest']) },
 };
 const WALL = {
-  wall: { re: /^(wall|beam)$/, n: 757 + 648 }, station: { re: /^(wall:workbench|wall:bench)$/, n: 578 + 141 }, hearth: { re: /^wall:hearth$/, n: 558 },
-  rafter: { re: /^rafter$/, n: 533 }, chest: { re: /^wall:chest$/, n: 333 }, table: { re: /^wall:table$/, n: 328 }, bed: { re: /^wall:bed$/, n: 208 },
-  door: { re: /^wall:door$/, n: 175 },
+  wall: { re: /^(wall|beam)$/, n: cnt(AW, ['wall', 'beam']) }, station: { re: /^(wall:workbench|wall:bench)$/, n: cnt(AW, ['wall:workbench', 'wall:bench']) },
+  hearth: { re: /^wall:hearth$/, n: cnt(AW, ['wall:hearth']) }, rafter: { re: /^rafter$/, n: cnt(AW, ['rafter']) }, chest: { re: /^wall:chest$/, n: cnt(AW, ['wall:chest']) },
+  table: { re: /^wall:table$/, n: cnt(AW, ['wall:table']) }, bed: { re: /^wall:bed$/, n: cnt(AW, ['wall:bed']) }, door: { re: /^wall:door$/, n: cnt(AW, ['wall:door']) },
 };
-const APART = { floor: { re: /^floor$/, n: 2080 }, stand: { re: /^stand$/, n: 745 } };
-const FLAT_ALL = 10940, WALL_ALL = 4787;
+const APART = { floor: { re: /^floor$/, n: AH.floor || 0 }, stand: { re: /^stand$/, n: AH.stand || 0 } };
+const FLAT_ALL = Object.values(AH).reduce((a, b) => a + b, 0), WALL_ALL = Object.values(AW).reduce((a, b) => a + b, 0);
 const share = G0 => { const t = Object.values(G0).reduce((s, g) => s + g.n, 0); return Object.fromEntries(Object.entries(G0).map(([k, g]) => [k, g.n / t])); };
 const CF = share(FLAT), CW = share(WALL);
-// stands and distinct items per house-like build with stands: quartile, median, quartile (perBuild)
-const CORPUS_Q = { distinct: [2, 7, 20], stands: [5, 19, 49] };
-// house shares (reported only): of the 211 house-like builds with stands, the share with at least one at each place
-const HOUSES = { table: 0.52, wall: 0.79, sill: 0.14, shelf: 0.51, hearth: 0.38, bench: 0.51, rafter: 0.38, chest: 0.33, feast: 0.21 };
+// stands and distinct items per house-like build with stands: quartile, median, quartile (houses)
+const CORPUS_Q = { distinct: CORPUS.houses.distinctItems, stands: CORPUS.houses.stands };
+// house shares (reported only): of the house-like builds with stands, the share with at least one at each place
+const HOUSES = { table: CORPUS.houses.table, wall: CORPUS.houses.wall, sill: CORPUS.houses.sill, shelf: CORPUS.houses.shelf, hearth: CORPUS.houses.mantel,
+  bench: CORPUS.houses.benchOrWorkbench, rafter: CORPUS.houses.rafter, chest: CORPUS.houses.chest, stand: CORPUS.houses.stand, feast: CORPUS.houses.feast };
 const HPLACES = {
   table: /^(table|sidetable)$/, wall: /^(wall|wall:.*|beam|free)$/, sill: /^sill$/, shelf: /^(shelf|ledge|counter|walltop)$/,
-  hearth: /^(mantel|wall:hearth)$/, bench: /^(bench|workbench|wall:bench|wall:workbench)$/, rafter: /^(rafter|hung|ceiling)$/, chest: /^(chest|wall:chest)$/,
+  hearth: /^(mantel|wall:hearth)$/, bench: /^(bench|workbench|wall:bench|wall:workbench)$/, rafter: /^(rafter|hung|ceiling)$/, chest: /^(chest|wall:chest)$/, stand: /^stand$/,
 };
 // share of each kind of furniture or opening with a stand on or over it (inst)
-const INST = { table: 0.2, fire: 0.095, bed: 0.047, bench: 0.047, chest: 0.009, window: 0.004 };
+const INST = Object.fromEntries(['table', 'fire', 'bed', 'bench', 'chest', 'window'].map(k => [k, CORPUS.inst[k] ? CORPUS.inst[k].share : 0]));
+// stands on another stand: their share of all flat stands, and the share of houses with one, each in the same band as
+// a place's share (BAND.rate, BAND.pts)
+const STACK = { flat: (AH.stand || 0) / FLAT_ALL, houses: CORPUS.houses.stand };
 
 // The gate's band, for d3 houses: each place's share of stands from 0.6 to 1.6 times the corpus share, and never
 // tighter than 2 points either side (so a place at 1 to 3 % of stands may sit at 0 to 5 %); flat stands 50 to 80 % of
@@ -138,7 +145,7 @@ for (const k of Object.keys(acc).sort()) {
     + String(pct(A.sinkDeep || 0, A.sinkN || 0)).padStart(9) + String(pct(A.flat.floor || 0, A.nFlat)).padStart(10) + String(pct(A.flat.stand || 0, A.nFlat)).padStart(12) + `${lo} / ${hi}`.padStart(16));
 }
 console.log('corpus'.padEnd(18) + String(pct(FLAT_ALL, FLAT_ALL + WALL_ALL)).padStart(8) + CORPUS_Q.stands.join('-').padStart(19) + CORPUS_Q.distinct.join('-').padStart(11)
-  + '       32' + p1(APART.floor.n / FLAT_ALL).padStart(10) + p1(APART.stand.n / FLAT_ALL).padStart(12));
+  + String(pct(CORPUS.sinks.itemstandh.over6cm, CORPUS.sinks.itemstandh.n)).padStart(9) + p1(APART.floor.n / FLAT_ALL).padStart(10) + p1(APART.stand.n / FLAT_ALL).padStart(12));
 
 const D3 = acc.d3;
 console.log('\nhouse share at d3, reported only (one stand at a place is enough):');
@@ -156,6 +163,8 @@ for (const [G0, CS, field, nm] of [[FLAT, CF, 'flat', 'flat'], [WALL, CW, 'wall'
   for (const c of Object.keys(G0)) { const v = t ? o[c] / t : 0, [lo, hi] = band(CS[c]); if ((v < lo - 1e-9 || v > hi + 1e-9) && !UNGATED[nm].includes(c)) fails.push(`${nm} ${c} ${p1(v)} % outside ${p1(lo)}-${p1(hi)}`); }
 }
 { const v = D3.nFlat / Math.max(1, D3.nFlat + D3.nWall); if (v < BAND.flat[0] || v > BAND.flat[1]) fails.push(`flat share ${pct(D3.nFlat, D3.nFlat + D3.nWall)} % outside ${BAND.flat[0] * 100}-${BAND.flat[1] * 100} %`); }
+{ const v = (D3.flat.stand || 0) / Math.max(1, D3.nFlat), [lo, hi] = band(STACK.flat); if (v < lo - 1e-9 || v > hi + 1e-9) fails.push(`flat on another stand ${p1(v)} % outside ${p1(lo)}-${p1(hi)}`);
+  const h = (D3.has.stand || 0) / Math.max(1, D3.houses), [hl, hh] = band(STACK.houses); if (h < hl - 1e-9 || h > hh + 1e-9) fails.push(`houses with a stand on a stand ${pct(D3.has.stand || 0, D3.houses)} % outside ${p1(hl)}-${p1(hh)}`); }
 for (const k of ['distinct', 'stands']) [0.25, 0.5, 0.75].forEach((f, i) => {
   const v = qt(D3[k], f), lo = CORPUS_Q[k][i] * BAND.q[0], hi = CORPUS_Q[k][i] * BAND.q[1];
   if (v < lo || v > hi) fails.push(`${k} ${['q1', 'median', 'q3'][i]} ${v} outside ${lo}-${hi}`);

@@ -956,6 +956,13 @@ function generate(req) {
     }
     if (dctx.profile.valleys !== false) valleys(parts, b);
     const caps = [];
+    // an overhanging eave over a deck, gallery or walkway floor would hang into the heads of people on it
+    const overDeck = p => p.eave && b.pieces.some(q => P.piece(q.name).role === 'floor' && !inside(p.wing, q.x, q.z, 0.1) &&
+      Math.abs(q.x - p.x) < 1.6 && Math.abs(q.z - p.z) < 1.6 && q.y < p.y && q.y > p.y - 3.2);
+    // the trim under an eave that comes out goes with it (eave motifs, lib/details.js bargeboards; an Ashlands beam left
+    // under no roof over a gallery fell, home Ashlands Baltic s2 seed 4 and s3 seed 6)
+    const gone = parts.filter(overDeck);
+    const underGone = p => p.role === 'trim' && gone.some(e => Math.hypot(e.x - p.x, e.z - p.z) < 1.5 && p.y < e.y + 0.3 && p.y > e.y - 1.6);
     // where wings cross, keep the higher roof so the lower roof runs into the higher one
     const placed = new Set();
     for (const p of parts) {
@@ -970,9 +977,7 @@ function generate(req) {
         // where another wing's gable already fills the spot, nothing more is needed
         if (b.pieces.some(q => Math.abs(q.x - p.x) < 0.05 && Math.abs(q.z - p.z) < 0.05 && Math.abs(q.y - p.y) < 0.9 && P.piece(q.name).role === 'wall')) continue;
       }
-      // an overhanging eave over a deck, gallery or walkway floor would hang into the heads of people on it
-      if (p.eave && b.pieces.some(q => P.piece(q.name).role === 'floor' && !inside(p.wing, q.x, q.z, 0.1) &&
-        Math.abs(q.x - p.x) < 1.6 && Math.abs(q.z - p.z) < 1.6 && q.y < p.y && q.y > p.y - 3.2)) continue;
+      if (overDeck(p) || underGone(p)) continue;
       const hidden = wings.some(o => o !== p.wing && inside(o, p.x, p.z, -0.2) && p.surf < surfaceAt(o, p.x, p.z, roofTop, r) - 0.25);
       if (!hidden) b.put(p.name, p.x, p.y, p.z, p.yaw);
     }

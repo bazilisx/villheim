@@ -177,7 +177,10 @@ Measures (seed 1, d3; main pieces reached of those counted, reach logic, before 
 |---|---|---|---|---|
 | Norse long | 2/7 / 6/6 | 6/10 / 10/10 | 10/17 / 18/18 | 16/23 / 23/23, both galleries and the loft reached (one gallery before) |
 | Norse round | 1/2 / 1/1 | 3/4 / 3/3 | 6/6 / 6/6 | 9/9 / 9/9, gallery ring reached |
-| Court | 0/7 / 6/6, roof reached | 1/14 / 12/12, roof reached | 13/13, roofs and tower top reached | 12/12, 16 rooms on 4 levels reached |
+| Court | 0/7 / 6/6, roof reached | 1/14 / 12/12, roof reached | 13/13 / 13/13, roofs and tower top reached | 10/12 / 12/12, 16 rooms on 4 levels reached |
+| Celtic round (after only) | 0 | 2 | 2 | 9 |
+
+Before: round 1 code with one room rect per hall. After: the room rects above.
 
 ### Exteriors from s4
 
@@ -232,4 +235,4 @@ a woodshed, moved out clear of the eaves, with the wood stack under it.
   the lantern).
 - The Celtic raised crown roof and the ring roofs of 45 degrees still show gaps between pieces near the crown.
 - Furniture refused by the reach test is left out; the s2 halls hold fewer tables than before (long s2: 6 main pieces
-  of 7).
+  of 7). The Celtic s2 holds no chest or table: its ring of posts leaves no spot the reach test allows.

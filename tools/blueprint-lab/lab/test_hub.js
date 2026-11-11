@@ -192,7 +192,9 @@ function checkOne(d, L, stage, decor) {
   for (const c of Ck.check(d, L.biome)) ok(c.ok, `${name}: ${c.check}: ${c.detail}`);
   ok(d.pieces.some(p => /^(hearth|fire_pit)$/.test(p.name) && Math.hypot(p.x, p.z) < 0.5), `${name}: no fire at the hub's heart`);
   const signs = d.pieces.filter(p => p.notice && p.name === 'sign');
-  ok(signs.length >= 3 && signs.every(p => Math.hypot(p.x, p.z) < 22), `${name}: notice board missing or outside the hearth area`);
+  // (the hearth area: the hall and its door, the board within 8 m of the main door's distance from the fire)
+  const doorR = Math.max(10, ...(d.markers || []).filter(m => m.kind === 'path').map(m => Math.hypot(m.x, m.z)));
+  ok(signs.length >= 3 && signs.every(p => Math.hypot(p.x, p.z) < doorR + 8), `${name}: notice board missing or outside the hearth area`);
   ok((d.markers || []).some(m => m.leader), `${name}: no leader marker`);
   if (+stage[1] >= 3) {
     ok(d.pieces.some(p => p.highSeat), `${name}: no high seat`);
@@ -203,7 +205,8 @@ function checkOne(d, L, stage, decor) {
   // the storey rule (D-156: storeys only; roofs and crowns as tall as their design): wall storeys at most HUB.capStoreys
   // over the culture's other buildings at s3 (styles.js TYPES, the watchtower left out)
   const others = Math.max(...Object.entries(S.TYPES).filter(([t]) => !['hub', 'tower'].includes(t)).map(([, T]) => T.storeys.s3));
-  const wallStoreys = new Set(d.pieces.filter(p => ['wall', 'door', 'window'].includes(P.piece(p.name).role) && !p.decor && !p.crown && !p.notice).map(p => Math.floor(p.y / 3))).size;
+  // (storeys are the floors people stand on, the rooms' levels; gables and crowns over the wall top are roof)
+  const wallStoreys = new Set((d.rooms || []).map(r => Math.round(r.y))).size;
   ok(wallStoreys <= others + (S.HUB.capStoreys || 2), `${name}: ${wallStoreys} wall storeys`);
   if (+stage[1] >= 2) {
     const gaps = floorGaps(d);

@@ -68,10 +68,11 @@ const GRAND = {
 // crown); porch6: a porch of six or more posts; dragons: carved heads at the gables; highWindows: windows in the
 // lantern tower.
 const EXT = { cross: ['tiers3', 'porch6', 'dragons', 'highWindows'], round: ['tiers3', 'porch6', 'dragons'] };
-function exteriorOf(has, stage, line, C) {
+function exteriorOf(has, stage, line, C, porch) {
   const k = +stage[1];
   if (k < 4) return {};
-  const list = (EXT[line === 'cross' ? 'cross' : 'round'] || []).filter(f => f !== 'dragons' || C.dragons);
+  // (the porch as the village drew it: a column porch only with 'columns', and then always)
+  const list = (EXT[line === 'cross' ? 'cross' : 'round'] || []).filter(f => (f !== 'dragons' || C.dragons) && (f !== 'porch6' || porch === 'columns' || porch == null));
   const pick = (st, min, base) => {
     const out = { ...base };
     for (const f of list) if (has(f, st)) out[f] = true;
@@ -79,7 +80,7 @@ function exteriorOf(has, stage, line, C) {
     if (out.highWindows) out.tiers3 = true;
     return out;
   };
-  const s4 = pick('s4', 1, {});
+  const s4 = pick('s4', 1, porch === 'columns' ? { porch6: true } : {});
   return k === 4 ? s4 : pick('s5', 3, s4);
 }
 
@@ -152,7 +153,8 @@ function walker(b) {
     // solids)
     return o;
   };
-  const dist = (o, x, z) => distSol(o, x, z);
+  // (by the whole box, as lib/reach.js reads it)
+  const dist = (o, x, z) => Math.hypot(Math.max(o.x0 - x, 0, x - o.x1), Math.max(o.z0 - z, 0, z - o.z1));
   // cells of each level within 'r' of box o: [level index, cell index]
   const cellsNear = (o, r, onlyBand) => {
     const out = [];
@@ -570,9 +572,8 @@ function lantern(b, K, C, T, y0, h, o = {}) {
 
 // ---------------------------------------------------------------- round halls (round, octagon, part)
 
-// Sides and side length per stage: round 16 sides of 2 m (10 m across), 24 of 2 m (15 m), 16 of 4 m (20 m), 24 of
-// 4 m (30 m); octagon 8 sides of 4, 6, 8 and 12 m (10, 14.5, 19 and 29 m). The part round takes the round's.
-const RSPEC = { round: { s2: [16, 2], s3: [24, 2], s4: [16, 4], s5: [24, 4] }, octagon: { s2: [8, 4], s3: [8, 6], s4: [8, 8], s5: [8, 12] } };
+// Sides and side length per stage: roundSpec, from the village's draws round the base sizes (round 10, 15, 20, 30 m
+// across; octagon sides of 4, 6, 8, 12 m). The part round takes the round's.
 // the culture's roof on a round hall: posts (rings of posts, an open crown under a cone), drum (a drum of high windows
 // over the fire from s4), flat (a flat roof with a raised lantern over the fire)
 const roundStyle = C => (C.roof === 'flat' ? 'flat' : C.roof === 'conical' ? 'posts' : 'drum');
@@ -582,7 +583,7 @@ function roundHall(b, K, C, T, o) {
   const V = o.V;
   const style = roundStyle(C);
   const k = +stage[1];
-  const [N, L] = RSPEC[variant === 'octagon' ? 'octagon' : 'round'][stage], ap = ringPoly(N, L);
+  const [N, L] = roundSpec(variant, stage, V), ap = ringPoly(N, L);
   // from s4 two storeys of 3 m with a gallery round the upper walls (at s4 the village may have none, V.gallery)
   const gallery = k >= 4 && V.gallery !== 'none';
   const SHt = gallery ? 3 : style === 'posts' ? 3 : 4, storeys = gallery ? 2 : 1, top = SHt * storeys;
@@ -592,7 +593,22 @@ function roundHall(b, K, C, T, o) {
   // (at s4 under a drum the gallery's inner edge is the drum's ring, so one ring of posts carries both)
   const vR0 = ringPoly(k === 5 ? 18 : 16, 2) / Math.cos(Math.PI / (k === 5 ? 18 : 16));
   const drumOnGallery = gallery && k === 4 && style === 'drum';
-  const rIn = gallery ? (drumOnGallery ? vR0 + 0.1 : ap - (k === 5 ? 4.5 : 3.5)) : 0;
+  // (the gallery 3.5 m deep, 4.5 m at s5, or deeper where a 2 m stair cell on the floor grid must fit between its inner
+  // edge and the wall)
+  let rIn = 0;
+  if (gallery && drumOnGallery) rIn = vR0 + 0.1;
+  else if (gallery) rIn = Math.min(ap - (k === 5 ? 4.5 : 3.5), 2 * Math.floor((ap - 2) / 2) - 1);
+  // (the gallery's opening: an even-sided polygon of 2 m sides as near the gallery ring as can be; the walkway's row
+  // 8 m from the fire, or 0.7 of the opening's apothem in a wide hall, out to the first cell over the gallery floor)
+  const M = gallery ? 2 * Math.max(4, Math.round(Math.PI / Math.atan(1 / rIn) / 2)) : 0, aIn = gallery ? ringPoly(M, 2) : 0;
+  const nM = [...Array(M).keys()].map(i => [Math.sin(rad(i * 360 / M)), Math.cos(rad(i * 360 / M))]);
+  const beyondIn = (x, z) => Math.max(...nM.map(([a, c]) => x * a + z * c)) - aIn;
+  const zw = aIn < 12 ? 8 : 2 * Math.round(0.7 * aIn / 2);
+  // the side rooms' partition (from s4) where the village drew it: the corpus inner wall lines of round builds lie at a
+  // share of the radius (SHAPE_Q.round.inner), kept under the gallery and 3 m or more off the wall
+  const oddU = v => 2 * Math.ceil((v - 1) / 2) + 1, xmLo = oddU(gallery ? rIn : ap - 3.5);
+  const xmHi = 2 * Math.floor((Math.min(ap - 3, Math.sqrt(Math.max(0, ap * ap - 6.6 * 6.6))) - 1) / 2) + 1;
+  const xmP = Math.min(xmHi, Math.max(xmLo, oddU(V.part * ap)));
   // the part round's straight front at z = zc (an odd metre, about 0.4 of the way out; clear of the drum, and at s5
   // behind the walkway along the front)
   let zc = null;
@@ -600,7 +616,7 @@ function roundHall(b, K, C, T, o) {
   if (variant === 'part') {
     let c = Math.max(3, 0.4 * ap);
     if (drum) c = Math.max(c, apD + 1.2);
-    if (k === 5 && gallery) c = Math.max(c, 9);
+    if (k === 5 && gallery) c = Math.max(c, zw + 1);
     // (at s4 the front stands clear of the gallery's opening, so the rail round it stays whole)
     if (k === 4 && gallery) c = Math.max(c, ringPoly(2 * Math.max(4, Math.round(Math.PI / Math.atan(1 / rIn) / 2)), 2) + 0.7);
     zc = -(2 * Math.ceil((c - 1) / 2) + 1);
@@ -610,11 +626,18 @@ function roundHall(b, K, C, T, o) {
   // the stair on the side the village drew (V.stairSide), the side rooms on the other
   const sS = V.stairSide, sR = -sS;
   const cxS = sS * 2 * Math.ceil((rIn + 1) / 2);
-  const St = gallery ? { run: [[cxS, 2], [cxS, 0], [cxS, -2]], stand: [cxS, 4], land: [cxS, -4], dir: [0, -1] } : null;
+  // (moved back toward the high seat end where the landing would run into the wall)
+  let dzS = 0;
+  while (gallery && dzS < 6 && !(polyInside(N, ap)(cxS, -4 + dzS, 0.95) && polyInside(N, ap)(cxS, 4 + dzS, 0.95))) dzS += 2;
+  if (dzS >= 6) dzS = 0;
+  const St = gallery ? { run: [[cxS, 2 + dzS], [cxS, dzS], [cxS, -2 + dzS]], stand: [cxS, 4 + dzS], land: [cxS, -4 + dzS], dir: [0, -1] } : null;
   // the walkway across the hall at s5 by the village's draw: across the front (z = -8, before the fire), along a side
   // (x = 8 on the rooms' side, clear of the stair), or none
   const wk = k === 5 && gallery ? V.walkway : 'none';
-  const bridge = wk === 'front' ? [-8, -6, -4, -2, 0, 2, 4, 6, 8].map(x => [x, -8]) : wk === 'side' ? [-8, -6, -4, -2, 0, 2, 4, 6, 8].map(z => [sR * 8, z]) : [];
+  let XW = 0;
+  if (wk !== 'none') while (beyondIn(XW, zw) < 1.2 && XW < 30) XW += 2;
+  const span = []; for (let t = -XW; t <= XW; t += 2) span.push(t);
+  const bridge = wk === 'front' ? span.map(x => [x, -zw]) : wk === 'side' ? span.map(z => [sR * zw, z]) : [];
   const inCells = (list, x, z, m = 0) => list.some(([cx, cz]) => Math.abs(x - cx) < 1 + m && Math.abs(z - cz) < 1 + m);
   const stairCells = St ? [St.stand, ...St.run, St.land] : [];
   // the floor, the hearth's stone flags under the fire from s2 (D-131)
@@ -678,7 +701,7 @@ function roundHall(b, K, C, T, o) {
   if (gallery && !drumOnGallery) rings.push({ r: rIn - 0.1, h: style === 'flat' ? top : SHt });
   if (style === 'posts' && k <= 3) rings.push({ r: ap - 2.2 });
   const postsOf = [];
-  const xmD = 2 * Math.ceil(((gallery ? rIn : ap - 3.5) - 1) / 2) + 1, roomDoors = V.rooms === 'two' ? [[sR * xmD, -4], [sR * xmD, 4]] : [[sR * xmD, -4]];
+  const xmD = xmP, roomDoors = V.rooms === 'two' ? [[sR * xmD, -4], [sR * xmD, 4]] : [[sR * xmD, -4]];
   for (const rr of rings) {
     // posts 5.5 m or more apart round the ring (corpus round and polygon buildings over 300 m2: 7.5 free-standing inner
     // posts in the median, 1.45 per 100 m2, clear radius round the middle 6 m, nearest post 2 to 4 m; lab/hub_posts.py)
@@ -700,10 +723,9 @@ function roundHall(b, K, C, T, o) {
   if (gallery) {
     // the opening over the hall: an even-sided polygon of 2 m sides as near the gallery ring as can be, so one 2 m rail
     // piece fits each side and the rail runs round it joined at the corners
-    const M = 2 * Math.max(4, Math.round(Math.PI / Math.atan(1 / rIn) / 2)), aIn = ringPoly(M, 2);
     polyFloor(b, K, N, ap, SHt, { rIn, inner: { M, a: aIn }, m: 0.02, skip: (x, z) => inCells(St.run, x, z) || inCells(bridge, x, z) });
     putStair(b, K, St, 0);
-    const strip = wk === 'front' ? { x0: -9.2, x1: 9.2, z0: -9.2, z1: -6.8 } : wk === 'side' ? { x0: sR * 8 - 1.2, x1: sR * 8 + 1.2, z0: -9.2, z1: 9.2 } : null;
+    const strip = wk === 'front' ? { x0: -XW - 1.2, x1: XW + 1.2, z0: -zw - 1.2, z1: -zw + 1.2 } : wk === 'side' ? { x0: sR * zw - 1.2, x1: sR * zw + 1.2, z0: -XW - 1.2, z1: XW + 1.2 } : null;
     for (let i = 0; i < M; i++) {
       const a = i * 360 / M, x = Math.sin(rad(a)) * aIn, z = Math.cos(rad(a)) * aIn, tx = Math.cos(rad(a)), tz = -Math.sin(rad(a));
       // (none where the walkway crosses the opening)
@@ -716,8 +738,9 @@ function roundHall(b, K, C, T, o) {
     rail(b, K, cxS, SHt, St.run[0][1] + 1, 0);
     if (bridge.length) {
       for (const [x, z] of bridge) if (polyInside(N, ap)(x, z, 1)) b.put(K.floor, x, SHt, z);
-      if (wk === 'front') for (const [x] of bridge) { rail(b, K, x, SHt, -7, 0); if (zc == null && Math.abs(x) <= 6) rail(b, K, x, SHt, -9, 0); }
-      else for (const [, z] of bridge) { rail(b, K, sR * 7, SHt, z, 90); if (Math.abs(z) <= 6) rail(b, K, sR * 9, SHt, z, 90); }
+      // rails along both sides where the walkway runs over the open hall (the front side of a part round's walkway is its wall)
+      if (wk === 'front') for (const [x] of bridge) { if (beyondIn(x, -zw + 1.5) < 0) rail(b, K, x, SHt, -zw + 1, 0); if (zc == null && beyondIn(x, -zw - 1.5) < 0) rail(b, K, x, SHt, -zw - 1, 0); }
+      else for (const [, z] of bridge) { if (beyondIn(sR * (zw - 1.5), z) < 0) rail(b, K, sR * (zw - 1), SHt, z, 90); if (beyondIn(sR * (zw + 1.5), z) < 0) rail(b, K, sR * (zw + 1), SHt, z, 90); }
       // (the walkway spans from gallery to gallery)
       b.notes.push('A walkway across the hall high up in front of the fire, between the two sides of the gallery.');
     }
@@ -786,7 +809,7 @@ function roundHall(b, K, C, T, o) {
   // closet); a partition with a door into each
   const rooms = [];
   if (k >= 4) {
-    const xm = 2 * Math.ceil(((gallery ? rIn : ap - 3.5) - 1) / 2) + 1, xs = sR * xm, w = Math.sqrt(ap * ap - xm * xm) - 0.2;
+    const xm = xmP, xs = sR * xm, w = Math.sqrt(ap * ap - xm * xm) - 0.2;
     const zMin = zc != null ? zc + 1 : -w, two = V.rooms === 'two';
     for (let z = -2 * Math.floor((w - 1) / 2); z <= w - 1 + 1e-6; z += 2) {
       if (z - 1 < zMin - 0.01) continue;
@@ -816,26 +839,25 @@ function roundHall(b, K, C, T, o) {
     b.put('wood_stack', wx, 0.57, wz, 90, { decor: true, ds: 2 });
     b.notes.push('The camp\'s lean-tos give way to the hall; one stands on behind it as a woodshed.');
   }
-  // the covered entrance at the main door from s4, six posts with the porch draw
-  if (k >= 4) {
+  // the covered entrance at the main door from s4, six posts with the porch draw (none where the village drew none)
+  if (k >= 4 && V.porch !== 'none') {
     const wy = Math.min(3, top - 1.6);
     coveredEntrance(b, K, C, T, door.x, door.z, wy, ext.porch6 ? 6 : 4);
     if (ext.dragons) b.put('wood_dragon1', door.x, wy + 1.3, door.z - (ext.porch6 ? 6 : 4) - 0.6, 180, { decor: true });
   }
-  return { groundBays: [...bays.slice(0, N * L / 2), ...frontBays], ap, N, L, top, peak, door, doors, rings, postsOf, gallery, rIn, St, bridge, drum, apD, SHt, zc, style, roofAt, rooms, sideX: k >= 4 ? Math.abs(sR * (2 * Math.ceil(((gallery ? rIn : ap - 3.5) - 1) / 2) + 1)) : null, sideS: sR, inSide: (x, m = 0) => k >= 4 && sR * x > 2 * Math.ceil(((gallery ? rIn : ap - 3.5) - 1) / 2) + 1 - m };
+  return { groundBays: [...bays.slice(0, N * L / 2), ...frontBays], ap, N, L, top, peak, door, doors, rings, postsOf, gallery, rIn, St, bridge, drum, apD, SHt, zc, style, roofAt, rooms, sideX: k >= 4 ? Math.abs(sR * (xmP)) : null, sideS: sR, inSide: (x, m = 0) => k >= 4 && sR * x > xmP - m };
 }
 
 // ---------------------------------------------------------------- cross hall
 
-// Half sizes per stage (odd metres): the front and back arm along z (Wz), the side arms along x (Wx), the arms' half
-// width D, the storey height and storeys. s2 14 x 14 m with arms 6 m wide; s3 18 x 18 m, arms 10 m; s4 26 x 22 m, two
-// storeys; s5 30 x 26 m, arms 14 m.
-const CSPEC = { s2: [7, 7, 3, 3, 1], s3: [9, 9, 5, 4, 1], s4: [13, 11, 5, 3, 2], s5: [15, 13, 7, 3, 2] };
+// Half sizes per stage (odd metres, crossSpec): the front and back arm along z (Wz), the side arms along x (Wx), the
+// arms' half width D, the storey height and storeys; drawn per village from the corpus spreads round the base sizes
+// (s2 14 x 14 m with arms 6 m wide; s3 18 x 18 m, arms 10 m; s4 26 x 22 m, two storeys; s5 30 x 26 m, arms 14 m).
 function crossHall(b, K, C, T, o) {
   const { stage, ext } = o;
   const V = o.V;
   const k = +stage[1];
-  const [Wz, Wx, D, SHt, storeys] = CSPEC[stage];
+  const [Wz, Wx, D, SHt, storeys] = crossSpec(stage, V);
   const top = SHt * storeys, gallery = storeys === 2 && V.gallery !== 'none';
   // the roof's pitch from the village's drawn rise against the arms' width (D-156, corpus spread): 45 degrees gives a
   // rise of about 0.43 of the width, 26 degrees 0.21
@@ -872,18 +894,20 @@ function crossHall(b, K, C, T, o) {
     b.put(K.beam, e.x, s * SHt + SHt, e.z, e.yaw);
     if (kind === 'door') doors.push({ x: e.x, z: e.z });
   }
-  // side rooms from s4 at the ends of the side arms: a storage closet (-x) and a kitchen (+x), each behind a partition
-  // with a door
-  const p = Wx - 4, rooms = [];
+  // side rooms from s4 at the ends of the side arms behind a partition with a door: storage always (D-154), and by the
+  // village's draw a second room at the other end (food prep with its own door out, or a closet); the partition where
+  // the village drew it (corpus inner wall lines, SHAPE_Q.hall.inner: a share of the plan's length from the end)
+  const depth = Math.max(4, Math.min(Wx - D - 2, 2 * Math.round(V.part * 2 * Wx / 2))), p = Wx - depth, rooms = [];
+  const sides = k >= 4 ? (V.rooms === 'two' ? [-sR, sR] : [-sR]) : [];
   if (k >= 4) {
-    for (const sx of [-1, 1]) for (let z = -D + 1; z < D; z += 2) T.wallSegment(b, K, C, sx * p, 0, z, 90, SHt, z === 0 ? 'door' : 'wall', 'plank');
-    // storage always (D-154); the other end food prep with its own door out, or a closet (the village's draw), on the side
-    // the village drew
+    for (const sx of sides) for (let z = -D + 1; z < D; z += 2) T.wallSegment(b, K, C, sx * p, 0, z, 90, SHt, z === 0 ? 'door' : 'wall', 'plank');
     const second = V.second === 'food' ? 'kitchen' : 'closet';
-    rooms.push({ x0: Math.min(sR * p, sR * Wx), x1: Math.max(sR * p, sR * Wx), z0: -D, z1: D, y: 0, h: SHt, use: second }, { x0: Math.min(-sR * p, -sR * Wx), x1: Math.max(-sR * p, -sR * Wx), z0: -D, z1: D, y: 0, h: SHt, use: 'storage' });
-    doors.push({ x: p, z: 0 }, { x: -p, z: 0 });
-    b.notes.push(`Side rooms at the ends of the side arms: ${second === 'kitchen' ? 'food prep with its own door out' : 'a closet'} and storage.`);
+    if (sides.length === 2) rooms.push({ x0: Math.min(sR * p, sR * Wx), x1: Math.max(sR * p, sR * Wx), z0: -D, z1: D, y: 0, h: SHt, use: second });
+    rooms.push({ x0: Math.min(-sR * p, -sR * Wx), x1: Math.max(-sR * p, -sR * Wx), z0: -D, z1: D, y: 0, h: SHt, use: 'storage' });
+    for (const sx of sides) doors.push({ x: sx * p, z: 0 });
+    b.notes.push(sides.length === 2 ? `Side rooms at the ends of the side arms, ${depth} m deep: ${second === 'kitchen' ? 'food prep with its own door out' : 'a closet'} and storage.` : `A storage room ${depth} m deep at the end of one side arm.`);
   }
+  const inSide = (x, m = 0) => sides.some(sx => sx * x > p - m);
   // the gallery (from s4) at 3 m. s4: over the front arm's end (over the door) and along its -x wall, a stair up the +x
   // wall. s5: along both walls of every arm, so a railed walkway runs round the hall and crosses the front and back arms
   // and the side arms at the crossing, round an opening over the fire; lofts over the side rooms; two stairs up the
@@ -894,11 +918,26 @@ function crossHall(b, K, C, T, o) {
     for (let x = -D + 1; x < D; x += 2) addG(x, -Wz + 1);
     // (the stair on the side the village drew, the gallery along the other wall)
     for (let z = -Wz + 3; z <= -D - 1; z += 2) addG(-sS * (D - 1), z);
+    // (the landing joins the row over the door along the stair's wall)
+    for (let z = -Wz + 3; z <= -D - 7; z += 2) addG(sS * (D - 1), z);
     stairs.push({ run: [[sS * (D - 1), -D - 1], [sS * (D - 1), -D - 3], [sS * (D - 1), -D - 5]], stand: [sS * (D - 1), -D + 1], land: [sS * (D - 1), -D - 7], dir: [0, -1] });
     addG(sS * (D - 1), -D - 7);
   } else if (gallery) {
-    for (const [, [x, z]] of cells) if ((inMain(x, z) && Math.abs(x) >= 4) || (inTrans(x, z) && Math.abs(z) >= 4) || (inTrans(x, z) && Math.abs(x) >= p + 1)) addG(x, z);
-    for (const sx of [-1, 1]) stairs.push({ run: [[sx * 6, 8], [sx * 6, 10], [sx * 6, 12]], stand: [sx * 6, 6], land: [sx * 6, 14], dir: [0, 1] });
+    // s5 by the village's draw (V.gallery): along both walls of every arm (full), of the front and back arms (nave), or
+    // round the back arm behind the high seat (back, one stair); lofts over the side rooms
+    const loft = (x, z) => V.gallery === 'full' && inTrans(x, z) && inSide(x, -1);
+    const near = (x, z) => (inMain(x, z) && Math.abs(x) >= D - 3) || (inTrans(x, z) && Math.abs(z) >= D - 3);
+    for (const [, [x, z]] of cells) {
+      const g = V.gallery === 'nave' ? inMain(x, z) && (Math.abs(x) >= D - 3 || Math.abs(z) >= Wz - 3) && Math.abs(z) > D - 2
+        : V.gallery === 'back' ? inMain(x, z) && z > D - 2 && (Math.abs(x) >= D - 3 || z >= Wz - 3)
+          : near(x, z);
+      if (g || loft(x, z)) addG(x, z);
+    }
+    // (the nave's galleries are a U over each end, one stair to each: the back one on the stair side, the front one on
+    // the other)
+    if (V.gallery === 'nave') for (const [sx, sz] of [[sS, 1], [-sS, -1]]) stairs.push({ run: [[sx * (D - 1), sz * (D + 1)], [sx * (D - 1), sz * (D + 3)], [sx * (D - 1), sz * (D + 5)]], stand: [sx * (D - 1), sz * (D - 1)], land: [sx * (D - 1), sz * (D + 7)], dir: [0, sz] });
+    else for (const sx of V.gallery === 'back' ? [sS] : [-1, 1]) stairs.push({ run: [[sx * (D - 1), D + 1], [sx * (D - 1), D + 3], [sx * (D - 1), D + 5]], stand: [sx * (D - 1), D - 1], land: [sx * (D - 1), D + 7], dir: [0, 1] });
+    for (const St of stairs) addG(St.land[0], St.land[1]);
   }
   const isRun = (x, z) => stairs.some(St => St.run.some(c => c[0] === x && c[1] === z));
   for (const St of stairs) for (const [x, z] of St.run) G.delete(`${x},${z}`);
@@ -912,7 +951,7 @@ function crossHall(b, K, C, T, o) {
       if (stairs.some(St => St.land[0] === x && St.land[1] === z && St.run[St.run.length - 1][0] === nx && St.run[St.run.length - 1][1] === nz)) continue;
       rail(b, K, x + dx, SHt, z + dz, dx ? 90 : 0);
     }
-    b.notes.push(k === 5 ? 'A gallery at 3 m along the walls of every arm, crossing the arms round the opening over the fire, lofts over the side rooms, two stairs.' : 'A gallery at 3 m over the door and along one wall of the front arm, a stair up to it.');
+    b.notes.push(k === 5 ? { full: 'A gallery at 3 m along the walls of every arm, crossing the arms round the opening over the fire, two stairs.', nave: 'A gallery at 3 m along both walls of the front and back arms, two stairs.', back: 'A gallery at 3 m round the back arm behind the high seat, one stair.' }[V.gallery] || 'A gallery at 3 m.' : 'A gallery at 3 m over the door and along one wall of the front arm, a stair up to it.');
   }
   // roof: a gable over each pair of arms; where they cross the valleys join them (generate.js, as for a house's wings)
   const wings = [{ cx: 0, cz: 0, W: Wz, D, alpha: 90, main: true }, { cx: 0, cz: 0, W: Wx, D, alpha: 0 }];
@@ -962,9 +1001,11 @@ function crossHall(b, K, C, T, o) {
     for (let x = -D; x <= D; x += 2) T.posts(b, K, x, zp + 0.15, yb);
     for (let x = -D + 1; x <= D - 1; x += 2) { b.put(K.beam, x, yb + 0.1, zp + 0.15, 0); b.put(K.roof26, x, yb + 1, zp + 3, 180); b.put(K.roof26, x, yb, zp + 1, 180); }
     b.notes.push(`Porch of ${D + 1} posts across the front.`);
-  } else if (k >= 4) coveredEntrance(b, K, C, T, 0, -Wz, 3, 4);
+  } else if (k >= 4 && V.porch !== 'none') coveredEntrance(b, K, C, T, 0, -Wz, 3, 4);
   // tie beams across the arms at the wall top (D-128: tie beams in halls), the chandeliers hang from them
-  const tie = { s3: { z: [7, -7], x: [7, -7] }, s4: { z: [7, 11, -7, -11], x: [6, -6] }, s5: { z: [12.5, -12.5], x: [8, -8] } }[stage] || { z: [], x: [] };
+  // (across the arms beyond the crossing: one at the middle of each arm, two in a long arm)
+  const tieAt = W => { const len = W - D; return len < 3 ? [] : len >= 8 ? [D + Math.round(len / 3), D + Math.round(2 * len / 3)] : [D + Math.round(len / 2)]; };
+  const tie = k < 3 ? { z: [], x: [] } : { z: tieAt(Wz).flatMap(z => [z, -z]), x: tieAt(Wx).flatMap(x => [x, -x]).filter(x => !inSide(x, 0.5)) };
   for (const z of tie.z) for (let x = -D + 1; x < D; x += 2) b.put(K.beam, x, top + 0.1, z, 0);
   for (const x of tie.x) for (let z = -D + 1; z < D; z += 2) b.put(K.beam, x, top + 0.1, z, 90);
   const hangs = [...tie.z.map(z => [0, z]), ...tie.x.map(x => [x, 0])].map(([x, z]) => ({ x, z, y: top - 1.97 }));
@@ -975,7 +1016,7 @@ function crossHall(b, K, C, T, o) {
   b.rooms.push(...rooms);
   b.doorX = 0;
   b.notes.push(`Cross hall ${2 * Wx} x ${2 * Wz} m, arms ${2 * D} m wide, round the fire at the crossing.`);
-  return { inSide: (x, m = 0) => k >= 4 && Math.abs(x) > p - m, Wz, Wx, D, top, SHt, capY, peak, doors, door: { x: 0, z: -Wz }, edges, stairs, G, rooms, porch, hangs, sideX: k >= 4 ? p : null, isRun };
+  return { inSide, Wz, Wx, D, top, SHt, capY, peak, doors, door: { x: 0, z: -Wz }, edges, stairs, G, rooms, porch, hangs, sideX: k >= 4 ? p : null, isRun };
 }
 
 // ---------------------------------------------------------------- furnishing a hall stage
@@ -987,7 +1028,7 @@ function wallSpots(b, o, F, y) {
   if (o.line === 'cross') {
     for (const e of F.edges) {
       if (F.doors.some(d => Math.hypot(d.x - e.x, d.z - e.z) < 2.5)) continue;
-      if (F.sideX != null && Math.abs(e.x) > F.sideX + 0.5) continue;
+      if (F.inSide(e.x, -0.5)) continue;
       if (e.yaw === 0 && Math.abs(e.z) >= F.Wz - 0.01 && e.z > 0) continue; // the trophy wall behind the high seat
       out.push(spotOf(e.x, e.z, e.nx, e.nz, y));
     }
@@ -1035,7 +1076,8 @@ function furnish(b, K, C, T, o, F) {
   // more fires in the big halls (corpus: 3 or more fires in 17 % of the ranked set, 63 % of the top tenth): the cross
   // a second fire in the front arm from s4 and one in the back arm at s5 by the draw; the round hall two at its sides
   // at s5 by the draw. Never under a gallery or walkway.
-  const extra = line === 'cross' ? (k === 5 && has('fires3', stage) ? [[0, -9], [0, 9]] : k >= 4 ? [[0, -9]] : [])
+  const fz = line === 'cross' ? Math.round((F.D + F.Wz) / 2) : 0;
+  const extra = line === 'cross' ? (k === 5 && has('fires3', stage) && V.seat !== 'near' ? [[0, -fz], [0, fz]] : k >= 4 ? [[0, -fz]] : [])
     : k === 5 && has('fires3', stage) ? [[-7, 0], [7, 0]].filter(([x]) => !F.inSide || !F.inSide(x, 2)) : [];
   for (const [x, ez] of extra) {
     b.put('stone_floor_2x2', x, -0.375, ez, 0, { hearthStone: true });
@@ -1059,9 +1101,12 @@ function furnish(b, K, C, T, o, F) {
     // near end of the back arm (cross); (in a round hall with a drum, inside the drum's ring of posts)
     let dist = line === 'cross' ? (V.seat === 'near' ? F.D + 1.6 : F.Wz - 1.3) : F.drum ? F.apD - 1.1 : (F.gallery ? F.rIn - 1.3 : F.ap - 2.2);
     const side = line !== 'cross' && V.seat === 'side' && k >= 4 && F.gallery;
-    const ux = side ? V.seatSide : 0, uz = side ? 0 : 1, tx = uz, tz = -ux;
+    let ux = side ? V.seatSide : 0, uz = side ? 0 : 1, tx = uz, tz = -ux;
     // (a seat at the side stands clear of the side rooms' partition)
     if (side && F.sideX != null) dist = Math.min(dist, F.sideX - 1.8);
+    // (a side seat with no room clear of the fires takes the far end)
+    let side2 = side;
+    if (side && dist < 4.6) { side2 = false; dist = F.drum ? F.apD - 1.1 : (F.gallery ? F.rIn - 1.3 : F.ap - 2.2); ux = 0; uz = 1; tx = 1; tz = 0; }
     const sx = ux * dist, sz = uz * dist, yaw = normH(Math.atan2(-ux, -uz) * 180 / Math.PI);
     F.seatA = normH(Math.atan2(ux, uz) * 180 / Math.PI);
     // raised as the village drew it (V.raise): a dais of two steps, one step, or none (always raised at s5)
@@ -1081,7 +1126,7 @@ function furnish(b, K, C, T, o, F) {
     leader = { x: sx, y, z: sz, yaw };
     for (const s of [1.45, -1.45]) if (place.put('piece_chair02', sx + tx * s, y, sz + tz * s, yaw, { ds: 1, spouseSeat: true }, { inKeep: true })) { spouse = { x: sx + tx * s, y, z: sz + tz * s, yaw }; break; }
     // the way from the fire to the high seat
-    if (side) place.keep(Math.min(2 * ux, sx - ux * 0.6), Math.max(2 * ux, sx - ux * 0.6), -1.3, 1.3, 0, 3);
+    if (side2) place.keep(Math.min(2 * ux, sx - ux * 0.6), Math.max(2 * ux, sx - ux * 0.6), -1.3, 1.3, 0, 3);
     else place.keep(-1.3, 1.3, 2, sz - 0.6, 0, 3);
     for (const s of [-1, 1]) place.put('piece_groundtorch_wood', sx + tx * s * 2.6 + ux * 0.4, y + 0.75, sz + tz * s * 2.6 + uz * 0.4, 0, ds(2));
   }
@@ -1187,10 +1232,10 @@ function furnish(b, K, C, T, o, F) {
     if (k === 2) for (const sx of [-1, 1]) tryTable(sx * 5, 0, 90, 1);
     else {
       // (at s5 the rows start in the crossing's corners, inside the stairs); a U leaves the front arm open
-      const v = k === 5 ? 3.6 : F.D - 2.4, s0 = k === 5 ? 4 : F.D + 0.5, endX = F.sideX != null ? F.sideX - 0.6 : F.Wx - 1;
+      const v = k === 5 ? F.D - 3.4 : F.D - 2.4, s0 = k === 5 ? F.D - 3 : F.D + 0.5, endX = sx => (F.inSide(sx * (F.Wx - 0.5)) ? F.sideX - 0.6 : F.Wx - 1);
       for (const sx of [-1, 1]) for (const sz of [-1, 1]) {
         if (!(seating === 'U' && sz < 0)) nRows += longRow(sx * v, sz * s0, 0, sz, (sz > 0 ? F.Wz - 4.5 : F.Wz - 2.5) - s0, 1) ? 1 : 0;
-        nRows += longRow(sx * s0, sz * v, sx, 0, endX - s0, 2) ? 1 : 0;
+        nRows += longRow(sx * s0, sz * v, sx, 0, endX(sx) - s0, 2) ? 1 : 0;
       }
     }
   } else if (seating === 'spokes') spokes(Math.min(6, Math.max(3, V.nTables)));
@@ -1366,6 +1411,67 @@ function quant(u, q) {
   return q[4];
 }
 
+// Plan shapes of the corpus big buildings (lab/hub_shapes.py, the 300 m2 set of lab/hub_roofs.py: 55 round and polygon
+// builds, 53 halls), quantiles at 10, 25, 50, 75 and 90 %. area: ground floor in m2; aspect: a hall's long side over its
+// short side; arm: a branched hall's commonest run of floor across the plan over its long side; inner: inner wall lines,
+// halls as the share of the length from the nearer end, round builds as the distance from the middle over the radius;
+// sides: the wall directions of round and polygon builds (counts of builds, 8 sides left to the octagon line); porch:
+// builds with no posts outside the floor, 2 to 5, and 6 or more; lobes: builds with no annex, one, two or more.
+const SHAPE_Q = {
+  round: { area: [363, 432, 568, 696, 1152], inner: [0.26, 0.42, 0.63, 0.87, 1.01], porch: { none: 16, entrance: 13, columns: 26 }, lobes: { 0: 22, 1: 9, 2: 24 } },
+  hall: { area: [360, 496, 529, 680, 830], aspect: [1.21, 1.29, 1.74, 1.99, 2.16], arm: [0.21, 0.27, 0.38, 0.47, 0.67], inner: [0.08, 0.16, 0.25, 0.36, 0.45], porch: { none: 17, entrance: 20, columns: 16 } },
+  sides: { 10: 2, 12: 9, 14: 2, 16: 18, 18: 1, 20: 1, 22: 1, 24: 1, 28: 1, 32: 3 },
+};
+// The stage's base size (the round 6 plans): round hall diameters, octagon side lengths, the cross's half sizes
+// [Wz, Wx, D] (odd metres), storey height and storeys.
+const BASE_DIA = { s2: 10.05, s3: 15.2, s4: 20.1, s5: 30.4 };
+const BASE_OCT = { s2: 4, s3: 6, s4: 8, s5: 12 };
+const CSPEC = { s2: [7, 7, 3, 3, 1], s3: [9, 9, 5, 4, 1], s4: [13, 11, 5, 3, 2], s5: [15, 13, 7, 3, 2] };
+// A village's place in the corpus size spread, as a scale on the stage's base: the square root of the drawn area over
+// the median, the draw kept between the quartile at 25 % and the 90 % one (the stage's band).
+const sizeScale = (u, q) => Math.sqrt(quant(0.25 + 0.65 * u, q) / q[2]);
+// Sides and side length of a round or octagonal hall at a stage: the diameter the village's scale asks for, the sides
+// it drew (octagon: 8) where some even side length comes within 6 % of it, else the corpus side count that comes
+// nearest. Side lengths are even (2 m wall bays).
+function roundSpec(variant, stage, V) {
+  if (variant === 'octagon') {
+    const want = BASE_OCT[stage] * (+stage[1] >= 4 ? Math.max(1, V.size) : V.size);
+    let L = Math.max(4, 2 * Math.round(want / 2));
+    if (stage !== 's2') L = Math.max(L, BASE_OCT['s' + (+stage[1] - 1)] * 1 + 2);
+    return [8, Math.min(12, L)];
+  }
+  const want = BASE_DIA[stage] * (+stage[1] >= 4 ? Math.max(1, V.size) : V.size), cands = [];
+  // (sides 16 and more, in fours, so the hall has walls square to its axes for the back door, the side rooms and the
+  // annexes; the floor band does not yet close at the corners of the 10 to 14 sided halls)
+  for (const N of [V.sides, ...Object.keys(SHAPE_Q.sides).map(Number)].filter(n => n >= 16 && n % 4 === 0)) for (let L = 2; L <= 12; L += 2) {
+    const d = 2 * ringPoly(N, L), err = Math.abs(d - want) / want;
+    cands.push({ N, L, d, score: err + (N === V.sides ? 0 : 0.06) - 0.002 * Math.log(SHAPE_Q.sides[N] || 1) });
+  }
+  // (never smaller than the stage before's base, so the floor grows every stage)
+  const k = +stage[1], lo = k > 2 ? BASE_DIA['s' + (k - 1)] * 1.05 : 7;
+  const ok = cands.filter(c => c.d >= lo && c.d >= want * 0.8);
+  const best = (ok.length ? ok : cands).sort((a, c) => a.score - c.score)[0];
+  return [best.N, best.L];
+}
+// The cross's half sizes at a stage: its ground floor the base's times the village's scale squared, its long arm over
+// its side arms the drawn aspect, its arms' width over its length the drawn arm share; odd metres, with the room the
+// stage's stairs, galleries and side rooms need.
+function crossSpec(stage, V) {
+  const [Wz0, Wx0, D0, SHt, storeys] = CSPEC[stage], k = +stage[1];
+  const area = (4 * D0 * (Wz0 + Wx0) - 4 * D0 * D0) * V.size * V.size, a = V.aspect, w = V.arm;
+  const odd = v => 2 * Math.round((v - 1) / 2) + 1;
+  let Wz = Math.sqrt(area / (4 * (w * (1 + 1 / a) - w * w)));
+  let D = Math.max(3, odd(w * Wz)), Wx = odd(Wz / a);
+  Wz = odd(Wz);
+  if (k >= 3) D = Math.max(D, 5);
+  if (k >= 4) { Wz = Math.max(Wz, D + 8); Wx = Math.max(Wx, D + 6); }
+  Wx = Math.max(Wx, D + 2);
+  Wz = Math.max(Wz, Wx);
+  // (never smaller than the stage before)
+  if (k > 2) { const [pz, px] = CSPEC['s' + (k - 1)]; Wz = Math.max(Wz, pz + 2); Wx = Math.max(Wx, px); }
+  return [Wz, Wx, D, SHt, storeys];
+}
+
 // The village's layout (D-155, Tyler 2026-11-11: "the layout and interior decor, etc should be highly varied and dynamic
 // and kitbashed such that even same cultural villages have different interior layouts"): one draw per choice from the
 // village's lineage, so each choice moves on its own; weights from the corpus measures (hubs.md, hub-gen.md) and the
@@ -1389,7 +1495,9 @@ function drawLayout(lineage, cultureKey, C, line, k) {
     tables: pick('tables', !round ? { rows: 4, U: 3, groups: 2, mixed: 1 } : style === 'drum' ? { spokes: 4, ring: 2, groups: 2, mixed: 2 }
       : style === 'posts' ? { ring: 4, groups: 3, spokes: 1, mixed: 1 } : { rugs: 4, groups: 3, ring: 1 }),
     nTables: 3 + Math.floor(u('nTables') * 4),
-    gallery: k === 4 ? pick('gallery', { full: 3, none: 1 }) : 'full',
+    // (s5 in the cross: every arm, the front and back arms, or the back arm; the corpus gives no shares for these, so
+    // even weights)
+    gallery: k === 4 ? pick('gallery', { full: 3, none: 1 }) : round ? 'full' : pick('gallery5', { full: 1, nave: 1, back: 1 }),
     walkway: pick('walkway', { front: 3, side: 2, none: 2 }),
     stairSide: u('stairSide') < 0.5 ? -1 : 1,
     roomSide: u('roomSide') < 0.5 ? -1 : 1,
@@ -1399,13 +1507,24 @@ function drawLayout(lineage, cultureKey, C, line, k) {
     banner: (KIT.banner || ['piece_banner01'])[Math.floor(u('banner') * (KIT.banner || [1]).length)],
     rug: pick('rug', { rug_fur: 3, rug_deer: 2, rug_wolf: 1, jute_carpet: 1 }),
     trophyRows: u('trophyRows') < 0.4 ? 3 : 2,
+    // the plan's shape (lab/hub_shapes.py spreads, SHAPE_Q): size in the stage's band, the round hall's sides, the cross's
+    // proportions, where the side rooms' wall falls, the porch, annexes
+    size: sizeScale(u('size'), SHAPE_Q[round ? 'round' : 'hall'].area),
+    sides: +pick('sides', Object.fromEntries(Object.entries(SHAPE_Q.sides).filter(([n]) => n >= 16 && n % 4 === 0))),
+    aspect: quant(0.1 + 0.8 * u('aspect'), SHAPE_Q.hall.aspect),
+    arm: quant(0.25 + 0.5 * u('arm'), SHAPE_Q.hall.arm),
+    part: quant(0.1 + 0.8 * u('part'), SHAPE_Q[round ? 'round' : 'hall'].inner),
+    porch: pick('porch', SHAPE_Q[round ? 'round' : 'hall'].porch),
+    annex: round ? +pick('annex', SHAPE_Q.round.lobes) : 0,
+    annexDeep: u('annexDeep') < 0.5 ? 2 : 3,
   };
   if (k === 5 && V.raise === 'none') V.raise = 'step';
   // (a part round's walkway runs along its straight front, where the gallery's opening meets it)
   if (line === 'part') V.walkway = 'front';
   if (V.seat === 'side' && round) V.seatSide = V.stairSide === V.seatSide ? -V.seatSide : V.seatSide;
   V.sig = [V.seat === 'side' ? `seat side ${V.seatSide}` : `seat ${V.seat}`, V.raise, `hearth ${V.hearth}`, `${V.tables} ${V.nTables}`,
-    `gallery ${V.gallery}${round ? ' walkway ' + V.walkway : ''}`, `stair ${V.stairSide}`, `rooms ${round ? -V.stairSide : V.roomSide} ${V.rooms} ${V.second}`].join(', ');
+    `gallery ${V.gallery}${round ? ' walkway ' + V.walkway : ''}`, `stair ${V.stairSide}`, `rooms ${round ? -V.stairSide : V.roomSide} ${V.rooms} ${V.second}`,
+    `size ${V.size.toFixed(2)}`, round ? (line === 'octagon' ? 'sides 8' : `sides ${V.sides}`) : `aspect ${V.aspect.toFixed(2)} arm ${V.arm.toFixed(2)}`, `part ${V.part.toFixed(2)}`, `porch ${V.porch}`, `annex ${V.annex}`].join(', ');
   return V;
 }
 
@@ -1434,10 +1553,10 @@ function generate(req, T) {
   C.wallStyle = wallStyle;
   C.baseTop = 0.6;
   const info = { type: 'hub', biome, cultureKey, stage, decor, seed, line, family: k === 1 ? 'camp' : line === 'cross' ? 'cross' : 'round', walls: k === 1 ? 'none' : wallStyle };
-  const ext = exteriorOf(has, stage, line, C);
-  let b, F = {};
   // the village's draws (D-155: every major choice by the village's seed, weighted by the corpus and the culture data)
   const V = drawLayout(lineage, cultureKey, C, line, k);
+  const ext = exteriorOf(has, stage, line, C, V.porch);
+  let b, F = {};
   if (k === 1) {
     b = new T.Build(); b.markers = [];
     campDesign(b, K, T, { R, cultureKey, decor, place: placer(b, T), biome });

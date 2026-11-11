@@ -1295,7 +1295,9 @@ const hits = (bx, z) => bx.x0 < z.x1 && bx.x1 > z.x0 && bx.y0 < z.y1 && bx.y1 > 
 // chimney.
 function settle(b, ctx) {
   const Ck = checksLib(), ord = P.BIOME_ORDER, limit = ord.indexOf(ctx.biome);
-  b.pieces = b.pieces.filter(p => !p.decor || ord.indexOf(P.needs(p.name)) <= limit);
+  // (lights and the fire's dressing follow the shared decor rule, lib/pieces.js decorOk: Tyler, 2026-11-10)
+  const dressing = p => P.piece(p.name).role === 'light' || /^(fire_pit|hearth|piece_cookingstation|piece_cookingstation_iron|piece_cauldron)$/.test(p.name);
+  b.pieces = b.pieces.filter(p => !p.decor || ord.indexOf(P.needs(p.name)) <= limit || (dressing(p) && P.decorOk(p.name, ctx.biome)));
 
   const isFire = p => p.decor && /^(fire_pit|hearth)$/.test(p.name);
   const ground = b.rooms.filter(r => !r.upper);

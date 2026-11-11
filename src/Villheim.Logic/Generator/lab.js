@@ -3555,6 +3555,8 @@ function placeLights(room, k, n, o = {}) {
   room.R = lightStream(room);
   try { return lightsIn(room, k, n, o); } finally { room.R = R0; }
 }
+// Lights are decor: they follow the shared decor rule (lib/pieces.js decorOk; Tyler, 2026-11-10: decor from any biome).
+const lightOk = (name, biome) => !!F[name] && P.decorOk(name, biome);
 // One stream per room for its lights, from the room's place and the household.
 function lightStream(room) {
   if (!room.lightR) room.lightR = rngFrom((Math.round(room.cx * 73 + room.cz * 131 + room.stand * 977) ^ ((room.persona && room.persona.salt) || 0x5eed)) >>> 0);
@@ -3573,7 +3575,7 @@ function lightsIn(room, k, n, o) {
   const want = { door: 0.6 + R() * 1.2, bed: 0.4 + R() * 1.0, work: 0.4 + R() * 0.8 };
   const purpose = (x, z) => (room.doorDist(x, z) < 1.8 ? want.door : 0) + (near(x, z, ['bed'], 1.6) ? want.bed : 0) + (near(x, z, ['table', 'craft', 'seat'], 1.6) ? want.work : 0);
   // a hanging brazier over a bigger room
-  if (o.hang && done < n && ok('piece_brazierceiling01', room.biome) && room.area >= 30 && R() < o.hang * likes) {
+  if (o.hang && done < n && lightOk('piece_brazierceiling01', room.biome) && room.area >= 30 && R() < o.hang * likes) {
     const cells = room.cells.filter(c => !fireNear(c.x, c.z) && room.doorDist(c.x, c.z) > 1.5);
     cells.sort((a, b) => Math.hypot(a.x - room.cx, a.z - room.cz) - dark(a.x, a.z) * 0.5 - (Math.hypot(b.x - room.cx, b.z - room.cz) - dark(b.x, b.z) * 0.5));
     const c = cells[0];
@@ -3582,7 +3584,7 @@ function lightsIn(room, k, n, o) {
       if (top - room.stand > 3.9 && room.add('piece_brazierceiling01', c.x, top - F.piece_brazierceiling01.under, c.z, 0, { mount: true, y0: top - 1.6 })) done++;
     }
   }
-  if (k.wallLight && ok(k.wallLight, room.biome)) {
+  if (k.wallLight && lightOk(k.wallLight, room.biome)) {
     const f = F[k.wallLight] || {};
     // the household's height for its sconces: 1.6 to 2.0 m, or as the piece hangs
     const y = f.under != null ? undefined : 1.6 + R() * 0.4;
@@ -3599,7 +3601,7 @@ function lightsIn(room, k, n, o) {
       done++;
     }
   }
-  if (done < n && k.floorLight && ok(k.floorLight, room.biome)) {
+  if (done < n && k.floorLight && lightOk(k.floorLight, room.biome)) {
     const name = k.floorLight;
     const spots = wallSpots(room, name, { gap: 0.05, tallOk: o.tallOk });
     while (done < n) {
@@ -3714,6 +3716,8 @@ function chooseKit(R, biome, culture, kind) {
     if (!ok2.length) return null;
     return pickW(R, ok2.map(n => [n, (shares.get(n) || 0) + floor]));
   };
+  // lights by the shared decor rule (decorOk), the village's own biome's lights twice as likely as others
+  const pickLight = list => { const l2 = list.filter(n => P.decorOk(n, biome) && F[n]); return l2.length ? pickW(R, l2.map(n => [n, ((shares.get(n) || 0) + 0.3) * (ok(n, biome) && bi(F[n].b) <= bi(biome) ? 2 : 1)])) : null; };
   const taste = CULTURE_TASTE[culture] || {};
   const k = {
     bed: pick(KIT.bed.filter(n => n !== 'piece_bed02' || R() < 0.5), 0.2),
@@ -3722,8 +3726,8 @@ function chooseKit(R, biome, culture, kind) {
     chair: pick(KIT.chair),
     bench: pick(KIT.bench, 0.3),
     rug: pick(KIT.rug, 0.2),
-    floorLight: pick(KIT.floorLight, 0.3),
-    wallLight: pick(KIT.wallLight, 0.3),
+    floorLight: pickLight(KIT.floorLight),
+    wallLight: pickLight(KIT.wallLight),
     banner: pick(KIT.banner, 0.2),
     carving: pick(KIT.carving, 0.2),
     stack: pick(KIT.stack, 0.3),
@@ -10953,7 +10957,9 @@ const hits = (bx, z) => bx.x0 < z.x1 && bx.x1 > z.x0 && bx.y0 < z.y1 && bx.y1 > 
 // chimney.
 function settle(b, ctx) {
   const Ck = checksLib(), ord = P.BIOME_ORDER, limit = ord.indexOf(ctx.biome);
-  b.pieces = b.pieces.filter(p => !p.decor || ord.indexOf(P.needs(p.name)) <= limit);
+  // (lights and the fire's dressing follow the shared decor rule, lib/pieces.js decorOk: Tyler, 2026-11-10)
+  const dressing = p => P.piece(p.name).role === 'light' || /^(fire_pit|hearth|piece_cookingstation|piece_cookingstation_iron|piece_cauldron)$/.test(p.name);
+  b.pieces = b.pieces.filter(p => !p.decor || ord.indexOf(P.needs(p.name)) <= limit || (dressing(p) && P.decorOk(p.name, ctx.biome)));
 
   const isFire = p => p.decor && /^(fire_pit|hearth)$/.test(p.name);
   const ground = b.rooms.filter(r => !r.upper);

@@ -73,7 +73,20 @@ function withBox(o) {
 }
 
 /** The piece's solid boxes in world space: [] when it is measured and nothing is solid, null when it is not measured. */
+// Kept per piece object while its name, place, turn and scale are the same: the furnishing asks for the solids of the
+// same walls and furniture again and again (about four calls in five, 2026-11-10). Callers read the boxes only.
+const SEEN_SH = typeof WeakMap !== 'undefined' ? new WeakMap() : null;
 function world(p) {
+  if (SEEN_SH && p && typeof p === 'object') {
+    const c = SEEN_SH.get(p);
+    if (c && c.n === p.name && c.x === p.x && c.y === p.y && c.z === p.z && c.q === p.q && c.yaw === p.yaw && c.s === p.s) return c.v;
+    const v = world0(p);
+    SEEN_SH.set(p, { n: p.name, x: p.x, y: p.y, z: p.z, q: p.q, yaw: p.yaw, s: p.s, v });
+    return v;
+  }
+  return world0(p);
+}
+function world0(p) {
   const L = local(p.name);
   if (!L) return null;
   const q = pieceQ(p), sc = p.s || [1, 1, 1];

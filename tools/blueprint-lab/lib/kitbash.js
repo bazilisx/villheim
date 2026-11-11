@@ -748,6 +748,13 @@ function placeable(p, bx, mm, i, b, ctx, room, idx, zones, made, clipOf, anc, fi
   const Ck = checksB(), SH = shapesB(), D = decorB(), m = room.m;
   const cx = (bx.x0 + bx.x1) / 2, cz = (bx.z0 + bx.z1) / 2;
   const info = PB.piece(p.name);
+  // what lies round the piece, read once (at 0.3 m) and narrowed for the tests that look closer; the box is fixed from
+  // here on
+  let NB = null;
+  const nearP = pad => {
+    if (!NB) NB = idx.near(bx, 0.3);
+    return pad >= 0.3 ? NB : NB.filter(r => { const o = r.b; return o.x0 <= bx.x1 + pad && o.x1 >= bx.x0 - pad && o.z0 <= bx.z1 + pad && o.z1 >= bx.z0 - pad; });
+  };
   const flat = info.role === 'rug';
   // on this room's floor, or against its wall
   const pts = [[cx, cz], [bx.x0 + 0.05, bx.z0 + 0.05], [bx.x1 - 0.05, bx.z0 + 0.05], [bx.x0 + 0.05, bx.z1 - 0.05], [bx.x1 - 0.05, bx.z1 - 0.05]];
@@ -815,19 +822,19 @@ function placeable(p, bx, mm, i, b, ctx, room, idx, zones, made, clipOf, anc, fi
   // plain wall behind a wall piece, structure over a hung one
   if (p.rest === 'wall' && !m.faces.some(f => !f.edge && Math.abs((cx - f.px(0)) * f.nx + (cz - f.pz(0)) * f.nz - f.ht) < 0.6 &&
     (cx * f.ux + cz * f.uz) > f.a0 && (cx * f.ux + cz * f.uz) < f.a1)) return no(14);
-  if (p.rest === 'hang' && !idx.near(bx).some(r => !r.p.decor && r.b.info.structural && r.b.x0 < cx && r.b.x1 > cx && r.b.z0 < cz && r.b.z1 > cz && r.b.y0 > bx.y1 - 0.3 && r.b.y0 < bx.y1 + 0.5)) return no(15);
+  if (p.rest === 'hang' && !nearP(0.2).some(r => !r.p.decor && r.b.info.structural && r.b.x0 < cx && r.b.x1 > cx && r.b.z0 < cz && r.b.z1 > cz && r.b.y0 > bx.y1 - 0.3 && r.b.y0 < bx.y1 + 0.5)) return no(15);
   // a building piece of a set (a beam shelf, a half-wall counter) touches the structure that holds it, as the checks'
   // stability test sees it (a beam shelf hung off a stone wall's box fell there, 2026-11-10)
   if (info.structural) {
     const tch = o => o.x0 <= bx.x1 + 0.02 && bx.x0 <= o.x1 + 0.02 && o.y0 <= bx.y1 + 0.02 && bx.y0 <= o.y1 + 0.02 && o.z0 <= bx.z1 + 0.02 && bx.z0 <= o.z1 + 0.02;
-    if (!idx.near(bx, 0.05).some(r => r.p !== p && (!r.p.decor || r.p.trim) && r.b.info.structural && tch(r.b)) &&
+    if (!nearP(0.05).some(r => r.p !== p && (!r.p.decor || r.p.trim) && r.b.info.structural && tch(r.b)) &&
       !made.some(o => o && PB.piece(o.name).structural && tch(Ck.aabbShapes(o)))) return no(15);
   }
   // clips: into the wall and the anchor no deeper than the source, into anything else not at all
   // never the same piece twice in one place (a rug laid on the decorator's own rug)
-  if (idx.near(bx, 0.1).some(r => r.p.name === p.name && Math.abs(r.p.x - p.x) < 0.1 && Math.abs(r.p.y - p.y) < 0.1 && Math.abs(r.p.z - p.z) < 0.1)) return no(19);
+  if (nearP(0.1).some(r => r.p.name === p.name && Math.abs(r.p.x - p.x) < 0.1 && Math.abs(r.p.y - p.y) < 0.1 && Math.abs(r.p.z - p.z) < 0.1)) return no(19);
   // small things with no solids (food, candles) keep apart from each other
-  if (bx.pass && !flat && idx.near(bx).concat(made.filter(Boolean).map(o => ({ p: o, b: Ck.aabbShapes(o) }))).some(r => r.p !== p && r.b.pass && PB.piece(r.p.name).role !== 'rug' &&
+  if (bx.pass && !flat && nearP(0.2).concat(made.filter(Boolean).map(o => ({ p: o, b: Ck.aabbShapes(o) }))).some(r => r.p !== p && r.b.pass && PB.piece(r.p.name).role !== 'rug' &&
     Math.hypot(r.p.x - p.x, r.p.z - p.z) < 0.22 && Math.abs(r.p.y - p.y) < 0.3)) return no(16);
   if (bx.y0 < m.stand - 0.02 && p.rest === 'floor') p.sink = +(m.stand - bx.y0 + 0.005).toFixed(3);
   // any set moves the decorator's extras out of its way; a built kit also its chests, seats and lights (as the bar
@@ -840,7 +847,7 @@ function placeable(p, bx, mm, i, b, ctx, room, idx, zones, made, clipOf, anc, fi
   // under its table; marked so the pool audit lets that depth pass, D-098)
   const mine = [], ownP = !mm.n || mm.n === p.name;
   let fdeep = 0;
-  for (const [q, deep] of D.furnClash(p, idx.near(bx, 0.3).map(r => r.p).filter(q => q.decor && !displace.has(q)).concat(made.filter(Boolean)))) {
+  for (const [q, deep] of D.furnClash(p, nearP(0.3).map(r => r.p).filter(q => q.decor && !displace.has(q)).concat(made.filter(Boolean)))) {
     const j = made.indexOf(q);
     if (j >= 0 && ownP && (!a.pieces[j].n || a.pieces[j].n === q.name)) { fdeep = Math.max(fdeep, deep); continue; }
     if (movable(q)) { mine.push(q); continue; }
@@ -858,7 +865,7 @@ function placeable(p, bx, mm, i, b, ctx, room, idx, zones, made, clipOf, anc, fi
   };
   if (flat || bx.pass || !bx.sol || !bx.sol.length) { if (!audited()) return false; for (const q of mine) displace.add(q); return true; }
   let deepest = 0;
-  for (const r of idx.near(bx)) {
+  for (const r of nearP(0.2)) {
     const q = r.p, qb = r.b;
     if (!qb.sol || !qb.sol.length || qb.pass || q === p) continue;
     if (qb.x0 >= bx.x1 || qb.x1 <= bx.x0 || qb.z0 >= bx.z1 || qb.z1 <= bx.z0 || qb.y0 >= bx.y1 || qb.y1 <= bx.y0) continue;
@@ -933,6 +940,21 @@ function furnishRooms(b, ctx, zones, R2, extra, rooms) {
   const lib = library().assemblies.concat(extra || []).filter(a => !/^BK-understair/.test(a.id) || a.id === UNDER[under]);
   const idx = boxIndex(b.pieces);
   let placed = 0;
+  // a set whose core pieces (those marked key and those others stand on) have no prefab in the village's reach
+  const hopeK = new Map();
+  const hopeless = a => {
+    if (hopeK.has(a)) return hopeK.get(a);
+    const need = new Set(a.pieces.filter(m => m.rest === 'on').map(m => m.on));
+    a.pieces.forEach((m, i) => { if (m.key) need.add(i); });
+    // (a set with a random pick, a pair of banners, draws from the stream inside the fitter: left to it)
+    const v = !a.pieces.some(m => m.any) && a.pieces.some((m, i) => {
+      if (!need.has(i) || m.any) return false;
+      const name = fillSlot(m, ctx.biome, ctx);
+      return !name || (a.creative && !PB.minor(name) && PB.BIOME_ORDER.indexOf(PB.needs(name)) > PB.BIOME_ORDER.indexOf(ctx.biome));
+    });
+    hopeK.set(a, v);
+    return v;
+  };
   const used = {};
   for (const room of rooms || roomsB(b, ctx)) {
     const kinds = ROOM_KINDS[room.role] || [room.role];
@@ -1029,6 +1051,9 @@ function furnishRooms(b, ctx, zones, R2, extra, rooms) {
         ancs.sort((p, q) => sc.get(q) - sc.get(p));
       }
       let done = false, lastWhy = ancs.length ? 0 : 'anchor';
+      // a set with a core piece the village cannot make fails at every spot: the spots' coin flips are still drawn, so
+      // the stream (and the rest of the design) stays as it was
+      if (hopeless(a)) { if (a.anchor !== 'floor') for (const an of ancs.slice(0, 10)) R2(); lastWhy = 30; ancs.length = 0; }
       for (const an of ancs.slice(0, a.anchor === 'floor' ? 16 : 10)) {
         for (const mir of a.anchor === 'floor' ? [false] : R2() < 0.5 ? [false, true] : [true, false]) {
           WHY_B = 0;

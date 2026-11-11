@@ -27,7 +27,18 @@ function localOf(p, x, z) {
 
 // The catalog box (lib/pieces.js), or, with the game's colliders on (the default), the catalog box and the solids
 // together, with the solids in 'sol' (see gameBox).
-function aabb(p) { return SHAPES_DEFAULT && SHP ? gameBox(p) : catBox(p); }
+// Kept per piece object while its name, place, turn and scale are the same (the motif passes and the stability test
+// read every piece's box several times over); callers read the box and never change it.
+const AABB_C = typeof WeakMap !== 'undefined' ? new WeakMap() : null;
+function aabb(p) {
+  if (!(SHAPES_DEFAULT && SHP)) return catBox(p);
+  if (!AABB_C || !p || typeof p !== 'object') return gameBox(p);
+  const c = AABB_C.get(p);
+  if (c && c.n === p.name && c.x === p.x && c.y === p.y && c.z === p.z && c.q === p.q && c.yaw === p.yaw && c.s === p.s) return c.v;
+  const v = gameBox(p);
+  AABB_C.set(p, { n: p.name, x: p.x, y: p.y, z: p.z, q: p.q, yaw: p.yaw, s: p.s, v });
+  return v;
+}
 function catBox(p) {
   const info = PC.piece(p.name);
   let [w, h, d] = info.size;

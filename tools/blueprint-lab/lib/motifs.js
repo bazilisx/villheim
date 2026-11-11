@@ -21,8 +21,14 @@ const reachesM = (biome, b) => BIOMES_M.indexOf(biome) >= BIOMES_M.indexOf(b);
 
 // ---------------------------------------------------------------- piece classes (shared with lab/mine_motifs.js)
 
-// the shape of a piece whatever it is made of
+// the shape of a piece whatever it is made of (kept per name: the motif fitter asks for the same names many times)
+const CLASS_M = new Map();
 function classOf(n) {
+  let c = CLASS_M.get(n);
+  if (c === undefined) { c = classOf0(n); CLASS_M.set(n, c); }
+  return c;
+}
+function classOf0(n) {
   const R = [
     [/wall_roof_top_45|roof_top_45/, n.includes('wall_roof_top') ? 'cross45' : 'cap45'], [/wall_roof_top|roof_top/, n.includes('wall_roof_top') ? 'cross26' : 'cap26'],
     [/wall_roof.*upsidedown/, /45/.test(n) ? 'gable45inv' : /67/.test(n) ? 'gable67inv' : 'gable26inv'],

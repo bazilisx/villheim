@@ -845,6 +845,18 @@ what the sets leave. Other changes in the same pass:
 - `generate.js` `biomeSafe` keeps decor within the village's decor reach (D-080, `pieces.js` `decorOk`) and swaps only
   what is past it; it had swapped a fitted log bench for a plank bench that went into the couch's half wall.
 
+In the rooms people live in (home, sleeping, guest, kitchen, hall, tavern) the extras' barrels are one group in a
+corner by the fire or in the kitchen, two or three by the household, and its chests go by a bed or in a corner away
+from the other chests; a bench goes by the fire, a table or under a window, weighed by the household (comfort, size,
+the sill). Store and work rooms keep their rows. A Swamp house for six households had rows of barrels along most
+walls, turned every way by the lived-in pass, which read as filler (2026-11-10).
+
+Engine time (2026-11-10): the solids of a piece (`shapes.js` `world`) and its box (`checks.js` `aabb`) are kept per
+piece object while its name, place, turn and scale stay the same (four calls in five were repeats); `motifs.js`
+`classOf` is kept per name; `kitbash.js` `placeable` reads what lies round a piece once; a set whose core piece has no
+prefab in reach skips its spots (their coin flips still drawn). Designs come out byte for byte the same; node time on
+a 32-design sample 8 to 12 % less.
+
 Measured over the sample: decor pieces per design 41 to 45, mined sets placed 43 to 75, creative sets 48 to 57, the
 decorator's own share 55.9 % to 47.3 %, prefabs 95 to 106 (Meadows 37 to 44). Costs: node time per design about 30 %
 more; test_variance at s2d2 a little closer (home-a 0.59 to 0.61, hall 0.58 to 0.60, home-c 0.62 to 0.66; about

@@ -79,6 +79,8 @@ jobs:
           cp src/Villheim.Logic/bin/Release/Villheim.Logic.dll src/Villheim.Logic/bin/Release/Villheim.Logic.pdb dev/
           cp src/Villheim.Logic/bin/Release/{Jint,Acornima,System.Runtime.CompilerServices.Unsafe}.dll dev/
           echo "$LABEL" > dev/version.txt
+          # the last commit that changed the core; the updater replaces the core only when this changes
+          git log -1 --format=%h -- src/Villheim > dev/core.txt
           gh release delete dev-latest --yes --cleanup-tag || true
           gh release create dev-latest dev/* --prerelease --target "$GITHUB_SHA" \
             --title "Latest test build" \
@@ -96,6 +98,8 @@ jobs:
           cp src/Villheim.Logic/bin/Release/Villheim.Logic.dll src/Villheim.Logic/bin/Release/Villheim.Logic.pdb dev/
           cp src/Villheim.Logic/bin/Release/{Jint,Acornima,System.Runtime.CompilerServices.Unsafe}.dll dev/
           echo "$LABEL" > dev/version.txt
+          # the last commit that changed the core; the updater replaces the core only when this changes
+          git log -1 --format=%h -- src/Villheim > dev/core.txt
           gh release delete "test-$CHANNEL" --yes --cleanup-tag || true
           gh release create "test-$CHANNEL" dev/* --prerelease --target "$GITHUB_SHA" \
             --title "Test channel: $CHANNEL" \

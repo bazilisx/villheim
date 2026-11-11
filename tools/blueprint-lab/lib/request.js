@@ -130,9 +130,10 @@ function make(o, scorer, rules) {
   const culture = SQ.cultureKey(o.culture || keyWord || words.culture) || o.culture || keyWord || words.culture;
   if (culture && !SQ.CULTURES[culture]) return { error: `unknown culture '${culture}'. Cultures: ${Object.keys(SQ.CULTURES).join(', ')}` };
   const req = { type, biome, culture, stage, decor, seed: +o.seed || 1 };
-  // the hub's line (lib/hub.js): long, round or court; by default the culture's (styles.js HUB)
+  // the hub's line (lib/hub.js): cross, round, octagon or part (a round hall with a flat front); by default the
+  // culture's (styles.js HUB)
   if (type === 'hub' && o.line) req.line = String(o.line).toLowerCase();
-  else if (type === 'hub' && words.plan) req.line = { octagon: 'round', long: 'long', U: 'court' }[words.plan];
+  else if (type === 'hub' && words.plan) req.line = { octagon: 'octagon', cross: 'cross' }[words.plan];
   for (const k of ['plan', 'roof', 'walls', 'pitch', 'storeys', 'porch']) if (words[k] !== undefined) req[k] = words[k];
   if (req.pitch) req.pitch = +req.pitch;
   const top = best(req, o.tries || 8, scorer);

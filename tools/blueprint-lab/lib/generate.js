@@ -3075,7 +3075,7 @@ function campDesign(b, K, biome, stage, R, decor) {
 }
 
 // what lib/hub.js builds with
-const HUB_TOOLS = { Build, quat, wallSegment, gablePieces, posts, putLadder, column, putDoor };
+const HUB_TOOLS = { Build, quat, wallSegment, gablePieces, posts, putLadder, column, putDoor, valleys, inside, surfaceAt };
 
 if (NODE) module.exports = { generate, quat, PLAN_BY_TYPE, ROOF_BY_CULTURE };
 else window.VHGenerate = { generate, quat, PLAN_BY_TYPE, ROOF_BY_CULTURE };

@@ -1,39 +1,42 @@
 // The village hub (lib/hub.js): node lab/test_hub.js [render-dir] [seeds]
-// For each line (Norse long, Norse round, Celtic round, Middle Eastern court), every stage s1 to s5 at d1 and d3:
+// For each line (Norse cross, Celtic round, Anglo-Saxon octagon, Middle Eastern part round), every stage s1 to s5 at d1
+// and d3, and for every village culture its own line at s2 to s5 (d3, seed 1):
 // every check in lib/checks.js passes; the shape family measured from the walls and roofs holds from s2 to s5 (D-132);
 // the fire is at the hub's heart and the notice board in the hearth area at every stage (D-140); the leader's marker is
 // there (D-141); item stands for mementos stay empty (D-134); the s1 camp lies inside the s5 plot (D-083); s5 has the
-// most floor of any building in its culture's set (every other type at s3, the lab's last stage for them).
+// most floor of any building in its culture's set (every other type at s3, the lab's last stage for them) and stands no
+// higher than lib/hub.js capFor allows (styles.js HUB: the culture's tallest other building and capStoreys storeys);
+// from s3 a high seat and the seat beside it for the spouse (D-154), from s4 a gallery reached by a stair.
 // Every floor of every stage s2 to s5 is reached on foot from a door to the outside, by its stairs and ladders, and so is
 // every bed, table, station and chest; nothing stands in a doorway's entry zone (the reach logic of lab/reach.js).
-// Renders each line s1 to s5 into the render dir (default /tmp/hub2-renders). Exits 1 on a failure.
+// Renders each line s1, s3 and s5 into the render dir (default /tmp/hub3-renders). Exits 1 on a failure.
 const path = require('path'), fs = require('fs');
 const G = require('../lib/generate.js'), Ck = require('../lib/checks.js'), P = require('../lib/pieces.js');
 const S = require('../lib/styles.js'), H = require('../lib/hub.js');
-const outDir = process.argv[2] || '/tmp/hub2-renders';
+const outDir = process.argv[2] || '/tmp/hub3-renders';
 const seeds = +(process.argv[3] || 2);
 let failed = 0;
 const ok = (cond, what) => { if (!cond) { failed++; console.log('FAIL', what); } };
 
 const LINES = [
-  { id: 'norse-long', culture: 'norse', biome: 'Meadows', line: 'long' },
-  { id: 'norse-round', culture: 'norse', biome: 'Meadows', line: 'round' },
+  { id: 'norse-cross', culture: 'norse', biome: 'Meadows', line: 'cross' },
   { id: 'celtic-round', culture: 'celtic', biome: 'Black Forest', line: 'round' },
-  { id: 'court', culture: 'middle-eastern', biome: 'Plains', line: 'court' },
+  { id: 'anglo-saxon-octagon', culture: 'anglo-saxon', biome: 'Meadows', line: 'octagon' },
+  { id: 'middle-eastern-part', culture: 'middle-eastern', biome: 'Plains', line: 'part' },
 ];
+const famOf = line => (line === 'cross' ? 'cross' : 'round');
 
-// Shape family from the pieces: wall turns (a round plan has many), the plan's aspect, and whether the fire is under
-// a roof (a court's fire is in the open yard).
+// Shape family from the pieces: a wall turned off the square makes it round (rings and octagons); an orthogonal plan
+// whose ground floor fills under 85 % of its bounding box with the fire's middle covered is a cross.
 function family(d) {
   const walls = d.pieces.filter(p => ['wall', 'door', 'window'].includes(P.piece(p.name).role) && !p.notice && !p.decor && p.y < 3);
   if (!walls.length) return 'camp';
-  const yaws = new Set(walls.map(p => Math.round((((p.yaw % 180) + 180) % 180) / 5)));
-  if (yaws.size >= 6) return 'round';
-  const xs = walls.map(p => p.x), zs = walls.map(p => p.z);
-  const w = Math.max(...xs) - Math.min(...xs), dd = Math.max(...zs) - Math.min(...zs);
-  const roofed = d.pieces.some(p => ['roof', 'roofTop', 'floor'].includes(P.piece(p.name).role) && p.y > 2 && Math.abs(p.x) < 1.01 && Math.abs(p.z) < 1.01);
-  if (!roofed) return 'court';
-  return Math.max(w, dd) / Math.max(1, Math.min(w, dd)) >= 1.5 ? 'long' : 'square';
+  if (walls.some(p => { const a = (((p.yaw || 0) % 90) + 90) % 90; return a > 5 && a < 85; })) return 'round';
+  const fl = d.pieces.filter(p => P.piece(p.name).role === 'floor' && !p.decor && !p.dais && Math.abs(p.y) < 0.2);
+  const xs = fl.map(p => p.x), zs = fl.map(p => p.z);
+  const area = fl.reduce((a, p) => a + P.piece(p.name).size[0] * P.piece(p.name).size[2], 0);
+  const boxA = (Math.max(...xs) - Math.min(...xs) + 2) * (Math.max(...zs) - Math.min(...zs) + 2);
+  return area / boxA < 0.85 ? 'cross' : 'square';
 }
 // Floor on every level, m2, and the height
 function measure(d) {
@@ -190,45 +193,51 @@ try {
 } catch (e) { console.log('no renders:', e.message); }
 
 const rows = [], rendered = [], reachRows = [];
+// one design's checks; returns the reach result
+function checkOne(d, L, stage, decor) {
+  const name = d.meta.Name;
+  for (const c of Ck.check(d, L.biome)) ok(c.ok, `${name}: ${c.check}: ${c.detail}`);
+  ok(d.pieces.some(p => /^(hearth|fire_pit)$/.test(p.name) && Math.hypot(p.x, p.z) < 0.5), `${name}: no fire at the hub's heart`);
+  const signs = d.pieces.filter(p => p.notice && p.name === 'sign');
+  ok(signs.length >= 3 && signs.every(p => Math.hypot(p.x, p.z) < 22), `${name}: notice board missing or outside the hearth area`);
+  ok((d.markers || []).some(m => m.leader), `${name}: no leader marker`);
+  if (+stage[1] >= 3) {
+    ok(d.pieces.some(p => p.highSeat), `${name}: no high seat`);
+    ok(d.pieces.some(p => p.spouseSeat) && (d.markers || []).some(m => m.spouse), `${name}: no seat for the spouse`);
+  }
+  if (+stage[1] >= 4 && (d.request.tier || 0) < 4) ok(d.rooms.some(r => r.use === 'gallery') && d.pieces.some(p => p.name === 'wood_stair'), `${name}: no gallery with a stair`);
+  ok(d.pieces.filter(p => /^itemstand/.test(p.name) && p.memento).every(p => !p.item), `${name}: a memento stand holds an item`);
+  ok(d.request.top <= H.capFor(d.request.cultureKey) + 0.01, `${name}: ${d.request.top} m over the cap ${H.capFor(d.request.cultureKey)}`);
+  let rr = null;
+  if (+stage[1] >= 2) {
+    rr = reach(d);
+    ok(rr.roomsOut.length === 0, `${name}: floors not reached: ${rr.roomsOut.slice(0, 4).join('; ')}`);
+    ok(rr.piecesOut.length === 0, `${name}: pieces not reached: ${rr.piecesOut.slice(0, 4).join('; ')}`);
+    ok(rr.entry.length === 0, `${name}: in an entry zone: ${rr.entry.slice(0, 4).map(e => e.name + ' ' + e.at).join('; ')}`);
+  }
+  ok((d.markers || []).some(m => m.kind === 'path'), `${name}: no path marker`);
+  const text = H.write(d);
+  ok(/#VillheimLeader\nseat;/.test(text) && /#VillheimPaths\npath;/.test(text), `${name}: markers not written`);
+  return rr;
+}
 for (const L of LINES) for (let seed = 1; seed <= seeds; seed++) {
   const fams = {}, ds = {};
   for (const stage of H.STAGES) for (const decor of ['d1', 'd3']) {
     const d = G.generate({ type: 'hub', biome: L.biome, culture: L.culture, line: L.line, stage, decor, seed });
     const name = d.meta.Name;
-    for (const c of Ck.check(d, L.biome)) ok(c.ok, `${name}: ${c.check}: ${c.detail}`);
-    const fire = d.pieces.find(p => /^(hearth|fire_pit)$/.test(p.name) && Math.hypot(p.x, p.z) < 0.5);
-    ok(fire, `${name}: no fire at the hub's heart`);
-    const signs = d.pieces.filter(p => p.notice && p.name === 'sign');
-    ok(signs.length >= 3, `${name}: notice board missing (${signs.length} notices)`);
-    ok(signs.every(p => Math.hypot(p.x, p.z) < 22), `${name}: a notice stands outside the hearth area`);
-    const lead = (d.markers || []).find(m => m.leader);
-    ok(lead, `${name}: no leader marker`);
-    if (+stage[1] >= 3) ok(d.pieces.some(p => p.highSeat), `${name}: no high seat`);
-    ok(d.pieces.filter(p => /^itemstand/.test(p.name) && p.memento).every(p => !p.item), `${name}: a memento stand holds an item`);
+    const rr = checkOne(d, L, stage, decor);
     ok(d.request.line === L.line, `${name}: line ${d.request.line}`);
-    // every floor reached on foot from the entrance, by stairs and ladders; every bed, table, station and chest reached;
-    // nothing standing in a doorway's entry zone
-    if (+stage[1] >= 2) {
-      const rr = reach(d);
-      ok(rr.roomsOut.length === 0, `${name}: floors not reached: ${rr.roomsOut.join('; ')}`);
-      ok(rr.piecesOut.length === 0, `${name}: pieces not reached: ${rr.piecesOut.slice(0, 4).join('; ')}`);
-      ok(rr.entry.length === 0, `${name}: in an entry zone: ${rr.entry.slice(0, 4).map(e => e.name + ' ' + e.at).join('; ')}`);
-      const levels = new Set(d.rooms.map(r => Math.round(r.y * 4) / 4));
-      if (decor === 'd3') reachRows.push({ name, levels: levels.size, rooms: rr.rooms, pieces: rr.pieces });
-    }
-    ok((d.markers || []).some(m => m.kind === 'path'), `${name}: no path marker`);
-    const text = H.write(d);
-    ok(/#VillheimLeader\nseat;/.test(text) && /#VillheimPaths\npath;/.test(text), `${name}: markers not written`);
+    if (rr && decor === 'd3') reachRows.push({ name, levels: new Set(d.rooms.map(r => Math.round(r.y * 4) / 4)).size, rooms: rr.rooms, pieces: rr.pieces });
     if (decor === 'd3') {
       fams[stage] = family(d);
       ds[stage] = d;
       const m = measure(d);
-      rows.push({ line: L.id, seed, stage, pieces: d.pieces.length, area: m.area, top: m.top, family: fams[stage], features: (d.request.features || []).join(' ') });
-      if (render && seed === 1) { const f = path.join(outDir, `${L.id}_${stage}.png`); render(d, f); rendered.push(f); }
+      rows.push({ line: L.id, seed, stage, pieces: d.pieces.length, area: m.area, top: m.top, family: fams[stage], features: (d.request.features || []).join(' ') + (d.request.tier ? ` (tier ${d.request.tier})` : '') });
+      if (render && seed === 1 && ['s1', 's3', 's5'].includes(stage)) { const f = path.join(outDir, `${L.id}_${stage}.png`); render(d, f); rendered.push(f); }
     }
   }
   const fam = fams.s2;
-  ok(fam === (L.line === 'long' ? 'long' : L.line), `${L.id} seed ${seed}: s2 family ${fam}`);
+  ok(fam === famOf(L.line), `${L.id} seed ${seed}: s2 family ${fam}`);
   for (const st of ['s3', 's4', 's5']) ok(fams[st] === fam, `${L.id} seed ${seed}: ${st} family ${fams[st]}, s2 ${fam} (D-132)`);
   // the camp lies inside the last stage's plot (D-083), a metre of slack for the lean-to eaves
   const p5 = box(ds.s5.pieces.filter(p => P.piece(p.name).structural)), p1 = box(ds.s1.pieces.filter(p => P.piece(p.name).structural));
@@ -237,6 +246,27 @@ for (const L of LINES) for (let seed = 1; seed <= seeds; seed++) {
   const areas = H.STAGES.slice(1).map(st => measure(ds[st]).area);
   ok(areas.every((a, i) => i === 0 || a > areas[i - 1]), `${L.id} seed ${seed}: floor does not grow every stage (${areas.join(', ')})`);
 }
+
+// every village culture: its own line (the village's draw for lineages 1 and 2) at s2 to s5, d3, seed 1
+const sweep = [];
+for (const [key, C] of Object.entries(S.CULTURES)) {
+  if (!C.village) continue;
+  for (const lineage of [1, 2]) {
+    const L = { culture: key, biome: C.biomes[0] };
+    let line = null, fam = null;
+    for (const stage of ['s2', 's3', 's4', 's5']) {
+      const d = G.generate({ type: 'hub', biome: L.biome, culture: key, stage, decor: 'd3', seed: 1, lineage });
+      checkOne(d, L, stage, 'd3');
+      line = d.request.line;
+      const f = family(d);
+      ok(f === famOf(line) && (!fam || f === fam), `${d.meta.Name}: family ${f}, line ${line}`);
+      fam = f;
+      if (stage === 's5') sweep.push({ key, lineage, line, top: d.request.top, cap: d.request.cap, tier: d.request.tier, area: measure(d).area });
+    }
+  }
+}
+console.log('every culture at s5 (d3, seed 1): line, height and cap, tier');
+for (const r of sweep) console.log(`${r.key.padEnd(16)} lineage ${r.lineage} ${r.line.padEnd(8)} ${String(r.top).padStart(5)} m of ${r.cap} m, tier ${r.tier}, ${r.area} m2`);
 
 // s5 is the largest building in its culture's set
 for (const L of LINES) {

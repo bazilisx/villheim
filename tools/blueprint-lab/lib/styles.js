@@ -277,18 +277,27 @@ const TYPES = {
   hub:       { label: 'Village hub (hearth)', bays: { s1: [5, 5], s2: [9, 5], s3: [11, 7], s4: [15, 7], s5: [17, 9] }, storeys: { s1: 1, s2: 1, s3: 1, s4: 2, s5: 3 }, use: 'hall', hub: true },
 };
 
-// The hub's lines per culture (lib/hub.js). long: a long hall; round: a round hall; court: rooms round a yard.
-// d137: which Norse hubs are round, D-137 (Open). Value in use until Tyler answers: 'B', Norse has two lines, a long
-// hall from the corpus and a round line like hub1, picked per village. 'A': Norse round only; 'C': Norse long only.
-// Cultures with no line of their own yet take the long hall (hubs.md section 4 lists their forms).
+// The hub's lines per culture (lib/hub.js), D-137 (Tyler 2026-11-11): "Strongly leanign toward circular/octagonal or
+// partial variants thereof for most, and cross-shape for those that are more strongly rectangular or l-shaped
+// sturectures throughout the rest of the settlement". cross: a cross-shaped hall; round: a ring of walls; octagon: eight
+// sides; part: a round hall with a flat front, the open chunk a forecourt. Weights per village. lab/hub_lines.js measures
+// and prints these: a culture whose other buildings at s3 are crossFrom (0.7) or more long or branched (L, T, U,
+// cross) takes the cross; the rest the round family (see that file for the rule).
+// capH: the tallest other building of the culture at s3 in the lab, leaving out the watchtower (lab/hub_lines.js), and
+// capStoreys: how many storeys of storeyH a hub may stand over it. The lab builds other types to s3 only; the value in
+// use is 2 (one storey for the hub rule at s5, one for the other buildings' growth from s3 to s5, D-138).
 // stoneFrom: the stage from which a Meadows or Black Forest hub stands on a stone course (D-012: stone for advanced
 // buildings and later stages); 's6' keeps them in wood throughout.
 const HUB = {
-  d137: 'B',
   stoneFrom: 's4',
-  lines: { 'norse': 'long', 'anglo-saxon': 'long', 'frankish-norman': 'long', 'norse-forest': 'long', 'slavic': 'long', 'baltic': 'long',
-    'fen-folk': 'long', 'norse-highland': 'long', 'celtic': 'round', 'celtic-crannog': 'round', 'saami': 'round', 'steppe': 'round',
-    'middle-eastern': 'court', 'byzantine': 'court', [ID.lamari]: 'long' },
+  crossFrom: 0.7,
+  lines: { 'norse': { cross: 1 }, 'anglo-saxon': { octagon: 3, part: 1 }, 'frankish-norman': { cross: 1 }, 'norse-forest': { cross: 1 },
+    'celtic': { round: 3, part: 1 }, 'slavic': { octagon: 3, part: 1 }, 'celtic-crannog': { round: 3, part: 1 }, 'baltic': { octagon: 3, part: 1 },
+    'fen-folk': { octagon: 3, part: 1 }, 'norse-highland': { octagon: 3, part: 1 }, 'saami': { round: 3, part: 1 }, 'byzantine': { octagon: 3, part: 1 },
+    'steppe': { round: 3, part: 1 }, [ID.lamari]: { cross: 1 }, 'middle-eastern': { part: 3, octagon: 1 } },
+  capH: { 'norse': 10.2, 'anglo-saxon': 10.2, 'frankish-norman': 11.2, 'norse-forest': 11.2, 'celtic': 9, 'slavic': 12.2, 'celtic-crannog': 9.6,
+    'baltic': 11.2, 'fen-folk': 12.2, 'norse-highland': 8.2, 'saami': 11, 'byzantine': 10, 'steppe': 6.2, [ID.lamari]: 16.7, 'middle-eastern': 11 },
+  capStoreys: 2, storeyH: 3,
 };
 
 // ---------------------------------------------------------------- massing: shapes, sizes and growth (D-069, D-068)

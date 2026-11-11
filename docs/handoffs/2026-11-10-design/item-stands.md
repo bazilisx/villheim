@@ -389,3 +389,115 @@ None.
 - The pool audit's wall stand height (`lib/audit.js` MID itemstand 0.7 to 2.4 m) against the corpus's wall stands
   (over a bed median 2.85 m, on beams over 2.3 m median 2.96): raise it to the corpus's 90th percentile (3.8 m) for the
   library-first track to make under D-127? Recommended yes.
+
+## Session of 2026-11-11, part 3 (corpus rerun, counters, heaps, wall shares)
+
+Branch `design/wip-stands`. Bundles not rebuilt or committed. Not tried in the game.
+
+### Corpus rerun (commits 4568214, 9707d08, the data in 3d1c7d0 or later)
+
+- `lab/mine_stands.js`: a flat stand on a chest or barrel is read at the lid (the top of its box; `SH.topAt` gave the
+  collider top, piece_chest_wood 0.21 m against a lid at 0.79). New counts: `byBuild` (for each place, builds with a
+  stand there, stands per build as percentiles, the top build's and top five builds' share, builds holding half);
+  `floor` (what is round a floor stand, floor-stand group sizes); `stacks` (stands on stands: the lower stand, what holds
+  the stack up, rise and level offset, stack height, kinds, piles and what each pile stands on); `chestOn`; `counter`
+  (which piece, group sizes); `houses` now computed in the miner (it was made by hand before; the rerun gives the same
+  211 builds and the same quartiles). `--counts <file>` writes the counts-only file committed as
+  `data/stands-corpus.json` (no build names, no positions). Files named `hs_*` or with "biomeblueprint" or "overdrive"
+  are skipped (none are in the corpus folder now).
+- Run on the device (`/tmp/vhs`, 37 s): `node --max-old-space-size=2800 lab/mine_stands.js $C /tmp/stands-full.json
+  $C/index.json --counts /tmp/stands-counts.json`. The file came across as gzip and base64 (md5
+  6b8b65ca87ce737acafe9b97f7fa90f8).
+- Changes in the counts: flat on a chest 58 to 99 (89 chests, 8 barrels, 2 by a bed); none 606 to 594; table 1,629 to
+  1,611. Floor stands: 2,078 in 140 builds, stands per build quartiles 3, 7, 16, the top build 6.7 % and the top five
+  27 %, half in 15 builds; 1,893 within 0.5 m of a wall, 130 in the open; groups 348 single, 102 pairs, 80 of six or
+  more. So floor stands are spread over many builds and stand against walls. Stands on stands: 745 in 71 builds (house
+  share 21 %), half in 6 builds; lower stand a flat one holding something 500, empty flat 179, empty wall stand 55;
+  rise percentiles -5, 0, 4 cm, level offset 4, 11, 16 cm; 376 heaps (274 of two, 41 of three, 18 of four, 28 of five,
+  15 of six or more); heaps on the floor 168, tables 39, beams 26, walls 25, posts 24, roofs 22, nothing found 26.
+  Counters: 360 stands on stone_wall_2x1 79, grausten 1x2 58, black marble 33, wood_wall_quarter 30 and others; 151 of
+  200 groups single. Side tables: no table under 1 m2 in the corpus; 2 flat stands on a chest or barrel by a bed.
+- `lab/test_stands.js` reads every target from `data/stands-corpus.json` (anchors, houses, inst, sinks), so a rerun moves
+  them (D-136). New gate lines: flat stands on another stand (share of flat stands, band round 6.8 %) and houses with
+  one (band round 21 %).
+
+### What changed in the stand pass (b685eca and after; lib/stands.js, lib/persona.js)
+
+- Counters: `countersIn` finds wall pieces on the room's floor whose top is 0.4 to 1.5 m over it (corpus counter
+  heights median 0.51 m, 90th percentile 1.0), at least 0.5 m long, nothing on them; sets `KS-co-one`, `-two`,
+  `-three`, `-row` (class `counter`, `CLASS_W` 1.0, `FAV_P` 0.55). The pieces found are the half walls under openings,
+  stone_wall_2x1 in taverns, and the half and quarter walls of library sets (BK-kitchen, BK-serving, BK-couch, KC
+  sets). The decorator places no bar counters of its own; with these anchors the counter share reaches the band.
+- Heaps (`pileStands`, `HEAP`): about 30 % of households (times 0.6 + 0.8 * clutter) heap things; in those, 15 to 50 %
+  of this pass's flat stands get one to five more stands 4 to 13 cm off, at the base's height (0 to +2 cm), the same
+  kind, on the same support, clear of everything but the heap and its support; each stand of a heap carries `fclip`
+  0.045 (a D-098 clip, written in `#VillheimClips`). `KS-f-heap`: a heap on the floor against a wall (homes, kitchens,
+  storage, taverns), heaping households only. Both stands of a heap read as "on another stand" to the miner, as the
+  corpus's do.
+- Side tables and nightstands: the corpus has no table under 1 m2, and 2 of its 99 chest stands are by a bed, so
+  bedside barrels stay under the chest class at the chest rate. No anchor of their own was added.
+- Chests: `CLASS_W.chest` 0.3 to 0.06, `FAV_P.chest` 0.25 to 0.12 (the chest share was 9.5 % read at the lid).
+- Wall stands: the wall over a table, over a bed and by a door are classes of their own (`wtable` 0.08, `wbed` 0.05,
+  `wdoor` 0.2); `CTX_W` workbench 0.18, bench 0.12, door 0.45, table 0.05, bed 0.03; `CLASS_W.wall` 1.4. A wall set over
+  a table or a bed waits while the house's wall stands there exceed `WALL_SHARE * CAPPED` (table 1.3, bed 1.0) plus a
+  household draw of up to 0.4 (`wallN`, kept at pick time). The removal pass keeps decorator and library wall stands
+  on plain wall. Capping over workbenches, benches, chests and doors too was tried: it took 40 to 60 wall stands away
+  with nothing to replace them (most wall spots read as over furniture) and the flat share went to 84 to 85 %.
+- Budget `show * (8 + area / 2.8)` (was 6 + area / 3.5); this did not move the top quartile, which is limited by places.
+- `lib/persona.js`: `AT_KINDS` counter and stand from the corpus, chest updated; `REPEAT_K` shield 0.85, weapon 0.65,
+  trophy 0.6; `repeatOf` base 0.75, floor 0.35.
+
+### Measures, `node lab/test_stands.js 3` (d3, 54 houses)
+
+| flat % | table | shelf | mantel | counter | bench | sill | rafter | chest | n |
+|---|---|---|---|---|---|---|---|---|---|
+| start (3158e18, new corpus file) | 26.0 | 39.4 | 19.3 | 2.5 | 3.3 | 0.0 | 0.0 | 9.5 | 830 |
+| now | 27.8 | 39.1 | 19.4 | 8.1 | 4.4 | 0.0 | 0.0 | 1.1 | 751 |
+| corpus | 23.8 | 44.0 | 15.0 | 6.6 | 3.7 | 2.8 | 2.8 | 1.5 | |
+
+| wall % | wall | station | hearth | rafter | chest | table | bed | door | n |
+|---|---|---|---|---|---|---|---|---|---|
+| start | 24.4 | 25.6 | 12.2 | 0.0 | 10.2 | 14.2 | 11.4 | 2.0 | 254 |
+| now | 27.3 | 27.8 | 13.4 | 0.0 | 10.6 | 7.9 | 6.9 | 6.0 | 216 |
+| corpus | 33.0 | 16.9 | 13.1 | 12.5 | 7.8 | 7.7 | 4.9 | 4.1 | |
+
+Per house at d3: flat share 77 to 79 % (corpus 70); stands 6-14-27 to 5-12-23 (corpus 5-19-49); distinct items 4-8-13
+to 3-7-12 (2-7-20); flat stands on another stand 0 to 8 % (6.8); houses with a heap 2 to 15 % (21); sunk 12 to 17 %
+(32).
+
+Gate (`--gate`, exit 1): outside the band at d3: wall station 27.8 % (band 10.1 to 27.0) and stands q3 23 (24.5 to
+73.5). The five misses of part 2 are inside (counter 8.1, wall table 7.9, bed 6.9, door 6.0, distinct q1 3). Station:
+the station cap above cost more than it gained. Stands q3: tavern rooms run out of places that take a set; the budget
+is seldom the limit. With 54 houses a share moves a point or two between seeds.
+
+### Checks run (from tools/blueprint-lab)
+
+- `node lab/test_structure.js`: all structure rules hold on 36 designs.
+- `node lab/make_testpool.js /tmp/h2-pool` (Norse Meadows): pool audit pass (81 designs); prefabsPerD3 11.5, setShare
+  0.496, corpusSetsPerD3 1.44; watched outside 11, intoWallSoft 192 (part 2: pass, 11.4, 0.502, 1.44, 11, 192).
+- `node lab/check_interiors.js lib /tmp/h2-ci.json 1`: every `lib/checks.js` check 0; floating 14 designs (52
+  problems), door 1, stairs 1, overlap 0; d3 49.3 pieces of furniture (part 2: the same counts, d3 49.1).
+- Not run: check_set, stages, gen-test, dotnet build, bundles (integration step).
+
+### Changes in other tracks' files
+
+None. `docs/INTERIOR_DESIGN.md` got an "Items on stands" section at its end with the corpus counts and the credits.
+
+### Open
+
+- Floor stands (19 % of the corpus's flat stands, 140 builds, against walls) are made only as heaps; single floor
+  stands by a wall are not made.
+- Sill and rafter places still need window pieces and tie beams (as in part 2).
+- Heaps on tables read as "table" when the base is sunk deeper than a stand's height (3.8 cm) into the top.
+
+### Next task
+
+1. Station share: lower the library's and decorator's wall stands over workbenches in the removal pass (step 4's
+   allowance) and see whether the flat share holds.
+2. Single floor stands against a wall (mugs, a jug, a crate's worth of food) at the corpus rate.
+3. The top quartile of stands per house: more places in taverns and longhouses (counters along a bar, heaps).
+
+### Proposed Decisions rows
+
+- The wall cap at pick time (wall stands over a table or a bed held to 1.3 and 1.0 times the corpus share of the
+  house's wall stands): keep, or let them follow the room. Recommended keep. In use: keep.

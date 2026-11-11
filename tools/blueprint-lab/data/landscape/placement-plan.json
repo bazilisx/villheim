@@ -1,0 +1,97 @@
+{
+ "about": "Proposed numbers for a greenery pass in the lab (D-143), by place. Spacing, distances, group sizes and shares come from corpus-greenery.json (the corpus, D-136); 'source' names the table. Where the corpus has no numbers (roads, junctions, stages) the value is a proposal, marked 'proposal', to be tuned against renders and Tyler's review. Nothing here is built. Prefab lists per biome come from vanilla-greenery.json and avoid food-bearing plants on the village side until the mod skips landscaping (see docs/handoffs/2026-11-10-design/landscaping.md, 'For the mod session').",
+ "version": "2026-11-11",
+ "tag": {
+  "piece_field": "landscape: true on every greenery piece the pass places (and on yards.js plants), kept with the piece through the blueprint",
+  "blueprint_section": "#VillheimLandscape: indices of landscape pieces in the file's #Pieces list, written beside #VillheimClips",
+  "mod_key": "villheim_landscape (ZDO int 1), set by DesignSpawner on spawn; gatherers, foragers and clearing skip it"
+ },
+ "biome_prefabs": {
+  "about": "Low-risk prefabs first (no Pickable, no TreeBase). Trees are TreeBase and need the mod's skip before they go in a village; berry bushes, crops and herbs are Pickable food or herbs and need it too.",
+  "Meadows": {"vine": ["vines"], "bush": ["Bush01", "shrub_2"], "flower": ["Pickable_Dandelion"], "tree": ["Beech_small1", "Beech_small2", "Oak1 (s3, open ground only)"], "food_after_mod_skip": ["RaspberryBush", "Pickable_Mushroom"]},
+  "Black Forest": {"vine": ["vines"], "bush": ["Bush02_en", "Bush01"], "flower": ["Pickable_Thistle"], "tree": ["FirTree_small", "Beech_small1"], "food_after_mod_skip": ["BlueberryBush", "Pickable_Mushroom_yellow", "Pickable_Carrot"]},
+  "Swamp": {"vine": ["vines"], "bush": ["Bush02_en"], "root": ["root07", "root11", "root12"], "tree": ["SwampTree2 (scaled 0.5 to 0.8)"], "food_after_mod_skip": ["Pickable_Turnip"]},
+  "Mountain": {"vine": [], "bush": ["Bush01_heath", "shrub_2_heath"], "tree": ["FirTree_small", "FirTree_small_dead"], "food_after_mod_skip": ["Pickable_Onion"]},
+  "Plains": {"vine": ["vines"], "bush": ["Bush01_heath", "shrub_2_heath"], "tree": ["Birch1", "Birch1_aut (scaled 0.5 to 0.8)"], "food_after_mod_skip": ["CloudberryBush", "Pickable_Barley", "Pickable_Flax"]},
+  "Mistlands": {"vine": ["vines"], "bush": ["Bush02_en"], "flower": ["GlowingMushroom"], "tree": ["YggaShoot_small1"], "root": ["HugeRoot1 (scaled down, grounds only)"]},
+  "Ashlands": {"vine": ["VineGreen", "vines"], "bush": ["AshlandsBush1", "AshlandsBush2"], "flower": ["FernAshlands"], "food_after_mod_skip": ["VineAsh (Ashvine: Vineberry clusters)", "Pickable_Fiddlehead"]}
+ },
+ "places": {
+  "on_house_vines": {
+   "share_of_houses": {"value": 0.27, "source": "house_builds.outdoor_per_build.vine.share_with_any"},
+   "pieces_per_house_when_any": {"median": 23, "p75": 64, "source": "house_builds.outdoor_per_build.vine"},
+   "patches": "one patch per wall face that gets vines; 0.05 vines per wall piece at the median, 0.15 at p75 (vines.on_wall_per_wall_piece), so a house carries one or two patches",
+   "where": "an outside corner first (38 % of vines are at a corner), then along a face in a line (275 line groups)",
+   "out_from_wall_m": [0.05, 0.4],
+   "spacing_m": {"p25": 0.11, "median": 0.28, "p75": 0.61, "source": "vines.spacing_on_wall_m"},
+   "patch_size": {"median": 5, "p90": 28, "source": "vines.groups"},
+   "height_m": {"start": 0, "median_top": 5.6, "p90": 16.7, "source": "vines.height_on_wall_m"},
+   "keep_clear": "door and window openings, chimney and smoke outlets, the 2 m in front of a door",
+   "scale": "1 (2 % scaled in the corpus)"
+  },
+  "foot_of_walls": {
+   "share_of_builds": "flower against a wall 42, bush 54, tree 25 of 609 builds with greenery",
+   "out_from_wall_m": {"flower": [0.3, 1.5], "bush": [0.8, 1.5]},
+   "spacing_m": {"flower": 0.87, "bush": 1.33, "source": "spacing_nearest_same_kind_m"},
+   "group": "singles and pairs; flowers in short runs of 2 to 4",
+   "rule_kept": "yards.js: nothing over 1 m tall within 1.2 m of the walls (eaves and braces)"
+  },
+  "window_boxes_and_sills": {
+   "share_of_builds": "pot raised by a wall 54, flower raised by a wall 24, bush raised by a wall 51",
+   "spacing_m": {"pot": 0.31, "flower": 0.92},
+   "group": "pots in clusters of 2 to 3 of mixed kinds (288 mixed pot groups)",
+   "now_in_lab": "details.js window boxes from d2: board box under ground-floor front windows with Pickable_Dandelion"
+  },
+  "porch_and_eaves": {
+   "share_of_builds": "flower 77, bush 92, pot 63 under eaves or porch",
+   "what": "pots and low flowers beside the door and along porch edges; Norse builds lead this place (flower 18 and bush 16 of 63 Norse builds)"
+  },
+  "yards": {
+   "share_of_builds": "bush 98, flower 78, tree 63 in yards",
+   "distance_from_walls_m": {"bush": [1.39, 3.25, 5.43], "flower": [1.64, 3.69, 5.54], "tree": [1.74, 3.74, 5.47]},
+   "spacing_m": {"bush": 1.14, "flower": 1.01, "tree": 2.79},
+   "groups": "bushes: mostly single (1,899 singles, 422 pairs, 274 clusters of 3 to 6); 38 % of multi-bush groups mix prefabs",
+   "trees": "0 or 1 small tree per yard at s2, up to 2 at s3, 2.8 m apart at least, scaled 0.5 to 1.0 (79 % of corpus trees are scaled, 0.49 to 1.46)",
+   "now_in_lab": "yards.js d3: 2 or 3 bushes 1.4 m in from the fence and 3 m apart; dandelions along the walls"
+  },
+  "gardens_and_beds": {
+   "share_of_builds": "crop in 23 of 609 builds; flower groups of 3 or more with a low border 29, crop 11",
+   "spacing_m": {"crop": [0.73, 0.81, 0.98], "source": "spacing_nearest_same_kind_m.crop"},
+   "rows": "12 of 85 crop groups lie in a line; beds of 3 to 8 plants",
+   "distance_from_walls_m": [1.2, 2.06, 3.4],
+   "where": "the yard side away from the street (Manor Lords backyard), against a sunny wall",
+   "now_in_lab": "yards.js d2 beds: 2 by 1 m beam border, 3 plants 0.55 m apart"
+  },
+  "courtyards": {
+   "share_of_builds": "bush 22, flower 14, tree 13, crop 2",
+   "spacing_m": {"bush": 0.82, "flower": 0.69, "tree": 2.84},
+   "what": "denser than yards: a tree or a bed in the middle, bushes and flowers in the corners and along the walls, the walking lines kept clear"
+  },
+  "road_edges": {
+   "share_of_builds": "bush 25, flower 15, tree 6 at a path edge",
+   "spacing_m": {"bush": 1.72, "flower": 1.35, "tree": 3.9},
+   "out_from_path_edge_m": [0.3, 1.6],
+   "proposal": "verge plants in short runs with gaps (one plant per 3 to 6 m of road at s2, one per 2 to 3 m at s3), both sides uneven, never on the road; heavier where a road meets a wall, fence or rock"
+  },
+  "junctions": {
+   "corpus": "no numbers (9 village builds; few laid roads)",
+   "proposal": "on the outside corner of a junction: one tree (s3) or a bush cluster of 2 to 4 with flowers at its foot (s2), set back 1.5 m from both road edges; the inside of the turn and the 2 m sight line along each road kept clear"
+  },
+  "open_ground": {
+   "share_of_builds": "tree 75, bush 88, flower 79 on grounds over 10 m from walls",
+   "spacing_m": {"tree": 3.65, "bush": 1.97, "flower": 1.01},
+   "what": "single trees and loose bush groups between houses, kept from the clearing or planted back; village builds put most of their trees here (145 weighted pieces)"
+  }
+ },
+ "stages": {
+  "about": "Proposal: the corpus has no stage data. Counts are per house unless noted.",
+  "s1": {"vines": 0, "foot_of_walls": "0 to 2 flowers by the door", "yard": "no yard (yards start at s2, D-060 B)", "village": "trees left standing by the clearing stay; no planting"},
+  "s2": {"vines": "one patch on 1 house in 4 (corpus 0.27), up to the median 23 pieces", "window_boxes": "as details.js (d2)", "yard": "1 to 3 bushes, 0 to 1 tree, beds as yards.js", "road_edges": "sparse verge", "junctions": "bush clusters"},
+  "s3": {"vines": "patches on 2 faces of older houses, up to p75 64 pieces", "yard": "cared-for garden: beds in rows, flowers along the walls, a tree", "courtyards": "full planting", "junctions": "a tree at the main junction", "open_ground": "trees planted back between houses"}
+ },
+ "variance": {
+  "culture": "from corpus by_culture: castle and norse-forest builds put vines on walls most; norse builds put flowers and bushes under eaves and porches and pots indoors; medieval-timber builds put flowers against walls; ashlands builds use pots; yards.js CULTURE_YARD already gives Frankish, Anglo-Saxon and Byzantine a second bed",
+  "village": "proposal: one roll per village for how green it is (vine share 0.15 to 0.4, density 0.6 to 1.4 times)",
+  "household": "persona.hobby.plants raises beds, pots and window flowers; persona.tidy picks cared-for (lines, borders, even spacing) or wild (masses, mixed prefabs, vines high); persona.yard work and plain keep beds out as today"
+ }
+}

@@ -10,6 +10,8 @@
 
 const NODE_D = typeof module !== 'undefined';
 const P = NODE_D ? require('./pieces.js') : window.VHPieces;
+// The pieces module under a name that a function's own P (a persona) cannot shadow.
+const PIECES = P;
 const SHD = NODE_D ? require('./shapes.js') : window.VHShapes;
 const PERS = () => (NODE_D ? require('./persona.js') : window.VHPersona);
 // what a piece shows, as boxes (lib/mesh.js): where a model stands proud of its collider (the 2x2 wood wall's bars)
@@ -1278,7 +1280,7 @@ function placeLights(room, k, n, o = {}) {
   try { return lightsIn(room, k, n, o); } finally { room.R = R0; }
 }
 // Lights are decor: they follow the shared decor rule (lib/pieces.js decorOk; Tyler, 2026-11-10: decor from any biome).
-const lightOk = (name, biome) => !!F[name] && P.decorOk(name, biome);
+const lightOk = (name, biome) => !!F[name] && PIECES.decorOk(name, biome);
 // One stream per room for its lights, from the room's place and the household.
 function lightStream(room) {
   if (!room.lightR) room.lightR = rngFrom((Math.round(room.cx * 73 + room.cz * 131 + room.stand * 977) ^ ((room.persona && room.persona.salt) || 0x5eed)) >>> 0);
@@ -1439,7 +1441,7 @@ function chooseKit(R, biome, culture, kind) {
     return pickW(R, ok2.map(n => [n, (shares.get(n) || 0) + floor]));
   };
   // lights by the shared decor rule (decorOk), the village's own biome's lights twice as likely as others
-  const pickLight = list => { const l2 = list.filter(n => P.decorOk(n, biome) && F[n]); return l2.length ? pickW(R, l2.map(n => [n, ((shares.get(n) || 0) + 0.3) * (ok(n, biome) && bi(F[n].b) <= bi(biome) ? 2 : 1)])) : null; };
+  const pickLight = list => { const l2 = list.filter(n => PIECES.decorOk(n, biome) && F[n]); return l2.length ? pickW(R, l2.map(n => [n, ((shares.get(n) || 0) + 0.3) * (ok(n, biome) && bi(F[n].b) <= bi(biome) ? 2 : 1)])) : null; };
   const taste = CULTURE_TASTE[culture] || {};
   const k = {
     bed: pick(KIT.bed.filter(n => n !== 'piece_bed02' || R() < 0.5), 0.2),

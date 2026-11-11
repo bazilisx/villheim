@@ -59,9 +59,12 @@ https://en.wikipedia.org/wiki/Wikipedia:Signs_of_AI_writing
   between villages, outlaws or thieves; villages never fine, turn away or guard against a player by default. A player who
   harms villagers is warned and banned for some days; one who kills a villager is never welcome there again (D-054).
   Local creatures may wander in and be fought off. Empty villages are settled again.
-- **Biome materials.** A village only builds designs whose materials exist in its biome (Meadows has no core wood).
-  The code also builds such a design once the chests hold the material, since anything brought in counts (D-007): see
-  D-125.
+- **Biome materials (D-125).** The look of a village's buildings follows its biome and the biomes around it: walls,
+  roofs, floors and beams come mostly from those, with no Ashlands grausten in the Meadows (D-065, D-126). Stone waits
+  for advanced buildings and later stages in the Meadows and Black Forest (D-012), with stone hearths allowed from s2
+  (D-131). Anything brought into the village counts toward paying for what it builds, whether it comes from villagers,
+  outposts or players (D-007, D-024). Decor and furniture can come from any biome and are paid with stand-ins from
+  nearby biomes (D-080, D-126).
 - **Gathering order.** Material on the ground first, then half-harvested work (felled logs, cracked rocks), then
   fresh trees and rocks. Loose sticks and stones (one material each) only when there is nothing bigger to work, and
   only close by. Nobody harvests when the village needs nothing.
@@ -77,7 +80,11 @@ https://en.wikipedia.org/wiki/Wikipedia:Signs_of_AI_writing
   by themselves and real feed is never used, though villagers may act out feeding. Animals tamed by players behave as
   in vanilla (D-015).
 - **Stone in early villages.** Meadows and Black Forest villages build in wood at their early stages; stone only for
-  advanced buildings and later stages (D-012).
+  advanced buildings and later stages (D-012). Hearths: wood at s1, stone acceptable at s2 and s3 in the Meadows and
+  every later biome (D-131).
+- **Learn from the corpus.** If the corpus builders do it, it is allowed and the designs mirror their work, clever
+  clips into walls included (D-127, D-098). Lessons and findings come from what the corpus shows; the examples Tyler
+  gives when setting a task do not bias them (D-136).
 - **Materials as for a player.** Building pieces and paths cost materials; anything the village breaks down returns
   its full materials, straight into the chest with nothing dropped; trees, rocks and obstacles yield what they yield a
   player; changing a path returns nothing (D-088, Tyler 2026-11-10). Open questions on costs: D-100.

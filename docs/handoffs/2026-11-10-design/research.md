@@ -6,7 +6,8 @@ in `docs/CULTURE_STYLES.md` "Corpus by culture" (commit 46ecbae) with a spot che
 outside sources for the thin cultures (D-135). Part (b) in part: `docs/INTERIOR_DESIGN.md` "Lived-in rooms: outside
 references (D-025)" (commit c630579): three valheimians builds from their photos, four historical households,
 Skyrim, Witcher 3, WoW housing, Enshrouded and a design talk, with options under the drivers and a table of
-on-purpose tricks with corpus counts (D-127).
+on-purpose tricks with corpus counts (D-127). Second pass (commit f926ee7): Baldur's Gate 3, ESO, Skyrim room sets from UESP,
+14 more valheimians builds, and new corpus counts (`relx` in `summary.json`) set against each observation (D-136).
 
 ## Files
 
@@ -123,19 +124,47 @@ Caveats: the "inside" test, storeys and sill reach are coarse; some builds use m
   prompt unanswered); after that no more pages needing approval were tried.
 - Web search and WebFetch for the D-135 sources; each is listed with its URL in `docs/CULTURE_STYLES.md`.
 
+## Session 2026-11-11, second pass (part b)
+
+- Baldur's Gate 3: no Larian talk or write-up on interior dressing was found (searches listed in
+  `docs/INTERIOR_DESIGN.md` "Baldur's Gate 3"). Nine Larian renders from bg3.wiki's "Larian location images" category
+  (Elfsong Tavern 4, Wyrm's Rock 2, Bonecloak shop, basement lodge, a Lower City lounge) viewed in the cloud browser;
+  bg3.wiki room text for the Last Light Inn, the Hollow and Armbrust's Home through WebFetch. ArtStation project pages
+  sit behind a bot check in the cloud browser and were not read; their WebFetch text names areas and credits only.
+- ESO: two forum threads and two housing guides (WebFetch). Thin: personal items by room and two reuse tricks.
+- Skyrim: UESP Breezehome, Proudspire Manor and the Bannered Mare, read in Tyler's Chrome (Claude in Chrome, one tab,
+  read only), at Tyler's request through the lead.
+- valheimians.com: 14 more builds opened in Tyler's Chrome (image lists from each page's HTML, photos viewed as image
+  files in a grid); 13 with interior photos, 11 with furnished interiors. Table and counts in `docs/INTERIOR_DESIGN.md`
+  "Valheim builds on valheimians.com, second pass". The Valheimberg Sawmill is not in the corpus.
+- D-136: each observation is set against a corpus measure in "Observation against the corpus (D-136)". New measures
+  counted on the device (`mine_extra.js`, `agg_extra.js`, `$HOME/vhresearch`, 38 s for 2,153 builds) and merged into
+  `summary.json` as `relx` per culture group and `relxAll` (definitions in the file's `note`). Over the 1,093
+  furnished buildings: 58 % of chests stand on or under another chest (48 % of buildings); 14 % of beds have a light
+  within 2 m; 14 % of beds sit under a roof piece (norse 21 %); 1 % of beds have a rug laid on them; 42 % of seats
+  stand within 1.1 m of a wall; 42 % of seats, 29 % of tables and 31 % of rugs are turned more than 10 degrees off the
+  wall axes; 3 % of windows have two lights beside them. A first run had beds under a roof at 1 % because roof pieces
+  were filtered by tilt (Valheim roof pieces are sloped meshes with level pivots); the filter was dropped and the run
+  repeated.
+- Measures still needed (no corpus data): beds round a central hearth, runner rugs from a door to a table, rugs and
+  seats per room, signs by storage, storage and trade pieces by storey, small loose pieces on the floor.
+
 ## Changes in other tracks' files
 
 None.
 
 ## What is left
 
-- Part (a): per-room layouts by culture would need the room finder of `lab/learn_interior.py` run per build. The
-  sort script's `franks?` word should get a guard for "Frank Lloyd Wright" when the miner is committed.
-- Part (b): Baldur's Gate 3 and ESO housing (no interior write-up read yet); more valheimians interiors (only three
-  builds viewed; captioned village builds such as the Valheimberg series give who-lives-where); UESP house pages for
-  Skyrim (who owns what in each home); the "not read" D-135 sources in `docs/CULTURE_STYLES.md`.
-- Measures that the references suggest and the corpus data lacks: chair angles off the table axis, beds in lofts,
-  rugs over beds, cloth hangings used as dividers, resource stacks set into wall bays.
-- For the essentials task first: findings 2 to 5 (bed kinds and their rug and chest rates, beds above the main floor,
-  seats mostly away from tables, `itemstandh` as the main table and sill dressing, rug kinds and layering), from
-  `summary.json` `kinds`, `rel`, `onTable`, `onSill`.
+- Part (a): per-room layouts by culture need the room finder of `lab/learn_interior.py` run per build (also needed for
+  rugs, seats and tables per room, and runner rugs between a door and a table). The sort script's `franks?` word needs a
+  guard for "Frank Lloyd Wright" when the miner is committed (the one frankish-norman match is Falling Water).
+- Commit the miner, the sort script and `mine_extra.js` / `agg_extra.js` as `tools/blueprint-lab/lab/mine_cultures.js`
+  through a track that owns lab scripts. Device copies in `$HOME/vhresearch` may be cleared when the device session
+  ends; rerunning takes under a minute each.
+- Part (b): the "not read" D-135 sources in `docs/CULTURE_STYLES.md`; ArtStation pages for BG3 (bot check in the cloud
+  browser; could be read in Tyler's Chrome); more valheimians village builds with captions.
+- For the essentials task first (beds, tables, seats, rugs, sills, pick lists): `summary.json` `kinds`, `rel`, `relx`,
+  `onTable`, `onSill`. Beds: 21 % of norse beds under a roof piece, a light by 14 % of beds, a rug laid on 1 %, a rug
+  beside about 30 %, a chest within 2.6 m 17 to 38 %. Seats: 42 % by a wall, a quarter at a table, 42 % turned. Tables:
+  29 % turned, dressed 23 to 59 %, mostly with horizontal item stands. Rugs: 31 % turned, 18 to 27 % layered. Sills:
+  15 to 31 % dressed, two lights at a window 3 %. Storage: 58 % of chests stacked.

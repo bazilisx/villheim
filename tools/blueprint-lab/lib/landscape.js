@@ -162,7 +162,8 @@ function quant(R, [lo, mid, hi], q = 0.6745, clip = 2.2) {
   const z = Math.max(-clip, Math.min(clip, gauss(R)));
   return z < 0 ? mid * Math.pow(lo / mid, -z / q) : mid * Math.pow(hi / mid, z / q);
 }
-function count(R, med, p75, lift) { return Math.max(1, Math.round(quant(R, [med * med / p75, med, p75], 0.6745, 2) * (lift || 1))); }
+// (never more than twice the p75: the corpus's long tails are whole decorated estates)
+function count(R, med, p75, lift) { return Math.max(1, Math.min(2 * p75, Math.round(quant(R, [med * med / p75, med, p75], 0.6745, 2) * (lift || 1)))); }
 function groupSize(R, kind) {
   const g = GROUPS[kind].n, t = g[0] + g[1] + g[2] + g[3];
   let v = R() * t;
@@ -211,7 +212,13 @@ function survey(b, G0) {
     f.t0 = Math.min(...f.segs.map(s => s.t - s.half)); f.t1 = Math.max(...f.segs.map(s => s.t + s.half));
     f.plane = Math.max(...f.segs.map(s => s.face)); // the outer face, along n
     f.ground = f.segs.filter(s => s.y0 < G0 + 1.2);
-    f.base = (t, d) => [f.ox + f.u[0] * t + f.n[0] * (f.plane - f.off + d), f.oz + f.u[1] * t + f.n[1] * (f.plane - f.off + d)];
+    // the outer face at t (and height y): the pieces there, as a stone course may stand out from the wall under it
+    // (a vine over y0..y1 keeps to the wall face farthest in, clipping into a course that stands out)
+    f.planeAt = (t, y0, y1) => {
+      const at = f.segs.filter(s => Math.abs(t - s.t) <= s.half + 0.02 && (y0 == null || (y1 >= s.y0 - 0.05 && y0 <= s.y1 + 0.05)));
+      return at.length ? (y0 == null ? Math.max(...at.map(s => s.face)) : Math.min(...at.map(s => s.face))) : f.plane;
+    };
+    f.base = (t, d, y0, y1) => { const pl = f.planeAt(t, y0, y1); return [f.ox + f.u[0] * t + f.n[0] * (pl - f.off + d), f.oz + f.u[1] * t + f.n[1] * (pl - f.off + d)]; };
     // is (t, y) on the wall? (a door's or window's piece is an opening)
     f.cover = (t, y) => f.segs.some(s => s.role === 'wall' && Math.abs(t - s.t) <= s.half + 0.02 && y >= s.y0 - 0.02 && y <= s.y1 + 0.02);
     f.top = t => Math.max(-Infinity, ...f.segs.filter(s => s.role === 'wall' && Math.abs(t - s.t) <= s.half).map(s => s.y1));
@@ -303,7 +310,7 @@ function add(b, ctx) {
   const S = survey(b, G0);
   if (!S.faces.length) return null;
   const Ck = checksL();
-  const R = rngL((ctx.seed || 1) * 9341 + 77 + hashL(String(ctx.type)));
+  const R = rngL(hashL(`${ctx.seed || 1}|${ctx.type}|${ctx.biome}|${ctx.cultureKey}|${ctx.stage}|${b.pieces.length}`));
   const H = ctx.persona || {}, hob = (H.hobby && H.hobby.plants) || 0.3, tidy = H.tidy != null ? H.tidy : 0.5;
   const cared = tidy > 0.5;
   // the village's greenness: one roll per village (opts.green, or one from the village's seed, else the design's)
@@ -361,7 +368,7 @@ function add(b, ctx) {
     const r = spread(e) * sc * 0.7, top = e[2][1] * sc;
     const foot = { x0: x - r, x1: x + r, z0: z - r, z1: z + r, y0: G0, y1: G0 + top };
     // a tree's crown stands over the way; a bush's or a flower's whole spread keeps off it
-    const rk = kind === 'tree' ? Math.min(r, 0.6) : r;
+    const rk = kind === 'tree' ? Math.min(r, 0.6) : Math.max(r, 0.25);
     if (inKeep({ ...foot, x0: x - rk, x1: x + rk, z0: z - rk, z1: z + rk })) return false;
     const box = Ck.aabb({ name: e[0], x, y: G0, z, yaw: 0, s: sc !== 1 ? [sc, sc, sc] : undefined });
     if (S.solid.some(o => hit(box, o, 0.08))) return false;
@@ -374,9 +381,13 @@ function add(b, ctx) {
     if (S.paths.some(o => x > o.x0 && x < o.x1 && z > o.z0 && z < o.z1)) return false;
     return true;
   };
+  // one piece per spot as the overlap check counts them (prefab, place to 0.1 m, turn)
+  const keyOf = (n, x, y, z, yaw) => `${n}|${x.toFixed(1)}|${y.toFixed(1)}|${z.toFixed(1)}|${Math.round(normL(yaw)) % 360}`;
+  const keys = new Set(b.pieces.map(p => keyOf(p.name, p.x, p.y, p.z, p.yaw || 0)));
   const put = (e, kind, at, src, x, y, z, yaw, sc, extra) => {
     const p0 = { name: e[0], x, y, z, yaw };
-    if (grows(p0)) return false;
+    if (grows(p0) || keys.has(keyOf(e[0], x, y, z, yaw))) return false;
+    keys.add(keyOf(e[0], x, y, z, yaw));
     const more = { green: { k: kind, at, src, use: useOf(e[0]), own }, ds: DS[kind], ...(extra || {}) };
     if (sc && Math.abs(sc - 1) > 0.01) more.s = [+sc.toFixed(3), +sc.toFixed(3), +sc.toFixed(3)];
     if (kind === 'pot') { more.decor = true; more.trim = true; }
@@ -493,7 +504,7 @@ function add(b, ctx) {
         const [ox, oz] = f.base(t, 0.5);
         const rooted = !S.onFloor(ox, oz) && (y <= G0 + 0.35 || patch.some(([pt, py]) => Math.abs(pt - t) < w * 0.5 && py < y && y - py <= h * 0.9));
         const ok = rooted && vineOk(f, t, y, w, h, cap, doorRects, G0);
-        const [x, z] = f.base(t, 0.08 + R() * 0.12);
+        const [x, z] = f.base(t, 0.08 + R() * 0.12, y, y + h);
         if (ok && !placed.some(q => q.green.k === 'vine' && Math.hypot(q.x - x, q.z - z) < 0.08 && Math.abs(q.y - y) < 0.08)) {
           if (put(e, 'vine', 'wall', pick.src, x, y, z, yaw, 1)) { k++; left--; got.vine = (got.vine || 0) + 1; patch.push([t, y]); }
           else miss++;
@@ -543,12 +554,12 @@ function mark(b, ctx) {
   for (const p of b.pieces) {
     if (p.green) continue;
     const k = classOf(p.name);
-    if (!k) continue;
-    if (k === 'crop' && !p.yard && p.y < 0.3) continue;
+    // pots indoors are furnishing; a farm's field crops are the farmer's
+    if (!k || k === 'pot' || (k === 'crop' && !p.yard)) continue;
     const near = NEAR[ctx.biome] || [ctx.biome];
     const e = (PLANTS[k] || []).find(x => x[0] === p.name);
-    const src = e && e[1] ? (e[1].some(bm => near.includes(bm)) ? 'gathered' : 'standin') : 'gathered';
-    p.green = { k, at: p.yard ? 'yard' : p.y > 0.3 ? 'sill' : 'foot', src, use: useOf(p.name), own };
+    const src = e && e[1] && !e[1].some(bm => near.includes(bm)) ? 'standin' : 'gathered';
+    p.green = { k, at: p.yard ? 'yard' : 'sill', src, use: useOf(p.name), own };
   }
 }
 
@@ -562,8 +573,27 @@ function plotR(pieces) {
 }
 function quatL(yaw) { const a = yaw * Math.PI / 360; return [0, +Math.sin(a).toFixed(6), 0, +Math.cos(a).toFixed(6)]; }
 
+// The pieces of one road kit set (data/landscape/road-kit.json) for a village biome, at a stage: each slot's class
+// gets a plant gathered near the biome or a stand-in (D-145), a corpus scale, and the marks (owner shared: road
+// greenery belongs to no building). y is the ground (0).
+function kitPieces(set, biome, stage = 's3', seed = 1) {
+  const R = rngL(hashL(`${set.id}|${biome}|${seed}`));
+  const lvl = st => +String(st || 's1').replace(/\D/g, '');
+  const out = [];
+  for (const sl of set.slots) {
+    if (lvl(sl.stage) > lvl(stage)) continue;
+    const c = pickW(R, choices(sl.k, biome)), s = SCALE[sl.k];
+    const sc = s && R() < s[0] ? Math.max(0.4, Math.min(1.7, quant(R, [s[1], Math.sqrt(s[1] * s[2]), s[2]], 1.2816, 1.6))) : 1;
+    const yaw = Math.floor(R() * 16) * 22.5;
+    const p = { name: c.e[0], x: sl.x, y: 0, z: sl.z, yaw, q: quatL(yaw), green: { k: sl.k, at: set.place, src: c.src, use: useOf(c.e[0]), own: 'shared' } };
+    if (sc !== 1) p.s = [+sc.toFixed(3), +sc.toFixed(3), +sc.toFixed(3)];
+    out.push(p);
+  }
+  return out;
+}
+
 /** Does this request get landscaping? req.landscape false turns it off; bare builds (skipDecor) get none. */
 function wants(req) { return !(req && (req.landscape === false || req.skipDecor)); }
 
-const apiL = { add, wants, mark, survey, classOf, useOf, ownerOf, choices, HOUSE, PLACES, SPACING, FROM_WALL, GROUPS, SCALE, VINE_HEIGHT, VINE_CORNER, LEAN, STAGE_W, VILLAGE_GREEN, PLANTS, NEAR, PLOT_GROW };
+const apiL = { add, wants, mark, kitPieces, survey, classOf, useOf, ownerOf, choices, HOUSE, PLACES, SPACING, FROM_WALL, GROUPS, SCALE, VINE_HEIGHT, VINE_CORNER, LEAN, STAGE_W, VILLAGE_GREEN, PLANTS, NEAR, PLOT_GROW };
 if (NODE_L) module.exports = apiL; else window.VHLandscape = apiL;

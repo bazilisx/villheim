@@ -29,6 +29,8 @@ if (args.includes('--kit')) {
     const pieces = L.kitPieces(set, biome);
     // the road itself as a gray strip of floor pieces, drawn for reference only
     const road = (set.road || []).map(([x, z, yaw]) => ({ name: 'stone_floor_2x2', x, y: -0.45, z, yaw, q: [0, Math.sin(yaw * Math.PI / 360), 0, Math.cos(yaw * Math.PI / 360)] }));
+    // a well or a notice board stands at the anchor: a post marks it (reference only)
+    if (set.anchor) road.push({ name: 'wood_pole2', x: set.anchor.x, y: 1, z: set.anchor.z, yaw: 0, q: [0, 0, 0, 1] });
     const all = [...road, ...pieces];
     sheet([[view(all, 35, 45, `${set.id} ${biome}`), view(all, 0, 90, 'top')]], `${set.id} (${set.label}), ${biome}: ${pieces.length} pieces`, path.join(out, `kit-${set.id}-${biome.replace(' ', '')}.png`));
     console.log('kit', set.id, biome, pieces.length);

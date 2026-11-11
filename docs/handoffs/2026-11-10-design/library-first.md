@@ -99,6 +99,57 @@ blackwood, size to seats, clutter to repeats) so households part again; find the
 (likely a set's ledge on a stone wall now that more sets go in); look at the new overlaps, stair zones and bare floors
 in `check_interiors` rows; then gen-test, dotnet build, merge.
 
+### Session of 2026-11-11 (stopped early for usage; branch tip 9a5e052)
+Done:
+- e9892e4 merge of main (0604748, creative sets from the full corpus). Conflicts in `kitbash.js`: the fitter and the
+  hopeless test keep `can` (pieces.js decorOk); main's creative-set filter by `a.from` is kept, read against
+  `PB.buildReach(ctx.biome)` so it is the same rule as decorOk. Bundles taken from main.
+- 9a5e052 (WIP):
+  - `generate.js` `settle` took out every decor piece past the village's biome after the decorator had placed it
+    (`ord.indexOf(P.needs(name)) <= limit`). On the branch the decorator draws decor from any biome, so a Meadows home
+    lost its Swamp chest, a Dvergr table and the chairs that went with it (home 303 s2d2: no table, chest or chair at
+    all). It now reads `P.decorOk`. `bedIfNone` counts any bed (decorOk). `decorate.js` `tplSwap` reads decorOk.
+  - `decorate.js` household taste: `tasteD(n, P)` weighs the kit (comfort to pelts and furs over jute and straw;
+    wealth to blackmarble, blackwood, oak, Dvergr table, chair02 and chair03 over plain wood; size to benches over
+    chairs and stools); `chooseKit` and `varyKit` take the household; `varyKit` draws from a stream salted with the
+    household's traits; a tidy household keeps the building's matched pick more often (`keep` 0.15 + 0.4 tidy) and
+    what the house shows already weighs less the tidier it is; `fill` repeats an extra more readily the more cluttered
+    the household (0.3 + 0.45 clutter in place of 0.5). Weights only.
+  - `decorate.js` `outside`: heaps go clear of decor already set out (a Meadows smithy's coal pile went into the
+    woodshed's wood stack once coal piles were allowed in the Meadows).
+- Changes in other tracks' files: `generate.js` `settle` first line and `bedIfNone` bed test (biome rule only).
+
+Measures (before is the merged branch e9892e4, after is 9a5e052):
+- test_variance means: home-a s2d2 0.61 to 0.51, s3d3 0.41 to 0.43; home-b s2d2 0.60 to 0.71, s3d3 0.59 to 0.52;
+  home-c s2d2 0.64 to 0.58, s3d3 0.61 to 0.47; hall 0.44 to 0.47 and 0.50 to 0.42. home-b s2d2 fails.
+- check_interiors, 3 seeds, 702 designs, main 0604748 against the branch with the settle fix (before the outside fix):
+  bareFloors 6 against 3; overlap 5 against 7; stairs 0 against 1; door 3 against 2; floating 114 against 107;
+  check:overlap 0 against 3; check:stability 0 against 1. With one seed (234 designs): overlap 1, stairs 1, door 2,
+  bareFloors 0.
+
+Half done:
+- home-b s2d2 (seed 202): the kit bed is `ashwood_bed` (1.6 m wide) for every household and the layout is far-sleep
+  (lib/layout.js) with three beds side by side; `placeTable1` finds no spot for any table (rejections: nearWall 46,
+  structure 68, fire 41, bed-table meter 37), so all six households show beds, chests and torches only. The fix is in
+  the table fit or the bed row (decorate.js `furnishPlan` home branch, `placeBeds`, `placeTable1`), never a cap.
+- check_interiors rows new on the branch (all appear because decor of other biomes now stays): smithy Meadows 277 and
+  375 wood_stack / coal_pile (fixed by the outside change, not re-run); sawmill Black Forest 438 wood_stack (the
+  woodshed's, `generate.js` `woodshed`, outside the gable at x -6) against a fill barrel at -4.5 indoors (decorator
+  boxes 2.46 x 2.31 for wood_stack; check if the wall stands between them, likely a measurement artifact of the
+  audit's boxes); tavern and farm Black Forest 330 and 600 Fiddlehead / Fiddlehead (two sill or yard plants on one
+  spot, details.js `SILL_PLANTS` or yards.js `FLOWERS`); check:overlap tavern Meadows 223 and temple Meadows 665 (one
+  doubled piece), barn Swamp 454 (piece_chest_wood in wood_wall_half, a BK-cabinet clip not marked); check:stability
+  smithy Black Forest 384 (a wood_pole would fall); stairs tower Black Forest 708 (piece_bench01 at a stair).
+
+Next steps, in order:
+1. home-b s2d2: make the table fit beside the bed row (or the bed row leave the table's place), then test_variance.
+2. The rows above, one by one (scripts used: /tmp/h1-var/aud.js prints one design's audit and checks).
+3. The Plains sample pool's itemstandh 9 cm into stone_wall_2x1 (middle-eastern woodworker s2, s3): not started.
+4. D-132 in lib/audit.js and the pool gate: nestBroken and lineage reported only; a gate that the plan's shape family
+   stays between stages. Not started.
+5. Quick checks (test_structure, Norse Meadows pool, Plains sample pool, test_variance, check_interiors one seed),
+   then the full run, gen-test, dotnet build, merge. Then the essentials task below.
+
 ## Open problems
 - The 16 most used prefabs still make 77 to 80 % of decor: item stands (food and drink are put on flat stands), wall
   torches, barrels, chests, candles. The visible essentials (beds, tables, seats, rugs, fires) are still the

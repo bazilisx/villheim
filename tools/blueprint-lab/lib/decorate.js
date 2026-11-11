@@ -105,7 +105,7 @@ const F = {
   piece_groundtorch_green: { s: [0.4, 1.6, 0.4], at: 'floor', b: 'Swamp', cat: 'light', base: 0.75 },
   piece_groundtorch_mist: { s: [0.4, 1.6, 0.4], at: 'floor', b: 'Mistlands', cat: 'light', base: 0.75 },
   piece_walltorch: { s: [0.31, 0.95, 0.45], at: 'mount', b: 'Black Forest', cat: 'light', wall: 0.28, y: 1.55, rel: 270 },
-  piece_dvergr_lantern: { s: [0.78, 1.21, 1.11], c: [-0.55, 0.0], at: 'mount', b: 'Mistlands', cat: 'light', wall: -0.1, under: 0.35, rel: 90 },
+  piece_dvergr_lantern: { s: [0.78, 1.21, 1.11], c: [-0.55, 0.0], at: 'mount', b: 'Mistlands', cat: 'light', wall: 0.42, under: 0.35, rel: 90 },
   piece_brazierceiling01: { s: [0.97, 1.6, 0.91], at: 'hang', b: 'Swamp', cat: 'light', under: 1.6 },
   Candle_resin: { s: [0.25, 0.32, 0.25], c: [0.06, 0.01], at: 'top', b: 'Mountain', cat: 'light' },
   rug_deer: { s: [3.11, 0.05, 3.11], at: 'rug', b: 'Meadows', cat: 'rug' },

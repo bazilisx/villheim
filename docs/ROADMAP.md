@@ -316,6 +316,9 @@ well (Tyler, 2026-11-08). The Features tab of the review sheet (`docs/features/b
   1. [x] Pool audit as a gate for `make_testpool.js` and `vh testpool make`; every round 6 screenshot defect is a
      measure (558604b).
   2. [x] One table of piece sizes from the game's models, `lab/test_sizes.js` (4496d51).
+  2h. [ ] Paused 2026-11-10, resume from docs/handoffs/2026-11-10-design/README.md: decor any biome and no caps (D-065,
+     D-126; design/wip-decor-limits), item stands (design/wip-stands), hearths and lighting (design/wip-hearths), and
+     D-132 (stages and decor phases need not carry everything over; nesting and shell kept become reported measures).
   2b. [ ] **Next, asked for by Tyler (2026-11-10):** one more round of tightening the piece models: rerun
      `lab/extract_models.py` on Tyler's PC (game files under Z:\SteamLibrary\steamapps\common\Valheim, UnityPy) with
      a finer proxy (more parts than the 40 or so now), `lab/build_models.js`, then every check; and in `lib/mesh.js`
@@ -324,8 +327,9 @@ well (Tyler, 2026-11-08). The Features tab of the review sheet (`docs/features/b
   2d. [x] Creative interior sets (D-065, D-098, design helper 2026-11-10): 92 combined and clipped sets, KC-001 on,
      each with role, household traits, rooms, decor stages, biome, footprint and height; the interior library holds
      193 of the 220 decor prefabs the corpus uses (was 109). `docs/INTERIOR_DESIGN.md`, "Creative sets".
-  2e. [ ] Run `lab/mine_creative.js` on the full corpus (Tyler's Downloads folder, not connected this time) and add the
-     objects that repeat or come from liked builds; measure `piece_drawer` and the other 12 decor prefabs with no model.
+  2e. [x] Run `lab/mine_creative.js` on the full corpus and add the objects that repeat or come from liked builds
+     (2026-11-10: 56 sets KC-093 to KC-148 from 1,536 builds, library at 201 prefabs); 8 of the 13 prefabs with no
+     model measured, `piece_drawer` and two others are mod pieces.
   2c. [x] Intentional clips (D-098): a set's own pieces go into what shows of the walls and into each other as deep as
      their source builds; marked in a `#VillheimClips` section that `lib/audit.js` honors (e44db1e). Not tried in the
      game.

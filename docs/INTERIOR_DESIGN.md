@@ -464,3 +464,152 @@ node lab/rooms_sheet.js <corpus dir> rows.json [batch]                          
 - With the fill a large building takes 6 to 7 s at best of 8 in the game's engine (the generator decorates its four
   best bare seeds).
 - Plants and food on tables have no vanilla buildable piece; empty horizontal item stands stand in for dishes.
+
+## Lived-in rooms: outside references (D-025)
+
+Study notes for how rooms look lived in, gathered 2026-11-11. D-025 (Tyler): "Yes, required." Study only: nothing
+here is shipped, no image or design is copied, and quotes stay short. D-136 (Tyler): targets come only from what is
+observed and learned, so each note says what the source shows and where it differs from the corpus counts.
+
+Access: valheimians.com pages were read in a cloud browser (read only, no sign-in); WebFetch was blocked for its build
+pages (the permission prompt went unanswered). Tyler's Chrome was not used. Not reached in the time set: Baldur's
+Gate 3 (the one article found, 80.lv "A closer look at modular assets created for Baldur's Gate 3", has nothing on
+interiors), The Elder Scrolls Online housing (pages found, not read), and UESP's Skyrim house pages (permission prompt
+unanswered).
+
+### Valheim builds on valheimians.com
+
+Three builds, picked as the newest village build with captioned interior photos and the two most downloaded norse
+and norse-forest builds in the corpus.
+
+- **Valheimberg - Ubbe's butchery** (The_Compulsive_Builder),
+  https://www.valheimians.com/build/valheimberg-ubbe-s-butchery/. A family of four (by the photo captions: parents, a
+  daughter and a son) lives above a shop. Shop: counter, a waiting area for customers, a
+  workers' area behind the counter with the stair up. House, in the roof space: kitchen and dining in one room, two
+  bedrooms. Seen in the photos:
+  - Kitchen: a cauldron on a counter against the wall; drying herbs hung from a rack under the rafters; a small table
+    with four chairs, each set at a different angle; food and drink on the table.
+  - Parents: a two-person bed with its head against the gable wall under a window; fur rugs laid over the bed as
+    covers and a wolf rug under and round it; a different nightstand on each side (a drawer on one, a stool on the
+    other), a candle on each, small things on the drawer.
+  - Children: one bed on a loft reached by a ladder, one bed below with a chest at its foot, a desk with a lantern
+    and small things on it, a small rug; a red cloth hanging divides their corner from the dining room.
+  - The description says the meat stores look cold because Frostner and wisp torches are hidden in them for the cold
+    effect: a builder using a piece for its effect alone.
+- **NPC House 3** (AstridSinjesdottir), https://www.valheimians.com/build/npc-house-3/. The most downloaded norse-sorted
+  build in the corpus (916 downloads on the page). Made for an RP server's NPC village, "can be used as very small
+  inn"; built with the OdinArchitect mod. The interior photos show bare rooms, stairs and one candle by a window.
+- **Cozy Blacksmith Cabin** (Olivanderr), https://www.valheimians.com/build/cozy-blacksmith-cabin/. 3,500+ pieces;
+  mods listed include Clutter, BetterCreative and Moregates, so some pieces are not vanilla. Seen in the photos:
+  - Ground floor: firewood stacked floor to ceiling in a wall bay beside the fireplace; herbs hung from the ceiling;
+    a wall shelf of jars and books beside a window; a lone stool in front of the fire; a ring of candles as a ceiling
+    light; one carpet covering the floor wall to wall; a crate by the door.
+  - Upper floor under the roof: a round table with a lantern and bowls on it, one chair and a bench built from
+    building pieces; an armor stand with a full set of gear in an alcove; weapons on wall stands; jars and sacks on the
+    floor along the wall; a pair of wall torches on either side of a window and a hanging lantern; fur rugs laid on the
+    carpet.
+
+What the three show together: households are told by who sleeps where (couple, children) and by things kept by use
+(food by the cooking, gear by the armor stand, fuel by the fire). Dressing is dense in a few spots and the floor between
+them is clear. These are three builds; the corpus counts (`docs/CULTURE_STYLES.md` "Corpus by culture" and the table
+below) are the measure.
+
+### Historical households (zones by who lives there)
+
+- **Svan house** (Stefan Applis, "Svaneti: traditional customs and habits, the Svan house and the role of the man",
+  https://stefan-applis-geographien.com/2020/08/02/svaneti-traditional-customs-habits-the-svan-house-and-the-role-of-the-man/):
+  one ground-floor room shared by people and animals; a hearth in the middle that always burns and a second one for
+  baking; the door near a corner; animal stalls along the door wall and the next; the family on the fourth side, split
+  into two sides with their own storage (household things on one, wine vessels, weapons and tools on the other); the
+  head's seat and a long bench on one side; the couple's bed behind a door off the room. The writer calls the order
+  "almost never violated."
+- **Yurt** (University of Washington, Silk Road Seattle, "Dwellings",
+  https://depts.washington.edu/silkroad/culture/dwellings/dwellings.html): fire in the middle; the place of honor
+  opposite the door for elders and guests; gear on one side of the door, kitchen on the other; things hung on pegs round
+  the wall; bedding piled in one quarter by day, the size of the pile showing wealth.
+- **Northern Slavic houses** (medievalheritage.eu, "Early medieval dwelling houses of the northern Slavic region",
+  https://medievalheritage.eu/en/2020/12/25/early-medieval-dwelling-houses-of-the-northern-slavic-region/): one room;
+  the stove in a corner; bedding in opposite corners; stools and wall pegs and no tables; work racks under the porch.
+- **Anglo-Saxon homes** (Assassin's Creed Valhalla entry, https://assassinscreedwiki.accesstheanimus.com/wiki/Learnings:_Anglo-Saxon_Homes):
+  ordinary homes are one room for cooking, eating, sleeping and company; richer families sleep in a separate building.
+
+Common to all four: the room is laid out round the fire and the door, each side of the room belongs to someone or to a
+use, and storage stands with the things of whoever owns that side.
+
+### Games and design talks
+
+- **Skyrim** (Joel Burgess, GDC 2013, summarized in Game Developer, "Skyrim's modular approach to level design",
+  https://gamedeveloper.com/design/skyrim-s-modular-approach-to-level-design): players notice repeated small details
+  sooner than repeated architecture; Oblivion's copied, fully furnished rooms read as cookie cutter, and the team moved
+  to finer pieces from Fallout 3 on; rare unique pieces give a space its identity; numbered variants fill one role.
+- **The Witcher 3** (80.lv, "World building of Witcher 3", https://80.lv/articles/world-building-of-witcher-3/; Game
+  Banshee, "The Witcher 3: Wild Hunt Environment Design Interview", https://gamebanshee.com/kwaax): meshes are placed
+  off any grid so places look built by people; villages are sited by how the people there feed themselves; city
+  districts differ by wealth (poor back alleys, cleaner streets near the center); decals and planks add grime.
+- **Environmental storytelling** (Harvey Smith and Matthias Worch, GDC 2010 "What happened here?", summarized by
+  Nieman Storyboard, https://niemanstoryboard.org/2011/01/14/harvey-smith-on-environmental-storytelling-and-embedding-narrative/):
+  players infer what happened from props and their arrangement; the residue of an activity tells it; each clue means
+  something alone and adds to a whole; players may miss clues.
+- **World of Warcraft housing** (Blizzard, "Azeroth Beautiful: a look at housing interior design",
+  https://news.blizzard.com/en-us/article/24186690/azeroth-beautiful-a-look-at-housing-interior-design): small items set
+  on a larger piece are parented to it and move with it (books on a shelf); rugs align to floors and pictures to walls;
+  partition pieces make rooms inside a shell; decor rides up onto objects it meets; a grid that shrinks on small
+  surfaces such as tables; free placement with clipping as an advanced mode.
+- **Enshrouded** (TechRaptor, "Enshrouded building and comfort guide",
+  https://techraptor.net/gaming/guides/enshrouded-building-and-comfort-guide): comfort counts the best item in each
+  furniture category, and resting needs a roof, a fire and one point of comfort. The same rule shape as Valheim's
+  comfort: variety of kinds counts, repeats do not.
+
+### How a generator could apply this under the drivers
+
+Options only; nothing here is built, and each needs a measure in the corpus before it becomes a target (D-136).
+
+- Who lives there (family and household traits): dress each bed from its sleeper (D-077 assigns beds ahead). A couple's
+  bed against an end wall with a different small piece on each side; children's beds in a loft or stacked, with a
+  chest at the foot. Corpus check: beds above the main floor 39 to 91 %, chest within 2.6 m of a bed 17 to 38 %.
+- Zones round the fire and the door (culture): give each side of a room an owner or a use and put that side's storage
+  with it (Svan, yurt, Slavic). Cultures differ in where the fire sits (middle, corner) and what faces the door (place
+  of honor, stalls, bench).
+- Clutter by use: fuel by the fire, gear by the armor stand, food by the cooking. Corpus: wood stacks in 19 % of
+  furnished buildings (median 4 when present), cauldron extensions 42 %, armor stands 38 %.
+- Layering on surfaces: place small things only on a parent surface (WoW parenting); rugs on rugs and on beds. Corpus:
+  horizontal item stands are the main table and sill dressing; layered rugs 7 to 28 %.
+- Few hot spots, clear floor: dense dressing at a table, a shelf or a bed head, open floor between. Corpus: most
+  tables bare (dressed 23 to 59 %), and builds that use horizontal stands use many (median 18).
+- Imperfect placement: small turns and offsets on chairs and loose things (Witcher grid-free placement; Ubbe's
+  chairs). No measure of chair angles exists in the corpus data yet.
+- Light: a candle at each bed side, paired torches at a window, a hanging light over a table. Corpus: 0.2 to 0.6 lights
+  per 10 m2.
+- Avoid visible repeats: vary nightstand kinds, item mixes and rug kinds between homes (Skyrim); one rare piece per
+  home.
+- Variety for comfort: one of each kind before a second of any (Enshrouded and Valheim comfort).
+- Wear and mess: wealth by village or family trait (Witcher districts). The corpus has no wear measure; vanilla has few
+  wear pieces, so mess is shown by quantity and placement.
+
+### Tricks builders use on purpose (D-127)
+
+Counts from the 1,093 furnished buildings in the corpus (40+ building pieces, 5+ pieces of furniture inside, outside
+the statue, bridge, arena, mini-game, portal-hub, farming and artistic folders); photos from the three builds above.
+
+| Trick | How often | Source |
+|---|---|---|
+| Horizontal item stands as table and sill dressing (items lie on the surface) | in 43 % of furnished buildings, median 18 where used; first on tables in most culture groups | corpus |
+| Upright item stands on walls | 48 %, median 12 | corpus |
+| Resource stacks as decor (wood, fine wood, core wood) | 19 %, median 4 | corpus |
+| Ore, stone, coal and bone piles | 12 %, median 4 | corpus |
+| Treasure stacks and treasure chests | 19 %, median 3 | corpus |
+| Banners | 54 %, median 6 | corpus |
+| Cauldron extensions (spice rack, butcher table, pots, rolling pins) | 42 %, median 4 | corpus |
+| Barrels | 22 %, median 6 | corpus |
+| Rugs layered on rugs | 7 to 28 % of rugs, by group | corpus (`rel.rugsLayered`) |
+| A table set on a table (Dvergr table as a counter or shelf) | 418 pieces in norse-forest, rare elsewhere | corpus (`onTable`) |
+| Black marble heads under or in windows | 3,032 pieces in castle, also Ashlands | corpus (`onSill`) |
+| Firewood stacked floor to ceiling in a wall bay | 1 of 3 builds viewed | Cozy Blacksmith Cabin |
+| Rugs laid over a bed as covers | 1 of 3 | Ubbe's butchery |
+| A cloth hanging as a room divider | 1 of 3 | Ubbe's butchery |
+| Herbs hung from rafters | 2 of 3 (piece not identified; may be a mod piece in the cabin) | both furnished builds |
+| A bench or couch built from building pieces | 1 of 3 | Cozy Blacksmith Cabin |
+| A piece hidden for its effect (Frostner and wisp torches for a cold look) | 1 of 3 | Ubbe's butchery (description) |
+
+Counts here cover whole builds; where the piece sits (in a wall, clipped, on a surface) is measured only for the
+table, sill and rug relations. Clip depths are in "Creative sets" above.

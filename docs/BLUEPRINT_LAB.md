@@ -592,15 +592,57 @@ Placed food (meads, bread, cooked meat; the feasts) spawns as items lying where 
 up. Until the mod locks them as above, the kits use only a few, on tables, counters and shelves.
 
 What each stand holds (`lib/persona.js` `dressStands`, last thing before a design is written): every `itemstand` and
-`itemstandh` gets an item or comes out. A kit may ask for a kind (`want`: trophy, shield, weapon, tool); otherwise the
-room and the household decide. Wall stands: in a home, trophies for a household that collects, shields and weapons for
-one that collects and shows wealth, tools for one that makes things, a hoe or cultivator for one that grows things; in
-a smithy tools, weapons and shields; in a workshop or store tools; in a tavern trophies and shields. Horizontal stands:
-drinks and food, herbs where the household grows things, valuables (amber, ruby) where it is well off; a tavern's are
-mostly tankards and meads. Items come from the village's biome or an earlier one (the own biome counts double), a
-design shows the same item twice less often, and a well-off collector may keep one boss trophy. Each stand draws from
-a stream seeded by its place, so it holds the same item at every decor stage. Names are vanilla item prefabs checked
-against the corpus's stands (`ITEMS`).
+`itemstandh` gets an item or comes out. `ITEMS` lists every item that fits a stand by kind (trophy, boss, shield,
+weapon, tool, farm, fishing, fish, drink, food, herbs, hat, rare, tray), Deep North included, each with the biome that
+first has it and a weight from the number of corpus builds that show it on a stand (2026-11-10). Any item may turn up
+in any village (Tyler, 2026-11-10: decor has no biome limit; D-080 is about payment); the village's own biome weighs
+a little more. Meads and food go on flat stands only. Rubies, amber and other valuables cannot go on a stand (Item
+Stand page of the wiki), so `valuable` draws from the rare things (cores, keys, eggs, totems). A set may say what a
+stand holds and where it is in one word (`want: 'drink@table'`); otherwise `standAt` reads the place the way the
+corpus miner does (a flat stand by what it stands on, a wall stand by what stands under it). `standItem` weighs the
+kinds by the corpus's mix for that place (`AT_KINDS`: a table's stands hold drink 45 % and food 33 %, a mantel's
+drink, a wall over a bed trophies) times the household's lean (`kindLean`: collecting, crafts, plants, food, wealth,
+clutter; never a trade), plus the work of a smithy or workshop and the drink of a tavern. A well-off collector may
+keep one boss trophy. Each stand draws from a stream seeded by its place, so it holds the same item at every decor
+stage.
+
+### Stands round the house (lib/stands.js, 2026-11-10)
+
+Tyler asked for item stands in every house, the way the best builders use them: food on the table, tools hung by the
+bench, trophies, rare things, things on side tables, walls, sills, benches, workbenches and rafters, and now and then a
+feast laid out with the serving tray. `lib/stands.js` `dressTops` runs after the interior library and the walking
+lanes and before the lived-in pass (`lib/kitbash.js` apply; round houses call it from `lib/generate.js` through
+`Kitbash.stands`, since they have no library pass). It reads each room's tables, benches, chairs, chests, beds, wall
+spots, windows and beams overhead and draws stand sets (ids `KS-`) for them by weight, placed and tested by the
+library's own fitter (clips, rests, doorways, windows, the audit's own tests).
+
+| Where | Sets | From the corpus |
+|---|---|---|
+| Table | a meal for two (drink and dish at each seat), a meal for four (households of three or more), mugs, something left, tools laid out, arms (a shield and two weapons), herbs drying, a curio and a candle; a round table's ring; a long table's settings | stands 0.4 to 0.5 m apart along the length, 0.3 m in from the edge; drink with food is the commonest pair (60 groups) |
+| Bench, chair | a mug set down; a mug and a dish or a helmet | a tankard on a chair seat recurs in many builds |
+| Chest, barrel | food and a drink; one thing; a shield with a dish | chest lids hold food, trophies, fish |
+| Wall | tools (3), farm tools (2), arms, shields (3), trophies (2 or 3), one thing, a fishing rod and a fish; each also 0.4 m higher and lower | wall stands about a metre apart (median 0.97 m), at 1.3 to 2.3 m; over a workbench trophies, shields and weapons, over a bed trophies |
+| Shelf | a ledge with a pantry, meads, herbs and a candle, curios (a rare thing, a hat), weapons laid on it; two ledges for a cluttered house (third stage) | shelves hold drink, food, herbs and weapons |
+| Mantel | a ledge by the hearth with a drink, something and a candle | stands by the fire hold mead (686 of 1,019) |
+| Sill | one to three stands on the wall under an opening, 0.3 m in from its sides | herbs, food, drink and trophies |
+| Rafters | stands on a beam across the room where there is one; else a beam high on the wall at 2.6 m, or a ledge at 2.3 m, with helmets, trophies, fish or herbs | stands on beams over 2.3 m hold hats, trophies and weapons |
+| Floor | a mug left by the bed (cluttered households, third stage) | 2,080 flat stands lie on floors in the corpus |
+| Feast | the village's own feast (`FeastMeadows` and the rest, the pieces the serving tray lays down) in the middle or at one end of a dining table, two drinks and the serving tray (`Feaster`) on a stand beside it; two feasts on a long table; third stage only, at most one per room, never where a feast is laid already | 266 feasts in 65 builds, 150 on tables, several along a long table |
+
+How many: by the room's floor area (a set per 8 m2 in a home, 9 in a hall or tavern, 14 in a work room) times the
+household's clutter (0.55 to 1.45), less for a plain household, with a little noise; about half go up at d2 and the
+rest at d3 (`p.ds`), never before the furniture they stand on. A set's weight is its place's times the household's
+traits (`lean`, read as `kitWeight` reads `traits`), lower each time the same set is used. A table already set by
+the library takes no more, but for a feast. Wall sets need plain wall their whole width and 0.6 m clear of the wall's
+ends; high sets need 0.55 m under the roof. A flat stand on a wall's or a beam's top is lifted onto what shows of it
+(a half wall's planks stand 2 to 3 cm over its collider), as the pool audit's mountClip measures it.
+
+Shared code, a few lines: `lib/kitbash.js` apply calls the pass, exports `boxIndex` and `stands`; `placeable` passes
+over another stretch of the same wall line (a wall either side of a doorway or a gap counted as "past the wall's end"
+for any piece hung on the first: every wall set on such a wall failed); `lib/generate.js` calls it for round houses.
+
+Measured with `node lab/test_stands.js 2` (108 designs: homes, longhouses and taverns, six biomes, s1d1, s2d2, s3d3;
+stands read by the corpus miner's own code): see `docs/INTERIOR_DESIGN.md`, "Items on stands".
 
 ## Households (D-068)
 

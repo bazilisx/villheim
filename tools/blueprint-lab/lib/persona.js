@@ -237,54 +237,132 @@ function kitWeight(P, a) {
 function kitBudget(P) { return P ? (0.75 + 0.5 * P.clutter + 0.15 * P.wealth) * (P.plain ? 0.75 : 1) : 1; }
 
 // ---------------------------------------------------------------- items on stands
-// Vanilla item prefabs by the biome a village first has them in. Wall stands (itemstand) take trophies, shields,
-// weapons and tools; horizontal stands (itemstandh) take drinks, food and small things (src/Villheim.Logic/Designs/
-// StandItems.cs leaves a stand empty when ItemStand.CanAttach refuses the item). Names checked against the corpus's
-// stands.
+// What builders put on item stands (lab/mine_stands.js over Tyler's corpus, 2026-11-10: 1,559 vanilla builds, 14,787
+// stands holding something inside a building). Vanilla item prefabs by the biome a village first has them in, with a
+// weight from the number of corpus builds that show each one on a stand. Both stands take trophies, weapons, shields,
+// tools, fish and rare things; only the flat stand (itemstandh) takes meads and food in the corpus (Item Stand page of
+// the Valheim wiki: meads on the horizontal stand only; honey, gems and valuables such as rubies and amber on neither).
+// src/Villheim.Logic/Designs/StandItems.cs leaves a stand empty when ItemStand.CanAttach refuses the item. Deep North
+// names are the wiki's (Trophies page).
+const BIOMES_I = ['Meadows', 'Black Forest', 'Swamp', 'Mountain', 'Plains', 'Mistlands', 'Ashlands', 'Deep North'];
+const tierI = b => Math.max(0, BIOMES_I.indexOf(b));
 const ITEMS = {
-  trophy: [['Meadows', 'TrophyDeer', 3], ['Meadows', 'TrophyBoar', 3], ['Meadows', 'TrophyNeck', 1], ['Black Forest', 'TrophyGreydwarf', 1],
-    ['Black Forest', 'TrophyGreydwarfBrute', 2], ['Black Forest', 'TrophyGreydwarfShaman', 1], ['Black Forest', 'TrophySkeleton', 1], ['Black Forest', 'TrophyFrostTroll', 2],
-    ['Swamp', 'TrophyDraugr', 2], ['Swamp', 'TrophyLeech', 1], ['Swamp', 'TrophyBlob', 1], ['Swamp', 'TrophyWraith', 1], ['Swamp', 'TrophyAbomination', 2], ['Swamp', 'TrophySurtling', 1],
-    ['Mountain', 'TrophyWolf', 3], ['Mountain', 'TrophyFenring', 2], ['Mountain', 'TrophyHatchling', 2], ['Mountain', 'TrophySGolem', 1],
-    ['Plains', 'TrophyLox', 3], ['Plains', 'TrophyDeathsquito', 2], ['Plains', 'TrophyGoblin', 2], ['Plains', 'TrophyGrowth', 1],
-    ['Mistlands', 'TrophySeeker', 2], ['Mistlands', 'TrophyTick', 1], ['Mistlands', 'TrophyHare', 2], ['Mistlands', 'TrophyGjall', 1],
-    ['Ashlands', 'TrophyAsksvin', 2], ['Ashlands', 'TrophyVolture', 2], ['Ashlands', 'TrophyCharredMelee', 1], ['Ashlands', 'TrophyMorgen', 1]],
-  boss: [['Meadows', 'TrophyEikthyr'], ['Black Forest', 'TrophyTheElder'], ['Swamp', 'TrophyBonemass'], ['Mountain', 'TrophyDragonQueen'],
-    ['Plains', 'TrophyGoblinKing'], ['Mistlands', 'TrophySeekerQueen'], ['Ashlands', 'TrophyFader']],
-  shield: [['Meadows', 'ShieldWood', 3], ['Meadows', 'ShieldWoodTower', 2], ['Black Forest', 'ShieldBronzeBuckler', 3], ['Black Forest', 'ShieldBoneTower', 1],
-    ['Swamp', 'ShieldBanded', 3], ['Swamp', 'ShieldIronBuckler', 2], ['Swamp', 'ShieldIronTower', 1], ['Mountain', 'ShieldSilver', 3], ['Mountain', 'ShieldSerpentscale', 1],
-    ['Plains', 'ShieldBlackmetal', 2], ['Plains', 'ShieldBlackmetalTower', 1], ['Mistlands', 'ShieldCarapace', 2], ['Mistlands', 'ShieldCarapaceBuckler', 1],
-    ['Ashlands', 'ShieldFlametal', 2], ['Ashlands', 'ShieldFlametalTower', 1]],
-  weapon: [['Meadows', 'AxeFlint', 2], ['Meadows', 'SpearFlint', 2], ['Meadows', 'Bow', 2], ['Meadows', 'Club', 1], ['Meadows', 'KnifeFlint', 1],
-    ['Black Forest', 'SwordBronze', 3], ['Black Forest', 'MaceBronze', 2], ['Black Forest', 'SpearBronze', 2], ['Black Forest', 'AtgeirBronze', 1], ['Black Forest', 'KnifeCopper', 1],
-    ['Swamp', 'SwordIron', 3], ['Swamp', 'MaceIron', 2], ['Swamp', 'Battleaxe', 1], ['Mountain', 'SwordSilver', 2], ['Mountain', 'BowHuntsman', 2], ['Mountain', 'SpearWolfFang', 1],
-    ['Plains', 'SwordBlackmetal', 2], ['Plains', 'AxeBlackMetal', 1], ['Plains', 'AtgeirBlackmetal', 1], ['Mistlands', 'SwordMistwalker', 1], ['Mistlands', 'KnifeChitin', 1]],
-  tool: [['Meadows', 'Hammer', 3], ['Meadows', 'AxeStone', 1], ['Meadows', 'PickaxeAntler', 2], ['Meadows', 'Hoe', 2], ['Black Forest', 'AxeBronze', 2], ['Black Forest', 'PickaxeBronze', 2],
-    ['Black Forest', 'Cultivator', 2], ['Swamp', 'AxeIron', 2], ['Swamp', 'PickaxeIron', 2], ['Plains', 'PickaxeBlackMetal', 1], ['Mistlands', 'AxeJotunBane', 1]],
-  farm: [['Meadows', 'Hoe', 3], ['Black Forest', 'Cultivator', 3], ['Meadows', 'AxeStone', 1]],
-  // for the game's role displays only (kitbash.js ROLE_DISPLAYS); no household draws these
+  trophy: [['Meadows', 'TrophyDeer', 5], ['Meadows', 'TrophyBoar', 4], ['Meadows', 'TrophyNeck', 2],
+    ['Black Forest', 'TrophyGreydwarf', 2], ['Black Forest', 'TrophyGreydwarfBrute', 4], ['Black Forest', 'TrophyGreydwarfShaman', 3], ['Black Forest', 'TrophySkeleton', 3],
+    ['Black Forest', 'TrophySkeletonPoison', 2], ['Black Forest', 'TrophyFrostTroll', 2], ['Black Forest', 'TrophyGhost', 1], ['Black Forest', 'TrophyBjorn', 1],
+    ['Swamp', 'TrophyDraugr', 1], ['Swamp', 'TrophyDraugrElite', 2], ['Swamp', 'TrophyLeech', 1], ['Swamp', 'TrophyBlob', 2], ['Swamp', 'TrophyWraith', 2],
+    ['Swamp', 'TrophyAbomination', 3], ['Swamp', 'TrophySurtling', 6], ['Swamp', 'TrophyKvastur', 1], ['Swamp', 'TrophyWrithan', 1], ['Swamp', 'TrophySerpent', 1],
+    ['Mountain', 'TrophyWolf', 3], ['Mountain', 'TrophyFenring', 1], ['Mountain', 'TrophyHatchling', 2], ['Mountain', 'TrophySGolem', 2], ['Mountain', 'TrophyCultist', 2],
+    ['Mountain', 'TrophyUlv', 1], ['Mountain', 'TrophyBlob_Frost', 1],
+    ['Plains', 'TrophyLox', 1], ['Plains', 'TrophyDeathsquito', 2], ['Plains', 'TrophyGoblin', 2], ['Plains', 'TrophyGoblinBrute', 1], ['Plains', 'TrophyGoblinShaman', 2],
+    ['Plains', 'TrophyGrowth', 1], ['Plains', 'TrophyBjornUndead', 1],
+    ['Mistlands', 'TrophySeeker', 1], ['Mistlands', 'TrophySeekerBrute', 1], ['Mistlands', 'TrophyTick', 1], ['Mistlands', 'TrophyGjall', 1], ['Mistlands', 'TrophyHare', 1],
+    ['Mistlands', 'TrophyDvergr', 1],
+    ['Ashlands', 'TrophyAsksvin', 1], ['Ashlands', 'TrophyVolture', 1], ['Ashlands', 'TrophyCharredMelee', 1], ['Ashlands', 'TrophyCharredArcher', 1], ['Ashlands', 'TrophyCharredMage', 1],
+    ['Ashlands', 'TrophyMorgen', 1], ['Ashlands', 'TrophyFallenValkyrie', 1], ['Ashlands', 'TrophyBonemawSerpent', 1], ['Ashlands', 'TrophyBlob_Lava', 1],
+    ['Deep North', 'TrophyMoose', 1], ['Deep North', 'TrophySeal', 1], ['Deep North', 'TrophyBarka', 1], ['Deep North', 'TrophyMole', 1], ['Deep North', 'TrophyJotunWarrior', 1],
+    ['Deep North', 'TrophyJotunWitch', 1], ['Deep North', 'TrophyBlob_Morkhalla', 1]],
+  // the great trophies: the bosses, and the Hildir quest's champions and the Elaking
+  boss: [['Meadows', 'TrophyEikthyr', 4], ['Black Forest', 'TrophyTheElder', 2], ['Black Forest', 'TrophySkeletonHildir', 1], ['Swamp', 'TrophyBonemass', 1],
+    ['Mountain', 'TrophyDragonQueen', 1], ['Mountain', 'TrophyCultist_Hildir', 1], ['Plains', 'TrophyGoblinKing', 1], ['Plains', 'TrophyGoblinBruteBrosShaman', 1],
+    ['Mistlands', 'TrophySeekerQueen', 1], ['Ashlands', 'TrophyFader', 1], ['Deep North', 'TrophyElaking', 1]],
+  shield: [['Meadows', 'ShieldWood', 5], ['Meadows', 'ShieldWoodTower', 3], ['Black Forest', 'ShieldBronzeBuckler', 4], ['Black Forest', 'ShieldBoneTower', 3],
+    ['Swamp', 'ShieldBanded', 5], ['Swamp', 'ShieldIronBuckler', 3], ['Swamp', 'ShieldIronTower', 3], ['Mountain', 'ShieldSilver', 4], ['Mountain', 'ShieldSerpentscale', 4],
+    ['Plains', 'ShieldBlackmetal', 2], ['Plains', 'ShieldBlackmetalTower', 2], ['Mistlands', 'ShieldCarapace', 1], ['Mistlands', 'ShieldCarapaceBuckler', 1],
+    ['Ashlands', 'ShieldFlametal', 1], ['Ashlands', 'ShieldFlametalTower', 1], ['Deep North', 'ShieldGoldBuckler', 1], ['Deep North', 'ShieldGold', 1], ['Deep North', 'ShieldGoldTower', 1]],
+  weapon: [['Meadows', 'AxeFlint', 1], ['Meadows', 'SpearFlint', 1], ['Meadows', 'Bow', 1], ['Meadows', 'Club', 1], ['Meadows', 'KnifeFlint', 1], ['Meadows', 'KnifeButcher', 3],
+    ['Black Forest', 'BowFineWood', 2], ['Black Forest', 'SwordBronze', 2], ['Black Forest', 'MaceBronze', 1], ['Black Forest', 'SpearBronze', 1], ['Black Forest', 'AtgeirBronze', 1],
+    ['Black Forest', 'KnifeCopper', 2], ['Black Forest', 'SledgeStagbreaker', 1],
+    ['Swamp', 'SwordIron', 2], ['Swamp', 'MaceIron', 2], ['Swamp', 'AtgeirIron', 1], ['Swamp', 'Battleaxe', 1], ['Swamp', 'SledgeIron', 2], ['Swamp', 'SpearElderbark', 1], ['Swamp', 'BowHuntsman', 1],
+    ['Mountain', 'SwordSilver', 2], ['Mountain', 'MaceSilver', 3], ['Mountain', 'SpearWolfFang', 1], ['Mountain', 'KnifeSilver', 1], ['Mountain', 'BowDraugrFang', 2],
+    ['Mountain', 'BattleaxeCrystal', 2], ['Mountain', 'FistFenrirClaw', 1],
+    ['Plains', 'SwordBlackmetal', 2], ['Plains', 'AtgeirBlackmetal', 1], ['Plains', 'KnifeBlackMetal', 2], ['Plains', 'MaceNeedle', 2], ['Plains', 'SpearChitin', 1], ['Plains', 'KnifeChitin', 2],
+    ['Mistlands', 'SwordMistwalker', 2], ['Mistlands', 'CrossbowArbalest', 2], ['Mistlands', 'THSwordKrom', 2], ['Mistlands', 'SledgeDemolisher', 2], ['Mistlands', 'AtgeirHimminAfl', 2],
+    ['Mistlands', 'KnifeSkollAndHati', 1], ['Mistlands', 'StaffFireball', 1], ['Mistlands', 'StaffIceShards', 2], ['Mistlands', 'StaffShield', 1], ['Mistlands', 'StaffSkeleton', 2],
+    ['Ashlands', 'SwordNiedhogg', 1], ['Ashlands', 'SwordDyrnwyn', 1], ['Ashlands', 'THSwordSlayer', 1], ['Ashlands', 'AxeBerzerkr', 1], ['Ashlands', 'BowAshlands', 1], ['Ashlands', 'CrossbowRipper', 1],
+    ['Deep North', 'SwordGold', 1], ['Deep North', 'AxeGold', 1], ['Deep North', 'MaceGold', 1], ['Deep North', 'SpearGold', 1], ['Deep North', 'KnifeGold', 1]],
+  tool: [['Meadows', 'Hammer', 3], ['Meadows', 'AxeStone', 1], ['Meadows', 'PickaxeAntler', 1], ['Meadows', 'Hoe', 1], ['Meadows', 'FishingRod', 1],
+    ['Black Forest', 'AxeBronze', 2], ['Black Forest', 'PickaxeBronze', 2], ['Black Forest', 'Cultivator', 1], ['Swamp', 'AxeIron', 1], ['Swamp', 'PickaxeIron', 1],
+    ['Plains', 'AxeBlackMetal', 2], ['Plains', 'PickaxeBlackMetal', 1], ['Plains', 'Scythe', 1], ['Mistlands', 'AxeJotunBane', 2], ['Deep North', 'Shovel', 1]],
+  farm: [['Meadows', 'Hoe', 3], ['Black Forest', 'Cultivator', 3], ['Meadows', 'AxeStone', 1], ['Plains', 'Scythe', 1]],
   fishing: [['Meadows', 'FishingRod', 1]],
-  fish: [['Meadows', 'Fish1', 2], ['Black Forest', 'Fish2', 2]],
-  drink: [['Meadows', 'Tankard', 4], ['Black Forest', 'MeadTasty', 2], ['Black Forest', 'MeadHealthMinor', 1], ['Black Forest', 'MeadStaminaMinor', 1], ['Swamp', 'MeadPoisonResist', 1],
-    ['Mountain', 'MeadFrostResist', 1], ['Plains', 'BarleyWine', 2], ['Plains', 'MeadHealthMedium', 1], ['Mistlands', 'Tankard_dvergr', 2]],
-  food: [['Meadows', 'Raspberry', 2], ['Meadows', 'CookedMeat', 2], ['Meadows', 'Honey', 1], ['Meadows', 'Mushroom', 1], ['Black Forest', 'Blueberries', 2], ['Black Forest', 'QueensJam', 2],
-    ['Black Forest', 'MushroomYellow', 1], ['Black Forest', 'Carrot', 1], ['Swamp', 'Turnip', 1], ['Swamp', 'Sausages', 1], ['Mountain', 'Onion', 1], ['Plains', 'Cloudberry', 1], ['Plains', 'Bread', 2],
-    ['Plains', 'LoxPie', 1], ['Mistlands', 'MushroomMagecap', 1]],
-  herbs: [['Meadows', 'Mushroom', 2], ['Meadows', 'Dandelion', 2], ['Black Forest', 'MushroomYellow', 2], ['Mountain', 'Onion', 1], ['Mistlands', 'MushroomJotunPuffs', 1]],
-  valuable: [['Black Forest', 'Ruby', 1], ['Black Forest', 'Amber', 1], ['Swamp', 'AmberPearl', 1], ['Mistlands', 'DragonEgg', 0]],
+  fish: [['Meadows', 'Fish1', 2], ['Black Forest', 'Fish2', 2], ['Swamp', 'Fish5', 1], ['Swamp', 'Fish3', 1], ['Mountain', 'Fish4_cave', 1], ['Plains', 'Fish6', 1], ['Plains', 'Fish7', 1],
+    ['Plains', 'Fish8', 1], ['Mistlands', 'Fish9', 1], ['Mistlands', 'Fish12', 1], ['Ashlands', 'Fish11', 1], ['Deep North', 'Fish10', 1]],
+  drink: [['Meadows', 'Tankard', 8], ['Meadows', 'TankardAnniversary', 3], ['Black Forest', 'MeadTasty', 3], ['Black Forest', 'MeadHealthMinor', 2], ['Black Forest', 'MeadStaminaMinor', 2],
+    ['Black Forest', 'MeadPoisonResist', 4], ['Black Forest', 'MeadLightfoot', 1], ['Swamp', 'MeadFrostResist', 4], ['Swamp', 'MeadHealthMedium', 2], ['Swamp', 'MeadHasty', 1],
+    ['Plains', 'MeadStaminaMedium', 3], ['Plains', 'BarleyWine', 2], ['Plains', 'MeadStrength', 1], ['Mistlands', 'MeadHealthMajor', 3], ['Mistlands', 'MeadStaminaLingering', 3],
+    ['Mistlands', 'MeadEitrMinor', 2], ['Mistlands', 'Tankard_dvergr', 3], ['Deep North', 'Lingondricka', 1], ['Deep North', 'OatMilk', 1]],
+  food: [['Meadows', 'Raspberry', 3], ['Meadows', 'CookedMeat', 2], ['Meadows', 'CookedDeerMeat', 1],
+    ['Black Forest', 'Blueberries', 3], ['Black Forest', 'QueensJam', 4], ['Black Forest', 'Carrot', 2], ['Black Forest', 'CarrotSoup', 3], ['Black Forest', 'DeerStew', 3], ['Black Forest', 'BoarJerky', 1],
+    ['Swamp', 'Turnip', 1], ['Swamp', 'TurnipStew', 2], ['Swamp', 'Sausages', 2], ['Swamp', 'MinceMeatSauce', 2], ['Swamp', 'ShocklateSmoothie', 2], ['Swamp', 'BlackSoup', 1],
+    ['Swamp', 'SerpentStew', 3], ['Swamp', 'SerpentMeatCooked', 1], ['Swamp', 'Pukeberries', 1],
+    ['Mountain', 'Onion', 1], ['Mountain', 'OnionSoup', 3], ['Mountain', 'Eyescream', 2], ['Mountain', 'CookedWolfMeat', 1], ['Mountain', 'WolfMeatSkewer', 1],
+    ['Plains', 'Cloudberry', 1], ['Plains', 'Bread', 3], ['Plains', 'LoxPie', 3], ['Plains', 'CookedLoxMeat', 2], ['Plains', 'BloodPudding', 2], ['Plains', 'FishWraps', 1], ['Plains', 'FishAndBread', 1], ['Plains', 'ChickenEgg', 1],
+    ['Mistlands', 'Salad', 2], ['Mistlands', 'HoneyGlazedChicken', 2], ['Mistlands', 'MushroomOmelette', 2], ['Mistlands', 'YggdrasilPorridge', 2], ['Mistlands', 'MisthareSupreme', 2],
+    ['Mistlands', 'SeekerAspic', 1], ['Mistlands', 'MeatPlatter', 2],
+    ['Ashlands', 'SparklingShroomshake', 1], ['Ashlands', 'ScorchingMedley', 1], ['Ashlands', 'SpicyMarmalade', 1], ['Ashlands', 'FierySvinstew', 1], ['Ashlands', 'MarinatedGreens', 1],
+    ['Ashlands', 'MashedMeat', 1], ['Ashlands', 'RoastedCrustPie', 1], ['Ashlands', 'PiquantPie', 1],
+    ['Deep North', 'Pancakes', 1], ['Deep North', 'SmokedFish', 1], ['Deep North', 'FishSoup', 1], ['Deep North', 'SealSoup', 1], ['Deep North', 'KaleChips', 1], ['Deep North', 'MooseKebab', 1],
+    ['Deep North', 'BakedPoteitr', 1], ['Deep North', 'Lingonberry', 1]],
+  herbs: [['Meadows', 'Dandelion', 4], ['Meadows', 'Mushroom', 3], ['Black Forest', 'MushroomYellow', 4], ['Black Forest', 'Thistle', 2], ['Mountain', 'MushroomBlue', 1],
+    ['Mistlands', 'MushroomMagecap', 1], ['Mistlands', 'MushroomJotunPuffs', 1], ['Deep North', 'Kale', 1]],
+  // curios a household keeps on show: the Dvergr circlet, crowns and caps, cores, keys, eggs, totems
+  hat: [['Meadows', 'HelmetMidsummerCrown', 1], ['Meadows', 'HelmetYule', 1], ['Mistlands', 'HelmetDverger', 3]],
+  rare: [['Black Forest', 'SurtlingCore', 2], ['Black Forest', 'AncientSeed', 1], ['Swamp', 'CryptKey', 3], ['Mountain', 'DragonEgg', 3], ['Mountain', 'DragonTear', 1],
+    ['Plains', 'GoblinTotem', 2], ['Plains', 'SaddleLox', 1], ['Plains', 'YagluthDrop', 1], ['Mistlands', 'BlackCore', 1], ['Mistlands', 'DvergrKey', 1],
+    ['Ashlands', 'MoltenCore', 1], ['Ashlands', 'CelestialFeather', 1], ['Ashlands', 'Bell', 1]],
+};
+// valuables (rubies, amber) cannot go on a stand: the rare things stand in for them
+ITEMS.valuable = ITEMS.rare;
+// the serving tray, left on a stand beside a feast it laid out (lib/stands.js)
+ITEMS.tray = [['Meadows', 'Feaster', 1]];
+// What each place holds in the corpus (flat stands by what they stand on, wall stands by what stands under them), as
+// shares; the household's hobbies then lean on these (standItem).
+const AT_KINDS = {
+  table: { drink: 732, food: 531, weapon: 88, shield: 45, trophy: 45, herbs: 33, tool: 25, fish: 25, rare: 17 },
+  sidetable: { drink: 60, food: 40, herbs: 15, rare: 10, trophy: 8, hat: 5 },
+  shelf: { drink: 544, food: 341, herbs: 284, weapon: 241, hat: 121, rare: 94, trophy: 54, tool: 50, shield: 41 },
+  ledge: { drink: 266, food: 242, herbs: 168, weapon: 103, trophy: 96, hat: 47, rare: 43, fish: 42 },
+  mantel: { drink: 686, food: 91, trophy: 90, herbs: 53, weapon: 39, rare: 19 },
+  sill: { drink: 55, food: 41, trophy: 41, weapon: 12, herbs: 8 },
+  bench: { drink: 108, trophy: 34, food: 26, weapon: 13, shield: 11, herbs: 7 },
+  chest: { food: 30, trophy: 10, fish: 7, drink: 4, shield: 3 },
+  workbench: { tool: 10, drink: 10, food: 6, rare: 4, weapon: 3 },
+  rafter: { hat: 52, trophy: 38, weapon: 38, drink: 25, herbs: 15, fish: 11, rare: 8 },
+  floor: { drink: 665, food: 432, herbs: 277, rare: 225, weapon: 116, trophy: 90, hat: 72, fish: 46 },
+  wall: { weapon: 215, trophy: 199, shield: 179, fish: 30, tool: 29, rare: 22, farm: 10 },
+  'wall:workbench': { trophy: 219, shield: 117, weapon: 116, tool: 26, fish: 8, farm: 9 },
+  'wall:hearth': { trophy: 182, shield: 172, weapon: 113, rare: 25, tool: 11 },
+  'wall:table': { shield: 112, trophy: 83, weapon: 82, fish: 10, rare: 8 },
+  'wall:bed': { trophy: 136, shield: 38, weapon: 16 },
+  'wall:chest': { trophy: 103, weapon: 88, shield: 71, tool: 14 },
+  'wall:door': { trophy: 61, shield: 59, weapon: 38, tool: 7, farm: 3 },
+  'wall:bench': { weapon: 55, trophy: 46, shield: 28, tool: 6 },
+  beam: { trophy: 214, weapon: 155, shield: 145, tool: 57, fish: 18, farm: 11 },
+  'wall:rafter': { trophy: 215, shield: 154, weapon: 61, fish: 26 },
 };
 function itemFrom(kind, biome, R, own = 2, seen) {
-  // what the village's biome and the next one give (D-080): a Meadows house may keep mead and jam from the Black Forest
-  const t = tierP(biome);
-  const list = (ITEMS[kind] || []).filter(([b]) => tierP(b) <= t + 1);
+  // any item from any biome may be on show in any village (Tyler, 2026-11-10: decor has no biome limit; D-080 is only
+  // about how it is paid for); the village's own biome weighs a little more, for flavor
+  const t = tierI(biome);
+  const list = ITEMS[kind] || [];
   if (!list.length) return null;
-  // the village's own biome counts more; older ones still turn up
+  own = 1 + (own - 1) * 0.6;
   // what the house already shows weighs less, so a wall of stands is not five of one thing
-  const got = pickWP(R, Object.fromEntries(list.map(([b, n, w]) => [n, (w == null ? 1 : w) * (tierP(b) === t ? own : 1) / (1 + 2 * ((seen && seen[n]) || 0))])));
+  const got = pickWP(R, Object.fromEntries(list.map(([b, n, w]) => [n, (w == null ? 1 : w) * (tierI(b) === t ? own : 1) / (1 + 2 * ((seen && seen[n]) || 0))])));
   if (seen && got) seen[got] = (seen[got] || 0) + 1;
   return got;
 }
-// What a stand holds, from the household's hobbies and the room: kind 'wall' or 'top'; want is what its kit asked for.
+// How much a household leans to each kind of thing on show (never a trade: the village cook may live in any house).
+function kindLean(P) {
+  const H = P ? P.hobby : { crafts: 0.3, collect: 0.3, plants: 0.3, food: 0.3, games: 0.3, maps: 0.3 };
+  const wealth = P ? P.wealth : 0.4, clutter = P ? P.clutter : 0.4, comfort = P ? P.comfort : 0.5;
+  return { trophy: 0.4 + 1.6 * H.collect, shield: 0.5 + 1.0 * H.collect + 0.5 * wealth, weapon: 0.5 + 0.9 * H.collect + 0.3 * wealth,
+    tool: 0.3 + 1.7 * H.crafts, farm: 0.2 + 1.5 * H.plants, drink: 0.6 + 0.6 * H.food + 0.4 * clutter + 0.3 * H.games, food: 0.5 + 1.2 * H.food + 0.2 * clutter,
+    herbs: 0.3 + 1.5 * H.plants, fish: 0.4 + 0.6 * H.food, hat: 0.2 + 0.5 * comfort + 0.6 * H.collect, rare: 0.15 + 0.9 * H.collect + 0.8 * wealth + 0.3 * H.maps };
+}
+// What a stand holds, from the household's hobbies, the room and the place: kind 'wall' or 'top'; o.want is what its
+// kit asked for (a kind such as 'drink' or 'trophy'), o.at where it stands ('table', 'shelf', 'sill', 'wall:hearth', ...).
 // Nothing here follows a trade: a work building's stands hold its own work (the smithy's tools and weapons), a home's
 // what its household collects, makes, grows and eats.
 function standItem(P, kind, o, R) {
@@ -292,20 +370,25 @@ function standItem(P, kind, o, R) {
   const H = P ? P.hobby : { crafts: 0.3, collect: 0.3, plants: 0.3, food: 0.3 };
   if (want === 'tool' && R() < H.plants / (H.plants + H.crafts + 0.2)) return itemFrom('farm', biome, R, 2, seen);
   if (want && ITEMS[want]) return itemFrom(want, biome, R, 2, seen);
+  const lean = kindLean(P);
+  const at = o.at || (kind === 'wall' ? 'wall' : 'table');
+  const base = AT_KINDS[at] || AT_KINDS[kind === 'wall' ? 'wall' : 'table'];
+  const tot = Object.values(base).reduce((s, v) => s + v, 0);
+  const w = {};
+  for (const [k, v] of Object.entries(base)) {
+    // meads and food only on the flat stand
+    if (kind === 'wall' && ['drink', 'food', 'herbs', 'hat'].includes(k)) continue;
+    w[k] = (v / tot) * (lean[k] || 1);
+  }
+  // the work of a work building, the drink of a tavern
+  if (role === 'smithy') { w.tool = (w.tool || 0) + 0.5; w.weapon = (w.weapon || 0) + 0.6; w.shield = (w.shield || 0) + 0.3; }
+  if (role === 'workshop' || role === 'storage') { w.tool = (w.tool || 0) + 0.8; w.farm = (w.farm || 0) + 0.2 + 0.4 * H.plants; }
+  if (role === 'temple') { w.trophy = (w.trophy || 0) + 0.4; w.rare = (w.rare || 0) + 0.2; }
+  if ((role === 'tavern' || role === 'guest') && kind !== 'wall') { w.drink = (w.drink || 0) * 2.5 + 0.3; w.food = (w.food || 0) * 1.3; }
   if (kind === 'wall') {
-    const w = role === 'smithy' ? { tool: 2, weapon: 2.5, shield: 1.5 }
-      : role === 'workshop' || role === 'storage' ? { tool: 3, farm: 0.6 + H.plants }
-        : role === 'temple' ? { shield: 1, trophy: 1.5 }
-          : role === 'tavern' ? { trophy: 2, shield: 1 }
-            : { trophy: 0.4 + 2 * H.collect, shield: 0.3 + 0.8 * H.collect + (P ? P.wealth * 0.4 : 0), weapon: 0.2 + 0.6 * H.collect,
-              tool: 0.2 + 1.4 * H.crafts, farm: 0.2 + H.plants };
     // a well-off collector may keep one great trophy
     if (P && H.collect > 0.6 && P.wealth > 0.6 && seen && !seen.boss && R() < 0.3) { seen.boss = 1; return itemFrom('boss', biome, R, 3, seen); }
-    return itemFrom(pickWP(R, w), biome, R, 2, seen);
   }
-  const w = role === 'tavern' || role === 'guest' ? { drink: 4, food: 1.5 }
-    : { drink: 1 + H.food, food: 1 + H.food * 1.5 + (P ? P.clutter * 0.5 : 0.3), herbs: 0.2 + H.plants * 1.5,
-      valuable: P ? Math.max(0, P.wealth - 0.5) * 1.5 + H.collect * 0.3 : 0, trophy: H.collect * 0.6 };
   return itemFrom(pickWP(R, w), biome, R, 2, seen);
 }
 // The room a point lies in (a design's room rectangles) and its role, roughly: the main floor by the building's use,
@@ -316,6 +399,44 @@ function roleAt(b, p, type, use) {
   const upper = r ? r.upper || r.y > 1.6 : p.y > 2.5;
   if (upper) return use === 'home' || use === 'hall' ? (type === 'tavern' ? 'guest' : 'sleeping') : 'storage';
   return { home: 'home', hall: type === 'tavern' ? 'tavern' : type === 'temple' ? 'temple' : 'hall', smithy: 'smithy', workshop: 'workshop', storage: 'storage', farm: 'storage', guard: 'home', temple: 'temple' }[use] || 'home';
+}
+// Where a stand is, as the corpus miner reads it (lab/mine_stands.js): a flat stand by what it stands on, a wall
+// stand by what stands under it. Sets that know say so themselves (p.at).
+const STAND_FIRE = /^(hearth|fire_pit|fire_pit_iron)$/;
+function standAt(b, p, near) {
+  const P_ = NODE_P ? require('./pieces.js') : window.VHPieces, Ck = NODE_P ? require('./checks.js') : window.VHChecks;
+  const role = q => P_.piece(q.name).role;
+  if (p.name === 'itemstandh') {
+    let best = null, bt = -Infinity;
+    for (const q of near) {
+      if (q === p || /^itemstand/.test(q.name)) continue;
+      const o = Ck.aabb(q);
+      if (o.pass || o.x0 > p.x || o.x1 < p.x || o.z0 > p.z || o.z1 < p.z || o.y1 > p.y + 0.3 || o.y1 < p.y - 0.15) continue;
+      if (o.y1 > bt) { bt = o.y1; best = { q, o }; }
+    }
+    if (!best) return 'table';
+    const n = best.q.name, r = role(best.q), o = best.o;
+    if (/^(piece_workbench|forge|piece_artisanstation|blackforge|piece_magetable|piece_stonecutter|piece_cauldron)/.test(n)) return 'workbench';
+    if (r === 'table') return (o.x1 - o.x0) * (o.z1 - o.z0) < 1 ? 'sidetable' : 'table';
+    if (r === 'seat') return 'bench';
+    if (r === 'storage') return 'chest';
+    if (r === 'beam' || r === 'pole' || /ledge|beam/.test(n)) {
+      const room = (b.rooms || []).find(q => p.x > q.x0 - 0.3 && p.x < q.x1 + 0.3 && p.z > q.z0 - 0.3 && p.z < q.z1 + 0.3 && p.y > q.y - 0.5 && p.y < q.y + 4);
+      return room && p.y - room.y > 2.2 ? 'rafter' : 'shelf';
+    }
+    return 'shelf';
+  }
+  // a wall stand: what stands under it, within reach
+  let at = 'wall', d = Infinity;
+  for (const q of near) {
+    if (!q.decor || q === p) continue;
+    const r = role(q), dist = Math.hypot(q.x - p.x, q.z - p.z);
+    if (dist > (STAND_FIRE.test(q.name) ? 2.4 : 1.4) || q.y > p.y || dist >= d) continue;
+    const k = /^(piece_workbench|forge|piece_artisanstation|blackforge|piece_stonecutter)/.test(q.name) ? 'wall:workbench' : STAND_FIRE.test(q.name) ? 'wall:hearth'
+      : r === 'bed' ? 'wall:bed' : r === 'table' ? 'wall:table' : r === 'seat' ? 'wall:bench' : r === 'storage' ? 'wall:chest' : null;
+    if (k) { at = k; d = dist; }
+  }
+  return at;
 }
 /**
  * Puts an item on every item stand of a design (p.item, written to the blueprint's info field) by the household and
@@ -331,10 +452,13 @@ function dressStands(b, ctx) {
   for (const p of stands) {
     const R = rngP(((P ? P.salt : 7) ^ Math.imul(Math.round(p.x * 20) + 4096, 73856093) ^ Math.imul(Math.round(p.y * 20) + 4096, 19349663) ^ Math.imul(Math.round(p.z * 20) + 4096, 83492791)) >>> 0);
     R(); R();
-    const name = standItem(P, p.name === 'itemstand' ? 'wall' : 'top', { biome: ctx.biome, role: roleAt(b, p, ctx.type, ctx.use), want: p.want, seen }, R);
+    // a set may say what a stand holds and where it is in one word ('drink@table', lib/stands.js)
+    const [want, at0] = String(p.want || '').split('@');
+    const at = at0 || p.at || (want ? null : standAt(b, p, b.pieces.filter(q => Math.abs(q.x - p.x) < 2.5 && Math.abs(q.z - p.z) < 2.5 && Math.abs(q.y - p.y) < 2.5)));
+    const name = standItem(P, p.name === 'itemstand' ? 'wall' : 'top', { biome: ctx.biome, role: roleAt(b, p, ctx.type, ctx.use), want: want || null, at, seen }, R);
     if (!name) { out.add(p); continue; }
     p.item = { name, variant: 0, quality: 1 };
-    delete p.want;
+    delete p.want; delete p.at;
     n++;
   }
   if (out.size) b.pieces = b.pieces.filter(p => !out.has(p));
@@ -433,5 +557,5 @@ function storyKits(P) {
 }
 
 const apiPer = { growth, storyKits, stageOf, persona, PRESETS, CULTURE_P, HOBBIES, ITEMS, extraWeights, fillShare, wallWeights, wallGap, wallSkip, torchGap, underStair, kitWeight, kitBudget,
-  standItem, itemFrom, dressStands, roleAt, rng: rngP, hash: hashP, pickW: pickWP };
+  standItem, standAt, kindLean, AT_KINDS, itemFrom, dressStands, roleAt, rng: rngP, hash: hashP, pickW: pickWP };
 if (NODE_P) module.exports = apiPer; else window.VHPersona = apiPer;

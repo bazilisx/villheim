@@ -1039,6 +1039,7 @@ function placeBeds(room, k, n, d, row = 1.5) {
   if (P && P.bedRow) row = P.bedRow;
   const gap = P && P.bedGap ? P.bedGap : 0.7, fireNear = P && P.bedFire ? P.bedFire : 2.6;
   const L = learned().items || {};
+  const apart = k.bedRow === false && row < 1;
   for (let i = 0; i < n; i++) {
     const name = k.bed;
     const doorMin = Math.min(3.0, fr.D * 0.55);
@@ -1051,15 +1052,19 @@ function placeBeds(room, k, n, d, row = 1.5) {
       if (room.doorDist(s.x, s.z) < doorMin) v -= 3;
       if (room.sideCells && room.sideCells(s.x, s.z)) v += 1.5;
       if (room.fire && Math.hypot(s.x - room.fire.x, s.z - room.fire.z) < fireNear) v -= 2;
-      if (prev) { const dd = Math.hypot(s.x - prev.x, s.z - prev.z); v += (s.face === prev.spot.face ? row : 0) - Math.abs(dd - (size(name)[0] + gap)) * 0.6 * (row > 1 ? 1 : 0.3); }
+      // a household that keeps its beds apart puts the next one on another wall or well along this one (homes and
+      // bedrooms only; bunk rows in halls and guest rooms stay rows)
+      if (prev && apart) for (const q of out) { const dd = Math.hypot(s.x - q.x, s.z - q.z); v += (s.face === q.spot.face ? -0.6 : 0.5) - Math.max(0, size(name)[0] + 1.6 - dd) * 0.8; }
+      else if (prev) { const dd = Math.hypot(s.x - prev.x, s.z - prev.z); v += (s.face === prev.spot.face ? row : 0) - Math.abs(dd - (size(name)[0] + gap)) * 0.6 * (row > 1 ? 1 : 0.3); }
       if (s.win) v -= 0.3;
       return v + pb(room, 'bed', s, name);
     }, { noise: 0.25 });
     if (!rec) break;
     out.push(rec);
     void L;
-    // a chest at the foot (learned: 1.75 m out from the bed's pivot, same facing)
-    if (d >= 2 || i === 0) {
+    // a chest at the foot (learned: 1.75 m out from the bed's pivot, same facing): the d1 essential by the first bed,
+    // past that as often as the household's clutter draws it (corpus: a chest within 2.6 m of 17 to 38 % of beds)
+    if ((d === 1 && i === 0) || (d >= 2 && (!k.hR || k.hR() < k.bedChest))) {
       const ch = k.chest;
       const off = size(name)[2] / 2 + size(ch)[2] / 2 + 0.3;
       const ax = Math.sin(rec.yaw * PI / 180), az = Math.cos(rec.yaw * PI / 180);
@@ -1110,6 +1115,8 @@ function placeTable1(room, k, o = {}) {
   if (!round && o.wall !== false) for (const s of wallSpots(room, name, { gap: 0.15 })) spots.push({ ...s, wallSide: true });
   const seatsWanted = o.seats != null ? o.seats : 4;
   const longX = (room.x1 - room.x0) >= (room.z1 - room.z0);
+  const seatName = o.seat || k.seat, seatBack = seatName && (F[seatName] || {}).back ? 180 : 0;
+  const seatD = seatName ? size(seatName)[2] : 0, seatR = seatName ? tw / 2 + seatD / 2 + 0.15 : 0;
   const rec = best(room, name, spots, s => {
     let v = 0;
     const dd = room.doorDist(s.x, s.z);
@@ -1126,6 +1133,14 @@ function placeTable1(room, k, o = {}) {
     // room to sit: the spots for seats must be on the floor
     const ax = Math.sin(s.yaw * PI / 180), az = Math.cos(s.yaw * PI / 180);
     for (const sg of s.wallSide ? [1] : [1, -1]) if (!room.inside(s.x + ax * sg * (td / 2 + 0.7), s.z + az * sg * (td / 2 + 0.7))) v -= 2;
+    // and a seat fits there now, clear of the fire, the beds and what stands round (a table squeezed between the fire
+    // and a wall had no seat on either side, and the house went without a table)
+    if (seatsWanted > 0 && seatName) {
+      let room2 = 0;
+      if (round) { for (let i = 0; i < 4; i++) { const a = (s.yaw + i * 90) * PI / 180, sx = s.x + Math.sin(a) * seatR, sz = s.z + Math.cos(a) * seatR; if (room.fits(seatName, sx, sz, norm(yawOfDir(s.x - sx, s.z - sz) + seatBack), { tight: true })) room2++; } }
+      else for (const sg of s.wallSide ? [1] : [1, -1]) { const dist = td / 2 + seatD / 2 + 0.2; if (room.fits(seatName, s.x + ax * sg * dist, s.z + az * sg * dist, norm(yawOfDir(-ax * sg, -az * sg) + seatBack), { tight: true })) room2++; }
+      if (!room2) v -= 6;
+    }
     return v + pb(room, o.kind || 'table', s, name);
   }, { noise: 0.4 });
   if (!rec) return null;
@@ -1443,8 +1458,8 @@ function chooseKit(R, biome, culture, kind, P) {
 // wealth to marble, blackwood, oak and Dvergr pieces over plain wood and logs, size to benches over chairs and stools.
 const PELTS_D = /^rug_(wolf|fur|deer|bogwitch_deer|moose|seal|Bjorn|asksvin|hare|bear)/;
 const WEAVES_D = /^(jute_carpet|jute_carpet_blue|rug_straw)$/;
-const FINE_D = /blackmarble|blackwood|_oak$|^dvergrprops_table$|^piece_chair0[23]$/;
-const PLAIN_D = /^(piece_table|piece_table_round|piece_chair|dvergrprops_stool|piece_bench01|piece_logbench01)$/;
+const FINE_D = /blackmarble|blackwood|_oak$|^dvergrprops_table$|^piece_chair0[23]$|^piece_bed02$/;
+const PLAIN_D = /^(piece_table|piece_table_round|piece_chair|dvergrprops_stool|piece_bench01|piece_logbench01|bed)$/;
 const hashD = str => { let h = 2166136261; for (let i = 0; i < str.length; i++) h = Math.imul(h ^ str.charCodeAt(i), 16777619); return h >>> 0; };
 function tasteD(n, P) {
   if (!P) return 1;
@@ -1457,6 +1472,24 @@ function tasteD(n, P) {
   if (/bench/.test(n)) w *= 0.5 + 0.17 * P.size;
   else if (cat === 'chair' || /chair|stool/.test(n)) w *= 1.3 - 0.1 * P.size;
   return w;
+}
+
+// The household's own bed and how it lays its beds out, from the household's stream (D-126: any bed, any biome;
+// weights only). Culture corpus (2,153 builds, data/culture-corpus/summary.json on the research branch): bed 910 and
+// piece_bed02 1,096 uses, ashwood_bed none in the lists; beds side by side in 21 % of furnished norse builds against a
+// bed in 71 % (about 3 in 10 of the houses with beds), 45 against 70 in the forest cabins; a rug beside or under about
+// 30 % of beds; a chest within 2.6 m of 17 to 38 %.
+const BED_W = { bed: 0.45, piece_bed02: 0.55, ashwood_bed: 0.12 };
+const BED_ROW = { 'norse-forest': 0.64 };
+function bedTaste(kit, R, biome, culture, P) {
+  const list = KIT.bed.filter(n => ok(n, biome));
+  if (list.length) kit.bed = pickW(R, list.map(n => [n, (BED_W[n] || 0.1) * flavorD(n, biome) * tasteD(n, P)]));
+  const tidy = P ? P.tidy : 0.5, comfort = P ? P.comfort : 0.5, clutter = P ? P.clutter : 0.5;
+  // a tidy household lines its beds up a little more often
+  kit.bedRow = R() < (BED_ROW[culture] != null ? BED_ROW[culture] : 0.3) * (0.7 + 0.6 * tidy);
+  kit.bedRug = 0.3 * (0.5 + comfort);
+  kit.bedChest = 0.17 + 0.35 * clutter;
+  kit.hR = R;
 }
 
 // Each room draws its own rug, seats, table, lights, banner and carving (Tyler, 2026-11-10: "Always the same tables...
@@ -1501,6 +1534,7 @@ function decorate(b, ctx) {
   // the rooms' own picks from a stream of the household's own (its traits), so two households in one house part
   const hhSalt = HP ? hashD(JSON.stringify([HP.tidy, HP.busy, HP.comfort, HP.wealth, HP.size, HP.hobby, HP.likes])) : 0;
   const kitR = rngFrom(((Math.floor(R() * 4294967296) ^ 0x6b17) ^ hhSalt) >>> 0), kitSeen = {};
+  bedTaste(kit, kitR, biome, ctx.culture, HP);
   const report = [], furnished = [];
   const usedTemplates = ctx.usedTemplates || new Set();
   // the layout plans' own stream, drawn once from the design's, so the plans can change without moving the rest
@@ -1947,6 +1981,8 @@ function furnishPlan(room, role, c) {
       const t = table({ seats: d >= 3 ? 4 : 2 });
       if (t && k.rug && d >= 3) placeRug(room, k, t, { mode: 'under' });
       if (k.rug) placeRug(room, k, room.fire, { mode: 'fire' });
+      // a rug beside or under a bed as often as the household's comfort draws it (corpus: about 30 % of beds)
+      for (const bd of beds) if (k.rug && k.hR && k.hR() < k.bedRug) placeRug(room, k, bd, { mode: k.hR() < 0.5 ? 'beside' : 'under' });
       placeLights(room, k, lights(d >= 3 ? 3 : 1));
       placeMounts(room, mountsFor());
       if (d >= 3) {

@@ -1062,9 +1062,11 @@ function openWays(b, ctx) {
         const seenG = new Set();
         for (const q of [...blockers]) {
           if (!b.pieces.includes(q) || seenG.has(q)) continue;
-          const grp = groupOf(b, q);
+          let grp = groupOf(b, q);
+          let S = grp.some(fixed) ? [] : spotsFor(b, W, grp, keep, seedN++);
+          // a set that finds no spot whole moves piece by piece (each with what stands on it, a table with its seats)
+          if (!S.length && q.kb) { const gp = groupOf(b, q, true), S2 = gp.some(fixed) ? [] : spotsFor(b, W, gp, keep, seedN++); if (S2.length) { grp = gp; S = S2; } }
           for (const r of grp) seenG.add(r);
-          const S = grp.some(fixed) ? [] : spotsFor(b, W, grp, keep, seedN++);
           if (!S.length) stuck.push(grp); else groups.push([grp, S]);
         }
         const tiers = [[], stuck.filter(gp => !gp.some(keepAlways) && !gp.some(q => W_MAIN.has(cat(q)))), stuck.filter(gp => !gp.some(keepAlways) && !gp.some(q => ['bed', 'table', 'craft'].includes(cat(q))))];

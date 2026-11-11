@@ -397,6 +397,8 @@ function dressTops(b, ctx, zones, rooms) {
   const bareTable = p => !tdLoose.some(q => Math.hypot(q.x - p.x, q.z - p.z) < 0.9 && q.y - p.y >= 0.5 && q.y - p.y <= 1.6);
   const wallN = { all: 0 }, capK = 0.4 * R();
   for (const p of b.pieces) if (p.decor && p.name === 'itemstand') { wallN.all++; const at = wallAtS(b, p); wallN[at] = (wallN[at] || 0) + 1; }
+  // flat stands, and those this pass sets on benches and seats, for the bench cap (FLAT_BENCH)
+  const flatN = { all: b.pieces.filter(p => p.decor && p.name === 'itemstandh').length, bench: 0 };
   for (const room of roomList) {
     const m = room.m;
     const inR = p => m.inside(p.x, p.z) && Math.abs(p.y - m.stand) < 0.9;
@@ -507,6 +509,7 @@ function dressTops(b, ctx, zones, rooms) {
         const at = an.ctxW === 'plain' ? 'wall' : `wall:${an.ctxW}`, k = pick.s.pieces.filter(q => q.n === 'itemstand').length;
         if (CAPPED[at] && (wallN[at] || 0) + k > (wallN.all + k) * WALL_SHARE[at] * (CAPPED[at] + capK) + 0.5) continue;
       }
+      if (pick.cl === 'bench') { const k = pick.s.pieces.filter(q => q.n === 'itemstandh').length; if (flatN.bench + k > (flatN.all + k) * FLAT_BENCH * (1 + capK) + 0.5) continue; }
       const s = pick.s;
       if (s.feast && !PBs.decorOk(FEAST_S[ctx.biome] || 'FeastMeadows', ctx.biome)) continue;
       let got = null;
@@ -565,6 +568,7 @@ function dressTops(b, ctx, zones, rooms) {
       if (s.feast) for (let k = cands.length - 1; k >= 0; k--) if (cands[k].s.feast) cands.splice(k, 1);
       got3 += got.filter(isStand).length; placedStands += got.filter(isStand).length;
       if (an.ctxW) { const at = an.ctxW === 'plain' ? 'wall' : `wall:${an.ctxW}`, k = got.filter(p => p.name === 'itemstand').length; wallN.all += k; wallN[at] = (wallN[at] || 0) + k; }
+      { const k = got.filter(p => p.name === 'itemstandh').length; flatN.all += k; if (pick.cl === 'bench') flatN.bench += k; }
       n++; placed++;
     }
   }
@@ -576,6 +580,12 @@ function dressTops(b, ctx, zones, rooms) {
 // beams 1,405 of 4,259, over a workbench or bench 719, by the hearth 558, a rafter 533, over a chest 333, a table 328,
 // a bed 208, by a door 175)
 const CAPPED = { 'wall:table': 1.3, 'wall:bed': 1.0 };
+// The corpus's flat stands on a bench or a workbench, of those at the places test_stands lists (data/stands-corpus.json
+// anchors: bench 216 and workbench 32 of 6,773 on tables, shelves and ledges, mantels, counters and wall tops, benches,
+// sills, rafters and chests): a bench set goes up while the building's flat stands on benches stay near that share.
+// Bench sets fit where table and shelf sets often do not, so the picks alone left a quarter of the flat stands on
+// benches once the sets were kept whole (integration round 6).
+const FLAT_BENCH = 248 / 6773;
 const WALL_SHARE = { 'wall:bed': 208 / 4259, 'wall:table': 328 / 4259, 'wall:chest': 333 / 4259, 'wall:hearth': 558 / 4259, 'wall:door': 175 / 4259,
   'wall:workbench': 578 / 4259, 'wall:bench': 141 / 4259 };
 // What is under a wall stand, as the corpus miner reads it (lab/mine_stands.js), so the shares compare: furniture

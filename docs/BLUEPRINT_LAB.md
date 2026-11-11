@@ -613,12 +613,12 @@ homes over 13 cultures and the three stages, 2026-11-11):
 
 | Class | Share | Corpus | Pieces when any (median) | Corpus |
 |---|---|---|---|---|
-| Vine | 0.21 | 0.27 | 23 | 23 |
-| Bush | 0.27 | 0.36 | 7 | 6 |
+| Vine | 0.21 | 0.27 | 30 | 23 |
+| Bush | 0.28 | 0.36 | 6 | 6 |
 | Flower | 0.26 | 0.30 | 2 | 2 |
-| Tree | 0.29 | 0.28 | 3 | 3 |
+| Tree | 0.29 | 0.28 | 4 | 3 |
 | Pot | 0.13 | 0.11 | 3 | 4 |
-| Mushroom | 0.15 | 0.16 | 5 | 8 |
+| Mushroom | 0.15 | 0.16 | 4 | 8 |
 
 `node lab/render_landscape.js <dir> [type:biome:culture:stage:seed ...]` draws each building without and with its
 greenery (three-quarter and top views); `--kit` draws the road kit sets in four biomes.

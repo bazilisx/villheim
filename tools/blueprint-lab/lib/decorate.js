@@ -1198,7 +1198,7 @@ function placeStorageRow(room, k, n, o = {}) {
   for (let i = 0; i < n; i++) {
     const last = placed[placed.length - 1];
     const rec = best(room, name, spots, s => {
-      let v = (s.corner ? 1.2 : 0) + fr.v(s.x, s.z) / fr.D * (o.back != null ? o.back : 0.6);
+      let v = (s.corner ? (o.corner || 1.2) : 0) + fr.v(s.x, s.z) / fr.D * (o.back != null ? o.back : 0.6);
       if (room.doorDist(s.x, s.z) < 1.6) v -= 3;
       if (last) v += (s.face === last.spot.face ? 2 : -1) - Math.abs(Math.hypot(s.x - last.x, s.z - last.z) - (w + 0.2)) * 1.5;
       if (o.near) v -= Math.hypot(s.x - o.near.x, s.z - o.near.z) * 0.3;
@@ -1666,6 +1666,7 @@ const EXTRAS = {
 
 // Top the room up toward the corpus density for its kind (d2 the median, d3 the 75th percentile), with seeded choice
 // among the extras. Stops at the target, when every extra has failed, or when half the floor is taken.
+const LIVING = new Set(['home', 'sleeping', 'guest', 'kitchen', 'hall', 'tavern']);
 function fill(room, role, c) {
   const extras = EXTRAS[role];
   if (!extras) return;
@@ -1699,9 +1700,25 @@ function fill(room, role, c) {
   const run = {
     trophies: () => pairOn('itemstand', 1.6, 1.0, d >= 3 ? 3 : 2),
     shelf: () => pairOn('itemstandh', 1.3, 1.0, 2),
-    barrels: () => barrel ? placeStorageRow(room, k, d >= 3 ? 3 : 2, { chest: barrel, back: 1 }).length : 0,
+    // in the rooms people live in, barrels stand where food is kept and used: one group by the fire or in the kitchen,
+    // in a corner, its size by the household (a row of pairs along every wall read as filler in the Swamp house of
+    // 2026-11-10); store and work rooms keep their rows
+    barrels: () => {
+      if (!barrel) return 0;
+      if (!LIVING.has(role)) return placeStorageRow(room, k, d >= 3 ? 3 : 2, { chest: barrel, back: 1 }).length;
+      if ((used.barrels || 0) > 0 || (!room.fire && role !== 'kitchen')) return 0;
+      const P = c.persona, n = d >= 3 && room.R() < (P ? 0.25 + 0.5 * Math.max(P.clutter || 0, (P.hobby || {}).food || 0) : 0.5) ? 3 : 2;
+      return placeStorageRow(room, k, n, { chest: barrel, back: 0.3, near: room.fire ? { x: room.fire.x, z: room.fire.z } : null, corner: 2.5 }).length;
+    },
     crates: () => ok('dvergrprops_crate', biome) ? placeStorageRow(room, k, 2, { chest: 'dvergrprops_crate' }).length : 0,
-    chest: () => placeStorageRow(room, k, 1).length,
+    // in the rooms people live in a chest goes by a bed or in a corner, away from the other chests (three chests in a
+    // row along a wall read as a store room); store and work rooms keep their rows
+    chest: () => {
+      if (!LIVING.has(role)) return placeStorageRow(room, k, 1).length;
+      const beds = room.placed.filter(q => (F[q.name] || {}).cat === 'bed'), chests = room.placed.filter(q => (F[q.name] || {}).cat === 'storage');
+      return placeAgainst(room, k.chest, sp => (sp.corner ? 1 : 0) + Math.max(0, ...beds.map(q => 2 - Math.hypot(sp.x - q.x, sp.z - q.z))) -
+        chests.reduce((v, q) => v + Math.max(0, 2.5 - Math.hypot(sp.x - q.x, sp.z - q.z)) * 1.5, 0), { kind: 'storage' }) ? 1 : 0;
+    },
     armor: () => placeAgainst(room, 'ArmorStand', s => (s.corner ? 0.5 : 0)) ? 1 : 0,
     fermenter: () => placeAgainst(room, 'fermenter', s => (s.corner ? 1 : 0)) ? 1 : 0,
     seating: () => { if (!ok('piece_table_round', biome) || (k.taste || {}).noTable) return 0; const n0 = before(); const t = placeTable(room, k, { table: 'piece_table_round', seats: 2, seat: k.chair || k.seat, depth: 0.7, spread: 3.5 }); if (t && d >= 3) placeOnTable(room, t, [ok('Candle_resin', biome) ? 'Candle_resin' : 'itemstandh']); return room.count - n0; },
@@ -1720,7 +1737,15 @@ function fill(room, role, c) {
     },
     tools: () => pairOn('itemstand', 1.5, 0.8, 3) + (placeAgainst(room, ok('piece_workbench_ext4', biome) ? 'piece_workbench_ext4' : 'forge_ext5') ? 1 : 0),
     chart: () => placeAgainst(room, 'piece_cartographytable') ? 1 : 0,
-    bench: () => placeAgainst(room, k.bench || 'piece_bench01', null, { rel: (F[k.bench] || {}).back ? 180 : 0 }) ? 1 : 0,
+    // a bench where people sit: by the fire, by a table or under a window (a bench on any free wall read as filler);
+    // which of them by the household (comfort to the fire, a big household to the table, the rest to the light)
+    bench: () => {
+      const P = c.persona, tables = room.placed.filter(q => (F[q.name] || {}).cat === 'table');
+      const wFire = 1 + (P ? P.comfort || 0 : 0.5), wTable = 0.6 + (P ? Math.min(1, (P.size || 2) / 4) : 0.5), wWin = 0.8 + (P && P.likes ? (P.likes.sill || 1) * 0.4 : 0.4);
+      const near = (s, q, w) => (q ? w * Math.max(0, 2.5 - Math.hypot(s.x - q.x, s.z - q.z)) : 0);
+      return placeAgainst(room, k.bench || 'piece_bench01', s => Math.max(near(s, room.fire, wFire), ...tables.map(t => near(s, t, wTable)), s.win ? wWin * 2 : 0) - 1.5,
+        { rel: (F[k.bench] || {}).back ? 180 : 0 }) ? 1 : 0;
+    },
     footBench: () => footBench(room, k),
     doorBench: () => {
       const b = k.bench || 'piece_bench01';

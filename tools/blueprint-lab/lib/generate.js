@@ -2240,7 +2240,9 @@ function eaveDraw(dctx) {
   if (dctx.eaveDrawn) return dctx.eaveDrawn;
   const R = rng(((dctx.profile && dctx.profile.hash) || 1) ^ 0x5eaf00d);
   const deep = R() < (dctx.profile && dctx.profile.deepEave != null ? +dctx.profile.deepEave : DEEP_EAVE);
-  const rake = R() < (dctx.profile && dctx.profile.rakeOut != null ? +dctx.profile.rakeOut : RAKE_OUT);
+  // a balcony keeps its rake: the balcony and its door are laid out under a rake a metre out (a flush rake left the
+  // balcony door blocked, home Black Forest norse-forest s2 seed 15)
+  const rake = R() < (dctx.profile && dctx.profile.rakeOut != null ? +dctx.profile.rakeOut : RAKE_OUT) || !!(dctx.profile && dctx.profile.balcony);
   return (dctx.eaveDrawn = { deep, rake });
 }
 
@@ -2384,7 +2386,8 @@ function wallSegment(b, K, C, x, y0, z, yaw, SH, kind, styleOverride) {
     // other half, a 2 m light, or either of them 2 m tall; the light filled by the kit (fillLight)
     const kit = C.winKit, ux = Math.cos(yaw * Math.PI / 180), uz = -Math.sin(yaw * Math.PI / 180);
     const block = stoneLike ? (/^(stone_wall_1x1|blackmarble_1x1)$/.test(K.stoneBlock || '') ? K.stoneBlock : null) : K.wallQuarter;
-    const tall = (kit.size === 'tall' || kit.size === 'big') && SH >= 3 && !b.lightLow, lw = (kit.size === 'single' || kit.size === 'tall') && block ? 1 : 2, lh = tall ? 2 : 1;
+    const tall = (kit.size === 'tall' || kit.size === 'big') && SH >= 3 && !b.lightLow && !/stone|marble|grausten/.test(style), // (stone beside a 2 m tall light fell, home Plains byzantine s2 seed 24)
+      lw = (kit.size === 'single' || kit.size === 'tall') && block ? 1 : 2, lh = tall ? 2 : 1;
     fill(y0, y0 + 1);
     let lx = x, lz = z;
     if (lw === 1) {

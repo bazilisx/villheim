@@ -754,10 +754,14 @@ function groupOf(b, p, part) {
   }
   // a library assembly (lib/kitbash.js) moves whole; to leave pieces out, the piece and what stands on it (part)
   if (!part) for (const m of [...g]) if (m.kb) for (const q of b.pieces) if (q.kb === m.kb) g.add(q);
+  const done = new Set();
   for (let k = 0; k < 3; k++) for (const m of [...g]) {
+    if (done.has(m)) continue;
+    done.add(m);
     const o = Ck.aabb(m);
     for (const q of b.pieces) {
       if (!q.decor || g.has(q) || (q.rest && ['wall', 'hang'].includes(q.rest)) || (F[q.name] || {}).at === 'mount' || (F[q.name] || {}).at === 'hang') continue;
+      if (q.x < o.x0 - 0.6 || q.x > o.x1 + 0.6 || q.z < o.z0 - 0.6 || q.z > o.z1 + 0.6) continue;
       // a set piece that says it rests on something (a mug stand on a bench, a plank top half over a chest) goes with
       // the piece it rests on, and only with that piece
       if (q.kb && q.rest === 'on') { if (wRestsOn(q, m)) g.add(q); continue; }

@@ -340,9 +340,15 @@ Before and after (round 5 record, then d75c7d8; full runs, 702 designs for check
 Other full checks at d75c7d8: check_set 224 of 225 (late 90 of 90, cultures 147 of 147), overlap 1 (same);
 test_structure 36 hold; test_sizes 0 off; every checks.js column in check_interiors 0, mountOnOpening 0; hearths
 spotmix homes 288, under 120 m2 against a wall 97 %, s3 middle 8 %, hallmix over 80 m2 middle 32 % (as round 4);
-compare_page all the same; dotnet build 0 errors, 43 warnings; gen-test (tools/gen-test/run.sh) FAILS: LabEngine (Jint) throws in LabJint.Make on the rebuilt lab.js (exit 134), cause not traced yet.
+compare_page all the same; dotnet build 0 errors, 43 warnings; gen-test (tools/gen-test/run.sh) FAILS: request 2 (longhouse Black Forest norse-forest s3d2, 8 tries) passes the
+Jint engine's 2 minute limit (LabEngine.cs TimeoutInterval) with System.TimeoutException; request 1 took 17.7 s. In
+node the same request takes 6.8 s at the windows merge 1091153 and at d75c7d8, against 4.9 s at round 5's tip (the
+chosen design has 1,216 pieces against 1,144); openWays is 0.5 s of it either way. The machine had other helpers'
+checks running. groupOf skips pieces more than 0.6 m off a member's box (layout.js, after d75c7d8).
 
-Where round 6 stopped: every fix and the record are pushed; the bundles (lab.js, web/index.html) are rebuilt locally from d75c7d8 and not committed, because gen-test fails on them. Left: trace the Jint error (likely a construct in the round 6 code Jint does not take, in layout.js, generate.js or lab/reach.js is not bundled), fix it, run gen-test again, commit the bundles.
+Where round 6 stopped: every fix and this record are pushed. The bundles (lab.js, web/index.html) are rebuilt locally
+and not committed, as gen-test fails on them. Left: find what makes the windows merge's designs slower to make (or
+settle the engine's time limit, a lead's call), run gen-test again on a quiet machine, commit the bundles.
 
 One check_interiors seed (234 designs), round 5 tip, the two merges, then a6ffb0d: floating 1, 7, 0; overlap 1, 2, 1;
 bareFloors 1, 3, 3; reach rooms 4, 6, 6 of 323; d3 furniture 42.8, 42.3, 43.7. The windows track's own run gave

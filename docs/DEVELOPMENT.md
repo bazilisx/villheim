@@ -34,12 +34,15 @@ Standing reference for building, deploying and testing Villheim. Current state i
 ## Keeping the game on the latest build
 
 - Every push to `main` makes CI publish the "Latest test build" release (tag `dev-latest`) with both DLLs, their
-  pdbs and `version.txt` (the short commit).
+  pdbs and `version.txt` (the build label: build number, then the short commit, for example `272-abc1234`).
 - On the PC, `scripts/Villheim-Updater.ps1` copies each new build into the profile. No Git or .NET needed. Start it
   by opening PowerShell and pasting:
   `irm https://raw.githubusercontent.com/bazilisx/villheim/main/scripts/Villheim-Updater.ps1 | iex`
   Leave the window open. When the core changed it asks to close Valheim and finishes the copy by itself.
-- Which logic build is live: the hearth's hover text and `vh version` show `commit-<hash>-<build time>`.
+- Which logic build is live: `vh version` shows `build-<number>-<hash>-<build time>`. The number is the count of commits on
+  main, so a higher number is a later build. A test branch build installed by hand is labeled from the main build it
+  starts from, the branch and its commits past main, for example `build-272+look.2-abc1234`: it holds everything in main
+  272 plus 2 commits of the look branch. Build such a label with `dotnet build -p:VillheimLabel=272+look.2-abc1234`.
 
 ## Hot reload loop
 

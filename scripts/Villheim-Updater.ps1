@@ -15,7 +15,7 @@
 #
 # Another profile: set $env:VILLHEIM_PROFILE = "Profile Name" in the window before pasting the line.
 
-$updaterVersion = 4
+$updaterVersion = 5
 $updaterUrl = "https://raw.githubusercontent.com/bazilisx/villheim/main/scripts/Villheim-Updater.ps1"
 
 $ErrorActionPreference = "Stop"
@@ -101,7 +101,7 @@ while ($true) {
                 }
             }
             $coreWarned = $false
-            Say "Installed build $latest. In game, the hearth's hover text should end in commit-$latest." Green
+            Say "Installed build $latest. In game, vh version should show build-$latest." Green
         }
 
         if ($coreWaiting) {

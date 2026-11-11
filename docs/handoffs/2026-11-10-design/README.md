@@ -114,6 +114,83 @@ Open:
 - home Mountain s2d2 139 overlap (ground torch by a log bench), as in round 2.
 
 
+## Integration, round 4 (2026-11-11, branch design/integration2 from main 509744e)
+
+Merged with --no-ff, no conflicts: f7c5797 design/wip-storeys 014c3c1 (storeys.md), ba6eaca design/wip-trim-banners
+44d9a9f (trim-banners.md), 26e65e3 design/wip-rooms-lights 87e6845 (rooms-lights.md). Fixes, one commit per cluster
+(D-123); the track whose code changed is in each commit message:
+- 5b03e83 rugs (rooms-lights code; settle in generate.js): trimRugs fills the d2 budget with rugs that lie at d2 first
+  (a set's d3 rug took a d2 room's one place); one layered pair per room with room for two, drawn so the design's
+  layered rugs come to the culture's rl share, a second rug laid over the first where no pair was laid (layOver);
+  rugTopUp for rooms the furnishing left short; settle keeps rugs in door and ladder zones (checks.js doors and ladders
+  pass over rugs). Homes with no rug: the household draw (has share per group, 27 to 44 % none) gave 7 of the 18
+  sample households none.
+- b2a865f lights (rooms-lights code): the draw of none passes over the stream's first four values (44 % of main rooms
+  drew under 0.33) and uses the corpus share alone (the household's liking divided into it put homes' main rooms at
+  0.46); the main room is found on raised floors and court plans (storage took the room share 0.83); trimLights puts
+  lights that stand at d2 first; round houses and the Svan tower are trimmed too (kitbash.js budgets).
+- 9191bb9 tables dressed (rooms-lights code): redressTables lays one non-light top piece on a table rolled dressed and
+  left bare, in generate.js finish before dressStands. 116 of 311 tables dressed against the roll's 36 %; the roll is
+  each culture's corpus td rate (norse 41 %, fen-folk 23, norse-highland 24), so the sample mix sits under 41 %.
+- dea0562 bare floors (rooms-lights code): sparseTopUp, a chest then an armor stand or barrel in a room of 8 m2 or
+  more holding under two pieces (every corpus room kind holds 0.82 pieces per 10 m2 or more at its lower quartile).
+- ce6c2cc mountOnOpening (trim-banners code): banners and motif props pass the decorator's mountOk (decorate.js
+  mountClear) where they are hung and committed.
+- 843af16 combined tracks: no svalgang on a knee-wall loft (2 of 63 knee lofts failed support, stability, doors);
+  benchByDoor, the lean-to goods and standing motif pieces keep out of the audit's 0.6 m ring round a climb and the
+  keep-clear zones (a straight stair up the inside of a wall to an s3 upper floor; 72 s3 longhouses, 46 with a hall
+  loft: audit stairs 3 to 0).
+- f13da3f table sets (D-152 g; essentials and stands code in kitbash.js): a seat whose dining table box is within
+  0.9 m turns only with its table; liveIn turns it 3 to 8 degrees toward the nearest seat at the table or pushes it
+  back 0.1 to 0.3 m and turns it 4 to 10 degrees (settings: data/interior.json pairs show turned seats at tables in
+  0.25 m steps with no turn size). Set seats turned over 10 degrees: 30.7 to 4.7 % (72 homes, longhouses, taverns).
+- e401eb2 circulation (D-152 i): lab/reach.js in check_interiors (reachRoom, reachPiece, entryZone; a 0.9 m lane walked
+  from inside the outside doors and up the climbs over the design's room rects); layout.js targetsOf adds tables,
+  stations and floor chests; clearLanes runs again after the late passes.
+- 43b1c12 entry zones (D-152 h): layout.js clearEntries, loose furniture out of a zone inside each door, the opening's
+  width plus 0.3 m each side and 1.5 m deep (accessibility turning circle; corpus p10 free depth inside a home's door
+  1.6 m, docs/INTERIOR_DESIGN.md). Beds, fires, stations, tables and the first chest stay and are counted.
+- d940c83: lanes and entries leave rooms of 8 m2 or more two pieces (layout.js leavesBare); sparseTopUp does not count
+  lights. 27c7fcd: bundles rebuilt.
+
+Reach, one seed (234 designs), before e401eb2 and after 43b1c12: main pieces not reached 395 of 1,548 to 255 of 1,395;
+room rects 28 to 24 of 323; pieces in entry zones 27 to 5. Renders in /tmp/int4-renders (not kept).
+
+Full checks (round 3 in brackets): check_set 224 of 225, overlap 1 (same); test_structure 36 hold; test_sizes 0 off;
+check_interiors 702 designs: overlap 3 (1), floating 7 (9), bareFloors 10 (7), stairs 0, mountOnOpening 0, door 0,
+every checks.js column 0, reach 769 of 4,067 main pieces and 71 of 987 room rects not reached, entryZone 37;
+furniture per design d2 21.5, d3 38.7; pools Norse Meadows pass (prefabsPerD3 13.1, setShare 0.36), norse-forest Black
+Forest pass (11.8, 0.345), middle-eastern Plains FAIL prefabsPerD3 10.3 under 11 (the merge 26e65e3 gave 10.8,
+5b03e83 11.1, b2a865f 10.4); test_stands 3 --gate d3 misses: flat bench 6.3 (8.9), flat chest 4.4 (in), wall station
+31.4 (38.3), wall table 13.9 (in), flat share 81 % (78); essentials: tables dressed 37.3 % (38.1), tables turned 23.2
+(21.7), seats turned 28.3 (33.3), rugs layered 20.9 (14.4), chests stacked 47.2, homes with no light 36 % (corpus 33),
+longhouses 25 (23), taverns 3 (6), workshops 31, smithies 44 and storehouses 50 (work 21); test_variance hall 0.44
+and 0.42, home-b s3d3 0.44 (closest 0.79); hearths spotmix and hallmix as main (homes s3 middle 8 %, halls over 80 m2
+middle 32 %); compare_page 5 of 5 same; gen-test 5 of 5 byte for byte; dotnet build 0 errors, 43 warnings.
+
+Ideas study measures (ideas.md commands, 612 designs, 576 files; main 509744e, then this branch; corpus as in ideas.md):
+s3 two storeys or more 28 to 39 % (Norse 75); beds upstairs 36 to 44 % (77); banner piece in 7 to 14 % of buildings,
+s3 5 to 24 % (Norse 53); windows dressed 94 to 91 % (70), corners 96 to 94 (77), inside corners 100 (78), wall tops 93
+(60); valleys 0.5 per build (2.2); lights per 10 m2 0.7 to 0.2 (0.2); home rooms with a wall torch 83 to 45 % (36), a
+candle 49 to 7 % (0 to 7); tables on a rug 72 to 25 % (27); seats at tables 46 % both (28); tables dressed 36 % both
+(41); rugs layered 17 to 8 % in the culture miner's reading (essentials reads 20.9 %); tavern rooms with a butcher table,
+prep table, mortar 0 to 10, 8, 10 % (27, 14, 16).
+
+Open:
+- Middle-eastern Plains pool prefabsPerD3 10.3 under its floor of 11. Dvergr wall lanterns (40 % of corpus wall
+  lights) are drawn and never put up (decorate.js putMount refuses them; rooms-lights.md); they are one kind more where
+  a room is lit.
+- Smithies and storehouses read 44 and 50 % dark in essentials with zero budgets at 22 and 28 % (corpus 21 and 29 %):
+  the measure counts lights over floor pieces with a roof 2 to 9 m over them, and 6 of 36 smithies have their wall
+  torches outside that reading; two steppe smithies place no light where the budget gives two.
+- Reach: 19 % of main pieces stay out of reach on a 0.9 m lane; beds, tables and stations are never taken out of a lane,
+  so a bed across a wing or a table set in a narrow room still closes it. Entry zones hold 37 pieces, mostly the kinds
+  the pass keeps.
+- bareFloors 10: tower upper floors where the light budget took a library ledge set's lights and the ledge, and the
+  top-up found no wall spot.
+- Homes with no rug 50 % in the 36-home sample (corpus 28 to 32 %), from 7 of 18 household draws.
+- Wall station stands 31.4 % (corpus 16.9), as in round 3.
+
 ## Rules for every helper (copy of /home/claude/briefs/common.md; /home/claude is not kept between sessions)
 
 A new session gives each helper these rules in its brief, with its own branch, working copy and file ownership.

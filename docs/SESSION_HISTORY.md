@@ -80,7 +80,8 @@ walkable building pads, underwater rocks, smaller lag spikes, D-080.
   own materials. D-080 (2026-11-10) says decor is never free; home decor pays local stand-ins
   (`Village/DecorAnalogs.cs`), with the free cases listed in `docs/ROADMAP.md`.
 - **Decisions D-067 to D-071 (2026-11-09):** working yards for work and community buildings; base crafting stations
-  outside without a roof are avoided (Tyler hesitant; extensions as decor are fine), market area later and no village square; three
+  outside without a roof are avoided (Tyler, chat 2026-11-09: "Im hesitant about adding the base workbenches ...
+  outside without roofs"; extensions as decor are fine), market area later and no village square; three
   drivers for the whole generator: messy realism, environmental storytelling, variance by culture, village, family
   and NPC, with no fixed-interval rules applied every time; a complexity ladder per stage (s1 and s2 one storey and
   simple, three storeys rare and late) and houses that grow from their own earlier stage; room layout learned from

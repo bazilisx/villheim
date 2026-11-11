@@ -121,7 +121,8 @@ https://en.wikipedia.org/wiki/Wikipedia:Signs_of_AI_writing
   (file) once it is built. A detail the answer leaves open becomes a new Open row.
 - **Status.** Open: asked. Answered: Tyler has answered. Done: built in the code, with the file named in "Decision on
   record"; for a rule with no code, written into CLAUDE.md or the doc named there. A row with an Open "Code differs"
-  row stays Answered until that row is settled. Tyler sets rows to Answered; a
+  row stays Answered until that row is settled. A decision that needs no work is Done with "No code" in Decision on
+  record. Tyler sets rows to Answered; a
   session sets Done once the work is built. Whether it works in the game is recorded in the Tests tab.
 - **Open rows.** Code does not treat an Open row as decided. When work needs a value before Tyler answers, the value is
   a setting and the row says which value is in use until he answers.

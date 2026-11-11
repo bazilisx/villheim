@@ -834,6 +834,9 @@ function partition(b, ctx, wallSegment) {
     const xp = w0.cx + sg * (w0.W - 4); // two 2 m cells deep
     if (Math.abs(xp - door.x) < 2.5) continue;
     if (flue && xp > flue.x0 - 1 && xp < flue.x1 + 1) continue;
+    // the back room never takes the hearth: a fire against the end wall keeps the main room's end
+    const keep = ctx.fireKeep || flue;
+    if (keep && sg * ((keep.x0 + keep.x1) / 2 - xp) > 0) continue;
     const zs = [...cells.values()].filter(([x, z]) => Math.abs(x - (xp - sg)) < 0.01 && Math.abs(z - w0.cz) < w0.D).map(([, z]) => z).sort((a, c) => a - c);
     if (zs.length < 3) continue;
     // ladders keep their foot, hole and landing
@@ -881,11 +884,14 @@ function interior(b, ctx) {
   benchByDoor(b, ctx);
   const furniture = () => b.pieces.filter(p => p.decor);
   // a kerb of beams round a fire pit on the floor, so it reads as a hearth set into the floor
-  if (X.fireKerb) {
+  // (a fire against a wall gets the kerb on its open sides; a fire in a stone alcove has the alcove's floor)
+  if (X.fireKerb && !(ctx.hearth && ctx.hearth.spot === 'stack')) {
     const fire = b.pieces.find(p => p.decor && p.name === 'fire_pit');
     if (fire) {
       const beam = K.beam || 'wood_beam', y = fire.y + 0.0;
-      const ring = [[0, -1.15, 0], [0, 1.15, 0], [-1.15, 0, 90], [1.15, 0, 90]].map(([dx, dz, yaw]) => ({ name: beam, x: fire.x + dx, y, z: fire.z + dz, yaw, q: quatD(yaw) }));
+      const walls = b.pieces.filter(p => !p.decor && ['wall', 'pole', 'window', 'door'].includes(PD.piece(p.name).role)).map(p => Ck.aabb(p));
+      const ring = [[0, -1.15, 0], [0, 1.15, 0], [-1.15, 0, 90], [1.15, 0, 90]].map(([dx, dz, yaw]) => ({ name: beam, x: fire.x + dx, y, z: fire.z + dz, yaw, q: quatD(yaw) }))
+        .filter(c => { const cb = Ck.aabb(c); return !walls.some(o => o.x0 < cb.x1 - 0.05 && o.x1 > cb.x0 + 0.05 && o.z0 < cb.z1 - 0.05 && o.z1 > cb.z0 + 0.05 && o.y0 < cb.y1 + 0.3 && o.y1 > cb.y0); });
       const ok = ring.every(c => { const cb = Ck.aabb(c); return !furniture().some(p => p !== fire && !/cookingstation|cauldron/.test(p.name) && PD.piece(p.name).role !== 'rug' && (o => o.x0 < cb.x1 && o.x1 > cb.x0 && o.z0 < cb.z1 && o.z1 > cb.z0 && o.y0 < cb.y1 + 0.3 && o.y1 > cb.y0)(Ck.aabb(p))); });
       if (ok) { for (const c of ring) b.put(c.name, c.x, c.y, c.z, c.yaw, { trim: true }); b.notes.push('A kerb of beams round the fire pit.'); }
     }

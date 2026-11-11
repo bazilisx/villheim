@@ -1262,30 +1262,63 @@ function placeStation(room, k, name, exts, o = {}) {
   return rec;
 }
 
-// Lights: torches on the walls in pairs either side of a face's middle; floor torches in corners and by beds and seats
-// of honor, clear of furniture (learned: 1.4 m to the nearest furniture at the tenth percentile).
+// Lights, by what they are for (corpus of 1,663 builds, 2026-11-11; docs/INTERIOR_DESIGN.md "Lights"). Wall lights are
+// the common kind (in half of the homes, two thirds of the halls, most taverns); a light goes where the room is
+// darkest and something is done there: by the way in (one wall light in six stands within 1.5 m of a door), at a bed,
+// by a table or a bench. Hardly any stand within 3 m of a fire, which lights its own part of the room. Spots are scored
+// one light at a time, never spaced: the corpus's wall lights stand 3.9 m apart at the median, with a spread of 0.28 of
+// that on one floor. A room may also get a hanging brazier from the rafters (o.hang: its odds), which settle() in
+// lib/generate.js hangs from the ceiling. Floor torches stand in corners and by beds and seats of honor (o.flank: the
+// pieces they stand either side of, 1.6 m out). The height of the wall lights is the household's own, under the
+// sconce's 1 m below the ceiling (Valheim puts one out above that).
 function placeLights(room, k, n, o = {}) {
+  // the lights draw from a stream of their own, so the rest of the room comes out as it would without them
+  const R0 = room.R;
+  room.R = lightStream(room);
+  try { return lightsIn(room, k, n, o); } finally { room.R = R0; }
+}
+// One stream per room for its lights, from the room's place and the household.
+function lightStream(room) {
+  if (!room.lightR) room.lightR = rngFrom((Math.round(room.cx * 73 + room.cz * 131 + room.stand * 977) ^ ((room.persona && room.persona.salt) || 0x5eed)) >>> 0);
+  return room.lightR;
+}
+function lightsIn(room, k, n, o) {
   let done = 0;
+  const R = room.R, P = room.persona || null;
+  const likes = P && P.likes ? Math.max(0.5, Math.min(1.6, P.likes.lights || 1)) : 1;
+  const lit = () => room.placed.filter(q => (F[q.name] || {}).cat === 'light' || q.fire);
+  // how dark a spot is: the distance to the nearest light, a fire counting as a light 2 m across
+  const dark = (x, z) => { let v = 6; for (const q of lit()) v = Math.min(v, Math.hypot(q.x - x, q.z - z) - (q.fire ? 1.5 : 0)); return v; };
+  const fireNear = (x, z) => room.fire && Math.hypot(room.fire.x - x, room.fire.z - z) < 3;
+  const near = (x, z, cats, r) => room.placed.some(q => cats.includes((F[q.name] || {}).cat) && ptDist(q.b, x, z) < r);
+  // what this household lights first: the way in, the beds, the work places (each a weight, drawn per room)
+  const want = { door: 0.6 + R() * 1.2, bed: 0.4 + R() * 1.0, work: 0.4 + R() * 0.8 };
+  const purpose = (x, z) => (room.doorDist(x, z) < 1.8 ? want.door : 0) + (near(x, z, ['bed'], 1.6) ? want.bed : 0) + (near(x, z, ['table', 'craft', 'seat'], 1.6) ? want.work : 0);
+  // a hanging brazier over a bigger room
+  if (o.hang && done < n && ok('piece_brazierceiling01', room.biome) && room.area >= 30 && R() < o.hang * likes) {
+    const cells = room.cells.filter(c => !fireNear(c.x, c.z) && room.doorDist(c.x, c.z) > 1.5);
+    cells.sort((a, b) => Math.hypot(a.x - room.cx, a.z - room.cz) - dark(a.x, a.z) * 0.5 - (Math.hypot(b.x - room.cx, b.z - room.cz) - dark(b.x, b.z) * 0.5));
+    const c = cells[0];
+    if (c) {
+      const top = room.ceilAt(c.x, c.z);
+      if (top - room.stand > 3.9 && room.add('piece_brazierceiling01', c.x, top - F.piece_brazierceiling01.under, c.z, 0, { mount: true, y0: top - 1.6 })) done++;
+    }
+  }
   if (k.wallLight && ok(k.wallLight, room.biome)) {
-    const faces = [...room.faces].sort((a, b) => b.len - a.len);
-    for (const face of faces) {
-      if (done >= n) break;
-      const spots = mountSpots(room, k.wallLight, { face, pairs: true }).filter(s => s.pair && Math.abs(s.pair) >= Math.min(1.5, face.len / 4));
-      // a pair at the same distance either side of the middle, as far apart as a third of the face
-      const byK = new Map();
-      for (const s of spots) { const kk = Math.abs(s.pair).toFixed(2); if (!byK.has(kk)) byK.set(kk, []); byK.get(kk).push(s); }
-      const want = face.len / 3.2;
-      const ks = [...byK.keys()].sort((a, b) => Math.abs(+a - want) - Math.abs(+b - want));
-      for (const kk of ks) {
-        const pr = byK.get(kk);
-        if (pr.length < 2) continue;
-        const a = putMount(room, k.wallLight, pr[0]);
-        if (!a) continue;
-        const b = putMount(room, k.wallLight, pr[1]);
-        if (!b) { room.out.pop(); room.mates.splice(room.mates.indexOf(room.placed.pop()), 1); room.mounts.pop(); room.count--; continue; }
-        done += 2;
-        break;
-      }
+    const f = F[k.wallLight] || {};
+    // the household's height for its sconces: 1.6 to 2.0 m, or as the piece hangs
+    const y = f.under != null ? undefined : 1.6 + R() * 0.4;
+    const spots = mountSpots(room, k.wallLight, { pairs: true, y });
+    while (done < n) {
+      const ranked = spots.map(s => {
+        const d0 = dark(s.x0, s.z0);
+        if (d0 < 1.2 || fireNear(s.x0, s.z0)) return [s, -99];
+        return [s, Math.min(d0, 5) * 0.6 + purpose(s.x0, s.z0) + R() * 0.6];
+      }).filter(([, v]) => v > -50).sort((a, b) => b[1] - a[1]);
+      let put = null;
+      for (const [s] of ranked.slice(0, 40)) if ((put = putMount(room, k.wallLight, s))) break;
+      if (!put) break;
+      done++;
     }
   }
   if (done < n && k.floorLight && ok(k.floorLight, room.biome)) {
@@ -1293,15 +1326,14 @@ function placeLights(room, k, n, o = {}) {
     const spots = wallSpots(room, name, { gap: 0.05, tallOk: o.tallOk });
     while (done < n) {
       const rec = best(room, name, spots, s => {
-        let v = s.corner ? 1.5 : 0;
-        let near = Infinity;
-        for (const q of room.placed) if (!q.rug && !q.mount) near = Math.min(near, ptDist(q.b, s.x, s.z));
-        if (near < 0.9) return -99;
-        v += Math.min(near, 3) * 0.3;
-        if (o.flank) v -= Math.min(...o.flank.map(f => Math.abs(Math.hypot(s.x - f.x, s.z - f.z) - 1.6))) * 0.8;
-        for (const q of room.placed) if (q.name === name && Math.hypot(q.x - s.x, q.z - s.z) < 3) v -= 2;
+        let v = s.corner ? 1.2 : 0;
+        let nearF = Infinity;
+        for (const q of room.placed) if (!q.rug && !q.mount) nearF = Math.min(nearF, ptDist(q.b, s.x, s.z));
+        if (nearF < 0.9 || fireNear(s.x, s.z)) return -99;
+        v += Math.min(nearF, 3) * 0.2 + Math.min(dark(s.x, s.z), 5) * 0.5 + purpose(s.x, s.z) * 0.6;
+        if (o.flank) v -= Math.min(...o.flank.map(fl => Math.abs(Math.hypot(s.x - fl.x, s.z - fl.z) - 1.6))) * 0.8;
         return v;
-      }, { noise: 0.3 });
+      }, { noise: 0.4 });
       if (!rec) break;
       done++;
     }
@@ -1456,6 +1488,7 @@ function decorate(b, ctx) {
       if (m.covered < 0.5) continue;
       const room = new Room(m, { out: b.pieces, R, mates: levelPlaced });
       room.biome = biome;
+      room.persona = ctx.persona || null;
       room.level = li;
       room.upper = li > 0 || (rects.length && rects.every(r => r.upper));
       const inMain = main && m.cells.filter(c => c.x > main.x0 && c.x < main.x1 && c.z > main.z0 && c.z < main.z1).length;
@@ -1849,6 +1882,16 @@ function evenLights(room, k) {
   return rec ? 1 : 0;
 }
 
+// Lights per 10 m2 of covered floor in the corpus (median and upper quartile over builds of the kind, 2026-11-11).
+const LIGHT_RATE = { home: [0.1, 0.22], sleeping: [0.1, 0.22], hall: [0.1, 0.22], tavern: [0.2, 0.33], workshop: [0.13, 0.3],
+  smithy: [0.13, 0.3], storage: [0.05, 0.15], living: [0.11, 0.29], other: [0.11, 0.29] };
+function lightCount(room, kind, d, taste) {
+  if (d < 2) return 0;
+  const R = lightStream(room), [lo, hi] = LIGHT_RATE[kind] || LIGHT_RATE.other;
+  const likes = room.persona && room.persona.likes ? room.persona.likes.lights || 1 : 1;
+  const v = Math.max(0, room.area / 10 * (lo + (hi - lo) * R()) * (d >= 3 ? 1.6 : 1) * likes * ((taste || {}).lights || 1) - (room.fire ? 0.5 : 0));
+  return Math.floor(v) + (R() < v - Math.floor(v) ? 1 : 0);
+}
 function furnishPlan(room, role, c) {
   const { decor, kit: k, counts } = c;
   const d = decor === 'd1' ? 1 : decor === 'd2' ? 2 : 3;
@@ -1859,7 +1902,10 @@ function furnishPlan(room, role, c) {
   const budget = Math.max(3, Math.round(room.area / 10 * density(learnKind, decor)));
   const room_ok = () => room.count < budget;
   const capBed = n => Math.max(0, Math.min(n, (BED_CAP[c.use] ? BED_CAP[c.use][d - 1] : CAPS[decor].bed) - counts.bed));
-  const lights = n => Math.round(n * (taste.lights || 1));
+  // how many lights: the corpus's lights per 10 m2 for this kind of room (between its median and upper quartile, drawn
+  // per room), more at d3, the household's liking for lights and the culture's taste; a fire in the room counts for
+  // half of one. No fixed number per room (Tyler, 2026-11-10). The number the old rule gave is ignored.
+  const lights = () => lightCount(room, learnKind, d, taste);
   const bed = (n, row) => { const r = placeBeds(room, k, capBed(n), d, row); counts.bed += r.length; return r; };
   const table = o => { if (!k.table || counts.table >= CAPS[decor].table) return null; const t = placeTable(room, k, o); if (t) counts.table++; return t; };
   const mountsFor = () => {
@@ -1882,7 +1928,7 @@ function furnishPlan(room, role, c) {
       const t = table({ seats: d >= 3 ? 4 : 2 });
       if (t && k.rug && d >= 3) placeRug(room, k, t, { mode: 'under' });
       if (k.rug) placeRug(room, k, room.fire, { mode: 'fire' });
-      placeLights(room, k, lights(d >= 3 ? 3 : 1));
+      placeLights(room, k, lights(d >= 3 ? 3 : 1), { hang: d >= 3 ? 0.2 : 0 });
       placeMounts(room, mountsFor());
       if (d >= 3) {
         if (t) placeOnTable(room, t, ['itemstandh', 'Candle_resin']);
@@ -1954,7 +2000,7 @@ function furnishPlan(room, role, c) {
       placeStorageRow(room, k, d >= 3 ? 3 : 2, { chest: ok('piece_chest_barrel', biome) ? 'piece_chest_barrel' : k.chest });
     }
     if (d >= 2) {
-      placeLights(room, k, lights(d >= 3 ? 4 : 2));
+      placeLights(room, k, lights(d >= 3 ? 4 : 2), { hang: tavern ? 0 : 0.35 });
       if (ok('piece_brazierceiling01', biome) && tables[0] && room.ceilAt(tables[0].x, tables[0].z) - room.stand > 3.5) {
         const t = tables[0];
         room.add('piece_brazierceiling01', t.x, room.ceilAt(t.x, t.z) - F.piece_brazierceiling01.under, t.z, 0, { mount: true, y0: room.ceilAt(t.x, t.z) - 1.6 });

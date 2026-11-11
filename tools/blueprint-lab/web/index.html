@@ -4535,30 +4535,63 @@ function placeStation(room, k, name, exts, o = {}) {
   return rec;
 }
 
-// Lights: torches on the walls in pairs either side of a face's middle; floor torches in corners and by beds and seats
-// of honor, clear of furniture (learned: 1.4 m to the nearest furniture at the tenth percentile).
+// Lights, by what they are for (corpus of 1,663 builds, 2026-11-11; docs/INTERIOR_DESIGN.md "Lights"). Wall lights are
+// the common kind (in half of the homes, two thirds of the halls, most taverns); a light goes where the room is
+// darkest and something is done there: by the way in (one wall light in six stands within 1.5 m of a door), at a bed,
+// by a table or a bench. Hardly any stand within 3 m of a fire, which lights its own part of the room. Spots are scored
+// one light at a time, never spaced: the corpus's wall lights stand 3.9 m apart at the median, with a spread of 0.28 of
+// that on one floor. A room may also get a hanging brazier from the rafters (o.hang: its odds), which settle() in
+// lib/generate.js hangs from the ceiling. Floor torches stand in corners and by beds and seats of honor (o.flank: the
+// pieces they stand either side of, 1.6 m out). The height of the wall lights is the household's own, under the
+// sconce's 1 m below the ceiling (Valheim puts one out above that).
 function placeLights(room, k, n, o = {}) {
+  // the lights draw from a stream of their own, so the rest of the room comes out as it would without them
+  const R0 = room.R;
+  room.R = lightStream(room);
+  try { return lightsIn(room, k, n, o); } finally { room.R = R0; }
+}
+// One stream per room for its lights, from the room's place and the household.
+function lightStream(room) {
+  if (!room.lightR) room.lightR = rngFrom((Math.round(room.cx * 73 + room.cz * 131 + room.stand * 977) ^ ((room.persona && room.persona.salt) || 0x5eed)) >>> 0);
+  return room.lightR;
+}
+function lightsIn(room, k, n, o) {
   let done = 0;
+  const R = room.R, P = room.persona || null;
+  const likes = P && P.likes ? Math.max(0.5, Math.min(1.6, P.likes.lights || 1)) : 1;
+  const lit = () => room.placed.filter(q => (F[q.name] || {}).cat === 'light' || q.fire);
+  // how dark a spot is: the distance to the nearest light, a fire counting as a light 2 m across
+  const dark = (x, z) => { let v = 6; for (const q of lit()) v = Math.min(v, Math.hypot(q.x - x, q.z - z) - (q.fire ? 1.5 : 0)); return v; };
+  const fireNear = (x, z) => room.fire && Math.hypot(room.fire.x - x, room.fire.z - z) < 3;
+  const near = (x, z, cats, r) => room.placed.some(q => cats.includes((F[q.name] || {}).cat) && ptDist(q.b, x, z) < r);
+  // what this household lights first: the way in, the beds, the work places (each a weight, drawn per room)
+  const want = { door: 0.6 + R() * 1.2, bed: 0.4 + R() * 1.0, work: 0.4 + R() * 0.8 };
+  const purpose = (x, z) => (room.doorDist(x, z) < 1.8 ? want.door : 0) + (near(x, z, ['bed'], 1.6) ? want.bed : 0) + (near(x, z, ['table', 'craft', 'seat'], 1.6) ? want.work : 0);
+  // a hanging brazier over a bigger room
+  if (o.hang && done < n && ok('piece_brazierceiling01', room.biome) && room.area >= 30 && R() < o.hang * likes) {
+    const cells = room.cells.filter(c => !fireNear(c.x, c.z) && room.doorDist(c.x, c.z) > 1.5);
+    cells.sort((a, b) => Math.hypot(a.x - room.cx, a.z - room.cz) - dark(a.x, a.z) * 0.5 - (Math.hypot(b.x - room.cx, b.z - room.cz) - dark(b.x, b.z) * 0.5));
+    const c = cells[0];
+    if (c) {
+      const top = room.ceilAt(c.x, c.z);
+      if (top - room.stand > 3.9 && room.add('piece_brazierceiling01', c.x, top - F.piece_brazierceiling01.under, c.z, 0, { mount: true, y0: top - 1.6 })) done++;
+    }
+  }
   if (k.wallLight && ok(k.wallLight, room.biome)) {
-    const faces = [...room.faces].sort((a, b) => b.len - a.len);
-    for (const face of faces) {
-      if (done >= n) break;
-      const spots = mountSpots(room, k.wallLight, { face, pairs: true }).filter(s => s.pair && Math.abs(s.pair) >= Math.min(1.5, face.len / 4));
-      // a pair at the same distance either side of the middle, as far apart as a third of the face
-      const byK = new Map();
-      for (const s of spots) { const kk = Math.abs(s.pair).toFixed(2); if (!byK.has(kk)) byK.set(kk, []); byK.get(kk).push(s); }
-      const want = face.len / 3.2;
-      const ks = [...byK.keys()].sort((a, b) => Math.abs(+a - want) - Math.abs(+b - want));
-      for (const kk of ks) {
-        const pr = byK.get(kk);
-        if (pr.length < 2) continue;
-        const a = putMount(room, k.wallLight, pr[0]);
-        if (!a) continue;
-        const b = putMount(room, k.wallLight, pr[1]);
-        if (!b) { room.out.pop(); room.mates.splice(room.mates.indexOf(room.placed.pop()), 1); room.mounts.pop(); room.count--; continue; }
-        done += 2;
-        break;
-      }
+    const f = F[k.wallLight] || {};
+    // the household's height for its sconces: 1.6 to 2.0 m, or as the piece hangs
+    const y = f.under != null ? undefined : 1.6 + R() * 0.4;
+    const spots = mountSpots(room, k.wallLight, { pairs: true, y });
+    while (done < n) {
+      const ranked = spots.map(s => {
+        const d0 = dark(s.x0, s.z0);
+        if (d0 < 1.2 || fireNear(s.x0, s.z0)) return [s, -99];
+        return [s, Math.min(d0, 5) * 0.6 + purpose(s.x0, s.z0) + R() * 0.6];
+      }).filter(([, v]) => v > -50).sort((a, b) => b[1] - a[1]);
+      let put = null;
+      for (const [s] of ranked.slice(0, 40)) if ((put = putMount(room, k.wallLight, s))) break;
+      if (!put) break;
+      done++;
     }
   }
   if (done < n && k.floorLight && ok(k.floorLight, room.biome)) {
@@ -4566,15 +4599,14 @@ function placeLights(room, k, n, o = {}) {
     const spots = wallSpots(room, name, { gap: 0.05, tallOk: o.tallOk });
     while (done < n) {
       const rec = best(room, name, spots, s => {
-        let v = s.corner ? 1.5 : 0;
-        let near = Infinity;
-        for (const q of room.placed) if (!q.rug && !q.mount) near = Math.min(near, ptDist(q.b, s.x, s.z));
-        if (near < 0.9) return -99;
-        v += Math.min(near, 3) * 0.3;
-        if (o.flank) v -= Math.min(...o.flank.map(f => Math.abs(Math.hypot(s.x - f.x, s.z - f.z) - 1.6))) * 0.8;
-        for (const q of room.placed) if (q.name === name && Math.hypot(q.x - s.x, q.z - s.z) < 3) v -= 2;
+        let v = s.corner ? 1.2 : 0;
+        let nearF = Infinity;
+        for (const q of room.placed) if (!q.rug && !q.mount) nearF = Math.min(nearF, ptDist(q.b, s.x, s.z));
+        if (nearF < 0.9 || fireNear(s.x, s.z)) return -99;
+        v += Math.min(nearF, 3) * 0.2 + Math.min(dark(s.x, s.z), 5) * 0.5 + purpose(s.x, s.z) * 0.6;
+        if (o.flank) v -= Math.min(...o.flank.map(fl => Math.abs(Math.hypot(s.x - fl.x, s.z - fl.z) - 1.6))) * 0.8;
         return v;
-      }, { noise: 0.3 });
+      }, { noise: 0.4 });
       if (!rec) break;
       done++;
     }
@@ -4729,6 +4761,7 @@ function decorate(b, ctx) {
       if (m.covered < 0.5) continue;
       const room = new Room(m, { out: b.pieces, R, mates: levelPlaced });
       room.biome = biome;
+      room.persona = ctx.persona || null;
       room.level = li;
       room.upper = li > 0 || (rects.length && rects.every(r => r.upper));
       const inMain = main && m.cells.filter(c => c.x > main.x0 && c.x < main.x1 && c.z > main.z0 && c.z < main.z1).length;
@@ -5122,6 +5155,16 @@ function evenLights(room, k) {
   return rec ? 1 : 0;
 }
 
+// Lights per 10 m2 of covered floor in the corpus (median and upper quartile over builds of the kind, 2026-11-11).
+const LIGHT_RATE = { home: [0.1, 0.22], sleeping: [0.1, 0.22], hall: [0.1, 0.22], tavern: [0.2, 0.33], workshop: [0.13, 0.3],
+  smithy: [0.13, 0.3], storage: [0.05, 0.15], living: [0.11, 0.29], other: [0.11, 0.29] };
+function lightCount(room, kind, d, taste) {
+  if (d < 2) return 0;
+  const R = lightStream(room), [lo, hi] = LIGHT_RATE[kind] || LIGHT_RATE.other;
+  const likes = room.persona && room.persona.likes ? room.persona.likes.lights || 1 : 1;
+  const v = Math.max(0, room.area / 10 * (lo + (hi - lo) * R()) * (d >= 3 ? 1.6 : 1) * likes * ((taste || {}).lights || 1) - (room.fire ? 0.5 : 0));
+  return Math.floor(v) + (R() < v - Math.floor(v) ? 1 : 0);
+}
 function furnishPlan(room, role, c) {
   const { decor, kit: k, counts } = c;
   const d = decor === 'd1' ? 1 : decor === 'd2' ? 2 : 3;
@@ -5132,7 +5175,10 @@ function furnishPlan(room, role, c) {
   const budget = Math.max(3, Math.round(room.area / 10 * density(learnKind, decor)));
   const room_ok = () => room.count < budget;
   const capBed = n => Math.max(0, Math.min(n, (BED_CAP[c.use] ? BED_CAP[c.use][d - 1] : CAPS[decor].bed) - counts.bed));
-  const lights = n => Math.round(n * (taste.lights || 1));
+  // how many lights: the corpus's lights per 10 m2 for this kind of room (between its median and upper quartile, drawn
+  // per room), more at d3, the household's liking for lights and the culture's taste; a fire in the room counts for
+  // half of one. No fixed number per room (Tyler, 2026-11-10). The number the old rule gave is ignored.
+  const lights = () => lightCount(room, learnKind, d, taste);
   const bed = (n, row) => { const r = placeBeds(room, k, capBed(n), d, row); counts.bed += r.length; return r; };
   const table = o => { if (!k.table || counts.table >= CAPS[decor].table) return null; const t = placeTable(room, k, o); if (t) counts.table++; return t; };
   const mountsFor = () => {
@@ -5155,7 +5201,7 @@ function furnishPlan(room, role, c) {
       const t = table({ seats: d >= 3 ? 4 : 2 });
       if (t && k.rug && d >= 3) placeRug(room, k, t, { mode: 'under' });
       if (k.rug) placeRug(room, k, room.fire, { mode: 'fire' });
-      placeLights(room, k, lights(d >= 3 ? 3 : 1));
+      placeLights(room, k, lights(d >= 3 ? 3 : 1), { hang: d >= 3 ? 0.2 : 0 });
       placeMounts(room, mountsFor());
       if (d >= 3) {
         if (t) placeOnTable(room, t, ['itemstandh', 'Candle_resin']);
@@ -5227,7 +5273,7 @@ function furnishPlan(room, role, c) {
       placeStorageRow(room, k, d >= 3 ? 3 : 2, { chest: ok('piece_chest_barrel', biome) ? 'piece_chest_barrel' : k.chest });
     }
     if (d >= 2) {
-      placeLights(room, k, lights(d >= 3 ? 4 : 2));
+      placeLights(room, k, lights(d >= 3 ? 4 : 2), { hang: tavern ? 0 : 0.35 });
       if (ok('piece_brazierceiling01', biome) && tables[0] && room.ceilAt(tables[0].x, tables[0].z) - room.stand > 3.5) {
         const t = tables[0];
         room.add('piece_brazierceiling01', t.x, room.ceilAt(t.x, t.z) - F.piece_brazierceiling01.under, t.z, 0, { mount: true, y0: room.ceilAt(t.x, t.z) - 1.6 });
@@ -7541,6 +7587,9 @@ function partition(b, ctx, wallSegment) {
     const xp = w0.cx + sg * (w0.W - 4); // two 2 m cells deep
     if (Math.abs(xp - door.x) < 2.5) continue;
     if (flue && xp > flue.x0 - 1 && xp < flue.x1 + 1) continue;
+    // the back room never takes the hearth: a fire against the end wall keeps the main room's end
+    const keep = ctx.fireKeep || flue;
+    if (keep && sg * ((keep.x0 + keep.x1) / 2 - xp) > 0) continue;
     const zs = [...cells.values()].filter(([x, z]) => Math.abs(x - (xp - sg)) < 0.01 && Math.abs(z - w0.cz) < w0.D).map(([, z]) => z).sort((a, c) => a - c);
     if (zs.length < 3) continue;
     // ladders keep their foot, hole and landing
@@ -7588,11 +7637,14 @@ function interior(b, ctx) {
   benchByDoor(b, ctx);
   const furniture = () => b.pieces.filter(p => p.decor);
   // a kerb of beams round a fire pit on the floor, so it reads as a hearth set into the floor
-  if (X.fireKerb) {
+  // (a fire against a wall gets the kerb on its open sides; a fire in a stone alcove has the alcove's floor)
+  if (X.fireKerb && !(ctx.hearth && ctx.hearth.spot === 'stack')) {
     const fire = b.pieces.find(p => p.decor && p.name === 'fire_pit');
     if (fire) {
       const beam = K.beam || 'wood_beam', y = fire.y + 0.0;
-      const ring = [[0, -1.15, 0], [0, 1.15, 0], [-1.15, 0, 90], [1.15, 0, 90]].map(([dx, dz, yaw]) => ({ name: beam, x: fire.x + dx, y, z: fire.z + dz, yaw, q: quatD(yaw) }));
+      const walls = b.pieces.filter(p => !p.decor && ['wall', 'pole', 'window', 'door'].includes(PD.piece(p.name).role)).map(p => Ck.aabb(p));
+      const ring = [[0, -1.15, 0], [0, 1.15, 0], [-1.15, 0, 90], [1.15, 0, 90]].map(([dx, dz, yaw]) => ({ name: beam, x: fire.x + dx, y, z: fire.z + dz, yaw, q: quatD(yaw) }))
+        .filter(c => { const cb = Ck.aabb(c); return !walls.some(o => o.x0 < cb.x1 - 0.05 && o.x1 > cb.x0 + 0.05 && o.z0 < cb.z1 - 0.05 && o.z1 > cb.z0 + 0.05 && o.y0 < cb.y1 + 0.3 && o.y1 > cb.y0); });
       const ok = ring.every(c => { const cb = Ck.aabb(c); return !furniture().some(p => p !== fire && !/cookingstation|cauldron/.test(p.name) && PD.piece(p.name).role !== 'rug' && (o => o.x0 < cb.x1 && o.x1 > cb.x0 && o.z0 < cb.z1 && o.z1 > cb.z0 && o.y0 < cb.y1 + 0.3 && o.y1 > cb.y0)(Ck.aabb(p))); });
       if (ok) { for (const c of ring) b.put(c.name, c.x, c.y, c.z, c.yaw, { trim: true }); b.notes.push('A kerb of beams round the fire pit.'); }
     }
@@ -10874,6 +10926,7 @@ function massingPath(o) {
   if (fam.roof === 'hip' && W <= D) W = D + 1;
   if (C.stoneWalls && W * D < 12) W += 1; // a metre-thick wall leaves a 6 m house no room for a bed beside the fire
   const side = FR() < 0.5 ? -1 : 1, full = FR() < 0.75;
+  fam.growSide = side; // the end the house grows toward (a wall hearth keeps to the other end)
   fam.porchWide = FR() < 0.5;
   fam.stilt2 = !!C.stiltChance && FR() < C.stiltChance;
   fam.podklet = fam.household === 'family' || (type !== 'home' && FR() < 0.5);
@@ -11307,7 +11360,21 @@ function generate(req) {
   let ventAt = fireInside && !['dome', 'drum'].includes(form) && !flat && roofKind !== 'shed' && !lookout
     ? (w0.alpha === 0 && T.use === 'home' ? { x: doorX, z: w0.cz } : { x: w0.cx, z: w0.cz }) : null;
   if (ventAt && hipMain) ventAt = { x: Math.max(w0.cx - (w0.W - w0.D), Math.min(w0.cx + (w0.W - w0.D), ventAt.x)), z: w0.cz }; // over a hip ridge
+  // a home's fire against a wall (hearthPlan): at a gable end under the ridge, half in the gable wall with a stone
+  // stack outside, or against the back wall with a shaft out through the roof
+  const hearth = lit && ventAt ? hearthPlan({ T, C, cultureKey, lineage, roofKind, plan, wings, flat, form, M, stoneOK, F, stage, K, cells,
+    doors: [door, backDoor].filter(Boolean) }) : { spot: 'middle' };
+  if (req.hearth === 'middle') hearth.spot = 'middle';
+  info.hearth = hearth.spot;
+  if (hearth.spot === 'end') ventAt = { x: hearth.x, z: hearth.z };
+  if (hearth.spot === 'side' || hearth.spot === 'stack') ventAt = null;
   let flue = lit && ventAt ? flueRect(w0, ventAt, hipMain ? w0.W - w0.D : w0.W - 1) : null;
+  if (hearth.spot === 'side') flue = cellRect([hearth.x, hearth.z]);
+  // the cell in front of a stack hearth stays clear of ladders and stairs (the shaft is outside the house)
+  const stackKeep = hearth.spot === 'stack' ? cellRect([hearth.x, hearth.z]) : null;
+  // the wall bay behind the hearth: the gable's middle bay for an end or stack hearth, the bay behind a side one
+  const hearthBay = e => (hearth.spot === 'end' || hearth.spot === 'stack') ? e.yaw === 90 && Math.abs(e.x - hearth.xW) < 0.01 && Math.abs(e.z - hearth.z) < 0.01
+    : hearth.spot === 'side' ? e.yaw === 0 && Math.abs(e.x - hearth.x) < 0.01 && Math.abs(e.z - (hearth.z + hearth.sv)) < 0.01 : false;
   // under a flat roof the fire gets a cell of its own, away from the doors, before the ladders are placed; a chimney
   // goes up from it
   let flatCell = null;
@@ -11319,8 +11386,12 @@ function generate(req) {
     // a courtyard's gallery is walled off from the rooms behind it, so it counts as outside here
     const roomCell = (cx, cz) => cells.has(`${cx},${cz}`) && !gallery.has(`${cx},${cz}`);
     const walled = ([x, z]) => [[2, 0], [-2, 0], [0, 2], [0, -2]].some(([dx, dz]) => !roomCell(x + dx, z + dz));
+    // a home keeps its fire against a wall most of the time (hearthPlan's odds for the culture, from the household's
+    // own stream): a cell along an outer wall, the far corner first
+    const wtF = HEARTHS[cultureKey] || HEARTHS.default, homeWall = T.use === 'home' && !thick && rng((lineage * 92821 + strHash(cultureKey) * 7 + 5) >>> 0)() >= wtF.middle;
+    if (homeWall) info.hearth = 'wall';
     const score = ([x, z]) => (doorEdges.some(e => Math.hypot(e.x - x, e.z - z) < 2.5) ? 100 : 0) + (thick && walled([x, z]) ? 50 : 0) +
-      (plan === 'court' ? -1 : 1) * Math.hypot(x - doorX, z - w0.cz);
+      (homeWall && !walled([x, z]) ? 8 : 0) + (plan === 'court' ? -1 : 1) * Math.hypot(x - doorX, z - w0.cz);
     flatCell = [...cells.values()].filter(([x, z]) => inside(w0, x, z) && !gallery.has(`${x},${z}`)).sort((a, c) => score(a) - score(c))[0] || null;
     if (flatCell) flue = cellRect(flatCell);
     // beside a thick wall the fire would reach into it: it goes between this cell and the next one away from the
@@ -11345,13 +11416,13 @@ function generate(req) {
   // last one up to a hatch
   const climbsUp = storeys - 1 + (flat && !lookout ? 1 : 0);
   const cellsG = loggia ? new Map([...cells].filter(([, c]) => !inLoggia(c))) : cells; // the ground rooms' cells
-  const ladders = climbsUp > 0 ? ladderPlan(cellsG, climbsUp, { door: doorCell, back: backCell, flue }) : [];
+  const ladders = climbsUp > 0 ? ladderPlan(cellsG, climbsUp, { door: doorCell, back: backCell, flue: stackKeep || flue }) : [];
   // a straight stair along a wall in place of the first ladder, where a long enough wall has room for it (most of the
   // best-liked builds climb by stairs; bench: req.details.stair true or false)
   const stairWanted = req.details && req.details.stair != null ? req.details.stair
     : climbsUp === 1 && !flat && +stage[1] >= 2 && ['home', 'tavern', 'longhouse', 'storage', 'workshop'].includes(type) && rng(seed * 7 + 3)() < 0.75;
   if (stairWanted && climbsUp === 1 && !flat && Math.abs(SH - Math.round(SH)) < 0.01) {
-    const st = stairPlan(cellsG, Math.round(SH), { door: doorCell, back: backCell, flue });
+    const st = stairPlan(cellsG, Math.round(SH), { door: doorCell, back: backCell, flue: stackKeep || flue });
     if (st) { ladders[0] = st; b.notes.push('A stair along the wall up to the floor above.'); }
   }
   if (climbsUp > 0 && ladders.length < climbsUp) b.notes.push('No room for a ladder with a clear foot and landing in this plan.');
@@ -11362,7 +11433,7 @@ function generate(req) {
   C.windowStyle = req.style && req.style.windowStyle ? req.style.windowStyle : (T.low || ['storage', 'barn'].includes(type) || form === 'sunken' || (stage === 's1' && !['longhouse', 'tavern', 'temple'].includes(type))) ? 'single' : 'twin';
   const dragonsHere = roofKind === 'gable' && plan !== 'gables' && ((C.dragons && ['longhouse', 'temple', 'tavern'].includes(type)) || (C.carved && stage !== 's1'));
   const dctx = { K, C, cultureKey, T, type, stage, decor, biome, plan, F, SH, storeys, edges, verts, cells, door, wings, flat,
-    ladders, flue, dragonsHere, R: rng(seed * 31337 + 7), persona: household };
+    ladders, flue, fireKeep: stackKeep || flue, hearth, dragonsHere, R: rng(seed * 31337 + 7), persona: household };
   dctx.profile = Details.profile(dctx);
   dctx.notes = b.notes;
   // wall dormers: Frankish, English, Slavic and medieval cultures, from stage 2 (bench: req.details.dormers)
@@ -11410,6 +11481,8 @@ function generate(req) {
       // a stone wall needs a timber bay over every opening (stone cannot span): half as many windows there, so the
       // wall reads as stone with openings, not timber between stone piers (2026-11-09 review)
       if (isWindow && /^stone$|marble|grausten/.test(C.wallStyle || '') && Math.round((e.x + e.z) / 2) % 4 !== 0) isWindow = false;
+      // no window behind a wall hearth, on any storey (its hood and shaft stand against that bay)
+      if (isWindow && hearthBay(e)) isWindow = false;
       const style = C.frontWood && plan === 'gables' ? (e.out[1] < 0 ? 'plank' : null) : null;
       wallSegment(b, K, C, e.x, y0, e.z, e.yaw, SH, isGate ? 'gate' : isDoor ? 'door' : isWindow ? 'window' : 'wall', style);
       if (isWindow || isDoor || isGate) (b.openings = b.openings || []).push({ e, y0, SH, storey: s, kind: isGate ? 'gate' : isDoor ? 'door' : 'window', back: e === backDoor });
@@ -11529,9 +11602,22 @@ function generate(req) {
       const hidden = wings.some(o => o !== p.wing && inside(o, p.x, p.z, -0.2) && p.surf < surfaceAt(o, p.x, p.z, roofTop, r) - 0.25);
       if (!hidden) b.put(p.name, p.x, p.y, p.z, p.yaw);
     }
+    // a wall hearth's shaft: whatever roof stands over its column above the walls comes out too (the rake's cap over
+    // an end hearth, the lowest row and the eave over a side one)
+    const col = (hearth.spot === 'end' || hearth.spot === 'side') && flue ? flue : null;
+    // (and the bargeboards along a rake that lose the roof they lay on)
+    // (over an end hearth only the rake's ridge cap, raised with the others; over a side one the row, the eave, and the
+    // bargeboards that lay on them)
+    const over = (p, m) => (o => o.x0 < col.x1 - 0.05 + m && o.x1 > col.x0 + 0.05 - m && o.z0 < col.z1 - 0.05 + m && o.z1 > col.z0 + 0.05 - m && o.y1 > F + storeys * SH - 0.3)(checksLib().catBox(p));
+    const extra = !col ? [] : hearth.spot === 'end' ? takeOut(b, p => !p.decor && P.piece(p.name).role === 'roofTop' && over(p, 0))
+      : takeOut(b, p => !p.decor && (['roof', 'roofTop', 'roofCorner'].includes(P.piece(p.name).role) ? over(p, 0)
+        : P.piece(p.name).role === 'beam' && (p.trim || /_(26|45)$/.test(p.name)) && over(p, /_(26|45)$/.test(p.name) ? 1.2 : 0)));
     // the ridge caps over the fire's place stay out for smoke; the last pass puts them back if no fire is laid
-    if (caps.length) b.vents.push({ kind: 'ridge', caps, x: avg(caps.map(c => c.x)), z: avg(caps.map(c => c.z)), y: caps[0].y,
+    if (caps.length && hearth.spot === 'end') b.vents.push({ kind: 'ridge', caps: [...caps, ...extra], x: hearth.x, z: hearth.z, y: caps[0].y, rect: flue, from: F + HOOD, hood: true });
+    else if (caps.length) b.vents.push({ kind: 'ridge', caps, x: avg(caps.map(c => c.x)), z: avg(caps.map(c => c.z)), y: caps[0].y,
       rect: rectOf(caps), from: storeys > 1 ? F + SH : caps[0].y });
+    if (hearth.spot === 'side') b.vents.push({ kind: 'slope', caps: extra, x: hearth.x, z: hearth.z, rect: flue, from: F + HOOD, hood: true,
+      y: (ys => ys.length ? Math.max(...ys) : F + storeys * SH + 1)(extra.filter(p => P.piece(p.name).role === 'roof').map(p => checksLib().catBox(p).y1)) });
   }
 
   // porch at the front door: one or three bays wide, on the grid, never on top of a wing
@@ -11669,6 +11755,7 @@ function generate(req) {
   if (T.pen) penDesign(b, K, Math.max(...[...cells.values()].map(c => c[0])) + 1, D, stage); // beside the last wing
   if (roofKind === 'gable' && plan !== 'gables' && ((C.dragons && ['longhouse', 'temple', 'tavern'].includes(type)) || (C.carved && stage !== 's1')))
     for (const sx of [-1, 1]) {
+      if (hearth.spot === 'stack' && sx === hearth.sg) continue; // the stack stands there
       // the carving rides on the ridge beam's end, run out a metre past the gable (it stood on nothing)
       const rk = (dctx.rake || 0) + (wings.some(w => w.spec && w.spec.ext && w.spec.side === sx) ? 4 : 0); // past the rake, and past an extension
       // a 2 m ridge beam from inside the gable to half a metre past the rake, so it rests on the gable wall
@@ -11678,7 +11765,7 @@ function generate(req) {
 
   b.outer = edges;
   if (['home', 'longhouse', 'smithy', 'workshop', 'sawmill', 'barn', 'farm'].includes(type) && stage !== 's1' && roofKind === 'gable' && !flat &&
-    F < 0.01 && !T.tower && dctx.R() < 0.5) woodshed(b, K, C, wings, edges, F, SH, svanTower);
+    F < 0.01 && !T.tower && dctx.R() < 0.5) woodshed(b, K, C, wings, edges, F, SH, svanTower, hearth.spot === 'stack' ? hearth.sg : 0);
   // a lean-to (outshut) along the back: a lower roof against the main mass (bench: req.details.outshut)
   const wantOut = dctx.profile.outshut != null ? dctx.profile.outshut
     : ['home', 'longhouse', 'barn', 'smithy', 'workshop', 'storage', 'farm', 'tavern'].includes(type) && stage !== 's1' && dctx.R() < 0.4;
@@ -11686,16 +11773,19 @@ function generate(req) {
   // a stone chimney stack against a gable end, from the ground to past the ridge (bench: req.details.stack)
   const wantStack = dctx.profile.stack != null ? dctx.profile.stack
     : stoneOK && stage !== 's1' && ['home', 'longhouse', 'tavern', 'smithy', 'temple'].includes(type) && dctx.R() < 0.6;
-  if (wantStack && roofKind === 'gable' && plan !== 'gables' && !flat && !T.tower && F < 1.01 && !/stone|marble|grausten/.test(C.wallStyle || '')) chimneyStack(b, K, wings, edges, dctx.profile, dctx.R, { C, SH, F, storeys });
+  // (a home with a wall hearth has its chimney already: the stack it was rebuilt with, or the hood's shaft)
+  if (hearth.spot === 'stack' && !hearthStack(b, K, C, w0, hearth, { F, SH, storeys, top: roofTop, notes: b.notes })) { hearth.spot = 'middle'; info.hearth = 'middle'; }
+  if (wantStack && hearth.spot === 'middle' && roofKind === 'gable' && plan !== 'gables' && !flat && !T.tower && F < 1.01 && !/stone|marble|grausten/.test(C.wallStyle || '')) chimneyStack(b, K, wings, edges, dctx.profile, dctx.R, { C, SH, F, storeys });
   // a balcony on a gable end, from the upper room (coverage audit: on 46 % of the best-liked builds; bench: req.details.balcony)
   const wantBalc = dctx.profile.balcony != null ? dctx.profile.balcony
     : stage !== 's1' && storeys >= 2 && ['home', 'tavern', 'longhouse', 'workshop'].includes(type) && dctx.R() < 0.5;
-  if (wantBalc && !b.gallery && roofKind === 'gable' && plan !== 'gables' && !flat && !T.tower && !loggia) balcony(b, K, C, wings[0], edges, { F, SH, ladders, cells });
+  if (wantBalc && !b.gallery && roofKind === 'gable' && plan !== 'gables' && !flat && !T.tower && !loggia) balcony(b, K, C, wings[0], edges, { F, SH, ladders, cells, hearthSg: ['end', 'stack'].includes(hearth.spot) || (hearth.spot === 'side' && hearth.corner) ? hearth.sg : null });
   Details.exterior(b, dctx);
   clearDoorways(b);
   // the fire's place for the decorator: under the ridge vent, or a cell of a flat roof (a chimney goes up from it),
   // clear of the ladders
   let fireAt = ventAt && lit && flue ? { x: avg(rectXs(flue)), z: avg(rectZs(flue)) } : null;
+  if (hearth.spot === 'side' || hearth.spot === 'stack') fireAt = { x: hearth.x, z: hearth.z }; // a stack's fire moves into its alcove after the furnishing
   if (flatCell) { fireAt = { x: flatCell[0], z: flatCell[1] }; b.vents.push({ kind: 'flat', x: flatCell[0], z: flatCell[1], rect: flue, from: storeys > 1 ? F + SH : top }); }
   if (!req.skipDecor) Decor.decorate(b, { use: T.use, decor, biome, type, R, culture: cultureKey, doorX: b.doorX, fireAt, persona: household, layout: layoutCtx });
   settle(b, { K, C, biome, use: T.use, type, stoneOK, F, SH, storeys, top, flat, cells, wing: w0, roofTop, skipDecor: !!req.skipDecor });
@@ -11721,6 +11811,7 @@ function balcony(b, K, C, w, edges, o) {
   const brackets = SH >= 3;
   for (const e of ends) {
     const sg = e.out[0], x0 = e.x, z = e.z;
+    if (o.hearthSg === sg) continue; // the hearth's hood or stack is at that end
     if (busyCell(x0 - sg, z)) continue;
     // nothing out there already: a stack, a woodshed, a porch
     const y0 = brackets ? yU - 1.4 : 0.1;
@@ -11866,18 +11957,20 @@ function settle(b, ctx) {
   const ridge = b.vents.find(v => v.kind === 'ridge'), crown = b.vents.find(v => v.kind === 'crown');
   const laysFire = ['home', 'hall'].includes(ctx.use);
   const flatVent = b.vents.find(v => v.kind === 'flat');
-  if (!fire && laysFire && !ctx.skipDecor && mainRoom && (ridge || crown || flatVent)) {
+  // a wall hearth's vents: a shaft out through the roof's lowest row, or the stone stack the hearth stands in
+  const slope = b.vents.find(v => v.kind === 'slope'), stack = b.vents.find(v => v.kind === 'stack');
+  if (!fire && laysFire && !ctx.skipDecor && mainRoom && (ridge || crown || flatVent || slope || stack)) {
     // the decorator found no room for the fire: lay it in the fire's place anyway
     const name = ctx.use === 'hall' && ord.indexOf('Black Forest') <= limit ? 'hearth' : 'fire_pit';
-    const v = ridge || crown || flatVent;
+    const v = ridge || crown || flatVent || slope || stack;
     b.pieces.push({ name, x: v.x, y: mainRoom.y + 0.1, z: v.z, q: quat(0), yaw: 0, decor: true });
     fire = b.pieces[b.pieces.length - 1];
   }
-  const target = ridge || crown || flatVent;
+  const target = ridge || crown || flatVent || slope || stack;
   if (flatVent && !fire) flatVent.rect = null; // no fire, no chimney
   if (fire && target) {
-    // a hearth is 3 m across: in a small room a fire pit takes its place
-    if (fire.name === 'hearth' && mainRoom && (mainRoom.x1 - mainRoom.x0) * (mainRoom.z1 - mainRoom.z0) < 40) fire.name = 'fire_pit';
+    // a hearth is 3 m across: in a small room, and against a wall, a fire pit takes its place
+    if (fire.name === 'hearth' && mainRoom && ((mainRoom.x1 - mainRoom.x0) * (mainRoom.z1 - mainRoom.z0) < 40 || target.hood || target === stack)) fire.name = 'fire_pit';
     const dx = target.x - fire.x, dz = target.z - fire.z, ox = fire.x, oz = fire.z;
     const moving = b.pieces.filter(p => p.decor && (p === fire || (/cookingstation|piece_cauldron/.test(p.name) && Math.hypot(p.x - ox, p.z - oz) < 0.4)));
     for (const p of moving) { p.x = +(p.x + dx).toFixed(3); p.z = +(p.z + dz).toFixed(3); }
@@ -11915,15 +12008,18 @@ function settle(b, ctx) {
       void L;
       for (const p of sit) { p.x = fire.x; p.z = fire.z; }
     }
+    // one pot or spit on the fire (a set laid round the fire may have brought a second)
+    const onIt = b.pieces.filter(p => p.decor && /cookingstation|piece_cauldron/.test(p.name) && Math.hypot(p.x - fire.x, p.z - fire.z) < 0.4);
+    if (onIt.length > 1) { const keep = onIt.find(p => p.name === 'piece_cauldron') || onIt[0]; b.pieces = b.pieces.filter(p => !onIt.includes(p) || p === keep); }
     // the cauldron's upgrades work within 5 m of it: those left farther away by the move come out
     const pot = b.pieces.find(p => p.decor && p.name === 'piece_cauldron');
     b.pieces = b.pieces.filter(p => !/^cauldron_ext/.test(p.name) || (pot && Math.hypot(p.x - pot.x, p.z - pot.z) < 5));
-    if (target.kind !== 'crown') chimney(b, ctx, target);
-    else b.notes.push('Fire under the open crown of the roof.');
+    if (target.kind === 'crown') b.notes.push('Fire under the open crown of the roof.');
+    else if (target !== stack) chimney(b, ctx, target);
   }
-  if (ridge && !(fire && target === ridge)) {
-    for (const c of ridge.caps) b.put(c.name, c.x, c.y, c.z, c.yaw); // no fire: the ridge is closed again
-    ridge.rect = null;
+  for (const v of [ridge, slope]) if (v && !(fire && target === v)) {
+    for (const c of v.caps) b.put(c.name, c.x, c.y, c.z, c.yaw); // no fire: the roof is closed again
+    v.rect = null;
   }
 
   hangBraziers(b, ctx, fire);
@@ -11965,7 +12061,7 @@ function chimney(b, ctx, v) {
   const stone = false;
   void stoneOK;
   const piece = stone ? K.stoneWall : K.wallHalf, course = stone && /2x2/.test(K.stoneWall) ? 2 : 1;
-  const yRoof = v.kind === 'ridge' ? v.y : ctx.top; // the ridge, or the flat roof
+  const yRoof = v.kind === 'ridge' || v.kind === 'slope' ? v.y : ctx.top; // the ridge, the top of the roof row taken out, or the flat roof
   // under a ridge with no floor to pass through, a smoke louver: the ridge caps raised 0.6 m on short posts over the
   // opening, open at the sides (the Norse ljore), in place of a plank box standing on the ridge
   const louver = v.kind === 'ridge' && v.from >= yRoof - 0.01;
@@ -11980,15 +12076,19 @@ function chimney(b, ctx, v) {
   const yBox = v.kind === 'ridge' ? yRoof - 0.9 : yTop; // the shaft's sides end under the ridge, inside the roof
   // (a side where a wall already stands, a tower's stone beside a flat-roof chimney, is that wall)
   const walled = (x, z, y) => b.pieces.some(p => !p.decor && P.piece(p.name).role === 'wall' && Math.abs(p.x - x) < 0.3 && Math.abs(p.z - z) < 0.3 && Math.abs(p.y - y) < 0.9);
+  const openSides = sides.filter(([x, z]) => !walled(x, z, v.from - 0.5));
   if (!louver) for (let y = v.from; y < yBox - 0.01; y += course) for (const [x, z, yaw] of sides) if (!walled(x, z, y + course / 2)) b.put(piece, x, y + course / 2, z, yaw);
+  // a wall hearth's hood: a beam along the hood's lower edge on each open side, the mantel
+  if (v.hood) for (const [x, z, yaw] of openSides) b.put(K.beam || 'wood_beam', x, v.from + 0.1, z, yaw, { trim: true });
   if (!stone) {
     // the cap: short posts at the corners, the ridge caps (or flat roof caps) half a metre over the box
-    const cap = v.caps ? v.caps : null;
+    const cap = v.caps && v.kind !== 'slope' ? v.caps : null;
     for (const [x, z] of [[r.x0, r.z0], [r.x0, r.z1], [r.x1, r.z0], [r.x1, r.z1]]) b.put(K.pole1, x, yTop, z);
     if (cap) for (const c of cap) b.put(c.name, c.x, yTop + 0.5, c.z, c.yaw);
     else for (let x = r.x0 + 1; x < r.x1; x += 2) for (let z = r.z0 + 1; z < r.z1; z += 2) b.put(K.floor, x, yTop + 0.55, z);
   }
-  b.notes.push(stone ? 'Stone chimney over the fire.' : louver ? 'A smoke louver on the ridge over the fire.' : 'Plank chimney over the fire with a raised cap for the smoke.');
+  b.notes.push(v.hood ? (v.kind === 'slope' ? 'The fire against the back wall under a hood, its shaft out through the roof with a raised lid.' : 'The fire against the gable wall under a hood, its shaft up to raised ridge caps.')
+    : stone ? 'Stone chimney over the fire.' : louver ? 'A smoke louver on the ridge over the fire.' : 'Plank chimney over the fire with a raised cap for the smoke.');
 }
 
 // Ceiling braziers hang on their chain (the pivot 1.6 m below what it hangs from) from the lowest roof or ceiling piece
@@ -12250,6 +12350,18 @@ const thickFloor = n => !!n && P.piece(n).size[1] >= 0.9;
 const rectXs = r => [r.x0, r.x1], rectZs = r => [r.z0, r.z1];
 const cellRect = c => ({ x0: c[0] - 1, x1: c[0] + 1, z0: c[1] - 1, z1: c[1] + 1 });
 const inRect = (r, x, z, pad = 0) => x > r.x0 - pad && x < r.x1 + pad && z > r.z0 - pad && z < r.z1 + pad;
+// The hood of a wall hearth starts 2.55 m over the floor: clear of a player's head (the headroom check's 2.4 m) and
+// low enough to catch the smoke.
+const HOOD = 2.55;
+// Take pieces out of a build (and out of its key set, so they can be put back in the same place later).
+function takeOut(b, test) {
+  const out = b.pieces.filter(test);
+  if (!out.length) return out;
+  const gone = new Set(out);
+  b.pieces = b.pieces.filter(p => !gone.has(p));
+  for (const p of out) b.keys.delete(`${p.name}|${Math.round(p.x * 100)}|${Math.round(p.y * 100)}|${Math.round(p.z * 100)}|${Math.round(p.yaw || 0) % 360}`);
+  return out;
+}
 function rectOf(caps) {
   return { x0: Math.min(...caps.map(c => c.x)) - 1, x1: Math.max(...caps.map(c => c.x)) + 1, z0: Math.min(...caps.map(c => c.z)) - 1, z1: Math.max(...caps.map(c => c.z)) + 1 };
 }
@@ -12261,6 +12373,78 @@ function stoneUnder(b, p, h) {
 }
 // a world point's place along a wing's ridge
 function ridgeU(w, pt) { const a = w.alpha * Math.PI / 180; return (pt.x - w.cx) * Math.cos(a) - (pt.z - w.cz) * Math.sin(a); }
+// Where a home keeps its fire (Tyler, 2026-11-10). In the corpus the main fire of 84 % of 291 homes stands against a
+// wall, in a corner, in an alcove or half in the wall, and 16 % in the middle of the floor; halls and taverns keep a
+// middle fire where people gather (docs/INTERIOR_DESIGN.md, "Hearths"). Weights per culture for a home under a gable
+// roof: 'middle' (under the ridge, the old way), 'end' (against a gable end under the ridge: a hood over it and a
+// shaft up to raised ridge caps), 'side' (against the back wall, or the front wall by the door for the Slavic stove
+// corner: a shaft out through the roof's lowest row). An end hearth is rebuilt in stone, half in the wall with a stack
+// outside, once the household's stage may build in stone (D-012), with the 'stack' odds.
+const HEARTHS = {
+  default: { middle: 0.15, end: 0.5, side: 0.35, stack: 0.5 },
+  norse: { middle: 0.35, end: 0.4, side: 0.25, stack: 0.3 },
+  'norse-forest': { middle: 0.25, end: 0.45, side: 0.3, stack: 0.35 },
+  'norse-highland': { middle: 0.2, end: 0.45, side: 0.35, stack: 0.5 },
+  baltic: { middle: 0.3, end: 0.4, side: 0.3, stack: 0.3 },
+  'fen-folk': { middle: 0.35, end: 0.4, side: 0.25, stack: 0.2 },
+  celtic: { middle: 0.4, end: 0.4, side: 0.2, stack: 0.3 },
+  'anglo-saxon': { middle: 0.15, end: 0.5, side: 0.35, stack: 0.5 },
+  'frankish-norman': { middle: 0.05, end: 0.55, side: 0.4, stack: 0.7 },
+  'castle-medieval': { middle: 0.05, end: 0.5, side: 0.45, stack: 0.7 },
+  slavic: { middle: 0, end: 0.15, side: 0.85, stack: 0.3, front: true, corner: 0.9 },
+  'east-asian': { middle: 0.5, end: 0.2, side: 0.3, stack: 0.2 },
+  byzantine: { middle: 0.2, end: 0.4, side: 0.4, stack: 0 },
+};
+// The plan is drawn from the household's own stream (the lineage), so the fire keeps its place from stage to stage;
+// the end is the one the house does not grow toward. A blocked end falls back to the corner at that end, then to the
+// middle. Returns { spot, sg, u, sv, x, z, stack } in world metres for the main wing.
+function hearthPlan(o) {
+  const { T, C, cultureKey, lineage, roofKind, plan, wings, flat, form, M, stoneOK, F, doors, stage, K, cells } = o;
+  const w0 = wings[0];
+  const none = { spot: 'middle' };
+  if (T.use !== 'home' || T.tower || flat || !['gable', 'hip'].includes(roofKind) || plan === 'gables' || w0.alpha !== 0 || form || w0.W < 3 || w0.D < 3) return none;
+  const HR = rng((lineage * 92821 + strHash(cultureKey) * 7 + 5) >>> 0);
+  const wt = HEARTHS[cultureKey] || HEARTHS.default;
+  const spot0 = pick(HR, { middle: wt.middle, end: wt.end, side: wt.side });
+  const sg = M && M.fam.growSide ? -M.fam.growSide : (HR() < 0.5 ? -1 : 1);
+  const corner = HR() < (wt.corner != null ? wt.corner : 0.5), stackDraw = HR();
+  if (spot0 === 'middle') return none;
+  const hip = roofKind === 'hip';
+  const sv0 = wt.front ? -1 : 1;
+  const nearDoor = (x, z, d = 2.4) => doors.some(e => Math.hypot(e.x - x, e.z - z) < d);
+  const cell = (x, z) => cells.has(`${x},${z}`) && !wings.some(w => w !== w0 && inside(w, x, z, -0.1));
+  // an end is free when nothing joins the gable: no wing past it, and the end cell is the main wing's own
+  const endAt = s1 => {
+    const xW = w0.cx + s1 * w0.W, x = xW - s1, z = w0.cz;
+    if (hip || wings.some(w => w !== w0 && (inside(w, xW + s1 * 1.5, z, 0.3) || inside(w, x, z, 0.3)))) return null;
+    if (!cell(x, z) || nearDoor(x, z, 2.2)) return null;
+    const stack = stoneOK && !C.stoneWalls && F < 1.01 && stage !== 's1' && K.stoneWall && /2x1/.test(K.stoneWall) && stackDraw < (wt.stack || 0);
+    return { spot: stack ? 'stack' : 'end', sg: s1, x, z, xW };
+  };
+  const sideAt = (u, sv) => {
+    if (Math.abs(u) > w0.W - 1) return null;
+    const x = w0.cx + u, z = w0.cz + sv * (w0.D - 1);
+    if (!cell(x, z) || nearDoor(x, z)) return null;
+    // nothing joins the wall behind it (a back wing, a cross wing), and the cells beside it are this wing's
+    if (wings.some(w => w !== w0 && (inside(w, x, z + sv * 2, 0.5) || inside(w, x + 2, z, 0.2) || inside(w, x - 2, z, 0.2)))) return null;
+    return { spot: 'side', sg: Math.sign(u) || sg, sv, u, x, z, corner: Math.abs(Math.abs(u) - (w0.W - 1)) < 0.01 };
+  };
+  // the household's first choice, then the nearest others: the other wall at the same end, the end itself, and only
+  // then the other end (a wing built on later can take the gable a hearth stood against)
+  const us = hip ? [sg * (w0.W - 3), sg * (w0.W - 5)] : corner || spot0 === 'end' ? [sg * (w0.W - 1), sg * (w0.W - 3)] : [sg * (w0.W - 3), sg * (w0.W - 1)];
+  const tries = spot0 === 'end'
+    ? [() => endAt(sg), ...us.map(u => () => sideAt(u, sv0)), ...us.map(u => () => sideAt(u, -sv0)), () => endAt(-sg)]
+    : [...us.map(u => () => sideAt(u, sv0)), ...us.map(u => () => sideAt(u, -sv0)), () => endAt(sg), ...us.map(u => () => sideAt(-u, sv0)), () => endAt(-sg)];
+  // and last, any bay of the back wall (then the front), nearest the household's end first: wings at both ends (a U)
+  // leave the middle of the back wall
+  const bays = [];
+  for (let u = -w0.W + 1; u <= w0.W - 1; u += 2) bays.push(u);
+  bays.sort((a, c) => Math.abs(a - sg * w0.W) - Math.abs(c - sg * w0.W));
+  tries.push(...bays.map(u => () => sideAt(u, sv0)), ...bays.map(u => () => sideAt(u, -sv0)));
+  for (const t of tries) { const h = t(); if (h) return h; }
+  return none;
+}
+
 // The chimney's footprint: the ridge caps within a metre of the vent (caps sit every 2 m from -maxU to maxU), the
 // width of one cap across the ridge.
 function flueRect(w, vent, maxU) {
@@ -12622,6 +12806,8 @@ function dormers(K, w, top, add, dctx) {
     // nothing else joins the wall here (another wing, a tower)
     const [fx, fz] = toWorld(w, u0, sv * (w.D + 1), 0);
     if (other.some(o => inside(o, fx, fz, 0.5))) continue;
+    // nor a wall hearth's shaft on this slope
+    if (dctx.hearth && dctx.hearth.spot === 'side' && Math.sign(dctx.hearth.z - w.cz) === Math.sign(fz - w.cz) && Math.abs(fx - dctx.hearth.x) < 3.1) continue;
     // nor does another wing's roof cover the patch of this roof it would stand on (a cross wing flush with the front)
     if (other.some(o => [[-2.5, 0.5], [2.5, 0.5], [0, 0.5], [-2.5, 2.5], [2.5, 2.5]].some(([du, dv]) => { const [x, z] = toWorld(w, u0 + du, sv * (w.D - dv), 0); return inside(o, x, z, 0.3); }))) continue;
     // a dormer over the door takes the place of a gable porch there
@@ -12983,7 +13169,7 @@ function skirtRoof(b, K, edges, yS) {
 
 // An open woodshed against a gable end: a 26 degree lean-to roof from the gable wall out over posts 2 m out, with wood
 // stacked under it. Only on a free gable end (no wing, tower or annex there) of the main wing.
-function woodshed(b, K, C, wings, edges, F, SH, tower) {
+function woodshed(b, K, C, wings, edges, F, SH, tower, avoid) {
   const w0 = wings[0];
   if (w0.alpha !== 0) return false;
   for (const sg of [1, -1]) {
@@ -12992,6 +13178,7 @@ function woodshed(b, K, C, wings, edges, F, SH, tower) {
     if (end.length < 3) continue;
     if (wings.some(o => o !== w0 && inside(o, xWall + sg * 1.5, w0.cz, 0.01))) continue;
     if (tower && Math.abs(tower.cx - xWall) < tower.n + 1) continue;
+    if (sg === avoid) continue; // a hearth's stack stands at that end
     const zs = end.length >= 4 ? [end[1], end[2]] : [end[0], end[1]];
     const xr = xWall + sg * 1, xp = xWall + sg * 2, yaw = sg > 0 ? 90 : 270, T2 = { trim: true };
     for (const z of zs) b.put(K.roof26, xr, F + SH - 0.6, z, yaw, T2); // 2.4 m at its outer edge, up against the gable
@@ -13047,6 +13234,56 @@ function outshut(b, K, C, wings, edges, F, SH, R, decor) {
     });
   }
   b.notes.push(`A lean-to ${best.length * 2} m long against the back wall.`);
+  return true;
+}
+
+// A hearth half in the gable wall (hearthPlan 'stack'): the middle bay of the ground storey opened 2 m high under a
+// timber lintel, and outside it a stone alcove (two cheeks, a back and a stone floor) that rises as a hollow stack to a
+// metre past the ridge. A plank lid on four short posts keeps the rain off the fire and lets the smoke out at the
+// sides (Valheim's smoke needs about a metre to pass). Stone stands on the ground the whole way up (stone takes no
+// support from wood); over the gable the shaft's house side is planks. Returns false when the end is not free.
+function hearthStack(b, K, C, w0, h, o) {
+  const Ck = checksLib(), sg = h.sg, xW = h.xW, z = h.z, F = o.F, SH = o.SH;
+  const block = K.stoneWall, cube = K.stoneBlock || 'stone_wall_1x1';
+  if (!block || !/2x1/.test(block)) return false;
+  const role = p => P.piece(p.name).role;
+  const inWall = p => Math.abs(p.x - xW) < 0.15 && role(p) === 'wall';
+  const face = Math.max(0.1, ...b.pieces.filter(inWall).map(p => { const a = Ck.aabb(p); return sg > 0 ? a.x1 - xW : xW - a.x0; }).filter(v => v < 0.8));
+  const xi0 = xW + sg * face, xi1 = xi0 + sg * 2; // the shaft's inside, from the wall's face 2 m out
+  const box = { x0: Math.min(xi0, xi1 + sg * 1.05), x1: Math.max(xi0, xi1 + sg * 1.05), z0: z - 2.05, z1: z + 2.05 };
+  const hit = (a, y0) => a.x0 < box.x1 - 0.05 && a.x1 > box.x0 + 0.05 && a.z0 < box.z1 - 0.05 && a.z1 > box.z0 + 0.05 && a.y1 > y0;
+  // nothing standing out there below the eaves (a deck, a post, a lean-to); roofs and trim over it come out below
+  const rakeTrim = p => role(p) === 'beam' && (p.trim || /_(26|45)$/.test(p.name));
+  const blocker = b.pieces.find(p => !/roof/.test(role(p)) && role(p) !== 'gable' && Math.abs(p.x - xW) > 0.35 && !rakeTrim(p) && hit(Ck.aabb(p), 0.05) && Ck.aabb(p).y0 < F + SH);
+  if (blocker) return false;
+  const tops = b.pieces.filter(p => /roof/.test(role(p)) && Math.abs(p.x - xW) < 3);
+  if (!tops.length) return false;
+  const yTop = Math.ceil(Math.max(...tops.map(p => Ck.aabb(p).y1)) + 0.8);
+  // the rake's overhang, its cap and the bargeboards over the stack come out (the roof ends at the gable there)
+  takeOut(b, p => !p.decor && (/roof/.test(role(p)) || rakeTrim(p)) && hit(Ck.aabb(p), F + 2));
+  // the opening: the ground storey's middle bay out, then a lintel beam at 2 m and planks over it to the wall top
+  takeOut(b, p => !p.decor && Math.abs(p.x - xW) < 0.6 && Math.abs(p.z - z) < 0.95 && ['wall', 'window', 'door', 'beam'].includes(role(p)) && (a => a.y1 <= F + SH + 0.02 && a.y1 > F + 0.05)(Ck.aabb(p)));
+  const T2 = { trim: true };
+  b.put(K.beam || 'wood_beam', xW, F + 1.9, z, 90);
+  for (let y = F + 2.2; y < F + SH - 0.01; y += 1) b.put(K.wallHalf, xW, Math.min(y + 0.5, F + SH - 0.5), z, 90);
+  // the alcove's floor: 1 m stone floors down to the ground, the top one flush with the house floor
+  for (let y = F - 0.4; y + 0.5 > 0.05; y -= 1) b.put(K.stoneFloor || 'stone_floor_2x2', xi0 + sg, y, z);
+  // cheeks, back and corners, course by course from the ground; over the opening the cheeks step in a metre a side
+  // (the shoulders), so the stack narrows to a flue 1 m wide and 2 m deep
+  const shoulder = Math.round(F + 2);
+  for (let y = 0; y < yTop - 0.01; y += 1) {
+    const zc = y < shoulder ? 1.5 : 1;
+    for (const s2 of [-1, 1]) { b.put(block, xi0 + sg, y + 0.5, z + s2 * zc, 0, T2); if (y < shoulder) b.put(cube, xi1 + sg * 0.5, y + 0.5, z + s2 * 1.5, 0, T2); }
+    b.put(block, xi1 + sg * 0.5, y + 0.5, z, 90, T2);
+  }
+  // the house side of the shaft over the gable: planks on the gable's top
+  const gableTop = Math.max(F + SH, ...b.pieces.filter(p => Math.abs(p.x - xW) < 0.3 && Math.abs(p.z - z) < 0.9 && ['wall', 'gable'].includes(role(p))).map(p => Ck.aabb(p).y1));
+  for (let y = gableTop; y < yTop - 0.01; y += 1) b.put(K.wallHalf, xW, Math.min(y + 0.5, yTop - 0.5), z, 90, T2);
+  // the lid on four short posts
+  for (const x of [xi0, xi1]) for (const s2 of [-1, 1]) b.put(K.pole1 || 'wood_pole', x, yTop + 0.5, z + s2 * 0.5, 0, T2);
+  b.put(K.floor, xi0 + sg, yTop + 1.1, z, 0, T2);
+  b.vents.push({ kind: 'stack', x: +(xW + sg * 0.7).toFixed(3), z, rect: null });
+  if (o.notes) o.notes.push('The hearth stands half in the gable wall, in a stone alcove that rises as a chimney stack past the ridge.');
   return true;
 }
 

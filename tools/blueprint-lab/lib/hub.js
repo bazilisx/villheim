@@ -36,6 +36,19 @@ const PH = NODE_H ? require('./pieces.js') : window.VHPieces;
 const CkH = () => (NODE_H ? require('./checks.js') : window.VHChecks);
 const DecH = () => (NODE_H ? require('./decorate.js') : window.VHDecorate);
 const BPH = () => (NODE_H ? require('./blueprint.js') : window.VHBlueprint);
+const SHH = () => (NODE_H ? require('./shapes.js') : window.VHShapes);
+// distance in plan from (x, z) to a piece's turned solids (o.sol, from checks.js gameBox), else to its box
+function distSol(o, x, z) {
+  if (!o.sol || !o.sol.length) return Math.hypot(Math.max(o.x0 - x, 0, x - o.x1), Math.max(o.z0 - z, 0, z - o.z1));
+  let best = Infinity;
+  for (const S of o.sol) {
+    const dx = x - S.c[0], dz = z - S.c[2];
+    let q = 0;
+    for (let k = 0; k < 3; k++) { const A = S.a[k]; if (Math.abs(A[1]) > 0.5) continue; const t = dx * A[0] + dz * A[2]; const e = Math.max(Math.abs(t) - S.h[k], 0); q += e * e; }
+    best = Math.min(best, Math.sqrt(q));
+  }
+  return best;
+}
 
 const STAGES = ['s1', 's2', 's3', 's4', 's5'];
 
@@ -133,9 +146,12 @@ function walker(b) {
     if (PASS.has(role) || role === 'stair' || p.onTable) return null;
     if (p.decor && f && ['mount', 'hang', 'top', 'rug'].includes(f.at)) return null;
     const o = Ck.aabbShapes(p);
-    return o.pass ? null : o;
+    if (o.pass) return null;
+    // a turned piece is judged by its turned solids
+    if (Math.abs(((p.yaw || 0) % 90 + 90) % 90) > 1) { const g = Ck.gameBox(p); if (g.sol && g.sol.length) o.sol = g.sol; }
+    return o;
   };
-  const dist = (o, x, z) => Math.hypot(Math.max(o.x0 - x, 0, x - o.x1), Math.max(o.z0 - z, 0, z - o.z1));
+  const dist = (o, x, z) => distSol(o, x, z);
   // cells of each level within 'r' of box o: [level index, cell index]
   const cellsNear = (o, r, onlyBand) => {
     const out = [];
@@ -262,6 +278,11 @@ function placer(b, T) {
   };
   const keep = [];
   const over = (a, c, e = 0.03) => a.x0 < c.x1 - e && a.x1 > c.x0 + e && a.z0 < c.z1 - e && a.z1 > c.z0 + e && a.y0 < c.y1 - e && a.y1 > c.y0 + e;
+  // boxes that overlap meet only if their turned solids do (a table turned 45 degrees is judged by its own footprint,
+  // its whole box is larger)
+  const SHP = SHH();
+  const hits = (a, c, e = 0.03) => over(a, c, e) && (!a.sol || !a.sol.length || !SHP ? true
+    : c.sol && c.sol.length ? a.sol.some(A => c.sol.some(B => SHP.hit(A, B, -e))) : SHP.hitsBox(a.sol, { x0: c.x0 + e, x1: c.x1 - e, y0: c.y0 + e, y1: c.y1 - e, z0: c.z0 + e, z1: c.z1 - e }));
   return {
     keep(x0, x1, z0, z1, y0 = -1, y1 = 100, always = false) { keep.push({ x0, x1, z0, z1, y0, y1, always }); },
     put(name, x, y, z, yaw, extra = {}, o = {}) {
@@ -269,9 +290,9 @@ function placer(b, T) {
       const p = { name, x, y, z, yaw: normH(yaw), q: T.quat(normH(yaw)) };
       const bx = Ck.gameBox(p);
       if (!o.free) {
-        if (hard.some(h => over(bx, h))) return false;
-        if (!o.onFurn && furn.some(h => over(bx, h, 0.01))) return false;
-        if (keep.some(k => (k.always || !o.inKeep) && over(bx, k, 0))) return false;
+        if (hard.some(h => hits(bx, h))) return false;
+        if (!o.onFurn && furn.some(h => hits(bx, h, 0.01))) return false;
+        if (keep.some(k => (k.always || !o.inKeep) && hits(bx, k, 0))) return false;
       }
       // the way through the hall stays open (D-148): built once the hall's rooms are known
       if (!walk && b.rooms.length) walk = walker(b);
@@ -659,15 +680,22 @@ function roundHall(b, K, C, T, o) {
   // roof on a ring of posts, open at the sides for the smoke, with a finial post on top (tier 0)
   const crownY = outer.top;
   if (style !== 'flat' && !drum && (style === 'drum' || (k >= 4 && tier < 2)) && tier < 3) {
-    const big = style === 'posts', rp = big ? 2.6 : 1.4, hp = big ? 2 : 1, np = big ? 8 : 4;
-    asCrown(b, () => {
-    for (let i = 0; i < np; i++) { const a = (i + 0.5) * 360 / np; for (let y = crownY - 0.6; y < crownY - 0.6 + hp - 0.01; y += 1) b.put(K.pole1, Math.sin(rad(a)) * rp, y + 0.5, Math.cos(rad(a)) * rp); }
-    const cap = ringRoofH(b, K, big ? 3.4 : 1.9, crownY - 0.6 + hp, big && tier < 1 && C.pitch !== 26 ? [2] : [1], { eave: true, crown: 0.4 });
-    peak = Math.max(peak, cap.top + (big ? 0 : 0.5));
-    if (big) { for (let y = cap.top - 0.5; y < cap.top + 1.5; y += 1) b.put(K.pole1, 0, y + 0.5, 0); peak = cap.top + 1.5; }
-    else b.put(K.roofTop26 || 'wood_roof_top', 0, cap.top, 0, 0);
-    });
-    b.notes.push(big ? 'A raised roof on a ring of posts over the open crown, a finial post on top.' : 'A smoke cap on four posts over the crown.');
+    const big = style === 'posts', rp = big ? 2.6 : 1.4, np = big ? 8 : 4;
+    // the raised crown fits the room the height cap leaves it (o.crownMax): 2 m posts and a finial, else 1 m posts
+    // and no finial, else none (the crown is about 5 m tall with all its parts)
+    const rr = big && tier < 1 && C.pitch !== 26 ? 2 : 1, rise = big ? 2 * rr - rr * 0.375 : 0.625;
+    const fits = (hp, fin) => crownY - 0.6 + hp + rise + (fin ? 1.5 : 0) <= (o.crownMax || Infinity) + 0.01;
+    const hp = !big ? 1 : fits(2, true) ? 2 : fits(1, false) ? 1 : 0, finial = big && hp === 2;
+    if (hp) {
+      asCrown(b, () => {
+        for (let i = 0; i < np; i++) { const a = (i + 0.5) * 360 / np; for (let y = crownY - 0.6; y < crownY - 0.6 + hp - 0.01; y += 1) b.put(K.pole1, Math.sin(rad(a)) * rp, y + 0.5, Math.cos(rad(a)) * rp); }
+        const cap = ringRoofH(b, K, big ? 3.4 : 1.9, crownY - 0.6 + hp, [rr], { eave: true, crown: 0.4 });
+        peak = Math.max(peak, cap.top + (big ? 0 : 0.5));
+        if (finial) { for (let y = cap.top - 0.5; y < cap.top + 1.5; y += 1) b.put(K.pole1, 0, y + 0.5, 0); peak = cap.top + 1.5; }
+        else if (!big) b.put(K.roofTop26 || 'wood_roof_top', 0, cap.top, 0, 0);
+      });
+      b.notes.push(big ? `A raised roof on a ring of ${hp} m posts over the open crown${finial ? ', a finial post on top' : ''}.` : 'A smoke cap on four posts over the crown.');
+    }
   }
   // the part round: everything in front of the straight wall comes out; the wall goes up with the door in its middle,
   // filled to the roof above (a tall flat front)
@@ -1031,13 +1059,13 @@ function furnish(b, K, C, T, o, F) {
       }
     }
   } else if (seating === 'spokes') {
-    const r0 = 4.0, r1 = F.gallery ? F.rIn - 0.6 : F.ap - 0.8;
-    // up to five spokes, tried every 22.5 degrees clear of the high seat's, the door's and the stair's sides
-    // (a turned piece takes its whole box: spokes off the square stop a metre shorter)
-    for (const a of [45, 135, 225, 315, 90, ...(F.St ? [] : [270]), 67.5, 112.5, 247.5, 292.5, 22.5, 337.5, 157.5, 202.5]) {
-      if (nRows >= 5) break;
+    // (when the drum stands on the gallery's posts the open middle is small: the spokes run under the gallery)
+    const under = F.gallery && F.rIn < 7, r0 = under ? F.rIn + 0.4 : 4.0, r1 = under ? F.ap - 0.8 : F.gallery ? F.rIn - 0.6 : F.ap - 0.8;
+    // five spokes: the four diagonals and the side away from the stair, each a long table pointing at the fire with a
+    // bench down each side (D-152: seats keep their spots; a spoke that does not fit is left out, never turned)
+    for (const a of [45, 135, 225, 315, 90]) {
       const ux = Math.sin(rad(a)), uz = Math.cos(rad(a));
-      nRows += longRow(ux * r0, uz * r0, ux, uz, r1 - r0 - (a % 90 && !F.gallery ? 1 : 0), nRows < 3 ? 1 : 2) ? 1 : 0;
+      nRows += longRow(ux * r0, uz * r0, ux, uz, r1 - r0, nRows < 3 ? 1 : 2) ? 1 : 0;
     }
   } else {
     // a ring of log benches round the fire (cone halls), or rugs (flat roof halls), and a few tables at the walls
@@ -1048,9 +1076,9 @@ function furnish(b, K, C, T, o, F) {
       else place.put(i % 2 ? 'rug_deer' : 'jute_carpet', x, 0.14, z, a, ds(i % 2 ? 2 : 1), { onFurn: true, inKeep: true });
     }
   }
-  if (line !== 'cross') {
+  if (line !== 'cross' && seating !== 'spokes') {
     const rr = F.gallery ? F.rIn + 1.8 : Math.max(F.ap - 2.8, 4.8);
-    const n = Math.max(3, Math.floor(2 * Math.PI * rr / (seating === 'spokes' ? 8 : 5)));
+    const n = Math.max(3, Math.floor(2 * Math.PI * rr / 5));
     for (let i = 0; i < n; i++) {
       const a = (i + 0.5) * 360 / n, x = Math.sin(rad(a)) * rr, z = Math.cos(rad(a)) * rr;
       if ((F.sideX != null && x > F.sideX - 1.6) || (F.zc != null && z < F.zc + 1.6)) continue;
@@ -1205,7 +1233,7 @@ function generate(req, T) {
     for (tier = Math.max(0, Math.min(TIERS - 1, +req.minTier || 0)); tier < TIERS; tier++) {
       b = new T.Build(); b.markers = [];
       F = line === 'cross' ? crossHall(b, Kw, C, T, { stage, tier, ext, wallStyle, has })
-        : roundHall(b, Kw, C, T, { stage, variant: line, tier, ext, wallStyle, has, cultureKey });
+        : roundHall(b, Kw, C, T, { stage, variant: line, tier, ext, wallStyle, has, cultureKey, crownMax: cap + CROWN_OVER });
       if (topOf(b.pieces.filter(p => !p.crown)) <= cap + 0.01 && topOf(b.pieces) <= cap + CROWN_OVER + 0.01) break;
     }
     if (tier >= TIERS) tier = TIERS - 1;
@@ -1235,6 +1263,15 @@ function generate(req, T) {
   else b.pieces = b.pieces.filter(p => !p.decor || p.hearth || p.notice || p.highSeat || p.spouseSeat);
   // pieces that stand on their pivot in the game go down to their foot (as lib/generate.js finish)
   for (const p of b.pieces) { const pi = PH.piece(p.name); if (pi.onPivot && !p.decor && !p.footed) { p.y = +(p.y - pi.size[1] / 2).toFixed(3); p.footed = true; } }
+  // the stair and the side rooms stand on the left or the right, by the village (the whole hall mirrored across its
+  // axis from the door to the high seat; the culture data give no side)
+  info.mirrored = k >= 2 && rngH(hashH(`${lineage}|${cultureKey}|side`))() < 0.5;
+  if (info.mirrored) {
+    for (const p of b.pieces) { p.x = +(-p.x).toFixed(3); p.yaw = normH(-(p.yaw || 0)); p.q = T.quat(p.yaw); }
+    for (const r of b.rooms) { const x0 = r.x0; r.x0 = -r.x1; r.x1 = -x0; if (r.door) r.door = { ...r.door, x: -r.door.x }; }
+    for (const m of b.markers) { m.x = -m.x; m.yaw = normH(-(m.yaw || 0)); }
+    for (const m of [b.leader, b.spouse]) if (m) { m.x = -m.x; m.yaw = normH(-(m.yaw || 0)); }
+  }
   const L = b.leader || { x: 0, y: 0, z: 3, yaw: 180 };
   const mk = (m, extra) => ({ kind: 'seat', x: +m.x.toFixed(3), y: +m.y.toFixed(3), z: +m.z.toFixed(3), yaw: Math.round(m.yaw || 0), ...extra });
   const markers = [...b.markers, mk(L, { leader: true })];

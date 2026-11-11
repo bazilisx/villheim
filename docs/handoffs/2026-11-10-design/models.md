@@ -231,3 +231,76 @@ None. `lib/build_web.js` and `lib/build_engine.js` changed in the lines that loa
 - Work files left in Tyler's game profile from round 1 (`BepInEx/config/Villheim-tools/models-run`, 18 files, 24 MB):
   copies of all of them are in `$HOME/vhmodels` (`from-profile/` holds the four debug files and the longer
   anchors.txt). The lead handles the folder.
+
+## Round 3 (2026-11-11)
+
+The work folder in Tyler's game profile was copied to `$HOME/vhmodels/from-profile` and removed by the lead with
+Tyler's approval. Round 3 wrote nothing to his connected folders.
+
+### Refit and rescore of the pieces with long triangles
+
+- 239 pieces with a triangle longer than 1.9 m (the 270 found in round 2, less 31 that are either trees, rocks and
+  cliffs kept coarse or among the 14 hard pieces done in round 2), the 43 the pools use first. Each was scored again with the fixed
+  sampling (`fit_score`), fitted again (800 boxes a part, 2 million cells) and the closer of the two kept (miss plus
+  over at least 2 mm lower). Driver: `$HOME/vhmodels/r3.py` on the PC.
+- 224 done: 34 take the new fit, 190 keep their parts with the new score in `err`. Pieces with a 99th percentile miss
+  over 20 mm among the 224: 56 before, 42 after (most of the 42 are large pieces where the score's own voxel is 20 to
+  40 mm). New fits include the six scale roof walls (miss 37 to 13), wood_wall_roof_67_upsidedown (140 to 0),
+  ashwood_wall_roof_67_a (157 to 0), wood_roof_top_45 (33/81 to 19/19), darkwood_roof_45 (33 to 23),
+  darkwood_roof_ocorner (46 to 33), MountainKit_wood_gate (76 to 25), piece_bench01 (18/13 to 9/9), wood_pole_log
+  (16 to 11), stave_beam_67, woodiron_beam_67, iron_wall_2x2, piece_hexagonal_door (63 to 30).
+- piece_bench01 got its tops set again: median 7.0 to 2.1 mm, 95th percentile 10.3 to 15.1.
+- Not done, cut off by the time limit (15): piece_artisanstation and darkwood_roof_ocorner_67 (scored, kept),
+  wood_roof_67, wood_pole_log_4, wood_roof_top, wood_wall_roof_a, smelter, eitrrefinery, incinerator, piece_maypole,
+  trader_wagon_destructable, Ashlands_Fortress_Wall_Pillar_frac, Charred_altar_bellfragment, Rock_destructible,
+  SwampTree1, cliff_mistlands1, cliff_mistlands1_creep.
+- Commit e9d467c. Parts 209,771; `data/piece-models.json` 0.91 MB, `data/piece-fine.json` 2.41 MB.
+
+### The stand bands and the new check_interiors cases, traced
+
+Method: the d3 requests of test_stands at 3 seeds made with the 29a1f2f lib and data, then with that lib and the new
+parts of only some pieces swapped in (`/tmp/models3-hyb.js`), stands counted by place with lab/mine_stands.js.
+
+- Stand bands (flat share 81 %, wall hearth 22.0 %): all from `stone_wall_2x1`. With only its new parts swapped in,
+  the counts match this round exactly (flat 630 to 703, wall 190 to 170, shelf 207 to 255, mantel 115 to 145, table
+  164 to 146); the tops and the other 78 refitted pieces change nothing. Its first proxy was one prism a full 1.18 m
+  thick everywhere (9 cm past its collider on each face); the fine parts follow the stones (miss 14 mm, over 0). Ledges
+  on stone walls in Plains, Mountain and Black Forest houses now pass: in the Plains taverns 84 ledge and wall pairs
+  touch, 3 to 7 mm into the fine parts, 8 to 10 cm into the old prism, 0 into the colliders. Model correction, no
+  model error. The band misses follow from more shelf and mantel stands in stone houses.
+- Overlaps (check_interiors, from the colliders): real clips in placement. The ledges in these sets sit on stone walls
+  and now pass the wall test; the set is then placed over furniture already there:
+  - tavern Plains s3d3 seed 357: KS-mantel wood_ledge at (-5.0, 1.5, -7.2) over piece_groundtorch_mist at (-5.5,
+    1.25, -7.21): 5.8 cm into the fine parts, 8.0 cm into the colliders.
+  - temple Plains s3d3 seed 701: BK-wcandles ledges at (-0.5, 1.55, -6.2), (6.2, 1.75, 2.0) and (-6.2, 1.55, 1.0)
+    over piece_groundtorch_mist: 5.0 to 7.4 cm fine, 0 to 3 cm colliders.
+  - tower Mountain s3d3 seed 628: KS-s-two wood_ledge at (-2.2, 5.05, 1.0) over piece_chest at (-1.96, 4.10, 1.0):
+    11.4 cm fine, 13.8 cm colliders.
+  - home Mountain s2d2 seed 139: piece_groundtorch_wood against piece_logbench01 (also in 29a1f2f): 4.4 cm fine, 0
+    colliders.
+- Headroom (tower Mountain s3d3 seed 530): a decor wood_beam from kitbash KC-100 at (-0.99, 5.06, -2.17), 0.96 m over
+  the floor at y 4.1, is read as a ceiling over the point (-0.25, 4.1, -2.25). The check reads the colliders and the
+  placement; no model involved.
+- For the integration helper (placement code, not changed here): the wall set placement (lib/stands.js KS-mantel,
+  KS-s-two; lib/kitbash.js BK-wcandles) lets a ledge go over a ground torch or a chest; the headroom check counts a low decor beam as a ceiling.
+
+### Checks (round 3 tree, e9d467c)
+
+- check_set 2: 224 of 225, 90 of 90, 147 of 147, overlap 1 (same); 294 s with other helpers on the machine.
+- test_structure: 36 hold. test_sizes: 0 off.
+- check_interiors in full (702 designs): bareFloors 4 (5), floating 6 (8), overlap 4 (6), headroom 1 (1), the rest 0;
+  219 ms a design. The same as round 2; cases traced above.
+- Pools: Norse Meadows, norse-forest Black Forest, middle-eastern Plains: audit pass, 81 each.
+- test_stands 3 --gate: the same table as round 2 (flat 645, wall 168 at d3); six bands missed (flat bench, wall
+  station, wall hearth, wall chest, flat share, stands q3); the two new ones traced above.
+- compare_page: 5 of 5 the same. gen-test: 5 of 5 byte for byte. dotnet build: 0 errors, 43 warnings.
+- gen-test times (C# engine, s, requests 1 to 5, load average about 2.5): 11.7 / 81.7 / 31.1 / 1.6 / 9.5 (29a1f2f
+  16.6 / 72.2 / 14.2 / 1.6 / 12.1 under load 3 to 4; requests 3 and 5 make other designs since round 2).
+- Bundles: lab.js 4.09 MB, lab page 5.88 MB.
+
+### Open
+
+- The 15 pieces cut off above; the 31 trees, rocks and cliffs kept coarse.
+- Placement: the ledge sets over ground torches and a chest, and the decor beam read as a ceiling (above).
+- Band misses flat share and wall hearth: they follow from the fine stone wall; the stands track decides whether the
+  bands or the sets change.

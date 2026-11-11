@@ -141,8 +141,28 @@ unchanged.
   again keeping s3 d1, Interior messy first in the households compare, layouts, zoom kept over a plan click, Pick
   stages for me. No page errors.
 
+### Shared top group (2026-11-11, second commit)
+
+Tyler (2026-11-11): "new building and interior should have the same slider and also messy etc drop-down UI changes
+I've asked for too, pls".
+
+- New building and Interiors use one top group (`#topgroup` in app.html): the same elements, moved into the open tab
+  (`tab()`), so both tabs show the same look and order and one state. The Interiors tab's own Building, Culture,
+  Household and slider controls are gone; its Building list is now the full list of S.TYPES and its Culture list
+  includes the older lab styles.
+- A choice made on either tab shows on the other and is kept across builds and page loads (localStorage keys `type`,
+  `culture`, `ghouse` and `stages`). Opening a tab builds a stage or Interior set on the other tab there too (New
+  building: rebuild of the kept candidate; Interiors: the same interiors again). Building and Culture wait for Build it
+  or Show interiors, as on their own tab.
+- Pick stages for me clears the shared stages. A slider never moved shows the open tab's drawn stage.
+- Compare, Examples, House seed and Biome stay under More choices on Interiors.
+- Checks: build, `lab/compare_page.js` all same, headless Chrome (/tmp/h5r2/run3.js and run2.js): Interior and both
+  sliders set on New building show on Interiors and the reverse, Pick stages for me from Interiors, a reload with both
+  tabs keeping type, culture, interior and stages; all the round 2 controls again. No page errors. One note on the
+  harness: after leaving real full screen, headless Chrome sometimes stops sending wheel input to the page (a plain
+  document listener gets nothing either); a fresh page zooms on Interiors (run2.js).
+
 ### Open
 
-- The two tabs keep separate sliders. If Tyler wants one pair shared by both tabs, it is a small change.
 - The view is orthographic; zoomed into a room with the roof on, the roof is in the way. Roof off cuts at 2.6 m above
   the ground.

@@ -319,6 +319,15 @@ well (Tyler, 2026-11-08). The Features tab of the review sheet (`docs/features/b
   2h. [ ] Paused 2026-11-10, resume from docs/handoffs/2026-11-10-design/README.md: decor any biome and no caps (D-065,
      D-126; design/wip-decor-limits), item stands (design/wip-stands), hearths and lighting (design/wip-hearths), and
      D-132 (stages and decor phases need not carry everything over; nesting and shell kept become reported measures).
+  2i. [ ] **Central hearth (hub) per culture, growing with the village (Tyler, 2026-11-11):** the village's
+     gathering place and the leader's usual spot, the same idea as Millénaire's town halls (D-067: the hearth is the
+     hub). Early stages are spare: a campfire with lean-tos round it. Each stage grows larger and grander, with more
+     storeys and richer architecture; in most villages the hub is the grandest structure at the last stage. By
+     culture it may be a longhouse, a round structure, or another form. Reference: Tyler's board saves for the
+     Meadows hearth (`BepInEx/config/Villheim/blueprints/inspiration/board/`: hub1_s1d2, hub1_s1d3; drafts
+     hub1_s2d3, hub1_s3d3, hub1_s4d3, the last two the same 1,006 pieces). No s5 save or draft was found; work on
+     s3 to s5 made after 2026-11-08 01:54 may still stand on the board in the flat test world. Plan first (docs and
+     data), generator work after the interior tracks merge.
   2b. [ ] **Next, asked for by Tyler (2026-11-10):** one more round of tightening the piece models: rerun
      `lab/extract_models.py` on Tyler's PC (game files under Z:\SteamLibrary\steamapps\common\Valheim, UnityPy) with
      a finer proxy (more parts than the 40 or so now), `lab/build_models.js`, then every check; and in `lib/mesh.js`

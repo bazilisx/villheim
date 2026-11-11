@@ -274,12 +274,12 @@ two rows of posts). Rooms: home, sleeping, hall, tavern, kitchen, smithy, worksh
   `decorate.js` by hand and the same plan IDs are laid out again to compare.
 - The node and game bundles give the same plan byte for byte, so the sheet's rows match what is built in the game.
 
-## Creative sets (D-065, D-096)
+## Creative sets (D-065, D-098)
 
 Measured 2026-11-10: the 1,561 corpus builds use 220 decor prefabs in 12,762 placements, but the 459 mined assemblies
 of the interior library held 109 of them. The miner grouped pieces by slot (any chest, any bench) and kept what
 repeats, so the long tail of clever objects never became sets. Tyler asked for the objects builders make by clipping
-or combining pieces for a purpose: furniture, decor, clutter, lived-in variance, wall, floor and window objects (D-096:
+or combining pieces for a purpose: furniture, decor, clutter, lived-in variance, wall, floor and window objects (D-098:
 clip only where it is meant for something).
 
 Sources this round. The full corpus was not reachable: it sits in Tyler's Downloads folder, which is not connected
@@ -351,10 +351,18 @@ top, so a candle set on a barrel sat inside it; what is set on one now stands on
 decorator's `kbRests`); `lib/kitbash.js` `lite()` carries the new fields, `fit` leaves out a creative set's pieces the
 village does not make, `placeable` refuses furniture more than 12 cm into other furniture the way the pool audit's
 `furnClip` measures it (a mined table set's chair pushed into the decorator's table failed the pool gate), and a
-d3-only set's pieces are marked for the third stage; `lib/persona.js` `kitWeight` reads `traits`.
+d3-only set's pieces are marked for the third stage; `lib/persona.js` `kitWeight` reads `traits`. A beam hung on a wall
+as a shelf keeps its own prefab: the dark wood beam pivots on its underside, and a village's dark beam on a wall read as
+loose structure to the support and headroom checks.
+
+Checks with the sets in (2026-11-10, rebased on 87bca47): `lab/check_set.js 2` 224 of 225, 90 of 90, 147 of 147 (as
+before); `lab/test_structure.js` holds; the test pool audit passes; the game engine and node give the same 5 designs
+byte for byte. `lab/check_interiors.js` against main of the same day: floating 39 designs, 150 problems (was 40, 154),
+overlap 2 (was 3), door 1 (1), bare floors 7 (7); one new `stairs` (a decorator bench on a tower's stair foot that a
+dining set used to move away, seed 708), and every `lib/checks.js` check at 0.
 
 How often they go in (`node lab/creative_fit.js 2`, 216 designs: nine types, six biomes, s2d2 and s3d3, two seeds):
-35 sets placed 109 times, against 36 mined sets placed 61 times; 72 prefabs reach a design through the library (43 by
+41 sets placed 108 times, against 37 mined sets placed 65 times; 73 prefabs reach a design through the library (51 by
 the creative sets). Every set fits somewhere when tried alone (`node lab/creative_fit.js --probe`) except a few that
 need a hall or a corner the sample rarely has (the stonecutter, the tub, the oven, the marble head on a plinth, pots
 under a window); bed sets wait for a bed whose anchor the home's own bedside kit has not taken.

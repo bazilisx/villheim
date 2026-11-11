@@ -321,6 +321,11 @@ well (Tyler, 2026-11-08). The Features tab of the review sheet (`docs/features/b
      a finer proxy (more parts than the 40 or so now), `lab/build_models.js`, then every check; and in `lib/mesh.js`
      split a prism (a blanket, a hide) into several boxes along its outline instead of one box round it. Used by the
      generator, the checks and the lab page; no textures.
+  2d. [x] Creative interior sets (D-065, D-098, design helper 2026-11-10): 92 combined and clipped sets, KC-001 on,
+     each with role, household traits, rooms, decor stages, biome, footprint and height; the interior library holds
+     193 of the 220 decor prefabs the corpus uses (was 109). `docs/INTERIOR_DESIGN.md`, "Creative sets".
+  2e. [ ] Run `lab/mine_creative.js` on the full corpus (Tyler's Downloads folder, not connected this time) and add the
+     objects that repeat or come from liked builds; measure `piece_drawer` and the other 12 decor prefabs with no model.
   2c. [ ] Intentional clips (Tyler, 2026-11-10): where the corpus clips or presses pieces together on purpose (the
      kit library records each set's clip depths), the new visible-clip tests take that depth as the limit for that
      set's own pieces; mark such clips in the file so the pool audit lets them pass.

@@ -1,4 +1,4 @@
-// Creative sets for the interior library (D-065, D-096): combined and clipped objects that serve a purpose in a room,
+// Creative sets for the interior library (D-065, D-098): combined and clipped objects that serve a purpose in a room,
 // furniture built up from building pieces, stations and props used as decor, things stacked, nested and set into each
 // other the way the corpus builders do it. Each set is written here in its anchor's frame, then settled and measured
 // with the game's colliders (lib/shapes.js) the way lib/kitbash.js fit() places it: what stands on the floor stands on
@@ -43,7 +43,9 @@ const C45 = Math.SQRT1_2;
 // (posts keep their own prefab: the village's post may be a 4 m log, and a lamp post or a rail is made for its height)
 const BUILT_K = { wood_beam_1: 'beam1', ashwood_beam_1m: 'beam1', wood_beam: 'beam2', darkwood_beam: 'beam2', woodiron_beam: 'beam2', wood_wall_half: 'half', wood_wall_quarter: 'quarter',
   wood_ledge: 'ledge' };
-const kOf = n => BUILT_K[n] || (KB.slotOf(n) === 'feast' ? 'feast' : n);
+// a beam hung on a wall as a shelf keeps its own prefab: the village's beam may pivot elsewhere (the dark wood beam
+// pivots on its underside) and then reads as loose structure to the support and headroom checks
+const kOf = (n, rest) => (rest !== 'wall' && BUILT_K[n]) || (KB.slotOf(n) === 'feast' ? 'feast' : n);
 
 // ---------------------------------------------------------------- the sets
 // Families, with the corpus behind each (counts: builds using the prefab / of them well-liked, and how its pieces rest:
@@ -76,7 +78,7 @@ set('stack-cellar', 'cellar corner of jars', { family: 'storage', role: 'clutter
 // 2. Built-up furniture (D-065): beams as shelves, half and quarter walls as cabinet backs and plinths, posts as
 // frames. Beams carry decor in 93 builds (on 66, against a wall 322 times); quarter walls carry it 32 times; ledges 43.
 set('built-beamshelf', 'beam shelf of jars', { family: 'built', role: 'wall', anchor: 'wall', traits: { food: 0.8, tidy: 0.6 }, rooms: ['kitchen', 'home', 'storage', 'tavern'], decor: ['d2', 'd3'], basis: 'wood beams hung on a wall with things on them: 322 times in 93 builds' }, [
-  pc('wood_beam', 0, 0, 0, 'wall', { y: 1.5, key: true }), pc('QueensJam', -0.6, 0.2, 10, 0), pc('Honey', -0.1, 0.2, 80, 0), pc('Candle_resin', 0.35, 0.2, 0, 0), pc('Blueberries', 0.7, 0.2, 0, 0), pc('piece_chest_barrel', -0.45, 0, 0, 'floor', { back: true })]);
+  pc('wood_beam', 0, 0, 0, 'wall', { y: 1.25, key: true }), pc('QueensJam', -0.6, 0.2, 10, 0), pc('Honey', -0.1, 0.2, 80, 0), pc('Candle_resin', 0.35, 0.2, 0, 0), pc('Blueberries', 0.7, 0.2, 0, 0), pc('piece_chest_barrel', -0.45, 0, 0, 'floor', { back: true })]);
 set('built-beamshelf2', 'two beam shelves with herbs', { family: 'built', role: 'wall', anchor: 'wall', traits: { plants: 0.7, tidy: 0.7 }, rooms: ['home', 'kitchen', 'sleeping'], decor: ['d3'], basis: 'beams as shelves (322 against a wall); pots rest on another piece 7 times' }, [
   pc('wood_beam', 0, 0, 0, 'wall', { y: 1.1, key: true }), pc('wood_beam', 0, 0, 0, 'wall', { y: 1.9 }), pc('Pukeberries', -0.55, 0.2, 30, 0), pc('Fiddleheadfern', 0.5, 0.2, 0, 0), pc('MeadTasty', -0.5, 0.2, 0, 1), pc('Candle_resin', 0.45, 0.2, 0, 1), pc('piece_pot1', -0.5, 0, 0, 'floor', { back: true })]);
 set('built-plinth', 'quarter wall plinth with a stand', { family: 'built', role: 'decor', anchor: 'wall', traits: { collect: 1 }, rooms: ['home', 'hall', 'tavern'], decor: ['d2', 'd3'], src: ['No. 207 house-octagon-starter-base'], basis: 'a quarter wall with an item stand hung on it, No. 207; quarter walls carry decor 32 times' }, [
@@ -271,7 +273,7 @@ set('store-dvergrbarrel', 'Dvergr barrel in the corner', { family: 'storage', ro
   pc('dvergrprops_barrel', 0.8, 1.05, 0, 'floor', { key: true }), pc('dvergrprops_crate', 2.2, 0.55, 12, 'floor'), pc('itemstandh', 2.2, 0.55, 0, 1, { want: 'drink' })]);
 
 set('built-shortshelf', 'short shelves of a candle and a cup', { family: 'built', role: 'wall', anchor: 'wall', traits: { tidy: 0.5, comfort: 0.5 }, rooms: ['home', 'sleeping', 'kitchen'], decor: ['d2', 'd3'], basis: 'short ashwood and wood beams on walls: 37 and 146 times' }, [
-  pc('ashwood_beam_1m', -0.6, 0, 0, 'wall', { y: 1.35, key: true }), pc('wood_beam_1', 0.6, 0, 0, 'wall', { y: 1.7 }), pc('Candle_resin', -0.6, 0.2, 0, 0), pc('itemstandh', 0.6, 0.2, 0, 1, { want: 'drink' }), pc('piece_chair', 0, 0.45, 0, 'floor')]);
+  pc('ashwood_beam_1m', -0.6, 0, 0, 'wall', { y: 1.35 }), pc('wood_beam_1', 0.6, 0, 0, 'wall', { y: 1.7, key: true }), pc('Candle_resin', -0.6, 0.2, 0, 0), pc('itemstandh', 0.6, 0.2, 0, 1, { want: 'drink' }), pc('piece_chair', 0, 0.45, 0, 'floor')]);
 
 // ---------------------------------------------------------------- settling and measuring
 const ANCHOR_PIECE = { table: 'piece_table', round: 'piece_table_round', long: 'piece_table_oak', bed: 'bed', bed2: 'piece_bed02', hearth: 'hearth', pit: 'fire_pit', workbench: 'piece_workbench', forge: 'forge' };
@@ -331,7 +333,7 @@ function build(s) {
   // into the fitter's frame: a corner turns 45 degrees so +z runs along the bisector (lab/mine_kitbash.js)
   const a = corner ? Math.PI / 4 : 0, c = Math.cos(a), sn = Math.sin(a);
   const pieces = made.map((p, i) => {
-    const m = s.pieces[i], o = { n: p.name, k: kOf(p.name), x: r3(p.x * c - p.z * sn), y: p.y, z: r3(p.x * sn + p.z * c), yaw: Math.round(((p.yaw - (corner ? 45 : 0)) % 360 + 360) % 360), rest: m.rest === 'floor' || m.rest === 'wall' || m.rest === 'anchor' ? m.rest : 'on' };
+    const m = s.pieces[i], o = { n: p.name, k: kOf(p.name, m.rest), x: r3(p.x * c - p.z * sn), y: p.y, z: r3(p.x * sn + p.z * c), yaw: Math.round(((p.yaw - (corner ? 45 : 0)) % 360 + 360) % 360), rest: m.rest === 'floor' || m.rest === 'wall' || m.rest === 'anchor' ? m.rest : 'on' };
     if (o.rest === 'on') o.on = m.rest;
     if (m.sink) o.sink = m.sink;
     if (m.key) o.key = true;
@@ -344,7 +346,7 @@ function build(s) {
     const b = boxOf({ name: q.n, x: q.x, y: q.y, z: q.z, yaw: q.yaw });
     x0 = Math.min(x0, b.x0); x1 = Math.max(x1, b.x1); z0 = Math.min(z0, b.z0); z1 = Math.max(z1, b.z1); top = Math.max(top, b.y1);
   }
-  const fb = n => (BUILT_K[n] || n === 'wood_pole' || P.minor(n) ? 0 : Math.max(0, P.BIOME_ORDER.indexOf(P.needs(n))));
+  const fb = n => ((BUILT_K[n] && P.needs(n) === 'Meadows') || n === 'wood_pole' || P.minor(n) ? 0 : Math.max(0, P.BIOME_ORDER.indexOf(P.needs(n))));
   const biome = P.BIOME_ORDER[Math.max(...pieces.map(q => fb(q.n)))];
   // the earliest biome whose village makes the core pieces (the fitter leaves the others out where it cannot make them)
   const core = pieces.filter(q => q.key);

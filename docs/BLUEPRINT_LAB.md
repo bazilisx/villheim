@@ -467,7 +467,7 @@ torches, deer rugs, iron chests, fur rugs, armor stands. Builders clip often and
 90th percentile of 10 to 40 cm (forges and black metal chests 0.52 and 0.57 m); a tenth of the banners reach 0.55 m
 into the floor.
 
-Creative sets (2026-11-10, D-096): 92 sets `KC-001` on (`creative: true`) of combined, stacked and clipped objects,
+Creative sets (2026-11-10, D-098): 92 sets `KC-001` on (`creative: true`) of combined, stacked and clipped objects,
 written by `lab/creative_sets.js` from the decor table, the pairs in `data/interior.json` and the builds on Tyler's
 board (`lab/mine_creative.js`, which mines such objects by contact and is ready for the full corpus). Each keeps its
 pieces' own prefabs and carries its family, role, household traits (`lib/persona.js` `kitWeight`), rooms, decor

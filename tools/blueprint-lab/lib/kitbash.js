@@ -1773,7 +1773,7 @@ function apply(b, ctx, zones) {
 // Both budgets for a building with no interior library pass (round houses, the Svan tower: lib/generate.js), so their
 // rooms keep to the same light and rug budgets as the rest (integration round 4: a yurt held 7 lights, as many as the
 // decorator and the stands put up)
-function budgets(b) {
+function budgets(b, ctx) {
   const t = trimLights(b), r = trimRugs(b);
   if (t) b.notes.push(`${t} lights over the rooms' budgets left out.`);
   if (r) b.notes.push(`${r} rugs over the rooms' budgets left out.`);
@@ -1938,6 +1938,30 @@ function trimRugs(b) {
   b.pieces = b.pieces.filter(q => !gone.has(q));
   return gone.size;
 }
+// A table whose one roll said dressed (lib/decorate.js tableDressed, td) and that the later passes left bare (the light
+// budget took its candle, a lane or a set undone took its things) gets one thing on its top that is no light, drawn by
+// the corpus's top weights (horizontal item stands first, treasure after). Called from lib/generate.js finish before
+// the household fills its stands, so the share of tables dressed stays at the roll's (integration round 4: 84 of 105
+// tables rolled dressed had anything on them; tables dressed 31.8 % against the corpus 41 %).
+function redressTables(b, ctx) {
+  const D = decorB(), F = D.FURNITURE;
+  const deco = b.pieces.filter(p => p.decor && !p.outside && !p.yard);
+  let n = 0;
+  for (const t of deco) {
+    if (t.td !== true || (F[t.name] || {}).cat !== 'table') continue;
+    if (deco.some(q => q !== t && Math.hypot(q.x - t.x, q.z - t.z) < 0.9 && q.y - t.y > 0.5 && q.y - t.y < 1.6)) continue;
+    const W = D.topWeights(ctx.culture || ctx.cultureKey).filter(([nm]) => !D.lightCls(nm) && F[nm]);
+    if (!W.length) continue;
+    const tot = W.reduce((a, [, w]) => a + w, 0);
+    let u = (hashB(`redress|${t.x}|${t.z}|${t.name}`) % 10000) / 10000 * tot, name = W[0][0];
+    for (const [nm, w] of W) { if (u < w) { name = nm; break; } u -= w; }
+    const yaw = t.yaw || 0;
+    b.pieces.push({ name, x: t.x, y: +(t.y + ((F[t.name] || {}).top || 0.75)).toFixed(3), z: t.z, yaw, q: quatB(yaw), decor: true, ds: t.ds, rest: 'on', onTable: true });
+    n++;
+  }
+  return n;
+}
+
 // A rug over a rug: another kind, turned 25 to 45 degrees, its middle 0.5 to 0.9 m off the first's, every corner on the
 // room's floor cells and 1.2 m or more from a door; null where none fits
 const LAYER_RUGS = ['rug_deer', 'rug_fur', 'rug_wolf', 'jute_carpet', 'rug_straw', 'rug_hare', 'rug_bogwitch_deer', 'rug_moose', 'rug_seal'];
@@ -2257,5 +2281,5 @@ function fitDebug(b, ctx, room, anc, a) {
   const got = fit(b, ctx, room, idx, ctx.zones || [], anc, a, false, fires);
   return { ok: !!got, why: WHY_B, piece: LAST_B, q: LASTQ_B };
 }
-const apiB = { setStats: s => { STATS_B = s; }, boxIndex, budgets, stands: (b, ctx, zones) => { const St = NODE_B ? require('./stands.js') : window.VHStands; return St ? St.dressTops(b, ctx, zones || []) : 0; }, liveIn, jitterSpec, WALL_DRESS, WALL_KITS, UNDER, underChoice, residentSlots, slotKits, ROLE_DISPLAYS, groupStorage, spreadTables, spaceBeds, seatRugs, dressWalls, why: () => WHY_B, _fitDebug: fitDebug, BUILT: BUILT_KITS, apply, library, setLibrary, lite, furnishRooms, anchorsOf, roomsB, fit, barCounter, canopyBed, stalls, dais, vignettes, CLASSES, SLOT, FOOD, BUILT_SLOTS, slotOf, isDecor, canDecor };
+const apiB = { setStats: s => { STATS_B = s; }, boxIndex, budgets, redressTables, stands: (b, ctx, zones) => { const St = NODE_B ? require('./stands.js') : window.VHStands; return St ? St.dressTops(b, ctx, zones || []) : 0; }, liveIn, jitterSpec, WALL_DRESS, WALL_KITS, UNDER, underChoice, residentSlots, slotKits, ROLE_DISPLAYS, groupStorage, spreadTables, spaceBeds, seatRugs, dressWalls, why: () => WHY_B, _fitDebug: fitDebug, BUILT: BUILT_KITS, apply, library, setLibrary, lite, furnishRooms, anchorsOf, roomsB, fit, barCounter, canopyBed, stalls, dais, vignettes, CLASSES, SLOT, FOOD, BUILT_SLOTS, slotOf, isDecor, canDecor };
 if (NODE_B) module.exports = apiB; else window.VHKitbash = apiB;

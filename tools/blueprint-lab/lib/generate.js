@@ -502,7 +502,7 @@ function generate(req) {
     if (!req.skipDecor) Decor.decorate(b, { use: T.use, decor, biome, type, R, culture: cultureKey, doorX: b.doorX, fireAt: { x: 0, z: 0 }, persona: household, layout: layoutCtx });
     // things on item stands (lib/stands.js; round houses have no interior library pass)
     if (!req.skipDecor) Kitbash.stands(b, { K: Kr, C, T, type, use: T.use, biome, decor, persona: household }, keepClear(b));
-    if (!req.skipDecor && Kitbash.budgets) Kitbash.budgets(b); // the rooms' light and rug budgets (lib/kitbash.js)
+    if (!req.skipDecor && Kitbash.budgets) Kitbash.budgets(b, { culture: cultureKey }); // the rooms' light and rug budgets (lib/kitbash.js)
     // corner and wall-face motifs on the eight-sided walls (details.js), after the furnishing
     if (kind === 'round' && !(req.details && req.details.motifs === false)) Details.roundTrim(b, { K: Kr, C, cultureKey, T, type, stage, decor, biome, plan: 'octagon', F, SH, storeys, edges: [], wings: [], seed });
     settle(b, { ...ctx, type, skipDecor: !!req.skipDecor });
@@ -520,7 +520,7 @@ function generate(req) {
     clearDoorways(b);
     if (!req.skipDecor) Decor.decorate(b, { use: 'guard', decor, biome, type, R, culture: cultureKey, doorX: b.doorX, persona: household, layout: layoutCtx });
     settle(b, { K, C, biome, use: 'guard', stoneOK, F: 0, SH: MIN_STOREY, storeys: n, top: n * MIN_STOREY, skipDecor: !!req.skipDecor });
-    if (!req.skipDecor && Kitbash.budgets) Kitbash.budgets(b); // the rooms' light and rug budgets (lib/kitbash.js)
+    if (!req.skipDecor && Kitbash.budgets) Kitbash.budgets(b, { culture: cultureKey }); // the rooms' light and rug budgets (lib/kitbash.js)
     return finish(b, info);
   }
 
@@ -1812,6 +1812,8 @@ function finish(b, info) {
     const out = new Set(loose);
     b.pieces = b.pieces.filter(p => !out.has(p));
   }
+  // a table rolled dressed that the passes left bare gets one thing on it (lib/kitbash.js redressTables)
+  if (Kitbash.redressTables) Kitbash.redressTables(b, { culture: info.cultureKey });
   // every item stand holds something the household would keep there, or goes (lib/persona.js)
   Persona.dressStands(b, { persona: info.household, biome: info.biome, type: info.type, use: S.TYPES[info.type].use });
   // the decor stage asked for: what the household has put up by then (D-071)

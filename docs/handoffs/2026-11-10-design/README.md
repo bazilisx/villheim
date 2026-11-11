@@ -383,6 +383,114 @@ Open:
   first chest never moves.
 - nestBroken 14 to 19 per pool (never gated, D-132).
 
+## Integration, round 7a (2026-11-11, branch design/integration2 from 4e3cbc6)
+
+Speed (item 1). gen-test request 2 (longhouse Black Forest norse-forest s3d2, 8 tries) took 112 s in the game's engine
+(Jint) at 4e3cbc6, near the 2 minute limit in src/Villheim/LabEngine.cs, which is left as it is. Profiled in node
+(--cpu-prof) and in Jint (a bundle with each top-level function timed, `dotnet run -- --js` in tools/gen-test; scripts
+in /tmp, not kept). What the windows merge added: its designs send more pieces into lanes, so clearLanes moved furniture
+aside 18 times on this request against 8 at round 5's tip (abad43c), and each move ran spotsFor (layout.js) over every
+cell of the level, four turns, every piece and every lane cell: 20 calls, 49 s of 149 s in Jint. Fix clusters, all
+giving the same files (the 62 requests of tools/gen-test/requests-all.txt at 3 tries, md5 per file, against 4e3cbc6;
+spotsFor also compared call by call with the old one):
+- ceff486 spotsFor reads only what can touch a spot (1 m buckets of pieces by each one's pad, floors, lane cells,
+  furniture and door boxes), counts reached cells down the columns of a dense grid (seenNear), works out item boxes once
+  per turn and runs the solid test (checks.js blocks) last; checks.js index gives a list in Set order (no Set made per
+  query).
+- 510a95f furniture against furniture first (it turns down 115,000 of 202,000 spots), the reach ring in one pass
+  (seenRing), spread spots kept in buckets, box corners tested in one go, walkMap cells keyed by number only;
+  decorate.js overlap tests its four axes with no lists made.
+- 39339f0 mesh.js deepest0 skips parts that miss the other list's box before the pair test.
+
+gen-test, s, requests 1 to 5 (C# engine; all 5 of 5 byte for byte):
+
+| Tree | 1 | 2 | 3 | 4 | 5 |
+|---|---|---|---|---|---|
+| round 1 | 16.6 | 72.2 | 14.2 | 1.6 | 12.1 |
+| models round 3 | 11.7 | 81.7 | 31.1 | 1.6 | 9.5 |
+| 4e3cbc6 (round 6 tip) | 18.7 | 112.1 | 20.1 | 6.6 | 13.4 |
+| 510a95f (speed fixes, before the merges) | 15.7 | 76.3 | 16.7 | 4.1 | 12.5 |
+| 39339f0 (after the merges) | 17.5 | 91.2 | 39.3 | 1.6 | 11.3 |
+| 475c617 (final, bundles committed) | 18.1 | 98.1 | 40.4 | 1.7 | 11.2 |
+
+In node request 2 takes 3.7 to 4.1 s (round 5 tip 5.4 s, 4e3cbc6 5.8 to 6.9 s, same machine at load 1 to 2). The
+merges add 15 s to request 2 and 23 s to request 3 in Jint: request 3 spends 42 s of 61 s (instrumented) in mesh.js
+deepest from decorate.js clearOfRelief (wall pieces against the fine stone wall parts of the models track, 4.2 million
+part pairs); 39339f0 takes 3 s of it. Not fixed further this round.
+
+Merges (--no-ff, one commit each; bundles rebuilt and compare_page all same after each):
+- ba21f03 design/wip-models ee15184: render.js api conflict (both sides' names kept).
+- f03c0ee design/wip-hub-gen 3fce7b8: lib/reach.js holds the walk check as it was on this branch (walks, court yards;
+  the hub track's copy was older) in the hub track's module form; lab/reach.js loads it. generate.js keeps windowKit in
+  its exports with HUB_TOOLS; styles.js exports HUB, UPPER_STOREY and LOFT. app.html: the lab-page2 shared top controls
+  stay; the hub track's stage lists (stagesOf, stageTextOf) drive the shared size slider, s1 to s5 for the hub, s1 to
+  s3 for the rest, on both tabs; the Building choice is filled from styles TYPES, which holds the hub. compare_page has
+  two hub requests, both the same.
+- 0b22e32 design/wip-landscape2 7b93a67: landscape.js added to both build lists, before reach.js and hub.js.
+- 2b92054 design/wip-measures 4f27706, 69cb507 design/wip-recount 0b5fa55, 5e6c397 design/wip-recount2 51b8fcd: as
+  they are (new data files and lab scripts; no lib or generator data changed). design/wip-recount2 is at c4856d1 now;
+  the brief's 51b8fcd was merged.
+
+Fix clusters after the merges:
+- f01bb6b decorate.js audit: greenery pieces of one class (landscape.js) at least the corpus 25th percentile
+  nearest-neighbor spacing apart pass the overlap test (pots 0.22 m between pivots; D-127); an outdoor, yard or greenery
+  piece on the design's lowest pivot is on the ground (yards.js: 0, or -0.4 by a sunk stone floor). After the merges
+  check_interiors read overlap 28 and floating 18, nearly all landscape pots at -0.40 m and 0.3 m apart.
+- 475c617 audit.js pool richness: '#VillheimGreen' pieces stay out of prefabsPerD3 and setShare, as the outside banners
+  do. With them in, Norse Meadows setShare was 0.331 and norse-forest 0.292, under the 0.34 floor.
+
+Models track clips (item 2): the five placements in models.md (Plains tavern 357, Plains temple 701, Mountain tower 628
+and 530, Mountain home 139) do not occur on this branch: the same check_interiors requests (generate.js, same seeds)
+make other designs since round 4, and the audit and checks.js report no overlap, floating or headroom on them; tavern
+357 and tower 628 have no ledge over a torch or chest. No placement code was changed for them. The three overlaps left in
+check_interiors are other cases (below).
+
+Before and after (round 6 record at d75c7d8, then 475c617; full runs, 702 designs for check_interiors):
+
+| Measure | Round 6 | Round 7a |
+|---|---|---|
+| check_interiors floating | 3 | 1 |
+| overlap | 4 | 3 |
+| bareFloors | 10 | 11 |
+| door | 2 | 3 |
+| stairs | 1 | 2 |
+| entryZone | 1 | 1 |
+| rooms not reached | 6 of 987 | 6 of 987 |
+| main pieces not reached | 11 of 3,898 | 13 of 3,838 |
+| furniture per d2 / d3 design | 22.0 / 40.6 | 22.3 / 41.0 |
+| Norse Meadows pool prefabsPerD3, setShare | 13.0, 0.376 pass | 13.1, 0.406 pass |
+| norse-forest Black Forest | 11.7, 0.366 pass | 11.9, 0.37 pass |
+| middle-eastern Plains | 11.7, 0.502 pass | 12.0, 0.5 pass |
+| test_stands misses at d3 | flat bench 21.8, wall station 32.0, wall table 15.5, flat share 82, stand on a stand 11 % | flat bench 18.6, wall station 31.5, wall table 14.9, flat share 86, distinct q1 4 (band 1 to 3) |
+| tables dressed, rugs layered, chests stacked | 39.5, 14.9, 49.2 % | 38.6, 12.9, 49 % |
+| homes, longhouses, taverns, smithies, storehouses with no light | 36, 19, 6, 42, 53 % | 33, 19, 3, 42, 56 % |
+| test_variance hall s2 and s3, home-b s3d3 (closest) | 0.45, 0.47, 0.39 (0.71) | 0.45, 0.47, 0.39 (0.71) |
+
+Other full checks at 475c617: test_structure 36 hold; test_sizes 0 off; every checks.js column in check_interiors 0,
+mountOnOpening 0, torchHeight 0; hearths spotmix homes 288, under 120 m2 against a wall 97 %, s3 middle 8 %, hallmix
+over 80 m2 middle 32 % (as round 6); test_hub_variance every seed of every culture differs; check_set 2: set 239 of 240, late 96 of 96, cultures 147 of 147, overlap 1 (round 6 224 of 225 and 90 of 90; the hub requests are new); test_landscape 3: all landscaping rules hold;
+test_hub all pass; compare_page all the same (7 requests, two of them hubs); gen-test 5 of 5 byte for byte (table above);
+dotnet build 0 errors, 43 warnings. Pool audits report nestBroken 19 to 21 per pool (never gated, D-132).
+
+Renders in /tmp/int7-renders (not kept): norse-cross_s5.png and celtic-round_s5.png (lab/test_hub.js),
+home_Meadows_norse_L+T+nave-gable-half-timber_s3d3_1.png (with and without greenery, lab/render_landscape.js),
+home-plains-court-s3d3-7.png (court home, seed 7), longhouse-bf-s3d2-613-after.png and -round6.png (the slow
+request; after the merges it carries 4 more pieces of greenery outside, inside the same).
+
+Where round 7a stopped: every fix and the bundles rebuilt at 475c617 are pushed; gen-test passed on them. Request 2 in
+Jint varies 91 to 98 s between runs on this machine, under the 120 s limit with less room than round 1.
+
+Open:
+- gen-test request 2 at 91 s and request 3 at 39 s in Jint: the fine model parts in clearOfRelief (decorate.js) are the
+  next cost; a per-wall cache or a coarse-first test would cut it.
+- check_interiors overlap 3: a Mistlands home's log bench on a fiddlehead (landscape), a Black Forest tavern's bed
+  over a chest, a smithy yard's ground torch by an anvil (forge_ext5; the boxes miss by 0.26 m in the colliders, the
+  audit reads catalog boxes); door 3 (two wall item stands, a chair); stairs 2 (a wood stack, a pot at a storehouse
+  stair); floating 1 (a feast on a stall at 1.91 m); entryZone 1 (a tavern fire pit); bareFloors 11.
+- test_stands bands (round 7b): flat bench 18.6, wall station 31.5, wall table 14.9, flat share 86, distinct q1 4.
+- Round 7b items from the brief: clip limits from the recount data, the woodworker s3 seed 21 workbench set, Mistlands
+  longhouse nave ends, Mistlands workshop 528, entry zones before big furniture.
+
 ## Rules for every helper (copy of /home/claude/briefs/common.md; /home/claude is not kept between sessions)
 
 A new session gives each helper these rules in its brief, with its own branch, working copy and file ownership.

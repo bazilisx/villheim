@@ -20326,7 +20326,9 @@ function pool(input, name) {
   const rich = { d3: 0, prefabs: 0, decor: 0, fromSets: 0, corpusSets: 0 };
   for (const d of Object.values(designs)) for (const [stage, v] of Object.entries(d)) {
     if (!v.pieces.sets || !/d[23]$/.test(stage)) continue;
-    const decor = v.pieces.filter(p => !structural(p) && !/^(Pickable|Placeable)_/.test(p.name));
+    // the village greenery (lib/landscape.js, '#VillheimGreen') is no interior decor: pots, vines and bushes stay out
+    // of these measures, as the outside banners do
+    const decor = v.pieces.filter(p => !structural(p) && !/^(Pickable|Placeable)_/.test(p.name) && !p.green);
     rich.decor += indoorDecor(v.pieces, decor).length;
     rich.fromSets += Object.values(v.pieces.sets).reduce((a, b) => a + b, 0);
     if (/d3$/.test(stage)) {

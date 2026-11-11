@@ -287,6 +287,94 @@ Open:
   entry zones before big furniture in lib/decorate.js and the library would cut the leave-outs (1.8 per d3 design).
 - test_stands wall door and stands q3 newly outside their bands; nestBroken reported 8 to 18 per pool.
 
+## Integration, round 6 (2026-11-11, branch design/integration2 from abad43c)
+
+Merged with --no-ff, no conflicts: 9432380 design/wip-lab-page2 e688583 (lab-page.md), 1091153 design/wip-windows
+56594de (windows.md). Bundles rebuilt after each merge; compare_page all the same each time. design/wip-hub-gen and
+design/wip-models are left for round 7. Fix clusters (D-123):
+- a6ffb0d nothing left in the air (layout.js openWays and groupOf, generate.js finish and dropOrphans, decorate.js
+  storeStacks, details.js benchByDoor). Traced on one check_interiors seed after the merges: floating 7, overlap 2,
+  entryZone 1. A set piece that says it rests on another (`rest: 'on'`) goes with the piece it rests on and only that
+  piece (`wRestsOn`, the audit's kbRests reading); a mug stand on a chair's box moved with a dining set it did not stand
+  on. A set's plank top resting on its chests is no longer fixed in openWays, so drawers move whole (their two ledges
+  were left at 2.42 m). Spits and cauldrons (`at: 'fire'`) never move off their fire; when a hearth becomes a fire pit
+  one goes over the pit and the rest go with the hearth. A chest the decorator stacked (storeStacks) carries
+  `stacked` on its piece and goes when its lower chest is taken out (a barrel at 2.0 m over a library crate). dropOrphans
+  reads a top piece as the audit does (on a table's box within 5 cm and 15 cm of its top, a built counter, a wall
+  within 0.4 m spanning its height), sets one up to 0.3 m off onto its table's top, and leaves set pieces with a rest to
+  the rest check in finish; the old reading (any table within 1.6 m, any wall within 1.2 m) dropped set pieces that
+  stood where the audit has them. The door bench keeps off the second leaf of a wide entrance (windows track) and
+  0.15 m off the door torches.
+- f343997 court plans (D-152, lead's call): the walls between a court's gallery and the rooms behind it are planks
+  (`wallSegment` style override). The rooms behind a 2 m gallery are 2 m deep; a 1 m stone wall each side left them
+  1 m clear. The paved yard is a walk: `b.walks` (generate.js), walked by layout.js walkMap and lab/reach.js, never a
+  room and never counted. The yard well goes in only where it leaves 0.9 m round it: a home's yard is 4 m and the well
+  3 m, so homes have an open paved yard; caravanserai-size yards (8 m) keep it. Court homes and taverns, Plains s2 and
+  s3, seeds 7, 8, 25, 26, 61, 62: no room or piece out of reach (round 5: 17 rooms and 25 pieces in 7 designs).
+- a30494a layout.js: a set in a lane that finds no spot whole moves piece by piece (part group) before anything is
+  left out. The bench stand cap in the same commit is taken back out in d75c7d8: any cap on bench sets (at the corpus
+  share 3.7 %, at twice and at five times it) put the Norse Meadows pool's set share at 0.319 to 0.323 under its 0.34
+  floor (0.376 without it).
+
+Before and after (round 5 record, then d75c7d8; full runs, 702 designs for check_interiors):
+
+| Measure | Round 5 | Round 6 |
+|---|---|---|
+| check_interiors floating | 8 | 3 |
+| overlap | 4 | 4 |
+| bareFloors | 9 | 10 |
+| door | 0 | 2 |
+| stairs | 0 | 1 |
+| entryZone | 1 | 1 |
+| rooms not reached | 24 of 987 | 6 of 987 |
+| main pieces not reached | 42 of 3,848 | 11 of 3,898 |
+| furniture per d2 / d3 design | 22.1 / 39.9 | 22.0 / 40.6 |
+| Norse Meadows pool prefabsPerD3, setShare | 13.2, 0.342 pass | 13.0, 0.376 pass |
+| norse-forest Black Forest | 11.7, 0.324 FAIL | 11.7, 0.366 pass |
+| middle-eastern Plains | 10.5 FAIL, setShare n/a | 11.7, 0.502 pass |
+| test_stands misses at d3 | flat bench 6.5, flat chest 3.8, wall station 29.4, wall door 8.7, stands q3 23 | flat bench 21.8, wall station 32.0, wall table 15.5, flat share 82, stand on a stand 11 % |
+| tables dressed, seats turned, rugs layered, chests stacked | 35.7, 31.8, 18.6, 47.6 % | 39.5, 30.6, 14.9, 49.2 % |
+| homes, longhouses, taverns, smithies, storehouses with no light | 39, 25, 6, 42, 50 % | 36, 19, 6, 42, 53 % |
+| test_variance hall s2 and s3, home-b s3d3 (closest) | 0.45, 0.42, 0.38 (0.76) | 0.45, 0.47, 0.39 (0.71) |
+
+Other full checks at d75c7d8: check_set 224 of 225 (late 90 of 90, cultures 147 of 147), overlap 1 (same);
+test_structure 36 hold; test_sizes 0 off; every checks.js column in check_interiors 0, mountOnOpening 0; hearths
+spotmix homes 288, under 120 m2 against a wall 97 %, s3 middle 8 %, hallmix over 80 m2 middle 32 % (as round 4);
+compare_page all the same; GENTEST.
+
+One check_interiors seed (234 designs), round 5 tip, the two merges, then a6ffb0d: floating 1, 7, 0; overlap 1, 2, 1;
+bareFloors 1, 3, 3; reach rooms 4, 6, 6 of 323; d3 furniture 42.8, 42.3, 43.7. The windows track's own run gave
+entryZone 9 on its base; after the merges and these fixes it is 1 on one seed and 1 on the full run.
+
+Item 2 of the brief, what was found:
+- Black Forest setShare: 0.324 to 0.366. The gain is a6ffb0d: dropOrphans no longer drops set pieces the audit reads as
+  standing, and sets move whole. The woodworker s3 (seed 21, norse-forest) still leaves out its BK-workzone (workbench,
+  chests) and the stonecutter: a 6 by 6 m main room with a wing whose way in runs through them, and no spot in a reached
+  place holds the set whole or piece by piece. Its s2 keeps the workzone. Not fixed.
+- Plains prefabsPerD3: 10.5 to 11.7, from a6ffb0d (set pieces kept, KS stand sets among them). The light budget was not
+  changed; the corpus count of light kinds per room (round 5: 56 % of the pool's designs with two lights or more use
+  one kind against 30 % of 1,134 corpus builds) was not compared again this round.
+- test_stands: wall door and stands q3 are back in their bands (stands q3 28). Flat bench goes from 6.5 to 21.8 %: the
+  old dropOrphans dropped bench mug sets (KS-b-two, KS-b-mug; 147 of 159 stands on benches in a 54-house sample), so
+  round 5's figure was what was left after that. The pick weights do not hold them down (bench weight 0.45 to 0.1 gave
+  18.4 %): bench sets fit where table and shelf sets do not, and the room keeps picking until its count is met.
+- Mistlands workshop seed 528 upper floor: still 3 rooms and 6 pieces. The longhouse single rooms (lamari 211, byzantine
+  116 and 312 in the full run) share the court's cause: a 2 m wide nave end (z -1 to 1) between 1 m black marble or
+  stone walls, 1 m clear, closed with no furniture in it. Not fixed this round; the court fix (planks for inner walls)
+  does not apply to outer walls.
+- Decorator entry zones up front (decorate.js): not done. openWays still puts right what the placers leave in lanes.
+
+Open:
+- test_stands: flat bench 21.8 % (band 1.7 to 5.9) against the Norse Meadows set share; wall station 32.0, wall table
+  15.5, flat share 82, stand on a stand 11 %.
+- Narrow wings between thick walls: nave ends in Mistlands longhouses, the Mistlands workshop's upper floor.
+- check_interiors door 2 (a flat stand and a chair in a door box), stairs 1 (a wood stack by a tavern stair), floating
+  3 (two outdoor wood stacks at -0.40 m, a feast on a stall at 1.91 m), entryZone 1 (a tavern fire pit), bareFloors 10
+  (tower top floors, a stall), overlap 4.
+- Court entry zones: the first chest by the back gallery door stands in the door's zone in 3 of 18 court designs; the
+  first chest never moves.
+- nestBroken 14 to 19 per pool (never gated, D-132).
+
 ## Rules for every helper (copy of /home/claude/briefs/common.md; /home/claude is not kept between sessions)
 
 A new session gives each helper these rules in its brief, with its own branch, working copy and file ownership.

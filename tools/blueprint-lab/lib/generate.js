@@ -1587,7 +1587,10 @@ function biomeSafe(b, biome) {
   const ord = P.BIOME_ORDER, limit = ord.indexOf(biome), fits = n => ord.indexOf(P.needs(n)) <= limit;
   const Ck = checksLib(), gone = [];
   b.pieces = b.pieces.filter(p => {
-    if (fits(p.name) || P.piece(p.name).structural || (p.decor && P.minor(p.name))) return true; // minor decor goes anywhere (D-066)
+    // minor decor goes anywhere (D-066); other decor one biome further, as the furnishing chose it (D-080,
+    // lib/pieces.js decorOk: a log bench of a Meadows couch was swapped here for a plank bench that went into the
+    // couch's half wall)
+    if (fits(p.name) || P.piece(p.name).structural || (p.decor && (P.minor(p.name) || P.decorOk(p.name, biome)))) return true;
     const alt = STAND_IN[p.name];
     if (alt && fits(alt)) { p.name = alt; return true; }
     if (p.decor) gone.push(Ck.aabb(p));

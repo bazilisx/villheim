@@ -1563,14 +1563,21 @@ function furnish(room, role, c) {
     // a template thin for a big room is topped up with the extras toward the corpus rate, a little short of it at d2 so
     // the template's own layout stays the larger part
     if (store) storeLabels(room, c);
-    if (c.decor !== 'd1') fill(room, role, { ...c, fillShare: c.decor === 'd3' ? 1 : 0.9 });
+    if (c.decor !== 'd1') extras(room, () => fill(room, role, { ...c, fillShare: c.decor === 'd3' ? 1 : 0.9 }));
     if (store) storeStacks(room, c);
     return;
   }
   furnishPlan(room, role, c);
   if (store) storeLabels(room, c);
-  if (c.decor !== 'd1') fill(room, role, c);
+  if (c.decor !== 'd1') extras(room, () => fill(room, role, c));
   if (store) storeStacks(room, c);
+}
+// What the extras pass adds is marked (p.extra, never written to the file): the interior library's sets come before
+// it and take its place where they fit (lib/kitbash.js), so the rule-based extras only top up what the sets leave.
+function extras(room, run) {
+  const at = room.out ? room.out.length : 0;
+  run();
+  if (room.out) for (let i = at; i < room.out.length; i++) if (room.out[i].decor) room.out[i].extra = true;
 }
 
 // A store room's chests stand stacked and labeled along the walls (Tyler, 2026-11-09). Two finishing passes for a
@@ -2584,7 +2591,7 @@ function audit(design, decor) {
       // Chests, stations and their extensions, beds and tables never reach into one another, whatever their source
       // builds did: in the game a chest half inside a chopping block reads as a mistake (Tyler's test, 2026-11-09).
       const solid = SOLID_CATS.has(a.f.cat) && SOLID_CATS.has(c.f.cat);
-      if ((a.p.kb || c.p.kb) && SHD) { if (kbClip(a.p, c.p) > (solid ? 0.03 : Math.max(a.p.clip || 0, c.p.clip || 0)) + 0.02) res.overlap.push(`${a.p.name} / ${c.p.name} at ${a.p.x.toFixed(1)},${a.p.z.toFixed(1)}`); continue; }
+      if ((a.p.kb || c.p.kb) && SHD) { if (kbClip(a.p, c.p) > (solid && a.p.kb !== c.p.kb ? 0.03 : Math.max(a.p.clip || 0, c.p.clip || 0)) + 0.02) res.overlap.push(`${a.p.name} / ${c.p.name} at ${a.p.x.toFixed(1)},${a.p.z.toFixed(1)}`); continue; }
       if (a.y0 > c.y1 - 0.05 || c.y0 > a.y1 - 0.05) continue;
       if (overlap(a.b, c.b, -0.06)) res.overlap.push(`${a.p.name} / ${c.p.name} at ${a.p.x.toFixed(1)},${a.p.z.toFixed(1)}`);
     }
@@ -2712,6 +2719,19 @@ function auditContext(pieces) {
 // furnishing keeps furniture within SHOWS_MAX; lib/audit.js fails a pool past 15 cm.
 const SHOWS_MAX = 0.12, SHOWS_DEEP = new Set(['bed', 'table', 'storage', 'seat', 'craft']);
 const SHOWS_FLAT = new Set(['wall', 'halfwall', 'gable', 'pole']), SHOWS_THIN = new Set(['window', 'beam', 'door']);
+// A piece as it will stand in the file: the generator keeps the middle of a piece set on its pivot (a quarter wall)
+// until generate.js finish turns it to its foot, so the furnishing would test that wall 0.25 m higher than it stands.
+const AB = typeof WeakMap !== 'undefined' ? new WeakMap() : null;
+function asBuilt(q) {
+  if (q.decor || q.footed) return q;
+  const pi = P.piece(q.name);
+  if (!pi.onPivot) return q;
+  const c = AB && AB.get(q);
+  if (c && c.x === q.x && c.y0 === q.y && c.z === q.z && c.q === q.q) return c.v;
+  const v = { ...q, y: q.y - pi.size[1] / 2 };
+  if (AB) AB.set(q, { x: q.x, y0: q.y, z: q.z, q: q.q, v });
+  return v;
+}
 function showsInto(p, others) {
   const Me = MESH_D();
   if (!Me) return 0;
@@ -2724,7 +2744,7 @@ function showsInto(p, others) {
     const mine = SHOWS_FLAT.has(role) ? (S && S.length ? S : V) : SHOWS_THIN.has(role) ? V : null;
     // a flat wall that shows no more than its collider is already kept clear by the furnishing's own tests
     if (!mine || (SHOWS_FLAT.has(role) && !Me.proud(q.name))) continue;
-    const d = Me.deepest(mine, Me.world(q));
+    const d = Me.deepest(mine, Me.world(asBuilt(q)));
     if (d > m) m = d;
   }
   return m;
@@ -2747,6 +2767,32 @@ function auditOne(p, ctx, extra) {
 }
 // which of auditOne's tests turned the last piece down (lab/richness.js)
 let ONE_WHY = '';
+// Furniture inside furniture as the pool audit measures it (lib/audit.js furnClip: the decorator's boxes, turned, more
+// than 12 cm into each other on every axis; a spit or a pot over its fire aside), for the library's fitter: a chair
+// set to a table of another size went 25 cm into it where the game's solids barely touch. Gives [piece, depth] for each.
+const FURN_ROLES = new Set(['bed', 'table', 'seat', 'storage', 'craft', 'fire', 'clutter']);
+const FIRE_SET = /^(fire_pit|hearth|piece_cookingstation|piece_cauldron|piece_cookingstation_iron)$/, FIRE_ONLY = /^(fire_pit|hearth|bonfire)$/;
+function boxGap(a, b) {
+  let best = -Infinity;
+  for (const [o, q] of [[a, b], [b, a]]) for (const [ax, az, h] of [[o.c, -o.s, o.hw], [o.s, o.c, o.hd]]) {
+    const d = Math.abs((q.x - o.x) * ax + (q.z - o.z) * az);
+    const r = Math.abs(q.c * ax - q.s * az) * q.hw + Math.abs(q.s * ax + q.c * az) * q.hd;
+    best = Math.max(best, d - h - r);
+  }
+  return best;
+}
+function furnClash(p, others) {
+  const out = [];
+  if (!F[p.name] || !FURN_ROLES.has(P.piece(p.name).role)) return out;
+  const ia = itemOf(p);
+  for (const q of others) {
+    if (!q || q === p || !F[q.name] || !FURN_ROLES.has(P.piece(q.name).role) || Math.abs(q.x - p.x) > 4 || Math.abs(q.z - p.z) > 4) continue;
+    if ([p.name, q.name].some(n => FIRE_SET.test(n)) && [p.name, q.name].some(n => FIRE_ONLY.test(n))) continue;
+    const ib = itemOf(q), oy = Math.min(ia.y1, ib.y1) - Math.max(ia.y0, ib.y0), deep = -boxGap(ia.b, ib.b);
+    if (deep > 0.12 && oy > 0.12) out.push([q, deep]);
+  }
+  return out;
+}
 // How deep what shows of a hung piece goes into what shows of the walls, posts and beams near it.
 function hungInto(p, others) {
   const Me = MESH_D();
@@ -2758,8 +2804,9 @@ function hungInto(p, others) {
     if (!q || q === p || (q.decor && !q.trim) || Math.abs(q.x - p.x) > 2.5 || Math.abs(q.z - p.z) > 2.5) continue;
     const role = P.piece(q.name).role;
     // a roof over it counts whatever its relief (a banner 40 cm into a sloped roof, 2026-11-10)
-    if (!SHOWS_THIN.has(role) && !['roof', 'roofCorner', 'roofTop'].includes(role) && !(SHOWS_FLAT.has(role) && Me.proud(q.name))) continue;
-    const d = Me.deepest(A, Me.world(q));
+    // every wall the pool audit counts (a stand slid up or down a wall met a quarter wall left out as flat, 2026-11-10)
+    if (!SHOWS_THIN.has(role) && !['roof', 'roofCorner', 'roofTop'].includes(role) && !SHOWS_FLAT.has(role)) continue;
+    const d = Me.deepest(A, Me.world(asBuilt(q)));
     if (d > m) m = d;
   }
   return m;
@@ -2832,6 +2879,6 @@ function decorateExisting(pieces, { use = 'home', decor = 'd2', biome = 'Meadows
   return b.pieces;
 }
 
-const api = { oneWhy: () => ONE_WHY, decorate, strip, findRooms, decorateExisting, setRules, setInterior, setTemplates, templateById, audit, auditContext, auditOne, itemOf, ITEM_BIOME, FURNITURE: F, readLevel,
+const api = { oneWhy: () => ONE_WHY, furnClash, asBuilt, decorate, strip, findRooms, decorateExisting, setRules, setInterior, setTemplates, templateById, audit, auditContext, auditOne, itemOf, ITEM_BIOME, FURNITURE: F, readLevel,
   _int: { floorLevels, standGuess, roleFor, stretch, size, ok, obox, overlap, ptDist, yawOfDir, pyaw, standOf, norm, WALLISH } };
 if (NODE_D) module.exports = api; else window.VHDecorate = api;

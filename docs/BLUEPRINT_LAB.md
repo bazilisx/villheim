@@ -771,10 +771,12 @@ sets (`kb` 'KB-'), hand-made kits ('BK-') and the decorator's own rules, the dis
 the 16 most used prefabs, the same per biome and stage, and why the library turned sets down (`kitbash.js` `WHY_B`,
 one count per set that no anchor in a room took; `setStats` turns the count on).
 
-| | Prefabs | Mined | Hand-made | Decorator | Mined sets | Top 16 | Meadows prefabs |
-|---|---|---|---|---|---|---|---|
-| Baseline (5277c77) | 80 | 2.6 % | 40.1 % | 57.3 % | 58 | 80.7 % | 27 |
-| Ceilings by solids | 79 | 3.0 % | 40.6 % | 56.4 % | 64 | 81.5 % | 28 |
+| | Prefabs | Mined | Creative | Hand-made | Decorator | Mined sets | Creative sets | Top 16 | Meadows prefabs |
+|---|---|---|---|---|---|---|---|---|---|
+| Baseline (5277c77) | 80 | 2.6 % | | 40.1 % | 57.3 % | 58 | | 80.7 % | 27 |
+| Ceilings by solids (77452c3) | 79 | 3.0 % | | 40.6 % | 56.4 % | 64 | | 81.5 % | 28 |
+| Creative sets merged (5e7588a) | 95 | 2.1 % | 3.7 % | 38.3 % | 55.9 % | 43 | 48 | 81.2 % | 37 |
+| Library first | 106 | 3.5 % | 7.6 % | 41.6 % | 47.3 % | 75 | 57 | 80.3 % | 44 |
 
 Baseline refusals of mined sets (95 placed, 2,005 turned down): a clip with something placed (417, mostly the
 decorator's own furniture), the audit's rest and visible-clip tests (367), over the ceiling (315), no prefab of the
@@ -792,6 +794,31 @@ Taller storeys were measured on the s3d3 sample (72 designs): 3.5 m gave 75 pref
 5.1 %, against 69 and 3.3 % at 3 m. The sets still turned down for the ceiling hang their torches and stands at 3 to
 4 m in their source builds (tall halls). That gain is small next to the clips with the decorator's furniture, so the
 storey stays 3 m; hung pieces slide down instead (below).
+
+Library first (2026-11-10). The decorator still lays each room's essentials and its layout (`furnishPlan`, the room
+templates); what its extras pass adds (`fill`, at d2 and d3) is marked `p.extra` (never written to the file). Every
+set of the library, mined, creative or hand-made, may move extras out of its way (six at most, a dining set fourteen),
+with whatever stood on them, and their floor counts as free again; a hand-made kit may also move up to two of the
+decorator's chests, seats and lights, as before. So the sets come before the rule-based extras and the extras keep
+what the sets leave. Other changes in the same pass:
+- Wall, corner and window sets take their spots by the room's layout plan (`layout.js` `bias`) for what the set mostly
+  is (`kitbash.js` `setKind`: storage, a bench, a station, a table), with the stream's noise; free-floor sets as before.
+- A hung piece that meets the ceiling or the wall's own relief slides up or down the wall (the set's last slide
+  first, so a pair stays level; never under 0.9 m; building pieces stay put).
+- A floor set may stand wholly on a raised section (the benches along the walls of Norse homes), all its floor pieces
+  on the same level.
+- Furniture is kept out of other furniture the way the pool audit measures it (`decorate.js` `furnClash`, refusal 31;
+  the decorator's extras move aside), and a building piece of a set must touch the structure that holds it.
+- Hung pieces are kept out of what shows of every wall the pool audit counts, and the furnishing tests a piece set on
+  its pivot (a quarter wall) where it will stand after `generate.js` `finish` (`decorate.js` `asBuilt`).
+- More tries per room (40 picks, 12 misses in a row).
+- `generate.js` `biomeSafe` keeps decor within the village's decor reach (D-080, `pieces.js` `decorOk`) and swaps only
+  what is past it; it had swapped a fitted log bench for a plank bench that went into the couch's half wall.
+
+Measured over the sample: decor pieces per design 41 to 45, mined sets placed 43 to 75, creative sets 48 to 57, the
+decorator's own share 55.9 % to 47.3 %, prefabs 95 to 106 (Meadows 37 to 44). Costs: node time per design about 30 %
+more; test_variance at s2d2 a little closer (home-a 0.59 to 0.61, hall 0.58 to 0.60, home-c 0.62 to 0.66; about
+half of it from the biomeSafe change).
 
 ## One table of piece sizes
 

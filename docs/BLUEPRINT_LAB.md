@@ -485,9 +485,9 @@ Pictures: `docs/yards/yard-bench.png` (the bench sheet: four buildings, the swit
 
 ## Landscaping and greenery (D-143)
 
-Research and a placement plan, 2026-11-11 (design helper 7). Nothing in this section is built yet. Greenery stands
-outside, round and on the buildings and along the village's roads, so it sits beside the yards in this doc;
-`docs/INTERIOR_DESIGN.md` covers rooms. The record with sources and commands is
+Research and a placement plan, 2026-11-11 (design helper 7); the pass built from it is under "The greenery pass"
+below. Greenery stands outside, round and on the buildings and along the village's roads, so it sits beside the yards
+in this doc; `docs/INTERIOR_DESIGN.md` covers rooms. The record with sources and commands is
 `docs/handoffs/2026-11-10-design/landscaping.md`.
 
 Data in `tools/blueprint-lab/data/landscape/`:
@@ -518,21 +518,143 @@ What the corpus shows (609 of 2,153 builds have vanilla greenery; median 12 piec
 - By culture group: castle and Norse forest builds put vines on walls most; Norse builds put flowers and bushes under
   eaves and porches; medieval timber builds put flowers against walls; Ashlands builds use pots.
 
-What the lab places today: `lib/yards.js` (stage 2 and 3 yards: garden beds with crops or dandelions from d2, 2 or 3
-bushes along the fence and dandelions along the walls from d3, bush and crop lists per biome) and `lib/details.js`
-(window boxes with dandelions under the ground-floor front windows from d2). Plants are tagged `garden` in the yard
-(`put(..., { garden: true })`); nothing marks them as landscaping for the mod.
+### The greenery pass (`lib/landscape.js`)
 
-What the lab would need:
+Built 2026-11-11 on design/wip-landscape2; not tried in the game. `lib/generate.js` `outside()` runs the yard
+(`lib/yards.js`) and then `Landscape.add` on every building; `req.landscape: false` turns it off, and a bare build
+(`skipDecor`) gets none. `req.landscape` as an object may set `green` (the village's greenness) and `only` (a list of
+classes).
 
-1. A greenery pass (a new `lib/landscape.js`, after the yard) for vines on walls, the foot of walls, sills and porch
-   pots, yard trees and courtyards, by `placement-plan.json`, with switches like the yard's.
-2. A `landscape: true` mark on every greenery piece (the pass's and `yards.js` and `details.js` plants), written to
-   the blueprint as a `#VillheimLandscape` list of piece indices beside `#VillheimClips`.
-3. Small landscape sets for the village's roads (a verge strip, a junction planting, a courtyard bed) that the mod's
-   path code can place, since road greenery belongs to no building.
-4. Mod side (another track): read the list and skip those pieces in every gather, forage and clearing search; see the
-   record's "For the mod session". Until then the plan keeps food-bearing plants and trees out of village greenery.
+What it does, with the corpus numbers it uses (`data/landscape/corpus-greenery.json`; D-136):
+
+| What | Number used | Corpus table |
+|---|---|---|
+| Whether a building carries a class | share of house builds with it outside: vine 0.27, bush 0.36, flower 0.30, tree 0.28, pot 0.11, mushroom 0.16 | `house_builds.outdoor_per_build` |
+| How many when it does | median and p75: vine 23 / 64, bush 6 / 19, flower 2 / 8, tree 3 / 6, pot 4 / 8, mushroom 8 / 56 (never more than twice the p75) | same |
+| Where | pieces by place: on a wall (vines); yard, under eaves, at the foot of a wall, courtyard, path edge, along a fence (others) | `pieces_by_class_place`, `builds_by_class_place` |
+| Spacing | nearest of the same class [p25, median, p75] by place, for example bushes in a yard 0.77 / 1.14 / 2.23 m, flowers by a wall 0.45 / 0.87 / 1.73 m, trees in a yard 1.92 / 2.79 / 4.62 m, vines on a wall 0.11 / 0.28 / 0.61 m | `spacing_nearest_same_kind_m`, `vines.spacing_on_wall_m` |
+| Distance out in the yard | bush 1.39 / 3.25 / 5.43 m, flower 1.64 / 3.69 / 5.54 m, tree 1.74 / 3.74 / 5.47 m | `distance_from_walls_on_the_ground_m` |
+| Groups | singles, pairs, clusters of 3 to 6, masses of 7 and more by their counts; the share of groups in a line and of mixed prefabs | `groups`, `vines.groups` |
+| Scale | trees 79 % scaled, 0.49 to 1.46 (p10 to p90); bushes 28 %, 0.9 to 1.29; mushrooms 16 %, 1.0 to 1.55 | `scale` |
+| Vines | from a corner in 38 % of patches; pivot heights over the ground 1.03 / 5.6 / 16.72 m (p10, median, p90), the card held on the wall under its top | `vines` |
+| Side of the house | groups by side: trees front 0.15, back 0.33, ends 0.53; bushes 0.29 / 0.27 / 0.44; flowers 0.34 / 0.15 / 0.51; vines 0.32 / 0.19 / 0.49; pots 0.75 / 0.25 / 0; mushrooms 0.87 / 0 / 0.13 (front is the side most ground-floor doors face) | `corpus-sides.json` `groups_by_side` |
+| How lopsided | each of a house's four sides gets its own weight exp(1.3 z) on top of the split; the corpus's busiest side holds a median 0.6 and a p75 0.68 of a house's ground groups | `corpus-sides.json` `lopsided` |
+| Planters | a group of two or more bushes or flowers gets a low border of the village's beams 0.41 m out from the stems, at the corpus share of bordered groups (bushes 74 of 805, flowers 29 of 334) | `groups` 'with a low border', `corpus-sides.json` `planters` |
+| Culture | a class's share in the culture group over its share in all builds, pulled toward 1 by 20 builds (norse, norse-forest, norse-highland, fen-folk, castle-medieval; Ashlands buildings without a group use the Ashlands group) | `by_culture` |
+
+Each draw comes from a log-normal through the corpus quantiles, so no two gaps are alike (no fixed intervals).
+Household traits (`lib/persona.js`): `hobby.plants` raises flowers, pots and bushes; `tidy` over 0.5 keeps lines with
+an even step and fewer mixed groups, under it more masses, mixed prefabs and vines higher up. The village's greenness
+is one roll per village (`req.landscape.village` names the village; the design's seed when it is missing). No
+profession enters (D-072).
+
+Settings with no corpus number (the corpus has no stages and 9 village builds), in use until set otherwise:
+`STAGE_W` s1 0.5, s2 1.0, s3 1.5, s4 2.0, s5 2.5 (the chance of each class: averaging 1 over s1 to s3, the same rise
+on to s5 for D-153; Tyler is asked in D-158); `VILLAGE_GREEN` 0.6 to
+1.4; `PLOT_GROW` 0.5 m (the most the pass may widen the plot the game gives); `DS` the decor stage each class goes in
+at (flowers d1, pots, bushes, mushrooms and trees d2, vines d3).
+
+Plants by biome (D-125, D-145): `PLANTS` lists each class's prefabs with where they grow wild (from
+`vanilla-greenery.json`) and only prefabs with a measured model. `NEAR` is what lies near a biome to gather from
+(the biome and those that border it: Meadows with the Black Forest; the Black Forest with the Meadows, Swamp and
+Mountain; and so on; Ashlands alone). A class with a plant near the biome uses those, the biome's own three times as
+often; a class with none takes the nearest biome's, marked a stand-in. Pots are built.
+
+Kept clear: each door's entry zone (the opening plus 0.3 m each side, 1.5 m out, D-152) on both sides and a lane
+on to 4 m out; the yard path's planks and 0.25 m round them; 1.3 m round the gate; the foot of outside stairs and
+the front of woodpiles. A bush's or flower's whole spread keeps off these (a tree's trunk and 0.6 m). Plants on the
+ground stay inside the yard fence, off the house floor and clear of every piece; the crown of a tree or bush stays
+under no roof, eave or upper floor. A vine is placed by its model (`VINE_BOX`: the `vines` card hangs round its pivot,
+1.17 m under it and 1.26 m over; the Ashlands vines stand on a pivot 0.4 m over their foot), its leaves outward and its
+back on the wall face. Its card stands on the wall over its whole height, under the wall top and no lower than the
+ground, clear of every door and its 0.3 m each side, and leaves alone any spot where more than a quarter of it would
+cover a window or other opening. A bush, tree or pot within 1.6 m of a window and covering more than
+80 % of its width is not placed.
+
+#### The marks: `#VillheimGreen`
+
+Every piece the pass places, and the plants of the yard's beds and borders and of the window boxes, carries
+`p.green = { k, at, src, use, own }`. `lib/blueprint.js` writes them as a section of the file, read back the same way
+(`parse` sets `p.green`). PlanBuild skips the section, as it skips `#VillheimClips`. One line per piece:
+
+```
+#VillheimGreen
+prefab;x;y;z;class;place;source;use;owner
+BlueberryBush;-7.1;0;-1.8;bush;yard;gathered;food;home
+FirTree_small;7.486;-0.025;5.374;tree;yard;gathered;keep;home
+```
+
+The piece is the one in `#Pieces` with that prefab at that x, y, z (within 0.002 m), as for the clips.
+
+| Field | Values | Meaning |
+|---|---|---|
+| class | vine, bush, flower, mushroom, tree, pot, crop | what it is |
+| place | wall, foot, eaves, yard, court, path, fence, sill (window box); verge, junction, well, notice (road kit) | where it stands |
+| source | gathered, standin, built | how the village pays for it (D-145, D-080): gathered from the wild near its biome, a stand-in from the chests, or built (pots, as decor) |
+| use | food, keep | food: a plant that stays when picked and grows its food back (berry bushes, dandelion, thistle, mushrooms, fiddlehead, Ashvine); keep: everything else |
+| owner | home, shared | home: the household of the home (or farm) it belongs to; shared: anyone (shared buildings, roads) |
+
+How the mod applies it (mod session; nothing here changes mod code):
+- D-143: no villager takes a marked piece for materials: tree felling, rock breaking, loose pickup and clearing all
+  pass it by.
+- D-144: a piece with use `food` may be picked for food, by the household of its home when the owner is `home`, by
+  anyone when it is `shared`. A piece with use `keep` is never taken. The food list was set from how these prefabs
+  behave as the lab knows them and was not checked against the game files: the mod can confirm it from the
+  Pickable's respawn time.
+- D-147: players may pick or fell any of it as in vanilla, and the village plants it back over time.
+- D-146: trees go in grown, at their scale (`p.s`); `DesignSpawner` already sets the scale on spawn.
+- A farm's field crops are the farmer's work and stay unmarked.
+
+#### The road kit (`data/landscape/road-kit.json`)
+
+Six small sets the village layout can place later (the lab has no roads): `verge-a` and `verge-b` (road edge runs),
+`junction-t` and `junction-x` (planting on the outside corners of a T junction and a crossroads), `well` and
+`notice-board`. Each lies in its own frame: the road along x with its edges at z = -1 and 1, a junction road along z.
+A slot is a class, a position and the stage it goes in at; `Landscape.kitPieces(set, biome, stage)` picks the prefab
+for the biome, the scale and the marks (owner shared). `keep` lists the boxes no plant may enter: the road and 0.3 m
+off its edge, 1.5 m back from a junction's edges, the sight line across a side road's mouth, the front of a well or a
+board. Verge distances and spacing come from the corpus path edge (0.3 to 1.6 m off the edge; bushes 0.73 / 1.72 /
+3.82 m, flowers 0.93 / 1.35 / 2.68 m); the junction set-back, the well and board sets and the stages are proposals.
+`python3 -I lab/make_road_kit.py` writes the file (positions drawn once, seed 144).
+
+#### Checks and renders
+
+`node lab/test_landscape.js [seeds]`: the share of homes with each class and the pieces when they have any, against
+a band round the corpus (half to 1.7 times the share, 0.35 to 2.5 times the median); nothing in an entry zone or on
+the path; no vine over a door; no floating plant (a vine's card on a wall and no lower than the ground); the biome
+rule; the marks and their round trip through the file; every `lib/checks.js` check that passes without greenery passes
+with it; the side split and how lopsided homes are, against `corpus-sides.json`; the road kit's kept boxes. With 3
+seeds (117 homes over 13 cultures and the three stages, 2026-11-11, round 2):
+
+| Class | Share | Corpus | Pieces when any (median) | Corpus |
+|---|---|---|---|---|
+| Vine | 0.21 | 0.27 | 38 | 23 |
+| Bush | 0.29 | 0.36 | 5 | 6 |
+| Flower | 0.26 | 0.30 | 2 | 2 |
+| Tree | 0.28 | 0.28 | 4 | 3 |
+| Pot | 0.11 | 0.11 | 2 | 4 |
+| Mushroom | 0.15 | 0.16 | 5 | 8 |
+
+Sides, same run: ground groups front 0.29, back 0.25, ends 0.47 (corpus 0.32, 0.24, 0.44; 394 groups). The busiest
+side holds a median 0.5 and a p75 0.67 of a home's ground groups (corpus 0.6 and 0.68), one side only in 4 % of homes
+(corpus 17 %; 52 homes against 18 corpus houses). Vine pivots stand 0.93 / 1.74 / 2.94 m over the ground (p10, median,
+p90) against the corpus's 1.03 / 5.6 / 16.72: the lab's walls are 3 to 6 m tall and the card stays under their top.
+Planter beams: 4.
+
+`node lab/mine_greenery_sides.js` measures the sides and planters from the compact corpus
+(`/home/claude/study/compact.json`): 135 vanilla houses with a ground-floor door, 62 of them with greenery, written
+to `data/landscape/corpus-sides.json`. The front is the side of the house box most of the lowest doors lie on.
+
+`node lab/render_landscape.js <dir> [type:biome:culture:stage:seed ...]` draws each building without and with its
+greenery (three-quarter and top views); `--kit` draws the road kit sets in four biomes; `--close
+type:biome:culture:stage:seed` draws the stretch of wall with the most vines from four sides. The mesh set holds the
+`vines` model as one part, so the renders show each vine as a flat dark green card.
+
+Not done: courtyard planting runs only where open ground lies between walls (`courtSpots`, the corpus's 6 of 8
+rays); none of the renders so far had such ground, so it has not been seen. Window boxes stay with
+`lib/details.js`. The corpus planters are rare and built of mixed pieces (in the 135 houses: 5 of 104 bush groups
+and 1 of 41 flower groups bordered, by log walls laid low, Ashlands arches, stone floors and grausten pillar bases,
+none raised); the lab borders them with the village's beams, as the yard's beds.
 
 ## Interior kitbash (D-065, D-066)
 

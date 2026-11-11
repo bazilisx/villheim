@@ -433,9 +433,12 @@ function moveAside(b, list, path) {
   let h = 0;
   for (const p of grp) h = (Math.imul(h ^ Math.round(p.x * 100 + p.z * 7), 16777619) + 1) >>> 0;
   const S = spotsFor(b, W, grp, (path || []).map(c => ({ x: c.x, z: c.z })), h);
-  if (!S.length) return false;
-  placeGroup(grp, S.cx, S.cz, S[0]);
-  return true;
+  for (const s of S.slice(0, 10)) {
+    const u = placeGroup(grp, S.cx, S.cz, s);
+    if (meshClear(b, grp)) return true;
+    u();
+  }
+  return false;
 }
 
 // Open every room's lanes: from the first door, every door, the fire, each stair and each bed's open side reached by a
@@ -873,6 +876,28 @@ function placeGroup(grp, cx, cz, s) {
   }
   return () => { for (const o of old) { o.p.x = o.x; o.p.z = o.z; o.p.yaw = o.yaw; o.p.q = o.q; } };
 }
+// What shows of a moved piece against what shows of the walls, windows, beams and posts round it (lib/audit.js
+// intoWall reads it the same way): a moved bed, table, chest, seat or station keeps within 5 cm of them.
+const meshL = () => (NODE_L ? require('./mesh.js') : window.VHMesh);
+const SHL = () => (NODE_L ? require('./shapes.js') : window.VHShapes);
+function meshClear(b, grp) {
+  const M = meshL(), SH = SHL();
+  if (!M || !M.world || !M.deepest) return true;
+  for (const p of grp) {
+    if (!['bed', 'table', 'storage', 'seat', 'craft'].includes(PL.piece(p.name).role)) continue;
+    const vis = M.world(p) || [], sol = (SH && SH.world && SH.world(p)) || [];
+    for (const q of b.pieces) {
+      if (q.decor && !(q.trim && !q.kb)) continue;
+      const rq = PL.piece(q.name).role;
+      if (!['wall', 'halfwall', 'window', 'beam', 'pole', 'gable', 'door'].includes(rq)) continue;
+      if (Math.abs(q.x - p.x) > 4 || Math.abs(q.z - p.z) > 4 || Math.abs(q.y - p.y) > 4) continue;
+      const mine = ['wall', 'halfwall', 'gable', 'pole'].includes(rq) ? (sol.length ? sol : vis) : vis;
+      if (M.deepest(mine, M.world(q) || []) > 0.05) return false;
+    }
+  }
+  return true;
+}
+
 // a change is kept when it leaves fewer problems in all and opens no room or entry zone problem that was not there
 // before (a piece it leaves out of reach is put right in its turn, and every change kept lowers the count)
 const better = (W, W2) => W2.bad < W.bad && W2.roomsOut.every(x => W.problems.has(x)) && W2.entry.every(x => W.problems.has(x));
@@ -901,6 +926,7 @@ function openWays(b, ctx) {
     const S = spotsFor(b, W, grp, keep, seedN++);
     for (const s of S.slice(0, 10)) {
       const undo = placeGroup(grp, S.cx, S.cz, s);
+      if (!meshClear(b, grp)) { undo(); continue; }
       const W2 = walkMap(b);
       if (accept(W2)) { W = W2; res.moved++; return true; }
       undo();
@@ -927,7 +953,8 @@ function openWays(b, ctx) {
     return false;
   };
   for (let it = 0; it < 80; it++) {
-    const probs = [...W.entry.map(p => ['entry', p]), ...W.piecesOut.map(p => ['piece', p]), ...W.roomsOut.map(r => ['room', r])].filter(([, x]) => !given.has(x));
+    // rooms first (a way into a room reaches what stands in it), then pieces, then the ways in
+    const probs = [...W.roomsOut.map(r => ['room', r]), ...W.piecesOut.map(p => ['piece', p]), ...W.entry.map(p => ['entry', p])].filter(([, x]) => !given.has(x));
     if (!probs.length) break;
     const [kind, x] = probs[0];
     const W0 = W, ok0 = W2 => better(W0, W2);
@@ -1002,7 +1029,11 @@ function openWays(b, ctx) {
           const undoAll = [];
           for (const [grp, S0] of groups) {
             const S = undoAll.length ? spotsFor(b, W, grp, keep, seedN++) : S0;
-            if (S.length) undoAll.push(placeGroup(grp, S.cx, S.cz, S[Math.min(r, S.length - 1)]));
+            for (let i = Math.max(0, Math.min(r, S.length - 1)); i < S.length && i < r + 6; i++) {
+              const u = placeGroup(grp, S.cx, S.cz, S[i]);
+              if (meshClear(b, grp)) { undoAll.push(u); break; }
+              u();
+            }
           }
           for (const t of tiers) {
             if (t !== tiers[0] && !t.length) continue;
@@ -1025,8 +1056,12 @@ function openWays(b, ctx) {
         const chests = [...blockers].filter(q => !keepAlways(q) && cat(q) === 'storage');
         const big = [...blockers].filter(q => !keepAlways(q) && ['table', 'craft'].includes(cat(q)));
         const set = new Set();
+        // one group at a time first, the smallest first; then the tier's groups together
         for (const tier of [loose, chests]) {
-          for (const q of tier) for (const r of groupOf(b, q)) set.add(r);
+          const gs = [...new Map(tier.map(q => { const gp = groupOf(b, q); return [gp[0], gp]; })).values()].sort((g1, g2) => g1.length - g2.length);
+          for (const gp of gs) if (!ok && !gp.some(keepAlways) && drop(new Set(gp), ok0)) ok = true;
+          if (ok) break;
+          for (const gp of gs) for (const r of gp) set.add(r);
           if (set.size && drop(new Set(set), ok0)) { ok = true; break; }
         }
         if (!ok && kind === 'piece' && !keepAlways(x) && cat(x) !== 'bed') ok = drop(new Set(groupOf(b, x)), ok0);

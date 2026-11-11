@@ -157,6 +157,11 @@ function audit(pieces, shell) {
       if (!fine) r.stacked.push(`${upper.name} on ${lower.name}`);
     }
   }
+  // a sign set on a chest's front as a label (corpus: 371 of 4,450 signs rest on another piece, D-127) is read where the
+  // chest is: its middle within 0.25 m of a storage piece's box and no higher than the chest's top
+  const store = pieces.map((q, j) => j).filter(j => role(pieces[j]) === 'storage');
+  const onChest = i => { const b = visBox[i] || boxes[i], mx = (b.x0 + b.x1) / 2, mz = (b.z0 + b.z1) / 2, my = (b.y0 + b.y1) / 2;
+    return store.some(j => { const c = boxes[j]; return mx > c.x0 - 0.25 && mx < c.x1 + 0.25 && mz > c.z0 - 0.25 && mz < c.z1 + 0.25 && my > c.y0 && my < c.y1 + 0.1; }); };
   // hangings over openings
   const open = pieces.map((p, i) => i).filter(i => ['window', 'door'].includes(role(pieces[i])));
   pieces.forEach((p, i) => {
@@ -222,7 +227,7 @@ function audit(pieces, shell) {
       if (b.y0 < floor - 0.03) r.hang.push(`${p.name} ${Math.round((floor - b.y0) * 100)} cm into the floor`);
       else if (b.y0 > floor + 1.0) r.hang.push(`${p.name} foot ${(b.y0 - floor).toFixed(1)} m over the floor`);
       if (ceil != null && b.y1 > ceil + 0.03) r.hang.push(`${p.name} ${Math.round((b.y1 - ceil) * 100)} cm into the roof`);
-    } else if (MID[p.name] && role(p) !== 'floor') {
+    } else if (MID[p.name] && role(p) !== 'floor' && !(/^sign/.test(p.name) && onChest(i))) {
       const h = mid - floor, [lo, hi] = MID[p.name];
       // a horizontal stand (itemstandh) is a table piece and has no entry here
       if (h < lo || h > hi) r.hang.push(`${p.name} middle ${h.toFixed(1)} m over the floor`);

@@ -235,7 +235,7 @@ kind and culture, D-136), with D-127 items 3 to 6 in the same pass.
 - `BlueprintEdits.cs` rewrites board saves without the `#VillheimClips` and `#VillheimSets` sections (a mod change).
 - D-098 in the Decisions tab: the pool audit handling is built (e44db1e).
 
-## Next: essentials from the corpus (as briefed, not started)
+## Next: essentials from the corpus (as briefed; the first pass is in "Essentials" below)
 Tyler on the lab page: "the same general beds. The same types of rugs. The same fires. The same tables and chairs. The
 same torches... Always the same tables. Candles. Dandelions on sills. Same exact lox rug."
 
@@ -253,3 +253,105 @@ same torches... Always the same tables. Candles. Dandelions on sills. Same exact
    and after; render plans and four views (`lab/render_views.js`) of a Meadows home, a Plains house, a Swamp tavern and a
    Meadows hall, and judge them against the corpus.
 Fire and light placement belong to the hearths and lighting helper; item stands to the stands helper.
+
+## Essentials (2026-11-11, branch design/wip-essentials from 2aa8836)
+Commits: 684d0ad (weights, turns, wall seats, table dressing), ca36476 (stacks, D-127 chest clips, kit draws, barrels,
+recipe biomes, stand cap), and the commit with this section (audit and stacking fixes from check_interiors, docs).
+
+Corpus data (D-136: the counts set the targets): the research branch's `data/culture-corpus/summary.json`, written into
+`lib/decorate.js` `CORPUS_CULT` by `lab/culture_kinds.js` (per culture group: furnished buildings, top prefabs per kind,
+onTable, the rel and relx shares; 'all' sums every group). `CULT_GROUP` maps the generator's cultures to the groups
+(baltic has none and uses 'all'). A group's numbers are blended with the whole corpus by n / (n + 40) furnished
+buildings, so small groups (saami 2, slavic 1) count for little.
+
+Done (`lib/decorate.js`, `lib/kitbash.js`; weights only, D-126):
+- Draws: `chooseKit`, `varyKit` and `bedTaste` weigh each prefab by the room kind's share in `data/interior.json` plus a
+  floor of 0.04 (it was 0.15 to 0.3, which put hare and straw rugs level with deer and fur), times `corpusTilt` (the
+  culture group's share of the kind against the corpus). Chests and wall lights are now drawn per room (`varyKit`), as
+  rugs, seats and tables were. The nook chair and the foot bench take the room's own pick (they were fixed
+  piece_chair02 and piece_bench01).
+- Library: a rug slot draws by the same weights (`fillSlot`, `corpusPick`; it was a uniform draw over 12 rugs). The
+  hand-made kits (BK-) draw their chairs, benches, pine table and chests by the same weights, one draw per kit
+  (`builtPick`, `BUILT_SWAP`: only prefabs of about the same footprint). Mined and creative sets keep their source's
+  prefabs.
+- Table tops: a table is dressed at the culture's `tablesDressed` rate (41 % norse), by the household's clutter, and
+  what lies on it is drawn by the corpus onTable counts among itemstandh, treasure_stack and Candle_resin
+  (`dressTable`, `topWeights`; candles were on most tables). The BK kits' table items follow the same rate.
+- Barrels in living rooms only for households that keep them: 22 % of furnished corpus buildings have barrels, times
+  0.6 + 0.8 clutter (`keepsBarrels`, the decorator's barrel extra and rows and the BK kits). Taverns, stores and work
+  buildings keep theirs.
+- Seats: `wallSeat` extra (a chair or bench along a wall away from tables, by a station or a chest), and a table asked
+  for more than two seats gets 40 to 90 % of them.
+- Turns (`kitbash.js turnLikeCorpus`, run in `liveIn`): tables (with what lies on them and the seats drawn up),
+  seats and rugs turned 12 to 30, 40 and 45 degrees as many as bring each design to the culture's relx share times
+  0.5 + clutter; a turn that makes a new problem is taken back and two more angles tried. Library pieces count (most
+  tables and seats come from the library); hung pieces and pieces marked as clips stay.
+- Stacks (`kitbash.js stackChests`): a chest of the same kind on a chest within 1.2 m of a wall, 0.3 m clear above, as
+  many as bring the design to the culture's chestsStacked share times 0.6 + 0.8 clutter; never on a set chest framed
+  by beams or posts, or within 1.8 m of a door (door lights go there later). `decorate.js audit` reads a chest on a
+  chest as resting (the store rooms' own stacks were counted as floating before: check_interiors floating 50 to 5).
+- D-127 items 3 and 4: `kitbash.js CHEST_PAIR` (piece_chest_wood into piece_chest_wood 11.4 cm, the median of 17 sets)
+  and `CHEST_WALL` (into a wall: piece_chest_wood 12.1 cm over 53 sets, piece_chest and piece_chest_blackmetal 14.2 cm)
+  in the fitter's solids test; the pair carries p.fclip for the pool audit (D-098); `decorate.js auditOne` lets a chest
+  show into a wall to the same medians; `decorate.js audit` overlap lets the wood chest pair pass to 11.4 cm.
+- `lib/audit.js`: wall stand middle cap (MID) is the higher 90th percentile of `itemstand|wall` and `itemstand|rafter`
+  in `data/stands-corpus.json` heights (3.8 m with the stands branch's file; 2.4 m where the file is missing, as on this
+  branch and the web page; `STAND_HI`). A sign on a chest's front (middle within 0.25 m of a storage box, no higher than
+  its top) is read as a label and skips the sign height test (the corpus has 371 of 4,450 signs resting on another
+  piece; mined set KB-023 puts one on a chest front, which failed the Plains pool with hang 6).
+- `lib/pieces.js` recipe biomes: galdr table and its two upgrades, black forge, cooler and vise Mistlands; metal cutter,
+  gem cutter, lava lantern, bone throne Ashlands (bamboogaming.net and metabot.gg recipe pages); mead ketill Ashlands
+  as a guess (its recipe was not found); feasts by their food's biome (sailor's bounty Swamp).
+
+Measures (`lab/essentials.js`, 216 designs: six kinds, six biomes, s2d2 and s3d3, three seeds; a floor stands in for a
+room). Distinct prefabs / share of floors using the most common one, before (2aa8836) and after:
+
+| Kind | Beds | Tables | Seats | Rugs | Lights | Chests |
+|---|---|---|---|---|---|---|
+| home | 3/67 to 3/64 | 5/39 to 5/50 | 8/35 to 9/41 | 12/41 to 11/40 | 10/69 to 11/69 | 5/91 to 6/65 |
+| longhouse | 2/75 to 2/75 | 5/88 to 6/81 | 10/65 to 9/64 | 12/34 to 10/53 | 11/52 to 11/55 | 7/73 to 6/73 |
+| tavern | 2/50 to 2/55 | 5/64 to 6/70 | 9/63 to 10/61 | 12/36 to 11/53 | 12/69 to 12/64 | 7/96 to 7/99 |
+| smithy | - | 4/62 to 3/63 | 6/59 to 7/38 | 9/29 to 10/33 | 9/60 to 9/63 | 6/79 to 6/71 |
+| workshop | - | 5/65 to 3/56 | 7/52 to 8/29 | 7/31 to 8/50 | 9/59 to 9/57 | 7/76 to 7/74 |
+| storage | - | 1/100 | 2/100 | 3/50 to 3/33 | 6/63 to 6/60 | 7/87 to 7/86 |
+
+The most common choice before was often a corpus rarity (hare and bog witch rugs, the butcher table, barrels as the
+home chest); after it is a corpus favorite (piece_table, piece_chair, rug_wolf and rug_fur, piece_chest_wood), so some
+top shares went up as the corpus has them. Tavern chests stay barrels (the bar).
+
+Relations, before and after (corpus norse / all groups in brackets; definitions in `lab/essentials.js`):
+tables turned 0 to 27.7 % (27 / 29); seats turned 12.9 to 38.5 % (41 / 41); rugs turned 8.3 to 27.4 % (30 / 30); rugs
+layered 15.5 to 20.1 % (23 / 21); chests stacked 22 to 42 % (60 / 57); tables dressed 90.1 to 53.1 % (41 / 41, ours
+counts the stands track's food on tables too); seats by a wall 31.9 to 36.1 % (41); seats at a table 60 to 57.1 % (28 /
+25); seats by a fire 13 to 11.8 % (4 / 4).
+
+Checks: test_structure 36 hold. Pools: Norse Meadows pass (14, 0.376, 1.81; before 14.6, 0.351, 1.58); middle-eastern
+Plains pass (12.4, 0.478, 1.56; it failed hang 6 on KB-023's chest-front sign before the audit change). test_variance
+means (closest pair), before to after: home-a s2d2 0.47 (0.81) to 0.40 (0.60), s3d3 0.41 to 0.42; home-b s2d2 0.53
+(0.83) to 0.52 (0.77), s3d3 0.51 (0.84) to 0.53 (0.71); home-c s2d2 0.50 (0.76) to 0.52 (0.67), s3d3 0.58 (0.89) to
+0.48 (0.64); hall 0.38 to 0.37 and 0.40 to 0.40. check_interiors, one seed, 234 designs (before / after): overlap 1 / 0,
+floating 50 / 5, stairs 1 / 2 (new: a bed by the stair, home Mistlands s3), door 2 / 2, bareFloors 1 / 0, check:space
+0 / 1 (stall Mountain s3, 36 % free).
+
+Creative picks left out for going into no room (`lab/creative_fit.js --drop`, library written with `NODROP=1 node
+lab/creative_sets.js x /tmp/lib.json`): 13 of 49 now fit at least once, the same 13 before and after the chest clip
+change in this session (KC numbers of that library: picks 197, 4, 11, 30, 50, 151, 48, 257, 269, 285, 178, 279, 280).
+The fitter's reasons summed over the probe: audit (rests, visible clip) 65,072, off the room 41,475, clips something
+placed 39,935, hung on a window 16,174 (signs on chest fronts, item 5), furnClip 14,852. They are still in `DROP`;
+bringing them back needs the pictures and the pool.
+
+Renders (`/tmp/ess-renders`, not committed): `after-views-*.png` and `before-views-*.png` (lab/render_views.js) and
+`after-households-*.png` (lab/households_sheet.js) for home Meadows, home Plains, tavern Swamp, longhouse Meadows, s3d3
+seed 11.
+
+Changes in other tracks' files: none. `varyKit` now draws `k.wallLight` per room; `placeLights` (hearths track) reads it
+unchanged.
+
+Open: seats at tables (57 % against 25 %) and by fires (12 % against 4 %) are still high (the BK dining kits and the
+layout templates seat every table); engine time 226 to 344 ms per design in `lab/essentials.js` (other helpers ran at
+the same time, not measured alone); the 13 creative picks above; sills come from `lib/details.js` window boxes (not in
+this track).
+
+Next: essentials as sets (bed corners with pelts, nightstands and foot chests; dining sets with fewer seats and some
+tables set against a wall; hearth seating); signs on chest fronts and other pieces in the fitter (D-127 item 5, 371 of
+4,450 signs); ledges, banners and Dvergr lanterns in relief (item 6).

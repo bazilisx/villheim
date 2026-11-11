@@ -1652,7 +1652,8 @@ function apply(b, ctx, zones) {
 
 // Chests stacked on chests as corpus builders stack them (relx.chestsStacked: 58 % of chests stand on or under another
 // chest, 0.3 to 1.5 m apart in height and within 0.6 m across, per culture group, lib/decorate.js corpusRate): a second
-// chest of the same kind on a chest within 1.2 m of a wall, where nothing stands over it and 0.3 m stays clear above;
+// chest of the same kind on a chest within 1.2 m of a wall, where nothing stands over it and 0.3 m stays clear above
+// (never on a set's chest framed by beams or posts, or within 1.8 m of a door);
 // as many as bring the design's share to the culture's rate, more in a cluttered household. Store rooms stack their
 // own first (decorate.js storeStacks). From a stream of its own, so the rest of the design is unchanged.
 const STACKABLE = /^(piece_chest_wood|piece_chest|piece_chest_blackmetal|piece_chest_barrel)$/;
@@ -1668,7 +1669,12 @@ function stackChests(b, ctx) {
   if (m <= 0) return 0;
   const idx = boxIndex(b.pieces);
   const hit = (a, c) => a.x0 < c.x1 - 0.02 && c.x0 < a.x1 - 0.02 && a.z0 < c.z1 - 0.02 && c.z0 < a.z1 - 0.02 && a.y0 < c.y1 - 0.02 && c.y0 < a.y1 - 0.02;
-  const cand = chests.filter(p => !inStack(p) && !p.stacked && (!p.rest || p.rest === 'floor') && !p.fclip).map(p => [p, R()]).sort((x, y) => x[1] - y[1]).map(([p]) => p);
+  // not a chest of a set built round it (framed by beams or posts), and not by a door, where the door lights go later
+  // (generate.js doorLights)
+  const framed = new Set(b.pieces.filter(q => q.kb && PB.piece(q.name).structural).map(q => q.kb));
+  const doors = b.pieces.filter(q => !q.decor && PB.piece(q.name).role === 'door');
+  const cand = chests.filter(p => !inStack(p) && !p.stacked && (!p.rest || p.rest === 'floor') && !p.fclip && !(p.kb && framed.has(p.kb)) &&
+    !doors.some(q => Math.hypot(q.x - p.x, q.z - p.z) < 1.8)).map(p => [p, R()]).sort((x, y) => x[1] - y[1]).map(([p]) => p);
   let n = 0;
   for (const p of cand) {
     if (m <= 0) break;
@@ -1681,7 +1687,8 @@ function stackChests(b, ctx) {
     const bx = Ck.aabbShapes(q), reach = { ...bx, x0: bx.x0 - 1.2, x1: bx.x1 + 1.2, z0: bx.z0 - 1.2, z1: bx.z1 + 1.2 };
     if (!idx.near(reach, 0).some(r => !r.p.decor && ['wall', 'window', 'door'].includes(PB.piece(r.p.name).role) && r.b.y1 > bx.y0 && r.b.y0 < bx.y1)) continue;
     const clear = { ...bx, y1: bx.y1 + 0.3 };
-    if (idx.near(clear, 0.1).some(r => r.p !== p && PB.piece(r.p.name).role !== 'rug' && hit(r.b, clear))) continue;
+    // (decor by its catalog box as well: a ground torch's solids are thinner than the torch)
+    if (idx.near(clear, 0.1).some(r => r.p !== p && PB.piece(r.p.name).role !== 'rug' && (hit(r.b, clear) || (r.p.decor && hit(Ck.catBox(r.p), clear))))) continue;
     b.pieces.push(q);
     idx.add(q);
     m--; n++;

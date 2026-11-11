@@ -632,6 +632,7 @@ function generate(req) {
   // 6 m deep plan with a 1 m footing are 9 to 10 m to the ridge, the corpus median for Norse buildings is 9.3 m)
   const eaveOf = n => (n <= 2 && stage === 's3' ? 0 : F) + n * SH;
   if (!T.tower && !form && !req.storeys) while (storeys > 1 && eaveOf(storeys) > 1.1 * 2 * Math.min(W, D) + 0.01) storeys--;
+  info.storeys = storeys; if (MS && MS.storeys !== storeys) info.storeysDrawn = MS.storeys;
   // stone and marble walls take no support from wooden posts or floors in Valheim: on posts the walls are planks
   C.baseTop = F + 0.6; // stone-base courses only at the bottom (F may still become 0.5 for a stone floor)
   const onPosts = F > 0.01 && !podklet && (C.stilts || T.dock || T.raised || C.raised || form === 'raised' || !stoneBase);
@@ -1605,7 +1606,8 @@ function bedIfNone(b, ctx, fire, zones) {
   // wall, else along the wall (a hall's side benches)
   const names = ['ashwood_bed', 'piece_bed02', 'bed'].filter(n => fits(n) && (n !== 'ashwood_bed' || ctx.biome === 'Ashlands'));
   const doors = b.pieces.filter(p => P.piece(p.name).role === 'door').map(p => P.doorOpening(p));
-  const rooms = [...b.rooms].sort((a, c) => (a.upper ? 1 : 0) - (c.upper ? 1 : 0) || (c.main ? 1 : 0) - (a.main ? 1 : 0));
+  // upstairs first where there is an upstairs (beds above the main floor in 77 % of corpus Norse buildings' beds)
+  const rooms = [...b.rooms].sort((a, c) => (c.upper ? 1 : 0) - (a.upper ? 1 : 0) || (c.main ? 1 : 0) - (a.main ? 1 : 0));
   // first round: only free floor; second: a table, bench or other furnishing (not the fire or its pot) makes room
   const movable = p => p.decor && !/^(fire_pit|hearth)$|cookingstation|cauldron/.test(p.name);
   for (const pass of [0, 1]) {

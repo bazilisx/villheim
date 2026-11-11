@@ -15,7 +15,7 @@
   --ink: #1c2427;
   --muted: #5b676b;
   --line: #c5cec9;
-  --accent: #2c5f73;    /* tar-blue, the colour of a darkwood roof in rain */
+  --accent: #2c5f73;    /* tar-blue, the color of a darkwood roof in rain */
   --accent-ink: #ffffff;
   --good: #3c7a4a; --warn: #a6731a; --bad: #a33d32;
   --board: #e9e4d8;
@@ -99,6 +99,14 @@ legend { font-size: 13px; color: var(--muted); padding: 0 4px; }
   .plans figure.on { outline: 2px solid currentColor; }
   .plans canvas { width: 100%; height: auto; display: block; }
   .plans figcaption { font-size: 13px; padding: 4px 2px 0; line-height: 1.35; }
+/* what was drawn, and the two stage sliders under it */
+.caption { margin: 0; font-size: 13.5px; color: var(--ink); }
+.stages { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 10px 14px; }
+.panel .stages { background: transparent; border-radius: 8px; padding: 8px 10px; }
+.stages label b { color: var(--ink); font-weight: 600; }
+.stages input[type="range"] { width: 100%; padding: 0; border: none; background: transparent; accent-color: var(--accent); }
+.ticks { display: flex; justify-content: space-between; font: 12px var(--mono); color: var(--muted); }
+.panel details > * + * { margin-top: 10px; }
 </style>
 </head>
 <body>
@@ -113,34 +121,44 @@ legend { font-size: 13px; color: var(--muted); padding: 0 4px; }
   <button class="tab" id="tab-int" role="tab" aria-selected="false">Interiors</button>
 </div>
 <main>
-  <section class="panel" id="panel-gen" aria-label="Request">
-    <label for="prompt">What should it be?
-      <textarea id="prompt">a cosy black forest log house, L-shaped, well furnished</textarea>
-    </label>
-    <div class="row">
-      <button class="primary" id="read">Read my request</button>
-      <span class="hint" id="readhint">Fills in the choices below.</span>
-    </div>
+  <section class="panel" id="panel-gen" aria-label="New building">
     <div class="grid2">
       <label for="type">Building<select id="type"></select></label>
-      <label for="biome">Biome<select id="biome"></select></label>
-      <label for="culture">Style<select id="culture"></select></label>
-      <label for="plan">Plan<select id="plan"></select></label>
-      <label for="roof">Roof<select id="roof"></select></label>
-      <label for="walls">Walls<select id="walls"></select></label>
-      <label for="storeys">Storeys<select id="storeys"><option value="">Style's own</option><option value="1">1</option><option value="2">2</option><option value="3">3</option></select></label>
-      <label for="porch">Porch<select id="porch"><option value="">Style's own</option><option value="true">Yes, where it fits</option><option value="false">No</option></select></label>
-      <label for="pitch">Roof pitch<select id="pitch"><option value="">Style's own</option><option value="26">26 degrees</option><option value="45">45 degrees</option></select></label>
-      <label for="stage">Size stage<select id="stage"><option value="s1">s1 small</option><option value="s2" selected>s2 middle</option><option value="s3">s3 large</option></select></label>
-      <label for="decor">Decor stage<select id="decor"><option value="d1">d1 bare needs</option><option value="d2" selected>d2 lived in</option><option value="d3">d3 rich</option></select></label>
-      <label for="seed">Seed<input id="seed" type="number" min="1" value="7"></label>
-      <label for="tries">Candidates<select id="tries"><option value="1">1</option><option value="4">best of 4</option><option value="8" selected>best of 8</option><option value="16">best of 16</option></select></label>
+      <label for="culture">Culture<select id="culture"></select></label>
     </div>
     <div class="row">
       <button class="primary" id="go">Build it</button>
-      <button class="secondary" id="next">Another seed</button>
+      <button class="secondary" id="next">Another one</button>
+      <span class="status" id="gstatus"></span>
     </div>
-    <p class="hint">Candidates: the lab builds several seeds and keeps the one that passes the checks and scores highest against your keep and drop review.</p>
+    <p class="hint">Build it draws the rest at random: the biome from the culture's own, then the plan, roof, walls, size and decor. Another one keeps the culture, biome and stages and tries a new seed. The sliders under the building grow the same design.</p>
+    <details id="gmore">
+      <summary>More choices</summary>
+      <p class="hint">Setting one of these rebuilds the design on the right with that one change. Pick for me leaves it to the generator.</p>
+      <div class="grid2">
+        <label for="biome">Biome<select id="biome"></select></label>
+        <label for="plan">Plan<select id="plan"></select></label>
+        <label for="roof">Roof<select id="roof"></select></label>
+        <label for="walls">Walls<select id="walls"></select></label>
+        <label for="storeys">Stories<select id="storeys"><option value="">Pick for me</option><option value="1">1</option><option value="2">2</option><option value="3">3</option></select></label>
+        <label for="porch">Porch<select id="porch"><option value="">Pick for me</option><option value="true">Yes, where it fits</option><option value="false">No</option></select></label>
+        <label for="pitch">Roof pitch<select id="pitch"><option value="">Pick for me</option><option value="26">26 degrees</option><option value="45">45 degrees</option></select></label>
+        <label for="tries">Candidates<select id="tries"><option value="">Pick for me (best of 8)</option><option value="1">1</option><option value="4">best of 4</option><option value="8">best of 8</option><option value="16">best of 16</option></select></label>
+        <label for="seed">Seed<input id="seed" type="number" min="1" placeholder="Pick for me"></label>
+      </div>
+      <p class="hint">Candidates: the lab builds several seeds and keeps the one that passes the checks and scores highest against your keep and drop review. A plan set here is built at every size stage, so the house no longer grows out of its smaller stages.</p>
+      <div class="row"><button class="secondary" id="greset">All back to Pick for me</button></div>
+    </details>
+    <details id="gwords">
+      <summary>Describe it in words</summary>
+      <label for="prompt">What should it be?
+        <textarea id="prompt">a cozy black forest log house, L-shaped, well furnished</textarea>
+      </label>
+      <div class="row">
+        <button class="primary" id="read">Read my request</button>
+        <span class="hint" id="readhint">Fills in the choices above and builds it.</span>
+      </div>
+    </details>
   </section>
 
   <section class="panel hidden" id="panel-dec" aria-label="Decorate">
@@ -163,7 +181,7 @@ legend { font-size: 13px; color: var(--muted); padding: 0 4px; }
       <label><input type="checkbox" id="rp-stacks" checked> Gaps in a stack (a missing course or post)</label>
       <label><input type="checkbox" id="rp-floors" checked> Holes in a floor</label>
       <label><input type="checkbox" id="rp-mirror" checked> Mirror the other half (builds that are mostly symmetric)</label>
-      <label><input type="checkbox" id="rp-pattern" checked> Patterns of this build (neighbours each kind of piece nearly always has)</label>
+      <label><input type="checkbox" id="rp-pattern" checked> Patterns of this build (neighbors each kind of piece nearly always has)</label>
     </fieldset>
     <div class="row"><button class="primary" id="rpgo" disabled>Repair</button></div>
     <p class="hint">Added pieces show in teal. Each is a guess from the rest of the build; look them over before you take the file into the game. Tested on damaged builds: on symmetric builds it put back about a third of a missing side, and most of what it adds is right.</p>
@@ -172,17 +190,26 @@ legend { font-size: 13px; color: var(--muted); padding: 0 4px; }
   <section class="panel hidden" id="panel-int" aria-label="Interiors">
     <p class="hint">One house furnished for several households, or one household laid out several ways. Each plan is the ground floor from above with the roof and the upper walls cut away. Click a plan to open it in the viewer.</p>
     <div class="grid2">
-      <label for="itype">Building<select id="itype"><option value="home">Home</option><option value="longhouse">Longhouse (hall)</option><option value="tavern">Tavern</option><option value="smithy">Smithy</option><option value="workshop">Workshop</option><option value="sawmill">Woodworker</option><option value="storage">Storehouse</option><option value="barn">Barn</option><option value="temple">Temple</option></select></label>
-      <label for="ibiome">Biome<select id="ibiome"></select></label>
-      <label for="iculture">Style<select id="iculture"></select></label>
-      <label for="istage">Size stage<select id="istage"><option value="s1">s1 small</option><option value="s2" selected>s2 middle</option><option value="s3">s3 large</option></select></label>
-      <label for="idecor">Decor stage<select id="idecor"><option value="d1">d1 bare needs</option><option value="d2">d2 lived in</option><option value="d3" selected>d3 rich</option></select></label>
-      <label for="imode">Compare<select id="imode"><option value="households" selected>Same house, other households</option><option value="layouts">Same household, other layouts</option><option value="houses">Other houses of this kind</option></select></label>
-      <label for="ihouse">Household<select id="ihouse"><option value="">Drawn by the house</option><option value="neat">Neat</option><option value="messy">Messy, half-done projects</option><option value="cosy">Cosy (rugs, pelts)</option><option value="austere">Austere</option><option value="plants">Plants and garden</option><option value="crafts">Crafts</option><option value="collector">Collector (trophies)</option><option value="wealthy">Well off</option><option value="poor">Poor</option><option value="food">Food and drink</option><option value="family">Family</option><option value="alone">Lives alone</option></select></label>
-      <label for="iseed">House seed<input id="iseed" type="number" min="1" value="7"></label>
-      <label for="icount">Examples<select id="icount"><option value="4">4</option><option value="6" selected>6</option><option value="9">9</option></select></label>
+      <label for="itype">Building<select id="itype"><option value="home">House</option><option value="longhouse">Longhouse (hall)</option><option value="tavern">Tavern</option><option value="smithy">Smithy</option><option value="workshop">Workshop</option><option value="sawmill">Woodworker</option><option value="storage">Storehouse</option><option value="barn">Barn</option><option value="temple">Temple</option></select></label>
+      <label for="iculture">Culture<select id="iculture"></select></label>
     </div>
     <div class="row"><button class="primary" id="igo">Show interiors</button><span class="hint" id="ihint"></span></div>
+    <p class="caption" id="icaption"></p>
+    <div class="stages" id="istages">
+      <label for="istage">Size stage: <b id="istagev">s2 middle</b><input type="range" id="istage" min="1" max="3" step="1" value="2"><span class="ticks"><span>s1</span><span>s2</span><span>s3</span></span></label>
+      <label for="idecor">Decor stage: <b id="idecorv">d3 rich</b><input type="range" id="idecor" min="1" max="3" step="1" value="3"><span class="ticks"><span>d1</span><span>d2</span><span>d3</span></span></label>
+    </div>
+    <details id="imore">
+      <summary>More choices</summary>
+      <div class="grid2">
+        <label for="ihouse">Household<select id="ihouse"><option value="">Pick for me</option><option value="neat">Neat</option><option value="messy">Messy, half-done projects</option><option value="cosy">Cozy (rugs, pelts)</option><option value="austere">Austere</option><option value="plants">Plants and garden</option><option value="crafts">Crafts</option><option value="collector">Collector (trophies)</option><option value="wealthy">Well off</option><option value="poor">Poor</option><option value="food">Food and drink</option><option value="family">Family</option><option value="alone">Lives alone</option></select></label>
+        <label for="imode">Compare<select id="imode"><option value="households" selected>Same house, other households</option><option value="layouts">Same household, other layouts</option><option value="houses">Other houses of this kind</option></select></label>
+        <label for="icount">Examples<select id="icount"><option value="4">4</option><option value="6" selected>6</option><option value="9">9</option></select></label>
+        <label for="iseed">House seed<input id="iseed" type="number" min="1" placeholder="Pick for me"></label>
+        <label for="ibiome">Biome<select id="ibiome"></select></label>
+      </div>
+      <p class="hint">Setting one of these shows the same interiors again with that one change.</p>
+    </details>
     <div class="plans" id="iplans"></div>
   </section>
 
@@ -191,6 +218,11 @@ legend { font-size: 13px; color: var(--muted); padding: 0 4px; }
       <canvas id="view" width="1200" height="760" aria-label="The building. Drag to turn it, scroll to tilt."></canvas>
       <div class="over"><span id="title">Building</span><span id="viewhint">Drag to turn, scroll to tilt</span></div>
       <label class="rooftoggle" for="roofoff"><input type="checkbox" id="roofoff"> Roof off</label>
+    </div>
+    <p class="caption" id="caption"></p>
+    <div class="stages" id="gstages">
+      <label for="gstage">Size stage: <b id="gstagev">s2 middle</b><input type="range" id="gstage" min="1" max="3" step="1" value="2"><span class="ticks"><span>s1</span><span>s2</span><span>s3</span></span></label>
+      <label for="gdecor">Decor stage: <b id="gdecorv">d2 lived in</b><input type="range" id="gdecor" min="1" max="3" step="1" value="2"><span class="ticks"><span>d1</span><span>d2</span><span>d3</span></span></label>
     </div>
     <div class="thumbs" id="thumbs"></div>
     <div class="facts" id="facts"></div>
@@ -205,6 +237,8 @@ legend { font-size: 13px; color: var(--muted); padding: 0 4px; }
   </section>
 </main>
 <script>
+// lib/yards.js reads node's `global` in a debug line without checking for it; the page gives it one
+if (typeof window.global === 'undefined') window.global = window;
 /*LIBS*/
 </script>
 <script>
@@ -214,27 +248,176 @@ VHDecorate.setRules(RULES);
 const $ = id => document.getElementById(id);
 const S = VHStyles;
 const fill = (sel, items) => { $(sel).innerHTML = items.map(([v, t]) => `<option value="${v}">${t}</option>`).join(''); };
+const PICK = 'Pick for me';
+// the village cultures, each with its biomes; the older lab styles come last in their own group
+const VILLAGE = Object.entries(S.CULTURES).filter(([, c]) => c.village);
+const OTHER = Object.entries(S.CULTURES).filter(([, c]) => !c.village);
+function cultureOptions(id, others) {
+  $(id).innerHTML = '<option value="">Any culture</option>' + VILLAGE.map(([k, c]) => `<option value="${k}">${c.label}: ${c.biomes.join(', ')}</option>`).join('')
+    + (others ? `<optgroup label="Older lab styles (not in villages)">${OTHER.map(([k, c]) => `<option value="${k}">${c.label}</option>`).join('')}</optgroup>` : '');
+}
 fill('type', Object.entries(S.TYPES).map(([k, t]) => [k, t.label]));
-fill('biome', S.BIOMES.map(b => [b, b])); fill('dbiome', S.BIOMES.map(b => [b, b]));
-fill('culture', [['', "Biome's cultures (by weight)"], ...Object.entries(S.CULTURES).filter(([, c]) => c.village).map(([k, c]) => [k, `${c.label}: ${c.biomes.join(', ')}`]),
-  ...Object.entries(S.CULTURES).filter(([, c]) => !c.village).map(([k, c]) => [k, c.label])]);
-fill('plan', [['auto', 'Pick for me'], ['rect', 'Rectangle'], ['long', 'Long'], ['square', 'Square'], ['L', 'L-shaped'], ['T', 'T-shaped'], ['cross', 'Cross'], ['U', 'U around a yard'], ['court', 'Rooms round a courtyard'], ['gables', 'Row of gables (turf farm)'], ['nave', 'Nave and chancel'], ['greek', 'Equal-armed cross'], ['octagon', 'Octagon (round)']]);
-fill('walls', [['auto', 'Pick for me'], ['plank', 'Plank'], ['half-timber', 'Half-timber'], ['log', 'Log (Black Forest on)'], ['stone-base', 'Stone base, wood above'], ['stone', 'Stone'], ['marble', 'Black marble (Mistlands)'], ['grausten', 'Grausten (Ashlands)']]);
-fill('roof', [['auto', 'Pick for me'], ['gable', 'Gable'], ['hip', 'Hip'], ['shed', 'Shed'], ['flat', 'Flat with parapet'], ['conical', 'Ring (round plans)']]);
+cultureOptions('culture', true);
+fill('biome', [['', PICK], ...S.BIOMES.map(b => [b, b])]); fill('dbiome', S.BIOMES.map(b => [b, b]));
+fill('plan', [['', PICK], ['rect', 'Rectangle'], ['long', 'Long'], ['square', 'Square'], ['L', 'L-shaped'], ['T', 'T-shaped'], ['cross', 'Cross'], ['U', 'U around a yard'], ['court', 'Rooms around a courtyard'], ['gables', 'Row of gables (turf farm)'], ['nave', 'Nave and chancel'], ['greek', 'Equal-armed cross'], ['octagon', 'Octagon (round)']]);
+fill('walls', [['', PICK], ['plank', 'Plank'], ['half-timber', 'Half-timber'], ['log', 'Log (Black Forest on)'], ['stone-base', 'Stone base, wood above'], ['stone', 'Stone'], ['marble', 'Black marble (Mistlands)'], ['grausten', 'Grausten (Ashlands)']]);
+fill('roof', [['', PICK], ['gable', 'Gable'], ['hip', 'Hip'], ['shed', 'Shed'], ['flat', 'Flat with parapet'], ['conical', 'Ring (round plans)']]);
+cultureOptions('iculture', false);
+fill('ibiome', [['', PICK], ...S.BIOMES.map(b => [b, b])]);
 
 let current = null, view = { az: 35, el: 30 }, mode = 'gen', fileBp = null;
 
+// ---------- random draws: a culture's biomes, stages and seeds
+const any = a => a[Math.floor(Math.random() * a.length)];
+const newSeed = () => 1 + Math.floor(Math.random() * 99999);
+const STAGES = ['s1', 's2', 's3'], DECORS = ['d1', 'd2', 'd3'];
+const STAGE_TEXT = { s1: 's1 small', s2: 's2 middle', s3: 's3 large' }, DECOR_TEXT = { d1: 'd1 bare needs', d2: 'd2 lived in', d3: 'd3 rich' };
+function biomesOf(key) {
+  const c = S.CULTURES[key];
+  if (c && c.biomes && c.biomes.length) return c.biomes;
+  const listed = S.BIOMES.filter(b => (S.BIOME_CULTURE[b] || {})[key]);
+  if (listed.length) return listed;
+  const named = S.BIOMES.filter(b => b.toLowerCase().replace(/ /g, '-') === key);
+  return named.length ? named : S.BIOMES;
+}
+const cultureLabel = k => (S.CULTURES[k] && S.CULTURES[k].label) || k;
+
+// ---------- the viewer's choices, kept between visits where the browser allows it
+const STORE = 'villheim-lab-choices';
+const KEPT = ['type', 'culture', 'biome', 'plan', 'roof', 'walls', 'storeys', 'porch', 'pitch', 'tries', 'itype', 'iculture', 'ibiome', 'imode', 'ihouse', 'icount'];
+const OPENS = ['gmore', 'gwords', 'imore'];
+function loadKept() {
+  try {
+    const o = JSON.parse(localStorage.getItem(STORE) || '{}');
+    for (const k of KEPT) if (typeof o[k] === 'string' && [...$(k).options].some(x => x.value === o[k])) $(k).value = o[k];
+    for (const k of OPENS) if (typeof o['open-' + k] === 'boolean') $(k).open = o['open-' + k];
+  } catch (e) { /* no storage here */ }
+}
+function saveKept() {
+  try {
+    const o = {};
+    for (const k of KEPT) o[k] = $(k).value;
+    for (const k of OPENS) o['open-' + k] = $(k).open;
+    localStorage.setItem(STORE, JSON.stringify(o));
+  } catch (e) { /* no storage here */ }
+}
+for (const k of OPENS) $(k).addEventListener('toggle', saveKept);
+for (const k of ['type', 'culture', 'itype', 'iculture']) $(k).addEventListener('change', saveKept);
+
+// ---------- stage sliders: s1 to s3 and d1 to d3; moving one rebuilds on release
+function slider(id, list, text, onset) {
+  const el = $(id), out = $(id + 'v');
+  const val = () => list[Math.max(0, Math.min(list.length - 1, +el.value - 1))];
+  el.oninput = () => { out.textContent = text[val()]; };
+  el.onchange = () => { out.textContent = text[val()]; onset(val()); };
+  return v => { el.value = list.indexOf(v) + 1; out.textContent = text[v]; };
+}
+
+// ---------- new building: the design drawn from Building and Culture, then changed one choice at a time
+// G holds what the current design was drawn with: type, culture, biome, stages, the household's seed (lineage) and the
+// candidate seed kept for it, so a change of stage or of one choice rebuilds the same design.
+let G = null, genResult = null;
+function evaluate(d, biome) { return VHRequest.evaluate(d, biome, SCORER); }
+function moreChoices() {
+  const v = id => $(id).value || undefined, porch = $('porch').value;
+  return { plan: v('plan'), roof: v('roof'), walls: v('walls'), storeys: +$('storeys').value || undefined,
+    porch: porch === '' ? undefined : porch === 'true', pitch: +$('pitch').value || undefined };
+}
+const triesOf = () => +$('tries').value || 8;
+function requestOf(g, seed) {
+  return { type: g.type, culture: g.culture, biome: g.biome, stage: g.stage, decor: g.decor, ...g.more, seed, lineage: g.seed };
+}
+function runGen(work) {
+  $('gstatus').textContent = 'Building...';
+  for (const b of ['go', 'next', 'read']) $(b).disabled = true;
+  setTimeout(() => {
+    try { work(); $('gstatus').textContent = ''; } catch (e) { $('gstatus').textContent = 'No design for these choices (' + e.message + ').'; }
+    for (const b of ['go', 'next', 'read']) $(b).disabled = false;
+  }, 30);
+}
+// several candidate seeds of the same household, the best kept (lib/request.js best)
+function search(g) {
+  const top = VHRequest.best(requestOf(g, g.seed), g.tries, SCORER);
+  g.kept = top.seed;
+  showGen({ d: top.d, ev: top.ev });
+}
+// the kept candidate built again with the changed choice
+function rebuildKept(g) {
+  const d = VHGenerate.generate(requestOf(g, g.kept));
+  showGen({ d, ev: evaluate(d, g.biome) });
+}
+// keep false: Build it, everything but Building and Culture drawn fresh. keep true: Another one, a new seed for the
+// same culture, biome and stages. fixed: stages named in a request in words.
+function draw(keep, fixed = {}) {
+  const prev = keep ? G : null, type = $('type').value, asked = $('culture').value;
+  const culture = asked || (prev ? prev.culture : any(VILLAGE)[0]);
+  const biome = $('biome').value || (prev && prev.culture === culture ? prev.biome : any(biomesOf(culture)));
+  let seed;
+  if (keep) { seed = newSeed(); if ($('seed').value) $('seed').value = seed; } else seed = Math.floor(+$('seed').value) || newSeed();
+  G = { type, culture, cultureAsked: !!asked, biome, stage: fixed.stage || (prev ? prev.stage : any(STAGES)), decor: fixed.decor || (prev ? prev.decor : any(DECORS)),
+    seed, tries: triesOf(), more: moreChoices(), kept: null };
+  setGStage(G.stage); setGDecor(G.decor);
+  runGen(() => search(G));
+}
+function rebuild(change) {
+  if (!G) return draw(false);
+  Object.assign(G, change);
+  const fresh = change.seed != null || change.tries != null || G.kept == null;
+  runGen(() => (fresh ? search(G) : rebuildKept(G)));
+}
+const setGStage = slider('gstage', STAGES, STAGE_TEXT, v => rebuild({ stage: v }));
+const setGDecor = slider('gdecor', DECORS, DECOR_TEXT, v => rebuild({ decor: v }));
+function showGen(r) {
+  genResult = r; current = r; mode = 'gen';
+  show();
+  captionGen();
+}
+function captionGen() {
+  if (!G || !genResult) return;
+  const i = genResult.d.request || {};
+  const T = S.TYPES[i.type] || {};
+  const set = [['biome', 'biome'], ['plan', 'plan'], ['roof', 'roof'], ['walls', 'walls'], ['storeys', 'stories'], ['porch', 'porch'], ['pitch', 'roof pitch'], ['tries', 'candidates'], ['seed', 'seed']]
+    .filter(([id]) => $(id).value !== '').map(([, t]) => t);
+  if (G.cultureAsked) set.unshift('culture');
+  $('caption').textContent = `${T.label || i.type}, ${cultureLabel(i.cultureKey)}, ${i.biome}, ${i.plan || 'no'} plan, ${i.roof || 'no'} roof, ${i.walls || 'no'} walls, `
+    + `${STAGE_TEXT[i.stage] || i.stage}, ${DECOR_TEXT[i.decor] || i.decor}, seed ${G.seed}${G.kept != null && G.kept !== G.seed ? ` (candidate ${G.kept})` : ''}.` + (set.length ? ` You set: ${set.join(', ')}; the rest was drawn.` : ' All drawn at random.');
+}
+$('go').onclick = () => draw(false);
+$('next').onclick = () => draw(true);
+$('roofoff').onchange = drawMain;
+for (const id of ['plan', 'roof', 'walls', 'storeys', 'porch', 'pitch']) $(id).onchange = () => { saveKept(); rebuild({ more: moreChoices() }); };
+$('biome').onchange = () => { saveKept(); if (G) rebuild({ biome: $('biome').value || any(biomesOf(G.culture)) }); else draw(false); };
+$('tries').onchange = () => { saveKept(); rebuild({ tries: triesOf() }); };
+$('seed').onchange = () => { const s = Math.floor(+$('seed').value); if (s >= 1) rebuild({ seed: s }); };
+$('greset').onclick = () => {
+  const hadBiome = $('biome').value !== '';
+  for (const id of ['biome', 'plan', 'roof', 'walls', 'storeys', 'porch', 'pitch', 'tries', 'seed']) $(id).value = '';
+  saveKept();
+  if (!G) return draw(false);
+  const ch = { more: moreChoices() };
+  if (hadBiome) ch.biome = any(biomesOf(G.culture));
+  if (triesOf() !== G.tries) ch.tries = triesOf();
+  rebuild(ch);
+};
+
 // ---------- request words to choices (lib/request.js; works without Claude; "Read my request" asks Claude when it can)
 const readLocal = text => VHRequest.read(text);
+const FIELDS = ['type', 'culture', 'biome', 'plan', 'roof', 'walls', 'storeys', 'porch', 'pitch'];
 function apply(fields) {
   const seen = [];
-  for (const [k, v] of Object.entries(fields)) { if (v == null || !$(k)) continue; $(k).value = String(v); seen.push(`${k} ${v}`); }
+  for (const [k, v] of Object.entries(fields)) {
+    if (v == null || !FIELDS.includes(k)) continue;
+    const val = v === 'auto' ? '' : String(v);
+    if (![...$(k).options].some(o => o.value === val)) continue;
+    $(k).value = val; seen.push(k);
+  }
+  if (seen.some(k => k !== 'type' && k !== 'culture')) $('gmore').open = true;
   return seen;
 }
 $('read').onclick = async () => {
   const text = $('prompt').value;
-  const local = readLocal(text);
-  apply(local);
+  let words = readLocal(text);
+  apply(words);
   $('readhint').textContent = 'Read from your words.';
   try {
     const sample = await Promise.race([window.claude ? claude.use('sample') : null, new Promise(r => setTimeout(() => r(null), 3000))]);
@@ -242,28 +425,12 @@ $('read').onclick = async () => {
       $('readhint').textContent = 'Asking Claude...';
       const opts = { walls: ['auto', 'plank', 'half-timber', 'log', 'stone-base', 'stone', 'marble', 'grausten'], type: Object.keys(S.TYPES), biome: S.BIOMES, culture: Object.keys(S.CULTURES), plan: ['auto', 'rect', 'long', 'square', 'L', 'T', 'cross', 'U', 'court', 'gables', 'nave', 'greek', 'octagon'], roof: ['auto', 'gable', 'hip', 'shed', 'flat', 'conical'], stage: ['s1', 's2', 's3'], decor: ['d1', 'd2', 'd3'] };
       const ans = await sample.json(`Turn this request for a Valheim building into settings. Request: "${text}". Allowed values: ${JSON.stringify(opts)}. Answer with a JSON object holding only keys from that list whose value the request implies, each value one of the allowed values. s1 small, s2 middle, s3 large; d1 bare, d2 lived in, d3 richly decorated.`, { modelTier: 'quick' });
-      if (ans && typeof ans === 'object') { const ok = {}; for (const [k, v] of Object.entries(ans)) if (opts[k] && opts[k].includes(v)) ok[k] = v; apply(ok); $('readhint').textContent = 'Claude read your request.'; }
+      if (ans && typeof ans === 'object') { const ok = {}; for (const [k, v] of Object.entries(ans)) if (opts[k] && opts[k].includes(v)) ok[k] = v; apply(ok); words = { ...words, ...ok }; $('readhint').textContent = 'Claude read your request.'; }
     }
   } catch (e) { $('readhint').textContent = 'Read from your words.'; }
-  build();
+  saveKept();
+  draw(false, { stage: words.stage, decor: words.decor });
 };
-
-// ---------- build: several seeds, keep the best that passes the checks
-function request(seed) {
-  const porch = $('porch').value;
-  return { type: $('type').value, biome: $('biome').value, culture: $('culture').value || undefined, plan: $('plan').value, roof: $('roof').value,
-    walls: $('walls').value, pitch: $('pitch').value ? +$('pitch').value : undefined, storeys: +$('storeys').value || undefined,
-    porch: porch === '' ? undefined : porch === 'true', stage: $('stage').value, decor: $('decor').value, seed };
-}
-function evaluate(d, biome) { return VHRequest.evaluate(d, biome, SCORER); }
-function build() {
-  mode = 'gen';
-  current = VHRequest.best(request(+$('seed').value || 1), +$('tries').value, SCORER);
-  show();
-}
-$('go').onclick = build;
-$('roofoff').onchange = drawMain;
-$('next').onclick = () => { $('seed').value = (+$('seed').value || 1) + 1; build(); };
 
 // ---------- decorate an uploaded blueprint
 $('bpfile').onchange = async e => {
@@ -382,33 +549,57 @@ $('copy').onclick = async () => {
 
 
 // ---------- interiors: one house for several households, or one household laid out several ways
-fill('ibiome', S.BIOMES.map(b => [b, b]));
-fill('iculture', [['', "Biome's cultures (by weight)"], ...Object.entries(S.CULTURES).filter(([, c]) => c.village).map(([k, c]) => [k, `${c.label}: ${c.biomes.join(', ')}`])]);
+// I holds what the interiors were drawn with: type, culture, biome, stages, house seed, and the plan open in the viewer.
+let I = null, irun = 0, intResult = null;
 const HOUSEHOLDS = ['neat', 'messy', 'cosy', 'plants', 'crafts', 'collector', 'wealthy', 'austere', 'food'];
+const said = t => String(t).replace(/cosy/g, 'cozy');
+function iDraw() {
+  const asked = $('iculture').value, culture = asked || any(VILLAGE)[0];
+  I = { type: $('itype').value, culture, cultureAsked: !!asked, biome: $('ibiome').value || any(biomesOf(culture)),
+    stage: any(STAGES), decor: any(DECORS), seed: Math.floor(+$('iseed').value) || newSeed(), sel: 0, fresh: true };
+  setIStage(I.stage); setIDecor(I.decor);
+  showInteriors();
+}
 function interiorRequests() {
-  const n = +$('icount').value, seed = +$('iseed').value || 1, m = $('imode').value, hh = $('ihouse').value;
-  const base = { type: $('itype').value, biome: $('ibiome').value, culture: $('iculture').value || undefined, stage: $('istage').value, decor: $('idecor').value, yard: false };
+  const n = +$('icount').value, seed = I.seed, m = $('imode').value, hh = $('ihouse').value;
+  const base = { type: I.type, biome: I.biome, culture: I.culture, stage: I.stage, decor: I.decor, yard: false };
   const out = [];
   for (let i = 0; i < n; i++) {
-    if (m === 'households') out.push({ ...base, seed, persona: HOUSEHOLDS[i % HOUSEHOLDS.length], label: HOUSEHOLDS[i % HOUSEHOLDS.length] });
+    if (m === 'households') out.push({ ...base, seed, persona: HOUSEHOLDS[i % HOUSEHOLDS.length], label: said(HOUSEHOLDS[i % HOUSEHOLDS.length]) });
     else if (m === 'layouts') out.push({ ...base, seed, persona: hh || undefined, layout: { seed: i + 1 }, label: `layout ${i + 1}` });
     else out.push({ ...base, seed: seed + i * 13, persona: hh || undefined, label: `house ${seed + i * 13}` });
   }
   return out;
 }
+function captionInt() {
+  const T = S.TYPES[I.type] || {};
+  const set = [['ihouse', 'household'], ['iseed', 'house seed'], ['ibiome', 'biome']].filter(([id]) => $(id).value !== '').map(([, t]) => t);
+  if (I.cultureAsked) set.unshift('culture');
+  $('icaption').textContent = `${T.label || I.type}, ${cultureLabel(I.culture)}, ${I.biome}, ${STAGE_TEXT[I.stage]}, ${DECOR_TEXT[I.decor]}, house seed ${I.seed}.`
+    + (set.length ? ` You set: ${set.join(', ')}; the rest was drawn.` : ' All drawn at random.');
+}
 function floorOf(pieces) {
   const fl = pieces.filter(p => VHPieces.piece(p.name).role === 'floor').map(p => p.y).sort((a, b) => a - b);
   return fl.length ? fl[0] : ground(pieces);
 }
+function openInterior(d, q) {
+  intResult = { d, ev: evaluate(d, q.biome) };
+  current = intResult; mode = 'int'; $('roofoff').checked = true;
+  if (I.fresh) { view = { az: 35, el: 60 }; I.fresh = false; }
+  show();
+}
 function showInteriors() {
-  const reqs = interiorRequests(), box = $('iplans');
+  if (!I) return iDraw();
+  const run = ++irun, reqs = interiorRequests(), box = $('iplans'), sel = Math.min(I.sel || 0, reqs.length - 1);
   box.innerHTML = '';
+  captionInt();
   $('ihint').textContent = 'Building...';
   const bg = getComputedStyle(document.body).getPropertyValue('--board').trim() || '#e9e4d8';
   let i = 0;
   const next = () => {
+    if (run !== irun) return;
     if (i >= reqs.length) { $('ihint').textContent = `${reqs.length} interiors.`; return; }
-    const q = reqs[i++];
+    const idx = i, q = reqs[i++];
     let d;
     try { d = VHGenerate.generate(q); } catch (e) { d = null; }
     const fig = document.createElement('figure');
@@ -421,16 +612,17 @@ function showInteriors() {
       const cv = document.createElement('canvas'); cv.width = sz2.width; cv.height = sz2.height;
       VHRender.plan(cv.getContext('2d'), pieces, { cut, ppm, crop: sz2.crop, background: bg, ss: 1 });
       const furn = pieces.filter(p => p.decor && Math.abs(p.y - f0) < 2.5).length;
-      const h = (d.meta && d.meta.household) || (d.info && d.info.household) || null;
+      const h = (d.request && d.request.household) || null;
       const cap = document.createElement('figcaption');
-      cap.textContent = `${q.label}: ${furn} pieces of furniture and decor on this floor${h && h.label ? ', ' + h.label : ''}`;
+      cap.textContent = `${q.label}: ${furn} pieces of furniture and decor on this floor${h && h.label ? ', ' + said(h.label) : ''}`;
       fig.append(cv, cap);
       fig.onclick = () => {
         for (const o of box.children) o.classList.remove('on');
         fig.classList.add('on');
-        current = { d, ev: evaluate(d, q.biome) }; mode = 'int'; $('roofoff').checked = true; view = { az: 35, el: 60 }; show();
+        I.sel = idx;
+        openInterior(d, q);
       };
-      if (i === 1) { current = { d, ev: evaluate(d, q.biome) }; mode = 'int'; $('roofoff').checked = true; view = { az: 35, el: 60 }; show(); fig.classList.add('on'); }
+      if (idx === sel) { openInterior(d, q); fig.classList.add('on'); }
     } else {
       fig.append(Object.assign(document.createElement('figcaption'), { textContent: `${q.label}: no design for this request` }));
     }
@@ -439,19 +631,26 @@ function showInteriors() {
   };
   setTimeout(next, 0);
 }
-$('igo').onclick = showInteriors;
+const setIStage = slider('istage', STAGES, STAGE_TEXT, v => { if (!I) return iDraw(); I.stage = v; showInteriors(); });
+const setIDecor = slider('idecor', DECORS, DECOR_TEXT, v => { if (!I) return iDraw(); I.decor = v; showInteriors(); });
+$('igo').onclick = iDraw;
+for (const id of ['ihouse', 'imode', 'icount']) $(id).onchange = () => { saveKept(); showInteriors(); };
+$('ibiome').onchange = () => { saveKept(); if (!I) return iDraw(); I.biome = $('ibiome').value || any(biomesOf(I.culture)); showInteriors(); };
+$('iseed').onchange = () => { const s = Math.floor(+$('iseed').value); if (s < 1) return; if (!I) return iDraw(); I.seed = s; showInteriors(); };
 
 // ---------- tabs
 function tab(which) {
   for (const t of ['gen', 'dec', 'rep', 'int']) { $('tab-' + t).setAttribute('aria-selected', which === t); $('panel-' + t).classList.toggle('hidden', which !== t); }
+  // the caption and the stage sliders under the building belong to the new building tab
+  for (const id of ['caption', 'gstages']) $(id).classList.toggle('hidden', which !== 'gen');
 }
-$('tab-gen').onclick = () => { tab('gen'); build(); };
+$('tab-gen').onclick = () => { tab('gen'); if (genResult) { current = genResult; mode = 'gen'; show(); captionGen(); } else draw(false); };
 $('tab-dec').onclick = () => tab('dec');
 $('tab-rep').onclick = () => tab('rep');
-$('tab-int').onclick = () => { tab('int'); if (!$('iplans').children.length) showInteriors(); };
+$('tab-int').onclick = () => { tab('int'); if (!$('iplans').children.length) iDraw(); else if (intResult) { current = intResult; mode = 'int'; show(); } };
 
-apply(readLocal($('prompt').value));
-build();
+loadKept();
+draw(false);
 </script>
 </body>
 </html>

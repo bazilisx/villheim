@@ -5,7 +5,8 @@
 // Per group: n furnished buildings; k: the top prefabs per kind with their uses (bed, table, seat, rug, storage,
 // light); t: what lies on tables; r: relations in percent (rel and relx, pieces share): sa seats at tables, sf seats by
 // fire, rl rugs layered, td tables dressed, cs chests stacked, sw seats by wall, so seats turned, to tables turned,
-// ro rugs turned. Mod prefabs (prefixes and names not in vanilla) are dropped.
+// ro rugs turned, ts tables with seats, ba beds above the main floor, bf beds on a storey with a fire, bb beds side by
+// side, th buildings with a table (kinds.table.has). Mod prefabs (prefixes and names not in vanilla) are dropped.
 const s = JSON.parse(require('fs').readFileSync(process.argv[2], 'utf8'));
 const MOD = /^(\$|GB_|kg_|VC_|MWL_|IG_|CastleKit_|mountainkit_|rae_|Pickable_|pressurePlate_)|piece_drawer|piece_bed03_bal|_Rotten_TW/;
 const out = {};
@@ -14,7 +15,9 @@ const add = (k, c) => {
   const e = { n: c.furnished, k: {}, t: (c.onTable || []).filter(([p]) => !MOD.test(p)), r: {} };
   for (const kind of ['bed', 'table', 'seat', 'rug', 'storage', 'light']) if (c.kinds && c.kinds[kind]) e.k[kind] = c.kinds[kind].top.filter(([p]) => !MOD.test(p));
   const rel = c.rel || {}, rx = c.relx || {};
-  const R = { sa: rel.seatsAtTables, sf: rel.seatsByFire, rl: rel.rugsLayered, td: rel.tablesDressed, cs: (rx.chestsStacked || [])[0], sw: (rx.seatsByWall || [])[0], so: (rx.seatsOffAxis || [])[0], to: (rx.tablesOffAxis || [])[0], ro: (rx.rugsOffAxis || [])[0] };
+  const R = { sa: rel.seatsAtTables, sf: rel.seatsByFire, rl: rel.rugsLayered, td: rel.tablesDressed, cs: (rx.chestsStacked || [])[0], sw: (rx.seatsByWall || [])[0], so: (rx.seatsOffAxis || [])[0], to: (rx.tablesOffAxis || [])[0], ro: (rx.rugsOffAxis || [])[0],
+    ts: rel.tablesWithSeats, ba: rel.bedsAboveMainFloor, bf: rel.bedsOnFireStorey, bb: rel.bedsSideBySide,
+    th: c.kinds && c.kinds.table ? c.kinds.table.has : null };
   for (const [kk, v] of Object.entries(R)) if (v != null) e.r[kk] = v;
   out[k] = e;
 };

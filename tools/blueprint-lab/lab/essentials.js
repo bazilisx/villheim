@@ -16,6 +16,20 @@
 // - chestsStacked: a chest with another within 0.6 m across and 0.3 to 1.5 m above or below (the corpus note).
 // - chestsPaired: a chest with another of the same kind beside it, sides 0.15 m apart or closer (this file's own).
 // - tablesDressed: a table with a loose piece within 0.9 m and 0.5 to 1.6 m over its pivot (rel.tablesDressed).
+// - tablesWithSeats: a table with a seat within 2.2 m (rel.tablesWithSeats, this file's reading of it).
+// - bedsAboveMain: a bed more than 1.2 m over the lowest storey with a fire (or the lowest storey) (rel.bedsAboveMainFloor).
+// - bedsOnFireStorey: a bed with a fire within 1.2 m in height (rel.bedsOnFireStorey).
+// - bedsSideBySide: a bed with another bed of the same facing within 2.6 m, 0.3 m in height (rel.bedsSideBySide, this
+//   file's reading).
+// - wallSeatsCrowded: seats more than 2.2 m from every table with another such seat within 1.2 m.
+// - Table to fire: the distance from each table to the nearest fire on its storey (0.3 m in height), quartiles, against
+//   data/interior.json items piece_table fire [3.73, 7.44, 14.94] and piece_table_round [3.93, 6.54, 12.61].
+// - Door distance: tables, seats and chests to the nearest door piece on their storey, quartiles, against the corpus
+//   items' door quartiles in data/interior.json.
+// - Bare floor: per design, the share of the ground storey's covered floor (1 m points on floor pieces with a roof or
+//   floor 2 to 9 m over them) farther than 2.5 m from every piece standing on that floor (rugs, mounts and things
+//   on tables left out); the mean over designs. The corpus has no count for this; it is a measure of what the lead
+//   saw (bare halves of big rooms).
 const path = require('path');
 const flags = process.argv.slice(2);
 const arg = (k, d) => (flags.includes(k) ? flags[flags.indexOf(k) + 1] : d);
@@ -43,6 +57,7 @@ function run() {
   const kinds = {}, rel = {};
   const r = (k, hit) => { const e = rel[k] || (rel[k] = [0, 0]); e[1]++; if (hit) e[0]++; };
   let n = 0, ms = 0;
+  const tableFire = [], bare = [], doorD = { table: [], seat: [], chest: [] };
   for (const type of TYPES) for (const biome of BIOMES) for (const [stage, decor] of STAGES) for (let s = 0; s < seeds; s++) {
     const t0 = Date.now();
     const d = G.generate({ type, biome, stage, decor, seed: 11 + 97 * s, yard: false });
@@ -89,6 +104,45 @@ function run() {
     });
     const loose = dec.filter(q => !/^(rug_|jute_carpet)/.test(q.name) && !CAT.table.test(q.name) && !CAT.seat.test(q.name) && !CAT.bed.test(q.name));
     for (const p of tables) r('tablesDressed', loose.some(q => Math.hypot(q.x - p.x, q.z - p.z) < 0.9 && q.y - p.y >= 0.5 && q.y - p.y <= 1.6));
+    for (const p of tables) r('tablesWithSeats', seats.some(q => Math.abs(q.y - p.y) < 1 && Math.hypot(q.x - p.x, q.z - p.z) < 2.2));
+    const doors = d.pieces.filter(p => !p.decor && PB.piece(p.name).role === 'door');
+    for (const [c, list] of [['table', tables], ['seat', seats], ['chest', chests]]) for (const p of list) {
+      const dd = doors.filter(q => q.y - p.y > -0.6 && q.y - p.y < 1.6).map(q => Math.hypot(q.x - p.x, q.z - p.z));
+      if (dd.length) doorD[c].push(Math.min(...dd));
+    }
+    for (const p of tables) { const fd = fires.filter(f => Math.abs(f.y - p.y) < 0.3).map(f => Math.hypot(f.x - p.x, f.z - p.z)); if (fd.length) tableFire.push(Math.min(...fd)); }
+    const free = seats.filter(p => !tables.some(t => Math.abs(t.y - p.y) < 1 && Math.hypot(t.x - p.x, t.z - p.z) < 2.2));
+    for (const p of free) r('wallSeatsCrowded', free.some(q => q !== p && Math.abs(q.y - p.y) < 0.3 && Math.hypot(q.x - p.x, q.z - p.z) < 1.2));
+    const beds = of('bed');
+    if (beds.length) {
+      const fy = fires.map(f => f.y), ly = Math.min(...dec.map(p => p.y));
+      const main = fy.length ? Math.min(...fy) : ly;
+      for (const p of beds) {
+        r('bedsAboveMain', p.y > main + 1.2);
+        r('bedsOnFireStorey', fires.some(f => Math.abs(f.y - p.y) < 1.2));
+        r('bedsSideBySide', beds.some(q => q !== p && Math.abs(q.y - p.y) < 0.3 && Math.hypot(q.x - p.x, q.z - p.z) < 2.6 && off90(yawOf(q) - yawOf(p)) < 10 && Math.abs(((yawOf(q) - yawOf(p)) % 360 + 360) % 360 - 180) > 10));
+      }
+    }
+    // bare floor of the ground storey
+    const fl = d.pieces.filter(p => !p.decor && PB.piece(p.name).role === 'floor');
+    if (fl.length) {
+      const f0 = Math.min(...fl.map(p => p.y));
+      const over = d.pieces.filter(p => !p.decor && ['roof', 'floor'].includes(PB.piece(p.name).role) && p.y > f0 + 2 && p.y < f0 + 9).map(box);
+      const stand = dec.filter(p => !/^(rug_|jute_carpet)/.test(p.name) && Math.abs(p.y - f0) < 0.6).map(box);
+      if (stand.length) {
+        let pts = 0, far = 0;
+        for (const f of fl.filter(p => Math.abs(p.y - f0) < 0.3)) {
+          const s = PB.piece(f.name).size || [2, 0.25, 2], fb = box(f);
+          for (let x = fb.x0 + 0.5; x < fb.x1; x += 1) for (let z = fb.z0 + 0.5; z < fb.z1; z += 1) {
+            if (!over.some(o => x > o.x0 && x < o.x1 && z > o.z0 && z < o.z1)) continue;
+            pts++;
+            if (!stand.some(b2 => ptBox(x, z, b2) < 2.5)) far++;
+          }
+          void s;
+        }
+        if (pts) bare.push(far / pts);
+      }
+    }
   }
   const out = { designs: n, msPer: Math.round(ms / n), kinds: {}, rel: {} };
   for (const [t, K] of Object.entries(kinds)) {
@@ -99,6 +153,10 @@ function run() {
     }
   }
   for (const [k, [h, t]] of Object.entries(rel)) out.rel[k] = { pct: t ? Math.round(1000 * h / t) / 10 : 0, of: t };
+  const q = (a, f) => { const b = a.slice().sort((x, y) => x - y); return b.length ? Math.round(b[Math.min(b.length - 1, Math.floor(f * b.length))] * 100) / 100 : null; };
+  out.doorDist = Object.fromEntries(Object.entries(doorD).map(([k, a]) => [k, { n: a.length, q: [q(a, 0.25), q(a, 0.5), q(a, 0.75)] }]));
+  out.tableFire = { n: tableFire.length, q: [q(tableFire, 0.25), q(tableFire, 0.5), q(tableFire, 0.75)] };
+  out.bare = { designs: bare.length, mean: bare.length ? Math.round(1000 * bare.reduce((a, b) => a + b, 0) / bare.length) / 10 : null, over20: bare.filter(v => v > 0.2).length };
   return out;
 }
 
@@ -111,6 +169,10 @@ if (require.main === module) {
   console.log('(distinct prefabs / share of floors using the most common one)');
   for (const [t, K] of Object.entries(o.kinds)) console.log(t.padEnd(10) + cats.map(c => (K[c] ? K[c].top : '-').slice(0, 15).padStart(16)).join(''));
   for (const [k, v] of Object.entries(o.rel)) console.log(k.padEnd(16), String(v.pct).padStart(6), '%', `of ${v.of}`);
+  console.log('table to fire (m, quartiles)', o.tableFire.q.join(' / '), `of ${o.tableFire.n}`, '(corpus piece_table 3.73 / 7.44 / 14.94, round 3.93 / 6.54 / 12.61)');
+  for (const [k, v] of Object.entries(o.doorDist)) console.log(`${k} to the nearest door on its storey (m)`, v.q.join(' / '), `of ${v.n}`);
+  console.log('(corpus, data/interior.json items door quartiles: piece_table 2.71 / 3.75 / 6.63, round 3.41 / 4.82 / 6.56, piece_chair 2.64 / 4.37 / 7.23, piece_chest_wood 2.02 / 3.69 / 6.46)');
+  console.log(`bare ground floor ${o.bare.mean} % mean over ${o.bare.designs} designs; ${o.bare.over20} designs over 20 %`);
   if (jsonOut) require('fs').writeFileSync(jsonOut, JSON.stringify(o, null, 1));
 }
 module.exports = { run };

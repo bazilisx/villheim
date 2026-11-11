@@ -284,8 +284,17 @@ function deepest0(A, B) {
   if (!A || !B || !A.length || !B.length) return 0;
   const a = A._bb || (A._bb = aabbOf(A)), b = B._bb || (B._bb = aabbOf(B));
   if (a.x0 > b.x1 || b.x0 > a.x1 || a.y0 > b.y1 || b.y0 > a.y1 || a.z0 > b.z1 || b.z0 > a.z1) return 0;
+  // only parts that reach the other list's box can meet a part of it; pairs whose boxes miss give depth 0 (depth's own
+  // first test, made here before the call)
+  const As = [], Bs = [];
+  for (const p of A) if (!(p.x0 > b.x1 || b.x0 > p.x1 || p.y0 > b.y1 || b.y0 > p.y1 || p.z0 > b.z1 || b.z0 > p.z1)) As.push(p);
+  for (const q of B) if (!(a.x0 > q.x1 || q.x0 > a.x1 || a.y0 > q.y1 || q.y0 > a.y1 || a.z0 > q.z1 || q.z0 > a.z1)) Bs.push(q);
   let m = 0;
-  for (const a of A || []) for (const b of B || []) { const d = depth(a, b); if (d > m) m = d; }
+  for (const pa of As) for (const pb of Bs) {
+    if (pa.x0 > pb.x1 || pb.x0 > pa.x1 || pa.y0 > pb.y1 || pb.y0 > pa.y1 || pa.z0 > pb.z1 || pb.z0 > pa.z1) continue;
+    const d = depth(pa, pb);
+    if (d > m) m = d;
+  }
   return m;
 }
 

@@ -1800,12 +1800,25 @@ function dropOrphans(b) {
   const tables = b.pieces.filter(p => p.decor && (F[p.name] || {}).cat === 'table');
   const built = b.pieces.filter(p => p.decor && !F[p.name] && P.piece(p.name).structural);
   const Ck = checksLib();
+  // read as decorate.js audit reads it: on a table's top (within 5 cm of its box, 15 cm of its top), on a built
+  // counter, or hung on a wall as a shelf (a wall within 0.4 m whose height spans it); one a little off its table's
+  // top (up to 0.3 m, a top piece left at the height of what stood there before) goes down or up onto it
+  const boxD = (o, x, z) => Math.hypot(Math.max(o.x0 - x, 0, x - o.x1), Math.max(o.z0 - z, 0, z - o.z1));
   b.pieces = b.pieces.filter(p => {
-    if (!p.decor || (F[p.name] || {}).at !== 'top') return true;
-    if (tables.some(t => Math.hypot(t.x - p.x, t.z - p.z) < 1.6 && Math.abs(t.y + ((F[t.name] || {}).top || 0.75) - p.y) < 0.25)) return true;
-    if (built.some(t => { const o = Ck.aabb(t); return p.x > o.x0 - 0.1 && p.x < o.x1 + 0.1 && p.z > o.z0 - 0.1 && p.z < o.z1 + 0.1 && Math.abs(o.y1 - p.y) < 0.25; })) return true;
+    // (a set's piece that says what it rests on is read by its rest, in finish, as the audit reads it)
+    if (!p.decor || (F[p.name] || {}).at !== 'top' || (p.kb && p.rest)) return true;
+    let near = null;
+    for (const t of tables) {
+      if (boxD(Ck.aabb(t), p.x, p.z) > 0.05) continue;
+      const d = Math.abs(t.y + ((F[t.name] || {}).top || 0.75) - p.y);
+      if (d < 0.15) return true;
+      if (d < 0.3 && (!near || d < near[1])) near = [t, d];
+    }
+    if (built.some(t => { const o = Ck.aabb(t); return boxD(o, p.x, p.z) < 0.05 && Math.abs(o.y1 - p.y) < 0.2; })) return true;
     // or hung on a wall as a shelf
-    return b.pieces.some(w => !w.decor && P.piece(w.name).role === 'wall' && Math.hypot(w.x - p.x, w.z - p.z) < 1.2 && Math.abs(w.y - p.y) < 1.2);
+    if (b.pieces.some(w => !w.decor && ['wall', 'window'].includes(P.piece(w.name).role) && (o => boxD(o, p.x, p.z) < 0.4 && o.y0 < p.y && o.y1 > p.y)(Ck.aabb(w)))) return true;
+    if (near) { p.y = +(near[0].y + ((F[near[0].name] || {}).top || 0.75)).toFixed(3); return true; }
+    return false;
   });
 }
 
@@ -1840,7 +1853,9 @@ function finish(b, info) {
     const ctx = Decor.auditContext(b.pieces);
     // a chest stays up only on another chest (a set's chest left on the decorator's table, 2026-11-10)
     const onChest = p => b.pieces.some(q => q !== p && /chest|barrel|crate/.test(q.name) && Math.abs(q.x - p.x) < 0.6 && Math.abs(q.z - p.z) < 0.6 && q.y < p.y - 0.3 && q.y > p.y - 1.3);
-    const loose = b.pieces.filter(p => p.decor && p.rest === 'on' && (!Decor.auditOne(p, ctx, []) || (/chest/.test(p.name) && !onChest(p))));
+    const onStack = p => b.pieces.some(q => q !== p && /chest|barrel|crate/.test(q.name) && Math.abs(q.x - p.x) < 0.3 && Math.abs(q.z - p.z) < 0.3 && Math.abs(checksLib().aabb(q).y1 - p.y) < 0.12);
+    // and a chest the decorator stacked on another (storeStacks) whose lower chest a later pass took out or moved
+    const loose = b.pieces.filter(p => p.decor && ((p.rest === 'on' && (!Decor.auditOne(p, ctx, []) || (/chest/.test(p.name) && !onChest(p)))) || (p.stacked && !p.rest && !onStack(p))));
     if (!loose.length) break;
     const out = new Set(loose);
     b.pieces = b.pieces.filter(p => !out.has(p));

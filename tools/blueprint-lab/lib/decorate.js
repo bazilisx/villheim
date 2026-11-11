@@ -2139,7 +2139,8 @@ function storeStacks(room, c) {
     if (room.ceilAt(q.x, q.z) - top < 0.35) continue;
     // nothing on the chest already, and no wall hanging in the way
     if (room.placed.some(o => o !== q && o.y0 >= q.y1 - 0.05 && o.y0 < top + 0.1 && overlap(o.b, q.b, 0))) continue;
-    room.add(q.name, q.x, q.y1, q.z, q.yaw, { stacked: true });
+    // (the piece says so too, so a later pass that takes out the lower chest takes this one: generate.js finish)
+    room.add(q.name, q.x, q.y1, q.z, q.yaw, { stacked: true }).p.stacked = true;
     room.count--; // a stack is one place in the room
   }
 }

@@ -750,12 +750,26 @@ function groupOf(b, p, part) {
   }
   // a library assembly (lib/kitbash.js) moves whole; to leave pieces out, the piece and what stands on it (part)
   if (!part) for (const m of [...g]) if (m.kb) for (const q of b.pieces) if (q.kb === m.kb) g.add(q);
-  for (const m of [...g]) {
+  for (let k = 0; k < 3; k++) for (const m of [...g]) {
     const o = Ck.aabb(m);
-    for (const q of b.pieces) if (q.decor && !g.has(q) && !(q.rest && ['wall', 'hang'].includes(q.rest)) && !((F[q.name] || {}).at === 'mount' || (F[q.name] || {}).at === 'hang')
-      && q.x > o.x0 && q.x < o.x1 && q.z > o.z0 && q.z < o.z1 && q.y > o.y0 + 0.2 && q.y < o.y1 + 0.6) g.add(q);
+    for (const q of b.pieces) {
+      if (!q.decor || g.has(q) || (q.rest && ['wall', 'hang'].includes(q.rest)) || (F[q.name] || {}).at === 'mount' || (F[q.name] || {}).at === 'hang') continue;
+      // a set piece that says it rests on something (a mug stand on a bench, a plank top half over a chest) goes with
+      // the piece it rests on, and only with that piece
+      if (q.kb && q.rest === 'on') { if (wRestsOn(q, m)) g.add(q); continue; }
+      if (q.x > o.x0 && q.x < o.x1 && q.z > o.z0 && q.z < o.z1 && q.y > o.y0 + 0.2 && q.y < o.y1 + 0.6) g.add(q);
+    }
   }
   return [...g];
+}
+// q rests on m: m's top under q's foot, read as decorate.js audit reads a set piece's rest (kbRests)
+function wRestsOn(q, m) {
+  if (Math.abs(q.x - m.x) > 3 || Math.abs(q.z - m.z) > 3) return false;
+  const SH = SHL(), F = decorL().FURNITURE, y0 = q.y - ((F[q.name] || {}).base || 0);
+  let top = null;
+  if (SH && SH.lidAt) { top = SH.lidAt(m, q.x, q.z); if (top == null) { const W = SH.world(m); if (W && W.length) top = SH.topAt(W, q.x, q.z); } }
+  if (top == null) { const o = checksL().aabb(m); if (q.x > o.x0 && q.x < o.x1 && q.z > o.z0 && q.z < o.z1) top = o.y1; }
+  return top != null && top > y0 - 0.15 && top < y0 + 0.12;
 }
 const W_QUAT = yaw => { const a = yaw * Math.PI / 360; return [0, +Math.sin(a).toFixed(6), 0, +Math.cos(a).toFixed(6)]; };
 const wYaw = p => (p.yaw != null ? p.yaw : (() => { const [x, y, z, w] = p.q || [0, 0, 0, 1]; return Math.atan2(2 * (w * y + x * z), 1 - 2 * (y * y + x * x)) * 180 / Math.PI; })());
@@ -931,7 +945,8 @@ function openWays(b, ctx) {
   const F = decorL().FURNITURE;
   const firstChest = b.pieces.find(p => p.decor && !p.kb && !p.outside && PL.piece(p.name).role === 'storage' && /chest/.test(p.name) && !/barrel|crate/.test(p.name)) || null;
   const isFire = p => PL.piece(p.name).role === 'fire' || /fire_pit|hearth|bonfire/.test(p.name);
-  const fixed = p => !p.decor || isFire(p) || PL.piece(p.name).role === 'door' || p.wclip || p.fclip || p.trim || p.outside || p.yard || (p.rest && ['wall', 'hang'].includes(p.rest)) || ['mount', 'hang'].includes((F[p.name] || {}).at);
+  // (a set's plank top resting on its chests rides with them: p.kb and rest 'on')
+  const fixed = p => !p.decor || isFire(p) || PL.piece(p.name).role === 'door' || p.wclip || p.fclip || (p.trim && !(p.kb && p.rest === 'on')) || p.outside || p.yard || (p.rest && ['wall', 'hang'].includes(p.rest)) || ['mount', 'hang', 'fire'].includes((F[p.name] || {}).at);
   // the building's trim stays, save a trim chest, table or station that closes a way (it counts as furniture to
   // reach); the building pieces of a library set (a kitchen counter of half walls) are furniture here
   const keepAlways = p => !p.decor || isFire(p) || p === firstChest || (p.trim && !p.kb && !W_MAIN.has((F[p.name] || {}).cat)) || p.outside || p.yard;
@@ -1018,10 +1033,19 @@ function openWays(b, ctx) {
       // (D-132: "Fires can be swapped"); the lane is then looked for again on the next round
       if (!path && !closed && from.length && goal.size) {
         for (const f of b.pieces.filter(q => q.decor && q.name === 'hearth' && Math.abs(q.y - g.y) < 0.6)) {
+          // what hangs over the hearth (a spit, a cauldron) goes over the pit; one only, the rest go with the hearth
+          const o0 = checksL().aabb(f);
+          const onIt = b.pieces.filter(q => q.decor && (F[q.name] || {}).at === 'fire' && q.x > o0.x0 - 0.1 && q.x < o0.x1 + 0.1 && q.z > o0.z0 - 0.1 && q.z < o0.z1 + 0.1 && Math.abs(q.y - f.y) < 1.2);
+          const keepB = b.pieces, was = onIt.map(q => ({ q, x: q.x, z: q.z }));
           f.name = 'fire_pit';
+          const o1 = checksL().aabb(f), over = q => q.x > o1.x0 - 0.1 && q.x < o1.x1 + 0.1 && q.z > o1.z0 - 0.1 && q.z < o1.z1 + 0.1;
+          const off = onIt.filter(q => !over(q));
+          if (off.length && off.length === onIt.length) { off[0].x = +((o1.x0 + o1.x1) / 2).toFixed(3); off[0].z = +((o1.z0 + o1.z1) / 2).toFixed(3); off.shift(); }
+          if (off.length) b.pieces = b.pieces.filter(q => !off.includes(q));
           const W2 = walkMap(b);
           if (ok0(W2)) { W = W2; res.swapped++; ok = true; break; }
-          f.name = 'hearth';
+          f.name = 'hearth'; b.pieces = keepB;
+          for (const w of was) { w.q.x = w.x; w.q.z = w.z; }
         }
       }
       const cat = q => (F[q.name] || {}).cat;

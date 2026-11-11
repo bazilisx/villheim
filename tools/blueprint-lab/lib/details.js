@@ -1137,6 +1137,10 @@ function benchByDoor(b, ctx) {
       const cand = { name, x: +(e.x + ux * s * 3 + ox * 0.45).toFixed(3), y: F + 0.1, z: +(e.z + uz * s * 3 + oz * 0.45).toFixed(3), yaw: faceOut, q: quatD(faceOut) };
       if (!edgeAt.has(`${e.x + ux * s * 2},${e.z + uz * s * 2}`) || !edgeAt.has(`${e.x + ux * s * 4},${e.z + uz * s * 4}`)) continue; // wall behind it
       if (!clear(b, cand)) continue;
+      // not before another door (the second leaf of a wide entrance is the bay beside), nor against a door's torch or
+      // any other piece put up outside (the decorator's audit reads their catalog boxes, a little wider than the solids)
+      if ((b.openings || []).some(o2 => o2 !== o && ['door', 'gate'].includes(o2.kind) && !o2.storey && Math.abs((o2.e.x - cand.x) * ux + (o2.e.z - cand.z) * uz) < 2 && Math.abs((o2.e.x - cand.x) * ox + (o2.e.z - cand.z) * oz) < 1.5)) continue;
+      { const cb0 = checksD().aabb(cand); if (b.pieces.some(q => q.decor && (c => c.x0 < cb0.x1 + 0.15 && c.x1 > cb0.x0 - 0.15 && c.z0 < cb0.z1 + 0.15 && c.z1 > cb0.z0 - 0.15 && c.y0 < cb0.y1 && c.y1 > cb0.y0)(checksD().aabb(q)))) continue; }
       // nor within 0.6 m of a stair or ladder, as the decorator's audit reads a climb through the wall (a straight
       // stair up the inside of the front wall to an s3 upper floor, integration round 4)
       const cb = checksD().aabb(cand);

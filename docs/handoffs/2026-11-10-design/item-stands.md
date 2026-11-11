@@ -394,7 +394,7 @@ None.
 
 Branch `design/wip-stands`. Bundles not rebuilt or committed. Not tried in the game.
 
-### Corpus rerun (commits 4568214, 9707d08, the data in 3d1c7d0 or later)
+### Corpus rerun (commits 4568214, 9707d08, the data and the test in 5c38eac)
 
 - `lab/mine_stands.js`: a flat stand on a chest or barrel is read at the lid (the top of its box; `SH.topAt` gave the
   collider top, piece_chest_wood 0.21 m against a lid at 0.79). New counts: `byBuild` (for each place, builds with a

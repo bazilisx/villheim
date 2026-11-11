@@ -79,7 +79,10 @@ if (mode === 'kitbash') {
     // it matched mirrored), in the pick's own member order
     const inv = new Map(m.map.map((j, i) => [j, i]));
     const mm = m.map.map(j => { const q = m.c.members[j]; return [q.n, m.mir ? -q.x : q.x, q.y, q.z, m.mir ? (360 - q.yaw) % 360 : q.yaw, q.rest, q.on != null ? inv.get(q.on) : null, q.sink || null]; });
-    kept.push({ ...o, m: mm, c: remap(m.c.clips, m.map), cs: remap(m.c.show || m.c.clips, m.map), f: m.c.foot, h: m.c.h, b: m.c.builds, l: m.c.liked });
+    // WHOLE=1 takes the pick as the run's object has it; by default the pick keeps its own members and colliders' clips
+    // (the pair it was judged on) and takes only cs from the run
+    kept.push(process.env.WHOLE ? { ...o, m: mm, c: remap(m.c.clips, m.map), cs: remap(m.c.show || m.c.clips, m.map), f: m.c.foot, h: m.c.h, b: m.c.builds, l: m.c.liked }
+      : { ...o, cs: remap(m.c.show || m.c.clips, m.map) });
   }
   const out = { ...cur, about: cur.about + ' cs: the same clips in what shows (lib/mesh.js fine parts; VH_SHAPES=fine run, contact by the colliders, lab/show_clips.js).',
     minedFine: { builds: run.builds, liked: run.liked, found: run.found, distinct: run.objects.length }, objects: kept };

@@ -277,6 +277,13 @@ function classOf(s, an) {
   return 'wall';
 }
 const isStand = p => /^itemstandh?$/.test(p.name);
+// the share of the corpus's benches, seats and chests with a stand on them (data/stands-corpus.json inst: bench 65 of
+// 1,434, seat 128 of 8,983, chest 210 of 20,361; lab/mine_stands.js)
+const INST_S = { bench: 0.045, seat: 0.014, chest: 0.010 };
+// Off (round 7a behavior) until the pools hold their setShare floor with it: on, test_stands at d3 puts flat bench at
+// 1.9 %, flat chest 1.5 %, flat share 79 % (all in band), and the Norse Meadows and norse-forest pools at setShare 0.339
+// and 0.311 under the 0.34 floor (round 7b record).
+const INST_ROLL = false;
 // the chance a household puts things at each kind of place, before its traits (favLean)
 const FAV_P = { table: 0.7, wall: 0.65, shelf: 0.5, bench: 0.4, hearth: 0.25, rafter: 0.2, chest: 0.12, sill: 0.45, floor: 0.25, counter: 0.55 };
 // how a household's traits lean those chances (lib/persona.js: likes are about 0.3 to 1.8, hobbies 0 to 1): pots and
@@ -398,6 +405,7 @@ function dressTops(b, ctx, zones, rooms) {
   const tdLoose = b.pieces.filter(q => q.decor && !q.outside && !q.yard && !TD_NOT.test(q.name) && !TD_TABLES.test(q.name));
   const bareTable = p => !tdLoose.some(q => Math.hypot(q.x - p.x, q.z - p.z) < 0.9 && q.y - p.y >= 0.5 && q.y - p.y <= 1.6);
   const wallN = { all: 0 }, capK = 0.4 * R();
+  const seatRoll = new Map();
   for (const p of b.pieces) if (p.decor && p.name === 'itemstand') { wallN.all++; const at = wallAtS(b, p); wallN[at] = (wallN[at] || 0) + 1; }
   for (const room of roomList) {
     const m = room.m;
@@ -505,6 +513,13 @@ function dressTops(b, ctx, zones, rooms) {
       if (usedAnc.some(u => (an.of && u.of === an.of) || (an.anchor === u.anchor && Math.hypot(u.x - an.x, u.z - an.z) < (an.anchor === 'wall' ? 1.6 : 0.6)))) continue;
       if (an.anchor === 'wall' && wallBusy(an, idx, m, pick.s)) continue;
       if (an.anchor === 'table' && an.bare && !D.tableDressed(an.of, R, ctx.culture || ctx.cultureKey, P)) continue;
+      // a bench, a chair or a chest holds something as often as the corpus's do, one roll per piece (INST_S), leaned by the
+      // household's clutter round its mean: bench sets fit where table and shelf sets do not, so without the roll the
+      // room's count was met on its benches (round 6 and 7a: 35 % of benches against the corpus's 4.5 %)
+      if (INST_ROLL && (an.anchor === 'bench' || an.anchor === 'seat' || an.anchor === 'chest') && an.of) {
+        if (!seatRoll.has(an.of)) seatRoll.set(an.of, R() < INST_S[an.anchor] * Math.max(0.3, Math.min(2.5, clutter / 0.45)));
+        if (!seatRoll.get(an.of)) continue;
+      }
       if (an.ctxW) {
         const at = an.ctxW === 'plain' ? 'wall' : `wall:${an.ctxW}`, k = pick.s.pieces.filter(q => q.n === 'itemstand').length;
         if (CAPPED[at] && (wallN[at] || 0) + k > (wallN.all + k) * WALL_SHARE[at] * (CAPPED[at] + capK) + 0.5) continue;

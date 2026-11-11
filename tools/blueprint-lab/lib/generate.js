@@ -1520,12 +1520,14 @@ function settle(b, ctx) {
     seen.add(k); return true;
   });
 
-  // nothing in a doorway, on a ladder or its foot, or in a chimney
+  // nothing in a doorway, on a ladder or its foot, or in a chimney; a rug lies flat, so it stays in a doorway or at a
+  // ladder's foot (checks.js doors and ladders pass over rugs, the decorator lays them there, and corpus rugs lie a
+  // median 3.45 m from a door: data/interior.json rug_deer) and comes out of a chimney only
   const zones = keepClear(b), gone = [];
   b.pieces = b.pieces.filter(p => {
     if (!p.decor || p === fire || /cookingstation|piece_cauldron/.test(p.name) && fire && Math.hypot(p.x - fire.x, p.z - fire.z) < 0.4) return true;
-    const bx = Ck.aabb(p);
-    if (!zones.some(z => hits(bx, z))) return true;
+    const bx = Ck.aabb(p), rug = P.piece(p.name).role === 'rug';
+    if (!zones.some(z => (!rug || z.flue) && hits(bx, z))) return true;
     gone.push(bx); return false;
   });
   // and whatever stood on a table or bench that came out

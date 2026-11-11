@@ -1848,9 +1848,12 @@ function trimLights(b) {
 }
 
 // The rooms' rug budgets (lib/decorate.js rugBudget) over every rug laid by now, the same way as the lights: best
-// first, kept while the room has room at d3 (and at d2 for those that lie at d2), a rug on another rug (within 1.2 m,
-// 0.3 m in height: rel.rugsLayered) only while the room's layered rugs stay under the culture's share. Best: under or
-// by a bed, a table, a seat or the fire, the decorator's own (laid for a purpose) a little before a set's.
+// first, kept while the room has room at d3 (and at d2 for those that lie at d2). Rugs that lie at d2 fill the d2
+// budget first, so a set's rug that goes down only at d3 never takes the one place a d2 room has. Best: under or by a
+// bed, a table, a seat or the fire, the decorator's own (laid for a purpose) a little before a set's.
+// A rug on another rug (within 1.2 m, 0.3 m in height: rel.rugsLayered, which counts both rugs of a pair) comes from
+// one pair per room, kept in a room with room for two by a draw that brings the design's layered rugs to the culture's
+// share (corpusRate rl: norse 23 %, all groups 21 %); any other rug on a kept rug comes out.
 function trimRugs(b) {
   const D = decorB(), recs = b.lightRooms;
   if (!recs || !recs.length) return 0;
@@ -1864,31 +1867,85 @@ function trimRugs(b) {
   }
   if (!by.size) return 0;
   const near = (re, p, rad) => b.pieces.some(q => q.decor && re.test(PB.piece(q.name).role) && Math.abs(q.y - p.y) < 1 && Math.hypot(q.x - p.x, q.z - p.z) < rad);
+  const on = (p, q) => Math.abs(q.y - p.y) < 0.3 && Math.hypot(q.x - p.x, q.z - p.z) < 1.2;
+  const d2ok = p => p.ds !== 3 || !p.kb; // lies at d2, or may be moved there
+  // the pair draw: rooms with room for two rugs share the design's layered rugs (rl times its rugs, two per pair)
+  const rooms = [...by.keys()], two = rooms.filter(r => r.rug[3] >= 2);
+  const total = rooms.reduce((t, r) => t + Math.min(r.rug[3], by.get(r).length), 0);
+  const rl = rooms.length ? rooms.reduce((t, r) => t + (r.rug.rl || 0), 0) / rooms.length : 0;
+  const pPair = two.length ? Math.min(1, rl * total / (2 * two.length)) : 0;
   const gone = new Set();
   for (const [r, list] of by) {
     const sc = new Map(list.map(p => [p, (near(/^bed$/, p, 1.8) ? 0.7 : 0) + (near(/^table$/, p, 1.6) ? 0.6 : 0) + (near(/^fire$/, p, 3) ? 0.5 : 0) +
       (near(/^seat$/, p, 1.4) ? 0.3 : 0) + (!p.kb && !p.extra ? 0.3 : 0) + (hashB(`${p.name}|${p.x}|${p.z}`) % 1000) / 2500]));
+    const n3 = r.rug[3], n2max = r.rug[2];
+    const sorted = list.slice().sort((a, c) => sc.get(c) - sc.get(a));
     const kept = [];
     let n2 = 0;
-    const rest = list.slice().sort((a, c) => sc.get(c) - sc.get(a));
-    for (const p of rest) {
-      const on = kept.some(q => Math.abs(q.y - p.y) < 0.3 && Math.hypot(q.x - p.x, q.z - p.z) < 1.2);
-      const late = p.ds === 3;
-      const room3 = kept.length < r.rug[3], room2 = n2 < r.rug[2];
-      // a rug on a rug as often as the culture's rugs are (a draw per rug, so a room of two rugs can have its pair)
-      const layerOk = !on || (hashB(`lay|${p.x}|${p.z}`) % 1000) / 1000 < r.rug.rl * 1.5;
-      if (room3 && layerOk && (late || room2 || !p.kb)) {
-        if (!late && !room2) p.ds = 3; else if (late && room2 && !p.kb) p.ds = 2;
-        if (p.ds !== 3) n2++;
-        kept.push(p);
-        continue;
+    const keep = (p, at2) => {
+      if (at2) { if (p.ds === 3) p.ds = 2; n2++; } else if (!p.kb) p.ds = 3;
+      kept.push(p);
+    };
+    // the pair first, when the room draws one: the best two rugs that lie on each other
+    const k0 = sorted[0];
+    const wantPair = n3 >= 2 && k0 && (hashB(`pair|${k0.x}|${k0.z}|${n3}`) % 1000) / 1000 < pPair;
+    if (wantPair) {
+      let best = null;
+      for (let i = 0; i < sorted.length; i++) for (let j = i + 1; j < sorted.length; j++) {
+        const a = sorted[i], c = sorted[j];
+        if (!on(a, c)) continue;
+        const both2 = d2ok(a) && d2ok(c), v = sc.get(a) + sc.get(c) + (n2max >= 2 && both2 ? 1 : 0);
+        if (!best || v > best.v) best = { a, c, v, both2 };
       }
-      gone.add(p);
+      if (best) for (const p of [best.a, best.c]) {
+        const at2 = d2ok(p) && n2 < n2max;
+        if (at2 || p.ds === 3 || !p.kb) keep(p, at2);
+      }
+    }
+    // then rugs that lie at d2 up to the d2 budget, then the rest up to the d3 budget (a set's rug past the d2 budget
+    // that would lie at d2 comes out)
+    for (const pass of [2, 3]) for (const p of sorted) {
+      if (kept.includes(p) || kept.length >= n3 || kept.some(q => on(p, q))) continue;
+      if (pass === 2) { if (d2ok(p) && n2 < n2max) keep(p, true); continue; }
+      if (p.ds === 3 || !p.kb) keep(p, false);
+    }
+    for (const p of list) if (!kept.includes(p)) gone.add(p);
+    // a room that drew its pair and had none: a second rug laid over the first, turned and a little off it, as corpus
+    // builders layer them (most at an angle), within the room's floor and clear of its doors
+    if (wantPair && kept.length && !kept.some(a => kept.some(c => c !== a && on(a, c)))) {
+      const base = kept[0], add = layOver(b, r, base, D);
+      if (add) {
+        if (kept.length >= n3) { const last = kept[kept.length - 1]; if (last !== base) { gone.add(last); kept.pop(); } }
+        if (kept.length < n3) { b.pieces.push(add); kept.push(add); }
+      }
     }
   }
   if (!gone.size) return 0;
   b.pieces = b.pieces.filter(q => !gone.has(q));
   return gone.size;
+}
+// A rug over a rug: another kind, turned 25 to 45 degrees, its middle 0.5 to 0.9 m off the first's, every corner on the
+// room's floor cells and 1.2 m or more from a door; null where none fits
+const LAYER_RUGS = ['rug_deer', 'rug_fur', 'rug_wolf', 'jute_carpet', 'rug_straw', 'rug_hare', 'rug_bogwitch_deer', 'rug_moose', 'rug_seal'];
+function layOver(b, r, base, D) {
+  const F = D.FURNITURE, Gs = 0.5;
+  const h = hashB(`layover|${base.x}|${base.z}|${base.name}`);
+  const names = LAYER_RUGS.filter(n => n !== base.name && F[n]);
+  if (!names.length) return null;
+  const name = names[h % names.length], sz = (F[name] && F[name].s) || [2.5, 0.05, 2.5];
+  const doors = b.pieces.filter(q => !q.decor && PB.piece(q.name).role === 'door');
+  for (let k = 0; k < 8; k++) {
+    const turn = (25 + ((h >>> 3) + k * 7) % 21) * ((k + (h >>> 9)) % 2 ? 1 : -1);
+    const yaw = normB((base.yaw || 0) + turn), a = yaw * Math.PI / 180, off = 0.5 + 0.1 * (((h >>> 5) + k) % 5);
+    const dir = ((h >>> 11) + k * 3) % 8 * Math.PI / 4;
+    const x = base.x + Math.cos(dir) * off, z = base.z + Math.sin(dir) * off;
+    const c = Math.cos(a), sn = Math.sin(a), hw = sz[0] / 2, hd = sz[2] / 2;
+    const corners = [[-hw, -hd], [hw, -hd], [hw, hd], [-hw, hd]].map(([u, v]) => [x + u * c + v * sn, z - u * sn + v * c]);
+    if (!corners.every(([cx, cz]) => r.keys.has(`${Math.round(cx / Gs)},${Math.round(cz / Gs)}`))) continue;
+    if (doors.some(q => Math.abs(q.y - base.y) < 2.5 && Math.hypot(q.x - x, q.z - z) < 1.2 + Math.max(hw, hd))) continue;
+    return { name, x: +x.toFixed(3), y: +(base.y + 0.01).toFixed(3), z: +z.toFixed(3), yaw: +yaw.toFixed(2), q: quatB(+yaw.toFixed(2)), decor: true, ds: base.ds, extra: true, rest: 'floor' };
+  }
+  return null;
 }
 
 // Chests stacked on chests as corpus builders stack them (relx.chestsStacked: 58 % of chests stand on or under another

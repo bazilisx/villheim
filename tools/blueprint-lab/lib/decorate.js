@@ -1891,7 +1891,9 @@ function decorate(b, ctx) {
       // over the fire on an upper floor: the generator clears what stands over a fire it moves under the smoke hole
       if (room.upper && ctx.fireAt) room.zones.push({ b: obox(ctx.fireAt.x, ctx.fireAt.z, 4.0, 2.8, 0), why: 'flue' });
       for (const r of rects) for (const kp of r.keep || []) room.zones.push({ b: obox((kp.x0 + kp.x1) / 2, (kp.z0 + kp.z1) / 2, kp.x1 - kp.x0, kp.z1 - kp.z0, 0), why: 'keep' });
-      furnish(room, role, { ...ctx, use, type, decor, biome, kit: varyKit(kit, kitR, kitKind, kitSeen, biome, HP, ctx.culture), counts, mainRect: main, levels: ys.length, usedTemplates, layoutR });
+      const rk = varyKit(kit, kitR, kitKind, kitSeen, biome, HP, ctx.culture);
+      furnish(room, role, { ...ctx, use, type, decor, biome, kit: rk, counts, mainRect: main, levels: ys.length, usedTemplates, layoutR });
+      if (decor !== 'd1') rugTopUp(room, rk, biome, ctx.culture);
       keepLightBudget(b, room);
       if (room.plan) (b.layoutPlans || (b.layoutPlans = [])).push({ plan: room.plan, stand: room.stand, inside: room.inside });
       report.push({ level: li, role, area: room.area, items: room.count, room, template: room.template || null, scheme: room.plan ? room.plan.scheme : null, story: room.plan ? room.plan.story : null });
@@ -2537,6 +2539,27 @@ function rugBudget(room) {
   if (rate > 0 && room.area >= 20 && ['home', 'sleeping', 'hall', 'tavern', 'living'].includes(kind)) n3 = Math.max(1, n3);
   room.rugB = { 3: n3, 2: Math.round(n3 * LIGHT_D2), rl: corpusRate(room.culture, 'rl') };
   return room.rugB;
+}
+// A room whose rug budget the furnishing left short (no bed, seat or table it laid a rug by, a template with none) gets
+// free rugs up to it, the way the fill's rug slot lays one: by a seat, chest, station or bed, at the corpus distance
+// from the door, drawn among the rugs by the room kind's corpus shares. From a stream of its own, so the other rooms'
+// draws are as before. (Integration round 4: 16 of 36 home designs had no rug against 28 to 32 % of corpus buildings,
+// part of them rooms with a budget and no rug.)
+function rugTopUp(room, k, biome, culture) {
+  if (!k || !k.rug || !room.role) return 0;
+  const B = rugBudget(room);
+  let have = room.placed.filter(q => q.rug).length;
+  if (have >= B[3]) return 0;
+  const R0 = room.R;
+  room.R = rngFrom(hashD(`rugtop|${room.cx.toFixed(1)}|${room.cz.toFixed(1)}|${room.stand.toFixed(1)}|${(room.persona && room.persona.salt) || 0}`) >>> 0);
+  let n = 0;
+  try {
+    for (let i = 0; have < B[3] && i < 6; i++) {
+      const rug = corpusPick(room.R, KIT.rug.filter(nm => F[nm]), LEARN_KIND[room.role] || 'home', 'rug', culture, k.rug) || k.rug;
+      if (placeRug(room, { ...k, rug }, null)) { have++; n++; }
+    }
+  } finally { room.R = R0; }
+  return n;
 }
 function rugFull(room, name) {
   if ((F[name] || {}).at !== 'rug' || !room.role) return false;

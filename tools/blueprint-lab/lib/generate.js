@@ -1733,15 +1733,26 @@ function tidyFurniture(b) {
   const anchors = deco.filter(p => ['table', 'bed', 'seat', 'craft', 'storage', 'fire'].includes(P.piece(p.name).role) && P.piece(p.name).role !== 'rug');
   const near = (o, q, m) => { const r = boxes.get(q); return r.x0 < o.x1 + m && r.x1 > o.x0 - m && r.z0 < o.z1 + m && r.z1 > o.z0 - m && Math.abs(r.y0 - o.y0) < 0.6; };
   const gone = new Set();
+  // D-149 (Tyler, 2026-11-11): "B. Always mirror what corpus builders do." Corpus (1,739 vanilla builds, pivots only,
+  // device script vhrug/rugmine.js, 2026-11-11): 69 % of roofed chairs stand 2.3 m or more from any table and 3 m from
+  // any fire, and 99 % of those have a wall, a seat, a stand, a light, a rug, a chest, a window or a station within
+  // 1.6 m; 67 % of rugs laid flat have no furniture standing on them. A lone chair stays where something of those kinds
+  // is within reach of it (box gap 1.2 m); a bare rug stays while the design's bare rugs are within that share. Neither
+  // closes a lane or a way in: lib/layout.js openWays moves or leaves out what does.
+  const facing = /itemstand|ArmorStand|chest|barrel|crate|window|crystal|ledge|shelf|bed|sign|banner|workbench|forge|stonecutter|artisan|spinning|magetable|cartography|cauldron|oven|fermenter|chair|bench|stool|throne|torch|lantern|candle|brazier|sconce|rug_|carpet|wall|pole|beam|log/i;
+  const near1 = (o, q, m) => { const r = Ck.aabb(q); return r.x0 < o.x1 + m && r.x1 > o.x0 - m && r.z0 < o.z1 + m && r.z1 > o.z0 - m && r.y1 > o.y0 - 0.3 && r.y0 < o.y0 + 2.2; };
   for (const p of deco) {
-    if (/^piece_chair/.test(p.name)) { const o = boxes.get(p); if (!tables.some(t => near(o, t, 0.9)) && !deco.some(f => /fire_pit|hearth/.test(f.name) && near(o, f, 1.6))) gone.add(p); }
-  }
-  for (const p of deco) {
-    if (P.piece(p.name).role !== 'rug') continue;
+    if (!/^piece_chair/.test(p.name)) continue;
     const o = boxes.get(p);
-    // something standing on it (inside its footprint, not just touching an edge)
-    if (!anchors.some(q => !gone.has(q) && q !== p && near(o, q, -0.3))) gone.add(p);
+    if (tables.some(t => near(o, t, 0.9)) || deco.some(f => /fire_pit|hearth/.test(f.name) && near(o, f, 1.6))) continue;
+    if (!b.pieces.some(q => q !== p && facing.test(q.name) && near1(o, q, 1.2))) gone.add(p);
   }
+  const RUG_BARE = 0.67;
+  const rugs = deco.filter(p => P.piece(p.name).role === 'rug');
+  const bare = rugs.filter(p => { const o = boxes.get(p); return !anchors.some(q => !gone.has(q) && q !== p && near(o, q, -0.3)); });
+  // the bare rugs over the share go, the last laid first
+  const over = Math.max(0, bare.length - Math.floor(RUG_BARE * rugs.length + 1e-9));
+  for (const p of bare.slice(bare.length - over)) gone.add(p);
   if (gone.size) b.pieces = b.pieces.filter(p => !gone.has(p));
   // a long table with nobody's seat at it gets a bench along each long side where there is room
   const zones = keepClear(b);

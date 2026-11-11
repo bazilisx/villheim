@@ -1068,7 +1068,8 @@ function placeBeds(room, k, n, d, row = 1.5) {
       const ch = k.chest;
       const off = size(name)[2] / 2 + size(ch)[2] / 2 + 0.3;
       const ax = Math.sin(rec.yaw * PI / 180), az = Math.cos(rec.yaw * PI / 180);
-      if (i < (d >= 3 ? 3 : d >= 2 ? 2 : 1)) room.put(ch, rec.x + ax * off, rec.z + az * off, rec.yaw);
+      // past the d1 essential it is an extra: a library set by the bed (a nightstand, a bedside barrel) moves it aside
+      if (i < (d >= 3 ? 3 : d >= 2 ? 2 : 1)) { const c2 = room.put(ch, rec.x + ax * off, rec.z + az * off, rec.yaw); if (c2 && d >= 2) c2.p.extra = true; }
     }
   }
   if (!out.length && n > 0) {
@@ -1983,7 +1984,8 @@ function furnishPlan(room, role, c) {
       if (t && k.rug && d >= 3) placeRug(room, k, t, { mode: 'under' });
       if (k.rug) placeRug(room, k, room.fire, { mode: 'fire' });
       // a rug beside or under a bed as often as the household's comfort draws it (corpus: about 30 % of beds)
-      for (const bd of beds) if (k.rug && k.hR && k.hR() < k.bedRug) placeRug(room, k, bd, { mode: k.hR() < 0.5 ? 'beside' : 'under' });
+      // (an extra, so a set's own rug takes its place where one fits)
+      for (const bd of beds) if (k.rug && k.hR && k.hR() < k.bedRug) { const r = placeRug(room, k, bd, { mode: k.hR() < 0.5 ? 'beside' : 'under' }); if (r) r.p.extra = true; }
       placeLights(room, k, lights(d >= 3 ? 3 : 1));
       placeMounts(room, mountsFor());
       if (d >= 3) {
@@ -2900,8 +2902,11 @@ function auditOne(p, ctx, extra, allow) {
   // what hangs on a wall stays out of what shows of the walls round it (the cross bars, T-606, T-612); the pool
   // audit's mountClip reads every stand, sign and banner that way wherever it rests (a flat stand on a shelf top went
   // 9 cm into a stone wall's relief)
-  if (it.f.at === 'mount' || p.rest === 'wall' || MOUNT_LIKE.test(p.name)) {
-    const d = hungInto(p, A.struct.map(sb => sb.p).concat(more));
+  // (one that stands on something is judged against the building's own shell only, as the audit does at d2 and d3:
+  // the shelf or ledge under it is no wall)
+  const hung = it.f.at === 'mount' || p.rest === 'wall';
+  if (hung || MOUNT_LIKE.test(p.name)) {
+    const d = hungInto(p, hung ? A.struct.map(sb => sb.p).concat(more) : A.struct.map(sb => sb.p).filter(q => !q.decor));
     if (d > Math.max(HUNG_CLIP(p.name), allow || 0)) { ONE_WHY = 'hung'; return false; }
     if (d > HUNG_CLIP(p.name)) used = Math.max(used, d);
   }

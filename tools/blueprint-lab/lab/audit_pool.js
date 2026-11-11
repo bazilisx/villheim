@@ -23,6 +23,7 @@ console.log('totals:', JSON.stringify(tot));
 for (const [line, L] of Object.entries(report.lines)) {
   console.log(`\n${line}`);
   console.log('  lineage:', Object.entries(L.lineage).map(([k, v]) => `${k} ${v}`).join(', '));
+  console.log('  shape:', Object.entries(L.shape || {}).map(([k, v]) => `${k} ${v}`).join(', '));
   const broken = Object.entries(L.nest).filter(([, v]) => v !== 'ok');
   console.log('  decor nesting:', broken.length ? broken.map(([k, v]) => `${k}: ${v}`).join('; ') : 'ok at every stage');
   console.log('  beds at d1:', JSON.stringify(L.beds));

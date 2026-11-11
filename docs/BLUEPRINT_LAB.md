@@ -753,7 +753,7 @@ game judge a pool the same way. A test pool's files are read as lines (`<culture
 
 | Measure | Gated | What it catches |
 |---|---|---|
-| nestBroken | yes | a piece of d1 missing from d2, or of d2 from d3 (D-071) |
+| shapeChange | yes | a line whose plan changes shape family between stages: square-cornered (rectangle, L, T, U, cross) against angled (octagon, round), read from the share of ground floor walls off the 90 degree grid (D-132) |
 | furnClip, stacked | yes | furniture inside furniture; furniture on furniture other than chest stacks and table settings |
 | overWin | yes | something hung over a window or door |
 | stairFoot, stations | yes | a stair with nothing under its foot; a base station with no roof (D-067) |
@@ -763,8 +763,9 @@ game judge a pool the same way. A test pool's files are read as lines (`<culture
 | doorway | yes | anything solid in the middle 0.9 m of a door's way from 0.35 to 1.95 m, 0.7 m either side (a beam at the foot of a door, T-606) |
 | onStation | yes | furniture on or in a crafting station (a table on a workbench, T-606) |
 | intoWall | yes | furniture more than 15 cm into a wall, post, brace, window or door; against walls and posts by the furniture's frame (a bed's fur tucks against a wall as in the game), against braces, windows and doors by what shows of both |
-| richness | yes, on pools of six lines or more | the corpus and the library slipping out of the designs: decor prefabs per d3 design (floor 11), the share of d2 and d3 decor pieces that came in a library set (0.36) and the corpus sets, mined and creative, per d3 design (0.9), from each file's `#VillheimSets` section |
+| richness | yes, on pools of six lines or more | the corpus and the library slipping out of the designs: decor prefabs per d3 design (floor 11), the share of d2 and d3 decor pieces that came in a library set (0.34 since 2026-11-11) and the corpus sets, mined and creative, per d3 design (0.9), from each file's `#VillheimSets` section |
 | outside, intoWallSoft | watched | furniture whose middle is outside the floor's outline; furniture 5 to 15 cm into a wall |
+| nestBroken, lineage | reported, never gated | a piece of d1 missing from d2, or of d2 from d3 (D-071); the share of a stage's shell kept at the next. D-132 (Tyler): decor, fires, tables, chairs, beds and walls may move and change as a house grows; only the shape family stays |
 
 Richness (2026-11-10). `lib/blueprint.js` writes a `#VillheimSets` section before `#Pieces` (`set id;decor pieces`, from
 each piece's `kb`), which PlanBuild and the mod skip; pools written before it carry none and are not measured. The

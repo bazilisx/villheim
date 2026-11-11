@@ -3,8 +3,12 @@
 // Node and in the game's bundle (Jint), so the lab and the game judge a pool the same way.
 //
 // What it measures, per design and per line:
-//   nest      decor stages nest: every piece of d1 is in d2, every piece of d2 in d3 (D-070)
-//   lineage   share of a stage's shell (structural pieces) still standing in the next stage (D-069)
+//   nest      decor stages nest: every piece of d1 is in d2, every piece of d2 in d3 (D-070); reported, never gated
+//             (D-132, Tyler: "Its not mandatory that everything there in s1 and different d1 to d3 phases carry over")
+//   lineage   share of a stage's shell (structural pieces) still standing in the next stage (D-069); reported only
+//   shape     the plan's shape family at each stage: square-cornered (rectangle, L, T, U, cross) or angled (octagon,
+//             round), by the share of the ground floor's walls off the 90 degree grid; a line whose family changes
+//             between stages fails (D-132: "A rectangular house cant likely turn into an octagonal house")
 //   furnClip  pairs of furniture pieces whose boxes overlap by more than 12 cm on every axis (chests in chests,
 //             benches in tables: T-6xx "chests clipping each other")
 //   stacked   furniture standing on furniture that is not a chest stack or a table setting
@@ -45,10 +49,14 @@ const SH = NODE_A ? require('./shapes.js') : window.VHShapes;
 // and the second sample (lab/make_testpool.js --sample: Norse Meadows 12.2, 0.443, 1.07; norse-forest Black Forest 14,
 // 0.455, 1.78; middle-eastern Plains 13.4, 0.397, 1.08 on 2026-11-10), so they guard against slipping back. Gated on
 // pools of six lines or more: a single line ranges widely (a barn holds no corpus set, a smithy six prefabs).
-const RICH_FLOOR = { prefabsPerD3: 11, setShare: 0.36, corpusSetsPerD3: 0.9 }, RICH_LINES = 6;
-const GATE = ['richness', 'homeAlike', 'nestBroken', 'furnClip', 'stacked', 'overWin', 'stairFoot', 'stations', 'mountClip', 'hang', 'loose', 'doorway', 'onStation', 'intoWall'];
+// 2026-11-11: beds, bed rugs and foot chests at the corpus rates (decorate.js bedTaste) put Norse Meadows at 14.6,
+// 0.355, 1.62 (0.371 and 1.81 with the earlier rates, the same pool); setShare's floor moved to 0.34 to stay under it.
+const RICH_FLOOR = { prefabsPerD3: 11, setShare: 0.34, corpusSetsPerD3: 0.9 }, RICH_LINES = 6;
+const GATE = ['richness', 'homeAlike', 'shapeChange', 'furnClip', 'stacked', 'overWin', 'stairFoot', 'stations', 'mountClip', 'hang', 'loose', 'doorway', 'onStation', 'intoWall'];
 // Watched only: printed with the totals; to be gated once the generator clears them.
 const WATCH = ['outside', 'intoWallSoft'];
+// Reported only, never gated (D-132): decor stages that do not nest.
+const REPORTED = ['nestBroken'];
 const MOUNT = /^(piece_banner\d+|sign|sign_notext|itemstand|piece_shieldgeneric|cloth_hanging_|fenrirhide_hanging|Trophy|wood_dragon)/;
 const BANNER = /^piece_banner\d+$/;
 // Heights of the middle of a sign or a wall item stand over the floor under it (m): read at eye height, reached by hand.
@@ -75,6 +83,20 @@ const HANG = /^(piece_banner\d+|sign|sign_notext|itemstand|cloth_hanging_|fenrir
 const key = p => `${p.name}@${p.x.toFixed(2)},${p.y.toFixed(2)},${p.z.toFixed(2)}@${p.q.map(v => v.toFixed(2)).join(',')}`;
 const role = p => PC.piece(p.name).role;
 const structural = p => PC.piece(p.name).structural;
+// The plan's shape family from its ground floor walls: 'angled' when more than a quarter of them stand off the 90
+// degree grid (an octagon's or a round house's facets), else 'square' (rectangle, L, T, U and cross grow into one
+// another). The plan's name from the design's own name (type_biome_culture_plan-roof-walls_stage_seed) is reported.
+function shapeOf(pieces) {
+  const walls = pieces.filter(p => !p.decor && ['wall', 'halfwall', 'window', 'door'].includes(role(p)) && PC.piece(p.name).structural !== false);
+  if (!walls.length) return { family: null, plan: null };
+  const y0 = Math.min(...walls.map(p => p.y));
+  const low = walls.filter(p => p.y < y0 + 2.2);
+  const off = low.filter(p => { const q = p.q || [0, 0, 0, 1], yaw = Math.atan2(2 * q[1] * q[3], 1 - 2 * q[1] * q[1]) * 180 / Math.PI; const r = ((yaw % 90) + 90) % 90; return r > 10 && r < 80; }).length;
+  const meta = pieces.meta || {};
+  const m = /villheim:.*design (\S+)/.exec(meta.Description || '') || [null, meta.Name || ''];
+  const f = String(m[1] || '').split('_');
+  return { family: off > 0.25 * low.length ? 'angled' : 'square', plan: f.length >= 6 ? f[3].split('-')[0] : null };
+}
 const ov = (a, b, ax) => Math.min(a[ax + '1'], b[ax + '1']) - Math.max(a[ax + '0'], b[ax + '0']);
 
 function hull(points) { // convex hull, monotone chain
@@ -271,9 +293,19 @@ function pool(input, name) {
   const dir = name || '';
   const report = { pool: dir, designs: Object.values(designs).reduce((s, d) => s + Object.keys(d).length, 0), lines: {}, totals: {} };
   const MEASURES = ['furnClip', 'stacked', 'overWin', 'outside', 'stairFoot', 'stations', 'mountClip', 'hang', 'loose', 'doorway', 'onStation', 'intoWall', 'intoWallSoft'];
-  const tot = Object.fromEntries([...MEASURES, 'nestBroken'].map(k => [k, 0]));
+  const tot = Object.fromEntries([...MEASURES, 'nestBroken', 'shapeChange'].map(k => [k, 0]));
   for (const [line, d] of Object.entries(designs)) {
-    const L = report.lines[line] = { nest: {}, lineage: {}, issues: {} };
+    const L = report.lines[line] = { nest: {}, lineage: {}, shape: {}, issues: {} };
+    // the shape family at each stage (from its first decor stage written), and the gate on a change between stages
+    let prev = null;
+    for (let s = 1; s <= 3; s++) {
+      const st = ['d1', 'd2', 'd3'].map(x => d[`s${s}${x}`]).find(Boolean);
+      if (!st) continue;
+      const sh = st.shape || (st.shape = shapeOf(st.pieces));
+      L.shape[`s${s}`] = sh.family + (sh.plan ? ` (${sh.plan})` : '');
+      if (prev && sh.family && prev.family && sh.family !== prev.family) { tot.shapeChange++; (L.issues[`s${s}`] = L.issues[`s${s}`] || []).push(`shapeChange: ${prev.family} at s${s - 1}, ${sh.family} at s${s}`); }
+      if (sh.family) prev = sh;
+    }
     for (let s = 1; s <= 3; s++) {
       for (const [a, b] of [[1, 2], [2, 3]]) {
         const A = d[`s${s}d${a}`], Bd = d[`s${s}d${b}`];
@@ -336,6 +368,7 @@ function pool(input, name) {
   report.failed = GATE.filter(k => tot[k] > 0);
   report.gate = report.failed.length ? 'fail' : 'pass';
   report.watch = Object.fromEntries(WATCH.map(k => [k, tot[k]]));
+  report.reported = Object.fromEntries(REPORTED.map(k => [k, tot[k]]));
   return report;
 }
 
@@ -381,6 +414,7 @@ function summary(report, n = 3) {
   if (report.richLow && report.richLow.length) out.push(`  richness: ${report.richLow.join('; ')}`);
   if (report.rich) out.push(`richness: ${Object.entries(report.rich).map(([k, v]) => `${k} ${v}`).join(', ')}`);
   out.push(`watched: ${Object.entries(report.watch).map(([k, v]) => `${k} ${v}`).join(', ')}`);
+  if (report.reported) out.push(`reported (never gated, D-132): ${Object.entries(report.reported).map(([k, v]) => `${k} ${v}`).join(', ')}`);
   return out.join('\n');
 }
 
@@ -390,10 +424,13 @@ function group(files, parse) {
   for (const [f, text] of Object.entries(files)) {
     const m = f.match(/^(.*)_s(\d)d(\d)(\.blueprint)?$/);
     const [line, stage] = m ? [m[1], `s${m[2]}d${m[3]}`] : [f.replace(/\.blueprint$/, ''), 'one'];
-    (out[line] = out[line] || {})[stage] = parse(text).pieces;
+    const bp = parse(text);
+    // the file's name and description go with its pieces (the plan's name for the shape report)
+    if (bp.meta) Object.defineProperty(bp.pieces, 'meta', { value: bp.meta, enumerable: false });
+    (out[line] = out[line] || {})[stage] = bp.pieces;
   }
   return out;
 }
 
-const apiA = { audit, pool, summary, group, likeness, signature, GATE, WATCH };
+const apiA = { audit, pool, summary, group, likeness, signature, shapeOf, GATE, WATCH, REPORTED };
 if (NODE_A) module.exports = apiA; else window.VHAudit = apiA;

@@ -6,6 +6,7 @@
 // A piece is {name, x, y, z, q: [qx, qy, qz, qw]} in Valheim world units (y up, left handed).
 
 const Pieces = (typeof module !== 'undefined') ? require('./pieces.js') : window.VHPieces;
+const MeshR = () => (typeof module !== 'undefined' ? require('./mesh.js') : window.VHMesh);
 
 let MODELS;
 function models() {
@@ -36,6 +37,76 @@ function meshPack() {
     MESHPACK = null;
   }
   return MESHPACK;
+}
+
+// ---------------------------------------------------------------- items on item stands
+
+// What an item stand holds, drawn where the game puts it (data/item-models.json, lab/build_models.js --items): the
+// item's proxy in its own frame, set at the stand's attach point with the item's own attach position, rotation and
+// scale (ItemStand.SetVisualItem). An item the data has no model for is a small labeled box (ITEM_MISSING lists them).
+let ITEMS;
+function itemModels() {
+  if (ITEMS !== undefined) return ITEMS;
+  ITEMS = null;
+  try {
+    if (typeof window !== 'undefined' && window.VHItemModels) ITEMS = window.VHItemModels;
+    else if (typeof require === 'function') ITEMS = require('../data/item-models.json');
+  } catch (e) {
+    ITEMS = null;
+  }
+  return ITEMS;
+}
+const ITEM_MISSING = new Set();
+function qmulR(a, b) {
+  const [ax, ay, az, aw] = a, [bx, by, bz, bw] = b;
+  return [aw * bx + ax * bw + ay * bz - az * by, aw * by - ax * bz + ay * bw + az * bx, aw * bz + ax * by - ay * bx + az * bw, aw * bw - ax * bx - ay * by - az * bz];
+}
+/** The item a stand holds: p.item ({name} or a name) as the generator sets it, or the info field read from a file. */
+function standItemName(p) {
+  if (!/^itemstand/.test(p.name)) return null;
+  const it = p.item ? (typeof p.item === 'string' ? p.item : p.item.name) : (p.info && /^[A-Za-z]/.test(p.info) ? p.info.split(':')[0] : null);
+  return it || null;
+}
+/** Each held item as a piece of its own, '@item:<name>', placed in the world as the game places it. */
+function standItems(pieces, opts = {}) {
+  const IM = itemModels();
+  if (opts.items === false) return [];
+  const out = [];
+  for (const p of pieces) {
+    const n = standItemName(p);
+    if (!n) continue;
+    const it = IM && IM.items[n];
+    const at = it && it.at && it.at[p.name];
+    const q = p.q || [0, 0, 0, 1], sc = p.s || [1, 1, 1];
+    if (!at) {
+      // no model: a small box over the stand's attach point, labeled with the item's name
+      ITEM_MISSING.add(n);
+      const st = IM && IM.stands && IM.stands[p.name];
+      const a = st ? st.attach.t : [0, 0.05, 0];
+      const r = rotate(q, [a[0] * sc[0], a[1] * sc[1], a[2] * sc[2] + (p.name === 'itemstand' ? 0.05 : 0)]);
+      out.push({ name: '@item:?', label: n, x: p.x + r[0], y: p.y + r[1] + (p.name === 'itemstandh' ? 0.05 : 0), z: p.z + r[2], q });
+      continue;
+    }
+    const r = rotate(q, [at.c[0] * sc[0], at.c[1] * sc[1], at.c[2] * sc[2]]);
+    out.push({ name: '@item:' + n, x: p.x + r[0], y: p.y + r[1], z: p.z + r[2], q: qmulR(q, at.q), s: at.s, stand: p });
+  }
+  return out;
+}
+const ITEM_INFO = { role: 'item', structural: false, color: '#8a7656', mat: 'wood', size: [0.1, 0.1, 0.1], shape: 'box' };
+function itemModel(name) {
+  const n = name.slice(6), IM = itemModels(), it = IM && IM.items[n];
+  const faces = [];
+  const ips = it ? it.parts || (it.k && MeshR() ? MeshR().unpack(it.k) : null) : null;
+  if (ips && ips.length) {
+    ips.forEach((part, pi) => {
+      const col = partColor(part, ITEM_INFO), pat = 0;
+      for (const f of partFaces(part)) faces.push({ ...f, ...faceFrame(f.pts, f.n), col, pat, part: pi, alpha: part.m === 'glass' ? 0.5 : 1, closed: true });
+    });
+  } else {
+    const col = hexRgb('#c8452c');
+    for (const f of partFaces({ t: 'box', c: [0, 0, 0], s: [0.1, 0.1, 0.1] })) faces.push({ ...f, ...faceFrame(f.pts, f.n), col, pat: 0, part: 0, alpha: 1, closed: true });
+  }
+  return { name, info: ITEM_INFO, faces, model: true, item: true };
 }
 
 /** Use other models (or {} for none, to draw the old box shapes). */
@@ -350,8 +421,12 @@ function pieceModel(name, useMesh) {
   const key = useMesh ? 'mesh:' + name : name;
   let m = MODEL_CACHE.get(key);
   if (m) return m;
+  if (name.startsWith('@item:')) { m = itemModel(name); MODEL_CACHE.set(key, m); return m; }
   const info = Pieces.piece(name);
-  const md = models()[name];
+  const md0 = models()[name];
+  // the parts are packed in data/piece-models.json and data/piece-fine.json (lib/mesh.js parts); a model set given
+  // to setModels may still carry its own
+  const md = md0 && !md0.parts && MeshR() ? { ...md0, parts: MeshR().parts(name) } : md0;
   const mesh = useMesh && meshPack() && meshPack()[name];
   const faces = [];
   if (mesh) {
@@ -443,7 +518,7 @@ function sceneFaces(pieces, opts = {}) {
   const out = [];
   let id = 0;
   const useMesh = opts.meshes !== false && !!meshPack();
-  for (const p of pieces) {
+  for (const p of pieces.concat(standItems(pieces, opts))) {
     const m = pieceModel(p.name, useMesh), info = m.info;
     if (opts.hide && opts.hide.includes(info.role)) continue;
     if (cut != null && (ROOF_ROLES.includes(info.role) || /^beam\d/.test(info.shape))) continue;
@@ -778,6 +853,6 @@ const VIEWS = [
   { key: 'inside', az: 35, el: 55, cut: 2.6, label: 'inside, roof off' },
 ];
 
-const api = { polygons, draw, plan, planSize, VIEWS, pieceModel, coverage, setModels, meshPack, PAT, pattern, project, unproject };
+const api = { polygons, draw, plan, planSize, VIEWS, pieceModel, coverage, setModels, meshPack, PAT, pattern, project, unproject, standItems, ITEM_MISSING };
 if (typeof module !== 'undefined') module.exports = api;
 else window.VHRender = api;

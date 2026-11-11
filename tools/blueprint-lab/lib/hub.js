@@ -626,8 +626,9 @@ function roundHall(b, K, C, T, o) {
   const beyondIn = (x, z) => Math.max(...nM.map(([a, c]) => x * a + z * c)) - aIn;
   const zw = aIn < 12 ? 8 : 2 * Math.round(0.7 * aIn / 2);
   // the side rooms' partition (from s4) where the village drew it: the corpus inner wall lines of round builds lie at a
-  // share of the radius (SHAPE_Q.round.inner), kept under the gallery and 3 m or more off the wall
-  const oddU = v => 2 * Math.ceil((v - 1) / 2) + 1, xmLo = oddU(gallery ? rIn : ap - 3.5);
+  // share of the radius (SHAPE_Q.round.inner), 3 m or more off the wall
+  // (the corpus places run from 0.26 to 1.01 of the radius, quantiles 10 to 90; the hall keeps 7 m round the fire)
+  const oddU = v => 2 * Math.ceil((v - 1) / 2) + 1, xmLo = oddU(Math.max(7, 0.42 * ap, drum ? apD + 2 : 0));
   const xmHi = 2 * Math.floor((Math.min(ap - 3, Math.sqrt(Math.max(0, ap * ap - 6.6 * 6.6))) - 1) / 2) + 1;
   const xmP = Math.min(xmHi, Math.max(xmLo, oddU(V.part * ap)));
   // the part round's straight front at z = zc (an odd metre, about 0.4 of the way out; clear of the drum, and at s5
@@ -1205,7 +1206,9 @@ function furnish(b, K, C, T, o, F) {
   const pR = rngH((P.salt ^ 0x5eed) >>> 0);
   const light = PS.pickW(pR, { piece_walltorch: 3 * tilt('light', 'piece_walltorch'), piece_dvergr_lantern: tilt('light', 'piece_dvergr_lantern') * P.likes.lights * (0.5 + P.wealth) });
   const rugK = PS.pickW(pR, Object.fromEntries(['rug_fur', 'rug_deer', 'rug_wolf', 'jute_carpet'].map(n => [n, tilt('rug', n) * (/jute/.test(n) ? 1 : P.likes.rugs)])));
-  V.light = light; V.rug = rugK;
+  // (a group's chairs by the culture's corpus seats and the persona: the finer chairs with comfort and wealth)
+  const chairK = PS.pickW(pR, Object.fromEntries(['piece_chair', 'piece_chair02', 'piece_chair03'].map(n => [n, tilt('seat', n) * (n === 'piece_chair' ? 1.5 - P.wealth : 0.4 + 0.6 * (P.comfort + P.wealth))])));
+  V.light = light; V.rug = rugK; V.chair = chairK;
   V.trophyRows = ww.trophy >= 1 ? 3 : 2;
   // the fire at the heart (stone flags under it from s2, D-131), in the form the village drew (V.hearth): the stone
   // hearth, a fire pit, or a long fire of a hearth between two pits across the hall
@@ -1350,7 +1353,7 @@ function furnish(b, K, C, T, o, F) {
     if (!place.put('piece_table', x, 0.125, z, yaw, ds(d))) return false;
     const a = rad(yaw), ex = Math.cos(a), ez = -Math.sin(a), nx = Math.sin(a), nz = Math.cos(a);
     for (const [px, pz, py] of [[ex * 1.6, ez * 1.6, yaw + 90], [-ex * 1.6, -ez * 1.6, yaw - 90], [nx * 0.95 + ex * 0.6, nz * 0.95 + ez * 0.6, yaw + 180], [-nx * 0.95 - ex * 0.6, -nz * 0.95 - ez * 0.6, yaw]])
-      place.put('piece_chair', x + px, 0.125, z + pz, py, ds(d));
+      place.put(V.chair || 'piece_chair', x + px, 0.125, z + pz, py, ds(d));
     nGroups++;
     return true;
   };
@@ -1580,6 +1583,7 @@ const SHAPE_Q = {
 // [Wz, Wx, D] (odd metres), storey height and storeys.
 const BASE_DIA = { s2: 10.05, s3: 15.2, s4: 20.1, s5: 30.4 };
 const BASE_OCT = { s2: 4, s3: 6, s4: 8, s5: 12 };
+const OCT_MAX = 16;
 const CSPEC = { s2: [7, 7, 3, 3, 1], s3: [9, 9, 5, 4, 1], s4: [13, 11, 5, 3, 2], s5: [15, 13, 7, 3, 2] };
 // A village's place in the corpus size spread, as a scale on the stage's base: the square root of the drawn area over
 // the median, the draw kept between the quartile at 25 % and the 90 % one (the stage's band).
@@ -1589,10 +1593,13 @@ const sizeScale = (u, q) => Math.sqrt(quant(0.25 + 0.65 * u, q) / q[2]);
 // nearest. Side lengths are even (2 m wall bays).
 function roundSpec(variant, stage, V) {
   if (variant === 'octagon') {
-    const want = BASE_OCT[stage] * (+stage[1] >= 4 ? Math.max(1, V.size) : V.size);
+    const want = BASE_OCT[stage] * (stage === 's4' ? Math.max(1, V.size) : V.size);
     let L = Math.max(4, 2 * Math.round(want / 2));
     if (stage !== 's2') L = Math.max(L, BASE_OCT['s' + (+stage[1] - 1)] * 1 + 2);
-    return [8, Math.min(12, L)];
+    // (14 m sides leave the floor band open at the corners: the nearer of 12 and 16)
+    L = Math.min(OCT_MAX, L);
+    if (L === 14) L = want >= 14 ? 16 : 12;
+    return [8, L];
   }
   const want = BASE_DIA[stage] * (+stage[1] >= 4 ? Math.max(1, V.size) : V.size), cands = [];
   // (sides 16 and more, in fours, so the hall has walls square to its axes for the back door, the side rooms and the
@@ -1769,6 +1776,12 @@ function generate(req, T) {
   info.top = +topOf(b.pieces).toFixed(1);
   info.mainTop = +topOf(b.pieces.filter(p => !p.crown)).toFixed(1);
   info.layout = V.sig;
+  // the plan as built (lab/test_hub_variance.js): its size, the side-room wall, the porch and the annexes
+  if (k >= 2) {
+    const nAnnex = (b.rooms || []).filter(r => r.annex).length, porch = k < 4 || V.porch === 'none' ? 'none' : ext.porch6 ? 'columns' : 'entrance';
+    const wallAt = F.sideX != null ? `side rooms at ${(+F.sideX).toFixed(0)} m` : 'no side rooms';
+    info.shape = [line === 'cross' ? `${2 * F.Wx} x ${2 * F.Wz} m, arms ${2 * F.D} m` : `${F.N} sides of ${F.L} m, ${(2 * F.ap).toFixed(1)} m`, wallAt, `porch ${porch}`, `annexes ${nAnnex}`].join('; ');
+  }
   const name = `hub_${biome.replace(' ', '')}_${cultureKey}_${line}_${stage}${decor}_${seed}`;
   return {
     ground: 0,

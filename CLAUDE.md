@@ -75,6 +75,18 @@ https://en.wikipedia.org/wiki/Wikipedia:Signs_of_AI_writing
   in vanilla (D-015).
 - **Stone in early villages.** Meadows and Black Forest villages build in wood at their early stages; stone only for
   advanced buildings and later stages (D-012).
+- **Materials as for a player.** Building pieces and paths costs materials; anything the village breaks down returns
+  its full materials, straight into the chest with nothing dropped; trees, rocks and obstacles yield what they yield a
+  player; changing a path returns nothing (D-088, Tyler 2026-11-10). Open questions on costs: D-100.
+- **Doorways.** Villagers always use doorways and never use indoor things from outside or through windows. Every door
+  is usable by villagers and players. A villager at a blocked entrance opens the door, tries, then passes through the
+  blocked doorway; never through a closed door (D-096).
+- **Homes and beds.** Beds and houses are assigned ahead of time by arrival order, never claimed. The roster is rolled
+  ahead with family sizes; a first house is big enough for the family still to come. Families have at most 4 people
+  in any mix. Four villagers at the start, with no fixed rule that the first ones are single. No house without beds
+  for everyone who will live in it. Beds never change hands (D-077, not built yet).
+- **Building kinds.** The storehouse (storage) and the longhouse (social hub) are separate buildings (D-113). The first
+  plot of a building is big enough for its last stage (D-083).
 
 ## Code layout rule (hot reload)
 
@@ -105,7 +117,8 @@ https://en.wikipedia.org/wiki/Wikipedia:Signs_of_AI_writing
   for word and does not reword them. "Decision on record" restates only what the answer says, then where it is built
   (file) once it is built. A detail the answer leaves open becomes a new Open row.
 - **Status.** Open: asked. Answered: Tyler has answered. Done: built in the code, with the file named in "Decision on
-  record". Whether it works in the game is recorded in the Tests tab.
+  record"; for a rule with no code, written into CLAUDE.md or the doc named there. Tyler sets rows to Answered; a
+  session sets Done once the work is built. Whether it works in the game is recorded in the Tests tab.
 - **Open rows.** Code does not treat an Open row as decided. When work needs a value before Tyler answers, the value is
   a setting and the row says which value is in use until he answers.
 - **Code that differs from a decision** gets an Open row ("Code differs from D-###") stating the decision, what the
@@ -134,6 +147,9 @@ Before ending any session that changed something:
    form: `- **DATE (short title)** - see docs/daily-notes/YYYY-MM/YYYY-MM-DD.md`.
 3. Tick off or add items in `docs/ROADMAP.md` by the Roadmap rule in Records and evidence.
 4. Commit and push as Baz.
+
+Pushes come in clusters of related fixes and changes, so one cluster can be reverted alone if it proves faulty
+(D-123).
 
 Keep `SESSION_HISTORY.md` short. Narrative goes in daily notes. One doc per purpose: update an existing doc before
 creating a new one.

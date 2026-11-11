@@ -316,6 +316,9 @@ well (Tyler, 2026-11-08). The Features tab of the review sheet (`docs/features/b
   1. [x] Pool audit as a gate for `make_testpool.js` and `vh testpool make`; every round 6 screenshot defect is a
      measure (558604b).
   2. [x] One table of piece sizes from the game's models, `lab/test_sizes.js` (4496d51).
+  2h. [ ] Paused 2026-11-10, resume from docs/handoffs/2026-11-10-design/README.md: decor any biome and no caps (D-065,
+     D-126; design/wip-decor-limits), item stands (design/wip-stands), hearths and lighting (design/wip-hearths), and
+     D-132 (stages and decor phases need not carry everything over; nesting and shell kept become reported measures).
   2b. [ ] **Next, asked for by Tyler (2026-11-10):** one more round of tightening the piece models: rerun
      `lab/extract_models.py` on Tyler's PC (game files under Z:\SteamLibrary\steamapps\common\Valheim, UnityPy) with
      a finer proxy (more parts than the 40 or so now), `lab/build_models.js`, then every check; and in `lib/mesh.js`

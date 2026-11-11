@@ -1,0 +1,1019 @@
+{
+ "baseline_5277c77": {
+  "designs": 216,
+  "pieces": 8236,
+  "prefabs": 80,
+  "minedShare": 2.6,
+  "builtShare": 40.1,
+  "ownShare": 57.3,
+  "minedSets": 58,
+  "top16Share": 80.7,
+  "top": [
+   [
+    "itemstandh",
+    1236
+   ],
+   [
+    "Candle_resin",
+    814
+   ],
+   [
+    "piece_chest_barrel",
+    733
+   ],
+   [
+    "itemstand",
+    721
+   ],
+   [
+    "piece_chest_wood",
+    707
+   ],
+   [
+    "piece_walltorch",
+    664
+   ],
+   [
+    "piece_bench01",
+    313
+   ],
+   [
+    "piece_groundtorch_wood",
+    240
+   ],
+   [
+    "sign",
+    218
+   ],
+   [
+    "bed",
+    186
+   ],
+   [
+    "piece_chair",
+    162
+   ],
+   [
+    "piece_table",
+    160
+   ],
+   [
+    "piece_chest",
+    145
+   ],
+   [
+    "rug_deer",
+    129
+   ],
+   [
+    "piece_groundtorch",
+    115
+   ],
+   [
+    "rug_fur",
+    107
+   ]
+  ],
+  "biomes": {
+   "Meadows": {
+    "prefabs": 27,
+    "minedShare": 1.8,
+    "perDesign": 41
+   },
+   "Black Forest": {
+    "prefabs": 36,
+    "minedShare": 2.8,
+    "perDesign": 38
+   },
+   "Swamp": {
+    "prefabs": 50,
+    "minedShare": 2.5,
+    "perDesign": 42
+   },
+   "Mountain": {
+    "prefabs": 55,
+    "minedShare": 2.4,
+    "perDesign": 29
+   },
+   "Plains": {
+    "prefabs": 53,
+    "minedShare": 0.8,
+    "perDesign": 26
+   },
+   "Mistlands": {
+    "prefabs": 73,
+    "minedShare": 3.9,
+    "perDesign": 54
+   }
+  },
+  "stages": {
+   "s1": {
+    "prefabs": 64,
+    "minedShare": 1.9,
+    "perDesign": 27
+   },
+   "s2": {
+    "prefabs": 71,
+    "minedShare": 2,
+    "perDesign": 38
+   },
+   "s3": {
+    "prefabs": 68,
+    "minedShare": 3.4,
+    "perDesign": 49
+   }
+  },
+  "refusals": {
+   "built": {
+    "placed": 523,
+    "refused": 1475,
+    "why": {
+     "1": 36,
+     "2": 78,
+     "3": 70,
+     "4": 16,
+     "6": 96,
+     "7": 9,
+     "8": 2,
+     "9": 2,
+     "11": 22,
+     "12": 23,
+     "13": 130,
+     "17": 316,
+     "18": 70,
+     "19": 8,
+     "20": 16,
+     "22": 1,
+     "23": 6,
+     "25": 64,
+     "27": 42,
+     "28": 5,
+     "29": 58,
+     "30": 298,
+     "31": 11,
+     "anchor": 91,
+     "area": 5
+    }
+   },
+   "mined": {
+    "placed": 95,
+    "refused": 2005,
+    "why": {
+     "1": 60,
+     "2": 44,
+     "3": 20,
+     "4": 315,
+     "5": 1,
+     "6": 57,
+     "7": 3,
+     "8": 7,
+     "9": 15,
+     "10": 1,
+     "11": 124,
+     "12": 51,
+     "13": 367,
+     "15": 5,
+     "17": 417,
+     "18": 5,
+     "19": 4,
+     "20": 96,
+     "22": 1,
+     "25": 12,
+     "26": 114,
+     "30": 166,
+     "31": 86,
+     "anchor": 34
+    }
+   }
+  }
+ },
+ "library_first_wip_before_creative": {
+  "designs": 216,
+  "pieces": 9311,
+  "prefabs": 81,
+  "minedShare": 6.8,
+  "builtShare": 42,
+  "ownShare": 51.2,
+  "minedSets": 91,
+  "top16Share": 81.1,
+  "top": [
+   [
+    "itemstandh",
+    1871
+   ],
+   [
+    "itemstand",
+    911
+   ],
+   [
+    "piece_walltorch",
+    854
+   ],
+   [
+    "piece_chest_wood",
+    827
+   ],
+   [
+    "Candle_resin",
+    732
+   ],
+   [
+    "piece_chest_barrel",
+    636
+   ],
+   [
+    "piece_bench01",
+    269
+   ],
+   [
+    "sign",
+    246
+   ],
+   [
+    "piece_groundtorch_wood",
+    196
+   ],
+   [
+    "bed",
+    187
+   ],
+   [
+    "piece_chair",
+    170
+   ],
+   [
+    "piece_table",
+    167
+   ],
+   [
+    "piece_chest",
+    155
+   ],
+   [
+    "ArmorStand",
+    122
+   ],
+   [
+    "rug_deer",
+    109
+   ],
+   [
+    "piece_logbench01",
+    99
+   ]
+  ],
+  "biomes": {
+   "Meadows": {
+    "prefabs": 27,
+    "minedShare": 4.6,
+    "perDesign": 46
+   },
+   "Black Forest": {
+    "prefabs": 40,
+    "minedShare": 6.5,
+    "perDesign": 46
+   },
+   "Swamp": {
+    "prefabs": 55,
+    "minedShare": 8,
+    "perDesign": 49
+   },
+   "Mountain": {
+    "prefabs": 55,
+    "minedShare": 6.6,
+    "perDesign": 29
+   },
+   "Plains": {
+    "prefabs": 57,
+    "minedShare": 3.4,
+    "perDesign": 27
+   },
+   "Mistlands": {
+    "prefabs": 75,
+    "minedShare": 9.4,
+    "perDesign": 62
+   }
+  },
+  "stages": {
+   "s1": {
+    "prefabs": 64,
+    "minedShare": 5.2,
+    "perDesign": 31
+   },
+   "s2": {
+    "prefabs": 71,
+    "minedShare": 6.2,
+    "perDesign": 43
+   },
+   "s3": {
+    "prefabs": 75,
+    "minedShare": 8.2,
+    "perDesign": 55
+   }
+  },
+  "refusals": {
+   "built": {
+    "placed": 594,
+    "refused": 2361,
+    "why": {
+     "1": 75,
+     "2": 97,
+     "5": 92,
+     "6": 130,
+     "7": 29,
+     "9": 5,
+     "11": 60,
+     "12": 32,
+     "13": 236,
+     "17": 682,
+     "18": 63,
+     "19": 19,
+     "20": 36,
+     "22": 6,
+     "25": 125,
+     "27": 25,
+     "28": 2,
+     "29": 54,
+     "30": 414,
+     "31": 29,
+     "anchor": 150
+    }
+   },
+   "mined": {
+    "placed": 307,
+    "refused": 3293,
+    "why": {
+     "1": 95,
+     "2": 83,
+     "4": 296,
+     "5": 40,
+     "6": 87,
+     "7": 4,
+     "8": 17,
+     "9": 22,
+     "11": 258,
+     "12": 130,
+     "13": 638,
+     "15": 1,
+     "17": 641,
+     "18": 5,
+     "19": 12,
+     "20": 199,
+     "22": 4,
+     "25": 21,
+     "26": 263,
+     "30": 282,
+     "31": 139,
+     "anchor": 56
+    }
+   }
+  }
+ },
+ "main_with_creative_5e7588a": {
+  "designs": 216,
+  "pieces": 8814,
+  "prefabs": 95,
+  "minedShare": 2.1,
+  "creativeShare": 3.7,
+  "builtShare": 38.3,
+  "ownShare": 55.9,
+  "minedSets": 43,
+  "creativeSets": 48,
+  "top16Share": 81.2,
+  "top": [
+   [
+    "itemstandh",
+    1341
+   ],
+   [
+    "piece_walltorch",
+    858
+   ],
+   [
+    "piece_chest_barrel",
+    814
+   ],
+   [
+    "piece_chest_wood",
+    804
+   ],
+   [
+    "Candle_resin",
+    795
+   ],
+   [
+    "itemstand",
+    758
+   ],
+   [
+    "piece_bench01",
+    313
+   ],
+   [
+    "sign",
+    260
+   ],
+   [
+    "piece_groundtorch_wood",
+    204
+   ],
+   [
+    "bed",
+    185
+   ],
+   [
+    "piece_table",
+    167
+   ],
+   [
+    "piece_chest",
+    162
+   ],
+   [
+    "piece_chair",
+    150
+   ],
+   [
+    "rug_deer",
+    124
+   ],
+   [
+    "rug_fur",
+    116
+   ],
+   [
+    "piece_groundtorch",
+    105
+   ]
+  ],
+  "biomes": {
+   "Meadows": {
+    "prefabs": 37,
+    "minedShare": 2,
+    "perDesign": 42
+   },
+   "Black Forest": {
+    "prefabs": 43,
+    "minedShare": 3,
+    "perDesign": 43
+   },
+   "Swamp": {
+    "prefabs": 52,
+    "minedShare": 1.8,
+    "perDesign": 43
+   },
+   "Mountain": {
+    "prefabs": 58,
+    "minedShare": 0.6,
+    "perDesign": 29
+   },
+   "Plains": {
+    "prefabs": 56,
+    "minedShare": 1.8,
+    "perDesign": 28
+   },
+   "Mistlands": {
+    "prefabs": 81,
+    "minedShare": 2.8,
+    "perDesign": 60
+   }
+  },
+  "stages": {
+   "s1": {
+    "prefabs": 72,
+    "minedShare": 1.4,
+    "perDesign": 30
+   },
+   "s2": {
+    "prefabs": 75,
+    "minedShare": 1.7,
+    "perDesign": 40
+   },
+   "s3": {
+    "prefabs": 82,
+    "minedShare": 2.9,
+    "perDesign": 53
+   }
+  },
+  "refusals": {
+   "built": {
+    "placed": 493,
+    "refused": 1403,
+    "why": {
+     "1": 33,
+     "2": 67,
+     "3": 70,
+     "4": 2,
+     "6": 106,
+     "7": 8,
+     "8": 2,
+     "9": 3,
+     "11": 30,
+     "12": 17,
+     "13": 116,
+     "17": 190,
+     "18": 34,
+     "19": 4,
+     "20": 22,
+     "22": 4,
+     "23": 6,
+     "25": 74,
+     "27": 38,
+     "28": 7,
+     "29": 60,
+     "30": 327,
+     "31": 110,
+     "anchor": 69,
+     "area": 4
+    }
+   },
+   "mined": {
+    "placed": 91,
+    "refused": 1615,
+    "why": {
+     "1": 53,
+     "2": 42,
+     "3": 7,
+     "4": 135,
+     "5": 2,
+     "6": 53,
+     "8": 8,
+     "9": 12,
+     "10": 1,
+     "11": 95,
+     "12": 74,
+     "13": 333,
+     "17": 150,
+     "20": 80,
+     "22": 2,
+     "25": 9,
+     "26": 112,
+     "30": 128,
+     "31": 298,
+     "anchor": 21
+    }
+   },
+   "creative": {
+    "placed": 126,
+    "refused": 580,
+    "why": {
+     "1": 10,
+     "2": 15,
+     "3": 9,
+     "4": 6,
+     "6": 11,
+     "7": 1,
+     "8": 3,
+     "9": 6,
+     "10": 1,
+     "11": 56,
+     "12": 19,
+     "13": 54,
+     "17": 132,
+     "18": 1,
+     "20": 12,
+     "22": 3,
+     "25": 47,
+     "26": 7,
+     "29": 1,
+     "30": 34,
+     "31": 140,
+     "anchor": 9,
+     "area": 3
+    }
+   }
+  }
+ },
+ "library_first_1545946": {
+  "designs": 216,
+  "pieces": 9748,
+  "prefabs": 106,
+  "minedShare": 3.5,
+  "creativeShare": 7.6,
+  "builtShare": 41.6,
+  "ownShare": 47.3,
+  "minedSets": 75,
+  "creativeSets": 57,
+  "top16Share": 80.3,
+  "top": [
+   [
+    "itemstandh",
+    1811
+   ],
+   [
+    "piece_walltorch",
+    920
+   ],
+   [
+    "itemstand",
+    883
+   ],
+   [
+    "piece_chest_wood",
+    865
+   ],
+   [
+    "Candle_resin",
+    785
+   ],
+   [
+    "piece_chest_barrel",
+    781
+   ],
+   [
+    "piece_bench01",
+    309
+   ],
+   [
+    "sign",
+    258
+   ],
+   [
+    "piece_groundtorch_wood",
+    198
+   ],
+   [
+    "bed",
+    185
+   ],
+   [
+    "piece_chair",
+    168
+   ],
+   [
+    "piece_table",
+    165
+   ],
+   [
+    "piece_chest",
+    143
+   ],
+   [
+    "rug_deer",
+    127
+   ],
+   [
+    "rug_fur",
+    114
+   ],
+   [
+    "ArmorStand",
+    111
+   ]
+  ],
+  "biomes": {
+   "Meadows": {
+    "prefabs": 44,
+    "minedShare": 3.1,
+    "perDesign": 49
+   },
+   "Black Forest": {
+    "prefabs": 51,
+    "minedShare": 5.4,
+    "perDesign": 49
+   },
+   "Swamp": {
+    "prefabs": 69,
+    "minedShare": 4.2,
+    "perDesign": 48
+   },
+   "Mountain": {
+    "prefabs": 64,
+    "minedShare": 1.7,
+    "perDesign": 30
+   },
+   "Plains": {
+    "prefabs": 65,
+    "minedShare": 1.8,
+    "perDesign": 31
+   },
+   "Mistlands": {
+    "prefabs": 89,
+    "minedShare": 3.6,
+    "perDesign": 64
+   }
+  },
+  "stages": {
+   "s1": {
+    "prefabs": 87,
+    "minedShare": 3.1,
+    "perDesign": 32
+   },
+   "s2": {
+    "prefabs": 86,
+    "minedShare": 2.9,
+    "perDesign": 46
+   },
+   "s3": {
+    "prefabs": 94,
+    "minedShare": 4.2,
+    "perDesign": 57
+   }
+  },
+  "refusals": {
+   "built": {
+    "placed": 570,
+    "refused": 1752,
+    "why": {
+     "1": 52,
+     "2": 100,
+     "5": 82,
+     "6": 115,
+     "7": 16,
+     "8": 1,
+     "9": 1,
+     "11": 66,
+     "12": 31,
+     "13": 41,
+     "17": 347,
+     "18": 39,
+     "19": 3,
+     "20": 23,
+     "22": 6,
+     "25": 80,
+     "27": 43,
+     "28": 6,
+     "29": 59,
+     "30": 375,
+     "31": 124,
+     "32": 18,
+     "anchor": 124
+    }
+   },
+   "mined": {
+    "placed": 160,
+    "refused": 2181,
+    "why": {
+     "1": 69,
+     "2": 54,
+     "4": 186,
+     "5": 13,
+     "6": 61,
+     "7": 3,
+     "8": 11,
+     "9": 9,
+     "10": 2,
+     "11": 189,
+     "12": 101,
+     "13": 178,
+     "14": 24,
+     "15": 18,
+     "17": 288,
+     "18": 1,
+     "19": 4,
+     "20": 137,
+     "22": 6,
+     "25": 16,
+     "26": 180,
+     "30": 172,
+     "31": 314,
+     "32": 89,
+     "anchor": 56
+    }
+   },
+   "creative": {
+    "placed": 265,
+    "refused": 758,
+    "why": {
+     "1": 12,
+     "2": 18,
+     "4": 7,
+     "5": 9,
+     "6": 24,
+     "8": 1,
+     "9": 3,
+     "11": 94,
+     "12": 27,
+     "13": 34,
+     "15": 1,
+     "17": 201,
+     "18": 5,
+     "19": 1,
+     "20": 20,
+     "25": 59,
+     "26": 11,
+     "30": 47,
+     "31": 133,
+     "32": 29,
+     "anchor": 22
+    }
+   }
+  }
+ },
+ "decor_any_biome_wip": {
+  "designs": 216,
+  "pieces": 10107,
+  "prefabs": 118,
+  "minedShare": 3.6,
+  "creativeShare": 10,
+  "builtShare": 44.9,
+  "ownShare": 41.5,
+  "minedSets": 77,
+  "creativeSets": 71,
+  "top16Share": 77.5,
+  "top": [
+   [
+    "itemstandh",
+    1735
+   ],
+   [
+    "piece_walltorch",
+    1019
+   ],
+   [
+    "piece_chest_barrel",
+    994
+   ],
+   [
+    "itemstand",
+    901
+   ],
+   [
+    "Candle_resin",
+    802
+   ],
+   [
+    "piece_chest_wood",
+    647
+   ],
+   [
+    "dvergrprops_stool",
+    297
+   ],
+   [
+    "piece_bench01",
+    275
+   ],
+   [
+    "sign",
+    250
+   ],
+   [
+    "bed",
+    182
+   ],
+   [
+    "piece_groundtorch_wood",
+    179
+   ],
+   [
+    "piece_chest",
+    121
+   ],
+   [
+    "piece_table",
+    118
+   ],
+   [
+    "piece_groundtorch_green",
+    107
+   ],
+   [
+    "piece_chair",
+    106
+   ],
+   [
+    "ArmorStand",
+    104
+   ]
+  ],
+  "biomes": {
+   "Meadows": {
+    "prefabs": 74,
+    "minedShare": 3.6,
+    "perDesign": 50
+   },
+   "Black Forest": {
+    "prefabs": 84,
+    "minedShare": 3.2,
+    "perDesign": 52
+   },
+   "Swamp": {
+    "prefabs": 77,
+    "minedShare": 4.2,
+    "perDesign": 48
+   },
+   "Mountain": {
+    "prefabs": 82,
+    "minedShare": 3.4,
+    "perDesign": 30
+   },
+   "Plains": {
+    "prefabs": 77,
+    "minedShare": 2.6,
+    "perDesign": 32
+   },
+   "Mistlands": {
+    "prefabs": 95,
+    "minedShare": 4.1,
+    "perDesign": 69
+   }
+  },
+  "stages": {
+   "s1": {
+    "prefabs": 100,
+    "minedShare": 3.5,
+    "perDesign": 35
+   },
+   "s2": {
+    "prefabs": 105,
+    "minedShare": 3.2,
+    "perDesign": 46
+   },
+   "s3": {
+    "prefabs": 107,
+    "minedShare": 4,
+    "perDesign": 60
+   }
+  },
+  "refusals": {
+   "built": {
+    "placed": 698,
+    "refused": 1508,
+    "why": {
+     "1": 29,
+     "2": 91,
+     "4": 2,
+     "5": 129,
+     "6": 119,
+     "7": 28,
+     "9": 4,
+     "11": 70,
+     "12": 35,
+     "13": 45,
+     "17": 391,
+     "18": 50,
+     "19": 5,
+     "20": 17,
+     "22": 11,
+     "25": 83,
+     "27": 49,
+     "28": 7,
+     "29": 75,
+     "31": 148,
+     "32": 18,
+     "anchor": 102
+    }
+   },
+   "mined": {
+    "placed": 172,
+    "refused": 2194,
+    "why": {
+     "1": 58,
+     "2": 69,
+     "4": 191,
+     "5": 24,
+     "6": 59,
+     "7": 5,
+     "8": 13,
+     "9": 19,
+     "11": 208,
+     "12": 111,
+     "13": 171,
+     "14": 27,
+     "15": 24,
+     "17": 339,
+     "18": 7,
+     "19": 5,
+     "20": 104,
+     "22": 5,
+     "25": 13,
+     "26": 196,
+     "30": 39,
+     "31": 352,
+     "32": 103,
+     "anchor": 52
+    }
+   },
+   "creative": {
+    "placed": 370,
+    "refused": 825,
+    "why": {
+     "1": 8,
+     "2": 32,
+     "4": 6,
+     "5": 19,
+     "6": 25,
+     "7": 2,
+     "8": 8,
+     "9": 3,
+     "11": 117,
+     "12": 25,
+     "13": 42,
+     "15": 1,
+     "17": 230,
+     "18": 6,
+     "20": 15,
+     "22": 1,
+     "25": 55,
+     "26": 5,
+     "29": 1,
+     "30": 43,
+     "31": 119,
+     "32": 44,
+     "anchor": 18
+    }
+   }
+  }
+ }
+}

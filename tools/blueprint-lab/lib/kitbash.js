@@ -736,7 +736,7 @@ function placeable(p, bx, mm, i, b, ctx, room, idx, zones, made, clipOf, anc, fi
   // a floor piece stands on this level's floor all round
   if (p.rest === 'floor' && !flat && anc.anchor !== 'stair' && !pts.slice(1).every(([x, z]) => { const c = m.cellAt(x, z); return !c || Math.abs(c.st - m.stand) < 0.06; })) return no(3);
   // under the ceiling, and no deeper in the floor than its source
-  if (bx.y1 > m.ceilAt(cx, cz) - 0.08) return no(4);
+  if (bx.y1 > m.ceilAt(cx, cz) - 0.08) { if (STATS_B) { const H = STATS_B.ceil || (STATS_B.ceil = []); H.push({ n: p.name, top: +(bx.y1 - m.stand).toFixed(2), ceil: +(m.ceilAt(cx, cz) - m.stand).toFixed(2), li: room.li, a: anc.anchor, id: a.id, type: ctx.type, role: room.role }); } return no(4); }
   if (bx.y0 < m.stand - (mm.sink || 0) - 0.06) return no(5);
   // out of doorways, climbs, chimneys and the room's keep-clear boxes; out of the fire's ring
   if (!flat) {
@@ -779,7 +779,7 @@ function placeable(p, bx, mm, i, b, ctx, room, idx, zones, made, clipOf, anc, fi
     if (p.rest === 'wall' && dist < 0.5 && !rod && (st.ks.has('window') || st.ks.has('open') || st.ks.has('none'))) return no(12);
   }
   // the audit's own tests: what it rests on is there, and plain wall behind a wall piece
-  if (!decorB().auditOne(p, idx.audit, made.filter(Boolean))) return no(13);
+  if (!decorB().auditOne(p, idx.audit, made.filter(Boolean))) { if (STATS_B) { const H = STATS_B.audit || (STATS_B.audit = {}); const k = decorB().oneWhy() + ' ' + p.name; H[k] = (H[k] || 0) + 1; } return no(13); }
   if (p.rest === 'wall' && !m.faces.some(f => !f.edge && Math.abs((cx - f.px(0)) * f.nx + (cz - f.pz(0)) * f.nz - f.ht) < 0.6 &&
     (cx * f.ux + cz * f.uz) > f.a0 && (cx * f.ux + cz * f.uz) < f.a1)) return no(14);
   if (p.rest === 'hang' && !idx.near(bx).some(r => !r.p.decor && r.b.info.structural && r.b.x0 < cx && r.b.x1 > cx && r.b.z0 < cz && r.b.z1 > cz && r.b.y0 > bx.y1 - 0.3 && r.b.y0 < bx.y1 + 0.5)) return no(15);
@@ -807,7 +807,7 @@ function placeable(p, bx, mm, i, b, ctx, room, idx, zones, made, clipOf, anc, fi
     let allow = 0;
     if (!q.decor && ['wall', 'window', 'gable', 'beam', 'pole'].includes(role)) allow = clipOf(i, 'w');
     if (anc.of && q === anc.of) allow = Math.max(allow, clipOf(i, 'a'));
-    if (d > allow + 0.01) { LASTQ_B = `${q.name}${q.decor ? '*' : ''} ${d.toFixed(2)}`; return no(17); }
+    if (d > allow + 0.01) { LASTQ_B = `${q.name}${q.decor ? '*' : ''} ${d.toFixed(2)}`; if (STATS_B) { const H = STATS_B.clip || (STATS_B.clip = {}); const k = `${q.decor ? (q.kb ? (/^KB-/.test(q.kb) ? 'mined' : 'kit') : 'decorator') : 'building'} ${PB.piece(q.name).role}`; H[k] = (H[k] || 0) + 1; } return no(17); }
     deepest = Math.max(deepest, d);
   }
   made.forEach((o, j) => {

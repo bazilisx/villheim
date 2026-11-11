@@ -1,7 +1,7 @@
 // How much of the corpus and the interior library reaches generated designs (Tyler, 2026-11-10: "what can I or my
 // helpers do to get as much as appropriate from the corpus and the library into these different designs?").
 //
-// Usage, from tools/blueprint-lab: node lab/richness.js [--seeds 2] [--quick] [--json out.json] [--list]
+// Usage, from tools/blueprint-lab: node lab/richness.js [--seeds 2] [--quick] [--json out.json] [--list] [--why]
 // Sample: home, longhouse, tavern, smithy, workshop, storage in Meadows, Black Forest, Swamp, Mountain, Plains and
 // Mistlands, at s1d3, s2d3 and s3d3, two seeds each (216 designs, no yards). --quick: s3d3 only.
 // Reports: distinct decor prefabs; the share of decor pieces from mined assemblies (kb 'KB-'), from hand-made kits
@@ -66,10 +66,14 @@ if (require.main === module) {
   console.log('top 16:', r.top.map(([k, c]) => `${k} ${c}`).join(', '));
   console.log('by biome:', Object.entries(r.biomes).map(([k, v]) => `${k} ${v.prefabs} prefabs, ${v.minedShare} % mined, ${v.perDesign} a design`).join('; '));
   console.log('by stage:', Object.entries(r.stages).map(([k, v]) => `${k} ${v.prefabs} prefabs, ${v.minedShare} % mined, ${v.perDesign} a design`).join('; '));
-  for (const [kind, S] of Object.entries(r.library)) {
+  for (const kind of ['mined', 'built']) {
+    const S = r.library[kind];
+    if (!S) continue;
     console.log(`\n${kind} sets: placed ${S.placed}, turned down ${S.refused} (sets tried and refused at every anchor)`);
     for (const [k, c] of Object.entries(S.why).sort((a, b) => b[1] - a[1])) console.log(`  ${String(c).padStart(5)}  ${String(k).padEnd(6)} ${WHY[k] || ''}`);
   }
+  // --why: which of the audit's tests (auditOne) and what the clips were against, counted per piece tried
+  if (process.argv.includes('--why')) for (const k of ['audit', 'clip']) console.log(`\n${k}:`, Object.entries(r.library[k] || {}).sort((a, b) => b[1] - a[1]).slice(0, 20).map(([x, c]) => `${x} ${c}`).join(', '));
   if (process.argv.includes('--list')) console.log('\nall prefabs:', r.prefabList.map(([k, c]) => `${k} ${c}`).join(', '));
   if (jsonOut) require('fs').writeFileSync(jsonOut, JSON.stringify(r, null, 1));
 }

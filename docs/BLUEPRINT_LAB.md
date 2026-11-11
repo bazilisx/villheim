@@ -765,11 +765,24 @@ one count per set that no anchor in a room took; `setStats` turns the count on).
 | | Prefabs | Mined | Hand-made | Decorator | Mined sets | Top 16 | Meadows prefabs |
 |---|---|---|---|---|---|---|---|
 | Baseline (5277c77) | 80 | 2.6 % | 40.1 % | 57.3 % | 58 | 80.7 % | 27 |
+| Ceilings by solids | 79 | 3.0 % | 40.6 % | 56.4 % | 64 | 81.5 % | 28 |
 
 Baseline refusals of mined sets (95 placed, 2,005 turned down): a clip with something placed (417, mostly the
 decorator's own furniture), the audit's rest and visible-clip tests (367), over the ceiling (315), no prefab of the
 slot in the biome's reach (166), tall in front of a window (124), one kind only (114). Hand-made kits: 523 placed,
 1,475 turned down; clips (316) and no prefab in reach (298) lead.
+
+Ceilings (2026-11-10). The storey is 3 m already (`generate.js` `MIN_STOREY`, a 2 m wall course and a 1 m half wall;
+2.5 m for sunken huts). The low ceilings came from how rooms were read: `decorate.js` `roomModel` took a cell's
+ceiling from the bounding box of what is over it, and a 45 degree roof piece's box reaches a metre below its slab, so
+every room under a sloped roof had a ceiling 1.8 to 2.0 m over the floor along its eaves walls. Cells now take the
+lowest underside of the game's solids over their middle and four corners (pieces with no solids keep the box); a
+cell counts as covered when something is over its middle, as before. Eaves walls now read 2.6 to 2.7 m (the wall
+plate). Refusals for the ceiling went from 315 to 156; the decorator also stacks more chests where it now sees room.
+Taller storeys were measured on the s3d3 sample (72 designs): 3.5 m gave 75 prefabs and 4.3 % mined, 4 m 82 and
+5.1 %, against 69 and 3.3 % at 3 m. The sets still turned down for the ceiling hang their torches and stands at 3 to
+4 m in their source builds (tall halls). That gain is small next to the clips with the decorator's furniture, so the
+storey stays 3 m; hung pieces slide down instead (below).
 
 ## One table of piece sizes
 

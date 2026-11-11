@@ -399,6 +399,14 @@ function readLevel(pieces, levelY, rects) {
   return out;
 }
 
+const CEIL_PTS = [[0, 0], [-0.24, -0.24], [0.24, -0.24], [-0.24, 0.24], [0.24, 0.24]];
+const OW = typeof WeakMap !== 'undefined' ? new WeakMap() : null;
+function overWorld(p) {
+  if (OW) { const c = OW.get(p); if (c && c.x === p.x && c.y === p.y && c.z === p.z) return c.v; }
+  const v = SHD.world(p);
+  if (OW) OW.set(p, { x: p.x, y: p.y, z: p.z, v });
+  return v;
+}
 function roomModel(cellList, stand, boxes, over, pieces, near) {
   const set = new Map(cellList.map(c => [ck(c.i, c.j), c]));
   const room = { cells: cellList, set, stand, boxes, near, area: cellList.length * G * G };
@@ -420,13 +428,24 @@ function roomModel(cellList, stand, boxes, over, pieces, near) {
   room.z0 = Math.min(...cellList.map(c => c.z)) - G / 2; room.z1 = Math.max(...cellList.map(c => c.z)) + G / 2;
   // ceiling over each cell
   const nearOver = indexOf(over, o => o.b);
+  // by the game's solids where they are known: a sloped roof piece's box reaches a metre below its slab, so the box
+  // put the ceiling of a room under a 45 degree roof at 1.8 m over the floor all along its eaves walls (2026-11-10, lab
+  // richness: a third of the library's sets were refused as over the ceiling). The lowest underside over the cell's
+  // middle and its four corners, so whatever stands in the cell is under it.
+  // A cell is covered when something is over its middle, as before.
+  let nCov = 0;
   for (const c of cellList) {
-    let h = Infinity;
-    for (const o of nearOver(c.x, c.z, 0.1)) if (o.y0 < h && ptDist(o.b, c.x, c.z) < 0.01) h = o.y0;
-    c.ceil = h;
+    let h = Infinity, mid = false;
+    for (const o of nearOver(c.x, c.z, 0.35)) {
+      const W = SHD && SHD.has(o.p.name) ? overWorld(o.p) : null;
+      if (!W || !W.length) { if (ptDist(o.b, c.x, c.z) < 0.01) { mid = true; if (o.y0 < h) h = o.y0; } continue; }
+      CEIL_PTS.forEach(([dx, dz], k) => { const u = SHD.undersideAt(W, c.x + dx, c.z + dz, stand + 1.2); if (u != null) { if (!k) mid = true; if (u < h) h = u; } });
+    }
+    c.ceil = mid ? h : Infinity;
+    if (mid) nCov++;
   }
   const ceils = cellList.map(c => c.ceil).filter(isFinite).sort((a, b) => a - b);
-  room.covered = ceils.length / cellList.length;
+  room.covered = nCov / cellList.length;
   room.ceiling = ceils.length ? ceils[Math.floor(ceils.length / 2)] : stand + 3;
   room.ceilAt = (x, z) => { const c = room.cellAt(x, z); return c && isFinite(c.ceil) ? c.ceil : room.ceiling; };
   // wall faces: wall pieces next to the room, grouped by line and side, joined where they touch
@@ -2719,13 +2738,15 @@ function auditOne(p, ctx, extra) {
   const more = (extra || []).filter(q => q !== p);
   const built = more.filter(q => !F[q.name] && P.piece(q.name).structural).map(structBox);
   const wallish = A.wallish.concat(built.filter(sb => WALLISH.has(sb.role)));
-  if (it.f.at === 'mount' && !mountOk(it, wallish)) return false;
-  if (p.rest && !kbRests(it, A.pieces.concat(more), wallish, A.struct.concat(built))) return false;
-  if (SHOWS_DEEP.has(it.f.cat) && showsInto(p, A.struct.map(sb => sb.p)) > SHOWS_MAX) return false;
+  if (it.f.at === 'mount' && !mountOk(it, wallish)) { ONE_WHY = 'mount'; return false; }
+  if (p.rest && !kbRests(it, A.pieces.concat(more), wallish, A.struct.concat(built))) { ONE_WHY = 'rest ' + p.rest; return false; }
+  if (SHOWS_DEEP.has(it.f.cat) && showsInto(p, A.struct.map(sb => sb.p)) > SHOWS_MAX) { ONE_WHY = 'shows'; return false; }
   // what hangs on a wall stays out of what shows of the walls round it (the cross bars, T-606, T-612)
-  if ((it.f.at === 'mount' || p.rest === 'wall') && hungInto(p, A.struct.map(sb => sb.p).concat(more)) > HUNG_CLIP(p.name)) return false;
+  if ((it.f.at === 'mount' || p.rest === 'wall') && hungInto(p, A.struct.map(sb => sb.p).concat(more)) > HUNG_CLIP(p.name)) { ONE_WHY = 'hung'; return false; }
   return true;
 }
+// which of auditOne's tests turned the last piece down (lab/richness.js)
+let ONE_WHY = '';
 // How deep what shows of a hung piece goes into what shows of the walls, posts and beams near it.
 function hungInto(p, others) {
   const Me = MESH_D();
@@ -2811,6 +2832,6 @@ function decorateExisting(pieces, { use = 'home', decor = 'd2', biome = 'Meadows
   return b.pieces;
 }
 
-const api = { decorate, strip, findRooms, decorateExisting, setRules, setInterior, setTemplates, templateById, audit, auditContext, auditOne, itemOf, ITEM_BIOME, FURNITURE: F, readLevel,
+const api = { oneWhy: () => ONE_WHY, decorate, strip, findRooms, decorateExisting, setRules, setInterior, setTemplates, templateById, audit, auditContext, auditOne, itemOf, ITEM_BIOME, FURNITURE: F, readLevel,
   _int: { floorLevels, standGuess, roleFor, stretch, size, ok, obox, overlap, ptDist, yawOfDir, pyaw, standOf, norm, WALLISH } };
 if (NODE_D) module.exports = api; else window.VHDecorate = api;

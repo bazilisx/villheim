@@ -542,3 +542,77 @@ After (seed 1, d3): cross s3 to s5 0.62, 0.40, 0.37; round 0.58, 0.45, 0.45; oct
 - The hub's walk test (lib/hub.js walker) and lab/test_hub.js reach still disagree in a few tight spots; the furniture
   rules above keep them apart. Worth one shared module at integration (lab/reach.js).
 - The Middle Eastern s5 rugs all touch another (8 of 8, the corpus q3 is 0.88).
+
+## Round 6 (2026-11-11): D-156 height, D-155 variety
+
+Tyler's answers (Decisions tab, column G): D-156 "re your hight limit for roofs and crowns: yes, this shouldnt play a
+role in the constraints youve set for storeys. Roofs can be taller depending on the design, and that's okay. It should
+not be cut off. Rule of cool applies, yes? WWCDD." D-155 "Just like any other building, the layout and interior decor,
+etc should be highly varied and dynamic and kitbashed such that even same cultural villages have different interior
+layouts, design, decor, etc. based on the procedural generation." D-154 (column H): the hub holds storage until
+storehouses are large enough.
+
+Commits: b643df9 (heights, draws, reach, variance test), this file. Hub refs tab: only the lead's example row at the end
+of the round.
+
+### D-156: no height cap
+
+Removed from lib/hub.js: the main-roof cap, `CROWN_OVER`, the crown that shrank to fit, the tier loop and its steps
+(`req.minTier`, `request.tier`, `request.cap`); `styles.js HUB.capH` is gone and `lab/hub_lines.js` no longer checks it.
+Kept: `HUB.capStoreys` counts storeys only; `lab/test_hub.js` checks the hub's wall storeys against the culture's other
+buildings at s3 and capStoreys. The round 3 to 5 sections above that describe the cap record what was built then.
+
+Roof proportions (`lab/hub_roofs.py`, the 300 m2 set, 108 builds): roof rise against the ground floor's short side,
+round and polygon (55 builds) median 0.34 (q10 0.18, q1 0.22, q3 0.54, q90 0.82), halls (53) 0.49 (0.25, 0.37, 0.56,
+0.64); rise median 10.9 and 9.0 m; eave median 5.2 and 3.8 m. Crown against the main roof, round 0.16 (q1 0.07, q3 0.32,
+q90 0.50), halls 0.21 (q1 0.00, q3 0.33, q90 0.62). These are `ROOF_Q` in lib/hub.js. Each village draws its place in
+the spread (`drawLayout` rise and crown; a culture with a 26 degree pitch draws in the lower 60 %): round halls get
+that many steep (45 degree) inner rings over a low eave ring; the cross's gables are 45 degrees at a drawn ratio of 0.32
+or more, else 26; the drum's walls 2 to 4 m, the posts-style raised crown 1 to 3 m posts with a finial when the draw
+leaves a metre over, the lantern tower and the flat roof's lantern 2 to 4 m. s5 heights (main roof / top, villages 1 to
+8, seed = lineage): Norse cross 9.2 to 12.2 / 9.2 to 16.2 m; Celtic round 12.1 to 18.6 / 12.1 to 23.3 m; Anglo-Saxon
+10.1 to 14.6 / 13.7 to 18.7 m; Middle Eastern 6.1 / 8.1 to 10.1 m.
+
+### D-155: layouts drawn per village
+
+`drawLayout` in lib/hub.js draws each choice from the village's lineage on its own (hash of lineage, culture and the
+choice), weights from the corpus and the culture data; recorded as `request.layout`:
+- seat: the far end (3) or a side (1, round halls with a gallery) or the near end of the back arm (1, cross); raise: dais
+  2, step 2, none 3 (s5 at least a step; corpus: 74 % of high seats at an end, dais 7 % of the set and 32 % of the top
+  tenth); the trophy wall follows the seat;
+- hearth: stone hearth, fire pit or a long fire (hearth between two pits), weights by the roof style;
+- tables: cross rows 4, U 3, groups 2, mixed 1; drum halls spokes 4, ring 2, groups 2, mixed 2; cone halls ring 4,
+  groups 3, spokes 1, mixed 1; flat roofs rugs 4, groups 3, ring 1; count 3 to 6. Spokes start at a drawn angle and keep
+  clear of the door, seat and stair; groups are a table with chairs at its heads and sides (D-152);
+- gallery at s4: full 3, none 1 (s5 always); walkway at s5 across the front 3, along a side 2, none 2 (a part round's
+  walkway always runs along its front);
+- stair side left or right; side rooms on the other side in round halls (each choice drawn, the rooms follow the
+  stair), drawn side in the cross; one room (storage) or two (storage and food prep or a closet); storage always (D-154)
+  besides the hall's wall chests;
+- kit: wall light (wall torch 3, Dvergr lantern 1), banner kind, rug kind, trophy rows 2 or 3.
+`MIRROR` is gone; the sides are drawn per choice.
+Not done: the interior dressing through decorate.js and kitbash.js with the village persona; only the kit kinds above
+vary. The cross builds both side rooms whatever `rooms` says.
+
+### Reach
+
+`lab/reach.js` copied from origin/design/integration2 (unchanged) and used by `lab/test_hub.js`. The same logic is
+copied into lib/hub.js as `reachH` for a last pass in generate that takes out decor the walk cannot reach or that stands
+in an entry zone, so the hub and the test read a design the same way. For the integration merge: lab/reach.js is that
+branch's file; reachH in lib/hub.js is a copy of it to fold into one module.
+
+### Checks run
+
+- `node lab/test_hub.js /tmp/hub6-renders 1`: all hub tests pass.
+- `node lab/test_hub_variance.js` (new): every culture, seeds 1 to 8 at s5: 8 distinct layouts of 8 in every culture;
+  per choice 1 to 3 seat places, 2 to 3 raises, 2 to 3 hearth forms, 4 to 7 table plans, 1 to 3 gallery kinds, 2 stair
+  sides, 4 to 6 room sets.
+- `node lab/test_structure.js`: all structure rules hold on 36 designs.
+- `node lib/build_web.js` then `node lab/compare_page.js`: all seven same (web/index.html restored).
+- Renders /tmp/hub6-renders: norse-cross_s5_four-villages.png and celtic-round_s5_four-villages.png (villages 1 to 4
+  side by side, whole and cut, each with its layout), and each line at s1, s3, s5.
+
+### Open
+
+- Dressing through the shared decorate and kitbash pipeline with the village persona (D-155) is not built.
+- The cross's side rooms do not follow the one-room draw; its gallery kind varies only at s4.

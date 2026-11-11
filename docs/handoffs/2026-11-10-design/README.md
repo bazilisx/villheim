@@ -17,6 +17,38 @@ All three branches sit on 539a56f; main is one commit ahead (8f3cb45). The corpu
 C:\Users\tyler\Downloads\Villheim-blueprints (connected to the session as Downloads; read only; never commit the
 builds; never use the OverDrive BiomeBlueprints pack).
 
+## Integration, round 2 (2026-11-11, branch design/integration)
+
+Merged with --no-ff: design/wip-essentials f923734 (943a419; decorate.js conflict, the room keeps both the persona
+line and the table seed line) and design/wip-hearths 5c634ed (66d1fd7; no conflicts). Fixes, one commit per cluster
+(D-123):
+- 2e1d614: the pot on a fire that slides clears doorways and climbs (generate.js settle, hearths code; tavern Plains
+  s1d1 155 ladder); the fire kerb leaves off a side in a door's way in (details.js; tavern Meadows s3d3 321).
+- 79d3a48: stackChests asks decorate.js lateClash (the audit's overlap and doorway tests for one piece; tavern
+  Mistlands s3d3 170, temple Mistlands s3d3 808); treasure_stack is no indoor pile (towers 509, 714).
+- bd0708b: eave trim goes with an eave left off over a gallery (generate.js roof loop; home Ashlands Baltic s2 4 and
+  s3 6 support and stability).
+- 4c512fd: the fitter keeps signs and wall stands at the pool audit's heights (kitbash.js hangOff, audit.js MID;
+  KB-058 and KC-142 signs on the floor failed hang in the Black Forest and Plains pools).
+- dd38633: one budget for table tops in the stand pass (stands.js); flat stands turn with their table or seat
+  (kitbash.js turnLikeCorpus); stand set tries 80 to up to 240 per room.
+- 042ba97: the lab page bundle carries audit.js. c2b68cb: bundles rebuilt.
+
+Full checks after the fixes (midpoint e74ccec in brackets): check_set 224 of 225, overlap 1 (same); test_structure
+36 hold; test_sizes 0 off; check_interiors 3 seeds, 702 designs: overlap 1 (3), door 0 (1), check:doors 0 (1),
+check:ladders 0 (1), check:overlap 0 (1), check:space 0 (1), indoorPile 0 (3), floating 7 in 5 designs (7 in 5),
+bareFloors 7 (8); pools Norse Meadows, norse-forest Black Forest and middle-eastern Plains all pass (Meadows and
+Black Forest failed hang); test_stands 3 --gate d3 misses: flat bench 8.9, wall wall 17.6, wall station 41.2, wall
+chest 2.6, flat share 83 %, stands q3 23 (midpoint: flat bench 7.2, station 35.7, flat share 84, heaps 9 %, distinct
+q3 9, stands q3 20); essentials: tables turned 23 % (17.4), seats turned 35.1 (33.3), rugs layered 18.7 (15.8),
+tables dressed 48.4 (68.3); test_variance hall 0.36 and 0.46 (0.41, 0.47); hearth measures as round 6; gen-test 5 of 5
+byte for byte; dotnet build 0 errors.
+
+Open: wall station share (41 % against 17 %): fewer wall stands reach plain wall in taverns since the essentials'
+wall seats and stacked chests came in; capping station stands at pick time (tried) took 49 of 152 wall stands away and moved
+three more wall shares out of the band, so it was left out. home Mountain s2d2 139 overlap (ground torch by a log bench)
+is in every track. The lab page's designs are not compared with node's (STAND_HI and data differ on the page).
+
 ## Rules to carry into every track (Tyler's words, Decisions tab)
 
 - D-065, D-126: any vanilla furniture, decor, light, rug, station and stand item in any biome, indoors and out, with no

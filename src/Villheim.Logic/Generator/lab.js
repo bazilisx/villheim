@@ -8587,6 +8587,8 @@ const SETS = [
   set('KS-t-mugs', 'table', [H(-0.6, 0.18, 112, { want: 'drink', at: 'table' }), H(-0.2, -0.26, 180, { want: 'drink', at: 'table' }), H(0.7, 0.2, 247, { want: 'drink', at: 'table' })],
     { of: 'table', lean: { games: 0.6, messy: 0.5 }, min: 2 }),
   set('KS-t-left', 'table', [H(0.45, 0.22, 62, { at: 'table' }), H(-0.35, -0.2, 300, { at: 'table' })], { of: 'table', lean: { messy: 0.7 }, min: 1 }),
+  set('KS-t-row', 'table', [H(-0.52, -0.3, 90, { want: 'drink', at: 'table' }), H(-0.17, -0.3, 90, { want: 'drink', at: 'table' }), H(0.18, -0.3, 90, { want: 'drink', at: 'table' }),
+    H(0.53, -0.29, 90, { at: 'table' })], { of: 'table', lean: { food: 0.5, tidy: 0.4 }, min: 3 }),
   set('KS-t-tools', 'table', [H(-0.7, -0.02, 180, { want: 'tool', at: 'table' }), H(-0.25, 0.02, 180, { want: 'tool', at: 'table' }), H(0.3, -0.04, 180, { want: 'tool', at: 'table' })],
     { of: 'table', lean: { crafts: 1, busy: 0.4 }, min: 2 }),
   set('KS-t-arms', 'table', [H(0.05, 0.2, 180, { want: 'shield', at: 'table' }), H(-0.45, -0.15, 45, { want: 'weapon', at: 'table' }), H(0.55, -0.12, 315, { want: 'weapon', at: 'table' })],
@@ -8618,6 +8620,7 @@ const SETS = [
   set('KS-c-mug', 'seat', [H(0.08, -0.05, 45, { want: 'drink', at: 'bench' })], { lean: { messy: 0.8 } }),
   // on a chest or a barrel's lid
   set('KS-ch-food', 'chest', [H(-0.3, 0.02, 90, { want: 'food', at: 'chest' }), H(0.3, -0.04, 0, { at: 'chest' })], { lean: { food: 0.6, messy: 0.4 } }),
+  set('KS-ch-three', 'chest', [H(-0.35, 0.05, 45, { at: 'chest' }), H(0, -0.06, 90, { want: 'food', at: 'chest' }), H(0.33, 0.04, 0, { want: 'drink', at: 'chest' })], { lean: { messy: 0.7, food: 0.4 }, min: 2 }),
   set('KS-ch-one', 'chest', [H(0.1, 0, 22, { at: 'chest' })], { lean: { messy: 0.3, collect: 0.3 } }),
   set('KS-ch-shield', 'chest', [H(-0.2, 0, 11, { want: 'shield', at: 'chest' }), H(0.35, 0.05, 90, { want: 'food', at: 'chest' })], { lean: { collect: 0.6 } }),
   // the wall over a workbench, a bench, a bed, a table, a chest, by the hearth or the door (the corpus's wall stands sit
@@ -8666,6 +8669,16 @@ const SETS = [
   // a mug or a dish left on the floor by a bed or a seat (a cluttered house)
   set('KS-f-mug', 'bed', [sp('itemstandh', 1.15, 0, 0.55, 30, 'floor', { want: 'drink', at: 'floor' })], { lean: { messy: 1.4 }, stage: 3 }),
 ];
+// Sets of wall stands also come a little higher and lower, so one of them finds the plain wall between a wall's bars
+// (the fitter slides each up to 0.4 m from where it is put; a set's stands keep together)
+for (const s0 of SETS.slice()) {
+  if (s0.anchor !== 'wall' || s0.high || !s0.pieces.every(q => q.n === 'itemstand')) continue;
+  for (const dy of [-0.4, 0.4]) {
+    const ys = s0.pieces.map(q => q.y + dy);
+    if (Math.min(...ys) < 1.0 || Math.max(...ys) > 2.3) continue;
+    SETS.push(Object.assign({}, s0, { pieces: s0.pieces.map(q => Object.assign({}, q, { y: +(q.y + dy).toFixed(2) })) }));
+  }
+}
 // on the sill of a window: stands set on the wall below the opening (made for each window, see sillSet)
 const SILL = [[{ x: -0.25, want: 'herbs', yaw: 20 }, { x: 0.22, yaw: 300 }], [{ x: 0, yaw: 0 }], [{ x: -0.3, want: 'food', yaw: 90 }, { x: 0.05, want: 'drink', yaw: 0 }, { x: 0.33, want: 'herbs', yaw: 45 }]];
 // on a beam overhead: one to three stands along it, half a metre apart (helmets, trophies, fish, herbs hung to dry)
@@ -8726,7 +8739,6 @@ function dressTops(b, ctx, zones, rooms) {
     for (const p of furn) {
       const yaw = normS(p.yaw || 0);
       if (TABLES.test(p.name)) {
-        // a table already set (the library's own table sets) takes nothing more; one with a candle or one dish may
         // a table already set (the library's own table sets) takes nothing more, but for a feast in its middle; one
         // with a candle or one dish may
         const on = hasOn(p);
@@ -8796,12 +8808,6 @@ function dressTops(b, ctx, zones, rooms) {
       if (DEBUG_S) {
         let k = `${s.id} ${got ? 'ok' : 'why' + KB.why()}`;
         if (!got && [13, 17].includes(KB.why())) { const r = KB._fitDebug(b, Object.assign({}, ctx, { zones }), room, an, s); k += ` ${r.piece} ${r.why === 17 ? r.q.replace(/[0-9. ]+$/, '') : D.oneWhy ? D.oneWhy() : ''}`; }
-        if (!got && KB.why() === 12 && DEBUG_S._12 == null) {
-          const ux = Math.cos(an.yaw * Math.PI / 180), uz = -Math.sin(an.yaw * Math.PI / 180);
-          DEBUG_S._12 = JSON.stringify({ an: [an.x, an.z, an.yaw, an.t, an.face.a0, an.face.a1], faces: room.m.faces.filter(f => !f.edge).map(f => {
-            const dist = (an.x - f.px(0)) * f.nx + (an.z - f.pz(0)) * f.nz - f.ht; const t = an.x * f.ux + an.z * f.uz;
-            return Math.abs(dist) < 1 ? { dist: +dist.toFixed(2), t: +t.toFixed(2), a0: f.a0, a1: f.a1, ks: [...D._int.stretch(f, t - 0.3, t + 0.3).ks], n: [f.nx, f.nz] } : null; }).filter(Boolean), ux, uz });
-        }
         DEBUG_S[k] = (DEBUG_S[k] || 0) + 1;
       }
       if (!got) continue;

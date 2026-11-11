@@ -55,6 +55,8 @@ const SETS = [
   set('KS-t-mugs', 'table', [H(-0.6, 0.18, 112, { want: 'drink', at: 'table' }), H(-0.2, -0.26, 180, { want: 'drink', at: 'table' }), H(0.7, 0.2, 247, { want: 'drink', at: 'table' })],
     { of: 'table', lean: { games: 0.6, messy: 0.5 }, min: 2 }),
   set('KS-t-left', 'table', [H(0.45, 0.22, 62, { at: 'table' }), H(-0.35, -0.2, 300, { at: 'table' })], { of: 'table', lean: { messy: 0.7 }, min: 1 }),
+  set('KS-t-row', 'table', [H(-0.52, -0.3, 90, { want: 'drink', at: 'table' }), H(-0.17, -0.3, 90, { want: 'drink', at: 'table' }), H(0.18, -0.3, 90, { want: 'drink', at: 'table' }),
+    H(0.53, -0.29, 90, { at: 'table' })], { of: 'table', lean: { food: 0.5, tidy: 0.4 }, min: 3 }),
   set('KS-t-tools', 'table', [H(-0.7, -0.02, 180, { want: 'tool', at: 'table' }), H(-0.25, 0.02, 180, { want: 'tool', at: 'table' }), H(0.3, -0.04, 180, { want: 'tool', at: 'table' })],
     { of: 'table', lean: { crafts: 1, busy: 0.4 }, min: 2 }),
   set('KS-t-arms', 'table', [H(0.05, 0.2, 180, { want: 'shield', at: 'table' }), H(-0.45, -0.15, 45, { want: 'weapon', at: 'table' }), H(0.55, -0.12, 315, { want: 'weapon', at: 'table' })],
@@ -86,6 +88,7 @@ const SETS = [
   set('KS-c-mug', 'seat', [H(0.08, -0.05, 45, { want: 'drink', at: 'bench' })], { lean: { messy: 0.8 } }),
   // on a chest or a barrel's lid
   set('KS-ch-food', 'chest', [H(-0.3, 0.02, 90, { want: 'food', at: 'chest' }), H(0.3, -0.04, 0, { at: 'chest' })], { lean: { food: 0.6, messy: 0.4 } }),
+  set('KS-ch-three', 'chest', [H(-0.35, 0.05, 45, { at: 'chest' }), H(0, -0.06, 90, { want: 'food', at: 'chest' }), H(0.33, 0.04, 0, { want: 'drink', at: 'chest' })], { lean: { messy: 0.7, food: 0.4 }, min: 2 }),
   set('KS-ch-one', 'chest', [H(0.1, 0, 22, { at: 'chest' })], { lean: { messy: 0.3, collect: 0.3 } }),
   set('KS-ch-shield', 'chest', [H(-0.2, 0, 11, { want: 'shield', at: 'chest' }), H(0.35, 0.05, 90, { want: 'food', at: 'chest' })], { lean: { collect: 0.6 } }),
   // the wall over a workbench, a bench, a bed, a table, a chest, by the hearth or the door (the corpus's wall stands sit

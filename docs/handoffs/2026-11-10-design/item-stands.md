@@ -126,6 +126,66 @@ floating 35 designs (base 34; the one case found, a mug on a third-stage bench, 
 5 byte for byte; dotnet build 0 errors. After the rebase and the last two sets only the bundles were rebuilt and
 `test_stands.js 2` run; the full checks were not rerun.
 
+## Session of 2026-11-11 (work in progress, paused for usage)
+
+Commits on `design/wip-stands`: b2869b7 (merge of main 0604748, no conflicts; main's creative sets kept), 979ea18
+(the work below, work in progress). Bundles not rebuilt or committed.
+
+What is done (979ea18):
+- `lib/stands.js` `showOf`: how much a household shows. From clutter, the collect, food and plants hobbies, wealth,
+  comfort, less for tidy; times 0.35 for a plain house, 1.15 for a tavern; times the village's culture lean
+  (`CULTURE_SHOW`, a setting with no corpus source, since the corpus is not split by culture); times a household draw
+  (log-normal, sd 0.6). Clamped to 0.08 to 4.
+- `dressTops`: a house budget of stands, `show * (4 + floor area / 6)`, shared among rooms by area, less what stands
+  there already. Places the household favors (`FAV_P`, drawn per house, more kinds in a house that shows more);
+  this pass leaves the other kinds alone. The decorator's single stands and stands of library sets that keep another
+  piece (a ledge, a table) are taken away: 80 % of those in places the household does not favor, then more down to
+  55 % of the budget. Each kind of place (`CLASS_W`, `classOf`) gets its own share of the picks, so many chest sets
+  or many wall anchors no longer make it come up more. The d2 share counts stands, 40 to 65 % of a room's.
+- Sunk stands: half the households (`sinker`) sink 55 to 95 % of the flat stands of this pass's table sets into the
+  top. Depth is the household's habit drawn from the corpus's sink percentiles (`SINK_Q`, `sinkDepth`: 6 cm, 9.7 at
+  the 75th percentile, 21.6 at the 90th, never deeper), plus or minus 1.5 cm. Each carries `p.fclip` (depth + 0.5
+  cm), which `lib/blueprint.js` writes in `#VillheimClips` as the furniture depth (the e44db1e format). Found in
+  `lib/audit.js`: no pool audit test looks at a flat stand inside a table (itemstandh is role deco, outside the
+  furnClip pairs; mountClip only measures structure), so the mark is a record; nothing failed without it.
+- `lib/persona.js` `fromStock`, `repeatOf`, `REPEAT_K`: a stand takes an item the house already shows, by
+  household (0.15 to 0.95; tidy and plain more, collectors and the well-off less) and by kind (drink, herbs 1, food
+  0.9, trophy 0.25; rare things, boss trophies and the tray never). `itemFrom` unchanged.
+- `lab/test_stands.js`: distinct items and stands print as quartile-median-quartile.
+
+Measures, `node lab/test_stands.js 3` (162 designs; d3 house share, distinct and stands as q1-median-q3):
+
+| | table | wall | sill | shelf | hearth | bench | rafter | chest | feast | distinct | stands |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| before (b2869b7) | 92 | 100 | 46 | 63 | 85 | 72 | 35 | 61 | 19 | 26 (median) | 28 (median) |
+| now (979ea18) | 68 | 94 | 2 | 48 | 63 | 46 | 24 | 30 | 17 | 3-8-13 | 5-10-19 |
+| corpus | 52 | 79 | 14 | 51 | 38 | 51 | 38 | 33 | 21 | 2-7-20 | 5-19-49 |
+
+The test's gate (`--gate`, d3 rates at or over TARGET) now fails on sill (2 % < 10) and rafter (24 % < 25).
+
+Half done:
+- Sill too low: `FAV_P.sill` 0.12 with `CLASS_W.sill` 0.22 nearly removes it; raise `FAV_P.sill` to about 0.25.
+- Rafter low: raise `FAV_P.rafter` (0.35) and `CLASS_W.rafter`.
+- Hearth (63) and table (68) still over: what remains is library sets of stands alone (BK-wtrophy and the like) and
+  favored places; consider lower `FAV_P.hearth`.
+- Stands median 10 against 19 and the top quartile 19 against 49: raise the budget constant in `dressTops`
+  (`4 + area / 6`), or `showOf`'s scale.
+- `lab/test_stands.js` gate still checks minimums only; change it to a band round the corpus (rate within about 0.6
+  to 1.6 times the corpus, medians within half) and state it.
+- D-127, D-128, D-129 Open: behavior kept (no stands into wall relief, no new tie beams, unconfirmed items as they
+  were).
+
+Not run yet on 979ea18: `node lab/test_structure.js`, the Norse Meadows pool gate (`node lab/make_testpool.js
+/tmp/h2-pool`), `node lab/check_interiors.js` on a small sample.
+
+Next steps, in order:
+1. Tune `FAV_P`, `CLASS_W` and the budget as above; rerun `node lab/test_stands.js 3`.
+2. Band gate in `lab/test_stands.js`.
+3. Quick checks: test_structure, the Norse Meadows pool gate, check_interiors on a small sample; compare with the
+   numbers in "Measures" above for the base.
+4. Then the next task: side tables and nightstands as their own anchors, stands on stands (745 in the corpus),
+   "Items on stands" with credits in `docs/INTERIOR_DESIGN.md`.
+
 ## Known problems
 
 - Wall sets fit poorly: stands into the 2x2 wood wall's planks and the stone wall's bevels fail the audit's hung test

@@ -95,7 +95,10 @@ function loadBuild(file) {
   for (const q of bp.pieces) {
     const tilt = Math.abs(q.q[0]) > 0.03 || Math.abs(q.q[2]) > 0.03;
     const scaled = q.s.some(v => Math.abs(v - 1) > 0.03);
-    ps.push({ name: q.name, x: q.x, y: q.y, z: q.z, yaw: norm(yawOfQ(q.q)), tilt, scaled, info: P.piece(q.name) });
+    // how far the piece's up is turned from the world's (degrees), and its largest scale away from 1
+    const tiltDeg = Math.acos(Math.max(-1, Math.min(1, 1 - 2 * (q.q[0] * q.q[0] + q.q[2] * q.q[2])))) / deg;
+    const scale = Math.max(...q.s.map(v => Math.abs(v - 1)));
+    ps.push({ name: q.name, x: q.x, y: q.y, z: q.z, yaw: norm(yawOfQ(q.q)), tilt, scaled, tiltDeg, scale, info: P.piece(q.name) });
   }
   // turn the build so most of its walls run along the axes
   const hist = new Map();
@@ -222,7 +225,7 @@ const OPEN_OK = /^(glass|shutter|grate|fence|beam1|beam2|pole1|pole2|beam26|beam
 
 // ---------------------------------------------------------------- collecting one feature
 
-const stats = { features: {}, why: {} };
+const stats = { features: {}, why: {}, tilts: {}, tiltSites: {} };
 const tally = (k, w) => { stats.why[k + ' ' + w] = (stats.why[k + ' ' + w] || 0) + 1; };
 const instances = [];
 
@@ -270,7 +273,20 @@ function collect(kind, B, ctx, f, box, isBase, fit, clear, keep, need) {
   }
   if (!items.length) { tally(kind, 'bare'); return null; }
   if (items.some(t => MODDED.test(t.p.name) || !vanilla(t.p.name))) { tally(kind, 'modded'); return null; }
-  if (items.some(t => t.p.tilt || t.p.scaled)) { tally(kind, 'tilted'); return null; }
+  if (items.some(t => t.p.tilt || t.p.scaled)) {
+    tally(kind, 'tilted');
+    // what is turned off level or scaled at the site, and how far (ideas gap 4: the generator needs the classes and the
+    // angles before it tilts trim the way corpus builders do)
+    for (const t of items) {
+      if (!t.p.tilt && !t.p.scaled) continue;
+      const k = `${kind}|${classOf(t.p.name)}|${t.p.tilt ? Math.min(90, Math.round(t.p.tiltDeg / 5) * 5) : 0}|${t.p.scaled ? 'scaled' : ''}`;
+      stats.tilts[k] = (stats.tilts[k] || 0) + 1;
+    }
+    const cls = new Set(items.map(t => (t.p.tilt || t.p.scaled ? 'tilted ' : 'level ') + classOf(t.p.name)));
+    stats.tiltSites[kind] = stats.tiltSites[kind] || {};
+    for (const c of cls) stats.tiltSites[kind][c] = (stats.tiltSites[kind][c] || 0) + 1;
+    return null;
+  }
   if (items.length > (BUSY[kind] || 18)) { tally(kind, 'busy'); return null; }
   if (items.some(t => /^(door|spiral)$/.test(classOf(t.p.name)))) { tally(kind, 'door'); return null; }
   // the ground holds things that stand on it
@@ -838,6 +854,9 @@ console.log(why);
 for (const m of motifs) { m.p = m.pieces.map(t => (t.clip ? [t.n, t.a, t.o, t.h, t.r, t.clip] : [t.n, t.a, t.o, t.h, t.r])); delete m.pieces; m.src = m.src.slice(0, 3); }
 fs.writeFileSync(outPath, JSON.stringify({
   about: 'Exterior motifs mined from the best-liked corpus builds by lab/mine_motifs.js. Frame: a along the wall, o out from it, h up from the feature foot; r piece yaw from the frame. See docs/BUILDING_DETAILS.md.',
-  builds: builds.length, counts: byKind, skipped: why, motifs,
+  builds: builds.length, counts: byKind, skipped: why,
+  // tilted sites: pieces turned off level or scaled, by kind|class|tilt in 5 degree steps|scaled; and per kind, the
+  // classes at those sites, tilted or level
+  tilts: Object.fromEntries(Object.entries(stats.tilts).sort((a, b) => b[1] - a[1])), tiltSites: stats.tiltSites, motifs,
 }, null, 0).replace(/\{"key"/g, '\n{"key"'));
 console.log('wrote', outPath);

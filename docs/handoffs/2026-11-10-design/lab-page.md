@@ -77,3 +77,92 @@ Maybe these can be slider options that change the exising model from s1 to s2 to
 - Build it draws the stages at random (s1 to s3, d1 to d3) on both tabs. If Tyler wants Build it to keep the slider
   positions, that is a small change in draw() and iDraw().
 - The yards.js guard and the temple growth path are generator work.
+
+## Round 2 (2026-11-11)
+
+Branch `design/wip-lab-page2` from main 509744e. Changed: `tools/blueprint-lab/web/app.html` and the camera part of
+`tools/blueprint-lab/lib/render.js` (frameOf, project, unproject). Nothing in the generator changed; `web/index.html`
+was built locally to test and restored.
+
+### Tyler's request (2026-11-11)
+
+"controls for the lab: a full screen button, an ability to zoom in much closer into the rooms ... please also move the
+two sliders up top next to the initial two decision drop downs, stop resetting them between runs (if I set it to d3,
+that stays until I change it) and please add the drop-down re messy vs austere options to this primary group too but
+default to random pick for me (but same logic: if I change to a speicifc choice, retain that until changed). So top
+chooses are building type, culture, type of interior (messy etc) and then two sliders."
+
+### What the page does now (app.html)
+
+- Top group on New building and on Interiors: Building, Culture, Interior, then the Size stage and Decor stage
+  sliders, then the build buttons. Interior lists Pick for me, then the household kinds of lib/persona.js PRESETS:
+  neat, messy, austere, cozy, plants, crafts, collector, games, maps, food, wealthy, poor, family, alone. Pick for me
+  sends no household, so the generator draws it from the seed as the game does; the caption names the household drawn
+  (for example "household messy cozy family, plants").
+- A slider the viewer moves is kept (localStorage, key `stages` in `villheim-lab-choices`, inside try/catch) and Build
+  it, Another one and Show interiors use it until it is moved again. A slider never moved is drawn at random at each
+  Build it, as before; Another one keeps the last stages, as before. "Pick stages for me" under the sliders clears both
+  kept stages of that tab and draws new ones. Stages named in Describe it in words count as moved. Each tab keeps its
+  own pair of sliders.
+- Building, Culture and Interior are kept across builds and page loads, as Building and Culture were. On Interiors,
+  Compare "Same house, other households" puts the Interior set at the top first; the other compare modes use it for
+  every plan.
+- The caption lists what the viewer set, now including interior, size stage and decor stage.
+- Main view: the wheel zooms toward the cursor from half the whole-design framing down to 1 m across the picture.
+  Shift and the wheel, the Tilt slider, or an up and down drag tilt. Drag turns. Right drag, middle drag or Ctrl and
+  drag move the picture. Two fingers pinch to zoom and move. Buttons: +, -, Reset view, Full screen. Turning keeps the
+  zoom and turns round the point in the middle of the picture. Build it, Another one, a loaded file and a thumbnail
+  click reset the zoom; a slider move, a More choices change and a plan click on Interiors keep it, so the same room
+  can be compared across stages.
+- Full screen uses the browser's Fullscreen API on the view; the canvas takes the screen size (capped at about 2.4
+  million pixels). If the browser refuses (for example inside a frame without permission), the view fills the window
+  inside the page instead; Esc or Leave full screen returns.
+- Decorate and Repair are unchanged and were run.
+
+### render.js
+
+`draw()` takes `target` (a world point put in the middle of the picture) with `ppm`, and returns `fit`, the pixels
+per metre that frame the whole design. `project` and `unproject` turn world points to camera space and back with the
+same camera as sceneFaces. Without `target`, framing is as before, so thumbnails, plans and node renders are
+unchanged.
+
+### Checks run
+
+- `node lib/build_web.js web/index.html` builds (4.43 MB).
+- `node lab/compare_page.js`: all five requests the same in node and the page.
+- Headless Chrome (puppeteer, /tmp/h5r2/run.js and run2.js): load; six Build it with untouched sliders drew five
+  different stage pairs; with d3 and s1 set, three Build it and Another one kept s1 d3; Interior messy and austere
+  rebuilt the design with that household; after a reload the type, culture, interior and both stages were kept; Pick
+  stages for me cleared them; More choices, All back to Pick for me, Describe it in words; wheel zoom to 1200 pixels per
+  metre (1 m across), the point under the cursor moved 4 mm over a zoom; Shift and wheel tilt, right drag and Ctrl drag
+  move, drag turn, Tilt slider, + and -, two-finger pinch (touch pointer events), Reset view; Full screen (browser,
+  canvas 1400 x 900) and back; Full screen refused, the in-page view, Esc and the button to leave; thumbnail click;
+  Decorate a blueprint at d3 and d1 and Repair a blueprint with files; Interiors with both sliders, Show interiors
+  again keeping s3 d1, Interior messy first in the households compare, layouts, zoom kept over a plan click, Pick
+  stages for me. No page errors.
+
+### Shared top group (2026-11-11, second commit)
+
+Tyler (2026-11-11): "new building and interior should have the same slider and also messy etc drop-down UI changes
+I've asked for too, pls".
+
+- New building and Interiors use one top group (`#topgroup` in app.html): the same elements, moved into the open tab
+  (`tab()`), so both tabs show the same look and order and one state. The Interiors tab's own Building, Culture,
+  Household and slider controls are gone; its Building list is now the full list of S.TYPES and its Culture list
+  includes the older lab styles.
+- A choice made on either tab shows on the other and is kept across builds and page loads (localStorage keys `type`,
+  `culture`, `ghouse` and `stages`). Opening a tab builds a stage or Interior set on the other tab there too (New
+  building: rebuild of the kept candidate; Interiors: the same interiors again). Building and Culture wait for Build it
+  or Show interiors, as on their own tab.
+- Pick stages for me clears the shared stages. A slider never moved shows the open tab's drawn stage.
+- Compare, Examples, House seed and Biome stay under More choices on Interiors.
+- Checks: build, `lab/compare_page.js` all same, headless Chrome (/tmp/h5r2/run3.js and run2.js): Interior and both
+  sliders set on New building show on Interiors and the reverse, Pick stages for me from Interiors, a reload with both
+  tabs keeping type, culture, interior and stages; all the round 2 controls again. No page errors. One note on the
+  harness: after leaving real full screen, headless Chrome sometimes stops sending wheel input to the page (a plain
+  document listener gets nothing either); a fresh page zooms on Interiors (run2.js).
+
+### Open
+
+- The view is orthographic; zoomed into a room with the roof on, the roof is in the way. Roof off cuts at 2.6 m above
+  the ground.

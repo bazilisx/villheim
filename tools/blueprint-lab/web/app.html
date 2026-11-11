@@ -107,6 +107,21 @@ legend { font-size: 13px; color: var(--muted); padding: 0 4px; }
 .stages input[type="range"] { width: 100%; padding: 0; border: none; background: transparent; accent-color: var(--accent); }
 .ticks { display: flex; justify-content: space-between; font: 12px var(--mono); color: var(--muted); }
 .panel details > * + * { margin-top: 10px; }
+.grid2 .wide { grid-column: 1 / -1; }
+/* one top group, moved into whichever of New building and Interiors is open */
+.topgroup { display: flex; flex-direction: column; gap: 12px; }
+#gtop, #itop { display: contents; }
+button.small { font: 500 12.5px var(--body); border-radius: 5px; padding: 3px 9px; cursor: pointer; background: transparent; color: var(--muted); border: 1px solid var(--line); justify-self: start; }
+.stages .small { grid-column: 1 / -1; }
+/* the view's own controls: zoom, tilt, reset, full screen */
+.viewbar { position: absolute; left: 12px; bottom: 10px; display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.viewbar button, .viewbar label { background: color-mix(in srgb, var(--panel) 85%, transparent); color: var(--ink); border: 1px solid var(--line); border-radius: 5px; padding: 3px 9px; font: 500 13px var(--body); cursor: pointer; }
+.viewbar label { flex-direction: row; align-items: center; gap: 6px; cursor: default; }
+.viewbar input[type="range"] { width: 90px; padding: 0; border: none; background: transparent; accent-color: var(--accent); }
+.board.full { border-radius: 0; border: none; }
+.board.full canvas { width: 100%; height: 100%; }
+.board.big { position: fixed; inset: 0; z-index: 100; }
+.board .over #viewhint { max-width: 60%; text-align: right; }
 </style>
 </head>
 <body>
@@ -122,16 +137,24 @@ legend { font-size: 13px; color: var(--muted); padding: 0 4px; }
 </div>
 <main>
   <section class="panel" id="panel-gen" aria-label="New building">
+    <div id="gtop"><div class="topgroup" id="topgroup">
     <div class="grid2">
       <label for="type">Building<select id="type"></select></label>
       <label for="culture">Culture<select id="culture"></select></label>
+      <label for="ghouse" class="wide">Interior<select id="ghouse"></select></label>
     </div>
+    <div class="stages" id="gstages">
+      <label for="gstage">Size stage: <b id="gstagev">s2 middle</b><input type="range" id="gstage" min="1" max="3" step="1" value="2"><span class="ticks"><span>s1</span><span>s2</span><span>s3</span></span></label>
+      <label for="gdecor">Decor stage: <b id="gdecorv">d2 lived in</b><input type="range" id="gdecor" min="1" max="3" step="1" value="2"><span class="ticks"><span>d1</span><span>d2</span><span>d3</span></span></label>
+      <button class="small" id="grandst">Pick stages for me</button>
+    </div>
+    </div></div>
     <div class="row">
       <button class="primary" id="go">Build it</button>
       <button class="secondary" id="next">Another one</button>
       <span class="status" id="gstatus"></span>
     </div>
-    <p class="hint">Build it draws the rest at random: the biome from the culture's own, then the plan, roof, walls, size and decor. Another one keeps the culture, biome and stages and tries a new seed. The sliders under the building grow the same design.</p>
+    <p class="hint">Build it draws the rest at random: the biome from the culture's own, then the plan, roof and walls. Another one keeps the culture and biome and tries a new seed. A slider you move stays where you put it for every build until you move it again or press Pick stages for me; until then each Build it draws the stages. Moving a slider grows the same design. These top choices are shared with the Interiors tab.</p>
     <details id="gmore">
       <summary>More choices</summary>
       <p class="hint">Setting one of these rebuilds the design on the right with that one change. Pick for me leaves it to the generator.</p>
@@ -188,42 +211,37 @@ legend { font-size: 13px; color: var(--muted); padding: 0 4px; }
   </section>
 
   <section class="panel hidden" id="panel-int" aria-label="Interiors">
-    <p class="hint">One house furnished for several households, or one household laid out several ways. Each plan is the ground floor from above with the roof and the upper walls cut away. Click a plan to open it in the viewer.</p>
-    <div class="grid2">
-      <label for="itype">Building<select id="itype"><option value="home">House</option><option value="longhouse">Longhouse (hall)</option><option value="tavern">Tavern</option><option value="smithy">Smithy</option><option value="workshop">Workshop</option><option value="sawmill">Woodworker</option><option value="storage">Storehouse</option><option value="barn">Barn</option><option value="temple">Temple</option></select></label>
-      <label for="iculture">Culture<select id="iculture"></select></label>
-    </div>
+    <div id="itop"></div>
     <div class="row"><button class="primary" id="igo">Show interiors</button><span class="hint" id="ihint"></span></div>
+    <p class="hint">One house furnished for several households, or one household laid out several ways. Each plan is the ground floor from above with the roof and the upper walls cut away. Click a plan to open it in the viewer. The top choices are shared with the New building tab.</p>
     <p class="caption" id="icaption"></p>
-    <div class="stages" id="istages">
-      <label for="istage">Size stage: <b id="istagev">s2 middle</b><input type="range" id="istage" min="1" max="3" step="1" value="2"><span class="ticks"><span>s1</span><span>s2</span><span>s3</span></span></label>
-      <label for="idecor">Decor stage: <b id="idecorv">d3 rich</b><input type="range" id="idecor" min="1" max="3" step="1" value="3"><span class="ticks"><span>d1</span><span>d2</span><span>d3</span></span></label>
-    </div>
     <details id="imore">
       <summary>More choices</summary>
       <div class="grid2">
-        <label for="ihouse">Household<select id="ihouse"><option value="">Pick for me</option><option value="neat">Neat</option><option value="messy">Messy, half-done projects</option><option value="cosy">Cozy (rugs, pelts)</option><option value="austere">Austere</option><option value="plants">Plants and garden</option><option value="crafts">Crafts</option><option value="collector">Collector (trophies)</option><option value="wealthy">Well off</option><option value="poor">Poor</option><option value="food">Food and drink</option><option value="family">Family</option><option value="alone">Lives alone</option></select></label>
         <label for="imode">Compare<select id="imode"><option value="households" selected>Same house, other households</option><option value="layouts">Same household, other layouts</option><option value="houses">Other houses of this kind</option></select></label>
         <label for="icount">Examples<select id="icount"><option value="4">4</option><option value="6" selected>6</option><option value="9">9</option></select></label>
         <label for="iseed">House seed<input id="iseed" type="number" min="1" placeholder="Pick for me"></label>
         <label for="ibiome">Biome<select id="ibiome"></select></label>
       </div>
-      <p class="hint">Setting one of these shows the same interiors again with that one change.</p>
+      <p class="hint">Setting one of these shows the same interiors again with that one change. With Compare on other households, the interior set at the top comes first and the others follow.</p>
     </details>
     <div class="plans" id="iplans"></div>
   </section>
 
   <section class="stage" aria-label="Result">
-    <div class="board">
-      <canvas id="view" width="1200" height="760" aria-label="The building. Drag to turn it, scroll to tilt."></canvas>
-      <div class="over"><span id="title">Building</span><span id="viewhint">Drag to turn, scroll to tilt</span></div>
+    <div class="board" id="board">
+      <canvas id="view" width="1200" height="760" aria-label="The building. Drag to turn it, scroll to zoom, Shift and scroll to tilt, right drag to move it."></canvas>
+      <div class="over"><span id="title">Building</span><span id="viewhint">Drag to turn. Scroll to zoom. Shift and scroll to tilt. Right drag or Ctrl and drag to move.</span></div>
+      <div class="viewbar">
+        <button id="zin" aria-label="Zoom in" title="Zoom in">+</button>
+        <button id="zout" aria-label="Zoom out" title="Zoom out">-</button>
+        <label for="tilt">Tilt<input type="range" id="tilt" min="5" max="90" step="1" value="30"></label>
+        <button id="vreset">Reset view</button>
+        <button id="full">Full screen</button>
+      </div>
       <label class="rooftoggle" for="roofoff"><input type="checkbox" id="roofoff"> Roof off</label>
     </div>
     <p class="caption" id="caption"></p>
-    <div class="stages" id="gstages">
-      <label for="gstage">Size stage: <b id="gstagev">s2 middle</b><input type="range" id="gstage" min="1" max="3" step="1" value="2"><span class="ticks"><span>s1</span><span>s2</span><span>s3</span></span></label>
-      <label for="gdecor">Decor stage: <b id="gdecorv">d2 lived in</b><input type="range" id="gdecor" min="1" max="3" step="1" value="2"><span class="ticks"><span>d1</span><span>d2</span><span>d3</span></span></label>
-    </div>
     <div class="thumbs" id="thumbs"></div>
     <div class="facts" id="facts"></div>
     <div class="checks" id="checks"></div>
@@ -262,10 +280,14 @@ fill('biome', [['', PICK], ...S.BIOMES.map(b => [b, b])]); fill('dbiome', S.BIOM
 fill('plan', [['', PICK], ['rect', 'Rectangle'], ['long', 'Long'], ['square', 'Square'], ['L', 'L-shaped'], ['T', 'T-shaped'], ['cross', 'Cross'], ['U', 'U around a yard'], ['court', 'Rooms around a courtyard'], ['gables', 'Row of gables (turf farm)'], ['nave', 'Nave and chancel'], ['greek', 'Equal-armed cross'], ['octagon', 'Octagon (round)']]);
 fill('walls', [['', PICK], ['plank', 'Plank'], ['half-timber', 'Half-timber'], ['log', 'Log (Black Forest on)'], ['stone-base', 'Stone base, wood above'], ['stone', 'Stone'], ['marble', 'Black marble (Mistlands)'], ['grausten', 'Grausten (Ashlands)']]);
 fill('roof', [['', PICK], ['gable', 'Gable'], ['hip', 'Hip'], ['shed', 'Shed'], ['flat', 'Flat with parapet'], ['conical', 'Ring (round plans)']]);
-cultureOptions('iculture', false);
 fill('ibiome', [['', PICK], ...S.BIOMES.map(b => [b, b])]);
+// the household kinds (lib/persona.js PRESETS); Pick for me sends none and the generator draws the household from the seed
+const INTERIORS = [['', 'Pick for me'], ['neat', 'Neat'], ['messy', 'Messy, half-done projects'], ['austere', 'Austere'], ['cosy', 'Cozy (rugs, pelts)'],
+  ['plants', 'Plants and garden'], ['crafts', 'Crafts'], ['collector', 'Collector (trophies)'], ['games', 'Games and music'], ['maps', 'Maps and books'],
+  ['food', 'Food and drink'], ['wealthy', 'Well off'], ['poor', 'Poor'], ['family', 'Family'], ['alone', 'Lives alone']];
+fill('ghouse', INTERIORS);
 
-let current = null, view = { az: 35, el: 30 }, mode = 'gen', fileBp = null;
+let current = null, view = { az: 35, el: 30, ppm: null, target: null }, mode = 'gen', fileBp = null;
 
 // ---------- random draws: a culture's biomes, stages and seeds
 const any = a => a[Math.floor(Math.random() * a.length)];
@@ -284,13 +306,18 @@ const cultureLabel = k => (S.CULTURES[k] && S.CULTURES[k].label) || k;
 
 // ---------- the viewer's choices, kept between visits where the browser allows it
 const STORE = 'villheim-lab-choices';
-const KEPT = ['type', 'culture', 'biome', 'plan', 'roof', 'walls', 'storeys', 'porch', 'pitch', 'tries', 'itype', 'iculture', 'ibiome', 'imode', 'ihouse', 'icount'];
+const KEPT = ['type', 'culture', 'ghouse', 'biome', 'plan', 'roof', 'walls', 'storeys', 'porch', 'pitch', 'tries', 'ibiome', 'imode', 'icount'];
 const OPENS = ['gmore', 'gwords', 'imore'];
+// the stage sliders the viewer has moved, by slider id ('gstage': 's3'); a slider not in here is drawn at each build
+let chosen = {};
+const SLIDERS = { gstage: STAGES, gdecor: DECORS };
 function loadKept() {
   try {
     const o = JSON.parse(localStorage.getItem(STORE) || '{}');
     for (const k of KEPT) if (typeof o[k] === 'string' && [...$(k).options].some(x => x.value === o[k])) $(k).value = o[k];
     for (const k of OPENS) if (typeof o['open-' + k] === 'boolean') $(k).open = o['open-' + k];
+    const st = o.stages && typeof o.stages === 'object' ? o.stages : {};
+    for (const [k, list] of Object.entries(SLIDERS)) if (list.includes(st[k])) chosen[k] = st[k];
   } catch (e) { /* no storage here */ }
 }
 function saveKept() {
@@ -298,18 +325,22 @@ function saveKept() {
     const o = {};
     for (const k of KEPT) o[k] = $(k).value;
     for (const k of OPENS) o['open-' + k] = $(k).open;
+    o.stages = chosen;
     localStorage.setItem(STORE, JSON.stringify(o));
   } catch (e) { /* no storage here */ }
 }
+function choose(id, v) { if (v) chosen[id] = v; else delete chosen[id]; saveKept(); }
 for (const k of OPENS) $(k).addEventListener('toggle', saveKept);
-for (const k of ['type', 'culture', 'itype', 'iculture']) $(k).addEventListener('change', saveKept);
+for (const k of ['type', 'culture']) $(k).addEventListener('change', saveKept);
+// which tab is open; the shared top group acts on its design
+let tabNow = 'gen';
 
 // ---------- stage sliders: s1 to s3 and d1 to d3; moving one rebuilds on release
 function slider(id, list, text, onset) {
   const el = $(id), out = $(id + 'v');
   const val = () => list[Math.max(0, Math.min(list.length - 1, +el.value - 1))];
   el.oninput = () => { out.textContent = text[val()]; };
-  el.onchange = () => { out.textContent = text[val()]; onset(val()); };
+  el.onchange = () => { out.textContent = text[val()]; choose(id, val()); onset(val()); };
   return v => { el.value = list.indexOf(v) + 1; out.textContent = text[v]; };
 }
 
@@ -325,7 +356,7 @@ function moreChoices() {
 }
 const triesOf = () => +$('tries').value || 8;
 function requestOf(g, seed) {
-  return { type: g.type, culture: g.culture, biome: g.biome, stage: g.stage, decor: g.decor, ...g.more, seed, lineage: g.seed };
+  return { type: g.type, culture: g.culture, biome: g.biome, stage: g.stage, decor: g.decor, persona: g.persona, ...g.more, seed, lineage: g.seed };
 }
 function runGen(work) {
   $('gstatus').textContent = 'Building...';
@@ -346,17 +377,21 @@ function rebuildKept(g) {
   const d = VHGenerate.generate(requestOf(g, g.kept));
   showGen({ d, ev: evaluate(d, g.biome) });
 }
-// keep false: Build it, everything but Building and Culture drawn fresh. keep true: Another one, a new seed for the
-// same culture, biome and stages. fixed: stages named in a request in words.
+// keep false: Build it, everything but the top choices drawn fresh. keep true: Another one, a new seed for the same
+// culture, biome and stages. A stage slider the viewer has moved keeps its place (chosen); fixed: stages named in a
+// request in words, which count as moved.
 function draw(keep, fixed = {}) {
+  if (fixed.stage) choose('gstage', fixed.stage);
+  if (fixed.decor) choose('gdecor', fixed.decor);
   const prev = keep ? G : null, type = $('type').value, asked = $('culture').value;
   const culture = asked || (prev ? prev.culture : any(VILLAGE)[0]);
   const biome = $('biome').value || (prev && prev.culture === culture ? prev.biome : any(biomesOf(culture)));
   let seed;
   if (keep) { seed = newSeed(); if ($('seed').value) $('seed').value = seed; } else seed = Math.floor(+$('seed').value) || newSeed();
-  G = { type, culture, cultureAsked: !!asked, biome, stage: fixed.stage || (prev ? prev.stage : any(STAGES)), decor: fixed.decor || (prev ? prev.decor : any(DECORS)),
-    seed, tries: triesOf(), more: moreChoices(), kept: null };
+  G = { type, culture, cultureAsked: !!asked, biome, stage: chosen.gstage || (prev ? prev.stage : any(STAGES)), decor: chosen.gdecor || (prev ? prev.decor : any(DECORS)),
+    persona: $('ghouse').value || undefined, seed, tries: triesOf(), more: moreChoices(), kept: null };
   setGStage(G.stage); setGDecor(G.decor);
+  resetView(true);
   runGen(() => search(G));
 }
 function rebuild(change) {
@@ -365,8 +400,26 @@ function rebuild(change) {
   const fresh = change.seed != null || change.tries != null || G.kept == null;
   runGen(() => (fresh ? search(G) : rebuildKept(G)));
 }
-const setGStage = slider('gstage', STAGES, STAGE_TEXT, v => rebuild({ stage: v }));
-const setGDecor = slider('gdecor', DECORS, DECOR_TEXT, v => rebuild({ decor: v }));
+// the shared stage sliders and Interior act on the open tab's design; the other tab catches up when it is opened
+function onStages(ch) {
+  if (tabNow !== 'int') return rebuild(ch);
+  if (!I) return iDraw();
+  Object.assign(I, ch); showInteriors();
+}
+const setGStage = slider('gstage', STAGES, STAGE_TEXT, v => onStages({ stage: v }));
+const setGDecor = slider('gdecor', DECORS, DECOR_TEXT, v => onStages({ decor: v }));
+$('ghouse').onchange = () => {
+  saveKept();
+  if (tabNow !== 'int') return rebuild({ persona: $('ghouse').value || undefined });
+  if (!I) return iDraw();
+  showInteriors();
+};
+$('grandst').onclick = () => {
+  choose('gstage', null); choose('gdecor', null);
+  const st = any(STAGES), dc = any(DECORS);
+  setGStage(st); setGDecor(dc);
+  onStages({ stage: st, decor: dc });
+};
 function showGen(r) {
   genResult = r; current = r; mode = 'gen';
   show();
@@ -378,9 +431,13 @@ function captionGen() {
   const T = S.TYPES[i.type] || {};
   const set = [['biome', 'biome'], ['plan', 'plan'], ['roof', 'roof'], ['walls', 'walls'], ['storeys', 'stories'], ['porch', 'porch'], ['pitch', 'roof pitch'], ['tries', 'candidates'], ['seed', 'seed']]
     .filter(([id]) => $(id).value !== '').map(([, t]) => t);
+  if (chosen.gdecor) set.unshift('decor stage');
+  if (chosen.gstage) set.unshift('size stage');
+  if (G.persona) set.unshift('interior');
   if (G.cultureAsked) set.unshift('culture');
+  const h = i.household && i.household.label ? `, household ${said(i.household.label)}` : '';
   $('caption').textContent = `${T.label || i.type}, ${cultureLabel(i.cultureKey)}, ${i.biome}, ${i.plan || 'no'} plan, ${i.roof || 'no'} roof, ${i.walls || 'no'} walls, `
-    + `${STAGE_TEXT[i.stage] || i.stage}, ${DECOR_TEXT[i.decor] || i.decor}, seed ${G.seed}${G.kept != null && G.kept !== G.seed ? ` (candidate ${G.kept})` : ''}.` + (set.length ? ` You set: ${set.join(', ')}; the rest was drawn.` : ' All drawn at random.');
+    + `${STAGE_TEXT[i.stage] || i.stage}, ${DECOR_TEXT[i.decor] || i.decor}${h}, seed ${G.seed}${G.kept != null && G.kept !== G.seed ? ` (candidate ${G.kept})` : ''}.` + (set.length ? ` You set: ${set.join(', ')}; the rest was drawn.` : ' All drawn at random.');
 }
 $('go').onclick = () => draw(false);
 $('next').onclick = () => draw(true);
@@ -438,7 +495,7 @@ $('bpfile').onchange = async e => {
   fileBp = VHBlueprint.parse(await f.text());
   $('dgo').disabled = !fileBp.pieces.length;
   current = { d: { meta: fileBp.meta, pieces: fileBp.pieces, notes: [`Loaded ${fileBp.pieces.length} pieces.`] }, ev: evaluate({ pieces: fileBp.pieces }, $('dbiome').value) };
-  mode = 'dec'; show();
+  mode = 'dec'; resetView(true); show();
 };
 $('dgo').onclick = () => {
   if (!fileBp) return;
@@ -458,7 +515,7 @@ $('rpfile').onchange = async e => {
   repairBp = VHBlueprint.parse(await f.text());
   $('rpgo').disabled = !repairBp.pieces.length;
   current = { d: { meta: repairBp.meta, pieces: repairBp.pieces, notes: [`Loaded ${repairBp.pieces.length} pieces.`] }, ev: evaluate({ pieces: repairBp.pieces }, $('dbiome').value) };
-  mode = 'rep'; show();
+  mode = 'rep'; resetView(true); show();
 };
 $('rpgo').onclick = () => {
   if (!repairBp) return;
@@ -486,11 +543,16 @@ function drawMain(quick) {
   }
   drawNow(false);
 }
+// lastFrame: how the last main picture was framed (pixels per metre, the whole-design fit, origin), for zoom and pan
+let lastFrame = null;
 function drawNow(quick) {
   if (!current) return;
   const c = $('view');
   const cut = $('roofoff').checked ? ground(current.d.pieces) + 2.6 : null;
-  VHRender.draw(c.getContext('2d'), current.d.pieces, { az: view.az, el: view.el, cut, ss: quick ? 1 : 2, width: c.width, height: c.height, background: getComputedStyle(document.body).getPropertyValue('--board').trim() || '#e9e4d8' });
+  const cam = view.target ? { ppm: view.ppm, target: view.target } : {};
+  const r = VHRender.draw(c.getContext('2d'), current.d.pieces, { az: view.az, el: view.el, cut, ss: quick ? 1 : 2, width: c.width, height: c.height, ...cam, background: getComputedStyle(document.body).getPropertyValue('--board').trim() || '#e9e4d8' });
+  lastFrame = r && r.ppm ? { s: r.ppm, fit: r.fit, ox: r.ox, oy: r.oy, W: c.width, H: c.height } : null;
+  $('tilt').value = Math.round(view.el);
 }
 function show() {
   const { d, ev } = current;
@@ -503,7 +565,7 @@ function show() {
     cv.width = 360; cv.height = 260;
     VHRender.draw(cv.getContext('2d'), d.pieces, { ...v, label: '', cut: v.cut != null ? g + v.cut : null, width: 360, height: 260, background: bg });
     fig.append(cv); const cap = document.createElement('figcaption'); cap.textContent = v.label; fig.append(cap);
-    fig.onclick = () => { view = { az: v.az, el: v.el }; $('roofoff').checked = v.cut != null; drawMain(); };
+    fig.onclick = () => { view = { az: v.az, el: v.el, ppm: null, target: null }; $('roofoff').checked = v.cut != null; drawMain(); };
     $('thumbs').append(fig);
   }
   const counts = {}; for (const p of d.pieces) counts[p.name] = (counts[p.name] || 0) + 1;
@@ -519,14 +581,139 @@ function show() {
   $('status').textContent = '';
 }
 
-// drag to turn, wheel to tilt
+// ---------- the main view's camera: drag to turn and tilt, wheel to zoom toward the cursor, Shift and wheel or the
+// Tilt slider to tilt, right drag or Ctrl and drag to move, two fingers to pinch and move. view.target (a world point in
+// the middle of the picture) and view.ppm (pixels per metre) are set once the viewer zooms or moves; until then the
+// whole design is framed as before.
+const clampN = (v, a, b) => Math.max(a, Math.min(b, v));
+function resetView(keepAngle) {
+  view.ppm = null; view.target = null;
+  if (!keepAngle) { view.az = 35; view.el = 30; }
+}
+// the point the camera turns round: the middle of the design, a meter above its ground
+function middleOf(pieces) {
+  let x0 = Infinity, x1 = -Infinity, z0 = Infinity, z1 = -Infinity;
+  for (const p of pieces) { x0 = Math.min(x0, p.x); x1 = Math.max(x1, p.x); z0 = Math.min(z0, p.z); z1 = Math.max(z1, p.z); }
+  return isFinite(x0) ? [(x0 + x1) / 2, ground(pieces) + 1, (z0 + z1) / 2] : [0, 0, 0];
+}
+// take over the framing from the last picture, so the first zoom or move starts from what is on screen
+function engage() {
+  if (!lastFrame || !current) return false;
+  if (view.target) return true;
+  const f = lastFrame, d = VHRender.project(middleOf(current.d.pieces), view.az, view.el)[2];
+  view.target = VHRender.unproject([(f.W / 2 - f.ox) / f.s, (f.oy - f.H / 2) / f.s, d], view.az, view.el);
+  view.ppm = f.s;
+  return true;
+}
+// zoom by k round the canvas point (mx, my), from a little under the whole design to about one meter across
+function zoomAt(mx, my, k) {
+  if (!engage()) return;
+  const f = lastFrame, s0 = view.ppm, s1 = clampN(s0 * k, f.fit * 0.5, f.W);
+  const t = VHRender.project(view.target, view.az, view.el);
+  const px = t[0] + (mx - f.W / 2) / s0, py = t[1] - (my - f.H / 2) / s0;
+  view.target = VHRender.unproject([px - (mx - f.W / 2) / s1, py + (my - f.H / 2) / s1, t[2]], view.az, view.el);
+  view.ppm = s1;
+}
+// move the picture by (dx, dy) canvas pixels
+function panBy(dx, dy) {
+  if (!engage()) return;
+  const t = VHRender.project(view.target, view.az, view.el);
+  view.target = VHRender.unproject([t[0] - dx / view.ppm, t[1] + dy / view.ppm, t[2]], view.az, view.el);
+}
+let settleT = null;
+function settle() { drawMain(true); clearTimeout(settleT); settleT = setTimeout(() => drawMain(), 200); }
 (() => {
-  const c = $('view'); let drag = null;
-  c.addEventListener('pointerdown', e => { drag = { x: e.clientX, y: e.clientY, az: view.az, el: view.el }; c.setPointerCapture(e.pointerId); });
-  c.addEventListener('pointermove', e => { if (!drag) return; view.az = drag.az + (e.clientX - drag.x) * 0.5; view.el = Math.max(5, Math.min(90, drag.el + (e.clientY - drag.y) * 0.3)); drawMain(true); });
-  c.addEventListener('pointerup', () => { drag = null; drawMain(); });
-  let wheelT = null;
-  c.addEventListener('wheel', e => { e.preventDefault(); view.el = Math.max(5, Math.min(90, view.el - e.deltaY * 0.05)); drawMain(true); clearTimeout(wheelT); wheelT = setTimeout(() => drawMain(), 200); }, { passive: false });
+  const c = $('view'), pts = new Map();
+  let drag = null, pinch = null;
+  const at = e => { const r = c.getBoundingClientRect(); return [(e.clientX - r.left) * c.width / r.width, (e.clientY - r.top) * c.height / r.height]; };
+  const pinchOf = () => { const [a, b] = [...pts.values()]; return { d: Math.hypot(a[0] - b[0], a[1] - b[1]) || 1, m: [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2] }; };
+  c.addEventListener('contextmenu', e => e.preventDefault());
+  c.addEventListener('pointerdown', e => {
+    try { c.setPointerCapture(e.pointerId); } catch (err) { /* a pointer the browser no longer tracks */ }
+    pts.set(e.pointerId, at(e));
+    if (pts.size === 2) { drag = null; pinch = pinchOf(); return; }
+    if (pts.size > 2) return;
+    const pan = e.button === 2 || e.button === 1 || e.ctrlKey || e.metaKey;
+    drag = { pan, p: at(e), az: view.az, el: view.el };
+    e.preventDefault();
+  });
+  c.addEventListener('pointermove', e => {
+    if (!pts.has(e.pointerId)) return;
+    pts.set(e.pointerId, at(e));
+    if (pinch && pts.size === 2) {
+      const n = pinchOf();
+      zoomAt(n.m[0], n.m[1], n.d / pinch.d);
+      panBy(n.m[0] - pinch.m[0], n.m[1] - pinch.m[1]);
+      pinch = n; drawMain(true); return;
+    }
+    if (!drag) return;
+    const p = at(e);
+    if (drag.pan) { panBy(p[0] - drag.p[0], p[1] - drag.p[1]); drag.p = p; }
+    else { view.az = drag.az + (p[0] - drag.p[0]) * 0.5 * 760 / c.height; view.el = clampN(drag.el + (p[1] - drag.p[1]) * 0.3 * 760 / c.height, 5, 90); }
+    drawMain(true);
+  });
+  const up = e => { pts.delete(e.pointerId); if (pts.size < 2) pinch = null; if (!pts.size) { drag = null; drawMain(); } };
+  c.addEventListener('pointerup', up);
+  c.addEventListener('pointercancel', up);
+  c.addEventListener('wheel', e => {
+    e.preventDefault();
+    const unit = e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? 400 : 1;
+    const dy = e.deltaY * unit, dx = e.deltaX * unit;
+    // some browsers send Shift and the wheel as a sideways scroll
+    if (e.shiftKey) view.el = clampN(view.el - (dy || dx) * 0.05, 5, 90);
+    else { const [mx, my] = at(e); zoomAt(mx, my, Math.exp(-dy * (e.ctrlKey ? 0.01 : 0.0015))); }
+    settle();
+  }, { passive: false });
+  const center = () => [c.width / 2, c.height / 2];
+  $('zin').onclick = () => { zoomAt(...center(), 1.6); drawMain(); };
+  $('zout').onclick = () => { zoomAt(...center(), 1 / 1.6); drawMain(); };
+  $('tilt').oninput = () => { view.el = +$('tilt').value; drawMain(true); };
+  $('tilt').onchange = () => { view.el = +$('tilt').value; drawMain(); };
+  $('vreset').onclick = () => { resetView(false); drawMain(); };
+})();
+
+// ---------- full screen: the browser's own full screen for the view, or the view filling the window where that is refused
+(() => {
+  const board = $('board'), c = $('view');
+  let big = false;
+  const isFull = () => document.fullscreenElement === board || document.webkitFullscreenElement === board || big;
+  function sizeCanvas() {
+    const full = isFull();
+    board.classList.toggle('full', full);
+    let W = 1200, H = 760;
+    if (full) {
+      W = Math.max(320, Math.round(board.clientWidth)); H = Math.max(240, Math.round(board.clientHeight));
+      // keep the still picture quick enough: at most about 2.4 million pixels
+      const k = Math.min(1, Math.sqrt(2.4e6 / (W * H)));
+      W = Math.round(W * k); H = Math.round(H * k);
+    }
+    if (c.width !== W || c.height !== H) {
+      if (view.ppm) view.ppm *= Math.min(W / c.width, H / c.height);
+      c.width = W; c.height = H;
+    }
+    $('full').textContent = full ? 'Leave full screen' : 'Full screen';
+    drawMain();
+  }
+  function bigOn(on) { big = on; board.classList.toggle('big', on); sizeCanvas(); }
+  function enter() {
+    const req = board.requestFullscreen || board.webkitRequestFullscreen;
+    if (!req) return bigOn(true);
+    try {
+      const p = req.call(board);
+      if (p && p.catch) p.catch(() => bigOn(true));
+    } catch (e) { bigOn(true); }
+  }
+  function leave() {
+    if (big) return bigOn(false);
+    const ex = document.exitFullscreen || document.webkitExitFullscreen;
+    if (ex) { try { const p = ex.call(document); if (p && p.catch) p.catch(() => {}); } catch (e) { /* already out */ } }
+  }
+  $('full').onclick = () => (isFull() ? leave() : enter());
+  document.addEventListener('fullscreenchange', sizeCanvas);
+  document.addEventListener('webkitfullscreenchange', sizeCanvas);
+  document.addEventListener('keydown', e => { if (e.key === 'Escape' && big) bigOn(false); });
+  let rt = null;
+  window.addEventListener('resize', () => { if (!isFull()) return; clearTimeout(rt); rt = setTimeout(sizeCanvas, 150); });
 })();
 
 // ---------- save and copy
@@ -554,18 +741,21 @@ let I = null, irun = 0, intResult = null;
 const HOUSEHOLDS = ['neat', 'messy', 'cosy', 'plants', 'crafts', 'collector', 'wealthy', 'austere', 'food'];
 const said = t => String(t).replace(/cosy/g, 'cozy');
 function iDraw() {
-  const asked = $('iculture').value, culture = asked || any(VILLAGE)[0];
-  I = { type: $('itype').value, culture, cultureAsked: !!asked, biome: $('ibiome').value || any(biomesOf(culture)),
-    stage: any(STAGES), decor: any(DECORS), seed: Math.floor(+$('iseed').value) || newSeed(), sel: 0, fresh: true };
-  setIStage(I.stage); setIDecor(I.decor);
+  const asked = $('culture').value, culture = asked || any(VILLAGE)[0];
+  I = { type: $('type').value, culture, cultureAsked: !!asked, biome: $('ibiome').value || any(biomesOf(culture)),
+    stage: chosen.gstage || any(STAGES), decor: chosen.gdecor || any(DECORS), seed: Math.floor(+$('iseed').value) || newSeed(), sel: 0, fresh: true };
+  setGStage(I.stage); setGDecor(I.decor);
   showInteriors();
 }
 function interiorRequests() {
-  const n = +$('icount').value, seed = I.seed, m = $('imode').value, hh = $('ihouse').value;
+  const n = +$('icount').value, seed = I.seed, m = $('imode').value, hh = $('ghouse').value;
+  I.hh = hh;
   const base = { type: I.type, biome: I.biome, culture: I.culture, stage: I.stage, decor: I.decor, yard: false };
   const out = [];
+  // the interior set at the top comes first, then the others
+  const kinds = hh ? [hh, ...HOUSEHOLDS.filter(k => k !== hh)] : HOUSEHOLDS;
   for (let i = 0; i < n; i++) {
-    if (m === 'households') out.push({ ...base, seed, persona: HOUSEHOLDS[i % HOUSEHOLDS.length], label: said(HOUSEHOLDS[i % HOUSEHOLDS.length]) });
+    if (m === 'households') out.push({ ...base, seed, persona: kinds[i % kinds.length], label: said(kinds[i % kinds.length]) });
     else if (m === 'layouts') out.push({ ...base, seed, persona: hh || undefined, layout: { seed: i + 1 }, label: `layout ${i + 1}` });
     else out.push({ ...base, seed: seed + i * 13, persona: hh || undefined, label: `house ${seed + i * 13}` });
   }
@@ -573,7 +763,8 @@ function interiorRequests() {
 }
 function captionInt() {
   const T = S.TYPES[I.type] || {};
-  const set = [['ihouse', 'household'], ['iseed', 'house seed'], ['ibiome', 'biome']].filter(([id]) => $(id).value !== '').map(([, t]) => t);
+  const set = [['ghouse', 'interior'], ['gstage', 'size stage'], ['gdecor', 'decor stage'], ['iseed', 'house seed'], ['ibiome', 'biome']]
+    .filter(([id]) => (SLIDERS[id] ? chosen[id] : $(id).value) || '').map(([, t]) => t);
   if (I.cultureAsked) set.unshift('culture');
   $('icaption').textContent = `${T.label || I.type}, ${cultureLabel(I.culture)}, ${I.biome}, ${STAGE_TEXT[I.stage]}, ${DECOR_TEXT[I.decor]}, house seed ${I.seed}.`
     + (set.length ? ` You set: ${set.join(', ')}; the rest was drawn.` : ' All drawn at random.');
@@ -585,7 +776,7 @@ function floorOf(pieces) {
 function openInterior(d, q) {
   intResult = { d, ev: evaluate(d, q.biome) };
   current = intResult; mode = 'int'; $('roofoff').checked = true;
-  if (I.fresh) { view = { az: 35, el: 60 }; I.fresh = false; }
+  if (I.fresh) { view = { az: 35, el: 60, ppm: null, target: null }; I.fresh = false; }
   show();
 }
 function showInteriors() {
@@ -631,23 +822,44 @@ function showInteriors() {
   };
   setTimeout(next, 0);
 }
-const setIStage = slider('istage', STAGES, STAGE_TEXT, v => { if (!I) return iDraw(); I.stage = v; showInteriors(); });
-const setIDecor = slider('idecor', DECORS, DECOR_TEXT, v => { if (!I) return iDraw(); I.decor = v; showInteriors(); });
 $('igo').onclick = iDraw;
-for (const id of ['ihouse', 'imode', 'icount']) $(id).onchange = () => { saveKept(); showInteriors(); };
+for (const id of ['imode', 'icount']) $(id).onchange = () => { saveKept(); showInteriors(); };
 $('ibiome').onchange = () => { saveKept(); if (!I) return iDraw(); I.biome = $('ibiome').value || any(biomesOf(I.culture)); showInteriors(); };
 $('iseed').onchange = () => { const s = Math.floor(+$('iseed').value); if (s < 1) return; if (!I) return iDraw(); I.seed = s; showInteriors(); };
 
 // ---------- tabs
 function tab(which) {
   for (const t of ['gen', 'dec', 'rep', 'int']) { $('tab-' + t).setAttribute('aria-selected', which === t); $('panel-' + t).classList.toggle('hidden', which !== t); }
-  // the caption and the stage sliders under the building belong to the new building tab
-  for (const id of ['caption', 'gstages']) $(id).classList.toggle('hidden', which !== 'gen');
+  tabNow = which;
+  if (which === 'gen') $('gtop').append($('topgroup'));
+  if (which === 'int') $('itop').append($('topgroup'));
+  // the caption under the building belongs to the new building tab
+  $('caption').classList.toggle('hidden', which !== 'gen');
 }
-$('tab-gen').onclick = () => { tab('gen'); if (genResult) { current = genResult; mode = 'gen'; show(); captionGen(); } else draw(false); };
+// opening a tab: a stage or interior set on the other tab is built here too; Building and Culture wait for Build it
+$('tab-gen').onclick = () => {
+  tab('gen');
+  if (!genResult) return draw(false);
+  const ch = {}, hh = $('ghouse').value || undefined;
+  if (chosen.gstage && chosen.gstage !== G.stage) ch.stage = chosen.gstage;
+  if (chosen.gdecor && chosen.gdecor !== G.decor) ch.decor = chosen.gdecor;
+  if (hh !== G.persona) ch.persona = hh;
+  setGStage(ch.stage || G.stage); setGDecor(ch.decor || G.decor);
+  if (Object.keys(ch).length) return rebuild(ch);
+  current = genResult; mode = 'gen'; show(); captionGen();
+};
 $('tab-dec').onclick = () => tab('dec');
 $('tab-rep').onclick = () => tab('rep');
-$('tab-int').onclick = () => { tab('int'); if (!$('iplans').children.length) iDraw(); else if (intResult) { current = intResult; mode = 'int'; show(); } };
+$('tab-int').onclick = () => {
+  tab('int');
+  if (!I || !$('iplans').children.length) return iDraw();
+  let again = I.hh !== $('ghouse').value;
+  if (chosen.gstage && chosen.gstage !== I.stage) { I.stage = chosen.gstage; again = true; }
+  if (chosen.gdecor && chosen.gdecor !== I.decor) { I.decor = chosen.gdecor; again = true; }
+  setGStage(I.stage); setGDecor(I.decor);
+  if (again) return showInteriors();
+  if (intResult) { current = intResult; mode = 'int'; show(); }
+};
 
 loadKept();
 draw(false);

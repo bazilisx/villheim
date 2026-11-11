@@ -1384,6 +1384,8 @@ function liveIn(b, ctx, zones) {
         if (it.y0 < y1 + 0.3 && it.y1 > y0 && I.overlap(I.obox(q.x, q.z, s.size[0] + 1.2, s.size[2] + 1.2, I.pyaw(q)), it.b, -0.02)) out.add('s' + id(q));
       }
     }
+    // furniture in furniture as the pool audit measures it
+    if (!flat) for (const [q] of D.furnClash(p, idx.near(bx, 0.3).map(r => r.p))) out.add('b' + id(q));
     // on what it stood on
     if (p.kb && p.rest) { if (!D.auditOne(p, idx.audit, [])) out.add('f'); }
     else if (sp.top) { if (!tables.some(t => I.ptDist(D.itemOf(t).b, p.x, p.z) < 0.05 && Math.abs(t.y + ((F[t.name] || {}).top || 0.75) - p.y) < 0.15) && !idx.near({ x0: p.x, x1: p.x, z0: p.z, z1: p.z }, 0).some(r => r.p !== p && r.b.x0 < p.x - 0.04 && r.b.x1 > p.x + 0.04 && r.b.z0 < p.z - 0.04 && r.b.z1 > p.z + 0.04 && Math.abs(r.b.y1 - (p.y - 0.0)) < 0.15)) out.add('f'); }
@@ -1402,7 +1404,8 @@ function liveIn(b, ctx, zones) {
   const amp = 0.12 + 0.88 * P.clutter;
   let moved = 0;
   for (const p of b.pieces.slice()) {
-    if (!p.decor || p.trim || p.yard || p.outside || (p.rest && ['wall', 'hang'].includes(p.rest))) continue;
+    // a piece standing as its source build stood it, marked for the pool audit (D-098), stays put
+    if (!p.decor || p.trim || p.yard || p.outside || (p.rest && ['wall', 'hang'].includes(p.rest)) || p.fclip || p.wclip) continue;
     const sp = jitterSpec(p);
     if (!sp) continue;
     const R = rngB((P.salt ^ Math.imul(Math.round(p.x * 20) + 8192, 73856093) ^ Math.imul(Math.round(p.y * 20) + 8192, 19349663) ^ Math.imul(Math.round(p.z * 20) + 8192, 83492791) ^ personaB().hash(p.name)) >>> 0);

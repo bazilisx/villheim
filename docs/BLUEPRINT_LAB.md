@@ -760,7 +760,18 @@ game judge a pool the same way. A test pool's files are read as lines (`<culture
 | doorway | yes | anything solid in the middle 0.9 m of a door's way from 0.35 to 1.95 m, 0.7 m either side (a beam at the foot of a door, T-606) |
 | onStation | yes | furniture on or in a crafting station (a table on a workbench, T-606) |
 | intoWall | yes | furniture more than 15 cm into a wall, post, brace, window or door; against walls and posts by the furniture's frame (a bed's fur tucks against a wall as in the game), against braces, windows and doors by what shows of both |
+| richness | yes, on pools of six lines or more | the corpus and the library slipping out of the designs: decor prefabs per d3 design (floor 11), the share of d2 and d3 decor pieces that came in a library set (0.36) and the corpus sets, mined and creative, per d3 design (0.9), from each file's `#VillheimSets` section |
 | outside, intoWallSoft | watched | furniture whose middle is outside the floor's outline; furniture 5 to 15 cm into a wall |
+
+Richness (2026-11-10). `lib/blueprint.js` writes a `#VillheimSets` section before `#Pieces` (`set id;decor pieces`, from
+each piece's `kb`), which PlanBuild and the mod skip; pools written before it carry none and are not measured. The
+floors (`lib/audit.js` `RICH_FLOOR`) sit a little under what the generator reaches on three pools of the nine lines:
+Norse Meadows 12.2 prefabs per d3 design, 0.443 of decor from sets, 1.07 corpus sets per d3 design; norse-forest Black
+Forest 14, 0.455, 1.78; middle-eastern Plains 13.4, 0.397, 1.08. A single line ranges too widely to gate (a barn holds
+no corpus set, a smithy six prefabs). `node lab/make_testpool.js <out> --sample` writes the Norse Meadows pool and the
+two others in `<out>/norse-forest` and `<out>/middle-eastern`, and gates each; `--culture` and `--biome` write one
+other pool. The other two pools fail today on defects that main showed before this work (Black Forest: mountClip 6,
+hang 9, intoWall 3; Plains: mountClip 3, hang 3, doorway 6, intoWall 6), so the gate passes for Norse Meadows only.
 
 Built furniture (a cabinet whose back is a half wall) is left out of the wall measures: only pieces already in the
 stage's d1 file count as the building. In the game the pool is made in `BepInEx/config/Villheim/testpool-staging-<culture>`

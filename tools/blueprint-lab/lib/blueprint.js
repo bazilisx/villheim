@@ -1,6 +1,6 @@
 // Read and write PlanBuild .blueprint files.
 function parse(text) {
-  const meta = {}, pieces = [], snaps = [], clips = [];
+  const meta = {}, pieces = [], snaps = [], clips = [], sets = {};
   let mode = null;
   for (const raw of text.split(/\r?\n/)) {
     const line = raw.trim();
@@ -8,7 +8,7 @@ function parse(text) {
     if (line[0] === '#') {
       const i = line.indexOf(':');
       const key = i < 0 ? line.slice(1) : line.slice(1, i);
-      if (['Pieces', 'SnapPoints', 'Terrain', 'VillheimClips', 'VillheimPaths'].includes(key)) mode = key;
+      if (['Pieces', 'SnapPoints', 'Terrain', 'VillheimClips', 'VillheimPaths', 'VillheimSets'].includes(key)) mode = key;
       else meta[key] = line.slice(i + 1).replace(/^"|"$/g, '');
       continue;
     }
@@ -20,6 +20,7 @@ function parse(text) {
       pieces.push({ name: p[0], cat: p[1], x: n[0], y: n[1], z: n[2], q: n.slice(3, 7),
         s: s.some(isNaN) ? [1, 1, 1] : s, info: p[9] || '', data: p[13] || '' });
     } else if (mode === 'SnapPoints' && p.length === 3) snaps.push(p.map(Number));
+    else if (mode === 'VillheimSets' && p.length >= 2) sets[p[0]] = (sets[p[0]] || 0) + (+p[1] || 0);
     else if (mode === 'VillheimClips' && p.length >= 5) clips.push({ name: p[0], x: +p[1], y: +p[2], z: +p[3], d: +p[4], f: +(p[5] || 0) });
   }
   // clips made on purpose (D-098): the depth a piece may go into what shows of the walls, matched by prefab and place
@@ -28,6 +29,8 @@ function parse(text) {
     if (q && c.d > 0) q.wclip = c.d;
     if (q && c.f > 0) q.fclip = c.f;
   }
+  // the interior library's sets in the design and how many decor pieces each brought (the pool audit's richness)
+  if (Object.keys(sets).length) Object.defineProperty(pieces, 'sets', { value: sets, enumerable: false });
   return { meta, pieces, snaps };
 }
 
@@ -54,6 +57,12 @@ function write(bp) {
   // Each line: prefab;x;y;z;depth into walls;depth into the set's own furniture (as the audit's furniture boxes).
   const marked = bp.pieces.filter(p => p.wclip > 0 || p.fclip > 0);
   if (marked.length) { out.push('#VillheimClips'); for (const p of marked) out.push([p.name, f(p.x), f(p.y), f(p.z), f(p.wclip || 0), f(p.fclip || 0)].join(';')); }
+  // The interior library's sets in the design (lib/kitbash.js: mined 'KB-', creative 'KC-', hand-made 'BK-') and how
+  // many decor pieces each brought, for the pool audit's richness measures (lib/audit.js). Skipped by PlanBuild and
+  // the mod as the section above.
+  const sets = {};
+  for (const p of bp.pieces) if (p.kb && !p.trim) { const id = String(p.kb).split('@')[0]; sets[id] = (sets[id] || 0) + 1; }
+  if (Object.keys(sets).length) { out.push('#VillheimSets'); for (const id of Object.keys(sets).sort()) out.push(`${id};${sets[id]}`); }
   out.push('#Pieces');
   for (const p of bp.pieces) {
     const q = p.q || [0, 0, 0, 1], s = p.s || [1, 1, 1];

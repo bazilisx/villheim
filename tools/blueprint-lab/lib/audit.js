@@ -41,7 +41,12 @@ const D = NODE_A ? require('./decorate.js') : window.VHDecorate;
 const M = NODE_A ? require('./mesh.js') : window.VHMesh;
 const SH = NODE_A ? require('./shapes.js') : window.VHShapes;
 // The gated measures: a pool fails when any of them is above zero.
-const GATE = ['homeAlike', 'nestBroken', 'furnClip', 'stacked', 'overWin', 'stairFoot', 'stations', 'mountClip', 'hang', 'loose', 'doorway', 'onStation', 'intoWall'];
+// Floors for the richness measures (pool below): a little under what the generator reaches on the Norse Meadows pool
+// and the second sample (lab/make_testpool.js --sample: Norse Meadows 12.2, 0.443, 1.07; norse-forest Black Forest 14,
+// 0.455, 1.78; middle-eastern Plains 13.4, 0.397, 1.08 on 2026-11-10), so they guard against slipping back. Gated on
+// pools of six lines or more: a single line ranges widely (a barn holds no corpus set, a smithy six prefabs).
+const RICH_FLOOR = { prefabsPerD3: 11, setShare: 0.36, corpusSetsPerD3: 0.9 }, RICH_LINES = 6;
+const GATE = ['richness', 'homeAlike', 'nestBroken', 'furnClip', 'stacked', 'overWin', 'stairFoot', 'stations', 'mountClip', 'hang', 'loose', 'doorway', 'onStation', 'intoWall'];
 // Watched only: printed with the totals; to be gated once the generator clears them.
 const WATCH = ['outside', 'intoWallSoft'];
 const MOUNT = /^(piece_banner\d+|sign|sign_notext|itemstand|piece_shieldgeneric|cloth_hanging_|fenrirhide_hanging|Trophy|wood_dragon)/;
@@ -305,6 +310,29 @@ function pool(input, name) {
     if (st !== 's1d1' && v > 0.7) tot.homeAlike++;
   }
 
+  // Richness (2026-11-10, lab/richness.js): how much of the corpus and the interior library reaches the pool, from the
+  // files' '#VillheimSets' sections (lib/blueprint.js); pools written before them carry none and are not measured.
+  // Per design, so a pool of a few lines or of another biome is judged the same way: distinct decor prefabs in each
+  // d3 design, the share of d2 and d3 decor pieces that came in a set, and the corpus sets (mined and creative) in each
+  // d3 design. Each has a floor a little under what the generator reaches; a pool under a floor fails.
+  const rich = { d3: 0, prefabs: 0, decor: 0, fromSets: 0, corpusSets: 0 };
+  for (const d of Object.values(designs)) for (const [stage, v] of Object.entries(d)) {
+    if (!v.pieces.sets || !/d[23]$/.test(stage)) continue;
+    const decor = v.pieces.filter(p => !structural(p) && !/^(Pickable|Placeable)_/.test(p.name));
+    rich.decor += decor.length;
+    rich.fromSets += Object.values(v.pieces.sets).reduce((a, b) => a + b, 0);
+    if (/d3$/.test(stage)) {
+      rich.d3++;
+      rich.prefabs += new Set(decor.map(p => p.name)).size;
+      rich.corpusSets += Object.keys(v.pieces.sets).filter(id => /^K[BC]-/.test(id)).length;
+    }
+  }
+  tot.richness = 0;
+  if (rich.d3) {
+    report.rich = { prefabsPerD3: +(rich.prefabs / rich.d3).toFixed(1), setShare: +(rich.fromSets / Math.max(1, rich.decor)).toFixed(3), corpusSetsPerD3: +(rich.corpusSets / rich.d3).toFixed(2) };
+    report.richLow = Object.entries(RICH_FLOOR).filter(([k, f]) => report.rich[k] < f).map(([k, f]) => `${k} ${report.rich[k]} under ${f}`);
+    tot.richness = Object.keys(designs).length >= RICH_LINES ? report.richLow.length : 0;
+  }
   report.failed = GATE.filter(k => tot[k] > 0);
   report.gate = report.failed.length ? 'fail' : 'pass';
   report.watch = Object.fromEntries(WATCH.map(k => [k, tot[k]]));
@@ -350,6 +378,8 @@ function summary(report, n = 3) {
       if (x.startsWith(k + ':') && seen.length < n) seen.push(`${line} ${stage} ${x}`);
     for (const x of seen) out.push('  ' + x);
   }
+  if (report.richLow && report.richLow.length) out.push(`  richness: ${report.richLow.join('; ')}`);
+  if (report.rich) out.push(`richness: ${Object.entries(report.rich).map(([k, v]) => `${k} ${v}`).join(', ')}`);
   out.push(`watched: ${Object.entries(report.watch).map(([k, v]) => `${k} ${v}`).join(', ')}`);
   return out.join('\n');
 }

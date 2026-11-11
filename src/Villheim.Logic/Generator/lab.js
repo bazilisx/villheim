@@ -1567,7 +1567,7 @@ if (NODE_P) module.exports = apiPer; else window.VHPersona = apiPer;
 (function () {
 // Read and write PlanBuild .blueprint files.
 function parse(text) {
-  const meta = {}, pieces = [], snaps = [], clips = [];
+  const meta = {}, pieces = [], snaps = [], clips = [], sets = {};
   let mode = null;
   for (const raw of text.split(/\r?\n/)) {
     const line = raw.trim();
@@ -1575,7 +1575,7 @@ function parse(text) {
     if (line[0] === '#') {
       const i = line.indexOf(':');
       const key = i < 0 ? line.slice(1) : line.slice(1, i);
-      if (['Pieces', 'SnapPoints', 'Terrain', 'VillheimClips', 'VillheimPaths'].includes(key)) mode = key;
+      if (['Pieces', 'SnapPoints', 'Terrain', 'VillheimClips', 'VillheimPaths', 'VillheimSets'].includes(key)) mode = key;
       else meta[key] = line.slice(i + 1).replace(/^"|"$/g, '');
       continue;
     }
@@ -1587,6 +1587,7 @@ function parse(text) {
       pieces.push({ name: p[0], cat: p[1], x: n[0], y: n[1], z: n[2], q: n.slice(3, 7),
         s: s.some(isNaN) ? [1, 1, 1] : s, info: p[9] || '', data: p[13] || '' });
     } else if (mode === 'SnapPoints' && p.length === 3) snaps.push(p.map(Number));
+    else if (mode === 'VillheimSets' && p.length >= 2) sets[p[0]] = (sets[p[0]] || 0) + (+p[1] || 0);
     else if (mode === 'VillheimClips' && p.length >= 5) clips.push({ name: p[0], x: +p[1], y: +p[2], z: +p[3], d: +p[4], f: +(p[5] || 0) });
   }
   // clips made on purpose (D-098): the depth a piece may go into what shows of the walls, matched by prefab and place
@@ -1595,6 +1596,8 @@ function parse(text) {
     if (q && c.d > 0) q.wclip = c.d;
     if (q && c.f > 0) q.fclip = c.f;
   }
+  // the interior library's sets in the design and how many decor pieces each brought (the pool audit's richness)
+  if (Object.keys(sets).length) Object.defineProperty(pieces, 'sets', { value: sets, enumerable: false });
   return { meta, pieces, snaps };
 }
 
@@ -1621,6 +1624,12 @@ function write(bp) {
   // Each line: prefab;x;y;z;depth into walls;depth into the set's own furniture (as the audit's furniture boxes).
   const marked = bp.pieces.filter(p => p.wclip > 0 || p.fclip > 0);
   if (marked.length) { out.push('#VillheimClips'); for (const p of marked) out.push([p.name, f(p.x), f(p.y), f(p.z), f(p.wclip || 0), f(p.fclip || 0)].join(';')); }
+  // The interior library's sets in the design (lib/kitbash.js: mined 'KB-', creative 'KC-', hand-made 'BK-') and how
+  // many decor pieces each brought, for the pool audit's richness measures (lib/audit.js). Skipped by PlanBuild and
+  // the mod as the section above.
+  const sets = {};
+  for (const p of bp.pieces) if (p.kb && !p.trim) { const id = String(p.kb).split('@')[0]; sets[id] = (sets[id] || 0) + 1; }
+  if (Object.keys(sets).length) { out.push('#VillheimSets'); for (const id of Object.keys(sets).sort()) out.push(`${id};${sets[id]}`); }
   out.push('#Pieces');
   for (const p of bp.pieces) {
     const q = p.q || [0, 0, 0, 1], s = p.s || [1, 1, 1];
@@ -7974,6 +7983,8 @@ function liveIn(b, ctx, zones) {
         if (it.y0 < y1 + 0.3 && it.y1 > y0 && I.overlap(I.obox(q.x, q.z, s.size[0] + 1.2, s.size[2] + 1.2, I.pyaw(q)), it.b, -0.02)) out.add('s' + id(q));
       }
     }
+    // furniture in furniture as the pool audit measures it
+    if (!flat) for (const [q] of D.furnClash(p, idx.near(bx, 0.3).map(r => r.p))) out.add('b' + id(q));
     // on what it stood on
     if (p.kb && p.rest) { if (!D.auditOne(p, idx.audit, [])) out.add('f'); }
     else if (sp.top) { if (!tables.some(t => I.ptDist(D.itemOf(t).b, p.x, p.z) < 0.05 && Math.abs(t.y + ((F[t.name] || {}).top || 0.75) - p.y) < 0.15) && !idx.near({ x0: p.x, x1: p.x, z0: p.z, z1: p.z }, 0).some(r => r.p !== p && r.b.x0 < p.x - 0.04 && r.b.x1 > p.x + 0.04 && r.b.z0 < p.z - 0.04 && r.b.z1 > p.z + 0.04 && Math.abs(r.b.y1 - (p.y - 0.0)) < 0.15)) out.add('f'); }
@@ -7992,7 +8003,8 @@ function liveIn(b, ctx, zones) {
   const amp = 0.12 + 0.88 * P.clutter;
   let moved = 0;
   for (const p of b.pieces.slice()) {
-    if (!p.decor || p.trim || p.yard || p.outside || (p.rest && ['wall', 'hang'].includes(p.rest))) continue;
+    // a piece standing as its source build stood it, marked for the pool audit (D-098), stays put
+    if (!p.decor || p.trim || p.yard || p.outside || (p.rest && ['wall', 'hang'].includes(p.rest)) || p.fclip || p.wclip) continue;
     const sp = jitterSpec(p);
     if (!sp) continue;
     const R = rngB((P.salt ^ Math.imul(Math.round(p.x * 20) + 8192, 73856093) ^ Math.imul(Math.round(p.y * 20) + 8192, 19349663) ^ Math.imul(Math.round(p.z * 20) + 8192, 83492791) ^ personaB().hash(p.name)) >>> 0);
@@ -12540,7 +12552,12 @@ const D = NODE_A ? require('./decorate.js') : window.VHDecorate;
 const M = NODE_A ? require('./mesh.js') : window.VHMesh;
 const SH = NODE_A ? require('./shapes.js') : window.VHShapes;
 // The gated measures: a pool fails when any of them is above zero.
-const GATE = ['homeAlike', 'nestBroken', 'furnClip', 'stacked', 'overWin', 'stairFoot', 'stations', 'mountClip', 'hang', 'loose', 'doorway', 'onStation', 'intoWall'];
+// Floors for the richness measures (pool below): a little under what the generator reaches on the Norse Meadows pool
+// and the second sample (lab/make_testpool.js --sample: Norse Meadows 12.2, 0.443, 1.07; norse-forest Black Forest 14,
+// 0.455, 1.78; middle-eastern Plains 13.4, 0.397, 1.08 on 2026-11-10), so they guard against slipping back. Gated on
+// pools of six lines or more: a single line ranges widely (a barn holds no corpus set, a smithy six prefabs).
+const RICH_FLOOR = { prefabsPerD3: 11, setShare: 0.36, corpusSetsPerD3: 0.9 }, RICH_LINES = 6;
+const GATE = ['richness', 'homeAlike', 'nestBroken', 'furnClip', 'stacked', 'overWin', 'stairFoot', 'stations', 'mountClip', 'hang', 'loose', 'doorway', 'onStation', 'intoWall'];
 // Watched only: printed with the totals; to be gated once the generator clears them.
 const WATCH = ['outside', 'intoWallSoft'];
 const MOUNT = /^(piece_banner\d+|sign|sign_notext|itemstand|piece_shieldgeneric|cloth_hanging_|fenrirhide_hanging|Trophy|wood_dragon)/;
@@ -12804,6 +12821,29 @@ function pool(input, name) {
     if (st !== 's1d1' && v > 0.7) tot.homeAlike++;
   }
 
+  // Richness (2026-11-10, lab/richness.js): how much of the corpus and the interior library reaches the pool, from the
+  // files' '#VillheimSets' sections (lib/blueprint.js); pools written before them carry none and are not measured.
+  // Per design, so a pool of a few lines or of another biome is judged the same way: distinct decor prefabs in each
+  // d3 design, the share of d2 and d3 decor pieces that came in a set, and the corpus sets (mined and creative) in each
+  // d3 design. Each has a floor a little under what the generator reaches; a pool under a floor fails.
+  const rich = { d3: 0, prefabs: 0, decor: 0, fromSets: 0, corpusSets: 0 };
+  for (const d of Object.values(designs)) for (const [stage, v] of Object.entries(d)) {
+    if (!v.pieces.sets || !/d[23]$/.test(stage)) continue;
+    const decor = v.pieces.filter(p => !structural(p) && !/^(Pickable|Placeable)_/.test(p.name));
+    rich.decor += decor.length;
+    rich.fromSets += Object.values(v.pieces.sets).reduce((a, b) => a + b, 0);
+    if (/d3$/.test(stage)) {
+      rich.d3++;
+      rich.prefabs += new Set(decor.map(p => p.name)).size;
+      rich.corpusSets += Object.keys(v.pieces.sets).filter(id => /^K[BC]-/.test(id)).length;
+    }
+  }
+  tot.richness = 0;
+  if (rich.d3) {
+    report.rich = { prefabsPerD3: +(rich.prefabs / rich.d3).toFixed(1), setShare: +(rich.fromSets / Math.max(1, rich.decor)).toFixed(3), corpusSetsPerD3: +(rich.corpusSets / rich.d3).toFixed(2) };
+    report.richLow = Object.entries(RICH_FLOOR).filter(([k, f]) => report.rich[k] < f).map(([k, f]) => `${k} ${report.rich[k]} under ${f}`);
+    tot.richness = Object.keys(designs).length >= RICH_LINES ? report.richLow.length : 0;
+  }
   report.failed = GATE.filter(k => tot[k] > 0);
   report.gate = report.failed.length ? 'fail' : 'pass';
   report.watch = Object.fromEntries(WATCH.map(k => [k, tot[k]]));
@@ -12849,6 +12889,8 @@ function summary(report, n = 3) {
       if (x.startsWith(k + ':') && seen.length < n) seen.push(`${line} ${stage} ${x}`);
     for (const x of seen) out.push('  ' + x);
   }
+  if (report.richLow && report.richLow.length) out.push(`  richness: ${report.richLow.join('; ')}`);
+  if (report.rich) out.push(`richness: ${Object.entries(report.rich).map(([k, v]) => `${k} ${v}`).join(', ')}`);
   out.push(`watched: ${Object.entries(report.watch).map(([k, v]) => `${k} ${v}`).join(', ')}`);
   return out.join('\n');
 }

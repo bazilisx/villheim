@@ -30,6 +30,7 @@ for (const [line, L] of Object.entries(report.lines)) {
   for (const [s, f] of Object.entries(L.issues)) if (list || /d3$/.test(s) || /s1d1/.test(s)) for (const x of f) console.log(`  ${s} ${x}`);
 }
 console.log('\nfurniture likeness between home lines (1 = same list):', JSON.stringify(report.same));
+if (report.rich) console.log(`\nrichness (floors in lib/audit.js RICH_FLOOR): ${Object.entries(report.rich).map(([k, v]) => `${k} ${v}`).join(', ')}${report.richLow && report.richLow.length ? `; UNDER: ${report.richLow.join('; ')}` : ''}`);
 console.log(`\nwatched (not gated yet): ${Object.entries(report.watch).map(([k, v]) => `${k} ${v}`).join(', ')}`);
 console.log(report.failed.length ? `GATE: fail (${report.failed.map(k => `${k} ${tot[k]}`).join(', ')})` : 'GATE: pass');
 if (process.argv.includes('--gate') && report.failed.length) process.exitCode = 1;

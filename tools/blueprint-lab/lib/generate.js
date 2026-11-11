@@ -34,6 +34,7 @@ const P = NODE ? require('./pieces.js') : window.VHPieces;
 const Details = NODE ? require('./details.js') : window.VHDetails;
 const Kitbash = NODE ? require('./kitbash.js') : window.VHKitbash;
 const Yards = NODE ? require('./yards.js') : window.VHYards;
+const Landscape = NODE ? require('./landscape.js') : window.VHLandscape;
 const Persona = NODE ? require('./persona.js') : window.VHPersona;
 const checksLib = () => (NODE ? require('./checks.js') : window.VHChecks);
 
@@ -498,7 +499,7 @@ function generate(req) {
     // corner and wall-face motifs on the eight-sided walls (details.js), after the furnishing
     if (kind === 'round' && !(req.details && req.details.motifs === false)) Details.roundTrim(b, { K: Kr, C, cultureKey, T, type, stage, decor, biome, plan: 'octagon', F, SH, storeys, edges: [], wings: [], seed });
     settle(b, { ...ctx, type, skipDecor: !!req.skipDecor });
-    if (Yards.wants(req, type, stage)) Yards.add(b, { K, C, type, stage, biome, cultureKey, decor: req.skipDecor ? 'd1' : decor, seed, opts: req.yard, details: req.details, persona: household }); // a yard round stage 2 and 3 homes and farms (lib/yards.js, D-060)
+    outside(b, req, { K, C, type, stage, biome, cultureKey, decor, seed, household });
     return finish(b, info);
   }
 
@@ -1207,8 +1208,16 @@ function generate(req) {
   if (!req.skipDecor && hearthStoneOK && F < 0.01 && !C.stoneWalls) hearthstone(b, KH);
   if (!req.skipDecor) { const zones = keepClear(b); Details.interior(b, { ...dctx, zones }); Kitbash.apply(b, { ...dctx, decor, layout: layoutCtx }, zones); doorLights(b, { biome, decor, F }); }
   else Details.commitMotifs(b, dctx); // bare builds (ranked before furnishing) carry the same wall trim
-  if (Yards.wants(req, type, stage)) Yards.add(b, { K, C, type, stage, biome, cultureKey, decor: req.skipDecor ? 'd1' : decor, seed, opts: req.yard, details: req.details, persona: household }); // a yard round stage 2 and 3 homes and farms (lib/yards.js, D-060)
+  outside(b, req, { K, C, type, stage, biome, cultureKey, decor, seed, household });
   return finish(b, info);
+}
+
+// What goes round a finished building outside: a yard round stage 2 and 3 homes and farms (lib/yards.js, D-060), then
+// its greenery (lib/landscape.js, D-143).
+function outside(b, req, o) {
+  const { K, C, type, stage, biome, cultureKey, decor, seed, household } = o;
+  if (Yards.wants(req, type, stage)) Yards.add(b, { K, C, type, stage, biome, cultureKey, decor: req.skipDecor ? 'd1' : decor, seed, opts: req.yard, details: req.details, persona: household });
+  if (Landscape.wants(req)) Landscape.add(b, { C, type, stage, biome, cultureKey, decor, seed, persona: household, opts: req.landscape });
 }
 
 // The gable end a middle fire's chimney stands near (within 2.5 m of the gable), or null: the balcony keeps to the other
@@ -1784,6 +1793,8 @@ function finish(b, info) {
     pieces: b.pieces, rooms: b.rooms, notes: [...new Set(b.notes)], request: info,
     // places a resident's own role props could go, left empty for the game (lib/kitbash.js residentSlots)
     slots: b.slots || [],
+    // what the greenery pass placed (lib/landscape.js)
+    landscape: b.landscape || null,
   };
 }
 

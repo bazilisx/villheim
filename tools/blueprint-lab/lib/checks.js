@@ -136,12 +136,16 @@ function index(boxes) {
   });
   // pad 1 also returns pieces in the cells round the box (for touching with a margin); pad 0 only those whose box can
   // reach into it, which is all a point or a small column needs
-  const none = [];
+  // the answer is a list in the order a Set would give (first seen first), each piece once; a mark per piece tells it
+  // was seen in this query
+  const none = [], mark = new Uint32Array(boxes.length);
+  let q = 0;
   return (b, pad = 1) => {
     const ia = Math.floor(b.x0 / 2) - pad, ib = Math.floor(b.x1 / 2) + pad, ja = Math.floor(b.z0 / 2) - pad, jb = Math.floor(b.z1 / 2) + pad;
     if (ia === ib && ja === jb) return g.get(k(ia, ja)) || none;
-    const out = new Set();
-    for (let i = ia; i <= ib; i++) for (let j = ja; j <= jb; j++) for (const n of g.get(k(i, j)) || none) out.add(n);
+    if (++q === 0xffffffff) { mark.fill(0); q = 1; }
+    const out = [];
+    for (let i = ia; i <= ib; i++) for (let j = ja; j <= jb; j++) { const l = g.get(k(i, j)); if (l) for (const n of l) if (mark[n] !== q) { mark[n] = q; out.push(n); } }
     return out;
   };
 }

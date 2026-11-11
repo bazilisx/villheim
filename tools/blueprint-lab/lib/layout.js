@@ -619,6 +619,7 @@ function wSolid(p) {
   const o = checksL().aabbShapes(p);
   return o.pass ? null : o;
 }
+const cellAt = (g, i, j) => g.cn.get(i * 4096 + j);
 const wDist = (o, x, z) => Math.hypot(Math.max(o.x0 - x, 0, x - o.x1), Math.max(o.z0 - z, 0, z - o.z1));
 function walkMap(b) {
   const P = PL, Ck = checksL(), F = decorL().FURNITURE;
@@ -653,7 +654,10 @@ function walkMap(b) {
       c.free = !c.hard && !c.block;
       cells.set(`${c.i},${c.j}`, c);
     }
-    out.grids.set(y, { y, rs, all, cells, list: [...cells.values()] });
+    // cn: the same cells by a number key (cellAt), quicker to read than the text key
+    const cn = new Map();
+    for (const c of cells.values()) cn.set(c.i * 4096 + c.j, c);
+    out.grids.set(y, { y, rs, all, cells, cn, list: [...cells.values()] });
   }
   const queue = [];
   const seed = (y, c) => { if (c.free && !c.seen) { c.seen = true; queue.push([y, c]); } };
@@ -674,9 +678,22 @@ function walkMap(b) {
     }
   }
   // the entry zones: a box is in one when a point of the zone (0.25 m steps) lies in it
+  // (each zone's points and their bounds worked out once; a box away from the bounds meets none of them)
+  const zonePts = zn => {
+    if (zn.pts) return zn.pts;
+    const pts = [];
+    for (let a = -zn.hw; a <= zn.hw + 1e-6; a += 0.25) for (let dd = 0.15; dd <= zn.dep + 1e-6; dd += 0.25) pts.push(zn.x + zn.ux * a + zn.nx * dd, zn.z + zn.uz * a + zn.nz * dd);
+    let x0 = Infinity, x1 = -Infinity, z0 = Infinity, z1 = -Infinity;
+    for (let n = 0; n < pts.length; n += 2) { x0 = Math.min(x0, pts[n]); x1 = Math.max(x1, pts[n]); z0 = Math.min(z0, pts[n + 1]); z1 = Math.max(z1, pts[n + 1]); }
+    Object.defineProperty(zn, 'pts', { value: pts, enumerable: false });
+    Object.defineProperty(zn, 'bb', { value: { x0, x1, z0, z1 }, enumerable: false });
+    return pts;
+  };
   out.inZone = (o, y) => out.zones.some(zn => {
     if (Math.abs(zn.y - y) > 0.3) return false;
-    for (let a = -zn.hw; a <= zn.hw + 1e-6; a += 0.25) for (let dd = 0.15; dd <= zn.dep + 1e-6; dd += 0.25) if (wDist(o, zn.x + zn.ux * a + zn.nx * dd, zn.z + zn.uz * a + zn.nz * dd) < 0.01) return true;
+    const pts = zonePts(zn), bb = zn.bb;
+    if (bb.x0 > o.x1 + 0.02 || bb.x1 < o.x0 - 0.02 || bb.z0 > o.z1 + 0.02 || bb.z1 < o.z0 - 0.02) return false;
+    for (let n = 0; n < pts.length; n += 2) if (wDist(o, pts[n], pts[n + 1]) < 0.01) return true;
     return false;
   });
   for (const s of solids) {
@@ -709,7 +726,7 @@ function walkMap(b) {
   const walk = () => {
     while (queue.length) {
       const [y, c] = queue.pop(), g = out.grids.get(y);
-      for (const [di, dj] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const n = g.cells.get(`${c.i + di},${c.j + dj}`); if (n) seed(y, n); }
+      for (const [di, dj] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const n = cellAt(g, c.i + di, c.j + dj); if (n) seed(y, n); }
     }
   };
   walk();
@@ -801,6 +818,8 @@ function spotsFor(b, W, grp, keep, seedN) {
   const skipAt = n => { const f = FD[n] || {}; return ['mount', 'hang', 'top', 'fire', 'rug'].includes(f.at); };
   const itemBox = (n, x, z, yaw, py) => { const [w, h, d] = DI.size(n); const f = FD[n] || {}; const [mx, mz] = DI.middleOf(n, x, z, yaw); const y0 = py - (f.base || 0); return { b: DI.obox(mx, mz, w, d, yaw), y0, y1: y0 + h }; };
   const items = b.pieces.filter(q => q.decor && !set.has(q) && !skipAt(q.name) && !(!FD[q.name] && PL.piece(q.name).structural)).map(q => itemBox(q.name, q.x, q.z, DI.pyaw(q), q.y));
+  const rOf = o => (o.r != null ? o.r : Math.hypot(o.hw, o.hd));
+  const iIdx = bucketsOf(items, it => ({ x0: it.b.x - rOf(it.b), x1: it.b.x + rOf(it.b), z0: it.b.z - rOf(it.b), z1: it.b.z + rOf(it.b) }), 0.05);
   const mine = rel.filter(r => r.p.decor && !skipAt(r.p.name) && !(!FD[r.p.name] && PL.piece(r.p.name).structural));
   // the decorator's door boxes: 1.2 m deep in front of each side of a door, the door's width (lib/decorate.js audit)
   const doorBoxes = [];
@@ -817,8 +836,22 @@ function spotsFor(b, W, grp, keep, seedN) {
     if (['floor', 'rug'].includes(role)) continue;
     const o = Ck.aabbShapes(q);
     if (o.pass || o.y1 < y + 0.05 || o.y0 > y + 2.4) continue;
-    others.push({ o, struct: !q.decor, fire: role === 'fire' || /fire_pit|hearth|bonfire|brazier/.test(q.name), stair: role === 'stair', door: role === 'door' });
+    const fire = role === 'fire' || /fire_pit|hearth|bonfire|brazier/.test(q.name), stair = role === 'stair', door = role === 'door';
+    others.push({ o, struct: !q.decor, fire, stair, door, pad: fire ? 0.8 : stair ? 1.0 : door ? 0.3 : 0 });
   }
+  // 1 m buckets over each box grown by its pad (or the 0.15 m a wall is read at), so a spot reads only what can touch
+  // it; the answer is the same as reading every piece
+  const oIdx = bucketsOfBy(others, q => q.o, q => Math.max(q.pad, q.struct ? 0.15 : 0) + 0.05);
+  let stamp = 0;
+  const near = (B, idx, list) => {
+    stamp++;
+    const res = [];
+    for (let i = Math.floor(B.x0); i <= Math.floor(B.x1); i++) for (let j = Math.floor(B.z0); j <= Math.floor(B.z1); j++) {
+      const l = idx.get(i * 4096 + j);
+      if (l) for (const n of l) if (list[n]._s !== stamp) { list[n]._s = stamp; res.push(list[n]); }
+    }
+    return res;
+  };
   const turn = (r, k) => {
     // a quarter turn clockwise seen from above, k times: (x, z) to (z, -x)
     let { x0, x1, z0, z1 } = r;
@@ -828,59 +861,94 @@ function spotsFor(b, W, grp, keep, seedN) {
   // floor pieces whose top is this floor: where there are any, a spot stands on them (an upper floor's rect can hold a
   // stair hole or an open side)
   const floors = b.pieces.filter(q => !q.decor && PL.piece(q.name).role === 'floor').map(q => Ck.aabb(q)).filter(o => Math.abs(o.y1 - y) < 0.2);
-  const onFloor = (x, z) => !floors.length || floors.some(o => x > o.x0 - 0.05 && x < o.x1 + 0.05 && z > o.z0 - 0.05 && z < o.z1 + 0.05);
-  const inRects = (x, z) => g.rs.some(r => x > r.x0 + 0.02 && x < r.x1 - 0.02 && z > r.z0 + 0.02 && z < r.z1 - 0.02) && onFloor(x, z);
+  const fIdx = bucketsOf(floors, o => o, 0.1);
+  const kIdx = keep ? bucketsOf(keep, kc => ({ x0: kc.x, x1: kc.x, z0: kc.z, z1: kc.z }), 0.05) : null;
+  const onFloor = (x, z) => {
+    if (!floors.length) return true;
+    const l = fIdx.get(Math.floor(x) * 4096 + Math.floor(z));
+    if (l) for (let n = 0; n < l.length; n++) { const o = floors[l[n]]; if (x > o.x0 - 0.05 && x < o.x1 + 0.05 && z > o.z0 - 0.05 && z < o.z1 + 0.05) return true; }
+    return false;
+  };
+  const rs = g.rs;
+  const inRects = (x, z) => {
+    let any = false;
+    for (let n = 0; n < rs.length; n++) { const r = rs[n]; if (x > r.x0 + 0.02 && x < r.x1 - 0.02 && z > r.z0 + 0.02 && z < r.z1 - 0.02) { any = true; break; } }
+    return any && onFloor(x, z);
+  };
+  // the level's cells in a dense grid (seen flags and places), read by the reach and cover counts below
+  const D = denseOf(g);
   let h = (seedN >>> 0) || 7;
   const R = () => { h ^= h << 13; h >>>= 0; h ^= h >> 17; h ^= h << 5; h >>>= 0; return h / 4294967296; };
   const out = [];
   for (let k = 0; k < 4; k++) {
     const boxes = rel.map(r => ({ ...turn(r, k), y0: r.y0, y1: r.y1, floor: r.floor }));
+    // what itemBox works out for each of mine at this turn and does not depend on the spot
+    const mk = mine.map(r => {
+      let dx = r.dx, dz = r.dz;
+      for (let i = 0; i < k; i++) [dx, dz] = [dz, -dx];
+      const n = r.p.name, yaw = (((DI.pyaw(r.p) + 90 * k) % 360) + 360) % 360, [w, h, dd] = DI.size(n), f = FD[n] || {}, cc = FD[n] && FD[n].c;
+      const a0 = yaw * Math.PI / 180, ca = Math.cos(a0), sa = Math.sin(a0), ob = DI.obox(0, 0, w, dd, yaw), y0 = r.p.y - (f.base || 0);
+      return { dx, dz, cc, ca, sa, hw: ob.hw, hd: ob.hd, c: ob.c, s: ob.s, r: ob.r, y0, y1: y0 + h };
+    });
     for (const c of g.list) {
       if (c.hard) continue;
       const nx = c.x, nz = c.z;
+      const d = Math.hypot(nx - cx, nz - cz);
+      if (d < 0.2 && k === 0) continue;
       let ok = true, wall = 0;
+      // the solid test (lib/checks.js blocks, the dearest) waits until every other test has passed
+      const solid = [];
       for (const bx of boxes) {
         const B = { x0: bx.x0 + nx, x1: bx.x1 + nx, z0: bx.z0 + nz, z1: bx.z1 + nz, y0: bx.y0, y1: bx.y1 };
         if (bx.floor && !(inRects(B.x0, B.z0) && inRects(B.x1, B.z0) && inRects(B.x0, B.z1) && inRects(B.x1, B.z1))) { ok = false; break; }
-        for (const q of others) {
-          const o = q.o;
-          const pad = q.fire ? 0.8 : q.stair ? 1.0 : q.door ? 0.3 : 0;
+        const cand = near(B, oIdx, others);
+        let Bc = null;
+        for (let n = 0; n < cand.length; n++) {
+          const q = cand[n], o = q.o, pad = q.pad;
           if (o.x0 > B.x1 + pad || B.x0 > o.x1 + pad || o.z0 > B.z1 + pad || B.z0 > o.z1 + pad) { if (q.struct && bx.floor && o.x0 < B.x1 + 0.15 && B.x0 < o.x1 + 0.15 && o.z0 < B.z1 + 0.15 && B.z0 < o.z1 + 0.15) wall = 1; continue; }
           if (pad) { ok = false; break; }
           if (o.y0 > B.y1 - 0.03 || B.y0 > o.y1 - 0.03) continue;
-          if (Ck.blocks({ ...B, y0: B.y0 + 0.05 }, o, -0.03)) { ok = false; break; }
-          if (q.struct && bx.floor) wall = 1;
+          if (!Bc) Bc = { x0: B.x0, x1: B.x1, z0: B.z0, z1: B.z1, y0: B.y0 + 0.05, y1: B.y1 };
+          solid.push(Bc, q, bx.floor);
         }
         if (!ok) break;
         if (bx.floor && W.inZone(B, y)) { ok = false; break; }
-        if (keep && bx.floor && keep.some(kc => wDist(B, kc.x, kc.z) < WR)) { ok = false; break; }
+        if (keep && bx.floor && near({ x0: B.x0 - WR, x1: B.x1 + WR, z0: B.z0 - WR, z1: B.z1 + WR }, kIdx, keep).some(kc => wDist(B, kc.x, kc.z) < WR)) { ok = false; break; }
         for (const cl of W.climbs) if (wDist(cl, (B.x0 + B.x1) / 2, (B.z0 + B.z1) / 2) < 1.2 + Math.max(B.x1 - B.x0, B.z1 - B.z0) / 2 && Math.abs(cl.y0 - y) < 3) { ok = false; break; }
         if (!ok) break;
       }
       if (!ok) continue;
-      for (const r of mine) {
-        let dx = r.dx, dz = r.dz;
-        for (let i = 0; i < k; i++) [dx, dz] = [dz, -dx];
-        const A = itemBox(r.p.name, nx + dx, nz + dz, (((DI.pyaw(r.p) + 90 * k) % 360) + 360) % 360, r.p.y);
-        if (items.some(c2 => !(A.y0 > c2.y1 - 0.05 || c2.y0 > A.y1 - 0.05) && DI.overlap(A.b, c2.b, -0.02))) { ok = false; break; }
-        if (doorBoxes.some(z2 => DI.overlap(z2, A.b, 0.02))) { ok = false; break; }
+      for (const m of mk) {
+        // itemBox (above) at this spot: the same numbers, worked the same way
+        const px = nx + m.dx, pz = nz + m.dz;
+        const mx = m.cc ? px + m.cc[0] * m.ca + m.cc[1] * m.sa : px, mz = m.cc ? pz - m.cc[0] * m.sa + m.cc[1] * m.ca : pz;
+        const Ab = { x: mx, z: mz, hw: m.hw, hd: m.hd, c: m.c, s: m.s, r: m.r }, ra = m.r;
+        const cand = near({ x0: mx - ra, x1: mx + ra, z0: mz - ra, z1: mz + ra }, iIdx, items);
+        for (let n = 0; n < cand.length; n++) { const c2 = cand[n]; if (!(m.y0 > c2.y1 - 0.05 || c2.y0 > m.y1 - 0.05) && DI.overlap(Ab, c2.b, -0.02)) { ok = false; break; } }
+        if (!ok) break;
+        for (let n = 0; n < doorBoxes.length; n++) if (DI.overlap(doorBoxes[n], Ab, 0.02)) { ok = false; break; }
+        if (!ok) break;
       }
       if (!ok) continue;
       // a person reaches it there (a reached cell within 0.9 m of its first box that it does not cover itself)
       const B0 = { x0: boxes[0].x0 + nx, x1: boxes[0].x1 + nx, z0: boxes[0].z0 + nz, z1: boxes[0].z1 + nz };
-      if (!g.list.some(c2 => c2.seen && Math.abs(c2.x - nx) < 3 && Math.abs(c2.z - nz) < 3 && wDist(B0, c2.x, c2.z) < 0.9 && wDist(B0, c2.x, c2.z) >= WR)) continue;
-      const d = Math.hypot(nx - cx, nz - cz);
-      if (d < 0.2 && k === 0) continue;
+      {
+        const ia = Math.round((B0.x0 - 0.9) / WS) - 1, ib = Math.round((B0.x1 + 0.9) / WS) + 1, ja = Math.round((B0.z0 - 0.9) / WS) - 1, jb = Math.round((B0.z1 + 0.9) / WS) + 1;
+        if (seenNear(D, B0, 0.9, ia, ib, ja, jb, nx, nz) - seenNear(D, B0, WR, ia, ib, ja, jb, nx, nz) <= 0) continue;
+      }
+      for (let n = 0; n < solid.length; n += 3) {
+        const q = solid[n + 1];
+        if (Ck.blocks(solid[n], q.o, -0.03)) { ok = false; break; }
+        if (q.struct && solid[n + 2]) wall = 1;
+      }
+      if (!ok) continue;
       // the walking floor it would take: reached cells its boxes come within a lane's half width of (a spot backed
       // into a corner or a wall takes least)
       let cover = 0;
       for (const bx of boxes) {
         if (!bx.floor) continue;
         const B = { x0: bx.x0 + nx, x1: bx.x1 + nx, z0: bx.z0 + nz, z1: bx.z1 + nz };
-        for (let i = Math.round((B.x0 - WR) / WS); i <= Math.round((B.x1 + WR) / WS); i++) for (let j = Math.round((B.z0 - WR) / WS); j <= Math.round((B.z1 + WR) / WS); j++) {
-          const c2 = g.cells.get(`${i},${j}`);
-          if (c2 && c2.seen && wDist(B, c2.x, c2.z) < WR) cover++;
-        }
+        cover += seenNear(D, B, WR, Math.round((B.x0 - WR) / WS), Math.round((B.x1 + WR) / WS), Math.round((B.z0 - WR) / WS), Math.round((B.z1 + WR) / WS));
       }
       out.push({ x: nx, z: nz, k, v: -0.35 * d + 1.5 * wall - 0.05 * cover - (k % 2 ? 0.3 : k ? 0.2 : 0) + R() * 0.2 });
     }
@@ -891,6 +959,84 @@ function spotsFor(b, W, grp, keep, seedN) {
   for (const s of out) if (!kept.some(t => t.k % 2 === s.k % 2 && Math.hypot(t.x - s.x, t.z - s.z) < 0.75)) kept.push(s);
   kept.cx = cx; kept.cz = cz;
   return kept;
+}
+// A level's cells (walkMap) as a dense grid over their i, j: seen flags and places, kept on the level's grid
+function denseOf(g) {
+  if (g.dense) return g.dense;
+  let i0 = Infinity, i1 = -Infinity, j0 = Infinity, j1 = -Infinity;
+  for (const c of g.list) { if (c.i < i0) i0 = c.i; if (c.i > i1) i1 = c.i; if (c.j < j0) j0 = c.j; if (c.j > j1) j1 = c.j; }
+  if (!g.list.length) { i0 = j0 = 0; i1 = j1 = -1; }
+  const ni = i1 - i0 + 1, nj = j1 - j0 + 1;
+  const seen = new Uint8Array(Math.max(0, ni * nj)), xs = new Float64Array(seen.length), zs = new Float64Array(seen.length);
+  // each column's x and each row's z (one value per column and row, as walkMap steps them; NaN where no cell is)
+  const X = new Float64Array(Math.max(0, ni)).fill(NaN), Z = new Float64Array(Math.max(0, nj)).fill(NaN);
+  for (const c of g.list) { const at = (c.i - i0) * nj + (c.j - j0); if (c.seen) seen[at] = 1; xs[at] = c.x; zs[at] = c.z; X[c.i - i0] = c.x; Z[c.j - j0] = c.z; }
+  // seen cells counted down each column: cp[i * (nj + 1) + j + 1] is the count in rows 0 to j
+  const cp = new Uint32Array(Math.max(0, ni * (nj + 1)));
+  for (let i = 0; i < ni; i++) for (let j = 0; j < nj; j++) cp[i * (nj + 1) + j + 1] = cp[i * (nj + 1) + j] + seen[i * nj + j];
+  const dense = { i0, j0, ni, nj, seen, xs, zs, X, Z, cp };
+  Object.defineProperty(g, 'dense', { value: dense, enumerable: false });
+  return dense;
+}
+// How many seen cells of a level's dense grid (denseOf) in columns ia to ib and rows ja to jb come within r of box B
+// (wDist(B, cell) < r), only cells within 3 m of (fx, fz) when fx is given. The same count as reading every cell: a
+// cell's distance splits into a column part ex and a row part ez; cells with ex or ez 0 are counted down the columns,
+// the few others one by one.
+function seenNear(D, B, r, ia, ib, ja, jb, fx, fz) {
+  if (ia < D.i0) ia = D.i0;
+  if (ib > D.i0 + D.ni - 1) ib = D.i0 + D.ni - 1;
+  if (ja < D.j0) ja = D.j0;
+  if (jb > D.j0 + D.nj - 1) jb = D.j0 + D.nj - 1;
+  if (ia > ib || ja > jb) return 0;
+  const nj1 = D.nj + 1, win = fx != null;
+  let v0 = null, v1 = null, c0 = null, c1 = null;
+  const side = [];
+  for (let j = ja; j <= jb; j++) {
+    const z = D.Z[j - D.j0];
+    if (z !== z || (win && !(Math.abs(z - fz) < 3))) continue;
+    const ez = Math.max(B.z0 - z, 0, z - B.z1);
+    if (ez >= r) continue;
+    if (v0 == null) v0 = j;
+    v1 = j;
+    if (ez === 0) { if (c0 == null) c0 = j; c1 = j; } else side.push(j, ez);
+  }
+  if (v0 == null) return 0;
+  let n = 0;
+  for (let i = ia; i <= ib; i++) {
+    const x = D.X[i - D.i0];
+    if (x !== x || (win && !(Math.abs(x - fx) < 3))) continue;
+    const ex = Math.max(B.x0 - x, 0, x - B.x1);
+    if (ex >= r) continue;
+    const base = (i - D.i0) * nj1 - D.j0;
+    // rows between the first and last counted one hold no other cells of the window (a row's ez grows away from the
+    // box, and a row with no cell adds none)
+    if (ex === 0) { n += D.cp[base + v1 + 1] - D.cp[base + v0]; continue; }
+    if (c0 != null) n += D.cp[base + c1 + 1] - D.cp[base + c0];
+    for (let k = 0; k < side.length; k += 2) if (D.seen[(i - D.i0) * D.nj + side[k] - D.j0] && Math.hypot(ex, side[k + 1]) < r) n++;
+  }
+  return n;
+}
+// The same with a margin of each one's own
+function bucketsOfBy(list, boxOf, marginOf) {
+  const idx = new Map();
+  list.forEach((it, n) => {
+    const o = boxOf(it), m = marginOf(it);
+    for (let i = Math.floor(o.x0 - m); i <= Math.floor(o.x1 + m); i++) for (let j = Math.floor(o.z0 - m); j <= Math.floor(o.z1 + m); j++) {
+      const k = i * 4096 + j; let l = idx.get(k); if (!l) idx.set(k, l = []); l.push(n);
+    }
+  });
+  return idx;
+}
+// 1 m buckets of a list by each one's box grown by a margin: key i * 4096 + j to the list's indexes
+function bucketsOf(list, boxOf, m) {
+  const idx = new Map();
+  list.forEach((it, n) => {
+    const o = boxOf(it);
+    for (let i = Math.floor(o.x0 - m); i <= Math.floor(o.x1 + m); i++) for (let j = Math.floor(o.z0 - m); j <= Math.floor(o.z1 + m); j++) {
+      const k = i * 4096 + j; let l = idx.get(k); if (!l) idx.set(k, l = []); l.push(n);
+    }
+  });
+  return idx;
 }
 function placeGroup(grp, cx, cz, s) {
   const old = grp.map(p => ({ p, x: p.x, z: p.z, yaw: p.yaw, q: p.q }));
@@ -1140,7 +1286,7 @@ function wCheapest(g, from, goal, target, structOnly) {
   const push = (d, n) => { heap.push([d, n]); let i = heap.length - 1; while (i > 0) { const pa = (i - 1) >> 1; if (heap[pa][0] <= heap[i][0]) break; [heap[pa], heap[i]] = [heap[i], heap[pa]]; i = pa; } };
   const pop = () => { const top = heap[0], last = heap.pop(); if (heap.length) { heap[0] = last; let i = 0; for (;;) { const l = 2 * i + 1, r = l + 1; let m = i; if (l < heap.length && heap[l][0] < heap[m][0]) m = l; if (r < heap.length && heap[r][0] < heap[m][0]) m = r; if (m === i) break; [heap[m], heap[i]] = [heap[i], heap[m]]; i = m; } } return top; };
   for (const s of from) { dist.set(s, 0); push(0, s); }
-  if (structOnly) { const seen = new Set(from), st = [...from]; while (st.length) { const a = st.pop(); if (goal.has(a)) return [a]; for (const [di, dj] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const q = g.cells.get(`${a.i + di},${a.j + dj}`); if (q && !q.hard && !seen.has(q)) { seen.add(q); st.push(q); } } } return null; }
+  if (structOnly) { const seen = new Set(from), st = [...from]; while (st.length) { const a = st.pop(); if (goal.has(a)) return [a]; for (const [di, dj] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const q = cellAt(g, a.i + di, a.j + dj); if (q && !q.hard && !seen.has(q)) { seen.add(q); st.push(q); } } } return null; }
   const done = new Set();
   while (heap.length) {
     const [d, a] = pop();
@@ -1148,7 +1294,7 @@ function wCheapest(g, from, goal, target, structOnly) {
     done.add(a);
     if (goal.has(a)) { const path = []; let c = a; while (c) { path.push(c); c = prev.get(c); } return path; }
     for (const [di, dj] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
-      const q = g.cells.get(`${a.i + di},${a.j + dj}`);
+      const q = cellAt(g, a.i + di, a.j + dj);
       if (!q || q.hard || done.has(q) || (q.block && q.block.some(r => r !== target && (PL.piece(r.name).role === 'fire' || /fire_pit|hearth|bonfire/.test(r.name) || r.wclip)))) continue;
       const nd = d + 1 + cost(q);
       if (!dist.has(q) || nd < dist.get(q)) { dist.set(q, nd); prev.set(q, a); push(nd, q); }

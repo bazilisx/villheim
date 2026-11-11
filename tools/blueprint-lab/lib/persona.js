@@ -345,11 +345,22 @@ const AT_KINDS = {
   beam: { trophy: 214, weapon: 155, shield: 145, tool: 57, fish: 18, farm: 11 },
   'wall:rafter': { trophy: 215, shield: 154, weapon: 61, fish: 26 },
 };
-function itemFrom(kind, biome, R, own = 2, seen) {
+// D-134 (Tyler): the larger mementos (rare treasures, bigger trophies, harder enemies) belong at the central hearth. A
+// trophy whose item model is longer than the corpus's 75th percentile of trophies on stands (1.90 m: data/item-models.json
+// bounds, each trophy weighted by the corpus builds that show it on a stand, data/stands-corpus.json itemBuilds; 833
+// sightings, 50th 1.07 m, 90th 2.92 m, 95th 3.08 m) goes only on the hub's stands. The corpus count covers every kind
+// of build, halls and castles too, and its 95th percentile (3.08 m) would let the Abomination's root arch (2.82 m) into
+// a home, so the 75th is the value in use (a setting, round 7b). Listed by name so the game's engine needs no item
+// models; lab/item_sizes.js is not needed to read them again: rerun the node one-liner in the round 7b record.
+const BIG_ITEM_M = 1.9;
+const BIG_ITEM = new Set(['TrophyWraith', 'TrophyAbomination', 'TrophyKvastur', 'TrophySerpent', 'TrophySGolem', 'TrophyLox', 'TrophyGoblinBrute',
+  'TrophySeeker', 'TrophySeekerBrute', 'TrophyGjall', 'TrophyBonemawSerpent', 'TrophyMoose', 'TrophyBarka', 'TrophyMole',
+  'TrophyEikthyr', 'TrophyBonemass', 'TrophyDragonQueen', 'TrophyGoblinKing', 'TrophySeekerQueen', 'TrophyFader']);
+function itemFrom(kind, biome, R, own = 2, seen, hub) {
   // any item from any biome may be on show in any village (Tyler, 2026-11-10: decor has no biome limit; D-080 is only
   // about how it is paid for); the village's own biome weighs a little more, for flavor
   const t = tierI(biome);
-  const list = ITEMS[kind] || [];
+  const list = (ITEMS[kind] || []).filter(e => hub || !BIG_ITEM.has(e[1]));
   if (!list.length) return null;
   own = 1 + (own - 1) * 0.6;
   // what the house already shows weighs less, so a wall of stands is not five of one thing
@@ -380,7 +391,7 @@ function repeatOf(P) {
   if (!P) return 0.7;
   return Math.min(0.95, Math.max(0.35, 0.75 + 0.6 * P.tidy - 0.5 * (P.hobby.collect || 0) - 0.2 * P.wealth + 0.2 * (P.plain ? 1 : 0)));
 }
-function fromStock(kind, biome, R, seen, P) {
+function fromStock(kind, biome, R, seen, P, hub) {
   const st = seen && !NO_REPEAT.has(kind) ? (seen._stock || (seen._stock = {})) : null;
   const list = st && st[kind];
   if (list && list.length && R() < repeatOf(P) * (REPEAT_K[kind] == null ? 0.5 : REPEAT_K[kind])) {
@@ -390,15 +401,15 @@ function fromStock(kind, biome, R, seen, P) {
     list.push(got);
     return got;
   }
-  const got = itemFrom(kind, biome, R, 2, seen);
+  const got = itemFrom(kind, biome, R, 2, seen, hub);
   if (st && got) (st[kind] || (st[kind] = [])).push(got);
   return got;
 }
 function standItem(P, kind, o, R) {
-  const biome = o.biome || 'Meadows', role = o.role || 'home', want = o.want, seen = o.seen;
+  const biome = o.biome || 'Meadows', role = o.role || 'home', want = o.want, seen = o.seen, hub = !!o.hub;
   const H = P ? P.hobby : { crafts: 0.3, collect: 0.3, plants: 0.3, food: 0.3 };
-  if (want === 'tool' && R() < H.plants / (H.plants + H.crafts + 0.2)) return fromStock('farm', biome, R, seen, P);
-  if (want && ITEMS[want]) return fromStock(want, biome, R, seen, P);
+  if (want === 'tool' && R() < H.plants / (H.plants + H.crafts + 0.2)) return fromStock('farm', biome, R, seen, P, hub);
+  if (want && ITEMS[want]) return fromStock(want, biome, R, seen, P, hub);
   const lean = kindLean(P);
   const at = o.at || (kind === 'wall' ? 'wall' : 'table');
   const base = AT_KINDS[at] || AT_KINDS[kind === 'wall' ? 'wall' : 'table'];
@@ -416,9 +427,9 @@ function standItem(P, kind, o, R) {
   if ((role === 'tavern' || role === 'guest') && kind !== 'wall') { w.drink = (w.drink || 0) * 2.5 + 0.3; w.food = (w.food || 0) * 1.3; }
   if (kind === 'wall') {
     // a well-off collector may keep one great trophy
-    if (P && H.collect > 0.6 && P.wealth > 0.6 && seen && !seen.boss && R() < 0.3) { seen.boss = 1; return itemFrom('boss', biome, R, 3, seen); }
+    if (P && H.collect > 0.6 && P.wealth > 0.6 && seen && !seen.boss && R() < 0.3) { seen.boss = 1; return itemFrom('boss', biome, R, 3, seen, hub); }
   }
-  return fromStock(pickWP(R, w), biome, R, seen, P);
+  return fromStock(pickWP(R, w), biome, R, seen, P, hub);
 }
 // The room a point lies in (a design's room rectangles) and its role, roughly: the main floor by the building's use,
 // upper floors sleeping or storage, as the decorator reads them.
@@ -484,7 +495,7 @@ function dressStands(b, ctx) {
     // a set may say what a stand holds and where it is in one word ('drink@table', lib/stands.js)
     const [want, at0] = String(p.want || '').split('@');
     const at = at0 || p.at || (want ? null : standAt(b, p, b.pieces.filter(q => Math.abs(q.x - p.x) < 2.5 && Math.abs(q.z - p.z) < 2.5 && Math.abs(q.y - p.y) < 2.5)));
-    const name = standItem(P, p.name === 'itemstand' ? 'wall' : 'top', { biome: ctx.biome, role: roleAt(b, p, ctx.type, ctx.use), want: want || null, at, seen }, R);
+    const name = standItem(P, p.name === 'itemstand' ? 'wall' : 'top', { biome: ctx.biome, role: roleAt(b, p, ctx.type, ctx.use), want: want || null, at, seen, hub: ctx.type === 'hub' }, R);
     if (!name) { out.add(p); continue; }
     p.item = { name, variant: 0, quality: 1 };
     delete p.want; delete p.at;

@@ -616,3 +616,127 @@ branch's file; reachH in lib/hub.js is a copy of it to fold into one module.
 
 - Dressing through the shared decorate and kitbash pipeline with the village persona (D-155) is not built.
 - The cross's side rooms do not follow the one-room draw; its gallery kind varies only at s4.
+
+## Round 7 (2026-11-11): the shared dressing pipeline, shapes per village, one reach module
+
+Commits: 5a55cb8 (lib/reach.js, lab/hub_shapes.py), 3ca6f6e (shapes per village, cross side rooms and s5 gallery
+kinds, walkway and stair for any size), 4609f32 (dressing through lib/kitbash.js and lib/persona.js, annexes), f8e5c77
+(octagon sizes, side-room wall place, chairs, request.shape, lab/hub_villages.js), and the commit with this file. Hub
+refs tab: only the lead's example row (MASSIVE Viking Hall) at the end of the round; nothing taken from it.
+
+### 1. Interior dressing through the shared pipeline
+
+- Persona: `persona.js persona({ type: 'hub', biome, culture, seed: lineage })`, the village's traits (never a trade),
+  recorded as `request.persona`. It picks the wall light (corpus tilt of the culture from `decorate.js corpusTilt`
+  times the persona's liking for lights and its wealth), the rug kind (corpus tilt times its liking for rugs), the
+  chairs of the table groups (corpus seat tilt, finer chairs with comfort and wealth), the torch spacing
+  (`torchGap`), the banner count (`wallWeights(P, 'hall').banner`, none to six) and the trophy rows (three when
+  `wallWeights.trophy` is 1 or more). The draws `V.light`, `V.rug`, `V.trophyRows` of round 6 are replaced by these.
+- `sharedDress` in lib/hub.js: the hub's rooms read by `decorate.js readLevel`, each model given the kind of the hub
+  room it lies in (hall and gallery: hall; storage, closet and annex: storage; food prep: kitchen), then
+  `kitbash.js furnishRooms` (corner, wall, window, table and hearth sets, and `dressWalls`: ledges, banners, stands,
+  candles and torches by the persona's weights). Side rooms take every set; the hall and the gallery take none that
+  stands on the free floor (anchors floor, bed, post left out), so the open floor stays. The hub's own pieces are never
+  moved by a set. Every set then goes back in whole only if the walk still reaches every room, climb and main piece
+  (placer `admit`, the hub walker); built frames of beams and posts, station extensions without their station, and
+  rugs that would lie on others past `RUG_OVER` stay out. Sets stop dressing new hall wall bays at the corpus third
+  quartile (0.59, `WALL_Q3`, lab/hub_dress.py). Item stands the sets bring get items by the persona
+  (`persona.js dressStands`); memento and trophy stands stay empty (D-134). The last pass removes a whole set when one
+  of its pieces is left unreached.
+- Kept: the hub's own furnishing plan (fires, high seat and spouse seat, table plan, trophy wall, storage chests,
+  chandeliers) and its wall-side fill to the corpus median after the library.
+- Sets per s5 hub, villages 1 to 4: Norse cross 79, 52, 60, 38; Celtic round 85, 93, 134, 105; Anglo-Saxon octagon 118,
+  63, 73, 103. Wall bays dressed as lab/test_hub.js measures them (every ground-storey bay, side rooms included), seed
+  1, s3 to s5: 0.60 to 0.76; round 6: 0.31 to 0.64.
+
+### 2. Round 6 leftovers
+
+- Cross side rooms follow the draw: one room (storage at the end of one side arm) or two (storage and food prep or a
+  closet). `inSide`, the wall spots, the rows' ends and the tie beams are per side.
+- Cross gallery at s5 by the draw: every arm (as before), the nave (a U over each end of the front and back arms, one
+  stair to each), or the back arm (a U round the high seat end, one stair). The corpus has no shares for these; even
+  weights. Lofts over the side rooms only with every arm.
+
+### 3. Shapes per village
+
+`lab/hub_shapes.py` over the 300 m2 set of lab/hub_roofs.py (108 builds, run read only on Tyler's PC), quantiles 10,
+25, 50, 75, 90 %:
+
+| Measure | Round and polygon (55) | Halls (53) |
+|---|---|---|
+| Ground floor | 363, 432, 568, 696, 1,152 m2 | 360, 496, 529, 680, 830 m2 |
+| Diameter | 19.2, 21.3, 25.9, 38.1, 46.1 m | |
+| Sides (builds) | 16: 18, 8: 13, 12: 9, 32: 3, 10, 14, 6: 2 each, 18, 20, 22, 24, 28, 36: 1 each | |
+| Long over short side | | 1.21, 1.29, 1.74, 1.99, 2.16 |
+| Arm width over long side (22 branched) | | 0.21, 0.27, 0.38, 0.47, 0.67 |
+| Inner wall lines (place) | 0.26, 0.42, 0.63, 0.87, 1.01 of the radius | 0.08, 0.16, 0.25, 0.36, 0.45 of the length from the end |
+| Porch posts none / 2 to 5 / 6 or more | 16 / 13 / 26 | 17 / 20 / 16 |
+| Annexes (lobes of 6 m2 or more) | none 22, one 9, two or more 24 | none 16, one or more 15 (31 unbranched) |
+| Annex share of floor | 0, 0, 0.071, 0.174, 0.42 | 0, 0, 0, 0.032, 0.107 |
+
+Drawn per village (`drawLayout`, `SHAPE_Q`, recorded in `request.layout`; the plan as built in `request.shape`):
+- Size: the square root of an area drawn between the 25 % and 90 % quantiles over the median, as a scale on the
+  stage's base size (round 10, 15, 20, 30 m; octagon sides 4, 6, 8, 12 m; cross 14 x 14 to 26 x 30 m). Round and
+  octagonal halls at s4 keep at least the base size (the gallery, stair and side rooms need it); octagons at s5 take
+  sides of 10, 12 or 16 m (14 m sides leave the floor band open at the corners, open problem).
+- Round line sides: drawn from the corpus counts of 16 or more in fours (16, 20, 24, 28, 32), each stage taking the
+  drawn count where an even side length comes within 6 % of the size, else the nearest. 10 to 14 sided halls are left
+  out: the floor band does not close at their corners yet.
+- Cross: aspect drawn over the 10 to 90 % quantiles, arm share over the 25 to 75 % ones; half sizes solved for the
+  drawn area, odd metres, with the room the stairs and side rooms need (Wz at least D + 8, Wx at least D + 6 from s4).
+- Side-room wall: round halls at the drawn share of the radius, 7 m or more from the fire and 3 m or more off the
+  wall; the cross's room depth the drawn share of the side arms' length, 4 m or more.
+- Porch: none, a covered entrance, or a column porch, at the corpus counts; the column porch is the `porch6` feature.
+- Annexes (round family from s4): the corpus count of lobes (two or more read as two), a room 6 m wide and 4 or 6 m
+  deep with a door from the hall and a gable roof under the hall's eave: on the side rooms' side where that wall is 10
+  m long or more, and behind the hall where the high seat is not at the far end. The cross has none (the corpus annex
+  measure covers unbranched halls only).
+- The gallery's inner edge moves out where a 2 m stair cell must fit; the walkway's row and length follow the
+  gallery's opening; the stair moves back where its landing would meet the wall; a seat drawn at the side with no room
+  clear of the fires takes the far end.
+
+Plans at s5, villages 1 to 4 (request.shape): Norse cross 26 x 38, 26 x 34 (arms 14), 26 x 34 (arms 10), 26 x 34 m;
+Celtic round 24 sides 30.4 m, 16 sides 30.2 m, 32 sides 40.6 m, 16 sides 40.2 m (side rooms at 11, 11, 11, 17 m);
+Anglo-Saxon octagon 38.6, 29.0, 29.0, 29.0 m (side rooms at 9 or 11 m; annexes 0, 0, 1, 1). Round 6: one footprint
+per culture.
+
+### 4. One reach module
+
+`lib/reach.js` holds the reach logic (node and browser, `window.VHReach`, in both bundle lists before hub.js).
+`lab/reach.js` loads it (same signature, `libDir` kept for check_interiors.js); lib/hub.js uses it for its last pass
+(`reachH` is gone). The placer's walker now judges pieces by their whole box, as lib/reach.js does (it read turned
+solids before, which let a turned table group close a stair the reach test then found shut).
+
+### Checks run
+
+- `node lab/test_hub.js /tmp/hub7-t 1`: all hub tests pass. Test changes: the notice board within 8 m past the main
+  door's distance from the fire (it was 22 m from the fire; halls are larger now); storeys counted as the rooms' floor
+  levels (gable walls of a wide cross were counted as storeys).
+- `node lab/test_hub_variance.js`: 8 of 8 distinct in every culture; per choice now also the plan as built (2 to 6
+  values), side-room wall (2 to 5), porch (3), annexes (1 to 3), personas (7 or 8 of 8).
+- Sweep, every village culture, lineages 1 to 8, s2 to s5, d3 (checks.js and lib/reach.js; /tmp/h7/sweep.js): 0 of 480
+  designs with a fault (before the wall cap; the run after it is in the report).
+- `node lab/test_structure.js`: all structure rules hold on 36 designs.
+- `node lib/build_web.js /tmp/h7/index.html` then `node lab/compare_page.js /tmp/h7/index.html`: all same.
+  web/index.html in the repo not rebuilt. Engine bundle `/tmp/h7/lab.js` in a VM: an Anglo-Saxon s5d3 hub writes
+  `#VillheimLeader`.
+- Renders: /tmp/hub7-renders/norse-cross_s5_four-villages.png, celtic-round_s5_four-villages.png,
+  anglo-saxon-octagon_s5_four-villages.png (`node lab/hub_villages.js /tmp/hub7-renders s5 4`): villages 1 to 4 side by
+  side, rows whole, cut at 2.6 m, cut at the gallery.
+
+### Changes in other tracks' files
+
+None. lib/kitbash.js, lib/decorate.js and lib/persona.js are called through their exports (`furnishRooms`,
+`library`, `setLibrary` for the hall's filtered library, `readLevel`, `corpusTilt`, `persona`, `wallWeights`,
+`torchGap`, `pickW`, `dressStands`). lab/reach.js now loads lib/reach.js.
+
+### Open
+
+- Round halls of 10 to 14 sides and octagon sides of 14 m: the floor band leaves gaps at their corners; left out of
+  the draws.
+- Cross side-room depth is 4 m in most villages (the transept is often at its minimum, D + 6).
+- Annexes are rare in round halls (their walls are mostly 4 or 6 m long); none on the stair side (the stair foot) or
+  behind a far-end high seat.
+- The cross s5 gallery kinds and the walkway kinds have no corpus shares (even weights or round 6 weights).
+- The library's sets in the hall are many (38 to 134 at s5); the hall wall bays stop at the corpus q3, the side rooms
+  and gallery are not capped.

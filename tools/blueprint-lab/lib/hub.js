@@ -1139,7 +1139,7 @@ function sharedDress(b, o) {
       // (a station's extension without its station stays out: the hub's sets are not workshops)
       const acc = [];
       const g = g0.filter(p => !/_ext\d/.test(p.name) && (PH.piece(p.name).role !== 'rug' || (rugFits([...b.pieces, ...acc], p) && acc.push(p))));
-      if (g.length && place.admit(g)) sets++;
+      if (g.length && (!o.wallCap || o.wallCap(g)) && place.admit(g)) sets++;
     }
   };
   // the side rooms take every set; the hall and the gallery none that stands on the free floor
@@ -1520,7 +1520,20 @@ function furnish(b, K, C, T, o, F) {
     if (sp2) place.put('fermenter', sp2.x + sp2.nx * (lowT + 0.8), sp2.y, sp2.z + sp2.nz * (lowT + 0.8), sp2.yawIn, ds(3));
   }
   // the shared interior library and the persona's wall dressing (lib/kitbash.js, lib/persona.js)
-  if (k >= 2) sharedDress(b, { P, decor: o.decor, biome: o.biome, cultureKey: o.cultureKey, place, R: o.R });
+  // (the library's sets dress the wall bays up to the corpus third quartile, lab/hub_dress.py: 0.59 of the ground
+  // storey's bays with furniture or dressing within 1.3 m on the hall side; a set that would take the hall past it
+  // stays out)
+  const DRESS0 = /bench|chair|throne|stool|chest|crate|barrel|itemstand|ArmorStand|banner|table|torch|lantern|brazier|candle|cauldron|fermenter|cooking|preptable|butcher|bed|sign/i;
+  const dresses = (p, sp) => p.decor && DRESS0.test(p.name) && Math.abs(p.y - sp.y) < 3.4 && (() => { const dx = p.x - sp.x, dz = p.z - sp.z, u = Math.abs(dx * sp.nz - dz * sp.nx), v = dx * sp.nx + dz * sp.nz; return u <= 1.1 && v > 0 && v <= 1.3; })();
+  const nBays = F.groundBays ? F.groundBays.length : edgeSpots.length;
+  const done = new Set(edgeSpots.map((sp, i) => (b.pieces.some(p => dresses(p, sp)) ? i : -1)).filter(i => i >= 0));
+  const wallCap = g => {
+    const add = edgeSpots.map((sp, i) => (!done.has(i) && g.some(p => dresses(p, sp)) ? i : -1)).filter(i => i >= 0);
+    if (add.length && (done.size + add.length) / nBays > WALL_Q3) return false;
+    for (const i of add) done.add(i);
+    return true;
+  };
+  if (k >= 2) sharedDress(b, { P, decor: o.decor, biome: o.biome, cultureKey: o.cultureKey, place, R: o.R, wallCap });
   // the wall sides: corpus halls and round buildings of 300 m2 or more (lab/hub_dress.py) have furniture or dressing
   // within 1.3 m of 47 % of the ground storey's wall bays in round and polygon buildings and 36 % in halls (medians),
   // mostly lights, chests, seats, stands and stations. Undressed bays get, in turn, a wall torch, a chest, a bench along
@@ -1556,6 +1569,8 @@ function furnish(b, K, C, T, o, F) {
 const topOf = pieces => pieces.reduce((m, p) => { const pi = PH.piece(p.name); return pi.structural ? Math.max(m, p.y + pi.size[1] / 2) : m; }, 0);
 // RUG_OVER: the most of a rug's area that may lie on rugs already down (corpus third quartile, lab/hub_dress.py).
 const RUG_OVER = 0.52;
+// WALL_Q3: the corpus third quartile of wall bays with furniture or dressing beside them (lab/hub_dress.py, 300 m2 set).
+const WALL_Q3 = 0.59;
 // Roof proportions of the corpus big buildings (lab/hub_roofs.py, the 300 m2 set): roof rise against the short side of
 // the ground floor and crown (lantern, cupola, spire) against the main roof, as quantiles at 10, 25, 50, 75 and 90 %.
 // A village draws its place in the spread (D-156: a roof is as tall as its design calls for and is never cut off).

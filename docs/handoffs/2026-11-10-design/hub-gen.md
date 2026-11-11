@@ -469,3 +469,76 @@ posts) with its roof cut away. Renders: /tmp/hub4-renders, each line s1, s3, s5.
 - The stair and side rooms do not change side by village.
 - Steppe s5 has no crown under its cap.
 - The hub_posts.py "round" test reads walls off the build's own square; houses with angled wings count as polygon.
+
+## Round 5 (2026-11-11): gallery rails, radial tables, rugs, wall sides, crowns, sides
+
+Commits: 5e0b25e, 32c3474, this file. The Hub refs tab held only the lead's example row at the end of this round.
+`lab/hub_posts.py` now holds the version that was run in round 4 (the build turned back to its own square, `off` per
+build).
+
+### 1. Gallery rails
+
+The opening of a round family gallery is now an even-sided polygon of 2 m sides, as near the gallery ring as can be
+(34 sides at s5, 16 to 20 at s4). Its edge is two bands of 1 m floor pieces turned with its sides, and one 2 m rail
+piece sits on each side, joined at the corners; none where the s5 walkway crosses the opening. At s4 the part round's
+front stands clear of the opening (front 7 m out), so the rail runs whole. New check (`railFaults` in
+`lab/test_hub.js`): every rail end meets another rail, a wall, a stair or the walkway's deck, and no two rails cross.
+All lines, s4 and s5: 0 open ends, 0 crossings.
+
+### 2. Tables in drum halls
+
+Five spokes (the four diagonals and the side away from the stair) from the fire out to the gallery, each a long table
+row along its spoke with a bench row down each side (D-152: a spoke that does not fit is left out, never turned). At s4,
+where the drum stands on the gallery's posts, the spokes run under the gallery. In s3 halls with no gallery, two spokes
+along the cross axis. The ring of tables is gone from these halls. Turned tables, and what stands or hangs at a wall,
+are judged by their solids against walls and furniture (lib/shapes.js `hit`); the walk test still judges by boxes, as
+`lab/test_hub.js` reach does. Tables (anglo-saxon octagon, seed 1, d3): s3 0 then 4, s4 0 then 2, s5 7 then 6.
+
+### 3. Rugs
+
+`lab/hub_dress.py` over the corpus: 764 builds with two rugs or more (median 12 rugs). Share of a build's rugs lying
+on another by more than 5 % of their area: median 0.69 (q1 0.30, q3 0.93); among those, the share of the rug covered:
+per-build median 0.48 (q1 0.26, q3 0.68). Builds with 2 to 12 rugs (387): share overlapping median 0.50 (q3 0.88),
+covered median 0.36 (q3 0.52). No build sorted as Middle Eastern (culture list or title words) has two rugs, so the
+all-build values are used. Rule (lib/hub.js `RUG_OVER` = 0.52, the q3): a rug goes in only where it lies on rugs
+already down by 52 % of its area or less, and a new overlapping rug only while half or fewer overlap. Middle Eastern
+part round s5: 8 rugs, the most covered 0.42 (before: about ten piled round the fire). Check: no rug over 0.58.
+
+### 4. Sides and crowns
+
+- Steppe s5 crown, traced: the main roof is 12.1 m under the cap of 12.2 m; the raised crown as built was about 5 m
+  tall (2 m posts, a cap of two 45 or 26 degree rings, a 1.5 m finial), so its top reached 17.1 m, over the 15.2 m
+  CROWN_OVER allows, and tier 2 dropped it. The crown now fits the room left: 2 m posts and a finial, else 1 m posts
+  and no finial, else none. Steppe s5: tier 0, main roof 12.1 m, crown to 14.2 m. Celtic s5: tier 1, crown and
+  finial to 17.1 m.
+- Stair and side-room side by village: built as a mirror of the whole hall in half the villages (`MIRROR` in
+  lib/hub.js). Doors are hung again in the mirrored bay. It is off (value in use: false): mirrored furniture whose
+  solids sit a few cm off its middle closed clearances the walk test had passed (chests behind benches not reached).
+  The culture data give no side.
+
+### 5. Wall sides
+
+`lab/hub_dress.py`, the 300 m2 set (122 builds): share of ground-storey wall bays with furniture or dressing within
+1.3 m on the hall side, median 0.43 (q1 0.20, q3 0.59); round and polygon 0.47 (69 builds), halls 0.36 (53). By kind,
+share of bays (median, q3): round: light 0.07 (0.13), seat 0.03 (0.09), craft 0.03 (0.14), storage 0.01 (0.18), stand
+0.00 (0.21); halls: storage 0.14 (0.24), craft 0.06 (0.14), seat 0.05 (0.09), light 0.05 (0.11); banners, tables, beds,
+shelves near zero. The hub dresses undressed bays in turn with a wall torch, a chest, a bench along the wall, an item
+stand and a barrel until the share reaches the median (0.47 round family, 0.36 cross), counting every ground-storey bay;
+chests and benches keep a step of clear floor in front. Check (`wallDress`): at least the corpus q1 (0.20) from s3 at d3.
+After (seed 1, d3): cross s3 to s5 0.62, 0.40, 0.37; round 0.58, 0.45, 0.45; octagon 0.64, 0.47, 0.43; part round
+0.60, 0.31, 0.44. Exterior ornament stays with the trim track.
+
+### Checks run
+
+- `node lab/test_hub.js /tmp/hub5-renders 1`: all hub tests pass (all lines and cultures, reach, floor gaps, posts,
+  crown and cap, rails, rugs, wall sides).
+- `node lab/test_structure.js`: all structure rules hold on 36 designs.
+- `node lib/build_web.js` then `node lab/compare_page.js`: all seven same (web/index.html restored).
+- Renders: /tmp/hub5-renders, each line s1, s3, s5 (whole, cut at 2.6 m, cut at the gallery).
+
+### Open
+
+- The stair and side rooms stay on one side (MIRROR off, see 4).
+- The hub's walk test (lib/hub.js walker) and lab/test_hub.js reach still disagree in a few tight spots; the furniture
+  rules above keep them apart. Worth one shared module at integration (lab/reach.js).
+- The Middle Eastern s5 rugs all touch another (8 of 8, the corpus q3 is 0.88).

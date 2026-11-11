@@ -1,5 +1,6 @@
-# Inner posts in large halls and round or polygon buildings of the corpus (Villheim-blueprints). Read only.
-import os, sys, math, json, re, statistics as st
+# Inner posts in large halls and round or polygon buildings of the corpus (Villheim-blueprints, on Tyler's PC; read only):
+# python3 lab/hub_posts.py <corpus dir> > posts.json. Summaries in docs/handoffs/2026-11-10-design/hub-gen.md, round 4.
+import os, sys, math, json, re, collections, statistics as st
 ROOT = sys.argv[1]
 POLE = re.compile(r'(pole|pillar|column|_log_|wood_log)', re.I)
 FLOOR = re.compile(r'floor', re.I)
@@ -38,6 +39,13 @@ for d, _, files in os.walk(ROOT):
         try: name, ps = parse(path)
         except Exception: continue
         if len(ps) < 150: continue
+        # the build's own square: the commonest wall turn (mod 90), the build turned back by it
+        wa = [p for p in ps if WALL.search(p[0]) and 'roof' not in p[0].lower()]
+        if wa:
+            hist = collections.Counter(round(p[4] % 90) % 90 for p in wa)
+            dd = hist.most_common(1)[0][0]
+            a = math.radians(dd); ca, sa = math.cos(a), math.sin(a)
+            ps = [(p[0], p[1] * ca - p[3] * sa, p[2], p[1] * sa + p[3] * ca, p[4] - dd) for p in ps]
         fl = [p for p in ps if FLOOR.search(p[0]) and 'roof' not in p[0].lower()]
         if not fl: continue
         ys = sorted(p[2] for p in fl)
@@ -80,7 +88,7 @@ for d, _, files in os.walk(ROOT):
             if any(abs(p[1] - x) < 0.7 and abs(p[3] - z) < 0.7 for x, z in wp): continue
             posts[(round(p[1] * 2) / 2, round(p[3] * 2) / 2)] = 1
         pts = list(posts)
-        rec = dict(f=rel, name=name.strip()[:60], area=round(area), bb=f'{min(bw,bl):.0f}x{max(bw,bl):.0f}', h=round(top - g0, 1), round=roundp, n=len(pts),
+        rec = dict(f=rel, off=round(off, 2), name=name.strip()[:60], area=round(area), bb=f'{min(bw,bl):.0f}x{max(bw,bl):.0f}', h=round(top - g0, 1), round=roundp, n=len(pts),
                    per100=round(100 * len(pts) / area, 1))
         if pts:
             rs = [math.hypot(x - cx, z - cz) for x, z in pts]

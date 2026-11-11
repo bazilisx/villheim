@@ -1075,7 +1075,9 @@ function bargeboards(K, C, w, ctx, rows, ends, add, low, pivot, r) {
       add(name, u, pivot(i), v, roofYaw + 90, 'trim', low(i) + r);
     }
     // and along the overhanging eave row
-    if (eo) for (const sv of [-1, 1]) if (!overDoor(sg * w.W, sv * w.D) && !overDoor(sg * w.W, sv * (w.D - 2))) add(name, u, pivot(rows) - r / 2, sv * (2 + 2 * rows + 1), (sv < 0 ? 180 : 0) + 90, 'trim', low(rows));
+    // (a deep eave, D-150: a whole row out)
+    if (eo === 2) { for (const sv of [-1, 1]) if (!overDoor(sg * w.W, sv * w.D) && !overDoor(sg * w.W, sv * (w.D - 2))) add(name, u, pivot(rows + 1), sv * (2 + 2 * (rows + 1)), (sv < 0 ? 180 : 0) + 90, 'trim', low(rows + 1) + r); }
+    else if (eo) for (const sv of [-1, 1]) if (!overDoor(sg * w.W, sv * w.D) && !overDoor(sg * w.W, sv * (w.D - 2))) add(name, u, pivot(rows) - r / 2, sv * (2 + 2 * rows + 1), (sv < 0 ? 180 : 0) + 90, 'trim', low(rows));
     // crossed boards over the apex: the game's Wood Roof Cross (the piece is the pair of crossed boards that Norwegian
     // vindskier end in), on the ridge where it meets the gable, as a quarter of the corpus builds have it
     // the piece's boards cross 1 m (26 degrees: 0.5 m) over its pivot, so the crossing sits on the apex (it stood a

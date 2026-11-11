@@ -726,6 +726,9 @@ function generate(req) {
   const backDoor = C.opposedDoors && !T.tower && form !== 'sunken'
     ? edges.filter(e => e.out[1] > 0 && inside(wings[0], e.cell[0], e.cell[1])).sort((a, c) => Math.abs(a.x - doorX) - Math.abs(c.x - doorX))[0] : null;
   if (backDoor) b.notes.push('Doors in the middle of both long sides.');
+  // a wide entrance (ideas gap 10): a second leaf in the bay beside the front door, toward the middle of the wall
+  const door2 = wideDoor({ type, stage, T, form, plan, door, gEdges, wing: wings[0], seed, cultureKey, req, F });
+  if (door2) b.notes.push('A wide entrance: two doors side by side.');
 
   // the fire's place: the middle of the main wing's ridge, in line with the door in a house (the smoke hole and chimney
   // go over it), kept free of ladders
@@ -765,7 +768,7 @@ function generate(req) {
   // goes up from it
   let flatCell = null;
   if (lit && flat && !lookout) {
-    const doorEdges = [door, backDoor].filter(Boolean);
+    const doorEdges = [door, backDoor, door2].filter(Boolean);
     // a courtyard wing has doors to the yard near its middle: its fire goes to the far end
     // and off the outer walls when they are thick (a 1 m stone wall reaches half a metre into the cell beside it)
     const thick = /stone|marble|grausten/.test(C.wallStyle || '');
@@ -804,7 +807,8 @@ function generate(req) {
     }
   }
   const doorCell = [door.cell[0], door.cell[1]];
-  const backCell = backDoor ? [backDoor.cell[0], backDoor.cell[1]] : null;
+  // (with no back door the second leaf of a wide entrance takes its place in the climbs' keep-offs)
+  const backCell = backDoor ? [backDoor.cell[0], backDoor.cell[1]] : door2 ? [door2.cell[0], door2.cell[1]] : null;
 
   // ladders: one per storey above the ground, each with a clear foot, a hole above it and a landing; a flat roof gets a
   // last one up to a hatch
@@ -883,13 +887,14 @@ function generate(req) {
       if (open === 'front' && e.out[1] < 0) continue;
       if (open === 'sides' && !(e.out[1] > 0)) continue;
       if (arcade.has(e)) continue;
-      const isDoor = s === 0 && (e === door || e === backDoor);
+      const isDoor = s === 0 && (e === door || e === backDoor || e === door2);
       // a barn's gates: three bays on the ground, the door bay alone when the floor is raised (one stair up)
-      const isGate = (dctx.profile.gateDoor && s === 0 && e === door) || T.bigDoor && s === 0 && e.out[1] < 0 && Math.abs(e.x - doorX) <= (F >= 0.9 ? 0.01 : 2.01) && Math.abs(e.z - doorZ) < 0.1;
+      const isGate = (dctx.profile.gateDoor && s === 0 && (e === door || e === door2)) || T.bigDoor && s === 0 && e.out[1] < 0 && Math.abs(e.x - doorX) <= (F >= 0.9 ? 0.01 : 2.01) && Math.abs(e.z - doorZ) < 0.1;
       // every other bay, and with the window kit some of the bays between (windowExtra: corpus walls carry 0.56 windows
       // per plain wall bay, the generator had 0.31 with every other bay)
       const evenBay = Math.round((e.x + e.z) / 2) % 2 === 0;
-      let isWindow = !knee && !isDoor && !isGate && (!T.tower || (form === 'keep' && s > 0)) && (evenBay || windowExtra(C, seed, e, s)) && Math.abs(e.x - doorX) + Math.abs(e.z - doorZ) > 2.5;
+      let isWindow = !knee && !isDoor && !isGate && (!T.tower || (form === 'keep' && s > 0)) && (evenBay || windowExtra(C, seed, e, s)) && Math.abs(e.x - doorX) + Math.abs(e.z - doorZ) > 2.5 &&
+        !(door2 && Math.abs(e.x - door2.x) + Math.abs(e.z - door2.z) < 2.5);
       if (plan === 'gables' && e.out[1] >= 0) isWindow = false;
       // a gable end gets one window per floor, in its middle bay (2026-11-09 review: windows scattered over gable ends)
       const w0g = wings[0];
@@ -902,14 +907,14 @@ function generate(req) {
       // no window behind a wall hearth, on any storey (its hood and shaft stand against that bay)
       if (isWindow && hearthBay(e)) isWindow = false;
       const style = C.frontWood && plan === 'gables' ? (e.out[1] < 0 ? 'plank' : null) : null;
-      b.lastLight = null;
+      b.lastLight = null; b.flipDoor = !!door2 && e === door2; // the second leaf turned round, so the pair hangs from the outer posts
       // a 2 m tall light keeps to bays with wall on both sides along the wall (at a corner two of them left the corner
       // with no wall 2.5 m up, which the headroom check refuses)
       if (isWindow && C.winKit) { const ex = e.yaw === 0 ? 2 : 0, ez = e.yaw === 0 ? 0 : 2, es = s === 0 ? gEdges : edges;
         b.lightLow = ![-1, 1].every(sg => es.some(q => q.yaw === e.yaw && Math.abs(q.x - (e.x + ex * sg)) < 0.01 && Math.abs(q.z - (e.z + ez * sg)) < 0.01)); }
       wallSegment(b, K, C, e.x, y0, e.z, e.yaw, SHw, isGate ? 'gate' : isDoor ? 'door' : isWindow ? 'window' : 'wall', style);
       if (isWindow || isDoor || isGate) (b.openings = b.openings || []).push({ e, y0, SH: SHw, storey: s, kind: isGate ? 'gate' : isDoor ? 'door' : 'window', back: e === backDoor, light: isWindow ? b.lastLight : null });
-      b.lightLow = false;
+      b.lightLow = false; b.flipDoor = false;
     }
     if (C.frame || open || T.tower || form === 'stave') for (const [x, z] of verts) {
       for (let y = y0; y < y0 + SHw - 0.01;) { const h = (y0 + SHw - y) >= 2 ? 2 : 1; b.put(h === 2 ? framePole(K, C) : K.pole1, x, y + h / 2, z); y += h; }
@@ -932,6 +937,7 @@ function generate(req) {
         if (!(e.cell[0] > room.x0 && e.cell[0] < room.x1 && e.cell[1] > room.z0 && e.cell[1] < room.z1)) continue;
         if (s === 0 && Math.abs(e.x - doorX) + Math.abs(e.z - doorZ) < 1.8) continue;
         if (backDoor && s === 0 && Math.abs(e.x - backDoor.x) + Math.abs(e.z - backDoor.z) < 1.8) continue;
+        if (door2 && s === 0 && Math.abs(e.x - door2.x) + Math.abs(e.z - door2.z) < 1.8) continue;
         if (open === 'all' || (open === 'front' && e.out[1] < 0) || (open === 'sides' && !(e.out[1] > 0)) || arcade.has(e)) continue;
         if (knee && e.yaw !== (w.alpha === 0 ? 90 : 0)) continue; // in a loft only the gable ends stand full height
         const ux = e.yaw === 0 ? 1 : 0, uz = e.yaw === 0 ? 0 : 1, nx = -e.out[0], nz = -e.out[1];
@@ -2198,6 +2204,45 @@ function putStairRun(b, K, L, yLow) {
   L.run.forEach(([x, z], k) => b.put(K.stair || 'wood_stair', x, yLow + k, z, yaw));
 }
 
+// ---------------------------------------------------------------- wide doors (ideas gap 10)
+
+// 42 % of the corpus's kept door motifs are 4 m wide (two doors or a gate pair; data/motifs.json, 148 uses). Halls,
+// taverns and temples take a wide entrance at that share, and homes at s3 with a front of 8 m or more; barns keep
+// their own gates (T.bigDoor). The second leaf goes in the bay beside the door toward the middle of the wall, where
+// the wall runs on past it.
+const WIDE_DOOR = 0.42;
+function wideDoor(o) {
+  const { type, stage, T, form, plan, door, gEdges, wing, seed, cultureKey, req, F } = o;
+  if (req.details && req.details.wideDoor === false) return null;
+  if (F > 0.3) return null; // the entry stair or steps of a raised floor serve the main door only
+  if (!door || T.bigDoor || T.tower || T.open || form === 'sunken' || ['round', 'tent', 'yurt', 'dome', 'drum', 'court', 'gables'].includes(form || plan)) return null;
+  const big = ['longhouse', 'tavern', 'temple'].includes(type) || (type === 'home' && stage === 's3' && wing && wing.alpha === 0 && wing.W >= 4);
+  if (!big || door.yaw !== 0) return null;
+  let h = 2166136261;
+  for (const ch of `${cultureKey}|${type}|${seed}|wide door`) { h ^= ch.charCodeAt(0); h = Math.imul(h, 16777619); }
+  if (!(req.details && req.details.wideDoor === true) && rng(h >>> 0)() >= WIDE_DOOR) return null;
+  const along = (e, d) => gEdges.find(q => q.yaw === e.yaw && q.out[0] === e.out[0] && q.out[1] === e.out[1] && Math.abs(q.x - (e.x + d)) < 0.01 && Math.abs(q.z - e.z) < 0.01);
+  const sides = [-2, 2].sort((a, c) => Math.abs(door.x + a - wing.cx) - Math.abs(door.x + c - wing.cx));
+  for (const d of sides) { const q = along(door, d); if (q && along(q, d)) return q; }
+  return null;
+}
+
+// ---------------------------------------------------------------- eaves (ideas gap 7, D-150)
+
+// One draw per building (the same for every wing), from the details' hash so the rest of the design draws as before:
+// a deep eave at DEEP_EAVE where its edge clears 2.3 m (26 % of the corpus's kept eave motifs reach 1.75 m past the
+// wall, data/motifs.json; about a third of s2 and s3 halls, taverns and homes have walls tall enough, so the draw is
+// higher than the share), a
+// rake a metre past the gable at RAKE_OUT (corpus gable motifs: 20 % at 1 m, 5 % at 0.5 to 0.75 m, 73 % flush).
+const DEEP_EAVE = 0.6, RAKE_OUT = 0.25;
+function eaveDraw(dctx) {
+  if (dctx.eaveDrawn) return dctx.eaveDrawn;
+  const R = rng(((dctx.profile && dctx.profile.hash) || 1) ^ 0x5eaf00d);
+  const deep = R() < (dctx.profile && dctx.profile.deepEave != null ? +dctx.profile.deepEave : DEEP_EAVE);
+  const rake = R() < (dctx.profile && dctx.profile.rakeOut != null ? +dctx.profile.rakeOut : RAKE_OUT);
+  return (dctx.eaveDrawn = { deep, rake });
+}
+
 // ---------------------------------------------------------------- window kit (ideas gap 3, D-151)
 
 // What fills a window's light, by culture group: the builds of the group with a light of that kind set in a wall
@@ -2260,7 +2305,7 @@ function fillLight(b, kit, x, y, z, yaw, w, h) {
   for (let i = 0; i < w; i++) for (let j = 0; j < h; j++) cells.push([(i - (w - 1) / 2), j]);
   const tag = { winFill: kit.fill };
   if (kit.fill === 'glass') for (const [a, j] of cells) b.put('crystal_wall_1x1', x + ux * a, y + j + 0.5, z + uz * a, yaw, tag);
-  else if (kit.fill === 'mesh') b.put('piece_dvergr_metal_wall_2x2', x, y + 1, z, yaw, tag);
+  else if (kit.fill === 'mesh') { if (w === 2 && h === 2) b.put('piece_dvergr_metal_wall_2x2', x, y + 1, z, yaw, tag); } // a 2 x 2 panel: other lights stay open
   else if (kit.fill === 'bars') {
     if (w === 2 && h === 2) b.put('iron_wall_2x2', x, y + 1, z, yaw, tag);
     else for (const [a, j] of cells) b.put('iron_wall_1x1', x + ux * a, y + j + 0.5, z + uz * a, yaw, tag);
@@ -2328,7 +2373,7 @@ function wallSegment(b, K, C, x, y0, z, yaw, SH, kind, styleOverride) {
   if (kind === 'door' || kind === 'gate') {
     let name = kind === 'gate' ? (K.gate || K.door) : doorPiece(K, C, SH);
     if (P.doorSpec(name).h > SH + 0.01) name = doorPiece(K, C, SH);
-    const h = putDoor(b, name, x, y0, z, yaw);
+    const h = putDoor(b, name, x, y0, z, b.flipDoor ? yaw + 180 : yaw);
     lintel();
     fill(y0 + h, y0 + SH); return;
   }
@@ -2346,7 +2391,7 @@ function wallSegment(b, K, C, x, y0, z, yaw, SH, kind, styleOverride) {
       lx = x - ux * side * 0.5; lz = z - uz * side * 0.5;
     }
     fillLight(b, kit, lx, y0 + 1, lz, yaw, lw, lh);
-    b.lastLight = { x: lx, z: lz, w: lw, h: lh, fill: kit.fill, block: lw === 1 ? block : null };
+    b.lastLight = { x: lx, z: lz, w: lw, h: lh, fill: kit.fill === 'mesh' && !(lw === 2 && lh === 2) ? 'open' : kit.fill, block: lw === 1 ? block : null };
     lintel();
     fill(y0 + 1 + lh, y0 + SH); return;
   }
@@ -2494,24 +2539,30 @@ function gablePieces(K, C, w, top, r, ends, vent, dctx) {
   // overhangs (Tyler, D-059 B, 2026-11-09; T-102 had them off): one more row half a row further out along the long
   // walls, so the eaves stand 1 m past the wall, and one more column at each free gable end, so the rake stands 1 m
   // past the gable. The new pieces overlap the old ones by a metre, the way builders half-snap roofs.
+  // D-150 (lead's call A, Tyler no preference): deeper eaves on about a quarter of roofs, a whole row past the wall
+  // (the roof's edge 2 m past the wall's middle, 1.75 m past its face, as 26 % of the corpus's kept eave motifs),
+  // where that edge stays 2.3 m over the ground; gable rakes mostly flush (73 % of corpus gables, 20 % a metre out)
   const over = dctx && dctx.profile.overhang !== false && !kick && (C.eaves || 1) <= 1;
+  const ed = dctx ? eaveDraw(dctx) : { deep: false, rake: true };
+  const eaveOK = low(wallRow) - r / 2 >= 2.3, deep = over && ed.deep && low(wallRow) - r >= 2.3;
   if (over) {
     const vE = 2 + 2 * wallRow + 1, yE = pivot(wallRow) - r / 2, surfE = low(wallRow) + r / 2 - r / 2;
     const cols = [];
     for (let u = -w.W + 1; u < w.W; u += 2) cols.push(u);
-    const rakeCols = [-1, 1].filter((sg, k) => ends[k]).map(sg => sg * w.W);
+    const rakeCols = ed.rake ? [-1, 1].filter((sg, k) => ends[k]).map(sg => sg * w.W) : [];
     const n0 = out.length;
     // the eave row only where its edge stays 2.3 m over the ground (r5 review: eaves at 1 to 1.5 m on 2 m walls under
-    // a 45 degree roof made houses read as tents); the rake overhang on the gables stays
-    const eaveOK = low(wallRow) - r / 2 >= 2.3;
-    if (eaveOK) for (const u of [...cols, ...rakeCols]) { add(roof, u, yE, -vE, 180, 'roof', surfE); add(roof, u, yE, vE, 0, 'roof', surfE); }
+    // a 45 degree roof made houses read as tents)
+    if (deep) { const i = wallRow + 1, v = 2 + 2 * i; for (const u of [...cols, ...rakeCols]) { add(roof, u, pivot(i), -v, 180, 'roof', low(i) + r / 2); add(roof, u, pivot(i), v, 0, 'roof', low(i) + r / 2); } }
+    else if (eaveOK) for (const u of [...cols, ...rakeCols]) { add(roof, u, yE, -vE, 180, 'roof', surfE); add(roof, u, yE, vE, 0, 'roof', surfE); }
     for (let k = n0; k < out.length; k++) out[k].eave = true;
     for (const u of rakeCols) {
       for (let i = 0; i <= wallRow; i++) { const v = 2 + 2 * i; add(roof, u, pivot(i), -v, 180, 'roof', low(i) + r / 2); add(roof, u, pivot(i), v, 0, 'roof', low(i) + r / 2); }
       add(roofTop, u, capY, 0, 0, 'cap', capY + 0.3);
     }
   }
-  if (dctx) { dctx.rake = over ? 1 : 0; dctx.eaveOut = over && low(wallRow) - r / 2 >= 2.3 ? 1 : 0; }
+  if (dctx) { dctx.rake = over && ed.rake ? 1 : 0; dctx.eaveOut = over ? (deep ? 2 : eaveOK ? 1 : 0) : 0; }
+  if (deep && dctx.notes && !dctx.notes.includes('Deep eaves: the roof a whole row past the long walls.')) dctx.notes.push('Deep eaves: the roof a whole row past the long walls.');
   if (dctx && !(C.kick && (C.eaves || 1) > 1)) Details.bargeboards(K, C, w, dctx, rows, ends, add, low, pivot, r);
   if (dctx && dctx.profile.dormers && r === 2 && !C.stoneWalls && w === dctx.wings[0]) dormers(K, w, top, add, dctx);
   return out;

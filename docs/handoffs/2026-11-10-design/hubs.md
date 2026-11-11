@@ -20,6 +20,8 @@ s3 to simplify it from s4 Ie not the inner roof, simpler interior fire etc."
 - `tools/blueprint-lab/data/hubs/hub1.json`: measures of Tyler's hub1 saves and drafts (counts by class, material and
   prefab, footprint, height, floor and roof levels, distances from the fire, lean-to groups), a plain reading of each
   stage, and the s5 candidates. No piece list.
+- `tools/blueprint-lab/data/hubs/grand-candidates.json`: grand buildings per culture group for s5 (counts, medians, feature
+  rates, candidates with measures, near-vanilla builds).
 - `tools/blueprint-lab/data/hubs/corpus-gathering.json`: gathering places in the corpus by kind and culture group
   (camps, halls, round halls, temples, taverns, squares, whole villages): sizes, storeys, plans, roofs, where the fire
   is, seats and rugs by the fire, thrones; the eight most downloaded of each kind by title and maker.
@@ -247,6 +249,152 @@ s3 or s4: a raised or upper floor (hub1 s4's 2 m ring and 7 m floor) and a secon
 - D-067 (Tyler, "Your answer"): "we treat the hearth as the central village hub, and it itself is an evolving
   structure around the primary hearth fire."
 
+## Grand buildings for s5 (corpus search, 2026-11-11)
+
+Asked by Tyler through the lead: search the whole corpus for large, grand buildings that fit the hub's role as
+inspiration for each culture's s5. Data: `tools/blueprint-lab/data/hubs/grand-candidates.json`. Credit is by title and
+maker; no corpus file is in the repo.
+
+Method (D-136, counts first):
+- 2,153 builds in `feat.jsonl`. Pool of 668: a title word (hall, round, temple, keep, town hall, tavern), a folder
+  (longhouse, temple, castle, tavern, village) or a form (3 or more storeys, 500 m2 or more, 11 m or higher; round
+  plan 250 m2 or more; 350 m2 or more in 3 storeys or fewer). 60 or more structural pieces. The OverDrive pack was not
+  in the data.
+- Each build was read one at a time with the lab parser. 124 of the 668 have pieces with a mod prefix and are left
+  out of the ranking; 544 are vanilla, 287 of those match a named kind. 20 named builds have only 1 to 12 mod pieces
+  (torches, braziers, chains); they are listed per culture as near-vanilla with the prefab names.
+- Ranked set of 181: vanilla, a named kind, at most 75 m long, 60 m high and 15,000 pieces, at least 5 m high, with an
+  open ground-floor room of 120 m2 or more or a keep or castle title. The grand score is the mean percentile of floor
+  area, height, storeys, structural pieces and downloads inside that set.
+- Measures per build: bounding box and ground-floor size, height, storeys, pieces, plan family and roof form (research
+  miner), open ground-floor room (floor cells with no floor above, and its median height), floor levels, gallery ring
+  (upper floor over the edge cells with the middle open), roof tiers (2.5 m bands with 6 percent of the roof pieces),
+  high windows over a lower roof (clerestory), towers (2 m height map, 5 m above the median top, at the ends when
+  past 0.55 of the long half), porch columns (outside the wall box) and aisle posts (inside), fires with place and
+  roof, high seats with ends and dais (floor under the seat 0.4 m above the floor 3 to 9 m round it), dragon heads
+  (`wood_dragon1`), materials by part.
+
+What the top tenth of the ranked set looks like (19 builds): median 2,066 m2 of floor, 28.8 m high, 7 storeys,
+6,697 pieces, 48 x 36 m. Medians of the whole set: 722 m2, 12.5 m, 3 storeys, 1,443 pieces. Share of builds with
+the feature, top tenth against the rest:
+
+| Feature | Top tenth | Rest |
+|---|---|---|
+| 3 or more fires | 63 % | 17 % |
+| 8 or more aisle posts | 89 % | 36 % |
+| high seat | 79 % | 37 % |
+| porch or colonnade of 6 or more columns | 47 % | 17 % |
+| dais under the high seat | 32 % | 7 % |
+| 4 or more high windows over a lower roof | 21 % | 4 % |
+| towers at both ends | 16 % | 4 % |
+| open middle to the roof | 16 % | 31 % |
+| gallery ring | 11 % | 9 % |
+| 3 or more roof tiers | 68 % | 62 % |
+| any tower | 37 % | 36 % |
+
+Grand halls have more fires, more posts, a porch and a raised high seat. Height and storeys come from piece count and
+extra floors; a tall open middle is less common among the grandest than among the rest. Medians by kind in the set:
+hall (38) 855 m2, 11 m, 3 storeys; round (7) 317 m2, 9 m, 2 storeys; temple (16) 776 m2, 17 m, 2 storeys; keep (83)
+498 m2, 13 m, 3 storeys; folder castle (37) 800 m2, 19 m, 5 storeys; tavern (12) 1,061 m2, 15 m, 4 storeys. The
+Hogan (about 30 x 31 m, 15.5 m, 1,162 pieces) is larger than the median corpus round hall.
+
+Candidates per culture group (strongest first; measures are bounding box in m, height, storeys, structural pieces,
+then the open room in m2 at its height; full numbers in the JSON):
+
+- **norse (long line):** MASSIVE Viking Hall (Olivanderr, 418 downloads; 28 x 42 m, 23 m, 4 storeys, 8,947 pieces,
+  room 668 m2 at 21 m): two towers at one end, high seat on a dais at the end, U plan round a court, open to the roof.
+  Einherjar's Throne Hall (AstridSinjesdottir, 263; 59 x 60 m, 21 m, 12,585 pieces, room 1,196 m2): cross plan, a
+  porch of 33 columns, ten high seats, dragon heads. Hall of the Dragon King (Winter, 386; 49 x 69 m, 23 m,
+  5 storeys): eight roof tiers, 63 aisle posts, three fires. viking hall (thepower3412, 451; 32 x 50 m, 17.5 m,
+  room 796 m2): one long room, three fires, dais at the end. Longhouse with crafting area (Dremka, 656; 38 x 46 m,
+  10.6 m, 2 storeys): low T plan, 51 aisle posts, five fires. Near-vanilla: Nuhedeby Longhus (Jarl_Bjorn_KrigsRavn,
+  824; 32 x 52 m, 14 m, 6 mod pieces: `h_trapdoor`, `MBRopeLadder`, `h_chain`): 36 porch columns, 36 aisle posts,
+  seven fires, three high seats at the end. Round line: the Hogan (section 1); corpus round halls are listed under
+  celtic.
+- **anglo-saxon:** the research sort has no group for it, so this is the thinnest line. 4 Part Rebuild Set - Duo
+  Meadows to Deep (DangerousDD, 113; 32 x 42 m, 12.5 m, room 272 m2): plain rectangle gable hall, aisle posts, high
+  seat at the end. Skeggox Manor (Fluffy-n-Dana, 554; 42 x 42 m, 9 m): low wide hall, porch of 26 columns, 91 aisle
+  posts. Long low stand-ins: viking style longhouse (thepower3412, 500; 16 x 39 m, 11.5 m, aspect 2.4), Viking
+  Longhouse (AC Valhalla Inspired) (KindlyJustDj, 346; 18 x 34 m, thatch gable, porch of 15 columns). Outside source:
+  Yeavering (section 3) for the end annexes and the tiered seating stand.
+- **frankish-norman:** Alfheim (Artyfacts, 850; 58 x 64 m, 27 m, 5 storeys, 9,091 pieces, room 568 m2 at 17.6 m):
+  a great hall inside a stone block, five roof tiers, a main fire in the middle with ten seats. Merlin's Keep (Sven of
+  Undenfell, 321; 42 x 54 m, 21 m, 6 storeys): three towers at the ends at 23.6 m, seven fires. Mistvale Keep
+  (Jaikanatar, 786; 21 x 30 m, 42 m, 10 storeys): a tall keep tower on a 12 x 21 m ground floor, high seat on a dais.
+  Bedheim Castle (Jaikanatar, 595; 44 x 58 m, 31 m, 9 storeys): six towers of 16 m, seven roof tiers. JC Plain's Castle
+  (Christin3vt, 429; 37 x 37 m, 21 m, 6 storeys): a porch of 63 columns. Near-vanilla: Shadowhall Castle (Con
+  Seannery, 524; 3 pieces of `CastleKit_braided_box01`): a gallery ring round a hall of 880 m2 and three towers.
+- **norse-forest:** stave final (Bjørn, no downloads listed; 34 x 52 m, 32.6 m, 5 storeys, room 792 m2): six roof
+  tiers up to 40 m, 26 aisle posts, 14 dragon heads. Stave Kirke (Jarl_Bjorn_KrigsRavn, 133; 20 x 20 m, 16.5 m): one
+  open room under six roof tiers with 56 posts and a central tower. Stave Church Home (aSoftPea, 149; 18 x 26 m,
+  23 m): four tiers and a 26 m tower on a small plan. Near-vanilla: Nordic stave church (ULRICH GamingAndMusic, 205;
+  25 x 53 m, 38.5 m, a single room 15 m high, `CastleKit_groundtorch` x5); Yggdrasil Sanctuary (User4445D, 264; a
+  gallery ring round an open middle, `CastleKit` torches x9).
+- **celtic (round):** the sort has 6 celtic builds and 2 are hall-class, so round builds of any sort stand in. Swamp
+  Fort (Create and Inspire, 312; 42 x 43 m, 16.5 m, 3 storeys, 1,988 pieces, room 944 m2): round plan 40 m across
+  under a thatch cone of five tiers, nine fires. Community Portal Hub & Meeting Hall (IzzyRiz, 192; 46 x 53 m,
+  10.5 m): ring of 55 posts, main fire in the middle, high seat on a dais, floors over the sides. Stone Watch
+  (aSoftPea, 454; 37 x 37 m, 22.5 m, 4 storeys): round tower hall, six tiers, 49 posts. A round house (smurfopax,
+  559; 20 x 20 m, 9 m, log and thatch): the s4 size with the fire in the middle under the roof. Near-vanilla: Elven
+  Feast Hall (Con Seannery, 505; 27 x 32 m, 14 m, `CastleKit_braided_box01` x4): 38 posts and six high seats.
+  Outside source: Navan Fort (section 3).
+- **slavic:** no slavic hall in the vanilla set (the two Cyrillic-titled builds are towers). Stand-ins by form (plank
+  walls, 2 to 5 storeys): Great Hall (rabbitramen; 24 x 42 m, 21 m, room 396 m2 at 14.8 m): 21 high windows over a
+  lower roof, a 25.8 m tower, two high seats on a dais at the end. Thomashof and the legend of Thomas (Fluffy-n-Dana,
+  127; 26 x 51 m, 23 m): open hall 16 m high, a tower at one end. Outside source needed: a terem or boyar hall (D-135).
+- **celtic-crannog:** no hall-class build with lake or platform words. Round stand-ins from celtic. Outside source:
+  the Crannog Centre house (table in section 4).
+- **baltic:** no build matched Baltic words. Stand-ins: the long log and thatch halls under anglo-saxon and Great Hall
+  (rabbitramen). Outside source needed (D-135).
+- **fen-folk:** Iron Villa Fort (Boom; 24 x 50 m, 19.5 m, 6 storeys): two towers at the ends, a porch of 37 columns.
+  Swamp Fort (see celtic). Long low stand-ins: viking style longhouse (thepower3412) and Viking Longhouse (AC
+  Valhalla Inspired) (KindlyJustDj). Outside source: Old Frisian longhouse (table in section 4).
+- **norse-highland:** no strong candidate. Standing Stone Sanctuary (HiccupTheHermit, 905; 52 x 75 m, 9.4 m, room
+  220 m2, thatch, main fire in the middle under a roof) is low and wide. Mountain Stronghold (mobiobi, 857) is a tower
+  with no hall room. Alternatives: the Hogan and Stöng (section 4).
+- **saami and steppe:** no tent, goahti or yurt build with a hall room. Round stand-ins: A round house (smurfopax),
+  Portalhub Dome (Thysicus, 261; 20 x 21 m, 11.7 m, log, open room 336 m2), The Cursed Temple (AstridSinjesdottir,
+  214; 29 x 29 m, 11 m, round, stone). Outside sources needed (D-135): goahti and yurt pages.
+- **middle-eastern:** the sort has 1 build, a 6 x 10 m house. Ottoman Turkish House with courtyard (venoms3131, 18;
+  34 x 38 m, 10 m, U plan round a court, room 900 m2) is the one courtyard plan found; MASSIVE Viking Hall also has a
+  U plan with two towers. Outside source needed: iwan and caravanserai (D-135).
+- **byzantine:** no greco-roman hall in the vanilla set; church builds stand in. Cathedral (Maleficarum, 161; 41 x 43 m,
+  31 m, 5 storeys, 10,888 pieces, room 680 m2 at 26 m): an open nave with a gallery ring of upper floors, stone. Church
+  of the Light (lazycat, 18; 22 x 44 m, 18 m): open nave 19 m high with side floors, 170 seats. Chapel 2 (HellKat,
+  158; 24 x 30 m, 14 m): 8 high windows over a lower roof, a tower, grausten. Stor Katedral (Fluffy-n-Dana, 349):
+  eight roof tiers, high seat on a dais. Near-vanilla: Monk Temple (Artyfacts, 578; 37 x 63 m, `rk_brazier` x12); The
+  Black Dome (Isepic, 18; round plan, 34 x 34 m, 20 m, 1 mod piece). No dome was confirmed by form; the Black Dome is
+  the closest round raised roof.
+- **lamari:** no mistlands hall in the vanilla set; marble and grausten builds stand in. Catharis' Hall: Wild Weapons
+  3.0 (Fluffy-n-Dana, 281; 43 x 46 m, 19.7 m, room 592 m2): 24 high windows over a lower roof, an open middle, 57
+  posts, marble walls and grausten roof. LEGENDARY Fortress (Olivanderr; 25 x 70 m, 26.5 m, marble). Black Marble Fort
+  (MonkeyMagicMan, 227; 27 x 28 m, 11.5 m, marble). Dvergr Military Barracks (Fluffy-n-Dana, 113; 30 x 58 m, 5
+  storeys).
+
+Strongest per culture: norse MASSIVE Viking Hall; anglo-saxon 4 Part Rebuild Set (weak); frankish-norman Alfheim;
+norse-forest stave final; celtic Swamp Fort; slavic Great Hall (stand-in); fen-folk viking style longhouse
+(stand-in); byzantine Cathedral; lamari Catharis' Hall; middle-eastern Ottoman Turkish House with courtyard (weak).
+No candidate for celtic-crannog, baltic, norse-highland, saami and steppe.
+
+What a generator could take (counts above): a porch of 6 or more columns and a raised high seat at an end on the long
+axis (halls); three or more fires and 8 or more aisle posts; towers at both ends of a keep; high windows over a lower
+roof (Great Hall, Chapel 2, Catharis' Hall) as the drum and clerestory; a gallery ring round an open middle (Cathedral,
+Yggdrasil Sanctuary, Shadowhall Castle); stacked roof tiers (stave line: 5 to 8).
+
+Left out, with reasons: The Lost Hall of Aegir (doublea1ron, 718; 122 x 126 m, 16 storeys, 26,428 pieces) is over the
+75 m cap; Dawn Hill Retreat (AstridSinjesdottir, 832) has no open ground-floor room of 120 m2; Meeting Hall at the Portal
+Hub Hull (AstridSinjesdottir, 380; 22 x 23 m, round, 11 m) has a 96 m2 room.
+
+Caveats: titles decide the kind and the culture group, so some picks are houses with a hall word; the open-room
+measure counts floor pieces only (stone ground without floor pieces reads as no room); size from the bounding box can
+include yards, and the ground-floor size is the better number for the hall itself; the dais, gallery and tower tests
+are rules of thumb; downloads are 0 for builds without an index entry.
+
+Proposed Decisions row (for the lead): **D-143 Outside sources for the cultures with no corpus candidate.**
+celtic-crannog, baltic, saami, steppe and norse-highland have none, slavic, anglo-saxon, middle-eastern and byzantine
+have stand-ins only. Options: A) read the D-135 pages for each (goahti, yurt, rija, terem, iwan, Byzantine church)
+and add them to section 3; B) use the stand-ins as they are. Recommendation: A.
+
 ## Proposed Decisions rows (for the lead to add)
 
 - **D-137 Hub shape per culture: which lines are round.** The corpus gives Norse halls as long (63 % gable, 7 %
@@ -273,7 +421,7 @@ s3 or s4: a raised or upper floor (hub1 s4's 2 m ring and 7 m floor) and a secon
 ## Next
 
 1. Save what still stands on the board: hub1 s2 to s5 in the flat test world (steps from the lead).
-2. **Follow-up task (asked by Tyler 2026-11-11, through the lead):** search the whole corpus for large, grand buildings
+2. **Done 2026-11-11 (section "Grand buildings for s5"):** search the whole corpus for large, grand buildings
    that fit the hub's role (great halls, mead halls, round halls, temples, keeps, gathering halls) as inspiration for
    each culture's final stage (s5). For each culture group, record the best candidates with title, maker, downloads,
    size, storeys, form and what makes them grand, all from counts and measures (D-136). Start from
@@ -298,4 +446,10 @@ node hubmine.js lab $HOME/mnt/Downloads/Villheim-blueprints $HOME/vhresearch/fea
 node hubagg.js rows.json gathering.json
 # Millenaire town halls (cloud, /tmp/h6-mill): unzip the jar from Inspiration.zip, then
 python3 -I /tmp/h6-scripts/nbtlevels.py jar/millenaire/cultures
+# grand buildings for s5 (device, $HOME/vhhub/g; scripts kept out of the repo)
+curl -sSL -o r.tgz https://codeload.github.com/bazilisx/villheim/tar.gz/design/wip-research && tar xzf r.tgz --wildcards '*/culture-corpus/members.json'
+node grandpool.js ../../vhresearch/feat.jsonl members.json pool.json          # 668 candidate builds
+node grandgeo.js ../lab $HOME/mnt/Downloads/Villheim-blueprints pool.json geo.jsonl 0 5000   # measures, one build at a time
+node grandagg.js pool.json geo.jsonl agg.json                                  # ranking, groups, feature rates
+node near.js                                                                   # builds with 1 to 12 mod pieces
 ```

@@ -513,4 +513,20 @@ last stages: halls 20 x 36 m, 11 m, 3 storeys (Norse group median); round halls 
   courtyard of 24 m or more with iwans and corner towers.
 - **byzantine:** chapel, cross with a dome, cross-in-square with a narthex, s5 a domed church on an arcaded square.
 - **steppe:** great yurt 9.7 m, 14.5 m, then joined to smaller yurts, s5 the largest yurt in a ring of yurts.
+
+Grand buildings for s5 (corpus search of 668 builds, 181 ranked; `hubs.md` "Grand buildings for s5", data in
+`tools/blueprint-lab/data/hubs/grand-candidates.json`). Strongest candidate per line, by title and maker; grand halls
+have more fires, aisle posts, a porch and a raised high seat than the rest of the set:
+- norse: MASSIVE Viking Hall (Olivanderr; 28 x 42 m, 23 m, towers at one end, dais), Einherjar's Throne Hall
+  (AstridSinjesdottir), Hall of the Dragon King (Winter); near-vanilla Nuhedeby Longhus (Jarl_Bjorn_KrigsRavn).
+- anglo-saxon: thin; 4 Part Rebuild Set (DangerousDD), viking style longhouse (thepower3412), Yeavering outside.
+- frankish-norman: Alfheim (Artyfacts; 58 x 64 m, 27 m), Merlin's Keep (Sven of Undenfell; towers at the ends).
+- norse-forest: stave final (Bjørn; 32 m, six roof tiers), Stave Kirke (Jarl_Bjorn_KrigsRavn).
+- celtic: Swamp Fort (Create and Inspire; round 40 m, thatch cone), Community Portal Hub & Meeting Hall (IzzyRiz).
+- slavic: stand-in Great Hall (rabbitramen; high windows over a lower roof, tower); outside source needed.
+- byzantine: Cathedral (Maleficarum; open nave 26 m, gallery ring), Chapel 2 (HellKat; clerestory).
+- lamari: Catharis' Hall (Fluffy-n-Dana; 24 high windows over a lower roof, marble).
+- middle-eastern: Ottoman Turkish House with courtyard (venoms3131), the one courtyard plan; outside source needed.
+- fen-folk: stand-in viking style longhouse (thepower3412); Iron Villa Fort (Boom).
+- celtic-crannog, baltic, norse-highland, saami, steppe: no candidate in the corpus; outside sources (D-135).
 - **lamari:** machub hall, a 4-storey tower beside it, a darbazi hall, s5 a hall with two towers and a drum church.

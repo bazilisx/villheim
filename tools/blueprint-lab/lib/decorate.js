@@ -310,6 +310,12 @@ function meetOn(a, b, dx, dz, m, ax, az) {
   const rb = b.hw * Math.abs(b.c * ax - b.s * az) + b.hd * Math.abs(b.s * ax + b.c * az);
   return !(Math.abs(dx * ax + dz * az) >= ra + rb + m);
 }
+// the corpus nearest-neighbor spacing of a greenery class, its 25th percentile (lib/landscape.js SPACING)
+function greenGap(k) {
+  const LS = NODE_D ? require('./landscape.js') : window.VHLandscape;
+  const sp = LS && LS.SPACING && LS.SPACING[k];
+  return sp && sp.all ? sp.all[0] : Infinity;
+}
 function ptDist(b, x, z) {
   const dx = x - b.x, dz = z - b.z;
   const lx = dx * b.c - dz * b.s, lz = dx * b.s + dz * b.c;
@@ -3403,6 +3409,10 @@ function audit(design, decor) {
       const solid = SOLID_CATS.has(a.f.cat) && SOLID_CATS.has(c.f.cat);
       // two chests of a kind pushed together as corpus builders do pass up to the corpus depth (CHEST_PAIR_D, D-127)
       const pairOk = a.p.name === c.p.name && CHEST_PAIR_D[a.p.name] ? CHEST_PAIR_D[a.p.name] : 0;
+      // greenery of one class (lib/landscape.js) set as close as the corpus sets it: its nearest-neighbor spacing at
+      // its 25th percentile (SPACING all[0], pots 0.22 m between pivots) passes, as corpus builders cluster pots so
+      // (D-127)
+      if (a.p.green && c.p.green && a.p.green.k === c.p.green.k && Math.hypot(a.p.x - c.p.x, a.p.z - c.p.z) >= greenGap(a.p.green.k) - 0.01) continue;
       if ((a.p.kb || c.p.kb) && SHD) { if (kbClip(a.p, c.p) > Math.max(pairOk, solid && a.p.kb !== c.p.kb ? 0.03 : Math.max(a.p.clip || 0, c.p.clip || 0)) + 0.02) res.overlap.push(`${a.p.name} / ${c.p.name} at ${a.p.x.toFixed(1)},${a.p.z.toFixed(1)}`); continue; }
       if (a.y0 > c.y1 - 0.05 || c.y0 > a.y1 - 0.05) continue;
       if (overlap(a.b, c.b, -0.06)) res.overlap.push(`${a.p.name} / ${c.p.name} at ${a.p.x.toFixed(1)},${a.p.z.toFixed(1)}`);
@@ -3427,6 +3437,7 @@ function audit(design, decor) {
   const ys = struct.filter(s => s.info.structural).map(s => s.y0).sort((a, b) => a - b);
   // generated designs say where the ground is (posts and stone floors reach below it)
   const ground = design.ground != null ? design.ground : ys.length ? ys[Math.floor(ys.length * 0.02)] : 0;
+  const lowest = pieces.reduce((m, p) => Math.min(m, p.y), Infinity);
   for (const it of items) {
     const fa = it.f.at || 'floor';
     // a kitbash piece says what it rests on: another piece, a wall or the structure over it; that must be there
@@ -3444,7 +3455,10 @@ function audit(design, decor) {
     if (it.f.base && isFinite(under) && under - yb > 0.3) { res.torchHeight.push(it.p.name); continue; }
     // a chest stacked on a chest (lib/kitbash.js stackChests, storeStacks) rests on the one under it
     if (it.f.cat === 'storage' && items.some(o => o !== it && o.f.cat === 'storage' && ptDist(o.b, it.p.x, it.p.z) < 0.3 && Math.abs(o.y1 - yb) < 0.12)) continue;
-    const onFloor = Math.abs(yb - ground) < 0.15 || (isFinite(under) && Math.abs(under - yb) < 0.12);
+    // outdoors, the ground is the design's lowest pivot, where the game sets it on the terrain (lib/yards.js: 0, or a
+    // sunk stone floor's middle, -0.4)
+    const outdoors = it.p.outside || it.p.yard || it.p.green;
+    const onFloor = Math.abs(yb - ground) < 0.15 || (isFinite(under) && Math.abs(under - yb) < 0.12) || (outdoors && Math.abs(yb - lowest) < 0.15);
     if (!onFloor) res.floating.push(`${it.p.name} at ${it.p.x.toFixed(1)},${it.p.y.toFixed(2)},${it.p.z.toFixed(1)}`);
   }
   // stairs and ladders: their own footprint and 0.6 m round it at their foot and top

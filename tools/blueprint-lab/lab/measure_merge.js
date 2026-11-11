@@ -11,7 +11,7 @@ for (const r of all) if (r.skip) skips[r.skip] = (skips[r.skip] || 0) + 1;
 const B = all.filter(r => r.trim); // builds read
 const r2 = v => v == null ? null : +v.toFixed(2);
 const qt = (a, t) => { if (!a.length) return null; const v = a.slice().sort((x, y) => x - y); return v[Math.min(v.length - 1, Math.floor(v.length * t))]; };
-const Q = a => a.length ? { n: a.length, p25: r2(qt(a, 0.25)), median: r2(qt(a, 0.5)), p75: r2(qt(a, 0.75)), min: r2(Math.min(...a)), max: r2(Math.max(...a)) } : { n: 0 };
+const Q = a => a.length ? { n: a.length, p25: r2(qt(a, 0.25)), median: r2(qt(a, 0.5)), p75: r2(qt(a, 0.75)), min: r2(a.reduce((x, y) => Math.min(x, y), Infinity)), max: r2(a.reduce((x, y) => Math.max(x, y), -Infinity)) } : { n: 0 };
 const pct = (a, b) => b ? +(100 * a / b).toFixed(0) : null;
 const sum = (o, k, v) => { o[k] = (o[k] || 0) + v; };
 const share = (m, keys) => { const t = keys.reduce((s, k) => s + (m[k] || 0), 0); return Object.fromEntries(keys.map(k => [k, pct(m[k] || 0, t)])); };

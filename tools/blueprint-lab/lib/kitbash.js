@@ -5,6 +5,7 @@
 const NODE_B = typeof module !== 'undefined';
 const PB = NODE_B ? require('./pieces.js') : window.VHPieces;
 const checksB = () => (NODE_B ? require('./checks.js') : window.VHChecks);
+const auditB = () => (NODE_B ? require('./audit.js') : (typeof window !== 'undefined' ? window.VHAudit : null));
 const personaB = () => (NODE_B ? require('./persona.js') : window.VHPersona);
 const quatB = yaw => { const a = yaw * Math.PI / 360; return [0, +Math.sin(a).toFixed(6), 0, +Math.cos(a).toFixed(6)]; };
 const BIOMES_B = ['Meadows', 'Black Forest', 'Swamp', 'Mountain', 'Plains', 'Mistlands', 'Ashlands'];
@@ -775,6 +776,10 @@ function fit(b, ctx, room, idx, zones, anc, a, mirror, fires) {
       if (!okP) { p.y = y0; bx = Ck.aabbShapes(p); WHY_B = why0; }
     }
     if (!okP) { LAST_B = `${i} ${p.name}`; if (fail()) return null; continue; }
+    // the pool audit's height for a sign or a wall stand (lib/audit.js MID, by the middle of what shows over the
+    // floor): a set's sign standing on the floor (KB-058, KC-142) or a stand hung too low stays out, as the audit
+    // would fail it; a sign on a chest's front is a label and passes, as the audit reads it
+    if (hangOff(p, stand, idx, made)) { WHY_B = 33; LAST_B = `${i} ${p.name}`; if (fail()) return null; continue; }
     // two of the set's pieces filled with one name in one place (two slots of a creative set both drawn as a beam) are
     // one piece in the game: the second is left out
     if (made.some(q => q && q.name === p.name && Math.abs(q.x - p.x) < 0.06 && Math.abs(q.y - p.y) < 0.06 && Math.abs(q.z - p.z) < 0.06 && Math.abs(((q.yaw - p.yaw) % 360 + 540) % 360 - 180) < 3)) { dropped++; continue; }
@@ -833,6 +838,23 @@ function fit(b, ctx, room, idx, zones, anc, a, mirror, fires) {
   }
   got.displace = displace ? [...displace] : [];
   return got;
+}
+
+// Whether a sign or a wall stand would fail the pool audit's height test (lib/audit.js MID and its label rule)
+function hangOff(p, stand, idx, made) {
+  const A = auditB(), MID = A && A.MID && A.MID[p.name];
+  if (!MID || !meshB()) return false;
+  const V = meshB().aabbOf(meshB().world(p) || []) || checksB().aabbShapes(p);
+  if (!V) return false;
+  const mid = (V.y0 + V.y1) / 2, h = mid - stand;
+  if (h >= MID[0] && h <= MID[1]) return false;
+  if (/^sign/.test(p.name)) {
+    const mx = (V.x0 + V.x1) / 2, mz = (V.z0 + V.z1) / 2;
+    const store = idx.near({ x0: mx - 0.3, x1: mx + 0.3, z0: mz - 0.3, z1: mz + 0.3, y0: V.y0 - 1, y1: V.y1 + 1 }, 0).map(r => r.p).concat(made.filter(Boolean))
+      .filter(q => q !== p && PB.piece(q.name).role === 'storage');
+    if (store.some(q => { const c = checksB().catBox(q); return mx > c.x0 - 0.25 && mx < c.x1 + 0.25 && mz > c.z0 - 0.25 && mz < c.z1 + 0.25 && mid > c.y0 && mid < c.y1 + 0.1; })) return false;
+  }
+  return true;
 }
 
 // The tests for one piece.

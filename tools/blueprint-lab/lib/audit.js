@@ -446,5 +446,5 @@ function group(files, parse) {
   return out;
 }
 
-const apiA = { STAND_HI, audit, pool, summary, group, likeness, signature, shapeOf, GATE, WATCH, REPORTED };
+const apiA = { STAND_HI, MID, audit, pool, summary, group, likeness, signature, shapeOf, GATE, WATCH, REPORTED };
 if (NODE_A) module.exports = apiA; else window.VHAudit = apiA;

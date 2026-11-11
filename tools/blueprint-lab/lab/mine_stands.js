@@ -76,7 +76,7 @@ const newStats = () => ({ builds: 0, vanilla: 0, interiors: 0, withStands: 0, st
   anchorKinds: {}, heights: {}, clips: {}, turn: {}, tableAt: [], groups: { sizes: {}, combos: {}, anchors: {} }, inst: {}, perBuild: [],
   feasts: { n: 0, builds: new Set(), on: {}, near: {}, at: [], names: {} }, loose: { n: 0, names: {}, on: {} }, tilt: { itemstand: {}, itemstandh: {} },
   wallGap: [], ex: [], dbg: {}, sinks: {}, rooms: [], byBuild: {}, floorNear: {}, floorGroups: {},
-  stacks: { n: 0, builds: new Set(), lower: {}, base: {}, rise: [], depth: {}, kinds: {}, pairs: {}, upper: {} } });
+  stacks: { n: 0, builds: new Set(), lower: {}, base: {}, rise: [], off: [], depth: {}, kinds: {}, pairs: {}, upper: {}, piles: {}, pileOn: {} }, chestOn: {}, counter: { sub: {}, sizes: {} } });
 const inc = (o, k, v = 1) => { o[k] = (o[k] || 0) + v; };
 const add = (o, k, v) => { (o[k] = o[k] || []).push(v); };
 
@@ -247,6 +247,7 @@ function scan(ps, build, meta, S) {
     const lo = ps[r.at], lr = recOf.get(r.at);
     inc(S2.lower, `${lo.name}${lr ? '' : ':empty'}`);
     S2.rise.push(+(ps[r.i].y - lo.y).toFixed(3));
+    S2.off.push(+Math.hypot(ps[r.i].x - lo.x, ps[r.i].z - lo.z).toFixed(3));
     inc(S2.kinds, r.kd);
     if (lr) inc(S2.pairs, `${lr.kd} under ${r.kd}`);
     let d = 2, cur = r.at, seen = new Set([r.i]);
@@ -263,6 +264,26 @@ function scan(ps, build, meta, S) {
     }
     inc(S2.depth, d >= 4 ? '4+' : String(d));
   }
+  // piles: stands linked by standing on one another, as one heap; its size and what the heap stands on (the highest
+  // top under its lowest stand that is not a stand)
+  { const lk = new Map(); const fp = k => { while (lk.has(k) && lk.get(k) !== k) k = lk.get(k); return k; };
+    for (const r of recs) if (r.anchor === 'stand') { lk.set(r.i, lk.get(r.i) || r.i); lk.set(r.at, lk.get(r.at) || r.at); const a = fp(r.i), b2 = fp(r.at); if (a !== b2) lk.set(a, b2); }
+    const pl = new Map(); for (const k of lk.keys()) { const g = fp(k); if (!pl.has(g)) pl.set(g, []); pl.get(g).push(k); }
+    for (const g of pl.values()) {
+      inc(S.stacks.piles, g.length >= 6 ? '6+' : String(g.length));
+      const lo = g.reduce((a, k) => (ps[k].y < ps[a].y ? k : a), g[0]), q0 = ps[lo];
+      let best = null, bt = -Infinity;
+      for (const j of around(q0.x, q0.z, 0.02, q0.y - 0.5, q0.y + 0.1)) { if (isStand(ps[j].name) || bx[j].pass) continue; const t = top(j, q0.x, q0.z); if (t == null || t > q0.y + 0.3 || t < q0.y - 0.4) continue; if (t > bt) { bt = t; best = j; } }
+      const fl = inside(q0.x, q0.z, q0.y + 0.05);
+      inc(S.stacks.pileOn, best == null ? 'nothing' : WORK.test(ps[best].name) ? 'workbench' : role(best) === 'floor' && fl != null && q0.y - fl < 0.15 ? 'floor' : role(best));
+    } }
+  // flat stands on a chest or a barrel: which, and whether a bed is within 1.5 m (a bedside barrel or chest)
+  for (const r of recs) if (r.anchor === 'chest') { const q0 = ps[r.i]; inc(S.chestOn, `${/barrel/i.test(r.sub) ? 'barrel' : 'chest'}${around(q0.x, q0.z, 1.5, r.ft, r.ft + 1).some(j => role(j) === 'bed') ? ' by a bed' : ''}`); }
+  // flat stands on a counter (a wall piece's top under 1.6 m): which piece, and the groups they make there
+  { const C = recs.filter(r => r.anchor === 'counter'); for (const r of C) inc(S.counter.sub, r.sub);
+    const par3 = C.map((_, k) => k), f3 = k => (par3[k] === k ? k : (par3[k] = f3(par3[k])));
+    for (let a = 0; a < C.length; a++) for (let b2 = a + 1; b2 < C.length; b2++) { const A = ps[C[a].i], B = ps[C[b2].i]; if (Math.hypot(A.x - B.x, A.z - B.z) < 0.9) par3[f3(a)] = f3(b2); }
+    const sz = {}; C.forEach((_, k) => inc(sz, f3(k))); for (const v of Object.values(sz)) inc(S.counter.sizes, v >= 6 ? '6+' : String(v)); }
   // the top stand of each stack: what it holds
   for (const r of recs) if (r.anchor === 'stand' && !recs.some(o => o.anchor === 'stand' && o.at === r.i)) inc(S.stacks.upper, r.kd);
   // feasts and loose food
@@ -341,7 +362,7 @@ for (const f of files) {
 // ---------------------------------------------------------------- summary
 const q = (a, f) => { if (!a || !a.length) return null; const s = a.slice().sort((x, y) => x - y); return s[Math.min(s.length - 1, Math.floor(f * s.length))]; };
 const quart = a => a && a.length ? [q(a, 0.1), q(a, 0.25), q(a, 0.5), q(a, 0.75), q(a, 0.9), a.length] : null;
-const ABOUT = "Item stands in Tyler's vanilla corpus builds (lab/mine_stands.js --counts over Downloads/Villheim-blueprints; the builds themselves are not in the repo). Counts of stands holding something inside a building (a floor under, a roof or floor over). A flat stand on a chest or barrel is read at the lid (the top of its box). kinds and anchors per stand kind; itemBuilds: builds that show each item on a stand (3 or more); anchorKinds: what each place holds; heights: stand height over the room's floor at the 10th, 25th, 50th, 75th, 90th percentile and the count; inst: of every table, bench, chest, window, fire, bed and station inside, how many carry a stand; groups: stands within 0.9 m of each other; byBuild: for each place, the builds with a stand there, stands per such build (percentiles and count), the share in the top build and top five builds, and how many builds hold half; floor: what is round a floor stand and the sizes of floor-stand groups; stacks: flat stands on another stand (the lower stand, what holds the stack up, rise from lower to upper stand in m as percentiles, stack height in stands, kinds held, the top stand's kind, lower and upper kind pairs); houses: of the house-like builds (starter homes, buildings, bases, longhouses, taverns, interiors, villages, tree houses, castles, towers, smithies) with stands inside (builds, of the house-like builds with interiors), the share with each place (table: of those with a table; sill: of those with a window piece).";
+const ABOUT = "Item stands in Tyler's vanilla corpus builds (lab/mine_stands.js --counts over Downloads/Villheim-blueprints; the builds themselves are not in the repo). Counts of stands holding something inside a building (a floor under, a roof or floor over). A flat stand on a chest or barrel is read at the lid (the top of its box). kinds and anchors per stand kind; itemBuilds: builds that show each item on a stand (3 or more); anchorKinds: what each place holds; heights: stand height over the room's floor at the 10th, 25th, 50th, 75th, 90th percentile and the count; inst: of every table, bench, chest, window, fire, bed and station inside, how many carry a stand; groups: stands within 0.9 m of each other; byBuild: for each place, the builds with a stand there, stands per such build (percentiles and count), the share in the top build and top five builds, and how many builds hold half; floor: what is round a floor stand and the sizes of floor-stand groups; stacks: flat stands on another stand (the lower stand, what holds the stack up, rise and level offset from lower to upper stand in m as percentiles, stack height in stands, kinds held, the top stand's kind, lower and upper kind pairs, piles: stands linked that way as one heap by size, pileOn: what each heap stands on); chestOn: flat stands on a chest or a barrel, and those with a bed within 1.5 m; counter: flat stands on a wall piece's top under 1.6 m, by piece and by group size; houses: of the house-like builds (starter homes, buildings, bases, longhouses, taverns, interiors, villages, tree houses, castles, towers, smithies) with stands inside (builds, of the house-like builds with interiors), the share with each place (table: of those with a table; sill: of those with a window piece).";
 const top = (o, n) => Object.fromEntries(Object.entries(o).sort((a, b) => b[1] - a[1]).slice(0, n));
 const res = {
   about: 'Item stands in the vanilla corpus builds (lab/mine_stands.js): items per stand kind, anchors, heights, groups, the share of each anchor that carries a stand, feasts.',
@@ -372,7 +393,8 @@ const res = {
     return [k, { builds: v.length, perBuild: quart(v), top1: +(v[0] / t).toFixed(3), top5: +(v.slice(0, 5).reduce((a, b) => a + b, 0) / t).toFixed(3), half }]; })),
   floor: { near: S.floorNear, groups: S.floorGroups },
   stacks: { n: S.stacks.n, builds: S.stacks.builds.size, lower: S.stacks.lower, base: S.stacks.base, rise: quart(S.stacks.rise), depth: S.stacks.depth, kinds: S.stacks.kinds,
-    upper: S.stacks.upper, pairs: top(S.stacks.pairs, 30) },
+    upper: S.stacks.upper, pairs: top(S.stacks.pairs, 30), off: quart(S.stacks.off), piles: S.stacks.piles, pileOn: S.stacks.pileOn },
+  chestOn: S.chestOn, counter: { sub: top(S.counter.sub, 20), sizes: S.counter.sizes },
 };
 // house-like builds: the corpus categories of homes and halls (by index.json cat or the folder name)
 const HOUSE_CAT = /^(starter[- ]home|building|advanced[- ]base|longhouse|tavern|interior[- ]design|village|tree[- ]house|castle|tower|blacksmith)/i;
@@ -394,7 +416,7 @@ if (countsOut) {
     sinks: Object.fromEntries(Object.entries(res.sinks).map(([k, [qq, over]]) => [k === 'h' ? 'itemstandh' : k, { percentiles: qq && qq.slice(0, 5), n: qq && qq[5], over6cm: over }])),
     inst: res.inst, groups: { sizes: res.groups.sizes, combos: res.groups.combos },
     perBuild: { n: res.perBuild.n, stands: res.perBuild.stands, distinct: res.perBuild.distinct, kinds: res.perBuild.kinds, per100m2: res.perBuild.per100m2 },
-    byBuild: res.byBuild, floor: res.floor, stacks: res.stacks,
+    byBuild: res.byBuild, floor: res.floor, stacks: res.stacks, chestOn: res.chestOn, counter: res.counter,
     feasts: { n: res.feasts.n, builds: res.feasts.builds, names: res.feasts.names, on: res.feasts.on }, loose: { n: res.loose.n, on: res.loose.on } };
   fs.writeFileSync(countsOut, '{' + Object.entries(c).map(([k, v]) => `${JSON.stringify(k)}:${JSON.stringify(v)}`).join(',\n') + '}\n');
 }

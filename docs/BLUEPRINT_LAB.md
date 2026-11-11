@@ -871,6 +871,114 @@ for any piece hung on the first: every wall set on such a wall failed); `lib/gen
 Measured with `node lab/test_stands.js 2` (108 designs: homes, longhouses and taverns, six biomes, s1d1, s2d2, s3d3;
 stands read by the corpus miner's own code): see `docs/INTERIOR_DESIGN.md`, "Items on stands".
 
+## Corpus recount with fine models
+
+Branch `design/wip-recount` from `design/wip-models` ee15184 (2026-11-11). Corpus: Tyler's 1,559 vanilla builds, read on
+his PC through the device (`lab/mine_stands.js` 38 to 51 s a run). Method: the miner's own code and filters, run with
+the old lib (main 509744e), with the models-track lib (ee15184), and with a switch for which shapes a surface top and a
+wall stand's clip depth are read from. No generator code or target changed.
+
+### Which corpus measures use piece shapes
+
+A spy on `lib/mesh.js` during `lab/mine_stands.js` and `lab/hearths/fire_mine.js` (tavern folder) shows one call
+kind: `dims`, the model bounds. `data/piece-models.json` bounds and colliders and `data/piece-solids.json` are the same
+on main and ee15184 (693 of 693 pieces, checked), so every measure that reads colliders and bounds gives the same numbers.
+
+| Measure | Script, data file | Shapes it reads | Same on ee15184 |
+|---|---|---|---|
+| Stand shares per place, heights, sinks, stacks, wall stand clip into the collider behind (4 cm at the 90th percentile) | `lab/mine_stands.js`, `data/stands-corpus.json` | colliders (`lib/shapes.js`), bounds | Yes: all counts byte for byte (md5 6b8b65ca...), also `/tmp` full output |
+| Fire, smoke and light places | `lab/hearths/fire_mine.js`, `lab/hearths/corpus-hearths-lights.json` | `P.piece` sizes (`dims`), colliders | Yes by the code path (spy: `dims` only); not rerun |
+| Seats round fires and beds, chest placement | `lab/hearths/seat_mine.js` | pivots only | Yes |
+| Kitbash and creative set clips (to the wall, to each other, to the anchor) | `lab/mine_kitbash.js`, `lab/mine_creative.js`, `data/kitbash-interior.json`, `data/creative-mined.json` | `SHP.clipDepth` on colliders (`sol`) | Yes by the code (they read `SHP`); not rerun, they need the compact corpus file (`compact.json`), which is not on the device |
+| Yards, motifs, coverage, piece sizes | `lab/mine_yards.js`, `lab/mine_motifs.js`, `lab/coverage.js`, `lab/piece_sizes.js` | model bounds and colliders | Yes by the code; not rerun (compact file) |
+
+Reach and lane measures: none of these scripts reads shapes for them (lanes are measured on generated designs).
+
+What changed is the generator side. `lib/stands.js`, `lib/audit.js` and `lib/kitbash.js` test what shows with
+`lib/mesh.js` (`WALL_SHOW` 12 cm, the mountClip and intoWall gates). Their corpus targets were taken with colliders, so
+no corpus number existed for "into what shows". Two new scripts give it: `VH_SHAPES=coarse|fine` in `lab/mine_stands.js`
+(surface tops and wall stand clips from the model parts) and `lab/recount_clips.js` (ledge and furniture clip depths
+from colliders, coarse and fine parts).
+
+### Stands (data/recount-stands.json)
+
+Setting: colliders (the committed counts), old coarse (main 509744e, `VH_SHAPES=coarse`), new coarse and fine (ee15184).
+Tolerance: the test_stands band round the colliders value (0.6 to 1.6 times, at least 2 points; flat share 50 to 80 %);
+1 cm for depths and heights.
+
+| Measure | Colliders (old) | Old coarse | New coarse | Fine (new) | Change, fine against colliders | Feeds |
+|---|---|---|---|---|---|---|
+| Flat table share | 23.8 % | 23.2 % | 23.3 % | 23.4 % | -0.4 pt | test_stands FLAT table band 14.3 to 38.1 % |
+| Flat shelf and ledge | 44.0 % | 42.7 % | 42.8 % | 43.3 % | -0.7 pt | band 26.4 to 70.3 % |
+| Flat mantel | 15.0 % | 14.3 % | 14.3 % | 14.5 % | -0.5 pt | band 9.0 to 24.0 % |
+| Flat counter and walltop | 6.6 % | 9.1 % | 9.0 % | 8.1 % | +1.5 pt | band 3.9 to 10.5 % (inside) |
+| Flat bench and workbench | 3.7 % | 3.7 % | 3.7 % | 3.6 % | -0.1 pt | band 1.7 to 5.9 % |
+| Flat sill, rafter, chest | 2.8, 2.8, 1.5 % | 2.7, 2.8, 1.4 % | 2.7, 2.8, 1.4 % | 2.8, 2.9, 1.5 % | under 0.1 pt | bands |
+| Flat share of all stands | 61.4 % | 61.9 % | 61.9 % | 61.7 % | +0.3 pt | BAND.flat 50 to 80 % |
+| Flat stands on another stand | 6.8 % | 6.9 % | 6.9 % | 7.2 % | +0.4 pt | STACK.flat 4.1 to 10.9 % |
+| Houses with a stand on a stand | 20.9 % | 20.9 % | 20.9 % | 21.3 % | +0.4 pt | STACK.houses |
+| Wall stand shares per place (8 places) | | same | same | same | 0 | WALL bands (read from colliders) |
+| Stands and distinct items per house, quartiles | 5, 19, 49 and 2, 7, 20 | same | same | same | 0 | CORPUS_Q bands |
+| Wall stand into what shows, 25th and 50th percentile | 0, 0 cm | 0.5, 0.6 | 0.5, 0.6 | 0.5, 0.6 | +0.5, +0.6 cm | `WALL_SHOW`, test_stands wall clip line |
+| Wall stand into what shows, 75th percentile | 0 cm | 7.1 | 6.6 | 5.0 | +5.0 cm (past 1 cm) | `WALL_SHOW` 12 cm, wall clip line (75th) |
+| Wall stand into what shows, 90th percentile | 4.0 cm | 10.9 | 10.9 | 9.7 | +5.7 cm (past 1 cm) | `WALL_SHOW` 12 cm, wall clip line (90th) |
+| Flat stand sink, 75th and 90th percentile | 9.7, 21.6 cm | 10.1, 21.0 | 10.1, 21.0 | 9.0, 21.0 | -0.7, -0.6 cm | stands.js sink into support |
+
+The colliders column is the old target: `WALL_COLL` 4 cm is its 90th percentile. The first mesh column that existed before
+the models track is "old coarse". Fine against old coarse: 75th percentile 7.1 to 5.0 cm (-2.1 cm), 90th 10.9 to
+9.7 cm (-1.2 cm), both past 1 cm; flat counter 9.1 to 8.1 % (-1.0 pt); stand-on-stand 6.9 to 7.2 %.
+
+No place share, flat share, house quartile or stack share leaves its band. Rows past tolerance:
+
+| Target or band | Old | New | Why |
+|---|---|---|---|
+| Corpus wall stand into what shows, 75th percentile (new target for `WALL_SHOW` use and test_stands wall clip line) | 7.1 cm (old coarse) | 5.0 cm (fine) | fine parts follow the wall's bars and stones |
+| Same, 90th percentile | 10.9 cm | 9.7 cm | same; still under `WALL_SHOW` 12 cm |
+| Median stand height on a bench | 55 cm (old coarse) | 53 cm | anchor labels move with the surface top; equals the colliders value |
+| Median height on a workbench | 93 (colliders), 88 (old coarse) | 80 | 35 stands against 32 and 40 |
+| Median height on a counter | 51 (colliders), 0 (old coarse) | 22 | 467 stands against 360 and 546 |
+| Median height on another stand, none, stair | 79, 80, 129 | 81, 77, 126 | 2 to 3 cm |
+
+The height rows are descriptive; no gate reads them. The test_stands bands (FLAT, WALL, BAND.flat, STACK, CORPUS_Q)
+hold as they are. The generator-side stand counts against these bands are in `docs/handoffs/2026-11-10-design/models.md`
+(Round 3).
+
+### Ledge and furniture clip depths (data/recount-clips.json)
+
+`lab/recount_clips.js`: pieces inside a building, deepest reach (`SH.clipDepth`, the least overlap over the separating
+axes) into the class, per set of shapes. Percentiles over the pieces that reach 1 cm or more. Tolerance 1 cm.
+Run in 24 chunks of the file list, merged with `--merge`.
+
+| Class (pieces) | Setting | Share with 1 cm or more | 50th | 75th | 90th | 99th | Feeds |
+|---|---|---|---|---|---|---|---|
+| wood_ledge into walls, poles, beams, windows, doors (3,242) | colliders | 83.7 % | 35.2 | 35.2 | 35.2 | 37.6 | `p.wclip`, `#VillheimClips`, audit mountClip |
+| | old coarse and new coarse | 86.1 % | 36.5 | 36.6 | 36.6 | 39.8 | |
+| | fine | 85.9 % | 35.2 | 35.2 | 35.2 | 39.7 | |
+| wood_ledge into furniture | colliders | 0.3 % (11) | 8.9 | 29.0 | 35.0 | 40.2 | audit furnClip |
+| | fine | 0.7 % (22) | 6.6 | 9.2 | 22.8 | 38.2 | |
+| Furniture into walls, poles, beams, windows, doors (46,924) | colliders | 50.6 % | 13.7 | 22.0 | 33.6 | 70.9 | intoWall 15 cm, softer 5 cm |
+| | coarse | 60.3 % | 16.0 | 25.7 | 35.8 | 73.9 | |
+| | fine | 57.9 % | 14.1 | 21.4 | 31.7 | 67.6 | |
+| Furniture into furniture (counted once a pair) | colliders | 22.7 % | 12.2 | 18.5 | 66.7 | 103.9 | furnClip 12 cm, `fclip` |
+| | coarse | 28.0 % | 12.8 | 20.2 | 35.4 | 100.9 | |
+| | fine | 23.9 % | 7.3 | 14.4 | 26.6 | 41.8 | |
+
+A ledge's pivot is its middle (1.0 x 0.6 m), so builders set it with 30 cm in the wall; the 35 cm is that plus the
+wall's relief. Past 1 cm against the colliders: furniture into furniture 50th percentile 12.2 to 7.3 cm (fine), 90th
+66.7 to 26.6 cm, 99th 103.9 to 41.8 cm; furniture into walls 90th 33.6 to 31.7 cm (-1.9 cm), 99th 70.9 to 67.6 cm
+(-3.3 cm). Against the coarse parts the fine parts are shallower in every furniture row (furniture into walls 50th
+16.0 to 14.1 cm). The `furnClip` gate (12 cm on every axis) and the `fclip` marks (D-098) read pairs. Which pieces make up the furniture pair tail was not looked at.
+
+### Not run
+
+- `lab/mine_kitbash.js`, `lab/mine_creative.js`, `lab/mine_yards.js`, `lab/mine_motifs.js`, `lab/coverage.js`: they read
+  `compact.json` (`lab/build_corpus.py` over the review sheet files), which is not on the device. By code they read
+  colliders and bounds only, so their output is the same on ee15184.
+- Generator-side `lab/test_stands.js` against the new miner switch: the generator and the miner use the default
+  (colliders), so the test_stands tables stay as in models.md Round 3.
+- Furniture clip rows use the roles `wall`, `pole`, `beam`, `window`, `door`, `gable` as structure; a counter built of
+  wall pieces counts as structure.
+
 ## Households (D-068)
 
 `lib/persona.js` draws a household for every design from a stream of its own (seeded by the seed, type, biome and

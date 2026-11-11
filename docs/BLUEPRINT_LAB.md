@@ -475,6 +475,57 @@ village gives already takes in the yard; an off-centre yard (a side yard) moves 
 Pictures: `docs/yards/yard-bench.png` (the bench sheet: four buildings, the switches on and off) and
 `docs/yards/yard-examples.png` (four yards, three-quarter and top views).
 
+## Landscaping and greenery (D-143)
+
+Research and a placement plan, 2026-11-11 (design helper 7). Nothing in this section is built yet. Greenery stands
+outside, round and on the buildings and along the village's roads, so it sits beside the yards in this doc;
+`docs/INTERIOR_DESIGN.md` covers rooms. The record with sources and commands is
+`docs/handoffs/2026-11-10-design/landscaping.md`.
+
+Data in `tools/blueprint-lab/data/landscape/`:
+
+| File | What it holds |
+|---|---|
+| `vanilla-greenery.json` | 64 vanilla plants, trees, bushes, vines, flowers, crops, roots, pots and planting modes: how each is placed, where it grows wild, its size from `data/piece-models.json` (46 measured), corpus use, and whether the mod's gatherers would take it today |
+| `corpus-greenery.json` | Where 609 corpus builds put their greenery: by class and place (on a wall, against a wall, by a window, under eaves, yard, path edge, courtyard, open ground), spacing, distance from walls, groups and lines, scale, by culture group, liked builds, the village builds |
+| `placement-plan.json` | Proposed numbers for a greenery pass, place by place, with biome prefab lists, stages and variance; each number names its corpus table or is marked a proposal |
+
+What the corpus shows (609 of 2,153 builds have vanilla greenery; median 12 pieces a build):
+
+| Class | Builds | Where most (builds) | Spacing, median | Groups |
+|---|---|---|---|---|
+| Flowers | 217 | open ground 79, yard 78, under eaves 77, indoors 74, against a wall 42 | 1.0 m | singles and pairs |
+| Bushes | 212 | raised (decks, terraces) 113, yard 98, under eaves 92, open ground 88, against a wall 54 | 1.2 m (courtyards 0.8) | singles (1,899), pairs (422), clusters of 3 to 6 (274); mixed kinds in 38 % of groups |
+| Pots | 189 | indoors 142, under eaves 63, by a wall raised (sills) 54 | 0.3 m on sills | mixed clusters of 2 to 3 |
+| Vines | 168 | on a wall 140, indoors 109, under eaves 60, on a roof 43 | 0.28 m | patches of 5 (p90 28), lines along walls (275), 38 % at a corner |
+| Trees | 166 | raised 88, open ground 75, yard 63, against a wall 25, courtyard 13 | 3.0 m | singles (1,284 of 1,440 groups); 79 % scaled, 0.5 to 1.5 |
+| Crops | 23 | raised 14, open ground 9, yard 6, against a wall 6 | 0.8 m | rows and beds of 3 to 8 |
+
+- Vines are the most placed greenery (24,000 pieces) and the most common outdoor place in liked builds (42 of 153).
+  71 % stand within 0.8 m of a wall and climb a median 5.6 m. A wall carries 0.05 vines per wall piece at the
+  median, 0.15 at p75: patches on one face or a corner.
+- Plants on the ground stand a median 3.3 to 3.7 m from the walls (bushes, flowers, trees), crops 2.1 m.
+- Few corpus builds lay roads, so road edges (bushes 25 builds, flowers 15, trees 6) and junctions (no numbers) lean
+  on the outside references in the record.
+- By culture group: castle and Norse forest builds put vines on walls most; Norse builds put flowers and bushes under
+  eaves and porches; medieval timber builds put flowers against walls; Ashlands builds use pots.
+
+What the lab places today: `lib/yards.js` (stage 2 and 3 yards: garden beds with crops or dandelions from d2, 2 or 3
+bushes along the fence and dandelions along the walls from d3, bush and crop lists per biome) and `lib/details.js`
+(window boxes with dandelions under the ground-floor front windows from d2). Plants are tagged `garden` in the yard
+(`put(..., { garden: true })`); nothing marks them as landscaping for the mod.
+
+What the lab would need:
+
+1. A greenery pass (a new `lib/landscape.js`, after the yard) for vines on walls, the foot of walls, sills and porch
+   pots, yard trees and courtyards, by `placement-plan.json`, with switches like the yard's.
+2. A `landscape: true` mark on every greenery piece (the pass's and `yards.js` and `details.js` plants), written to
+   the blueprint as a `#VillheimLandscape` list of piece indices beside `#VillheimClips`.
+3. Small landscape sets for the village's roads (a verge strip, a junction planting, a courtyard bed) that the mod's
+   path code can place, since road greenery belongs to no building.
+4. Mod side (another track): read the list and skip those pieces in every gather, forage and clearing search; see the
+   record's "For the mod session". Until then the plan keeps food-bearing plants and trees out of village greenery.
+
 ## Interior kitbash (D-065, D-066)
 
 Rooms furnished the way the best builders do it: any prefab that ships with the game may dress a room (stations and

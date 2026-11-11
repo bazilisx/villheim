@@ -348,6 +348,14 @@ parts, with `solids`, `pass` and `snap` per piece) and `data/piece-solids.json` 
 `lib/shapes.js` and bundled for the game and the request page). The meshes and textures stay on Tyler's PC; the repo
 holds measurements, collider boxes and our own boxes and prisms.
 
+Since 2026-11-11 the proxies come in two levels and are stored packed (whole millimeters, grouped by color, material
+and rotation, boxes as short text; `lib/mesh.js` `unpack`): `data/piece-models.json` (0.9 MB) keeps the coarse parts
+(`k`, the first proxy) with the measurements, and `data/piece-fine.json` (2.4 MB) the parts fitted to 2 cm of the
+mesh. The checks test the coarse parts first and the fine parts where two coarse lists meet. The game's bundle and the
+lab page carry the fine parts as one JSON text per piece kind (`VH_MESH_FINE`), parsed when a piece of that kind first
+needs them. `data/item-models.json` holds the stand items the same way. Round notes:
+`docs/handoffs/2026-11-10-design/models.md`.
+
 API (old calls work as before):
 
 - `draw(ctx, pieces, opts)`: `az`, `el` (90 is straight down), `cut` (structural pieces are cut at that height and
@@ -477,9 +485,9 @@ Pictures: `docs/yards/yard-bench.png` (the bench sheet: four buildings, the swit
 
 ## Landscaping and greenery (D-143)
 
-Research and a placement plan, 2026-11-11 (design helper 7). Nothing in this section is built yet. Greenery stands
-outside, round and on the buildings and along the village's roads, so it sits beside the yards in this doc;
-`docs/INTERIOR_DESIGN.md` covers rooms. The record with sources and commands is
+Research and a placement plan, 2026-11-11 (design helper 7); the pass built from it is under "The greenery pass"
+below. Greenery stands outside, round and on the buildings and along the village's roads, so it sits beside the yards
+in this doc; `docs/INTERIOR_DESIGN.md` covers rooms. The record with sources and commands is
 `docs/handoffs/2026-11-10-design/landscaping.md`.
 
 Data in `tools/blueprint-lab/data/landscape/`:
@@ -510,21 +518,143 @@ What the corpus shows (609 of 2,153 builds have vanilla greenery; median 12 piec
 - By culture group: castle and Norse forest builds put vines on walls most; Norse builds put flowers and bushes under
   eaves and porches; medieval timber builds put flowers against walls; Ashlands builds use pots.
 
-What the lab places today: `lib/yards.js` (stage 2 and 3 yards: garden beds with crops or dandelions from d2, 2 or 3
-bushes along the fence and dandelions along the walls from d3, bush and crop lists per biome) and `lib/details.js`
-(window boxes with dandelions under the ground-floor front windows from d2). Plants are tagged `garden` in the yard
-(`put(..., { garden: true })`); nothing marks them as landscaping for the mod.
+### The greenery pass (`lib/landscape.js`)
 
-What the lab would need:
+Built 2026-11-11 on design/wip-landscape2; not tried in the game. `lib/generate.js` `outside()` runs the yard
+(`lib/yards.js`) and then `Landscape.add` on every building; `req.landscape: false` turns it off, and a bare build
+(`skipDecor`) gets none. `req.landscape` as an object may set `green` (the village's greenness) and `only` (a list of
+classes).
 
-1. A greenery pass (a new `lib/landscape.js`, after the yard) for vines on walls, the foot of walls, sills and porch
-   pots, yard trees and courtyards, by `placement-plan.json`, with switches like the yard's.
-2. A `landscape: true` mark on every greenery piece (the pass's and `yards.js` and `details.js` plants), written to
-   the blueprint as a `#VillheimLandscape` list of piece indices beside `#VillheimClips`.
-3. Small landscape sets for the village's roads (a verge strip, a junction planting, a courtyard bed) that the mod's
-   path code can place, since road greenery belongs to no building.
-4. Mod side (another track): read the list and skip those pieces in every gather, forage and clearing search; see the
-   record's "For the mod session". Until then the plan keeps food-bearing plants and trees out of village greenery.
+What it does, with the corpus numbers it uses (`data/landscape/corpus-greenery.json`; D-136):
+
+| What | Number used | Corpus table |
+|---|---|---|
+| Whether a building carries a class | share of house builds with it outside: vine 0.27, bush 0.36, flower 0.30, tree 0.28, pot 0.11, mushroom 0.16 | `house_builds.outdoor_per_build` |
+| How many when it does | median and p75: vine 23 / 64, bush 6 / 19, flower 2 / 8, tree 3 / 6, pot 4 / 8, mushroom 8 / 56 (never more than twice the p75) | same |
+| Where | pieces by place: on a wall (vines); yard, under eaves, at the foot of a wall, courtyard, path edge, along a fence (others) | `pieces_by_class_place`, `builds_by_class_place` |
+| Spacing | nearest of the same class [p25, median, p75] by place, for example bushes in a yard 0.77 / 1.14 / 2.23 m, flowers by a wall 0.45 / 0.87 / 1.73 m, trees in a yard 1.92 / 2.79 / 4.62 m, vines on a wall 0.11 / 0.28 / 0.61 m | `spacing_nearest_same_kind_m`, `vines.spacing_on_wall_m` |
+| Distance out in the yard | bush 1.39 / 3.25 / 5.43 m, flower 1.64 / 3.69 / 5.54 m, tree 1.74 / 3.74 / 5.47 m | `distance_from_walls_on_the_ground_m` |
+| Groups | singles, pairs, clusters of 3 to 6, masses of 7 and more by their counts; the share of groups in a line and of mixed prefabs | `groups`, `vines.groups` |
+| Scale | trees 79 % scaled, 0.49 to 1.46 (p10 to p90); bushes 28 %, 0.9 to 1.29; mushrooms 16 %, 1.0 to 1.55 | `scale` |
+| Vines | from a corner in 38 % of patches; pivot heights over the ground 1.03 / 5.6 / 16.72 m (p10, median, p90), the card held on the wall under its top | `vines` |
+| Side of the house | groups by side: trees front 0.15, back 0.33, ends 0.53; bushes 0.29 / 0.27 / 0.44; flowers 0.34 / 0.15 / 0.51; vines 0.32 / 0.19 / 0.49; pots 0.75 / 0.25 / 0; mushrooms 0.87 / 0 / 0.13 (front is the side most ground-floor doors face) | `corpus-sides.json` `groups_by_side` |
+| How lopsided | each of a house's four sides gets its own weight exp(1.3 z) on top of the split; the corpus's busiest side holds a median 0.6 and a p75 0.68 of a house's ground groups | `corpus-sides.json` `lopsided` |
+| Planters | a group of two or more bushes or flowers gets a low border of the village's beams 0.41 m out from the stems, at the corpus share of bordered groups (bushes 74 of 805, flowers 29 of 334) | `groups` 'with a low border', `corpus-sides.json` `planters` |
+| Culture | a class's share in the culture group over its share in all builds, pulled toward 1 by 20 builds (norse, norse-forest, norse-highland, fen-folk, castle-medieval; Ashlands buildings without a group use the Ashlands group) | `by_culture` |
+
+Each draw comes from a log-normal through the corpus quantiles, so no two gaps are alike (no fixed intervals).
+Household traits (`lib/persona.js`): `hobby.plants` raises flowers, pots and bushes; `tidy` over 0.5 keeps lines with
+an even step and fewer mixed groups, under it more masses, mixed prefabs and vines higher up. The village's greenness
+is one roll per village (`req.landscape.village` names the village; the design's seed when it is missing). No
+profession enters (D-072).
+
+Settings with no corpus number (the corpus has no stages and 9 village builds), in use until set otherwise:
+`STAGE_W` s1 0.5, s2 1.0, s3 1.5, s4 2.0, s5 2.5 (the chance of each class: averaging 1 over s1 to s3, the same rise
+on to s5 for D-153; Tyler is asked in D-158); `VILLAGE_GREEN` 0.6 to
+1.4; `PLOT_GROW` 0.5 m (the most the pass may widen the plot the game gives); `DS` the decor stage each class goes in
+at (flowers d1, pots, bushes, mushrooms and trees d2, vines d3).
+
+Plants by biome (D-125, D-145): `PLANTS` lists each class's prefabs with where they grow wild (from
+`vanilla-greenery.json`) and only prefabs with a measured model. `NEAR` is what lies near a biome to gather from
+(the biome and those that border it: Meadows with the Black Forest; the Black Forest with the Meadows, Swamp and
+Mountain; and so on; Ashlands alone). A class with a plant near the biome uses those, the biome's own three times as
+often; a class with none takes the nearest biome's, marked a stand-in. Pots are built.
+
+Kept clear: each door's entry zone (the opening plus 0.3 m each side, 1.5 m out, D-152) on both sides and a lane
+on to 4 m out; the yard path's planks and 0.25 m round them; 1.3 m round the gate; the foot of outside stairs and
+the front of woodpiles. A bush's or flower's whole spread keeps off these (a tree's trunk and 0.6 m). Plants on the
+ground stay inside the yard fence, off the house floor and clear of every piece; the crown of a tree or bush stays
+under no roof, eave or upper floor. A vine is placed by its model (`VINE_BOX`: the `vines` card hangs round its pivot,
+1.17 m under it and 1.26 m over; the Ashlands vines stand on a pivot 0.4 m over their foot), its leaves outward and its
+back on the wall face. Its card stands on the wall over its whole height, under the wall top and no lower than the
+ground, clear of every door and its 0.3 m each side, and leaves alone any spot where more than a quarter of it would
+cover a window or other opening. A bush, tree or pot within 1.6 m of a window and covering more than
+80 % of its width is not placed.
+
+#### The marks: `#VillheimGreen`
+
+Every piece the pass places, and the plants of the yard's beds and borders and of the window boxes, carries
+`p.green = { k, at, src, use, own }`. `lib/blueprint.js` writes them as a section of the file, read back the same way
+(`parse` sets `p.green`). PlanBuild skips the section, as it skips `#VillheimClips`. One line per piece:
+
+```
+#VillheimGreen
+prefab;x;y;z;class;place;source;use;owner
+BlueberryBush;-7.1;0;-1.8;bush;yard;gathered;food;home
+FirTree_small;7.486;-0.025;5.374;tree;yard;gathered;keep;home
+```
+
+The piece is the one in `#Pieces` with that prefab at that x, y, z (within 0.002 m), as for the clips.
+
+| Field | Values | Meaning |
+|---|---|---|
+| class | vine, bush, flower, mushroom, tree, pot, crop | what it is |
+| place | wall, foot, eaves, yard, court, path, fence, sill (window box); verge, junction, well, notice (road kit) | where it stands |
+| source | gathered, standin, built | how the village pays for it (D-145, D-080): gathered from the wild near its biome, a stand-in from the chests, or built (pots, as decor) |
+| use | food, keep | food: a plant that stays when picked and grows its food back (berry bushes, dandelion, thistle, mushrooms, fiddlehead, Ashvine); keep: everything else |
+| owner | home, shared | home: the household of the home (or farm) it belongs to; shared: anyone (shared buildings, roads) |
+
+How the mod applies it (mod session; nothing here changes mod code):
+- D-143: no villager takes a marked piece for materials: tree felling, rock breaking, loose pickup and clearing all
+  pass it by.
+- D-144: a piece with use `food` may be picked for food, by the household of its home when the owner is `home`, by
+  anyone when it is `shared`. A piece with use `keep` is never taken. The food list was set from how these prefabs
+  behave as the lab knows them and was not checked against the game files: the mod can confirm it from the
+  Pickable's respawn time.
+- D-147: players may pick or fell any of it as in vanilla, and the village plants it back over time.
+- D-146: trees go in grown, at their scale (`p.s`); `DesignSpawner` already sets the scale on spawn.
+- A farm's field crops are the farmer's work and stay unmarked.
+
+#### The road kit (`data/landscape/road-kit.json`)
+
+Six small sets the village layout can place later (the lab has no roads): `verge-a` and `verge-b` (road edge runs),
+`junction-t` and `junction-x` (planting on the outside corners of a T junction and a crossroads), `well` and
+`notice-board`. Each lies in its own frame: the road along x with its edges at z = -1 and 1, a junction road along z.
+A slot is a class, a position and the stage it goes in at; `Landscape.kitPieces(set, biome, stage)` picks the prefab
+for the biome, the scale and the marks (owner shared). `keep` lists the boxes no plant may enter: the road and 0.3 m
+off its edge, 1.5 m back from a junction's edges, the sight line across a side road's mouth, the front of a well or a
+board. Verge distances and spacing come from the corpus path edge (0.3 to 1.6 m off the edge; bushes 0.73 / 1.72 /
+3.82 m, flowers 0.93 / 1.35 / 2.68 m); the junction set-back, the well and board sets and the stages are proposals.
+`python3 -I lab/make_road_kit.py` writes the file (positions drawn once, seed 144).
+
+#### Checks and renders
+
+`node lab/test_landscape.js [seeds]`: the share of homes with each class and the pieces when they have any, against
+a band round the corpus (half to 1.7 times the share, 0.35 to 2.5 times the median); nothing in an entry zone or on
+the path; no vine over a door; no floating plant (a vine's card on a wall and no lower than the ground); the biome
+rule; the marks and their round trip through the file; every `lib/checks.js` check that passes without greenery passes
+with it; the side split and how lopsided homes are, against `corpus-sides.json`; the road kit's kept boxes. With 3
+seeds (117 homes over 13 cultures and the three stages, 2026-11-11, round 2):
+
+| Class | Share | Corpus | Pieces when any (median) | Corpus |
+|---|---|---|---|---|
+| Vine | 0.21 | 0.27 | 38 | 23 |
+| Bush | 0.29 | 0.36 | 5 | 6 |
+| Flower | 0.26 | 0.30 | 2 | 2 |
+| Tree | 0.28 | 0.28 | 4 | 3 |
+| Pot | 0.11 | 0.11 | 2 | 4 |
+| Mushroom | 0.15 | 0.16 | 5 | 8 |
+
+Sides, same run: ground groups front 0.29, back 0.25, ends 0.47 (corpus 0.32, 0.24, 0.44; 394 groups). The busiest
+side holds a median 0.5 and a p75 0.67 of a home's ground groups (corpus 0.6 and 0.68), one side only in 4 % of homes
+(corpus 17 %; 52 homes against 18 corpus houses). Vine pivots stand 0.93 / 1.74 / 2.94 m over the ground (p10, median,
+p90) against the corpus's 1.03 / 5.6 / 16.72: the lab's walls are 3 to 6 m tall and the card stays under their top.
+Planter beams: 4.
+
+`node lab/mine_greenery_sides.js` measures the sides and planters from the compact corpus
+(`/home/claude/study/compact.json`): 135 vanilla houses with a ground-floor door, 62 of them with greenery, written
+to `data/landscape/corpus-sides.json`. The front is the side of the house box most of the lowest doors lie on.
+
+`node lab/render_landscape.js <dir> [type:biome:culture:stage:seed ...]` draws each building without and with its
+greenery (three-quarter and top views); `--kit` draws the road kit sets in four biomes; `--close
+type:biome:culture:stage:seed` draws the stretch of wall with the most vines from four sides. The mesh set holds the
+`vines` model as one part, so the renders show each vine as a flat dark green card.
+
+Not done: courtyard planting runs only where open ground lies between walls (`courtSpots`, the corpus's 6 of 8
+rays); none of the renders so far had such ground, so it has not been seen. Window boxes stay with
+`lib/details.js`. The corpus planters are rare and built of mixed pieces (in the 135 houses: 5 of 104 bush groups
+and 1 of 41 flower groups bordered, by log walls laid low, Ashlands arches, stone floors and grausten pillar bases,
+none raised); the lab borders them with the village's beams, as the yard's beds.
 
 ## Interior kitbash (D-065, D-066)
 
@@ -740,6 +870,233 @@ for any piece hung on the first: every wall set on such a wall failed); `lib/gen
 
 Measured with `node lab/test_stands.js 2` (108 designs: homes, longhouses and taverns, six biomes, s1d1, s2d2, s3d3;
 stands read by the corpus miner's own code): see `docs/INTERIOR_DESIGN.md`, "Items on stands".
+
+## Corpus recount with fine models
+
+Branch `design/wip-recount` from `design/wip-models` ee15184 (2026-11-11). Corpus: Tyler's 1,559 vanilla builds, read on
+his PC through the device (`lab/mine_stands.js` 38 to 51 s a run). Method: the miner's own code and filters, run with
+the old lib (main 509744e), with the models-track lib (ee15184), and with a switch for which shapes a surface top and a
+wall stand's clip depth are read from. No generator code or target changed.
+
+### Which corpus measures use piece shapes
+
+A spy on `lib/mesh.js` during `lab/mine_stands.js` and `lab/hearths/fire_mine.js` (tavern folder) shows one call
+kind: `dims`, the model bounds. `data/piece-models.json` bounds and colliders and `data/piece-solids.json` are the same
+on main and ee15184 (693 of 693 pieces, checked), so every measure that reads colliders and bounds gives the same numbers.
+
+| Measure | Script, data file | Shapes it reads | Same on ee15184 |
+|---|---|---|---|
+| Stand shares per place, heights, sinks, stacks, wall stand clip into the collider behind (4 cm at the 90th percentile) | `lab/mine_stands.js`, `data/stands-corpus.json` | colliders (`lib/shapes.js`), bounds | Yes: all counts byte for byte (md5 6b8b65ca...), also `/tmp` full output |
+| Fire, smoke and light places | `lab/hearths/fire_mine.js`, `lab/hearths/corpus-hearths-lights.json` | `P.piece` sizes (`dims`), colliders | Yes by the code path (spy: `dims` only); not rerun |
+| Seats round fires and beds, chest placement | `lab/hearths/seat_mine.js` | pivots only | Yes |
+| Kitbash and creative set clips (to the wall, to each other, to the anchor) | `lab/mine_kitbash.js`, `lab/mine_creative.js`, `data/kitbash-interior.json`, `data/creative-mined.json` | `SHP.clipDepth` on colliders (`sol`) | Yes by the code (they read `SHP`); not rerun, they need the compact corpus file (`compact.json`), which is not on the device |
+| Yards, motifs, coverage, piece sizes | `lab/mine_yards.js`, `lab/mine_motifs.js`, `lab/coverage.js`, `lab/piece_sizes.js` | model bounds and colliders | Yes by the code; not rerun (compact file) |
+
+Reach and lane measures: none of these scripts reads shapes for them (lanes are measured on generated designs).
+
+What changed is the generator side. `lib/stands.js`, `lib/audit.js` and `lib/kitbash.js` test what shows with
+`lib/mesh.js` (`WALL_SHOW` 12 cm, the mountClip and intoWall gates). Their corpus targets were taken with colliders, so
+no corpus number existed for "into what shows". Two new scripts give it: `VH_SHAPES=coarse|fine` in `lab/mine_stands.js`
+(surface tops and wall stand clips from the model parts) and `lab/recount_clips.js` (ledge and furniture clip depths
+from colliders, coarse and fine parts).
+
+### Stands (data/recount-stands.json)
+
+Setting: colliders (the committed counts), old coarse (main 509744e, `VH_SHAPES=coarse`), new coarse and fine (ee15184).
+Tolerance: the test_stands band round the colliders value (0.6 to 1.6 times, at least 2 points; flat share 50 to 80 %);
+1 cm for depths and heights.
+
+| Measure | Colliders (old) | Old coarse | New coarse | Fine (new) | Change, fine against colliders | Feeds |
+|---|---|---|---|---|---|---|
+| Flat table share | 23.8 % | 23.2 % | 23.3 % | 23.4 % | -0.4 pt | test_stands FLAT table band 14.3 to 38.1 % |
+| Flat shelf and ledge | 44.0 % | 42.7 % | 42.8 % | 43.3 % | -0.7 pt | band 26.4 to 70.3 % |
+| Flat mantel | 15.0 % | 14.3 % | 14.3 % | 14.5 % | -0.5 pt | band 9.0 to 24.0 % |
+| Flat counter and walltop | 6.6 % | 9.1 % | 9.0 % | 8.1 % | +1.5 pt | band 3.9 to 10.5 % (inside) |
+| Flat bench and workbench | 3.7 % | 3.7 % | 3.7 % | 3.6 % | -0.1 pt | band 1.7 to 5.9 % |
+| Flat sill, rafter, chest | 2.8, 2.8, 1.5 % | 2.7, 2.8, 1.4 % | 2.7, 2.8, 1.4 % | 2.8, 2.9, 1.5 % | under 0.1 pt | bands |
+| Flat share of all stands | 61.4 % | 61.9 % | 61.9 % | 61.7 % | +0.3 pt | BAND.flat 50 to 80 % |
+| Flat stands on another stand | 6.8 % | 6.9 % | 6.9 % | 7.2 % | +0.4 pt | STACK.flat 4.1 to 10.9 % |
+| Houses with a stand on a stand | 20.9 % | 20.9 % | 20.9 % | 21.3 % | +0.4 pt | STACK.houses |
+| Wall stand shares per place (8 places) | | same | same | same | 0 | WALL bands (read from colliders) |
+| Stands and distinct items per house, quartiles | 5, 19, 49 and 2, 7, 20 | same | same | same | 0 | CORPUS_Q bands |
+| Wall stand into what shows, 25th and 50th percentile | 0, 0 cm | 0.5, 0.6 | 0.5, 0.6 | 0.5, 0.6 | +0.5, +0.6 cm | `WALL_SHOW`, test_stands wall clip line |
+| Wall stand into what shows, 75th percentile | 0 cm | 7.1 | 6.6 | 5.0 | +5.0 cm (past 1 cm) | `WALL_SHOW` 12 cm, wall clip line (75th) |
+| Wall stand into what shows, 90th percentile | 4.0 cm | 10.9 | 10.9 | 9.7 | +5.7 cm (past 1 cm) | `WALL_SHOW` 12 cm, wall clip line (90th) |
+| Flat stand sink, 75th and 90th percentile | 9.7, 21.6 cm | 10.1, 21.0 | 10.1, 21.0 | 9.0, 21.0 | -0.7, -0.6 cm | stands.js sink into support |
+
+The colliders column is the old target: `WALL_COLL` 4 cm is its 90th percentile. The first mesh column that existed before
+the models track is "old coarse". Fine against old coarse: 75th percentile 7.1 to 5.0 cm (-2.1 cm), 90th 10.9 to
+9.7 cm (-1.2 cm), both past 1 cm; flat counter 9.1 to 8.1 % (-1.0 pt); stand-on-stand 6.9 to 7.2 %.
+
+No place share, flat share, house quartile or stack share leaves its band. Rows past tolerance:
+
+| Target or band | Old | New | Why |
+|---|---|---|---|
+| Corpus wall stand into what shows, 75th percentile (new target for `WALL_SHOW` use and test_stands wall clip line) | 7.1 cm (old coarse) | 5.0 cm (fine) | fine parts follow the wall's bars and stones |
+| Same, 90th percentile | 10.9 cm | 9.7 cm | same; still under `WALL_SHOW` 12 cm |
+| Median stand height on a bench | 55 cm (old coarse) | 53 cm | anchor labels move with the surface top; equals the colliders value |
+| Median height on a workbench | 93 (colliders), 88 (old coarse) | 80 | 35 stands against 32 and 40 |
+| Median height on a counter | 51 (colliders), 0 (old coarse) | 22 | 467 stands against 360 and 546 |
+| Median height on another stand, none, stair | 79, 80, 129 | 81, 77, 126 | 2 to 3 cm |
+
+The height rows are descriptive; no gate reads them. The test_stands bands (FLAT, WALL, BAND.flat, STACK, CORPUS_Q)
+hold as they are. The generator-side stand counts against these bands are in `docs/handoffs/2026-11-10-design/models.md`
+(Round 3).
+
+### Ledge and furniture clip depths (data/recount-clips.json)
+
+`lab/recount_clips.js`: pieces inside a building, deepest reach (`SH.clipDepth`, the least overlap over the separating
+axes) into the class, per set of shapes. Percentiles over the pieces that reach 1 cm or more. Tolerance 1 cm.
+Run in 24 chunks of the file list, merged with `--merge`.
+
+| Class (pieces) | Setting | Share with 1 cm or more | 50th | 75th | 90th | 99th | Feeds |
+|---|---|---|---|---|---|---|---|
+| wood_ledge into walls, poles, beams, windows, doors (3,242) | colliders | 83.7 % | 35.2 | 35.2 | 35.2 | 37.6 | `p.wclip`, `#VillheimClips`, audit mountClip |
+| | old coarse and new coarse | 86.1 % | 36.5 | 36.6 | 36.6 | 39.8 | |
+| | fine | 85.9 % | 35.2 | 35.2 | 35.2 | 39.7 | |
+| wood_ledge into furniture | colliders | 0.3 % (11) | 8.9 | 29.0 | 35.0 | 40.2 | audit furnClip |
+| | fine | 0.7 % (22) | 6.6 | 9.2 | 22.8 | 38.2 | |
+| Furniture into walls, poles, beams, windows, doors (46,924) | colliders | 50.6 % | 13.7 | 22.0 | 33.6 | 70.9 | intoWall 15 cm, softer 5 cm |
+| | coarse | 60.3 % | 16.0 | 25.7 | 35.8 | 73.9 | |
+| | fine | 57.9 % | 14.1 | 21.4 | 31.7 | 67.6 | |
+| Furniture into furniture (counted once a pair) | colliders | 22.7 % | 12.2 | 18.5 | 66.7 | 103.9 | furnClip 12 cm, `fclip` |
+| | coarse | 28.0 % | 12.8 | 20.2 | 35.4 | 100.9 | |
+| | fine | 23.9 % | 7.3 | 14.4 | 26.6 | 41.8 | |
+
+A ledge's pivot is its middle (1.0 x 0.6 m), so builders set it with 30 cm in the wall; the 35 cm is that plus the
+wall's relief. Past 1 cm against the colliders: furniture into furniture 50th percentile 12.2 to 7.3 cm (fine), 90th
+66.7 to 26.6 cm, 99th 103.9 to 41.8 cm; furniture into walls 90th 33.6 to 31.7 cm (-1.9 cm), 99th 70.9 to 67.6 cm
+(-3.3 cm). Against the coarse parts the fine parts are shallower in every furniture row (furniture into walls 50th
+16.0 to 14.1 cm). The `furnClip` gate (12 cm on every axis) and the `fclip` marks (D-098) read pairs. Which pieces make up the furniture pair tail was not looked at.
+
+### Not run
+
+- `lab/mine_kitbash.js`, `lab/mine_creative.js`, `lab/mine_yards.js`, `lab/mine_motifs.js`, `lab/coverage.js`: they read
+  `compact.json`, which is not on the device. Rerun in the second recount below.
+- Generator-side `lab/test_stands.js` against the new miner switch: the generator and the miner use the default
+  (colliders), so the test_stands tables stay as in models.md Round 3.
+- Furniture clip rows use the roles `wall`, `pole`, `beam`, `window`, `door`, `gable` as structure; a counter built of
+  wall pieces counts as structure.
+
+### Miners that need compact.json (second recount, 2026-11-11)
+
+Branch `design/wip-recount2` from `design/wip-recount` 0b5fa55. Scope: measure only; no generator code, target or band changed.
+Corpus: Tyler's 2,153 files on his PC (2,128 builds after 25 duplicates). `compact.json` is made by the new
+`lab/build_compact.js <corpus folder> <out>` (folder walk as `lab/mine_stands.js`, `index.json` for titles and downloads, same-build
+rule of `lab/build_corpus.py`); `lab/build_corpus.py` reads an older folder layout (pb, vh, hs, review.json) that the corpus no
+longer has. The Review tab is not on the device, so every `verdict` is empty (4,268,344 pieces; 188 MB; kept in `/home/claude/study`,
+outside the repo). Effects: `lab/mine_motifs.js` picks builds by downloads alone (517 builds, cut 251) where the committed file also took
+Tyler's Yes; the corpus now holds 1,555 vanilla builds for `lab/mine_kitbash.js` (356 well-liked) and 195 well-liked yard builds, against 115
+in the committed `data/yards.json`. So the "old" column below is the unchanged miner (or the colliders through the same code path) run on
+this corpus, not the committed file.
+
+#### Where each script judges contact, clipping or touching
+
+Rest and snap keep the colliders in every mode. Judgments of what shows get the `VH_SHAPES=collider|coarse|fine` switch
+(`lab/shape_mode.js`; unset gives the old output, `collider` runs the new code path on the colliders).
+
+| Script | Judgment | About | Shapes |
+|---|---|---|---|
+| mine_kitbash | what a piece rests on (floor, anchor, another piece, hung); against a wall at its height (box within 0.3 m of a wall box) | rest/snap | colliders (`Ck.aabb`) |
+| mine_kitbash | anchor frames and wall faces (`extent`, `faces`: the collider face a piece stands against) | rest/snap | colliders |
+| mine_kitbash | clip depth between members, to the anchor, to the wall (`SHP.clipDepth`) | what shows | switch |
+| mine_creative | rest (`restOf`) and wall faces | rest/snap | colliders |
+| mine_creative | contact that joins pieces into one object (solids within 2 cm, `touch`) | what shows | switch (box test widened 0.5 m first) |
+| mine_creative | clip depth between members, to the anchor, to the wall; the 3 cm "on purpose" rule reads these | what shows | switch |
+| mine_yards | piece box (collider), roofed cells, distance to the building (`againstWall`, distance under 1.3 m) | position, no contact | unchanged |
+| mine_yards | fence line joins by snap points (`ends`) | snap | unchanged |
+| mine_yards | sink of a piece below the ground; fence, wall, post and gate height and foot | what shows | switch (lowest and highest point of the shapes) |
+| mine_yards | prop clip depth into fence, post, wall or another prop | what shows | switch (`clipDepth` of the shapes; old: shallowest axis of the two collider boxes) |
+| mine_motifs | piece in the region, wall and roof "base" anchors, doorway cover | position | model bounds, unchanged |
+| mine_motifs | nothing floating (each piece touches an anchor or a piece that does, 8 cm) | what shows | switch |
+| mine_motifs | hidden piece (over 80 % shared volume), clipping (over 0.4 m rejects), kept clip depth | what shows | switch |
+| mine_motifs | clip into the wall the feature is on | what shows | switch |
+| coverage | footprint, wall and roof boxes, overhang, outer/inner | position | unchanged |
+| coverage | a prop set into a wall (middle point inside a thin wall's box) | what shows | switch (point inside a wall part) |
+
+Coarse and fine parts are read with `lib/mesh.js` (`world`, `worldFine`). Pieces without parts keep their collider. Not switched: the
+candidate lists (`around`, the 2 m grid), which still use collider boxes.
+
+#### Results
+
+Tolerance: 1 cm for depths and heights; 5 points for clip shares; the test_stands band (0.6 to 1.6 times, at least 2 points) for
+counts and rates. Data files, next to the old ones: `data/kitbash-interior-fine.json`, `data/yards-fine.json`, `data/motifs-fine.json`,
+`data/coverage-fine.json` (all builds), `data/recount2-compare.json` (every row below). Command lines are in the handoff.
+
+Kitbash library (`lab/mine_kitbash.js`, 1,555 builds, colliders against fine):
+
+| Measure | Colliders | Fine | Change | Feeds |
+|---|---|---|---|---|
+| Entries kept, same anchor and pieces at the same spots | 533, 522 shared | 533, 522 shared | 0 entries differ | library membership unchanged (grouping reads no clip) |
+| Clips between members: count, 50th, 90th | 307, 6.9, 23.0 cm | 590, 6.5, 13.3 cm | +283, -0.4, -9.7 cm (past) | `assemblies[].clips`, `clipOf`, furnClip 12 cm |
+| Clips to the anchor: count, 50th, 90th | 207, 7.1, 25.7 cm | 484, 9.4, 26.9 cm | +277, +2.3, +1.2 cm (past) | same |
+| Clips to the wall: count, 50th, 90th | 362, 13.0, 35.0 cm | 677, 11.0, 30.0 cm | +315, -2.0, -5.0 cm (past) | intoWall 15 cm, mountClip |
+| Entries with a clip of 3 cm or more | 54.0 % | 76.5 % | +22.5 pt (past) | which entries `maxClip` marks |
+| Entries with a clip of 12 cm or more | 33.2 % | 52.5 % | +19.3 pt (past) | furnClip gate |
+| Decor table: pieces with 30+ uses whose 90th clip moved over 1 cm | | 103 of 131 | | `decor[].clip90` |
+
+Largest decor movers (90th percentile clip, colliders to fine): Blueberries 0 to 61 cm, QueensJam 0 to 49 cm, blackmarble_head02 100 to
+52 cm, forge_ext2 63 to 18 cm, piece_cookingstation 62 to 21 cm, fermenter 61 to 31 cm, piece_xmasgarland 0 to 30 cm.
+Fine parts of food and wall decor have no matching collider, so pairs the colliders never saw now count. The library keeps the same
+entries. The clips stored with each entry change, so the clip allowances the generator reads from it move.
+
+Yards (`lab/mine_yards.js`, well-liked 195 builds; the unchanged miner and the collider path differ in the clip depth only, the
+unchanged one takes the shallowest axis of two collider boxes, 487 clips, median 23 cm):
+
+| Measure | Colliders | Fine | Change | Feeds |
+|---|---|---|---|---|
+| Prop clip depth (n 255 to 293): median, 75th, 90th | 14, 19, 28 cm | 8, 16, 25 cm | -6, -3, -3 cm (past) | yards prop clip allowance |
+| Sink of props: median, 75th, 90th | 0, 9, 22 cm | 3, 15, 40 cm | +3, +6, +18 cm (past) | yards sink into the ground |
+| Sink of fences: 75th, 90th | 20, 59 cm | 15, 65 cm | -5, +6 cm (past) | same |
+| Fence top (all fence kinds) median | 363 cm | 356 cm | -7 cm (past) | fence height |
+| wood_fence top median, 90th | 213, 278 cm | 231, 296 cm | +18, +18 cm (past) | fence height |
+| stake_wall top | 380 cm | 373 cm | -7 cm (past) | fence height |
+| Low wall top median | 100 cm | 108 cm | +8 cm (past) | low wall height |
+| Post top 90th | 370 cm | 386 cm | +16 cm (past) | post height |
+| Gate top, floor sink | | | 0 | no change |
+
+Heights here are over the ground estimate of the miner (5th percentile of the structure's bottoms). All vanilla builds (958 fences) move
+the same way; dvergr stake wall top +50 cm (15 pieces). The full row list is in `data/recount2-compare.json`.
+
+Motifs (`lab/mine_motifs.js`, 517 builds, colliders against fine; the fine run takes 6 slices of `SLICE=i/6` with `DUMP` and `MERGE`
+because one run takes over 5 minutes on the device):
+
+| Measure | Colliders | Fine | Change | Feeds |
+|---|---|---|---|---|
+| Distinct motifs kept | 2,647 | 2,649 | +2 | motif library size |
+| Motifs with a clipped piece | 74.4 % | 75.2 % | +0.8 pt | D-098 clip marks |
+| Clip depth, median, 90th | 20, 30 cm | 20, 34 cm | 0, +4 cm (past) | motif clip allowance |
+| Motif keys only in one run | 235 | 237 | | library membership (past: about 9 % of keys differ) |
+| Top 100 by rank shared | 98 of 100 | | | the top of the library holds |
+| Sites dropped as "hidden piece" (corner, base, balcony, chimney) | 42, 17, 9, 2 | 71, 36, 15, 10 | +29, +19, +6, +8 (past) | site rates |
+| Sites rejected as "clipping" (window, eave, valley, icorner) | 88, 55, 1, 5 | 149, 97, 6, 13 | +61, +42, +5, +8 (past) | site rates |
+| Sites rejected as "floating" (corner, valley, gable, icorner, balcony) | 7, 24, 15, 7, 6 | 4, 12, 6, 0, 3 | fewer (past) | site rates |
+
+Fine parts see more overlap between trim pieces (window trim, eaves) and more contact (fewer floating).
+
+Creative sets (`lab/mine_creative.js`). One run of the fine shapes takes over 20 minutes (contact tests between fine parts), so both
+settings ran on every 6th vanilla build (256 of 1,536; `data/creative-mined-fine-sample.json`). The unchanged miner and the
+collider path give the same 2,706 objects on the sample.
+
+| Measure | Colliders | Fine | Change | Feeds |
+|---|---|---|---|---|
+| Combined objects found, distinct entries | 2,706, 1,896 | 2,763, 1,962 | +57, +66 | `data/creative-mined.json` size |
+| Entries in both runs (same anchor, same pieces at the same spots) | 1,276 | 1,276 | 596 only colliders, 664 only fine (past, about 31 %) | creative set library membership |
+| Clips between members: count, 50th, 90th | 5,931, 10.4, 25.6 cm | 7,600, 9.2, 21.9 cm | +1,669, -1.2, -3.7 cm (past) | `objects[].clips`, `fclip` marks |
+| Clips to the anchor: count, 50th, 90th | 320, 7.0, 20.7 cm | 574, 5.1, 19.6 cm | +254, -1.9, -1.1 cm (past) | same |
+| Clips to the wall: count, 50th, 90th | 2,282, 19.3, 33.6 cm | 3,022, 17.5, 32.8 cm | +740, -1.8, -0.8 cm | `wclip` |
+| Entries with a clip of 3 cm or more | 80.4 % | 88.9 % | +8.5 pt (past) | which sets count as clipped on purpose |
+| Entries with a clip of 12 cm or more | 62.0 % | 65.3 % | +3.3 pt | furnClip |
+
+Contact grouping (shown shapes touch within 2 cm) makes the object set change; the library keeps different entries where the fine
+parts join or separate pieces.
+
+Coverage (`lab/coverage.js --quick`, 239 well-liked buildings): buildings with 3 or more props set into a wall, 5.4 % (colliders) to 6.3 %
+(fine), +0.9 pt, inside tolerance. Generated side 0 % both ways. The COVERAGE.md gap is unchanged.
+
+Rows past tolerance (summary): creative sets: membership (about 31 % of entries differ), clip percentiles to members and anchor, clip share 3 cm; kitbash clip counts, percentiles and shares (all three clip kinds); yards prop clip depth, prop and fence
+sink, fence, wall and post heights; motif clip 90th percentile, motif key set, hidden/clipping/floating site rates. Library membership
+changes: kitbash none; motifs about 9 % of keys differ; creative sets about 31 % of entries differ (sample).
 
 ## Households (D-068)
 
@@ -1139,7 +1496,7 @@ node lib/gen_cultures.js out/cultures 6 ../../docs/cultures       # culture samp
 node lib/build_web.js web/index.html                               # the request page
 node lib/cli.js plan <in.blueprint> <out.png> [ppm] [cut] [x0 x1 z0 z1]   # top-down plan, optionally one room
 python3 lab/extract_models.py index|run|collect ...                # piece models, on Tyler's PC only (see the script)
-node lab/build_models.js <piece-models-raw.json>                    # to data/piece-models.json
+node lab/build_models.js <piece-models-raw.json>                    # to data/piece-models.json and data/piece-fine.json
 node lab/piece_sizes.js                                            # catalog sizes against the game
 node lib/build_engine.js                                           # the game's bundle, src/Villheim.Logic/Generator/lab.js
 python3 lab/learn_interior.py <corpus dir> data/interior.json      # interior rules; then node lab/interior_lite.js
@@ -1154,3 +1511,317 @@ node lab/floorplan_feedback.js floorplans.csv                      # Tyler's Flo
 node lab/process_requests.js <requests.jsonl> [result dir]         # make the designs asked for with 'vh ask'
 ../gen-test/run.sh [list] [tries]                                  # game engine and node, byte for byte
 ```
+
+## Corpus measures for trim, decks and storeys
+
+Measure only; no generator code or target changed (branch `design/wip-measures`). Scripts: `lab/measure_corpus.js`
+(one record per build, run in chunks `i/n` on the corpus through the device), `lab/measure_merge.js` (sums the chunks,
+writes the three data files and the tables below). Data: `data/measures-trim.json`, `data/measures-decks.json`,
+`data/measures-storeys.json` (counts and quartiles only, no blueprint content). Corpus `C:\Users\tyler\Downloads\Villheim-blueprints`,
+read only, 2,153 `.blueprint` files in 24 folders; no OverDrive BiomeBlueprints pack and no `hs_` files are in it.
+Numbers come from what the corpus shows (D-136). Quartiles are 25th / median / 75th.
+
+### Method and limits
+
+- Builds kept: no modded piece, 40 pieces or more, 4 roof pieces or more, folders statue, bridge, arena, mini-game,
+  portal-hub, farming and artistic skipped. 932 builds of 2,153 files (646 have modded pieces or fewer than 40 pieces,
+  365 have no roof, 210 in the skipped folders). Each build is turned to its main wall axis. Ground is the 5th
+  percentile of the bottoms of structural pieces, so builds on slopes carry some error in heights.
+- Culture: `data/culture-corpus/members.json` (high and medium confidence). Builds not in it are "unsorted", which is
+  the largest group (about half). Biome: the highest biome that at least 10 % of the wall, floor, roof, beam, pole and
+  gable pieces need (`P.needs`). Type: the folder where it names a type (starter-home home, longhouse hall, tavern,
+  blacksmith workshop, tower, storage storehouse, temple); in the general folders words in the title or slug. Builds
+  with no type word are "other". Groups under 10 builds are in the JSON files and left out of the tables.
+- Tilted trim: beams and poles. A pole is tilted when it leans more than 3 degrees from vertical. A box beam is tilted
+  when its pitch is over 3 degrees or its turn away from the nearest wall within 1.5 m (the main axis where no wall is
+  near) is over 3 degrees. `slopeBeam` is the vanilla beam_26, beam_45 and beam_67 family, sloped by its own model; every
+  one counts as tilted. Pitch is from horizontal for beams and from vertical for poles (lean). Places, in this order: a
+  crossing with another tilted piece within 0.5 m (gableCross if a roof or gable piece is near, else xBrace); roofSlope
+  (touches a roof piece and its pitch is within 12 degrees of that roof's slope); brace (both ends touch two different
+  wall, pole, beam, floor, gable, door or window pieces, length 3.6 m or less, pitch 15 to 75); roofOther (touches a
+  roof piece otherwise); loose (the rest). Beam pivots are taken at the middle and tilted pieces use the catalog
+  length (`lib/pieces.js`), so ends are accurate to about 0.3 m.
+- Decks: a room is the ground enclosed by walls 1.4 m tall or more (walls of any storey, doors, windows, posts,
+  grown by one 0.5 m cell to close hairline gaps). 920 of the 932 builds have 6 m2 or more of it. A floor outside is a
+  floor piece with at least 75 % of its cells outside the rooms, its top between 0.1 m under and 4 m over the ground,
+  within 8 m of a room. Bands by top over ground: ground (under 0.35 m, a terrace), low (0.35 to 1.2 m, a deck or
+  porch), high (1.2 to 4 m, a balcony or platform). A deck is a connected set of such cells in one band of 3 m2 or more.
+  "Touching walls" means a cell within 0.5 m of a room. A flat roof built of floor pieces outside the rooms counts as a
+  high deck, and walls of a roofed porch count as rooms, so porches under the main roof are in the room figure.
+- Low walls, fences and rails (outside the rooms, more than 0.5 m from them): fence (a `fence`-role piece except stake
+  walls and sharp stakes), lowWall (a wall piece 0.3 to 1.7 m tall standing on the ground), deckWall (the same on a
+  deck), deckRail and yardRail (a horizontal box beam 0.5 to 1.5 m over the foot of a post within 1 m, or a fence piece
+  on a deck). Runs join pieces within 1.3 m of each other. Heights are piece heights from the catalog (a fence is 1 m,
+  a half wall 1 m), so stacked walls and posts taller than the rail are not in them. Low walls on the ground also
+  catch short annex walls, so the lowWall share is an upper bound for yard walls.
+- "Where": front is the side with most ground-floor doors (builds with no door have none). For a build with doors the
+  sides are front, back, side. Without a door, long side and end side of the main building's roof footprint. Round is a
+  piece set that covers three or more sides.
+- Storeys: roofed clusters (roof, roof top and corner pieces on a 0.5 m grid, joined across gaps under 1 m, 10 m2 or
+  more). Storey count is the ground level plus each floor level that is 2.4 m or more above the one below, has 6 m2 or
+  more of floor and has at least 4 wall or post pieces standing on it. This leaves out landings, decks and flat roofs.
+  A tower with a stair and no floors counts as one storey. The main building is the largest cluster of a file and
+  takes the file's type. Roof area is the area of the whole cluster, so large starter-home designs that join several
+  wings under one roof show footprints of 300 m2 and more. Buildings closer than 1 m are one cluster, so the smallest
+  gap reported is 1 m. Gap is the distance from a roof edge to the nearest roof edge of another building, up to 15 m.
+- Not measured: the real wall-to-wall street width (roofs overhang), the number of storeys of a building made only of
+  walls and stairs without floor pieces, wall heights of upper storeys, and whether a deck is entered from a door.
+  Heights of fence, low wall and rail are catalog heights.
+
+### Tilted trim
+
+Builds read: 932 of 2153 files (skipped: mod_or_small 646, no_roof 365).
+
+| Share of builds with | % |
+|---|---|
+| any trim piece | 100 |
+| any tilted piece (all kinds) | 93 |
+| any slopeBeam (beam_26, 45, 67) | 87 |
+| any free tilt (a box beam or pole that is off axis) | 62 |
+| any free tilt with a pitch over 3 degrees (not only turned flat) | 20 |
+| any tilted box beam | 61 |
+| any leaning pole | 15 |
+| any brace | 72 |
+| any gable crossing | 25 |
+| any X brace | 23 |
+| any roofSlope piece | 78 |
+| any loose piece | 75 |
+
+| Count per build (builds that have any) | n builds | 25th / median / 75th | max |
+|---|---|---|---|
+| all tilted | 871 | 26 / 86 / 279 | 10446 |
+| free tilt | 576 | 14 / 54 / 182 | 9760 |
+| free tilt with pitch over 3 degrees | 190 | 8 / 48 / 221 | 9539 |
+| slopeBeam | 813 | 20 / 62 / 166 | 4704 |
+| all tilted, every build | 932 | 20 / 75 / 257 | 10446 |
+| free tilt as % of all trim pieces | 576 | 2.89 / 8.88 / 18.61 | 96.76 |
+
+| Piece kind | n pieces | pitch 0-3 | 3-10 | 10-20 | 20-35 | 35-55 | 55-75 | 75-90 | yaw 0-3 | 3-10 | 10-25 | 25-40 | 40-45 |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| beam | 97139 | 73% | 1% | 3% | 6% | 4% | 5% | 8% | 12% | 2% | 54% | 9% | 23% |
+| slopeBeam | 130891 | 6% | 1% | 1% | 44% | 41% | 4% | 3% | 65% | 1% | 21% | 4% | 9% |
+| pole | 20632 | 0% | 6% | 37% | 25% | 14% | 8% | 10% | 42% | 5% | 29% | 16% | 9% |
+
+Pitch is degrees from horizontal for beams and from vertical (lean) for poles. Yaw is the turn away from the nearest
+wall (folded to 0 to 45). 590,823 pieces took the wall as reference and 241,418 the main axis. Median length of a
+tilted piece 2.24 m (2 / 2.24 / 2.83).
+
+| Place | n pieces | % of pieces | % of builds having one | % of beam | % of slopeBeam | % of pole |
+|---|---|---|---|---|---|---|
+| roofSlope | 49169 | 20 | 78 | 2 | 36 | 0 |
+| roofOther | 36938 | 15 | 63 | 23 | 11 | 0 |
+| brace | 32744 | 13 | 72 | 3 | 21 | 10 |
+| gableCross | 8049 | 3 | 25 | 2 | 3 | 7 |
+| xBrace | 14318 | 6 | 23 | 5 | 3 | 26 |
+| loose | 107444 | 43 | 75 | 66 | 24 | 57 |
+
+By culture (groups of 10 builds or more; unsorted is the rest):
+
+| Culture | builds | % any tilted | % free tilt | % slope beam | free tilt / build | slope beam / build | % roofSlope | % roofOther | % brace | % gableCross | % xBrace | % loose |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| unsorted | 506 | 93 | 54 | 86 | 15 / 53 / 149 | 16 / 41 / 108 | 21 | 17 | 12 | 3 | 3 | 44 |
+| norse | 115 | 97 | 70 | 97 | 19 / 61 / 212 | 42 / 114 / 278 | 26 | 13 | 17 | 3 | 5 | 36 |
+| castle | 88 | 85 | 75 | 78 | 8 / 50 / 216 | 8 / 44 / 157 | 8 | 10 | 8 | 5 | 17 | 53 |
+| ashlands | 72 | 93 | 64 | 82 | 9 / 34 / 78 | 21 / 83 / 189 | 25 | 7 | 11 | 1 | 2 | 54 |
+| norse-forest | 40 | 95 | 53 | 93 | 6 / 24 / 69 | 36 / 74 / 189 | 45 | 13 | 18 | 2 | 1 | 22 |
+| fantasy | 23 | 100 | 91 | 83 | 30 / 99 / 257 | 84 / 128 / 292 | 17 | 21 | 12 | 3 | 6 | 41 |
+| medieval-timber | 22 | 100 | 77 | 95 | 19 / 32 / 69 | 59 / 94 / 359 | 29 | 10 | 29 | 1 | 4 | 27 |
+| norse-highland | 16 | 88 | 75 | 88 | 19 / 81 / 657 | 66 / 128 / 432 | 24 | 34 | 17 | 2 | 2 | 21 |
+| east-asian | 14 | 100 | 79 | 93 | 14 / 54 / 214 | 39 / 92 / 247 | 16 | 15 | 39 | 4 | 1 | 25 |
+
+By biome:
+
+| Biome | builds | % any tilted | % free tilt | % slope beam | free tilt / build | slope beam / build | % roofSlope | % roofOther | % brace | % gableCross | % xBrace | % loose |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| Meadows | 224 | 93 | 33 | 90 | 10 / 28 / 105 | 9 / 25 / 62 | 24 | 14 | 10 | 7 | 7 | 38 |
+| Black Forest | 213 | 90 | 61 | 86 | 14 / 33 / 100 | 29 / 77 / 169 | 25 | 9 | 18 | 2 | 4 | 41 |
+| Ashlands | 197 | 96 | 80 | 85 | 18 / 75 / 243 | 44 / 104 / 230 | 17 | 13 | 11 | 5 | 10 | 46 |
+| Plains | 195 | 96 | 70 | 90 | 9 / 54 / 175 | 24 / 70 / 254 | 20 | 21 | 13 | 2 | 3 | 40 |
+| Swamp | 51 | 94 | 78 | 90 | 88 / 234 / 416 | 26 / 177 / 282 | 17 | 15 | 12 | 1 | 3 | 52 |
+| Mistlands | 46 | 89 | 83 | 80 | 4 / 32 / 101 | 10 / 34 / 148 | 18 | 14 | 22 | 2 | 3 | 42 |
+
+Reading: nearly every build has some sloped trim, almost all of it vanilla slope beams on roof edges and braces.
+Pitched free tilt is in a fifth of builds; most free-tilt beams are turned flat (73 % under 3 degrees pitch), mostly
+10 to 25 degrees or 40 to 45 degrees off the wall. Leaning poles have pitch 10 to 35 degrees in 62 % of cases. Meadows
+builds use free tilt in a third of builds, the later biomes in 60 to 83 %.
+
+### Decks, low walls and railings
+
+Builds with a walled room (6 m2 or more): 920 of 932; 819 of them hold one main building.
+
+| Share of builds with | % |
+|---|---|
+| any floor outside the rooms | 52 |
+| ground terrace | 14 |
+| low deck (0.35 to 1.2 m) | 30 |
+| high deck or balcony (1.2 to 4 m) | 29 |
+| any raised deck (low or high) | 46 |
+| raised deck touching the walls | 44 |
+| freestanding raised platform | 12 |
+| fence | 8 |
+| low wall on the ground | 32 |
+| low wall on a deck | 18 |
+| rail on a deck | 16 |
+| rail on the ground | 18 |
+| any fence, low wall or rail | 50 |
+
+| Floor outside the walls | components | area m2 (25th / median / 75th) | top over ground m | per build having one | where %: front / back / side / round / long side / end side |
+|---|---|---|---|---|---|
+| ground terrace | 256 | 8.75 / 19.25 / 48.5 | 0.13 / 0.25 / 0.33 | 1 / 1 / 2 | 11 / 7 / 15 / 16 / 27 / 24 |
+| low deck | 680 | 11 / 24 / 66 | 0.98 / 1 / 1 | 1 / 2 / 3 | 14 / 7 / 16 / 16 / 26 / 21 |
+| high deck | 778 | 6.5 / 14.25 / 31.75 | 1.61 / 2.13 / 2.72 | 1 / 2 / 4 | 9 / 7 / 16 / 10 / 29 / 29 |
+
+For the 270 single-building designs that have a door: low decks sit front 27 %, back 18 %, side 40 %, round 14 %; high
+decks front 23 %, back 22 %, side 43 %, round 12 %.
+
+| Band | floor pieces (% of cells) |
+|---|---|
+| ground | wood_floor 75, stone_floor_2x2 14, wood_floor_1x1 5, blackmarble_floor 2, Piece_grausten_floor_2x2 1, Piece_grausten_floor_4x4 1, ashwood_floor_1x1 1 |
+| low | stone_floor_2x2 53, wood_floor 18, Piece_grausten_floor_4x4 7, blackmarble_floor_large 5, stone_floor 4, Piece_grausten_floor_2x2 3, wood_floor_1x1 3, dvergrprops_wood_floor 2 |
+| high | stone_floor_2x2 38, wood_floor 29, Piece_grausten_floor_4x4 12, blackmarble_floor_large 9, wood_floor_1x1 6, blackmarble_floor 2, ashwood_floor_2x2 1, piece_brazierfloor01 1 |
+
+| Run | runs | length m | height m | pieces per run | runs per build | total m per build | where % | top pieces % |
+|---|---|---|---|---|---|---|---|---|
+| fence | 223 | 2 / 6 / 12 | 1 / 1 / 1 | 1 / 3 / 6 | 1 / 2 / 5 | 6 / 16 / 48 | back 5, side 18, long side 37, end side 28, front 9, round 2 | wood_fence 81, stone_fence 18, wood_beam 1 |
+| low wall (ground) | 936 | 2 / 4 / 9.78 | 1 / 1 / 1 | 1 / 2 / 5 | 1 / 2 / 4 | 4 / 10 / 30.9 | long side 30, end side 26, side 21, front 13, back 9, round 1 | stone_wall_2x1 64, stone_wall_1x1 11, wood_wall_half 10, iron_wall_1x1 6, blackmarble_2x1x1 3, crystal_wall_1x1 2 |
+| low wall (deck) | 492 | 2 / 3 / 6 | 1 / 1 / 1 | 1 / 2 / 3 | 1 / 2 / 3 | 4.46 / 8.92 / 16 | back 5, side 17, long side 40, end side 28, front 10 | stone_wall_2x1 37, wood_wall_half 29, stone_wall_1x1 11, wood_wall_log 7, wood_wall_quarter 7, crystal_wall_1x1 4 |
+| rail (deck) | 461 | 2 / 4 / 6 | 1 / 1 / 1 | 1 / 2 / 4 | 1 / 2 / 3 | 4 / 7 / 21 | side 23, end side 25, long side 31, front 12, round 1, back 9 | wood_beam 52, wood_beam_1 28, wood_fence 5, stone_fence 4, ashwood_beam_2m 2 |
+| rail (ground) | 436 | 2 / 4 / 6 | 1 / 1 / 1 | 1 / 2 / 4 | 1 / 2 / 3 | 4 / 7 / 16 | long side 30, end side 35, back 7, side 17, front 11 | wood_beam 69, wood_beam_1 17, darkwood_beam 4, Piece_flametal_beam 3, ashwood_beam_2m 3, woodiron_beam 2 |
+
+By biome:
+
+| Biome | builds | % raised deck | % low deck | % high deck/balcony | % ground terrace | % fence | % low wall | % rail | raised deck area m2 |
+|---|---|---|---|---|---|---|---|---|---|
+| Meadows | 222 | 42 | 24 | 29 | 20 | 6 | 34 | 32 | 6.75 / 16 / 29.75 |
+| Black Forest | 212 | 58 | 38 | 41 | 17 | 14 | 50 | 36 | 8.5 / 17.75 / 43.75 |
+| Ashlands | 196 | 42 | 29 | 20 | 6 | 3 | 27 | 15 | 9.75 / 20.25 / 52.25 |
+| Plains | 193 | 38 | 27 | 24 | 13 | 9 | 39 | 24 | 8.5 / 17.25 / 43.25 |
+| Swamp | 51 | 53 | 33 | 35 | 14 | 4 | 37 | 37 | 6.75 / 23.5 / 109.25 |
+| Mistlands | 40 | 35 | 25 | 23 | 13 | 8 | 38 | 15 | 7.5 / 13 / 43.5 |
+
+By culture:
+
+| Culture | builds | % raised deck | % low deck | % high deck/balcony | % ground terrace | % fence | % low wall | % rail | raised deck area m2 |
+|---|---|---|---|---|---|---|---|---|---|
+| unsorted | 502 | 48 | 31 | 31 | 14 | 5 | 40 | 29 | 8 / 17.25 / 44.25 |
+| norse | 115 | 48 | 33 | 29 | 17 | 8 | 44 | 30 | 7.5 / 18.75 / 55 |
+| castle | 81 | 33 | 22 | 21 | 10 | 11 | 32 | 17 | 11.25 / 18.75 / 72.25 |
+| ashlands | 72 | 36 | 25 | 14 | 1 | 0 | 14 | 13 | 9.25 / 19 / 45.75 |
+| norse-forest | 40 | 43 | 25 | 35 | 23 | 33 | 33 | 40 | 10 / 22.75 / 40.25 |
+| fantasy | 23 | 43 | 35 | 30 | 9 | 0 | 35 | 13 | 6.25 / 13.5 / 34.75 |
+| medieval-timber | 22 | 36 | 23 | 23 | 18 | 23 | 45 | 9 | 11.25 / 13.5 / 31.25 |
+| norse-highland | 15 | 60 | 33 | 47 | 40 | 7 | 47 | 47 | 6.25 / 26 / 51.25 |
+| east-asian | 14 | 57 | 36 | 36 | 7 | 14 | 57 | 43 | 11.25 / 17.75 / 29.25 |
+
+By building type:
+
+| Type | builds | % raised deck | % low deck | % high deck/balcony | % ground terrace | % fence | % low wall | % rail | raised deck area m2 |
+|---|---|---|---|---|---|---|---|---|---|
+| home | 340 | 46 | 27 | 30 | 16 | 9 | 36 | 30 | 7.25 / 16.75 / 38.25 |
+| other | 291 | 49 | 32 | 31 | 13 | 7 | 42 | 27 | 7.75 / 16 / 52 |
+| tower | 88 | 23 | 17 | 14 | 9 | 7 | 16 | 15 | 11.5 / 20 / 48.25 |
+| hall | 64 | 44 | 33 | 30 | 8 | 6 | 53 | 25 | 13 / 20.5 / 63 |
+| tavern | 43 | 49 | 33 | 33 | 16 | 9 | 51 | 33 | 6.25 / 13 / 21.25 |
+| workshop | 39 | 69 | 54 | 46 | 13 | 10 | 46 | 54 | 11 / 22.25 / 45.5 |
+| storehouse | 29 | 41 | 28 | 24 | 21 | 7 | 24 | 17 | 16 / 26.25 / 40.25 |
+| temple | 26 | 42 | 35 | 15 | 19 | 4 | 31 | 8 | 7.75 / 29 / 46.75 |
+
+Reading: close to half of the builds have a raised floor outside the rooms, and most of those touch the walls (porch
+or deck); a fifth have a platform apart from the walls. A low deck is usually 11 to 66 m2 and 1 m up; a high deck 6.5 to 32 m2 and 1.6 to 2.7 m
+up. Half of the builds have some fence, low wall or rail outside the rooms; low walls are mostly stone 2x1 and
+1x1, half walls are the wood choice, and rails are wood beams on posts. Decks are on the side of the building more
+than at the front.
+
+### Storeys and density
+
+Builds with a roofed building (10 m2 of roof or more): 917.
+
+| Type (main building) | n | 1 storey % | 2 % | 3 % | 4+ % | mean | roof area m2 | eave height m |
+|---|---|---|---|---|---|---|---|---|
+| home | 336 | 23 | 38 | 21 | 17 | 2.51 | 195 / 348 / 521.25 | 7.69 / 10.61 / 14.5 |
+| hall | 64 | 5 | 22 | 34 | 39 | 3.52 | 570.5 / 719 / 1011 | 12 / 14 / 18.23 |
+| tavern | 43 | 0 | 30 | 33 | 37 | 3.51 | 287.5 / 448.5 / 650.5 | 10.16 / 14.93 / 18.07 |
+| workshop | 39 | 26 | 44 | 13 | 18 | 2.28 | 154.5 / 244.5 / 528.5 | 8 / 11 / 15 |
+| tower | 94 | 24 | 13 | 16 | 47 | 3.71 | 122.5 / 202.25 / 374 | 14.58 / 21 / 27.79 |
+| storehouse | 29 | 28 | 45 | 17 | 10 | 2.21 | 151 / 270 / 700.75 | 8 / 10 / 12 |
+| temple | 25 | 24 | 16 | 8 | 52 | 3.44 | 330 / 497 / 1270.75 | 16.22 / 25 / 30.27 |
+| other | 287 | 29 | 24 | 20 | 28 | 2.94 | 94.75 / 277.75 / 695 | 7.2 / 12 / 19 |
+| all main buildings | 917 | 23 | 29 | 21 | 27 | 2.89 | 157.5 / 347 / 619 | 8 / 12 / 18.4 |
+| other buildings in the same files | 502 | 53 | 27 | 10 | 10 | 1.85 | 24 / 43.5 / 106.5 | |
+
+Footprint by storey count (roof area m2, 25th / median / 75th, with n in parentheses; n under 3 shows only n):
+
+| Type | 1 storey | 2 storeys | 3 storeys | 4+ storeys |
+|---|---|---|---|---|
+| home | 128.25 / 234 / 305 (78) | 185.75 / 338.5 / 477.5 (128) | 307.5 / 453 / 642 (72) | 370.25 / 513.25 / 880.5 (58) |
+| hall | 308.25 / 360 / 570.5 (3) | 574.75 / 719 / 878.75 (14) | 602 / 730.5 / 929.5 (22) | 550.25 / 817.25 / 1696.5 (25) |
+| tavern | (0) | 229 / 309 / 565 (13) | 287.5 / 389.5 / 443 (14) | 509.5 / 631.25 / 782.25 (16) |
+| workshop | 170.25 / 199.75 / 243 (10) | 105 / 244.5 / 425.75 (17) | 198.75 / 433.25 / 499.75 (5) | 244.75 / 536 / 999.75 (7) |
+| tower | 84 / 122.5 / 225 (23) | 79 / 105 / 141.5 (12) | 135.75 / 161.5 / 217.5 (15) | 191.75 / 326.75 / 646.5 (44) |
+| storehouse | 97.75 / 133 / 287.5 (8) | 232 / 347 / 722.5 (13) | 191.75 / 224.75 / 241 (5) | 700.75 / 789.25 / 1106.25 (3) |
+| temple | 96 / 280.75 / 330 (6) | 421.5 / 2330.75 / 2330.75 (4) | (2) | 497 / 1116.75 / 1840.75 (13) |
+| other | 45.5 / 83.5 / 166 (83) | 101.5 / 252 / 490.5 (68) | 211.5 / 420.5 / 713.25 (57) | 478 / 755.5 / 1141.5 (79) |
+| all main buildings | 73.5 / 146.5 / 249.25 (211) | 152.25 / 313 / 496 (269) | 224.75 / 448.25 / 698.5 (192) | 370.25 / 617.5 / 999.75 (245) |
+
+The JSON file also holds width, length and eave height by storey count for each type.
+
+Homes by biome:
+
+| Biome | n | 1 % | 2 % | 3 % | 4+ % |
+|---|---|---|---|---|---|
+| Meadows | 130 | 32 | 55 | 12 | 2 |
+| Black Forest | 73 | 18 | 38 | 29 | 15 |
+| Plains | 70 | 26 | 17 | 24 | 33 |
+| Ashlands | 45 | 9 | 29 | 29 | 33 |
+| Swamp | 10 | 10 | 20 | 10 | 60 |
+
+Homes by culture:
+
+| Culture | n | 1 % | 2 % | 3 % | 4+ % |
+|---|---|---|---|---|---|
+| unsorted | 198 | 29 | 43 | 17 | 11 |
+| norse | 44 | 20 | 25 | 32 | 23 |
+| norse-forest | 30 | 17 | 53 | 23 | 7 |
+| ashlands | 15 | 0 | 27 | 40 | 33 |
+| medieval-timber | 12 | 8 | 17 | 42 | 33 |
+
+Gap to the nearest other building (roof edge to roof edge, files with two or more buildings; 173 files, 675 buildings):
+
+| Group | files | buildings | buildings per file | gap m | % 1-2 m | % 2-4 m | % 4-8 m | % 8+ m | mean storeys |
+|---|---|---|---|---|---|---|---|---|---|
+| all | 173 | 675 | 2 / 3 / 4 | 1.5 / 2.66 / 4.91 | 30 | 35 | 28 | 7 | 2.37 |
+| type folders | 50 | 156 | 2 / 2 / 3 | 1.74 / 2.5 / 4.5 | 26 | 40 | 26 | 7 | 2.23 |
+| other folders | 99 | 386 | 2 / 3 / 4 | 1.5 / 2.54 / 4.5 | 34 | 34 | 28 | 4 | 2.3 |
+| castle | 21 | 98 | 2 / 4 / 6 | 2.19 / 4.5 / 7.33 | 20 | 24 | 35 | 21 | 2.81 |
+| village | 3 | 35 | 3 / 4 / 28 | 1.5 / 2.42 / 4.11 | 27 | 47 | 17 | 10 | 2.57 |
+| 2-3 buildings | 116 | 271 | 2 / 2 / 3 | 1.5 / 3 / 5 | 34 | 27 | 33 | 6 | 2.62 |
+| 4-9 buildings | 46 | 248 | 4 / 5 / 6 | 2 / 3.31 / 5 | 23 | 39 | 30 | 8 | 2.32 |
+| 10+ buildings | 11 | 156 | 10 / 12 / 16 | 1.5 / 2.42 / 4 | 35 | 40 | 17 | 9 | 2.02 |
+
+| Biome | files | buildings | buildings per file | gap m | % 1-2 m | % 2-4 m | % 4-8 m | % 8+ m | mean storeys |
+|---|---|---|---|---|---|---|---|---|---|
+| Plains | 43 | 200 | 2 / 3 / 5 | 1.5 / 2.5 / 4.5 | 36 | 34 | 19 | 11 | 2.13 |
+| Black Forest | 41 | 160 | 2 / 3 / 4 | 2 / 3.74 / 6 | 24 | 29 | 41 | 6 | 2.57 |
+| Swamp | 15 | 74 | 2 / 3 / 5 | 1.5 / 2.42 / 3.5 | 37 | 44 | 19 | 0 | 2.41 |
+| Ashlands | 51 | 164 | 2 / 2 / 4 | 1.74 / 2.7 / 5.02 | 28 | 35 | 27 | 11 | 2.65 |
+| Meadows | 14 | 39 | 2 / 2 / 3 | 2.33 / 4 / 4.5 | 12 | 38 | 50 | 0 | 1.46 |
+
+| Storeys of the building | n gaps | gap m |
+|---|---|---|
+| 1 | 239 | 1.5 / 2.5 / 4.5 |
+| 2 | 147 | 2 / 3 / 5 |
+| 3 | 78 | 2 / 3.97 / 6.17 |
+| 4+ | 112 | 1.08 / 2.42 / 4.5 |
+
+| Files | n files | buildings | 1 % | 2 % | 3 % | 4+ % |
+|---|---|---|---|---|---|---|
+| dense (median gap under 4 m) | 119 | 457 | 43 | 27 | 11 | 19 |
+| sparse | 54 | 218 | 43 | 22 | 17 | 18 |
+
+Reading, for D-153: of the 336 homes, 23 % have one storey, 38 % two, 21 % three and 17 % four or more; in the
+Meadows 32 / 55 / 12 / 2 % and in the Black Forest 18 / 38 / 29 / 15 %. Halls, taverns, towers and temples are mostly
+three storeys or more (halls 73 %, taverns 70 %, towers 63 %, temples 60 %); workshops and storehouses sit near homes
+(2.3 and 2.2 mean). The other buildings in a multi-building file are single storey in 53 % of cases. Neighbors are
+close: the median nearest gap is 2.7 m, 65 % are under 4 m and 7 % are 8 m or more. Gap does not change with the
+number of storeys (median 2.4 to 4 m). The sample is designs that people share, which skew toward large and tall
+builds (median home roof area 348 m2), so shares of three storeys and more are likely above what a village needs.

@@ -1368,6 +1368,7 @@ function dressWalls(b, ctx, room, idx, zones, anchors, fires, R2, used) {
         r.b.y1 > m.stand + pass.y0 && r.b.y0 < m.stand + pass.y1 && r.b.x0 < box.x1 && r.b.x1 > box.x0 && r.b.z0 < box.z1 && r.b.z1 > box.z0);
       const jit = 0.7 + 0.8 * R2();
       if (busy) { next = an.t + pass.step * 0.6 * jit; continue; }
+      if (pass.light && wallLightsFull(b, an.x, m.stand + 1.5, an.z)) { next = an.t + pass.step * jit; continue; }
       // a neat household leaves some of the wall bare
       if (!pass.light && R2() < skip) { next = an.t + pass.step * 0.5 * jit; continue; }
       let kits = pass.kits;
@@ -1389,6 +1390,16 @@ function dressWalls(b, ctx, room, idx, zones, anchors, fires, R2, used) {
     }
   }
   return n;
+}
+
+// Whether the room at a point has its budget of wall lights already (lib/decorate.js lightBudget), so the wall torch
+// pass puts up no more than trimLights would keep
+function wallLightsFull(b, x, y, z) {
+  const D = decorB(), r = D.lightRoomOf(b.lightRooms, x, y, z);
+  if (!r) return false;
+  let n = 0;
+  for (const p of b.pieces) if (p.decor && D.lightCls(p.name) === 'wall' && D.lightRoomOf([r], p.x, p.y, p.z)) n++;
+  return n >= r.B[3].wall;
 }
 
 // Long rows of chests and barrels the furnishing set along a wall (review 2026-11-09: four chests in a line): in a row
@@ -1538,6 +1549,22 @@ const JITTER = [
   [/^dvergrprops_crate/, { rot: 10, off: 0.06 }],
   [/^(itemstandh|Candle_resin)$/, { rot: 40, off: 0.06, top: true }],
 ];
+// The table a seat belongs to: a dining table on its floor whose box is within 0.9 m of the seat's pivot (the reach
+// turnLikeCorpus uses for the seats drawn up to a table). D-152 (Tyler): seats of a table set keep their spot at a head
+// or along a side; they may turn slightly as if facing another seat, or sit pushed back and turned a little as if
+// someone got up.
+const SET_TABLE = /^(piece_table|piece_table_round|piece_table_oak|dvergrprops_table|piece_blackmarble_table)$/;
+function setTableOf(b, p) {
+  const D = decorB(), I = D._int, F = D.FURNITURE;
+  if ((F[p.name] || {}).cat !== 'seat' && PB.piece(p.name).role !== 'seat') return null;
+  let best = null, bd = 0.9;
+  for (const t of b.pieces) {
+    if (!t.decor || !SET_TABLE.test(t.name) || Math.abs(t.y - p.y) > 0.5) continue;
+    const d = I.ptDist(D.itemOf(t).b, p.x, p.z);
+    if (d < bd) { bd = d; best = t; }
+  }
+  return best;
+}
 function jitterSpec(p) {
   if (FOOD.test(p.name)) return { rot: 45, off: 0.07, top: true };
   for (const [re, sp] of JITTER) if (re.test(p.name)) return sp;
@@ -1625,7 +1652,24 @@ function liveIn(b, ctx, zones) {
     p._sp = sp;
     const before = problems(p);
     const old = { x: p.x, z: p.z, yaw: p.yaw, q: p.q };
-    const dr = (R() * 2 - 1) * sp.rot * amp, dx = (R() * 2 - 1) * sp.off * amp, dz = (R() * 2 - 1) * sp.off * amp;
+    let dr = (R() * 2 - 1) * sp.rot * amp, dx = (R() * 2 - 1) * sp.off * amp, dz = (R() * 2 - 1) * sp.off * amp;
+    // a seat of a table set keeps its spot (D-152): turned 3 to 8 degrees toward another seat at the table, as if facing
+    // that person, or pushed back 0.1 to 0.3 m from the table and turned 4 to 10 degrees, as if someone got up. The
+    // corpus pairs (data/interior.json, offsets in 0.25 m steps) show turned seats at tables without the size of the
+    // turn, so these are small settings.
+    const tb = setTableOf(b, p);
+    if (tb) {
+      const ft = Math.atan2(tb.x - p.x, tb.z - p.z) * 180 / Math.PI;
+      const mates = b.pieces.filter(q => q !== p && q.decor && setTableOf(b, q) === tb);
+      if (mates.length && R() < 0.6) {
+        const o = mates.slice().sort((a, c) => Math.hypot(a.x - p.x, a.z - p.z) - Math.hypot(c.x - p.x, c.z - p.z))[0];
+        const fo = Math.atan2(o.x - p.x, o.z - p.z) * 180 / Math.PI, d = ((fo - ft) % 360 + 540) % 360 - 180;
+        dr = (d < 0 ? -1 : 1) * (3 + 5 * R()); dx = 0; dz = 0;
+      } else {
+        const l = Math.hypot(tb.x - p.x, tb.z - p.z) || 1, push = 0.1 + 0.2 * R();
+        dr = (R() < 0.5 ? -1 : 1) * (4 + 6 * R()); dx = -(tb.x - p.x) / l * push; dz = -(tb.z - p.z) / l * push;
+      }
+    }
     let ok = false;
     for (const f of [1, 0.5]) {
       const yaw = normB((old.yaw != null ? old.yaw : I.pyaw(p)) + dr * f);
@@ -1709,6 +1753,8 @@ function turnLikeCorpus(b, ctx, idx, problems, bears) {
     for (const p of order(kind)) {
       if (left <= 0) break;
       if (turned.has(p)) continue;
+      // a seat of a table set turns only with its table (D-152); liveIn gives it its small turn
+      if (kind === 'seat' && setTableOf(b, p)) continue;
       // a seat turns with the flat stands on it (a bench the stand pass set); anything else on it keeps it square
       let with_ = [];
       if (kind !== 'rug' && bears(p)) {
@@ -1748,12 +1794,233 @@ function apply(b, ctx, zones) {
   // things on item stands round the house, from a stream of their own (lib/stands.js)
   const St = NODE_B ? require('./stands.js') : window.VHStands;
   if (St && X.stands !== false) St.dressTops(b, ctx, zones || []);
+  // every room's lights to its budget (lib/decorate.js lightBudget)
+  if (X.lightBudget !== false) { const t = trimLights(b); if (t) b.notes.push(`${t} lights over the rooms' budgets left out.`); }
+  if (X.rugBudget !== false) { const t = trimRugs(b); if (t) b.notes.push(`${t} rugs over the rooms' budgets left out.`); }
   // lived in: movable things a little off square, by the household (lib/persona.js)
   if (X.lived !== false && ctx.decor !== 'd1') {
     const m = liveIn(b, ctx, zones || []);
     if (m) b.notes.push(`${m} movable things set a little off square, as a household leaves them.`);
   }
+  // the way in at every door and the lanes to every room's main pieces are put right last, after every pass that sets
+  // or moves furniture, by moving pieces before leaving any out (lib/layout.js openWays, from lib/generate.js finish)
   dropFalling(b);
+}
+
+// Both budgets for a building with no interior library pass (round houses, the Svan tower: lib/generate.js), so their
+// rooms keep to the same light and rug budgets as the rest (integration round 4: a yurt held 7 lights, as many as the
+// decorator and the stands put up)
+function budgets(b, ctx) {
+  const t = trimLights(b), r = trimRugs(b);
+  if (t) b.notes.push(`${t} lights over the rooms' budgets left out.`);
+  if (r) b.notes.push(`${r} rugs over the rooms' budgets left out.`);
+  return t + r;
+}
+
+// The rooms' light budgets (lib/decorate.js lightBudget) over everything lit by now: the decorator's lights, the
+// library's sets and wall torches, the stand pass's candles. Per room and class, the lights are taken best first and
+// kept while the class has room at d3, and at d2 for those that stand at d2 (one with no room at d2 goes up at d3 when
+// it belongs to no set); the rest come out, and a ledge or shelf of a set left with nothing on it goes with them.
+// Best: what the corpus lights (within 1.5 m of a door 16 % of wall lights, of a bed, a table or a seat; candles on a
+// table), the decorator's own spots (scored for darkness and purpose), less within 3 m of a fire (2 to 4 % of corpus
+// lights, the fire lights its own part of the room) and less beside a light already kept (corpus wall lights stand a
+// median 3.9 m apart). Lights outside every room are left as they are.
+const LEDGES = /^(wood_ledge|piece_shelf|dvergrprops_shelf)$/;
+const hashB = str => { let h = 2166136261; for (let i = 0; i < str.length; i++) h = Math.imul(h ^ str.charCodeAt(i), 16777619); return h >>> 0; };
+function trimLights(b) {
+  const D = decorB(), recs = b.lightRooms;
+  if (!recs || !recs.length) return 0;
+  const by = new Map();
+  for (const p of b.pieces) {
+    if (!p.decor || p.outside || p.yard) continue;
+    const c = D.lightCls(p.name);
+    if (!c) continue;
+    const r = D.lightRoomOf(recs, p.x, p.y, p.z);
+    if (!r) continue;
+    if (!by.has(r)) by.set(r, []);
+    by.get(r).push({ p, c });
+  }
+  if (!by.size) return 0;
+  const near = (re, x, y, z, rad) => b.pieces.some(q => q.decor && re.test(PB.piece(q.name).role) && Math.abs(q.y - y) < 2.4 && Math.hypot(q.x - x, q.z - z) < rad);
+  const doors = b.pieces.filter(q => !q.decor && PB.piece(q.name).role === 'door');
+  const fires = b.pieces.filter(q => q.decor && PB.piece(q.name).role === 'fire');
+  const gone = new Set(), kbs = new Set();
+  for (const [r, list] of by) {
+    for (const e of list) {
+      const { p } = e;
+      let v = 0;
+      if (doors.some(q => Math.abs(q.y - p.y) < 3 && Math.hypot(q.x - p.x, q.z - p.z) < 1.8)) v += 1;
+      if (near(/^bed$/, p.x, p.y, p.z, 1.8)) v += 0.8;
+      if (near(/^(table|seat|craft)$/, p.x, p.y, p.z, 1.8)) v += 0.6;
+      if (!p.kb && !p.extra) v += 0.5;
+      if (fires.some(q => Math.abs(q.y - p.y) < 3 && Math.hypot(q.x - p.x, q.z - p.z) < 3)) v -= 1.5;
+      e.v = v + ((hashB(`${p.name}|${p.x}|${p.z}`) % 1000) / 1000) * 0.4;
+    }
+    const used2 = {}, used3 = {}, kept = [];
+    // pass 1 by class; pass 2 lets wall, floor and hanging lights take one another's places left empty (candles keep
+    // to their own count), as lib/decorate.js lightFull does
+    const BIG = ['wall', 'floor', 'hang'], sum = (o, ks) => ks.reduce((t, k) => t + (o[k] || 0), 0);
+    let rest = list.slice();
+    for (const pool of [false, true]) {
+      const left = [];
+      while (rest.length) {
+        // the best of what is left, less for a kept light of its class within 3.9 m; while its class has room at d2, a
+        // light that can stand at d2 comes first (a set's light that goes up only at d3 would take the place a d2 room
+        // has and leave it dark at d2)
+        let bi = 0, bv = -Infinity;
+        rest.forEach((e, i) => {
+          const eks = pool && e.c !== 'small' ? BIG : [e.c];
+          const first = !(e.p.ds === 3 && e.p.kb) && sum(used2, eks) < sum(r.B[2], eks) ? 10 : 0;
+          const v = first + e.v - kept.filter(k => k.c === e.c && Math.hypot(k.p.x - e.p.x, k.p.z - e.p.z) < 3.9).length * 0.8;
+          if (v > bv) { bv = v; bi = i; }
+        });
+        const [e] = rest.splice(bi, 1), c = e.c, p = e.p;
+        const ks = pool && c !== 'small' ? BIG : [c];
+        const has3 = sum(used3, ks) < sum(r.B[3], ks), has2 = sum(used2, ks) < sum(r.B[2], ks);
+        const late = p.ds === 3;
+        // a light kept for d3 goes up at d2 where d2 has room for it (one of a set keeps its set's stage)
+        if (has3 && late && has2 && !p.kb) { p.ds = 2; used3[c] = (used3[c] || 0) + 1; used2[c] = (used2[c] || 0) + 1; kept.push(e); continue; }
+        if (has3 && (late || has2)) { used3[c] = (used3[c] || 0) + 1; if (!late) used2[c] = (used2[c] || 0) + 1; kept.push(e); continue; }
+        if (has3 && !p.kb) { p.ds = 3; used3[c] = (used3[c] || 0) + 1; kept.push(e); continue; }
+        left.push(e);
+      }
+      rest = left;
+    }
+    for (const { p } of rest) { gone.add(p); if (p.kb) kbs.add(p.kb); }
+  }
+  if (!gone.size) return 0;
+  // a set's ledge or shelf with nothing left on it goes too
+  for (const kb of kbs) {
+    const left = b.pieces.filter(q => q.kb === kb && !gone.has(q));
+    if (left.length && left.every(q => LEDGES.test(q.name))) for (const q of left) gone.add(q);
+  }
+  b.pieces = b.pieces.filter(q => !gone.has(q));
+  return gone.size;
+}
+
+// The rooms' rug budgets (lib/decorate.js rugBudget) over every rug laid by now, the same way as the lights: best
+// first, kept while the room has room at d3 (and at d2 for those that lie at d2). Rugs that lie at d2 fill the d2
+// budget first, so a set's rug that goes down only at d3 never takes the one place a d2 room has. Best: under or by a
+// bed, a table, a seat or the fire, the decorator's own (laid for a purpose) a little before a set's.
+// A rug on another rug (within 1.2 m, 0.3 m in height: rel.rugsLayered, which counts both rugs of a pair) comes from
+// one pair per room, kept in a room with room for two by a draw that brings the design's layered rugs to the culture's
+// share (corpusRate rl: norse 23 %, all groups 21 %); any other rug on a kept rug comes out.
+function trimRugs(b) {
+  const D = decorB(), recs = b.lightRooms;
+  if (!recs || !recs.length) return 0;
+  const by = new Map();
+  for (const p of b.pieces) {
+    if (!p.decor || p.outside || p.yard || PB.piece(p.name).role !== 'rug') continue;
+    const r = D.lightRoomOf(recs, p.x, p.y, p.z);
+    if (!r || !r.rug) continue;
+    if (!by.has(r)) by.set(r, []);
+    by.get(r).push(p);
+  }
+  if (!by.size) return 0;
+  const near = (re, p, rad) => b.pieces.some(q => q.decor && re.test(PB.piece(q.name).role) && Math.abs(q.y - p.y) < 1 && Math.hypot(q.x - p.x, q.z - p.z) < rad);
+  const on = (p, q) => Math.abs(q.y - p.y) < 0.3 && Math.hypot(q.x - p.x, q.z - p.z) < 1.2;
+  const d2ok = p => p.ds !== 3 || !p.kb; // lies at d2, or may be moved there
+  // the pair draw: rooms with room for two rugs share the design's layered rugs (rl times its rugs, two per pair)
+  const rooms = [...by.keys()], two = rooms.filter(r => r.rug[3] >= 2);
+  const total = rooms.reduce((t, r) => t + Math.min(r.rug[3], by.get(r).length), 0);
+  const rl = rooms.length ? rooms.reduce((t, r) => t + (r.rug.rl || 0), 0) / rooms.length : 0;
+  const pPair = two.length ? Math.min(1, rl * total / (2 * two.length)) : 0;
+  const gone = new Set();
+  for (const [r, list] of by) {
+    const sc = new Map(list.map(p => [p, (near(/^bed$/, p, 1.8) ? 0.7 : 0) + (near(/^table$/, p, 1.6) ? 0.6 : 0) + (near(/^fire$/, p, 3) ? 0.5 : 0) +
+      (near(/^seat$/, p, 1.4) ? 0.3 : 0) + (!p.kb && !p.extra ? 0.3 : 0) + (hashB(`${p.name}|${p.x}|${p.z}`) % 1000) / 2500]));
+    const n3 = r.rug[3], n2max = r.rug[2];
+    const sorted = list.slice().sort((a, c) => sc.get(c) - sc.get(a));
+    const kept = [];
+    let n2 = 0;
+    const keep = (p, at2) => {
+      if (at2) { if (p.ds === 3) p.ds = 2; n2++; } else if (!p.kb) p.ds = 3;
+      kept.push(p);
+    };
+    // the pair first, when the room draws one: the best two rugs that lie on each other
+    const k0 = sorted[0];
+    const wantPair = n3 >= 2 && k0 && (hashB(`pair|${k0.x}|${k0.z}|${n3}`) % 1000) / 1000 < pPair;
+    if (wantPair) {
+      let best = null;
+      for (let i = 0; i < sorted.length; i++) for (let j = i + 1; j < sorted.length; j++) {
+        const a = sorted[i], c = sorted[j];
+        if (!on(a, c)) continue;
+        const both2 = d2ok(a) && d2ok(c), v = sc.get(a) + sc.get(c) + (n2max >= 2 && both2 ? 1 : 0);
+        if (!best || v > best.v) best = { a, c, v, both2 };
+      }
+      if (best) for (const p of [best.a, best.c]) {
+        const at2 = d2ok(p) && n2 < n2max;
+        if (at2 || p.ds === 3 || !p.kb) keep(p, at2);
+      }
+    }
+    // then rugs that lie at d2 up to the d2 budget, then the rest up to the d3 budget (a set's rug past the d2 budget
+    // that would lie at d2 comes out)
+    for (const pass of [2, 3]) for (const p of sorted) {
+      if (kept.includes(p) || kept.length >= n3 || kept.some(q => on(p, q))) continue;
+      if (pass === 2) { if (d2ok(p) && n2 < n2max) keep(p, true); continue; }
+      if (p.ds === 3 || !p.kb) keep(p, false);
+    }
+    for (const p of list) if (!kept.includes(p)) gone.add(p);
+    // a room that drew its pair and had none: a second rug laid over the first, turned and a little off it, as corpus
+    // builders layer them (most at an angle), within the room's floor and clear of its doors
+    if (wantPair && kept.length && !kept.some(a => kept.some(c => c !== a && on(a, c)))) {
+      const base = kept[0], add = layOver(b, r, base, D);
+      if (add) {
+        if (kept.length >= n3) { const last = kept[kept.length - 1]; if (last !== base) { gone.add(last); kept.pop(); } }
+        if (kept.length < n3) { b.pieces.push(add); kept.push(add); }
+      }
+    }
+  }
+  if (!gone.size) return 0;
+  b.pieces = b.pieces.filter(q => !gone.has(q));
+  return gone.size;
+}
+// A table whose one roll said dressed (lib/decorate.js tableDressed, td) and that the later passes left bare (the light
+// budget took its candle, a lane or a set undone took its things) gets one thing on its top that is no light, drawn by
+// the corpus's top weights (horizontal item stands first, treasure after). Called from lib/generate.js finish before
+// the household fills its stands, so the share of tables dressed stays at the roll's (integration round 4: 84 of 105
+// tables rolled dressed had anything on them; tables dressed 31.8 % against the corpus 41 %).
+function redressTables(b, ctx) {
+  const D = decorB(), F = D.FURNITURE;
+  const deco = b.pieces.filter(p => p.decor && !p.outside && !p.yard);
+  let n = 0;
+  for (const t of deco) {
+    if (t.td !== true || (F[t.name] || {}).cat !== 'table') continue;
+    if (deco.some(q => q !== t && Math.hypot(q.x - t.x, q.z - t.z) < 0.9 && q.y - t.y > 0.5 && q.y - t.y < 1.6)) continue;
+    const W = D.topWeights(ctx.culture || ctx.cultureKey).filter(([nm]) => !D.lightCls(nm) && F[nm]);
+    if (!W.length) continue;
+    const tot = W.reduce((a, [, w]) => a + w, 0);
+    let u = (hashB(`redress|${t.x}|${t.z}|${t.name}`) % 10000) / 10000 * tot, name = W[0][0];
+    for (const [nm, w] of W) { if (u < w) { name = nm; break; } u -= w; }
+    const yaw = t.yaw || 0;
+    b.pieces.push({ name, x: t.x, y: +(t.y + ((F[t.name] || {}).top || 0.75)).toFixed(3), z: t.z, yaw, q: quatB(yaw), decor: true, ds: t.ds, rest: 'on', onTable: true });
+    n++;
+  }
+  return n;
+}
+
+// A rug over a rug: another kind, turned 25 to 45 degrees, its middle 0.5 to 0.9 m off the first's, every corner on the
+// room's floor cells and 1.2 m or more from a door; null where none fits
+const LAYER_RUGS = ['rug_deer', 'rug_fur', 'rug_wolf', 'jute_carpet', 'rug_straw', 'rug_hare', 'rug_bogwitch_deer', 'rug_moose', 'rug_seal'];
+function layOver(b, r, base, D) {
+  const F = D.FURNITURE, Gs = 0.5;
+  const h = hashB(`layover|${base.x}|${base.z}|${base.name}`);
+  const names = LAYER_RUGS.filter(n => n !== base.name && F[n]);
+  if (!names.length) return null;
+  const name = names[h % names.length], sz = (F[name] && F[name].s) || [2.5, 0.05, 2.5];
+  const doors = b.pieces.filter(q => !q.decor && PB.piece(q.name).role === 'door');
+  for (let k = 0; k < 8; k++) {
+    const turn = (25 + ((h >>> 3) + k * 7) % 21) * ((k + (h >>> 9)) % 2 ? 1 : -1);
+    const yaw = normB((base.yaw || 0) + turn), a = yaw * Math.PI / 180, off = 0.5 + 0.1 * (((h >>> 5) + k) % 5);
+    const dir = ((h >>> 11) + k * 3) % 8 * Math.PI / 4;
+    const x = base.x + Math.cos(dir) * off, z = base.z + Math.sin(dir) * off;
+    const c = Math.cos(a), sn = Math.sin(a), hw = sz[0] / 2, hd = sz[2] / 2;
+    const corners = [[-hw, -hd], [hw, -hd], [hw, hd], [-hw, hd]].map(([u, v]) => [x + u * c + v * sn, z - u * sn + v * c]);
+    if (!corners.every(([cx, cz]) => r.keys.has(`${Math.round(cx / Gs)},${Math.round(cz / Gs)}`))) continue;
+    if (doors.some(q => Math.abs(q.y - base.y) < 2.5 && Math.hypot(q.x - x, q.z - z) < 1.2 + Math.max(hw, hd))) continue;
+    return { name, x: +x.toFixed(3), y: +(base.y + 0.01).toFixed(3), z: +z.toFixed(3), yaw: +yaw.toFixed(2), q: quatB(+yaw.toFixed(2)), decor: true, ds: base.ds, extra: true, rest: 'floor' };
+  }
+  return null;
 }
 
 // Chests stacked on chests as corpus builders stack them (relx.chestsStacked: 58 % of chests stand on or under another
@@ -2051,5 +2318,5 @@ function fitDebug(b, ctx, room, anc, a) {
   const got = fit(b, ctx, room, idx, ctx.zones || [], anc, a, false, fires);
   return { ok: !!got, why: WHY_B, piece: LAST_B, q: LASTQ_B };
 }
-const apiB = { setStats: s => { STATS_B = s; }, boxIndex, stands: (b, ctx, zones) => { const St = NODE_B ? require('./stands.js') : window.VHStands; return St ? St.dressTops(b, ctx, zones || []) : 0; }, liveIn, jitterSpec, WALL_DRESS, WALL_KITS, UNDER, underChoice, residentSlots, slotKits, ROLE_DISPLAYS, groupStorage, spreadTables, spaceBeds, seatRugs, dressWalls, why: () => WHY_B, _fitDebug: fitDebug, BUILT: BUILT_KITS, apply, library, setLibrary, lite, furnishRooms, anchorsOf, roomsB, fit, barCounter, canopyBed, stalls, dais, vignettes, CLASSES, SLOT, FOOD, BUILT_SLOTS, slotOf, isDecor, canDecor };
+const apiB = { setStats: s => { STATS_B = s; }, boxIndex, budgets, redressTables, stands: (b, ctx, zones) => { const St = NODE_B ? require('./stands.js') : window.VHStands; return St ? St.dressTops(b, ctx, zones || []) : 0; }, liveIn, jitterSpec, WALL_DRESS, WALL_KITS, UNDER, underChoice, residentSlots, slotKits, ROLE_DISPLAYS, groupStorage, spreadTables, spaceBeds, seatRugs, dressWalls, why: () => WHY_B, _fitDebug: fitDebug, BUILT: BUILT_KITS, apply, library, setLibrary, lite, furnishRooms, anchorsOf, roomsB, fit, barCounter, canopyBed, stalls, dais, vignettes, CLASSES, SLOT, FOOD, BUILT_SLOTS, slotOf, isDecor, canDecor };
 if (NODE_B) module.exports = apiB; else window.VHKitbash = apiB;

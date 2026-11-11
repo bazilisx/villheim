@@ -136,12 +136,16 @@ function index(boxes) {
   });
   // pad 1 also returns pieces in the cells round the box (for touching with a margin); pad 0 only those whose box can
   // reach into it, which is all a point or a small column needs
-  const none = [];
+  // the answer is a list in the order a Set would give (first seen first), each piece once; a mark per piece tells it
+  // was seen in this query
+  const none = [], mark = new Uint32Array(boxes.length);
+  let q = 0;
   return (b, pad = 1) => {
     const ia = Math.floor(b.x0 / 2) - pad, ib = Math.floor(b.x1 / 2) + pad, ja = Math.floor(b.z0 / 2) - pad, jb = Math.floor(b.z1 / 2) + pad;
     if (ia === ib && ja === jb) return g.get(k(ia, ja)) || none;
-    const out = new Set();
-    for (let i = ia; i <= ib; i++) for (let j = ja; j <= jb; j++) for (const n of g.get(k(i, j)) || none) out.add(n);
+    if (++q === 0xffffffff) { mark.fill(0); q = 1; }
+    const out = [];
+    for (let i = ia; i <= ib; i++) for (let j = ja; j <= jb; j++) { const l = g.get(k(i, j)); if (l) for (const n of l) if (mark[n] !== q) { mark[n] = q; out.push(n); } }
     return out;
   };
 }
@@ -339,6 +343,18 @@ function stability(pieces, boxes, near, ground) {
   return out;
 }
 
+// A loft under the roof (storeys track, 2026-11-11): on an upper floor, a point under a roof slope may be lower than
+// the headroom where people stand up close by: the roof over it is at least LOFT_LOW over the floor, and a point of
+// the same floor with full headroom (and walls) lies within LOFT_REACH. People walk where they can stand; the low
+// edges under the slope hold beds and chests (corpus: 21 % of Norse beds stand under a roof slope, culture-corpus
+// summary.json relx bedsUnderSlope). LOFT_LOW and LOFT_REACH are settings.
+const LOFT_LOW = 1.0, LOFT_REACH = 3.0;
+function underSlopeOK(L, stand, ground) {
+  const { pt, lowest, slope } = L;
+  if (!slope || pt.y < ground + 1.5 || lowest - pt.y < LOFT_LOW) return false;
+  return stand.some(q => Math.abs(q.y - pt.y) < 0.05 && Math.hypot(q.x - pt.x, q.z - pt.z) <= LOFT_REACH);
+}
+
 // opts.shapes: use the game's colliders (lib/shapes.js) for boxes, overlaps, doorways, headroom and climbs
 function check(design, biome, opts = {}) {
   const pieces = design.pieces;
@@ -455,7 +471,7 @@ function check(design, biome, opts = {}) {
   // wall are left out (nobody stands in the wall)
   const walls = wallGrid(pieces, boxes);
   let low = 0, inside = 0;
-  const lowBy = new Set(), where = [];
+  const lowBy = new Set(), where = [], stand = [], lows = [];
   for (const pt of pts) {
     // the lowest roof or ceiling over the point; a floor open to the sky (a roof terrace, a yard) is left out
     const col = ptBox(pt.x, pt.y + 0.05, pt.y + 30, pt.z);
@@ -473,7 +489,13 @@ function check(design, biome, opts = {}) {
     let bad = lowest < pt.y + HEADROOM - 0.01 ? by : null;
     // walls at least 2.5 m tall: a point beside a wall needs wall at that height too (from the floor piece's middle)
     if (!bad && walls.near(pt.x, pt.y, pt.z, 1.0, 0.6, 1.9) && !walls.near(pt.x, pt.y - 0.15, pt.z, 1.6, WALL_MIN - 0.05)) bad = 'walls under 2.5 m';
-    if (bad) { low++; lowBy.add(bad); if (where.length < 6) where.push({ x: +pt.x.toFixed(2), y: +pt.y.toFixed(2), z: +pt.z.toFixed(2), under: bad }); }
+    if (!bad) stand.push(pt);
+    else lows.push({ pt, bad, lowest, slope: by && ['roof', 'roofCorner', 'roofTop'].includes(PC.piece(by).role) });
+  }
+  for (const L of lows) {
+    if (underSlopeOK(L, stand, ground)) continue;
+    const { pt, bad } = L;
+    low++; lowBy.add(bad); if (where.length < 6) where.push({ x: +pt.x.toFixed(2), y: +pt.y.toFixed(2), z: +pt.z.toFixed(2), under: bad });
   }
   results.push({ check: 'headroom', ok: low === 0, where,
     detail: low ? `${low} of ${inside} floor points under ${HEADROOM} m or by low walls (${[...lowBy].slice(0, 4).join(', ')})` : `${inside} floor points inside, all with ${HEADROOM} m or more and walls of ${WALL_MIN} m or more` });

@@ -52,6 +52,16 @@ const SH = NODE_A ? require('./shapes.js') : window.VHShapes;
 // 2026-11-11: beds, bed rugs and foot chests at the corpus rates (decorate.js bedTaste) put Norse Meadows at 14.6,
 // 0.355, 1.62 (0.371 and 1.81 with the earlier rates, the same pool); setShare's floor moved to 0.34 to stay under it.
 const RICH_FLOOR = { prefabsPerD3: 11, setShare: 0.34, corpusSetsPerD3: 0.9 }, RICH_LINES = 6;
+// The banners hung on the outside walls (lib/details.js bannerFace, bannerDoor, the gable banner; the corpus share of
+// buildings with one, ideas gap 5) are no set's: they stay out of the decor setShare, which is the interior library's
+// (trim-banners track, 2026-11-11). Everything else counts as before.
+function indoorDecor(pieces, decor) {
+  const pts = [];
+  for (const p of pieces) if (PC.piece(p.name).role === 'floor') { const s = PC.piece(p.name).size; pts.push([p.x - s[0] / 2, p.z - s[2] / 2], [p.x - s[0] / 2, p.z + s[2] / 2], [p.x + s[0] / 2, p.z - s[2] / 2], [p.x + s[0] / 2, p.z + s[2] / 2]); }
+  if (pts.length < 3) return decor;
+  const h = hull(pts);
+  return decor.filter(p => !BANNER.test(p.name) || inHull(h, p.x, p.z, 0.05));
+}
 const GATE = ['richness', 'homeAlike', 'shapeChange', 'furnClip', 'stacked', 'overWin', 'stairFoot', 'stations', 'mountClip', 'hang', 'loose', 'doorway', 'onStation', 'intoWall'];
 // Watched only: printed with the totals; to be gated once the generator clears them.
 const WATCH = ['outside', 'intoWallSoft'];
@@ -382,8 +392,10 @@ function pool(input, name) {
   const rich = { d3: 0, prefabs: 0, decor: 0, fromSets: 0, corpusSets: 0 };
   for (const d of Object.values(designs)) for (const [stage, v] of Object.entries(d)) {
     if (!v.pieces.sets || !/d[23]$/.test(stage)) continue;
-    const decor = v.pieces.filter(p => !structural(p) && !/^(Pickable|Placeable)_/.test(p.name));
-    rich.decor += decor.length;
+    // the village greenery (lib/landscape.js, '#VillheimGreen') is no interior decor: pots, vines and bushes stay out
+    // of these measures, as the outside banners do
+    const decor = v.pieces.filter(p => !structural(p) && !/^(Pickable|Placeable)_/.test(p.name) && !p.green);
+    rich.decor += indoorDecor(v.pieces, decor).length;
     rich.fromSets += Object.values(v.pieces.sets).reduce((a, b) => a + b, 0);
     if (/d3$/.test(stage)) {
       rich.d3++;

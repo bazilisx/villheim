@@ -88,6 +88,7 @@ const F = {
   cauldron_ext1_spice: { s: [1.0, 0.8, 0.3], at: 'mount', b: 'Swamp', cat: 'craft', wall: 0.15, y: 1.4 },
   cauldron_ext4_pots: { s: [1.2, 0.9, 0.35], at: 'mount', b: 'Plains', cat: 'craft', wall: 0.18, y: 1.3 },
   cauldron_ext3_butchertable: { s: [2.0, 0.9, 1.0], at: 'wall', b: 'Mountain', cat: 'craft' },
+  cauldron_ext5_mortarandpestle: { s: [1.98, 0.94, 0.99], c: [-0.32, 0.04], at: 'wall', b: 'Mistlands', cat: 'craft' },
   itemstand: { s: [0.6, 0.6, 0.25], at: 'mount', b: 'Meadows', cat: 'deco', wall: 0.14, y: 1.6 },
   itemstandh: { s: [0.9, 0.2, 0.5], at: 'top', b: 'Meadows', cat: 'deco' },
   sign: { s: [1.0, 0.55, 0.1], at: 'mount', b: 'Black Forest', cat: 'deco', wall: 0.12, y: 1.3 },
@@ -104,7 +105,7 @@ const F = {
   piece_groundtorch_green: { s: [0.4, 1.6, 0.4], at: 'floor', b: 'Swamp', cat: 'light', base: 0.75 },
   piece_groundtorch_mist: { s: [0.4, 1.6, 0.4], at: 'floor', b: 'Mistlands', cat: 'light', base: 0.75 },
   piece_walltorch: { s: [0.31, 0.95, 0.45], at: 'mount', b: 'Black Forest', cat: 'light', wall: 0.28, y: 1.55, rel: 270 },
-  piece_dvergr_lantern: { s: [0.78, 1.21, 1.11], c: [-0.55, 0.0], at: 'mount', b: 'Mistlands', cat: 'light', wall: -0.1, under: 0.35, rel: 90 },
+  piece_dvergr_lantern: { s: [0.78, 1.21, 1.11], c: [-0.55, 0.0], at: 'mount', b: 'Mistlands', cat: 'light', wall: 0.42, under: 0.35, rel: 90 },
   piece_brazierceiling01: { s: [0.97, 1.6, 0.91], at: 'hang', b: 'Swamp', cat: 'light', under: 1.6 },
   Candle_resin: { s: [0.25, 0.32, 0.25], c: [0.06, 0.01], at: 'top', b: 'Mountain', cat: 'light' },
   rug_deer: { s: [3.11, 0.05, 3.11], at: 'rug', b: 'Meadows', cat: 'rug' },
@@ -299,14 +300,21 @@ function obox(x, z, w, d, yaw) { const a = yaw * PI / 180; return { x, z, hw: w 
 function overlap(a, b, m) {
   const rr = (a.r != null ? a.r : Math.hypot(a.hw, a.hd)) + (b.r != null ? b.r : Math.hypot(b.hw, b.hd)) + m;
   if (Math.abs(b.x - a.x) > rr || Math.abs(b.z - a.z) > rr) return false;
-  const axes = [[a.c, -a.s], [a.s, a.c], [b.c, -b.s], [b.s, b.c]];
   const dx = b.x - a.x, dz = b.z - a.z;
-  for (const [ax, az] of axes) {
-    const ra = a.hw * Math.abs(a.c * ax - a.s * az) + a.hd * Math.abs(a.s * ax + a.c * az);
-    const rb = b.hw * Math.abs(b.c * ax - b.s * az) + b.hd * Math.abs(b.s * ax + b.c * az);
-    if (Math.abs(dx * ax + dz * az) >= ra + rb + m) return false;
-  }
-  return true;
+  // the four axes (each box's two), tested one by one with no lists made (the game's engine runs this often)
+  return meetOn(a, b, dx, dz, m, a.c, -a.s) && meetOn(a, b, dx, dz, m, a.s, a.c) && meetOn(a, b, dx, dz, m, b.c, -b.s) && meetOn(a, b, dx, dz, m, b.s, b.c);
+}
+// true when the boxes' shadows on axis (ax, az) meet
+function meetOn(a, b, dx, dz, m, ax, az) {
+  const ra = a.hw * Math.abs(a.c * ax - a.s * az) + a.hd * Math.abs(a.s * ax + a.c * az);
+  const rb = b.hw * Math.abs(b.c * ax - b.s * az) + b.hd * Math.abs(b.s * ax + b.c * az);
+  return !(Math.abs(dx * ax + dz * az) >= ra + rb + m);
+}
+// the corpus nearest-neighbor spacing of a greenery class, its 25th percentile (lib/landscape.js SPACING)
+function greenGap(k) {
+  const LS = NODE_D ? require('./landscape.js') : window.VHLandscape;
+  const sp = LS && LS.SPACING && LS.SPACING[k];
+  return sp && sp.all ? sp.all[0] : Infinity;
 }
 function ptDist(b, x, z) {
   const dx = x - b.x, dz = z - b.z;
@@ -651,7 +659,8 @@ function faceModel(f, room) {
   // How deep what shows of a piece hung on this face goes into what shows of the face's walls (lib/mesh.js): the 2x2
   // wood wall's cross bars stand 13 cm proud of its collider, and a sign or a stand hung flat on the collider face
   // goes into them (T-606, T-612).
-  face.wallClip = p => {
+  // cap (optional): only whether the clip passes cap is asked; the clip itself comes back up to cap (mesh.js deepest)
+  face.wallClip = (p, cap) => {
     const Me = MESH_D();
     if (!Me) return 0;
     // this face's walls, and the walls, posts and beams round it (a wall coming in at a corner), where they show more
@@ -664,8 +673,9 @@ function faceModel(f, room) {
     if (!A || !A.length) return 0;
     let m = 0;
     for (const q of look) {
-      const d = Me.deepest(A, Me.world(q));
+      const d = Me.deepest(A, Me.world(q), cap);
       if (d > m) m = d;
+      if (cap != null && m > cap) return m;
     }
     return m;
   };
@@ -818,7 +828,7 @@ class Room {
     return isFinite(y) ? y : this.stand;
   }
   put(name, x, z, yaw, o = {}) {
-    if (!this.fits(name, x, z, yaw, o)) return null;
+    if (lightFull(this, name) || rugFull(this, name) || !this.fits(name, x, z, yaw, o)) return null;
     const f = F[name] || {};
     const [w, , d] = size(name);
     const y = this.floorY(obox(x, z, w, d, yaw)) + (f.base || 0) + (o.lift || 0) + (f.at === 'rug' ? 0.02 : 0);
@@ -922,7 +932,11 @@ function mountSpots(room, name, o = {}) {
       if (f.under != null && /^piece_banner/.test(name) && (y - h < room.stand + 0.05 || y - h > room.stand + 1.0)) continue;
       const span = stretch(face, t - w / 2 - 0.35, t + w / 2 + 0.35);
       if (span.ks.size !== 1 || !span.ks.has('wall')) continue;  // keeps clear of doors and windows on either side
-      if (span.top + room.stand < y + Math.min(h, 1.2) - 0.05) continue;
+      // the wall reaches the top of what is hung on it: a lantern hangs from its hook down (the corpus hangs Dvergr wall
+      // lanterns by the hook 0.31 to 0.97 m under the ceiling, 3.2 to 3.8 m over the floor, data/interior.json), so the
+      // wall reaches the hook; a piece that stands on its foot needs the wall to its height
+      const hook = f.under != null && !/^piece_banner/.test(name);
+      if (hook ? span.top + room.stand < y - 0.05 : span.top + room.stand < y + Math.min(h, 1.2) - 0.05) continue;
       const off = face.ht + (f.wall != null ? f.wall : 0.12);
       const yawM = norm(yawOfDir(face.nx, face.nz) + (f.rel || 0));
       // what putMount needs to keep it clear of the wall's own relief
@@ -939,8 +953,10 @@ const HUNG_CLIP = name => (/^piece_banner\d+$/.test(name) ? 0.03 : 0.015);
 // into a wall's relief on purpose, up to the median depth they use (data/kitbash-interior.json, lab/mine_kitbash.js):
 // a wall item stand 5.3 cm (15 mined sets with the stand clipped into the wall, max 28 cm; 7.7 cm median over all
 // 4,212 stands), a wall torch 8.6 cm (808 torches in 238 builds, 90th percentile 23 cm). Past HUNG_CLIP the piece
-// carries its depth as p.wclip, a clip made on purpose in the file's #VillheimClips (D-098).
-const HUNG_CORPUS = { itemstand: 0.053, piece_walltorch: 0.086 };
+// carries its depth as p.wclip, a clip made on purpose in the file's #VillheimClips (D-098). A Dvergr wall lantern
+// 18.8 cm (462 lanterns in 107 builds, 395 of them resting on the wall, 90th percentile 37.6 cm, the same file): its
+// bracket goes into the wall, and with no depth allowed none was ever put up.
+const HUNG_CORPUS = { itemstand: 0.053, piece_walltorch: 0.086, piece_dvergr_lantern: 0.188 };
 const hungLimit = name => Math.max(HUNG_CLIP(name), HUNG_CORPUS[name] || 0);
 // Clear of the wall's own relief (lib/mesh.js), by what shows of the piece against what shows of the walls round it:
 // a height between the bars within 0.4 m (T-606, T-612). A hung piece keeps its collider against the wall's, which is
@@ -949,12 +965,13 @@ const hungLimit = name => Math.max(HUNG_CLIP(name), HUNG_CORPUS[name] || 0);
 function clearOfRelief(room, name, spot) {
   const face = spot.face, f = F[name] || {};
   if (!face.wallClip || spot.x0 == null) return spot;
-  const clipAt = yy => { const [px, pz] = pivotOf(name, spot.x0 + face.nx * spot.off, spot.z0 + face.nz * spot.off, spot.yaw); return face.wallClip({ name, x: px, y: yy, z: pz, q: quatY(spot.yaw) }); };
+  // (each test asks only up to the limit it compares with; the clip kept on the piece is read in full)
+  const clipAt = (yy, cap) => { const [px, pz] = pivotOf(name, spot.x0 + face.nx * spot.off, spot.z0 + face.nz * spot.off, spot.yaw); return face.wallClip({ name, x: px, y: yy, z: pz, q: quatY(spot.yaw) }, cap); };
   const lim = HUNG_CLIP(name), deep = hungLimit(name);
-  const c0 = clipAt(spot.y);
+  const c0 = clipAt(spot.y, Math.max(lim, deep));
   if (c0 <= lim) return spot;
   if (f.under == null) for (let d = 0.1; d <= 0.401; d += 0.1) for (const yy of [spot.y + d, spot.y - d]) {
-    if (yy >= spot.lowY && yy <= spot.topY && clipAt(yy) <= lim) return { ...spot, y: +yy.toFixed(2) };
+    if (yy >= spot.lowY && yy <= spot.topY && clipAt(yy, lim) <= lim) return { ...spot, y: +yy.toFixed(2) };
   }
   // no clear height: as deep as corpus builders hang it, marked (D-127, D-098)
   if (c0 <= deep) return { ...spot, clip: c0 };
@@ -966,6 +983,7 @@ function putMount(room, name, spot) {
   const [w, h] = size(name);
   const f = F[name] || {};
   const y0 = spot.y - (f.under != null ? h : 0), y1 = f.under != null ? spot.y : spot.y + h;
+  if (lightFull(room, name)) return null;
   for (const m of room.mounts) if (m.face === spot.face && Math.abs(m.t - spot.t) < (m.w + w) / 2 + 0.3 && m.y0 < y1 + 0.2 && m.y1 > y0 - 0.2) return null;
   // in front of a tall piece standing against this wall: no
   const probe = obox(spot.x + spot.face.nx * 0.3, spot.z + spot.face.nz * 0.3, w, 0.6, spot.yaw);
@@ -1018,7 +1036,7 @@ function onFire(room, name, o = {}) {
 // best-liked builds have them, none of ours did.
 function kitchenExtras(room, pot) {
   const dist = s => Math.hypot(s.x - pot.x, s.z - pot.z);
-  if (ok('cauldron_ext3_butchertable', room.biome)) placeAgainst(room, 'cauldron_ext3_butchertable', s => (dist(s) > 4.5 ? -100 : -dist(s)));
+  if (ok('cauldron_ext3_butchertable', room.biome) && !room.placed.some(q => q.name === 'cauldron_ext3_butchertable')) placeAgainst(room, 'cauldron_ext3_butchertable', s => (dist(s) > 4.5 ? -100 : -dist(s)));
   for (const name of ['cauldron_ext1_spice', 'cauldron_ext4_pots']) {
     if (!ok(name, room.biome)) continue;
     const spots = mountSpots(room, name, { pairs: true }).filter(s => dist(s) < 4.5).sort((a, c) => dist(a) - dist(c));
@@ -1263,18 +1281,15 @@ function placeTable(room, k, o = {}) {
 // walls tried, a seat or none, then the other tables the village makes (a long one against a wall, a round one, a
 // small Dvergr one). A one-room home left three households of six without a table (lead's review of
 // design/integration e74ccec, home Meadows s2 d3 seed 7); the corpus has a table in 68 % of norse furnished buildings.
-const TABLE_BED_TIGHT = 0.6;
+// D-148 (Tyler, 2026-11-11): "a player or npc must be able to navigate around the table to the bed or vice versa. So
+// if .6m is too tight to do so, any furniture or decor that disrupts that expectation should not be placed." The table
+// keeps 0.9 m from a bed on every try; a table, or anything else, that still closes a lane to a bed, table, station or
+// chest is moved or left out at the end (lib/layout.js openWays).
 function tableSure(room, k, o) {
   const first = o.table || k.table;
   const names = [first, 'piece_table', 'piece_table_round', 'dvergrprops_table'].filter((n, i, a) => n && a.indexOf(n) === i && ok(n, room.biome));
   for (const seats of [Math.min(1, o.seats || 0), 0]) for (const name of names) {
     const t = placeTable1(room, k, { ...o, table: name, seats, dense: true, wallBias: Math.max(o.wallBias || 0, 1) });
-    if (t) return t;
-  }
-  // then a little closer to a bed: 0.6 m clear to walk between, in place of the 0.9 m kept since Tyler's FP-003
-  // ("table too close to the beds"); a value in use until the Decisions tab settles it (TABLE_BED_TIGHT)
-  for (const name of names) {
-    const t = placeTable1(room, k, { ...o, table: name, seats: 0, dense: true, wallBias: Math.max(o.wallBias || 0, 1), bedGap: TABLE_BED_TIGHT });
     if (t) return t;
   }
   // then fewer extras: what the room holds as an extra (a chest at a bed's foot, a rug) gives way where the table goes
@@ -1284,7 +1299,7 @@ function tableSure(room, k, o) {
   for (const q of ex) drop(q);
   let t = null;
   for (const seats of [Math.min(1, o.seats || 0), 0]) {
-    for (const name of names) { t = placeTable1(room, k, { ...o, table: name, seats, dense: true, wallBias: Math.max(o.wallBias || 0, 1), bedGap: TABLE_BED_TIGHT }); if (t) break; }
+    for (const name of names) { t = placeTable1(room, k, { ...o, table: name, seats, dense: true, wallBias: Math.max(o.wallBias || 0, 1) }); if (t) break; }
     if (t) break;
   }
   const mine = t ? room.placed.slice(room.placed.indexOf(t)) : [];
@@ -1556,7 +1571,7 @@ function lightsIn(room, k, n, o) {
   const want = { door: 0.6 + R() * 1.2, bed: 0.4 + R() * 1.0, work: 0.4 + R() * 0.8 };
   const purpose = (x, z) => (room.doorDist(x, z) < 1.8 ? want.door : 0) + (near(x, z, ['bed'], 1.6) ? want.bed : 0) + (near(x, z, ['table', 'craft', 'seat'], 1.6) ? want.work : 0);
   // a hanging brazier over a bigger room
-  if (o.hang && done < n && lightOk('piece_brazierceiling01', room.biome) && room.area >= 30 && R() < o.hang * likes) {
+  if (o.hang && done < n && lightOk('piece_brazierceiling01', room.biome) && room.area >= 30 && R() < o.hang * likes && !lightFull(room, 'piece_brazierceiling01')) {
     const cells = room.cells.filter(c => !fireNear(c.x, c.z) && room.doorDist(c.x, c.z) > 1.5);
     cells.sort((a, b) => Math.hypot(a.x - room.cx, a.z - room.cz) - dark(a.x, a.z) * 0.5 - (Math.hypot(b.x - room.cx, b.z - room.cz) - dark(b.x, b.z) * 0.5));
     const c = cells[0];
@@ -1647,7 +1662,7 @@ function placeOnTable(room, table, names) {
   const bx = Math.cos(table.yaw * PI / 180), bz = -Math.sin(table.yaw * PI / 180);
   let n = 0;
   names.forEach((name, i) => {
-    if (!ok(name, room.biome)) return;
+    if (!ok(name, room.biome) || lightFull(room, name)) return;
     const off = f.round ? (i - (names.length - 1) / 2) * 0.45 : (i - (names.length - 1) / 2) * Math.min(0.9, tw / (names.length + 0.5));
     room.add(name, table.x + bx * off, top, table.z + bz * off, table.yaw + (name === 'itemstandh' ? 0 : 0), { onTable: table });
     n++;
@@ -1729,7 +1744,7 @@ function chooseKit(R, biome, culture, kind, P) {
     const ok2 = list.filter(n => ok(n, biome));
     if (!ok2.length) return null;
     const kind = SLOT_KIND[slot];
-    return pickW(R, ok2.map(n => [n, ((shares.get(n) || 0) + floor) * (kind ? corpusTilt(culture, kind, n) : 1) * flavorD(n, biome) * tasteD(n, P)]));
+    return pickW(R, ok2.map(n => [n, ((shares.get(n) || 0) + floor) * (kind ? corpusTilt(culture, kind, n) : 1) * lightFlavor(slot, n, biome) * tasteD(n, P)]));
   };
   const taste = CULTURE_TASTE[culture] || {};
   const k = {
@@ -1798,6 +1813,11 @@ function bedTaste(kit, R, biome, culture, P) {
 // chests stay the building's. From a stream of its own, so the rest of the design keeps its own.
 // the village's own biome, earlier ones and the next weigh fully; one further on less (flavor only, D-065)
 const flavorD = (n, biome) => { const d = bi((F[n] || {}).b || 'Meadows') - bi(biome); return d <= 1 ? 1 : 1 / (1 + 0.8 * (d - 1)); };
+// Lights take the corpus's shares as they are: Dvergr wall lanterns are 40 % of corpus wall lights and the Mistlands
+// standing torch the commonest floor light, in every culture group (lab/hearths/corpus-hearths-lights.json lightNames,
+// CORPUS_CULT), and decor goes in any biome (D-126). The biome flavor held both near none outside the Mistlands
+// (Dvergr lanterns on 1 % of generated floors). Other slots keep it.
+const lightFlavor = (slot, n, biome) => (slot === 'wallLight' || slot === 'floorLight' ? 1 : flavorD(n, biome));
 function varyKit(kit, R, kind, seen, biome, P, culture) {
   const L = learned().rooms || {};
   const shares = new Map(((L[kind] || L.home || {}).items || []).map(([n, s2]) => [n, s2]));
@@ -1811,7 +1831,7 @@ function varyKit(kit, R, kind, seen, biome, P, culture) {
     if (!kit[slot] || !KIT[slot] || R() < keep) continue;
     const list = KIT[slot].filter(n => F[n]);
     const kd = SLOT_KIND[slot], fl = kd ? FLOOR_C : 0.25;
-    const got = pickW(R, list.map(n => [n, ((shares.get(n) || 0) + fl) * (kd ? corpusTilt(culture, kd, n) : 1) * (n === kit[slot] ? 2 : 1) * flavorD(n, biome) * tasteD(n, P) / (1 + again * (seen[n] || 0))]));
+    const got = pickW(R, list.map(n => [n, ((shares.get(n) || 0) + fl) * (kd ? corpusTilt(culture, kd, n) : 1) * (n === kit[slot] ? 2 : 1) * lightFlavor(slot, n, biome) * tasteD(n, P) / (1 + again * (seen[n] || 0))]));
     if (got) { k[slot] = got; seen[got] = (seen[got] || 0) + 1; }
   }
   k.seat = kit.seat === kit.bench ? (k.bench || k.chair) : (k.chair || k.bench);
@@ -1846,6 +1866,8 @@ function decorate(b, ctx) {
   // the layout plans' own stream, drawn once from the design's, so the plans can change without moving the rest
   // (ctx.layout.seed, a household's own number, draws another layout for the same building)
   const layoutR = rngFrom((Math.floor(R() * 4294967296) ^ 0x1a70) + ((ctx.layout && +ctx.layout.seed) || 0) * 7919);
+  let mainDone = false;
+  const bigOf = ms => ms.filter(q => q.area >= 4 && q.covered >= 0.5).sort((a, c) => c.area - a.area)[0];
   ys.forEach((y, li) => {
     const rects = byY.get(y);
     const hintY = rects.length ? standGuess(b.pieces, rects, y) : y;
@@ -1859,12 +1881,17 @@ function decorate(b, ctx) {
       const room = new Room(m, { out: b.pieces, R, mates: levelPlaced });
       room.biome = biome;
       room.persona = ctx.persona || null;
+      room.village = ctx.village;
       room.uSeed = Math.floor(tabR() * 4294967296) >>> 0;
       room.level = li;
       room.upper = li > 0 || (rects.length && rects.every(r => r.upper));
       const inMain = main && m.cells.filter(c => c.x > main.x0 && c.x < main.x1 && c.z > main.z0 && c.z < main.z1).length;
       const role = ctx.role || roleFor(use, type, room, inMain / m.cells.length, rects, ys.length, li);
+      // the building's main room (lightBudget): on the lowest level that has a room, the room in the main rect, else
+      // that level's largest room (a raised floor's first level, a court plan's rooms, integration round 4)
+      room.mainRoom = !mainDone && (!main || inMain / m.cells.length > 0.5 || m === bigOf(models));
       if (!role) continue;
+      if (room.mainRoom) mainDone = true;
       // the main way in: a door, else the top of the stairs, else the room's longest open side
       room.entry = room.doors.slice().sort((a, c) => (a.open ? 1 : 0) - (c.open ? 1 : 0) || Math.abs(a.x - (ctx.doorX ?? a.x)) - Math.abs(c.x - (ctx.doorX ?? c.x)))[0] || null;
       if (!room.entry && room.stairs.length) {
@@ -1882,7 +1909,11 @@ function decorate(b, ctx) {
       // over the fire on an upper floor: the generator clears what stands over a fire it moves under the smoke hole
       if (room.upper && ctx.fireAt) room.zones.push({ b: obox(ctx.fireAt.x, ctx.fireAt.z, 4.0, 2.8, 0), why: 'flue' });
       for (const r of rects) for (const kp of r.keep || []) room.zones.push({ b: obox((kp.x0 + kp.x1) / 2, (kp.z0 + kp.z1) / 2, kp.x1 - kp.x0, kp.z1 - kp.z0, 0), why: 'keep' });
-      furnish(room, role, { ...ctx, use, type, decor, biome, kit: varyKit(kit, kitR, kitKind, kitSeen, biome, HP, ctx.culture), counts, mainRect: main, levels: ys.length, usedTemplates, layoutR });
+      const rk = varyKit(kit, kitR, kitKind, kitSeen, biome, HP, ctx.culture);
+      furnish(room, role, { ...ctx, use, type, decor, biome, kit: rk, counts, mainRect: main, levels: ys.length, usedTemplates, layoutR });
+      if (decor !== 'd1') rugTopUp(room, rk, biome, ctx.culture);
+      if (decor !== 'd1') sparseTopUp(room, rk);
+      keepLightBudget(b, room);
       if (room.plan) (b.layoutPlans || (b.layoutPlans = [])).push({ plan: room.plan, stand: room.stand, inside: room.inside });
       report.push({ level: li, role, area: room.area, items: room.count, room, template: room.template || null, scheme: room.plan ? room.plan.scheme : null, story: room.plan ? room.plan.story : null });
       furnished.push({ room, role });
@@ -1967,6 +1998,7 @@ function furnish(room, role, c) {
   if (room.plan) c = { ...c, kit: { ...c.kit, side: room.plan.side } };
   if ((!room.plan || room.plan.templateFirst) && tplFurnish(room, role, c)) {
     if (c.templateOnly) return; // 'vh floorplan template': the room as the template lays it out, nothing added
+    cookCorner(room, role, c);
     // a template thin for a big room is topped up with the extras toward the corpus rate, a little short of it at d2 so
     // the template's own layout stays the larger part
     if (store) storeLabels(room, c);
@@ -1979,6 +2011,83 @@ function furnish(room, role, c) {
   if (c.decor !== 'd1') extras(room, () => fill(room, role, c));
   if (store) storeStacks(room, c);
 }
+// ---------------------------------------------------------------- cooking corners
+// Where food is made, beside the fire's own pot or spit: a butcher table, a prep table, an oven, a mortar and pestle,
+// standing together against a wall (ideas track gap 9: none of these stood in a generated kitchen against 26 to 54 % of
+// corpus kitchens). Corpus, data/interior.json (497 designs, 2,686 rooms): of the learner's kitchens (cooking stations,
+// no beds; 78 rooms) a butcher table stands in 54 %, an oven in 32 %, a prep table in 26 %, a mortar and pestle in 22 %;
+// of tavern rooms 27, 18, 14 and 16 %; of home rooms (beds) about 7, 5, 5 and 4 % (items' piece counts per room kind over
+// their mean counts). A house has a cooking corner as often as a corpus home room has one of the four or the design
+// has a kitchen room (78 in 497): 1 - (1 - 0.19)(1 - 0.157) = 0.32; a tavern as often as a corpus tavern room, 0.57
+// (each as if independent). In a corner the stations draw by those rooms' shares over the share with any (homes take
+// the kitchens' mix). Where they stand, from the items: against a wall (half of them in the corpus; the rest, islands in
+// the middle, are not built here), a corner as often as the item's corner share, from the fire and the door at
+// distances drawn from the item's quartiles (butcher table fire 2.2 / 2.9 / 7.0 m, mortar 2.3 / 3.1 / 9.5, prep table
+// 2.8 / 5.6 / 8.7, oven 3.0 / 6.0 / 12.8), the next one within about 3 m of the first. Over the first, a horizontal item
+// stand as a shelf as often as kitchens have one (33 %). By household: food and drink, a busy house and a big one cook
+// more. Stations are decor here: any biome (D-126), paid with stand-ins (D-080).
+const COOK_ST = ['cauldron_ext3_butchertable', 'piece_preptable', 'piece_oven', 'cauldron_ext5_mortarandpestle'];
+const COOK = {
+  home: { p: 0.32, st: [0.66, 0.32, 0.39, 0.27] },
+  tavern: { p: 0.57, st: [0.47, 0.25, 0.32, 0.28] },
+};
+const COOK_CORNER = { cauldron_ext3_butchertable: 0.51, piece_preptable: 0.4, piece_oven: 0.36, cauldron_ext5_mortarandpestle: 0.36 };
+// Take a placed piece out of the room again
+function unplace(room, rec) {
+  const i = room.placed.indexOf(rec);
+  if (i >= 0) room.placed.splice(i, 1);
+  const j = room.mates.indexOf(rec);
+  if (j >= 0) room.mates.splice(j, 1);
+  const k = room.out.lastIndexOf(rec.p);
+  if (k >= 0) room.out.splice(k, 1);
+  if (!rec.rug && !rec.fire) room.count--;
+}
+function cookCorner(room, role, c) {
+  const C = COOK[role];
+  if (!C || room.upper || c.decor === 'd1' || room.area < 20 || room.cooked) return 0;
+  room.cooked = true;
+  const P = c.persona;
+  const lean = P ? Math.max(0.4, Math.min(1.8, 0.55 + 0.6 * ((P.hobby || {}).food || 0) + 0.3 * (P.busy || 0) + 0.15 * Math.min(4, P.size || 2) / 2)) : 1;
+  if (roomU(room, 'cook', 0) >= Math.min(0.95, C.p * lean)) return 0;
+  const have = n => room.placed.some(q => q.name === n);
+  let want = COOK_ST.filter((n, i) => !have(n) && ok(n, room.biome) && roomU(room, 'cookSt', i) < C.st[i]);
+  if (!want.length && !COOK_ST.some(have)) want = [COOK_ST[0]];
+  // the butcher table and the mortar are the cauldron's upgrades: the game places them within 5 m of one (and
+  // lib/generate.js settle takes out any farther off). A spit on the fire pit gives way to the cauldron for them.
+  let pot = room.placed.find(q => q.name === 'piece_cauldron') || null;
+  if (!pot && want.some(n => /^cauldron_ext/.test(n)) && room.fire && room.fire.name === 'fire_pit' && ok('piece_cauldron', room.biome)) {
+    const spit = room.placed.find(q => q.onFire && /^piece_cookingstation/.test(q.name));
+    if (spit) unplace(room, spit);
+    if (!room.placed.some(q => q.onFire)) { pot = onFire(room, 'piece_cauldron', { later: true }); room.potLater = null; }
+  }
+  if (!pot) want = want.filter(n => !/^cauldron_ext/.test(n));
+  // the first goes where the corpus puts it; the rest by it
+  let n = 0, first = room.placed.find(q => COOK_ST.includes(q.name)) || null;
+  want.forEach((name, i) => {
+    const fw = corpusAt(name, 'fire', roomU(room, 'cookFire', i)), dw = doorWant(room, name, 'cook', i);
+    const beds = room.placed.filter(q => (F[q.name] || {}).cat === 'bed');
+    const rec = placeAgainst(room, name, s => {
+      let v = s.corner ? 2 * (COOK_CORNER[name] || 0.4) : 0;
+      if (room.fire && fw != null) v += 1.2 * nearWant(Math.hypot(s.x - room.fire.x, s.z - room.fire.z), fw);
+      if (dw != null) v += 0.6 * nearWant(room.doorDist(s.x, s.z), dw);
+      for (const q of beds) v -= Math.max(0, 2 - Math.hypot(s.x - q.x, s.z - q.z)) * 1.5;
+      if (first) v += 3 * Math.max(0, 1 - Math.max(0, Math.hypot(s.x - first.x, s.z - first.z) - 1.5) / 2);
+      if (/^cauldron_ext/.test(name) && Math.hypot(s.x - pot.x, s.z - pot.z) > 4.5) v -= 100;
+      return v;
+    }, { kind: 'station' });
+    if (!rec) return;
+    n++;
+    if (!first) first = rec;
+  });
+  // a shelf over the first, for its pots and jars
+  if (first && ok('itemstandh', room.biome) && roomU(room, 'cookShelf', 0) < 0.33 * lean) {
+    const spots = mountSpots(room, 'itemstandh', { pairs: true, y: 1.5 }).filter(s => Math.hypot(s.x0 - first.x, s.z0 - first.z) < 1.6)
+      .sort((a, b2) => Math.hypot(a.x0 - first.x, a.z0 - first.z) - Math.hypot(b2.x0 - first.x, b2.z0 - first.z));
+    for (const sp of spots) if (putMount(room, 'itemstandh', sp)) { n++; break; }
+  }
+  return n;
+}
+
 // What the extras pass adds is marked (p.extra, never written to the file): the interior library's sets come before
 // it and take its place where they fit (lib/kitbash.js), so the rule-based extras only top up what the sets leave.
 function extras(room, run) {
@@ -2040,7 +2149,8 @@ function storeStacks(room, c) {
     if (room.ceilAt(q.x, q.z) - top < 0.35) continue;
     // nothing on the chest already, and no wall hanging in the way
     if (room.placed.some(o => o !== q && o.y0 >= q.y1 - 0.05 && o.y0 < top + 0.1 && overlap(o.b, q.b, 0))) continue;
-    room.add(q.name, q.x, q.y1, q.z, q.yaw, { stacked: true });
+    // (the piece says so too, so a later pass that takes out the lower chest takes this one: generate.js finish)
+    room.add(q.name, q.x, q.y1, q.z, q.yaw, { stacked: true }).p.stacked = true;
     room.count--; // a stack is one place in the room
   }
 }
@@ -2330,6 +2440,195 @@ function lightCount(room, kind, d, taste) {
   const v = Math.max(0, room.area / 10 * (lo + (hi - lo) * R()) * (d >= 3 ? 1.6 : 1) * likes * ((taste || {}).lights || 1) - (room.fire ? 0.5 : 0));
   return Math.floor(v) + (R() < v - Math.floor(v) ? 1 : 0);
 }
+// ---------------------------------------------------------------- light budget
+// Every room has one budget of lights, by kind of light, shared by everything that lights it: the decorator's lights
+// here, the interior library's sets and wall torches and the stand pass's candles (lib/kitbash.js trimLights keeps the
+// best of what they put up to the budget, at d2 and at d3). Generated rooms had 0.7 lights per 10 m2 against the
+// corpus's 0.2 and resin candles in 36 to 77 % of rooms against 0 to 7 % (docs/handoffs/2026-11-10-design/ideas.md,
+// gap 8). Classes as lab/learn_interior.py reads lights: wall (sconces, Dvergr wall lanterns), floor (standing torches,
+// braziers and lanterns), small (candles, lava and hooded lanterns), hang (ceiling braziers).
+// LIGHT_ROOM: data/interior.json rooms (2,686 rooms of 497 designs), per kind: lights of each class per room (share of
+// the kind's rooms with the prefab times its mean count, summed per class), the share of rooms with none (the product
+// of one minus each light's share) and the median room area in m2.
+const LIGHT_CLASS = [['wall', /^(piece_walltorch|piece_dvergr_lantern)$/], ['hang', /^(piece_brazierceiling01|piece_dvergr_lantern_pole)$/],
+  ['small', /^(Candle_resin|Candle_resin_bogwitch|piece_Lavalantern|piece_hoodedlantern|dvergrprops_lantern)$/],
+  ['floor', /torch|lantern_standing|brazierfloor|MountainKit_brazier/]];
+const LCLS = new Map();
+function lightCls(name) {
+  if (!LCLS.has(name)) { const e = LIGHT_CLASS.find(([, re]) => re.test(name)); LCLS.set(name, e ? e[0] : null); }
+  return LCLS.get(name);
+}
+const LIGHT_KEYS = ['wall', 'floor', 'small', 'hang'];
+//                 wall  floor small hang  none  area
+const LIGHT_ROOM = { home: [1.89, 0.37, 0.21, 0.18, 0.36, 96.75], sleeping: [1.03, 0.37, 0.28, 0.06, 0.46, 39.25],
+  tavern: [2.54, 0.74, 0.53, 0, 0.27, 135.25], hall: [1.02, 0.48, 0.17, 0, 0.53, 55.25], kitchen: [0.96, 0.46, 0.09, 0.04, 0.52, 41.25],
+  living: [0.75, 0.41, 0.16, 0.07, 0.51, 36], smithy: [2.38, 0.58, 0, 0, 0.41, 76.5], workshop: [0.78, 0.55, 0.08, 0.03, 0.51, 29],
+  storage: [0.33, 0.16, 0.01, 0, 0.83, 7.5], other: [0.75, 0.32, 0.1, 0.01, 0.55, 12.25] };
+// The building's main room: as often lit as the corpus's buildings of its kind (lab/hearths/corpus-hearths-lights.json
+// lightsPer10m2 use: homes 67 %, halls 77 %, taverns 94 %, temples 88 %, work buildings 79 %, others 71 %); the
+// generator's buildings have one or two rooms where the corpus's have many, so the room's own share of none would
+// leave more of them dark than the corpus has.
+const LIGHT_MAIN_NONE = { home: 0.33, hall: 0.23, tavern: 0.06, smithy: 0.21, workshop: 0.21, storage: 0.29, kitchen: 0.33, living: 0.29 };
+// The share of lights that already stand at d2 (the rest go up at d3, D-071)
+const LIGHT_D2 = 0.7;
+// The budget: none at all as often as the kind's corpus rooms have none, else the corpus count of a lit room of the
+// kind, scaled by the room's size against the kind's median room (square root, 0.35 to 2 times), by the household's
+// liking for lights, the culture's taste and the village's own (a number per village, from c.village where the caller
+// gives one, else per culture and biome), and a draw of 0.7 to 1.3. Each light then draws its class by the kind's
+// corpus mix (candles more for a comfortable household; a hanging brazier only in a room of 30 m2 with 3.9 m under its
+// ceiling). From a stream of its own, so the room's other draws are as before.
+function lightBudget(room) {
+  if (room.lightB) return room.lightB;
+  const kind = LEARN_KIND[room.role] || 'other';
+  const [w, f, s, h, p0, med] = LIGHT_ROOM[kind] || LIGHT_ROOM.other;
+  const P = room.persona || null;
+  const R = rngFrom((hashD(`lb|${room.cx.toFixed(1)}|${room.cz.toFixed(1)}|${room.stand.toFixed(1)}`) ^ ((P && P.salt) || 0x5eed)) >>> 0);
+  // the stream's first values follow its seed closely (44 % of main rooms drew under 0.33, integration round 4): the
+  // first four are passed over
+  for (let i = 0; i < 4; i++) R();
+  const likes = P && P.likes ? Math.max(0.5, Math.min(1.6, P.likes.lights || 1)) : 1;
+  const taste = (CULTURE_TASTE[room.culture] || {}).lights || 1;
+  const village = 0.8 + 0.45 * hashD(`vl|${room.village != null ? room.village : `${room.culture}|${room.biome}`}`) / 4294967296;
+  const mult = likes * taste * village;
+  const zero = { wall: 0, floor: 0, small: 0, hang: 0 };
+  const B = { kind, 2: { ...zero }, 3: { ...zero }, n: 0 };
+  room.lightB = B;
+  const none = room.mainRoom && LIGHT_MAIN_NONE[kind] != null ? LIGHT_MAIN_NONE[kind] : p0;
+  // dark as often as the corpus's rooms (the household and village move how many lights a lit room has; moving the
+  // share of none by them too put homes' main rooms at 0.46 against the corpus 0.33, integration round 4)
+  if (R() < none) return B;
+  const scale = Math.max(0.35, Math.min(2, Math.sqrt(room.area / med)));
+  const mean = Math.max(1, (w + f + s + h) / (1 - none) * scale * mult * (0.7 + 0.6 * R()));
+  const n = Math.floor(mean) + (R() < mean - Math.floor(mean) ? 1 : 0);
+  const comfort = P ? P.comfort || 0 : 0.5;
+  const hangOk = room.area >= 30 && (room.ceiling || 0) - room.stand > 3.9;
+  const W = [['wall', w], ['floor', f], ['small', s * (0.6 + 0.8 * comfort)], ['hang', hangOk ? h : 0]].filter(([, v]) => v > 0);
+  const n2 = Math.round(n * LIGHT_D2);
+  for (let i = 0; i < n && W.length; i++) { const c = pickW(R, W); B[3][c]++; if (i < n2) B[2][c]++; }
+  B.n = n;
+  return B;
+}
+// Whether the room has its budget of this light's class (pieces that are no light are never full). Candles keep to
+// their own count; wall, floor and hanging lights may take one another's places, so a room lit by what its walls and
+// kit allow still has its number of lights.
+function lightFull(room, name) {
+  const c = lightCls(name);
+  if (!c || !room.role) return false;
+  const B = lightBudget(room);
+  let used = 0, big = 0;
+  for (const q of room.placed) { const qc = lightCls(q.name); if (qc === c) used++; if (qc && qc !== 'small') big++; }
+  if (c === 'small') return used >= B[3].small;
+  return used >= B[3][c] && big >= B[3].wall + B[3].floor + B[3].hang;
+}
+// Rugs, the same way (the lead's review of 2026-11-11: about a dozen rugs on the ground floor of a 20 x 8 m Norse
+// longhouse, most layered at angles). Corpus, data/culture-corpus/summary.json per culture group: the share of
+// furnished buildings with rugs (has), the median and upper quartile of rugs per building, over the median and upper
+// quartile floor area (rugs per 10 m2: norse 0.10 and 0.22, norse-forest 0.19 and 0.16, norse-highland 0.11 and 0.12,
+// medieval-timber 0.26 and 0.15; all groups weighted by their buildings 0.16 and 0.19, 68 % with rugs). A household
+// draws where it stands in that spread (no rugs as often as the group's buildings have none, then 0.7 of the median,
+// the median, the upper quartile and twice it at the top, one draw for the whole house; one rug at least in a room
+// lived in of 20 m2 or more), blended with the whole corpus by n / (n + 40)
+// as the other culture counts are. The room's kind moves it by data/interior.json rooms' rugs per 10 m2 against home
+// rooms (sleeping 1.5, other 1.35, hall 0.9, workshop and living 0.85, tavern, smithy and kitchen 0.6, storage 0.45).
+// Rugs on rugs (rugs layered, rl) are kept to the culture's share in lib/kitbash.js trimRugs.
+const RUG_RATE = { unsorted: [0.517, 0.324, 59], norse: [0.1, 0.222, 72], castle: [0.062, 0.119, 64], ashlands: [0.038, 0.1, 52], 'norse-named': [0.149, 0.219, 75],
+  mistlands: [0, 0.073, 45], 'stone-house': [0.069, 0.115, 68], 'norse-forest': [0.19, 0.162, 84], fantasy: [0.329, 0.247, 84], 'medieval-timber': [0.259, 0.148, 81],
+  'norse-highland': [0.11, 0.12, 83], 'east-asian': [0.018, 0.13, 50], 'fen-folk': [0.144, 0.105, 75], celtic: [0.464, 0.276, 50], modern: [0.424, 0.493, 90],
+  'greco-roman': [0.027, 0.528, 60], 'tree-house': [0.353, 0.309, 100], 'celtic-crannog': [0.036, 0.044, 80], saami: [0.776, 0.776, 100], slavic: [0.116, 0.116, 100],
+  'frankish-norman': [0, 0, 0], 'middle-eastern': [0, 0, 0], steppe: [0.523, 0.523, 100], all: [0.156, 0.195, 68] };
+const RUG_KIND = { home: 1, sleeping: 1.5, other: 1.35, hall: 0.9, workshop: 0.85, living: 0.85, tavern: 0.6, smithy: 0.6, kitchen: 0.6, storage: 0.45 };
+function rugBudget(room) {
+  if (room.rugB) return room.rugB;
+  const { g, l } = cultG(room.culture);
+  const key = g ? CULT_GROUP[room.culture] : null;
+  const G0 = RUG_RATE.all, G1 = (key && RUG_RATE[key]) || G0, lw = key && RUG_RATE[key] ? l : 0;
+  const mix = i => lw * G1[i] + (1 - lw) * G0[i];
+  const lo = Math.min(mix(0), mix(1)), hi = Math.max(mix(0), mix(1)), has = mix(2) / 100;
+  const P = room.persona || null;
+  // the household's place in the spread: one draw for the house, a little more per room
+  const u = hashD(`rugs|${(P && P.salt) || 0}|${room.culture}|${room.village != null ? room.village : room.biome}`) / 4294967296;
+  const ru = hashD(`rug|${room.cx.toFixed(1)}|${room.cz.toFixed(1)}|${room.stand.toFixed(1)}|${(P && P.salt) || 0}`) / 4294967296;
+  let rate = 0;
+  const u0 = 1 - has;
+  if (u >= u0) {
+    const pts = [[u0, lo * 0.7], [Math.max(u0 + 0.01, 0.5), lo], [0.75, hi], [1, hi * 2]];
+    for (let j = 1; j < pts.length; j++) if (u <= pts[j][0]) { const [a0, r0] = pts[j - 1], [a1, r1] = pts[j]; rate = r0 + (r1 - r0) * (u - a0) / Math.max(1e-6, a1 - a0); break; }
+  }
+  const likes = P && P.likes ? Math.max(0.5, Math.min(1.8, P.likes.rugs || 1)) : 1;
+  const taste = (CULTURE_TASTE[room.culture] || {}).rugs || 1;
+  const kind = LEARN_KIND[room.role] || 'other';
+  const v = room.area / 10 * rate * (RUG_KIND[kind] || 1) * likes * taste * (0.75 + 0.5 * ru);
+  let n3 = Math.floor(v) + (((ru * 7919) % 1) < v - Math.floor(v) ? 1 : 0);
+  // a household that keeps rugs has one at least in each room it lives in
+  if (rate > 0 && room.area >= 20 && ['home', 'sleeping', 'hall', 'tavern', 'living'].includes(kind)) n3 = Math.max(1, n3);
+  room.rugB = { 3: n3, 2: Math.round(n3 * LIGHT_D2), rl: corpusRate(room.culture, 'rl') };
+  return room.rugB;
+}
+// A room whose rug budget the furnishing left short (no bed, seat or table it laid a rug by, a template with none) gets
+// free rugs up to it, the way the fill's rug slot lays one: by a seat, chest, station or bed, at the corpus distance
+// from the door, drawn among the rugs by the room kind's corpus shares. From a stream of its own, so the other rooms'
+// draws are as before. (Integration round 4: 16 of 36 home designs had no rug against 28 to 32 % of corpus buildings,
+// part of them rooms with a budget and no rug.)
+function rugTopUp(room, k, biome, culture) {
+  if (!k || !k.rug || !room.role) return 0;
+  const B = rugBudget(room);
+  let have = room.placed.filter(q => q.rug).length;
+  if (have >= B[3]) return 0;
+  const R0 = room.R;
+  room.R = rngFrom(hashD(`rugtop|${room.cx.toFixed(1)}|${room.cz.toFixed(1)}|${room.stand.toFixed(1)}|${(room.persona && room.persona.salt) || 0}`) >>> 0);
+  let n = 0;
+  try {
+    for (let i = 0; have < B[3] && i < 6; i++) {
+      const rug = corpusPick(room.R, KIT.rug.filter(nm => F[nm]), LEARN_KIND[room.role] || 'home', 'rug', culture, k.rug) || k.rug;
+      if (placeRug(room, { ...k, rug }, null)) { have++; n++; }
+    }
+  } finally { room.R = R0; }
+  return n;
+}
+// A room of 8 m2 or more that the furnishing left with fewer than two pieces (a tower's upper floor once its light
+// came out under the light budget) gets a chest against a wall, then an armor stand or a barrel, up to two: every
+// corpus room kind holds 0.82 pieces per 10 m2 or more at its lower quartile (data/interior.json rooms perTenM2; other
+// rooms 0.82, sleeping 1.09, storage 4), 2.5 in a room of 30 m2. From a stream of its own.
+function sparseTopUp(room, k) {
+  if (!room.role || room.area < 8) return 0;
+  // (lights left out: the light budget may take them out later, lib/kitbash.js trimLights)
+  const count = () => room.placed.filter(q => !q.rug && !lightCls(q.name)).length;
+  if (count() >= 2) return 0;
+  const R0 = room.R;
+  room.R = rngFrom(hashD(`sparse|${room.cx.toFixed(1)}|${room.cz.toFixed(1)}|${room.stand.toFixed(1)}|${(room.persona && room.persona.salt) || 0}`) >>> 0);
+  let n = 0;
+  try {
+    const order = [k.chest || 'piece_chest_wood', room.R() < 0.5 ? 'ArmorStand' : 'piece_chest_barrel', 'piece_chest_barrel', 'ArmorStand'];
+    for (const name of order) {
+      if (count() >= 2) break;
+      if (!F[name]) continue;
+      if (placeAgainst(room, name, sp => (sp.corner ? 1 : 0), { kind: (F[name] || {}).cat === 'storage' ? 'storage' : undefined })) n++;
+    }
+  } finally { room.R = R0; }
+  return n;
+}
+function rugFull(room, name) {
+  if ((F[name] || {}).at !== 'rug' || !room.role) return false;
+  return room.placed.filter(q => q.rug).length >= rugBudget(room)[3];
+}
+
+// The rooms' budgets on the design, for lib/kitbash.js trimLights: the room's floor cells (0.5 m keys), its stand and
+// ceiling, and the budget.
+function keepLightBudget(b, room) {
+  if (!room.role) return;
+  const keys = new Set(room.cells.map(cc => `${Math.round(cc.x / G)},${Math.round(cc.z / G)}`));
+  (b.lightRooms || (b.lightRooms = [])).push({ keys, y0: room.stand - 0.3, y1: Math.max(room.ceiling || 0, room.stand + 2.5) + 0.3, B: lightBudget(room), rug: rugBudget(room), role: room.role });
+}
+// The budget record a point is in, or null
+function lightRoomOf(recs, x, y, z) {
+  const i = Math.round(x / G), j = Math.round(z / G);
+  for (const r of recs || []) {
+    if (y < r.y0 || y > r.y1) continue;
+    for (let di = -1; di <= 1; di++) for (let dj = -1; dj <= 1; dj++) if (r.keys.has(`${i + di},${j + dj}`)) return r;
+  }
+  return null;
+}
+
 function furnishPlan(room, role, c) {
   const { decor, kit: k, counts } = c;
   const d = decor === 'd1' ? 1 : decor === 'd2' ? 2 : 3;
@@ -2363,6 +2662,8 @@ function furnishPlan(room, role, c) {
     planPaths(room);
     placeStorageRow(room, k, d >= 2 ? 1 : 0, { side: k.side });
     if (d >= 2) {
+      // the cooking corner before the table, which has its own ways to find room (tableSure)
+      cookCorner(room, role, c);
       // a table where the household keeps one, as often as the culture's corpus buildings have one (corpusRate th:
       // 68 % of norse furnished buildings): made room for when the first tries find none (tableSure)
       const t = table({ seats: d >= 3 ? 4 : 2, sure: roomU(room, 'hasTable', 0) < corpusRate(c.culture, 'th') });
@@ -2409,6 +2710,7 @@ function furnishPlan(room, role, c) {
       if (room.fire && room.fire.name === 'fire_pit') onFire(room, ok('piece_cookingstation_iron', biome) && d >= 3 ? 'piece_cookingstation_iron' : 'piece_cookingstation');
     }
     planPaths(room);
+    if (tavern) cookCorner(room, role, c);
     const fr0 = fr();
     // the seat of honor at the far end, facing the way in
     let throne = null;
@@ -3110,6 +3412,10 @@ function audit(design, decor) {
       const solid = SOLID_CATS.has(a.f.cat) && SOLID_CATS.has(c.f.cat);
       // two chests of a kind pushed together as corpus builders do pass up to the corpus depth (CHEST_PAIR_D, D-127)
       const pairOk = a.p.name === c.p.name && CHEST_PAIR_D[a.p.name] ? CHEST_PAIR_D[a.p.name] : 0;
+      // greenery of one class (lib/landscape.js) set as close as the corpus sets it: its nearest-neighbor spacing at
+      // its 25th percentile (SPACING all[0], pots 0.22 m between pivots) passes, as corpus builders cluster pots so
+      // (D-127)
+      if (a.p.green && c.p.green && a.p.green.k === c.p.green.k && Math.hypot(a.p.x - c.p.x, a.p.z - c.p.z) >= greenGap(a.p.green.k) - 0.01) continue;
       if ((a.p.kb || c.p.kb) && SHD) { if (kbClip(a.p, c.p) > Math.max(pairOk, solid && a.p.kb !== c.p.kb ? 0.03 : Math.max(a.p.clip || 0, c.p.clip || 0)) + 0.02) res.overlap.push(`${a.p.name} / ${c.p.name} at ${a.p.x.toFixed(1)},${a.p.z.toFixed(1)}`); continue; }
       if (a.y0 > c.y1 - 0.05 || c.y0 > a.y1 - 0.05) continue;
       if (overlap(a.b, c.b, -0.06)) res.overlap.push(`${a.p.name} / ${c.p.name} at ${a.p.x.toFixed(1)},${a.p.z.toFixed(1)}`);
@@ -3134,6 +3440,7 @@ function audit(design, decor) {
   const ys = struct.filter(s => s.info.structural).map(s => s.y0).sort((a, b) => a - b);
   // generated designs say where the ground is (posts and stone floors reach below it)
   const ground = design.ground != null ? design.ground : ys.length ? ys[Math.floor(ys.length * 0.02)] : 0;
+  const lowest = pieces.reduce((m, p) => Math.min(m, p.y), Infinity);
   for (const it of items) {
     const fa = it.f.at || 'floor';
     // a kitbash piece says what it rests on: another piece, a wall or the structure over it; that must be there
@@ -3151,7 +3458,10 @@ function audit(design, decor) {
     if (it.f.base && isFinite(under) && under - yb > 0.3) { res.torchHeight.push(it.p.name); continue; }
     // a chest stacked on a chest (lib/kitbash.js stackChests, storeStacks) rests on the one under it
     if (it.f.cat === 'storage' && items.some(o => o !== it && o.f.cat === 'storage' && ptDist(o.b, it.p.x, it.p.z) < 0.3 && Math.abs(o.y1 - yb) < 0.12)) continue;
-    const onFloor = Math.abs(yb - ground) < 0.15 || (isFinite(under) && Math.abs(under - yb) < 0.12);
+    // outdoors, the ground is the design's lowest pivot, where the game sets it on the terrain (lib/yards.js: 0, or a
+    // sunk stone floor's middle, -0.4)
+    const outdoors = it.p.outside || it.p.yard || it.p.green;
+    const onFloor = Math.abs(yb - ground) < 0.15 || (isFinite(under) && Math.abs(under - yb) < 0.12) || (outdoors && Math.abs(yb - lowest) < 0.15);
     if (!onFloor) res.floating.push(`${it.p.name} at ${it.p.x.toFixed(1)},${it.p.y.toFixed(2)},${it.p.z.toFixed(1)}`);
   }
   // stairs and ladders: their own footprint and 0.6 m round it at their foot and top
@@ -3199,6 +3509,16 @@ function mountOk(it, wallish) {
     if (!here.length || here.some(s => s.role !== 'wall' || isGlass(s.p.name))) return false;
   }
   return true;
+}
+// The audit's plain-wall test for one hung piece against the building as it stands (lib/details.js asks it for motif
+// props and banners, so the outside trim passes the audit's mountOnOpening): true for a piece that is not hung.
+function mountClear(p, pieces) {
+  modelSizes();
+  const it = itemOf(p.q ? p : { ...p, q: [0, Math.sin((p.yaw || 0) * PI / 360), 0, Math.cos((p.yaw || 0) * PI / 360)] });
+  if (it.f.at !== 'mount') return true;
+  const wallish = pieces.filter(q => Math.abs(q.x - p.x) < 3 && Math.abs(q.z - p.z) < 3 && (!q.decor || (!F[q.name] && P.piece(q.name).structural)))
+    .map(structBox).filter(sb => WALLISH.has(sb.role));
+  return mountOk(it, wallish);
 }
 // The audit's box for one piece, as boxOf in audit() makes it.
 function itemOf(p) {
@@ -3458,5 +3778,6 @@ function decorateExisting(pieces, { use = 'home', decor = 'd2', biome = 'Meadows
 }
 
 const api = { lateClash, corpusPick, corpusRate, tableRate, tableDressed, corpusTilt, topPick, keepsBarrels, oneWhy: () => ONE_WHY, furnClash, asBuilt, decorate, strip, findRooms, decorateExisting, setRules, setInterior, setTemplates, templateById, audit, auditContext, auditOne, itemOf, ITEM_BIOME, FURNITURE: F, readLevel,
-  _int: { floorLevels, standGuess, roleFor, stretch, size, ok, obox, overlap, ptDist, yawOfDir, pyaw, standOf, norm, WALLISH } };
+  lightCls, lightBudget, rugBudget, lightRoomOf, LIGHT_D2, topWeights, mountClear,
+  _int: { floorLevels, standGuess, roleFor, stretch, size, ok, obox, overlap, ptDist, yawOfDir, pyaw, standOf, norm, WALLISH, middleOf } };
 if (NODE_D) module.exports = api; else window.VHDecorate = api;

@@ -5,7 +5,7 @@
 const fs = require('fs'), path = require('path');
 const dir = __dirname;
 const out = process.argv[2] || path.join(dir, '../../../src/Villheim.Logic/Generator/lab.js');
-const libs = ['pieces.js', 'shapes.js', 'mesh.js', 'styles.js', 'persona.js', 'blueprint.js', 'checks.js', 'features.js', 'decorate.js', 'motifs.js', 'details.js', 'kitbash.js', 'stands.js', 'layout.js', 'yards.js', 'generate.js', 'critic.js', 'request.js', 'floorplan.js', 'audit.js'];
+const libs = ['pieces.js', 'shapes.js', 'mesh.js', 'styles.js', 'persona.js', 'blueprint.js', 'checks.js', 'features.js', 'decorate.js', 'motifs.js', 'details.js', 'kitbash.js', 'stands.js', 'layout.js', 'yards.js', 'landscape.js', 'reach.js', 'hub.js', 'generate.js', 'critic.js', 'request.js', 'floorplan.js', 'audit.js'];
 const code = libs.map(f => `// ---- ${f}\n(function () {\n${fs.readFileSync(path.join(dir, f), 'utf8')}\n})();`).join('\n');
 const rules = fs.readFileSync(path.join(dir, '../data/rules-lite.json'), 'utf8').trim();
 const scorer = fs.readFileSync(path.join(dir, '../data/scorer.json'), 'utf8').trim();
@@ -24,8 +24,11 @@ const motifScores = path.join(dir, '../data/motif-scores.json');
 const motifLite = Mo.lite(JSON.parse(fs.readFileSync(path.join(dir, '../data/motifs.json'), 'utf8')), fs.existsSync(motifScores) ? JSON.parse(fs.readFileSync(motifScores, 'utf8')).weights : null);
 // the interior library (lib/kitbash.js), without sources and the decor table
 const kitbash = JSON.stringify(require('./kitbash.js').lite(JSON.parse(fs.readFileSync(path.join(dir, '../data/kitbash-interior.json'), 'utf8'))));
-// what shows of each piece (lib/mesh.js): the model's parts where they stand proud of its collider, and its prefab folder
-const meshLite = JSON.stringify(require('./mesh.js').lite(JSON.parse(fs.readFileSync(path.join(dir, '../data/piece-models.json'), 'utf8'))));
+// what shows of each piece (lib/mesh.js): the model's coarse parts where they stand proud of its collider, and its
+// prefab folder; the fine parts of those pieces per piece kind as JSON text, read the first time one is needed
+const meshLiteObj = require('./mesh.js').lite(JSON.parse(fs.readFileSync(path.join(dir, '../data/piece-models.json'), 'utf8')));
+const meshLite = JSON.stringify(meshLiteObj);
+const meshFine = require('./mesh_fine.js').byKind(meshLiteObj, JSON.parse(fs.readFileSync(path.join(dir, '../data/piece-fine.json'), 'utf8')).pieces);
 // the room layout rules (lib/layout.js)
 const layouts = JSON.stringify(JSON.parse(fs.readFileSync(path.join(dir, '../data/room-layouts.json'), 'utf8')));
 // the corpus's stand heights (lib/audit.js STAND_HI reads them when it loads, so they go before the libraries)
@@ -44,6 +47,7 @@ window.VH_LAYOUTS = ${layouts};
 window.VH_CRITIC = ${critic};
 window.VH_SOLIDS = ${solids};
 window.VH_MESH = ${meshLite};
+window.VH_MESH_FINE = ${meshFine};
 window.VH_ROOMS = ${roomsLite};
 window.VH_ROOM_WEIGHTS = ${roomWeights};
 window.VH_MOTIFS = ${JSON.stringify({ motifs: motifLite.motifs })};

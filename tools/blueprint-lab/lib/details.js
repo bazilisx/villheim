@@ -882,6 +882,20 @@ function benchByDoor(b, ctx) {
 
 // ---------------------------------------------------------------- interior (after the furnishing)
 
+// Whether a box on the floor reaches into a door's way in: 0.45 m either side of the opening's middle and 0.15 m
+// more, the corridor's depth either side of the door's plane (as lib/checks.js doorBlockers walks it)
+function kerbInDoorway(b, cb, corridor) {
+  for (const d of b.pieces) {
+    if (d.decor || PD.piece(d.name).role !== 'door') continue;
+    const o = PD.doorOpening(d);
+    if (cb.y0 > o.y + 2.3 || cb.y1 < o.y) continue;
+    const cx = (cb.x0 + cb.x1) / 2 - o.x, cz = (cb.z0 + cb.z1) / 2 - o.z, hx = (cb.x1 - cb.x0) / 2, hz = (cb.z1 - cb.z0) / 2;
+    const along = Math.abs(cx * o.ux + cz * o.uz) - (hx * Math.abs(o.ux) + hz * Math.abs(o.uz));
+    const across = Math.abs(cx * o.nx + cz * o.nz) - (hx * Math.abs(o.nx) + hz * Math.abs(o.nz));
+    if (along < 0.6 && across < corridor + 0.1) return true;
+  }
+  return false;
+}
 function interior(b, ctx) {
   const X = ctx.profile;
   if (!X) return;
@@ -897,7 +911,10 @@ function interior(b, ctx) {
       const beam = K.beam || 'wood_beam', y = fire.y + 0.0;
       const walls = b.pieces.filter(p => !p.decor && ['wall', 'pole', 'window', 'door'].includes(PD.piece(p.name).role)).map(p => Ck.aabb(p));
       const ring = [[0, -1.15, 0], [0, 1.15, 0], [-1.15, 0, 90], [1.15, 0, 90]].map(([dx, dz, yaw]) => ({ name: beam, x: fire.x + dx, y, z: fire.z + dz, yaw, q: quatD(yaw) }))
-        .filter(c => { const cb = Ck.aabb(c); return !walls.some(o => o.x0 < cb.x1 - 0.05 && o.x1 > cb.x0 + 0.05 && o.z0 < cb.z1 - 0.05 && o.z1 > cb.z0 + 0.05 && o.y0 < cb.y1 + 0.3 && o.y1 > cb.y0); });
+        .filter(c => { const cb = Ck.aabb(c); return !walls.some(o => o.x0 < cb.x1 - 0.05 && o.x1 > cb.x0 + 0.05 && o.z0 < cb.z1 - 0.05 && o.z1 > cb.z0 + 0.05 && o.y0 < cb.y1 + 0.3 && o.y1 > cb.y0); })
+        // and a side that lies in a doorway's way in (checks.js doors: 1 m in and out from the opening) is
+        // left open (tavern Meadows s3d3 seed 321 had its fire 2 m inside a door)
+        .filter(c => !kerbInDoorway(b, Ck.aabb(c), Ck.CORRIDOR || 1));
       const ok = ring.every(c => { const cb = Ck.aabb(c); return !furniture().some(p => p !== fire && !/cookingstation|cauldron/.test(p.name) && PD.piece(p.name).role !== 'rug' && (o => o.x0 < cb.x1 && o.x1 > cb.x0 && o.z0 < cb.z1 && o.z1 > cb.z0 && o.y0 < cb.y1 + 0.3 && o.y1 > cb.y0)(Ck.aabb(p))); });
       if (ok) { for (const c of ring) b.put(c.name, c.x, c.y, c.z, c.yaw, { trim: true }); b.notes.push('A kerb of beams round the fire pit.'); }
     }

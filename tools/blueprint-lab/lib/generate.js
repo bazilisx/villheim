@@ -1405,8 +1405,10 @@ function settle(b, ctx) {
     // (the pot or spit on the fire moves with it, and an iron spit is wider than the fire pit: it must clear the walls too)
     const pots = b.pieces.filter(p => p.decor && p !== fire && /cookingstation|piece_cauldron/.test(p.name) && Math.hypot(p.x - fire.x, p.z - fire.z) < 0.4);
     const inWall = o => walls.some(w => w.x0 < o.x1 - 0.05 && w.x1 > o.x0 + 0.05 && w.z0 < o.z1 - 0.05 && w.z1 > o.z0 + 0.05 && w.y0 < o.y1 && w.y1 > o.y0 + 0.05);
-    const clips = () => { const o = Ck.aabb(fire); return inWall(o) || pots.some(p => inWall(Ck.aabb({ ...p, x: fire.x, z: fire.z }))) ||
-      clear0.some(z => hits({ ...o, x0: o.x0 + 0.15, x1: o.x1 - 0.15, z0: o.z0 + 0.15, z1: o.z1 - 0.15 }, z)); };
+    // (the pot clears the doorways and climbs as the fire does: an iron spit 3.6 m long reached the foot of a ladder,
+    // tavern Plains s1d1 seed 155)
+    const inClear = o => clear0.some(z => hits({ ...o, x0: o.x0 + 0.15, x1: o.x1 - 0.15, z0: o.z0 + 0.15, z1: o.z1 - 0.15 }, z));
+    const clips = () => { const o = Ck.aabb(fire); return inWall(o) || pots.some(p => { const q = Ck.aabb({ ...p, x: fire.x, z: fire.z }); return inWall(q) || inClear(q); }) || inClear(o); };
     if (clips()) {
       const rm = mainRoom || { x0: fire.x - 1, x1: fire.x + 1, z0: fire.z - 1, z1: fire.z + 1 };
       const cx = (rm.x0 + rm.x1) / 2, cz = (rm.z0 + rm.z1) / 2, L = Math.hypot(cx - fire.x, cz - fire.z) || 1;

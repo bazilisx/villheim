@@ -273,6 +273,22 @@ const TYPES = {
   temple:    { label: 'Temple', bays: { s1: [3, 2], s2: [5, 3], s3: [7, 4] }, storeys: { s1: 1, s2: 1, s3: 1 }, tall: 2, use: 'temple' },
   well:      { label: 'Well', bays: { s1: [1, 1], s2: [1, 1], s3: [2, 2] }, storeys: { s1: 1, s2: 1, s3: 1 }, use: 'yard', well: true, open: 'all', low: true },
   camp:      { label: 'Camp', bays: { s1: [2, 2], s2: [3, 2], s3: [3, 3] }, storeys: { s1: 1, s2: 1, s3: 1 }, use: 'yard', camp: true },
+  // the village hub, the hearth (D-139): five stages on one plot, built by lib/hub.js (sizes there per line)
+  hub:       { label: 'Village hub (hearth)', bays: { s1: [5, 5], s2: [9, 5], s3: [11, 7], s4: [15, 7], s5: [17, 9] }, storeys: { s1: 1, s2: 1, s3: 1, s4: 2, s5: 3 }, use: 'hall', hub: true },
+};
+
+// The hub's lines per culture (lib/hub.js). long: a long hall; round: a round hall; court: rooms round a yard.
+// d137: which Norse hubs are round, D-137 (Open). Value in use until Tyler answers: 'B', Norse has two lines, a long
+// hall from the corpus and a round line like hub1, picked per village. 'A': Norse round only; 'C': Norse long only.
+// Cultures with no line of their own yet take the long hall (hubs.md section 4 lists their forms).
+// stoneFrom: the stage from which a Meadows or Black Forest hub stands on a stone course (D-012: stone for advanced
+// buildings and later stages); 's6' keeps them in wood throughout.
+const HUB = {
+  d137: 'B',
+  stoneFrom: 's4',
+  lines: { 'norse': 'long', 'anglo-saxon': 'long', 'frankish-norman': 'long', 'norse-forest': 'long', 'slavic': 'long', 'baltic': 'long',
+    'fen-folk': 'long', 'norse-highland': 'long', 'celtic': 'round', 'celtic-crannog': 'round', 'saami': 'round', 'steppe': 'round',
+    'middle-eastern': 'court', 'byzantine': 'court', [ID.lamari]: 'long' },
 };
 
 // ---------------------------------------------------------------- massing: shapes, sizes and growth (D-069, D-068)
@@ -356,7 +372,7 @@ function growthFor(cultureKey, type) {
   return own ? { ...g, ...own, storey: own.storey || g.storey, extras: own.extras || g.extras } : g;
 }
 
-const api = { BIOMES, kitFor, CULTURES, BIOME_CULTURE, TYPES, ROOF_SETS, cultureFor, roofKit, ID, RENAMED, cultureKey,
+const api = { BIOMES, kitFor, CULTURES, BIOME_CULTURE, TYPES, HUB, ROOF_SETS, cultureFor, roofKit, ID, RENAMED, cultureKey,
   HOUSEHOLDS, LADDER, GROWTH, PLAN_SETS, growthFor };
 if (typeof module !== 'undefined') module.exports = api;
 else window.VHStyles = api;

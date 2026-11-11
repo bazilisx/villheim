@@ -10,6 +10,7 @@ const FQ = NODE_Q ? require('./features.js') : window.VHFeatures;
 const BQ = NODE_Q ? require('./blueprint.js') : window.VHBlueprint;
 const DQ = NODE_Q ? require('./decorate.js') : window.VHDecorate;
 const KQ = NODE_Q ? require('./critic.js') : window.VHCritic;
+const HQ = () => (NODE_Q ? require('./hub.js') : window.VHHub);
 // the critic's targets (data/critic.json, from lab/learn_critic.js); in the bundle and the page they are inlined
 function criticModel() {
   if (NODE_Q) { try { return require('../data/critic.json'); } catch (e) { return null; } }
@@ -23,6 +24,7 @@ function rank(scorer, pieces, stage) {
 
 // Words to choices. The first match per field wins, so the more specific words come first.
 const WORDS = [
+  ['type', 'hub', /\bhub\b|village hearth|\bhearth\b/],
   ['type', 'longhouse', /long ?house|great hall|mead ?hall|jarl/], ['type', 'tavern', /tavern|\binn\b|\bpub\b|feast/],
   ['type', 'smithy', /smith|forge|\bmine\b|mining|metal/], ['type', 'sawmill', /saw ?mill|wood ?work|lumber|carpent|woodcutter/],
   ['type', 'barn', /barn|stable|animal|\bpen\b|\bboar|\blox\b|chicken|coop/], ['type', 'farm', /farm|field|crop|garden/],
@@ -63,7 +65,7 @@ function read(text) {
 const BIOME_CODES = { md: 'Meadows', bf: 'Black Forest', sw: 'Swamp', mt: 'Mountain', pl: 'Plains', ml: 'Mistlands', al: 'Ashlands', dn: 'Deep North' };
 // The lab has no Deep North kit yet; Deep North requests use the Mountain kit, the nearest one.
 const BIOME_STAND_IN = { 'Deep North': 'Mountain' };
-const TYPE_WORDS = { house: 'home', hall: 'longhouse', greathall: 'longhouse', inn: 'tavern', forge: 'smithy', woodworker: 'sawmill',
+const TYPE_WORDS = { hearth: 'hub', house: 'home', hall: 'longhouse', greathall: 'longhouse', inn: 'tavern', forge: 'smithy', woodworker: 'sawmill',
   storehouse: 'storage', watchtower: 'tower', market: 'stall', shrine: 'temple', church: 'temple', boathouse: 'dock' };
 
 function evaluate(d, biome, scorer) {
@@ -114,12 +116,13 @@ function make(o, scorer, rules) {
   if (BIOME_STAND_IN[biome]) { biome = BIOME_STAND_IN[biome]; notes.push(`The lab has no ${asked} kit yet; built with the ${biome} kit.`); }
   let type = String(o.type || words.type || 'home').toLowerCase();
   type = TYPE_WORDS[type] || type;
-  if (type === 'hub' || type === 'hearth') return { error: 'the lab has no hub or hearth design yet. Types: ' + Object.keys(SQ.TYPES).join(', ') };
   if (!SQ.TYPES[type]) return { error: `unknown type '${o.type}'. Types: ${Object.keys(SQ.TYPES).join(', ')}` };
   if (!SQ.BIOMES.includes(biome)) return { error: `unknown biome '${o.biome}'. Codes: ${Object.keys(BIOME_CODES).join(', ')}` };
   let stage = o.stage, decor = o.decor;
-  const sd = /^(s[123])(d[123])?$/i.exec(String(stage || ''));
+  // the hub has five stages (D-138), other types three
+  const sd = /^(s[1-5])(d[123])?$/i.exec(String(stage || ''));
   if (sd) { stage = sd[1].toLowerCase(); decor = decor || (sd[2] && sd[2].toLowerCase()); }
+  if (stage && +String(stage).replace(/\D/g, '') > 3 && type !== 'hub') return { error: `stage '${stage}': s4 and s5 are for the hub only` };
   stage = stage || words.stage || 's2';
   decor = decor || words.decor || 'd2';
   // a culture key written among the words ("middle-eastern courtyard") counts as the culture
@@ -127,13 +130,16 @@ function make(o, scorer, rules) {
   const culture = SQ.cultureKey(o.culture || keyWord || words.culture) || o.culture || keyWord || words.culture;
   if (culture && !SQ.CULTURES[culture]) return { error: `unknown culture '${culture}'. Cultures: ${Object.keys(SQ.CULTURES).join(', ')}` };
   const req = { type, biome, culture, stage, decor, seed: +o.seed || 1 };
+  // the hub's line (lib/hub.js): long, round or court; by default the culture's (styles.js HUB)
+  if (type === 'hub' && o.line) req.line = String(o.line).toLowerCase();
+  else if (type === 'hub' && words.plan) req.line = { octagon: 'round', long: 'long', U: 'court' }[words.plan];
   for (const k of ['plan', 'roof', 'walls', 'pitch', 'storeys', 'porch']) if (words[k] !== undefined) req[k] = words[k];
   if (req.pitch) req.pitch = +req.pitch;
   const top = best(req, o.tries || 8, scorer);
   const d = top.d, info = d.request;
   const failed = top.ev.checks.filter(c => !c.ok).map(c => `${c.check}: ${c.detail}`);
   return {
-    name: d.meta.Name, description: d.meta.Description, blueprint: BQ.write(d), pieces: d.pieces.length,
+    name: d.meta.Name, description: d.meta.Description, blueprint: d.markers ? HQ().write(d) : BQ.write(d), pieces: d.pieces.length,
     type: info.type, biome: info.biome, culture: info.cultureKey, plan: info.plan || '', roof: info.roof || '', walls: info.walls || '',
     stage: info.stage, decor: info.decor, seed: info.seed, score: top.ev.score, passed: top.ev.pass, checks: top.ev.checks.length,
     failed, notes: notes.concat(d.notes || []), read: words, request: req,

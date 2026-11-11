@@ -752,6 +752,25 @@ where 3 m of cloth fits with its foot under a meter; a gable banner over a wall 
 can lie against is left out. Kit food and drink go on flat item stands whose item the household picks; a kit's source
 clip holds only for its own pieces, never a substitute.
 
+## Richness: how much of the corpus and the library gets in
+
+Tyler's question (2026-11-10): what can be done to get as much as fits from the corpus and the interior library into
+the designs. `node lab/richness.js [--seeds n] [--quick] [--json out] [--list]` generates home, longhouse, tavern,
+smithy, workshop and storage in Meadows, Black Forest, Swamp, Mountain, Plains and Mistlands at s1d3, s2d3 and s3d3,
+two seeds each (216 designs, no yards), and reports the distinct decor prefabs, the share of decor pieces from mined
+sets (`kb` 'KB-'), hand-made kits ('BK-') and the decorator's own rules, the distinct mined sets placed, the share of
+the 16 most used prefabs, the same per biome and stage, and why the library turned sets down (`kitbash.js` `WHY_B`,
+one count per set that no anchor in a room took; `setStats` turns the count on).
+
+| | Prefabs | Mined | Hand-made | Decorator | Mined sets | Top 16 | Meadows prefabs |
+|---|---|---|---|---|---|---|---|
+| Baseline (5277c77) | 80 | 2.6 % | 40.1 % | 57.3 % | 58 | 80.7 % | 27 |
+
+Baseline refusals of mined sets (95 placed, 2,005 turned down): a clip with something placed (417, mostly the
+decorator's own furniture), the audit's rest and visible-clip tests (367), over the ceiling (315), no prefab of the
+slot in the biome's reach (166), tall in front of a window (124), one kind only (114). Hand-made kits: 523 placed,
+1,475 turned down; clips (316) and no prefab in reach (298) lead.
+
 ## One table of piece sizes
 
 Furniture and decor take their size from the game's models (`data/piece-models.json` through `lib/mesh.js` `dims`):

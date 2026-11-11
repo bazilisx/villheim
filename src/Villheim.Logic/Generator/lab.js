@@ -7057,7 +7057,7 @@ function fit(b, ctx, room, idx, zones, anc, a, mirror, fires) {
     if (a.byWidth && anc.w) lx = Math.sign(lx) * (anc.w / 2 + Math.abs(lx));
     const x = anc.x + lx * c + (mm.z + push) * s, z = anc.z - lx * s + (mm.z + push) * c, y = m.stand + mm.y;
     const out = (anc.anchor !== 'stair' && !m.nearWall(x, z, 0.5)) || (mm.k !== 'rug' && zones.some(zn => x > zn.x0 && x < zn.x1 && z > zn.z0 && z < zn.z1 && y + 0.3 > zn.y0 && y < zn.y1));
-    if (out) { if (needed.has(i)) return null; miss++; }
+    if (out) { if (needed.has(i)) { WHY_B = 25; return null; } miss++; }
   }
   if (a.pieces.length - miss < Math.max(a.min || 2, Math.ceil(a.pieces.length * 0.6))) { WHY_B = 20; return null; }
   for (const i of order) {
@@ -7065,7 +7065,7 @@ function fit(b, ctx, room, idx, zones, anc, a, mirror, fires) {
     const fail = () => { if (needed.has(i)) return true; dropped++; return false; };
     // a random pick (banners) is made once per assembly, so a pair matches
     const name = mm.any ? (picks[mm.k] || (picks[mm.k] = fillSlot(mm, ctx.biome, ctx))) : fillSlot(mm, ctx.biome, ctx);
-    if (!name || (mm.rest === 'on' && !made[mm.on])) { if (fail()) return null; continue; }
+    if (!name || (mm.rest === 'on' && !made[mm.on])) { if (!name) WHY_B = 30; if (fail()) return null; continue; }
     let lx = mirror ? -mm.x : mm.x;
     if (a.byWidth && anc.w) lx = Math.sign(lx) * (anc.w / 2 + Math.abs(lx));
     const lz = mm.z + push, lyaw = mirror ? -mm.yaw : mm.yaw;
@@ -7096,7 +7096,7 @@ function fit(b, ctx, room, idx, zones, anc, a, mirror, fires) {
             if (u != null && u < ceil) ceil = u;
           }
         }
-        if (rodTop > ceil - 0.05) { if (fail()) return null; continue; }
+        if (rodTop > ceil - 0.05) { WHY_B = 31; if (fail()) return null; continue; }
       }
     }
     // what hangs on the wall goes back to it: its solid back against the nearest wall face's collider (what holds it up
@@ -7137,20 +7137,20 @@ function fit(b, ctx, room, idx, zones, anc, a, mirror, fires) {
   if (got.length < (a.min || 2) || got.length < Math.ceil(a.pieces.length * 0.6) || got.every(p => p.trim)) { WHY_B = WHY_B || 21; return null; }
   // a dining set keeps 0.7 m clear round it, the way round a table
   // two of one thing is a pair of chairs, not a corner; only a store room takes those
-  if (!a.built && room.role !== 'storage' && new Set(got.map(p => slotOf(p.name))).size < 2) return null;
+  if (!a.built && room.role !== 'storage' && new Set(got.map(p => slotOf(p.name))).size < 2) { WHY_B = 26; return null; }
   if (a.anchor === 'floor') {
     let x0 = Infinity, x1 = -Infinity, z0 = Infinity, z1 = -Infinity;
     for (const p of got) { const o = Ck.aabbShapes(p); if (o.pass || PB.piece(p.name).role === 'rug') continue; x0 = Math.min(x0, o.x0); x1 = Math.max(x1, o.x1); z0 = Math.min(z0, o.z0); z1 = Math.max(z1, o.z1); }
     const g = { x0: x0 - 0.7, x1: x1 + 0.7, z0: z0 - 0.7, z1: z1 + 0.7 };
     // its whole footprint 0.6 m inside the room's walls
     for (const [x, z] of [[x0 - 0.6, z0 - 0.6], [x1 + 0.6, z0 - 0.6], [x0 - 0.6, z1 + 0.6], [x1 + 0.6, z1 + 0.6], [(x0 + x1) / 2, z0 - 0.6], [(x0 + x1) / 2, z1 + 0.6], [x0 - 0.6, (z0 + z1) / 2], [x1 + 0.6, (z0 + z1) / 2]])
-      if (!m.inside(x, z)) return null;
+      if (!m.inside(x, z)) { WHY_B = 27; return null; }
     // and clear of where a stair or ladder lands on this floor
     for (const r of idx.passages) {
       if (r.b.info.role !== 'stair') continue;
       const top = r.b.y1;
       if (Math.abs(top - m.stand) > 0.6) continue;
-      if (r.b.x0 - 1.8 < x1 && r.b.x1 + 1.8 > x0 && r.b.z0 - 1.8 < z1 && r.b.z1 + 1.8 > z0) return null;
+      if (r.b.x0 - 1.8 < x1 && r.b.x1 + 1.8 > x0 && r.b.z0 - 1.8 < z1 && r.b.z1 + 1.8 > z0) { WHY_B = 28; return null; }
     }
     for (const r of idx.near(g, 0)) {
       if (!r.p.decor || got.includes(r.p) || (displace && displace.has(r.p)) || r.b.pass || PB.piece(r.p.name).role === 'rug') continue;
@@ -7159,7 +7159,7 @@ function fit(b, ctx, room, idx, zones, anc, a, mirror, fires) {
       // the decorator's tables and seats round it make way too; anything else keeps the set out
       const role = PB.piece(r.p.name).role;
       if (displace && !r.p.kb && !r.p.trim && ['table', 'seat', 'storage', 'light', 'deco'].includes(role) && !/cartography|workbench|butcher|preptable|magetable|throne/.test(r.p.name)) { displace.add(r.p); continue; }
-      return null;
+      WHY_B = 29; return null;
     }
   }
   if (displace && displace.size > (a.dining ? 14 : 2)) { WHY_B = 23; return null; }
@@ -7187,7 +7187,7 @@ function fit(b, ctx, room, idx, zones, anc, a, mirror, fires) {
 
 // The tests for one piece.
 // why the last piece was turned down (for lab/bench.js and tuning)
-let WHY_B = 0, LAST_B = '', LASTQ_B = '';
+let WHY_B = 0, LAST_B = '', LASTQ_B = '', STATS_B = null;
 const no = k => { WHY_B = k; return false; };
 const MOVABLE = ['storage', 'seat', 'deco', 'clutter', 'light'];
 function placeable(p, bx, mm, i, b, ctx, room, idx, zones, made, clipOf, anc, fires, displace, a) {
@@ -7410,14 +7410,15 @@ function furnishRooms(b, ctx, zones, R2, extra, rooms) {
         const sc = new Map(ancs.map(an => [an, Lay.floorScore(plan, an, a, b) + R2() * 1.2]));
         ancs.sort((p, q) => sc.get(q) - sc.get(p));
       }
-      let done = false;
+      let done = false, lastWhy = ancs.length ? 0 : 'anchor';
       for (const an of ancs.slice(0, a.anchor === 'floor' ? 16 : 10)) {
         for (const mir of a.anchor === 'floor' ? [false] : R2() < 0.5 ? [false, true] : [true, false]) {
+          WHY_B = 0;
           const got = fit(b, ctx, room, idx, zones, an, a, mir, fires);
-          if (!got) continue;
+          if (!got) { lastWhy = WHY_B || 0; continue; }
           // floor kept free
           const add = got.reduce((sum, p) => { const o = Ck.aabbShapes(p); return sum + (!o.pass && p.rest === 'floor' && PB.piece(p.name).role !== 'rug' ? (o.x1 - o.x0) * (o.z1 - o.z0) : 0); }, 0);
-          if (footprint + add > floorArea * 0.5) continue;
+          if (footprint + add > floorArea * 0.5) { lastWhy = 'area'; continue; }
           footprint += add;
           // what the kit moved goes, with whatever stood on it
           if (got.displace.length) {
@@ -7438,6 +7439,12 @@ function furnishRooms(b, ctx, zones, R2, extra, rooms) {
         if (done) break;
       }
       if (!done) misses++;
+      // lab/richness.js: what was placed and why the rest was turned down
+      if (STATS_B) {
+        const kind = /^KB-/.test(a.id) ? 'mined' : 'built';
+        const S = STATS_B[kind] || (STATS_B[kind] = { placed: 0, refused: 0, why: {}, ids: {} });
+        if (done) { S.placed++; S.ids[a.id] = (S.ids[a.id] || 0) + 1; } else { S.refused++; S.why[lastWhy] = (S.why[lastWhy] || 0) + 1; }
+      }
     }
     if (ctx.decor !== 'd1') placed += dressWalls(b, ctx, room, idx, zones, anchors, fires, R2, used);
     residentSlots(b, ctx, room, idx, zones, anchors, fires);
@@ -8059,7 +8066,7 @@ function fitDebug(b, ctx, room, anc, a) {
   const got = fit(b, ctx, room, idx, ctx.zones || [], anc, a, false, fires);
   return { ok: !!got, why: WHY_B, piece: LAST_B, q: LASTQ_B };
 }
-const apiB = { liveIn, jitterSpec, WALL_DRESS, WALL_KITS, UNDER, underChoice, residentSlots, slotKits, ROLE_DISPLAYS, groupStorage, spreadTables, spaceBeds, seatRugs, dressWalls, why: () => WHY_B, _fitDebug: fitDebug, BUILT: BUILT_KITS, apply, library, setLibrary, lite, furnishRooms, anchorsOf, roomsB, fit, barCounter, canopyBed, stalls, dais, vignettes, CLASSES, SLOT, FOOD, BUILT_SLOTS, slotOf, isDecor, canDecor };
+const apiB = { setStats: s => { STATS_B = s; }, liveIn, jitterSpec, WALL_DRESS, WALL_KITS, UNDER, underChoice, residentSlots, slotKits, ROLE_DISPLAYS, groupStorage, spreadTables, spaceBeds, seatRugs, dressWalls, why: () => WHY_B, _fitDebug: fitDebug, BUILT: BUILT_KITS, apply, library, setLibrary, lite, furnishRooms, anchorsOf, roomsB, fit, barCounter, canopyBed, stalls, dais, vignettes, CLASSES, SLOT, FOOD, BUILT_SLOTS, slotOf, isDecor, canDecor };
 if (NODE_B) module.exports = apiB; else window.VHKitbash = apiB;
 
 })();

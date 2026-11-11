@@ -923,7 +923,11 @@ function mountSpots(room, name, o = {}) {
       if (f.under != null && /^piece_banner/.test(name) && (y - h < room.stand + 0.05 || y - h > room.stand + 1.0)) continue;
       const span = stretch(face, t - w / 2 - 0.35, t + w / 2 + 0.35);
       if (span.ks.size !== 1 || !span.ks.has('wall')) continue;  // keeps clear of doors and windows on either side
-      if (span.top + room.stand < y + Math.min(h, 1.2) - 0.05) continue;
+      // the wall reaches the top of what is hung on it: a lantern hangs from its hook down (the corpus hangs Dvergr wall
+      // lanterns by the hook 0.31 to 0.97 m under the ceiling, 3.2 to 3.8 m over the floor, data/interior.json), so the
+      // wall reaches the hook; a piece that stands on its foot needs the wall to its height
+      const hook = f.under != null && !/^piece_banner/.test(name);
+      if (hook ? span.top + room.stand < y - 0.05 : span.top + room.stand < y + Math.min(h, 1.2) - 0.05) continue;
       const off = face.ht + (f.wall != null ? f.wall : 0.12);
       const yawM = norm(yawOfDir(face.nx, face.nz) + (f.rel || 0));
       // what putMount needs to keep it clear of the wall's own relief
@@ -940,8 +944,10 @@ const HUNG_CLIP = name => (/^piece_banner\d+$/.test(name) ? 0.03 : 0.015);
 // into a wall's relief on purpose, up to the median depth they use (data/kitbash-interior.json, lab/mine_kitbash.js):
 // a wall item stand 5.3 cm (15 mined sets with the stand clipped into the wall, max 28 cm; 7.7 cm median over all
 // 4,212 stands), a wall torch 8.6 cm (808 torches in 238 builds, 90th percentile 23 cm). Past HUNG_CLIP the piece
-// carries its depth as p.wclip, a clip made on purpose in the file's #VillheimClips (D-098).
-const HUNG_CORPUS = { itemstand: 0.053, piece_walltorch: 0.086 };
+// carries its depth as p.wclip, a clip made on purpose in the file's #VillheimClips (D-098). A Dvergr wall lantern
+// 18.8 cm (462 lanterns in 107 builds, 395 of them resting on the wall, 90th percentile 37.6 cm, the same file): its
+// bracket goes into the wall, and with no depth allowed none was ever put up.
+const HUNG_CORPUS = { itemstand: 0.053, piece_walltorch: 0.086, piece_dvergr_lantern: 0.188 };
 const hungLimit = name => Math.max(HUNG_CLIP(name), HUNG_CORPUS[name] || 0);
 // Clear of the wall's own relief (lib/mesh.js), by what shows of the piece against what shows of the walls round it:
 // a height between the bars within 0.4 m (T-606, T-612). A hung piece keeps its collider against the wall's, which is
